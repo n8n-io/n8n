@@ -1,0 +1,78 @@
+operationId: updateAgent
+tags:
+  - Agent
+summary: Update an agent
+description: |-
+  Replace the configuration of an agent. Send the configuration and the concurrency token you read from the retrieve endpoint: a stale token returns a conflict. Fields the server manages are ignored, not rejected. The retrieved body of an agent without a configuration carries a null configuration: sending it back changes nothing.
+
+  Requires the `agent:update` API key scope.
+x-required-scope: agent:update
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the agent.
+    name: agentId
+    in: path
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          config:
+            type: object
+            nullable: true
+          baseConfigHash:
+            type: string
+            nullable: true
+          configHash:
+            type: string
+            nullable: true
+          id: {}
+          name: {}
+          projectId: {}
+          project: {}
+          availableInMCP: {}
+          isArchived: {}
+          versionId: {}
+          activeVersionId: {}
+          createdAt: {}
+          updatedAt: {}
+          tools: {}
+          activeVersion: {}
+          parentFolder: {}
+          parentFolderId: {}
+          isRunnable: {}
+          hasPublishHistory: {}
+          hasVersionHistory: {}
+          skills: {}
+          skillHashes: {}
+          outdatedSkillIds: {}
+          skillVersions: {}
+          adopted: {}
+        required:
+          - config
+        additionalProperties: false
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/agentPublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

@@ -11,6 +11,7 @@ import {
 	mockInstance,
 } from '@n8n/backend-test-utils';
 import { CacheService, ProjectScopeService } from '@n8n/backend-services';
+import { AgentsConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import {
 	FolderRepository,
@@ -298,6 +299,160 @@ describe('GET /projects/sharing-candidates', () => {
 			.query({ take: 50, skip: 0 });
 		expect(resp.status).toBe(403);
 	});
+
+	describe('service accounts', () => {
+		const agentsConfig = Container.get(AgentsConfig);
+
+		afterEach(() => {
+			agentsConfig.serviceAccountsEnabled = false;
+		});
+
+		async function listCandidates(
+			caller: Awaited<ReturnType<typeof createMember>>,
+			{ includeServiceAccounts = true } = {},
+		) {
+			const resp = await testServer
+				.authAgentFor(caller)
+				.get('/projects/sharing-candidates')
+				.query({ take: 50, skip: 0, includeServiceAccounts })
+				.expect(200);
+			return resp.body.data as Array<Project & { accountKind?: string }>;
+		}
+
+		test('owner sees the service account project with its account kind when the flag is on', async () => {
+			agentsConfig.serviceAccountsEnabled = true;
+			const [owner, serviceAccount] = await Promise.all([
+				createOwner(),
+				createServiceAccountWithProject(),
+			]);
+			const team = await createTeamProject(undefined, owner);
+			const [ownerPersonal, serviceAccountPersonal] = await Promise.all([
+				getPersonalProject(owner),
+				getPersonalProject(serviceAccount),
+			]);
+
+			const projects = await listCandidates(owner);
+
+			expect(projects.find((p) => p.id === serviceAccountPersonal.id)?.accountKind).toBe('service');
+			expect(projects.find((p) => p.id === ownerPersonal.id)?.accountKind).toBe('person');
+			const teamProject = projects.find((p) => p.id === team.id);
+			expect(teamProject).toBeDefined();
+			expect(teamProject?.accountKind).toBeUndefined();
+		});
+
+		test('a picker that does not ask for service accounts gets none', async () => {
+			agentsConfig.serviceAccountsEnabled = true;
+			const [owner, serviceAccount] = await Promise.all([
+				createOwner(),
+				createServiceAccountWithProject(),
+			]);
+			const [ownerPersonal, serviceAccountPersonal] = await Promise.all([
+				getPersonalProject(owner),
+				getPersonalProject(serviceAccount),
+			]);
+
+			const projects = await listCandidates(owner, { includeServiceAccounts: false });
+
+			expect(projects.find((p) => p.id === serviceAccountPersonal.id)).toBeUndefined();
+			expect(projects.find((p) => p.id === ownerPersonal.id)?.accountKind).toBe('person');
+		});
+
+		test('member does not see a service account that acts for none of their projects', async () => {
+			agentsConfig.serviceAccountsEnabled = true;
+			const [member, peer, serviceAccount] = await Promise.all([
+				createMember(),
+				createMember(),
+				createServiceAccountWithProject(),
+			]);
+			const [peerPersonal, serviceAccountPersonal] = await Promise.all([
+				getPersonalProject(peer),
+				getPersonalProject(serviceAccount),
+			]);
+
+			const projects = await listCandidates(member);
+
+			expect(projects.find((p) => p.id === serviceAccountPersonal.id)).toBeUndefined();
+			expect(projects.find((p) => p.id === peerPersonal.id)?.accountKind).toBe('person');
+		});
+
+		test.each([
+			['member', createMember],
+			['owner', createOwner],
+		])(
+			'%s does not see the service account project when the flag is off',
+			async (_, createCaller) => {
+				agentsConfig.serviceAccountsEnabled = false;
+				const [caller, serviceAccount] = await Promise.all([
+					createCaller(),
+					createServiceAccountWithProject(),
+				]);
+				const [callerPersonal, serviceAccountPersonal] = await Promise.all([
+					getPersonalProject(caller),
+					getPersonalProject(serviceAccount),
+				]);
+
+				const projects = await listCandidates(caller);
+
+				expect(projects.find((p) => p.id === serviceAccountPersonal.id)).toBeUndefined();
+				expect(projects.find((p) => p.id === callerPersonal.id)).toBeDefined();
+			},
+		);
+	});
+});
+
+describe('GET /projects account kind', () => {
+	const agentsConfig = Container.get(AgentsConfig);
+
+	afterEach(() => {
+		agentsConfig.serviceAccountsEnabled = false;
+	});
+
+	test('returns the account kind of each personal project', async () => {
+		agentsConfig.serviceAccountsEnabled = true;
+		const [owner, serviceAccount] = await Promise.all([
+			createOwner(),
+			createServiceAccountWithProject(),
+		]);
+		const team = await createTeamProject();
+		const [ownerPersonal, serviceAccountPersonal] = await Promise.all([
+			getPersonalProject(owner),
+			getPersonalProject(serviceAccount),
+		]);
+
+		const resp = await testServer.authAgentFor(owner).get('/projects').expect(200);
+		const projects = resp.body.data as Array<Project & { accountKind?: string }>;
+
+		expect(projects.find((p) => p.id === serviceAccountPersonal.id)?.accountKind).toBe('service');
+		expect(projects.find((p) => p.id === ownerPersonal.id)?.accountKind).toBe('person');
+		expect(projects.find((p) => p.id === team.id)?.accountKind).toBeUndefined();
+	});
+
+	test.each([
+		['member', createMember],
+		['owner', createOwner],
+	])('%s does not see service account projects when the flag is off', async (_, createCaller) => {
+		agentsConfig.serviceAccountsEnabled = false;
+		const [caller, serviceAccount] = await Promise.all([
+			createCaller(),
+			createServiceAccountWithProject(),
+		]);
+		const team = await createTeamProject(undefined, caller);
+		const [callerPersonal, serviceAccountPersonal] = await Promise.all([
+			getPersonalProject(caller),
+			getPersonalProject(serviceAccount),
+		]);
+
+		const resp = await testServer
+			.authAgentFor(caller)
+			.get('/projects')
+			.query({ take: 50, skip: 0 })
+			.expect(200);
+		const projects = resp.body.data as Project[];
+
+		expect(projects.find((p) => p.id === serviceAccountPersonal.id)).toBeUndefined();
+		expect(projects.find((p) => p.id === callerPersonal.id)).toBeDefined();
+		expect(projects.find((p) => p.id === team.id)).toBeDefined();
+	});
 });
 
 describe('Project members endpoints', () => {
@@ -356,6 +511,55 @@ describe('Project members endpoints', () => {
 		expect(relations.some((r) => r.userId === member.id && r.role.slug === 'project:viewer')).toBe(
 			true,
 		);
+	});
+
+	test.each([
+		['owner', createOwner],
+		['admin', createAdmin],
+	])(
+		'POST /projects/:projectId/users returns 403 when an instance %s adds a member to their personal project',
+		async (_label, createActor) => {
+			const actor = await createActor();
+			const member = await createMember();
+			const personalProject = await getPersonalProject(actor);
+
+			const res = await testServer
+				.authAgentFor(actor)
+				.post(`/projects/${personalProject.id}/users`)
+				.send({ relations: [{ userId: member.id, role: 'project:editor' }] });
+
+			expect(res.status).toBe(403);
+			expect(res.body.message).toBe("Personal projects can't have members.");
+			const relations = await getProjectRelations({ projectId: personalProject.id });
+			expect(relations.map((r) => r.userId)).toEqual([actor.id]);
+		},
+	);
+
+	test('PATCH /projects/:projectId returns 403 when the owner updates their personal project', async () => {
+		const owner = await createOwner();
+		const personalProject = await getPersonalProject(owner);
+
+		const res = await testServer
+			.authAgentFor(owner)
+			.patch(`/projects/${personalProject.id}`)
+			.send({ name: 'New Name' });
+
+		expect(res.status).toBe(403);
+		expect(res.body.message).toBe("Personal projects can't be updated.");
+		expect((await findProject(personalProject.id)).name).not.toBe('New Name');
+	});
+
+	test('POST /projects/:projectId/users returns 404 for an unknown project', async () => {
+		const owner = await createOwner();
+		const member = await createMember();
+
+		const res = await testServer
+			.authAgentFor(owner)
+			.post('/projects/unknown-project-id/users')
+			.send({ relations: [{ userId: member.id, role: 'project:editor' }] });
+
+		expect(res.status).toBe(404);
+		expect(res.body.message).toBe('Could not find project with ID: unknown-project-id');
 	});
 
 	test("PATCH /projects/:projectId/users/:userId changes a member's role", async () => {
@@ -633,6 +837,49 @@ describe('Project members endpoints', () => {
 				userHasScopes: false,
 				hasScopes: false,
 			});
+		});
+
+		test('GET /projects/:projectId shows the kind of each member', async () => {
+			const [admin, member, serviceAccount] = await Promise.all([
+				createAdmin(),
+				createMember(),
+				createServiceAccountWithProject(),
+			]);
+			const project = await createTeamProject('Team Project');
+			await linkUserToProject(member, project, 'project:editor');
+			await linkUserToProject(serviceAccount, project, 'project:editor');
+
+			const response = await testServer
+				.authAgentFor(admin)
+				.get(`/projects/${project.id}`)
+				.expect(200);
+
+			expect(response.body.data.relations).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ id: member.id, kind: 'person' }),
+					expect.objectContaining({ id: serviceAccount.id, kind: 'service' }),
+				]),
+			);
+		});
+
+		test('GET /projects/:projectId shows the kind of an implicit member', async () => {
+			const [admin, serviceAccount] = await Promise.all([
+				createAdmin(),
+				createServiceAccountWithProject(GLOBAL_ADMIN_ROLE),
+			]);
+			const project = await createTeamProject('Team Project');
+
+			const response = await testServer
+				.authAgentFor(admin)
+				.get(`/projects/${project.id}`)
+				.expect(200);
+
+			expect(response.body.data.implicitMembers).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ id: admin.id, kind: 'person' }),
+					expect.objectContaining({ id: serviceAccount.id, kind: 'service' }),
+				]),
+			);
 		});
 	});
 
@@ -1122,7 +1369,8 @@ describe('PATCH /projects/:projectId', () => {
 		const resp = await ownerAgent
 			.patch(`/projects/${personalProject.id}`)
 			.send({ name: 'New Name' });
-		expect(resp.status).toBe(404);
+		expect(resp.status).toBe(403);
+		expect(resp.body.message).toBe("Personal projects can't be updated.");
 
 		const updatedProject = await findProject(personalProject.id);
 		expect(updatedProject.name).not.toEqual('New Name');
@@ -1390,6 +1638,7 @@ describe('GET /project/:projectId', () => {
 			email: testUser1.email,
 			firstName: testUser1.firstName,
 			lastName: testUser1.lastName,
+			kind: 'person',
 			role: 'project:editor',
 		});
 		expect(resp.body.data.relations).toContainEqual({
@@ -1397,6 +1646,7 @@ describe('GET /project/:projectId', () => {
 			email: testUser2.email,
 			firstName: testUser2.firstName,
 			lastName: testUser2.lastName,
+			kind: 'person',
 			role: 'project:admin',
 		});
 	});
@@ -1428,6 +1678,7 @@ describe('GET /project/:projectId', () => {
 					email: ownerUser.email,
 					firstName: ownerUser.firstName,
 					lastName: ownerUser.lastName,
+					kind: 'person',
 					globalRole: { slug: 'global:owner', displayName: 'Owner' },
 				},
 				{
@@ -1435,6 +1686,7 @@ describe('GET /project/:projectId', () => {
 					email: adminUser.email,
 					firstName: adminUser.firstName,
 					lastName: adminUser.lastName,
+					kind: 'person',
 					globalRole: { slug: 'global:admin', displayName: 'Admin' },
 				},
 			]),

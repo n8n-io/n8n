@@ -72,20 +72,6 @@ describe('RunStateRegistry', () => {
 		mockedNanoid.mockImplementation(() => `id-${++nanoidCounter}`);
 	});
 
-	it('retains mode across internal runs and clears it on a control request', () => {
-		registry.setBuildMode('thread-1', 'progressive');
-		registry.startRun({ threadId: 'thread-1', user: { id: 'user-1', name: 'Alice' } });
-		expect(registry.getBuildMode('thread-1')).toBe('progressive');
-		registry.setBuildMode('thread-1', undefined);
-		expect(registry.getBuildMode('thread-1')).toBeUndefined();
-	});
-
-	it('removes retained mode when a thread is cleared', () => {
-		registry.setBuildMode('thread-1', 'progressive');
-		registry.clearThread('thread-1');
-		expect(registry.getBuildMode('thread-1')).toBeUndefined();
-	});
-
 	it('scopes the observer threshold override to its own thread and clears it', () => {
 		registry.setObserverThresholdTokens('thread-1', 8000);
 		// A second thread on the same process keeps the instance default.
@@ -110,14 +96,14 @@ describe('RunStateRegistry', () => {
 
 	it('retains the selected prompt version and metadata until the next explicit selection', () => {
 		const metadata = {
-			version: 'progressive@1',
-			systemPromptVersion: 'instance-agent@1',
-			skillVariants: ['progressive-building@1'],
+			version: 'concise@1',
+			systemPromptVersion: 'instance-agent-concise@1',
+			skillVariants: [],
 			skillsHash: 'selected-skills',
 		};
 		registry.setPromptConfiguration('thread-1', metadata);
 		registry.startRun({ threadId: 'thread-1', user: { id: 'user-1', name: 'Alice' } });
-		expect(registry.getPromptVersion('thread-1')).toBe('progressive@1');
+		expect(registry.getPromptVersion('thread-1')).toBe('concise@1');
 		expect(registry.getPromptConfiguration('thread-1')).toEqual(metadata);
 		registry.setPromptVersion('thread-1', 'default@1');
 		expect(registry.getPromptConfiguration('thread-1')).toBeUndefined();
@@ -431,6 +417,20 @@ describe('RunStateRegistry', () => {
 
 			expect(status.backgroundTasks).toHaveLength(2);
 			expect(status.backgroundTasks.map((t) => t.taskId)).toEqual(['task-1', 'task-3']);
+		});
+
+		it('includes detachedFromTurn only for tasks detached from their turn', () => {
+			const tasks: BackgroundTaskStatusSnapshot[] = [
+				createBackgroundTask({ taskId: 'task-1' }),
+				createBackgroundTask({ taskId: 'task-2', detachedFromTurn: true }),
+				createBackgroundTask({ taskId: 'task-3', detachedFromTurn: false }),
+			];
+
+			const status = registry.getThreadStatus('thread-1', tasks);
+
+			expect(status.backgroundTasks[0]).not.toHaveProperty('detachedFromTurn');
+			expect(status.backgroundTasks[1]).toHaveProperty('detachedFromTurn', true);
+			expect(status.backgroundTasks[2]).not.toHaveProperty('detachedFromTurn');
 		});
 
 		it('maps background task fields correctly, stripping threadId', () => {
@@ -1132,9 +1132,9 @@ describe('RunStateRegistry', () => {
 		it('clears everything and returns all active and suspended runs', () => {
 			registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
 			registry.setPromptConfiguration('thread-1', {
-				version: 'progressive@1',
-				systemPromptVersion: 'instance-agent@1',
-				skillVariants: ['progressive-building@1'],
+				version: 'concise@1',
+				systemPromptVersion: 'instance-agent-concise@1',
+				skillVariants: [],
 				skillsHash: 'selected-skills',
 			});
 			registry.startRun({ threadId: 'thread-2', user: { id: 'u2', name: 'B' } });
@@ -1150,7 +1150,7 @@ describe('RunStateRegistry', () => {
 
 			expect(result.activeRuns).toHaveLength(2);
 			expect(result.activeRuns[0].runId).toBe('run_id-1');
-			expect(result.activeRuns[0].promptVersion).toBe('progressive@1');
+			expect(result.activeRuns[0].promptVersion).toBe('concise@1');
 			expect(result.activeRuns.find((run) => run.threadId === 'thread-3')?.promptVersion).toBe(
 				'default@1',
 			);

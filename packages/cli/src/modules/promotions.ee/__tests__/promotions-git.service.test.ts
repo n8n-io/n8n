@@ -1,13 +1,14 @@
 import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError, ServiceUnavailableError } from '@n8n/errors';
 
+import { STALE_GIT_LOCK_AGE_MS } from '../constants';
 import { PromotionGitError, PromotionLocalGitError } from '../promotions-git.error';
 import { PromotionsGitService } from '../promotions-git.service';
 
@@ -266,6 +267,7 @@ describe('PromotionsGitService (git operations)', () => {
 		repositoryFolder: string;
 		nextRepositoryFolder: string;
 		sshDir: string;
+		trashFolder: string;
 	};
 
 	beforeEach(async () => {
@@ -278,6 +280,7 @@ describe('PromotionsGitService (git operations)', () => {
 			repositoryFolder: path.join(rootFolder, 'repository'),
 			nextRepositoryFolder: path.join(rootFolder, 'repository-next'),
 			sshDir: path.join(rootFolder, '.ssh'),
+			trashFolder: path.join(rootFolder, 'trash'),
 		};
 	});
 
@@ -338,6 +341,28 @@ describe('PromotionsGitService (git operations)', () => {
 				'--progress',
 			]);
 			await expect(stat(paths.repositoryFolder)).resolves.toBeDefined();
+		});
+
+		it('moves the old checkout to trash, puts the new one in place, and empties the trash', async () => {
+			mockGit.listRemote.mockResolvedValue('abc123\trefs/heads/main\n');
+			await mkdir(paths.repositoryFolder, { recursive: true });
+			await writeFile(path.join(paths.repositoryFolder, 'old-checkout'), 'old');
+			mockGit.clone.mockImplementation(async (_url: unknown, dir: unknown) => {
+				await mkdir(String(dir), { recursive: true });
+				await writeFile(path.join(String(dir), 'new-checkout'), 'new');
+				return '';
+			});
+
+			await call();
+
+			await expect(
+				readFile(path.join(paths.repositoryFolder, 'new-checkout'), 'utf8'),
+			).resolves.toBe('new');
+			await expect(stat(path.join(paths.repositoryFolder, 'old-checkout'))).rejects.toMatchObject({
+				code: 'ENOENT',
+			});
+			await expect(stat(paths.nextRepositoryFolder)).rejects.toMatchObject({ code: 'ENOENT' });
+			await expect(readdir(paths.trashFolder)).resolves.toEqual([]);
 		});
 
 		it.each([
@@ -511,6 +536,55 @@ describe('PromotionsGitService (git operations)', () => {
 			expect(mockGit.raw).toHaveBeenCalledWith(['reset', '--hard', 'base']);
 			expect(onCheckoutRestored).toHaveBeenCalled();
 			expect(result).toEqual({ commitSha: 'commit' });
+		});
+
+		it('runs the push check after the commit and just before the push', async () => {
+			const beforePush = vi.fn();
+
+			await call({ beforePush });
+
+			expect(beforePush).toHaveBeenCalledOnce();
+			expect(mockGit.commit.mock.invocationCallOrder[0]).toBeLessThan(
+				beforePush.mock.invocationCallOrder[0],
+			);
+			expect(beforePush.mock.invocationCallOrder[0]).toBeLessThan(
+				mockGit.push.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('does not push and rolls back the commit when the push check throws', async () => {
+			mockGit.raw.mockResolvedValueOnce('previous\n');
+			const stopped = new ServiceUnavailableError('stopped');
+
+			await expect(
+				call({
+					rollbackOnFailure: true,
+					beforePush: () => {
+						throw stopped;
+					},
+				}),
+			).rejects.toBe(stopped);
+
+			expect(mockGit.push).not.toHaveBeenCalled();
+			expect(mockGit.raw).toHaveBeenCalledWith(['reset', '--mixed', 'previous']);
+		});
+
+		it('does not push a new branch and restores the base branch when the push check throws', async () => {
+			mockGit.raw.mockResolvedValueOnce('base\n');
+			const stopped = new ServiceUnavailableError('stopped');
+
+			await expect(
+				call({
+					targetBranchName: 'n8n-promotion/x',
+					beforePush: () => {
+						throw stopped;
+					},
+				}),
+			).rejects.toBe(stopped);
+
+			expect(mockGit.push).not.toHaveBeenCalled();
+			expect(mockGit.raw).toHaveBeenCalledWith(['reset', '--hard', 'base']);
+			expect(onCheckoutRestored).toHaveBeenCalled();
 		});
 
 		it('restores the local base branch when a new branch push fails', async () => {
@@ -836,6 +910,101 @@ describe('PromotionsGitService (git operations)', () => {
 		});
 	});
 
+	describe('ensureCommit', () => {
+		const commitSha = 'c'.repeat(40);
+		const call = async (over: Record<string, unknown> = {}) =>
+			await gitService.ensureCommit({
+				remoteUrl,
+				credentials,
+				paths,
+				branchName: 'main',
+				environmentId,
+				commitSha,
+				...over,
+			});
+		const hasCommitCall = ['cat-file', '-e', `${commitSha}^{commit}`];
+
+		it('does not fetch when the checkout has the commit', async () => {
+			mockGit.raw.mockResolvedValue('');
+
+			await call();
+
+			expect(mockGit.raw).toHaveBeenCalledExactlyOnceWith(hasCommitCall);
+			expect(mockGit.fetch).not.toHaveBeenCalled();
+		});
+
+		it('fetches the branch when the checkout lacks the commit', async () => {
+			mockGit.raw.mockRejectedValueOnce(new Error('missing')).mockResolvedValueOnce('');
+
+			await call();
+
+			expect(mockGit.fetch).toHaveBeenCalledExactlyOnceWith(
+				'origin',
+				'+refs/heads/main:refs/remotes/origin/main',
+				['--progress'],
+			);
+			expect(mockGit.raw).toHaveBeenCalledTimes(2);
+			expect(mockGit.fetch.mock.invocationCallOrder[0]).toBeLessThan(
+				mockGit.raw.mock.invocationCallOrder[1],
+			);
+		});
+
+		it('fails with 400 when the fetched branch still lacks the commit', async () => {
+			mockGit.raw.mockRejectedValue(new Error('missing'));
+
+			const error = await call().catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(BadRequestError);
+			expect((error as Error).message).toBe(
+				'The branch no longer has the commit of the preview. Load the preview again.',
+			);
+			expect(mockGit.fetch).toHaveBeenCalledOnce();
+		});
+
+		it('redacts a fetch failure', async () => {
+			mockGit.raw.mockRejectedValue(new Error('missing'));
+			mockGit.fetch.mockRejectedValueOnce(
+				new GitError({ commands: ['fetch', 'origin'] }, 'remote: fatal secret-token'),
+			);
+
+			const error = await call().catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(PromotionGitError);
+			expect((error as Error).message).toBe('Could not complete the Git operation');
+		});
+
+		it('rejects a commit that is not an object name before calling Git', async () => {
+			await expect(call({ commitSha: 'origin/main' })).rejects.toThrow(
+				'The commit SHA is not a Git object name',
+			);
+			expect(simpleGitMock).not.toHaveBeenCalled();
+		});
+
+		it('waits for the checkout lock, so a fetch in progress finishes first', async () => {
+			const fetching = createDeferredPromise();
+			mockGit.fetch.mockReturnValueOnce(fetching.promise);
+			mockGit.revparse.mockResolvedValue(`${commitSha}\n`);
+			mockGit.raw.mockResolvedValue('');
+			const listing = gitService.listBranchTree({
+				remoteUrl,
+				credentials,
+				paths,
+				branchName: 'main',
+				environmentId,
+				pathspecs: ['n8n/'],
+			});
+			await vi.waitFor(() => expect(mockGit.fetch).toHaveBeenCalledTimes(1));
+
+			const ensuring = call();
+			await new Promise((resolve) => setImmediate(resolve));
+			expect(mockGit.raw).not.toHaveBeenCalledWith(hasCommitCall);
+
+			fetching.resolve();
+			await Promise.all([listing, ensuring]);
+			expect(mockGit.raw).toHaveBeenCalledWith(hasCommitCall);
+		});
+	});
+
 	describe('hasRemoteBranch', () => {
 		const call = async () =>
 			await gitService.hasRemoteBranch({
@@ -892,11 +1061,267 @@ describe('PromotionsGitService (git operations)', () => {
 			expect(mockGit.raw).toHaveBeenCalledWith(['reset', '--hard', 'origin/main']);
 		});
 
+		it('removes untracked files from the package folder only, after the reset', async () => {
+			mockGit.listRemote.mockResolvedValue('def456\trefs/heads/main\n');
+			mockGit.revparse.mockResolvedValue('d'.repeat(40) + '\n');
+
+			await call();
+
+			expect(mockGit.raw.mock.calls).toEqual([
+				[['reset', '--hard', 'origin/main']],
+				[['clean', '-ffdx', '--', 'n8n']],
+			]);
+		});
+
 		it('rejects a promotion when the remote base branch does not exist', async () => {
 			mockGit.listRemote.mockResolvedValue('');
 
 			await expect(call()).rejects.toThrow('Remote branch does not exist: main');
 			expect(mockGit.fetch).not.toHaveBeenCalled();
+			expect(mockGit.raw).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('prepareCheckoutForFirstPush', () => {
+		const call = async () =>
+			await gitService.prepareCheckoutForFirstPush({ paths, branchName: 'main', environmentId });
+
+		const trackingRefCall = ['for-each-ref', '--format=%(objectname)', 'refs/remotes/origin/main'];
+		const localBranchCall = ['for-each-ref', '--format=%(objectname)', 'refs/heads/main'];
+
+		it('removes the local branch, empties the index, and cleans the package folder', async () => {
+			mockGit.raw.mockResolvedValueOnce('').mockResolvedValueOnce('c'.repeat(40) + '\n');
+
+			await call();
+
+			expect(mockGit.raw.mock.calls).toEqual([
+				[trackingRefCall],
+				[localBranchCall],
+				[['update-ref', '-d', 'refs/heads/main']],
+				[['read-tree', '--empty']],
+				[['clean', '-ffdx', '--', 'n8n']],
+			]);
+		});
+
+		it('keeps a branch with no commits as it is, and still cleans the package folder', async () => {
+			mockGit.raw.mockResolvedValueOnce('').mockResolvedValueOnce('');
+
+			await call();
+
+			expect(mockGit.raw.mock.calls).toEqual([
+				[trackingRefCall],
+				[localBranchCall],
+				[['read-tree', '--empty']],
+				[['clean', '-ffdx', '--', 'n8n']],
+			]);
+		});
+
+		it('keeps the local branch when the checkout saw the branch on the remote before', async () => {
+			mockGit.raw.mockResolvedValueOnce('d'.repeat(40) + '\n');
+
+			await call();
+
+			expect(mockGit.raw.mock.calls).toEqual([[trackingRefCall]]);
+		});
+
+		it('contacts no remote', async () => {
+			mockGit.raw.mockResolvedValueOnce('').mockResolvedValueOnce('');
+
+			await call();
+
+			expect(mockGit.listRemote).not.toHaveBeenCalled();
+			expect(mockGit.fetch).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('stale Git lock files', () => {
+		// Any operation runs inside the checkout lock. This one runs one local Git command.
+		const call = async () =>
+			await gitService.hasCommittedPath({
+				paths,
+				branchName: 'main',
+				environmentId,
+				pathspec: 'n8n/manifest.json',
+			});
+
+		const gitPath = (...segments: string[]) =>
+			path.join(paths.repositoryFolder, '.git', ...segments);
+
+		const writeGitFile = async (ageMs: number, ...segments: string[]) => {
+			await mkdir(path.dirname(gitPath(...segments)), { recursive: true });
+			await writeFile(gitPath(...segments), 'content');
+			const modified = new Date(Date.now() - ageMs);
+			await utimes(gitPath(...segments), modified, modified);
+		};
+		const writeStale = async (...segments: string[]) =>
+			await writeGitFile(STALE_GIT_LOCK_AGE_MS + 60_000, ...segments);
+		const writeFresh = async (...segments: string[]) =>
+			await writeGitFile(STALE_GIT_LOCK_AGE_MS - 60_000, ...segments);
+
+		const exists = async (...segments: string[]) =>
+			await stat(gitPath(...segments)).then(
+				() => true,
+				() => false,
+			);
+
+		beforeEach(() => {
+			mockGit.raw.mockResolvedValue('');
+		});
+
+		it('removes old index, HEAD, packed-refs, branch, and remote-tracking lock files', async () => {
+			const lockFiles = [
+				['index.lock'],
+				['HEAD.lock'],
+				['packed-refs.lock'],
+				['refs', 'heads', 'main.lock'],
+				['refs', 'heads', 'team', 'feature.lock'],
+				['refs', 'remotes', 'origin', 'main.lock'],
+				['refs', 'remotes', 'origin', 'team', 'feature.lock'],
+			];
+			for (const lockFile of lockFiles) await writeStale(...lockFile);
+
+			await call();
+
+			for (const lockFile of lockFiles) {
+				expect(await exists(...lockFile)).toBe(false);
+				expect(logger.debug).toHaveBeenCalledWith(
+					'Removed a leftover Git lock file from the promotion checkout',
+					{ environmentId, lockFile: path.join(...lockFile) },
+				);
+			}
+			expect(await exists('refs', 'remotes', 'origin', 'team')).toBe(true);
+		});
+
+		it('keeps lock files that a running Git command on another main can hold', async () => {
+			await writeFresh('index.lock');
+			await writeFresh('refs', 'remotes', 'origin', 'main.lock');
+
+			await call();
+
+			expect(await exists('index.lock')).toBe(true);
+			expect(await exists('refs', 'remotes', 'origin', 'main.lock')).toBe(true);
+			expect(logger.debug).not.toHaveBeenCalled();
+		});
+
+		it('keeps refs, FETCH_HEAD, the index, and other lock files', async () => {
+			for (const file of [
+				['refs', 'heads', 'main'],
+				['refs', 'remotes', 'origin', 'main'],
+				['FETCH_HEAD'],
+				['index'],
+				['config.lock'],
+			]) {
+				await writeStale(...file);
+			}
+
+			await call();
+
+			expect(await exists('refs', 'heads', 'main')).toBe(true);
+			expect(await exists('refs', 'remotes', 'origin', 'main')).toBe(true);
+			expect(await exists('FETCH_HEAD')).toBe(true);
+			expect(await exists('index')).toBe(true);
+			expect(await exists('config.lock')).toBe(true);
+		});
+
+		it('removes the lock files before the operation runs Git', async () => {
+			await writeStale('refs', 'remotes', 'origin', 'main.lock');
+			const seenByGit: boolean[] = [];
+			mockGit.raw.mockImplementationOnce(async () => {
+				seenByGit.push(await exists('refs', 'remotes', 'origin', 'main.lock'));
+				return '';
+			});
+
+			await call();
+
+			expect(seenByGit).toEqual([false]);
+		});
+
+		it('runs the operation when the checkout has no .git folder', async () => {
+			await expect(call()).resolves.toBe(false);
+
+			expect(mockGit.raw).toHaveBeenCalled();
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+
+		it('logs a failed removal and still runs the operation', async () => {
+			// A file where Git keeps the refs folder makes the listing fail.
+			await writeStale('refs');
+
+			await expect(call()).resolves.toBe(false);
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to remove leftover Git lock files from the promotion checkout',
+				{ environmentId, error: expect.stringContaining('ENOTDIR') },
+			);
+			expect(mockGit.raw).toHaveBeenCalled();
+		});
+	});
+
+	describe('failure log', () => {
+		const call = async () =>
+			await gitService.hasCommittedPath({
+				paths,
+				branchName: 'main',
+				environmentId,
+				pathspec: 'n8n/manifest.json',
+			});
+
+		it('names the lock file that Git found, and nothing else from its output', async () => {
+			const lockFile =
+				'/data/.n8n/promotions/environments/e/repository/.git/refs/remotes/origin/main.lock';
+			mockGit.raw.mockRejectedValueOnce(
+				new GitError(
+					{ commands: ['fetch', 'origin'] },
+					[
+						' ! abc..def  main -> origin/main  (unable to update local ref)',
+						`error: cannot lock ref 'refs/remotes/origin/main': Unable to create '${lockFile}': File exists.`,
+						'',
+						'Another git process seems to be running in this repository',
+					].join('\n'),
+				),
+			);
+
+			await expect(call()).rejects.toThrow(PromotionGitError);
+
+			expect(logger.warn).toHaveBeenCalledWith('Git operation failed', {
+				environmentId,
+				branchName: 'main',
+				lockFile,
+			});
+		});
+
+		it('names the index lock file', async () => {
+			const lockFile = '/data/repository/.git/index.lock';
+			mockGit.raw.mockRejectedValueOnce(
+				new GitError(
+					{ commands: ['reset', '--hard'] },
+					`fatal: Unable to create '${lockFile}': File exists.`,
+				),
+			);
+
+			await expect(call()).rejects.toThrow(PromotionLocalGitError);
+
+			expect(logger.warn).toHaveBeenCalledWith('Git operation failed', {
+				environmentId,
+				branchName: 'main',
+				lockFile,
+			});
+		});
+
+		it('ignores the same text from the remote', async () => {
+			mockGit.raw.mockRejectedValueOnce(
+				new GitError(
+					{ commands: ['fetch', 'origin'] },
+					"remote: fatal: Unable to create '/secret/x.lock': File exists.",
+				),
+			);
+
+			await expect(call()).rejects.toThrow(PromotionGitError);
+
+			expect(logger.warn).toHaveBeenCalledWith('Git operation failed', {
+				environmentId,
+				branchName: 'main',
+			});
 		});
 	});
 

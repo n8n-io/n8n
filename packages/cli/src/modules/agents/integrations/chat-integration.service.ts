@@ -8,6 +8,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import {
+	LOWEST_SHUTDOWN_PRIORITY,
 	OnLeaderStepdown,
 	OnPubSubEvent,
 	OnShutdown,
@@ -20,7 +21,6 @@ import type { Channel, Chat as ChatSdk, StateAdapter, Thread, UserInfo } from 'c
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError, UnexpectedError } from '@n8n/errors';
 
-import { LOWEST_SHUTDOWN_PRIORITY } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { UrlService } from '@n8n/backend-services';
 
@@ -1263,7 +1263,7 @@ export class ChatIntegrationService {
 		// The `chat` variable is returned by `new Chat(...)` from the ESM-only
 		// package. Its runtime shape matches our local `ChatInstance` interface.
 		// We validate the required methods exist before storing.
-		return { chat: chat as ChatInstance, bridge };
+		return { chat, bridge };
 	}
 
 	private async createChatBridge(

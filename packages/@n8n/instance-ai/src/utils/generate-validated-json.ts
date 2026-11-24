@@ -1,5 +1,5 @@
 /**
- * One-shot "LLM returns a JSON object" helper for eval-agent calls: create the
+ * One-shot "LLM returns a JSON object" helper for in-product helper calls: create the
  * agent, send the user text, strip markdown fences, parse, validate against a
  * zod schema. Never throws — callers own their fallback (and the schema-issue
  * details when they want to log them).
@@ -8,11 +8,15 @@
  * helper's own tests mock `eval-agents`.
  */
 
+import { randomUUID } from 'node:crypto';
+
+import { getCatalogModelId } from '@n8n/agents';
 import type { AnthropicThinkingEffort, FetchFn, ModelConfig } from '@n8n/agents';
 import { extractJsonCandidate } from '@n8n/ai-utilities/llm-output';
 import type { z } from 'zod';
 
 import { createEvalAgent, extractText } from './eval-agents';
+import type { HelperModelUsageReport, HelperUsageHook } from '../types';
 
 export type ValidatedJsonResult<T> =
 	| { ok: true; data: T }
@@ -25,16 +29,17 @@ export type ValidatedJsonResult<T> =
 	  };
 
 export interface GenerateValidatedJsonOptions<T> {
-	model?: string;
-	/** Thinking effort for a pinned `model`. */
+	/** Host-resolved model for the call. Without one, the call fails as `generation_failed`. */
+	model: ModelConfig | undefined;
+	/** Thinking effort, applied when the model supports it. */
 	effort?: AnthropicThinkingEffort;
 	instructions: string;
 	userText: string;
 	schema: z.ZodType<T>;
-	/** Host-resolved model used when no eval model API key is configured in the environment. */
-	fallbackModelConfig?: ModelConfig;
 	/** Transport for the helper's model call. */
 	modelFetch?: FetchFn;
+	/** Receives the call's token usage so the host can bill it. */
+	onHelperUsage?: HelperUsageHook;
 }
 
 /** Tracing must never block a model call: when it fails, the call runs without spans. */
@@ -47,24 +52,47 @@ async function helperTelemetry(agentName: string) {
 	}
 }
 
+/** Billing must never fail the helper call. */
+async function reportUsage<T>(
+	agentName: string,
+	options: GenerateValidatedJsonOptions<T>,
+	usage: HelperModelUsageReport['usage'],
+): Promise<void> {
+	if (!options.onHelperUsage || options.model === undefined) return;
+	try {
+		await options.onHelperUsage({
+			helper: agentName,
+			model: getCatalogModelId(options.model),
+			usage,
+			reportId: randomUUID(),
+		});
+	} catch {
+		// The host logs its own billing failures.
+	}
+}
+
 export async function generateValidatedJson<T>(
 	agentName: string,
 	options: GenerateValidatedJsonOptions<T>,
 ): Promise<ValidatedJsonResult<T>> {
+	if (options.model === undefined) {
+		return { ok: false, reason: 'generation_failed', message: 'No model is available' };
+	}
 	const telemetry = await helperTelemetry(agentName);
 	let text: string;
 	try {
 		const llm = createEvalAgent(agentName, {
 			telemetry,
-			model: options.model,
+			resolvedModel: options.model,
 			effort: options.effort,
 			instructions: options.instructions,
-			fallbackModelConfig: options.fallbackModelConfig,
 			modelFetch: options.modelFetch,
 		});
 		const result = await llm.generate([
 			{ role: 'user' as const, content: [{ type: 'text' as const, text: options.userText }] },
 		]);
+		// Not awaited: billing must not delay the helper result.
+		if (result.usage) void reportUsage(agentName, options, result.usage);
 		text = extractText(result);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);

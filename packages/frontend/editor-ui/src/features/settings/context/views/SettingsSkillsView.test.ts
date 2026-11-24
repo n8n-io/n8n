@@ -13,12 +13,17 @@ import {
 import { ResponseError } from '@n8n/rest-api-client';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { IUser } from '@n8n/rest-api-client/api/users';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import userEvent from '@testing-library/user-event';
-import { fireEvent, screen, waitFor, within } from '@testing-library/vue';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/vue';
+import type { VNode } from 'vue';
 import { mock } from 'vitest-mock-extended';
+import { nextTick, ref } from 'vue';
 
 import { getDropdownItems } from '@/__tests__/utils';
+import { RECOMMENDED_SKILLS_EXPERIMENT } from '@/app/constants/experiments';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { AgentSkillModalData } from '@/features/agents/components/AgentSkillModal.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -179,11 +184,21 @@ describe('SettingsSkillsView', () => {
 		if (!view.queryByTestId('resources-list-filters-dropdown')) {
 			await userEvent.click(view.getByTestId('resources-list-filters-trigger'));
 		}
-		const items = await getDropdownItems(await view.findByTestId(testId));
-		const option = [...items].find((item) => item.textContent?.trim() === optionText);
-		if (!option) throw new Error(`No option ${optionText}`);
-		await userEvent.click(option);
+		const select = await view.findByTestId(testId);
+		await userEvent.click(within(select).getAllByRole('combobox')[0]);
+		await userEvent.click(await screen.findByRole('option', { name: optionText }));
 	}
+
+	it.each([true, false])(
+		'shows the enterprise readiness badge only on the enterprise plan (%s)',
+		async (enterprise) => {
+			mockedStore(useSettingsStore).isEnterprisePlan = enterprise;
+			const view = renderView();
+			await new Promise(process.nextTick);
+
+			expect(!!view.queryByTestId('skills-enterprise-readiness-badge')).toBe(enterprise);
+		},
+	);
 
 	it('loads the first page of 10 skills on mount', async () => {
 		renderView();
@@ -193,6 +208,123 @@ describe('SettingsSkillsView', () => {
 			skip: 0,
 			take: 10,
 			sortBy: 'updatedAt:desc',
+		});
+	});
+
+	describe('pagination preferences', () => {
+		const key = 'n8n-skills-pagination:alice';
+
+		beforeEach(() => {
+			mockedStore(useUsersStore).currentUserId = 'alice';
+			skillsStore.skills = [skill()];
+			skillsStore.count = 200;
+		});
+
+		it('restores page and page size with a fresh store after changing the controls', async () => {
+			const view = renderView();
+			await userEvent.click(await view.findByTestId('pagination-sizes'));
+			await userEvent.click(await screen.findByRole('option', { name: /25/ }));
+			await userEvent.click(view.getByTestId('pagination-next'));
+			await userEvent.click(view.getByTestId('pagination-next'));
+			await waitFor(() =>
+				expect(JSON.parse(localStorage.getItem(key)!)).toEqual({ page: 2, itemsPerPage: 25 }),
+			);
+			view.unmount();
+
+			createTestingPinia();
+			setPermissions();
+			mockedStore(useUsersStore).currentUserId = 'alice';
+			skillsStore = mockedStore(useSkillsStore);
+			skillsStore.count = 200;
+			skillsStore.skills = [skill()];
+			renderView();
+			await waitFor(() =>
+				expect(skillsStore.fetchSkills).toHaveBeenCalledWith({
+					skip: 50,
+					take: 25,
+					sortBy: 'updatedAt:desc',
+				}),
+			);
+		});
+
+		it.each([false, true])('clamps and saves an invalid page with grouping=%s', async (grouped) => {
+			localStorage.setItem(key, JSON.stringify({ page: 99, itemsPerPage: 10 }));
+			mockedStore(usePostHog).isFeatureEnabled.mockImplementation(
+				(flag) => grouped && String(flag) === SKILL_SYNC_FLAG,
+			);
+			skillsStore.fetchSources.mockResolvedValue([]);
+			skillsStore.fetchSkills.mockImplementation(async () => {
+				skillsStore.count = 23;
+				if (grouped) {
+					skillsStore.page = 2;
+					skillsStore.pageCount = 3;
+				}
+				return {
+					data: skillsStore.skills,
+					count: 23,
+					...(grouped ? { page: 2, pageCount: 3 } : {}),
+				};
+			});
+			renderView();
+			await waitFor(() =>
+				expect(JSON.parse(localStorage.getItem(key)!)).toEqual({ page: 2, itemsPerPage: 10 }),
+			);
+			if (!grouped) {
+				expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith(
+					expect.objectContaining({ skip: 20, take: 10 }),
+				);
+			}
+		});
+
+		it('keeps pagination preferences separate for each user', async () => {
+			localStorage.setItem(key, JSON.stringify({ page: 2, itemsPerPage: 25 }));
+			mockedStore(useUsersStore).currentUserId = 'bob';
+			const view = renderView();
+			await waitFor(() =>
+				expect(skillsStore.fetchSkills).toHaveBeenCalledWith(
+					expect.objectContaining({ skip: 0, take: 10 }),
+				),
+			);
+			await userEvent.click(view.getByTestId('pagination-next'));
+			await waitFor(() =>
+				expect(JSON.parse(localStorage.getItem('n8n-skills-pagination:bob')!)).toEqual({
+					page: 1,
+					itemsPerPage: 10,
+				}),
+			);
+			expect(JSON.parse(localStorage.getItem(key)!)).toEqual({ page: 2, itemsPerPage: 25 });
+		});
+
+		it.each([
+			{ page: -1, itemsPerPage: 0 },
+			{ page: '2', itemsPerPage: 123 },
+		])('uses defaults for invalid saved values %j', async (saved) => {
+			localStorage.setItem(key, JSON.stringify(saved));
+			renderView();
+			await waitFor(() =>
+				expect(skillsStore.fetchSkills).toHaveBeenCalledWith(
+					expect.objectContaining({ skip: 0, take: 10 }),
+				),
+			);
+		});
+
+		it('resets a restored page when the filter changes and keeps the page size', async () => {
+			localStorage.setItem(key, JSON.stringify({ page: 2, itemsPerPage: 25 }));
+			const view = renderView();
+			await waitFor(() =>
+				expect(skillsStore.fetchSkills).toHaveBeenCalledWith(
+					expect.objectContaining({ skip: 50, take: 25 }),
+				),
+			);
+			await pickFilter(view, 'skills-filter-scope', 'Projects');
+			await waitFor(() =>
+				expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith(
+					expect.objectContaining({ skip: 0, take: 25, scope: 'project' }),
+				),
+			);
+			await waitFor(() =>
+				expect(JSON.parse(localStorage.getItem(key)!)).toEqual({ page: 0, itemsPerPage: 25 }),
+			);
 		});
 	});
 
@@ -366,6 +498,17 @@ describe('SettingsSkillsView', () => {
 		const items = await getDropdownItems(await view.findByTestId('skills-filter-scope'));
 
 		expect([...items].map((item) => item.textContent?.trim())).toEqual(['Global', 'Projects']);
+	});
+
+	it('keeps source filtering and source search copy behind Skill Sync', async () => {
+		const view = renderView();
+		await userEvent.click(view.getByTestId('resources-list-filters-trigger'));
+
+		expect(view.queryByTestId('skills-filter-source')).not.toBeInTheDocument();
+		expect(view.getByTestId('skills-search')).toHaveAttribute(
+			'placeholder',
+			'Search skills by name...',
+		);
 	});
 
 	it('combines the agent and creator filters with the search, from the first page', async () => {
@@ -856,15 +999,273 @@ describe('SettingsSkillsView', () => {
 		});
 	});
 
+	describe('recommended skills', () => {
+		const experimentProperties = {
+			variant: 'variant',
+			'$feature/143_recommended_skills': 'variant',
+		};
+
+		function assignVariant(variant: string | undefined) {
+			mockedStore(usePostHog).getVariant.mockImplementation((flag) =>
+				String(flag) === RECOMMENDED_SKILLS_EXPERIMENT.name ? variant : undefined,
+			);
+			mockedStore(usePostHog).isVariantEnabled.mockImplementation(
+				(flag, expected) => flag === RECOMMENDED_SKILLS_EXPERIMENT.name && expected === variant,
+			);
+		}
+
+		function addedEvents() {
+			return trackMock.mock.calls.filter(
+				([event]) => event === TELEMETRY_EVENT.CONTEXT.USER_ADDED_RECOMMENDED_SKILL,
+			);
+		}
+
+		async function pickCard(container: HTMLElement, id: string) {
+			await userEvent.click(
+				within(within(container).getByTestId(`recommended-skill-${id}`)).getByTestId(
+					'recommended-skill-use-button',
+				),
+			);
+			await waitFor(() => expect(uiStore.openModalWithData).toHaveBeenCalled());
+		}
+
+		it('keeps the empty state and the menu in the control group, and tracks the exposure', async () => {
+			assignVariant('control');
+			const view = renderView();
+
+			const emptyState = await view.findByTestId('skills-empty-state');
+			expect(within(emptyState).getByText('No skills yet')).toBeVisible();
+			expect(view.queryByTestId('recommended-skill-cards')).not.toBeInTheDocument();
+			expect(mockedStore(usePostHog).trackExposure).toHaveBeenCalledWith(
+				RECOMMENDED_SKILLS_EXPERIMENT.name,
+			);
+
+			await userEvent.click(view.getByTestId('skills-create-menu-button'));
+			await view.findByTestId('skills-create-manual');
+			expect(createMenuLabels()).toEqual(['Upload folder', 'Upload SKILL.md', 'Create manually']);
+		});
+
+		it('shows the recommended skills instead of the table in the empty state of the treatment', async () => {
+			assignVariant('variant');
+			const view = renderView();
+
+			const emptyState = await view.findByTestId('skills-recommended-empty-state');
+			expect(within(emptyState).getByText('Start with a recommended skill')).toBeVisible();
+			expect(within(emptyState).getByTestId('recommended-skill-cards')).toBeVisible();
+			expect(view.queryByTestId('skills-search')).not.toBeInTheDocument();
+			expect(view.queryByTestId('skills-empty-state')).not.toBeInTheDocument();
+			expect(view.queryByRole('table')).not.toBeInTheDocument();
+			expect(mockedStore(usePostHog).trackExposure).toHaveBeenCalledWith(
+				RECOMMENDED_SKILLS_EXPERIMENT.name,
+			);
+			expect(trackMock).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.USER_VIEWED_RECOMMENDED_SKILLS,
+				{ entry_point: 'empty_state', ...experimentProperties },
+			);
+
+			await userEvent.click(within(emptyState).getByTestId('skills-empty-create-button'));
+			await view.findByTestId('skills-create-manual');
+			expect(createMenuLabels()).toEqual(['Upload folder', 'Upload SKILL.md', 'Create manually']);
+		});
+
+		it('tracks no exposure when the user has skills', async () => {
+			assignVariant('variant');
+			skillsStore.skills = [skill()];
+			skillsStore.count = 1;
+			renderView();
+			await new Promise(process.nextTick);
+
+			expect(mockedStore(usePostHog).trackExposure).not.toHaveBeenCalled();
+		});
+
+		it('tracks the exposure when the variant arrives after the page', async () => {
+			const lateVariant = ref<string>();
+			mockedStore(usePostHog).getVariant.mockImplementation((flag) =>
+				String(flag) === RECOMMENDED_SKILLS_EXPERIMENT.name ? lateVariant.value : undefined,
+			);
+			renderView();
+			await new Promise(process.nextTick);
+			expect(mockedStore(usePostHog).trackExposure).not.toHaveBeenCalled();
+
+			lateVariant.value = 'variant';
+			await nextTick();
+
+			expect(mockedStore(usePostHog).trackExposure).toHaveBeenCalledExactlyOnceWith(
+				RECOMMENDED_SKILLS_EXPERIMENT.name,
+			);
+		});
+
+		it('tracks the exposure when the last skill goes away', async () => {
+			assignVariant('variant');
+			skillsStore.skills = [skill()];
+			skillsStore.count = 1;
+			renderView();
+			await new Promise(process.nextTick);
+			expect(mockedStore(usePostHog).trackExposure).not.toHaveBeenCalled();
+
+			skillsStore.skills = [];
+			skillsStore.count = 0;
+			await nextTick();
+
+			expect(mockedStore(usePostHog).trackExposure).toHaveBeenCalledExactlyOnceWith(
+				RECOMMENDED_SKILLS_EXPERIMENT.name,
+			);
+		});
+
+		it('tracks no exposure when a source with no synced skills replaces the empty state', async () => {
+			assignVariant('variant');
+			skillsStore.collapsedSources = [{ sourceId: 'src-1', index: 0, skillCount: 0 }];
+			const view = renderView();
+			await new Promise(process.nextTick);
+
+			expect(mockedStore(usePostHog).trackExposure).not.toHaveBeenCalled();
+			expect(view.queryByTestId('recommended-skill-cards')).not.toBeInTheDocument();
+		});
+
+		it('drops an upload when the user opens the recommended skills before it finishes', async () => {
+			assignVariant('variant');
+			skillsStore.skills = [skill()];
+			skillsStore.count = 1;
+			const view = renderView();
+			await new Promise(process.nextTick);
+			const read = Promise.withResolvers<string>();
+			const slow = skillFile();
+			Object.defineProperty(slow, 'text', { value: async () => await read.promise });
+
+			await fireEvent.change(view.getByTestId('skills-upload-file-input'), {
+				target: { files: [slow] },
+			});
+			await userEvent.click(view.getByTestId('skills-create-menu-button'));
+			await userEvent.click(await view.findByTestId('skills-create-recommended'));
+			await screen.findByTestId('recommended-skills-dialog');
+			read.resolve('---\nname: slow-skill\ndescription: d\n---\ni');
+			await new Promise(process.nextTick);
+			await new Promise(process.nextTick);
+
+			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+		});
+
+		it('opens the create modal filled in from a card and reports the saved skill', async () => {
+			assignVariant('variant');
+			skillsStore.createSkill.mockResolvedValue(detail({ id: 's-new' }));
+			const view = renderView();
+
+			await pickCard(await view.findByTestId('skills-recommended-empty-state'), 'cold-email');
+
+			const data = lastModalData();
+			expect(data.skill?.name).toBe('cold-email');
+			expect(data.skill?.references?.map(({ path }) => path)).toEqual([
+				'references/personalization.md',
+				'references/frameworks.md',
+				'references/subject-lines.md',
+				'references/follow-up-sequences.md',
+			]);
+			expect(data.initialStep).toBeUndefined();
+			expect(data.availableToAssistant).toBeUndefined();
+			expect(addedEvents()).toHaveLength(0);
+
+			await data.onConfirm({ skill: data.skill!, scope: 'project:personal-1', method: 'manual' });
+
+			expect(skillsStore.createSkill).toHaveBeenCalledWith({
+				scope: 'project',
+				projectId: 'personal-1',
+				skill: data.skill,
+				method: 'manual',
+			});
+			expect(addedEvents()).toEqual([
+				[
+					TELEMETRY_EVENT.CONTEXT.USER_ADDED_RECOMMENDED_SKILL,
+					{
+						recommended_skill_id: 'cold-email',
+						skill_id: 's-new',
+						entry_point: 'empty_state',
+						...experimentProperties,
+					},
+				],
+			]);
+		});
+
+		it('reports no added skill when the save is refused', async () => {
+			assignVariant('variant');
+			skillsStore.createSkill.mockRejectedValue(new Error('Server down'));
+			const view = renderView();
+
+			await pickCard(await view.findByTestId('skills-recommended-empty-state'), 'humanizer');
+			const data = lastModalData();
+			const result = await data.onConfirm({ skill: data.skill!, scope: 'project:personal-1' });
+
+			expect(result).toEqual({ saved: false });
+			expect(addedEvents()).toHaveLength(0);
+		});
+
+		it('offers "Recommended skills" last in the menu and shows the cards in a dialog', async () => {
+			assignVariant('variant');
+			skillsStore.skills = [skill()];
+			skillsStore.count = 1;
+			skillsStore.createSkill.mockResolvedValue(detail({ id: 's-new' }));
+			const view = renderView();
+			await new Promise(process.nextTick);
+
+			await userEvent.click(view.getByTestId('skills-create-menu-button'));
+			await view.findByTestId('skills-create-manual');
+			expect(createMenuLabels()).toEqual([
+				'Upload folder',
+				'Upload SKILL.md',
+				'Create manually',
+				'Recommended skills',
+			]);
+			await userEvent.click(view.getByTestId('skills-create-recommended'));
+
+			const dialog = await screen.findByTestId('recommended-skills-dialog');
+			expect(trackMock).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.USER_VIEWED_RECOMMENDED_SKILLS,
+				{ entry_point: 'create_menu', ...experimentProperties },
+			);
+			await pickCard(dialog, 'research');
+
+			await waitFor(() =>
+				expect(screen.queryByTestId('recommended-skills-dialog')).not.toBeInTheDocument(),
+			);
+			const data = lastModalData();
+			expect(data.skill?.name).toBe('research');
+			await data.onConfirm({ skill: data.skill!, scope: 'project:personal-1' });
+			expect(addedEvents()).toEqual([
+				[
+					TELEMETRY_EVENT.CONTEXT.USER_ADDED_RECOMMENDED_SKILL,
+					{
+						recommended_skill_id: 'research',
+						skill_id: 's-new',
+						entry_point: 'create_menu',
+						...experimentProperties,
+					},
+				],
+			]);
+
+			await userEvent.click(view.getByTestId('skills-create-menu-button'));
+			await userEvent.click(await view.findByTestId('skills-create-recommended'));
+			const reopened = await screen.findByTestId('recommended-skills-dialog');
+			expect(
+				within(within(reopened).getByTestId('recommended-skill-research')).getByTestId(
+					'recommended-skill-added',
+				),
+			).toHaveTextContent('Added');
+			expect(within(reopened).getAllByTestId('recommended-skill-added')).toHaveLength(1);
+		});
+	});
+
 	describe('edit', () => {
 		it.each([
-			['instance', true, false, false],
-			['project', true, true, true],
-			['instance', false, true, undefined],
+			['instance', true, true, false, false],
+			['project', true, true, true, true],
+			['instance', false, true, true, undefined],
+			['project', true, false, true, undefined],
 		] as const)(
-			'shows availability in the table and modal behind the Assistant flag (%s, %s)',
-			async (scope, enabled, availableToAssistant, expected) => {
+			'shows availability in the table and modal behind the Assistant flag (%s, flag %s, Assistant on %s)',
+			async (scope, enabled, assistantOn, availableToAssistant, expected) => {
 				mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(enabled);
+				mockedStore(useSettingsStore).moduleSettings = {
+					'instance-ai': { enabled: assistantOn },
+				} as never;
 				skillsStore.skills = [skill({ scope, availableToAssistant })];
 				skillsStore.count = 1;
 				skillsStore.fetchSkill.mockResolvedValue(detail({ scope, availableToAssistant }));
@@ -918,6 +1319,25 @@ describe('SettingsSkillsView', () => {
 				scope: 'instance',
 				read_only: true,
 			});
+		});
+
+		it('passes the fetched project type to the modal for an unlisted personal project', async () => {
+			const projectSkill = {
+				scope: 'project' as const,
+				projectId: 'other-personal',
+				projectName: 'Ada Lovelace <ada@example.com>',
+				projectType: 'personal' as const,
+			};
+			skillsStore.skills = [skill(projectSkill)];
+			skillsStore.count = 1;
+			skillsStore.fetchSkill.mockResolvedValue(detail(projectSkill));
+			const { getByText } = renderView();
+			await new Promise(process.nextTick);
+
+			await userEvent.click(getByText('research-search'));
+
+			await waitFor(() => expect(lastModalData().projectType).toBe('personal'));
+			expect(lastModalData().initialScope).toBe('project:other-personal');
 		});
 
 		it('lets the user move a skill that agents use, and hands the modal who uses it', async () => {
@@ -1273,15 +1693,47 @@ describe('SettingsSkillsView', () => {
 			`,
 		};
 
-		function enableSkillSync() {
+		function enableSkillSync({ switchOn = true, managedByEnv = false } = {}) {
 			mockedStore(usePostHog).isFeatureEnabled.mockImplementation(
 				(flag) => String(flag) === SKILL_SYNC_FLAG,
+			);
+			mockedStore(useSettingsStore).moduleSettings = {
+				skills: { skillSyncEnabled: switchOn, skillSyncManagedByEnv: managedByEnv },
+			};
+		}
+
+		async function openSkillSyncSettings(view: ReturnType<typeof renderView>) {
+			await userEvent.click(view.getByTestId('skill-sync-settings-button'));
+			return await view.findByTestId('skill-sync-settings');
+		}
+
+		function allowSkillSyncManage(allowed = true) {
+			mockedStore(useRBACStore).hasScope.mockImplementation(
+				(scope) => allowed && scope === 'skill:manage',
 			);
 		}
 
 		function renderWithDialogStub() {
 			return renderView({ global: { stubs: { SkillSourceConnectDialog: ConnectDialogStub } } });
 		}
+
+		it('shows only the settings button above the recommended-skills empty state', async () => {
+			enableSkillSync({ switchOn: false });
+			allowSkillSyncManage();
+			mockedStore(usePostHog).getVariant.mockImplementation((flag) =>
+				String(flag) === RECOMMENDED_SKILLS_EXPERIMENT.name ? 'variant' : undefined,
+			);
+			mockedStore(usePostHog).isVariantEnabled.mockImplementation(
+				(flag, expected) => flag === RECOMMENDED_SKILLS_EXPERIMENT.name && expected === 'variant',
+			);
+			const view = renderWithDialogStub();
+
+			await view.findByTestId('skills-recommended-empty-state');
+			expect(view.queryByTestId('skills-search')).not.toBeInTheDocument();
+			expect(view.queryByTestId('skills-create-menu-button')).not.toBeInTheDocument();
+			const settings = await openSkillSyncSettings(view);
+			expect(within(settings).getByTestId('skill-sync-enable-toggle')).toBeEnabled();
+		});
 
 		it('offers "Connect to GitHub" first in the "Create skills" menu when the flag is on', async () => {
 			enableSkillSync();
@@ -1298,6 +1750,129 @@ describe('SettingsSkillsView', () => {
 			]);
 			await userEvent.click(await view.findByTestId('skills-create-github'));
 			expect(await view.findByTestId('connect-dialog-stub')).toBeInTheDocument();
+		});
+
+		describe('switch', () => {
+			it('shows the switch to an admin while the flag is on', async () => {
+				enableSkillSync();
+				allowSkillSyncManage();
+				const view = renderWithDialogStub();
+				await new Promise(process.nextTick);
+
+				expect(view.getByTestId('skill-sync-settings-button')).toHaveAttribute(
+					'aria-label',
+					'Skill settings',
+				);
+				expect(view.queryByTestId('skill-sync-settings')).not.toBeInTheDocument();
+
+				const settings = await openSkillSyncSettings(view);
+
+				expect(settings).toHaveTextContent('Skill Sync');
+				expect(view.getByTestId('skill-sync-enable-toggle')).not.toBeDisabled();
+			});
+
+			it('hides the switch from a user without the manage scope', async () => {
+				enableSkillSync();
+				allowSkillSyncManage(false);
+				const view = renderWithDialogStub();
+				await new Promise(process.nextTick);
+
+				expect(view.queryByTestId('skill-sync-settings-button')).not.toBeInTheDocument();
+			});
+
+			it('hides the switch while the flag is off', async () => {
+				mockedStore(useSettingsStore).moduleSettings = {
+					skills: { skillSyncEnabled: true, skillSyncManagedByEnv: false },
+				};
+				allowSkillSyncManage();
+				const view = renderWithDialogStub();
+				await new Promise(process.nextTick);
+
+				expect(view.queryByTestId('skill-sync-settings-button')).not.toBeInTheDocument();
+			});
+
+			it('hides "Connect to GitHub" and the sources while the switch is off', async () => {
+				enableSkillSync({ switchOn: false });
+				allowSkillSyncManage();
+				const view = renderWithDialogStub();
+				await new Promise(process.nextTick);
+
+				await userEvent.click(view.getByTestId('skills-create-menu-button'));
+
+				await view.findByTestId('skills-create-manual');
+				expect(view.queryByTestId('skills-create-github')).not.toBeInTheDocument();
+				expect(skillsStore.fetchSources).not.toHaveBeenCalled();
+				expect(skillsStore.fetchSkills).toHaveBeenCalledWith(
+					expect.not.objectContaining({ groupBy: 'source' }),
+				);
+			});
+
+			it('saves the switch', async () => {
+				enableSkillSync();
+				allowSkillSyncManage();
+				const view = renderWithDialogStub();
+				await new Promise(process.nextTick);
+
+				await openSkillSyncSettings(view);
+				await userEvent.click(view.getByTestId('skill-sync-enable-toggle'));
+
+				expect(skillsStore.setSkillSyncEnabled).toHaveBeenCalledWith(false);
+			});
+
+			it('shows an error when the save fails', async () => {
+				enableSkillSync();
+				allowSkillSyncManage();
+				const error = new Error('nope');
+				skillsStore.setSkillSyncEnabled.mockRejectedValue(error);
+				const view = renderWithDialogStub();
+				await new Promise(process.nextTick);
+
+				await openSkillSyncSettings(view);
+				await userEvent.click(view.getByTestId('skill-sync-enable-toggle'));
+
+				await waitFor(() =>
+					expect(showErrorMock).toHaveBeenCalledWith(
+						error,
+						'Could not save the Skill Sync setting',
+					),
+				);
+				expect(view.getByTestId('skill-sync-enable-toggle')).not.toBeDisabled();
+			});
+
+			it('falls back to the plain list when another admin turned Skill Sync off', async () => {
+				enableSkillSync();
+				const settingsStore = mockedStore(useSettingsStore);
+				settingsStore.getModuleSettings.mockImplementation(async () => {
+					settingsStore.moduleSettings = {
+						skills: { skillSyncEnabled: false, skillSyncManagedByEnv: false },
+					};
+				});
+				skillsStore.fetchSkills.mockImplementation(async (query) => {
+					if (query?.groupBy === 'source') throw new Error('Not found');
+					return { data: [], count: 0, page: 1, pageCount: 1 };
+				});
+				skillsStore.fetchSources.mockRejectedValue(new Error('Not found'));
+				renderWithDialogStub();
+
+				await waitFor(() =>
+					expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith(
+						expect.not.objectContaining({ groupBy: 'source' }),
+					),
+				);
+				expect(showErrorMock).not.toHaveBeenCalled();
+			});
+
+			it('locks the switch while env manages it', async () => {
+				enableSkillSync({ managedByEnv: true });
+				allowSkillSyncManage();
+				const view = renderWithDialogStub();
+				await new Promise(process.nextTick);
+
+				await openSkillSyncSettings(view);
+
+				expect(view.getByTestId('skill-sync-enable-toggle')).toBeDisabled();
+				expect(view.getByText('Managed via environment variables')).toBeInTheDocument();
+			});
 		});
 
 		it('reloads the list and names the imported and failed skills', async () => {
@@ -1321,6 +1896,7 @@ describe('SettingsSkillsView', () => {
 				sourceId: 'src-1',
 				type: 'github' as const,
 				label: 'acme/skills',
+				ref: 'main',
 				webUrl: 'https://github.com/acme/skills/tree/main/research-search',
 				canStopSyncing: false,
 			};
@@ -1353,10 +1929,16 @@ describe('SettingsSkillsView', () => {
 				projectIcon: null,
 				skillCount: 1,
 				updatesAvailable: 0,
+				newSkillsAvailable: 0,
 				updatesBlocked: 0,
 				health: 'connected' as const,
 				lastCheckedAt: null,
+				missingSkills: [],
+				canReplaceCredential: true,
 				canReview: true,
+				canImport: true,
+				canMove: true,
+				canDelete: true,
 			};
 
 			async function renderWithSource() {
@@ -1391,6 +1973,207 @@ describe('SettingsSkillsView', () => {
 				expect(view.getByTestId('skill-group-title')).toHaveTextContent('acme/skills · main');
 			});
 
+			it('selects multiple sources, combines filters, resets the page and clears the selection', async () => {
+				const view = await renderWithSource();
+				skillsStore.sources = [
+					source,
+					{
+						...source,
+						id: 'src-2',
+						projectId: 'team-1',
+						projectName: 'Marketing',
+						projectType: 'team',
+					},
+				];
+				skillsStore.count = 21;
+				skillsStore.pageCount = 3;
+				await userEvent.click(await view.findByTestId('pagination-next'));
+				await waitFor(() =>
+					expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith(
+						expect.objectContaining({ page: 1 }),
+					),
+				);
+				await userEvent.click(view.getByTestId('resources-list-filters-trigger'));
+				const select = await view.findByTestId('skills-filter-source');
+				const input = within(select).getAllByRole('combobox')[0];
+				await userEvent.click(input);
+				const items = screen.getAllByRole('option');
+				expect(items.map((item) => item.textContent?.trim())).toEqual([
+					'acme/skills · main · Global',
+					'acme/skills · main · Marketing',
+				]);
+				await userEvent.click(items[0]);
+				await userEvent.click(items[1]);
+				await waitFor(() =>
+					expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith(
+						expect.objectContaining({ sourceIds: 'src-1,src-2', page: 0, skip: 0 }),
+					),
+				);
+				expect(view.getByTestId('resources-list-filters-count')).toHaveTextContent('1');
+				await userEvent.click(input);
+				await pickFilter(view, 'skills-filter-scope', 'Projects');
+				await pickFilter(view, 'skills-filter-agent', 'Support bot');
+				await pickFilter(view, 'skills-filter-created-by', 'Ada Lovelace');
+				await userEvent.type(view.getByTestId('skills-search'), 'acme');
+				await waitFor(() =>
+					expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith(
+						expect.objectContaining({
+							sourceIds: 'src-1,src-2',
+							search: 'acme',
+							scope: 'project',
+							agentId: 'agent-1',
+							createdById: 'user-2',
+						}),
+					),
+				);
+				expect(view.getByTestId('skills-search')).toHaveAttribute(
+					'placeholder',
+					'Search skills or sources…',
+				);
+				if (!view.queryByTestId('resources-list-filters-dropdown')) {
+					await userEvent.click(view.getByTestId('resources-list-filters-trigger'));
+				}
+				await userEvent.click(await view.findByText('Reset all'));
+				await waitFor(() =>
+					expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith({
+						groupBy: 'source',
+						page: 0,
+						skip: 0,
+						take: 10,
+						sortBy: 'updatedAt:desc',
+						search: 'acme',
+					}),
+				);
+				expect(view.queryByTestId('resources-list-filters-count')).not.toBeInTheDocument();
+			});
+
+			it('shows a selected empty source instead of the no-results state', async () => {
+				const view = await renderWithSource();
+				skillsStore.skills = [];
+				skillsStore.collapsedSources = [{ sourceId: source.id, index: 0, skillCount: 0 }];
+
+				await pickFilter(view, 'skills-filter-source', 'acme/skills · main · Global');
+
+				expect(await view.findByTestId('skill-group-empty')).toHaveTextContent('No synced skills');
+				expect(view.queryByTestId('skills-no-results')).not.toBeInTheDocument();
+			});
+
+			it('shows no results when a source selection matches nothing', async () => {
+				const view = await renderWithSource();
+				skillsStore.skills = [];
+				skillsStore.count = 0;
+
+				await pickFilter(view, 'skills-filter-source', 'acme/skills · main · Global');
+
+				expect(await view.findByTestId('skills-no-results')).toBeInTheDocument();
+				expect(view.queryByTestId('skills-empty-state')).not.toBeInTheDocument();
+			});
+
+			it('confirms source deletion and reloads the sources, skills, and creators', async () => {
+				const view = await renderWithSource();
+				await userEvent.click(view.getByTestId('skill-group-actions').querySelector('button')!);
+				const action = await screen.findByTestId('action-deleteSource');
+				await userEvent.click(action);
+				const dialog = await screen.findByRole('dialog');
+				expect(dialog).toHaveTextContent("This can't be undone.");
+				expect(skillsStore.deleteSource).not.toHaveBeenCalled();
+				skillsStore.fetchSkills.mockClear();
+				skillsStore.fetchSources.mockClear();
+				skillsStore.fetchCreators.mockClear();
+				await userEvent.click(within(dialog).getByRole('button', { name: 'Delete skills' }));
+				await waitFor(() => expect(skillsStore.deleteSource).toHaveBeenCalledWith('src-1'));
+				await waitFor(() => expect(skillsStore.fetchSkills).toHaveBeenCalled());
+				expect(skillsStore.fetchSources).toHaveBeenCalled();
+				expect(skillsStore.fetchCreators).toHaveBeenCalled();
+				await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+			});
+
+			it.each([false, true])(
+				'offers optional source removal for the last skill with checked=%s',
+				async (checked) => {
+					const view = await renderWithSource();
+					confirmMock.mockImplementationOnce(async (content: VNode) => {
+						const confirmation = render({ render: () => content });
+						const checkbox = confirmation.getByRole('checkbox', {
+							name: 'Also remove acme/skills. This is its last synced skill.',
+						});
+						expect(checkbox).not.toBeChecked();
+						if (checked) await userEvent.click(checkbox);
+						return 'confirm';
+					});
+
+					await userEvent.click(view.getByTestId('skill-actions').querySelector('button')!);
+					await userEvent.click(await screen.findByTestId('action-delete'));
+					await waitFor(() => {
+						if (checked)
+							expect(skillsStore.deleteSource).toHaveBeenCalledWith('src-1', { onlySkillId: 's1' });
+						else expect(skillsStore.deleteSkill).toHaveBeenCalledWith('s1');
+					});
+					if (checked) expect(skillsStore.deleteSkill).not.toHaveBeenCalled();
+					else expect(skillsStore.deleteSource).not.toHaveBeenCalled();
+				},
+			);
+
+			it('counts the blocking agents when agent use blocks the last-skill source removal', async () => {
+				const view = await renderWithSource();
+				confirmMock.mockImplementationOnce(async (content: VNode) => {
+					const confirmation = render({ render: () => content });
+					await userEvent.click(confirmation.getByRole('checkbox'));
+					return 'confirm';
+				});
+				skillsStore.deleteSource.mockRejectedValue(
+					new ResponseError('Remove the skills from these agents first.', {
+						httpStatusCode: 409,
+						meta: {
+							reason: 'skills_in_use',
+							agents: [
+								{ agentId: 'a1', agentName: 'Research', projectId: 'p1', projectName: 'Marketing' },
+							],
+							hiddenAgents: 1,
+						},
+					}),
+				);
+
+				await userEvent.click(view.getByTestId('skill-actions').querySelector('button')!);
+				await userEvent.click(await screen.findByTestId('action-delete'));
+
+				await waitFor(() =>
+					expect(showMessageMock).toHaveBeenCalledWith({
+						title: 'Could not delete the skill',
+						message: 'Used by 2 agents. Remove the skill from each agent first.',
+						type: 'error',
+						duration: 0,
+					}),
+				);
+				expect(showErrorMock).not.toHaveBeenCalled();
+			});
+
+			it('omits source removal for a skill that is not from the single-skill source', async () => {
+				const view = await renderWithSource();
+				skillsStore.skills = [skill()];
+				await userEvent.click(view.getByTestId('skill-actions').querySelector('button')!);
+				await userEvent.click(await screen.findByTestId('action-delete'));
+				await waitFor(() => expect(skillsStore.deleteSkill).toHaveBeenCalledWith('s1'));
+				expect(confirmMock.mock.calls[0][0]).toBe(
+					"This will permanently delete the skill and all its versions. This can't be undone.",
+				);
+				expect(skillsStore.deleteSource).not.toHaveBeenCalled();
+			});
+
+			it.each([{ skillCount: 2 }, { canDelete: false }])(
+				'omits source removal when the source is not eligible: %j',
+				async (overrides) => {
+					const view = await renderWithSource();
+					skillsStore.sources = [{ ...source, ...overrides }];
+					await userEvent.click(view.getByTestId('skill-actions').querySelector('button')!);
+					await userEvent.click(await screen.findByTestId('action-delete'));
+					await waitFor(() => expect(confirmMock).toHaveBeenCalled());
+					expect(confirmMock.mock.calls[0][0]).toBe(
+						"This will permanently delete the skill and all its versions. This can't be undone.",
+					);
+				},
+			);
+
 			it('opens and focuses the page of a duplicate source', async () => {
 				enableSkillSync();
 				localStorage.setItem('n8n-skills-collapsed-sources:anonymous', JSON.stringify(['src-1']));
@@ -1402,12 +2185,14 @@ describe('SettingsSkillsView', () => {
 					return { data: skillsStore.skills, count: 21, page: 2, pageCount: 3 };
 				});
 				const view = renderWithDialogStub();
+				await pickFilter(view, 'skills-filter-source', 'acme/skills · main · Global');
 				await userEvent.click(view.getByTestId('connect-dialog-open-source'));
 				await waitFor(() =>
 					expect(skillsStore.fetchSkills).toHaveBeenCalledWith(
 						expect.objectContaining({ focusSourceId: 'src-1' }),
 					),
 				);
+				expect(skillsStore.fetchSkills.mock.lastCall?.[0]).not.toHaveProperty('sourceIds');
 				expect(
 					JSON.parse(localStorage.getItem('n8n-skills-collapsed-sources:anonymous') ?? '[]'),
 				).toEqual([]);
@@ -1497,6 +2282,34 @@ describe('SettingsSkillsView', () => {
 				localStorage.removeItem('n8n-skills-collapsed-sources:anonymous');
 			});
 
+			it('keeps the current page when folding and unfolding a source on a later page', async () => {
+				mockedStore(useUsersStore).currentUserId = 'alice';
+				localStorage.setItem(
+					'n8n-skills-pagination:alice',
+					JSON.stringify({ page: 2, itemsPerPage: 10 }),
+				);
+				skillsStore.fetchSkills.mockImplementation(async () => {
+					skillsStore.page = 2;
+					skillsStore.pageCount = 3;
+					skillsStore.count = 23;
+					return { data: skillsStore.skills, count: 23, page: 2, pageCount: 3 };
+				});
+				const view = await renderWithSource();
+				for (const expanded of ['false', 'true']) {
+					skillsStore.fetchSkills.mockClear();
+					await userEvent.click(view.getByTestId('skill-group-toggle'));
+					await waitFor(() =>
+						expect(skillsStore.fetchSkills).toHaveBeenCalledWith(
+							expect.objectContaining({ page: 2 }),
+						),
+					);
+					expect(skillsStore.fetchSkills).not.toHaveBeenCalledWith(
+						expect.objectContaining({ focusSourceId: expect.anything() }),
+					);
+					expect(view.getByTestId('skill-group-toggle')).toHaveAttribute('aria-expanded', expanded);
+				}
+			});
+
 			it('forgets the folds of sources that are gone', async () => {
 				localStorage.setItem(
 					'n8n-skills-collapsed-sources:anonymous',
@@ -1550,28 +2363,39 @@ describe('SettingsSkillsView', () => {
 			it.each([
 				{
 					updatesFound: 0,
+					newSkillsFound: 0,
 					throttled: false,
 					title: 'Checked acme/skills',
 					message: 'No new changes.',
 				},
 				{
 					updatesFound: 2,
+					newSkillsFound: 0,
 					throttled: false,
 					title: 'Checked acme/skills',
 					message: '2 skills have updates.',
 				},
 				{
 					updatesFound: 1,
+					newSkillsFound: 0,
 					throttled: true,
 					title: 'acme/skills was checked less than a minute ago',
 					message: '1 skill has an update.',
 				},
+				{
+					updatesFound: 0,
+					newSkillsFound: 2,
+					throttled: false,
+					title: 'Checked acme/skills',
+					message: '2 new skills are available to review',
+				},
 			])(
 				'checks a source for updates ($updatesFound, throttled $throttled) and refreshes the source row',
-				async ({ updatesFound, throttled, title, message }) => {
+				async ({ updatesFound, newSkillsFound, throttled, title, message }) => {
 					skillsStore.checkSource.mockResolvedValue({
 						label: 'acme/skills',
 						updatesFound,
+						newSkillsFound,
 						throttled,
 						lastCheckedAt: '2026-10-29T12:00:00.000Z',
 					});
@@ -1599,15 +2423,17 @@ describe('SettingsSkillsView', () => {
 				await clickCheck(view);
 
 				await waitFor(() => expect(view.getByTestId('skill-group-checking')).toBeInTheDocument());
-				finish({ label: 'acme/skills', updatesFound: 0, throttled: false, lastCheckedAt: null });
+				finish({
+					label: 'acme/skills',
+					updatesFound: 0,
+					newSkillsFound: 0,
+					throttled: false,
+					lastCheckedAt: null,
+				});
 				await waitFor(() => expect(view.queryByTestId('skill-group-checking')).toBeNull());
 			});
 
 			it.each([
-				{
-					reason: 'rate_limited',
-					text: 'GitHub limits how often n8n can read it. Try again in a few minutes.',
-				},
 				{
 					reason: 'credential_missing',
 					text: 'The credential of this source no longer exists, or this scope can no longer use it.',
@@ -1630,7 +2456,7 @@ describe('SettingsSkillsView', () => {
 				const view = await renderWithSource();
 				skillsStore.checkSource.mockRejectedValue(new Error('Network down'));
 				skillsStore.fetchSources.mockImplementation(async () => {
-					const failedSource = { ...source, health: 'unreachable' as const };
+					const failedSource = { ...source, health: 'source_unavailable' as const };
 					skillsStore.sources = [failedSource];
 					return [failedSource];
 				});
@@ -1638,9 +2464,26 @@ describe('SettingsSkillsView', () => {
 				await clickCheck(view);
 
 				await waitFor(() =>
-					expect(view.getByRole('button', { name: 'Unreachable' })).toBeInTheDocument(),
+					expect(view.getByRole('button', { name: 'Source unavailable' })).toBeInTheDocument(),
 				);
 				expect(view.queryByTestId('skill-group-checking')).toBeNull();
+			});
+
+			it('reports a rate limit as delayed checking instead of an error', async () => {
+				skillsStore.checkSource.mockRejectedValue(
+					new ResponseError('Wait', { meta: { reason: 'rate_limited' } }),
+				);
+				const view = await renderWithSource();
+				await clickCheck(view);
+				await waitFor(() =>
+					expect(showMessageMock).toHaveBeenCalledWith({
+						title: 'Checking delayed',
+						message: 'GitHub has limited requests. n8n will check again later.',
+						type: 'info',
+					}),
+				);
+				expect(showErrorMock).not.toHaveBeenCalled();
+				expect(skillsStore.fetchSources).toHaveBeenCalled();
 			});
 
 			it('keeps the error of a failure without a reason', async () => {
@@ -1660,6 +2503,7 @@ describe('SettingsSkillsView', () => {
 				sourceId: 'src-1',
 				type: 'github' as const,
 				label: 'acme/skills',
+				ref: 'main',
 				webUrl: 'https://github.com/acme/skills/tree/main/research-search',
 				canStopSyncing: true,
 			};
@@ -1696,13 +2540,13 @@ describe('SettingsSkillsView', () => {
 				await waitFor(() => expect(skillsStore.fetchSkills).toHaveBeenCalled());
 
 				expect(confirmMock).toHaveBeenCalledWith(
-					expect.stringContaining('You cannot undo this.'),
+					expect.objectContaining({ type: 'div' }),
 					'Stop syncing research-search?',
 					expect.anything(),
 				);
 				expect(skillsStore.stopSyncingSkill).toHaveBeenCalledWith('s1');
 				expect(showMessageMock).toHaveBeenCalledWith({
-					title: 'research-search stopped syncing. You can edit it now.',
+					title: 'research-search stopped syncing',
 					type: 'success',
 				});
 			});
@@ -1711,7 +2555,7 @@ describe('SettingsSkillsView', () => {
 				await openSynced();
 
 				expect(lastModalData().scopeLockedReason).toBe(
-					'Set by the source acme/skills. The skill moves only with its source. To move this skill on its own, stop syncing it first.',
+					'Set by the source acme/skills. To move all its skills, select Change scope in the source menu. To move only this skill, stop syncing it first.',
 				);
 			});
 
@@ -1721,20 +2565,30 @@ describe('SettingsSkillsView', () => {
 				expect(lastModalData().onStopSyncing).toBeUndefined();
 			});
 
-			it('asks first and says the action cannot be undone', async () => {
+			it('uses short paragraphs that explain local editing and stopped updates', async () => {
 				await openSynced();
 				confirmMock.mockResolvedValue('cancel');
 
 				await lastModalData().onStopSyncing?.('s1');
 
 				expect(confirmMock).toHaveBeenCalledWith(
-					'The skill stays in Global with all 3 versions. Agents keep using it. You can edit it in n8n after this, and move it to another scope on its own. It no longer gets updates from GitHub. You cannot undo this.',
+					expect.objectContaining({ type: 'div' }),
 					'Stop syncing research-search?',
 					expect.objectContaining({
 						confirmButtonText: 'Stop syncing',
 						cancelButtonText: 'Cancel',
 					}),
 				);
+				const confirmation = render({ render: () => confirmMock.mock.calls[0][0] });
+				expect(confirmation.container.querySelectorAll('p')).toHaveLength(3);
+				expect(confirmation.container).toHaveTextContent(
+					'The skill stays in Global with its version history.',
+				);
+				expect(confirmation.container).toHaveTextContent(
+					'Agents can still use the skill. Users with edit access can edit it in n8n.',
+				);
+				expect(confirmation.container).toHaveTextContent('GitHub updates stop.');
+				expect(confirmation.container).not.toHaveTextContent('cannot undo');
 				expect(skillsStore.stopSyncingSkill).not.toHaveBeenCalled();
 				expect(uiStore.closeModal).not.toHaveBeenCalled();
 				expect(skillsStore.fetchSkills).not.toHaveBeenCalled();
@@ -1749,7 +2603,7 @@ describe('SettingsSkillsView', () => {
 				expect(skillsStore.stopSyncingSkill).toHaveBeenCalledWith('s1');
 				expect(uiStore.closeModal).toHaveBeenCalled();
 				expect(showMessageMock).toHaveBeenCalledWith({
-					title: 'research-search stopped syncing. You can edit it now.',
+					title: 'research-search stopped syncing',
 					type: 'success',
 				});
 				expect(skillsStore.fetchSkills).toHaveBeenCalled();

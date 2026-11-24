@@ -473,16 +473,19 @@ async function resolveCredentialState(
 	// Auto-apply n8n credits only when the user has no credentials of their own
 	// for this type: none assigned on the node (`hasExistingOnNode`) and none
 	// stored (`existingCredentials`). Any user-defined credential wins — we never
-	// override a saved key with the managed gateway.
+	// override a saved key with the managed gateway. The node itself must also be
+	// eligible, or the card would offer credits that fail when the workflow runs.
 	if (
 		!hasExistingOnNode &&
 		!prefersNewCredential &&
 		existingCredentials.length === 0 &&
 		context.credentialService.isAiGatewayCredentialType
 	) {
-		const gatewaySupported = await context.credentialService
-			.isAiGatewayCredentialType(credentialType)
-			.catch(() => false);
+		const gatewaySupported =
+			(await context.credentialService
+				.isAiGatewayCredentialType(credentialType)
+				.catch(() => false)) &&
+			!(await context.credentialService.getAiGatewayNodeRejection?.(node, credentialType));
 		if (gatewaySupported) {
 			isAutoApplied = true;
 			autoAppliedGateway = true;

@@ -1,0 +1,126 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"ad": {
+			"type": "object"
+		},
+		"adset": {
+			"type": "object"
+		},
+		"created_time": {
+			"type": ["number", "string"]
+		},
+		"event": {
+			"additionalProperties": true,
+			"properties": {
+				"created_time": {
+					"type": "number"
+				},
+				"form_id": {
+					"type": "string"
+				},
+				"leadgen_id": {
+					"type": "string"
+				},
+				"page_id": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"field_data": {
+			"items": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"values": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"form": {
+			"properties": {
+				"id": {
+					"type": "string"
+				},
+				"locale": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				},
+				"page": {
+					"properties": {
+						"id": {
+							"type": "string"
+						},
+						"name": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"questions": {
+					"items": {
+						"properties": {
+							"id": {
+								"type": "string"
+							},
+							"key": {
+								"type": "string"
+							},
+							"label": {
+								"type": "string"
+							},
+							"options": {
+								"items": {
+									"properties": {
+										"key": {
+											"type": "string"
+										},
+										"value": {
+											"type": "string"
+										}
+									},
+									"type": "object"
+								},
+								"type": "array"
+							},
+							"type": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				},
+				"status": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"id": {
+			"type": "string"
+		},
+		"page": {
+			"properties": {
+				"id": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

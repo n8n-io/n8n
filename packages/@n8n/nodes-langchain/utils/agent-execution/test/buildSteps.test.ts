@@ -370,6 +370,66 @@ describe('buildSteps', () => {
 				expect(result).toHaveLength(1);
 				expect(result[0]).toEqual(previousRequests[0]);
 			});
+
+			it("should not leak another item's previous requests into this item's steps", () => {
+				const otherItemStep = {
+					action: {
+						tool: 'other_item_tool',
+						toolInput: { input: 'belongs to item 0' },
+						log: 'Other item log',
+						toolCallId: 'call_other_item',
+						type: 'tool_call',
+					},
+					observation: 'other item result',
+					itemIndex: 0,
+				};
+				const thisItemStep = {
+					action: {
+						tool: 'this_item_tool',
+						toolInput: { input: 'belongs to item 1' },
+						log: 'This item log',
+						toolCallId: 'call_this_item',
+						type: 'tool_call',
+					},
+					observation: 'this item result',
+					itemIndex: 1,
+				};
+
+				const response: EngineResponse<RequestResponseMetadata> = {
+					actionResponses: [],
+					metadata: {
+						previousRequests: [otherItemStep, thisItemStep],
+					},
+				};
+
+				const result = buildSteps(response, 1);
+
+				expect(result).toEqual([thisItemStep]);
+			});
+
+			it('should preserve untagged previous requests persisted before upgrade (itemIndex === undefined)', () => {
+				const untaggedStep = {
+					action: {
+						tool: 'pre_upgrade_tool',
+						toolInput: { input: 'persisted prior to upgrade' },
+						log: 'Pre-upgrade log',
+						toolCallId: 'call_pre_upgrade',
+						type: 'tool_call',
+					},
+					observation: 'pre-upgrade result',
+				};
+
+				const response: EngineResponse<RequestResponseMetadata> = {
+					actionResponses: [],
+					metadata: {
+						previousRequests: [untaggedStep],
+					},
+				};
+
+				const result = buildSteps(response, 0);
+
+				expect(result).toEqual([untaggedStep]);
+			});
 		});
 
 		describe('Synthetic AI message creation', () => {
@@ -1865,9 +1925,10 @@ describe('buildSteps', () => {
 				.__gemini_function_call_thought_signatures__ as Record<string, string>;
 			expect(sigMap).toEqual({ call_1: 'shared_gemini_sig' });
 
-			// Signatures array should have: ['', 'sig', ''] (text part, first func call, second func call)
+			// The model wrote no text, so no text part precedes the function calls
+			expect(firstMessage.content).toEqual([]);
 			const sigArray = firstMessage.additional_kwargs.signatures as string[];
-			expect(sigArray).toEqual(['', 'shared_gemini_sig', '']);
+			expect(sigArray).toEqual(['shared_gemini_sig', '']);
 
 			// Second step should have EMPTY messageLog (no duplicate AIMessage)
 			expect(result[1].action.messageLog).toEqual([]);

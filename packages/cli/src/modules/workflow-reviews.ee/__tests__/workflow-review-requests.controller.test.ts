@@ -14,6 +14,7 @@ const serviceGatedHandlers = new Set([
 	'create',
 	'updateVersion',
 	'decide',
+	'close',
 	'listActivity',
 	'createComment',
 	'getDetail',

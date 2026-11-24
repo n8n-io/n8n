@@ -1,7 +1,7 @@
 import type { DatabaseConfig } from '@n8n/config';
 import { QueryFailedError } from '@n8n/typeorm';
 import type { DataSource, EntityManager } from '@n8n/typeorm';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { DbLockUnavailableError } from '../db-lock-unavailable.error';
@@ -205,6 +205,22 @@ describe('DbLockService', () => {
 			expect(fn).toHaveBeenCalledWith({
 				trx: expect.any(TypeOrmTransaction) as TypeOrmTransaction,
 			});
+		});
+	});
+
+	describe('tryWithLockContext', () => {
+		it('passes the active transaction in an operation context', async () => {
+			databaseConfig.type = 'postgresdb';
+			mockTx.query.mockResolvedValueOnce([{ pg_try_advisory_xact_lock: true }]);
+			const run = vi.fn(async () => 'result');
+
+			await expect(service.tryWithLockContext(1001, run, { subKey: 7 })).resolves.toBe('result');
+
+			expect(run).toHaveBeenCalledWith({ trx: expect.any(TypeOrmTransaction) });
+			expect(mockTx.query).toHaveBeenCalledWith(
+				'SELECT pg_try_advisory_xact_lock($1, $2)',
+				[1001, 7],
+			);
 		});
 	});
 

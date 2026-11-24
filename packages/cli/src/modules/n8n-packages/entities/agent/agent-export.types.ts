@@ -9,6 +9,7 @@ import type { ExportRequirements } from '../requirements.types';
 import type { AgentWorkflowRequirement } from '../workflow/workflow.types';
 
 export interface PreparedAgentExport {
+	parentFolderId?: string | null;
 	projectId: string;
 	content: SerializedAgent;
 	metadata: SerializedAgentMetadata;
@@ -20,6 +21,8 @@ export interface AgentExportRequirements extends ExportRequirements {
 }
 
 export interface AgentSelectionExportRequest {
+	folderIds?: string[];
+	existingFolderEntries?: ManifestEntry[];
 	user: User;
 	writer: PackageWriter;
 	agentIds?: string[];
@@ -28,10 +31,13 @@ export interface AgentSelectionExportRequest {
 	projectWorkflowIds?: string[];
 	versionPolicy?: ExportVersionPolicy;
 	dependencyPolicy?: ExportDependencyPolicy;
+	/** Whether project exports include archived Agents. Agents given by id always export. */
+	includeArchived?: boolean;
 	projectTargetsById?: Map<string, string>;
 }
 
 export interface AgentSelectionExportResult {
+	folderEntries?: ManifestEntry[];
 	agentEntries: ManifestEntry[];
 	skillEntries: ManifestEntry[];
 	projectEntries: ManifestEntry[];

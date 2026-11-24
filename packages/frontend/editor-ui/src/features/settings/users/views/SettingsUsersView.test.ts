@@ -1,4 +1,4 @@
-import { defineComponent } from 'vue';
+import { defineComponent, ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
@@ -12,6 +12,9 @@ import SettingsUsersView from './SettingsUsersView.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useEmitters } from '@/__tests__/utils';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
+import { isModalPrefetchEnabled } from '@/__tests__/prefetchModals';
+
+vi.mock('@/app/composables/usePrefetchModals');
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -230,7 +233,7 @@ describe('SettingsUsersView', () => {
 		renderComponent();
 
 		const inviteButton = screen.getByTestId('settings-users-invite-button');
-		expect(inviteButton).toBeDisabled();
+		expect(inviteButton).toHaveAttribute('aria-disabled', 'true');
 	});
 
 	it('should disable invite button when OIDC SSO is enabled', () => {
@@ -239,7 +242,7 @@ describe('SettingsUsersView', () => {
 		renderComponent();
 
 		const inviteButton = screen.getByTestId('settings-users-invite-button');
-		expect(inviteButton).toBeDisabled();
+		expect(inviteButton).toHaveAttribute('aria-disabled', 'true');
 	});
 
 	it('should disable invite button when users limit is reached', () => {
@@ -1263,6 +1266,58 @@ describe('SettingsUsersView', () => {
 					},
 				});
 			});
+		});
+	});
+
+	describe('modal prefetch', () => {
+		it('prefetches the delete modal only with the user:delete scope', () => {
+			const spy = vi.spyOn(permissions, 'hasPermission').mockReturnValue(false);
+			renderComponent();
+			expect(isModalPrefetchEnabled(DELETE_USER_MODAL_KEY)).toBe(false);
+
+			spy.mockImplementation((_features, options) => options?.rbac?.scope === 'user:delete');
+			expect(isModalPrefetchEnabled(DELETE_USER_MODAL_KEY)).toBe(true);
+			spy.mockRestore();
+		});
+
+		it('prefetches the invite modal only when the user can invite', () => {
+			renderComponent();
+			expect(isModalPrefetchEnabled(INVITE_USER_MODAL_KEY)).toBe(true);
+
+			usersStore.usersLimitNotReached = false;
+			expect(isModalPrefetchEnabled(INVITE_USER_MODAL_KEY)).toBe(false);
+
+			usersStore.usersLimitNotReached = true;
+			ssoStore.isSamlLoginEnabled = true;
+			expect(isModalPrefetchEnabled(INVITE_USER_MODAL_KEY)).toBe(false);
+		});
+
+		it('waits for the provisioning config before it prefetches the invite modal', () => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Provisioning] = true;
+			// The store exposes the config as a readonly ref, so a getter stands in for the fetch.
+			const config = ref<{ scopesProvisionInstanceRole: boolean } | undefined>();
+			Object.defineProperty(mockedStore(useUserRoleProvisioningStore), 'provisioningConfig', {
+				configurable: true,
+				get: () => config.value,
+			});
+			renderComponent();
+			expect(isModalPrefetchEnabled(INVITE_USER_MODAL_KEY)).toBe(false);
+
+			config.value = { scopesProvisionInstanceRole: false };
+			expect(isModalPrefetchEnabled(INVITE_USER_MODAL_KEY)).toBe(true);
+
+			config.value = { scopesProvisionInstanceRole: true };
+			expect(isModalPrefetchEnabled(INVITE_USER_MODAL_KEY)).toBe(false);
+		});
+
+		it('does not prefetch the invite modal while user management is not set up', () => {
+			const spy = vi
+				.spyOn(permissions, 'hasPermission')
+				.mockImplementation((features) => features.includes('defaultUser'));
+			renderComponent();
+
+			expect(isModalPrefetchEnabled(INVITE_USER_MODAL_KEY)).toBe(false);
+			spy.mockRestore();
 		});
 	});
 });

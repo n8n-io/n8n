@@ -21,6 +21,7 @@ import {
 	NodeApiError,
 	NodeConnectionTypes,
 	NodeOperationError,
+	getMcpAuthHeaders,
 	jsonParse,
 	removeCircularRefs,
 	setSafeObjectProperty,
@@ -42,6 +43,7 @@ import {
 	isStream,
 	prepareRequestBody,
 	reduceAsync,
+	removeRequestOptions,
 	replaceNullValues,
 	sanitizeUiMessage,
 	setAgentOptions,
@@ -129,6 +131,7 @@ export class HttpRequestV3 implements INodeType {
 		let httpBearerAuth;
 		let httpDigestAuth;
 		let httpHeaderAuth;
+		let httpMultipleHeadersAuth;
 		let httpQueryAuth;
 		let httpCustomAuth;
 		let httpTemplatedCustomAuth;
@@ -200,6 +203,12 @@ export class HttpRequestV3 implements INodeType {
 					} else if (genericCredentialType === 'httpHeaderAuth') {
 						httpHeaderAuth = await this.getCredentials('httpHeaderAuth', itemIndex);
 						allowedDomains = getAllowedDomains(this.getNode(), httpHeaderAuth);
+					} else if (genericCredentialType === 'httpMultipleHeadersAuth') {
+						httpMultipleHeadersAuth = await this.getCredentials(
+							'httpMultipleHeadersAuth',
+							itemIndex,
+						);
+						allowedDomains = getAllowedDomains(this.getNode(), httpMultipleHeadersAuth);
 					} else if (genericCredentialType === 'httpQueryAuth') {
 						httpQueryAuth = await this.getCredentials('httpQueryAuth', itemIndex);
 						allowedDomains = getAllowedDomains(this.getNode(), httpQueryAuth);
@@ -586,6 +595,11 @@ export class HttpRequestV3 implements INodeType {
 					requestOptions.headers![httpHeaderAuth.name as string] = httpHeaderAuth.value;
 					authDataKeys.headers = [httpHeaderAuth.name as string];
 				}
+				if (httpMultipleHeadersAuth !== undefined) {
+					const headers = getMcpAuthHeaders('multipleHeadersAuth', httpMultipleHeadersAuth);
+					requestOptions.headers = { ...requestOptions.headers, ...headers };
+					authDataKeys.headers = Object.keys(headers);
+				}
 				if (httpQueryAuth !== undefined) {
 					if (!requestOptions.qs) {
 						requestOptions.qs = {};
@@ -905,6 +919,7 @@ export class HttpRequestV3 implements INodeType {
 
 						throw error;
 					} else {
+						removeRequestOptions(responseData.reason);
 						removeCircularRefs(responseData.reason as JsonObject);
 						// Return the actual reason as error
 						returnItems.push({

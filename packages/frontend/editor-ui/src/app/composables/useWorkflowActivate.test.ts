@@ -2,7 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import type { PushMessage } from '@n8n/api-types';
 import { useWorkflowActivate } from './useWorkflowActivate';
-import { WORKFLOW_ACTIVE_MODAL_KEY } from '@/app/constants';
+import {
+	WORKFLOW_ACTIVE_MODAL_KEY,
+	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
+	WORKFLOW_PUBLISH_MODAL_KEY,
+} from '@/app/constants';
 
 // --- hoisted mocks ---
 // vi.hoisted callbacks run before any imports, so only plain JS is usable there.
@@ -92,6 +96,7 @@ vi.mock('@/app/stores/workflowsList.store', () => ({
 const mockSettingsImpl = vi.hoisted(() => ({
 	isWorkflowPublicationServiceEnabled: false,
 	isMultiMain: false,
+	setWorkflowReviewsPolicy: vi.fn(),
 }));
 
 vi.mock('@n8n/stores/settings.store', () => ({
@@ -99,10 +104,12 @@ vi.mock('@n8n/stores/settings.store', () => ({
 }));
 
 const mockOpenModal = vi.hoisted(() => vi.fn());
+const mockCloseModal = vi.hoisted(() => vi.fn());
 
 vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: vi.fn().mockReturnValue({
 		openModal: mockOpenModal,
+		closeModal: mockCloseModal,
 		openModalWithData: vi.fn(),
 	}),
 }));
@@ -265,6 +272,26 @@ describe('useWorkflowActivate', () => {
 			expect(mockShowError).not.toHaveBeenCalled();
 			expect(mockSetWorkflowInactive).not.toHaveBeenCalled();
 			expect(mockSetActiveState).not.toHaveBeenCalled();
+		});
+
+		it('requires approval in the editor when the server refuses an unreviewed version', async () => {
+			const refusal = Object.assign(new Error('No approved review'), {
+				meta: { reason: 'review_required', versionId: VERSION_ID, validationError: true },
+			});
+			mockPublishWorkflow.mockRejectedValueOnce(refusal);
+
+			const { publishWorkflow } = useWorkflowActivate();
+			const result = await publishWorkflow(WORKFLOW_ID, VERSION_ID);
+
+			expect(result).toEqual({ success: false, errorHandled: true });
+			expect(mockSettingsImpl.setWorkflowReviewsPolicy).toHaveBeenCalledWith({
+				enabled: true,
+				alwaysRequired: true,
+			});
+			expect(mockCloseModal).toHaveBeenCalledWith(WORKFLOW_PUBLISH_MODAL_KEY);
+			expect(mockCloseModal).toHaveBeenCalledWith(WORKFLOW_HISTORY_PUBLISH_MODAL_KEY);
+			expect(mockShowError).toHaveBeenCalled();
+			expect(mockSetWorkflowInactive).not.toHaveBeenCalled();
 		});
 
 		it('sends the document checksum and refreshes it when the document is open in an editor', async () => {

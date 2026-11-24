@@ -64,6 +64,7 @@ import { createSkill, toSkillContent } from '@/modules/skills/testing';
 import { serializedSkillSchema } from '@/modules/n8n-packages/spec/serialized/skill.schema';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { Telemetry } from '@/telemetry';
+import { createAgent } from '@test-integration/db/agents';
 import { createCredentials } from '@test-integration/db/credentials';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
@@ -128,7 +129,7 @@ beforeEach(async () => {
 			...definition
 		} = serializedAgentSchema.parse(fixture.files[`${entry.target}/agent.json`]);
 		for (const [id, tool] of Object.entries(definition.tools)) tool.descriptor.name = id;
-		const agent = await agents.save({
+		const agent = await createAgent({
 			...definition,
 			projectId: sourceProject.id,
 			versionId: 'source-draft',
@@ -403,7 +404,7 @@ it.each([
 	'missing-workflow',
 	'inaccessible-workflow',
 ] as const)('imports bundled and existing dependencies when references are %s', async (state) => {
-	const existingChild = await agents.save({
+	const existingChild = await createAgent({
 		id: 'existing-child',
 		name: 'Existing child',
 		projectId: destination.id,
@@ -815,6 +816,33 @@ it.each(['read', 'create', 'update', 'publish', 'unpublish'] as const)(
 		expect(await records()).toEqual(before);
 	},
 );
+
+it('archives a matched Agent only with the agent:delete API-key grant', async () => {
+	const live = await download();
+	await agents.update({ projectId: sourceProject.id }, { isArchived: true });
+	const archived = await download();
+	await agents.delete({ projectId: sourceProject.id });
+	expect((await upload(live)).statusCode).toBe(200);
+	const scopes: ApiKeyScope[] = [
+		'agent:import',
+		'agent:read',
+		'agent:update',
+		'skill:create',
+		'skill:update',
+	];
+
+	const refused = await upload(archived, {}, await createOwnerWithApiKey({ scopes }));
+	expect(refused.statusCode).toBe(403);
+	expect(await agents.findOneByOrFail({ id: sourceAgents[0].id })).toMatchObject({
+		isArchived: false,
+	});
+
+	const granted = await createOwnerWithApiKey({ scopes: [...scopes, 'agent:delete'] });
+	expect((await upload(archived, {}, granted)).statusCode).toBe(200);
+	expect(await agents.findOneByOrFail({ id: sourceAgents[0].id })).toMatchObject({
+		isArchived: true,
+	});
+});
 
 it.each(['project:viewer', 'project:chatUser'] as const)(
 	'rejects an import for %s despite API-key grants',

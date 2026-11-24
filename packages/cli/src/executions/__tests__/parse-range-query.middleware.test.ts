@@ -98,6 +98,24 @@ describe('`parseRangeQuery` middleware', () => {
 			expect(nextFn).toBeCalledTimes(1);
 		});
 
+		test('should parse `engine` field', () => {
+			const req = request({ filter: '{ "engine": "v2" }' });
+
+			parseRangeQuery(req, res, nextFn);
+
+			expect(req.rangeQuery.engine).toBe('v2');
+			expect(nextFn).toBeCalledTimes(1);
+		});
+
+		test('should fail on an unknown `engine` value', () => {
+			const req = request({ filter: '{ "engine": "v3" }' });
+
+			parseRangeQuery(req, res, nextFn);
+
+			expect(nextFn).toBeCalledTimes(0);
+			expect(res.status).toBeCalledWith(400);
+		});
+
 		test('should delete invalid fields', () => {
 			// `id` is no longer a filter, so it is dropped like any unknown field.
 			const req = request({ filter: '{ "workflowId": "456", "id": "123", "test": "789" }' });

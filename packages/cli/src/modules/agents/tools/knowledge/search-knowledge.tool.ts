@@ -1,17 +1,22 @@
 import { Tool } from '@n8n/agents/tool';
 import { isRecord } from '@n8n/utils/is-record';
 
+import type { KnowledgeConsumerScope } from '@/modules/knowledge/knowledge-consumer-scope';
+import type {
+	KnowledgePreparationWait,
+	KnowledgeRetrievalObserver,
+	KnowledgeRetriever,
+} from '@/modules/knowledge/knowledge-retriever';
 import {
-	globKnowledgeFilesInputSchema,
+	findKnowledgeFilesInputSchema,
 	MAX_READ_RANGES,
-	readKnowledgeInputSchema,
-	searchKnowledgeInputSchema,
-	type GlobKnowledgeFilesResult,
-	type ReadKnowledgeResult,
-	type SearchKnowledgeResult,
+	readKnowledgeFileInputSchema,
+	searchKnowledgeTextInputSchema,
+	type FindKnowledgeFilesResult,
+	type ReadKnowledgeFileResult,
+	type SearchKnowledgeTextResult,
 } from '@/modules/knowledge/retrieval/retrieval-schemas';
 
-import type { AgentKnowledgeMirrorService } from '../../agent-knowledge-mirror.service';
 import type {
 	FinishKnowledgeToolCall,
 	KnowledgeToolCall,
@@ -23,7 +28,7 @@ interface KnowledgeToolErrorOutput {
 	errorType: string;
 }
 
-const MODEL_OUTPUT_GLOB_FILE_LIMIT = 20;
+const MODEL_OUTPUT_SEARCH_FILE_LIMIT = 20;
 const MODEL_OUTPUT_SEARCH_MATCH_LIMIT = 8;
 const MODEL_OUTPUT_SEARCH_TEXT_CHARS = 240;
 const MODEL_OUTPUT_READ_TEXT_BUDGET = 6_000;
@@ -67,7 +72,7 @@ function toKnowledgeToolCallResult(
 
 /** A search that worked and found nothing, in the output mode that the agent chose. */
 function isEmptySearchResult(output: unknown): boolean {
-	if (!isSearchKnowledgeResult(output)) {
+	if (!isSearchKnowledgeTextResult(output)) {
 		return false;
 	}
 
@@ -99,11 +104,34 @@ function withFileUploadedAt(
 	result: KnowledgeToolCallResult,
 	output: unknown,
 ): KnowledgeToolCallResult {
-	if (result.failed || !isReadKnowledgeResult(output)) {
+	if (result.failed || !isReadKnowledgeFileResult(output)) {
 		return result;
 	}
 
 	return { ...result, readFile: { fileId: output.fileId, uploadedAt: output.createdAt } };
+}
+
+/** Keeps the wait that the retriever reports for one call. */
+function observePreparationWait() {
+	const observed: { wait?: KnowledgePreparationWait } = {};
+	const observer: KnowledgeRetrievalObserver = {
+		onPreparationWait: (wait) => {
+			observed.wait = wait;
+		},
+	};
+
+	return { observer, observed };
+}
+
+function withPreparationWait(
+	result: KnowledgeToolCallResult,
+	wait: KnowledgePreparationWait | undefined,
+): KnowledgeToolCallResult {
+	if (!wait) {
+		return result;
+	}
+
+	return { ...result, preparationWait: wait };
 }
 
 function truncateForModel(text: string, maxChars: number): { text: string; truncated: boolean } {
@@ -120,11 +148,11 @@ function isKnowledgeToolErrorOutput(output: unknown): output is KnowledgeToolErr
 	);
 }
 
-function isGlobKnowledgeFilesResult(output: unknown): output is GlobKnowledgeFilesResult {
+function isFindKnowledgeFilesResult(output: unknown): output is FindKnowledgeFilesResult {
 	return isRecord(output) && Array.isArray(output.files) && typeof output.hasMore === 'boolean';
 }
 
-function isSearchKnowledgeResult(output: unknown): output is SearchKnowledgeResult {
+function isSearchKnowledgeTextResult(output: unknown): output is SearchKnowledgeTextResult {
 	if (
 		!isRecord(output) ||
 		typeof output.outputMode !== 'string' ||
@@ -139,7 +167,7 @@ function isSearchKnowledgeResult(output: unknown): output is SearchKnowledgeResu
 	return false;
 }
 
-function isReadKnowledgeResult(output: unknown): output is ReadKnowledgeResult {
+function isReadKnowledgeFileResult(output: unknown): output is ReadKnowledgeFileResult {
 	return (
 		isRecord(output) &&
 		typeof output.file === 'string' &&
@@ -149,8 +177,8 @@ function isReadKnowledgeResult(output: unknown): output is ReadKnowledgeResult {
 	);
 }
 
-function toGlobKnowledgeModelOutput(output: unknown): unknown {
-	if (isKnowledgeToolErrorOutput(output) || !isGlobKnowledgeFilesResult(output)) return output;
+function toFindKnowledgeFilesModelOutput(output: unknown): unknown {
+	if (isKnowledgeToolErrorOutput(output) || !isFindKnowledgeFilesResult(output)) return output;
 
 	const files = output.files.map((file) => ({
 		file: file.file,
@@ -168,11 +196,11 @@ function toGlobKnowledgeModelOutput(output: unknown): unknown {
 	};
 }
 
-function toSearchKnowledgeModelOutput(output: unknown): unknown {
-	if (isKnowledgeToolErrorOutput(output) || !isSearchKnowledgeResult(output)) return output;
+function toSearchKnowledgeTextModelOutput(output: unknown): unknown {
+	if (isKnowledgeToolErrorOutput(output) || !isSearchKnowledgeTextResult(output)) return output;
 
 	if (output.outputMode === 'files_with_matches') {
-		const files = output.files.slice(0, MODEL_OUTPUT_GLOB_FILE_LIMIT).map((file) => ({
+		const files = output.files.slice(0, MODEL_OUTPUT_SEARCH_FILE_LIMIT).map((file) => ({
 			file: file.file,
 			fileId: file.fileId,
 			displayName: file.displayName,
@@ -184,13 +212,13 @@ function toSearchKnowledgeModelOutput(output: unknown): unknown {
 			returnedFiles: output.files.length,
 			shownFiles: files.length,
 			limit: output.limit,
-			hasMore: output.hasMore || output.files.length > MODEL_OUTPUT_GLOB_FILE_LIMIT,
-			truncated: output.truncated || output.files.length > MODEL_OUTPUT_GLOB_FILE_LIMIT,
+			hasMore: output.hasMore || output.files.length > MODEL_OUTPUT_SEARCH_FILE_LIMIT,
+			truncated: output.truncated || output.files.length > MODEL_OUTPUT_SEARCH_FILE_LIMIT,
 		};
 	}
 
 	if (output.outputMode === 'count') {
-		const counts = output.counts.slice(0, MODEL_OUTPUT_GLOB_FILE_LIMIT);
+		const counts = output.counts.slice(0, MODEL_OUTPUT_SEARCH_FILE_LIMIT);
 
 		return {
 			outputMode: output.outputMode,
@@ -198,8 +226,8 @@ function toSearchKnowledgeModelOutput(output: unknown): unknown {
 			returnedCounts: output.counts.length,
 			shownCounts: counts.length,
 			limit: output.limit,
-			hasMore: output.hasMore || output.counts.length > MODEL_OUTPUT_GLOB_FILE_LIMIT,
-			truncated: output.truncated || output.counts.length > MODEL_OUTPUT_GLOB_FILE_LIMIT,
+			hasMore: output.hasMore || output.counts.length > MODEL_OUTPUT_SEARCH_FILE_LIMIT,
+			truncated: output.truncated || output.counts.length > MODEL_OUTPUT_SEARCH_FILE_LIMIT,
 		};
 	}
 
@@ -246,8 +274,8 @@ function toSearchKnowledgeModelOutput(output: unknown): unknown {
 	};
 }
 
-function toReadKnowledgeModelOutput(output: unknown): unknown {
-	if (isKnowledgeToolErrorOutput(output) || !isReadKnowledgeResult(output)) return output;
+function toReadKnowledgeFileModelOutput(output: unknown): unknown {
+	if (isKnowledgeToolErrorOutput(output) || !isReadKnowledgeFileResult(output)) return output;
 
 	const perRangeBudget = Math.max(
 		MODEL_OUTPUT_READ_RANGE_MIN_CHARS,
@@ -293,66 +321,66 @@ function toReadKnowledgeModelOutput(output: unknown): unknown {
 }
 
 export function createKnowledgeRetrievalTools({
-	projectId,
-	agentId,
-	knowledgeMirrorService,
+	scope,
+	retriever,
 	startToolCall,
 }: {
-	projectId: string;
-	agentId: string;
-	knowledgeMirrorService: AgentKnowledgeMirrorService;
+	scope: KnowledgeConsumerScope;
+	retriever: KnowledgeRetriever;
 	/** Called when each call starts. The returned function gets the size of the output that the model gets. */
 	startToolCall: (runId: string | undefined, call: KnowledgeToolCall) => FinishKnowledgeToolCall;
 }) {
-	const globTool = new Tool('find_file')
+	const findFilesTool = new Tool('find_file')
 		.description(
 			'Find uploaded knowledge files by filename pattern, such as `*knowledge*`, `*agent*tool*`, or `*sandbox*`. Use `*` to list every uploaded file, an extension pattern like `*.pdf` to filter by type, or a name fragment when the user gives title or filename clues. Use first for knowledge lookup to discover plausible candidate files; call until enough candidates are found, then copy returned file values into search_text path or read_file. Results are paged: page through the full list with `limit` and `offset` while `hasMore` is true. Returns file, fileId, mimeType, and fileSizeBytes metadata; does not read file contents.',
 		)
-		.input(globKnowledgeFilesInputSchema)
+		.input(findKnowledgeFilesInputSchema)
 		.handler(async (input, ctx) => {
 			const finishToolCall = startToolCall(ctx.runId, 'file_find');
-			const output = await runKnowledgeTool(
-				async () => await knowledgeMirrorService.globKnowledgeFiles(projectId, agentId, input),
-			);
-			const result = toKnowledgeToolCallResult(output, toGlobKnowledgeModelOutput);
+			const output = await runKnowledgeTool(async () => await retriever.findFiles(scope, input));
+			const result = toKnowledgeToolCallResult(output, toFindKnowledgeFilesModelOutput);
 			finishToolCall(result);
 			return output;
 		})
-		.toModelOutput(toGlobKnowledgeModelOutput);
+		.toModelOutput(toFindKnowledgeFilesModelOutput);
 
-	const searchTool = new Tool('search_text')
+	const searchTextTool = new Tool('search_text')
 		.description(
 			'Search uploaded knowledge file contents with a ripgrep regex `pattern`. Omit `path` to search across every uploaded knowledge file. Pass `path` — one exact file value or an array of exact file values returned by find_file, search_text, or read_file — to scope the search to specific files. Does not accept empty path, `*`, fileId, absolute paths, guessed paths, arrays of non-strings, offsets, or semantic questions. Searching more than 20 files with an explicit `path` requires batching arrays across multiple calls (max 20 paths per call). `output_mode` defaults to content for snippets; use files_with_matches for matching files only or count for per-file match counts. Use `head_limit` to bound results and small `-C` values for nearby context. Answer from snippets when enough; use read_file only for quotes, citations, exact wording, source text, or larger missing context.',
 		)
-		.input(searchKnowledgeInputSchema)
+		.input(searchKnowledgeTextInputSchema)
 		.handler(async (input, ctx) => {
 			const finishToolCall = startToolCall(ctx.runId, 'file_search');
+			const preparation = observePreparationWait();
 			const startedAt = Date.now();
 			const output = await runKnowledgeTool(
-				async () => await knowledgeMirrorService.searchKnowledge(projectId, agentId, input),
+				async () => await retriever.searchText(scope, input, preparation.observer),
 			);
 			const durationMs = Date.now() - startedAt;
-			const result = toKnowledgeToolCallResult(output, toSearchKnowledgeModelOutput);
-			finishToolCall(withSearchStats(result, output, durationMs));
+			const result = toKnowledgeToolCallResult(output, toSearchKnowledgeTextModelOutput);
+			const resultWithStats = withSearchStats(result, output, durationMs);
+			finishToolCall(withPreparationWait(resultWithStats, preparation.observed.wait));
 			return output;
 		})
-		.toModelOutput(toSearchKnowledgeModelOutput);
+		.toModelOutput(toSearchKnowledgeTextModelOutput);
 
-	const readTool = new Tool('read_file')
+	const readFileTool = new Tool('read_file')
 		.description(
 			`Read one uploaded knowledge file using an exact \`file\` or \`fileId\` returned by a knowledge tool. Use only for exact quotes, citations, source text, or extra surrounding context not covered by search_text snippets or small -C context. Prefer bounded line ranges; each call supports up to ${MAX_READ_RANGES} ranges and output is truncated when too large. Read all needed ranges from the same file in one call when practical, and do not use read_file for broad manual scanning. If using fileId without an exact matching file value, omit file.`,
 		)
-		.input(readKnowledgeInputSchema)
+		.input(readKnowledgeFileInputSchema)
 		.handler(async (input, ctx) => {
 			const finishToolCall = startToolCall(ctx.runId, 'file_read');
+			const preparation = observePreparationWait();
 			const output = await runKnowledgeTool(
-				async () => await knowledgeMirrorService.readKnowledge(projectId, agentId, input),
+				async () => await retriever.readFile(scope, input, preparation.observer),
 			);
-			const result = toKnowledgeToolCallResult(output, toReadKnowledgeModelOutput);
-			finishToolCall(withFileUploadedAt(result, output));
+			const result = toKnowledgeToolCallResult(output, toReadKnowledgeFileModelOutput);
+			const resultWithFile = withFileUploadedAt(result, output);
+			finishToolCall(withPreparationWait(resultWithFile, preparation.observed.wait));
 			return output;
 		})
-		.toModelOutput(toReadKnowledgeModelOutput);
+		.toModelOutput(toReadKnowledgeFileModelOutput);
 
-	return [globTool, searchTool, readTool];
+	return [findFilesTool, searchTextTool, readFileTool];
 }

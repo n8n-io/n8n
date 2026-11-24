@@ -4,6 +4,7 @@ import type {
 	WorkflowSuggestionGraph,
 	WorkflowSuggestionProposalDetail,
 } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import {
 	SharedWorkflowRepository,
 	TransactionRunner,
@@ -14,7 +15,6 @@ import {
 import type { OperationContext, User, WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
-import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 import { calculateWorkflowChecksum, WORKFLOW_CHECKSUM_FIELDS } from 'n8n-workflow';
 import { z } from 'zod';
@@ -23,8 +23,11 @@ import { validateWorkflowStructure } from '@/workflow-helpers';
 import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { afterCommit, runInTransaction } from '../after-commit';
+import { SelfHealingResultRepository } from '../self-healing/database/self-healing-result.repository';
 import { WorkflowSuggestionRepository } from './database/workflow-suggestion.repository';
 import type { WorkflowSuggestion } from './database/workflow-suggestion.entity';
+import { hasGraphChanges } from './workflow-suggestion-graph';
 
 const suggestionInputSchema = z
 	.object({
@@ -65,6 +68,8 @@ export class WorkflowSuggestionService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
+		private readonly results: SelfHealingResultRepository,
+		private readonly events: EventService,
 	) {}
 
 	async requireEditor(userId: string, workflowId: string, ctx: OperationContext = {}) {
@@ -141,7 +146,7 @@ export class WorkflowSuggestionService {
 		}
 		validateWorkflowStructure(input.graph);
 		const graph = structuredClone(input.graph);
-		if (isEqual(original.nodes, graph.nodes) && isEqual(original.connections, graph.connections)) {
+		if (!hasGraphChanges(original, graph)) {
 			throw new ConflictError('The suggestion has no workflow changes.');
 		}
 		return {
@@ -213,10 +218,14 @@ export class WorkflowSuggestionService {
 	}
 
 	// Prepare immediately before the caller opens its completion transaction.
-	async createSuggestion(prepared: PreparedWorkflowSuggestion, ctx: OperationContext = {}) {
+	async createSuggestion(
+		prepared: PreparedWorkflowSuggestion,
+		selfHealingResultId: string,
+		ctx: OperationContext = {},
+	) {
 		const { baseline, payload } = prepared;
 		const { workflowId } = baseline;
-		return await this.txRunner.run(ctx, async (ctx) => {
+		return await runInTransaction(this.txRunner, ctx, async (ctx) => {
 			const target = await this.readWorkflowTarget(workflowId, ctx);
 			if (
 				!target.workflow ||
@@ -230,8 +239,9 @@ export class WorkflowSuggestionService {
 			const suggestion = await this.suggestions.createPending(
 				baseline,
 				payload,
-				ctx,
 				prepared.resultKind,
+				selfHealingResultId,
+				ctx,
 			);
 			await this.suggestions.appendSubmittedActivity(suggestion.id, ctx);
 			return suggestion;
@@ -260,7 +270,7 @@ export class WorkflowSuggestionService {
 		scope: { workflowId: string; projectId: string },
 		ctx: OperationContext = {},
 	) {
-		return await this.txRunner.run(ctx, async (ctx) => {
+		return await runInTransaction(this.txRunner, ctx, async (ctx) => {
 			const target = await this.readWorkflowTarget(scope.workflowId, ctx);
 			const suggestion = await this.suggestions.getSuggestion(suggestionId, scope, ctx);
 			return { suggestion: await this.closeIfOutdated(suggestion, target, ctx), target };
@@ -275,19 +285,55 @@ export class WorkflowSuggestionService {
 		if (suggestion.state !== 'pending' || (await this.matchesBaseline(suggestion, target))) {
 			return suggestion;
 		}
-		await this.suggestions.closePending(
-			suggestion,
-			'outdated',
-			{ author: 'system', actorId: null },
-			ctx,
-		);
+		await this.closeOutdatedResult(suggestion.selfHealingResultId, ctx);
 		return await this.suggestions.getSuggestion(suggestion.id, suggestion, ctx);
+	}
+
+	private async closeOutdatedResult(selfHealingResultId: string, ctx: OperationContext) {
+		let closed = false;
+		for (const member of await this.suggestions.getForResult(selfHealingResultId, ctx)) {
+			const memberClosed = await this.suggestions.closePending(
+				member,
+				'outdated',
+				{ author: 'system', actorId: null },
+				ctx,
+			);
+			closed ||= memberClosed;
+		}
+		const resultClosed = await this.results.closeResult(selfHealingResultId, 'outdated', ctx);
+		if (closed || resultClosed) {
+			afterCommit(ctx, () =>
+				this.events.emit('self-healing-result-outdated', { selfHealingResultId }),
+			);
+		}
 	}
 
 	async reconcileWorkflow(workflowId: string) {
 		const pending = await this.suggestions.getPendingForWorkflow(workflowId);
 		if (pending)
 			await this.reconcilePending(pending.id, { workflowId, projectId: pending.projectId });
+	}
+
+	async getPendingResultId(workflowId: string) {
+		return (await this.suggestions.getPendingForWorkflow(workflowId))?.selfHealingResultId;
+	}
+
+	async closeResultAsOutdated(selfHealingResultId: string) {
+		await runInTransaction(
+			this.txRunner,
+			{},
+			async (ctx) => await this.closeOutdatedResult(selfHealingResultId, ctx),
+		);
+	}
+
+	async closeResultsOfMovedWorkflow(workflowId: string) {
+		for (const id of await this.results.getOpenResultIds(workflowId, {})) {
+			await this.closeResultAsOutdated(id);
+		}
+	}
+
+	async getForResult(selfHealingResultId: string, ctx: OperationContext = {}) {
+		return await this.suggestions.getForResult(selfHealingResultId, ctx);
 	}
 
 	private async requireProposalAccess(viewer: User, projectId: string, workflowId: string) {
@@ -308,12 +354,34 @@ export class WorkflowSuggestionService {
 			workflowId,
 			projectId,
 		});
-		const activity = await this.suggestions.getActivity(suggestionId);
+		return await this.toProposal(suggestion);
+	}
+
+	async getProposals(
+		viewer: User,
+		projectId: string,
+		suggestions: WorkflowSuggestion[],
+	): Promise<WorkflowSuggestionProposalDetail[]> {
+		if (suggestions.some((suggestion) => suggestion.projectId !== projectId)) {
+			throw new NotFoundError('Proposal not found.');
+		}
+		for (const { workflowId } of suggestions) {
+			await this.requireProposalAccess(viewer, projectId, workflowId);
+		}
+		return await Promise.all(
+			suggestions.map(async (suggestion) => await this.toProposal(suggestion)),
+		);
+	}
+
+	private async toProposal(
+		suggestion: WorkflowSuggestion,
+	): Promise<WorkflowSuggestionProposalDetail> {
+		const activity = await this.suggestions.getActivity(suggestion.id);
 		const { appliedVersionId, appliedChecksum, appliedAction, appliedActorId } = suggestion;
 		return {
-			suggestionId,
+			suggestionId: suggestion.id,
 			workflowId: suggestion.workflowId,
-			projectId,
+			projectId: suggestion.projectId,
 			backgroundUserId: suggestion.backgroundUserId,
 			expectedBaseline: suggestion.expectedBaseline,
 			state: suggestion.state,

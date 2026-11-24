@@ -1,9 +1,10 @@
-import { InstanceAiConfig } from '@n8n/config';
+import { GlobalConfig, InstanceAiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import { InstanceAiCheckpointPruningTask } from '../instance-ai-checkpoint-pruning.task';
 import { InstanceAiModule } from '../instance-ai.module';
+import { SelfHealingConfigurationSnapshotTask } from '../self-healing/self-healing-configuration-snapshot.task';
 import { SelfHealingReconciliationTask } from '../self-healing/self-healing-reconciliation.task';
 
 describe('InstanceAiModule', () => {
@@ -19,8 +20,23 @@ describe('InstanceAiModule', () => {
 
 		const tasks = await new InstanceAiModule().systemTasks();
 
-		expect(tasks).toEqual([InstanceAiCheckpointPruningTask, SelfHealingReconciliationTask]);
+		expect(tasks).toEqual([SelfHealingReconciliationTask, InstanceAiCheckpointPruningTask]);
 	});
+
+	it.each([true, false])(
+		'schedules the configuration snapshot only with telemetry on (%s)',
+		async (enabled) => {
+			Container.set(
+				InstanceAiConfig,
+				mock<InstanceAiConfig>({ pruneInterval: 0, workflowSuggestionsEnabled: true }),
+			);
+			Container.set(GlobalConfig, mock<GlobalConfig>({ diagnostics: { enabled } }));
+
+			const tasks = await new InstanceAiModule().systemTasks();
+
+			expect(tasks.includes(SelfHealingConfigurationSnapshotTask)).toBe(enabled);
+		},
+	);
 
 	it('keeps reconciliation scheduled when data pruning is disabled', async () => {
 		usePruneInterval(0);

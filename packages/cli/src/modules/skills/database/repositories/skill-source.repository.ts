@@ -6,6 +6,8 @@ import {
 	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
+import { UnexpectedError } from '@n8n/errors';
 import { DataSource, In, IsNull, LessThan, LessThanOrEqual, Not, Or } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
@@ -13,6 +15,7 @@ import {
 	SkillSourceConnection,
 	type OpaqueSourceValue,
 	type SkillSourceType,
+	type UnlinkedSkill,
 } from '../entities/skill-source-connection.entity';
 import { SkillSourceLink, type SkillSourceLinkState } from '../entities/skill-source-link.entity';
 
@@ -50,6 +53,29 @@ export type PendingUpdate = {
 	state: Extract<SkillSourceLinkState, 'update_available' | 'update_blocked'>;
 };
 
+export type SkillSyncSnapshot = Pick<
+	SkillSourceLink,
+	'sourceId' | 'baseContentHash' | 'pendingContentHash' | 'skippedContentHash'
+>;
+
+function snapshotCondition(skillId: string, read: SkillSyncSnapshot) {
+	return {
+		skillId,
+		sourceId: read.sourceId,
+		baseContentHash: read.baseContentHash,
+		pendingContentHash: read.pendingContentHash ?? IsNull(),
+		skippedContentHash: read.skippedContentHash ?? IsNull(),
+	};
+}
+
+const clearedPending = {
+	pendingContent: null,
+	pendingContentHash: null,
+	pendingScan: null,
+	pendingRevision: null,
+	state: 'up_to_date',
+} as const;
+
 /** Two sources for one identity in one scope. The partial unique indexes refuse the second. */
 export class DuplicateSkillSourceError extends Error {}
 
@@ -63,7 +89,10 @@ export class SkillSourceRepository {
 
 	private readonly links: SkillSourceLinkTable;
 
-	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+	constructor(
+		dataSource: DataSource,
+		private readonly transactionRunner: TransactionRunner,
+	) {
 		this.sources = new SkillSourceTable(dataSource, transactionRunner);
 		this.links = new SkillSourceLinkTable(dataSource, transactionRunner);
 	}
@@ -101,6 +130,7 @@ export class SkillSourceRepository {
 			await manager.save(
 				manager.create(SkillSourceConnection, {
 					...source,
+					credentialRequired: source.credentialId !== null,
 					status: 'connected',
 					lastCheckedAt: new Date(),
 					lastErrorReason: null,
@@ -141,6 +171,167 @@ export class SkillSourceRepository {
 
 	async findById(id: string, ctx: OperationContext = {}): Promise<SkillSourceConnection | null> {
 		return await this.sources.managerFor(ctx).findOneBy(SkillSourceConnection, { id });
+	}
+
+	/** Stores a complete discovery only while its source snapshot still holds. */
+	async storeUnlinkedSkills(
+		source: SkillSourceConnection,
+		skills: UnlinkedSkill[],
+	): Promise<boolean> {
+		return await this.transactionRunner.run({}, async (ctx) => {
+			const current = await this.findForDelete(source.id, ctx);
+			if (
+				!current ||
+				current.probeCursor !== source.probeCursor ||
+				current.credentialId !== source.credentialId ||
+				current.projectId !== source.projectId ||
+				JSON.stringify(current.unlinkedSkills) !== JSON.stringify(source.unlinkedSkills)
+			)
+				return false;
+			const linked = new Set(
+				(await this.findLinksBySource(source.id, ctx)).map(({ remoteRef }) =>
+					JSON.stringify(remoteRef),
+				),
+			);
+			await this.saveUnlinkedSkills(
+				source.id,
+				skills.filter(({ key }) => !linked.has(key)),
+				ctx,
+			);
+			return true;
+		});
+	}
+
+	/** Call inside the transaction that holds the source lock or creates the source. */
+	async saveUnlinkedSkills(
+		sourceId: string,
+		skills: UnlinkedSkill[],
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.sources
+			.managerFor(ctx)
+			.update(SkillSourceConnection, { id: sourceId }, { unlinkedSkills: skills });
+	}
+
+	/** A removed link needs discovery even when the remote revision stays the same. */
+	async invalidateSourceForSkill(skillId: string, ctx: OperationContext): Promise<void> {
+		const link = await this.findLinkBySkillId(skillId, ctx);
+		if (!link) return;
+		// A unique cursor also invalidates a check that started with a null cursor.
+		await this.sources
+			.managerFor(ctx)
+			.update(
+				SkillSourceConnection,
+				{ id: link.sourceId },
+				{ probeCursor: `local-change:${generateNanoId()}` },
+			);
+	}
+
+	async lockForMove(sourceId: string, ctx: OperationContext): Promise<void> {
+		if (!ctx.trx) throw new UnexpectedError('Source row locks need a transaction');
+		if (this.sources.manager.connection.options.type !== 'postgres') return;
+		await this.sources.managerFor(ctx).findOne(SkillSourceConnection, {
+			where: { id: sourceId },
+			lock: { mode: 'pessimistic_write' },
+		});
+	}
+
+	async moveScope(
+		sourceId: string,
+		projectId: string | null,
+		credentialId: string | null,
+		ctx: OperationContext,
+	): Promise<void> {
+		try {
+			await this.sources.managerFor(ctx).update(
+				SkillSourceConnection,
+				{ id: sourceId },
+				{
+					projectId,
+					credentialId,
+					credentialRequired: credentialId !== null,
+					probeCursor: null,
+				},
+			);
+		} catch (error) {
+			if (isUniqueConstraintError(error)) throw new DuplicateSkillSourceError();
+			throw error;
+		}
+	}
+
+	/** Replaces validated access only while the source still has the scope and credential read. */
+	async replaceCredential(
+		source: Pick<SkillSourceConnection, 'id' | 'projectId' | 'credentialId'>,
+		credentialId: string,
+	): Promise<boolean> {
+		const result = await this.sources.managerFor({}).update(
+			SkillSourceConnection,
+			{
+				id: source.id,
+				projectId: source.projectId ?? IsNull(),
+				credentialId: source.credentialId ?? IsNull(),
+			},
+			{
+				credentialId,
+				credentialRequired: true,
+				lastErrorReason: null,
+				lastCheckedAt: new Date(),
+				probeCursor: null,
+			},
+		);
+		return (result.affected ?? 0) > 0;
+	}
+
+	/** Missing folders among visible sources. No skill content is needed. */
+	async findMissingLinks(
+		sourceIds: string[],
+	): Promise<Array<Pick<SkillSourceLink, 'sourceId' | 'skillId'>>> {
+		const links: Array<Pick<SkillSourceLink, 'sourceId' | 'skillId'>> = [];
+		for (const chunk of chunkIds(sourceIds)) {
+			links.push(
+				...(await this.links.managerFor({}).find(SkillSourceLink, {
+					select: ['sourceId', 'skillId'],
+					where: { sourceId: In(chunk), state: 'source_unavailable' },
+				})),
+			);
+		}
+		return links;
+	}
+
+	/** Changes folder availability without discarding an update that waits for review. */
+	async setLinkAvailability(link: SkillSourceLink, missing: boolean): Promise<boolean> {
+		const state = missing
+			? 'source_unavailable'
+			: link.pendingContentHash === null
+				? 'up_to_date'
+				: link.pendingScan?.verdict === 'blocked'
+					? 'update_blocked'
+					: 'update_available';
+		const manager = this.links.managerFor({});
+		const read = {
+			skillId: link.skillId,
+			state: link.state,
+			pendingContentHash: link.pendingContentHash ?? IsNull(),
+		};
+		if (state === link.state) return await manager.existsBy(SkillSourceLink, read);
+		const result = await manager.update(SkillSourceLink, read, { state });
+		return (result.affected ?? 0) > 0;
+	}
+
+	/** Serializes source deletion with other changes to this source. */
+	async findForDelete(id: string, ctx: OperationContext): Promise<SkillSourceConnection | null> {
+		const manager = this.sources.managerFor(ctx);
+		return await manager.findOne(SkillSourceConnection, {
+			where: { id },
+			...(manager.connection.options.type === 'postgres'
+				? { lock: { mode: 'pessimistic_write' as const } }
+				: {}),
+		});
+	}
+
+	/** Deletes the source and its links. Callers can delete its skills first or keep them. */
+	async deleteSource(sourceId: string, ctx: OperationContext): Promise<void> {
+		await this.sources.managerFor(ctx).delete(SkillSourceConnection, { id: sourceId });
 	}
 
 	/** The source of a synced skill, in one query. Null for a skill without a source. */
@@ -190,6 +381,10 @@ export class SkillSourceRepository {
 		return (result.affected ?? 0) > 0;
 	}
 
+	async hasAnySource(): Promise<boolean> {
+		return await this.sources.managerFor({}).exists(SkillSourceConnection);
+	}
+
 	/**
 	 * Every source, the longest unchecked first, for the check task. A run that times out
 	 * checks the others first next time.
@@ -200,8 +395,30 @@ export class SkillSourceRepository {
 		return sources.sort((a, b) => time(a) - time(b));
 	}
 
-	async findLinksBySource(sourceId: string): Promise<SkillSourceLink[]> {
-		return await this.links.managerFor({}).find(SkillSourceLink, { where: { sourceId } });
+	async findLinksBySource(
+		sourceId: string,
+		ctx: OperationContext = {},
+	): Promise<SkillSourceLink[]> {
+		return await this.links.managerFor(ctx).find(SkillSourceLink, { where: { sourceId } });
+	}
+
+	/** Claims the reviewed update in the transaction that saves its next skill version. */
+	async acceptPending(
+		skillId: string,
+		read: SkillSyncSnapshot,
+		revision: string,
+		ctx: OperationContext,
+	): Promise<boolean> {
+		if (!read.pendingContentHash) return false;
+		const result = await this.links
+			.managerFor(ctx)
+			.update(SkillSourceLink, snapshotCondition(skillId, read), {
+				...clearedPending,
+				baseContentHash: read.pendingContentHash,
+				baseRevision: revision,
+				skippedContentHash: null,
+			});
+		return (result.affected ?? 0) > 0;
 	}
 
 	/**
@@ -296,10 +513,18 @@ export class SkillSourceRepository {
 	 * A check that did not read the source, because its access still waits after a rate limit.
 	 * Only the reason changes: `lastCheckedAt` keeps the time of the last read.
 	 */
-	async recordDelayed(sourceId: string): Promise<void> {
-		await this.sources
-			.managerFor({})
-			.update(SkillSourceConnection, { id: sourceId }, { lastErrorReason: 'rate_limited' });
+	async recordDelayed(source: SkillSourceConnection): Promise<boolean> {
+		const result = await this.sources.managerFor({}).update(
+			SkillSourceConnection,
+			{
+				id: source.id,
+				projectId: source.projectId ?? IsNull(),
+				credentialId: source.credentialId ?? IsNull(),
+				lastErrorReason: source.lastErrorReason ?? IsNull(),
+			},
+			{ lastErrorReason: 'rate_limited' },
+		);
+		return (result.affected ?? 0) > 0;
 	}
 
 	/**
@@ -313,58 +538,69 @@ export class SkillSourceRepository {
 		sourceId: string,
 		result: {
 			checkedAt: Date;
+			readScope?: Pick<SkillSourceConnection, 'projectId' | 'credentialId'>;
 			errorReason: string | null;
 			/** `to` null clears the cursor, so the next check reads every skill again. */
 			probeCursor?: { from: string | null; to: string | null };
+			/** A result from an old credential must not overwrite its replacement. */
+			credentialId?: string | null;
 		},
-	): Promise<void> {
+	): Promise<boolean> {
 		const manager = this.sources.managerFor({});
-		const { checkedAt, errorReason, probeCursor } = result;
-		await manager.update(
-			SkillSourceConnection,
-			{ id: sourceId, lastCheckedAt: Or(IsNull(), LessThanOrEqual(checkedAt)) },
-			{ lastCheckedAt: checkedAt, lastErrorReason: errorReason },
-		);
-		if (!probeCursor) return;
+		const { checkedAt, errorReason, probeCursor, readScope } = result;
+		const unchanged = {
+			id: sourceId,
+			lastCheckedAt: Or(IsNull(), LessThanOrEqual(checkedAt)),
+			...(result.credentialId !== undefined
+				? { credentialId: result.credentialId ?? IsNull() }
+				: {}),
+			...(readScope
+				? {
+						projectId: readScope.projectId ?? IsNull(),
+						credentialId: readScope.credentialId ?? IsNull(),
+					}
+				: {}),
+		};
+		const written = await manager.update(SkillSourceConnection, unchanged, {
+			lastCheckedAt: checkedAt,
+			lastErrorReason: errorReason,
+		});
+		if ((written.affected ?? 0) === 0) return false;
+		if (!probeCursor) return true;
 		const moved = await manager.update(
 			SkillSourceConnection,
-			{ id: sourceId, probeCursor: probeCursor.from ?? IsNull() },
+			{ ...unchanged, probeCursor: probeCursor.from ?? IsNull() },
 			{ probeCursor: probeCursor.to },
 		);
 		if ((moved.affected ?? 0) === 0) {
-			await manager.update(SkillSourceConnection, { id: sourceId }, { probeCursor: null });
+			await manager.update(SkillSourceConnection, unchanged, { probeCursor: null });
 		}
+		return true;
 	}
 
 	/**
 	 * The source has the base content at this revision: the base moves to it, and an update
-	 * that waited for review is dropped, as the source reverted it. `readPendingHash` is the
-	 * pending hash that the check read. Answers false, and writes nothing, when another check
+	 * that waited for review is dropped, as the source reverted it. The snapshot holds the base,
+	 * pending and skipped hashes that the check read. Answers false when another action
 	 * changed the link since: the check then clears the cursor, so the next one reads again.
 	 */
-	async moveBase(
-		skillId: string,
-		revision: string,
-		readPendingHash: string | null,
-	): Promise<boolean> {
-		const result = await this.links.managerFor({}).update(
-			SkillSourceLink,
-			{ skillId, pendingContentHash: readPendingHash ?? IsNull() },
-			{
+	async moveBase(skillId: string, revision: string, read: SkillSyncSnapshot): Promise<boolean> {
+		const result = await this.links
+			.managerFor({})
+			.update(SkillSourceLink, snapshotCondition(skillId, read), {
 				baseRevision: revision,
 				pendingContent: null,
 				pendingContentHash: null,
 				pendingScan: null,
 				pendingRevision: null,
 				state: 'up_to_date',
-			},
-		);
+			});
 		return (result.affected ?? 0) > 0;
 	}
 
 	/**
 	 * Stores an update that waits for review, in place of the one that the check read
-	 * (`readPendingHash`). Answers false, and writes nothing, when another check changed the
+	 * in the read snapshot. Answers false, and writes nothing, when another action changed the
 	 * link since, such as a check on another main: with the same content the update is
 	 * reported once, and with other content the cleared cursor makes the next check read the
 	 * skill again. Also false when the link is gone.
@@ -372,11 +608,11 @@ export class SkillSourceRepository {
 	async storePending(
 		skillId: string,
 		pending: PendingUpdate,
-		readPendingHash: string | null,
+		read: SkillSyncSnapshot,
 	): Promise<boolean> {
 		const result = await this.links.managerFor({}).update(
 			SkillSourceLink,
-			{ skillId, pendingContentHash: readPendingHash ?? IsNull() },
+			snapshotCondition(skillId, read),
 			// The partial-entity type of `update` rejects free-form JSON, as for `insert` above.
 			{
 				pendingContent: pending.content,

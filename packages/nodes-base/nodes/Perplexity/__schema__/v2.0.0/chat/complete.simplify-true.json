@@ -1,0 +1,29 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"citations": {
+			"items": {
+				"type": "string"
+			},
+			"type": "array"
+		},
+		"created": {
+			"type": "number"
+		},
+		"id": {
+			"type": "string"
+		},
+		"message": {
+			"properties": {
+				"content": {
+					"type": "string"
+				},
+				"role": {
+					"type": "string"
+				}
+			},
+			"type": ["object", "string"]
+		}
+	},
+	"type": "object"
+}

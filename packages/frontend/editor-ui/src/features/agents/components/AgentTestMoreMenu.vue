@@ -49,7 +49,7 @@ const props = withDefaults(
 		hideLayoutToggle?: boolean;
 		isLangSmithExportEnabled: boolean;
 		isExporting: boolean;
-		getConversationMarkdown: () => string;
+		getConversationMarkdown: () => Promise<string>;
 		usageUpdates?: Record<string, AgentUsageUpdate>;
 	}>(),
 	{ canDeleteSession: false, isDeletingSession: false, usageUpdates: () => ({}) },
@@ -137,6 +137,7 @@ const triggerLabel = computed(() => {
 	}
 	if (source === 'instance-ai') return i18n.baseText('agentSessions.origin.instanceAi');
 	if (source === 'n8n_chat_production') return i18n.baseText('agentSessions.origin.n8nChat');
+	if (source === 'webhook') return i18n.baseText('agentSessions.origin.webhook');
 	return source.charAt(0).toUpperCase() + source.slice(1);
 });
 
@@ -150,8 +151,9 @@ const triggerIcon = computed<IconName>(() => {
 		case 'teams':
 		case 'mcp':
 		case 'workflow':
-		case 'webhook':
 			return sessionMetadata.value.source;
+		case 'webhook':
+			return 'plug';
 		case 'instance-ai':
 			return 'sparkles';
 		case 'n8n_chat_production':
@@ -216,7 +218,7 @@ async function copyLink() {
 
 async function copyConversation() {
 	try {
-		const conversation = props.getConversationMarkdown();
+		const conversation = await props.getConversationMarkdown();
 		if (!conversation) return;
 		await clipboard.copy(conversation);
 		toast.showMessage({

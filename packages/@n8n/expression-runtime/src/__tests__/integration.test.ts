@@ -1430,6 +1430,28 @@ describe(`Integration: ${engineName} error handling`, () => {
 			await bridge.dispose();
 		}
 	});
+
+	it('should throw MemoryLimitError when a template expression exceeds memory limit', async () => {
+		const evaluator = new ExpressionEvaluator({
+			createBridge: () => newBridge({ memoryLimit: 8, timeout: 5000 }),
+			maxCodeCacheSize: 64,
+		});
+		const caller = {};
+		await evaluator.initialize();
+		await evaluator.acquire(caller);
+		try {
+			expect(() =>
+				evaluator.evaluate(
+					'{{ Array.from({ length: 3000000 }, (_, i) => ({ i })).length }}',
+					{},
+					caller,
+				),
+			).toThrow(MemoryLimitError);
+		} finally {
+			await evaluator.release(caller);
+			await evaluator.dispose();
+		}
+	});
 });
 
 describe('Integration: Concurrent execution pooling', () => {

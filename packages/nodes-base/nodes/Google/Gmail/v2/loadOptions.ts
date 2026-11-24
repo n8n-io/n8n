@@ -1,4 +1,5 @@
 import type { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { googleApiRequest, getLabels } from '../GenericFunctions';
 
@@ -8,10 +9,11 @@ export async function getThreadMessages(
 	const returnData: INodePropertyOptions[] = [];
 
 	const id = this.getNodeParameter('threadId', 0) as string;
+	if (!id) return returnData;
 	const { messages } = await googleApiRequest.call(
 		this,
 		'GET',
-		`/gmail/v1/users/me/threads/${id}`,
+		requestPath`/gmail/v1/users/me/threads/${id}`,
 		{},
 		{ format: 'minimal' },
 	);
@@ -30,7 +32,11 @@ export async function getGmailAliases(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
-	const { sendAs } = await googleApiRequest.call(this, 'GET', '/gmail/v1/users/me/settings/sendAs');
+	const { sendAs } = await googleApiRequest.call(
+		this,
+		'GET',
+		requestPath`/gmail/v1/users/me/settings/sendAs`,
+	);
 
 	for (const alias of sendAs || []) {
 		const displayName = alias.isDefault ? `${alias.sendAsEmail} (Default)` : alias.sendAsEmail;

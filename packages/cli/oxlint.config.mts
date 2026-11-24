@@ -91,8 +91,6 @@ const skillsModuleEntryForTests = {
 const skillsModuleIsolation = {
 	group: [
 		'@/*',
-		'!@/posthog',
-		'!@/telemetry',
 		'@/*/**',
 		// Any depth, so files in subfolders of the skills module are covered too.
 		'../**/agents/**',
@@ -481,6 +479,8 @@ export default defineConfig({
 									'!@/events/maps/',
 									'!@/events/maps/system-task-metrics.event-map',
 									'!@/modules/',
+									'!@/modules/agents/',
+									'!@/modules/agents/agent-execution-probe',
 									'!@/modules/instance-ai/',
 									'!@/modules/instance-ai/instance-ai-run-probe',
 									'!@/services/',

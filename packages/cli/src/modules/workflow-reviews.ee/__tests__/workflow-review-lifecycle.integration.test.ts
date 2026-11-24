@@ -729,18 +729,78 @@ describe('auto-close on source-control pull', () => {
 		expect(untouched?.updatedAt).toEqual(request.updatedAt);
 	});
 
-	test('a pull that updates the workflow without archiving leaves the review open', async () => {
+	test('a pull that moves the workflow within its project leaves the review open', async () => {
 		const { workflow, versionId } = await createReviewableWorkflow(owner);
 		const request = await createOpenReview(workflow.id, versionId);
+		const folder = await createFolder(ownerProject);
 
-		const candidate = putWorkflowFile(remoteWorkflow(workflow.id, { name: 'Updated by pull' }));
+		const candidate = putWorkflowFile(remoteWorkflow(workflow.id, { parentFolderId: folder.id }));
 		await importService.importWorkflowFromWorkFolder([candidate], owner.id);
 
-		const updated = await Container.get(WorkflowRepository).findOneBy({ id: workflow.id });
-		expect(updated?.name).toBe('Updated by pull');
+		const updated = await Container.get(WorkflowRepository).findOne({
+			where: { id: workflow.id },
+			relations: { parentFolder: true },
+		});
+		expect(updated?.parentFolder?.id).toBe(folder.id);
 
 		const stillOpen = await requestRepository.findById(request.id, {});
 		expect(stillOpen?.state).toBe('open');
+		expect(await getActivityEntries(request.id)).toEqual([]);
+	});
+
+	test('a pull that changes the owning project records a system move and closes the review', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow(owner);
+		const request = await createOpenReview(workflow.id, versionId);
+		const destination = await createTeamProject('Destination', owner);
+		const candidate = putWorkflowFile(
+			remoteWorkflow(workflow.id, {
+				owner: { type: 'team', teamId: destination.id, teamName: destination.name },
+			}),
+		);
+
+		await importService.importWorkflowFromWorkFolder([candidate], owner.id);
+
+		expect(
+			await Container.get(SharedWorkflowRepository).getWorkflowOwningProjectId(workflow.id),
+		).toBe(destination.id);
+		expect(await requestRepository.findById(request.id, {})).toMatchObject({
+			state: 'closed',
+			closedById: null,
+		});
+		expect(await getActivityEntries(request.id)).toEqual([
+			expect.objectContaining({
+				type: 'workflow.moved',
+				data: { workflowId: workflow.id, actorKind: 'system' },
+				createdBy: null,
+			}),
+			closedEntry,
+		]);
+	});
+
+	test('a failed owner update keeps the original owner and leaves the review open', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow(owner);
+		const request = await createOpenReview(workflow.id, versionId);
+		const destination = await createTeamProject('Destination', owner);
+		const candidate = putWorkflowFile(
+			remoteWorkflow(workflow.id, {
+				owner: { type: 'team', teamId: destination.id, teamName: destination.name },
+			}),
+		);
+		const sharedWorkflows = Container.get(SharedWorkflowRepository);
+		const makeOwner = vi
+			.spyOn(sharedWorkflows, 'makeOwner')
+			.mockRejectedValueOnce(new Error('Write failed'));
+
+		try {
+			await expect(
+				importService.importWorkflowFromWorkFolder([candidate], owner.id),
+			).rejects.toThrow('Write failed');
+			expect(await sharedWorkflows.getWorkflowOwningProjectId(workflow.id)).toBe(ownerProject.id);
+			expect((await requestRepository.findById(request.id, {}))?.state).toBe('open');
+			expect(await getActivityEntries(request.id)).toEqual([]);
+		} finally {
+			makeOwner.mockRestore();
+		}
 	});
 
 	test('a pull that deletes a folder closes reviews of cascade-deleted workflows', async () => {

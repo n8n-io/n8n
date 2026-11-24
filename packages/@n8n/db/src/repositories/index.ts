@@ -47,6 +47,7 @@ export { ExecutionListRepository } from './execution-list.repository';
 export { ExecutionMetadataRepository } from './execution-metadata.repository';
 export {
 	ExecutionRepository,
+	type CanceledExecution,
 	type CrashedExecution,
 	type ExecutionDeletionCriteria,
 	type ResumableExecutionStatus,
@@ -63,6 +64,7 @@ export {
 } from './idempotency-key.repository';
 export { InvalidAuthTokenRepository } from './invalid-auth-token.repository';
 export { InstanceCredentialAssignmentRepository } from './instance-credential-assignment.repository';
+export { AgentExecutionStatisticsRepository } from './agent-execution-statistics.repository';
 export { LicenseMetricsRepository } from './license-metrics.repository';
 export { ProjectPoolSettingsRepository } from './project-pool-settings.repository.ee';
 export { ProjectRelationRepository } from './project-relation.repository';
@@ -120,6 +122,7 @@ export {
 export {
 	WorkflowPublishedVersionRepository,
 	type PublishedWorkflowDataForExecution,
+	type PublishedVersionForExecution,
 } from './workflow-published-version.repository';
 export {
 	WorkflowPublishHistoryRepository,

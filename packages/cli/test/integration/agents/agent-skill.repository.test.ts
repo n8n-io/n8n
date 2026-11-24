@@ -4,6 +4,8 @@ import { Container } from '@n8n/di';
 import { DataSource, type Repository } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
+import { createAgent as createTestAgent } from '@test-integration/db/agents';
+
 import { AgentPublishHistory } from '@/modules/agents/entities/agent-publish-history.entity';
 import { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
@@ -53,16 +55,14 @@ describe('AgentSkillRepository', () => {
 
 	async function createAgent(name: string, options: { inSync?: boolean; projectId?: string } = {}) {
 		const versionId = randomUUID();
-		const agent = await agents.save(
-			agents.create({
-				id: randomUUID(),
-				name,
-				projectId: options.projectId ?? project.id,
-				integrations: [],
-				tools: {},
-				versionId,
-			}),
-		);
+		const agent = await createTestAgent({
+			id: randomUUID(),
+			name,
+			projectId: options.projectId ?? project.id,
+			integrations: [],
+			tools: {},
+			versionId,
+		});
 		if (options.inSync) {
 			await histories.save(histories.create({ versionId, agentId: agent.id, author: 'Test' }));
 			await agents.update({ id: agent.id }, { activeVersionId: versionId });

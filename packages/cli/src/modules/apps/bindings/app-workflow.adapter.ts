@@ -2,11 +2,12 @@ import {
 	getWorkflowToolIncompatibilityReason,
 	type AppDescribedWorkflowBinding,
 	type AppJsonSchema,
+	type AppRuntimeCredentialConnection,
 	type AppWorkflowBinding,
 	type AppWorkflowRunResult,
 	type AppWorkflowRunStatus,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import {
 	AppRuntimeError,
 	AppsConfig,
@@ -15,12 +16,15 @@ import {
 } from '@n8n/backend-module-apps';
 import { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { isRecord } from '@n8n/utils/is-record';
 import {
 	createRunExecutionData,
+	getExecutableNodeNames,
+	mapConnectionsByDestination,
+	type CredentialCheckStatus,
 	type IDataObject,
 	type INode,
 	type IPinData,
@@ -48,6 +52,7 @@ import {
 } from '@/workflows/callable/callable-workflow-result';
 import { CallableWorkflowUnavailableError } from '@/workflows/callable/callable-workflow-unavailable.error';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowService } from '@/workflows/workflow.service';
 
 import { inferOutputSchema, sampleOutputItems, UNKNOWN_OUTPUT_SCHEMA } from './infer-output-schema';
 
@@ -80,6 +85,19 @@ function visitorTag(ctx: AppCallContext): string {
 
 function isDataObject(value: unknown): value is IDataObject {
 	return isRecord(value);
+}
+
+/** Leaves out credential IDs and revoke links. Only the connect link is for the visitor. */
+function toCredentialConnection(status: CredentialCheckStatus): AppRuntimeCredentialConnection {
+	return {
+		name: status.credentialName,
+		type: status.credentialType,
+		status: status.status,
+		...(status.status === 'missing' && status.authorizationUrl
+			? { connectUrl: status.authorizationUrl }
+			: {}),
+		...(status.iconUrl ? { iconUrl: status.iconUrl } : {}),
+	};
 }
 
 /**
@@ -122,6 +140,7 @@ export class AppWorkflowAdapter extends AppWorkflowPort {
 	constructor(
 		private readonly workflowLoader: CallableWorkflowLoader,
 		private readonly workflowFinder: WorkflowFinderService,
+		private readonly workflowService: WorkflowService,
 		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly activeExecutions: ActiveExecutions,
@@ -129,6 +148,7 @@ export class AppWorkflowAdapter extends AppWorkflowPort {
 		private readonly appsConfig: AppsConfig,
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
+		private readonly moduleRegistry: ModuleRegistry,
 	) {
 		super();
 	}
@@ -154,6 +174,33 @@ export class AppWorkflowAdapter extends AppWorkflowPort {
 				`Binding "${binding.key}": workflow "${workflow.name}" cannot run from an app (${incompatibility.reason}).`,
 			);
 		}
+	}
+
+	async canPublish(user: User, _projectId: string, binding: AppWorkflowBinding) {
+		const workflow = await this.workflowFinder.findWorkflowForUser(binding.workflowId, user, [
+			'workflow:publish',
+		]);
+		return workflow !== null;
+	}
+
+	async getPublishState(projectId: string, binding: AppWorkflowBinding) {
+		const draft = await this.workflowLoader.loadWorkflow(projectId, {
+			workflowId: binding.workflowId,
+			workflowName: '',
+		});
+		if (!draft || getWorkflowToolIncompatibilityReason(draft) !== null) return null;
+		const published = draft.activeVersionId !== null;
+		return {
+			name: draft.name,
+			published,
+			hasChanges: published && draft.versionId !== draft.activeVersionId,
+		};
+	}
+
+	async publish(user: User, _projectId: string, binding: AppWorkflowBinding) {
+		await this.workflowService.activateWorkflow(user, binding.workflowId, {
+			publishHistory: 'latestActivation',
+		});
 	}
 
 	async describe(
@@ -211,7 +258,40 @@ export class AppWorkflowAdapter extends AppWorkflowPort {
 			);
 		}
 
+		await this.assertCredentialsConnected(ctx, workflow, trigger.node);
+
 		return await this.execute(ctx, workflow, trigger.node, parsed.data);
+	}
+
+	/**
+	 * Refuses the run before it starts when the visitor has not connected an
+	 * end-user credential that the run can reach. The error carries connect links.
+	 */
+	private async assertCredentialsConnected(
+		ctx: AppCallContext,
+		workflow: WorkflowEntity,
+		triggerNode: INode,
+	) {
+		if (!ctx.runnerIdentity || !this.moduleRegistry.isActive('dynamic-credentials')) return;
+
+		const reachable = getExecutableNodeNames(
+			workflow.connections,
+			mapConnectionsByDestination(workflow.connections),
+			triggerNode.name,
+		);
+		const rootNodes = workflow.nodes.filter((node) => reachable.has(node.name));
+
+		const { CredentialCheckProxyService } = await import(
+			'@/modules/dynamic-credentials.ee/services/credential-check-proxy.service.js'
+		);
+		const result = await Container.get(CredentialCheckProxyService).checkCredentialStatus(
+			workflow.id,
+			{ credentials: ctx.runnerIdentity },
+			{ rootNodes },
+		);
+		if (result.readyToExecute) return;
+
+		throw AppRuntimeError.credentialsRequired(result.credentials.map(toCredentialConnection));
 	}
 
 	async getRun(
@@ -256,6 +336,8 @@ export class AppWorkflowAdapter extends AppWorkflowPort {
 		const pinData: IPinData = { [triggerNode.name]: [{ json: input }] };
 		const runData: IWorkflowExecutionDataProcess = {
 			executionMode: 'integrated',
+			// End-user credentials resolve as the visitor, not as the app project.
+			encryptedRunnerIdentity: ctx.runnerIdentity,
 			workflowData: {
 				...workflow,
 				// `getRun` reads the result from the execution row, so it must outlive pruning-on-finish.

@@ -15,7 +15,8 @@ import type {
 	NodeConnectionType,
 	SupplyData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, UnexpectedError, Workflow } from 'n8n-workflow';
+import { NodeConnectionTypes, Workflow } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { ErrorReporter } from '@/errors/error-reporter';

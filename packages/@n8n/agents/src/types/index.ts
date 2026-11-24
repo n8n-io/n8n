@@ -74,6 +74,8 @@ export type { SerializedMessageList } from './runtime/message-list';
 
 export type {
 	ToolContext,
+	ToolCallInterception,
+	ToolCallInterceptor,
 	ToolCancellationContext,
 	ToolExecutionContext,
 	ToolApprovalContext,
@@ -81,6 +83,7 @@ export type {
 	ToolSuspendOptions,
 	BuiltTool,
 	ToolDispatch,
+	LegacyCallConverter,
 	BuiltProviderTool,
 } from './sdk/tool';
 
@@ -127,6 +130,10 @@ export type {
 	NewEpisodicMemoryCaptureCandidate,
 	ObservationLogMemoryConfig,
 	ObservationalMemoryConfig,
+	ObservationWindowShares,
+	ObservationLogPlacement,
+	ObservationFailurePolicy,
+	ObservationReflectionMode,
 	CheckpointStore,
 	TitleGenerationConfig,
 } from './sdk/memory';
@@ -142,7 +149,11 @@ export type {
 	VectorFilter,
 } from './sdk/vector-store';
 
-export type { ObservationCursor } from './sdk/observation';
+export type {
+	BuiltObservationResumeStore,
+	ObservationCursor,
+	ObservationResumeState,
+} from './sdk/observation';
 
 export type {
 	BuiltObservationLogStore,

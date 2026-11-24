@@ -1,8 +1,8 @@
-import type { User } from '@n8n/db';
+import type { TelemetryProxy } from '@n8n/backend-services';
+import type { OperationContext, User } from '@n8n/db';
 import z from 'zod';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
-import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
@@ -28,8 +28,9 @@ export const createArchiveWorkflowTool = (
 	user: User,
 	workflowFinderService: WorkflowFinderService,
 	workflowService: WorkflowService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 	collaborationService: CollaborationService,
+	ctx: OperationContext = {},
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_ARCHIVE_WORKFLOW_TOOL.toolName,
 	config: {
@@ -56,7 +57,7 @@ export const createArchiveWorkflowTool = (
 
 			await collaborationService.ensureWorkflowEditable(workflowId);
 
-			const workflow = await workflowService.archive(user, workflowId, { skipArchived: true });
+			const workflow = await workflowService.archive(user, workflowId, { skipArchived: true }, ctx);
 
 			if (!workflow) {
 				throw new Error("Workflow not found or you don't have permission to archive it.");

@@ -2,16 +2,19 @@ import type { HttpRequestClient } from '@n8n/backend-network';
 import { Logger } from '@n8n/backend-common';
 import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import type { EngineRuntime, ExecutionResponseSender, LifecycleEventCallback } from '@n8n/engine';
+import type {
+	EngineRuntime,
+	EngineWorkQueues,
+	ExecutionResponseSender,
+	LifecycleEventCallback,
+} from '@n8n/engine';
 import {
 	AllowAllAdmittance,
 	createDataSource,
-	createEngineHttpServer,
 	createEngineRuntime,
 	mintApprovalCallback,
 	mintResumeToken,
 	mintStepBoundResumeToken,
-	noopExecutionResponseSender,
 	SharedSecretIdentityVerifier,
 } from '@n8n/engine';
 import type { AdditionalDataContext, V1StepExecutorDeps } from '@n8n/node-engine-compatibility';
@@ -30,15 +33,17 @@ import { EngineAdditionalDataBuilder } from './engine-additional-data';
 import { EngineControlPlaneTransport } from './engine-control-plane-transport';
 import { EngineCredentialsClient } from './engine-credentials-client';
 import { EngineSubWorkflowClient } from './engine-sub-workflow-client';
-import { EngineTlsMaterial } from './engine-tls-material';
+import { EngineMtls } from './engine-mtls';
 import { RemoteCredentialsHelper } from './remote-credentials-helper';
 import { RemoteDataTableProxyProvider } from './remote-data-table-proxy-provider';
 
-/** The data plane ends of the execution channel. */
-export interface EngineV2ChannelSenders {
+export interface EngineV2RuntimeOptions {
+	/** The data plane end of the execution channel for responses. */
 	responseSender: ExecutionResponseSender;
 	/** Without it, the engine publishes no lifecycle events. */
 	lifecycleEventSender?: { send: LifecycleEventCallback };
+	/** The queues the engine runs on. The caller closes their connections. */
+	queues: EngineWorkQueues;
 }
 
 /**
@@ -46,8 +51,9 @@ export interface EngineV2ChannelSenders {
  *
  * This is the integrated-mode composition root. It chooses the adapters the
  * engine needs — the data plane `DataSource`, the admittance policy, the v1 step
- * executor — and owns the connection and the HTTP listener. The engine owns its
- * own wiring, so this host never sees the workers or the queues.
+ * executor — and owns the connection and the HTTP listener. Its caller chooses
+ * the work queues. The engine owns its own wiring, so this host never sees the
+ * workers.
  */
 @Service()
 export class EngineV2Runtime {
@@ -69,7 +75,7 @@ export class EngineV2Runtime {
 
 	constructor(
 		private readonly engineConfig: EngineConfig,
-		private readonly tlsMaterial: EngineTlsMaterial,
+		private readonly mtls: EngineMtls,
 		private readonly nodeTypes: NodeTypesProxy,
 		private readonly logger: Logger,
 		private readonly credentialsClient: EngineCredentialsClient,
@@ -84,13 +90,11 @@ export class EngineV2Runtime {
 		this.dataTablesHttp = transport.forScope('data-tables:use');
 	}
 
-	async init(
-		senders: EngineV2ChannelSenders = { responseSender: noopExecutionResponseSender },
-	): Promise<void> {
+	async init(options: EngineV2RuntimeOptions): Promise<void> {
 		try {
 			await this.initDb();
 
-			this.initEngine(senders);
+			this.initEngine(options);
 
 			await this.initServer();
 		} catch (error) {
@@ -106,7 +110,7 @@ export class EngineV2Runtime {
 	}
 
 	private async initDb(): Promise<void> {
-		const { databaseUrl } = this.engineConfig;
+		const { databaseUrl, databasePoolSize, databaseConnectionTimeoutMs } = this.engineConfig;
 
 		if (!databaseUrl) {
 			throw new UserError(
@@ -114,12 +118,19 @@ export class EngineV2Runtime {
 			);
 		}
 
-		this.dataSource = createDataSource(databaseUrl);
+		this.dataSource = createDataSource(databaseUrl, {
+			poolSize: databasePoolSize,
+			connectTimeoutMS: databaseConnectionTimeoutMs,
+		});
 		await this.dataSource.initialize();
 		await this.dataSource.runMigrations();
 	}
 
-	private initEngine({ responseSender, lifecycleEventSender }: EngineV2ChannelSenders): void {
+	private initEngine({
+		responseSender,
+		lifecycleEventSender,
+		queues,
+	}: EngineV2RuntimeOptions): void {
 		assert(this.dataSource, 'Engine v2 cannot start without a data source');
 
 		const stopping = new AbortController();
@@ -134,6 +145,7 @@ export class EngineV2Runtime {
 			logger: this.logger,
 			responseSender,
 			resumeSecret: this.engineConfig.resumeSecret,
+			queues,
 			externalDependencies: ({ executionStore, stepStore }) => ({
 				lifecycleEventCallback: lifecycleEventSender
 					? async (events, signal) => await lifecycleEventSender.send(events, signal)
@@ -196,19 +208,24 @@ export class EngineV2Runtime {
 
 	private async initServer(): Promise<void> {
 		const { host, port } = this.engineConfig;
-		const { tls } = this.tlsMaterial;
 
 		this.server = await new Promise<Server>((resolve, reject) => {
 			assert(this.engine, 'Engine v2 cannot start without an engine runtime');
 
-			const listener = createEngineHttpServer(this.engine.app, tls).listen(port, host);
+			const listener = this.mtls.createServer(this.engine.app).listen(port, host);
 			listener.once('listening', () => resolve(listener));
-			listener.once('error', reject);
+			listener.once('error', (error) => {
+				// A failed bind: closing also ends its subscription to TLS reloads.
+				if (!listener.listening) listener.close();
+				reject(error);
+			});
 		});
 
 		// An IPv6 literal needs brackets to read as a URL.
 		const shownHost = host.includes(':') ? `[${host}]` : host;
-		this.logger.info(`Engine v2 listening on ${tls ? 'https' : 'http'}://${shownHost}:${port}`);
+		this.logger.info(
+			`Engine v2 listening on ${this.mtls.enabled ? 'https' : 'http'}://${shownHost}:${port}`,
+		);
 	}
 
 	/**

@@ -1,4 +1,4 @@
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type { IBinaryData, INodeExecutionData } from 'n8n-workflow';
 
 import { normalizeItems } from '../normalize-items';

@@ -37,6 +37,10 @@ export const MCP_DISCOVER_METHOD = 'server/discover';
 
 export { MCP_SKILLS_EXTENSION_FLAG } from '@n8n/api-types';
 
+export const MCP_EMPTY_PREFERENCES_NOTE_FLAG = '140_mcp_empty_preferences_note';
+export const MCP_EMPTY_PREFERENCES_NOTE_MAX_IMPRESSIONS = 3;
+export const MCP_EMPTY_PREFERENCES_NOTE_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+
 /**
  * Message constants
  */
@@ -79,6 +83,15 @@ export const MCP_USER_PREFERENCES_TRIGGER_CLAUSE =
 	'you create or modify anything in n8n — a workflow, an Agent, a data table, a folder —';
 export const MCP_CALL_AGENT_TOOL_NAME = 'call_agent';
 export const MCP_CREATE_AGENT_TOOL_NAME = 'create_agent';
+
+/**
+ * Migration report tools. Reading needs the `breakingChanges:list` scope; a fix or a status
+ * needs `breakingChanges:migrate`.
+ */
+export const MCP_GET_MIGRATION_REPORT_TOOL_NAME = 'get_migration_report';
+export const MCP_GET_MIGRATION_FINDINGS_TOOL_NAME = 'get_migration_findings';
+export const MCP_MIGRATE_WORKFLOW_TOOL_NAME = 'migrate_workflow';
+export const MCP_SET_MIGRATION_FINDING_STATUS_TOOL_NAME = 'set_migration_finding_status';
 
 /**
  * Triggers supported in production mode for MCP execution
