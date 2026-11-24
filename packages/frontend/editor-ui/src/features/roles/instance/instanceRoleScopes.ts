@@ -31,6 +31,7 @@ export const INSTANCE_RESOURCE_ORDER: InstanceResource[] = [
 	'credential',
 	'project',
 	'app',
+	'mcpServer',
 	'insights',
 ];
 
@@ -45,6 +46,7 @@ export const INSTANCE_RESOURCE_LABEL_KEYS: Record<InstanceResource, BaseTextKey>
 	credential: 'instanceRoles.resource.credential',
 	project: 'instanceRoles.resource.project',
 	app: 'instanceRoles.resource.app',
+	mcpServer: 'instanceRoles.resource.mcpServer',
 	insights: 'instanceRoles.resource.insights',
 };
 
@@ -122,6 +124,10 @@ export const INSTANCE_OPTION_DESCRIPTION_KEYS: Partial<
 	app: {
 		View: 'instanceRoles.description.app.view',
 		Manage: 'instanceRoles.description.app.manage',
+	},
+	mcpServer: {
+		Use: 'instanceRoles.description.mcpServer.use',
+		Manage: 'instanceRoles.description.mcpServer.manage',
 	},
 	insights: { View: 'instanceRoles.description.insights.view' },
 };

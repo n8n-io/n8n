@@ -433,6 +433,10 @@ export const setupTestServer = ({
 						await import('@/modules/mcp/mcp.module.js');
 						break;
 
+					case 'mcp-servers':
+						await import('@n8n/backend-module-mcp-servers/module');
+						break;
+
 					case 'module-settings':
 						await import('@/controllers/module-settings.controller.js');
 						break;

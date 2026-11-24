@@ -8,6 +8,11 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import ProjectRoleView from './ProjectRoleView.vue';
 
+const { customMcpServersEnabled } = vi.hoisted(() => ({ customMcpServersEnabled: vi.fn() }));
+vi.mock('@/experiments/customMcpServers/customMcpServersEnabled', () => ({
+	customMcpServersEnabled,
+}));
+
 // Mock composables
 const mockShowError = vi.fn();
 const mockShowMessage = vi.fn();
@@ -713,6 +718,35 @@ describe('ProjectRoleView', () => {
 
 			await waitFor(() => expect(getByTestId('scope-checkbox-app:read')).toBeInTheDocument());
 			expect(getByTestId('scope-checkbox-app:create')).toBeInTheDocument();
+		});
+	});
+
+	describe('MCP server scopes', () => {
+		it.each([
+			['the module is inactive', false, true],
+			['the flag is off', true, false],
+		])('hides MCP server scopes when %s', async (_case, moduleActive, flag) => {
+			vi.mocked(settingsStore.isModuleActive).mockImplementation(
+				(name: string) => name === 'mcp-servers' && moduleActive,
+			);
+			customMcpServersEnabled.mockReturnValue(flag);
+			const { getByTestId, queryByTestId } = renderComponent();
+			await waitFor(() => expect(getByTestId('scope-checkbox-workflow:read')).toBeInTheDocument());
+
+			expect(queryByTestId('scope-checkbox-mcpServer:connect')).not.toBeInTheDocument();
+		});
+
+		it('shows MCP server scopes when the module is active and the flag is on', async () => {
+			vi.mocked(settingsStore.isModuleActive).mockImplementation(
+				(name: string) => name === 'mcp-servers',
+			);
+			customMcpServersEnabled.mockReturnValue(true);
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() =>
+				expect(getByTestId('scope-checkbox-mcpServer:connect')).toBeInTheDocument(),
+			);
+			expect(getByTestId('scope-checkbox-mcpServer:create')).toBeInTheDocument();
 		});
 	});
 

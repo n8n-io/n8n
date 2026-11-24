@@ -8,6 +8,7 @@ import type { Scope } from '../types.ee';
  */
 export const PROJECT_CUSTOM_ROLE_OPERATIONS = {
 	app: ['read', 'list', 'create', 'update', 'delete'],
+	mcpServer: ['read', 'list', 'connect', 'create', 'update', 'delete'],
 	project: ['read', 'update', 'delete', 'export', 'manageMembers'],
 	folder: ['read', 'update', 'create', 'move', 'delete'],
 	workflow: [
@@ -89,6 +90,17 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 	app: {
 		View: ['app:list', 'app:read'],
 		Manage: ['app:list', 'app:read', 'app:create', 'app:update', 'app:delete'],
+	},
+	mcpServer: {
+		Use: ['mcpServer:list', 'mcpServer:read', 'mcpServer:connect'],
+		Manage: [
+			'mcpServer:list',
+			'mcpServer:read',
+			'mcpServer:connect',
+			'mcpServer:create',
+			'mcpServer:update',
+			'mcpServer:delete',
+		],
 	},
 	settings: {
 		// Grants access to every instance Settings page, including MCP and n8n

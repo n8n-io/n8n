@@ -18,6 +18,7 @@ import {
 	type InstanceScopeOption,
 } from '../instanceRoleScopes';
 import PersonalSpacePermissions from './PersonalSpacePermissions.vue';
+import { customMcpServersEnabled } from '@/experiments/customMcpServers/customMcpServersEnabled';
 
 const i18n = useI18n();
 
@@ -34,11 +35,14 @@ const props = withDefaults(
 const emit = defineEmits<{ 'update:modelValue': [scopes: string[]] }>();
 
 const settingsStore = useSettingsStore();
-const groups = computed(() =>
-	settingsStore.isAppsEnabled
-		? INSTANCE_SCOPE_GROUP_LIST
-		: INSTANCE_SCOPE_GROUP_LIST.filter((group) => group.resource !== 'app'),
-);
+const groups = computed(() => {
+	const hidden = new Set<InstanceResource>();
+	if (!settingsStore.isAppsEnabled) hidden.add('app');
+	if (!settingsStore.isModuleActive('mcp-servers') || !customMcpServersEnabled()) {
+		hidden.add('mcpServer');
+	}
+	return INSTANCE_SCOPE_GROUP_LIST.filter((group) => !hidden.has(group.resource));
+});
 
 /** data-testid must be a single value: turn "Manage own" into "manage-own". */
 function optionTestId(resource: string, option: InstanceScopeOption): string {

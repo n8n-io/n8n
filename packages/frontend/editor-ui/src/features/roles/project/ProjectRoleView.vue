@@ -23,6 +23,7 @@ import RoleEditorLayout, { type RoleEditorLabels } from '../components/RoleEdito
 import RoleAssignmentsTab from './RoleAssignmentsTab.vue';
 import { useRoleEditorForm } from '../composables/useRoleEditorForm';
 import { CUSTOM_ROLE_SCOPE_WHITELIST } from '@n8n/permissions';
+import { customMcpServersEnabled } from '@/experiments/customMcpServers/customMcpServersEnabled';
 
 const rolesStore = useRolesStore();
 const route = useRoute();
@@ -85,6 +86,9 @@ const scopeTypes = computed(() => {
 	let types = SCOPE_TYPES;
 	if (!settingsStore.isAppsEnabled) {
 		types = types.filter((type) => type !== 'app');
+	}
+	if (!settingsStore.isModuleActive('mcp-servers') || !customMcpServersEnabled()) {
+		types = types.filter((type) => type !== 'mcpServer');
 	}
 	if (!settingsStore.moduleSettings['external-secrets']?.roleBasedAccess) {
 		types = types.filter((type) => type !== 'externalSecretsProvider' && type !== 'externalSecret');

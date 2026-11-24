@@ -239,7 +239,11 @@ type EntityName =
 	| 'AgentExecutionStatisticsDelta'
 	| 'ExecutionLedgerEntity'
 	| 'ExecutionLedgerParkedEntity'
-	| 'ExecutionLimitAudit';
+	| 'ExecutionLimitAudit'
+	| 'McpServer'
+	| 'McpServerTool'
+	| 'McpServerConnection'
+	| 'McpServerBlock';
 
 /**
  * Truncate specific DB tables in a test DB.
