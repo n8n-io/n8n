@@ -310,8 +310,10 @@ mains, `orchestrator` runs the orchestration queue, and `step-worker` runs the
 nodes and hosts the task broker. Run it with
 `pnpm --filter=n8n-playwright test:container:engine-v2-split-roles:e2e`, or start
 the stack with `pnpm --filter n8n-containers stack --split-engine-roles`. Add
-`--mains 2 --workers 1` for the topology of the project. No CI job runs this
-project; run it by hand when you change how the engine roles work together.
+`--mains 2 --workers 1` for the topology of the project. PR CI does not run this
+project; the nightly workflow `test-e2e-engine-split-roles-nightly.yml` does, and
+posts failures to `#team-core-execution`. Run it by hand when you change how the
+engine roles work together.
 
 ### Worker Isolation (Fresh Database)
 

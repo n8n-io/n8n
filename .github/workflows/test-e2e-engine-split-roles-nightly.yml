@@ -1,0 +1,55 @@
+name: 'Test: E2E on engine v2 with split roles'
+
+# Runs the engine v2 e2e specs with the api, orchestrator and step-worker roles
+# in separate containers. PR CI runs the same specs on one all-roles container
+# (e2e-engine), so this only adds coverage for the roles talking to each other.
+
+on:
+  schedule:
+    - cron: '30 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  prepare-docker:
+    name: Prepare Docker
+    uses: ./.github/workflows/prepare-docker-reusable.yml
+    secrets: inherit
+
+  e2e:
+    name: E2E on engine v2 with split roles
+    needs: [prepare-docker]
+    uses: ./.github/workflows/test-e2e-reusable.yml
+    with:
+      test-mode: docker-artifact
+      test-command: pnpm --filter=n8n-playwright test:container:engine-v2-split-roles:e2e
+      workers: '1'
+      timeout-minutes: 45
+      artifact-prefix: e2e-engine-split-roles
+      currents-project-id: 'LRxcNt'
+    secrets: inherit
+
+  notify-on-failure:
+    name: Notify Core Execution on failure
+    runs-on: ubuntu-latest
+    needs: [prepare-docker, e2e]
+    if: always() && contains(needs.*.result, 'failure') && github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts/slack
+          sparse-checkout-cone-mode: false
+      - name: Notify Slack
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel '#team-core-execution' \
+            --text 'Nightly engine v2 e2e with split roles failed - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
