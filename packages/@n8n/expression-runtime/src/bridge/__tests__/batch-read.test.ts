@@ -160,14 +160,13 @@ describe('readBatchAtPath on an array, for a request of named fields', () => {
 	}));
 
 	it('returns only the named fields of each item', () => {
-		// An item counts for 8 characters, and a number for 8 more. The first read takes 60.
+		// An item counts for 8 characters, the name for 2 and a number for 8. The first read takes 60.
 		expect(readItems(rows, 2, 0, ['id'])).toEqual(whole([{ id: 2 }, { id: 3 }, { id: 4 }]));
 	});
 
 	it('returns a small object field whole', () => {
-		expect(readItems(rows, 0, 0, ['nested'])).toEqual(
-			whole([{ nested: { a: 0 } }, { nested: { a: 1 } }]),
-		);
+		// Each item takes 31 characters, so the first read of 60 has room for one.
+		expect(readItems(rows, 0, 0, ['nested'])).toEqual(whole([{ nested: { a: 0 } }]));
 	});
 
 	it('leaves out a field that is missing or over the small size', () => {
@@ -211,6 +210,14 @@ describe('readBatchAtPath on an array, for a request of named fields', () => {
 
 	it('stops the run before an item that is not a plain object', () => {
 		expect(readItems([{ id: 1 }, [2], { id: 3 }], 0, 0, ['id'])).toEqual(whole([{ id: 1 }]));
+	});
+
+	it('counts the name of each field in the read limit', () => {
+		const name = 'n'.repeat(300);
+		const items = Array.from({ length: 10 }, () => ({ [name]: 1 }));
+
+		// Each item takes 316 characters of the read limit of 1000.
+		expect(readItems(items, 0, 9, [name])).toEqual(whole(items.slice(0, 3)));
 	});
 
 	it.each([

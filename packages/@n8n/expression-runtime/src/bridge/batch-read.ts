@@ -125,7 +125,7 @@ function namedFieldsOf(
 			? undefined
 			: wholeChild(item, name, childChars);
 		if (field !== undefined) {
-			chars += field.chars;
+			chars += name.length + field.chars;
 			defineOwnValue(fields, name, field.copy);
 		}
 	}
