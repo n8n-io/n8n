@@ -92,10 +92,11 @@ type VersionHistoryItem = {
 	 */
 	disabled?: boolean;
 	/**
-	 * Hide the compare control. The menu stays.
-	 * @default false
+	 * Show the compare control.
+	 * Set this to false to hide compare. The menu stays.
+	 * @default true
 	 */
-	hideCompare?: boolean;
+	showCompare?: boolean;
 	/**
 	 * The compare control stays visible and does not emit `compare`. Its tooltip stays hidden.
 	 * @default false
@@ -110,10 +111,12 @@ type VersionHistoryItem = {
 	 */
 	actions?: Array<ActionDropdownItem<string>>;
 	/**
-	 * Hide the menu. Compare stays.
-	 * @default false
+	 * Show the menu.
+	 * Set this to false to hide the menu. Compare stays.
+	 * The menu stays hidden when `actions` is missing or empty.
+	 * @default true
 	 */
-	hideActions?: boolean;
+	showActions?: boolean;
 	/**
 	 * The menu stays visible and does not open.
 	 * @default false
@@ -267,7 +270,7 @@ const items: VersionHistoryEntry[] = [
 				label: 'v1.3',
 				author: 'Sam',
 				createdAt: 'Oct 27 at 18:41',
-				hideCompare: true,
+				showCompare: false,
 				actions: [{ id: 'restore', label: 'Restore' }],
 			},
 		],
