@@ -1680,9 +1680,11 @@ describe('PromotionPreviewView', () => {
 				credentialIds: [],
 				expectedPreviewRevision: REVISION,
 			});
-			expect(getByTestId('promotion-preview-operation-notice')).toHaveTextContent(
-				"This project or its branch changed after the page loaded, so Promote didn't push anything. The page now shows the latest changes. Review them and promote again.",
+			const notice = getByTestId('promotion-preview-operation-notice');
+			expect(notice).toHaveTextContent(
+				"Promote found missing dependencies that you did not confirm, so it didn't push anything. The page now shows them. Review the Issues tab and promote again.",
 			);
+			expect(notice).not.toHaveTextContent('changed after the page loaded');
 			expect(api.getPromotionPreview).toHaveBeenCalledTimes(2);
 			expect(showMessage).not.toHaveBeenCalled();
 			expect(router.currentRoute.value.name).not.toBe(VIEWS.PROJECTS_WORKFLOWS);
@@ -1731,9 +1733,11 @@ describe('PromotionPreviewView', () => {
 					confirmMissingDependencies: true,
 				}),
 			);
-			expect(getByTestId('promotion-preview-operation-notice')).toHaveTextContent(
-				"so Promote didn't push anything.",
+			const notice = getByTestId('promotion-preview-operation-notice');
+			expect(notice).toHaveTextContent(
+				"This project or its branch changed after the page loaded, so Promote didn't push anything.",
 			);
+			expect(notice).not.toHaveTextContent('missing dependencies');
 			expect(api.getPromotionPreview).toHaveBeenCalledTimes(2);
 			expect(showMessage).not.toHaveBeenCalled();
 			expect(router.currentRoute.value.name).not.toBe(VIEWS.PROJECTS_WORKFLOWS);

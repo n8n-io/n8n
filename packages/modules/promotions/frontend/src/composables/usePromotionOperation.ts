@@ -36,7 +36,12 @@ export type OperationRequest = OperationSelection & {
 };
 
 /** Why the page reloaded the preview after an operation that wrote nothing. */
-type OperationNotice = 'sourceChanged' | 'instanceChanged' | 'projectChanged' | 'newBlockers';
+type OperationNotice =
+	| 'sourceChanged'
+	| 'instanceChanged'
+	| 'projectChanged'
+	| 'missingDependencies'
+	| 'newBlockers';
 
 type OperationError = {
 	message: string;
@@ -199,7 +204,8 @@ export function usePromotionOperation(
 		// Nothing was pushed. `missing-dependencies`: the user did not confirm the list that the
 		// Promote found. The reloaded preview shows the list to confirm.
 		if (result.status !== 'promoted') {
-			notice.value = 'projectChanged';
+			notice.value =
+				result.status === 'missing-dependencies' ? 'missingDependencies' : 'projectChanged';
 			await refresh();
 			return;
 		}

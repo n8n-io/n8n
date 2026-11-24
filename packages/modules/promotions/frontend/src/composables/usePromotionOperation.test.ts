@@ -3,8 +3,13 @@ import { ResponseError } from '@n8n/rest-api-client';
 import { ref } from 'vue';
 
 import { applied } from '../__tests__/bindings.fixtures';
+import { outsideAccessWorkflow } from '../__tests__/missingDependencies.fixtures';
 import type { ApplyCheckResult } from '../promotions.types';
-import { applyProjectSelection, continueApplyProjectSelection } from '../promotions.api';
+import {
+	applyProjectSelection,
+	continueApplyProjectSelection,
+	promoteProjectSelection,
+} from '../promotions.api';
 import { usePromotionOperation, type OperationRequest } from './usePromotionOperation';
 
 const confirm = vi.hoisted(() => vi.fn());
@@ -21,9 +26,10 @@ vi.mock('@n8n/design-system', async () => ({
 	useMessage: () => ({ confirm }),
 }));
 const showApplied = vi.hoisted(() => vi.fn());
+const showPromoted = vi.hoisted(() => vi.fn());
 vi.mock('./usePromotionOutcome', () => ({
 	usePromotionOutcome: () => ({
-		showPromoted: vi.fn(),
+		showPromoted,
 		showApplied,
 		announceApplied: vi.fn(),
 	}),
@@ -35,9 +41,9 @@ const check = {
 	git: { branchName: 'main', commitSha: 'a'.repeat(40) },
 } as ApplyCheckResult;
 
-function setup() {
+function setup(direction: PromotionDirection = 'apply') {
 	const refresh = vi.fn(async () => {});
-	const operation = usePromotionOperation(ref('project-1'), ref<PromotionDirection>('apply'), {
+	const operation = usePromotionOperation(ref('project-1'), ref(direction), {
 		preview: ref<PromotionPreview | null>(null),
 		check: ref<ApplyCheckResult | null>(check),
 		refresh,
@@ -89,6 +95,37 @@ it.each([
 		kind,
 	});
 	expect(refresh).toHaveBeenCalledTimes(refreshes ? 1 : 0);
+});
+
+describe('a Promote that pushes nothing', () => {
+	it.each([
+		{
+			answer: {
+				status: 'missing-dependencies' as const,
+				environmentId: 'env-1',
+				missingDependencies: [outsideAccessWorkflow],
+				warnings: [],
+			},
+			notice: 'missingDependencies',
+		},
+		{
+			answer: { status: 'preview-changed' as const, environmentId: 'env-1' },
+			notice: 'projectChanged',
+		},
+	])(
+		'gives the $notice notice, reports no success and reloads the preview when the Promote answers $answer.status',
+		async ({ answer, notice }) => {
+			vi.mocked(promoteProjectSelection).mockResolvedValue(answer);
+			const { operation, refresh } = setup('promote');
+
+			await operation.submit(request());
+
+			expect(operation.notice.value).toBe(notice);
+			expect(operation.error.value).toBeNull();
+			expect(showPromoted).not.toHaveBeenCalled();
+			expect(refresh).toHaveBeenCalledTimes(1);
+		},
+	);
 });
 
 describe('the questions of an Apply', () => {
