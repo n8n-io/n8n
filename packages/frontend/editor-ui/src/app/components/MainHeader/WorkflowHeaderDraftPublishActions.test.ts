@@ -916,6 +916,22 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			);
 		});
 
+		it('should explain a disabled Publish menu item with the reason in a tooltip', async () => {
+			workflowDocumentStore.setNodes([]);
+			uiStore.markStateDirty();
+
+			const { getByTestId, findByText } = renderComponent();
+
+			await userEvent.click(getByTestId('version-menu-button'));
+
+			const publishItem = getByTestId('version-menu-item-publish');
+			expect(publishItem).toHaveClass('is-disabled');
+			const icon = within(publishItem).getByTestId('action-dropdown-item-tooltip');
+
+			await userEvent.hover(icon);
+			expect(await findByText(/no trigger nodes that require publishing/)).toBeVisible();
+		});
+
 		it('should show publish button disabled when trigger node is disabled', () => {
 			workflowDocumentStore.setNodes([{ ...triggerNode, disabled: true }]);
 

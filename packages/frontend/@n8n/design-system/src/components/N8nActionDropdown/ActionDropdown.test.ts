@@ -167,6 +167,36 @@ describe('components', () => {
 			});
 		});
 
+		it('explains a disabled item with a tooltip on a trailing info icon', async () => {
+			const wrapper = render(N8nActionDropdown, {
+				props: {
+					items: [
+						{ id: 'edit', label: 'Edit' },
+						{
+							id: 'publish',
+							label: 'Publish',
+							disabled: true,
+							tooltip: 'Fix the node issues first',
+						},
+					],
+				},
+			});
+
+			await userEvent.click(wrapper.container.querySelector('button')!);
+
+			const icons = await waitFor(() => {
+				const found = document.querySelectorAll('[data-test-id="action-dropdown-item-tooltip"]');
+				expect(found).toHaveLength(1);
+				return found;
+			});
+			expect(document.querySelector('[data-test-id="action-publish"]')).toContainElement(
+				icons[0] as HTMLElement,
+			);
+
+			await userEvent.hover(icons[0]);
+			expect(await wrapper.findByText('Fix the node issues first')).toBeVisible();
+		});
+
 		it('should render footer content', async () => {
 			const wrapper = render(N8nActionDropdown, {
 				props: {

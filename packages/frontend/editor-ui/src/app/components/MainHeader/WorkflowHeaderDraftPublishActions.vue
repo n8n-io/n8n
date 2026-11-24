@@ -704,6 +704,10 @@ const versionMenuActions = computed<Array<ActionDropdownItem<VERSION_ACTIONS>>>(
 				: i18n.baseText('workflows.publish'),
 			shortcut: { shiftKey: true, keys: ['P'] },
 			disabled: shouldDisablePublishButton.value,
+			// The same reason as the tooltip of the Publish button.
+			tooltip: shouldDisablePublishButton.value
+				? publishButtonConfig.value.tooltip || undefined
+				: undefined,
 		},
 	];
 

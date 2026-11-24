@@ -9,6 +9,7 @@ import N8nDropdownMenu from '../N8nDropdownMenu/DropdownMenu.vue';
 import N8nIcon from '../N8nIcon';
 import N8nIconButton from '../N8nIconButton';
 import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
+import N8nTooltip from '../N8nTooltip';
 import type { ActionDropdownProps } from './ActionDropdown.types';
 
 const { t } = useI18n();
@@ -152,7 +153,12 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 				</span>
 			</template>
 			<template #item-trailing="slotProps">
-				<span :class="slotProps.ui.class">
+				<span
+					:class="[
+						slotProps.ui.class,
+						{ [$style.trailingWithTooltip]: !!slotProps.item.data?.tooltip },
+					]"
+				>
 					<N8nIcon
 						v-if="slotProps.item.data?.checked"
 						:class="$style.checkIcon"
@@ -168,6 +174,18 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 							{{ slotProps.item.data.badge }}
 						</N8nBadge>
 					</span>
+					<N8nTooltip
+						v-if="slotProps.item.data?.tooltip"
+						:content="slotProps.item.data.tooltip"
+						placement="left"
+					>
+						<N8nIcon
+							icon="info"
+							size="xsmall"
+							color="text-base"
+							data-test-id="action-dropdown-item-tooltip"
+						/>
+					</N8nTooltip>
 					<N8nKeyboardShortcut
 						v-if="slotProps.item.data?.shortcut"
 						v-bind="slotProps.item.data.shortcut"
@@ -185,6 +203,13 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 <style lang="scss" module>
 .actionDropdownContainer {
 	display: inline-block;
+}
+
+// Keep the info icon and the shortcut on one line. Only items with a tooltip get this class.
+.trailingWithTooltip {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .activator {
