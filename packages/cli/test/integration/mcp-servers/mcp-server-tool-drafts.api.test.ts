@@ -187,6 +187,37 @@ describe('POST /projects/:projectId/mcp-servers/:serverId/tools/:toolId/draft', 
 		expect(response.body.data.tool.toolName).toBe('get_numbers_2');
 	});
 
+	it('gives two parallel drafts with the same name different names', async () => {
+		const { serverId, draftUrl } = await setup();
+		const other = await createActiveWorkflow(
+			{ name: 'Campaign numbers again', nodes: [TRIGGER], connections: {} },
+			project,
+		);
+		const added = await testServer
+			.authAgentFor(editor)
+			.post(`${base(serverId)}/tools`)
+			.send({ workflowIds: [other.id] })
+			.expect(200);
+		draft.mockResolvedValue({
+			status: 'drafted',
+			text: JSON.stringify({ toolName: 'get_campaign_numbers', description: 'Returns them.' }),
+		});
+
+		const responses = await Promise.all([
+			testServer.authAgentFor(editor).post(draftUrl).send({}),
+			testServer
+				.authAgentFor(editor)
+				.post(`${base(serverId)}/tools/${added.body.data[0].id}/draft`)
+				.send({}),
+		]);
+
+		expect(responses.map((response) => response.status)).toEqual([200, 200]);
+		expect(responses.map((response) => response.body.data.tool.toolName).sort()).toEqual([
+			'get_campaign_numbers',
+			'get_campaign_numbers_2',
+		]);
+	});
+
 	it('keeps the default text without the Assistant, and makes no model call', async () => {
 		const { tool, draftUrl } = await setup();
 		isAvailable.mockResolvedValue(false);

@@ -37,6 +37,7 @@
   "dependencies": {
     "@n8n/ai-utilities": "workspace:*",
     "@n8n/api-types": "workspace:*",
+    "@n8n/backend-common": "workspace:*",
     "@n8n/backend-services": "workspace:*",
     "@n8n/db": "workspace:*",
     "@n8n/decorators": "workspace:*",

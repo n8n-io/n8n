@@ -9,6 +9,7 @@ import {
 	type McpServerWorkflowUnavailableReason,
 	type UpdateMcpServerToolDto,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -21,13 +22,23 @@ import {
 
 import type { McpServerActor } from './mcp-server-events';
 import type { McpServerTool } from './mcp-server-tool.entity';
-import { McpServerToolRepository, type NewWorkflowTool } from './mcp-server-tool.repository';
+import {
+	McpServerToolRepository,
+	type McpServerToolChanges,
+	type NewWorkflowTool,
+} from './mcp-server-tool.repository';
 import type { McpServer } from './mcp-server.entity';
 import { McpServerRepository } from './mcp-server.repository';
-import { TextDraftPort } from './tools/text-draft-port';
-import { buildToolDraftPrompt, parseToolDraftAnswer } from './tools/tool-draft';
+import { TextDraftPort, type TextDraftResult } from './tools/text-draft-port';
+import { buildToolDraftPrompt, parseToolDraftAnswer, type ToolDraft } from './tools/tool-draft';
 import { toToolName, uniqueToolName } from './tools/tool-name';
 import { WorkflowToolPort, type WorkflowToolRefusal } from './tools/workflow-tool-port';
+
+/**
+ * Parallel drafts after an add can pick the same name. The unique index refuses the second
+ * write, and the draft tries again with the next free name.
+ */
+const DRAFT_SAVE_ATTEMPTS = 3;
 
 /** `null` for `not_found`: a workflow that the project does not own is no candidate. */
 const UNAVAILABLE_REASONS: Record<WorkflowToolRefusal, McpServerWorkflowUnavailableReason | null> =
@@ -76,6 +87,7 @@ export class McpServerToolsService {
 		private readonly workflows: WorkflowToolPort,
 		private readonly textDrafts: TextDraftPort,
 		private readonly events: EventService,
+		private readonly logger: Logger,
 	) {}
 
 	/** Whether the n8n Assistant can write tool drafts for the user. */
@@ -221,7 +233,7 @@ export class McpServerToolsService {
 				? { field, current: { toolName: tool.toolName, description: tool.description } }
 				: undefined,
 		);
-		let result: Awaited<ReturnType<TextDraftPort['draft']>>;
+		let result: TextDraftResult;
 		try {
 			result = await this.textDrafts.draft(user, prompt);
 		} catch {
@@ -232,20 +244,37 @@ export class McpServerToolsService {
 		}
 
 		const answer = parseToolDraftAnswer(result.text, field);
-		if (!answer.ok) throw new ServiceUnavailableError(answer.error);
-		const { toolName, description } = answer.draft;
-		const others = (await this.tools.listByServer(tool.serverId)).filter(
-			(other) => other.id !== tool.id,
-		);
-		const updated = await this.tools.updateInServer(tool.serverId, tool.id, {
-			...(toolName !== undefined
-				? { toolName: uniqueToolName(toolName, new Set(others.map((other) => other.toolName))) }
-				: {}),
-			...(description !== undefined ? { description } : {}),
-			draftSource: 'ai',
-		});
-		if (!updated) throw new NotFoundError('Tool not found');
+		if (!answer.ok) {
+			this.logger.warn('The draft of a custom MCP server tool broke the rules', {
+				serverId: tool.serverId,
+				toolId: tool.id,
+				error: answer.error,
+			});
+			throw new ServiceUnavailableError(answer.error);
+		}
+		const updated = await this.saveDraft(tool, answer.draft);
 		return { status: 'drafted', tool: toToolResponse(updated, null) };
+	}
+
+	/** A drafted name that another tool of the server has gets `_2`, `_3`, and so on. */
+	private async saveDraft(tool: McpServerTool, draft: ToolDraft): Promise<McpServerTool> {
+		for (let attempt = 1; ; attempt++) {
+			const changes: McpServerToolChanges = { ...draft, draftSource: 'ai' };
+			if (draft.toolName !== undefined) {
+				const others = await this.tools.listByServer(tool.serverId);
+				const taken = new Set(
+					others.filter((other) => other.id !== tool.id).map((other) => other.toolName),
+				);
+				changes.toolName = uniqueToolName(draft.toolName, taken);
+			}
+			try {
+				const updated = await this.tools.updateInServer(tool.serverId, tool.id, changes);
+				if (!updated) throw new NotFoundError('Tool not found');
+				return updated;
+			} catch (error) {
+				if (!(error instanceof ConflictError) || attempt >= DRAFT_SAVE_ATTEMPTS) throw error;
+			}
+		}
 	}
 
 	async removeTool(projectId: string, serverId: string, toolId: string): Promise<void> {
