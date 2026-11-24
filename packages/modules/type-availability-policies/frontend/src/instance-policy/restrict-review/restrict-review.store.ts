@@ -13,7 +13,6 @@ export type RestrictReviewRequest = {
 	kind: RestrictedTypeKind;
 	name: string;
 	label: string;
-	/** `null` when the usage counts did not load. */
 	usage: TypeUsage | null;
 };
 
@@ -27,7 +26,6 @@ export const useRestrictReviewStore = defineStore(RESTRICT_REVIEW_STORE_ID, () =
 
 	const request = shallowRef<RestrictReviewRequest | null>(null);
 	let answer: IDeferredPromise<boolean> | undefined;
-	// The latest change of each type. A review applies only while its change is the latest one.
 	const latestChange = new Map<string, symbol>();
 
 	function resolve(confirmed: boolean) {
@@ -37,7 +35,6 @@ export const useRestrictReviewStore = defineStore(RESTRICT_REVIEW_STORE_ID, () =
 		open?.resolve(confirmed);
 	}
 
-	/** Cancels the open review and each review that still loads its counts. */
 	function cancelAll() {
 		latestChange.clear();
 		resolve(false);
@@ -59,7 +56,6 @@ export const useRestrictReviewStore = defineStore(RESTRICT_REVIEW_STORE_ID, () =
 		const change = Symbol(key);
 		latestChange.set(key, change);
 		if (access !== 'deny') return true;
-		// An unused type applies at once, so its row does not wait for a review.
 		if (instancePolicy.usageOf(kind, name)?.uses === 0) return true;
 		return confirmRestrict(kind, name, label, () => latestChange.get(key) === change);
 	}
@@ -70,13 +66,11 @@ export const useRestrictReviewStore = defineStore(RESTRICT_REVIEW_STORE_ID, () =
 		label: string,
 		isLatest: () => boolean,
 	): Promise<boolean> {
-		// A related type of the other kind can have no counts yet.
 		await instancePolicy.loadMissingUsage([kind]);
 		if (!isLatest()) return false;
 		const usage = instancePolicy.usageOf(kind, name);
 		if (usage?.uses === 0) return true;
 
-		// Only one review shows at a time, so a new one cancels the open one.
 		resolve(false);
 		request.value = { kind, name, label, usage };
 		answer = createDeferredPromise<boolean>();

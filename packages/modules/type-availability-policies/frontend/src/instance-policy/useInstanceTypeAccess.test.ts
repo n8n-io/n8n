@@ -48,7 +48,6 @@ describe('useInstanceTypeAccess', () => {
 		vi.clearAllMocks();
 		mocks.fetchInstancePolicy.mockResolvedValue(nodePolicy(1));
 		mocks.fetchInstanceAccess.mockResolvedValue(nodeAccess(1));
-		// No entry means no usage, so a restriction applies with no review.
 		mocks.fetchNodeTypeUsage.mockResolvedValue({});
 	});
 

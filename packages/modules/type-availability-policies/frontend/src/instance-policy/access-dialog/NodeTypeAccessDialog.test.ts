@@ -376,7 +376,6 @@ describe('NodeTypeAccessDialog', () => {
 	});
 
 	it('keeps the rule that decides for the Tool variant when the node changes', async () => {
-		// No workflow uses a type, so a change applies with no review.
 		mocks.fetchNodeTypeUsage.mockResolvedValue({});
 		mocks.fetchCredentialTypeUsage.mockResolvedValue({});
 		const denyNotionTool = {
@@ -412,7 +411,6 @@ describe('NodeTypeAccessDialog', () => {
 	});
 
 	it('keeps showing the latest choice when an earlier save on the same row ends', async () => {
-		// No workflow uses a type, so a change applies with no review.
 		mocks.fetchNodeTypeUsage.mockResolvedValue({});
 		mocks.fetchCredentialTypeUsage.mockResolvedValue({});
 		const firstSave = createDeferredPromise<unknown>();

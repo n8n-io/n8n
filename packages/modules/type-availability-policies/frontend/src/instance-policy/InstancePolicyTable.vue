@@ -38,7 +38,6 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	/** `label` is the display name, for the review before a type in use is restricted. */
 	change: [name: string, access: PolicyAction, label: string];
 	open: [name: string];
 }>();

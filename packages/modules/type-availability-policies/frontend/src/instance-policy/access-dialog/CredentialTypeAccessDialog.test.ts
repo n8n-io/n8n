@@ -284,7 +284,6 @@ describe('CredentialTypeAccessDialog', () => {
 	});
 
 	it('saves only the changed related node type, not the credential type', async () => {
-		// No workflow uses a type, so a change applies with no review.
 		mocks.fetchNodeTypeUsage.mockResolvedValue({});
 		mocks.fetchCredentialTypeUsage.mockResolvedValue({});
 		const { getByTestId } = await setup('airtableApi');
