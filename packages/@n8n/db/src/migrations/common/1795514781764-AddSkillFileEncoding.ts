@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddSkillFileEncoding1795160890331 implements ReversibleMigration {
+export class AddSkillFileEncoding1795514781764 implements ReversibleMigration {
 	async up({ schemaBuilder: { addColumns, column } }: MigrationContext) {
 		await addColumns(
 			'skill_file',

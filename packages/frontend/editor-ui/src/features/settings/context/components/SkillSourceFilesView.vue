@@ -72,9 +72,7 @@ const skippedFiles = computed(() =>
 		return {
 			path,
 			label:
-				rule === 'file_skipped'
-					? pathInSource(path)
-					: `${pathInSource(path)} · ${ruleText(rule)}`,
+				rule === 'file_skipped' ? pathInSource(path) : `${pathInSource(path)} · ${ruleText(rule)}`,
 		};
 	}),
 );
@@ -186,12 +184,12 @@ const files = computed(() =>
 			props.diffFiles || file.afterIsBinary
 				? []
 				: file.after.split('\n').map((text, index) => ({
-					number: index + 1,
-					segments: segmentsOf(
-						text,
-						marks.filter((finding) => finding.location?.line === index + 1),
-					),
-				}));
+						number: index + 1,
+						segments: segmentsOf(
+							text,
+							marks.filter((finding) => finding.location?.line === index + 1),
+						),
+					}));
 		return {
 			...file,
 			hasBinary: file.beforeIsBinary || file.afterIsBinary,
