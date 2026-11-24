@@ -69,8 +69,6 @@ const props = withDefaults(
 		increaseBudget?: (payload: { field: BudgetAmountField; amount: number }) => Promise<boolean>;
 		/** Safe-testing execution mode (`'test'` or `'live'`). Omitted when safe testing is off. */
 		chatMode?: AgentChatMode;
-		/** Disables the chat composer (for example while the Live gate requires a publish). */
-		composerDisabled?: boolean;
 	}>(),
 	{
 		newSession: false,
@@ -81,7 +79,6 @@ const props = withDefaults(
 		budgetCards: false,
 		increaseBudget: undefined,
 		chatMode: undefined,
-		composerDisabled: false,
 	},
 );
 
@@ -354,7 +351,6 @@ defineExpose({ clearBudgetStops });
 				:budget-cards="props.budgetCards"
 				:increase-budget="props.increaseBudget"
 				:chat-mode="props.chatMode"
-				:composer-disabled="props.composerDisabled"
 				@continue-loaded="emit('continue-loaded', $event)"
 				@usage-updated="onUsageUpdated"
 				@session-created="emit('session-created', $event)"
