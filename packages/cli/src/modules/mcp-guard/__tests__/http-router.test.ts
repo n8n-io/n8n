@@ -4,6 +4,7 @@ import { HttpGuardRouter, type HttpGuardRouterDeps } from '../http-router';
 import { GMAIL_PROFILE } from '../http-profiles';
 import type { McpCaller } from '../mcp-upstream';
 import type { CapturedRequest } from '../network';
+import { currentRequestContext } from '../request-context';
 
 const result = (body: unknown, status = 200): CallToolResult => ({
 	isError: status >= 400,
@@ -36,16 +37,14 @@ function setup(over: Partial<HttpGuardRouterDeps> = {}) {
 		hydrateWrite: vi.fn(async (..._a: unknown[]) => {}),
 		noteWrite: vi.fn(),
 	};
-	const context = { origin: '' } as { authorization?: string; origin: string };
 	const router = new HttpGuardRouter({
 		upstream: upstream as unknown as McpCaller,
 		gym: gym as unknown as McpCaller,
 		hydrator,
 		profile: GMAIL_PROFILE,
-		context,
 		...over,
 	});
-	return { router, upstream, gym, hydrator, context };
+	return { router, upstream, gym, hydrator };
 }
 
 describe('HttpGuardRouter', () => {
@@ -229,13 +228,43 @@ describe('HttpGuardRouter', () => {
 		expect(res.status).toBe(502);
 	});
 
-	it('keeps the credential and the host of the latest request for the real reads', async () => {
-		const { router, context } = setup();
+	it('gives the real reads the credential and the host of the request', async () => {
+		const { router, upstream, hydrator } = setup();
+		const seen: unknown[] = [];
+		hydrator.hydrate.mockImplementationOnce(async () => {
+			seen.push(currentRequestContext());
+		});
+		upstream.callTool.mockImplementationOnce(async () => {
+			seen.push(currentRequestContext());
+			return result({ messages: [] });
+		});
 
 		await router.handle(request('GET', LIST, undefined, 'gmail.googleapis.com'));
 
-		expect(context.authorization).toBe('Bearer real-token');
-		expect(context.origin).toBe('https://gmail.googleapis.com');
+		for (const context of seen) {
+			expect(context).toEqual({
+				authorization: 'Bearer real-token',
+				origin: 'https://gmail.googleapis.com',
+			});
+		}
+	});
+
+	it('keeps the credential of each request when two requests run at the same time', async () => {
+		const { router, hydrator } = setup();
+		const seen: Record<string, string | undefined> = {};
+		hydrator.hydrate.mockImplementation(async () => {
+			const before = currentRequestContext().authorization ?? 'none';
+			await new Promise((resolve) => setTimeout(resolve, before === 'Bearer a' ? 20 : 1));
+			seen[before] = currentRequestContext().authorization;
+		});
+		const withToken = (token: string) => ({
+			...request('GET', LIST),
+			headers: { authorization: token },
+		});
+
+		await Promise.all([router.handle(withToken('Bearer a')), router.handle(withToken('Bearer b'))]);
+
+		expect(seen).toEqual({ 'Bearer a': 'Bearer a', 'Bearer b': 'Bearer b' });
 	});
 
 	it('answers an error result without a status as 500 with a JSON content type', async () => {
@@ -249,17 +278,17 @@ describe('HttpGuardRouter', () => {
 		expect(res.headers.get('content-type')).toBe('application/json');
 	});
 
-	it('keeps the earlier credential when a request has none, and reads a body that is no JSON', async () => {
-		const { router, upstream, context } = setup();
-		upstream.callTool.mockResolvedValueOnce({
-			content: [{ type: 'text', text: 'not json' }],
-			_meta: { status: 200 },
+	it('sends a real read without a credential when the request has none', async () => {
+		const { router, upstream } = setup();
+		let authorization: string | undefined = 'unset';
+		upstream.callTool.mockImplementationOnce(async () => {
+			authorization = currentRequestContext().authorization;
+			return result({ messages: [] });
 		});
-		await router.handle(request('GET', LIST));
 
 		await router.handle({ ...request('GET', LIST), headers: {} });
 
-		expect(context.authorization).toBe('Bearer real-token');
+		expect(authorization).toBeUndefined();
 	});
 
 	it('returns a 401 of the real read to the node, so that the node refreshes its token', async () => {
@@ -271,5 +300,13 @@ describe('HttpGuardRouter', () => {
 		expect(res.status).toBe(401);
 		expect(gym.callTool).not.toHaveBeenCalled();
 		expect(hydrator.hydrate).not.toHaveBeenCalled();
+	});
+
+	it('answers a gym 204 without a body', async () => {
+		const { router, gym } = setup();
+		gym.callTool.mockResolvedValueOnce({ content: [], _meta: { status: 204 } });
+		const res = await router.handle(request('DELETE', `${LIST}/${ID}`));
+		expect(res.status).toBe(204);
+		expect(await res.text()).toBe('');
 	});
 });

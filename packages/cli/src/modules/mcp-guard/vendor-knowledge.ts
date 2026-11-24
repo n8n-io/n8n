@@ -17,6 +17,8 @@ export interface VendorKnowledge {
 	passthroughHosts: string[];
 	// Paths of `POST` requests that only read.
 	readPaths: RegExp[];
+	// Paths of GraphQL endpoints. Only a `POST` to one of them can be a GraphQL query.
+	graphqlPaths: RegExp[];
 	instructions: string;
 }
 
@@ -29,16 +31,27 @@ const list = (value: string | undefined): string[] =>
 		.map((item) => item.trim())
 		.filter((item) => item !== '');
 
+function toRegExp(pattern: string, kind: string, source: string): RegExp {
+	try {
+		return new RegExp(pattern);
+	} catch {
+		throw new UnexpectedError(`${source}: "${pattern}" is not a valid ${kind} path`);
+	}
+}
+
 export function parseVendorFile(text: string, source: string): VendorKnowledge {
 	const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/.exec(text);
 	if (!match) throw new UnexpectedError(`${source}: the file has no front block`);
 	const fields = new Map<string, string>();
-	const readPaths: string[] = [];
+	const lists: Record<'read_paths' | 'graphql_paths', string[]> = {
+		read_paths: [],
+		graphql_paths: [],
+	};
 	let current: string | undefined;
 	for (const line of match[1].split(/\r?\n/)) {
 		const item = /^-\s+(.*)$/.exec(line);
-		if (item && current === 'read_paths') {
-			readPaths.push(item[1].trim());
+		if (item && (current === 'read_paths' || current === 'graphql_paths')) {
+			lists[current].push(item[1].trim());
 			continue;
 		}
 		const field = /^([a-z_]+):\s*(.*)$/.exec(line);
@@ -57,13 +70,8 @@ export function parseVendorFile(text: string, source: string): VendorKnowledge {
 		hosts,
 		pathPrefixes: list(fields.get('path_prefixes')),
 		passthroughHosts: list(fields.get('passthrough_hosts')).map(canonicalHost),
-		readPaths: readPaths.map((source_) => {
-			try {
-				return new RegExp(source_);
-			} catch {
-				throw new UnexpectedError(`${source}: "${source_}" is not a valid read path`);
-			}
-		}),
+		readPaths: lists.read_paths.map((source_) => toRegExp(source_, 'read', source)),
+		graphqlPaths: lists.graphql_paths.map((source_) => toRegExp(source_, 'GraphQL', source)),
 		instructions,
 	};
 }
@@ -110,6 +118,7 @@ export function isPassthroughHost(host: string): boolean {
  */
 export function isTokenExchange(req: { method: string; url: URL }): boolean {
 	return (
+		req.url.protocol === 'https:' &&
 		isPassthroughHost(req.url.hostname) &&
 		req.method.toUpperCase() === 'POST' &&
 		/\/token$/.test(req.url.pathname)

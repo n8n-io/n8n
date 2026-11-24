@@ -9,6 +9,8 @@ const req = (method: string, path = '/x', body?: unknown) => ({
 			: Buffer.from(typeof body === 'string' ? body : JSON.stringify(body)),
 });
 
+const GRAPHQL = [/^\/graphql$/];
+
 describe('isReadShaped', () => {
 	it.each(['GET', 'HEAD', 'get', 'head'])('treats %s as a read', (method) => {
 		expect(isReadShaped(req(method))).toBe(true);
@@ -22,8 +24,12 @@ describe('isReadShaped', () => {
 	);
 
 	it('treats a GraphQL query as a read', () => {
-		expect(isReadShaped(req('POST', '/graphql', { query: 'query { viewer { id } }' }))).toBe(true);
-		expect(isReadShaped(req('POST', '/graphql', { query: '{ viewer { id } }' }))).toBe(true);
+		expect(
+			isReadShaped(req('POST', '/graphql', { query: 'query { viewer { id } }' }), [], GRAPHQL),
+		).toBe(true);
+		expect(isReadShaped(req('POST', '/graphql', { query: '{ viewer { id } }' }), [], GRAPHQL)).toBe(
+			true,
+		);
 	});
 
 	it.each([
@@ -34,15 +40,22 @@ describe('isReadShaped', () => {
 		'query A { a },mutation B { b }',
 		'query A { a }\nmutation B { b }',
 	])('treats a GraphQL document with a mutation as a write: %s', (query) => {
-		expect(isReadShaped(req('POST', '/graphql', { query }))).toBe(false);
+		expect(isReadShaped(req('POST', '/graphql', { query }), [], GRAPHQL)).toBe(false);
+	});
+
+	it('treats a query-shaped body on a path that is not a GraphQL path as a write', () => {
+		const trash = req('POST', '/gmail/v1/users/me/messages/abc/trash', { query: '{' });
+		expect(isReadShaped(trash)).toBe(false);
+		expect(isReadShaped(trash, [], GRAPHQL)).toBe(false);
+		expect(isReadShaped(req('POST', '/other', { query: 'query { a }' }), [], GRAPHQL)).toBe(false);
 	});
 
 	it('treats an unparseable or non-GraphQL POST body as a write', () => {
-		expect(isReadShaped(req('POST', '/graphql', 'not json'))).toBe(false);
-		expect(isReadShaped(req('POST', '/graphql', { other: 1 }))).toBe(false);
-		expect(isReadShaped(req('POST', '/graphql'))).toBe(false);
-		expect(isReadShaped(req('POST', '/graphql', { query: 5 }))).toBe(false);
-		expect(isReadShaped(req('POST', '/search', { query: 'search term' }))).toBe(false);
+		expect(isReadShaped(req('POST', '/graphql', 'not json'), [], GRAPHQL)).toBe(false);
+		expect(isReadShaped(req('POST', '/graphql', { other: 1 }), [], GRAPHQL)).toBe(false);
+		expect(isReadShaped(req('POST', '/graphql'), [], GRAPHQL)).toBe(false);
+		expect(isReadShaped(req('POST', '/graphql', { query: 5 }), [], GRAPHQL)).toBe(false);
+		expect(isReadShaped(req('POST', '/search', { query: 'search term' }), [], GRAPHQL)).toBe(false);
 	});
 
 	it('treats a POST as a read only when a read path matches', () => {

@@ -1,9 +1,11 @@
+import { OutboundHttp } from '@n8n/backend-network';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
 import { GymAdmin } from './gym-admin';
-import { HttpRunRegistry } from './http-runs';
-import type { CapturedRequest } from './network';
+import { HttpRunRegistry, REQUEST_TIMEOUT_MS } from './http-runs';
+import { GUARDED_CALL_TIMEOUT_MS } from './mcp-guard-fetch';
+import { sendToNetwork, type CapturedRequest } from './network';
 import { HTTP_PROFILES, type HttpVendorProfile } from './http-profiles';
 import type { NodeRequestGuardScope } from './node-request-guard';
 import {
@@ -30,11 +32,23 @@ const refusal = (status: number, text: string): Response => new Response(text, {
 @Service()
 export class HttpGuardService {
 	// One registry for each vendor. Each vendor can use its own gym process.
-	private readonly registries = new Map<string, HttpRunRegistry>(
-		HTTP_PROFILES.map((profile) => [profile.name, new HttpRunRegistry(runConfig(profile))]),
-	);
+	private readonly registries: Map<string, HttpRunRegistry>;
 
-	constructor(private readonly logger: Logger) {}
+	constructor(
+		private readonly logger: Logger,
+		outboundHttp: OutboundHttp,
+	) {
+		// Real reads use the proxy and egress settings of the instance.
+		const fetchViaInstance = outboundHttp.transport({ proxy: 'env' }).asCustomFetch();
+		const send = async (req: CapturedRequest) =>
+			await sendToNetwork(req, { fetch: fetchViaInstance, timeoutMs: REQUEST_TIMEOUT_MS });
+		this.registries = new Map(
+			HTTP_PROFILES.map((profile) => [
+				profile.name,
+				new HttpRunRegistry({ ...runConfig(profile), send }),
+			]),
+		);
+	}
 
 	/** Answers a request of a node tool, or returns `undefined` to let the node send it as usual. */
 	async handle(req: CapturedRequest, scope: NodeRequestGuardScope): Promise<Response | undefined> {
@@ -59,6 +73,18 @@ export class HttpGuardService {
 			this.logger.error(`mcp-guard http run setup failed: ${reason}`);
 			return refusal(502, 'mcp-guard: the gym is not available');
 		}
-		return await run.router.handle(req);
+		// A hydration can need several model turns. Fail the call when it takes longer than a guarded call.
+		let timer: NodeJS.Timeout | undefined;
+		const timeout = new Promise<Response>((resolve) => {
+			timer = setTimeout(
+				() => resolve(refusal(504, 'mcp-guard: the preview call took too long')),
+				GUARDED_CALL_TIMEOUT_MS,
+			);
+		});
+		try {
+			return await Promise.race([run.router.handle(req), timeout]);
+		} finally {
+			clearTimeout(timer);
+		}
 	}
 }

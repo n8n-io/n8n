@@ -24,17 +24,21 @@ function isGraphqlQuery(body: Buffer | undefined): boolean {
 }
 
 /**
- * A request may reach the real service only when it is read-shaped: GET, HEAD, a GraphQL query, or a
- * POST that a vendor file lists as a read. A wrong "write" costs a thinner answer. A wrong "read" can
+ * A request may reach the real service only when it is read-shaped: GET, HEAD, a GraphQL query on a
+ * vendor GraphQL path, or a POST that a vendor file lists as a read. A wrong "write" costs a thinner answer. A wrong "read" can
  * change real data, so every doubt means write.
  */
 export function isReadShaped(
 	req: Pick<CapturedRequest, 'method' | 'url' | 'body'>,
 	readPaths: readonly RegExp[] = [],
+	graphqlPaths: readonly RegExp[] = [],
 ): boolean {
 	const method = req.method.toUpperCase();
 	if (method === 'GET' || method === 'HEAD') return true;
 	if (method !== 'POST') return false;
-	if (isGraphqlQuery(req.body)) return true;
+	// A body that looks like a query proves nothing on a REST path, so only a vendor GraphQL path counts.
+	if (graphqlPaths.some((path) => path.test(req.url.pathname)) && isGraphqlQuery(req.body)) {
+		return true;
+	}
 	return readPaths.some((path) => path.test(req.url.pathname));
 }

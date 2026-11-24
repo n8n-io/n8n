@@ -1,3 +1,4 @@
+import type { OutboundHttp } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import { Logger } from '@n8n/backend-common';
 
@@ -25,6 +26,10 @@ const request = (host: string, path: string, method = 'GET'): CapturedRequest =>
 
 const scope: NodeRequestGuardScope = { model, chatId: 'chat1', agentId: 'agent1' };
 
+const outboundHttp = {
+	transport: () => ({ asCustomFetch: () => fetch }),
+} as unknown as OutboundHttp;
+
 describe('HttpGuardService', () => {
 	const error = vi.fn();
 	let service: HttpGuardService;
@@ -32,7 +37,7 @@ describe('HttpGuardService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		Container.set(Logger, { error, info: vi.fn(), warn: vi.fn() } as unknown as Logger);
-		service = new HttpGuardService(Container.get(Logger));
+		service = new HttpGuardService(Container.get(Logger), outboundHttp);
 	});
 
 	it('gives a Gmail request to the run of its agent and chat', async () => {

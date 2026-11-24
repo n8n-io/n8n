@@ -69,4 +69,21 @@ describe('sendToNetwork', () => {
 		expect(res.status).toBe(302);
 		expect(hits).toBe(1);
 	});
+
+	it('uses the given fetch and fails a request that takes too long', async () => {
+		const custom = vi.fn(
+			async (_url: unknown, init?: RequestInit) =>
+				await new Promise<Response>((_resolve, reject) => {
+					init?.signal?.addEventListener('abort', () => reject(new Error('aborted')));
+				}),
+		);
+		await expect(
+			sendToNetwork(
+				{ method: 'GET', url: new URL(`${base}/p`), headers: {} },
+				{ fetch: custom, timeoutMs: 20 },
+			),
+		).rejects.toThrow('aborted');
+		expect(custom).toHaveBeenCalledTimes(1);
+		expect(hits).toBe(0);
+	});
 });

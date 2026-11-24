@@ -173,6 +173,8 @@ const NO_BODY_STATUS: ReadonlySet<number> = new Set([204, 205, 304]);
 export function createGymSender(options: {
 	gymUrl: string;
 	bearer: () => string;
+	// The gym does not answer in this time: the request fails.
+	timeoutMs?: number;
 }): (req: CapturedRequest) => Promise<Response> {
 	const target = new URL(options.gymUrl);
 	const lib = target.protocol === 'https:' ? https : http;
@@ -212,6 +214,11 @@ export function createGymSender(options: {
 				},
 			);
 			request.on('error', reject);
+			if (options.timeoutMs !== undefined) {
+				request.setTimeout(options.timeoutMs, () =>
+					request.destroy(new UnexpectedError('mcp-guard: the gym did not answer in time')),
+				);
+			}
 			request.end(req.body);
 		});
 }

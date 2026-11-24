@@ -6,6 +6,11 @@ import type { HttpVendorProfile } from './http-profiles';
 import { looksLikeId, toToolCall, type HttpToolArgs } from './http-tool-caller';
 import type { McpCaller } from './mcp-upstream';
 import type { CapturedRequest } from './network';
+import {
+	currentRequestContext,
+	runWithRequestContext,
+	type RequestContext,
+} from './request-context';
 import { isReadShaped } from './request-classifier';
 import type { Hydrator } from './router';
 import { canonicalHost, vendorForRequest } from './vendor-knowledge';
@@ -16,8 +21,6 @@ export interface HttpGuardRouterDeps {
 	gym: McpCaller;
 	hydrator: Hydrator;
 	profile: HttpVendorProfile;
-	// The credential and the host of the latest request. The real reads of the hydration use them.
-	context: { authorization?: string; origin: string };
 }
 
 const refusal = (status: number, text: string): Response => new Response(text, { status });
@@ -25,11 +28,15 @@ const refusal = (status: number, text: string): Response => new Response(text, {
 const textOf = (res: CallToolResult): string =>
 	res.content.flatMap((c) => (c.type === 'text' ? [c.text] : [])).join('\n');
 
+// A `Response` with one of these statuses cannot have a body.
+const NO_BODY_STATUS: ReadonlySet<number> = new Set([204, 205, 304]);
+
 function toResponse(res: CallToolResult): Response {
 	const status = typeof res._meta?.status === 'number' ? res._meta.status : res.isError ? 500 : 200;
 	const type =
 		typeof res._meta?.contentType === 'string' ? res._meta.contentType : 'application/json';
-	return new Response(textOf(res), { status, headers: { 'content-type': type } });
+	const body = NO_BODY_STATUS.has(status) ? null : textOf(res);
+	return new Response(body, { status, headers: { 'content-type': type } });
 }
 
 const ID_FIELD = /"(?:id|threadId)"\s*:\s*"([^"]+)"/g;
@@ -50,11 +57,14 @@ export class HttpGuardRouter {
 		const vendor = vendorForRequest(host, req.url.pathname);
 		if (!vendor) return refusal(403, 'mcp-guard: this host is not available in a preview chat');
 
-		this.deps.context.origin = `${req.url.protocol}//${req.url.host}`;
-		if (req.headers.authorization) this.deps.context.authorization = req.headers.authorization;
-		const readShaped = isReadShaped(req, vendor.readPaths);
-		const { name, args } = toToolCall(req, readShaped);
-		return readShaped ? await this.read(name, args) : await this.write(name, args);
+		// The real reads of the hydration use the credential and the host of this request.
+		const context: RequestContext = { origin: `${req.url.protocol}//${req.url.host}` };
+		if (req.headers.authorization) context.authorization = req.headers.authorization;
+		return await runWithRequestContext(context, async () => {
+			const readShaped = isReadShaped(req, vendor.readPaths, vendor.graphqlPaths);
+			const { name, args } = toToolCall(req, readShaped);
+			return readShaped ? await this.read(name, args) : await this.write(name, args);
+		});
 	}
 
 	private async write(name: string, args: HttpToolArgs): Promise<Response> {
@@ -99,13 +109,13 @@ export class HttpGuardRouter {
 
 	// Method, host and path only. Never the query, the headers or the body.
 	private warn(args: HttpToolArgs, text: string): void {
-		const host = new URL(this.deps.context.origin).host;
+		const host = new URL(currentRequestContext().origin).host;
 		Container.get(Logger).warn(`mcp-guard http ${args.method} ${host}${args.path}: ${text}`);
 	}
 
 	// Method, host and path only. Never the query, the headers or the body.
 	private log(args: HttpToolArgs, route: string): void {
-		const host = new URL(this.deps.context.origin).host;
+		const host = new URL(currentRequestContext().origin).host;
 		Container.get(Logger).info(`mcp-guard http ${args.method} ${host}${args.path} -> ${route}`);
 	}
 

@@ -14,6 +14,8 @@ passthrough_hosts: auth.demo.test
 read_paths:
 - ^/v1/search$
 - ^/v1/list\\..*$
+graphql_paths:
+- ^/v1/graphql$
 ---
 Instructions for the demo vendor.
 Second line.
@@ -27,6 +29,8 @@ describe('parseVendorFile', () => {
 		expect(vendor.hosts).toEqual(['api.demo.test']);
 		expect(vendor.pathPrefixes).toEqual(['/v1']);
 		expect(vendor.passthroughHosts).toEqual(['auth.demo.test']);
+		expect(vendor.graphqlPaths).toHaveLength(1);
+		expect(vendor.graphqlPaths[0].test('/v1/graphql')).toBe(true);
 		expect(vendor.readPaths).toHaveLength(2);
 		expect(vendor.readPaths[0].test('/v1/search')).toBe(true);
 		expect(vendor.readPaths[1].test('/v1/list.all')).toBe(true);
@@ -97,5 +101,8 @@ describe('the Gmail vendor file', () => {
 		expect(isTokenExchange(call('POST', '/revoke'))).toBe(false);
 		expect(isTokenExchange(call('GET', '/token'))).toBe(false);
 		expect(isTokenExchange(call('POST', '/token', 'example.com'))).toBe(false);
+		expect(
+			isTokenExchange({ method: 'POST', url: new URL('http://oauth2.googleapis.com/token') }),
+		).toBe(false);
 	});
 });

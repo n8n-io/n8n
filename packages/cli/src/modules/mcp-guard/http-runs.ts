@@ -4,9 +4,10 @@ import type { HttpVendorProfile } from './http-profiles';
 import { createGymSender, createHttpToolCaller, isReadToolName } from './http-tool-caller';
 import { createPlanLlm, type HydrationModel } from './hydration-llm';
 import { PLAN_INSTRUCTIONS } from './hydration-prompts';
-import { sendToNetwork } from './network';
+import { sendToNetwork, type CapturedRequest } from './network';
 import { PlanHydrator } from './plan-hydrator';
 import { isReadShaped } from './request-classifier';
+import { currentRequestContext } from './request-context';
 import { matchesVendor, type VendorKnowledge } from './vendor-knowledge';
 
 export interface HttpRun {
@@ -21,7 +22,12 @@ export interface HttpRunConfig {
 	admin: GymAdmin;
 	// Address of the gym that serves the vendor over HTTP.
 	gymUrl: string;
+	// Sends a real read. It defaults to the global `fetch`.
+	send?: (req: CapturedRequest) => Promise<Response>;
 }
+
+// One request to the gym or to the real service.
+export const REQUEST_TIMEOUT_MS = 60_000;
 
 const IDLE_MS = 6 * 60 * 60 * 1000;
 
@@ -65,26 +71,25 @@ export class HttpRunRegistry {
 			profile.credentialField,
 		);
 
-		const context: { authorization?: string; origin: string } = { origin: '' };
-		// The real reads use the credential of the node, read at call time so a refreshed token is used.
+		// The real reads use the credential of the request that is being answered.
 		const upstream = createHttpToolCaller({
-			origin: () => context.origin,
-			send: sendToNetwork,
-			headers: () => ({
-				accept: 'application/json',
-				...(context.authorization && { authorization: context.authorization }),
-			}),
+			origin: () => currentRequestContext().origin,
+			send: this.cfg.send ?? ((req) => sendToNetwork(req, { timeoutMs: REQUEST_TIMEOUT_MS })),
+			headers: () => {
+				const { authorization } = currentRequestContext();
+				return { accept: 'application/json', ...(authorization && { authorization }) };
+			},
 			enrich: profile.enrich,
 			// The model writes the args of a real read. Code checks the request they make: it must use
 			// HTTPS, be read-shaped, be on the host of the node, and be inside the vendor.
 			allow: (req) =>
 				req.url.protocol === 'https:' &&
-				isReadShaped(req, vendor.readPaths) &&
+				isReadShaped(req, vendor.readPaths, vendor.graphqlPaths) &&
 				matchesVendor(vendor, req.url.hostname, req.url.pathname),
 		});
 		const gym = createHttpToolCaller({
-			origin: () => context.origin,
-			send: createGymSender({ gymUrl, bearer: () => token }),
+			origin: () => currentRequestContext().origin,
+			send: createGymSender({ gymUrl, bearer: () => token, timeoutMs: REQUEST_TIMEOUT_MS }),
 			headers: () => ({ accept: 'application/json' }),
 		});
 		const hydrator = new PlanHydrator({
@@ -103,7 +108,6 @@ export class HttpRunRegistry {
 			gym,
 			hydrator,
 			profile,
-			context,
 		});
 		const run: HttpRun = { tenant, lastUsed: Date.now(), router };
 		this.runs.set(runId, run);
