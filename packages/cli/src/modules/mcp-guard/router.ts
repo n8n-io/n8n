@@ -17,8 +17,6 @@ const toolError = (msg: string): CallToolResult => ({
 	content: [{ type: 'text', text: msg }],
 });
 
-const errMsg = (e: unknown): string => (e instanceof Error ? e.message : 'unknown error');
-
 export class GuardRouter {
 	private gymToolNames?: Set<string>;
 
@@ -53,16 +51,19 @@ export class GuardRouter {
 				if (res.isError) logError(name, 'gym');
 				else this.deps.hydrator.noteWrite?.(name, res);
 				return res;
-			} catch (e) {
-				return toolError(`gym call failed: ${errMsg(e)}`);
+			} catch {
+				// Error text can hold urls or data of the user. The agent gets a fixed message.
+				logError(name, 'gym');
+				return toolError('The gym call failed.');
 			}
 		}
 
 		let gymNames: Set<string>;
 		try {
 			gymNames = await this.getGymToolNames();
-		} catch (e) {
-			return toolError(`gym unreachable: ${errMsg(e)}`);
+		} catch {
+			logError(name, 'gym tool list');
+			return toolError('The gym is unreachable.');
 		}
 		// The gym says when it lacks a feature of a call (the SQL mode of a Notion query). Then the real
 		// read and the hydration are useless: the gym can not answer, so tell the agent now.
@@ -76,8 +77,9 @@ export class GuardRouter {
 				name,
 				this.deps.upstreamArgs?.(name, args) ?? args,
 			);
-		} catch (e) {
-			return toolError(`upstream read failed: ${errMsg(e)}`);
+		} catch {
+			logError(name, 'upstream');
+			return toolError('The read from the real service failed.');
 		}
 		if (upstreamResult.isError) {
 			// An object that the agent made in the gym has no real copy. The gym may know it.
@@ -95,12 +97,22 @@ export class GuardRouter {
 		}
 		try {
 			await this.deps.hydrator.hydrate(name, args, upstreamResult);
+		} catch {
+			// The gym may still hold what the read names. Ask it, else answer with the real read.
+			logError(name, 'hydrate');
+			const fromGym = await this.tryGym(name, args);
+			if (fromGym) return fromGym;
+			log(name, 'upstream (hydration failed)');
+			return upstreamResult;
+		}
+		try {
 			const res = await this.deps.gym.callTool(name, args);
 			if (res.isError) logError(name, 'gym');
 			log(name, 'upstream+hydrate+gym');
 			return res;
-		} catch (e) {
-			return toolError(`hydrate or gym read failed: ${errMsg(e)}`);
+		} catch {
+			logError(name, 'gym');
+			return toolError('The gym read failed.');
 		}
 	}
 

@@ -1,4 +1,4 @@
-import { isRecord } from './gym-admin';
+import { isRecord } from '@n8n/utils/is-record';
 
 type Entity = Record<string, unknown>;
 
@@ -30,6 +30,10 @@ function entities(service: Record<string, unknown>, name: string): Entity[] {
 // An entity that lists other entities, such as the rows of a database.
 const hasChildren = (entity: Entity): boolean =>
 	Object.values(entity).some((value) => Array.isArray(value) && value.some(isRecord));
+
+// The id (or the ref, when there is no id) as the entity writes it. Only call it when keyOf found one.
+const originalKey = (entity: Entity): string =>
+	typeof entity.id === 'string' && entity.id !== '' ? entity.id : String(entity.ref);
 
 const keyOf = (entity: Entity): string | undefined => {
 	const key = typeof entity.id === 'string' ? entity.id : entity.ref;
@@ -78,7 +82,7 @@ export class SeededEntities {
 	knows(ids: string[]): boolean {
 		const squash = (id: string) => id.toLowerCase().replace(/-/g, '');
 		const keys = [...this.seeded.keys(), ...this.held].map(squash);
-		return ids.every((id) => keys.some((key) => key === id || key.endsWith(`:${id}`)));
+		return ids.map(squash).every((id) => keys.some((key) => key === id || key.endsWith(`:${id}`)));
 	}
 
 	/**
@@ -112,7 +116,10 @@ export class SeededEntities {
 				if (typeof entity.ref === 'string' && storedRef !== undefined) {
 					this.refs.set(entity.ref.toLowerCase(), storedRef);
 				}
-				return this.options.keepParents === true && hasChildren(entity);
+				const keep = this.options.keepParents === true && hasChildren(entity);
+				// A kept entity is seeded again: it must name the ref that the gym stored.
+				if (keep && storedRef !== undefined) entity.ref = storedRef;
+				return keep;
 			});
 		}
 		return this.fixRefs(next) as Record<string, unknown>;
@@ -128,10 +135,15 @@ export class SeededEntities {
 			for (const entity of entities(service, name)) {
 				const key = keyOf(entity);
 				if (key === undefined) continue;
-				const ref = typeof entity.ref === 'string' ? entity.ref : key;
-				this.seeded.set(key, ref);
-				if (shallow) this.shallow.add(key);
-				else this.shallow.delete(key);
+				// Gym refs are case-sensitive. Without a ref, the gym knows the entity by its id as written.
+				const ref =
+					typeof entity.ref === 'string' && entity.ref !== '' ? entity.ref : originalKey(entity);
+				// The ref is an identity too: a later result may show the entity by its ref only.
+				for (const identity of new Set([key, ref.toLowerCase()])) {
+					this.seeded.set(identity, ref);
+					if (shallow) this.shallow.add(identity);
+					else this.shallow.delete(identity);
+				}
 				if (typeof entity.key === 'string') this.byKey.set(this.keyName(name, entity), ref);
 				this.refs.set(ref.toLowerCase(), ref);
 			}
