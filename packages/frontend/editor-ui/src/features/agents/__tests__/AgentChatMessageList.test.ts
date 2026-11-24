@@ -494,6 +494,28 @@ describe('AgentChatMessageList', () => {
 		wrapper.unmount();
 	});
 
+	it('renders the references of a user message above its bubble, like files', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{ id: 'u-1', role: 'user', content: 'Explain it', references: [{ type: 'workflow' }] },
+				],
+				messagingState: 'idle',
+			},
+			slots: { 'user-message-references': '<span>Orders</span>' },
+		});
+
+		const references = wrapper.get('[data-testid="agent-chat-message-references"]').element;
+		const bubble = wrapper.get('[data-testid="chat-message-shell"]').element;
+		expect(references).toHaveTextContent('Orders');
+		expect(bubble.contains(references)).toBe(false);
+		expect(
+			references.compareDocumentPosition(bubble) & Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
+
+		wrapper.unmount();
+	});
+
 	it('uses shared message shells without merging consecutive assistant output', () => {
 		const wrapper = mount(AgentChatMessageList, {
 			props: {

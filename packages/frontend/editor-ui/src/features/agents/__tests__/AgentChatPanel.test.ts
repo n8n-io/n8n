@@ -5258,7 +5258,7 @@ describe('AgentChatPanel', () => {
 			);
 			expect(chip.text()).toContain('Invoices');
 
-			await wrapper.find('[data-test-id="agent-chat-composer-chip-remove"]').trigger('click');
+			await chip.find('[data-test-id="attachment-remove"]').trigger('click');
 
 			expect(wrapper.find('[data-test-id="agent-chat-composer-chip"]').exists()).toBe(false);
 		});

@@ -57,7 +57,6 @@ import type {
 	ChatMessageQueueItem,
 } from '@/features/ai/shared/components/chatMessageQueue.types';
 import { useAttachmentPreviews } from '@/features/ai/shared/composables/useAttachmentPreviews';
-import InstanceAiResourceChip from '@/features/ai/instanceAi/components/InstanceAiResourceChip.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
 import {
 	findTailOpenInteractive,
@@ -2076,50 +2075,45 @@ onBeforeUnmount(() => {
 							"
 							#attachments
 						>
-							<div
-								v-if="composerAttachments.length > 0 || $slots['composer-attachments']"
-								:class="$style.attachmentsStrip"
-							>
-								<slot
-									name="composer-attachments"
-									:chips="composerChips"
-									:remove-chip="removeComposerAttachment"
+							<div :class="$style.attachmentsRow">
+								<div
+									v-if="composerAttachments.length > 0 || $slots['composer-attachments']"
+									:class="$style.attachmentsStrip"
 								>
-									<InstanceAiResourceChip
-										v-for="chip in composerChips"
-										:key="chip.id"
-										:label="chip.label"
-										:icon="chip.icon"
-										removable
-										:remove-label="
-											locale.baseText('agents.chat.composer.removeChip', {
-												interpolate: { label: chip.label },
-											})
-										"
-										test-id="agent-chat-composer-chip"
-										remove-test-id="agent-chat-composer-chip-remove"
-										@remove="removeComposerAttachment(chip.id)"
+									<slot
+										name="composer-attachments"
+										:chips="composerChips"
+										:remove-chip="removeComposerAttachment"
+									>
+										<N8nAttachment
+											v-for="chip in composerChips"
+											:key="chip.id"
+											:file-name="chip.label"
+											:icon="chip.icon"
+											data-test-id="agent-chat-composer-chip"
+											@remove="removeComposerAttachment(chip.id)"
+										/>
+									</slot>
+								</div>
+								<N8nAttachmentGroup
+									v-if="attachedFiles.length > 0"
+									ref="attachmentGroupRef"
+									:class="$style.attachmentGroup"
+								>
+									<N8nAttachment
+										v-for="file in attachedFiles"
+										:key="draftFileKey(file)"
+										:file-name="file.name"
+										:mime-type="file.type"
+										:size-bytes="file.size"
+										:src="previewUrl(file)"
+										:is-removable="true"
+										@remove-start="removingFiles.add(file)"
+										@remove="handleFileRemove(file)"
+										@remove-end="removingFiles.delete(file)"
 									/>
-								</slot>
+								</N8nAttachmentGroup>
 							</div>
-							<N8nAttachmentGroup
-								v-if="attachedFiles.length > 0"
-								ref="attachmentGroupRef"
-								:class="$style.attachmentGroup"
-							>
-								<N8nAttachment
-									v-for="file in attachedFiles"
-									:key="draftFileKey(file)"
-									:file-name="file.name"
-									:mime-type="file.type"
-									:size-bytes="file.size"
-									:src="previewUrl(file)"
-									:is-removable="true"
-									@remove-start="removingFiles.add(file)"
-									@remove="handleFileRemove(file)"
-									@remove-end="removingFiles.delete(file)"
-								/>
-							</N8nAttachmentGroup>
 						</template>
 						<template #footer-start>
 							<slot name="composer-start" />
@@ -2477,11 +2471,21 @@ onBeforeUnmount(() => {
 	color: var(--text-color--subtler);
 }
 
+// Resource cards and file cards sit in one row, like several files do.
+.attachmentsRow {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	gap: var(--spacing--4xs);
+}
+
+// Same box as the file group, so the cards of both line up.
 .attachmentsStrip {
 	display: flex;
 	flex-wrap: wrap;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--3xs) var(--spacing--2xs) 0;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--4xs) 0;
+	margin-block-start: calc(var(--spacing--4xs) * -1);
 }
 
 .errorBanner {

@@ -16,6 +16,7 @@ import { useAssistantAwayTelemetry } from '../composables/useAssistantAwayTeleme
 import { getCurrentTurn } from '../assistantTurn';
 import {
 	N8nActionDropdown,
+	N8nAttachment,
 	N8nChatRating,
 	N8nIconButton,
 	N8nResizeWrapper,
@@ -52,7 +53,6 @@ import InstanceAiDataTablePreview from '../components/InstanceAiDataTablePreview
 import InstanceAiFixWithAiPanel from '../components/InstanceAiFixWithAiPanel.vue';
 import InstanceAiInputMenu from '../components/InstanceAiInputMenu.vue';
 import InstanceAiPreviewTabBar from '../components/InstanceAiPreviewTabBar.vue';
-import InstanceAiResourceChip from '../components/InstanceAiResourceChip.vue';
 import InstanceAiResourcePicker from '../components/InstanceAiResourcePicker.vue';
 import InstanceAiSkillPreview from '../components/InstanceAiSkillPreview.vue';
 import InstanceAiViewHeader from '../components/InstanceAiViewHeader.vue';
@@ -130,7 +130,7 @@ import { assistantSharedFilesExtension } from './assistantSharedFiles';
 import { assistantToolResultTableExtension } from './assistantToolResultTables';
 import { useAssistantAgentThreadsStore } from './assistantAgentThreads.store';
 import { stagedElementAppId, toElementComposerAttachment } from './assistantElementAttachments';
-import { readMessageReferences } from './assistantMentionAttachments';
+import { readMessageReferences, toMentionComposerAttachment } from './assistantMentionAttachments';
 import {
 	countSentNodes,
 	readNodesAttachment,
@@ -215,24 +215,24 @@ function readPendingHandoff() {
 	const fromEmptyView = consumePendingAssistantAgentMessage(props.threadId);
 	const fromHandoff = consumePendingFirstMessage(props.threadId);
 	const firstMessage = firstMessageOf(fromEmptyView, fromHandoff);
-	const workflow = getPendingWorkflowAttachment(props.threadId);
+	// The handed-off workflow shows as a composer chip, so the user sees it and can remove it.
+	const workflowChip = getPendingWorkflowAttachment(props.threadId) ?? undefined;
 	const draft = getPendingComposerDraft(props.threadId);
 	const nodes = consumePendingDraftAttachment(props.threadId);
 	const context = fromHandoff?.context ?? getPendingHandoffContext(props.threadId) ?? undefined;
-	const references: InstanceAiAttachment[] = [
-		...(firstMessage?.references ?? []),
-		...(workflow ? [workflow] : []),
-	];
+	const references: InstanceAiAttachment[] = firstMessage?.references ?? [];
 	return {
 		firstMessage,
 		draft,
 		nodes,
 		context,
 		references,
+		workflowChip,
 		// The preview opens the handed-off workflow before the first message.
-		workflow: references.find(
-			(reference): reference is InstanceAiWorkflowAttachment => reference.type === 'workflow',
-		),
+		workflow:
+			references.find(
+				(reference): reference is InstanceAiWorkflowAttachment => reference.type === 'workflow',
+			) ?? workflowChip,
 	};
 }
 
@@ -373,6 +373,10 @@ provide(ASSISTANT_AGENT_SETUP_SAVED, setupSavedTelemetry.expectResult);
 
 watch(panel, (current) => {
 	if (!current) return;
+	if (handoff.workflowChip) {
+		const { chip, clientContextPatch } = toMentionComposerAttachment(handoff.workflowChip);
+		current.addComposerAttachment(chip, clientContextPatch);
+	}
 	if (handoff.firstMessage) {
 		messageTelemetry.expectHostSend(handoff.firstMessage);
 		current.sendMessageFromOutside(handoff.firstMessage.text, handoff.firstMessage.files);
@@ -1065,18 +1069,11 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 									@update:attachment="updateStagedNodes"
 									@remove-all="mentions.handleChipRemoved(chip.id)"
 								/>
-								<InstanceAiResourceChip
+								<N8nAttachment
 									v-else
-									:label="chip.label"
+									:file-name="chip.label"
 									:icon="chip.icon"
-									removable
-									:remove-label="
-										i18n.baseText('agents.chat.composer.removeChip', {
-											interpolate: { label: chip.label },
-										})
-									"
-									test-id="agent-chat-composer-chip"
-									remove-test-id="agent-chat-composer-chip-remove"
+									data-test-id="agent-chat-composer-chip"
 									@remove="mentions.handleChipRemoved(chip.id)"
 								/>
 							</template>

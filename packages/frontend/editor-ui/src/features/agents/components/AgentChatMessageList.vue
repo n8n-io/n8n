@@ -115,7 +115,7 @@ defineSlots<{
 	status?: () => unknown;
 	/** Host actions for a finished agent reply, next to the default copy action. */
 	'message-actions'?: (props: { message: ChatMessage; executionId?: string }) => unknown;
-	/** The `references` of a user message, for example mentioned workflows. */
+	/** The `references` of a user message, for example mentioned workflows. Shows above the bubble. */
 	'user-message-references'?: (props: { message: ChatMessage }) => unknown;
 }>();
 
@@ -830,12 +830,28 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 					group.message.role === CHAT_MESSAGE_ROLE.USER ? $style.user : $style.assistant,
 				]"
 			>
-				<AgentChatMessageAttachments
-					v-if="group.message.attachments?.length && projectId && agentId"
-					:attachments="group.message.attachments"
-					:project-id="projectId"
-					:agent-id="agentId"
-				/>
+				<div
+					v-if="group.message.attachments?.length || group.message.references?.length"
+					:class="$style.attachmentsRow"
+				>
+					<div
+						v-if="
+							group.message.role === CHAT_MESSAGE_ROLE.USER &&
+							group.message.references?.length &&
+							$slots['user-message-references']
+						"
+						:class="$style.references"
+						data-testid="agent-chat-message-references"
+					>
+						<slot name="user-message-references" :message="group.message" />
+					</div>
+					<AgentChatMessageAttachments
+						v-if="group.message.attachments?.length && projectId && agentId"
+						:attachments="group.message.attachments"
+						:project-id="projectId"
+						:agent-id="agentId"
+					/>
+				</div>
 				<N8nText
 					v-if="group.message.role === CHAT_MESSAGE_ROLE.USER && group.message.author"
 					size="xsmall"
@@ -965,17 +981,6 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 							</div>
 						</template>
 					</template>
-					<div
-						v-if="
-							group.message.role === CHAT_MESSAGE_ROLE.USER &&
-							group.message.references?.length &&
-							$slots['user-message-references']
-						"
-						:class="$style.references"
-						data-testid="agent-chat-message-references"
-					>
-						<slot name="user-message-references" :message="group.message" />
-					</div>
 					<AgentBudgetNoticeCard
 						v-for="notice in group.message.budgetNotices ?? []"
 						:key="notice.id"
@@ -1236,14 +1241,26 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 	padding: 0 var(--spacing--sm) var(--spacing--4xs);
 }
 
+// References and files sit in one row, like several files do.
+.attachmentsRow {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	align-items: flex-start;
+	gap: var(--spacing--4xs);
+
+	&:empty {
+		display: none;
+	}
+}
+
+// Same box as the file group, so the cards of both line up.
 .references {
 	display: flex;
 	flex-wrap: wrap;
-	gap: var(--spacing--2xs);
-
-	.chatMessage + & {
-		margin-top: var(--spacing--2xs);
-	}
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--4xs);
+	margin-inline: calc(var(--spacing--4xs) * -1);
 
 	// The host can show none of the references of a message.
 	&:empty {

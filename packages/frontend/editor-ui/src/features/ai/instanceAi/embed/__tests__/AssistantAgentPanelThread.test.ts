@@ -232,7 +232,7 @@ describe('AssistantAgentPanelThread', () => {
 		// The other chips of the composer stay.
 		const staged = wrapper.find('[data-test-id="agent-chat-composer-chip"]');
 		expect(staged.text()).toContain('Slack');
-		await staged.find('[data-test-id="agent-chat-composer-chip-remove"]').trigger('click');
+		await staged.find('[data-test-id="attachment-remove"]').trigger('click');
 		expect(removeChip).toHaveBeenCalledWith('nodes-1');
 
 		await chip.find('[data-test-id="instance-ai-handoff-context-chip-dismiss"]').trigger('click');
