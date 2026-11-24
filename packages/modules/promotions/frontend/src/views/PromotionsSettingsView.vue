@@ -32,6 +32,7 @@ import { I18nT } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
+import PromotionDirectionTitle from '../components/PromotionDirectionTitle.vue';
 import PromotionEnvironmentCard from '../components/PromotionEnvironmentCard.vue';
 import { useInstanceProtection } from '../composables/useInstanceProtection';
 import { usePromotionCheckout } from '../composables/usePromotionCheckout';
@@ -226,10 +227,11 @@ async function remove(environment: PromotionEnvironment) {
 							@remove="remove(environments[direction])"
 						/>
 						<div v-else :class="[$style.column, $style.emptyColumn]">
-							<N8nSettingsRow
-								:title="i18n.baseText(`settings.promotions.environments.${direction}.title`)"
-								:show-divider="false"
-							/>
+							<N8nSettingsRow :show-divider="false">
+								<template #info>
+									<PromotionDirectionTitle :direction="direction" />
+								</template>
+							</N8nSettingsRow>
 							<div :class="$style.empty">
 								<N8nButton
 									:ref="(button) => (addButtons[direction] = button)"
@@ -341,6 +343,8 @@ async function remove(environment: PromotionEnvironment) {
 	flex: 1;
 	align-items: center;
 	justify-content: center;
-	padding: var(--spacing--lg) var(--spacing--sm);
+	// The title row has its own bottom padding. The bottom padding here moves the button up,
+	// so it centers in the space below the title text.
+	padding: 0 var(--spacing--sm) var(--spacing--lg);
 }
 </style>
