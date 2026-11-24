@@ -370,6 +370,55 @@ describe('QuickJsBridge workflow data', () => {
 	});
 
 	it.each([
+		{
+			label: 'a batched read',
+			code: 'return this.$json.rows.map(function (r) { return r; });',
+			$json: { rows: [1, 2, 'fail'] },
+		},
+		{ label: 'a single read', code: 'return typeof this.$json.box;', $json: { box: { fail: 1 } } },
+	])('stops the evaluation when the guest cannot build the value of $label', async (testCase) => {
+		const bridge = await newBridge();
+		const vm = bridge['vm']!;
+		// Fails like the guest JSON parser at the memory limit, for a value that holds "fail".
+		vm.unwrapResult(
+			vm.evalCode(`
+				var unwrap = globalThis.__unwrapFromHost;
+				globalThis.__unwrapFromHost = function (json, holdsSentinel) {
+					if (json.indexOf('fail') !== -1) throw new InternalError('out of memory');
+					return unwrap(json, holdsSentinel);
+				};
+			`),
+		).dispose();
+
+		expect(() => bridge.execute(testCase.code, { $json: testCase.$json })).toThrow(
+			MemoryLimitError,
+		);
+	});
+
+	it('stops the evaluation when the guest cannot build a date', async () => {
+		const bridge = await newBridge();
+		const vm = bridge['vm']!;
+		// Fails like the guest at the memory limit, for this one date only.
+		vm.unwrapResult(
+			vm.evalCode(`
+				var HostDate = Date;
+				globalThis.Date = function (time) {
+					if (time === 1234) throw new InternalError('out of memory');
+					return arguments.length ? new HostDate(time) : new HostDate();
+				};
+				globalThis.Date.prototype = HostDate.prototype;
+				globalThis.Date.now = HostDate.now;
+				globalThis.Date.UTC = HostDate.UTC;
+				globalThis.Date.parse = HostDate.parse;
+			`),
+		).dispose();
+
+		expect(() =>
+			bridge.execute('return typeof this.$json.when;', { $json: { when: new Date(1234) } }),
+		).toThrow(MemoryLimitError);
+	});
+
+	it.each([
 		{ label: 'a marker key', $json: { a: { __isDate: true, __isoString: 'text' }, b: 1 } },
 		{ label: 'a metadata key', $json: { __isObject: true, __keys: ['x'], __length: 3 } },
 		{ label: 'a __proto__ key', $json: JSON.parse('{"__proto__": {"a": 1}, "b": 2}') as object },

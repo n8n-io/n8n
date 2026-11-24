@@ -6,6 +6,7 @@ import type {
 	QuickJSHandle,
 	QuickJSRuntime,
 	QuickJSWASMModule as QuickJSWasm,
+	VmCallResult,
 } from 'quickjs-emscripten-core';
 
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions, Logger, WorkflowData } from '../types';
@@ -1497,8 +1498,10 @@ export class QuickJsBridge implements RuntimeBridge {
 	 *
 	 * For primitives, uses the dedicated vm.newXxx() methods.
 	 * For complex objects (arrays, objects), uses JSON round-trip via evalCode.
+	 * A guest error while it builds the value, such as out of memory, comes back
+	 * as an error result, so the host function throws it in the guest.
 	 */
-	private hostValueToQuickJSHandle(value: unknown): QuickJSHandle {
+	private hostValueToQuickJSHandle(value: unknown): QuickJSHandle | VmCallResult<QuickJSHandle> {
 		if (!this.vm) throw new Error('Context not initialized');
 
 		// Building a value runs guest code, which a broken runtime must not do.
@@ -1518,8 +1521,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		if (value instanceof Date) {
 			const dateResult = this.vm.evalCode(`(new Date(${value.getTime()}))`);
 			if (dateResult.error) {
-				dateResult.error.dispose();
-				return this.vm.undefined;
+				return { error: dateResult.error };
 			}
 			return dateResult.value;
 		}
@@ -1539,8 +1541,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		jsonHandle.dispose();
 		unwrapFn.dispose();
 		if (result.error) {
-			result.error.dispose();
-			return this.vm.undefined;
+			return { error: result.error };
 		}
 		return result.value;
 	}
