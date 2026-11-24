@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'AddSkillFileEncoding1795514781764';
+const MIGRATION_NAME = 'AddSkillFileEncoding1795546358453';
 
 describe('AddSkillFileEncoding migration', () => {
 	let dataSource: DataSource;
