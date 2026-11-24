@@ -13,10 +13,13 @@ import {
 	type ITaskDataConnections,
 } from 'n8n-workflow';
 
-/** Max size of `task.json`. The code daemon rejects larger inputs by default. */
+/** Max size of `task.json`. This is the default limit of the code daemon. */
 export const MAX_TASK_INPUT_BYTES = 64 * 1024 * 1024;
 
-/** Keeps what the code can read. The execution stack and the waiting data belong to the engine. */
+/**
+ * Empties the queue of nodes that wait to run. The code cannot read it,
+ * and it can hold the input of each queued node.
+ */
 function toTaskRunExecutionData(runExecutionData: IRunExecutionData): IRunExecutionData {
 	const { executionData } = runExecutionData;
 
@@ -36,7 +39,7 @@ function toTaskRunExecutionData(runExecutionData: IRunExecutionData): IRunExecut
 	});
 }
 
-/** The runtime puts the items of the chunk back at their index. */
+/** Sends only the items of the chunk. The runtime puts them back at their original index. */
 function toChunkInputData(
 	inputData: ITaskDataConnections,
 	{ startIndex, count }: CodeTaskChunk,
@@ -71,7 +74,7 @@ function toTaskData(request: CodeTaskRequest): unknown {
 		siblingParameters: request.siblingParameters,
 		mode: request.mode,
 		envProviderState: request.envProviderState,
-		// The Code node does not pass these, so they get the defaults of the task request
+		// The Code node always uses the latest run, no self data, and its own node as context
 		defaultReturnRunIndex: -1,
 		selfData: {},
 		contextNodeName: request.activeNodeName,
@@ -94,8 +97,8 @@ function toTaskData(request: CodeTaskRequest): unknown {
 }
 
 /**
- * Builds the content of `task.json` for a JS task. It holds all the data that
- * the code can read, because n8n does not analyze the code yet.
+ * Builds the content of `task.json` for a JS task. The file holds all the data
+ * that the code can read, because n8n does not yet find which data the code uses.
  */
 export function buildTaskInput(taskId: string, request: CodeTaskRequest): Buffer {
 	if (request.taskType !== 'javascript') {
@@ -132,7 +135,7 @@ export function buildTaskInput(taskId: string, request: CodeTaskRequest): Buffer
 	try {
 		content = Buffer.from(JSON.stringify(input));
 	} catch (error) {
-		// V8 cannot make a string of more than about 512 MiB
+		// `JSON.stringify` throws a `RangeError` for a string of more than about 512 MiB
 		if (error instanceof RangeError) throw tooLarge();
 		throw error;
 	}
