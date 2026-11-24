@@ -4,12 +4,12 @@ A list of versions, groups, and headings. A group hides its versions behind a to
 
 The component writes every label, tooltip, and control name. The caller does not pass those strings.
 
-- **Component Name:** N8nVersionHistory
+- **Component Name:** VersionHistory
 
 ## Component structure
 
 ```
-N8nVersionHistory
+VersionHistory
 ├── loading skeletons (the list and the empty state stay hidden)
 ├── empty slot (when items is empty)
 └── list
@@ -198,7 +198,7 @@ A disabled version does not emit `select` from the keyboard. A disabled compare 
 ```vue
 <script setup lang="ts">
 import { ref } from 'vue';
-import { N8nVersionHistory } from '@n8n/design-system';
+import { VersionHistory } from '@n8n/design-system';
 import type { VersionHistoryEntry } from '@n8n/design-system';
 
 const selectedId = ref('v2');
@@ -232,7 +232,7 @@ const items: VersionHistoryEntry[] = [
 </script>
 
 <template>
-	<N8nVersionHistory
+	<VersionHistory
 		:items="items"
 		:selected-id="selectedId"
 		@select="selectedId = $event"
@@ -247,7 +247,7 @@ const items: VersionHistoryEntry[] = [
 Omit `selectedId`. Pass `defaultSelectedId` for the version that is open on first render. The list keeps later choices.
 
 ```vue
-<N8nVersionHistory :items="items" default-selected-id="v2" @select="onSelect" />
+<VersionHistory :items="items" default-selected-id="v2" @select="onSelect" />
 ```
 
 **Groups, headings, and hidden compare**
@@ -286,7 +286,7 @@ const items: VersionHistoryEntry[] = [
 Set `hasMore` while another page exists. Append that page to `items`, then set `loadingMore` back to false. Use `loading` for the first page.
 
 ```vue
-<N8nVersionHistory
+<VersionHistory
 	:items="items"
 	:has-more="hasMore"
 	:loading-more="loadingMore"
