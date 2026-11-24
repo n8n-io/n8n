@@ -67,7 +67,7 @@ describe('RestrictReviewDialog', () => {
 		await waitFor(() =>
 			expect(
 				screen.getByText(
-					"Users won't be able to add or use this credential. This item is currently used in:",
+					"Users won't be able to add or use this credential type. This item is currently used in:",
 				),
 			).toBeInTheDocument(),
 		);

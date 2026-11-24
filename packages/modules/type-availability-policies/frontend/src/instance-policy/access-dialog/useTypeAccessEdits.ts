@@ -47,12 +47,8 @@ export function useTypeAccessEdits() {
 		action: PolicyAction,
 		label: string,
 	) {
-		if (
-			restrictReview.needsReview(kind, name, action) &&
-			!(await restrictReview.confirmRestrict(kind, name, label))
-		) {
-			return;
-		}
+		const approved = restrictReview.reviewChange(kind, name, action, label);
+		if (approved !== true && !(await approved)) return;
 
 		const key = keyOf(kind, name);
 		const change = { action };

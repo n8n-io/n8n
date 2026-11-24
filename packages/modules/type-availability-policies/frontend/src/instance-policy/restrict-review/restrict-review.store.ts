@@ -1,5 +1,4 @@
 import type { PolicyAction, TypeUsage } from '@n8n/api-types';
-import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { defineStore } from 'pinia';
 import { shallowRef } from 'vue';
@@ -28,8 +27,8 @@ export const useRestrictReviewStore = defineStore(RESTRICT_REVIEW_STORE_ID, () =
 
 	const request = shallowRef<RestrictReviewRequest | null>(null);
 	let answer: IDeferredPromise<boolean> | undefined;
-	// A review that still loads its counts opens only if nothing cancelled it in the meantime.
-	const latest = useLatestFetch();
+	// The latest change of each type. A review applies only while its change is the latest one.
+	const latestChange = new Map<string, symbol>();
 
 	function resolve(confirmed: boolean) {
 		const open = answer;
@@ -40,33 +39,40 @@ export const useRestrictReviewStore = defineStore(RESTRICT_REVIEW_STORE_ID, () =
 
 	/** Cancels the open review and each review that still loads its counts. */
 	function cancelAll() {
-		latest.invalidate();
+		latestChange.clear();
 		resolve(false);
 	}
 
 	/**
-	 * `true` when the change restricts a type that is in use or that has unknown usage. A type that
-	 * no workflow uses applies at once, so its row does not wait for a review.
+	 * Starts a change of the access of a type. Returns `true` at once when the change can apply
+	 * with no review: it does not restrict, or no workflow uses the type. Otherwise returns a
+	 * promise that resolves `true` when the admin confirms the review. A later change of the same
+	 * type, for example to Allowed while the counts load, makes this review resolve `false`.
 	 */
-	function needsReview(kind: RestrictedTypeKind, name: string, access: PolicyAction): boolean {
-		if (access !== 'deny') return false;
-		const usage = instancePolicy.usageOf(kind, name);
-		return usage === null || usage.uses > 0;
+	function reviewChange(
+		kind: RestrictedTypeKind,
+		name: string,
+		access: PolicyAction,
+		label: string,
+	): true | Promise<boolean> {
+		const key = `${kind}:${name}`;
+		const change = Symbol(key);
+		latestChange.set(key, change);
+		if (access !== 'deny') return true;
+		// An unused type applies at once, so its row does not wait for a review.
+		if (instancePolicy.usageOf(kind, name)?.uses === 0) return true;
+		return confirmRestrict(kind, name, label, () => latestChange.get(key) === change);
 	}
 
-	/**
-	 * Resolves `true` when the restriction can apply. A type with no usage applies at once. A type
-	 * in use, or with unknown usage, waits for the admin to confirm.
-	 */
 	async function confirmRestrict(
 		kind: RestrictedTypeKind,
 		name: string,
 		label: string,
+		isLatest: () => boolean,
 	): Promise<boolean> {
-		const isCurrent = latest.next();
 		// A related type of the other kind can have no counts yet.
 		await instancePolicy.loadMissingUsage([kind]);
-		if (!isCurrent()) return false;
+		if (!isLatest()) return false;
 		const usage = instancePolicy.usageOf(kind, name);
 		if (usage?.uses === 0) return true;
 
@@ -74,8 +80,9 @@ export const useRestrictReviewStore = defineStore(RESTRICT_REVIEW_STORE_ID, () =
 		resolve(false);
 		request.value = { kind, name, label, usage };
 		answer = createDeferredPromise<boolean>();
-		return await answer.promise;
+		const confirmed = await answer.promise;
+		return confirmed && isLatest();
 	}
 
-	return { request, needsReview, confirmRestrict, resolve, cancelAll };
+	return { request, reviewChange, resolve, cancelAll };
 });

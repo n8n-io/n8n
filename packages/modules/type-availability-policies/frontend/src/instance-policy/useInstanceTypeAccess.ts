@@ -59,12 +59,8 @@ export function useInstanceTypeAccess(kind: RestrictedTypeKind) {
 	/** `label` names the type in the review that asks before a type in use is restricted. */
 	async function changeAccess(typeName: string, access: PolicyAction, label: string) {
 		// A refused review leaves no pending entry, so the row keeps its access.
-		if (
-			restrictReview.needsReview(kind, typeName, access) &&
-			!(await restrictReview.confirmRestrict(kind, typeName, label))
-		) {
-			return;
-		}
+		const approved = restrictReview.reviewChange(kind, typeName, access, label);
+		if (approved !== true && !(await approved)) return;
 
 		const change: PendingChange = { access };
 		pending.set(typeName, change);

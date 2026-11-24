@@ -28,33 +28,27 @@ describe('useRestrictReviewStore', () => {
 		mocks.fetchCredentialTypeUsage.mockResolvedValue({});
 	});
 
-	it('needs no review for a type that no workflow uses', async () => {
+	it('applies at once to restrict a type that no workflow uses', async () => {
 		await useInstancePolicyStore().loadUsage('credential');
 		const review = useRestrictReviewStore();
 
-		expect(review.needsReview('credential', 'notionApi', 'deny')).toBe(false);
-		await expect(review.confirmRestrict('credential', 'notionApi', 'Notion API')).resolves.toBe(
-			true,
-		);
+		expect(review.reviewChange('credential', 'notionApi', 'deny', 'Notion API')).toBe(true);
 		expect(review.request).toBeNull();
 	});
 
-	it('never needs a review to allow a type or open it to projects', async () => {
+	it('applies at once to allow a type or open it to projects', async () => {
 		await useInstancePolicyStore().loadUsage('node');
 		const review = useRestrictReviewStore();
 
-		expect(review.needsReview('node', NOTION, 'allow')).toBe(false);
-		expect(review.needsReview('node', NOTION, 'delegate')).toBe(false);
-	});
-
-	it('needs a review while the usage is not known', () => {
-		expect(useRestrictReviewStore().needsReview('node', NOTION, 'deny')).toBe(true);
+		expect(review.reviewChange('node', NOTION, 'allow', 'Notion')).toBe(true);
+		expect(review.reviewChange('node', NOTION, 'delegate', 'Notion')).toBe(true);
+		expect(review.request).toBeNull();
 	});
 
 	it('loads missing counts, then opens a review with the usage of a type in use', async () => {
 		const review = useRestrictReviewStore();
 
-		const confirmed = review.confirmRestrict('node', NOTION, 'Notion');
+		const confirmed = review.reviewChange('node', NOTION, 'deny', 'Notion');
 		await vi.waitFor(() =>
 			expect(review.request).toEqual({
 				kind: 'node',
@@ -70,24 +64,45 @@ describe('useRestrictReviewStore', () => {
 		expect(review.request).toBeNull();
 	});
 
+	it('applies with no review when the missing counts show no usage', async () => {
+		mocks.fetchNodeTypeUsage.mockResolvedValue({});
+		const review = useRestrictReviewStore();
+
+		await expect(review.reviewChange('node', NOTION, 'deny', 'Notion')).resolves.toBe(true);
+		expect(review.request).toBeNull();
+	});
+
 	it('opens a review with unknown usage when the counts do not load', async () => {
 		mocks.fetchNodeTypeUsage.mockRejectedValue(new Error('boom'));
 		const review = useRestrictReviewStore();
 
-		const confirmed = review.confirmRestrict('node', NOTION, 'Notion');
+		const confirmed = review.reviewChange('node', NOTION, 'deny', 'Notion');
 		await vi.waitFor(() => expect(review.request?.usage).toBeNull());
 
 		review.resolve(false);
 		await expect(confirmed).resolves.toBe(false);
 	});
 
+	it('drops a review that still loads its counts when a later change of the type starts', async () => {
+		const counts = createDeferredPromise<Record<string, typeof IN_USE>>();
+		mocks.fetchNodeTypeUsage.mockReturnValue(counts.promise);
+		const review = useRestrictReviewStore();
+
+		const restrict = review.reviewChange('node', NOTION, 'deny', 'Notion');
+		expect(review.reviewChange('node', NOTION, 'allow', 'Notion')).toBe(true);
+		counts.resolve({ [NOTION]: IN_USE });
+
+		await expect(restrict).resolves.toBe(false);
+		expect(review.request).toBeNull();
+	});
+
 	it('cancels an open review when another one opens', async () => {
 		await useInstancePolicyStore().loadUsage('node');
 		const review = useRestrictReviewStore();
 
-		const first = review.confirmRestrict('node', NOTION, 'Notion');
+		const first = review.reviewChange('node', NOTION, 'deny', 'Notion');
 		await vi.waitFor(() => expect(review.request?.label).toBe('Notion'));
-		const second = review.confirmRestrict('node', NOTION, 'Notion again');
+		const second = review.reviewChange('node', NOTION, 'deny', 'Notion again');
 
 		await expect(first).resolves.toBe(false);
 		await vi.waitFor(() => expect(review.request?.label).toBe('Notion again'));
@@ -100,7 +115,7 @@ describe('useRestrictReviewStore', () => {
 		mocks.fetchNodeTypeUsage.mockReturnValue(counts.promise);
 		const review = useRestrictReviewStore();
 
-		const confirmed = review.confirmRestrict('node', NOTION, 'Notion');
+		const confirmed = review.reviewChange('node', NOTION, 'deny', 'Notion');
 		review.cancelAll();
 		counts.resolve({ [NOTION]: IN_USE });
 
@@ -112,7 +127,7 @@ describe('useRestrictReviewStore', () => {
 		await useInstancePolicyStore().loadUsage('node');
 		const review = useRestrictReviewStore();
 
-		const confirmed = review.confirmRestrict('node', NOTION, 'Notion');
+		const confirmed = review.reviewChange('node', NOTION, 'deny', 'Notion');
 		await vi.waitFor(() => expect(review.request).not.toBeNull());
 		review.cancelAll();
 

@@ -191,6 +191,30 @@ describe('useInstanceTypeAccess', () => {
 			expect(types.value[0].access).toBe('allow');
 		});
 
+		it('drops a restriction that waits for its counts when the admin picks Allowed', async () => {
+			useSettingsStore().isModuleActive = vi.fn(() => true);
+			useRBACStore().setGlobalScopes(['nodeTypePolicy:manage']);
+			vi.spyOn(useTypeAvailabilityPoliciesStore(), 'reload').mockResolvedValue();
+			await useInstancePolicyStore().load(['node']);
+			const counts = createDeferredPromise<Record<string, typeof inUse>>();
+			mocks.fetchNodeTypeUsage.mockReturnValue(counts.promise);
+			mocks.saveInstancePolicy.mockResolvedValue({ ...nodePolicy(2), warnings: [] });
+			const { changeAccess } = useInstanceTypeAccess('node');
+
+			const restrict = changeAccess('n8n-nodes-base.slack', 'deny', 'Slack');
+			await changeAccess('n8n-nodes-base.slack', 'allow', 'Slack');
+			counts.resolve({});
+			await restrict;
+
+			expect(useRestrictReviewStore().request).toBeNull();
+			expect(mocks.saveInstancePolicy).toHaveBeenCalledTimes(1);
+			expect(mocks.saveInstancePolicy).not.toHaveBeenCalledWith(
+				expect.anything(),
+				'node',
+				expect.objectContaining({ rules: [expect.objectContaining({ action: 'deny' })] }),
+			);
+		});
+
 		it('never asks before allowing a type', async () => {
 			mocks.fetchNodeTypeUsage.mockResolvedValue({ 'n8n-nodes-base.slack': inUse });
 			await setup();
