@@ -285,6 +285,41 @@ export const ticketDescription: INodeProperties[] = [
 						type: 'string',
 						default: '',
 					},
+					{
+						displayName: 'From',
+						name: 'from',
+						type: 'string',
+						placeholder: 'Jane Doe <jane@example.com>',
+						default: '',
+						description:
+							'Sender shown on the article. Leave empty to let Zammad fill it in from the authenticated user.',
+					},
+					{
+						displayName: 'Content Type',
+						name: 'content_type',
+						type: 'options',
+						options: [
+							{
+								name: 'Plain Text',
+								value: 'text/plain',
+							},
+							{
+								name: 'HTML',
+								value: 'text/html',
+							},
+						],
+						default: 'text/plain',
+						description: 'Whether the body is plain text or HTML',
+					},
+					{
+						displayName: 'Attachments',
+						name: 'attachments',
+						type: 'string',
+						placeholder: 'data, invoice',
+						default: '',
+						description:
+							'Comma-separated names of the input binary properties to attach to the article',
+					},
 				],
 			},
 		],

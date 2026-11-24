@@ -670,6 +670,150 @@ describe('Zammad Node', () => {
 			);
 		});
 
+		it('should send from, content type and binary attachments on the article', async () => {
+			const mockTicket = { id: 3, title: 'Contact form' };
+			const mockArticles = [{ id: 3, body: 'Hello' }];
+
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
+				(paramName, _itemIndex) => {
+					switch (paramName) {
+						case 'resource':
+							return 'ticket';
+						case 'operation':
+							return 'create';
+						case 'title':
+							return 'Contact form';
+						case 'group':
+							return 'Support';
+						case 'customer':
+							return 'customer@example.com';
+						case 'article':
+							return {
+								articleDetails: {
+									subject: 'Contact form',
+									body: 'Hello',
+									type: 'email',
+									sender: 'Customer',
+									visibility: 'external',
+									to: 'support@example.com',
+									reply_to: 'customer@example.com',
+									from: 'Jane Doe <customer@example.com>',
+									content_type: 'text/plain',
+									attachments: 'screenshot, log',
+								},
+							};
+						case 'additionalFields':
+							return {};
+						default:
+							return null;
+					}
+				},
+			);
+
+			const binaries: Record<string, { fileName?: string; mimeType: string; content: string }> = {
+				screenshot: { fileName: 'shot.png', mimeType: 'image/png', content: 'png-bytes' },
+				log: { mimeType: 'text/plain', content: 'log line' },
+			};
+			mockExecuteFunctions.helpers = {
+				...mockExecuteFunctions.helpers,
+				assertBinaryData: vi.fn().mockImplementation((_i: number, name: string) => binaries[name]),
+				getBinaryDataBuffer: vi
+					.fn()
+					.mockImplementation(async (_i: number, name: string) =>
+						Buffer.from(binaries[name].content),
+					),
+			} as unknown as IExecuteFunctions['helpers'];
+
+			(GenericFunctions.zammadApiRequest as Mock)
+				.mockResolvedValueOnce(mockTicket)
+				.mockResolvedValueOnce(mockArticles);
+
+			await node.execute.call(mockExecuteFunctions as IExecuteFunctions);
+
+			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith(
+				'POST',
+				requestPath`/tickets`,
+				{
+					article: {
+						subject: 'Contact form',
+						body: 'Hello',
+						type: 'email',
+						sender: 'Customer',
+						to: 'support@example.com',
+						reply_to: 'customer@example.com',
+						content_type: 'text/plain',
+						internal: false,
+						from: 'Jane Doe <customer@example.com>',
+						attachments: [
+							{
+								filename: 'shot.png',
+								'mime-type': 'image/png',
+								data: Buffer.from('png-bytes').toString('base64'),
+							},
+							{
+								filename: 'log',
+								'mime-type': 'text/plain',
+								data: Buffer.from('log line').toString('base64'),
+							},
+						],
+					},
+					title: 'Contact form',
+					group: 'Support',
+					customer: 'customer@example.com',
+				},
+			);
+		});
+
+		it('should leave from and attachments out when they are empty', async () => {
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
+				(paramName, _itemIndex) => {
+					switch (paramName) {
+						case 'resource':
+							return 'ticket';
+						case 'operation':
+							return 'create';
+						case 'title':
+							return 'Plain';
+						case 'group':
+							return 'Support';
+						case 'customer':
+							return 'customer@example.com';
+						case 'article':
+							return {
+								articleDetails: {
+									body: 'Hi',
+									type: 'note',
+									visibility: 'internal',
+									from: '',
+									attachments: ' , ',
+								},
+							};
+						case 'additionalFields':
+							return {};
+						default:
+							return null;
+					}
+				},
+			);
+
+			(GenericFunctions.zammadApiRequest as Mock)
+				.mockResolvedValueOnce({ id: 4 })
+				.mockResolvedValueOnce([]);
+
+			await node.execute.call(mockExecuteFunctions as IExecuteFunctions);
+
+			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith(
+				'POST',
+				requestPath`/tickets`,
+				{
+					article: { body: 'Hi', type: 'note', internal: true },
+					title: 'Plain',
+					group: 'Support',
+					customer: 'customer@example.com',
+				},
+			);
+		});
+
 		it('should include to and cc for email articles', async () => {
 			const mockTicket = { id: 2, title: 'Email Ticket' };
 			const mockArticles = [{ id: 2, body: 'Email body' }];
