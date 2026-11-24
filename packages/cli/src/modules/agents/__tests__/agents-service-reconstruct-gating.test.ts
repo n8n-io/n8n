@@ -339,6 +339,30 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — MCP w
 		}
 	});
 
+	it.each([
+		['hands the tool call interceptor of the instrumentation to the agent', true],
+		['installs no interceptor without one', false],
+	])('%s', async (_label, withInterceptor) => {
+		const { service, credentialProvider } = setup();
+		builtAgent.toolCallInterceptor.mockClear();
+		const toolCallInterceptor = vi.fn();
+
+		await service.reconstructFromAgentEntity(
+			storedRunSource(makeAgentEntity()),
+			credentialProvider,
+			'production',
+			undefined,
+			undefined,
+			withInterceptor ? ({ toolCallInterceptor } as never) : undefined,
+		);
+
+		if (withInterceptor) {
+			expect(builtAgent.toolCallInterceptor).toHaveBeenCalledWith(toolCallInterceptor);
+		} else {
+			expect(builtAgent.toolCallInterceptor).not.toHaveBeenCalled();
+		}
+	});
+
 	it('forwards resolved MCP tool names through eval instrumentation', async () => {
 		const { service, credentialProvider } = setup();
 		const onMcpToolCallSettled = vi.fn();

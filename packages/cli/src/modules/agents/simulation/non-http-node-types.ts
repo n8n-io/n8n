@@ -79,6 +79,10 @@ export function nodeSimulationGap(
 	if (!nodeType.startsWith(FIRST_PARTY_NODE_PREFIX)) {
 		return 'Community nodes cannot run in a test run, because n8n cannot check what they send.';
 	}
+	// The guard sees raw parameters, so an expression could resolve to a blocked operation.
+	if (typeof parameters?.operation === 'string' && parameters.operation.startsWith('=')) {
+		return 'The operation is set by an expression, so the test run cannot check what it does.';
+	}
 	if (
 		nodeType === `${FIRST_PARTY_NODE_PREFIX}removeDuplicates` &&
 		DEDUPE_HISTORY_OPERATIONS.has(parameters?.operation)
