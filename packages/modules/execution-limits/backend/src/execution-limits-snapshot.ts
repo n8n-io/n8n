@@ -16,9 +16,7 @@ export const REFRESH_INTERVAL_MS = 60 * Time.seconds.toMilliseconds;
 export type LimitedScopes = {
 	periodUnit: ExecutionLimitPeriodUnit;
 	hasInstanceLimit: boolean;
-	hasProjectLimits: boolean;
-	/** Changes at each successful load. */
-	generation: number;
+	limitedProjectIds: ReadonlySet<string>;
 };
 
 /**
@@ -34,7 +32,7 @@ export class ExecutionLimitsSnapshot {
 	private loaded: {
 		settings: ExecutionLimitSettings;
 		projectMaxExecutions: ReadonlyMap<string, number>;
-		generation: number;
+		limitedScopes: LimitedScopes;
 	} | null = null;
 
 	private refreshTimer: NodeJS.Timeout | undefined;
@@ -73,17 +71,9 @@ export class ExecutionLimitsSnapshot {
 		};
 	}
 
-	/** `null` until the first load succeeds. */
+	/** `null` until the first load succeeds. Each load makes a new object. */
 	readLimitedScopes(): LimitedScopes | null {
-		if (!this.loaded) return null;
-
-		const { settings, projectMaxExecutions, generation } = this.loaded;
-		return {
-			periodUnit: settings.periodUnit,
-			hasInstanceLimit: settings.instanceMaxExecutions !== null,
-			hasProjectLimits: projectMaxExecutions.size > 0,
-			generation,
-		};
+		return this.loaded?.limitedScopes ?? null;
 	}
 
 	/** A failed reload keeps the limits that are loaded, and the next reload tries again. */
@@ -120,7 +110,11 @@ export class ExecutionLimitsSnapshot {
 			projectMaxExecutions: new Map(
 				projectLimits.map(({ projectId, maxExecutions }) => [projectId, maxExecutions]),
 			),
-			generation: (this.loaded?.generation ?? 0) + 1,
+			limitedScopes: {
+				periodUnit: settings.periodUnit,
+				hasInstanceLimit: settings.instanceMaxExecutions !== null,
+				limitedProjectIds: new Set(projectLimits.map(({ projectId }) => projectId)),
+			},
 		};
 	});
 }

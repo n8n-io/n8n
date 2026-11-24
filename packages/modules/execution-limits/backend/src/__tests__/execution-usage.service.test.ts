@@ -3,7 +3,7 @@ import { mock } from 'vitest-mock-extended';
 import type { ExecutionLimitUsageRepository } from '../execution-limit-usage.repository';
 import type { ExecutionUsageCache } from '../execution-usage-cache';
 import { ExecutionUsageService } from '../execution-usage.service';
-import type { ExecutionUsage, UsageTotals } from '../execution-usage.types';
+import type { ExecutionUsage, UsageTotals } from '../execution-usage';
 
 const TOTALS: UsageTotals = {
 	startedCount: 7,
