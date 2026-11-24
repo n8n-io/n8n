@@ -26,6 +26,7 @@ import { useActions } from '../../composables/useActions';
 import { useViewStacks } from '../../composables/useViewStacks';
 import {
 	getNodeItemRestriction,
+	keepsFullTriggerName,
 	isNodePreviewKey,
 	removePreviewToken,
 	shouldShowCommunityNodeDetails,
@@ -144,7 +145,10 @@ const displayName = computed<string>(() => {
 
 	return i18n.headerText({
 		key: `headers.${shortNodeType.value}.displayName`,
-		fallback: hasActions.value ? trimmedDisplayName.replace('Trigger', '') : trimmedDisplayName,
+		fallback:
+			hasActions.value && !keepsFullTriggerName(props.nodeType.name)
+				? trimmedDisplayName.replace('Trigger', '')
+				: trimmedDisplayName,
 	});
 });
 
