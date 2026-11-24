@@ -1,16 +1,10 @@
-import { projectSkillForModel } from '@n8n/api-types';
+import { projectSkillForModel, SKILL_READ_MAX_LENGTH } from '@n8n/api-types';
 import { UserError } from '@n8n/errors';
 
 import type { AgentSkillsService } from './agent-skills.service';
 import type { AgentTaskService } from './agent-task.service';
 import type { Agent } from './entities/agent.entity';
 import { getAgentSkillHash } from './utils/agent-config-hash';
-
-/**
- * The most reference content that one skill read returns, in characters. A skill can store
- * eight times as much, and one tool result must fit the context of the builder model.
- */
-export const AGENT_SKILL_READ_MAX_LENGTH = 262_144;
 
 export async function readAgentSkill(
 	agentSkillsService: AgentSkillsService,
@@ -27,7 +21,7 @@ export async function readAgentSkill(
 	const { missingReferencePaths, ...projection } = projectSkillForModel(skill, {
 		paths: referencePaths,
 		offset: referenceOffset,
-		maxLength: AGENT_SKILL_READ_MAX_LENGTH,
+		maxLength: SKILL_READ_MAX_LENGTH,
 	});
 	if (missingReferencePaths) {
 		throw new UserError(`Skill reference not found: ${missingReferencePaths.join(', ')}`);

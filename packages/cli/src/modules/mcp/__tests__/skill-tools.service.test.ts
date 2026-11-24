@@ -313,6 +313,18 @@ describe('McpSkillToolsService', () => {
 			expect(JSON.stringify(result)).not.toContain('AP8=');
 		});
 
+		it('refuses a referenceOffset without a referencePath as an error result', async () => {
+			const result = await callTool('get_skill', { skillId: 'skill_a', referenceOffset: 10 });
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toEqual({
+				ok: false,
+				skillId: 'skill_a',
+				error: 'Pass referencePath with referenceOffset.',
+			});
+			expect(skillService.get).not.toHaveBeenCalled();
+		});
+
 		it('bounds reference content and reads omitted paths and the remaining parts on request', async () => {
 			const referencePath = 'reference/long.md';
 			const first = 'x'.repeat(72 * 1024);

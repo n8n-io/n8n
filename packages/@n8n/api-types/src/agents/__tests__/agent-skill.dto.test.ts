@@ -93,6 +93,12 @@ describe('agent skill DTOs', () => {
 		(path) => expect(agentSkillReferencePathSchema.safeParse(path).success).toBe(false),
 	);
 
+	// Persian and Indic scripts use these two characters inside words.
+	it.each(['references/راهنمای\u200Cکاربر.md', 'references/क्\u200Dष.md'])(
+		'accepts path %j with a zero width joiner or non-joiner',
+		(path) => expect(agentSkillReferencePathSchema.safeParse(path).success).toBe(true),
+	);
+
 	it('accepts a lower case skill.md below the skill root', () => {
 		expect(agentSkillReferencePathSchema.safeParse('examples/skill.md').success).toBe(true);
 	});

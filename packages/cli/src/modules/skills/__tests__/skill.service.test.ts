@@ -1033,6 +1033,27 @@ describe('SkillService', () => {
 			});
 		});
 
+		it('keeps the stored bytes of a binary file that the update names with empty content', async () => {
+			await service.update(
+				user,
+				'skill_a',
+				{
+					baseSkillHash: 'hash-2',
+					references: [{ path: 'assets/logo.png', content: '', isBinary: true }],
+				},
+				'mcp',
+				{ keepUnnamedBinaryFiles: true },
+			);
+
+			expect(saveTrusted.mock.calls[0][1]).toEqual({
+				baseSkillHash: 'hash-2',
+				references: [
+					{ path: 'assets/logo.png', content: 'AP8=', isBinary: true },
+					{ path: 'assets/old.png', content: 'AP4=', isBinary: true },
+				],
+			});
+		});
+
 		it('reads no stored files when the update has no references', async () => {
 			await service.update(
 				user,

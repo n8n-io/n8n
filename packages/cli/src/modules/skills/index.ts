@@ -47,3 +47,4 @@ export {
 	type SkillSaveResult,
 	type SkillTarget,
 } from './utils/skill-content';
+export { withUnsentSkillFiles } from './utils/skill-model-update';

@@ -69,6 +69,7 @@ import {
 import { compareSkillFilePaths, skillContentHash } from '../utils/skill-content-hash';
 import { skillGroupPage } from '../utils/skill-group-page';
 import { getSkillHash } from '../utils/skill-hash';
+import { withUnsentSkillFiles } from '../utils/skill-model-update';
 import { AssistantSkillsFlagGate } from './assistant-skills-flag-gate';
 import { SkillAccessService } from './skill-access.service';
 import { SkillRuntimeService } from './skill-runtime.service';
@@ -566,13 +567,12 @@ export class SkillService {
 		references: NonNullable<AgentSkill['references']>,
 	): Promise<NonNullable<AgentSkill['references']>> {
 		const latest = (await this.skillRepository.findLatestSaved([skillId])).get(skillId);
-		const named = new Set(references.map((reference) => reference.path));
-		const kept = (latest?.files ?? []).flatMap((file) =>
-			file.isBinary && !named.has(file.path)
-				? [{ path: file.path, content: file.content, isBinary: true as const }]
-				: [],
-		);
-		return [...references, ...kept];
+		const stored = (latest?.files ?? []).map((file) => ({
+			path: file.path,
+			content: file.content,
+			...(file.isBinary ? { isBinary: true as const } : {}),
+		}));
+		return withUnsentSkillFiles(stored, references);
 	}
 
 	/** Every saved version of the skill, newest first, so the first one is the latest. Needs read access. */

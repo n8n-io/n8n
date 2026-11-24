@@ -4,6 +4,7 @@ import {
 	discoverPublicSkillSourceSchema,
 	ListSkillsQueryDto,
 	projectSkillDetailsForModel,
+	skillReferenceReadError,
 	SaveSkillDto,
 	SKILLS_MAX_PAGE_SIZE,
 	skillReferenceReadShape,
@@ -194,9 +195,11 @@ export class McpSkillToolsService {
 				},
 			},
 			handler: async ({ skillId, ...reference }) =>
-				await this.run(user, 'get_skill', { skillId }, async () =>
-					details(await this.skillService.get(user, skillId), flags, reference),
-				),
+				await this.run(user, 'get_skill', { skillId }, async () => {
+					const error = skillReferenceReadError(reference);
+					if (error) return { ok: false, skillId, error };
+					return details(await this.skillService.get(user, skillId), flags, reference);
+				}),
 		});
 
 		registerTool({

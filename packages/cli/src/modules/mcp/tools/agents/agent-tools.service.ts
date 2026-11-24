@@ -19,9 +19,11 @@ import {
 	McpOAuth2CredentialTypeSchema,
 	agentSkillSchema,
 	agentTaskSchema,
+	projectSkillForModel,
 	sanitizeAgentJsonConfig,
 	WEBHOOK_INTEGRATION_TYPE,
 	type AgentJsonConfig,
+	type AgentSkill,
 } from '@n8n/api-types';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { OperationContext, User } from '@n8n/db';
@@ -111,6 +113,19 @@ const MCP_AGENT_CONFIG_MESSAGES: AgentConfigValidationMessages = {
 	dynamicSelectorFollowUp:
 		'Ask the user for the concrete value and write it into nodeParameters as a literal.',
 };
+
+/**
+ * The skills of an Agent as a model reads them: each file as a path and a size, with no
+ * content. One Agent can hold several skills of 2 MiB each, and a tool result has a limit.
+ */
+function skillsForModel(skills: Record<string, AgentSkill>) {
+	return Object.fromEntries(
+		Object.entries(skills).map(([id, skill]) => [
+			id,
+			projectSkillForModel(skill, { paths: [], maxLength: 0 }).skill,
+		]),
+	);
+}
 
 function integrationsField(config: unknown): unknown {
 	return isRecord(config) ? config.integrations : undefined;
@@ -639,7 +654,7 @@ export class McpAgentToolsService {
 			name: 'get_agent',
 			config: {
 				description:
-					'Read an Agent draft, sidecar resources, runnable state, and configHash. Call before mutate_agent. Pass versionId to inspect a published version snapshot instead of the draft.',
+					'Read an Agent draft, sidecar resources, runnable state, and configHash. Call before mutate_agent. Pass versionId to inspect a published version snapshot instead of the draft. A skill lists its files by path and size, without content. Read the text of a file with get_skill and referencePath.',
 				inputSchema: getAgentInput,
 				annotations: {
 					title: 'Get Agent',
@@ -1356,7 +1371,7 @@ export class McpAgentToolsService {
 			configHash: getAgentConfigHash(config),
 			isRunnable: runnable.missing.length === 0,
 			missing: runnable.missing,
-			skills,
+			skills: skillsForModel(skills),
 			skillHashes: Object.fromEntries(
 				Object.entries(skills).map(([id, skill]) => [id, getAgentSkillHash(skill)]),
 			),
@@ -1403,7 +1418,7 @@ export class McpAgentToolsService {
 				isActive: version.versionId === agent.activeVersionId,
 			},
 			config: editableConfig,
-			skills: definition.skills,
+			skills: skillsForModel(definition.skills),
 			tasks: [...definition.tasks].map(([id, task]) => ({
 				id,
 				name: task.name,

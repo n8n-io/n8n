@@ -152,6 +152,9 @@ vague skill.
 - Omit fields you cannot fill confidently. Do not invent tool names or file paths.
 - Scripts are not supported in this phase. Do not pass scripts or non-markdown
   linked files to \`agent_builder_create_skills\` or \`agent_builder_update_skill\`.
+- In \`agent_builder_update_skill\`, \`references\` replaces the Markdown files of the
+  skill. Pass every Markdown file that stays. The scripts, binary files, and other
+  files of the skill stay as they are.
 
 ## Rules
 

@@ -5,6 +5,7 @@ import {
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
 	projectSkillDetailsForModel,
+	skillReferenceReadError,
 	SKILLS_MAX_PAGE_SIZE,
 	skillReferenceReadShape,
 	skillScopeSchema,
@@ -466,8 +467,11 @@ export function createSkillsTool(context: InstanceAiContext) {
 						skills: data.map((item) => summary(item, service.assistantSkillsEnabled)),
 					};
 				}
-				case 'get':
+				case 'get': {
+					const reason = skillReferenceReadError(input);
+					if (reason) return { success: false, refused: true, reason };
 					return details(await service.get(input.skillId), service.assistantSkillsEnabled, input);
+				}
 				case 'create':
 					return await handleCreate(context, service, input, ctx);
 				case 'update':

@@ -2436,7 +2436,17 @@ describe('McpAgentToolsService', () => {
 			agentValidationService.validateAgentIsRunnable.mockResolvedValue({
 				missing: ['credential:model'],
 			} as never);
-			agentSkillsService.listSkills.mockResolvedValue([{ id: 'skill-1' }] as never);
+			agentSkillsService.listSkills.mockResolvedValue({
+				'skill-1': {
+					name: 'Skill',
+					description: 'Use for tests',
+					instructions: 'Read the guide.',
+					references: [
+						{ path: 'references/guide.md', content: 'Guide text.' },
+						{ path: 'assets/logo.png', content: 'AP8=', isBinary: true },
+					],
+				},
+			});
 			agentTaskService.list.mockResolvedValue([
 				{ id: 'task-1', name: 'Daily' },
 				{ id: 'task-2', name: 'Detached' },
@@ -2450,13 +2460,26 @@ describe('McpAgentToolsService', () => {
 				configHash: getAgentConfigHash({ ...config, integrations: [] }),
 				isRunnable: false,
 				missing: ['credential:model'],
-				skills: [{ id: 'skill-1' }],
+				// A file shows its path and size. The content stays out of the result.
+				skills: {
+					'skill-1': {
+						name: 'Skill',
+						instructions: 'Read the guide.',
+						references: [
+							{ path: 'references/guide.md', characterCount: 11 },
+							{ path: 'assets/logo.png', characterCount: 4, isBinary: true },
+						],
+					},
+				},
 				tasks: [
 					{ id: 'task-1', name: 'Daily', enabled: true },
 					{ id: 'task-2', name: 'Detached', enabled: false },
 				],
 				customTools: [{ id: 'my_tool', descriptor: { name: 'my_tool' } }],
 			});
+			expect(JSON.stringify(result.structuredContent)).not.toContain('Guide text.');
+			expect(JSON.stringify(result.structuredContent)).not.toContain('AP8=');
+			expect(result.structuredContent).toHaveProperty('skillHashes.skill-1');
 		});
 
 		it('reports integrations separately and omits them from the editable config', async () => {

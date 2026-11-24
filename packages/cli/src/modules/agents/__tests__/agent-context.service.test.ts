@@ -1,5 +1,5 @@
 import type { User } from '@n8n/db';
-import type { AgentTaskDto } from '@n8n/api-types';
+import { SKILL_READ_MAX_LENGTH, type AgentTaskDto } from '@n8n/api-types';
 import { beforeEach, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -21,7 +21,6 @@ import type { AgentsToolsService } from '../agents-tools.service';
 import type { AgentsService } from '../agents.service';
 import type { AttachableWorkflowsService } from '../attachable-workflows.service';
 import type { ProjectAgent } from '../entities/agent.entity';
-import { AGENT_SKILL_READ_MAX_LENGTH } from '../agent-context-readers';
 import { AgentContextService } from '../agent-context.service';
 import { createAgentSkillRefsService, storedAgentConfig } from './test-utils/stored-agent-config';
 
@@ -274,7 +273,7 @@ describe('AgentContextService', () => {
 	it('keeps one skill read within the content budget and names the omitted paths', async () => {
 		const { service, agentsService, agentSkillsService } = makeService();
 		agentsService.findById.mockResolvedValue(agent);
-		const large = 'x'.repeat(AGENT_SKILL_READ_MAX_LENGTH - 5);
+		const large = 'x'.repeat(SKILL_READ_MAX_LENGTH - 5);
 		agentSkillsService.getSkill.mockResolvedValue({
 			name: 'Support',
 			description: 'Handle support requests',
@@ -313,7 +312,7 @@ describe('AgentContextService', () => {
 	it('reads a reference that is larger than the whole budget without splitting a character', async () => {
 		const { service, agentsService, agentSkillsService } = makeService();
 		agentsService.findById.mockResolvedValue(agent);
-		const firstPart = 'x'.repeat(AGENT_SKILL_READ_MAX_LENGTH - 1);
+		const firstPart = 'x'.repeat(SKILL_READ_MAX_LENGTH - 1);
 		const lastPart = '😀 end';
 		agentSkillsService.getSkill.mockResolvedValue({
 			name: 'Support',

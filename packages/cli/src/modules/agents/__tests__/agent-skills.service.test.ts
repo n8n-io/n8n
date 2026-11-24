@@ -441,6 +441,66 @@ describe('AgentSkillsService', () => {
 			expect(skillService.saveTrusted).not.toHaveBeenCalled();
 		});
 
+		describe('files of an update', () => {
+			const guide = { path: 'references/guide.md', content: 'Old.' };
+			const script = { path: 'scripts/run.py', content: 'print(1)' };
+			const logo = { path: 'assets/logo.png', content: 'AP8=', isBinary: true as const };
+			const newGuide = { ...guide, content: 'New.' };
+
+			// A model reads no binary content, and the builder prompt says to send Markdown only.
+			it.each([
+				['builder', [newGuide, script, logo]],
+				['mcp', [newGuide, logo]],
+				['user', [newGuide]],
+			] as const)('from %s saves the files %j', async (modifiedBy, references) => {
+				const stored = { ...skill, references: [guide, script, logo] };
+				skillRefs.bodies.skill_a = stored;
+				givenAgent({
+					schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },
+					skills: { skill_a: stored },
+				});
+
+				await service.updateSkill(
+					agentId,
+					projectId,
+					'skill_a',
+					{ references: [newGuide] },
+					{ user, modifiedBy },
+				);
+
+				expect(skillService.saveTrusted).toHaveBeenCalledWith(
+					'skill_a',
+					expect.objectContaining({ references }),
+					'user-1',
+					{},
+				);
+			});
+
+			it('keeps the files that are not Markdown when the builder sends no files', async () => {
+				const stored = { ...skill, references: [guide, script, logo] };
+				skillRefs.bodies.skill_a = stored;
+				givenAgent({
+					schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },
+					skills: { skill_a: stored },
+				});
+
+				await service.updateSkill(
+					agentId,
+					projectId,
+					'skill_a',
+					{ references: undefined },
+					{ user, modifiedBy: 'builder' },
+				);
+
+				expect(skillService.saveTrusted).toHaveBeenCalledWith(
+					'skill_a',
+					expect.objectContaining({ references: [script, logo] }),
+					'user-1',
+					{},
+				);
+			});
+		});
+
 		it('saves the next version with the skill edit permission, then refreshes the agents that follow it', async () => {
 			const agent = givenAgent({
 				schema: { ...baseConfig, skills: [{ type: 'skill', id: 'skill_a' }] },

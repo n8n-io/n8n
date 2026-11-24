@@ -17,8 +17,9 @@ export const AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH = 2 * 1024 * 1024;
 const agentSkillStringArraySchema = z.array(z.string().trim().min(1));
 
 // Zero-width and bidirectional characters. They make a file list show a name that differs
-// from the stored path.
-const HIDDEN_PATH_CHARACTERS = /[\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff]/;
+// from the stored path. U+200C and U+200D stay valid, because Persian and Indic scripts use
+// them inside words.
+const HIDDEN_PATH_CHARACTERS = /[\u200b\u200e\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff]/;
 
 export const agentSkillReferencePathSchema = z
 	.string()
@@ -83,17 +84,27 @@ export const skillReferenceReadShape = {
 
 export type SkillReferenceRead = z.infer<z.ZodObject<typeof skillReferenceReadShape>>;
 
+/** Why a reference read is not valid. A tool refuses the read with this text. */
+export function skillReferenceReadError({
+	referencePath,
+	referenceOffset,
+}: SkillReferenceRead = {}): string | undefined {
+	return referenceOffset !== undefined && referencePath === undefined
+		? 'Pass referencePath with referenceOffset.'
+		: undefined;
+}
+
+/** The page size of one skill read by a model. It fits the tool result limit of the runtime. */
+export const SKILL_READ_MAX_LENGTH = 72 * 1024;
+
 export function projectSkillDetailsForModel<T extends { references?: AgentSkillReference[] }>(
 	skill: T,
 	{ referencePath, referenceOffset }: SkillReferenceRead = {},
 ) {
-	if (referenceOffset !== undefined && referencePath === undefined) {
-		return { error: 'Pass referencePath with referenceOffset.' };
-	}
 	return projectSkillForModel(skill, {
 		paths: referencePath === undefined ? undefined : [referencePath],
 		offset: referenceOffset,
-		maxLength: 72 * 1024,
+		maxLength: SKILL_READ_MAX_LENGTH,
 	});
 }
 

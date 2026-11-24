@@ -186,6 +186,23 @@ describe('skills tool', () => {
 		]);
 	});
 
+	it('refuses a referenceOffset without a referencePath', async () => {
+		const tool = createSkillsTool(createContext(service));
+
+		const result = await executeTool(tool, {
+			action: 'get',
+			skillId: 'skill_a',
+			referenceOffset: 10,
+		});
+
+		expect(result).toEqual({
+			success: false,
+			refused: true,
+			reason: 'Pass referencePath with referenceOffset.',
+		});
+		expect(service.get).not.toHaveBeenCalled();
+	});
+
 	it('reads the next part of a reference on request', async () => {
 		const referencePath = 'reference/guide.md';
 		const first = 'x'.repeat(72 * 1024);
