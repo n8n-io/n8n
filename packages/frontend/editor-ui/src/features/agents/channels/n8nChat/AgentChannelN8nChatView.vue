@@ -40,14 +40,18 @@ defineExpose({ description });
 			<N8nLink
 				v-if="chatUrl"
 				:to="chatUrl"
-				:class="$style.chatLink"
+				:underline="false"
 				size="small"
 				theme="text"
 				new-window
 				rel="noopener noreferrer"
 			>
-				{{ i18n.baseText('agents.channels.n8nChat.talkToAgent') }}
-				<N8nIcon icon="external-link" size="xsmall" aria-hidden="true" />
+				<span :class="$style.chatLink">
+					<span :class="$style.chatLinkLabel">
+						{{ i18n.baseText('agents.channels.n8nChat.talkToAgent') }}
+					</span>
+					<N8nIcon icon="external-link" />
+				</span>
 			</N8nLink>
 		</N8nCallout>
 		<div :class="$style.descriptionBlock">
@@ -88,7 +92,14 @@ defineExpose({ description });
 }
 
 .chatLink {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 	white-space: nowrap;
+}
+
+.chatLinkLabel {
+	text-decoration: underline;
 }
 
 .labelRow {
