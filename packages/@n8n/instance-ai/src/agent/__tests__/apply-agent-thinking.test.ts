@@ -224,6 +224,20 @@ describe('applyAgentThinking', () => {
 		expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
 	});
 
+	it('preserves the reasoning effort set by an OpenRouter helper', async ({ onTestFinished }) => {
+		vi.stubEnv('N8N_INSTANCE_AI_REASONING_EFFORT', 'high');
+		onTestFinished(() => {
+			vi.unstubAllEnvs();
+		});
+		const { Agent: SdkAgent } = await vi.importActual<typeof import('@n8n/agents')>('@n8n/agents');
+		const modelId = 'openrouter/moonshotai/kimi-k3';
+		const helper = new SdkAgent('helper').model(modelId).reasoning('low');
+
+		applyAgentThinking(helper, modelId);
+
+		expect(helper.snapshot.reasoning).toBe('low');
+	});
+
 	it('enables medium reasoning effort for Grok 4.5 via xAI', () => {
 		const agent = new Agent('test');
 		applyAgentThinking(agent, 'xai/grok-4.5');

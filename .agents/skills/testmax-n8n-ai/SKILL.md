@@ -646,10 +646,10 @@ each decision. After `run-finish`, the runner waits until the thread is idle
 for 10 seconds, so it does not miss a background task or a follow-up run.
 This wait is not part of the time: `finishedAt` is the time of the last
 `run-finish` event. n8n does not report the reasoning effort, so the Effort
-column shows the effort that n8n uses for `N8N_INSTANCE_AI_MODEL` and
-`N8N_INSTANCE_AI_REASONING_EFFORT`, with the rules of
-`apply-agent-thinking.ts`. Claude Code reports its effort in the session
-file. Codex reports it in the recorded model request.
+column uses the configured model and `N8N_INSTANCE_AI_REASONING_EFFORT`.
+A dash means the orchestrator has no fixed effort or thinking is disabled.
+Claude Code reports its effort in the session file. Codex reports it in the
+recorded model request.
 
 **Claude Code and Codex** run in a Docker container (`COMPARE_ISOLATION=container`):
 

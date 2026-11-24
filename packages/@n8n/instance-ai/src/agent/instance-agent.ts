@@ -13,6 +13,7 @@ import {
 	createClaimedToolNames,
 	type McpToolNameValidationError,
 } from './mcp-tool-name-validation';
+import { resolveModelProvider } from './model-config-identity';
 import { applyApprovalReview } from '../approval-review/approval-review';
 import { holdProbeTelemetry } from '../approval-review/probe-telemetry';
 import { listConnectedMcpServices } from '../mcp/connected-mcp-services';
@@ -47,7 +48,18 @@ import type {
 	InstanceAiToolRegistry,
 	ModelConfig,
 } from '../types';
+import { parseReasoningEffort } from '../utils/custom-model-defaults';
 import { withModalSession } from '../utils/modal-session';
+
+const OPENROUTER_REASONING_EFFORTS = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh'] as const;
+
+function applyOpenRouterReasoningEffort(agent: Agent, modelId: ModelConfig): void {
+	if (resolveModelProvider(modelId) !== 'openrouter') return;
+
+	const override = parseReasoningEffort(process.env.N8N_INSTANCE_AI_REASONING_EFFORT);
+	const effort = OPENROUTER_REASONING_EFFORTS.find((supported) => supported === override);
+	if (effort !== undefined) agent.reasoning(effort);
+}
 
 function resolveModalSessionModelId(
 	modelId: ModelConfig,
@@ -268,6 +280,8 @@ export async function createInstanceAgent(
 	if (options.requestLabels) agent.functionId(functionId);
 	if (options.thinkingEnabled !== false) {
 		applyAgentThinking(agent, modelId);
+		// Only the orchestrator agent reads this override so helpers keep their own effort.
+		applyOpenRouterReasoningEffort(agent, modelId);
 	}
 	if (hasDeferrableTools) {
 		// Tool catalog mode keeps the toolset fixed for the whole run, so the prompt cache

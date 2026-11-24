@@ -84,18 +84,21 @@ class Recorder:
 
 ANTHROPIC_EFFORTS = ('low', 'medium', 'high', 'xhigh', 'max')
 CUSTOM_EFFORTS = ('none', 'minimal', *ANTHROPIC_EFFORTS)
+OPENROUTER_EFFORTS = ('none', 'minimal', 'low', 'medium', 'high', 'xhigh')
 # Keep in sync with instance-ai.config.ts and CUSTOM_MODEL_DEFAULTS in utils/custom-model-defaults.ts.
 DEFAULT_INSTANCE_AI_MODEL = 'anthropic/claude-opus-5-5'
 CUSTOM_MODEL_EFFORTS = (('kimi-k3', 'low'), ('glm-5.2', 'medium'))
 
 
 def configured_effort():
-	"""The orchestrator effort that n8n uses for N8N_INSTANCE_AI_MODEL, with the rules of
-	packages/@n8n/instance-ai/src/agent/apply-agent-thinking.ts. n8n does not report the effort, so this
-	reads the settings that the server reads. None when the provider has no fixed effort."""
+	"""Read the orchestrator settings because n8n does not report the configured effort."""
+	if setting('N8N_INSTANCE_AI_THINKING_ENABLED', default='true').lower() in ('false', '0'):
+		return None
 	model = (setting('N8N_INSTANCE_AI_MODEL') or DEFAULT_INSTANCE_AI_MODEL).lower()
 	provider = model.split('/', 1)[0] if '/' in model else ''
 	effort = (setting('N8N_INSTANCE_AI_REASONING_EFFORT') or '').strip().lower()
+	if provider == 'openrouter':
+		return effort if effort in OPENROUTER_EFFORTS else None
 	if provider in ('anthropic', 'google-vertex-anthropic'):
 		return effort if effort in ANTHROPIC_EFFORTS else 'medium'
 	if provider in ('custom', 'moonshotai'):
@@ -317,7 +320,7 @@ def main():
 		'langsmithRunIds': langsmith_run_ids,
 		'decisions': decisions,
 		'effort': configured_effort(),
-		'effortSource': 'n8n settings (N8N_INSTANCE_AI_MODEL, N8N_INSTANCE_AI_REASONING_EFFORT)',
+		'effortSource': 'n8n settings (N8N_INSTANCE_AI_MODEL, N8N_INSTANCE_AI_THINKING_ENABLED, N8N_INSTANCE_AI_REASONING_EFFORT)',
 		'threadUrl': thread_url,
 		'screen': 'screen.webm' if (out / 'screen.webm').exists() else None,
 	}
