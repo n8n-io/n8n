@@ -61,11 +61,16 @@ export const DOMAIN_TOOL_IDS = {
 	LEAVE_ONBOARDING: 'leave-onboarding',
 	BUILD_WORKFLOW: WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW,
 	PARSE_FILE: 'parse-file',
+	IMPORT_FILES: 'import-files',
+	LIST_FILES: 'list-files',
+	SHARE_FILES: 'share-files',
+	VIEW_FILE: 'view-file',
 	AGENT_CONTEXT: 'agent-context',
 	MCP_SERVERS: 'mcp-servers',
 	CONVERSATION_HISTORY: 'conversation-history',
 	ACTIVITY: 'activity',
 	SAVE_USER_PREFERENCE: 'save_user_preference',
+	SEND_FEEDBACK: 'send_feedback',
 	SKILLS: 'skills',
 	APPS: 'apps',
 } as const;
@@ -127,6 +132,12 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	// Deferring it would route the user's "let me out" through `call_tool`.
 	DOMAIN_TOOL_IDS.LEAVE_ONBOARDING,
 	DOMAIN_TOOL_IDS.PARSE_FILE,
+	// Registered only with stored files and a sandbox. The sandbox prompt section names it.
+	DOMAIN_TOOL_IDS.IMPORT_FILES,
+	// Registered only with the sandbox files feature. The sandbox prompt section names it.
+	DOMAIN_TOOL_IDS.LIST_FILES,
+	DOMAIN_TOOL_IDS.SHARE_FILES,
+	DOMAIN_TOOL_IDS.VIEW_FILE,
 	DOMAIN_TOOL_IDS.RESEARCH,
 	// Paired with RESEARCH on purpose: the research tool tells the agent to prefer
 	// n8n's own docs for n8n questions, but deferring n8n-docs put that route behind
@@ -149,6 +160,9 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	// can react, which is exactly the moment it does not. Registered only when the
 	// preferences service is wired, so an instance without the feature pays nothing.
 	DOMAIN_TOOL_IDS.SAVE_USER_PREFERENCE,
+	// The agent reaches for this at the moment it is stuck. Behind `find_tools`, it
+	// would have to know the tool exists first, so it would not report the problem.
+	DOMAIN_TOOL_IDS.SEND_FEEDBACK,
 	'web-search',
 	'fetch-url',
 	DOMAIN_TOOL_IDS.SKILLS,

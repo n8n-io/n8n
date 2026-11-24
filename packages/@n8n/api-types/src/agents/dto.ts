@@ -807,6 +807,15 @@ const agentChatMessageShape = {
 	 */
 	clientContext: z.record(z.unknown()).optional(),
 	/**
+	 * Only the preview chat has test runs. Every other surface accepts `live` and rejects
+	 * `test`, so a message that asked for a test run fails instead of running live.
+	 */
+	mode: z.literal('live').optional(),
+};
+
+const agentPreviewChatMessageShape = {
+	...agentChatMessageShape,
+	/**
 	 * `test` starts a test run (safe testing flag on). A chat that is already a test run
 	 * stays one. Absent or `live` runs the draft against real services.
 	 */
@@ -830,6 +839,11 @@ const agentChatMessageSchema = z
 	.refine(hasMessageContent.check, hasMessageContent.options)
 	.refine(hasSessionForMessageId.check, hasSessionForMessageId.options);
 
+const agentPreviewChatMessageSchema = z
+	.object(agentPreviewChatMessageShape)
+	.refine(hasMessageContent.check, hasMessageContent.options)
+	.refine(hasSessionForMessageId.check, hasSessionForMessageId.options);
+
 /**
  * A UUID in canonical lowercase form. Use it where an id becomes part of a
  * case-insensitive name: two ids that differ only in case must not map to the
@@ -841,11 +855,26 @@ export const lowercaseUuidSchema = z
 	.refine((value) => value === value.toLowerCase(), { message: 'The UUID must be lowercase' });
 
 /**
+ * Raised character limit for chat surfaces where users paste long,
+ * externally-drafted prompts (agent builder, Assistant). The system agent
+ * chat routes enforce it on the backend.
+ */
+export const EXTENDED_PROMPT_MAX_LENGTH = 25_000;
+
+const systemAgentMessageSchema = z
+	.string()
+	.max(
+		EXTENDED_PROMPT_MAX_LENGTH,
+		`Message must be ${EXTENDED_PROMPT_MAX_LENGTH} characters or fewer`,
+	);
+
+/**
  * A system agent session ID is a lowercase UUID. System agents derive
  * resource names, such as sandbox names, from it.
  */
 const systemAgentChatMessageShape = {
 	...agentChatMessageShape,
+	message: systemAgentMessageSchema,
 	sessionId: lowercaseUuidSchema.optional(),
 };
 
@@ -875,9 +904,29 @@ export class AgentChatMessageDto extends Z.class(agentChatMessageShape) {
 }
 
 /**
- * The chat message of a system agent. Same as {@link AgentChatMessageDto},
- * but the session ID must be a lowercase UUID. Validate via `parse`/`safeParse`,
+ * A message in the agent preview chat, the only surface with test runs. Same as
+ * {@link AgentChatMessageDto}, but `mode` can be `test`. Validate via `parse`/`safeParse`,
  * for the same reason as `AgentChatMessageDto`.
+ */
+export class AgentPreviewChatMessageDto extends Z.class(agentPreviewChatMessageShape) {
+	constructor(data: z.infer<typeof agentPreviewChatMessageSchema>) {
+		super(agentPreviewChatMessageSchema.parse(data));
+	}
+
+	static override safeParse(data: unknown) {
+		return agentPreviewChatMessageSchema.safeParse(data);
+	}
+
+	static override parse(data: unknown) {
+		return agentPreviewChatMessageSchema.parse(data);
+	}
+}
+
+/**
+ * The chat message of a system agent. Same as {@link AgentChatMessageDto},
+ * but the session ID must be a lowercase UUID and the message has a maximum
+ * length. Validate via `parse`/`safeParse`, for the same reason as
+ * `AgentChatMessageDto`.
  */
 export class SystemAgentChatMessageDto extends Z.class(systemAgentChatMessageShape) {
 	constructor(data: z.infer<typeof systemAgentChatMessageSchema>) {
@@ -895,6 +944,11 @@ export class SystemAgentChatMessageDto extends Z.class(systemAgentChatMessageSha
 
 export class AgentChatQueueUpdateDto extends Z.class({
 	message: z.string(),
+}) {}
+
+/** Same as {@link AgentChatQueueUpdateDto}, with the system agent message limit. */
+export class SystemAgentChatQueueUpdateDto extends Z.class({
+	message: systemAgentMessageSchema,
 }) {}
 
 export class AgentChatQueueSteerDto extends Z.class({

@@ -52,28 +52,34 @@ export class WorkflowReviewsPage extends BasePage {
 		await Promise.all([this.waitForRestResponse('/comments', 'POST'), composer.press('Enter')]);
 	}
 
+	/** Request changes opens a form that requires a note. */
 	async requestChanges(note: string): Promise<void> {
-		await this.decide(note, 'workflow-review-decision-request-changes-button');
+		await this.chooseDecision('Request changes');
+		const form = this.page.getByTestId('workflow-review-request-changes-form');
+		await form.getByTestId('workflow-review-decision-note').fill(note);
+		await Promise.all([
+			this.waitForRestResponse('/decision', 'POST'),
+			form.getByTestId('workflow-review-decision-request-changes-button').click(),
+		]);
 	}
 
 	/** Approving also publishes the version the review pinned. */
-	async approve(note: string): Promise<void> {
-		await this.decide(note, 'workflow-review-decision-approve-button');
+	async approve(): Promise<void> {
+		await Promise.all([
+			this.waitForRestResponse('/decision', 'POST'),
+			this.chooseDecision('Approve and publish'),
+		]);
 	}
 
 	private getCommentComposerInput(): Locator {
 		return this.page.getByTestId('workflow-review-comment-composer').locator('textarea');
 	}
 
-	/** The popover requires a note before it will accept either decision. */
-	private async decide(note: string, buttonTestId: string): Promise<void> {
+	private async chooseDecision(name: string): Promise<void> {
 		await this.getDecisionTrigger().click();
-		const popover = this.page.getByTestId('workflow-review-decision-popover');
-		await popover.waitFor({ state: 'visible' });
-		await popover.getByTestId('workflow-review-decision-note').fill(note);
-		await Promise.all([
-			this.waitForRestResponse('/decision', 'POST'),
-			popover.getByTestId(buttonTestId).click(),
-		]);
+		await this.page
+			.getByTestId('workflow-review-decision-menu')
+			.getByRole('menuitem', { name })
+			.click();
 	}
 }

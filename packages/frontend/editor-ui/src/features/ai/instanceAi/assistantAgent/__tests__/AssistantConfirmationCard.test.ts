@@ -264,6 +264,32 @@ describe('AssistantConfirmationCard', () => {
 		expect(card).not.toHaveTextContent('workflowId');
 	});
 
+	describe('an approval that the "Approve for me" mode shows', () => {
+		const input = {
+			requestId: 'req-archive',
+			message: 'Archive "Lead router"',
+			severity: 'warning' as const,
+		};
+
+		it('shows the reason of the review below the description', () => {
+			const { getByTestId } = renderComponent({
+				props: { input: { ...input, askReason: { kind: 'always-ask' as const } } },
+			});
+
+			expect(getByTestId('assistant-agent-approval')).toHaveTextContent('Archive "Lead router"');
+			expect(getByTestId('approval-ask-reason')).toHaveTextContent(
+				'This type of action always needs your approval.',
+			);
+		});
+
+		it('shows no reason without one, as in the "Ask for approval" mode', () => {
+			const { getByTestId, queryByTestId } = renderComponent({ props: { input } });
+
+			expect(getByTestId('assistant-agent-approval')).toHaveTextContent('Archive "Lead router"');
+			expect(queryByTestId('approval-ask-reason')).not.toBeInTheDocument();
+		});
+	});
+
 	it('does not offer always allow for a destructive action', () => {
 		const { queryByTestId } = renderComponent({
 			props: {

@@ -23,7 +23,6 @@ import {
 	SELF_HEALING_CONFIGURATION_VIEW,
 	type SelfHealingLocation,
 } from '@n8n/frontend-constants/self-healing';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, nextTick, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -37,7 +36,6 @@ const props = withDefaults(defineProps<{ projectId: string; variant?: SelfHealin
 const isPersonalTab = computed(() => props.variant === 'personalTab');
 const store = useSelfHealingStore();
 const rootStore = useRootStore();
-const settingsStore = useSettingsStore();
 const i18n = useI18n();
 const toast = useToast();
 const message = useMessage();
@@ -229,7 +227,6 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 			<label>{{ i18n.baseText('selfHealing.config.heading') }}</label>
 			<N8nPreviewBadge size="xsmall" data-test-id="self-healing-preview-badge" />
 			<N8nEnterpriseReadinessBadge
-				v-if="settingsStore.isEnterprisePlan"
 				size="xsmall"
 				data-test-id="self-healing-enterprise-readiness-badge"
 			/>

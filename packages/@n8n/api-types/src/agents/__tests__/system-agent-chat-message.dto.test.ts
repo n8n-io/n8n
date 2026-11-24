@@ -1,4 +1,13 @@
-import { AgentChatMessageDto, SystemAgentChatMessageDto } from '../dto';
+import {
+	AgentChatMessageDto,
+	AgentChatQueueUpdateDto,
+	EXTENDED_PROMPT_MAX_LENGTH,
+	SystemAgentChatMessageDto,
+	SystemAgentChatQueueUpdateDto,
+} from '../dto';
+
+const atLimit = 'a'.repeat(EXTENDED_PROMPT_MAX_LENGTH);
+const overLimit = 'a'.repeat(EXTENDED_PROMPT_MAX_LENGTH + 1);
 
 describe('SystemAgentChatMessageDto', () => {
 	const sessionId = '5f3a1b2c-9d8e-4f70-8a6b-1c2d3e4f5a6b';
@@ -39,5 +48,36 @@ describe('SystemAgentChatMessageDto', () => {
 				messageId: 'c4b02d7b-2088-41ce-9c6b-faf8c7b83d8a',
 			}).success,
 		).toBe(false);
+	});
+
+	it('accepts a message at the length limit', () => {
+		expect(SystemAgentChatMessageDto.safeParse({ message: atLimit }).success).toBe(true);
+	});
+
+	it('rejects a message over the length limit', () => {
+		const result = SystemAgentChatMessageDto.safeParse({ message: overLimit });
+		expect(result.success).toBe(false);
+		expect(result.error?.issues[0]).toMatchObject({
+			path: ['message'],
+			message: 'Message must be 25000 characters or fewer',
+		});
+	});
+
+	it('does not limit the message length of AgentChatMessageDto', () => {
+		expect(AgentChatMessageDto.safeParse({ message: overLimit }).success).toBe(true);
+	});
+});
+
+describe('SystemAgentChatQueueUpdateDto', () => {
+	it('accepts a message at the length limit', () => {
+		expect(SystemAgentChatQueueUpdateDto.safeParse({ message: atLimit }).success).toBe(true);
+	});
+
+	it('rejects a message over the length limit', () => {
+		expect(SystemAgentChatQueueUpdateDto.safeParse({ message: overLimit }).success).toBe(false);
+	});
+
+	it('does not limit the message length of AgentChatQueueUpdateDto', () => {
+		expect(AgentChatQueueUpdateDto.safeParse({ message: overLimit }).success).toBe(true);
 	});
 });

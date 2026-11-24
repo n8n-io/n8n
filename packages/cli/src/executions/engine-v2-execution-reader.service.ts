@@ -16,6 +16,7 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 import { UnexpectedError, UserError } from '@n8n/errors';
+import type { ExecutionLinks } from '@n8n/node-engine-compatibility';
 
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 
@@ -28,6 +29,9 @@ import type { ExecutionIdV2 } from './execution-id';
  * returned by the search.
  */
 export type V2Scope = 'all' | ReadonlyArray<Workflow['id']>;
+
+/** The ids of the workflows a caller may read, or a check of one workflow. */
+type WorkflowAccess = string[] | ((workflowId: string) => Promise<boolean>);
 
 /** The subset of a range query the data plane search actually understands. */
 export interface EngineV2SearchQuery {
@@ -195,26 +199,30 @@ export class EngineV2ExecutionReader {
 	 * `undefined` for absent and for inaccessible alike, so neither reveals the
 	 * other.
 	 *
+	 * `access` is the `workflow:read` check: the ids of the workflows the caller
+	 * may read, or a check of the execution's one workflow. Pass the check when a
+	 * list of every shared workflow id costs more.
+	 *
 	 * The steps are the run data, so `includeData` decides both.
 	 */
 	async findOne(
 		executionId: ExecutionIdV2,
-		sharedWorkflowIds: string[],
+		access: WorkflowAccess,
 		options?: { includeData?: true },
 	): Promise<IExecutionResponse | undefined>;
 	async findOne(
 		executionId: ExecutionIdV2,
-		sharedWorkflowIds: string[],
+		access: WorkflowAccess,
 		options: { includeData: false },
 	): Promise<IExecutionBase | undefined>;
 	async findOne(
 		executionId: ExecutionIdV2,
-		sharedWorkflowIds: string[],
+		access: WorkflowAccess,
 		options?: { includeData?: boolean },
 	): Promise<IExecutionResponse | IExecutionBase | undefined>;
 	async findOne(
 		executionId: ExecutionIdV2,
-		sharedWorkflowIds: string[],
+		access: WorkflowAccess,
 		{ includeData = true }: { includeData?: boolean } = {},
 	): Promise<IExecutionResponse | IExecutionBase | undefined> {
 		// TODO(CAT-4235): mirror this metadata on the control plane, so we can
@@ -224,10 +232,14 @@ export class EngineV2ExecutionReader {
 		});
 		if (!snapshot) return undefined;
 
-		// The `workflow:read` check.
-		if (!sharedWorkflowIds.includes(snapshot.workflowId)) return undefined;
+		const canRead = Array.isArray(access)
+			? access.includes(snapshot.workflowId)
+			: await access(snapshot.workflowId);
+		if (!canRead) return undefined;
 
-		if (includeData) return await this.fromSnapshot(snapshot);
+		if (includeData) {
+			return await this.fromSnapshot(snapshot);
+		}
 
 		// Checked in both modes, so a metadata read and a data read agree on
 		// whether the execution exists.
@@ -252,7 +264,12 @@ export class EngineV2ExecutionReader {
 		return this.toExecutionResponse(
 			snapshot,
 			workflow,
-			toV1RunExecutionData(snapshot.graph, snapshot.steps ?? [], workflow.pinData),
+			toV1RunExecutionData(
+				snapshot.graph,
+				snapshot.steps ?? [],
+				workflow.pinData,
+				toExecutionLinks(snapshot),
+			),
 		);
 	}
 
@@ -303,4 +320,19 @@ export function asWorkflowSnapshot(document: unknown): WorkflowRunDocument | und
 	if (!Array.isArray((document as { nodes?: unknown }).nodes)) return undefined;
 
 	return document as unknown as WorkflowRunDocument;
+}
+
+/** The links the editor offers, from what the snapshot reports. */
+function toExecutionLinks({
+	parent,
+	parentWorkflowId,
+	subExecutions = [],
+}: ExecutionSnapshot): ExecutionLinks {
+	return {
+		parent:
+			parent && parentWorkflowId
+				? { executionId: parent.executionId, workflowId: parentWorkflowId }
+				: undefined,
+		subExecutions,
+	};
 }

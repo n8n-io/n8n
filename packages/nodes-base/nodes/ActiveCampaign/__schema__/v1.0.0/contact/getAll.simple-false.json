@@ -1,0 +1,301 @@
+{
+	"properties": {
+		"contacts": {
+			"items": {
+				"additionalProperties": true,
+				"properties": {
+					"accountContacts": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"adate": {
+						"type": ["null", "string"]
+					},
+					"anonymized": {
+						"type": "string"
+					},
+					"best_send_hour": {
+						"type": ["null", "string"]
+					},
+					"bounced_date": {
+						"type": ["null", "string"]
+					},
+					"bounced_hard": {
+						"type": "string"
+					},
+					"bounced_soft": {
+						"type": "string"
+					},
+					"cdate": {
+						"type": "string"
+					},
+					"created_by": {
+						"type": ["null", "string"]
+					},
+					"created_timestamp": {
+						"type": "string"
+					},
+					"created_utc_timestamp": {
+						"type": "string"
+					},
+					"deleted": {
+						"type": "string"
+					},
+					"deleted_at": {
+						"type": ["null", "string"]
+					},
+					"edate": {
+						"type": ["null", "string"]
+					},
+					"email": {
+						"type": ["null", "string"]
+					},
+					"email_domain": {
+						"type": "string"
+					},
+					"email_local": {
+						"type": "string"
+					},
+					"firstName": {
+						"type": "string"
+					},
+					"gravatar": {
+						"type": "string"
+					},
+					"hash": {
+						"type": "string"
+					},
+					"id": {
+						"type": "string"
+					},
+					"ip": {
+						"type": "string"
+					},
+					"last_click_date": {
+						"type": ["null", "string"]
+					},
+					"last_mpp_open_date": {
+						"type": ["null", "string"]
+					},
+					"last_open_date": {
+						"type": ["null", "string"]
+					},
+					"lastName": {
+						"type": "string"
+					},
+					"links": {
+						"properties": {
+							"accountContacts": {
+								"type": "string"
+							},
+							"automationEntryCounts": {
+								"type": "string"
+							},
+							"bounceLogs": {
+								"type": "string"
+							},
+							"contactAutomations": {
+								"type": "string"
+							},
+							"contactData": {
+								"type": "string"
+							},
+							"contactDeals": {
+								"type": "string"
+							},
+							"contactGoals": {
+								"type": "string"
+							},
+							"contactLists": {
+								"type": "string"
+							},
+							"contactLogs": {
+								"type": "string"
+							},
+							"contactTags": {
+								"type": "string"
+							},
+							"deals": {
+								"type": "string"
+							},
+							"fieldValues": {
+								"type": "string"
+							},
+							"geoIps": {
+								"type": "string"
+							},
+							"notes": {
+								"type": "string"
+							},
+							"organization": {
+								"type": "string"
+							},
+							"plusAppend": {
+								"type": "string"
+							},
+							"scoreValues": {
+								"type": "string"
+							},
+							"trackingLogs": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"mpp_tracking": {
+						"type": "string"
+					},
+					"organization": {
+						"type": ["null", "string"]
+					},
+					"orgid": {
+						"type": "string"
+					},
+					"orgname": {
+						"type": "string"
+					},
+					"phone": {
+						"type": "string"
+					},
+					"rating_tstamp": {
+						"type": ["null", "string"]
+					},
+					"scoreValues": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"segmentio_id": {
+						"type": "string"
+					},
+					"sentcnt": {
+						"type": "string"
+					},
+					"sms_consent": {
+						"type": ["null", "string"]
+					},
+					"sms_consent_updated_at": {
+						"type": ["null", "string"]
+					},
+					"socialdata_lastcheck": {},
+					"ua": {
+						"type": ["null", "string"]
+					},
+					"udate": {
+						"type": "string"
+					},
+					"updated_by": {
+						"type": ["null", "string"]
+					},
+					"updated_timestamp": {
+						"type": "string"
+					},
+					"updated_utc_timestamp": {
+						"type": "string"
+					},
+					"whatsapp_id": {},
+					"whatsapp_username": {}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"meta": {
+			"properties": {
+				"page_input": {
+					"additionalProperties": true,
+					"properties": {
+						"cacheid": {
+							"type": "string"
+						},
+						"forceQuery": {
+							"type": "number"
+						},
+						"formid": {
+							"type": "number"
+						},
+						"limit": {
+							"type": "number"
+						},
+						"listid": {
+							"type": "number"
+						},
+						"offset": {
+							"type": "number"
+						},
+						"search": {},
+						"segmentid": {},
+						"seriesid": {
+							"type": "number"
+						},
+						"sort": {},
+						"status": {
+							"type": "number"
+						},
+						"tagid": {
+							"type": "number"
+						},
+						"waitid": {
+							"type": "number"
+						}
+					},
+					"type": "object"
+				},
+				"sortable": {
+					"type": "boolean"
+				},
+				"total": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"scoreValues": {
+			"items": {
+				"properties": {
+					"cdate": {
+						"type": "string"
+					},
+					"contact": {
+						"type": "string"
+					},
+					"deal": {
+						"type": ["null", "string"]
+					},
+					"id": {
+						"type": "string"
+					},
+					"links": {
+						"properties": {
+							"contact": {
+								"type": "string"
+							},
+							"deal": {
+								"type": "string"
+							},
+							"score": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"mdate": {
+						"type": "string"
+					},
+					"score": {
+						"type": "string"
+					},
+					"scoreValue": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		}
+	},
+	"type": "object"
+}

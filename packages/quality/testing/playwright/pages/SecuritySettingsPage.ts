@@ -27,10 +27,6 @@ export class SecuritySettingsPage extends BasePage {
 		return this.page.getByTestId('redaction-enforcement-scope-select');
 	}
 
-	getEnforcementSummary(): Locator {
-		return this.page.getByTestId('redaction-enforcement-summary');
-	}
-
 	private getConfirmDialog(): Locator {
 		return this.page.getByRole('dialog');
 	}

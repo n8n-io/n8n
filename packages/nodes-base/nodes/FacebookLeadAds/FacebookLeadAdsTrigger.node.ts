@@ -24,6 +24,7 @@ export class FacebookLeadAdsTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Facebook Lead Ads Trigger',
 		name: 'facebookLeadAdsTrigger',
+		schemaPath: 'FacebookLeadAds',
 		icon: 'file:facebook.svg',
 		group: ['trigger'],
 		version: 1,

@@ -8,7 +8,9 @@ import type {
 	WorkflowRepository,
 } from '@n8n/db';
 import { type DataSource, type EntityManager } from '@n8n/typeorm';
+import { createReadStream, type ReadStream } from 'fs';
 import { readdir, readFile } from 'fs/promises';
+import { Readable } from 'stream';
 import { mock } from 'vitest-mock-extended';
 import type { Cipher } from 'n8n-core';
 
@@ -28,7 +30,25 @@ vi.mock('@/utils/compression.util');
 vi.mock('fs', async (importOriginal) => ({
 	...(await importOriginal<typeof import('fs')>()),
 	existsSync: vi.fn(),
+	createReadStream: vi.fn(),
 }));
+
+function mockArchiveFile(content: string): void {
+	vi.mocked(createReadStream).mockImplementation(
+		() => Readable.from([content]) as unknown as ReadStream,
+	);
+}
+
+function mockArchiveFileError(error: Error): void {
+	vi.mocked(createReadStream).mockImplementation(
+		() =>
+			new Readable({
+				read() {
+					this.destroy(error);
+				},
+			}) as unknown as ReadStream,
+	);
+}
 
 vi.mock('@n8n/backend-common', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/backend-common')>()),
@@ -332,88 +352,6 @@ describe('ImportService', () => {
 			});
 		});
 
-		it('should read the files of a renamed entity under its current name', async () => {
-			// @ts-expect-error Accessing private property for testing
-			mockDataSource.entityMetadatas = [
-				{
-					name: 'KnowledgeFile',
-					tableName: 'agent_files',
-					columns: [{ databaseName: 'id' }, { databaseName: 'agentId' }],
-				},
-			] as any;
-			// An export from before the rename holds `agentfile.jsonl`, numbered when large.
-			const mockFiles = ['agentfile.jsonl', 'agentfile.2.jsonl'];
-
-			vi.mocked(readdir).mockResolvedValue(mockFiles as any);
-			vi.mocked(safeJoinPath)
-				.mockReturnValueOnce('/test/input/agentfile.jsonl')
-				.mockReturnValueOnce('/test/input/agentfile.2.jsonl');
-
-			const result = await importService.getImportMetadata('/test/input');
-
-			expect(result).toEqual({
-				entityFiles: {
-					knowledgefile: ['/test/input/agentfile.jsonl', '/test/input/agentfile.2.jsonl'],
-				},
-				tableNames: ['agent_files'],
-				dataTableFiles: {},
-			});
-		});
-
-		it('should skip the old-name files of a renamed entity when the directory also holds current-name files', async () => {
-			// @ts-expect-error Accessing private property for testing
-			mockDataSource.entityMetadatas = [
-				{
-					name: 'KnowledgeFile',
-					tableName: 'agent_files',
-					columns: [{ databaseName: 'id' }, { databaseName: 'agentId' }],
-				},
-			] as any;
-			// One export never writes both names: the old file is a leftover of an earlier run.
-			const mockFiles = ['agentfile.jsonl', 'agentfile.2.jsonl', 'knowledgefile.jsonl'];
-
-			vi.mocked(readdir).mockResolvedValue(mockFiles as any);
-			vi.mocked(safeJoinPath).mockReturnValueOnce('/test/input/knowledgefile.jsonl');
-
-			const result = await importService.getImportMetadata('/test/input');
-
-			expect(result).toEqual({
-				entityFiles: { knowledgefile: ['/test/input/knowledgefile.jsonl'] },
-				tableNames: ['agent_files'],
-				dataTableFiles: {},
-			});
-			expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('agentfile.jsonl'));
-			expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('agentfile.2.jsonl'));
-		});
-
-		it('should not remap an old-name file while an entity carries that name', async () => {
-			// @ts-expect-error Accessing private property for testing
-			mockDataSource.entityMetadatas = [
-				{
-					name: 'AgentFile',
-					tableName: 'agent_file_other',
-					columns: [{ databaseName: 'id' }],
-				},
-				{
-					name: 'KnowledgeFile',
-					tableName: 'agent_files',
-					columns: [{ databaseName: 'id' }, { databaseName: 'agentId' }],
-				},
-			] as any;
-			const mockFiles = ['agentfile.jsonl'];
-
-			vi.mocked(readdir).mockResolvedValue(mockFiles as any);
-			vi.mocked(safeJoinPath).mockReturnValueOnce('/test/input/agentfile.jsonl');
-
-			const result = await importService.getImportMetadata('/test/input');
-
-			expect(result).toEqual({
-				entityFiles: { agentfile: ['/test/input/agentfile.jsonl'] },
-				tableNames: ['agent_file_other'],
-				dataTableFiles: {},
-			});
-		});
-
 		it('should skip entities without metadata', async () => {
 			const mockFiles = ['unknown.jsonl', 'invalid.txt'];
 
@@ -505,7 +443,7 @@ describe('ImportService', () => {
 	describe('readEntityFile', () => {
 		it('should parse valid JSONL file', async () => {
 			const mockContent = '{"id":1,"name":"Test"}\n{"id":2,"name":"Test2"}';
-			vi.mocked(readFile).mockResolvedValue(mockContent);
+			mockArchiveFile(mockContent);
 
 			const result = await importService.readEntityFile('/test/data.jsonl');
 
@@ -519,7 +457,7 @@ describe('ImportService', () => {
 
 		it('should handle empty lines in JSONL file', async () => {
 			const mockContent = '{"id":1,"name":"Test"}\n\n{"id":2,"name":"Test2"}\n';
-			vi.mocked(readFile).mockResolvedValue(mockContent);
+			mockArchiveFile(mockContent);
 
 			const result = await importService.readEntityFile('/test/data.jsonl');
 
@@ -531,7 +469,7 @@ describe('ImportService', () => {
 
 		it('should handle Windows line endings', async () => {
 			const mockContent = '{"id":1,"name":"Test"}\r\n{"id":2,"name":"Test2"}';
-			vi.mocked(readFile).mockResolvedValue(mockContent);
+			mockArchiveFile(mockContent);
 
 			const result = await importService.readEntityFile('/test/data.jsonl');
 
@@ -543,7 +481,7 @@ describe('ImportService', () => {
 
 		it('should handle empty file', async () => {
 			const mockContent = '';
-			vi.mocked(readFile).mockResolvedValue(mockContent);
+			mockArchiveFile(mockContent);
 
 			const result = await importService.readEntityFile('/test/data.jsonl');
 
@@ -552,7 +490,7 @@ describe('ImportService', () => {
 
 		it('should throw error for invalid JSON', async () => {
 			const mockContent = '{"id":1,"name":"Test"}\n{invalid json}';
-			vi.mocked(readFile).mockResolvedValue(mockContent);
+			mockArchiveFile(mockContent);
 
 			await expect(importService.readEntityFile('/test/invalid.jsonl')).rejects.toThrow(
 				'Invalid JSON on line 1 in file /test/invalid.jsonl. JSONL format requires one complete JSON object per line.',
@@ -560,7 +498,7 @@ describe('ImportService', () => {
 		});
 
 		it('should handle file read errors', async () => {
-			vi.mocked(readFile).mockRejectedValue(new Error('File not found'));
+			mockArchiveFileError(new Error('File not found'));
 
 			await expect(importService.readEntityFile('/test/missing.jsonl')).rejects.toThrow(
 				'File not found',
@@ -583,7 +521,7 @@ describe('ImportService', () => {
 
 			const mockEntities = [{ id: 1, name: 'Test User' }];
 			const mockContent = JSON.stringify(mockEntities[0]);
-			vi.mocked(readFile).mockResolvedValue(mockContent);
+			mockArchiveFile(mockContent);
 
 			await importService.importEntitiesFromFiles(
 				'/test/input',
@@ -592,7 +530,11 @@ describe('ImportService', () => {
 				importMetadata.entityFiles,
 			);
 
-			expect(readFile).toHaveBeenCalledWith('/test/input/user.jsonl', 'utf8');
+			expect(mockDataSource.driver.escapeQueryWithParameters).toHaveBeenCalledWith(
+				expect.any(String),
+				{ id: 1, name: 'Test User' },
+				{},
+			);
 			expect(mockEntityManager.query).toHaveBeenCalledWith('INSERT COMMAND', { data: 'data' });
 		});
 
@@ -609,7 +551,7 @@ describe('ImportService', () => {
 				importMetadata.entityFiles,
 			);
 
-			expect(readFile).not.toHaveBeenCalled();
+			expect(mockEntityManager.query).not.toHaveBeenCalled();
 			expect(mockEntityManager.insert).not.toHaveBeenCalled();
 		});
 
@@ -626,7 +568,7 @@ describe('ImportService', () => {
 				importMetadata.entityFiles,
 			);
 
-			expect(readFile).not.toHaveBeenCalled();
+			expect(mockEntityManager.query).not.toHaveBeenCalled();
 			expect(mockEntityManager.insert).not.toHaveBeenCalled();
 		});
 
@@ -639,7 +581,7 @@ describe('ImportService', () => {
 			};
 
 			const mockContent = '';
-			vi.mocked(readFile).mockResolvedValue(mockContent);
+			mockArchiveFile(mockContent);
 
 			await importService.importEntitiesFromFiles(
 				'/test/input',
@@ -648,7 +590,7 @@ describe('ImportService', () => {
 				importMetadata.entityFiles,
 			);
 
-			expect(readFile).toHaveBeenCalledWith('/test/input/user.jsonl', 'utf8');
+			expect(mockEntityManager.query).not.toHaveBeenCalled();
 			expect(mockEntityManager.insert).not.toHaveBeenCalled();
 		});
 
@@ -666,7 +608,7 @@ describe('ImportService', () => {
 
 			const mockEntities = [{ id: 1, name: 'Test User' }];
 			const mockContent = JSON.stringify(mockEntities[0]);
-			vi.mocked(readFile).mockResolvedValue(mockContent);
+			mockArchiveFile(mockContent);
 
 			await importService.importEntitiesFromFiles(
 				'/test/input',
@@ -680,7 +622,11 @@ describe('ImportService', () => {
 				'{"id":1,"name":"Test User"}',
 				'custom-encryption-key',
 			);
-			expect(readFile).toHaveBeenCalledWith('/test/input/user.jsonl', 'utf8');
+			expect(mockDataSource.driver.escapeQueryWithParameters).toHaveBeenCalledWith(
+				expect.any(String),
+				{ id: 1, name: 'Test User' },
+				{},
+			);
 			expect(mockEntityManager.query).toHaveBeenCalledWith('INSERT COMMAND', { data: 'data' });
 		});
 	});
@@ -933,6 +879,33 @@ describe('ImportService', () => {
 
 			await expect(importService.validateMigrations('/test/input')).resolves.not.toThrow();
 		});
+
+		it('should reject a 2.49.0 archive before any insert', async () => {
+			// 2.48 and 2.49 wrote the `agent_files` rows to a file named after the entity class of that
+			// time. The class `KnowledgeFile` now maps `knowledge_file`, so only this check keeps them out.
+			// The last migration of 2.49.0 against the migration of the collection tables.
+			const migrationsContent =
+				'{"id":"1","timestamp":"1794826383663","name":"AddAgentFolderPlacement1794826383663"}';
+			const dbMigrations = [
+				{
+					id: '2',
+					timestamp: '1795076463180',
+					name: 'CreateKnowledgeCollectionTables1795076463180',
+				},
+			];
+
+			const { existsSync } = await import('fs');
+			vi.mocked(existsSync).mockReturnValueOnce(true);
+			vi.mocked(readFile).mockResolvedValue(migrationsContent);
+			vi.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
+
+			await expect(importService.importEntities('/test/input', false)).rejects.toThrow(
+				'Migration timestamp mismatch',
+			);
+
+			expect(mockDataSource.transaction).not.toHaveBeenCalled();
+			expect(mockEntityManager.query).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('normalizeEntityJsonColumns', () => {
@@ -1044,7 +1017,7 @@ describe('ImportService', () => {
 
 			// SQLite-origin: nodes is a serialised string, not an object
 			const sqliteEntity = { id: '1', nodes: '[{"id":"abc"}]' };
-			vi.mocked(readFile).mockResolvedValue(JSON.stringify(sqliteEntity));
+			mockArchiveFile(JSON.stringify(sqliteEntity));
 
 			const capturedParams: Array<Record<string, unknown>> = [];
 			mockDataSource.driver.escapeQueryWithParameters = vi
@@ -1081,7 +1054,7 @@ describe('ImportService', () => {
 
 			// Postgres-origin: nodes is a parsed object in the JSONL
 			const postgresEntity = { id: '1', nodes: [{ id: 'abc' }] };
-			vi.mocked(readFile).mockResolvedValue(JSON.stringify(postgresEntity));
+			mockArchiveFile(JSON.stringify(postgresEntity));
 
 			const capturedParams: Array<Record<string, unknown>> = [];
 			mockDataSource.driver.escapeQueryWithParameters = vi
@@ -1261,7 +1234,7 @@ describe('ImportService', () => {
 					updatedAt: '2024-01-01 12:00:00',
 					flag: 0,
 				};
-				vi.mocked(readFile).mockResolvedValue(JSON.stringify(row));
+				mockArchiveFile(JSON.stringify(row));
 
 				await importService.recreateDataTableUserTablesFromRegistry(mockEntityManager, {
 					abc: ['/test/input/data_table_user_abc.jsonl'],
@@ -1308,7 +1281,7 @@ describe('ImportService', () => {
 					.mockResolvedValueOnce([{ column_name: 'id' }]) // information_schema lookup
 					.mockResolvedValue(undefined);
 
-				vi.mocked(readFile).mockResolvedValue(
+				mockArchiveFile(
 					JSON.stringify({
 						id: 5,
 						createdAt: '2024-01-01T00:00:00.000Z',

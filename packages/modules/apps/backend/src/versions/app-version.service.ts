@@ -38,6 +38,7 @@ export class AppVersionService {
 		files: AppFiles,
 		label: string | null = null,
 		bindings?: AppBinding[],
+		{ isScaffold = false }: { isScaffold?: boolean } = {},
 	): Promise<AppVersion> {
 		const app = await this.requireApp(projectId, appId);
 		this.checkDraft(app.draftVersionId, expectedDraftVersionId);
@@ -50,6 +51,7 @@ export class AppVersionService {
 				expectedDraftVersionId,
 				label,
 				bindings: bindings ?? (await this.draftBindings(expectedDraftVersionId)),
+				isScaffold,
 			},
 			files,
 		);
@@ -164,7 +166,14 @@ export class AppVersionService {
 			files,
 			version.label,
 			version.bindings,
+			{ isScaffold: version.isScaffold },
 		);
+	}
+
+	/** Whether the version holds the empty scaffold. False when the version does not exist. */
+	async isScaffold(versionId: string | null): Promise<boolean> {
+		if (versionId === null) return false;
+		return (await this.versions.findVersionById(versionId))?.isScaffold ?? false;
 	}
 
 	async setLabel(

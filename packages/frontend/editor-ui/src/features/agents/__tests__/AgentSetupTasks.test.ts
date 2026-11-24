@@ -163,7 +163,9 @@ describe('AgentSetupTasks', () => {
 
 		expect(taskItems).toHaveLength(2);
 		expect(taskItems[0].text()).toContain('agents.builder.setupTasks.addInstructions');
+		expect(taskItems[0].attributes('data-attr')).toBe('agent-setup-task-add-instructions');
 		expect(taskItems[1].text()).toContain('agents.builder.setupTasks.chooseModel');
+		expect(taskItems[1].attributes('data-attr')).toBe('agent-setup-task-choose-model');
 		expect(taskItems[1].attributes('tabindex')).toBeUndefined();
 		expect(taskItems[1].attributes('role')).toBeUndefined();
 		expect(taskItems[1].attributes('data-selected')).toBe('false');

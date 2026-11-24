@@ -293,6 +293,7 @@ also emit `tool-error` if its resume path throws.
 | `workflowId` | string | Workflow being set up (for `setup_workflow`) |
 | `projectId` | string | Scopes actions to a project (e.g., credential creation) |
 | `domainAccess` | `{url, host}` | Renders domain-access approval UI instead of generic confirm |
+| `askReason` | `{kind: 'judge', text}` \| `{kind: 'always-ask' \| 'too-long' \| 'judge-failed'}` | Why Auto approval mode showed the card. Absent in Manual mode |
 
 ### `auto-approval`
 
@@ -309,7 +310,7 @@ is `rule`. The reducer folds the fact onto the tool call as
 ```
 
 An approval that Auto mode sends to the user produces a normal
-`confirmation-request`.
+`confirmation-request` that carries `askReason`.
 
 ### `tasks-update`
 

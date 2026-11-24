@@ -17,7 +17,7 @@ export class Netlify implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Netlify',
 		name: 'netlify',
-		icon: 'file:netlify.svg',
+		icon: { light: 'file:netlify.svg', dark: 'file:netlify.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
