@@ -208,6 +208,23 @@ export function plannedCredentialUpdates(
 }
 
 /**
+ * Every destination credential that the import saves: the planned updates of the conflict policy
+ * and the selected credentials that it updates under any policy. One destination keeps one group,
+ * so a check that reads the group sees every source credential and consumer that reaches it.
+ */
+export function plannedCredentialSaves(
+	policy: CredentialConflictPolicy,
+	plans: Array<Pick<CredentialImportPlan, 'updates' | 'selected'>>,
+): Map<string, CredentialUpdateCandidate[]> {
+	return groupByTarget([
+		...(policy === CredentialConflictPolicy.Overwrite
+			? plans.flatMap(({ updates }) => updates)
+			: []),
+		...plans.flatMap(({ selected }) => selected.updates),
+	]);
+}
+
+/**
  * One issue for each destination credential in the update scope that the user cannot update.
  * Takes every scope at once, like {@link credentialConflicts}.
  */

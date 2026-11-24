@@ -9,7 +9,7 @@ import type { AgentImporter } from '../entities/agent/agent-importer';
 import {
 	credentialConflicts,
 	forbiddenCredentialUpdates,
-	plannedCredentialUpdates,
+	plannedCredentialSaves,
 } from '../entities/credential/credential-conflict-policy';
 import {
 	requiredAgentScopes,
@@ -27,7 +27,6 @@ import type {
 	CredentialBindingRequest,
 	CredentialImportPlan,
 	CredentialResolutionFailure,
-	CredentialUpdateCandidate,
 } from '../entities/credential/credential.types';
 import {
 	columnIdConflictError,
@@ -349,13 +348,7 @@ export class ImportOrchestrator {
 			}
 			issues.push(
 				...(await this.credentialSavePolicyGate.refusedUpdates(
-					// A selected update is a save like any other update, so the policy gate sees it too.
-					new Map([
-						...plannedCredentialUpdates(credentialRequest.conflictPolicy, credentialPlans),
-						...credentialPlans
-							.flatMap(({ selected }) => selected.updates)
-							.map((update): [string, CredentialUpdateCandidate[]] => [update.targetId, [update]]),
-					]),
+					plannedCredentialSaves(credentialRequest.conflictPolicy, credentialPlans),
 					contentImportTransport(importSource),
 					{ kind: 'user', user: context.user },
 					mode,
