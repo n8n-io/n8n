@@ -1,18 +1,18 @@
 <script lang="ts" setup>
+import { N8nMarkdown } from '@n8n/design-system';
+
 defineProps<{
 	text: string;
 }>();
 </script>
 
 <template>
-	<pre :class="$style.text" v-text="text" />
+	<N8nMarkdown :class="$style.text" :content="text" />
 </template>
 
 <style module>
 .text {
-	white-space: pre-wrap;
-	margin: 0;
-	font-family: var(--font-family);
-	font-size: var(--font-size--sm);
+	--n8n-markdown--font-size--base: var(--font-size--xs);
+	padding: var(--spacing--sm);
 }
 </style>
