@@ -70,7 +70,10 @@ describe('CanvasNodeTrigger', () => {
 		it('should disable the execute workflow button', () => {
 			const { getByTestId } = renderWithCredentials(false);
 
-			expect(getByTestId('execute-workflow-button-Schedule Trigger')).toBeDisabled();
+			expect(getByTestId('execute-workflow-button-Schedule Trigger')).toHaveAttribute(
+				'aria-disabled',
+				'true',
+			);
 		});
 
 		it('should show the reason in a tooltip', async () => {
@@ -130,12 +133,18 @@ describe('CanvasNodeTrigger', () => {
 		};
 
 		it('should disable the execute button and not run the workflow', async () => {
+			const user = userEvent.setup();
 			const { getByTestId } = renderRestricted();
 			const button = getByTestId('execute-workflow-button-Trigger');
 
-			expect(button).toBeDisabled();
+			expect(button).toHaveAttribute('aria-disabled', 'true');
+			expect(button).not.toBeDisabled();
 
-			await userEvent.click(button);
+			await user.tab();
+			expect(button).toHaveFocus();
+			await waitFor(() => expect(getTooltip()).toHaveTextContent('Restricted on this instance'));
+			await user.keyboard('{Enter} ');
+			await user.click(button);
 
 			expect(runEntireWorkflow).not.toHaveBeenCalled();
 		});

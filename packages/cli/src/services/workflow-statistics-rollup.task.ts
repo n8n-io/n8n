@@ -8,7 +8,7 @@ import { WorkflowStatisticsRollupService } from './workflow-statistics-rollup.se
 const ROLLUP_INTERVAL_SECONDS = 5;
 
 /**
- * Folds the pending workflow statistics increments into the counters, and
+ * Folds pending workflow and agent statistics increments into their counters, and
  * fires the first-occurrence milestone events.
  */
 @SystemTask()
@@ -19,6 +19,7 @@ export class WorkflowStatisticsRollupTask implements SystemTask {
 
 	readonly target = clusterTarget({
 		scheduler: { retryOnFailure: true },
+		// oxlint-disable-next-line typescript/no-deprecated -- Keep timer scheduling while the durable scheduler is disabled.
 		leaderTimer: {
 			/** Increments pile up while no instance is the leader, so a backlog is waiting. */
 			runOnTakeover: true,

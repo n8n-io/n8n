@@ -15,14 +15,6 @@ const hubSkillTelemetryStateSchema = z.object({
 				.optional(),
 		}),
 	),
-	context: z.array(
-		z.object({
-			runtimeSkillId: z.string(),
-			skillId: z.string().optional(),
-			version: z.string().optional(),
-			kind: z.enum(['carried', 'refreshed', 'revoked', 'unavailable']),
-		}),
-	),
 });
 
 export type HubSkillTelemetryState = z.infer<typeof hubSkillTelemetryStateSchema>;

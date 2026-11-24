@@ -1,5 +1,6 @@
 import {
 	AGENT_BUILDER_TOOL_NAMES,
+	APP_TOOL_NAMES,
 	DATA_TABLE_TOOL_NAMES,
 	EXECUTION_TOOL_NAMES,
 	SHARED_BUILDER_TOOL_NAMES,
@@ -40,14 +41,7 @@ export const DOMAIN_TOOL_IDS = {
 	LIST_DATA_TABLES: SHARED_BUILDER_TOOL_NAMES.LIST_DATA_TABLES,
 	GET_DATA_TABLE_SCHEMA: SHARED_BUILDER_TOOL_NAMES.GET_DATA_TABLE_SCHEMA,
 	QUERY_DATA_TABLE: SHARED_BUILDER_TOOL_NAMES.QUERY_DATA_TABLE,
-	CREATE_DATA_TABLE: SHARED_BUILDER_TOOL_NAMES.CREATE_DATA_TABLE,
-	DELETE_DATA_TABLE: SHARED_BUILDER_TOOL_NAMES.DELETE_DATA_TABLE,
-	ADD_DATA_TABLE_COLUMN: SHARED_BUILDER_TOOL_NAMES.ADD_DATA_TABLE_COLUMN,
-	DELETE_DATA_TABLE_COLUMN: SHARED_BUILDER_TOOL_NAMES.DELETE_DATA_TABLE_COLUMN,
-	RENAME_DATA_TABLE_COLUMN: SHARED_BUILDER_TOOL_NAMES.RENAME_DATA_TABLE_COLUMN,
-	INSERT_DATA_TABLE_ROWS: SHARED_BUILDER_TOOL_NAMES.INSERT_DATA_TABLE_ROWS,
-	UPDATE_DATA_TABLE_ROWS: SHARED_BUILDER_TOOL_NAMES.UPDATE_DATA_TABLE_ROWS,
-	DELETE_DATA_TABLE_ROWS: SHARED_BUILDER_TOOL_NAMES.DELETE_DATA_TABLE_ROWS,
+	CHANGE_DATA_TABLES: SHARED_BUILDER_TOOL_NAMES.CHANGE_DATA_TABLES,
 	LIST_PROJECTS: INSTANCE_TOOL_NAME_BY_ACTION['list-projects'],
 	LIST_TAGS: INSTANCE_TOOL_NAME_BY_ACTION['list-tags'],
 	TAG_WORKFLOW: INSTANCE_TOOL_NAME_BY_ACTION['tag-workflow'],
@@ -68,13 +62,17 @@ export const DOMAIN_TOOL_IDS = {
 	LEAVE_ONBOARDING: 'leave-onboarding',
 	BUILD_WORKFLOW: WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW,
 	PARSE_FILE: 'parse-file',
+	IMPORT_FILES: 'import-files',
+	LIST_FILES: 'list-files',
+	SHARE_FILES: 'share-files',
+	VIEW_FILE: 'view-file',
 	AGENT_CONTEXT: 'agent-context',
 	MCP_SERVERS: 'mcp-servers',
 	CONVERSATION_HISTORY: 'conversation-history',
 	ACTIVITY: 'activity',
 	SAVE_USER_PREFERENCE: 'save_user_preference',
+	SEND_FEEDBACK: 'send_feedback',
 	SKILLS: 'skills',
-	APPS: 'apps',
 } as const;
 
 /** Trace-only chain-typed child run emitted by `workflow_builder_build_workflow` with the
@@ -94,13 +92,13 @@ export const ORCHESTRATION_TOOL_IDS = {
 	APPLY_WORKFLOW_CREDENTIALS: WORKFLOW_BUILDER_TOOL_NAMES.APPLY_WORKFLOW_CREDENTIALS,
 	SELECT_AGENT: AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT,
 	GET_SESSION: 'get-session',
+	START_CLOUD_BROWSER_TASK: 'start-cloud-browser-task',
 } as const;
 
 export const WORKSPACE_TOOL_IDS = {
 	WRITE_FILE: 'write-file',
 } as const;
 
-export const APPS_TOOL_ID = DOMAIN_TOOL_IDS.APPS;
 export const EVAL_CONFIG_TOOL_ID = DOMAIN_TOOL_IDS.EVAL_CONFIG;
 export const ASK_USER_TOOL_ID = DOMAIN_TOOL_IDS.ASK_USER;
 export const N8N_DOCS_TOOL_ID = DOMAIN_TOOL_IDS.N8N_DOCS;
@@ -133,6 +131,12 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	// Deferring it would route the user's "let me out" through `call_tool`.
 	DOMAIN_TOOL_IDS.LEAVE_ONBOARDING,
 	DOMAIN_TOOL_IDS.PARSE_FILE,
+	// Registered only with stored files and a sandbox. The sandbox prompt section names it.
+	DOMAIN_TOOL_IDS.IMPORT_FILES,
+	// Registered only with the sandbox files feature. The sandbox prompt section names it.
+	DOMAIN_TOOL_IDS.LIST_FILES,
+	DOMAIN_TOOL_IDS.SHARE_FILES,
+	DOMAIN_TOOL_IDS.VIEW_FILE,
 	DOMAIN_TOOL_IDS.RESEARCH,
 	// Paired with RESEARCH on purpose: the research tool tells the agent to prefer
 	// n8n's own docs for n8n questions, but deferring n8n-docs put that route behind
@@ -155,6 +159,9 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	// can react, which is exactly the moment it does not. Registered only when the
 	// preferences service is wired, so an instance without the feature pays nothing.
 	DOMAIN_TOOL_IDS.SAVE_USER_PREFERENCE,
+	// The agent reaches for this at the moment it is stuck. Behind `find_tools`, it
+	// would have to know the tool exists first, so it would not report the problem.
+	DOMAIN_TOOL_IDS.SEND_FEEDBACK,
 	'web-search',
 	'fetch-url',
 	DOMAIN_TOOL_IDS.SKILLS,
@@ -191,6 +198,7 @@ const TOOL_GROUP_BY_NAME = new Map<string, string>([
 		name,
 		'instance',
 	]),
+	...APP_TOOL_NAMES.map((name): [string, string] => [name, 'apps']),
 ]);
 
 /** One line on what each n8n tool group holds, shown next to its tool names. */
@@ -203,6 +211,7 @@ const TOOL_GROUP_DESCRIPTIONS: Readonly<Record<string, string>> = {
 	agents: 'build and configure standalone n8n Agents',
 	instance:
 		'list projects and tags, manage folders, tag workflows and clean up test executions in this n8n instance',
+	apps: 'create, open, change, save and bind n8n Apps',
 };
 
 /** Returns the description of a tool group, or undefined when it has none. */

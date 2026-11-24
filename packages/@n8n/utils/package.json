@@ -1,7 +1,7 @@
 {
   "name": "@n8n/utils",
   "type": "module",
-  "version": "1.55.0",
+  "version": "1.57.0",
   "files": [
     "dist"
   ],

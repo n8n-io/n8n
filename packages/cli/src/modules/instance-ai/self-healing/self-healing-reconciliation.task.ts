@@ -13,6 +13,7 @@ export class SelfHealingReconciliationTask implements SystemTask {
 
 	readonly target = clusterTarget({
 		scheduler: { retryOnFailure: true },
+		// oxlint-disable-next-line typescript/no-deprecated -- Keep timer scheduling while the durable scheduler is disabled.
 		leaderTimer: { runOnTakeover: true, retryDelaySeconds: 30 },
 	});
 

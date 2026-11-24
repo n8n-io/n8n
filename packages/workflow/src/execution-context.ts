@@ -73,11 +73,16 @@ export interface OAuthResourceGrant {
 	audiences: string[];
 	/** Workflow the holder must keep `workflow:execute` on. Absent if none is required. */
 	executeAccessWorkflowId?: string;
+	/** Project in which the holder must keep all `scopes`. Absent if none is required. */
+	projectAccess?: { projectId: string; scopes: string[] };
 }
 
 export const OAuthResourceGrantSchema = z.object({
 	audiences: z.array(z.string()).min(1),
 	executeAccessWorkflowId: z.string().optional(),
+	projectAccess: z
+		.object({ projectId: z.string().min(1), scopes: z.array(z.string()).min(1) })
+		.optional(),
 }) satisfies ZodType<OAuthResourceGrant>;
 
 const CredentialContextSchemaV1 = z.object({

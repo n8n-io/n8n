@@ -664,6 +664,52 @@ describe('TestWebhooks', () => {
 		);
 	});
 
+	describe('needsTriggerEvent()', () => {
+		const args: Parameters<typeof testWebhooks.needsTriggerEvent>[0] = {
+			workflowEntity,
+			additionalData: mock<IWorkflowExecuteAdditionalData>(),
+		};
+
+		const triggerWebhook = (restartWebhook: boolean) =>
+			mock<IWebhookData>({
+				node: 'Webhook',
+				httpMethod,
+				path,
+				workflowId: workflowEntity.id,
+				userId,
+				webhookDescription: { restartWebhook, name: 'default' } as IWebhookDescription,
+			});
+
+		test('returns true for a workflow with a webhook trigger', async () => {
+			const workflow = mock<Workflow>({ expression: mock<WorkflowExpression>() });
+			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([triggerWebhook(false)]);
+
+			await expect(testWebhooks.needsTriggerEvent(args)).resolves.toBe(true);
+		});
+
+		test('returns false for a workflow with no webhook trigger', async () => {
+			const workflow = mock<Workflow>({ expression: mock<WorkflowExpression>() });
+			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([]);
+
+			await expect(testWebhooks.needsTriggerEvent(args)).resolves.toBe(false);
+		});
+
+		test('returns false if a triggerToStartFrom with triggerData is given', async () => {
+			const workflow = mock<Workflow>({ expression: mock<WorkflowExpression>() });
+			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([triggerWebhook(false)]);
+
+			const result = await testWebhooks.needsTriggerEvent({
+				...args,
+				triggerToStartFrom: { name: 'Webhook', data: mock<ITaskData>() },
+			});
+
+			expect(result).toBe(false);
+		});
+	});
+
 	describe('executeWebhook()', () => {
 		test('if webhook is not registered, should throw', async () => {
 			vi.spyOn(testWebhooks, 'getActiveWebhook').mockResolvedValue(webhook);

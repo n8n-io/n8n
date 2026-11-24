@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { i18nInstance, i18nVersion } from '@n8n/i18n';
-import type { InstanceAiApprovalDetails } from '@n8n/api-types';
-import { formatApprovalDetails } from '../approvalDetails';
+import {
+	CHANGE_DATA_TABLES_TOOL_NAME,
+	DATA_TABLE_TOOL_NAME_BY_ACTION,
+	type InstanceAiApprovalDetails,
+	type InstanceAiDataTableChangeDetails,
+} from '@n8n/api-types';
+import { formatApprovalDetails, formatApprovalTitle } from '../approvalDetails';
 
 const originalLocale = i18nInstance.global.locale.value;
 afterEach(() => {
@@ -20,6 +25,289 @@ const rows: InstanceAiApprovalDetails = {
 };
 
 describe('approval details', () => {
+	describe('publish agent', () => {
+		const details = (
+			overrides: Partial<Extract<InstanceAiApprovalDetails, { action: 'publish-agent' }>> = {},
+		): InstanceAiApprovalDetails => ({
+			action: 'publish-agent',
+			liveAvailability: 'unpublished',
+			selectedVersion: false,
+			sendTargets: [
+				{ kind: 'channel', name: 'Slack' },
+				{ kind: 'task', name: 'Daily digest' },
+				{ kind: 'mcp-server', name: 'Linear' },
+				{ kind: 'tools', count: 3 },
+			],
+			...overrides,
+		});
+
+		it('lists what might get sent for real, as the panel does', () => {
+			expect(formatApprovalDetails(details())).toBe(
+				[
+					'Publishes your latest draft. Live uses the published agent.',
+					[
+						'These might get sent for real:',
+						'• Replies in Slack',
+						'• Runs the scheduled task "Daily digest"',
+						'• Calls tools from Linear',
+						'• Uses its 3 tools',
+					].join('\n'),
+				].join('\n\n'),
+			);
+		});
+
+		it('says that anything the agent sends is real when the targets are not known', () => {
+			expect(
+				formatApprovalDetails(
+					details({ liveAvailability: 'changed', selectedVersion: true, sendTargets: [] }),
+				),
+			).toBe(
+				[
+					'Publishes the selected version. Live uses the published agent.',
+					'It replaces the version that is live now.',
+					'Anything the agent sends will be real.',
+				].join('\n\n'),
+			);
+		});
+
+		it('says why a card replaces an earlier one', () => {
+			expect(formatApprovalDetails(details({ changedSinceAsked: true }))).toMatch(
+				/^The agent changed since you were asked\. Check what goes live again\.\n\n/,
+			);
+		});
+
+		it('counts the targets left out by the limit', () => {
+			const output = formatApprovalDetails(
+				details({
+					sendTargets: [{ kind: 'tools', count: 1 }],
+					moreSendTargets: 2,
+				}),
+			);
+			expect(output).toContain('• And 2 more\n• Uses its 1 tool');
+		});
+
+		it.each([
+			['unpublished', 'Publish Support agent and go live?'],
+			['changed', 'Republish Support agent and go live?'],
+		] as const)('titles a %s agent as the panel does', (liveAvailability, title) => {
+			expect(
+				formatApprovalTitle({
+					toolName: 'agent_builder_publish_agent',
+					resourceName: 'Support agent',
+					approvalDetails: details({ liveAvailability }),
+				}),
+			).toBe(title);
+		});
+
+		it('names the agent generically without a resource name', () => {
+			expect(
+				formatApprovalTitle({
+					toolName: 'agent_builder_publish_agent',
+					approvalDetails: details(),
+				}),
+			).toBe('Publish this agent and go live?');
+		});
+	});
+
+	describe('data table changes', () => {
+		const addEmail = { action: 'add-column', column: 'email', columnType: 'string' } as const;
+		const renameNote = { action: 'rename-column', column: 'note', newName: 'comment' } as const;
+		const deleteTable = { action: 'delete-table' } as const;
+		const insertRow: Extract<InstanceAiApprovalDetails, { action: 'insert-rows' }> = {
+			action: 'insert-rows',
+			count: 2,
+			rows: [{ values: [{ column: 'email', value: '"a@example.com"' }], remainingColumns: 0 }],
+		};
+
+		it('groups changes by table in first-seen order with one line per change', () => {
+			const output = formatApprovalDetails({
+				action: 'data-table-changes',
+				changes: [
+					{ tableName: 'Leads', tableKey: 'existing:leads', details: addEmail },
+					{ tableName: 'Orders', tableKey: 'existing:orders', details: deleteTable },
+					{ tableName: 'Leads', tableKey: 'existing:leads', details: renameNote },
+				],
+			});
+			const blocks = output.split('\n\n').map((block) => block.split('\n'));
+			expect(blocks).toHaveLength(2);
+			const [leads, orders] = blocks;
+			// A header that names the table, then the text of each single change.
+			expect(leads).toHaveLength(3);
+			expect(leads[0]).toContain('Leads');
+			expect(leads.slice(1)).toEqual([
+				formatApprovalDetails(addEmail),
+				formatApprovalDetails(renameNote),
+			]);
+			expect(orders).toHaveLength(2);
+			expect(orders[0]).toContain('Orders');
+			expect(orders[1]).toBe(formatApprovalDetails(deleteTable));
+		});
+
+		it('keeps two tables with the same name apart', () => {
+			const output = formatApprovalDetails({
+				action: 'data-table-changes',
+				changes: [
+					{ tableName: 'Leads', tableKey: 'existing:dt-1', details: addEmail },
+					{ tableName: 'Leads', tableKey: 'existing:dt-2', details: renameNote },
+				],
+			});
+			const blocks = output.split('\n\n').map((block) => block.split('\n'));
+			expect(blocks).toHaveLength(2);
+			expect(blocks.map(([header]) => header)).toEqual([
+				expect.stringContaining('Leads'),
+				expect.stringContaining('Leads'),
+			]);
+			expect(blocks.map((block) => block.slice(1))).toEqual([
+				[formatApprovalDetails(addEmail)],
+				[formatApprovalDetails(renameNote)],
+			]);
+		});
+
+		it('lists the changes of one table without a table header', () => {
+			const output = formatApprovalDetails({
+				action: 'data-table-changes',
+				changes: [
+					{ tableName: 'Leads', tableKey: 'existing:leads', details: addEmail },
+					{ tableName: 'Leads', tableKey: 'existing:leads', details: renameNote },
+				],
+			});
+			expect(output.split('\n')).toEqual([
+				formatApprovalDetails(addEmail),
+				formatApprovalDetails(renameNote),
+			]);
+		});
+
+		it('keeps row previews of a change inside its table block', () => {
+			const output = formatApprovalDetails({
+				action: 'data-table-changes',
+				changes: [
+					{ tableName: 'Leads', tableKey: 'existing:leads', details: insertRow },
+					{ tableName: 'Orders', tableKey: 'existing:orders', details: deleteTable },
+				],
+			});
+			const blocks = output.split('\n\n').map((block) => block.split('\n'));
+			expect(blocks).toHaveLength(2);
+			expect(blocks[0].slice(1)).toEqual(formatApprovalDetails(insertRow).split('\n\n'));
+		});
+
+		it('describes a table creation with each column and its type', () => {
+			const output = formatApprovalDetails({
+				action: 'data-table-changes',
+				changes: [
+					{
+						tableName: 'Leads',
+						tableKey: 'created:Leads',
+						details: {
+							action: 'create-table',
+							columns: [
+								{ name: 'email', columnType: 'string' },
+								{ name: 'score', columnType: 'number' },
+							],
+						},
+					},
+				],
+			});
+			expect(output.split('\n')).toHaveLength(1);
+			expect(output).toContain('email');
+			expect(output).toContain('score');
+			expect(output).not.toContain('instanceAi.');
+		});
+	});
+
+	describe('approval title', () => {
+		const batch = (...tableNames: string[]): InstanceAiApprovalDetails => ({
+			action: 'data-table-changes',
+			changes: tableNames.map((tableName) => ({
+				tableName,
+				tableKey: `existing:${tableName.toLowerCase()}`,
+				details: { action: 'delete-table' },
+			})),
+		});
+
+		it('names the table when a batch changes one table', () => {
+			const title = formatApprovalTitle({
+				toolName: CHANGE_DATA_TABLES_TOOL_NAME,
+				resourceName: 'Leads',
+				approvalDetails: batch('Leads', 'Leads'),
+			});
+			expect(title).toContain('Leads');
+			expect(title).not.toContain('instanceAi.');
+		});
+
+		const singleChangeCases: Array<
+			[string, keyof typeof DATA_TABLE_TOOL_NAME_BY_ACTION, InstanceAiDataTableChangeDetails]
+		> = [
+			['create-table', 'create', { action: 'create-table', columns: [] }],
+			['delete-table', 'delete', { action: 'delete-table' }],
+			['add-column', 'add-column', { action: 'add-column', column: 'x', columnType: 'string' }],
+			['delete-column', 'delete-column', { action: 'delete-column', column: 'x' }],
+			['rename-column', 'rename-column', { action: 'rename-column', column: 'x', newName: 'y' }],
+			['insert-rows', 'insert-rows', { action: 'insert-rows', count: 1, rows: [] }],
+			[
+				'update-rows',
+				'update-rows',
+				{
+					action: 'update-rows',
+					changes: { values: [], remainingColumns: 0 },
+					filter: { type: 'and', filters: [] },
+				},
+			],
+			[
+				'delete-rows',
+				'delete-rows',
+				{ action: 'delete-rows', filter: { type: 'and', filters: [] } },
+			],
+		];
+
+		it.each(singleChangeCases)(
+			'titles a single %s change like the former single-action tool',
+			(_, toolAction, details) => {
+				const title = formatApprovalTitle({
+					toolName: CHANGE_DATA_TABLES_TOOL_NAME,
+					resourceName: 'Suppliers',
+					approvalDetails: {
+						action: 'data-table-changes',
+						changes: [{ tableName: 'Suppliers', tableKey: 'existing:dt-1', details }],
+					},
+				});
+				const formerTitle = formatApprovalTitle({
+					toolName: DATA_TABLE_TOOL_NAME_BY_ACTION[toolAction],
+					resourceName: 'Suppliers',
+				});
+				expect(title).toBe(formerTitle);
+				expect(title).not.toContain('instanceAi.');
+			},
+		);
+
+		it('counts two tables with the same name as several tables', () => {
+			const title = formatApprovalTitle({
+				toolName: CHANGE_DATA_TABLES_TOOL_NAME,
+				resourceName: '2 tables',
+				approvalDetails: {
+					action: 'data-table-changes',
+					changes: ['dt-1', 'dt-2'].map((id) => ({
+						tableName: 'Leads',
+						tableKey: `existing:${id}`,
+						details: { action: 'delete-table' },
+					})),
+				},
+			});
+			expect(title).toContain('2');
+			expect(title).not.toContain('Leads');
+		});
+
+		it('counts the tables when a batch changes several tables', () => {
+			const title = formatApprovalTitle({
+				toolName: CHANGE_DATA_TABLES_TOOL_NAME,
+				resourceName: '3 tables',
+				approvalDetails: batch('Leads', 'Orders', 'Leads', 'Users'),
+			});
+			expect(title).toContain('3');
+			expect(title).not.toContain('Leads');
+			expect(title).not.toContain('instanceAi.');
+		});
+	});
+
 	it('renders row values, empty values, omitted counts, and paragraph breaks', () => {
 		expect(formatApprovalDetails(rows)).toBe(
 			'Add 5 rows\n\nRow 1: set "email" to "alice.test@example.com", 1 more column\n\nRow 2: set "status" to no value, 2 more columns\n\nRow 3: no column values supplied\n\n2 more rows',

@@ -2351,6 +2351,92 @@ describe('WorkflowExecute', () => {
 			]);
 		});
 
+		test('should store plain input data in the error item of a Code node', () => {
+			const codeNode: INode = { ...testNode, name: 'Code', type: 'n8n-nodes-base.code' };
+			const codeWorkflow = new Workflow({
+				id: 'test',
+				nodes: [codeNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+			const inputItem = { json: { headers: { host: 'localhost' }, tags: ['a'] } };
+			const codeExecutionData = {
+				...executionData,
+				node: codeWorkflow.nodes.Code,
+				data: { main: [[inputItem]] },
+			};
+			workflowExecute = new WorkflowExecute(
+				mock<IWorkflowExecuteAdditionalData>({
+					webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+					formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+				}),
+				'manual',
+				createRunExecutionData({
+					resultData: {
+						runData: {
+							previousNode: [
+								{
+									data: { main: [[inputItem]] },
+									source: [],
+									startTime: 0,
+									executionIndex: 0,
+									executionTime: 0,
+								},
+							],
+						},
+					},
+				}),
+			);
+			const nodeSuccessData: INodeExecutionData[][] = [
+				[{ json: { error: 'Test error' }, pairedItem: { item: 0, input: 0 } }],
+			];
+
+			workflowExecute.handleNodeErrorOutput(codeWorkflow, codeExecutionData, nodeSuccessData, 0);
+
+			const [errorItem] = nodeSuccessData[1];
+			expect(structuredClone(errorItem)).toEqual({
+				json: { headers: { host: 'localhost' }, tags: ['a'], error: 'Test error' },
+				pairedItem: { item: 0, input: 0 },
+			});
+		});
+
+		test('should keep the input data of a node without proxies unchanged in the error item', () => {
+			const inputJson: IDataObject = JSON.parse('{"constructor":"a","prototype":"b","list":[1]}');
+			(inputJson.list as unknown[]).push(inputJson.list);
+			workflowExecute = new WorkflowExecute(
+				mock<IWorkflowExecuteAdditionalData>({
+					webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+					formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+				}),
+				'manual',
+				createRunExecutionData({
+					resultData: {
+						runData: {
+							previousNode: [
+								{
+									data: { main: [[{ json: inputJson }]] },
+									source: [],
+									startTime: 0,
+									executionIndex: 0,
+									executionTime: 0,
+								},
+							],
+						},
+					},
+				}),
+			);
+			const nodeSuccessData: INodeExecutionData[][] = [
+				[{ json: { error: 'Test error' }, pairedItem: { item: 0, input: 0 } }],
+			];
+
+			workflowExecute.handleNodeErrorOutput(workflow, executionData, nodeSuccessData, 0);
+
+			const [errorItem] = nodeSuccessData[1];
+			expect(Object.keys(errorItem.json)).toEqual(['constructor', 'prototype', 'list', 'error']);
+			expect(errorItem.json.list).toBe(inputJson.list);
+		});
+
 		test('should route an error item undecorated when its source points at a missing output', () => {
 			const mismatchedSource = {
 				...executionData,
@@ -2597,6 +2683,16 @@ describe('WorkflowExecute', () => {
 		}
 
 		const lastRun = (result: IRun) => result.data.resultData.runData[SUB_NODE].at(-1)!;
+
+		it('runs a waiting node again when the resume mode requires execution', async () => {
+			// The waiting node must execute again instead of passing its input through.
+			const { result } = await runResumedSubError(
+				{},
+				{ resumeError: undefined, resumeMode: 'reexecute' },
+			);
+			expect(result.status).toBe('success');
+			expect(lastRun(result).data?.main?.[0]?.[0]?.json).toEqual({ ran: true });
+		});
 
 		it('should halt the parent execution when onError = stopWorkflow', async () => {
 			const { result } = await runResumedSubError({ onError: 'stopWorkflow' });

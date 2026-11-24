@@ -15,6 +15,7 @@ export class LemlistTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Lemlist Trigger',
 		name: 'lemlistTrigger',
+		schemaPath: 'Lemlist',
 		icon: 'file:lemlist.svg',
 		group: ['trigger'],
 		version: 1,

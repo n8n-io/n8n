@@ -408,6 +408,80 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		expect(items[0]).toMatchObject({ credentialType: 'notionApi' });
 	});
 
+	describe('workflow drafts', () => {
+		const filePath = 'src/workflows/demo.workflow.ts';
+		const draftEvent = (revision: number) =>
+			makeSSEEvent({
+				type: 'workflow-draft',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: {
+					filePath,
+					revision,
+					workflow: { name: `Draft ${revision}`, nodes: [], connections: {} },
+				},
+			});
+		const buildResult = () =>
+			makeSSEEvent({
+				type: 'tool-result',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: {
+					toolCallId: 'tc-build',
+					result: { success: true, filePath, workflowId: 'wf-1' },
+				},
+			});
+
+		test('keeps the latest draft of each source file', () => {
+			capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
+			capturedOnMessage!(draftEvent(2));
+			capturedOnMessage!(draftEvent(1));
+
+			expect(activeRuntime(registry).workflowDrafts[filePath].workflow.name).toBe('Draft 2');
+		});
+
+		test('marks a draft saved when the build saves its file', () => {
+			capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
+			capturedOnMessage!(draftEvent(1));
+			capturedOnMessage!(buildResult());
+
+			expect(activeRuntime(registry).workflowDrafts[filePath].savedWorkflowId).toBe('wf-1');
+		});
+
+		test('keeps the run that made a draft', () => {
+			capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
+			capturedOnMessage!(draftEvent(1));
+
+			expect(activeRuntime(registry).workflowDrafts[filePath].runId).toBe('run-1');
+		});
+
+		test('sets the validation issues on the draft they blocked', () => {
+			const issues = [{ code: 'SET_INVALID_ASSIGNMENT', message: 'Bad', nodeName: 'Set' }];
+			capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
+			capturedOnMessage!(draftEvent(1));
+			capturedOnMessage!(
+				makeSSEEvent({
+					type: 'workflow-draft-issues',
+					runId: 'run-1',
+					agentId: 'agent-root',
+					payload: { filePath, revision: 1, issues },
+				}),
+			);
+
+			expect(activeRuntime(registry).workflowDrafts[filePath].issues).toEqual(issues);
+		});
+
+		test('removes a saved draft once the saved workflow is on screen', () => {
+			capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
+			capturedOnMessage!(draftEvent(1));
+			capturedOnMessage!(buildResult());
+
+			activeRuntime(registry).dismissWorkflowDrafts('wf-1');
+
+			expect(activeRuntime(registry).workflowDrafts).toEqual({});
+		});
+	});
+
 	test('preferences-applied SSE events replace the applied payload, empty included', () => {
 		const runtime = activeRuntime(registry);
 		expect(runtime.appliedPreferences).toBeNull();
@@ -1320,7 +1394,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
-				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+				mention_counts: { total: 0, workflow: 0, node: 0, group: 0, agent: 0 },
 				attachment_count: 0,
 				selected_element_count: 0,
 				approval_mode: 'unavailable',
@@ -1337,7 +1411,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
-				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+				mention_counts: { total: 0, workflow: 0, node: 0, group: 0, agent: 0 },
 				attachment_count: 0,
 				selected_element_count: 0,
 				approval_mode: 'unavailable',
@@ -1418,7 +1492,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 					prefill_type: 'handoff_setup_panel_execute',
 					prefill_id: null,
 					prompt_modified: false,
-					mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+					mention_counts: { total: 0, workflow: 0, node: 0, group: 0, agent: 0 },
 					attachment_count: 0,
 					selected_element_count: 0,
 					approval_mode: 'unavailable',
@@ -1471,13 +1545,14 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				workflow: 1,
 				node: 1,
 				group: 1,
+				agent: 0,
 			},
 		});
 
 		expect(mockTelemetryTrack).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
 			expect.objectContaining({
-				mention_counts: { total: 3, workflow: 1, node: 1, group: 1 },
+				mention_counts: { total: 3, workflow: 1, node: 1, group: 1, agent: 0 },
 				attachment_count: 3,
 				selected_element_count: 1,
 			}),
@@ -1499,7 +1574,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				{ type: 'workflow', id: 'workflow-mentioned', name: 'Orders' },
 				{ type: 'workflow', id: 'workflow-handoff', name: 'Canvas' },
 			],
-			mentionCounts: { total: 1, workflow: 1, node: 0, group: 0 },
+			mentionCounts: { total: 1, workflow: 1, node: 0, group: 0, agent: 0 },
 			mentionedWorkflowIds: ['workflow-mentioned'],
 		});
 		await nextTick();
@@ -1516,7 +1591,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		const sent = await runtime.sendMessage('Look at this', {
 			authorship: USER_TYPED_MESSAGE,
 			attachments: [{ type: 'workflow', id: 'workflow-mentioned', name: 'Orders' }],
-			mentionCounts: { total: 1, workflow: 1, node: 0, group: 0 },
+			mentionCounts: { total: 1, workflow: 1, node: 0, group: 0, agent: 0 },
 			mentionedWorkflowIds: ['workflow-mentioned'],
 		});
 		await nextTick();
@@ -1548,7 +1623,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
-				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+				mention_counts: { total: 0, workflow: 0, node: 0, group: 0, agent: 0 },
 				attachment_count: 0,
 				selected_element_count: 0,
 				approval_mode: 'unavailable',
@@ -1610,7 +1685,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: null,
 				prefill_id: null,
 				prompt_modified: null,
-				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+				mention_counts: { total: 0, workflow: 0, node: 0, group: 0, agent: 0 },
 				attachment_count: 0,
 				selected_element_count: 0,
 				approval_mode: 'unavailable',
@@ -1647,7 +1722,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prefill_type: 'suggestion_catalog',
 				prefill_id: 'v4-engineering-data-management-1',
 				prompt_modified: true,
-				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+				mention_counts: { total: 0, workflow: 0, node: 0, group: 0, agent: 0 },
 				attachment_count: 0,
 				selected_element_count: 0,
 				approval_mode: 'unavailable',
@@ -1790,6 +1865,30 @@ describe('createThreadRuntime - SSE and hydration', () => {
 
 		expect(mockPostMessage.mock.calls[0]?.[8]).toEqual({
 			artifacts: [{ type: 'workflow', id: 'wf-2', name: 'Open' }],
+			activeId: 'wf-2',
+		});
+	});
+
+	test('sendMessage names the run that the user started in the preview of a tab', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		const runtime = activeRuntime(registry);
+		runtime.setOpenTabs([{ type: 'workflow', id: 'wf-2', name: 'Open' }]);
+		runtime.setActiveArtifactId('wf-2');
+		runtime.rememberManualExecution('wf-2', 'exec-1', undefined);
+
+		await runtime.sendMessage('Why is the output wrong?', { authorship: USER_TYPED_MESSAGE });
+
+		expect(mockPostMessage.mock.calls[0]?.[8]).toEqual({
+			artifacts: [{ type: 'workflow', id: 'wf-2', name: 'Open', executionId: 'exec-1' }],
+			activeId: 'wf-2',
+		});
+
+		// A second run replaces the first one.
+		runtime.rememberManualExecution('wf-2', 'exec-2', undefined);
+		await runtime.sendMessage('And now?', { authorship: USER_TYPED_MESSAGE });
+
+		expect(mockPostMessage.mock.calls[1]?.[8]).toEqual({
+			artifacts: [{ type: 'workflow', id: 'wf-2', name: 'Open', executionId: 'exec-2' }],
 			activeId: 'wf-2',
 		});
 	});
@@ -1941,7 +2040,7 @@ describe('createThreadRuntime - response timing telemetry', () => {
 					response_kind: 'completed',
 					action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 					tab_visible: false,
-					mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+					mention_counts: { total: 0, workflow: 0, node: 0, group: 0, agent: 0 },
 					attachment_count: 0,
 					selected_element_count: 0,
 				},
@@ -1957,7 +2056,7 @@ describe('createThreadRuntime - response timing telemetry', () => {
 					response_kind: 'completed',
 					action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 					tab_visible: false,
-					mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
+					mention_counts: { total: 0, workflow: 0, node: 0, group: 0, agent: 0 },
 					attachment_count: 0,
 					selected_element_count: 0,
 				},
@@ -1984,6 +2083,7 @@ describe('createThreadRuntime - response timing telemetry', () => {
 				workflow: 1,
 				node: 1,
 				group: 1,
+				agent: 0,
 			},
 		});
 		finishRun('run-with-context', 'completed');
@@ -1991,7 +2091,7 @@ describe('createThreadRuntime - response timing telemetry', () => {
 
 		expect(responseMetricCalls()[0][1]).toMatchObject({
 			run_id: 'run-with-context',
-			mention_counts: { total: 3, workflow: 1, node: 1, group: 1 },
+			mention_counts: { total: 3, workflow: 1, node: 1, group: 1, agent: 0 },
 			attachment_count: 3,
 			selected_element_count: 1,
 		});
@@ -3067,6 +3167,13 @@ describe('createThreadRuntime - session always-allow', () => {
 		expect(runtime.sessionAlwaysAllowKeys.size).toBe(0);
 	});
 
+	it('never offers or stores Always allow for publishing an agent', () => {
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		expect(runtime.canAlwaysAllow('agent_builder_publish_agent', {})).toBe(false);
+		runtime.addAlwaysAllowKey('agent_builder_publish_agent', {});
+		expect(runtime.sessionAlwaysAllowKeys.size).toBe(0);
+	});
+
 	it('reports canAlwaysAllow false for unscoped workflow edits', () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
 		expect(
@@ -3082,6 +3189,64 @@ describe('createThreadRuntime - session always-allow', () => {
 				workflowId: 'wf-1',
 			}),
 		).toBe(true);
+	});
+
+	describe('batch data table changes', () => {
+		const insertAndRename = {
+			changes: [
+				{ action: 'insert-rows', table: 'Leads' },
+				{ action: 'rename-column', table: 'Leads' },
+			],
+		};
+
+		it('auto-approves a batch when every action has a session grant', async () => {
+			const runtime = registry.getOrCreateRuntime(activeThreadId);
+			runtime.addAlwaysAllowKey('change_data_tables', insertAndRename);
+
+			pushPendingApproval(runtime, {
+				messageId: 'msg-batch-1',
+				requestId: 'req-batch-1',
+				toolName: 'change_data_tables',
+				args: { changes: [{ action: 'rename-column', table: 'Orders' }] },
+			});
+			await vi.waitFor(() => {
+				expect(runtime.resolvedConfirmationIds.get('req-batch-1')).toBe('approved');
+			});
+		});
+
+		it('keeps the card when one action of the batch has no session grant', async () => {
+			const runtime = registry.getOrCreateRuntime(activeThreadId);
+			runtime.addAlwaysAllowKey('change_data_tables', insertAndRename);
+
+			pushPendingApproval(runtime, {
+				messageId: 'msg-batch-2',
+				requestId: 'req-batch-2',
+				toolName: 'change_data_tables',
+				args: {
+					changes: [
+						{ action: 'insert-rows', table: 'Leads' },
+						{ action: 'add-column', table: 'Leads' },
+					],
+				},
+			});
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			expect(runtime.resolvedConfirmationIds.has('req-batch-2')).toBe(false);
+		});
+
+		it('keeps the card for a batch that gives no grant key', async () => {
+			const runtime = registry.getOrCreateRuntime(activeThreadId);
+			runtime.addAlwaysAllowKey('change_data_tables', insertAndRename);
+
+			pushPendingApproval(runtime, {
+				messageId: 'msg-batch-3',
+				requestId: 'req-batch-3',
+				toolName: 'change_data_tables',
+				args: { changes: [] },
+			});
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			expect(runtime.resolvedConfirmationIds.has('req-batch-3')).toBe(false);
+			expect(runtime.canAlwaysAllow('change_data_tables', { changes: [] })).toBe(false);
+		});
 	});
 
 	it('scopes executions run grants per workflow', async () => {
@@ -4000,5 +4165,72 @@ describe('threadTargetsAgent', () => {
 		expect(threadTargetsAgent({ instanceAiAgentBuilderTarget: { agentId: 'agent-1' } })).toBe(
 			false,
 		);
+	});
+});
+
+describe('createThreadRuntime - background agent confirmations', () => {
+	beforeEach(() => {
+		setupRuntimePinia();
+		activeThreadId = 'thread-background-agent';
+	});
+
+	it('attaches a confirmation to the background agent that raised it, even with hidden steps', () => {
+		const runtime = activeRuntime(createRuntimeRegistry());
+		runtime.messages = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				runId: 'run-1',
+				content: '',
+				reasoning: '',
+				isStreaming: false,
+				createdAt: '2026-01-01T00:00:00.000Z',
+				agentTree: {
+					agentId: 'agent-root',
+					role: 'orchestrator',
+					status: 'completed',
+					textContent: '',
+					reasoning: '',
+					toolCalls: [],
+					timeline: [],
+					children: [
+						{
+							agentId: 'agent-cloud-browser',
+							role: 'cloud-browser',
+							kind: 'cloud-browser',
+							status: 'active',
+							textContent: '',
+							reasoning: '',
+							children: [],
+							timeline: [],
+							toolCalls: [
+								{
+									toolCallId: 'tc-navigate',
+									toolName: 'browser_navigate',
+									args: { url: 'https://example.com' },
+									isLoading: true,
+									confirmation: {
+										requestId: 'req-navigate',
+										severity: 'warning',
+										message: 'browser_navigate: Browser: example.com',
+										inputType: 'resource-decision',
+										resourceDecision: {
+											toolGroup: 'browser',
+											kind: 'host',
+											resource: 'example.com',
+											description: 'Browser: example.com',
+											options: ['denyOnce', 'allowOnce', 'allowForSession'],
+										},
+									},
+								},
+							],
+						},
+					],
+				},
+			},
+		] as unknown as typeof runtime.messages;
+
+		expect(runtime.pendingConfirmations).toHaveLength(1);
+		expect(runtime.pendingConfirmations[0].agentNode.kind).toBe('cloud-browser');
 	});
 });

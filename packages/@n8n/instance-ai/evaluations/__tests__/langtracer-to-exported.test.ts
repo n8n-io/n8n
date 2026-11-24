@@ -395,7 +395,7 @@ describe('attach round-trip: write → export → reparse', () => {
 						id: agentId,
 						config: {
 							name: 'Notion research',
-							model: 'anthropic/claude-sonnet-4-5',
+							model: 'anthropic/claude-sonnet-5-5',
 							instructions: 'Research company notes.',
 						},
 					},

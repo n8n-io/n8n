@@ -10,6 +10,14 @@ export function buildMentionAttachment(
 	item: AssistantMentionItem,
 	index?: WorkflowArtifactIndex,
 ): AssistantMentionSelection | undefined {
+	if (item.kind === 'agent') {
+		return {
+			item,
+			attachment: { type: 'agent', id: item.entityId, name: item.label, projectId: item.projectId },
+			truncated: false,
+		};
+	}
+
 	if (item.kind === 'workflow') {
 		return {
 			item,

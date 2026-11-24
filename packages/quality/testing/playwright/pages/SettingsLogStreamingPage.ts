@@ -144,9 +144,10 @@ export class SettingsLogStreamingPage extends BasePage {
 	}
 
 	async closeModalByClickingOverlay(): Promise<void> {
+		// The shared dialog uses its own overlay, not an Element Plus overlay.
 		await this.page
-			.locator('.el-overlay')
-			.filter({ has: this.getDestinationModal() })
+			.locator('[data-dialog-overlay]')
+			.filter({ visible: true })
 			.click({ position: { x: 1, y: 1 } });
 	}
 

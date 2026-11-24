@@ -19,6 +19,7 @@ import type { NormalizeComponentsContext, SuspendComponent } from '../../../comp
 import {
 	draftChatMemoryResourceId,
 	productionChatMemoryResourceId,
+	taskRunMemoryResourceId,
 } from '../../../../utils/agent-memory-scope';
 import {
 	createWhatsAppIntegration,
@@ -627,6 +628,7 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 					action: 'send_dm',
 					input: { userId: fixtures.contact.wa_id, message: { text: 'Your order shipped' } },
 					awaitResponse: false,
+					resourceId: taskRunMemoryResourceId('task-1'),
 				});
 
 				expect(result).toMatchObject({
@@ -655,6 +657,7 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 					action: 'send_dm',
 					input: { userId: `+${fixtures.contact.wa_id}`, message: { text: 'Your order shipped' } },
 					awaitResponse: false,
+					resourceId: taskRunMemoryResourceId('task-1'),
 				});
 
 				expect(result).toMatchObject({ ok: true });
@@ -676,6 +679,7 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 					action: 'send_dm',
 					input: { userId: 'not-a-number', message: { text: 'Hello' } },
 					awaitResponse: false,
+					resourceId: taskRunMemoryResourceId('task-1'),
 				});
 
 				expect(result).toMatchObject({ ok: false });
@@ -1055,6 +1059,7 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 				action: 'send_template',
 				input,
 				awaitResponse: false,
+				resourceId: taskRunMemoryResourceId('task-1'),
 			});
 
 		const templatePosts = (ctx: Awaited<ReturnType<typeof createWhatsAppReplayContext>>) =>
@@ -1200,6 +1205,37 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 						],
 					},
 				});
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('records the digits-only user ID when the template recipient has a leading plus', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				templates: [orderUpdateTemplate],
+			});
+			try {
+				await ctx.sendWebhook(expiredInbound(fixtures));
+
+				const result = await sendTemplate(ctx, {
+					userId: `+${fixtures.contact.wa_id}`,
+					templateName: 'order_update',
+					language: 'en_US',
+					parameters: { '2': 'A-1001', '1': 'Ana' },
+				});
+
+				expect(result).toMatchObject({
+					ok: true,
+					messageContext: {
+						target: {
+							type: 'dm',
+							userId: fixtures.contact.wa_id,
+							threadId: whatsAppThreadId(fixtures),
+						},
+					},
+				});
+				expect(ctx.lastPost()?.body).toMatchObject({ to: fixtures.contact.wa_id });
 			} finally {
 				await ctx.shutdown();
 			}
@@ -1926,6 +1962,19 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 			} finally {
 				await ctx.shutdown();
 			}
+		});
+	});
+
+	describe('normalizeUserId', () => {
+		it.each(['+447397567320', '447397567320', '+44 7397-567-320'])(
+			'maps %s to the digits-only wa_id',
+			(input) => {
+				expect(createWhatsAppIntegration().normalizeUserId(input)).toBe('447397567320');
+			},
+		);
+
+		it('keeps an ID with no digits unchanged', () => {
+			expect(createWhatsAppIntegration().normalizeUserId('abc')).toBe('abc');
 		});
 	});
 

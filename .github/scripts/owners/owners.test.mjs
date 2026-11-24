@@ -17,9 +17,11 @@ import {
  * node --test ./.github/scripts/owners/owners.test.mjs
  * */
 
+const REQUIRED = { rule: 'required', count: 1 };
+
 /** @param {Partial<import('./owners.mjs').OwnersEntry>} entry */
 function entry(entry) {
-	return { team: '@n8n-io/some-team', required: false, line: 1, pattern: '*', ...entry };
+	return { team: '@n8n-io/some-team', review: null, line: 1, pattern: '*', ...entry };
 }
 
 describe('parseOwnersContent', () => {
@@ -33,9 +35,9 @@ describe('parseOwnersContent', () => {
 		].join('\n');
 
 		assert.deepEqual(parseOwnersContent(content), [
-			{ pattern: '*', team: '@n8n-io/catalysts', required: false, line: 3 },
-			{ pattern: 'packages/cli/', team: '@n8n-io/cli-team', required: false, line: 4 },
-			{ pattern: 'packages/foo/bar.ts', team: '@n8n-io/some-team', required: false, line: 5 },
+			{ pattern: '*', team: '@n8n-io/catalysts', review: null, line: 3 },
+			{ pattern: 'packages/cli/', team: '@n8n-io/cli-team', review: null, line: 4 },
+			{ pattern: 'packages/foo/bar.ts', team: '@n8n-io/some-team', review: null, line: 5 },
 		]);
 	});
 
@@ -43,8 +45,43 @@ describe('parseOwnersContent', () => {
 		const entries = parseOwnersContent('pkg/  @n8n-io/keepers required');
 
 		assert.deepEqual(entries, [
-			{ pattern: 'pkg/', team: '@n8n-io/keepers', required: true, line: 1 },
+			{ pattern: 'pkg/', team: '@n8n-io/keepers', review: { rule: 'required', count: 1 }, line: 1 },
 		]);
+	});
+
+	it('parses the `involved` option after the team', () => {
+		const entries = parseOwnersContent('pkg/  @n8n-io/keepers involved');
+
+		assert.deepEqual(entries[0].review, { rule: 'involved', count: 1 });
+	});
+
+	it('parses a review count', () => {
+		assert.deepEqual(parseOwnersContent('pkg/ @n8n-io/keepers required(2)')[0].review, {
+			rule: 'required',
+			count: 2,
+		});
+		assert.deepEqual(parseOwnersContent('pkg/ @n8n-io/keepers involved(5)')[0].review, {
+			rule: 'involved',
+			count: 5,
+		});
+	});
+
+	it('throws on a review count out of range', () => {
+		assert.throws(
+			() => parseOwnersContent('pkg/ @n8n-io/keepers required(0)'),
+			/OWNERS line 1: count in "required\(0\)" must be from 1 to 5/,
+		);
+		assert.throws(
+			() => parseOwnersContent('pkg/ @n8n-io/keepers involved(6)'),
+			/OWNERS line 1: count in "involved\(6\)" must be from 1 to 5/,
+		);
+	});
+
+	it('throws on two review options', () => {
+		assert.throws(
+			() => parseOwnersContent('pkg/ @n8n-io/keepers required involved'),
+			/OWNERS line 1: only one of "required" and "involved" per pattern is supported/,
+		);
 	});
 
 	it('throws on a second team', () => {
@@ -272,11 +309,15 @@ describe('resolveRequiredTeams', () => {
 	const owners = [
 		entry({ pattern: '*', team: '@n8n-io/catalysts' }),
 		entry({ pattern: '.github/', team: '@n8n-io/qa-dx' }),
-		entry({ pattern: '.github/workflows/', team: '@n8n-io/qa-dx', required: true }),
-		entry({ pattern: 'db/migrations/', team: '@n8n-io/migrations-review', required: true }),
+		entry({ pattern: '.github/workflows/', team: '@n8n-io/qa-dx', review: REQUIRED }),
+		entry({
+			pattern: 'db/migrations/',
+			team: '@n8n-io/migrations-review',
+			review: { rule: 'involved', count: 1 },
+		}),
 	];
 
-	it('collects the teams of `required` entries that win for a changed file', () => {
+	it('collects the teams of `required` and `involved` entries that win for a changed file', () => {
 		const result = resolveRequiredTeams(
 			new Set(['.github/workflows/ci.yml', 'db/migrations/1-init.ts', 'src/a.ts']),
 			owners,
@@ -287,7 +328,7 @@ describe('resolveRequiredTeams', () => {
 		assert.equal(result.size, 2);
 	});
 
-	it('ignores files whose winning entry is not required', () => {
+	it('ignores files whose winning entry has no review option', () => {
 		const result = resolveRequiredTeams(new Set(['OWNERS', 'src/a.ts']), owners);
 
 		assert.equal(result.size, 0);
@@ -301,8 +342,8 @@ describe('resolveRequiredTeams', () => {
 				'.github/workflows/ci.yml',
 			]),
 			[
-				entry({ pattern: '.github/scripts/', team: '@n8n-io/qa-dx', required: true }),
-				entry({ pattern: '.github/workflows/', team: '@n8n-io/qa-dx', required: true }),
+				entry({ pattern: '.github/scripts/', team: '@n8n-io/qa-dx', review: REQUIRED }),
+				entry({ pattern: '.github/workflows/', team: '@n8n-io/qa-dx', review: REQUIRED }),
 			],
 		);
 
@@ -311,7 +352,7 @@ describe('resolveRequiredTeams', () => {
 
 	it('a later non-required entry overrides an earlier required one', () => {
 		const result = resolveRequiredTeams(new Set(['db/migrations/1-init.ts']), [
-			entry({ pattern: 'db/', team: '@n8n-io/migrations-review', required: true }),
+			entry({ pattern: 'db/', team: '@n8n-io/migrations-review', review: REQUIRED }),
 			entry({ pattern: 'db/migrations/', team: '@n8n-io/catalysts' }),
 		]);
 

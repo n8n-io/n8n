@@ -261,10 +261,10 @@ export class WebhookTriggerRegistrar {
 
 	private async clearRegisteredWebhook(workflow: Workflow, webhookData: IWebhookData) {
 		try {
+			// The row goes first so a failed external delete cannot leave the node looking registered.
+			await this.clearWorkflowWebhooksForNodes(workflow.id, [webhookData.node]);
 			await this.deregister({ workflow, webhookData });
 			await this.workflowStaticDataService.saveStaticData(workflow);
-
-			await this.clearWorkflowWebhooksForNodes(workflow.id, [webhookData.node]);
 		} catch (clearError) {
 			const error = ensureError(clearError);
 			this.errorReporter.error(error);
