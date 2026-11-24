@@ -27,7 +27,10 @@ import type {
 	AgentTurnStatus,
 	FormattedTurnError,
 } from '../types/agent-turn-outcome';
-import type { SystemAgentHostEventEmitter } from './system-agent-host-events';
+import type {
+	SystemAgentHostEventEmitter,
+	SystemAgentTransientHostEventEmitter,
+} from './system-agent-host-events';
 
 export type { AgentHostInstruction as SystemAgentHostInstruction } from '../types/agent-host-instruction';
 
@@ -76,6 +79,14 @@ interface SystemAgentTurnBase<TLease> {
 	 * the payload as it is, so do not put secrets in it.
 	 */
 	emitHostEvent: SystemAgentHostEventEmitter;
+	/**
+	 * Send a custom event that the chat shows live, such as a preview. The
+	 * runtime streams it as a `transient-host-event` SSE event and does not
+	 * record it, so history does not show it after a reload. Events after the
+	 * turn closed are dropped. It throws when the payload is larger than 1 MiB
+	 * as JSON. Do not put secrets in it.
+	 */
+	emitTransientHostEvent: SystemAgentTransientHostEventEmitter;
 	/**
 	 * Find a file that the user attached to any message of this thread, by id.
 	 * Gives `undefined` for a file of another thread.

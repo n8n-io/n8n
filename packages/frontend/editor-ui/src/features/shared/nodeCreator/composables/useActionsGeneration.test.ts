@@ -6,6 +6,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { SIMPLE_MEMORY_NODE_TYPE } from '@/app/constants';
 import { mockedStore } from '@/__tests__/utils';
+import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 
 let posthogStore: ReturnType<typeof usePostHog>;
 let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
@@ -632,6 +633,68 @@ describe('useActionsGenerator', () => {
 			const nodeNames = mergedNodes.map((n) => n.name);
 			expect(nodeNames).not.toContain(SIMPLE_MEMORY_NODE_TYPE);
 			expect(nodeNames).toContain('n8n-nodes-base.regularNode');
+		});
+	});
+
+	describe('trigger merging with type availability policies', () => {
+		const APP_NAME = 'n8n-nodes-base.acme';
+		const TRIGGER_NAME = 'n8n-nodes-base.acmeTrigger';
+		const app: INodeTypeDescription = {
+			...baseV2NodeWoProps,
+			name: APP_NAME,
+			displayName: 'Acme',
+			description: 'Acme app',
+			properties: [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					noDataExpression: true,
+					options: [
+						{ name: 'Get', value: 'get' },
+						{ name: 'Create', value: 'create' },
+					],
+					default: 'get',
+				},
+			],
+		};
+		const trigger: INodeTypeDescription = {
+			...baseV2NodeWoProps,
+			name: TRIGGER_NAME,
+			displayName: 'Acme Trigger',
+			description: 'Handle Acme events',
+			group: ['trigger'],
+			inputs: [],
+		};
+
+		const restrict = (...restricted: string[]) =>
+			mockRestrictedNodeTypes(
+				Object.fromEntries(restricted.map((name) => [name, 'instance' as const])),
+			);
+
+		it.each([
+			{ case: 'neither type is restricted', restricted: [] },
+			{ case: 'both types are restricted', restricted: [APP_NAME, TRIGGER_NAME] },
+		])('merges the trigger into the app when $case', ({ restricted }) => {
+			restrict(...restricted);
+
+			const { mergedNodes, actions } = generateMergedNodesAndActions([app, trigger], []);
+
+			expect(mergedNodes.map((node) => node.name)).toEqual([APP_NAME]);
+			expect(actions[APP_NAME].map((action) => action.name)).toContain(TRIGGER_NAME);
+		});
+
+		it.each([
+			{ case: 'only the app is restricted', restricted: [APP_NAME] },
+			{ case: 'only the trigger is restricted', restricted: [TRIGGER_NAME] },
+		])('keeps the trigger as its own item when $case', ({ restricted }) => {
+			restrict(...restricted);
+
+			const { mergedNodes, actions } = generateMergedNodesAndActions([app, trigger], []);
+
+			expect(mergedNodes.map((node) => node.name)).toEqual([APP_NAME, TRIGGER_NAME]);
+			expect(mergedNodes.find((node) => node.name === APP_NAME)?.description).toBe('Acme app');
+			expect(actions[APP_NAME].map((action) => action.name)).not.toContain(TRIGGER_NAME);
 		});
 	});
 });

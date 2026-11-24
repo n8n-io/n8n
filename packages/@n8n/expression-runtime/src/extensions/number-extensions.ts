@@ -13,11 +13,7 @@ function format(value: number, extraArgs: unknown[]): string {
 		Intl.NumberFormatOptions,
 	];
 
-	try {
-		return value.toLocaleString(locales as string, config);
-	} catch {
-		return String(value);
-	}
+	return value.toLocaleString(locales as string, config);
 }
 
 function isEven(value: number) {
