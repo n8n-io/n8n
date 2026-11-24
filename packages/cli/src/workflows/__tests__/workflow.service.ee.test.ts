@@ -1276,6 +1276,27 @@ describe('EnterpriseWorkflowService', () => {
 
 			it('saves a new node whose credential is allowed and does not exist on this instance', async () => {
 				credentialsRepository.findExistingIds.mockResolvedValue([]);
+				const stored = httpNode('own-cred');
+				const added = {
+					...httpNode('missing-cred', 'https://v2.test'),
+					id: 'node-2',
+					name: 'Added',
+				};
+
+				const result = await service.preventTampering(
+					{ nodes: [stored, added] } as IWorkflowBase,
+					'w1',
+					user,
+					[],
+					{ allowMissingCredentialIds: new Set(['missing-cred']) },
+				);
+
+				expect(result.nodes).toEqual([stored, added]);
+				expect(credentialsRepository.findExistingIds).toHaveBeenCalledWith(['missing-cred']);
+			});
+
+			it('saves a stored node that changes to an allowed credential that does not exist on this instance', async () => {
+				credentialsRepository.findExistingIds.mockResolvedValue([]);
 				const submitted = httpNode('missing-cred', 'https://v2.test');
 
 				const result = await service.preventTampering(
