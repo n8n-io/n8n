@@ -33,6 +33,9 @@ function layerOf(env: RigEnv, args: { on?: string; secret?: boolean }): string {
 	return resolveLayer(env, args.secret && !args.on ? 'secrets' : args.on);
 }
 
+/** The key names that the dotenv parser reads. */
+const ENV_KEY = /^[A-Za-z_][A-Za-z0-9_.]*$/;
+
 const restartArg = {
 	restart: {
 		type: 'boolean',
@@ -58,6 +61,9 @@ const setCommand = defineCommand({
 		const assignments = parseAssignments(positionals(args));
 
 		for (const [key] of Object.entries(assignments)) {
+			if (!ENV_KEY.test(key)) {
+				throw new RigError(`Invalid name "${key}". Use letters, digits, and underscores.`);
+			}
 			const topologyKey = TOPOLOGY_KEYS[key];
 			if (topologyKey && !args.force) {
 				throw new RigError(
@@ -126,7 +132,9 @@ function resolvedFor(env: RigEnv, target: string): { name: string; resolved: Res
 	// A direct runner is a component. Otherwise the name means the runner env of a launcher.
 	if (runner && !env.component(target)) {
 		const host = target.slice(runner.length + 1);
-		return { name: target, resolved: resolveRunnerEnv(env.context(), host, runner) };
+		if (env.launchers().some((launcher) => launcher.host.name === host)) {
+			return { name: target, resolved: resolveRunnerEnv(env.context(), host, runner) };
+		}
 	}
 	const component = env.component(target);
 	if (!component) {

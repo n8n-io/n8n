@@ -51,8 +51,8 @@ describe('imports from n8n-containers', () => {
 		const reached = new Set<string>();
 		for (const file of sourceFiles(srcDir)) {
 			for (const specifier of imports(file)) {
-				if (!specifier.startsWith('n8n-containers/')) continue;
-				const target = resolveTs(join(containersDir, specifier.slice('n8n-containers/'.length)));
+				if (specifier !== 'n8n-containers' && !specifier.startsWith('n8n-containers/')) continue;
+				const target = resolveTs(join(containersDir, specifier.slice('n8n-containers'.length)));
 				expect(target).toBeDefined();
 				if (target) packagesReachedFrom(target).forEach((p) => reached.add(p));
 			}

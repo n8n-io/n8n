@@ -64,5 +64,6 @@ describe('port slots', () => {
 		expect(parseSlot('auto', 'new')).toBe(2);
 		expect(parseSlot('4', 'new')).toBe(4);
 		expect(() => parseSlot('10', 'new')).toThrow('Invalid slot');
+		expect(() => parseSlot('', 'new')).toThrow('Invalid slot');
 	});
 });

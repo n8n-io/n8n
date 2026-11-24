@@ -105,6 +105,10 @@ function checkoutBinary(checkout: string, log: (message: string) => void): strin
 	const sources = Math.max(
 		newestGoSource(join(checkout, 'cmd')),
 		newestGoSource(join(checkout, 'internal')),
+		...['go.mod', 'go.sum']
+			.map((name) => join(checkout, name))
+			.filter((path) => existsSync(path))
+			.map((path) => statSync(path).mtimeMs),
 	);
 	if (existsSync(binary) && statSync(binary).mtimeMs >= sources) return binary;
 

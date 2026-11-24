@@ -52,7 +52,10 @@ describe('source resolution', () => {
 	});
 
 	it('should pin repo:<path> even inside another checkout', () => {
-		vi.stubEnv('INIT_CWD', '/');
+		const other = join(root, 'other');
+		mkdirSync(other);
+		writeFileSync(join(other, 'package.json'), JSON.stringify({ name: 'n8n-monorepo' }));
+		vi.stubEnv('INIT_CWD', other);
 		expect(resolveSource(`repo:${checkout}`)).toEqual({
 			root: checkout,
 			origin: 'env.yaml',

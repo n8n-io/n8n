@@ -49,6 +49,9 @@ describe('tunnel topology', () => {
 		expect(() =>
 			parseTopology({ name: 't', tunnel: { provider: 'cloudflare', target: 'worker-1' } }),
 		).toThrow(RigError);
+		expect(() =>
+			parseTopology({ name: 't', tunnel: { provider: 'cloudflare', target: 'main-0' } }),
+		).toThrow(RigError);
 		const topology = parseTopology({
 			name: 't',
 			...PRESETS.queue.topology,

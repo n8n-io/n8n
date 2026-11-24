@@ -79,6 +79,7 @@ export function runnerCommand(
 			args: [
 				'--disallow-code-generation-from-strings',
 				'--disable-proto=delete',
+				'--no-experimental-webstorage',
 				join(cwd, 'dist/start.js'),
 			],
 			cwd,

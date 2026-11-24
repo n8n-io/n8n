@@ -63,8 +63,11 @@ answers in the global config.
   manages only the containers of the set runtime.
 - Podman on macOS needs a running machine (`podman machine start`) and a
   compose provider (`docker-compose` or `podman-compose`).
-- GUI editors open with `--wait`. When you close the file, `rig` offers a
-  restart.
+- GUI editors from the list open with `--wait`. When you close the file,
+  `rig` offers a restart.
+- `rig` runs `$VISUAL`, `$EDITOR`, and a command line as you give them. For a
+  GUI editor, add its wait flag, for example `code --wait`. Without it, `rig`
+  offers the restart before you close the file.
 
 ### Task runner launcher
 
@@ -199,7 +202,9 @@ tunnel:
 For a named tunnel:
 
 1. Create the tunnel in the Cloudflare dashboard.
-2. Point its public hostname at `http://host.docker.internal:5678`.
+2. Point its public hostname at `http://host.docker.internal:<port>`. Use
+   the HTTP port of the target main. For `main-1` in slot `0`, the port is
+   `5678`. `pnpm rig status` shows the ports.
 3. Put the token in secrets.env: `pnpm rig env edit --on secrets`.
 
 | Effect | Detail |
@@ -356,6 +361,9 @@ To select an environment, `rig` uses the first of these:
 | `~/.local/share/rig/envs/<name>/data/` | User folders and binary data | `RIG_DATA_DIR` |
 | `~/.cache/rig/env-catalog/` | Env var catalog of each checkout | `RIG_CACHE_DIR` |
 | `~/.cache/rig/launcher/` | Launcher releases | `RIG_CACHE_DIR` |
+
+Without the override, `rig` uses `$XDG_CONFIG_HOME/rig`, `$XDG_DATA_HOME/rig`,
+and `$XDG_CACHE_HOME/rig` when you set these variables.
 
 ## Relation to n8n-containers
 

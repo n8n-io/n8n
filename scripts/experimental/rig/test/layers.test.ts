@@ -2,7 +2,7 @@ import { mkdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { resolveLayer, ensureLayerFile } from '../src/commands/layers';
+import { ensureLayerFile, managedConflicts, resolveLayer } from '../src/commands/layers';
 import { parseTopology, saveTopology, type TopologyInput } from '../src/config/env-yaml';
 import { envsDir, globalSecretsFile, profileFile } from '../src/config/paths';
 import { PRESETS } from '../src/config/presets';
@@ -92,5 +92,18 @@ describe('env diff', () => {
 		expect(keys).toContain('QUEUE_HEALTH_CHECK_PORT');
 		expect(keys).not.toContain('PATH');
 		expect(differences.find((d) => d.key === 'N8N_PORT')?.b).toBeUndefined();
+	});
+});
+
+describe('managedConflicts', () => {
+	it('should check the runner env of a launcher for a runner layer', () => {
+		const env = makeEnv('r');
+		const [launcher] = env.launchers();
+		expect(managedConflicts(env, `runner-py@${launcher.host.name}`, 'PYTHONPATH')).toEqual([
+			{
+				component: `runner-py@${launcher.host.name}`,
+				value: expect.stringContaining('task-runner-python'),
+			},
+		]);
 	});
 });

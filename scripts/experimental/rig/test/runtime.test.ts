@@ -12,6 +12,7 @@ import { globalConfigFile } from '../src/config/paths';
 import { RigError } from '../src/errors';
 import { buildCompose, containerName } from '../src/services/compose';
 import {
+	assertRuntimeRunning,
 	configuredRuntime,
 	containerRuntime,
 	ensureContainerRuntime,
@@ -92,6 +93,12 @@ describe('container runtime', () => {
 		fakeRuntime('podman', false);
 		expect(serverVersion('docker')).toBe('9.9');
 		expect(serverVersion('podman')).toBeUndefined();
+	});
+
+	it('should tell apart a runtime that does not run from one that is not installed', () => {
+		fakeRuntime('docker', false);
+		expect(() => assertRuntimeRunning('docker')).toThrow('Docker is not running.');
+		expect(() => assertRuntimeRunning('podman')).toThrow('Podman is not installed.');
 	});
 });
 

@@ -115,9 +115,9 @@ function inputFromFlags(name: string, args: TopologyFlags): TopologyInput {
 	if (args.queue !== undefined) input.queue = args.queue;
 	input.mains = intArg(args.mains, 'mains') ?? input.mains;
 	input.workers = intArg(args.workers, 'workers') ?? input.workers;
+	if ((input.mains ?? 1) > 1 && input.queue === undefined) input.queue = true;
 	if (input.queue && input.workers === undefined) input.workers = 1;
 	if (input.queue && input.db === undefined) input.db = 'postgres';
-	if ((input.mains ?? 1) > 1 && input.queue === undefined) input.queue = true;
 	if (args.runners !== undefined || args.languages !== undefined) {
 		const runners: Record<string, unknown> = {};
 		if (args.runners === 'direct') {
@@ -317,7 +317,7 @@ export const useCommand = defineCommand({
  * Stops all components, including components that left the topology. Throws
  * when one still runs, so the caller does not delete its state or data.
  */
-export async function stopEverything(env: RigEnv): Promise<void> {
+export async function stopEverything(env: RigEnv): Promise<string[]> {
 	const supervisor = newSupervisor(env);
 	const stopped = await stopComponents(supervisor, env.components());
 	for (const state of liveStates(env.paths)) {
@@ -336,6 +336,7 @@ export async function stopEverything(env: RigEnv): Promise<void> {
 			'Stop these processes, then try again.',
 		);
 	}
+	return stopped;
 }
 
 const isSqliteFile = (name: string) => name.startsWith('database.sqlite');

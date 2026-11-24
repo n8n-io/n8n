@@ -39,7 +39,7 @@ const tunnelSchema = z.preprocess(
 			/** The main that the tunnel exposes. */
 			target: z
 				.string()
-				.regex(/^main-\d+$/, 'use a main, for example main-1')
+				.regex(/^main-[1-9]\d*$/, 'use a main, for example main-1')
 				.default('main-1'),
 			hostname: z
 				.string()

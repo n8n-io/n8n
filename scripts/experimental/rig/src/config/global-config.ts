@@ -62,7 +62,15 @@ export function loadGlobalConfig(): GlobalConfig {
 	const file = globalConfigFile();
 	if (!existsSync(file)) return globalConfigSchema.parse({});
 
-	const result = globalConfigSchema.safeParse(parse(readFileSync(file, 'utf8')) ?? {});
+	let raw: unknown;
+	try {
+		raw = parse(readFileSync(file, 'utf8'));
+	} catch (error) {
+		throw new RigError(
+			`Cannot parse ${file}: ${error instanceof Error ? error.message : String(error)}`,
+		);
+	}
+	const result = globalConfigSchema.safeParse(raw ?? {});
 	if (!result.success) {
 		const issue = result.error.issues[0];
 		throw new RigError(

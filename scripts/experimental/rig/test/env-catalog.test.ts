@@ -12,6 +12,7 @@ declare function Config(target: unknown): void;
 class CommaSeparatedStringArray<T> extends Array<T> {}
 class ColonSeparatedStringArray<T> extends Array<T> {}
 const levels = ['error', 'info'] as const;
+const NAMES = { timeout: 'N8N_TIMEOUT' } as const;
 type LogLevel = (typeof levels)[number];
 
 @Config
@@ -45,6 +46,14 @@ class LoggingConfig {
 	@Env('N8N_OVERRIDES')
 	overrides: Record<string, string> = {};
 
+	@Env(NAMES.timeout)
+	timeout: number = 0;
+
+	@Env(
+		'N8N_MULTILINE',
+	)
+	multiline: string = '';
+
 	notAnEnv: string = '';
 }
 
@@ -76,14 +85,16 @@ describe('extractEnvCatalog', () => {
 			'N8N_LOG_LEVEL',
 			'N8N_LOG_OUTPUT',
 			'N8N_MAYBE',
+			'N8N_MULTILINE',
 			'N8N_NAME',
 			'N8N_OVERRIDES',
 			'N8N_PATHS',
 			'N8N_PORT',
+			'N8N_TIMEOUT',
 		]);
 		expect(vars.get('N8N_LOG_LEVEL')).toMatchObject({
 			group: 'Logging',
-			source: 'logging.config.ts:15',
+			source: 'logging.config.ts:16',
 			description: 'Minimum level of logs to output.\nLower levels are dropped.',
 		});
 	});
@@ -148,6 +159,9 @@ describe('rankVars', () => {
 describe('shortDescription', () => {
 	it('should keep the first sentence and shorten long text', () => {
 		expect(shortDescription({ description: 'First one.\nSecond one.' })).toBe('First one.');
+		expect(shortDescription({ description: 'An endpoint, e.g. for Azurite. More.' })).toBe(
+			'An endpoint, e.g. for Azurite.',
+		);
 		expect(shortDescription({ description: 'x'.repeat(100) }, 10)).toBe(`${'x'.repeat(9)}…`);
 	});
 });

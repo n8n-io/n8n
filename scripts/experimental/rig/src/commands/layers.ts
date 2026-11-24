@@ -2,7 +2,9 @@ import { chmodSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 import { GLOBAL_SECRETS_LAYER, profileName, type RigEnv, suggest } from '../environment';
+import { resolveRunnerEnv } from '../env/resolve';
 import { RigError } from '../errors';
+import { RUNNER_LAYERS } from '../topology/components';
 import { layerHeader } from './lifecycle';
 
 export function resolveLayer(env: RigEnv, on: string | undefined): string {
@@ -56,12 +58,18 @@ export function managedConflicts(
 	key: string,
 ): Array<{ component: string; value: string }> {
 	const conflicts: Array<{ component: string; value: string }> = [];
+	const runnerLayer = RUNNER_LAYERS.find((r) => layer === r || layer.startsWith(`${r}@`));
 	for (const component of env.affectedBy(layer)) {
-		const managed = env
-			.resolve(component)
-			.trace.get(key)
-			?.find((source) => source.layer === 'managed');
-		if (managed) conflicts.push({ component: component.name, value: managed.value });
+		// A launcher passes a runner layer to its runners, not to its own env.
+		const [name, resolved] =
+			runnerLayer && component.kind === 'launcher'
+				? [
+						`${runnerLayer}@${component.host.name}`,
+						resolveRunnerEnv(env.context(), component.host.name, runnerLayer),
+					]
+				: [component.name, env.resolve(component)];
+		const managed = resolved.trace.get(key)?.find((source) => source.layer === 'managed');
+		if (managed) conflicts.push({ component: name, value: managed.value });
 	}
 	return conflicts;
 }

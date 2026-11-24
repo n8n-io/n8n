@@ -36,7 +36,7 @@ export function freeSlot(exclude?: string): number {
 export function parseSlot(value: string | undefined, envName: string): number | undefined {
 	if (value === undefined) return undefined;
 	if (value === 'auto') return freeSlot(envName);
-	const slot = Number(value);
+	const slot = /^\d+$/.test(value) ? Number(value) : Number.NaN;
 	if (!Number.isInteger(slot) || slot < 0 || slot > MAX_SLOT) {
 		throw new RigError(`Invalid slot "${value}". Use a number from 0 to ${MAX_SLOT}, or auto.`);
 	}

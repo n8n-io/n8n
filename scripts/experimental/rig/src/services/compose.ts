@@ -300,11 +300,13 @@ export async function servicesUp(
 	paths: EnvPaths,
 ): Promise<ServiceName[]> {
 	const needed = requiredServices(topology);
-	writeCompose(envName, topology, paths);
 	if (needed.length === 0) {
+		await servicesDown(envName, paths);
+		writeCompose(envName, topology, paths);
 		clearTunnelUrl(paths);
 		return [];
 	}
+	writeCompose(envName, topology, paths);
 	const runtime = await ensureContainerRuntime();
 	assertRuntimeRunning(runtime);
 	const token = tunnelToken(paths, topology);

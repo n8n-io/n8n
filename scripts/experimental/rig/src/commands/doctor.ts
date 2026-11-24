@@ -96,7 +96,7 @@ function nodeCheck(repoRoot: string | undefined): Check {
 		: { status: 'ok', label: 'Node', detail: `${process.version} (n8n needs ${range})` };
 }
 
-function systemChecks(repoRoot: string | undefined): Check[] {
+function systemChecks(repoRoot: string | undefined, needsContainers: boolean): Check[] {
 	const checks = [nodeCheck(repoRoot)];
 
 	const pnpm = version('pnpm', ['--version']);
@@ -111,11 +111,11 @@ function systemChecks(repoRoot: string | undefined): Check[] {
 				},
 	);
 
-	checks.push(...runtimeChecks());
+	checks.push(...runtimeChecks(needsContainers));
 	return checks;
 }
 
-function runtimeChecks(): Check[] {
+function runtimeChecks(needsContainers: boolean): Check[] {
 	let configured: ContainerRuntime | undefined;
 	try {
 		configured = configuredRuntime();
@@ -130,9 +130,10 @@ function runtimeChecks(): Check[] {
 	}
 	const installed = CONTAINER_RUNTIMES.filter(isInstalled);
 	const selected = configured ?? (installed.length > 0 ? containerRuntime() : undefined);
+	const missing: Status = needsContainers ? 'fail' : 'warn';
 	const checks: Check[] = [
 		{
-			status: selected ? 'ok' : 'fail',
+			status: selected ? 'ok' : missing,
 			label: 'Containers',
 			detail: configured
 				? `${runtimeLabel(configured)} ${pc.dim(process.env[RUNTIME_ENV_VAR] ? `(${RUNTIME_ENV_VAR})` : '(container.runtime)')}`
@@ -148,11 +149,11 @@ function runtimeChecks(): Check[] {
 		const label = runtimeLabel(runtime);
 		const used = runtime === selected;
 		// A runtime that rig does not use is information only.
-		const problem: Status = used ? 'fail' : 'info';
+		const problem: Status = used ? missing : 'info';
 		if (!installed.includes(runtime)) {
 			if (used)
 				checks.push({
-					status: 'fail',
+					status: missing,
 					label,
 					detail: 'not found',
 					hint: `Install ${label}, or run \`${RIG} config set container.runtime <docker|podman>\`.`,
@@ -393,13 +394,15 @@ export const doctorCommand = defineCommand({
 		const source = env?.source ?? resolveSource('auto');
 		const components = env?.components() ?? [];
 		const needsLauncher = components.some((c) => c.kind === 'launcher');
+		// Without an environment, containers are likely needed.
+		const needsContainers = env ? requiredServices(env.topology).length > 0 : true;
 		const needsPython =
 			(needsLauncher && (env?.topology.runners.languages.includes('python') ?? false)) ||
 			components.some((c) => c.kind === 'runner' && c.language === 'python');
 
 		console.log(`rig ${runningVersion()}`);
 		const sections: Array<[string, Check[]]> = [
-			['System', systemChecks(source.root)],
+			['System', systemChecks(source.root, needsContainers)],
 			['Source', sourceChecks(source, env)],
 			[
 				'Task runner launcher',

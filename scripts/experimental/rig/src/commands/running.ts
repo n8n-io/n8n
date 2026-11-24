@@ -15,6 +15,7 @@ import { type Component, portsOf } from '../topology/components';
 import { validateTopology } from '../topology/validate';
 import { PrefixPrinter, table, ui } from '../ui/output';
 import { openUrl } from '../integrations/browser';
+import { stopEverything } from './lifecycle';
 import {
 	envArg,
 	loadEnv,
@@ -191,13 +192,16 @@ export const stopCommand = defineCommand({
 	},
 	async run({ args }) {
 		const env = loadEnv(args.env);
-		const supervisor = newSupervisor(env);
-		const targets = args.target
-			? positionals(args).flatMap((name) => env.select(name))
-			: env.components();
-		const stopped = await stopComponents(supervisor, targets);
-		ui.success(stopped.length > 0 ? `Stopped ${stopped.join(', ')}` : 'No component was running.');
-		if (!args.target && requiredServices(env.topology).length > 0) {
+		if (args.target) {
+			const targets = positionals(args).flatMap((name) => env.select(name));
+			const stopped = await stopComponents(newSupervisor(env), targets);
+			ui.success(
+				stopped.length > 0 ? `Stopped ${stopped.join(', ')}` : 'No component was running.',
+			);
+			return;
+		}
+		if ((await stopEverything(env)).length === 0) ui.success('No component was running.');
+		if (requiredServices(env.topology).length > 0) {
 			await servicesDown(env.name, env.paths);
 			ui.success('Stopped the services. The data stays.');
 		}
@@ -274,7 +278,13 @@ export const statusCommand = defineCommand({
 					: 'stopped';
 				rows.push([
 					name,
-					status?.state === 'running' ? pc.green(state) : pc.dim(state),
+					status?.state !== 'running'
+						? pc.dim(state)
+						: status.health === 'unhealthy'
+							? pc.red(state)
+							: status.health === '' || status.health === 'healthy'
+								? pc.green(state)
+								: pc.yellow(state),
 					serviceAddress(env.topology, env.paths, name),
 				]);
 			}

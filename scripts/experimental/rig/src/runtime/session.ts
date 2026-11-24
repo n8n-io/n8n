@@ -78,6 +78,8 @@ export class Session {
 	private activeRestart: Promise<void> | undefined;
 	/** Components that left the topology while this session ran. The shutdown still stops them. */
 	private removed: Component[] = [];
+	/** Dependencies that this session started in the background. `R` starts them again when they do not run. */
+	private backgroundDeps: Component[] = [];
 	private quitting = false;
 	private resolveDone: (() => void) | undefined;
 	private readonly abort = new AbortController();
@@ -108,7 +110,7 @@ export class Session {
 			if (deps.length > 0) {
 				const mode = await this.chooseDependencyMode(deps);
 				if (mode === 'abort') throw new RigError('Aborted.');
-				if (mode === 'background') backgroundDeps = deps;
+				if (mode === 'background') this.backgroundDeps = backgroundDeps = deps;
 				else await this.waitForDependencies(deps);
 			}
 		}
@@ -425,7 +427,11 @@ export class Session {
 		else if (key === 'p') this.openPublicUrl();
 		else if (key === 'm') this.openMail();
 		else if (key === 'r') this.restartDrifted().catch(printError);
-		else if (key === 'R') this.restartTargets(this.targets.map((t) => t.name)).catch(printError);
+		else if (key === 'R')
+			this.restartTargets(
+				this.targets.map((t) => t.name),
+				true,
+			).catch(printError);
 		else if (/^[1-9]$/.test(key)) this.toggleFilter(Number(key) - 1);
 		else if (key === '0') this.toggleFilter(undefined);
 		else if (key === '?' || key === 'h') this.printHelp(true);
@@ -465,11 +471,11 @@ export class Session {
 		await this.restartTargets(this.drifted);
 	}
 
-	private async restartTargets(names: string[]): Promise<void> {
+	private async restartTargets(names: string[], withBackgroundDeps = false): Promise<void> {
 		if (this.busy || this.quitting) return;
 		this.busy = true;
 		// The shutdown waits for it, so a quit cannot leave a new process behind.
-		this.activeRestart = this.restartStages(names);
+		this.activeRestart = this.restartStages(names, withBackgroundDeps);
 		try {
 			await this.activeRestart;
 		} finally {
@@ -478,14 +484,32 @@ export class Session {
 		}
 	}
 
-	private async restartStages(names: string[]): Promise<void> {
-		const components = this.env.withDependentRunners(
-			names.map((name) => this.env.component(name)).filter((c): c is Component => c !== undefined),
-		);
+	private async restartStages(names: string[], withBackgroundDeps: boolean): Promise<void> {
+		if (withBackgroundDeps) {
+			const deps = this.backgroundDeps
+				.map((dep) => this.env.component(dep.name))
+				.filter((c): c is Component => c !== undefined && !liveState(this.env.paths, c.name));
+			if (deps.length > 0 && !(await this.startAll(deps, new Set(deps.map((d) => d.name))))) {
+				return;
+			}
+		}
+		const requested = names
+			.map((name) => this.env.component(name))
+			.filter((c): c is Component => c !== undefined);
+		// Without runners, only the direct runners that run already restart with their host.
+		const components = this.env
+			.withDependentRunners(requested)
+			.filter(
+				(c) =>
+					this.options.withRunners ||
+					requested.includes(c) ||
+					liveState(this.env.paths, c.name) !== undefined,
+			);
+		const restarted: string[] = [];
 		for (const stage of startStages(components)) {
 			if (this.quitting) return;
-			await Promise.all(
-				stage.map(async (component) => {
+			const results = await Promise.all(
+				stage.map(async (component): Promise<boolean> => {
 					this.printer.event(component.name, 'restarting');
 					const startedAt = Date.now();
 					this.restarting.add(component.name);
@@ -493,7 +517,7 @@ export class Session {
 					try {
 						const previous = liveState(this.env.paths, component.name);
 						await this.supervisor.stop(component);
-						if (this.quitting) return;
+						if (this.quitting) return false;
 						// A component that another live terminal owns stays with that terminal.
 						const pid = await this.supervisor.start(component, inheritedOwner(previous, 'self'), {
 							inspect: previous?.inspect,
@@ -515,16 +539,24 @@ export class Session {
 						} else if (result !== 'aborted') {
 							this.printer.event(component.name, pc.red('did not become ready'));
 						}
+						return result === 'ready';
 					} catch (error) {
 						this.setStatus(component.name, 'exited');
 						printError(error);
+						return false;
 					} finally {
 						this.restarting.delete(component.name);
 					}
 				}),
 			);
+			if (this.quitting) return;
+			restarted.push(...stage.map((c) => c.name));
+			if (results.includes(false)) {
+				ui.warn('A component did not become ready. rig does not restart the next components.');
+				break;
+			}
 		}
-		this.drifted = this.drifted.filter((name) => !names.includes(name));
+		this.drifted = this.drifted.filter((name) => !restarted.includes(name));
 		this.renderStatus();
 	}
 

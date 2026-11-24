@@ -8,7 +8,7 @@ import { cacheDir } from '../config/paths';
 import type { EnvVarInfo } from './extract';
 
 /** Change this when the extractor output changes, so old caches are ignored. */
-const CATALOG_VERSION = 1;
+const CATALOG_VERSION = 2;
 
 const envVarSchema = z.object({
 	name: z.string(),

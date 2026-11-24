@@ -6,6 +6,7 @@ import {
 	ENV_NAME_PATTERN,
 	type EngineMode,
 	type Language,
+	MAX_SLOT,
 	parseTopology,
 	type TopologyInput,
 } from '../config/env-yaml';
@@ -14,7 +15,7 @@ import { envPaths } from '../environment';
 import { launcherComponents, processComponents, runnerComponents } from '../topology/components';
 import { validateTopology } from '../topology/validate';
 import { ask, type Choice, confirm, intro, multiselect, note, outro, select } from '../ui/prompt';
-import { freeSlot, slotsInUse } from '../topology/slots';
+import { slotsInUse } from '../topology/slots';
 
 type Start = PresetName | 'custom';
 
@@ -163,25 +164,25 @@ export async function wizard(givenName?: string): Promise<TopologyInput | undefi
 		},
 	]);
 	if (mail) topology.mail = { provider: 'mailpit' };
-	const sharing = slotsInUse().get(0);
+	const used = slotsInUse();
+	const sharing = used.get(0);
 	if (sharing) {
-		const slot = freeSlot();
-		topology.slot = await select(
-			'Ports',
-			[
-				{
-					value: 0,
-					label: 'Default ports (slot 0)',
-					hint: `same as ${sharing.join(', ')}: they cannot run at the same time`,
-				},
-				{
-					value: slot,
-					label: `Own ports (slot ${slot})`,
-					hint: `runs next to other environments, editor on port ${5678 + 1000 * slot}`,
-				},
-			],
-			slot,
-		);
+		const slot = Array.from({ length: MAX_SLOT + 1 }, (_, i) => i).find((s) => !used.has(s));
+		const choices: Array<Choice<number>> = [
+			{
+				value: 0,
+				label: 'Default ports (slot 0)',
+				hint: `same as ${sharing.join(', ')}: they cannot run at the same time`,
+			},
+		];
+		if (slot !== undefined) {
+			choices.push({
+				value: slot,
+				label: `Own ports (slot ${slot})`,
+				hint: `runs next to other environments, editor on port ${5678 + 1000 * slot}`,
+			});
+		}
+		topology.slot = await select('Ports', choices, slot ?? 0);
 	}
 	const name =
 		givenName ??

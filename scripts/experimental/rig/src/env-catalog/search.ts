@@ -42,6 +42,7 @@ export function rankVars<T extends Searchable>(vars: T[], term: string): T[] {
 
 /** One line of a description, short enough for a list hint. */
 export function shortDescription(info: Pick<EnvVarInfo, 'description'>, max = 70): string {
-	const firstSentence = info.description.split(/(?<=\.)\s/)[0]?.replace(/\s+/g, ' ') ?? '';
+	const firstSentence =
+		info.description.split(/(?<=\.)(?<!\b(?:e\.g|i\.e)\.)\s/i)[0]?.replace(/\s+/g, ' ') ?? '';
 	return firstSentence.length > max ? `${firstSentence.slice(0, max - 1)}…` : firstSentence;
 }

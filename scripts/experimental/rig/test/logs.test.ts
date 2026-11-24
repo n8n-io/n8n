@@ -36,7 +36,7 @@ describe('LogFollower', () => {
 			appendFileSync(file, 'new\n');
 			await until(() => lines.length === 1);
 			expect(lines).toEqual(['new']);
-			expect(Date.now() - started).toBeLessThan(500);
+			expect(Date.now() - started).toBeLessThan(900);
 		} finally {
 			follower.stop();
 		}

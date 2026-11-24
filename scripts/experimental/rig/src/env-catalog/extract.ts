@@ -73,7 +73,8 @@ export function findEnvFiles(repoRoot: string): string[] {
 		[
 			'grep',
 			'-l',
-			"@Env('",
+			'-E',
+			'^[[:space:]]*@Env\\(',
 			'--',
 			'packages/**/*.ts',
 			':!**/*.test.ts',
@@ -148,6 +149,7 @@ function defaultText(node: TS.PropertyDeclaration, sourceFile: TS.SourceFile): s
 }
 
 function envDecoratorName(
+	checker: TS.TypeChecker,
 	node: TS.PropertyDeclaration,
 	sourceFile: TS.SourceFile,
 ): string | undefined {
@@ -155,7 +157,11 @@ function envDecoratorName(
 		const call = decorator.expression;
 		if (!ts.isCallExpression(call) || call.expression.getText(sourceFile) !== 'Env') continue;
 		const [first] = call.arguments;
-		if (first && ts.isStringLiteralLike(first)) return first.text;
+		if (!first) continue;
+		if (ts.isStringLiteralLike(first)) return first.text;
+		// A constant, for example `OTEL_ENV_VARS.enabled`.
+		const type = checker.getTypeAtLocation(first);
+		if (type.isStringLiteral()) return type.value;
 	}
 	return undefined;
 }
@@ -182,7 +188,7 @@ export function extractEnvCatalog(repoRoot: string, files = findEnvFiles(repoRoo
 
 		const visit = (node: TS.Node) => {
 			if (ts.isPropertyDeclaration(node)) {
-				const name = envDecoratorName(node, sourceFile);
+				const name = envDecoratorName(checker, node, sourceFile);
 				if (name) {
 					const symbol = checker.getSymbolAtLocation(node.name);
 					const description = symbol

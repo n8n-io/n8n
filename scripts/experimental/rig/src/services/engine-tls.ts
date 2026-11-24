@@ -50,7 +50,6 @@ export function ensureEngineTls(paths: EnvPaths, log: (message: string) => void)
 		);
 	}
 	log('Creating the engine TLS certificates');
-	rmSync(paths.engineTlsDir, { recursive: true, force: true });
 	mkdirSync(paths.engineTlsDir, { recursive: true });
 	generateTlsCerts(paths.engineTlsDir, { main: SUBJECT_ALT_NAMES, engine: SUBJECT_ALT_NAMES });
 	// The helper keeps the CA key and signing files next to the certificates. Nothing needs them later.

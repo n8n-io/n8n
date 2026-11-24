@@ -129,6 +129,12 @@ export async function ensureContainerRuntime(): Promise<ContainerRuntime> {
 /** Throws with a hint when the runtime does not run. */
 export function assertRuntimeRunning(runtime: ContainerRuntime): void {
 	if (serverVersion(runtime) !== undefined) return;
+	if (!isInstalled(runtime)) {
+		throw new RigError(
+			`${runtimeLabel(runtime)} is not installed.`,
+			`Install it, or change the runtime with \`${RIG} config set container.runtime <docker|podman>\`.`,
+		);
+	}
 	throw new RigError(
 		`${runtimeLabel(runtime)} is not running.`,
 		runtime === 'docker'

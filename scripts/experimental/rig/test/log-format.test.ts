@@ -21,9 +21,10 @@ describe('JSON log lines', () => {
 			},
 		});
 		const formatted = plain(formatLogLine(line));
-		expect(formatted).toMatch(
-			/^\d\d:\d\d:\d\d warn {2}Slow query \[db\] ms=1200 query="select 1"$/,
-		);
+		const stamp = new Date('2026-11-13T21:09:52.000Z').toLocaleTimeString(undefined, {
+			hour12: false,
+		});
+		expect(formatted).toBe(`${stamp} warn  Slow query [db] ms=1200 query="select 1"`);
 		expect(formatted).not.toContain('db.js');
 	});
 

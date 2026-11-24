@@ -7,15 +7,15 @@ function xdg(variable: string, fallback: string): string {
 }
 
 export function configDir(): string {
-	return process.env.RIG_CONFIG_DIR ?? join(xdg('XDG_CONFIG_HOME', '.config'), 'rig');
+	return process.env.RIG_CONFIG_DIR || join(xdg('XDG_CONFIG_HOME', '.config'), 'rig');
 }
 
 export function dataDir(): string {
-	return process.env.RIG_DATA_DIR ?? join(xdg('XDG_DATA_HOME', '.local/share'), 'rig');
+	return process.env.RIG_DATA_DIR || join(xdg('XDG_DATA_HOME', '.local/share'), 'rig');
 }
 
 export function cacheDir(): string {
-	return process.env.RIG_CACHE_DIR ?? join(xdg('XDG_CACHE_HOME', '.cache'), 'rig');
+	return process.env.RIG_CACHE_DIR || join(xdg('XDG_CACHE_HOME', '.cache'), 'rig');
 }
 
 export function globalConfigFile(): string {
