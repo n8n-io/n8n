@@ -19,21 +19,20 @@ const PARSED_JSON = '={{ typeof $value === "string" ? $value.parseJson() : $valu
 
 const LIMIT_DESCRIPTION = 'Max number of results to return';
 
-const withUpperCaseId = (text: string) => text.replace(/\b[iI]d(s?)\b/g, 'ID$1');
+const ID_WORD = /\b[iI]d(s?)\b/g;
 
-const titleOf = (text: string) => withUpperCaseId(titleCase(text));
+const CAMEL_CASE_BOUNDARY = /([a-z0-9])([A-Z])/g;
 
-const displayNameOf = (name: string) =>
-	titleOf(name.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' '));
+const WORD_SEPARATORS = /[_-]+/g;
 
-function descriptionOf(text: string | undefined): string | undefined {
-	if (text === undefined) return undefined;
-	const description = withUpperCaseId(text);
-	const sentences = description.replace('e.g.', '').split('. ').length;
-	if (sentences === 1 && description.endsWith('.')) return description.slice(0, -1);
-	if (sentences === 2 && !description.endsWith('.')) return `${description}.`;
-	return description;
-}
+const PATH_PARAMETER = /\{(\w+)\}/g;
+
+const QUOTED_KEY = /^(\t*)"([A-Za-z_$][\w$]*)":/gm;
+
+// The n8n node lint rules need names in title case, with ID in upper case.
+// Before: add a column to a data table id
+// After:  Add a Column to a Data Table ID
+const titleOf = (text: string) => titleCase(text).replace(ID_WORD, 'ID$1');
 
 type Field = Pick<INodeProperties, 'type' | 'default' | 'options' | 'typeOptions'> & {
 	value?: string;
@@ -97,8 +96,12 @@ const pathLocator = ({ operation, fields }: OperationRow) =>
 		({ name, location }) => location === 'path' && fields[name]?.type === 'resourceLocator',
 	);
 
+// The API path has placeholders, but the node needs a URL with the field values in it.
+// The locator field sends this URL, so the locator value is $value, the ID that n8n gets from the URL or the list.
+// Before: /workflows/{workflowId}/versions/{versionId}
+// After:  =/workflows/{{ toPathSegment($value) }}/versions/{{ toPathSegment($parameter["versionId"]) }}
 function urlOf(apiPath: string, locator?: string): string {
-	const url = apiPath.replace(/\{(\w+)\}/g, (_, name: string) => {
+	const url = apiPath.replace(PATH_PARAMETER, (_, name: string) => {
 		const value = name === locator ? '$value' : `$parameter[${JSON.stringify(name)}]`;
 		return `{{ toPathSegment(${value}) }}`;
 	});
@@ -112,10 +115,12 @@ function propertyOf(
 ): INodeProperties {
 	const { value, ...field } = fieldOf(parameter);
 	return {
-		displayName: displayNameOf(parameter.name),
+		displayName: titleOf(
+			parameter.name.replace(CAMEL_CASE_BOUNDARY, '$1 $2').replace(WORD_SEPARATORS, ' '),
+		),
 		name: parameter.name,
 		...field,
-		description: descriptionOf(parameter.description),
+		description: parameter.description,
 		...override,
 		routing: url === undefined ? routingOf(parameter, value) : { request: { url } },
 	};
@@ -261,33 +266,34 @@ export function buildProperties(
 	const rowsByResource = new Map<string, { resource: Resource; rows: OperationRow[] }>();
 	for (const row of rows) {
 		const group = rowsByResource.get(row.resource.id) ?? { resource: row.resource, rows: [] };
-		rowsByResource.set(row.resource.id, { ...group, rows: [...group.rows, row] });
+		group.rows.push(row);
+		rowsByResource.set(row.resource.id, group);
 	}
-	if (rowsByResource.size === 0) return [];
-
 	const groups = [...rowsByResource.values()];
-	return [
-		selector(
-			'resource',
-			groups.map(({ resource }) => ({ name: titleOf(resource.displayName), value: resource.id })),
-			defaultResource,
-		),
-		...groups.flatMap(({ resource, rows: resourceRows }) => [
-			selector(
-				'operation',
-				resourceRows.map((row) => operationOption(row, options)),
-				resourceRows.find((row) => row.isDefault)?.operation.operationId,
-				{ resource: [resource.id] },
-			),
-			...resourceRows.flatMap((row) => operationProperties(row, options)),
-		]),
-	];
+	if (groups.length === 0) return [];
+
+	const resources = groups.map(({ resource }) => ({
+		name: titleOf(resource.displayName),
+		value: resource.id,
+	}));
+	const resourceSelector = selector('resource', resources, defaultResource);
+
+	const resourceProperties = groups.flatMap((group) => {
+		const operations = group.rows.map((row) => operationOption(row, options));
+		const defaultOperation = group.rows.find((row) => row.isDefault)?.operation.operationId;
+		const show = { resource: [group.resource.id] };
+		const operationSelector = selector('operation', operations, defaultOperation, show);
+		const fields = group.rows.flatMap((row) => operationProperties(row, options));
+		return [operationSelector, ...fields];
+	});
+
+	return [resourceSelector, ...resourceProperties];
 }
 
 export function renderProperties(properties: INodeProperties[]): string {
-	const literal = JSON.stringify(properties, null, '\t').replace(
-		/^(\t*)"([A-Za-z_$][\w$]*)":/gm,
-		'$1$2:',
-	);
+	// The n8n node lint rules check only keys without quotes.
+	// Before: "displayName": "Name"
+	// After:  displayName: "Name"
+	const literal = JSON.stringify(properties, null, '\t').replace(QUOTED_KEY, '$1$2:');
 	return `import type { INodeProperties } from 'n8n-workflow';\n\nexport const properties: INodeProperties[] = ${literal};\n`;
 }

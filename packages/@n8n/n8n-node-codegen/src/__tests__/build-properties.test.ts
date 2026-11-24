@@ -364,27 +364,6 @@ describe('buildProperties', () => {
 		expect(versionId.displayName).toBe('Workflow Version ID');
 	});
 
-	it('should end a description with a period only when it has two sentences, and write ID in upper case', () => {
-		const properties = build(
-			row('getWorkflows', {
-				parameters: [
-					parameter('name', { required: true, description: 'Name of the workflow.' }),
-					parameter('tags', {
-						required: true,
-						description: 'Tags to match. Separate them with commas',
-					}),
-					parameter('projectId', { required: true, description: 'The project id. It must exist.' }),
-				],
-			}),
-		);
-
-		expect(properties.slice(2).map((property) => property.description)).toEqual([
-			'Name of the workflow',
-			'Tags to match. Separate them with commas.',
-			'The project ID. It must exist.',
-		]);
-	});
-
 	it('should build no properties when the node has no operations', () => {
 		expect(build()).toEqual([]);
 	});

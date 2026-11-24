@@ -56,7 +56,7 @@ The generator makes these parts of the node:
 | `operationId` | Operation ID |
 | `summary` | Operation name in title case, and the action as it is. A deprecated operation gets ` (deprecated)` |
 | Parameter name | Field name. The display name is the parameter name in title case, for example `workflowVersionId` gives `Workflow Version ID` |
-| Parameter description | Field description. A description with one sentence loses its final period, and a description with two sentences gets one. `id` becomes `ID` |
+| Parameter description | Field description, as it is in the spec |
 | Required parameter | Required field |
 | Optional parameter | Field in the `Options` collection. The node sends it only when the user adds it |
 | Path parameter | Part of the URL, through `toPathSegment`. A number path parameter, for example `executionId`, becomes a string field with an empty default |
@@ -198,6 +198,11 @@ new version.
   `overrides.ts`. A change in the spec also corrects the API docs, and a text
   change does not change the API. Use `fields` when the node needs a different
   field, for example a resource locator, or a text that only the node needs.
+- The node lint checks the texts in `properties.generated.ts`. If it reports a
+  text, correct the text in the spec. For example, a description with one
+  sentence must not end with a period, and `id` must be `ID`. If the text
+  contains code, for example the field `id`, change the words around the code,
+  or give the node its own text in `fields`.
 
 ### Test version 2 locally
 
