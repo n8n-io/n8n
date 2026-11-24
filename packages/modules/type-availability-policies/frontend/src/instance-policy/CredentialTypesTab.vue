@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, onMounted, shallowRef } from 'vue';
+import { computed, onMounted, shallowRef, useTemplateRef } from 'vue';
 
 import { credentialTypeIcon, FALLBACK_TYPE_ICON } from './credentialTypeIcon';
 import InstancePolicyTable, { type InstancePolicyTableRow } from './InstancePolicyTable.vue';
@@ -59,10 +59,15 @@ async function loadSummaries() {
 onMounted(async () => {
 	await Promise.all([loadSummaries(), typeUsage.load()]);
 });
+
+const table = useTemplateRef<InstanceType<typeof InstancePolicyTable>>('table');
+
+defineExpose({ returnFocus: (name: string | undefined) => table.value?.returnFocus(name) });
 </script>
 
 <template>
 	<InstancePolicyTable
+		ref="table"
 		:rows="rows"
 		:loading="loading"
 		:search-placeholder="

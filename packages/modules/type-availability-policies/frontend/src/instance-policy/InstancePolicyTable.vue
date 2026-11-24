@@ -17,7 +17,7 @@ import {
 	type TextColor,
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 
 import type { TypeIcon } from './instancePolicyTable.types';
 import type { InstanceTypeAccessRow } from './useInstanceTypeAccess';
@@ -200,6 +200,45 @@ watch(
 	},
 );
 
+// `N8nSelect2` exposes its trigger component, whose element is the focusable combobox.
+const filter = useTemplateRef<{ triggerRef?: { $el?: unknown } | null }>('filter');
+// Keeps the last button of each row. `returnFocus` skips one that has left the page.
+const rowButtons = new Map<string, HTMLElement>();
+
+function setRowButton(name: string, element: unknown) {
+	if (element instanceof HTMLElement) rowButtons.set(name, element);
+}
+
+/**
+ * Puts the focus on the name button of a type. When its row is not on the page, the focus goes to the
+ * access filter, which decides which rows the table shows.
+ */
+function returnFocus(name: string | undefined) {
+	const button = name === undefined ? undefined : rowButtons.get(name);
+	if (button?.isConnected) {
+		button.focus();
+		return;
+	}
+	const trigger = filter.value?.triggerRef?.$el;
+	if (trigger instanceof HTMLElement) trigger.focus();
+}
+
+// A change of access can take the focused row out of the table, or move it when the table is sorted
+// by access. Both lose the focus to the body.
+watch(
+	pageRows,
+	async () => {
+		const focused = document.activeElement;
+		const focusedRow = [...rowButtons].find(([, button]) => button === focused)?.[0];
+		if (focusedRow === undefined) return;
+		await nextTick();
+		if (document.activeElement === document.body) returnFocus(focusedRow);
+	},
+	{ flush: 'pre' },
+);
+
+defineExpose({ returnFocus });
+
 // This page sets only Allowed and Restricted. A row that the default action leaves open to project
 // opt-in can still move to either. One list for each current access keeps the menus' props stable.
 function menuItems(current: PolicyAction): Array<DropdownMenuItemProps<PolicyAction>> {
@@ -218,8 +257,12 @@ function onRowClick(_event: MouseEvent, { item }: { item: InstancePolicyTableRow
 	emit('open', item.name);
 }
 
-function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction) {
-	if (access !== row.access) emit('change', row.name, access);
+async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction) {
+	if (access === row.access) return;
+	emit('change', row.name, access);
+	await nextTick();
+	// The menu returns the focus to its trigger, which a row that left the filter took with it.
+	if (!pageRows.value.some(({ name }) => name === row.name)) returnFocus(undefined);
 }
 </script>
 
@@ -240,6 +283,7 @@ function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction) {
 				</template>
 			</N8nInput>
 			<N8nSelect2
+				ref="filter"
 				:model-value="accessFilter"
 				:items="filterOptions"
 				size="large"
@@ -267,6 +311,7 @@ function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction) {
 			<template #[`item.displayName`]="{ item }">
 				<!-- A row is not focusable, so the name is the button that keyboard users reach. -->
 				<button
+					:ref="(element) => setRowButton(item.name, element)"
 					type="button"
 					:class="$style.name"
 					:data-test-id="`instance-policy-open-${item.name}`"
