@@ -7,6 +7,7 @@ import type {
 	NodeParameterValueType,
 	RequestPath,
 } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
@@ -20,6 +21,9 @@ import {
 } from '../../v2/helpers/message-filters';
 import type * as _transport from '../../v2/transport';
 import { microsoftApiRequest, SERVICE_PRINCIPAL_AUTH } from '../../v2/transport';
+
+// The retry waits through `sleep`. The tests check the wait instead of waiting.
+vi.mock('@n8n/utils/sleep', () => ({ sleep: vi.fn(async () => {}) }));
 
 vi.mock('../../v2/transport', async () => {
 	const actual = await vi.importActual<typeof _transport>('../../v2/transport');
@@ -55,6 +59,14 @@ const off: MessageFilters = {
 
 const apiError = (httpCode: string) =>
 	new NodeApiError(mock<INode>(), { message: `status ${httpCode}`, httpCode });
+
+// The shape the transport throws for a 429 with `Retry-After`: the wait is on `failure`.
+const throttled = (retryAfterMs: number) =>
+	new NodeApiError(
+		mock<INode>(),
+		{ message: 'Too Many Requests', httpCode: '429' },
+		{ failure: { cause: 'rate-limited', retryAfterMs } },
+	);
 
 // The shape `microsoftApiRequest` throws when core cannot refresh a revoked OAuth2 token: it has
 // no HTTP status.
@@ -547,20 +559,18 @@ describe('message filters', () => {
 			);
 		});
 
-		it('warns with capped ids on a throttled read and keeps going', async () => {
+		it('warns with capped ids when the retry is throttled too, and keeps going', async () => {
 			const longId = 'm'.repeat(100);
-			const throttled = { ...notification('1'), subscriptionId: 's'.repeat(100) };
-			throttled.resourceData = { id: longId };
+			const item = { ...notification('1'), subscriptionId: 's'.repeat(100) };
+			item.resourceData = { id: longId };
 			routeMessages({ [messagePath('1')]: apiError('429'), [messagePath('2')]: plainMessage });
 			const ctx = ctxWith();
 
-			const result = await filterChangeNotifications.call(
-				ctx,
-				[throttled, notification('2')],
-				skipBot,
-			);
+			const result = await filterChangeNotifications.call(ctx, [item, notification('2')], skipBot);
 
 			expect(result.passed).toHaveLength(1);
+			expect(readPaths()).toEqual([messagePath('1'), messagePath('1'), messagePath('2')]);
+			expect(sleep).toHaveBeenCalledWith(1000);
 			expect(ctx.logger.warn).toHaveBeenCalledWith(
 				'Microsoft Teams Trigger: failed to read message, notification skipped',
 				expect.objectContaining({
@@ -569,6 +579,107 @@ describe('message filters', () => {
 					messageId: 'm'.repeat(64),
 				}),
 			);
+		});
+
+		describe('retry of a failed read', () => {
+			it('waits for Retry-After and keeps a message that the retry reads', async () => {
+				const answers = [throttled(2500), plainMessage];
+				request.mockImplementation(async () => {
+					const answer = answers.shift();
+					if (answer instanceof Error) throw answer;
+					return answer;
+				});
+
+				const { passed } = await filterChangeNotifications.call(
+					ctxWith(),
+					[notification('1')],
+					skipBot,
+				);
+
+				expect(passed).toHaveLength(1);
+				expect(readPaths()).toEqual([messagePath('1'), messagePath('1')]);
+				expect(sleep).toHaveBeenCalledWith(2500);
+			});
+
+			it.each([
+				['a 503', apiError('503')],
+				[
+					'a network error',
+					new NodeApiError(
+						mock<INode>(),
+						Object.assign(new Error('socket hang up'), {
+							code: 'ECONNRESET',
+						}) as unknown as JsonObject,
+					),
+				],
+				[
+					'a network error under Service Principal (status and code dropped)',
+					new NodeApiError(
+						mock<INode>(),
+						{ message: 'Microsoft Graph rejected the request (HTTP unknown).' },
+						{ failure: { cause: 'temporarily-unavailable' } },
+					),
+				],
+			])('retries once after %s, waiting one second', async (_label, failure) => {
+				const answers: unknown[] = [failure, plainMessage];
+				request.mockImplementation(async () => {
+					const answer = answers.shift();
+					if (answer instanceof Error) throw answer;
+					return answer;
+				});
+
+				const { passed } = await filterChangeNotifications.call(
+					ctxWith(),
+					[notification('1')],
+					skipBot,
+				);
+
+				expect(passed).toHaveLength(1);
+				expect(sleep).toHaveBeenCalledWith(1000);
+			});
+
+			it.each([
+				['a 404', apiError('404')],
+				['a 400', apiError('400')],
+				['an error without a status', new Error('boom')],
+			])('does not retry after %s', async (_label, failure) => {
+				routeMessages({ [messagePath('1')]: failure });
+
+				await filterChangeNotifications.call(ctxWith(), [notification('1')], skipBot);
+
+				expect(readPaths()).toEqual([messagePath('1')]);
+				expect(sleep).not.toHaveBeenCalled();
+			});
+
+			it('does not retry when Retry-After is longer than the budget', async () => {
+				routeMessages({ [messagePath('1')]: throttled(11_000) });
+
+				await filterChangeNotifications.call(ctxWith(), [notification('1')], skipBot);
+
+				expect(readPaths()).toEqual([messagePath('1')]);
+				expect(sleep).not.toHaveBeenCalled();
+			});
+
+			it('shares one wait budget across the reads of a request', async () => {
+				routeMessages({
+					[messagePath('1')]: throttled(4000),
+					[messagePath('2')]: throttled(4000),
+					[messagePath('3')]: throttled(4000),
+				});
+				const items = [notification('1'), notification('2'), notification('3')];
+
+				await filterChangeNotifications.call(ctxWith(), items, skipBot);
+
+				// 4 s + 4 s fit in the 10 s budget, the third wait does not.
+				expect(readPaths()).toEqual([
+					messagePath('1'),
+					messagePath('1'),
+					messagePath('2'),
+					messagePath('2'),
+					messagePath('3'),
+				]);
+				expect(sleep).toHaveBeenCalledTimes(2);
+			});
 		});
 
 		it('caps the logged error text', async () => {
@@ -674,22 +785,25 @@ describe('message filters', () => {
 			});
 
 			it.each([
-				['a 429', apiError('429')],
-				['an empty id', { id: '' }],
-			])('skips the batch without reading messages after %s from /me', async (_label, answer) => {
-				routeMessages({ '/v1.0/me': answer });
-				const ctx = ctxWith();
+				['a 429 on the read and the retry', apiError('429'), ['/v1.0/me', '/v1.0/me']],
+				['an empty id', { id: '' }, ['/v1.0/me']],
+			])(
+				'skips the batch without reading messages after %s from /me',
+				async (_label, answer, reads) => {
+					routeMessages({ '/v1.0/me': answer });
+					const ctx = ctxWith();
 
-				const result = await filterChangeNotifications.call(ctx, [notification('1')], mentionsMe);
+					const result = await filterChangeNotifications.call(ctx, [notification('1')], mentionsMe);
 
-				expect(result).toEqual({ passed: [] });
-				expect(readPaths()).toEqual(['/v1.0/me']);
-				expect(ctx.logger.warn).toHaveBeenCalledTimes(1);
-				expect(ctx.logger.warn).toHaveBeenCalledWith(
-					'Microsoft Teams Trigger: could not read the signed-in user, Mentions Me notifications skipped',
-					expect.anything(),
-				);
-			});
+					expect(result).toEqual({ passed: [] });
+					expect(readPaths()).toEqual(reads);
+					expect(ctx.logger.warn).toHaveBeenCalledTimes(1);
+					expect(ctx.logger.warn).toHaveBeenCalledWith(
+						'Microsoft Teams Trigger: could not read the signed-in user, Mentions Me notifications skipped',
+						expect.anything(),
+					);
+				},
+			);
 
 			it('does not read /me when Mentions Me is off', async () => {
 				routeMessages({ [messagePath('1')]: plainMessage });

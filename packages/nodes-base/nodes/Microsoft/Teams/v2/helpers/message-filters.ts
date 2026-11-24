@@ -1,7 +1,9 @@
+import { retryabilityFromError } from '@n8n/backend-network';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { isRecord } from '@n8n/utils/is-record';
+import { sleep } from '@n8n/utils/sleep';
 import type { FormatCallback } from 'html-to-text';
-import type { IWebhookFunctions, RequestPath } from 'n8n-workflow';
+import type { IDataObject, IWebhookFunctions, RequestPath } from 'n8n-workflow';
 import { NodeApiError, requestPath } from 'n8n-workflow';
 
 import type { WebhookNotification } from './types';
@@ -93,15 +95,53 @@ export function getMessageFilters(this: IWebhookFunctions): MessageFilters | und
 		: undefined;
 }
 
+// Teams limits are per second, so a retry waits one second when Graph sends no `Retry-After`.
+const DEFAULT_RETRY_MS = 1_000;
+// ponytail: one wait budget for each request. Graph already has its 202, so a wait only holds this
+// request open. The budget counts the waits, not the time of the reads. Raise it, or retry in the
+// background, if throttled reads still get skipped.
+const RETRY_BUDGET_MS = 10_000;
+
+/** How long to wait before a retry, or `undefined` when the error is not worth one. */
+function retryWaitMs(error: unknown): number | undefined {
+	const { retryable, retryAfterMs } = retryabilityFromError(error);
+	// The transport keeps the throttle cause and the `Retry-After` wait on `failure`, because it
+	// drops the headers and, under Service Principal, the network error code.
+	const failure = error instanceof NodeApiError ? error.failure : undefined;
+	const timed = failure?.cause === 'rate-limited' || failure?.cause === 'temporarily-unavailable';
+	if (retryable !== 'yes' && !timed) return undefined;
+	const hinted = failure && 'retryAfterMs' in failure ? failure.retryAfterMs : undefined;
+	return hinted ?? retryAfterMs ?? DEFAULT_RETRY_MS;
+}
+
+type GraphRead = (path: RequestPath, qs?: IDataObject) => Promise<unknown>;
+
+/**
+ * A Graph GET that retries once after a 429, a 5xx or a network error. The waits of one request
+ * share {@link RETRY_BUDGET_MS}. A wait that does not fit throws the error without a retry.
+ */
+function createGraphRead(this: IWebhookFunctions): GraphRead {
+	let budgetMs = RETRY_BUDGET_MS;
+	return async (path, qs = {}) => {
+		try {
+			return await microsoftApiRequest.call(this, 'GET', path, {}, qs);
+		} catch (error) {
+			const waitMs = retryWaitMs(error);
+			if (waitMs === undefined || waitMs > budgetMs) throw error;
+			budgetMs -= waitMs;
+			logTrigger.call(this, 'debug', 'Graph read failed, retrying once', {
+				status: httpStatus(error),
+				waitMs,
+			});
+			await sleep(waitMs);
+			return await microsoftApiRequest.call(this, 'GET', path, {}, qs);
+		}
+	};
+}
+
 /** The signed-in user id, or `undefined` when the answer has none. */
-async function readUserId(this: IWebhookFunctions): Promise<string | undefined> {
-	const answer: unknown = await microsoftApiRequest.call(
-		this,
-		'GET',
-		requestPath`/v1.0/me`,
-		{},
-		{ $select: 'id' },
-	);
+async function readUserId(read: GraphRead): Promise<string | undefined> {
+	const answer = await read(requestPath`/v1.0/me`, { $select: 'id' });
 	return isRecord(answer) && validId(answer.id) ? answer.id : undefined;
 }
 
@@ -226,12 +266,13 @@ export async function filterChangeNotifications(
 	notifications: WebhookNotification[],
 	filters: MessageFilters,
 ): Promise<{ passed: WebhookNotification[]; denied?: NodeApiError }> {
+	const read = createGraphRead.call(this);
 	let userId: string | undefined;
 	if (filters.mentionsMe) {
 		// Read for each batch, not stored: a reconnected credential can belong to another user.
 		let failure: Record<string, unknown> = {};
 		try {
-			userId = await readUserId.call(this);
+			userId = await readUserId(read);
 		} catch (error) {
 			const denied = deniedError.call(this, error, 'User.Read', 'the signed-in user');
 			if (denied) return { passed: [], denied };
@@ -250,7 +291,7 @@ export async function filterChangeNotifications(
 
 	const passed: WebhookNotification[] = [];
 	let denied: NodeApiError | undefined;
-	// Graph already has its 202, so a skipped notification is final.
+	// Graph already has its 202, so a skipped notification is final. A throttled read gets one retry.
 	// ponytail: no batch cap. The reads run one at a time, so a large batch under throttling holds
 	// this request open for its whole length. Add a cap or a queue for each channel if long webhook
 	// requests show up.
@@ -270,7 +311,7 @@ export async function filterChangeNotifications(
 			continue;
 		}
 		try {
-			const message: unknown = await microsoftApiRequest.call(this, 'GET', target.path);
+			const message = await read(target.path);
 			if (await messagePassesFilters(message, filters, userId)) passed.push(notification);
 		} catch (error) {
 			const status = httpStatus(error);

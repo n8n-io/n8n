@@ -52,22 +52,34 @@ describe('Microsoft Graph transport kernel', () => {
 	// message at ANY status.
 	const rawLeak =
 		'request-id: 11111111-2222-3333-4444-555555555555; client-request-id: aaaa; token=eyJ0eParrotedSecret; resource /teams/19:injected@thread.tacv2';
-	const wrappedGraphError = (statusCode: number, code: string, message = rawLeak) => {
+	const wrappedGraphError = (
+		statusCode: number,
+		code: string,
+		message = rawLeak,
+		headers: Record<string, string> = {},
+	) => {
 		const underlying = Object.assign(
 			new Error(`${statusCode} - ${JSON.stringify({ error: { code, message } })}`),
 			{
 				statusCode,
 				status: statusCode,
 				error: { error: { code, message } },
-				response: { status: statusCode, statusText: code, headers: {} },
+				response: { status: statusCode, statusText: code, headers },
 			},
 		);
 		return new NodeApiError(mockNode, underlying as unknown as JsonObject);
 	};
-	const delegatedError = (statusCode: number, code: string, message: string) =>
+	// The shape the legacy request helper throws: Graph body on `error`, headers on `response`.
+	const delegatedError = (
+		statusCode: number,
+		code: string,
+		message: string,
+		headers: Record<string, string> = {},
+	) =>
 		Object.assign(new Error(`${statusCode} - {"error":{"code":"${code}"}}`), {
 			statusCode,
 			error: { error: { code, message } },
+			response: { status: statusCode, headers },
 		});
 
 	describe('microsoftApiRequest', () => {
@@ -350,6 +362,27 @@ describe('Microsoft Graph transport kernel', () => {
 					},
 				);
 
+				it.each([
+					[429, { 'retry-after': '3' }, { cause: 'rate-limited', retryAfterMs: 3000 }],
+					[429, {}, { cause: 'rate-limited' }],
+					[503, { 'Retry-After': '2' }, { cause: 'temporarily-unavailable', retryAfterMs: 2000 }],
+					[400, { 'retry-after': '3' }, undefined],
+				])(
+					'keeps the wait of a %i with headers %j on failure',
+					async (statusCode, headers, expected) => {
+						mockRequestWithAuthentication.mockRejectedValue(
+							wrappedGraphError(statusCode, 'Code', rawLeak, headers),
+						);
+
+						const error = (await microsoftApiRequest
+							.call(mockExecuteFunctions, 'GET', requestPath`/v1.0/teams`)
+							.catch((e: Error) => e)) as NodeApiError;
+
+						expect(error.failure).toEqual(expected);
+						expect(JSON.stringify(error)).not.toContain('request-id');
+					},
+				);
+
 				it('rewrites a 404 to the static "{Resource} not found" message', async () => {
 					mockExecuteFunctions.getNodeParameter.mockImplementation((name: string) => {
 						if (name === 'authentication') return SERVICE_PRINCIPAL_AUTH;
@@ -363,6 +396,19 @@ describe('Microsoft Graph transport kernel', () => {
 						.catch((e: Error) => e);
 
 					expect(error.message).toBe('Channel not found');
+				});
+
+				it('marks a network error as temporarily unavailable without leaking its code', async () => {
+					mockRequestWithAuthentication.mockRejectedValue(
+						Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' }),
+					);
+
+					const error = (await microsoftApiRequest
+						.call(mockExecuteFunctions, 'GET', requestPath`/v1.0/teams`)
+						.catch((e: Error) => e)) as NodeApiError;
+
+					expect(error.failure).toEqual({ cause: 'temporarily-unavailable' });
+					expect(JSON.stringify(error)).not.toContain('ECONNRESET');
 				});
 
 				it('maps a status-less failure (network error) to the static unknown-status message', async () => {
@@ -402,6 +448,26 @@ describe('Microsoft Graph transport kernel', () => {
 				expect(error.constructor.name).toBe('NodeApiError');
 				expect(error.message).toBe('Channel not found');
 			});
+
+			it.each([
+				[429, { 'Retry-After': '5' }, { cause: 'rate-limited', retryAfterMs: 5000 }],
+				[503, {}, { cause: 'temporarily-unavailable' }],
+				[404, { 'retry-after': '5' }, undefined],
+			])(
+				'keeps the wait of a delegated %i with headers %j on failure',
+				async (statusCode, headers, expected) => {
+					mockRequestOAuth2.mockRejectedValue(
+						delegatedError(statusCode, 'Code', 'Graph text', headers),
+					);
+
+					const error = (await microsoftApiRequest
+						.call(mockExecuteFunctions, 'GET', requestPath`/v1.0/teams`)
+						.catch((e: Error) => e)) as NodeApiError;
+
+					expect(error.httpCode).toBe(String(statusCode));
+					expect(error.failure).toEqual(expected);
+				},
+			);
 
 			it('passes the Graph error message through for other delegated errors', async () => {
 				mockRequestOAuth2.mockRejectedValue(

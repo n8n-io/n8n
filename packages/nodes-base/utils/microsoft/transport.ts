@@ -1,4 +1,6 @@
+import { retryabilityFromError } from '@n8n/backend-network';
 import type {
+	Failure,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	IDataObject,
@@ -49,6 +51,23 @@ export interface MicrosoftGraphForbiddenHint {
 	message: string;
 	description: string;
 	delegated?: { message: string; description: string };
+}
+
+/**
+ * A 429, a 503 or a network error as a `failure`, with the `Retry-After` wait when Graph sent
+ * one. It is read from the original error, because the rebuilt `NodeApiError` keeps no response
+ * headers, and the sanitized Service Principal error keeps no error code either.
+ */
+function throttleFailure(error: unknown): Failure | undefined {
+	const { retryable, status, retryAfterMs } = retryabilityFromError(error);
+	const cause =
+		status === 429
+			? 'rate-limited'
+			: status === 503 || (status === undefined && retryable === 'yes')
+				? 'temporarily-unavailable'
+				: undefined;
+	if (cause === undefined) return undefined;
+	return retryAfterMs === undefined ? { cause } : { cause, retryAfterMs };
 }
 
 function wrappedGraphText(error: unknown): string {
@@ -336,6 +355,7 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 			}
 			return await this.helpers.requestOAuth2.call(this, credentialType, options);
 		} catch (error) {
+			const failure = throttleFailure(error);
 			if (isServicePrincipal) {
 				// App-only runs under a tenant-wide token: a raw Graph error body can carry
 				// correlation IDs and reflected input. For ANY status, never pass the raw
@@ -384,6 +404,7 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 					sanitizedError.httpStatusCode = httpCode;
 					errorOptions.httpCode = `${httpCode}`;
 				}
+				if (failure) errorOptions.failure = failure;
 				throw new NodeApiError(this.getNode(), sanitizedError, errorOptions);
 			}
 
@@ -411,6 +432,7 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 					}
 				}
 			}
+			if (failure) errorOptions.failure = failure;
 			throw new NodeApiError(this.getNode(), error as JsonObject, errorOptions);
 		}
 	}
