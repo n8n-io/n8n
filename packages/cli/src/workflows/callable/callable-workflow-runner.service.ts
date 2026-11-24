@@ -109,6 +109,12 @@ const OPEN_INPUT_SCHEMA: CallableWorkflowInputSchema = {
 /**
  * Loads, checks, describes, and runs the published version of a project
  * workflow that another feature calls as a tool, such as a custom MCP server.
+ *
+ * `AppWorkflowAdapter` keeps its own copy of this path in the MVP, with its own
+ * run cap. The copies differ: here a stop during the wait gives `canceled` and
+ * a run checks that the project owns the workflow. Apps throws on a stop and
+ * checks the owner only when it binds the workflow. Move Apps onto this runner
+ * after the MVP.
  */
 @Service()
 export class CallableWorkflowRunner {
