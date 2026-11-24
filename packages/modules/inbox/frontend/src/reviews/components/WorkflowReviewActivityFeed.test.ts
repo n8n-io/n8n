@@ -906,6 +906,29 @@ describe('WorkflowReviewActivityFeed', () => {
 			expect(queryByTestId('workflow-review-activity-actor')).not.toBeInTheDocument();
 		});
 
+		it('names the user who closed the review in its callout', async () => {
+			store.entries = [
+				{
+					...systemEntry,
+					type: 'review.closed_by_user',
+					data: null,
+					createdBy: {
+						id: 'user-1',
+						email: 'ada@example.com',
+						firstName: 'Ada',
+						lastName: 'Lovelace',
+					},
+				},
+			];
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			const callout = getByTestId('workflow-review-activity-closed');
+			expect(callout).toHaveTextContent('Submission closed');
+			expect(callout).toHaveTextContent(/Ada Lovelace closed the review [^.]+\.$/);
+		});
+
 		it('renders footer content as one more timeline item after the entries', async () => {
 			store.entries = [makeComment({ id: '1' })];
 

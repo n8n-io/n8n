@@ -106,7 +106,9 @@ const renderAt = async (path: string) => {
 };
 
 const allowConnect = () => {
-	mockedStore(useUsersStore).currentUser = mock<IUser>({ globalScopes: ['promotions:connect'] });
+	mockedStore(useUsersStore).currentUser = mock<IUser>({
+		globalScopes: ['promotions:manageEnvironments'],
+	});
 };
 
 const fillInput = async (testId: string, value: string) => {

@@ -42,6 +42,8 @@ import {
 	describeRestrictedNodeTypes,
 	collectRestrictedNodeTypes,
 } from '@n8n/frontend-module-type-availability-policies';
+import { describeEngineV2Block } from '@n8n/frontend-module-engine-v2';
+import { useWorkflowEngineV2Compatibility } from '@/app/composables/useWorkflowEngineV2Compatibility';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowVersionFormModalEventBusEvents } from '@/features/workflows/workflowHistory/components/WorkflowVersionFormModal.vue';
@@ -230,8 +232,16 @@ const restrictedNodeTypes = computed(() =>
 
 const hasRestrictedNodeTypes = computed(() => restrictedNodeTypes.value.length > 0);
 
+const { blockingReasons: engineV2BlockingReasons } =
+	useWorkflowEngineV2Compatibility(workflowDocumentStore);
+const hasEngineV2BlockingReasons = computed(() => engineV2BlockingReasons.value.length > 0);
+
 const isWorkflowPublishable = computed(
-	() => containsTrigger.value && !hasNodeIssues.value && !hasRestrictedNodeTypes.value,
+	() =>
+		containsTrigger.value &&
+		!hasNodeIssues.value &&
+		!hasRestrictedNodeTypes.value &&
+		!hasEngineV2BlockingReasons.value,
 );
 
 /** Why publishing is blocked, or '' when it is not. Also the Publish tooltip. */
@@ -239,6 +249,7 @@ const publishBlockedReason = computed(() => {
 	if (isWorkflowPublishable.value) return '';
 	if (!containsTrigger.value) return i18n.baseText('workflows.publishModal.noTriggerMessage');
 	if (hasRestrictedNodeTypes.value) return describeRestrictedNodeTypes(restrictedNodeTypes.value);
+	if (hasEngineV2BlockingReasons.value) return describeEngineV2Block();
 
 	return i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title', {
 		interpolate: { count: nodesWithValidationIssues.value.length },
@@ -281,7 +292,7 @@ const workflowPublishState = computed((): WorkflowPublishState => {
 		return 'published-invalid-trigger';
 	}
 
-	if (hasNodeIssues.value || hasRestrictedNodeTypes.value) {
+	if (hasNodeIssues.value || hasRestrictedNodeTypes.value || hasEngineV2BlockingReasons.value) {
 		return 'published-node-issues';
 	}
 
@@ -429,6 +440,11 @@ const onPublishButtonClick = async () => {
 	// Event-bus callers skip the disabled button, so show the reason as a toast.
 	if (unusableCredentialReason.value) {
 		toast.showMessage({ title: unusableCredentialReason.value, type: 'warning' });
+		return;
+	}
+
+	if (hasEngineV2BlockingReasons.value) {
+		toast.showMessage({ title: describeEngineV2Block(), type: 'warning' });
 		return;
 	}
 
