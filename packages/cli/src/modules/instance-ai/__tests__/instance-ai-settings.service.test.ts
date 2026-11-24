@@ -2069,6 +2069,46 @@ describe('InstanceAiSettingsService', () => {
 			expect((await service.getAdminSettings()).cloudBrowserSavedLoginSites).toEqual([]);
 		});
 
+		describe('a mode change', () => {
+			beforeEach(async () => {
+				await service.updateAdminSettings(
+					{ cloudBrowserSavedLoginsMode: 'only', cloudBrowserSavedLoginSites: ['github.com'] },
+					admin,
+				);
+			});
+
+			it.each(['except', 'off', 'all'] as const)(
+				'clears the sites when the mode becomes %s',
+				async (mode) => {
+					const result = await service.updateAdminSettings(
+						{ cloudBrowserSavedLoginsMode: mode },
+						admin,
+					);
+
+					expect(result.cloudBrowserSavedLoginsMode).toBe(mode);
+					expect(result.cloudBrowserSavedLoginSites).toEqual([]);
+				},
+			);
+
+			it('keeps the sites that the same update sends', async () => {
+				const result = await service.updateAdminSettings(
+					{ cloudBrowserSavedLoginsMode: 'except', cloudBrowserSavedLoginSites: ['gitlab.com'] },
+					admin,
+				);
+
+				expect(result.cloudBrowserSavedLoginSites).toEqual(['gitlab.com']);
+			});
+
+			it('keeps the sites when the mode stays the same', async () => {
+				const result = await service.updateAdminSettings(
+					{ cloudBrowserSavedLoginsMode: 'only' },
+					admin,
+				);
+
+				expect(result.cloudBrowserSavedLoginSites).toEqual(['github.com']);
+			});
+		});
+
 		it('loads the saved mode and sites from the database', async () => {
 			persistedSettingsValue = JSON.stringify({
 				cloudBrowserSavedLoginsMode: 'except',

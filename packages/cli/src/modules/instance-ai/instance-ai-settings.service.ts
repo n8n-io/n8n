@@ -582,6 +582,14 @@ export class InstanceAiSettingsService {
 				update.cloudBrowserSavedLoginSites,
 			);
 		}
+
+		const newSavedLoginsMode = update.cloudBrowserSavedLoginsMode;
+		const isSavedLoginsModeChange =
+			newSavedLoginsMode !== undefined && newSavedLoginsMode !== this.cloudBrowserSavedLoginsMode;
+		if (isSavedLoginsModeChange && update.cloudBrowserSavedLoginSites === undefined) {
+			update.cloudBrowserSavedLoginSites = [];
+		}
+
 		const {
 			modelCredentialId: initialModelCredentialId,
 			daytonaCredentialId: initialDaytonaCredentialId,
