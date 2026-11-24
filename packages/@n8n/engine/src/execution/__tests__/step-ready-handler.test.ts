@@ -861,6 +861,17 @@ describe('StepReadyHandler', () => {
 		await expect(handler.handle(event)).rejects.toBeInstanceOf(ExecutionNotFoundError);
 	});
 
+	it('rejects when the execution load fails for another reason', async () => {
+		const executionStore = makeExecutionStore();
+		const loadError = new Error('connection lost');
+		vi.mocked(executionStore.loadExecution).mockRejectedValue(loadError);
+		const handler = makeHandler(executionStore, makeStepStore(), makeQueue(), {
+			v1StepExecutor: makeExecutor(),
+		});
+
+		await expect(handler.handle(event)).rejects.toBe(loadError);
+	});
+
 	it('settles a claimed step as cancelled when its execution has ended, announcing nothing', async () => {
 		// the claim already happened, so the row would otherwise sit `running`
 		const stepStore = makeStepStore();
