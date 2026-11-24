@@ -60,8 +60,11 @@ export interface EngineRuntimeOptions {
 	/** The data plane database, already initialized and migrated. */
 	dataSource: DataSource;
 	admittance: AdmittanceService;
-	/** Verifies the identity token on every `/api` request. No default: an unauthenticated engine must never boot by omission. */
-	identityVerifier: IdentityVerifier;
+	/**
+	 * Verifies the identity token on every `/api` request. The `api` role refuses
+	 * to start without it, so an unauthenticated API never boots by omission.
+	 */
+	identityVerifier?: IdentityVerifier;
 	/** Where the engine writes its own messages. Defaults to the console. */
 	logger?: EngineLogger;
 	/**
@@ -254,6 +257,7 @@ export function createEngineRuntime({
 
 	let apiDeps: EngineServerDeps | undefined;
 	if (runs.has('api')) {
+		if (!identityVerifier) throw new UnexpectedError('The api role needs an identity verifier');
 		apiDeps = {
 			startExecution,
 			cancelExecution,

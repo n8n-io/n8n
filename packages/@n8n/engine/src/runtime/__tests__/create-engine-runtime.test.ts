@@ -92,11 +92,25 @@ describe('createEngineRuntime', () => {
 		{ name: 'orchestrator only', roles: ['orchestrator'] },
 		{ name: 'step-worker only', roles: ['step-worker'] },
 		{ name: 'orchestrator and step-worker', roles: ['orchestrator', 'step-worker'] },
-	])('does not serve the execution API without the api role ($name)', async ({ roles }) => {
-		// 404 and not 401: no authentication middleware is mounted either.
-		const response = await request(runtime({ roles }).app).post('/api/workflow-executions');
+	])(
+		'needs no identity verifier and serves no execution API without the api role ($name)',
+		async ({ roles }) => {
+			// 404 and not 401: no authentication middleware is mounted either.
+			const response = await request(runtime({ roles, identityVerifier: undefined }).app).post(
+				'/api/workflow-executions',
+			);
 
-		expect(response.status).toBe(404);
+			expect(response.status).toBe(404);
+		},
+	);
+
+	it.each<{ name: string; roles?: EngineRole[] }>([
+		{ name: 'all roles (default)', roles: undefined },
+		{ name: 'api only', roles: ['api'] },
+	])('refuses the api role without an identity verifier ($name)', ({ roles }) => {
+		expect(() => runtime({ roles, identityVerifier: undefined })).toThrow(
+			'The api role needs an identity verifier',
+		);
 	});
 
 	it.each([

@@ -63,7 +63,8 @@ a deployable engine worker) without touching core logic.
   `orchestrator` runs the orchestration worker and the reconciliation sweeper,
   and `step-worker` runs the step worker and the wait sweeper. Every role serves
   `/healthz`. Roles can be split over processes only on shared queues: the
-  in-memory queues need all three roles in one process.
+  in-memory queues need all three roles in one process. Only the `api` role
+  needs an identity verifier, and the factory refuses that role without one.
   A data plane database is not optional — the factory's type requires one, and
   each composition root refuses to start without it rather than serving
   `/healthz` while unable to run a workflow.
