@@ -381,6 +381,16 @@ describe.each(bridges)('$label item data', ({ create }) => {
 		expect(evaluate(code, $json)).toStrictEqual(evaluatePlain(code, $json));
 	});
 
+	it('reads a field that a batched read leaves out with a read of one value', () => {
+		const meta = Object.fromEntries(
+			Array.from({ length: 2000 }, (_, index) => [`key${index}`, index]),
+		);
+		const $json = { rows: rowsOf(30).map((row, index) => ({ ...row, at: new Date(index), meta })) };
+		const code = 'return $json.rows.map(function (r) { return [r.id, r.at, r.meta.key5]; });';
+
+		expect(evaluate(code, $json)).toStrictEqual(evaluatePlain(code, $json));
+	});
+
 	it('never calls a getter of the item data more than a read of one field does', () => {
 		const read = vi.fn(() => 'computed');
 		const rows = rowsOf(10).map((row) =>

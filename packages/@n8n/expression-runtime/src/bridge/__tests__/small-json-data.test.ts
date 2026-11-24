@@ -2,7 +2,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { smallJsonCopy } from '../small-json-data';
 
-const charsOf = (value: unknown, maxChars: number) => smallJsonCopy(value, maxChars)?.chars;
+const charsOf = (value: unknown, maxChars: number) => {
+	const result = smallJsonCopy(value, maxChars);
+	return result.copy === undefined ? undefined : result.chars;
+};
 
 const isSmall = (value: unknown, maxChars: number) => charsOf(value, maxChars) !== undefined;
 
@@ -115,6 +118,12 @@ describe('smallJsonCopy, for an object or an array', () => {
 });
 
 describe('smallJsonCopy', () => {
+	it('counts what a walk counted before it stopped, at most the limit', () => {
+		expect(smallJsonCopy(new Date(0), 100)).toEqual({ copy: undefined, chars: 8 });
+		expect(smallJsonCopy({ a: 1, b: undefined }, 100)).toEqual({ copy: undefined, chars: 18 });
+		expect(smallJsonCopy('x'.repeat(200), 100)).toEqual({ copy: undefined, chars: 100 });
+	});
+
 	it.each([
 		{ label: 'null', value: null, chars: 8 },
 		{ label: 'a boolean', value: true, chars: 8 },
