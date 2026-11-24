@@ -1,0 +1,69 @@
+packages/@n8n/api-types/src/agents/types.ts
+  s_c3fb44d7ad272c::t_516c0394467c43 6,584-585
+packages/@n8n/api-types/src/index.ts
+  s_c3fb44d7ad272c::t_e55aa1a49f77c0 1185
+packages/@n8n/api-types/src/schemas/agent-safe-testing.schema.ts
+  s_c3fb44d7ad272c::t_5428d19d3e150e 133-136
+packages/cli/src/modules/agents/__tests__/agent-test-run-persistence.test.ts
+  s_c3fb44d7ad272c::t_ae7b69fb60307e 1-77
+packages/cli/src/modules/agents/__tests__/agent-test-run.controller.test.ts
+  s_c3fb44d7ad272c::t_20d20eea4551da 187-248
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_c3fb44d7ad272c::t_f207888d245dda 323,1409-1414,1593-1598,1964
+packages/cli/src/modules/agents/agent-test-run.controller.ts
+  s_c3fb44d7ad272c::t_1adb7a0588277e 4,10,13,64-86
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_c3fb44d7ad272c::t_cd6c48adee0029 11,108-109,340-342
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_c3fb44d7ad272c::t_e133df83c0e7a1 8,257-258,453-457,758-761,782,816
+packages/cli/src/modules/agents/simulation/simulation-session.service.ts
+  s_c3fb44d7ad272c::t_f04caa6c4503af 302-315
+packages/cli/src/modules/agents/simulation/simulation-session.ts
+  s_c3fb44d7ad272c::t_4c99e859e705d6 216-219
+packages/cli/src/modules/agents/utils/execution-to-message-mapper.ts
+  s_c3fb44d7ad272c::t_430dadbf7195d1 64,99
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_c3fb44d7ad272c::t_e281b479b3ac3a 11,52-55
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatSafeTesting.test.ts
+  s_c3fb44d7ad272c::t_7a8ad797f62c95 1-228
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_c3fb44d7ad272c::t_5e25d79c1f9b66 6500-6560
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_c3fb44d7ad272c::t_8e7e4d0ba7ae25 47,74-76,110,113,265,335,1761-1802,2211-2218,2290-2293,2316-2319,2599-2609
+packages/frontend/editor-ui/src/features/agents/components/AgentChatToolSteps.vue
+  s_c3fb44d7ad272c::t_81bd01a167cf6f 49-50,113,138-152,325,495-500,599-602
+packages/frontend/editor-ui/src/features/agents/components/AgentTestChatPage.vue
+  s_c3fb44d7ad272c::t_b6868b02e93e85 58,129
+packages/frontend/editor-ui/src/features/agents/components/AgentTestDock.vue
+  s_c3fb44d7ad272c::t_82186a70a11930 355
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_c3fb44d7ad272c::t_1ed3ca2730c9bc 39-40,1177-1202
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_c3fb44d7ad272c::t_691ec745b32f1e 22,1403-1408
+packages/frontend/editor-ui/src/features/agents/composables/useAgentTestRunTools.ts
+  s_c3fb44d7ad272c::t_cde3580626e860 1-65
+packages/frontend/editor-ui/src/features/agents/testRunTools.types.ts
+  s_c3fb44d7ad272c::t_b182969210b876 1,3,6
+packages/frontend/editor-ui/src/features/agents/toolCallSimulation.types.ts
+  s_c3fb44d7ad272c::t_222eda74d75cde 1-6,8
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_c3fb44d7ad272c::t_e8e2b9c2953e5e 6,392-395,407
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_c3fb44d7ad272c::t_09bc92e18c6be3 7,62-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3dedc5fb3b773ceeec740413af41ca3013b928cd",
+  "prompts": {},
+  "sessions": {
+    "s_c3fb44d7ad272c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20dd5-b561-70c9-800f-e58948d8542a",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

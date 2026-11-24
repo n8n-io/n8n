@@ -1,0 +1,37 @@
+packages/nodes-base/utils/workflow-backtracking.ts
+  s_ee257bd3aa5f17::t_9bb382ca0d28b9 5
+  s_ee257bd3aa5f17::t_02a4dffbc42dbd 47-65
+  s_ee257bd3aa5f17::t_ac3ce95daa043d 143-144
+packages/nodes-base/utils/workflow-backtracking.test.ts
+  s_ee257bd3aa5f17::t_8b76102a38d0d4 599-602,604-648
+  s_ee257bd3aa5f17::t_41d049f43d516a 603
+packages/cli/test/integration/sub-workflow-paired-item.test.ts
+  s_ee257bd3aa5f17::t_7ffe9f74661cd0 146,286-287,85,92,106,150,153,168,190,257,273,281,288-289,322-325,327-339,350-351,111,118,125,141,290-320
+  s_ee257bd3aa5f17::t_b5d59fc53c9d5e 83-84,86-91,96,98-100,102-105,164,179,186,256,107-110,112-117,119-124,126-140
+  s_fcb95719ac2ec5::t_6ed13e9a0101a3 242-246,254
+  s_ee257bd3aa5f17::t_24923145d30a7d 35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "af79aa9c4dc92c827a9e17fde24457bd2c6e97f6",
+  "prompts": {},
+  "sessions": {
+    "s_ee257bd3aa5f17": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9afdedee-89bd-4956-bc5d-7218bb0f47a5",
+        "model": "unknown"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_fcb95719ac2ec5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2c719b4a-4120-47d6-982d-b1feac15f85e",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

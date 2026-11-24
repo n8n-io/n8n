@@ -1,0 +1,22 @@
+packages/@n8n/expression-runtime/src/__tests__/integration.test.ts
+  s_780d9e2f5e36af::t_c69805d708ec4e 1405-1409
+  s_780d9e2f5e36af::t_338e40b1582994 1403-1404,1410-1418
+packages/@n8n/expression-runtime/src/runtime/lazy-array-concat.ts
+  s_780d9e2f5e36af::t_19f3f5febc3844 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "023c5be1f04232f7b51a9d548f637388c54f8cdf",
+  "prompts": {},
+  "sessions": {
+    "s_780d9e2f5e36af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "744d2d63-cd10-4cdc-a350-7025fc39dba8",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
