@@ -256,6 +256,10 @@ ${mcpServerSchemaText}
 
 ### Tool exposure and approval
 
+Load \`agent-builder-human-review\` when the request includes approvals or
+reviewers. Infer channel or workflow review from the requested process. A review
+request is not an extra same-platform messaging tool.
+
 - Omit \`toolPermissions\` unless the user explicitly asks to require approval,
   block a tool or category, or restrict which tools are exposed. Omission
   allows all MCP tools without approval.
