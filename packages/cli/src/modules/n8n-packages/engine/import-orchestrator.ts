@@ -609,7 +609,7 @@ export class ImportOrchestrator {
 			credentialPlan,
 		);
 
-		await this.credentialImporter.applySelected(context, credentialPlan);
+		const selected = await this.credentialImporter.applySelected(context, credentialPlan);
 
 		// After the workflow writes: a failed write then leaves the existing folders as they were.
 		// Before the removals, which plan with the folders in their new places.
@@ -633,7 +633,17 @@ export class ImportOrchestrator {
 			removedFolders,
 			folderSummaries: toFolderSummaries(folderPlan),
 			bindings,
-			credentialResult: { ...credentialBindResult, updated: credentialsUpdated },
+			// A selected credential keeps its id, so it binds to itself. The counts and the telemetry
+			// read a created one as a stub and a renamed one as an update.
+			credentialResult: {
+				...credentialBindResult,
+				bindings: new Map([
+					...credentialBindResult.bindings,
+					...[...selected.created, ...selected.renamed].map((id): [string, string] => [id, id]),
+				]),
+				stubbed: [...credentialBindResult.stubbed, ...selected.created],
+				updated: [...credentialsUpdated, ...selected.renamed],
+			},
 			dataTablePlan,
 			variablePlan,
 			variableResult,
