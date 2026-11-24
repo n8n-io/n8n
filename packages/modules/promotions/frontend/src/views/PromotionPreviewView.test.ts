@@ -1293,6 +1293,37 @@ describe('PromotionPreviewView', () => {
 			);
 		});
 
+		it('should name the project of a dependency of another project in the reason of its action', async () => {
+			vi.mocked(api.getPromotionPreview).mockResolvedValue(
+				billingPreview({
+					missingDependencies: [
+						{ ...otherProjectCredential, project: { id: 'p2', name: 'Finance' } },
+						// A row without a project keeps the text that names no project.
+						{ ...otherProjectCredential, id: 'c9', name: 'ERP key' },
+					],
+				}),
+			);
+
+			const { findByTestId, getAllByTestId, getByRole } = await render();
+			await userEvent.click(getByRole('tab', { name: /Issues/ }));
+
+			const otherProject = section(getAllByTestId, 'In another project (2)');
+			const action = (name: RegExp) =>
+				within(otherProject.getByRole('row', { name })).getByTestId(
+					'promotion-preview-blocker-disabled-action',
+				);
+			expect(action(/CRM key/)).toHaveAccessibleName(
+				'Include. This dependency is in the project Finance. Promote it from that project.',
+			);
+			expect(action(/ERP key/)).toHaveAccessibleName(
+				'Include. This dependency is in another project. Promote it from that project.',
+			);
+			action(/CRM key/).focus();
+			expect(await findByTestId('tooltip-content')).toHaveTextContent(
+				'This dependency is in the project Finance. Promote it from that project.',
+			);
+		});
+
 		it('should not name credentials when a personal sub-workflow cannot be promoted', async () => {
 			vi.mocked(api.getPromotionPreview).mockResolvedValue(
 				billingPreview({
@@ -1350,10 +1381,13 @@ describe('PromotionPreviewView', () => {
 			);
 		});
 
-		it('should show no project and no owner of a dependency', async () => {
+		it('should show no project and no owner in the text of a row', async () => {
 			vi.mocked(api.getPromotionPreview).mockResolvedValue(
 				billingPreview({
-					missingDependencies: [otherProjectCredential, outsideAccessWorkflow],
+					missingDependencies: [
+						{ ...otherProjectCredential, project: { id: 'p2', name: 'Finance' } },
+						outsideAccessWorkflow,
+					],
 					warnings: [deletedWorkflowWarning],
 				}),
 			);
@@ -1361,8 +1395,10 @@ describe('PromotionPreviewView', () => {
 			const { getAllByTestId, getByRole, getByTestId } = await render();
 			await userEvent.click(getByRole('tab', { name: /Issues/ }));
 
-			// "Billing" is the project of the workflows. The API sends no project for a dependency.
+			// "Billing" is the project of the workflows. "Finance" is the project of "CRM key", which
+			// only the tooltip of "Include" names.
 			expect(getByTestId('promotion-preview-blockers')).not.toHaveTextContent('Billing');
+			expect(getByTestId('promotion-preview-blockers')).not.toHaveTextContent('Finance');
 			for (const row of getAllByTestId('promotion-preview-blocker-row')) {
 				expect(row).not.toHaveTextContent(/project|owner/i);
 			}

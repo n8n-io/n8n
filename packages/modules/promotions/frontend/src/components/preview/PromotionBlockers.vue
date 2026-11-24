@@ -281,17 +281,22 @@ function dependencyDescription(
 	);
 }
 
-// The same rule for one row: the tooltip must not tell the user to move what the user cannot reach.
-const disabledReason = (
-	{ group, accessible }: PromotionMissingDependency,
+// The tooltip of one row. It must not tell the user to move what the user cannot reach. It names
+// the project of the dependency when the API sends it.
+function disabledReason(
+	{ group, accessible, project }: PromotionMissingDependency,
 	reason: DependencySection['reason'],
-) =>
-	group === 'personal' && !accessible
-		? 'promotions.preview.blockers.disabled.personal.noAccess'
+) {
+	if (group === 'personal' && !accessible) {
+		return 'promotions.preview.blockers.disabled.personal.noAccess';
+	}
+	return group === 'other-project' && project
+		? 'promotions.preview.blockers.disabled.otherProject.named'
 		: reason;
+}
 
 // The row shows the name, the type and the workflows that use the dependency. The API sends no
-// owner and no project for it.
+// owner. It sends the project only for a dependency of another project that the user can access.
 const dependencyRow = (
 	dependency: PromotionMissingDependency,
 	{ id, status: statusKey, reason }: DependencySection,
@@ -308,6 +313,7 @@ const dependencyRow = (
 		reason: i18n.baseText(disabledReason(dependency, reason), {
 			interpolate: {
 				type: i18n.baseText(`promotions.preview.blockers.type.${dependency.kind}`).toLowerCase(),
+				project: dependency.project?.name ?? '',
 			},
 		}),
 	},

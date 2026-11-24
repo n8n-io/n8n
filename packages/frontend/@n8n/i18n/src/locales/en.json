@@ -11751,6 +11751,7 @@
 	"promotions.preview.blockers.create.variable": "Add variable",
 	"promotions.preview.blockers.include": "Include",
 	"promotions.preview.blockers.disabled.otherProject": "This dependency is in another project. Promote it from that project.",
+	"promotions.preview.blockers.disabled.otherProject.named": "This dependency is in the project {project}. Promote it from that project.",
 	"promotions.preview.blockers.disabled.outside.promote": "This {type} is in a project that you do not have access to, so you cannot include it.",
 	"promotions.preview.blockers.disabled.personal": "This {type} is in a personal project. Move it to a team project to promote it.",
 	"promotions.preview.blockers.disabled.personal.noAccess": "This {type} is in a personal project that you do not have access to. Someone with access must move it to a team project to promote it.",
