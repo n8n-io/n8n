@@ -1549,10 +1549,17 @@ function getInvalidParameterPaths(
 	}
 	if (isExpression(value)) return [];
 
+	// With `multipleValues`, the value is a list. One bad entry rejects the list, as for a collection.
+	const entries = typeOptions?.multipleValues ? value : [value];
 	const valid =
-		type === 'options' || type === 'multiOptions'
-			? isOfferedOptionValue(property, value, displayValues, root, node, nodeType)
-			: isValidParameterValue(property, value);
+		Array.isArray(entries) &&
+		entries.every(
+			(entry) =>
+				isExpression(entry) ||
+				(type === 'options' || type === 'multiOptions'
+					? isOfferedOptionValue(property, entry, displayValues, root, node, nodeType)
+					: isValidParameterValue(property, entry)),
+		);
 	return valid ? [] : [path];
 }
 

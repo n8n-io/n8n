@@ -1158,6 +1158,62 @@ describe('carryOverNodeParameters', () => {
 		});
 	});
 
+	describe('simple parameter with multiple values', () => {
+		const type = desc(1, [
+			{
+				displayName: 'Tags',
+				name: 'tags',
+				type: 'string',
+				typeOptions: { multipleValues: true },
+				default: [],
+			},
+			{
+				displayName: 'Limits',
+				name: 'limits',
+				type: 'number',
+				typeOptions: { multipleValues: true },
+				default: [],
+			},
+			{
+				displayName: 'Kinds',
+				name: 'kinds',
+				type: 'options',
+				typeOptions: { multipleValues: true },
+				options: [
+					{ name: 'A', value: 'a' },
+					{ name: 'B', value: 'b' },
+				],
+				default: [],
+			},
+		]);
+
+		it('should keep a list of valid values', () => {
+			const parameters = { tags: ['x', '={{ $json.tag }}'], limits: [1, 2], kinds: ['a', 'b'] };
+			const result = carry(node(1, parameters), type, type, 1);
+
+			expect(result.setAside).toEqual([]);
+			expect(result.parameters).toEqual(parameters);
+		});
+
+		it('should set aside a list with an entry that the target does not accept', () => {
+			const result = carry(
+				node(1, { tags: ['x'], limits: [1, 'two'], kinds: ['a', 'removed'] }),
+				type,
+				type,
+				1,
+			);
+
+			expect(names(result)).toEqual(['limits', 'kinds']);
+			expect(result.parameters).toEqual({ tags: ['x'] });
+		});
+
+		it('should set aside a value that is not a list', () => {
+			const result = carry(node(1, { tags: 'x' }), type, type, 1);
+
+			expect(names(result)).toEqual(['tags']);
+		});
+	});
+
 	describe('dependent value with a definition that does not depend on the removed value', () => {
 		it('should keep the value', () => {
 			const limit = (displayOptions?: INodeProperties['displayOptions']): INodeProperties => ({
