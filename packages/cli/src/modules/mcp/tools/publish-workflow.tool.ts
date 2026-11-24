@@ -1,7 +1,6 @@
 import {
 	type WorkflowPublishBlockedDetails,
 	type WorkflowPublishBlockedReason,
-	type WorkflowReviewBlockedDetails,
 	workflowPublishBlockedDetailsShape,
 	workflowVersionDescriptionSchema,
 	workflowVersionNameSchema,
@@ -53,7 +52,6 @@ type PublishWorkflowOutput = {
 	activeVersionId: string | null;
 	publicationStatus?: WorkflowPublicationStatusWithDetails;
 	error?: string;
-	guidance?: string;
 } & Partial<WorkflowPublishBlockedDetails>;
 
 const outputSchema = {
@@ -65,18 +63,7 @@ const outputSchema = {
 	reason: workflowPublishBlockedDetailsShape.reason.optional(),
 	workflowReviewRequestId: workflowPublishBlockedDetailsShape.workflowReviewRequestId.optional(),
 	versionId: workflowPublishBlockedDetailsShape.versionId.optional(),
-	guidance: z.string().optional(),
 } satisfies z.ZodRawShape;
-
-// The client cannot submit a review over MCP, so it must hand this to the user instead of retrying.
-const REVIEW_BLOCK_GUIDANCE: Record<WorkflowReviewBlockedDetails['reason'], string> = {
-	review_required:
-		'This version needs an approved review before it can go live. Tell the user to submit the workflow for review in n8n. Do not retry the publish.',
-	review_pending:
-		'A review is open for this workflow, so it cannot go live until the review closes. Tell the user. Do not retry the publish.',
-	changes_requested:
-		'A review is open for this workflow and the reviewer requested changes, so it cannot go live until the review closes. Tell the user. Do not retry the publish.',
-};
 
 /** Only these two failures carry a machine-readable reason; anything else reports just its message. */
 const extractErrorReason = (
@@ -99,7 +86,7 @@ export const createPublishWorkflowTool = (
 	name: 'publish_workflow',
 	config: {
 		description:
-			'Publish (activate) a workflow to make it available for production execution. This creates an active version from the current draft. If publicationStatus.status is in_progress, poll get_workflow_details and check workflow.publicationStatus before reporting that the workflow is live. A workflow review can block publishing. Then follow the guidance in the result: only the user can submit a review in n8n.',
+			'Publish (activate) a workflow to make it available for production execution. This creates an active version from the current draft. If publicationStatus.status is in_progress, poll get_workflow_details and check workflow.publicationStatus before reporting that the workflow is live. If the result has reason review_required, review_pending or changes_requested, do not retry. Ask the user to submit the workflow for review in the n8n editor, or to wait until the open review closes.',
 		inputSchema: inputSchema.shape,
 		outputSchema,
 		annotations: {
@@ -191,9 +178,6 @@ export const createPublishWorkflowTool = (
 				activeVersionId: null,
 				error: error.message,
 				...publishBlockedDetails,
-				...(publishBlockedDetails && {
-					guidance: REVIEW_BLOCK_GUIDANCE[publishBlockedDetails.reason],
-				}),
 			};
 
 			telemetryPayload.results = {

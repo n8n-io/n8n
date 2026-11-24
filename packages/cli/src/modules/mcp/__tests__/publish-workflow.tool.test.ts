@@ -565,7 +565,6 @@ describe('publish-workflow MCP tool', () => {
 						error: expect.any(String),
 						reason,
 						workflowReviewRequestId,
-						guidance: expect.stringContaining('A review is open'),
 					});
 					expect(telemetry.track).toHaveBeenCalledWith(
 						'User called mcp tool',
@@ -575,34 +574,6 @@ describe('publish-workflow MCP tool', () => {
 					);
 				},
 			);
-
-			test('tells the client to submit for review in n8n when a review is required', async () => {
-				const workflow = createWorkflow({ settings: { availableInMCP: true } });
-				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
-				(workflowService.activateWorkflow as Mock).mockRejectedValue(
-					new WorkflowPublishBlockedError({ reason: 'review_required', versionId: 'v-2' }),
-				);
-
-				const tool = createPublishWorkflowTool(
-					user,
-					workflowFinderService,
-					workflowService,
-					telemetry,
-					collaborationService,
-				);
-
-				const result = await tool.handler(
-					{ workflowId: 'wf-1', versionId: undefined },
-					{} as Parameters<typeof tool.handler>[1],
-				);
-
-				expect(result.structuredContent).toMatchObject({
-					success: false,
-					reason: 'review_required',
-					versionId: 'v-2',
-					guidance: expect.stringContaining('submit the workflow for review in n8n'),
-				});
-			});
 
 			test('handles WorkflowService errors gracefully', async () => {
 				const workflow = createWorkflow({ settings: { availableInMCP: true } });
