@@ -307,9 +307,10 @@ export class VariablesService {
 			}
 		}
 
-		if (variable.key) {
-			await this.validateUniqueVariable(variable.key, newProjectId, id);
-		}
+		// Validate the effective key and scope even when only the project is being
+		// changed - a move into a scope that already holds the same key must be
+		// rejected just like a duplicate create or key rename.
+		await this.validateUniqueVariable(variable.key ?? existingVariable.key, newProjectId, id);
 
 		await this.variablesRepository.update(id, {
 			key: variable.key,
