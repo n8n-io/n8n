@@ -926,9 +926,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const publishItem = getByTestId('version-menu-item-publish');
 			expect(publishItem).toHaveClass('is-disabled');
-			const icon = within(publishItem).getByTestId('action-dropdown-item-tooltip');
 
-			await userEvent.hover(icon);
+			await userEvent.hover(publishItem);
 			expect(await findByText(/no trigger nodes that require publishing/)).toBeVisible();
 		});
 

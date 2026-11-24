@@ -11,7 +11,7 @@ export interface ActionDropdownItem<T extends string> {
 	icon?: IconName;
 	divided?: boolean;
 	disabled?: boolean;
-	/** Tooltip content for a trailing info icon, such as the reason an item is disabled. */
+	/** Tooltip shown while the pointer is over the item, such as the reason it is disabled. */
 	tooltip?: string;
 	shortcut?: KeyboardShortcut;
 	customClass?: string;

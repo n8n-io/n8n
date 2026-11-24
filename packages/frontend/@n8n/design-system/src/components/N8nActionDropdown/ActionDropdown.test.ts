@@ -167,7 +167,7 @@ describe('components', () => {
 			});
 		});
 
-		it('explains a disabled item with a tooltip on a trailing info icon', async () => {
+		it('explains a disabled item with a tooltip while the pointer is over the item', async () => {
 			const wrapper = render(N8nActionDropdown, {
 				props: {
 					items: [
@@ -183,18 +183,32 @@ describe('components', () => {
 			});
 
 			await userEvent.click(wrapper.container.querySelector('button')!);
-
-			const icons = await waitFor(() => {
-				const found = document.querySelectorAll('[data-test-id="action-dropdown-item-tooltip"]');
-				expect(found).toHaveLength(1);
-				return found;
+			const publishItem = await waitFor(() => {
+				const item = document.querySelector<HTMLElement>('[data-test-id="action-publish"]');
+				expect(item).toBeInTheDocument();
+				return item!;
 			});
-			expect(document.querySelector('[data-test-id="action-publish"]')).toContainElement(
-				icons[0] as HTMLElement,
-			);
+			// No icon: the item is the only trigger.
+			expect(publishItem.querySelector('svg')).toBeNull();
 
-			await userEvent.hover(icons[0]);
+			await userEvent.hover(publishItem);
 			expect(await wrapper.findByText('Fix the node issues first')).toBeVisible();
+		});
+
+		it('shows no tooltip for an item without one', async () => {
+			const wrapper = render(N8nActionDropdown, {
+				props: { items: [{ id: 'edit', label: 'Edit' }] },
+			});
+
+			await userEvent.click(wrapper.container.querySelector('button')!);
+			const editItem = await waitFor(() => {
+				const item = document.querySelector<HTMLElement>('[data-test-id="action-edit"]');
+				expect(item).toBeInTheDocument();
+				return item!;
+			});
+			await userEvent.hover(editItem);
+
+			expect(document.querySelector('[role="tooltip"]')).toBeNull();
 		});
 
 		it('should render footer content', async () => {
