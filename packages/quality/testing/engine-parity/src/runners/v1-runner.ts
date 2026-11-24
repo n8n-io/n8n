@@ -1,5 +1,5 @@
 import { ExecutionLifecycleHooks, WorkflowExecute } from 'n8n-core';
-import type { IDataObject, INodeExecutionData, IRun } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { createRunExecutionData, jsonParse, Workflow } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -29,29 +29,33 @@ export class V1Runner implements EngineRunner {
 
 	async run(parityCase: ParityCase): Promise<RawOutcome> {
 		const progress: string[] = [];
+		const { workflowExecute, workflow } = this.prepare(
+			parityCase,
+			// A node can change its input items in place. Each engine gets its own copy.
+			toExecutionData(parityCase.ir.triggerItems),
+			progress,
+		);
+		const execution = workflowExecute.processRunExecutionData(workflow);
 		try {
-			const run = await withTimeout(
-				this.execute(
-					parityCase,
-					// A node can change its input items in place. Each engine gets its own copy.
-					toExecutionData(parityCase.ir.triggerItems),
-					progress,
-				),
-				CASE_TIMEOUT_MS,
-			);
+			const run = await withTimeout(execution, CASE_TIMEOUT_MS);
 			const { runData, lastNodeExecuted, error } = run.data.resultData;
 			return { kind: 'ran', status: run.status, runData, lastNodeExecuted, error };
 		} catch (error) {
-			if (error instanceof TimeoutError) return { kind: 'timeout', stalledAt: progress };
+			if (error instanceof TimeoutError) {
+				const stalledAt = [...progress];
+				// Stop the run, so that it does not use the process while the next cases run.
+				execution.cancel();
+				return { kind: 'timeout', stalledAt };
+			}
 			throw error;
 		}
 	}
 
-	private async execute(
+	private prepare(
 		parityCase: ParityCase,
 		items: INodeExecutionData[],
 		progress: string[],
-	): Promise<IRun> {
+	): { workflowExecute: WorkflowExecute; workflow: Workflow } {
 		const { workflow: workflowData } = parityCase;
 		const startNodeName = parityCase.ir.firedTrigger;
 		const mode = 'trigger';
@@ -81,6 +85,6 @@ export class V1Runner implements EngineRunner {
 			},
 		});
 		const workflowExecute = new WorkflowExecute(additionalData, mode, runExecutionData);
-		return await workflowExecute.processRunExecutionData(workflow);
+		return { workflowExecute, workflow };
 	}
 }

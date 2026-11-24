@@ -24,8 +24,22 @@ export interface EngineRunner {
 	stop(): Promise<void>;
 }
 
+/** The largest delay that `setTimeout` accepts. A larger delay fires at once. */
+const MAX_TIMER_MS = 2 ** 31 - 1;
+
+export function parseCaseTimeout(value: string | undefined): number {
+	if (!value) return 10_000;
+	const ms = Number(value);
+	if (!Number.isInteger(ms) || ms <= 0 || ms > MAX_TIMER_MS) {
+		throw new Error(
+			`PARITY_CASE_TIMEOUT_MS must be a whole number from 1 to ${MAX_TIMER_MS}, got "${value}"`,
+		);
+	}
+	return ms;
+}
+
 /** How long a case can run before the runner reports a timeout. */
-export const CASE_TIMEOUT_MS = Number(process.env.PARITY_CASE_TIMEOUT_MS || 10_000);
+export const CASE_TIMEOUT_MS = parseCaseTimeout(process.env.PARITY_CASE_TIMEOUT_MS);
 
 export class TimeoutError extends Error {
 	constructor(readonly ms: number) {
