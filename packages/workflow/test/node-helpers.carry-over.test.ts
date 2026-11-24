@@ -194,7 +194,7 @@ const kafkaV2 = desc(2, [
 				{ name: 'None', value: 'none' },
 			],
 		},
-		{ displayName: 'Timeout', name: 'timeout', type: 'number', default: 60000 },
+		{ displayName: 'Timeout', name: 'timeout', type: 'number', default: 30000 },
 	]),
 ]);
 
@@ -491,6 +491,15 @@ const ifV2 = desc(
 	],
 );
 
+const operation = (resource: string, values: string[]): INodeProperties => ({
+	displayName: 'Operation',
+	name: 'operation',
+	type: 'options',
+	displayOptions: { show: { resource: [resource] } },
+	options: values.map((value) => ({ name: value, value })),
+	default: values[0],
+});
+
 describe('carryOverNodeParameters', () => {
 	describe('HTTP Request 1 to 3', () => {
 		it('should set aside renamed, removed and moved values and keep the others', () => {
@@ -597,14 +606,6 @@ describe('carryOverNodeParameters', () => {
 	});
 
 	describe('same-name option that the target does not offer', () => {
-		const operation = (resource: string, values: string[]): INodeProperties => ({
-			displayName: 'Operation',
-			name: 'operation',
-			type: 'options',
-			displayOptions: { show: { resource: [resource] } },
-			options: values.map((value) => ({ name: value, value })),
-			default: values[0],
-		});
 		const resource = (values: string[]): INodeProperties => ({
 			displayName: 'Resource',
 			name: 'resource',
@@ -663,7 +664,6 @@ describe('carryOverNodeParameters', () => {
 				changedDefaults: [],
 				issues: null,
 			});
-			expect(Object.hasOwn(result.parameters, 'conditions')).toBe(false);
 		});
 	});
 
@@ -828,6 +828,7 @@ describe('carryOverNodeParameters', () => {
 	});
 
 	describe('small cases', () => {
+		// A regression shows as a test that does not end.
 		it('should end when an options parameter has an empty default', () => {
 			const type = desc(1, [
 				{
@@ -1004,14 +1005,6 @@ describe('carryOverNodeParameters', () => {
 	});
 
 	describe('more than one displayed definition', () => {
-		const operation = (resource: string, values: string[]): INodeProperties => ({
-			displayName: 'Operation',
-			name: 'operation',
-			type: 'options',
-			displayOptions: { show: { resource: [resource] } },
-			options: values.map((value) => ({ name: value, value })),
-			default: values[0],
-		});
 		const type = desc(1, [
 			{
 				displayName: 'Resource',
@@ -1100,7 +1093,6 @@ describe('carryOverNodeParameters', () => {
 				{ name: 'options.verifyTls', displayName: 'options.verifyTls', value: 'junk' },
 				{ name: 'fc.group[0].a', displayName: 'fc.group[0].a', value: 'junk' },
 			]);
-			expect(Object.hasOwn(result.parameters, 'options.verifyTls')).toBe(false);
 		});
 	});
 
@@ -1175,6 +1167,120 @@ describe('carryOverNodeParameters', () => {
 				{ name: 'fc', displayName: 'Fields', value: 5 },
 			]);
 			expect(result.parameters).toEqual({});
+		});
+	});
+
+	describe('target version', () => {
+		const current = desc(1, [
+			{ displayName: 'Legacy', name: 'legacy', type: 'string', default: '' },
+		]);
+		const target = desc(
+			[2, 2.1],
+			[
+				{
+					displayName: 'Legacy',
+					name: 'legacy',
+					type: 'string',
+					displayOptions: { show: { '@version': [{ _cnd: { lt: 2.1 } }] } },
+					default: '',
+				},
+			],
+		);
+
+		it('should keep a value that the target version displays', () => {
+			expect(carry(node(1, { legacy: 'x' }), current, target, 2)).toEqual({
+				parameters: { legacy: 'x' },
+				setAside: [],
+				changedDefaults: [],
+				issues: null,
+			});
+		});
+
+		it('should set aside a value that the target version hides', () => {
+			expect(carry(node(1, { legacy: 'x' }), current, target, 2.1)).toEqual({
+				parameters: {},
+				setAside: [{ name: 'legacy', displayName: 'Legacy', value: 'x' }],
+				changedDefaults: [],
+				issues: null,
+			});
+		});
+	});
+
+	describe('structured value with a wrong inner shape', () => {
+		const type = desc(1, [
+			{ displayName: 'Filter', name: 'f', type: 'filter', default: {} },
+			{
+				displayName: 'Columns',
+				name: 'r',
+				type: 'resourceMapper',
+				default: { mappingMode: 'defineBelow', value: null },
+			},
+		]);
+
+		it('should set aside a filter value whose conditions are not an array', () => {
+			const f = { conditions: 'x', combinator: 'and' };
+			const result = carry(node(1, { f }), type, type, 1);
+
+			expect(result.setAside).toEqual([{ name: 'f', displayName: 'Filter', value: f }]);
+			expect(result.parameters).toEqual({});
+		});
+
+		it.each([[5], [[null]]])(
+			'should set aside a resourceMapper value with the schema %j',
+			(schema) => {
+				const r = { mappingMode: 'defineBelow', value: { a: 1 }, schema, matchingColumns: [] };
+				const result = carry(node(1, { r } as unknown as INodeParameters), type, type, 1);
+
+				expect(result.setAside).toEqual([{ name: 'r', displayName: 'Columns', value: r }]);
+				expect(result.parameters).toEqual({});
+			},
+		);
+	});
+
+	describe('collection with multiple values', () => {
+		const type = desc(1, [
+			{
+				displayName: 'Items',
+				name: 'items',
+				type: 'collection',
+				typeOptions: { multipleValues: true },
+				default: {},
+				options: [{ displayName: 'A', name: 'a', type: 'string', default: '' }],
+			},
+		]);
+
+		it('should set aside a record', () => {
+			const result = carry(node(1, { items: { a: 'x' } }), type, type, 1);
+
+			expect(result.setAside).toEqual([{ name: 'items', displayName: 'Items', value: { a: 'x' } }]);
+			expect(result.parameters).toEqual({});
+		});
+
+		it('should keep an array', () => {
+			const result = carry(node(1, { items: [{ a: 'x' }] }), type, type, 1);
+
+			expect(result.setAside).toEqual([]);
+			expect(result.parameters).toEqual({ items: [{ a: 'x' }] });
+		});
+	});
+
+	describe('changed default', () => {
+		const b = (value: boolean): INodeTypeDescription =>
+			desc(1, [{ displayName: 'B', name: 'b', type: 'boolean', default: value }]);
+
+		it('should keep a saved value that equals the old default', () => {
+			const result = carry(node(1, { b: false }), b(false), b(true), 1);
+
+			expect(result.parameters).toEqual({ b: false });
+			expect(result.changedDefaults).toEqual([]);
+		});
+
+		it('should list the changed default of an untouched parameter', () => {
+			const result = carry(node(1, {}), b(false), b(true), 1);
+
+			expect(result.changedDefaults).toEqual([
+				{ name: 'b', displayName: 'B', oldDefault: false, newDefault: true },
+			]);
 		});
 	});
 

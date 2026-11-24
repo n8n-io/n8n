@@ -2930,9 +2930,13 @@ export interface NodeParametersCarryOver {
 	 * Values that the target version cannot keep.
 	 * `name` is a display label, for example `options.compression` or `rules.values[0].kind`.
 	 * Do not use it as a lodash path, because a saved key can contain a dot.
+	 * The values are raw user data. Do not log them.
 	 */
 	setAside: Array<{ name: string; displayName: string; value: NodeParameterValueType }>;
-	/** Untouched top-level parameters whose default is different in the target version. */
+	/**
+	 * Untouched top-level parameters whose default is different in the target version.
+	 * `name` is the top-level parameter name.
+	 */
 	changedDefaults: Array<{
 		name: string;
 		displayName: string;

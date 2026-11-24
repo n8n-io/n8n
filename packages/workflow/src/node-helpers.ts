@@ -1073,14 +1073,13 @@ export function getNodeParameters(
 						continue;
 					}
 
-					if (!Array.isArray((propertyValues as INodeParameters)[itemName])) {
+					const groupValue = (propertyValues as INodeParameters)[itemName];
+					if (!Array.isArray(groupValue)) {
 						continue;
 					}
 
 					// Iterate over all items as it contains multiple ones
-					for (const nodeValue of (propertyValues as INodeParameters)[
-						itemName
-					] as INodeParameters[]) {
+					for (const nodeValue of groupValue as INodeParameters[]) {
 						tempNodePropertiesArray = nodePropertyOptions.values!;
 						tempValue = getNodeParameters(
 							tempNodePropertiesArray,
@@ -1451,8 +1450,12 @@ function isValidParameterValue(property: INodeProperties, value: unknown): boole
 		);
 	}
 
-	if (type === 'filter') return isFilterValue(value);
-	if (type === 'resourceMapper') return isResourceMapperValue(value);
+	if (type === 'filter') return isFilterValue(value) && Array.isArray(value.conditions);
+	if (type === 'resourceMapper') {
+		return (
+			isResourceMapperValue(value) && Array.isArray(value.schema) && value.schema.every(isRecord)
+		);
+	}
 	if (type === 'assignmentCollection') return isRecord(value) && Array.isArray(value.assignments);
 
 	return true;
@@ -1472,7 +1475,6 @@ function getInvalidParameterPaths(
 
 	if (type === 'collection') {
 		if (typeOptions?.multipleValues) return Array.isArray(value) ? [] : [path];
-		if (!isRecord(value)) return [path];
 		return isINodePropertiesList(options)
 			? findInvalidParameterPaths(options, value, path, root, node, nodeType, saved)
 			: [];
@@ -1547,7 +1549,13 @@ function collectSetAside(
 	const newRecord: unknown = newValue;
 	if (descend && isParameterRecord(oldRecord) && isParameterRecord(newRecord)) {
 		for (const key of Object.keys(oldRecord)) {
-			collectSetAside(oldRecord[key], newRecord[key], [...path, key], removed, entries);
+			collectSetAside(
+				oldRecord[key],
+				Object.hasOwn(newRecord, key) ? newRecord[key] : undefined,
+				[...path, key],
+				removed,
+				entries,
+			);
 		}
 	} else if (
 		descend &&
@@ -1567,6 +1575,8 @@ function collectSetAside(
  * Returns the parameters of a node for a different version of its node type.
  * A value that the target version does not accept is set aside and not converted.
  * Does not change `node`.
+ *
+ * @param targetVersion The typeVersion to set. A description can cover more than one version.
  */
 export function carryOverNodeParameters(
 	node: INode,
@@ -1599,7 +1609,8 @@ export function carryOverNodeParameters(
 	// A removed value can change which definition of a parameter is displayed, so check again.
 	let parameters = deepCopy(node.parameters);
 	const removed = new Set<string>();
-	for (;;) {
+	// Each invalid path ends in a property name, so each pass removes a saved value and the loop ends.
+	while (true) {
 		const resolved = resolve(parameters, true);
 		const invalid = findInvalidParameterPaths(
 			targetNodeType.properties,
@@ -1622,18 +1633,10 @@ export function carryOverNodeParameters(
 
 	const entries: Array<{ path: ParameterPath; value: NodeParameterValueType }> = [];
 	collectSetAside(node.parameters, full, [], removed, entries);
+	// The saved form can keep raw values, so remove each set-aside value here.
+	for (const { path } of entries) unset(parameters, path);
 	const setAside = entries.map(({ path, value }) => {
-		// The saved form can keep raw values, so remove each set-aside value here.
-		unset(parameters, path);
-		const name = path.reduce<string>(
-			(joined, segment) =>
-				typeof segment === 'number'
-					? `${joined}[${segment}]`
-					: joined
-						? `${joined}.${segment}`
-						: segment,
-			'',
-		);
+		const name = path.map((s, i) => (typeof s === 'number' ? `[${s}]` : i ? `.${s}` : s)).join('');
 		// `findDisplayedProperty` splits its path on `.` and `[`.
 		const property = path.some((segment) => typeof segment === 'string' && /[.[]/.test(segment))
 			? undefined
