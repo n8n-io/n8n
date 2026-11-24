@@ -31,8 +31,8 @@ const node = (typeVersion: number, parameters: INodeParameters): INode => ({
 /** Runs the helper and checks that `parameters` holds no value that `setAside` lists. */
 const carry = (...args: Parameters<typeof carryOverNodeParameters>) => {
 	const result = carryOverNodeParameters(...args);
-	for (const { name } of result.setAside) {
-		expect(has(result.parameters, name)).toBe(false);
+	for (const { path } of result.setAside) {
+		expect(has(result.parameters, path)).toBe(false);
 	}
 	return result;
 };
@@ -67,9 +67,24 @@ describe('carryOverNodeParameters', () => {
 			expect(result).toEqual({
 				parameters: { url: 'https://example.com', options: { timeout: 5000 } },
 				setAside: [
-					{ name: 'requestMethod', displayName: 'Request Method', value: 'POST' },
-					{ name: 'authentication', displayName: 'Authentication', value: 'basicAuth' },
-					{ name: 'options.batchSize', displayName: 'Batch Size', value: 10 },
+					{
+						name: 'requestMethod',
+						path: ['requestMethod'],
+						displayName: 'Request Method',
+						value: 'POST',
+					},
+					{
+						name: 'authentication',
+						path: ['authentication'],
+						displayName: 'Authentication',
+						value: 'basicAuth',
+					},
+					{
+						name: 'options.batchSize',
+						path: ['options', 'batchSize'],
+						displayName: 'Batch Size',
+						value: 10,
+					},
 				],
 				changedDefaults: [],
 				issues: null,
@@ -94,7 +109,14 @@ describe('carryOverNodeParameters', () => {
 
 			expect(result).toEqual({
 				parameters: { topic: 'orders', options: { acks: true } },
-				setAside: [{ name: 'options.compression', displayName: 'Compression', value: true }],
+				setAside: [
+					{
+						name: 'options.compression',
+						path: ['options', 'compression'],
+						displayName: 'Compression',
+						value: true,
+					},
+				],
 				changedDefaults: [],
 				issues: null,
 			});
@@ -119,10 +141,15 @@ describe('carryOverNodeParameters', () => {
 			expect(result).toEqual({
 				parameters: {},
 				setAside: [
-					{ name: 'dataType', displayName: 'Data Type', value: 'string' },
-					{ name: 'value1', displayName: 'Value 1', value: '={{ $json.a }}' },
-					{ name: 'rules.rules', displayName: 'Strings', value: rules },
-					{ name: 'fallbackOutput', displayName: 'Fallback Output', value: 3 },
+					{ name: 'dataType', path: ['dataType'], displayName: 'Data Type', value: 'string' },
+					{ name: 'value1', path: ['value1'], displayName: 'Value 1', value: '={{ $json.a }}' },
+					{ name: 'rules.rules', path: ['rules', 'rules'], displayName: 'Strings', value: rules },
+					{
+						name: 'fallbackOutput',
+						path: ['fallbackOutput'],
+						displayName: 'Fallback Output',
+						value: 3,
+					},
 				],
 				changedDefaults: [],
 				issues: null,
@@ -179,20 +206,23 @@ describe('carryOverNodeParameters', () => {
 			expect(result).toEqual({
 				parameters: {},
 				setAside: [
-					{ name: 'resource', displayName: 'Resource', value: 'file' },
-					{ name: 'operation', displayName: 'Operation', value: 'upload' },
+					{ name: 'resource', path: ['resource'], displayName: 'Resource', value: 'file' },
+					{ name: 'operation', path: ['operation'], displayName: 'Operation', value: 'upload' },
 				],
 				changedDefaults: [],
 				issues: null,
 			});
 		});
 
-		it('should keep an operation that the default resource offers', () => {
+		it('should set aside an operation that was chosen for a removed resource', () => {
 			const result = carry(node(1, { resource: 'file', operation: 'delete' }), current, target, 2);
 
 			expect(result).toEqual({
-				parameters: { operation: 'delete' },
-				setAside: [{ name: 'resource', displayName: 'Resource', value: 'file' }],
+				parameters: {},
+				setAside: [
+					{ name: 'resource', path: ['resource'], displayName: 'Resource', value: 'file' },
+					{ name: 'operation', path: ['operation'], displayName: 'Operation', value: 'delete' },
+				],
 				changedDefaults: [],
 				issues: null,
 			});
@@ -207,8 +237,18 @@ describe('carryOverNodeParameters', () => {
 			expect(result).toEqual({
 				parameters: {},
 				setAside: [
-					{ name: 'conditions', displayName: 'Conditions', value: conditions },
-					{ name: 'combineOperation', displayName: 'Combine', value: 'any' },
+					{
+						name: 'conditions',
+						path: ['conditions'],
+						displayName: 'Conditions',
+						value: conditions,
+					},
+					{
+						name: 'combineOperation',
+						path: ['combineOperation'],
+						displayName: 'Combine',
+						value: 'any',
+					},
 				],
 				changedDefaults: [],
 				issues: null,
@@ -259,14 +299,21 @@ describe('carryOverNodeParameters', () => {
 		it('should set aside a string on a resourceMapper parameter', () => {
 			const result = carry(node(1, { columns: 'id' }), type, type, 1);
 
-			expect(result.setAside).toEqual([{ name: 'columns', displayName: 'Columns', value: 'id' }]);
+			expect(result.setAside).toEqual([
+				{ name: 'columns', path: ['columns'], displayName: 'Columns', value: 'id' },
+			]);
 		});
 
 		it('should set aside a record without assignments on an assignmentCollection parameter', () => {
 			const result = carry(node(1, { assignments: { values: [] } }), type, type, 1);
 
 			expect(result.setAside).toEqual([
-				{ name: 'assignments', displayName: 'Assignments', value: { values: [] } },
+				{
+					name: 'assignments',
+					path: ['assignments'],
+					displayName: 'Assignments',
+					value: { values: [] },
+				},
 			]);
 		});
 	});
@@ -321,7 +368,7 @@ describe('carryOverNodeParameters', () => {
 			const result = carry(node(1, { resource: '={{ $json.r }}' }), loose, strict, 1);
 
 			expect(result.setAside).toEqual([
-				{ name: 'resource', displayName: 'Resource', value: '={{ $json.r }}' },
+				{ name: 'resource', path: ['resource'], displayName: 'Resource', value: '={{ $json.r }}' },
 			]);
 			expect(result.parameters).toEqual({});
 		});
@@ -330,7 +377,7 @@ describe('carryOverNodeParameters', () => {
 			const result = carry(node(1, { name: '={{ $json.n }}' }), loose, strict, 1);
 
 			expect(result.setAside).toEqual([
-				{ name: 'name', displayName: 'Name', value: '={{ $json.n }}' },
+				{ name: 'name', path: ['name'], displayName: 'Name', value: '={{ $json.n }}' },
 			]);
 			expect(result.parameters).toEqual({});
 		});
@@ -339,7 +386,7 @@ describe('carryOverNodeParameters', () => {
 			const result = carry(node(1, { opts: { inner: '={{ 1 }}' } }), loose, strict, 1);
 
 			expect(result.setAside).toEqual([
-				{ name: 'opts.inner', displayName: 'Inner', value: '={{ 1 }}' },
+				{ name: 'opts.inner', path: ['opts', 'inner'], displayName: 'Inner', value: '={{ 1 }}' },
 			]);
 		});
 
@@ -350,7 +397,7 @@ describe('carryOverNodeParameters', () => {
 			expect(result.parameters).toEqual({ name: "={{ $fromAI('x') }}" });
 		});
 
-		it('should keep a dependent value when the old version also has noDataExpression', () => {
+		it('should set aside a dependent value with the expression', () => {
 			const result = carry(
 				node(1, { resource: '={{ $json.r }}', operation: 'delete' }),
 				strict,
@@ -358,8 +405,8 @@ describe('carryOverNodeParameters', () => {
 				1,
 			);
 
-			expect(names(result)).toEqual(['resource']);
-			expect(result.parameters).toEqual({ operation: 'delete' });
+			expect(names(result)).toEqual(['resource', 'operation']);
+			expect(result.parameters).toEqual({});
 		});
 
 		it('should keep all values when the target has no noDataExpression', () => {
@@ -445,7 +492,7 @@ describe('carryOverNodeParameters', () => {
 			);
 
 			expect(result.setAside).toEqual([
-				{ name: 'events', displayName: 'Events', value: ['created', 'archived'] },
+				{ name: 'events', path: ['events'], displayName: 'Events', value: ['created', 'archived'] },
 			]);
 			expect(result.parameters).toEqual({});
 		});
@@ -482,7 +529,12 @@ describe('carryOverNodeParameters', () => {
 			);
 
 			expect(result.setAside).toEqual([
-				{ name: 'fc.values[0].kind', displayName: 'Kind', value: 'legacy' },
+				{
+					name: 'fc.values[0].kind',
+					path: ['fc', 'values', 0, 'kind'],
+					displayName: 'Kind',
+					value: 'legacy',
+				},
 			]);
 			expect(result.parameters).toEqual({ fc: { values: [{ label: 'a' }] } });
 		});
@@ -586,7 +638,7 @@ describe('carryOverNodeParameters', () => {
 			);
 
 			expect(result.setAside).toEqual([
-				{ name: 'operation', displayName: 'Operation', value: 'gone' },
+				{ name: 'operation', path: ['operation'], displayName: 'Operation', value: 'gone' },
 			]);
 			expect(result.parameters).toEqual({ resource: '={{ $json.r }}' });
 		});
@@ -639,8 +691,18 @@ describe('carryOverNodeParameters', () => {
 				fc: { group: [{ a: 7 }] },
 			});
 			expect(result.setAside).toEqual([
-				{ name: 'options.verifyTls', displayName: 'options.verifyTls', value: 'junk' },
-				{ name: 'fc.group[0].a', displayName: 'fc.group[0].a', value: 'junk' },
+				{
+					name: 'options.verifyTls',
+					path: ['options.verifyTls'],
+					displayName: 'options.verifyTls',
+					value: 'junk',
+				},
+				{
+					name: 'fc.group[0].a',
+					path: ['fc.group[0].a'],
+					displayName: 'fc.group[0].a',
+					value: 'junk',
+				},
 			]);
 		});
 	});
@@ -676,7 +738,7 @@ describe('carryOverNodeParameters', () => {
 			const result = carry(node(1, { fc: { group: { a: 1 } } }), multiple, multiple, 1);
 
 			expect(result.setAside).toEqual([
-				{ name: 'fc.group', displayName: 'Group', value: { a: 1 } },
+				{ name: 'fc.group', path: ['fc', 'group'], displayName: 'Group', value: { a: 1 } },
 			]);
 			expect(result.parameters).toEqual({});
 		});
@@ -685,7 +747,7 @@ describe('carryOverNodeParameters', () => {
 			const result = carry(node(1, { fc: { group: [{ a: 1 }] } }), multiple, single, 1);
 
 			expect(result.setAside).toEqual([
-				{ name: 'fc.group', displayName: 'Group', value: [{ a: 1 }] },
+				{ name: 'fc.group', path: ['fc', 'group'], displayName: 'Group', value: [{ a: 1 }] },
 			]);
 			expect(result.parameters).toEqual({ fc: {} });
 		});
@@ -693,7 +755,9 @@ describe('carryOverNodeParameters', () => {
 		it.each([null, 'abc', 5])('should set aside the group value %j', (group) => {
 			const result = carry(node(1, { fc: { group } }), multiple, multiple, 1);
 
-			expect(result.setAside).toEqual([{ name: 'fc.group', displayName: 'Group', value: group }]);
+			expect(result.setAside).toEqual([
+				{ name: 'fc.group', path: ['fc', 'group'], displayName: 'Group', value: group },
+			]);
 			expect(result.parameters).toEqual({});
 		});
 
@@ -702,7 +766,12 @@ describe('carryOverNodeParameters', () => {
 
 			// `getNodeParameters` drops the empty fixedCollection, so the diff stops one level up.
 			expect(result.setAside).toEqual([
-				{ name: 'options.fc', displayName: 'Fields', value: { group: null } },
+				{
+					name: 'options.fc',
+					path: ['options', 'fc'],
+					displayName: 'Fields',
+					value: { group: null },
+				},
 			]);
 			expect(result.parameters).toEqual({ options: {} });
 		});
@@ -712,8 +781,8 @@ describe('carryOverNodeParameters', () => {
 			const result = carry(node(1, { options: 'abc', fc: 5 }), type, type, 1);
 
 			expect(result.setAside).toEqual([
-				{ name: 'options', displayName: 'Options', value: 'abc' },
-				{ name: 'fc', displayName: 'Fields', value: 5 },
+				{ name: 'options', path: ['options'], displayName: 'Options', value: 'abc' },
+				{ name: 'fc', path: ['fc'], displayName: 'Fields', value: 5 },
 			]);
 			expect(result.parameters).toEqual({});
 		});
@@ -748,7 +817,7 @@ describe('carryOverNodeParameters', () => {
 		it('should set aside a value that the target version hides', () => {
 			expect(carry(node(1, { legacy: 'x' }), current, target, 2.1)).toEqual({
 				parameters: {},
-				setAside: [{ name: 'legacy', displayName: 'Legacy', value: 'x' }],
+				setAside: [{ name: 'legacy', path: ['legacy'], displayName: 'Legacy', value: 'x' }],
 				changedDefaults: [],
 				issues: null,
 			});
@@ -770,7 +839,9 @@ describe('carryOverNodeParameters', () => {
 			const f = { conditions: 'x', combinator: 'and' };
 			const result = carry(node(1, { f }), type, type, 1);
 
-			expect(result.setAside).toEqual([{ name: 'f', displayName: 'Filter', value: f }]);
+			expect(result.setAside).toEqual([
+				{ name: 'f', path: ['f'], displayName: 'Filter', value: f },
+			]);
 			expect(result.parameters).toEqual({});
 		});
 
@@ -780,7 +851,9 @@ describe('carryOverNodeParameters', () => {
 				const r = { mappingMode: 'defineBelow', value: { a: 1 }, schema, matchingColumns: [] };
 				const result = carry(node(1, { r } as unknown as INodeParameters), type, type, 1);
 
-				expect(result.setAside).toEqual([{ name: 'r', displayName: 'Columns', value: r }]);
+				expect(result.setAside).toEqual([
+					{ name: 'r', path: ['r'], displayName: 'Columns', value: r },
+				]);
 				expect(result.parameters).toEqual({});
 			},
 		);
@@ -801,7 +874,9 @@ describe('carryOverNodeParameters', () => {
 		it('should set aside a record', () => {
 			const result = carry(node(1, { items: { a: 'x' } }), type, type, 1);
 
-			expect(result.setAside).toEqual([{ name: 'items', displayName: 'Items', value: { a: 'x' } }]);
+			expect(result.setAside).toEqual([
+				{ name: 'items', path: ['items'], displayName: 'Items', value: { a: 'x' } },
+			]);
 			expect(result.parameters).toEqual({});
 		});
 
@@ -855,8 +930,8 @@ describe('carryOverNodeParameters', () => {
 			const result = carry(node(1, { flag: 'on', n: '5' }), current, target, 2);
 
 			expect(result.setAside).toEqual([
-				{ name: 'flag', displayName: 'Flag', value: 'on' },
-				{ name: 'n', displayName: 'N', value: '5' },
+				{ name: 'flag', path: ['flag'], displayName: 'Flag', value: 'on' },
+				{ name: 'n', path: ['n'], displayName: 'N', value: '5' },
 			]);
 			expect(result.parameters).toEqual({});
 		});
@@ -869,7 +944,209 @@ describe('carryOverNodeParameters', () => {
 			const result = carry(node(1, parameters), description, description, 1);
 
 			expect(result.parameters).toEqual({ s: 'x' });
-			expect(result.setAside).toEqual([{ name: '__proto__', displayName: '__proto__', value: {} }]);
+			expect(result.setAside).toEqual([
+				{ name: '__proto__', path: ['__proto__'], displayName: '__proto__', value: {} },
+			]);
+		});
+	});
+
+	describe('value with the wrong shape for the target type', () => {
+		const locator: INodeProperties = {
+			displayName: 'Channel',
+			name: 'channel',
+			type: 'resourceLocator',
+			default: { mode: 'list', value: '' },
+			modes: [
+				{ displayName: 'From List', name: 'list', type: 'list' },
+				{ displayName: 'ID', name: 'id', type: 'string' },
+			],
+		};
+		const text: INodeProperties = {
+			displayName: 'Channel',
+			name: 'channel',
+			type: 'string',
+			default: '',
+		};
+
+		it('should set aside a string on a resourceLocator parameter', () => {
+			const result = carry(node(1, { channel: 'C1' }), desc(1, [text]), desc(2, [locator]), 2);
+
+			expect(names(result)).toEqual(['channel']);
+			expect(result.parameters).toEqual({});
+		});
+
+		it('should set aside a resourceLocator value with a mode that the target does not have', () => {
+			const type = desc(1, [locator]);
+			const value = { __rl: true, mode: 'url', value: 'https://example.com' };
+			const result = carry(node(1, { channel: value }), type, type, 1);
+
+			expect(names(result)).toEqual(['channel']);
+		});
+
+		it('should keep a resourceLocator value with a mode that the target has', () => {
+			const type = desc(1, [locator]);
+			const value = { __rl: true, mode: 'id', value: 'C1' };
+			const result = carry(node(1, { channel: value }), type, type, 1);
+
+			expect(result.setAside).toEqual([]);
+			expect(result.parameters).toEqual({ channel: value });
+		});
+
+		it('should set aside a resourceLocator value on a string parameter', () => {
+			const value = { __rl: true, mode: 'id', value: 'C1' };
+			const result = carry(node(1, { channel: value }), desc(1, [locator]), desc(2, [text]), 2);
+
+			expect(names(result)).toEqual(['channel']);
+		});
+
+		it('should keep a number on a string parameter', () => {
+			const type = desc(1, [text]);
+			const result = carry(node(1, { channel: 5 }), type, type, 1);
+
+			expect(result.setAside).toEqual([]);
+			expect(result.parameters).toEqual({ channel: 5 });
+		});
+	});
+
+	describe('options list', () => {
+		it('should keep a value that is not in the list when the parameter allows arbitrary values', () => {
+			const type = desc(1, [
+				{
+					displayName: 'Model',
+					name: 'model',
+					type: 'options',
+					allowArbitraryValues: true,
+					options: [{ name: 'A', value: 'a' }],
+					default: 'a',
+				},
+			]);
+			const result = carry(node(1, { model: 'custom' }), type, type, 1);
+
+			expect(result.setAside).toEqual([]);
+			expect(result.parameters).toEqual({ model: 'custom' });
+		});
+
+		it('should set aside an option that the target version hides', () => {
+			const type = desc(
+				[1, 2],
+				[
+					{
+						displayName: 'Mode',
+						name: 'mode',
+						type: 'options',
+						options: [
+							{ name: 'New', value: 'new' },
+							{ name: 'Old', value: 'old', displayOptions: { show: { '@version': [1] } } },
+						],
+						default: 'new',
+					},
+				],
+			);
+			const result = carry(node(1, { mode: 'old' }), type, type, 2);
+
+			expect(names(result)).toEqual(['mode']);
+		});
+
+		it('should check a parameter that a hidden parameter displays', () => {
+			const type = desc(1, [
+				{
+					displayName: 'A',
+					name: 'a',
+					type: 'hidden',
+					default: 'a',
+					displayOptions: { show: { '@version': [99] } },
+				},
+				{
+					displayName: 'B',
+					name: 'b',
+					type: 'options',
+					options: [{ name: 'Kept', value: 'kept' }],
+					default: 'kept',
+					displayOptions: { show: { a: ['a'] } },
+				},
+			]);
+			const result = carry(node(1, { b: 'gone' }), type, type, 1);
+
+			expect(names(result)).toEqual(['b']);
+		});
+	});
+
+	describe('resourceMapper value without a schema', () => {
+		it('should keep the value', () => {
+			const type = desc(1, [
+				{
+					displayName: 'Fields',
+					name: 'fields',
+					type: 'resourceMapper',
+					default: { mappingMode: 'defineBelow', value: null },
+				},
+			]);
+			const value = { mappingMode: 'autoMapInputData', value: null };
+			const result = carry(node(1, { fields: value }), type, type, 1);
+
+			expect(result.setAside).toEqual([]);
+			expect(result.parameters).toEqual({ fields: value });
+		});
+	});
+
+	describe('item of a collection with multiple values', () => {
+		it('should set aside the fields that the target does not accept', () => {
+			const type = desc(1, [
+				{
+					displayName: 'Items',
+					name: 'items',
+					type: 'collection',
+					typeOptions: { multipleValues: true },
+					default: [],
+					options: [
+						{
+							displayName: 'Kind',
+							name: 'k',
+							type: 'options',
+							options: [{ name: 'New', value: 'new' }],
+							default: 'new',
+						},
+						{ displayName: 'Label', name: 'label', type: 'string', default: '' },
+					],
+				},
+			]);
+			const result = carry(
+				node(1, { items: [{ k: 'legacy', junk: 1, label: 'x' }] }),
+				type,
+				type,
+				1,
+			);
+
+			expect(result.setAside).toEqual([
+				{ name: 'items[0].k', path: ['items', 0, 'k'], displayName: 'Kind', value: 'legacy' },
+				{
+					name: 'items[0].junk',
+					path: ['items', 0, 'junk'],
+					displayName: 'items[0].junk',
+					value: 1,
+				},
+			]);
+			expect(result.parameters).toEqual({ items: [{ label: 'x' }] });
+		});
+	});
+
+	describe('result values', () => {
+		it('should not share a changed default with the node type description', () => {
+			const multi = (value: string): INodeProperties => ({
+				displayName: 'Events',
+				name: 'events',
+				type: 'multiOptions',
+				options: [
+					{ name: 'A', value: 'a' },
+					{ name: 'B', value: 'b' },
+				],
+				default: [value],
+			});
+			const target = desc(2, [multi('b')]);
+			const result = carry(node(1, {}), desc(1, [multi('a')]), target, 2);
+
+			expect(result.changedDefaults[0].newDefault).toEqual(['b']);
+			expect(result.changedDefaults[0].newDefault).not.toBe(target.properties[0].default);
 		});
 	});
 });
