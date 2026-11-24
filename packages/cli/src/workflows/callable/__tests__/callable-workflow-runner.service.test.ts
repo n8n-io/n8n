@@ -16,7 +16,10 @@ import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks
 import type { WorkflowRunner } from '@/workflow-runner';
 
 import type { CallableWorkflowLoader } from '../callable-workflow-loader.service';
-import { CallableWorkflowRunner } from '../callable-workflow-runner.service';
+import {
+	CallableWorkflowRunner,
+	type CallableWorkflowStartedRun,
+} from '../callable-workflow-runner.service';
 import { CallableWorkflowUnavailableError } from '../callable-workflow-unavailable.error';
 
 const PROJECT_ID = 'project-1';
@@ -384,6 +387,81 @@ describe('CallableWorkflowRunner', () => {
 			expect(ctx.executionPersistence.findSingleExecution).toHaveBeenCalledWith('exec-1', {
 				includeData: true,
 				unflattenData: true,
+			});
+		});
+
+		it.each([
+			[
+				'a crashed run as an error',
+				{
+					status: 'crashed',
+					resultData: { error: { message: 'Out of memory' }, lastNodeExecuted: 'Set' },
+				},
+				{ status: 'error', error: { message: 'Out of memory', nodeType: 'n8n-nodes-base.set' } },
+			],
+			[
+				'an error without a message with the fallback text and no node type',
+				{ status: 'error', resultData: {} },
+				{ status: 'error', error: { message: 'The workflow failed.' } },
+			],
+			['a stored "unknown"', { status: 'unknown', resultData: {} }, { status: 'unknown' }],
+			['a waiting run', { status: 'waiting', resultData: {} }, { status: 'waiting' }],
+			['a canceled run', { status: 'canceled', resultData: {} }, { status: 'canceled' }],
+		])('reports %s from the stored row', async (_label, row, outcome) => {
+			const ctx = setup();
+			ctx.loader.loadWorkflow.mockResolvedValue(makeWorkflow());
+			ctx.workflowRunner.run.mockResolvedValue('exec-1');
+			ctx.executionPersistence.findSingleExecution.mockResolvedValue({
+				status: row.status,
+				data: { resultData: { runData: {}, ...row.resultData } },
+			} as unknown as IExecutionResponse);
+
+			const { finished, ...result } = (await ctx.runner.run(
+				PROJECT_ID,
+				WORKFLOW_ID,
+				{},
+				WAIT,
+			)) as CallableWorkflowStartedRun;
+
+			expect(result).toEqual({ ...outcome, executionId: 'exec-1' });
+			await finished;
+		});
+
+		it('returns "unknown" when the row of a run that ended before the wait is gone', async () => {
+			const ctx = setup();
+			ctx.loader.loadWorkflow.mockResolvedValue(makeWorkflow());
+			ctx.workflowRunner.run.mockResolvedValue('exec-1');
+			ctx.executionPersistence.findSingleExecution.mockResolvedValue(undefined);
+
+			await expect(ctx.runner.run(PROJECT_ID, WORKFLOW_ID, {}, WAIT)).resolves.toMatchObject({
+				status: 'unknown',
+				executionId: 'exec-1',
+			});
+		});
+
+		it('returns the items of all outputs when the last node is an IF node', async () => {
+			const ctx = setup();
+			ctx.loader.loadWorkflow.mockResolvedValue(makeWorkflow());
+			const done = startExecution(ctx);
+
+			const pending = ctx.runner.run(PROJECT_ID, WORKFLOW_ID, {}, WAIT);
+			done.resolve(
+				completedRun({
+					data: {
+						resultData: {
+							runData: {
+								Start: [{ data: { main: [[{ json: {} }]] } }],
+								If: [{ data: { main: [[{ json: { kept: true } }], [{ json: { kept: false } }]] } }],
+							},
+							lastNodeExecuted: 'If',
+						},
+					},
+				} as Partial<IRun>),
+			);
+
+			await expect(pending).resolves.toMatchObject({
+				status: 'success',
+				output: [{ kept: true }, { kept: false }],
 			});
 		});
 
