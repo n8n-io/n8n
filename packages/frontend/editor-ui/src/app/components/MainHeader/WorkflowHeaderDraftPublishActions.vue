@@ -695,6 +695,15 @@ const enum VERSION_ACTIONS {
 	UNPUBLISH = 'unpublish',
 }
 
+/** Why Unpublish is disabled, or '' when it is not. Also the tooltip of the menu item. */
+const unpublishDisabledReason = computed(() => {
+	if (!activeVersion.value) return i18n.baseText('workflows.unpublish.notPublished');
+	if (collaborationReadOnly.value) return i18n.baseText('workflows.unpublish.readOnly');
+	if (!hasUnpublishPermission.value) return i18n.baseText('workflows.unpublish.permissionDenied');
+
+	return '';
+});
+
 const versionMenuActions = computed<Array<ActionDropdownItem<VERSION_ACTIONS>>>(() => {
 	const actions: Array<ActionDropdownItem<VERSION_ACTIONS>> = [
 		{
@@ -729,7 +738,8 @@ const versionMenuActions = computed<Array<ActionDropdownItem<VERSION_ACTIONS>>>(
 	actions.push({
 		id: VERSION_ACTIONS.UNPUBLISH,
 		label: i18n.baseText('workflows.unpublish'),
-		disabled: !activeVersion.value || collaborationReadOnly.value || !hasUnpublishPermission.value,
+		disabled: unpublishDisabledReason.value !== '',
+		tooltip: unpublishDisabledReason.value || undefined,
 		divided: true,
 		shortcut: { metaKey: true, keys: ['U'] },
 	});

@@ -916,19 +916,21 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			);
 		});
 
-		it('should explain a disabled Publish menu item with the reason in a tooltip', async () => {
+		it('should give a disabled Publish menu item the reason as a tooltip', async () => {
 			workflowDocumentStore.setNodes([]);
 			uiStore.markStateDirty();
 
-			const { getByTestId, findByText } = renderComponent();
+			const { getByTestId } = renderComponent();
 
 			await userEvent.click(getByTestId('version-menu-button'));
 
 			const publishItem = getByTestId('version-menu-item-publish');
 			expect(publishItem).toHaveClass('is-disabled');
-
-			await userEvent.hover(publishItem);
-			expect(await findByText(/no trigger nodes that require publishing/)).toBeVisible();
+			// The tooltip stub of the tests renders its content as an attribute.
+			expect(publishItem.parentElement).toHaveAttribute(
+				'content',
+				'This workflow has no trigger nodes that require publishing',
+			);
 		});
 
 		it('should show publish button disabled when trigger node is disabled', () => {
@@ -1635,6 +1637,58 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			const unpublishItem = getByTestId('version-menu-item-unpublish');
 			expect(unpublishItem).toBeInTheDocument();
 			expect(unpublishItem).toHaveClass('is-disabled');
+		});
+
+		it.each([
+			{
+				name: 'the workflow is not published',
+				arrange: () =>
+					workflowDocumentStore.setActiveState({ activeVersionId: null, activeVersion: null }),
+				props: {},
+				reason: "This workflow isn't published",
+			},
+			{
+				name: 'someone else is editing the workflow',
+				arrange: () => {
+					collaborationStore.shouldBeReadOnly = true;
+				},
+				props: {},
+				reason: 'This workflow is read-only while someone else is editing it',
+			},
+			{
+				name: 'the user lacks the unpublish permission',
+				arrange: () => {},
+				props: {
+					workflowPermissions: { ...defaultWorkflowProps.workflowPermissions, unpublish: false },
+				},
+				reason: "You don't have permission to unpublish this workflow",
+			},
+		])('should give Unpublish the reason as a tooltip when $name', async (scenario) => {
+			setupEnabledPublishButton();
+			scenario.arrange();
+
+			const { getByTestId } = renderComponent({
+				props: { ...defaultWorkflowProps, ...scenario.props },
+			});
+
+			await userEvent.click(getByTestId('version-menu-button'));
+			const unpublishItem = getByTestId('version-menu-item-unpublish');
+
+			expect(unpublishItem).toHaveClass('is-disabled');
+			// The tooltip stub of the tests renders its content as an attribute.
+			expect(unpublishItem.parentElement).toHaveAttribute('content', scenario.reason);
+		});
+
+		it('should give Unpublish no tooltip when it is available', async () => {
+			setupEnabledPublishButton();
+
+			const { getByTestId } = renderComponent();
+
+			await userEvent.click(getByTestId('version-menu-button'));
+			const unpublishItem = getByTestId('version-menu-item-unpublish');
+
+			expect(unpublishItem).not.toHaveClass('is-disabled');
+			expect(unpublishItem.parentElement).not.toHaveAttribute('content');
 		});
 	});
 
