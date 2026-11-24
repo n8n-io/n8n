@@ -92,6 +92,20 @@ describe('jotformApiRequest', () => {
 		expect(context.helpers.request).toHaveBeenCalledTimes(1);
 	});
 
+	it('should reject a custom host that the credential allowlist excludes', async () => {
+		const context = buildContext({
+			apiDomain: 'custom',
+			customApiDomain: 'subdomain.jotform.com/API',
+			allowedHttpRequestDomains: 'domains',
+			allowedDomains: 'other.example',
+		});
+
+		await expect(jotformApiRequest.call(context, 'GET', requestPath`/user`)).rejects.toThrow(
+			NodeOperationError,
+		);
+		expect(context.helpers.request).not.toHaveBeenCalled();
+	});
+
 	it.each([
 		[''],
 		['   '],
