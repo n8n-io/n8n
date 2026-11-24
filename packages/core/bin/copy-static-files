@@ -17,7 +17,7 @@ const statSafe = (filePath) => {
 const collectStaticFiles = (cwd) => {
 	const results = [];
 
-	const walk = (dir, realDir, relBase, includeSchemaJson, visitedRealDirs) => {
+	const walk = (dir, realDir, relBase, includeSchemaJson, ancestorRealDirs) => {
 		let entries;
 		try {
 			entries = readdirSync(dir, { withFileTypes: true });
@@ -43,9 +43,13 @@ const collectStaticFiles = (cwd) => {
 						continue;
 					}
 				}
-				if (visitedRealDirs.has(nextRealDir)) continue;
-				visitedRealDirs.add(nextRealDir);
-				walk(fullPath, nextRealDir, relPath, includeSchemaJson, visitedRealDirs);
+				if (ancestorRealDirs.has(nextRealDir)) continue;
+				ancestorRealDirs.add(nextRealDir);
+				try {
+					walk(fullPath, nextRealDir, relPath, includeSchemaJson, ancestorRealDirs);
+				} finally {
+					ancestorRealDirs.delete(nextRealDir);
+				}
 			} else if (
 				entry.isFile() ||
 				(entry.isSymbolicLink() && Boolean(statSafe(fullPath)?.isFile()))
@@ -63,7 +67,6 @@ const collectStaticFiles = (cwd) => {
 		}
 	};
 
-	const visited = new Set();
 	for (const [subDir, includeSchemaJson] of [
 		['nodes', true],
 		['credentials', false],
@@ -72,11 +75,12 @@ const collectStaticFiles = (cwd) => {
 		let realStartDir = startDir;
 		try {
 			realStartDir = realpathSync(startDir);
-		} catch {
-			continue;
+		} catch (error) {
+			if (error && (error.code === 'ENOENT' || error.code === 'ENOTDIR')) continue;
+			throw error;
 		}
-		visited.add(realStartDir);
-		walk(startDir, realStartDir, subDir, includeSchemaJson, visited);
+		const ancestorRealDirs = new Set([realStartDir]);
+		walk(startDir, realStartDir, subDir, includeSchemaJson, ancestorRealDirs);
 	}
 	return results;
 };

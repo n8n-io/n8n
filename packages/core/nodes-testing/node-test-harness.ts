@@ -13,21 +13,14 @@ import type {
 import { createRunExecutionData, Workflow } from 'n8n-workflow';
 import { UnexpectedError } from '@n8n/errors';
 import nock from 'nock';
-import {
-	existsSync,
-	mkdtempSync,
-	readdirSync,
-	readFileSync,
-	realpathSync,
-	rmSync,
-	statSync,
-} from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect } from 'vitest';
 
 import { ExecutionLifecycleHooks } from '../dist/execution-engine/execution-lifecycle-hooks';
 import { WorkflowExecute } from '../dist/execution-engine/workflow-execute';
+import { collectWorkflowFilenames } from './collect-workflow-filenames';
 import { CredentialTypes } from './credential-types';
 import { CredentialsHelper } from './credentials-helper';
 import { LoadNodesAndCredentials } from './load-nodes-and-credentials';
@@ -163,59 +156,7 @@ export class NodeTestHarness {
 
 	@Memoized
 	private get workflowFilenames() {
-		const results: string[] = [];
-		let realTestDir = this.testDir;
-		try {
-			realTestDir = realpathSync(this.testDir);
-		} catch {
-			return results;
-		}
-		const visitedRealDirs = new Set<string>([realTestDir]);
-
-		const walk = (dir: string, realDir: string) => {
-			let entries;
-			try {
-				entries = readdirSync(dir, { withFileTypes: true });
-			} catch {
-				return;
-			}
-
-			for (const entry of entries) {
-				if (entry.name.startsWith('.')) continue;
-
-				const fullPath = path.join(dir, entry.name);
-				let isDir = entry.isDirectory();
-				let isFile = entry.isFile();
-				if (entry.isSymbolicLink()) {
-					try {
-						const stats = statSync(fullPath);
-						isDir = stats.isDirectory();
-						isFile = stats.isFile();
-					} catch {
-						continue;
-					}
-				}
-
-				if (isDir) {
-					let nextRealDir = path.join(realDir, entry.name);
-					if (entry.isSymbolicLink()) {
-						try {
-							nextRealDir = realpathSync(fullPath);
-						} catch {
-							continue;
-						}
-					}
-					if (visitedRealDirs.has(nextRealDir)) continue;
-					visitedRealDirs.add(nextRealDir);
-					walk(fullPath, nextRealDir);
-				} else if (isFile && entry.name.endsWith('.json')) {
-					results.push(path.relative(this.packageDir, fullPath).split(path.sep).join('/'));
-				}
-			}
-		};
-
-		walk(this.testDir, realTestDir);
-		return results;
+		return collectWorkflowFilenames(this.testDir, this.packageDir);
 	}
 
 	private setupNetworkMocks({ baseUrl, mocks }: NonNullable<WorkflowTestData['nock']>) {
