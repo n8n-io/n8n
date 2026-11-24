@@ -115,10 +115,7 @@ export class RetentionSweeper {
 		if (deleted > 0) this.logger.info('Execution retention pass finished', { deleted });
 	}
 
-	/**
-	 * Deletes the files first and the rows second, so a row is never gone while
-	 * its files stay. An execution whose files remain keeps its row.
-	 */
+	/** Deletes the files before the rows. An execution whose files fail to delete keeps its rows. */
 	private async deleteBatch(batch: PrunableExecution[]): Promise<number> {
 		const withoutFiles = await this.fileCleanup.deleteFilesOf(
 			batch.map(({ id, workflowId }) => ({ executionId: id, workflowId })),
