@@ -1,6 +1,12 @@
 import { escapeXmlText } from '@n8n/utils/string/escape-xml';
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
-import { NodeOperationError, requestPath, tryToParseDateTime } from 'n8n-workflow';
+import {
+	NodeOperationError,
+	decodePathValue,
+	requestPath,
+	toPathSegment,
+	tryToParseDateTime,
+} from 'n8n-workflow';
 
 import { returnAllOrLimit } from '@utils/descriptions';
 import { escapeDavLikeValue } from '@utils/query-escaping';
@@ -214,6 +220,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<IData
 	const options = this.getNodeParameter('options', i, {}) as { exactName?: boolean };
 	const where = whereClause.call(this, query, options.exactName === true, filter, i);
 
+	const scopeSegment = (segment: string) => decodePathValue(toPathSegment(segment));
+	const scopeSegments = segments.map(scopeSegment);
+
 	// Nextcloud answers a file scope with a bare HTTP 500, so check the scope first
 	if (segments.length > 0) {
 		const [scope] = await readMultistatus(
@@ -237,10 +246,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<IData
 		}
 	}
 
-	const uid = await nextCloudUserId.call(this);
-	// Nextcloud does not decode a relative scope href, so the names stay raw. It also ignores
-	// the depth and always searches the subfolders.
-	const scopeHref = ['', 'files', uid, ...segments].join('/');
+	const uid = scopeSegment(await nextCloudUserId.call(this));
+	const scopeHref = ['', 'files', uid, ...scopeSegments].join('/');
 	const body = `<?xml version="1.0" encoding="UTF-8"?>
 <d:searchrequest xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns" xmlns:nc="http://nextcloud.org/ns">
   <d:basicsearch>

@@ -251,6 +251,27 @@ describe('NextCloud Node: folder search', () => {
 		expect(searchBody()).toContain('<d:href>/files/alice@example.com/My Docs/R&amp;D #1</d:href>');
 	});
 
+	it.each(['/Finance/..', '/./Finance', '/a/../b'])(
+		'rejects the dot segments in "%s" before any request',
+		async (path) => {
+			const { request } = fakeNextcloud();
+
+			await expect(run(buildExecuteFunctions({ query: 'a', path }, request))).rejects.toThrow(
+				'Invalid identifier',
+			);
+			expect(request).not.toHaveBeenCalled();
+		},
+	);
+
+	it('checks and searches the same folder for an encoded dot name', async () => {
+		const { request, searchBody } = fakeNextcloud();
+
+		await run(buildExecuteFunctions({ query: 'a', path: '/%2e%2e' }, request));
+
+		expect(String(request.mock.calls[0][1].uri)).toBe(`${webDavUrl}//%252e%252e`);
+		expect(searchBody()).toContain('<d:href>/files/alice/%2e%2e</d:href>');
+	});
+
 	it('fails with a clear message when the folder is a file', async () => {
 		const { request } = fakeNextcloud([], ['/Finance/x.pdf']);
 
