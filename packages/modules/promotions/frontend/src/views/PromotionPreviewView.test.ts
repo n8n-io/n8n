@@ -2597,8 +2597,8 @@ describe('PromotionPreviewView', () => {
 		});
 
 		describe('with a credential that the project cannot use', () => {
-			const stopsWorkflow =
-				'1 dependency is outside your access and stops this workflow. Someone with access must resolve it.';
+			// The Issues tab lists the credential under "Needs your action".
+			const stopsWorkflow = '1 issue needs your action.';
 
 			it.each(['not-shared', 'incompatible-usage-scope'] as const)(
 				'should stop the workflows that use the credential, and apply the other changes, for the reason %s',
@@ -2639,32 +2639,76 @@ describe('PromotionPreviewView', () => {
 				},
 			);
 
-			it('should show the credential with a message and no action, and count it as an issue to resolve', async () => {
-				const { getAllByRole, getAllByTestId, getByTestId } = await renderIssues({
+			it('should show the credential under "Needs your action", with a message and no action, and count it as an issue to resolve', async () => {
+				const { getAllByRole, getAllByTestId, getByRole, getByTestId } = await renderIssues({
 					missingDependencies: [unsharedCredential],
 				});
 
-				expect(headings(getAllByRole)).toEqual(['Outside your access (1)']);
-				const outside = section(getAllByTestId, 'Outside your access (1)');
+				expect(getByRole('tab', { name: /Issues/ })).toHaveTextContent(/^Issues\s*1$/);
+				expect(headings(getAllByRole)).toEqual(['Needs your action (1)']);
+				const needsAction = section(getAllByTestId, 'Needs your action (1)');
+				// No row of the section has a dependency to create.
 				expect(
-					outside.getByText(
-						'You do not have access to these dependencies. A credential that this project cannot use stops the workflows that use it. You can apply without the other dependencies.',
+					needsAction.queryByText(
+						'Create these dependencies or use a placeholder before you apply.',
 					),
-				).toBeVisible();
-				expect(cells(outside.getByRole('row', { name: /Stripe/ }))).toEqual([
+				).not.toBeInTheDocument();
+				const row = needsAction.getByRole('row', { name: /Stripe/ });
+				expect(cells(row)).toEqual([
 					'StripeThis credential exists on this instance, but this project cannot use it. Someone with access must share it with this project.',
 					'Invoice reconciliation',
 					'Credential',
 					'No access',
 					'',
 				]);
+				expect(within(row).getByText('No access').className).toContain('neutral');
 				// The credential exists, so the user has nothing to add.
 				expect(
-					outside.queryByTestId('promotion-preview-blocker-disabled-action'),
+					needsAction.queryByTestId('promotion-preview-blocker-disabled-action'),
 				).not.toBeInTheDocument();
-				expect(outside.queryByRole('button', { name: /Add/ })).not.toBeInTheDocument();
+				expect(needsAction.queryByRole('button', { name: /Add/ })).not.toBeInTheDocument();
 				expect(getByTestId('promotion-preview-blockers-status')).toHaveTextContent(
-					'1 issue to resolve',
+					/^1 issue to resolve$/,
+				);
+			});
+
+			it('should show the credential next to the same case for a user who can access the credential', async () => {
+				// The check details "Currency API" (c2), which the user can access. "Weekly KPI
+				// report" (w3) uses it. The user cannot access "Stripe" (c1).
+				const access = {
+					...credential,
+					code: 'access-required' as const,
+					sourceId: 'c2',
+					name: 'Currency API',
+					consumers: consumers('w3'),
+				};
+				const { getAllByRole, getAllByTestId, getByRole, getByTestId } = await renderIssues({
+					accessRequirements: [access],
+					missingDependencies: [
+						{ ...repeatedBinding(access), reason: 'not-shared' },
+						unsharedCredential,
+						{ ...unreachableWorkflow, consumers: consumers('w4') },
+					],
+				});
+
+				// Each row of "Needs your action" stops the Apply. No row of "Outside your access" does.
+				expect(getByRole('tab', { name: /Issues/ })).toHaveTextContent(/^Issues\s*3$/);
+				expect(headings(getAllByRole)).toEqual([
+					'Needs your action (2)',
+					'Outside your access (1)',
+				]);
+				const needsAction = section(getAllByTestId, 'Needs your action (2)');
+				expect(cells(needsAction.getByRole('row', { name: /Currency API/ }))[3]).toBe('No access');
+				expect(cells(needsAction.getByRole('row', { name: /Stripe/ }))[3]).toBe('No access');
+				const outside = section(getAllByTestId, 'Outside your access (1)');
+				expect(outside.queryByRole('row', { name: /Stripe/ })).not.toBeInTheDocument();
+				expect(
+					outside.getByText(
+						'You do not have access to these dependencies. You can apply without them.',
+					),
+				).toBeVisible();
+				expect(getByTestId('promotion-preview-blockers-status')).toHaveTextContent(
+					/^2 issues to resolve$/,
 				);
 			});
 
@@ -2726,11 +2770,18 @@ describe('PromotionPreviewView', () => {
 				expect(submit).toHaveTextContent(/^Apply with 1 unresolved dependency$/);
 
 				await userEvent.click(getByRole('tab', { name: /Issues/ }));
-				expect(headings(getAllByRole)).toEqual(['Outside your access (2)']);
-				const outside = section(getAllByTestId, 'Outside your access (2)');
+				expect(headings(getAllByRole)).toEqual([
+					'Needs your action (1)',
+					'Outside your access (1)',
+				]);
+				const outside = section(getAllByTestId, 'Outside your access (1)');
 				expect(outside.queryByRole('row', { name: /Legacy SMTP/ })).not.toBeInTheDocument();
 				expect(cells(outside.getByRole('row', { name: /Send audit log/ }))[4]).toBe('Add workflow');
-				expect(cells(outside.getByRole('row', { name: /Stripe/ }))[4]).toBe('');
+				expect(
+					cells(
+						section(getAllByTestId, 'Needs your action (1)').getByRole('row', { name: /Stripe/ }),
+					)[4],
+				).toBe('');
 				expect(getByTestId('promotion-preview-blockers-status')).toHaveTextContent(
 					'1 issue to resolve',
 				);
@@ -3000,7 +3051,7 @@ describe('PromotionPreviewView', () => {
 			await userEvent.click(getByRole('tab', { name: /Issues/ }));
 			expect(
 				cells(
-					section(getAllByTestId, 'Outside your access (1)').getByRole('row', { name: /Stripe/ }),
+					section(getAllByTestId, 'Needs your action (1)').getByRole('row', { name: /Stripe/ }),
 				),
 			).toEqual([
 				'StripeThis credential exists on this instance, but this project cannot use it. Someone with access must share it with this project.',

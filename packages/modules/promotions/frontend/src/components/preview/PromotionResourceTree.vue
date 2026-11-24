@@ -38,7 +38,8 @@ const props = withDefaults(
 		blockers: BlockerIndex;
 		/**
 		 * By workflow: the missing dependencies that the Issues tab lists. A workflow that no blocker
-		 * stops gets a quiet marker for them.
+		 * stops gets a muted marker for them. The marker of a workflow that a blocker stops also
+		 * counts those that are outside the access of the user.
 		 */
 		missingDependencies?: ReadonlyMap<ResourceKey, readonly PromotionMissingDependency[]>;
 		/** False for a list that users only read, such as a review. Rows then only open their card. */
@@ -62,12 +63,12 @@ const { blockerMessage, missingDependencyMarker, selectLabel } = usePromotionPre
 
 function markers(resource: PromotionResource) {
 	const blockers = blockersOf(props.blockers, resource);
-	const blocked = blockerMessage(resource, blockers);
+	const missing = props.missingDependencies?.get(resource.key);
+	const blocked = blockerMessage(resource, blockers, missing);
 	const meta =
 		resource.type !== 'workflow' && blockers?.some(({ kind }) => kind === 'warning')
 			? i18n.baseText('promotions.preview.marker.warning')
 			: undefined;
-	const missing = props.missingDependencies?.get(resource.key);
 	return {
 		blocked,
 		meta: blocked ? undefined : meta,

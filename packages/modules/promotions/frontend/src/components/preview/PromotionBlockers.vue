@@ -286,14 +286,11 @@ function dependencyDescription(
 	}
 	if (id === 'outsideAccess') {
 		if (props.outsideDescription !== undefined) return props.outsideDescription;
-		if (!props.check) {
-			return i18n.baseText('promotions.preview.blockers.section.outsideAccess.description.promote');
-		}
-		// The text must stay true when a row of the section stops the Apply.
+		// No row of this section stops the Apply. See `stopsApply`.
 		return i18n.baseText(
-			dependencies.some(({ blocking }) => blocking)
-				? 'promotions.preview.blockers.section.outsideAccess.description.blocking'
-				: 'promotions.preview.blockers.section.outsideAccess.description',
+			props.check
+				? 'promotions.preview.blockers.section.outsideAccess.description'
+				: 'promotions.preview.blockers.section.outsideAccess.description.promote',
 		);
 	}
 	// A user cannot move what is in a personal project that the user cannot access.
@@ -397,7 +394,7 @@ const OUTSIDE_WORKFLOW_DETAILS: Partial<Record<PromotionMissingDependencyReason,
 	'caller-policy': 'promotions.preview.blockers.workflow.callerPolicy.noAccess',
 };
 
-// Apply: what a row of "Outside your access" shows, by the reason of the dependency.
+// Apply: what the row of a dependency outside the access of the user shows, by its reason.
 function outsideAccessOnApply({
 	kind,
 	reason,
@@ -433,22 +430,40 @@ function outsideAccessOnApply({
 	};
 }
 
-// The kinds of issue, in the order that users read them. Only Apply has "Needs your action".
+/**
+ * Apply: a dependency outside the access of the user that stops the Apply. Someone with access
+ * must resolve it before the Apply can continue, so its row is in "Needs your action".
+ */
+const stopsApply = ({ group, blocking }: PromotionMissingDependency) =>
+	!!props.check && group === 'outside-access' && blocking;
+
+// The rows of "Needs your action", which only Apply has. Each row stops the Apply.
+const needsActionRows = computed<BlockerRow[]>(() => [
+	...blockerRows.value,
+	...props.missingDependencies.filter(stopsApply).map((dependency) => ({
+		...dependencyRow(dependency, 'blockers'),
+		...outsideAccessOnApply(dependency),
+	})),
+]);
+
+// The kinds of issue, in the order that users read them.
 const sections = computed(() =>
 	[
 		{
 			id: 'blockers' as const,
 			title: i18n.baseText('promotions.preview.blockers.section.blockers', {
-				interpolate: { count: String(blockerRows.value.length) },
+				interpolate: { count: String(needsActionRows.value.length) },
 			}),
 			// The text tells users to create dependencies, so it needs a row that they can create.
-			description: blockerRows.value.some(({ createLabel }) => createLabel !== undefined)
+			description: needsActionRows.value.some(({ createLabel }) => createLabel !== undefined)
 				? i18n.baseText('promotions.preview.blockers.section.blockers.description')
 				: undefined,
-			rows: blockerRows.value,
+			rows: needsActionRows.value,
 		},
 		...DEPENDENCY_SECTIONS.map((section) => {
-			const dependencies = props.missingDependencies.filter(({ group }) => group === section.group);
+			const dependencies = props.missingDependencies.filter(
+				(dependency) => dependency.group === section.group && !stopsApply(dependency),
+			);
 			return {
 				id: section.id,
 				title: i18n.baseText(`promotions.preview.blockers.section.${section.id}`, {
