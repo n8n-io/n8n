@@ -119,7 +119,7 @@ describe('AllowImportSourceOnAiPreference migration', () => {
 	it('refuses the import source before the migration', async () => {
 		await expect(
 			withContext(async (context) => await insertPreference(context, 'import')),
-		).rejects.toThrow();
+		).rejects.toThrow(/check constraint/i);
 	});
 
 	it('preserves existing rows and accepts imported rows in every scope', async () => {
@@ -140,7 +140,7 @@ describe('AllowImportSourceOnAiPreference migration', () => {
 
 		await expect(
 			withContext(async (context) => await insertPreference(context, 'unknown')),
-		).rejects.toThrow();
+		).rejects.toThrow(/check constraint/i);
 	});
 
 	it('relabels only imported rows as ui on rollback and can upgrade again', async () => {
@@ -159,10 +159,10 @@ describe('AllowImportSourceOnAiPreference migration', () => {
 		expect(await withContext(readPreferences)).toEqual(expected);
 		await expect(
 			withContext(async (context) => await insertPreference(context, 'import')),
-		).rejects.toThrow();
+		).rejects.toThrow(/check constraint/i);
 		await expect(
 			withContext(async (context) => await insertPreference(context, 'unknown')),
-		).rejects.toThrow();
+		).rejects.toThrow(/check constraint/i);
 
 		await runSingleMigration(migrationName);
 
