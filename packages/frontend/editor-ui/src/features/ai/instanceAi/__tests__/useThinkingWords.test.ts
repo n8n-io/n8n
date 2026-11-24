@@ -29,9 +29,9 @@ function setup(initial: { active: boolean; building?: boolean; threadId?: string
 	 * the reads, because each rotation marks a word as shown.
 	 */
 	const collect = (count: number) => {
-		const words: Array<string | undefined> = [word.value];
-		for (let i = 1; i < count; i++) {
-			vi.advanceTimersByTime(THINKING_WORD_ROTATION_MS);
+		const words: Array<string | undefined> = [];
+		for (let i = 0; i < count; i++) {
+			if (i > 0) vi.advanceTimersByTime(THINKING_WORD_ROTATION_MS);
 			words.push(word.value);
 		}
 		return words;
