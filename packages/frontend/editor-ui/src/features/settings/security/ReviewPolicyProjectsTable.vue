@@ -54,11 +54,11 @@ const headers = computed<Array<TableHeader<ReviewPolicyProject>>>(() => [
 ]);
 
 const approvalOptions = computed<Array<SelectOptionBase<ApprovalOption>>>(() => [
-	{ value: 'required', label: i18n.baseText('settings.reviewPolicy.projects.option.required') },
 	{
 		value: 'notRequired',
 		label: i18n.baseText('settings.reviewPolicy.projects.option.notRequired'),
 	},
+	{ value: 'required', label: i18n.baseText('settings.reviewPolicy.projects.option.required') },
 ]);
 
 function approvalOf(project: ReviewPolicyProject): ApprovalOption {

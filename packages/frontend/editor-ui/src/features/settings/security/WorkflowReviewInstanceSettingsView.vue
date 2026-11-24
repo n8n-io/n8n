@@ -246,12 +246,12 @@ onMounted(load);
 						@update:model-value="onApprovalFilter"
 					>
 						<N8nOption
-							value="required"
-							:label="i18n.baseText('settings.reviewPolicy.projects.option.required')"
-						/>
-						<N8nOption
 							value="notRequired"
 							:label="i18n.baseText('settings.reviewPolicy.projects.option.notRequired')"
+						/>
+						<N8nOption
+							value="required"
+							:label="i18n.baseText('settings.reviewPolicy.projects.option.required')"
 						/>
 					</N8nSelect>
 				</div>
