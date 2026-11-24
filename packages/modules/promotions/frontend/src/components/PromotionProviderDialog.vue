@@ -452,6 +452,22 @@ async function submit() {
 								:disabled="isLoading || isSubmitting"
 								data-test-id="promotion-provider-password-input"
 							/>
+							<N8nText
+								v-if="isEdit && capabilities.hasHostApi && hasHostUrlChange"
+								size="small"
+								:class="$style.hint"
+								color="text-base"
+							>
+								{{ i18n.baseText('settings.promotions.provider.form.accessToken.urlChangeHint') }}
+							</N8nText>
+							<N8nText
+								v-if="capabilities.hasHostApi && !isEdit"
+								size="small"
+								:class="$style.hint"
+								color="text-base"
+							>
+								{{ i18n.baseText('settings.promotions.provider.form.accessToken.hint') }}
+							</N8nText>
 						</N8nInputLabel>
 
 						<N8nText
@@ -460,17 +476,6 @@ async function submit() {
 							color="danger"
 						>
 							{{ i18n.baseText('settings.promotions.provider.form.credentials.required') }}
-						</N8nText>
-
-						<N8nText
-							v-if="isEdit && capabilities.hasHostApi && hasHostUrlChange"
-							size="small"
-							color="text-base"
-						>
-							{{ i18n.baseText('settings.promotions.provider.form.accessToken.urlChangeHint') }}
-						</N8nText>
-						<N8nText v-if="capabilities.hasHostApi && !isEdit" size="small" color="text-base">
-							{{ i18n.baseText('settings.promotions.provider.form.accessToken.hint') }}
 						</N8nText>
 					</template>
 
