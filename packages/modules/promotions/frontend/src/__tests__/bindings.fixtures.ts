@@ -4,6 +4,7 @@ import type {
 	BlockedApplyResult,
 	CreatedPromotionBinding,
 	MissingPromotionBinding,
+	PromotedResult,
 } from '../promotions.types';
 
 export const consumers = [
@@ -74,7 +75,6 @@ export function blocked(check: Partial<BlockedApplyResult['check']> = {}): Block
 
 export const applied: AppliedResult = {
 	status: 'applied',
-	missingDependencies: [],
 	environmentId: 'environment-id',
 	git: { branchName: 'main', commitSha: 'a'.repeat(40) },
 	counts: {
@@ -103,4 +103,15 @@ export const applied: AppliedResult = {
 			consumers,
 		},
 	],
+	missingDependencies: [],
 };
+
+/** A Promote that pushed to the branch. */
+export const promoted = (fields: Partial<PromotedResult> = {}): PromotedResult => ({
+	status: 'promoted',
+	environmentId: 'environment-1',
+	counts: { workflows: 4, folders: 0, credentials: 0, dataTables: 0, variables: 0, tags: 0 },
+	git: { branchName: 'main', commitSha: 'a'.repeat(40) },
+	missingDependencies: [],
+	...fields,
+});

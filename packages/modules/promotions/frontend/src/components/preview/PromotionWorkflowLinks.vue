@@ -9,6 +9,8 @@ const props = defineProps<{
 	workflows: ReadonlyArray<{ key: ResourceKey; name: string }>;
 	/** One name per line, for a table cell. Otherwise the names form a sentence. */
 	list?: boolean;
+	/** The names are text, for a page that does not open a change card. */
+	plain?: boolean;
 }>();
 
 const emit = defineEmits<{ inspect: [key: ResourceKey] }>();
@@ -30,21 +32,23 @@ const parts = computed(() => {
 
 <template>
 	<span v-if="list" :class="$style.list">
-		<button
-			v-for="workflow in workflows"
-			:key="workflow.key"
-			type="button"
-			:class="$style.link"
-			data-test-id="promotion-preview-workflow-link"
-			@click="emit('inspect', workflow.key)"
-		>
-			{{ workflow.name }}
-		</button>
+		<template v-for="workflow in workflows" :key="workflow.key">
+			<span v-if="plain" data-test-id="promotion-preview-workflow-name">{{ workflow.name }}</span>
+			<button
+				v-else
+				type="button"
+				:class="$style.link"
+				data-test-id="promotion-preview-workflow-link"
+				@click="emit('inspect', workflow.key)"
+			>
+				{{ workflow.name }}
+			</button>
+		</template>
 	</span>
 	<span v-else>
 		<template v-for="(part, index) in parts" :key="index"
 			><button
-				v-if="part.key"
+				v-if="part.key && !plain"
 				type="button"
 				:class="$style.link"
 				data-test-id="promotion-preview-workflow-link"

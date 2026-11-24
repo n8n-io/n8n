@@ -12,3 +12,6 @@ export const loadPromotionReviewChanges = async () =>
 
 export const loadPromotionProjectAccessRows = async () =>
 	await import('./components/PromotionProjectAccessRows.vue');
+
+export const loadPromotionReviewIssues = async () =>
+	await import('./components/review/PromotionReviewIssues.vue');

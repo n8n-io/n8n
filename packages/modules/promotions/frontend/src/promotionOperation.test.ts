@@ -3,7 +3,6 @@ import type { ApplyCheckResult } from './promotions.types';
 import { credential, destructiveChange, variable } from './__tests__/bindings.fixtures';
 import {
 	archivedWorkflow,
-	notOnBranchCredential,
 	otherProjectCredential,
 	outsideAccessWorkflow,
 	personalCredential,
@@ -12,6 +11,7 @@ import {
 	targetSelectedWorkflow,
 	unreachableCredential,
 	unreachableWorkflow,
+	unsharedCredential,
 } from './__tests__/missingDependencies.fixtures';
 import { billingPreview, billingResources, resource } from './__tests__/preview.fixtures';
 import {
@@ -19,6 +19,7 @@ import {
 	indexByWorkflow,
 	isWarningDependency,
 	listBlockers,
+	listDependencyBlockers,
 	listOnlyDependencies,
 	crossProjectMoveBlockers,
 	scopeCheck,
@@ -104,12 +105,6 @@ describe('promotion operation', () => {
 								scope: { kind: 'global' },
 								consumers: consumer('w3'),
 							},
-							{
-								kind: 'variable',
-								code: 'missing-on-source',
-								name: 'GONE',
-								consumers: consumer('w3'),
-							},
 						],
 					}),
 					movedWorkflows: [
@@ -124,7 +119,6 @@ describe('promotion operation', () => {
 					movedFolders: [],
 				},
 				[],
-				noSelection,
 			),
 		);
 
@@ -135,8 +129,6 @@ describe('promotion operation', () => {
 			workflowKeys: ['workflow:w1'],
 		});
 		expect(index.byResource.get('variable:global:API_URL')?.[0].kind).toBe('warning');
-		// A reference that is broken on the source instance marks no row.
-		expect([...index.byResource.keys()].filter((key) => key.includes('GONE'))).toEqual([]);
 		// A data table change that removes values needs a confirmation, but does not block.
 		expect(touchesDestructiveChange(index, ['workflow:w2'])).toBe(true);
 		expect(touchesDestructiveChange(index, ['workflow:w1', 'workflow:w3'])).toBe(false);
@@ -158,7 +150,6 @@ describe('promotion operation', () => {
 					],
 				},
 				[],
-				noSelection,
 			),
 		);
 
@@ -197,7 +188,7 @@ describe('promotion operation', () => {
 		const listed = ['workflow:w1', 'workflow:w2', 'workflow:w3'];
 		const project = { id: 'p1', name: 'Billing' };
 		const blockersOf = (conflicts: ApplyCheckResult['conflicts']) =>
-			indexBlockers(listBlockers(check({ conflicts }), listed, noSelection));
+			indexBlockers(listBlockers(check({ conflicts }), listed));
 
 		const tagConflict = blockersOf([
 			{
@@ -239,46 +230,43 @@ describe('promotion operation', () => {
 		]);
 	});
 
-	it('should block the workflows of a missing dependency only when the dependency stops the Apply', () => {
-		const index = indexBlockers(
-			listBlockers(
-				check({
-					missingDependencies: [unreachableCredential, unreachableWorkflow, archivedWorkflow],
-				}),
-				[],
+	it('should not block a workflow for a dependency that only the list of missing dependencies holds', () => {
+		const blockers = listBlockers(
+			check({
+				missingDependencies: [unreachableCredential, unreachableWorkflow, archivedWorkflow],
+			}),
+			[],
+		);
+
+		// The user accepts these dependencies in the confirmation of the Apply.
+		expect(blockers).toEqual([]);
+	});
+
+	it('should block the workflows of a dependency that stops the Apply, and only those', () => {
+		const blockers = listDependencyBlockers(
+			listOnlyDependencies(
+				[
+					// "Invoice reconciliation" (w1) uses a credential that the project cannot use.
+					unsharedCredential,
+					// The Apply continues without these two.
+					{ ...unreachableCredential, id: 'c5', consumers: consumer('w2') },
+					unreachableWorkflow,
+				],
 				noSelection,
 			),
 		);
 
-		// "Invoice reconciliation" (w1) uses the credential. The two sub-workflows stop nothing.
+		expect(blockers).toEqual([
+			{ kind: 'outside', resourceKey: 'credential:c1', workflowKeys: ['workflow:w1'] },
+		]);
+		const index = indexBlockers(blockers);
 		expect([...index.blocked]).toEqual(['workflow:w1']);
-		expect(index.byWorkflow.has('workflow:w3')).toBe(false);
-		expect(index.byResource.get('credential:c1')).toEqual([
-			{
-				kind: 'outside',
-				reason: 'not-on-instance',
-				resourceKey: 'credential:c1',
-				workflowKeys: ['workflow:w1'],
-			},
-		]);
-	});
-
-	it('should give the blocker of a missing dependency the reason of the dependency', () => {
-		const blockers = listBlockers(
-			check({ missingDependencies: [unreachableCredential, notOnBranchCredential] }),
-			[],
-			noSelection,
-		);
-
-		expect(blockers.map(({ kind, reason, resourceKey }) => [kind, reason, resourceKey])).toEqual([
-			['outside', 'not-on-instance', 'credential:c1'],
-			['outside', 'not-on-branch', 'credential:c9'],
-		]);
+		expect(index.byResource.get('credential:c1')).toEqual(blockers);
 	});
 
 	it('should keep a dependency that does not stop the Apply only for the selected workflows, and keep one that stops it whole', () => {
 		// "w1" and "w3" use each dependency. Only the first one stops the Apply.
-		const stops = { ...unreachableCredential, consumers: consumer('w1', 'w3') };
+		const stops = { ...unsharedCredential, consumers: consumer('w1', 'w3') };
 		const accepted = { ...archivedWorkflow, consumers: consumer('w1', 'w3') };
 		const scoped = (selected: string[]) =>
 			scopeNonBlockingToSelection([stops, accepted, unreachableWorkflow], new Set(selected));
@@ -286,6 +274,47 @@ describe('promotion operation', () => {
 		expect(scoped(['workflow:w1', 'workflow:w3'])).toEqual([stops, accepted, unreachableWorkflow]);
 		expect(scoped(['workflow:w1'])).toEqual([stops, { ...accepted, consumers: consumer('w1') }]);
 		expect(scoped([])).toEqual([stops]);
+	});
+
+	it('should block for a dependency with a condition only while the selection matches the condition', () => {
+		// The entry holds while the selection includes "Weekly KPI report" (w3).
+		const missingDependencies = [{ ...targetSelectedWorkflow, blocking: true }];
+		const blocked = (selected: string[]) => [
+			...indexBlockers(
+				listDependencyBlockers(listOnlyDependencies(missingDependencies, new Set(selected))),
+			).blocked,
+		];
+
+		expect(blocked(['workflow:w3'])).toEqual(['workflow:w1']);
+		expect(blocked([])).toEqual([]);
+	});
+
+	it('should mark a shadowed variable, and no row for a reference that was broken on the source', () => {
+		const blockers = listBlockers(
+			check({
+				warnings: [
+					{
+						kind: 'variable',
+						code: 'variable-shadowed',
+						name: 'API_URL',
+						scope: { kind: 'global' },
+						consumers: consumer('w3'),
+					},
+					{
+						kind: 'credential',
+						code: 'missing-on-source',
+						id: 'c9',
+						name: 'Old CRM key',
+						consumers: consumer('w1'),
+					},
+				],
+			}),
+			[],
+		);
+
+		expect(blockers).toEqual([
+			{ kind: 'warning', resourceKey: 'variable:global:API_URL', workflowKeys: ['workflow:w3'] },
+		]);
 	});
 
 	it('should not count a credential or a variable twice when the check also details it', () => {
@@ -306,14 +335,13 @@ describe('promotion operation', () => {
 			listBlockers(
 				check({ missingBindings: [missingCredential, missingVariable], missingDependencies }),
 				[],
-				noSelection,
 			).map(({ kind }) => kind),
 		).toEqual(['missing', 'missing']);
 	});
 
 	it('should say that only a sub-workflow that the user can access is a warning', () => {
 		const listed = listOnlyDependencies(
-			[archivedWorkflow, unreachableWorkflow, unreachableCredential, notOnBranchCredential],
+			[archivedWorkflow, unreachableWorkflow, unreachableCredential, unsharedCredential],
 			new Set(),
 		);
 
@@ -333,17 +361,6 @@ describe('promotion operation', () => {
 		expect(reasons(['workflow:w1', 'workflow:w3'])).toEqual(['archived', 'caller-policy']);
 		expect(reasons(['workflow:w1'])).toEqual(['archived', 'not-on-instance']);
 		expect(reasons([])).toEqual(['archived', 'not-on-instance']);
-	});
-
-	it('should block the workflows of a missing dependency with a condition only when the selection matches the condition', () => {
-		const stops = { ...targetSelectedWorkflow, blocking: true };
-		const blocked = (selected: string[]) => [
-			...indexBlockers(listBlockers(check({ missingDependencies: [stops] }), [], new Set(selected)))
-				.blocked,
-		];
-
-		expect(blocked(['workflow:w3'])).toEqual(['workflow:w1']);
-		expect(blocked(['workflow:w1'])).toEqual([]);
 	});
 
 	it('should keep the missing dependencies that a selected workflow uses, with only the selected workflows', () => {

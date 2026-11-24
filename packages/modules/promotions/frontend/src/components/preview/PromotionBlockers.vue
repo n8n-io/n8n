@@ -45,9 +45,18 @@ const props = withDefaults(
 		 * lists of the check do not detail, and that hold for the selection.
 		 */
 		missingDependencies?: PromotionMissingDependency[];
-		/** Promote only: what the selected workflows reference and this instance does not have. */
+		/**
+		 * Promote only: what the selected workflows reference and this instance does not have. Apply
+		 * reads its warnings from the check.
+		 */
 		dependencyWarnings?: PromotionDependencyWarning[];
 		busy: boolean;
+		/** Replaces the text above the sections, for a page that is not a Promote or an Apply. */
+		intro?: string;
+		/** Replaces the text of the section "Outside your access", for such a page. */
+		outsideDescription?: string;
+		/** True for a page that does not open a change card. The workflow names are then plain text. */
+		plainWorkflowNames?: boolean;
 	}>(),
 	{ missingDependencies: () => [], dependencyWarnings: () => [] },
 );
@@ -276,9 +285,11 @@ function dependencyDescription(
 		return i18n.baseText('promotions.preview.blockers.section.otherProject.description');
 	}
 	if (id === 'outsideAccess') {
+		if (props.outsideDescription !== undefined) return props.outsideDescription;
 		if (!props.check) {
 			return i18n.baseText('promotions.preview.blockers.section.outsideAccess.description.promote');
 		}
+		// The text must stay true when a row of the section stops the Apply.
 		return i18n.baseText(
 			dependencies.some(({ blocking }) => blocking)
 				? 'promotions.preview.blockers.section.outsideAccess.description.blocking'
@@ -391,6 +402,13 @@ function outsideAccessOnApply({
 	kind,
 	reason,
 }: PromotionMissingDependency): Pick<BlockerRow, 'status' | 'detail' | 'disabledAction'> {
+	// The credential is on this instance, so the row offers nothing to add.
+	if (reason === 'not-shared' || reason === 'incompatible-usage-scope') {
+		return {
+			status: status('outside'),
+			detail: i18n.baseText('promotions.preview.blockers.credential.notUsable'),
+		};
+	}
 	const detailKey = kind === 'workflow' ? OUTSIDE_WORKFLOW_DETAILS[reason] : undefined;
 	const detail = detailKey && i18n.baseText(detailKey);
 	// The workflow is on this instance, so the row offers nothing to add.
@@ -472,8 +490,24 @@ function removedColumns(
 		.join(', ');
 }
 
-const warnings = computed(() =>
-	(props.check?.warnings ?? []).filter(({ code }) => code === 'variable-shadowed'),
+const shadowedVariables = computed(() =>
+	(props.check?.warnings ?? []).flatMap((warning) =>
+		warning.code === 'variable-shadowed' ? [warning] : [],
+	),
+);
+// The references that were already broken on the source instance. Promote finds them on this
+// instance. Apply reads those that Promote marked on the branch.
+const missingOnSource = computed(() =>
+	props.check
+		? props.check.warnings.flatMap((warning) =>
+				warning.code === 'missing-on-source' ? [warning] : [],
+			)
+		: props.dependencyWarnings,
+);
+const missingOnSourceText = computed(() =>
+	props.check
+		? ('promotions.preview.blockers.missingOnSource.apply' as const)
+		: ('promotions.preview.blockers.missingOnSource' as const),
 );
 
 // Apply: the sub-workflows and error workflows that users can access, and that the workflows
@@ -484,18 +518,20 @@ const unusableWorkflows = computed(() => props.missingDependencies.filter(isWarn
 const dependencyWarningGroups = computed(() =>
 	[
 		{
-			id: 'missingOnSource' as const,
-			rows: props.dependencyWarnings.map(({ kind, id, name, consumers }) => ({
+			id: 'missingOnSource',
+			text: missingOnSourceText.value,
+			rows: missingOnSource.value.map(({ kind, id, name, consumers }) => ({
 				key: `${kind}:${id ?? name}`,
 				icon: resourceIcon(kind),
 				name,
 				type: kind,
 				usedBy: usedBy(consumers),
-				detail: i18n.baseText(`promotions.preview.blockers.missingOnSource.${kind}`),
+				detail: i18n.baseText(`${missingOnSourceText.value}.${kind}`),
 			})),
 		},
 		{
-			id: 'unusableWorkflows' as const,
+			id: 'unusableWorkflows',
+			text: 'promotions.preview.blockers.unusableWorkflows' as const,
 			rows: unusableWorkflows.value.map((dependency) => dependencyRow(dependency, 'warnings')),
 		},
 	].filter(({ rows }) => rows.length > 0),
@@ -505,8 +541,8 @@ const dependencyWarningGroups = computed(() =>
 const warningCount = computed(
 	() =>
 		bindings.destructiveChanges.value.length +
-		warnings.value.length +
-		props.dependencyWarnings.length +
+		shadowedVariables.value.length +
+		missingOnSource.value.length +
 		unusableWorkflows.value.length,
 );
 const open = ref({
@@ -533,6 +569,7 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 		<slot />
 		<N8nText tag="p" color="text-base">
 			{{
+				intro ??
 				i18n.baseText(
 					check ? 'promotions.preview.blockers.intro' : 'promotions.preview.blockers.intro.promote',
 				)
@@ -624,6 +661,7 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 									<PromotionWorkflowLinks
 										:workflows="row.usedBy"
 										list
+										:plain="plainWorkflowNames"
 										@inspect="emit('inspect', $event)"
 									/>
 								</N8nText>
@@ -730,6 +768,7 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 										<PromotionWorkflowLinks
 											:workflows="usedBy(table.consumers)"
 											list
+											:plain="plainWorkflowNames"
 											@inspect="emit('inspect', $event)"
 										/>
 									</N8nText>
@@ -741,7 +780,7 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 						</tbody>
 					</table>
 				</div>
-				<div v-if="warnings.length > 0" :class="$style.group">
+				<div v-if="shadowedVariables.length > 0" :class="$style.group">
 					<N8nCallout theme="info" :class="$style.callout">
 						<N8nText bold tag="p">{{
 							i18n.baseText('promotions.preview.blockers.shadowed.title')
@@ -760,7 +799,7 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 							</tr>
 						</thead>
 						<tbody>
-							<tr v-for="warning in warnings" :key="warning.name">
+							<tr v-for="warning in shadowedVariables" :key="warning.name">
 								<td>
 									<div :class="$style.name">
 										<N8nIcon :icon="resourceIcon('variable')" size="small" :class="$style.icon" />
@@ -771,6 +810,7 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 									<N8nText step="2xs" color="text-light">
 										<PromotionWorkflowLinks
 											:workflows="usedBy(warning.consumers)"
+											:plain="plainWorkflowNames"
 											@inspect="emit('inspect', $event)"
 										/>
 									</N8nText>
@@ -781,10 +821,8 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 				</div>
 				<div v-for="group in dependencyWarningGroups" :key="group.id" :class="$style.group">
 					<N8nCallout theme="warning" :class="$style.callout">
-						<N8nText bold tag="p">{{
-							i18n.baseText(`promotions.preview.blockers.${group.id}.title`)
-						}}</N8nText>
-						{{ i18n.baseText(`promotions.preview.blockers.${group.id}.description`) }}
+						<N8nText bold tag="p">{{ i18n.baseText(`${group.text}.title`) }}</N8nText>
+						{{ i18n.baseText(`${group.text}.description`) }}
 					</N8nCallout>
 					<table :class="$style.table">
 						<thead>
@@ -822,6 +860,7 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 										<PromotionWorkflowLinks
 											:workflows="row.usedBy"
 											list
+											:plain="plainWorkflowNames"
 											@inspect="emit('inspect', $event)"
 										/>
 									</N8nText>

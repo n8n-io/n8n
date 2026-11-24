@@ -57,7 +57,7 @@ export const personalCredential: PromotionMissingDependency = {
 	consumers: usedBy(kpiReport),
 };
 
-/** A sub-workflow of a personal project. It stops an instance Promote. */
+/** A sub-workflow of a personal project. */
 export const personalWorkflow: PromotionMissingDependency = {
 	kind: 'workflow',
 	id: 'w6',
@@ -65,7 +65,7 @@ export const personalWorkflow: PromotionMissingDependency = {
 	group: 'personal',
 	reason: 'personal-project',
 	accessible: true,
-	blocking: true,
+	blocking: false,
 	consumers: usedBy(kpiReport),
 };
 
@@ -80,7 +80,7 @@ export const deletedWorkflowWarning: PromotionDependencyWarning = {
 
 /**
  * Apply: the "Stripe" credential of the "Billing" preview is not on this instance, and the user
- * cannot add it. It stops "Invoice reconciliation".
+ * cannot add it. "Invoice reconciliation" uses it. Apply continues without it.
  */
 export const unreachableCredential: PromotionMissingDependency = {
 	kind: 'credential',
@@ -90,8 +90,18 @@ export const unreachableCredential: PromotionMissingDependency = {
 	group: 'outside-access',
 	reason: 'not-on-instance',
 	accessible: false,
-	blocking: true,
+	blocking: false,
 	consumers: usedBy(reconciliation),
+};
+
+/**
+ * Apply: the "Stripe" credential is on this instance, but the project cannot use it, and the user
+ * cannot access it. "Invoice reconciliation" uses it. Apply stops on it.
+ */
+export const unsharedCredential: PromotionMissingDependency = {
+	...unreachableCredential,
+	reason: 'not-shared',
+	blocking: true,
 };
 
 /** Apply: a sub-workflow that is not on this instance, and that the user cannot access. */
@@ -120,7 +130,7 @@ export const archivedWorkflow: PromotionMissingDependency = {
 
 /**
  * Apply: a credential that this instance does not have, and that the branch holds under no
- * project. It stops "Invoice reconciliation".
+ * project. "Invoice reconciliation" uses it. Apply continues without it.
  */
 export const notOnBranchCredential: PromotionMissingDependency = {
 	kind: 'credential',
@@ -130,7 +140,7 @@ export const notOnBranchCredential: PromotionMissingDependency = {
 	group: 'outside-access',
 	reason: 'not-on-branch',
 	accessible: false,
-	blocking: true,
+	blocking: false,
 	consumers: usedBy(reconciliation),
 };
 

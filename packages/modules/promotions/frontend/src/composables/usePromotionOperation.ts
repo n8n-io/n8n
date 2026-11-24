@@ -27,6 +27,8 @@ import { usePromotionOutcome } from './usePromotionOutcome';
 export type OperationRequest = OperationSelection & {
 	/** True when the selection imports a data table change that removes values. */
 	confirmDestructiveChanges: boolean;
+	/** True when the operation leaves dependencies unresolved, which the user must accept. */
+	confirmMissingDependencies: boolean;
 	/** Whole-instance Apply only: the names of the projects that it deletes. */
 	deletedProjects?: string[];
 	/** Promote only. When it is missing, the backend generates the message. */
@@ -56,6 +58,23 @@ function errorKind(cause: unknown): Exclude<OperationError['kind'], 'explained'>
 }
 
 /**
+ * What the user confirmed, for Continue. Project deletions, destructive data table changes and
+ * unresolved dependencies need it. `undefined` when the Apply needs no confirmation.
+ */
+function confirmationsOf({
+	confirmDestructiveChanges,
+	confirmMissingDependencies,
+	deletedProjects = [],
+}: OperationRequest) {
+	const destructive = confirmDestructiveChanges || deletedProjects.length > 0;
+	if (!destructive && !confirmMissingDependencies) return undefined;
+	return {
+		...(destructive && { confirmDestructiveChanges: true }),
+		...(confirmMissingDependencies && { confirmMissingDependencies: true }),
+	};
+}
+
+/**
  * Runs the promote or the apply of the preview page, and handles its result. Without a project,
  * it applies the whole instance.
  */
@@ -66,10 +85,13 @@ export function usePromotionOperation(
 		preview,
 		check,
 		refresh,
+		confirmUnresolved,
 	}: {
 		preview: Ref<PromotionPreview | null>;
 		check: Ref<ApplyCheckResult | null>;
 		refresh: () => Promise<void>;
+		/** Asks the user to accept the dependencies that an Apply leaves unresolved. */
+		confirmUnresolved: () => Promise<boolean>;
 	},
 ) {
 	const i18n = useI18n();
@@ -86,8 +108,15 @@ export function usePromotionOperation(
 
 	async function confirmApply({
 		confirmDestructiveChanges,
+		confirmMissingDependencies,
 		deletedProjects = [],
 	}: OperationRequest) {
+		// The question about the unresolved dependencies replaces the generic one. It comes before
+		// the question about what the Apply removes.
+		if (confirmMissingDependencies) {
+			if (!(await confirmUnresolved())) return false;
+			if (!confirmDestructiveChanges && deletedProjects.length === 0) return true;
+		}
 		if (deletedProjects.length > 0) {
 			const deletion = i18n.baseText('promotions.preview.confirmProjectDeletion.message', {
 				adjustToNumber: deletedProjects.length,
@@ -150,7 +179,13 @@ export function usePromotionOperation(
 
 	async function promote(
 		id: string,
-		{ workflowIds, folderIds, credentialIds, commitMessage }: OperationRequest,
+		{
+			workflowIds,
+			folderIds,
+			credentialIds,
+			commitMessage,
+			confirmMissingDependencies,
+		}: OperationRequest,
 	) {
 		// Promote what the page shows. A project or branch that changed since is reported, not pushed.
 		const result = await promoteProjectSelection(rootStore.publicApiContext, id, {
@@ -159,15 +194,13 @@ export function usePromotionOperation(
 			credentialIds,
 			...(commitMessage && { commitMessage }),
 			expectedPreviewRevision: preview.value?.revision,
+			...(confirmMissingDependencies && { confirmMissingDependencies: true }),
 		});
-		if (result.status === 'preview-changed') {
+		// Nothing was pushed. `missing-dependencies`: the user did not confirm the list that the
+		// Promote found. The reloaded preview shows the list to confirm.
+		if (result.status !== 'promoted') {
 			notice.value = 'projectChanged';
 			await refresh();
-			return;
-		}
-		if (result.status === 'missing-dependencies') {
-			// The Issues tab lists them. This page cannot confirm them yet.
-			error.value = { message: '', kind: 'explained' };
 			return;
 		}
 		outcome.showPromoted(id, result);
@@ -193,10 +226,11 @@ export function usePromotionOperation(
 			expectedSource: { environmentId: source.environmentId, ...source.git },
 			expectedPreviewRevision: preview.value?.revision,
 		};
-		const result = request.confirmDestructiveChanges
+		const confirmations = confirmationsOf(request);
+		const result = confirmations
 			? await continueApplyProjectSelection(rootStore.publicApiContext, id, {
 					...expected,
-					confirmDestructiveChanges: true,
+					...confirmations,
 				})
 			: await applyProjectSelection(rootStore.publicApiContext, id, expected);
 		if (result.status === 'applied') {
@@ -213,12 +247,11 @@ export function usePromotionOperation(
 			expectedSource: { environmentId: source.environmentId, ...source.git },
 			expectedPreviewRevision: preview.value?.revision,
 		};
-		// Project deletions and destructive data table changes need the confirmation of Continue.
-		const confirm = request.confirmDestructiveChanges || !!request.deletedProjects?.length;
-		const result = confirm
+		const confirmations = confirmationsOf(request);
+		const result = confirmations
 			? await continueApplyPromotion(rootStore.publicApiContext, source.environmentId, {
 					...expected,
-					confirmDestructiveChanges: true,
+					...confirmations,
 				})
 			: await applyPromotion(rootStore.publicApiContext, source.environmentId, expected);
 		if (result.status === 'applied') {

@@ -10,8 +10,8 @@ import { resourceIcon } from '../promotionPreview.tree';
 type Dependency = PromotionMissingDependency | PromotionDependencyWarning;
 
 /**
- * What a Promote leaves out, as a short list for a dialog. A row shows the name, the type and the
- * workflows that use the dependency. It shows no owner and no project.
+ * What a Promote or an Apply leaves unresolved, as a short list for a dialog. A row shows the
+ * name, the type and the workflows that use the dependency. It shows no owner and no project.
  */
 const props = defineProps<{
 	dependencies: Dependency[];
@@ -40,6 +40,15 @@ const statuses = computed(() =>
 	}),
 );
 
+// One dependency can have an entry for each reason and for each condition on the selection.
+const rowKey = (dependency: Dependency) =>
+	[
+		dependency.kind,
+		dependency.id ?? dependency.name,
+		'reason' in dependency ? dependency.reason : dependency.code,
+		'condition' in dependency ? (dependency.condition ?? '') : '',
+	].join(':');
+
 /** A row names this many workflows. It counts the others. */
 const NAMED_WORKFLOWS = 2;
 
@@ -60,7 +69,7 @@ function summary({ kind, consumers }: Dependency) {
 	<ul :class="$style.list" data-test-id="promotion-missing-dependency-list">
 		<li
 			v-for="(dependency, index) in dependencies"
-			:key="`${dependency.kind}:${dependency.id ?? dependency.name}`"
+			:key="rowKey(dependency)"
 			:class="$style.row"
 			data-test-id="promotion-missing-dependency"
 		>

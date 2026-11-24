@@ -21,6 +21,8 @@ import type { INodeTypeDescription, IWorkflowSettings } from 'n8n-workflow';
  * `promotion-changes` lists what a promotion review changes. It loads the changes itself, so
  * the module needs no knowledge of the promotion types. The promotions module provides it, and
  * the shell registers it for the inbox module.
+ * `promotion-issues` lists the dependencies that a promotion review leaves out. It loads them
+ * itself, like `promotion-changes`.
  * `project-header` is the overview/project page header with the project tabs, which a
  * resource list page renders above its list.
  * `insights-summary` is the weekly insights summary of the overview pages. It loads the summary
@@ -36,6 +38,7 @@ export type ModuleComponentSlot =
 	| 'workflow-diff-placeholder'
 	| 'code-diff'
 	| 'promotion-changes'
+	| 'promotion-issues'
 	| 'project-header'
 	| 'insights-summary'
 	| 'resources-list-layout'
@@ -91,6 +94,14 @@ export type SlotPromotionChangesProps = {
 	reviewId: string;
 };
 
+/**
+ * The same review as `promotion-changes`. This is no alias of its props, because the Vue compiler
+ * cannot resolve an alias of an imported type.
+ */
+export type SlotPromotionIssuesProps = {
+	reviewId: string;
+};
+
 export type SlotNodeTypeIconProps = {
 	nodeType: INodeTypeDescription | null;
 	size?: number;
@@ -107,7 +118,12 @@ export type SlotCredentialTypeIconProps = {
  */
 export type PromotionChangesState =
 	| { status: 'loading' }
-	| { status: 'ready'; headCommitSha: string }
+	| {
+			status: 'ready';
+			headCommitSha: string;
+			/** How many issues the review has. A host shows the `promotion-issues` slot above 0. */
+			issueCount?: number;
+	  }
 	| { status: 'unavailable' };
 
 /** The create action shown as the main button of the `project-header` slot. */

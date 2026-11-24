@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PromotionProviderType } from '@n8n/api-types';
+import type { PromotionMissingDependency, PromotionProviderType } from '@n8n/api-types';
 import {
 	N8nButton,
 	N8nDialog,
@@ -13,14 +13,20 @@ import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, useTemplateRef } from 'vue';
 
 import PromotionCommitMessageField from './PromotionCommitMessageField.vue';
+import PromotionMissingDependencyList from './PromotionMissingDependencyList.vue';
 
-const props = defineProps<{
-	open: boolean;
-	changeCount: number;
-	baseBranchName: string;
-	createBranchOnPromotion: boolean;
-	providerType: PromotionProviderType;
-}>();
+const props = withDefaults(
+	defineProps<{
+		open: boolean;
+		changeCount: number;
+		baseBranchName: string;
+		createBranchOnPromotion: boolean;
+		providerType: PromotionProviderType;
+		/** The dependencies that this Promote leaves out. The user confirms them with the Promote. */
+		unresolved?: PromotionMissingDependency[];
+	}>(),
+	{ unresolved: () => [] },
+);
 
 const emit = defineEmits<{
 	'update:open': [value: boolean];
@@ -34,11 +40,23 @@ const commitMessage = defineModel<string>('commitMessage', { default: '' });
 const i18n = useI18n();
 const messageField = useTemplateRef('messageField');
 
+const unresolvedText = (
+	key:
+		| 'promotions.preview.unresolved.title.promote'
+		| 'promotions.preview.submit.promote.unresolved',
+) =>
+	i18n.baseText(key, {
+		adjustToNumber: props.unresolved.length,
+		interpolate: { count: String(props.unresolved.length) },
+	});
+
 const title = computed(() =>
-	i18n.baseText('promotions.preview.promote.dialog.title', {
-		adjustToNumber: props.changeCount,
-		interpolate: { count: String(props.changeCount) },
-	}),
+	props.unresolved.length > 0
+		? unresolvedText('promotions.preview.unresolved.title.promote')
+		: i18n.baseText('promotions.preview.promote.dialog.title', {
+				adjustToNumber: props.changeCount,
+				interpolate: { count: String(props.changeCount) },
+			}),
 );
 
 const bodyText = computed(() => {
@@ -54,6 +72,10 @@ const bodyText = computed(() => {
 			});
 });
 
+const unresolvedBody = computed(() =>
+	props.unresolved.length > 0 ? i18n.baseText('promotions.preview.unresolved.body.promote') : '',
+);
+
 function onOpenAutoFocus(event: Event) {
 	event.preventDefault();
 	void nextTick(() => messageField.value?.focus());
@@ -68,7 +90,7 @@ function submit() {
 	<N8nDialog
 		:open="open"
 		size="medium"
-		:aria-description="bodyText"
+		:aria-description="unresolvedBody ? `${bodyText} ${unresolvedBody}` : bodyText"
 		data-test-id="promote-selection-dialog"
 		@open-auto-focus="onOpenAutoFocus"
 		@update:open="emit('update:open', $event)"
@@ -79,6 +101,10 @@ function submit() {
 		<N8nDialogBody>
 			<form id="promote-selection-form" :class="$style.body" @submit.prevent="submit">
 				<N8nText color="text-base">{{ bodyText }}</N8nText>
+				<template v-if="unresolvedBody">
+					<N8nText color="text-base">{{ unresolvedBody }}</N8nText>
+					<PromotionMissingDependencyList :dependencies="unresolved" />
+				</template>
 				<PromotionCommitMessageField ref="messageField" v-model="commitMessage" />
 			</form>
 		</N8nDialogBody>
@@ -92,7 +118,11 @@ function submit() {
 				{{ i18n.baseText('generic.cancel') }}
 			</N8nButton>
 			<N8nButton type="submit" form="promote-selection-form" data-test-id="promote-confirm-button">
-				{{ i18n.baseText('promotions.preview.promote.dialog.confirm') }}
+				{{
+					unresolved.length > 0
+						? unresolvedText('promotions.preview.submit.promote.unresolved')
+						: i18n.baseText('promotions.preview.promote.dialog.confirm')
+				}}
 			</N8nButton>
 		</N8nDialogFooter>
 	</N8nDialog>

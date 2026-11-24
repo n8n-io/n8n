@@ -11,7 +11,7 @@ import type { PromotionChangesState, SlotPromotionChangesProps } from '@n8n/fron
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import dateformat from 'dateformat';
-import { computed, provide, ref, shallowRef, watch } from 'vue';
+import { computed, onBeforeUnmount, provide, ref, shallowRef, watch } from 'vue';
 
 import { usePromotionResourceDetails } from '../../composables/usePromotionResourceDetails';
 import { indexBlockers } from '../../promotionOperation';
@@ -25,6 +25,7 @@ import {
 import { buildPreviewTree, cardOrder } from '../../promotionPreview.tree';
 import { defaultActiveWorkflow, hasWorkflowDiff } from '../../promotionPreview.workflow';
 import { httpUrl } from '../../promotionResult';
+import { clearLoadedReviewChanges, setLoadedReviewChanges } from '../../promotionReviewChanges';
 import { getPromotionReviewChanges, getPromotionReviewDetails } from '../../promotions.api';
 import PromotionChangeCards from '../preview/PromotionChangeCards.vue';
 import PromotionResourceTree from '../preview/PromotionResourceTree.vue';
@@ -55,18 +56,26 @@ async function load() {
 	const current = ++generation;
 	state.value = 'loading';
 	changes.value = null;
+	clearLoadedReviewChanges();
 	emit('state', { status: 'loading' });
+	const { reviewId } = props;
 	try {
-		const result = await getPromotionReviewChanges(rootStore.restApiContext, props.reviewId);
+		const result = await getPromotionReviewChanges(rootStore.restApiContext, reviewId);
 		if (current !== generation) return;
 		changes.value = result;
+		// The Issues tab lists the dependencies of this answer, which the count below reports.
+		setLoadedReviewChanges(reviewId, result);
 		state.value = 'ready';
 		// Approve sends the head that the reviewer saw. A warning means there was nothing to see.
 		emit(
 			'state',
 			result.warnings.length > 0
 				? { status: 'unavailable' }
-				: { status: 'ready', headCommitSha: result.headCommitSha },
+				: {
+						status: 'ready',
+						headCommitSha: result.headCommitSha,
+						issueCount: result.missingDependencies.length,
+					},
 		);
 	} catch (error) {
 		if (current !== generation) return;
@@ -75,6 +84,12 @@ async function load() {
 		emit('state', { status: 'unavailable' });
 	}
 }
+
+// A late answer must not stay as the loaded changes after this tab is gone.
+onBeforeUnmount(() => {
+	generation++;
+	clearLoadedReviewChanges();
+});
 
 // The host dropped the commits of a finished review. What is left to show is how it ended.
 const outcome = computed(() =>

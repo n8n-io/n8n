@@ -10,9 +10,16 @@ import {
 	outsideAccessWorkflow,
 	personalCredential,
 	unreachableWorkflow,
+	unsharedCredential,
 } from '../../__tests__/missingDependencies.fixtures';
 import { billingPreview } from '../../__tests__/preview.fixtures';
-import { crossProjectMoveBlockers, indexBlockers, indexByWorkflow } from '../../promotionOperation';
+import {
+	crossProjectMoveBlockers,
+	indexBlockers,
+	indexByWorkflow,
+	listDependencyBlockers,
+	type Blocker,
+} from '../../promotionOperation';
 import { buildSelectionGraph, resolveInclusion } from '../../promotionPreview.selection';
 import { buildPreviewTree } from '../../promotionPreview.tree';
 import PromotionResourceTree from './PromotionResourceTree.vue';
@@ -138,6 +145,79 @@ describe('PromotionResourceTree', () => {
 		expect(await findByTestId('tooltip-content')).toHaveTextContent(
 			'moved to Ops on this instance',
 		);
+	});
+
+	describe('dependencies that stop an Apply', () => {
+		// "Invoice reconciliation" (w1) uses a credential that the project cannot use.
+		const outside = listDependencyBlockers([unsharedCredential]);
+		const renderBlocked = (blockerList: Blocker[]) => {
+			const blockers = indexBlockers(blockerList);
+			const selected = new Set(['workflow:w3']);
+			return renderComponent({
+				pinia: createTestingPinia(),
+				props: {
+					tree,
+					graph,
+					selected,
+					inclusion: resolveInclusion(graph, selected),
+					includedChanges: 0,
+					totalChanges: 0,
+					disabled: blockers.blocked,
+					locked: false,
+					direction: 'apply',
+					blockers,
+					missingDependencies: indexByWorkflow([unsharedCredential]),
+				},
+			});
+		};
+
+		it('should say that someone with access must resolve the dependency that stops a workflow', () => {
+			const { getAllByTestId } = renderBlocked(outside);
+
+			const workflow = row(getAllByTestId, 'workflow:w1');
+			expect(workflow.getByTestId('promotion-preview-tree-blocker')).toHaveAccessibleName(
+				'1 dependency is outside your access and stops this workflow. Someone with access must resolve it.',
+			);
+			// The blocker replaces the quiet marker of a missing dependency.
+			expect(workflow.queryByTestId('promotion-preview-tree-dependencies')).not.toBeInTheDocument();
+			expect(workflow.getByRole('checkbox')).not.toBeChecked();
+			expect(workflow.getByRole('checkbox')).toBeDisabled();
+			expect(
+				row(getAllByTestId, 'credential:c1').getByTestId('promotion-preview-tree-blocker'),
+			).toHaveAccessibleName(
+				"This credential exists, but 1 workflow that depends on it can't use it. Ask an admin to share it with this project.",
+			);
+		});
+
+		it('should use the plural for two dependencies that stop a workflow', () => {
+			const { getAllByTestId } = renderBlocked(
+				listDependencyBlockers([
+					unsharedCredential,
+					{ ...unsharedCredential, id: 'c5', reason: 'incompatible-usage-scope' },
+				]),
+			);
+
+			expect(
+				row(getAllByTestId, 'workflow:w1').getByTestId('promotion-preview-tree-blocker'),
+			).toHaveAccessibleName(
+				'2 dependencies are outside your access and stop this workflow. Someone with access must resolve them.',
+			);
+		});
+
+		it('should ask for the action of the user when the user can resolve one of the issues', () => {
+			const { getAllByTestId } = renderBlocked([
+				...outside,
+				{
+					kind: 'missing',
+					resourceKey: 'variable:global:API_URL',
+					workflowKeys: ['workflow:w1'],
+				},
+			]);
+
+			expect(
+				row(getAllByTestId, 'workflow:w1').getByTestId('promotion-preview-tree-blocker'),
+			).toHaveAccessibleName('2 issues need your action.');
+		});
 	});
 
 	describe('missing dependencies', () => {

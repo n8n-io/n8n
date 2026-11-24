@@ -48,9 +48,24 @@ const stateBadge: Record<PromotionReviewState, BadgeVariant> = {
 
 // The editor renders the changes.
 const PromotionChanges = computed(() => componentRegistry.get('promotion-changes'));
-// One tab for now. The bar matches workflow reviews, which also have an Activity tab.
+// The dependencies that the promotion leaves out. The editor renders them, like the changes.
+const PromotionIssues = computed(() => componentRegistry.get('promotion-issues'));
+const tab = ref<'changes' | 'issues'>('changes');
+const issueCount = computed(() =>
+	changes.value.status === 'ready' ? (changes.value.issueCount ?? 0) : 0,
+);
+// The Issues tab exists only when the review has issues. The bar matches workflow reviews.
 const tabOptions = computed(() => [
 	{ label: i18n.baseText('inbox.promotionReview.detail.tabs.changes'), value: 'changes' as const },
+	...(issueCount.value > 0 && PromotionIssues.value
+		? [
+				{
+					label: i18n.baseText('inbox.promotionReview.detail.tabs.issues'),
+					value: 'issues' as const,
+					tag: String(issueCount.value),
+				},
+			]
+		: []),
 ]);
 
 // Approve sends the head of the changes that the reviewer saw. A list refresh can report a newer
@@ -58,8 +73,15 @@ const tabOptions = computed(() => [
 const changes = ref<PromotionChangesState>({ status: 'loading' });
 watch(
 	() => props.item.id,
-	() => (changes.value = { status: 'loading' }),
+	() => {
+		changes.value = { status: 'loading' };
+		tab.value = 'changes';
+	},
 );
+// A reload can find that no issue is left. The Issues tab then goes away.
+watch(issueCount, (count) => {
+	if (count === 0) tab.value = 'changes';
+});
 
 const hasNewCommits = computed(
 	() =>
@@ -244,7 +266,7 @@ async function onApprove() {
 		</N8nCallout>
 		<div :class="[$style.tabRow, $style.gutter]">
 			<N8nTabs
-				model-value="changes"
+				v-model="tab"
 				:options="tabOptions"
 				data-test-id="inbox-promotion-review-tab-bar"
 			/>
@@ -283,7 +305,8 @@ async function onApprove() {
 				</N8nButton>
 			</div>
 		</div>
-		<div :class="$style.changesArea">
+		<!-- The changes stay mounted under the Issues tab, so Approve keeps the head that they report. -->
+		<div v-show="tab === 'changes'" :class="$style.changesArea">
 			<N8nCallout
 				v-if="hasNewCommits"
 				theme="warning"
@@ -321,6 +344,9 @@ async function onApprove() {
 				:review-id="item.id"
 				@state="changes = $event"
 			/>
+		</div>
+		<div v-if="tab === 'issues'" :class="$style.changesArea">
+			<component :is="PromotionIssues" :class="$style.changes" :review-id="item.id" />
 		</div>
 		<N8nDialog
 			:open="!!pendingApproval"

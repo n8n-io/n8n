@@ -1,10 +1,8 @@
-import type { PromotePackageResultDto } from '@n8n/api-types';
 import type { I18nClass } from '@n8n/i18n';
 import { h, type VNode } from 'vue';
 
-import type { AppliedResult } from './promotions.types';
+import type { AppliedResult, PromotedResult } from './promotions.types';
 
-export type PromotedResult = Extract<PromotePackageResultDto, { status: 'promoted' }>;
 type PromoteOutcome = Pick<PromotedResult, 'git' | 'review' | 'warnings'>;
 type PromoteWarning = NonNullable<PromoteOutcome['warnings']>[number];
 
@@ -39,14 +37,36 @@ export function warningSegments(
 const externalLink = (href: string, label: string) =>
 	h('a', { href, target: '_blank', rel: 'noopener noreferrer' }, label);
 
+/** How many confirmed dependencies a Promote left out. Empty when it left out none. */
+export function notIncludedNote(
+	i18n: I18nClass,
+	{ missingDependencies }: Pick<PromotedResult, 'missingDependencies'>,
+): string {
+	const count = missingDependencies.length;
+	return count > 0
+		? i18n.baseText('promotions.result.notIncluded', {
+				adjustToNumber: count,
+				interpolate: { count: String(count) },
+			})
+		: '';
+}
+
 /** Toast body for a selection promote. A link or a warning keeps the toast open. */
 export function promoteSuccessToast(
 	result: PromoteOutcome,
-	text: { pushed: string; viewMergeRequest: string; reviewNotRecorded: string },
+	text: {
+		pushed: string;
+		viewMergeRequest: string;
+		reviewNotRecorded: string;
+		/** Empty when the Promote left out no dependency. */
+		notIncluded: string;
+	},
 ): { message: string | VNode; duration?: 0 } {
 	const warnings = result.warnings ?? [];
 	const mergeRequestUrl = httpUrl(result.review?.webUrl);
-	if (!mergeRequestUrl && warnings.length === 0) return { message: text.pushed };
+	if (!mergeRequestUrl && warnings.length === 0) {
+		return { message: [text.pushed, text.notIncluded].filter(Boolean).join(' ') };
+	}
 
 	const summary = mergeRequestUrl
 		? externalLink(mergeRequestUrl, text.viewMergeRequest)
@@ -54,6 +74,7 @@ export function promoteSuccessToast(
 	return {
 		message: h('div', [
 			h('div', [summary]),
+			...(text.notIncluded ? [h('div', text.notIncluded)] : []),
 			...warnings.map((warning) => h('div', warningNodes(warning, text.reviewNotRecorded))),
 		]),
 		duration: 0,
@@ -109,4 +130,18 @@ export function withFolderNotes(
 		);
 	}
 	return notes.join(' ');
+}
+
+/** How many confirmed dependencies are still missing after an Apply. Empty when none is. */
+export function stillMissingNote(
+	i18n: I18nClass,
+	{ missingDependencies }: Pick<AppliedResult, 'missingDependencies'>,
+): string {
+	const count = missingDependencies.length;
+	return count > 0
+		? i18n.baseText('promotions.applied.stillMissing', {
+				adjustToNumber: count,
+				interpolate: { count: String(count) },
+			})
+		: '';
 }

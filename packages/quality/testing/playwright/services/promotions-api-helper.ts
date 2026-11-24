@@ -4,7 +4,11 @@ import type {
 	PromotionCheckoutPublicDto,
 	PromotePackageDto,
 	PromotePackageResultDto,
+	PromoteSelectionRequestDto,
+	PromoteSelectionResultDto,
+	PromotionEnvironmentListPublicDto,
 	PromotionEnvironmentPublicDto,
+	PromotionEnvironmentScope,
 	PromotionProviderCreatedPublicDto,
 	UpdatePromotionEnvironmentDto,
 } from '@n8n/api-types';
@@ -42,6 +46,18 @@ export class PromotionsApiHelper {
 		return await this.send('POST', '/environments', input);
 	}
 
+	/** The first page of the environments. A test instance has only a few. */
+	async listEnvironments(
+		scope?: PromotionEnvironmentScope,
+	): Promise<PromotionEnvironmentListPublicDto['data']> {
+		const query = scope ? `?scope=${scope}` : '';
+		const { data } = await this.send<PromotionEnvironmentListPublicDto>(
+			'GET',
+			`/environments${query}`,
+		);
+		return data;
+	}
+
 	/** The checkout state in the response is the state on the main that answers. */
 	async getEnvironment(environmentId: string): Promise<PromotionEnvironmentPublicDto> {
 		return await this.send('GET', `/environments/${environmentId}`);
@@ -68,6 +84,14 @@ export class PromotionsApiHelper {
 
 	async promote(environmentId: string, input: PromotePackageDto): Promise<PromotePackageResultDto> {
 		return await this.send('POST', `/environments/${environmentId}/promote`, input);
+	}
+
+	/** Promotes a selection of one project to the Promote environment of the project. */
+	async promoteProjectSelection(
+		projectId: string,
+		input: PromoteSelectionRequestDto,
+	): Promise<PromoteSelectionResultDto> {
+		return await this.send('POST', `/projects/${projectId}/promote`, input);
 	}
 
 	private async send<T>(

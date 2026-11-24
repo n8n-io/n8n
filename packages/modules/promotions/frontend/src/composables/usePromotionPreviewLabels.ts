@@ -3,7 +3,7 @@ import type {
 	PromotionMissingDependency,
 	PromotionResource,
 } from '@n8n/api-types';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useI18n } from '@n8n/i18n';
 
 import { isBlocking, type Blocker } from '../promotionOperation';
 import type { ApplyCheckResult } from '../promotions.types';
@@ -78,23 +78,13 @@ export function usePromotionPreviewLabels() {
 					interpolate: { project: resource.movedFromProject.name },
 				});
 			}
-			const counted = (key: BaseTextKey, count: number) =>
-				i18n.baseText(key, { adjustToNumber: count, interpolate: { count: String(count) } });
-			if (!blocking.every(({ kind }) => kind === 'outside')) {
-				return counted('promotions.preview.marker.workflow', blocking.length);
-			}
-			// Users cannot resolve these dependencies. No one can add to this instance a dependency
-			// that the branch does not hold, so it has its own text.
-			const notOnBranch = blocking.filter(({ reason }) => reason === 'not-on-branch').length;
-			const noAccess = blocking.length - notOnBranch;
-			return [
-				noAccess > 0 ? counted('promotions.preview.marker.workflow.outside', noAccess) : '',
-				notOnBranch > 0
-					? counted('promotions.preview.marker.workflow.notOnBranch', notOnBranch)
-					: '',
-			]
-				.filter(Boolean)
-				.join(' ');
+			return i18n.baseText(
+				// Users cannot resolve a dependency that is outside their access.
+				blocking.every(({ kind }) => kind === 'outside')
+					? 'promotions.preview.marker.workflow.outside'
+					: 'promotions.preview.marker.workflow',
+				{ adjustToNumber: blocking.length, interpolate: { count: String(blocking.length) } },
+			);
 		}
 		const [first] = blocking;
 		if (first.kind === 'moved' && resource.type === 'folder') {
@@ -102,20 +92,15 @@ export function usePromotionPreviewLabels() {
 		}
 		const count = new Set(blocking.flatMap(({ workflowKeys }) => workflowKeys)).size;
 		const options = { adjustToNumber: count, interpolate: { count: String(count) } };
-		if (first.kind === 'access') return i18n.baseText('promotions.preview.marker.access', options);
+		// In both cases the credential exists, and the project cannot use it.
+		if (first.kind === 'access' || first.kind === 'outside') {
+			return i18n.baseText('promotions.preview.marker.access', options);
+		}
 		if (first.kind === 'missing' && resource.type === 'credential') {
 			return i18n.baseText('promotions.preview.marker.missingCredential', options);
 		}
 		if (first.kind === 'missing' && resource.type === 'variable') {
 			return i18n.baseText('promotions.preview.marker.missingVariable', options);
-		}
-		if (first.kind === 'outside' && resource.type === 'credential') {
-			return i18n.baseText(
-				first.reason === 'not-on-branch'
-					? 'promotions.preview.marker.notOnBranchCredential'
-					: 'promotions.preview.marker.outsideCredential',
-				options,
-			);
 		}
 		return i18n.baseText('promotions.preview.marker.conflict', options);
 	}
