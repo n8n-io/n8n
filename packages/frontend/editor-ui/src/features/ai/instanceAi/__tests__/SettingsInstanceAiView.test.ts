@@ -1230,6 +1230,24 @@ describe('SettingsInstanceAiView', () => {
 				expect(sites).toHaveValue('');
 			});
 
+			it('keeps the box when the mode change is not saved', async () => {
+				setSavedLogins({ cloudBrowserSavedLoginsMode: 'only' });
+				confirmMock.mockResolvedValue(MODAL_CONFIRM);
+				vi.spyOn(store, 'save').mockResolvedValue(false);
+				const { getByTestId } = renderComponent();
+				await flushPromises();
+				const sites = getByTestId('n8n-agent-saved-login-sites');
+				await fireEvent.update(sites, 'bank.com');
+
+				await selectOption(
+					getByTestId('n8n-agent-saved-logins-mode'),
+					'settings.n8nAgent.savedLogins.mode.except',
+				);
+				await flushPromises();
+
+				expect(sites).toHaveValue('bank.com');
+			});
+
 			it('changes the mode without asking when the list is empty', async () => {
 				setSavedLogins({ cloudBrowserSavedLoginsMode: 'only' });
 				const save = vi.spyOn(store, 'save').mockResolvedValue(true);

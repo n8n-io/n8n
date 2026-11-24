@@ -70,10 +70,10 @@ const hasUnsavedLoginSites = computed(
 
 async function handleSavedLoginsModeChange(value: InstanceAiSavedLoginsMode) {
 	if (!(await confirmClearingSavedLoginSites(value))) return;
-	// The server deletes the list on a mode change.
-	savedLoginSitesText.value = '';
 	store.setField('cloudBrowserSavedLoginsMode', value);
-	void store.save();
+	if (!(await store.save())) return;
+	// The server deleted the list. Also remove the sites that were typed and not saved.
+	savedLoginSitesText.value = '';
 }
 
 /** A mode change deletes the list of sites, so ask first when it has sites. */
