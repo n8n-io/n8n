@@ -59,10 +59,13 @@ describe('app blueprint schema', () => {
 	const blueprint = {
 		name: 'Planner',
 		namespace: 'planner',
-		visibility: 'project',
 		description: 'Plan weekly tasks.',
 		theme: 'both',
 	} as const;
+
+	it('ignores the visibility of blueprints from older threads', () => {
+		expect(appBlueprintSchema.parse({ ...blueprint, visibility: 'instance' })).toEqual(blueprint);
+	});
 
 	it('accepts existing and new planned bindings', () => {
 		expect(
@@ -828,7 +831,6 @@ describe('isDisplayableConfirmationRequest', () => {
 					appBlueprint: {
 						name: 'Planner',
 						namespace: 'planner',
-						visibility: 'project',
 						description: 'Plan weekly tasks.',
 						theme: 'both',
 					},

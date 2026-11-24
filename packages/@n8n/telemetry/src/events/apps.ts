@@ -66,17 +66,6 @@ export const APPS_TELEMETRY = defineTelemetryEvents({
 			was_published: z.boolean(),
 		}),
 	},
-	USER_CHANGED_APP_VISIBILITY: {
-		name: 'User changed app visibility',
-		description:
-			'A user changed who can open an app, in the publish dialog or through the API. Fires only when the value changes.',
-		properties: z.object({
-			app_id: z.string(),
-			user_id: actorUserId,
-			from: visibility,
-			to: visibility,
-		}),
-	},
 	APP_BUILD_FINISHED: {
 		name: 'App build finished',
 		description:

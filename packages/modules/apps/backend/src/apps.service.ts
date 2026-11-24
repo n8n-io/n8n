@@ -88,32 +88,15 @@ export class AppsService {
 		return { data: data.map((app) => toResponse(app, this.hosts)), count };
 	}
 
-	async updateApp(
-		projectId: string,
-		appId: string,
-		dto: UpdateAppDto,
-		actor?: AppActor,
-	): Promise<AppResponse> {
+	async updateApp(projectId: string, appId: string, dto: UpdateAppDto): Promise<AppResponse> {
 		if (Object.keys(dto).length === 0) {
 			throw new BadRequestError('Select an app field to update.');
 		}
 		this.assertValidAppId(appId);
 		if (dto.namespace !== undefined) this.assertValidNamespace(dto.namespace);
-		const before =
-			dto.visibility !== undefined
-				? await this.appRepository.findInProject(projectId, appId)
-				: null;
 		const app = await this.appRepository.updateApp(projectId, appId, dto);
 		if (!app) throw new NotFoundError('App not found');
 		this.logger.debug('Updated app.', { projectId, appId });
-		if (before && before.visibility !== app.visibility) {
-			this.events.emit('app-visibility-changed', {
-				...actor,
-				appId,
-				from: before.visibility,
-				to: app.visibility,
-			});
-		}
 		return toResponse(app, this.hosts);
 	}
 

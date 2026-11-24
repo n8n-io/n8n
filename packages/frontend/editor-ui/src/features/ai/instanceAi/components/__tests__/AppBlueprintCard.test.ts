@@ -7,7 +7,6 @@ import AppBlueprintCard from '../AppBlueprintCard.vue';
 const blueprint: AppBlueprint = {
 	name: 'Weekly planner',
 	namespace: 'weekly-planner',
-	visibility: 'project',
 	description: 'Plan the week and track completed tasks.',
 	theme: 'both',
 	bindings: [

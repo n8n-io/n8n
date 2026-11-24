@@ -71,7 +71,6 @@ const ARCHIVE = Buffer.from('archive');
 const BLUEPRINT: AppBlueprint = {
 	name: 'Todos',
 	namespace: 'todos',
-	visibility: 'project',
 	description: 'Track tasks and mark them complete.',
 	theme: 'both',
 	bindings: [
@@ -207,7 +206,6 @@ describe('apps tool', () => {
 		expect(appService.createApp).toHaveBeenCalledWith({
 			name: 'Todos',
 			namespace: 'todos',
-			visibility: 'project',
 			id: PENDING_ID,
 		});
 		expect(readBaseVersion).not.toHaveBeenCalled();
@@ -274,13 +272,11 @@ describe('apps tool', () => {
 			...BLUEPRINT,
 			name: 'Admin',
 			namespace: 'admin',
-			visibility: 'instance',
 		});
 
 		expect(appService.createApp).toHaveBeenCalledWith({
 			name: 'Admin',
 			namespace: 'admin',
-			visibility: 'instance',
 			id: undefined,
 		});
 		expect(thread.metadata?.[INSTANCE_AI_APP_TARGETS_METADATA_KEY]).toEqual([
@@ -679,7 +675,6 @@ describe('apps tool', () => {
 					id: SERVER_ID,
 					name: 'Todos',
 					namespace: 'todos',
-					visibility: 'project',
 					publishedUrl: 'https://todos.example.com',
 				},
 			],

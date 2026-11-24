@@ -112,7 +112,7 @@ describe('AppProtectedResource', () => {
 		).resolves.toBeUndefined();
 	});
 
-	it('checks current project grants and visibility', async () => {
+	it('checks current project grants', async () => {
 		const { resource, app, projectScope } = setup();
 		const user = mock<ResourcePrincipal>({
 			id: 'user',
@@ -123,37 +123,27 @@ describe('AppProtectedResource', () => {
 		expect(projectScope.hasScopes).toHaveBeenCalledExactlyOnceWith(user, 'project', ['app:read']);
 		projectScope.hasScopes.mockResolvedValue(false);
 		expect(await descriptor.authorize(user)).toBe(false);
-		app.visibility = 'instance';
-		expect(await descriptor.authorize(user)).toBe(true);
 	});
 
-	it('requires read access regardless of visibility', async () => {
+	it('requires read access in the project of the app', async () => {
 		const { resource, app, projectScope } = setup();
 		const user = mock<ResourcePrincipal>({
 			id: 'user',
 			role: { slug: 'global:member', scopes: [] },
 		});
-		app.visibility = 'instance';
 
 		expect(await resource.canRead(app, user)).toBe(true);
 		projectScope.hasScopes.mockResolvedValue(false);
 		expect(await resource.canRead(app, user)).toBe(false);
 	});
 
-	it('offers a grant that requires app:read in the project of a project app', async () => {
+	it('offers a grant that requires app:read in the project of the app', async () => {
 		const { resource, app } = setup();
 
 		expect(resource.forApp(app).getGrant?.()).toEqual({
 			audiences: [url],
 			projectAccess: { projectId: 'project', scopes: ['app:read'] },
 		});
-	});
-
-	it('offers a grant without a project requirement for an instance app', async () => {
-		const { resource, app } = setup();
-		app.visibility = 'instance';
-
-		expect(resource.forApp(app).getGrant?.()).toEqual({ audiences: [url] });
 	});
 
 	it('uses the given app without a lookup when revalidation is off', async () => {

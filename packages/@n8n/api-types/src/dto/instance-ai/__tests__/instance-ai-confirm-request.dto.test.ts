@@ -129,7 +129,6 @@ describe('InstanceAiConfirmRequestDto', () => {
 					blueprint: {
 						name: 'Planner',
 						namespace: 'planner',
-						visibility: 'project',
 						description: 'Plan weekly tasks.',
 						theme: 'both',
 						bindings: [

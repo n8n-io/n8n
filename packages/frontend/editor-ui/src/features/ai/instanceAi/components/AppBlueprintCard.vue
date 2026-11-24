@@ -36,7 +36,6 @@ const emit = defineEmits<{ submit: [body: InstanceAiConfirmRequest] }>();
 const i18n = useI18n();
 const name = ref(props.blueprint.name);
 const namespace = ref(props.blueprint.namespace);
-const visibility = ref(props.blueprint.visibility);
 const theme = ref(props.blueprint.theme);
 const additionalInstructions = ref(props.blueprint.additionalInstructions ?? '');
 
@@ -46,7 +45,6 @@ const bindingIcons: Record<AppBlueprintBinding['kind'], IconName> = {
 	agent: 'robot',
 };
 
-const visibilityOptions = ['project', 'instance'] as const;
 const themeOptions = computed(() =>
 	(['light', 'dark', 'both'] as const).map((value) => ({
 		value,
@@ -56,7 +54,6 @@ const themeOptions = computed(() =>
 const editedBlueprint = computed<AppBlueprint>(() => ({
 	name: name.value.trim(),
 	namespace: namespace.value.trim(),
-	visibility: visibility.value,
 	description: props.blueprint.description,
 	theme: theme.value,
 	...(props.blueprint.bindings ? { bindings: props.blueprint.bindings } : {}),
@@ -151,24 +148,6 @@ function cancel() {
 					>
 						{{ namespaceError }}
 					</N8nText>
-				</label>
-				<label :class="$style.field">
-					<N8nText size="medium" color="text-dark">{{
-						i18n.baseText('instanceAi.appBlueprint.visibility')
-					}}</N8nText>
-					<N8nSelect
-						v-model="visibility"
-						size="medium"
-						:disabled="readOnly"
-						data-test-id="instance-ai-app-blueprint-visibility"
-					>
-						<N8nOption
-							v-for="option in visibilityOptions"
-							:key="option"
-							:value="option"
-							:label="i18n.baseText(`instanceAi.appBlueprint.visibility.${option}`)"
-						/>
-					</N8nSelect>
 				</label>
 				<label :class="$style.field">
 					<N8nText size="medium" color="text-dark">{{

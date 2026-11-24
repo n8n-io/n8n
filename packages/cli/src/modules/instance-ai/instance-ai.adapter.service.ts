@@ -3821,14 +3821,13 @@ export class InstanceAiAdapterService {
 		};
 
 		return {
-			createApp: async ({ name, namespace, visibility, id }) => {
+			createApp: async ({ name, namespace, id }) => {
 				const { apps } = await services('app:create');
 				try {
-					return await apps.createApp(
-						projectId,
-						CreateAppDto.parse({ name, namespace, visibility }),
-						{ id, actor },
-					);
+					return await apps.createApp(projectId, CreateAppDto.parse({ name, namespace }), {
+						id,
+						actor,
+					});
 				} catch (error) {
 					// The namespace is the only unique field that the user picks.
 					if (error instanceof ConflictError) throw new AppNamespaceTakenError(namespace);

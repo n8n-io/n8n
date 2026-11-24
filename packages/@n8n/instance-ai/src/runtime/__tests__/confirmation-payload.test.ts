@@ -175,7 +175,6 @@ describe('confirmation payload → tool resume schema contract', () => {
 				blueprint: {
 					name: 'Planner',
 					namespace: 'planner',
-					visibility: 'project',
 					description: 'Plan weekly tasks.',
 					theme: 'both',
 					bindings: [

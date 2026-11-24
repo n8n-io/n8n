@@ -18,12 +18,6 @@ const renderComponent = createComponentRenderer(AppPublishDialog, {
 				template: '<a :data-route="JSON.stringify(to)"><slot /></a>',
 			},
 			AppLinkField: { props: ['url'], template: '<span data-test-id="link">{{ url }}</span>' },
-			AppVisibilitySelect: {
-				props: ['modelValue'],
-				emits: ['update:modelValue'],
-				template:
-					'<button data-test-id="visibility" @click="$emit(\'update:modelValue\', \'instance\')">{{ modelValue }}</button>',
-			},
 		},
 	},
 });
@@ -46,21 +40,19 @@ describe('AppPublishDialog', () => {
 			versionId: 'v2',
 			label: 'Expense tracker',
 			description: '',
-			visibility: undefined,
 			publishResources: true,
 		});
 		expect(emitted('updated')).toEqual([[published]]);
 	});
 
-	it('publishes the name, description and a changed visibility in one request', async () => {
-		vi.mocked(publishApp).mockResolvedValue(testApp({ visibility: 'instance' }));
+	it('publishes the name and description in one request', async () => {
+		vi.mocked(publishApp).mockResolvedValue(testApp());
 		renderComponent();
 		const name = await screen.findByTestId('app-publish-name');
 
 		await userEvent.clear(name);
 		await userEvent.type(name, 'Launch');
 		await userEvent.type(screen.getByTestId('app-publish-description'), 'Adds charts');
-		await userEvent.click(screen.getByTestId('visibility'));
 		await userEvent.click(screen.getByTestId('app-publish-dialog-confirm'));
 
 		await waitFor(() => expect(publishApp).toHaveBeenCalledOnce());
@@ -68,9 +60,16 @@ describe('AppPublishDialog', () => {
 			versionId: 'v2',
 			label: 'Launch',
 			description: 'Adds charts',
-			visibility: 'instance',
 			publishResources: true,
 		});
+	});
+
+	it('says that everyone in the project can open the app', async () => {
+		renderComponent();
+
+		expect(await screen.findByTestId('app-project-access-note')).toHaveTextContent(
+			'This app will be available to everyone in this project',
+		);
 	});
 
 	it('starts from the label and description of the version', async () => {
@@ -369,7 +368,7 @@ describe('AppPublishDialog', () => {
 
 	it('shows the link only for a published app', async () => {
 		const { rerender } = renderComponent();
-		await screen.findByTestId('visibility');
+		await screen.findByTestId('app-project-access-note');
 		expect(screen.queryByTestId('link')).not.toBeInTheDocument();
 
 		await rerender({ app: testApp({ publishedVersionId: 'v1', publishedUrl: PUBLISHED_URL }) });

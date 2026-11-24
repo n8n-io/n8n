@@ -37,8 +37,6 @@ const appRoute = computed(() => ({
 			<div :class="$style.description">
 				<span>{{ app.namespace }}</span>
 				<span>|</span>
-				<span>{{ i18n.baseText(`apps.card.visibility.${app.visibility}`) }}</span>
-				<span>|</span>
 				<span>
 					{{ i18n.baseText('apps.card.updated') }}
 					<N8nTimeAgo :date="app.updatedAt" :locale="rootStore.defaultLocale" />

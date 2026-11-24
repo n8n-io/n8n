@@ -169,12 +169,7 @@ watch(
 			data-test-id="app-header-tabs"
 		/>
 		<div :class="$style.right">
-			<AppSharePopover
-				v-if="app?.publishedUrl"
-				:app="app"
-				:url="app.publishedUrl"
-				@updated="emit('updated', $event)"
-			/>
+			<AppSharePopover v-if="app?.publishedUrl" :app="app" :url="app.publishedUrl" />
 			<AppPublishButton
 				v-if="app"
 				:app="app"

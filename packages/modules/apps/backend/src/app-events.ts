@@ -15,11 +15,6 @@ export type AppBuildOrigin = AppActor & { changeSource?: AppChangeSource };
 
 export interface AppEventMap {
 	'app-created': AppActor & { appId: string; projectId: string; visibility: AppVisibility };
-	'app-visibility-changed': AppActor & {
-		appId: string;
-		from: AppVisibility;
-		to: AppVisibility;
-	};
 	'app-deleted': AppActor & { appId: string; wasPublished: boolean };
 	'app-published': AppActor & {
 		appId: string;

@@ -136,7 +136,6 @@ async function createApp(
 		(await apps.createApp({
 			name: blueprint.name,
 			namespace: blueprint.namespace,
-			visibility: blueprint.visibility,
 			id: pendingId,
 		}));
 	await reportChangedApp(context, app.id, async () => app);
@@ -215,11 +214,10 @@ async function handle(
 		case 'list': {
 			const { data, count } = await apps.listApps({ name: input.search });
 			return {
-				apps: data.map(({ id, name, namespace, visibility, publishedUrl }) => ({
+				apps: data.map(({ id, name, namespace, publishedUrl }) => ({
 					id,
 					name,
 					namespace,
-					visibility,
 					publishedUrl,
 				})),
 				count,

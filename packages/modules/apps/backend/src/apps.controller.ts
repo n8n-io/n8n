@@ -44,9 +44,7 @@ export class AppsController {
 	@Patch('/:appId')
 	@ProjectScope('app:update')
 	async update(req: AppRequest, _res: Response, @Body dto: UpdateAppDto) {
-		return await this.appsService.updateApp(req.params.projectId, req.params.appId, dto, {
-			userId: req.user.id,
-		});
+		return await this.appsService.updateApp(req.params.projectId, req.params.appId, dto);
 	}
 
 	@Delete('/:appId')

@@ -17,7 +17,8 @@ export const appVersionNameSchema = z.string().trim().min(1).max(128);
 
 export const appVersionDescriptionSchema = z.string().trim().max(2000);
 
-export const appVisibilitySchema = z.enum(['project', 'instance']);
+/** Apps are visible only to the members of their project. */
+export const appVisibilitySchema = z.enum(['project']);
 export type AppVisibility = z.infer<typeof appVisibilitySchema>;
 
 export const appBuildStatusSchema = z.enum(['queued', 'running', 'succeeded', 'failed']);

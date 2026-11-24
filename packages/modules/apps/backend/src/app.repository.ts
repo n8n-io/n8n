@@ -1,4 +1,4 @@
-import type { AppVisibility, CreateAppDto, ListAppsQueryDto, UpdateAppDto } from '@n8n/api-types';
+import type { CreateAppDto, ListAppsQueryDto, UpdateAppDto } from '@n8n/api-types';
 import {
 	BaseRepository,
 	escapeLike,
@@ -38,13 +38,12 @@ export class AppRepository extends BaseRepository<App> {
 		projectId: string,
 		appId: string,
 		versionId: string | null,
-		visibility: AppVisibility | undefined,
 		ctx: OperationContext,
 	) {
 		await this.managerFor(ctx).update(
 			App,
 			{ id: appId, projectId },
-			{ publishedVersionId: versionId, ...(visibility && { visibility }) },
+			{ publishedVersionId: versionId },
 		);
 		return await this.findInProject(projectId, appId, ctx);
 	}

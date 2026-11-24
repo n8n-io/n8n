@@ -39,12 +39,11 @@ const renderComponent = createComponentRenderer(AppCard, {
 });
 
 describe('AppCard', () => {
-	it('shows the app name, namespace, visibility and draft state', () => {
+	it('shows the app name, namespace and draft state', () => {
 		const { getByText, getByTestId } = renderComponent({ props: { app } });
 
 		expect(getByTestId('app-card-name')).toHaveTextContent('Expense tracker');
 		expect(getByText('expenses')).toBeInTheDocument();
-		expect(getByText('Project members')).toBeInTheDocument();
 		expect(getByTestId('app-card-publication')).toHaveTextContent('Draft');
 	});
 

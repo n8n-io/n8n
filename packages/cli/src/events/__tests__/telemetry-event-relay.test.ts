@@ -6844,12 +6844,6 @@ describe('TelemetryEventRelay', () => {
 				},
 			],
 			[
-				'app-visibility-changed',
-				{ userId: 'user-1', appId, from: 'project', to: 'instance' },
-				TELEMETRY_EVENT.APPS.USER_CHANGED_APP_VISIBILITY,
-				{ app_id: appId, user_id: 'user-1', from: 'project', to: 'instance' },
-			],
-			[
 				'app-deleted',
 				{ userId: 'user-1', appId, wasPublished: true },
 				TELEMETRY_EVENT.APPS.USER_DELETED_APP,
@@ -6857,13 +6851,13 @@ describe('TelemetryEventRelay', () => {
 			],
 			[
 				'app-published',
-				{ userId: 'user-1', appId, versionId: 'v-1', visibility: 'instance', isFirstPublish: true },
+				{ userId: 'user-1', appId, versionId: 'v-1', visibility: 'project', isFirstPublish: true },
 				TELEMETRY_EVENT.APPS.USER_PUBLISHED_APP,
 				{
 					app_id: appId,
 					version_id: 'v-1',
 					user_id: 'user-1',
-					access_level: 'instance',
+					access_level: 'project',
 					is_first_publish: true,
 				},
 			],

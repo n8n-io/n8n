@@ -24,7 +24,7 @@ import { computed, ref, watch } from 'vue';
 import { getAppPublishPreview, publishApp } from '../../apps.api';
 import AppLinkField from './AppLinkField.vue';
 import AppPublishResources from './AppPublishResources.vue';
-import AppVisibilitySelect from './AppVisibilitySelect.vue';
+import AppProjectAccessNote from './AppProjectAccessNote.vue';
 
 const NAME_MAX_LENGTH = appVersionNameSchema.maxLength ?? 128;
 const DESCRIPTION_MAX_LENGTH = appVersionDescriptionSchema.maxLength ?? 2000;
@@ -40,7 +40,6 @@ const rootStore = useRootStore();
 
 const label = ref('');
 const description = ref('');
-const visibility = ref(props.app.visibility);
 const busy = ref(false);
 const publishResources = ref(true);
 const resources = ref<AppPublishPreviewResource[]>([]);
@@ -84,7 +83,6 @@ async function loadResources() {
 function reset() {
 	label.value = props.version.label ?? props.app.name;
 	description.value = props.version.description ?? '';
-	visibility.value = props.app.visibility;
 	publishResources.value = true;
 	publishError.value = null;
 	resources.value = [];
@@ -100,7 +98,6 @@ async function publish() {
 				versionId: props.version.id,
 				label: label.value,
 				description: description.value,
-				visibility: visibility.value === props.app.visibility ? undefined : visibility.value,
 				publishResources: publishResources.value,
 			}),
 		);
@@ -160,7 +157,7 @@ watch(open, (isOpen) => isOpen && reset(), { immediate: true });
 				/>
 			</N8nInputLabel>
 			<AppLinkField v-if="app.publishedUrl" :url="app.publishedUrl" />
-			<AppVisibilitySelect v-model="visibility" :disabled="busy" />
+			<AppProjectAccessNote />
 			<N8nCheckbox
 				v-model="publishResources"
 				:label="i18n.baseText('apps.publish.dialog.publishResources')"

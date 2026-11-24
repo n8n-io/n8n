@@ -19,11 +19,11 @@ const flowCookieName = `__Host-n8n-app-flow-${createHash('sha256').update(state)
 const appId = '11111111-1111-4111-8111-111111111111';
 const callbackUrl = `https://sales.apps.example.com/_n8n/auth/${appId}/callback`;
 
-function setup(visibility: App['visibility'] = 'project') {
+function setup() {
 	const app = mock<App>({
 		id: appId,
 		namespace: 'sales',
-		visibility,
+		visibility: 'project',
 		publishedVersionId: 'version',
 	});
 	const apps = mock<AppRepository>();
@@ -78,13 +78,13 @@ const sessionCookie = { '__Host-n8n-app-session': 'app-token' };
 
 describe('AppAuthService', () => {
 	it('requires a published app', async () => {
-		const { service, req, res, apps } = setup('instance');
+		const { service, req, res, apps } = setup();
 		apps.findByNamespace.mockResolvedValue(null);
 		await expect(service.authenticate(req, res, vi.fn())).rejects.toThrow('App not found');
 	});
 
-	it('authenticates instance apps with the session cookie', async () => {
-		const { service, req, res, admission } = setup('instance');
+	it('authenticates apps with the session cookie', async () => {
+		const { service, req, res, admission } = setup();
 		req.cookies = { '__Host-n8n-app-session': 'app-token' };
 		const next = vi.fn();
 		await service.authenticate(req, res, next);

@@ -152,7 +152,6 @@ describe('instanceAi.liveRunState', () => {
 			const blueprint = {
 				name: 'Planner',
 				namespace: 'planner',
-				visibility: 'project' as const,
 				description: 'Plan weekly tasks.',
 				theme: 'both' as const,
 			};
