@@ -2055,14 +2055,16 @@ describe('InstanceAiSettingsService', () => {
 			});
 		});
 
-		it('rejects a site without a registrable domain, and saves nothing', async () => {
+		it('rejects the sites without a registrable domain, names all of them, and saves nothing', async () => {
 			const update = service.updateAdminSettings(
-				{ cloudBrowserSavedLoginSites: ['github.com', 'localhost'] },
+				{ cloudBrowserSavedLoginSites: ['localhost', 'github.com', '10.0.0.1'] },
 				admin,
 			);
 
 			await expect(update).rejects.toThrow(UnprocessableRequestError);
-			await expect(update).rejects.toThrow('"localhost" is not a valid site');
+			await expect(update).rejects.toMatchObject({
+				meta: { invalidSites: ['localhost', '10.0.0.1'] },
+			});
 			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
 			expect((await service.getAdminSettings()).cloudBrowserSavedLoginSites).toEqual([]);
 		});

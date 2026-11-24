@@ -1900,10 +1900,18 @@ export class InstanceAiSettingsService {
  */
 async function toSavedLoginSites(sites: string[]): Promise<string[]> {
 	const domains = new Set<string>();
+	const invalidSites: string[] = [];
 	for (const site of sites) {
 		const domain = await toSavedLoginSite(site);
-		if (!domain) throw new UnprocessableRequestError(`"${site}" is not a valid site`);
-		domains.add(domain);
+		if (domain) domains.add(domain);
+		else invalidSites.push(site);
+	}
+	// All of them at once, so the admin can fix every site before the next save. The settings
+	// page builds its own message from `invalidSites`.
+	if (invalidSites.length > 0) {
+		throw new UnprocessableRequestError('Some saved login sites are not valid', undefined, {
+			invalidSites,
+		});
 	}
 	return [...domains];
 }

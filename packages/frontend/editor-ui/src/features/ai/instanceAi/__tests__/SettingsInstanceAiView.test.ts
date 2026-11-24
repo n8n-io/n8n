@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
+import { ResponseError } from '@n8n/rest-api-client';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
 import { MODAL_CONFIRM } from '@/app/constants';
@@ -123,6 +124,14 @@ function setModuleSettings(
 	instanceAi: FrontendModuleSettings['instance-ai'],
 ) {
 	settingsStore.moduleSettings = { 'instance-ai': instanceAi };
+}
+
+/** The error the server sends when it rejects saved login sites. */
+function invalidSitesError(invalidSites: string[]) {
+	return new ResponseError('Some saved login sites are not valid', {
+		httpStatusCode: 422,
+		meta: { invalidSites },
+	});
 }
 
 describe('SettingsInstanceAiView', () => {
@@ -1155,7 +1164,7 @@ describe('SettingsInstanceAiView', () => {
 				expect(getByLabelText(label)).toHaveValue('github.com\nlinkedin.com');
 			});
 
-			it('saves the sites from lines, commas and spaces when the list loses focus', async () => {
+			it('saves the sites from lines, commas and spaces with the Save button', async () => {
 				setSavedLogins({ cloudBrowserSavedLoginsMode: 'only' });
 				const setField = vi.spyOn(store, 'setField');
 				const save = vi.spyOn(store, 'save').mockResolvedValue(true);
@@ -1164,7 +1173,7 @@ describe('SettingsInstanceAiView', () => {
 				const sites = getByTestId('n8n-agent-saved-login-sites');
 
 				await fireEvent.update(sites, 'github.com\nlinkedin.com, example.com  gitlab.com');
-				await fireEvent.blur(sites);
+				await fireEvent.click(getByTestId('n8n-agent-saved-login-sites-save'));
 
 				expect(setField).toHaveBeenCalledWith('cloudBrowserSavedLoginSites', [
 					'github.com',
@@ -1193,55 +1202,77 @@ describe('SettingsInstanceAiView', () => {
 				expect(getByTestId('n8n-agent-saved-login-sites-save')).toBeVisible();
 			});
 
-			it('saves once when the list loses focus as the Save button is clicked', async () => {
+			it('does not save when the list loses focus', async () => {
 				setSavedLogins({ cloudBrowserSavedLoginsMode: 'only' });
-				let finishSave: (saved: boolean) => void = () => {};
-				const save = vi
-					.spyOn(store, 'save')
-					.mockImplementation(async () => await new Promise((resolve) => (finishSave = resolve)));
-				const { getByTestId } = renderComponent();
-				await flushPromises();
-				const sites = getByTestId('n8n-agent-saved-login-sites');
-				await fireEvent.update(sites, 'github.com');
-				const saveButton = getByTestId('n8n-agent-saved-login-sites-save');
-
-				await fireEvent.blur(sites);
-				await fireEvent.click(saveButton);
-				finishSave(true);
-				await flushPromises();
-
-				expect(save).toHaveBeenCalledTimes(1);
-			});
-
-			it('does not save an unchanged list', async () => {
-				setSavedLogins({
-					cloudBrowserSavedLoginsMode: 'only',
-					cloudBrowserSavedLoginSites: ['github.com'],
-				});
 				const save = vi.spyOn(store, 'save').mockResolvedValue(true);
 				const { getByTestId } = renderComponent();
 				await flushPromises();
+				const sites = getByTestId('n8n-agent-saved-login-sites');
 
-				await fireEvent.blur(getByTestId('n8n-agent-saved-login-sites'));
+				await fireEvent.update(sites, 'github.com');
+				await fireEvent.blur(sites);
 
 				expect(save).not.toHaveBeenCalled();
 			});
 
-			it('shows the stored list again when the server rejects a site', async () => {
+			it('keeps the typed list and shows the error when the server rejects a site', async () => {
 				setSavedLogins({
 					cloudBrowserSavedLoginsMode: 'only',
 					cloudBrowserSavedLoginSites: ['github.com'],
 				});
-				vi.spyOn(store, 'save').mockResolvedValue(false);
+				vi.spyOn(store, 'save').mockImplementation(async () => {
+					store.lastSaveError = invalidSitesError(['localhost', 'notion']);
+					return false;
+				});
 				const { getByTestId } = renderComponent();
 				await flushPromises();
 				const sites = getByTestId('n8n-agent-saved-login-sites');
 
-				await fireEvent.update(sites, 'github.com\nlocalhost');
-				await fireEvent.blur(sites);
+				await fireEvent.update(sites, 'github.com\nlinkedin.com\nlocalhost');
+				await fireEvent.click(getByTestId('n8n-agent-saved-login-sites-save'));
+				await flushPromises();
+
+				expect(sites).toHaveValue('github.com\nlinkedin.com\nlocalhost');
+				// This file's i18n mock returns the key.
+				expect(getByTestId('n8n-agent-saved-login-sites-error')).toHaveTextContent(
+					'settings.n8nAgent.savedLogins.sites.invalid',
+				);
+			});
+
+			it('keeps the typed list without a message when the save fails for another reason', async () => {
+				setSavedLogins({ cloudBrowserSavedLoginsMode: 'only' });
+				vi.spyOn(store, 'save').mockImplementation(async () => {
+					store.lastSaveError = new Error('Network error');
+					return false;
+				});
+				const { getByTestId, queryByTestId } = renderComponent();
+				await flushPromises();
+				const sites = getByTestId('n8n-agent-saved-login-sites');
+
+				await fireEvent.update(sites, 'github.com');
+				await fireEvent.click(getByTestId('n8n-agent-saved-login-sites-save'));
 				await flushPromises();
 
 				expect(sites).toHaveValue('github.com');
+				expect(queryByTestId('n8n-agent-saved-login-sites-error')).toBeNull();
+			});
+
+			it('hides the error when the admin edits the list', async () => {
+				setSavedLogins({ cloudBrowserSavedLoginsMode: 'only' });
+				vi.spyOn(store, 'save').mockImplementation(async () => {
+					store.lastSaveError = invalidSitesError(['localhost']);
+					return false;
+				});
+				const { getByTestId, queryByTestId } = renderComponent();
+				await flushPromises();
+				const sites = getByTestId('n8n-agent-saved-login-sites');
+				await fireEvent.update(sites, 'localhost');
+				await fireEvent.click(getByTestId('n8n-agent-saved-login-sites-save'));
+				await flushPromises();
+
+				await fireEvent.update(sites, 'github.com');
+
+				expect(queryByTestId('n8n-agent-saved-login-sites-error')).toBeNull();
 			});
 		});
 	});

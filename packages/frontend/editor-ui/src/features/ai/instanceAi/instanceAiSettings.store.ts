@@ -189,6 +189,9 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	 * Persists the staged admin draft. Returns whether the save succeeded; on
 	 * failure the draft is discarded so a later unrelated save can't flush it.
 	 */
+	/** The error of the last failed save, so a field can show why next to its input. */
+	const lastSaveError = ref<unknown>();
+
 	async function save(showToast = true): Promise<boolean> {
 		if (Object.keys(draft).length === 0) return true;
 		isSaving.value = true;
@@ -198,6 +201,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			} as InstanceAiAdminSettingsUpdateRequest);
 			settings.value = result;
 			clearDraft();
+			lastSaveError.value = undefined;
 			if (showToast) {
 				toast.showMessage({
 					title: i18n.baseText('settings.n8nAgent.toast.saved'),
@@ -209,6 +213,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			return true;
 		} catch (error) {
 			clearDraft();
+			lastSaveError.value = error;
 			toast.showError(error, i18n.baseText('settings.n8nAgent.toast.errorTitle'));
 			return false;
 		} finally {
@@ -503,6 +508,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		draft,
 		isLoading,
 		isSaving,
+		lastSaveError,
 		isModelCatalogLoading,
 		fetch,
 		save,

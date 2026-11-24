@@ -30,6 +30,7 @@ import {
 	type InstanceAiSavedLoginsMode,
 } from '@n8n/api-types';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
+import { ResponseError } from '@n8n/rest-api-client';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { useAsyncState } from '@vueuse/core';
@@ -475,21 +476,26 @@ const hasUnsavedLoginSites = computed(
 		(store.settings?.cloudBrowserSavedLoginSites ?? []).join(','),
 );
 
-// The list saves when it loses focus, or with the Save button. A click on the button also
-// moves the focus, so the second call reuses the save that is still running.
-let pendingSavedLoginSitesSave: Promise<void> | undefined;
-async function handleSavedLoginSitesChange() {
-	pendingSavedLoginSitesSave ??= saveSavedLoginSites().finally(() => {
-		pendingSavedLoginSitesSave = undefined;
-	});
-	await pendingSavedLoginSitesSave;
+/** Why the server rejected the list. The typed list stays, so the admin can fix it. */
+const savedLoginSitesError = ref<string>();
+watch(savedLoginSitesText, () => {
+	savedLoginSitesError.value = undefined;
+});
+
+/** Saves the list with the Save button, which shows only while the list has changes. */
+async function saveSavedLoginSites() {
+	store.setField('cloudBrowserSavedLoginSites', enteredSavedLoginSites.value);
+	if (await store.save()) return;
+	savedLoginSitesError.value = invalidSitesMessage(store.lastSaveError);
 }
 
-async function saveSavedLoginSites() {
-	if (!hasUnsavedLoginSites.value) return;
-	store.setField('cloudBrowserSavedLoginSites', enteredSavedLoginSites.value);
-	// The server rejects a site it cannot read, so show the stored list again.
-	if (!(await store.save())) showStoredSavedLoginSites();
+/** The message for the sites that the server could not read. Nothing for any other error. */
+function invalidSitesMessage(error: unknown): string | undefined {
+	if (!(error instanceof ResponseError)) return undefined;
+	const invalidSites = error.meta?.invalidSites;
+	if (!Array.isArray(invalidSites)) return undefined;
+	const sites = invalidSites.map((site) => `"${String(site)}"`).join(', ');
+	return i18n.baseText('settings.n8nAgent.savedLogins.sites.invalid', { interpolate: { sites } });
 }
 
 function handleMcpAccessToggle(value: boolean) {
@@ -773,8 +779,15 @@ const { isLoading: isSavingModelTraining, executeImmediate: handleModelTrainingT
 								id="n8n-agent-saved-login-sites"
 								:disabled="store.isSaving"
 								data-test-id="n8n-agent-saved-login-sites"
-								@blur="handleSavedLoginSitesChange"
 							/>
+							<N8nText
+								v-if="savedLoginSitesError"
+								size="small"
+								color="danger"
+								data-test-id="n8n-agent-saved-login-sites-error"
+							>
+								{{ savedLoginSitesError }}
+							</N8nText>
 							<div :class="$style.savedLoginSitesFooter">
 								<N8nText size="small" color="text-light">
 									{{ i18n.baseText('settings.n8nAgent.savedLogins.sites.hint') }}
@@ -786,7 +799,7 @@ const { isLoading: isSavingModelTraining, executeImmediate: handleModelTrainingT
 									:label="i18n.baseText('generic.save')"
 									:disabled="store.isSaving"
 									data-test-id="n8n-agent-saved-login-sites-save"
-									@click="handleSavedLoginSitesChange"
+									@click="saveSavedLoginSites"
 								/>
 							</div>
 						</div>
