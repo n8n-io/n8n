@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { projectTypeSchema } from './project.schema';
+
 /**
  * Per-instance PostHog flag for custom MCP servers, with the variants `control` and `test`.
  * Only `test` turns the feature on. Force it with `N8N_FEATURE_FLAG_OVERRIDES`.
@@ -7,11 +9,13 @@ import { z } from 'zod';
 export const CUSTOM_MCP_SERVERS_FLAG = '155_custom_mcp_servers';
 export const CUSTOM_MCP_SERVERS_FLAG_VARIANT = 'test';
 
-export const MCP_SERVER_SLUG_MAX_LENGTH = 128;
+export const MCP_SERVER_NAME_MAX_LENGTH = 128;
+export const MCP_SERVER_SLUG_MAX_LENGTH = 64;
+export const MCP_SERVER_DESCRIPTION_MAX_LENGTH = 2000;
 export const MCP_SERVER_TOOL_NAME_MAX_LENGTH = 64;
 export const MCP_SERVER_TOOL_DESCRIPTION_MAX_LENGTH = 2000;
 
-export const mcpServerNameSchema = z.string().trim().min(1).max(128);
+export const mcpServerNameSchema = z.string().trim().min(1).max(MCP_SERVER_NAME_MAX_LENGTH);
 
 /** Path segment of the server URL `/mcp-servers/<slug>`. It never changes after the create. */
 export const mcpServerSlugSchema = z
@@ -24,8 +28,27 @@ export const mcpServerSlugSchema = z
 		'Use lowercase letters, numbers, and single hyphens between them.',
 	);
 
+/**
+ * The slug while the builder types it: lowercase letters, digits, and single dashes. A dash at
+ * the end stays, so that the builder can type the next word.
+ */
+export function mcpServerSlugInput(value: string): string {
+	return value
+		.normalize('NFKD')
+		.replace(/[\u0300-\u036f]/g, '')
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+/, '')
+		.slice(0, MCP_SERVER_SLUG_MAX_LENGTH);
+}
+
+/** The slug that n8n makes from a server name. It is empty when the name has no letter or digit. */
+export function mcpServerSlugFromName(name: string): string {
+	return mcpServerSlugInput(name).replace(/-+$/, '');
+}
+
 /** Clients get the description as the MCP instructions. */
-export const mcpServerDescriptionSchema = z.string().trim().max(2000);
+export const mcpServerDescriptionSchema = z.string().trim().max(MCP_SERVER_DESCRIPTION_MAX_LENGTH);
 
 export const mcpServerToolNameSchema = z
 	.string()
@@ -79,6 +102,8 @@ export type McpServerToolBrokenReason = z.infer<typeof mcpServerToolBrokenReason
 export const mcpServerSchema = z.object({
 	id: z.string().uuid(),
 	projectId: z.string(),
+	/** The owner project. The UI names it where it says who can connect. */
+	project: z.object({ name: z.string(), type: projectTypeSchema }),
 	name: mcpServerNameSchema,
 	slug: mcpServerSlugSchema,
 	description: z.string(),
@@ -86,6 +111,13 @@ export const mcpServerSchema = z.object({
 	updatedAt: z.string().datetime(),
 });
 export type McpServerResponse = z.infer<typeof mcpServerSchema>;
+
+/** `reserved`: a deleted server used the slug. Its URL never points to another server. */
+export const mcpServerSlugAvailabilitySchema = z.object({
+	available: z.boolean(),
+	reason: z.enum(['taken', 'reserved']).nullable(),
+});
+export type McpServerSlugAvailability = z.infer<typeof mcpServerSlugAvailabilitySchema>;
 
 export const mcpServerToolSchema = z.object({
 	id: z.string().uuid(),

@@ -1,8 +1,6 @@
 import {
 	MCP_SERVER_TOOL_DESCRIPTION_MAX_LENGTH,
 	mcpServerSchema,
-	type McpServerResponse,
-	type McpServerDetailResponse,
 	type McpServerToolBrokenReason,
 	type McpServerToolCandidate,
 	type McpServerToolResponse,
@@ -13,7 +11,7 @@ import { EventService } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 
-import type { McpServerBuilderActor } from './mcp-server-events';
+import type { McpServerActor } from './mcp-server-events';
 import type { McpServerTool } from './mcp-server-tool.entity';
 import { McpServerToolRepository, type NewWorkflowTool } from './mcp-server-tool.repository';
 import type { McpServer } from './mcp-server.entity';
@@ -38,18 +36,6 @@ function toBrokenReason(refusal: WorkflowToolRefusal): McpServerToolBrokenReason
 
 function isId(value: string): boolean {
 	return mcpServerSchema.shape.id.safeParse(value).success;
-}
-
-function toServerResponse(server: McpServer): McpServerResponse {
-	return {
-		id: server.id,
-		projectId: server.projectId,
-		name: server.name,
-		slug: server.slug,
-		description: server.description,
-		createdAt: server.createdAt.toISOString(),
-		updatedAt: server.updatedAt.toISOString(),
-	};
 }
 
 function toToolResponse(
@@ -81,15 +67,13 @@ export class McpServerToolsService {
 		private readonly events: EventService,
 	) {}
 
-	async getServer(projectId: string, serverId: string): Promise<McpServerDetailResponse> {
+	/** The tools of a server, in their order. Each tool says if it is broken, and why. */
+	async listTools(projectId: string, serverId: string): Promise<McpServerToolResponse[]> {
 		const server = await this.findServer(projectId, serverId);
 		const tools = await this.tools.listByServer(server.id);
-		return {
-			...toServerResponse(server),
-			tools: await Promise.all(
-				tools.map(async (tool) => toToolResponse(tool, await this.brokenReason(projectId, tool))),
-			),
-		};
+		return await Promise.all(
+			tools.map(async (tool) => toToolResponse(tool, await this.brokenReason(projectId, tool))),
+		);
 	}
 
 	/** Every workflow of the project, with the reason when it cannot be a tool of this server. */
@@ -118,7 +102,7 @@ export class McpServerToolsService {
 		projectId: string,
 		serverId: string,
 		workflowIds: string[],
-		actor: McpServerBuilderActor,
+		actor: McpServerActor,
 	): Promise<McpServerToolResponse[]> {
 		const server = await this.findServer(projectId, serverId);
 		const existing = await this.tools.listByServer(server.id);
@@ -187,9 +171,7 @@ export class McpServerToolsService {
 	}
 
 	private async findServer(projectId: string, serverId: string): Promise<McpServer> {
-		const server = isId(serverId)
-			? await this.servers.findLiveInProject(projectId, serverId)
-			: null;
+		const server = isId(serverId) ? await this.servers.findInProject(projectId, serverId) : null;
 		if (!server) throw new NotFoundError('MCP server not found');
 		return server;
 	}

@@ -118,6 +118,7 @@ export type SlotProjectHeaderMainButton =
 	| 'variable'
 	| 'agent'
 	| 'app'
+	| 'mcpServer'
 	| 'selfHealing';
 
 export type SlotProjectHeaderProps = {

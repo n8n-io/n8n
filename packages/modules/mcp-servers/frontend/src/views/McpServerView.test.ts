@@ -1,55 +1,216 @@
+import type { McpServerResponse } from '@n8n/api-types';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
+import type { Scope } from '@n8n/permissions';
+import { ResponseError } from '@n8n/rest-api-client';
 import userEvent from '@testing-library/user-event';
+import { fireEvent, screen, waitFor, within } from '@testing-library/vue';
 
-import { MCP_SERVER_CONNECTIONS_VIEW, MCP_SERVER_VIEW } from '../mcp-servers.constants';
+import {
+	MCP_SERVER_CONNECTIONS_VIEW,
+	MCP_SERVER_VIEW,
+	MCP_SERVERS_LIST_VIEW,
+} from '../mcp-servers.constants';
 import McpServerView from './McpServerView.vue';
+
+const api = vi.hoisted(() => ({
+	getMcpServer: vi.fn(),
+	updateMcpServer: vi.fn(),
+	deleteMcpServer: vi.fn(),
+}));
+vi.mock('../mcp-servers.api', () => api);
 
 const route = vi.hoisted(() => ({
 	name: 'McpServerView',
-	params: { projectId: 'project-1', serverId: 'server-1' },
+	params: { projectId: 'project-1', serverId: '0190a8d6-4a2e-7000-8000-000000000001' },
 }));
 const push = vi.hoisted(() => vi.fn());
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
 	useRoute: () => route,
-	useRouter: () => ({ push }),
+	useRouter: () => ({ push, resolve: () => ({ href: '/home/mcp-servers' }) }),
 }));
 
-// The Contents tab loads the server. Its own test covers it.
+const server: McpServerResponse = {
+	id: '0190a8d6-4a2e-7000-8000-000000000001',
+	projectId: 'project-1',
+	project: { name: 'Marketing', type: 'team' },
+	name: 'Sales tools',
+	slug: 'sales-tools',
+	description: 'Pipeline numbers',
+	createdAt: '2026-11-24T10:00:00.000Z',
+	updatedAt: '2026-11-24T10:00:00.000Z',
+};
+
+const BUILDER: Scope[] = [
+	'mcpServer:read',
+	'mcpServer:list',
+	'mcpServer:update',
+	'mcpServer:delete',
+];
+const VIEWER: Scope[] = ['mcpServer:read', 'mcpServer:list'];
+
+// The Contents tab loads the tools. Its own test covers it.
 const renderComponent = createComponentRenderer(McpServerView, {
 	global: {
 		stubs: { McpServerContentsTab: { template: '<div data-test-id="mcp-server-contents" />' } },
 	},
 });
 
+async function renderPage(scopes: Scope[] = BUILDER) {
+	capabilityRegistry.provide(capabilities.projectPermissions, {
+		scopesFor: () => scopes,
+		isReadOnly: () => false,
+	});
+	renderComponent();
+	await screen.findByTestId('mcp-server-name');
+}
+
+async function openMenuItem(label: string) {
+	await userEvent.click(screen.getByTestId('mcp-server-menu').querySelector('button')!);
+	await userEvent.click(await screen.findByText(label));
+}
+
 describe('McpServerView', () => {
 	beforeEach(() => {
 		route.name = MCP_SERVER_VIEW;
-		push.mockClear();
+		api.getMcpServer.mockResolvedValue(server);
+		api.updateMcpServer.mockImplementation(async (_ctx, _projectId, _serverId, body) => ({
+			...server,
+			...body,
+		}));
+		api.deleteMcpServer.mockResolvedValue(undefined);
 	});
 
-	it('shows the tabs "Contents" and "Connections", with "Contents" open', () => {
-		const { getByTestId, getByText, queryByTestId } = renderComponent();
-
-		expect(getByText('Contents')).toBeInTheDocument();
-		expect(getByText('Connections')).toBeInTheDocument();
-		expect(getByTestId('mcp-server-contents')).toBeInTheDocument();
-		expect(queryByTestId('mcp-server-connections')).not.toBeInTheDocument();
+	afterEach(() => {
+		capabilityRegistry.clear();
+		vi.clearAllMocks();
 	});
 
-	it('opens the connections on their own route', () => {
-		route.name = MCP_SERVER_CONNECTIONS_VIEW;
-		const { getByTestId, queryByTestId } = renderComponent();
+	describe('tabs', () => {
+		it('shows the tabs "Contents" and "Connections", with "Contents" open', async () => {
+			await renderPage();
 
-		expect(getByTestId('mcp-server-connections')).toBeInTheDocument();
-		expect(queryByTestId('mcp-server-contents')).not.toBeInTheDocument();
+			expect(screen.getByText('Contents')).toBeInTheDocument();
+			expect(screen.getByText('Connections')).toBeInTheDocument();
+			expect(screen.getByTestId('mcp-server-contents')).toBeInTheDocument();
+			expect(screen.queryByTestId('mcp-server-connections')).not.toBeInTheDocument();
+		});
+
+		it('opens the connections on their own route', async () => {
+			route.name = MCP_SERVER_CONNECTIONS_VIEW;
+			await renderPage();
+
+			expect(screen.getByTestId('mcp-server-connections')).toBeInTheDocument();
+			expect(screen.queryByTestId('mcp-server-contents')).not.toBeInTheDocument();
+		});
+
+		it('changes the route when a tab is selected', async () => {
+			await renderPage();
+
+			await userEvent.click(screen.getByText('Connections'));
+
+			expect(push).toHaveBeenCalledWith({
+				name: MCP_SERVER_CONNECTIONS_VIEW,
+				params: route.params,
+			});
+		});
 	});
 
-	it('changes the route when a tab is selected', async () => {
-		const { getByText } = renderComponent();
+	describe('header', () => {
+		it('shows the name, the description, and the URL, with no project label', async () => {
+			await renderPage();
 
-		await userEvent.click(getByText('Connections'));
+			expect(api.getMcpServer).toHaveBeenCalledWith(expect.anything(), 'project-1', server.id);
+			expect(screen.getByTestId('mcp-server-name')).toHaveTextContent('Sales tools');
+			expect(screen.getByTestId('mcp-server-description')).toHaveTextContent('Pipeline numbers');
+			expect(screen.getByTestId('mcp-server-url')).toHaveTextContent('/mcp-servers/sales-tools');
+			expect(screen.getByTestId('mcp-server-header')).not.toHaveTextContent('Marketing');
+		});
 
-		expect(push).toHaveBeenCalledWith({ name: MCP_SERVER_CONNECTIONS_VIEW, params: route.params });
+		it('renames the server from the dialog that a double-click on the title opens', async () => {
+			await renderPage();
+
+			await userEvent.dblClick(screen.getByTestId('mcp-server-name'));
+			const input = await screen.findByTestId('rename-mcp-server-name');
+			await waitFor(() => expect(input).toHaveFocus());
+			await userEvent.clear(input);
+			await userEvent.type(input, 'Revenue tools');
+			await userEvent.click(screen.getByTestId('rename-mcp-server-submit'));
+
+			expect(api.updateMcpServer).toHaveBeenCalledWith(expect.anything(), 'project-1', server.id, {
+				name: 'Revenue tools',
+			});
+			await waitFor(() =>
+				expect(screen.getByTestId('mcp-server-name')).toHaveTextContent('Revenue tools'),
+			);
+		});
+
+		it('renames the server from the server menu', async () => {
+			await renderPage();
+
+			await openMenuItem('Rename');
+
+			expect(await screen.findByTestId('rename-mcp-server-dialog')).toBeInTheDocument();
+		});
+
+		it('saves the description from the inline edit', async () => {
+			await renderPage();
+
+			const description = screen.getByTestId('mcp-server-description');
+			await userEvent.click(description);
+			const input = description.querySelector('input, textarea') as HTMLElement;
+			await userEvent.clear(input);
+			await userEvent.type(input, 'For the revenue team{Enter}');
+
+			await waitFor(() =>
+				expect(api.updateMcpServer).toHaveBeenCalledWith(
+					expect.anything(),
+					'project-1',
+					server.id,
+					{ description: 'For the revenue team' },
+				),
+			);
+		});
+
+		it('deletes the server after the confirmation and goes back to the list', async () => {
+			await renderPage();
+
+			await openMenuItem('Delete');
+			const dialog = await screen.findByRole('dialog');
+			expect(dialog).toHaveTextContent('stays reserved');
+			await userEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+
+			expect(api.deleteMcpServer).toHaveBeenCalledWith(expect.anything(), 'project-1', server.id);
+			await waitFor(() => expect(push).toHaveBeenCalledWith({ name: MCP_SERVERS_LIST_VIEW }));
+		});
+
+		it('gives a project viewer no rename, no delete, and no description edit', async () => {
+			await renderPage(VIEWER);
+
+			await fireEvent.dblClick(screen.getByTestId('mcp-server-name'));
+			await userEvent.click(screen.getByTestId('mcp-server-menu').querySelector('button')!);
+
+			expect(await screen.findByText('Copy URL')).toBeInTheDocument();
+			expect(screen.queryByText('Rename')).not.toBeInTheDocument();
+			expect(screen.queryByText('Delete')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('rename-mcp-server-dialog')).not.toBeInTheDocument();
+			expect(
+				screen.getByTestId('mcp-server-description').querySelector('input, textarea'),
+			).toBeNull();
+		});
+
+		it('shows "not found" for a server that does not exist', async () => {
+			api.getMcpServer.mockRejectedValue(new ResponseError('Not found', { httpStatusCode: 404 }));
+			capabilityRegistry.provide(capabilities.projectPermissions, {
+				scopesFor: () => BUILDER,
+				isReadOnly: () => false,
+			});
+			renderComponent();
+
+			expect(await screen.findByTestId('mcp-server-not-found')).toHaveTextContent(
+				'MCP server not found',
+			);
+		});
 	});
 });

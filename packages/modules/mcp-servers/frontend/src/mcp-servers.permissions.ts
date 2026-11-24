@@ -6,6 +6,7 @@ export function isCustomMcpServersEnabled() {
 	return capabilityRegistry.tryUse(capabilities.customMcpServersEnabled)?.() === true;
 }
 
+/** Reads reactive state, so call it in a `computed`. */
 export function getMcpServerPermissions(projectId: string) {
 	const permissions = capabilityRegistry.use(capabilities.projectPermissions);
 	const mcpServer = getResourcePermissions(permissions.scopesFor(projectId)).mcpServer;
@@ -13,6 +14,8 @@ export function getMcpServerPermissions(projectId: string) {
 	return {
 		canList: Boolean(mcpServer?.list),
 		canRead: Boolean(mcpServer?.read),
+		canCreate: Boolean(mcpServer?.create),
 		canUpdate: Boolean(mcpServer?.update),
+		canDelete: Boolean(mcpServer?.delete),
 	};
 }

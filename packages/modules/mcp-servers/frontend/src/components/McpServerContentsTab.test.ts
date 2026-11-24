@@ -52,6 +52,7 @@ function server(tools: McpServerToolResponse[]): McpServerDetailResponse {
 	return {
 		id: SERVER_ID,
 		projectId: PROJECT_ID,
+		project: { name: 'Marketing', type: 'team' },
 		name: 'Marketing tools',
 		slug: 'marketing-tools',
 		description: '',
