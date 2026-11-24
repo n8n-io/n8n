@@ -78,18 +78,25 @@ describe('grammar', () => {
 
 	it('refers to upstream nodes in expressions, and never to a parallel branch', () => {
 		let upstreamReferences = 0;
+		let nonTriggerReferences = 0;
 		for (const { ir } of sample('smoke')) {
 			for (const irNode of ir.nodes) {
 				const ancestors = reachable(irNode.key, ir, false);
 				const descendants = reachable(irNode.key, ir, true);
 				for (const name of referencedNodes(irNode.params)) {
-					if (ancestors.has(name)) upstreamReferences++;
-					else expect(name === 'Ghost' || descendants.has(name)).toBe(true);
+					if (ancestors.has(name)) {
+						upstreamReferences++;
+						if (name !== ir.firedTrigger) nonTriggerReferences++;
+					} else {
+						expect(name === 'Ghost' || descendants.has(name)).toBe(true);
+					}
 				}
 			}
 		}
 
 		expect(upstreamReferences).toBeGreaterThan(0);
+		// Most nodes have more than one upstream node, so nodes other than the trigger get a fair part.
+		expect(nonTriggerReferences / upstreamReferences).toBeGreaterThanOrEqual(0.2);
 	});
 
 	it('uses every combinator that the rules allow', () => {

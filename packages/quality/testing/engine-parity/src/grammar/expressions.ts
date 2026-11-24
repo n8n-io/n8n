@@ -37,7 +37,8 @@ export interface ExprScope {
 	elsewhere: string[];
 }
 
-const pick = fc.double({ min: 0, max: 1, maxExcluded: true, noNaN: true });
+// Not fc.double: most doubles in [0, 1) are near 0, so almost every pick would select the trigger.
+const pick = fc.noBias(fc.integer({ min: 0, max: 999 })).map((n) => n / 1000);
 
 export function itemSourceArb(rules: ParityRules): fc.Arbitrary<ItemSource> {
 	const ghostWeight = Math.round(rules.expressions.ghostRate * 100);
