@@ -11767,7 +11767,7 @@
 	"promotions.preview.blockers.missingOnSource.description": "The selected workflows use them. You can still promote these workflows.",
 	"promotions.preview.blockers.missingOnSource.credential": "This credential does not exist on this instance. Workflows that use it will fail where this is applied.",
 	"promotions.preview.blockers.missingOnSource.workflow": "This workflow does not exist on this instance. Workflows that use it will fail where this is applied.",
-	"promotions.preview.blockers.missingOnSource.variable": "This variable does not exist on this instance. Workflows that use it will fail where this is applied.",
+	"promotions.preview.blockers.missingOnSource.variable": "This variable does not exist on this instance. Workflows that use it fail where the variable does not exist.",
 	"promotions.preview.blockers.unresolved": "{count} issue to resolve | {count} issues to resolve",
 	"promotions.preview.blockers.none": "No issues. You can apply the selected changes.",
 	"promotions.preview.confirmInstance.title": "Apply all changes?",
