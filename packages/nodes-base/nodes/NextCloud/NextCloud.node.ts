@@ -30,6 +30,7 @@ import {
 } from './GenericFunctions';
 import { wrapData } from '../../utils/utilities';
 import * as createFromText from './actions/file/createFromText.operation';
+import * as update from './actions/file/update.operation';
 import * as search from './actions/folder/search.operation';
 
 export class NextCloud implements INodeType {
@@ -155,6 +156,12 @@ export class NextCloud implements INodeType {
 						value: 'share',
 						description: 'Share a file',
 						action: 'Share a file',
+					},
+					{
+						name: 'Update',
+						value: 'update',
+						description: "Replace a file's content or rename it",
+						action: 'Update a file',
 					},
 					{
 						name: 'Upload',
@@ -399,6 +406,11 @@ export class NextCloud implements INodeType {
 			//         file:createFromText
 			// ----------------------------------
 			...createFromText.description,
+
+			// ----------------------------------
+			//         file:update
+			// ----------------------------------
+			...update.description,
 
 			// ----------------------------------
 			//         file:upload
@@ -941,6 +953,16 @@ export class NextCloud implements INodeType {
 					returnData.push(
 						...this.helpers.constructExecutionMetaData(
 							wrapData(await createFromText.execute.call(this, i)),
+							{ itemData: { item: i } },
+						),
+					);
+					continue;
+				}
+
+				if (resource === 'file' && operation === 'update') {
+					returnData.push(
+						...this.helpers.constructExecutionMetaData(
+							wrapData(await update.execute.call(this, i)),
 							{ itemData: { item: i } },
 						),
 					);

@@ -1,12 +1,5 @@
-import { escapeXmlText } from '@n8n/utils/string/escape-xml';
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
-import {
-	NodeOperationError,
-	decodePathValue,
-	requestPath,
-	toPathSegment,
-	tryToParseDateTime,
-} from 'n8n-workflow';
+import { NodeOperationError, tryToParseDateTime } from 'n8n-workflow';
 
 import { returnAllOrLimit } from '@utils/descriptions';
 import { escapeDavLikeValue } from '@utils/query-escaping';
@@ -15,10 +8,10 @@ import { updateDisplayOptions } from '@utils/utilities';
 import {
 	RESOURCETYPE_PROPFIND_BODY,
 	nextCloudApiRequest,
-	nextCloudUserId,
 	readMultistatus,
 	readProps,
-	toWebDavItem,
+	searchCondition,
+	searchFiles,
 	webDavPath,
 } from '../../GenericFunctions';
 
@@ -135,10 +128,6 @@ interface Filter {
 	whatToSearch?: 'all' | 'files' | 'folders';
 }
 
-function compare(operator: 'eq' | 'like' | 'gt' | 'lt', prop: string, literal: string | number) {
-	return `<d:${operator}><d:prop><${prop}/></d:prop><d:literal>${escapeXmlText(String(literal))}</d:literal></d:${operator}>`;
-}
-
 // Nextcloud reads unix seconds or an ATOM date without fractions. It turns any other form into 0,
 // which makes an "after" filter match everything, so the node always sends unix seconds.
 function unixSeconds(this: IExecuteFunctions, field: string, value: string, i: number) {
@@ -182,16 +171,16 @@ function whereClause(
 
 	const name =
 		query === '' ? '%' : exactName ? escapeDavLikeValue(query) : `%${escapeDavLikeValue(query)}%`;
-	const conditions = [compare('like', 'd:displayname', name)];
+	const conditions = [searchCondition('like', 'd:displayname', name)];
 
 	if (filter.whatToSearch === 'folders') conditions.push('<d:is-collection/>');
 	if (filter.whatToSearch === 'files') conditions.push('<d:not><d:is-collection/></d:not>');
 
 	// Nextcloud takes a MIME pattern only as "type/%"
 	if (mimeType?.endsWith('/*')) {
-		conditions.push(compare('like', 'd:getcontenttype', `${mimeType.slice(0, -1)}%`));
+		conditions.push(searchCondition('like', 'd:getcontenttype', `${mimeType.slice(0, -1)}%`));
 	} else if (mimeType) {
-		conditions.push(compare('eq', 'd:getcontenttype', mimeType));
+		conditions.push(searchCondition('eq', 'd:getcontenttype', mimeType));
 	}
 
 	const dates = [
@@ -203,7 +192,7 @@ function whereClause(
 		...dates
 			.filter(([, value]) => value)
 			.map(([field, value, operator, prop]) =>
-				compare(operator, prop, unixSeconds.call(this, field, String(value), i)),
+				searchCondition(operator, prop, unixSeconds.call(this, field, String(value), i)),
 			),
 	);
 
@@ -224,11 +213,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<IData
 	const filter = this.getNodeParameter('filter', i, {}) as Filter;
 	const options = this.getNodeParameter('options', i, {}) as { exactName?: boolean };
 	const where = whereClause.call(this, query, options.exactName === true, filter, i);
-
-	// Nextcloud reads a relative scope href as it is and never decodes it (SearchDAV
-	// PathHelper::getPathFromUri), so the names stay raw. toPathSegment only rejects "." and "..".
-	const scopeSegment = (segment: string) => decodePathValue(toPathSegment(segment));
-	const scopeSegments = segments.map(scopeSegment);
 
 	// Nextcloud answers a file scope with a bare HTTP 500, so check the scope first
 	if (segments.length > 0) {
@@ -253,43 +237,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<IData
 		}
 	}
 
-	const uid = scopeSegment(await nextCloudUserId.call(this));
-	const scopeHref = ['', 'files', uid, ...scopeSegments].join('/');
-	const body = `<?xml version="1.0" encoding="UTF-8"?>
-<d:searchrequest xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns" xmlns:nc="http://nextcloud.org/ns">
-  <d:basicsearch>
-    <d:select>
-      <d:prop><oc:fileid/><d:getetag/><d:getlastmodified/><d:getcontentlength/><d:getcontenttype/><d:resourcetype/><nc:upload_time/></d:prop>
-    </d:select>
-    <d:from>
-      <d:scope>
-        <d:href>${escapeXmlText(scopeHref)}</d:href>
-        <d:depth>infinity</d:depth>
-      </d:scope>
-    </d:from>
-    <d:where>${where}</d:where>
-    <d:orderby>
-      <d:order><d:prop><d:getlastmodified/></d:prop><d:descending/></d:order>
-    </d:orderby>
-    <d:limit><d:nresults>${limit + 1}</d:nresults></d:limit>
-  </d:basicsearch>
-</d:searchrequest>`;
-
 	// The SQL limit also counts the searched folder, which Nextcloud then drops, so ask for one more
-	const items = (
-		await readMultistatus(
-			await nextCloudApiRequest.call(
-				this,
-				'SEARCH',
-				requestPath``,
-				body,
-				{ 'Content-Type': 'application/xml' },
-				undefined,
-				undefined,
-				'dav',
-			),
-		)
-	).map(toWebDavItem);
+	const items = await searchFiles.call(this, segments, where, limit + 1);
 
 	if (returnAll && items.length >= RETURN_ALL_LIMIT) {
 		this.addExecutionHints({
