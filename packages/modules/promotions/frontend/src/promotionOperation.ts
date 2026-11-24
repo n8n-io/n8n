@@ -143,6 +143,10 @@ export const listOnlyDependencies = (
 		return selected.has(workflowKey(id)) === (condition === 'target-selected');
 	});
 
+/** An entry of `listOnlyDependencies` that only warns. The Issues tab lists it under "Warnings". */
+export const isWarningDependency = ({ group }: PromotionMissingDependency) =>
+	group === 'needs-action';
+
 /**
  * Narrows the list of `listOnlyDependencies` to the selection of a project Apply. An entry that
  * does not stop the Apply shows only for the selected workflows that use it. An entry that stops

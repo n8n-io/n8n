@@ -1662,45 +1662,53 @@ describe('PromotionPreviewView', () => {
 			expect(queryByTestId('promotion-preview-blockers-status')).not.toBeInTheDocument();
 		});
 
-		it('should list both groups, with the sub-workflows that the user can access under "Needs your action"', async () => {
-			const { getAllByRole, getAllByTestId, getByRole, getByTestId } = await renderIssues({
-				missingBindings: [missingVariable],
-				// A dependency that does not stop the Apply shows only for a selected workflow. The
-				// variable and the credential stop "Weekly KPI report" (w3), and nothing stops the
-				// workflow that uses the others.
-				missingDependencies: [
-					repeatedBinding(missingVariable),
-					archivedWorkflow,
-					{ ...archivedWorkflow, id: 'w10', name: 'Notify finance', reason: 'caller-policy' },
-					{ ...archivedWorkflow, id: 'w11', name: 'Close month', reason: 'not-on-instance' },
-					{ ...unreachableCredential, consumers: missingVariable.consumers },
-					{ ...unreachableWorkflow, consumers: archivedWorkflow.consumers },
-				],
-			});
+		it('should list both groups, with the sub-workflows that the user can access under "Warnings"', async () => {
+			const { getAllByRole, getAllByTestId, getByRole, getByTestId, getByText } =
+				await renderIssues({
+					missingBindings: [missingVariable],
+					// A dependency that does not stop the Apply shows only for a selected workflow. The
+					// variable and the credential stop "Weekly KPI report" (w3), and nothing stops the
+					// workflow that uses the others.
+					missingDependencies: [
+						repeatedBinding(missingVariable),
+						archivedWorkflow,
+						{ ...archivedWorkflow, id: 'w10', name: 'Notify finance', reason: 'caller-policy' },
+						{ ...archivedWorkflow, id: 'w11', name: 'Close month', reason: 'not-on-instance' },
+						{ ...unreachableCredential, consumers: missingVariable.consumers },
+						{ ...unreachableWorkflow, consumers: archivedWorkflow.consumers },
+					],
+				});
 
-			expect(getByRole('tab', { name: /Issues/ })).toHaveTextContent(/^Issues\s*6$/);
-			expect(headings(getAllByRole)).toEqual(['Needs your action (4)', 'Outside your access (2)']);
-			const needsAction = section(getAllByTestId, 'Needs your action (4)');
-			expect(cells(needsAction.getByRole('row', { name: /Archive invoices/ }))).toEqual([
+			// The tab counts the two sections of issues. It does not count the warnings.
+			expect(getByRole('tab', { name: /Issues/ })).toHaveTextContent(/^Issues\s*3$/);
+			expect(headings(getAllByRole)).toEqual([
+				'Needs your action (1)',
+				'Outside your access (2)',
+				'3 warnings',
+			]);
+			// Each row of "Needs your action" stops the Apply.
+			const needsAction = section(getAllByTestId, 'Needs your action (1)');
+			expect(needsAction.getByRole('row', { name: /API_URL/ })).toBeVisible();
+			expect(needsAction.queryByRole('row', { name: /Archive invoices/ })).not.toBeInTheDocument();
+			expect(getAllByTestId('promotion-preview-dependency-warning')).toHaveLength(3);
+			expect(getByText('Some workflows are not usable on this instance')).toBeVisible();
+			expect(getByTestId('promotion-preview-blockers')).toHaveTextContent(
+				'Other workflows use them as a sub-workflow or as an error workflow. You can still apply the workflows that use them.',
+			);
+			expect(cells(getByRole('row', { name: /Archive invoices/ }))).toEqual([
 				'Archive invoicesThis workflow is archived on this instance. Workflows that use it fail until it is unarchived.',
 				'Invoice reconciliation',
 				'Workflow',
-				'Archived',
-				'',
 			]);
-			expect(cells(needsAction.getByRole('row', { name: /Notify finance/ }))).toEqual([
+			expect(cells(getByRole('row', { name: /Notify finance/ }))).toEqual([
 				'Notify financeThis workflow does not accept calls from the workflows that use it. Change its caller policy to let them run.',
 				'Invoice reconciliation',
 				'Workflow',
-				'Conflict',
-				'',
 			]);
-			expect(cells(needsAction.getByRole('row', { name: /Close month/ }))).toEqual([
+			expect(cells(getByRole('row', { name: /Close month/ }))).toEqual([
 				'Close monthThis workflow is not on this instance. Workflows that use it fail until it exists here.',
 				'Invoice reconciliation',
 				'Workflow',
-				'Missing',
-				'',
 			]);
 			// The variable and the credential stop the Apply. The workflows do not.
 			expect(getByTestId('promotion-preview-blockers-status')).toHaveTextContent(
@@ -1805,7 +1813,7 @@ describe('PromotionPreviewView', () => {
 					{ ...archivedWorkflow, consumers: unreachableWorkflow.consumers },
 				],
 			});
-			const withoutCreate = section(getAllByTestId, 'Needs your action (2)');
+			const withoutCreate = section(getAllByTestId, 'Needs your action (1)');
 			expect(withoutCreate.queryByRole('button', { name: /Add/ })).not.toBeInTheDocument();
 			expect(withoutCreate.queryByText(description)).not.toBeInTheDocument();
 			unmount();
@@ -1814,7 +1822,7 @@ describe('PromotionPreviewView', () => {
 				missingBindings: [missingVariable],
 				missingDependencies: [repeatedBinding(missingVariable), archivedWorkflow],
 			});
-			const needsAction = section(withCreate.getAllByTestId, 'Needs your action (2)');
+			const needsAction = section(withCreate.getAllByTestId, 'Needs your action (1)');
 			expect(needsAction.getByRole('button', { name: 'Add variable' })).toBeVisible();
 			expect(needsAction.getByText(description)).toBeVisible();
 		});
@@ -1825,7 +1833,7 @@ describe('PromotionPreviewView', () => {
 				name: RegExp,
 			) => await userEvent.click(getByRole('tab', { name }));
 
-			it('should list a dependency only while the selection matches its condition, and count and mark it', async () => {
+			it('should warn about a dependency only while the selection matches its condition, and mark its workflow', async () => {
 				vi.mocked(api.getPromotionPreview).mockResolvedValue(
 					previewWithCheck(check({ missingDependencies: [targetNotSelectedWorkflow] })),
 				);
@@ -1854,24 +1862,20 @@ describe('PromotionPreviewView', () => {
 
 				await userEvent.click(target());
 
-				expect(issuesTab).toHaveTextContent(/^Issues\s*1$/);
+				// A warning does not count on the tab, and nothing is to resolve.
+				expect(issuesTab).toHaveTextContent(/^Issues$/);
 				expect(marker()).toHaveAccessibleName('1 dependency is not usable on this instance.');
 				expect(caller().getByRole('checkbox')).toBeChecked();
-				expect(queryByTestId('promotion-preview-blockers-status')).not.toBeInTheDocument();
+				expect(getByTestId('promotion-preview-blockers-status')).toHaveTextContent(
+					'No issues. You can apply the selected changes.',
+				);
 				await openTab(getByRole, /Issues/);
-				expect(headings(getAllByRole)).toEqual(['Needs your action (1)']);
-				expect(
-					cells(
-						section(getAllByTestId, 'Needs your action (1)').getByRole('row', {
-							name: /Weekly KPI report/,
-						}),
-					),
-				).toEqual([
+				expect(headings(getAllByRole)).toEqual(['1 warning']);
+				expect(queryAllByTestId('promotion-preview-blocker-row')).toHaveLength(0);
+				expect(cells(getByTestId('promotion-preview-dependency-warning'))).toEqual([
 					'Weekly KPI reportThis workflow is not on this instance. Workflows that use it fail until it exists here.',
 					'Invoice reconciliation',
 					'Workflow',
-					'Missing',
-					'',
 				]);
 
 				await openTab(getByRole, /Changes/);
@@ -1879,7 +1883,7 @@ describe('PromotionPreviewView', () => {
 
 				expect(issuesTab).toHaveTextContent(/^Issues$/);
 				expect(marker()).not.toBeInTheDocument();
-				expect(queryAllByTestId('promotion-preview-blocker-row')).toHaveLength(0);
+				expect(queryByTestId('promotion-preview-dependency-warning')).not.toBeInTheDocument();
 				expect(getByTestId('promotion-preview-blockers-status')).toHaveTextContent(
 					'No issues. You can apply the selected changes.',
 				);
@@ -1923,19 +1927,17 @@ describe('PromotionPreviewView', () => {
 			it.each([
 				{
 					reason: 'archived',
-					status: 'Archived',
 					detail:
 						'This Apply archives this workflow. Workflows that use it fail until it is unarchived.',
 				},
 				{
 					reason: 'not-on-instance',
-					status: 'Missing',
 					detail:
 						'This Apply deletes this workflow. Workflows that use it fail until it exists here again.',
 				},
 			] as const)(
 				'should say what the Apply does to a selected workflow with the reason $reason',
-				async ({ reason, status, detail }) => {
+				async ({ reason, detail }) => {
 					vi.mocked(api.getPromotionPreview).mockResolvedValue(
 						previewWithCheck(
 							check({ missingDependencies: [{ ...targetSelectedWorkflow, reason }] }),
@@ -1946,8 +1948,8 @@ describe('PromotionPreviewView', () => {
 					// The selection includes the target, so the entry holds.
 					await openTab(getByRole, /Issues/);
 
-					expect(getAllByTestId('promotion-preview-blocker-row').map(cells)).toEqual([
-						[`Weekly KPI report${detail}`, 'Invoice reconciliation', 'Workflow', status, ''],
+					expect(getAllByTestId('promotion-preview-dependency-warning').map(cells)).toEqual([
+						[`Weekly KPI report${detail}`, 'Invoice reconciliation', 'Workflow'],
 					]);
 				},
 			);
@@ -1965,36 +1967,32 @@ describe('PromotionPreviewView', () => {
 					treeRow(getAllByTestId, 'workflow:w1').getByTestId('promotion-preview-tree-dependencies');
 				const rows = async () => {
 					await openTab(getByRole, /Issues/);
-					const shown = getAllByTestId('promotion-preview-blocker-row').map(cells);
+					const shown = getAllByTestId('promotion-preview-dependency-warning').map(cells);
 					await openTab(getByRole, /Changes/);
 					return shown;
 				};
 
 				// The selection includes the target: the caller policy of the branch applies.
-				expect(issuesTab).toHaveTextContent(/^Issues\s*1$/);
+				expect(issuesTab).toHaveTextContent(/^Issues$/);
 				expect(marker()).toHaveAccessibleName('1 dependency is not usable on this instance.');
 				expect(await rows()).toEqual([
 					[
 						'Weekly KPI reportThis workflow does not accept calls from the workflows that use it. Change its caller policy to let them run.',
 						'Invoice reconciliation',
 						'Workflow',
-						'Conflict',
-						'',
 					],
 				]);
 
 				await userEvent.click(target());
 
 				// The selection leaves out the target: this instance does not have the workflow.
-				expect(issuesTab).toHaveTextContent(/^Issues\s*1$/);
+				expect(issuesTab).toHaveTextContent(/^Issues$/);
 				expect(marker()).toHaveAccessibleName('1 dependency is not usable on this instance.');
 				expect(await rows()).toEqual([
 					[
 						'Weekly KPI reportThis workflow is not on this instance. Workflows that use it fail until it exists here.',
 						'Invoice reconciliation',
 						'Workflow',
-						'Missing',
-						'',
 					],
 				]);
 			});
@@ -2010,10 +2008,15 @@ describe('PromotionPreviewView', () => {
 				],
 			});
 
-			// "Billing" is the project of the workflows. The API sends no project for a dependency.
+			// "Billing" is the project of the workflows. An Apply check sends no project for a
+			// dependency.
 			expect(getByTestId('promotion-preview-blockers')).not.toHaveTextContent('Billing');
-			expect(getAllByTestId('promotion-preview-blocker-row')).toHaveLength(3);
-			for (const row of getAllByTestId('promotion-preview-blocker-row')) {
+			const rows = [
+				...getAllByTestId('promotion-preview-blocker-row'),
+				...getAllByTestId('promotion-preview-dependency-warning'),
+			];
+			expect(rows).toHaveLength(3);
+			for (const row of rows) {
 				expect(row).not.toHaveTextContent(/project|owner/i);
 			}
 		});
@@ -2056,14 +2059,15 @@ describe('PromotionPreviewView', () => {
 				await userEvent.click(issuesTab);
 			};
 
-			expect(issuesTab).toHaveTextContent(/^Issues\s*3$/);
-			expect(getAllByTestId('promotion-preview-blocker-row')).toHaveLength(3);
+			// The tab counts the credential and "Send audit log". "Archive invoices" is a warning.
+			expect(issuesTab).toHaveTextContent(/^Issues\s*2$/);
+			expect(getAllByTestId('promotion-preview-blocker-row')).toHaveLength(2);
 			expect(usedBy(/Archive invoices/)).toBe('w3w4');
 
 			await toggle('workflow:w3');
 
 			// No selected workflow uses "Send audit log" now. "Format currency" uses the other one.
-			expect(issuesTab).toHaveTextContent(/^Issues\s*2$/);
+			expect(issuesTab).toHaveTextContent(/^Issues\s*1$/);
 			expect(queryByRole('row', { name: /Send audit log/ })).not.toBeInTheDocument();
 			expect(usedBy(/Archive invoices/)).toBe('w4');
 			// The user cannot select the workflow that the credential stops, so its row stays.
@@ -2073,10 +2077,11 @@ describe('PromotionPreviewView', () => {
 
 			expect(issuesTab).toHaveTextContent(/^Issues\s*1$/);
 			expect(getAllByTestId('promotion-preview-blocker-row')).toHaveLength(1);
+			expect(queryByRole('row', { name: /Archive invoices/ })).not.toBeInTheDocument();
 
 			await toggle('workflow:w3');
 
-			expect(issuesTab).toHaveTextContent(/^Issues\s*3$/);
+			expect(issuesTab).toHaveTextContent(/^Issues\s*2$/);
 			expect(usedBy(/Send audit log/)).toBe('Weekly KPI report');
 			expect(usedBy(/Archive invoices/)).toBe('w3');
 		});
@@ -2299,10 +2304,11 @@ describe('PromotionPreviewView', () => {
 
 			const { getAllByTestId, getByRole } = await renderInstance();
 
-			// The Apply has no selection, so the tab lists the dependency for every workflow.
-			expect(getByRole('tab', { name: /Issues/ })).toHaveTextContent(/^Issues\s*1$/);
+			// The Apply has no selection, so the tab lists the dependency for every workflow. The
+			// dependency is a warning, so the tab does not count it.
+			expect(getByRole('tab', { name: /Issues/ })).toHaveTextContent(/^Issues$/);
 			await userEvent.click(getByRole('tab', { name: /Issues/ }));
-			expect(getAllByTestId('promotion-preview-blocker-row')).toHaveLength(1);
+			expect(getAllByTestId('promotion-preview-dependency-warning')).toHaveLength(1);
 		});
 
 		it('should show the new issues after an Apply that only a dependency outside the access of the user stops', async () => {

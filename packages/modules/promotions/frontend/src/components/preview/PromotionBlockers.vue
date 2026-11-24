@@ -27,6 +27,7 @@ import {
 	PROMOTE_STATUS_STYLES,
 	type StatusStyle,
 } from '../../promotionDependencyStatus';
+import { isWarningDependency } from '../../promotionOperation';
 import type { ApplyCheckResult, BlockedApplyResult } from '../../promotions.types';
 import { resourceIcon } from '../../promotionPreview.tree';
 import PromotionWorkflowLinks from './PromotionWorkflowLinks.vue';
@@ -120,7 +121,6 @@ type StatusKey =
 	| 'access'
 	| 'conflict'
 	| 'moved'
-	| 'archived'
 	| 'otherProject'
 	| 'outside'
 	| 'notOnBranch'
@@ -297,18 +297,10 @@ function dependencyDescription(
 }
 
 /** Why the workflows cannot use a sub-workflow or an error workflow on this instance after an Apply. */
-const WORKFLOW_ISSUES: Partial<
-	Record<PromotionMissingDependencyReason, { status: StatusKey; detail: BaseTextKey }>
-> = {
-	'not-on-instance': {
-		status: 'missing',
-		detail: 'promotions.preview.blockers.workflow.notOnInstance',
-	},
-	archived: { status: 'archived', detail: 'promotions.preview.blockers.workflow.archived' },
-	'caller-policy': {
-		status: 'conflict',
-		detail: 'promotions.preview.blockers.workflow.callerPolicy',
-	},
+const WORKFLOW_DETAILS: Partial<Record<PromotionMissingDependencyReason, BaseTextKey>> = {
+	'not-on-instance': 'promotions.preview.blockers.workflow.notOnInstance',
+	archived: 'promotions.preview.blockers.workflow.archived',
+	'caller-policy': 'promotions.preview.blockers.workflow.callerPolicy',
 };
 
 /**
@@ -320,11 +312,11 @@ const WORKFLOW_DETAILS_BY_APPLY: Partial<Record<PromotionMissingDependencyReason
 	archived: 'promotions.preview.blockers.workflow.archived.byApply',
 };
 
-function workflowIssue({ kind, reason, condition }: PromotionMissingDependency) {
-	const issue = kind === 'workflow' ? WORKFLOW_ISSUES[reason] : undefined;
+function workflowDetail({ kind, reason, condition }: PromotionMissingDependency) {
+	const detail = kind === 'workflow' ? WORKFLOW_DETAILS[reason] : undefined;
 	const detailByApply =
 		condition === 'target-selected' ? WORKFLOW_DETAILS_BY_APPLY[reason] : undefined;
-	return issue && detailByApply ? { ...issue, detail: detailByApply } : issue;
+	return detail && i18n.baseText(detailByApply ?? detail);
 }
 
 // The row of a dependency of another project tells which project to promote it from.
@@ -338,7 +330,6 @@ const otherProjectDetail = ({ group, project }: PromotionMissingDependency) =>
 // The row shows the name, the type and the workflows that use the dependency. The API sends no
 // owner. It sends the project only for a dependency of another project that the user can access.
 function dependencyRow(dependency: PromotionMissingDependency, sectionId: string) {
-	const issue = workflowIssue(dependency);
 	return {
 		// One dependency can have an entry for each reason and for each condition on the selection.
 		key: [
@@ -352,7 +343,7 @@ function dependencyRow(dependency: PromotionMissingDependency, sectionId: string
 		name: dependency.name,
 		type: dependency.kind,
 		usedBy: usedBy(dependency.consumers),
-		detail: issue ? i18n.baseText(issue.detail) : otherProjectDetail(dependency),
+		detail: workflowDetail(dependency) ?? otherProjectDetail(dependency),
 	};
 }
 
@@ -424,31 +415,19 @@ function outsideAccessOnApply({
 	};
 }
 
-// The rows of "Needs your action", which only Apply has. A sub-workflow or an error workflow that
-// users can access joins them. It does not stop the Apply, and this page cannot add it.
-const needsActionRows = computed<BlockerRow[]>(() => [
-	...blockerRows.value,
-	...props.missingDependencies
-		.filter(({ group }) => group === 'needs-action')
-		.map((dependency) => ({
-			...dependencyRow(dependency, 'blockers'),
-			status: status(workflowIssue(dependency)?.status ?? 'missing'),
-		})),
-]);
-
-// The kinds of issue, in the order that users read them.
+// The kinds of issue, in the order that users read them. Only Apply has "Needs your action".
 const sections = computed(() =>
 	[
 		{
 			id: 'blockers' as const,
 			title: i18n.baseText('promotions.preview.blockers.section.blockers', {
-				interpolate: { count: String(needsActionRows.value.length) },
+				interpolate: { count: String(blockerRows.value.length) },
 			}),
 			// The text tells users to create dependencies, so it needs a row that they can create.
-			description: needsActionRows.value.some(({ createLabel }) => createLabel !== undefined)
+			description: blockerRows.value.some(({ createLabel }) => createLabel !== undefined)
 				? i18n.baseText('promotions.preview.blockers.section.blockers.description')
 				: undefined,
-			rows: needsActionRows.value,
+			rows: blockerRows.value,
 		},
 		...DEPENDENCY_SECTIONS.map((section) => {
 			const dependencies = props.missingDependencies.filter(({ group }) => group === section.group);
@@ -495,12 +474,38 @@ function removedColumns(
 
 const warnings = computed(() => props.check?.warnings ?? []);
 
+// Apply: the sub-workflows and error workflows that users can access, and that the workflows
+// cannot use on this instance. They do not stop the Apply, and this page cannot add them.
+const unusableWorkflows = computed(() => props.missingDependencies.filter(isWarningDependency));
+
+// The dependencies that only warn, in one group for each cause.
+const dependencyWarningGroups = computed(() =>
+	[
+		{
+			id: 'missingOnSource' as const,
+			rows: props.dependencyWarnings.map(({ kind, id, name, consumers }) => ({
+				key: `${kind}:${id ?? name}`,
+				icon: resourceIcon(kind),
+				name,
+				type: kind,
+				usedBy: usedBy(consumers),
+				detail: i18n.baseText(`promotions.preview.blockers.missingOnSource.${kind}`),
+			})),
+		},
+		{
+			id: 'unusableWorkflows' as const,
+			rows: unusableWorkflows.value.map((dependency) => dependencyRow(dependency, 'warnings')),
+		},
+	].filter(({ rows }) => rows.length > 0),
+);
+
 // Data table changes and warnings do not block the operation, so they share one section.
 const warningCount = computed(
 	() =>
 		bindings.destructiveChanges.value.length +
 		warnings.value.length +
-		props.dependencyWarnings.length,
+		props.dependencyWarnings.length +
+		unusableWorkflows.value.length,
 );
 const open = ref({
 	blockers: true,
@@ -533,7 +538,9 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 		</N8nText>
 
 		<N8nCallout
-			v-if="check && unresolvedCount === 0 && missingDependencies.length === 0"
+			v-if="
+				check && unresolvedCount === 0 && missingDependencies.length === unusableWorkflows.length
+			"
 			theme="success"
 			slim
 			role="status"
@@ -770,12 +777,12 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 						</tbody>
 					</table>
 				</div>
-				<div v-if="dependencyWarnings.length > 0" :class="$style.group">
+				<div v-for="group in dependencyWarningGroups" :key="group.id" :class="$style.group">
 					<N8nCallout theme="warning" :class="$style.callout">
 						<N8nText bold tag="p">{{
-							i18n.baseText('promotions.preview.blockers.missingOnSource.title')
+							i18n.baseText(`promotions.preview.blockers.${group.id}.title`)
 						}}</N8nText>
-						{{ i18n.baseText('promotions.preview.blockers.missingOnSource.description') }}
+						{{ i18n.baseText(`promotions.preview.blockers.${group.id}.description`) }}
 					</N8nCallout>
 					<table :class="$style.table">
 						<thead>
@@ -789,25 +796,29 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 						</thead>
 						<tbody>
 							<tr
-								v-for="warning in dependencyWarnings"
-								:key="`${warning.kind}:${warning.id ?? warning.name}`"
+								v-for="row in group.rows"
+								:key="row.key"
 								data-test-id="promotion-preview-dependency-warning"
 							>
 								<td>
 									<div :class="$style.name">
-										<N8nIcon :icon="resourceIcon(warning.kind)" size="small" :class="$style.icon" />
-										<N8nText step="xs" color="text-dark">{{ warning.name }}</N8nText>
+										<N8nIcon :icon="row.icon" size="small" :class="$style.icon" />
+										<N8nText step="xs" color="text-dark">{{ row.name }}</N8nText>
 									</div>
-									<N8nText tag="p" step="2xs" color="text-light" :class="$style.detail">
-										{{
-											i18n.baseText(`promotions.preview.blockers.missingOnSource.${warning.kind}`)
-										}}
+									<N8nText
+										v-if="row.detail"
+										tag="p"
+										step="2xs"
+										color="text-light"
+										:class="$style.detail"
+									>
+										{{ row.detail }}
 									</N8nText>
 								</td>
 								<td>
 									<N8nText step="2xs" color="text-light">
 										<PromotionWorkflowLinks
-											:workflows="usedBy(warning.consumers)"
+											:workflows="row.usedBy"
 											list
 											@inspect="emit('inspect', $event)"
 										/>
@@ -815,7 +826,7 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 								</td>
 								<td>
 									<N8nText step="xs" color="text-base">
-										{{ i18n.baseText(`promotions.preview.blockers.type.${warning.kind}`) }}
+										{{ i18n.baseText(`promotions.preview.blockers.type.${row.type}`) }}
 									</N8nText>
 								</td>
 							</tr>

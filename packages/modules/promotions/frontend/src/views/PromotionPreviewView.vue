@@ -38,6 +38,7 @@ import {
 	indexBlockers,
 	indexByWorkflow,
 	isBlocking,
+	isWarningDependency,
 	listBlockers,
 	listOnlyDependencies,
 	crossProjectMoveBlockers,
@@ -353,11 +354,12 @@ async function onPromoteConfirm(commitMessage: string | undefined) {
 type PreviewTab = 'changes' | 'blockers';
 const activeTab = ref<PreviewTab>('changes');
 // Warnings do not count in either direction. On Apply, a dependency that stops its workflows is
-// already one of the blockers.
+// already one of the blockers, and a dependency that only warns is in the section "Warnings".
 const blockerCount = computed(() =>
 	props.direction === 'apply'
 		? blockerList.value.filter(isBlocking).length +
-			missingDependencies.value.filter(({ blocking }) => !blocking).length
+			missingDependencies.value.filter((entry) => !entry.blocking && !isWarningDependency(entry))
+				.length
 		: missingDependencies.value.length,
 );
 // Apply always has the tab. Promote has it only when the selection has issues.

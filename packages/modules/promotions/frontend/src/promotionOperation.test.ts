@@ -17,6 +17,7 @@ import { billingPreview, billingResources, resource } from './__tests__/preview.
 import {
 	indexBlockers,
 	indexByWorkflow,
+	isWarningDependency,
 	listBlockers,
 	listOnlyDependencies,
 	crossProjectMoveBlockers,
@@ -300,6 +301,15 @@ describe('promotion operation', () => {
 				noSelection,
 			).map(({ kind }) => kind),
 		).toEqual(['missing', 'missing']);
+	});
+
+	it('should say that only a sub-workflow that the user can access is a warning', () => {
+		const listed = listOnlyDependencies(
+			[archivedWorkflow, unreachableWorkflow, unreachableCredential, notOnBranchCredential],
+			new Set(),
+		);
+
+		expect(listed.filter(isWarningDependency)).toEqual([archivedWorkflow]);
 	});
 
 	it('should keep a missing dependency with a condition only when the selection matches the condition', () => {
