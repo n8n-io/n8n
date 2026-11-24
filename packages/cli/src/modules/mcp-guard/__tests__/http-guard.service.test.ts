@@ -105,7 +105,7 @@ describe('HttpGuardService', () => {
 
 		it('gives every vendor the same gym and the default addresses', () => {
 			configs.length = 0;
-			new HttpGuardService(Container.get(Logger));
+			new HttpGuardService(Container.get(Logger), outboundHttp);
 
 			expect(configs.length).toBeGreaterThan(0);
 			expect(new Set(configs.map((c) => c.admin)).size).toBe(1);
@@ -117,7 +117,7 @@ describe('HttpGuardService', () => {
 			vi.stubEnv('GYM_NODES_URL', 'http://gym.test:8000');
 			configs.length = 0;
 
-			new HttpGuardService(Container.get(Logger));
+			new HttpGuardService(Container.get(Logger), outboundHttp);
 
 			expect(new Set(configs.map((c) => c.gymUrl))).toEqual(new Set(['http://gym.test:8000']));
 			expect(new Set(configs.map((c) => c.admin)).size).toBe(1);

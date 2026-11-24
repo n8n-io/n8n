@@ -35,9 +35,6 @@ const isPassedBack = (status: unknown): boolean =>
 const textOf = (res: CallToolResult): string =>
 	res.content.flatMap((c) => (c.type === 'text' ? [c.text] : [])).join('\n');
 
-// A `Response` with one of these statuses cannot have a body.
-const NO_BODY_STATUS: ReadonlySet<number> = new Set([204, 205, 304]);
-
 function toResponse(res: CallToolResult): Response {
 	const status = typeof res._meta?.status === 'number' ? res._meta.status : res.isError ? 500 : 200;
 	const type =
