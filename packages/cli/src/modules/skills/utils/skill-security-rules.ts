@@ -17,7 +17,7 @@ import type { SkillContent } from './skill-content-hash';
 import { extractSkillLinks, linkReviewReason } from './skill-link-review-policy';
 import { SKILL_MD } from './skill-md';
 import { codePointOf, HIDDEN_PATTERN, locate, skillMdText } from './skill-text';
-import { isScriptFile } from './skipped-files';
+import { isScriptFile, isTextFile } from './skipped-files';
 import type { SkillSourceFidelityWarning } from '../sources/skill-source-client';
 
 /**
@@ -218,7 +218,9 @@ export function findHiddenUnicode(input: SkillScanInput): SkillScanFinding[] {
 export function findScriptChanges({ content, previous }: SkillScanInput): SkillScanFinding[] {
 	const before = new Map(previous?.files.map((file) => [file.path, file]));
 	return content.files.flatMap(({ path, content: text, isBinary }) => {
-		if (!isScriptFile(path) && !path.startsWith('scripts/')) return [];
+		// A text file that starts with `#!` is a script, whatever its name and folder are.
+		const isScript = isScriptFile(path) || path.startsWith('scripts/');
+		if (!isScript && (isBinary || !text.startsWith('#!'))) return [];
 		const old = before.get(path);
 		if (old?.content === text && old.isBinary === isBinary) return [];
 		return [
@@ -233,8 +235,6 @@ export function findScriptChanges({ content, previous }: SkillScanInput): SkillS
 }
 
 /** Text file types. A file with one of these names that is not UTF-8 text is not what it claims. */
-const TEXT_FILE =
-	/\.(?:md|markdown|txt|json|ya?ml|toml|xml|html?|css|csv|tsv|ini|cfg|conf|env|svg)$/i;
 /** `#!` as Base64. A file that starts with it is a script for the operating system. */
 const SHEBANG_BASE64 = /^Iy[E-H]/;
 
@@ -252,7 +252,7 @@ export function findUnscannedBinaryFiles({
 		if (!isBinary) return [];
 		const old = before.get(path);
 		if (old?.isBinary && old.content === base64) return [];
-		const looksLikeText = TEXT_FILE.test(path) || isScriptFile(path) || SHEBANG_BASE64.test(base64);
+		const looksLikeText = isTextFile(path) || isScriptFile(path) || SHEBANG_BASE64.test(base64);
 		return [
 			{
 				rule: 'binary_file',

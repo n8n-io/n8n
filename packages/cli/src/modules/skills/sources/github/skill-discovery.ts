@@ -71,13 +71,107 @@ export function filesOfSkill(paths: Iterable<string>, folder: string): string[] 
 	);
 }
 
-/** Whether a file is in one of the skill folders, at any depth. */
-export function isInSkillFolder(path: string, folders: ReadonlySet<string>): boolean {
-	if (folders.has('')) return true;
+/** The skill folder that holds a file, at any depth. Undefined for a file outside the skills. */
+function skillFolderOf(path: string, folders: ReadonlySet<string>): string | undefined {
 	for (let slash = path.lastIndexOf('/'); slash > 0; slash = path.lastIndexOf('/', slash - 1)) {
-		if (folders.has(path.slice(0, slash))) return true;
+		const folder = path.slice(0, slash);
+		if (folders.has(folder)) return folder;
 	}
-	return false;
+	return folders.has('') ? '' : undefined;
+}
+
+const MARKDOWN_FILE = /\.(?:md|markdown)$/i;
+
+/**
+ * The rank of a file when a skill holds more than n8n keeps. A lower rank stays first:
+ * `references/`, then `scripts/` and `assets/`, then other files, then dependency folders.
+ * The path is relative to the skill folder. No file is excluded, so a link in SKILL.md to any
+ * of them works when the skill is within the limits.
+ */
+function skillFileRank(path: string): number {
+	const folders = path.split('/').slice(0, -1);
+	if (folders.some((folder) => SKIPPED_FOLDERS.has(folder))) return 3;
+	if (folders[0] === 'references') return 0;
+	if (folders[0] === 'scripts' || folders[0] === 'assets') return 1;
+	return 2;
+}
+
+/** Sorts the files of one skill by rank, then by path. */
+export function compareSkillFilePriority(left: string, right: string): number {
+	return skillFileRank(left) - skillFileRank(right) || comparePaths(left, right);
+}
+
+export type SkillFileSelectionLimits = {
+	/** The most files of one skill, without SKILL.md. */
+	maxFiles: number;
+	/** The most bytes of one skill. */
+	maxSkillBytes: number;
+	/** The most bytes of all skills together. */
+	maxTotalBytes: number;
+	/** A larger file keeps no bytes, so it does not count. */
+	maxFileBytes: number;
+};
+
+/**
+ * The files whose bytes a reader keeps, from the size of every file. A skill keeps at most
+ * `maxFiles` files and `maxSkillBytes` bytes, so a reader downloads no file that the skill
+ * cannot store. SKILL.md and the Markdown files in `references/` come first for every skill,
+ * because they are what n8n kept before it kept other files. The other files follow in
+ * priority order while the bytes of all skills fit `maxTotalBytes`. A file over
+ * `maxFileBytes` is in the result, so the reader lists it as too large.
+ */
+export function selectSkillFiles(
+	sizes: ReadonlyMap<string, number>,
+	folders: ReadonlySet<string>,
+	limits: SkillFileSelectionLimits,
+): Set<string> {
+	const keep = new Set<string>();
+	const skills = new Map<string, { files: string[]; count: number; bytes: number }>();
+	const relative = (path: string, folder: string) =>
+		folder === '' ? path : path.slice(folder.length + 1);
+	let total = 0;
+	for (const [path, size] of sizes) {
+		const folder = skillFolderOf(path, folders);
+		if (folder === undefined) continue;
+		if (size > limits.maxFileBytes) {
+			keep.add(path);
+			continue;
+		}
+		const skill = skills.get(folder) ?? { files: [], count: 0, bytes: 0 };
+		skills.set(folder, skill);
+		const file = relative(path, folder);
+		if (file === SKILL_FILE) {
+			keep.add(path);
+			total += size;
+		} else if (skillFileRank(file) === 0 && MARKDOWN_FILE.test(file)) {
+			keep.add(path);
+			total += size;
+			skill.count += 1;
+			skill.bytes += size;
+		} else {
+			skill.files.push(path);
+		}
+	}
+	for (const [folder, skill] of skills) {
+		skill.files.sort((left, right) =>
+			compareSkillFilePriority(relative(left, folder), relative(right, folder)),
+		);
+		for (const path of skill.files) {
+			const size = sizes.get(path) ?? 0;
+			if (
+				skill.count >= limits.maxFiles ||
+				skill.bytes + size > limits.maxSkillBytes ||
+				total + size > limits.maxTotalBytes
+			) {
+				continue;
+			}
+			keep.add(path);
+			total += size;
+			skill.count += 1;
+			skill.bytes += size;
+		}
+	}
+	return keep;
 }
 
 /** Whether `path` is `folder` or below it. The empty folder is the root. */

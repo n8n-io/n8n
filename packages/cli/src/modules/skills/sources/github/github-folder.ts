@@ -2,8 +2,13 @@ import { createHash } from 'node:crypto';
 import type { Readable } from 'node:stream';
 import { z } from 'zod';
 
-import { archiveTooLarge, type ArchiveLimits, type RepositoryArchive } from './github-archive';
-import { findSkillFolders, SKILL_FILE } from './skill-discovery';
+import {
+	archiveTooLarge,
+	fileSelectionLimits,
+	type ArchiveLimits,
+	type RepositoryArchive,
+} from './github-archive';
+import { findSkillFolders, selectSkillFiles, SKILL_FILE } from './skill-discovery';
 import { SkillSourceReadError } from '../../errors/skill-source-read.error';
 
 // GitHub limits recursive trees to 7 MB. Leave room for the response envelope.
@@ -75,9 +80,15 @@ export async function readRepositoryFolder(
 		blobs.set(path, { sha: entry.sha, size });
 	}
 	const skillFolders = new Set(findSkillFolders(result.paths, root).folders);
-	// Only fetch files that belong to a skill in the picker.
+	// Each file is one request. Fetch only the files that a skill in the picker can keep. The
+	// other files keep their path, so the review lists them.
+	const keep = selectSkillFiles(
+		new Map([...blobs].map(([path, { size }]) => [path, size])),
+		skillFolders,
+		fileSelectionLimits(limits),
+	);
 	for (const [path, { sha, size }] of blobs) {
-		if (!insideSkill(path, root, skillFolders)) continue;
+		if (!keep.has(path)) continue;
 		const oversized = size > limits.maxFileBytes;
 		if (oversized && !path.endsWith(`/${SKILL_FILE}`)) {
 			result.oversized.set(path, null);
@@ -103,17 +114,6 @@ export async function readRepositoryFolder(
 		);
 	}
 	return result;
-}
-
-function insideSkill(path: string, root: string, skillFolders: ReadonlySet<string>): boolean {
-	for (
-		let slash = path.lastIndexOf('/');
-		slash >= root.length;
-		slash = path.lastIndexOf('/', slash - 1)
-	) {
-		if (skillFolders.has(path.slice(0, slash))) return true;
-	}
-	return false;
 }
 
 async function hashSkill(source: Readable, size: number): Promise<string> {

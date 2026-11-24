@@ -150,8 +150,7 @@ describe('SkillSecurityScanner', () => {
 				max: AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
 				file: 'references/0.md',
 				content: (size: number) => skill({ files: references(1, size) }),
-				detail:
-					'A reference file can have at most 1048576 characters. It has 1048577 characters.',
+				detail: 'A reference file can have at most 1048576 characters. It has 1048577 characters.',
 			},
 			{
 				field: 'referencesTotal',
@@ -279,6 +278,19 @@ describe('SkillSecurityScanner', () => {
 				expect(result).toEqual({ verdict: 'needs_review', findings: [scriptFinding(path)] });
 			},
 		);
+
+		it('flags a text file that starts with #!, whatever its name and folder are', () => {
+			const result = scanner.scan(
+				fetched(
+					withFiles([
+						{ path: 'bin/setup', content: '#!/bin/sh\necho 1' },
+						{ path: 'bin/readme', content: 'Run setup. It starts with #!/bin/sh.' },
+					]),
+				),
+			);
+
+			expect(result).toEqual({ verdict: 'needs_review', findings: [scriptFinding('bin/setup')] });
+		});
 
 		it('passes a skill with only a reference and an asset', () => {
 			const result = scanner.scan(

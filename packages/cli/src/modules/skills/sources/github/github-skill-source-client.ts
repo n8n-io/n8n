@@ -24,6 +24,7 @@ import {
 	DEFAULT_ARCHIVE_LIMITS,
 	archiveSize,
 	archiveTooLarge,
+	fileSelectionLimits,
 	readRepositoryArchive,
 	type ArchiveLimits,
 	type RepositoryArchive,
@@ -39,10 +40,11 @@ import {
 import { lsRefsRequestBody, parseLsRefsResponse, type GitRefs } from './git-refs';
 import {
 	SKILL_FILE,
+	compareSkillFilePriority,
 	filesOfSkill,
 	findSkillFolders,
-	isInSkillFolder,
 	isInside,
+	selectSkillFiles,
 } from './skill-discovery';
 import { SkillParseError } from '../../errors/skill-parse.error';
 import { SkillSourceNotFoundError } from '../../errors/skill-source-not-found.error';
@@ -314,9 +316,12 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		// A file over the size limit has no contents, so it is skipped, not imported empty.
 		const all = filesOfSkill(archive.paths, path);
 		const oversized = all.filter((file) => archive.oversized.has(inRepository(file)));
+		const unread: string[] = [];
 		const files = all.flatMap((file) => {
 			const content = archive.files.get(inRepository(file));
-			return content === undefined ? [] : [{ path: file, content }];
+			if (content !== undefined) return [{ path: file, content }];
+			if (!archive.oversized.has(inRepository(file))) unread.push(file);
+			return [];
 		});
 		const folderName = path.split('/').at(-1) || parsed.repository;
 		try {
@@ -328,23 +333,29 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 				if (tooLarge) oversized.push(file.path);
 				return !tooLarge;
 			});
-			// A skill over the limits of one skill keeps the files that fit, in path order. The
-			// review lists the rest, so the user can still import the skill.
-			const overLimit: string[] = [];
+			// A skill over the limits of one skill keeps the files that fit, in priority order, so
+			// a dependency folder cannot push out the files in `references/`. The review lists
+			// the rest, so the user can still import the skill.
+			const fitting = new Set<string>();
 			let length = 0;
-			let count = 0;
-			content.files = content.files.filter((file) => {
-				const fits =
-					count < AGENT_SKILL_REFERENCE_MAX_COUNT &&
-					length + file.content.length <= AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH;
-				if (fits) {
-					count += 1;
+			const byPriority = [...content.files].sort((left, right) =>
+				compareSkillFilePriority(left.path, right.path),
+			);
+			for (const file of byPriority) {
+				if (
+					fitting.size < AGENT_SKILL_REFERENCE_MAX_COUNT &&
+					length + file.content.length <= AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH
+				) {
+					fitting.add(file.path);
 					length += file.content.length;
-				} else {
-					overLimit.push(file.path);
 				}
-				return fits;
-			});
+			}
+			// A reader that chose its files gave the other files a path and no bytes.
+			const overLimit = [
+				...unread,
+				...content.files.flatMap((file) => (fitting.has(file.path) ? [] : [file.path])),
+			];
+			content.files = content.files.filter((file) => fitting.has(file.path));
 			return {
 				content,
 				revision: sha,
@@ -560,26 +571,35 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 					headers: bearer(auth),
 				}
 			: { url: `https://codeload.${GITHUB_HOST}/${o}/${r}/tar.gz/${s}` };
-		const deadline = new AbortController();
-		const timer = setTimeout(() => deadline.abort(), DOWNLOAD_MS);
-		const read = async (options: Parameters<typeof readRepositoryArchive>[1]) =>
-			await readRepositoryArchive(await this.sendStream(target, auth, deadline.signal), {
-				...options,
-				signal: deadline.signal,
-				limits: this.archiveLimits,
-			});
-		try {
-			const whole = await read({ onRetainedOverflow: 'paths' });
-			if (!whole.overflowed) return whole;
-			// The repository holds more than n8n keeps, but a skill needs only its own folder.
-			// The first read gave every path, so a second read keeps the files of the skills.
-			const folders = new Set(findSkillFolders(whole.paths, '').folders);
-			return await read({ keep: (path) => isInSkillFolder(path, folders) });
-		} finally {
-			clearTimeout(timer);
-			// Frees the connection when the read stopped early.
-			deadline.abort();
-		}
+		// Each read has its own deadline, so a second read does not start with the time that the
+		// first one left.
+		const read = async (options: Parameters<typeof readRepositoryArchive>[1]) => {
+			const deadline = new AbortController();
+			const timer = setTimeout(() => deadline.abort(), DOWNLOAD_MS);
+			try {
+				return await readRepositoryArchive(await this.sendStream(target, auth, deadline.signal), {
+					...options,
+					signal: deadline.signal,
+					limits: this.archiveLimits,
+				});
+			} finally {
+				clearTimeout(timer);
+				// Frees the connection when the read stopped early.
+				deadline.abort();
+			}
+		};
+		const { overflowed, sizes, ...whole } = await read({ onRetainedOverflow: 'paths' });
+		if (!overflowed) return whole;
+		// The repository holds more than n8n keeps. The first read gave the path and the size of
+		// every file, so a second read keeps the files that the skills can store. The other
+		// files keep their path, and the review lists them.
+		const keep = selectSkillFiles(
+			sizes,
+			new Set(findSkillFolders(whole.paths, '').folders),
+			fileSelectionLimits(this.archiveLimits),
+		);
+		const { paths, files, oversized } = await read({ keep: (path) => keep.has(path) });
+		return { paths, files, oversized };
 	}
 
 	private async sendStream(

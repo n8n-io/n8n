@@ -460,6 +460,29 @@ describe('GitHubSkillSourceClient', () => {
 	);
 
 	describe('a skill over the limits of one skill', () => {
+		it('keeps the files in references before the files of a dependency folder', async () => {
+			const files: Record<string, string> = {
+				'big/SKILL.md': skillMd('big'),
+				'big/references/api.md': '# API\n',
+				'big/scripts/run.py': 'print(1)\n',
+			};
+			for (let index = 0; index < 500; index += 1) {
+				files[`big/node_modules/pkg/${String(index).padStart(3, '0')}.js`] = 'x';
+			}
+			github.push('acme/skills', files);
+			const locator = await client.parseLocator('https://github.com/acme/skills');
+
+			const fetched = await client.fetchLatest(locator, { path: 'big' });
+
+			const kept = fetched.content.files.map((file) => file.path);
+			expect(kept).toHaveLength(AGENT_SKILL_REFERENCE_MAX_COUNT);
+			expect(kept).toEqual(expect.arrayContaining(['references/api.md', 'scripts/run.py']));
+			expect(fetched.overLimitFiles).toEqual([
+				'node_modules/pkg/498.js',
+				'node_modules/pkg/499.js',
+			]);
+		});
+
 		it('keeps the first 500 files in path order and lists the rest', async () => {
 			const files: Record<string, string> = { 'big/SKILL.md': skillMd('big') };
 			for (let index = 0; index < 501; index += 1) {
@@ -570,6 +593,27 @@ describe('GitHubSkillSourceClient', () => {
 			expect(tooDeep).toBe(1);
 			expect(fetched.content.files).toEqual([{ path: 'vendor/guide.txt', content: guide }]);
 			expect(github.requests.files).toBe(2);
+		});
+
+		it('fetches only the files that one skill can keep, and lists the others', async () => {
+			const files: Record<string, string> = {
+				'skills/pdf/SKILL.md': skillMd('pdf'),
+				'skills/pdf/references/api.md': '# API\n',
+			};
+			for (let index = 0; index < 600; index += 1) {
+				files[`skills/pdf/node_modules/pkg/${String(index).padStart(3, '0')}.js`] = 'x';
+			}
+			github.push('acme/skills', files);
+			const locator = await client.parseLocator('https://github.com/acme/skills/tree/main/skills');
+
+			const { items, revision } = await client.discover(locator);
+			const fetched = await client.fetchLatest(locator, items[0], undefined, revision);
+
+			// SKILL.md and 500 files, not the 602 files of the folder.
+			expect(github.requests.files).toBe(AGENT_SKILL_REFERENCE_MAX_COUNT + 1);
+			expect(fetched.content.files).toHaveLength(AGENT_SKILL_REFERENCE_MAX_COUNT);
+			expect(fetched.content.files.map((file) => file.path)).toContain('references/api.md');
+			expect(fetched.overLimitFiles).toHaveLength(101);
 		});
 
 		it('fetches a known skill path outside the discovery depth on demand', async () => {
@@ -771,6 +815,34 @@ describe('GitHubSkillSourceClient', () => {
 			// One read for the paths, and one that keeps the files of the skills.
 			expect(github.requests.archives).toBe(2);
 			expect(github.requests.trees).toBe(0);
+		});
+
+		it('imports a skill at the repository root that is over the budget, and lists the files it leaves out', async () => {
+			const reference = '# API\n';
+			const files: Record<string, string> = {
+				'SKILL.md': skillMd('root'),
+				'references/api.md': reference,
+			};
+			for (let index = 0; index < 30; index += 1) files[`src/file-${index}.ts`] = 'x'.repeat(10);
+			github.push('acme/one-skill', files);
+			// Room for SKILL.md, the reference and two source files.
+			const small = clientWithLimits({
+				maxRetainedBytes: skillMd('root').length + reference.length + 25,
+			});
+			const locator = await small.parseLocator('https://github.com/acme/one-skill');
+
+			const { items } = await small.discover(locator);
+			const fetched = await small.fetchLatest(locator, items[0]);
+
+			expect(items).toEqual([{ path: '' }]);
+			expect(fetched.content.files.map((file) => file.path)).toEqual([
+				'references/api.md',
+				'src/file-0.ts',
+				'src/file-1.ts',
+			]);
+			expect(fetched.overLimitFiles).toHaveLength(28);
+			expect(fetched.skippedFiles).toEqual(fetched.overLimitFiles);
+			expect(github.requests.archives).toBe(2);
 		});
 
 		it('counts the paths and text of a cached archive in the cache size', async () => {

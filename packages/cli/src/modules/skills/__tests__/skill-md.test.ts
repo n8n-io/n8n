@@ -182,6 +182,24 @@ describe('readSkillFolder', () => {
 			]);
 		});
 
+		it('keeps a file with a text name as text when it has a byte that is not UTF-8', () => {
+			// 0x92 is a quote in Windows-1252.
+			const quote = Buffer.from([0x49, 0x74, 0x92, 0x73]);
+			const { content } = readSkillFolder('brand-voice', [
+				{ path: 'SKILL.md', content: Buffer.concat([Buffer.from(String(SKILL.content)), quote]) },
+				{ path: 'assets/data.bin', content: quote },
+				{ path: 'references/guide.md', content: quote },
+				{ path: 'references/nul.md', content: Buffer.from([0x41, 0]) },
+			]);
+
+			expect(content.instructions).toContain('It\uFFFDs');
+			expect(content.files).toEqual([
+				{ path: 'assets/data.bin', content: quote.toString('base64'), isBinary: true },
+				{ path: 'references/guide.md', content: 'It\uFFFDs' },
+				{ path: 'references/nul.md', content: 'QQA=', isBinary: true },
+			]);
+		});
+
 		it('preserves binary bytes, empty files, and the line endings of a script', () => {
 			const input = Buffer.from([0, 0xff, 0xfe, 10]);
 			const { content, skippedFiles } = readSkillFolder('brand-voice', [

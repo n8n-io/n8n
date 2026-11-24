@@ -1,9 +1,13 @@
-import { AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH } from '@n8n/api-types';
+import {
+	AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
+	AGENT_SKILL_REFERENCE_MAX_COUNT,
+	AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH,
+} from '@n8n/api-types';
 import type { Readable } from 'node:stream';
 import { createHash } from 'node:crypto';
 import { Parser, type ReadEntry } from 'tar';
 
-import { isInside, SKILL_FILE } from './skill-discovery';
+import { isInside, SKILL_FILE, type SkillFileSelectionLimits } from './skill-discovery';
 import { SkillSourceReadError } from '../../errors/skill-source-read.error';
 
 export type ArchiveLimits = {
@@ -27,6 +31,18 @@ export const DEFAULT_ARCHIVE_LIMITS: ArchiveLimits = {
 	// One UTF-16 code unit can use up to three bytes in UTF-8.
 	maxFileBytes: 3 * AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
 };
+
+/** The limits for the choice of the files that a reader keeps. Sizes are bytes before decoding. */
+export function fileSelectionLimits(limits: ArchiveLimits): SkillFileSelectionLimits {
+	return {
+		maxFiles: AGENT_SKILL_REFERENCE_MAX_COUNT,
+		// A skill stores this many characters, and one character can use three bytes. The rest
+		// is room for a file that the size check of one file leaves out after the read.
+		maxSkillBytes: 4 * AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH,
+		maxTotalBytes: limits.maxRetainedBytes,
+		maxFileBytes: limits.maxFileBytes,
+	};
+}
 
 /**
  * The files of a repository folder at one commit. Every file keeps its path, so the picker can
@@ -77,7 +93,7 @@ export async function readRepositoryArchive(
 		 */
 		onRetainedOverflow?: 'fail' | 'paths';
 	} = {},
-): Promise<RepositoryArchive & { overflowed: boolean }> {
+): Promise<RepositoryArchive & { overflowed: boolean; sizes: Map<string, number> }> {
 	const {
 		root = '',
 		signal,
@@ -87,6 +103,8 @@ export async function readRepositoryArchive(
 	} = options;
 	let overflowed = false;
 	const paths: string[] = [];
+	// The size of every file, so the caller can choose the files of a second read.
+	const sizes = new Map<string, number>();
 	const files = new Map<string, Buffer>();
 	const oversized = new Map<string, string | null>();
 	let downloaded = 0;
@@ -132,6 +150,7 @@ export async function readRepositoryArchive(
 				return;
 			}
 			paths.push(path);
+			sizes.set(path, entry.size);
 			if (overflowed || !keep(path)) {
 				entry.resume();
 				return;
@@ -174,7 +193,7 @@ export async function readRepositoryArchive(
 		parser.on('end', () => {
 			if (settled) return;
 			settle();
-			resolve({ paths, files, oversized, overflowed });
+			resolve({ paths, files, oversized, overflowed, sizes });
 		});
 
 		source.on('data', (chunk: Buffer) => {

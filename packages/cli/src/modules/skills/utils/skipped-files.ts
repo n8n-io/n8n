@@ -42,6 +42,14 @@ export function isScriptFile(path: string): boolean {
 	return SCRIPT_FILE.test(path);
 }
 
+const TEXT_FILE =
+	/\.(?:md|markdown|txt|json|ya?ml|toml|xml|html?|css|csv|tsv|ini|cfg|conf|env|svg)$/i;
+
+/** Whether the name says that the file holds text for a reader, such as Markdown or JSON. */
+export function isTextFile(path: string): boolean {
+	return TEXT_FILE.test(path);
+}
+
 /**
  * The extensions that telemetry reports by name: scripts, and common file types that a skill
  * folder can hold. Any other suffix can hold part of a file name, so it goes to `other`.

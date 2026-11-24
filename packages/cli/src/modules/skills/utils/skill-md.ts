@@ -4,6 +4,7 @@ import { isUtf8 } from 'node:buffer';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 
 import { compareSkillFilePaths, type SkillContent } from './skill-content-hash';
+import { isTextFile } from './skipped-files';
 import { SkillParseError } from '../errors/skill-parse.error';
 
 /** One file of a skill folder. The path is relative to the folder. */
@@ -11,7 +12,7 @@ export type SkillFolderFile = { path: string; content: string | Buffer };
 
 export const SKILL_MD = 'SKILL.md';
 
-const MARKDOWN_FILE = /\.(?:md|markdown)$/i;
+export const MARKDOWN_FILE = /\.(?:md|markdown)$/i;
 
 /**
  * One skill folder to the content of one skill. The reader is lenient. It keeps every
@@ -19,8 +20,9 @@ const MARKDOWN_FILE = /\.(?:md|markdown)$/i;
  * n8n does not know.
  * Keeps other files at their original relative paths. Files with invalid paths are left out.
  * A Markdown file loses its byte order mark and gets LF line endings, as before n8n kept
- * other files, so a skill that n8n synced earlier shows no update. Every other file keeps
- * its bytes, because a script can depend on them.
+ * other files, so a skill that n8n synced earlier shows no update. Every other text file
+ * keeps its bytes, because a script can depend on them. A file that is not UTF-8 text is
+ * stored as Base64, unless its name says that it is text.
  */
 export function readSkillFolder(
 	folderName: string,
@@ -34,9 +36,6 @@ export function readSkillFolder(
 	}
 	const skillFile = sorted.find((file) => file.path === SKILL_MD);
 	if (!skillFile) throw new SkillParseError('The folder has no SKILL.md.');
-	if (Buffer.isBuffer(skillFile.content) && !isUtf8(skillFile.content)) {
-		throw new SkillParseError('SKILL.md must use UTF-8 text.');
-	}
 	const { data, instructions } = parseSkillMd(skillFile.content.toString());
 	const kept: SkillContent['files'] = [];
 	const skippedFiles: string[] = [];
@@ -47,7 +46,10 @@ export function readSkillFolder(
 			continue;
 		}
 		const bytes = Buffer.isBuffer(content) ? content : Buffer.from(content);
-		if (!isUtf8(bytes) || bytes.includes(0)) {
+		// A file with a text name stays text when some bytes are not UTF-8. The decoder writes
+		// U+FFFD for each of them, as before n8n kept other files, so an agent can still read
+		// the file. Postgres cannot store NUL in text, so a file with NUL is binary.
+		if (bytes.includes(0) || (!isUtf8(bytes) && !isTextFile(path))) {
 			kept.push({ path, content: bytes.toString('base64'), isBinary: true });
 			continue;
 		}
