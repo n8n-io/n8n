@@ -15,8 +15,14 @@ const parameter = (name: string, overrides: Partial<ApiParameter> = {}): ApiPara
 	...overrides,
 });
 
-const row = (operationId: string, overrides: Partial<SpecOperation> = {}): OperationRow => ({
+const row = (
+	operationId: string,
+	overrides: Partial<SpecOperation> = {},
+	fields: OperationRow['fields'] = {},
+): OperationRow => ({
 	resource: { id: 'workflow', displayName: 'Workflow' },
+	isDefault: false,
+	fields,
 	operation: {
 		operationId,
 		summary: `Summary of ${operationId}`,
@@ -180,7 +186,7 @@ describe('buildProperties', () => {
 		});
 	});
 
-	it('should give a paginated operation Return All and Limit, and send its query on each page', () => {
+	it('should give a paginated operation Return All and a Limit of at least 1, and send its query on each page', () => {
 		const [, operation, returnAll, limit, collection] = build(
 			row('getWorkflows', {
 				paginated: true,
@@ -216,10 +222,22 @@ describe('buildProperties', () => {
 		expect(limit).toMatchObject({
 			name: 'limit',
 			default: 100,
-			typeOptions: { maxValue: 250 },
+			description: 'Max number of results to return',
+			typeOptions: { minValue: 1, maxValue: 250 },
 			displayOptions: { show: { returnAll: [false] } },
 		});
 		expect(collection.options).toEqual([expect.objectContaining({ name: 'name' })]);
+	});
+
+	it('should keep a limit minimum from the spec that is above 1', () => {
+		const [, , , limit] = build(
+			row('getWorkflows', {
+				paginated: true,
+				parameters: [parameter('limit', { schema: { type: 'number', default: 100, minimum: 10 } })],
+			}),
+		);
+
+		expect(limit.typeOptions).toEqual({ minValue: 10 });
 	});
 
 	it('should show a required limit of a paginated operation once, as a required field, when Return All is off', () => {
@@ -308,12 +326,130 @@ describe('buildProperties', () => {
 		);
 
 		expect(choicesOf(operation)[0]).toMatchObject({
-			name: 'Publish a workflow (deprecated)',
+			name: 'Publish a Workflow (Deprecated)',
 			action: 'Publish a workflow (deprecated)',
 		});
 	});
 
+	it('should select the default resource and the default operation of each resource', () => {
+		const properties = buildProperties(
+			[
+				row('archiveWorkflow'),
+				{ ...row('getWorkflows'), isDefault: true },
+				{ ...row('getTag'), resource: { id: 'tag', displayName: 'Tag' }, isDefault: true },
+			],
+			N8N_NODE_CONFIG.spec,
+			'workflow',
+		);
+
+		expect(
+			properties
+				.filter(({ name }) => name === 'resource' || name === 'operation')
+				.map((property) => property.default),
+		).toEqual(['workflow', 'getWorkflows', 'getTag']);
+	});
+
+	it('should write the display names and the operation names in title case, with ID in upper case', () => {
+		const [, operation, versionId] = build(
+			row('getWorkflowVersion', {
+				summary: 'Retrieve a workflow version',
+				parameters: [parameter('workflowVersionId', { required: true })],
+			}),
+		);
+
+		expect(choicesOf(operation)[0]).toMatchObject({
+			name: 'Retrieve a Workflow Version',
+			action: 'Retrieve a workflow version',
+		});
+		expect(versionId.displayName).toBe('Workflow Version ID');
+	});
+
 	it('should build no properties when the node has no operations', () => {
 		expect(build()).toEqual([]);
+	});
+
+	it('should put a field override over the generated field, in the required fields and in Options', () => {
+		const properties = build(
+			row(
+				'getWorkflow',
+				{
+					apiPath: '/workflows/{workflowId}',
+					parameters: [
+						parameter('workflowId', { location: 'path', required: true }),
+						parameter('excludePinnedData', { schema: { type: 'boolean' } }),
+					],
+				},
+				{
+					workflowId: { displayName: 'Workflow', description: 'Workflow to get' },
+					excludePinnedData: { displayName: 'Exclude Pinned Data', default: true },
+				},
+			),
+		);
+
+		expect(named(properties, 'workflowId')).toEqual({
+			displayName: 'Workflow',
+			name: 'workflowId',
+			type: 'string',
+			default: '',
+			description: 'Workflow to get',
+			required: true,
+			displayOptions: { show: { resource: ['workflow'], operation: ['getWorkflow'] } },
+		});
+		expect(named(properties, 'options')?.options).toEqual([
+			expect.objectContaining({
+				displayName: 'Exclude Pinned Data',
+				name: 'excludePinnedData',
+				type: 'boolean',
+				default: true,
+				routing: { send: { type: 'query', property: 'excludePinnedData' } },
+			}),
+		]);
+	});
+
+	it('should send the method from the operation and the URL from the resource locator path field', () => {
+		const properties = build(
+			row(
+				'getWorkflowVersion',
+				{
+					apiPath: '/workflows/{workflowId}/versions/{workflowVersionId}',
+					parameters: [
+						parameter('workflowId', { location: 'path', required: true }),
+						parameter('workflowVersionId', { location: 'path', required: true }),
+					],
+				},
+				{ workflowId: { type: 'resourceLocator', default: { mode: 'list', value: '' } } },
+			),
+		);
+
+		expect(choicesOf(named(properties, 'operation'))[0].routing?.request).toEqual({
+			method: 'GET',
+		});
+		expect(named(properties, 'workflowId')?.routing).toEqual({
+			request: {
+				url: '=/workflows/{{ toPathSegment($value) }}/versions/{{ toPathSegment($parameter["workflowVersionId"]) }}',
+			},
+		});
+		expect(named(properties, 'workflowVersionId')?.routing).toBeUndefined();
+	});
+
+	it('should send a resource locator field outside the path like any other field', () => {
+		const properties = build(
+			row(
+				'getExecutions',
+				{ apiPath: '/executions', parameters: [parameter('workflowId')] },
+				{ workflowId: { type: 'resourceLocator', default: { mode: 'list', value: '' } } },
+			),
+		);
+
+		expect(choicesOf(named(properties, 'operation'))[0].routing?.request).toEqual({
+			method: 'GET',
+			url: '/executions',
+		});
+		expect(named(properties, 'options')?.options).toEqual([
+			expect.objectContaining({
+				type: 'resourceLocator',
+				routing: { send: { type: 'query', property: 'workflowId' } },
+			}),
+		]);
 	});
 });

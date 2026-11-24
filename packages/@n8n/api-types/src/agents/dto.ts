@@ -835,11 +835,26 @@ export const lowercaseUuidSchema = z
 	.refine((value) => value === value.toLowerCase(), { message: 'The UUID must be lowercase' });
 
 /**
+ * Raised character limit for chat surfaces where users paste long,
+ * externally-drafted prompts (agent builder, Assistant). The system agent
+ * chat routes enforce it on the backend.
+ */
+export const EXTENDED_PROMPT_MAX_LENGTH = 25_000;
+
+const systemAgentMessageSchema = z
+	.string()
+	.max(
+		EXTENDED_PROMPT_MAX_LENGTH,
+		`Message must be ${EXTENDED_PROMPT_MAX_LENGTH} characters or fewer`,
+	);
+
+/**
  * A system agent session ID is a lowercase UUID. System agents derive
  * resource names, such as sandbox names, from it.
  */
 const systemAgentChatMessageShape = {
 	...agentChatMessageShape,
+	message: systemAgentMessageSchema,
 	sessionId: lowercaseUuidSchema.optional(),
 };
 
@@ -870,8 +885,9 @@ export class AgentChatMessageDto extends Z.class(agentChatMessageShape) {
 
 /**
  * The chat message of a system agent. Same as {@link AgentChatMessageDto},
- * but the session ID must be a lowercase UUID. Validate via `parse`/`safeParse`,
- * for the same reason as `AgentChatMessageDto`.
+ * but the session ID must be a lowercase UUID and the message has a maximum
+ * length. Validate via `parse`/`safeParse`, for the same reason as
+ * `AgentChatMessageDto`.
  */
 export class SystemAgentChatMessageDto extends Z.class(systemAgentChatMessageShape) {
 	constructor(data: z.infer<typeof systemAgentChatMessageSchema>) {
@@ -889,6 +905,11 @@ export class SystemAgentChatMessageDto extends Z.class(systemAgentChatMessageSha
 
 export class AgentChatQueueUpdateDto extends Z.class({
 	message: z.string(),
+}) {}
+
+/** Same as {@link AgentChatQueueUpdateDto}, with the system agent message limit. */
+export class SystemAgentChatQueueUpdateDto extends Z.class({
+	message: systemAgentMessageSchema,
 }) {}
 
 export class AgentChatQueueSteerDto extends Z.class({

@@ -278,6 +278,15 @@ describe('AgentSessionTimelineView', () => {
 		expect(wrapper.findComponent(AgentSessionTimelineHeader).props('metadata')).toEqual({
 			trigger: { source: null, icon: 'bolt-filled', label: '' },
 			totalTokens: 30,
+			// The loaded executions record no tokens of their own.
+			usage: {
+				inputTokens: 0,
+				cacheReadTokens: null,
+				cacheWriteTokens: null,
+				outputTokens: 0,
+				totalTokens: 0,
+				turns: 0,
+			},
 			totalCost: 0.5,
 			durationLabel: '1.5s',
 		});

@@ -6527,6 +6527,29 @@ describe('TelemetryEventRelay', () => {
 			).toBeNull();
 		});
 
+		it('should track a review a user closed with the closer and the reviewed version', () => {
+			eventService.emit('workflow-review-closed-by-user', {
+				user: { id: 'user123' },
+				workflowReviewRequestId: 'review-1',
+				workflowId: 'wf-1',
+				workflowVersionId: 'ver-1',
+			});
+
+			const payload = {
+				user_id: 'user123',
+				workflow_review_request_id: 'review-1',
+				workflow_id: 'wf-1',
+				workflow_version_id: 'ver-1',
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_CLOSED_WORKFLOW_REVIEW,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_CLOSED_WORKFLOW_REVIEW.getValidationError(payload),
+			).toBeNull();
+		});
+
 		it('should track a comment on a review, never its body', () => {
 			eventService.emit('workflow-review-comment-created', {
 				user: { id: 'user123' },
@@ -6893,6 +6916,8 @@ describe('TelemetryEventRelay', () => {
 					projectId: 'project-1',
 					versionId: 'v-2',
 					userId: 'user-1',
+					threadId: 'thread-1',
+					source: 'assistant',
 					workflowCount: 1,
 					dataTableCount: 2,
 					agentCount: 0,
@@ -6905,6 +6930,8 @@ describe('TelemetryEventRelay', () => {
 					project_id: 'project-1',
 					version_id: 'v-2',
 					user_id: 'user-1',
+					thread_id: 'thread-1',
+					source: 'assistant',
 					workflow_count: 1,
 					data_table_count: 2,
 					agent_count: 0,

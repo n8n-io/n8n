@@ -5,6 +5,8 @@ import { DataSource, type EntityManager, In, QueryFailedError, Repository } from
 import { UnexpectedError } from '@n8n/errors';
 import chunk from 'lodash/chunk';
 
+import { buildStatisticsDeltaClaimQuery } from './statistics-delta';
+
 import {
 	ProjectRelation,
 	Role,
@@ -188,12 +190,24 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 		);
 	}
 
+	async rollupIncrementsInContext(ctx: OperationContext, batchSize: number) {
+		const manager = ctx.trx ? entityManagerOf(ctx.trx) : this.manager;
+		return await this.rollupIncrements(manager, batchSize);
+	}
+
 	async rollupIncrements(
 		manager: EntityManager,
 		batchSize: number,
 	): Promise<{ increments: number; firstOccurrences: FirstOccurrenceRow[] }> {
 		const stats = this.manager.connection.driver.escape(this.metadata.tableName);
 		const delta = this.deltaTableName();
+		const claimBatch = buildStatisticsDeltaClaimQuery(delta, [
+			'"workflowId"',
+			'"name"',
+			'"rootCountDelta"',
+			'"createdAt"',
+			'"workflowName"',
+		]);
 
 		/**
 		 * Query walkthrough
@@ -208,9 +222,7 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 		 */
 		const rows = await manager.query<FoldRow[]>(
 			`WITH batch AS (
-				DELETE FROM ${delta}
-				WHERE id IN (SELECT id FROM ${delta} ORDER BY id LIMIT $1)
-				RETURNING "workflowId", "name", "rootCountDelta", "createdAt", "workflowName"
+				${claimBatch}
 			),
 			agg AS (
 				SELECT "workflowId", "name",

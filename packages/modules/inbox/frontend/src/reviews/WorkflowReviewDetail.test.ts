@@ -34,11 +34,11 @@ const renderComponent = createComponentRenderer(WorkflowReviewDetail, {
 	global: {
 		stubs: {
 			WorkflowReviewDecisionPopover: {
-				props: ['deciding', 'viewerCanDecide', 'viewerCanComment', 'ineligibilityHint'],
+				props: ['deciding', 'viewerCanDecide', 'viewerCanClose', 'ineligibilityHint'],
 				template: `<div data-test-id="workflow-review-decision-popover" :data-deciding="deciding">
     <button data-test-id="approve-review" @click="$emit('decide', { decision: 'approved' })" />
+    <button data-test-id="close-review" @click="$emit('close')" />
     <button data-test-id="request-changes" @click="$emit('decide', { decision: 'changes_requested', note: 'needs work' })" />
-    <button data-test-id="comment-posted" @click="$emit('comment-posted')" />
    </div>`,
 			},
 		},
@@ -71,6 +71,7 @@ beforeEach(() => {
 	reviewStore.fetchDetail.mockResolvedValue(undefined);
 	reviewStore.detail = createDetail();
 	reviewStore.decideOnReview.mockResolvedValue(decisionResponse());
+	reviewStore.closeReview.mockResolvedValue(decisionResponse({ decision: 'pending' }));
 	activityStore = mockedStore(useReviewActivityStore);
 	activityStore.currentReviewId = 'req-1';
 	activityStore.fetchFeed.mockResolvedValue(undefined);
@@ -188,16 +189,40 @@ describe('review decisions', () => {
 		expect(showMessage).not.toHaveBeenCalled();
 		expect(reviewStore.fetchDetail).not.toHaveBeenCalled();
 	});
-	it('shows an error toast when the decision fails', async () => {
+	it('closes the selected review and reloads it', async () => {
+		const { getByTestId } = renderComponent();
+		await waitAllPromises();
+		reviewStore.fetchDetail.mockClear();
+		activityStore.fetchFeed.mockClear();
+
+		getByTestId('close-review').click();
+		await waitAllPromises();
+
+		expect(reviewStore.closeReview).toHaveBeenCalledWith('req-1');
+		expect(onItemChange).toHaveBeenCalledWith({
+			type: 'workflow_review',
+			id: 'req-1',
+			state: 'closed',
+			decision: 'pending',
+			updatedAt: '2024-01-02T00:00:00.000Z',
+		});
+		expect(reviewStore.fetchDetail).toHaveBeenCalledWith('req-1');
+		expect(activityStore.fetchFeed).toHaveBeenCalledWith('req-1');
+		expect(showMessage).not.toHaveBeenCalled();
+	});
+	it.each([
+		['decision', 'approve-review', 'decideOnReview', 'Could not submit review decision'],
+		['close', 'close-review', 'closeReview', 'Could not close review'],
+	] as const)('shows an error toast when the %s fails', async (_label, button, action, title) => {
 		const error = new Error('forbidden');
-		reviewStore.decideOnReview.mockRejectedValueOnce(error);
+		reviewStore[action].mockRejectedValueOnce(error);
 
 		const { getByTestId } = renderComponent();
 		await waitAllPromises();
-		getByTestId('approve-review').click();
+		getByTestId(button).click();
 		await waitAllPromises();
 
-		expect(showError).toHaveBeenCalledWith(error, 'Could not submit review decision');
+		expect(showError).toHaveBeenCalledWith(error, title);
 	});
 	it('refreshes detail and activity and reports a failed decision', async () => {
 		reviewStore.decideOnReview.mockRejectedValueOnce(new Error('conflict'));
@@ -642,6 +667,7 @@ function createDetail(
 		viewerCanDecide: true,
 		viewerDecisionIneligibilityReason: null,
 		viewerCanComment: true,
+		viewerCanClose: true,
 		...overrides,
 	};
 }

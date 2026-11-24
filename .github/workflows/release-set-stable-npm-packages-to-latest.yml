@@ -15,11 +15,14 @@ jobs:
     environment: release
 
     steps:
-      - name: Checkout
+      - name: Checkout release tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Checkout stable release
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: refs/tags/stable
-          fetch-depth: 1
+          path: stable-release
 
       - name: Setup NodeJS
         uses: ./.github/actions/setup-nodejs
@@ -29,6 +32,7 @@ jobs:
           cache-dependency-path: .github/scripts/pnpm-lock.yaml
 
       - name: Set npm packages to latest
-        run: node ./.github/scripts/set-latest-for-monorepo-packages.mjs
+        working-directory: stable-release
+        run: node ../.github/scripts/set-latest-for-monorepo-packages.mjs
         env:
           NPM_TOKEN: ${{ secrets.NPM_DIST_TAG_AND_INITIAL_PUBLISH_TOKEN }}
