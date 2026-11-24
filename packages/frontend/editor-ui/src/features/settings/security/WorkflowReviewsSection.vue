@@ -122,7 +122,7 @@ async function persistAlwaysRequired(selected: SelectValue | undefined): Promise
 }
 
 function openProjects() {
-	void router.push({ name: VIEWS.SECURITY_WORKFLOW_REVIEW_PROJECTS });
+	void router.push({ name: VIEWS.SECURITY_WORKFLOW_REVIEW_INSTANCE_SETTINGS });
 }
 
 function confirmDisable() {
@@ -186,7 +186,7 @@ function confirmDisable() {
 				<template #info>
 					<N8nText :bold="true">{{ i18n.baseText('generic.projects') }}</N8nText>
 					<N8nText size="small" color="text-light">
-						{{ i18n.baseText('settings.security.workflowReviews.projects.description') }}
+						{{ i18n.baseText('settings.security.workflowReviews.instanceSettings.description') }}
 					</N8nText>
 				</template>
 				<template #action>

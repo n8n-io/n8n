@@ -88,7 +88,7 @@ export async function updateProjectWorkflowReviewSettings(
 	);
 }
 
-export async function getWorkflowReviewProjects(
+export async function getWorkflowReviewInstanceSettings(
 	context: IRestApiContext,
 	query: { skip: number; take: number; search?: string; requiredByInstance?: boolean },
 ): Promise<WorkflowReviewInstanceSettingsList> {
@@ -100,7 +100,7 @@ export async function getWorkflowReviewProjects(
 	);
 }
 
-export async function updateWorkflowReviewProject(
+export async function updateWorkflowReviewInstanceSettings(
 	context: IRestApiContext,
 	projectId: string,
 	payload: UpdateWorkflowReviewInstanceSettingsDto,

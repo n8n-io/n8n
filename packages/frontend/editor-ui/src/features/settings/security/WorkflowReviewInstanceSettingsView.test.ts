@@ -12,14 +12,16 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { EnterpriseEditionFeature } from '@/app/constants';
-import WorkflowReviewProjectsView from './WorkflowReviewProjectsView.vue';
+import WorkflowReviewInstanceSettingsView from './WorkflowReviewInstanceSettingsView.vue';
 
-const getWorkflowReviewProjects = vi.fn();
-const updateWorkflowReviewProject = vi.fn();
+const getWorkflowReviewInstanceSettings = vi.fn();
+const updateWorkflowReviewInstanceSettings = vi.fn();
 
 vi.mock('@/features/workflow-reviews/workflowReviews.api', () => ({
-	getWorkflowReviewProjects: (...args: unknown[]) => getWorkflowReviewProjects(...args),
-	updateWorkflowReviewProject: (...args: unknown[]) => updateWorkflowReviewProject(...args),
+	getWorkflowReviewInstanceSettings: (...args: unknown[]) =>
+		getWorkflowReviewInstanceSettings(...args),
+	updateWorkflowReviewInstanceSettings: (...args: unknown[]) =>
+		updateWorkflowReviewInstanceSettings(...args),
 }));
 
 vi.mock('vue-router', async (importOriginal) => ({
@@ -37,7 +39,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: {} }),
 }));
 
-const renderView = createComponentRenderer(WorkflowReviewProjectsView, {
+const renderView = createComponentRenderer(WorkflowReviewInstanceSettingsView, {
 	pinia: createTestingPinia({ stubActions: false }),
 });
 
@@ -63,7 +65,7 @@ function projectList(
 
 /** Serves the list and the saves from `stored`, so a reload reads what a save wrote. */
 function serveStoredProjects(stored: WorkflowReviewInstanceSettingsProject[]) {
-	getWorkflowReviewProjects.mockImplementation(
+	getWorkflowReviewInstanceSettings.mockImplementation(
 		async (_context, query: { skip: number; take: number; requiredByInstance?: boolean }) => {
 			const matches = stored.filter(
 				(row) =>
@@ -75,7 +77,7 @@ function serveStoredProjects(stored: WorkflowReviewInstanceSettingsProject[]) {
 			});
 		},
 	);
-	updateWorkflowReviewProject.mockImplementation(
+	updateWorkflowReviewInstanceSettings.mockImplementation(
 		async (_context, projectId: string, { requiredByInstance }) => {
 			const row = stored.find(({ id }) => id === projectId)!;
 			row.requiredByInstance = requiredByInstance;
@@ -99,11 +101,11 @@ function setInstancePolicy(alwaysRequired: boolean) {
 	} as FrontendSettings;
 }
 
-describe('WorkflowReviewProjectsView', () => {
+describe('WorkflowReviewInstanceSettingsView', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		setInstancePolicy(false);
-		getWorkflowReviewProjects.mockResolvedValue(
+		getWorkflowReviewInstanceSettings.mockResolvedValue(
 			projectList([
 				project({ id: 'p1', name: 'Alpha', requiredByInstance: true }),
 				project({ id: 'p2', name: 'Beta' }),
@@ -119,7 +121,7 @@ describe('WorkflowReviewProjectsView', () => {
 	});
 
 	it('shows Required by project admin on a Not required row whose project opted in', async () => {
-		getWorkflowReviewProjects.mockResolvedValue(
+		getWorkflowReviewInstanceSettings.mockResolvedValue(
 			projectList([project({ id: 'p2', name: 'Beta', requiredByProject: true })]),
 		);
 		const { findByText } = renderView();
@@ -138,7 +140,7 @@ describe('WorkflowReviewProjectsView', () => {
 		await userEvent.click(await approvalSelect('Beta'));
 		await userEvent.click(await screen.findByRole('option', { name: 'Required' }));
 
-		expect(updateWorkflowReviewProject).toHaveBeenCalledWith(expect.anything(), 'p2', {
+		expect(updateWorkflowReviewInstanceSettings).toHaveBeenCalledWith(expect.anything(), 'p2', {
 			requiredByInstance: true,
 		});
 		await waitFor(() =>
@@ -150,7 +152,7 @@ describe('WorkflowReviewProjectsView', () => {
 	});
 
 	it('keeps the previous option when the save fails', async () => {
-		updateWorkflowReviewProject.mockRejectedValue(new Error('network down'));
+		updateWorkflowReviewInstanceSettings.mockRejectedValue(new Error('network down'));
 		renderView();
 
 		await userEvent.click(await approvalSelect('Alpha'));
@@ -176,10 +178,10 @@ describe('WorkflowReviewProjectsView', () => {
 		await approvalSelect('Beta');
 
 		let returnStaleList: (list: WorkflowReviewInstanceSettingsList) => void = () => {};
-		getWorkflowReviewProjects.mockImplementationOnce(
+		getWorkflowReviewInstanceSettings.mockImplementationOnce(
 			async () => await new Promise((resolve) => (returnStaleList = resolve)),
 		);
-		await userEvent.type(getByTestId('workflow-review-projects-search'), 'a');
+		await userEvent.type(getByTestId('workflow-review-instance-settings-search'), 'a');
 		await vi.runAllTimersAsync();
 
 		await userEvent.click(await approvalSelect('Beta'));
@@ -196,7 +198,7 @@ describe('WorkflowReviewProjectsView', () => {
 	describe('search and filter', () => {
 		beforeEach(() => {
 			vi.useFakeTimers({ shouldAdvanceTime: true });
-			getWorkflowReviewProjects.mockResolvedValue(
+			getWorkflowReviewInstanceSettings.mockResolvedValue(
 				projectList([project({ id: 'p1', name: 'Alpha' })], { count: 25 }),
 			);
 		});
@@ -208,41 +210,43 @@ describe('WorkflowReviewProjectsView', () => {
 		it('says when no project matches the search', async () => {
 			const { findByTestId, getByTestId } = renderView();
 			await approvalSelect('Alpha');
-			getWorkflowReviewProjects.mockResolvedValue(projectList([]));
+			getWorkflowReviewInstanceSettings.mockResolvedValue(projectList([]));
 
-			await userEvent.type(getByTestId('workflow-review-projects-search'), 'zzz');
+			await userEvent.type(getByTestId('workflow-review-instance-settings-search'), 'zzz');
 			await vi.runAllTimersAsync();
 
-			expect(await findByTestId('workflow-review-projects-empty')).toHaveTextContent(
+			expect(await findByTestId('workflow-review-instance-settings-empty')).toHaveTextContent(
 				'No projects match.',
 			);
 		});
 
 		it('reloads the first page with the search term and the filter', async () => {
 			const { findByTestId, getByTestId } = renderView();
-			expect(await findByTestId('workflow-review-projects-count')).toHaveTextContent('25 projects');
+			expect(await findByTestId('workflow-review-instance-settings-count')).toHaveTextContent(
+				'25 projects',
+			);
 			await userEvent.click(await findByTestId('pagination-next'));
 			await waitFor(() =>
-				expect(getWorkflowReviewProjects).toHaveBeenLastCalledWith(expect.anything(), {
+				expect(getWorkflowReviewInstanceSettings).toHaveBeenLastCalledWith(expect.anything(), {
 					skip: 10,
 					take: 10,
 				}),
 			);
 
-			await userEvent.type(getByTestId('workflow-review-projects-search'), 'alp');
+			await userEvent.type(getByTestId('workflow-review-instance-settings-search'), 'alp');
 			await vi.runAllTimersAsync();
-			expect(getWorkflowReviewProjects).toHaveBeenLastCalledWith(expect.anything(), {
+			expect(getWorkflowReviewInstanceSettings).toHaveBeenLastCalledWith(expect.anything(), {
 				skip: 0,
 				take: 10,
 				search: 'alp',
 			});
 
 			await userEvent.click(getByTestId('resources-list-filters-trigger'));
-			const filter = await findByTestId('workflow-review-projects-filter-approval');
+			const filter = await findByTestId('workflow-review-instance-settings-filter-approval');
 			await userEvent.click(within(filter).getAllByRole('combobox')[0]);
 			await userEvent.click(await screen.findByRole('option', { name: 'Required' }));
 			await waitFor(() =>
-				expect(getWorkflowReviewProjects).toHaveBeenLastCalledWith(expect.anything(), {
+				expect(getWorkflowReviewInstanceSettings).toHaveBeenLastCalledWith(expect.anything(), {
 					skip: 0,
 					take: 10,
 					search: 'alp',
@@ -264,7 +268,7 @@ describe('WorkflowReviewProjectsView', () => {
 		const { findByTestId, getByTestId } = renderView();
 
 		await userEvent.click(await findByTestId('resources-list-filters-trigger'));
-		const filter = await findByTestId('workflow-review-projects-filter-approval');
+		const filter = await findByTestId('workflow-review-instance-settings-filter-approval');
 		await userEvent.click(within(filter).getAllByRole('combobox')[0]);
 		await userEvent.click(await screen.findByRole('option', { name: 'Required' }));
 		await approvalSelect('Project 01');
@@ -277,7 +281,7 @@ describe('WorkflowReviewProjectsView', () => {
 		expect(
 			screen.queryByRole('combobox', { name: 'Approval for Project 11' }),
 		).not.toBeInTheDocument();
-		expect(getWorkflowReviewProjects).toHaveBeenLastCalledWith(expect.anything(), {
+		expect(getWorkflowReviewInstanceSettings).toHaveBeenLastCalledWith(expect.anything(), {
 			skip: 0,
 			take: 10,
 			requiredByInstance: true,
@@ -291,34 +295,36 @@ describe('WorkflowReviewProjectsView', () => {
 		const beta = await approvalSelect('Beta');
 		expect(beta).toHaveTextContent('Required');
 		expect(beta).toHaveAttribute('data-disabled');
-		expect(await findByTestId('workflow-review-projects-locked-notice')).toHaveTextContent(
+		expect(await findByTestId('workflow-review-instance-settings-locked-notice')).toHaveTextContent(
 			'Require approval is set to "Always required" for all projects.',
 		);
 	});
 
 	it('shows the rows read-only while the security policy is managed by environment variables', async () => {
-		getWorkflowReviewProjects.mockResolvedValue(
+		getWorkflowReviewInstanceSettings.mockResolvedValue(
 			projectList([project({ id: 'p2', name: 'Beta' })], { managedByEnv: true }),
 		);
 		const { findByTestId } = renderView();
 
-		expect(await findByTestId('workflow-review-projects-managed-by-env-notice')).toBeVisible();
+		expect(
+			await findByTestId('workflow-review-instance-settings-managed-by-env-notice'),
+		).toBeVisible();
 		expect(await approvalSelect('Beta')).toHaveAttribute('data-disabled');
 	});
 
 	it('shows the load error and no rows when the projects cannot load', async () => {
-		getWorkflowReviewProjects.mockRejectedValue(new Error('network down'));
+		getWorkflowReviewInstanceSettings.mockRejectedValue(new Error('network down'));
 		const { findByTestId } = renderView();
 
-		expect(await findByTestId('workflow-review-projects-load-error')).toBeVisible();
+		expect(await findByTestId('workflow-review-instance-settings-load-error')).toBeVisible();
 		expect(screen.queryByRole('combobox', { name: /Approval for/ })).not.toBeInTheDocument();
 	});
 
 	it('says when there are no team projects', async () => {
-		getWorkflowReviewProjects.mockResolvedValue(projectList([]));
+		getWorkflowReviewInstanceSettings.mockResolvedValue(projectList([]));
 		const { findByTestId } = renderView();
 
-		expect(await findByTestId('workflow-review-projects-empty')).toHaveTextContent(
+		expect(await findByTestId('workflow-review-instance-settings-empty')).toHaveTextContent(
 			'There are no team projects.',
 		);
 	});

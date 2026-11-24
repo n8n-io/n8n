@@ -31,7 +31,7 @@ export class WorkflowReviewInstanceSettingsController {
 		_res: Response,
 		@Query query: ListWorkflowReviewInstanceSettingsQueryDto,
 	): Promise<WorkflowReviewInstanceSettingsList> {
-		return await this.projectSettingsService.listProjects(query);
+		return await this.projectSettingsService.listInstanceSettings(query);
 	}
 
 	// Global scope on purpose: a project role must never set the instance option.

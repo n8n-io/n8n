@@ -26,8 +26,8 @@ import ResourceFiltersDropdown from '@/app/components/forms/ResourceFiltersDropd
 import { VIEWS } from '@/app/constants';
 import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
 import {
-	getWorkflowReviewProjects,
-	updateWorkflowReviewProject,
+	getWorkflowReviewInstanceSettings,
+	updateWorkflowReviewInstanceSettings,
 } from '@/features/workflow-reviews/workflowReviews.api';
 import ReviewPolicyProjectsTable from './ReviewPolicyProjectsTable.vue';
 
@@ -58,7 +58,7 @@ const loadedFiltered = ref(false);
 
 const lockedReason = computed(() =>
 	isInstanceApprovalRequired.value
-		? i18n.baseText('settings.security.workflowReviews.projects.lockedByAlwaysRequired', {
+		? i18n.baseText('settings.security.workflowReviews.instanceSettings.lockedByAlwaysRequired', {
 				interpolate: {
 					option: i18n.baseText('settings.security.workflowReviews.requireApproval.option.always'),
 				},
@@ -79,7 +79,7 @@ async function load() {
 	const term = search.value.trim();
 	loading.value = true;
 	try {
-		const result = await getWorkflowReviewProjects(rootStore.restApiContext, {
+		const result = await getWorkflowReviewInstanceSettings(rootStore.restApiContext, {
 			skip: page * itemsPerPage,
 			take: itemsPerPage,
 			...(term ? { search: term } : {}),
@@ -150,9 +150,13 @@ async function onRequired(projectId: string, required: boolean) {
 	setRequiredByInstance(projectId, required);
 	setSaving(projectId, true);
 	try {
-		const response = await updateWorkflowReviewProject(rootStore.restApiContext, projectId, {
-			requiredByInstance: required,
-		});
+		const response = await updateWorkflowReviewInstanceSettings(
+			rootStore.restApiContext,
+			projectId,
+			{
+				requiredByInstance: required,
+			},
+		);
 		setRequiredByInstance(projectId, response.requiredByInstance);
 		// The reload drops an older list request, and the saved row can leave the filter.
 		void load();
@@ -182,33 +186,35 @@ onMounted(load);
 		full-width
 		show-back
 		:back-label="i18n.baseText('settings.security')"
-		data-test-id="workflow-review-projects-view"
+		data-test-id="workflow-review-instance-settings-view"
 		@back="goBack"
 	>
 		<N8nSettingsPageHeader
-			:title="i18n.baseText('settings.security.workflowReviews.projects.page.title')"
-			:description="i18n.baseText('settings.security.workflowReviews.projects.page.description')"
+			:title="i18n.baseText('settings.security.workflowReviews.instanceSettings.page.title')"
+			:description="
+				i18n.baseText('settings.security.workflowReviews.instanceSettings.page.description')
+			"
 			:show-docs-link="false"
 		/>
 
 		<N8nNotice
 			v-if="managedByEnv"
 			:content="i18n.baseText('settings.security.managedByEnv')"
-			data-test-id="workflow-review-projects-managed-by-env-notice"
+			data-test-id="workflow-review-instance-settings-managed-by-env-notice"
 		/>
 		<N8nNotice
 			v-if="lockedReason"
 			:content="lockedReason"
-			data-test-id="workflow-review-projects-locked-notice"
+			data-test-id="workflow-review-instance-settings-locked-notice"
 		/>
 
 		<div :class="$style.toolbar">
 			<N8nInput
 				v-model="search"
 				:class="$style.search"
-				:placeholder="i18n.baseText('settings.security.workflowReviews.projects.search')"
+				:placeholder="i18n.baseText('settings.security.workflowReviews.instanceSettings.search')"
 				clearable
-				data-test-id="workflow-review-projects-search"
+				data-test-id="workflow-review-instance-settings-search"
 				@update:model-value="onSearch"
 			>
 				<template #prefix>
@@ -233,8 +239,10 @@ onMounted(load);
 						:model-value="filters.approval"
 						size="medium"
 						clearable
-						:placeholder="i18n.baseText('settings.security.workflowReviews.projects.filter.all')"
-						data-test-id="workflow-review-projects-filter-approval"
+						:placeholder="
+							i18n.baseText('settings.security.workflowReviews.instanceSettings.filter.all')
+						"
+						data-test-id="workflow-review-instance-settings-filter-approval"
 						@update:model-value="onApprovalFilter"
 					>
 						<N8nOption
@@ -253,10 +261,10 @@ onMounted(load);
 				v-if="!loadFailed && (!loading || count > 0)"
 				size="small"
 				color="text-light"
-				data-test-id="workflow-review-projects-count"
+				data-test-id="workflow-review-instance-settings-count"
 			>
 				{{
-					i18n.baseText('settings.security.workflowReviews.projects.count', {
+					i18n.baseText('settings.security.workflowReviews.instanceSettings.count', {
 						adjustToNumber: count,
 						interpolate: { count: String(count) },
 					})
@@ -267,9 +275,9 @@ onMounted(load);
 		<N8nText
 			v-if="loadFailed"
 			color="text-light"
-			data-test-id="workflow-review-projects-load-error"
+			data-test-id="workflow-review-instance-settings-load-error"
 		>
-			{{ i18n.baseText('settings.security.workflowReviews.projects.loadError') }}
+			{{ i18n.baseText('settings.security.workflowReviews.instanceSettings.loadError') }}
 		</N8nText>
 		<template v-else>
 			<ReviewPolicyProjectsTable
@@ -284,12 +292,12 @@ onMounted(load);
 				@update:required="onRequired"
 			>
 				<template v-if="!loading && count === 0" #empty>
-					<N8nText color="text-light" data-test-id="workflow-review-projects-empty">
+					<N8nText color="text-light" data-test-id="workflow-review-instance-settings-empty">
 						{{
 							i18n.baseText(
 								loadedFiltered
-									? 'settings.security.workflowReviews.projects.noMatch'
-									: 'settings.security.workflowReviews.projects.empty',
+									? 'settings.security.workflowReviews.instanceSettings.noMatch'
+									: 'settings.security.workflowReviews.instanceSettings.empty',
 							)
 						}}
 					</N8nText>

@@ -49,7 +49,7 @@ afterAll(() => {
 	instanceSettingsLoaderConfig.securityPolicyManagedByEnv = false;
 });
 
-const listProjects = (agent: SuperAgentTest, query: Record<string, string | number> = {}) =>
+const listInstanceSettings = (agent: SuperAgentTest, query: Record<string, string | number> = {}) =>
 	agent.get(projectsUrl).query(query);
 
 const setOption = (agent: SuperAgentTest, projectId: string, requiredByInstance: boolean) =>
@@ -63,7 +63,9 @@ const requireByProjectAdmin = async (projectId: string) =>
 
 const listedNames = async (query: Record<string, string | number>) =>
 	(
-		(await listProjects(ownerAgent, query).expect(200)).body.data.data as Array<{ name: string }>
+		(await listInstanceSettings(ownerAgent, query).expect(200)).body.data.data as Array<{
+			name: string;
+		}>
 	).map(({ name }) => name);
 
 describe('listing the review option of each project', () => {
@@ -73,7 +75,7 @@ describe('listing the review option of each project', () => {
 		await setOption(ownerAgent, alpha.id, true).expect(200);
 		await requireByProjectAdmin(charlie.id);
 
-		const response = await listProjects(ownerAgent).expect(200);
+		const response = await listInstanceSettings(ownerAgent).expect(200);
 
 		expect(response.body.data).toEqual({
 			count: 3,
@@ -116,7 +118,11 @@ describe('listing the review option of each project', () => {
 			'Sales 1000',
 		]);
 
-		const page = await listProjects(ownerAgent, { search: 'sales', skip: 1, take: 1 }).expect(200);
+		const page = await listInstanceSettings(ownerAgent, {
+			search: 'sales',
+			skip: 1,
+			take: 1,
+		}).expect(200);
 		expect(page.body.data.count).toBe(2);
 		expect(page.body.data.data.map(({ name }: { name: string }) => name)).toEqual(['Sales 1000']);
 	});
@@ -194,7 +200,7 @@ describe('setting the review option of a project', () => {
 
 describe('access to the review option of each project', () => {
 	const storedOption = async () =>
-		(await listProjects(ownerAgent).expect(200)).body.data.data.find(
+		(await listInstanceSettings(ownerAgent).expect(200)).body.data.data.find(
 			({ id }: { id: string }) => id === teamProject.id,
 		).requiredByInstance;
 
@@ -203,7 +209,7 @@ describe('access to the review option of each project', () => {
 		await linkUserToProject(projectAdmin, teamProject, 'project:admin');
 
 		for (const agent of [memberAgent, testServer.authAgentFor(projectAdmin)]) {
-			await listProjects(agent).expect(403);
+			await listInstanceSettings(agent).expect(403);
 			await setOption(agent, teamProject.id, true).expect(403);
 		}
 
@@ -213,7 +219,7 @@ describe('access to the review option of each project', () => {
 	test('rejects reads and changes without the workflow reviews license', async () => {
 		testServer.license.disable('feat:workflowReviews');
 
-		await listProjects(ownerAgent).expect(403);
+		await listInstanceSettings(ownerAgent).expect(403);
 		await setOption(ownerAgent, teamProject.id, true).expect(403);
 	});
 
@@ -221,7 +227,7 @@ describe('access to the review option of each project', () => {
 		await setOption(ownerAgent, teamProject.id, true).expect(200);
 		await policyService.update({ enabled: false });
 
-		await listProjects(ownerAgent).expect(403);
+		await listInstanceSettings(ownerAgent).expect(403);
 		await setOption(ownerAgent, teamProject.id, false).expect(403);
 
 		await policyService.update({ enabled: true });
@@ -233,7 +239,7 @@ describe('access to the review option of each project', () => {
 
 		await setOption(ownerAgent, teamProject.id, true).expect(403);
 
-		const response = await listProjects(ownerAgent).expect(200);
+		const response = await listInstanceSettings(ownerAgent).expect(200);
 		expect(response.body.data.managedByEnv).toBe(true);
 		expect(await storedOption()).toBe(false);
 	});

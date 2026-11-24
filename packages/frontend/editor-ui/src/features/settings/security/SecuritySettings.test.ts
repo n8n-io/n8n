@@ -1089,7 +1089,7 @@ describe('SecuritySettings', () => {
 
 			await userEvent.click(await findByTestId('security-workflow-reviews-projects-row'));
 
-			expect(routerPush).toHaveBeenCalledWith({ name: 'SecurityWorkflowReviewProjects' });
+			expect(routerPush).toHaveBeenCalledWith({ name: 'SecurityWorkflowReviewInstanceSettings' });
 		});
 
 		it('keeps the stored workflow review policy current after loading the page', async () => {

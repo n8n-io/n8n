@@ -46,7 +46,7 @@ export enum VIEWS {
 	LDAP_SETTINGS = 'LdapSettings',
 	PERSONAL_SETTINGS = 'PersonalSettings',
 	SECURITY_SETTINGS = 'SecuritySettings',
-	SECURITY_WORKFLOW_REVIEW_PROJECTS = 'SecurityWorkflowReviewProjects',
+	SECURITY_WORKFLOW_REVIEW_INSTANCE_SETTINGS = 'SecurityWorkflowReviewInstanceSettings',
 	API_SETTINGS = 'APISettings',
 	NOT_FOUND = 'NotFoundView',
 	COMMUNITY_NODES = 'CommunityNodes',

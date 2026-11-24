@@ -55,7 +55,7 @@ export class WorkflowReviewProjectSettingsService {
 		return await this.settingsRepository.getRequirements(projectId, {});
 	}
 
-	async listProjects({
+	async listInstanceSettings({
 		search,
 		requiredByInstance,
 		skip,

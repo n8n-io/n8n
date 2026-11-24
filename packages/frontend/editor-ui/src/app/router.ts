@@ -123,8 +123,8 @@ const ResourceCenterView = async () =>
 
 const SecuritySettingsView = async () =>
 	await import('@/features/settings/security/SecuritySettings.vue');
-const WorkflowReviewProjectsView = async () =>
-	await import('@/features/settings/security/WorkflowReviewProjectsView.vue');
+const WorkflowReviewInstanceSettingsView = async () =>
+	await import('@/features/settings/security/WorkflowReviewInstanceSettingsView.vue');
 
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 
@@ -721,8 +721,8 @@ export const routes: RouteRecordRaw[] = [
 			},
 			{
 				path: 'security/workflow-reviews/project-requirements',
-				name: VIEWS.SECURITY_WORKFLOW_REVIEW_PROJECTS,
-				component: WorkflowReviewProjectsView,
+				name: VIEWS.SECURITY_WORKFLOW_REVIEW_INSTANCE_SETTINGS,
+				component: WorkflowReviewInstanceSettingsView,
 				beforeEnter: () =>
 					useWorkflowReviewsFeature().isWorkflowReviewsEnabled.value || {
 						name: VIEWS.SECURITY_SETTINGS,
