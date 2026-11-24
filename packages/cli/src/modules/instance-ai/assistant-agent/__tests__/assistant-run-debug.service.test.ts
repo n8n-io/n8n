@@ -49,15 +49,56 @@ describe('AssistantRunDebugService', () => {
 			threadId: 'thread-1',
 			steps: [],
 		});
+		expect(systemAgents.getUsableThread).toHaveBeenCalledTimes(1);
 		expect(systemAgents.getUsableThread).toHaveBeenCalledWith('assistant', user, 'thread-1');
 
 		const list = await service.listThreadDebugRuns(user, 'thread-1');
+		expect(systemAgents.getUsableThread).toHaveBeenCalledTimes(2);
+		expect(systemAgents.getUsableThread).toHaveBeenLastCalledWith('assistant', user, 'thread-1');
 		expect(list).toEqual([
 			expect.objectContaining({
 				runId: 'run-1',
 				threadId: 'thread-1',
 				stepCount: 0,
 				workflowCodeCount: 0,
+			}),
+		]);
+	});
+
+	it('records workflow-code snapshots when runDebugEnabled is true and returns undefined when false', async () => {
+		const disabled = setup(false);
+		expect(
+			disabled.service.workflowCodeRecorderForTurn({ runId: 'run-1', threadId: 'thread-1' }),
+		).toBeUndefined();
+
+		const { service, user } = setup(true);
+		const recordSnapshot = service.workflowCodeRecorderForTurn({
+			runId: 'run-2',
+			threadId: 'thread-2',
+		});
+		expect(recordSnapshot).toBeDefined();
+
+		recordSnapshot?.({
+			code: 'export default {}',
+			source: 'full-code',
+			success: true,
+			capturedAt: 1_700_000_000_000,
+		});
+
+		const record = await service.getRunDebug(user, 'run-2');
+		expect(record.workflowCode).toHaveLength(1);
+		expect(record.workflowCode[0]).toMatchObject({
+			code: 'export default {}',
+			source: 'full-code',
+			success: true,
+		});
+
+		const list = await service.listThreadDebugRuns(user, 'thread-2');
+		expect(list).toEqual([
+			expect.objectContaining({
+				runId: 'run-2',
+				threadId: 'thread-2',
+				workflowCodeCount: 1,
 			}),
 		]);
 	});

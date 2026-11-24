@@ -281,6 +281,7 @@ export class AssistantTurnEnvironmentFactory {
 			proxyRunConfig ?? (await this.createProxyRunConfig(user));
 
 		const proxyContext = { runId, threadId };
+		const baseModelFetch = this.modelService.getModelFetch();
 		const labeledModelFetch = this.modelService.getLabeledModelFetch(proxyContext);
 		const modelId =
 			proxyBaseUrl && tokenManager
@@ -353,6 +354,7 @@ export class AssistantTurnEnvironmentFactory {
 			utilityModelId,
 			onHelperUsage: this.creditService.helperUsageClaimer(user, threadId, runId),
 			modelFetch: labeledModelFetch,
+			catalogFetch: baseModelFetch,
 			allowSendingParameterValues,
 			temporaryWorkflowMarkers: runtime.temporaryWorkflowMarkers,
 		});

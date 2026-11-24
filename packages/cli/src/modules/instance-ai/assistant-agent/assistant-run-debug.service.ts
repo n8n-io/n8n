@@ -6,6 +6,7 @@ import {
 	buildRunDebugLabel,
 	createRunDebugStepHooks,
 	RunDebugBuffer,
+	type InstanceAiContext,
 	type RunDebugRecord,
 } from '@n8n/instance-ai';
 
@@ -47,6 +48,18 @@ export class AssistantRunDebugService {
 			runId: params.runId,
 			threadId: params.threadId,
 		});
+	}
+
+	/** Create a workflow-code snapshot recorder for a turn when run debug is enabled; returns `undefined` otherwise. */
+	workflowCodeRecorderForTurn(params: {
+		runId: string;
+		threadId: string;
+	}): InstanceAiContext['recordWorkflowCodeSnapshot'] {
+		if (!this.instanceAiConfig.runDebugEnabled) return undefined;
+		return (snapshot) => {
+			this.buffer.ensure(params.runId, params.threadId);
+			this.buffer.recordWorkflowCode(params.runId, snapshot);
+		};
 	}
 
 	async getRunDebug(user: User, runId: string): Promise<RunDebugRecord> {

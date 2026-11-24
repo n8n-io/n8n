@@ -143,8 +143,7 @@ describe('N8nClient on the Agents runtime', () => {
 			{
 				path: '/rest/assistant/eval/threads/t-1/overrides',
 				method: 'PUT',
-				// The Assistant agent has no observer threshold override.
-				body: { promptVersion: 'v7' },
+				body: { promptVersion: 'v7', observerThresholdTokens: 1000 },
 			},
 			{
 				path: '/rest/agents/system/assistant/chat?projectId=p-1',

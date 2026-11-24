@@ -675,6 +675,10 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 					});
 				}
 			},
+			recordWorkflowCodeSnapshot: this.runDebug.workflowCodeRecorderForTurn({
+				runId: options.runId,
+				threadId: turn.thread.id,
+			}),
 			readSetupItemsSnapshots: async () => [],
 			// The setup panel announces the checklist without suspending the turn.
 			markWorkflowSetupHandled: async (workflowId) =>
