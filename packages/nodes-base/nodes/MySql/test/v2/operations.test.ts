@@ -1668,6 +1668,25 @@ describe('Test MySql V2, operations', () => {
 				expect(result[0].pairedItem).toEqual({ item: 1 });
 			});
 
+			it('should return an error item when the database of the first item is empty', async () => {
+				const nodeParameters = insertParameters('independently');
+				const runQueries = vi.fn(async () => []);
+
+				const result = await insert.execute.call(
+					createDatabaseExpressionContext(nodeParameters, [undefined, 'b', 'c'], true),
+					items,
+					runQueries,
+					nodeParameters.options as IDataObject,
+				);
+
+				expect(runQueries).toHaveBeenCalledWith([
+					expect.objectContaining({ query: 'INSERT   INTO `b`.`test_table` (`id`) VALUES (?);' }),
+					expect.objectContaining({ query: 'INSERT   INTO `c`.`test_table` (`id`) VALUES (?);' }),
+				]);
+				expect(result).toHaveLength(1);
+				expect(result[0].pairedItem).toEqual({ item: 0 });
+			});
+
 			it('should throw in single mode when the database differs between items', async () => {
 				const nodeParameters = insertParameters('single');
 				const runQueries = vi.fn(async () => []);

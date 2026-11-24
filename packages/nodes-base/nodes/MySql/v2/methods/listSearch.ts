@@ -1,7 +1,7 @@
 import type { IDataObject, ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 
 import type { Mysql2PoolConnection, MysqlNodeCredentials } from '../helpers/interfaces';
-import { escapeSqlIdentifier } from '../helpers/utils';
+import { quoteSqlIdentifier } from '../helpers/utils';
 import { createPool } from '../transport';
 
 // A SHOW statement names its column after the database or the filter, so the value is read by position.
@@ -39,7 +39,7 @@ export async function searchTables(
 		if (typeof database === 'string' && database) {
 			const result = await showNames(
 				connection,
-				`SHOW TABLES FROM ${escapeSqlIdentifier(database)}`,
+				`SHOW TABLES FROM ${quoteSqlIdentifier(database)}`,
 				filter,
 			);
 			connection.release();

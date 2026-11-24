@@ -558,11 +558,20 @@ describe('Test MySql V2, getTableName', () => {
 		);
 	});
 
+	it.each([
+		['my.db', '`my.db`.`tbl`'],
+		['my`db', '`my``db`.`tbl`'],
+	])('should keep the database "%s" as one identifier', (database, expected) => {
+		const name = getTableName(context({ table: locator('tbl'), database: locator(database) }), 0);
+		expect(name).toBe(expected);
+		expect(escapeSqlIdentifier(name)).toBe(expected);
+	});
+
 	it('should throw when a database expression resolves to empty', () => {
 		expectNameError({ table: locator('tbl'), database: '={{ $json.db }}' }, 'Database');
 	});
 
-	it.each([123, '.'])('should throw when the database is %s', (value) => {
+	it.each([123, ' '])('should throw when the database is "%s"', (value) => {
 		expectNameError({ table: locator('tbl'), database: locator(value) }, 'Database');
 	});
 

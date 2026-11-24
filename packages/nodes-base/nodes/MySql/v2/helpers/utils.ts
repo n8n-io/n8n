@@ -41,7 +41,7 @@ function toIdentifierText(value: unknown, paramNumber: string): string {
 }
 
 export function escapeSqlIdentifier(identifier: string): string {
-	const parts = identifier.match(/(`[^`]*`|[^.`]+)/g) ?? [];
+	const parts = identifier.match(/(`(?:[^`]|``)*`|[^.`]+)/g) ?? [];
 
 	return parts
 		.map((part) => {
@@ -54,6 +54,11 @@ export function escapeSqlIdentifier(identifier: string): string {
 			return `\`${trimmedPart}\``;
 		})
 		.join('.');
+}
+
+// Quotes a value as one identifier. A dot or a backtick in the value stays part of the name.
+export function quoteSqlIdentifier(name: string): string {
+	return `\`${name.trim().replace(/`/g, '``')}\``;
 }
 
 // The raw read does not depend on the item, so index 0 is enough.
@@ -71,10 +76,9 @@ export function getTableName(ctx: IExecuteFunctions, itemIndex: number): string 
 	// A literal empty Database keeps the unqualified table name.
 	if (!database && !isDatabaseExpression(ctx)) return table;
 
-	const escapePart = (value: unknown) =>
-		typeof value === 'string' ? escapeSqlIdentifier(value) : '';
-	const databaseName = escapePart(database);
-	const tableName = escapePart(table);
+	const databaseName =
+		typeof database === 'string' && database.trim() ? quoteSqlIdentifier(database) : '';
+	const tableName = typeof table === 'string' ? escapeSqlIdentifier(table) : '';
 	// An empty part would collapse to a one-part name in the next escape pass.
 	if (!databaseName || !tableName) {
 		throw new NodeOperationError(

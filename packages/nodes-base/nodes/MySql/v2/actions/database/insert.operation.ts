@@ -126,12 +126,14 @@ export async function execute(
 	let returnData: INodeExecutionData[] = [];
 	const items = replaceEmptyStringsByNulls(inputItems, nodeOptions.replaceEmptyStrings as boolean);
 
-	// The read at index 0 stays for compatibility with saved workflows.
-	const table = getTableName(this, 0);
 	const databasePerItem = isDatabaseExpression(this);
 
 	const dataMode = this.getNodeParameter('dataMode', 0) as string;
 	const queryBatching = (nodeOptions.queryBatching as QueryMode) || BATCH_MODE.SINGLE;
+
+	// The read at index 0 stays for compatibility with saved workflows.
+	// With a Database expression, the per-item modes read the name for each item instead.
+	const table = databasePerItem && queryBatching !== BATCH_MODE.SINGLE ? '' : getTableName(this, 0);
 
 	const queries: QueryWithValues[] = [];
 

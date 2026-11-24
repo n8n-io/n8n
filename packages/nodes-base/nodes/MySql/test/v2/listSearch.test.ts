@@ -32,7 +32,11 @@ const mockLoadOptionsFunctions = (
 ): ILoadOptionsFunctions =>
 	({
 		getCredentials: vi.fn().mockResolvedValue({ database }),
-		getNodeParameter: vi.fn().mockImplementation((name: string) => parameters[name] ?? {}),
+		getNodeParameter: vi
+			.fn()
+			.mockImplementation((name: string) =>
+				Object.hasOwn(parameters, name) ? parameters[name] : {},
+			),
 	}) as unknown as ILoadOptionsFunctions;
 
 vi.mock('../../v2/transport', () => ({ createPool: vi.fn() }));
@@ -134,6 +138,15 @@ describe('MySQL v2 / listSearch / searchDatabases', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockEnd.mockResolvedValue(undefined);
+	});
+
+	it('should quote a database name with a dot as one identifier', async () => {
+		const { pool, mockQuery } = createMockPool([{ 'Tables_in_my.db': 'users' }]);
+		(createPool as Mock).mockResolvedValue(pool);
+
+		await searchTables.call(mockLoadOptionsFunctions('test_db', { database: 'my.db' }));
+
+		expect(mockQuery).toHaveBeenCalledWith('SHOW TABLES FROM `my.db`');
 	});
 
 	it('should list the databases that match the filter', async () => {
