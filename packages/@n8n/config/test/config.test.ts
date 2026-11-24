@@ -785,6 +785,7 @@ describe('GlobalConfig', () => {
 			modules: [],
 			backgroundTasksEnabled: false,
 			serviceAccountsEnabled: false,
+			simulationBackend: 'llm-mock',
 			sandboxEnabled: false,
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
 			sandboxSnapshot: 'daytonaio/sandbox:0.8.0',

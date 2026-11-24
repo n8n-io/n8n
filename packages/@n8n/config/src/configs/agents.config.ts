@@ -1,4 +1,5 @@
 import { Time } from '@n8n/constants';
+import z from 'zod';
 
 import { CommaSeparatedStringArray } from '../custom-types';
 import { Config, Env } from '../decorators';
@@ -32,6 +33,8 @@ class AgentsModuleArray extends CommaSeparatedStringArray<AgentsModuleName> {
 		}
 	}
 }
+
+const simulationBackendSchema = z.enum(['llm-mock', 'gym']);
 
 @Config
 export class AgentsConfig {
@@ -90,6 +93,14 @@ export class AgentsConfig {
 	 */
 	@Env('N8N_AGENTS_SERVICE_ACCOUNTS_ENABLED')
 	serviceAccountsEnabled: boolean = false;
+
+	/**
+	 * Which simulator answers the tools of an agent test chat. `llm-mock` invents each reply.
+	 * `gym` serves it from the in-process AI Gym, so a later read sees an earlier write; it needs
+	 * a module that binds the Gym, and without one every simulated call is blocked.
+	 */
+	@Env('N8N_AGENTS_SIMULATION_BACKEND', simulationBackendSchema)
+	simulationBackend: 'llm-mock' | 'gym' = 'llm-mock';
 
 	/** Enable sandbox-backed agent knowledge base operations. */
 	@Env('N8N_AGENTS_AI_SANDBOX_ENABLED')
