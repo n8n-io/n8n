@@ -108,10 +108,16 @@ export function useChatCredentials(userId: string) {
 		() => projectStore.personalProject,
 		async (personalProject) => {
 			if (personalProject) {
-				await Promise.all([
+				// Continue after a failed request, so the chat does not wait for credentials forever.
+				const results = await Promise.allSettled([
 					credentialTypes.whenSettled(),
 					credentialsStore.fetchUsableCredentials({ projectId: personalProject.id }),
 				]);
+				for (const result of results) {
+					if (result.status === 'rejected') {
+						console.error('Failed to load chat credentials', result.reason);
+					}
+				}
 
 				isInitialized.value = true;
 			}

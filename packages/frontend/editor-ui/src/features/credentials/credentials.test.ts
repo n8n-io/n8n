@@ -82,6 +82,25 @@ describe('store', () => {
 					expect(spy).toHaveBeenCalledTimes(2);
 				});
 
+				it('should keep a newer response when an older request ends after it', async () => {
+					const older = Promise.withResolvers<ICredentialType[]>();
+					const newer = Promise.withResolvers<ICredentialType[]>();
+					vi.spyOn(credentialsApi, 'getCredentialTypes')
+						.mockReturnValueOnce(older.promise)
+						.mockReturnValueOnce(newer.promise);
+					const credentialsStore = useCredentialsStore();
+					const newerType = { ...credentialType, displayName: 'Test API (new)' };
+
+					const first = credentialsStore.fetchCredentialTypes(false);
+					const second = credentialsStore.fetchCredentialTypes(true);
+					newer.resolve([newerType]);
+					await second;
+					older.resolve([credentialType]);
+					await first;
+
+					expect(credentialsStore.allCredentialTypes).toEqual([newerType]);
+				});
+
 				it('should reject every caller of a failed request, and retry on the next call', async () => {
 					const error = new Error('credential types');
 					const spy = vi

@@ -509,6 +509,8 @@ onMounted(async () => {
 			// If the types fail to load, still load the credential.
 			await credentialTypes.whenSettled();
 		}
+		// The user can close the modal while the types load.
+		if (isUnmounted || !modalOpen.value) return;
 
 		try {
 			// Name + defaults (new) or load + custom-OAuth detect (edit) — the same

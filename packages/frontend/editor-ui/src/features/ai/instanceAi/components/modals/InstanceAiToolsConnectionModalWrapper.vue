@@ -173,7 +173,7 @@ async function discoverDraft(
 }
 
 const isLoadingCredentials = ref(false);
-// The credential setup of a connector needs the credential types.
+// The credential setup of an MCP connector needs the credential types. Browser Use does not.
 const { isLoading: credentialTypesLoading } = useCredentialTypesLoad();
 
 /**
@@ -528,7 +528,7 @@ function retryConnection(item: McpServerConnectionItem): void {
 		:detail-mode="detailMode"
 		:hide-back-button="isDirectConnectionOpen"
 		:show-suggestion-footer="true"
-		:loading="isLoadingCredentials || credentialTypesLoading"
+		:loading="isLoadingCredentials || (settingsStore.isMcpAvailable && credentialTypesLoading)"
 		@update:detail-item="handleDetailItemUpdate"
 		@select-credential="handleSelectCredential"
 		@credential-dropdown-open="handleCredentialDropdownOpen"

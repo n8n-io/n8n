@@ -80,6 +80,17 @@ describe('useChatCredentials', () => {
 		expect(credentialsByProvider.value?.openai).toBe('openai-1');
 	});
 
+	it('is ready after its own loads end, also when the usable credentials fail to load', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		credentialsStore.fetchUsableCredentials.mockRejectedValue(new Error('credentials'));
+		const { credentialsByProvider } = setup();
+
+		reactiveProjectsStore.personalProject = { id: 'personal' };
+		await flushPromises();
+
+		expect(credentialsByProvider.value).not.toBeNull();
+	});
+
 	it('is ready after its own loads end, also when the credential types fail to load', async () => {
 		vi.spyOn(console, 'error').mockImplementation(() => {});
 		credentialsStore.fetchCredentialTypes.mockRejectedValue(new Error('credential types'));

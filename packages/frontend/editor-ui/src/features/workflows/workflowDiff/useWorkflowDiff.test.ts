@@ -53,12 +53,12 @@ vi.mock('@/app/stores/workflowExecutionState.store', () => ({
 	disposeWorkflowExecutionStateStore: vi.fn(),
 }));
 
-const nodeTypesLoading = await vi.hoisted(async () => {
+const { nodeTypesLoading, nodeTypesLoaded } = await vi.hoisted(async () => {
 	const { ref } = await import('vue');
-	return ref(false);
+	return { nodeTypesLoading: ref(false), nodeTypesLoaded: ref(true) };
 });
 vi.mock('@/app/composables/useNodeTypesLoad', () => ({
-	useNodeTypesLoad: () => ({ isLoading: nodeTypesLoading }),
+	useNodeTypesLoad: () => ({ isLoading: nodeTypesLoading, isLoaded: nodeTypesLoaded }),
 }));
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({
@@ -482,6 +482,24 @@ describe('useWorkflowDiff', () => {
 				expect(mockDocumentStore.hydrate).toHaveBeenCalledTimes(2);
 			} finally {
 				nodeTypesLoading.value = false;
+			}
+		});
+
+		it('hydrates again when the node types arrive after a failed load', async () => {
+			nodeTypesLoaded.value = false;
+
+			try {
+				useWorkflowDiff(createMockWorkflow('source'), undefined);
+
+				// The failed load ended, so the source hydrates without the node types.
+				expect(mockDocumentStore.hydrate).toHaveBeenCalledTimes(1);
+
+				nodeTypesLoaded.value = true;
+				await nextTick();
+
+				expect(mockDocumentStore.hydrate).toHaveBeenCalledTimes(2);
+			} finally {
+				nodeTypesLoaded.value = true;
 			}
 		});
 

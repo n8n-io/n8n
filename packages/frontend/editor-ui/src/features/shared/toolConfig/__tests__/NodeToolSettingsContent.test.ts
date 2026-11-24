@@ -807,6 +807,32 @@ describe('NodeToolSettingsContent', () => {
 			expect(getNodeParametersSpy).toHaveBeenCalledTimes(1);
 		});
 
+		it('reports the form as invalid until the node types load', async () => {
+			nodeTypesStore.hasNodeTypes = false;
+			const { promise, resolve } = Promise.withResolvers<void>();
+			nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockReturnValue(promise);
+			// A node type with no required parameters or credentials, so only the load decides.
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(MOCK_NODE_TYPE_NO_PARAMS);
+
+			const { emitted } = renderComponent({
+				props: {
+					initialNode: createMockNode({
+						name: 'No Params Tool',
+						type: MOCK_NODE_TYPE_NO_PARAMS.name,
+						parameters: {},
+					}),
+				},
+			});
+			await flushPromises();
+
+			expect((emitted()['update:valid'] as boolean[][]).at(-1)?.[0]).toBe(false);
+
+			resolve();
+			await flushPromises();
+
+			expect((emitted()['update:valid'] as boolean[][]).at(-1)?.[0]).toBe(true);
+		});
+
 		it('shows the form when the node types fail to load', async () => {
 			nodeTypesStore.hasNodeTypes = false;
 			nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockRejectedValue(new Error('node types'));

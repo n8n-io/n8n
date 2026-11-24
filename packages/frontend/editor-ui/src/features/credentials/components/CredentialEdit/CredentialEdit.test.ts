@@ -694,6 +694,26 @@ describe('CredentialEdit', () => {
 			await retry(() => expect(screen.getByDisplayValue('eu')).toBeInTheDocument());
 		});
 
+		test('does not load the credential when the modal closes while the types load', async () => {
+			const { credentialsStore, pinia } = setupStores();
+			const { promise, resolve } = Promise.withResolvers<void>();
+			credentialsStore.fetchCredentialTypes.mockReturnValueOnce(promise);
+
+			renderComponent({
+				props: { activeId: 'cred-defaults', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' },
+				pinia,
+			});
+			await retry(() => expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(false));
+
+			mockedStore(useUIStore).modalsById = {
+				[CREDENTIAL_EDIT_MODAL_KEY]: { open: false },
+			} as never;
+			resolve();
+			await new Promise((r) => setTimeout(r, 0));
+
+			expect(credentialsStore.getCredentialData).not.toHaveBeenCalled();
+		});
+
 		test('still loads the credential when the credential types fail to load', async () => {
 			vi.spyOn(console, 'error').mockImplementation(() => {});
 			const { credentialsStore, pinia } = setupStores();

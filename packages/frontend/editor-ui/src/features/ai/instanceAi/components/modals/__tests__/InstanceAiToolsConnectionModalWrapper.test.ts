@@ -107,12 +107,14 @@ vi.mock('../../../composables/useMcpServerConnect', () => ({
 	}),
 }));
 
+const instanceAiSettingsMock = vi.hoisted(() => ({
+	isMcpAvailable: true,
+	isBrowserUseAvailable: true,
+	browserConnected: false,
+}));
+
 vi.mock('../../../instanceAiSettings.store', () => ({
-	useInstanceAiSettingsStore: () => ({
-		isMcpAvailable: true,
-		isBrowserUseAvailable: true,
-		browserConnected: false,
-	}),
+	useInstanceAiSettingsStore: () => instanceAiSettingsMock,
 }));
 
 const { browserTelemetryMock, telemetryMock, uiStoreMock } = vi.hoisted(() => ({
@@ -358,6 +360,7 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		confirmRemoveMock.mockResolvedValue(MODAL_CONFIRM);
 		mockIsConnectLocked.mockReturnValue(false);
 		credentialsStoreMock.allCredentials = [];
+		instanceAiSettingsMock.isMcpAvailable = true;
 		// The credential types are in the store by default. The credential types tests empty it.
 		credentialsStoreMock.allCredentialTypes = [{ name: 'mcpOAuth2Api' }];
 		credentialsStoreMock.fetchAllCredentials.mockResolvedValue([]);
@@ -403,6 +406,16 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 		expect(modalProps.loading).toBe(true);
 
 		resolve();
+		await flushPromises();
+
+		expect(modalProps.loading).toBe(false);
+	});
+
+	it('does not wait for the credential types when MCP is not available', async () => {
+		instanceAiSettingsMock.isMcpAvailable = false;
+		credentialsStoreMock.allCredentialTypes = [];
+		credentialsStoreMock.fetchCredentialTypes.mockReturnValue(new Promise(() => {}));
+		renderComponent();
 		await flushPromises();
 
 		expect(modalProps.loading).toBe(false);

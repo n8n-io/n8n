@@ -27,7 +27,6 @@ type UseAgentChannelSetupOptions = {
 export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 	const uiStore = useUIStore();
 	const credentialsStore = useCredentialsStore();
-	const credentialTypes = useCredentialTypesLoad();
 	const projectsStore = useProjectsStore();
 
 	const selectedCredentials = ref<Record<string, string>>({});
@@ -106,7 +105,8 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 					forAgent: true,
 				}),
 				// The type labels below need the credential types. A failure only removes the labels.
-				credentialTypes.whenSettled(),
+				// A new instance on each fetch retries a load that failed.
+				useCredentialTypesLoad().whenSettled(),
 			]);
 
 			for (const integration of integrations) {

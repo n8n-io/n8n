@@ -87,6 +87,8 @@ const environmentsStore = useEnvironmentsStore();
 const settingsStore = useSettingsStore();
 
 const node = shallowRef<INode | null>(props.initialNode);
+// The defaults come from the node type. Fill them one time, after the node types load.
+const { isLoading: nodeTypesLoading } = useNodeTypesLoad();
 const userEditedName = ref(false);
 
 const existingToolNames = computed(() => props.existingToolNames ?? []);
@@ -229,7 +231,9 @@ const hasUnavailableAgentCredential = computed(() => {
 });
 
 const isValid = computed(() => {
+	// Without the node type, the parameters can't be checked and have no defaults yet.
 	return (
+		!nodeTypesLoading.value &&
 		node.value?.name &&
 		!hasParameterIssues.value &&
 		!hasCredentialIssues.value &&
@@ -350,9 +354,6 @@ function handleChangeName(name: string) {
 		node.value = { ...node.value, name };
 	}
 }
-
-// The defaults come from the node type. Fill them one time, after the node types load.
-const { isLoading: nodeTypesLoading } = useNodeTypesLoad();
 
 watch(
 	() => [props.initialNode, nodeTypesLoading.value] as const,
