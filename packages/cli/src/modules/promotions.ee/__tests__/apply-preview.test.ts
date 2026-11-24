@@ -1,9 +1,10 @@
-import type {
-	PromotionApplyCheck,
-	PromotionBindingConflict,
-	PromotionMissingDependency,
+import {
+	promotionPreviewCheckSchema,
+	type PromotionApplyCheck,
+	type PromotionBindingConflict,
+	type PromotionMissingDependency,
 } from '@n8n/api-types';
-import type { INode } from 'n8n-workflow';
+import type { INode, INodeCredentialsDetails } from 'n8n-workflow';
 
 import type { PackageImportPlan } from '@/modules/n8n-packages/engine/project-package-importer';
 import { VariableRequirementsExtractor } from '@/modules/n8n-packages/entities/variable/variable-requirements.extractor';
@@ -136,7 +137,7 @@ function checkPackage(
 		issues,
 	} as unknown as PackageImportPlan;
 
-	return toPreviewCheck({
+	const check = toPreviewCheck({
 		plan,
 		inventory,
 		credentials: collectCredentialReferences(inventory),
@@ -145,6 +146,9 @@ function checkPackage(
 		moves: { workflows: [], folders: [] },
 		dependencies: { ...NO_ACCESS, ...dependencies },
 	});
+	// Each route parses the check with this schema before it answers.
+	promotionPreviewCheckSchema.parse(check);
+	return check;
 }
 
 describe('toPreviewCheck', () => {
@@ -466,6 +470,118 @@ describe('toPreviewCheck: missing dependencies', () => {
 				reason: code,
 				consumers: [consumer(ALPHA, 'wf-1'), consumer(BETA, 'wf-2')],
 			},
+		]);
+	});
+
+	describe.each([
+		[
+			'the name of its requirement row',
+			{
+				credentials: [
+					{
+						id: 'cred-1',
+						name: 'Row name',
+						type: 'githubApi',
+						usedBy: [{ kind: 'workflow' as const, id: 'wf-1' }],
+					},
+				],
+			},
+			'Row name',
+		],
+		['its id, when no requirement row names it', {}, 'cred-1'],
+	])(
+		'a credential that this instance holds, without a file on the branch, takes %s',
+		(_case, requirements, name) => {
+			/** A workflow file of a branch holds the id of a credential, without its name. */
+			const usesCredentialOfBranch = (id: string) =>
+				workflow(id, ALPHA.id, [
+					node('Request', {
+						credentials: { githubApi: { id: 'cred-1' } as INodeCredentialsDetails },
+					}),
+				]);
+			const checkWithIssue = (
+				failure: Partial<Extract<BlockingIssue, { type: 'credential-unresolved' }>>,
+			) =>
+				checkPackage({
+					workflows: [usesCredentialOfBranch('wf-1')],
+					requirements,
+					issues: [credentialIssue('cred-1', ['wf-1'], failure)],
+				});
+
+			it('in the access requirement of a credential that the project cannot use', () => {
+				const check = checkWithIssue({ reason: 'access-required' });
+
+				expect(check.accessRequirements).toEqual([
+					{
+						kind: 'credential',
+						code: 'access-required',
+						sourceId: 'cred-1',
+						name,
+						credentialType: 'githubApi',
+						consumers: [consumer(ALPHA, 'wf-1')],
+					},
+				]);
+				expect(check.missingDependencies).toEqual([
+					{
+						...credentialEntry,
+						name,
+						...needsAction,
+						reason: 'not-shared',
+						consumers: [consumer(ALPHA, 'wf-1')],
+					},
+				]);
+			});
+
+			it.each([
+				['type-mismatch', { kind: 'type_mismatch', actualType: 'gitlabApi' }],
+				['unknown-type', { kind: 'unknown_type' }],
+				['incompatible-usage-scope', { reason: 'incompatible-usage-scope' }],
+			] as const)('in the conflict %s', (code, failure) => {
+				const check = checkWithIssue(failure);
+
+				expect(check.conflicts).toEqual([
+					expect.objectContaining({ kind: 'credential', code, sourceId: 'cred-1', name }),
+				]);
+				expect(check.missingDependencies).toEqual([
+					expect.objectContaining({ id: 'cred-1', name, reason: code }),
+				]);
+			});
+
+			it('in the conflict of an id that the workflows use with two types', () => {
+				const check = checkPackage({
+					workflows: [
+						workflow('wf-1', ALPHA.id, [
+							node('Request', {
+								credentials: {
+									githubApi: { id: 'cred-1' } as INodeCredentialsDetails,
+									gitlabApi: { id: 'cred-1' } as INodeCredentialsDetails,
+								},
+							}),
+						]),
+					],
+					requirements,
+				});
+
+				expect(check.conflicts).toEqual([
+					expect.objectContaining({ code: 'conflicting-types', sourceId: 'cred-1', name }),
+				]);
+			});
+		},
+	);
+
+	it('gives an empty name to a reference without an id when the workflow file holds no name', () => {
+		const check = checkPackage({
+			workflows: [
+				workflow('wf-1', ALPHA.id, [
+					node('Request', {
+						credentials: { githubApi: { id: null } as INodeCredentialsDetails },
+					}),
+				]),
+			],
+		});
+
+		expect(check.conflicts).toEqual([
+			expect.objectContaining({ code: 'missing-id', sourceId: null, name: '' }),
 		]);
 	});
 

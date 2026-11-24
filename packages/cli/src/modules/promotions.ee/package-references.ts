@@ -15,7 +15,11 @@ import type {
  */
 export interface CredentialReference {
 	sourceId: string | null;
-	name: string;
+	/**
+	 * The name of the credential file. Without a file, the name in the node, which a workflow file
+	 * of an export does not hold.
+	 */
+	name: string | undefined;
 	expectedTypes: string[];
 	file: InventoryCredential | undefined;
 	workflows: InventoryWorkflow[];
@@ -72,7 +76,7 @@ export function collectCredentialReferences(
 		(a, b) =>
 			compare(a.sourceId ?? '', b.sourceId ?? '') ||
 			compare(a.expectedTypes[0], b.expectedTypes[0]) ||
-			compare(a.name, b.name),
+			compare(a.name ?? '', b.name ?? ''),
 	);
 }
 

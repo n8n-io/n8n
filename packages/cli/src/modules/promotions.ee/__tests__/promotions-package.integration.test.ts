@@ -3788,6 +3788,64 @@ describe('Missing dependencies of an Apply', () => {
 		expect(await snapshotApplyState()).toEqual(before);
 	});
 
+	it('names a credential that the project cannot use from its requirement row, when the branch holds no file for it', async () => {
+		const credential = await saveHeaderCredential('CRM key', beta);
+		await shareCredentialWithProjects(credential, [alpha]);
+		const workflow = await createWorkflow(
+			{ name: 'Sync', nodes: [headerAuthNode(credential)], connections: {} },
+			alpha,
+		);
+		// A Promote of Alpha writes no file for a credential that Beta owns.
+		await service.clone(environments.promote.id, owner);
+		expectPushed(
+			await service.promoteProjectSelection(alpha.id, owner, {
+				workflowIds: [workflow.id],
+				commitMessage: 'Promote Sync',
+				canExportVariableValues: true,
+				confirmMissingDependencies: true,
+			}),
+		);
+		const { dir } = await inspectBranch(remote.bareDir);
+		expect(await readBranchEntities(dir, PACKAGE_ENTITY_LAYOUT.credentials.fileName)).toEqual([]);
+		// On this instance, nobody shared the credential of Beta with Alpha.
+		await Container.get(SharedCredentialsRepository).delete({
+			credentialsId: credential.id,
+			projectId: alpha.id,
+		});
+		await Container.get(WorkflowRepository).update(workflow.id, { nodes: [] });
+		const agent = testServer.publicApiAgentFor(owner);
+		const before = await snapshotApplyState();
+		const accessRequirements = [
+			{
+				kind: 'credential',
+				code: 'access-required',
+				sourceId: credential.id,
+				name: 'CRM key',
+				credentialType: 'httpHeaderAuth',
+				consumers: usedBy(workflow),
+			},
+		];
+
+		// Each route parses its response, so the requests go over the wire.
+		const preview = await agent.get(`/promotions/projects/${alpha.id}/changes/apply`);
+		const applied = await agent
+			.post(`/promotions/projects/${alpha.id}/apply`)
+			.send({ workflowIds: [workflow.id] });
+		const continued = await agent.post(`/promotions/projects/${alpha.id}/apply/continue`).send({
+			workflowIds: [workflow.id],
+			expectedSource: { ...preview.body.source, commitSha: preview.body.commitSha },
+			confirmMissingDependencies: true,
+		});
+
+		expect(preview.status, JSON.stringify(preview.body)).toBe(200);
+		expect(preview.body.check.accessRequirements).toEqual(accessRequirements);
+		for (const response of [applied, continued]) {
+			expect(response.status, JSON.stringify(response.body)).toBe(200);
+			expect(response.body).toMatchObject({ status: 'blocked', check: { accessRequirements } });
+		}
+		expect(await snapshotApplyState()).toEqual(before);
+	});
+
 	it('stops a confirmed Continue when the list changed after the reviewed preview, and shows the new list', async () => {
 		const credential = await savePersonalCredential('My key');
 		const helper = await createWorkflow(

@@ -482,13 +482,21 @@ function addCredentialRules(
 	);
 	const files = new Map(inventory.credentials.map((file) => [file.credential.id, file]));
 	const workflowsById = new Map(inventory.workflows.map((workflow) => [workflow.id, workflow]));
+	// A workflow file holds no credential name, so a credential without a file takes the name of
+	// its requirement row.
+	const rowNames = new Map(
+		(plan.manifest.requirements?.credentials ?? []).map(({ id, name }) => [id, name ?? id]),
+	);
+	const nameOf = (sourceId: string, { file }: CredentialReference) =>
+		file?.credential.name ?? rowNames.get(sourceId) ?? sourceId;
 
 	for (const reference of credentials) {
-		const { sourceId, name, expectedTypes, file, workflows } = reference;
+		const { sourceId, expectedTypes, file, workflows } = reference;
 		const conflict = {
 			kind: 'credential' as const,
 			sourceId,
-			name,
+			// A reference without an id has no file and no requirement row.
+			name: sourceId === null ? (reference.name ?? '') : nameOf(sourceId, reference),
 			expectedTypes,
 			consumers: consumersOf(workflows, projectOf),
 			...(file ? { filePath: file.path } : {}),
@@ -507,13 +515,6 @@ function addCredentialRules(
 	const access = new Map<string, Binding>();
 	const brokenOnSource = new Map<string, Binding>();
 	const markedBrokenOnSource = idsMissingOnSource(plan.manifest.requirements?.credentials);
-	// A workflow file holds no credential name, so a credential without a file takes the name of
-	// its requirement row.
-	const rowNames = new Map(
-		(plan.manifest.requirements?.credentials ?? []).map(({ id, name }) => [id, name ?? id]),
-	);
-	const nameOf = (sourceId: string, reference: CredentialReference) =>
-		reference.file ? reference.name : (rowNames.get(sourceId) ?? sourceId);
 	// The list names a credential once for each reason, also when two projects raise the issue.
 	const listed = new Map<string, PromotionMissingDependency>();
 	const list = (
@@ -545,7 +546,7 @@ function addCredentialRules(
 		const conflict = (issue: (typeof issues)[number]) => ({
 			kind: 'credential' as const,
 			sourceId,
-			name: reference.name,
+			name: nameOf(sourceId, reference),
 			expectedTypes: reference.expectedTypes,
 			consumers: consumersOfIds(issue.usedBy),
 			...(file ? { filePath: file.path } : {}),
@@ -611,19 +612,19 @@ function addCredentialRules(
 	}
 
 	for (const [sourceId, { reference, consumers }] of access) {
-		const { name, expectedTypes } = reference;
+		const { expectedTypes } = reference;
 		result.accessRequirements.push({
 			kind: 'credential',
 			code: 'access-required',
 			sourceId,
-			name,
+			name: nameOf(sourceId, reference),
 			credentialType: expectedTypes[0],
 			consumers,
 		});
 		list(sourceId, { reference, consumers }, 'not-shared');
 	}
 	for (const [sourceId, { reference, file, projectId, consumers }] of missing) {
-		const { name, expectedTypes } = reference;
+		const { expectedTypes } = reference;
 		const canCreate =
 			consumers.some(({ project }) => project.id === projectId) ||
 			dependencies.credentialProjectIds.has(projectId);
@@ -639,7 +640,7 @@ function addCredentialRules(
 		result.missingBindings.push({
 			kind: 'credential',
 			sourceId,
-			name,
+			name: nameOf(sourceId, reference),
 			credentialType: expectedTypes[0],
 			consumers,
 			ownerProject: projectOf(projectId),
