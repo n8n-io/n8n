@@ -320,8 +320,8 @@ export function createEngineRuntime({
 			// dropped from an in-memory queue, and stays in a Redis queue for the
 			// next consumer.
 
-			// The sweepers stop first: the wait and reconciliation sweepers feed the
-			// queues, and a retention pass must end before the host closes the database.
+			// The wait and reconciliation sweepers stop first: they feed the queues, so
+			// nothing lands there after the workers have drained.
 			await Promise.all(sweepers.map(async (sweeper) => await sweeper.stop()));
 			await Promise.all(workers.map(async (worker) => await worker.stop()));
 			// After the workers are quiet, so the last events still reach the host.
