@@ -5,7 +5,7 @@ import {
 	mintResumeToken,
 	mintStepBoundResumeToken,
 } from '../../auth/resume-token';
-import type { StepMessage, WorkQueue } from '../../queue';
+import type { StepMessage, WorkQueuePublisher } from '../../queue';
 import { ExecutionNotFoundError, type ExecutionStore } from '../execution-store';
 import type { ExecutionStatus } from '../execution.types';
 import { ResumeRequestService, type ResumeHold } from '../resume-request.service';
@@ -80,7 +80,7 @@ function setup({
 			return { status };
 		}),
 	} as unknown as ExecutionStore;
-	const stepQueue = { publish: vi.fn() } as unknown as WorkQueue<StepMessage>;
+	const stepQueue: WorkQueuePublisher<StepMessage> = { publish: vi.fn() };
 
 	const service = new ResumeRequestService(
 		executionStore,

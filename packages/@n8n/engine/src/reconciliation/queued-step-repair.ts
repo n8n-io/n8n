@@ -1,5 +1,5 @@
 import type { StepStore } from '../execution';
-import type { StepMessage, WorkQueue } from '../queue';
+import type { StepMessage, WorkQueuePublisher } from '../queue';
 import type { Finding, Repair } from './reconciliation.types';
 
 type Kind = 'step-queued-no-message';
@@ -17,7 +17,7 @@ export class QueuedStepRepair implements Repair<Kind> {
 
 	constructor(
 		private readonly stepStore: StepStore,
-		private readonly stepQueue: WorkQueue<StepMessage>,
+		private readonly stepQueue: WorkQueuePublisher<StepMessage>,
 	) {}
 
 	async apply({

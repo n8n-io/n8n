@@ -24,10 +24,14 @@ import {
 	type EngineRuntimeOptions,
 } from '../create-engine-runtime';
 
-const fakeQueue = <T>() => ({
-	publish: vi.fn(async (_message: T) => {}),
-	start: vi.fn(),
-	stop: vi.fn(async () => {}),
+const fakePublisher = <T>() => ({ publish: vi.fn(async (_message: T) => {}) });
+const fakeConsumer = () => ({ start: vi.fn(), stop: vi.fn(async () => {}) });
+const fakeQueues = () => ({
+	publishers: {
+		orchestration: fakePublisher<OrchestrationMessage>(),
+		step: fakePublisher<StepMessage>(),
+	},
+	consumers: { orchestration: fakeConsumer(), step: fakeConsumer() },
 });
 
 vi.mock('../../retention', async (importOriginal) => {
@@ -138,7 +142,11 @@ describe('createEngineRuntime', () => {
 		expect(() => runtime({ roles: roles as EngineRole[] })).toThrow(error);
 	});
 
-	it.each<{ name: string; roles?: EngineRole[]; consumed: Array<keyof EngineWorkQueues> }>([
+	it.each<{
+		name: string;
+		roles?: EngineRole[];
+		consumed: Array<keyof EngineWorkQueues['consumers']>;
+	}>([
 		{ name: 'all roles (default)', roles: undefined, consumed: ['orchestration', 'step'] },
 		{ name: 'api only', roles: ['api'], consumed: [] },
 		{ name: 'orchestrator only', roles: ['orchestrator'], consumed: ['orchestration'] },
@@ -146,10 +154,7 @@ describe('createEngineRuntime', () => {
 		{ name: 'a role listed twice', roles: ['step-worker', 'step-worker'], consumed: ['step'] },
 	])('starts and stops only the queues its roles consume ($name)', async ({ roles, consumed }) => {
 		vi.spyOn(TypeOrmStepStore.prototype, 'nextWaitDeadline').mockResolvedValue(null);
-		const queues = {
-			orchestration: fakeQueue<OrchestrationMessage>(),
-			step: fakeQueue<StepMessage>(),
-		};
+		const queues = fakeQueues();
 		const engine = runtime({ roles, queues });
 
 		engine.start();
@@ -157,8 +162,8 @@ describe('createEngineRuntime', () => {
 
 		for (const name of ['orchestration', 'step'] as const) {
 			const times = consumed.includes(name) ? 1 : 0;
-			expect(queues[name].start, name).toHaveBeenCalledTimes(times);
-			expect(queues[name].stop, name).toHaveBeenCalledTimes(times);
+			expect(queues.consumers[name].start, name).toHaveBeenCalledTimes(times);
+			expect(queues.consumers[name].stop, name).toHaveBeenCalledTimes(times);
 		}
 	});
 
@@ -178,10 +183,7 @@ describe('createEngineRuntime', () => {
 		vi.spyOn(TypeOrmStepStore.prototype, 'findStaleRunningSteps').mockResolvedValue([]);
 		const engine = runtime({
 			roles,
-			queues: {
-				orchestration: fakeQueue<OrchestrationMessage>(),
-				step: fakeQueue<StepMessage>(),
-			},
+			queues: fakeQueues(),
 			waitSweepIntervalMs: 1,
 			reconciliationIntervalMs: 1,
 		});
@@ -315,15 +317,14 @@ describe('createEngineRuntime', () => {
 		vi.spyOn(TypeOrmStepStore.prototype, 'resumeDueSteps')
 			.mockResolvedValueOnce([{ id: 'step-1', executionId }])
 			.mockResolvedValue([]);
-		const orchestration = fakeQueue<OrchestrationMessage>();
-		const step = fakeQueue<StepMessage>();
+		const { publishers, consumers } = fakeQueues();
 		const engine = createEngineRuntime({
 			dataSource: fakeDataSource(),
 			admittance: new AllowAllAdmittance(),
 			identityVerifier,
 			responseSender,
 			waitSweepIntervalMs: 1,
-			queues: { orchestration, step },
+			queues: { publishers, consumers },
 		});
 		engine.start();
 
@@ -340,24 +341,24 @@ describe('createEngineRuntime', () => {
 				})
 				.expect(201);
 			await vi.waitFor(() =>
-				expect(step.publish).toHaveBeenCalledWith({
+				expect(publishers.step.publish).toHaveBeenCalledWith({
 					type: 'step:ready',
 					executionId,
 					stepId: 'step-1',
 				}),
 			);
-			expect(orchestration.publish).toHaveBeenCalledExactlyOnceWith({
+			expect(publishers.orchestration.publish).toHaveBeenCalledExactlyOnceWith({
 				type: 'execution:enqueued',
 				executionId,
 			});
-			expect(orchestration.start).toHaveBeenCalledOnce();
-			expect(step.start).toHaveBeenCalledOnce();
+			expect(consumers.orchestration.start).toHaveBeenCalledOnce();
+			expect(consumers.step.start).toHaveBeenCalledOnce();
 		} finally {
 			await engine.stop();
 		}
 
-		expect(orchestration.stop).toHaveBeenCalledOnce();
-		expect(step.stop).toHaveBeenCalledOnce();
+		expect(consumers.orchestration.stop).toHaveBeenCalledOnce();
+		expect(consumers.step.stop).toHaveBeenCalledOnce();
 	});
 
 	it('re-announces a stale queued execution on the orchestration queue the host gives it', async () => {
@@ -365,20 +366,20 @@ describe('createEngineRuntime', () => {
 			.mockResolvedValueOnce([{ id: 'exec-1', staleAfter: new Date() }])
 			.mockResolvedValue([]);
 		vi.spyOn(TypeOrmExecutionStore.prototype, 'renewQueuedExecution').mockResolvedValue(true);
-		const orchestration = fakeQueue<OrchestrationMessage>();
+		const queues = fakeQueues();
 		const engine = createEngineRuntime({
 			dataSource: fakeDataSource(),
 			admittance: new AllowAllAdmittance(),
 			identityVerifier,
 			responseSender,
 			reconciliationIntervalMs: 1,
-			queues: { orchestration, step: fakeQueue<StepMessage>() },
+			queues,
 		});
 		engine.start();
 
 		try {
 			await vi.waitFor(() =>
-				expect(orchestration.publish).toHaveBeenCalledExactlyOnceWith({
+				expect(queues.publishers.orchestration.publish).toHaveBeenCalledExactlyOnceWith({
 					type: 'execution:enqueued',
 					executionId: 'exec-1',
 				}),

@@ -1,6 +1,6 @@
 import { createConsoleLogger, type EngineLogger } from '../logging';
 import { checkWorkQueueConcurrency } from './work-queue-concurrency';
-import type { WorkQueue } from './work-queue.types';
+import type { WorkQueueConsumer, WorkQueuePublisher } from './work-queue.types';
 
 /** Makes a synchronous throw a rejection, so `run()` cannot recurse on one stack. */
 async function callAsync<TMessage>(
@@ -11,11 +11,13 @@ async function callAsync<TMessage>(
 }
 
 /**
- * In-memory `WorkQueue`. When a handler is registered, it runs up to
- * `concurrency` messages at once and starts them in the order they were
- * published.
+ * In-memory work queue. One object is the publisher and the consumer. When a
+ * handler is registered, it runs up to `concurrency` messages at once and
+ * starts them in the order they were published.
  */
-export class InMemoryWorkQueue<TMessage> implements WorkQueue<TMessage> {
+export class InMemoryWorkQueue<TMessage>
+	implements WorkQueuePublisher<TMessage>, WorkQueueConsumer<TMessage>
+{
 	private readonly concurrency: number;
 
 	constructor(

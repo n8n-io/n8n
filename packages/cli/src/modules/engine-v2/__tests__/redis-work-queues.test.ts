@@ -34,15 +34,15 @@ describe('createInstanceRedisWorkQueues', () => {
 		});
 	});
 
-	it('opens a consuming connection as a work queue consumer of this instance when a queue starts', async () => {
+	it('opens a consuming connection as a work queue consumer of this instance when a consumer starts', async () => {
 		const { queues } = await createInstanceRedisWorkQueues(publisher, mockLogger(), {
 			orchestration: 1,
 			step: 1,
 		});
 		expect(redisClientService.createClient).not.toHaveBeenCalled();
 
-		queues.step.start(async () => {});
-		await queues.step.stop();
+		queues.consumers.step.start(async () => {});
+		await queues.consumers.step.stop();
 
 		expect(redisClientService.createClient.mock.calls).toEqual([
 			[{ type: 'work-queue-consumer(n8n)' }],

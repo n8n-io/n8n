@@ -7,7 +7,7 @@ import {
 } from '../execution';
 import type { GraphNode } from '../graph';
 import type { LifecycleEventPublisherFactory } from '../lifecycle-events';
-import type { OrchestrationMessage, WorkQueue } from '../queue';
+import type { OrchestrationMessage, WorkQueuePublisher } from '../queue';
 import type { Finding, Repair } from './reconciliation.types';
 
 type Kind = 'step-running-no-worker';
@@ -35,7 +35,7 @@ export class RunningStepRepair implements Repair<Kind> {
 	constructor(
 		private readonly executionStore: ExecutionStore,
 		private readonly stepStore: StepStore,
-		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
+		private readonly orchestrationQueue: WorkQueuePublisher<OrchestrationMessage>,
 		private readonly lifecycleEventPublisherFactory: LifecycleEventPublisherFactory,
 	) {}
 

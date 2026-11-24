@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { StepStore } from '../../execution';
-import type { StepMessage, WorkQueue } from '../../queue';
+import type { StepMessage, WorkQueuePublisher } from '../../queue';
 import { QueuedStepDetector } from '../queued-step-detector';
 import { QueuedStepRepair } from '../queued-step-repair';
 
@@ -16,8 +16,8 @@ function makeStepStore() {
 	};
 }
 
-function makeStepQueue(): WorkQueue<StepMessage> {
-	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
+function makeStepQueue(): WorkQueuePublisher<StepMessage> {
+	return { publish: vi.fn() };
 }
 
 describe('QueuedStepDetector', () => {

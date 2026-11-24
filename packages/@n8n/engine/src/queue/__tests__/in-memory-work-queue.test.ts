@@ -12,9 +12,10 @@ const silentLogger: EngineLogger = {
 	error: () => {},
 };
 
-describeWorkQueueContract('InMemoryWorkQueue', ({ concurrency }) => ({
-	queue: new InMemoryWorkQueue<ContractMessage>(silentLogger, { concurrency }),
-}));
+describeWorkQueueContract('InMemoryWorkQueue', ({ concurrency }) => {
+	const queue = new InMemoryWorkQueue<ContractMessage>(silentLogger, { concurrency });
+	return { publisher: queue, consumer: queue };
+});
 
 describe('InMemoryWorkQueue', () => {
 	it('runs one handler at a time when no concurrency is given', async () => {

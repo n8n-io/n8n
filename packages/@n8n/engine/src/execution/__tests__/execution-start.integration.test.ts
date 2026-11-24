@@ -21,7 +21,7 @@ import {
 	InMemoryWorkQueue,
 	type OrchestrationMessage,
 	type StepMessage,
-	type WorkQueue,
+	type WorkQueuePublisher,
 } from '../../queue';
 import { noopExecutionResponseSender } from '../../response-channel';
 import type { CancelExecutionService } from '../cancel-execution.service';
@@ -143,7 +143,7 @@ describe('execution start (integration)', () => {
 	it('is idempotent across duplicate execution:enqueued deliveries', async () => {
 		const { executionStore, stepStore } = stores();
 		const publish = vi.fn();
-		const queue: WorkQueue<OrchestrationMessage> = { publish, start: vi.fn(), stop: vi.fn() };
+		const queue: WorkQueuePublisher<OrchestrationMessage> = { publish };
 		const handler = new ExecutionStartHandler(
 			executionStore,
 			stepStore,

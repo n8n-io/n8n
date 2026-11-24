@@ -17,10 +17,9 @@ export function createInMemoryWorkQueues({
 	concurrency = {},
 	logger,
 }: InMemoryWorkQueuesOptions = {}): EngineWorkQueues {
-	return {
-		orchestration: new InMemoryWorkQueue<OrchestrationMessage>(logger, {
-			concurrency: concurrency.orchestration,
-		}),
-		step: new InMemoryWorkQueue<StepMessage>(logger, { concurrency: concurrency.step }),
-	};
+	const orchestration = new InMemoryWorkQueue<OrchestrationMessage>(logger, {
+		concurrency: concurrency.orchestration,
+	});
+	const step = new InMemoryWorkQueue<StepMessage>(logger, { concurrency: concurrency.step });
+	return { publishers: { orchestration, step }, consumers: { orchestration, step } };
 }

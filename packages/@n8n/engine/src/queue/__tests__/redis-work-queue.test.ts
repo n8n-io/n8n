@@ -4,9 +4,9 @@ import { afterEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { UnexpectedError } from '../../common';
 import type { EngineLogger } from '../../logging';
 import {
-	RedisWorkQueue,
-	type RedisWorkQueueOptions,
-	type WorkQueueConsumerClient,
+	RedisWorkQueueConsumer,
+	type RedisWorkQueueConsumerOptions,
+	type ClosableWorkQueueConsumerClient,
 	type WorkQueuePublisherClient,
 } from '../redis-work-queue';
 import { FakeRedisList } from './fake-redis-list';
@@ -21,29 +21,29 @@ const silentLogger: EngineLogger = {
 	error: () => {},
 };
 
-const queues: Array<RedisWorkQueue<ContractMessage>> = [];
+const consumers: Array<RedisWorkQueueConsumer<ContractMessage>> = [];
 
-function createQueue(
+function createConsumer(
 	redis: FakeRedisList,
-	options: Partial<RedisWorkQueueOptions<ContractMessage>> = {},
+	options: Partial<RedisWorkQueueConsumerOptions<ContractMessage>> = {},
 ) {
-	const queue = new RedisWorkQueue<ContractMessage>({
+	const consumer = new RedisWorkQueueConsumer<ContractMessage>({
 		publisher: redis,
-		openConsumer: () => redis,
+		openConnection: () => redis,
 		key: KEY,
 		parse: parseContractMessage,
 		logger: silentLogger,
 		blockTimeoutSeconds: 0.05,
 		...options,
 	});
-	queues.push(queue);
-	return queue;
+	consumers.push(consumer);
+	return consumer;
 }
 
-describe('RedisWorkQueue', () => {
+describe('RedisWorkQueueConsumer', () => {
 	afterEach(async () => {
 		vi.useRealTimers();
-		for (const queue of queues.splice(0)) await queue.stop();
+		for (const consumer of consumers.splice(0)) await consumer.stop();
 	});
 
 	it('logs a failed push-back and still resolves stop', async () => {
@@ -55,11 +55,11 @@ describe('RedisWorkQueue', () => {
 		);
 		const error = new Error('connection lost');
 		redis.rpush.mockRejectedValueOnce(error);
-		const queue = createQueue(redis, { logger });
-		queue.start(async () => {});
+		const consumer = createConsumer(redis, { logger });
+		consumer.start(async () => {});
 		await vi.waitFor(() => expect(redis.brpop).toHaveBeenCalledTimes(1));
 
-		const stopping = queue.stop();
+		const stopping = consumer.stop();
 		answerFetch([KEY, '{"n":1}']);
 		await stopping;
 
@@ -81,9 +81,9 @@ describe('RedisWorkQueue', () => {
 		await redis.lpush(KEY, malformed);
 		await redis.lpush(KEY, '{"n":2}');
 		const received: ContractMessage[] = [];
-		const queue = createQueue(redis, { logger });
+		const consumer = createConsumer(redis, { logger });
 
-		queue.start(async (message) => {
+		consumer.start(async (message) => {
 			received.push(message);
 		});
 
@@ -102,9 +102,9 @@ describe('RedisWorkQueue', () => {
 		redis.brpop.mockRejectedValueOnce(error);
 		await redis.lpush(KEY, '{"n":1}');
 		const handler = vi.fn(async () => {});
-		const queue = createQueue(redis, { logger });
+		const consumer = createConsumer(redis, { logger });
 
-		queue.start(handler);
+		consumer.start(handler);
 		await vi.advanceTimersByTimeAsync(0);
 
 		expect(logger.error).toHaveBeenCalledWith(`work queue ${KEY} fetch failed: connection lost`, {
@@ -116,7 +116,7 @@ describe('RedisWorkQueue', () => {
 		await vi.advanceTimersByTimeAsync(1);
 		expect(handler).toHaveBeenCalledWith({ n: 1 });
 
-		const stopping = queue.stop();
+		const stopping = consumer.stop();
 		await vi.advanceTimersByTimeAsync(100);
 		await stopping;
 	});
@@ -124,12 +124,12 @@ describe('RedisWorkQueue', () => {
 	it('cancels the retry delay when stop is called', async () => {
 		const redis = new FakeRedisList();
 		redis.brpop.mockRejectedValueOnce(new Error('connection lost'));
-		const queue = createQueue(redis);
-		queue.start(async () => {});
+		const consumer = createConsumer(redis);
+		consumer.start(async () => {});
 		await vi.waitFor(() => expect(redis.brpop).toHaveBeenCalledTimes(1));
 
 		const startedAt = Date.now();
-		await queue.stop();
+		await consumer.stop();
 
 		expect(Date.now() - startedAt).toBeLessThan(500);
 		expect(redis.brpop).toHaveBeenCalledTimes(1);
@@ -142,12 +142,12 @@ describe('RedisWorkQueue', () => {
 		redis.brpop.mockImplementationOnce(
 			async () => await new Promise((_resolve, reject) => (failFetch = reject)),
 		);
-		const queue = createQueue(redis);
-		queue.start(async () => {});
+		const consumer = createConsumer(redis);
+		consumer.start(async () => {});
 		await vi.advanceTimersByTimeAsync(0);
 		let stopped = false;
 
-		const stopping = queue.stop().then(() => {
+		const stopping = consumer.stop().then(() => {
 			stopped = true;
 		});
 		failFetch(new Error('connection lost'));
@@ -161,12 +161,12 @@ describe('RedisWorkQueue', () => {
 		vi.useFakeTimers();
 		const redis = new FakeRedisList();
 		redis.brpop.mockImplementation(async () => await new Promise(() => {}));
-		const queue = createQueue(redis, { blockTimeoutSeconds: 2 });
-		queue.start(async () => {});
+		const consumer = createConsumer(redis, { blockTimeoutSeconds: 2 });
+		consumer.start(async () => {});
 		await vi.advanceTimersByTimeAsync(0);
 		let stopped = false;
 
-		const stopping = queue.stop().then(() => {
+		const stopping = consumer.stop().then(() => {
 			stopped = true;
 		});
 		await vi.advanceTimersByTimeAsync(2_999);
@@ -186,14 +186,14 @@ describe('RedisWorkQueue', () => {
 		);
 		const firstHandler = vi.fn(async (_message: ContractMessage) => {});
 		const secondHandler = vi.fn(async (_message: ContractMessage) => {});
-		const queue = createQueue(redis);
-		queue.start(firstHandler);
+		const consumer = createConsumer(redis);
+		consumer.start(firstHandler);
 		await vi.advanceTimersByTimeAsync(0);
-		const stopping = queue.stop();
+		const stopping = consumer.stop();
 		await vi.advanceTimersByTimeAsync(1_050);
 		await stopping;
 
-		queue.start(secondHandler);
+		consumer.start(secondHandler);
 		await vi.advanceTimersByTimeAsync(0);
 		answerFetch([KEY, '{"n":1}']);
 		await vi.advanceTimersByTimeAsync(0);
@@ -202,7 +202,7 @@ describe('RedisWorkQueue', () => {
 		expect(redis.rpush).toHaveBeenCalledWith(KEY, '{"n":1}');
 		expect(secondHandler).toHaveBeenCalledWith({ n: 1 });
 
-		const stoppingAgain = queue.stop();
+		const stoppingAgain = consumer.stop();
 		await vi.advanceTimersByTimeAsync(100);
 		await stoppingAgain;
 	});
@@ -214,14 +214,14 @@ describe('RedisWorkQueue', () => {
 		redis.brpop.mockImplementationOnce(
 			async () => await new Promise((resolve) => (answerFetch = resolve)),
 		);
-		const queue = createQueue(redis);
-		queue.start(async () => {});
+		const consumer = createConsumer(redis);
+		consumer.start(async () => {});
 		await vi.advanceTimersByTimeAsync(0);
-		const stopping = queue.stop();
+		const stopping = consumer.stop();
 		await vi.advanceTimersByTimeAsync(1_050);
 		await stopping;
 
-		queue.start(async () => {});
+		consumer.start(async () => {});
 		await vi.advanceTimersByTimeAsync(1_000);
 		expect(redis.brpop).toHaveBeenCalledTimes(1);
 
@@ -229,7 +229,7 @@ describe('RedisWorkQueue', () => {
 		await vi.advanceTimersByTimeAsync(0);
 		expect(redis.brpop).toHaveBeenCalledTimes(2);
 
-		const stoppingAgain = queue.stop();
+		const stoppingAgain = consumer.stop();
 		await vi.advanceTimersByTimeAsync(100);
 		await stoppingAgain;
 	});
@@ -238,9 +238,9 @@ describe('RedisWorkQueue', () => {
 		const redis = new FakeRedisList();
 		for (const n of [1, 2, 3]) await redis.lpush(KEY, JSON.stringify({ n }));
 		const releases: Array<() => void> = [];
-		const queue = createQueue(redis, { concurrency: 2 });
+		const consumer = createConsumer(redis, { concurrency: 2 });
 
-		queue.start(async () => await new Promise<void>((resolve) => releases.push(resolve)));
+		consumer.start(async () => await new Promise<void>((resolve) => releases.push(resolve)));
 		try {
 			await vi.waitFor(() => expect(releases).toHaveLength(2));
 			await new Promise((resolve) => setTimeout(resolve, 50));
@@ -251,7 +251,7 @@ describe('RedisWorkQueue', () => {
 			releases[0]();
 			await vi.waitFor(() => expect(releases).toHaveLength(3));
 		} finally {
-			const stopping = queue.stop();
+			const stopping = consumer.stop();
 			for (const release of releases) release();
 			await stopping;
 		}
@@ -267,9 +267,9 @@ describe('RedisWorkQueue', () => {
 		handler.mockImplementationOnce(() => {
 			throw error;
 		});
-		const queue = createQueue(redis, { logger });
+		const consumer = createConsumer(redis, { logger });
 
-		queue.start(handler);
+		consumer.start(handler);
 
 		await vi.waitFor(() => expect(handler.mock.calls).toEqual([[{ n: 1 }], [{ n: 2 }]]));
 		expect(logger.error).toHaveBeenCalledWith(`work queue ${KEY} handler failed: handler failed`, {
@@ -278,15 +278,15 @@ describe('RedisWorkQueue', () => {
 	});
 
 	it('refuses a second consumer while one is registered', () => {
-		const queue = createQueue(new FakeRedisList());
-		queue.start(async () => {});
+		const consumer = createConsumer(new FakeRedisList());
+		consumer.start(async () => {});
 
-		expect(() => queue.start(async () => {})).toThrow(UnexpectedError);
+		expect(() => consumer.start(async () => {})).toThrow(UnexpectedError);
 	});
 
 	it('accepts ioredis Redis and Cluster clients', () => {
-		expectTypeOf<Redis>().toExtend<WorkQueuePublisherClient & WorkQueueConsumerClient>();
-		expectTypeOf<Cluster>().toExtend<WorkQueuePublisherClient & WorkQueueConsumerClient>();
+		expectTypeOf<Redis>().toExtend<WorkQueuePublisherClient & ClosableWorkQueueConsumerClient>();
+		expectTypeOf<Cluster>().toExtend<WorkQueuePublisherClient & ClosableWorkQueueConsumerClient>();
 	});
 
 	it.each([
@@ -300,12 +300,12 @@ describe('RedisWorkQueue', () => {
 		['blockTimeoutSeconds', Number.NaN],
 		['blockTimeoutSeconds', 2_147_483],
 	])('refuses a %s of %s', (option, value) => {
-		expect(() => createQueue(new FakeRedisList(), { [option]: value })).toThrow(UnexpectedError);
+		expect(() => createConsumer(new FakeRedisList(), { [option]: value })).toThrow(UnexpectedError);
 	});
 
 	it('accepts a blockTimeoutSeconds for which the stop wait still fits in a Node timer', () => {
 		expect(() =>
-			createQueue(new FakeRedisList(), { blockTimeoutSeconds: 2_147_482 }),
+			createConsumer(new FakeRedisList(), { blockTimeoutSeconds: 2_147_482 }),
 		).not.toThrow();
 	});
 });

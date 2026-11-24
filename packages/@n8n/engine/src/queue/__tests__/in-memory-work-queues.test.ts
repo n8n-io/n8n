@@ -20,16 +20,26 @@ async function startBlocked(
 	const blocked = new Promise<void>((resolve) => (release = resolve));
 	const orchestrationHandler = vi.fn(async () => await blocked);
 	const stepHandler = vi.fn(async () => await blocked);
-	queues.orchestration.start(orchestrationHandler);
-	queues.step.start(stepHandler);
+	queues.consumers.orchestration.start(orchestrationHandler);
+	queues.consumers.step.start(stepHandler);
 	for (let n = 0; n < published.orchestration; n++) {
-		await queues.orchestration.publish({ type: 'execution:enqueued', executionId: `exec-${n}` });
+		await queues.publishers.orchestration.publish({
+			type: 'execution:enqueued',
+			executionId: `exec-${n}`,
+		});
 	}
 	for (let n = 0; n < published.step; n++) {
-		await queues.step.publish({ type: 'step:ready', executionId: 'exec-1', stepId: `step-${n}` });
+		await queues.publishers.step.publish({
+			type: 'step:ready',
+			executionId: 'exec-1',
+			stepId: `step-${n}`,
+		});
 	}
 	const stop = async () => {
-		const stopping = Promise.all([queues.orchestration.stop(), queues.step.stop()]);
+		const stopping = Promise.all([
+			queues.consumers.orchestration.stop(),
+			queues.consumers.step.stop(),
+		]);
 		release();
 		await stopping;
 	};
@@ -73,12 +83,19 @@ describe('createInMemoryWorkQueues', () => {
 	it('logs a failed handler through the given logger', async () => {
 		const logger = { ...silentLogger, error: vi.fn() };
 		const queues = createInMemoryWorkQueues({ logger });
-		queues.orchestration.start(async () => await Promise.reject(new Error('failed')));
-		queues.step.start(async () => await Promise.reject(new Error('failed')));
+		queues.consumers.orchestration.start(async () => await Promise.reject(new Error('failed')));
+		queues.consumers.step.start(async () => await Promise.reject(new Error('failed')));
 
-		await queues.orchestration.publish({ type: 'execution:enqueued', executionId: 'exec-1' });
-		await queues.step.publish({ type: 'step:ready', executionId: 'exec-1', stepId: 'step-1' });
-		await Promise.all([queues.orchestration.stop(), queues.step.stop()]);
+		await queues.publishers.orchestration.publish({
+			type: 'execution:enqueued',
+			executionId: 'exec-1',
+		});
+		await queues.publishers.step.publish({
+			type: 'step:ready',
+			executionId: 'exec-1',
+			stepId: 'step-1',
+		});
+		await Promise.all([queues.consumers.orchestration.stop(), queues.consumers.step.stop()]);
 
 		expect(logger.error).toHaveBeenCalledTimes(2);
 	});

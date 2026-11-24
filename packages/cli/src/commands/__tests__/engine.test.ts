@@ -119,9 +119,9 @@ describe('Engine', () => {
 	/** Opens the consuming connections, as the runtime does when it starts the queues. */
 	const startAndStopWorkQueues = async () => {
 		const queues = vi.mocked(runtime.init).mock.calls.at(-1)?.[0].queues;
-		for (const queue of [queues?.orchestration, queues?.step]) {
-			queue?.start(async () => {});
-			await queue?.stop();
+		for (const consumer of [queues?.consumers.orchestration, queues?.consumers.step]) {
+			consumer?.start(async () => {});
+			await consumer?.stop();
 		}
 	};
 
@@ -360,7 +360,7 @@ describe('Engine', () => {
 			await createEngine().init();
 			const queues = vi.mocked(runtime.init).mock.calls.at(-1)?.[0].queues;
 
-			await queues?.orchestration.publish({
+			await queues?.publishers.orchestration.publish({
 				type: 'step:settled',
 				executionId: 'exec-1',
 				stepId: 'step-1',

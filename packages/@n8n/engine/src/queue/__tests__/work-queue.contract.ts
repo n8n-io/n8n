@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
-import type { WorkQueue } from '../work-queue.types';
+import type { WorkQueueConsumer, WorkQueuePublisher } from '../work-queue.types';
 
 export interface ContractMessage {
 	n: number;
@@ -14,7 +14,8 @@ export const parseContractMessage = (value: unknown): ContractMessage =>
 	contractMessageSchema.parse(value);
 
 export interface WorkQueueUnderTest {
-	queue: WorkQueue<ContractMessage>;
+	publisher: WorkQueuePublisher<ContractMessage>;
+	consumer: WorkQueueConsumer<ContractMessage>;
 	/** Releases what the adapter holds (connections, keys). */
 	dispose?: () => Promise<void>;
 }
@@ -91,8 +92,11 @@ async function settleBriefly(): Promise<void> {
 	await new Promise((resolve) => setTimeout(resolve, 50));
 }
 
-async function publishAll(queue: WorkQueue<ContractMessage>, ns: number[]): Promise<void> {
-	for (const n of ns) await queue.publish({ n });
+async function publishAll(
+	publisher: WorkQueuePublisher<ContractMessage>,
+	ns: number[],
+): Promise<void> {
+	for (const n of ns) await publisher.publish({ n });
 }
 
 const range = (count: number) => Array.from({ length: count }, (_, index) => index + 1);
@@ -104,18 +108,18 @@ async function expectDeliveredExactly(received: number[], expected: number[]): P
 }
 
 /**
- * The behaviour every `WorkQueue` adapter must have. The contract makes no
+ * The behaviour every work queue adapter must have. The contract makes no
  * promise about delivery order, so no case here asserts one.
  */
 export function describeWorkQueueContract(adapterName: string, create: WorkQueueFactory): void {
-	describe(`WorkQueue contract: ${adapterName}`, () => {
+	describe(`Work queue contract: ${adapterName}`, () => {
 		const disposers: Array<() => Promise<void>> = [];
 
 		async function build(concurrency: number) {
-			const { queue, dispose } = await create({ concurrency });
+			const queue = await create({ concurrency });
 			disposers.push(async () => {
-				await queue.stop();
-				await dispose?.();
+				await queue.consumer.stop();
+				await queue.dispose?.();
 			});
 			return queue;
 		}
@@ -128,24 +132,24 @@ export function describeWorkQueueContract(adapterName: string, create: WorkQueue
 		it.each([1, 2, 3, 4])(
 			'delivers every published message exactly once at concurrency %i',
 			async (concurrency) => {
-				const queue = await build(concurrency);
+				const { publisher, consumer } = await build(concurrency);
 				const received: number[] = [];
-				queue.start(async ({ n }) => {
+				consumer.start(async ({ n }) => {
 					received.push(n);
 				});
 
-				await publishAll(queue, range(20));
+				await publishAll(publisher, range(20));
 
 				await expectDeliveredExactly(received, range(20));
 			},
 		);
 
 		it('delivers messages that were published before the consumer started', async () => {
-			const queue = await build(2);
-			await publishAll(queue, [1, 2]);
+			const { publisher, consumer } = await build(2);
+			await publishAll(publisher, [1, 2]);
 
 			const received: number[] = [];
-			queue.start(async ({ n }) => {
+			consumer.start(async ({ n }) => {
 				received.push(n);
 			});
 
@@ -153,11 +157,11 @@ export function describeWorkQueueContract(adapterName: string, create: WorkQueue
 		});
 
 		it.each([1, 2, 3, 4])('never runs more than %i handlers at once', async (concurrency) => {
-			const queue = await build(concurrency);
+			const { publisher, consumer } = await build(concurrency);
 			const gated = gatedHandler();
-			queue.start(gated.handler);
+			consumer.start(gated.handler);
 
-			await publishAll(queue, range(10));
+			await publishAll(publisher, range(10));
 			await eventually(() => expect(gated.started).toHaveLength(concurrency));
 			await settleBriefly();
 
@@ -173,11 +177,11 @@ export function describeWorkQueueContract(adapterName: string, create: WorkQueue
 		});
 
 		it('starts the next message as soon as one slot frees, while other handlers still run', async () => {
-			const queue = await build(2);
+			const { publisher, consumer } = await build(2);
 			const gated = gatedHandler();
-			queue.start(gated.handler);
+			consumer.start(gated.handler);
 
-			await publishAll(queue, [1, 2, 3]);
+			await publishAll(publisher, [1, 2, 3]);
 			await eventually(() => expect(gated.started).toHaveLength(2));
 
 			const [first, second] = gated.started;
@@ -190,11 +194,11 @@ export function describeWorkQueueContract(adapterName: string, create: WorkQueue
 		});
 
 		it('frees the slot of a handler that throws and keeps delivering', async () => {
-			const queue = await build(1);
+			const { publisher, consumer } = await build(1);
 			const gated = gatedHandler();
-			queue.start(gated.handler);
+			consumer.start(gated.handler);
 
-			await publishAll(queue, [1, 2]);
+			await publishAll(publisher, [1, 2]);
 			await eventually(() => expect(gated.started).toHaveLength(1));
 			gated.fail(gated.started[0]);
 
@@ -204,11 +208,11 @@ export function describeWorkQueueContract(adapterName: string, create: WorkQueue
 		});
 
 		it('starts the next message after a handler throws, while another handler still runs', async () => {
-			const queue = await build(2);
+			const { publisher, consumer } = await build(2);
 			const gated = gatedHandler();
-			queue.start(gated.handler);
+			consumer.start(gated.handler);
 
-			await publishAll(queue, [1, 2, 3]);
+			await publishAll(publisher, [1, 2, 3]);
 			await eventually(() => expect(gated.started).toHaveLength(2));
 
 			const [failing, other] = gated.started;
@@ -222,27 +226,27 @@ export function describeWorkQueueContract(adapterName: string, create: WorkQueue
 		});
 
 		it('delivers messages that a handler publishes while it runs', async () => {
-			const queue = await build(2);
+			const { publisher, consumer } = await build(2);
 			const received: number[] = [];
-			queue.start(async ({ n }) => {
+			consumer.start(async ({ n }) => {
 				received.push(n);
-				if (n < 10) await queue.publish({ n: n + 10 });
+				if (n < 10) await publisher.publish({ n: n + 10 });
 			});
 
-			await publishAll(queue, range(5));
+			await publishAll(publisher, range(5));
 
 			await expectDeliveredExactly(received, [1, 2, 3, 4, 5, 11, 12, 13, 14, 15]);
 		});
 
 		it('waits in stop for every in-flight handler', async () => {
-			const queue = await build(3);
+			const { publisher, consumer } = await build(3);
 			const gated = gatedHandler();
-			queue.start(gated.handler);
-			await publishAll(queue, [1, 2, 3]);
+			consumer.start(gated.handler);
+			await publishAll(publisher, [1, 2, 3]);
 			await eventually(() => expect(gated.started).toHaveLength(3));
 
 			let stopped = false;
-			const stopping = queue.stop().then(() => {
+			const stopping = consumer.stop().then(() => {
 				stopped = true;
 			});
 
@@ -257,13 +261,13 @@ export function describeWorkQueueContract(adapterName: string, create: WorkQueue
 		});
 
 		it('starts no queued message after stop is called', async () => {
-			const queue = await build(1);
+			const { publisher, consumer } = await build(1);
 			const gated = gatedHandler();
-			queue.start(gated.handler);
-			await publishAll(queue, [1, 2, 3]);
+			consumer.start(gated.handler);
+			await publishAll(publisher, [1, 2, 3]);
 			await eventually(() => expect(gated.started).toHaveLength(1));
 
-			const stopping = queue.stop();
+			const stopping = consumer.stop();
 			gated.releaseAll();
 			await stopping;
 			await settleBriefly();
@@ -272,10 +276,10 @@ export function describeWorkQueueContract(adapterName: string, create: WorkQueue
 		});
 
 		it('resolves stop when no consumer ever started', async () => {
-			const queue = await build(2);
-			await queue.publish({ n: 1 });
+			const { publisher, consumer } = await build(2);
+			await publisher.publish({ n: 1 });
 
-			await expect(queue.stop()).resolves.toBeUndefined();
+			await expect(consumer.stop()).resolves.toBeUndefined();
 		});
 	});
 }

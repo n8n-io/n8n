@@ -8,7 +8,7 @@ import {
 	type LifecycleEvent,
 } from '../../lifecycle-events';
 import { noopExecutionResponseSender, type ExecutionResponseSender } from '../../response-channel';
-import type { OrchestrationMessage, WorkQueue } from '../../queue';
+import type { OrchestrationMessage, WorkQueuePublisher } from '../../queue';
 import {
 	ExecutionNotFoundError,
 	type ExecutionRecord,
@@ -73,7 +73,7 @@ function makeSubExecutionStarter(): SubExecutionStarter {
 function makeHandler(
 	executionStore: ExecutionStore,
 	stepStore: StepStore,
-	queue: WorkQueue<OrchestrationMessage>,
+	queue: WorkQueuePublisher<OrchestrationMessage>,
 	dependencies: ExternalDependencies,
 	lifecycleEventPublisher: LifecycleEventPublisher = makeLifecycleEventPublisher(),
 	responseSender: ExecutionResponseSender = noopExecutionResponseSender,
@@ -175,8 +175,8 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 	} satisfies StepStore;
 }
 
-function makeQueue(): WorkQueue<OrchestrationMessage> {
-	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
+function makeQueue(): WorkQueuePublisher<OrchestrationMessage> {
+	return { publish: vi.fn() };
 }
 
 function makeExecutor(result: unknown = { outputs: [[{ json: { ok: true } }]] }): IStepExecutor {
@@ -1791,13 +1791,11 @@ describe('StepReadyHandler lifecycle events', () => {
 			}),
 			stop: vi.fn(),
 		};
-		const queue: WorkQueue<OrchestrationMessage> = {
+		const queue: WorkQueuePublisher<OrchestrationMessage> = {
 			publish: vi.fn(async (message: OrchestrationMessage) => {
 				order.push(`queue:${message.type}`);
 				await Promise.resolve();
 			}),
-			start: vi.fn(),
-			stop: vi.fn(),
 		};
 		const handler = makeHandler(
 			makeExecutionStore(),

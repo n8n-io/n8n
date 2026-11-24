@@ -4,22 +4,18 @@ import type { EngineLogger } from '../../logging';
 import { createRedisWorkQueues } from '../redis-work-queues';
 import { FakeRedisList } from './fake-redis-list';
 
-class FakeRedisConnection extends FakeRedisList {
-	disconnect = vi.fn();
-}
-
 const orchestrationKey = 'n8n:engine-v2-queue:orchestration';
 const stepKey = 'n8n:engine-v2-queue:step';
 const enqueued = JSON.stringify({ type: 'execution:enqueued', executionId: 'exec-1' });
 const ready = JSON.stringify({ type: 'step:ready', executionId: 'exec-1', stepId: 'step-1' });
 
 function create(concurrency = { orchestration: 1, step: 1 }, logger?: EngineLogger) {
-	const publisher = new FakeRedisConnection();
-	const consumers: FakeRedisConnection[] = [];
+	const publisher = new FakeRedisList();
+	const consumers: FakeRedisList[] = [];
 	const { queues, close } = createRedisWorkQueues({
 		publisher,
 		createConsumer: () => {
-			const consumer = new FakeRedisConnection();
+			const consumer = new FakeRedisList();
 			consumers.push(consumer);
 			return consumer;
 		},
@@ -36,12 +32,15 @@ function startBlocked({ queues, consumers }: ReturnType<typeof create>) {
 	const blocked = new Promise<void>((resolve) => (release = resolve));
 	const orchestrationHandler = vi.fn(async () => await blocked);
 	const stepHandler = vi.fn(async () => await blocked);
-	queues.orchestration.start(orchestrationHandler);
-	queues.step.start(stepHandler);
+	queues.consumers.orchestration.start(orchestrationHandler);
+	queues.consumers.step.start(stepHandler);
 	const [orchestrationConsumer, stepConsumer] = consumers;
 	const stop = async () => {
 		// Stop before the release, so that no queue starts a fetch that waits for the block timeout.
-		const stopping = Promise.all([queues.orchestration.stop(), queues.step.stop()]);
+		const stopping = Promise.all([
+			queues.consumers.orchestration.stop(),
+			queues.consumers.step.stop(),
+		]);
 		release();
 		await stopping;
 	};
@@ -52,8 +51,15 @@ describe('createRedisWorkQueues', () => {
 	it('publishes each queue to its own list under the key prefix', async () => {
 		const { publisher, queues } = create();
 
-		await queues.orchestration.publish({ type: 'execution:enqueued', executionId: 'exec-1' });
-		await queues.step.publish({ type: 'step:ready', executionId: 'exec-1', stepId: 'step-1' });
+		await queues.publishers.orchestration.publish({
+			type: 'execution:enqueued',
+			executionId: 'exec-1',
+		});
+		await queues.publishers.step.publish({
+			type: 'step:ready',
+			executionId: 'exec-1',
+			stepId: 'step-1',
+		});
 
 		expect(publisher.lpush.mock.calls).toEqual([
 			[orchestrationKey, enqueued],
@@ -119,8 +125,15 @@ describe('createRedisWorkQueues', () => {
 	it('opens no consumer connection for a queue that it only publishes to', async () => {
 		const { publisher, consumers, queues, close } = create();
 
-		await queues.orchestration.publish({ type: 'execution:enqueued', executionId: 'exec-1' });
-		await queues.step.publish({ type: 'step:ready', executionId: 'exec-1', stepId: 'step-1' });
+		await queues.publishers.orchestration.publish({
+			type: 'execution:enqueued',
+			executionId: 'exec-1',
+		});
+		await queues.publishers.step.publish({
+			type: 'step:ready',
+			executionId: 'exec-1',
+			stepId: 'step-1',
+		});
 		close();
 
 		expect(publisher.lpush).toHaveBeenCalledTimes(2);
@@ -130,20 +143,22 @@ describe('createRedisWorkQueues', () => {
 	it('opens one consumer connection when a queue starts and keeps it after a restart', async () => {
 		const { consumers, queues } = create();
 
-		queues.step.start(async () => {});
+		queues.consumers.step.start(async () => {});
 		expect(consumers).toHaveLength(1);
-		expect(() => queues.step.start(async () => {})).toThrow('work queue already has a consumer');
-		await queues.step.stop();
-		queues.step.start(async () => {});
-		await queues.step.stop();
+		expect(() => queues.consumers.step.start(async () => {})).toThrow(
+			'work queue already has a consumer',
+		);
+		await queues.consumers.step.stop();
+		queues.consumers.step.start(async () => {});
+		await queues.consumers.step.stop();
 
 		expect(consumers).toHaveLength(1);
 	});
 
 	it('closes the consumer connections it opened but not the publisher', async () => {
 		const { publisher, consumers, queues, close } = create();
-		queues.orchestration.start(async () => {});
-		await queues.orchestration.stop();
+		queues.consumers.orchestration.start(async () => {});
+		await queues.consumers.orchestration.stop();
 
 		close();
 

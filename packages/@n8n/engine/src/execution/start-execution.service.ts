@@ -11,7 +11,7 @@ import {
 	type WorkflowLoop,
 } from '../graph';
 import type { LifecycleEventSubscription } from '../lifecycle-events';
-import type { OrchestrationMessage, WorkQueue } from '../queue';
+import type { OrchestrationMessage, WorkQueuePublisher } from '../queue';
 import type { ResponseExpectation } from '../response-channel';
 import {
 	ExecutionNotFoundError,
@@ -86,7 +86,7 @@ export class StartExecutionService {
 		private readonly admittance: AdmittanceService,
 		private readonly executionStore: ExecutionStore,
 		private readonly stepStore: StepStore,
-		private readonly workQueue: WorkQueue<OrchestrationMessage>,
+		private readonly workQueue: WorkQueuePublisher<OrchestrationMessage>,
 		private readonly validateGraph: (graph: WorkflowGraph) => void = validateExecutableGraph,
 	) {}
 

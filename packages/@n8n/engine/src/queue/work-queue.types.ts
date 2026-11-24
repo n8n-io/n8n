@@ -3,8 +3,8 @@
  *
  * Two logical queues are used so a flood of step events can't starve
  * orchestration (or vice versa): an **orchestration queue** (execution/step
- * lifecycle planning) and a **step queue** (steps ready to execute). `WorkQueue`
- * is generic over its message type; adapters implement it per queue.
+ * lifecycle planning) and a **step queue** (steps ready to execute). Each queue
+ * has a publisher side and a consumer side, generic over its message type.
  */
 
 export interface ExecutionEnqueuedEvent {
@@ -35,8 +35,11 @@ export interface StepReadyEvent {
 /** Messages consumed by the step worker. */
 export type StepMessage = StepReadyEvent;
 
-export interface WorkQueue<TMessage> {
+export interface WorkQueuePublisher<TMessage> {
 	publish(message: TMessage): Promise<void>;
+}
+
+export interface WorkQueueConsumer<TMessage> {
 	/**
 	 * Register the single consumer; dispatch begins for queued and future
 	 * messages. The adapter runs up to its concurrency limit of handlers at once
@@ -53,10 +56,17 @@ export interface WorkQueue<TMessage> {
 	stop(): Promise<void>;
 }
 
-/** The two queues the engine runs on. */
+/** The two queues the engine runs on, by side. */
 export interface EngineWorkQueues {
-	/** Feeds the orchestration worker. */
-	orchestration: WorkQueue<OrchestrationMessage>;
-	/** Feeds the step worker. */
-	step: WorkQueue<StepMessage>;
+	publishers: {
+		orchestration: WorkQueuePublisher<OrchestrationMessage>;
+		step: WorkQueuePublisher<StepMessage>;
+	};
+	/** The runtime starts and stops only the consumers of its roles. */
+	consumers: {
+		/** Feeds the orchestration worker. */
+		orchestration: WorkQueueConsumer<OrchestrationMessage>;
+		/** Feeds the step worker. */
+		step: WorkQueueConsumer<StepMessage>;
+	};
 }

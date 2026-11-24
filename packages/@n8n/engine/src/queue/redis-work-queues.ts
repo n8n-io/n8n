@@ -1,21 +1,17 @@
 import type { EngineLogger } from '../logging';
 import {
-	RedisWorkQueue,
-	type WorkQueueConsumerClient,
+	RedisWorkQueueConsumer,
+	RedisWorkQueuePublisher,
+	type ClosableWorkQueueConsumerClient,
 	type WorkQueuePublisherClient,
 } from './redis-work-queue';
 import { orchestrationMessageSchema, stepMessageSchema } from './work-queue.schemas';
-import type { EngineWorkQueues } from './work-queue.types';
-
-/** A consumer connection that the engine opens through the host, and closes. */
-export interface ClosableWorkQueueConsumerClient extends WorkQueueConsumerClient {
-	disconnect(): void;
-}
+import type { EngineWorkQueues, OrchestrationMessage, StepMessage } from './work-queue.types';
 
 export interface RedisWorkQueuesOptions {
 	/** Both queues publish over it. The caller owns it and closes it. */
 	publisher: WorkQueuePublisherClient;
-	/** Opens a new connection. It is called once for each queue that starts, because a blocking pop holds its connection. */
+	/** Opens a new connection. It is called once for each consumer that starts, because a blocking pop holds its connection. */
 	createConsumer: () => ClosableWorkQueueConsumerClient;
 	/** The Redis key prefix of the host. The engine adds the names of its lists. */
 	keyPrefix: string;
@@ -26,9 +22,9 @@ export interface RedisWorkQueuesOptions {
 }
 
 export interface RedisWorkQueues {
-	/** Pass them to `createEngineRuntime`, which starts and stops them. */
+	/** Pass them to `createEngineRuntime`, which starts and stops the consumers. */
 	queues: EngineWorkQueues;
-	/** Closes the consumer connections that the started queues opened. Call it after the engine has stopped the queues. */
+	/** Closes the connections that the started consumers opened. Call it after the engine has stopped the consumers. */
 	close(): void;
 }
 
@@ -43,34 +39,41 @@ export function createRedisWorkQueues({
 	concurrency,
 	logger,
 }: RedisWorkQueuesOptions): RedisWorkQueues {
-	const opened: ClosableWorkQueueConsumerClient[] = [];
-	const openConsumer = () => {
-		const consumer = createConsumer();
-		opened.push(consumer);
-		return consumer;
+	const orchestrationKey = `${keyPrefix}:engine-v2-queue:orchestration`;
+	const stepKey = `${keyPrefix}:engine-v2-queue:step`;
+	const consumers = {
+		orchestration: new RedisWorkQueueConsumer({
+			openConnection: createConsumer,
+			publisher,
+			key: orchestrationKey,
+			parse: (value) => orchestrationMessageSchema.parse(value),
+			logger,
+			concurrency: concurrency.orchestration,
+		}),
+		step: new RedisWorkQueueConsumer({
+			openConnection: createConsumer,
+			publisher,
+			key: stepKey,
+			parse: (value) => stepMessageSchema.parse(value),
+			logger,
+			concurrency: concurrency.step,
+		}),
 	};
 
 	return {
 		queues: {
-			orchestration: new RedisWorkQueue({
-				publisher,
-				openConsumer,
-				key: `${keyPrefix}:engine-v2-queue:orchestration`,
-				parse: (value) => orchestrationMessageSchema.parse(value),
-				logger,
-				concurrency: concurrency.orchestration,
-			}),
-			step: new RedisWorkQueue({
-				publisher,
-				openConsumer,
-				key: `${keyPrefix}:engine-v2-queue:step`,
-				parse: (value) => stepMessageSchema.parse(value),
-				logger,
-				concurrency: concurrency.step,
-			}),
+			publishers: {
+				orchestration: new RedisWorkQueuePublisher<OrchestrationMessage>(
+					publisher,
+					orchestrationKey,
+				),
+				step: new RedisWorkQueuePublisher<StepMessage>(publisher, stepKey),
+			},
+			consumers,
 		},
 		close: () => {
-			for (const consumer of opened) consumer.disconnect();
+			consumers.orchestration.close();
+			consumers.step.close();
 		},
 	};
 }

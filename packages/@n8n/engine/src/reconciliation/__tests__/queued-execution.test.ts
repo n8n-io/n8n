@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { ExecutionStore } from '../../execution';
-import type { OrchestrationMessage, WorkQueue } from '../../queue';
+import type { OrchestrationMessage, WorkQueuePublisher } from '../../queue';
 import { QueuedExecutionDetector } from '../queued-execution-detector';
 import { QueuedExecutionRepair } from '../queued-execution-repair';
 
@@ -27,8 +27,8 @@ function makeExecutionStore(): ExecutionStore {
 	};
 }
 
-function makeOrchestrationQueue(): WorkQueue<OrchestrationMessage> {
-	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
+function makeOrchestrationQueue(): WorkQueuePublisher<OrchestrationMessage> {
+	return { publish: vi.fn() };
 }
 
 describe('QueuedExecutionDetector', () => {
