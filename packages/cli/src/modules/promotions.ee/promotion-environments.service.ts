@@ -433,7 +433,7 @@ export class PromotionEnvironmentsService {
 	}
 
 	// Manage links only for projects the caller can edit, on top of the route's
-	// global `promotions:manageProjects` scope.
+	// global `promotions:manageEnvironments` scope.
 	private async assertProjectAccess(user: User, projectId: string) {
 		const allowed = await userHasScopes(user, ['project:update'], false, { projectId });
 		if (!allowed) throw new ForbiddenError('You do not have access to this project');

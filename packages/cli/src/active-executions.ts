@@ -119,7 +119,11 @@ export class ActiveExecutions {
 				executionId = await this.executionPersistence.create(
 					fullExecutionData,
 					{},
-					{ source: executionData.source },
+					{
+						source: executionData.source,
+						// On an error workflow run, this is the project of the workflow that failed, not the owner.
+						projectId: mode === 'error' ? undefined : executionData.projectId,
+					},
 				);
 				assert(executionId);
 				await this.unsavedManualExecutionService.recordStarter(executionId, executionData);

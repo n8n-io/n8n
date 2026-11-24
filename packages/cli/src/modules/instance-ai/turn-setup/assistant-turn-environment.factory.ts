@@ -19,6 +19,7 @@ import {
 	describePromptProfile,
 	createDomainAccessTracker,
 	createSetupItemsEmitter,
+	createWorkflowDraftPublisher,
 	isSetupPanelEnabled,
 	orchestratorAgentId,
 	threadTargetsAgent,
@@ -294,6 +295,7 @@ export class AssistantTurnEnvironmentFactory {
 		const {
 			configEvalsEnabled,
 			conversationHistoryEnabled,
+			draftWorkflowPreviewEnabled,
 			conciseStyleEnabled,
 			setupPanelEnabled,
 			setupPanelVariant,
@@ -618,6 +620,15 @@ export class AssistantTurnEnvironmentFactory {
 			nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
 			domainContext: context,
 		};
+		if (draftWorkflowPreviewEnabled) {
+			context.workflowDraftPublisher = createWorkflowDraftPublisher({
+				eventBus: runtime.eventBus,
+				threadId,
+				runId,
+				agentId: orchestratorAgentId(runId),
+				context,
+			});
+		}
 
 		const { cloudBrowser } = runtime;
 		if (adminSettings.cloudBrowserEnabled && cloudBrowser && (await cloudBrowser.isAvailable())) {

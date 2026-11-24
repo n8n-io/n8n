@@ -92,6 +92,8 @@ const props = defineProps<{
 	loadingOlderMessages?: boolean;
 	/** The last older page failed to load. */
 	loadOlderMessagesFailed?: boolean;
+	/** Replaces the generic "Thinking" of the thinking blocks. The Assistant sets it. */
+	thinkingLabel?: string;
 }>();
 
 const emit = defineEmits<{
@@ -770,6 +772,7 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 					<AgentChatHostEvents :items="getGroupHostEventItems(group.id).end" />
 					<template #after-actions>
 						<AiThinkingBlock
+							:idle-label="props.thinkingLabel"
 							v-if="group.thinkingSegments.length"
 							:segments="group.thinkingSegments"
 							:active="group.active || group.awaitingInput"
@@ -1019,6 +1022,7 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 						</N8nCallout>
 
 						<AiThinkingBlock
+							:idle-label="props.thinkingLabel"
 							v-if="group.thinkingSegments.length"
 							:segments="group.thinkingSegments"
 							:active="isThinkingActive(group.message)"

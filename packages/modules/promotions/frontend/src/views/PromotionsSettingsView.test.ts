@@ -249,7 +249,9 @@ describe('PromotionsSettingsView', () => {
 	});
 
 	it('keeps each card busy until its own connection test finishes', async () => {
-		mockedStore(useUsersStore).currentUser = mock<IUser>({ globalScopes: ['promotions:connect'] });
+		mockedStore(useUsersStore).currentUser = mock<IUser>({
+			globalScopes: ['promotions:manageEnvironments'],
+		});
 		const promoteEnvironment = {
 			...applyEnvironment,
 			id: 'environment-promote',
@@ -286,7 +288,9 @@ describe('PromotionsSettingsView', () => {
 	});
 
 	it('shows the connection test result on the card', async () => {
-		mockedStore(useUsersStore).currentUser = mock<IUser>({ globalScopes: ['promotions:connect'] });
+		mockedStore(useUsersStore).currentUser = mock<IUser>({
+			globalScopes: ['promotions:manageEnvironments'],
+		});
 		api.fetchPromotionEnvironments.mockResolvedValue([applyEnvironment]);
 		api.fetchPromotionEnvironment.mockResolvedValue(applyEnvironment);
 		api.connectPromotionCheckout
