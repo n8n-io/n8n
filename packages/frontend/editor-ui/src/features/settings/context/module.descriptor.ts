@@ -1,6 +1,7 @@
 import { type FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 
 import { VIEWS } from '@/app/constants';
+import { usePostHog, waitForFeatureFlagsWithTimeout } from '@/app/stores/posthog.store';
 import { useIsCollectionsEnabled } from '@/features/shared/knowledge/useIsCollectionsEnabled';
 
 import {
@@ -8,6 +9,15 @@ import {
 	isContextPreferencesEnabled,
 	isContextSkillsEnabled,
 } from './context.utils';
+
+/** PostHog can still load the flags on a page reload, so wait for them before the check. */
+async function collectionsGuard() {
+	const collectionsEnabled = useIsCollectionsEnabled();
+	if (!collectionsEnabled.value) {
+		await waitForFeatureFlagsWithTimeout(usePostHog(), 3000);
+	}
+	return collectionsEnabled.value || { name: VIEWS.HOMEPAGE };
+}
 
 /**
  * No `custom` middleware: the initializer would gate the routes on a backend module,
@@ -68,7 +78,18 @@ export const ContextModule: FrontendModuleDescription = {
 					pageCategory: 'settings',
 				},
 			},
-			beforeEnter: () => useIsCollectionsEnabled().value || { name: VIEWS.HOMEPAGE },
+			beforeEnter: collectionsGuard,
+		},
+		{
+			path: 'collections/:collectionId',
+			name: VIEWS.KNOWLEDGE_COLLECTION,
+			props: true,
+			component: async () => await import('./views/CollectionView.vue'),
+			meta: {
+				projectRoute: true,
+				middleware: ['authenticated'],
+			},
+			beforeEnter: collectionsGuard,
 		},
 	],
 };

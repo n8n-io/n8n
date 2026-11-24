@@ -521,11 +521,14 @@ export function canonicalJson(value: unknown): string {
  * A hash of what a preview shows, so an operation can stop when it changed. It leaves out
  * `changes` and `dependencies`: they come from the same data, and `changes` holds a save time.
  * It also leaves out the commit, because a commit for another project changes nothing here.
+ * A Promote hashes its branch setting, because its confirmation says where the push goes.
+ * The environment name and provider type only label the preview, so they stay out.
  */
 export function previewRevision(shown: {
 	resources: PromotionResource[];
 	check?: PromotionPreviewCheck;
 	source?: PromotionPreview['source'];
+	createBranchOnPromotion?: boolean;
 	blocker?: PromotionBlocker;
 }): string {
 	return createHash('sha256')

@@ -14,6 +14,8 @@ import { unsavedAgentIds } from '../composables/useCreateAgent';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { N8nButton } from '@n8n/design-system';
 import { AGENT_PROMPT_INSPIRATION_TIMING } from '@/app/constants/durations';
+import { AGENTS_INVOCATION_STEP_EXPERIMENT } from '@/app/constants/experiments';
+import { usePostHog } from '@/app/stores/posthog.store';
 import type { persistPendingAgent } from '@/features/ai/instanceAi/instanceAi.memory.api';
 import {
 	forgetAssistantAgentThread,
@@ -350,6 +352,8 @@ interface TestAgentConfig {
 	credential?: string;
 	tools?: AgentJsonToolRef[];
 	skills?: AgentJsonSkillRef[];
+	integrations?: AgentJsonConfig['integrations'];
+	tasks?: AgentJsonConfig['tasks'];
 	personalisation?: AgentJsonConfig['personalisation'];
 	config?: AgentJsonConfig['config'];
 }
@@ -3704,6 +3708,111 @@ describe('AgentBuilderView — configuration validation', () => {
 
 		expect(header.props('tasks')).toEqual(
 			expect.arrayContaining([expect.objectContaining({ id: 'publish-agent', visible: false })]),
+		);
+	});
+
+	it('shows the trigger step and gates publish behind it when the experiment is enabled', async () => {
+		fetchedSessionThreads.push({ id: 'thread-tested', updatedAt: '2026-01-02T00:00:00Z' });
+		intendedConfig = {
+			name: 'Agent One',
+			...defaultLlmConfig,
+			instructions: 'Help the user',
+			integrations: [{ type: 'slack', credentialId: '' }],
+			tasks: [{ type: 'task', id: 'schedule-1', enabled: false }],
+		};
+
+		const wrapper = await renderView({
+			seedStores: () => {
+				usePostHog().overrides = {
+					[AGENTS_INVOCATION_STEP_EXPERIMENT.name]: {
+						value: AGENTS_INVOCATION_STEP_EXPERIMENT.variant,
+					},
+				};
+			},
+		});
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+		header.vm.$emit('publish-ready', true);
+		await nextTick();
+
+		expect(header.props('tasks')).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					id: 'add-trigger',
+					visible: true,
+					state: 'todo',
+				}),
+				expect.objectContaining({ id: 'publish-agent', visible: false }),
+			]),
+		);
+	});
+
+	it.each([
+		{
+			label: 'a connected channel',
+			configPatch: { integrations: [{ type: 'slack' as const, credentialId: 'cred-1' }] },
+		},
+		{
+			label: 'an enabled schedule',
+			configPatch: { tasks: [{ type: 'task' as const, id: 'schedule-1', enabled: true }] },
+		},
+	])(
+		'completes the trigger step and reveals publish with $label when the experiment is enabled',
+		async ({ configPatch }) => {
+			fetchedSessionThreads.push({ id: 'thread-tested', updatedAt: '2026-01-02T00:00:00Z' });
+			intendedConfig = {
+				name: 'Agent One',
+				...defaultLlmConfig,
+				instructions: 'Help the user',
+				...configPatch,
+			};
+
+			const wrapper = await renderView({
+				seedStores: () => {
+					usePostHog().overrides = {
+						[AGENTS_INVOCATION_STEP_EXPERIMENT.name]: {
+							value: AGENTS_INVOCATION_STEP_EXPERIMENT.variant,
+						},
+					};
+				},
+			});
+			const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+			header.vm.$emit('publish-ready', true);
+			await nextTick();
+
+			expect(header.props('tasks')).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						id: 'add-trigger',
+						visible: true,
+						state: 'complete',
+					}),
+					expect.objectContaining({ id: 'publish-agent', visible: true }),
+				]),
+			);
+		},
+	);
+
+	it('keeps the trigger step hidden in the control arm', async () => {
+		fetchedSessionThreads.push({ id: 'thread-tested', updatedAt: '2026-01-02T00:00:00Z' });
+
+		const wrapper = await renderView({
+			seedStores: () => {
+				usePostHog().overrides = {
+					[AGENTS_INVOCATION_STEP_EXPERIMENT.name]: {
+						value: AGENTS_INVOCATION_STEP_EXPERIMENT.control,
+					},
+				};
+			},
+		});
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+		header.vm.$emit('publish-ready', true);
+		await nextTick();
+
+		expect(header.props('tasks')).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ id: 'add-trigger', visible: false }),
+				expect.objectContaining({ id: 'publish-agent', visible: true }),
+			]),
 		);
 	});
 
