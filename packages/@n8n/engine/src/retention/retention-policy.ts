@@ -2,10 +2,10 @@ import type { ExecutionRetentionPolicy } from './retention-sweeper';
 
 const HOUR_MS = 3_600_000;
 
-/** 1,000 years. The cap keeps the period a safe integer and the cutoff in the Postgres range. */
+/** The cap keeps the cutoff in the Postgres timestamp range. */
 const MAX_RETENTION_MS = 1_000 * 365 * 24 * HOUR_MS;
 
-/** The policy for a host that sets the retention period in hours. Off gives no policy. */
+/** Gives no policy when `enabled` is false. */
 export function retentionPolicyFromHours({
 	enabled,
 	maxAgeHours,
