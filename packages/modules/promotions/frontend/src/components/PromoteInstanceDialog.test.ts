@@ -8,6 +8,7 @@ import {
 	deletedWorkflowWarning,
 	otherProjectCredential,
 	outsideAccessWorkflow,
+	personalCredential,
 	personalWorkflow,
 	usedBy,
 } from '../__tests__/missingDependencies.fixtures';
@@ -154,8 +155,21 @@ describe('PromoteInstanceDialog', () => {
 	});
 
 	describe('missing dependencies', () => {
+		const statusOf = (row: HTMLElement) =>
+			within(row).queryByTestId('promotion-missing-dependency-status');
+		/** The name and the summary of each row. `statuses` reads the status of each row. */
 		const rows = (getAllByTestId: (id: string) => HTMLElement[]) =>
-			getAllByTestId('promotion-missing-dependency').map((row) => row.textContent?.trim());
+			getAllByTestId('promotion-missing-dependency').map((row) =>
+				[...row.children]
+					.filter((part) => part !== statusOf(row))
+					.map((part) => part.textContent)
+					.join('')
+					.trim(),
+			);
+		const statuses = (getAllByTestId: (id: string) => HTMLElement[]) =>
+			getAllByTestId('promotion-missing-dependency').map(
+				(row) => statusOf(row)?.textContent?.trim() ?? null,
+			);
 
 		it('reads the check of the environment and shows nothing more when nothing is missing', async () => {
 			const { findByTestId, queryByTestId } = renderComponent();
@@ -273,6 +287,31 @@ describe('PromoteInstanceDialog', () => {
 
 			expect(region).toContainElement(await findByTestId('promote-missing-dependencies'));
 			expect(queryByTestId('promote-check-loading')).not.toBeInTheDocument();
+		});
+
+		it('says for each dependency if the user can access it, and when a personal project holds it', async () => {
+			api.fetchPromoteCheck.mockResolvedValue(
+				promoteCheck({
+					missingDependencies: [otherProjectCredential, outsideAccessWorkflow, personalCredential],
+					warnings: [deletedWorkflowWarning],
+				}),
+			);
+			const { findByTestId, getAllByTestId } = renderComponent();
+
+			await findByTestId('promote-missing-dependencies');
+			// A warning has no status.
+			expect(statuses(getAllByTestId)).toEqual([
+				'Not included',
+				'No access',
+				'Personal project',
+				null,
+			]);
+			expect(rows(getAllByTestId)).toEqual([
+				'CRM keyCredential · Used by Invoice reconciliation',
+				'Send audit logWorkflow · Used by Invoice reconciliation, Weekly KPI report',
+				'Personal GmailCredential · Used by Weekly KPI report',
+				'Archive invoicesWorkflow · Used by Invoice reconciliation',
+			]);
 		});
 
 		it.each([

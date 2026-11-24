@@ -21,6 +21,11 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { usePromotionBindingCreation } from '../../composables/usePromotionBindingCreation';
 import { usePromotionBindings } from '../../composables/usePromotionBindings';
 import { usePromotionPreviewLabels } from '../../composables/usePromotionPreviewLabels';
+import {
+	PROMOTE_GROUP_STATUS,
+	PROMOTE_STATUS_STYLES,
+	type StatusStyle,
+} from '../../promotionDependencyStatus';
 import type { ApplyCheckResult, BlockedApplyResult } from '../../promotions.types';
 import { resourceIcon } from '../../promotionPreview.tree';
 import PromotionWorkflowLinks from './PromotionWorkflowLinks.vue';
@@ -113,14 +118,12 @@ type StatusKey =
 	| 'otherProject'
 	| 'outside'
 	| 'personal';
-type StatusStyle = { tone: 'warning' | 'success' | 'neutral'; icon: IconName };
 
 const WARNING_STYLE: StatusStyle = { tone: 'warning', icon: 'circle-alert' };
 // A dependency that Promote leaves out does not stop it, so its status is not a warning.
 const STATUS_STYLES: Partial<Record<StatusKey, StatusStyle>> = {
 	resolved: { tone: 'success', icon: 'circle-check' },
-	otherProject: { tone: 'neutral', icon: 'circle-minus' },
-	outside: { tone: 'neutral', icon: 'lock' },
+	...PROMOTE_STATUS_STYLES,
 };
 
 const status = (key: StatusKey) => ({
@@ -238,19 +241,19 @@ const DEPENDENCY_SECTIONS = [
 	{
 		group: 'other-project',
 		id: 'otherProject',
-		status: 'otherProject',
+		status: PROMOTE_GROUP_STATUS['other-project'],
 		reason: 'promotions.preview.blockers.disabled.otherProject',
 	},
 	{
 		group: 'outside-access',
 		id: 'outsideAccess',
-		status: 'outside',
+		status: PROMOTE_GROUP_STATUS['outside-access'],
 		reason: 'promotions.preview.blockers.disabled.outside.promote',
 	},
 	{
 		group: 'personal',
 		id: 'notPromoted',
-		status: 'personal',
+		status: PROMOTE_GROUP_STATUS.personal,
 		reason: 'promotions.preview.blockers.disabled.personal',
 	},
 ] as const;

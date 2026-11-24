@@ -181,7 +181,7 @@ async function submit() {
 							<N8nText color="text-base">
 								{{ i18n.baseText('settings.promotions.promote.dialog.missing.description') }}
 							</N8nText>
-							<PromotionMissingDependencyList :dependencies="leftOut" />
+							<PromotionMissingDependencyList :dependencies="leftOut" show-status />
 							<!-- The server still decides. The callout says what stops the Promote today. -->
 							<N8nCallout
 								v-if="blockingNames.length > 0"

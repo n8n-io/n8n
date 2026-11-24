@@ -2,7 +2,9 @@
 import type { PromotionDependencyWarning, PromotionMissingDependency } from '@n8n/api-types';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { computed } from 'vue';
 
+import { promoteGroupStatus } from '../promotionDependencyStatus';
 import { resourceIcon } from '../promotionPreview.tree';
 
 type Dependency = PromotionMissingDependency | PromotionDependencyWarning;
@@ -11,9 +13,30 @@ type Dependency = PromotionMissingDependency | PromotionDependencyWarning;
  * What a Promote leaves out, as a short list for a dialog. A row shows the name, the type and the
  * workflows that use the dependency. The API sends no owner and no project for it.
  */
-defineProps<{ dependencies: Dependency[] }>();
+const props = defineProps<{
+	dependencies: Dependency[];
+	/**
+	 * True for a dialog that has no Issues tab. A row then says if the user can access the
+	 * dependency, with the status that the Issues tab shows for its group.
+	 */
+	showStatus?: boolean;
+}>();
 
 const i18n = useI18n();
+
+// A warning has no group, and so no status.
+const statuses = computed(() =>
+	props.dependencies.map((dependency) => {
+		const status =
+			props.showStatus && 'group' in dependency ? promoteGroupStatus(dependency.group) : undefined;
+		return (
+			status && {
+				...status,
+				label: i18n.baseText(`promotions.preview.blockers.status.${status.key}`),
+			}
+		);
+	}),
+);
 
 /** A row names this many workflows. It counts the others. */
 const NAMED_WORKFLOWS = 2;
@@ -34,7 +57,7 @@ function summary({ kind, consumers }: Dependency) {
 <template>
 	<ul :class="$style.list" data-test-id="promotion-missing-dependency-list">
 		<li
-			v-for="dependency in dependencies"
+			v-for="(dependency, index) in dependencies"
 			:key="`${dependency.kind}:${dependency.id ?? dependency.name}`"
 			:class="$style.row"
 			data-test-id="promotion-missing-dependency"
@@ -44,6 +67,15 @@ function summary({ kind, consumers }: Dependency) {
 				<N8nText step="xs" color="text-dark">{{ dependency.name }}</N8nText>
 				<N8nText step="2xs" color="text-light">{{ summary(dependency) }}</N8nText>
 			</div>
+			<N8nText
+				v-if="statuses[index]"
+				step="2xs"
+				:class="[$style.status, $style[statuses[index].tone]]"
+				data-test-id="promotion-missing-dependency-status"
+			>
+				<N8nIcon :icon="statuses[index].icon" size="small" />
+				{{ statuses[index].label }}
+			</N8nText>
 		</li>
 	</ul>
 </template>
@@ -80,5 +112,23 @@ function summary({ kind, consumers }: Dependency) {
 	display: flex;
 	flex-direction: column;
 	min-width: 0;
+}
+
+.status {
+	display: inline-flex;
+	flex-shrink: 0;
+	align-items: center;
+	align-self: center;
+	gap: var(--spacing--4xs);
+	margin-left: auto;
+	white-space: nowrap;
+}
+
+.neutral {
+	color: var(--text-color--subtler);
+}
+
+.warning {
+	color: var(--text-color--warning);
 }
 </style>
