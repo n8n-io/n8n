@@ -633,7 +633,7 @@ export const properties: INodeProperties[] = [
 				name: "includeParentFolder",
 				type: "boolean",
 				default: false,
-				description: "Whether to add `parentFolder` to each workflow. `parentFolder` holds the folder `ID`, or is `null` at the project root.",
+				description: "Whether to add `parentFolder` to each workflow. `parentFolder` holds the ID of the folder that contains the workflow, or is `null` at the project root.",
 				routing: {
 					send: {
 						type: "query",

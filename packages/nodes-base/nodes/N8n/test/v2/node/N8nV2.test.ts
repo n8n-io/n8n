@@ -121,4 +121,26 @@ describe('N8nV2 workflow operations', () => {
 			[workflow, otherWorkflow],
 		),
 	);
+
+	harness.setupTest(
+		testData(
+			'should keep an option in the request of each page when Return All is on',
+			{ operation: 'getWorkflows', returnAll: true, options: { active: true } },
+			[
+				{
+					method: 'get',
+					path: '/workflows?active=true',
+					statusCode: 200,
+					responseBody: { data: [workflow], nextCursor: 'page2' },
+				},
+				{
+					method: 'get',
+					path: '/workflows?active=true&cursor=page2',
+					statusCode: 200,
+					responseBody: { data: [otherWorkflow], nextCursor: null },
+				},
+			],
+			[workflow, otherWorkflow],
+		),
+	);
 });
