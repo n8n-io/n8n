@@ -162,6 +162,8 @@ export interface Adapter {
 	 * every page first, so call it only before the browser closes. Playwright adapter only.
 	 */
 	clearSiteDataExcept?(domain: string): Promise<void>;
+	/** Whether every page and frame loaded was on `domain`. Playwright adapter only. */
+	hasVisitedOnlySite?(domain: string): boolean;
 }
 
 export interface ConnectionState {

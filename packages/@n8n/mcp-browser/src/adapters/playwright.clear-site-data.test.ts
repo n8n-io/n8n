@@ -226,6 +226,45 @@ describe('PlaywrightAdapter.clearSiteDataExcept', () => {
 		]);
 	});
 
+	describe('hasVisitedOnlySite', () => {
+		function setupSiteVisits() {
+			const context = setup({ trackVisitedOrigins: true });
+			const tab = navigablePage('https://app.example.com/');
+			context.context.pages.mockReturnValue([tab.page]);
+			Object.assign(context.context, { on: vi.fn() });
+			trackVisitedOriginsIn(context.adapter, context.context);
+			return { ...context, tab };
+		}
+
+		it('is true when every page and frame was on the site or its subdomains', () => {
+			const { adapter, tab } = setupSiteVisits();
+			tab.navigate('https://example.com/login');
+			tab.navigate('https://accounts.example.com/frame');
+
+			expect(adapter.hasVisitedOnlySite('example.com')).toBe(true);
+		});
+
+		it('is false when a page or frame was on another site', () => {
+			const { adapter, tab } = setupSiteVisits();
+			tab.navigate('https://widget.other.org/frame');
+
+			expect(adapter.hasVisitedOnlySite('example.com')).toBe(false);
+		});
+
+		it('is false when it did not record every origin', () => {
+			const { adapter, tab } = setupSiteVisits();
+			for (let index = 0; index < 1000; index++) tab.navigate(`https://s${index}.example.com/`);
+
+			expect(adapter.hasVisitedOnlySite('example.com')).toBe(false);
+		});
+
+		it('is false when it does not track visited origins', () => {
+			const adapter = new PlaywrightAdapter(ADAPTER_TEST_CONFIG);
+
+			expect(adapter.hasVisitedOnlySite('example.com')).toBe(false);
+		});
+	});
+
 	describe('visited origins', () => {
 		function setupVisits() {
 			const context = setup({ urls: ['https://example.com/'], trackVisitedOrigins: true });

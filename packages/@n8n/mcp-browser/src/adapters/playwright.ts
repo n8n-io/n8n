@@ -942,6 +942,14 @@ export class PlaywrightAdapter {
 		}
 	}
 
+	/** Whether every page and frame loaded was on `domain`. False if not all were recorded. */
+	hasVisitedOnlySite(domain: string): boolean {
+		if (!this.trackVisitedOrigins || this.hasVisitedUntrackedOrigins) return false;
+		return [...this.visitedOrigins].every((origin) =>
+			isDomainOfHost(domain, new URL(origin).hostname),
+		);
+	}
+
 	/**
 	 * Clears the site data in the browser for every site except `domain` and its subdomains: the
 	 * cookies, and the storage of the sites that set cookies, have a page open, or were visited
@@ -953,10 +961,7 @@ export class PlaywrightAdapter {
 		if (this.hasVisitedUntrackedOrigins) {
 			throw new Error('Cannot clear the site data of untracked origins');
 		}
-		const isOtherSite = (host: string) => {
-			const bare = host.replace(/^\./, '');
-			return bare !== domain && !bare.endsWith(`.${domain}`);
-		};
+		const isOtherSite = (host: string) => !isDomainOfHost(domain, host);
 
 		// CDP cannot list the origins that hold storage, so this clears the ones we know of: the
 		// sites that set cookies, the pages that are open, and the visited origins.
@@ -1401,4 +1406,10 @@ export class PlaywrightAdapter {
 			.replace(/\?/g, '.');
 		return new RegExp(`^${escaped}$`);
 	}
+}
+
+/** Whether `host`, or a cookie domain like `.example.com`, is `domain` or one of its subdomains. */
+function isDomainOfHost(domain: string, host: string): boolean {
+	const bare = host.replace(/^\./, '');
+	return bare === domain || bare.endsWith(`.${domain}`);
 }
