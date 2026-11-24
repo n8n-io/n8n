@@ -9,13 +9,20 @@ import type {
 	AiPreferenceSource,
 	AiPreferencesAppliedPayload,
 } from '@n8n/api-types';
-import { AI_PREFERENCE_MAX_PER_SCOPE, aiPreferenceTargetOf } from '@n8n/api-types';
+import {
+	AI_PREFERENCE_MAX_PER_SCOPE,
+	aiPreferenceTargetOf,
+	serializedPreferenceSchema,
+} from '@n8n/api-types';
 import type { AiPreference, OperationContext, Project, User } from '@n8n/db';
 import { AiPreferenceRepository, ProjectRepository, UserRepository, accountSummary } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { hasGlobalScope } from '@n8n/permissions';
 import { randomUUID } from 'node:crypto';
+
+import { InstanceWriteAccessService } from './instance-write-access.service';
+import type { SharedPreferenceChange, SharedPreferencePlan } from './ai-preference-changes';
 
 import { ProjectScopeService } from './project-scope.service';
 import { AiPreferenceScopeFullError } from '../errors/response-errors/ai-preference-scope-full.error';
@@ -119,6 +126,7 @@ export class AiPreferenceService {
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly userRepository: UserRepository,
+		private readonly instanceWriteAccess: InstanceWriteAccessService,
 	) {}
 
 	/** Preferences that apply to the user inside the given projects. */
@@ -229,10 +237,12 @@ export class AiPreferenceService {
 	): Promise<AiPreferenceDto> {
 		const access = this.projectAccess(user);
 		const target = await this.resolveTarget(user, request, 'create', access);
+		this.assertWritable(target);
 		const row = await this.aiPreferenceRepository.withWriteLock(
 			[aiPreferenceTargetOf(target)],
 			{},
 			async (ctx) => {
+				this.assertWritable(target);
 				await this.assertScopeHasRoom(target, ctx);
 				await this.assertNotDuplicate(target, request.content, undefined, ctx);
 				return await this.aiPreferenceRepository.savePreference(
@@ -284,11 +294,14 @@ export class AiPreferenceService {
 		}
 		await this.assertCanWrite(user, row, moved ? 'delete' : 'update', access);
 		const target = await this.resolveTarget(user, resolved, moved ? 'create' : 'update', access);
+		this.assertWritable(target);
 		const saved = await this.aiPreferenceRepository.withWriteLock(
 			[aiPreferenceTargetOf(row), aiPreferenceTargetOf(target)],
 			{},
 			async (ctx) => {
+				this.assertWritable(row);
 				await this.aiPreferenceRepository.assertUnchanged(row, ctx);
+				this.assertWritable(target);
 				// An edit in place adds no row to the scope.
 				if (moved) await this.assertScopeHasRoom(target, ctx);
 				if (moved || row.content !== resolved.content) {
@@ -327,6 +340,7 @@ export class AiPreferenceService {
 			[aiPreferenceTargetOf(row)],
 			{},
 			async (ctx) => {
+				this.assertWritable(row);
 				await this.aiPreferenceRepository.assertUnchanged(row, ctx);
 				if (row.content !== content) await this.assertNotDuplicate(row, content, row.id, ctx);
 				row.content = content;
@@ -341,7 +355,15 @@ export class AiPreferenceService {
 		const row = await this.requireVisible(user, id, access);
 		await this.assertCanWrite(user, row, 'delete', access);
 
-		await this.aiPreferenceRepository.delete({ id: row.id });
+		await this.aiPreferenceRepository.withWriteLock(
+			[aiPreferenceTargetOf(row)],
+			{},
+			async (ctx) => {
+				this.assertWritable(row);
+				await this.aiPreferenceRepository.assertUnchanged(row, ctx);
+				await this.aiPreferenceRepository.removePreference(row.id, ctx);
+			},
+		);
 	}
 
 	/**
@@ -360,7 +382,15 @@ export class AiPreferenceService {
 		}
 		await this.assertCanWrite(user, row, 'delete', access);
 
-		await this.aiPreferenceRepository.delete({ id: row.id });
+		await this.aiPreferenceRepository.withWriteLock(
+			[aiPreferenceTargetOf(row)],
+			{},
+			async (ctx) => {
+				this.assertWritable(row);
+				await this.aiPreferenceRepository.assertUnchanged(row, ctx);
+				await this.aiPreferenceRepository.removePreference(row.id, ctx);
+			},
+		);
 		return this.toDto(row, await this.scopesFor(user, row, access));
 	}
 
@@ -369,6 +399,212 @@ export class AiPreferenceService {
 		const access = this.projectAccess(user);
 		const row = await this.requireVisible(user, id, access);
 		return this.toDto(row, await this.scopesFor(user, row, access));
+	}
+
+	private assertWritable(
+		target: Pick<PreferenceTarget, 'userId' | 'projectId'> & { project?: Project | null },
+	) {
+		if (target.userId || target.project?.type === 'personal') return;
+		if (this.instanceWriteAccess.isReadOnly()) {
+			throw new ForbiddenError('Shared Preferences cannot change in a protected environment.');
+		}
+	}
+
+	/** Plan shared changes without changing saved rows. New projects are authorized by their caller. */
+	async planSharedChanges(
+		user: User,
+		changes: SharedPreferenceChange[],
+		policy: 'fail' | 'skip' | 'replace' = 'fail',
+		newProjectIds: string[] = [],
+	): Promise<SharedPreferencePlan> {
+		const plan: SharedPreferencePlan = { items: [], issues: [], newProjectIds };
+		const seen = new Set<string>();
+		for (let change of changes) {
+			try {
+				if (seen.has(change.id))
+					throw new BadRequestError('A Preference can be selected only once.');
+				seen.add(change.id);
+				const parsed = serializedPreferenceSchema.partial({ content: true }).safeParse({
+					id: change.id,
+					scope: change.scope,
+					content: change.content,
+				});
+				if (!parsed.success) throw new BadRequestError('Invalid Preference ID, scope, or content.');
+				change = { ...change, content: parsed.data.content };
+				const previous = await this.aiPreferenceRepository.findByIdWithRelations(change.id);
+				const projectId = change.scope === 'project' ? change.projectId : null;
+				if (change.scope === 'project' && !projectId)
+					throw new BadRequestError('A project Preference needs a destination project.');
+				if (previous && (previous.userId || previous.projectId !== projectId)) {
+					throw new ConflictError('The Preference ID belongs to another scope.');
+				}
+				let action: SharedPreferencePlan['items'][number]['action'] = 'skip';
+				if (change.content === undefined) {
+					if (previous) action = 'delete';
+				} else if (!previous) {
+					action = 'create';
+				} else if (previous.content !== change.content && policy !== 'skip') {
+					if (policy !== 'replace')
+						throw new ConflictError('Select replacement to change an existing Preference.');
+					action = 'update';
+				}
+				const item: SharedPreferencePlan['items'][number] = { ...change, action, previous };
+				await this.authorizeSharedChange(user, item, newProjectIds);
+				plan.items.push(item);
+			} catch (error) {
+				if (
+					!(
+						error instanceof BadRequestError ||
+						error instanceof ForbiddenError ||
+						error instanceof ConflictError
+					)
+				)
+					throw error;
+				plan.issues.push({ preferenceId: change.id, message: error.message });
+			}
+		}
+		if (plan.issues.length === 0) {
+			try {
+				await this.checkSharedChanges(user, plan);
+			} catch (error) {
+				if (
+					!(
+						error instanceof BadRequestError ||
+						error instanceof ForbiddenError ||
+						error instanceof ConflictError
+					)
+				)
+					throw error;
+				plan.issues.push({ message: error.message });
+			}
+		}
+		return plan;
+	}
+
+	private async authorizeSharedChange(
+		user: User,
+		item: SharedPreferencePlan['items'][number],
+		newProjectIds: string[],
+	) {
+		const operation = item.action === 'skip' ? 'read' : item.action;
+		const access = this.projectAccess(user);
+		if (item.scope === 'project' && item.projectId && newProjectIds.includes(item.projectId)) {
+			if (!hasGlobalScope(user, 'project:create'))
+				throw new ForbiddenError('You cannot create the destination project.');
+		} else if (operation === 'read') {
+			if (item.previous) await this.requireVisible(user, item.id, access);
+		} else {
+			const target = await this.resolveTarget(
+				user,
+				{ ...item, content: item.content ?? '' },
+				operation,
+				access,
+			);
+			if (target.project?.type === 'personal')
+				throw new BadRequestError('Personal project Preferences cannot be imported.');
+		}
+		if (item.previous?.project?.type === 'personal')
+			throw new BadRequestError('Personal project Preferences cannot be imported.');
+		if (item.action !== 'skip')
+			this.assertWritable({ userId: null, projectId: item.projectId ?? null });
+	}
+
+	/** Recheck a preview before any package writes. Apply repeats this check under the same scope locks. */
+	async checkSharedChanges(user: User, plan: SharedPreferencePlan): Promise<void> {
+		if (plan.issues.length) throw new ConflictError('A blocked Preference plan cannot be applied.');
+		if (plan.items.length === 0) return;
+		for (const item of plan.items) await this.authorizeSharedChange(user, item, plan.newProjectIds);
+		await this.aiPreferenceRepository.withWriteLock(
+			plan.items.map(changeTarget),
+			{},
+			async (ctx) => {
+				await this.validateSharedChanges(plan, ctx);
+			},
+			plan.items.map(({ id }) => id),
+		);
+	}
+
+	async applySharedChanges(user: User, plan: SharedPreferencePlan) {
+		if (plan.issues.length) throw new ConflictError('A blocked Preference plan cannot be applied.');
+		if (plan.items.length === 0) return [];
+		for (const item of plan.items) await this.authorizeSharedChange(user, item, []);
+		return await this.aiPreferenceRepository.withWriteLock(
+			plan.items.map(changeTarget),
+			{},
+			async (ctx) => {
+				await this.validateSharedChanges(plan, ctx);
+				// Remove first so the final batch can replace a full scope.
+				for (const item of plan.items) {
+					if (item.action === 'delete')
+						await this.aiPreferenceRepository.removePreference(item.id, ctx);
+				}
+				for (const item of plan.items) {
+					if (item.action !== 'create' && item.action !== 'update') continue;
+					const row =
+						item.previous ??
+						this.aiPreferenceRepository.create({
+							id: item.id,
+							userId: null,
+							projectId: item.projectId ?? null,
+							source: 'import',
+							createdById: user.id,
+						});
+					row.content = item.content!;
+					await this.aiPreferenceRepository.savePreference(row, ctx);
+				}
+				return plan.items.map(({ id, scope, projectId, action }) => ({
+					id,
+					scope,
+					projectId,
+					status: action,
+				}));
+			},
+			plan.items.map(({ id }) => id),
+		);
+	}
+
+	private async validateSharedChanges(plan: SharedPreferencePlan, ctx: OperationContext) {
+		for (const item of plan.items) {
+			if (item.action !== 'skip')
+				this.assertWritable({ userId: null, projectId: item.projectId ?? null });
+			if (item.previous) await this.aiPreferenceRepository.assertUnchanged(item.previous, ctx);
+			else if (await this.aiPreferenceRepository.findForChange(item.id, ctx))
+				throw new ConflictError('The Preference changed. Create a new import plan.');
+		}
+		const groups = new Map<string, SharedPreferencePlan['items']>();
+		for (const item of plan.items) {
+			const key = item.scope === 'project' ? `project:${item.projectId}` : 'instance';
+			const group = groups.get(key) ?? [];
+			group.push(item);
+			groups.set(key, group);
+		}
+		for (const items of groups.values()) {
+			const target = changeTarget(items[0]);
+			const rows = await this.aiPreferenceRepository.findForTarget(target, ctx);
+			const final = new Map(rows.map((row) => [row.id, row.content]));
+			for (const item of items) {
+				if (item.action === 'delete') final.delete(item.id);
+				else if (item.action === 'create' || item.action === 'update')
+					final.set(item.id, item.content!);
+			}
+			if (
+				final.size > AI_PREFERENCE_MAX_PER_SCOPE &&
+				items.some((item) => item.action === 'create')
+			) {
+				throw new AiPreferenceScopeFullError(target.scope, {
+					limit: AI_PREFERENCE_MAX_PER_SCOPE,
+					actual: final.size,
+				});
+			}
+			for (const item of items) {
+				if (item.action !== 'create' && item.action !== 'update') continue;
+				if ([...final].some(([id, content]) => id !== item.id && content === item.content)) {
+					throw new ConflictError(
+						'The destination scope already has a Preference with the same text.',
+					);
+				}
+			}
+		}
 	}
 
 	private projectAccess(user: User): ProjectAccess {
@@ -445,6 +681,7 @@ export class AiPreferenceService {
 		operation: WriteOperation,
 		access: ProjectAccess,
 	) {
+		this.assertWritable(row);
 		if (!(await this.canWrite(user, row, operation, access))) {
 			throw new ForbiddenError(`You are not allowed to ${operation} this preference`);
 		}
@@ -857,4 +1094,10 @@ function escapeTags(text: string): string {
 	return text
 		.replaceAll('<ai-preferences>', '&lt;ai-preferences&gt;')
 		.replaceAll('</ai-preferences>', '&lt;/ai-preferences&gt;');
+}
+
+function changeTarget(change: SharedPreferenceChange) {
+	return change.scope === 'project'
+		? { scope: 'project' as const, projectId: change.projectId! }
+		: { scope: 'instance' as const };
 }

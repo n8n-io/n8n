@@ -235,3 +235,50 @@ describe('packageManifestSchema', () => {
 		expect(() => packageManifestSchema.parse(manifest)).not.toThrow();
 	});
 });
+
+describe('Preference package compatibility', () => {
+	const preferences = [
+		{ id: '7dfb1649-a8b9-49bf-bbed-5a3c933584b2', name: 'Preference', target: 'preferences/rule' },
+	];
+	it('requires format 3 for Preferences, including an empty collection', () => {
+		for (const entries of [preferences, []]) {
+			expect(
+				packageManifestSchema.safeParse({ ...validManifest, preferences: entries }).success,
+			).toBe(false);
+			expect(
+				packageManifestSchema.safeParse({
+					...validManifest,
+					packageFormatVersion: '3',
+					preferences: entries,
+				}).success,
+			).toBe(true);
+		}
+	});
+	it('rejects unknown collections in format 3 and unsupported format 2', () => {
+		expect(
+			packageManifestSchema.safeParse({
+				...validManifest,
+				packageFormatVersion: '3',
+				preferences,
+				unknownEntities: [],
+			}).success,
+		).toBe(false);
+		expect(
+			packageManifestSchema.safeParse({ ...validManifest, packageFormatVersion: '2' }).success,
+		).toBe(false);
+	});
+	it('rejects duplicate or invalid Preference identities', () => {
+		for (const entries of [
+			[...preferences, ...preferences],
+			[{ ...preferences[0], id: 'invalid' }],
+		]) {
+			expect(
+				packageManifestSchema.safeParse({
+					...validManifest,
+					packageFormatVersion: '3',
+					preferences: entries,
+				}).success,
+			).toBe(false);
+		}
+	});
+});

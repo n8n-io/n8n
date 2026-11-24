@@ -25,6 +25,35 @@ it('does not require workflow:import for a project-only package', () => {
 	).toEqual([]);
 });
 
+it.each([
+	{ preferences: [] },
+	{ preferences: [{ id: 'rule', name: 'Preference', target: 'preferences/rule' }] },
+])(
+	'does not require workflow:import for a Preference-only collection $preferences',
+	({ preferences }) => {
+		expect(
+			packageImportScopes({
+				packageFormatVersion: '3',
+				sourceN8nVersion: '2.0.0',
+				sourceId: 'source',
+				preferences,
+			}),
+		).toEqual([]);
+	},
+);
+
+it('keeps workflow:import for loose content exported with Preferences', () => {
+	expect(
+		packageImportScopes({
+			packageFormatVersion: '3',
+			sourceN8nVersion: '2.0.0',
+			sourceId: 'source',
+			preferences: [{ id: 'rule', name: 'Preference', target: 'preferences/rule' }],
+			folders: [{ id: 'folder', name: 'Folder', target: 'folders/folder' }],
+		}),
+	).toEqual(['workflow:import']);
+});
+
 function workflowPlan(archiveTransition: 'archive' | 'unarchive' | null): WorkflowImportPlan {
 	const workflow = { id: 'workflow-1', name: 'Workflow' } as WorkflowEntity;
 	return {

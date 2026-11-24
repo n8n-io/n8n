@@ -4,6 +4,19 @@ oneOf:
       type:
         type: string
         enum:
+          - preference-conflict
+      preferenceId:
+        type: string
+      message:
+        type: string
+    required:
+      - type
+      - message
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
           - agent-conflict
       kind:
         type: string

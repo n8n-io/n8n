@@ -107,7 +107,16 @@ export class N8nPackagesPublicController {
 	) {}
 
 	@Post('/import')
-	@ApiKeyScope({ anyOf: ['workflow:import', 'agent:import'] })
+	@ApiKeyScope({
+		anyOf: [
+			'workflow:import',
+			'agent:import',
+			'aiPreference:read',
+			'aiPreference:create',
+			'aiPreference:update',
+			'aiPreference:delete',
+		],
+	})
 	@ApiSummary(IMPORT_SUMMARY)
 	@ApiDescription(IMPORT_DESCRIPTION)
 	@ApiTags(PACKAGE_TAGS)
@@ -153,7 +162,15 @@ export class N8nPackagesPublicController {
 	}
 
 	@Post('/import-selection')
-	@ApiKeyScope('workflow:import')
+	@ApiKeyScope({
+		anyOf: [
+			'workflow:import',
+			'aiPreference:read',
+			'aiPreference:create',
+			'aiPreference:update',
+			'aiPreference:delete',
+		],
+	})
 	@ApiSummary(IMPORT_SELECTION_SUMMARY)
 	@ApiDescription(IMPORT_SELECTION_DESCRIPTION)
 	@ApiTags(PACKAGE_TAGS)
@@ -181,6 +198,8 @@ export class N8nPackagesPublicController {
 			selectedProjectId,
 			selectedWorkflowIds,
 			deletedWorkflowIds,
+			selectedPreferenceIds,
+			deletedPreferenceIds,
 			...policies
 		} = body;
 
@@ -198,6 +217,8 @@ export class N8nPackagesPublicController {
 					selectedProjectId,
 					selectedWorkflowIds,
 					deletedWorkflowIds,
+					selectedPreferenceIds,
+					deletedPreferenceIds,
 				},
 			);
 		} catch (error) {
@@ -211,7 +232,9 @@ export class N8nPackagesPublicController {
 	}
 
 	@Post('/export')
-	@ApiKeyScope({ anyOf: ['project:export', 'workflow:export', 'agent:export'] })
+	@ApiKeyScope({
+		anyOf: ['project:export', 'workflow:export', 'agent:export', 'aiPreference:read'],
+	})
 	@ApiSummary(EXPORT_SUMMARY)
 	@ApiDescription(EXPORT_DESCRIPTION)
 	@ApiTags(PACKAGE_TAGS)
@@ -239,9 +262,9 @@ export class N8nPackagesPublicController {
 				);
 			}
 
-			if (!hasLooseSelection && projectIds.length === 0) {
+			if (!hasLooseSelection && projectIds.length === 0 && !body.preferenceIds?.length) {
 				throw new BadRequestError(
-					'At least one agentId, workflowId, folderId, or projectId is required',
+					'At least one agentId, workflowId, folderId, projectId, or preferenceId is required',
 				);
 			}
 
@@ -260,6 +283,10 @@ export class N8nPackagesPublicController {
 				workflowIds,
 				folderIds,
 				projectIds,
+				preferenceIds: body.preferenceIds,
+				includePreferences: body.includePreferences,
+				canExportPreferences:
+					apiKeyScopes.includes('aiPreference:read') && apiKeyScopes.includes('aiPreference:list'),
 				includeVariableValues: body.includeVariableValues,
 				canExportVariableValues: apiKeyScopes.includes('variable:list'),
 				includeTags: body.includeTags,

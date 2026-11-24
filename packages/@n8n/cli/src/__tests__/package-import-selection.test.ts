@@ -66,6 +66,9 @@ describe('package import-selection command', () => {
 			filename: 'export.n8np',
 		});
 		expect(importPackageSelection.mock.calls[0][1]).toStrictEqual({
+			preferenceConflictPolicy: undefined,
+			deletedPreferenceIds: undefined,
+			selectedPreferenceIds: undefined,
 			selectedProjectId: 'sp-1',
 			selectedWorkflowIds: ['w-1', 'w-2'],
 			deletedWorkflowIds: ['w-3'],
@@ -85,6 +88,9 @@ describe('package import-selection command', () => {
 		await command.run();
 
 		expect(importPackageSelection.mock.calls[0][1]).toStrictEqual({
+			preferenceConflictPolicy: undefined,
+			deletedPreferenceIds: undefined,
+			selectedPreferenceIds: undefined,
 			selectedProjectId: 'sp-1',
 			selectedWorkflowIds: [],
 			deletedWorkflowIds: undefined,
@@ -129,6 +135,26 @@ describe('package import-selection command', () => {
 			await command.run();
 			return importPackageSelection;
 		}
+
+		it('parses Preference selection and explicit removals', async () => {
+			const selected = 'b86d323f-c829-4cd9-877e-c34a80cb6dfa';
+			const removed = '7dfb1649-a8b9-49bf-bbed-5a3c933584b2';
+			const importPackageSelection = await runWithArgv([
+				'--file=/tmp/export.n8np',
+				'--selected-project-id=team',
+				`--selected-preference-ids=${selected}`,
+				`--deleted-preference-ids=${removed}`,
+				'--preference-conflict-policy=replace',
+			]);
+			expect(importPackageSelection).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({
+					selectedPreferenceIds: [selected],
+					deletedPreferenceIds: [removed],
+					preferenceConflictPolicy: 'replace',
+				}),
+			);
+		});
 
 		it('splits comma-separated id lists into arrays', async () => {
 			const importPackageSelection = await runWithArgv([

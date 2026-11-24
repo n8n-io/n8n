@@ -1,7 +1,7 @@
 export const PACKAGE_TAGS = ['N8nPackage'];
 
 export const EXPORT_SUMMARY =
-	'Beta: Export agents, workflows, folders, or projects as an n8n package';
+	'Beta: Export agents, workflows, projects, or shared Preferences as an n8n package';
 export const EXPORT_DESCRIPTION =
 	'**Beta** — breaking changes may still occur without major version bump.\n\n' +
 	'Export agents, workflows, and folders, or whole projects, as a gzipped tar\n' +
@@ -23,7 +23,11 @@ export const EXPORT_DESCRIPTION =
 	'variables, `variable:list` is also required. Exports that reference no variables\n' +
 	'do not need it.\n\n' +
 	'Agent definitions include referenced skills, custom tools, and schedules.\n' +
-	'Knowledge base files and runtime data are excluded.\n';
+	'Knowledge base files and runtime data are excluded.\n\n' +
+	'Select shared Preferences with `preferenceIds`, or include project Preferences with ' +
+	'`includePreferences=true`. Personal Preferences stay local. Preference export also needs ' +
+	'`aiPreference:read` and `aiPreference:list`. Packages with Preferences use format 3 and ' +
+	'require a destination that supports this format. Older readers reject them.\n';
 
 export const EXPORT_422_DESCRIPTION =
 	'A requested workflow cannot be exported because its stored data is invalid. ' +
@@ -39,7 +43,7 @@ export const EXPORT_COUNTS_HEADER_DESCRIPTION =
 export const IMPORT_SUMMARY = 'Beta: Import an n8n package into a project';
 export const IMPORT_DESCRIPTION =
 	'**Beta** — breaking changes may still occur without major version bump.\n\n' +
-	'Imports Agent-only, workflow-only, mixed, and whole-project packages. The Agents module ' +
+	'Imports Agent-only, workflow-only, Preference-only, mixed, and whole-project packages. The Agents module ' +
 	'must be active for packages that contain Agents. Send the gzip-compressed tar ' +
 	'archive (`.n8np`) as the multipart field `package`. Optional routing uses form fields `projectId` ' +
 	'and `folderId` (omit or send empty for defaults). Every optional mode/policy field ' +
@@ -81,6 +85,12 @@ export const IMPORT_DESCRIPTION =
 	'returns HTTP 200.\n\n' +
 	'Selected-Agent exports use this endpoint. Agent content is rejected by `/import-selection`, ' +
 	'directory imports, and Promotions before writes.\n\n' +
+	'Shared Preferences keep their UUIDs. Identical content is a no-op. Changed content requires ' +
+	'`preferenceConflictPolicy=replace`; the default is `fail`. `deletedPreferenceIds` removes only ' +
+	'explicit shared UUIDs. Personal Preferences, missing collections, and unselected rows stay local. ' +
+	'Preferences must be available, and protected environments reject ordinary shared writes. ' +
+	'Each planned action needs its aiPreference API key scope. Results include `preferences` and ' +
+	'`counts.preferences`. Conflicts appear as `preference-conflict` issues.\n\n' +
 	'Example multipart fields: `conflictPolicy=new-version`, `idPolicy=source`, ' +
 	'`publishingPolicy=match-source`, ' +
 	'and `bindings={"credentials":{"source-credential":"target-credential"}}`.';

@@ -64,20 +64,21 @@ export class AiPreferenceRepository extends BaseRepository<AiPreference> {
 			.getMany();
 	}
 
-	/** Hold scope locks until all checks and writes commit. Moves lock both scopes. */
+	/** Lock scopes and imported IDs until commit. An imported ID can target different projects. */
 	async withWriteLock<T>(
 		targets: AiPreferenceTarget[],
 		ctx: OperationContext,
 		write: (ctx: OperationContext) => Promise<T>,
+		preferenceIds: string[] = [],
 	): Promise<T> {
 		return await this.txRunner.run(ctx, async (ctx) => {
 			const manager = this.managerFor(ctx);
 			// SQLite leases its single write connection for the transaction.
 			if (manager.connection.options.type === 'postgres') {
-				// Sort the lock IDs because distinct scopes can share a hash.
+				// Sort the lock IDs because distinct keys can share a hash.
 				const keys: Array<{ key: number }> = await manager.query(
 					'SELECT DISTINCT hashtext(scope) AS key FROM unnest($1::text[]) AS scope ORDER BY key',
-					[targets.map(scopeLockKey)],
+					[[...targets.map(scopeLockKey), ...preferenceIds.map((id) => `preference:${id}`)]],
 				);
 				for (const { key } of keys) {
 					await manager.query('SELECT pg_advisory_xact_lock($1, $2)', [
@@ -114,6 +115,21 @@ export class AiPreferenceRepository extends BaseRepository<AiPreference> {
 
 	async savePreference(row: AiPreference, ctx: OperationContext): Promise<AiPreference> {
 		return await this.managerFor(ctx).save(AiPreference, row);
+	}
+
+	async findForTarget(
+		target: AiPreferenceTarget,
+		ctx: OperationContext = {},
+	): Promise<AiPreference[]> {
+		return await this.managerFor(ctx).find(AiPreference, { where: whereTarget(target) });
+	}
+
+	async findForChange(id: string, ctx: OperationContext = {}): Promise<AiPreference | null> {
+		return await this.managerFor(ctx).findOne(AiPreference, { where: { id } });
+	}
+
+	async removePreference(id: string, ctx: OperationContext): Promise<void> {
+		await this.managerFor(ctx).delete(AiPreference, { id });
 	}
 
 	/** Wider than `findApplicable`: an admin sees rows that never reach their own prompts. */

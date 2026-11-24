@@ -208,3 +208,8 @@ export * from './auth';
 export { ProjectNotFoundError } from './errors/project-not-found.error';
 
 export { ExecutionRetentionService } from './services/execution-retention.service';
+
+export type {
+	SharedPreferenceChange,
+	SharedPreferencePlan,
+} from './services/ai-preference-changes';

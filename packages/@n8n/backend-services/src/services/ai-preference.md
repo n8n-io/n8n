@@ -230,3 +230,19 @@ The feature shipped behind the PostHog flag `111_context_preferences`. The flag 
 100% and the code no longer reads it. Every surface that reads preferences is on for every
 user, and `McpProtectedResource.getGrantableScopes` offers `aiPreference:read` and
 `aiPreference:write` to every user.
+
+### Shared transfers and protected environments
+
+`planSharedChanges` accepts validated shared UUIDs for a package batch. It checks
+identity, permissions, and the final scope contents. `checkSharedChanges` checks
+a preview again before package writes. `applySharedChanges` repeats validation
+under the scope locks and commits removals, creations, and updates together.
+Snapshots detect changes to the destination content or target. Ordinary creation
+still generates its own ID.
+
+New imported rows use `import` and the destination actor. Updates keep the source
+and creator. Package transfer excludes user Preferences and personal projects.
+
+`InstanceWriteAccessService` blocks ordinary shared writes in a protected
+environment. This guard covers creation, edits, moves, and deletion in the shared
+service. Personal writes keep their current behavior.

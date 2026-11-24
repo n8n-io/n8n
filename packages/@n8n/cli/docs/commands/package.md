@@ -270,7 +270,7 @@ n8n-cli package import-selection --file=project.n8np --selected-project-id=<id> 
 
 Requires the API key to hold:
 
-- `workflow:import` — always
+- `workflow:import` — when the package contains workflows
 - `workflow:activate` — when the fixed `match-source` publication publishes a selected workflow
 - `workflow:deactivate` — when the fixed `match-source` publication unpublishes a selected workflow
 - `workflow:delete` — when `--deleted-workflow-ids` contains IDs or an imported workflow changes between archived and unarchived
@@ -283,3 +283,72 @@ have permission to create data tables when the import creates missing tables.
 
 When the import is blocked, the command exits non-zero and lists the blocking
 issues.
+
+## Shared Preferences
+
+Packages can transfer project and instance AI Preferences. User Preferences and
+Preferences in personal projects stay local. Feature settings and project roles
+also stay local.
+
+Export selected rows with `--preference-id=<uuid>`. Repeat the flag for more
+rows. For a project package, add `--include-preferences=true` to include its
+shared Preferences. Instance Preferences require explicit IDs. Project packages
+keep project IDs. A loose project Preference uses the destination named by
+`--project-id`; it cannot use a personal project.
+
+```sh
+n8n-cli package export --preference-id=<uuid> --output=preferences.n8np
+n8n-cli package export --project-id=<id> --include-preferences=true --output=project.n8np
+n8n-cli package import --file=preferences.n8np --project-id=<destination-id>
+n8n-cli package import --file=preferences.n8np --preference-conflict-policy=replace
+n8n-cli package import-selection --file=project.n8np --selected-project-id=<id> --selected-preference-ids=<uuid>
+```
+
+| CLI option | API field | Behavior |
+| --- | --- | --- |
+| `--preference-id` | `preferenceIds` | Shared UUIDs to export. |
+| `--include-preferences` | `includePreferences` | Include Preferences from `projectIds`. Defaults to false. |
+| `--preference-conflict-policy` | `preferenceConflictPolicy` | `fail` (default), `skip`, or `replace`. Applies to changed content with the same ID. |
+| `--selected-preference-ids` | `selectedPreferenceIds` | Select rows for `import-selection`. Omit to import no Preferences. |
+| `--deleted-preference-ids` | `deletedPreferenceIds` | Explicit destination UUIDs to remove. Requires a Preferences collection. |
+
+API export fields use JSON arrays. Import and selection fields carry UUID arrays
+as JSON text in the multipart request. Selection imports can select instance
+Preferences and project Preferences from the selected project. Full imports
+include every Preference in the package.
+
+Identical content is a no-op. Changed content needs `replace`; the workflow
+`conflictPolicy` does not grant replacement. Import never combines instruction
+text. New rows keep the package UUID and use the destination actor with source
+`import`. Updates keep the original source and creator.
+
+Removal affects only the named IDs. It cannot remove personal Preferences or
+rows in other destination projects. A missing collection never requests removal.
+A disabled Preferences feature blocks a transfer that selects Preferences and
+leaves saved rows unchanged. Protected environments reject ordinary shared
+Preference writes, including package imports. Personal writes keep their current
+behavior. This package path grants no Promotions bypass.
+
+Import checks permissions, ID ownership, duplicate text, content length, and the
+50-row limit for each scope. Selected removals count toward the final batch.
+Concurrent imports and ordinary writes use the same scope lock. Imports also
+lock each UUID across destination scopes. Destination
+changes after a preview require a new plan. A rejected Preference plan reports
+`preference-conflict` issues before package writes. Successful results include
+`preferences` and `counts.preferences` with created, updated, removed, and skipped
+counts. The Preference batch commits as one transaction. Other package entities
+retain the package engine's existing apply behavior.
+
+Export needs the `aiPreference:read` and `aiPreference:list` API key scopes.
+Import checks the scope for each planned action: `aiPreference:create`,
+`aiPreference:update`, or `aiPreference:delete`. A no-op needs
+`aiPreference:read`. Project permissions and permissions for other package
+entities still apply.
+
+Packages with a Preferences collection use package format `3`. They require an
+n8n destination that supports this format and has Preferences enabled. Older
+readers reject the package. Packages without the collection retain format `1`.
+The source n8n version does not override the format check. Format `2` belongs to
+the separate standalone Skills change; readers must support every collection
+before they accept a package. Do not change the format number to bypass a
+rejection.

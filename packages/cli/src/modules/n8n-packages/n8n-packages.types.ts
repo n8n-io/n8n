@@ -261,7 +261,14 @@ export type TagMissingMode = (typeof TagMissingMode)[keyof typeof TagMissingMode
 
 export type TagConflictPolicy = (typeof TagConflictPolicy)[keyof typeof TagConflictPolicy];
 
+export const PreferenceConflictPolicy = { Fail: 'fail', Skip: 'skip', Replace: 'replace' } as const;
+export type PreferenceConflictPolicy =
+	(typeof PreferenceConflictPolicy)[keyof typeof PreferenceConflictPolicy];
+
 export interface ExportPackageRequest {
+	preferenceIds?: string[];
+	includePreferences?: boolean;
+	canExportPreferences?: boolean;
 	user: User;
 	/** The caller's operation context. Audit events read the login of a service account from it. */
 	ctx?: OperationContext;
@@ -298,6 +305,8 @@ export interface ExportPackageRequest {
 export type PackageImportSource = 'package-import' | 'git-pull';
 
 export type ImportRequest = {
+	preferenceConflictPolicy?: PreferenceConflictPolicy;
+	deletedPreferenceIds?: string[];
 	user: User;
 	/** The caller's operation context. Audit events read the login of a service account from it. */
 	ctx?: OperationContext;
@@ -328,6 +337,8 @@ export type ImportPackageRequest = ImportRequest & {
  * References to deleted workflows remain unchanged.
  */
 export interface ImportSelection {
+	selectedPreferenceIds?: string[];
+	deletedPreferenceIds?: string[];
 	/** Source project ID from the package. */
 	selectedProjectId: string;
 	/** Source workflow IDs from the selected project. */
@@ -348,6 +359,7 @@ export interface ImportSelection {
  * promotions set it), and `projectConflictPolicy` (defaults to `merge`; only promotions set it).
  */
 export type ImportSelectionRequest = {
+	preferenceConflictPolicy?: PreferenceConflictPolicy;
 	user: User;
 	/** The caller's operation context. Audit events read the login of a service account from it. */
 	ctx?: OperationContext;
@@ -561,7 +573,7 @@ export type ExportPackageEventCounts = {
  * the requested id counts.
  */
 export interface ExportPackageSummary {
-	counts: ExportPackageEventCounts;
+	counts: ExportPackageEventCounts & { preferences?: number };
 }
 
 /**
@@ -682,6 +694,7 @@ export type ImportPlanMode = 'enforce' | 'check';
  * The import aborts when any are present.
  */
 export type BlockingIssue =
+	| { type: 'preference-conflict'; preferenceId?: string; message: string }
 	| AgentImportIssue
 	| ({ type: 'workflow-conflict' } & WorkflowConflict)
 	| ({ type: 'workflow-lineage-conflict' } & WorkflowLineageConflict)
@@ -889,10 +902,21 @@ export interface ImportTagSummary {
 	skipped: string[];
 }
 
+export interface ImportedPreferenceSummary {
+	id: string;
+	scope: 'instance' | 'project';
+	projectId?: string;
+	status: 'create' | 'update' | 'delete' | 'skip';
+}
+
 export interface ImportResult {
+	preferences?: ImportedPreferenceSummary[];
 	package: ImportPackageSummary;
 	agents: ImportedAgentSummary[];
-	counts: { agents: ImportStatusCounts };
+	counts: {
+		agents: ImportStatusCounts;
+		preferences?: { created: number; updated: number; removed: number; skipped: number };
+	};
 	workflows: ImportedWorkflowSummary[];
 	/** Workflows the package did not contain, removed under `folderConflictPolicy=overwrite`. */
 	removedWorkflows: RemovedWorkflowSummary[];

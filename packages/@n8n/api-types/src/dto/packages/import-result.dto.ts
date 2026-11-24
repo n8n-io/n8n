@@ -324,7 +324,25 @@ const serializedBindingsSchema = z
 export const importResultSchema = z.object({
 	package: importPackageSummarySchema,
 	agents: z.array(importedAgentSummarySchema),
+	preferences: z
+		.array(
+			z.object({
+				id: z.string().uuid(),
+				scope: z.enum(['project', 'instance']),
+				projectId: z.string().optional(),
+				status: z.enum(['create', 'update', 'delete', 'skip']),
+			}),
+		)
+		.optional(),
 	counts: z.object({
+		preferences: z
+			.object({
+				created: z.number(),
+				updated: z.number(),
+				removed: z.number(),
+				skipped: z.number(),
+			})
+			.optional(),
 		agents: z.object({
 			created: z.number().int().nonnegative(),
 			updated: z.number().int().nonnegative(),

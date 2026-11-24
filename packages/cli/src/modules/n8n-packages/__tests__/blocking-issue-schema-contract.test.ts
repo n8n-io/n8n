@@ -5,6 +5,9 @@ import type { BlockingIssue } from '../n8n-packages.types';
 // The shared schema must match the backend-specific BlockingIssue variants.
 describe('BlockingIssue / ImportBlockingIssue contract', () => {
 	it('mirrors the schema inferred from importBlockingIssueSchema exactly, variant by variant', () => {
+		expectTypeOf<Extract<BlockingIssue, { type: 'preference-conflict' }>>().branded.toEqualTypeOf<
+			Extract<ImportBlockingIssue, { type: 'preference-conflict' }>
+		>();
 		expectTypeOf<Extract<BlockingIssue, { type: 'workflow-conflict' }>>().branded.toEqualTypeOf<
 			Extract<ImportBlockingIssue, { type: 'workflow-conflict' }>
 		>();

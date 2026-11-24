@@ -599,6 +599,7 @@ export * from './packages/folder.schema';
 export * from './packages/project.schema';
 export * from './packages/tag.schema';
 export * from './packages/variable.schema';
+export * from './packages/preference.schema';
 export * from './packages/workflow-metadata.schema';
 export * from './packages/workflow.schema';
 export { CommunityPackageRequestDto } from './community-packages/community-package-request.dto';

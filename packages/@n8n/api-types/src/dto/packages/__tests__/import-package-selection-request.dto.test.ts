@@ -185,6 +185,9 @@ describe('ImportPackageSelectionRequestDto', () => {
 
 	it('lists the selection fields as multipart form fields', () => {
 		expect(IMPORT_PACKAGE_SELECTION_REQUEST_FORM_FIELDS).toEqual([
+			'preferenceConflictPolicy',
+			'selectedPreferenceIds',
+			'deletedPreferenceIds',
 			'selectedProjectId',
 			'selectedWorkflowIds',
 			'deletedWorkflowIds',
@@ -193,4 +196,24 @@ describe('ImportPackageSelectionRequestDto', () => {
 			'overwriteDeletionPolicy',
 		]);
 	});
+});
+
+it('validates Preference UUID arrays and replacement for selection imports', () => {
+	const id = '7dfb1649-a8b9-49bf-bbed-5a3c933584b2';
+	const fields = withPackageFile({
+		selectedProjectId: 'project',
+		selectedWorkflowIds: '[]',
+		selectedPreferenceIds: JSON.stringify([id]),
+		deletedPreferenceIds: '[]',
+		preferenceConflictPolicy: 'replace',
+	});
+	expect(ImportPackageSelectionRequestDto.parse(fields)).toMatchObject({
+		selectedPreferenceIds: [id],
+		deletedPreferenceIds: [],
+		preferenceConflictPolicy: 'replace',
+	});
+	expect(
+		ImportPackageSelectionRequestDto.safeParse({ ...fields, selectedPreferenceIds: '["invalid"]' })
+			.success,
+	).toBe(false);
 });

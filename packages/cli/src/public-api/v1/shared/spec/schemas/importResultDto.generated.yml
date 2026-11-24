@@ -121,9 +121,51 @@ properties:
         - status
         - publishing
         - channels
+  preferences:
+    type: array
+    items:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        scope:
+          type: string
+          enum:
+            - project
+            - instance
+        projectId:
+          type: string
+        status:
+          type: string
+          enum:
+            - create
+            - update
+            - delete
+            - skip
+      required:
+        - id
+        - scope
+        - status
   counts:
     type: object
     properties:
+      preferences:
+        type: object
+        properties:
+          created:
+            type: number
+          updated:
+            type: number
+          removed:
+            type: number
+          skipped:
+            type: number
+        required:
+          - created
+          - updated
+          - removed
+          - skipped
       agents:
         type: object
         properties:

@@ -23,6 +23,7 @@ import {
 	renderAiPreferences,
 	renderAiPreferencesBlock,
 } from '../ai-preference.service';
+import { InstanceWriteAccessService } from '../instance-write-access.service';
 import { ProjectScopeService } from '../project-scope.service';
 import type { RoleService } from '../role.service';
 
@@ -62,6 +63,7 @@ describe('AiPreferenceService', () => {
 		projectRepository,
 		new ProjectScopeService(roleService, projectRelationRepository),
 		userRepository,
+		new InstanceWriteAccessService(),
 	);
 
 	type Membership = { projectId: string; scopes: string[] };
@@ -888,7 +890,7 @@ describe('AiPreferenceService', () => {
 
 			const removed = await service.undoWrite(member, 'pref-1', 'mcp');
 
-			expect(aiPreferenceRepository.delete).toHaveBeenCalledWith({ id: 'pref-1' });
+			expect(aiPreferenceRepository.removePreference).toHaveBeenCalledWith('pref-1', {});
 			expect(removed).toMatchObject({ id: 'pref-1', content: 'Rule.', source: 'mcp' });
 		});
 
@@ -908,7 +910,7 @@ describe('AiPreferenceService', () => {
 			await expect(service.undoWrite(member, 'pref-1', 'mcp')).rejects.toBeInstanceOf(
 				NotFoundError,
 			);
-			expect(aiPreferenceRepository.delete).not.toHaveBeenCalled();
+			expect(aiPreferenceRepository.removePreference).not.toHaveBeenCalled();
 		});
 
 		it('refuses a row the person has since moved to the instance, even for an owner', async () => {
@@ -918,7 +920,7 @@ describe('AiPreferenceService', () => {
 			);
 
 			await expect(service.undoWrite(owner, 'pref-1', 'mcp')).rejects.toBeInstanceOf(NotFoundError);
-			expect(aiPreferenceRepository.delete).not.toHaveBeenCalled();
+			expect(aiPreferenceRepository.removePreference).not.toHaveBeenCalled();
 		});
 
 		it('refuses a row the caller cannot see, before it reads the source', async () => {
@@ -935,7 +937,7 @@ describe('AiPreferenceService', () => {
 			await expect(service.undoWrite(member, 'pref-1', 'mcp')).rejects.toBeInstanceOf(
 				NotFoundError,
 			);
-			expect(aiPreferenceRepository.delete).not.toHaveBeenCalled();
+			expect(aiPreferenceRepository.removePreference).not.toHaveBeenCalled();
 		});
 	});
 

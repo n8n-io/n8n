@@ -17,10 +17,13 @@ import type { VariableImportRequest } from '../entities/variable/variable.types'
 import type { PackageReader } from '../io/package-reader';
 import { VariableParentPolicy } from '../n8n-packages.types';
 import type { ImportContext, ResolvedImportRequest } from '../n8n-packages.types';
-import { packageImportScopes } from './import-gates';
+import { isPreferenceOnlyPackage, packageImportScopes } from './import-gates';
+import { toImportBlockedError } from './import-blocked.error';
+import { PreferenceImporter } from '../entities/preference/preference.importer';
 import { ImportOrchestrator } from './import-orchestrator';
 import {
 	buildImportResult,
+	emptyImportResult,
 	identifyRequirements,
 	reconcileCredentialSummary,
 	toImportedWorkflowSummaries,
@@ -46,6 +49,7 @@ import type { PackageManifest } from '../spec/manifest.schema';
 export class WorkflowPackageImporter {
 	constructor(
 		private readonly packageParser: N8nPackageParser,
+		private readonly preferenceImporter: PreferenceImporter,
 		private readonly importOrchestrator: ImportOrchestrator,
 		private readonly importPreflight: PackageImportPreflight,
 		private readonly projectService: ProjectService,
@@ -57,6 +61,15 @@ export class WorkflowPackageImporter {
 		reader: PackageReader,
 		manifest: PackageManifest,
 	): Promise<ImportOutcome> {
+		const preferencePlan =
+			manifest.preferences !== undefined || request.deletedPreferenceIds?.length
+				? await this.preferenceImporter.plan(request, reader, manifest)
+				: undefined;
+		if (preferencePlan?.issues.length) throw toImportBlockedError(preferencePlan.issues);
+		if (preferencePlan && isPreferenceOnlyPackage(manifest)) {
+			const preferences = await this.preferenceImporter.apply(request, preferencePlan);
+			return { result: emptyImportResult(manifest, preferences), scopes: [], agentOutcomes: [] };
+		}
 		const folders = await this.packageParser.getFolders(reader);
 		const importLocation = await this.findImportLocation(
 			request.user,
@@ -157,6 +170,7 @@ export class WorkflowPackageImporter {
 
 		const [plan] = await this.importPreflight.prepare([draftPlan], reader, request.apiKeyScopes);
 
+		if (preferencePlan) await this.preferenceImporter.check(request, preferencePlan);
 		const content = await this.importOrchestrator.apply(plan);
 
 		const { workflows: published, agentOutcomes } = await this.importOrchestrator.publishPackage({
@@ -179,7 +193,12 @@ export class WorkflowPackageImporter {
 			},
 		];
 
+		const preferences = preferencePlan
+			? await this.preferenceImporter.apply(request, preferencePlan)
+			: undefined;
+
 		const result = buildImportResult({
+			preferences,
 			package: toPackageSummary(manifest),
 			agentOutcomes,
 			workflows: toImportedWorkflowSummaries(

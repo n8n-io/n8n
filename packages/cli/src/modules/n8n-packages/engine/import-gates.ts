@@ -19,9 +19,31 @@ import type { WorkflowRemovalPlan } from '../entities/workflow/workflow-removal.
 import type { CredentialConflictPolicy } from '../n8n-packages.types';
 import type { PackageManifest } from '../spec/manifest.schema';
 
+/** Preference-only transfers need no workflow import grant or workflow destination. */
+export function isPreferenceOnlyPackage(manifest: PackageManifest): boolean {
+	return (
+		manifest.preferences !== undefined &&
+		![
+			manifest.workflows,
+			manifest.agents,
+			manifest.projects,
+			manifest.folders,
+			manifest.credentials,
+			manifest.dataTables,
+			manifest.variables,
+			manifest.tags,
+			manifest.skills,
+		].some((entries) => entries?.length) &&
+		!manifest.requirements
+	);
+}
+
 export function packageImportScopes(manifest: PackageManifest): Scope[] {
 	const scopes: Scope[] = [];
-	if (manifest.workflows?.length || (!manifest.agents?.length && !manifest.projects?.length)) {
+	if (
+		manifest.workflows?.length ||
+		(!manifest.agents?.length && !manifest.projects?.length && !isPreferenceOnlyPackage(manifest))
+	) {
 		scopes.push('workflow:import');
 	}
 	if (manifest.agents?.length) scopes.push('agent:import');

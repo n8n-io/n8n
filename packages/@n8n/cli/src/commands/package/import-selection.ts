@@ -18,6 +18,25 @@ export default class PackageImportSelection extends BaseCommand {
 
 	static override flags = {
 		...BaseCommand.baseFlags,
+		selectedPreferenceIds: Flags.string({
+			description: 'Shared Preference UUIDs to import',
+			multiple: true,
+			delimiter: ',',
+			aliases: ['selected-preference-ids'],
+		}),
+		preferenceConflictPolicy: Flags.option({
+			description:
+				'How to handle changed shared Preferences. Use replace to replace their content explicitly',
+			options: ['fail', 'skip', 'replace'] as const,
+			aliases: ['preference-conflict-policy'],
+		})(),
+		deletedPreferenceIds: Flags.string({
+			description: 'Destination shared Preference UUIDs to remove',
+			multiple: true,
+			delimiter: ',',
+			aliases: ['deleted-preference-ids'],
+		}),
+
 		file: Flags.string({ description: 'Path to the .n8np project package file', required: true }),
 		selectedProjectId: Flags.string({
 			description: 'Source project ID the selection is scoped to',
@@ -75,8 +94,11 @@ export default class PackageImportSelection extends BaseCommand {
 					{
 						selectedProjectId: flags.selectedProjectId,
 						selectedWorkflowIds: flags.selectedWorkflowIds ?? [],
+						selectedPreferenceIds: flags.selectedPreferenceIds,
 						deletedWorkflowIds: flags.deletedWorkflowIds,
 						conflictPolicy: flags.conflictPolicy,
+						preferenceConflictPolicy: flags.preferenceConflictPolicy,
+						deletedPreferenceIds: flags.deletedPreferenceIds,
 						idPolicy: flags.idPolicy,
 						overwriteDeletionPolicy: flags.overwriteDeletionPolicy,
 					},
