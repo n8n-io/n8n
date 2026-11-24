@@ -261,9 +261,12 @@ survive. The run is skipped when `latest` already matches the lockfile; a
 |------------------------------------|----------------------------------------|--------|
 | PR dequeued (not merged or manual) | `util-notify-merge-queue-removal.yml`  | Writes one PR comment with the reason. Later removals update the same comment. |
 
-This workflow uses `pull_request_target`. Thus, it runs without approval on
-fork and bot PRs, and it has a write token on them. No step checks out or runs
-PR code. An edit to the comment does not send a new notification.
+This workflow uses `pull_request`, because GitHub does not start a
+`pull_request_target` run for the `dequeued` type. On PRs from external
+contributors and bots, a run waits for approval. On fork PRs, the token is
+read-only, so the comment step fails. The `concurrency` group keeps at most one
+pending run for each PR, so many approved runs update one comment. An edit to
+the comment does not send a new notification.
 
 ### Label Triggers
 

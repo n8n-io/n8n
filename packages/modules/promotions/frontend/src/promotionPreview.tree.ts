@@ -5,8 +5,9 @@ import type { ResourceKey } from './promotionPreview.selection';
 
 /**
  * The resource tree of the promotion preview pages. Projects, folders and workflows follow the
- * project hierarchy. Dependencies are grouped by type and appear once, however many workflows
- * use them.
+ * project hierarchy: under the heading "Workflows" when the project has workflows, and as a plain
+ * project row when it has none. Dependencies are grouped by type and appear once, however many
+ * workflows use them.
  */
 
 export type PreviewTreeGroup = 'credential' | 'dataTable' | 'variable' | 'tag' | 'subWorkflow';
@@ -19,6 +20,8 @@ export type PreviewTreeItem = {
 	/** A section heading groups resources: workflows by project and folder, the others by type. */
 	kind: 'section' | 'resource';
 	children?: PreviewTreeItem[];
+	/** A section counts these resources: workflows only in "Workflows", never projects or folders. */
+	memberKeys?: ResourceKey[];
 };
 
 /**
@@ -124,14 +127,19 @@ export function buildPreviewTree(
 	}
 
 	const sections: PreviewTreeItem[] = [];
-	const workflows = hierarchyItems(hierarchy);
-	if (workflows.length > 0) {
+	const roots = hierarchyItems(hierarchy);
+	if (hierarchy.some(({ type }) => type === 'workflow')) {
 		sections.push({
 			id: 'section:workflows',
 			label: labels.workflows,
 			kind: 'section',
-			children: workflows,
+			children: roots,
+			memberKeys: hierarchy.filter(({ type }) => type === 'workflow').map(({ key }) => key),
 		});
+	} else {
+		// Without a workflow the project is not a list of workflows. Its own row stands at the top,
+		// with the folders below it, so a project or a credential promote does not read "Workflows".
+		sections.push(...roots);
 	}
 
 	for (const group of GROUP_ORDER) {
@@ -142,6 +150,7 @@ export function buildPreviewTree(
 			label: labels.group(group),
 			kind: 'section',
 			children: [...members].sort(byFolderThenName).map((resource) => toItem(resource)),
+			memberKeys: members.map(({ key }) => key),
 		});
 	}
 	return sections;
