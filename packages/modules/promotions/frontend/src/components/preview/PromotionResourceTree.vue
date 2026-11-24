@@ -186,11 +186,7 @@ function onToggle(resource: PromotionResource) {
 				</li>
 				<li
 					v-else-if="resource && check && marker"
-					:class="[
-						$style.row,
-						$style.resource,
-						{ [$style.inspected]: inspectedKey === item.id, [$style.blocked]: marker.blocked },
-					]"
+					:class="[$style.row, $style.resource, { [$style.inspected]: inspectedKey === item.id }]"
 					data-test-id="promotion-preview-tree-row"
 					:data-resource-key="item.id"
 				>
@@ -233,7 +229,7 @@ function onToggle(resource: PromotionResource) {
 							@click="emit('showBlockers')"
 						>
 							<template #icon>
-								<N8nIcon icon="circle-alert" size="small" color="warning" />
+								<N8nIcon icon="triangle-alert" size="small" color="warning" />
 							</template>
 						</N8nButton>
 						<span
@@ -244,23 +240,22 @@ function onToggle(resource: PromotionResource) {
 							:class="$style.blockerMarker"
 							data-test-id="promotion-preview-tree-blocker"
 						>
-							<N8nIcon icon="circle-alert" size="small" color="warning" />
+							<N8nIcon icon="triangle-alert" size="small" color="warning" />
 						</span>
 					</N8nTooltip>
-					<!-- A missing dependency does not stop the workflow, so the row keeps its colors and gets
-					a quiet marker. -->
+					<!-- A missing dependency does not stop the workflow, so the marker is muted, not amber. -->
 					<N8nTooltip v-else-if="marker.missing" placement="right" as-child>
-						<template #content>{{ marker.missing.message }}</template>
+						<template #content>{{ marker.missing }}</template>
 						<N8nButton
 							variant="ghost"
 							size="xsmall"
 							icon-only
-							:aria-label="marker.missing.message"
+							:aria-label="marker.missing"
 							data-test-id="promotion-preview-tree-dependencies"
 							@click="emit('showBlockers')"
 						>
 							<template #icon>
-								<N8nIcon :icon="marker.missing.icon" size="small" color="text-light" />
+								<N8nIcon icon="triangle-alert" size="small" color="text-light" />
 							</template>
 						</N8nButton>
 					</N8nTooltip>
@@ -308,10 +303,6 @@ function onToggle(resource: PromotionResource) {
 .inspected,
 .inspected:hover {
 	background-color: var(--background--active);
-}
-
-.resource.blocked {
-	background-color: var(--callout--color--background--warning);
 }
 
 .heading {

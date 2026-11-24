@@ -126,6 +126,9 @@ describe('PromotionResourceTree', () => {
 		});
 		const marker = getByTestId('promotion-preview-tree-blocker');
 
+		// The row of a workflow with an issue has a warning triangle, and no highlight.
+		expect(marker.querySelector('[data-icon]')).toHaveAttribute('data-icon', 'triangle-alert');
+		expect(marker.closest('li')?.className).not.toMatch(/blocked/);
 		expect(marker).toHaveAttribute('tabindex', '0');
 		marker.focus();
 
@@ -167,7 +170,9 @@ describe('PromotionResourceTree', () => {
 			// "Weekly KPI report" (w3) uses only the sub-workflow that the user cannot access.
 			const outside = row(getAllByTestId, 'workflow:w3');
 			const marker = outside.getByTestId('promotion-preview-tree-dependencies');
-			expect(marker).toHaveAccessibleName('1 dependency is outside your access.');
+			expect(marker).toHaveAccessibleName(
+				'This workflow uses 1 dependency that is outside your access. You can promote it without it.',
+			);
 			expect(outside.queryByTestId('promotion-preview-tree-blocker')).not.toBeInTheDocument();
 			expect(outside.getByRole('checkbox')).toBeChecked();
 			expect(outside.getByRole('checkbox')).toBeEnabled();
@@ -186,21 +191,89 @@ describe('PromotionResourceTree', () => {
 
 		// "Invoice reconciliation" (w1) uses each of these dependencies.
 		it.each([
-			['lock', 'every dependency is outside the access of the user', [outsideAccessWorkflow]],
 			[
-				'circle-minus',
+				'every dependency is outside the access of the user',
+				[outsideAccessWorkflow, { ...outsideAccessWorkflow, id: 'w9', name: 'Notify finance' }],
+				'This workflow uses 2 dependencies that are outside your access. You can promote it without them.',
+			],
+			[
 				'only some dependencies are outside the access of the user',
 				[otherProjectCredential, outsideAccessWorkflow],
+				'2 dependencies are not included in this Promote.',
 			],
-			['circle-minus', 'no dependency is outside the access of the user', [otherProjectCredential]],
-		])('should show the %s icon when %s', (icon, _case, dependencies) => {
-			const { getAllByTestId } = renderWithMissing(dependencies);
+			[
+				'the user can access the project of the dependency',
+				[otherProjectCredential],
+				'1 dependency is not included in this Promote.',
+			],
+		])(
+			'should show a warning triangle with its reason when %s',
+			async (_case, dependencies, text) => {
+				const { getAllByTestId, findByTestId } = renderWithMissing(dependencies);
 
-			expect(
-				row(getAllByTestId, 'workflow:w1')
-					.getByTestId('promotion-preview-tree-dependencies')
-					.querySelector('[data-icon]'),
-			).toHaveAttribute('data-icon', icon);
+				const marker = row(getAllByTestId, 'workflow:w1').getByTestId(
+					'promotion-preview-tree-dependencies',
+				);
+				expect(marker.querySelector('[data-icon]')).toHaveAttribute('data-icon', 'triangle-alert');
+				await userEvent.hover(marker);
+				expect(await findByTestId('tooltip-content')).toHaveTextContent(text);
+			},
+		);
+
+		it('should show an amber triangle for an issue that stops a workflow, and a muted one for dependencies that the Promote leaves out', () => {
+			const base = billingPreview();
+			const preview = {
+				...base,
+				resources: base.resources.map((resource) =>
+					resource.key === 'workflow:w2'
+						? { ...resource, movedToProject: { id: 'p2', name: 'Ops' } }
+						: resource,
+				),
+			};
+			const movedGraph = buildSelectionGraph(preview, 'promote');
+			const selected = new Set(['workflow:w1']);
+			const { getAllByTestId } = renderComponent({
+				pinia: createTestingPinia(),
+				// The stub shows the color of an icon, which the test DOM does not keep.
+				global: {
+					stubs: {
+						N8nIcon: {
+							props: ['icon', 'color'],
+							template: '<i :data-icon="icon" :data-color="color" />',
+						},
+					},
+				},
+				props: {
+					tree: buildPreviewTree(preview, { workflows: 'workflows', group: (id) => id }),
+					graph: movedGraph,
+					selected,
+					inclusion: resolveInclusion(movedGraph, selected),
+					includedChanges: 0,
+					totalChanges: 0,
+					disabled: new Set(['workflow:w2']),
+					locked: false,
+					direction: 'promote',
+					blockers: indexBlockers(crossProjectMoveBlockers(movedGraph)),
+					missingDependencies: indexByWorkflow([otherProjectCredential]),
+				},
+			});
+
+			const icon = (key: string, marker: string) =>
+				row(getAllByTestId, key).getByTestId(marker).querySelector('[data-icon]');
+			expect(icon('workflow:w2', 'promotion-preview-tree-blocker')).toHaveAttribute(
+				'data-color',
+				'warning',
+			);
+			expect(icon('workflow:w1', 'promotion-preview-tree-dependencies')).toHaveAttribute(
+				'data-color',
+				'text-light',
+			);
+			for (const marker of [
+				icon('workflow:w2', 'promotion-preview-tree-blocker'),
+				icon('workflow:w1', 'promotion-preview-tree-dependencies'),
+			]) {
+				expect(marker).toHaveAttribute('data-icon', 'triangle-alert');
+			}
 		});
 
 		it('should show no marker on a workflow without missing dependencies', () => {

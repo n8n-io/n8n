@@ -1409,7 +1409,9 @@ describe('PromotionPreviewView', () => {
 			).toHaveAccessibleName('2 dependencies are not included in this Promote.');
 			const row = treeRow(getAllByTestId, 'workflow:w3');
 			const marker = row.getByTestId('promotion-preview-tree-dependencies');
-			expect(marker).toHaveAccessibleName('1 dependency is outside your access.');
+			expect(marker).toHaveAccessibleName(
+				'This workflow uses 1 dependency that is outside your access. You can promote it without it.',
+			);
 			// The dependency does not stop the workflow, so users can still clear and select it.
 			expect(row.getByRole('checkbox')).toBeChecked();
 			expect(row.getByRole('checkbox')).toBeEnabled();

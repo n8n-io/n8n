@@ -11700,7 +11700,7 @@
 	"promotions.preview.submit.folderMoved": "Apply is disabled. The branch and this instance hold the folder {folders} in different projects, and Apply can't move folders between projects. | Apply is disabled. The branch and this instance hold the folders {folders} in different projects, and Apply can't move folders between projects.",
 	"promotions.preview.tab.blockers": "Issues",
 	"promotions.preview.marker.workflow": "{count} issue needs your action. | {count} issues need your action.",
-	"promotions.preview.marker.outside": "{count} dependency is outside your access. | {count} dependencies are outside your access.",
+	"promotions.preview.marker.outside.promote": "This workflow uses {count} dependency that is outside your access. You can promote it without it. | This workflow uses {count} dependencies that are outside your access. You can promote it without them.",
 	"promotions.preview.marker.notIncluded": "{count} dependency is not included in this Promote. | {count} dependencies are not included in this Promote.",
 	"promotions.preview.personalProject": "a personal project",
 	"promotions.preview.marker.movedOut": "This workflow moved to {project} on this instance. Promote can't move a workflow between projects. Move it back, then promote again.",
