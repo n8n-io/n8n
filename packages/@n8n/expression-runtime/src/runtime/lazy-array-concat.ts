@@ -1,6 +1,8 @@
 import { defineProperty, isArray, reflectGet } from './intrinsics';
 import { isLazyProxy } from './lazy-proxy';
 
+const NativeArray = Array;
+
 const nativeConcat = Array.prototype.concat;
 
 const { apply } = Reflect;
@@ -28,7 +30,20 @@ function holdsLazyProxy(receiver: unknown, items: unknown[]): boolean {
 	return found;
 }
 
-/** A plain array with the elements and the holes of a lazy array. */
+/** Give the plain array the constructor of the lazy array. `concat` creates its result from it. */
+function keepConstructor(plain: unknown[], lazyArray: unknown[]): void {
+	const { constructor } = lazyArray;
+	if (constructor !== NativeArray) {
+		defineProperty(plain, 'constructor', {
+			value: constructor,
+			writable: true,
+			enumerable: false,
+			configurable: true,
+		});
+	}
+}
+
+/** A plain array with the elements, the holes and the constructor of a lazy array. */
 function toPlainArray(lazyArray: unknown[]): unknown[] {
 	const { length } = lazyArray;
 	const plain: unknown[] = [];
@@ -38,6 +53,7 @@ function toPlainArray(lazyArray: unknown[]): unknown[] {
 		}
 	}
 	plain.length = length;
+	keepConstructor(plain, lazyArray);
 	return plain;
 }
 
