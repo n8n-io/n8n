@@ -12,12 +12,8 @@ import {
 	provenIds,
 	removeUnprovenLiterals,
 } from '../plan-template';
-import {
-	linearLookups,
-	notionLookups,
-	withIssueDescriptions,
-	withUserEmails,
-} from '../linear-lookups';
+import { linearLookups, withIssueDescriptions, withUserEmails } from '../linear-lookups';
+import { notionLookups } from '../notion-lookups';
 import {
 	PlanHydrator,
 	nestDottedKeys,
@@ -247,6 +243,24 @@ describe('PlanHydrator', () => {
 		);
 		await gymLacks.hydrator.hydrate('get_issue', { id: 'TRUST-1209' }, real);
 		expect(gymLacks.upstreamCalls).toEqual([['get_issue', { id: 'TRUST-1' }]]);
+	});
+
+	it('tells the model which objects the gym holds when other lookups remain', async () => {
+		const lookups = () => [
+			{ tool: 'get_issue', args: { id: 'TRUST-1' } },
+			{ tool: 'get_team', args: { query: 'LHO' } },
+		];
+		const { hydrator, prompts } = setup(
+			[JSON.stringify({ overlay: {} })],
+			() => text(`TRUST-1 ${ID}`),
+			lookups,
+			undefined,
+			new Set(['get_issue']),
+		);
+		await hydrator.hydrate('get_issue', { id: 'TRUST-1209' }, real);
+		expect(prompts[0]).toContain('The gym holds these objects already');
+		expect(prompts[0]).toContain('get_issue {"id":"TRUST-1"}');
+		expect(prompts[0]).toContain('The call names objects in its args');
 	});
 
 	it('leaves out an entity under the id of an object that a write made in the gym', async () => {
@@ -613,6 +627,15 @@ describe('nestDottedKeys', () => {
 			nestDottedKeys({ world_version: 1, 'native.linear': { teams: [] }, native: { notion: {} } }),
 		).toEqual({ world_version: 1, native: { notion: {}, linear: { teams: [] } } });
 	});
+
+	it('drops keys that are not data keys', () => {
+		const overlay = JSON.parse(
+			'{"__proto__.flag": 1, "native.constructor.prototype.flag": 1, "__proto__": {"flag": 1}, "native.linear": {"teams": []}}',
+		) as Record<string, unknown>;
+		expect(nestDottedKeys(overlay)).toEqual({ native: { linear: { teams: [] } } });
+		expect(({} as Record<string, unknown>).flag).toBeUndefined();
+		expect(Object.getPrototypeOf(nestDottedKeys(overlay))).toBe(Object.prototype);
+	});
 });
 
 describe('PlanHydrator checks of the seed and the replay', () => {
@@ -640,6 +663,28 @@ describe('PlanHydrator checks of the seed and the replay', () => {
 		expect(prompts[1]).toContain('"ref":"project:p"');
 		expect(prompts[1]).not.toContain('"name":"P"');
 		expect(seeds).toHaveLength(2);
+	});
+
+	it('records what the gym took, so a repair does not seed it again', async () => {
+		const plan = JSON.stringify({
+			overlay: {
+				native: { linear: { teams: [{ ref: 'team:t' }], extras: [{ ref: 'extra:x' }] } },
+			},
+		});
+		const { hydrator, seeds } = setup([plan, plan], undefined, undefined, (n) =>
+			n === 1
+				? {
+						report: {
+							warnings: [{ path: '$.native.linear.extras', message: 'unknown top-level field' }],
+						},
+					}
+				: {},
+		);
+		await hydrator.hydrate('get_issue', { id: 'TRUST-1209' }, text('{}'));
+		expect(seeds).toHaveLength(2);
+		const repaired = JSON.stringify(seeds[1]);
+		expect(repaired).not.toContain('team:t');
+		expect(repaired).toContain('extra:x');
 	});
 
 	it('does not ask for the id of a filter in an empty list', async () => {

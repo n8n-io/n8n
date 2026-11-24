@@ -38,18 +38,32 @@ describe('withMcpGuard', () => {
 		);
 	});
 
-	it.each(['/sse', '/sse/', '/sse/abc', '/messages', '/messages/'])(
-		'should refuse the SSE path %s',
+	it.each(['/sse', '/sse/', '/sse/abc', '/messages', '/messages/', '//mcp', '/v1/mcp', '/message'])(
+		'should refuse the path %s',
 		async (path) => {
 			const res = await guarded(`https://mcp.linear.app${path}`);
 			expect(res.status).toBe(403);
 			expect(baseFetch).not.toHaveBeenCalled();
+			expect(handleMcp).not.toHaveBeenCalled();
 		},
 	);
 
-	it('should leave OAuth requests of a guarded host to the real server', async () => {
-		expect(await call('https://mcp.linear.app/token')).toBe('real');
+	it.each([
+		'/token',
+		'/authorize',
+		'/register',
+		'/.well-known/oauth-authorization-server',
+		'/.well-known/oauth-protected-resource/mcp',
+	])('should leave the OAuth path %s of a guarded host to the real server', async (path) => {
+		expect(await call(`https://mcp.linear.app${path}`)).toBe('real');
 		expect(handleMcp).not.toHaveBeenCalled();
+	});
+
+	it('should not consume the body of a request for another host', async () => {
+		const req = new Request('https://example.com/api', { method: 'POST', body: 'payload' });
+		await guarded(req);
+		expect(req.bodyUsed).toBe(false);
+		expect(baseFetch).toHaveBeenCalledWith(req, undefined);
 	});
 
 	it('should leave other hosts to the real server', async () => {

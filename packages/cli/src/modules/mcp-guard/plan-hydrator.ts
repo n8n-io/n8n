@@ -3,9 +3,10 @@ import { Container } from '@n8n/di';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 import type { GymAdmin } from './gym-admin';
-import { isRecord } from './gym-admin';
+import { isRecord } from '@n8n/utils/is-record';
 import type { McpCaller } from './mcp-upstream';
 import { OnceByKey } from './once-by-key';
+import { clip, errText, resultText } from './result-text';
 import {
 	dropUnprovenIds,
 	fillPointers,
@@ -66,18 +67,7 @@ const DETAIL_TOOL = /(^|[-_])(get|fetch)([-_]|$)/;
 
 const MADE_ID_KEYS: ReadonlySet<string> = new Set(['id', 'uuid', 'identifier', 'page_id']);
 const MAX_SHOWN = 6000;
-const MAX_REPAIRS: number = 2;
-const MAX_TEXT = 40_000;
-
-const clip = (text: string): string =>
-	text.length > MAX_TEXT
-		? `${text.slice(0, MAX_TEXT)}\n[cut: ${text.length - MAX_TEXT} more characters]`
-		: text;
-
-const resultText = (res: CallToolResult): string =>
-	res.content.flatMap((c) => (c.type === 'text' ? [c.text] : [])).join('\n');
-
-const errText = (e: unknown): string => (e instanceof Error ? e.message : 'unknown error');
+const MAX_REPAIRS = 2;
 
 // Keys and value types of a value, without the values. For logs.
 function shapeOf(value: unknown): unknown {
@@ -103,38 +93,64 @@ function shownIds(ids: string[], text: string): string[] {
 	return ids.filter((id) => haystack.includes(id));
 }
 
+// Names that are not data keys. The overlay comes from a model, so code drops them.
+const RESERVED_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
 /** A model writes "native.linear" as one key. Make it the two levels that the gym reads. */
 export function nestDottedKeys(overlay: Record<string, unknown>): Record<string, unknown> {
 	const out: Record<string, unknown> = {};
 	for (const [key, value] of Object.entries(overlay)) {
-		if (!key.includes('.')) {
-			out[key] = isRecord(out[key]) && isRecord(value) ? { ...out[key], ...value } : value;
-			continue;
-		}
 		const parts = key.split('.');
+		if (parts.some((part) => RESERVED_KEYS.has(part))) continue;
 		const last = parts.pop() ?? key;
 		let level = out;
 		for (const part of parts) {
-			const next = level[part];
-			level[part] = isRecord(next) ? next : {};
-			level = level[part] as Record<string, unknown>;
+			const next = Object.hasOwn(level, part) ? level[part] : undefined;
+			const child: Record<string, unknown> = isRecord(next) ? next : {};
+			level[part] = child;
+			level = child;
 		}
-		level[last] = isRecord(level[last]) && isRecord(value) ? { ...level[last], ...value } : value;
+		const current = Object.hasOwn(level, last) ? level[last] : undefined;
+		level[last] = isRecord(current) && isRecord(value) ? { ...current, ...value } : value;
 	}
 	return out;
 }
 
 // The gym answers a seed with a report. A field that the gym does not know was not seeded.
-function ignoredBySeed(report: unknown): string | undefined {
+function ignoredBySeed(report: unknown): { message: string; paths: string[] } | undefined {
 	const r = isRecord(report) && isRecord(report.report) ? report.report : undefined;
 	if (!r) return undefined;
 	const warnings = Array.isArray(r.warnings) ? r.warnings : [];
-	const unknown = warnings.flatMap((w) =>
-		isRecord(w) && typeof w.message === 'string' && /unknown/i.test(w.message)
-			? [`${String(w.path)}: ${w.message.slice(0, 120)}`]
-			: [],
+	const unknown = warnings.filter(
+		(w): w is { path?: unknown; message: string } =>
+			isRecord(w) && typeof w.message === 'string' && /unknown/i.test(w.message),
 	);
-	return unknown.length > 0 ? unknown.slice(0, 4).join('; ') : undefined;
+	if (unknown.length === 0) return undefined;
+	return {
+		message: unknown
+			.slice(0, 4)
+			.map((w) => `${String(w.path)}: ${w.message.slice(0, 120)}`)
+			.join('; '),
+		paths: unknown.flatMap((w) => (typeof w.path === 'string' ? [w.path] : [])),
+	};
+}
+
+// The overlay without the fields at the paths that the gym did not take ("$.a.b").
+function withoutPaths(overlay: Record<string, unknown>, paths: string[]): Record<string, unknown> {
+	const next: Record<string, unknown> = structuredClone(overlay);
+	for (const path of paths) {
+		const parts = path
+			.replace(/^\$\.?/, '')
+			.split('.')
+			.filter(Boolean);
+		const last = parts.pop();
+		if (last === undefined) continue;
+		let level: unknown = next;
+		for (const part of parts)
+			level = isRecord(level) && Object.hasOwn(level, part) ? level[part] : undefined;
+		if (isRecord(level)) delete level[last];
+	}
+	return next;
 }
 
 /** Reads the plan out of a model answer. Models wrap JSON in fences or add a sentence. */
@@ -273,7 +289,7 @@ export class PlanHydrator implements Hydrator {
 		}
 		if (lookups.length > 0) {
 			const answers = await this.execute(lookups, ctx, stats, true);
-			fullPrompt = `${prompt}\n\nThe call names objects in its args. These are the real results of looking them up (${ctx.reads.length} reads, usable as $reads[n]). Each object that the call names must exist in the gym, also when the real result above has no items. Take it from these results.\n${answers}`;
+			fullPrompt = `${fullPrompt}\n\nThe call names objects in its args. These are the real results of looking them up (${ctx.reads.length} reads, usable as $reads[n]). Each object that the call names must exist in the gym, also when the real result above has no items. Take it from these results.\n${answers}`;
 		}
 		let plan = await this.ask(fullPrompt, stats);
 		if (plan.reads.length > 0) {
@@ -285,7 +301,7 @@ export class PlanHydrator implements Hydrator {
 		const trace: { sent?: unknown } = {};
 		// A read that is not a lookup of one entity (a list, a search, a query) shows fewer fields.
 		const shallow = verify !== undefined && !DETAIL_TOOL.test(tool);
-		let problem = await this.apply(plan, ctx, verify, MAX_REPAIRS === 0, trace, shallow);
+		let problem = await this.apply(plan, ctx, verify, false, trace, shallow);
 		for (let repair = 0; problem !== undefined && repair < MAX_REPAIRS; repair++) {
 			Container.get(Logger).info(
 				`mcp-guard plan problem; overlay shape ${JSON.stringify(shapeOf(plan.overlay)).slice(0, 700)}`,
@@ -447,8 +463,11 @@ export class PlanHydrator implements Hydrator {
 		try {
 			const report = overlay ? await admin.seed(tenant, overlay) : undefined;
 			const ignored = last ? undefined : ignoredBySeed(report);
-			if (ignored) return `the gym ignored parts of it: ${ignored}`;
-			if (isRecord(overlay)) this.seeded.record(overlay, shallow);
+			// The gym holds what it took. Record that before a repair, which must not seed it again.
+			if (isRecord(overlay)) {
+				this.seeded.record(ignored ? withoutPaths(overlay, ignored.paths) : overlay, shallow);
+			}
+			if (ignored) return `the gym ignored parts of it: ${ignored.message}`;
 			for (const event of events) await admin.event(tenant, event);
 		} catch (e) {
 			return `the gym refused it: ${errText(e)}`;

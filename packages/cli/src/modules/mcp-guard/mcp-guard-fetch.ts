@@ -8,6 +8,8 @@ type FetchFn = (input: string | URL | Request, init?: RequestInit) => Promise<Re
 
 const GUARDED_HOSTS: ReadonlySet<string> = new Set(GUARD_PROFILES.map((p) => p.host));
 
+const OAUTH_PATHS: ReadonlySet<string> = new Set(['/authorize', '/token', '/register']);
+
 /** Test chats send Linear and Notion MCP calls to the guard when it is on. An evaluation run has its own MCP fetch and never uses it. */
 export const isMcpGuardActive = (runType: string | undefined, hasInstrumentedFetch: boolean) =>
 	runType === 'test' && !hasInstrumentedFetch && guardMode() !== undefined;
@@ -39,20 +41,20 @@ export function withMcpGuard<T extends FetchFn>(
 	model?: HydrationModel,
 ): FetchFn {
 	return async (input, init) => {
-		const req = new Request(input, init);
-		const url = new URL(req.url);
+		// Read the URL without a `Request`. A `Request` built from a stream body would consume it.
+		const url = new URL(input instanceof Request ? input.url : String(input));
 		const host = canonicalHost(url.hostname);
 		if (!GUARDED_HOSTS.has(host)) return await baseFetch(input, init);
 		// `/mcp/` is the same endpoint as `/mcp`.
 		const path = url.pathname.replace(/\/+$/, '') || '/';
-		// The SSE transport has no guard. Refuse it, so a call cannot reach the real server.
-		if (path === '/sse' || path.startsWith('/sse/') || path === '/messages') {
-			return new Response('mcp-guard: the SSE transport is not supported in test runs', {
-				status: 403,
-			});
+		if (path !== '/mcp') {
+			// Fail closed. Only the OAuth and discovery paths go to the real server.
+			if (OAUTH_PATHS.has(path) || path.startsWith('/.well-known/')) {
+				return await baseFetch(input, init);
+			}
+			return new Response(`mcp-guard: ${path} is not allowed in test runs`, { status: 403 });
 		}
-		// OAuth and discovery requests of the same host go to the real server.
-		if (path !== '/mcp') return await baseFetch(input, init);
+		const req = new Request(input, init);
 		// Load the guard only when a call needs it. Most chats never do.
 		const { McpGuardService } = await import('./mcp-guard.service.js');
 		return await Container.get(McpGuardService).handleMcp(host, chatRunId(runId), req, model);

@@ -12,6 +12,7 @@ import { guardMode, type GuardServiceProfile } from './services';
 export interface Run {
 	tenant: string;
 	lastUsed: number;
+	verifiedAt: number; // When the gym last confirmed that the tenant exists.
 	tokenRef: { value: string }; // Real upstream token. In memory only. Never logged.
 	router: GuardRouter;
 }
@@ -26,6 +27,9 @@ export interface RunConfig {
 
 const IDLE_MS = 6 * 60 * 60 * 1000;
 
+// `tenantExists` lists every tenant of the gym. Check a run at most once in this time.
+const VERIFY_MS = 30 * 1000;
+
 export class RunRegistry {
 	private readonly runs = new Map<string, Run>();
 
@@ -39,9 +43,14 @@ export class RunRegistry {
 		const existing = this.runs.get(runId);
 		if (existing) {
 			// Mark the run as used before the check, so the idle cleanup does not delete it meanwhile.
-			existing.lastUsed = Date.now();
+			const now = Date.now();
+			existing.lastUsed = now;
 			// Someone can delete the tenant in the gym. Then build the run again.
-			if (await this.cfg.admin.tenantExists(existing.tenant)) {
+			if (
+				now - existing.verifiedAt < VERIFY_MS ||
+				(await this.cfg.admin.tenantExists(existing.tenant))
+			) {
+				existing.verifiedAt = Math.max(existing.verifiedAt, now);
 				existing.tokenRef.value = token;
 				return existing;
 			}
@@ -85,7 +94,8 @@ export class RunRegistry {
 			writeTools: profile.writeTools,
 			upstreamArgs: profile.upstreamReadArgs,
 		});
-		const run: Run = { tenant, lastUsed: Date.now(), tokenRef, router };
+		const now = Date.now();
+		const run: Run = { tenant, lastUsed: now, verifiedAt: now, tokenRef, router };
 		this.runs.set(runId, run);
 		return run;
 	}

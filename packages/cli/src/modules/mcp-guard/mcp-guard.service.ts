@@ -1,10 +1,11 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 
-import { GymAdmin, isRecord } from './gym-admin';
+import { GymAdmin } from './gym-admin';
 import type { HydrationModel } from './hydration-llm';
 import { RunRegistry } from './runs';
 import { GUARD_PROFILES, type GuardServiceProfile } from './services';

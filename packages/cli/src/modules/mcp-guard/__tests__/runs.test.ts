@@ -64,8 +64,24 @@ describe('RunRegistry', () => {
 		expect(admin.createTenant).toHaveBeenCalledTimes(1);
 	});
 
+	it('should check that the tenant exists at most once in 30 seconds', async () => {
+		vi.useFakeTimers();
+		try {
+			await registry.getOrCreate('a-1', 'token', model);
+			await registry.getOrCreate('a-1', 'token', model);
+			expect(admin.tenantExists).not.toHaveBeenCalled();
+			vi.advanceTimersByTime(31_000);
+			await registry.getOrCreate('a-1', 'token', model);
+			await registry.getOrCreate('a-1', 'token', model);
+			expect(admin.tenantExists).toHaveBeenCalledTimes(1);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('should build the run again when someone deleted the tenant', async () => {
 		const first = await registry.getOrCreate('a-1', 'token', model);
+		first.verifiedAt = 0;
 		admin.tenantExists.mockResolvedValue(false);
 		const second = await registry.getOrCreate('a-1', 'token', model);
 		expect(second).not.toBe(first);

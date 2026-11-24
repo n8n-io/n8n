@@ -1,4 +1,5 @@
 import { OperationalError, UnexpectedError } from '@n8n/errors';
+import { isRecord } from '@n8n/utils/is-record';
 
 export class GymAdmin {
 	private readonly baseUrl: string;
@@ -82,10 +83,6 @@ export class GymAdmin {
 	async deleteTenant(tenant: string): Promise<void> {
 		await this.call('DELETE', `/_sim/v1/tenants/${tenant}`);
 	}
-}
-
-export function isRecord(v: unknown): v is Record<string, unknown> {
-	return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 
 function dig(v: unknown, path: string[]): unknown {

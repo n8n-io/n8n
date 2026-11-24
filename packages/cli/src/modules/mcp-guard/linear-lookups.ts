@@ -1,3 +1,5 @@
+import { isRecord } from '@n8n/utils/is-record';
+
 export interface Lookup {
 	tool: string;
 	args: Record<string, unknown>;
@@ -16,11 +18,8 @@ const PERSON_KEYS: ReadonlySet<string> = new Set([
 	'user',
 ]);
 
-const text = (value: unknown): string | undefined =>
+export const text = (value: unknown): string | undefined =>
 	typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined;
-
-const isRecord = (v: unknown): v is Record<string, unknown> =>
-	typeof v === 'object' && v !== null && !Array.isArray(v);
 
 // The people a real result names: an object with an id, or a plain name.
 function peopleIn(result: unknown): string[] {
@@ -136,25 +135,6 @@ export function withUserEmails(overlay: Record<string, unknown>): Record<string,
 		return { ...u, email: `user-${slug}@unknown.invalid` };
 	});
 	return { ...overlay, native: { ...native, linear: { ...linear, users } } };
-}
-
-const MAX_SOURCES = 2;
-
-/**
- * Real reads for the data sources that a Notion query names. The rows of a query do not carry the
- * title or the schema of their database, and the gym refuses a database without a title. The fetch
- * of the data source has both.
- */
-export function notionLookups(tool: string, args: Record<string, unknown>): Lookup[] {
-	if (tool !== 'notion-query-data-sources') return [];
-	const data = isRecord(args.data) ? args.data : args;
-	const urls = [
-		data.data_source_url,
-		...(Array.isArray(data.data_source_urls) ? data.data_source_urls : []),
-	]
-		.flatMap((u) => text(u) ?? [])
-		.slice(0, MAX_SOURCES);
-	return urls.map((id) => ({ tool: 'notion-fetch', args: { id } }));
 }
 
 // The issues of a real result: a list of them, one issue, or one issue in an `issue` field.

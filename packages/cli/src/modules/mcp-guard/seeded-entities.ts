@@ -1,4 +1,4 @@
-import { isRecord } from './gym-admin';
+import { isRecord } from '@n8n/utils/is-record';
 
 type Entity = Record<string, unknown>;
 

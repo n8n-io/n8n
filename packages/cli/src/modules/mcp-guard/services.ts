@@ -1,12 +1,8 @@
 import { LINEAR_INSTRUCTIONS, NOTION_INSTRUCTIONS } from './hydration-prompts';
-import {
-	linearLookups,
-	notionLookups,
-	withIssueDescriptions,
-	withUserEmails,
-} from './linear-lookups';
+import { linearLookups, withIssueDescriptions, withUserEmails } from './linear-lookups';
 import { LINEAR_READ_TOOLS, LINEAR_WRITE_TOOLS } from './linear-tools';
 import { withTitles } from './notion-finalize';
+import { notionLookups } from './notion-lookups';
 import { NOTION_READ_TOOLS, NOTION_WRITE_TOOLS } from './notion-tools';
 
 export interface GuardServiceProfile {

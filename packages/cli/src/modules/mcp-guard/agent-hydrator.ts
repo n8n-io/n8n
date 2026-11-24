@@ -7,6 +7,7 @@ import type { GymAdmin } from './gym-admin';
 import { COMMON_INSTRUCTIONS } from './hydration-prompts';
 import type { McpCaller } from './mcp-upstream';
 import { OnceByKey } from './once-by-key';
+import { clip, errText, resultText } from './result-text';
 import type { Hydrator } from './router';
 
 export interface HydrationTool {
@@ -35,16 +36,7 @@ interface AgentHydratorDeps {
 	llm: HydrationLlm;
 }
 
-const MAX_TEXT = 40_000;
 const MAX_ITERATIONS = 24;
-
-const clip = (text: string, max = MAX_TEXT): string =>
-	text.length > max ? `${text.slice(0, max)}\n[cut: ${text.length - max} more characters]` : text;
-
-const resultText = (res: CallToolResult): string =>
-	res.content.flatMap((c) => (c.type === 'text' ? [c.text] : [])).join('\n');
-
-const errText = (e: unknown): string => (e instanceof Error ? e.message : 'unknown error');
 
 /**
  * Hydrates the gym with an LLM agent instead of one parser for each tool. The agent decides which
