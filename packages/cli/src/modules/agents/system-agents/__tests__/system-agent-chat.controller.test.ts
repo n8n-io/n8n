@@ -18,6 +18,7 @@ import type { AgentExecutionThread } from '../../entities/agent-execution-thread
 import type { AgentExecution } from '../../entities/agent-execution.entity';
 import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../../integrations/n8n-memory';
+import { SYSTEM_CHAT_SOURCE } from '../../utils/agent-thread-access';
 import { SystemAgentChatController } from '../system-agent-chat.controller';
 import type { SystemAgentExecutionService } from '../system-agent-execution.service';
 
@@ -419,7 +420,7 @@ describe('SystemAgentChatController', () => {
 		} as unknown as AgentExecutionThread;
 		const executions = [
 			{ id: 'execution-1', source: null },
-			{ id: 'execution-2', source: 'system-chat' },
+			{ id: 'execution-2', source: SYSTEM_CHAT_SOURCE },
 		] as AgentExecution[];
 		const threadMemory = { recalls: {}, flags: {} };
 
@@ -452,7 +453,7 @@ describe('SystemAgentChatController', () => {
 					id: 'thread-1',
 					projectId: 'project-1',
 					agentId: AGENT_ID,
-					source: 'system-chat',
+					source: SYSTEM_CHAT_SOURCE,
 					canContinueInPreview: false,
 				},
 				executions,
