@@ -90,7 +90,7 @@ const isCloudBrowserOn = computed(
 	() => !isOff.value && (store.settings?.cloudBrowserEnabled ?? true),
 );
 const savedLoginsMode = computed(
-	(): InstanceAiSavedLoginsMode => store.settings?.cloudBrowserSavedLoginsMode ?? 'all',
+	(): InstanceAiSavedLoginsMode => store.settings?.cloudBrowserSavedLoginsMode ?? 'off',
 );
 const showSavedLoginSites = computed(
 	() =>

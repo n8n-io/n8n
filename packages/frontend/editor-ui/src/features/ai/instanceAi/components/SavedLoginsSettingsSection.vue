@@ -45,7 +45,7 @@ const isCloudBrowserAvailable = computed(() => {
 });
 
 const isSavedLoginsEnabled = computed(
-	() => settingsStore.moduleSettings?.['instance-ai']?.cloudBrowserSavedLoginsEnabled ?? true,
+	() => settingsStore.moduleSettings?.['instance-ai']?.cloudBrowserSavedLoginsEnabled ?? false,
 );
 const hasSavedLogins = ref(false);
 const isSectionShown = computed(

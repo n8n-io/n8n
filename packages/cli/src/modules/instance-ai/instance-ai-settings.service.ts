@@ -310,7 +310,8 @@ export class InstanceAiSettingsService {
 
 	private searchDisabled = false;
 
-	private cloudBrowserSavedLoginsMode: InstanceAiSavedLoginsMode = 'all';
+	/** Off until an admin turns saved logins on. */
+	private cloudBrowserSavedLoginsMode: InstanceAiSavedLoginsMode = 'off';
 
 	/** Registrable domains, for example "github.com". */
 	private cloudBrowserSavedLoginSites: string[] = [];

@@ -1999,12 +1999,12 @@ describe('InstanceAiSettingsService', () => {
 			aiService.isProxyEnabled.mockReturnValue(false);
 		});
 
-		it('allows saved logins on all sites by default', async () => {
+		it('turns saved logins off by default', async () => {
 			const settings = await service.getAdminSettings();
 
-			expect(settings.cloudBrowserSavedLoginsMode).toBe('all');
+			expect(settings.cloudBrowserSavedLoginsMode).toBe('off');
 			expect(settings.cloudBrowserSavedLoginSites).toEqual([]);
-			expect(service.isCloudBrowserSavedLoginsEnabled()).toBe(true);
+			expect(service.isCloudBrowserSavedLoginsEnabled()).toBe(false);
 		});
 
 		it.each([

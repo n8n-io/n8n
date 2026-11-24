@@ -52,6 +52,7 @@ const instanceAiSettings: InstanceAiModuleSettings = {
 	workflowSuggestionsEnabled: false,
 	assistantAgentEnabled: false,
 	cloudBrowserEnabled: true,
+	cloudBrowserSavedLoginsEnabled: true,
 };
 
 let settingsStore: ReturnType<typeof useSettingsStore>;
