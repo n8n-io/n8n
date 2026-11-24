@@ -1016,7 +1016,23 @@ describe('GET /agents/:agentId/versions', () => {
 	});
 
 	const schema = { name: 'Support', model: '', instructions: 'Help users.' };
-	const tools = { lookup: { code: 'return 1;', descriptor: { name: 'lookup' } } };
+	const tools = {
+		lookup: {
+			code: 'return 1;',
+			descriptor: {
+				name: 'lookup',
+				description: 'Look up a record.',
+				systemInstruction: null,
+				inputSchema: null,
+				outputSchema: null,
+				hasSuspend: false,
+				hasResume: false,
+				hasToMessage: false,
+				requireApproval: false,
+				providerOptions: null,
+			},
+		},
+	};
 
 	async function createVersionedAgent(projectId: string) {
 		const agent = await createTestAgent({
