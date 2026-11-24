@@ -1,0 +1,29 @@
+packages/quality/testing/playwright/services/promotions-api-helper.ts
+  s_4a494bfdece475::t_90507c8c4fc8ef 7-9,11,49-60,89-95
+  s_4a494bfdece475::t_cd74101c0a40ae 96
+packages/quality/testing/playwright/tests/e2e/settings/environments/promotion-environment-lock-multimain.spec.ts
+  s_4a494bfdece475::t_d5bc5fea64df94 160-163
+packages/quality/testing/playwright/pages/promotion-preview-page.ts
+  s_4a494bfdece475::t_1e9d9ded5f96e8 1-25,27-35,37-91
+  s_4a494bfdece475::t_e4e5504d6d18bc 26,36
+packages/quality/testing/playwright/pages/n8nPage.ts
+  s_4a494bfdece475::t_1e9d9ded5f96e8 38,106,198
+packages/quality/testing/playwright/tests/e2e/settings/environments/promotion-missing-dependencies.spec.ts
+  s_4a494bfdece475::t_b4e12086e0fbba 1-307
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0247817474860c4e55092ab1373615f2986a6853",
+  "prompts": {},
+  "sessions": {
+    "s_4a494bfdece475": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64240406-7a90-4cf7-9a1d-31fa1cac357e",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
