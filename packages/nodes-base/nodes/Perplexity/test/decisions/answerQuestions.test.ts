@@ -1,6 +1,8 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import type { IDataObject, WorkflowTestData } from 'n8n-workflow';
+import type { IDataObject, INodeListSearchResult, WorkflowTestData } from 'n8n-workflow';
 import nock from 'nock';
+
+import { PerplexityV3 } from '../../v3/PerplexityV3.node';
 
 const baseUrl = 'https://api.perplexity.ai';
 
@@ -95,10 +97,10 @@ describe('Perplexity Node - Decisions', () => {
 	};
 
 	harness.setupTest({
-		description: 'should send a versioned model unchanged with a Locate question',
+		description: 'should send a model entered by ID with a Locate question',
 		input: {
 			workflowData: workflow({
-				model: 'pplx-decider-flash-v1.3',
+				decisionModel: { __rl: true, mode: 'id', value: 'pplx-decider-flash-v1.3' },
 				state: review,
 				questions: {
 					values: [{ name: 'complaint', type: 'locate', instructions: 'the product problem' }],
@@ -209,7 +211,7 @@ describe('Perplexity Node - Decisions', () => {
 		description: 'should send a JSON state and questions defined as JSON',
 		input: {
 			workflowData: workflow({
-				model: 'pplx-decider-v1.2',
+				decisionModel: { __rl: true, mode: 'id', value: 'pplx-decider-v1.2' },
 				stateType: 'json',
 				stateJson: '{"title": "Battery died after two weeks", "rating": 2}',
 				defineQuestions: 'json',
@@ -368,7 +370,7 @@ describe('Perplexity Node - Decisions', () => {
 		description: 'should surface the message of an API 400 response',
 		input: {
 			workflowData: workflow({
-				model: 'pplx-decider-v1.2',
+				decisionModel: { __rl: true, mode: 'id', value: 'pplx-decider-v1.2' },
 				state: review,
 				questions: {
 					values: [{ name: 'complaint', type: 'locate', instructions: 'the product problem' }],
@@ -401,5 +403,29 @@ describe('Perplexity Node - Decisions', () => {
 				},
 			],
 		},
+	});
+
+	it('should list only the two model aliases in the Model field', async () => {
+		const v3 = new PerplexityV3({
+			displayName: 'Perplexity',
+			name: 'perplexity',
+			group: ['transform'],
+			description: 'test',
+			defaultVersion: 3,
+		});
+		const model = v3.description.properties.find((property) => property.name === 'decisionModel');
+		const method = model?.modes?.find((mode) => mode.name === 'list')?.typeOptions
+			?.searchListMethod;
+		const listSearch = v3.methods.listSearch as unknown as Record<
+			string,
+			() => Promise<INodeListSearchResult>
+		>;
+
+		const { results } = await listSearch[method ?? '']();
+
+		expect(results.map(({ value }) => value)).toEqual([
+			'pplx-decider-latest',
+			'pplx-decider-flash-latest',
+		]);
 	});
 });

@@ -2,7 +2,7 @@ import type { INodeType, INodeTypeBaseDescription, INodeTypeDescription } from '
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { agent, decisions, embeddings, search } from '../descriptions';
-import { getAgentModels } from '../GenericFunctions';
+import { getAgentModels, getDecisionModels } from '../GenericFunctions';
 
 export class PerplexityV3 implements INodeType {
 	description: INodeTypeDescription;
@@ -70,6 +70,7 @@ export class PerplexityV3 implements INodeType {
 	methods = {
 		listSearch: {
 			getAgentModels,
+			getDecisionModels,
 		},
 	};
 }

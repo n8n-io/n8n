@@ -188,3 +188,14 @@ export async function getAgentModels(
 
 	return { results };
 }
+
+export async function getDecisionModels(): Promise<INodeListSearchResult> {
+	const url = 'https://docs.perplexity.ai/docs/decisions/decisions#models';
+
+	return {
+		results: [
+			{ name: 'pplx-decider-latest', value: 'pplx-decider-latest', url },
+			{ name: 'pplx-decider-flash-latest', value: 'pplx-decider-flash-latest', url },
+		],
+	};
+}

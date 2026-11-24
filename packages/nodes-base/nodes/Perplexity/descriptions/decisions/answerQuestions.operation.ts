@@ -4,47 +4,29 @@ import { updateDisplayOptions } from 'n8n-workflow';
 const properties: INodeProperties[] = [
 	{
 		displayName: 'Model',
-		name: 'model',
-		type: 'options',
+		name: 'decisionModel',
+		type: 'resourceLocator',
 		required: true,
-		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
-		options: [
+		default: { mode: 'list', value: 'pplx-decider-latest' },
+		description:
+			'The decision model to use. Each alias in the list follows the newest version of its model, and pplx-decider-flash-latest is the smaller of the two. To pin a version, select By ID and enter its name.',
+		modes: [
 			{
-				name: 'PPLX Decider Latest',
-				value: 'pplx-decider-latest',
-				description:
-					'Alias for the newest 27B decision model. It can move to a newer model over time.',
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'getDecisionModels',
+					skipCredentialsCheckInRLC: true,
+				},
 			},
 			{
-				name: 'PPLX Decider Flash Latest',
-				value: 'pplx-decider-flash-latest',
-				description:
-					'Alias for the newest 4B decision model. It can move to a newer model over time.',
-			},
-			{
-				name: 'PPLX Decider V1.3',
-				value: 'pplx-decider-v1.3',
-				description: '27B decision model, version 1.3',
-			},
-			{
-				name: 'PPLX Decider Flash V1.3',
-				value: 'pplx-decider-flash-v1.3',
-				description: '4B decision model, version 1.3',
-			},
-			{
-				name: 'PPLX Decider V1.2',
-				value: 'pplx-decider-v1.2',
-				description: '27B decision model, version 1.2. Does not answer Locate questions.',
-			},
-			{
-				name: 'PPLX Decider Flash V1.2',
-				value: 'pplx-decider-flash-v1.2',
-				description: '4B decision model, version 1.2. Does not answer Locate questions.',
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'e.g. pplx-decider-v1.3',
 			},
 		],
-		default: 'pplx-decider-latest',
-		description:
-			'The decision model to use. A versioned model does not change when an alias moves.',
 		routing: {
 			send: {
 				type: 'body',
@@ -165,7 +147,7 @@ const properties: INodeProperties[] = [
 								name: 'Locate',
 								value: 'locate',
 								description:
-									'Finds the parts of the state that match the instructions. Needs a text state. The v1.2 models do not answer Locate questions.',
+									'Finds the parts of the state that match the instructions. Needs a text state. Models before v1.3 do not answer Locate questions.',
 							},
 						],
 						default: 'noul',
