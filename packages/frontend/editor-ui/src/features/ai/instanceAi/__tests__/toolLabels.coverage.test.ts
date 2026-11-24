@@ -40,7 +40,6 @@ const OTHER_INSTANCE_AI_TOOL_NAMES = [
 	'search_tools',
 	'load_tool',
 	'load_skill',
-	'apps',
 	'workspace_append_file',
 	'workspace_copy_file',
 	'workspace_delete_file',

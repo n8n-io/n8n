@@ -12,11 +12,11 @@ export const AI_PREFERENCE_CONTENT_MAX_LENGTH = 2000;
 export const AI_PREFERENCE_MAX_PER_SCOPE = 50;
 
 /**
- * Which surface wrote the row. `ui` is the settings area, `aia` the n8n Assistant,
- * `mcp` an MCP client, `api` the public API. Never taken from a request body: a client must not be able
- * to claim that the assistant wrote a row the user wrote.
+ * Where the row was created. `ui` is the settings area, `aia` the n8n Assistant,
+ * `mcp` an MCP client, `api` the public API, and `import` a package import.
+ * The write path sets this value. Clients cannot set it in a request body.
  */
-export const aiPreferenceSourceSchema = z.enum(['ui', 'aia', 'mcp', 'api']);
+export const aiPreferenceSourceSchema = z.enum(['ui', 'aia', 'mcp', 'api', 'import']);
 
 export type AiPreferenceSource = z.infer<typeof aiPreferenceSourceSchema>;
 
