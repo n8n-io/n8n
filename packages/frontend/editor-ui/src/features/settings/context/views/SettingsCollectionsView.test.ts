@@ -36,7 +36,7 @@ const CollectionModalStub = {
 			/>
 			<button
 				data-test-id="collection-modal-stub-created"
-				@click="$emit('created', { id: 'c1', name: 'Customer support' })"
+				@click="$emit('created', { id: 'c1', name: 'Customer support', homeProject: { id: 'p1' } })"
 			/>
 			<button data-test-id="collection-modal-stub-close" @click="$emit('update:open', false)" />
 		</div>
@@ -101,14 +101,17 @@ describe('SettingsCollectionsView', () => {
 		expect(getByTestId('collection-modal-stub')).toHaveAttribute('data-open', 'true');
 	});
 
-	it('closes the dialog after a create', async () => {
+	it('closes the dialog and opens the new collection after a create', async () => {
 		const { getByTestId } = renderView();
 		await userEvent.click(getByTestId('collections-create-button'));
 
 		await userEvent.click(getByTestId('collection-modal-stub-created'));
 
 		expect(getByTestId('collection-modal-stub')).toHaveAttribute('data-open', 'false');
-		expect(push).not.toHaveBeenCalled();
+		expect(push).toHaveBeenCalledWith({
+			name: 'KnowledgeCollection',
+			params: { projectId: 'p1', collectionId: 'c1' },
+		});
 	});
 
 	it('closes the dialog on cancel', async () => {
