@@ -29,7 +29,7 @@ import {
 	processStartTime,
 	writeState,
 } from './state';
-import { RIG } from '../self/build-info';
+import { RIG } from '../meta';
 import { componentUsingPort, freeSlot } from '../topology/slots';
 
 /** Who owns a started component. */

@@ -29,10 +29,8 @@ import {
 	redisCliCommand,
 } from './commands/tools';
 import { profileCommand } from './commands/profile';
-import { installGlobalCommand, printVersion, selfUpdateCommand } from './commands/self';
 import { RigError } from './errors';
-import { runningVersion } from './self/build-info';
-import { handOff } from './self/delegate';
+import { runningVersion } from './meta';
 import { printError } from './ui/output';
 
 const rig = defineCommand({
@@ -65,8 +63,6 @@ const rig = defineCommand({
 		'redis-cli': redisCliCommand,
 		config: configCommand,
 		doctor: doctorCommand,
-		'install-global': installGlobalCommand,
-		'self-update': selfUpdateCommand,
 	},
 });
 
@@ -78,10 +74,8 @@ function usageErrorCode(error: unknown): string | undefined {
 
 async function main(): Promise<void> {
 	const rawArgs = process.argv.slice(2);
-	// The global rig runs the version of the checkout that it runs in.
-	if (await handOff(rawArgs)) return;
 	if (rawArgs.length === 1 && ['--version', '-v'].includes(rawArgs[0])) {
-		printVersion();
+		console.log(`rig ${runningVersion()}`);
 		return;
 	}
 	const beforeSeparator = rawArgs.includes('--')

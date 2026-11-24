@@ -45,7 +45,7 @@ import {
 	type RunnerComponent,
 	type RunnerHostComponent,
 } from './topology/components';
-import { RIG } from './self/build-info';
+import { RIG } from './meta';
 
 export const GLOBAL_SECRETS_LAYER = 'global-secrets';
 export const PROFILE_PREFIX = 'profile:';
@@ -134,7 +134,7 @@ export class RigEnv {
 	) {
 		this.topology = loadTopology(paths.envYaml);
 		this.globalConfig = loadGlobalConfig();
-		this.source = options.source ?? resolveSource(this.topology.source, this.globalConfig.repo);
+		this.source = options.source ?? resolveSource(this.topology.source);
 		this.repoRoot = this.source.root;
 		this.overrides = options.overrides ?? {};
 	}

@@ -7,7 +7,7 @@ import { Supervisor } from '../runtime/supervisor';
 import { type Component, startStages } from '../topology/components';
 import { PrefixPrinter, printError, ui } from '../ui/output';
 import { confirm, isInteractive } from '../ui/prompt';
-import { RIG } from '../self/build-info';
+import { RIG } from '../meta';
 
 export const envArg = {
 	env: {

@@ -44,25 +44,20 @@ describe('source resolution', () => {
 
 	it('should use the checkout of the current directory first', () => {
 		vi.stubEnv('INIT_CWD', join(checkout, 'packages/cli'));
-		expect(resolveSource('auto', outside)).toEqual({ root: checkout, origin: 'current directory' });
+		expect(resolveSource('auto')).toEqual({ root: checkout, origin: 'current directory' });
 	});
 
-	it('should fall back to repo in the global config outside a checkout', () => {
-		expect(resolveSource('auto', checkout)).toEqual({ root: checkout, origin: 'global config' });
-		expect(resolveSource('auto', undefined).problem?.message).toBe(
-			'rig needs an n8n checkout as the source.',
-		);
+	it('should fall back to the checkout of rig outside a checkout', () => {
+		expect(resolveSource('auto')).toMatchObject({ origin: 'rig checkout' });
 	});
 
 	it('should pin repo:<path> even inside another checkout', () => {
 		vi.stubEnv('INIT_CWD', '/');
-		expect(resolveSource(`repo:${checkout}`, undefined)).toEqual({
+		expect(resolveSource(`repo:${checkout}`)).toEqual({
 			root: checkout,
 			origin: 'env.yaml',
 		});
-		expect(resolveSource(`repo:${outside}`, undefined).problem?.message).toContain(
-			'is not an n8n checkout',
-		);
+		expect(resolveSource(`repo:${outside}`).problem?.message).toContain('is not an n8n checkout');
 	});
 });
 

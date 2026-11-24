@@ -7,7 +7,7 @@ import { servicePort, type Topology } from '../config/env-yaml';
 import { type EnvPaths, globalSecretsFile } from '../config/paths';
 import { readDotenv } from '../env/dotenv';
 import { RigError } from '../errors';
-import { RIG } from '../self/build-info';
+import { RIG } from '../meta';
 
 /** The secret that a named tunnel needs. rig passes it to the container, not to the compose file. */
 export const TUNNEL_TOKEN_KEY = 'CLOUDFLARE_TUNNEL_TOKEN';

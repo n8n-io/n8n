@@ -1,10 +1,10 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { expandHome } from './config/paths';
 import { RigError } from './errors';
-import { RIG } from './self/build-info';
 
 const MONOREPO_NAME = 'n8n-monorepo';
 
@@ -40,7 +40,7 @@ export function findMonorepoRoot(start = userCwd()): string | undefined {
 }
 
 /** Where the n8n checkout of an environment comes from. */
-export type SourceOrigin = 'env.yaml' | 'current directory' | 'global config';
+export type SourceOrigin = 'env.yaml' | 'current directory' | 'rig checkout';
 
 export interface ResolvedSource {
 	root?: string;
@@ -62,19 +62,20 @@ function checkoutAt(path: string, origin: SourceOrigin, setting: string): Resolv
 
 /**
  * The n8n checkout that runs the components. `repo:<path>` pins one checkout.
- * `auto` uses the checkout of the current directory, then `repo` in the global config.
+ * `auto` uses the checkout of the current directory, then the checkout that contains rig.
  */
-export function resolveSource(source: string, configRepo: string | undefined): ResolvedSource {
+export function resolveSource(source: string): ResolvedSource {
 	if (source.startsWith('repo:')) {
 		return checkoutAt(source.slice('repo:'.length), 'env.yaml', '`source`');
 	}
 	const root = findMonorepoRoot();
 	if (root) return { root, origin: 'current directory' };
-	if (configRepo) return checkoutAt(configRepo, 'global config', '`repo`');
+	const own = findMonorepoRoot(dirname(fileURLToPath(import.meta.url)));
+	if (own) return { root: own, origin: 'rig checkout' };
 	return {
 		problem: new RigError(
 			'rig needs an n8n checkout as the source.',
-			`Run rig inside an n8n repository or worktree, run \`${RIG} config set repo <path>\`, or set \`source: repo:<path>\` in env.yaml.`,
+			'Run rig inside an n8n repository or worktree, or set `source: repo:<path>` in env.yaml.',
 		),
 	};
 }

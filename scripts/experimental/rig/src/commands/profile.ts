@@ -7,7 +7,7 @@ import { displayPath, profileFile, profilesDir } from '../config/paths';
 import { readDotenv } from '../env/dotenv';
 import { listProfiles, PROFILE_PREFIX, suggest } from '../environment';
 import { RigError } from '../errors';
-import { RIG } from '../self/build-info';
+import { RIG } from '../meta';
 import { table, ui } from '../ui/output';
 import { envArg, loadEnv, offerRestart, positionals } from './common';
 

@@ -28,9 +28,7 @@ import {
 	runtimeLabel,
 	serverVersion,
 } from '../services/runtime';
-import { BUILD, RIG, runningVersion } from '../self/build-info';
-import { handOffTarget } from '../self/delegate';
-import { binDir, currentInstall, isShim, pathStatus, shimPath } from '../self/install';
+import { RIG, runningVersion } from '../meta';
 import { checkBuild, CLI_DIR, type ResolvedSource, resolveSource } from '../source';
 import { portsOf } from '../topology/components';
 import { ui } from '../ui/output';
@@ -343,60 +341,6 @@ async function portChecks(env: RigEnv): Promise<Check[]> {
 	return checks;
 }
 
-function installChecks(): Check[] {
-	const installed = currentInstall();
-	if (!installed) {
-		return [
-			{
-				status: 'info',
-				label: 'Global rig',
-				detail: `not installed. Run \`${RIG} install-global\``,
-			},
-		];
-	}
-	const checks: Check[] = [
-		{
-			status: 'ok',
-			label: 'Global rig',
-			detail: `${installed.id}${installed.info ? pc.dim(` (built from ${installed.info.checkout})`) : ''}`,
-		},
-	];
-	const shim = shimPath();
-	if (!existsSync(shim) || !isShim(shim)) {
-		checks.push({
-			status: 'fail',
-			label: 'Shim',
-			detail: `${shim} is missing`,
-			hint: `Run \`${RIG} self-update\`.`,
-		});
-	}
-	const { onPath, first } = pathStatus();
-	if (!onPath) {
-		checks.push({
-			status: 'warn',
-			label: 'PATH',
-			detail: `${binDir()} is not on PATH`,
-			hint: `Add \`export PATH="${binDir()}:$PATH"\` to your shell profile.`,
-		});
-	} else if (first && !isShim(first)) {
-		checks.push({
-			status: 'warn',
-			label: 'PATH',
-			detail: `the shell finds another rig first: ${first}`,
-		});
-	}
-	const handOff = handOffTarget();
-	if (BUILD && handOff.kind === 'not-installed') {
-		checks.push({
-			status: 'warn',
-			label: 'Hand-off',
-			detail: `${handOff.root} has rig without dependencies`,
-			hint: 'Run `pnpm install` there to use its version.',
-		});
-	}
-	return checks;
-}
-
 function toolChecks(): Check[] {
 	const { browser, editor } = loadGlobalConfig();
 	const browsers = installedBrowsers().map((b) => b.label);
@@ -434,7 +378,7 @@ function printSection(title: string, checks: Check[]): void {
 export const doctorCommand = defineCommand({
 	meta: {
 		name: 'doctor',
-		description: 'Check the tools, the checkout, the launcher, ports, and the global install',
+		description: 'Check the tools, the checkout, the launcher, and ports',
 	},
 	args: { ...envArg },
 	async run({ args }) {
@@ -446,7 +390,7 @@ export const doctorCommand = defineCommand({
 			envProblem = error instanceof RigError ? error.message : String(error);
 		}
 		const config = loadGlobalConfig();
-		const source = env?.source ?? resolveSource('auto', config.repo);
+		const source = env?.source ?? resolveSource('auto');
 		const components = env?.components() ?? [];
 		const needsLauncher = components.some((c) => c.kind === 'launcher');
 		const needsPython =
@@ -477,7 +421,6 @@ export const doctorCommand = defineCommand({
 			]);
 		}
 		sections.push(['Browser and editor', toolChecks()]);
-		sections.push(['Global install', installChecks()]);
 
 		for (const [title, checks] of sections) printSection(title, checks);
 

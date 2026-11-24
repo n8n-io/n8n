@@ -31,7 +31,7 @@ import { confirm, isInteractive } from '../ui/prompt';
 import { envArg, loadEnv, newSupervisor, offerRestart, stopComponents } from './common';
 import { editFile } from '../integrations/editor';
 import { wizard } from './wizard';
-import { RIG } from '../self/build-info';
+import { RIG } from '../meta';
 import { parseSlot, slotsInUse } from '../topology/slots';
 import { ensureContainerRuntime } from '../services/runtime';
 

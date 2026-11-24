@@ -25,8 +25,6 @@ const globalConfigSchema = z
 			})
 			.strict()
 			.default({}),
-		/** The n8n checkout for `source: auto` outside a checkout. */
-		repo: z.string().optional(),
 		/** `default`, a known browser such as `chrome`, or a macOS app name or a command. */
 		browser: z.string().min(1).optional(),
 		/** `env` for $VISUAL or $EDITOR, a known editor such as `code`, or a command line. */
@@ -47,14 +45,13 @@ export type GlobalConfig = z.infer<typeof globalConfigSchema>;
 export const GLOBAL_CONFIG_KEYS = [
 	'launcher.path',
 	'launcher.version',
-	'repo',
 	'container.runtime',
 	'browser',
 	'editor',
 ] as const;
 
 /** Keys whose values are paths. `rig config set` expands `~` and makes them absolute. */
-export const PATH_KEYS: readonly GlobalConfigKey[] = ['launcher.path', 'repo'];
+export const PATH_KEYS: readonly GlobalConfigKey[] = ['launcher.path'];
 export type GlobalConfigKey = (typeof GLOBAL_CONFIG_KEYS)[number];
 
 export function isGlobalConfigKey(key: string): key is GlobalConfigKey {
@@ -95,8 +92,6 @@ export function getGlobalConfigValue(
 			return config.launcher.path;
 		case 'launcher.version':
 			return config.launcher.version;
-		case 'repo':
-			return config.repo;
 		case 'container.runtime':
 			return config.container.runtime;
 		case 'browser':
@@ -116,8 +111,6 @@ export function setGlobalConfigValue(
 			return { ...config, launcher: { ...config.launcher, path: value } };
 		case 'launcher.version':
 			return { ...config, launcher: { ...config.launcher, version: value } };
-		case 'repo':
-			return { ...config, repo: value };
 		case 'container.runtime':
 			return {
 				...config,

@@ -17,7 +17,7 @@ import { join } from 'node:path';
 import { type GlobalConfig, launcherCheckout } from '../config/global-config';
 import { cacheDir } from '../config/paths';
 import { RigError } from '../errors';
-import { RIG } from '../self/build-info';
+import { RIG } from '../meta';
 
 const CHECKOUT_BINARY = 'bin/main';
 const BINARY_NAME = 'task-runner-launcher';

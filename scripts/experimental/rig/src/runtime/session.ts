@@ -13,7 +13,7 @@ import { needsBrowserChoice, openUrl } from '../integrations/browser';
 import { isInteractive, select } from '../ui/prompt';
 import { liveState } from './state';
 import { inheritedOwner, type Owner, type Supervisor } from './supervisor';
-import { RIG } from '../self/build-info';
+import { RIG } from '../meta';
 
 const SIGNALS: NodeJS.Signals[] = ['SIGINT', 'SIGTERM', 'SIGHUP'];
 

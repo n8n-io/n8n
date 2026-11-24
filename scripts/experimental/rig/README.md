@@ -79,30 +79,17 @@ External task runners need the
 
 `rig` caches releases in `~/.cache/rig/launcher/<version>/`.
 
-### Global install
+### Checkout
+
+`rig` runs n8n from the checkout or worktree of the current directory. To pin
+one environment to another checkout, set `source: repo:<path>` in its
+`env.yaml`.
+
+To run `rig` from a subdirectory, use `pnpm -w rig`, or add an alias:
 
 ```bash
-pnpm rig install-global   # builds rig and writes ~/.local/bin/rig
-rig --version             # shows the global and the checkout version
+alias rig='pnpm -w rig'
 ```
-
-The global `rig` is one bundled file in
-`~/.local/share/rig/versions/<version>+<commit>/`. Branch switches and deleted
-worktrees do not break it.
-
-| Where you run `rig` | What runs |
-|---|---|
-| In an n8n checkout that contains rig | The rig of that checkout. The first time, `rig` asks you to trust the checkout |
-| In an untrusted checkout, without a terminal | The global version |
-| Outside a checkout | n8n from `repo` in the global config (`rig config set repo ~/work/n8n`) |
-| In any place, with `RIG_NO_DELEGATE=1` | The global version |
-
-- `rig` saves trusted checkouts in `~/.local/share/rig/trusted-checkouts.json`.
-- To pin one environment to a checkout, set `source: repo:<path>` in its
-  `env.yaml`.
-- `rig self-update` rebuilds from the current checkout, `repo`, or the
-  checkout of the installed version. `--rollback` returns to the previous
-  version. `rig` keeps the last five versions.
 
 ## Quick start
 
@@ -333,10 +320,9 @@ seconds. Later runs use a cache until the commit or a scanned file changes.
 | `exec <component> -- <cmd>` | Run a command with the env of a component |
 | `print <component> --format shell\|dotenv\|json\|vscode` | Print the resolved env, or VS Code launch configurations |
 | `psql`, `redis-cli` | Open a shell in a service container |
-| `config get\|set\|unset\|edit` | Read and change the global config: `launcher.path`, `launcher.version`, `repo`, `container.runtime`, `browser`, `editor` |
+| `config get\|set\|unset\|edit` | Read and change the global config: `launcher.path`, `launcher.version`, `container.runtime`, `browser`, `editor` |
 | `edit` | Open `env.yaml` in your editor, then check it |
-| `doctor` | Check the runtime, Node, Go, `uv`, the checkout and build, the launcher, ports, and the global install |
-| `install-global`, `self-update [--rollback]` | Install and update the global `rig` |
+| `doctor` | Check the runtime, Node, Go, `uv`, the checkout and build, the launcher, and ports |
 
 To select an environment, `rig` uses the first of these:
 
@@ -356,11 +342,8 @@ To select an environment, `rig` uses the first of these:
 | `~/.local/share/rig/envs/<name>/secrets.env` | Generated and own secrets | `RIG_DATA_DIR` |
 | `~/.local/share/rig/envs/<name>/logs/` | One log file for each component | `RIG_DATA_DIR` |
 | `~/.local/share/rig/envs/<name>/data/` | User folders and binary data | `RIG_DATA_DIR` |
-| `~/.local/share/rig/versions/` | Global installs | `RIG_DATA_DIR` |
-| `~/.local/share/rig/trusted-checkouts.json` | Trusted checkouts | `RIG_DATA_DIR` |
 | `~/.cache/rig/env-catalog/` | Env var catalog of each checkout | `RIG_CACHE_DIR` |
 | `~/.cache/rig/launcher/` | Launcher releases | `RIG_CACHE_DIR` |
-| `~/.local/bin/rig` | Shim of the global install | `RIG_BIN_DIR` |
 
 ## Relation to n8n-containers
 

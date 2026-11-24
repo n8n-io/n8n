@@ -5,7 +5,7 @@ import pc from 'picocolors';
 
 import { loadGlobalConfig, saveGlobalConfig, setGlobalConfigValue } from '../config/global-config';
 import { RigError } from '../errors';
-import { RIG } from '../self/build-info';
+import { RIG } from '../meta';
 import { ui } from '../ui/output';
 import { isInteractive, select } from '../ui/prompt';
 import { applicationDirs, hasMacApp, onPath } from './browser';

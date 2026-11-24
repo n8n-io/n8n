@@ -80,7 +80,7 @@ export type MailConfig = z.infer<typeof mailSchema>;
 export const topologySchema = z
 	.object({
 		name: z.string().regex(ENV_NAME_PATTERN, 'use lowercase letters, digits, and dashes'),
-		/** `auto`: the checkout that rig runs in, then `repo` in the global config. `repo:<path>`: that checkout. */
+		/** `auto`: the checkout of the current directory, then the checkout of rig. `repo:<path>`: that checkout. */
 		source: z
 			.union([z.literal('auto'), z.string().regex(/^repo:.+/, 'use auto or repo:<path>')])
 			.default('auto'),

@@ -25,7 +25,7 @@ import {
 	restartComponents,
 	stopComponents,
 } from './common';
-import { RIG } from '../self/build-info';
+import { RIG } from '../meta';
 
 function inspectOption(
 	args: { inspect?: boolean; 'inspect-brk'?: boolean },

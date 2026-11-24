@@ -25,7 +25,7 @@ import {
 } from '../ui/prompt';
 import { envArg, loadEnv, offerRestart } from './common';
 import { ensureLayerFile, managedConflicts, resolveLayer } from './layers';
-import { RIG } from '../self/build-info';
+import { RIG } from '../meta';
 
 type Pick =
 	| { type: 'done' }
