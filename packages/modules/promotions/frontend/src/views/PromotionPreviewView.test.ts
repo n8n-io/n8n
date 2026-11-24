@@ -530,7 +530,7 @@ describe('PromotionPreviewView', () => {
 			heading: "Couldn't load the changes",
 		},
 	] as const)(
-		'should hide unknown counts and retry when $name fails to load for $direction',
+		'should show ? for the unknown count and retry when $name fails to load for $direction',
 		async ({ direction, fail, heading }) => {
 			fail();
 			const { getByTestId, getByRole } = await render(
@@ -541,7 +541,8 @@ describe('PromotionPreviewView', () => {
 			const tabs = getByTestId('promotion-preview-tabs');
 			const submit = getByTestId('promotion-preview-submit');
 			expect(getByTestId('promotion-preview-error')).toHaveTextContent(heading);
-			expect(tabs).toHaveTextContent(/^Changes$/);
+			expect(tabs).toHaveTextContent(/^Changes\s*\?$/);
+			expect(tabs).not.toHaveTextContent(/Changes\s*0/);
 			expect(submit).toHaveTextContent(new RegExp(`^${action} changes$`));
 			expect(submit).toBeDisabled();
 
@@ -629,7 +630,8 @@ describe('PromotionPreviewView', () => {
 
 		// "Nothing to promote" could be out of date, so the page asks for a retry.
 		expect(getByTestId('promotion-preview-error')).toHaveTextContent("Couldn't load the changes");
-		expect(getByTestId('promotion-preview-tabs')).toHaveTextContent(/^Changes$/);
+		// The count is unknown, so the tab shows ? and not 0.
+		expect(getByTestId('promotion-preview-tabs')).toHaveTextContent(/^Changes\s*\?$/);
 	});
 
 	it('should promote the selection to a branch that has no commit yet, then go back to the project', async () => {

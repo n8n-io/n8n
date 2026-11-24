@@ -320,7 +320,9 @@ const tabs = computed(() => [
 	{
 		value: 'changes' as const,
 		label: i18n.baseText('promotions.preview.tab.changes'),
-		tag: graph.value ? String(totalChanges.value) : undefined,
+		// A failed load shows ? and not 0: 0 would say that there is nothing to review. The badge also
+		// keeps the height of the tab row, so the buttons next to it stay in place.
+		tag: graph.value ? String(totalChanges.value) : state.value === 'error' ? '?' : undefined,
 	},
 	...(showBlockersTab.value
 		? [
