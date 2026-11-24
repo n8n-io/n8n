@@ -52,6 +52,13 @@ export interface SidebarProps {
 	 * @default true
 	 */
 	resizable?: boolean;
+	/**
+	 * Wrap the body in a scroll area.
+	 * The area fades the top and the bottom.
+	 * Set this to false when the body scrolls itself.
+	 * @default true
+	 */
+	scrollable?: boolean;
 	/** Accessible name for the sidebar. */
 	label?: string;
 }

@@ -1,6 +1,6 @@
 # Component specification
 
-A list of versions, groups, and headings. A group hides its versions behind a toggle. The list scrolls.
+A list of versions, groups, and headings. A group hides its versions behind a toggle. The list scrolls. The list fades the top and the bottom. The list is the scrollport. Turn off a parent scroll area. Set `scrollable` to false on `N8nSidebar`.
 
 The component writes every label, tooltip, and control name. The caller does not pass those strings.
 
@@ -12,15 +12,16 @@ The component writes every label, tooltip, and control name. The caller does not
 VersionHistory
 ├── loading skeletons (the list and the empty state stay hidden)
 ├── empty slot (when items is empty)
-└── list
-    ├── version row
-    │   ├── label, detail, author, and time
-    │   ├── tooltip
-    │   ├── compare
-    │   └── actions menu
-    ├── group row (versions stay hidden until the toggle opens)
-    ├── heading
-    └── load-more status (when hasMore or loadingMore)
+└── scroll area (fade only)
+    └── list
+        ├── version row
+        │   ├── label, detail, author, and time
+        │   ├── tooltip
+        │   ├── compare
+        │   └── actions menu
+        ├── group row (versions stay hidden until the toggle opens)
+        ├── heading
+        └── load-more status (when hasMore or loadingMore)
 ```
 
 ## Public API Definition

@@ -65,6 +65,19 @@ describe('N8nSidebar', () => {
 		expect(right.querySelector('[data-dir="right"]')).toBeNull();
 	});
 
+	it('scrolls the body by default', () => {
+		const { container } = renderSidebar();
+
+		expect(container.querySelector('[data-reka-scroll-area-viewport]')).toBeTruthy();
+	});
+
+	it('leaves the body bare when scrolling is off', () => {
+		const { container, getByText } = renderSidebar({ scrollable: false });
+
+		expect(container.querySelector('[data-reka-scroll-area-viewport]')).toBeNull();
+		expect(getByText('Notes')).toBeTruthy();
+	});
+
 	it('hides the resize handle when resizing is off', () => {
 		const { container } = renderSidebar({ resizable: false });
 

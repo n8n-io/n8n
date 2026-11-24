@@ -10,7 +10,6 @@ import N8nInput from '../N8nInput/Input.vue';
 import N8nInputLabel from '../N8nInputLabel';
 import N8nOption from '../N8nOption';
 import N8nPopover from '../N8nPopover/Popover.vue';
-import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
 import N8nSelect from '../N8nSelect';
 import N8nSidebar from '../N8nSidebar/Sidebar.vue';
 import N8nSwitch from '../N8nSwitch';
@@ -964,13 +963,6 @@ const canvasStyle = [
 	'background-color: var(--background--surface)',
 ].join('; ');
 
-// The host scroll area owns the fade. Its content must fill the viewport
-// so this list keeps a fixed height and scrolls itself.
-const hostFillStyle = [
-	'.version-history-host [data-reka-scroll-area-viewport] { position: relative; }',
-	'.version-history-host [data-reka-scroll-area-viewport] > * { height: 100%; min-height: 0; }',
-].join(' ');
-
 const popoverStageStyle = [
 	'display: flex',
 	'align-items: flex-start',
@@ -983,7 +975,7 @@ export const InPanel: Story = {
 		docs: {
 			description: {
 				story:
-					'The list fills a sidebar. The sidebar fades the top and the bottom. The list scrolls inside that frame. The switch keeps named versions. Compare text follows the open version. Command-click or Control-click keeps the open version.',
+					'The list fills a sidebar. The sidebar leaves scrolling to the list. The list fades the top and the bottom. The switch keeps named versions. Compare text follows the open version. Command-click or Control-click keeps the open version.',
 			},
 		},
 	},
@@ -1029,11 +1021,11 @@ export const InPanel: Story = {
 					<div style="${canvasStyle}"></div>
 				</section>
 				<N8nSidebar
-					class="version-history-host"
 					side="right"
 					label="Versions"
 					:width="320"
 					:min-width="320"
+					:scrollable="false"
 					width-storage-id="version-history-sidebar-width"
 					style="--n8n-sidebar--padding: 0; flex-shrink: 0"
 				>
@@ -1055,7 +1047,6 @@ export const InPanel: Story = {
 						@toggle="onToggle"
 					/>
 				</N8nSidebar>
-				<component :is="'style'">${hostFillStyle}</component>
 			</div>
 		`,
 	}),
@@ -1069,12 +1060,12 @@ export const InPopover: Story = {
 		docs: {
 			description: {
 				story:
-					'A popover does not give this list a height. Turn off the popover scroll so the list is the only scrollport. Put the list in a scroll area with a fixed height. The scroll area fades the edges. The list scrolls inside it.',
+					'A popover does not give this list a height. Turn off the popover scroll. Give the list a fixed height. The list fades the top and the bottom. The list scrolls inside that frame.',
 			},
 		},
 	},
 	render: (args) => ({
-		components: { VersionHistory, N8nPopover, N8nScrollArea, N8nButton },
+		components: { VersionHistory, N8nPopover, N8nButton },
 		setup() {
 			const open = ref(false);
 			return { args, open, ...presentedHistory(args.items, 'v40') };
@@ -1092,7 +1083,7 @@ export const InPopover: Story = {
 						<N8nButton label="Versions" variant="outline" />
 					</template>
 					<template #content>
-						<N8nScrollArea class="version-history-host" edge-fade="y" style="height: 24rem">
+						<div style="height: 24rem">
 							<VersionHistory
 								v-bind="args"
 								:items="items"
@@ -1103,10 +1094,9 @@ export const InPopover: Story = {
 								@action="onAction"
 								@toggle="onToggle"
 							/>
-						</N8nScrollArea>
+						</div>
 					</template>
 				</N8nPopover>
-				<component :is="'style'">${hostFillStyle}</component>
 			</div>
 		`,
 	}),
