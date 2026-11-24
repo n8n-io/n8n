@@ -1,8 +1,11 @@
 import type { ExecutionAgentRun } from '@n8n/api-types';
 import { AgentsConfig } from '@n8n/config';
-import { ServiceAccountRepository } from '@n8n/db';
+import { ServiceAccountRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { IRunExecutionData, WorkflowExecuteMode } from 'n8n-workflow';
+import type { ExecutionSummary, IRunExecutionData, WorkflowExecuteMode } from 'n8n-workflow';
+
+import { userHasScopes } from '@/permissions.ee/check-access';
+import { AgentDirectory } from '@/services/agent-directory';
 
 /**
  * Names the agent that started an execution through a workflow tool, so the
@@ -14,7 +17,41 @@ export class ExecutionAgentAttributionService {
 	constructor(
 		private readonly agentsConfig: AgentsConfig,
 		private readonly serviceAccountRepository: ServiceAccountRepository,
+		private readonly agentDirectory: AgentDirectory,
 	) {}
+
+	/**
+	 * Adds the agent to each summary that an agent's workflow tool started. The
+	 * name and project stay `null` when the viewer cannot read the agent, so the
+	 * list does not name agents of other projects.
+	 */
+	async addAgents(user: User, summaries: ExecutionSummary[]): Promise<void> {
+		if (!this.agentsConfig.runtimeIdentityEnabled) return;
+		const agentIds = [...new Set(summaries.flatMap((s) => (s.agentId ? [s.agentId] : [])))];
+		if (agentIds.length === 0) return;
+
+		const agents = await this.agentDirectory.findAgents(agentIds);
+		const readable = new Map<string, boolean>();
+		const canRead = async (projectId: string) => {
+			let allowed = readable.get(projectId);
+			if (allowed === undefined) {
+				allowed = await userHasScopes(user, ['agent:read'], false, { projectId });
+				readable.set(projectId, allowed);
+			}
+			return allowed;
+		};
+
+		for (const summary of summaries) {
+			if (!summary.agentId) continue;
+			const agent = agents.get(summary.agentId);
+			const visible = agent !== undefined && (await canRead(agent.projectId));
+			summary.agent = {
+				id: summary.agentId,
+				name: visible ? agent.name : null,
+				projectId: visible ? agent.projectId : null,
+			};
+		}
+	}
 
 	async describe(
 		data: IRunExecutionData | undefined,

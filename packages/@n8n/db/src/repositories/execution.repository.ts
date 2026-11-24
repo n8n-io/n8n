@@ -1251,6 +1251,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		startedAt: true,
 		stoppedAt: true,
 		usedPrivateCredentials: true,
+		agentId: true,
 	};
 
 	private annotationFields = {
@@ -1425,6 +1426,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			workflowVersionId,
 			isArchived,
 			workflowBooleanSettings,
+			agentId,
 		} = query;
 
 		const fields = Object.keys(this.summaryFields)
@@ -1473,6 +1475,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 
 		if (status) qb.andWhere('execution.status IN (:...status)', { status });
 		if (query.mode) qb.andWhere('execution.mode = :filterMode', { filterMode: query.mode });
+		if (agentId) qb.andWhere('execution.agentId = :agentId', { agentId });
 		if (workflowId) qb.andWhere({ workflowId });
 		const startedAt = startedAtCondition(
 			{ startedAfter, startedBefore },

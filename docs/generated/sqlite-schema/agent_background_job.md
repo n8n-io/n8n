@@ -114,6 +114,7 @@ erDiagram
   varchar_36_ workflowId
 }
 "execution_entity" {
+  VARCHAR_36_ agentId
   bigint binaryDataSizeBytes
   datetime_3_ createdAt
   varchar_255_ deduplicationKey

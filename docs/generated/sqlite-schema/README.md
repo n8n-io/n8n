@@ -81,7 +81,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [execution_annotation_tags](execution_annotation_tags.md) | 2 |  | table |
 | [execution_annotations](execution_annotations.md) | 6 |  | table |
 | [execution_data](execution_data.md) | 4 |  | table |
-| [execution_entity](execution_entity.md) | 20 |  | table |
+| [execution_entity](execution_entity.md) | 21 |  | table |
 | [execution_ledger](execution_ledger.md) | 16 |  | table |
 | [execution_ledger_parked](execution_ledger_parked.md) | 20 |  | table |
 | [execution_limit_audit](execution_limit_audit.md) | 8 |  | table |
@@ -1281,6 +1281,7 @@ erDiagram
   VARCHAR_36_ workflowVersionId
 }
 "execution_entity" {
+  VARCHAR_36_ agentId
   bigint binaryDataSizeBytes
   datetime_3_ createdAt
   varchar_255_ deduplicationKey

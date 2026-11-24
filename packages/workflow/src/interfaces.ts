@@ -4544,6 +4544,13 @@ export interface ExecutionSummary {
 		[key: string]: IExecutionSummaryNodeExecutionResult;
 	};
 	usedPrivateCredentials?: boolean;
+	/** The agent whose workflow tool started this execution. */
+	agentId?: string | null;
+	/**
+	 * Name and project of that agent. Both are `null` when the viewer cannot
+	 * read the agent, or when it was deleted.
+	 */
+	agent?: { id: string; name: string | null; projectId: string | null };
 	annotation?: {
 		vote?: AnnotationVote | null;
 		tags: Array<{

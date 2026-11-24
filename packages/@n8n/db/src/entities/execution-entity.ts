@@ -110,6 +110,13 @@ export class ExecutionEntity {
 	deduplicationKey: string | null;
 
 	/**
+	 * The agent whose workflow tool started this execution. `null` for every
+	 * other execution, and for executions from before the column existed.
+	 */
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	agentId: string | null;
+
+	/**
 	 * Size in bytes of the serialized execution data bundle (run data, workflow
 	 * snapshot, version id) as last persisted; excludes binary data, stored
 	 * separately. `0` means not yet calculated — a real bundle is always larger.

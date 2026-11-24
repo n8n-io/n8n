@@ -53,6 +53,59 @@ describe('GlobalExecutionsListItem', () => {
 		expect(getByTestId('execution-status')).toBeInTheDocument();
 	});
 
+	describe('agent column', () => {
+		const execution = (agent?: ExecutionSummary['agent']) =>
+			({
+				status: 'success',
+				id: '1',
+				workflowId: 'w1',
+				agentId: agent?.id,
+				agent,
+			}) as unknown as ExecutionSummary;
+
+		it('links to the agent that started the execution', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					execution: execution({ id: 'agent-1', name: 'Support Agent', projectId: 'p1' }),
+					showAgent: true,
+				},
+			});
+
+			const cell = getByTestId('execution-agent');
+			expect(cell).toHaveTextContent('Support Agent');
+			expect(cell.querySelector('a')).not.toBeNull();
+		});
+
+		it('hides the name of an agent the viewer cannot read', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					execution: execution({ id: 'agent-1', name: null, projectId: null }),
+					showAgent: true,
+				},
+			});
+
+			const cell = getByTestId('execution-agent');
+			expect(cell).toHaveTextContent('An agent');
+			expect(cell.querySelector('a')).toBeNull();
+		});
+
+		it('leaves the cell empty for an execution no agent started', () => {
+			const { getByTestId } = renderComponent({
+				props: { execution: execution(), showAgent: true },
+			});
+
+			expect(getByTestId('execution-agent')).toBeEmptyDOMElement();
+		});
+
+		it('has no agent cell when the column is off', () => {
+			const { queryByTestId } = renderComponent({
+				props: { execution: execution({ id: 'agent-1', name: 'Support Agent', projectId: 'p1' }) },
+			});
+
+			expect(queryByTestId('execution-agent')).not.toBeInTheDocument();
+		});
+	});
+
 	it('should emit stop event on stop button click for a running execution', async () => {
 		const { getByTestId, emitted } = renderComponent({
 			props: {

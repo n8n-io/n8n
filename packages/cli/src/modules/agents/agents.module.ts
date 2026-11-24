@@ -71,6 +71,20 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentServiceAccountService } = await import('./agent-service-account.service.js');
 		Container.get(ServiceAccountProjects).register(Container.get(AgentServiceAccountService));
 
+		// The executions list names the agent that started an execution.
+		const { AgentDirectory } = await import('@/services/agent-directory.js');
+		const agentRepository = Container.get(
+			(await import('./repositories/agent.repository.js')).AgentRepository,
+		);
+		Container.get(AgentDirectory).register({
+			findAgents: async (agentIds) => {
+				const agents = await agentRepository.findSummariesByIds(agentIds);
+				return new Map(
+					agents.map((agent) => [agent.id, { name: agent.name, projectId: agent.projectId }]),
+				);
+			},
+		});
+
 		// Register blob backends for agent execution logs.
 		// The fs backend is always available; s3/az reuse the clients base-command
 		// already initialized (initBinaryDataService runs before module init in

@@ -25,6 +25,7 @@ import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCreden
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import EngineBadge from '@/app/components/EngineBadge.vue';
 import { getExecutionEngine } from '@/features/execution/executions/executions.utils';
+import { AGENT_BUILDER_VIEW } from '@n8n/frontend-constants/agents';
 type Command = 'retrySaved' | 'retryOriginal' | 'delete';
 
 const emit = defineEmits<{
@@ -45,6 +46,8 @@ const props = withDefaults(
 		executionPermissions?: PermissionsRecord['execution'];
 		concurrencyCap: number;
 		isCloudDeployment?: boolean;
+		/** Show the agent column (runtime identity). */
+		showAgent?: boolean;
 	}>(),
 	{
 		selected: false,
@@ -252,6 +255,22 @@ async function handleActionItemClick(commandData: Command) {
 				</RouterLink>
 			</N8nTooltip>
 		</td>
+		<td v-if="showAgent" data-test-id="execution-agent">
+			<span v-if="execution.agent" :class="$style.agent">
+				<N8nIcon icon="bot" size="small" />
+				<RouterLink
+					v-if="execution.agent.name && execution.agent.projectId"
+					:to="{
+						name: AGENT_BUILDER_VIEW,
+						params: { projectId: execution.agent.projectId, agentId: execution.agent.id },
+					}"
+					:class="$style.workflowName"
+				>
+					{{ execution.agent.name }}
+				</RouterLink>
+				<span v-else>{{ locale.baseText('executionsList.agent.hidden') }}</span>
+			</span>
+		</td>
 		<td data-test-id="execution-status">
 			<GlobalExecutionsListItemQueuedTooltip
 				v-if="isWaitTillIndefinite || execution.status === EXECUTION_STATUS.NEW"
@@ -400,5 +419,11 @@ tr.dangerBg {
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--lg);
 	max-width: 450px;
+}
+
+.agent {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 }
 </style>

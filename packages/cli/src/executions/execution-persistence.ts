@@ -143,7 +143,15 @@ export class ExecutionPersistence {
 		const workflowSnapshot = toWorkflowSnapshot(workflowData);
 		const storedAt = this.storageConfig.modeTag;
 		const workflowVersionId = workflowData.versionId ?? null;
-		const executionEntity = { ...rest, createdAt: new Date(), storedAt, workflowVersionId };
+		// A retry copies the run data, but the agent did not start it.
+		const agentId = rest.mode === 'retry' ? null : (rawData.parentAgentRun?.agentId ?? null);
+		const executionEntity = {
+			...rest,
+			createdAt: new Date(),
+			storedAt,
+			workflowVersionId,
+			agentId,
+		};
 
 		let reclaimedTombstone: ReclaimedTombstone | null = null;
 		const failedCreate: {

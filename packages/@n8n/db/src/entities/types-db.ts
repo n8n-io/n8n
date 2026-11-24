@@ -235,6 +235,8 @@ export namespace ExecutionSummaries {
 		isArchived: boolean;
 		workflowBooleanSettings: Array<{ key: string; value: boolean }>;
 		engine: WorkflowEngineType;
+		/** Only executions that this agent's workflow tool started. */
+		agentId: string;
 	}>;
 
 	export type StopExecutionFilterQuery = { workflowId: string } & Pick<

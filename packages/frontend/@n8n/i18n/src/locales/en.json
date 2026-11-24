@@ -2178,6 +2178,8 @@
 	"executionsList.runTime": "Run time",
 	"executionsList.startingSoon": "Starting soon",
 	"executionsList.started": "{date}, {time}",
+	"executionsList.agent": "Agent",
+	"executionsList.agent.hidden": "An agent",
 	"executionsList.id": "Exec. ID",
 	"executionsList.engine.tooltip": "Ran on engine {engine}",
 	"executionsList.status": "Status",

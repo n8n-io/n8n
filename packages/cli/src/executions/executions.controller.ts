@@ -9,6 +9,7 @@ import { License } from '@/license';
 import { isPositiveInteger } from '@/utils';
 import { WorkflowSharingService } from '@n8n/backend-services';
 
+import { ExecutionAgentAttributionService } from './execution-agent-attribution.service';
 import { isExecutionIdV2 } from './execution-id';
 import { ExecutionListService } from './execution-list.service';
 import { ExecutionService } from './execution.service';
@@ -25,6 +26,7 @@ export class ExecutionsController {
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly license: License,
 		private readonly executionListService: ExecutionListService,
+		private readonly executionAgentAttribution: ExecutionAgentAttributionService,
 	) {}
 
 	private async getAccessibleWorkflowIds(user: User, scopes: Scope[]) {
@@ -48,10 +50,13 @@ export class ExecutionsController {
 			this.executionListService.listExecutionsForUI(query, cursor),
 			this.executionService.getConcurrentExecutionsCount(),
 		]);
-		await this.executionListService.addScopes(
-			req.user,
-			executions.results as ExecutionSummaries.ExecutionSummaryWithScopes[],
-		);
+		await Promise.all([
+			this.executionListService.addScopes(
+				req.user,
+				executions.results as ExecutionSummaries.ExecutionSummaryWithScopes[],
+			),
+			this.executionAgentAttribution.addAgents(req.user, executions.results),
+		]);
 		return {
 			...executions,
 			concurrentExecutionsCount,

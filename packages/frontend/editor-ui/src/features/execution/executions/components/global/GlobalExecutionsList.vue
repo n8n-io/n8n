@@ -47,6 +47,10 @@ const telemetry = useTelemetry();
 const workflowsListStore = useWorkflowsListStore();
 const executionsStore = useExecutionsStore();
 const settingsStore = useSettingsStore();
+
+// With runtime identity on, the list names the agent that started an execution.
+const showAgentColumn = computed(() => settingsStore.isAgentsRuntimeIdentityEnabled);
+const columnCount = computed(() => (showAgentColumn.value ? 10 : 9));
 const pageRedirectionHelper = usePageRedirectionHelper();
 
 const autoRefresh = computed({
@@ -390,7 +394,7 @@ const goToUpgrade = () => {
 									@update:model-value="handleCheckAllExistingChange"
 								/>
 							</th>
-							<th colspan="8">
+							<th :colspan="columnCount - 1">
 								{{
 									i18n.baseText('executionsList.selectAll', {
 										adjustToNumber: total,
@@ -412,6 +416,7 @@ const goToUpgrade = () => {
 							<th>
 								{{ i18n.baseText('generic.workflow') }}
 							</th>
+							<th v-if="showAgentColumn">{{ i18n.baseText('executionsList.agent') }}</th>
 							<th>{{ i18n.baseText('executionsList.status') }}</th>
 							<th>
 								{{ i18n.baseText('executionsList.startedAt') }}
@@ -438,6 +443,7 @@ const goToUpgrade = () => {
 							:selected="selectedItems[execution.id] || allExistingSelected"
 							:concurrency-cap="settingsStore.concurrency"
 							:is-cloud-deployment="settingsStore.isCloudDeployment"
+							:show-agent="showAgentColumn"
 							data-test-id="global-execution-list-item"
 							@stop="stopExecution"
 							@delete="deleteExecution"
@@ -448,13 +454,13 @@ const goToUpgrade = () => {
 						/>
 						<template v-if="isInitialLoad && executionsStore.loading && !executions.length">
 							<tr v-for="item in executionsStore.itemsPerPage" :key="item">
-								<td v-for="col in 9" :key="col">
+								<td v-for="col in columnCount" :key="col">
 									<ElSkeletonItem />
 								</td>
 							</tr>
 						</template>
 						<tr>
-							<td colspan="9" style="text-align: center">
+							<td :colspan="columnCount" style="text-align: center">
 								<template v-if="!executions.length">
 									<span data-test-id="execution-list-empty">
 										{{ i18n.baseText('executionsList.empty') }}

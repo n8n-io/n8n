@@ -40,6 +40,12 @@ import { License } from '@/license';
 import { ProjectAgentAccessService } from '@/services/project-agent-access.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RuntimeAccessService } from '@/services/runtime-access.service';
+import { AgentDirectory } from '@/services/agent-directory';
+import { ExecutionAgentAttributionService } from '@/executions/execution-agent-attribution.service';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { ExecutionRepository } from '@n8n/db';
+import { createRunExecutionData } from 'n8n-workflow';
+import { createExecution } from '../shared/db/executions';
 import { Telemetry } from '@/telemetry';
 import { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
 
@@ -72,6 +78,15 @@ describe('Agent runtime identity', () => {
 		registerServiceAccountUsage();
 		// The module registers this in `init`, which tests do not run.
 		Container.get(ServiceAccountProjects).register(Container.get(AgentServiceAccountService));
+		Container.get(AgentDirectory).register({
+			findAgents: async (ids) =>
+				new Map(
+					(await Container.get(AgentRepository).findSummariesByIds(ids)).map((agent) => [
+						agent.id,
+						{ name: agent.name, projectId: agent.projectId },
+					]),
+				),
+		});
 	});
 
 	beforeEach(() => {
@@ -500,6 +515,69 @@ describe('Agent runtime identity', () => {
 					id: homeWorkflow.id,
 				}),
 			).toBe(true);
+		});
+	});
+	describe('executions list', () => {
+		it('stores the agent of a workflow tool run on the execution', async () => {
+			const project = await createTeamProject();
+			const agent = await createAgentIn(project.id);
+			const workflow = await createWorkflow({ name: 'Tool' }, project);
+			const parentAgentRun = {
+				agentId: agent.id,
+				projectId: project.id,
+				threadId: 'thread-1',
+				runId: 'run-1',
+				toolCallId: 'call-1',
+			};
+
+			const id = await Container.get(ExecutionPersistence).create({
+				data: createRunExecutionData({ parentAgentRun }),
+				workflowData: workflow,
+				workflowId: workflow.id,
+				mode: 'integrated',
+				finished: false,
+				status: 'new',
+			});
+
+			const [summary] = await Container.get(ExecutionRepository).findManyByRangeQuery({
+				kind: 'range',
+				range: { limit: 10 },
+				user: await createOwner(),
+				workflowId: workflow.id,
+			});
+			expect(summary.id).toBe(id);
+			expect(summary.agentId).toBe(agent.id);
+		});
+
+		it('filters by agent, and names the agent only to a viewer who can read it', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject();
+			const agent = await createAgentIn(project.id);
+			const workflow = await createWorkflow({ name: 'Tool' }, project);
+			await createExecution({ agentId: agent.id }, workflow);
+			await createExecution({}, workflow);
+
+			const results = await Container.get(ExecutionRepository).findManyByRangeQuery({
+				kind: 'range',
+				range: { limit: 10 },
+				user: owner,
+				agentId: agent.id,
+			});
+			expect(results).toHaveLength(1);
+
+			const attribution = Container.get(ExecutionAgentAttributionService);
+			const forOwner = results.map((r) => ({ ...r }));
+			await attribution.addAgents(owner, forOwner);
+			expect(forOwner[0].agent).toEqual({
+				id: agent.id,
+				name: 'Support Agent',
+				projectId: project.id,
+			});
+
+			const outsider = await createMember();
+			const forOutsider = results.map((r) => ({ ...r }));
+			await attribution.addAgents(outsider, forOutsider);
+			expect(forOutsider[0].agent).toEqual({ id: agent.id, name: null, projectId: null });
 		});
 	});
 });

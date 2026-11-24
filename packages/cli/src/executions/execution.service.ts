@@ -100,6 +100,7 @@ export const schemaGetExecutionsQueryFilter = {
 		vote: { type: 'string' },
 		projectId: { type: 'string' },
 		workflowVersionId: { type: 'string' },
+		agentId: { type: 'string' },
 		engine: { type: 'string', enum: [...WORKFLOW_ENGINE_TYPES] },
 	},
 	$defs: {
