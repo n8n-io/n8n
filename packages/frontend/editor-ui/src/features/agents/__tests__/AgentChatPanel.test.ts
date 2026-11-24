@@ -5293,7 +5293,7 @@ describe('AgentChatPanel', () => {
 			composerVm(wrapper).addComposerAttachment({ id: 'wf-1', label: 'Invoices' });
 			composer(wrapper).vm.$emit('update:modelValue', 'Use it');
 			await nextTick();
-			const card = wrapper.findComponent('[data-test-id="agent-chat-composer-chip"]');
+			const card = wrapper.findComponent('[data-test-id="agent-chat-composer-chip"]') as VueWrapper;
 
 			card.vm.$emit('remove-start');
 			await nextTick();
