@@ -199,15 +199,31 @@ try {
 }
 ```
 
-A workflow that the app runs gets the visitor's user ID from the expression
-`{{ $execution.customData.get('appVisitor') }}`. The value has the format
-`user:<id>`. Use it to save and read data for each visitor, for example in a
-`userId` column of a data table. Do not trust a user ID, email or name that
-the app sends in the run input, because the visitor can change it. Use the
-values from `n8n.me()` only for display. A data table that you bind to the app
-shows all its rows to every visitor. When each visitor must see only their own
-rows, do not bind the table. Read it in a bound workflow that filters the
-`userId` column by the `appVisitor` expression. `appVisitor` is not a column.
+### Data for each visitor
+
+By default, bind data tables to the app and read and write them directly. A
+bound data table shows all its rows to every visitor. This is correct when all
+visitors share the same data.
+
+Use a workflow only when each visitor must see or change only their own rows,
+and the app must not trust the visitor's input. The visitor can change a user
+ID, email or name that the app sends in the run input or in a table filter. Use
+the values from `n8n.me()` only for display. For this case:
+
+1. Do not bind the data table to the app.
+2. Bind a workflow that reads and writes the table for the visitor.
+3. In that workflow, add a Code node directly after the trigger. The Code node
+   reads the visitor's user ID and adds it to each item:
+
+   ```js
+   const visitor = $execution.customData.get('appVisitor');
+   return $input.all().map((item) => ({ json: { ...item.json, visitor } }));
+   ```
+
+4. In the nodes after the Code node, use `{{ $json.visitor }}`. For example,
+   filter and set a `userId` column of the data table with it.
+
+The value has the format `user:<id>`. Read `appVisitor` only in a Code node.
 
 ## Several apps
 

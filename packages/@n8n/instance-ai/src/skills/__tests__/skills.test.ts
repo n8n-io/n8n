@@ -172,6 +172,8 @@ describe('Instance AI skills', () => {
 		const skill = await loadInstanceAiSkills().loadSkill('app-builder');
 
 		expect(skill?.instructions).toContain("$execution.customData.get('appVisitor')");
+		expect(skill?.instructions).toContain('Read `appVisitor` only in a Code node');
+		expect(skill?.instructions).toContain('By default, bind data tables to the app');
 	});
 
 	it('opens a newly created app before editing its files', async () => {
