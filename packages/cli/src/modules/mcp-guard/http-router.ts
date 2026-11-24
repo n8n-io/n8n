@@ -52,13 +52,13 @@ export class HttpGuardRouter {
 
 	constructor(private readonly deps: HttpGuardRouterDeps) {}
 
-	async handle(req: CapturedRequest): Promise<Response> {
+	async handle(req: CapturedRequest, signal?: AbortSignal): Promise<Response> {
 		const host = canonicalHost(req.url.hostname);
 		const vendor = vendorForRequest(host, req.url.pathname);
 		if (!vendor) return refusal(403, 'mcp-guard: this host is not available in a preview chat');
 
 		// The real reads of the hydration use the credential and the host of this request.
-		const context: RequestContext = { origin: `${req.url.protocol}//${req.url.host}` };
+		const context: RequestContext = { origin: `${req.url.protocol}//${req.url.host}`, signal };
 		if (req.headers.authorization) context.authorization = req.headers.authorization;
 		return await runWithRequestContext(context, async () => {
 			const readShaped = isReadShaped(req, vendor.readPaths, vendor.graphqlPaths);

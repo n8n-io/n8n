@@ -74,15 +74,17 @@ export class HttpGuardService {
 			return refusal(502, 'mcp-guard: the gym is not available');
 		}
 		// A hydration can need several model turns. Fail the call when it takes longer than a guarded call.
+		const controller = new AbortController();
 		let timer: NodeJS.Timeout | undefined;
 		const timeout = new Promise<Response>((resolve) => {
-			timer = setTimeout(
-				() => resolve(refusal(504, 'mcp-guard: the preview call took too long')),
-				GUARDED_CALL_TIMEOUT_MS,
-			);
+			timer = setTimeout(() => {
+				// Stop the model calls of the hydration, so they do not run on after the answer.
+				controller.abort();
+				resolve(refusal(504, 'mcp-guard: the preview call took too long'));
+			}, GUARDED_CALL_TIMEOUT_MS);
 		});
 		try {
-			return await Promise.race([run.router.handle(req), timeout]);
+			return await Promise.race([run.router.handle(req, controller.signal), timeout]);
 		} finally {
 			clearTimeout(timer);
 		}

@@ -6,6 +6,8 @@ import { UnexpectedError } from '@n8n/errors';
 export interface RequestContext {
 	authorization?: string;
 	origin: string;
+	// Aborts when the guarded call takes too long. A model call of the hydration stops with it.
+	signal?: AbortSignal;
 }
 
 const storage = new AsyncLocalStorage<RequestContext>();
@@ -24,3 +26,15 @@ export function currentRequestContext(): RequestContext {
 	if (!context) throw new UnexpectedError('mcp-guard: no request context');
 	return context;
 }
+
+type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
+
+/** Wraps a fetch so that its requests also stop when the signal of the current request aborts. */
+export const withRequestSignal =
+	(base: FetchLike = fetch): FetchLike =>
+	async (input, init) => {
+		const { signal } = currentRequestContext();
+		const own = init?.signal;
+		const combined = signal && own ? AbortSignal.any([signal, own]) : (signal ?? own);
+		return await base(input, { ...init, signal: combined });
+	};

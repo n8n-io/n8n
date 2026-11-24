@@ -293,7 +293,7 @@ async function getChatIntegrationToolServices() {
 	const { IntegrationMessageContextService } = await import(
 		'./integrations/integration-message-context.service.js'
 	);
-
+	// eslint-disable-next-line import-x/no-cycle
 	const { ChatIntegrationActionExecutor } = await import(
 		'./integrations/integration-action-executor.js'
 	);

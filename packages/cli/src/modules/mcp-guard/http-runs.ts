@@ -7,7 +7,7 @@ import { PLAN_INSTRUCTIONS } from './hydration-prompts';
 import { sendToNetwork, type CapturedRequest } from './network';
 import { PlanHydrator } from './plan-hydrator';
 import { isReadShaped } from './request-classifier';
-import { currentRequestContext } from './request-context';
+import { currentRequestContext, withRequestSignal } from './request-context';
 import { matchesVendor, type VendorKnowledge } from './vendor-knowledge';
 
 export interface HttpRun {
@@ -99,7 +99,8 @@ export class HttpRunRegistry {
 			gym,
 			readTools: isReadToolName,
 			instructions: `${PLAN_INSTRUCTIONS}\n${vendor.instructions}`,
-			llm: createPlanLlm(model),
+			// A timeout of the guarded call aborts the model call of the hydration too.
+			llm: createPlanLlm({ ...model, fetch: withRequestSignal(model.fetch) }),
 			lookups: profile.lookups,
 			finalize: profile.finalize,
 		});
