@@ -103,10 +103,14 @@ function shownIds(ids: string[], text: string): string[] {
 	return ids.filter((id) => !missing.has(id));
 }
 
+// Keys that would step into an object's prototype. The model writes the keys, so they are dropped.
+const RESERVED_KEYS: ReadonlySet<string> = new Set(['__proto__', 'constructor', 'prototype']);
+
 /** A model writes "native.linear" as one key. Make it the two levels that the gym reads. */
 export function nestDottedKeys(overlay: Record<string, unknown>): Record<string, unknown> {
 	const out: Record<string, unknown> = {};
 	for (const [key, value] of Object.entries(overlay)) {
+		if (key.split('.').some((part) => RESERVED_KEYS.has(part))) continue;
 		if (!key.includes('.')) {
 			out[key] = isRecord(out[key]) && isRecord(value) ? { ...out[key], ...value } : value;
 			continue;
@@ -115,7 +119,7 @@ export function nestDottedKeys(overlay: Record<string, unknown>): Record<string,
 		const last = parts.pop() ?? key;
 		let level = out;
 		for (const part of parts) {
-			const next = level[part];
+			const next = Object.hasOwn(level, part) ? level[part] : undefined;
 			level[part] = isRecord(next) ? next : {};
 			level = level[part] as Record<string, unknown>;
 		}

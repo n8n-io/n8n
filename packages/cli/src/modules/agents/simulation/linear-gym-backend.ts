@@ -66,6 +66,19 @@ async function json(
 const harnessToken = 'synthetic-loopback-harness';
 /** Every MCP server of the agent. A server without an origin stays, so an outage blocks it too. */
 const mcpServers = (agent: SimulatedAgent) => agent.tools.filter((tool) => tool.kind === 'mcp');
+/** Removes the Gym tenant of a world. A tenant that is gone already is fine. */
+async function deleteTenant(worldId: string): Promise<void> {
+	const base = endpoint(process.env.GYM_BASE_URL, '/');
+	const token = process.env.GYM_HARNESS_TOKEN;
+	if (token !== harnessToken) throw unavailable();
+	const r = await fetch(`${base}/_sim/v1/tenants/${encodeURIComponent(worldId)}`, {
+		method: 'DELETE',
+		redirect: 'error',
+		signal: AbortSignal.timeout(3000),
+		headers: { authorization: `Bearer ${token}` },
+	});
+	if (!r.ok && r.status !== 404) throw unavailable();
+}
 const rpc = (name: string, args: unknown) => ({
 	jsonrpc: '2.0',
 	id: 1,
@@ -113,6 +126,11 @@ export class LinearGymBackend implements SimulationBackend {
 
 	/** The world copies data that the Linear connection of the draft can read. */
 	readonly worldDependsOnDraftConnections = true;
+
+	/** Called when a test session expires or is replaced. Removes the world's Gym tenant. */
+	async closeWorld(worldId: string): Promise<void> {
+		await deleteTenant(worldId);
+	}
 
 	private readonly manifest = new LinearGymManifest();
 
@@ -174,11 +192,17 @@ export class LinearGymBackend implements SimulationBackend {
 				{ admin_token: randomUUID(), world },
 				{ authorization: `Bearer ${token}` },
 			);
-			const key = z
+			const credentials = z
 				.object({
 					n8n_credentials: z.object({ linearApi: z.object({ apiKey: z.string().min(1) }) }),
 				})
-				.parse(tenant).n8n_credentials.linearApi.apiKey;
+				.safeParse(tenant);
+			if (!credentials.success) {
+				// The tenant exists, but the world cannot open. Do not leave it behind.
+				await deleteTenant(worldId).catch(() => {});
+				throw unavailable();
+			}
+			const key = credentials.data.n8n_credentials.linearApi.apiKey;
 			const readTools = new Set(['get_issue']);
 			// Overlapping requests of one world each get their own record.
 			const requests = new AsyncLocalStorage<RequestTrace>();
