@@ -28,6 +28,7 @@ import { INSTANCE_AI_EMBED_SUBJECT_KEY, isEmbedSubject } from '../embed/instance
 import { useThread } from '../instanceAi.store';
 import AgentSection from './AgentSection.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
+import { toAnsweredQuestionsToolCall } from '@/features/ai/instanceAi/assistantAgent/assistantAnsweredQuestions';
 import ArtifactCard from './ArtifactCard.vue';
 import InstanceAiAppBlueprint from './InstanceAiAppBlueprint.vue';
 import InstanceAiMcpConnect from './InstanceAiMcpConnect.vue';
@@ -385,7 +386,7 @@ function handleOpenTestChat(tc: InstanceAiToolCallState, testChatId: string): vo
 
 					<!-- Answered questions (read-only after resolution) -->
 					<template v-else-if="block.type === 'questions'">
-						<AnsweredQuestions :tool-call="block.toolCall" />
+						<AnsweredQuestions :tool-call="toAnsweredQuestionsToolCall(block.toolCall)" />
 					</template>
 
 					<!-- A preference the assistant saved: edit or undo it from the latest turn -->
