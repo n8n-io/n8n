@@ -195,7 +195,7 @@ describe('a gateway that repeats what it was sent', () => {
 	const bodyFrom = async (
 		endpoint: EndpointCredential,
 		body: string,
-		requestHeaders?: Record<string, string>,
+		secretHeaders?: Record<string, string>,
 	) => {
 		const authFetch = createCustomModelEndpointAuthFetch(
 			ctx,
@@ -204,7 +204,8 @@ describe('a gateway that repeats what it was sent', () => {
 				endpoint,
 				egressFilter: allowAll,
 				baseFetch: routed(body),
-				requestHeaders,
+				requestHeaders: secretHeaders,
+				secretHeaders,
 			},
 		);
 		return await (await authFetch(BASE_URL)).text();
@@ -283,8 +284,36 @@ describe('a gateway that repeats what it was sent', () => {
 		expect(await bodyFrom(endpoint, body)).not.toContain(SECRET);
 	});
 
-	// The node's own per-request headers can hold a key, and the gateway can echo that too
-	it('keeps a per-request header value out of the error', async () => {
+	// n8n's own context headers carry the workflow name and the execution id, which are not
+	// secrets and would be cut out of any error that names them
+	it('leaves n8n context header values in the error', async () => {
+		const endpoint = endpointWith({ type: 'none' });
+		const body = JSON.stringify({ error: { message: 'run 1234 of My Workflow failed' } });
+		const authFetch = createCustomModelEndpointAuthFetch(
+			ctx,
+			{},
+			{
+				endpoint,
+				egressFilter: allowAll,
+				baseFetch: routed(body),
+				requestHeaders: { 'x-n8n-execution-id': '1234', 'x-n8n-workflow-name': 'My Workflow' },
+			},
+		);
+
+		expect(await (await authFetch(BASE_URL)).text()).toContain('run 1234 of My Workflow failed');
+	});
+
+	// Trimming the body first would take the no-break space with it, and the padded
+	// spelling is the one the gateway was sent
+	it('keeps a credential padded with a no-break space out of the error', async () => {
+		const padded = `\u00a0${SECRET}\u00a0`;
+		const endpoint = endpointWith({ type: 'none' }, { 'x-api-key': padded });
+
+		expect(await bodyFrom(endpoint, padded)).not.toContain(SECRET);
+	});
+
+	// A header the user typed can hold a key, and the gateway can echo that too
+	it('keeps a per-request header value the user typed out of the error', async () => {
 		const endpoint = endpointWith({ type: 'none' });
 		const body = JSON.stringify({ error: { message: `bad key ${SECRET}` } });
 

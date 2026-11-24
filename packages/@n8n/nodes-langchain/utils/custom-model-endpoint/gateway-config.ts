@@ -78,6 +78,8 @@ export function createCustomModelEndpointConfig(
 		credentialType: AcceptedCredential;
 		timeout?: number;
 		requestHeaders?: Record<string, string>;
+		/** The subset of `requestHeaders` the user typed, which can hold a key. */
+		secretHeaders?: Record<string, string>;
 	},
 ): { configuration: ClientOptions; endpoint: EndpointCredential } {
 	const endpoint = readEndpointCredential(options.credentialType, credential);
@@ -89,6 +91,7 @@ export function createCustomModelEndpointConfig(
 		egressFilter,
 		baseFetch: createEndpointBaseFetch(egressFilter, options.timeout),
 		requestHeaders: options.requestHeaders,
+		secretHeaders: options.secretHeaders,
 	});
 
 	return {

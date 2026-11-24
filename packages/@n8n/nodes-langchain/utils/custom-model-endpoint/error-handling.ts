@@ -343,7 +343,9 @@ function withoutContentLength(response: Response): Headers {
  * untouched error reaches the client exactly as the gateway sent it.
  */
 function filteredErrorBody(raw: string, secrets: string[]): string {
-	const filtered = withoutSecrets(raw, secrets);
+	// Filtered before trimming, because `String.trim` also takes a no-break space, which a
+	// credential can be padded with: trimming first would leave that spelling unmatched.
+	const filtered = withoutSecrets(raw, secrets).trim();
 	const parsed = parseJson(filtered);
 
 	if (isClientShaped(parsed)) {
@@ -392,7 +394,7 @@ export function wrapCustomModelEndpointErrorFetch(
 		// A status that carries no body cannot be rebuilt around one
 		if (response.body === null) return response;
 
-		const body = filteredErrorBody((await response.text()).trim(), known);
+		const body = filteredErrorBody(await response.text(), known);
 		const headers = withoutContentLength(response);
 		// Reshaping produced client-shaped JSON; saying so is a no-op when it already was
 		if (isClientShaped(parseJson(body))) headers.set('content-type', 'application/json');

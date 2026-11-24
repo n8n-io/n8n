@@ -62,6 +62,12 @@ export function createCustomModelEndpointAuthFetch(
 		egressFilter: NodeEgressFilter;
 		baseFetch: typeof fetch;
 		requestHeaders?: Record<string, string>;
+		/**
+		 * The subset of `requestHeaders` the user typed. n8n's own context headers carry the
+		 * workflow name and the execution id, which are not secrets and would be cut out of
+		 * any error that names them.
+		 */
+		secretHeaders?: Record<string, string>;
 	},
 ): typeof fetch {
 	const { endpoint, egressFilter, baseFetch, requestHeaders } = options;
@@ -96,11 +102,9 @@ export function createCustomModelEndpointAuthFetch(
 		});
 
 	const authFetch = createRefreshingAuthFetch({
-		// The node's own headers can hold a key too, and an answer is never filtered, so
-		// listing a routing label among them costs nothing
 		baseFetch: wrapCustomModelEndpointErrorFetch(baseFetch, [
 			...credentialSecrets(endpoint),
-			...Object.values(requestHeaders ?? {})
+			...Object.values(options.secretHeaders ?? {})
 				.map(asSent)
 				.filter((value) => value.length > 0),
 		]),
