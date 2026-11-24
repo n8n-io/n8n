@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/simulation/simulation-session.ts
+  s_c3fb44d7ad272c::t_27729690545871 326-330
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "80f073845985a1325f6a2bfd81eeb98afbfe9f1d",
+  "prompts": {},
+  "sessions": {
+    "s_c3fb44d7ad272c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20dd5-b561-70c9-800f-e58948d8542a",
+        "model": "gemini-4-neon"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
