@@ -249,12 +249,8 @@ export const extendTransform = (expression: string): { code: string } | undefine
 
 				// Skip if this node is part of a larger MemberExpression chain
 				// We only want to process the topmost expression containing [*]
-				const parentNode = path.parent?.node as types.namedTypes.Node | undefined;
-				if (
-					parentNode &&
-					parentNode.type === 'MemberExpression' &&
-					(parentNode as types.namedTypes.MemberExpression).object === node
-				) {
+				const parentNode: unknown = path.parent?.node;
+				if (types.namedTypes.MemberExpression.check(parentNode) && parentNode.object === node) {
 					// This node is the `object` of a parent MemberExpression,
 					// so we should skip it and let the parent handle the full chain
 					return;

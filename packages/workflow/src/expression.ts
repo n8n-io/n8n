@@ -556,7 +556,8 @@ export class Expression {
 				const resolved = resolveParameterValue(item as NodeParameterValueType, {});
 				// Check if item contains [*] syntax and resolved to an array (was expanded)
 				const itemUsesWildcard =
-					typeof item === 'object' && item !== null && containsWildcardSyntax(item);
+					(typeof item === 'string' && isExpression(item) && hasArrayWildcardSyntax(item)) ||
+					(typeof item === 'object' && item !== null && containsWildcardSyntax(item));
 				if (itemUsesWildcard && Array.isArray(resolved)) {
 					// Flatten expanded arrays from [*] expressions
 					returnData.push(...resolved);

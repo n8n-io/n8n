@@ -424,7 +424,6 @@ export const useExpressionEditor = ({
 			result.fullError = error;
 		}
 
-		console.log('result', result);
 		if (result.resolved === undefined) {
 			if (hasArrayWildcardSyntax(resolvable)) {
 				const validation = validateWildcardExpression(resolvable, target);
