@@ -422,7 +422,6 @@ describe('utils', () => {
 			now.mockImplementation(() => clock);
 			client.listResources
 				.mockImplementationOnce(async () => {
-					// Use most of the budget before the first page returns.
 					clock += 250_000;
 					return {
 						resources: [{ uri: 'mem://a', name: 'a' }],
@@ -446,8 +445,6 @@ describe('utils', () => {
 					{ cursor: undefined },
 					expect.objectContaining({ timeout: 60_000 }),
 				);
-				// Only 50s of the 5 minute budget is left, so the cap is lower
-				// than the 60s request timeout.
 				expect(client.listResources).toHaveBeenNthCalledWith(
 					2,
 					{ cursor: 'c1' },

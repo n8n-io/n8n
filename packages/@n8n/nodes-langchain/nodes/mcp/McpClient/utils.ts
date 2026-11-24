@@ -367,15 +367,6 @@ async function getAllPages<T>(
 	}
 }
 
-/**
- * Lists every resource, following pagination until the server stops or the page cap is hit.
- *
- * @param client - The connected MCP client.
- * @param options - Per-request options, including the abort signal and timeout.
- * @param node - The node that runs the operation, used for error reporting.
- * @param itemIndex - The index of the item that is running.
- * @returns The collected resources and whether the page cap truncated the result.
- */
 export async function getAllResources(
 	client: Client,
 	options: RequestOptions,
@@ -388,15 +379,6 @@ export async function getAllResources(
 	});
 }
 
-/**
- * Lists every resource template, following pagination until the server stops or the page cap is hit.
- *
- * @param client - The connected MCP client.
- * @param options - Per-request options, including the abort signal and timeout.
- * @param node - The node that runs the operation, used for error reporting.
- * @param itemIndex - The index of the item that is running.
- * @returns The collected resource templates and whether the page cap truncated the result.
- */
 export async function getAllResourceTemplates(
 	client: Client,
 	options: RequestOptions,
@@ -412,15 +394,6 @@ export async function getAllResourceTemplates(
 	});
 }
 
-/**
- * Lists every prompt, following pagination until the server stops or the page cap is hit.
- *
- * @param client - The connected MCP client.
- * @param options - Per-request options, including the abort signal and timeout.
- * @param node - The node that runs the operation, used for error reporting.
- * @param itemIndex - The index of the item that is running.
- * @returns The collected prompts and whether the page cap truncated the result.
- */
 export async function getAllPrompts(
 	client: Client,
 	options: RequestOptions,
@@ -434,16 +407,8 @@ export async function getAllPrompts(
 }
 
 /**
- * Turns only the JSON-RPC "method not found" error into a capability-named
- * NodeOperationError. Other errors pass through unchanged so the caller's
- * existing error handling still applies.
- *
- * @param node - The node that runs the operation, used for error reporting.
- * @param itemIndex - The index of the item that is running.
- * @param capability - The missing server capability, `resources` or `prompts`.
- * @param method - The MCP method that needs the capability, such as `resources/list`.
- * @param error - The error thrown by the MCP call.
- * @returns A capability-named NodeOperationError, or the original error.
+ * Turns a JSON-RPC "method not found" error into a capability-named error.
+ * Other errors pass through unchanged.
  */
 export function mapCapabilityError(
 	node: INode,
@@ -464,14 +429,8 @@ export function mapCapabilityError(
 }
 
 /**
- * Converts the fixedCollection value into the string map the MCP SDK expects.
- * Argument names are user input, so the accumulator uses a null prototype.
- * The value is never included in an error message.
- *
- * @param raw - The raw `promptArguments` parameter value.
- * @param node - The node that runs the operation, used for error reporting.
- * @param itemIndex - The index of the item that is running.
- * @returns A `Record<string, string>` when entries exist, otherwise `undefined`.
+ * Converts the `promptArguments` fixedCollection into the string map the MCP SDK expects.
+ * Argument values never appear in error messages.
  */
 export function buildPromptArguments(
 	raw: IDataObject,
