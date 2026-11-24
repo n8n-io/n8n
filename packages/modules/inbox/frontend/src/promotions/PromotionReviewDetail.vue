@@ -265,11 +265,7 @@ async function onApprove() {
 			{{ i18n.baseText(`inbox.promotionReview.detail.remoteError.${item.remoteError}`) }}
 		</N8nCallout>
 		<div :class="[$style.tabRow, $style.gutter]">
-			<N8nTabs
-				v-model="tab"
-				:options="tabOptions"
-				data-test-id="inbox-promotion-review-tab-bar"
-			/>
+			<N8nTabs v-model="tab" :options="tabOptions" data-test-id="inbox-promotion-review-tab-bar" />
 			<!-- In the tab row, like the Review button of workflow reviews. -->
 			<div v-if="item.state === 'open'" :class="$style.approve">
 				<!-- Visible text, not a tooltip: a disabled button cannot take keyboard focus. -->
