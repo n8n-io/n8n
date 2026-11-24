@@ -282,7 +282,7 @@ class LazyRuntimeFilesystem extends BaseFilesystem {
 		await traceSandboxOperation(
 			'write-files',
 			{
-				kind: 'batch',
+				kind: 'io',
 				inputs: { fileCount: files.length, bytes },
 			},
 			async () => {
