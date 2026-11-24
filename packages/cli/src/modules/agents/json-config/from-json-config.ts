@@ -65,7 +65,11 @@ const WEB_SEARCH_PLAN_INSTRUCTION =
 	'Before using web_search, choose the smallest search plan that can answer the user. Default to one broad, high-signal query. After each search, stop if the results already contain enough credible sources to answer. Use a second search only when the first result set is insufficient or the user asked for comparison across independent source categories. Do not fan out variations of the same query, and do not search for confirmation only. Use more than two searches only when the user explicitly asks for deep research, exhaustive coverage, or multiple independent topics.';
 
 export type FallbackWebSearchArgs = z.infer<typeof WEB_SEARCH_INPUT_SCHEMA>;
-export type FallbackWebSearchHandler = (args: FallbackWebSearchArgs) => Promise<unknown>;
+export type FallbackWebSearchHandler = (
+	args: FallbackWebSearchArgs,
+	/** Aborts when the run stops. */
+	options?: { signal?: AbortSignal },
+) => Promise<unknown>;
 
 const WEB_SEARCH_POLICY_INSTRUCTION =
 	'### Web search policy\n' +
@@ -133,6 +137,12 @@ export interface BuildFromJsonOptions {
 	 * or credential in the config (eval instrumentation only).
 	 */
 	fallbackWebSearch?: FallbackWebSearchHandler;
+	/**
+	 * Leave out the provider's own tools (native web search and configured
+	 * `providerTools`) and attach the fallback `web_search` tool instead, so
+	 * every call goes through a tool handler.
+	 */
+	disableProviderTools?: boolean;
 	/**
 	 * Attach MCP servers whose credential is still pending instead of skipping
 	 * them. Only safe when MCP traffic cannot reach the real server — set by
@@ -271,7 +281,9 @@ export async function buildFromJson(
 	agent.skills(configuredSkillSource);
 
 	// Provider tools
-	const providerTools = getNativeWebSearchProviderTools(config, { includeDefaultArgs: false });
+	const providerTools = options.disableProviderTools
+		? undefined
+		: getNativeWebSearchProviderTools(config, { includeDefaultArgs: false });
 	if (providerTools) {
 		for (const [name, args] of Object.entries(providerTools)) {
 			const resolved = resolveProviderToolName(name);
@@ -283,6 +295,7 @@ export async function buildFromJson(
 		options.credentialProvider,
 		options.webSearchFetch,
 		options.fallbackWebSearch,
+		options.disableProviderTools,
 	);
 	if (fallbackWebSearchTool) {
 		agent.tool(fallbackWebSearchTool);
@@ -362,18 +375,32 @@ function buildFallbackWebSearchTool(
 	credentialProvider: CredentialProvider & Partial<AiGatewaySearchCredentialResolver>,
 	webSearchFetch?: FetchFn,
 	fallbackWebSearch?: FallbackWebSearchHandler,
+	disableProviderTools = false,
 ): BuiltTool | null {
 	const webSearchConfig = config.config?.webSearch;
 
 	if (!webSearchConfig?.enabled) return null;
-	if (isNativeWebSearchRequested(config) && hasNativeWebSearchProvider(config.model)) return null;
+	if (
+		!disableProviderTools &&
+		isNativeWebSearchRequested(config) &&
+		hasNativeWebSearchProvider(config.model)
+	) {
+		return null;
+	}
+	// Provider tools are disabled so that every search goes through a handler the caller owns.
+	// Without that handler, the live search below would run for real, so there is no web search.
+	if (disableProviderTools && !fallbackWebSearch) return null;
 	if (fallbackWebSearch) {
 		return {
 			name: WEB_SEARCH_TOOL_NAME,
 			description: 'Search the web for current information.',
 			systemInstruction: WEB_SEARCH_PLAN_INSTRUCTION,
 			inputSchema: WEB_SEARCH_INPUT_SCHEMA,
-			handler: async (input) => await fallbackWebSearch(WEB_SEARCH_INPUT_SCHEMA.parse(input)),
+			handler: async (input, ctx) =>
+				await fallbackWebSearch(
+					WEB_SEARCH_INPUT_SCHEMA.parse(input),
+					ctx?.abortSignal ? { signal: ctx.abortSignal } : undefined,
+				),
 		};
 	}
 	if (webSearchConfig.provider !== 'brave' && webSearchConfig.provider !== 'searxng') {
@@ -509,6 +536,8 @@ async function resolveToolRef(
 				systemInstruction: descriptor.systemInstruction ?? undefined,
 				inputSchema: descriptor.inputSchema ?? undefined,
 				outputTrust: descriptor.outputTrust === 'untrusted' ? 'untrusted' : undefined,
+				// Lets a test run block custom code even when its name matches a built-in tool.
+				metadata: { customTool: true },
 				handler: async (input, ctx) => {
 					return await options.toolExecutor.executeTool(descriptor.name, input, {
 						resumeData: 'resumeData' in ctx ? ctx.resumeData : undefined,
