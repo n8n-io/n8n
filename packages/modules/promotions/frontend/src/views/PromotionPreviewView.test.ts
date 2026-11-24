@@ -836,6 +836,7 @@ describe('PromotionPreviewView', () => {
 		expect(api.applyProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w2', 'w4'],
 			folderIds: [],
+			credentialIds: [],
 			expectedSource,
 			expectedPreviewRevision: REVISION,
 		});
@@ -898,6 +899,7 @@ describe('PromotionPreviewView', () => {
 		expect(api.applyProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w3', 'w4'],
 			folderIds: [],
+			credentialIds: [],
 			expectedSource,
 			expectedPreviewRevision: REVISION,
 		});
@@ -913,6 +915,7 @@ describe('PromotionPreviewView', () => {
 		expect(api.continueApplyProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
 			workflowIds: ['w1', 'w3', 'w4'],
 			folderIds: [],
+			credentialIds: [],
 			expectedSource,
 			expectedPreviewRevision: REVISION,
 			confirmDestructiveChanges: true,

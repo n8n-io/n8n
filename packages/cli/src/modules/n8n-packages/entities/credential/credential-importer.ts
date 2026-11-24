@@ -35,6 +35,7 @@ import type {
 	CredentialResolutionFailure,
 	CredentialUpdateCandidate,
 	PlacedCredentialRequirement,
+	SelectedCredentialPlan,
 } from './credential.types';
 import type { ImportBindingMap, ImportContext } from '../../n8n-packages.types';
 import { mergeRequirementConsumers } from '../../spec/requirement-consumers';
@@ -75,15 +76,81 @@ export class CredentialImporter {
 			]),
 		);
 
+		const { selected, forbidden: selectedForbidden } = await this.planSelected(context, request);
 		if (request.conflictPolicy === 'keep-existing') {
-			return { ...resolution, stubIds, candidates: [], updates: [], forbidden: [] };
+			return {
+				...resolution,
+				stubIds,
+				candidates: [],
+				updates: [],
+				forbidden: selectedForbidden,
+				selected,
+			};
 		}
 
+		const planned = await this.planUpdates(context.user, request, resolution);
 		return {
 			...resolution,
 			stubIds,
-			...(await this.planUpdates(context.user, request, resolution)),
+			...planned,
+			forbidden: [...planned.forbidden, ...selectedForbidden],
+			selected,
 		};
+	}
+
+	/**
+	 * Plans the credentials that a selection names and no workflow requires. A credential is
+	 * created or renamed in the project that owns it, by name and type only. The package values
+	 * are never read here, so the write cannot change a stored secret. Reads and writes nothing else.
+	 */
+	private async planSelected(
+		context: ImportContext,
+		request: CredentialBindingRequest,
+	): Promise<{ selected: SelectedCredentialPlan; forbidden: CredentialMatch[] }> {
+		const selected: SelectedCredentialPlan = {
+			creations: [],
+			renames: [],
+			ownedElsewhere: [],
+			unchanged: [],
+		};
+		const forbidden: CredentialMatch[] = [];
+		const requested = request.selectedCredentials ?? [];
+		if (requested.length === 0) return { selected, forbidden };
+
+		const destinations = new Map(
+			(
+				await Promise.all(
+					requested.map(
+						async ({ id }) =>
+							[
+								id,
+								await this.credentialsFinder.findById(id, { includeSharedProject: true }),
+							] as const,
+					),
+				)
+			).filter((entry): entry is [string, CredentialsEntity] => entry[1] !== null),
+		);
+		const updatable = await this.credentialsFinder.findCredentialIdsWithScopeForUser(
+			[...destinations.keys()],
+			context.user,
+			['credential:update'],
+		);
+
+		for (const { id, name, type } of requested) {
+			const destination = destinations.get(id);
+			if (!destination) {
+				selected.creations.push({ sourceId: id, name, type });
+			} else if (credentialOwnerProjectId(destination) !== context.projectId) {
+				selected.ownedElsewhere.push({ id, name: destination.name });
+			} else if (destination.name === name) {
+				selected.unchanged.push({ id, name });
+			} else if (updatable.has(id)) {
+				selected.renames.push({ id, name, previousName: destination.name });
+			} else {
+				forbidden.push({ sourceId: id, targetId: id, targetName: destination.name, usedBy: [] });
+			}
+		}
+		return { selected, forbidden };
 	}
 
 	/**
@@ -201,11 +268,11 @@ export class CredentialImporter {
 	async assertCanCreate(
 		context: ImportContext,
 		request: CredentialBindingRequest,
-		resolution: CredentialResolution,
+		resolution: CredentialImportPlan,
 		projectPendingCreation: boolean,
 	): Promise<void> {
 		const toCreate = credentialsToStub(request.missingMode, resolution);
-		if (toCreate.length === 0) return;
+		if (toCreate.length === 0 && resolution.selected.creations.length === 0) return;
 
 		// The import creates this project and makes the user its admin, so it has no scopes to look up yet.
 		if (!projectPendingCreation) {
@@ -314,34 +381,70 @@ export class CredentialImporter {
 	): Promise<string[]> {
 		const updated: string[] = [];
 
-		for (const [targetId, group] of plannedCredentialUpdates(request.conflictPolicy, [plan])) {
-			const prepared = await this.prepareUpdate(context.user, group[0]);
-			if (prepared === null) continue;
-
-			// Like the credential UI route. `createEncryptedData` sets only the id, name, type and
-			// data, and the update writes only the set columns: sharing, `isGlobal` and
-			// `isResolvable` stay. The description changes only when the package decides it.
-			const encrypted = await this.credentialsService.createEncryptedData({
-				id: targetId,
-				name: prepared.name,
-				type: prepared.type,
-				data: prepared.data,
-			});
-			if (prepared.description !== undefined) encrypted.description = prepared.description;
-			const saved = await this.credentialsService.update(
-				targetId,
-				encrypted,
-				{ kind: 'user', user: context.user },
-				prepared.data,
-				{ user: context.user },
-			);
-			if (saved === null) throw credentialNotFound(group[0]);
-
-			await this.emitCredentialUpdated(context.user, saved, prepared.data, context.ctx);
-			updated.push(...group.map(({ sourceId }) => sourceId));
+		for (const [, group] of plannedCredentialUpdates(request.conflictPolicy, [plan])) {
+			if (await this.writeUpdate(context, group[0])) {
+				updated.push(...group.map(({ sourceId }) => sourceId));
+			}
 		}
 
 		return updated;
+	}
+
+	/** Writes one update like the credential UI. Returns false when the credential already holds it. */
+	private async writeUpdate(
+		context: ImportContext,
+		update: CredentialUpdateCandidate,
+	): Promise<boolean> {
+		const prepared = await this.prepareUpdate(context.user, update);
+		if (prepared === null) return false;
+
+		// Like the credential UI route. `createEncryptedData` sets only the id, name, type and
+		// data, and the update writes only the set columns: sharing, `isGlobal` and
+		// `isResolvable` stay. The description changes only when the package decides it.
+		const encrypted = await this.credentialsService.createEncryptedData({
+			id: update.targetId,
+			name: prepared.name,
+			type: prepared.type,
+			data: prepared.data,
+		});
+		if (prepared.description !== undefined) encrypted.description = prepared.description;
+		const saved = await this.credentialsService.update(
+			update.targetId,
+			encrypted,
+			{ kind: 'user', user: context.user },
+			prepared.data,
+			{ user: context.user },
+		);
+		if (saved === null) throw credentialNotFound(update);
+
+		await this.emitCredentialUpdated(context.user, saved, prepared.data, context.ctx);
+		return true;
+	}
+
+	/**
+	 * Writes the selected credentials that no workflow requires. A missing one is created empty
+	 * in the project. A renamed one keeps its stored values, because the write carries no package
+	 * data. Run after {@link planSelected} found no issue.
+	 */
+	async applySelected(context: ImportContext, plan: CredentialImportPlan): Promise<void> {
+		for (const { sourceId, name, type } of plan.selected.creations) {
+			await this.credentialsService.createStubCredential(
+				{ id: sourceId, name, type, projectId: context.projectId },
+				context.user,
+			);
+		}
+		for (const { id, name, previousName } of plan.selected.renames) {
+			await this.writeUpdate(context, {
+				sourceId: id,
+				targetId: id,
+				targetName: previousName,
+				usedBy: [],
+				// Unused by an update: it keeps the stored type and owner.
+				targetType: '',
+				ownerProjectId: context.projectId,
+				name,
+			});
+		}
 	}
 
 	/**

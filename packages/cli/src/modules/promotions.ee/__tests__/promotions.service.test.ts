@@ -3163,6 +3163,46 @@ describe('PromotionsService', () => {
 				n8nPackagesService.planPackageSelection.mockResolvedValue(plan);
 			});
 
+			it('selects the credentials that the branch holds under the project', async () => {
+				inventoryReader.read.mockResolvedValue({
+					...inventory,
+					credentials: [
+						{
+							path: 'projects/alpha/credentials/c1/credential.json',
+							projectId: 'p1',
+							credential: { id: 'c1', name: 'Stripe', type: 'stripeApi' },
+						},
+					],
+				});
+
+				await service.applyProjectSelection('p1', actor, { credentialIds: ['c1'] }, 'other');
+
+				expect(n8nPackagesService.planPackageSelection).toHaveBeenCalledWith(
+					expect.anything(),
+					expect.any(GitCommitPackageReader),
+					expect.objectContaining({ selectedCredentialIds: ['c1'] }),
+					'enforce',
+				);
+			});
+
+			it('rejects a credential that the branch does not hold under the project', async () => {
+				inventoryReader.read.mockResolvedValue({
+					...inventory,
+					credentials: [
+						{
+							path: 'projects/ops/credentials/c2/credential.json',
+							projectId: 'p2',
+							credential: { id: 'c2', name: 'Other', type: 'stripeApi' },
+						},
+					],
+				});
+
+				await expect(
+					service.applyProjectSelection('p1', actor, { credentialIds: ['c2'] }, 'other'),
+				).rejects.toThrow('The following credentials are not selectable in this project: c2');
+				expect(n8nPackagesService.planPackageSelection).not.toHaveBeenCalled();
+			});
+
 			it.each([
 				{ workflowIds: ['w1'], selectedWorkflowIds: ['w1'], deletedWorkflowIds: [] },
 				{ workflowIds: ['deleted'], selectedWorkflowIds: [], deletedWorkflowIds: ['deleted'] },
@@ -3185,6 +3225,7 @@ describe('PromotionsService', () => {
 					selectedWorkflowIds: selection.selectedWorkflowIds,
 					deletedWorkflowIds: selection.deletedWorkflowIds,
 					selectedFolderIds: [],
+					selectedCredentialIds: [],
 				};
 				expect(n8nPackagesService.planPackageSelection).toHaveBeenCalledWith(
 					{
@@ -3402,6 +3443,7 @@ describe('PromotionsService', () => {
 									selectedWorkflowIds: ['w1'],
 									deletedWorkflowIds: ['deleted'],
 									selectedFolderIds: [],
+									selectedCredentialIds: [],
 								},
 								noMoves,
 							);
@@ -3435,6 +3477,7 @@ describe('PromotionsService', () => {
 								selectedWorkflowIds: ['w1'],
 								deletedWorkflowIds: ['deleted'],
 								selectedFolderIds: [],
+								selectedCredentialIds: [],
 							},
 							'enforce',
 						);

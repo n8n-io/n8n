@@ -37,8 +37,9 @@ export type PreviewSide = {
 	blobByPath: ReadonlyMap<string, string>;
 	/**
 	 * Lists the credentials that the project holds in its own folder, even when no workflow uses
-	 * them. The file decides a change, like any other resource. A package file holds no secret
-	 * value, so a secret that changes is not a change. An expression, the name and the type are.
+	 * them. With `credentialFields`, it compares them by name and type, never by value. The caller
+	 * gives the name and type of each credential file there, by package path. Apply sets it only
+	 * on the branch side, and the import plan decides what changes.
 	 */
 	ownedCredentials?: boolean;
 	/**
@@ -46,7 +47,24 @@ export type PreviewSide = {
 	 * list, so the user cannot see its name or type. Without it, every owned credential is listed.
 	 */
 	visibleCredentialIds?: ReadonlySet<string>;
+	credentialFields?: ReadonlyMap<string, CredentialFields>;
 };
+
+export type CredentialFields = { name: string; type: string };
+
+/** Reads the name and type of credential files. A file that is not valid is left out. */
+export function readCredentialFields(
+	contents: ReadonlyMap<string, string>,
+): Map<string, CredentialFields> {
+	const fields = new Map<string, CredentialFields>();
+	for (const [path, raw] of contents) {
+		const parsed = parseBranchJson<{ name?: unknown; type?: unknown }>(raw);
+		if (typeof parsed?.name === 'string' && typeof parsed.type === 'string') {
+			fields.set(path, { name: parsed.name, type: parsed.type });
+		}
+	}
+	return fields;
+}
 
 /** A resource as one side of the comparison holds it. */
 export type SideResource = {
@@ -61,6 +79,11 @@ export type SideResource = {
 	blobSha: string | null;
 	/** Only a workflow entry carries the flag; every other resource is active. */
 	isArchived: boolean;
+	/**
+	 * What decides whether the resource changed, when it is not the file content: for a credential
+	 * the name and the type, so a new value is not a change. Without it, the blob SHA decides.
+	 */
+	contentKey?: string;
 };
 
 export type SideIndex = ReadonlyMap<string, SideResource>;
@@ -147,6 +170,9 @@ export function indexSide(side: PreviewSide, projectId: string): Map<string, Sid
 			path,
 			blobSha: side.blobByPath.get(path) ?? null,
 			isArchived: 'isArchived' in entry && entry.isArchived,
+			...(collection === 'credentials' && inProject(entry) && side.credentialFields?.has(path)
+				? { contentKey: JSON.stringify(side.credentialFields.get(path)) }
+				: {}),
 		});
 	};
 
@@ -320,15 +346,23 @@ function applyOperationRules(
  * credential that the project owns and that the operation adds or changes. A credential outside the
  * folder of its owner project has no parent here, and only its owner project can select it.
  */
-function isSelectable(
-	{ type, change, parentKey }: PromotionResource,
-	direction: PromotionDirection,
-): boolean {
+function isSelectable({ type, change, parentKey }: PromotionResource): boolean {
 	if (type === 'workflow') return true;
 	const changed = change === 'added' || change === 'modified';
 	// `parentKey` is set only when the credential sits in the folder of a project or a folder in it.
-	if (type === 'credential') return direction === 'promote' && changed && parentKey !== null;
+	if (type === 'credential') return changed && parentKey !== null;
 	return (type === 'project' || type === 'folder') && changed;
+}
+
+/**
+ * Compares the name and type of a credential, and the file otherwise. Both sides need a
+ * `contentKey`. When one side has none, its file did not parse, so the file content decides.
+ */
+function contentDiffers(before: SideResource, after: SideResource): boolean {
+	if (before.contentKey !== undefined && after.contentKey !== undefined) {
+		return before.contentKey !== after.contentKey;
+	}
+	return before.blobSha !== after.blobSha;
 }
 
 function compareResource(
@@ -339,7 +373,7 @@ function compareResource(
 	let change: PromotionResource['change'] = 'unchanged';
 	if (!before) change = 'added';
 	else if (!after) change = 'deleted';
-	else if (before.blobSha !== after.blobSha) {
+	else if (contentDiffers(before, after)) {
 		change = after.isArchived ? 'archived' : 'modified';
 	}
 	// The files hold no project, so a move between two project roots keeps the same file.
@@ -470,12 +504,7 @@ export function buildPreview({
 		const compared = compareResource(current, before, after);
 		const resource = operation ? applyOperationRules(compared, { ...operation, before }) : compared;
 		if (resource)
-			all.set(
-				key,
-				operation
-					? { ...resource, selectable: isSelectable(resource, operation.direction) }
-					: resource,
-			);
+			all.set(key, operation ? { ...resource, selectable: isSelectable(resource) } : resource);
 	}
 
 	const { links, missingWorkflows } = dependencyLinks(desired, desiredIndex, projectIds);
@@ -555,14 +584,11 @@ export function canonicalJson(value: unknown): string {
  * A hash of what a preview shows, so an operation can stop when it changed. It leaves out
  * `changes` and `dependencies`: they come from the same data, and `changes` holds a save time.
  * It also leaves out the commit, because a commit for another project changes nothing here.
- * A Promote hashes its branch setting, because its confirmation says where the push goes.
- * The environment name and provider type only label the preview, so they stay out.
  */
 export function previewRevision(shown: {
 	resources: PromotionResource[];
 	check?: PromotionPreviewCheck;
 	source?: PromotionPreview['source'];
-	createBranchOnPromotion?: boolean;
 	blocker?: PromotionBlocker;
 }): string {
 	return createHash('sha256')
