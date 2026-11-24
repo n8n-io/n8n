@@ -330,24 +330,15 @@ async function remove(environment: PromotionEnvironment) {
 	cursor: pointer;
 }
 
-// The title and the button share one grid cell, so the button centers in the whole column
-// instead of in the space below the title. The minimum height keeps the title clear of it.
+// The minimum height gives the empty column room, so the button sits in the middle of the
+// space below the title.
 .emptyColumn {
-	display: grid;
-	grid-template-areas: 'stack';
 	min-height: calc(var(--spacing--4xl) + var(--spacing--sm));
-
-	> * {
-		grid-area: stack;
-	}
-
-	> :first-child {
-		align-self: start;
-	}
 }
 
 .empty {
 	display: flex;
+	flex: 1;
 	align-items: center;
 	justify-content: center;
 	padding: var(--spacing--lg) var(--spacing--sm);
