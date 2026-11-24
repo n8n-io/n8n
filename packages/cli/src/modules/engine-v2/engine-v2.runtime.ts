@@ -139,6 +139,7 @@ export class EngineV2Runtime {
 
 		const stopping = new AbortController();
 		this.stopping = stopping;
+		const runsApi = roles?.includes('api') ?? true;
 
 		this.engine = createEngineRuntime({
 			roles,
@@ -146,7 +147,9 @@ export class EngineV2Runtime {
 			// TODO(CAT-2909): placeholder policy — every execution is admitted and no
 			// limits are applied.
 			admittance: new AllowAllAdmittance(),
-			identityVerifier: new SharedSecretIdentityVerifier(this.engineConfig.authSecret),
+			identityVerifier: runsApi
+				? new SharedSecretIdentityVerifier(this.engineConfig.authSecret)
+				: undefined,
 			logger: this.logger,
 			responseSender,
 			resumeSecret: this.engineConfig.resumeSecret,

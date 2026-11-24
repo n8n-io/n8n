@@ -193,25 +193,59 @@ describe('Engine', () => {
 			}
 		});
 
-		it('refuses to boot without the shared secret', async () => {
-			engineConfig.authSecret = '';
+		it.each([
+			{ flag: undefined, role: 'api' },
+			{ flag: 'api', role: 'api' },
+			{ flag: 'step-worker', role: 'step-worker' },
+			{ flag: 'orchestrator,step-worker', role: 'step-worker' },
+		])(
+			'refuses to boot --roles=$flag without the shared secret, naming the $role role',
+			async ({ flag, role }) => {
+				engineConfig.authSecret = '';
 
-			await expect(createEngine().init()).rejects.toThrow('N8N_ENGINE_AUTH_SECRET');
-		});
+				await expect(createEngine({ roles: flag }).init()).rejects.toThrow(
+					`The ${role} role needs N8N_ENGINE_AUTH_SECRET`,
+				);
+			},
+		);
 
-		it('refuses to boot without the control plane address', async () => {
-			engineConfig.controlPlaneBaseUrl = '';
+		it.each([undefined, 'step-worker', 'api,step-worker'])(
+			'refuses to boot --roles=%s without the control plane address',
+			async (flag) => {
+				engineConfig.controlPlaneBaseUrl = '';
 
-			await expect(createEngine().init()).rejects.toThrow('N8N_ENGINE_CONTROL_PLANE_BASE_URL');
-		});
+				await expect(createEngine({ roles: flag }).init()).rejects.toThrow(
+					'The step-worker role needs N8N_ENGINE_CONTROL_PLANE_BASE_URL',
+				);
+			},
+		);
 
-		it('refuses to boot over plain HTTP without the opt-out', async () => {
-			engineConfig.tlsInsecureAllowPlainHttp = false;
+		it.each([
+			{ flag: 'orchestrator', withSecret: false },
+			{ flag: 'api', withSecret: true },
+			{ flag: 'api,orchestrator', withSecret: true },
+		])(
+			'boots --roles=$flag without the control plane address (shared secret set: $withSecret)',
+			async ({ flag, withSecret }) => {
+				if (!withSecret) engineConfig.authSecret = '';
+				engineConfig.controlPlaneBaseUrl = '';
 
-			await expect(createEngine().init()).rejects.toThrow(
-				'N8N_ENGINE_TLS_INSECURE_ALLOW_PLAIN_HTTP',
-			);
-		});
+				await createEngine({ roles: flag }).init();
+
+				expect(runtime.init).toHaveBeenCalled();
+			},
+		);
+
+		it.each(['api', 'orchestrator', 'step-worker'])(
+			'refuses to boot --roles=%s over plain HTTP without the opt-out',
+			async (flag) => {
+				engineConfig.tlsInsecureAllowPlainHttp = false;
+
+				await expect(createEngine({ roles: flag }).init()).rejects.toThrow(
+					'N8N_ENGINE_TLS_INSECURE_ALLOW_PLAIN_HTTP',
+				);
+			},
+		);
 
 		it('refuses an http control plane address when TLS is on', async () => {
 			useTls(true);
@@ -219,6 +253,14 @@ describe('Engine', () => {
 			await expect(createEngine().init()).rejects.toThrow(
 				'N8N_ENGINE_CONTROL_PLANE_BASE_URL must start with https://',
 			);
+		});
+
+		it('ignores an http control plane address when TLS is on and no role dials it', async () => {
+			useTls(true);
+
+			await createEngine({ roles: 'api,orchestrator' }).init();
+
+			expect(runtime.init).toHaveBeenCalled();
 		});
 
 		it('never opens, migrates or reads the control plane database', async () => {

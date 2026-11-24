@@ -2,7 +2,7 @@ import { AzureBlobConfig, ObjectStoreConfig } from '@n8n/blob-storage';
 import { EngineConfig } from '@n8n/config';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import type { ExecutionChannelPublisher, RedisWorkQueues } from '@n8n/engine';
+import type { EngineRole, ExecutionChannelPublisher, RedisWorkQueues } from '@n8n/engine';
 import { BinaryDataConfig, BinaryDataService, ErrorReporter } from 'n8n-core';
 import { Expression } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
@@ -54,14 +54,15 @@ export class Engine extends BaseCommand<z.infer<typeof flagsSchema>> {
 		const { parseEngineRoles } = await import('@/modules/engine-v2/engine-roles.js');
 		const roles = parseEngineRoles(this.flags.roles, engineConfig.roles);
 		assertControlPlaneIsolated(process.env);
-		assertRemoteControlPlane(engineConfig);
-		const { EngineMtls } = await import('@/modules/engine-v2/engine-mtls.js');
-		Container.get(EngineMtls).assertSecureTransport({
-			N8N_ENGINE_CONTROL_PLANE_BASE_URL: engineConfig.controlPlaneBaseUrl,
-		});
-
-		// Only the step worker runs nodes, so only it evaluates expressions and Code nodes.
+		assertRoleSettings(engineConfig, roles);
+		// Only the step worker runs nodes, so only it evaluates expressions and Code nodes,
+		// and only it dials the control plane.
 		const runsSteps = roles.includes('step-worker');
+		const { EngineMtls } = await import('@/modules/engine-v2/engine-mtls.js');
+		Container.get(EngineMtls).assertSecureTransport(
+			runsSteps ? { N8N_ENGINE_CONTROL_PLANE_BASE_URL: engineConfig.controlPlaneBaseUrl } : {},
+		);
+
 		this.needsExpressionEngine = runsSteps;
 		// TODO(CET-332): remove once Code nodes run on the sandbox service.
 		this.needsCodeExecution = runsSteps;
@@ -212,16 +213,18 @@ function assertControlPlaneIsolated(env: NodeJS.ProcessEnv): void {
 	}
 }
 
-function assertRemoteControlPlane(config: EngineConfig): void {
-	if (!config.authSecret) {
+/** The api role verifies the mains' tokens, and the step worker signs its control plane requests. */
+function assertRoleSettings(config: EngineConfig, roles: readonly EngineRole[]): void {
+	const secretUser = roles.find((role) => role === 'api' || role === 'step-worker');
+	if (secretUser && !config.authSecret) {
 		throw new UserError(
-			'The engine process needs N8N_ENGINE_AUTH_SECRET. The control plane runs elsewhere, so nothing here can generate the shared secret.',
+			`The ${secretUser} role needs N8N_ENGINE_AUTH_SECRET. The control plane runs elsewhere, so nothing here can generate the shared secret.`,
 		);
 	}
 
-	if (!config.controlPlaneBaseUrl) {
+	if (roles.includes('step-worker') && !config.controlPlaneBaseUrl) {
 		throw new UserError(
-			'The engine process needs N8N_ENGINE_CONTROL_PLANE_BASE_URL. The default points at this process, which does not run the control plane.',
+			'The step-worker role needs N8N_ENGINE_CONTROL_PLANE_BASE_URL to resolve credentials, sub-workflows and data tables. The default points at this process, which does not run the control plane.',
 		);
 	}
 }
