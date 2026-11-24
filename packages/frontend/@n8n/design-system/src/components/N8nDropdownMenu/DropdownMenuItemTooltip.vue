@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Primitive } from 'reka-ui';
+
 import N8nTooltip from '../N8nTooltip';
 
 defineOptions({ name: 'N8nDropdownMenuItemTooltip' });
@@ -14,5 +16,7 @@ defineProps<{ content?: string }>();
 	<N8nTooltip v-if="content" :content="content" placement="left" :offset="10" as-child>
 		<slot />
 	</N8nTooltip>
-	<slot v-else />
+	<Primitive v-else as-child>
+		<slot />
+	</Primitive>
 </template>

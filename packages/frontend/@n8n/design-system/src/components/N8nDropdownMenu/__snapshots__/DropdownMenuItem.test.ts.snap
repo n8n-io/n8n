@@ -205,7 +205,6 @@ exports[`N8nDropdownMenuItem > rendering > should render separator when divided 
   </div>
   
   <!-- Regular item without children -->
-  
   <div
     class="item"
     data-reka-collection-item=""
@@ -234,7 +233,6 @@ exports[`N8nDropdownMenuItem > rendering > should render separator when divided 
     
     
   </div>
-  
   
 </div>
 `;
