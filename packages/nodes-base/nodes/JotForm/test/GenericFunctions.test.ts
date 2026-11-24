@@ -70,7 +70,7 @@ describe('jotformApiRequest', () => {
 
 	it.each([
 		['subdomain.jotform.com/API', requestPath`/user`, 'https://subdomain.jotform.com/API/user'],
-		['subdomain.jotform.com/API/', requestPath`user`, 'https://subdomain.jotform.com/API/user'],
+		['subdomain.jotform.com/API/', requestPath`/user`, 'https://subdomain.jotform.com/API/user'],
 		[
 			'https://subdomain.jotform.com/API',
 			requestPath`/user`,
@@ -79,8 +79,17 @@ describe('jotformApiRequest', () => {
 		['subdomain.jotform.com//API', requestPath`/user`, 'https://subdomain.jotform.com/API/user'],
 		['x.jotform.com/API/v2', requestPath`/user`, 'https://x.jotform.com/API/v2/user'],
 		['localhost:8080/API', requestPath`/user`, 'https://localhost:8080/API/user'],
+		['host:8080/API', requestPath`/user`, 'https://host:8080/API/user'],
 	])('should build the custom domain "%s"', async (customApiDomain, resource, expected) => {
 		expect(await requestUri({ apiDomain: 'custom', customApiDomain }, resource)).toBe(expected);
+	});
+
+	it('should issue the request when no domain allowlist is configured', async () => {
+		const context = buildContext({ apiDomain: 'api.jotform.com' });
+
+		await jotformApiRequest.call(context, 'GET', requestPath`/user`);
+
+		expect(context.helpers.request).toHaveBeenCalledTimes(1);
 	});
 
 	it.each([
@@ -90,8 +99,14 @@ describe('jotformApiRequest', () => {
 		['/API'],
 		['subdomain.jotform.com/API?x=1'],
 		['subdomain.jotform.com/API#x'],
-		['subdomain.jotform.com@attacker.example'],
+		['subdomain.jotform.com@other.example'],
 		['ftp://enterprise.jotform.com/API'],
+		['evil.example\\.jotform.com'],
+		['%65vil.com'],
+		['[::1]'],
+		['host with space'],
+		['héllo.com'],
+		['host:abc'],
 	])('should reject the invalid custom domain "%s"', async (customApiDomain) => {
 		const context = buildContext({ apiDomain: 'custom', customApiDomain });
 
@@ -122,9 +137,9 @@ describe('getJotFormBaseUrl', () => {
 	});
 
 	it.each([
-		'user:password@attacker.example',
-		'user:password@attacker.example?x=1',
-		'ftp://user:password@attacker.example/API',
+		'user:password@other.example',
+		'user:password@other.example?x=1',
+		'ftp://user:password@other.example/API',
 	])('should not echo embedded credentials for "%s"', (customApiDomain) => {
 		const build = () => getJotFormBaseUrl({ apiDomain: 'custom', customApiDomain }, testNode);
 

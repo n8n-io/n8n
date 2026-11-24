@@ -58,12 +58,13 @@ export class JotFormApi implements ICredentialType {
 	];
 
 	// Declarative credential tests cannot call `getJotFormBaseUrl`, so this mirrors
-	// its validation. An invalid domain returns an empty base URL, so the request
-	// fails instead of sending the API key to an unintended host.
+	// its normalization and validation: it accepts `host[:port]` with an optional
+	// path. An invalid domain returns an empty base URL, so the credential test
+	// fails instead of issuing the request.
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL:
-				'={{ (() => { const isCustom = $credentials.apiDomain === "custom"; const selected = String((isCustom ? $credentials.customApiDomain : $credentials.apiDomain) || "").trim(); const raw = !isCustom && selected === "" ? "api.jotform.com" : selected; const scheme = new RegExp("^([a-z][a-z0-9+.-]*)://", "i").exec(raw); const domain = raw.replace(new RegExp("^https?://", "i"), "").replace(new RegExp("/{2,}", "g"), "/").replace(new RegExp("/+$"), ""); if ((scheme && !new RegExp("^https?$", "i").test(scheme[1])) || !domain || new RegExp("[@?#]").test(domain)) return ""; return "https://" + domain; })() }}',
+				'={{ (() => { const isCustom = $credentials.apiDomain === "custom"; const selected = String((isCustom ? $credentials.customApiDomain : $credentials.apiDomain) || "").trim(); const raw = !isCustom && selected === "" ? "api.jotform.com" : selected; const scheme = new RegExp("^([a-z][a-z0-9+.-]*)://", "i").exec(raw); const domain = raw.replace(new RegExp("^https?://", "i"), "").replace(new RegExp("/{2,}", "g"), "/").replace(new RegExp("/+$"), ""); if ((scheme && !new RegExp("^https?$", "i").test(scheme[1])) || !domain || new RegExp("[@?#]").test(domain)) return ""; const host = domain.split("/")[0]; if (!new RegExp("^[A-Za-z0-9.-]+(:[0-9]{1,5})?$").test(host)) return ""; return "https://" + domain; })() }}',
 			url: '/user',
 			method: 'GET',
 			headers: {

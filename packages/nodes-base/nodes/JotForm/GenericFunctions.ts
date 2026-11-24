@@ -11,12 +11,19 @@ import type {
 	RequestPath,
 	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
+import {
+	assertUrlAllowed,
+	getCredentialAllowedDomains,
+	NodeApiError,
+	NodeOperationError,
+	requestUrl,
+} from 'n8n-workflow';
 
 const DEFAULT_API_DOMAIN = 'api.jotform.com';
 
-// Guard the custom domain before it reaches requestUrl's base-URL slot: a
-// non-http scheme or userinfo (`host@attacker`) changes the request destination.
+// Keep the custom domain to a bare `host[:port]` with an optional path before it
+// reaches requestUrl's base-URL slot. The resolver rejects a non-http scheme and
+// userinfo / query / fragment, so the request cannot be redirected.
 const SCHEME = /^([a-z][a-z0-9+.-]*):\/\//i;
 const HOST = /^[A-Za-z0-9.-]+(?::\d{1,5})?$/;
 
@@ -107,7 +114,7 @@ export function getJotFormBaseUrl(
 		);
 	}
 
-	// Userinfo makes everything after "@" the request host, which would leak the key.
+	// Reject userinfo: everything after "@" would otherwise become the request host.
 	if (domain.includes('@')) {
 		throw new NodeOperationError(
 			node,
@@ -127,14 +134,6 @@ export function getJotFormBaseUrl(
 	return `https://${host}${basePath}`;
 }
 
-/**
- * Ensure the resource is rooted. Callers always pass rooted paths; this guards a
- * future caller, because RequestPath does not enforce rootedness.
- */
-function toRootedResourcePath(resource: RequestPath): RequestPath {
-	return resource.value.startsWith('/') ? resource : requestPath`/${resource}`;
-}
-
 export async function jotformApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	method: IHttpRequestMethods,
@@ -148,6 +147,14 @@ export async function jotformApiRequest(
 	// requestUrl's base-URL slot keeps the `/API` prefix in the path, not the authority.
 	const baseUrl = getJotFormBaseUrl(credentials, node);
 
+	// Apply the credential's domain restriction. `customApiDomain` is user-typed, so
+	// this is not a credential-owned surface: the allowlist applies as written and no
+	// node host widens it. Without a restriction it is a no-op, so the three preset
+	// domains and the default keep working.
+	const allowedDomains = getCredentialAllowedDomains({ node, credentialData: credentials });
+	assertUrlAllowed({ url: baseUrl, allowedDomains, node });
+
+	// Callers pass a rooted path; `RequestPath` does not enforce rootedness.
 	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			APIKEY: credentials.apiKey,
@@ -156,7 +163,8 @@ export async function jotformApiRequest(
 		method,
 		qs,
 		form: body,
-		uri: requestUrl`${baseUrl}${toRootedResourcePath(resource)}`,
+		allowedDomains,
+		uri: requestUrl`${baseUrl}${resource}`,
 		json: true,
 	};
 
