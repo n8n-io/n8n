@@ -1598,8 +1598,10 @@ describe('SourceControlService', () => {
 	});
 
 	describe('SourceControlGetStatus parsing', () => {
-		const build = (preferLocalVersion: string | boolean | undefined, verbose: string | boolean | undefined = undefined) =>
-			new SourceControlGetStatus({ direction: 'pull', preferLocalVersion, verbose });
+		const build = (
+			preferLocalVersion: string | boolean | undefined,
+			verbose: string | boolean | undefined = undefined,
+		) => new SourceControlGetStatus({ direction: 'pull', preferLocalVersion, verbose });
 
 		it('defaults preferLocalVersion to true when the query parameter is missing', () => {
 			expect(build(undefined).preferLocalVersion).toBe(true);
@@ -1630,7 +1632,6 @@ describe('SourceControlService', () => {
 			expect(build(undefined, 'true').verbose).toBe(true);
 		});
 	});
-
 
 	describe('sanityCheck', () => {
 		beforeEach(() => {
