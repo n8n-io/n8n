@@ -1,0 +1,42 @@
+packages/@n8n/nodes-langchain/nodes/vendors/GoogleGemini/actions/image/edit.operation.test.ts
+  s_9c8cc6871aa134::t_c954acc7e10e50 195,204
+  s_9c8cc6871aa134::t_ebfe4d6d4013b0 92-99,101-102
+packages/@n8n/nodes-langchain/nodes/vendors/GoogleGemini/helpers/candidates.test.ts
+  s_9c8cc6871aa134::t_893bd98b364461 4
+  s_9c8cc6871aa134::t_aa4a955b52cd54 38
+  s_9c8cc6871aa134::t_c9249a0fe43f25 39-42
+  s_9c8cc6871aa134::t_40934eb3364f78 91-93
+  s_9c8cc6871aa134::t_8133216aade4a9 3,6-8,19-37,43-48,89-90,94
+  s_9c8cc6871aa134::t_4195387d483737 9-18
+  s_9c8cc6871aa134::t_2284e3707993ff 5
+packages/@n8n/nodes-langchain/nodes/vendors/GoogleGemini/actions/image/edit.operation.ts
+  s_9c8cc6871aa134::t_ebfe4d6d4013b0 4-7
+  s_9c8cc6871aa134::t_0430759c2b94f2 177
+packages/@n8n/nodes-langchain/nodes/vendors/GoogleGemini/helpers/candidates.ts
+  s_9c8cc6871aa134::t_175db39023e291 11-14
+  s_9c8cc6871aa134::t_921d9dfad75266 3,9-10,15-32,36
+packages/@n8n/nodes-langchain/nodes/vendors/GoogleGemini/actions/image/generate.operation.ts
+  s_9c8cc6871aa134::t_ebfe4d6d4013b0 4-7
+  s_9c8cc6871aa134::t_c2fab54aba43fa 108,115,117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9b2b7a5564604998cf911f3a2d95a938d332472c",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_9c8cc6871aa134": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4f89ef58-0d26-4bf9-b6c5-c8543d8fd050",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

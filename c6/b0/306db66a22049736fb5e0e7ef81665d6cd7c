@@ -1,0 +1,14 @@
+packages/nodes-base/nodes/Git/test/Git.node.security.test.ts
+  h_52a137d26d774c 17,1156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c6b0306db66a22049736fb5e0e7ef81665d6cd7c",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
