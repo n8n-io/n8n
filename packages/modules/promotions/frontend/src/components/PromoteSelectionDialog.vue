@@ -43,16 +43,12 @@ const messageField = useTemplateRef('messageField');
 
 const hasUnresolved = computed(() => props.unresolved.length > 0);
 
+// The title stays the same with or without unresolved dependencies, so it matches the button.
 const title = computed(() =>
-	hasUnresolved.value
-		? i18n.baseText('promotions.unresolved.title.promote', {
-				adjustToNumber: props.unresolved.length,
-				interpolate: { count: String(props.unresolved.length) },
-			})
-		: i18n.baseText('promotions.preview.promote.dialog.title', {
-				adjustToNumber: props.changeCount,
-				interpolate: { count: String(props.changeCount) },
-			}),
+	i18n.baseText('promotions.preview.promote.dialog.title', {
+		adjustToNumber: props.changeCount,
+		interpolate: { count: String(props.changeCount) },
+	}),
 );
 
 // The button repeats the label of the button that opened the dialog, so no new word appears
@@ -102,7 +98,11 @@ function submit() {
 			<N8nDialogTitle>{{ title }}</N8nDialogTitle>
 		</N8nDialogHeader>
 		<N8nDialogBody>
-			<form id="promote-selection-form" :class="$style.body" @submit.prevent="submit">
+			<form
+				id="promote-selection-form"
+				:class="[$style.body, hasUnresolved && $style.withUnresolved]"
+				@submit.prevent="submit"
+			>
 				<PromotionUnresolvedSummary
 					v-if="hasUnresolved"
 					:dependencies="unresolved"
@@ -133,5 +133,10 @@ function submit() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
+}
+
+// The list of dependencies and the commit message are two tasks, so they get more room.
+.withUnresolved {
+	gap: var(--spacing--lg);
 }
 </style>

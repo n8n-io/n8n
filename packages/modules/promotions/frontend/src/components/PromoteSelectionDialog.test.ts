@@ -83,9 +83,9 @@ describe('PromoteSelectionDialog', () => {
 			});
 
 			const dialog = await findByTestId('promote-selection-dialog');
-			expect(dialog).toHaveTextContent('Promote without 2 dependencies?');
+			expect(dialog).toHaveTextContent('Promote 3 changes?');
 			expect(dialog).toHaveTextContent(
-				'These are outside your access, so you cannot promote them.',
+				"can't be published because their dependencies can't be promoted",
 			);
 			expect(dialog).toHaveTextContent('Billing database');
 			expect(getByTestId('promote-commit-message')).toBeInTheDocument();

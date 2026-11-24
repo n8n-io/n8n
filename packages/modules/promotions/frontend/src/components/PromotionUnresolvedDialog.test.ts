@@ -18,7 +18,7 @@ describe('PromotionUnresolvedDialog', () => {
 		const { findByTestId } = renderComponent();
 
 		const dialog = await findByTestId('promotion-unresolved-dialog');
-		expect(dialog).toHaveTextContent('Apply without 2 dependencies?');
+		expect(dialog).toHaveTextContent('Apply 3 changes?');
 		expect(dialog).toHaveTextContent('Billing database');
 		expect(await findByTestId('promotion-unresolved-confirm')).toHaveTextContent('Apply 3 changes');
 	});

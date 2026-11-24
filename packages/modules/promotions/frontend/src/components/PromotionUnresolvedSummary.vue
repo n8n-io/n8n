@@ -5,12 +5,11 @@ import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
 import type { PromotionOutsideAccessDependency } from '../promotions.types';
-import { resourceIcon } from '../promotionPreview.tree';
 
 /**
- * What a confirmation says about the dependencies that the operation leaves out, and the list of
- * them. A dependency outside the access of the user and a credential in a personal project each
- * get their own sentence, because the reason differs.
+ * What a confirmation says about the dependencies that the operation leaves out. One sentence
+ * names the workflows that cannot be published. One list names those workflows, each with the
+ * dependencies it misses, so the user sees the effect first and the cause second.
  */
 const props = defineProps<{
 	dependencies: PromotionOutsideAccessDependency[];
@@ -19,73 +18,81 @@ const props = defineProps<{
 
 const i18n = useI18n();
 
-const groups = computed(() =>
-	(
-		[
-			{ id: 'outside', items: props.dependencies.filter(({ reason }) => !reason) },
-			{ id: 'personal', items: props.dependencies.filter(({ reason }) => reason === 'personal') },
-		] as const
-	)
-		.filter(({ items }) => items.length > 0)
-		.map(({ id, items }) => ({
-			id,
-			lead: i18n.baseText(`promotions.unresolved.body.${id}.${props.direction}`, {
-				adjustToNumber: items.length,
+// The list names the workflows that cannot be published, each with the dependencies it misses.
+// A workflow counts once, even when it uses several of the dependencies.
+const workflows = computed(() => {
+	const byId = new Map<string, { name: string; missing: string[] }>();
+	for (const dependency of props.dependencies) {
+		for (const { workflows: used } of dependency.consumers) {
+			for (const { id, name } of used) {
+				const entry = byId.get(id) ?? { name, missing: [] };
+				entry.missing.push(dependency.name);
+				byId.set(id, entry);
+			}
+		}
+	}
+	return [...byId.values()];
+});
+
+const lead = computed(() =>
+	workflows.value.length > 0
+		? i18n.baseText(`promotions.unresolved.lead.${props.direction}`, {
+				adjustToNumber: workflows.value.length,
+				interpolate: { count: String(workflows.value.length) },
+			})
+		: i18n.baseText(`promotions.unresolved.lead.none.${props.direction}`, {
+				adjustToNumber: props.dependencies.length,
+				interpolate: { count: String(props.dependencies.length) },
 			}),
-			rows: items.map((dependency) => ({
-				name: dependency.name,
-				icon: resourceIcon(dependency.kind),
-				type: i18n.baseText(`promotions.preview.blockers.type.${dependency.kind}`),
-				usedBy: usedBy(dependency),
-			})),
-		})),
 );
 
-function usedBy({ consumers }: PromotionOutsideAccessDependency) {
-	const names = [
-		...new Set(consumers.flatMap(({ workflows }) => workflows.map(({ name }) => name))),
-	];
+// With no workflow to list, the dependencies themselves are the rows.
+const rows = computed(() =>
+	workflows.value.length > 0
+		? workflows.value.map(({ name, missing }) => ({ name, detail: describeMissing(missing) }))
+		: props.dependencies.map(({ name }) => ({ name, detail: undefined })),
+);
+
+function describeMissing(names: string[]) {
 	const shown = names.slice(0, 2).join(', ');
 	return names.length > 2
-		? i18n.baseText('promotions.unresolved.usedByMore', {
+		? i18n.baseText('promotions.unresolved.missingMore', {
 				interpolate: { names: shown, count: String(names.length - 2) },
 			})
-		: i18n.baseText('promotions.unresolved.usedBy', { interpolate: { names: shown } });
+		: i18n.baseText('promotions.unresolved.missing', { interpolate: { names: shown } });
 }
 </script>
 
 <template>
 	<div :class="$style.summary" data-test-id="promotion-unresolved-summary">
-		<div v-for="group in groups" :key="group.id" :class="$style.group">
-			<N8nText color="text-base">{{ group.lead }}</N8nText>
-			<!-- About five rows show. The rest scroll, so a long list never pushes the buttons away. -->
-			<ul :class="$style.list" data-test-id="promotion-unresolved-list">
-				<li v-for="row in group.rows" :key="row.name" :class="$style.row">
-					<N8nIcon :icon="row.icon" size="small" :class="$style.icon" />
-					<span :class="$style.text">
-						<N8nText bold size="small" color="text-dark">{{ row.name }}</N8nText>
-						<N8nText size="small" color="text-light">{{ row.type }}. {{ row.usedBy }}</N8nText>
-					</span>
-				</li>
-			</ul>
-		</div>
+		<N8nIcon icon="triangle-alert" size="medium" :class="$style.warning" />
+		<N8nText color="text-base">{{ lead }}</N8nText>
+		<!-- The list always shows. A long one scrolls, so it never pushes the buttons away. -->
+		<ul :class="$style.list" data-test-id="promotion-unresolved-list">
+			<li v-for="row in rows" :key="row.name" :class="$style.row">
+				<N8nText bold size="small" color="text-dark">{{ row.name }}</N8nText>
+				<N8nText v-if="row.detail" size="small" color="text-light">{{ row.detail }}</N8nText>
+			</li>
+		</ul>
 	</div>
 </template>
 
 <style lang="scss" module>
+// Two columns: the icon, then the text. The list sits in the text column, so the sentence heads it.
 .summary {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--sm);
+	display: grid;
+	grid-template-columns: auto 1fr;
+	column-gap: var(--spacing--2xs);
+	row-gap: var(--spacing--2xs);
 }
 
-.group {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
+.warning {
+	margin-top: var(--spacing--5xs);
+	color: var(--color--warning);
 }
 
 .list {
+	grid-column: 2;
 	display: flex;
 	flex-direction: column;
 	max-height: 14rem;
@@ -93,29 +100,17 @@ function usedBy({ consumers }: PromotionOutsideAccessDependency) {
 	padding: 0;
 	overflow-y: auto;
 	list-style: none;
-	border: var(--border);
-	border-radius: var(--radius);
+	border-top: var(--border);
+	border-bottom: var(--border);
 }
 
 .row {
 	display: flex;
-	align-items: flex-start;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--2xs) var(--spacing--xs);
+	flex-direction: column;
+	padding: var(--spacing--2xs) 0;
 
 	& + & {
 		border-top: var(--border);
 	}
-}
-
-.icon {
-	margin-top: var(--spacing--5xs);
-	flex-shrink: 0;
-}
-
-.text {
-	display: flex;
-	flex-direction: column;
-	min-width: 0;
 }
 </style>

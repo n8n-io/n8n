@@ -11,10 +11,10 @@ describe('PromotionUnresolvedSummary', () => {
 		createTestingPinia();
 	});
 
-	it('should say why the dependencies are left out, in the verb of the page', () => {
+	it("should name the workflows that can't be published, in the verb of the page", () => {
 		const apply = renderComponent({ props: { dependencies: outsideAccess, direction: 'apply' } });
 		expect(apply.getByTestId('promotion-unresolved-summary')).toHaveTextContent(
-			'These are outside your access, so you cannot apply them. Workflows that use them cannot be published until they exist here.',
+			"4 workflows can't be published because their dependencies don't exist here.",
 		);
 		apply.unmount();
 
@@ -22,42 +22,41 @@ describe('PromotionUnresolvedSummary', () => {
 			props: { dependencies: outsideAccess, direction: 'promote' },
 		});
 		expect(promote.getByTestId('promotion-unresolved-summary')).toHaveTextContent(
-			'These are outside your access, so you cannot promote them.',
+			"4 workflows can't be published because their dependencies can't be promoted.",
 		);
 	});
 
-	it('should list each dependency with its type and the workflows that use it', () => {
+	it('should list each workflow with the dependencies that it misses', () => {
 		const { getByTestId } = renderComponent({
-			props: { dependencies: outsideAccess, direction: 'apply' },
+			props: { dependencies: [...outsideAccess, ...personal], direction: 'apply' },
 		});
 
 		const list = getByTestId('promotion-unresolved-list');
-		expect(list).toHaveTextContent('Billing database');
-		expect(list).toHaveTextContent('Credential. Used by Sync orders.');
-		// Two names show, and the rest is a count.
-		expect(list).toHaveTextContent('Workflow. Used by Sync orders, Churn alert and 2 more.');
+		// Sync orders uses all three. Two names show, and the rest is a count.
+		expect(list).toHaveTextContent(
+			'Sync ordersMissing Billing database, Normalize contact data and 1 more.',
+		);
+		expect(list).toHaveTextContent('Churn alertMissing Normalize contact data.');
 	});
 
-	it('should use the singular for one dependency', () => {
+	it('should use the singular for one workflow', () => {
 		const { getByTestId } = renderComponent({
 			props: { dependencies: [outsideAccess[0]], direction: 'apply' },
 		});
 
 		expect(getByTestId('promotion-unresolved-summary')).toHaveTextContent(
-			'This is outside your access, so you cannot apply it.',
+			"1 workflow can't be published because its dependency doesn't exist here.",
 		);
 	});
 
-	it('should give a credential in a personal project its own sentence', () => {
-		const { getByTestId, getAllByTestId } = renderComponent({
-			props: { dependencies: [...outsideAccess, ...personal], direction: 'promote' },
+	it('should list the dependencies when no workflow uses them', () => {
+		const { getByTestId } = renderComponent({
+			props: { dependencies: [{ ...outsideAccess[0], consumers: [] }], direction: 'promote' },
 		});
 
-		const summary = getByTestId('promotion-unresolved-summary');
-		expect(summary).toHaveTextContent('These are outside your access, so you cannot promote them.');
-		expect(summary).toHaveTextContent(
-			'This credential is in a personal project, so you cannot promote it. Move it to a team project to promote it.',
+		expect(getByTestId('promotion-unresolved-summary')).toHaveTextContent(
+			'1 dependency is not promoted.',
 		);
-		expect(getAllByTestId('promotion-unresolved-list')).toHaveLength(2);
+		expect(getByTestId('promotion-unresolved-list')).toHaveTextContent('Billing database');
 	});
 });

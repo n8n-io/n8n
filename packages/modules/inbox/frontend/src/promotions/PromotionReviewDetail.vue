@@ -7,6 +7,7 @@ import {
 	N8nButton,
 	N8nCallout,
 	N8nDialog,
+	N8nDialogBody,
 	N8nDialogDescription,
 	N8nDialogFooter,
 	N8nDialogHeader,
@@ -50,6 +51,8 @@ const stateBadge: Record<PromotionReviewState, BadgeVariant> = {
 const PromotionChanges = computed(() => componentRegistry.get('promotion-changes'));
 // What the promotion leaves out. The editor renders it, like the changes.
 const PromotionIssues = computed(() => componentRegistry.get('promotion-issues'));
+// The warning in the approval dialog. The editor renders it, like the changes.
+const ApprovalNotice = computed(() => componentRegistry.get('promotion-approval-notice'));
 type PromotionReviewTab = 'changes' | 'issues';
 const tab = ref<PromotionReviewTab>('changes');
 const issueCount = computed(() =>
@@ -351,7 +354,7 @@ async function onApprove() {
 		</div>
 		<N8nDialog
 			:open="!!pendingApproval"
-			size="small"
+			size="medium"
 			:show-close-button="false"
 			:close-on-overlay-click="!approving"
 			:close-on-escape="!approving"
@@ -365,6 +368,9 @@ async function onApprove() {
 					{{ i18n.baseText('inbox.promotionReview.approve.confirm.description') }}
 				</N8nDialogDescription>
 			</N8nDialogHeader>
+			<N8nDialogBody v-if="ApprovalNotice && pendingApproval">
+				<component :is="ApprovalNotice" :review-id="item.id" />
+			</N8nDialogBody>
 			<N8nDialogFooter>
 				<N8nButton
 					variant="outline"

@@ -1,6 +1,7 @@
 import { componentRegistry } from '@n8n/frontend-module-sdk';
 import {
 	loadPromotionReviewChanges,
+	loadPromotionApprovalNotice,
 	loadPromotionReviewIssues,
 } from '@n8n/frontend-module-promotions';
 import { defineAsyncComponent } from 'vue';
@@ -37,6 +38,10 @@ export const registerComponentSlots = () => {
 
 	componentRegistry.register('promotion-changes', defineAsyncComponent(loadPromotionReviewChanges));
 	componentRegistry.register('promotion-issues', defineAsyncComponent(loadPromotionReviewIssues));
+	componentRegistry.register(
+		'promotion-approval-notice',
+		defineAsyncComponent(loadPromotionApprovalNotice),
+	);
 
 	componentRegistry.register(
 		'project-filter',

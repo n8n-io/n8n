@@ -205,6 +205,10 @@ export function buildPlaygroundPreview(
 				included: true,
 			});
 		}
+		// A tag is promoted with the workflows that carry it, so one of them has to use it.
+		if (index % 2 === 1) {
+			dependencies.push({ workflowKey: key, resourceKey: 'tag:playground-tag', included: true });
+		}
 	}
 
 	return {
@@ -231,10 +235,17 @@ export function buildOutsideAccess(
 	workflows: number,
 	project: PlaygroundProject,
 ): PromotionOutsideAccessDependency[] {
-	return Array.from({ length: ISSUE_AMOUNTS[size] }, (_, index) => ({
-		...outsideNameAt(index),
-		consumers: consumersOf(index + 1, workflows, project),
-	}));
+	return Array.from({ length: ISSUE_AMOUNTS[size] }, (_, index) => {
+		const named = outsideNameAt(index);
+		return {
+			...named,
+			// The project of a workflow is known for some and hidden for the others.
+			...(named.kind === 'workflow' && index % 4 === 1
+				? { project: { id: 'playground-ops', name: 'Operations' } }
+				: {}),
+			consumers: consumersOf(index + 1, workflows, project),
+		};
+	});
 }
 
 export const workflowCountOf = (size: PlaygroundSize) => AMOUNTS[size].workflows;

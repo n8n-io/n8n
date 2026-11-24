@@ -109,11 +109,12 @@ export function usePromotionPreviewLabels() {
 	function outsideMessage(
 		resource: PromotionResource,
 		blockers: readonly Blocker[] = [],
+		direction: PromotionDirection = 'apply',
 	): string | undefined {
 		if (resource.type !== 'workflow' || blockers.some(isBlocking)) return undefined;
 		const outside = blockers.filter(({ kind }) => kind === 'outside').length;
 		return outside > 0
-			? i18n.baseText('promotions.preview.marker.outside', {
+			? i18n.baseText(`promotions.preview.marker.outside.${direction}`, {
 					adjustToNumber: outside,
 					interpolate: { count: String(outside) },
 				})

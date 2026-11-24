@@ -17,8 +17,9 @@ Each moment shows the text on master today, then a proposal. Items marked
 | The state word | **unresolved** |
 | Not used in the product | blocker, gap, binding |
 
-Rules: short sentences, active voice, no humor. Do not show an owner or a
-project. Name the dependency and the next step.
+Rules: short sentences, active voice, no humor. Do not show an owner. Show a
+project only in the selection tree, and only when the user may know it. Name the
+dependency and the next step.
 
 ## 1. The Issues tab
 
@@ -137,6 +138,20 @@ The review screen shows a second tab, Issues, only when something is missing.
 Rows use the "Outside your access" row. The reviewer may have different access
 from the author. Open: does the tab show to everyone, and which dependencies does it
 list?
+
+## 7b. Outside your access in the selection tree
+
+Each dependency is the last item of its group, with a disabled checkbox, muted text and a lock at
+the right. The group count includes it. An outside workflow nests below a project row with a lock.
+Where the project is known, the row shows its name. Where it is hidden, the workflows share one row,
+**Other projects**, which comes last.
+
+| Where | Text |
+|---|---|
+| Lock on a dependency | You don't have permission to promote this dependency. (Apply: "apply") |
+| Lock on a project row | You don't have permission to promote dependencies from this project. (Hidden: "these projects") |
+| Lock on a personal credential, Promote | This credential is in a personal project. Move it to a team project to promote it. |
+| Marker on a workflow, Promote | This workflow uses 2 dependencies that are outside your access. You can promote it without them. |
 
 ## 8. Small messages
 

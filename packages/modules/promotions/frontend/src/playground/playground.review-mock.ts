@@ -23,7 +23,7 @@ const HEAD = 'b'.repeat(40);
 const BASE = 'a'.repeat(40);
 const NOW = new Date().toISOString();
 
-const reviewItem: InboxPromotionReviewItem = {
+const initialReview: InboxPromotionReviewItem = {
 	type: 'promotion_review',
 	id: PLAYGROUND_REVIEW_ID,
 	state: 'open',
@@ -47,6 +47,10 @@ const reviewItem: InboxPromotionReviewItem = {
 	createdAt: NOW,
 	updatedAt: NOW,
 };
+
+// The review the Inbox shows. Approve and close change it, so the screen follows what the user
+// did. Starting the mock again makes it open again.
+let reviewItem: InboxPromotionReviewItem = initialReview;
 
 type ReviewContext = { size: PlaygroundSize; project: PlaygroundProject };
 
@@ -81,6 +85,8 @@ function requestedKeys(data: unknown): string[] {
 const INBOX_LIST = /\/inbox$/;
 const INBOX_SUMMARY = /\/inbox\/summary$/;
 const REVIEW_CHANGES = /\/promotions\/reviews\/[^/]+\/changes$/;
+const REVIEW_APPROVE = /\/promotions\/reviews\/[^/]+\/approve$/;
+const REVIEW_CLOSE = /\/promotions\/reviews\/[^/]+\/close$/;
 const REVIEW_DETAILS = /\/promotions\/reviews\/[^/]+\/changes\/details$/;
 
 let remove: (() => void) | undefined;
@@ -88,20 +94,38 @@ let remove: (() => void) | undefined;
 /** Starts answering the Inbox and the review requests. Calling it again replaces the answers. */
 export function startReviewMock(context: ReviewContext) {
 	stopReviewMock();
+	reviewItem = initialReview;
 	const hook = axios.interceptors.request.use((config) => {
 		const url = config.url ?? '';
-		const known = [INBOX_LIST, INBOX_SUMMARY, REVIEW_CHANGES, REVIEW_DETAILS].some((path) =>
-			path.test(url),
-		);
+		const known = [
+			INBOX_LIST,
+			INBOX_SUMMARY,
+			REVIEW_CHANGES,
+			REVIEW_DETAILS,
+			REVIEW_APPROVE,
+			REVIEW_CLOSE,
+		].some((path) => path.test(url));
 		if (!known) return config;
 
 		config.adapter = async (adapterConfig) => {
 			// The REST API wraps every answer in a `data` key. The public API, used by the preview
 			// scenarios, does not.
 			const answer = (payload: unknown) => respond(adapterConfig, { data: payload });
+			if (REVIEW_APPROVE.test(url) || REVIEW_CLOSE.test(url)) {
+				const merged = REVIEW_APPROVE.test(url);
+				reviewItem = {
+					...reviewItem,
+					state: 'closed',
+					reviewState: merged ? 'merged' : 'closed',
+					approver: merged ? reviewItem.requester : null,
+					updatedAt: new Date().toISOString(),
+				};
+				return answer(reviewItem);
+			}
 			if (INBOX_SUMMARY.test(url)) {
+				const open = reviewItem.state === 'open';
 				return answer({
-					counts: { open: 1, closed: 0 },
+					counts: { open: open ? 1 : 0, closed: open ? 0 : 1 },
 					partial: false,
 					failedSources: [],
 					disabledSources: [],

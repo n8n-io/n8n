@@ -23,6 +23,9 @@ import type { INodeTypeDescription, IWorkflowSettings } from 'n8n-workflow';
  * the shell registers it for the inbox module.
  * `promotion-issues` lists what a promotion review leaves out, such as dependencies that the
  * promotion does not carry. It loads its data itself, like `promotion-changes`.
+ * `promotion-approval-notice` is the warning that the approval dialog of a promotion review shows
+ * above its buttons: the workflows that cannot be published. It loads its data itself and renders
+ * nothing when the promotion leaves nothing out.
  * `project-header` is the overview/project page header with the project tabs, which a
  * resource list page renders above its list.
  * `insights-summary` is the weekly insights summary of the overview pages. It loads the summary
@@ -39,6 +42,7 @@ export type ModuleComponentSlot =
 	| 'code-diff'
 	| 'promotion-changes'
 	| 'promotion-issues'
+	| 'promotion-approval-notice'
 	| 'project-header'
 	| 'insights-summary'
 	| 'resources-list-layout'
@@ -99,6 +103,10 @@ export type SlotPromotionChangesProps = {
  * not an alias, because the Vue compiler cannot resolve an alias of an imported type.
  */
 export type SlotPromotionIssuesProps = {
+	reviewId: string;
+};
+
+export type SlotPromotionApprovalNoticeProps = {
 	reviewId: string;
 };
 

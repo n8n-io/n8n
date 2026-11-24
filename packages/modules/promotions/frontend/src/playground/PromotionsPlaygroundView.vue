@@ -4,13 +4,20 @@ import { useI18n } from '@n8n/i18n';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { N8nText } from '@n8n/design-system';
-import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref } from 'vue';
+import {
+	computed,
+	defineAsyncComponent,
+	onBeforeUnmount,
+	onMounted,
+	ref,
+	useTemplateRef,
+} from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import PlaygroundSidebar from './PlaygroundSidebar.vue';
 import { buildPlaygroundPreview, type PlaygroundProject } from './playground.data';
 import { installMockPromotionApi } from './playground.mock-api';
-import { reviewFrameUrl } from './playground.embed';
+import { PLAYGROUND_DIALOG_MESSAGE, reviewFrameUrl } from './playground.embed';
 import {
 	DEFAULT_PLAYGROUND_SCENARIO,
 	DEFAULT_PLAYGROUND_SIZE,
@@ -88,13 +95,35 @@ removeMockApi = installMockPromotionApi(
 	() => `${scenarioId.value}-${size.value}`,
 	() => scenarioId.value === 'p4',
 );
+
+// The review frame is a page of its own, so its dialogs dim only the frame. The frame tells this
+// page when a dialog is open, and a backdrop dims the rest of the window around the frame.
+const stage = useTemplateRef('stage');
+const dimmed = ref(false);
+const hole = ref('');
+
+function onFrameMessage(event: MessageEvent) {
+	if (event.origin !== window.location.origin) return;
+	const data: unknown = event.data;
+	if (typeof data !== 'object' || data === null || !('type' in data)) return;
+	if (data.type !== PLAYGROUND_DIALOG_MESSAGE || !('open' in data)) return;
+	dimmed.value = data.open === true;
+	const box = stage.value?.getBoundingClientRect();
+	// The frame draws its own backdrop, so the hole keeps the two from adding up.
+	hole.value = box
+		? `polygon(evenodd, 0 0, 100% 0, 100% 100%, 0 100%, 0 0, ${box.left}px ${box.top}px, ${box.right}px ${box.top}px, ${box.right}px ${box.bottom}px, ${box.left}px ${box.bottom}px, ${box.left}px ${box.top}px)`
+		: '';
+}
+
 onMounted(() => {
 	document.querySelector(SIDEBAR)?.setAttribute('data-playground', '');
+	window.addEventListener('message', onFrameMessage);
 	void loadProject();
 });
 
 onBeforeUnmount(() => {
 	document.querySelector(SIDEBAR)?.removeAttribute('data-playground');
+	window.removeEventListener('message', onFrameMessage);
 	removeMockApi?.();
 });
 </script>
@@ -110,7 +139,15 @@ onBeforeUnmount(() => {
 				@resize="show({ size: $event })"
 			/>
 		</Teleport>
-		<div :class="$style.stage" data-test-id="promotions-playground-stage">
+		<Teleport to="body">
+			<div
+				v-if="dimmed"
+				:class="$style.backdrop"
+				:style="{ clipPath: hole }"
+				data-test-id="promotions-playground-backdrop"
+			/>
+		</Teleport>
+		<div ref="stage" :class="$style.stage" data-test-id="promotions-playground-stage">
 			<!-- The key reloads the page when the scenario or the amount changes. -->
 			<PreviewPage
 				v-if="scenario?.built && scenario.direction && project"
@@ -159,6 +196,16 @@ onBeforeUnmount(() => {
 		flex: 1;
 		min-height: 0;
 	}
+}
+
+.backdrop {
+	position: fixed;
+	inset: 0;
+	// The same look as the backdrop of a dialog, so the window dims as one.
+	background-color: light-dark(var(--color--black-alpha-300), var(--color--black-alpha-600));
+	backdrop-filter: blur(8px);
+	z-index: 1949;
+	pointer-events: none;
 }
 
 .pending {

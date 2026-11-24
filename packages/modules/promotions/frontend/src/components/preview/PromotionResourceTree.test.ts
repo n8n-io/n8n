@@ -41,12 +41,12 @@ const row = (getAllByTestId: (id: string) => HTMLElement[], key: string) => {
 };
 
 describe('PromotionResourceTree', () => {
-	it('should show required dependencies as checked and read-only, and unused ones as unchecked', () => {
+	it('should show required dependencies as checked, like any checked box, and unused ones as unchecked', () => {
 		const { getAllByTestId } = render(['workflow:w1']);
 
 		const table = row(getAllByTestId, 'dataTable:t1').getByRole('checkbox');
 		expect(table).toBeChecked();
-		expect(table).toBeDisabled();
+		expect(table).not.toBeDisabled();
 		// "Format currency" is a sub-workflow of the selected workflow. Selecting a caller does not include it.
 		expect(row(getAllByTestId, 'workflow:w4').getByRole('checkbox')).not.toBeChecked();
 	});
@@ -148,9 +148,9 @@ describe('PromotionResourceTree', () => {
 			return within(match);
 		};
 
-		it('should show "Select all" with the count of included changes behind it', () => {
+		it('should show "Select all" with no count behind it', () => {
 			const selected = new Set(['workflow:w1']);
-			const { getByTestId, getByText } = renderComponent({
+			const { queryByTestId, getByText } = renderComponent({
 				pinia: createTestingPinia(),
 				props: {
 					tree,
@@ -167,19 +167,18 @@ describe('PromotionResourceTree', () => {
 			});
 
 			expect(getByText('Select all')).toBeInTheDocument();
-			expect(getByTestId('promotion-preview-counts')).toHaveTextContent('3/17');
-			expect(getByTestId('promotion-preview-counts')).toHaveAccessibleName('3 of 17 selected');
+			expect(queryByTestId('promotion-preview-counts')).not.toBeInTheDocument();
 		});
 
-		it('should show each group with how many of its resources the operation includes', () => {
+		it('should show how many resources each group has, next to its title', () => {
 			const { getAllByTestId } = render(['workflow:w1']);
 
 			expect(
-				group(getAllByTestId, 'section:workflows').getByTestId('promotion-preview-group-count'),
-			).toHaveTextContent(/^1\/4$/);
+				group(getAllByTestId, 'section:workflows').getByTestId('promotion-preview-group-total'),
+			).toHaveTextContent(/^\(4\)$/);
 			expect(
-				group(getAllByTestId, 'group:credential').getByTestId('promotion-preview-group-count'),
-			).toHaveTextContent('1/2');
+				group(getAllByTestId, 'group:credential').getByTestId('promotion-preview-group-total'),
+			).toHaveTextContent('(2)');
 		});
 
 		it('should send the workflows of the group when users click its checkbox', async () => {
@@ -194,29 +193,12 @@ describe('PromotionResourceTree', () => {
 			]);
 		});
 
-		it('should disable the checkbox of a group that users cannot select', () => {
+		it('should keep the checkbox of a group of dependencies enabled', () => {
 			const { getAllByTestId } = render(['workflow:w1']);
 
 			expect(
 				group(getAllByTestId, 'group:credential').getByTestId('promotion-preview-group-checkbox'),
-			).toBeDisabled();
-		});
-
-		it('should say what needs a locked resource and how many dependencies a workflow uses', () => {
-			const { getAllByTestId } = render(['workflow:w1']);
-
-			// The row shows an icon and a number. The text is the label, and the tooltip.
-			const locked = row(getAllByTestId, 'dataTable:t1').getByTestId('promotion-preview-tree-hint');
-			expect(locked).toHaveAccessibleName('Required by Invoice reconciliation');
-			expect(locked).toHaveTextContent('1');
-			const workflow = row(getAllByTestId, 'workflow:w1').getByTestId(
-				'promotion-preview-tree-hint',
-			);
-			expect(workflow).toHaveAccessibleName('Uses 3 dependencies');
-			expect(workflow).toHaveTextContent('3');
-			expect(
-				row(getAllByTestId, 'workflow:w9').queryByTestId('promotion-preview-tree-hint'),
-			).toBeNull();
+			).not.toBeDisabled();
 		});
 
 		it('should show no checkbox, count or hint in a list that users only read', () => {
@@ -239,9 +221,104 @@ describe('PromotionResourceTree', () => {
 			});
 
 			expect(queryAllByTestId('promotion-preview-group-checkbox')).toHaveLength(0);
-			expect(queryAllByTestId('promotion-preview-group-count')).toHaveLength(0);
 			expect(queryAllByTestId('promotion-preview-tree-hint')).toHaveLength(0);
+			// The heading shows the total, like (2).
+			const totals = queryAllByTestId('promotion-preview-group-total');
+			expect(totals.length).toBeGreaterThan(0);
+			for (const total of totals) expect(total.textContent?.trim()).toMatch(/^\(\d+\)$/);
 		});
+	});
+
+	it('should add a dependency outside the access of the user to its group, last, with a disabled box and a lock', async () => {
+		const selected = new Set(['workflow:w1']);
+		const { getAllByTestId, findByTestId } = renderComponent({
+			pinia: createTestingPinia(),
+			props: {
+				tree,
+				graph,
+				selected,
+				inclusion: resolveInclusion(graph, selected),
+				includedChanges: 0,
+				totalChanges: 0,
+				disabled: new Set(),
+				locked: false,
+				direction: 'promote',
+				blockers: indexBlockers([]),
+				outsideAccess: [
+					{
+						kind: 'credential',
+						name: 'Billing database',
+						consumers: [
+							{
+								project: { id: 'p1', name: 'Sales' },
+								workflows: [
+									{ id: 'w1', name: 'Sync orders' },
+									{ id: 'w2', name: 'Churn alert' },
+								],
+							},
+						],
+					},
+				],
+			},
+		});
+
+		// The group counts it, although users cannot select it. It is the last item of the group.
+		const heading = getAllByTestId('promotion-preview-tree-group').find(
+			(element) => element.dataset.groupId === 'group:credential',
+		) as HTMLElement;
+		expect(within(heading).getByTestId('promotion-preview-group-total')).toHaveTextContent('(3)');
+		const rowsOfCredentials = getAllByTestId('promotion-preview-tree-outside-row');
+		expect(rowsOfCredentials).toHaveLength(1);
+		const [outside] = rowsOfCredentials;
+		expect(outside).toHaveTextContent('Billing database');
+		expect(outside.previousElementSibling).toHaveAttribute('data-resource-key');
+		expect(outside.nextElementSibling?.getAttribute('data-group-id') ?? null).not.toBe(
+			'group:credential',
+		);
+		const checkbox = within(outside).getByRole('checkbox');
+		expect(checkbox).not.toBeChecked();
+		expect(checkbox).toBeDisabled();
+		await userEvent.hover(within(outside).getByTestId('promotion-preview-tree-outside-lock'));
+		expect(await findByTestId('tooltip-content')).toHaveTextContent(
+			"You don't have permission to promote this dependency.",
+		);
+	});
+
+	it('should nest outside workflows below their project, and share one row when the project is hidden', () => {
+		const selected = new Set(['workflow:w1']);
+		const consumers = [{ project: { id: 'p1', name: 'Sales' }, workflows: [] }];
+		const { getAllByTestId } = renderComponent({
+			pinia: createTestingPinia(),
+			props: {
+				tree,
+				graph,
+				selected,
+				inclusion: resolveInclusion(graph, selected),
+				includedChanges: 0,
+				totalChanges: 0,
+				disabled: new Set(),
+				locked: false,
+				direction: 'promote',
+				blockers: indexBlockers([]),
+				outsideAccess: [
+					{ kind: 'workflow', name: 'Hidden one', consumers },
+					{ kind: 'workflow', name: 'Known one', project: { id: 'o1', name: 'Ops' }, consumers },
+					{ kind: 'workflow', name: 'Hidden two', consumers },
+				],
+			},
+		});
+
+		const names = getAllByTestId('promotion-preview-tree-outside-row').map((row) =>
+			row.textContent?.trim(),
+		);
+		// Known projects first. The hidden ones share one row. Project rows are not counted.
+		expect(names).toEqual(['Ops', 'Known one', 'Other projects', 'Hidden one', 'Hidden two']);
+		const heading = getAllByTestId('promotion-preview-tree-group').find(
+			(element) => element.dataset.groupId === 'section:workflows',
+		) as HTMLElement;
+		expect(within(heading).getByTestId('promotion-preview-group-total')).toHaveTextContent(
+			/\(\d+\)/,
+		);
 	});
 
 	describe('dependencies outside the access of the user', () => {
@@ -272,7 +349,9 @@ describe('PromotionResourceTree', () => {
 			const marker = row(getAllByTestId, 'workflow:w1').getByTestId(
 				'promotion-preview-tree-outside',
 			);
-			expect(marker).toHaveAccessibleName('1 dependency is outside your access.');
+			expect(marker).toHaveAccessibleName(
+				'This workflow uses 1 dependency that is outside your access. You can promote it without it.',
+			);
 			expect(
 				row(getAllByTestId, 'workflow:w1').queryByTestId('promotion-preview-tree-blocker'),
 			).toBeNull();

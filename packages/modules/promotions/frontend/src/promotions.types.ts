@@ -19,6 +19,11 @@ export type PromotionOutsideAccessDependency = {
 	 * personal project. Absent when the user has no access to its project.
 	 */
 	reason?: 'personal';
+	/**
+	 * The project that holds it, when the user may know it. Often it is hidden, so this is absent
+	 * and the dependency shows under "Other projects".
+	 */
+	project?: { id: string; name: string };
 	/** The workflows that use it, so the row can link to them. */
 	consumers: PromotionBindingConsumer[];
 };

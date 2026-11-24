@@ -184,12 +184,32 @@ export function toggleSelection(
 	key: ResourceKey,
 	disabled: DisabledKeys = noKeys,
 ): SelectionState {
-	if (!canSelect(graph, key)) return state;
+	if (!canSelect(graph, key)) return clearRequirers(state, graph, [key]);
 	const selected = new Set(state.selected);
 	if (selected.has(key)) selected.delete(key);
 	else if (disabled.has(key)) return state;
 	else selected.add(key);
 	return { mode: 'custom', selected };
+}
+
+/**
+ * Users cannot select a dependency on its own. It is included while a selected resource needs it.
+ * Clearing it clears the selected resources that need it, so the box always does what it shows.
+ * A dependency that nothing needs is not included, and the state stays as it is.
+ */
+function clearRequirers(
+	state: SelectionState,
+	graph: SelectionGraph,
+	keys: readonly ResourceKey[],
+): SelectionState {
+	const { requiredBy } = resolveInclusion(graph, state.selected);
+	const selected = new Set(state.selected);
+	let changed = false;
+	for (const key of keys) {
+		for (const requirer of requiredBy.get(key) ?? [])
+			changed = selected.delete(requirer) || changed;
+	}
+	return changed ? { mode: 'custom', selected } : state;
 }
 
 /** The selectable resources inside a project or folder, at any depth. */
@@ -243,27 +263,29 @@ export function selectionCheck(
 	const { selected, inclusion, disabled, locked } = state;
 	if (isContainer(resource)) {
 		const check = containerCheckState(graph, selected, resource.key, disabled);
-		const canAdd = containerKeys(graph, resource.key).some((key) => !disabled.has(key));
 		return {
 			checked: check === 'checked',
 			indeterminate: check === 'indeterminate',
-			disabled: locked || (!canAdd && check === 'unchecked'),
+			disabled: locked,
 		};
 	}
 	// A selected resource that needs this one locks it, even when users selected it as well.
 	if (resource.selectable && inclusion.requiredBy.has(resource.key)) {
-		return { checked: true, indeterminate: false, disabled: true };
+		return { checked: true, indeterminate: false, disabled: locked };
 	}
 	if (resource.selectable) {
 		const checked = selected.has(resource.key);
 		return {
 			checked,
 			indeterminate: false,
-			// A blocked workflow can still be cleared.
-			disabled: locked || (!checked && disabled.has(resource.key)),
+			disabled: locked,
 		};
 	}
-	return { checked: inclusion.included.has(resource.key), indeterminate: false, disabled: true };
+	return {
+		checked: inclusion.included.has(resource.key),
+		indeterminate: false,
+		disabled: locked,
+	};
 }
 
 /**
@@ -293,24 +315,17 @@ export type GroupCheck = {
 	included: number;
 	total: number;
 	/** False when users can neither add nor clear anything in the group. */
-	canToggle: boolean;
 };
 
 /**
  * What the header of a group shows. `members` are the resources that the group counts. Users can
  * toggle a group only when it holds a resource that they can select.
  */
-export function groupCheck(
-	graph: SelectionGraph,
-	inclusion: Inclusion,
-	members: readonly ResourceKey[],
-	disabled: DisabledKeys = noKeys,
-): GroupCheck {
+export function groupCheck(inclusion: Inclusion, members: readonly ResourceKey[]): GroupCheck {
 	const included = members.filter((key) => inclusion.included.has(key)).length;
 	const state: CheckState =
 		included === 0 ? 'unchecked' : included === members.length ? 'checked' : 'indeterminate';
-	const canToggle = members.some((key) => canSelect(graph, key) && !disabled.has(key));
-	return { state, included, total: members.length, canToggle };
+	return { state, included, total: members.length };
 }
 
 /**
@@ -325,7 +340,8 @@ export function toggleGroup(
 	disabled: DisabledKeys = noKeys,
 ): SelectionState {
 	const available = members.filter((key) => canSelect(graph, key) && !disabled.has(key));
-	if (available.length === 0) return state;
+	// A group of dependencies has nothing to add. Its box clears what needs them.
+	if (available.length === 0) return clearRequirers(state, graph, members);
 	const selected = new Set(state.selected);
 	if (available.every((key) => inclusion.included.has(key))) {
 		for (const key of members) selected.delete(key);

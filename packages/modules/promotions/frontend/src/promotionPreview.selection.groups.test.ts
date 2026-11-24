@@ -36,13 +36,13 @@ describe('promotion preview groups', () => {
 			const workflows = members('section:workflows');
 
 			expect(workflows.every((key) => key.startsWith('workflow:'))).toBe(true);
-			const none = groupCheck(graph, resolveInclusion(graph, new Set()), workflows);
+			const none = groupCheck(resolveInclusion(graph, new Set()), workflows);
 			expect(none).toMatchObject({ state: 'unchecked', included: 0, total: workflows.length });
 
-			const some = groupCheck(graph, resolveInclusion(graph, new Set(['workflow:w2'])), workflows);
+			const some = groupCheck(resolveInclusion(graph, new Set(['workflow:w2'])), workflows);
 			expect(some).toMatchObject({ state: 'indeterminate', included: 1 });
 
-			const all = groupCheck(graph, resolveInclusion(graph, new Set(workflows)), workflows);
+			const all = groupCheck(resolveInclusion(graph, new Set(workflows)), workflows);
 			expect(all).toMatchObject({ state: 'checked', included: workflows.length });
 		});
 
@@ -50,26 +50,11 @@ describe('promotion preview groups', () => {
 			const { graph, members } = graphOf();
 			const inclusion = resolveInclusion(graph, new Set(['workflow:w1']));
 
-			expect(groupCheck(graph, inclusion, members('group:credential'))).toEqual({
+			expect(groupCheck(inclusion, members('group:credential'))).toEqual({
 				state: 'indeterminate',
 				included: 1,
 				total: 2,
-				canToggle: false,
 			});
-		});
-
-		it('should not let users toggle a group whose resources are all blocked', () => {
-			const { graph, members } = graphOf();
-			const workflows = members('section:workflows');
-
-			const check = groupCheck(
-				graph,
-				resolveInclusion(graph, new Set()),
-				workflows,
-				new Set(workflows),
-			);
-
-			expect(check.canToggle).toBe(false);
 		});
 	});
 
@@ -118,9 +103,23 @@ describe('promotion preview groups', () => {
 			expect(next.selected.has('workflow:w1')).toBe(true);
 		});
 
-		it('should change nothing in a group that users cannot select', () => {
+		it('should clear the workflows that need a group of dependencies, when its box is cleared', () => {
 			const { graph, members } = graphOf();
 			const current = state('workflow:w1');
+
+			const next = toggleGroup(
+				current,
+				graph,
+				resolveInclusion(graph, current.selected),
+				members('group:credential'),
+			);
+
+			expect(next.selected.has('workflow:w1')).toBe(false);
+		});
+
+		it('should change nothing in a group of dependencies that nothing needs', () => {
+			const { graph, members } = graphOf();
+			const current = state();
 
 			const next = toggleGroup(
 				current,
@@ -150,7 +149,7 @@ describe('promotion preview groups', () => {
 	});
 
 	describe('locked resources', () => {
-		it('should lock a credential that a selected workflow needs, even when the user selected it too', () => {
+		it('should keep a credential checked while a selected workflow needs it, even when the user selected it too', () => {
 			const { graph } = graphOf({ selectableCredentials: true });
 			const selected = new Set(['workflow:w1', 'credential:c1']);
 			const inclusion = resolveInclusion(graph, selected);
@@ -158,7 +157,7 @@ describe('promotion preview groups', () => {
 
 			expect(
 				selectionCheck(graph, stripe, { selected, inclusion, disabled: new Set(), locked: false }),
-			).toEqual({ checked: true, indeterminate: false, disabled: true });
+			).toEqual({ checked: true, indeterminate: false, disabled: false });
 		});
 
 		it('should unlock the credential when no selected workflow needs it any more', () => {

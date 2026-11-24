@@ -315,12 +315,12 @@ describe('PromotionPreviewView', () => {
 
 	it('should keep the selection while the user inspects cards', async () => {
 		const { getAllByTestId, getByTestId } = await render();
-		expect(getByTestId('promotion-preview-counts')).toHaveTextContent('5/5');
+		expect(getByTestId('promotion-preview-submit')).toHaveTextContent('Promote 5 changes');
 
 		await userEvent.click(treeRow(getAllByTestId, 'workflow:w1').getByRole('checkbox'));
 		await userEvent.click(treeRow(getAllByTestId, 'dataTable:t1').getByText('Invoices'));
 
-		expect(getByTestId('promotion-preview-counts')).toHaveTextContent('4/5');
+		expect(getByTestId('promotion-preview-submit')).toHaveTextContent('Promote 4 changes');
 		// The tab shows the total, whatever the selection.
 		expect(getByTestId('promotion-preview-tabs')).toHaveTextContent(/Changes\s*5/);
 		expect(treeRow(getAllByTestId, 'workflow:w1').getByRole('checkbox')).not.toBeChecked();
@@ -349,20 +349,20 @@ describe('PromotionPreviewView', () => {
 		const { getAllByTestId, getByTestId } = await render();
 		const cardCheckbox = (key: string) =>
 			card(getAllByTestId, key).getByTestId('promotion-preview-card-checkbox');
-		expect(getByTestId('promotion-preview-counts')).toHaveTextContent('3/3');
+		expect(getByTestId('promotion-preview-submit')).toHaveTextContent('Promote 3 changes');
 
 		// The folder card clears the workflows inside the folder, and the card stays open.
 		await userEvent.click(cardCheckbox('folder:f1'));
 		expect(cardToggle(getAllByTestId, 'folder:f1')).toHaveAttribute('aria-expanded', 'true');
 		expect(treeRow(getAllByTestId, 'workflow:w1').getByRole('checkbox')).not.toBeChecked();
 		expect(cardCheckbox('workflow:w2')).not.toBeChecked();
-		expect(getByTestId('promotion-preview-counts')).toHaveTextContent('1/3');
+		expect(getByTestId('promotion-preview-submit')).toHaveTextContent('Promote 1 change');
 
 		await userEvent.click(treeRow(getAllByTestId, 'workflow:w1').getByRole('checkbox'));
 		expect(cardCheckbox('workflow:w1')).toBeChecked();
 		expect(cardCheckbox('folder:f1')).toHaveAttribute('data-state', 'indeterminate');
 		expect(cardCheckbox('workflow:w2')).not.toBeChecked();
-		expect(getByTestId('promotion-preview-counts')).toHaveTextContent('3/3');
+		expect(getByTestId('promotion-preview-submit')).toHaveTextContent('Promote 3 changes');
 
 		await promote(getByTestId);
 		expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
@@ -672,7 +672,9 @@ describe('PromotionPreviewView', () => {
 		const { getAllByTestId, getByTestId, getAllByLabelText } = await render();
 		const moved = treeRow(getAllByTestId, 'workflow:w2').getByRole('checkbox');
 		expect(moved).not.toBeChecked();
-		expect(moved).toBeDisabled();
+		// The box looks like any other. Clicking it does not add a workflow that has a blocker.
+		await userEvent.click(moved);
+		expect(moved).not.toBeChecked();
 		expect(getAllByLabelText(/This workflow moved to Ops on this instance/).length).toBeGreaterThan(
 			0,
 		);
@@ -820,10 +822,15 @@ describe('PromotionPreviewView', () => {
 		vi.mocked(api.applyProjectSelection).mockResolvedValue(applied);
 
 		const { getAllByTestId, getByTestId } = await renderApply();
+		// A workflow with an issue to resolve is selectable. While it is selected, Apply is disabled.
 		const blocked = treeRow(getAllByTestId, 'workflow:w3').getByRole('checkbox');
+		expect(blocked).toBeChecked();
+		expect(getByTestId('promotion-preview-submit')).toBeDisabled();
+		expect(getByTestId('promotion-preview-submit-blocked')).toBeInTheDocument();
+		await userEvent.click(blocked);
 		expect(blocked).not.toBeChecked();
-		expect(blocked).toBeDisabled();
-		// The blocked workflow also excludes its required variable from the selection.
+		// The workflow also takes its required variable out of the selection.
+		expect(getByTestId('promotion-preview-submit')).toBeEnabled();
 		expect(getByTestId('promotion-preview-submit')).toHaveTextContent('Apply 3 changes');
 
 		await userEvent.click(getByTestId('promotion-preview-submit'));
@@ -1140,7 +1147,8 @@ describe('PromotionPreviewView', () => {
 		});
 
 		const { getAllByTestId, getByTestId, getByRole } = await renderApply();
-		expect(treeRow(getAllByTestId, 'workflow:w3').getByRole('checkbox')).toBeDisabled();
+		expect(treeRow(getAllByTestId, 'workflow:w3').getByRole('checkbox')).toBeChecked();
+		expect(getByTestId('promotion-preview-submit')).toBeDisabled();
 
 		await userEvent.click(
 			treeRow(getAllByTestId, 'workflow:w3').getByTestId('promotion-preview-tree-blocker'),
@@ -1155,7 +1163,7 @@ describe('PromotionPreviewView', () => {
 		expect(createBinding).toHaveBeenCalledWith(missing);
 		expect(row).toHaveTextContent('Resolved');
 		expect(getByTestId('promotion-preview-blockers-status')).toHaveTextContent('No issues');
-		// The refreshed check has no blockers, so the workflow joins the selection again.
+		// The refreshed check has no blockers, so the workflow stays selected and Apply is on.
 		await userEvent.click(getByRole('tab', { name: /Changes/ }));
 		expect(treeRow(getAllByTestId, 'workflow:w3').getByRole('checkbox')).toBeChecked();
 		expect(getByTestId('promotion-preview-submit')).toBeEnabled();

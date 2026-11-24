@@ -32,8 +32,8 @@ const i18n = useI18n();
 
 const title = computed(() =>
 	i18n.baseText('promotions.unresolved.title.apply', {
-		adjustToNumber: props.dependencies.length,
-		interpolate: { count: String(props.dependencies.length) },
+		adjustToNumber: props.changeCount,
+		interpolate: { count: String(props.changeCount) },
 	}),
 );
 

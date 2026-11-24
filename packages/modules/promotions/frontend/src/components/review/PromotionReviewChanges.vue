@@ -26,6 +26,7 @@ import { buildPreviewTree, cardOrder } from '../../promotionPreview.tree';
 import { defaultActiveWorkflow, hasWorkflowDiff } from '../../promotionPreview.workflow';
 import { httpUrl } from '../../promotionResult';
 import { getPromotionReviewChanges, getPromotionReviewDetails } from '../../promotions.api';
+import type { PromotionReviewChangesWithIssues } from '../../promotions.types';
 import PromotionChangeCards from '../preview/PromotionChangeCards.vue';
 import PromotionResourceTree from '../preview/PromotionResourceTree.vue';
 
@@ -47,7 +48,7 @@ provide(PromotionAbsentSideLabelsKey, {
 
 const state = ref<'loading' | 'error' | 'ready'>('loading');
 const errorMessage = ref<string>();
-const changes = shallowRef<PromotionReviewChanges | null>(null);
+const changes = shallowRef<PromotionReviewChangesWithIssues | null>(null);
 // Each load counts up, so the answer for a review that is no longer shown is dropped.
 let generation = 0;
 
@@ -258,6 +259,7 @@ const treeResizer = useResizablePanel({
 						direction="promote"
 						:blockers="noBlockers"
 						:selectable="false"
+						:outside-access="changes?.outsideAccess ?? []"
 						@inspect="inspect"
 					/>
 				</N8nResizeWrapper>

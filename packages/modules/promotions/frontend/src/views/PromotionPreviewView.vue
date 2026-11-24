@@ -105,8 +105,18 @@ const operation = usePromotionOperation(projectId, direction, {
 	unresolved,
 	confirmUnresolved,
 });
+// A workflow with an issue that the user can resolve stays selectable, and the button explains
+// why it is disabled. Only a workflow that moved to another project cannot be selected.
+const unselectable = computed(
+	() =>
+		new Set(
+			blockerList.value
+				.filter(({ kind }) => kind === 'moved')
+				.flatMap(({ workflowKeys }) => workflowKeys),
+		),
+);
 const selection = usePromotionSelection(graph, {
-	disabled: computed(() => blockers.value.blocked),
+	disabled: unselectable,
 	locked: operation.isBusy,
 });
 const activeWorkflowKey = ref<ResourceKey>();
@@ -354,7 +364,7 @@ const tabs = computed(() => [
 				{
 					value: 'blockers' as const,
 					label: i18n.baseText('promotions.preview.tab.blockers'),
-					tag: blockerCount.value > 0 ? String(blockerCount.value) : undefined,
+					tag: String(blockerCount.value),
 				},
 			]
 		: []),
@@ -507,11 +517,12 @@ const treeResizer = useResizablePanel({
 						:included-changes="includedChanges"
 						:total-changes="totalChanges"
 						:inspected-key="inspectedKey"
-						:disabled="blockers.blocked"
+						:disabled="unselectable"
 						:locked="operation.isBusy.value"
 						:direction="direction"
 						:blockers="blockers"
 						:selectable="!isInstance"
+						:outside-access="scopedCheck?.outsideAccess ?? []"
 						@show-blockers="showBlockers"
 						@toggle="selection.toggle"
 						@toggle-container="selection.toggleAllInside"
@@ -555,7 +566,7 @@ const treeResizer = useResizablePanel({
 						:direction="direction"
 						:selected="selection.selected.value"
 						:inclusion="selection.inclusion.value"
-						:disabled="blockers.blocked"
+						:disabled="unselectable"
 						:locked="operation.isBusy.value"
 						:entries="details.entries.value"
 						:inspected-key="inspectedKey"
