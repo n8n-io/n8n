@@ -10283,6 +10283,7 @@
 	"agents.builder.setupTasks.addTool": "Add tools",
 	"agents.builder.setupTasks.addInstructions": "Add instructions",
 	"agents.builder.setupTasks.testAgent": "Test agent",
+	"agents.builder.setupTasks.addTrigger": "Add a trigger",
 	"agents.builder.setupTasks.addChannel": "Add channels",
 	"agents.builder.setupTasks.addChannel.description": "Add a channel to let this agent respond to events from a chat platform.",
 	"agents.builder.setupTasks.publishAgent": "Publish agent",
