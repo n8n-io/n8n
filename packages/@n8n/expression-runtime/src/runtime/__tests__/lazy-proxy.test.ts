@@ -820,6 +820,30 @@ describe('createDeepLazyProxy batched reads', () => {
 			]);
 		});
 
+		it.each([
+			{ when: 'without a key list', listKeys: false, request: ['type', 'meta'] },
+			{ when: 'after a key list', listKeys: true, request: WHOLE_VALUES },
+		])(
+			'asks for $request after a read of every key of the first item $when',
+			({ listKeys, request }) => {
+				const callbacks = createCallbacks();
+				callbacks.getArrayElement.mockReturnValue(objectOf(['type', 'meta']));
+				callbacks.getValueAtPath.mockImplementation((path: string[]) =>
+					path[3] === 'meta' ? objectOf(['id']) : 'x',
+				);
+				callbacks.readBatch.mockImplementation((path: string[]) =>
+					hostData(path.length === 2 ? [{ type: 'y' }] : {}),
+				);
+				const rows = arrayProxy(callbacks, 10);
+				if (listKeys) Object.keys(rows[0]);
+				void rows[0].type;
+				void rows[0].meta;
+				void rows[1];
+
+				expect(callbacks.readBatch.mock.calls.at(-1)).toEqual([['$json', 'rows'], 1, 0, request]);
+			},
+		);
+
 		it('asks for small fields after a key list and one field of each item, also after a read of the items to the end', () => {
 			const callbacks = createCallbacks();
 			callbacks.getArrayElement.mockReturnValue(objectOf(['id', 'blob']));

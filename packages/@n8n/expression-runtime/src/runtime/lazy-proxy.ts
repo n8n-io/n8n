@@ -52,7 +52,7 @@ export type ReadBatch = (
 interface ReadTrace {
 	/**
 	 * The expression read an item that shares this trace in full: every host key
-	 * of an object, or an array in order to its last item.
+	 * of an object after a key list, or an array in order to its last item.
 	 */
 	bulk: boolean;
 	/** The first names of the fields the expression read by name. */
@@ -108,9 +108,10 @@ interface ChildReads {
 	 */
 	endKey?: string;
 	/**
-	 * The count of host keys of an object that the expression read. A read of
-	 * every one sets `bulk` on the trace. A read before the key list is known does
-	 * not count.
+	 * The count of host keys of an object that the expression read. The trace
+	 * gets `bulk` when the last of these reads comes after a key list. Reads
+	 * before the key list count too. A read before the proxy knows its host
+	 * keys does not count.
 	 */
 	hostKeysRead: number;
 }
@@ -649,9 +650,13 @@ export function createDeepLazyProxy(
 			// writes on an item whose json is an array.
 			const value = cacheObjectValue(prop);
 			// Only object items have a trace with names, and only items use the mark.
+			// Reads by name can stop at the top of a large field, so only a read of
+			// every field (after a key list) marks the item.
 			if (trace.names !== undefined && knownKeys !== undefined && isHostKey(knownKeys, prop)) {
 				const reads = (childReads ??= newChildReads());
-				if (++reads.hostKeysRead === knownKeys.length) trace.bulk = true;
+				if (++reads.hostKeysRead === knownKeys.length && reads.fieldsRequest !== undefined) {
+					trace.bulk = true;
+				}
 			}
 			return value;
 		},

@@ -159,7 +159,7 @@ reads it, and the host never guesses.
 | --- | --- |
 | Reads a value after it listed the keys (`JSON.stringify`, a returned item, a spread) | Every small field of the object. Every field whole after the expression read an earlier item of the same array in full |
 | Reads the array index after the last one (`map`, `filter`, a `for` loop) | The next small items. The first item that is not small comes alone, as before. Each such read can be four times larger than the read before it |
-| Read an earlier item in full: every field of an object, or an array in order to its last item | The next items whole, including items that are not small |
+| Read an earlier item in full: every field of an object after a key list, or an array in order to its last item | The next items whole, including items that are not small |
 | Read fields by name on the item before (`row.name`) | Only these fields of the next items |
 | Reads one field, or one item out of order | That one value, as before |
 
