@@ -32,10 +32,12 @@
   "dependencies": {
     "@n8n/backend-common": "workspace:*",
     "@n8n/backend-services": "workspace:*",
+    "@n8n/code-task-contract": "workspace:*",
     "@n8n/config": "workspace:*",
     "@n8n/di": "workspace:*",
     "@n8n/errors": "workspace:*",
-    "@n8n/utils": "workspace:*"
+    "@n8n/utils": "workspace:*",
+    "n8n-workflow": "workspace:*"
   },
   "peerDependencies": {
     "zod": "catalog:"
