@@ -45,6 +45,11 @@ export function outputPath(path: string): string {
 	return `/${path.split('/').filter(Boolean).join('/')}`;
 }
 
+export const RESOURCETYPE_PROPFIND_BODY = `<?xml version="1.0"?>
+<d:propfind xmlns:d="DAV:">
+  <d:prop><d:resourcetype/></d:prop>
+</d:propfind>`;
+
 export async function readMultistatus(xml: string): Promise<Array<Record<string, unknown>>> {
 	const data: unknown = await parseStringPromise(xml, {
 		explicitArray: false,
@@ -61,30 +66,36 @@ export function readProps(response: Record<string, unknown> | undefined): Record
 	return isRecord(prop) ? prop : {};
 }
 
-export async function parseFolderList(xml: string): Promise<IDataObject[]> {
-	const propNames: Record<string, string> = {
-		'd:getlastmodified': 'lastModified',
-		'd:getcontentlength': 'contentLength',
-		'd:getcontenttype': 'contentType',
+// A prop that the request did not ask for is missing from the response, so its key is left out
+const ITEM_PROPS: Record<string, string> = {
+	'oc:fileid': 'fileId',
+	'd:getlastmodified': 'lastModified',
+	'd:getcontentlength': 'contentLength',
+	'd:getcontenttype': 'contentType',
+	'nc:upload_time': 'uploadTime',
+};
+
+/** A file or folder from a multistatus response, with its path relative to the user's root. */
+export function toWebDavItem(response: Record<string, unknown>): IDataObject {
+	const props = readProps(response);
+	const eTag = props['d:getetag'];
+
+	return {
+		// Nextcloud never encodes "/" in an href, so decoding the full path adds no separator.
+		path: decodePathValue(String(response['d:href']).replace(WEBDAV_HREF_PREFIX, '')),
+		...Object.fromEntries(
+			Object.entries(ITEM_PROPS)
+				.filter(([propName]) => typeof props[propName] === 'string')
+				.map(([propName, key]): [string, string] => [key, String(props[propName])]),
+		),
+		type: props['d:resourcetype'] === '' ? 'file' : 'folder',
+		eTag: typeof eTag === 'string' ? eTag.slice(1, -1) : undefined,
 	};
+}
 
+export async function parseFolderList(xml: string): Promise<IDataObject[]> {
 	// The first response is the listed folder itself.
-	return (await readMultistatus(xml)).slice(1).map((response): IDataObject => {
-		const props = readProps(response);
-		const eTag = props['d:getetag'];
-
-		return {
-			// Nextcloud never encodes "/" in an href, so decoding the full path adds no separator.
-			path: decodePathValue(String(response['d:href']).replace(WEBDAV_HREF_PREFIX, '')),
-			...Object.fromEntries(
-				Object.entries(propNames)
-					.filter(([propName]) => typeof props[propName] === 'string')
-					.map(([propName, key]): [string, string] => [key, String(props[propName])]),
-			),
-			type: props['d:resourcetype'] === '' ? 'file' : 'folder',
-			eTag: typeof eTag === 'string' ? eTag.slice(1, -1) : undefined,
-		};
-	});
+	return (await readMultistatus(xml)).slice(1).map(toWebDavItem);
 }
 
 export function nextCloudRootUrl(webDavUrl: string): string {

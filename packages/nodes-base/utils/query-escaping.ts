@@ -55,6 +55,18 @@ export function escapeSgqlLikeValue(value: unknown): string {
 }
 
 /**
+ * Escapes a value for the literal of a WebDAV SEARCH `DAV:like` (Nextcloud).
+ *
+ * `%` and `_` are wildcards there and a backslash escapes them, so a search for
+ * "50%" or "report_v2" stays literal. The result still needs XML escaping.
+ *
+ * @see https://www.rfc-editor.org/rfc/rfc5323#section-5.15.1
+ */
+export function escapeDavLikeValue(value: unknown): string {
+	return String(value).replace(/[\\%_]/g, '\\$&');
+}
+
+/**
  * Escapes a value for a double-quoted clause in a Microsoft Graph
  * **directory-object** `$search` (`/users`, `/groups`), where the documented
  * rule is to backslash-escape a quote or a backslash.
