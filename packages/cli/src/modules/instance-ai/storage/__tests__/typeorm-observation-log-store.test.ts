@@ -222,18 +222,17 @@ describe('TypeORMObservationLogStore', () => {
 		);
 	});
 
-	it('returns observation-scope messages after the cursor keyset', async () => {
+	it('returns observation-scope messages with and without a cursor keyset', async () => {
 		const messageRepo = mock<InstanceAiMessageRepository>();
 		const sinceCreatedAt = new Date('2026-01-01T00:00:00.000Z');
-		messageRepo.findForObservationScope.mockResolvedValueOnce([
-			makeMessageRow({
-				id: 'message-2',
-				content: JSON.stringify({ role: 'user', content: [{ type: 'text', text: 'hello' }] }),
-				role: 'user',
-				type: 'llm',
-				createdAt: new Date('2026-01-01T00:01:00.000Z'),
-			}),
-		]);
+		const row = makeMessageRow({
+			id: 'message-2',
+			content: JSON.stringify({ role: 'user', content: [{ type: 'text', text: 'hello' }] }),
+			role: 'user',
+			type: 'llm',
+			createdAt: new Date('2026-01-01T00:01:00.000Z'),
+		});
+		messageRepo.findForObservationScope.mockResolvedValueOnce([row]).mockResolvedValueOnce([row]);
 
 		const store = createObservationLogStore({ messageRepo });
 
@@ -247,6 +246,16 @@ describe('TypeORMObservationLogStore', () => {
 			{},
 		);
 		expect(messages).toEqual([
+			expect.objectContaining({
+				id: 'message-2',
+				role: 'user',
+			}),
+		]);
+
+		const allMessages = await store.getMessagesForObservationScope('thread-1');
+
+		expect(messageRepo.findForObservationScope).toHaveBeenLastCalledWith('thread-1', undefined, {});
+		expect(allMessages).toEqual([
 			expect.objectContaining({
 				id: 'message-2',
 				role: 'user',
