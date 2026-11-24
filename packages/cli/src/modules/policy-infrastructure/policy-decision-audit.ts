@@ -123,6 +123,15 @@ function targetOf(context: AnyPolicyContext) {
 		};
 	}
 
+	// An admission names the artifact itself: it has no nodes and no stored version.
+	if ('artifactKind' in context) {
+		const { artifactKind, artifactId, artifactName, projectId } = context;
+
+		return artifactKind === 'agent'
+			? { agentId: artifactId, agentName: artifactName, projectId }
+			: { workflowId: artifactId, workflowName: artifactName, projectId };
+	}
+
 	const projectId = 'targetProjectId' in context ? context.targetProjectId : context.projectId;
 
 	if (context.workflow.artifactKind === 'agent') {
