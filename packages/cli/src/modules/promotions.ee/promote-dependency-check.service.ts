@@ -122,9 +122,12 @@ export class PromoteDependencyCheckService {
 	}
 }
 
-/** Keeps the id and type only. The check must not see the name of an owner project. */
+/** Keeps the name of a team project only. The name of a personal project holds an email. */
 function toOwners(projects: ReadonlyMap<string, Project>): Map<string, DependencyOwner> {
 	return new Map(
-		[...projects].map(([id, { id: projectId, type }]) => [id, { id: projectId, type }]),
+		[...projects].map(([id, { id: projectId, type, name }]) => [
+			id,
+			type === 'team' ? { id: projectId, type, name } : { id: projectId, type },
+		]),
 	);
 }

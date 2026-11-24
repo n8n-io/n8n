@@ -12,8 +12,13 @@ import type { PackageRequirementConsumer } from '@/modules/n8n-packages/spec/req
 import { isUnder, projectHolding } from './branch-placement';
 import { compare, consumersOf, variableKey, type ConsumerWorkflow } from './package-references';
 
-/** The project that owns a dependency. It has no name, so a result cannot show one. */
-export type DependencyOwner = { id: string; type: 'personal' | 'team' };
+/**
+ * The project that owns a dependency. A personal project has no name here, because that name holds
+ * the email of its owner.
+ */
+export type DependencyOwner =
+	| { id: string; type: 'personal' }
+	| { id: string; type: 'team'; name: string };
 
 export type PromoteDependencyFacts = {
 	/** The export of the promoted projects. Its requirement rows hold the references. */
@@ -42,7 +47,7 @@ export type PromoteDependencyCheck = {
 	warnings: PromotionDependencyWarning[];
 };
 
-type Placement = Pick<PromotionMissingDependency, 'group' | 'reason' | 'accessible'>;
+type Placement = Pick<PromotionMissingDependency, 'group' | 'reason' | 'accessible' | 'project'>;
 
 type ConsumersOfRow = (
 	usedBy: PackageRequirementConsumer[],
@@ -51,8 +56,9 @@ type ConsumersOfRow = (
 
 /**
  * Lists what the promoted workflows use and the branch does not hold after the Promote, and the
- * references to something that this instance does not hold. It never shows the owner of a
- * dependency. References in expressions are not checked.
+ * references to something that this instance does not hold. It names the project of a dependency
+ * only when that project is a team project that the user can read. References in expressions are
+ * not checked.
  */
 export function checkPromoteDependencies(facts: PromoteDependencyFacts): PromoteDependencyCheck {
 	const result: PromoteDependencyCheck = { missingDependencies: [], warnings: [] };
@@ -173,11 +179,14 @@ function placementOf(
 		return { group: 'personal', reason: 'personal-project', accessible: readable };
 	}
 	if (onBranch) return null;
-	const accessible = facts.readableProjectIds.has(owner.id);
+	if (!facts.readableProjectIds.has(owner.id)) {
+		return { group: 'outside-access', reason: 'not-on-branch', accessible: false };
+	}
 	return {
-		group: accessible ? 'other-project' : 'outside-access',
+		group: 'other-project',
 		reason: 'not-on-branch',
-		accessible,
+		accessible: true,
+		project: { id: owner.id, name: owner.name },
 	};
 }
 

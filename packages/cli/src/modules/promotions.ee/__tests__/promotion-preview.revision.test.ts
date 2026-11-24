@@ -42,6 +42,10 @@ describe('previewRevision', () => {
 				missingDependencies: [{ ...missing, group: 'outside-access' as const, accessible: false }],
 			},
 		],
+		[
+			'a missing dependency names another project',
+			{ missingDependencies: [{ ...missing, project: { id: 'B', name: 'Beta' } }] },
+		],
 		['a warning leaves the list', { warnings: [] }],
 	])('changes when %s', (_case, change) => {
 		expect(previewRevision({ ...shown, ...change })).not.toBe(previewRevision(shown));

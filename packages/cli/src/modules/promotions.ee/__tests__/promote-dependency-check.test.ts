@@ -1,3 +1,5 @@
+import { promotionMissingDependencySchema } from '@n8n/api-types';
+
 import { FORMAT_VERSION } from '@/modules/n8n-packages/spec/constants';
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 import type { PackageRequirements } from '@/modules/n8n-packages/spec/requirements.schema';
@@ -10,7 +12,7 @@ import {
 
 const ALPHA = { id: 'A', name: 'Alpha', target: 'projects/alpha-A' };
 const BETA = { id: 'B', name: 'Beta', target: 'projects/beta-B' };
-const BETA_OWNER: DependencyOwner = { id: 'B', type: 'team' };
+const BETA_OWNER: DependencyOwner = { id: 'B', type: 'team', name: 'Beta' };
 const PERSONAL_OWNER: DependencyOwner = { id: 'U', type: 'personal' };
 
 const usedBy = (...ids: string[]) => ids.map((id) => ({ kind: 'workflow' as const, id }));
@@ -83,7 +85,7 @@ describe('checkPromoteDependencies', () => {
 		});
 
 		it('does not list a credential of the promoted project', () => {
-			const credentialOwners = new Map([['C', { id: 'A', type: 'team' } as const]]);
+			const credentialOwners = new Map([['C', { id: 'A', type: 'team', name: 'Alpha' } as const]]);
 
 			expect(check({ manifest, credentialOwners }).missingDependencies).toEqual([]);
 		});
@@ -161,6 +163,7 @@ describe('checkPromoteDependencies', () => {
 					group: 'other-project',
 					reason: 'not-on-branch',
 					accessible: true,
+					project: { id: 'B', name: 'Beta' },
 					blocking: false,
 					consumers: CONSUMERS,
 				},
@@ -175,16 +178,34 @@ describe('checkPromoteDependencies', () => {
 			]);
 		});
 
-		it('never shows the owner project', () => {
-			const result = check({
-				manifest,
-				credentialOwners: new Map([['C', { id: 'owner-project-id', type: 'team' }]]),
-				readableProjectIds: new Set(['owner-project-id']),
-			});
+		it.each([
+			{
+				owner: BETA_OWNER,
+				readable: true,
+				group: 'other-project',
+				project: { id: 'B', name: 'Beta' },
+			},
+			{ owner: BETA_OWNER, readable: false, group: 'outside-access', project: undefined },
+			{ owner: PERSONAL_OWNER, readable: true, group: 'personal', project: undefined },
+			{ owner: PERSONAL_OWNER, readable: false, group: 'personal', project: undefined },
+		])(
+			'gives the project of a credential only for a team project that the user can read, owner: $owner.type, readable: $readable',
+			({ owner, readable, group, project }) => {
+				const result = check({
+					manifest,
+					credentialOwners: new Map([['C', owner]]),
+					readableProjectIds: new Set(readable ? [owner.id] : []),
+					readableCredentialIds: new Set(readable ? ['C'] : []),
+				});
 
-			expect(result.missingDependencies).toHaveLength(1);
-			expect(JSON.stringify(result)).not.toContain('owner-project-id');
-		});
+				expect(result.missingDependencies).toHaveLength(1);
+				const [entry] = result.missingDependencies;
+				expect(entry).toMatchObject({ group, accessible: readable });
+				expect(entry.project).toEqual(project);
+				expect('project' in entry).toBe(project !== undefined);
+				expect(promotionMissingDependencySchema.parse(entry)).toEqual(entry);
+			},
+		);
 	});
 
 	describe('workflows', () => {
@@ -213,7 +234,7 @@ describe('checkPromoteDependencies', () => {
 		});
 
 		it('does not list a workflow of the promoted project', () => {
-			const workflowOwners = new Map([['sub', { id: 'A', type: 'team' } as const]]);
+			const workflowOwners = new Map([['sub', { id: 'A', type: 'team', name: 'Alpha' } as const]]);
 
 			expect(check({ manifest, workflowOwners })).toEqual({
 				missingDependencies: [],
@@ -283,6 +304,10 @@ describe('checkPromoteDependencies', () => {
 					accessible: group === 'other-project',
 				},
 			]);
+			// Only a user who can read the project gets its name.
+			expect(result.missingDependencies[0].project).toEqual(
+				group === 'other-project' ? { id: 'B', name: 'Beta' } : undefined,
+			);
 		});
 
 		it('shows the id of a workflow that has no name', () => {

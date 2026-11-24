@@ -183,7 +183,7 @@ const consumersOf = (workflow: { id: string; name: string }) => [
 const byId = <T extends { id?: string }>(entries: T[] | undefined, id: string) =>
 	entries?.find((entry) => entry.id === id);
 
-/** The two lists must not show the project that owns a dependency. */
+/** The two lists must not show this project. */
 function expectNoTraceOf(
 	project: Project,
 	{ missingDependencies, warnings }: Pick<PromotionPreview, 'missingDependencies' | 'warnings'>,
@@ -225,6 +225,7 @@ describe('Missing dependencies of a project Promote', () => {
 			group: 'other-project',
 			reason: 'not-on-branch',
 			accessible: true,
+			project: { id: beta.id, name: beta.name },
 			blocking: false,
 			consumers: consumersOf(caller),
 		});
@@ -235,11 +236,11 @@ describe('Missing dependencies of a project Promote', () => {
 			group: 'other-project',
 			reason: 'not-on-branch',
 			accessible: true,
+			project: { id: beta.id, name: beta.name },
 			blocking: false,
 			consumers: consumersOf(caller),
 		});
 		expect(preview.warnings).toEqual([]);
-		expectNoTraceOf(beta, preview);
 		expect((await previewOf(owner, alpha.id)).revision).toBe(preview.revision);
 
 		const afterPreview = await Container.get(PromotionsService).promoteProjectSelection(
@@ -395,10 +396,14 @@ describe('Missing dependencies of a project Promote', () => {
 
 		const ownerPreview = await previewOf(owner, alpha.id);
 		expect(ownerPreview.missingDependencies).toHaveLength(3);
+		// The owner can read Beta, so each entry names it.
 		for (const entry of ownerPreview.missingDependencies ?? []) {
-			expect(entry).toMatchObject({ group: 'other-project', accessible: true });
+			expect(entry).toMatchObject({
+				group: 'other-project',
+				accessible: true,
+				project: { id: beta.id, name: beta.name },
+			});
 		}
-		expectNoTraceOf(beta, ownerPreview);
 	}, 60_000);
 
 	it('warns about references to something that this instance does not hold, and still promotes', async () => {

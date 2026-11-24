@@ -63,6 +63,28 @@ describe('promotionMissingDependencySchema', () => {
 		).toBe(false);
 	});
 
+	it('accepts an entry that names the project of the dependency', () => {
+		const withProject = { ...credential, project: { id: 'project2', name: 'Billing' } };
+
+		expect(promotionMissingDependencySchema.parse(withProject)).toEqual(withProject);
+	});
+
+	it.each([
+		['an id', { name: 'Billing' }],
+		['a name', { id: 'project2' }],
+	])('rejects a project without %s', (_case, project) => {
+		expect(promotionMissingDependencySchema.safeParse({ ...credential, project }).success).toBe(
+			false,
+		);
+	});
+
+	it('removes other fields of the project', () => {
+		const project = { id: 'project2', name: 'Billing' };
+		const withType = { ...credential, project: { ...project, type: 'team' } };
+
+		expect(promotionMissingDependencySchema.parse(withType)).toEqual({ ...credential, project });
+	});
+
 	it('removes a field that names the owner project', () => {
 		const withOwner = { ...credential, ownerProject: { id: 'project2', name: 'Billing' } };
 

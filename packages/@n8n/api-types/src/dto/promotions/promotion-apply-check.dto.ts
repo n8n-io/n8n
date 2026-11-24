@@ -290,7 +290,7 @@ export const promotionMissingDependencyReasonSchema = z.enum([
 /**
  * A credential, variable, sub-workflow or error workflow that a workflow of the operation uses,
  * and that is not on the branch after a Promote, or not usable on this instance after an Apply.
- * It never names the project or the owner of the dependency.
+ * It never names the owner of the dependency. It names the project only when the user can read it.
  */
 export const promotionMissingDependencySchema = z
 	.object({
@@ -312,6 +312,10 @@ export const promotionMissingDependencySchema = z
 		reason: promotionMissingDependencyReasonSchema,
 		accessible: z.boolean().openapi({
 			description: 'Whether you can access the project that holds the dependency.',
+		}),
+		project: promotionBindingProjectSchema.optional().openapi({
+			description:
+				'The team project that holds the dependency. Only an entry of the group `other-project` has it, because you can access that project.',
 		}),
 		blocking: z.boolean().openapi({
 			description:

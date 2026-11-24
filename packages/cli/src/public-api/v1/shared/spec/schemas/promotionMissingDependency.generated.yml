@@ -39,6 +39,18 @@ properties:
   accessible:
     type: boolean
     description: Whether you can access the project that holds the dependency.
+  project:
+    type: object
+    properties:
+      id:
+        type: string
+        minLength: 1
+      name:
+        type: string
+    required:
+      - id
+      - name
+    description: The team project that holds the dependency. Only an entry of the group `other-project` has it, because you can access that project.
   blocking:
     type: boolean
     description: Whether the operation stops on this dependency. When false, the operation continues without it.
