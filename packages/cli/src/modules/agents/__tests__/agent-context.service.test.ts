@@ -378,6 +378,7 @@ describe('AgentContextService', () => {
 		let offset: number | undefined;
 		let rebuilt = '';
 		let pages = 0;
+		let largestSerialized = '';
 
 		do {
 			const page = (await reader.lookup({
@@ -390,8 +391,10 @@ describe('AgentContextService', () => {
 				skill: { references: Array<{ content?: string; nextOffset?: number }> };
 			};
 			const serialized = JSON.stringify(page);
-			expect(Buffer.byteLength(serialized, 'utf8')).toBeLessThan(48_976);
-			expect(await estimateObservationTokens(serialized)).toBeLessThanOrEqual(50_000);
+			// UTF-8 bytes bound the token count on every page. Tokenize only the largest page.
+			const bytes = Buffer.byteLength(serialized, 'utf8');
+			expect(bytes).toBeLessThan(48_976);
+			if (bytes > Buffer.byteLength(largestSerialized, 'utf8')) largestSerialized = serialized;
 			const ref = page.skill.references[0];
 			rebuilt += ref.content ?? '';
 			offset = ref.nextOffset;
@@ -400,6 +403,7 @@ describe('AgentContextService', () => {
 
 		expect(pages).toBeGreaterThan(1);
 		expect(rebuilt).toBe(chinese);
+		expect(await estimateObservationTokens(largestSerialized)).toBeLessThanOrEqual(50_000);
 	});
 
 	it.each([
