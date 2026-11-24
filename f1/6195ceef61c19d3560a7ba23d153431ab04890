@@ -1,0 +1,63 @@
+packages/nodes-base/nodes/NextCloud/NextCloud.node.ts
+  s_50795f9787e625::t_5e3b048625dda1 1054
+  s_50795f9787e625::t_6fdbdbaabebdff 915
+  s_50795f9787e625::t_6f9edbf0dae3d6 1030
+  s_50795f9787e625::t_d443e096a0e2e1 1168
+  s_50795f9787e625::t_3b2042dbc1d365 1290
+  s_50795f9787e625::t_01443423041350 898-900,1148,1285
+  s_50795f9787e625::t_bec200ca816bc5 22-25,27-29
+  s_0481ab2872e2f7::t_18f7c29a40e47e 26
+packages/nodes-base/nodes/NextCloud/test/GenericFunctions.test.ts
+  s_50795f9787e625::t_8845515c943ee6 126,163,193,220,241,294,314,336
+  s_50795f9787e625::t_0024654168bd33 472
+  s_50795f9787e625::t_6efe0ff39c8705 201-219,221-225
+  s_50795f9787e625::t_00a8a5fda3a089 57-58
+  s_50795f9787e625::t_af8964d2ff0330 29
+  s_50795f9787e625::t_ca929dee97a993 6,8-9
+  s_50795f9787e625::t_6633181a57d163 464-471,473-478,480-488
+  s_50795f9787e625::t_7b34b1f41b5fa1 346-463,479,489-513
+  s_50795f9787e625::t_5961cc9fff4a30 59-60
+  s_0481ab2872e2f7::t_18f7c29a40e47e 14-16,18-20
+packages/nodes-base/nodes/NextCloud/test/NextCloud.node.test.ts
+  s_50795f9787e625::t_280b9fb7096631 832-834
+  s_50795f9787e625::t_4487ae47598dd5 815-831,835-837
+packages/nodes-base/nodes/NextCloud/GenericFunctions.ts
+  s_50795f9787e625::t_1aa27bf1f82295 96-109,115,122,124-125
+  s_50795f9787e625::t_ef9c616b0d5fad 150
+  s_50795f9787e625::t_35ad5b38725e01 171-188,190-194,196-203,208-218
+  s_50795f9787e625::t_69cea396e6a433 1,5,12-13,16,21-29
+  s_50795f9787e625::t_1a7d8ae31def11 189,195,204-207
+  s_50795f9787e625::t_993ee6e90c2085 91-95
+  s_50795f9787e625::t_b97ed793abcf87 90
+  s_50795f9787e625::t_c3823246500501 30
+packages/nodes-base/credentials/NextCloudApi.credentials.ts
+  s_50795f9787e625::t_81d3a44a175a22 52,55
+  s_50795f9787e625::t_48da34b3ada39e 53
+  s_50795f9787e625::t_eec0727b850cca 54
+packages/nodes-base/credentials/test/NextCloudApi.credentials.test.ts
+  s_50795f9787e625::t_e45a44560124fa 1-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f16195ceef61c19d3560a7ba23d153431ab04890",
+  "prompts": {},
+  "sessions": {
+    "s_0481ab2872e2f7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5884e799-6268-4cb4-8513-23c91424175e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    },
+    "s_50795f9787e625": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "42d12515-ea53-4ce2-9f84-b88ec831710f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
