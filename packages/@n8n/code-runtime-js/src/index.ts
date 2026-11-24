@@ -9,3 +9,4 @@ export {
 } from './task-console';
 export { createTaskData, type TaskData } from './task-data';
 export { runTask } from './run-task';
+export { MAX_CONTROL_MESSAGE_BYTES, serveTasks, startRuntime } from './runtime';
