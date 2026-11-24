@@ -8,6 +8,7 @@ import { TO_ASCII_CHARMAP_HOST_FUNCTION } from '../runtime/host-function-names';
 import type { BatchRequest, ErrorSentinel } from '../runtime/lazy-proxy';
 import { unwrapTransferredValue } from '../runtime/transfer-codec';
 import { BATCH_READ_LIMITS, readBatchAtPath } from './batch-read';
+import type { BatchReadBudget } from './batch-read';
 import { HostDataResolver } from './host-data-resolver';
 import {
 	dispatchHostCall,
@@ -352,11 +353,19 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 *
 	 * @private
 	 */
-	private createReadBatchRef(resolver: HostDataResolver): ivm.Callback {
+	private createReadBatchRef(resolver: HostDataResolver, budget: BatchReadBudget): ivm.Callback {
 		return new (getIvm().Callback)(
 			(pathArr: string[], start: number, step: number, request: BatchRequest) => {
 				try {
-					return readBatchAtPath(resolver, pathArr, start, step, request, BATCH_READ_LIMITS);
+					return readBatchAtPath(
+						resolver,
+						pathArr,
+						start,
+						step,
+						request,
+						BATCH_READ_LIMITS,
+						budget,
+					);
 				} catch (err) {
 					return serializeError(err);
 				}
@@ -438,12 +447,13 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		// next isolated-vm call in the process, even after the isolate is disposed.
 		// So the callbacks read the data from a resolver that `finally` disposes.
 		const resolver = new HostDataResolver(data);
+		const budget = { remaining: BATCH_READ_LIMITS.maxCharsPerEvaluation };
 
 		try {
 			const getValueAtPath = this.createGetValueAtPathRef(resolver);
 			const getArrayElement = this.createGetArrayElementRef(resolver);
 			const callHost = this.createCallHostRef(resolver);
-			const readBatch = this.createReadBatchRef(resolver);
+			const readBatch = this.createReadBatchRef(resolver, budget);
 			const timezone = options?.timezone ? safeStringify(options.timezone) : 'undefined';
 
 			// Wrap transformed code so 'this' === the closure-scoped context.

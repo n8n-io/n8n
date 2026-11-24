@@ -3,13 +3,25 @@ import { describe, expect, it, vi } from 'vitest';
 import { SMALL_VALUES, WHOLE_VALUES } from '../../runtime/lazy-proxy';
 import type { BatchRequest } from '../../runtime/lazy-proxy';
 import { BATCH_READ_LIMITS, readBatchAtPath } from '../batch-read';
+import type { BatchReadBudget } from '../batch-read';
 import { HostDataResolver } from '../host-data-resolver';
 
-const limits = { smallValueChars: 100, firstBatchChars: 60, maxBatchChars: 1000 };
+const limits = {
+	smallValueChars: 100,
+	firstBatchChars: 60,
+	maxBatchChars: 1000,
+	maxCharsPerEvaluation: 100_000,
+};
 
 const whole = (value: unknown) => ({ __n8nType: 'HostData', __value: value });
 
-function readItems(rows: unknown, start: number, step: number, request: BatchRequest) {
+function readItems(
+	rows: unknown,
+	start: number,
+	step: number,
+	request: BatchRequest,
+	budget: BatchReadBudget = { remaining: limits.maxCharsPerEvaluation },
+) {
 	return readBatchAtPath(
 		new HostDataResolver({ $json: { rows } }),
 		['$json', 'rows'],
@@ -17,11 +29,16 @@ function readItems(rows: unknown, start: number, step: number, request: BatchReq
 		step,
 		request,
 		limits,
+		budget,
 	);
 }
 
-function readFields($json: unknown, request: BatchRequest = SMALL_VALUES) {
-	return readBatchAtPath(new HostDataResolver({ $json }), ['$json'], 0, 0, request, limits);
+function readFields(
+	$json: unknown,
+	request: BatchRequest = SMALL_VALUES,
+	budget: BatchReadBudget = { remaining: limits.maxCharsPerEvaluation },
+) {
+	return readBatchAtPath(new HostDataResolver({ $json }), ['$json'], 0, 0, request, limits, budget);
 }
 
 describe('readBatchAtPath on an array', () => {
@@ -86,6 +103,7 @@ describe('readBatchAtPath on an array', () => {
 				0,
 				SMALL_VALUES,
 				BATCH_READ_LIMITS,
+				{ remaining: BATCH_READ_LIMITS.maxCharsPerEvaluation },
 			),
 		).toEqual({ __isObject: true, __keys: ['text'] });
 	});
@@ -160,7 +178,9 @@ describe('readBatchAtPath on an array', () => {
 	it('gives one lazy item for a path outside $json', () => {
 		const resolver = new HostDataResolver({ $json: {}, $other: { rows: [1, 2] } });
 
-		expect(readBatchAtPath(resolver, ['$other', 'rows'], 0, 0, SMALL_VALUES, limits)).toBe(1);
+		expect(
+			readBatchAtPath(resolver, ['$other', 'rows'], 0, 0, SMALL_VALUES, limits, { remaining: 1 }),
+		).toBe(1);
 	});
 });
 
@@ -342,7 +362,48 @@ describe('readBatchAtPath on an object', () => {
 	it('returns no field for a path outside $json', () => {
 		const resolver = new HostDataResolver({ $json: {}, $other: { id: 1 } });
 
-		expect(readBatchAtPath(resolver, ['$other'], 0, 0, SMALL_VALUES, limits)).toEqual(whole({}));
+		expect(
+			readBatchAtPath(resolver, ['$other'], 0, 0, SMALL_VALUES, limits, { remaining: 1 }),
+		).toEqual(whole({}));
+	});
+});
+
+describe('readBatchAtPath with the character budget of an evaluation', () => {
+	it('gives one item, as a read of one item does, when the budget is spent', () => {
+		expect(readItems([1, { id: 2 }], 0, 0, SMALL_VALUES, { remaining: 0 })).toBe(1);
+		expect(readItems([1, { id: 2 }], 1, 0, ['id'], { remaining: 0 })).toEqual({
+			__isObject: true,
+			__keys: ['id'],
+		});
+	});
+
+	it('gives no field when the budget is spent', () => {
+		expect(readFields({ id: 1 }, SMALL_VALUES, { remaining: 0 })).toEqual(whole({}));
+	});
+
+	it.each([
+		{
+			label: 'array items',
+			read: (budget: BatchReadBudget) => readItems([1, 2, 3], 0, 0, SMALL_VALUES, budget),
+			chars: 24,
+		},
+		{
+			label: 'every field',
+			read: (budget: BatchReadBudget) => readFields({ id: 1, name: 'ab' }, SMALL_VALUES, budget),
+			chars: 24,
+		},
+		{
+			label: 'named fields, with a field over the small size',
+			read: (budget: BatchReadBudget) =>
+				readItems([{ id: 1, big: 'x'.repeat(200) }], 0, 0, ['id', 'big'], budget),
+			chars: 118,
+		},
+	])('takes the characters of a read of $label from the budget', ({ read, chars }) => {
+		const budget = { remaining: 1000 };
+
+		read(budget);
+
+		expect(budget.remaining).toBe(1000 - chars);
 	});
 });
 

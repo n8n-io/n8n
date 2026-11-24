@@ -27,14 +27,23 @@ export interface BatchReadLimits {
 	firstBatchChars: number;
 	/** The most that one read takes. */
 	maxBatchChars: number;
+	/** The most that all reads of one evaluation take. After that, each read gives one value. */
+	maxCharsPerEvaluation: number;
 }
 
-/** The limits that the bridges use for one batched read of item data. */
+/** The limits that the bridges use for the batched reads of item data. */
 export const BATCH_READ_LIMITS: BatchReadLimits = {
 	smallValueChars: 1024,
 	firstBatchChars: 512,
 	maxBatchChars: 262_144,
+	// Provisional. Tune it by measurement.
+	maxCharsPerEvaluation: 16_777_216,
 };
+
+/** The characters that the batched reads of one evaluation can still take. */
+export interface BatchReadBudget {
+	remaining: number;
+}
 
 /** The characters counted for an array item that goes across with only some of its fields. */
 const PARTIAL_ITEM_CHARS = 8;
@@ -97,6 +106,7 @@ function wholeItemsFrom(
 	start: number,
 	readChars: number,
 	childChars: number,
+	budget: BatchReadBudget,
 ): unknown[] {
 	const whole: unknown[] = [];
 	let remaining = readChars;
@@ -109,6 +119,7 @@ function wholeItemsFrom(
 		remaining -= item.chars;
 		whole.push(item.copy);
 	}
+	budget.remaining -= readChars - remaining;
 	return whole;
 }
 
@@ -154,6 +165,7 @@ function namedFieldsOfItemsFrom(
 	readChars: number,
 	names: string[],
 	childChars: number,
+	budget: BatchReadBudget,
 ): Array<Record<string, unknown>> {
 	const rows: Array<Record<string, unknown>> = [];
 	let remaining = readChars;
@@ -169,6 +181,7 @@ function namedFieldsOfItemsFrom(
 		remaining -= chars;
 		rows.push(fields);
 	}
+	budget.remaining -= readChars - remaining;
 	return rows;
 }
 
@@ -180,6 +193,7 @@ function wholeFieldsOf(
 	record: Record<string, unknown>,
 	readChars: number,
 	childChars: number,
+	budget: BatchReadBudget,
 ): Record<string, unknown> {
 	const whole: Record<string, unknown> = {};
 	let remaining = readChars;
@@ -194,6 +208,7 @@ function wholeFieldsOf(
 			defineOwnValue(whole, key, field.copy);
 		}
 	}
+	budget.remaining -= readChars - remaining;
 	return whole;
 }
 
@@ -204,6 +219,7 @@ function itemsOfRead(
 	step: number,
 	request: unknown,
 	limits: BatchReadLimits,
+	budget: BatchReadBudget,
 ): unknown[] {
 	const names = namesOf(request);
 	const readChars = readAheadChars(step, limits);
@@ -213,8 +229,8 @@ function itemsOfRead(
 		return [];
 	}
 	return names === undefined
-		? wholeItemsFrom(items, start, readChars, childChars)
-		: namedFieldsOfItemsFrom(items, start, readChars, names, childChars);
+		? wholeItemsFrom(items, start, readChars, childChars, budget)
+		: namedFieldsOfItemsFrom(items, start, readChars, names, childChars, budget);
 }
 
 /** The values of one read. Empty when a proxy trap throws, so the values stay lazy. */
@@ -237,6 +253,9 @@ function valuesOfRead<T extends unknown[] | Record<string, unknown>>(empty: T, r
  *
  * For any other value, the result is a data wrapper around the fields that can
  * go across whole. It holds no field for a path outside `$json`.
+ *
+ * A read takes its characters from `budget`. When the budget is spent, a read
+ * gives what a read of one value gives.
  */
 export function readBatchAtPath(
 	resolver: HostDataResolver,
@@ -245,22 +264,23 @@ export function readBatchAtPath(
 	step: number,
 	request: BatchRequest,
 	limits: BatchReadLimits,
+	budget: BatchReadBudget,
 ): unknown {
-	const isItemData = pathArr[0] === ITEM_DATA_ROOT;
+	const canBatch = pathArr[0] === ITEM_DATA_ROOT && budget.remaining > 0;
 	const container = resolver.resolve(pathArr);
 	if (Array.isArray(container)) {
 		if (!Number.isInteger(start) || start < 0) {
 			return undefined;
 		}
-		const items = isItemData
-			? valuesOfRead([], () => itemsOfRead(container, start, step, request, limits))
+		const items = canBatch
+			? valuesOfRead([], () => itemsOfRead(container, start, step, request, limits, budget))
 			: [];
 		return items.length > 0 ? toHostData(items) : toHostMetadata(container[start]);
 	}
 	return toHostData(
-		isItemData && isPlainRecord(container)
+		canBatch && isPlainRecord(container)
 			? valuesOfRead({}, () =>
-					wholeFieldsOf(container, limits.maxBatchChars, valueCharsFor(request, limits)),
+					wholeFieldsOf(container, limits.maxBatchChars, valueCharsFor(request, limits), budget),
 				)
 			: {},
 	);

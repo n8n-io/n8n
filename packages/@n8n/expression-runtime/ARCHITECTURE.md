@@ -165,8 +165,9 @@ reads it, and the host never guesses.
 
 A value that is plain JSON data and small goes across whole. A larger value
 stays a lazy proxy, and the same rules apply to it. A value of a parent that
-the expression read whole can be as large as one read. `BATCH_READ_LIMITS`
-holds the sizes.
+the expression read whole can be as large as one read. All reads of one
+evaluation share one character budget. When the budget is spent, a proxy reads
+one value for each host call. `BATCH_READ_LIMITS` holds the sizes.
 
 `readBatchAtPath` in `src/bridge/batch-read.ts` is the host side. It never
 calls an accessor and it only reads `$json`. All other roots stay lazy. Both

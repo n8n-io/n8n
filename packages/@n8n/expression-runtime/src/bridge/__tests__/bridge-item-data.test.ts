@@ -1,6 +1,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import type { RuntimeBridge } from '../../types';
+import { BATCH_READ_LIMITS } from '../batch-read';
 import { HostDataResolver } from '../host-data-resolver';
 import { IsolatedVmBridge } from '../isolated-vm-bridge';
 import { QuickJsBridge } from '../quickjs-bridge';
@@ -368,6 +369,22 @@ describe.each(bridges)('$label item data', ({ create }) => {
 			rows.map((row) => row.id),
 		);
 		expect(read).not.toHaveBeenCalled();
+	});
+
+	it('reads one value for each host call after the batched reads spend the budget of the evaluation', () => {
+		const $json = { rows: rowsOf(100) };
+		const code = 'return $json.rows.map(function (r) { return r.id; });';
+		const budget = BATCH_READ_LIMITS.maxCharsPerEvaluation;
+		BATCH_READ_LIMITS.maxCharsPerEvaluation = 1;
+		try {
+			const hostReads = countHostReads();
+
+			expect(evaluate(code, $json)).toStrictEqual(evaluatePlain(code, $json));
+			// The first batched read spends the budget. Each next row takes two host reads.
+			expect(hostReads()).toBeGreaterThan(100);
+		} finally {
+			BATCH_READ_LIMITS.maxCharsPerEvaluation = budget;
+		}
 	});
 
 	it('throws the error of a host read in a batched read', () => {

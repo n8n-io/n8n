@@ -272,11 +272,11 @@ describe('QuickJsBridge error origin', () => {
 	it('should record a failed callback cleanup and keep its error', () => {
 		const cleanupError = new RangeError('cleanup failed');
 		const internals = bridge as unknown as {
-			createCallbackHandles(resolver: unknown): Array<{ dispose(): void }>;
+			createCallbackHandles(resolver: unknown, budget: unknown): Array<{ dispose(): void }>;
 		};
 		const createCallbackHandles = internals.createCallbackHandles.bind(bridge);
-		vi.spyOn(internals, 'createCallbackHandles').mockImplementationOnce((resolver) => {
-			const handles = createCallbackHandles(resolver);
+		vi.spyOn(internals, 'createCallbackHandles').mockImplementationOnce((resolver, budget) => {
+			const handles = createCallbackHandles(resolver, budget);
 			const [first] = handles;
 			const dispose = first.dispose.bind(first);
 			first.dispose = () => {
