@@ -50,6 +50,7 @@ export class PollContext extends NodeExecutionContext implements IPollFunctions 
 		// loop from a finite budget.
 		readonly getPollBudgetMs: IPollFunctions['getPollBudgetMs'] = () =>
 			5 * Time.minutes.toMilliseconds,
+		readonly declareBoundedPoll: NonNullable<IPollFunctions['declareBoundedPoll']> = () => {},
 	) {
 		super(workflow, node, additionalData, mode);
 
