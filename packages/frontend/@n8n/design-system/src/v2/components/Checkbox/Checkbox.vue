@@ -82,11 +82,19 @@ function onUpdate(value: boolean | 'indeterminate') {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	border: var(--border);
-	border-color: var(--border-color--strong);
+	border: none;
 	color: var(--text-color--inverse);
 	cursor: inherit;
 	flex-shrink: 0;
+
+	&[data-state='unchecked'] {
+		border: var(--border);
+		border-color: var(--border-color--strong);
+
+		&[data-disabled] {
+			border: var(--border);
+		}
+	}
 
 	&[data-state='checked'],
 	&[data-state='indeterminate'] {
@@ -96,10 +104,6 @@ function onUpdate(value: boolean | 'indeterminate') {
 			background: var(--color--foreground);
 			color: var(--color--text--tint-1);
 		}
-	}
-
-	&[data-disabled] {
-		border: var(--border);
 	}
 
 	&:focus-visible {
