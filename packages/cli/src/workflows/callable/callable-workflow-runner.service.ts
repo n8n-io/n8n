@@ -3,6 +3,7 @@ import { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
+import type { DistributiveOmit } from '@n8n/utils/types';
 import {
 	createRunExecutionData,
 	type IDataObject,
@@ -180,7 +181,7 @@ export class CallableWorkflowRunner {
 		const finished = this.whenFinished(executionId).finally(release);
 
 		const run = await this.waitForRun(executionId, options.waitMs);
-		if (run === 'running') return { status: 'running', executionId, finished };
+		if (run === 'running' || run === 'canceled') return { status: run, executionId, finished };
 
 		const execution =
 			run ??
@@ -212,11 +213,14 @@ export class CallableWorkflowRunner {
 		await this.activeExecutions.getPostExecutePromise(executionId).catch(() => {});
 	}
 
-	/** Returns `undefined` when the execution already left the active set. */
+	/**
+	 * Returns `undefined` when the execution already left the active set.
+	 * A stop rejects the post-execute promise, so a rejection means `canceled`.
+	 */
 	private async waitForRun(
 		executionId: string,
 		waitMs: number,
-	): Promise<IRun | 'running' | undefined> {
+	): Promise<IRun | 'running' | 'canceled' | undefined> {
 		if (!this.activeExecutions.has(executionId)) return undefined;
 
 		let timeoutId: NodeJS.Timeout | undefined;
@@ -225,7 +229,7 @@ export class CallableWorkflowRunner {
 		});
 		try {
 			return await Promise.race([
-				this.activeExecutions.getPostExecutePromise(executionId),
+				this.activeExecutions.getPostExecutePromise(executionId).catch(() => 'canceled' as const),
 				timeout,
 			]);
 		} finally {
@@ -248,13 +252,16 @@ export class CallableWorkflowRunner {
 				{ usePublishedVersion: true },
 			);
 		} catch (error) {
-			if (error instanceof CallableWorkflowUnavailableError)
-				return { reason: error.reason === 'not_published' ? 'not_published' : 'not_found' };
-			throw error;
+			if (!(error instanceof CallableWorkflowUnavailableError)) throw error;
+			if (error.reason !== 'not_published') return { reason: 'not_found' };
+			// Ownership comes first, so only a workflow of the project reports "not published".
+			const draft = await this.workflowLoader.loadWorkflow(projectId, {
+				workflowId,
+				workflowName: '',
+			});
+			return { reason: draft && isOwnedBy(draft, projectId) ? 'not_published' : 'not_found' };
 		}
-		// The loader also finds workflows that are only shared with the project.
-		const ownerProjectId = workflow?.shared?.find((s) => s.role === 'workflow:owner')?.projectId;
-		if (!workflow || ownerProjectId !== projectId) return { reason: 'not_found' };
+		if (!workflow || !isOwnedBy(workflow, projectId)) return { reason: 'not_found' };
 
 		const incompatibility = getWorkflowToolIncompatibilityReason(workflow);
 		if (incompatibility) return { reason: incompatibility.reason };
@@ -333,7 +340,6 @@ function isRunStatus(status: string): status is CallableWorkflowRunStatus {
 }
 
 type RunOutcome = DistributiveOmit<CallableWorkflowStartedRun, 'executionId' | 'finished'>;
-type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 
 function toRunOutcome(
 	status: string | undefined,
@@ -358,4 +364,11 @@ function toRunOutcome(
 		};
 	}
 	return { status: isRunStatus(normalised) ? normalised : 'unknown' };
+}
+
+/** The loader also finds workflows that are only shared with the project. */
+function isOwnedBy(workflow: WorkflowEntity, projectId: string): boolean {
+	return (
+		workflow.shared?.some((s) => s.role === 'workflow:owner' && s.projectId === projectId) ?? false
+	);
 }

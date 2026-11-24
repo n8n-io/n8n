@@ -67,7 +67,7 @@ export class WorkflowsConfig {
 	@Env('N8N_WORKFLOW_PUBLICATION_RECONCILE_INTERVAL_SECONDS', positiveIntSchema)
 	publicationReconcileIntervalSeconds: number = 10;
 
-	/** Maximum workflows that run at the same time as tools in each main process, for example for tool calls from an MCP client. These runs don't count toward the production concurrency limit. Calls above this limit get a busy error until a run finishes. Set to 0 to remove the limit. */
+	/** Maximum workflow executions that tool calls start and that run at the same time in each main process, for example tool calls from an MCP client. An execution counts until it finishes, and calls above this limit fail until one finishes. Set to 0 to remove the limit. */
 	@Env('N8N_CALLABLE_WORKFLOW_MAX_CONCURRENT_RUNS', nonnegativeIntSchema)
 	callableMaxConcurrentRuns: number = 20;
 

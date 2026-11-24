@@ -1,7 +1,12 @@
 import type { WorkflowsConfig } from '@n8n/config';
-import type { Project, WorkflowEntity } from '@n8n/db';
+import {
+	type IExecutionResponse,
+	type Project,
+	type SharedWorkflow,
+	WorkflowEntity,
+} from '@n8n/db';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import type { IRun, IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import type { INode, IRun, IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -17,7 +22,7 @@ import { CallableWorkflowUnavailableError } from '../callable-workflow-unavailab
 const PROJECT_ID = 'project-1';
 const WORKFLOW_ID = 'workflow-1';
 
-const trigger = {
+const trigger: INode = {
 	id: 'trigger',
 	name: 'Start',
 	type: 'n8n-nodes-base.executeWorkflowTrigger',
@@ -33,7 +38,7 @@ const trigger = {
 		},
 	},
 };
-const setNode = {
+const setNode: INode = {
 	id: 'set',
 	name: 'Set',
 	type: 'n8n-nodes-base.set',
@@ -42,17 +47,22 @@ const setNode = {
 	parameters: {},
 };
 
+function sharedWith(...shares: Array<Pick<SharedWorkflow, 'projectId' | 'role'>>) {
+	return shares.map((share) => mock<SharedWorkflow>(share));
+}
+
+/** A real entity, because a deep mock answers every unset node field, such as `disabled`. */
 function makeWorkflow(overrides: Partial<WorkflowEntity> = {}) {
-	return {
+	return Object.assign(new WorkflowEntity(), {
 		id: WORKFLOW_ID,
 		name: 'Get pipeline summary',
 		description: 'Returns the open deals.',
 		nodes: [trigger, setNode],
 		connections: { Start: { main: [[{ node: 'Set', type: 'main', index: 0 }]] } },
 		settings: {},
-		shared: [{ projectId: PROJECT_ID, role: 'workflow:owner' }],
+		shared: sharedWith({ projectId: PROJECT_ID, role: 'workflow:owner' }),
 		...overrides,
-	} as unknown as WorkflowEntity;
+	});
 }
 
 const policyDenial = () =>
@@ -66,7 +76,7 @@ const policyDenial = () =>
 
 function completedRun(overrides: Partial<IRun> & { error?: string; lastNode?: string } = {}) {
 	const { error, lastNode, ...run } = overrides;
-	return {
+	return mock<IRun>({
 		status: 'success',
 		data: {
 			resultData: {
@@ -79,7 +89,13 @@ function completedRun(overrides: Partial<IRun> & { error?: string; lastNode?: st
 			},
 		},
 		...run,
-	} as unknown as IRun;
+	});
+}
+
+/** The execution row of a finished run, as the persistence layer returns it. */
+function storedExecution() {
+	const { status, data } = completedRun();
+	return mock<IExecutionResponse>({ status, data });
 }
 
 /** Starts an execution that stays active until the test settles `done`. */
@@ -134,11 +150,11 @@ describe('CallableWorkflowRunner', () => {
 			const { runner, loader } = setup();
 			loader.loadWorkflow.mockResolvedValue(
 				makeWorkflow({
-					shared: [
+					shared: sharedWith(
 						{ projectId: 'project-2', role: 'workflow:owner' },
 						{ projectId: PROJECT_ID, role: 'workflow:editor' },
-					],
-				} as Partial<WorkflowEntity>),
+					),
+				}),
 			);
 
 			await expect(runner.check(PROJECT_ID, WORKFLOW_ID)).resolves.toEqual({
@@ -149,9 +165,11 @@ describe('CallableWorkflowRunner', () => {
 
 		it('refuses a workflow that is not published', async () => {
 			const { runner, loader } = setup();
-			loader.loadWorkflow.mockRejectedValue(
-				new CallableWorkflowUnavailableError('not_published', 'not published'),
-			);
+			loader.loadWorkflow
+				.mockRejectedValueOnce(
+					new CallableWorkflowUnavailableError('not_published', 'not published'),
+				)
+				.mockResolvedValueOnce(makeWorkflow());
 
 			await expect(runner.check(PROJECT_ID, WORKFLOW_ID)).resolves.toEqual({
 				callable: false,
@@ -159,9 +177,25 @@ describe('CallableWorkflowRunner', () => {
 			});
 		});
 
+		it('refuses a workflow that is not published and not owned by the project as not found', async () => {
+			const { runner, loader } = setup();
+			loader.loadWorkflow
+				.mockRejectedValueOnce(
+					new CallableWorkflowUnavailableError('not_published', 'not published'),
+				)
+				.mockResolvedValueOnce(
+					makeWorkflow({ shared: sharedWith({ projectId: 'project-2', role: 'workflow:owner' }) }),
+				);
+
+			await expect(runner.check(PROJECT_ID, WORKFLOW_ID)).resolves.toEqual({
+				callable: false,
+				reason: 'not_found',
+			});
+		});
+
 		it('refuses a workflow without the trigger "When Executed by Another Workflow"', async () => {
 			const { runner, loader } = setup();
-			loader.loadWorkflow.mockResolvedValue(makeWorkflow({ nodes: [setNode] } as never));
+			loader.loadWorkflow.mockResolvedValue(makeWorkflow({ nodes: [setNode] }));
 
 			await expect(runner.check(PROJECT_ID, WORKFLOW_ID)).resolves.toEqual({
 				callable: false,
@@ -176,7 +210,7 @@ describe('CallableWorkflowRunner', () => {
 				makeWorkflow({
 					nodes: [trigger, form],
 					connections: { Start: { main: [[{ node: 'Form', type: 'main', index: 0 }]] } },
-				} as never),
+				}),
 			);
 
 			await expect(runner.check(PROJECT_ID, WORKFLOW_ID)).resolves.toEqual({
@@ -240,9 +274,7 @@ describe('CallableWorkflowRunner', () => {
 		it('describes a workflow that accepts all data as an open object', async () => {
 			const { runner, loader } = setup();
 			const passthrough = { ...trigger, parameters: { inputSource: 'passthrough' } };
-			loader.loadWorkflow.mockResolvedValue(
-				makeWorkflow({ nodes: [passthrough, setNode] } as never),
-			);
+			loader.loadWorkflow.mockResolvedValue(makeWorkflow({ nodes: [passthrough, setNode] }));
 
 			const described = await runner.describe(PROJECT_ID, WORKFLOW_ID);
 
@@ -254,7 +286,7 @@ describe('CallableWorkflowRunner', () => {
 
 		it('gives the reason when the workflow cannot be a tool', async () => {
 			const { runner, loader } = setup();
-			loader.loadWorkflow.mockResolvedValue(makeWorkflow({ nodes: [setNode] } as never));
+			loader.loadWorkflow.mockResolvedValue(makeWorkflow({ nodes: [setNode] }));
 
 			await expect(runner.describe(PROJECT_ID, WORKFLOW_ID)).resolves.toEqual({
 				callable: false,
@@ -328,7 +360,7 @@ describe('CallableWorkflowRunner', () => {
 			const ctx = setup();
 			ctx.loader.loadWorkflow.mockResolvedValue(makeWorkflow());
 			ctx.workflowRunner.run.mockResolvedValue('exec-1');
-			ctx.executionPersistence.findSingleExecution.mockResolvedValue(completedRun() as never);
+			ctx.executionPersistence.findSingleExecution.mockResolvedValue(storedExecution());
 
 			await expect(ctx.runner.run(PROJECT_ID, WORKFLOW_ID, {}, WAIT)).resolves.toMatchObject({
 				status: 'success',
@@ -338,6 +370,17 @@ describe('CallableWorkflowRunner', () => {
 				includeData: true,
 				unflattenData: true,
 			});
+		});
+
+		it('returns "canceled" when the execution is stopped during the wait', async () => {
+			const ctx = setup();
+			ctx.loader.loadWorkflow.mockResolvedValue(makeWorkflow());
+			const done = startExecution(ctx);
+
+			const pending = ctx.runner.run(PROJECT_ID, WORKFLOW_ID, {}, WAIT);
+			done.reject(new Error('The execution was stopped.'));
+
+			await expect(pending).resolves.toMatchObject({ status: 'canceled', executionId: 'exec-1' });
 		});
 
 		it('returns "running" when the run does not finish in the wait time', async () => {
@@ -416,7 +459,7 @@ describe('CallableWorkflowRunner', () => {
 			const ctx = setup({ maxRuns: 1 });
 			ctx.loader.loadWorkflow.mockResolvedValue(makeWorkflow());
 			ctx.workflowRunner.run.mockResolvedValueOnce('exec-1').mockResolvedValueOnce('exec-2');
-			ctx.executionPersistence.findSingleExecution.mockResolvedValue(completedRun() as never);
+			ctx.executionPersistence.findSingleExecution.mockResolvedValue(storedExecution());
 
 			await ctx.runner.run(PROJECT_ID, WORKFLOW_ID, {}, WAIT);
 
