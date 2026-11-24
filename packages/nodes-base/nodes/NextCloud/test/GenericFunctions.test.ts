@@ -8,7 +8,7 @@ import type {
 import { NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
-import { nextCloudApiRequest, parseFolderList, webDavPath } from '../GenericFunctions';
+import { nextCloudApiRequest, outputPath, parseFolderList, webDavPath } from '../GenericFunctions';
 
 const webDavUrl = 'https://nextcloud.example.com/remote.php/webdav';
 const baseUrl = 'https://nextcloud.example.com';
@@ -49,6 +49,17 @@ function requestOptions(requestWithAuthentication: Mock, callIndex = 0): IDataOb
 	const options = requestWithAuthentication.mock.calls[callIndex][1] as IDataObject;
 	return { ...options, uri: String(options.uri) };
 }
+
+describe('outputPath', () => {
+	it.each([
+		['docs/a.txt', '/docs/a.txt'],
+		['/docs/sub/', '/docs/sub'],
+		['//docs//a.txt', '/docs/a.txt'],
+		['', '/'],
+	])('turns "%s" into "%s"', (path, expected) => {
+		expect(outputPath(path)).toBe(expected);
+	});
+});
 
 describe('NextCloud GenericFunctions', () => {
 	beforeEach(() => {

@@ -302,9 +302,35 @@ describe('NextCloud Node: file createFromText', () => {
 		expect(result[0][0].json.path).toBe('/notes.txt');
 	});
 
-	it('passes errors other than 412 through', async () => {
+	it('names the folder when Nextcloud answers 409 because the parent folder is missing', async () => {
 		const { request } = fakeNextcloud();
 		request.mockRejectedValueOnce(new NodeApiError(node, { message: 'Conflict', httpCode: '409' }));
+
+		await expect(
+			run(
+				buildExecuteFunctions(
+					[
+						{
+							content: 'hello',
+							fileName: 'notes.txt',
+							parentFolder: '/missing',
+							ifFileExists: 'overwrite',
+						},
+					],
+					request,
+				),
+			),
+		).rejects.toMatchObject({
+			message: 'The folder "/missing" does not exist',
+			context: expect.objectContaining({ itemIndex: 0 }),
+		});
+	});
+
+	it('passes errors other than 409 and 412 through', async () => {
+		const { request } = fakeNextcloud();
+		request.mockRejectedValueOnce(
+			new NodeApiError(node, { message: 'Insufficient Storage', httpCode: '507' }),
+		);
 
 		await expect(
 			run(
@@ -344,18 +370,50 @@ describe('NextCloud Node: file createFromText', () => {
 		expect(request).not.toHaveBeenCalled();
 	});
 
-	it('rejects an empty file name before it sends a request', async () => {
+	it.each(['', null, undefined])(
+		'rejects the file name %s before it sends a request',
+		async (fileName) => {
+			const { request } = fakeNextcloud();
+
+			await expect(
+				run(
+					buildExecuteFunctions(
+						[{ content: 'hello', fileName, parentFolder: '/docs', ifFileExists: 'fail' }],
+						request,
+					),
+				),
+			).rejects.toMatchObject({
+				message: 'The file name is empty',
+				context: expect.objectContaining({ itemIndex: 0 }),
+			});
+			expect(request).not.toHaveBeenCalled();
+		},
+	);
+
+	it('asks for File Content as text, so core writes an object as JSON and stops on null', async () => {
+		const { request } = fakeNextcloud();
+		const executeFunctions = buildExecuteFunctions(
+			[{ content: 'hello', fileName: 'notes.txt', parentFolder: '/docs', ifFileExists: 'fail' }],
+			request,
+		);
+		const getNodeParameter = vi.spyOn(executeFunctions, 'getNodeParameter');
+
+		await run(executeFunctions);
+
+		expect(getNodeParameter).toHaveBeenCalledWith('content', 0, '', { ensureType: 'string' });
+	});
+
+	it('returns the path with a leading slash when Parent Folder has none', async () => {
 		const { request } = fakeNextcloud();
 
-		await expect(
-			run(
-				buildExecuteFunctions(
-					[{ content: 'hello', fileName: '', parentFolder: '/docs', ifFileExists: 'fail' }],
-					request,
-				),
+		const result = await run(
+			buildExecuteFunctions(
+				[{ content: 'hello', fileName: 'notes.txt', parentFolder: 'docs/', ifFileExists: 'fail' }],
+				request,
 			),
-		).rejects.toThrow();
-		expect(request).not.toHaveBeenCalled();
+		);
+
+		expect(result[0][0].json.path).toBe('/docs/notes.txt');
 	});
 
 	it.each([
@@ -387,5 +445,36 @@ describe('NextCloud Node: file createFromText', () => {
 				),
 			),
 		).rejects.toThrow('Created the file "/docs/notes.txt", but could not read its file ID');
+	});
+
+	it('says the file was created when the read after the write fails', async () => {
+		const { files, request } = fakeNextcloud();
+		const answer = request.getMockImplementation()!;
+		request.mockImplementation(async (credentialType, options) => {
+			if (options.method === 'PROPFIND') {
+				throw new NodeApiError(node, { message: 'Service Unavailable', httpCode: '503' });
+			}
+			return await answer(credentialType, options);
+		});
+
+		await expect(
+			run(
+				buildExecuteFunctions(
+					[
+						{
+							content: 'hello',
+							fileName: 'notes.txt',
+							parentFolder: '/docs',
+							ifFileExists: 'fail',
+						},
+					],
+					request,
+				),
+			),
+		).rejects.toMatchObject({
+			message: 'Created the file "/docs/notes.txt", but could not read its file ID',
+			context: expect.objectContaining({ itemIndex: 0 }),
+		});
+		expect(files.get(notesUri)?.content).toBe('hello');
 	});
 });

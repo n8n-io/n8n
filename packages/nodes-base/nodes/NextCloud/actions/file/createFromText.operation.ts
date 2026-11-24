@@ -1,3 +1,4 @@
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { IDataObject, IExecuteFunctions, INodeProperties, RequestPath } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 
@@ -5,6 +6,7 @@ import { updateDisplayOptions } from '@utils/utilities';
 
 import {
 	nextCloudApiRequest,
+	outputPath,
 	readMultistatus,
 	readProps,
 	webDavPath,
@@ -108,16 +110,20 @@ const OUTPUT_PROPS = {
 };
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<IDataObject> {
-	const content = this.getNodeParameter('content', i, '') as string;
-	const fileName = this.getNodeParameter('fileName', i) as string;
-	const parentFolder = (this.getNodeParameter('parentFolder', i, '/') as string).replace(
-		/\/+$/,
-		'',
-	);
+	const content = this.getNodeParameter('content', i, '', { ensureType: 'string' }) as string;
+	const fileName = String(this.getNodeParameter('fileName', i) ?? '');
+	const parentFolder = String(this.getNodeParameter('parentFolder', i, '/')).replace(/\/+$/, '');
 	const ifFileExists = this.getNodeParameter('ifFileExists', i) as
 		| 'addSuffix'
 		| 'fail'
 		| 'overwrite';
+
+	if (fileName.trim() === '') {
+		throw new NodeOperationError(this.getNode(), 'The file name is empty', {
+			itemIndex: i,
+			description: 'Set "File Name" to the name of the new file, with its extension.',
+		});
+	}
 
 	if (fileName.includes('/')) {
 		throw new NodeOperationError(this.getNode(), 'The file name cannot contain "/"', {
@@ -130,56 +136,77 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<IData
 	const endpoint = requestPath`${folder}/${fileName}`;
 	let writtenName = fileName;
 
-	if (ifFileExists === 'overwrite') {
-		await nextCloudApiRequest.call(this, 'PUT', endpoint, content);
-	} else if (!(await putIfNew.call(this, endpoint, content))) {
-		if (ifFileExists === 'fail') {
+	try {
+		if (ifFileExists === 'overwrite') {
+			await nextCloudApiRequest.call(this, 'PUT', endpoint, content);
+		} else if (!(await putIfNew.call(this, endpoint, content))) {
+			if (ifFileExists === 'fail') {
+				throw new NodeOperationError(
+					this.getNode(),
+					`The file "${outputPath(`${parentFolder}/${fileName}`)}" already exists`,
+					{
+						itemIndex: i,
+						description:
+							'Set "If File Exists" to "Overwrite" to replace it, or to "Add Suffix" to keep both files.',
+					},
+				);
+			}
+
+			writtenName = nameWithTimestamp(fileName, new Date());
+			if (!(await putIfNew.call(this, requestPath`${folder}/${writtenName}`, content))) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`The file "${outputPath(`${parentFolder}/${writtenName}`)}" already exists`,
+					{ itemIndex: i },
+				);
+			}
+		}
+	} catch (error) {
+		// Nextcloud answers 409 when the parent folder is missing or is a file, or when a folder has the file's name
+		if (error instanceof NodeApiError && error.httpCode === '409') {
 			throw new NodeOperationError(
 				this.getNode(),
-				`The file "${parentFolder}/${fileName}" already exists`,
+				`The folder "${outputPath(parentFolder)}" does not exist`,
 				{
 					itemIndex: i,
 					description:
-						'Set "If File Exists" to "Overwrite" to replace it, or to "Add Suffix" to keep both files.',
+						'Check that "Parent Folder" exists and that "File Name" is not the name of a folder.',
 				},
 			);
 		}
-
-		writtenName = nameWithTimestamp(fileName, new Date());
-		if (!(await putIfNew.call(this, requestPath`${folder}/${writtenName}`, content))) {
-			throw new NodeOperationError(
-				this.getNode(),
-				`The file "${parentFolder}/${writtenName}" already exists`,
-				{ itemIndex: i },
-			);
-		}
+		throw error;
 	}
 
-	const path = `${parentFolder}/${writtenName}`;
+	const path = outputPath(`${parentFolder}/${writtenName}`);
+	const readError = `Created the file "${path}", but could not read its file ID`;
 
-	// A PUT response has no body, so read the new file's metadata separately
-	const [response] = await readMultistatus(
-		await nextCloudApiRequest.call(
-			this,
-			'PROPFIND',
-			requestPath`${folder}/${writtenName}`,
-			PROPFIND_BODY,
-			{ 'Content-Type': 'application/xml', Depth: '0' },
-		),
-	);
-	const props = readProps(response);
-	const metadata = Object.fromEntries(
-		Object.entries(OUTPUT_PROPS)
-			.filter(([, prop]) => typeof props[prop] === 'string')
-			.map(([key, prop]) => [key, String(props[prop])]),
-	);
+	let metadata: Record<string, string>;
+	try {
+		// A PUT response has no body, so read the new file's metadata separately
+		const [response] = await readMultistatus(
+			await nextCloudApiRequest.call(
+				this,
+				'PROPFIND',
+				requestPath`${folder}/${writtenName}`,
+				PROPFIND_BODY,
+				{ 'Content-Type': 'application/xml', Depth: '0' },
+			),
+		);
+		const props = readProps(response);
+		metadata = Object.fromEntries(
+			Object.entries(OUTPUT_PROPS)
+				.filter(([, prop]) => typeof props[prop] === 'string')
+				.map(([key, prop]) => [key, String(props[prop])]),
+		);
+	} catch (error) {
+		throw new NodeOperationError(this.getNode(), readError, {
+			itemIndex: i,
+			description: ensureError(error).message,
+		});
+	}
 
 	if (!metadata.fileId) {
-		throw new NodeOperationError(
-			this.getNode(),
-			`Created the file "${path}", but could not read its file ID`,
-			{ itemIndex: i },
-		);
+		throw new NodeOperationError(this.getNode(), readError, { itemIndex: i });
 	}
 
 	return { path, ...metadata, eTag: metadata.eTag?.replace(/^"|"$/g, '') };

@@ -24,6 +24,11 @@ export function webDavPath(path: string): RequestPath {
 		);
 }
 
+/** Every operation returns paths in this shape: a leading slash and no trailing slash. */
+export function outputPath(path: string): string {
+	return `/${path.split('/').filter(Boolean).join('/')}`;
+}
+
 const WEBDAV_ROOT = /^.*?\/remote\.php\/(?:webdav|dav\/files\/[^/]+)\//;
 
 export async function readMultistatus(xml: string): Promise<Array<Record<string, unknown>>> {
