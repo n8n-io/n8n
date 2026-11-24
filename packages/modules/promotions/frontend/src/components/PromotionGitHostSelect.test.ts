@@ -74,7 +74,7 @@ it('ignores an old provider response while the current provider is still loading
 	resolveOld({ data: [repository], nextCursor: 'stale-page' });
 	await flushPromises();
 	await userEvent.click(screen.getByRole('combobox'));
-	expect(await screen.findByText('Loading')).toBeVisible();
+	expect(await screen.findByRole('status', { name: 'Loading' })).toBeVisible();
 	expect(screen.queryByText('team/workflows')).not.toBeInTheDocument();
 	resolveCurrent({ data: [otherRepository], nextCursor: null });
 	expect(await screen.findByText('team/other')).toBeInTheDocument();
@@ -228,7 +228,7 @@ it('keeps the previous results in the list while a new search loads', async () =
 
 	expect(api.fetchPromotionRepositories).toHaveBeenCalledTimes(2);
 	expect(screen.getByRole('option', { name: 'team/workflows' })).toBeInTheDocument();
-	expect(screen.queryByText('Loading')).not.toBeInTheDocument();
+	expect(screen.queryByRole('status', { name: 'Loading' })).not.toBeInTheDocument();
 
 	finishSearch({ data: [otherRepository], nextCursor: null });
 	await flushPromises();

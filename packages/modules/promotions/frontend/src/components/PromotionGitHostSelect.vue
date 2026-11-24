@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { PromotionRepository } from '@n8n/api-types';
-import { N8nButton, N8nNotice, N8nOption, N8nSelect } from '@n8n/design-system';
+import { N8nButton, N8nNotice, N8nOption, N8nSelect, N8nSpinner } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref, useCssModule, watch } from 'vue';
 
@@ -104,6 +104,16 @@ function onInput(event: Event) {
 			:no-match-text="emptyMessage"
 			@update:model-value="select"
 		>
+			<template v-if="loading && !refreshing" #empty>
+				<div
+					:class="$style.loading"
+					role="status"
+					:aria-label="i18n.baseText('generic.loading')"
+					data-test-id="promotion-git-host-loading"
+				>
+					<N8nSpinner type="dots" />
+				</div>
+			</template>
 			<N8nOption
 				v-for="option in visibleOptions"
 				:key="`${option.value}:${option.label}`"
@@ -149,6 +159,12 @@ function onInput(event: Event) {
 	&:global(.el-zoom-in-top-leave-active) {
 		transition: none;
 	}
+}
+
+.loading {
+	display: flex;
+	justify-content: center;
+	padding-block: var(--spacing--xs);
 }
 
 .refreshing :global(.el-select-dropdown__item) {
