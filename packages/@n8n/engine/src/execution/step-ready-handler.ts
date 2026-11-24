@@ -99,7 +99,7 @@ export class StepReadyHandler {
 		try {
 			execution = await this.executionStore.loadExecution(event.executionId);
 		} catch (error) {
-			// The deletion of the execution also deleted the step row, so nothing is left to cancel.
+			// A deletion after the claim removed the execution and its step row.
 			// A step of another execution means a wrong message, which must still fail.
 			if (isMissingExecution(error, event.executionId) && step.executionId === event.executionId) {
 				return;
