@@ -480,7 +480,7 @@ describe('SimulationSessionService connection binding', () => {
 
 			draft.current = draftWith([serverB]);
 			const second = await turn();
-			await vi.runAllTicks();
+			vi.runAllTicks();
 
 			expect(second?.worldId).toBe('world-2');
 			expect(opened).toHaveLength(2);
@@ -493,7 +493,7 @@ describe('SimulationSessionService connection binding', () => {
 
 			draft.current = draftWith([serverB]);
 			const second = await turn();
-			await vi.runAllTicks();
+			vi.runAllTicks();
 
 			expect(second?.worldId).toBe('world-2');
 			expect(opened).toHaveLength(2);
