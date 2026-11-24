@@ -17,6 +17,7 @@ import { LockNamespace, LockService } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import type { Attachment, Author, CardElement, Chat, Message, Thread } from 'chat';
+import { HITL_CALLBACK_PREFIX } from 'n8n-core';
 import type { Logger } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
 
@@ -468,6 +469,28 @@ export class AgentChatBridge {
 
 		this.chat.onAction(async (event) => {
 			try {
+				// Reviewers need not be on the chat allowlist. `respond` verifies the signed
+				// callback and the configured recipient.
+				if (event.actionId.startsWith(HITL_CALLBACK_PREFIX)) {
+					const { AgentChannelHitlService } = await import(
+						'../approval/agent-channel-hitl.service.js'
+					);
+					const decision = await Container.get(AgentChannelHitlService).respond(
+						this.agentId,
+						this.n8nProjectId,
+						this.integration,
+						event,
+					);
+					if (decision === 'unavailable') {
+						if (event.thread)
+							await postToUserOrThread(
+								event.thread,
+								event.user,
+								'This approval request is no longer available or has already been handled',
+							);
+					} else await this.hitlResumeHandler.settleApprovalAction(event, decision);
+					return;
+				}
 				if (!this.canUserAccess(event.user, event.raw)) return;
 				await this.hitlResumeHandler.handleAction(event);
 			} catch (error) {

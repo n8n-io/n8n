@@ -1,4 +1,5 @@
 {
+	"agents.hitl.title": "Human review",
 	"experiments.mcpDiscovery.cta.connect": "Connect Claude",
 	"experiments.mcpDiscovery.cta.build": "Build in Claude",
 	"experiments.mcpDiscovery.footer.prefix": "Prefer Claude?",
