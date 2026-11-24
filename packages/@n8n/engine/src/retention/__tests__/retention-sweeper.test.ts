@@ -90,7 +90,7 @@ describe('RetentionSweeper', () => {
 			await sweeper.stop();
 		});
 
-		it('keeps the rows of an execution whose files fail to delete and does not select it again in the pass', async () => {
+		it('keeps the rows of an execution whose files fail to delete, and selects it again only in the next pass', async () => {
 			const store = makeExecutionStore();
 			vi.mocked(store.findPrunableExecutions).mockResolvedValueOnce([row(1), row(2)]);
 			const deleteFiles = vi.fn(async ({ executionId }: ExecutionLocation) => {
@@ -106,6 +106,13 @@ describe('RetentionSweeper', () => {
 			expect(store.findPrunableExecutions).toHaveBeenLastCalledWith(
 				expect.objectContaining({ after: row(2) }),
 			);
+
+			await vi.advanceTimersByTimeAsync(INTERVAL_MS);
+			expect(store.findPrunableExecutions).toHaveBeenLastCalledWith({
+				maxAgeMs: DAY_MS,
+				limit: 2,
+				after: undefined,
+			});
 
 			await sweeper.stop();
 		});
