@@ -4,6 +4,8 @@ import { computed, onBeforeUnmount, ref, toRef, watch } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import N8nButton from '../N8nButton';
+import N8nChatRating from '../N8nChatRating/ChatRating.vue';
+import type { ChatRatingValue } from '../N8nChatRating/ChatRating.types';
 import N8nIcon from '../N8nIcon';
 import N8nIconButton from '../N8nIconButton';
 import N8nTooltip from '../N8nTooltip';
@@ -26,8 +28,7 @@ defineSlots<{
 
 const clipboard = useClipboard({ legacy: true });
 const showCopiedFeedback = ref(false);
-const showRatingButtons = ref(true);
-const showRatingSuccess = ref(false);
+const rating = ref<ChatRatingValue>();
 let copyFeedbackTimer: ReturnType<typeof setTimeout> | undefined;
 const speech = useSpeechSynthesis(toRef(props, 'content'), {
 	pitch: 1,
@@ -59,10 +60,9 @@ async function copyMessage() {
 	}
 }
 
-function rateMessage(rating: 'up' | 'down') {
-	showRatingButtons.value = false;
-	props.onRating?.({ rating });
-	showRatingSuccess.value = true;
+function rateMessage(value: ChatRatingValue) {
+	rating.value = value;
+	props.onRating?.({ rating: value });
 }
 
 function readMessageAloud() {
@@ -152,39 +152,8 @@ onBeforeUnmount(function cleanUpActions() {
 			/>
 		</N8nTooltip>
 
-		<N8nTooltip
-			v-if="showRating && showRatingButtons"
-			:content="t('assistantChat.rating.thumbsUp')"
-			placement="bottom"
-		>
-			<N8nIconButton
-				variant="ghost"
-				size="small"
-				icon="thumbs-up"
-				icon-size="medium"
-				:aria-label="t('assistantChat.rating.thumbsUp')"
-				data-test-id="message-thumbs-up-button"
-				@click="rateMessage('up')"
-			/>
-		</N8nTooltip>
-		<N8nTooltip
-			v-if="showRating && showRatingButtons"
-			:content="t('assistantChat.rating.thumbsDown')"
-			placement="bottom"
-		>
-			<N8nIconButton
-				variant="ghost"
-				size="small"
-				icon="thumbs-down"
-				icon-size="medium"
-				:aria-label="t('assistantChat.rating.thumbsDown')"
-				data-test-id="message-thumbs-down-button"
-				@click="rateMessage('down')"
-			/>
-		</N8nTooltip>
-		<p v-if="showRatingSuccess" :class="$style.success">
-			{{ t('assistantChat.rating.success') }}
-		</p>
+		<!-- The thank-you note stays when the parent turns `showRating` off after a rating. -->
+		<N8nChatRating v-if="showRating || rating" :rating="rating" @rate="rateMessage" />
 		<slot />
 	</div>
 </template>
@@ -214,11 +183,5 @@ onBeforeUnmount(function cleanUpActions() {
 .swapLeaveActive {
 	position: absolute;
 	@include motion.blur-swap-out;
-}
-
-.success {
-	margin: 0;
-	color: var(--text-color);
-	font-size: var(--font-size--2xs);
 }
 </style>

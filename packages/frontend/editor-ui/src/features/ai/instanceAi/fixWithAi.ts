@@ -1,4 +1,5 @@
 import { useI18n } from '@n8n/i18n';
+import { truncate } from '@n8n/utils/string/truncate';
 
 export interface FixWithAiError {
 	nodeName: string;
@@ -14,14 +15,25 @@ export function isFixWithAiError(value: unknown): value is FixWithAiError {
 	);
 }
 
+/**
+ * Cuts each error to a short prefix, so a long error (such as an HTTP response
+ * body) cannot push the message over the chat message limit. The caller
+ * attaches the failed execution, and the agent reads the full error from it.
+ */
+const ERROR_PREFIX_LENGTH = 500;
+
 export function buildFixWithAiPrompt(context: {
 	workflowName?: string;
 	errors: FixWithAiError[];
 }): string {
 	const i18n = useI18n();
+	const errors = context.errors.map(({ nodeName, errorMessage }) => ({
+		nodeName,
+		errorMessage: truncate(errorMessage, ERROR_PREFIX_LENGTH),
+	}));
 
-	if (context.errors.length === 1) {
-		const { nodeName, errorMessage } = context.errors[0];
+	if (errors.length === 1) {
+		const { nodeName, errorMessage } = errors[0];
 
 		if (context.workflowName) {
 			return i18n.baseText('instanceAi.fixWithAi.prompt.singleInWorkflow', {
@@ -34,7 +46,7 @@ export function buildFixWithAiPrompt(context: {
 		});
 	}
 
-	const errorList = context.errors
+	const errorList = errors
 		.map(({ nodeName, errorMessage }) =>
 			i18n.baseText('instanceAi.fixWithAi.prompt.errorLine', {
 				interpolate: { nodeName, errorMessage },

@@ -157,12 +157,19 @@ const props = withDefaults(
 		 */
 		clientContext?: () => Record<string, unknown> | undefined;
 		/**
+		 * The resources that a sent message shows, from the client context it
+		 * sends. The `user-message-references` slot renders them.
+		 */
+		messageReferences?: (clientContext: Record<string, unknown> | undefined) => unknown[];
+		/**
 		 * Replaces the default composer placeholder. The placeholders for an open
 		 * question card and for a non-empty queue still take priority.
 		 */
 		placeholder?: string;
 		placeholderPreview?: Readonly<Ref<string | undefined>>;
 		composerHeight?: string;
+		/** The most characters the composer accepts. Without it, the composer default applies. */
+		maxLength?: number;
 		/**
 		 * Shows the attach button of the composer. A host that opens the file
 		 * picker from its own `footer-start` menu sets this to false and calls
@@ -181,6 +188,8 @@ const props = withDefaults(
 		 * not blocked; use `beforeSend` to refuse them.
 		 */
 		disabled?: boolean;
+		/** Replaces the generic "Thinking" of the thinking blocks. The Assistant sets it. */
+		thinkingLabel?: string;
 	}>(),
 	{
 		visible: true,
@@ -197,6 +206,7 @@ const props = withDefaults(
 		budgetCards: false,
 		increaseBudget: undefined,
 		clientContext: undefined,
+		messageReferences: undefined,
 		placeholder: undefined,
 		showAttachButton: true,
 		acceptedMimeTypes: undefined,
@@ -279,6 +289,8 @@ defineSlots<{
 	'message-actions'?: (props: { message: ChatMessage; executionId?: string }) => unknown;
 	/** Content below the composer. */
 	'input-footer'?: () => unknown;
+	/** The `references` of a user message, for example mentioned workflows. */
+	'user-message-references'?: (props: { message: ChatMessage }) => unknown;
 	/** Content below the composer or an approval card. */
 	'composer-footer'?: () => unknown;
 }>();
@@ -339,6 +351,7 @@ const {
 	budgetCards: props.budgetCards,
 	interactionExtensions: props.interactionExtensions,
 	onStreamEvent: (event) => emit('stream-event', event),
+	messageReferences: (clientContext) => props.messageReferences?.(clientContext) ?? [],
 });
 
 provide(
@@ -805,6 +818,17 @@ const approvalCards = useTemplateRef<HTMLDivElement>('approvalCards');
 
 function focusInput(options?: FocusOptions) {
 	if (props.visible) chatInput.value?.focus(options);
+}
+
+/** Moves focus to the card that the run waits on, for a host that points the user to it. */
+function focusOpenInteraction() {
+	if (hasOpenApproval.value) {
+		approvalCards.value?.querySelector<HTMLElement>('button')?.focus();
+		return;
+	}
+	// An open question is the last card of the transcript, and the composer answers it.
+	scrollArea.value?.scrollToBottom();
+	focusInput();
 }
 
 let forceFocusPending = true;
@@ -1812,6 +1836,9 @@ defineExpose({
 	isSubmitting: computed(() => isSubmitting.value),
 	/** The chat waits for the user to answer a card, such as an approval or a question. A waiting card does not count, because the workflow resumes the run. */
 	isAwaitingUserAnswer: computed(() => hasOpenInteraction.value && !hasOpenWaitCard.value),
+	/** The card that the chat waits on is an approval. */
+	isAwaitingUserApproval: computed(() => hasOpenApproval.value),
+	focusOpenInteraction,
 	/** The chat shows a card that the run waits on, including a waiting card. */
 	hasOpenInteraction: computed(() => hasOpenInteraction.value),
 	/** The chat streams, cannot take a send, or waits for the user to answer a card. */
@@ -1994,6 +2021,7 @@ onBeforeUnmount(() => {
 								: undefined
 						"
 						:composer-height="composerHeight"
+						:max-length="maxLength"
 						:is-streaming="false"
 						:show-stop-button="showStop"
 						show-voice
@@ -2097,6 +2125,7 @@ onBeforeUnmount(() => {
 							<slot name="composer-start" />
 							<N8nTooltip
 								v-if="showAttach && showAttachButton"
+								as-child
 								:content="locale.baseText('chatInputBase.button.attach')"
 								placement="top"
 							>
@@ -2105,6 +2134,7 @@ onBeforeUnmount(() => {
 									:icon="attachButtonIcon"
 									icon-size="large"
 									:disabled="isComposerBlocked"
+									focusable-when-disabled
 									:aria-label="locale.baseText('chatInputBase.button.attach')"
 									data-test-id="chat-input-attach-button"
 									@click.stop="chatInput?.openFilePicker()"
@@ -2241,6 +2271,7 @@ onBeforeUnmount(() => {
 				:has-older-messages="hasOlderMessages"
 				:loading-older-messages="isLoadingOlderMessages"
 				:load-older-messages-failed="loadOlderMessagesFailed"
+				:thinking-label="props.thinkingLabel"
 				:task-trace-route="
 					continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
 				"
@@ -2253,6 +2284,12 @@ onBeforeUnmount(() => {
 			>
 				<template v-if="$slots['message-actions']" #message-actions="actionProps">
 					<slot name="message-actions" v-bind="actionProps" />
+				</template>
+				<template
+					v-if="$slots['user-message-references']"
+					#user-message-references="referenceProps"
+				>
+					<slot name="user-message-references" v-bind="referenceProps" />
 				</template>
 				<!-- Host offers end the transcript, so they share its column and scroll with it. -->
 				<template v-if="stopNotice || $slots['inline-offers']" #status>

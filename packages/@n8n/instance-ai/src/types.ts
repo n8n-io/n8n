@@ -33,6 +33,12 @@ import type {
 	SkillListResponse,
 	SkillSaveResponse,
 	SkillScope,
+	ConnectPublicSkillSource,
+	DiscoverPublicSkillSource,
+	PublicSkillSourceDiscovery,
+	PublicSkillSourceImportCheck,
+	SkillSourceConnectResponse,
+	SkillSourceListItem,
 	EvaluationMetric,
 	TaskList,
 	InstanceAiApprovalMode,
@@ -45,6 +51,8 @@ import type {
 	McpToolPermissions,
 	McpToolCallRequest,
 	McpToolCallResult,
+	InstanceAiAgentFeedbackCategory,
+	InstanceAiAgentFeedbackSeverity,
 } from '@n8n/api-types';
 import type { NodeJSON, OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
 import type {
@@ -54,6 +62,7 @@ import type {
 	INodeTypes,
 	ITaskData,
 	NodeConnectionType,
+	WorkflowEngineType,
 } from 'n8n-workflow';
 import type { z } from 'zod';
 
@@ -90,6 +99,7 @@ import type {
 	WorkflowVerificationEvidence,
 	WorkflowTriggerVerificationProgress,
 } from './workflow-loop/workflow-loop-state';
+import type { WorkflowDraftPublisher } from './tools/workflows/workflow-draft-publisher';
 
 // ── Data shapes ──────────────────────────────────────────────────────────────
 
@@ -1241,8 +1251,30 @@ export interface InstanceAiPreferenceService {
 	): void;
 }
 
+/** One report from the `send_feedback` tool. */
+export interface InstanceAiAgentFeedback {
+	category: InstanceAiAgentFeedbackCategory;
+	severity: InstanceAiAgentFeedbackSeverity;
+	summary: string;
+	toolName?: string;
+	threadId?: string;
+	runId?: string;
+}
+
+export interface InstanceAiAgentFeedbackService {
+	/** Records the report for the n8n team. Nothing replies to it. */
+	send(feedback: InstanceAiAgentFeedback): void;
+}
+
 export interface InstanceAiSkillService {
 	assistantSkillsEnabled: boolean;
+	sources?: {
+		list(): Promise<SkillSourceListItem[]>;
+		discover(input: DiscoverPublicSkillSource): Promise<PublicSkillSourceDiscovery>;
+		/** What an import of the selection does, before the user approves it. Stores nothing. */
+		checkImport(input: ConnectPublicSkillSource): Promise<PublicSkillSourceImportCheck>;
+		connect(input: ConnectPublicSkillSource): Promise<SkillSourceConnectResponse>;
+	};
 	list(options: {
 		query?: string;
 		scope?: SkillScope;
@@ -1777,6 +1809,14 @@ export type InstanceAiChangedArtifact = Pick<
 	'type' | 'id' | 'name' | 'projectId'
 >;
 
+/** The workflow engine setup of the instance. */
+export interface InstanceAiEngineSetup {
+	/** True when the `engine-v2` module is active, so the instance can run workflows on engine v2. */
+	engineV2Available: boolean;
+	/** The engine that a new workflow gets when it is saved without `settings.engineType`. */
+	newWorkflowEngine: WorkflowEngineType;
+}
+
 export interface InstanceAiContext {
 	/** Instance-wide gate for credential description output and guidance. */
 	credentialDescriptionsEnabled?: boolean;
@@ -1834,6 +1874,8 @@ export interface InstanceAiContext {
 	/** Present only when saved preferences are enabled for this user; its
 	 *  absence hides the `save_user_preference` tool. */
 	aiPreferenceService?: InstanceAiPreferenceService;
+	/** Present when the host can record agent feedback; its absence hides `send_feedback`. */
+	agentFeedbackService?: InstanceAiAgentFeedbackService;
 	skillService?: InstanceAiSkillService;
 	appService?: InstanceAiAppService;
 	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
@@ -1898,6 +1940,11 @@ export interface InstanceAiContext {
 	/** Human-readable hints about licensed features that are NOT available on this instance.
 	 *  Injected into the system prompt so the agent can explain why certain capabilities are missing. */
 	licenseHints?: string[];
+	/**
+	 * The workflow engine setup of the instance. The host resolves it when it builds the
+	 * context. Absent means that new workflows run on engine v1.
+	 */
+	engineSetup?: InstanceAiEngineSetup;
 	/** Domain access tracker for HITL gating of fetch-url and similar tools. */
 	domainAccessTracker?: DomainAccessTracker;
 	/** Current run ID — used for transient (allow_once) domain approvals. */
@@ -1923,6 +1970,8 @@ export interface InstanceAiContext {
 	 * paths stay in effect.
 	 */
 	setupItemsEmitter?: SetupItemsEmitter;
+	/** Shows each compiled workflow on the canvas before the build saves it. Present only while the draft preview gate is on. */
+	workflowDraftPublisher?: WorkflowDraftPublisher;
 	/**
 	 * Setup panel v2: the setup tool announced a workflow's final checklist
 	 * instead of suspending, so the host must treat that build's setup as

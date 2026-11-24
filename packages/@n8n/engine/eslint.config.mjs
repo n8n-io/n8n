@@ -9,6 +9,7 @@ export default defineConfig(
 			'src/database/migrations/1778529600000-CreateWorkflowExecution.ts',
 			'src/database/migrations/1784890100000-CreateWorkflowStepExecution.ts',
 			'src/database/migrations/1794960000000-AddOutputSourcesToWorkflowStepExecution.ts',
+			'src/database/migrations/1795046400000-AddFinishedAtIndexToWorkflowExecution.ts',
 		],
 		rules: {
 			'unicorn/filename-case': 'off',
