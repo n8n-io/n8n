@@ -1,9 +1,16 @@
+import { randomUUID } from 'node:crypto';
+
 import { OperationalError, UnexpectedError } from '@n8n/errors';
+import { isRecord } from '@n8n/utils/is-record';
 
 export class GymAdmin {
 	private readonly baseUrl: string;
 
-	constructor(baseUrl: string) {
+	/** harnessToken: the gym's harness bearer. A gym started without one takes admin calls without it. */
+	constructor(
+		baseUrl: string,
+		private readonly harnessToken?: string,
+	) {
 		// Admin paths start with a slash. A trailing slash in the setting would double it.
 		this.baseUrl = baseUrl.replace(/\/+$/, '');
 	}
@@ -11,7 +18,10 @@ export class GymAdmin {
 	private async call(method: string, path: string, body?: unknown): Promise<unknown> {
 		const res = await fetch(this.baseUrl + path, {
 			method,
-			headers: { 'content-type': 'application/json' },
+			headers: {
+				'content-type': 'application/json',
+				...(this.harnessToken ? { authorization: `Bearer ${this.harnessToken}` } : {}),
+			},
 			body: body === undefined ? undefined : JSON.stringify(body),
 		}).catch((error: unknown) => {
 			// Name the target and the cause. A bare "fetch failed" does not say which gym is down.
@@ -34,7 +44,7 @@ export class GymAdmin {
 
 	async createTenant(tenant: string): Promise<void> {
 		const create = async () => {
-			const adminToken = `guard-${tenant}-${Math.random().toString(36).slice(2)}-admin`;
+			const adminToken = `guard-${tenant}-${randomUUID()}-admin`;
 			await this.call('PUT', `/_sim/v1/tenants/${tenant}`, { admin_token: adminToken });
 		};
 		try {
@@ -82,10 +92,6 @@ export class GymAdmin {
 	async deleteTenant(tenant: string): Promise<void> {
 		await this.call('DELETE', `/_sim/v1/tenants/${tenant}`);
 	}
-}
-
-export function isRecord(v: unknown): v is Record<string, unknown> {
-	return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 
 function dig(v: unknown, path: string[]): unknown {
