@@ -234,7 +234,7 @@ async function submit() {
 								<N8nText color="text-base">
 									{{ i18n.baseText('promotions.preview.unresolved.body.promote') }}
 								</N8nText>
-								<PromotionMissingDependencyList :dependencies="unresolved" show-status />
+								<PromotionMissingDependencyList :dependencies="unresolved" />
 							</template>
 							<template v-if="warnings.length > 0">
 								<N8nText color="text-base">

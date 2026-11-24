@@ -152,8 +152,8 @@ watch(
 );
 // What the operation leaves unresolved, which the user must accept. Promote: every missing
 // dependency of the selection. Apply: the entries of the Issues tab that do not stop the Apply.
-// The tab lists them for the selection, so the count, the button and the confirmation agree
-// with its rows.
+// The tab lists them for the selection, so the confirmation names only the workflows that are
+// selected now.
 const unresolved = computed(() =>
 	props.direction === 'promote'
 		? missingDependencies.value
@@ -353,18 +353,12 @@ const hasSubmittableChanges = computed(
 const canSubmit = computed(
 	() => hasSubmittableChanges.value && !refreshing.value && !operation.isBusy.value,
 );
-// The button names what stays unresolved. The confirmation repeats this label. A button that has
-// nothing to submit keeps the plain label, so it does not offer what the page disables.
+// The label does not name what stays unresolved. The confirmation says it, and repeats this label.
 const submitLabel = computed(() =>
-	hasSubmittableChanges.value && unresolved.value.length > 0
-		? i18n.baseText(`promotions.preview.submit.${props.direction}.unresolved`, {
-				adjustToNumber: unresolved.value.length,
-				interpolate: { count: String(unresolved.value.length) },
-			})
-		: i18n.baseText(`promotions.preview.submit.${props.direction}`, {
-				adjustToNumber: actionableChanges.value,
-				interpolate: { count: String(actionableChanges.value) },
-			}),
+	i18n.baseText(`promotions.preview.submit.${props.direction}`, {
+		adjustToNumber: actionableChanges.value,
+		interpolate: { count: String(actionableChanges.value) },
+	}),
 );
 
 // Promote asks for the optional commit message first. Apply confirms inside the operation.
@@ -674,6 +668,7 @@ const treeResizer = useResizablePanel({
 		<ApplyUnresolvedDialog
 			v-if="unresolvedAnswer"
 			:dependencies="unresolved"
+			:change-count="actionableChanges"
 			@confirm="unresolvedAnswer?.(true)"
 			@cancel="unresolvedAnswer?.(false)"
 		/>

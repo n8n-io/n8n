@@ -7,28 +7,33 @@ import {
 	N8nDialogFooter,
 	N8nDialogHeader,
 	N8nDialogTitle,
-	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
-import PromotionMissingDependencyList from './PromotionMissingDependencyList.vue';
+import { usePromotionUnresolvedSummary } from '../composables/usePromotionUnresolvedSummary';
+import PromotionUnresolvedSummary from './PromotionUnresolvedSummary.vue';
 
 /**
- * Asks the user to accept the dependencies that an Apply leaves unresolved. Mount it only while
- * the question is open.
+ * The confirmation of an Apply that leaves dependencies unresolved. It replaces the generic
+ * confirmation, so the user answers one time. Mount it only while the question is open.
  */
-const props = defineProps<{ dependencies: PromotionMissingDependency[] }>();
+const props = defineProps<{
+	/** The dependencies that the Apply leaves unresolved, for the workflows that it includes. */
+	dependencies: PromotionMissingDependency[];
+	/** The count of changes on the button that opened the dialog. */
+	changeCount: number;
+}>();
 
 const emit = defineEmits<{ confirm: []; cancel: [] }>();
 
 const i18n = useI18n();
+const { lead, rows } = usePromotionUnresolvedSummary(() => props.dependencies, 'apply');
 
-const text = (
-	key: 'promotions.preview.unresolved.title.apply' | 'promotions.preview.submit.apply.unresolved',
-) =>
+// The confirm button repeats the label of the button that opened the dialog.
+const counted = (key: 'promotions.unresolved.title.apply' | 'promotions.preview.submit.apply') =>
 	i18n.baseText(key, {
-		adjustToNumber: props.dependencies.length,
-		interpolate: { count: String(props.dependencies.length) },
+		adjustToNumber: props.changeCount,
+		interpolate: { count: String(props.changeCount) },
 	});
 </script>
 
@@ -36,20 +41,15 @@ const text = (
 	<N8nDialog
 		open
 		size="medium"
-		:aria-description="i18n.baseText('promotions.preview.unresolved.body.apply')"
+		:aria-description="lead"
 		data-test-id="apply-unresolved-dialog"
 		@update:open="emit('cancel')"
 	>
 		<N8nDialogHeader>
-			<N8nDialogTitle>{{ text('promotions.preview.unresolved.title.apply') }}</N8nDialogTitle>
+			<N8nDialogTitle>{{ counted('promotions.unresolved.title.apply') }}</N8nDialogTitle>
 		</N8nDialogHeader>
 		<N8nDialogBody>
-			<div :class="$style.body">
-				<N8nText color="text-base">
-					{{ i18n.baseText('promotions.preview.unresolved.body.apply') }}
-				</N8nText>
-				<PromotionMissingDependencyList :dependencies="dependencies" />
-			</div>
+			<PromotionUnresolvedSummary :lead="lead" :rows="rows" />
 		</N8nDialogBody>
 		<N8nDialogFooter>
 			<N8nButton
@@ -61,16 +61,8 @@ const text = (
 				{{ i18n.baseText('generic.cancel') }}
 			</N8nButton>
 			<N8nButton type="button" data-test-id="apply-unresolved-confirm" @click="emit('confirm')">
-				{{ text('promotions.preview.submit.apply.unresolved') }}
+				{{ counted('promotions.preview.submit.apply') }}
 			</N8nButton>
 		</N8nDialogFooter>
 	</N8nDialog>
 </template>
-
-<style lang="scss" module>
-.body {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--md);
-}
-</style>

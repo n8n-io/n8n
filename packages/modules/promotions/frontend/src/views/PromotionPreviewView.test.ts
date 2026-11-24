@@ -205,6 +205,12 @@ const cells = (row: HTMLElement) =>
 		.getAllByRole('cell')
 		.map((cell) => cell.textContent?.trim());
 
+/** The rows of the warning in a confirmation: the name of a workflow, then what it misses. */
+const unresolvedRows = (getAllByTestId: (id: string) => HTMLElement[]) =>
+	getAllByTestId('promotion-unresolved-row').map((row) =>
+		[...row.children].map((child) => child.textContent?.trim()),
+	);
+
 const cardToggle = (getAllByTestId: (id: string) => HTMLElement[], key: string) =>
 	card(getAllByTestId, key).getByTestId('promotion-preview-card-toggle');
 
@@ -1510,46 +1516,75 @@ describe('PromotionPreviewView', () => {
 			]);
 		});
 
-		it('should name the unresolved dependencies of the selection on the Promote button', async () => {
+		it('should keep the plain label on the Promote button when the selection has missing dependencies', async () => {
 			vi.mocked(api.getPromotionPreview).mockResolvedValue(
 				billingPreview({
 					missingDependencies: [otherProjectCredential, outsideAccessWorkflow, personalCredential],
-					// A warning needs no confirmation, so the button does not count it.
 					warnings: [deletedWorkflowWarning],
 				}),
 			);
-			const { getAllByTestId, getByTestId } = await render();
+			const { getByTestId } = await render();
+
 			const submit = getByTestId('promotion-preview-submit');
-			expect(submit).toHaveTextContent(/^Promote with 3 unresolved dependencies$/);
+			expect(submit).toHaveTextContent(/^Promote \d+ changes$/);
 			expect(submit).toBeEnabled();
-
-			// Only "Weekly KPI report" (w3) uses "Personal Gmail".
-			await userEvent.click(treeRow(getAllByTestId, 'workflow:w3').getByRole('checkbox'));
-			expect(submit).toHaveTextContent(/^Promote with 2 unresolved dependencies$/);
-
-			await userEvent.click(treeRow(getAllByTestId, 'workflow:w1').getByRole('checkbox'));
-			expect(submit).toHaveTextContent(/^Promote \d+ changes?$/);
 		});
 
-		it('should use the singular for one unresolved dependency', async () => {
+		it('should warn in the Promote dialog only about the workflows that are selected now', async () => {
 			vi.mocked(api.getPromotionPreview).mockResolvedValue(
-				billingPreview({ missingDependencies: [personalCredential] }),
+				billingPreview({
+					missingDependencies: [otherProjectCredential, outsideAccessWorkflow, personalCredential],
+				}),
 			);
-			const { getByRole, getByTestId } = await render();
+			const { getAllByTestId, getByRole, getByTestId, queryByTestId } = await render();
+			const submit = getByTestId('promotion-preview-submit');
+			const openDialog = async () => {
+				await userEvent.click(submit);
+				// The title and the confirm button repeat the count of the page button.
+				expect(getByRole('heading', { name: /^Promote \d+ changes\?$/ })).toBeVisible();
+			};
+			const closeDialog = async () => await userEvent.click(getByTestId('promote-cancel-button'));
 
-			expect(getByTestId('promotion-preview-submit')).toHaveTextContent(
-				/^Promote with 1 unresolved dependency$/,
+			await openDialog();
+			expect(getByTestId('promotion-unresolved-lead')).toHaveTextContent(
+				"2 workflows can't be published because their dependencies can't be promoted.",
 			);
-			await userEvent.click(getByTestId('promotion-preview-submit'));
-			expect(getByRole('heading', { name: 'Promote with 1 unresolved dependency?' })).toBeVisible();
-			expect(getByTestId('promote-confirm-button')).toHaveTextContent(
-				/^Promote with 1 unresolved dependency$/,
+			expect(unresolvedRows(getAllByTestId)).toEqual([
+				['Invoice reconciliation', 'Missing CRM key, Send audit log.'],
+				['Weekly KPI report', 'Missing Send audit log, Personal Gmail.'],
+			]);
+			expect(getByTestId('promote-confirm-button').textContent?.trim()).toBe(
+				submit.textContent?.trim(),
 			);
+			await closeDialog();
+
+			// Without "Weekly KPI report" (w3), the dialog does not name it.
+			await userEvent.click(treeRow(getAllByTestId, 'workflow:w3').getByRole('checkbox'));
+			await openDialog();
+			expect(getByTestId('promotion-unresolved-lead')).toHaveTextContent(
+				"1 workflow can't be published because its dependency can't be promoted.",
+			);
+			expect(unresolvedRows(getAllByTestId)).toEqual([
+				['Invoice reconciliation', 'Missing CRM key, Send audit log.'],
+			]);
+			expect(getByTestId('promote-confirm-button').textContent?.trim()).toBe(
+				submit.textContent?.trim(),
+			);
+			await closeDialog();
+
+			// No selected workflow misses a dependency now, so the dialog has no warning.
+			await userEvent.click(treeRow(getAllByTestId, 'workflow:w1').getByRole('checkbox'));
+			await openDialog();
+			expect(queryByTestId('promotion-unresolved-summary')).not.toBeInTheDocument();
+			expect(getByTestId('promote-selection-dialog')).toHaveTextContent(
+				'This promotes the selected changes to branch main.',
+			);
+			expect(getByTestId('promote-confirm-button')).toHaveTextContent(/^Promote$/);
 		});
 
-		it('should list the unresolved dependencies in the Promote dialog, and send the confirmation with the reviewed revision', async () => {
+		it('should warn about the missing dependencies in the Promote dialog, and send the confirmation with the reviewed revision', async () => {
 			const missingDependencies = [
-				otherProjectCredential,
+				{ ...otherProjectCredential, project: { id: 'p2', name: 'Finance' } },
 				outsideAccessWorkflow,
 				personalCredential,
 			];
@@ -1559,35 +1594,30 @@ describe('PromotionPreviewView', () => {
 			vi.mocked(api.promoteProjectSelection).mockResolvedValue(promoted({ missingDependencies }));
 
 			const { getAllByTestId, getByRole, getByTestId } = await render();
+			const label = getByTestId('promotion-preview-submit').textContent?.trim();
+			expect(label).toMatch(/^Promote \d+ changes$/);
 			await userEvent.click(getByTestId('promotion-preview-submit'));
 
 			const dialog = getByTestId('promote-selection-dialog');
-			expect(
-				getByRole('heading', { name: 'Promote with 3 unresolved dependencies?' }),
-			).toBeVisible();
-			expect(dialog).toHaveTextContent('This promotes the selected changes to branch main.');
-			expect(dialog).toHaveTextContent(
-				'These dependencies are not on the branch after this Promote. Workflows that use them cannot be published where this is applied until the dependencies exist there.',
+			expect(getByRole('heading', { name: `${label}?` })).toBeVisible();
+			expect(getByTestId('promotion-unresolved-lead')).toHaveTextContent(
+				"2 workflows can't be published because their dependencies can't be promoted.",
 			);
-			// The warning is not in the list. The Issues tab shows it.
-			expect(
-				getAllByTestId('promotion-missing-dependency').map((row) => row.textContent?.trim()),
-			).toEqual([
-				'CRM keyCredential · Used by Invoice reconciliation',
-				'Send audit logWorkflow · Used by Invoice reconciliation, Weekly KPI report',
-				'Personal GmailCredential · Used by Weekly KPI report',
+			// The warning of the preview is not in the list. The Issues tab shows it.
+			expect(unresolvedRows(getAllByTestId)).toEqual([
+				['Invoice reconciliation', 'Missing CRM key, Send audit log.'],
+				['Weekly KPI report', 'Missing Send audit log, Personal Gmail.'],
 			]);
-			const list = getByTestId('promotion-missing-dependency-list');
 			expect(
-				list.compareDocumentPosition(getByTestId('promote-commit-message')) &
-					Node.DOCUMENT_POSITION_FOLLOWING,
+				getByTestId('promotion-unresolved-summary').compareDocumentPosition(
+					getByTestId('promote-commit-message'),
+				) & Node.DOCUMENT_POSITION_FOLLOWING,
 			).toBeTruthy();
-			// "Billing" is the project of the workflows. The API sends no project for a dependency.
+			// "Billing" is the project of the workflows, and "Finance" the project of "CRM key".
 			expect(dialog).not.toHaveTextContent('Billing');
+			expect(dialog).not.toHaveTextContent('Finance');
 			expect(dialog).not.toHaveTextContent(/project|owner/i);
-			expect(getByTestId('promote-confirm-button')).toHaveTextContent(
-				/^Promote with 3 unresolved dependencies$/,
-			);
+			expect(getByTestId('promote-confirm-button').textContent?.trim()).toBe(label);
 
 			await userEvent.click(getByTestId('promote-confirm-button'));
 
@@ -1638,7 +1668,7 @@ describe('PromotionPreviewView', () => {
 			await userEvent.click(getByTestId('promotion-preview-submit'));
 
 			expect(getByRole('heading', { name: /^Promote \d+ changes\?$/ })).toBeVisible();
-			expect(queryByTestId('promotion-missing-dependency-list')).not.toBeInTheDocument();
+			expect(queryByTestId('promotion-unresolved-summary')).not.toBeInTheDocument();
 			expect(getByTestId('promote-confirm-button')).toHaveTextContent(/^Promote$/);
 			await userEvent.click(getByTestId('promote-confirm-button'));
 
@@ -1689,14 +1719,16 @@ describe('PromotionPreviewView', () => {
 			expect(showMessage).not.toHaveBeenCalled();
 			expect(router.currentRoute.value.name).not.toBe(VIEWS.PROJECTS_WORKFLOWS);
 			expect(getByRole('tab', { name: /Issues/ })).toHaveTextContent(/^Issues\s*1$/);
-			expect(getByTestId('promotion-preview-submit')).toHaveTextContent(
-				/^Promote with 1 unresolved dependency$/,
-			);
 
 			await waitFor(() =>
 				expect(queryByTestId('promote-selection-dialog')).not.toBeInTheDocument(),
 			);
-			await promote(getByTestId);
+			// The dialog now warns about the list that the Promote found.
+			await userEvent.click(getByTestId('promotion-preview-submit'));
+			expect(getByTestId('promotion-unresolved-lead')).toHaveTextContent(
+				"2 workflows can't be published because their dependencies can't be promoted.",
+			);
+			await userEvent.click(getByTestId('promote-confirm-button'));
 
 			expect(api.promoteProjectSelection).toHaveBeenLastCalledWith(expect.anything(), 'p1', {
 				workflowIds: ['w1', 'w2', 'w3', 'w4'],
@@ -1722,7 +1754,7 @@ describe('PromotionPreviewView', () => {
 				environmentId: 'environment-1',
 			});
 
-			const { getByTestId } = await render();
+			const { getByRole, getByTestId } = await render();
 			await promote(getByTestId);
 
 			expect(api.promoteProjectSelection).toHaveBeenCalledWith(
@@ -1741,9 +1773,8 @@ describe('PromotionPreviewView', () => {
 			expect(api.getPromotionPreview).toHaveBeenCalledTimes(2);
 			expect(showMessage).not.toHaveBeenCalled();
 			expect(router.currentRoute.value.name).not.toBe(VIEWS.PROJECTS_WORKFLOWS);
-			expect(getByTestId('promotion-preview-submit')).toHaveTextContent(
-				/^Promote with 2 unresolved dependencies$/,
-			);
+			// The page shows the new list: the Issues tab counts both dependencies.
+			expect(getByRole('tab', { name: /Issues/ })).toHaveTextContent(/^Issues\s*2$/);
 		});
 	});
 
@@ -1973,9 +2004,8 @@ describe('PromotionPreviewView', () => {
 			expect(
 				usesCredential.queryByTestId('promotion-preview-tree-blocker'),
 			).not.toBeInTheDocument();
-			expect(getByTestId('promotion-preview-submit')).toHaveTextContent(
-				/^Apply with 2 unresolved dependencies$/,
-			);
+			expect(getByTestId('promotion-preview-submit')).toBeEnabled();
+			expect(getByTestId('promotion-preview-submit')).toHaveTextContent(/^Apply \d+ changes$/);
 		});
 
 		it('should show no action for a workflow of this instance that the user cannot access', async () => {
@@ -2098,7 +2128,7 @@ describe('PromotionPreviewView', () => {
 				);
 			});
 
-			it('should count an unresolved dependency only while the selection matches its condition, and list the same entries in the confirmation', async () => {
+			it('should ask the user to accept a dependency only while the selection matches its condition', async () => {
 				vi.mocked(api.getPromotionPreview).mockResolvedValue(
 					previewWithCheck(
 						check({ missingDependencies: [unreachableCredential, targetNotSelectedWorkflow] }),
@@ -2113,8 +2143,7 @@ describe('PromotionPreviewView', () => {
 				const submit = getByTestId('promotion-preview-submit');
 				const target = () => treeRow(getAllByTestId, 'workflow:w3').getByRole('checkbox');
 				const caller = () => treeRow(getAllByTestId, 'workflow:w1');
-				const listed = () =>
-					getAllByTestId('promotion-missing-dependency').map((row) => row.textContent?.trim());
+				const label = () => submit.textContent?.trim();
 
 				// The selection includes "Weekly KPI report" (w3), so only the credential stays unresolved.
 				expect(target()).toBeChecked();
@@ -2122,7 +2151,7 @@ describe('PromotionPreviewView', () => {
 				expect(caller().getByTestId('promotion-preview-tree-dependencies')).toHaveAccessibleName(
 					'This workflow uses 1 dependency that is outside your access. You can apply it without it.',
 				);
-				expect(submit).toHaveTextContent(/^Apply with 1 unresolved dependency$/);
+				expect(label()).toMatch(/^Apply \d+ changes$/);
 
 				await userEvent.click(target());
 
@@ -2134,14 +2163,11 @@ describe('PromotionPreviewView', () => {
 				expect(caller().getByTestId('promotion-preview-tree-dependencies')).toHaveAccessibleName(
 					'2 dependencies are not usable on this instance.',
 				);
-				expect(submit).toHaveTextContent(/^Apply with 2 unresolved dependencies$/);
+				expect(label()).toMatch(/^Apply \d+ changes$/);
 				await userEvent.click(submit);
-				expect(
-					getByRole('heading', { name: 'Apply with 2 unresolved dependencies?' }),
-				).toBeVisible();
-				expect(listed()).toEqual([
-					'StripeCredential · Used by Invoice reconciliation',
-					'Weekly KPI reportWorkflow · Used by Invoice reconciliation',
+				expect(getByRole('heading', { name: `${label()}?` })).toBeVisible();
+				expect(unresolvedRows(getAllByTestId)).toEqual([
+					['Invoice reconciliation', 'Missing Stripe, Weekly KPI report.'],
 				]);
 				await userEvent.click(getByTestId('apply-unresolved-cancel'));
 				expect(queryByTestId('apply-unresolved-dialog')).not.toBeInTheDocument();
@@ -2150,13 +2176,12 @@ describe('PromotionPreviewView', () => {
 				await userEvent.click(target());
 
 				expect(issuesTab).toHaveTextContent(/^Issues\s*1$/);
-				expect(submit).toHaveTextContent(/^Apply with 1 unresolved dependency$/);
 				await userEvent.click(submit);
-				expect(getByRole('heading', { name: 'Apply with 1 unresolved dependency?' })).toBeVisible();
-				expect(listed()).toEqual(['StripeCredential · Used by Invoice reconciliation']);
-				expect(getByTestId('apply-unresolved-confirm')).toHaveTextContent(
-					/^Apply with 1 unresolved dependency$/,
-				);
+				expect(getByRole('heading', { name: `${label()}?` })).toBeVisible();
+				expect(unresolvedRows(getAllByTestId)).toEqual([
+					['Invoice reconciliation', 'Missing Stripe.'],
+				]);
+				expect(getByTestId('apply-unresolved-confirm').textContent?.trim()).toBe(label());
 
 				await userEvent.click(getByTestId('apply-unresolved-confirm'));
 				await waitAllPromises();
@@ -2334,7 +2359,7 @@ describe('PromotionPreviewView', () => {
 		it('should list a dependency that does not stop the Apply only for the selected workflows that use it', async () => {
 			// "Weekly KPI report" (w3) uses the two sub-workflows, and "Format currency" (w4) uses one
 			// of them. "Invoice reconciliation" (w1) uses the credential, which stops it.
-			const { getAllByTestId, getByRole, getByTestId, queryByRole } = await renderIssues({
+			const { getAllByTestId, getByRole, queryByRole } = await renderIssues({
 				missingDependencies: [
 					unsharedCredential,
 					unreachableWorkflow,
@@ -2342,7 +2367,6 @@ describe('PromotionPreviewView', () => {
 				],
 			});
 			const issuesTab = getByRole('tab', { name: /Issues/ });
-			const submit = getByTestId('promotion-preview-submit');
 			const usedBy = (name: RegExp) => cells(getByRole('row', { name }))[1];
 			const toggle = async (key: string) => {
 				await userEvent.click(getByRole('tab', { name: /Changes/ }));
@@ -2354,7 +2378,6 @@ describe('PromotionPreviewView', () => {
 			expect(issuesTab).toHaveTextContent(/^Issues\s*2$/);
 			expect(getAllByTestId('promotion-preview-blocker-row')).toHaveLength(2);
 			expect(usedBy(/Archive invoices/)).toBe('w3w4');
-			expect(submit).toHaveTextContent(/^Apply with 2 unresolved dependencies$/);
 
 			await toggle('workflow:w3');
 
@@ -2362,7 +2385,6 @@ describe('PromotionPreviewView', () => {
 			expect(issuesTab).toHaveTextContent(/^Issues\s*1$/);
 			expect(queryByRole('row', { name: /Send audit log/ })).not.toBeInTheDocument();
 			expect(usedBy(/Archive invoices/)).toBe('w4');
-			expect(submit).toHaveTextContent(/^Apply with 1 unresolved dependency$/);
 			// The user cannot select the workflow that the credential stops, so its row stays.
 			expect(usedBy(/Stripe/)).toBe('Invoice reconciliation');
 
@@ -2371,17 +2393,15 @@ describe('PromotionPreviewView', () => {
 			expect(issuesTab).toHaveTextContent(/^Issues\s*1$/);
 			expect(getAllByTestId('promotion-preview-blocker-row')).toHaveLength(1);
 			expect(queryByRole('row', { name: /Archive invoices/ })).not.toBeInTheDocument();
-			expect(submit).not.toHaveTextContent('unresolved');
 
 			await toggle('workflow:w3');
 
 			expect(issuesTab).toHaveTextContent(/^Issues\s*2$/);
 			expect(usedBy(/Send audit log/)).toBe('Weekly KPI report');
 			expect(usedBy(/Archive invoices/)).toBe('w3');
-			expect(submit).toHaveTextContent(/^Apply with 2 unresolved dependencies$/);
 		});
 
-		it('should name the unresolved dependencies of the selected workflows on the Apply button', async () => {
+		it('should keep the plain label on the Apply button, and warn in the dialog only about the workflows that are selected now', async () => {
 			vi.mocked(api.getPromotionPreview).mockResolvedValue(
 				previewWithCheck(
 					check({
@@ -2389,24 +2409,53 @@ describe('PromotionPreviewView', () => {
 					}),
 				),
 			);
-			const { getAllByTestId, getByTestId, queryAllByTestId } = await renderApply();
+			const { getAllByTestId, getByRole, getByTestId, queryAllByTestId, queryByTestId } =
+				await renderApply();
 			const submit = getByTestId('promotion-preview-submit');
+			const openDialog = async () => {
+				const label = submit.textContent?.trim();
+				expect(label).toMatch(/^Apply \d+ changes?$/);
+				await userEvent.click(submit);
+				// The title and the confirm button repeat the label of the page button.
+				expect(getByRole('heading', { name: `${label}?` })).toBeVisible();
+				expect(getByTestId('apply-unresolved-confirm').textContent?.trim()).toBe(label);
+			};
+			const closeDialog = async () => await userEvent.click(getByTestId('apply-unresolved-cancel'));
 
 			// No dependency stops a workflow.
 			expect(queryAllByTestId('promotion-preview-tree-blocker')).toHaveLength(0);
-			expect(treeRow(getAllByTestId, 'workflow:w1').getByRole('checkbox')).toBeChecked();
-			expect(submit).toHaveTextContent(/^Apply with 3 unresolved dependencies$/);
 			expect(submit).toBeEnabled();
 
-			// Only "Weekly KPI report" (w3) uses "Send audit log".
-			await userEvent.click(treeRow(getAllByTestId, 'workflow:w3').getByRole('checkbox'));
-			expect(submit).toHaveTextContent(/^Apply with 2 unresolved dependencies$/);
+			await openDialog();
+			expect(getByTestId('promotion-unresolved-lead')).toHaveTextContent(
+				"2 workflows can't be published because their dependencies don't exist here.",
+			);
+			expect(unresolvedRows(getAllByTestId)).toEqual([
+				['Invoice reconciliation', 'Missing Stripe, Archive invoices.'],
+				['Weekly KPI report', 'Missing Send audit log.'],
+			]);
+			await closeDialog();
 
+			// Without "Weekly KPI report" (w3), the dialog does not name it.
+			await userEvent.click(treeRow(getAllByTestId, 'workflow:w3').getByRole('checkbox'));
+			await openDialog();
+			expect(getByTestId('promotion-unresolved-lead')).toHaveTextContent(
+				"1 workflow can't be published because its dependency doesn't exist here.",
+			);
+			expect(unresolvedRows(getAllByTestId)).toEqual([
+				['Invoice reconciliation', 'Missing Stripe, Archive invoices.'],
+			]);
+			await closeDialog();
+
+			// No selected workflow misses a dependency now, so the generic question comes back.
 			await userEvent.click(treeRow(getAllByTestId, 'workflow:w1').getByRole('checkbox'));
-			expect(submit).toHaveTextContent(/^Apply \d+ changes?$/);
+			confirm.mockResolvedValue('cancel');
+			await userEvent.click(submit);
+			expect(queryByTestId('apply-unresolved-dialog')).not.toBeInTheDocument();
+			expect(confirm).toHaveBeenCalledTimes(1);
 		});
 
-		it('should ask the user to accept the unresolved dependencies in place of the generic question, then continue the Apply', async () => {
+		it('should warn about the missing dependencies in one dialog in place of the generic question, then continue the Apply', async () => {
 			const missingDependencies = [unreachableCredential, unreachableWorkflow];
 			vi.mocked(api.getPromotionPreview).mockResolvedValue(
 				previewWithCheck(check({ missingDependencies })),
@@ -2420,22 +2469,18 @@ describe('PromotionPreviewView', () => {
 			await userEvent.click(getByTestId('promotion-preview-submit'));
 
 			const dialog = getByTestId('apply-unresolved-dialog');
-			expect(getByRole('heading', { name: 'Apply with 2 unresolved dependencies?' })).toBeVisible();
-			expect(dialog).toHaveTextContent(
-				'These dependencies stay missing on this instance. Apply does not create them. Workflows that use them cannot be published until the dependencies exist here.',
+			expect(getByRole('heading', { name: /^Apply \d+ changes\?$/ })).toBeVisible();
+			expect(getByTestId('promotion-unresolved-lead')).toHaveTextContent(
+				"2 workflows can't be published because their dependencies don't exist here.",
 			);
-			expect(
-				getAllByTestId('promotion-missing-dependency').map((row) => row.textContent?.trim()),
-			).toEqual([
-				'StripeCredential · Used by Invoice reconciliation',
-				'Send audit logWorkflow · Used by Weekly KPI report',
+			expect(unresolvedRows(getAllByTestId)).toEqual([
+				['Invoice reconciliation', 'Missing Stripe.'],
+				['Weekly KPI report', 'Missing Send audit log.'],
 			]);
-			// "Billing" is the project of the workflows. The API sends no project for a dependency.
+			// "Billing" is the project of the workflows. The dialog shows no project.
 			expect(dialog).not.toHaveTextContent('Billing');
 			expect(dialog).not.toHaveTextContent(/project|owner/i);
-			expect(getByTestId('apply-unresolved-confirm')).toHaveTextContent(
-				/^Apply with 2 unresolved dependencies$/,
-			);
+			expect(getByTestId('apply-unresolved-confirm')).toHaveTextContent(/^Apply \d+ changes$/);
 			expect(confirm).not.toHaveBeenCalled();
 			expect(api.continueApplyProjectSelection).not.toHaveBeenCalled();
 
@@ -2560,15 +2605,12 @@ describe('PromotionPreviewView', () => {
 			const blockedWorkflow = treeRow(getAllByTestId, 'workflow:w3').getByRole('checkbox');
 			expect(blockedWorkflow).not.toBeChecked();
 			expect(blockedWorkflow).toBeDisabled();
-			// The button counts only what the user can accept.
-			expect(getByTestId('promotion-preview-submit')).toHaveTextContent(
-				/^Apply with 1 unresolved dependency$/,
-			);
 
+			// The dialog names only what the user can accept.
 			await userEvent.click(getByTestId('promotion-preview-submit'));
-			expect(
-				getAllByTestId('promotion-missing-dependency').map((row) => row.textContent?.trim()),
-			).toEqual(['StripeCredential · Used by Invoice reconciliation']);
+			expect(unresolvedRows(getAllByTestId)).toEqual([
+				['Invoice reconciliation', 'Missing Stripe.'],
+			]);
 
 			await userEvent.click(getByTestId('apply-unresolved-confirm'));
 			expect(api.continueApplyProjectSelection).toHaveBeenCalledWith(
@@ -2578,7 +2620,7 @@ describe('PromotionPreviewView', () => {
 			);
 		});
 
-		it('should keep Apply disabled, with the label of today, while every selected change has a dependency that stops it', async () => {
+		it('should keep Apply disabled while every selected change has a dependency that stops it', async () => {
 			const stopsAll = { ...missingVariable, consumers: consumers('w1', 'w2', 'w3', 'w4') };
 			vi.mocked(api.getPromotionPreview).mockResolvedValue(
 				previewWithCheck(
@@ -2592,7 +2634,6 @@ describe('PromotionPreviewView', () => {
 			const { getByTestId, queryByTestId } = await renderApply();
 
 			expect(getByTestId('promotion-preview-submit')).toBeDisabled();
-			expect(getByTestId('promotion-preview-submit')).not.toHaveTextContent('unresolved');
 			expect(queryByTestId('apply-unresolved-dialog')).not.toBeInTheDocument();
 		});
 
@@ -2620,7 +2661,7 @@ describe('PromotionPreviewView', () => {
 						stopped.queryByTestId('promotion-preview-tree-dependencies'),
 					).not.toBeInTheDocument();
 					expect(getByRole('tab', { name: /Issues/ })).toHaveTextContent(/^Issues\s*1$/);
-					// The user cannot accept this dependency, so the button does not name it.
+					// The user cannot accept this dependency, so the Apply asks no question about it.
 					const submit = getByTestId('promotion-preview-submit');
 					expect(submit).toHaveTextContent(/^Apply \d+ changes$/);
 					expect(submit).toBeEnabled();
@@ -2730,7 +2771,6 @@ describe('PromotionPreviewView', () => {
 					expect(treeRow(getAllByTestId, key).getByRole('checkbox')).toBeDisabled();
 				}
 				expect(getByTestId('promotion-preview-submit')).toBeDisabled();
-				expect(getByTestId('promotion-preview-submit')).not.toHaveTextContent('unresolved');
 				expect(queryByTestId('apply-unresolved-dialog')).not.toBeInTheDocument();
 			});
 
@@ -2764,10 +2804,11 @@ describe('PromotionPreviewView', () => {
 				);
 				expect(accepted.queryByTestId('promotion-preview-tree-blocker')).not.toBeInTheDocument();
 				// The selection leaves out the stopped workflow, and so its other credential. The tab
-				// and the button count the same dependencies that the Apply continues without.
+				// counts the credential that stops the Apply, and the dependency that the Apply
+				// continues without.
 				expect(getByRole('tab', { name: /Issues/ })).toHaveTextContent(/^Issues\s*2$/);
 				const submit = getByTestId('promotion-preview-submit');
-				expect(submit).toHaveTextContent(/^Apply with 1 unresolved dependency$/);
+				expect(submit).toHaveTextContent(/^Apply \d+ changes$/);
 
 				await userEvent.click(getByRole('tab', { name: /Issues/ }));
 				expect(headings(getAllByRole)).toEqual([
@@ -2786,10 +2827,11 @@ describe('PromotionPreviewView', () => {
 					'1 issue to resolve',
 				);
 
+				// The dialog names only the workflow of the dependency that the user can accept.
 				await userEvent.click(submit);
-				expect(
-					getAllByTestId('promotion-missing-dependency').map((row) => row.textContent?.trim()),
-				).toEqual(['Send audit logWorkflow · Used by Weekly KPI report']);
+				expect(unresolvedRows(getAllByTestId)).toEqual([
+					['Weekly KPI report', 'Missing Send audit log.'],
+				]);
 				await userEvent.click(getByTestId('apply-unresolved-confirm'));
 				await waitAllPromises();
 
@@ -2947,9 +2989,10 @@ describe('PromotionPreviewView', () => {
 			// The user can accept the dependency and apply again.
 			expect(queryByTestId('promotion-preview-blockers-status')).not.toBeInTheDocument();
 			expect(getByTestId('promotion-preview-submit')).toBeEnabled();
-			expect(getByTestId('promotion-preview-submit')).toHaveTextContent(
-				/^Apply with 1 unresolved dependency$/,
-			);
+			await userEvent.click(getByTestId('promotion-preview-submit'));
+			expect(unresolvedRows(getAllByTestId)).toEqual([
+				['Invoice reconciliation', 'Missing Stripe.'],
+			]);
 		});
 	});
 
@@ -3041,7 +3084,6 @@ describe('PromotionPreviewView', () => {
 
 			const submit = getByTestId('promotion-preview-submit');
 			expect(submit).toBeDisabled();
-			expect(submit).not.toHaveTextContent('unresolved');
 			expect(getByTestId('promotion-preview-submit-blocked')).toHaveTextContent(
 				'Resolve the issues that need your action, then apply.',
 			);
@@ -3065,7 +3107,7 @@ describe('PromotionPreviewView', () => {
 			);
 		});
 
-		it('should show the plain label on the disabled Apply button, without the unresolved dependencies', async () => {
+		it('should keep the Apply button disabled while an issue stops the Apply, also with a dependency that the user can accept', async () => {
 			vi.mocked(api.getPromotionEnvironmentChanges).mockResolvedValue(
 				instancePreview({
 					missingBindings: [{ ...variable, name: 'API_URL', consumers: consumers('w-unchanged') }],
@@ -3119,14 +3161,17 @@ describe('PromotionPreviewView', () => {
 			expect(getByRole('tab', { name: /Issues/ })).toHaveTextContent(/^Issues\s*1$/);
 			const submit = getByTestId('promotion-preview-submit');
 			expect(submit).toBeEnabled();
-			expect(submit).toHaveTextContent(/^Apply with 1 unresolved dependency$/);
+			const label = submit.textContent?.trim();
+			expect(label).toMatch(/^Apply \d+ changes$/);
 			expect(queryByTestId('promotion-preview-submit-blocked')).not.toBeInTheDocument();
 
 			await userEvent.click(submit);
-			expect(getByRole('heading', { name: 'Apply with 1 unresolved dependency?' })).toBeVisible();
-			expect(
-				getAllByTestId('promotion-missing-dependency').map((row) => row.textContent?.trim()),
-			).toEqual(['StripeCredential · Used by w-unchanged']);
+			expect(getByRole('heading', { name: `${label}?` })).toBeVisible();
+			expect(getByTestId('promotion-unresolved-lead')).toHaveTextContent(
+				"1 workflow can't be published because its dependency doesn't exist here.",
+			);
+			expect(unresolvedRows(getAllByTestId)).toEqual([['w-unchanged', 'Missing Stripe.']]);
+			expect(getByTestId('apply-unresolved-confirm').textContent?.trim()).toBe(label);
 			await userEvent.click(getByTestId('apply-unresolved-confirm'));
 			await waitAllPromises();
 
@@ -3205,9 +3250,8 @@ describe('PromotionPreviewView', () => {
 			expect(getByRole('heading', { level: 2, name: 'Outside your access (1)' })).toBeVisible();
 			// The user can accept the dependency and apply again.
 			expect(getByTestId('promotion-preview-submit')).toBeEnabled();
-			expect(getByTestId('promotion-preview-submit')).toHaveTextContent(
-				/^Apply with 1 unresolved dependency$/,
-			);
+			await userEvent.click(getByTestId('promotion-preview-submit'));
+			expect(getByTestId('apply-unresolved-dialog')).toBeVisible();
 		});
 
 		it.each([false, true])(

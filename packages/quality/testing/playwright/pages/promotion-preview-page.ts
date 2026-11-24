@@ -71,7 +71,7 @@ export class PromotionPreviewPage extends BasePage {
 		return this.getPromoteDialog().getByTestId('promote-confirm-button');
 	}
 
-	/** The dialog that lists the dependencies that an Apply leaves unresolved. */
+	/** The dialog that confirms an Apply that leaves dependencies unresolved. */
 	getApplyUnresolvedDialog(): Locator {
 		return this.page.getByTestId('apply-unresolved-dialog');
 	}
@@ -84,18 +84,23 @@ export class PromotionPreviewPage extends BasePage {
 		return this.getApplyUnresolvedDialog().getByTestId('apply-unresolved-confirm');
 	}
 
-	/** The list of the unresolved dependencies in a dialog. */
-	getUnresolvedDependencyList(dialog: Locator): Locator {
-		return dialog.getByTestId('promotion-missing-dependency-list');
+	/** The warning of a dialog about the dependencies that the operation leaves unresolved. */
+	getUnresolvedSummary(dialog: Locator): Locator {
+		return dialog.getByTestId('promotion-unresolved-summary');
+	}
+
+	/** The sentence of the warning. It counts the workflows that cannot be published. */
+	getUnresolvedLead(dialog: Locator): Locator {
+		return dialog.getByTestId('promotion-unresolved-lead');
 	}
 
 	/**
-	 * An unresolved dependency that a dialog lists, by its exact name. The summary of a row names
-	 * the workflows that use the dependency, and an exact match ignores that text.
+	 * The row of a workflow in the warning of a dialog, by the exact name of the workflow. The row
+	 * also names the dependencies that the workflow misses, and an exact match ignores that text.
 	 */
-	getUnresolvedDependency(dialog: Locator, name: string): Locator {
+	getUnresolvedWorkflow(dialog: Locator, name: string): Locator {
 		return dialog
-			.getByTestId('promotion-missing-dependency')
+			.getByTestId('promotion-unresolved-row')
 			.filter({ has: this.page.getByText(name, { exact: true }) });
 	}
 }

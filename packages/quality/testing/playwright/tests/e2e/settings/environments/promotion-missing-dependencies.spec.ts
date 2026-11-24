@@ -165,16 +165,17 @@ test.describe(
 			const repository = await createRepository(promotions, services.gitea);
 			await connectEnvironment(promotions, repository, 'promote');
 			const preview = n8n.promotionPreview;
-			const unresolved = 'Promote with 2 unresolved dependencies';
+			// The button counts the changes. It does not name the dependencies.
+			const promoteLabel = /^Promote \d+ changes$/;
 
 			await n8n.start.fromHome();
 			await preview.goto(projectA.id, 'promote');
 
-			await test.step('name the unresolved dependencies of the selection on the button', async () => {
+			await test.step('count the issues of the selection on the Issues tab, and keep the label of the button', async () => {
 				await expect(preview.getWorkflowCheckbox(caller.id)).toBeChecked();
 				await expect(preview.getWorkflowCheckbox(independent.id)).toBeChecked();
 				await expect(preview.getIssuesTab()).toHaveText(/Issues\s*2$/);
-				await expect(preview.getSubmitButton()).toHaveText(unresolved);
+				await expect(preview.getSubmitButton()).toHaveText(promoteLabel);
 			});
 
 			await test.step('show no issues for a workflow without such dependencies', async () => {
@@ -184,7 +185,8 @@ test.describe(
 				// The project and the workflow that stays selected.
 				await expect(preview.getSubmitButton()).toHaveText('Promote 2 changes');
 				await preview.getWorkflowCheckbox(caller.id).check();
-				await expect(preview.getSubmitButton()).toHaveText(unresolved);
+				await expect(preview.getIssuesTab()).toHaveText(/Issues\s*2$/);
+				await expect(preview.getSubmitButton()).toHaveText(promoteLabel);
 			});
 
 			await test.step('list the dependencies of the other project on the Issues tab', async () => {
@@ -198,17 +200,27 @@ test.describe(
 				}
 			});
 
-			await test.step('confirm the dependencies with the commit message', async () => {
+			await test.step('warn in the dialog about the workflow that misses the dependencies', async () => {
+				const label = (await preview.getSubmitButton().innerText()).trim();
 				await preview.getSubmitButton().click();
 				const dialog = preview.getPromoteDialog();
-				await expect(preview.getPromoteDialogTitle()).toHaveText(`${unresolved}?`);
-				await expect(preview.getUnresolvedDependency(dialog, credential.name)).toBeVisible();
-				await expect(preview.getUnresolvedDependency(dialog, subWorkflow.name)).toBeVisible();
-				await expect(preview.getPromoteConfirmButton()).toHaveText(unresolved);
-				// The list comes before the commit message, so the user reads it first.
-				const list = await preview.getUnresolvedDependencyList(dialog).boundingBox();
+				// The title and the confirm button repeat the label of the button of the page.
+				await expect(preview.getPromoteDialogTitle()).toHaveText(`${label}?`);
+				await expect(preview.getPromoteConfirmButton()).toHaveText(label);
+				await expect(preview.getUnresolvedLead(dialog)).toHaveText(
+					"1 workflow can't be published because its dependency can't be promoted.",
+				);
+				// The workflow without such dependencies has no row.
+				await expect(preview.getUnresolvedWorkflow(dialog, independent.name)).toBeHidden();
+				const row = preview.getUnresolvedWorkflow(dialog, caller.name);
+				await expect(row).toContainText(credential.name);
+				await expect(row).toContainText(subWorkflow.name);
+				// The warning comes before the commit message, so the user reads it first.
+				const summary = await preview.getUnresolvedSummary(dialog).boundingBox();
 				const commitMessage = await preview.getPromoteCommitMessage().boundingBox();
-				expect(list && commitMessage && list.y + list.height <= commitMessage.y).toBe(true);
+				expect(summary && commitMessage && summary.y + summary.height <= commitMessage.y).toBe(
+					true,
+				);
 			});
 
 			await test.step('promote without the dependencies', async () => {
@@ -258,14 +270,15 @@ test.describe(
 			await api.workflows.archive(subWorkflow.id);
 			await api.workflows.delete(subWorkflow.id);
 			const preview = n8n.promotionPreview;
-			const unresolved = 'Apply with 1 unresolved dependency';
+			// The button counts the changes. It does not name the dependency.
+			const applyLabel = /^Apply \d+ changes?$/;
 
 			await n8n.start.fromHome();
 			await preview.goto(projectA.id, 'apply');
 
-			await test.step('name the unresolved dependency of the selection on the button', async () => {
+			await test.step('keep the label of the button for a selection with a missing dependency', async () => {
 				await expect(preview.getWorkflowCheckbox(caller.id)).toBeChecked();
-				await expect(preview.getSubmitButton()).toHaveText(unresolved);
+				await expect(preview.getSubmitButton()).toHaveText(applyLabel);
 			});
 
 			await test.step('list the missing workflow on the Issues tab', async () => {
@@ -279,16 +292,24 @@ test.describe(
 				await preview.getWorkflowCheckbox(caller.id).uncheck();
 				await expect(preview.getSubmitButton()).toBeDisabled();
 				await preview.getWorkflowCheckbox(caller.id).check();
-				await expect(preview.getSubmitButton()).toHaveText(unresolved);
+				await expect(preview.getSubmitButton()).toHaveText(applyLabel);
 				await expect(preview.getSubmitButton()).toBeEnabled();
 			});
 
-			await test.step('apply after the confirmation of the dependency', async () => {
+			await test.step('warn in one dialog about the workflow that misses the dependency, then apply', async () => {
+				const label = (await preview.getSubmitButton().innerText()).trim();
 				await preview.getSubmitButton().click();
 				const dialog = preview.getApplyUnresolvedDialog();
-				await expect(preview.getApplyUnresolvedDialogTitle()).toHaveText(`${unresolved}?`);
-				await expect(preview.getUnresolvedDependency(dialog, subWorkflow.name)).toBeVisible();
-				await expect(preview.getApplyUnresolvedConfirmButton()).toHaveText(unresolved);
+				// One dialog asks the question. Its title and its confirm button repeat the label of
+				// the button of the page.
+				await expect(preview.getApplyUnresolvedDialogTitle()).toHaveText(`${label}?`);
+				await expect(preview.getApplyUnresolvedConfirmButton()).toHaveText(label);
+				await expect(preview.getUnresolvedLead(dialog)).toHaveText(
+					"1 workflow can't be published because its dependency doesn't exist here.",
+				);
+				await expect(preview.getUnresolvedSummary(dialog)).toContainText(
+					`Missing ${subWorkflow.name}.`,
+				);
 				const apply = n8n.page.waitForResponse(
 					(response) =>
 						response.url().endsWith(`/promotions/projects/${projectA.id}/apply/continue`) &&

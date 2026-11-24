@@ -10,17 +10,11 @@ import { resourceIcon } from '../promotionPreview.tree';
 type Dependency = PromotionMissingDependency | PromotionDependencyWarning;
 
 /**
- * What a Promote or an Apply leaves unresolved, as a short list for a dialog. A row shows the
+ * What an instance Promote leaves unresolved, as a short list for its dialog. A row shows the
  * name, the type and the workflows that use the dependency. It shows no owner and no project.
+ * That dialog has no Issues tab, so a row also shows the status of the Issues tab for its group.
  */
-const props = defineProps<{
-	dependencies: Dependency[];
-	/**
-	 * True for a dialog that has no Issues tab. A row then says if the user can access the
-	 * dependency, with the status that the Issues tab shows for its group.
-	 */
-	showStatus?: boolean;
-}>();
+const props = defineProps<{ dependencies: Dependency[] }>();
 
 const i18n = useI18n();
 
@@ -30,7 +24,7 @@ const statusLabel = (key: PromoteGroupStatus) =>
 // A warning has no group, and so no status.
 const statuses = computed(() =>
 	props.dependencies.map((dependency) => {
-		if (!props.showStatus || !('group' in dependency)) return undefined;
+		if (!('group' in dependency)) return undefined;
 		const status = promoteGroupStatus(dependency.group);
 		if (!status) return undefined;
 		// The group of a personal project does not say if the user can access that project.

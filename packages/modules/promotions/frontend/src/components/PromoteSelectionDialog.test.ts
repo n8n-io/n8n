@@ -37,11 +37,11 @@ describe('PromoteSelectionDialog', () => {
 		expect(dialog).toHaveAccessibleDescription(
 			'This promotes the selected changes to branch main.',
 		);
-		expect(queryByTestId('promotion-missing-dependency-list')).not.toBeInTheDocument();
+		expect(queryByTestId('promotion-unresolved-summary')).not.toBeInTheDocument();
 		expect(getByTestId('promote-confirm-button')).toHaveTextContent(/^Promote$/);
 	});
 
-	it('asks the user to confirm the dependencies that the Promote leaves out', async () => {
+	it('warns above the message field about the workflows that the Promote leaves without a dependency', async () => {
 		const { findByTestId, getAllByTestId, getByRole, getByTestId } = renderComponent({
 			props: {
 				unresolved: [
@@ -59,26 +59,76 @@ describe('PromoteSelectionDialog', () => {
 		});
 
 		const dialog = await findByTestId('promote-selection-dialog');
-		expect(getByRole('heading', { name: 'Promote with 2 unresolved dependencies?' })).toBeVisible();
-		const leftOut =
-			'These dependencies are not on the branch after this Promote. Workflows that use them cannot be published where this is applied until the dependencies exist there.';
-		expect(dialog.querySelector('[data-slot="dialog-body"]')).toHaveTextContent(
-			`This promotes the selected changes to branch main.${leftOut}`,
-		);
+		// The title is the same with and without missing dependencies.
+		expect(getByRole('heading', { name: 'Promote 3 changes?' })).toBeVisible();
+		const lead = "3 workflows can't be published because their dependencies can't be promoted.";
+		expect(getByTestId('promotion-unresolved-lead')).toHaveTextContent(lead);
 		expect(dialog).toHaveAccessibleDescription(
-			`This promotes the selected changes to branch main. ${leftOut}`,
+			`This promotes the selected changes to branch main. ${lead}`,
 		);
 		expect(
-			getAllByTestId('promotion-missing-dependency').map((row) => row.textContent?.trim()),
+			getAllByTestId('promotion-unresolved-row').map((row) =>
+				[...row.children].map((child) => child.textContent?.trim()),
+			),
 		).toEqual([
-			'CRM keyCredential · Used by Invoice reconciliation',
-			'Send audit logWorkflow · Used by Invoice reconciliation, Payment reminders +1',
+			['Invoice reconciliation', 'Missing CRM key, Send audit log.'],
+			['Payment reminders', 'Missing Send audit log.'],
+			['Weekly KPI report', 'Missing Send audit log.'],
 		]);
-		expect(getByTestId('promote-confirm-button')).toHaveTextContent(
-			/^Promote with 2 unresolved dependencies$/,
-		);
+		// The warning replaces the sentence about the branch, and comes before the message field.
+		const body = dialog.querySelector('[data-slot="dialog-body"]');
+		expect(body).not.toHaveTextContent('This promotes the selected changes');
+		expect(
+			getByTestId('promotion-unresolved-summary').compareDocumentPosition(
+				getByTestId('promote-commit-message'),
+			) & Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
+		// The confirm button repeats the label of the button of the page.
+		expect(getByTestId('promote-confirm-button')).toHaveTextContent(/^Promote 3 changes$/);
+		expect(dialog).not.toHaveTextContent(/unresolved/i);
 		// The message field keeps the focus, below the list.
 		await waitFor(() => expect(getByTestId('promote-commit-message')).toHaveFocus());
+	});
+
+	it('uses the singular for one workflow, and counts the dependencies that its row does not name', async () => {
+		const consumers = usedBy({ id: 'w1', name: 'Invoice reconciliation' });
+		const { findByTestId, getByTestId } = renderComponent({
+			props: {
+				changeCount: 1,
+				unresolved: [
+					otherProjectCredential,
+					{ ...outsideAccessWorkflow, consumers },
+					{ ...otherProjectCredential, id: 'c9', name: 'ERP key' },
+					{ ...otherProjectCredential, id: 'c10', name: 'Tax API' },
+				],
+			},
+		});
+
+		expect(await findByTestId('promotion-unresolved-lead')).toHaveTextContent(
+			"1 workflow can't be published because its dependency can't be promoted.",
+		);
+		expect(getByTestId('promotion-unresolved-row')).toHaveTextContent(
+			'Missing CRM key, Send audit log and 2 more.',
+		);
+		expect(getByTestId('promote-confirm-button')).toHaveTextContent(/^Promote 1 change$/);
+	});
+
+	it('counts and names the dependencies when no workflow uses them', async () => {
+		const { findByTestId, getAllByTestId } = renderComponent({
+			props: {
+				unresolved: [
+					{ ...otherProjectCredential, consumers: [] },
+					{ ...outsideAccessWorkflow, consumers: [] },
+				],
+			},
+		});
+
+		expect(await findByTestId('promotion-unresolved-lead')).toHaveTextContent(
+			/^2 dependencies are not promoted\.$/,
+		);
+		expect(
+			getAllByTestId('promotion-unresolved-row').map((row) => row.textContent?.trim()),
+		).toEqual(['CRM key', 'Send audit log']);
 	});
 
 	it('confirms with the message when the Promote leaves out dependencies', async () => {

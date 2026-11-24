@@ -34,24 +34,24 @@ const statusOf = (row: HTMLElement) =>
 	within(row).queryByTestId('promotion-missing-dependency-status');
 
 describe('PromotionMissingDependencyList', () => {
-	it('shows the name, the type and the workflows of each dependency, and no status', () => {
-		const { getAllByTestId, queryByTestId } = renderComponent({ props: { dependencies } });
+	it('shows the name, the type and the workflows of each dependency', () => {
+		const { getAllByTestId } = renderComponent({ props: { dependencies } });
 
-		const rows = getAllByTestId('promotion-missing-dependency');
-		expect(rows.map((row) => row.textContent?.trim())).toEqual([
+		// The second child of a row is its text. The first one is the icon.
+		const texts = getAllByTestId('promotion-missing-dependency').map((row) =>
+			row.children[1].textContent?.trim(),
+		);
+		expect(texts).toEqual([
 			'CRM keyCredential · Used by Invoice reconciliation',
 			'Send audit logWorkflow · Used by Invoice reconciliation, Weekly KPI report',
 			'Personal GmailCredential · Used by Weekly KPI report',
 			'Stripe keyCredential · Used by Invoice reconciliation',
 			'Archive invoicesWorkflow · Used by Invoice reconciliation',
 		]);
-		// A row holds the icon and the text, and nothing else.
-		expect(rows.map((row) => row.children.length)).toEqual([2, 2, 2, 2, 2]);
-		expect(queryByTestId('promotion-missing-dependency-status')).not.toBeInTheDocument();
 	});
 
-	it('shows the status of each group of a Promote as text, when the dialog asks for it', () => {
-		const { getAllByTestId } = renderComponent({ props: { dependencies, showStatus: true } });
+	it('shows the status of each group of a Promote as text', () => {
+		const { getAllByTestId } = renderComponent({ props: { dependencies } });
 
 		const rows = getAllByTestId('promotion-missing-dependency');
 		// A group of an Apply and a warning have no status.
@@ -62,15 +62,15 @@ describe('PromotionMissingDependencyList', () => {
 			null,
 			null,
 		]);
-		// The status comes after the text, and the text stays the same.
+		// The status comes after the text. A row without a status holds only the icon and the text.
 		expect(rows[0].lastElementChild).toBe(statusOf(rows[0]));
-		expect(rows[0]).toHaveTextContent('CRM keyCredential · Used by Invoice reconciliation');
+		expect(rows.map((row) => row.children.length)).toEqual([3, 3, 3, 2, 2]);
 	});
 
 	it('says that the user has no access to a dependency of a personal project', () => {
 		const unreachable = { ...personalCredential, id: 'c8', accessible: false };
 		const { getAllByTestId } = renderComponent({
-			props: { dependencies: [personalCredential, unreachable], showStatus: true },
+			props: { dependencies: [personalCredential, unreachable] },
 		});
 
 		const rows = getAllByTestId('promotion-missing-dependency');
@@ -82,7 +82,7 @@ describe('PromotionMissingDependencyList', () => {
 
 	it('does not show a project or an owner in a status of a dependency that the user cannot access', () => {
 		const { getAllByTestId } = renderComponent({
-			props: { dependencies: [outsideAccessWorkflow], showStatus: true },
+			props: { dependencies: [outsideAccessWorkflow] },
 		});
 
 		const [row] = getAllByTestId('promotion-missing-dependency');
