@@ -292,7 +292,6 @@ describe('the real answer reaches the plan with plain text', () => {
 			gym: gym as unknown as McpCaller,
 			hydrator: { hydrate, hydrateWrite: vi.fn(), noteWrite: vi.fn() },
 			profile: GOOGLE_DOCS_PROFILE,
-			context: { origin: '' },
 		});
 
 		await router.handle(call('GET', DOCS, `/v1/documents/${DOC_ID}`));

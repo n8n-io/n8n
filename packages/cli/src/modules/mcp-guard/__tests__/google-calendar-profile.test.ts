@@ -355,13 +355,11 @@ describe('the guard on a Calendar request', () => {
 			hydrateWrite: vi.fn(async (..._a: unknown[]) => {}),
 			noteWrite: vi.fn(),
 		};
-		const context = { origin: '' } as { authorization?: string; origin: string };
 		const router = new HttpGuardRouter({
 			upstream: upstream as unknown as McpCaller,
 			gym: gym as unknown as McpCaller,
 			hydrator,
 			profile: GOOGLE_CALENDAR_PROFILE,
-			context,
 		});
 		return { router, upstream, gym, hydrator };
 	}

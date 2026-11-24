@@ -1,3 +1,4 @@
+import type { OutboundHttp } from '@n8n/backend-network';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 
@@ -75,7 +76,9 @@ describe('the YouTube vendor file', () => {
 
 	it('leaves a token exchange to the node when the service runs, and refuses other sign-in calls', async () => {
 		Container.set(Logger, { error: vi.fn(), info: vi.fn(), warn: vi.fn() } as unknown as Logger);
-		const service = new HttpGuardService(Container.get(Logger));
+		const service = new HttpGuardService(Container.get(Logger), {
+			transport: () => ({ asCustomFetch: () => fetch }),
+		} as unknown as OutboundHttp);
 		const scope = { model, chatId: 'c', agentId: 'a' };
 		const request = (path: string) => ({
 			method: 'POST',
