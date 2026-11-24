@@ -25,7 +25,6 @@ on:
       - 'docker/docker-bake.hcl'
       - 'docker/images/n8n/**'
       - 'docker/images/n8n-base/**'
-      - 'docker/images/node-pc/check-v8-patches.js'
       - 'docker/images/runners/**'
       - 'packages/nodes-base/package.json'
       - 'scripts/build-n8n.mjs'
