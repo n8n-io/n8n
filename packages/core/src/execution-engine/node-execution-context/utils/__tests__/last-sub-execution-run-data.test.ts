@@ -22,6 +22,16 @@ describe('LastSubExecutionRunData', () => {
 	});
 
 	it('should keep only the last sub-execution', () => {
+		const lastRunExecutionData = createRunExecutionData();
+		const lastSubExecutionRunData = new LastSubExecutionRunData();
+		lastSubExecutionRunData.keep('1', createRunExecutionData());
+		lastSubExecutionRunData.keep('2', lastRunExecutionData);
+
+		expect(lastSubExecutionRunData.take('1')).toBeUndefined();
+		expect(lastSubExecutionRunData.take('2')).toBe(lastRunExecutionData);
+	});
+
+	it('should clear the entry when the last sub-execution has no run data', () => {
 		const lastSubExecutionRunData = new LastSubExecutionRunData();
 		lastSubExecutionRunData.keep('1', createRunExecutionData());
 		lastSubExecutionRunData.keep('2', undefined);
