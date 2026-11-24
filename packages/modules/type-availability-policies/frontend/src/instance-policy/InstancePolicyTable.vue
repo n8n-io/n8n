@@ -35,6 +35,7 @@ const props = defineProps<{
 	rows: InstancePolicyTableRow[];
 	loading: boolean;
 	searchPlaceholder: string;
+	noMatchText: string;
 }>();
 
 const emit = defineEmits<{
@@ -184,6 +185,19 @@ const filteredRows = computed(() =>
 		: searchedRows.value.filter((row) => row.access === accessFilter.value),
 );
 
+// With rows to show, an empty result means that the search or the filter removed all of them. The
+// first load has no rows, so the message never replaces it.
+const noMatch = computed(() => props.rows.length > 0 && filteredRows.value.length === 0);
+
+const searchInput = useTemplateRef<InstanceType<typeof N8nInput>>('searchInput');
+
+// The click removes the clear button, so the focus moves to the search box.
+function clearSearchAndFilter() {
+	search.value = '';
+	accessFilter.value = 'all';
+	searchInput.value?.focus();
+}
+
 const pageRows = computed(() =>
 	filteredRows.value.slice(page.value * itemsPerPage.value, (page.value + 1) * itemsPerPage.value),
 );
@@ -266,6 +280,7 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 		<div :class="$style.controls">
 			<slot name="toolbar-start" />
 			<N8nInput
+				ref="searchInput"
 				v-model="search"
 				:placeholder="searchPlaceholder"
 				:class="$style.search"
@@ -290,12 +305,13 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 				@update:model-value="onFilterChange"
 			/>
 		</div>
+		<!-- The reload after a save must not swap the message, and its clear button, for skeleton rows. -->
 		<N8nDataTableServer
 			v-model:sort-by="sortBy"
 			:headers="headers"
 			:items="pageRows"
 			:items-length="filteredRows.length"
-			:loading="loading"
+			:loading="loading && !noMatch"
 			item-value="name"
 			:pin-columns="1"
 			:pagination="false"
@@ -303,6 +319,17 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 			:row-props="{ class: $style.row }"
 			@click:row="onRowClick"
 		>
+			<template v-if="noMatch" #cover>
+				<div :class="$style.noMatch" data-test-id="instance-policy-no-match">
+					<N8nText color="text-base">{{ noMatchText }}</N8nText>
+					<N8nButton
+						variant="outline"
+						:label="i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.noMatch.clear')"
+						data-test-id="instance-policy-clear-filters"
+						@click="clearSearchAndFilter"
+					/>
+				</div>
+			</template>
 			<template #[`item.displayName`]="{ item }">
 				<!-- A row is not focusable, so the name is the button that keyboard users reach. -->
 				<button
@@ -428,6 +455,15 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
+}
+
+.noMatch {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--2xl) var(--spacing--md);
+	text-align: center;
 }
 
 .footer {
