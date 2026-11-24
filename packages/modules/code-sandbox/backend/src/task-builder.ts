@@ -13,7 +13,7 @@ import {
 	type ITaskDataConnections,
 } from 'n8n-workflow';
 
-/** Max size of `task.json`. This is the default limit of the code daemon. */
+/** The default limit of the code daemon. */
 export const MAX_TASK_INPUT_BYTES = 64 * 1024 * 1024;
 
 /**
@@ -39,7 +39,6 @@ function toTaskRunExecutionData(runExecutionData: IRunExecutionData): IRunExecut
 	});
 }
 
-/** Sends only the items of the chunk. The runtime puts them back at their original index. */
 function toChunkInputData(
 	inputData: ITaskDataConnections,
 	{ startIndex, count }: CodeTaskChunk,
