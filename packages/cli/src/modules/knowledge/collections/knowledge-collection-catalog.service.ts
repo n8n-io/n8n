@@ -31,6 +31,9 @@ export interface KnowledgeCollectionRef {
 	collectionId: string;
 }
 
+/** Collections have no scopes of their own yet, so these agent scopes decide. */
+type CollectionScope = Extract<Scope, 'agent:read' | 'agent:update'>;
+
 /**
  * Creates, lists, changes and deletes shared knowledge collections, in the
  * shape that the collection list shows. Also gives the collection routes
@@ -119,7 +122,7 @@ export class KnowledgeCollectionCatalogService {
 		collectionId: string,
 		{ name, description }: UpdateKnowledgeCollectionDto,
 	): Promise<KnowledgeCollectionDto> {
-		const collection = await this.findEditableOrThrow(user, projectId, collectionId);
+		const collection = await this.getInProject(user, { projectId, collectionId }, 'agent:update');
 
 		const trimmedName = name?.trim();
 		const trimmedDescription = description?.trim();
@@ -167,7 +170,7 @@ export class KnowledgeCollectionCatalogService {
 	 * nothing is deleted, as the delete of a missing knowledge file does.
 	 */
 	async delete(user: User, projectId: string, collectionId: string): Promise<{ success: true }> {
-		await this.assertCanChangeCollections(user, projectId, 'delete');
+		await this.assertCanAccessProject(user, projectId, 'agent:update');
 
 		// The stored file bytes stay for now (see the cascade note in the module AGENTS.md).
 		await this.collectionRepository.deleteSharedInProject(collectionId, projectId, {});
@@ -191,16 +194,9 @@ export class KnowledgeCollectionCatalogService {
 	async getInProject(
 		user: User,
 		{ projectId, collectionId }: KnowledgeCollectionRef,
-		scope: 'agent:read' | 'agent:update',
+		scope: CollectionScope,
 	): Promise<KnowledgeCollection> {
-		const collectionsEnabled = await this.availabilityService.isCollectionsEnabled();
-		if (!collectionsEnabled) {
-			throw new NotFoundError('Knowledge collection not found');
-		}
-
-		if (!(await userHasScopes(user, [scope], false, { projectId }))) {
-			throw new ForbiddenError('You do not have permission to access this knowledge collection.');
-		}
+		await this.assertCanAccessProject(user, projectId, scope);
 
 		const collection = await this.collectionRepository.findByIdAndProjectId(
 			collectionId,
@@ -242,49 +238,20 @@ export class KnowledgeCollectionCatalogService {
 		return { count: data.length, data };
 	}
 
-	/**
-	 * The lookup must use the project id, so a collection of another project
-	 * answers like a missing one, even if the name is the same.
-	 */
-	private async findEditableOrThrow(
+	/** Checks the collections flag and the scope of the user on the project in the path. */
+	private async assertCanAccessProject(
 		user: User,
 		projectId: string,
-		collectionId: string,
-	): Promise<KnowledgeCollection> {
-		await this.assertCanChangeCollections(user, projectId, 'change');
-
-		const collection = await this.collectionRepository.findSharedInProject(
-			collectionId,
-			projectId,
-			{},
-		);
-		if (!collection) {
-			throw new NotFoundError('Knowledge collection not found');
-		}
-
-		return collection;
-	}
-
-	private async assertCanChangeCollections(
-		user: User,
-		projectId: string,
-		action: 'change' | 'delete',
+		scope: CollectionScope,
 	): Promise<void> {
 		const collectionsEnabled = await this.availabilityService.isCollectionsEnabled();
 		if (!collectionsEnabled) {
-			throw new NotFoundError('Knowledge collections are not enabled');
+			throw new NotFoundError('Knowledge collection not found');
 		}
 
-		/**
-		 * Collections have no scopes of their own yet (TBD), so a change or a delete
-		 * needs `agent:update` on the home project.
-		 */
-		const scopes: Scope[] = ['agent:update'];
-		const canUpdateAgents = await userHasScopes(user, scopes, false, { projectId });
-		if (!canUpdateAgents) {
-			throw new ForbiddenError(
-				`You do not have permission to ${action} a knowledge collection in this project.`,
-			);
+		const hasScope = await userHasScopes(user, [scope], false, { projectId });
+		if (!hasScope) {
+			throw new ForbiddenError('You do not have permission to access this knowledge collection.');
 		}
 	}
 

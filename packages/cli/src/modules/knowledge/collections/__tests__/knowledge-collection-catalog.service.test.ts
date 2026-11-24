@@ -55,9 +55,6 @@ function makeService({ collectionsFlag = true }: { collectionsFlag?: boolean } =
 	collectionRepository.findSharedSummaryById.mockResolvedValue(summary);
 	collectionRepository.findByIdAndProjectId.mockResolvedValue(collection);
 	collectionRepository.findSharedSummaries.mockResolvedValue([summary]);
-	collectionRepository.findSharedInProject.mockResolvedValue(
-		mock<KnowledgeCollection>({ id: 'collection-1', projectId: 'project-1', name: input.name }),
-	);
 	collectionRepository.isNameTakenInProject.mockResolvedValue(false);
 
 	const projectRepository = mock<ProjectRepository>();
@@ -394,7 +391,7 @@ describe('KnowledgeCollectionCatalogService', () => {
 
 			await service.update(user, projectId, 'collection-1', changes);
 
-			expect(collectionRepository.findSharedInProject).toHaveBeenCalledWith(
+			expect(collectionRepository.findByIdAndProjectId).toHaveBeenCalledWith(
 				'collection-1',
 				'project-1',
 				{},
@@ -534,7 +531,7 @@ describe('KnowledgeCollectionCatalogService', () => {
 
 		it('returns not found for a collection that is not in the project', async () => {
 			const { service, collectionRepository } = makeService();
-			collectionRepository.findSharedInProject.mockResolvedValue(null);
+			collectionRepository.findByIdAndProjectId.mockResolvedValue(null);
 
 			await expect(service.update(user, projectId, 'collection-1', changes)).rejects.toThrow(
 				NotFoundError,
@@ -549,7 +546,7 @@ describe('KnowledgeCollectionCatalogService', () => {
 			await expect(service.update(user, projectId, 'collection-1', changes)).rejects.toThrow(
 				ForbiddenError,
 			);
-			expect(collectionRepository.findSharedInProject).not.toHaveBeenCalled();
+			expect(collectionRepository.findByIdAndProjectId).not.toHaveBeenCalled();
 		});
 
 		it('returns not found when collections are off', async () => {
@@ -582,7 +579,7 @@ describe('KnowledgeCollectionCatalogService', () => {
 			await expect(service.delete(user, projectId, 'missing')).resolves.toEqual({
 				success: true,
 			});
-			expect(collectionRepository.findSharedInProject).not.toHaveBeenCalled();
+			expect(collectionRepository.findByIdAndProjectId).not.toHaveBeenCalled();
 		});
 
 		it('returns forbidden for a user who cannot update agents in the project', async () => {
