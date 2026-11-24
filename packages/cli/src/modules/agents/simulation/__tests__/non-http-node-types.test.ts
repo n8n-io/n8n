@@ -62,6 +62,13 @@ describe('nodeSimulationGap', () => {
 		},
 	);
 
+	it.each([
+		['n8n-nodes-base.removeDuplicates', "={{ 'clearDeduplicationHistory' }}"],
+		['n8n-nodes-base.slack', "={{ 'sendAndWait' }}"],
+	])('blocks %s when an expression sets the operation', (nodeType, operation) => {
+		expect(nodeSimulationGap(nodeType, { operation })).toEqual(expect.any(String));
+	});
+
 	it('lets Remove Duplicates run on the current items only', () => {
 		expect(
 			nodeSimulationGap('n8n-nodes-base.removeDuplicates', {
