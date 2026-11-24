@@ -214,6 +214,7 @@ function makeHandler(
 const event = { type: 'step:settled', executionId: 'exec-1', stepId: 'step-a' } as const;
 
 class StepLoadError extends Error {}
+class ExecutionLoadError extends Error {}
 
 describe('StepSettledHandler', () => {
 	it('plans every live successor in one batch and publishes step:ready for each', async () => {
@@ -557,6 +558,15 @@ describe('StepSettledHandler', () => {
 				loadExecution: vi.fn().mockRejectedValue(new ExecutionNotFoundError('exec-1')),
 			},
 			error: StepLoadError,
+		},
+		{
+			reason: 'the execution load fails for another reason',
+			step: {},
+			stepOverrides: {},
+			executionOverrides: {
+				loadExecution: vi.fn().mockRejectedValue(new ExecutionLoadError('connection lost')),
+			},
+			error: ExecutionLoadError,
 		},
 		{
 			reason: 'only the step has no row',
