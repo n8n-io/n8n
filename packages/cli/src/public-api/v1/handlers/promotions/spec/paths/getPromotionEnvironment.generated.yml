@@ -7,8 +7,8 @@ description: |-
 
   Returns the environment with its provider summary and the state of its local checkout.
 
-  Requires the `promotions:read` API key scope.
-x-required-scope: promotions:read
+  Requires the `promotions:readEnvironments` API key scope.
+x-required-scope: promotions:readEnvironments
 parameters:
   - schema:
       type: string

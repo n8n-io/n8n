@@ -34,7 +34,6 @@ import ApiKeyRateLimitsSection from './rateLimits/ApiKeyRateLimitsSection.vue';
 import { PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG } from './rateLimits/rateLimits';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { usePolicyAdminAccess } from '@n8n/frontend-module-type-availability-policies';
-import { useTypePoliciesSettingsFlag } from './composables/useTypePoliciesSettingsFlag';
 
 const router = useRouter();
 const rootStore = useRootStore();
@@ -46,7 +45,6 @@ const pageRedirectionHelper = usePageRedirectionHelper();
 const posthogStore = usePostHog();
 const { canManagePolicies: canManageTypePolicies, entryRouteName: typePoliciesRouteName } =
 	usePolicyAdminAccess();
-const { isEnabled: isTypePoliciesSettingsEnabled } = useTypePoliciesSettingsFlag();
 
 function openTypePolicies() {
 	void router.push({ name: typePoliciesRouteName.value });
@@ -404,7 +402,7 @@ const sharingCountText = computed(() => {
 		</N8nSettingsSection>
 
 		<N8nSettingsSection
-			v-if="canManageTypePolicies && isTypePoliciesSettingsEnabled"
+			v-if="canManageTypePolicies"
 			:title="i18n.baseText('settings.security.nodeAndCredentialPolicies.section')"
 			data-test-id="security-type-policies-section"
 		>

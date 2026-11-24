@@ -7,8 +7,8 @@ description: |-
 
   Returns the provider with its public configuration. Secrets are never returned.
 
-  Requires the `promotions:read` API key scope.
-x-required-scope: promotions:read
+  Requires the `promotions:readProviders` API key scope.
+x-required-scope: promotions:readProviders
 parameters:
   - schema:
       type: string
