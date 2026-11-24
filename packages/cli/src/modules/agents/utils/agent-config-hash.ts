@@ -31,7 +31,25 @@ export function getAgentRuntimeDefinitionHash(
 	toolCodeByName: Record<string, string> = {},
 	integrations: AgentIntegrationConfig[] = [],
 ): string {
-	return getHash({ config, toolCodeByName, integrations });
+	const routes = [...(config.tools ?? []), ...(config.mcpServers ?? [])];
+	const usedIds = new Set(
+		routes.flatMap(({ approvalRoute }) =>
+			approvalRoute?.type === 'configuration' ? approvalRoute.configurationIds : [],
+		),
+	);
+	const connectedDestinations = (config.hitlConfigurations ?? []).flatMap((destination) =>
+		destination.method === 'channel' &&
+		usedIds.has(destination.id) &&
+		integrations.some(
+			(integration) =>
+				integration.type === destination.channel &&
+				'credentialId' in integration &&
+				integration.credentialId === destination.credentialId,
+		)
+			? [{ type: destination.channel, credentialId: destination.credentialId }]
+			: [],
+	);
+	return getHash({ config, toolCodeByName, integrations: connectedDestinations });
 }
 
 export function isSameAgentConfig(a: unknown, b: unknown): boolean {

@@ -24,6 +24,7 @@ import { isCancellation } from '../../sdk/cancellation';
 import { isLlmMessage } from '../../sdk/message';
 import type { BuiltTool, ToolSuspendOptions } from '../../types';
 import { AgentEvent } from '../../types/runtime/event';
+import { GuardrailStopError } from '../guardrails/guardrail-stop-error';
 import type {
 	ProcessToolCallParams,
 	ToolCallExecutorDeps,
@@ -174,10 +175,7 @@ export class ToolCallRunner {
 		if (guardrails && guardCtx && !params.previouslySuspended) {
 			const stop = await guardrails.beforeTool(guardCtx);
 			if (stop) {
-				return await this.toolError(
-					params,
-					new Error(`Tool call stopped by guardrail: ${stop.code}`),
-				);
+				return await this.toolError(params, new GuardrailStopError('before', stop.code));
 			}
 		}
 
@@ -232,6 +230,11 @@ export class ToolCallRunner {
 					'Run aborted',
 					'[Tool call canceled because the run stopped]',
 				);
+			}
+			// A guardrail refusal is runtime-authored text: it reaches the model
+			// plainly even for untrusted tools, matching the before-stage stop.
+			if (error instanceof GuardrailStopError) {
+				return await this.toolError(params, error);
 			}
 			return await this.toolError(params, error, builtTool);
 		}
@@ -462,13 +465,10 @@ export class ToolCallRunner {
 			resolvedTelemetry,
 			async () =>
 				await raceWithAbort(async () => {
-					const result = await executeTool(
-						input,
-						builtTool,
-						resumeData,
-						resolvedTelemetry,
-						toolCallId,
-						{
+					const run = async () => {
+						// An interceptor can await before it calls `run`; the run may be aborted by then.
+						abortSignal?.throwIfAborted();
+						return await executeTool(input, builtTool, resumeData, resolvedTelemetry, toolCallId, {
 							runId,
 							persistence,
 							emitEvent: (event) => this.eventBus.emit(event),
@@ -480,8 +480,13 @@ export class ToolCallRunner {
 							resumeSchema,
 							onSuspend,
 							onGuardrailNotice: params.guardrails?.onNotice,
-						},
-					);
+						});
+					};
+					const interceptor = this.deps.toolCallInterceptor;
+					// Guard the result the model receives, also when an interceptor replaces it.
+					const result = interceptor
+						? await interceptor({ tool: builtTool, toolCallId, input }, run)
+						: await run();
 					// Final result only: a call that suspended reports once,
 					// after resume. The after-stage check runs inside the span
 					// so a refused result is recorded as the refusal, never as
@@ -489,7 +494,7 @@ export class ToolCallRunner {
 					if (guardrails && guardCtx && !isSuspendedToolResult(result)) {
 						const stop = await guardrails.afterTool(guardCtx, result);
 						if (stop) {
-							throw new Error(`Tool result blocked by guardrail: ${stop.code}`);
+							throw new GuardrailStopError('after', stop.code);
 						}
 					}
 					return result;

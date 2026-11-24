@@ -1,7 +1,8 @@
 import type { IConnections, INode } from 'n8n-workflow';
 
-import { checkEngineV2Eligibility, type EngineV2Reason } from '../index';
+import { checkEngineV2Eligibility, isNodeTypeSupported, type EngineV2Reason } from '../index';
 import { NODE_TYPE_DENYLIST } from '../node-type-denylist';
+import { findNodeTypeReasons } from '../node-type-rule';
 
 const manualTrigger: INode = {
 	id: 'manual-id',
@@ -176,5 +177,39 @@ describe('node type rule', () => {
 			  "@n8n/n8n-nodes-langchain.: AI_NODE CET-780",
 			]
 		`);
+	});
+});
+
+describe('isNodeTypeSupported', () => {
+	it.each(
+		NODE_TYPE_DENYLIST.filter((entry) => !entry.type.endsWith('.')).map((entry) => entry.type),
+	)('refuses the denylisted type %s', (type) => {
+		expect(isNodeTypeSupported(type)).toBe(false);
+	});
+
+	it.each([
+		['an AI node, through the package prefix', '@n8n/n8n-nodes-langchain.agent'],
+		['a community node', 'n8n-nodes-acme.example'],
+		['a type with no package', 'example'],
+	])('refuses %s', (_case, type) => {
+		expect(isNodeTypeSupported(type)).toBe(false);
+	});
+
+	it.each(['n8n-nodes-base.set', 'n8n-nodes-base.webhook', 'n8n-nodes-base.splitInBatches'])(
+		'accepts %s',
+		(type) => {
+			expect(isNodeTypeSupported(type)).toBe(true);
+		},
+	);
+
+	// The editor asks before the node exists, so the answer must match what the check says later.
+	it.each([
+		...NODE_TYPE_DENYLIST.map((entry) => entry.type),
+		'@n8n/n8n-nodes-langchain.agent',
+		'n8n-nodes-acme.example',
+		'n8n-nodes-base.set',
+		'n8n-nodes-base.httpRequest',
+	])('agrees with the node type rule of the check for %s', (type) => {
+		expect(isNodeTypeSupported(type)).toBe(findNodeTypeReasons([node(type)]).length === 0);
 	});
 });

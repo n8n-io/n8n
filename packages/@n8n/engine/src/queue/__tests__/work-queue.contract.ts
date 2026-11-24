@@ -1,10 +1,17 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 
 import type { WorkQueue } from '../work-queue.types';
 
 export interface ContractMessage {
 	n: number;
 }
+
+const contractMessageSchema = z.object({ n: z.number() });
+
+/** For adapters that send messages across a process boundary. */
+export const parseContractMessage = (value: unknown): ContractMessage =>
+	contractMessageSchema.parse(value);
 
 export interface WorkQueueUnderTest {
 	queue: WorkQueue<ContractMessage>;

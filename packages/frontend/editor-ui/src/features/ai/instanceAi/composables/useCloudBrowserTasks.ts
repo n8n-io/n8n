@@ -7,6 +7,9 @@ import { useThread, type ThreadRuntime } from '../instanceAi.store';
 /** Opens a new browser session, which has a new live view link. */
 const START_SESSION_TOOL = 'browser_start_session';
 
+/** The agent's request for the user. It runs until the user returns control. */
+const REQUEST_USER_ACTION_TOOL = 'browser_request_user_action';
+
 export interface CloudBrowserTask {
 	agentId: string;
 	taskId: string;
@@ -16,8 +19,13 @@ export interface CloudBrowserTask {
 	 * reached the orchestrator yet. That waits until no run is live in the thread.
 	 */
 	state: 'running' | 'done' | 'failed';
-	/** Changes each time the agent opens a browser session, so the live view link is fetched again. */
+	/**
+	 * Changes each time the agent opens a browser session or its current window changes, so the live
+	 * view link is fetched again.
+	 */
 	sessionKey: string;
+	/** Set while the agent waits for the user to do a step in the browser. */
+	userAction?: { reason: string };
 }
 
 export const CloudBrowserTasksKey: InjectionKey<ComputedRef<CloudBrowserTask[]>> =
@@ -27,7 +35,17 @@ function sessionKeyOf(node: InstanceAiAgentNode): string {
 	const started = node.toolCalls.filter(
 		(toolCall) => toolCall.toolName === START_SESSION_TOOL && !toolCall.isLoading,
 	);
-	return started.at(-1)?.toolCallId ?? '';
+	const sessionId = started.at(-1)?.toolCallId;
+	if (!sessionId) return '';
+	return `${sessionId}:${node.cloudBrowserWindowChanges ?? 0}`;
+}
+
+function userActionOf(node: InstanceAiAgentNode): CloudBrowserTask['userAction'] {
+	const request = node.toolCalls.find(
+		(toolCall) => toolCall.toolName === REQUEST_USER_ACTION_TOOL && toolCall.isLoading,
+	);
+	const reason = request?.args.reason;
+	return typeof reason === 'string' ? { reason } : undefined;
 }
 
 function taskStateOf(node: InstanceAiAgentNode): CloudBrowserTask['state'] | undefined {
@@ -43,7 +61,9 @@ function taskStateOf(node: InstanceAiAgentNode): CloudBrowserTask['state'] | und
  * tree: running ones, and finished ones whose result is still waiting to reach the orchestrator.
  * A task the user stopped is left out.
  */
-export function useCloudBrowserTasks(runtime?: ThreadRuntime): ComputedRef<CloudBrowserTask[]> {
+export function useCloudBrowserTasks(
+	runtime?: Pick<ThreadRuntime, 'messages'>,
+): ComputedRef<CloudBrowserTask[]> {
 	const thread = runtime ?? useThread();
 
 	return computed(() => {
@@ -64,6 +84,7 @@ export function useCloudBrowserTasks(runtime?: ThreadRuntime): ComputedRef<Cloud
 				title: node.title ?? node.subtitle ?? node.goal ?? '',
 				state,
 				sessionKey: sessionKeyOf(node),
+				userAction: state === 'running' ? userActionOf(node) : undefined,
 			});
 		}
 		return tasks;

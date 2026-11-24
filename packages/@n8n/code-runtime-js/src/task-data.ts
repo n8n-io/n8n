@@ -56,7 +56,10 @@ function getAdditionalKeys({
 			: undefined,
 		$vars: additionalData.variables,
 		$secrets: undefined,
+		// Keep these aliases for backward compatibility with existing Code nodes.
+		// oxlint-disable-next-line typescript/no-deprecated
 		$executionId: executionId,
+		// oxlint-disable-next-line typescript/no-deprecated
 		$resumeWebhookUrl: resumeUrl,
 	};
 }

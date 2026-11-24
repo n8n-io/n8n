@@ -754,6 +754,7 @@ export class EvalThreadRestoreService {
 			nodes,
 			connections,
 			nodeGroups,
+			// oxlint-disable-next-line typescript/no-deprecated -- Initialize the legacy active column for the unpublished seed workflow.
 			active: false,
 			versionId: randomUUID(),
 			parentFolder: parentFolderId === null ? null : { id: parentFolderId },
@@ -766,6 +767,7 @@ export class EvalThreadRestoreService {
 				const { name, nodes, connections, nodeGroups, active, versionId, parentFolder } = entity;
 				await this.workflowRepo.updateContent(
 					workflow.id,
+					// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy active column when restoring a seed workflow.
 					{ name, nodes, connections, nodeGroups, active, versionId, parentFolder },
 					ctx,
 				);

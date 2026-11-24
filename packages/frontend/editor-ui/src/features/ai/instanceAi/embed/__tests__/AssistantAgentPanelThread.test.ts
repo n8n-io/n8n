@@ -1,7 +1,8 @@
-import type {
-	InstanceAiAgentAttachment,
-	InstanceAiHandoffContext,
-	InstanceAiResourceAttachment,
+import {
+	EXTENDED_PROMPT_MAX_LENGTH,
+	type InstanceAiAgentAttachment,
+	type InstanceAiHandoffContext,
+	type InstanceAiResourceAttachment,
 } from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createTestingPinia } from '@pinia/testing';
@@ -168,6 +169,11 @@ describe('AssistantAgentPanelThread', () => {
 		expect(wrapper.emitted('content-change')).toEqual([[true]]);
 	});
 
+	it('lets the composer take a message up to the Assistant limit', async () => {
+		await render();
+		expect(panelProps.current['max-length']).toBe(EXTENDED_PROMPT_MAX_LENGTH);
+	});
+
 	it('opens a new thread of the Assistant agent on the system channel', async () => {
 		await render();
 
@@ -180,14 +186,15 @@ describe('AssistantAgentPanelThread', () => {
 		});
 	});
 
-	it('sends the agent with each message', async () => {
+	it('sends the agent with each message, as a reference and as the subject', async () => {
 		await render();
 
 		const first = clientContext();
 		expect(first.attachments).toEqual([subject]);
+		expect(first.subject).toEqual(subject);
 		acceptMessage(first);
 
-		expect(clientContext().attachments).toEqual([subject]);
+		expect(clientContext()).toMatchObject({ attachments: [subject], subject });
 	});
 
 	it('sends the hand-off context with the next message only', async () => {

@@ -31,6 +31,7 @@ export const AGENT_N8N_CHAT_SEARCH_MAX_LENGTH = 128;
 
 export const AGENT_TOOLS_MODAL_KEY = 'agentToolsModal';
 export const AGENT_TOOL_CONFIG_MODAL_KEY = 'agentToolConfigModal';
+export const AGENT_GUARDRAIL_MODAL_KEY = 'agentGuardrailModal';
 export const AGENT_SKILL_MODAL_KEY = 'agentSkillModal';
 export const AGENT_TASK_MODAL_KEY = 'agentTaskModal';
 export const AGENT_SUB_AGENTS_MODAL_KEY = 'agentSubAgentsModal';
@@ -38,18 +39,9 @@ export const AGENT_VECTOR_STORES_MODAL_KEY = 'agentVectorStoresModal';
 export const AGENT_JSON_IMPORT_MODAL_KEY = 'agentJsonImportModal';
 export const AGENT_CONFIRMATION_MODAL_KEY = 'agentConfirmation';
 export const AGENT_VERSION_METADATA_MODAL_KEY = 'agentVersionMetadata';
-export const AGENT_PUBLISHED_MODAL_KEY = 'agentPublished';
 export const AGENT_UNPUBLISHED_WORKFLOWS_MODAL_KEY = 'agentUnpublishedWorkflows';
 export const AGENT_DUPLICATE_MODAL_KEY = 'agentDuplicateModal';
 export const AGENT_DESCRIPTION_MODAL_KEY = 'agentDescriptionModal';
-
-/**
- * localStorage flag for the "Agent published" confirmation modal's
- * "Don't show again" checkbox — same mechanism as the workflow-side
- * `N8N_HIDE_ACTIVATION_ALERT`.
- */
-export const LOCAL_STORAGE_HIDE_AGENT_PUBLISHED_CONFIRMATION =
-	'N8N_HIDE_AGENT_PUBLISHED_CONFIRMATION';
 
 /** One-time n8n Chat hint popovers: set to `'true'` once the user dismisses the hint. */
 export const N8N_CHAT_HINT_DISMISSED_STORAGE_KEYS = {

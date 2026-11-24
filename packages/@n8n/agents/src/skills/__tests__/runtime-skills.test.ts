@@ -723,7 +723,7 @@ Use the workflow SDK.`,
 		source.prepare = prepare;
 
 		const agent = new Agent('assistant')
-			.model('anthropic/claude-sonnet-4-5')
+			.model('anthropic/claude-sonnet-5-5')
 			.instructions('Base instructions.')
 			.skills(source);
 		const runtimeConfig = await (
@@ -880,7 +880,7 @@ Use the workflow SDK.`,
 
 	it('adds runtime skills to agents through one shared load path', () => {
 		const agent = new Agent('assistant')
-			.model('anthropic/claude-sonnet-4-5')
+			.model('anthropic/claude-sonnet-5-5')
 			.instructions('Base instructions.')
 			.skills([
 				{
@@ -915,7 +915,7 @@ Use the workflow SDK.`,
 		]);
 
 		const agent = new Agent('assistant')
-			.model('anthropic/claude-sonnet-4-5')
+			.model('anthropic/claude-sonnet-5-5')
 			.instructions('Base instructions.')
 			.skills(initialSource)
 			.skills(materializedSource);
@@ -948,7 +948,7 @@ Use the workflow SDK.`,
 			.build();
 
 		const agent = new Agent('assistant')
-			.model('anthropic/claude-sonnet-4-5')
+			.model('anthropic/claude-sonnet-5-5')
 			.instructions('Base instructions.')
 			.skills(source);
 

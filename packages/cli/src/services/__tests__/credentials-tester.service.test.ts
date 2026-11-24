@@ -8,6 +8,7 @@ import type {
 	ICredentialsHelper,
 	ICredentialTestFunctions,
 	ICredentialType,
+	IHttpRequestHelper,
 	INode,
 	INodeType,
 	IWorkflowExecuteAdditionalData,
@@ -418,6 +419,70 @@ describe('CredentialsTester', () => {
 			// everything else delegates to the real helper
 			ctx.additionalData.credentialsHelper.getParentTypes('databricksOAuth2Api');
 			expect(storedHelper.getParentTypes).toHaveBeenCalledWith('databricksOAuth2Api');
+		});
+
+		it('hands the routing engine a credentials helper that forces the token refresh of an expirable credential', async () => {
+			// Otherwise the cached token is sent as-is, and a service that rejects an expired
+			// session with a status other than 401 fails a credential that still works.
+			const cached = { clientId: 'id', accessToken: 'cached-token' };
+			credentialTypes.getByName.mockReturnValue({
+				test: { request: { url: 'https://example.test/userinfo' } },
+			} as unknown as ICredentialType);
+			credentialsHelper.applyDefaultsAndOverwrites.mockImplementation(async (_base, data) => data);
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({
+					description: { name: 'noOp', version: 1, properties: [] },
+				}),
+			);
+			const storedPreAuthentication = vi.fn().mockResolvedValue({ accessToken: 'fresh-token' });
+			const storedHelper = {
+				getDecrypted: vi.fn(),
+				getParentTypes: vi.fn().mockReturnValue([]),
+				preAuthentication: storedPreAuthentication,
+			} as unknown as ICredentialsHelper;
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({
+				credentialsHelper: storedHelper,
+			} as unknown as IWorkflowExecuteAdditionalData);
+			mockRoutingNodeResult({ resolve: [[{ json: {} }]] });
+
+			await credentialsTester.testCredentials('user-id', 'salesforceJwtApi', {
+				id: 'credential-id',
+				name: 'Salesforce JWT',
+				type: 'salesforceJwtApi',
+				data: cached,
+			});
+
+			const ctx = (RoutingNode as unknown as Mock).mock.calls[0][0] as ExecuteContext;
+			const requestHelper = mock<IHttpRequestHelper>();
+			const testNode = ctx.getNode();
+			// The engine reports the token as not expired before its first request.
+			await expect(
+				ctx.additionalData.credentialsHelper.preAuthentication(
+					requestHelper,
+					cached,
+					'salesforceJwtApi',
+					testNode,
+					false,
+				),
+			).resolves.toEqual({ accessToken: 'fresh-token' });
+			expect(storedPreAuthentication).toHaveBeenCalledTimes(1);
+			const [helpersUsed, credentialsUsed, typeUsed, nodeUsed, expired] = storedPreAuthentication
+				.mock.calls[0] as Parameters<ICredentialsHelper['preAuthentication']>;
+			expect([helpersUsed, credentialsUsed, typeUsed, expired]).toEqual([
+				requestHelper,
+				cached,
+				'salesforceJwtApi',
+				true,
+			]);
+			// The helper gets the test node without its credentials, so the minted token is
+			// not written to the stored credential; the engine's own node keeps them.
+			expect(nodeUsed).toMatchObject({ name: 'Temp-Node', type: 'noOp' });
+			expect(nodeUsed.credentials).toBeUndefined();
+			expect(testNode.credentials).toEqual({
+				salesforceJwtApi: { id: 'credential-id', name: 'Salesforce JWT' },
+			});
+			// shared singleton not mutated
+			expect(storedHelper.preAuthentication).toBe(storedPreAuthentication);
 		});
 
 		it('keeps the node type of a request test isolated from a concurrent one', async () => {

@@ -1,6 +1,7 @@
 import { createTestingPinia } from '@pinia/testing';
 import { flushPromises, mount } from '@vue/test-utils';
 import type { INode } from 'n8n-workflow';
+import type { AgentToolGuardrailConfig } from '@n8n/api-types';
 import { defineComponent, onMounted } from 'vue';
 
 import AgentToolConfigForm, {
@@ -241,4 +242,41 @@ it('uses one combined approval section for custom tools and saves its toggle and
 	expect(onConfirm.mock.calls.at(-1)?.[0].requireApproval).toBeUndefined();
 	expect(onConfirm.mock.calls.at(-1)?.[0].approvalRoute).toBeUndefined();
 	wrapper.unmount();
+});
+
+describe('AgentToolConfigForm guardrails', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('forwards an open-guardrail request from the section', async () => {
+		const savedGuardrail = {
+			kind: 'keywords',
+			id: 'g1',
+			stage: 'before',
+			keywords: ['secret'],
+			tools: [{ type: 'node', name: 'Slack' }],
+		} satisfies AgentToolGuardrailConfig;
+		const wrapper = renderForm({
+			toolRef: {
+				type: 'node',
+				name: 'Slack',
+				node: { nodeType: 'n8n-nodes-base.slack', nodeTypeVersion: 1, nodeParameters: {} },
+			},
+			onConfirm: vi.fn(),
+			onRemove: vi.fn(),
+			guardrails: {
+				getGuardrails: () => [savedGuardrail],
+				getTools: () => [],
+				onUpdateGuardrails: vi.fn(),
+			},
+		});
+		await flushPromises();
+
+		const chip = wrapper.find('[data-testid="agent-tool-guardrails-chip"]');
+		expect(chip.exists()).toBe(true);
+		await chip.trigger('click');
+
+		expect(wrapper.emitted('open-guardrail')).toEqual([[{ guardrail: savedGuardrail }]]);
+	});
 });

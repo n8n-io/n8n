@@ -14,6 +14,12 @@ Go through Turbo. It builds this package's workspace dependencies first.
 Read `docs/backend/how-to/build-a-backend-module.md` for the module lifecycle, REST controller,
 service, repository, entity, configuration, and testing patterns.
 
+## Licence
+
+The module has no licence flag. Its `init` registers the fold step that counts runs in
+`execution_limit_usage`, and that step must run on every instance. Gate each licensed part
+(a controller, the limit check) with `@Licensed` or `LicenseState`.
+
 ## Import rules
 
 - Do not import from `packages/cli` or from the `n8n` package.

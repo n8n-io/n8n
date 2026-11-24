@@ -1,4 +1,5 @@
 import { computed, type ComputedRef, type Ref } from 'vue';
+import isEqual from 'lodash/isEqual';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
@@ -9,6 +10,7 @@ import {
 	type AgentConfigValidationIssue,
 	type AgentSkillAvailability,
 	type AgentSkillVersionInfo,
+	type AgentToolGuardrailConfig,
 	type SkillCreateMethod,
 	type SkillDetail,
 	type SkillVersionDetail,
@@ -29,8 +31,10 @@ import {
 } from '../constants';
 import { isSkillNameTakenError, normalizeAgentSkillForSave } from '../utils/agentSkill';
 import { hitlConfigurationUpdates } from '../utils/hitlConfiguration';
+import { withToolGuardrails } from '../utils/guardrails';
 import type { ToolOpenTarget, ToolPickerMode } from '../components/AgentCapabilitiesSection.types';
 import type { AgentSkillConfirmResult } from '../components/AgentSkillModal.vue';
+import type { ToolGuardrailsWiring } from '../components/AgentToolGuardrailsSection.vue';
 import type {
 	AgentResource,
 	AgentJsonConfig,
@@ -120,6 +124,12 @@ export interface UseAgentCapabilitiesActionsDeps {
 	 */
 	refreshAgentAfterMutation?: (projectId: string, agentId: string) => Promise<boolean>;
 	validationIssues?: Ref<AgentConfigValidationIssue[]> | ComputedRef<AgentConfigValidationIssue[]>;
+	/**
+	 * Whether the user may edit this agent. Tool modals lock their guardrails
+	 * section without it: creating, changing, or deleting a guardrail is a
+	 * config write. Hosts without guardrails wiring omit it.
+	 */
+	canEditAgent?: Ref<boolean> | ComputedRef<boolean>;
 	telemetry?: AgentCapabilitiesTelemetry;
 }
 
@@ -146,6 +156,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		beforeAgentMutation,
 		refreshAgentAfterMutation,
 		validationIssues,
+		canEditAgent,
 		telemetry,
 	} = deps;
 
@@ -159,6 +170,64 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 
 	// Agents keep their skills in the skills module. Inline agents keep them in the node.
 	const skillRefsEnabled = computed(() => !localSkills);
+	// Tool guardrails live on the agent's `config` sub-object, which inline
+	// agents do not carry, so their tool modals get no guardrails wiring.
+	const toolGuardrailsEnabled = !localSkills;
+
+	/**
+	 * Guardrails wiring for the tool modals: reads stay live through getters,
+	 * commits write the whole `config` sub-object because the config funnel
+	 * shallow-assigns top-level keys. Writes land on the agent that was open
+	 * when the modal opened, like the tools confirm.
+	 */
+	function toolGuardrailsWiring(targetAgentId: string): ToolGuardrailsWiring {
+		return {
+			getGuardrails: () => localConfig.value?.config?.guardrails?.tools ?? [],
+			getTools: () => localConfig.value?.tools ?? [],
+			onUpdateGuardrails: (tools: AgentToolGuardrailConfig[]) => {
+				if (agentId.value !== targetAgentId) return;
+				if (canEditAgent && !canEditAgent.value) return;
+				scheduleConfigUpdate(withToolGuardrails(localConfig.value, tools));
+			},
+			validationIssues: () =>
+				validationIssues?.value.filter((issue) => issue.capability.kind === 'guardrail') ?? [],
+			// Live check
+			disabled: () => (canEditAgent ? !canEditAgent.value : false),
+		};
+	}
+
+	/**
+	 * Renaming a node tool must not orphan guardrail refs that name it: the
+	 * publish gate refuses a config whose refs point at no configured tool.
+	 * Follows each rename with a config write, so both surfaces (the edit-tool
+	 * modal and the tools picker) keep the refs attached.
+	 */
+	function migrateGuardrailsForToolRenames(renames: Array<{ from: string; to: string }>): void {
+		const byFrom = new Map(
+			renames
+				.filter(({ from, to }) => from !== '' && to !== '' && from !== to)
+				.map(({ from, to }) => [from, to]),
+		);
+		if (byFrom.size === 0) return;
+		const guardrails = localConfig.value?.config?.guardrails?.tools;
+		if (!guardrails?.length) return;
+		const touched = guardrails.some((guardrail) =>
+			(guardrail.tools ?? []).some((ref) => ref.type === 'node' && byFrom.has(ref.name)),
+		);
+		if (!touched) return;
+		const next = guardrails.map((guardrail) => {
+			if (!guardrail.tools) return guardrail;
+			return {
+				...guardrail,
+				tools: guardrail.tools.map((ref) =>
+					ref.type === 'node' && byFrom.has(ref.name)
+						? { ...ref, name: byFrom.get(ref.name) as string }
+						: ref,
+				),
+			};
+		});
+		scheduleConfigUpdate(withToolGuardrails(localConfig.value, next));
+	}
 
 	function hitlContext() {
 		if (supportsToolApproval === false) return undefined;
@@ -209,15 +278,40 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				agentId: targetAgentId,
 				supportsToolApproval,
 				approvalContext: hitlContext(),
+				...(toolGuardrailsEnabled && { guardrails: toolGuardrailsWiring(targetAgentId) }),
 				onConfirm: (payload: {
 					tools?: AgentJsonToolConfig[];
 					mcpServers?: AgentJsonMcpServerConfig[];
 				}) => {
 					if (agentId.value !== targetAgentId) return;
+					// Rename detection diffs against the tools as saved, so it
+					// must read them before the update below replaces the list.
+					const previousTools = localConfig.value?.tools ?? [];
 					scheduleConfigUpdate({
 						...(payload.tools && { tools: payload.tools }),
 						...(payload.mcpServers && { mcpServers: payload.mcpServers }),
 					});
+					if (!toolGuardrailsEnabled || !payload.tools) return;
+					// The picker commits each operation separately, so a shorter
+					// list is always a removal: every same-index pair is then a
+					// shift, not a rename, and must not retarget guardrail refs.
+					if (payload.tools.length < previousTools.length) return;
+					const renames = payload.tools.flatMap((next, index) => {
+						const before = previousTools[index];
+						if (before?.type !== 'node' || next.type !== 'node') return [];
+						if (before.name === next.name) return [];
+						// A slot that now holds a different tool (a removal shifted
+						// the list) is not a rename: only a node pair that is
+						// otherwise unchanged may carry its guardrail refs over.
+						if (
+							before.node.nodeType !== next.node.nodeType ||
+							!isEqual(before.node.nodeParameters, next.node.nodeParameters)
+						) {
+							return [];
+						}
+						return [{ from: before.name, to: next.name }];
+					});
+					migrateGuardrailsForToolRenames(renames);
 				},
 			},
 		});
@@ -260,6 +354,8 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 						validationIssues?.value.filter(
 							(issue) => issue.capability.kind === 'tool' && issue.capability.index === toolIndex,
 						) ?? [],
+					...(toolGuardrailsEnabled &&
+						tool.type !== 'custom' && { guardrails: toolGuardrailsWiring(agentId.value) }),
 					existingToolNames: tools
 						.map((toolRef, i) =>
 							i === toolIndex || toolRef.type === 'custom' ? null : toolRef.name,
@@ -269,6 +365,10 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 						const nextTools = [...(localConfig.value?.tools ?? [])];
 						nextTools[toolIndex] = updatedTool;
 						scheduleConfigUpdate({ tools: nextTools });
+						// Follow a node-tool rename so guardrail refs stay attached.
+						if (toolGuardrailsEnabled && tool.type === 'node' && updatedTool.type === 'node') {
+							migrateGuardrailsForToolRenames([{ from: tool.name, to: updatedTool.name }]);
+						}
 					},
 					onRemove: () => {
 						if (!localConfig.value?.tools?.[toolIndex]) return;

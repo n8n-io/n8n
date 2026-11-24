@@ -27,7 +27,7 @@ export type AgentBackgroundJobStatus = AgentBackgroundJobDto['status'];
 @Entity({ name: 'agent_background_job' })
 @Index(['parentThreadId', 'status'])
 @Index(['parentAgentId'])
-@Index(['parentAgentId', 'parentRunId'], {
+@Index('IDX_agent_approval_parent_run', ['parentAgentId', 'parentRunId'], {
 	where: '"kind" = \'approval\' AND "notifiedAt" IS NULL',
 })
 @Index(['sourceExecutionId'])

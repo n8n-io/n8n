@@ -5,7 +5,12 @@ import type {
 	CredentialProvider,
 	StreamChunk,
 } from '@n8n/agents';
-import type { AgentJsonConfig, AgentSkill, BudgetGuardrailConfig } from '@n8n/api-types';
+import type {
+	AgentJsonConfig,
+	AgentSkill,
+	AgentToolGuardrailConfig,
+	BudgetGuardrailConfig,
+} from '@n8n/api-types';
 import {
 	AGENT_WORKFLOW_TRIGGER_TYPE,
 	formatAgentConfigZodError,
@@ -17,6 +22,7 @@ import { Logger } from '@n8n/backend-common';
 import { AiConfig, AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { context } from '@opentelemetry/api';
+import type { LanguageModel } from 'ai';
 import type { JSONSchema7 } from 'json-schema';
 import {
 	jsonParse,
@@ -54,6 +60,8 @@ import {
 import { AgentTurnExecutionService } from './agent-turn-execution.service';
 import { withBudgetGuardrail } from './budget-guardrail';
 import type { ExecutionRecorder, MessageRecord } from './execution-recorder';
+import { withToolGuardrails } from './tool-guardrails';
+import type { ToolRegistry } from './tool-registry';
 import { encodeIntegrationMessageContext } from './integrations/integration-message-context';
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import { fromAgentDocument, toAgentDocument } from './json-config/agent-document';
@@ -112,6 +120,12 @@ interface WorkflowAgentStreamParams {
 	};
 	recordingParams?: StartExecutionParams;
 	budget?: BudgetGuardrailConfig;
+	/** Saved tool guardrail config. Absent when the agent has none. */
+	toolGuardrails?: AgentToolGuardrailConfig[];
+	/** Model instance for the jailbreak/nsfw/topicalAlignment guardrail kinds. */
+	guardrailModel?: LanguageModel;
+	/** Registry resolving guardrail tool refs to runtime tool names. */
+	toolRegistry?: ToolRegistry;
 	streamObserver?: WorkflowAgentStreamObserver;
 	sandboxScope?: { projectId: string; principalHash: AgentSandboxPrincipalHash };
 	/**
@@ -293,6 +307,9 @@ export class AgentWorkflowExecutionService {
 		agent?: BuiltAgent;
 		budget?: BudgetGuardrailConfig;
 		modelCredentialGatewayManaged?: boolean;
+		toolGuardrails?: AgentToolGuardrailConfig[];
+		guardrailModel?: LanguageModel;
+		toolRegistry?: ToolRegistry;
 		error?: string;
 	}> {
 		if (!runSource.agent.schema) {
@@ -324,6 +341,9 @@ export class AgentWorkflowExecutionService {
 				...applied,
 				budget: reconstructed.budget,
 				modelCredentialGatewayManaged: reconstructed.modelCredentialGatewayManaged,
+				toolGuardrails: reconstructed.toolGuardrails,
+				guardrailModel: reconstructed.guardrailModel,
+				toolRegistry: reconstructed.toolRegistry,
 			};
 		} catch (e) {
 			return {
@@ -356,6 +376,9 @@ export class AgentWorkflowExecutionService {
 		agent?: BuiltAgent;
 		budget?: BudgetGuardrailConfig;
 		modelCredentialGatewayManaged?: boolean;
+		toolGuardrails?: AgentToolGuardrailConfig[];
+		guardrailModel?: LanguageModel;
+		toolRegistry?: ToolRegistry;
 		error?: string;
 	}> {
 		try {
@@ -378,6 +401,9 @@ export class AgentWorkflowExecutionService {
 				...applied,
 				budget: reconstructed.budget,
 				modelCredentialGatewayManaged: reconstructed.modelCredentialGatewayManaged,
+				toolGuardrails: reconstructed.toolGuardrails,
+				guardrailModel: reconstructed.guardrailModel,
+				toolRegistry: reconstructed.toolRegistry,
 			};
 		} catch (e) {
 			return {
@@ -490,6 +516,9 @@ export class AgentWorkflowExecutionService {
 			recordingParams,
 			sandboxScope,
 			budget,
+			toolGuardrails,
+			guardrailModel,
+			toolRegistry,
 		} = params;
 		const telemetry = await this.agentRunTracingService.build({
 			agentId: telemetryAgentId,
@@ -507,7 +536,7 @@ export class AgentWorkflowExecutionService {
 		const messageContext = recordingParams
 			? await this.integrationMessageContextService.getLatest(threadId)
 			: null;
-		return withBudgetGuardrail(
+		const options = withBudgetGuardrail(
 			{
 				// The memory store scopes message reads by `resourceId` (the
 				// "per-user scope"; chat integrations pass the chat user id there).
@@ -546,6 +575,11 @@ export class AgentWorkflowExecutionService {
 				...(params.modelCredentialGatewayManaged ? { modelCredentialGatewayManaged: true } : {}),
 			},
 		);
+		// A workflow-invoked agent runs the same guardrail config a chat run
+		// does: the reconstruction result carries it alongside the registry it
+		// resolves refs against.
+		if (!toolGuardrails || !toolRegistry) return options;
+		return withToolGuardrails(options, { toolGuardrails, toolRegistry, guardrailModel });
 	}
 
 	private recordWorkflowChunk(
@@ -792,6 +826,9 @@ export class AgentWorkflowExecutionService {
 			budget,
 			snapshot,
 			modelCredentialGatewayManaged,
+			toolGuardrails,
+			guardrailModel,
+			toolRegistry,
 		} = prepared;
 		// Filled by `beforeFinalize` when the run waits for a human review.
 		const suspension: { waiting?: { runId: string; executionIds: string[] } } = {};
@@ -803,6 +840,9 @@ export class AgentWorkflowExecutionService {
 				runType,
 				budget,
 				modelCredentialGatewayManaged,
+				toolGuardrails,
+				guardrailModel,
+				toolRegistry,
 				recordingParams: { ...recordingParams, agentName: agentInstance.name },
 				...(sandboxScope
 					? { sandboxScope: { projectId, principalHash: sandboxScope.principalHash } }
@@ -934,6 +974,9 @@ export class AgentWorkflowExecutionService {
 			runType: snapshot.runType,
 			budget: reconstructed.budget,
 			modelCredentialGatewayManaged: reconstructed.modelCredentialGatewayManaged,
+			toolGuardrails: reconstructed.toolGuardrails,
+			guardrailModel: reconstructed.guardrailModel,
+			toolRegistry: reconstructed.toolRegistry,
 			snapshot,
 			resume: { runId: continuation.runId, toolCallId: call.toolCallId },
 		};
@@ -1017,6 +1060,9 @@ export class AgentWorkflowExecutionService {
 			snapshot,
 			resume: undefined,
 			modelCredentialGatewayManaged: compiled.modelCredentialGatewayManaged,
+			toolGuardrails: compiled.toolGuardrails,
+			guardrailModel: compiled.guardrailModel,
+			toolRegistry: compiled.toolRegistry,
 		};
 	}
 
@@ -1073,6 +1119,9 @@ export class AgentWorkflowExecutionService {
 			| 'budget'
 			| 'resume'
 			| 'modelCredentialGatewayManaged'
+			| 'toolGuardrails'
+			| 'guardrailModel'
+			| 'toolRegistry'
 			| 'beforeFinalize'
 		>,
 	): Promise<WorkflowAgentRunOutcome> {
@@ -1177,6 +1226,9 @@ export class AgentWorkflowExecutionService {
 				runType,
 				budget: compiled.budget,
 				modelCredentialGatewayManaged: compiled.modelCredentialGatewayManaged,
+				toolGuardrails: compiled.toolGuardrails,
+				guardrailModel: compiled.guardrailModel,
+				toolRegistry: compiled.toolRegistry,
 			});
 			this.trackInlineRun(params, syntheticAgentId, runType, runtimeConfig, run);
 			return this.buildWorkflowResult({ run, session: null, outputSchema });

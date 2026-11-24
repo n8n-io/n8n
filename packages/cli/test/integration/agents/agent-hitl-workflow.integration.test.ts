@@ -1,25 +1,12 @@
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { ExecutionRepository, WorkflowRepository, SharedWorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { AgentHitlWorkflowRepository } from '@/modules/agents/repositories/agent-hitl-workflow.repository';
 import { AgentProjectDeletionRepository } from '@/modules/agents/repositories/agent-project-deletion.repository';
 import { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
-async function createAgent(projectId: string) {
-	const agents = Container.get(AgentRepository);
-	return await agents.save(
-		agents.create({
-			id: generateNanoId(),
-			name: 'Reviewer',
-			projectId,
-			integrations: [],
-			tools: {},
-			skills: {},
-		}),
-	);
-}
+import { createAgent } from '../shared/db/agents';
 
 describe('Private approval execution ownership', () => {
 	beforeAll(async () => {
@@ -32,7 +19,7 @@ describe('Private approval execution ownership', () => {
 
 	it('reuses an unshared owner without changing the Agent revision', async () => {
 		const project = await createTeamProject();
-		const agent = await createAgent(project.id);
+		const agent = await createAgent({ projectId: project.id });
 		const owners = Container.get(AgentHitlWorkflowRepository);
 		const id = await owners.ensureExecutionOwner(project.id, agent.id);
 		expect(await Container.get(WorkflowRepository).findOneBy({ id })).toMatchObject({
@@ -63,11 +50,15 @@ describe('Private approval execution ownership', () => {
 	it('scopes ownership to each Agent and rejects a different project', async () => {
 		const first = await createTeamProject();
 		const second = await createTeamProject();
-		const firstAgent = await createAgent(first.id);
-		const secondAgent = await createAgent(second.id);
+		const firstAgent = await createAgent({ projectId: first.id });
+		const secondAgent = await createAgent({ projectId: second.id });
 		const owners = Container.get(AgentHitlWorkflowRepository);
-		expect(await owners.ensureExecutionOwner(first.id, firstAgent.id)).not.toBe(
-			await owners.ensureExecutionOwner(second.id, secondAgent.id),
+		const firstOwner = await owners.ensureExecutionOwner(first.id, firstAgent.id);
+		const secondOwner = await owners.ensureExecutionOwner(second.id, secondAgent.id);
+		expect(firstOwner).not.toBe(secondOwner);
+		const workflows = Container.get(WorkflowRepository);
+		expect((await workflows.findOneByOrFail({ id: firstOwner })).name).not.toBe(
+			(await workflows.findOneByOrFail({ id: secondOwner })).name,
 		);
 		await expect(owners.ensureExecutionOwner(second.id, firstAgent.id)).rejects.toThrow(
 			'Agent not found',
@@ -75,7 +66,7 @@ describe('Private approval execution ownership', () => {
 	});
 	it('does not create an execution owner while its project is being deleted', async () => {
 		const project = await createTeamProject();
-		const agent = await createAgent(project.id);
+		const agent = await createAgent({ projectId: project.id });
 		await Container.get(AgentProjectDeletionRepository).beginDeletion(project.id);
 		await expect(
 			Container.get(AgentHitlWorkflowRepository).ensureExecutionOwner(project.id, agent.id),
@@ -87,7 +78,7 @@ describe('Private approval execution ownership', () => {
 	});
 	it('keeps an Agent when a private execution owner appears after cleanup', async () => {
 		const project = await createTeamProject();
-		const agent = await createAgent(project.id);
+		const agent = await createAgent({ projectId: project.id });
 		const owners = Container.get(AgentHitlWorkflowRepository);
 		const ownerId = await owners.ensureExecutionOwner(project.id, agent.id);
 		const agents = Container.get(AgentRepository);
@@ -106,7 +97,7 @@ describe('Private approval execution ownership', () => {
 
 	it('keeps an Agent while an unconsumed decision workflow receipt exists', async () => {
 		const project = await createTeamProject();
-		const agent = await createAgent(project.id);
+		const agent = await createAgent({ projectId: project.id });
 		const jobs = Container.get(AgentBackgroundJobRepository);
 		const job = await jobs.save(
 			jobs.create({
@@ -123,7 +114,13 @@ describe('Private approval execution ownership', () => {
 		await expect(agents.removeAfterApprovalCleanup(agent.id, project.id)).rejects.toThrow(
 			'approval started during cleanup',
 		);
-		await jobs.update(job.id, { status: 'cancelled', notifiedAt: new Date() });
+		expect(await agents.findOneBy({ id: agent.id })).not.toBeNull();
+		await jobs.update(job.id, { status: 'cancelled' });
+		await expect(agents.removeAfterApprovalCleanup(agent.id, project.id)).rejects.toThrow(
+			'approval started during cleanup',
+		);
+		expect(await agents.findOneBy({ id: agent.id })).not.toBeNull();
+		await jobs.update(job.id, { notifiedAt: new Date() });
 		await agents.removeAfterApprovalCleanup(agent.id, project.id);
 		expect(await agents.findOneBy({ id: agent.id })).toBeNull();
 		await expect(
@@ -143,7 +140,7 @@ describe('Private approval execution ownership', () => {
 
 	it('stops resolving a detached owner and deletes it only after detachment', async () => {
 		const project = await createTeamProject();
-		const agent = await createAgent(project.id);
+		const agent = await createAgent({ projectId: project.id });
 		const owners = Container.get(AgentHitlWorkflowRepository);
 		const ownerId = await owners.ensureExecutionOwner(project.id, agent.id);
 		expect(await owners.findExecutionProject(ownerId)).toMatchObject({ id: project.id });
@@ -164,7 +161,7 @@ describe('Private approval execution ownership', () => {
 
 	it('consumes only the settled approval receipts with the given ids', async () => {
 		const project = await createTeamProject();
-		const agent = await createAgent(project.id);
+		const agent = await createAgent({ projectId: project.id });
 		const jobs = Container.get(AgentBackgroundJobRepository);
 		const create = async (status: 'running' | 'completed' | 'failed', title: string) =>
 			await jobs.save(

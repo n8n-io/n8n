@@ -111,6 +111,8 @@ type CreateAgentOptions =
 			metadata?: AgentDefinitionMetadata;
 			plannedDestinations?: PlannedAgentDestinations;
 			writeSkills?: AgentSkillWriter;
+			/** Context of the request, for the audit event. */
+			ctx?: OperationContext;
 	  };
 
 type DraftAgentCreateOptions = {
@@ -142,6 +144,8 @@ type DraftAgentCreateOptions = {
 	tagIds?: string[];
 	/** User for configuration validation and product save effects. With schema, duplicates safely. */
 	user?: User;
+	/** Context of the request, for the audit event. */
+	ctx?: OperationContext;
 };
 
 export type AgentCreationResult = AgentCreationState & { agent: ProjectAgent };
@@ -300,6 +304,7 @@ export class AgentsService {
 			);
 			return await this.getCreationResult(existing, true);
 		}
+		this.agentServiceAccount.reportCreated(agent, options.actor, options.ctx);
 
 		// The mappings were written in the insert transaction; carry them on the
 		// entity so the create response reports the agent's tags.
@@ -517,6 +522,7 @@ export class AgentsService {
 			await this.definitionService.captureVersion(agent, user, ctx);
 			return savedRefs;
 		});
+		this.agentServiceAccount.reportCreated(agent, options.actor, options.ctx);
 		await Container.get(AgentSaveCompletionService).definitionSaved(
 			buildAgentMutationEvent(
 				agent,
@@ -1041,35 +1047,29 @@ export class AgentsService {
 		// (no `projectId` argument) cleans up the same as the project-scoped one.
 		const { projectId: agentProjectId } = agent;
 
-		// Check approval blockers before any step that cannot be undone. This check
-		// makes no changes, so a pending approval leaves the agent as it was.
 		await this.approvalCleanup.assertCanCleanupAgent(agentId);
-		// Stop pending approvals before the account goes. If a resume wins the race,
-		// cleanup throws and the account stays. The agent is archived, so stopped
-		// approvals are the only effect if the account removal then fails.
-		await this.approvalCleanup.cleanupAgent(agentId, agentProjectId, agent.approvalWorkflowId);
 
-		// Remove the account before the other cleanup that cannot be undone. If the
-		// removal fails, for example because a policy blocks the transfer of its
-		// work, the files, logs and memory stay.
-		await this.agentServiceAccount.deleteForAgent(agent, actor, agentProjectId, ctx);
+		// The work of the account moves before any cleanup that cannot be undone.
+		// If a policy blocks the transfer, the agent stays as it was. The agent
+		// row and the account row go in one transaction.
+		await this.agentServiceAccount.deleteForAgent(agent, actor, agentProjectId, ctx, async () => {
+			await this.approvalCleanup.cleanupAgent(agentId, agentProjectId, agent.approvalWorkflowId);
 
-		await this.deleteKnowledgeFiles(agentProjectId, agentId);
+			await this.deleteKnowledgeFiles(agentProjectId, agentId);
 
-		await this.agentKnowledgeService.destroyKnowledgeSandbox(agentProjectId, agentId);
+			await this.agentKnowledgeService.destroyKnowledgeSandbox(agentProjectId, agentId);
 
-		await this.deleteChatAttachments(agentId);
+			await this.deleteChatAttachments(agentId);
 
-		const chatIntegrationService = Container.get(ChatIntegrationService);
-		for (const integration of agent.integrations ?? []) {
-			await chatIntegrationService.disconnectChannel(agentId, integration);
-		}
+			const chatIntegrationService = Container.get(ChatIntegrationService);
+			for (const integration of agent.integrations ?? []) {
+				await chatIntegrationService.disconnectChannel(agentId, integration);
+			}
 
-		await this.agentExecutionService.deleteExecutionLogsForAgent(agentId);
+			await this.agentExecutionService.deleteExecutionLogsForAgent(agentId);
 
-		await this.agentExecutionService.deleteMemoryThreadsForAgent(agentId);
-
-		await this.agentRepository.removeAfterApprovalCleanup(agentId, agentProjectId);
+			await this.agentExecutionService.deleteMemoryThreadsForAgent(agentId);
+		});
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 

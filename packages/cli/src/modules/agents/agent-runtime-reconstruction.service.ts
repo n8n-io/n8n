@@ -12,6 +12,7 @@ import {
 	type CreateDelegateSubAgentToolOptions,
 	BuiltTool,
 	createModel,
+	getCatalogModelId,
 	CredentialProvider,
 	ModelConfig,
 	type Workspace,
@@ -50,11 +51,12 @@ import { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import { UserError } from '@n8n/errors';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import { nanoid } from 'nanoid';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsFinderService } from '@n8n/backend-services';
+import { sanitizeSandboxErrorDetail } from '@n8n/utils/redaction/sanitize-sandbox-error-detail';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import { EphemeralNodeExecutor } from '@/node-execution';
@@ -64,7 +66,6 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { createAiMcpFetch, createAiProxyFetch, createWebSearchFetch } from '@/utils/ai-proxy-fetch';
-import { sanitizeSandboxErrorDetail } from '@/utils/sanitize-sandbox-error-detail';
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import type { KnowledgeConsumerScope } from '@/modules/knowledge/knowledge-consumer-scope';
 import { KnowledgeRetrievalService } from '@/modules/knowledge/retrieval/knowledge-retrieval.service';
@@ -87,6 +88,7 @@ import { AgentWorkspaceService } from './agent-workspace.service';
 import type { AgentRuntimeInstrumentation } from './evaluation/agent-evaluation.contracts';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { buildFileUploadGuidance } from './integrations/integration-tool-descriptions';
+import { createConversationTools } from './integrations/conversation-tools';
 import {
 	createIntegrationActionTool,
 	createIntegrationContextTool,
@@ -122,7 +124,7 @@ import {
 } from './tools/read-binary-data.tool';
 import type { WorkflowToolExecutionMode } from './tools/workflow-tool-factory';
 import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolver';
-import { AgentDecisionWorkflowService } from './approval/agent-decision-workflow.service';
+import type { AgentDecisionWorkflowService } from './approval/agent-decision-workflow.service';
 import { withApprovalDescription } from './approval/approval-description';
 import type { AgentRunSource } from './utils/agent-published-snapshot';
 import { getAgentRuntimeAssets, type AgentRuntimeAssets } from './utils/agent-runtime-assets';
@@ -160,6 +162,8 @@ export interface ReconstructedAgentRuntime {
 	 * same way the run's model is. Absent when no model kind is configured.
 	 */
 	guardrailModel?: LanguageModel;
+	/** Catalog id of `guardrailModel`, used to price its token spend. */
+	guardrailModelId?: string;
 }
 
 export interface SubAgentDelegationConfig {
@@ -204,6 +208,11 @@ export interface ReconstructAgentRuntimeParams extends AgentRuntimeAssets {
 	 */
 	user?: User;
 	attributionUserId?: string;
+	/**
+	 * The stored agent's service account (`agents.identityId`). Workflow tools stamp it
+	 * for attribution in log events only. Absent for inline agents.
+	 */
+	agentServiceAccountId?: string;
 	/** Runtime seams inherited from the delegating parent run (see {@link AgentRuntimeInstrumentation}). */
 	instrumentation?: AgentRuntimeInstrumentation;
 	abortSignal?: AbortSignal;
@@ -265,6 +274,8 @@ interface ToolRunIdentity {
 	userId?: string;
 	previewChat?: boolean;
 	publishedN8nChat?: boolean;
+	agentServiceAccountId?: string;
+	delegatingAgentId?: string;
 	supportsHitl: boolean;
 	backgroundTasksEnabled: boolean;
 }
@@ -363,6 +374,25 @@ export interface UnavailableTool {
 function toolRefName(ref: AgentJsonToolConfig): string {
 	if (ref.type === 'custom') return ref.id;
 	return ref.type === 'workflow' ? (ref.name ?? ref.workflow) : ref.name;
+}
+
+/** Ids that workflow tools stamp for log attribution. The run does not act as the account. */
+function workflowToolAttribution({
+	agentServiceAccountId,
+	runtimeProfile,
+	parentAgentIdForDelegation,
+}: RuntimeReconstructionOptions): Pick<
+	ToolRunIdentity,
+	'agentServiceAccountId' | 'delegatingAgentId'
+> {
+	if (!agentServiceAccountId || !Container.get(AgentsConfig).serviceAccountsEnabled) return {};
+	return {
+		agentServiceAccountId,
+		// Only a sub-agent runtime has a delegating agent; delegation is one level deep.
+		...(runtimeProfile === 'sub-agent' && parentAgentIdForDelegation
+			? { delegatingAgentId: parentAgentIdForDelegation }
+			: {}),
+	};
 }
 
 /** The guardrail kinds whose check runs on an LLM rather than a local pattern. */
@@ -491,6 +521,7 @@ export class AgentRuntimeReconstructionService {
 			subAgentDelegation,
 			user,
 			attributionUserId,
+			...(agentEntity.identityId ? { agentServiceAccountId: agentEntity.identityId } : {}),
 			instrumentation,
 			abortSignal,
 			sandboxPrincipalHash,
@@ -786,6 +817,9 @@ export class AgentRuntimeReconstructionService {
 				? { toolGuardrails: options.config.config.guardrails.tools }
 				: {}),
 			...(runtime.guardrailModel !== undefined ? { guardrailModel: runtime.guardrailModel } : {}),
+			...(runtime.guardrailModelId !== undefined
+				? { guardrailModelId: runtime.guardrailModelId }
+				: {}),
 		};
 	}
 
@@ -843,11 +877,30 @@ export class AgentRuntimeReconstructionService {
 		const aiProxyFetch = createAiProxyFetch(this.outboundHttp);
 		const aiMcpFetch = instrumentation?.mcpFetch ?? createAiMcpFetch(this.outboundHttp);
 		const webSearchFetch = createWebSearchFetch(this.outboundHttp);
-		const buildMcpClient = this.makeMcpClientFactory(options, aiMcpFetch, mcpServerAttributions);
+		const needsDecisionWorkflows =
+			(options.supportsHitl ?? options.runtimeProfile === 'top-level') &&
+			[...(config.tools ?? []), ...(config.mcpServers ?? [])].some(
+				({ approvalRoute }) => approvalRoute?.type === 'configuration',
+			);
+		let decisionWorkflows: AgentDecisionWorkflowService | undefined;
+		if (needsDecisionWorkflows) {
+			const { AgentDecisionWorkflowService } = await import(
+				'./approval/agent-decision-workflow.service.js'
+			);
+			decisionWorkflows = Container.get(AgentDecisionWorkflowService);
+		}
+		const wrapApproval = (tool: BuiltTool, route: AgentApprovalRoute | undefined) =>
+			this.wrapConfiguredApproval(tool, route, options, decisionWorkflows);
+		const buildMcpClient = this.makeMcpClientFactory(
+			options,
+			aiMcpFetch,
+			mcpServerAttributions,
+			wrapApproval,
+		);
 		const modelFetch = instrumentation?.modelFetch ?? aiProxyFetch;
-		const guardrailModel = await this.resolveGuardrailModel(config, credentialProvider, modelFetch);
+		const guardrail = await this.resolveGuardrailModel(config, credentialProvider, modelFetch);
 		const reconstructed = await buildFromJson(config, toolDescriptors, {
-			wrapApproval: (tool, ref) => this.wrapConfiguredApproval(tool, ref.approvalRoute, options),
+			wrapApproval: (tool, ref) => wrapApproval(tool, ref.approvalRoute),
 			toolExecutor,
 			credentialProvider,
 			resolveTool: async (ref) => {
@@ -873,7 +926,9 @@ export class AgentRuntimeReconstructionService {
 			agent: reconstructed,
 			resolvedTools,
 			mcpServerAttributions,
-			...(guardrailModel !== undefined ? { guardrailModel } : {}),
+			...(guardrail !== undefined
+				? { guardrailModel: guardrail.model, guardrailModelId: guardrail.modelId }
+				: {}),
 		};
 	}
 
@@ -881,7 +936,7 @@ export class AgentRuntimeReconstructionService {
 		config: AgentJsonConfig,
 		credentialProvider: AgentCredentialProvider,
 		modelFetch: ReturnType<typeof createAiProxyFetch>,
-	): Promise<LanguageModel | undefined> {
+	): Promise<{ model: LanguageModel; modelId: string } | undefined> {
 		const guardrails = config.config?.guardrails?.tools;
 		if (!guardrails?.some(isModelBasedKind) || config.model.trim() === '') return undefined;
 
@@ -893,10 +948,13 @@ export class AgentRuntimeReconstructionService {
 						credentialProvider,
 					)
 				: config.model;
-			return createModel(
-				modelConfig,
-				credentialProvider.createAiGatewayTokenRefreshFetch?.(modelFetch) ?? modelFetch,
-			);
+			return {
+				model: createModel(
+					modelConfig,
+					credentialProvider.createAiGatewayTokenRefreshFetch?.(modelFetch) ?? modelFetch,
+				),
+				modelId: getCatalogModelId(modelConfig),
+			};
 		} catch (error) {
 			this.logger.warn('Failed to resolve the guardrail model; model-based guardrails skip', {
 				model: config.model,
@@ -939,6 +997,7 @@ export class AgentRuntimeReconstructionService {
 					runType === 'production' &&
 					integrationType === N8N_CHAT_INTEGRATION_TYPE &&
 					attributionUserId !== undefined,
+				...workflowToolAttribution(options),
 				// Sub-agent checkpoints are rejected on resume and inline agents have no
 				// checkpoint storage, so neither can be woken again.
 				supportsHitl: canResume,
@@ -959,6 +1018,7 @@ export class AgentRuntimeReconstructionService {
 		tool: BuiltTool,
 		route: AgentApprovalRoute | undefined,
 		options: RuntimeReconstructionOptions,
+		decisionWorkflows: AgentDecisionWorkflowService | undefined,
 	): BuiltTool {
 		const effective = route;
 		if (!effective || effective.type === 'conversation') {
@@ -975,8 +1035,10 @@ export class AgentRuntimeReconstructionService {
 				},
 			};
 		}
+		if (!decisionWorkflows)
+			throw new UnexpectedError('Configured Agent approval service is unavailable');
 		return withApprovalDescription(
-			Container.get(AgentDecisionWorkflowService).wrap(
+			decisionWorkflows.wrap(
 				tool,
 				effective,
 				options.config,
@@ -1002,13 +1064,13 @@ export class AgentRuntimeReconstructionService {
 		options: RuntimeReconstructionOptions,
 		aiMcpFetch: ReturnType<typeof createAiMcpFetch>,
 		mcpServerAttributions: Map<string, string>,
+		wrapApproval: (tool: BuiltTool, route: AgentApprovalRoute | undefined) => BuiltTool,
 	) {
 		const { credentialProvider, projectId, memoryOwnerAgentId, instrumentation, runtimeProfile } =
 			options;
 		return async (server: AgentJsonMcpServerConfig) =>
 			await buildMcpClientForServer(server, {
-				wrapApproval: (tool: BuiltTool) =>
-					this.wrapConfiguredApproval(tool, server.approvalRoute, options),
+				wrapApproval: (tool) => wrapApproval(tool, server.approvalRoute),
 				credentialProvider,
 				// Inline agents have no checkpoint storage, and their schema rejects approval policies.
 				nonInterrupting: runtimeProfile === 'inline',
@@ -1158,6 +1220,8 @@ export class AgentRuntimeReconstructionService {
 			userId,
 			previewChat,
 			publishedN8nChat,
+			agentServiceAccountId,
+			delegatingAgentId,
 			supportsHitl,
 			backgroundTasksEnabled,
 		} = runIdentity;
@@ -1179,6 +1243,8 @@ export class AgentRuntimeReconstructionService {
 			userId,
 			previewChat,
 			publishedN8nChat,
+			agentServiceAccountId,
+			delegatingAgentId,
 			supportsHitl,
 			backgroundTasksEnabled,
 		};
@@ -1360,6 +1426,9 @@ export class AgentRuntimeReconstructionService {
 					: actionTool,
 			);
 		}
+		agent.tool(
+			createConversationTools({ descriptors, messageContextStore, actionExecutor, projectId }),
+		);
 	}
 
 	private createIntegrationDescriptors(
@@ -1373,6 +1442,8 @@ export class AgentRuntimeReconstructionService {
 			(integrationConfig) => {
 				const integrationDef = integrationRegistry.get(integrationConfig.type);
 				return {
+					conversationTools: integrationDef?.conversationTools,
+					supportedComponents: integrationDef?.supportedComponents,
 					contextToolDefinitions: integrationDef?.contextToolDefinitions,
 					actionToolDefinitions: integrationDef?.actionToolDefinitions,
 					contextQueries: integrationDef?.contextQueries,
@@ -1415,6 +1486,8 @@ export class AgentRuntimeReconstructionService {
 			actionToolDefinitions: [...n8nChat.actionToolDefinitions],
 			contextToolGuidance: n8nChat.contextToolGuidance,
 			actionToolGuidance: n8nChat.actionToolGuidance,
+			conversationTools: n8nChat.conversationTools,
+			supportedComponents: n8nChat.supportedComponents,
 		};
 	}
 

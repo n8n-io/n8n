@@ -147,7 +147,7 @@ vi.mock('../components/AgentHitlPanel.vue', () => ({
 	default: {
 		name: 'AgentHitlPanel',
 		template: '<div data-testid="agent-hitl-panel" />',
-		props: ['config', 'disabled', 'projectId', 'agentId'],
+		props: ['config', 'disabled', 'projectId', 'agentId', 'agentUnsaved'],
 		emits: ['update:config'],
 	},
 }));
@@ -158,6 +158,15 @@ vi.mock('../components/AgentBudgetPanel.vue', () => ({
 		template: '<div data-testid="agent-budget-panel-stub" />',
 		props: ['config', 'disabled', 'projectId', 'agentId'],
 		emits: ['update:config'],
+	},
+}));
+
+vi.mock('../components/AgentGuardrailsSection.vue', () => ({
+	default: {
+		name: 'AgentGuardrailsSection',
+		template: '<div data-testid="agent-guardrails-section-stub" />',
+		props: ['config', 'tools', 'projectId', 'agentId', 'disabled', 'validationIssues'],
+		emits: ['update:config', 'update:budget-config'],
 	},
 }));
 
@@ -231,7 +240,7 @@ async function mountColumn(
 			],
 			localConfig: {
 				name: 'Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Help the user.',
 				memory: { enabled: true, storage: 'n8n' },
 			},
@@ -566,6 +575,7 @@ describe('AgentBuilderEditorColumn', () => {
 			'agents.builder.skills.title',
 			'agents.builder.triggers.title',
 			'agents.builder.capabilities.title',
+			'agents.builder.guardrails.title',
 			'agents.builder.memory.title',
 		]);
 	});
@@ -589,14 +599,15 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(wrapper.find('[data-testid="agent-observational-memory-toggle"]').exists()).toBe(false);
 	});
 
-	it('shows Human review on a new Agent and starts channel lookup only after it is saved', async () => {
+	it('passes the save state to Human review on a new Agent', async () => {
 		const wrapper = await mountColumn({
 			activeMainTab: 'settings',
 			agentUnsaved: true,
 			humanReviewEnabled: true,
 		});
 		const panel = wrapper.getComponent({ name: 'AgentHitlPanel' });
-		expect(panel.props('agentId')).toBe('');
+		expect(panel.props('agentId')).toBe('agent-1');
+		expect(panel.props('agentUnsaved')).toBe(true);
 		expect(panel.props('disabled')).toBe(false);
 		const changes = {
 			hitlConfigurations: [{ id: 'review', name: 'Review', method: 'workflow', workflowId: 'wf' }],
@@ -604,7 +615,7 @@ describe('AgentBuilderEditorColumn', () => {
 		panel.vm.$emit('update:config', changes);
 		expect(wrapper.emitted('update:config')?.[0]).toEqual([changes]);
 		await wrapper.setProps({ agentUnsaved: false });
-		expect(panel.props('agentId')).toBe('agent-1');
+		expect(panel.props('agentUnsaved')).toBe(false);
 	});
 
 	it('keeps Human review hidden for new Agents when the module is disabled', async () => {
@@ -626,41 +637,38 @@ describe('AgentBuilderEditorColumn', () => {
 		const wrapper = await mountColumn({ activeMainTab: 'settings' });
 		await flushPromises();
 
-		const budgetPanel = wrapper.findComponent({ name: 'AgentBudgetPanel' });
-		expect(budgetPanel.exists()).toBe(true);
-		expect(budgetPanel.props('config')).toMatchObject({
-			name: 'Agent',
-			model: 'anthropic/claude-sonnet-4-5',
-		});
-		expect(budgetPanel.props('disabled')).toBe(false);
-		expect(budgetPanel.props('projectId')).toBe('project-1');
-		expect(budgetPanel.props('agentId')).toBe('agent-1');
+		// The budget panel moved to the Guardrails section on the Build tab.
+		expect(wrapper.findComponent({ name: 'AgentBudgetPanel' }).exists()).toBe(false);
 		const subAgentsPanel = wrapper.findComponent({ name: 'AgentSubAgentsPanel' });
 		expect(subAgentsPanel.exists()).toBe(true);
 		expect(subAgentsPanel.props('config')).toMatchObject({
 			name: 'Agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 		});
 		expect(subAgentsPanel.props('disabled')).toBe(false);
 		expect(subAgentsPanel.props('projectId')).toBe('project-1');
 		expect(subAgentsPanel.props('agentId')).toBe('agent-1');
-		// Usage and limits sits above sub-agents.
-		expect(
-			budgetPanel.element.compareDocumentPosition(subAgentsPanel.element) &
-				Node.DOCUMENT_POSITION_FOLLOWING,
-		).toBeTruthy();
 		expect(wrapper.findComponent({ name: 'AgentMemoryPanel' }).exists()).toBe(false);
 		const advancedPanel = wrapper.findComponent({ name: 'AgentAdvancedPanel' });
 		expect(advancedPanel.exists()).toBe(true);
 		expect(advancedPanel.props('projectId')).toBe('project-1');
 	});
 
-	it('forwards a budget panel config update to the host as a budget save', async () => {
+	it('does not render the guardrails section on the Settings tab', async () => {
 		const wrapper = await mountColumn({ activeMainTab: 'settings' });
 		await flushPromises();
 
+		expect(wrapper.findComponent({ name: 'AgentGuardrailsSection' }).exists()).toBe(false);
+	});
+
+	it('forwards a budget panel config update to the host as a budget save', async () => {
+		const wrapper = await mountColumn();
+		await flushPromises();
+
 		const changes = { config: { guardrails: { budget: { enabled: true, sessionCostCapUsd: 5 } } } };
-		wrapper.findComponent({ name: 'AgentBudgetPanel' }).vm.$emit('update:config', changes);
+		wrapper
+			.findComponent({ name: 'AgentGuardrailsSection' })
+			.vm.$emit('update:budget-config', changes);
 
 		expect(wrapper.emitted('update:budget-config')?.[0]).toEqual([changes]);
 		expect(wrapper.emitted('update:config')).toBeUndefined();
@@ -711,6 +719,37 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(
 			capabilities.element.compareDocumentPosition(memory.element) &
 				Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
+	});
+
+	it('places the guardrails section between capabilities and memory on the Build tab', async () => {
+		const wrapper = await mountColumn();
+		await flushPromises();
+
+		const guardrails = wrapper.getComponent({ name: 'AgentGuardrailsSection' });
+		const capabilities = wrapper.getComponent({ name: 'AgentCapabilitiesSection' });
+		const memory = wrapper.getComponent({ name: 'AgentMemoryPanel' });
+
+		expect(guardrails.props('projectId')).toBe('project-1');
+		expect(guardrails.props('agentId')).toBe('agent-1');
+		expect(guardrails.props('disabled')).toBe(false);
+		expect(guardrails.props('tools')).toEqual([]);
+		expect(guardrails.props('validationIssues')).toEqual([]);
+		expect(
+			capabilities.element.compareDocumentPosition(guardrails.element) &
+				Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
+		expect(
+			guardrails.element.compareDocumentPosition(memory.element) & Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
+
+		const guardrailsPanel = wrapper
+			.findAllComponents({ name: 'AgentPanel' })
+			.find((panel) => panel.props('header') === 'agents.builder.guardrails.title');
+		expect(guardrailsPanel?.props('description')).toBe('agents.builder.guardrails.description');
+		expect(
+			guardrailsPanel?.element.compareDocumentPosition(guardrails.element) &
+				Node.DOCUMENT_POSITION_CONTAINED_BY,
 		).toBeTruthy();
 	});
 });

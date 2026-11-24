@@ -8,7 +8,7 @@ import {
 } from '../review-requester';
 
 describe('review requester', () => {
-	it('uses the account name and falls back to email or ID', () => {
+	it('uses the account name and omits it when only an email is available', () => {
 		const user = Object.assign(new Person(), {
 			id: 'user-1',
 			firstName: 'Alex',
@@ -22,8 +22,6 @@ describe('review requester', () => {
 		});
 		user.firstName = '';
 		user.lastName = '';
-		expect(reviewRequesterForUser(user, 'n8n_chat').name).toBe('alex@example.com');
-		user.email = '';
 		expect(reviewRequesterForUser(user, 'n8n_chat')).toEqual({ id: 'user-1', source: 'n8n_chat' });
 	});
 

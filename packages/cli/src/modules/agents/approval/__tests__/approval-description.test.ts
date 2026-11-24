@@ -28,6 +28,10 @@ describe('approval descriptions', () => {
 
 	it.each([
 		z.object({ target: z.string() }),
+		z.preprocess(
+			(value) => (typeof value === 'string' ? { target: value } : value),
+			z.object({ target: z.string() }),
+		),
 		{
 			type: 'object',
 			properties: { target: { type: 'string' } },

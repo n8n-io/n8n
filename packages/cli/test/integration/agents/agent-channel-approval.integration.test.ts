@@ -60,6 +60,7 @@ import { AgentRepository } from '@/modules/agents/repositories/agent.repository'
 import { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { createAgent } from '../shared/db/agents';
 import { createSuccessfulExecution } from '../shared/db/executions';
 import { createOwner } from '../shared/db/users';
 import * as utils from '../shared/utils';
@@ -157,20 +158,6 @@ const nodes: INodeTypeData = {
 	'n8n-nodes-base.agentDecisionTrigger': { type: trigger, sourcePath: '' },
 };
 
-async function createReviewAgent(projectId: string) {
-	const agents = Container.get(AgentRepository);
-	return await agents.save(
-		agents.create({
-			id: generateNanoId(),
-			name: 'Reviewer',
-			projectId,
-			integrations: [],
-			tools: {},
-			skills: {},
-		}),
-	);
-}
-
 describe('Durable channel approval lifecycle', () => {
 	beforeAll(async () => {
 		await testModules.loadModules(['agents']);
@@ -186,7 +173,7 @@ describe('Durable channel approval lifecycle', () => {
 	it('rejects a credential outside the private execution owner project', async () => {
 		const project = await createTeamProject();
 		const otherProject = await createTeamProject();
-		const agent = await createReviewAgent(project.id);
+		const agent = await createAgent({ name: 'Reviewer', projectId: project.id });
 		const credential = await createCredentials(
 			{ type: 'slackApi', name: 'Other channel', data: '' },
 			otherProject,
@@ -264,7 +251,7 @@ describe('Durable channel approval lifecycle', () => {
 				project,
 			);
 			const agents = Container.get(AgentRepository);
-			const agent = await createReviewAgent(project.id);
+			const agent = await createAgent({ name: 'Reviewer', projectId: project.id });
 			const caller = await createWorkflowWithHistory({ name: 'Approval caller' }, project);
 			const callerExecution = await createSuccessfulExecution(caller);
 			const threadId = generateNanoId();

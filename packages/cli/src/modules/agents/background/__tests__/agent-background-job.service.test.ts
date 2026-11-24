@@ -1102,11 +1102,15 @@ describe('result consumption updates', () => {
 });
 
 describe('cancel', () => {
-	it('cancels active child jobs for a session across its resource IDs', async () => {
+	it.each([false, true])('settles cancellable jobs (resource scoped: %s)', async (scoped) => {
 		const { service, jobRepository } = setup();
+		const executionService = mock<ExecutionService>();
+		Container.set(ExecutionService, executionService);
 		const jobs = [
 			makeJob({ id: 'running', parentResourceId: 'integration:thread-1' }),
-			makeJob({ id: 'suspended', status: 'suspended', parentResourceId: 'draft-chat:user-1' }),
+			makeJob({ id: 'suspended', status: 'suspended' }),
+			makeWorkflowJob({ id: 'ordinary-workflow', childExecutionId: 'ordinary-execution' }),
+			makeWorkflowJob({ id: 'approval', kind: 'approval' }),
 			makeJob({ id: 'other-agent', parentAgentId: 'other-agent' }),
 			makeJob({ id: 'paused', status: 'paused' }),
 		];
@@ -1115,13 +1119,20 @@ describe('cancel', () => {
 		);
 		jobRepository.settleIfActive.mockResolvedValue(true);
 
-		await service.cancelForSession('agent-1', 'thread-1');
+		if (scoped) await service.cancelForParent('agent-1', 'thread-1', 'draft-chat:user-1');
+		else await service.cancelForSession('agent-1', 'thread-1');
 
-		expect(jobRepository.settleIfActive.mock.calls.map(([id]) => id)).toEqual([
-			'running',
-			'suspended',
-		]);
+		expect(executionService.stop).toHaveBeenCalledExactlyOnceWith('exec-1', ['workflow-1']);
+		expect(
+			jobRepository.settleIfActive.mock.calls.map(([id, settlement]) => [id, settlement.status]),
+		).toEqual(
+			(scoped ? ['suspended', 'approval'] : ['running', 'suspended', 'approval']).map((id) => [
+				id,
+				'cancelled',
+			]),
+		);
 	});
+
 	it.each([false, true])(
 		'retains paused tasks when the parent reply is cancelled (stale snapshot: %s)',
 		async (staleSnapshot) => {

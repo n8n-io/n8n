@@ -42,6 +42,7 @@ export class AgentsModule implements ModuleInterface {
 		await import('./agents-config.controller.js');
 		await import('./agents-skills.controller.js');
 		await import('./agent-knowledge.controller.js');
+		await import('./knowledge-collection-agents.controller.js');
 		await import('./agent-memory.controller.js');
 		await import('./agent-publish.controller.js');
 		await import('./agent-chat.controller.js');
@@ -81,9 +82,7 @@ export class AgentsModule implements ModuleInterface {
 		// data backend cannot be reached — so a live process in s3/az mode always
 		// has that location registered here.
 		const { AgentExecutionLogStore } = await import('./execution-log/agent-execution-log-store.js');
-		const { ExecutionDataJsonStore } = await import(
-			'@/executions/execution-data/execution-data-json-store.js'
-		);
+		const { ExecutionDataJsonStore } = await import('@n8n/backend-services');
 		const { registerAgentBlobByteStores } = await import('./register-blob-byte-stores.js');
 		await registerAgentBlobByteStores({
 			executionDataJsonStore: Container.get(ExecutionDataJsonStore),

@@ -1,4 +1,9 @@
-import { SKILL_SCAN_RULES, SKILL_SOURCE_REASONS, skillScopeSchema } from '@n8n/api-types';
+import {
+	SKILL_LINK_REVIEW_REASONS,
+	SKILL_SCAN_RULES,
+	SKILL_SOURCE_REASONS,
+	skillScopeSchema,
+} from '@n8n/api-types';
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
@@ -114,6 +119,12 @@ const preferenceExampleId = z
 	.optional()
 	.describe(
 		'The example card on the empty preferences page that filled the text (experiment 127). Absent when the text box opened empty',
+	);
+
+const emptyPreferencesNoteVariant = z
+	.enum(['control', 'variant'])
+	.describe(
+		'Variant of the 147_assistant_empty_preferences_note feature flag. Only the treatment adds the note',
 	);
 
 const recommendedSkillsVariant = z
@@ -280,6 +291,18 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 		}),
 	},
 
+	ASSISTANT_PREFERENCES_NOTE_EXPOSED: {
+		name: 'Assistant preferences note exposed',
+		description:
+			'An n8n Assistant turn of a user with no saved preferences reached the point where experiment 147 adds a note about preferences. Fires in both arms, at most 3 times for each user and at most once in 24 hours. Only `variant` adds the note, which tells the assistant to mention after the task that the user can save a preference. Use it as the exposure of the experiment.',
+		properties: z.object({
+			user_id: userId,
+			thread_id: z.string().describe('The n8n Assistant thread of the turn'),
+			variant: emptyPreferencesNoteVariant,
+			'$feature/147_assistant_empty_preferences_note': emptyPreferencesNoteVariant,
+		}),
+	},
+
 	ASSISTANT_SAVED_PREFERENCE: {
 		name: 'Assistant saved preference',
 		description:
@@ -401,6 +424,28 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			read_only: z.boolean().describe('Whether the user may only read the skill'),
 		}),
 	},
+	USER_VIEWED_SKILL_DIAGRAMS: {
+		name: 'User viewed skill diagrams',
+		description:
+			'The read-only skill view finished the Mermaid diagrams of one skill file, on the Skills settings page or in the agent builder. Fires once for each file view that has a Mermaid block, when the last diagram ends, and again when the theme changes. A diagram that does not render shows its source as code with no error, so `failed` and `timed_out` are the only signal that valid diagrams stay as code.',
+		properties: z.object({
+			file: z
+				.enum(['skill', 'reference'])
+				.describe('`skill` is SKILL.md. `reference` is a reference file'),
+			rendered: z.number().describe('Diagrams that show as an image'),
+			invalid: z.number().describe('Blocks that Mermaid rejects. The view shows them as code'),
+			failed: z
+				.number()
+				.describe(
+					'Blocks where the render sandbox answered without a diagram, or sent one the view cannot show',
+				),
+			timed_out: z
+				.number()
+				.describe(
+					'Blocks where the render sandbox did not answer in 10 seconds, for example because a content security policy blocks its scripts',
+				),
+		}),
+	},
 	USER_DOWNLOADED_SKILL: {
 		name: 'User downloaded skill',
 		description:
@@ -514,6 +559,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			'A user connected a source, such as a GitHub repository, to sync skills into one scope. Fires once per connect request, also when it fails, with the reason code. Also fires as a failure when reading the link for the picker fails or finds the source already connected (`duplicate_result: blocked`). The skills it imported are reported by `User imported skills from source`.',
 		properties: z.object({
 			user_id: userId,
+			surface: z.enum(['assistant', 'mcp']).optional().describe('Absent for the Skills UI'),
 			provider: skillSourceProvider,
 			access: skillSourceAccess,
 			scope_type: skillSourceScopeType,
@@ -532,6 +578,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			'A user imported skills from a source. Fires once the import commits, also when it imported nothing, with the reason code. Counts and file extensions only, never names, paths or content.',
 		properties: z.object({
 			user_id: userId,
+			surface: z.enum(['assistant', 'mcp']).optional().describe('Absent for the Skills UI'),
 			provider: skillSourceProvider,
 			access: skillSourceAccess,
 			scope_type: skillSourceScopeType,
@@ -569,16 +616,20 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	SKILL_SOURCE_CHECK_FLAGGED_SKILL: {
 		name: 'Skill source check flagged skill',
 		description:
-			'The security check of Skill Sync gave a skill from a source a verdict other than pass. At import it fires when the picker reads the link, once for each flagged skill, so a second read of the same link fires again. Counts rule codes only, never names, files or content.',
+			'The security check of Skill Sync gave a skill from a source a verdict other than pass. At import it fires when the picker reads the link, once for each flagged skill, so a second read of the same link fires again. A check that finds a new skill in a connected source fires it once for each new content of that skill. Counts rule codes only, never names, files or content.',
 		properties: z.object({
 			user_id: z
 				.string()
 				.optional()
-				.describe('The user who read the link. Absent for a check that runs in the background'),
+				.describe(
+					'The user who read the link or clicked Check for updates. Absent for a check that runs in the background',
+				),
 			provider: skillSourceProvider,
 			stage: z
 				.enum(['import', 'update'])
-				.describe('`import` is the picker of a connect. `update` is a new version from the source'),
+				.describe(
+					'`import` is the picker of a connect, or a new skill that a check found in a connected source. `update` is a new version from the source',
+				),
 			verdict: z
 				.enum(['needs_review', 'blocked'])
 				.describe(
@@ -587,6 +638,12 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			rule_codes: z
 				.array(z.enum(SKILL_SCAN_RULES))
 				.describe('The rules that gave a `needs_review` or `blocked` finding, each one time'),
+			link_reason_codes: z
+				.array(z.enum(SKILL_LINK_REVIEW_REASONS))
+				.optional()
+				.describe(
+					'Why each `risky_url` finding needs review, each reason one time. Absent when no link needs review',
+				),
 		}),
 	},
 	SKILL_SOURCE_UPDATE_FOUND: {
@@ -616,6 +673,10 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			updates_found: z
 				.number()
 				.describe('Skills of the source with an update that waits for review, after the check'),
+			new_skills_found: z
+				.number()
+				.optional()
+				.describe('New skills that are not hidden from the count, after the check'),
 			throttled: z
 				.boolean()
 				.describe(
@@ -632,7 +693,9 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			user_id: userId,
 			provider: skillSourceProvider,
-			kind: z.literal('update').describe('An update to an existing synced skill'),
+			kind: z
+				.enum(['update', 'new'])
+				.describe('An update to a synced skill, or a new skill hidden from the count'),
 			action: z.enum(['accept', 'skip']),
 			verdict: z.enum(['pass', 'needs_review', 'blocked']),
 			bulk: z.boolean().describe('Whether the request selected more than one skill'),
@@ -643,12 +706,17 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	USER_DELETED_SKILL_SOURCE: {
 		name: 'User deleted skill source',
 		description:
-			'A user deleted a source and its synced skills. Fires after the transaction commits or fails. An agent draft or published pin blocks the delete with reason skills_in_use. Contains no skill, source, agent, or project names.',
+			'A user removed a source. The user deleted its synced skills, or kept them as normal skills that n8n can edit (`skills_kept`). Fires after the transaction commits or fails. An agent draft or published pin blocks a delete of the skills with reason skills_in_use. A request for a skill list that changed in the meantime fails with reason stale. Contains no skill, source, agent, or project names.',
 		properties: z.object({
 			user_id: userId,
 			provider: skillSourceProvider,
+			skills_kept: z
+				.boolean()
+				.describe(
+					'True when the user chose Stop syncing in the dialog, so the skills stay. This choice does not fire `User stopped skill sync`',
+				),
 			status: skillSourceStatus,
-			reason: z.enum(['skills_in_use', 'unexpected']).optional(),
+			reason: z.enum(['skills_in_use', 'stale', 'unexpected']).optional(),
 		}),
 	},
 	USER_UPDATED_SKILL_SOURCE_CREDENTIAL: {
@@ -687,7 +755,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	USER_DELETED_SKILL: {
 		name: 'User deleted skill',
 		description:
-			'A user deleted a skill from the settings page, n8n Assistant or an MCP client. Fires once the delete commits. Removing a skill from one agent keeps the skill and reports nothing here.',
+			'A user deleted a skill from the settings page, n8n Assistant or an MCP client. Fires once the delete commits, also when the user removes the source with its last skill. Removing a skill from one agent keeps the skill and reports nothing here.',
 		properties: z.object({
 			user_id: userId,
 			skill_id: skillId,

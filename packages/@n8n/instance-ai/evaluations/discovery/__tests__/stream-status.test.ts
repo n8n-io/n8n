@@ -1,20 +1,8 @@
-import type { ExecuteResumableStreamResult } from '../../../src/runtime/resumable-stream-executor';
 import { resolveStreamStatus } from '../stream-status';
+import type { StreamTurnResult } from '../stream-turn';
 
-function streamResult(
-	overrides: Partial<ExecuteResumableStreamResult> = {},
-): ExecuteResumableStreamResult {
-	return {
-		status: 'completed',
-		agentRunId: 'run-1',
-		workSummary: {
-			toolCalls: [],
-			totalToolCalls: 0,
-			totalToolErrors: 0,
-			askedClarifyingQuestion: false,
-		},
-		...overrides,
-	};
+function streamResult(overrides: Partial<StreamTurnResult> = {}): StreamTurnResult {
+	return { status: 'completed', ...overrides };
 }
 
 describe('resolveStreamStatus', () => {
@@ -58,12 +46,15 @@ describe('resolveStreamStatus', () => {
 		expect(resolveStreamStatus('timed-out', false)).toBe('timed-out');
 	});
 
-	it.each([streamResult({ status: 'suspended' }), streamResult({ finishReason: 'paused' })])(
-		'reports a suspended or paused run as suspended',
-		(result) => {
-			expect(resolveStreamStatus(result, false)).toBe('suspended');
-		},
-	);
+	it('reports a turn that ended at an unanswered tool call as waiting for the user', () => {
+		expect(resolveStreamStatus(streamResult({ status: 'suspended' }), false)).toBe(
+			'waiting-for-user',
+		);
+	});
+
+	it('reports a paused run as suspended', () => {
+		expect(resolveStreamStatus(streamResult({ finishReason: 'paused' }), false)).toBe('suspended');
+	});
 
 	it.each([streamResult({ status: 'cancelled' }), streamResult({ finishReason: 'cancelled' })])(
 		'never reads a cancelled run as a clean finish',

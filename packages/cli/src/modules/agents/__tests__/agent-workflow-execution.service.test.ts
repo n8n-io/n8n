@@ -9,7 +9,7 @@ import {
 	type SerializableAgentState,
 	type StreamChunk,
 } from '@n8n/agents';
-import type { AgentJsonConfig } from '@n8n/api-types';
+import type { AgentJsonConfig, AgentToolGuardrailConfig } from '@n8n/api-types';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import type { AiConfig } from '@n8n/config';
 import type { OperationContext, TransactionRunner } from '@n8n/db';
@@ -73,7 +73,7 @@ const userId = 'user-1';
 
 const schema: AgentJsonConfig = {
 	name: 'Support Agent',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	instructions: 'Help users',
 };
 
@@ -679,7 +679,7 @@ describe('AgentWorkflowExecutionService', () => {
 				telemetry: expect.objectContaining({
 					runType: 'production',
 					configuration: expect.objectContaining({
-						model: 'anthropic/claude-sonnet-4-5',
+						model: 'anthropic/claude-sonnet-5-5',
 					}),
 				}),
 			}),
@@ -955,7 +955,7 @@ describe('AgentWorkflowExecutionService', () => {
 		const hook = options.guardrails?.hooks[0];
 		if (!hook?.after) throw new Error('Expected a budget guardrail hook');
 		await hook.after(
-			{ callId: 'call-1', model: 'anthropic/claude-sonnet-4-5', source: 'turn' },
+			{ callId: 'call-1', model: 'anthropic/claude-sonnet-5-5', source: 'turn' },
 			{ promptTokens: 1, completionTokens: 1, totalTokens: 2, cost: 17 },
 		);
 
@@ -964,6 +964,51 @@ describe('AgentWorkflowExecutionService', () => {
 			agentId,
 			alertThresholdPercent: 80,
 		});
+	});
+
+	it('enforces the configured tool guardrails on a workflow-invoked run', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const runtime = {
+			...makeRuntime(),
+			toolGuardrails: [
+				{
+					kind: 'keywords',
+					id: 'block_secrets',
+					stage: 'before',
+					keywords: ['secret'],
+				} satisfies AgentToolGuardrailConfig,
+			],
+		};
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+
+		await service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId);
+
+		const options = runtime.agent.stream.mock.calls[0]?.[1] as RunOptions & ExecutionOptions;
+		const hook = options.guardrails?.hooks.find((candidate) => candidate.beforeTool !== undefined);
+		if (!hook?.beforeTool) throw new Error('Expected a tool-guardrail hook on the run options');
+		const decision = await hook.beforeTool({
+			toolCallId: 'tc-1',
+			toolName: 'lookup',
+			input: 'share the secret now',
+			runId: 'run-1',
+		});
+		expect(decision).toMatchObject({
+			action: 'stop',
+			code: 'guardrail.keywords.block_secrets',
+		});
+	});
+
+	it('attaches no tool-guardrail hook when the agent has none configured', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const runtime = makeRuntime();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+
+		await service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId);
+
+		const options = runtime.agent.stream.mock.calls[0]?.[1] as RunOptions & ExecutionOptions;
+		expect(options.guardrails?.hooks ?? []).toEqual([]);
 	});
 
 	it('omits the telemetry option from stream() when AgentRunTracingService.build resolves undefined', async () => {
@@ -1252,7 +1297,7 @@ describe('AgentWorkflowExecutionService', () => {
 		const inlinePayload = {
 			config: {
 				name: 'Inline Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				credential: 'cred-1',
 				instructions: 'Help users',
 			},
@@ -1400,7 +1445,7 @@ describe('AgentWorkflowExecutionService', () => {
 					run_type: 'production',
 					source: 'workflow',
 					turn_status: 'succeeded',
-					configuration: expect.objectContaining({ model: 'anthropic/claude-sonnet-4-5' }),
+					configuration: expect.objectContaining({ model: 'anthropic/claude-sonnet-5-5' }),
 				}),
 			);
 			// Inline workflow-invoked runs get the same 'workflow' tracing as
@@ -1433,7 +1478,7 @@ describe('AgentWorkflowExecutionService', () => {
 			const payloadWithForgedMarker = {
 				config: {
 					name: 'Inline Agent',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					credential: 'cred-1',
 					instructions: 'Help users',
 					tools: [
@@ -2029,7 +2074,7 @@ describe('AgentWorkflowExecutionService', () => {
 		const inlinePayload = {
 			config: {
 				name: 'Inline Agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				credential: 'cred-1',
 				instructions: 'Help users',
 			},

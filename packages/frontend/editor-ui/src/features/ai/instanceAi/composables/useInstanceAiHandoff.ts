@@ -11,6 +11,7 @@ import {
 	type InstanceAiThreadOrigin,
 	type InstanceAiThreadSource,
 	type InstanceAiResourceAttachment,
+	type InstanceAiThreadSubject,
 	type InstanceAiWorkflowAttachment,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -413,6 +414,7 @@ function isAssistantAgentLaunch(): boolean {
 async function createLaunchedThread(
 	projectId: string,
 	launch: InstanceAiThreadLaunch,
+	subject?: InstanceAiThreadSubject,
 ): Promise<string> {
 	const threadId = uuidv4();
 	if (isAssistantAgentLaunch()) {
@@ -423,6 +425,7 @@ async function createLaunchedThread(
 			origin: launch.origin,
 			sourceContext: launch.sourceContext,
 			...(typeof templateId === 'string' ? { templateId } : {}),
+			...(subject ? { subject } : {}),
 		});
 	} else {
 		await useInstanceAiStore().syncThread(threadId, projectId, launch);
@@ -578,6 +581,22 @@ export async function provisionSubjectThread(
 	if (subject.type === 'agent') stashPendingAgentAttachment(threadId, subject);
 
 	return threadId;
+}
+
+/**
+ * Provision a thread that starts on `subject`, on the runtime of the user. An
+ * Assistant agent thread keeps the subject in its launch marker, and its first
+ * message binds it on the server. A current Assistant thread binds it now.
+ * Throws if the thread is not created.
+ */
+export async function provisionLaunchedSubjectThread(
+	subject: InstanceAiThreadSubject,
+	launch: InstanceAiThreadLaunch,
+): Promise<string> {
+	if (isAssistantAgentLaunch()) {
+		return await createLaunchedThread(subject.projectId, launch, subject);
+	}
+	return await provisionSubjectThread(subject, launch);
 }
 
 export async function provisionContextOnlyThread(

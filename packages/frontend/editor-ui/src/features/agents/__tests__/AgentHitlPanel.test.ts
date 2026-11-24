@@ -76,7 +76,10 @@ it('removes a configuration and clears its tool and MCP references', async () =>
 });
 it('keeps configuration actions disabled under the edit lock', async () => {
 	const wrapper = render(true);
-	expect(wrapper.get('[data-testid="agent-hitl-add"]').attributes('disabled')).toBeDefined();
+	const add = wrapper.get('[data-testid="agent-hitl-add"]');
+	expect(add.attributes('aria-disabled')).toBe('true');
+	await add.trigger('click');
+	expect(wrapper.findComponent(AgentHitlConfigurationModal).exists()).toBe(false);
 	expect(
 		wrapper.get('[data-testid="agent-hitl-configuration"]').attributes('disabled'),
 	).toBeDefined();

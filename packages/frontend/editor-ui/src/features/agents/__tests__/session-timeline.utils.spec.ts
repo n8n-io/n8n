@@ -14,6 +14,7 @@ import {
 	timelineItemErrorMessage,
 	executionErrorLabel,
 	executionErrorMessage,
+	threadTokenBreakdownOf,
 } from '../session-timeline.utils';
 import type { TimelineItem } from '../session-timeline.types';
 
@@ -215,6 +216,120 @@ function toolCallEvent(overrides: Record<string, unknown> = {}): AgentExecutionT
 		...overrides,
 	};
 }
+
+describe('turn usage', () => {
+	const usage = {
+		model: 'claude-sonnet-4-5',
+		promptTokens: 1000,
+		cacheReadTokens: 750,
+		cacheWriteTokens: 200,
+		completionTokens: 50,
+		totalTokens: 1050,
+		cost: 0.01,
+		stoppedAt: '2026-04-24T10:00:09Z',
+	};
+
+	it('puts the usage of a turn on its last agent message only', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline(
+				[
+					{ type: 'text', timestamp: 100, content: 'Working on it' },
+					toolCallEvent({ endTime: 200, success: true }),
+					{ type: 'text', timestamp: 300, content: 'Done' },
+				],
+				{ userMessage: 'Build it', ...usage },
+			),
+		]);
+
+		const withUsage = items.filter((item) => item.turnUsage);
+		expect(withUsage).toHaveLength(1);
+		expect(withUsage[0].content).toBe('Done');
+		expect(withUsage[0].turnUsage).toEqual({
+			inputTokens: 1000,
+			cacheReadTokens: 750,
+			cacheWriteTokens: 200,
+			outputTokens: 50,
+			totalTokens: 1050,
+			cost: 0.01,
+			startedAt: new Date('2026-04-24T10:00:00Z').getTime(),
+			stoppedAt: new Date('2026-04-24T10:00:09Z').getTime(),
+		});
+	});
+
+	it('keeps each turn on its own message', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([{ type: 'text', timestamp: 100, content: 'First' }], {
+				id: 'e-1',
+				...usage,
+			}),
+			withTimeline([{ type: 'text', timestamp: 500, content: 'Second' }], {
+				id: 'e-2',
+				...usage,
+				totalTokens: 20,
+			}),
+		]);
+
+		expect(items.map((item) => item.turnUsage?.totalTokens)).toEqual([1050, 20]);
+	});
+
+	it('adds no usage to a turn without tokens or without an agent message', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([{ type: 'text', timestamp: 100, content: 'No usage' }], { id: 'e-1' }),
+			withTimeline([toolCallEvent({ endTime: 200, success: true })], { id: 'e-2', ...usage }),
+		]);
+
+		expect(items.some((item) => item.turnUsage)).toBe(false);
+	});
+
+	it('sums the turns of a thread, also turns without an agent message', () => {
+		const breakdown = threadTokenBreakdownOf([
+			withTimeline([{ type: 'text', timestamp: 100, content: 'First' }], { id: 'e-1', ...usage }),
+			withTimeline([toolCallEvent({ endTime: 200, success: true })], { id: 'e-2', ...usage }),
+			withTimeline([{ type: 'text', timestamp: 300, content: 'No usage' }], { id: 'e-3' }),
+		]);
+
+		expect(breakdown).toEqual({
+			inputTokens: 2000,
+			cacheReadTokens: 1500,
+			cacheWriteTokens: 400,
+			outputTokens: 100,
+			totalTokens: 2100,
+			turns: 2,
+		});
+	});
+
+	it('has no cache counts when no turn reported cache data', () => {
+		const breakdown = threadTokenBreakdownOf([
+			withTimeline([], {
+				...usage,
+				cacheReadTokens: null,
+				cacheWriteTokens: null,
+			}),
+		]);
+
+		expect(breakdown.cacheReadTokens).toBeNull();
+		expect(breakdown.cacheWriteTokens).toBeNull();
+	});
+
+	it('has no cache counts when one turn reported no cache data', () => {
+		const breakdown = threadTokenBreakdownOf([
+			withTimeline([], { id: 'e-1', ...usage }),
+			withTimeline([], {
+				id: 'e-2',
+				...usage,
+				cacheReadTokens: null,
+				cacheWriteTokens: null,
+			}),
+		]);
+
+		expect(breakdown).toMatchObject({
+			inputTokens: 2000,
+			cacheReadTokens: null,
+			cacheWriteTokens: null,
+			turns: 2,
+		});
+	});
+});
 
 describe('timeline identity', () => {
 	it('distinguishes events with the same kind and timestamp across refreshes', () => {
@@ -437,6 +552,46 @@ describe('flattenExecutionsToTimelineItems', () => {
 		]);
 
 		expect(items[0]).toMatchObject({ kind: 'skill', skillName: 'Triage' });
+	});
+
+	it('maps a tool catalog call_tool call as the tool it runs', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				toolCallEvent({
+					name: 'call_tool',
+					input: { tool: 'list_workflows', arguments: { limit: 5 } },
+					endTime: 200,
+					success: true,
+				}),
+			]),
+		]);
+
+		expect(items[0]).toMatchObject({
+			kind: 'tool',
+			toolName: 'list_workflows',
+			toolInput: { limit: 5 },
+		});
+	});
+
+	it('maps a suspended tool catalog call_tool call as the tool it runs', () => {
+		const catalogCall = {
+			name: 'call_tool',
+			input: { tool: 'delete_workflow', arguments: { id: 'wf-1' } },
+		};
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				toolCallEvent(catalogCall),
+				suspensionEvent({ toolName: 'call_tool', input: catalogCall.input }),
+				hitlResponseEvent({ response: { approved: true } }),
+			]),
+		]);
+
+		expect(items.map(({ kind, toolName }) => ({ kind, toolName }))).toEqual([
+			{ kind: 'tool', toolName: 'delete_workflow' },
+			{ kind: 'suspension', toolName: 'delete_workflow' },
+			{ kind: 'hitl-response', toolName: 'delete_workflow' },
+		]);
+		expect(items[1].hitlRequest).toEqual({ id: 'wf-1' });
 	});
 
 	it.each([

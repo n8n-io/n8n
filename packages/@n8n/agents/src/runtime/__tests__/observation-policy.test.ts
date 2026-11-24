@@ -25,6 +25,8 @@ describe('resolveObservationThresholds', () => {
 			midRunHard: 30_000,
 			observerBatch: 120_000,
 			reflect: 40_000,
+			reflectTo: 24_000,
+			workingSet: 2_000,
 		});
 	});
 
@@ -40,8 +42,35 @@ describe('resolveObservationThresholds', () => {
 			midRunSoft: 120_000,
 			midRunHard: 180_000,
 			observerBatch: 120_000,
-			reflect: 120_000,
+			reflect: 30_000,
+			reflectTo: 18_000,
+			workingSet: 2_000,
 		});
+	});
+
+	it('keeps the rewrite target at or below a lower reflect share', () => {
+		expect(
+			resolveObservationThresholds(
+				{ windowShares: { reflectAt: 0.05 }, reflect: noopReflect as never },
+				200_000,
+			)?.reflectTo,
+		).toBe(10_000);
+	});
+
+	it('starts the Reflector at 15% of the window, with no fixed ceiling', () => {
+		expect(
+			resolveObservationThresholds({ windowShares: {}, reflect: noopReflect as never }, 1_000_000)
+				?.reflect,
+		).toBe(150_000);
+	});
+
+	it('uses a set reflect share', () => {
+		expect(
+			resolveObservationThresholds(
+				{ windowShares: { reflectAt: 0.6 }, reflect: noopReflect as never },
+				200_000,
+			)?.reflect,
+		).toBe(120_000);
 	});
 
 	it('uses a set reflector threshold over the reflect share', () => {
@@ -92,7 +121,9 @@ describe('resolveObservationThresholds', () => {
 				midRunSoft: 120_000,
 				midRunHard: 180_000,
 				observerBatch: 120_000,
-				reflect: 120_000,
+				reflect: 30_000,
+				reflectTo: 18_000,
+				workingSet: 2_000,
 			});
 		});
 

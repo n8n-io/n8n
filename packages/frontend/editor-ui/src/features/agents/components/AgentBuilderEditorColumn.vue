@@ -4,6 +4,7 @@ import { N8nCard, N8nIcon, N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentConfigValidationIssue, AgentFileDto } from '@n8n/api-types';
 
+import { useTestButtonPrimaryColorExperiment } from '@/experiments/testButtonPrimaryColor/useTestButtonPrimaryColorExperiment';
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import type { SetupTask } from './AgentSetupTasks/agentSetupTasks.registry';
@@ -20,7 +21,6 @@ import { useTypeAvailability } from '@n8n/frontend-module-type-availability-poli
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
 import AgentHitlPanel from './AgentHitlPanel.vue';
-import AgentBudgetPanel from './AgentBudgetPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
 import AgentTriggersSection from './AgentTriggersSection.vue';
 import { provideAgentPersonalisation } from '../channels/agentPersonalisation';
@@ -31,6 +31,7 @@ import AgentMemoryEntriesPanel from './AgentMemoryEntriesPanel.vue';
 import AgentVectorStoresPanel from './AgentVectorStoresPanel.vue';
 import AgentMcpPanel from './AgentMcpPanel.vue';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
+import AgentGuardrailsSection from './AgentGuardrailsSection.vue';
 import AgentSubAgentsPanel from './AgentSubAgentsPanel.vue';
 import AgentBuilderTabPanel from './AgentBuilderTabPanel.vue';
 import AgentPanel from './AgentPanel.vue';
@@ -132,6 +133,14 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const agentTelemetry = useAgentTelemetry();
+const testButtonPrimaryColorExperiment = useTestButtonPrimaryColorExperiment();
+
+// AGENT-1437 scopes the treatment to the standalone agent page. The same
+// component also renders inside the Assistant artifact builder, which must
+// keep the existing outlined button.
+const showPrimaryColorTestButton = computed(
+	() => !props.artifactMode && testButtonPrimaryColorExperiment.isEnabled.value,
+);
 
 const agentInfoPanel = ref<InstanceType<typeof AgentInfoPanel>>();
 const agentTriggersSection = ref<InstanceType<typeof AgentTriggersSection>>();
@@ -202,6 +211,7 @@ defineExpose({ onSetupTaskAction });
 						:is-runnable="props.agent?.isRunnable === true"
 						:is-preview-open="props.isPreviewOpen"
 						:validation-issues="props.configValidationIssues ?? []"
+						:variant="showPrimaryColorTestButton ? 'solid' : 'outline'"
 						test-id="agent-header-preview-btn"
 						@open-preview="emit('open-preview', 'primary')"
 						@close-preview="emit('close-preview')"
@@ -310,6 +320,23 @@ defineExpose({ onSetupTaskAction });
 							@add-tool="emit('add-tool', $event)"
 							@update:config="emit('update:config', $event)"
 							@remove-tool="emit('remove-tool', $event)"
+						/>
+					</AgentPanel>
+
+					<AgentPanel
+						:header="i18n.baseText('agents.builder.guardrails.title')"
+						:description="i18n.baseText('agents.builder.guardrails.description')"
+						data-testid="agent-guardrails-panel"
+					>
+						<AgentGuardrailsSection
+							:config="localConfig"
+							:tools="localConfig?.tools ?? []"
+							:project-id="projectId"
+							:agent-id="agentId"
+							:disabled="childrenDisabled"
+							:validation-issues="configValidationIssues ?? []"
+							@update:config="emit('update:config', $event)"
+							@update:budget-config="emit('update:budget-config', $event)"
 						/>
 					</AgentPanel>
 
@@ -422,13 +449,6 @@ defineExpose({ onSetupTaskAction });
 							:disabled="childrenDisabled"
 							@agent-changed="emit('agent-changed')"
 							@update:config="emit('update:config', $event)"
-						/>
-						<AgentBudgetPanel
-							:config="localConfig"
-							:project-id="projectId"
-							:agent-id="agentId"
-							:disabled="childrenDisabled"
-							@update:config="emit('update:budget-config', $event)"
 						/>
 						<AgentSubAgentsPanel
 							:config="localConfig"

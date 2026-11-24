@@ -93,7 +93,7 @@ describe('useNodeTypesStore', () => {
 	describe('visibleNodeTypes module gating', () => {
 		const DATA_TABLE = 'n8n-nodes-base.dataTable';
 		const MESSAGE_AN_AGENT = 'n8n-nodes-base.messageAnAgent';
-		const DECISION_NODES = [
+		const decisionNodes = [
 			'n8n-nodes-base.agentDecisionTrigger',
 			'n8n-nodes-base.agentDecisionResponse',
 		];
@@ -107,14 +107,11 @@ describe('useNodeTypesStore', () => {
 				makeNodeType({ name: 'n8n-nodes-test.plain', outputs: ['main'] }),
 				makeNodeType({ name: DATA_TABLE, outputs: ['main'] }),
 				makeNodeType({ name: MESSAGE_AN_AGENT, outputs: ['main'] }),
-				...DECISION_NODES.map((name) => makeNodeType({ name, outputs: ['main'] })),
+				...decisionNodes.map((name) => makeNodeType({ name, outputs: ['main'] })),
 			]);
 
 			activeModules = ['data-table', 'agents'];
 			const settingsStore = useSettingsStore();
-			vi.spyOn(settingsStore, 'isAgentModuleActive').mockImplementation((name) =>
-				activeModules.includes(name),
-			);
 			vi.spyOn(settingsStore, 'isModuleActive').mockImplementation((name) =>
 				activeModules.includes(name),
 			);
@@ -147,14 +144,25 @@ describe('useNodeTypesStore', () => {
 			expect(store.isNodeTypeModuleDisabled(MESSAGE_AN_AGENT)).toBe(true);
 		});
 
-		it.each([false, true])('shows decision nodes when Human review is enabled=%s', (enabled) => {
-			if (enabled) activeModules.push('human-review');
-			for (const name of DECISION_NODES) expect(visibleNames().includes(name)).toBe(enabled);
-		});
+		it('only offers the approval nodes when Agents and Human Review are enabled', () => {
+			const settingsStore = useSettingsStore();
+			const gate = vi
+				.spyOn(settingsStore, 'isAgentModuleActive')
+				.mockImplementation(
+					(feature) =>
+						feature === 'human-review' &&
+						activeModules.includes('agents') &&
+						activeModules.includes(feature),
+				);
 
-		it('keeps decision nodes hidden when the Agents module is disabled', () => {
+			for (const name of decisionNodes) expect(visibleNames()).not.toContain(name);
+
+			activeModules = ['agents', 'human-review'];
+			for (const name of decisionNodes) expect(store.isNodeTypeModuleDisabled(name)).toBe(false);
+			expect(gate).toHaveBeenCalledWith('human-review');
+
 			activeModules = ['human-review'];
-			for (const name of DECISION_NODES) expect(visibleNames()).not.toContain(name);
+			for (const name of decisionNodes) expect(store.isNodeTypeModuleDisabled(name)).toBe(true);
 		});
 
 		it('should never treat a node type without a module as disabled', () => {

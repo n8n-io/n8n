@@ -17,7 +17,7 @@ import type {
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AiConfig } from '@n8n/config';
-import { UserRepository, type User } from '@n8n/db';
+import { AgentExecutionStatisticsRepository, UserRepository, type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { OperationalError, UserError } from '@n8n/errors';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
@@ -71,7 +71,7 @@ import { AgentsSettingsService } from './agents-settings.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
 import { buildAgentConfigurationTelemetry } from './agent-telemetry';
 import { AgentTurnExecutionService, type AgentTurnRequest } from './agent-turn-execution.service';
-import { withBudgetGuardrail } from './budget-guardrail';
+import { budgetChargeOptions, withBudgetGuardrail } from './budget-guardrail';
 import { withToolGuardrails } from './tool-guardrails';
 import { AgentExecutionRecordingError } from './agent-execution-recording.error';
 import type { AgentChatBridge } from './integrations/agent-chat-bridge';
@@ -293,6 +293,8 @@ export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecut
 	toolGuardrails?: AgentToolGuardrailConfig[];
 	/** Model instance for the model-based guardrail kinds. Absent when none is configured. */
 	guardrailModel?: LanguageModel;
+	/** Catalog id of `guardrailModel`. Absent when none is configured. */
+	guardrailModelId?: string;
 	/** See `AgentRuntime.mcpServerAttributions`. */
 	mcpServerAttributions: Map<string, string>;
 	userId?: string;
@@ -411,7 +413,21 @@ export class AgentExecutionOrchestratorService {
 		private readonly settingsService: AgentsSettingsService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
 		private readonly userRepository: UserRepository,
+		private readonly agentExecutionStatisticsRepository: AgentExecutionStatisticsRepository,
 	) {}
+
+	private async beforeProductionExecution(agentId: string): Promise<void> {
+		await this.externalHooks.run('agent.preExecute', [agentId]);
+		await this.recordProductionExecution();
+	}
+
+	private async recordProductionExecution(): Promise<void> {
+		try {
+			await this.agentExecutionStatisticsRepository.recordAgentExecution();
+		} catch (error) {
+			this.logger.error('Failed to record agent execution statistic', { error });
+		}
+	}
 
 	async getSessionMode(threadId: string): Promise<AgentSessionMode> {
 		return await this.agentExecutionService.getSessionMode(threadId);
@@ -908,7 +924,7 @@ export class AgentExecutionOrchestratorService {
 			sandboxPrincipalHash,
 			sessionMode = 'new',
 		} = config;
-		await this.externalHooks.run('agent.preExecute', [agentId]);
+		await this.beforeProductionExecution(agentId);
 
 		// Published integration runtimes have no n8n user but are isolated by
 		// their external caller's hashed workspace principal.
@@ -971,6 +987,7 @@ export class AgentExecutionOrchestratorService {
 					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 					toolGuardrails: runtime.toolGuardrails,
 					guardrailModel: runtime.guardrailModel,
+					guardrailModelId: runtime.guardrailModelId,
 					agentId,
 					message,
 					modelMessage,
@@ -1015,7 +1032,7 @@ export class AgentExecutionOrchestratorService {
 			userId: user.id,
 			sessionMode,
 		});
-		await this.externalHooks.run('agent.preExecute', [agentId]);
+		await this.beforeProductionExecution(agentId);
 		yield* this.withRuntimeLease(
 			async () =>
 				await this.getRuntimeOrRecordFailure(
@@ -1058,6 +1075,7 @@ export class AgentExecutionOrchestratorService {
 					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 					toolGuardrails: runtime.toolGuardrails,
 					guardrailModel: runtime.guardrailModel,
+					guardrailModelId: runtime.guardrailModelId,
 					agentId,
 					projectId,
 					message,
@@ -1088,7 +1106,7 @@ export class AgentExecutionOrchestratorService {
 		config: ExecuteForTaskPublishedConfig,
 	): AsyncGenerator<AgentExecutionStreamChunk> {
 		const { agentId, projectId, message, memory, taskId, taskVersionId } = config;
-		await this.externalHooks.run('agent.preExecute', [agentId]);
+		await this.beforeProductionExecution(agentId);
 
 		// Cron-fired runs have no n8n user and reuse the scheduled task's scope.
 		const sandboxPrincipalHash = hashAgentSandboxPrincipal({ type: 'scheduled-task', taskId });
@@ -1122,6 +1140,7 @@ export class AgentExecutionOrchestratorService {
 					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 					toolGuardrails: runtime.toolGuardrails,
 					guardrailModel: runtime.guardrailModel,
+					guardrailModelId: runtime.guardrailModelId,
 					agentId,
 					message,
 					memory,
@@ -1184,6 +1203,7 @@ export class AgentExecutionOrchestratorService {
 					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 					toolGuardrails: runtime.toolGuardrails,
 					guardrailModel: runtime.guardrailModel,
+					guardrailModelId: runtime.guardrailModelId,
 					agentId,
 					userId: user.id,
 					message,
@@ -1250,19 +1270,31 @@ export class AgentExecutionOrchestratorService {
 		const delivery = setup
 			? undefined
 			: await this.getWakeDelivery(agentId, integrationType, messageContext);
+		let usageWrite: Promise<void> | undefined;
+		const wakeConfig: ExecuteForWakeConfig = {
+			...config,
+			onRuntimeStarted: () => {
+				config.onRuntimeStarted?.();
+				if (!isDraft) usageWrite = this.recordProductionExecution();
+			},
+		};
 		const stream = this.withRuntimeLease(
 			async () => await this.getWakeRuntime(config, setup, access, integrationType),
 			(runtime) =>
 				this.streamWakeResponse(
-					this.streamWakeTurn(config, runtime, setup, access, integrationType, messageContext),
+					this.streamWakeTurn(wakeConfig, runtime, setup, access, integrationType, messageContext),
 					abortSignal,
 					delivery,
 					messageContext?.interactingUserId,
 					memory.threadId,
 				),
 		);
-		for await (const _chunk of stream) {
-			// Complete execution and reply delivery within the runtime lease.
+		try {
+			for await (const _chunk of stream) {
+				// Complete execution and reply delivery within the runtime lease.
+			}
+		} finally {
+			await usageWrite;
 		}
 	}
 
@@ -1549,6 +1581,15 @@ export class AgentExecutionOrchestratorService {
 			runtime,
 		);
 		const messageContext = await this.resolveResumeMessageContext(config, memoryScope);
+		const budgetInput = {
+			budget: runtime.budget,
+			sessionId: memoryScope.threadId,
+			agentId: config.agentId,
+			...(runtime.modelCredentialGatewayManaged ? { modelCredentialGatewayManaged: true } : {}),
+			...(config.chatSurface === 'preview' && config.onBudgetNotice
+				? { onNotice: config.onBudgetNotice }
+				: {}),
+		};
 		const taskThread = isTaskRunMemoryResourceId(memoryScope.resourceId)
 			? await this.agentExecutionService.findThreadById(memoryScope.threadId)
 			: undefined;
@@ -1558,22 +1599,14 @@ export class AgentExecutionOrchestratorService {
 			options: withToolGuardrails(
 				withBudgetGuardrail(
 					this.createResumeOptions(config, memoryScope, messageContext, executionSource, tracing),
-					{
-						budget: runtime.budget,
-						sessionId: memoryScope.threadId,
-						agentId: config.agentId,
-						...(runtime.modelCredentialGatewayManaged
-							? { modelCredentialGatewayManaged: true }
-							: {}),
-						...(config.chatSurface === 'preview' && config.onBudgetNotice
-							? { onNotice: config.onBudgetNotice }
-							: {}),
-					},
+					budgetInput,
 				),
 				{
 					toolGuardrails: runtime.toolGuardrails,
 					toolRegistry: runtime.toolRegistry,
 					guardrailModel: runtime.guardrailModel,
+					guardrailModelId: runtime.guardrailModelId,
+					budget: budgetChargeOptions(budgetInput),
 				},
 			),
 			recording: {
@@ -1873,6 +1906,7 @@ export class AgentExecutionOrchestratorService {
 			modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 			toolGuardrails: runtime.toolGuardrails,
 			guardrailModel: runtime.guardrailModel,
+			guardrailModelId: runtime.guardrailModelId,
 			agentId,
 			userId: user.id,
 			requester: reviewRequesterForUser(
@@ -1939,6 +1973,15 @@ export class AgentExecutionOrchestratorService {
 			config.messageContext === undefined
 				? await this.integrationMessageContextService.getLatest(threadId)
 				: config.messageContext;
+		const budgetInput = {
+			budget: config.budget,
+			sessionId: threadId,
+			agentId,
+			...(config.modelCredentialGatewayManaged ? { modelCredentialGatewayManaged: true } : {}),
+			...(config.chatSurface === 'preview' && config.onBudgetNotice
+				? { onNotice: config.onBudgetNotice }
+				: {}),
+		};
 		const hostMetadata = {
 			...encodeAgentSandboxHostMetadata({
 				projectId,
@@ -1989,22 +2032,14 @@ export class AgentExecutionOrchestratorService {
 						...(tracing ? { telemetry: tracing } : {}),
 						...(abortSignal ? { abortSignal } : {}),
 					},
-					{
-						budget: config.budget,
-						sessionId: threadId,
-						agentId,
-						...(config.modelCredentialGatewayManaged
-							? { modelCredentialGatewayManaged: true }
-							: {}),
-						...(config.chatSurface === 'preview' && config.onBudgetNotice
-							? { onNotice: config.onBudgetNotice }
-							: {}),
-					},
+					budgetInput,
 				),
 				{
 					toolGuardrails: config.toolGuardrails,
 					toolRegistry: config.toolRegistry,
 					guardrailModel: config.guardrailModel,
+					guardrailModelId: config.guardrailModelId,
+					budget: budgetChargeOptions(budgetInput),
 				},
 			),
 			recording: this.createChatRecording(config),
@@ -2109,6 +2144,7 @@ export class AgentExecutionOrchestratorService {
 			modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 			toolGuardrails: runtime.toolGuardrails,
 			guardrailModel: runtime.guardrailModel,
+			guardrailModelId: runtime.guardrailModelId,
 			agentId,
 			...(access.ownerId ? { userId: access.ownerId } : {}),
 			message,

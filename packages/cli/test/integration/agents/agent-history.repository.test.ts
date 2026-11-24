@@ -3,14 +3,14 @@ import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomUUID } from 'node:crypto';
 
+import { createAgent } from '@test-integration/db/agents';
+
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
-import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
 import { createUser } from '../shared/db/users';
 
 describe('AgentHistoryRepository', () => {
 	let history: AgentHistoryRepository;
-	let agents: AgentRepository;
 	let saver: User;
 	let publisher: User;
 	let agentId: string;
@@ -19,13 +19,15 @@ describe('AgentHistoryRepository', () => {
 		await testModules.loadModules(['skills', 'agents']);
 		await testDb.init();
 		history = Container.get(AgentHistoryRepository);
-		agents = Container.get(AgentRepository);
 		saver = await createUser({ firstName: 'Draft', lastName: 'Author' });
 		publisher = await createUser({ firstName: 'Release', lastName: 'Publisher' });
 		const project = await createTeamProject();
-		const agent = await agents.save(
-			agents.create({ name: 'Support', projectId: project.id, integrations: [], tools: {} }),
-		);
+		const agent = await createAgent({
+			name: 'Support',
+			projectId: project.id,
+			integrations: [],
+			tools: {},
+		});
 		agentId = agent.id;
 	});
 
