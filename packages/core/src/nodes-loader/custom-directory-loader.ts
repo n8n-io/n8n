@@ -1,11 +1,87 @@
-import glob from 'fast-glob';
 import { jsonParse } from 'n8n-workflow';
-import { access, readFile } from 'node:fs/promises';
+import { access, readFile, realpath } from 'node:fs/promises';
 import path from 'node:path';
 
 import { CUSTOM_NODES_PACKAGE_NAME } from './constants';
 import { DirectoryLoader } from './directory-loader';
+import { isDirectoryEntry, isFileEntry, isFilePath, readDirectoryEntries } from './fs-utils';
 import type { n8n } from './types';
+
+async function collectCustomFiles(
+	rootDir: string,
+): Promise<{ nodes: string[]; credentials: string[] }> {
+	const nodes: string[] = [];
+	const credentials: string[] = [];
+	const visitedRealDirs = new Set<string>([rootDir]);
+
+	const walk = async (dir: string, realDir: string): Promise<void> => {
+		const entries = await readDirectoryEntries(dir);
+
+		for (const entry of entries) {
+			if (entry.name.startsWith('.')) continue;
+
+			const fullPath = path.join(dir, entry.name);
+
+			if (await isDirectoryEntry(dir, entry)) {
+				if (entry.name === 'node_modules') continue;
+
+				let nextRealDir = path.join(realDir, entry.name);
+				if (entry.isSymbolicLink()) {
+					try {
+						nextRealDir = await realpath(fullPath);
+					} catch {
+						continue;
+					}
+				}
+				if (visitedRealDirs.has(nextRealDir)) continue;
+				visitedRealDirs.add(nextRealDir);
+
+				await walk(fullPath, nextRealDir);
+			} else if (await isFileEntry(dir, entry)) {
+				if (entry.name.endsWith('.node.js')) {
+					nodes.push(fullPath);
+				} else if (entry.name.endsWith('.credentials.js')) {
+					credentials.push(fullPath);
+				}
+			}
+		}
+	};
+
+	await walk(rootDir, rootDir);
+	return { nodes, credentials };
+}
+
+async function findCustomPackageManifests(rootDir: string): Promise<string[]> {
+	const nodeModulesDir = path.join(rootDir, 'node_modules');
+	const entries = await readDirectoryEntries(nodeModulesDir);
+	const manifests: string[] = [];
+
+	for (const entry of entries) {
+		if (entry.name.startsWith('.')) continue;
+		if (!(await isDirectoryEntry(nodeModulesDir, entry))) continue;
+
+		const entryDir = path.join(nodeModulesDir, entry.name);
+		const directManifest = path.join(entryDir, 'package.json');
+		if (await isFilePath(directManifest)) {
+			manifests.push(directManifest);
+		}
+
+		if (entry.name.startsWith('@')) {
+			const scopedEntries = await readDirectoryEntries(entryDir);
+			for (const scopedEntry of scopedEntries) {
+				if (scopedEntry.name.startsWith('.')) continue;
+				if (!(await isDirectoryEntry(entryDir, scopedEntry))) continue;
+
+				const scopedManifest = path.join(entryDir, scopedEntry.name, 'package.json');
+				if (await isFilePath(scopedManifest)) {
+					manifests.push(scopedManifest);
+				}
+			}
+		}
+	}
+
+	return manifests;
+}
 
 /**
  * Loader for source files of nodes and credentials located in a custom dir,
@@ -22,23 +98,11 @@ export class CustomDirectoryLoader extends DirectoryLoader {
 	}
 
 	override async loadAll() {
-		const nodes = await glob('**/*.node.js', {
-			cwd: this.directory,
-			absolute: true,
-			ignore: ['**/node_modules/**'],
-		});
-
-		const credentials = await glob('**/*.credentials.js', {
-			cwd: this.directory,
-			absolute: true,
-			ignore: ['**/node_modules/**'],
-		});
+		const rootDir = path.resolve(this.directory);
+		const { nodes, credentials } = await collectCustomFiles(rootDir);
 
 		// Dev packages are linked here. Load their manifest entries, not their dependencies.
-		const packageFiles = await glob(
-			['node_modules/*/package.json', 'node_modules/@*/*/package.json'],
-			{ cwd: this.directory, absolute: true },
-		);
+		const packageFiles = await findCustomPackageManifests(rootDir);
 		for (const packageFile of packageFiles) {
 			try {
 				const { n8n } = jsonParse<n8n.PackageJson>(await readFile(packageFile, 'utf8'));

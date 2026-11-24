@@ -83,7 +83,6 @@
     "callsites": "catalog:",
     "chardet": "2.0.0",
     "cron": "catalog:",
-    "fast-glob": "catalog:",
     "file-type": "catalog:",
     "form-data": "catalog:",
     "jsonwebtoken": "catalog:",

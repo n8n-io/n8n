@@ -3,21 +3,21 @@ import { mock } from 'vitest-mock-extended';
 import { Logger } from '@n8n/backend-common';
 import { N8N_NODES_API_VERSION, parseNodesApiLevel } from 'n8n-workflow';
 import * as fs from 'node:fs';
-import type * as fsPromises from 'node:fs/promises';
+import * as fsPromises from 'node:fs/promises';
 
 vi.mock('node:fs', () => mock<typeof fs>());
 vi.mock('node:fs/promises', () => mock<typeof fsPromises>());
 
-const mockFs = mock(fs);
+const createDirDirent = (name: string): fs.Dirent =>
+	({
+		name,
+		isDirectory: () => true,
+		isFile: () => false,
+		isSymbolicLink: () => false,
+	}) as fs.Dirent;
 
-vi.mock('fast-glob', () => ({
-	default: async (pattern: string) => {
-		if (pattern === '@*/n8n-nodes-*') {
-			return ['@mendable/n8n-nodes-firecrawl', '@elevenlabs/n8n-nodes-elevenlabs'];
-		}
-		return [];
-	},
-}));
+const mockFs = mock(fs);
+const mockFsPromises = mock(fsPromises);
 
 import { mockInstance } from '@test/utils';
 
@@ -59,6 +59,18 @@ describe('scanDirectoryForPackages', () => {
 		logger = mockInstance(Logger);
 		// Symlink resolution at construction time resolves to the same path.
 		mockFs.realpathSync.mockImplementation((p) => p as string);
+		mockFsPromises.readdir.mockImplementation((async (dir: fs.PathLike) => {
+			switch (String(dir)) {
+				case nodeModulesDir:
+					return [createDirDirent('@mendable'), createDirDirent('@elevenlabs')];
+				case `${nodeModulesDir}/@mendable`:
+					return [createDirDirent('n8n-nodes-firecrawl')];
+				case `${nodeModulesDir}/@elevenlabs`:
+					return [createDirDirent('n8n-nodes-elevenlabs')];
+				default:
+					return [];
+			}
+		}) as unknown as typeof fsPromises.readdir);
 	});
 
 	it('skips a directory whose package.json is missing and returns the valid loaders', async () => {

@@ -1,10 +1,47 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import glob from 'fast-glob';
 import { checkNodesApiVersion, N8N_NODES_API_VERSION, type NodeLoader } from 'n8n-workflow';
 import path from 'path';
 
+import { isDirectoryEntry, readDirectoryEntries } from './fs-utils';
 import { LazyPackageDirectoryLoader } from './lazy-package-directory-loader';
+
+// Excludes leftover `<package>.backup-<timestamp>` directories from a crashed
+// install (see `backupPackageDirectory` in `CommunityPackagesService`), which
+// would otherwise collide with the real package and crash boot.
+const BACKUP_DIRECTORY_PATTERN = /\.backup-[0-9]+$/;
+
+async function findInstalledPackagePaths(nodeModulesDir: string): Promise<string[]> {
+	const topLevelEntries = await readDirectoryEntries(nodeModulesDir);
+	const unscoped: string[] = [];
+	const scoped: string[] = [];
+
+	for (const entry of topLevelEntries) {
+		if (BACKUP_DIRECTORY_PATTERN.test(entry.name)) continue;
+
+		if (entry.name.startsWith('n8n-nodes-')) {
+			if (await isDirectoryEntry(nodeModulesDir, entry)) {
+				unscoped.push(entry.name);
+			}
+		} else if (entry.name.startsWith('@')) {
+			if (!(await isDirectoryEntry(nodeModulesDir, entry))) continue;
+
+			const scopeDir = path.join(nodeModulesDir, entry.name);
+			const scopedEntries = await readDirectoryEntries(scopeDir);
+			for (const scopedEntry of scopedEntries) {
+				if (
+					scopedEntry.name.startsWith('n8n-nodes-') &&
+					!BACKUP_DIRECTORY_PATTERN.test(scopedEntry.name) &&
+					(await isDirectoryEntry(scopeDir, scopedEntry))
+				) {
+					scoped.push(`${entry.name}/${scopedEntry.name}`);
+				}
+			}
+		}
+	}
+
+	return [...unscoped, ...scoped];
+}
 
 /**
  * Scan a directory for node packages and return a `LazyPackageDirectoryLoader`
@@ -15,20 +52,7 @@ export async function scanDirectoryForPackages(
 	nodeModulesDir: string,
 	options: { excludeNodes?: string[]; includeNodes?: string[] } = {},
 ): Promise<NodeLoader[]> {
-	const globOptions = {
-		cwd: nodeModulesDir,
-		onlyDirectories: true,
-		deep: 1,
-		// Excludes leftover `<package>.backup-<timestamp>` directories from a crashed
-		// install (see `backupPackageDirectory` in `CommunityPackagesService`), which
-		// would otherwise collide with the real package and crash boot.
-		ignore: ['**/*.backup-+([0-9])'],
-	};
-
-	const installedPackagePaths = [
-		...(await glob('n8n-nodes-*', globOptions)),
-		...(await glob('@*/n8n-nodes-*', { ...globOptions, deep: 2 })),
-	];
+	const installedPackagePaths = await findInstalledPackagePaths(nodeModulesDir);
 
 	const logger = Container.get(Logger);
 	const loaders: NodeLoader[] = [];

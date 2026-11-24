@@ -1,6 +1,5 @@
 import { Memoized } from '@n8n/decorators';
 import callsites from 'callsites';
-import glob from 'fast-glob';
 import { mock } from './mock-extended';
 import isEmpty from 'lodash/isEmpty';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -14,7 +13,15 @@ import type {
 import { createRunExecutionData, Workflow } from 'n8n-workflow';
 import { UnexpectedError } from '@n8n/errors';
 import nock from 'nock';
-import { readFileSync, mkdtempSync, existsSync, rmSync } from 'node:fs';
+import {
+	existsSync,
+	mkdtempSync,
+	readdirSync,
+	readFileSync,
+	realpathSync,
+	rmSync,
+	statSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect } from 'vitest';
@@ -156,7 +163,59 @@ export class NodeTestHarness {
 
 	@Memoized
 	private get workflowFilenames() {
-		return glob.sync(`${this.relativePath}/**/*.json`, { cwd: this.packageDir });
+		const results: string[] = [];
+		let realTestDir = this.testDir;
+		try {
+			realTestDir = realpathSync(this.testDir);
+		} catch {
+			return results;
+		}
+		const visitedRealDirs = new Set<string>([realTestDir]);
+
+		const walk = (dir: string, realDir: string) => {
+			let entries;
+			try {
+				entries = readdirSync(dir, { withFileTypes: true });
+			} catch {
+				return;
+			}
+
+			for (const entry of entries) {
+				if (entry.name.startsWith('.')) continue;
+
+				const fullPath = path.join(dir, entry.name);
+				let isDir = entry.isDirectory();
+				let isFile = entry.isFile();
+				if (entry.isSymbolicLink()) {
+					try {
+						const stats = statSync(fullPath);
+						isDir = stats.isDirectory();
+						isFile = stats.isFile();
+					} catch {
+						continue;
+					}
+				}
+
+				if (isDir) {
+					let nextRealDir = path.join(realDir, entry.name);
+					if (entry.isSymbolicLink()) {
+						try {
+							nextRealDir = realpathSync(fullPath);
+						} catch {
+							continue;
+						}
+					}
+					if (visitedRealDirs.has(nextRealDir)) continue;
+					visitedRealDirs.add(nextRealDir);
+					walk(fullPath, nextRealDir);
+				} else if (isFile && entry.name.endsWith('.json')) {
+					results.push(path.relative(this.packageDir, fullPath).split(path.sep).join('/'));
+				}
+			}
+		};
+
+		walk(this.testDir, realTestDir);
+		return results;
 	}
 
 	private setupNetworkMocks({ baseUrl, mocks }: NonNullable<WorkflowTestData['nock']>) {

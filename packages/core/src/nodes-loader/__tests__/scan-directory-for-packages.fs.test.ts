@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { N8N_NODES_API_VERSION, parseNodesApiLevel } from 'n8n-workflow';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -31,7 +31,7 @@ describe('scanDirectoryForPackages (real filesystem)', () => {
 
 	const writePackage = (name: string, n8n?: object) => {
 		const dir = path.join(nodeModulesDir, name);
-		mkdirSync(dir);
+		mkdirSync(dir, { recursive: true });
 		writeFileSync(
 			path.join(dir, 'package.json'),
 			JSON.stringify({ name, version: '1.0.0', ...(n8n ? { n8n } : {}) }),
@@ -120,6 +120,63 @@ describe('scanDirectoryForPackages (real filesystem)', () => {
 			'n8n-nodes-explicit',
 			'n8n-nodes-legacy',
 		]);
+		expect(logger.warn).not.toHaveBeenCalled();
+	});
+
+	it('discovers scoped packages and ignores scoped backup directories', async () => {
+		writePackage('@scope/n8n-nodes-scoped');
+		writePackage('@scope/n8n-nodes-scoped.backup-1700000000000');
+
+		const loaders = await scanDirectoryForPackages(nodeModulesDir);
+
+		expect(loaders.map((loader) => loader.packageName)).toEqual(['@scope/n8n-nodes-scoped']);
+		expect(logger.warn).not.toHaveBeenCalled();
+	});
+
+	it('follows symlinked package directories and ignores files and broken symlinks', async () => {
+		const externalRoot = mkdtempSync(path.join(tmpdir(), 'n8n-scan-linked-'));
+		try {
+			const linkedTarget = path.join(externalRoot, 'pkg-unscoped');
+			mkdirSync(linkedTarget);
+			writeFileSync(
+				path.join(linkedTarget, 'package.json'),
+				JSON.stringify({ name: 'n8n-nodes-linked', version: '1.0.0' }),
+			);
+			symlinkSync(linkedTarget, path.join(nodeModulesDir, 'n8n-nodes-linked'), 'dir');
+
+			const scopedTarget = path.join(externalRoot, 'pkg-scoped');
+			mkdirSync(scopedTarget);
+			writeFileSync(
+				path.join(scopedTarget, 'package.json'),
+				JSON.stringify({ name: '@scope/n8n-nodes-linked', version: '1.0.0' }),
+			);
+			mkdirSync(path.join(nodeModulesDir, '@scope'));
+			symlinkSync(scopedTarget, path.join(nodeModulesDir, '@scope/n8n-nodes-linked'), 'dir');
+
+			// Non-directory file and broken symlink matching the package prefix should be ignored.
+			writeFileSync(path.join(nodeModulesDir, 'n8n-nodes-plain-file'), 'not a directory');
+			symlinkSync(
+				path.join(externalRoot, 'missing-target'),
+				path.join(nodeModulesDir, 'n8n-nodes-broken-link'),
+				'dir',
+			);
+
+			const loaders = await scanDirectoryForPackages(nodeModulesDir);
+
+			expect(loaders.map((loader) => loader.packageName).sort()).toEqual([
+				'@scope/n8n-nodes-linked',
+				'n8n-nodes-linked',
+			]);
+			expect(logger.warn).not.toHaveBeenCalled();
+		} finally {
+			rmSync(externalRoot, { recursive: true, force: true });
+		}
+	});
+
+	it('returns an empty list when nodeModulesDir does not exist', async () => {
+		const loaders = await scanDirectoryForPackages(path.join(nodeModulesDir, 'does-not-exist'));
+
+		expect(loaders).toEqual([]);
 		expect(logger.warn).not.toHaveBeenCalled();
 	});
 });

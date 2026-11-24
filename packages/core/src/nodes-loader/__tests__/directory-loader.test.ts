@@ -14,17 +14,16 @@ import * as fsPromises from 'node:fs/promises';
 vi.mock('node:fs', () => mock<typeof fs>());
 vi.mock('node:fs/promises', () => mock<typeof fsPromises>());
 
+const createDirent = (name: string, kind: 'file' | 'dir'): fs.Dirent =>
+	({
+		name,
+		isDirectory: () => kind === 'dir',
+		isFile: () => kind === 'file',
+		isSymbolicLink: () => false,
+	}) as fs.Dirent;
+
 const mockFs = mock(fs);
 const mockFsPromises = mock(fsPromises);
-
-vi.mock('fast-glob', () => ({
-	default: async (pattern: string | string[]) => {
-		if (Array.isArray(pattern)) return [];
-		return pattern.endsWith('.node.js')
-			? ['dist/Node1/Node1.node.js', 'dist/Node2/Node2.node.js']
-			: ['dist/Credential1.js'];
-	},
-}));
 
 import { NodeTypes } from '@test/helpers';
 
@@ -71,6 +70,24 @@ describe('DirectoryLoader', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockFs.realpathSync.mockImplementation((path) => String(path));
+		mockFsPromises.readdir.mockImplementation((async (dir: fs.PathLike) => {
+			switch (String(dir)) {
+				case directory:
+					return [createDirent('dist', 'dir')];
+				case `${directory}/dist`:
+					return [
+						createDirent('Node1', 'dir'),
+						createDirent('Node2', 'dir'),
+						createDirent('Credential1.credentials.js', 'file'),
+					];
+				case `${directory}/dist/Node1`:
+					return [createDirent('Node1.node.js', 'file')];
+				case `${directory}/dist/Node2`:
+					return [createDirent('Node2.node.js', 'file')];
+				default:
+					return [];
+			}
+		}) as unknown as typeof fsPromises.readdir);
 		mockCredential1 = createCredential('credential1');
 		mockNode1 = createNode('node1', 'credential1');
 		mockNode2 = createNode('node2');
@@ -97,11 +114,14 @@ describe('DirectoryLoader', () => {
 
 			expect(loader.nodesByCredential).toEqual({ credential1: ['node1'] });
 			expect(loader.credentialTypes).toEqual({
-				credential1: { sourcePath: 'dist/Credential1.js', type: mockCredential1 },
+				credential1: {
+					sourcePath: `${directory}/dist/Credential1.credentials.js`,
+					type: mockCredential1,
+				},
 			});
 			expect(loader.nodeTypes).toEqual({
-				node1: { sourcePath: 'dist/Node1/Node1.node.js', type: mockNode1 },
-				node2: { sourcePath: 'dist/Node2/Node2.node.js', type: mockNode2 },
+				node1: { sourcePath: `${directory}/dist/Node1/Node1.node.js`, type: mockNode1 },
+				node2: { sourcePath: `${directory}/dist/Node2/Node2.node.js`, type: mockNode2 },
 			});
 			expect(mockCredential1.iconUrl).toBe('icons/CUSTOM/dist/credential1.svg');
 			expect(mockNode1.description.iconUrl).toBe('icons/CUSTOM/dist/Node1/node1.svg');
@@ -124,8 +144,8 @@ describe('DirectoryLoader', () => {
 			await loader.loadAll();
 
 			expect(loader.nodeTypes).toEqual({
-				node1: { sourcePath: 'dist/Node1/Node1.node.js', type: mockNode1 },
-				node2: { sourcePath: 'dist/Node2/Node2.node.js', type: mockNode2 },
+				node1: { sourcePath: `${directory}/dist/Node1/Node1.node.js`, type: mockNode1 },
+				node2: { sourcePath: `${directory}/dist/Node2/Node2.node.js`, type: mockNode2 },
 			});
 			expect(Object.keys(loader.nodeTypes)).toHaveLength(2);
 		});
@@ -140,7 +160,7 @@ describe('DirectoryLoader', () => {
 			await loader.loadAll();
 
 			expect(loader.nodeTypes).toEqual({
-				node1: { sourcePath: 'dist/Node1/Node1.node.js', type: mockNode1 },
+				node1: { sourcePath: `${directory}/dist/Node1/Node1.node.js`, type: mockNode1 },
 			});
 			expect(Object.keys(loader.nodeTypes)).toHaveLength(1);
 			// node2 should not be loaded
@@ -165,7 +185,7 @@ describe('DirectoryLoader', () => {
 			await loader.loadAll();
 
 			expect(loader.nodeTypes).toEqual({
-				node2: { sourcePath: 'dist/Node2/Node2.node.js', type: mockNode2 },
+				node2: { sourcePath: `${directory}/dist/Node2/Node2.node.js`, type: mockNode2 },
 			});
 			expect(Object.keys(loader.nodeTypes)).toHaveLength(1);
 		});

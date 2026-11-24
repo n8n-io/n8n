@@ -365,4 +365,15 @@ describe('CustomDirectoryLoader dependencies', () => {
 			);
 		},
 	);
+
+	it('skips dotfiles and avoids infinite loops on circular symlinks', async () => {
+		const files = writeCustomFiles(customDir);
+		writeFile(customDir, '.hidden/Hidden.node.js', 'module.exports = {};');
+		symlinkSync(customDir, path.join(customDir, 'loop'), 'dir');
+
+		await expect(loader.loadAll()).resolves.toBeUndefined();
+
+		expectCustomFilesLoaded(files);
+		expect(logger.warn).not.toHaveBeenCalled();
+	});
 });
