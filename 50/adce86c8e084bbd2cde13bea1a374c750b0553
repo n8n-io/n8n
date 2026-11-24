@@ -1,0 +1,25 @@
+packages/cli/src/modules/agents/simulation/__tests__/linear-gym-backend.test.ts
+  s_f4d26adb514784::t_e96f73b34d079f 152-153,162-169,181,196-199,398-423
+packages/cli/src/modules/agents/simulation/linear-gym-backend.ts
+  s_f4d26adb514784::t_9fdabd7b5c9955 69-81,130-134,195,199-205
+packages/cli/src/modules/mcp-guard/__tests__/plan-hydrator.test.ts
+  s_f4d26adb514784::t_6d373181b6b157 8,162-182
+packages/cli/src/modules/mcp-guard/plan-hydrator.ts
+  s_f4d26adb514784::t_52b24f9a688aae 106-108,113,122
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "50adce86c8e084bbd2cde13bea1a374c750b0553",
+  "prompts": {},
+  "sessions": {
+    "s_f4d26adb514784": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20e79-477e-7622-9119-23278d51a45d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
