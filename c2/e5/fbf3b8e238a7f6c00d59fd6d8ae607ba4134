@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/simulation/__tests__/non-http-node-types.test.ts
+  s_4e8100d4ba14d2::t_ef33b297658e5f 65-71
+packages/cli/src/modules/agents/simulation/non-http-node-types.ts
+  s_4e8100d4ba14d2::t_35d253e367da3e 82-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c2e5fbf3b8e238a7f6c00d59fd6d8ae607ba4134",
+  "prompts": {},
+  "sessions": {
+    "s_4e8100d4ba14d2": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20889-233d-7672-8300-b96f5d9f857d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

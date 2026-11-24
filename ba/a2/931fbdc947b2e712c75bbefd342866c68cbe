@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/oxlint.config.mts
+  s_1b279b1934f6ba::t_205f2e81d94c04 78,119
+packages/frontend/@n8n/eslint-plugin-design-system/src/rules/wrapped-module-bans.ts
+  s_1b279b1934f6ba::t_5d083d452ad2c7 1-24
+packages/frontend/@n8n/eslint-plugin-design-system/src/rules/no-direct-component-imports.test.ts
+  s_1b279b1934f6ba::t_ecd3e41119c5c3 11,425-572
+packages/modules/insights/frontend/oxlint.config.mts
+  s_1b279b1934f6ba::t_205f2e81d94c04 4
+packages/frontend/@n8n/eslint-plugin-design-system/src/rules/no-direct-component-imports.ts
+  s_1b279b1934f6ba::t_02ab654eed3465 16,23-24,39-43,101,104-113,185,188-189,201-208,241-249,253,270,284,290-295
+  s_1b279b1934f6ba::t_41a01923c97549 296-297
+packages/frontend/@n8n/eslint-plugin-design-system/README.md
+  s_1b279b1934f6ba::t_205f2e81d94c04 21,23,27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "baa2931fbdc947b2e712c75bbefd342866c68cbe",
+  "prompts": {},
+  "sessions": {
+    "s_1b279b1934f6ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d587a90-f43c-4aaf-90cd-8f1f40ac1be8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

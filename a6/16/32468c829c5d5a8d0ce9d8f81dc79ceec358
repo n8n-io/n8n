@@ -1,0 +1,77 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_5b60edc27245af::t_9197d8e78e50fd 168-172,1121-1127,1130,3742,3748-3761,3803,3906,3918-3922,3925-3931,3952,3954-3959
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMode.test.ts
+  s_5b60edc27245af::t_cde55eacc69474 4
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentApi.test.ts
+  s_5b60edc27245af::t_efc4ce7daf7e12 8,736-756
+  s_c3fb44d7ad272c::t_18f334e058c5b1 757-758
+packages/frontend/editor-ui/src/features/agents/components/chatMode/useAgentHeldActions.ts
+  s_5b60edc27245af::t_3d66dd0444d77c 1-122
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5b60edc27245af::t_3aeaa8a5163127 10000-10014
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_5b60edc27245af::t_a7e4634fc4ba6a 7911-7912,7915,7918,7969,7974,7996,7999
+  s_5b60edc27245af::t_eb22536ec24f4b 272-273,285,720,7884,7887,7897-7898,7902,7913-7914,7916-7917,7919,7921-7923,7925-7927,7929-7933,7936-7948,7950-7962,7964-7965,7968,7970-7973,7975-7995,7997-7998,8000
+packages/frontend/editor-ui/src/features/agents/components/chatMode/AgentRunHeldActionsModal.vue
+  s_5b60edc27245af::t_06a4dc6ea5533a 1-151
+packages/frontend/editor-ui/src/features/agents/components/chatMode/AgentTestRunEmptyState.vue
+  s_5b60edc27245af::t_f1b32ec80a4860 1-154
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHoldReplay.test.ts
+  s_5b60edc27245af::t_c1f3f54e3aaae5 1-202,206-256
+  s_5b60edc27245af::t_65d1962336758d 203-205
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_5b60edc27245af::t_fb68ada317d111 7,54-55
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_5b60edc27245af::t_24c57431c8fe8e 1280-1304
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_5b60edc27245af::t_13bcb3fb7c3755 1399
+packages/frontend/editor-ui/src/features/agents/components/AgentTestChatPage.vue
+  s_5b60edc27245af::t_7d238e0040d87a 140-145
+packages/frontend/editor-ui/src/features/agents/components/AgentTestDock.vue
+  s_5b60edc27245af::t_c1607b8a28e623 367-372
+packages/frontend/editor-ui/src/features/agents/components/chatMode/AgentHeldActionsTray.vue
+  s_5b60edc27245af::t_04da6799fa75cc 1-448
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_5b60edc27245af::t_6ae1898ab22d2f 118-119,827-832,1087-1096
+packages/frontend/editor-ui/src/features/agents/components/chatMode/heldActions.ts
+  s_5b60edc27245af::t_866399eb405949 1-173
+packages/frontend/editor-ui/src/features/agents/composables/useAgentPublish.ts
+  s_5b60edc27245af::t_cde55eacc69474 173
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_5b60edc27245af::t_d5ad2975027e09 74-78,298-299,2300-2301
+  s_353d81d28a8909::t_917036335da029 2302
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentPublish.test.ts
+  s_5b60edc27245af::t_cde55eacc69474 229,231-240
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a61632468c829c5d5a8d0ce9d8f81dc79ceec358",
+  "prompts": {},
+  "sessions": {
+    "s_353d81d28a8909": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a2061f-4f31-74c3-bad0-1c9246b4c8d2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    },
+    "s_5b60edc27245af": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20dd9-5b4e-7234-b950-6ad8d07a6e65",
+        "model": "gemini-4-neon"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    },
+    "s_c3fb44d7ad272c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20dd5-b561-70c9-800f-e58948d8542a",
+        "model": "gemini-4-neon"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

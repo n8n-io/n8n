@@ -1,0 +1,43 @@
+packages/nodes-base/nodes/NextCloud/actions/file/createFromText.operation.ts
+  s_69d18b007d0835::t_f2fa4ee9988cbf 7
+  s_69d18b007d0835::t_912d6ac1c7dbc9 162
+packages/nodes-base/nodes/NextCloud/GenericFunctions.ts
+  s_69d18b007d0835::t_63ac365d79aae8 2,10
+  s_69d18b007d0835::t_edad051a8697d9 75-84
+  s_69d18b007d0835::t_eec0eb77d917e1 235-257,260-291
+  s_69d18b007d0835::t_f1a7081e5b2c81 258-259
+packages/nodes-base/nodes/NextCloud/actions/folder/search.operation.ts
+  s_69d18b007d0835::t_764b7237443168 2,13-14
+  s_69d18b007d0835::t_a3b946bc8ab631 174,181,183,195
+  s_69d18b007d0835::t_bd620bf2d0ffc7 236
+packages/nodes-base/nodes/NextCloud/test/update.operation.test.ts
+  s_69d18b007d0835::t_b51f7a1f4e09f3 259,264-269,277-279,287-293,374-402,404,407-425,485
+  s_69d18b007d0835::t_f1a7081e5b2c81 140-143,553
+  s_69d18b007d0835::t_d3186f900a5547 225-228
+  s_69d18b007d0835::t_50f4f3236caf59 1-139,144-176,178-224,229-258,260-263,270-276,280-286,294-373,403,405-406,426-484,486-552,554-558
+  s_69d18b007d0835::t_67a3e7f551ae17 177
+packages/nodes-base/nodes/NextCloud/NextCloud.node.ts
+  s_69d18b007d0835::t_4a939d4d553ab5 33,160-165,410-414,962-965
+  s_69d18b007d0835::t_ab0cdbb29c843f 966-968
+  s_69d18b007d0835::t_1a4f39f7a97c65 969-971
+packages/nodes-base/nodes/NextCloud/actions/file/update.operation.ts
+  s_69d18b007d0835::t_ad1837fafd37bf 1,282
+  s_69d18b007d0835::t_c57fccfbd287f1 144-145,210,256,275-281,283-290
+  s_69d18b007d0835::t_8cdb58957d8e87 2-143,146-209,211-255,257-274,291-295
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "187c8c3b124e2f7c1b453a5dc6d214d80f15f343",
+  "prompts": {},
+  "sessions": {
+    "s_69d18b007d0835": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2742f16a-41df-4d0f-909f-e67f21d45770",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}
