@@ -218,11 +218,11 @@ export class ActiveWorkflowTriggers {
 				// Closed before the new start, since both starts of a node can share external state (e.g. Postgres trigger names).
 				const storedResponse = triggers.get(triggerNode.id);
 				if (storedResponse) {
-					await this.closeTrigger(storedResponse, workflowId);
+					await this.closeRegistration(triggers, triggerNode.id, storedResponse, workflowId);
 					triggers.delete(triggerNode.id);
 				}
 
-				// False until this start records its registration, and again once another start or a removal replaces it.
+				// False until this start records its registration, and again once a close of that registration starts.
 				let token: TriggerRegistrationToken | undefined;
 				const isCurrentRegistration = () =>
 					token !== undefined &&
@@ -327,7 +327,7 @@ export class ActiveWorkflowTriggers {
 
 			const response = activeTriggers.get(nodeId);
 			if (response) {
-				await this.closeTrigger(response, workflowId);
+				await this.closeRegistration(activeTriggers, nodeId, response, workflowId);
 			}
 			activeTriggers.delete(nodeId);
 
@@ -366,7 +366,7 @@ export class ActiveWorkflowTriggers {
 			}
 
 			try {
-				await this.closeTrigger(response, workflowId);
+				await this.closeRegistration(triggers, nodeId, response, workflowId);
 			} catch (e) {
 				this.errorReporter.error(ensureError(e), { extra: { workflowId } });
 			} finally {
@@ -498,7 +498,7 @@ export class ActiveWorkflowTriggers {
 		// teardown passes) while the rest of the cleanup proceeds.
 		for (const { nodeId, response } of triggers.closableTriggers()) {
 			try {
-				await this.closeTrigger(response, workflowId);
+				await this.closeRegistration(triggers, nodeId, response, workflowId);
 				triggers.delete(nodeId);
 			} catch (error) {
 				errors.push(ensureError(error));
@@ -548,7 +548,14 @@ export class ActiveWorkflowTriggers {
 		});
 	}
 
-	private async closeTrigger(response: ITriggerResponse, workflowId: string) {
+	/** A registration stops being current when its close starts, not when the close ends. */
+	private async closeRegistration(
+		triggers: WorkflowActiveTriggersState,
+		nodeId: INode['id'],
+		response: ITriggerResponse,
+		workflowId: string,
+	): Promise<void> {
+		triggers.retire(nodeId);
 		if (!response.closeFunction) return;
 
 		try {

@@ -74,6 +74,12 @@ export class WorkflowActiveTriggersState {
 		return this.registrationsByNodeId.get(nodeId)?.token === token;
 	}
 
+	/** Ends the current generation of a node's registration; the node stays registered. */
+	retire(nodeId: string): void {
+		const registration = this.registrationsByNodeId.get(nodeId);
+		if (registration) registration.token = Symbol(nodeId);
+	}
+
 	/** Drops the registration recorded for a node. */
 	delete(nodeId: string) {
 		this.registrationsByNodeId.delete(nodeId);

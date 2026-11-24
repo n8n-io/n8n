@@ -151,9 +151,6 @@ export type TriggerActivationOutcome = {
  */
 @Service()
 export class WorkflowTriggerActivator {
-	/** Runtime teardowns by `workflowId:nodeId`, kept until they settle, even past the lock hold. */
-	private readonly runtimeTeardownsInFlight = new Set<string>();
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
@@ -1045,6 +1042,8 @@ export class WorkflowTriggerActivator {
 			shouldBeLogged: true,
 		});
 
+		let surfaced: { error: WorkflowActivationError; reason: string } | undefined;
+
 		try {
 			const isTornDown = await this.lifecycleLock.runExclusive({
 				workflowId,
@@ -1054,22 +1053,41 @@ export class WorkflowTriggerActivator {
 				signal: new AbortController().signal,
 			});
 
-			if (isTornDown) {
-				await this.activationErrorsService.register(workflowId, error.message);
-				this.triggerExecutionContextFactory.executeErrorWorkflow(
-					activationError,
-					workflowData,
-					mode,
-				);
-			}
+			if (isTornDown) surfaced = { error: activationError, reason: error.message };
 		} catch (e) {
-			const recoveryError = ensureError(e);
+			const teardownError = ensureError(e);
 			this.logger.error(
 				`Failed to tear down trigger node "${node.name}" of workflow "${workflowData.name}" after a runtime failure`,
-				{ workflowId, nodeId: node.id, nodeName: node.name, error: recoveryError },
+				{ workflowId, nodeId: node.id, nodeName: node.name, error: teardownError },
 			);
-			this.errorReporter.error(recoveryError, {
+			this.errorReporter.error(teardownError, {
 				extra: { workflowId, nodeId: node.id, nodeName: node.name },
+			});
+			surfaced = {
+				error: new WorkflowActivationError(
+					`The trigger node "${node.name}" failed at runtime and its teardown failed`,
+					{ cause: teardownError, node, level: 'error' },
+				),
+				reason: teardownError.message,
+			};
+		}
+
+		if (surfaced) await this.surfaceRuntimeFailure(surfaced, workflowData, mode);
+	}
+
+	/** Records the activation error and runs the error workflow; a failure of either is reported, not thrown. */
+	private async surfaceRuntimeFailure(
+		{ error, reason }: { error: WorkflowActivationError; reason: string },
+		workflowData: IWorkflowDb,
+		mode: WorkflowExecuteMode,
+	): Promise<void> {
+		try {
+			await this.activationErrorsService.register(workflowData.id, reason);
+			this.triggerExecutionContextFactory.executeErrorWorkflow(error, workflowData, mode);
+		} catch (e) {
+			this.errorReporter.error(ensureError(e), {
+				extra: { workflowId: workflowData.id },
+				shouldBeLogged: true,
 			});
 		}
 	}
@@ -1080,15 +1098,10 @@ export class WorkflowTriggerActivator {
 		nodeId: INode['id'],
 		isCurrentRegistration: () => boolean,
 	): Promise<boolean> {
-		const teardownKey = `${workflow.id}:${nodeId}`;
-		const shouldTearDown =
-			isCurrentRegistration() && !this.runtimeTeardownsInFlight.has(teardownKey);
+		const shouldTearDown = isCurrentRegistration();
 
 		if (shouldTearDown) {
-			this.runtimeTeardownsInFlight.add(teardownKey);
-			const teardown = this.deregisterAndSaveStaticData(workflow, nodeId).finally(() =>
-				this.runtimeTeardownsInFlight.delete(teardownKey),
-			);
+			const teardown = this.deregisterAndSaveStaticData(workflow, nodeId);
 			const pendingTeardown = new OperationalError(
 				'Released the workflow lock while a runtime trigger teardown is still pending',
 				{ level: 'error' },

@@ -215,7 +215,7 @@ export class TriggerExecutionContextFactory {
 			_additionalData,
 			_mode,
 			_activation,
-			isCurrentRegistration = () => false,
+			isCurrentRegistration = () => true,
 		) => {
 			const emit = (
 				data: INodeExecutionData[][],

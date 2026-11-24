@@ -1266,6 +1266,20 @@ describe('ActiveWorkflowTriggers', () => {
 			expect(isCurrent?.()).toBe(false);
 		});
 
+		it('reports a trigger registration as not current, and keeps its node registered, while its close is pending', async () => {
+			const response: ITriggerResponse = { closeFunction: async () => await new Promise(() => {}) };
+			workflow.getTriggerNodes.mockReturnValue([triggerNodeA]);
+			workflow.getPollNodes.mockReturnValue([]);
+			triggersAndPollers.runTriggerFunction.mockResolvedValue(response);
+			await addTriggers(['a']);
+			const isCurrent = triggersAndPollers.runTriggerFunction.mock.calls[0][6];
+
+			void activeWorkflowTriggers.removeTriggers(workflowId, new Set(['a']));
+
+			expect(isCurrent?.()).toBe(false);
+			expect(activeWorkflowTriggers.get(workflowId)?.get('a')).toBe(response);
+		});
+
 		it('shares workflow state across concurrent single-node registrations', async () => {
 			const responseA = mock<ITriggerResponse>();
 			const responseB = mock<ITriggerResponse>();
