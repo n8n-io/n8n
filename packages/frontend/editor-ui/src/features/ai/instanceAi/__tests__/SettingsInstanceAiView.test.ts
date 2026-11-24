@@ -1165,7 +1165,7 @@ describe('SettingsInstanceAiView', () => {
 					await flushPromises();
 
 					expect(confirmMock).toHaveBeenCalledWith(
-						'settings.n8nAgent.savedLogins.clearSites.description',
+						'settings.n8nAgent.savedLogins.clearSites.allowedDescription',
 						expect.objectContaining({
 							title: 'settings.n8nAgent.savedLogins.clearSites.title',
 						}),
@@ -1189,6 +1189,27 @@ describe('SettingsInstanceAiView', () => {
 					expect(save).not.toHaveBeenCalled();
 					expect(getByTestId('n8n-agent-saved-login-sites')).toHaveValue('github.com\ngitlab.com');
 				});
+			});
+
+			it('says that the blocked sites will be deleted when the list blocks sites', async () => {
+				setSavedLogins({
+					cloudBrowserSavedLoginsMode: 'except',
+					cloudBrowserSavedLoginSites: ['bank.com'],
+				});
+				confirmMock.mockResolvedValue(MODAL_CANCEL);
+				const { getByTestId } = renderComponent();
+				await flushPromises();
+
+				await selectOption(
+					getByTestId('n8n-agent-saved-logins-mode'),
+					'settings.n8nAgent.savedLogins.mode.all',
+				);
+				await flushPromises();
+
+				expect(confirmMock).toHaveBeenCalledWith(
+					'settings.n8nAgent.savedLogins.clearSites.blockedDescription',
+					expect.anything(),
+				);
 			});
 
 			it('changes the mode without asking when the list is empty', async () => {

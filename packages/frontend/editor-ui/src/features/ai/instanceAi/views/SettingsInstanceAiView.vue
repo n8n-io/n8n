@@ -1,6 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue';
-import { onBeforeRouteLeave } from 'vue-router';
+import { computed, onMounted, reactive, ref } from 'vue';
 import {
 	N8nBadge,
 	N8nButton,
@@ -8,7 +7,6 @@ import {
 	N8nEmptyState,
 	N8nEnterpriseReadinessBadge,
 	N8nExternalLink,
-	N8nInput,
 	N8nLoading,
 	N8nOption,
 	N8nSelect,
@@ -25,17 +23,14 @@ import {
 } from '@n8n/design-system';
 import {
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
-	instanceAiSavedLoginsModeSchema,
 	type InstanceAiPermissions,
 	type InstanceAiPermissionMode,
-	type InstanceAiSavedLoginsMode,
 } from '@n8n/api-types';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
-import { ResponseError } from '@n8n/rest-api-client';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { useAsyncState } from '@vueuse/core';
-import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants';
+import { MODAL_CONFIRM } from '@/app/constants';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -51,6 +46,7 @@ import { useSetupPageViewTelemetry } from '../instanceAiSetup.telemetry';
 import type { InstanceAiConnectionKind } from '../constants';
 import ConnectionDialog from '../components/settings/ConnectionDialog.vue';
 import SandboxSettingsRow from '../components/settings/SandboxSettingsRow.vue';
+import SavedLoginsSettingsRows from '@/features/ai/instanceAi/components/settings/SavedLoginsSettingsRows.vue';
 
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
@@ -91,35 +87,6 @@ const showCloudBrowserRow = computed(
 const isCloudBrowserOn = computed(
 	() => !isOff.value && (store.settings?.cloudBrowserEnabled ?? true),
 );
-const savedLoginsMode = computed(
-	(): InstanceAiSavedLoginsMode => store.settings?.cloudBrowserSavedLoginsMode ?? 'off',
-);
-const showSavedLoginSites = computed(
-	() =>
-		isCloudBrowserOn.value &&
-		(savedLoginsMode.value === 'only' || savedLoginsMode.value === 'except'),
-);
-const savedLoginSitesLabel = computed(() =>
-	i18n.baseText(
-		savedLoginsMode.value === 'except'
-			? 'settings.n8nAgent.savedLogins.sites.blockedLabel'
-			: 'settings.n8nAgent.savedLogins.sites.allowedLabel',
-	),
-);
-const SAVED_LOGINS_MODE_LABEL: Record<InstanceAiSavedLoginsMode, BaseTextKey> = {
-	off: 'settings.n8nAgent.savedLogins.mode.off',
-	all: 'settings.n8nAgent.savedLogins.mode.all',
-	only: 'settings.n8nAgent.savedLogins.mode.only',
-	except: 'settings.n8nAgent.savedLogins.mode.except',
-};
-// The site list as the admin edits it. It is saved when the input loses focus.
-const savedLoginSitesText = ref('');
-const showStoredSavedLoginSites = () => {
-	savedLoginSitesText.value = (store.settings?.cloudBrowserSavedLoginSites ?? []).join('\n');
-};
-watch(() => store.settings?.cloudBrowserSavedLoginSites, showStoredSavedLoginSites, {
-	immediate: true,
-});
 const isMcpAccessEnabled = computed(() => store.settings?.mcpAccessEnabled ?? true);
 const isSelfManaged = computed(() => !store.isProxyEnabled && !store.isCloudManaged);
 const showCredentialsRows = computed(() => isAdmin.value && isSelfManaged.value);
@@ -463,92 +430,6 @@ function handleCloudBrowserToggle(value: boolean) {
 	void store.save();
 }
 
-async function handleSavedLoginsModeChange(value: InstanceAiSavedLoginsMode) {
-	if (!(await confirmClearingSavedLoginSites())) return;
-	store.setField('cloudBrowserSavedLoginsMode', value);
-	void store.save();
-}
-
-/** A mode change clears the list of sites, so ask first when it has sites. */
-async function confirmClearingSavedLoginSites(): Promise<boolean> {
-	const count = enteredSavedLoginSites.value.length;
-	if (count === 0) return true;
-	const confirmed = await message.confirm(
-		i18n.baseText('settings.n8nAgent.savedLogins.clearSites.description', {
-			adjustToNumber: count,
-			interpolate: { count: String(count) },
-		}),
-		{
-			title: i18n.baseText('settings.n8nAgent.savedLogins.clearSites.title'),
-			confirmButtonText: i18n.baseText('settings.n8nAgent.savedLogins.clearSites.confirm'),
-			cancelButtonText: i18n.baseText('generic.cancel'),
-		},
-	);
-	return confirmed === MODAL_CONFIRM;
-}
-
-const enteredSavedLoginSites = computed(() =>
-	savedLoginSitesText.value.split(/[\s,]+/).filter(Boolean),
-);
-const hasUnsavedLoginSites = computed(
-	() =>
-		enteredSavedLoginSites.value.join(',') !==
-		(store.settings?.cloudBrowserSavedLoginSites ?? []).join(','),
-);
-
-/** Why the server rejected the list. The typed list stays, so the admin can fix it. */
-const savedLoginSitesError = ref<string>();
-watch(savedLoginSitesText, () => {
-	savedLoginSitesError.value = undefined;
-});
-
-/** Saves the list with the Save button, which shows only while the list has changes. */
-async function saveSavedLoginSites() {
-	store.setField('cloudBrowserSavedLoginSites', enteredSavedLoginSites.value);
-	if (await store.save()) return;
-	savedLoginSitesError.value = invalidSitesMessage(store.lastSaveError);
-}
-
-onBeforeRouteLeave(async (_to, _from, next) => {
-	if (!hasUnsavedLoginSites.value) {
-		next();
-		return;
-	}
-
-	const response = await message.confirm(
-		i18n.baseText('generic.unsavedWork.confirmMessage.message'),
-		{
-			title: i18n.baseText('generic.unsavedWork.confirmMessage.headline'),
-			type: 'warning',
-			confirmButtonText: i18n.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
-			cancelButtonText: i18n.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
-			showClose: true,
-		},
-	);
-
-	if (response === MODAL_CONFIRM) {
-		await saveSavedLoginSites();
-		next(!hasUnsavedLoginSites.value);
-		return;
-	}
-
-	if (response === MODAL_CANCEL) {
-		next();
-		return;
-	}
-
-	next(false);
-});
-
-/** The message for the sites that the server could not read. Nothing for any other error. */
-function invalidSitesMessage(error: unknown): string | undefined {
-	if (!(error instanceof ResponseError)) return undefined;
-	const invalidSites = error.meta?.invalidSites;
-	if (!Array.isArray(invalidSites)) return undefined;
-	const sites = invalidSites.map((site) => `"${String(site)}"`).join(', ');
-	return i18n.baseText('settings.n8nAgent.savedLogins.sites.invalid', { interpolate: { sites } });
-}
-
 function handleMcpAccessToggle(value: boolean) {
 	store.setField('mcpAccessEnabled', value);
 	void store.save();
@@ -789,72 +670,7 @@ const { isLoading: isSavingModelTraining, executeImmediate: handleModelTrainingT
 						</template>
 					</N8nSettingsRow>
 
-					<N8nSettingsRow
-						v-if="showCloudBrowserRow"
-						:class="{ [$style.dim]: !isCloudBrowserOn }"
-						:title="i18n.baseText('settings.n8nAgent.savedLogins.label')"
-						:description="i18n.baseText('settings.n8nAgent.savedLogins.description')"
-					>
-						<template #action>
-							<N8nSelect
-								:class="$style.permissionSelect"
-								:model-value="savedLoginsMode"
-								size="small"
-								:disabled="store.isSaving || !isCloudBrowserOn"
-								:aria-label="i18n.baseText('settings.n8nAgent.savedLogins.label')"
-								data-test-id="n8n-agent-saved-logins-mode"
-								@update:model-value="
-									handleSavedLoginsModeChange($event as InstanceAiSavedLoginsMode)
-								"
-							>
-								<N8nOption
-									v-for="mode in instanceAiSavedLoginsModeSchema.options"
-									:key="mode"
-									:value="mode"
-									:label="i18n.baseText(SAVED_LOGINS_MODE_LABEL[mode])"
-								/>
-							</N8nSelect>
-						</template>
-					</N8nSettingsRow>
-
-					<N8nSettingsRow v-if="showCloudBrowserRow && showSavedLoginSites" layout="custom">
-						<div :class="$style.savedLoginSites">
-							<N8nText tag="label" for="n8n-agent-saved-login-sites" size="small" bold>
-								{{ savedLoginSitesLabel }}
-							</N8nText>
-							<N8nInput
-								v-model="savedLoginSitesText"
-								type="textarea"
-								:rows="5"
-								:placeholder="i18n.baseText('settings.n8nAgent.savedLogins.sites.placeholder')"
-								id="n8n-agent-saved-login-sites"
-								:disabled="store.isSaving"
-								data-test-id="n8n-agent-saved-login-sites"
-							/>
-							<N8nText
-								v-if="savedLoginSitesError"
-								size="small"
-								color="danger"
-								data-test-id="n8n-agent-saved-login-sites-error"
-							>
-								{{ savedLoginSitesError }}
-							</N8nText>
-							<div :class="$style.savedLoginSitesFooter">
-								<N8nText size="small" color="text-light">
-									{{ i18n.baseText('settings.n8nAgent.savedLogins.sites.hint') }}
-								</N8nText>
-								<N8nButton
-									v-if="hasUnsavedLoginSites"
-									variant="solid"
-									size="small"
-									:label="i18n.baseText('generic.save')"
-									:disabled="store.isSaving"
-									data-test-id="n8n-agent-saved-login-sites-save"
-									@click="saveSavedLoginSites"
-								/>
-							</div>
-						</div>
-					</N8nSettingsRow>
+					<SavedLoginsSettingsRows v-if="showCloudBrowserRow" :disabled="!isCloudBrowserOn" />
 				</N8nSettingsRowGroup>
 			</N8nSettingsSection>
 
@@ -1100,20 +916,6 @@ const { isLoading: isSavingModelTraining, executeImmediate: handleModelTrainingT
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
-}
-
-.savedLoginSites {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-	width: 100%;
-}
-
-.savedLoginSitesFooter {
-	display: flex;
-	align-items: flex-start;
-	justify-content: space-between;
-	gap: var(--spacing--xs);
 }
 
 .permissionSelect {
