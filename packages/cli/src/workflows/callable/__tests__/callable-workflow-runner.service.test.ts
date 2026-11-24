@@ -456,7 +456,7 @@ describe('CallableWorkflowRunner', () => {
 							lastNodeExecuted: 'If',
 						},
 					},
-				} as Partial<IRun>),
+				} as unknown as Partial<IRun>),
 			);
 
 			await expect(pending).resolves.toMatchObject({
