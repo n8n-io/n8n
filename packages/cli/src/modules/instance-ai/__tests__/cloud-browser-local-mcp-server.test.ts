@@ -88,11 +88,14 @@ describe('CloudBrowserLocalMcpServer', () => {
 			getPageUrl: Mock<(pageId: string) => string | undefined>;
 			getTargetId: Mock<(pageId: string) => Promise<string | undefined>>;
 			clearSiteDataExcept: Mock<(domain: string) => Promise<void>>;
+			hasVisitedOnlySite: Mock<(domain: string) => boolean>;
 		} = {
 			onDisconnect: connectionOnDisconnect,
 			getPageUrl: vi.fn(),
 			getTargetId: vi.fn(async (pageId: string) => `target-${pageId}`),
 			clearSiteDataExcept: vi.fn().mockResolvedValue(undefined),
+			// Most tests visit other sites, or do not care.
+			hasVisitedOnlySite: vi.fn().mockReturnValue(false),
 		};
 		const state = { activePageId: 'page-1', adapter };
 		const click = {
@@ -2820,6 +2823,31 @@ describe('CloudBrowserLocalMcpServer', () => {
 				expect(server.getLoginSaveResults()).toEqual([
 					{ domain: 'example.com', status: 'removed' },
 				]);
+			});
+
+			it('keeps the saved login after a drop when the session stayed on its site', async () => {
+				const { server, sessionProvider, toolkits } = await setupReusedLogin();
+				toolkits[0].adapter.hasVisitedOnlySite.mockReturnValue(true);
+
+				dropConnection(toolkits[0]);
+				await server.release();
+
+				expect(toolkits[0].adapter.hasVisitedOnlySite).toHaveBeenCalledWith('example.com');
+				expect(sessionProvider.deleteLoginProfile).not.toHaveBeenCalled();
+				expect(server.getLoginSaveResults()).toEqual([]);
+			});
+
+			it('saves a new login after a drop when the session stayed on its site', async () => {
+				const { server, sessionProvider, toolkits } = await setupSavedLogin();
+				toolkits[0].adapter.hasVisitedOnlySite.mockReturnValue(true);
+				toolkits[0].connection.isConnected = false;
+				toolkits[0].adapter.onDisconnect?.('browser_closed');
+
+				await server.release();
+
+				expect(toolkits[0].adapter.clearSiteDataExcept).not.toHaveBeenCalled();
+				expect(sessionProvider.saveLoginProfile).toHaveBeenCalledTimes(1);
+				expect(server.getLoginSaveResults()).toEqual([{ domain: 'example.com', status: 'saved' }]);
 			});
 
 			it('reports a login as removed when it was saved earlier in the task', async () => {

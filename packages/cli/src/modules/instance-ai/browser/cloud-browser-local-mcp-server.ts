@@ -240,6 +240,11 @@ interface ActiveSession {
 	windowSeenByAgent?: string;
 	/** The browser tools that run right now. Calls can run in parallel. See `executeBrowserToolOnSession`. */
 	runningBrowserTools: number;
+	/**
+	 * Whether the session loaded only pages and frames of `domain`. Works after a drop too. Absent
+	 * when the browser cannot tell.
+	 */
+	hasVisitedOnlySite?: (domain: string) => boolean;
 }
 
 /** Browser tools on a Browserbase session, for one background task. */
@@ -797,6 +802,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 			windows: activePageId ? [activePageId] : [],
 			windowSeenByAgent: activePageId || undefined,
 			runningBrowserTools: 0,
+			hasVisitedOnlySite: adapter.hasVisitedOnlySite?.bind(adapter),
 		};
 		adapter.onPageChange = (change) => this.onPageChange(session, change);
 		// The connection uses this hook to clear its own state, so ours runs after it.
@@ -946,15 +952,18 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 	/**
 	 * Whether to keep the login profile when its session ends: a saved login the session used, or a
 	 * login the user chose to save. The login profile keeps the browser state of its session, so the
-	 * other sites are cleared from it first. When they cannot be cleared, for example after the
-	 * connection dropped, it is deleted. This also applies to an existing saved login, because it may now
-	 * hold the data of other sites.
+	 * other sites are cleared from it first. After a drop they cannot be cleared, so it is kept only
+	 * when the session loaded no page or frame of another site. Otherwise it is deleted, also an
+	 * existing saved login, because it may now hold the data of other sites.
 	 */
 	private async shouldKeepLoginProfile(session: ActiveSession): Promise<boolean> {
 		const { loginProfile } = session;
 		if (!loginProfile) return false;
 		if (!loginProfile.savedAt && !session.saveLoginProfileOnSessionEnd) return false;
-		if (!session.connection.isConnected) return false;
+		// The other sites cannot be cleared after a drop, so keep it only when no other site was loaded.
+		if (!session.connection.isConnected) {
+			return session.hasVisitedOnlySite?.(loginProfile.domain) ?? false;
+		}
 		return await this.clearOtherSiteData(session, loginProfile);
 	}
 
