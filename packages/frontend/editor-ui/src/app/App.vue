@@ -4,6 +4,7 @@ import AppBanners from '@/app/components/app/AppBanners.vue';
 import AppModals from '@/app/components/app/AppModals.vue';
 import AppCommandBar from '@/app/components/app/AppCommandBar.vue';
 import AppLayout from '@/app/components/app/AppLayout.vue';
+import AppChatPanel from '@/app/components/app/AppChatPanel.vue';
 import E2ETestModeMarker from '@/app/components/app/E2ETestModeMarker.vue';
 
 import { useHistoryHelper } from '@/app/composables/useHistoryHelper';
@@ -27,7 +28,7 @@ import { setLanguage } from '@n8n/i18n';
 // Note: no need to import en.json here; default 'en' is handled via setLanguage
 import { useRootStore } from '@n8n/stores/useRootStore';
 import axios from 'axios';
-import { computed, defineAsyncComponent, onMounted, provide, ref, shallowRef, watch } from 'vue';
+import { computed, onMounted, provide, ref, shallowRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useStyles } from '@n8n/composables/useStyles';
 import { useExposeCssVar } from '@/app/composables/useExposeCssVar';
@@ -38,12 +39,6 @@ import type {
 	WorkflowDocumentId,
 	WorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
-
-// The chat panel pulls the assistant and the node parameter inputs into its chunk.
-// Load it after the first render, so that this code is not in the startup JS.
-const AppChatPanel = defineAsyncComponent(
-	async () => await import('@/app/components/app/AppChatPanel.vue'),
-);
 
 const route = useRoute();
 const router = useRouter();
