@@ -605,11 +605,9 @@ describe('InstanceAiBrowserPreview', () => {
 
 				expect(postCloudBrowserReturnControl).toHaveBeenCalledTimes(1);
 				expect(getByTestId(callout)).toHaveTextContent(
-					'n8n Assistant can save your logins, so you do not have to sign in again next time.',
+					"n8n Assistant can save your logins, so you don't have to sign in next time.",
 				);
-				expect(getByTestId(`${callout}-settings`)).toHaveTextContent(
-					'Turn on saved logins in Assistant settings',
-				);
+				expect(getByTestId(`${callout}-settings`)).toHaveTextContent('Turn on saved logins');
 			});
 
 			it('tells a member to ask an admin', async () => {
