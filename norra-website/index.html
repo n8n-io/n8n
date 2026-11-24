@@ -3859,6 +3859,24 @@ a.br-card:hover .br-mini .nst-tile { scale: 1.06; }
     .pk-draw { stroke-dashoffset: 0; }
   }
 
+/* ===== src/content/70-onboarding.css ===== */
+  /* ---------- #onboarding: Tally full-page embed below the nav ---------- */
+  /* While the page is active the document does not scroll and the footer is hidden: the form is the page. */
+  html:has(#page-onboarding.active), html:has(#page-onboarding.active) body { overflow: hidden; height: 100%; }
+  body:has(#page-onboarding.active) footer { display: none; }
+  .ob-full { position: fixed; left: 0; right: 0; bottom: 0; top: calc(64px + env(safe-area-inset-top, 0px));
+    /* The Tally form uses dark text on a transparent background, so its surface stays light in both themes. */
+    background: hsl(45 30% 98%); z-index: 1; }
+  .ob-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: transparent; }
+  .ob-wait { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+    color: hsl(210 9% 42%); font-size: 14px; text-align: center; padding: 0 max(16px, env(safe-area-inset-left, 0px)); }
+  .ob-wait a { color: hsl(158 44% 18%); text-decoration: underline; text-underline-offset: 3px; }
+  .ob-spin { width: 28px; height: 28px; border-radius: 999px; border: 2px solid hsl(44 16% 87%); border-top-color: hsl(158 44% 18%);
+    animation: ob-spin 0.9s linear infinite; }
+  @keyframes ob-spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .ob-spin { animation: none; } }
+  .ob-full.ob-loaded .ob-wait { display: none; }
+
 /* ===== src/content/90-logo-reel.css ===== */
   /* ---------- logo reel: the client's animated logo film, in the footer ---------- */
   /* Soft tile in both themes: the film is a white mark on black, so light mode inverts it and multiplies
@@ -3937,6 +3955,7 @@ a.br-card:hover .br-mini .nst-tile { scale: 1.06; }
   <div class="page" id="page-impressum"></div>
   <div class="page" id="page-datenschutz"></div>
   <div class="page" id="page-agb"></div>
+  <div class="page" id="page-onboarding"></div>
 </main>
 
 <!-- ============ FOOTER ============ -->
@@ -3963,7 +3982,7 @@ a.br-card:hover .br-mini .nst-tile { scale: 1.06; }
       </div>
       <div>
         <h3>Mehr</h3>
-        <ul><li><a href="#preise">Preise</a></li><li><a href="#kontakt">Kontakt</a></li><li><a href="#impressum">Impressum</a></li><li><a href="#datenschutz">Datenschutz</a></li><li><a href="#agb">AGB</a></li></ul>
+        <ul><li><a href="#preise">Preise</a></li><li><a href="#kontakt">Kontakt</a></li><li><a href="#onboarding">Onboarding</a></li><li><a href="#impressum">Impressum</a></li><li><a href="#datenschutz">Datenschutz</a></li><li><a href="#agb">AGB</a></li></ul>
       </div>
       <div>
         <h3>Kontakt</h3>
@@ -3978,7 +3997,7 @@ a.br-card:hover .br-mini .nst-tile { scale: 1.06; }
     </div>
   </div>
 </footer>
-<script>window.NORRA_ENV = 'hosting'; window.NORRA_I18N_LAZY = true; window.NORRA_I18N_VER = 'b1e60bccee';</script>
+<script>window.NORRA_ENV = 'hosting'; window.NORRA_I18N_LAZY = true; window.NORRA_I18N_VER = 'e29702782c';</script>
 <script>
 /* ===== src/core.js ===== */
 /* =========================================================================
@@ -4449,7 +4468,7 @@ NORRA.canPost = function () {
 /* Flat hash routes. industry routes are 'branche-' + industry slug. */
 NORRA.ROUTES = ['start', 'produkte', 'voice-agent', 'chatbot', 'social-media', 'website', 'branchen',
   'branche-kosmetik', 'branche-coaches', 'branche-gastro', 'branche-friseure', 'branche-hotels',
-  'preise', 'kontakt', 'impressum', 'datenschutz', 'agb'];
+  'preise', 'kontakt', 'onboarding', 'impressum', 'datenschutz', 'agb'];
 NORRA.PRODUCT_ROUTES = ['voice-agent', 'chatbot', 'social-media', 'website'];
 NORRA.KIT_BY_PRODUCT = { 'voice-agent': 'voice', 'chatbot': 'chat', 'social-media': 'social', 'website': 'website' };
 /* Boot calls this: every slug in NORRA.products / NORRA.industries becomes a route. */
@@ -6337,6 +6356,7 @@ NORRA.buildChrome = function () {
     }).join('') +
       '<h4>Mehr</h4><a href="#preise" data-route="preise"><span class="ico">' + NORRA.ico('euro') + '</span><span>Preise</span></a>' +
       '<a href="#kontakt" data-route="kontakt"><span class="ico">' + NORRA.ico('mail') + '</span><span>Kontakt</span></a>' +
+      '<a href="#onboarding" data-route="onboarding"><span class="ico">' + NORRA.ico('list') + '</span><span>Onboarding</span></a>' +
       '<div class="mnav-cta">' + NORRA.btn({ label: 'Demo anfragen', href: '#kontakt', arrow: true }) + '</div>' +
       '<h4>Sprache und Land</h4><div class="mnav-lsw">' + NORRA.switcherHtml('mlsw') + '</div>' +
       '<nav class="mnav-legal" aria-label="Rechtliches"><a href="#impressum" data-route="impressum">Impressum</a><a href="#datenschutz" data-route="datenschutz">Datenschutz</a><a href="#agb" data-route="agb">AGB</a></nav>';
@@ -14115,6 +14135,38 @@ NORRA.pages.agb = function (el) {
   });
 };
 NORRA.pages.agb.wire = function (el) { NORRA.recht.wire(el); };
+</script>
+<script>
+/* ===== src/content/70-onboarding.js ===== */
+/* 70-onboarding.js: route #onboarding, listed under "Mehr".
+   Embeds the Tally form "Norra – Onboarding für Ihren KI-Agenten" (bZWypL) as a FULL PAGE embed:
+   the form fills everything below the nav, the page itself does not scroll (see 70-onboarding.css).
+   The iframe loads tally.so directly (Tally full-page share URL with a transparent background), so no
+   third-party script is needed. Behind it sits a quiet loading state with a link to open the form in a new tab. */
+NORRA.onboarding = {
+  formId: 'bZWypL',
+  title: 'Norra – Onboarding für Ihren KI-Agenten',
+  url: function () { return 'https://tally.so/r/' + NORRA.onboarding.formId; }
+};
+NORRA.titles.onboarding = 'Onboarding · Norra';
+
+NORRA.pages.onboarding = function (el) {
+  var O = NORRA.onboarding, src = O.url() + '?transparentBackground=1';
+  el.innerHTML =
+    '<section class="ob-full" aria-label="Onboarding">' +
+      '<div class="ob-wait" aria-hidden="true">' +
+        '<span class="ob-spin"></span>' +
+        '<p>Formular wird geladen …</p>' +
+        '<a href="' + O.url() + '" target="_blank" rel="noopener">Formular in neuem Tab öffnen</a>' +
+      '</div>' +
+      '<iframe class="ob-frame" src="' + src + '" title="' + NORRA.esc(O.title) + '" ' +
+        '' +
+        'allow="fullscreen; clipboard-write" referrerpolicy="strict-origin-when-cross-origin"></iframe>' +
+    '</section>';
+  /* The form background is transparent, so the loading state must disappear once Tally has loaded. */
+  var full = el.querySelector('.ob-full'), frame = el.querySelector('.ob-frame');
+  if (frame && full) frame.addEventListener('load', function () { full.classList.add('ob-loaded'); });
+};
 </script>
 <script>
 /* ===== src/content/90-logo-reel.js ===== */
