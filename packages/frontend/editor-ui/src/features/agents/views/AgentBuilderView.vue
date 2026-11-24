@@ -165,7 +165,11 @@ import type { SetupTask } from '../components/AgentSetupTasks/agentSetupTasks.re
 import AgentTestHeader from '../components/AgentTestHeader.vue';
 import AgentTestChatPage from '../components/AgentTestChatPage.vue';
 import AgentTestDock from '../components/AgentTestDock.vue';
+import AgentHeldActionsTray from '../components/chatMode/AgentHeldActionsTray.vue';
+import AgentRunHeldActionsModal from '../components/chatMode/AgentRunHeldActionsModal.vue';
 import AgentTestRunEmptyState from '../components/chatMode/AgentTestRunEmptyState.vue';
+import { extractHeldActions } from '../components/chatMode/heldActions';
+import { useAgentHeldActions } from '../components/chatMode/useAgentHeldActions';
 import { useAgentSafeTestingFlag } from '../composables/useAgentSafeTestingFlag';
 import AgentVersionHistoryPanel from '../components/VersionHistory/AgentVersionHistoryPanel.vue';
 import {
@@ -1117,6 +1121,11 @@ const isSafeTestingEnabled = useAgentSafeTestingFlag();
 const panelChatMode = computed<'test' | undefined>(() =>
 	isSafeTestingEnabled.value ? 'test' : undefined,
 );
+const heldActionsState = useAgentHeldActions({
+	projectId,
+	agentId,
+	sessionId: effectiveSessionId,
+});
 
 function sendStarterPrompt(prompt: string) {
 	const target = { projectId: projectId.value, agentId: agentId.value };
@@ -3743,6 +3752,14 @@ useKeybindings({
 							@select-prompt="sendStarterPrompt"
 						/>
 					</template>
+					<template v-if="isSafeTestingEnabled" #after-reply="{ groupId, toolCalls }">
+						<AgentHeldActionsTray
+							:actions="extractHeldActions(toolCalls)"
+							:committed="heldActionsState.committedByReply.value[groupId]"
+							:busy="heldActionsState.committingReplyId.value === groupId"
+							@run-actions="heldActionsState.openConfirmModal(groupId, $event)"
+						/>
+					</template>
 				</AgentTestChatPage>
 
 				<AgentBuilderEditorColumn
@@ -3905,6 +3922,14 @@ useKeybindings({
 									@select-prompt="sendStarterPrompt"
 								/>
 							</template>
+							<template v-if="isSafeTestingEnabled" #after-reply="{ groupId, toolCalls }">
+								<AgentHeldActionsTray
+									:actions="extractHeldActions(toolCalls)"
+									:committed="heldActionsState.committedByReply.value[groupId]"
+									:busy="heldActionsState.committingReplyId.value === groupId"
+									@run-actions="heldActionsState.openConfirmModal(groupId, $event)"
+								/>
+							</template>
 							<template v-if="inlineTestChat" #composer-footer>
 								<AgentBuilderChatDisclaimer />
 							</template>
@@ -3924,6 +3949,15 @@ useKeybindings({
 				</Teleport>
 			</template>
 		</div>
+		<AgentRunHeldActionsModal
+			v-if="isSafeTestingEnabled"
+			v-model:open="heldActionsState.confirmModalOpen.value"
+			:actions="heldActionsState.pendingActions.value"
+			:busy="heldActionsState.committingReplyId.value !== null"
+			:error="heldActionsState.commitError.value"
+			@confirm="heldActionsState.confirmCommit"
+			@cancel="heldActionsState.cancelConfirmModal"
+		/>
 	</div>
 </template>
 

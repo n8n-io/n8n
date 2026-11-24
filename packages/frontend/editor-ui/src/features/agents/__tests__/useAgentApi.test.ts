@@ -5,6 +5,7 @@ import { getFullApiResponse, makeRestApiRequest, request } from '@n8n/rest-api-c
 import {
 	cancelAgentChatExecution,
 	cancelAgentChatRun,
+	commitAgentTestRunActions,
 	createAgent,
 	deleteN8nChatThread,
 	deleteSystemAgentThread,
@@ -730,6 +731,29 @@ describe('useAgentApi', () => {
 				{ type: 'slack', credentialId: '', settings: { channel: 'C1' } },
 				{ type: 'n8n_chat', credentialId: '' },
 			]);
+		});
+	});
+
+	describe('commitAgentTestRunActions', () => {
+		it('posts testChatId and actionIds to the test-run commit endpoint', async () => {
+			const response = {
+				committedAt: '2026-11-20T14:05:00.000Z',
+				results: [{ actionId: 'call-1', toolName: 'slack__post_message', status: 'done' }],
+			};
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce(response);
+
+			const result = await commitAgentTestRunActions(restApiContext, 'project-1', 'agent-1', {
+				testChatId: 'chat-1',
+				actionIds: ['call-1'],
+			});
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'POST',
+				'/projects/project-1/agents/v2/agent-1/test-run/commit',
+				{ testChatId: 'chat-1', actionIds: ['call-1'] },
+			);
+			expect(result).toEqual(response);
 		});
 	});
 });

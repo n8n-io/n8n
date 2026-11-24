@@ -1,11 +1,13 @@
 import { createTestingPinia } from '@pinia/testing';
-import { configure, fireEvent, waitFor } from '@testing-library/vue';
-import { describe, expect, it } from 'vitest';
+import { configure, fireEvent, screen, waitFor } from '@testing-library/vue';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ref } from 'vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 
 import AgentHeldActionsTray from '../components/chatMode/AgentHeldActionsTray.vue';
+import AgentRunHeldActionsModal from '../components/chatMode/AgentRunHeldActionsModal.vue';
 import AgentTestRunEmptyState from '../components/chatMode/AgentTestRunEmptyState.vue';
 import {
 	extractHeldActions,
@@ -13,9 +15,25 @@ import {
 	isHeldWriteToolCall,
 	type AgentHeldAction,
 } from '../components/chatMode/heldActions';
+import { useAgentHeldActions } from '../components/chatMode/useAgentHeldActions';
 import { TOOL_CALL_STATE } from '../constants';
+import { AgentModalTestStub } from './utils/AgentModalTestStub';
 
 configure({ testIdAttribute: 'data-testid' });
+
+const commitAgentTestRunActionsMock = vi.fn();
+
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ restApiContext: { baseUrl: 'http://localhost:5678' } }),
+}));
+
+vi.mock('../composables/useAgentApi', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../composables/useAgentApi')>();
+	return {
+		...actual,
+		commitAgentTestRunActions: (...args: unknown[]) => commitAgentTestRunActionsMock(...args),
+	};
+});
 
 const sampleActions: AgentHeldAction[] = [
 	{
@@ -179,5 +197,74 @@ describe('AgentHeldActionsTray', () => {
 			'Done in your real apps at 14:07.',
 		);
 		expect(queryByTestId('agent-held-actions-run-btn')).not.toBeInTheDocument();
+	});
+});
+
+describe('AgentRunHeldActionsModal', () => {
+	const renderModal = createComponentRenderer(AgentRunHeldActionsModal, {
+		pinia: createTestingPinia(),
+		global: { stubs: { AgentModal: AgentModalTestStub } },
+	});
+
+	it('lists each action with its target and emits confirm', async () => {
+		const { emitted } = renderModal({
+			props: { open: true, actions: sampleActions },
+		});
+
+		expect(
+			screen.getByRole('heading', { name: 'Run these actions for real?' }),
+		).toBeInTheDocument();
+		const items = screen.getAllByTestId('agent-run-held-actions-item');
+		expect(items).toHaveLength(2);
+		expect(screen.getByTestId('agent-run-held-actions-description')).toHaveTextContent(
+			"These actions from this test will run in your real apps. This can't be undone.",
+		);
+		expect(items[0]).toHaveTextContent('Post message');
+		expect(items[0]).toHaveTextContent('Slack · #ops');
+		expect(items[1]).toHaveTextContent('Create issue');
+		expect(items[1]).toHaveTextContent('Linear · ENG-123');
+
+		await fireEvent.click(screen.getByTestId('agent-run-held-actions-confirm'));
+		expect(emitted('confirm')).toHaveLength(1);
+	});
+});
+
+describe('useAgentHeldActions', () => {
+	beforeEach(() => {
+		commitAgentTestRunActionsMock.mockReset();
+	});
+
+	it('commits held actions and stores the response per reply', async () => {
+		const committedAt = new Date(2026, 10, 20, 15, 30, 0).toISOString();
+		const response = {
+			committedAt,
+			results: [
+				{ actionId: 'call-1', toolName: 'slack__post_message', status: 'done' },
+				{ actionId: 'call-2', toolName: 'linear__create_issue', status: 'done' },
+			],
+		};
+		commitAgentTestRunActionsMock.mockResolvedValueOnce(response);
+
+		const state = useAgentHeldActions({
+			projectId: ref('p1'),
+			agentId: ref('a1'),
+			sessionId: ref('chat-1'),
+		});
+
+		state.openConfirmModal('reply-1', sampleActions);
+		expect(state.confirmModalOpen.value).toBe(true);
+
+		expect(await state.confirmCommit()).toBe(true);
+		expect(commitAgentTestRunActionsMock).toHaveBeenCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p1',
+			'a1',
+			{
+				testChatId: 'chat-1',
+				actionIds: ['call-1', 'call-2'],
+			},
+		);
+		expect(state.confirmModalOpen.value).toBe(false);
+		expect(state.committedByReply.value['reply-1']).toEqual(response);
 	});
 });
