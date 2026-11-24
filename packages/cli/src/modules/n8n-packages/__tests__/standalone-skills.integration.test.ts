@@ -1,6 +1,12 @@
 import { ModuleRegistry } from '@n8n/backend-common';
 import { InstanceWriteAccessService, TelemetryProxy } from '@n8n/backend-services';
-import { createTeamProject, mockInstance, testDb, testModules } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	createWorkflow,
+	mockInstance,
+	testDb,
+	testModules,
+} from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
@@ -29,6 +35,7 @@ import { N8nPackagesService } from '../n8n-packages.service';
 import { TarPackageReader } from '../io/tar/tar-package-reader';
 import { TarPackageWriter } from '../io/tar/tar-package-writer';
 import { N8nPackageParser } from '../engine/n8n-package-parser';
+import { ImportOrchestrator } from '../engine/import-orchestrator';
 import { PackageImportConfig } from '../n8n-packages.config';
 import type { SerializedSkill } from '../spec/serialized/skill.schema';
 
@@ -444,6 +451,61 @@ it('reports saved changes if refreshing consumers fails', async () => {
 		},
 	});
 	expect(await findLatestSkillVersion(skill.id)).toMatchObject({ version: 2 });
+});
+
+it('reports saved Skills if a later project content write fails', async () => {
+	const project = await createTeamProject('Skill project', owner);
+	const { id } = await createSkill({ projectId: project.id, content });
+	const exported = await service.exportPackage({
+		user: owner,
+		projectIds: [project.id],
+		includeSkills: true,
+	});
+	const packageBuffer = await streamToBuffer(exported.stream);
+	await deleteAllSkills();
+	vi.spyOn(Container.get(ImportOrchestrator), 'apply').mockRejectedValueOnce(
+		new Error('Content write failed'),
+	);
+	await expect(importSkills(packageBuffer, { projectId: undefined })).rejects.toMatchObject({
+		meta: {
+			counts: { skills: { created: 1 } },
+			skills: [expect.objectContaining({ localId: id, status: 'created' })],
+		},
+	});
+	expect(await findSkill(id)).toMatchObject({ projectId: project.id });
+});
+
+it('reports workflow and Skill conflicts together before writes', async () => {
+	const source = await createTeamProject('Source', owner);
+	const { id } = await createSkill({ projectId: source.id, content });
+	const workflow = await createWorkflow(
+		{ name: 'Source workflow', nodes: [], connections: {} },
+		source,
+	);
+	const exported = await service.exportPackage({
+		user: owner,
+		workflowIds: [workflow.id],
+		skillIds: [id],
+	});
+	const packageBuffer = await streamToBuffer(exported.stream);
+	await deleteAllSkills();
+	await createSkill({
+		id,
+		projectId: destination.id,
+		content: { ...content, instructions: 'Keep this edit.' },
+	});
+	await expect(importSkills(packageBuffer, { conflictPolicy: 'fail' })).rejects.toMatchObject({
+		meta: {
+			issues: expect.arrayContaining([
+				expect.objectContaining({ type: 'skill-conflict', skillId: id }),
+				expect.objectContaining({ type: 'workflow-id-conflict', sourceWorkflowId: workflow.id }),
+			]),
+		},
+	});
+	expect(await findLatestSkillVersion(id)).toMatchObject({
+		version: 1,
+		instructions: 'Keep this edit.',
+	});
 });
 
 it('reads legacy Skills collections without removing unselected destination Skills', async () => {

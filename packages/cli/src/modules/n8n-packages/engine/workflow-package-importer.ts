@@ -37,7 +37,6 @@ import {
 	placeByPolicy,
 } from './package-layout';
 import type { PackageManifest } from '../spec/manifest.schema';
-import { toImportBlockedError } from './import-blocked.error';
 import {
 	planStandaloneSkills,
 	applyStandaloneSkills,
@@ -87,7 +86,7 @@ export class WorkflowPackageImporter {
 			const skillPlan = await planStandaloneSkills(request, manifest, skills, [], {
 				destinationProjectId: projectId,
 			});
-			if (skillPlan?.issues.length) throw toImportBlockedError(skillPlan.issues);
+			await this.importPreflight.prepare([], reader, request.apiKeyScopes, skillPlan);
 			const outcomes = await applyStandaloneSkills(request, skillPlan);
 			const result = buildImportResult({
 				package: toPackageSummary(manifest),
@@ -216,8 +215,12 @@ export class WorkflowPackageImporter {
 			[draftPlan],
 			{ destinationProjectId: context.projectId },
 		);
-		if (skillPlan?.issues.length) throw toImportBlockedError(skillPlan.issues);
-		const [plan] = await this.importPreflight.prepare([draftPlan], reader, request.apiKeyScopes);
+		const [plan] = await this.importPreflight.prepare(
+			[draftPlan],
+			reader,
+			request.apiKeyScopes,
+			skillPlan,
+		);
 		const skillOutcomes = await applyStandaloneSkills(request, skillPlan);
 		try {
 			const content = await this.importOrchestrator.apply(plan);

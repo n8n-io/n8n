@@ -6,7 +6,6 @@ import { countSkillOutcomes, type StandaloneSkillPlan } from '../entities/skill/
 import type { ImportRequest, ImportResult } from '../n8n-packages.types';
 import type { PackageManifest } from '../spec/manifest.schema';
 import type { SerializedSkill } from '../spec/serialized/skill.schema';
-import { assertPackageImportApiKeyScopes, assertSharedSkillWritesAllowed } from './import-gates';
 import type { ImportPlan } from './import-orchestrator';
 import { SkillImportFailedError } from './import-blocked.error';
 
@@ -70,8 +69,6 @@ export async function planStandaloneSkills(
 			),
 		},
 	);
-	assertSharedSkillWritesAllowed(request.apiKeyScopes, [plan.writes]);
-	if (plan.removals.length) assertPackageImportApiKeyScopes(request.apiKeyScopes, ['skill:delete']);
 	const selectedIds = new Set(plan.outcomes.map(({ localId }) => localId));
 	const deleted = new Set(deletedIds);
 	const names = new Map(
@@ -92,9 +89,9 @@ export async function planStandaloneSkills(
 					});
 			}
 		}
-		const agentSkills = scope.agentPlan?.skills;
-		if (!agentSkills) continue;
-		for (const write of agentSkills.shared) {
+		const dependencySkillPlan = scope.agentPlan?.skills;
+		if (!dependencySkillPlan) continue;
+		for (const write of dependencySkillPlan.shared) {
 			if (deleted.has(write.skill.id)) {
 				plan.issues.push({
 					type: 'skill-conflict',
@@ -114,7 +111,9 @@ export async function planStandaloneSkills(
 			names.set(key, write.skill.id);
 		}
 		// The standalone batch writes these Skills once. Agents retain their change markers.
-		agentSkills.shared = agentSkills.shared.filter(({ skill }) => !selectedIds.has(skill.id));
+		dependencySkillPlan.shared = dependencySkillPlan.shared.filter(
+			({ skill }) => !selectedIds.has(skill.id),
+		);
 	}
 	return plan;
 }

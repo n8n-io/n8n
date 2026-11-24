@@ -32,7 +32,10 @@ import {
 	columnIdConflictError,
 	DataTableImporter,
 } from '../entities/data-table/data-table-importer';
-import { reconcileSharedWrites } from '../entities/skill/skill-import.types';
+import {
+	reconcileSharedWrites,
+	type StandaloneSkillPlan,
+} from '../entities/skill/skill-import.types';
 import type {
 	DataTableImportPlan,
 	DataTableImportRequest,
@@ -199,7 +202,7 @@ export class ImportOrchestrator {
 
 	async assertNotBlocked(
 		plans: ImportPlan[],
-		options: { apiKeyScopes: string[] | undefined },
+		options: { apiKeyScopes: string[] | undefined; skillPlan?: StandaloneSkillPlan },
 	): Promise<void> {
 		const issues = await this.blockingIssues(plans, { ...options, mode: 'enforce' });
 		if (issues.length > 0) throw toImportBlockedError(issues);
@@ -215,7 +218,11 @@ export class ImportOrchestrator {
 	 */
 	async blockingIssues(
 		plans: ImportPlan[],
-		options: { apiKeyScopes: string[] | undefined; mode: ImportPlanMode },
+		options: {
+			apiKeyScopes: string[] | undefined;
+			mode: ImportPlanMode;
+			skillPlan?: StandaloneSkillPlan;
+		},
 	): Promise<BlockingIssue[]> {
 		assertTagWritesAllowed(
 			options.apiKeyScopes,
@@ -279,12 +286,18 @@ export class ImportOrchestrator {
 			if (!plan.agentPlan) continue;
 			assertPackageImportApiKeyScopes(options.apiKeyScopes, requiredAgentScopes(plan.agentPlan));
 		}
-		assertSharedSkillWritesAllowed(
-			options.apiKeyScopes,
-			plans.flatMap(({ agentPlan }) => (agentPlan?.skills ? [agentPlan.skills] : [])),
-		);
+		assertSharedSkillWritesAllowed(options.apiKeyScopes, [
+			...plans.flatMap(({ agentPlan }) => (agentPlan?.skills ? [agentPlan.skills] : [])),
+			...(options.skillPlan ? [options.skillPlan.writes] : []),
+		]);
+		if (options.skillPlan?.removals.length) {
+			assertPackageImportApiKeyScopes(options.apiKeyScopes, ['skill:delete']);
+		}
 
-		return await this.collectPackageBlockingIssues(plans, options.mode);
+		return [
+			...(await this.collectPackageBlockingIssues(plans, options.mode)),
+			...(options.skillPlan?.issues ?? []),
+		];
 	}
 
 	/**

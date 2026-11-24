@@ -71,7 +71,7 @@ export function assertVariableWritesAllowed(options: {
  */
 export function assertProjectWritesAllowed(
 	apiKeyScopes: string[] | undefined,
-	items: Pick<ProjectPlanItem, 'action'>[],
+	items: Array<Pick<ProjectPlanItem, 'action'>>,
 ): void {
 	if (items.some((item) => item.action === 'create')) {
 		assertPackageImportApiKeyScopes(apiKeyScopes, ['project:create']);
@@ -88,10 +88,10 @@ export function assertProjectWritesAllowed(
 export function assertFolderWritesAllowed(
 	licenseState: LicenseState,
 	apiKeyScopes: string[] | undefined,
-	plans: {
+	plans: Array<{
 		folderPlan: Pick<FolderImportPlan, 'items'>;
 		folderRemovalPlan: Pick<FolderRemovalPlan, 'removals'>;
-	}[],
+	}>,
 ): void {
 	const items = plans.flatMap(({ folderPlan }) => folderPlan.items);
 	const hasCreations = items.some((item) => item.action === 'create');
@@ -112,7 +112,7 @@ export function assertFolderWritesAllowed(
 /** An `overwrite` import that removes no workflow needs no `workflow:delete` scope. */
 export function assertWorkflowRemovalsAllowed(
 	apiKeyScopes: string[] | undefined,
-	removalPlans: Pick<WorkflowRemovalPlan, 'removals'>[],
+	removalPlans: Array<Pick<WorkflowRemovalPlan, 'removals'>>,
 ): void {
 	if (removalPlans.some((plan) => plan.removals.length > 0)) {
 		assertPackageImportApiKeyScopes(apiKeyScopes, ['workflow:delete']);
@@ -138,12 +138,14 @@ export function assertDataTableWritesAllowed(
  */
 export function assertSharedSkillWritesAllowed(
 	apiKeyScopes: string[] | undefined,
-	skillPlans: Pick<SkillImportPlan, 'shared'>[],
+	skillPlans: Array<Pick<SkillImportPlan, 'shared'>>,
 ): void {
 	assertPackageImportApiKeyScopes(apiKeyScopes, requiredSharedSkillScopes(skillPlans));
 }
 
-export function requiredSharedSkillScopes(skillPlans: Pick<SkillImportPlan, 'shared'>[]): Scope[] {
+export function requiredSharedSkillScopes(
+	skillPlans: Array<Pick<SkillImportPlan, 'shared'>>,
+): Scope[] {
 	const writes = skillPlans.flatMap((plan) => plan.shared);
 	const scopes: Scope[] = [];
 	if (writes.some(({ base }) => !base)) scopes.push('skill:create');
@@ -158,7 +160,7 @@ export function requiredSharedSkillScopes(skillPlans: Pick<SkillImportPlan, 'sha
 export function assertCredentialUpdatesAllowed(
 	apiKeyScopes: string[] | undefined,
 	policy: CredentialConflictPolicy,
-	credentialPlans: Pick<CredentialImportPlan, 'updates'>[],
+	credentialPlans: Array<Pick<CredentialImportPlan, 'updates'>>,
 ): void {
 	if (plannedCredentialUpdates(policy, credentialPlans).size > 0) {
 		assertPackageImportApiKeyScopes(apiKeyScopes, ['credential:update']);

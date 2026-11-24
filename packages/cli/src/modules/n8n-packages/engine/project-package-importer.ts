@@ -25,6 +25,7 @@ import type {
 	ImportBindingMap,
 	ImportedFolderSummary,
 	ImportedWorkflowSummary,
+	ImportedProjectSummary,
 	ImportPlanMode,
 	ImportSelection,
 	ResolvedImportRequest,
@@ -78,7 +79,7 @@ export interface PackageImportPlan {
 	manifest: PackageManifest;
 	projectPlan: ProjectImportPlan;
 	/** Empty when a project conflict stops the import before its contents are planned. */
-	scopes: { project: ManifestEntry; plan: ImportPlan }[];
+	scopes: Array<{ project: ManifestEntry; plan: ImportPlan }>;
 	/** Everything that blocks the import, from every stage that could run. */
 	issues: BlockingIssue[];
 }
@@ -202,6 +203,7 @@ export class ProjectPackageImporter {
 			reader,
 			request.apiKeyScopes,
 			mode,
+			skillPlan,
 		);
 		const scopes = selectedProjects.map((project, index) => ({ project, plan: plans[index] }));
 
@@ -211,13 +213,13 @@ export class ProjectPackageImporter {
 			projectPlan,
 			scopes,
 			skillPlan,
-			issues: [...issues, ...(skillPlan?.issues ?? [])],
+			issues,
 		};
 	}
 
 	/** Writes a plan that has no issues. */
 	async applyPlan(plan: PackageImportPlan): Promise<ImportOutcome> {
-		const { request, manifest, projectPlan, scopes: planned } = plan;
+		const { request, projectPlan, scopes: planned } = plan;
 		if (plan.issues.length > 0) {
 			throw new UnexpectedError('An import plan with blocking issues cannot be applied');
 		}
@@ -227,131 +229,135 @@ export class ProjectPackageImporter {
 		const projectSummaries = await this.projectImporter.apply(request.user, projectPlan.items);
 		const skillOutcomes = await applyStandaloneSkills(request, plan.skillPlan);
 		try {
-			// Resolve every project's workflow ids up front so a sub-workflow reference
-			// that points into another project resolves when its parent is applied.
-			const packageWorkflowBindings: ImportBindingMap = new Map(
-				planned.flatMap(({ plan }) => [...collectPlannedWorkflowBindings(plan.workflowPlan.items)]),
-			);
-
-			// Write every project's content first. Publishing waits for the sweep below, so a project's
-			// position here does not decide whether a cross-project sub-workflow exists in time.
-			const applied: {
-				project: ManifestEntry;
-				plan: ImportPlan;
-				content: ImportContentResult;
-			}[] = [];
-			for (const { project, plan } of planned) {
-				applied.push({
-					project,
-					plan,
-					content: await this.importOrchestrator.apply(plan, packageWorkflowBindings),
-				});
-			}
-
-			const { workflows: published, agentOutcomes } = await this.importOrchestrator.publishPackage({
-				user: request.user,
-				publicApi: request.publicApi,
-				ctx: request.ctx,
-				content: applied.map(({ content }) => content),
-				policy: request.publishingPolicy,
-				subWorkflowRequirements: manifest.requirements?.workflows,
-			});
-
-			const workflows: ImportedWorkflowSummary[] = [];
-			const removedWorkflows: RemovedWorkflowSummary[] = [];
-			const removedFolders: RemovedFolderSummary[] = [];
-			const folders: ImportedFolderSummary[] = [];
-			const scopedBindings: PackageImportBindings[] = [];
-			const matched: string[] = [];
-			const stubbed: string[] = [];
-			let dataTablesMatched = 0;
-			let dataTablesCreated = 0;
-			let dataTablesUpdated = 0;
-			const seeded: string[] = [];
-			const incomplete: string[] = [];
-			const variablesMatched: string[] = [];
-			const variablesMissing: string[] = [];
-			const variablesCreated: string[] = [];
-			const variablesStubbed: string[] = [];
-			const variablesSkipped: string[] = [];
-			const variablesUpdated: string[] = [];
-			const tagSummaries: ImportTagSummary[] = [];
-			const scopes: PackageImportScope[] = [];
-
-			for (const { project, plan, content } of applied) {
-				workflows.push(
-					...toImportedWorkflowSummaries(content.workflowOutcomes, project.id, published),
-				);
-				removedWorkflows.push(...content.removedWorkflows);
-				removedFolders.push(...content.removedFolders);
-				folders.push(...content.folderSummaries);
-				scopedBindings.push(content.bindings);
-				matched.push(...content.credentialResult.matched);
-				stubbed.push(...content.credentialResult.stubbed);
-				dataTablesMatched += content.dataTablePlan.matchedCount;
-				dataTablesCreated += content.dataTablePlan.creations.length;
-				dataTablesUpdated += content.dataTablePlan.updates.length;
-				seeded.push(...content.credentialResult.seeded);
-				incomplete.push(...content.credentialResult.incomplete);
-				variablesMatched.push(...content.variablePlan.matched.map(({ name }) => name));
-				variablesMissing.push(...content.variablePlan.missing.map(({ name }) => name));
-				variablesCreated.push(...content.variableResult.created);
-				variablesStubbed.push(...content.variableResult.stubbed);
-				variablesSkipped.push(...content.variableResult.skippedExisting);
-				variablesUpdated.push(...content.variableResult.updated);
-				tagSummaries.push(toTagSummary(content.tagPlan));
-				scopes.push({
-					context: plan.input.context,
-					imported: content,
-					credentialRequest: plan.input.credentialRequest,
-					dataTableRequest: plan.input.dataTableRequest,
-					variableRequest: plan.input.variableRequest,
-					tagRequest: plan.input.tagRequest,
-				});
-			}
-
-			const result = buildImportResult({
-				package: toPackageSummary(manifest),
-				agentOutcomes,
-				workflows,
-				removedWorkflows,
-				removedFolders,
-				folders,
-				projects: projectSummaries,
-				bindings: mergeBindings(...scopedBindings),
-				credentials: reconcileCredentialSummary({
-					matched,
-					stubbed,
-					seeded,
-					incomplete,
-					updated: credentialsUpdatedAcrossScopes(
-						applied.map(({ content }) => content.credentialResult),
-					),
-				}),
-				dataTables: {
-					matched: dataTablesMatched,
-					created: dataTablesCreated,
-					updated: dataTablesUpdated,
-				},
-				variables: reconcileVariableSummary({
-					matched: variablesMatched,
-					missing: variablesMissing,
-					created: variablesCreated,
-					stubbed: variablesStubbed,
-					skipped: variablesSkipped,
-					updated: variablesUpdated,
-				}),
-				tags: unionTagSummaries(tagSummaries),
-			});
-
-			return {
-				result: addSkillResults(result, skillOutcomes, plan.skillPlan),
-				scopes,
-				agentOutcomes,
-			};
+			const outcome = await this.applyProjectContent(plan, projectSummaries);
+			return { ...outcome, result: addSkillResults(outcome.result, skillOutcomes, plan.skillPlan) };
 		} catch (error) {
 			throwWithSkillResults(error, skillOutcomes);
 		}
+	}
+
+	private async applyProjectContent(
+		{ request, manifest, scopes: planned }: PackageImportPlan,
+		projectSummaries: ImportedProjectSummary[],
+	): Promise<ImportOutcome> {
+		// Resolve every project's workflow ids up front so a sub-workflow reference
+		// that points into another project resolves when its parent is applied.
+		const packageWorkflowBindings: ImportBindingMap = new Map(
+			planned.flatMap(({ plan }) => [...collectPlannedWorkflowBindings(plan.workflowPlan.items)]),
+		);
+
+		// Write every project's content first. Publishing waits for the sweep below, so a project's
+		// position here does not decide whether a cross-project sub-workflow exists in time.
+		const applied: Array<{
+			project: ManifestEntry;
+			plan: ImportPlan;
+			content: ImportContentResult;
+		}> = [];
+		for (const { project, plan } of planned) {
+			applied.push({
+				project,
+				plan,
+				content: await this.importOrchestrator.apply(plan, packageWorkflowBindings),
+			});
+		}
+
+		const { workflows: published, agentOutcomes } = await this.importOrchestrator.publishPackage({
+			user: request.user,
+			publicApi: request.publicApi,
+			ctx: request.ctx,
+			content: applied.map(({ content }) => content),
+			policy: request.publishingPolicy,
+			subWorkflowRequirements: manifest.requirements?.workflows,
+		});
+
+		const workflows: ImportedWorkflowSummary[] = [];
+		const removedWorkflows: RemovedWorkflowSummary[] = [];
+		const removedFolders: RemovedFolderSummary[] = [];
+		const folders: ImportedFolderSummary[] = [];
+		const scopedBindings: PackageImportBindings[] = [];
+		const matched: string[] = [];
+		const stubbed: string[] = [];
+		let dataTablesMatched = 0;
+		let dataTablesCreated = 0;
+		let dataTablesUpdated = 0;
+		const seeded: string[] = [];
+		const incomplete: string[] = [];
+		const variablesMatched: string[] = [];
+		const variablesMissing: string[] = [];
+		const variablesCreated: string[] = [];
+		const variablesStubbed: string[] = [];
+		const variablesSkipped: string[] = [];
+		const variablesUpdated: string[] = [];
+		const tagSummaries: ImportTagSummary[] = [];
+		const scopes: PackageImportScope[] = [];
+
+		for (const { project, plan, content } of applied) {
+			workflows.push(
+				...toImportedWorkflowSummaries(content.workflowOutcomes, project.id, published),
+			);
+			removedWorkflows.push(...content.removedWorkflows);
+			removedFolders.push(...content.removedFolders);
+			folders.push(...content.folderSummaries);
+			scopedBindings.push(content.bindings);
+			matched.push(...content.credentialResult.matched);
+			stubbed.push(...content.credentialResult.stubbed);
+			dataTablesMatched += content.dataTablePlan.matchedCount;
+			dataTablesCreated += content.dataTablePlan.creations.length;
+			dataTablesUpdated += content.dataTablePlan.updates.length;
+			seeded.push(...content.credentialResult.seeded);
+			incomplete.push(...content.credentialResult.incomplete);
+			variablesMatched.push(...content.variablePlan.matched.map(({ name }) => name));
+			variablesMissing.push(...content.variablePlan.missing.map(({ name }) => name));
+			variablesCreated.push(...content.variableResult.created);
+			variablesStubbed.push(...content.variableResult.stubbed);
+			variablesSkipped.push(...content.variableResult.skippedExisting);
+			variablesUpdated.push(...content.variableResult.updated);
+			tagSummaries.push(toTagSummary(content.tagPlan));
+			scopes.push({
+				context: plan.input.context,
+				imported: content,
+				credentialRequest: plan.input.credentialRequest,
+				dataTableRequest: plan.input.dataTableRequest,
+				variableRequest: plan.input.variableRequest,
+				tagRequest: plan.input.tagRequest,
+			});
+		}
+
+		const result = buildImportResult({
+			package: toPackageSummary(manifest),
+			agentOutcomes,
+			workflows,
+			removedWorkflows,
+			removedFolders,
+			folders,
+			projects: projectSummaries,
+			bindings: mergeBindings(...scopedBindings),
+			credentials: reconcileCredentialSummary({
+				matched,
+				stubbed,
+				seeded,
+				incomplete,
+				updated: credentialsUpdatedAcrossScopes(
+					applied.map(({ content }) => content.credentialResult),
+				),
+			}),
+			dataTables: {
+				matched: dataTablesMatched,
+				created: dataTablesCreated,
+				updated: dataTablesUpdated,
+			},
+			variables: reconcileVariableSummary({
+				matched: variablesMatched,
+				missing: variablesMissing,
+				created: variablesCreated,
+				stubbed: variablesStubbed,
+				skipped: variablesSkipped,
+				updated: variablesUpdated,
+			}),
+			tags: unionTagSummaries(tagSummaries),
+		});
+
+		return { result, scopes, agentOutcomes };
 	}
 
 	private async buildImportContextForProject(
@@ -503,8 +509,8 @@ function deletesForProject(
  * that hold a selected workflow, with every folder above them. Other folders stay as they are.
  */
 function foldersInSelection(
-	folders: { sourceFolderId: string; parentFolderId: string | null }[],
-	workflows: { parentFolderId: string | null }[],
+	folders: Array<{ sourceFolderId: string; parentFolderId: string | null }>,
+	workflows: Array<{ parentFolderId: string | null }>,
 	selectedFolderIds: string[],
 ): Set<string> {
 	const parentOf = new Map(
