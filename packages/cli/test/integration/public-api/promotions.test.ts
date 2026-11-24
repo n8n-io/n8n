@@ -9,6 +9,7 @@ import { GLOBAL_MEMBER_ROLE, ProjectRepository, TransactionRunner, UserRepositor
 import { Container } from '@n8n/di';
 import { onTestFinished } from 'vitest';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import type { ApiKeyScope } from '@n8n/permissions';
 import { Cipher } from 'n8n-core';
 import nock from 'nock';
 import { randomUUID } from 'node:crypto';
@@ -1398,13 +1399,16 @@ describe('Promotions in Public API', () => {
 		});
 
 		it.each(routes)(
-			'requires the API-key discovery scope and user permission for %s',
+			'requires the provider manage scope and user permission for %s',
 			async (route) => {
 				const id = await savedProvider();
-				const readOnlyOwner = await createOwnerWithApiKey({ scopes: ['promotions:read'] });
-				const listOnlyOwner = await createOwnerWithApiKey({ scopes: ['promotions:list'] });
-				const member = await createMemberWithApiKey({ scopes: ['promotions:discover'] });
-				for (const user of [readOnlyOwner, listOnlyOwner, member]) {
+				const readOnlyOwner = await createOwnerWithApiKey({ scopes: ['promotions:readProviders'] });
+				// Managing environments does not grant access to a provider's repositories.
+				const environmentManager = await createOwnerWithApiKey({
+					scopes: ['promotions:manageEnvironments'],
+				});
+				const member = await createMemberWithApiKey({ scopes: ['promotions:manageProviders'] });
+				for (const user of [readOnlyOwner, environmentManager, member]) {
 					const response = await testServer
 						.publicApiAgentFor(user)
 						.get(`/promotions/providers/${id}/${route}`);
@@ -1414,7 +1418,9 @@ describe('Promotions in Public API', () => {
 					(await testServer.publicApiAgentFor(readOnlyOwner).get(`/promotions/providers/${id}`))
 						.status,
 				).toBe(200);
-				const discoveryOwner = await createOwnerWithApiKey({ scopes: ['promotions:discover'] });
+				const discoveryOwner = await createOwnerWithApiKey({
+					scopes: ['promotions:manageProviders'],
+				});
 				const admin = await createAdminWithApiKey();
 				for (const user of [discoveryOwner, admin]) {
 					const api = (
@@ -1763,17 +1769,39 @@ describe('Promotions in Public API', () => {
 		);
 	});
 
-	it('rejects a key that has no promotion scope', async () => {
-		const unscopedOwner = await createOwnerWithApiKey({ scopes: ['tag:list'] });
-		const agent = testServer.publicApiAgentFor(unscopedOwner);
+	it.each([
+		{ name: 'no promotion scope', scopes: ['tag:list'] },
+		{
+			// A key saved before the upgrade keeps the old scope names. They grant nothing now.
+			name: 'only the promotion scopes from before the upgrade',
+			scopes: [
+				'promotions:create',
+				'promotions:read',
+				'promotions:update',
+				'promotions:delete',
+				'promotions:list',
+				'promotions:discover',
+				'promotions:connect',
+				'promotions:manageProjects',
+			],
+		},
+	])('rejects a key that has $name', async ({ scopes }) => {
+		const staleOwner = await createOwnerWithApiKey({
+			scopes: scopes as unknown as ApiKeyScope[],
+		});
+		const agent = testServer.publicApiAgentFor(staleOwner);
 
 		const list = await agent.get('/promotions/environments');
+		const createProvider = await agent
+			.post('/promotions/providers')
+			.send({ name: 'Deploy key', type: 'git', auth: { authType: 'ssh-key' } });
 		const apply = await agent.post(`/promotions/environments/${randomUUID()}/apply`);
 		const missingProjects = await agent.get(
 			`/promotions/environments/${randomUUID()}/missing-projects`,
 		);
 
 		expect(list.status).toBe(403);
+		expect(createProvider.status).toBe(403);
 		expect(apply.status).toBe(403);
 		expect(missingProjects.status).toBe(403);
 	});
@@ -1883,39 +1911,6 @@ describe('Promotions in Public API', () => {
 		expect(response.status).toBe(400);
 		expect(response.body.message).toBe('request/body At least one field is required');
 	});
-
-	it.each([false, true])(
-		'passes the API key variable permission to Promote: %s',
-		async (canExportVariableValues) => {
-			const scopedOwner = await createOwnerWithApiKey({
-				scopes: canExportVariableValues
-					? ['promotions:promote', 'variable:list']
-					: ['promotions:promote'],
-			});
-			const environmentId = randomUUID();
-			const promote = vi
-				.spyOn(Container.get(PromotionsService), 'promote')
-				.mockRejectedValueOnce(new BadRequestError('Operation stopped for test'));
-			try {
-				const response = await testServer
-					.publicApiAgentFor(scopedOwner)
-					.post(`/promotions/environments/${environmentId}/promote`)
-					.send({ commitMessage: 'Export projects' });
-
-				expect(response.status).toBe(400);
-				expect(promote).toHaveBeenCalledWith(
-					environmentId,
-					expect.objectContaining({ id: scopedOwner.id }),
-					{
-						commitMessage: 'Export projects',
-						canExportVariableValues,
-					},
-				);
-			} finally {
-				promote.mockRestore();
-			}
-		},
-	);
 
 	it('accepts a Promote without a commit message', async () => {
 		const environmentId = randomUUID();
@@ -2446,20 +2441,17 @@ describe('Promotions in Public API', () => {
 			expect(response.status).toBe(400);
 		});
 
-		it('forwards the selection and the variable-list grant to the service', async () => {
+		it('forwards the selection to the service', async () => {
 			const project = await createTeamProject('Team project', owner);
 			const promote = vi
 				.spyOn(Container.get(PromotionsService), 'promoteProjectSelection')
 				.mockResolvedValue(promoteResult);
 			try {
-				const withVars = testServer.publicApiAgentFor(
-					await createOwnerWithApiKey({ scopes: ['promotions:promote', 'variable:list'] }),
-				);
-				const withoutVars = testServer.publicApiAgentFor(
+				const promoteOnly = testServer.publicApiAgentFor(
 					await createOwnerWithApiKey({ scopes: ['promotions:promote'] }),
 				);
 
-				const first = await withVars.post(`/promotions/projects/${project.id}/promote`).send({
+				const first = await promoteOnly.post(`/promotions/projects/${project.id}/promote`).send({
 					workflowIds: ['w1', 'w2'],
 					folderIds: ['f1'],
 					commitMessage: 'Promote checkout flow',
@@ -2469,15 +2461,14 @@ describe('Promotions in Public API', () => {
 				expect(promote).toHaveBeenLastCalledWith(
 					project.id,
 					expect.objectContaining({ id: expect.any(String) }),
-					expect.objectContaining({
+					{
 						workflowIds: ['w1', 'w2'],
 						folderIds: ['f1'],
 						commitMessage: 'Promote checkout flow',
-						canExportVariableValues: true,
-					}),
+					},
 				);
 
-				const second = await withoutVars
+				const second = await promoteOnly
 					.post(`/promotions/projects/${project.id}/promote`)
 					.send({ workflowIds: ['w1'] });
 				expect(second.status, JSON.stringify(second.body)).toBe(200);
@@ -2485,7 +2476,7 @@ describe('Promotions in Public API', () => {
 					project.id,
 					expect.anything(),
 					// No commitMessage key when the client omits it; the service applies the default.
-					expect.objectContaining({ canExportVariableValues: false }),
+					expect.not.objectContaining({ commitMessage: expect.anything() }),
 				);
 			} finally {
 				promote.mockRestore();
