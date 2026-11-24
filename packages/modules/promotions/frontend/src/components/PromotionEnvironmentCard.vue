@@ -100,7 +100,7 @@ function onAction(action: 'edit' | 'connect' | 'remove') {
 				</N8nActionToggle>
 			</template>
 		</N8nSettingsRow>
-		<N8nSettingsRow :show-divider="false">
+		<N8nSettingsRow :class="$style.details" :show-divider="false">
 			<template #info>
 				<N8nText bold color="text-dark">{{ environment.name }}</N8nText>
 				<N8nText :class="$style.remote" size="small" color="text-light">
@@ -194,6 +194,13 @@ function onAction(action: 'edit' | 'connect' | 'remove') {
 </template>
 
 <style lang="scss" module>
+// Align the provider icon with the environment name, not the middle of the details.
+// The offset matches the vertical padding of the row text.
+.details [data-test-id='settings-row-visual'] {
+	align-self: flex-start;
+	margin-block-start: var(--spacing--xs);
+}
+
 .remote {
 	overflow-wrap: anywhere;
 }
