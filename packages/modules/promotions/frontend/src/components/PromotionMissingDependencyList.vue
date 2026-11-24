@@ -11,7 +11,7 @@ type Dependency = PromotionMissingDependency | PromotionDependencyWarning;
 
 /**
  * What a Promote leaves out, as a short list for a dialog. A row shows the name, the type and the
- * workflows that use the dependency. The API sends no owner and no project for it.
+ * workflows that use the dependency. It shows no owner and no project.
  */
 const props = defineProps<{
 	dependencies: Dependency[];

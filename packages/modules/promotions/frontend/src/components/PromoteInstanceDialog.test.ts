@@ -222,14 +222,20 @@ describe('PromoteInstanceDialog', () => {
 
 		it('does not show the project of a dependency or of the workflows that use it', async () => {
 			api.fetchPromoteCheck.mockResolvedValue(
-				promoteCheck({ missingDependencies: [otherProjectCredential, outsideAccessWorkflow] }),
+				promoteCheck({
+					missingDependencies: [
+						{ ...otherProjectCredential, project: { id: 'p2', name: 'Finance' } },
+						outsideAccessWorkflow,
+					],
+				}),
 			);
 			const { findByTestId } = renderComponent();
 
 			const list = await findByTestId('promotion-missing-dependency-list');
 			expect(within(list).getByText('CRM key')).toBeVisible();
-			// "Billing" is the project of the workflows. The API sends no project for the dependency.
+			// "Billing" is the project of the workflows. "Finance" is the project of "CRM key".
 			expect(list).not.toHaveTextContent('Billing');
+			expect(list).not.toHaveTextContent('Finance');
 			expect(list).not.toHaveTextContent(/project|owner/i);
 		});
 
