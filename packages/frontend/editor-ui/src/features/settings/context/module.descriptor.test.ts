@@ -136,6 +136,43 @@ describe('ContextModule routes', () => {
 		);
 	});
 
+	describe('collections', () => {
+		const limits = { maxFileSizeBytes: 1, maxFilesPerUpload: 1, maxTotalSizeBytes: 1 };
+
+		const setupKnowledge = (knowledgeActive: boolean, collectionsEnabled: boolean) => {
+			setup(false, { knowledge: { limits, collectionsEnabled } } as FrontendModuleSettings);
+			const settingsStore = useSettingsStore();
+			settingsStore.settings = {
+				...settingsStore.settings,
+				activeModules: knowledgeActive ? ['knowledge'] : [],
+			};
+		};
+
+		test('opens the collections page while collections are on', async () => {
+			setupKnowledge(true, true);
+			const router = createTestRouter();
+
+			await router.push('/settings/context/collections');
+
+			expect(router.currentRoute.value.name).toBe(VIEWS.SETTINGS_CONTEXT_COLLECTIONS);
+		});
+
+		test.each([
+			{ knowledgeActive: true, collectionsEnabled: false },
+			{ knowledgeActive: false, collectionsEnabled: true },
+		])(
+			'redirects to the homepage (knowledge module active: $knowledgeActive, collections on: $collectionsEnabled)',
+			async ({ knowledgeActive, collectionsEnabled }) => {
+				setupKnowledge(knowledgeActive, collectionsEnabled);
+				const router = createTestRouter();
+
+				await router.push('/settings/context/collections');
+
+				expect(router.currentRoute.value.name).toBe(VIEWS.HOMEPAGE);
+			},
+		);
+	});
+
 	it('lists no custom middleware, so the initializer does not gate it on a backend module', () => {
 		for (const route of ContextModule.routes ?? []) {
 			expect(route.meta?.middleware).toEqual(['authenticated']);

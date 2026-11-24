@@ -166,13 +166,18 @@ describe('isSelfHealingEnabled', () => {
 
 	it.each([
 		{ setting: false, cloudManaged: false, flag: true, plan: 'Community', expected: false },
+		{ setting: false, cloudManaged: false, flag: true, plan: 'Enterprise', expected: false },
 		{ setting: false, cloudManaged: true, flag: true, plan: 'Community', expected: false },
+		{ setting: false, cloudManaged: true, flag: true, plan: 'Enterprise', expected: false },
 		{ setting: true, cloudManaged: false, flag: false, plan: 'Community', expected: true },
+		{ setting: true, cloudManaged: false, flag: true, plan: 'Enterprise', expected: false },
 		{ setting: true, cloudManaged: false, flag: false, plan: 'Enterprise', expected: false },
 		{ setting: true, cloudManaged: true, flag: false, plan: 'Community', expected: false },
 		{ setting: true, cloudManaged: true, flag: undefined, plan: 'Community', expected: false },
 		{ setting: true, cloudManaged: true, flag: true, plan: 'Community', expected: true },
-		{ setting: true, cloudManaged: true, flag: true, plan: 'Enterprise', expected: false },
+		{ setting: true, cloudManaged: true, flag: false, plan: 'Enterprise', expected: false },
+		{ setting: true, cloudManaged: true, flag: undefined, plan: 'Enterprise', expected: false },
+		{ setting: true, cloudManaged: true, flag: true, plan: 'Enterprise', expected: true },
 	])(
 		'returns $expected for setting $setting, Cloud $cloudManaged, flag $flag, plan $plan',
 		({ setting, cloudManaged, flag, plan, expected }) => {

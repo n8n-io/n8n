@@ -3,12 +3,7 @@ import { FORMAT_VERSION } from '@/modules/n8n-packages/spec/constants';
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
 import { PACKAGE_SUBFOLDER } from '../constants';
-import {
-	buildPreview,
-	readCredentialFields,
-	type CredentialFields,
-	type PreviewSide,
-} from '../promotion-preview';
+import { buildPreview, type PreviewSide } from '../promotion-preview';
 
 const PROJECT = { id: 'P', name: 'Platform', target: 'projects/platform-P' };
 const OWNED_TARGET = `${PROJECT.target}/credentials/crm-key-C`;
@@ -52,15 +47,7 @@ function side(
 		},
 	};
 	const blobByPath = new Map(specs.map(({ target, blob = 'blob' }) => [pathOf(target), blob]));
-	const credentialFields = readCredentialFields(
-		new Map(
-			specs.map(({ target, name = 'CRM key', type = 'httpHeaderAuth' }) => [
-				pathOf(target),
-				JSON.stringify({ id: 'C', name, type } satisfies CredentialFields & { id: string }),
-			]),
-		),
-	);
-	return { manifest, blobByPath, ownedCredentials: options.owned, credentialFields };
+	return { manifest, blobByPath, ownedCredentials: options.owned };
 }
 
 const preview = (
@@ -142,10 +129,11 @@ describe('credentials in the Promote preview', () => {
 		});
 	});
 
-	describe('Only the name, the type and the owner folder make a credential change', () => {
+	describe('The package file and the owner folder make a credential change', () => {
 		it.each([
 			['name', { name: 'CRM token' }],
 			['type', { type: 'oAuth2Api' }],
+			['expression or other exported field', {}],
 		])('shows a different %s as modified', (_field, changed) => {
 			const { resources } = preview(
 				side([{ target: OWNED_TARGET }]),
@@ -164,10 +152,10 @@ describe('credentials in the Promote preview', () => {
 			expect(credentialRow(resources)).toMatchObject({ change: 'modified', selectable: true });
 		});
 
-		it('does not list a credential whose only difference is its content', () => {
+		it('does not list a credential whose file is the same', () => {
 			const { resources } = preview(
-				side([{ target: OWNED_TARGET, blob: 'before' }]),
-				side([{ target: OWNED_TARGET, blob: 'after' }]),
+				side([{ target: OWNED_TARGET, blob: 'same' }]),
+				side([{ target: OWNED_TARGET, blob: 'same' }]),
 			);
 
 			expect(credentialRow(resources)).toBeUndefined();
