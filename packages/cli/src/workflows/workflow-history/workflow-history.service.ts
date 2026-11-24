@@ -12,7 +12,7 @@ import {
 import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
-import type { IWorkflowBase, IWorkflowSettings } from 'n8n-workflow';
+import type { IWorkflowBase, IWorkflowSettings, StoredVersionedSettings } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { pickVersionedSettings } from 'n8n-workflow';
 import { UnexpectedError } from '@n8n/errors';
@@ -333,8 +333,8 @@ export class WorkflowHistoryService {
 		versionId: string,
 		updateData: Omit<
 			Partial<WorkflowHistory>,
-			'versionId' | 'workflowId' | 'createdAt' | 'updatedAt'
-		>,
+			'versionId' | 'workflowId' | 'createdAt' | 'updatedAt' | 'settings'
+		> & { settings?: StoredVersionedSettings },
 	) {
 		// Cast avoids a TypeORM `QueryDeepPartialEntity` deep-instantiation (TS2589);
 		// same workaround as workflow.service.ts / import.service.ts.

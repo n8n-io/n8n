@@ -35,8 +35,110 @@ describe('isInsideQuotes', () => {
 			target: '$2',
 			expected: true,
 		},
-	])('$label', ({ text, target, expected }) => {
-		expect(isInsideQuotes(text, text.indexOf(target))).toBe(expected);
+		{
+			label: 'a [bracketed] identifier is not a quote unless bracketIdentifiers is set',
+			text: 'SELECT * FROM [Company$Table 1$123-456-789]',
+			target: '$123',
+			expected: false,
+		},
+		{
+			label: 'a position inside a [bracketed] identifier with bracketIdentifiers set',
+			text: 'SELECT * FROM [Company$Table 1$123-456-789]',
+			target: '$123',
+			options: { bracketIdentifiers: true },
+			expected: true,
+		},
+		{
+			label: 'an escaped closing bracket (]]) does not end the identifier early',
+			text: 'SELECT * FROM [a]]$1]',
+			target: '$1',
+			options: { bracketIdentifiers: true },
+			expected: true,
+		},
+		{
+			label: 'a position after a closed [bracketed] identifier',
+			text: 'SELECT [a] FROM t WHERE id = $1',
+			target: '$1',
+			options: { bracketIdentifiers: true },
+			expected: false,
+		},
+		{
+			label: 'a single quote inside a [bracketed] identifier does not open a string',
+			text: "SELECT [it's] FROM t WHERE id = $1",
+			target: '$1',
+			options: { bracketIdentifiers: true },
+			expected: false,
+		},
+		{
+			label: 'a [ inside a single-quoted string does not open an identifier',
+			text: "WHERE note = '[' AND id = $1",
+			target: '$1',
+			options: { bracketIdentifiers: true },
+			expected: false,
+		},
+		{
+			label: 'an unbalanced [ inside a -- comment does not mask a later placeholder',
+			text: '-- note [\nSELECT * FROM t WHERE id = $1',
+			target: '$1',
+			options: { bracketIdentifiers: true },
+			expected: false,
+		},
+		{
+			label: 'a [ inside a /* */ comment does not mask a later placeholder',
+			text: '/* [ */ WHERE id = $1',
+			target: '$1',
+			options: { bracketIdentifiers: true },
+			expected: false,
+		},
+		{
+			label: 'a $N inside a -- comment is still a placeholder',
+			text: 'SELECT 1 -- comment $1',
+			target: '$1',
+			options: { bracketIdentifiers: true },
+			expected: false,
+		},
+		{
+			label: 'an apostrophe inside a -- comment does not open a string',
+			text: "-- don't\nSELECT * FROM t WHERE id = $1",
+			target: '$1',
+			options: { bracketIdentifiers: true },
+			expected: false,
+		},
+		{
+			label: 'comments are not recognized without bracketIdentifiers (unbalanced [ is no quote)',
+			text: '-- note [\nSELECT * FROM t WHERE id = $1',
+			target: '$1',
+			expected: false,
+		},
+		{
+			label: 'comments are not recognized without bracketIdentifiers (apostrophe opens a string)',
+			text: "-- don't\nSELECT * FROM t WHERE id = $1",
+			target: '$1',
+			expected: true,
+		},
+		{
+			label:
+				'default path does not skip /* */ comments, so a quoted $1 inside one stays quoted (MySQL binding order)',
+			text: "/* was '$1' */ SELECT * FROM t WHERE id = $2",
+			target: '$1',
+			expected: true,
+		},
+		{
+			label: 'bracketIdentifiers skips /* */ comments, so a $1 inside one counts as a placeholder',
+			text: "/* was '$1' */ SELECT * FROM t WHERE id = $2",
+			target: '$1',
+			options: { bracketIdentifiers: true },
+			expected: false,
+		},
+		{
+			label: 'a -- inside a single-quoted string does not start a comment',
+			text: "WHERE a = '--' AND b = [x$1]",
+			target: '$1',
+			options: { bracketIdentifiers: true },
+			expected: true,
+		},
+	])('$label', ({ text, target, expected, options }) => {
+		expect(isInsideQuotes(text, text.indexOf(target), options)).toBe(expected);
 	});
 });
 

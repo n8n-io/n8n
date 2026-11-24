@@ -11,6 +11,7 @@ import { customAlphabet } from 'nanoid';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
 
+import type { KnowledgeCollection } from '../entities';
 import { KnowledgeAvailabilityService } from '../knowledge-availability.service';
 import {
 	KnowledgeCollectionRepository,
@@ -22,9 +23,16 @@ const MAX_SLUG_ATTEMPTS = 5;
 const MAX_INSERT_ATTEMPTS = 2;
 const randomSlugSuffix = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', SLUG_SUFFIX_LENGTH);
 
+/** A collection as a route addresses it: by its id and the project in the path. */
+export interface KnowledgeCollectionRef {
+	projectId: string;
+	collectionId: string;
+}
+
 /**
  * Creates and lists shared knowledge collections, in the shape that the
- * collection list shows.
+ * collection list shows. Also gives the collection routes access to one
+ * collection through its home project.
  */
 @Service()
 export class KnowledgeCollectionCatalogService {
@@ -91,6 +99,51 @@ export class KnowledgeCollectionCatalogService {
 				}
 			}
 		}
+	}
+
+	/** Returns the collection as the collection page shows it. */
+	async get(user: User, ref: KnowledgeCollectionRef): Promise<KnowledgeCollectionDto> {
+		await this.getInProject(user, ref, 'agent:read');
+		return await this.getDtoOrThrow(ref.collectionId);
+	}
+
+	/**
+	 * Returns the collection when the project is its home project and the user
+	 * has the scope on that project. The route checks the scope too, and this
+	 * method checks it again for callers that do not go through the route.
+	 *
+	 * A collection of another project answers the same as a missing one.
+	 */
+	async getInProject(
+		user: User,
+		{ projectId, collectionId }: KnowledgeCollectionRef,
+		scope: 'agent:read' | 'agent:update',
+	): Promise<KnowledgeCollection> {
+		const collectionsEnabled = await this.availabilityService.isCollectionsEnabled();
+		if (!collectionsEnabled) {
+			throw new NotFoundError('Knowledge collection not found');
+		}
+
+		if (!(await userHasScopes(user, [scope], false, { projectId }))) {
+			throw new ForbiddenError('You do not have permission to access this knowledge collection.');
+		}
+
+		const collection = await this.collectionRepository.findByIdAndProjectId(
+			collectionId,
+			projectId,
+			{},
+		);
+		if (!collection) {
+			throw new NotFoundError('Knowledge collection not found');
+		}
+
+		return collection;
+	}
+
+	/** The ids of the agents that use the collection. */
+	async listAgentIds(user: User, ref: KnowledgeCollectionRef): Promise<string[]> {
+		await this.getInProject(user, ref, 'agent:read');
+		return await this.collectionRepository.findAgentIds(ref.collectionId, {});
 	}
 
 	/**

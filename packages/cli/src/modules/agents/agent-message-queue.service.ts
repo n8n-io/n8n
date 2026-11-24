@@ -404,7 +404,7 @@ export class AgentMessageQueueService {
 				throw new ConflictError('This message is no longer available');
 			// Steering skips the checks a turn of its own makes. A message that asked for a test
 			// run must never join a live run, so only a test chat's run can take it.
-			if (item.payload.mode === 'test' && thread.testChat !== true) {
+			if (item.payload.mode === 'test' && !thread.testChat) {
 				throw new ConflictError('This chat runs live. Start a new chat to run a test.');
 			}
 			const execution = await this.steering.findEligible(thread, ctx);
