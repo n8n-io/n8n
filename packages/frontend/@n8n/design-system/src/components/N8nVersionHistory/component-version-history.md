@@ -61,7 +61,7 @@ A group that contains the open version starts open. The user can close it. It op
 An entry is a version, a group, or a heading.
 
 ```typescript
-import type { ActionToggleItem } from '@n8n/design-system';
+import type { ActionDropdownItem } from '@n8n/design-system';
 
 type VersionHistoryStatus = 'published' | 'latest' | 'default';
 
@@ -92,28 +92,31 @@ type VersionHistoryItem = {
 	 */
 	disabled?: boolean;
 	/**
-	 * Hide the compare control. The menu stays.
-	 * @default false
+	 * Show the compare control.
+	 * Set this to false to hide compare. The menu stays.
+	 * @default true
 	 */
-	hideCompare?: boolean;
+	showCompare?: boolean;
 	/**
 	 * The compare control stays visible and does not emit `compare`. Its tooltip stays hidden.
 	 * @default false
 	 */
 	compareDisabled?: boolean;
 	/**
-	 * Menu items. Each item is an `ActionToggleItem`.
+	 * Menu items. Each item is an `ActionDropdownItem`.
 	 * Set `icon` to show an icon before the label.
 	 * Set `disabled` on an item to stop that choice. The other choices stay available.
 	 * The menu is hidden when this list is missing or empty.
 	 * @default []
 	 */
-	actions?: Array<ActionToggleItem<string>>;
+	actions?: Array<ActionDropdownItem<string>>;
 	/**
-	 * Hide the menu. Compare stays.
-	 * @default false
+	 * Show the menu.
+	 * Set this to false to hide the menu. Compare stays.
+	 * The menu stays hidden when `actions` is missing or empty.
+	 * @default true
 	 */
-	hideActions?: boolean;
+	showActions?: boolean;
 	/**
 	 * The menu stays visible and does not open.
 	 * @default false
@@ -174,7 +177,7 @@ The compare tooltip and the accessible name are "Compare" (`versionHistory.compa
 
 A click on the row emits `select`. A click on compare emits `compare` and does not select the row. A menu choice emits `action` and does not select the row.
 
-`action` is the id of the chosen `ActionToggleItem`. `id` on `VersionHistoryActionPayload` is the version id.
+`action` is the id of the chosen `ActionDropdownItem`. `id` on `VersionHistoryActionPayload` is the version id.
 
 **Keyboard**
 
@@ -267,7 +270,7 @@ const items: VersionHistoryEntry[] = [
 				label: 'v1.3',
 				author: 'Sam',
 				createdAt: 'Oct 27 at 18:41',
-				hideCompare: true,
+				showCompare: false,
 				actions: [{ id: 'restore', label: 'Restore' }],
 			},
 		],

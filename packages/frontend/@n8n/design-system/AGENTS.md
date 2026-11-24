@@ -11,6 +11,7 @@
 - Prefer to bind fixed child component props from a fixed props object. Add comment that explain why each prop must remain fixed.
 - Declare state that the parent owns as a named prop. Declare the change as `update:<name>` on the emits interface.
 - Name the prop for that state. `N8nSettingsEnableRow` uses `enabled`. Callers bind `:enabled` and `@update:enabled`.
+- Name a visibility boolean `show` plus the control, for example `showCompare`. Set the default to the common case: `true` when the control starts visible, and `false` when it starts hidden. Callers omit the prop for that case and pass it only to choose the other state.
 - Use `defineModel` only when the component must also work with no parent binding. `N8nSettingsRow` does this for its disclosure state.
 
 ### Storybook Stories
