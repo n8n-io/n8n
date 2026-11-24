@@ -3,6 +3,7 @@ import type { Dispatcher } from 'undici';
 import { Agent, EnvHttpProxyAgent, ProxyAgent, fetch as undiciFetch } from 'undici';
 
 import type { ProxyOption } from '../node-agents';
+import { getScopedHttpInterceptor } from '../scoped-interceptor';
 
 /**
  * Drop-in replacement type for the global `fetch`.
@@ -413,6 +414,21 @@ export async function dispatchedFetch(
 	init?: RequestInit,
 	responseSizeLimit?: ResponseSizeLimit,
 ): Promise<Response> {
+	const interceptor = getScopedHttpInterceptor();
+	if (interceptor) {
+		const targetStr =
+			typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+		let parsed: URL | undefined;
+		try {
+			parsed = new URL(targetStr);
+		} catch {
+			// Fall through to undici for invalid URLs so standard error behavior applies.
+		}
+		if (parsed && interceptor.matches(parsed)) {
+			const intercepted = await interceptor.fetch(input, init);
+			return responseSizeLimit ? limitResponseBody(intercepted, responseSizeLimit) : intercepted;
+		}
+	}
 	const response = (await undiciFetch(
 		input as Parameters<typeof undiciFetch>[0],
 		{ ...(init ?? {}), dispatcher } as Parameters<typeof undiciFetch>[1],

@@ -16,6 +16,7 @@ import type { SsrfBridge } from '../ssrf';
 import { invokeAxios } from './axios/invoke';
 import { buildAxiosConfigFromLegacyRequest, buildLegacyAgentOptions } from './axios/legacy';
 import { followSsrfRedirects, shouldFollowRedirectsManually } from './axios/redirect';
+import { invokeScopedInterceptor } from './axios/scoped-intercept';
 import {
 	destroyRequestBody,
 	resolveLegacyRequestUrl,
@@ -25,6 +26,7 @@ import {
 } from './axios/utils';
 import { binaryToString } from './binary-string';
 import { parseIncomingMessage } from './parse-incoming-message';
+import { getScopedHttpInterceptor } from './scoped-interceptor';
 
 export interface LegacyRequestCallbacks {
 	/**
@@ -78,6 +80,54 @@ async function sendLegacyRequest(
 	};
 
 	const url = resolveLegacyRequestUrl(requestObject);
+
+	const interceptor = getScopedHttpInterceptor();
+	if (interceptor && url) {
+		let parsed: URL | undefined;
+		try {
+			parsed = new URL(url);
+		} catch {
+			// Fall through to standard validation for malformed URLs.
+		}
+		if (parsed && interceptor.matches(parsed)) {
+			axiosConfig = Object.assign(
+				axiosConfig,
+				await buildAxiosConfigFromLegacyRequest(requestObject, undefined),
+			);
+			throwIfDomainNotAllowed(axiosConfig, requestObject.allowedDomains);
+			const response = await invokeScopedInterceptor(
+				interceptor,
+				axiosConfig,
+				{
+					url,
+					qs: requestObject.qs,
+					json: Boolean(requestObject.json),
+					encoding:
+						requestObject.encoding === null
+							? 'arraybuffer'
+							: requestObject.useStream
+								? 'stream'
+								: undefined,
+				},
+				url,
+			);
+			let body = response.data;
+			if (body === '') {
+				body = axiosConfig.responseType === 'arraybuffer' ? Buffer.alloc(0) : undefined;
+			}
+			await callbacks?.onFetched?.();
+			return requestObject.resolveWithFullResponse
+				? {
+						body,
+						headers: { ...response.headers },
+						statusCode: response.status,
+						statusMessage: response.statusText,
+						request: response.request,
+					}
+				: body;
+		}
+	}
+
 	await validateUrlSsrf(url, ssrfBridge);
 	await validateProxySsrf(requestObject.proxy, ssrfBridge);
 
