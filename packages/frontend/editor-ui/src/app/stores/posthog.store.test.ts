@@ -13,7 +13,6 @@ import {
 	// EOF Experiment cleanup
 	ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT,
 	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
-	NODE_VERSION_PICKER_EXPERIMENT,
 } from '@/app/constants';
 import {
 	AGENT_BUILDER_EXPERIMENT_COHORT as COHORT,
@@ -152,18 +151,6 @@ describe('Posthog store', () => {
 				test: 'variant',
 				enabled_flag: true,
 			});
-		});
-
-		it('should enable the node version picker only when its flag is true', () => {
-			setSettings({ posthog: { ...DEFAULT_POSTHOG_SETTINGS, enabled: false } });
-			setCurrentUser();
-			const posthog = usePostHog();
-
-			posthog.init({});
-			expect(posthog.isNodeVersionPickerEnabled).toBe(false);
-
-			posthog.init({ [NODE_VERSION_PICKER_EXPERIMENT.name]: true });
-			expect(posthog.isNodeVersionPickerEnabled).toBe(true);
 		});
 
 		it('should not init if user is not logged in', () => {

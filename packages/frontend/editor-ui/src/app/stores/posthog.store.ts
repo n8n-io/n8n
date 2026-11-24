@@ -1,5 +1,5 @@
 import type { Ref } from 'vue';
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 import { defineStore } from 'pinia';
 import { useStorage } from '@n8n/composables/useStorage';
 import { useUsersStore } from '@n8n/stores/users.store';
@@ -16,7 +16,6 @@ import {
 	ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT,
 	EXPERIMENTS_TO_TRACK,
 	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
-	NODE_VERSION_PICKER_EXPERIMENT,
 } from '@/app/constants';
 // Experiment cleanup (133_agent_builder_experiment_cohort)
 import {
@@ -130,10 +129,6 @@ export const usePostHog = defineStore('posthog', () => {
 	const isFeatureEnabled = (experiment: keyof FeatureFlags) => {
 		return getVariant(experiment) === true;
 	};
-
-	const isNodeVersionPickerEnabled = computed(() =>
-		isFeatureEnabled(NODE_VERSION_PICKER_EXPERIMENT.name),
-	);
 
 	const hasPendingFeatureFlags = () => pendingFeatureFlagsEvaluation.value;
 
@@ -427,7 +422,6 @@ export const usePostHog = defineStore('posthog', () => {
 		setTaxonomyInspirationEligible,
 		// EOF Experiment cleanup
 		isFeatureEnabled,
-		isNodeVersionPickerEnabled,
 		isVariantEnabled,
 		getVariant,
 		getFeatureFlagPayload,
