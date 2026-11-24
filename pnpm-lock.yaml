@@ -8602,6 +8602,9 @@ importers:
       '@n8n/typeorm':
         specifier: workspace:*
         version: link:../../../@n8n/typeorm
+      uuid:
+        specifier: 'catalog:'
+        version: 11.1.1
     devDependencies:
       '@n8n/oxlint-config':
         specifier: workspace:*
@@ -8636,6 +8639,9 @@ importers:
       '@n8n/api-types':
         specifier: workspace:*
         version: link:../../../@n8n/api-types
+      '@n8n/composables':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/composables
       '@n8n/design-system':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/design-system
@@ -8651,6 +8657,12 @@ importers:
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../../../@n8n/permissions
+      '@n8n/rest-api-client':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/rest-api-client
+      '@n8n/stores':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/stores
       vue:
         specifier: catalog:frontend
         version: 3.5.26(typescript@6.0.2)

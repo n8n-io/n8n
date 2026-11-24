@@ -1,3 +1,4 @@
+import type { SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
 import { WorkflowEntity } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -10,7 +11,14 @@ const WORKFLOW_ID = 'workflow-1';
 
 function setup() {
 	const runner = mock<CallableWorkflowRunner>();
-	return { runner, adapter: new WorkflowToolAdapter(runner) };
+	return {
+		runner,
+		adapter: new WorkflowToolAdapter(
+			runner,
+			mock<SharedWorkflowRepository>(),
+			mock<WorkflowRepository>(),
+		),
+	};
 }
 
 describe('WorkflowToolAdapter', () => {

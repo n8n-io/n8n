@@ -4,6 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
+import McpServerContentsTab from '../components/McpServerContentsTab.vue';
 import { MCP_SERVER_CONNECTIONS_VIEW, MCP_SERVER_VIEW } from '../mcp-servers.constants';
 
 const i18n = useI18n();
@@ -17,6 +18,9 @@ const tabs = computed(() => [
 		label: i18n.baseText('mcpServers.server.tabs.connections'),
 	},
 ]);
+
+const projectId = computed(() => String(route.params.projectId));
+const serverId = computed(() => String(route.params.serverId));
 
 const selectedTab = computed(() =>
 	route.name === MCP_SERVER_CONNECTIONS_VIEW ? MCP_SERVER_CONNECTIONS_VIEW : MCP_SERVER_VIEW,
@@ -35,10 +39,12 @@ async function onSelectTab(tab: string) {
 			data-test-id="mcp-server-tabs"
 			@update:model-value="onSelectTab"
 		/>
-		<div
+		<McpServerContentsTab
 			v-if="selectedTab === MCP_SERVER_VIEW"
+			:key="serverId"
 			:class="$style.panel"
-			data-test-id="mcp-server-contents"
+			:project-id="projectId"
+			:server-id="serverId"
 		/>
 		<div v-else :class="$style.panel" data-test-id="mcp-server-connections" />
 	</div>

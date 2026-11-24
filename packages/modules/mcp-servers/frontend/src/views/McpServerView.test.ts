@@ -15,7 +15,12 @@ vi.mock('vue-router', async (importOriginal) => ({
 	useRouter: () => ({ push }),
 }));
 
-const renderComponent = createComponentRenderer(McpServerView);
+// The Contents tab loads the server. Its own test covers it.
+const renderComponent = createComponentRenderer(McpServerView, {
+	global: {
+		stubs: { McpServerContentsTab: { template: '<div data-test-id="mcp-server-contents" />' } },
+	},
+});
 
 describe('McpServerView', () => {
 	beforeEach(() => {

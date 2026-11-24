@@ -9,6 +9,7 @@ export const CUSTOM_MCP_SERVERS_FLAG_VARIANT = 'test';
 
 export const MCP_SERVER_SLUG_MAX_LENGTH = 128;
 export const MCP_SERVER_TOOL_NAME_MAX_LENGTH = 64;
+export const MCP_SERVER_TOOL_DESCRIPTION_MAX_LENGTH = 2000;
 
 export const mcpServerNameSchema = z.string().trim().min(1).max(128);
 
@@ -32,7 +33,10 @@ export const mcpServerToolNameSchema = z
 	.max(MCP_SERVER_TOOL_NAME_MAX_LENGTH)
 	.regex(/^[a-z0-9_]+$/, 'Use lowercase letters, numbers, and underscores.');
 
-export const mcpServerToolDescriptionSchema = z.string().trim().max(2000);
+export const mcpServerToolDescriptionSchema = z
+	.string()
+	.trim()
+	.max(MCP_SERVER_TOOL_DESCRIPTION_MAX_LENGTH);
 
 export const mcpServerToolKindSchema = z.enum(['workflow', 'node', 'agent', 'skill']);
 export type McpServerToolKind = z.infer<typeof mcpServerToolKindSchema>;
@@ -45,10 +49,14 @@ export type McpServerToolDraftSource = z.infer<typeof mcpServerToolDraftSourceSc
 export const mcpServerToolDraftFieldSchema = z.enum(['toolName', 'description']);
 export type McpServerToolDraftField = z.infer<typeof mcpServerToolDraftFieldSchema>;
 
-/** Why a workflow cannot be a tool. */
+/**
+ * Why a workflow cannot be a tool. `incompatible_nodes`: the trigger reaches a node that cannot
+ * run as a tool, for example a Form node.
+ */
 export const mcpServerWorkflowUnavailableReasonSchema = z.enum([
 	'not_published',
 	'missing_trigger',
+	'incompatible_nodes',
 	'caller_policy',
 ]);
 export type McpServerWorkflowUnavailableReason = z.infer<

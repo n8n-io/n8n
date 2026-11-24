@@ -13,5 +13,6 @@ export function getMcpServerPermissions(projectId: string) {
 	return {
 		canList: Boolean(mcpServer?.list),
 		canRead: Boolean(mcpServer?.read),
+		canUpdate: Boolean(mcpServer?.update),
 	};
 }
