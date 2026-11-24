@@ -8,6 +8,7 @@ import { ProjectScopeService } from '@n8n/backend-services';
 import { isUniqueConstraintError, ProjectRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, ForbiddenError, NotFoundError, UnexpectedError } from '@n8n/errors';
+import type { Scope } from '@n8n/permissions';
 import { customAlphabet } from 'nanoid';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -19,7 +20,6 @@ import {
 	type KnowledgeCollectionSummary,
 } from '../repositories/knowledge-collection.repository';
 import { SLUG_SUFFIX_LENGTH, slugFromName, slugWithSuffix } from './collection-slug';
-import { Scope } from '@n8n/permissions';
 
 const MAX_SLUG_ATTEMPTS = 5;
 const MAX_INSERT_ATTEMPTS = 2;
@@ -55,7 +55,7 @@ export class KnowledgeCollectionCatalogService {
 		 * `agent:update` on the home project. The route checks it, and this method
 		 * checks it again for callers that do not go through the route.
 		 */
-		const scopes = ['agent:update'] as Scope[];
+		const scopes: Scope[] = ['agent:update'];
 		if (!(await userHasScopes(user, scopes, false, { projectId }))) {
 			throw new ForbiddenError(
 				'You do not have permission to create a knowledge collection in this project.',
@@ -228,7 +228,7 @@ export class KnowledgeCollectionCatalogService {
 		 * Collections have no scopes of their own yet (TBD), so a change or a delete
 		 * needs `agent:update` on the home project.
 		 */
-		const scopes = ['agent:update'] as Scope[];
+		const scopes: Scope[] = ['agent:update'];
 		const canUpdateAgents = await userHasScopes(user, scopes, false, { projectId });
 		if (!canUpdateAgents) {
 			throw new ForbiddenError(
