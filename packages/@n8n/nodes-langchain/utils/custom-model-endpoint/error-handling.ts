@@ -117,8 +117,44 @@ const EVENT_BOUNDARY = /\r\n\r\n|\n\n|\r\r/g;
 /** Nothing is held past this without a frame boundary, so an odd gateway cannot grow it. */
 const MAX_CARRIED = 64 * 1024;
 
-/** The client throws on a frame whose JSON carries this, and only such a frame is a refusal. */
-const REFUSAL_KEY = '"error"';
+/**
+ * What this node reads as an answer, and nothing else.
+ *
+ * The set of refusals a gateway can send is open: every vendor and every proxy in front of
+ * one words it differently, and three rounds of recognising them left most unmatched. The
+ * set of answers is closed, because this node speaks three protocols. So an answer is what
+ * is matched here, and everything else is filtered.
+ *
+ * `error` being truthy is the client's own test for a refusal, which the Responses format
+ * needs: it carries `error: null` on every normal lifecycle frame.
+ */
+function isAnswer(parsed: unknown): boolean {
+	if (Array.isArray(parsed)) return true;
+	if (!isRecord(parsed) || parsed.error) return false;
+
+	return (
+		Array.isArray(parsed.choices) ||
+		Array.isArray(parsed.data) ||
+		parsed.object === 'response' ||
+		'output' in parsed ||
+		(typeof parsed.type === 'string' && parsed.type.startsWith('response.'))
+	);
+}
+
+/** A frame carries its payload on `data:` lines; the rest of it is protocol. */
+function frameData(frame: string): string | undefined {
+	const data = frame
+		.split(/\r\n|\n|\r/)
+		.filter((line) => line.startsWith('data:'))
+		.map((line) => line.slice('data:'.length).trim())
+		.join('');
+	return data.length > 0 ? data : undefined;
+}
+
+/** Reads one frame, or a whole body from a gateway that framed nothing. */
+function isAnswerText(text: string): boolean {
+	return isAnswer(parseJson(frameData(text) ?? text.trim()));
+}
 
 function endOfLastFrame(text: string): number {
 	let end = -1;
@@ -126,6 +162,19 @@ function endOfLastFrame(text: string): number {
 		end = boundary.index + boundary[0].length;
 	}
 	return end;
+}
+
+/** Splits on the boundary and keeps it, so the bytes out are the bytes in. */
+function framesOf(text: string): string[] {
+	const frames: string[] = [];
+	let at = 0;
+	for (const boundary of text.matchAll(EVENT_BOUNDARY)) {
+		const end = boundary.index + boundary[0].length;
+		frames.push(text.slice(at, end));
+		at = end;
+	}
+	if (at < text.length) frames.push(text.slice(at));
+	return frames;
 }
 
 /**
@@ -147,16 +196,15 @@ function withoutSecretsInStream(
 	let carried = '';
 
 	/**
-	 * A whole frame is self-contained, so a refusal can be told from an answer and an answer
-	 * passes through untouched. A release forced by the size bound is part of neither, and the
-	 * marker may already have gone out in an earlier piece, so that one is always filtered.
+	 * A whole frame can be read, so an answer passes through untouched. A release forced by
+	 * the size bound is an arbitrary slice of one, which cannot be read, so it is filtered.
 	 */
 	const emit = (
 		text: string,
 		controller: TransformStreamDefaultController<Uint8Array>,
-		framed: boolean,
+		readable: boolean,
 	) => {
-		const safe = framed && !text.includes(REFUSAL_KEY) ? text : withoutKnownSecrets(text, secrets);
+		const safe = readable && isAnswerText(text) ? text : withoutKnownSecrets(text, secrets);
 		controller.enqueue(encoder.encode(safe));
 	};
 
@@ -170,12 +218,15 @@ function withoutSecretsInStream(
 					frameEnd !== -1 ? frameEnd : carried.length > MAX_CARRIED ? carried.length - overlap : -1;
 				if (release <= 0) return;
 
-				emit(carried.slice(0, release), controller, frameEnd !== -1);
+				const complete = carried.slice(0, release);
 				carried = carried.slice(release);
+
+				if (frameEnd === -1) return emit(complete, controller, false);
+				for (const frame of framesOf(complete)) emit(frame, controller, true);
 			},
 			flush(controller) {
 				carried += decoder.decode();
-				if (carried.length > 0) emit(carried, controller, false);
+				if (carried.length > 0) emit(carried, controller, true);
 			},
 		}),
 	);
@@ -248,19 +299,22 @@ export function wrapCustomModelEndpointErrorFetch(
 		if (response.ok) {
 			if (known.length === 0 || response.body === null) return response;
 
-			// A refusal can arrive on a 200. An answer never passes through a filter: it is the
-			// user's content, and a credential that is also an ordinary word would corrupt it.
 			if (isStreamed(response)) {
 				const filtered = withoutSecretsInStream(response.body, known);
 				return rebuiltFrom(response, filtered, withoutContentLength(response));
 			}
 
 			const raw = await response.text();
-			if (!isClientShaped(parseJson(raw))) return rebuiltFrom(response, raw, response.headers);
+			if (isAnswer(parseJson(raw))) return rebuiltFrom(response, raw, response.headers);
 
-			const body = filteredErrorBody(raw, known);
-			return rebuiltFrom(response, body, withoutContentLength(response));
+			// A refusal on a 200 keeps its shape and loses only the credential. It is not
+			// reshaped: the client reads a 200 as an answer, so the body it gets must still
+			// be the one the gateway sent.
+			return rebuiltFrom(response, withoutKnownSecrets(raw, known), withoutContentLength(response));
 		}
+
+		// A status that carries no body cannot be rebuilt around one
+		if (response.body === null) return response;
 
 		const body = filteredErrorBody((await response.text()).trim(), known);
 		const headers = withoutContentLength(response);

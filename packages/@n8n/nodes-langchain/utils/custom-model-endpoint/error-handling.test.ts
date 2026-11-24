@@ -544,3 +544,104 @@ describe('a gateway that repeats what it was sent', () => {
 		});
 	});
 });
+
+/**
+ * The two invariants, over the shapes a gateway really sends. A refusal always loses the
+ * credential; an answer is always handed back byte for byte. Four rounds of this change
+ * each broke one of the two, and each time a single case was added. This is the table that
+ * holds both at once.
+ */
+describe('every shape a gateway can answer with', () => {
+	// The key Ollama and LM Studio document, so it is also an ordinary word in the answers
+	const KEY = 'ollama';
+	const secrets = [KEY, `Bearer ${KEY}`];
+
+	const through = async (body: string, status: number, contentType: string) => {
+		const baseFetch = (async () =>
+			new Response(body, { status, headers: { 'content-type': contentType } })) as typeof fetch;
+		return await (await wrapCustomModelEndpointErrorFetch(baseFetch, secrets)(BASE_URL)).text();
+	};
+
+	const JSON_REFUSALS: Array<[string, string]> = [
+		['OpenAI', `{"error":{"message":"Incorrect API key provided: ${KEY}"}}`],
+		['an error that is a bare string', `{"error":"Invalid API key ${KEY}"}`],
+		['an error with no message', `{"error":{"code":"invalid_key","detail":"got ${KEY}"}}`],
+		['the FastAPI and vLLM detail', `{"detail":"Invalid API key ${KEY}"}`],
+		['a top-level message', `{"message":"Access denied for ${KEY}"}`],
+		['the vLLM flat shape', `{"object":"error","message":"bad key ${KEY}","code":401}`],
+		['an errors array', `{"errors":[{"message":"bad key ${KEY}"}]}`],
+		// Answer-shaped but for the error, which is the client's own test for a refusal
+		[
+			'a Responses body carrying an error',
+			`{"object":"response","error":{"message":"bad key ${KEY}"}}`,
+		],
+	];
+
+	const REFUSALS: Array<[string, string, string]> = [
+		...JSON_REFUSALS.map(([name, body]): [string, string, string] => [
+			name,
+			body,
+			'application/json',
+		]),
+		['plain text', `Invalid API key ${KEY}`, 'text/plain'],
+		['an HTML page', `<html><head><title>401 ${KEY}</title></head></html>`, 'text/html'],
+	];
+
+	it.each(REFUSALS)('loses the credential from %s on a 401', async (_name, body, contentType) => {
+		expect(await through(body, 401, contentType)).not.toContain(KEY);
+	});
+
+	it.each(REFUSALS)('loses the credential from %s on a 200', async (_name, body, contentType) => {
+		expect(await through(body, 200, contentType)).not.toContain(KEY);
+	});
+
+	it.each(JSON_REFUSALS)('loses the credential from %s streamed on a 200', async (_name, body) => {
+		expect(await through(`data: ${body}\n\n`, 200, 'text/event-stream')).not.toContain(KEY);
+	});
+
+	const ANSWERS: Array<[string, string, string]> = [
+		[
+			'a chat completion',
+			`{"choices":[{"message":{"content":"run \`${KEY} serve\`"}}]}`,
+			'application/json',
+		],
+		[
+			'a chat completion delta',
+			`data: {"choices":[{"delta":{"content":"run \`${KEY} serve\`"}}]}\n\n`,
+			'text/event-stream',
+		],
+		[
+			'a Responses body, which carries a null error',
+			`{"object":"response","error":null,"output":[{"content":[{"text":"${KEY} is running"}]}]}`,
+			'application/json',
+		],
+		[
+			'a Responses lifecycle frame, which carries a null error',
+			`data: {"type":"response.completed","response":{"object":"response","error":null,"output":[{"content":[{"text":"${KEY}"}]}]}}\n\n`,
+			'text/event-stream',
+		],
+		// A background response is accepted before it has produced any output
+		[
+			'a queued Responses body that has no output yet',
+			`{"object":"response","status":"queued","error":null,"model":"${KEY}/llama3.1"}`,
+			'application/json',
+		],
+		['a model list', `{"data":[{"id":"${KEY}/llama3.1"},{"id":"gpt-4o"}]}`, 'application/json'],
+		['a model list as a bare array', `[{"id":"${KEY}/llama3.1"}]`, 'application/json'],
+	];
+
+	it.each(ANSWERS)('hands back %s byte for byte', async (_name, body, contentType) => {
+		expect(await through(body, 200, contentType)).toBe(body);
+	});
+
+	// undici hands on whatever has arrived, so two frames often reach the filter together
+	it('leaves an answer frame alone when a refusal frame shares the read', async () => {
+		const answer = `data: {"choices":[{"delta":{"content":"run \`${KEY} serve\`"}}]}\n\n`;
+		const refusal = `data: {"error":{"message":"bad key ${KEY}"}}\n\n`;
+
+		const surfaced = await through(answer + refusal, 200, 'text/event-stream');
+
+		expect(surfaced).toContain(answer);
+		expect(surfaced).not.toContain(`bad key ${KEY}`);
+	});
+});
