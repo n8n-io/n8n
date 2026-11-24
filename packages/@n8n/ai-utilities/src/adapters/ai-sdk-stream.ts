@@ -18,7 +18,7 @@ const DEFAULT_REASONING_ID = 'reasoning';
 
 type TextKind = 'text' | 'reasoning';
 
-interface ToolCallState {
+type ToolCallState = {
 	id: string;
 	name?: string;
 	/** Whether `tool-input-start` was sent. It needs the name. */
@@ -26,7 +26,25 @@ interface ToolCallState {
 	input: string;
 	/** Chat model metadata of all chunks of the call. */
 	metadata?: Record<string, unknown>;
-}
+};
+
+type ReceivedFinish = {
+	readonly reason: FinishReason;
+	readonly usage?: TokenUsage;
+	readonly providerMetadata?: SharedV4ProviderMetadata;
+};
+
+/**
+ * The first finish chunk closes the open parts. The AI SDK finish waits for
+ * the end of the chat model stream, because a later finish chunk can carry
+ * the usage.
+ */
+type Phase =
+	| { readonly kind: 'streaming' }
+	| { readonly kind: 'finishing'; readonly finish: ReceivedFinish }
+	| { readonly kind: 'ended' };
+
+type ContentChunk = Exclude<StreamChunk, { type: 'finish' }>;
 
 /**
  * Turns the flat chat model stream into the AI SDK stream, which brackets
@@ -42,9 +60,6 @@ interface ToolCallState {
  *
  * Complete tool calls are held back until the finish. A tool result from the
  * chat model releases its call first, marked as executed by the provider.
- *
- * The AI SDK finish is sent when the chat model stream ends. Some APIs send
- * the usage in a separate last chunk, so a later finish chunk updates it.
  */
 export class AiSdkStreamConverter {
 	/** Open text and reasoning parts, with the text sent for each so far. */
@@ -62,14 +77,7 @@ export class AiSdkStreamConverter {
 	/** Set by an error chunk or an error finish. A failed turn sends no tool calls. */
 	private failed = false;
 
-	/** Set by the first finish chunk. Later finish chunks update it. */
-	private pendingFinish?: {
-		reason: FinishReason;
-		usage?: TokenUsage;
-		providerMetadata?: SharedV4ProviderMetadata;
-	};
-
-	private finished = false;
+	private phase: Phase = { kind: 'streaming' };
 
 	constructor(
 		private readonly provider: string,
@@ -77,14 +85,54 @@ export class AiSdkStreamConverter {
 	) {}
 
 	convert(chunk: StreamChunk): LanguageModelV4StreamPart[] {
-		if (this.finished) return [];
+		const { phase } = this;
 		const providerMetadata = toProviderMetadata(this.provider, chunk.providerMetadata);
-		if (chunk.type === 'finish') {
-			return this.receiveFinish(chunk.finishReason, chunk.usage, providerMetadata);
+		switch (phase.kind) {
+			case 'streaming':
+				return chunk.type === 'finish'
+					? this.startFinish({ reason: chunk.finishReason, usage: chunk.usage, providerMetadata })
+					: this.convertContent(chunk, providerMetadata);
+			case 'finishing':
+				// After the finish only a finish with the last usage is expected.
+				if (chunk.type === 'finish') {
+					this.phase = {
+						kind: 'finishing',
+						finish: {
+							reason: chunk.finishReason,
+							usage: chunk.usage ?? phase.finish.usage,
+							providerMetadata: providerMetadata ?? phase.finish.providerMetadata,
+						},
+					};
+				}
+				return [];
+			case 'ended':
+				return [];
 		}
-		// After the finish only a finish with the last usage is expected.
-		if (this.pendingFinish) return [];
+	}
 
+	/** Closes what is still open and sends the finish when the chat model stream ends. */
+	end(): LanguageModelV4StreamPart[] {
+		const { phase } = this;
+		switch (phase.kind) {
+			case 'streaming':
+				return [...this.closeAll(), this.sendFinish({ reason: 'other' })];
+			case 'finishing':
+				return [this.sendFinish(phase.finish)];
+			case 'ended':
+				return [];
+		}
+	}
+
+	/** Sends an error that stopped the stream, then closes what is still open. */
+	fail(error: unknown): LanguageModelV4StreamPart[] {
+		this.failed = true;
+		return [{ type: 'error', error }, ...this.end()];
+	}
+
+	private convertContent(
+		chunk: ContentChunk,
+		providerMetadata: SharedV4ProviderMetadata | undefined,
+	): LanguageModelV4StreamPart[] {
 		switch (chunk.type) {
 			case 'text-delta':
 				return this.delta('text', chunk.id ?? DEFAULT_TEXT_ID, chunk.delta, providerMetadata);
@@ -117,27 +165,6 @@ export class AiSdkStreamConverter {
 				this.failed = true;
 				return [{ type: 'error', error: chunk.error }];
 		}
-	}
-
-	/** Closes what is still open and sends the finish when the chat model stream ends. */
-	end(): LanguageModelV4StreamPart[] {
-		if (this.finished) return [];
-		const parts: LanguageModelV4StreamPart[] = this.pendingFinish ? [] : this.closeAll();
-		const pending = this.pendingFinish;
-		parts.push({
-			type: 'finish',
-			finishReason: toFinishReason(this.failed ? 'error' : (pending?.reason ?? 'other')),
-			usage: toUsage(pending?.usage),
-			providerMetadata: pending?.providerMetadata,
-		});
-		this.finished = true;
-		return parts;
-	}
-
-	/** Sends an error that stopped the stream, then closes what is still open. */
-	fail(error: unknown): LanguageModelV4StreamPart[] {
-		this.failed = true;
-		return [{ type: 'error', error }, ...this.end()];
 	}
 
 	private openParts(kind: TextKind): Map<string, string> {
@@ -341,19 +368,20 @@ export class AiSdkStreamConverter {
 		return [{ type: 'tool-input-end', id: state.id }];
 	}
 
-	private receiveFinish(
-		reason: FinishReason,
-		usage: TokenUsage | undefined,
-		providerMetadata: SharedV4ProviderMetadata | undefined,
-	): LanguageModelV4StreamPart[] {
-		if (reason === 'error') this.failed = true;
-		const first = this.pendingFinish === undefined;
-		this.pendingFinish = {
-			reason,
-			usage: usage ?? this.pendingFinish?.usage,
-			providerMetadata: providerMetadata ?? this.pendingFinish?.providerMetadata,
+	private startFinish(finish: ReceivedFinish): LanguageModelV4StreamPart[] {
+		if (finish.reason === 'error') this.failed = true;
+		this.phase = { kind: 'finishing', finish };
+		return this.closeAll();
+	}
+
+	private sendFinish(finish: ReceivedFinish): LanguageModelV4StreamPart {
+		this.phase = { kind: 'ended' };
+		return {
+			type: 'finish',
+			finishReason: toFinishReason(this.failed ? 'error' : finish.reason),
+			usage: toUsage(finish.usage),
+			providerMetadata: finish.providerMetadata,
 		};
-		return first ? this.closeAll() : [];
 	}
 
 	/** Ends the open parts and sends the held tool calls, unless the turn failed. */

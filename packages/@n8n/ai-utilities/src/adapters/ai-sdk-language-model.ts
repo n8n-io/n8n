@@ -40,7 +40,7 @@ export class AiSdkLanguageModelAdapter implements LanguageModelV4 {
 
 	/**
 	 * Takes a chat model without bound tools. Each call binds the tools of the
-	 * AI SDK call, and `withTools` adds to tools that are already bound, so a
+	 * AI SDK call, and binding adds to the tools that are already bound, so a
 	 * tool bound before would reach the model on every call, even with tool
 	 * choice `none`.
 	 */
