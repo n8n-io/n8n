@@ -18,6 +18,7 @@ packages/nodes-base/nodes/NextCloud/test/GenericFunctions.test.ts
   s_50795f9787e625::t_7b34b1f41b5fa1 346-463,479,489-513
   s_50795f9787e625::t_5961cc9fff4a30 59-60
   s_0481ab2872e2f7::t_18f7c29a40e47e 14-16,18-20
+  s_69d18b007d0835::t_b5dfc6cd5bd9e3 17
 packages/nodes-base/nodes/NextCloud/test/NextCloud.node.test.ts
   s_50795f9787e625::t_280b9fb7096631 832-834
   s_50795f9787e625::t_4487ae47598dd5 815-831,835-837
@@ -58,6 +59,14 @@ packages/nodes-base/credentials/test/NextCloudApi.credentials.test.ts
         "model": "claude-opus-5-5"
       },
       "human_author": null
+    },
+    "s_69d18b007d0835": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2742f16a-41df-4d0f-909f-e67f21d45770",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
     }
   }
 }
