@@ -74,7 +74,7 @@ import {
 	type ManifestEntityCollection,
 } from '@/modules/n8n-packages/io/manifest-entry';
 import { createAgent } from '@test-integration/db/agents';
-import { saveCredential } from '@test-integration/db/credentials';
+import { encryptCredentialData, saveCredential } from '@test-integration/db/credentials';
 import { createTag } from '@test-integration/db/tags';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { buildWorkflowReferencingVariables } from '@/modules/n8n-packages/__tests__/utils/test-builders';
@@ -3214,6 +3214,38 @@ describe('Promote a project selection — branch effects', () => {
 
 		const after = await changeService().getPreview(owner, project.id, 'promote');
 		expect(after.resources.find(({ type }) => type === 'credential')).toBeUndefined();
+	});
+
+	it('lists a changed expression of a promoted credential, but not a changed secret', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.promote.id, owner);
+		const { project } = await setupProjectWithWorkflows('Platform', []);
+		const credential = await saveCredential(
+			{ name: 'CRM key', type: 'httpHeaderAuth', data: { name: 'X-Key', value: 'secret' } },
+			{ project, role: 'credential:owner' },
+		);
+		await service.promoteProjectSelection(project.id, owner, {
+			credentialIds: [credential.id],
+			commitMessage: 'Promote credential',
+		});
+		const setData = async (data: Record<string, string>) => {
+			const repository = Container.get(CredentialsRepository);
+			const row = await repository.findOneByOrFail({ id: credential.id });
+			Object.assign(row, { data });
+			await encryptCredentialData(row);
+			await repository.update({ id: credential.id }, { data: row.data });
+		};
+		const row = async () =>
+			(await changeService().getPreview(owner, project.id, 'promote')).resources.find(
+				({ type }) => type === 'credential',
+			);
+
+		await setData({ name: 'X-Key', value: 'another secret' });
+		expect(await row()).toBeUndefined();
+
+		await setData({ name: 'X-Key', value: '={{ $vars.CRM_TOKEN }}' });
+		expect(await row()).toMatchObject({ key: `credential:${credential.id}`, change: 'modified' });
 	});
 
 	it('refuses to promote a credential that another project owns', async () => {

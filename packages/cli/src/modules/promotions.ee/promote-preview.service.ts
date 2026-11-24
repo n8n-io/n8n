@@ -4,7 +4,6 @@ import { Service } from '@n8n/di';
 
 import { BadRequestError } from '@n8n/errors';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
-import { PACKAGE_ENTITY_LAYOUT } from '@/modules/n8n-packages/io/manifest-entry';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
@@ -17,7 +16,6 @@ import {
 	blobsByPath,
 	buildPreview,
 	parsePackageManifest,
-	readCredentialFields,
 	previewEnvironment,
 	previewRevision,
 	previewSource,
@@ -76,31 +74,16 @@ export class PromotePreviewService {
 			this.credentialSelection.findSelectableIds(user, projectId),
 		]);
 		// The project's own credentials are listed even when no workflow uses them, so the user can
-		// select them. The export keeps the name and type of each credential file to compare them.
+		// select them.
 		const visibleCredentialIds = new Set(selectableCredentialIds);
 		const instance = await exportInstancePackage(this.packagesService, user, [projectId], {
 			credentialIds: selectableCredentialIds,
-			keepContent: isCredentialFile,
 		});
 		// Promote compares with the branch manifest to see renames and moves. The manifest can list
 		// other projects while this project has no files on the branch yet, and the move markers
 		// still need it.
 		const promoteBase =
 			branch.hasManifest || branch.files.length > 0 ? await readBranchManifest(branch) : null;
-		// Read only the credential files of this project. The branch can hold other projects, and an
-		// empty branch has no commit to read from.
-		const projectTarget = promoteBase?.projects?.find(({ id }) => id === projectId)?.target;
-		const branchCredentialPaths = branch.files
-			.filter(
-				({ type, path }) =>
-					type === 'credential' &&
-					projectTarget !== undefined &&
-					path.startsWith(`${PACKAGE_SUBFOLDER}/${projectTarget}/`),
-			)
-			.map(({ path }) => path);
-		const branchCredentialFields = readCredentialFields(
-			branchCredentialPaths.length > 0 ? await branch.readFiles(branchCredentialPaths) : new Map(),
-		);
 		const { resources: compared, dependencies } = buildPreview({
 			operation: { direction: 'promote', planned: null },
 			projectIds: [projectId],
@@ -112,14 +95,12 @@ export class PromotePreviewService {
 				blobByPath: blobsByPath(branch.files),
 				ownedCredentials: true,
 				visibleCredentialIds,
-				credentialFields: branchCredentialFields,
 			},
 			desired: {
 				manifest: instance.manifest,
 				blobByPath: blobsByPath(instance.files),
 				ownedCredentials: true,
 				visibleCredentialIds,
-				credentialFields: readCredentialFields(instance.contents),
 			},
 		});
 		const resources = promoteBase
@@ -189,8 +170,4 @@ async function readBranchManifest(branch: BranchPackage): Promise<PackageManifes
 		throw new BadRequestError('The package manifest on the branch cannot be read');
 	}
 	return manifest;
-}
-
-function isCredentialFile(path: string): boolean {
-	return path.endsWith(`/${PACKAGE_ENTITY_LAYOUT.credentials.fileName}`);
 }

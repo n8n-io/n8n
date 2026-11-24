@@ -36,9 +36,9 @@ export type PreviewSide = {
 	manifest: PackageManifest | null;
 	blobByPath: ReadonlyMap<string, string>;
 	/**
-	 * Promote only. Lists the credentials that the project holds in its own folder, even when no
-	 * workflow uses them, and compares them by name and type, never by value. The caller gives the
-	 * name and type of each credential file in `credentialFields`, by package path.
+	 * Lists the credentials that the project holds in its own folder, even when no workflow uses
+	 * them. The file decides a change, like any other resource. A package file holds no secret
+	 * value, so a secret that changes is not a change. An expression, the name and the type are.
 	 */
 	ownedCredentials?: boolean;
 	/**
@@ -46,24 +46,7 @@ export type PreviewSide = {
 	 * list, so the user cannot see its name or type. Without it, every owned credential is listed.
 	 */
 	visibleCredentialIds?: ReadonlySet<string>;
-	credentialFields?: ReadonlyMap<string, CredentialFields>;
 };
-
-export type CredentialFields = { name: string; type: string };
-
-/** Reads the name and type of credential files. A file that is not valid is left out. */
-export function readCredentialFields(
-	contents: ReadonlyMap<string, string>,
-): Map<string, CredentialFields> {
-	const fields = new Map<string, CredentialFields>();
-	for (const [path, raw] of contents) {
-		const parsed = parseBranchJson<{ name?: unknown; type?: unknown }>(raw);
-		if (typeof parsed?.name === 'string' && typeof parsed.type === 'string') {
-			fields.set(path, { name: parsed.name, type: parsed.type });
-		}
-	}
-	return fields;
-}
 
 /** A resource as one side of the comparison holds it. */
 export type SideResource = {
@@ -78,11 +61,6 @@ export type SideResource = {
 	blobSha: string | null;
 	/** Only a workflow entry carries the flag; every other resource is active. */
 	isArchived: boolean;
-	/**
-	 * What decides whether the resource changed, when it is not the file content: for a credential
-	 * the name and the type, so a new value is not a change. Without it, the blob SHA decides.
-	 */
-	contentKey?: string;
 };
 
 export type SideIndex = ReadonlyMap<string, SideResource>;
@@ -169,9 +147,6 @@ export function indexSide(side: PreviewSide, projectId: string): Map<string, Sid
 			path,
 			blobSha: side.blobByPath.get(path) ?? null,
 			isArchived: 'isArchived' in entry && entry.isArchived,
-			...(collection === 'credentials' && inProject(entry) && side.credentialFields?.has(path)
-				? { contentKey: JSON.stringify(side.credentialFields.get(path)) }
-				: {}),
 		});
 	};
 
@@ -356,17 +331,6 @@ function isSelectable(
 	return (type === 'project' || type === 'folder') && changed;
 }
 
-/**
- * Compares the name and type of a credential, and the file otherwise. Both sides need a
- * `contentKey`. When one side has none, its file did not parse, so the file content decides.
- */
-function contentDiffers(before: SideResource, after: SideResource): boolean {
-	if (before.contentKey !== undefined && after.contentKey !== undefined) {
-		return before.contentKey !== after.contentKey;
-	}
-	return before.blobSha !== after.blobSha;
-}
-
 function compareResource(
 	current: SideResource,
 	before: SideResource | undefined,
@@ -375,7 +339,7 @@ function compareResource(
 	let change: PromotionResource['change'] = 'unchanged';
 	if (!before) change = 'added';
 	else if (!after) change = 'deleted';
-	else if (contentDiffers(before, after)) {
+	else if (before.blobSha !== after.blobSha) {
 		change = after.isArchived ? 'archived' : 'modified';
 	}
 	// The files hold no project, so a move between two project roots keeps the same file.
