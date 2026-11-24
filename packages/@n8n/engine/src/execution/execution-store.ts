@@ -188,7 +188,7 @@ export interface ExecutionStore {
 	/**
 	 * The ended executions that finished more than `maxAgeMs` ago or that are
 	 * at or before `countCutoff`, oldest first by finish time and id, at most
-	 * `limit`. The database clock sets the age cut-off. It skips an execution
+	 * `limit`. The database clock sets the age cutoff. It skips an execution
 	 * that still has a step that has not settled, and an awaited sub-execution
 	 * whose parent step still waits. A plain read: it locks no row.
 	 */
