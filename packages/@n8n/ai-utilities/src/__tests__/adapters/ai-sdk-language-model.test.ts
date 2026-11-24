@@ -1675,6 +1675,29 @@ describe('AiSdkLanguageModelAdapter', () => {
 			);
 		});
 
+		it('writes a stream with an error finish and no error chunk as an error of the node', async () => {
+			const ctx = createNodeContext();
+			const adapter = new AiSdkLanguageModelAdapter(
+				createFakeChatModel({
+					chunks: [
+						{ type: 'text-delta', delta: 'Hel' },
+						{ type: 'finish', finishReason: 'error' },
+					],
+				}),
+				ctx,
+			);
+
+			const { stream } = await adapter.doStream(callOptions());
+			await readAll(stream);
+
+			expect(ctx.addOutputData).toHaveBeenCalledTimes(1);
+			expect(ctx.addOutputData).toHaveBeenCalledWith(
+				NodeConnectionTypes.AiLanguageModel,
+				0,
+				expect.any(NodeOperationError),
+			);
+		});
+
 		it('writes a stream that fails to open as an error of the node and rethrows it', async () => {
 			const ctx = createNodeContext();
 			const error = new Error('invalid config');

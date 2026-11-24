@@ -93,6 +93,12 @@ export class AiSdkCallTrace {
 				break;
 			case 'finish':
 				this.#usage = part.usage;
+				// A chat model can end with an error finish without an error chunk.
+				if (part.finishReason.unified === 'error') {
+					this.#streamError ??= {
+						error: new Error('The chat model ended the stream with an error'),
+					};
+				}
 				break;
 			case 'error':
 				this.#streamError ??= { error: part.error };
@@ -102,7 +108,7 @@ export class AiSdkCallTrace {
 		}
 	}
 
-	/** A stream with an error part is logged as failed, although it did not throw. */
+	/** A stream with an error part or an error finish is logged as failed, although it did not throw. */
 	async streamed(): Promise<void> {
 		await (this.#streamError ? this.failed(this.#streamError.error) : this.#log());
 	}
