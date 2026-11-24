@@ -20,6 +20,7 @@ type Props = {
 	selectedTab: NodeSettingsTab;
 	nodeType?: INodeTypeDescription | null;
 	pushRef: string;
+	hasNewerVersion?: boolean;
 };
 
 const props = defineProps<Props>();
@@ -45,6 +46,7 @@ const emit = defineEmits<{
 			:model-value="selectedTab"
 			:node-type="nodeType"
 			:push-ref="pushRef"
+			:has-newer-version="hasNewerVersion"
 			:class="$style.tabs"
 			@update:model-value="emit('tab-changed', $event)"
 		/>

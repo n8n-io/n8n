@@ -22,6 +22,7 @@ type Props = {
 	includeAction?: boolean;
 	includeCredential?: boolean;
 	hasCredentialIssue?: boolean;
+	hasNewerVersion?: boolean;
 	compact?: boolean;
 };
 
@@ -89,7 +90,10 @@ const options = computed(() => {
 		},
 		{
 			value: 'settings',
-			notification: canUpdatePackage.value && hasUpdateAvailable.value ? true : undefined,
+			notification:
+				(canUpdatePackage.value && hasUpdateAvailable.value) || props.hasNewerVersion
+					? true
+					: undefined,
 			...(props.compact
 				? { icon: 'settings', align: 'right', tooltip: i18n.baseText('nodeSettings.settings') }
 				: { label: i18n.baseText('nodeSettings.settings') }),
