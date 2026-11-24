@@ -119,7 +119,7 @@ describe('AgentKnowledgeSandboxProvider', () => {
 						sandboxSnapshot: '',
 						sandboxTimeout: 300_000,
 						sandboxEphemeral: false,
-						sandboxEgressEnabled: true,
+						sandboxEgressPolicy: 'opt-out',
 					} as AgentsConfig,
 					mock<Logger>(),
 					mock<InstanceSettings>({ instanceId: 'instance-1' }),

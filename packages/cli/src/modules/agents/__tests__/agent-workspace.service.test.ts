@@ -15,7 +15,7 @@ const projectId = 'project-1';
 const agentId = 'agent-1';
 const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' });
 
-function makeService(sandboxEgressEnabled = false) {
+function makeService(egressEnabled = false) {
 	const filesystem = mock<WorkspaceFilesystem>();
 	const sandbox = mock<WorkspaceSandbox>({
 		id: 'sandbox-id',
@@ -25,7 +25,7 @@ function makeService(sandboxEgressEnabled = false) {
 	});
 	const runtimeService = mock<AgentSandboxRuntimeService>();
 	const checkpointStorage = mock<N8NCheckpointStorage>();
-	const agentsConfig = mock<AgentsConfig>({ checkpointTtlSeconds: 60, sandboxEgressEnabled });
+	const agentsConfig = mock<AgentsConfig>({ checkpointTtlSeconds: 60 });
 	filesystem.readdir.mockResolvedValue([]);
 	checkpointStorage.getActiveRunIdsForSandbox.mockResolvedValue(new Set());
 	const runtime = {
@@ -34,6 +34,7 @@ function makeService(sandboxEgressEnabled = false) {
 		filesystem,
 		workspaceRoot: '/home/daytona/workspace',
 		cacheKey: 'daytona:agent:sandbox-id',
+		egressEnabled,
 	};
 	runtimeService.acquireWorkspaceSandbox.mockResolvedValue(runtime);
 
@@ -82,6 +83,19 @@ describe('AgentWorkspaceService', () => {
 			}
 		},
 	);
+
+	it('forwards the per-agent sandboxEgress setting to acquireWorkspaceSandbox', async () => {
+		const { service, runtimeService } = makeService(true);
+
+		await service.getAgentWorkspace(projectId, agentId, principalHash, { sandboxEgress: true });
+
+		expect(runtimeService.acquireWorkspaceSandbox).toHaveBeenCalledWith(
+			projectId,
+			agentId,
+			principalHash,
+			expect.objectContaining({ sandboxEgress: true }),
+		);
+	});
 
 	it('creates a scoped workspace with only the core workspace tools without touching the filesystem', async () => {
 		const { service, filesystem, runtime, runtimeService, checkpointStorage } = makeService();

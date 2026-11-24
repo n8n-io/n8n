@@ -127,8 +127,8 @@ describe('InstanceAiSandboxService', () => {
 					},
 				});
 
-				for (const value of ['false', 'true']) {
-					vi.stubEnv('N8N_AGENTS_AI_SANDBOX_EGRESS_ENABLED', value);
+				for (const value of ['disabled', 'opt-in', 'opt-out']) {
+					vi.stubEnv('N8N_AGENTS_AI_SANDBOX_EGRESS_POLICY', value);
 
 					const config = await service.resolveSandboxConfig(fakeUser);
 

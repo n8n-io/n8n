@@ -1270,11 +1270,20 @@ export class AgentRuntimeReconstructionService {
 			);
 		}
 		try {
-			const { workspace, handle } = await this.agentWorkspaceService.getAgentWorkspace(
-				projectId,
-				agentId,
-				sandboxPrincipalHash,
-			);
+			const sandboxEgress = params.config.config?.sandboxEgress;
+			const { workspace, handle } =
+				sandboxEgress !== undefined
+					? await this.agentWorkspaceService.getAgentWorkspace(
+							projectId,
+							agentId,
+							sandboxPrincipalHash,
+							{ sandboxEgress },
+						)
+					: await this.agentWorkspaceService.getAgentWorkspace(
+							projectId,
+							agentId,
+							sandboxPrincipalHash,
+						);
 			throwIfAborted(params.abortSignal);
 			await this.attachWorkspaceTools(params, workspace);
 			return handle;

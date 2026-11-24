@@ -97,7 +97,7 @@ function makeService({
 			sandboxSnapshot: '',
 			sandboxTimeout: 300_000,
 			sandboxEphemeral: false,
-			sandboxEgressEnabled: false,
+			sandboxEgressPolicy: 'disabled',
 			...configOverrides,
 		} as AgentsConfig,
 		logger,
@@ -133,13 +133,17 @@ describe('AgentSandboxRuntimeService', () => {
 	});
 
 	it.each(['daytona', 'n8n-sandbox'] as const)(
-		'disables %s egress for workspace and knowledge sandboxes by default',
+		'disables %s egress for workspace and knowledge sandboxes by default even if an agent requests it',
 		async (provider) => {
 			const service = makeService({ sandboxSettingsService: makeSandboxSettingsService(provider) });
 
-			await service.acquireWorkspaceSandbox(projectId, agentId, principalHash);
-			await service.acquireKnowledgeSandbox(projectId, agentId);
+			const workspace = await service.acquireWorkspaceSandbox(projectId, agentId, principalHash, {
+				sandboxEgress: true,
+			});
+			const knowledge = await service.acquireKnowledgeSandbox(projectId, agentId);
 
+			expect(workspace.egressEnabled).toBe(false);
+			expect(knowledge.egressEnabled).toBe(false);
 			expect(createSandboxMock.mock.calls.map(([config]) => config.egress)).toEqual([
 				'none',
 				'none',
@@ -148,24 +152,83 @@ describe('AgentSandboxRuntimeService', () => {
 	);
 
 	it.each(['daytona', 'n8n-sandbox'] as const)(
-		'enables %s egress and keeps existing public sandbox identities when configured',
+		'under opt-in policy, keeps %s workspace egress off by default and enables it only when the agent opts in',
 		async (provider) => {
 			const service = makeService({
-				configOverrides: { sandboxEgressEnabled: true },
+				configOverrides: { sandboxEgressPolicy: 'opt-in' },
 				sandboxSettingsService: makeSandboxSettingsService(provider),
 			});
 
-			await service.acquireWorkspaceSandbox(projectId, agentId, principalHash);
-			await service.acquireKnowledgeSandbox(projectId, agentId);
+			const defaultWorkspace = await service.acquireWorkspaceSandbox(
+				projectId,
+				agentId,
+				principalHash,
+			);
+			const optedInWorkspace = await service.acquireWorkspaceSandbox(
+				projectId,
+				agentId,
+				principalHash,
+				{ sandboxEgress: true },
+			);
+			const knowledge = await service.acquireKnowledgeSandbox(projectId, agentId);
 
+			expect(defaultWorkspace.egressEnabled).toBe(false);
+			expect(optedInWorkspace.egressEnabled).toBe(true);
+			expect(knowledge.egressEnabled).toBe(false);
+			expect(createSandboxMock.mock.calls.map(([config]) => config.egress)).toEqual([
+				'none',
+				'public',
+				'none',
+			]);
+			expect(createSandboxMock.mock.calls.map(([config]) => config.id)).toEqual(
+				provider === 'daytona'
+					? [
+							`agent-ws-${workspaceSandboxId}`,
+							`agent-ws-${publicWorkspaceSandboxId}`,
+							`agent-kb-${knowledgeSandboxId}`,
+						]
+					: [workspaceSandboxId, publicWorkspaceSandboxId, knowledgeSandboxId],
+			);
+		},
+	);
+
+	it.each(['daytona', 'n8n-sandbox'] as const)(
+		'under opt-out policy, keeps %s public sandbox identities by default and lets an agent disable egress',
+		async (provider) => {
+			const service = makeService({
+				configOverrides: { sandboxEgressPolicy: 'opt-out' },
+				sandboxSettingsService: makeSandboxSettingsService(provider),
+			});
+
+			const defaultWorkspace = await service.acquireWorkspaceSandbox(
+				projectId,
+				agentId,
+				principalHash,
+			);
+			const optedOutWorkspace = await service.acquireWorkspaceSandbox(
+				projectId,
+				agentId,
+				principalHash,
+				{ sandboxEgress: false },
+			);
+			const knowledge = await service.acquireKnowledgeSandbox(projectId, agentId);
+
+			expect(defaultWorkspace.egressEnabled).toBe(true);
+			expect(optedOutWorkspace.egressEnabled).toBe(false);
+			expect(knowledge.egressEnabled).toBe(true);
 			expect(createSandboxMock.mock.calls.map(([config]) => config.egress)).toEqual([
 				'public',
+				'none',
 				'public',
 			]);
 			expect(createSandboxMock.mock.calls.map(([config]) => config.id)).toEqual(
 				provider === 'daytona'
-					? [`agent-ws-${publicWorkspaceSandboxId}`, `agent-kb-${publicKnowledgeSandboxId}`]
-					: [publicWorkspaceSandboxId, publicKnowledgeSandboxId],
+					? [
+							`agent-ws-${publicWorkspaceSandboxId}`,
+							`agent-ws-${workspaceSandboxId}`,
+							`agent-kb-${publicKnowledgeSandboxId}`,
+						]
+					: [publicWorkspaceSandboxId, workspaceSandboxId, publicKnowledgeSandboxId],
 			);
 		},
 	);
