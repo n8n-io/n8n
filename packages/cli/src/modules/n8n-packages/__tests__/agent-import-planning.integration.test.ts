@@ -29,6 +29,7 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialTypes } from '@/credential-types';
 import { AgentPolicyService } from '@/modules/agents/agent-policy.service';
 import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
+import { SkillsGate } from '@/modules/skills';
 import { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
 import { TeamsIntegration } from '@/modules/agents/integrations/platforms/teams/teams-integration';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
@@ -687,6 +688,22 @@ function sharedSkill(id: string, scope: 'project' | 'instance', name = 'Review')
 		frontmatter: null,
 	};
 }
+
+it('reports unavailable Skill dependencies before writes', async () => {
+	vi.spyOn(Container.get(SkillsGate), 'isEnabled', 'get').mockReturnValue(false);
+	const request = input([agent('source', { skills: [{ type: 'skill', id: 'skill_shared' }] })]);
+	request.skills = [sharedSkill('skill_shared', 'project')];
+	const before = await records();
+	const plan = await planner.plan(request);
+	expect(plan.blockingIssues).toEqual([
+		expect.objectContaining({
+			type: 'agent-invalid',
+			path: 'skills.skill_shared',
+			message: expect.stringContaining('unavailable'),
+		}),
+	]);
+	expect(await records()).toEqual(before);
+});
 
 it.each([
 	['project', 'projectSkill:create'],

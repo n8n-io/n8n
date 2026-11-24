@@ -1,4 +1,4 @@
-import { ModuleRegistry } from '@n8n/backend-common';
+import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { InstanceWriteAccessService, TelemetryProxy } from '@n8n/backend-services';
 import {
 	createTeamProject,
@@ -27,6 +27,7 @@ import {
 } from '@/modules/skills/testing';
 import { createMember, createOwner } from '@test-integration/db/users';
 import { createAgent } from '@test-integration/db/agents';
+import { LicenseMocker } from '@test-integration/license';
 
 import { importPackageRequest } from './fixtures/import-request';
 import { streamToBuffer } from './utils/tar-support';
@@ -41,6 +42,7 @@ import type { SerializedSkill } from '../spec/serialized/skill.schema';
 
 mockInstance(TelemetryProxy);
 mockInstance(CredentialTypes).recognizes.mockReturnValue(true);
+const license = new LicenseMocker();
 let owner: User;
 let destination: Project;
 let service: N8nPackagesService;
@@ -61,6 +63,7 @@ beforeAll(async () => {
 	await testModules.loadModules(['skills', 'agents', 'n8n-packages']);
 	await testDb.init();
 	registerSkillUsage();
+	license.mockLicenseState(Container.get(LicenseState));
 	owner = await createOwner();
 	destination = await createTeamProject('Destination', owner);
 	service = Container.get(N8nPackagesService);
@@ -213,7 +216,6 @@ it('reports batch rename conflicts across scopes before applying the plan', asyn
 		'new-version',
 	);
 	expect(plan.issues).toEqual([
-		expect.objectContaining({ type: 'skill-conflict', skillId: projectSkill.id }),
 		expect.objectContaining({ type: 'skill-conflict', skillId: instanceSkill.id }),
 	]);
 	await expect(importer.applyStandalone(owner, plan)).rejects.toThrow(
@@ -236,6 +238,54 @@ it('imports only the explicit selection and preserves unrelated Skills', async (
 	expect(result.skills?.map(({ localId }) => localId)).toEqual(['b']);
 	expect(await findSkillIds()).toEqual(['b', 'unselected']);
 });
+
+it.each([false, true])(
+	'checks batch renames in save order (vacate name first: %s)',
+	async (vacateFirst) => {
+		const projectSkill = packaged('project-skill');
+		const instanceSkill = packaged('instance-skill', 'instance');
+		instanceSkill.skill.name = 'Instance guide';
+		await importSkills(await archive([projectSkill, instanceSkill]));
+		const follower = await createAgent({ projectId: destination.id, schema: agentSchema });
+		await Container.get(AgentSkillRefsService).replaceDraftRefs(
+			follower,
+			[
+				{ type: 'skill', id: projectSkill.id },
+				{ type: 'skill', id: instanceSkill.id },
+			],
+			{},
+		);
+		projectSkill.skill.name = instanceSkill.skill.name;
+		instanceSkill.skill.name = 'New instance guide';
+		const skills = vacateFirst ? [instanceSkill, projectSkill] : [projectSkill, instanceSkill];
+		const importer = Container.get(SkillImporter);
+		const plan = await importer.planStandalone(
+			owner,
+			skills.map((skill) => ({ skill, projectId: destination.id })),
+			[],
+			'new-version',
+		);
+		if (vacateFirst) {
+			expect(plan.issues).toEqual([]);
+			vi.spyOn(Container.get(SkillService), 'refreshFollowingAgents').mockResolvedValue();
+			await importer.applyStandalone(owner, plan);
+			for (const skill of skills)
+				expect(await findLatestSkillVersion(skill.id)).toMatchObject({
+					version: 2,
+					name: skill.skill.name,
+				});
+		} else {
+			expect(plan.issues).toEqual([
+				expect.objectContaining({ type: 'skill-conflict', skillId: projectSkill.id }),
+			]);
+			await expect(importer.applyStandalone(owner, plan)).rejects.toThrow(
+				'Resolve the Skill conflicts',
+			);
+			for (const skill of skills)
+				expect(await findLatestSkillVersion(skill.id)).toMatchObject({ version: 1 });
+		}
+	},
+);
 
 it('reports name conflicts before creating any Skill', async () => {
 	await expect(importSkills(await archive([packaged('a'), packaged('b')]))).rejects.toMatchObject({
@@ -351,12 +401,69 @@ it('rejects ordinary imports and edits on a protected instance', async () => {
 
 it('reports unavailable Skills and rejects unsupported format versions', async () => {
 	Container.get(ModuleRegistry).settings.set('agents', { enabled: false });
-	await expect(importSkills(await archive([packaged()]))).rejects.toThrow('unavailable');
+	await expect(importSkills(await archive([packaged()]))).rejects.toMatchObject({
+		meta: {
+			issues: [
+				expect.objectContaining({
+					type: 'skill-conflict',
+					skillId: 'skill_one',
+					message: expect.stringContaining('unavailable'),
+				}),
+			],
+		},
+	});
 	Container.get(ModuleRegistry).settings.set('agents', { enabled: true });
 	await expect(importSkills(await archive([packaged()], '99'))).rejects.toThrow(
 		'manifest failed validation',
 	);
 	expect(await findSkillIds()).toEqual([]);
+});
+
+it.each([false, true])('checks availability for selected Skills only (%s)', async (selectSkill) => {
+	const project = await createTeamProject('Selected resources', owner);
+	const { id } = await createSkill({ projectId: project.id, content });
+	const workflow = await createWorkflow({ name: 'Workflow', nodes: [], connections: {} }, project);
+	const exported = await service.exportPackage({
+		user: owner,
+		projectIds: [project.id],
+		includeSkills: true,
+	});
+	const packageBuffer = await streamToBuffer(exported.stream);
+	const request = importPackageRequest({
+		user: owner,
+		packageBuffer,
+		conflictPolicy: 'new-version',
+	});
+	const selection = {
+		selectedProjectId: project.id,
+		selectedWorkflowIds: [workflow.id],
+		selectedSkillIds: selectSkill ? [id] : [],
+	};
+	Container.get(ModuleRegistry).settings.set('agents', { enabled: false });
+	const plan = await service.planPackageSelection(
+		request,
+		new TarPackageReader(packageBuffer, new PackageImportConfig()),
+		selection,
+		'check',
+	);
+	if (selectSkill) {
+		expect(plan.issues).toEqual([
+			expect.objectContaining({
+				type: 'skill-conflict',
+				skillId: id,
+				message: expect.stringContaining('unavailable'),
+			}),
+		]);
+		await expect(service.importPackageSelection(request, selection)).rejects.toMatchObject({
+			meta: { issues: plan.issues },
+		});
+	} else {
+		expect(plan.issues).toEqual([]);
+		const result = await service.importPackageSelection(request, selection);
+		expect(result.workflows).toEqual([expect.objectContaining({ sourceWorkflowId: workflow.id })]);
+		expect(result.skills).toBeUndefined();
+	}
+	expect(await findLatestSkillVersion(id)).toMatchObject({ version: 1 });
 });
 
 it('keeps published pins and updates only consumers that follow latest', async () => {

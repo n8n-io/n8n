@@ -654,15 +654,6 @@ export class N8nPackagesService {
 				throw new BadRequestError('The Agents module is not enabled.');
 			}
 		}
-		if (manifest.skills?.length) {
-			const { SkillsGate } = await import('../skills/index.js');
-			if (!Container.get(SkillsGate).isEnabled) {
-				throw new BadRequestError(
-					'Skills are unavailable. The requested import cannot be completed.',
-				);
-			}
-		}
-
 		if (!allowAgents && manifest.folders?.length) {
 			const prefixes = ['', ...(manifest.projects ?? []).map(({ target }) => `${target}/`)];
 

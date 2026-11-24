@@ -79,7 +79,12 @@ export class SkillImporter {
 		const ids = [...new Set([...selected.map(({ skill }) => skill.id), ...deletedSkillIds])];
 		if (ids.length === 0) return plan;
 		if (!this.skillsGate.isEnabled) {
-			throw new UserError('Skills are unavailable on this instance. No Skills were imported.');
+			plan.issues = ids.map((skillId) => ({
+				type: 'skill-conflict',
+				skillId,
+				message: 'Skills are unavailable on this instance.',
+			}));
+			return plan;
 		}
 		const existing = await this.skillService.findLatest(ids);
 		const names = new Set<string>();
@@ -148,9 +153,8 @@ export class SkillImporter {
 				followingAgentCount: row ? await this.skillService.countFollowingAgents(row.id) : 0,
 			});
 		}
-		const plannedNames = new Map(
-			plan.writes.shared.map(({ skill }) => [skill.id, skill.skill.name]),
-		);
+		// Each save sees the names written earlier in the batch.
+		const plannedNames = new Map<string, string>();
 		for (const { skill, target, base } of plan.writes.shared) {
 			const row = existing.get(skill.id);
 			if (!base || !row) continue;
@@ -162,6 +166,7 @@ export class SkillImporter {
 				plannedNames,
 			);
 			if (problem) issue(skill.id, problem);
+			plannedNames.set(skill.id, skill.skill.name);
 		}
 		for (const id of new Set(deletedSkillIds)) {
 			const row = existing.get(id);
@@ -310,6 +315,14 @@ export class SkillImporter {
 	): Promise<Map<string, SkillDecision>> {
 		const decisions = new Map<string, SkillDecision>();
 		if (users.size === 0) return decisions;
+		if (!this.skillsGate.isEnabled) {
+			for (const skillId of users.keys())
+				decisions.set(skillId, {
+					kind: 'issue',
+					message: 'Skills are unavailable on this instance.',
+				});
+			return decisions;
+		}
 		const packaged = new Map(packageSkills.map((skill) => [skill.id, skill]));
 		const existing = await this.skillService.findLatest([...users.keys()]);
 		const plannedNames = new Set<string>();
