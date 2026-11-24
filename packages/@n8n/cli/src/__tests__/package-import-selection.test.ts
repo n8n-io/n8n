@@ -11,6 +11,8 @@ vi.mock('node:fs');
 const packageRoot = process.cwd();
 
 interface ImportSelectionFlags {
+	selectedSkillIds?: string[];
+	deletedSkillIds?: string[];
 	file: string;
 	selectedProjectId: string;
 	selectedWorkflowIds?: string[];
@@ -217,4 +219,22 @@ describe('package import-selection command', () => {
 			);
 		});
 	});
+});
+
+it('forwards a Skill-only selection and explicit removals', async () => {
+	const { command, importPackageSelection } = stubCommand({
+		file: '/tmp/skills.n8np',
+		selectedProjectId: 'project',
+		selectedSkillIds: ['one'],
+		deletedSkillIds: ['two'],
+	});
+	await command.run();
+	expect(importPackageSelection).toHaveBeenCalledWith(
+		expect.anything(),
+		expect.objectContaining({
+			selectedWorkflowIds: [],
+			selectedSkillIds: ['one'],
+			deletedSkillIds: ['two'],
+		}),
+	);
 });

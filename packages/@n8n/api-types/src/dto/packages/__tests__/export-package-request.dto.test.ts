@@ -1,7 +1,7 @@
 import { ExportPackageRequestDto } from '../export-package-request.dto';
 
 describe('ExportPackageRequestDto', () => {
-	describe.each(['workflowIds', 'agentIds'] as const)('%s', (field) => {
+	describe.each(['workflowIds', 'agentIds', 'skillIds'] as const)('%s', (field) => {
 		it('accepts and trims up to 300 IDs', () => {
 			const ids = Array.from({ length: 300 }, (_, index) => `id-${index}`);
 			const parsed = ExportPackageRequestDto.parse({ [field]: ids.map((id) => ` ${id} `) });

@@ -2,7 +2,7 @@ import { isSafeObjectKey } from '@n8n/api-types';
 import path from 'node:path';
 import { z } from 'zod';
 
-import { FORMAT_VERSION } from './constants';
+import { FORMAT_VERSION, STANDALONE_SKILLS_FORMAT_VERSION } from './constants';
 import { packageRequirementsSchema } from './requirements.schema';
 
 export const manifestEntrySchema = z.object({
@@ -27,7 +27,7 @@ export const workflowManifestEntrySchema = manifestEntrySchema.extend({
 	isArchived: z.boolean().default(false),
 });
 
-type ManifestEntryList = Array<z.infer<typeof manifestEntrySchema>>;
+type ManifestEntryList = z.infer<typeof manifestEntrySchema>[];
 
 function assertNoDuplicateIds(
 	entries: ManifestEntryList | undefined,
@@ -49,12 +49,13 @@ function assertNoDuplicateIds(
 
 export const packageManifestSchema = z
 	.object({
-		packageFormatVersion: z.literal(FORMAT_VERSION),
+		packageFormatVersion: z.enum([FORMAT_VERSION, STANDALONE_SKILLS_FORMAT_VERSION]),
 		sourceN8nVersion: z.string().min(1),
 		sourceId: z.string().min(1),
 		workflows: z.array(workflowManifestEntrySchema).optional(),
 		agents: z.array(manifestEntrySchema).optional(),
 		skills: z.array(manifestEntrySchema).optional(),
+		selectedSkillIds: z.array(z.string().min(1)).optional(),
 		folders: z.array(manifestEntrySchema).optional(),
 		projects: z.array(manifestEntrySchema).optional(),
 		credentials: z.array(manifestEntrySchema).optional(),
@@ -64,6 +65,18 @@ export const packageManifestSchema = z
 		requirements: packageRequirementsSchema.optional(),
 	})
 	.superRefine((manifest, ctx) => {
+		if (manifest.selectedSkillIds !== undefined) {
+			const ids = new Set(manifest.skills?.map(({ id }) => id));
+			if (
+				manifest.packageFormatVersion !== STANDALONE_SKILLS_FORMAT_VERSION ||
+				manifest.selectedSkillIds.some((id) => !ids.has(id))
+			) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: 'Standalone Skill selection requires format 2 and matching Skill entries',
+				});
+			}
+		}
 		assertNoDuplicateIds(manifest.workflows, 'workflow', ctx);
 		assertNoDuplicateIds(manifest.agents, 'Agent', ctx);
 		assertNoDuplicateIds(manifest.skills, 'skill', ctx);

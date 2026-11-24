@@ -120,6 +120,7 @@ import {
 import { identifyRequirements } from './import-result';
 
 export interface ImportOrchestrationInput {
+	standaloneSkillsOnly?: boolean;
 	context: ImportContext;
 	folders: PreparedFolder[];
 	workflows: PreparedWorkflow[];
@@ -435,7 +436,7 @@ export class ImportOrchestrator {
 			options,
 		} = input;
 
-		if (workflows.length > 0 || !agentPlan)
+		if (workflows.length > 0 || (!agentPlan && !input.standaloneSkillsOnly))
 			await this.workflowPublisher.assertCanPublish(
 				context.user,
 				context.projectId,
@@ -880,7 +881,7 @@ function toDataTableBlockingIssue(
 
 function toTagBlockingIssue(
 	failure: TagResolutionFailure,
-	plans: Array<Pick<ImportPlan, 'tagPlan' | 'workflowPlan'>>,
+	plans: Pick<ImportPlan, 'tagPlan' | 'workflowPlan'>[],
 ): BlockingIssue {
 	const consumers = plans.flatMap(({ tagPlan, workflowPlan }) => {
 		let tagIds: string[];

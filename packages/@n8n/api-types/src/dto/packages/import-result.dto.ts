@@ -3,6 +3,7 @@ import '../../openapi-extend';
 import { z } from 'zod';
 
 import { importBlockingIssueSchema } from './import-blocking-issue.schema';
+import { importedSkillSummarySchema, skillImportCountsSchema } from './skill-import.schema';
 import { Z } from '../../zod-class';
 
 const importPackageSummarySchema = z.object({
@@ -323,8 +324,10 @@ const serializedBindingsSchema = z
 
 export const importResultSchema = z.object({
 	package: importPackageSummarySchema,
+	skills: z.array(importedSkillSummarySchema).optional(),
 	agents: z.array(importedAgentSummarySchema),
 	counts: z.object({
+		skills: skillImportCountsSchema.optional(),
 		agents: z.object({
 			created: z.number().int().nonnegative(),
 			updated: z.number().int().nonnegative(),
@@ -363,4 +366,6 @@ export class ImportResultDto extends Z.class(importResultSchema.shape) {}
 export class ImportBlockedErrorDto extends Z.class({
 	message: z.string(),
 	issues: z.array(importBlockingIssueSchema),
+	skills: z.array(importedSkillSummarySchema).optional(),
+	counts: z.object({ skills: skillImportCountsSchema }).optional(),
 }) {}

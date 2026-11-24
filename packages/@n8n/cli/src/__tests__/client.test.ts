@@ -578,12 +578,19 @@ describe('N8nClient packages', () => {
 
 			await client.importPackageSelection(
 				{ buffer: Buffer.from('package-bytes'), filename: 'project.n8np' },
-				{ selectedProjectId: 'project-1', selectedWorkflowIds: [] },
+				{
+					selectedProjectId: 'project-1',
+					selectedWorkflowIds: [],
+					selectedSkillIds: ['one'],
+					deletedSkillIds: [],
+				},
 			);
 
 			const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
 			expect(form.get('selectedProjectId')).toBe('project-1');
 			expect(form.get('selectedWorkflowIds')).toBe('[]');
+			expect(form.get('selectedSkillIds')).toBe('["one"]');
+			expect(form.get('deletedSkillIds')).toBe('[]');
 			expect(form.has('deletedWorkflowIds')).toBe(false);
 			expect(form.has('conflictPolicy')).toBe(false);
 			expect(form.has('idPolicy')).toBe(false);
@@ -616,6 +623,8 @@ describe('N8nClient packages', () => {
 				{ buffer: Buffer.from('package-bytes'), filename: 'export.n8np' },
 				{
 					conflictPolicy: 'fail',
+					skillIds: ['one'],
+					deletedSkillIds: ['two'],
 					projectId: 'proj-1',
 					folderId: '',
 					idPolicy: 'source',
@@ -633,6 +642,8 @@ describe('N8nClient packages', () => {
 			const form = init.body as FormData;
 			expect(form.get('conflictPolicy')).toBe('fail');
 			expect(form.get('projectId')).toBe('proj-1');
+			expect(form.get('skillIds')).toBe('["one"]');
+			expect(form.get('deletedSkillIds')).toBe('["two"]');
 			expect(form.get('idPolicy')).toBe('source');
 			expect(form.get('publishingPolicy')).toBe('match-source');
 			expect(form.get('bindings')).toBe('{"credentials":{"source":"target"}}');

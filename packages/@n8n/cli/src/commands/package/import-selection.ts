@@ -8,7 +8,7 @@ import { BaseCommand } from '../../base-command';
 
 export default class PackageImportSelection extends BaseCommand {
 	static override description =
-		'Import a chosen subset of workflows from an n8n project package (.n8np)';
+		'Import a chosen subset of workflows and Skills from an n8n project package (.n8np)';
 
 	static override examples = [
 		'<%= config.bin %> package import-selection --file=export.n8np --selected-project-id=<id> --selected-workflow-ids=<id1>,<id2>',
@@ -18,6 +18,18 @@ export default class PackageImportSelection extends BaseCommand {
 
 	static override flags = {
 		...BaseCommand.baseFlags,
+		selectedSkillIds: Flags.string({
+			description: 'Source Skill IDs to import',
+			multiple: true,
+			delimiter: ',',
+			aliases: ['selected-skill-ids'],
+		}),
+		deletedSkillIds: Flags.string({
+			description: 'Destination Skill IDs to remove',
+			multiple: true,
+			delimiter: ',',
+			aliases: ['deleted-skill-ids'],
+		}),
 		file: Flags.string({ description: 'Path to the .n8np project package file', required: true }),
 		selectedProjectId: Flags.string({
 			description: 'Source project ID the selection is scoped to',
@@ -75,6 +87,8 @@ export default class PackageImportSelection extends BaseCommand {
 					{
 						selectedProjectId: flags.selectedProjectId,
 						selectedWorkflowIds: flags.selectedWorkflowIds ?? [],
+						...(flags.selectedSkillIds ? { selectedSkillIds: flags.selectedSkillIds } : {}),
+						...(flags.deletedSkillIds ? { deletedSkillIds: flags.deletedSkillIds } : {}),
 						deletedWorkflowIds: flags.deletedWorkflowIds,
 						conflictPolicy: flags.conflictPolicy,
 						idPolicy: flags.idPolicy,

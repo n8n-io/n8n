@@ -13,6 +13,7 @@ import type { ExportPackageCounts, ExportPackageResult } from '../../client';
  */
 function describeExport(counts: ExportPackageCounts): string {
 	const parts: string[] = [];
+	if (counts.skills) parts.push(`${counts.skills} skill(s)`);
 	if (counts.projects) parts.push(`${counts.projects} project(s)`);
 	if (counts.agents) parts.push(`${counts.agents} agent(s)`);
 	if (counts.workflows) parts.push(`${counts.workflows} workflow(s)`);
@@ -26,7 +27,7 @@ function describeExport(counts: ExportPackageCounts): string {
 
 export default class PackageExport extends BaseCommand {
 	static override description =
-		'Export Agents, workflows, folders, or projects as an n8n package (.n8np)';
+		'Export Agents, workflows, Skills, folders, or projects as an n8n package (.n8np)';
 
 	static override examples = [
 		'<%= config.bin %> package export --agent-id=reviewer --agent-id=helper --dependency-policy=include-in-package -o agents.n8np',
@@ -42,6 +43,15 @@ export default class PackageExport extends BaseCommand {
 
 	static override flags = {
 		...BaseCommand.baseFlags,
+		skillId: Flags.string({
+			description: 'Skill ID to export (repeat for multiple)',
+			multiple: true,
+			aliases: ['skill-id'],
+		}),
+		includeSkills: Flags.boolean({
+			description: 'Include all Skills in the selected projects',
+			aliases: ['include-skills'],
+		}),
 		agentId: Flags.string({
 			description: 'Agent ID to include (repeat for multiple)',
 			multiple: true,
@@ -115,6 +125,7 @@ export default class PackageExport extends BaseCommand {
 	async run(): Promise<void> {
 		const { flags } = await this.parse(PackageExport);
 		const agentIds = flags.agentId ?? [];
+		const skillIds = flags.skillId ?? [];
 		const workflowIds = flags.workflowId ?? [];
 		const folderIds = flags.folderId ?? [];
 		const projectIds = flags.projectId ?? [];
@@ -129,9 +140,11 @@ export default class PackageExport extends BaseCommand {
 		if (projectIds.length > 0 && hasLooseSelection) {
 			this.error('Provide either --agent-id/--workflow-id/--folder-id or --project-id, not both');
 		}
-		if (!hasLooseSelection && projectIds.length === 0) {
+		if (flags.includeSkills && !projectIds.length)
+			this.error('--include-skills requires --project-id');
+		if (!hasLooseSelection && projectIds.length === 0 && skillIds.length === 0) {
 			this.error(
-				'At least one --agent-id, --workflow-id, --folder-id, or --project-id is required',
+				'At least one --skill-id, --agent-id, --workflow-id, --folder-id, or --project-id is required',
 			);
 		}
 
@@ -143,6 +156,8 @@ export default class PackageExport extends BaseCommand {
 					projectIds.length > 0
 						? {
 								projectIds,
+								...(skillIds.length ? { skillIds } : {}),
+								...(flags.includeSkills ? { includeSkills: true } : {}),
 								includeVariableValues,
 								includeTags,
 								dependencyPolicy,
@@ -152,6 +167,7 @@ export default class PackageExport extends BaseCommand {
 							}
 						: {
 								...(agentIds.length > 0 ? { agentIds } : {}),
+								...(skillIds.length ? { skillIds } : {}),
 								workflowIds,
 								folderIds,
 								includeVariableValues,
@@ -176,6 +192,7 @@ export default class PackageExport extends BaseCommand {
 					: `${projectIds.length} project(s)`;
 				this.succeed(`Exported ${summary} to ${flags.output}`, flags, {
 					output: flags.output,
+					...(skillIds.length ? { skillIds } : {}),
 					projectIds,
 					...(counts ? { counts } : {}),
 				});
@@ -184,10 +201,12 @@ export default class PackageExport extends BaseCommand {
 
 			// Older servers omit counts; fall back to the requested id counts.
 			let summary = `${workflowIds.length} workflow(s) and ${folderIds.length} folder(s)`;
+			if (skillIds.length > 0) summary = `${skillIds.length} skill(s), ${summary}`;
 			if (agentIds.length > 0) summary = `${agentIds.length} agent(s), ${summary}`;
 			if (counts) summary = describeExport({ ...counts, agents: counts.agents ?? agentIds.length });
 			this.succeed(`Exported ${summary} to ${flags.output}`, flags, {
 				output: flags.output,
+				...(skillIds.length ? { skillIds } : {}),
 				...(agentIds.length > 0 ? { agentIds } : {}),
 				workflowIds,
 				folderIds,

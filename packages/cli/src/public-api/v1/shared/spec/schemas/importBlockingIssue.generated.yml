@@ -4,6 +4,20 @@ oneOf:
       type:
         type: string
         enum:
+          - skill-conflict
+      skillId:
+        type: string
+      message:
+        type: string
+    required:
+      - type
+      - skillId
+      - message
+  - type: object
+    properties:
+      type:
+        type: string
+        enum:
           - agent-conflict
       kind:
         type: string

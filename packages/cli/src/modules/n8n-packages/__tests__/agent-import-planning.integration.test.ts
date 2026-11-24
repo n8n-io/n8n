@@ -1,9 +1,9 @@
+import { ModuleRegistry, LicenseState } from '@n8n/backend-common';
 import {
 	AI_GATEWAY_MANAGED_TAG,
 	AgentJsonConfigSchema,
 	type AgentJsonConfig,
 } from '@n8n/api-types';
-import { LicenseState } from '@n8n/backend-common';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -77,6 +77,7 @@ beforeAll(async () => {
 	await testModules.loadModules(['skills', 'agents', 'n8n-packages']);
 	await testDb.init();
 	registerSkillUsage();
+	Container.get(ModuleRegistry).settings.set('agents', { enabled: true });
 	license.mockLicenseState(Container.get(LicenseState));
 	Container.get(ChatIntegrationRegistry).register(Container.get(TeamsIntegration));
 	planner = Container.get(ImportOrchestrator);

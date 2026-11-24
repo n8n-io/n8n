@@ -981,3 +981,13 @@ describe('SkillService user actions', () => {
 		});
 	});
 });
+
+it('rejects ordinary Skill writes while the instance is protected', async () => {
+	const { service, instanceWriteAccess, skills, txRunner } = createSkillServices();
+	instanceWriteAccess.setReadOnly(true);
+	await expect(service.create(user, mock<CreateSkillDto>())).rejects.toThrow(ForbiddenError);
+	await expect(service.update(user, 'skill', mock<SaveSkillDto>())).rejects.toThrow(ForbiddenError);
+	await expect(service.delete(user, 'skill')).rejects.toThrow(ForbiddenError);
+	expect(txRunner.run).not.toHaveBeenCalled();
+	expect(skills.deleteSkill).not.toHaveBeenCalled();
+});

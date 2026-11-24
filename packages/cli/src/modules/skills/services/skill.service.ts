@@ -22,7 +22,7 @@ import {
 	type SkillVersionSummary,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { ProjectScopeService } from '@n8n/backend-services';
+import { InstanceWriteAccessService, ProjectScopeService } from '@n8n/backend-services';
 import {
 	accountSummary,
 	TransactionRunner,
@@ -31,7 +31,7 @@ import {
 	type User,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
+import { ConflictError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
@@ -157,7 +157,52 @@ export class SkillService {
 		private readonly sourceRepository: SkillSourceRepository,
 		private readonly skillSyncFlagGate: SkillSyncFlagGate,
 		private readonly sourceClients: SkillSourceClientRegistry,
+		private readonly instanceWriteAccess: InstanceWriteAccessService,
 	) {}
+
+	assertWritable(): void {
+		if (this.instanceWriteAccess.isReadOnly()) {
+			throw new ForbiddenError('Cannot modify Skills on a protected instance.');
+		}
+	}
+
+	/** Callers must check access to each returned Skill before reading its content. */
+	async findIdsInProjects(projectIds: string[]): Promise<string[]> {
+		return await this.skillRepository.findIdsInProjects(projectIds);
+	}
+
+	async isSourceManaged(skillId: string, ctx: OperationContext = {}): Promise<boolean> {
+		return (await this.sourceRepository.findLinkBySkillId(skillId, ctx)) !== null;
+	}
+
+	async countFollowingAgents(skillId: string): Promise<number> {
+		return (await this.skillUsage.findFollowingAgentIds(skillId, {})).length;
+	}
+
+	async assertCanDelete(user: User, skillId: string, ctx: OperationContext = {}): Promise<void> {
+		this.assertWritable();
+		await this.skillAccess.requireAccess(user, skillId, 'delete');
+		if ((await this.skillUsage.findUsingAgentIds(skillId, ctx)).length > 0) {
+			throw new ConflictError('A consumer still uses this Skill. Remove its references first.');
+		}
+	}
+
+	/** Recheck a reviewed deletion under the same lock used by Skill edits. */
+	async deleteChecked(user: User, checked: LatestSkill, ctx: OperationContext): Promise<void> {
+		await this.txRunner.run(ctx, async (txCtx) => {
+			await this.skillRepository.lockForEdit([checked.id], txCtx);
+			const latest = (await this.skillRepository.findLatestSaved([checked.id], txCtx)).get(
+				checked.id,
+			);
+			if (!latest) throw new ConflictError('The Skill was removed after planning.');
+			assertUnchangedSince(latest, checked.versionId, checked.target);
+			await this.assertCanDelete(user, checked.id, txCtx);
+			if (await this.isSourceManaged(checked.id, txCtx)) {
+				throw new ConflictError('The destination Skill is managed by a source.');
+			}
+			await this.deleteSkill(checked.id, 'all', txCtx);
+		});
+	}
 
 	// ---------------------------------------------------------------- user actions
 
@@ -389,6 +434,7 @@ export class SkillService {
 		payload: CreateSkillDto,
 		source: SkillTelemetrySource = 'ui',
 	): Promise<SkillDetail> {
+		this.assertWritable();
 		if (
 			payload.availableToAssistant !== undefined &&
 			!(await this.assistantSkillsFlagGate.isEnabled())
@@ -435,6 +481,7 @@ export class SkillService {
 		payload: SaveSkillDto,
 		source: SkillTelemetrySource = 'ui',
 	): Promise<SkillSaveResponse> {
+		this.assertWritable();
 		if (
 			payload.availableToAssistant !== undefined &&
 			!(await this.assistantSkillsFlagGate.isEnabled())
@@ -530,6 +577,7 @@ export class SkillService {
 	}
 
 	async delete(user: User, skillId: string, source: SkillTelemetrySource = 'ui'): Promise<void> {
+		this.assertWritable();
 		const skill = await this.skillAccess.requireAccess(user, skillId, 'delete');
 		// The conflict message names only the agents the user may read, as the detail does.
 		const agentProjectIds = await this.projectScopeService.getProjectIds(user, ['agent:read']);
@@ -558,6 +606,7 @@ export class SkillService {
 		},
 		ctx: OperationContext = {},
 	): Promise<string> {
+		this.assertWritable();
 		return await this.txRunner.run(ctx, async (txCtx) => {
 			const skill = withTrimmedName(input.skill);
 			assertHasInstructions(skill);
@@ -610,6 +659,7 @@ export class SkillService {
 			sourceRevision?: string;
 		} = {},
 	): Promise<SkillSaveResult> {
+		this.assertWritable();
 		const { saved, following } = await this.txRunner.run(ctx, async (txCtx) => {
 			await this.skillRepository.lockForEdit([skillId], txCtx);
 			const latest = (await this.skillRepository.findLatestSaved([skillId], txCtx)).get(skillId);
@@ -699,6 +749,7 @@ export class SkillService {
 			movingSourceId,
 		}: SkillMoveOptions = {},
 	): Promise<void> {
+		this.assertWritable();
 		await this.txRunner.run(ctx, async (txCtx) => {
 			await this.skillRepository.lockForEdit([skillId], txCtx);
 			// `assertCanMove` ran before the lock. If another move changed the scope since,
@@ -745,6 +796,7 @@ export class SkillService {
 		checkedTarget: SkillTarget,
 		ctx: OperationContext = {},
 	): Promise<void> {
+		this.assertWritable();
 		await this.txRunner.run(ctx, async (txCtx) => {
 			await this.lockInCheckedTarget(skillId, checkedTarget, txCtx);
 			await this.skillRepository.setAssistantAvailability(skillId, available, txCtx);
@@ -757,6 +809,7 @@ export class SkillService {
 		checkedTarget: SkillTarget,
 		ctx: OperationContext = {},
 	): Promise<void> {
+		this.assertWritable();
 		await this.txRunner.run(ctx, async (txCtx) => {
 			await this.lockInCheckedTarget(skillId, checkedTarget, txCtx);
 			await this.skillRepository.updateAvailableToMCP(skillId, available, txCtx);

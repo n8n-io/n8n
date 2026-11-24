@@ -1,6 +1,11 @@
-import { skillNameKey } from '@n8n/api-types';
+import {
+	skillNameKey,
+	type ImportedSkillSummary,
+	type SkillImportCounts,
+	type SkillImportIssue,
+} from '@n8n/api-types';
 
-import { isSameSkillTarget, type SkillTarget } from '@/modules/skills';
+import { isSameSkillTarget, type LatestSkill, type SkillTarget } from '@/modules/skills';
 
 import type { SerializedSkill } from '../../spec/serialized/skill.schema';
 import type { AgentImportIssue } from '../agent/agent-import.types';
@@ -25,6 +30,14 @@ export interface SkillImportPlan {
 	shared: SharedSkillWrite[];
 	/** The Agents that use a project or instance skill that the import writes. */
 	sharedUsers: Set<string>;
+}
+
+export interface StandaloneSkillPlan {
+	writes: SkillImportPlan;
+	removals: LatestSkill[];
+	checked: LatestSkill[];
+	outcomes: ImportedSkillSummary[];
+	issues: SkillImportIssue[];
 }
 
 export function skillIssue(
@@ -78,4 +91,16 @@ function instanceNameClash({
 }: SharedSkillWrite): AgentImportIssue[] {
 	const message = `Another instance skill of this package has the same name "${skill.skill.name}". Rename one of the skills.`;
 	return usedBy.map((agentId) => skillIssue(agentId, packageSkillId ?? skill.id, message));
+}
+
+export function countSkillOutcomes(skills: ImportedSkillSummary[]): SkillImportCounts {
+	const counts: SkillImportCounts = {
+		created: 0,
+		updated: 0,
+		unchanged: 0,
+		skipped: 0,
+		deleted: 0,
+	};
+	for (const { status } of skills) counts[status]++;
+	return counts;
 }

@@ -13,6 +13,8 @@ const packageFileSchema = publicApiUploadedFileSchema.openapi(
 
 /** Multipart text field names validated by {@link ImportPackageRequestDto}. */
 export const IMPORT_PACKAGE_REQUEST_FORM_FIELDS = [
+	'skillIds',
+	'deletedSkillIds',
 	'projectId',
 	'folderId',
 	'credentialMatchingMode',
@@ -100,9 +102,60 @@ const bindingsSchema = z
 		return result.data;
 	});
 
+const SELECTED_WORKFLOW_IDS_ERROR_MESSAGE =
+	'selectedWorkflowIds must be a JSON array of non-empty strings, e.g. ["id1","id2"]';
+const DELETED_WORKFLOW_IDS_ERROR_MESSAGE =
+	'deletedWorkflowIds must be a JSON array of non-empty strings, e.g. ["id1","id2"]';
+
+const idArraySchema = z.array(z.string().trim().min(1));
+
+function parseIdArray(value: string, ctx: z.RefinementCtx, errorMessage: string): string[] {
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(value);
+	} catch {
+		ctx.addIssue({ code: z.ZodIssueCode.custom, message: errorMessage });
+		return z.NEVER;
+	}
+
+	const result = idArraySchema.safeParse(parsed);
+	if (!result.success) {
+		ctx.addIssue({ code: z.ZodIssueCode.custom, message: errorMessage });
+		return z.NEVER;
+	}
+
+	return result.data;
+}
+
+/** Multipart fields carry arrays as JSON text. Reject a blank value, but accept `[]`. */
+const requiredJsonStringIdArray = (errorMessage: string) =>
+	z.string().transform((value, ctx): string[] => {
+		if (value.trim().length === 0) {
+			ctx.addIssue({ code: z.ZodIssueCode.custom, message: errorMessage });
+			return z.NEVER;
+		}
+		return parseIdArray(value, ctx, errorMessage);
+	});
+
+/** Treat blank or omitted fields as `undefined`. */
+const optionalJsonStringIdArray = (errorMessage: string) =>
+	z
+		.string()
+		.optional()
+		.transform((value, ctx): string[] | undefined => {
+			if (value === undefined || value.trim().length === 0) return undefined;
+			return parseIdArray(value, ctx, errorMessage);
+		});
+
 export class ImportPackageRequestDto extends Z.class(
 	{
 		package: packageFileSchema,
+		skillIds: optionalJsonStringIdArray('skillIds must be a JSON array of Skill IDs').openapi(
+			importPackageRequestFieldDocs.skillIds,
+		),
+		deletedSkillIds: optionalJsonStringIdArray(
+			'deletedSkillIds must be a JSON array of Skill IDs',
+		).openapi(importPackageRequestFieldDocs.deletedSkillIds),
 		projectId: optionalFormId.openapi(importPackageRequestFieldDocs.projectId),
 		folderId: optionalFormId.openapi(importPackageRequestFieldDocs.folderId),
 		credentialMatchingMode: optionalEnum(
@@ -173,6 +226,8 @@ export class ImportPackageRequestDto extends Z.class(
 
 /** Multipart text field names validated by {@link ImportPackageSelectionRequestDto}. */
 export const IMPORT_PACKAGE_SELECTION_REQUEST_FORM_FIELDS = [
+	'selectedSkillIds',
+	'deletedSkillIds',
 	'selectedProjectId',
 	'selectedWorkflowIds',
 	'deletedWorkflowIds',
@@ -181,54 +236,15 @@ export const IMPORT_PACKAGE_SELECTION_REQUEST_FORM_FIELDS = [
 	'overwriteDeletionPolicy',
 ] as const;
 
-const SELECTED_WORKFLOW_IDS_ERROR_MESSAGE =
-	'selectedWorkflowIds must be a JSON array of non-empty strings, e.g. ["id1","id2"]';
-const DELETED_WORKFLOW_IDS_ERROR_MESSAGE =
-	'deletedWorkflowIds must be a JSON array of non-empty strings, e.g. ["id1","id2"]';
-
-const idArraySchema = z.array(z.string().trim().min(1));
-
-function parseIdArray(value: string, ctx: z.RefinementCtx, errorMessage: string): string[] {
-	let parsed: unknown;
-	try {
-		parsed = JSON.parse(value);
-	} catch {
-		ctx.addIssue({ code: z.ZodIssueCode.custom, message: errorMessage });
-		return z.NEVER;
-	}
-
-	const result = idArraySchema.safeParse(parsed);
-	if (!result.success) {
-		ctx.addIssue({ code: z.ZodIssueCode.custom, message: errorMessage });
-		return z.NEVER;
-	}
-
-	return result.data;
-}
-
-/** Multipart fields carry arrays as JSON text. Reject a blank value, but accept `[]`. */
-const requiredJsonStringIdArray = (errorMessage: string) =>
-	z.string().transform((value, ctx): string[] => {
-		if (value.trim().length === 0) {
-			ctx.addIssue({ code: z.ZodIssueCode.custom, message: errorMessage });
-			return z.NEVER;
-		}
-		return parseIdArray(value, ctx, errorMessage);
-	});
-
-/** Treat blank or omitted fields as `undefined`. */
-const optionalJsonStringIdArray = (errorMessage: string) =>
-	z
-		.string()
-		.optional()
-		.transform((value, ctx): string[] | undefined => {
-			if (value === undefined || value.trim().length === 0) return undefined;
-			return parseIdArray(value, ctx, errorMessage);
-		});
-
 export class ImportPackageSelectionRequestDto extends Z.class(
 	{
 		package: packageFileSchema,
+		selectedSkillIds: optionalJsonStringIdArray(
+			'selectedSkillIds must be a JSON array of Skill IDs',
+		).openapi(importPackageSelectionRequestFieldDocs.selectedSkillIds),
+		deletedSkillIds: optionalJsonStringIdArray(
+			'deletedSkillIds must be a JSON array of Skill IDs',
+		).openapi(importPackageSelectionRequestFieldDocs.deletedSkillIds),
 		selectedProjectId: z
 			.string()
 			.trim()

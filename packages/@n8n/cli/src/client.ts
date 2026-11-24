@@ -41,6 +41,7 @@ export type ExportPackageFields = Partial<ExportPackageRequestDto>;
 
 /** True per-entity counts of what ended up in an exported package. */
 export interface ExportPackageCounts {
+	skills?: number;
 	/** Older servers can omit Agent and project counts. */
 	agents?: number;
 	projects?: number;
@@ -839,6 +840,8 @@ export class N8nClient {
 		form.append('package', new Blob([new Uint8Array(file.buffer)]), file.filename);
 		for (const [key, value] of Object.entries(fields)) {
 			if (typeof value === 'string' && value !== '') form.append(key, value);
+			if ((key === 'skillIds' || key === 'deletedSkillIds') && Array.isArray(value))
+				form.append(key, JSON.stringify(value));
 		}
 		return await this.request<ImportResultDto>('POST', '/n8n-packages/import', {
 			formData: form,
@@ -865,6 +868,10 @@ export class N8nClient {
 		if (fields.deletedWorkflowIds !== undefined) {
 			form.append('deletedWorkflowIds', JSON.stringify(fields.deletedWorkflowIds));
 		}
+		if (fields.selectedSkillIds !== undefined)
+			form.append('selectedSkillIds', JSON.stringify(fields.selectedSkillIds));
+		if (fields.deletedSkillIds !== undefined)
+			form.append('deletedSkillIds', JSON.stringify(fields.deletedSkillIds));
 		return await this.request<ImportResultDto>('POST', '/n8n-packages/import-selection', {
 			formData: form,
 		});

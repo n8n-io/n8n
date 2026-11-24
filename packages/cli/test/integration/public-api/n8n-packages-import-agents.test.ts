@@ -1,3 +1,4 @@
+import { ModuleRegistry } from '@n8n/backend-common';
 import { packagedModules } from '@/modules/modules.manifest';
 import {
 	AI_GATEWAY_MANAGED_TAG,
@@ -100,6 +101,7 @@ let tasks: AgentTaskRepository;
 
 beforeAll(async () => {
 	registerSkillUsage();
+	Container.get(ModuleRegistry).settings.set('agents', { enabled: true });
 	agents = Container.get(AgentRepository);
 	tasks = Container.get(AgentTaskRepository);
 	Container.get(InstanceSettings).markAsLeader();
@@ -953,4 +955,46 @@ it('rejects Agent content on import-selection while the Agents module is active'
 	expect(response.statusCode).toBe(400);
 	expect(response.body.message).toContain('ordinary archive import');
 	expect(await records()).toEqual(before);
+});
+
+it('imports standalone Skills with only the scopes for each action', async () => {
+	const writer = new TarPackageWriter();
+	await writer.writeFile(
+		'skills/standalone/skill.json',
+		JSON.stringify({
+			id: 'standalone',
+			scope: 'instance',
+			skill: { name: 'Standalone', description: 'A guide', instructions: 'Use short sentences.' },
+			frontmatter: null,
+		}),
+	);
+	await writer.writeFile(
+		'manifest.json',
+		JSON.stringify({
+			packageFormatVersion: '2',
+			sourceN8nVersion: '2.0.0',
+			sourceId: 'source',
+			skills: [{ id: 'standalone', name: 'Standalone', target: 'skills/standalone' }],
+			selectedSkillIds: ['standalone'],
+		}),
+	);
+	const buffer = await streamToBuffer(writer.finalize());
+	const reader = await createOwnerWithApiKey({ scopes: ['skill:read'] });
+	const denied = await upload(buffer, { projectId: '' }, reader);
+	expect(denied.statusCode).toBe(403);
+	const creator = await createOwnerWithApiKey({ scopes: ['skill:create'] });
+	const created = await upload(buffer, { projectId: '' }, creator);
+	expect(created.statusCode).toBe(200);
+	expect(ImportResultDto.parse(created.body).counts.skills?.created).toBe(1);
+	const unchanged = await upload(buffer, { projectId: '' }, reader);
+	expect(unchanged.statusCode).toBe(200);
+	expect(unchanged.body.counts.skills.unchanged).toBe(1);
+	const remover = await createOwnerWithApiKey({ scopes: ['skill:delete'] });
+	const removed = await upload(
+		buffer,
+		{ projectId: '', skillIds: '[]', deletedSkillIds: '["standalone"]' },
+		remover,
+	);
+	expect(removed.statusCode).toBe(200);
+	expect(removed.body.counts.skills.deleted).toBe(1);
 });

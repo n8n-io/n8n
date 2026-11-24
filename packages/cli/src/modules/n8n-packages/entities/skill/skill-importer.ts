@@ -1,7 +1,7 @@
-import { skillNameKey } from '@n8n/api-types';
+import { skillNameKey, type ImportedSkillSummary } from '@n8n/api-types';
 import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ConflictError, ForbiddenError, UserError } from '@n8n/errors';
+import { ConflictError, ForbiddenError, UserError, UnprocessableRequestError } from '@n8n/errors';
 import { createHash } from 'node:crypto';
 
 import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
@@ -14,11 +14,18 @@ import {
 	skillContentHashOf,
 	SkillService,
 	SkillRuntimeService,
+	SkillsGate,
 	type LatestSkill,
 	type SkillTarget,
 } from '@/modules/skills';
 
-import { skillIssue, type SkillImportPlan, type SkillWrite } from './skill-import.types';
+import {
+	skillIssue,
+	countSkillOutcomes,
+	type SkillImportPlan,
+	type SkillWrite,
+	type StandaloneSkillPlan,
+} from './skill-import.types';
 import type { ImportConflictPolicy } from '../../n8n-packages.types';
 import type { SerializedSkill } from '../../spec/serialized/skill.schema';
 import type {
@@ -52,7 +59,183 @@ export class SkillImporter {
 		private readonly transactionRunner: TransactionRunner,
 		private readonly agentSkillRefs: AgentSkillRefsService,
 		private readonly skillRuntime: SkillRuntimeService,
+		private readonly skillsGate: SkillsGate,
 	) {}
+
+	async planStandalone(
+		user: User,
+		selected: { skill: SerializedSkill; projectId: string | null }[],
+		deletedSkillIds: string[],
+		conflictPolicy: ImportConflictPolicy,
+		options: { pendingProjectIds?: Set<string>; allowedProjectIds?: Set<string> } = {},
+	): Promise<StandaloneSkillPlan> {
+		const plan: StandaloneSkillPlan = {
+			writes: { shared: [], sharedUsers: new Set() },
+			removals: [],
+			checked: [],
+			outcomes: [],
+			issues: [],
+		};
+		const ids = [...new Set([...selected.map(({ skill }) => skill.id), ...deletedSkillIds])];
+		if (ids.length === 0) return plan;
+		if (!this.skillsGate.isEnabled) {
+			throw new UserError('Skills are unavailable on this instance. No Skills were imported.');
+		}
+		const existing = await this.skillService.findLatest(ids);
+		const names = new Set<string>();
+		const issue = (skillId: string, message: string) =>
+			plan.issues.push({ type: 'skill-conflict', skillId, message });
+		for (const { skill, projectId } of selected) {
+			if (deletedSkillIds.includes(skill.id)) {
+				issue(skill.id, 'A Skill cannot be imported and removed in the same request.');
+				continue;
+			}
+			const target = { projectId: skill.scope === 'instance' ? null : projectId };
+			if (skill.scope === 'project' && target.projectId === null) {
+				issue(skill.id, 'A project Skill requires a destination project.');
+				continue;
+			}
+			const row = existing.get(skill.id);
+			if (row && !isSameSkillTarget(row.target, target)) {
+				issue(skill.id, 'The Skill identity belongs to another scope.');
+				continue;
+			}
+			if (row && !(await this.skillAccess.canAccess(user, target, 'read'))) {
+				throw new ForbiddenError('You cannot read the destination Skill.');
+			}
+			if (row && (await this.skillService.isSourceManaged(skill.id))) {
+				issue(skill.id, 'The destination Skill is managed by a source.');
+				continue;
+			}
+			// Standalone selection keeps the package identity. Agent copies keep their existing rules.
+			const decision = decideWrite(skill, target, row, conflictPolicy);
+			if (decision.kind === 'issue') {
+				issue(skill.id, decision.message);
+				continue;
+			}
+			if (row) plan.checked.push(row);
+			if (decision.kind === 'write') {
+				const problem = row
+					? await this.renameProblem(skill.id, target, row.skill.name, skill.skill.name)
+					: await this.createNameProblem(skill.id, target, skill.skill.name);
+				if (problem) issue(skill.id, problem);
+				if (!claimName(names, decision.write))
+					issue(skill.id, 'Two selected Skills have the same name in this scope.');
+				await this.assertCanWrite(
+					user,
+					[decision.write],
+					target.projectId !== null && options.pendingProjectIds?.has(target.projectId),
+				);
+				addWrite(plan.writes, decision.write, skill.id, []);
+			}
+			plan.outcomes.push({
+				sourceSkillId: skill.id,
+				localId: decision.id,
+				name: decision.name,
+				projectId: target.projectId,
+				status:
+					decision.kind === 'write'
+						? row
+							? 'updated'
+							: 'created'
+						: row?.contentHash === skillContentHashOf(skill.skill, skill.frontmatter)
+							? 'unchanged'
+							: 'skipped',
+				followingAgentCount: row ? await this.skillService.countFollowingAgents(row.id) : 0,
+			});
+		}
+		for (const id of new Set(deletedSkillIds)) {
+			const row = existing.get(id);
+			if (!row) {
+				issue(id, 'The requested destination Skill does not exist.');
+				continue;
+			}
+			if (
+				row.target.projectId !== null &&
+				options.allowedProjectIds &&
+				!options.allowedProjectIds.has(row.target.projectId)
+			) {
+				issue(id, 'The Skill is outside the selected destination projects.');
+				continue;
+			}
+			await this.skillAccess.requireAccess(user, id, 'delete');
+			try {
+				await this.skillService.assertCanDelete(user, id);
+				if (await this.skillService.isSourceManaged(id)) {
+					issue(id, 'The destination Skill is managed by a source.');
+					continue;
+				}
+			} catch (error) {
+				if (!(error instanceof ConflictError)) throw error;
+				issue(id, error.message);
+				continue;
+			}
+			plan.checked.push(row);
+			plan.removals.push(row);
+			plan.outcomes.push({
+				sourceSkillId: id,
+				localId: id,
+				name: row.skill.name,
+				projectId: row.target.projectId,
+				status: 'deleted',
+				followingAgentCount: 0,
+			});
+		}
+		if (plan.writes.shared.length || plan.removals.length) this.skillService.assertWritable();
+		return plan;
+	}
+
+	async applyStandalone(user: User, plan: StandaloneSkillPlan): Promise<ImportedSkillSummary[]> {
+		if (plan.issues.length)
+			throw new UserError('Resolve the Skill conflicts before applying the plan.');
+		if (plan.outcomes.length === 0) return [];
+		if (!this.skillsGate.isEnabled) throw new UserError('Skills are unavailable on this instance.');
+		await this.assertCanWrite(user, plan.writes.shared);
+		const following = await this.transactionRunner.run({}, async (ctx) => {
+			await this.skillRuntime.lockForEdit(
+				plan.checked.map(({ id }) => id),
+				ctx,
+			);
+			const latest = await this.skillService.findLatest(
+				plan.checked.map(({ id }) => id),
+				ctx,
+			);
+			for (const checked of plan.checked) {
+				const current = latest.get(checked.id);
+				if (
+					!current ||
+					current.versionId !== checked.versionId ||
+					!isSameSkillTarget(current.target, checked.target)
+				) {
+					throw new ConflictError('A Skill changed after planning. Review the import again.');
+				}
+				if (await this.skillService.isSourceManaged(checked.id, ctx)) {
+					throw new ConflictError('The destination Skill is now managed by a source.');
+				}
+			}
+			const followingIds: string[] = [];
+			for (const write of plan.writes.shared)
+				followingIds.push(...(await this.write(user, write, ctx)));
+			for (const row of plan.removals) await this.skillService.deleteChecked(user, row, ctx);
+			return followingIds;
+		});
+		try {
+			await this.skillService.refreshFollowingAgents([...new Set(following)]);
+		} catch (error) {
+			const failure = new UnprocessableRequestError(
+				'Skill changes were saved, but consumers could not be refreshed.',
+				undefined,
+				{
+					skills: plan.outcomes,
+					counts: { skills: countSkillOutcomes(plan.outcomes) },
+					issues: [],
+				},
+			);
+			failure.cause = error;
+			throw failure;
+		}
+		return plan.outcomes;
+	}
 
 	async plan(
 		context: AgentImportMatchContext,
@@ -173,6 +356,9 @@ export class SkillImporter {
 			};
 		}
 		const { skill, row: current } = destination;
+		if (current && (await this.skillService.isSourceManaged(skill.id))) {
+			return { kind: 'issue', message: 'The destination Skill is managed by a source.' };
+		}
 		const decision = decideWrite(skill, target, current, conflictPolicy);
 		if (decision.kind !== 'write') return decision;
 		const nameProblem = current
@@ -235,6 +421,7 @@ export class SkillImporter {
 		writes: SkillWrite[],
 		projectPendingCreation = false,
 	): Promise<void> {
+		if (writes.length) this.skillService.assertWritable();
 		const denied: string[] = [];
 		for (const write of writes) {
 			if (!(await this.canWrite(user, write, projectPendingCreation))) {

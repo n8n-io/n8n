@@ -1,6 +1,7 @@
 import '../../openapi-extend';
 
 import { z } from 'zod';
+import { skillImportIssueSchema } from './skill-import.schema';
 
 import {
 	credentialConflictFieldDocs,
@@ -421,6 +422,7 @@ const credentialPolicyViolationIssueSchema = z
 
 export const importBlockingIssueSchema = z
 	.discriminatedUnion('type', [
+		skillImportIssueSchema,
 		z.object({
 			type: z.literal('agent-conflict'),
 			kind: z.enum(['existing', 'id', 'task-id']),

@@ -9,6 +9,12 @@ export { SetAppBindingsDto } from './app/set-app-bindings.dto';
 
 export { AiAskRequestDto } from './ai/ai-ask-request.dto';
 export { AiChatRequestDto } from './ai/ai-chat-request.dto';
+export type {
+	ImportedSkillSummary,
+	SkillImportCounts,
+	SkillImportIssue,
+} from './packages/skill-import.schema';
+
 export {
 	AiBuilderChatRequestDto,
 	QUICK_REPLY_TYPES,

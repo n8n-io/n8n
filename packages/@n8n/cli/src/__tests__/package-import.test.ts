@@ -12,6 +12,8 @@ vi.mock('node:fs');
 const packageRoot = process.cwd();
 
 interface ImportFlags {
+	skillId?: string[];
+	deleteSkillId?: string[];
 	file: string;
 	projectId?: string;
 	folderId?: string;
@@ -305,4 +307,17 @@ describe('package import command', () => {
 			);
 		});
 	});
+});
+
+it('forwards standalone Skill selection and explicit removals', async () => {
+	const { command, importPackage } = stubCommand({
+		file: '/tmp/skills.n8np',
+		skillId: ['one'],
+		deleteSkillId: ['two'],
+	});
+	await command.run();
+	expect(importPackage).toHaveBeenCalledWith(
+		expect.anything(),
+		expect.objectContaining({ skillIds: ['one'], deletedSkillIds: ['two'] }),
+	);
 });

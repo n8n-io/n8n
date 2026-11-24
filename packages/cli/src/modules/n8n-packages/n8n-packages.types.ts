@@ -1,5 +1,11 @@
 import type { AgentImportIssue } from './entities/agent/agent-import.types';
-import type { ImportedAgentChannel, PolicyViolation } from '@n8n/api-types';
+import type {
+	ImportedAgentChannel,
+	PolicyViolation,
+	ImportedSkillSummary,
+	SkillImportCounts,
+	SkillImportIssue,
+} from '@n8n/api-types';
 import type { OperationContext, User } from '@n8n/db';
 import type { Readable } from 'node:stream';
 
@@ -263,6 +269,9 @@ export type TagConflictPolicy = (typeof TagConflictPolicy)[keyof typeof TagConfl
 
 export interface ExportPackageRequest {
 	user: User;
+	skillIds?: string[];
+	/** Include every Skill owned by the selected projects. */
+	includeSkills?: boolean;
 	/** The caller's operation context. Audit events read the login of a service account from it. */
 	ctx?: OperationContext;
 	agentIds?: string[];
@@ -293,6 +302,10 @@ export type PackageImportSource = 'package-import' | 'git-pull';
 
 export type ImportRequest = {
 	user: User;
+	/** Omit to use the standalone Skill selection in the package. */
+	skillIds?: string[];
+	/** Destination Skills to remove explicitly. */
+	deletedSkillIds?: string[];
 	/** The caller's operation context. Audit events read the login of a service account from it. */
 	ctx?: OperationContext;
 	projectId?: string;
@@ -326,6 +339,8 @@ export interface ImportSelection {
 	selectedProjectId: string;
 	/** Source workflow IDs from the selected project. */
 	selectedWorkflowIds: string[];
+	selectedSkillIds?: string[];
+	deletedSkillIds?: string[];
 	/** Source folder IDs from the selected project. Their parents come along. */
 	selectedFolderIds?: string[];
 	/** Destination workflow IDs to remove. */
@@ -555,7 +570,7 @@ export type ExportPackageEventCounts = {
  * the requested id counts.
  */
 export interface ExportPackageSummary {
-	counts: ExportPackageEventCounts;
+	counts: ExportPackageEventCounts & { skills?: number };
 }
 
 /**
@@ -676,6 +691,7 @@ export type ImportPlanMode = 'enforce' | 'check';
  * The import aborts when any are present.
  */
 export type BlockingIssue =
+	| SkillImportIssue
 	| AgentImportIssue
 	| ({ type: 'workflow-conflict' } & WorkflowConflict)
 	| ({ type: 'workflow-lineage-conflict' } & WorkflowLineageConflict)
@@ -885,8 +901,9 @@ export interface ImportTagSummary {
 
 export interface ImportResult {
 	package: ImportPackageSummary;
+	skills?: ImportedSkillSummary[];
 	agents: ImportedAgentSummary[];
-	counts: { agents: ImportStatusCounts };
+	counts: { agents: ImportStatusCounts; skills?: SkillImportCounts };
 	workflows: ImportedWorkflowSummary[];
 	/** Workflows the package did not contain, removed under `folderConflictPolicy=overwrite`. */
 	removedWorkflows: RemovedWorkflowSummary[];

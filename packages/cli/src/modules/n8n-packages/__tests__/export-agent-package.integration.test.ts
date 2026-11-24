@@ -1,3 +1,4 @@
+import { ModuleRegistry } from '@n8n/backend-common';
 import { AgentJsonConfigSchema } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
@@ -59,7 +60,7 @@ const parser = new N8nPackageParser(
 	mock<CredentialTypes>(),
 );
 const limits = new PackageImportConfig();
-const sources: Array<{ agent: Agent; draft: SerializedAgent; published: SerializedAgent }> = [];
+const sources: { agent: Agent; draft: SerializedAgent; published: SerializedAgent }[] = [];
 let project: Project;
 let owner: User;
 let exporter: AgentExporter;
@@ -91,6 +92,7 @@ beforeAll(async () => {
 	await testModules.loadModules(['skills', 'agents', 'n8n-packages']);
 	await testDb.init();
 	registerSkillUsage();
+	Container.get(ModuleRegistry).settings.set('agents', { enabled: true });
 	agentRepository = Container.get(AgentRepository);
 	historyRepository = Container.get(AgentHistoryRepository);
 	taskRepository = Container.get(AgentTaskRepository);
@@ -210,7 +212,7 @@ it.each([
 		const archive = new TarPackageWriter();
 		const loose = new DirectoryPackageWriter(directory);
 		const entries: ManifestEntry[] = [];
-		const skillUsers: Array<{ agentId: string; projectId: string; skillIds: string[] }> = [];
+		const skillUsers: { agentId: string; projectId: string; skillIds: string[] }[] = [];
 		for (const { agent } of sources) {
 			const snapshot = (await exporter.prepare(agent, policy))!;
 			expect(snapshot.projectId).toBe(project.id);
