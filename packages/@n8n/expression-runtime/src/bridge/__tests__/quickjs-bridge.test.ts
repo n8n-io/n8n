@@ -356,6 +356,33 @@ describe('QuickJsBridge workflow data', () => {
 		).toBe('from host');
 	});
 
+	it('keeps a change to a small item inside the evaluation', async () => {
+		const bridge = await newBridge();
+		const $json = { count: 1, rows: [{ id: 1 }] };
+
+		expect(
+			bridge.execute(
+				'this.$json.count = 2; this.$json.rows.push({ id: 2 }); return [this.$json.count, this.$json.rows.length];',
+				{ $json },
+			),
+		).toEqual([2, 2]);
+		expect($json).toEqual({ count: 1, rows: [{ id: 1 }] });
+	});
+
+	it.each([
+		{ label: 'a marker key', $json: { a: { __isDate: true, __isoString: 'text' }, b: 1 } },
+		{ label: 'a metadata key', $json: { __isObject: true, __keys: ['x'], __length: 3 } },
+		{ label: 'a __proto__ key', $json: JSON.parse('{"__proto__": {"a": 1}, "b": 2}') as object },
+		{ label: 'a marker key as text', $json: { text: '__isDate', b: 1 } },
+		{ label: 'a Date', $json: { at: new Date(0), b: 1 } },
+		{ label: 'undefined', $json: { a: undefined, list: [undefined, 1] } },
+		{ label: 'NaN', $json: { nan: NaN, b: 1 } },
+	])('returns a small item with $label as the same data', async ({ $json }) => {
+		const bridge = await newBridge();
+
+		expect(bridge.execute('return this.$json;', { $json })).toStrictEqual($json);
+	});
+
 	it('reads a host symbol as undefined and frees the runtime', async () => {
 		const bridge = await newBridge();
 
