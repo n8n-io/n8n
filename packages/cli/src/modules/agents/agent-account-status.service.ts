@@ -1,6 +1,6 @@
 import type { AgentRuntimeIdentityStatus } from '@n8n/api-types';
 import { EventService, loginIdOf } from '@n8n/backend-services';
-import type { OperationContext, User } from '@n8n/db';
+import { type OperationContext, ProjectRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
@@ -23,18 +23,24 @@ export class AgentAccountStatusService {
 		private readonly runtimeCache: AgentRuntimeCacheService,
 		private readonly sessionStop: AgentSessionStopService,
 		private readonly eventService: EventService,
+		private readonly projectRepository: ProjectRepository,
 	) {}
 
 	async getStatus(agentId: string, projectId: string): Promise<AgentRuntimeIdentityStatus> {
 		const agent = await this.findAgentOrFail(agentId, projectId);
 		const available = this.runtimeIdentity.isEnabled();
-		if (!available) return { available, actsAsServiceAccount: false, disabled: false };
+		if (!available) {
+			return { available, actsAsServiceAccount: false, disabled: false, otherProjects: [] };
+		}
 
-		const [account, disabled] = await Promise.all([
+		const [account, disabled, toolProjectIds] = await Promise.all([
 			this.agentServiceAccount.findActingAccount(agent),
 			this.agentServiceAccount.isDisabled(agent),
+			this.runtimeIdentity.toolProjectIds(agent),
 		]);
-		return { available, actsAsServiceAccount: account !== undefined, disabled };
+		const otherIds = toolProjectIds.filter((id) => id !== projectId);
+		const otherProjects = await this.projectRepository.findNamesByIds(otherIds);
+		return { available, actsAsServiceAccount: account !== undefined, disabled, otherProjects };
 	}
 
 	async setDisabled(

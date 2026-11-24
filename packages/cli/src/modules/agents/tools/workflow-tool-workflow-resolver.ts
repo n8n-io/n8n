@@ -1,12 +1,12 @@
 import type { AgentJsonConfig, AgentJsonWorkflowToolConfig } from '@n8n/api-types';
-import type { WorkflowEntity, WorkflowRepository } from '@n8n/db';
+import type { AgentToolProjects, WorkflowEntity, WorkflowRepository } from '@n8n/db';
 
 import { extractAgentWorkflowRefs } from '../utils/extract-agent-workflow-refs';
 
 export async function findWorkflowToolWorkflows(
 	workflowRepository: WorkflowRepository,
 	refs: AgentJsonWorkflowToolConfig[],
-	projectId: string,
+	projectIds: AgentToolProjects,
 ): Promise<Map<string, WorkflowEntity>> {
 	if (refs.length === 0) return new Map();
 
@@ -18,7 +18,7 @@ export async function findWorkflowToolWorkflows(
 	];
 
 	const workflows = await workflowRepository.findManyByAgentToolReferences(
-		projectId,
+		projectIds,
 		workflowIds,
 		legacyWorkflowNames,
 	);
@@ -36,9 +36,9 @@ export async function findWorkflowToolWorkflows(
 export async function findWorkflowToolWorkflow(
 	workflowRepository: WorkflowRepository,
 	ref: AgentJsonWorkflowToolConfig,
-	projectId: string,
+	projectIds: AgentToolProjects,
 ): Promise<WorkflowEntity | null> {
-	return await workflowRepository.findOneByAgentToolReference(projectId, {
+	return await workflowRepository.findOneByAgentToolReference(projectIds, {
 		workflowName: ref.workflow,
 		...(ref.workflowId !== undefined ? { workflowId: ref.workflowId } : {}),
 	});

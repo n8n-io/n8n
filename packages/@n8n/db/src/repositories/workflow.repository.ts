@@ -93,17 +93,30 @@ type WorkflowListResult = {
  * name, both inside the agent's project. Shared by the runtime lookup and the
  * agent dependency index, so the two cannot resolve a reference differently.
  */
+/**
+ * The projects whose workflows an agent can use as tools. An agent with runtime
+ * identity can also use the workflows of other projects it has access to.
+ */
+export type AgentToolProjects = string | string[];
+
+function sharedInProjects(
+	projectIds: AgentToolProjects,
+): FindOptionsWhere<WorkflowEntity>['shared'] {
+	return typeof projectIds === 'string' ? { projectId: projectIds } : { projectId: In(projectIds) };
+}
+
 export function agentToolReferenceWhere(
-	projectId: string,
+	projectIds: AgentToolProjects,
 	workflowIds: string[],
 	legacyWorkflowNames: string[],
 ): Array<FindOptionsWhere<WorkflowEntity>> {
 	const where: Array<FindOptionsWhere<WorkflowEntity>> = [];
+	const shared = sharedInProjects(projectIds);
 	if (workflowIds.length > 0) {
-		where.push({ id: In(workflowIds), shared: { projectId } });
+		where.push({ id: In(workflowIds), shared });
 	}
 	if (legacyWorkflowNames.length > 0) {
-		where.push({ name: In(legacyWorkflowNames), shared: { projectId } });
+		where.push({ name: In(legacyWorkflowNames), shared });
 	}
 	return where;
 }
@@ -721,11 +734,11 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	}
 
 	async findManyByAgentToolReferences(
-		projectId: string,
+		projectIds: AgentToolProjects,
 		workflowIds: string[],
 		legacyWorkflowNames: string[],
 	) {
-		const where = agentToolReferenceWhere(projectId, workflowIds, legacyWorkflowNames);
+		const where = agentToolReferenceWhere(projectIds, workflowIds, legacyWorkflowNames);
 		if (where.length === 0) return [];
 
 		return await this.find({
@@ -771,7 +784,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	}
 
 	async findOneByAgentToolReference(
-		projectId: string,
+		projectIds: AgentToolProjects,
 		reference: { workflowId?: string; workflowName: string },
 		options: { withActiveVersion?: boolean } = {},
 	) {
@@ -781,7 +794,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 				: { name: reference.workflowName };
 
 		return await this.findOne({
-			where: { ...workflowWhere, shared: { projectId } },
+			where: { ...workflowWhere, shared: sharedInProjects(projectIds) },
 			relations: options.withActiveVersion ? ['shared', 'activeVersion'] : ['shared'],
 		});
 	}

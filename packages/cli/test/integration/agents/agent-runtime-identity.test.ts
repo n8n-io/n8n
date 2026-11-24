@@ -1,5 +1,6 @@
 import {
 	createTeamProject,
+	createWorkflow,
 	getPersonalProject,
 	linkUserToProject,
 	mockInstance,
@@ -37,6 +38,7 @@ import { License } from '@/license';
 import { ProjectAgentAccessService } from '@/services/project-agent-access.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { Telemetry } from '@/telemetry';
+import { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
 
 import { createCredentials, shareCredentialWithProjects } from '../shared/db/credentials';
 import { createMember, createOwner } from '../shared/db/users';
@@ -246,7 +248,12 @@ describe('Agent runtime identity', () => {
 				admin,
 			);
 
-			expect(status).toEqual({ available: true, actsAsServiceAccount: true, disabled: true });
+			expect(status).toEqual({
+				available: true,
+				actsAsServiceAccount: true,
+				disabled: true,
+				otherProjects: [],
+			});
 			expect(emit).toHaveBeenCalledWith('agent-service-account-disabled-changed', {
 				user: admin,
 				disabled: true,
@@ -372,6 +379,36 @@ describe('Agent runtime identity', () => {
 			);
 
 			expect(usable.map((c) => c.id).sort()).toEqual([shared.id, own.id].sort());
+		});
+	});
+
+	describe('workflow tools from other projects', () => {
+		it('finds a workflow of a project that gave the agent access', async () => {
+			const owner = await createOwner();
+			const home = await createTeamProject();
+			const sales = await createTeamProject();
+			const agent = await createAgentIn(home.id);
+			const workflow = await createWorkflow({ name: 'Sales lookup' }, sales);
+			const loader = Container.get(CallableWorkflowLoader);
+			const reference = { workflowId: workflow.id, workflowName: workflow.name };
+
+			const before = await runtimeIdentity.toolProjectIds(agent);
+			expect(before).toEqual([home.id]);
+			expect(await loader.loadWorkflow(before, reference)).toBeNull();
+
+			await Container.get(ProjectAgentAccessService).add(owner, sales.id, agent.identityId);
+			const after = await runtimeIdentity.toolProjectIds(agent);
+
+			expect(after).toEqual([home.id, sales.id]);
+			expect((await loader.loadWorkflow(after, reference))?.id).toBe(workflow.id);
+		});
+
+		it('keeps only the own project when the flag is off', async () => {
+			agentsConfig.runtimeIdentityEnabled = false;
+			const home = await createTeamProject();
+			const agent = await createAgentIn(home.id);
+
+			expect(await runtimeIdentity.toolProjectIds(agent)).toEqual([home.id]);
 		});
 	});
 });

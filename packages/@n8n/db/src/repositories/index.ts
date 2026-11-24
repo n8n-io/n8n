@@ -111,6 +111,7 @@ export { SharedCredentialsRepository } from './shared-credentials.repository';
 export {
 	WorkflowRepository,
 	agentToolReferenceWhere,
+	type AgentToolProjects,
 	type WorkflowIdsQuery,
 } from './workflow.repository';
 export { WorkflowPublicationOutboxRepository } from './workflow-publication-outbox.repository';

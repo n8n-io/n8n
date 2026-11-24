@@ -12,8 +12,11 @@ import nodePopularity from 'virtual:node-popularity-data';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { ToolCategoryKey } from '@/features/shared/toolsConnection/types';
 import type { IWorkflowDb } from '@/Interface';
+import { getAgentRuntimeIdentity } from './useAgentApi';
 import { isMcpRelatedNodeType } from './useMcpServerAdapter';
 
 const nodePopularityMap = new Map(nodePopularity.map((node) => [node.id, node.popularity]));
@@ -67,6 +70,15 @@ function nodeTypeOrderRank(nodeType: INodeTypeDescription): number {
 export function useAgentToolCatalog() {
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsListStore = useWorkflowsListStore();
+	const settingsStore = useSettingsStore();
+	const rootStore = useRootStore();
+
+	/**
+	 * Runtime identity: the name of the other project of each workflow that a
+	 * project gave the agent access to. Workflows of the agent's own project
+	 * have no entry.
+	 */
+	const workflowProjectNames = ref(new Map<string, string>());
 
 	/**
 	 * Fetched workflows kept local — do NOT write into workflowsListStore's
@@ -112,24 +124,53 @@ export function useAgentToolCatalog() {
 		),
 	);
 
-	async function loadWorkflows(projectId?: string): Promise<boolean> {
+	// `connections` is needed to scope the compatibility check to nodes
+	// actually reachable from a supported trigger. A null `activeVersionId`
+	// marks unpublished workflows (shown by the tool config panel).
+	async function searchProjectWorkflows(projectId?: string) {
+		return await workflowsListStore.searchWorkflows({
+			projectId,
+			select: [
+				'id',
+				'name',
+				'description',
+				'isArchived',
+				'activeVersionId',
+				'nodes',
+				'connections',
+				'updatedAt',
+			],
+		});
+	}
+
+	/** The other projects that gave the agent access. Their workflows can be tools too. */
+	async function loadOtherProjects(projectId?: string, agentId?: string) {
+		if (!projectId || !agentId || !settingsStore.isAgentsRuntimeIdentityEnabled) return [];
 		try {
-			// `connections` is needed to scope the compatibility check to nodes
-			// actually reachable from a supported trigger. A null `activeVersionId`
-			// marks unpublished workflows (shown by the tool config panel).
-			projectWorkflows.value = await workflowsListStore.searchWorkflows({
-				projectId,
-				select: [
-					'id',
-					'name',
-					'description',
-					'isArchived',
-					'activeVersionId',
-					'nodes',
-					'connections',
-					'updatedAt',
-				],
-			});
+			const status = await getAgentRuntimeIdentity(rootStore.restApiContext, projectId, agentId);
+			return status.otherProjects;
+		} catch {
+			// The agent's own workflows still load.
+			return [];
+		}
+	}
+
+	async function loadWorkflows(projectId?: string, agentId?: string): Promise<boolean> {
+		try {
+			const [own, otherProjects] = await Promise.all([
+				searchProjectWorkflows(projectId),
+				loadOtherProjects(projectId, agentId),
+			]);
+			const projectNames = new Map<string, string>();
+			const others = await Promise.all(
+				otherProjects.map(async (project) => {
+					const workflows = await searchProjectWorkflows(project.id);
+					for (const workflow of workflows) projectNames.set(workflow.id, project.name);
+					return workflows;
+				}),
+			);
+			workflowProjectNames.value = projectNames;
+			projectWorkflows.value = [...own, ...others.flat()];
 			return true;
 		} catch (error) {
 			console.warn('[useAgentToolCatalog] failed to load workflows for project', error);
@@ -141,6 +182,7 @@ export function useAgentToolCatalog() {
 		availableToolTypes,
 		availableWorkflows,
 		projectWorkflows,
+		workflowProjectNames,
 		loadWorkflows,
 		resolveToolNodeType,
 	};

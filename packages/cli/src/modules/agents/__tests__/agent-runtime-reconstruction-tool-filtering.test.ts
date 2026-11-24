@@ -623,7 +623,7 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 			testUser,
 		);
 
-		expect(workflowRepository.findOneByAgentToolReference).toHaveBeenCalledWith(projectId, {
+		expect(workflowRepository.findOneByAgentToolReference).toHaveBeenCalledWith([projectId], {
 			workflowId: 'wf-1',
 			workflowName: 'Lookup customer',
 		});

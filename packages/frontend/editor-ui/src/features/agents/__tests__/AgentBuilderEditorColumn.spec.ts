@@ -151,6 +151,14 @@ vi.mock('../components/AgentBudgetPanel.vue', () => ({
 	},
 }));
 
+vi.mock('../components/AgentRuntimeIdentityPanel.vue', () => ({
+	default: {
+		name: 'AgentRuntimeIdentityPanel',
+		template: '<div data-testid="agent-runtime-identity-panel-stub" />',
+		props: ['projectId', 'agentId'],
+	},
+}));
+
 vi.mock('../components/AgentSubAgentsPanel.vue', () => ({
 	default: {
 		name: 'AgentSubAgentsPanel',

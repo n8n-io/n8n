@@ -168,8 +168,13 @@ const toolTelemetry = useAgentToolTelemetry(props.data.agentId);
 const { createCredentialAdapter, fetchCatalog, preloadCredentials } = useAgentMcpDiscovery(
 	() => props.data.projectId,
 );
-const { availableToolTypes, availableWorkflows, loadWorkflows, resolveToolNodeType } =
-	useAgentToolCatalog();
+const {
+	availableToolTypes,
+	availableWorkflows,
+	workflowProjectNames,
+	loadWorkflows,
+	resolveToolNodeType,
+} = useAgentToolCatalog();
 const { installNode: installCommunityNode } = useInstallNode();
 const { warnIfRestricted } = useRestrictedNodeWarning();
 const usersStore = useUsersStore();
@@ -346,7 +351,7 @@ async function loadCredentials() {
 }
 
 onMounted(() => {
-	if (isWorkflow.value) void loadWorkflows(props.data.projectId);
+	if (isWorkflow.value) void loadWorkflows(props.data.projectId, props.data.agentId);
 	if (!isWorkflow.value) {
 		void loadRegistryCatalog();
 		void loadCredentials();
@@ -1023,6 +1028,17 @@ function n8nConnectNodeItem(nodeType: INodeTypeDescription): NodeConnectionItem 
 	};
 }
 
+/** A workflow of another project that gave the agent access names that project. */
+function workflowDescription(workflow: IWorkflowDb): string | undefined {
+	const projectName = workflowProjectNames.value.get(workflow.id);
+	const fromProject = projectName
+		? i18n.baseText('agents.builder.tools.workflowFromProject', {
+				interpolate: { project: projectName },
+			})
+		: undefined;
+	return [fromProject, workflow.description].filter(Boolean).join(' · ') || undefined;
+}
+
 function availableWorkflowItem(workflow: IWorkflowDb): WorkflowConnectionItem {
 	return {
 		id: `workflow:${workflow.id}`,
@@ -1030,7 +1046,7 @@ function availableWorkflowItem(workflow: IWorkflowDb): WorkflowConnectionItem {
 		category: 'workflows',
 		workflowId: workflow.id,
 		title: workflow.name,
-		description: workflow.description ?? undefined,
+		description: workflowDescription(workflow),
 		status: 'none',
 		credentials: [],
 	};

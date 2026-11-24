@@ -14,7 +14,7 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 import { VIEWS } from '@/app/constants';
 import { useAgentToolCatalog } from '../composables/useAgentToolCatalog';
@@ -39,7 +39,9 @@ const i18n = useI18n();
 const triggerLabel = workflowToolTriggerLabel();
 
 const router = useRouter();
-const { availableWorkflows, projectWorkflows, loadWorkflows } = useAgentToolCatalog();
+const route = useRoute();
+const { availableWorkflows, projectWorkflows, workflowProjectNames, loadWorkflows } =
+	useAgentToolCatalog();
 
 const name = ref(props.initialRef.name ?? props.initialRef.workflow ?? '');
 const description = ref(props.initialRef.description ?? '');
@@ -62,7 +64,8 @@ const isIdUnresolvable = ref(false);
 
 async function reloadWorkflows() {
 	isLoadingWorkflows.value = true;
-	workflowsLoaded.value = await loadWorkflows(props.projectId);
+	const agentId = typeof route.params.agentId === 'string' ? route.params.agentId : undefined;
+	workflowsLoaded.value = await loadWorkflows(props.projectId, agentId);
 	isLoadingWorkflows.value = false;
 }
 
@@ -145,7 +148,15 @@ const workflowOptions = computed(() =>
 		.map((candidate) => ({
 			id: candidate.id,
 			name: candidate.name,
-			meta: [dateformat(candidate.updatedAt, 'd mmm yyyy, HH:MM'), candidate.description]
+			meta: [
+				workflowProjectNames.value.has(candidate.id)
+					? i18n.baseText('agents.builder.tools.workflowFromProject', {
+							interpolate: { project: workflowProjectNames.value.get(candidate.id) ?? '' },
+						})
+					: undefined,
+				dateformat(candidate.updatedAt, 'd mmm yyyy, HH:MM'),
+				candidate.description,
+			]
 				.filter(Boolean)
 				.join(' · '),
 		})),

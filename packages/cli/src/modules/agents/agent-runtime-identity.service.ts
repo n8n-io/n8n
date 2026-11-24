@@ -1,12 +1,13 @@
 import { AgentsConfig } from '@n8n/config';
-import { type ServiceAccount, UserRepository } from '@n8n/db';
+import { ServiceAccountRepository, type ServiceAccount, UserRepository } from '@n8n/db';
 import type { SecurityContext } from '@n8n/permissions';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { UserError } from '@n8n/errors';
 
 import type { Agent } from './entities/agent.entity';
 import { agentRunSecurityContext } from './agent-run-security';
 import { AgentServiceAccountService } from './agent-service-account.service';
+import { AgentRepository } from './repositories/agent.repository';
 
 /** A published run of a disabled agent does not start. */
 export class AgentDisabledError extends UserError {
@@ -31,7 +32,27 @@ export class AgentRuntimeIdentityService {
 		private readonly agentsConfig: AgentsConfig,
 		private readonly agentServiceAccount: AgentServiceAccountService,
 		private readonly userRepository: UserRepository,
+		private readonly serviceAccountRepository: ServiceAccountRepository,
+		private readonly agentRepository: AgentRepository,
 	) {}
+
+	/** Like {@link toolProjectIds}, for an agent known by its id. A new agent has only its project. */
+	async toolProjectIdsFor(agentId: string, projectId: string): Promise<string[]> {
+		if (!this.isEnabled()) return [projectId];
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		return agent ? await this.toolProjectIds(agent) : [projectId];
+	}
+
+	/**
+	 * The projects whose workflows the agent can use as tools: its own project,
+	 * and with the flag on, each project that gave the agent access.
+	 */
+	async toolProjectIds(agent: Pick<Agent, 'identityId' | 'projectId'>): Promise<string[]> {
+		if (!agent.projectId) return [];
+		if (!this.isEnabled()) return [agent.projectId];
+		const others = await this.serviceAccountRepository.findAgentProjectIds(agent.identityId);
+		return [...new Set([agent.projectId, ...others])];
+	}
 
 	isEnabled(): boolean {
 		return this.agentsConfig.runtimeIdentityEnabled;
@@ -67,4 +88,26 @@ export class AgentRuntimeIdentityService {
 			: [];
 		return { account, security: agentRunSecurityContext(account, person) };
 	}
+}
+
+/**
+ * The projects whose workflows the agent can use as tools. With the flag off,
+ * only the agent's own project, without a database read.
+ */
+export async function resolveToolProjectIds(
+	agent: Pick<Agent, 'identityId' | 'projectId'>,
+): Promise<string[]> {
+	if (!Container.get(AgentsConfig).runtimeIdentityEnabled) {
+		return agent.projectId ? [agent.projectId] : [];
+	}
+	return await Container.get(AgentRuntimeIdentityService).toolProjectIds(agent);
+}
+
+/** Like {@link resolveToolProjectIds}, for an agent known by its id. */
+export async function resolveToolProjectIdsFor(
+	agentId: string,
+	projectId: string,
+): Promise<string[]> {
+	if (!Container.get(AgentsConfig).runtimeIdentityEnabled) return [projectId];
+	return await Container.get(AgentRuntimeIdentityService).toolProjectIdsFor(agentId, projectId);
 }

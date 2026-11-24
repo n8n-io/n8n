@@ -60,6 +60,7 @@ import type { AgentSkillRefs } from './json-config/agent-document';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { isValidCronExpression } from './integrations/cron-validation';
 import { AgentRepository } from './repositories/agent.repository';
+import { resolveToolProjectIdsFor } from './agent-runtime-identity.service';
 import { findWorkflowToolWorkflows } from './tools/workflow-tool-workflow-resolver';
 import { extractAgentWorkflowRefs } from './utils/extract-agent-workflow-refs';
 import { findHttpRequestToolUrlFromAiViolations } from './utils/node-tool-validation';
@@ -428,7 +429,11 @@ export class AgentValidationService {
 
 		const [agents, workflowsByReference] = await Promise.all([
 			this.agentRepository.findByIdsAndProjectId([...subAgentIds], ctx.projectId),
-			findWorkflowToolWorkflows(this.workflowRepository, workflowRefs, ctx.projectId),
+			findWorkflowToolWorkflows(
+				this.workflowRepository,
+				workflowRefs,
+				await resolveToolProjectIdsFor(ctx.agentId, ctx.projectId),
+			),
 		]);
 
 		return {

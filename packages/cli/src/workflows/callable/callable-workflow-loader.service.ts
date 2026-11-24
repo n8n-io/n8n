@@ -1,5 +1,5 @@
 import { WorkflowsConfig } from '@n8n/config';
-import { type WorkflowEntity, WorkflowRepository } from '@n8n/db';
+import { type AgentToolProjects, type WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import {
@@ -34,13 +34,14 @@ export class CallableWorkflowLoader {
 		private readonly workflowVersionedSettings: WorkflowVersionedSettingsService,
 	) {}
 
+	/** `projectIds` can name more than one project for an agent with runtime identity. */
 	async loadWorkflow(
-		projectId: string,
+		projectIds: AgentToolProjects,
 		reference: CallableWorkflowReference,
 		options: LoadCallableWorkflowOptions = {},
 	): Promise<WorkflowEntity | null> {
 		const workflow = await this.workflowRepository.findOneByAgentToolReference(
-			projectId,
+			projectIds,
 			reference,
 			{ withActiveVersion: options.usePublishedVersion === true },
 		);

@@ -87,6 +87,15 @@ export class ServiceAccountRepository {
 		return relations.map((relation) => relation.userId);
 	}
 
+	/** The projects where the account has the `project:agent` role. */
+	async findAgentProjectIds(id: string): Promise<string[]> {
+		const relations = await this.table.manager.find(ProjectRelation, {
+			select: { projectId: true },
+			where: { userId: id, role: { slug: PROJECT_AGENT_ROLE_SLUG } },
+		});
+		return relations.map((relation) => relation.projectId);
+	}
+
 	/** Removes the `project:agent` role of the account in the project. */
 	async leaveProjectAsAgent(id: string, projectId: string, ctx: OperationContext = {}) {
 		await this.table.managerFor(ctx).delete(ProjectRelation, {

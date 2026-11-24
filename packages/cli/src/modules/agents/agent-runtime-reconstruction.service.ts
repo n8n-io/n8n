@@ -118,6 +118,7 @@ import {
 	READ_BINARY_DATA_TOOL_NAME,
 } from './tools/read-binary-data.tool';
 import type { WorkflowToolExecutionMode } from './tools/workflow-tool-factory';
+import { resolveToolProjectIds } from './agent-runtime-identity.service';
 import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolver';
 import type { AgentRunSource } from './utils/agent-published-snapshot';
 import { getAgentRuntimeAssets, type AgentRuntimeAssets } from './utils/agent-runtime-assets';
@@ -201,6 +202,11 @@ export interface ReconstructAgentRuntimeParams extends AgentRuntimeAssets {
 	 * with itself as the actor.
 	 */
 	security?: SecurityContext;
+	/**
+	 * Projects whose workflows the agent can use as tools. Defaults to `projectId`.
+	 * With runtime identity, it also holds the projects that gave the agent access.
+	 */
+	toolProjectIds?: string[];
 	attributionUserId?: string;
 	/**
 	 * The stored agent's service account (`agents.identityId`). Workflow tools stamp it
@@ -270,6 +276,7 @@ interface ToolRunIdentity {
 	agentServiceAccountId?: string;
 	delegatingAgentId?: string;
 	security?: SecurityContext;
+	toolProjectIds?: string[];
 	supportsHitl: boolean;
 	backgroundTasksEnabled: boolean;
 }
@@ -471,10 +478,12 @@ export class AgentRuntimeReconstructionService {
 		// built, so denied tools never reach the LLM or the executor.
 		let userToolAccessSnapshot: UserToolAccessSnapshot | undefined;
 		let unavailableTools: UnavailableTool[] = [];
+		const toolProjectIds = await resolveToolProjectIds(agentEntity);
 		if (user && config.tools?.length) {
 			const tools = config.tools;
 			const filtered = await raceWithAbort(
-				async () => await this.filterToolsForUser(tools, agentEntity.projectId, user),
+				async () =>
+					await this.filterToolsForUser(tools, agentEntity.projectId, user, toolProjectIds),
 				abortSignal,
 			);
 			config = { ...config, tools: filtered.tools };
@@ -520,6 +529,7 @@ export class AgentRuntimeReconstructionService {
 			user,
 			attributionUserId,
 			...(security ? { security } : {}),
+			toolProjectIds,
 			...(agentEntity.identityId ? { agentServiceAccountId: agentEntity.identityId } : {}),
 			instrumentation,
 			abortSignal,
@@ -549,6 +559,7 @@ export class AgentRuntimeReconstructionService {
 		tools: AgentJsonToolConfig[],
 		projectId: string,
 		user: User,
+		toolProjectIds: string[] = [projectId],
 	): Promise<{
 		tools: AgentJsonToolConfig[];
 		snapshot?: UserToolAccessSnapshot;
@@ -571,7 +582,14 @@ export class AgentRuntimeReconstructionService {
 				filtered.push(ref);
 				continue;
 			}
-			const access = await this.checkToolAccess(ref, projectId, user, canExecute, loadUsableIds);
+			const access = await this.checkToolAccess(
+				ref,
+				projectId,
+				user,
+				canExecute,
+				loadUsableIds,
+				toolProjectIds,
+			);
 			if (access && 'reason' in access) {
 				unavailable.push(access);
 				continue;
@@ -635,6 +653,7 @@ export class AgentRuntimeReconstructionService {
 		user: User,
 		canExecute: boolean,
 		loadUsableIds: () => Promise<Set<string>>,
+		toolProjectIds: string[] = [projectId],
 	): Promise<UserToolAccessSnapshot | UnavailableTool | undefined> {
 		const denied = (message: string): UnavailableTool => ({
 			toolName: toolRefName(ref),
@@ -666,7 +685,7 @@ export class AgentRuntimeReconstructionService {
 			return { credentialIds, workflowIds: [] };
 		}
 
-		const workflow = await findWorkflowToolWorkflow(this.workflowRepository, ref, projectId);
+		const workflow = await findWorkflowToolWorkflow(this.workflowRepository, ref, toolProjectIds);
 		// Missing workflows stay in the list so the tool factory can return a stub.
 		if (!workflow) return undefined;
 		const accessibleWorkflow = await this.workflowFinderService.findWorkflowForUser(
@@ -976,6 +995,7 @@ export class AgentRuntimeReconstructionService {
 					attributionUserId !== undefined,
 				...workflowToolAttribution(options),
 				...(security ? { security } : {}),
+				...(options.toolProjectIds ? { toolProjectIds: options.toolProjectIds } : {}),
 				// Sub-agent checkpoints are rejected on resume and inline agents have no
 				// checkpoint storage, so neither can be woken again.
 				supportsHitl: canResume,
@@ -1153,6 +1173,7 @@ export class AgentRuntimeReconstructionService {
 			publishedN8nChat,
 			agentServiceAccountId,
 			delegatingAgentId,
+			toolProjectIds,
 			supportsHitl,
 			backgroundTasksEnabled,
 		} = runIdentity;
@@ -1176,6 +1197,7 @@ export class AgentRuntimeReconstructionService {
 			publishedN8nChat,
 			agentServiceAccountId,
 			delegatingAgentId,
+			toolProjectIds,
 			supportsHitl,
 			backgroundTasksEnabled,
 		};

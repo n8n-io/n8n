@@ -36,6 +36,7 @@ import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { resolveUniqueSubAgents, type ResolvedSubAgentRef } from './utils/sub-agent-resolver';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { resolveToolProjectIdsFor } from './agent-runtime-identity.service';
 import { NodeToolAiGatewayService } from './json-config/node-tool-ai-gateway.service';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
 import {
@@ -208,7 +209,14 @@ export class AgentConfigPreparationService {
 			}
 			await this.validateAgentDestinations(prepared.config, projectId, user, planned);
 			await normalizeWorkflowToolRefs(this.workflowRepository, prepared.config, projectId);
-			await this.validateWorkflowDestinations(prepared.config, projectId, user, planned);
+			const toolProjectIds = await resolveToolProjectIdsFor(agentId, projectId);
+			await this.validateWorkflowDestinations(
+				prepared.config,
+				projectId,
+				user,
+				planned,
+				toolProjectIds,
+			);
 		}
 		return { definition: prepared, credentialProvider };
 	}
@@ -243,9 +251,14 @@ export class AgentConfigPreparationService {
 		projectId: string,
 		user: User,
 		planned: PlannedAgentDestinations,
+		toolProjectIds: string[] = [projectId],
 	): Promise<void> {
 		const refs = extractAgentWorkflowRefs(config);
-		const workflows = await findWorkflowToolWorkflows(this.workflowRepository, refs, projectId);
+		const workflows = await findWorkflowToolWorkflows(
+			this.workflowRepository,
+			refs,
+			toolProjectIds,
+		);
 		const localIds = refs.map(
 			(ref) => workflows.get(ref.workflowId ?? ref.workflow)?.id ?? ref.workflowId,
 		);
@@ -266,12 +279,17 @@ export class AgentConfigPreparationService {
 		const readable = await finder.findWorkflowIdsWithScopeForUser([...ids], user, [
 			'workflow:read',
 		]);
-		const local = await finder.findWorkflowIdsWithScopeForUser(
-			[...projectLocal],
-			user,
-			['workflow:read'],
-			projectId,
-		);
+		// A workflow of another project that gave the agent access counts as local too.
+		const local = new Set<string>();
+		for (const toolProjectId of toolProjectIds) {
+			const found = await finder.findWorkflowIdsWithScopeForUser(
+				[...projectLocal],
+				user,
+				['workflow:read'],
+				toolProjectId,
+			);
+			for (const id of found) local.add(id);
+		}
 		const existing = await finder.findExistingWorkflowIds([...ids]);
 		for (const id of ids) {
 			if (readable.has(id) && (!projectLocal.has(id) || local.has(id))) continue;

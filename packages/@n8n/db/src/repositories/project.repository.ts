@@ -229,6 +229,12 @@ export class ProjectRepository extends BaseRepository<Project> {
 		});
 	}
 
+	/** The id and name of each project. Unknown ids are left out. */
+	async findNamesByIds(ids: string[]): Promise<Array<Pick<Project, 'id' | 'name'>>> {
+		if (ids.length === 0) return [];
+		return await this.find({ select: ['id', 'name'], where: { id: In(ids) } });
+	}
+
 	async findTeamProjects(): Promise<Project[]> {
 		return await this.findBy({ type: 'team' });
 	}

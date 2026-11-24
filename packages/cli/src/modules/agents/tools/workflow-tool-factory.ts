@@ -199,6 +199,8 @@ export interface WorkflowToolContext {
 	userId?: string;
 	/** See `RelatedAgentRun.agentServiceAccountId`. */
 	agentServiceAccountId?: string;
+	/** Projects whose workflows the agent can call. Defaults to `projectId`. */
+	toolProjectIds?: string[];
 	/** See `RelatedAgentRun.delegatingAgentId`. */
 	delegatingAgentId?: string;
 	/** Whether a suspension can be resumed at all. Defaults to true. */
@@ -1031,7 +1033,7 @@ async function buildWorkflowTool(
 	context: WorkflowToolContext,
 ): Promise<BuiltTool> {
 	const workflow = await context.workflowLoader.loadWorkflow(
-		context.projectId,
+		context.toolProjectIds ?? context.projectId,
 		toReference(descriptor),
 		{
 			usePublishedVersion: context.usePublishedWorkflowVersion === true,
@@ -1222,9 +1224,13 @@ async function loadCurrentWorkflow(
 	context: WorkflowToolContext,
 	reference: CallableWorkflowReference,
 ) {
-	const workflow = await context.workflowLoader.loadWorkflow(context.projectId, reference, {
-		usePublishedVersion: context.usePublishedWorkflowVersion === true,
-	});
+	const workflow = await context.workflowLoader.loadWorkflow(
+		context.toolProjectIds ?? context.projectId,
+		reference,
+		{
+			usePublishedVersion: context.usePublishedWorkflowVersion === true,
+		},
+	);
 	if (!workflow) {
 		throw new CallableWorkflowUnavailableError(
 			'not_found',
