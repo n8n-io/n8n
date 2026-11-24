@@ -4,7 +4,8 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { v4 as uuid } from 'uuid';
 
-import type { Agent } from '@/modules/agents/entities/agent.entity';
+import { createAgent as createTestAgent, ensureInstanceAgent } from '@test-integration/db/agents';
+
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
@@ -57,13 +58,12 @@ describe('AgentRepository.findPublishedVectorStoreProvidersPage', () => {
 	});
 
 	async function createAgent(id: string, draftSchema: StoredAgentConfig): Promise<string> {
-		const agent = agentRepo.create({
+		await createTestAgent({
 			id,
 			name: 'Agent',
 			projectId,
 			schema: draftSchema,
-		} as Partial<Agent>);
-		await agentRepo.save(agent);
+		});
 
 		return id;
 	}
@@ -97,7 +97,7 @@ describe('AgentRepository.findPublishedVectorStoreProvidersPage', () => {
 	});
 
 	it('leaves out instance agents', async () => {
-		await agentRepo.ensureInstanceAgent('instance-agent', 'Instance agent');
+		await ensureInstanceAgent('instance-agent', 'Instance agent');
 		await publish('instance-agent', schemaWith([pinecone]));
 
 		await expect(agentRepo.findPublishedVectorStoreProvidersPage(null, 10)).resolves.toEqual([]);

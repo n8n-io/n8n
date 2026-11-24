@@ -1,0 +1,63 @@
+{
+	"properties": {
+		"board": {
+			"properties": {
+				"id": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"columns": {
+			"additionalProperties": true,
+			"properties": {
+				"Subitems": {}
+			},
+			"type": "object"
+		},
+		"created_at": {
+			"type": "string"
+		},
+		"group": {
+			"properties": {
+				"id": {
+					"type": "string"
+				},
+				"title": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"id": {
+			"type": "string"
+		},
+		"name": {
+			"type": "string"
+		},
+		"parent_item": {
+			"properties": {
+				"id": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"type": ["null", "object"]
+		},
+		"state": {
+			"type": "string"
+		},
+		"updated_at": {
+			"type": "string"
+		},
+		"url": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

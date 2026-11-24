@@ -99,8 +99,8 @@ function parseJson(text: string): unknown {
 
 // The ids of the list that the text shows. Dashes and case do not matter.
 function shownIds(ids: string[], text: string): string[] {
-	const haystack = text.toLowerCase().replace(/-/g, '');
-	return ids.filter((id) => haystack.includes(id));
+	const missing = new Set(missingIds(ids, text));
+	return ids.filter((id) => !missing.has(id));
 }
 
 /** A model writes "native.linear" as one key. Make it the two levels that the gym reads. */
@@ -447,8 +447,8 @@ export class PlanHydrator implements Hydrator {
 		try {
 			const report = overlay ? await admin.seed(tenant, overlay) : undefined;
 			const ignored = last ? undefined : ignoredBySeed(report);
-			if (ignored) return `the gym ignored parts of it: ${ignored}`;
 			if (isRecord(overlay)) this.seeded.record(overlay, shallow);
+			if (ignored) return `the gym ignored parts of it: ${ignored}`;
 			for (const event of events) await admin.event(tenant, event);
 		} catch (e) {
 			return `the gym refused it: ${errText(e)}`;

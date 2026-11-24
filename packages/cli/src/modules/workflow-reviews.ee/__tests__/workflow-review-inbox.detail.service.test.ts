@@ -106,6 +106,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 			canDecide: true,
 			decisionIneligibilityReason: null,
 			canComment: true,
+			canClose: true,
 		});
 	});
 
@@ -224,6 +225,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 				canDecide: false,
 				decisionIneligibilityReason: 'author',
 				canComment: true,
+				canClose: false,
 			});
 
 			const detail = await service.getDetail(requester, requestId);
@@ -246,6 +248,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 				canDecide: false,
 				decisionIneligibilityReason: 'missing_permission',
 				canComment: false,
+				canClose: false,
 			});
 
 			const detail = await service.getDetail(requester, requestId);

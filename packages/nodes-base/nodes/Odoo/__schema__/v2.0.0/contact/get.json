@@ -1,0 +1,785 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"account_move_count": {
+			"type": "number"
+		},
+		"account_represented_company_ids": {
+			"items": {},
+			"type": "array"
+		},
+		"active": {
+			"type": "boolean"
+		},
+		"active_lang_count": {
+			"type": "number"
+		},
+		"activity_calendar_event_id": {
+			"type": "boolean"
+		},
+		"activity_date_deadline": {
+			"type": "boolean"
+		},
+		"activity_exception_decoration": {
+			"type": "boolean"
+		},
+		"activity_exception_icon": {
+			"type": "boolean"
+		},
+		"activity_ids": {
+			"items": {},
+			"type": "array"
+		},
+		"activity_state": {
+			"type": "boolean"
+		},
+		"activity_summary": {
+			"type": "boolean"
+		},
+		"activity_type_icon": {
+			"type": "boolean"
+		},
+		"activity_type_id": {
+			"type": "boolean"
+		},
+		"activity_user_id": {
+			"type": "boolean"
+		},
+		"agent_ids": {
+			"items": {},
+			"type": "array"
+		},
+		"application_statistics": {
+			"items": {
+				"properties": {
+					"iconClass": {
+						"type": "string"
+					},
+					"label": {
+						"type": "string"
+					},
+					"tagClass": {
+						"type": "string"
+					},
+					"value": {
+						"type": "number"
+					}
+				},
+				"type": "object"
+			},
+			"type": ["array", "boolean"]
+		},
+		"autopost_bills": {
+			"type": "string"
+		},
+		"available_invoice_template_pdf_report_ids": {
+			"items": {
+				"type": "number"
+			},
+			"type": "array"
+		},
+		"avatar_1024": {
+			"properties": {
+				"content": {
+					"type": "string"
+				},
+				"filename": {
+					"type": "string"
+				},
+				"size": {
+					"type": "number"
+				}
+			},
+			"type": ["object", "string"]
+		},
+		"avatar_128": {
+			"properties": {
+				"content": {
+					"type": "string"
+				},
+				"filename": {
+					"type": "string"
+				},
+				"size": {
+					"type": "number"
+				}
+			},
+			"type": ["object", "string"]
+		},
+		"avatar_1920": {
+			"properties": {
+				"content": {
+					"type": "string"
+				},
+				"filename": {
+					"type": "string"
+				},
+				"size": {
+					"type": "number"
+				}
+			},
+			"type": ["object", "string"]
+		},
+		"avatar_256": {
+			"properties": {
+				"content": {
+					"type": "string"
+				},
+				"filename": {
+					"type": "string"
+				},
+				"size": {
+					"type": "number"
+				}
+			},
+			"type": ["object", "string"]
+		},
+		"avatar_512": {
+			"properties": {
+				"content": {
+					"type": "string"
+				},
+				"filename": {
+					"type": "string"
+				},
+				"size": {
+					"type": "number"
+				}
+			},
+			"type": ["object", "string"]
+		},
+		"bank_account_count": {
+			"type": "number"
+		},
+		"bank_ids": {
+			"items": {},
+			"type": "array"
+		},
+		"barcode": {
+			"type": "boolean"
+		},
+		"calendar_last_notif_ack": {
+			"type": "string"
+		},
+		"category_id": {
+			"items": {
+				"type": "number"
+			},
+			"type": "array"
+		},
+		"channel_ids": {
+			"items": {},
+			"type": "array"
+		},
+		"channel_member_ids": {
+			"items": {},
+			"type": "array"
+		},
+		"child_ids": {
+			"items": {
+				"type": "number"
+			},
+			"type": "array"
+		},
+		"city": {
+			"type": ["boolean", "string"]
+		},
+		"color": {
+			"type": "number"
+		},
+		"comment": {
+			"type": ["boolean", "string"]
+		},
+		"commercial_company_name": {
+			"type": ["boolean", "string"]
+		},
+		"commercial_partner_id": {
+			"items": {
+				"type": ["number", "string"]
+			},
+			"type": ["array", "boolean"]
+		},
+		"company_id": {
+			"items": {
+				"type": ["number", "string"]
+			},
+			"type": ["array", "boolean"]
+		},
+		"complete_name": {
+			"type": "string"
+		},
+		"contact_address": {
+			"type": "string"
+		},
+		"contact_address_complete": {
+			"type": "string"
+		},
+		"contact_address_inline": {
+			"type": "string"
+		},
+		"contract_ids": {
+			"items": {
+				"type": "number"
+			},
+			"type": "array"
+		},
+		"country_code": {
+			"type": ["boolean", "string"]
+		},
+		"country_id": {
+			"items": {
+				"type": ["number", "string"]
+			},
+			"type": ["array", "boolean"]
+		},
+		"create_date": {
+			"type": ["boolean", "string"]
+		},
+		"create_uid": {
+			"items": {
+				"type": ["number", "string"]
+			},
+			"type": ["array", "boolean"]
+		},
+		"credit": {
+			"type": "number"
+		},
+		"credit_limit": {
+			"type": "number"
+		},
+		"credit_to_invoice": {
+			"type": "number"
+		},
+		"currency_id": {
+			"items": {
+				"type": ["number", "string"]
+			},
+			"type": "array"
+		},
+		"customer_rank": {
+			"type": "number"
+		},
+		"days_sales_outstanding": {
+			"type": "number"
+		},
+		"debit": {
+			"type": "number"
+		},
+		"display_invoice_edi_format": {
+			"type": "boolean"
+		},
+		"display_invoice_template_pdf_report_id": {
+			"type": "boolean"
+		},
+		"display_name": {
+			"type": "string"
+		},
+		"duplicate_bank_partner_ids": {
+			"items": {},
+			"type": "array"
+		},
+		"email": {
+			"type": ["boolean", "string"]
+		},
+		"email_formatted": {
+			"type": ["boolean", "string"]
+		},
+		"email_normalized": {
+			"type": ["boolean", "string"]
+		},
+		"employee": {
+			"type": "boolean"
+		},
+		"employee_ids": {
+			"items": {
+				"type": "number"
+			},
+			"type": "array"
+		},
+		"employees_count": {
+			"type": "number"
+		},
+		"fiscal_country_codes": {
+			"type": "string"
+		},
+		"fiscal_country_group_codes": {
+			"items": {
+				"type": "string"
+			},
+			"type": "array"
+		},
+		"followup_line_id": {
+			"items": {
+				"type": ["number", "string"]
+			},
+			"type": ["array", "boolean"]
+		},
+		"function": {
+			"type": ["boolean", "string"]
+		},
+		"has_message": {
+			"type": "boolean"
+		},
+		"has_moves": {
+			"type": "boolean"
+		},
+		"id": {
+			"type": ["boolean", "number"]
+		},
+		"ignore_abnormal_invoice_amount": {
+			"type": "boolean"
+		},
+		"ignore_abnormal_invoice_date": {
+			"type": "boolean"
+		},
+		"image_1024": {
+			"properties": {
+				"content": {
+					"type": "string"
+				},
+				"size": {
+					"type": "number"
+				}
+			},
+			"type": ["boolean", "object", "string"]
+		},
+		"image_128": {
+			"properties": {
+				"content": {
+					"type": "string"
+				},
+				"size": {
+					"type": "number"
+				}
+			},
+			"type": ["boolean", "object", "string"]
+		},
+		"image_1920": {
+			"properties": {
+				"content": {
+					"type": "string"
+				},
+				"size": {
+					"type": "number"
+				}
+			},
+			"type": ["boolean", "object", "string"]
+		},
+		"image_256": {
+			"properties": {
+				"content": {
+					"type": "string"
+				},
+				"size": {
+					"type": "number"
+				}
+			},
+			"type": ["boolean", "object", "string"]
+		},
+		"image_512": {
+			"properties": {
+				"content": {
+					"type": "string"
+				},
+				"size": {
+					"type": "number"
+				}
+			},
+			"type": ["boolean", "object", "string"]
+		},
+		"image_medium": {
+			"properties": {
+				"content": {
+					"type": "string"
+				},
+				"filename": {
+					"type": "string"
+				},
+				"size": {
+					"type": "number"
+				}
+			},
+			"type": ["object", "string"]
+		},
+		"industry_id": {
+			"items": {
+				"type": ["number", "string"]
+			},
+			"type": ["array", "boolean"]
+		},
+		"invoice_edi_format": {
+			"type": "boolean"
+		},
+		"invoice_edi_format_store": {
+			"type": "boolean"
+		},
+		"invoice_ids": {
+			"items": {
+				"type": "number"
+			},
+			"type": "array"
+		},
+		"invoice_sending_method": {
+			"type": ["boolean", "string"]
+		},
+		"invoice_template_pdf_report_id": {
+			"type": "boolean"
+		},
+		"is_blacklisted": {
+			"type": "boolean"
+		},
+		"is_company": {
+			"type": "boolean"
+		},
+		"is_created_by_ocr": {
+			"type": "boolean"
+		},
+		"is_in_call": {
+			"type": "boolean"
+		},
+		"is_public": {
+			"type": "boolean"
+		},
+		"is_ubl_format": {
+			"type": "boolean"
+		},
+		"lang": {
+			"type": "string"
+		},
+		"main_user_id": {
+			"type": "boolean"
+		},
+		"meeting_count": {
+			"type": "number"
+		},
+		"meeting_ids": {
+			"items": {},
+			"type": "array"
+		},
+		"message_attachment_count": {
+			"type": "number"
+		},
+		"message_bounce": {
+			"type": "number"
+		},
+		"message_follower_ids": {
+			"items": {
+				"type": "number"
+			},
+			"type": "array"
+		},
+		"message_has_error": {
+			"type": "boolean"
+		},
+		"message_has_error_counter": {
+			"type": "number"
+		},
+		"message_has_sms_error": {
+			"type": "boolean"
+		},
+		"message_ids": {
+			"items": {
+				"type": "number"
+			},
+			"type": "array"
+		},
+		"message_is_follower": {
+			"type": "boolean"
+		},
+		"message_needaction": {
+			"type": "boolean"
+		},
+		"message_needaction_counter": {
+			"type": "number"
+		},
+		"message_partner_ids": {
+			"items": {
+				"type": "number"
+			},
+			"type": "array"
+		},
+		"my_activity_date_deadline": {
+			"type": "boolean"
+		},
+		"name": {
+			"type": ["boolean", "string"]
+		},
+		"ocn_token": {
+			"type": "boolean"
+		},
+		"opportunity_count": {
+			"type": "number"
+		},
+		"opportunity_ids": {
+			"items": {
+				"type": "number"
+			},
+			"type": "array"
+		},
+		"parent_id": {
+			"items": {
+				"type": ["number", "string"]
+			},
+			"type": ["array", "boolean"]
+		},
+		"parent_name": {
+			"type": ["boolean", "string"]
+		},
+		"partner_latitude": {
+			"type": "number"
+		},
+		"partner_longitude": {
+			"type": "number"
+		},
+		"partner_share": {
+			"type": "boolean"
+		},
+		"partner_vat_placeholder": {
+			"type": "string"
+		},
+		"payment_token_count": {
+			"type": "number"
+		},
+		"payment_token_ids": {
+			"items": {},
+			"type": "array"
+		},
+		"phone": {
+			"type": ["boolean", "string"]
+		},
+		"phone_blacklisted": {
+			"type": "boolean"
+		},
+		"phone_mobile_search": {
+			"type": "boolean"
+		},
+		"phone_sanitized": {
+			"type": ["boolean", "string"]
+		},
+		"phone_sanitized_blacklisted": {
+			"type": "boolean"
+		},
+		"project_ids": {
+			"items": {
+				"type": "number"
+			},
+			"type": "array"
+		},
+		"properties": {
+			"items": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"string": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"properties_base_definition_id": {
+			"items": {
+				"type": ["number", "string"]
+			},
+			"type": "array"
+		},
+		"property_account_payable_id": {
+			"items": {
+				"type": ["number", "string"]
+			},
+			"type": "array"
+		},
+		"property_account_position_id": {
+			"items": {
+				"type": ["number", "string"]
+			},
+			"type": ["array", "boolean"]
+		},
+		"property_account_receivable_id": {
+			"items": {
+				"type": ["number", "string"]
+			},
+			"type": "array"
+		},
+		"property_inbound_payment_method_line_id": {
+			"type": "boolean"
+		},
+		"property_outbound_payment_method_line_id": {
+			"type": "boolean"
+		},
+		"property_payment_term_id": {
+			"items": {
+				"type": ["number", "string"]
+			},
+			"type": ["array", "boolean"]
+		},
+		"property_product_pricelist": {
+			"items": {
+				"type": ["number", "string"]
+			},
+			"type": ["array", "boolean"]
+		},
+		"property_supplier_payment_term_id": {
+			"items": {
+				"type": ["number", "string"]
+			},
+			"type": ["array", "boolean"]
+		},
+		"rating_ids": {
+			"items": {},
+			"type": "array"
+		},
+		"ref": {
+			"type": "boolean"
+		},
+		"ref_company_ids": {
+			"items": {
+				"type": "number"
+			},
+			"type": "array"
+		},
+		"rtc_session_ids": {
+			"items": {},
+			"type": "array"
+		},
+		"sale_order_count": {
+			"type": "number"
+		},
+		"sale_order_ids": {
+			"items": {
+				"type": "number"
+			},
+			"type": "array"
+		},
+		"sale_warn_msg": {
+			"type": "boolean"
+		},
+		"same_vat_partner_id": {
+			"type": "boolean"
+		},
+		"self": {
+			"items": {
+				"type": ["number", "string"]
+			},
+			"type": ["array", "boolean"]
+		},
+		"show_credit_limit": {
+			"type": "boolean"
+		},
+		"signup_type": {
+			"type": ["boolean", "string"]
+		},
+		"specific_property_product_pricelist": {
+			"items": {
+				"type": ["number", "string"]
+			},
+			"type": ["array", "boolean"]
+		},
+		"state_id": {
+			"items": {
+				"type": ["number", "string"]
+			},
+			"type": ["array", "boolean"]
+		},
+		"street": {
+			"type": ["boolean", "string"]
+		},
+		"street2": {
+			"type": ["boolean", "string"]
+		},
+		"supplier_invoice_count": {
+			"type": "number"
+		},
+		"supplier_rank": {
+			"type": "number"
+		},
+		"task_count": {
+			"type": "number"
+		},
+		"task_ids": {
+			"items": {
+				"type": "number"
+			},
+			"type": "array"
+		},
+		"total_all_due": {
+			"type": "number"
+		},
+		"total_all_overdue": {
+			"type": "number"
+		},
+		"total_due": {
+			"type": "number"
+		},
+		"total_invoiced": {
+			"type": "number"
+		},
+		"total_overdue": {
+			"type": "number"
+		},
+		"total_overdue_followup": {
+			"type": "number"
+		},
+		"trust": {
+			"type": "string"
+		},
+		"type": {
+			"type": "string"
+		},
+		"type_address_label": {
+			"type": "string"
+		},
+		"tz": {
+			"type": ["boolean", "string"]
+		},
+		"tz_offset": {
+			"type": "string"
+		},
+		"unreconciled_aml_ids": {
+			"items": {
+				"type": "number"
+			},
+			"type": "array"
+		},
+		"use_partner_credit_limit": {
+			"type": "boolean"
+		},
+		"user_id": {
+			"items": {
+				"type": ["number", "string"]
+			},
+			"type": ["array", "boolean"]
+		},
+		"user_ids": {
+			"items": {},
+			"type": "array"
+		},
+		"vat": {
+			"type": ["boolean", "string"]
+		},
+		"vat_label": {
+			"type": "string"
+		},
+		"website": {
+			"type": "boolean"
+		},
+		"write_date": {
+			"type": ["boolean", "string"]
+		},
+		"write_uid": {
+			"items": {
+				"type": ["number", "string"]
+			},
+			"type": ["array", "boolean"]
+		},
+		"zip": {
+			"type": ["boolean", "string"]
+		}
+	},
+	"type": "object"
+}

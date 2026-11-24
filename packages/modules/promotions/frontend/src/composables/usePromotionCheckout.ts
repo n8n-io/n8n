@@ -16,7 +16,7 @@ export function usePromotionCheckout() {
 	const permissions = computed(
 		() => getResourcePermissions(usersStore.currentUser?.globalScopes).promotions,
 	);
-	const canConnect = computed(() => !!permissions.value.connect);
+	const canConnect = computed(() => !!permissions.value.manageEnvironments);
 
 	async function connect(environmentId: string): Promise<boolean> {
 		try {

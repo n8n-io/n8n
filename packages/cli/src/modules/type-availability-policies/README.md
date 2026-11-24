@@ -300,9 +300,11 @@ every type against that read. That read is two queries, the scope and then its a
 write between them can return newer rules under the older `version`. A write that sends this
 `version` back then fails with a conflict, so no change is lost.
 
-Each route lists the same type names as the builder read of its kind: `available-types` for
-node types, `available-credential-types` for credential types. Generated tool variants are node
-types, and they get the verdict of their base type.
+The credential route lists the type names of `available-credential-types`. The node route lists
+the type names of `available-types`, but it leaves out a generated tool variant when the same rule,
+or the default action, decides the variant and its base type. Such a variant has the access of its
+base. When a different rule decides the variant, for example an earlier `name` rule for the
+variant (see the rule order above), the variant keeps its row so that the admin can see that rule.
 
 ### Usage counts of each credential type
 
@@ -330,6 +332,32 @@ than the counts show:
 - A tool of an inline agent. The index reads only the nodes of the workflow itself.
 - A node whose selected credential no longer exists, or whose credential has no ID. The node
   still names the type in its `credentials` map.
+
+The counts are only as current as the index.
+
+### Usage counts of each node type
+
+`GET /node-type-policies/usage` and `GET /projects/:projectId/node-type-policies/usage` return
+Uses, Workflows, Active workflows and Projects for each node type in use. A type that no workflow
+uses has no entry. The counts come from the `nodeType` rows of the workflow dependency index. The
+index writes one row for each node, so Uses is the number of nodes.
+
+- Each workflow counts in one version: the published version if it is active, the draft if not.
+  Archived workflows do not count.
+- A workflow counts only in the project that owns it, as for the credential types.
+- A disabled node counts, as in [Grandfathering](#grandfathering).
+- The entry of a node type also counts its generated tool variants, because a `name` rule on the
+  node type also matches them. The entry of `n8n-nodes-base.gmail` counts the `gmail`, `gmailTool`
+  and `gmailHitlTool` nodes, and a workflow with more than one of them counts once. Each variant
+  also has an entry of its own, for the row that the Nodes tab shows when a different rule decides
+  the variant. A real node whose name ends in `Tool` is not a variant, and only its own entry
+  counts it.
+
+When a different rule decides a variant, the entry of the base type still counts the nodes of the
+variant. A deny on the base type then blocks fewer nodes than its counts show.
+
+The check also reads nodes that the counts leave out. A tool of an inline agent is not in the
+index, so a deny can block more workflows than the counts show.
 
 The counts are only as current as the index.
 

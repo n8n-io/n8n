@@ -15,11 +15,12 @@ import {
 	blobsByPath,
 	buildPreview,
 	parsePackageManifest,
+	previewEnvironment,
 	previewRevision,
+	previewSource,
 	scopeManifestToProject,
 } from './promotion-preview';
 import { PromotionReviewGateService } from './promotion-review-gate.service';
-import { checkoutBranchName } from './promotions-git.utils';
 import type { BranchPackage, PromotionOperationInput } from './promotions.types';
 
 /**
@@ -53,17 +54,17 @@ export class PromotePreviewService {
 				? await this.reviewGate.findPromoteBlocker(projectId, input.environmentId)
 				: null;
 		if (blocker) {
-			const source = {
-				environmentId: input.environmentId,
-				branchName: checkoutBranchName(input.config),
-			};
+			const source = previewSource(input);
+			const environment = previewEnvironment(input);
+			const { createBranchOnPromotion } = environment;
 			return {
 				commitSha: null,
 				source,
+				environment,
 				resources: [],
 				dependencies: [],
 				blocker,
-				revision: previewRevision({ source, resources: [], blocker }),
+				revision: previewRevision({ source, createBranchOnPromotion, resources: [], blocker }),
 			};
 		}
 		const branch = await readBranch();
@@ -88,13 +89,17 @@ export class PromotePreviewService {
 		const resources = promoteBase
 			? await this.markCrossProjectMoves(projectId, compared, promoteBase)
 			: compared;
-		const source = { environmentId: branch.environmentId, branchName: branch.branchName };
+		// The branch read resolves the environment again. Name the one it read.
+		const source = previewSource(branch.input);
+		const environment = previewEnvironment(branch.input);
+		const { createBranchOnPromotion } = environment;
 		return {
 			commitSha: branch.commitSha,
 			source,
+			environment,
 			resources,
 			dependencies,
-			revision: previewRevision({ source, resources }),
+			revision: previewRevision({ source, createBranchOnPromotion, resources }),
 		};
 	}
 

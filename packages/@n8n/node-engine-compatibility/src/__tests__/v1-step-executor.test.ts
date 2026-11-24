@@ -43,6 +43,7 @@ function linked(slots: StepSlots): StepSlots {
 	);
 }
 import { V1WorkflowConverter } from '../v1-workflow-converter';
+import { realNodeTypes, splitOutNode } from './acceptance-fixtures';
 import {
 	items,
 	noSubWorkflows,
@@ -188,6 +189,53 @@ describe('V1StepExecutor', () => {
 		const graph = graphWith('test.echoParam', { message: 'solo' });
 		const result = await testStepExecutor(graph).execute(stepRequest(graph, 'n', []));
 		expect(result.outputs).toEqual([[{ json: { message: 'solo' } }]]);
+	});
+
+	it('keeps an empty first input empty when another input has items', async () => {
+		// ┌────────┐  ┌───────────┐  ┌───────────┐ i0 ┌───────┐
+		// │ Manual ├─►│ SplitOut1 ├┬►│ SplitOut2 ├───►│       │
+		// └────────┘  └───────────┘│ └───────────┘    │ Merge │
+		//                          └─────────────────►│       │
+		//                                          i1 └───────┘
+		const graph = converter.convert(
+			v1Workflow(
+				[
+					{ id: 't', name: 'Manual', type: 'n8n-nodes-base.manualTrigger' },
+					splitOutNode('s1', 'SplitOut1', 'list'),
+					splitOutNode('s2', 'SplitOut2', 'n'),
+					{
+						id: 'm',
+						name: 'Merge',
+						type: 'n8n-nodes-base.merge',
+						typeVersion: 3,
+						parameters: {},
+					},
+				],
+				{
+					Manual: { main: [[{ node: 'SplitOut1', type: 'main', index: 0 }]] },
+					SplitOut1: {
+						main: [
+							[
+								{ node: 'SplitOut2', type: 'main', index: 0 },
+								{ node: 'Merge', type: 'main', index: 1 },
+							],
+						],
+					},
+					SplitOut2: { main: [[{ node: 'Merge', type: 'main', index: 0 }]] },
+				},
+			),
+		);
+		const executor = new V1StepExecutor({
+			resolveSubWorkflow: noSubWorkflows,
+			nodeTypes: realNodeTypes,
+			additionalDataFactory: testAdditionalDataFactory,
+			loadStepData: async () => await Promise.resolve({ graph, outputsByNode: {} }),
+		});
+
+		// SplitOut2 made no items, so the engine marks its edge into Merge dead.
+		const result = await executor.execute(stepRequest(graph, 'm', [null, ...items({ list: 0 })]));
+
+		expect(result.outputs).toEqual([[expect.objectContaining({ json: { list: 0 } })]]);
 	});
 
 	it('rejects non-v1-node steps', async () => {

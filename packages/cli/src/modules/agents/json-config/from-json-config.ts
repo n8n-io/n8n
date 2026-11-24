@@ -65,7 +65,11 @@ const WEB_SEARCH_PLAN_INSTRUCTION =
 	'Before using web_search, choose the smallest search plan that can answer the user. Default to one broad, high-signal query. After each search, stop if the results already contain enough credible sources to answer. Use a second search only when the first result set is insufficient or the user asked for comparison across independent source categories. Do not fan out variations of the same query, and do not search for confirmation only. Use more than two searches only when the user explicitly asks for deep research, exhaustive coverage, or multiple independent topics.';
 
 export type FallbackWebSearchArgs = z.infer<typeof WEB_SEARCH_INPUT_SCHEMA>;
-export type FallbackWebSearchHandler = (args: FallbackWebSearchArgs) => Promise<unknown>;
+export type FallbackWebSearchHandler = (
+	args: FallbackWebSearchArgs,
+	/** Aborts when the run stops. */
+	options?: { signal?: AbortSignal },
+) => Promise<unknown>;
 
 const WEB_SEARCH_POLICY_INSTRUCTION =
 	'### Web search policy\n' +
@@ -383,13 +387,20 @@ function buildFallbackWebSearchTool(
 	) {
 		return null;
 	}
+	// Provider tools are disabled so that every search goes through a handler the caller owns.
+	// Without that handler, the live search below would run for real, so there is no web search.
+	if (disableProviderTools && !fallbackWebSearch) return null;
 	if (fallbackWebSearch) {
 		return {
 			name: WEB_SEARCH_TOOL_NAME,
 			description: 'Search the web for current information.',
 			systemInstruction: WEB_SEARCH_PLAN_INSTRUCTION,
 			inputSchema: WEB_SEARCH_INPUT_SCHEMA,
-			handler: async (input) => await fallbackWebSearch(WEB_SEARCH_INPUT_SCHEMA.parse(input)),
+			handler: async (input, ctx) =>
+				await fallbackWebSearch(
+					WEB_SEARCH_INPUT_SCHEMA.parse(input),
+					ctx?.abortSignal ? { signal: ctx.abortSignal } : undefined,
+				),
 		};
 	}
 	if (webSearchConfig.provider !== 'brave' && webSearchConfig.provider !== 'searxng') {

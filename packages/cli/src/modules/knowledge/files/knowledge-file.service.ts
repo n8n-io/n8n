@@ -12,7 +12,7 @@ import { unlink } from 'node:fs/promises';
 import path from 'node:path';
 import type { Readable } from 'node:stream';
 
-import type { KnowledgeFile } from '../entities/knowledge-file.entity';
+import type { AgentFile } from '../entities';
 import { KnowledgeConfig } from '../knowledge.config';
 import type { KnowledgeConsumerScope } from '../knowledge-consumer-scope';
 import { KnowledgeSandboxProviderProxy } from '../knowledge-sandbox-provider-proxy';
@@ -76,7 +76,7 @@ export class KnowledgeFileService {
 			this.validateUploadMetadata(files);
 			await this.validateUploadBatch(scope, files);
 
-			const uploadedFiles: KnowledgeFile[] = [];
+			const uploadedFiles: AgentFile[] = [];
 			const results: KnowledgeFileUploadResult[] = [];
 			try {
 				for (const file of files) {
@@ -191,7 +191,7 @@ export class KnowledgeFileService {
 		scope: KnowledgeConsumerScope,
 		file: Express.Multer.File,
 		writeFence: KnowledgeWriteRunner,
-	): Promise<KnowledgeFile> {
+	): Promise<AgentFile> {
 		const fileId = generateNanoId();
 		const contentFileName = toKnowledgeContentFileName(file.originalname);
 		const content = await this.prepareUploadContent(file);
@@ -224,7 +224,7 @@ export class KnowledgeFileService {
 		file: Express.Multer.File,
 		storageReference: KnowledgeFileStorageReference,
 		ctx: OperationContext,
-	): Promise<KnowledgeFile> {
+	): Promise<AgentFile> {
 		return await this.fileRepository.saveUploadedFile(
 			{
 				id: fileId,
@@ -239,7 +239,8 @@ export class KnowledgeFileService {
 		);
 	}
 
-	private async prepareUploadContent(file: Express.Multer.File): Promise<Buffer | Readable> {
+	/** The bytes to store for an upload. A PDF is stored as its extracted text. */
+	async prepareUploadContent(file: Express.Multer.File): Promise<Buffer | Readable> {
 		if (!file.path) {
 			throw new BadRequestError('Uploaded file path is missing');
 		}
@@ -260,7 +261,7 @@ export class KnowledgeFileService {
 		return createReadStream(file.path);
 	}
 
-	private async cleanupFailedUploadBatch(files: KnowledgeFile[]): Promise<void> {
+	private async cleanupFailedUploadBatch(files: AgentFile[]): Promise<void> {
 		for (const file of files) {
 			await this.fileStore
 				.delete([{ storedAt: file.storedAt, storageKey: file.storageKey }])
@@ -269,7 +270,8 @@ export class KnowledgeFileService {
 		}
 	}
 
-	private validateUploadMetadata(files: Express.Multer.File[]) {
+	/** Rejects a file name or a MIME type that is too long for its column. */
+	validateUploadMetadata(files: Express.Multer.File[]) {
 		for (const file of files) {
 			this.validateMetadataLength('File name', file.originalname, 'invalid_file_name');
 			// No reason fits a MIME type that is too long, so the failure event reports `unknown`.
