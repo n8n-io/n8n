@@ -30,6 +30,13 @@ import { useInstanceAiStore } from '../../instanceAi.store';
 import { USER_TYPED_MESSAGE } from '../../prefills';
 
 import { createComponentRenderer } from '@/__tests__/render';
+import {
+	AGENT_TOOL_STEP_LABEL_KEY,
+	type AgentToolStepLabeler,
+} from '@/features/agents/components/agentChatInjectionKeys';
+import { mockedStore } from '@/__tests__/utils';
+import { INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT } from '@/app/constants/experiments';
+import { usePostHog } from '@/app/stores/posthog.store';
 
 import {
 	getPendingComposerDraft,
@@ -140,6 +147,12 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 const chatMessages = ref<ChatMessage[]>([]);
 const isLoadingHistory = ref(true);
 const isBusy = ref(false);
+const isPanelStreaming = ref(false);
+const isAwaitingUserAnswer = ref(false);
+const isAwaitingUserApproval = ref(false);
+const focusOpenInteraction = vi.fn();
+// The tool step labeler that the view gives the chat.
+const panelToolStepLabel: { current?: AgentToolStepLabeler } = {};
 const composerAttachments = ref<AgentChatComposerAttachment[]>([]);
 // The user message whose references the stub panel renders through its slot.
 const referencedMessage = ref<ChatMessage>();
@@ -148,6 +161,7 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 	default: defineComponent({
 		inheritAttrs: false,
 		setup(_props, { attrs, expose, slots }) {
+			panelToolStepLabel.current = inject(AGENT_TOOL_STEP_LABEL_KEY, undefined);
 			// A chip with the same id replaces the old one, as in the real panel.
 			const addComposerAttachment = (
 				chip: AgentChatComposerAttachment['chip'],
@@ -172,7 +186,10 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 				removeComposerAttachment,
 				composerAttachments,
 				messages: chatMessages,
-				isStreaming: ref(false),
+				isStreaming: isPanelStreaming,
+				isAwaitingUserAnswer,
+				isAwaitingUserApproval,
+				focusOpenInteraction,
 				isSubmitting: ref(false),
 				isBusy,
 				isLoadingHistory,
@@ -219,6 +236,18 @@ vi.mock('../../components/InstanceAiWorkflowPreview.vue', async () => {
 		}),
 	};
 });
+
+// The real draft preview renders a canvas, which has its own tests.
+vi.mock('../../components/InstanceAiWorkflowDraftPreview.vue', () => ({
+	default: defineComponent({
+		props: { draft: { type: Object, required: true }, building: Boolean },
+		setup: (props) => () =>
+			h('div', {
+				'data-test-id': 'workflow-draft-preview-stub',
+				'data-file-path': (props.draft as { filePath: string }).filePath,
+			}),
+	}),
+}));
 
 // Picking a resource emits a fixed workflow, so the tests do not depend on the resource search.
 vi.mock('../../components/InstanceAiResourcePicker.vue', () => ({
@@ -579,6 +608,10 @@ describe('AssistantAgentThreadView', () => {
 		chatMessages.value = [];
 		isLoadingHistory.value = true;
 		isBusy.value = false;
+		isPanelStreaming.value = false;
+		isAwaitingUserAnswer.value = false;
+		isAwaitingUserApproval.value = false;
+		focusOpenInteraction.mockReset();
 		panelSlots.current = [];
 		if (threadArea.width) threadArea.width.value = 0;
 		fetchTabs.mockReset().mockResolvedValue({ state: null });
@@ -591,6 +624,202 @@ describe('AssistantAgentThreadView', () => {
 		agentPreview.emit = undefined;
 		agentPreview.targets = undefined;
 		agentPreview.thread = undefined;
+	});
+
+	describe('draft workflow preview experiment', () => {
+		const DRAFT_FILE = 'src/workflows/demo.workflow.ts';
+
+		function setVariant(variant: string) {
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? variant : undefined,
+			);
+		}
+
+		async function renderLoadedThread() {
+			const result = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			isLoadingHistory.value = false;
+			await flushPromises();
+			return result;
+		}
+
+		function streamDraft() {
+			const onStreamEvent = panelProps.current.onStreamEvent as (event: unknown) => void;
+			onStreamEvent({
+				type: 'transient-host-event',
+				name: 'workflow-draft',
+				payload: {
+					filePath: DRAFT_FILE,
+					revision: 1,
+					workflow: {
+						name: 'Demo',
+						nodes: [
+							{
+								id: 'node-1',
+								name: 'Start',
+								type: 'n8n-nodes-base.manualTrigger',
+								typeVersion: 1,
+								position: [0, 0],
+								parameters: {},
+							},
+						],
+						connections: {},
+					},
+				},
+			});
+		}
+
+		const buildingTurn: ChatMessage = {
+			id: 'a-build',
+			role: 'assistant',
+			content: '',
+			toolCalls: [
+				{
+					tool: 'load_skill',
+					toolCallId: 'call-skill',
+					input: { name: 'workflow-builder' },
+					output: {},
+					state: 'done',
+				},
+			],
+		};
+
+		it('shows a streamed workflow draft on the canvas', async () => {
+			setVariant(INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.variant);
+			const { findByTestId } = await renderLoadedThread();
+			chatMessages.value = [{ id: 'u-1', role: 'user', content: 'Build it' }, buildingTurn];
+			isPanelStreaming.value = true;
+
+			streamDraft();
+
+			const preview = await findByTestId('workflow-draft-preview-stub');
+			expect(preview).toHaveAttribute('data-file-path', DRAFT_FILE);
+		});
+
+		it('shows the staging canvas while a new workflow builds', async () => {
+			setVariant(INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.variant);
+			const { findByTestId } = await renderLoadedThread();
+
+			chatMessages.value = [{ id: 'u-1', role: 'user', content: 'Build it' }, buildingTurn];
+			isPanelStreaming.value = true;
+
+			const preview = await findByTestId('workflow-draft-preview-stub');
+			expect(preview).toHaveAttribute('data-file-path', 'staging:a-build');
+		});
+
+		it('shows the building wave over the staging canvas while the agent works', async () => {
+			setVariant(INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.variant);
+			const { findByTestId, queryByTestId } = await renderLoadedThread();
+
+			chatMessages.value = [{ id: 'u-1', role: 'user', content: 'Build it' }, buildingTurn];
+			isPanelStreaming.value = true;
+
+			await findByTestId('instance-ai-draft-building-wave');
+			expect(queryByTestId('instance-ai-canvas-waiting-pill')).toBeNull();
+		});
+
+		it('shows a waiting pill instead of the wave while the run waits for an answer', async () => {
+			setVariant(INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.variant);
+			const { findByTestId, queryByTestId } = await renderLoadedThread();
+			chatMessages.value = [{ id: 'u-1', role: 'user', content: 'Build it' }, buildingTurn];
+			isPanelStreaming.value = true;
+
+			isAwaitingUserAnswer.value = true;
+
+			expect(await findByTestId('instance-ai-canvas-waiting-pill')).toHaveTextContent(
+				'Waiting for your answer in the chat',
+			);
+			expect(queryByTestId('instance-ai-draft-building-wave')).toBeNull();
+		});
+
+		it('shows the waiting pill when the run ends its stream to wait for the answer', async () => {
+			setVariant(INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.variant);
+			const { findByTestId } = await renderLoadedThread();
+			chatMessages.value = [{ id: 'u-1', role: 'user', content: 'Build it' }, buildingTurn];
+			isPanelStreaming.value = true;
+			await findByTestId('instance-ai-draft-building-wave');
+
+			isPanelStreaming.value = false;
+			isAwaitingUserAnswer.value = true;
+
+			expect(await findByTestId('instance-ai-canvas-waiting-pill')).toHaveTextContent(
+				'Waiting for your answer in the chat',
+			);
+		});
+
+		it('asks for the approval while the run waits for one', async () => {
+			setVariant(INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.variant);
+			const { findByTestId } = await renderLoadedThread();
+			chatMessages.value = [{ id: 'u-1', role: 'user', content: 'Build it' }, buildingTurn];
+			isPanelStreaming.value = true;
+
+			isAwaitingUserAnswer.value = true;
+			isAwaitingUserApproval.value = true;
+
+			expect(await findByTestId('instance-ai-canvas-waiting-pill')).toHaveTextContent(
+				'Waiting for your approval in the chat',
+			);
+		});
+
+		it('focuses the open card of the chat when the user clicks the waiting pill', async () => {
+			setVariant(INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.variant);
+			const { findByTestId } = await renderLoadedThread();
+			chatMessages.value = [{ id: 'u-1', role: 'user', content: 'Build it' }, buildingTurn];
+			isPanelStreaming.value = true;
+			isAwaitingUserAnswer.value = true;
+
+			await userEvent.click(await findByTestId('instance-ai-canvas-waiting-pill'));
+
+			expect(focusOpenInteraction).toHaveBeenCalledOnce();
+		});
+
+		it('shows no draft in the control arm', async () => {
+			setVariant(INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.control);
+			const { queryByTestId } = await renderLoadedThread();
+			chatMessages.value = [{ id: 'u-1', role: 'user', content: 'Build it' }, buildingTurn];
+			isPanelStreaming.value = true;
+
+			streamDraft();
+			await flushPromises();
+
+			expect(queryByTestId('workflow-draft-preview-stub')).toBeNull();
+		});
+
+		it('gives the chat a thinking word while the thread runs', async () => {
+			setVariant(INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.variant);
+			await renderLoadedThread();
+
+			isPanelStreaming.value = true;
+			await flushPromises();
+
+			expect(panelProps.current['thinking-label']).toEqual(expect.any(String));
+		});
+
+		it('gives the chat the specific tool labels of the experiment', async () => {
+			setVariant(INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.variant);
+			await renderLoadedThread();
+
+			expect(panelToolStepLabel.current?.('search_nodes', { queries: ['gmail'] })).toBe(
+				'Searching for gmail',
+			);
+			expect(panelToolStepLabel.current?.('list_credentials', {})).toBeUndefined();
+		});
+
+		it('gives the chat no specific tool label in the control arm', async () => {
+			setVariant(INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.control);
+			await renderLoadedThread();
+
+			expect(panelToolStepLabel.current?.('search_nodes', { queries: ['gmail'] })).toBeUndefined();
+		});
+
+		it('gives the chat no thinking word in the control arm', async () => {
+			setVariant(INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.control);
+			await renderLoadedThread();
+
+			isPanelStreaming.value = true;
+			await flushPromises();
+
+			expect(panelProps.current['thinking-label']).toBeUndefined();
+		});
 	});
 
 	it('opens the chat of the Assistant agent on the system channel', async () => {

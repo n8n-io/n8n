@@ -40,6 +40,24 @@ export class KnowledgeCollectionRepository {
 		return await this.table.managerFor(ctx).existsBy(KnowledgeCollection, { projectId, name });
 	}
 
+	async findByIdAndProjectId(
+		id: string,
+		projectId: string,
+		ctx: OperationContext,
+	): Promise<KnowledgeCollection | null> {
+		return await this.table.managerFor(ctx).findOneBy(KnowledgeCollection, { id, projectId });
+	}
+
+	/** The ids of the agents that use the collection. */
+	async findAgentIds(collectionId: string, ctx: OperationContext): Promise<string[]> {
+		const dependencies = await this.table.managerFor(ctx).find(AgentKnowledgeDependency, {
+			select: ['agentId'],
+			where: { knowledgeCollectionId: collectionId },
+		});
+
+		return dependencies.map((dependency) => dependency.agentId);
+	}
+
 	async existsBySlug(slug: string, ctx: OperationContext): Promise<boolean> {
 		return await this.table.managerFor(ctx).existsBy(KnowledgeCollection, { slug });
 	}

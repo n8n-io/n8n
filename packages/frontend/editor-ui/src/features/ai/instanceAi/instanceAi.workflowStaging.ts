@@ -2,14 +2,13 @@ import {
 	SHARED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
 	resolveBuilderToolName,
-	type InstanceAiAgentNode,
-	type InstanceAiToolCallState,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { GRID_SIZE } from '@/app/utils/nodeViewUtils';
 
+import type { ArtifactToolCall } from './artifactTurns';
 import type { WorkflowDraft } from './instanceAi.workflowDrafts';
 
 /**
@@ -43,11 +42,13 @@ const STAGING_COLUMNS = 4;
 const STAGING_COLUMN_STEP = 20 * GRID_SIZE;
 const STAGING_ROW_STEP = 14 * GRID_SIZE;
 
-function collectToolCalls(node: InstanceAiAgentNode): InstanceAiToolCallState[] {
-	return [...node.toolCalls, ...node.children.flatMap(collectToolCalls)];
+/** The tool calls of one run, also those of its sub-agents, as both runtimes give them. */
+export interface StagingRun {
+	runId: string;
+	toolCalls: readonly ArtifactToolCall[];
 }
 
-function toolName(toolCall: InstanceAiToolCallState): string {
+function toolName(toolCall: ArtifactToolCall): string {
 	return resolveBuilderToolName(toolCall.toolName, toolCall.args.action);
 }
 
@@ -60,13 +61,13 @@ function skillName(args: Record<string, unknown>): string | undefined {
 	return stringArg(args, 'name') ?? stringArg(args, 'skillId');
 }
 
-function isWorkflowBuilderLoad(toolCall: InstanceAiToolCallState): boolean {
+function isWorkflowBuilderLoad(toolCall: ArtifactToolCall): boolean {
 	return (
 		toolName(toolCall) === LOAD_SKILL_TOOL && skillName(toolCall.args) === WORKFLOW_BUILDER_SKILL
 	);
 }
 
-function isEditCall(toolCall: InstanceAiToolCallState): boolean {
+function isEditCall(toolCall: ArtifactToolCall): boolean {
 	const name = toolName(toolCall);
 	if (EDIT_TOOLS.has(name)) return true;
 	return (
@@ -76,7 +77,7 @@ function isEditCall(toolCall: InstanceAiToolCallState): boolean {
 }
 
 /** The workflow that a build saved. From then on the saved canvas owns the tab. */
-function savedWorkflowId(toolCall: InstanceAiToolCallState): string | undefined {
+function savedWorkflowId(toolCall: ArtifactToolCall): string | undefined {
 	if (toolName(toolCall) !== WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW) return undefined;
 	const { result } = toolCall;
 	if (!isRecord(result) || result.success !== true) return undefined;
@@ -84,7 +85,7 @@ function savedWorkflowId(toolCall: InstanceAiToolCallState): string | undefined 
 }
 
 /** The saved workflow of a call: the one it reads or builds on, or the one its build saved. */
-function workflowOfCall(toolCall: InstanceAiToolCallState): string | undefined {
+function workflowOfCall(toolCall: ArtifactToolCall): string | undefined {
 	const saved = savedWorkflowId(toolCall);
 	if (saved) return saved;
 	return isEditCall(toolCall) ? stringArg(toolCall.args, 'workflowId') : undefined;
@@ -117,7 +118,7 @@ function toStagingNode(request: unknown): WorkflowStagingNode | undefined {
 	};
 }
 
-function requestedNodes(toolCall: InstanceAiToolCallState): WorkflowStagingNode[] {
+function requestedNodes(toolCall: ArtifactToolCall): WorkflowStagingNode[] {
 	if (toolName(toolCall) !== SHARED_BUILDER_TOOL_NAMES.GET_NODE_TYPES) return [];
 	const { nodeTypes } = toolCall.args;
 	if (!Array.isArray(nodeTypes)) return [];
@@ -130,10 +131,9 @@ function requestedNodes(toolCall: InstanceAiToolCallState): WorkflowStagingNode[
  * saved workflow.
  */
 export function getWorkflowStaging(
-	tree: InstanceAiAgentNode,
+	{ runId, toolCalls }: StagingRun,
 	options: { hasNodeType: (nodeType: string) => boolean },
 ): WorkflowStaging | undefined {
-	const toolCalls = collectToolCalls(tree);
 	if (!toolCalls.some(isWorkflowBuilderLoad)) return undefined;
 	if (toolCalls.some(isEditCall)) return undefined;
 	// The run's drafts go away once the saved canvas loads, so the save itself ends staging.
@@ -143,18 +143,16 @@ export function getWorkflowStaging(
 	for (const node of toolCalls.flatMap(requestedNodes)) {
 		if (!nodes.has(node.id) && options.hasNodeType(node.nodeType)) nodes.set(node.id, node);
 	}
-	return { runId: tree.runId ?? tree.agentId, nodes: [...nodes.values()] };
+	return { runId, nodes: [...nodes.values()] };
 }
 
-export function loadsWorkflowBuilder(tree: InstanceAiAgentNode): boolean {
-	return collectToolCalls(tree).some(isWorkflowBuilderLoad);
+export function loadsWorkflowBuilder(toolCalls: readonly ArtifactToolCall[]): boolean {
+	return toolCalls.some(isWorkflowBuilderLoad);
 }
 
 /** The newest saved workflow that the run reads, builds on or saves. */
-export function workflowOfRun(tree: InstanceAiAgentNode): string | undefined {
-	return collectToolCalls(tree)
-		.flatMap((toolCall) => workflowOfCall(toolCall) ?? [])
-		.at(-1);
+export function workflowOfRun(toolCalls: readonly ArtifactToolCall[]): string | undefined {
+	return toolCalls.flatMap((toolCall) => workflowOfCall(toolCall) ?? []).at(-1);
 }
 
 type StagingDraftNode = WorkflowDraft['workflow']['nodes'][number];

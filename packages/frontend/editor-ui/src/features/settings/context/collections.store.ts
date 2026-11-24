@@ -1,6 +1,9 @@
 import type {
 	CreateKnowledgeCollectionDto,
+	KnowledgeCollectionAgentDto,
 	KnowledgeCollectionDto,
+	KnowledgeCollectionFileDto,
+	KnowledgeCollectionFileListResponse,
 	UpdateKnowledgeCollectionDto,
 } from '@n8n/api-types';
 import { defineStore } from 'pinia';
@@ -64,6 +67,48 @@ export const useCollectionsStore = defineStore('contextCollections', () => {
 		await api.deleteCollection(rootStore.restApiContext, projectId, collectionId);
 	}
 
+	async function getCollection(
+		projectId: string,
+		collectionId: string,
+	): Promise<KnowledgeCollectionDto> {
+		return await api.getCollection(rootStore.restApiContext, projectId, collectionId);
+	}
+
+	async function listCollectionFiles(
+		projectId: string,
+		collectionId: string,
+	): Promise<KnowledgeCollectionFileListResponse> {
+		return await api.listCollectionFiles(rootStore.restApiContext, projectId, collectionId);
+	}
+
+	async function uploadCollectionFiles(
+		projectId: string,
+		collectionId: string,
+		files: File[],
+	): Promise<KnowledgeCollectionFileDto[]> {
+		return await api.uploadCollectionFiles(
+			rootStore.restApiContext,
+			projectId,
+			collectionId,
+			files,
+		);
+	}
+
+	async function deleteCollectionFile(
+		projectId: string,
+		collectionId: string,
+		fileId: string,
+	): Promise<void> {
+		await api.deleteCollectionFile(rootStore.restApiContext, projectId, collectionId, fileId);
+	}
+
+	async function listCollectionAgents(
+		projectId: string,
+		collectionId: string,
+	): Promise<KnowledgeCollectionAgentDto[]> {
+		return await api.listCollectionAgents(rootStore.restApiContext, projectId, collectionId);
+	}
+
 	return {
 		collections,
 		count,
@@ -72,5 +117,10 @@ export const useCollectionsStore = defineStore('contextCollections', () => {
 		createCollection,
 		updateCollection,
 		deleteCollection,
+		getCollection,
+		listCollectionFiles,
+		uploadCollectionFiles,
+		deleteCollectionFile,
+		listCollectionAgents,
 	};
 });

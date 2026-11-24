@@ -134,7 +134,13 @@ export function toExecutionSnapshot(
 		finishedAt: record.finishedAt?.toISOString() ?? null,
 		// Absent unless the request asked for steps, which a caller cannot tell
 		// from an execution that ran none.
-		...('steps' in record ? { steps: record.steps.map(toStepDetail) } : {}),
+		...('steps' in record
+			? {
+					steps: record.steps.map(toStepDetail),
+					parentWorkflowId: record.parentWorkflowId,
+					subExecutions: record.subExecutions,
+				}
+			: {}),
 	};
 }
 

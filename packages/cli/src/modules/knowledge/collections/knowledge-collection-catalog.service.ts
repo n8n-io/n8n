@@ -8,6 +8,7 @@ import { ProjectScopeService } from '@n8n/backend-services';
 import { isUniqueConstraintError, ProjectRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, ForbiddenError, NotFoundError, UnexpectedError } from '@n8n/errors';
+import type { Scope } from '@n8n/permissions';
 import { customAlphabet } from 'nanoid';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -24,9 +25,16 @@ const MAX_SLUG_ATTEMPTS = 5;
 const MAX_INSERT_ATTEMPTS = 2;
 const randomSlugSuffix = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', SLUG_SUFFIX_LENGTH);
 
+/** A collection as a route addresses it: by its id and the project in the path. */
+export interface KnowledgeCollectionRef {
+	projectId: string;
+	collectionId: string;
+}
+
 /**
  * Creates, lists, changes and deletes shared knowledge collections, in the
- * shape that the collection list shows.
+ * shape that the collection list shows. Also gives the collection routes
+ * access to one collection through its home project.
  */
 @Service()
 export class KnowledgeCollectionCatalogService {
@@ -54,7 +62,8 @@ export class KnowledgeCollectionCatalogService {
 		 * `agent:update` on the home project. The route checks it, and this method
 		 * checks it again for callers that do not go through the route.
 		 */
-		if (!(await userHasScopes(user, ['agent:update'], false, { projectId }))) {
+		const scopes: Scope[] = ['agent:update'];
+		if (!(await userHasScopes(user, scopes, false, { projectId }))) {
 			throw new ForbiddenError(
 				'You do not have permission to create a knowledge collection in this project.',
 			);
@@ -160,11 +169,55 @@ export class KnowledgeCollectionCatalogService {
 	async delete(user: User, projectId: string, collectionId: string): Promise<{ success: true }> {
 		await this.assertCanChangeCollections(user, projectId, 'delete');
 
-		// The stored file bytes stay: no code writes a collection file yet, and the upload
-		// brings their cleanup (see the module AGENTS.md).
+		// The stored file bytes stay for now (see the cascade note in the module AGENTS.md).
 		await this.collectionRepository.deleteSharedInProject(collectionId, projectId, {});
 
 		return { success: true };
+	}
+
+	/** Returns the collection as the collection page shows it. */
+	async get(user: User, ref: KnowledgeCollectionRef): Promise<KnowledgeCollectionDto> {
+		await this.getInProject(user, ref, 'agent:read');
+		return await this.getDtoOrThrow(ref.collectionId);
+	}
+
+	/**
+	 * Returns the collection when the project is its home project and the user
+	 * has the scope on that project. The route checks the scope too, and this
+	 * method checks it again for callers that do not go through the route.
+	 *
+	 * A collection of another project answers the same as a missing one.
+	 */
+	async getInProject(
+		user: User,
+		{ projectId, collectionId }: KnowledgeCollectionRef,
+		scope: 'agent:read' | 'agent:update',
+	): Promise<KnowledgeCollection> {
+		const collectionsEnabled = await this.availabilityService.isCollectionsEnabled();
+		if (!collectionsEnabled) {
+			throw new NotFoundError('Knowledge collection not found');
+		}
+
+		if (!(await userHasScopes(user, [scope], false, { projectId }))) {
+			throw new ForbiddenError('You do not have permission to access this knowledge collection.');
+		}
+
+		const collection = await this.collectionRepository.findByIdAndProjectId(
+			collectionId,
+			projectId,
+			{},
+		);
+		if (!collection) {
+			throw new NotFoundError('Knowledge collection not found');
+		}
+
+		return collection;
+	}
+
+	/** The ids of the agents that use the collection. */
+	async listAgentIds(user: User, ref: KnowledgeCollectionRef): Promise<string[]> {
+		await this.getInProject(user, ref, 'agent:read');
+		return await this.collectionRepository.findAgentIds(ref.collectionId, {});
 	}
 
 	/**
@@ -190,8 +243,8 @@ export class KnowledgeCollectionCatalogService {
 	}
 
 	/**
-	 * The lookup uses the project of the URL, so a collection of another project
-	 * answers like a missing one.
+	 * The lookup must use the project id, so a collection of another project
+	 * answers like a missing one, even if the name is the same.
 	 */
 	private async findEditableOrThrow(
 		user: User,
@@ -212,10 +265,6 @@ export class KnowledgeCollectionCatalogService {
 		return collection;
 	}
 
-	/**
-	 * Collections have no scopes of their own yet (TBD), so a change or a delete
-	 * needs `agent:update` on the home project.
-	 */
 	private async assertCanChangeCollections(
 		user: User,
 		projectId: string,
@@ -226,7 +275,12 @@ export class KnowledgeCollectionCatalogService {
 			throw new NotFoundError('Knowledge collections are not enabled');
 		}
 
-		const canUpdateAgents = await userHasScopes(user, ['agent:update'], false, { projectId });
+		/**
+		 * Collections have no scopes of their own yet (TBD), so a change or a delete
+		 * needs `agent:update` on the home project.
+		 */
+		const scopes: Scope[] = ['agent:update'];
+		const canUpdateAgents = await userHasScopes(user, scopes, false, { projectId });
 		if (!canUpdateAgents) {
 			throw new ForbiddenError(
 				`You do not have permission to ${action} a knowledge collection in this project.`,

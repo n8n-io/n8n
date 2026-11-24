@@ -55,6 +55,18 @@ describe('Data Transformation Functions', () => {
 			);
 		});
 
+		test('.pluck() should return the values of several fields in the key order of each item', () => {
+			expect(
+				evaluate(`={{ [
+					{ lastName: 'Doe', firstName: 'John' },
+					{ firstName: 'Jane', lastName: 'Roe' }
+			].pluck("firstName", "lastName") }}`),
+			).toEqual([
+				['Doe', 'John'],
+				['Jane', 'Roe'],
+			]);
+		});
+
 		test('.pluck() should work return everything with no args', () => {
 			expect(
 				evaluate(`={{ [

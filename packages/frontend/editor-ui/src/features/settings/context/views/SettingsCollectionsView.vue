@@ -1,7 +1,7 @@
 <script lang="ts" setup>
+import type { KnowledgeCollectionDto } from '@n8n/api-types';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import type { KnowledgeCollectionDto } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { useToast } from '@n8n/composables/useToast';
@@ -67,8 +67,12 @@ function openEditModal(collection: KnowledgeCollectionDto) {
 	modalOpen.value = true;
 }
 
-function onCreated() {
+async function onCreated(collection: KnowledgeCollectionDto) {
 	modalOpen.value = false;
+	await router.push({
+		name: VIEWS.KNOWLEDGE_COLLECTION,
+		params: { projectId: collection.homeProject.id, collectionId: collection.id },
+	});
 }
 
 function openDeleteDialog(collection: KnowledgeCollectionDto) {

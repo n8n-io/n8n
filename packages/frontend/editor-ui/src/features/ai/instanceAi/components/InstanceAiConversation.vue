@@ -476,6 +476,30 @@ watch([chatInputRef, () => props.autofocus], ([input, autofocus], [, previousAut
 	});
 });
 
+const inlineConfirmationsRef = useTemplateRef<HTMLElement>('inlineConfirmations');
+const floatingConfirmationRef = useTemplateRef<HTMLElement>('floatingConfirmation');
+// A text field first, so the user can type the answer at once. Then the actions of a card,
+// before a focusable region such as the details of an approval.
+const CONFIRMATION_CONTROLS = [
+	'textarea',
+	'input:not([type="hidden"])',
+	'[role="toolbar"] button:not([disabled])',
+	'[tabindex="0"]',
+	'button:not([disabled])',
+];
+
+/** Moves focus to the card that the run waits on. The browser scrolls it into view. */
+function focusPendingConfirmation() {
+	const card = floatingConfirmationRef.value ?? inlineConfirmationsRef.value;
+	for (const selector of CONFIRMATION_CONTROLS) {
+		const control = card?.querySelector<HTMLElement>(selector);
+		if (control) {
+			control.focus();
+			return;
+		}
+	}
+}
+
 watch(hasFloatingConfirmation, (isFloating) => {
 	if (isFloating) return;
 	void nextTick(() => {
@@ -869,6 +893,7 @@ function resetScroll() {
 
 defineExpose({
 	focus: () => chatInputRef.value?.focus(),
+	focusPendingConfirmation,
 	isDirty,
 	applyHandoff,
 	dismissPendingComposerContext,
@@ -970,7 +995,9 @@ defineExpose({
 						 gateway resource-decision, continue) render in
 						 the chat flow. Floating-eligible items take over the chat
 						 input slot below instead - see `hasFloatingConfirmation`. -->
-				<InstanceAiConfirmationPanel kind="inline" />
+				<div ref="inlineConfirmations" :class="$style.inlineConfirmations">
+					<InstanceAiConfirmationPanel kind="inline" />
+				</div>
 
 				<slot name="inline-offers" />
 
@@ -1057,7 +1084,9 @@ defineExpose({
 								</template>
 							</N8nPopover>
 							<Transition name="input-swap">
-								<InstanceAiConfirmationPanel v-if="hasFloatingConfirmation" kind="floating" />
+								<div v-if="hasFloatingConfirmation" ref="floatingConfirmation">
+									<InstanceAiConfirmationPanel kind="floating" />
+								</div>
 							</Transition>
 							<!-- Hidden, not unmounted, so the unsent draft survives the confirmation. -->
 							<Transition name="input-swap">
@@ -1217,6 +1246,11 @@ defineExpose({
 // the cross-fade.
 .inputSwap {
 	position: relative;
+}
+
+// Only marks where the inline cards are. It adds no box to the chat flow.
+.inlineConfirmations {
+	display: contents;
 }
 
 // The onboarding greeting's paragraphs rise one after the other while `greetingPhase` is set.
