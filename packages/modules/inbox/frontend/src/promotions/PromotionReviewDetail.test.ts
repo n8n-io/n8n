@@ -46,11 +46,14 @@ const onItemChange = vi.fn();
 
 /** What the Changes tab reports. The editor renders it, so the test uses a stub. */
 let shownChanges: PromotionChangesState;
+/** Reports a new state from the mounted Changes tab, as a reload of the changes does. */
+let reportChanges: (state: PromotionChangesState) => void;
 const ChangesStub = defineComponent({
 	props: { reviewId: { type: String, required: true } },
 	emits: ['state'],
 	mounted() {
-		this.$emit('state', shownChanges);
+		reportChanges = (state) => this.$emit('state', state);
+		reportChanges(shownChanges);
 	},
 	template: '<div data-test-id="promotion-changes-stub">{{ reviewId }}</div>',
 });
@@ -449,6 +452,22 @@ describe('issues tab', () => {
 		await rerender({ item: item({ id: 'rev-2' }), onItemChange });
 
 		// The issues belong to the first review. The other review reports its own count later.
+		expect(queryByTestId('promotion-issues-stub')).not.toBeInTheDocument();
+		expect(getByTestId('promotion-changes-stub')).toBeVisible();
+	});
+
+	it('goes back to the changes when no issue is left while the Issues tab is open', async () => {
+		shownChanges = { status: 'ready', headCommitSha, issueCount: 2 };
+		const { findByRole, getByTestId, queryByRole, queryByTestId } = renderComponent({
+			props: { item: item(), onItemChange },
+		});
+		await userEvent.click(await findByRole('tab', { name: /Issues/ }));
+		expect(getByTestId('promotion-issues-stub')).toBeInTheDocument();
+		expect(getByTestId('promotion-changes-stub')).not.toBeVisible();
+
+		reportChanges({ status: 'ready', headCommitSha });
+
+		await waitFor(() => expect(queryByRole('tab', { name: /Issues/ })).not.toBeInTheDocument());
 		expect(queryByTestId('promotion-issues-stub')).not.toBeInTheDocument();
 		expect(getByTestId('promotion-changes-stub')).toBeVisible();
 	});

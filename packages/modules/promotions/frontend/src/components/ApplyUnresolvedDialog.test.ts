@@ -25,7 +25,8 @@ describe('ApplyUnresolvedDialog', () => {
 		const dialog = await findByRole('dialog', { name: 'Apply with 2 unresolved dependencies?' });
 		const body =
 			'These dependencies stay missing on this instance. Apply does not create them. Workflows that use them cannot be published until the dependencies exist here.';
-		expect(dialog).toHaveTextContent(body);
+		// The dialog also holds the hidden description, so read the text of the visible body.
+		expect(dialog.querySelector('[data-slot="dialog-body"]')).toHaveTextContent(body);
 		expect(dialog).toHaveAccessibleDescription(body);
 		expect(
 			getAllByTestId('promotion-missing-dependency').map((row) => row.textContent?.trim()),

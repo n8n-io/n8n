@@ -30,7 +30,10 @@ describe('PromoteSelectionDialog', () => {
 
 		const dialog = await findByTestId('promote-selection-dialog');
 		expect(dialog).toHaveTextContent('Promote 3 changes?');
-		expect(dialog).toHaveTextContent('This promotes the selected changes to branch main.');
+		// The dialog also holds the hidden description, so read the text of the visible body.
+		expect(dialog.querySelector('[data-slot="dialog-body"]')).toHaveTextContent(
+			'This promotes the selected changes to branch main.',
+		);
 		expect(dialog).toHaveAccessibleDescription(
 			'This promotes the selected changes to branch main.',
 		);
@@ -59,7 +62,7 @@ describe('PromoteSelectionDialog', () => {
 		expect(getByRole('heading', { name: 'Promote with 2 unresolved dependencies?' })).toBeVisible();
 		const leftOut =
 			'These dependencies are not on the branch after this Promote. Workflows that use them cannot be published where this is applied until the dependencies exist there.';
-		expect(dialog).toHaveTextContent(
+		expect(dialog.querySelector('[data-slot="dialog-body"]')).toHaveTextContent(
 			`This promotes the selected changes to branch main.${leftOut}`,
 		);
 		expect(dialog).toHaveAccessibleDescription(
