@@ -1,7 +1,7 @@
+import { isRecord } from '@n8n/utils/is-record';
 import type { INodeExecutionData, IRunData, ITaskData } from 'n8n-workflow';
 
 import type { ParityCase } from '../grammar/ir';
-import { isRecord } from '../grammar/resolve';
 import type { RawOutcome } from '../runners/runner';
 
 export type Item = Record<string, unknown>;
