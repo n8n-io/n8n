@@ -128,7 +128,7 @@ Each point hands its check a different context. The types are in
 | ------------------- | -------------------------- | ---------------------------------------------------------------------------------------- |
 | `workflowSave`      | `WorkflowSaveContext`      | `workflow`, `storedWorkflow` (`null` for a create), `projectId`                          |
 | `workflowPublish`   | `WorkflowPublishContext`   | `workflow`, `projectId`                                                                  |
-| `executionAdmission` | `ExecutionAdmissionContext` | `artifactKind`, `artifactId`, `artifactName`, `projectId`, `mode`, `source` (`null` for a regular run), `engine` (`v1` or `v2`) |
+| `executionAdmission` | `ExecutionAdmissionContext` | `artifact` (`kind`, `id`, `name`), `projectId`, `mode`, `source` (`null` for a regular run), `engine` (`v1` or `v2`) |
 | `workflowStart`     | `WorkflowStartContext`     | `workflow`, `projectId`                                                                  |
 | `workflowTransfer`  | `WorkflowTransferContext`  | `workflow`, `targetProjectId` — the project it moves _into_, whose policy applies        |
 | `credentialSave`    | `CredentialSaveContext`    | `credential`, `storedCredential` (`null` for a create), `projectId`                      |
@@ -155,7 +155,7 @@ package, a source-control pull skips and reports the workflow.
 
 An agent has no enforcement point of its own. It goes through the workflow
 points, so every check that reads `nodes` covers agents with no change.
-`executionAdmission` covers agent runs with `artifactKind: 'agent'`.
+`executionAdmission` covers agent runs with `artifact.kind: 'agent'`.
 
 - **An agent is a `PolicedWorkflow` with `artifactKind: 'agent'`.** Its `nodes`
   are its node tools, one node each, built by `toPolicedNodes` in

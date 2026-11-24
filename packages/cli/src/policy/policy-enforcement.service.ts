@@ -130,8 +130,8 @@ export class PolicyEnforcementService {
 		actor: PolicyActor,
 	): Promise<PolicyCleared<'executionAdmission'>> {
 		return await this.enforce('executionAdmission', context, actor, {
-			type: context.artifactKind,
-			id: context.artifactId,
+			type: context.artifact.kind,
+			id: context.artifact.id,
 		});
 	}
 

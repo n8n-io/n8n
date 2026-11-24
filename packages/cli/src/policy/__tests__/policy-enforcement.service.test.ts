@@ -28,9 +28,7 @@ const violation: PolicyViolation = {
 const cleared: PolicyDecision = { violations: [] };
 
 const admissionContext: ExecutionAdmissionContext = {
-	artifactKind: 'workflow',
-	artifactId: 'wf-1',
-	artifactName: 'My workflow',
+	artifact: { kind: 'workflow', id: 'wf-1', name: 'My workflow' },
 	projectId: 'proj-1',
 	mode: 'webhook',
 	source: null,
@@ -489,7 +487,11 @@ describe('PolicyEnforcementService', () => {
 
 		it('binds an execution admission for an agent to its id as an agent subject', async () => {
 			const token = await service.enforceExecutionAdmission(
-				{ ...admissionContext, artifactKind: 'agent', artifactId: 'agent-1', mode: 'agent' },
+				{
+					...admissionContext,
+					artifact: { kind: 'agent', id: 'agent-1', name: 'Support agent' },
+					mode: 'agent',
+				},
 				{ kind: 'system', reason: 'execution' },
 			);
 

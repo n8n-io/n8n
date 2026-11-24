@@ -123,13 +123,13 @@ function targetOf(context: AnyPolicyContext) {
 		};
 	}
 
-	// An admission names the artifact itself: it has no nodes and no stored version.
-	if ('artifactKind' in context) {
-		const { artifactKind, artifactId, artifactName, projectId } = context;
+	// A reference has no stored version, so its id is always the committed one.
+	if ('artifact' in context) {
+		const { artifact, projectId } = context;
 
-		return artifactKind === 'agent'
-			? { agentId: artifactId, agentName: artifactName, projectId }
-			: { workflowId: artifactId, workflowName: artifactName, projectId };
+		return artifact.kind === 'agent'
+			? { agentId: artifact.id, agentName: artifact.name, projectId }
+			: { workflowId: artifact.id, workflowName: artifact.name, projectId };
 	}
 
 	const projectId = 'targetProjectId' in context ? context.targetProjectId : context.projectId;

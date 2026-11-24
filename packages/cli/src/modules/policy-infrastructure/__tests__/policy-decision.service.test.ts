@@ -208,9 +208,7 @@ class StartOnlyCheck implements RegisteredPolicyCheck {
 }
 
 const admissionContext: ExecutionAdmissionContext = {
-	artifactKind: 'workflow',
-	artifactId: 'wf-1',
-	artifactName: 'Billing sync',
+	artifact: { kind: 'workflow', id: 'wf-1', name: 'Billing sync' },
 	projectId: 'proj-1',
 	mode: 'webhook',
 	source: null,
@@ -825,9 +823,7 @@ describe('PolicyDecisionService', () => {
 			const { service, audit } = auditedServiceWith(AdmissionCheck);
 			const agentContext: ExecutionAdmissionContext = {
 				...admissionContext,
-				artifactKind: 'agent',
-				artifactId: 'agent-1',
-				artifactName: 'Support agent',
+				artifact: { kind: 'agent', id: 'agent-1', name: 'Support agent' },
 				mode: 'agent',
 			};
 

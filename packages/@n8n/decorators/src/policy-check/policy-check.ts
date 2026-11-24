@@ -78,6 +78,13 @@ export type WorkflowPublishContext = {
 	readonly projectId: string | null;
 };
 
+/** A workflow or an agent named by reference, without its nodes. */
+export type PolicedArtifactRef = {
+	readonly kind: PolicedArtifactKind;
+	readonly id: string;
+	readonly name: string;
+};
+
 /** Which engine runs the execution. */
 export type ExecutionEngine = 'v1' | 'v2';
 
@@ -86,9 +93,7 @@ export type ExecutionEngine = 'v1' | 'v2';
  * the shared counting rules. There are no nodes: a check here must read memory only.
  */
 export type ExecutionAdmissionContext = {
-	readonly artifactKind: PolicedArtifactKind;
-	readonly artifactId: string;
-	readonly artifactName: string;
+	readonly artifact: PolicedArtifactRef;
 	/** `null` when the artifact has no owner project. */
 	readonly projectId: string | null;
 	readonly mode: WorkflowExecuteMode;
