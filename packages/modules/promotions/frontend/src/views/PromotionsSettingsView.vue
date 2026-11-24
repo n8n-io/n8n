@@ -11,6 +11,7 @@ import {
 	N8nEmptyState,
 	N8nEnterpriseReadinessBadge,
 	N8nExternalLink,
+	N8nIcon,
 	N8nLoading2,
 	N8nPreviewBadge,
 	N8nSettingsLayout,
@@ -32,7 +33,6 @@ import { I18nT } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
-import PromotionDirectionTitle from '../components/PromotionDirectionTitle.vue';
 import PromotionEnvironmentCard from '../components/PromotionEnvironmentCard.vue';
 import { useInstanceProtection } from '../composables/useInstanceProtection';
 import { usePromotionCheckout } from '../composables/usePromotionCheckout';
@@ -49,6 +49,7 @@ import {
 	fetchPromotionEnvironments,
 	type PromotionEnvironment,
 } from '../promotionsSettings.api';
+import { promotionDirectionIcon } from '../promotionsSettings.utils';
 
 const i18n = useI18n();
 const toast = useToast();
@@ -229,7 +230,18 @@ async function remove(environment: PromotionEnvironment) {
 						<div v-else :class="[$style.column, $style.emptyColumn]">
 							<N8nSettingsRow :show-divider="false">
 								<template #info>
-									<PromotionDirectionTitle :direction="direction" />
+									<div
+										:style="{ display: 'flex', alignItems: 'center', gap: 'var(--spacing--2xs)' }"
+									>
+										<N8nIcon
+											:icon="promotionDirectionIcon[direction]"
+											color="text-dark"
+											size="small"
+										/>
+										<N8nText bold size="medium" color="text-dark">
+											{{ i18n.baseText(`settings.promotions.environments.${direction}.title`) }}
+										</N8nText>
+									</div>
 								</template>
 							</N8nSettingsRow>
 							<div :class="$style.empty">
