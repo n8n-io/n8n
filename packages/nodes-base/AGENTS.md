@@ -37,6 +37,49 @@ Common parameter types:
 
 Use `displayOptions` to show/hide fields based on other parameters. Use `noDataExpression: true` for resource/operation selectors.
 
+### Keyset paging on a relational Select
+
+A relational node that pages a read operation uses a keyset cursor, never `OFFSET`.
+`OFFSET` counts from the start of the result on every call, so a table written to
+while it is being paged shifts rows under the reader and a row can be skipped or
+returned twice.
+
+Use the helpers in `utils/sql-keyset-paging.ts`. MySQL's Select is the reference
+to copy. Postgres still has older copies of its own, so do not copy from it.
+
+- **Start After**, parameter name `startAfter`, a `fixedCollection` holding Column
+  and Value. Shown when Return All is off. Gate on `'@version'` only if an older
+  version outputs a column type differently, as Postgres does for DATE below 2.7.
+  If you gate, put `'@version'` first in `show`: when a show value is an
+  expression, n8n displays the field and skips every later key. The existing Limit
+  is the page size.
+- An empty Value is the first page: no predicate, Limit rows, ordered by Column.
+  Empty text in Column looks the same, so when the Value is empty the node looks
+  for a row holding empty text with an index lookup and stops with a
+  `NodeOperationError`. Oracle stores empty text as NULL, so a NOT NULL column
+  never has it and Oracle does not need the check.
+- Column must appear in Output Columns, or Output Columns must be `*`, otherwise
+  the next page has no value to resume from.
+- A Value that is set adds `Column > :value` to the WHERE clause, bound through the
+  engine's own parameter binding and never concatenated. The node's other conditions
+  go in brackets before it, so an `OR` cannot match rows of an earlier page.
+- Column is the first sort key. With no Sort rules the node sorts by Column
+  ascending. A Sort rule before Column is rejected with a `NodeOperationError`,
+  because it changes the order and pages then skip rows. Appending Column as the
+  last key lost 800 of 1,000 rows on Postgres.
+- If the first Sort rule is Column DESC, the comparison flips to `Column < :value`
+  and the pages run from the biggest value down.
+- Column must be unique on its own and never null. A unique index over more than one
+  column, with a WHERE condition, or on an expression does not count. Anything else
+  is rejected with a `NodeOperationError` naming the column: `>` on a repeated value
+  drops the rows that share it, and a NULL never comes after a value.
+- A column whose output value the node changes, by rounding, by time zone or by
+  returning an object, is rejected, because the next Value would not match the
+  stored value.
+
+A node that cannot meet this shape records why in its own code rather than
+inventing a second shape.
+
 ## Versioning
 
 - **Light versioning**: Use version arrays in description: `version: [3, 3.1, 3.2]`

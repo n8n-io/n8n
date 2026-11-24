@@ -31,12 +31,18 @@ export class ExecutionLimitsModule implements ModuleInterface {
 	}
 
 	async entities() {
+		const { ExecutionLimitAudit } = await import('./execution-limit-audit.entity.js');
 		const { ExecutionLimitInstanceUsage } = await import(
 			'./execution-limit-instance-usage.entity.js'
 		);
 		const { ExecutionLimitUsage } = await import('./execution-limit-usage.entity.js');
 		const { ProjectExecutionLimit } = await import('./project-execution-limit.entity.js');
 
-		return [ProjectExecutionLimit, ExecutionLimitUsage, ExecutionLimitInstanceUsage];
+		return [
+			ProjectExecutionLimit,
+			ExecutionLimitUsage,
+			ExecutionLimitInstanceUsage,
+			ExecutionLimitAudit,
+		];
 	}
 }

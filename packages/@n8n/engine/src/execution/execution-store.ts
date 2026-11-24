@@ -58,6 +58,21 @@ export interface StaleQueuedExecution {
 	staleAfter: Date;
 }
 
+/** An ended execution that the retention sweep can delete. */
+export interface PrunableExecution {
+	id: string;
+	workflowId: string;
+	finishedAt: Date;
+}
+
+export interface PrunableExecutionQuery {
+	/** Select only executions that ended more than this long ago. */
+	maxAgeMs: number;
+	limit: number;
+	/** The last row of the previous batch. The result starts after it. */
+	after?: Pick<PrunableExecution, 'id' | 'finishedAt'>;
+}
+
 /** Thrown by `loadExecution` when no execution exists for the given id. */
 export class ExecutionNotFoundError extends Error {
 	constructor(readonly executionId: string) {
@@ -162,4 +177,20 @@ export interface ExecutionStore {
 	 * `running` or `waiting`. A cancel cascades through them.
 	 */
 	loadLiveSubExecutionIds(parentExecutionId: string): Promise<string[]>;
+
+	/**
+	 * The ended executions that finished more than `maxAgeMs` ago, oldest first
+	 * by finish time and id, at most `limit`. The database clock sets the
+	 * cut-off. It skips an execution that still has a step that has not
+	 * settled, and an awaited sub-execution whose parent step still waits. A
+	 * plain read: it locks no row.
+	 */
+	findPrunableExecutions(query: PrunableExecutionQuery): Promise<PrunableExecution[]>;
+
+	/**
+	 * Deletes the given executions that have ended, with their step rows and
+	 * seeded rows. It skips an execution that has not ended. Returns the number
+	 * of executions it deleted.
+	 */
+	deleteEndedExecutions(ids: string[]): Promise<number>;
 }

@@ -60,7 +60,18 @@ the Assistant's text. In a long thread it sees the newest messages. From the
 part before them it sees only what the user wrote, up to a budget of messages
 and characters. A limit that the user set there stays in view while it fits
 the budget. A note tells the judge when older messages are left out. Of a long
-message it sees only the end.
+message it sees only the end. `pnpm eval:approval-judge` measures the judge on
+a directory of cases (see the evaluations README).
+
+The trace of a run shows the mode as `approval_mode` in the metadata of its
+root run and its `agent: orchestrator` run: `manual`, `auto`, or `unavailable`
+when the flag is off. In Auto, each reviewed approval adds an `approval: review`
+run to the trace, with the tag `approval-review`. Its metadata has `tool_name`,
+`approval_route` (`always-ask`, `low-risk` or `judge`), `approval_decision`
+(`approve` or `ask`), `approval_decided_by` (`rule` or `judge`),
+`approval_judge_failed`, and `tool_call_id` when the call has one. Its output
+adds `approval_reason`. A decision that the judge model made also has its
+`llm: approval-judge` run. A review that failed before the model call has none.
 
 ### Approval copy
 
@@ -108,7 +119,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `eval-config` | 6 |
 | `n8n-docs` | 3 |
 | `agent-context` | 13 lookup types |
-| `skills` | 5 |
+| `skills` | 5 (8 when Skill Sync is on) |
 | `apps` | 6 |
 | `workflow_builder_build_workflow`, `ask_user`, `parse-file`, `import-files`, `search_models`, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node` | single-purpose |
 
@@ -1096,7 +1107,7 @@ so the agent can pass a node it is building verbatim:
 | `config.parameters` | object | yes | Same shape as workflow-sdk `NodeConfig.parameters` |
 | `config.credentials` | object | no | Resolved credential references `{ id, name }` by credential type; n8n Connect managed credentials use `{ id: null, name, __aiGatewayManaged: true }` |
 | `input` | array | no | Input items `{ json }` (defaults to one empty item) |
-| `timeoutMs` | number | no | Max execution time, capped at 60s |
+| `timeoutMs` | number | no | Max execution time (default 30s, max 10 min). `EXECUTIONS_TIMEOUT_MAX` can lower the max |
 
 **Returns**: `{ status: 'success', output }` or
 `{ status: 'error', error: { message, description?, nodeErrorType? } }`. The
@@ -1479,6 +1490,40 @@ carries *what* it does.
 
 ---
 
+## `send_feedback` *(conditional)*
+
+Send a short report to the n8n team when the agent is not sure how to do
+something, a tool or n8n behaves wrong, or n8n cannot do what the user needs.
+Present when the adapter wires `agentFeedbackService` and the instance shares
+data (`allowSendingParameterValues` is not `false`). The CLI adapter wires the
+service only when telemetry is on (`N8N_DIAGNOSTICS_ENABLED`), because the report
+goes out only as a telemetry event. The report is agent-written text, so the
+tool is not registered when data sharing is off. When the tool is absent, the
+system prompt omits the feedback section too.
+Always loaded, because the agent needs it at the moment it is stuck.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `category` | `'unsure' \| 'bug' \| 'missing_capability' \| 'confusing_tool' \| 'other'` | yes | What kind of problem it is |
+| `severity` | `'blocked' \| 'workaround' \| 'minor'` | yes | How much the problem affected the task |
+| `summary` | string | yes | The goal, what the agent tried, and where it got stuck. The CLI adapter redacts it, then cuts it to 1,000 characters |
+| `toolName` | string | no | The tool that the report is about |
+
+The tool does not suspend and nothing replies. It always returns
+`{ ok: true, message }`, and the message tells the agent to continue. A run
+sends at most 3 reports. Later calls return the same result and send nothing.
+A resume rebuilds the agent and starts a new count.
+
+The CLI adapter tracks the `AI Assistant sent feedback` telemetry event. It
+removes secrets and personal data from the summary and the tool name before it
+cuts them, so a secret that crosses the cut is still found. LangSmith records the
+call as a normal tool span, so traces show the reports too.
+
+The system prompt carries the judgment of *when* to call it (see
+`getFeedbackSection` in `agent/system-prompt.ts`).
+
+---
+
 ## `apps` *(conditional)*
 
 Build n8n Apps. Present only when the apps module is active, the run has a
@@ -1666,6 +1711,15 @@ a `delete` that the user has no permission for, before it asks for approval.
 For `update`, pass the `skillHash` that `get` returns as `baseSkillHash`. The
 tool marks its output as untrusted data, because other users can write skill
 content. The tool does not attach a skill to an Agent.
+
+When Skill Sync is on, `list-sources` lists visible sources and their update
+counts. `discover-source` previews a public GitHub link and reports the check
+verdict for each skill. `import-from-source` connects the source and imports the
+selected skills that pass. The result lists the other selected skills in
+`failed`. The backend checks the selection first, so the approval card names the
+skills that come in. A selection with no skill that can come in is refused
+before the card. The import checks the source revision again before writing. Use **Settings > Context > Skills** for
+private repositories, warning review, and update acceptance.
 
 ## MCP Registry Tool
 

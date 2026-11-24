@@ -104,6 +104,7 @@ erDiagram
   text userMessage
 }
 "public.agent_background_job" {
+  integer callerExecutionId FK
   varchar_36_ childExecutionId
   varchar_128_ childThreadId
   timestamp_3__with_time_zone createdAt
@@ -115,6 +116,7 @@ erDiagram
   varchar_36_ parentAgentId FK
   varchar_64_ parentPrincipalHash
   varchar_255_ parentResourceId
+  varchar_128_ parentRunId
   varchar_128_ parentThreadId
   uuid pauseRequestId
   uuid planId FK

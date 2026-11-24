@@ -1,5 +1,7 @@
 import {
+	AGENT_SKILL_DESCRIPTION_MAX_LENGTH,
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
+	AGENT_SKILL_NAME_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
 	AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH,
@@ -68,59 +70,125 @@ describe('SkillSecurityScanner', () => {
 			expect(result.verdict).toBe('blocked');
 			expect(result.findings.map((finding) => finding.rule)).toEqual(['invalid_skill']);
 		});
+
+		it.each([
+			{ case: 'name', content: skill({ name: '   ' }), detail: 'The name is empty.' },
+			{
+				case: 'description',
+				content: skill({ description: ' ' }),
+				detail: 'The description is empty.',
+			},
+			{
+				case: 'reference file',
+				content: skill({ files: [{ path: 'references/a.md', content: '' }] }),
+				detail: 'The reference file is empty.',
+			},
+		])('says that the $case is empty in its own words', ({ content, detail }) => {
+			expect(scanner.scan(fetched(content)).findings).toEqual([
+				expect.objectContaining({ rule: 'invalid_skill', detail }),
+			]);
+		});
 	});
 
 	describe('rule over_limit: content over the size limits', () => {
-		it.each([
+		const references = (count: number, length: number) =>
+			Array.from({ length: count }, (_, index) => ({
+				path: `references/${index}.md`,
+				content: 'a'.repeat(length),
+			}));
+		const longPath = (length: number) => `references/${'a'.repeat(length - 14)}.md`;
+		const frontmatter = (length: number) => ({
+			// The JSON adds `{"notes":""}` around the value.
+			notes: 'a'.repeat(length - 12),
+		});
+		const limits = [
 			{
-				case: 'instructions over the limit',
-				content: skill({ instructions: 'a'.repeat(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH + 1) }),
+				field: 'name',
+				max: AGENT_SKILL_NAME_MAX_LENGTH,
 				file: 'SKILL.md',
+				content: (size: number) => skill({ name: 'a'.repeat(size) }),
+				detail: 'The name can have at most 128 characters. It has 129 characters.',
 			},
 			{
-				case: 'too many reference files',
-				content: skill({
-					files: Array.from({ length: AGENT_SKILL_REFERENCE_MAX_COUNT + 1 }, (_, index) => ({
-						path: `references/${index}.md`,
-						content: 'a',
-					})),
-				}),
+				field: 'description',
+				max: AGENT_SKILL_DESCRIPTION_MAX_LENGTH,
 				file: 'SKILL.md',
+				content: (size: number) => skill({ description: 'a'.repeat(size) }),
+				detail: 'The description can have at most 1024 characters. It has 1025 characters.',
 			},
 			{
-				case: 'a reference file over the limit',
-				content: skill({
-					files: [
-						{
-							path: 'references/big.md',
-							content: 'a'.repeat(AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH + 1),
-						},
-					],
-				}),
-				file: 'references/big.md',
-			},
-			{
-				case: 'reference files over the total limit',
-				content: skill({
-					files: Array.from({ length: 5 }, (_, index) => ({
-						path: `references/${index}.md`,
-						content: 'a'.repeat(AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH / 4),
-					})),
-				}),
+				field: 'instructions',
+				max: AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 				file: 'SKILL.md',
+				content: (size: number) => skill({ instructions: 'a'.repeat(size) }),
+				detail: 'The instructions can have at most 65536 characters. They have 65537 characters.',
 			},
 			{
-				case: 'frontmatter over the limit',
-				content: skill({ frontmatter: { notes: 'a'.repeat(16_384) } }),
+				field: 'frontmatter',
+				max: 16_384,
 				file: 'SKILL.md',
+				content: (size: number) => skill({ frontmatter: frontmatter(size) }),
+				detail:
+					'The frontmatter can have at most 16384 characters as JSON. It has 16385 characters.',
 			},
-		])('blocks $case', ({ content, file }) => {
-			const result = scanner.scan(fetched(content));
+			{
+				field: 'referenceCount',
+				max: AGENT_SKILL_REFERENCE_MAX_COUNT,
+				file: 'SKILL.md',
+				content: (size: number) => skill({ files: references(size, 1) }),
+				detail: 'A skill can have at most 20 reference files. It has 21 files.',
+			},
+			{
+				field: 'referencePath',
+				max: 512,
+				file: longPath(513),
+				content: (size: number) => skill({ files: [{ path: longPath(size), content: 'a' }] }),
+				detail:
+					'The path of a reference file can have at most 512 characters. It has 513 characters.',
+			},
+			{
+				field: 'referenceContent',
+				max: AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
+				file: 'references/0.md',
+				content: (size: number) => skill({ files: references(1, size) }),
+				detail: 'A reference file can have at most 65536 characters. It has 65537 characters.',
+			},
+			{
+				field: 'referencesTotal',
+				max: AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH,
+				file: 'SKILL.md',
+				content: (size: number) =>
+					skill({
+						files: [
+							...references(4, AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH / 4 - 1),
+							{
+								path: 'references/last.md',
+								content: 'a'.repeat(size + 4 - AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH),
+							},
+						],
+					}),
+				detail:
+					'The reference files can have at most 262144 characters in total. They have 262145 characters.',
+			},
+		] as const;
+
+		it.each(limits)('blocks $field over the limit', ({ field, max, file, content, detail }) => {
+			const result = scanner.scan(fetched(content(max + 1)));
 
 			expect(result.verdict).toBe('blocked');
 			expect(result.findings).toEqual([
-				expect.objectContaining({ rule: 'over_limit', severity: 'blocked', file }),
+				{
+					rule: 'over_limit',
+					severity: 'blocked',
+					file,
+					detail,
+					limit: { field, max, current: max + 1 },
+				},
 			]);
+		});
+
+		it.each(limits)('accepts $field at the limit', ({ max, content }) => {
+			expect(scanner.scan(fetched(content(max)))).toEqual({ verdict: 'pass', findings: [] });
 		});
 	});
 
