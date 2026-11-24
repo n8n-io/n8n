@@ -13,7 +13,9 @@ const MAX_TIMER_DELAY_MS = 2 ** 31 - 1;
 export interface ExecutionRetentionPolicy {
 	/** Delete an execution that ended more than this long ago. */
 	maxAgeMs: number;
-	/** Delete an ended execution that is not among the newest this many. `0` or none: no limit. */
+	/**
+	 * Delete an ended execution that is not among the newest this many. `0` or unset gives no limit.
+	 */
 	maxCount?: number;
 	/** The time from the end of one pass to the start of the next. Defaults to an hour. */
 	intervalMs?: number;
