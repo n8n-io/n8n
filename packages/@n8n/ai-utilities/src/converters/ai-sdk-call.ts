@@ -60,7 +60,7 @@ export function bindCallTools(
 }
 
 /** Converts the sampling settings of an AI SDK call into a chat model config. */
-export function toChatModelConfig(options: LanguageModelV4CallOptions): {
+export function fromAiSdkCallOptions(options: LanguageModelV4CallOptions): {
 	config: ChatModelConfig;
 	warnings: SharedV4Warning[];
 } {
@@ -86,12 +86,12 @@ export function toChatModelConfig(options: LanguageModelV4CallOptions): {
 	return { config, warnings };
 }
 
-export function toFinishReason(reason: FinishReason | undefined): LanguageModelV4FinishReason {
+export function toAiSdkFinishReason(reason: FinishReason | undefined): LanguageModelV4FinishReason {
 	// The chat model contract only carries the unified reason.
 	return { unified: reason ?? 'other', raw: undefined };
 }
 
-export function toUsage(usage: TokenUsage | undefined): LanguageModelV4Usage {
+export function toAiSdkUsage(usage: TokenUsage | undefined): LanguageModelV4Usage {
 	const raw = usage?.additionalMetadata;
 	const cacheRead = usage?.inputTokenDetails?.cacheRead;
 	const reasoning = usage?.outputTokenDetails?.reasoning;

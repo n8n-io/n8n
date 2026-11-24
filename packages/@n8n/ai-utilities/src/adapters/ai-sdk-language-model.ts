@@ -10,14 +10,14 @@ import { raceAbort } from '@n8n/utils/race-abort';
 import { AiSdkStreamConverter } from './ai-sdk-stream';
 import {
 	bindCallTools,
-	toChatModelConfig,
-	toFinishReason,
-	toUsage,
+	fromAiSdkCallOptions,
+	toAiSdkFinishReason,
+	toAiSdkUsage,
 } from '../converters/ai-sdk-call';
 import {
-	fromChatModelMessage,
-	toChatModelMessages,
-	toProviderMetadata,
+	toAiSdkContent,
+	fromAiSdkPrompt,
+	toAiSdkProviderMetadata,
 } from '../converters/ai-sdk-message';
 import type { ChatModel } from '../types/chat-model';
 
@@ -59,10 +59,10 @@ export class AiSdkLanguageModelAdapter implements LanguageModelV4 {
 		const result = await model.generate(messages, config);
 
 		return {
-			content: fromChatModelMessage(result.message, this.provider),
-			finishReason: toFinishReason(result.finishReason),
-			usage: toUsage(result.usage),
-			providerMetadata: toProviderMetadata(this.provider, result.providerMetadata),
+			content: toAiSdkContent(result.message, this.provider),
+			finishReason: toAiSdkFinishReason(result.finishReason),
+			usage: toAiSdkUsage(result.usage),
+			providerMetadata: toAiSdkProviderMetadata(this.provider, result.providerMetadata),
 			response: { id: result.id, modelId: this.modelId },
 			warnings,
 		};
@@ -145,8 +145,8 @@ export class AiSdkLanguageModelAdapter implements LanguageModelV4 {
 
 	private prepareCall(options: LanguageModelV4CallOptions) {
 		const { model, warnings } = bindCallTools(this.chatModel, options);
-		const { config, warnings: configWarnings } = toChatModelConfig(options);
-		const prompt = toChatModelMessages(options.prompt, this.provider);
+		const { config, warnings: configWarnings } = fromAiSdkCallOptions(options);
+		const prompt = fromAiSdkPrompt(options.prompt, this.provider);
 
 		return {
 			model,

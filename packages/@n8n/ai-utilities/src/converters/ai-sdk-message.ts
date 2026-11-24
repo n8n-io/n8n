@@ -19,9 +19,9 @@ type PromptPart = Exclude<LanguageModelV4Message['content'], string>[number];
 /**
  * Converts an AI SDK prompt into the messages a chat model takes. The provider
  * options of a part become the metadata of its block, so the metadata that
- * `fromChatModelMessage` sent out comes back to the chat model.
+ * `toAiSdkContent` sent out comes back to the chat model.
  */
-export function toChatModelMessages(
+export function fromAiSdkPrompt(
 	prompt: LanguageModelV4Prompt,
 	provider: string,
 ): {
@@ -39,7 +39,7 @@ export function toChatModelMessages(
 
 		const content: MessageContent[] = [];
 		for (const part of message.content) {
-			const block = toMessageContent(part, warnings);
+			const block = fromAiSdkPart(part, warnings);
 			const providerMetadata = part.providerOptions?.[provider];
 			if (block) content.push(providerMetadata ? { ...block, providerMetadata } : block);
 		}
@@ -51,17 +51,14 @@ export function toChatModelMessages(
 	return { messages, warnings };
 }
 
-function toMessageContent(
-	part: PromptPart,
-	warnings: SharedV4Warning[],
-): MessageContent | undefined {
+function fromAiSdkPart(part: PromptPart, warnings: SharedV4Warning[]): MessageContent | undefined {
 	switch (part.type) {
 		case 'text':
 			return { type: 'text', text: part.text };
 		case 'reasoning':
 			return { type: 'reasoning', text: part.text };
 		case 'file': {
-			const data = toChatModelFileData(part.data, warnings);
+			const data = fromAiSdkFileData(part.data, warnings);
 			return data === undefined ? undefined : { type: 'file', mediaType: part.mediaType, data };
 		}
 		case 'reasoning-file':
@@ -78,14 +75,14 @@ function toMessageContent(
 				input: JSON.stringify(part.input ?? {}),
 			};
 		case 'tool-result':
-			return toToolResultContent(part.toolCallId, part.output);
+			return fromAiSdkToolResult(part.toolCallId, part.output);
 		case 'tool-approval-response':
 			warnings.push({ type: 'unsupported', feature: 'tool approval response' });
 			return undefined;
 	}
 }
 
-function toChatModelFileData(
+function fromAiSdkFileData(
 	data: SharedV4FileData,
 	warnings: SharedV4Warning[],
 ): string | Uint8Array | undefined {
@@ -103,7 +100,7 @@ function toChatModelFileData(
 	}
 }
 
-function toToolResultContent(
+function fromAiSdkToolResult(
 	toolCallId: string,
 	output: LanguageModelV4ToolResultOutput,
 ): ContentToolResult {
@@ -157,7 +154,7 @@ function toJsonFileData(data: SharedV4FileData): JSONValue {
 }
 
 /** Converts a generated chat model message into AI SDK content parts. */
-export function fromChatModelMessage(message: Message, provider: string): LanguageModelV4Content[] {
+export function toAiSdkContent(message: Message, provider: string): LanguageModelV4Content[] {
 	// A chat model tool result carries no tool name. Take it from the tool call
 	// with the same id in the same message.
 	const toolNames = new Map<string, string>();
@@ -171,7 +168,7 @@ export function fromChatModelMessage(message: Message, provider: string): Langua
 
 	const content: LanguageModelV4Content[] = [];
 	for (const block of message.content) {
-		const part = fromMessageContent(block, toolNames, provider);
+		const part = toAiSdkContentPart(block, toolNames, provider);
 		if (part?.type === 'tool-call' && toolResultIds.has(part.toolCallId)) {
 			// The model produced the result itself, so the caller must not run the tool.
 			content.push({ ...part, providerExecuted: true });
@@ -182,12 +179,12 @@ export function fromChatModelMessage(message: Message, provider: string): Langua
 	return content;
 }
 
-function fromMessageContent(
+function toAiSdkContentPart(
 	block: MessageContent,
 	toolNames: Map<string, string>,
 	provider: string,
 ): LanguageModelV4Content | undefined {
-	const providerMetadata = toProviderMetadata(provider, block.providerMetadata);
+	const providerMetadata = toAiSdkProviderMetadata(provider, block.providerMetadata);
 
 	switch (block.type) {
 		case 'text':
@@ -280,7 +277,7 @@ function toJsonValue(value: unknown): NonNullable<JSONValue> | undefined {
  * Chat model metadata is a flat record that belongs to the chat model. The AI
  * SDK keys metadata by provider, so the record goes under the provider name.
  */
-export function toProviderMetadata(
+export function toAiSdkProviderMetadata(
 	provider: string,
 	metadata: Record<string, unknown> | undefined,
 ): SharedV4ProviderMetadata | undefined {

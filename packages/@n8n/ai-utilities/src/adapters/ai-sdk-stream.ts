@@ -7,8 +7,8 @@ import type {
 import { UserError } from '@n8n/errors';
 import { randomUUID } from 'node:crypto';
 
-import { toFinishReason, toUsage } from '../converters/ai-sdk-call';
-import { fromChatModelMessage, toProviderMetadata } from '../converters/ai-sdk-message';
+import { toAiSdkFinishReason, toAiSdkUsage } from '../converters/ai-sdk-call';
+import { toAiSdkContent, toAiSdkProviderMetadata } from '../converters/ai-sdk-message';
 import type { MessageContent } from '../types/message';
 import type { FinishReason, StreamChunk, TokenUsage } from '../types/output';
 
@@ -86,7 +86,7 @@ export class AiSdkStreamConverter {
 
 	convert(chunk: StreamChunk): LanguageModelV4StreamPart[] {
 		const { phase } = this;
-		const providerMetadata = toProviderMetadata(this.provider, chunk.providerMetadata);
+		const providerMetadata = toAiSdkProviderMetadata(this.provider, chunk.providerMetadata);
 		switch (phase.kind) {
 			case 'streaming':
 				return chunk.type === 'finish'
@@ -287,7 +287,7 @@ export class AiSdkStreamConverter {
 		);
 		const parts: LanguageModelV4StreamPart[] = [];
 
-		for (const part of fromChatModelMessage(
+		for (const part of toAiSdkContent(
 			{ role: 'assistant', content: [withChunkMetadata] },
 			this.provider,
 		)) {
@@ -363,7 +363,7 @@ export class AiSdkStreamConverter {
 			toolCallId: state.id,
 			toolName: state.name,
 			input: state.input || '{}',
-			providerMetadata: toProviderMetadata(this.provider, state.metadata),
+			providerMetadata: toAiSdkProviderMetadata(this.provider, state.metadata),
 		});
 		return [{ type: 'tool-input-end', id: state.id }];
 	}
@@ -378,8 +378,8 @@ export class AiSdkStreamConverter {
 		this.phase = { kind: 'ended' };
 		return {
 			type: 'finish',
-			finishReason: toFinishReason(this.failed ? 'error' : finish.reason),
-			usage: toUsage(finish.usage),
+			finishReason: toAiSdkFinishReason(this.failed ? 'error' : finish.reason),
+			usage: toAiSdkUsage(finish.usage),
 			providerMetadata: finish.providerMetadata,
 		};
 	}
