@@ -47,6 +47,7 @@ export class KnowledgeModule implements ModuleInterface {
 		});
 
 		await import('./collections/knowledge-collections.controller.js');
+		await import('./collections/knowledge-collection-files.controller.js');
 		await import('./collections/knowledge-collection-list.controller.js');
 	}
 

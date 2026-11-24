@@ -36,6 +36,25 @@ const mergeIntoObject = arrayExtensions.functions.mergeIntoObject as (
 	extraArgs: unknown[][],
 ) => Record<string, unknown>;
 
+const pluck = arrayExtensions.functions.pluck as (
+	value: unknown[],
+	extraArgs: unknown[],
+) => unknown[];
+
+describe('pluck', () => {
+	it('should return the values of several fields in the key order of each item', () => {
+		const people = [
+			{ lastName: 'Doe', firstName: 'John' },
+			{ firstName: 'Jane', lastName: 'Roe' },
+		];
+
+		expect(pluck(people, ['firstName', 'lastName'])).toEqual([
+			['Doe', 'John'],
+			['Jane', 'Roe'],
+		]);
+	});
+});
+
 describe('smartJoin', () => {
 	it('should join own key and value fields', () => {
 		expect(

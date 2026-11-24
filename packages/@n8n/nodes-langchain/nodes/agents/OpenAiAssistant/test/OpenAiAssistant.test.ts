@@ -1,6 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/unbound-method */
+import { AgentExecutor } from '@langchain/classic/agents';
 import { aiClientFetch } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
@@ -98,6 +99,20 @@ describe('OpenAiAssistant', () => {
 					fetch: mockedAiClientFetch,
 				}),
 			);
+		});
+
+		it('should abort the signal of a failed run', async () => {
+			const ctx = setupMockContext();
+			const invoke = vi.fn().mockRejectedValue(new Error('A tool failed'));
+			vi.mocked(AgentExecutor.fromAgentAndTools).mockReturnValueOnce({
+				withConfig: vi.fn().mockReturnValue({ invoke }),
+			} as never);
+
+			await expect(node.execute.call(ctx)).rejects.toThrow('A tool failed');
+
+			const [chainValues, config] = invoke.mock.calls[0] as Array<{ signal: AbortSignal }>;
+			expect(chainValues.signal.aborted).toBe(true);
+			expect(config.signal).toBe(chainValues.signal);
 		});
 	});
 });
