@@ -5,6 +5,7 @@ import { NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import {
+	ITEM_PROPFIND_BODY,
 	nextCloudApiRequest,
 	outputPath,
 	readMultistatus,
@@ -76,11 +77,6 @@ const displayOptions = {
 };
 
 export const description = updateDisplayOptions(displayOptions, properties);
-
-const PROPFIND_BODY = `<?xml version="1.0"?>
-<d:propfind xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns" xmlns:nc="http://nextcloud.org/ns">
-  <d:prop><oc:fileid/><d:getetag/><d:getlastmodified/><d:getcontentlength/><d:getcontenttype/><d:resourcetype/><nc:upload_time/></d:prop>
-</d:propfind>`;
 
 export function nameWithTimestamp(fileName: string, date: Date) {
 	// Windows file names cannot contain colons
@@ -190,7 +186,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<IData
 				this,
 				'PROPFIND',
 				requestPath`${folder}/${writtenName}`,
-				PROPFIND_BODY,
+				ITEM_PROPFIND_BODY,
 				{ 'Content-Type': 'application/xml', Depth: '0' },
 			),
 		);
