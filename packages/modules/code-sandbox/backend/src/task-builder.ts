@@ -13,13 +13,10 @@ import {
 	type ITaskDataConnections,
 } from 'n8n-workflow';
 
-/** The default limit of the code daemon. */
+/** The default max input size of the code daemon. */
 export const MAX_TASK_INPUT_BYTES = 64 * 1024 * 1024;
 
-/**
- * Empties the queue of nodes that wait to run. The code cannot read it,
- * and it can hold the input of each queued node.
- */
+/** Drops the execution stack and the waiting data, which the code cannot read, to keep `task.json` small. */
 function toTaskRunExecutionData(runExecutionData: IRunExecutionData): IRunExecutionData {
 	const { executionData } = runExecutionData;
 
@@ -50,7 +47,7 @@ function toChunkInputData(
 }
 
 function toTaskData(request: CodeTaskRequest): unknown {
-	const { workflow, additionalData } = request;
+	const { workflow } = request;
 
 	return {
 		workflow: {
@@ -73,31 +70,17 @@ function toTaskData(request: CodeTaskRequest): unknown {
 		siblingParameters: request.siblingParameters,
 		mode: request.mode,
 		envProviderState: request.envProviderState,
-		// The Code node always uses the latest run, no self data, and its own node as context
+		// -1 selects the last run of a node in `$('Node')`
 		defaultReturnRunIndex: -1,
 		selfData: {},
 		contextNodeName: request.activeNodeName,
-		additionalData: {
-			executionId: additionalData.executionId,
-			restartExecutionId: additionalData.restartExecutionId,
-			restApiUrl: additionalData.restApiUrl,
-			instanceBaseUrl: additionalData.instanceBaseUrl,
-			formWaitingBaseUrl: additionalData.formWaitingBaseUrl,
-			webhookBaseUrl: additionalData.webhookBaseUrl,
-			webhookWaitingBaseUrl: additionalData.webhookWaitingBaseUrl,
-			webhookTestBaseUrl: additionalData.webhookTestBaseUrl,
-			currentNodeParameters: additionalData.currentNodeParameters,
-			executionTimeoutTimestamp: additionalData.executionTimeoutTimestamp,
-			userId: additionalData.userId,
-			variables: additionalData.variables,
-			evaluationRunId: additionalData.evaluationRunId,
-		},
+		additionalData: request.additionalData,
 	};
 }
 
 /**
- * Builds the content of `task.json` for a JS task. It sends all the data, because n8n
- * does not yet parse the code to send only the data that the code uses.
+ * Builds the content of `task.json` for a JS task. The file holds all the data,
+ * because n8n does not yet parse the code to find the data that the code uses.
  */
 export function buildTaskInput(taskId: string, request: CodeTaskRequest): Buffer {
 	if (request.taskType !== 'javascript') {
