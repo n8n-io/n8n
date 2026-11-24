@@ -14,7 +14,7 @@ import { BaseCommand } from '../../base-command';
 
 export default class PromotionEnvironmentApplySelectionContinue extends PromotionApplyCommand {
 	static override description =
-		'Continue a selection Apply that was blocked on bindings, after they are set up. Resend the same --workflow and --folder flags, and pass the environment ID, branch, and commit SHA that the blocked Apply reported. Exits 3 when the reviewed source or preview no longer matches and 4 when bindings are still missing or a destructive data table change is not confirmed with --confirm-destructive-changes; nothing is imported in either case. On exit 4, the output lists the missing dependencies of the workflows by group.';
+		'Continue a selection Apply that was blocked on bindings, after they are set up. Resend the same --workflow and --folder flags, and pass the environment ID, branch, and commit SHA that the blocked Apply reported. Exits 3 when the reviewed source or preview no longer matches and 4 when bindings are still missing or a destructive data table change is not confirmed with --confirm-destructive-changes; nothing is imported in either case. On exit 4, the output lists the missing dependencies of the workflows by group, but only when the Apply has missing dependencies and you do not pass --quiet.';
 
 	static override examples = [
 		'<%= config.bin %> promotion-environment apply-selection-continue proj-abc -w wf-1 --expected-environment-id=env-1 --expected-branch=main --expected-commit-sha=<full sha>',

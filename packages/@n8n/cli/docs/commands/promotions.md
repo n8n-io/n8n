@@ -354,8 +354,10 @@ when an entry stops the Promote.
 
 Use `--json` to get the full check:
 
-- `missingDependencies`: the credentials, sub-workflows, and error workflows of
-  personal projects that the workflows of the team projects use.
+- `missingDependencies`: every credential, sub-workflow, and error workflow that
+  the workflows of the team projects use and that the Promote does not include.
+  A dependency can be in another project, outside your access, or in a personal
+  project.
 - `warnings`: the references to a credential, workflow, or variable that does
   not exist on this instance.
 - `revision`: a hash of the two lists. It changes when one of them changes.
@@ -573,7 +575,7 @@ by the same ID, not the workflows after `used by`:
 
 | Condition | Meaning |
 |-----------|---------|
-| `only when the Apply includes <id>` | The entry applies only when the selection of `apply-selection` includes the workflow with this ID. The reason tells what the Apply does to that workflow: `archived by this Apply` or `deleted by this Apply`. |
+| `only when the Apply includes <id>` | The entry applies only when the selection of `apply-selection` includes the workflow with this ID. When the Apply archives or deletes that workflow, the reason is `archived by this Apply` or `deleted by this Apply`. The entry can also have another reason, for example `its caller policy refuses the workflow`. |
 | `only when the Apply does not include <id>` | The entry applies only when the selection of `apply-selection` does not include the workflow with this ID. |
 
 In the example, the first entry does not apply when the selection includes

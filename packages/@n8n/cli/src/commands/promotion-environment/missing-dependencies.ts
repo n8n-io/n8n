@@ -34,8 +34,9 @@ const APPLY_REASONS: Partial<Record<PromotionMissingDependency['reason'], string
 };
 
 /**
- * With `target-selected`, the Apply itself archives or deletes the workflow. These reasons tell
- * what the Apply does, because the workflow is not in that state yet.
+ * With `target-selected`, the Apply itself can archive or delete the workflow. These reasons then
+ * tell what the Apply does, because the workflow is not in that state yet. Each other reason keeps
+ * its text.
  */
 const APPLY_REASONS_OF_SELECTED_TARGET: Partial<
 	Record<PromotionMissingDependency['reason'], string>
