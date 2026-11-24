@@ -7,6 +7,7 @@ import { NotFoundError } from '@n8n/errors';
 
 import { Publisher } from '@n8n/backend-services';
 
+import type { AgentExecutionThread } from './entities/agent-execution-thread.entity';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentChatExecutionService } from './agent-chat-execution.service';
@@ -69,7 +70,18 @@ export class AgentSessionStopService {
 
 	/** Internal cleanup includes system and delegated sessions in this project. */
 	async stopProjectSessions(projectId: string): Promise<void> {
-		for (const thread of await this.threads.findMemoryThreadsForProject(projectId)) {
+		await this.stopThreads(await this.threads.findMemoryThreadsForProject(projectId));
+	}
+
+	/** Stops every live session of one agent, for example when its account is disabled. */
+	async stopAgentSessions(agentId: string): Promise<void> {
+		await this.stopThreads(await this.threads.findMemoryThreadsForAgent(agentId));
+	}
+
+	private async stopThreads(
+		threads: Array<Pick<AgentExecutionThread, 'id' | 'agentId'>>,
+	): Promise<void> {
+		for (const thread of threads) {
 			try {
 				const { executionIds, queueIds } = await this.messageQueue.prepareSessionStop(thread.id, {
 					preserveInput: true,

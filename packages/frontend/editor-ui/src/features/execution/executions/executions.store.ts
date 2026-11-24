@@ -8,7 +8,11 @@ import type {
 	ExecutionStatus,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import type { ExecutionRedactionQueryDto, SerializedCursor } from '@n8n/api-types';
+import type {
+	ExecutionAgentRun,
+	ExecutionRedactionQueryDto,
+	SerializedCursor,
+} from '@n8n/api-types';
 import { compareExecutionListItems } from '@n8n/api-types';
 import type {
 	ExecutionFilterType,
@@ -243,6 +247,15 @@ export const useExecutionsStore = defineStore('executions', () => {
 	}
 
 	/** Load the first page, replacing the pages loaded so far. */
+	/** The agent that started an execution through a workflow tool, or `null`. */
+	async function fetchExecutionAgentRun(executionId: string) {
+		return await makeRestApiRequest<ExecutionAgentRun | null>(
+			rootStore.restApiContext,
+			'GET',
+			`/executions/${executionId}/agent-run`,
+		);
+	}
+
 	async function fetchExecutions(filter = executionsFilters.value) {
 		return await loadExecutionsPage(filter, 'first');
 	}
@@ -430,6 +443,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		currentExecutions,
 		currentExecutionsByWorkflowId,
 		activeExecution,
+		fetchExecutionAgentRun,
 		fetchExecutions,
 		loadMoreExecutions,
 		refreshExecutions,

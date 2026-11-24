@@ -91,6 +91,15 @@ export class AgentsConfig {
 	@Env('N8N_AGENTS_SERVICE_ACCOUNTS_ENABLED')
 	serviceAccountsEnabled: boolean = false;
 
+	/**
+	 * Whether a published agent runs as its own service account instead of with
+	 * the access of its project. With this on, a project admin can disable an
+	 * agent, and an execution that an agent starts names the agent. Set the
+	 * same value on every main and worker instance.
+	 */
+	@Env('N8N_AGENTS_RUNTIME_IDENTITY_ENABLED')
+	runtimeIdentityEnabled: boolean = false;
+
 	/** Enable sandbox-backed agent knowledge base operations. */
 	@Env('N8N_AGENTS_AI_SANDBOX_ENABLED')
 	sandboxEnabled: boolean = false;

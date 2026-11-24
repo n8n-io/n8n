@@ -267,3 +267,13 @@ export const PROJECT_VIEWER_SCOPES: Scope[] = [
 ];
 
 export const PROJECT_CHAT_USER_SCOPES: Scope[] = ['agent:execute', 'workflow:execute-chat'];
+
+/**
+ * An agent's service account in the project of the agent. It can use the
+ * credentials and run the workflows of the project, and nothing else.
+ */
+export const PROJECT_AGENT_SCOPES: Scope[] = [
+	'credential:read',
+	'workflow:read',
+	'workflow:execute',
+];

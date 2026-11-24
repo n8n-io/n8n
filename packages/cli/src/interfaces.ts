@@ -1,3 +1,4 @@
+import type { ExecutionAgentRun } from '@n8n/api-types';
 import type {
 	ICredentialsBase,
 	IExecutionBase,
@@ -130,6 +131,8 @@ export interface IExecutionFlattedResponse extends IExecutionFlatted {
 	retryOf?: string;
 	/** See {@link IExecutionResponse.dataTooLargeToDisplay}. When true, `data` is empty. */
 	dataTooLargeToDisplay?: boolean;
+	/** The agent that started this execution through a workflow tool (runtime identity). */
+	agentRun?: ExecutionAgentRun;
 }
 
 export interface IExecutionsListResponse {

@@ -3,6 +3,8 @@ import type { Mocked } from 'vitest';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
+import type { AgentAccountStatusService } from '../agent-account-status.service';
+
 import { LockedError } from '@n8n/errors';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { FolderService } from '@/services/folder.service';
@@ -70,6 +72,7 @@ function makeController({
 			agentDefaultModelResolverService,
 			agentWriteLockService,
 			agentConfigService,
+			mock<AgentAccountStatusService>(),
 		),
 		agentsService,
 		agentPublishService,

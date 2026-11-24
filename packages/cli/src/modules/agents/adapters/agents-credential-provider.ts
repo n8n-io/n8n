@@ -6,6 +6,7 @@ import type {
 } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import type { CredentialsEntity, User } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import { Container } from '@n8n/di';
 import { UserError } from '@n8n/errors';
 import type { ICredentialDataDecryptedObject, McpAiGatewayCredentialType } from 'n8n-workflow';
@@ -17,6 +18,7 @@ import { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiGatewayModelCredentialResolver } from '../agent-credential-provider.contracts';
 import type { AiGatewayMcpCredentialResolver } from '../json-config/mcp-client-factory';
 import type { AiGatewaySearchCredentialResolver } from '../json-config/web-search-credential';
+import { isAgentRun } from '../agent-run-security';
 import { decryptAgentCredential } from '../utils/decrypt-agent-credential';
 
 function toResolvedCredential(data: unknown): ResolvedCredential & { apiKey: string } {
@@ -32,6 +34,8 @@ function toResolvedCredential(data: unknown): ResolvedCredential & { apiKey: str
  * This is not a DI-managed singleton — a new instance is created per request,
  * scoped to a specific project. When a request user is provided, list/resolve
  * follows the same credential set as the workflow editor for that project.
+ * When the security context is an agent run (runtime identity), list/resolve
+ * follows what the agent's account can use, in any project.
  * Published runtime execution can omit the user and stays project-scoped.
  */
 export class AgentsCredentialProvider
@@ -57,7 +61,16 @@ export class AgentsCredentialProvider
 		private readonly projectId: string,
 		private readonly user?: User,
 		private readonly agentId?: string,
+		/** Set for a published run with runtime identity. Its subject is `user`, the agent's account. */
+		private readonly security?: SecurityContext,
 	) {}
+
+	/** The agent's account acts, so its access counts in any project, not the project's access. */
+	private get agentAccount(): User | undefined {
+		return isAgentRun(this.security) && this.user?.id === this.security.subject.id
+			? this.user
+			: undefined;
+	}
 
 	/**
 	 * Mint the n8n Connect (AI Gateway) synthetic credential for a model slot
@@ -186,6 +199,13 @@ export class AgentsCredentialProvider
 	 * List all credentials available in this provider's scope.
 	 */
 	async list(): Promise<CredentialListItem[]> {
+		const agentAccount = this.agentAccount;
+		if (agentAccount) {
+			const accessible =
+				await this.credentialsService.getCredentialsAnAgentAccountCanUse(agentAccount);
+			return accessible.map((c) => ({ id: c.id, name: c.name, type: c.type }));
+		}
+
 		if (this.user) {
 			const accessible = await this.getUserAccessibleCredentials();
 
@@ -207,6 +227,14 @@ export class AgentsCredentialProvider
 	}
 
 	private async findCredentialEntity(credentialId: string): Promise<CredentialsEntity | null> {
+		// An agent account can also use what is shared with it from other projects.
+		const agentAccount = this.agentAccount;
+		if (agentAccount) {
+			const accessible =
+				await this.credentialsService.getCredentialsAnAgentAccountCanUse(agentAccount);
+			return accessible.find((c) => c.id === credentialId) ?? null;
+		}
+
 		if (this.user) {
 			// Same user-scoped intersection as list() — a credential the project
 			// or global scope allows but this user can't see must not resolve.

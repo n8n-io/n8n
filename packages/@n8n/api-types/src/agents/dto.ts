@@ -347,6 +347,14 @@ export class CreateAgentPublicDto extends Z.class(
 	{ strict: true },
 ) {}
 
+export class AddProjectAgentAccessDto extends Z.class({
+	serviceAccountId: z.string().uuid(),
+}) {}
+
+export class UpdateAgentRuntimeIdentityDto extends Z.class({
+	disabled: z.boolean(),
+}) {}
+
 export class MoveAgentDto extends Z.class({
 	parentFolderId: z.string().min(1).max(36).nullable(),
 }) {}

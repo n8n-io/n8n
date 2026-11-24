@@ -31,6 +31,8 @@ import type {
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
+import type { AgentRuntimeIdentityService } from '../agent-runtime-identity.service';
+
 import type { N8nChatFlagService } from '../integrations/platforms/n8n-chat/n8n-chat-flag.service';
 import type { AgentsSettingsService } from '../agents-settings.service';
 
@@ -276,6 +278,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			credentialsService,
 			agentSandboxRuntimeService,
 			skillRefs,
+			mock<AgentRuntimeIdentityService>(),
 		);
 		Container.set(AgentRuntimeCacheService, runtimeCacheService);
 		const modificationTelemetry = mock<AgentModificationTelemetryService>();

@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { CredentialAccessRepository, CredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { SecurityContext } from '@n8n/permissions';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { Tool as LangChainTool, type Tool as LangChainToolType } from '@langchain/core/tools';
 import { ExecuteContext, StructuredToolkit, SupplyDataContext } from 'n8n-core';
@@ -40,6 +41,8 @@ import {
 /** Minimal tool shape for constructing an in-memory single-node execution. */
 export type EphemeralWorkflowToolLike = {
 	projectId: string;
+	/** Set for an agent run with runtime identity. Credentials are checked against its subject. */
+	security?: SecurityContext;
 	nodeType: string;
 	nodeTypeVersion: number;
 	nodeParameters: INodeParameters;
@@ -62,6 +65,8 @@ export interface InlineNodeExecutionRequest {
 	credentialDetails?: Record<string, INodeCredentialsDetails>;
 	inputData: INodeExecutionData[];
 	projectId: string;
+	/** Set for an agent run with runtime identity. Credentials are checked against its subject. */
+	security?: SecurityContext;
 	/** Ephemeral node name override (defaults to 'Target Node'). */
 	nodeName?: string;
 	/** Eval-only additionalData decoration (e.g. HTTP mock handler) — never set on production paths. */
@@ -214,6 +219,7 @@ export class EphemeralNodeExecutor {
 	private async verifyCredentialDetailsForProject(
 		projectId: string,
 		details: Record<string, INodeCredentialsDetails>,
+		security?: SecurityContext,
 	): Promise<Record<string, INodeCredentialsDetails>> {
 		const verified: Record<string, INodeCredentialsDetails> = {};
 
@@ -232,10 +238,13 @@ export class EphemeralNodeExecutor {
 				);
 			}
 
-			const [credential] = await this.credentialsRepository.findCredentialsUsableInProject(
-				projectId,
-				[d.id],
-			);
+			// An agent run acts as the agent's account, so its access counts, not the project's.
+			const [credential] =
+				security?.authMethod === 'agent-run'
+					? await this.credentialsRepository.findCredentialsUsableByAccount(security.subject.id, [
+							d.id,
+						])
+					: await this.credentialsRepository.findCredentialsUsableInProject(projectId, [d.id]);
 
 			if (!credential) {
 				const [currentCredential] = await this.credentialAccessRepository.findCredentialNames([
@@ -484,6 +493,7 @@ export class EphemeralNodeExecutor {
 			fromDetails = await this.verifyCredentialDetailsForProject(
 				request.projectId,
 				request.credentialDetails,
+				request.security,
 			);
 		}
 
@@ -494,6 +504,7 @@ export class EphemeralNodeExecutor {
 
 		const tool: EphemeralWorkflowToolLike = {
 			projectId: request.projectId,
+			...(request.security ? { security: request.security } : {}),
 			nodeType: request.nodeType,
 			nodeTypeVersion: request.nodeTypeVersion,
 			nodeParameters: request.nodeParameters,
@@ -656,7 +667,11 @@ export class EphemeralNodeExecutor {
 		let credentials = tool.credentials;
 		if (credentials && Object.keys(credentials).length > 0) {
 			try {
-				credentials = await this.verifyCredentialDetailsForProject(tool.projectId, credentials);
+				credentials = await this.verifyCredentialDetailsForProject(
+					tool.projectId,
+					credentials,
+					tool.security,
+				);
 			} catch (error) {
 				this.logger.warn('supplyData tool introspection failed', {
 					nodeType: tool.nodeType,

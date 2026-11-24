@@ -34,7 +34,8 @@ import type {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AiConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import { ServiceAccountRepository, type User } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import { Container, Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { jsonParse } from 'n8n-workflow';
@@ -42,6 +43,7 @@ import { UserError } from '@n8n/errors';
 import { v4 as uuid } from 'uuid';
 
 import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import { isAgentRun, onBehalfOfParent } from '../agent-run-security';
 import {
 	type ActiveRun,
 	AgentSandboxFilesService,
@@ -113,6 +115,12 @@ export interface SubAgentRunContext {
 	 * is a published/integration run.
 	 */
 	user?: User;
+	/**
+	 * Security context of the delegating parent run, when it acts as the parent
+	 * agent's account (runtime identity). The child keeps the parent as the
+	 * subject and becomes the actor: it acts on behalf of the parent.
+	 */
+	security?: SecurityContext;
 	/**
 	 * Runtime instrumentation of the delegating parent run. Threaded into the
 	 * child's reconstruction so delegated runs share the parent's seams
@@ -271,6 +279,20 @@ export class SubAgentRunner {
 		await this.checkpointStorage.delete(request.childRunId, pinnedSource.agentId);
 	}
 
+	/**
+	 * A saved sub-agent acts on behalf of its parent. An inline sub-agent has no
+	 * account, so it keeps the parent's context as it is.
+	 */
+	private async securityOnBehalfOfParent(
+		parent: SecurityContext | undefined,
+		subAgentAccountId: string | undefined,
+	): Promise<SecurityContext | undefined> {
+		if (!isAgentRun(parent) || !subAgentAccountId) return parent;
+		const subAgent =
+			await Container.get(ServiceAccountRepository).findActingAccount(subAgentAccountId);
+		return subAgent ? onBehalfOfParent(parent, subAgent) : parent;
+	}
+
 	private async executeForeground(
 		operation: ForegroundOperation,
 		context: SubAgentRunContext,
@@ -289,6 +311,8 @@ export class SubAgentRunner {
 					: {}),
 			},
 		);
+
+		const security = await this.securityOnBehalfOfParent(context.security, agentServiceAccountId);
 
 		// A delegated run uses the same fresh id for SDK memory and its session
 		// record. A background dispatcher supplies the id itself so the job row
@@ -333,7 +357,7 @@ export class SubAgentRunner {
 				parentAgentId: context.parentAgentId,
 			},
 			telemetry: {
-				userId: context.user?.id,
+				userId: context.user?.kind === 'person' ? context.user.id : undefined,
 				runType: context.runType,
 				configuration: buildAgentConfigurationTelemetryFromConfig(runtimeSource.source.config),
 			},
@@ -373,6 +397,7 @@ export class SubAgentRunner {
 				rootSessionCapUsd: context.rootSessionCapUsd,
 				budgetForwarded: context.budgetForwarded,
 				user: context.user,
+				...(security ? { security } : {}),
 				instrumentation: context.instrumentation,
 				...(sandboxPrincipalHash !== undefined ? { sandboxPrincipalHash } : {}),
 				...(context.parentWorkspaceHandle !== undefined

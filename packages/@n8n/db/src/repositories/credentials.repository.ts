@@ -615,6 +615,31 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 	}
 
 	/**
+	 * Like {@link findCredentialsUsableInProject}, but for an agent run that acts as
+	 * the agent's service account: a credential of any project the account
+	 * belongs to, one shared with the account's personal project, or a global one.
+	 */
+	async findCredentialsUsableByAccount(
+		accountId: string,
+		credentialIds: string[],
+	): Promise<Array<Pick<CredentialsEntity, 'id' | 'name' | 'type'>>> {
+		if (credentialIds.length === 0) return [];
+
+		const filter = this.excludePendingAuthorization({
+			usageScope: 'project',
+			id: In(credentialIds),
+		});
+
+		return await this.find({
+			where: [
+				{ ...filter, shared: { project: { projectRelations: { userId: accountId } } } },
+				{ ...filter, isGlobal: true },
+			],
+			select: ['id', 'name', 'type'],
+		});
+	}
+
+	/**
 	 * Find credentials by name and type, scoped to a specific project.
 	 * Used by replaceInvalidCredentials to prevent cross-project credential resolution.
 	 */

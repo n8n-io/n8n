@@ -97,7 +97,8 @@ export class LogStreamingEventRelay extends EventRelay {
 	) {
 		// The tool stamps the marker only with the flag on, but a stored marker can come back
 		// after the flag goes off, for example when a waiting execution resumes.
-		if (!this.agentsConfig.serviceAccountsEnabled) return {};
+		const { serviceAccountsEnabled, runtimeIdentityEnabled } = this.agentsConfig;
+		if (!serviceAccountsEnabled && !runtimeIdentityEnabled) return {};
 		// A retry copies the run data of the original execution, but its caller starts it.
 		if (mode === 'retry' || !parentAgentRun?.agentServiceAccountId) return {};
 		const { agentId, agentServiceAccountId, userId, delegatingAgentId } = parentAgentRun;
@@ -122,6 +123,8 @@ export class LogStreamingEventRelay extends EventRelay {
 			'agent-archived': (event) => this.agentArchived(event),
 			'agent-unarchived': (event) => this.agentUnarchived(event),
 			'agent-service-account-created': (event) => this.agentServiceAccountCreated(event),
+			'agent-service-account-disabled-changed': (event) =>
+				this.agentServiceAccountDisabledChanged(event),
 			'agent-service-account-deleted': (event) => this.agentServiceAccountDeleted(event),
 			'workflow-activated': (event) => this.workflowActivated(event),
 			'workflow-deactivated': (event) => this.workflowDeactivated(event),
@@ -392,6 +395,21 @@ export class LogStreamingEventRelay extends EventRelay {
 			payload: user
 				? { ...user, ...target, ...(loginId !== undefined && { loginId }) }
 				: { userId: null, source, ...target },
+		});
+	}
+
+	@Redactable()
+	private agentServiceAccountDisabledChanged({
+		user,
+		disabled,
+		loginId,
+		...target
+	}: RelayEventMap['agent-service-account-disabled-changed']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: disabled
+				? 'n8n.audit.agent.service-account.disabled'
+				: 'n8n.audit.agent.service-account.enabled',
+			payload: { ...user, ...target, ...(loginId !== undefined && { loginId }) },
 		});
 	}
 

@@ -1517,6 +1517,17 @@ export type RelayEventMap = ModuleEventMap & {
 		loginId?: string;
 	};
 
+	/** A project admin disabled or enabled the service account of an agent. */
+	'agent-service-account-disabled-changed': {
+		user: UserLike;
+		disabled: boolean;
+		serviceAccountId: string;
+		agentId: string;
+		projectId: string;
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
+	};
+
 	/** n8n deleted the service account of an agent. Sent after the transaction commits. */
 	'agent-service-account-deleted': {
 		/**

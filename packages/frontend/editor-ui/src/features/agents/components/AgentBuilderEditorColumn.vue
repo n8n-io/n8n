@@ -20,6 +20,7 @@ import { useTypeAvailability } from '@n8n/frontend-module-type-availability-poli
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
 import AgentBudgetPanel from './AgentBudgetPanel.vue';
+import AgentRuntimeIdentityPanel from './AgentRuntimeIdentityPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
 import AgentTriggersSection from './AgentTriggersSection.vue';
 import { provideAgentPersonalisation } from '../channels/agentPersonalisation';
@@ -444,6 +445,12 @@ defineExpose({ onSetupTaskAction });
 								@toggle-mcp-access="emit('toggle-mcp-access', $event)"
 							/>
 						</N8nCard>
+						<AgentRuntimeIdentityPanel
+							v-if="agentId"
+							:class="$style.settingsCard"
+							:project-id="projectId"
+							:agent-id="agentId"
+						/>
 						<AgentAdvancedPanel
 							:config="localConfig"
 							:disabled="childrenDisabled"

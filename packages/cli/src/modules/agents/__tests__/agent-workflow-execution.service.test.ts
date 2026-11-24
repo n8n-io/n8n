@@ -17,6 +17,8 @@ import { OperationalError, UserError } from '@n8n/errors';
 import type { ExecuteAgentWorkflowContext, IRunExecutionData } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+
+import type { AgentRuntimeIdentityService } from '../agent-runtime-identity.service';
 import type { AgentUsageTelemetryService } from '../agent-usage-telemetry.service';
 import type { AgentsSettingsService } from '../agents-settings.service';
 import { SkillRuntimeService, SkillService } from '@/modules/skills';
@@ -193,6 +195,7 @@ function makeService() {
 		integrationMessageContextService,
 		settingsService,
 		skillRefs,
+		mock<AgentRuntimeIdentityService>(),
 	);
 
 	return {

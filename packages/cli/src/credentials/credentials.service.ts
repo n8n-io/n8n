@@ -778,6 +778,23 @@ export class CredentialsService {
 	}
 
 	/**
+	 * The credentials an agent service account can use when its agent runs: the
+	 * credentials of each project the account belongs to, the ones shared with
+	 * the account directly, and the global ones. Unlike for a person, the
+	 * credential does not have to be in the project of the agent.
+	 */
+	async getCredentialsAnAgentAccountCanUse(account: User): Promise<CredentialsEntity[]> {
+		const credentials = await this.credentialsFinderService.findCredentialsForUser(account, [
+			'credential:read',
+		]);
+		const usable = new Map<string, CredentialsEntity>();
+		for (const credential of credentials) {
+			if (!credential.isResolvable) usable.set(credential.id, credential);
+		}
+		return [...usable.values()];
+	}
+
+	/**
 	 * The ids, among `candidateCredentials`, that the user can use here only
 	 * via the personal route: granted to the user's own personal project (owned
 	 * by it, or shared with it directly), where the user also belongs to the

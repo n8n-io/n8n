@@ -225,6 +225,11 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		() => isAgentsEnabled.value && moduleSettings.value.agents?.knowledgeBaseEnabled === true,
 	);
 
+	// Opt-in flag controlled by the backend's N8N_AGENTS_RUNTIME_IDENTITY_ENABLED setting.
+	const isAgentsRuntimeIdentityEnabled = computed(
+		() => isAgentsEnabled.value && moduleSettings.value.agents?.runtimeIdentityEnabled === true,
+	);
+
 	const isPublicChatTriggerDisabled = computed(
 		() => settings.value.chatTrigger?.disablePublicChat ?? false,
 	);
@@ -613,6 +618,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isOtelCustomSpanAttributesEnabled,
 		isWorkerPoolsEnabled,
 		isAgentsKnowledgeBaseFeatureEnabled,
+		isAgentsRuntimeIdentityEnabled,
 		isPublicChatTriggerDisabled,
 		isWorkflowPublicationServiceEnabled,
 	};

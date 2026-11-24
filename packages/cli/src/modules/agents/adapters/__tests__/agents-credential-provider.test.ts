@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
@@ -24,6 +25,63 @@ describe('AgentsCredentialProvider', () => {
 				excludePersonalRoute: true,
 				excludeResolvable: true,
 			});
+		});
+	});
+
+	describe('agent run (runtime identity)', () => {
+		const account = { id: 'agent-account', kind: 'service' } as User;
+		const security: SecurityContext = {
+			subject: { id: 'agent-account', type: 'service', role: {} as User['role'] },
+			authMethod: 'agent-run',
+		};
+		const fromOtherProject = { id: 'credential-2', name: 'Shared', type: 'httpHeaderAuth' };
+
+		it('lists what the account can use, also outside the project of the agent', async () => {
+			const credentialsService = mock<CredentialsService>();
+			credentialsService.getCredentialsAnAgentAccountCanUse.mockResolvedValue([
+				fromOtherProject,
+			] as never);
+
+			const provider = new AgentsCredentialProvider(
+				credentialsService,
+				'proj-1',
+				account,
+				undefined,
+				security,
+			);
+
+			await expect(provider.list()).resolves.toEqual([fromOtherProject]);
+			expect(credentialsService.getCredentialsAnAgentAccountCanUse).toHaveBeenCalledWith(account);
+			expect(credentialsService.findAllCredentialIdsForProject).not.toHaveBeenCalled();
+		});
+
+		it('keeps the project check for an agent account without an agent-run context', async () => {
+			const credentialsService = mock<CredentialsService>();
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
+
+			const provider = new AgentsCredentialProvider(credentialsService, 'proj-1', account);
+			await provider.list();
+
+			expect(credentialsService.getCredentialsAnAgentAccountCanUse).not.toHaveBeenCalled();
+		});
+
+		it('does not resolve a credential that the account cannot use', async () => {
+			const credentialsService = mock<CredentialsService>();
+			credentialsService.getCredentialsAnAgentAccountCanUse.mockResolvedValue([
+				fromOtherProject,
+			] as never);
+
+			const provider = new AgentsCredentialProvider(
+				credentialsService,
+				'proj-1',
+				account,
+				undefined,
+				security,
+			);
+
+			await expect(provider.resolve('credential-other')).rejects.toThrow(
+				'Credential "credential-other" not found or not accessible',
+			);
 		});
 	});
 

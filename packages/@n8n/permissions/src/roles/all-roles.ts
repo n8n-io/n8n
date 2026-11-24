@@ -4,6 +4,7 @@ import {
 	PROJECT_OWNER_ROLE_SLUG,
 	PROJECT_VIEWER_ROLE_SLUG,
 	PROJECT_CHAT_USER_ROLE_SLUG,
+	PROJECT_AGENT_ROLE_SLUG,
 } from '../constants.ee';
 import {
 	CREDENTIALS_SHARING_SCOPE_MAP,
@@ -26,6 +27,7 @@ const ROLE_NAMES: Record<AllRoleTypes, string> = {
 	[PROJECT_EDITOR_ROLE_SLUG]: 'Project Editor',
 	[PROJECT_VIEWER_ROLE_SLUG]: 'Project Viewer',
 	[PROJECT_CHAT_USER_ROLE_SLUG]: 'Project Chat User',
+	[PROJECT_AGENT_ROLE_SLUG]: 'Project Agent',
 	'credential:user': 'Credential User',
 	'credential:owner': 'Credential Owner',
 	'workflow:owner': 'Workflow Owner',
@@ -47,6 +49,8 @@ const ROLE_DESCRIPTIONS: Record<AllRoleTypes, string> = {
 	[PROJECT_VIEWER_ROLE_SLUG]: 'Read-only access to workflows, credentials, and executions',
 	[PROJECT_CHAT_USER_ROLE_SLUG]:
 		'Chat-only access to chatting with workflows that have n8n Chat enabled',
+	[PROJECT_AGENT_ROLE_SLUG]:
+		'Identity of an agent in its project. Uses credentials and runs workflows',
 	'credential:user': 'Credential User',
 	'credential:owner': 'Credential Owner',
 	'workflow:owner': 'Workflow Owner',

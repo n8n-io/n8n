@@ -204,6 +204,8 @@ export const PROJECT_ADMIN_ROLE_SLUG = 'project:admin';
 export const PROJECT_EDITOR_ROLE_SLUG = 'project:editor';
 export const PROJECT_VIEWER_ROLE_SLUG = 'project:viewer';
 export const PROJECT_CHAT_USER_ROLE_SLUG = 'project:chatUser';
+/** The role of an agent's service account in the project of the agent. Only n8n sets it. */
+export const PROJECT_AGENT_ROLE_SLUG = 'project:agent';
 /** Global roles that make a user an implicit member of every team project. */
 export const IMPLICIT_TEAM_PROJECT_MEMBER_ROLE_SLUGS = [
 	GLOBAL_OWNER_ROLE_SLUG,

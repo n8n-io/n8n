@@ -34,6 +34,7 @@ import {
 	type ProjectRole,
 	AssignableProjectRole,
 	IMPLICIT_TEAM_PROJECT_MEMBER_ROLE_SLUGS,
+	PROJECT_AGENT_ROLE_SLUG,
 	PROJECT_OWNER_ROLE_SLUG,
 	isAssignableProjectRoleSlug,
 } from '@n8n/permissions';
@@ -66,6 +67,10 @@ const INSTANCE_ACCESS_REMOVE_ERROR =
 	"This user has access through their instance role and can't be removed from the project.";
 const PERSONAL_PROJECT_MEMBERS_ERROR = "Personal projects can't have members.";
 const PERSONAL_PROJECT_UPDATE_ERROR = "Personal projects can't be updated.";
+
+/** Only n8n sets the relation of an agent service account, so member edits keep it. */
+const isAgentRelation = (relation: ProjectRelation) =>
+	relation.role?.slug === PROJECT_AGENT_ROLE_SLUG;
 
 export class TeamProjectOverQuotaError extends UserError {
 	constructor(limit: number) {
@@ -457,7 +462,9 @@ export class ProjectService {
 		user: User,
 		isAdmin: boolean,
 	): Promise<string[] | undefined> {
-		if (!this.agentsConfig.serviceAccountsEnabled) return [];
+		// Runtime identity reads shares to the agent, so it also offers agents as targets.
+		const { serviceAccountsEnabled, runtimeIdentityEnabled } = this.agentsConfig;
+		if (!serviceAccountsEnabled && !runtimeIdentityEnabled) return [];
 		if (isAdmin) return undefined;
 
 		const relations = await this.projectRelationRepository.findAllByUser(user.id);
@@ -647,7 +654,7 @@ export class ProjectService {
 		const incomingByUserId = new Map(relations.map((r) => [r.userId, r.role]));
 
 		const removedUserIds = project.projectRelations
-			.filter((r) => !incomingByUserId.has(r.userId))
+			.filter((r) => !incomingByUserId.has(r.userId) && !isAgentRelation(r))
 			.map((r) => r.userId);
 
 		// Users whose role slug changed — a downgrade may strip credential:update,
@@ -953,7 +960,7 @@ export class ProjectService {
 	}
 
 	async pruneRelations(em: EntityManager, project: Project) {
-		await em.delete(ProjectRelation, { projectId: project.id });
+		await this.projectRelationRepository.deleteMemberRelations(project.id, em);
 	}
 
 	async addManyRelations(
@@ -1051,11 +1058,13 @@ export class ProjectService {
 		return await this.projectRepository.findOne({ where: { id: projectId } });
 	}
 
+	/** The members of a project. Agent service accounts are not members that people manage, so they are left out. */
 	async getProjectRelations(projectId: string): Promise<ProjectRelation[]> {
-		return await this.projectRelationRepository.find({
+		const relations = await this.projectRelationRepository.find({
 			where: { projectId },
 			relations: { user: true, role: true },
 		});
+		return relations.filter((r) => !isAgentRelation(r));
 	}
 
 	/**

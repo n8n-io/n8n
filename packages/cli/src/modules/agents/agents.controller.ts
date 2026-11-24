@@ -1,10 +1,12 @@
 import {
 	type AgentCapabilitySummary,
+	type AgentRuntimeIdentityStatus,
 	AgentJsonConfigSchema,
 	CreateAgentDto,
 	ListAgentsQueryDto,
 	MoveAgentDto,
 	UpdateAgentDto,
+	UpdateAgentRuntimeIdentityDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -22,9 +24,12 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { NotFoundError } from '@n8n/errors';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
+
+import { userHasScopes } from '@/permissions.ee/check-access';
 import { AgentWriteLockService } from './agent-write-lock.service';
 
+import { AgentAccountStatusService } from './agent-account-status.service';
 import { AgentConfigService } from './agent-config.service';
 import { AgentDefaultModelResolverService } from './agent-default-model-resolver.service';
 import { AgentResponseMapper } from './agent-response.mapper';
@@ -38,6 +43,7 @@ export class AgentsController {
 		private readonly agentDefaultModelResolverService: AgentDefaultModelResolverService,
 		private readonly agentWriteLockService: AgentWriteLockService,
 		private readonly agentConfigService: AgentConfigService,
+		private readonly agentAccountStatusService: AgentAccountStatusService,
 	) {}
 
 	@Post('/')
@@ -183,6 +189,39 @@ export class AgentsController {
 		}
 
 		return { success: true };
+	}
+
+	@Get('/:agentId/runtime-identity')
+	@ProjectScope('agent:read')
+	async getRuntimeIdentity(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+	): Promise<AgentRuntimeIdentityStatus> {
+		const { projectId, agentId } = req.params;
+		return await this.agentAccountStatusService.getStatus(agentId, projectId);
+	}
+
+	/**
+	 * Disables or enables the agent on every channel. The agent's account is a
+	 * member of the project, so only people who manage members can change it.
+	 */
+	@Patch('/:agentId/runtime-identity')
+	@ProjectScope('agent:update')
+	async updateRuntimeIdentity(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+		_res: Response,
+		@Body payload: UpdateAgentRuntimeIdentityDto,
+	): Promise<AgentRuntimeIdentityStatus> {
+		const { projectId, agentId } = req.params;
+		if (!(await userHasScopes(req.user, ['project:manageMembers'], false, { projectId }))) {
+			throw new ForbiddenError('Only project admins can disable or enable an agent');
+		}
+		return await this.agentAccountStatusService.setDisabled(
+			agentId,
+			projectId,
+			payload.disabled,
+			req.user,
+			req.ctx,
+		);
 	}
 
 	@Patch('/:agentId/move')

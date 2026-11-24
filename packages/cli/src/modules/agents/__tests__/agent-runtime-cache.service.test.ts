@@ -12,6 +12,8 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Publisher } from '@n8n/backend-services';
 
 import { AgentChangePublisher } from '../agent-change-publisher.service';
+import { AgentDisabledError } from '../agent-runtime-identity.service';
+import type { AgentRuntimeIdentityService } from '../agent-runtime-identity.service';
 import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { hashAgentSandboxPrincipal } from '../agent-sandbox-principal';
@@ -60,6 +62,8 @@ function makeService({
 		isEnabled: () => sandboxEnabled,
 	});
 	const globalConfig = { multiMainSetup: { enabled: multiMain } } as GlobalConfig;
+	const runtimeIdentity = mock<AgentRuntimeIdentityService>();
+	runtimeIdentity.resolveRunIdentity.mockResolvedValue(undefined);
 
 	publisher.publishCommand.mockResolvedValue();
 
@@ -71,9 +75,10 @@ function makeService({
 		credentialsService,
 		sandboxRuntimeService,
 		createAgentSkillRefsService(),
+		runtimeIdentity,
 	);
 
-	return { service, agentRepository, publisher, reconstructionService };
+	return { service, agentRepository, publisher, reconstructionService, runtimeIdentity };
 }
 
 describe('AgentRuntimeCacheService', () => {
@@ -750,5 +755,83 @@ describe('AgentRuntimeCacheService', () => {
 		service.handleAgentConfigChanged({ agentId });
 
 		expect(publisher.publishCommand).not.toHaveBeenCalled();
+	});
+
+	describe('runtime identity', () => {
+		const publishedAgent = () =>
+			makeAgent({
+				activeVersion: {
+					schema: { name: 'Published', model: 'openai:gpt-4o', instructions: 'Help' },
+					tools: {},
+				} as Agent['activeVersion'],
+			});
+		const account = mock<User>({ id: 'agent-account', kind: 'service' });
+
+		it('builds a published run without a person as the agent account', async () => {
+			const { service, agentRepository, reconstructionService, runtimeIdentity } = makeService();
+			const agent = publishedAgent();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			const security = {
+				subject: { id: 'agent-account', type: 'service' as const, role: account.role },
+				authMethod: 'agent-run' as const,
+			};
+			runtimeIdentity.resolveRunIdentity.mockResolvedValue({
+				account: account as never,
+				security,
+			});
+			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(makeRuntime());
+
+			const runtime = await service.getRuntime({
+				agentId,
+				projectId,
+				usePublishedVersion: true,
+				integrationType: 'n8n_chat',
+				attributionUserId: 'user-1',
+			});
+
+			expect(runtimeIdentity.resolveRunIdentity).toHaveBeenCalledWith(agent, {
+				personId: 'user-1',
+			});
+			const [, , , , user, , , , options] =
+				reconstructionService.reconstructFromAgentEntity.mock.calls[0];
+			expect(user).toBe(account);
+			expect(options).toEqual(expect.objectContaining({ security }));
+			expect(runtime.actingAccount).toBe(account);
+			expect(runtime.security).toBe(security);
+		});
+
+		it('keeps the person of a published run with a person', async () => {
+			const { service, agentRepository, reconstructionService, runtimeIdentity } = makeService();
+			const person = mock<User>({ id: 'user-1', kind: 'person' });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(publishedAgent());
+			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(makeRuntime());
+
+			await service.getRuntime({ agentId, projectId, usePublishedVersion: true, user: person });
+
+			expect(runtimeIdentity.resolveRunIdentity).not.toHaveBeenCalled();
+			const [, , , , user] = reconstructionService.reconstructFromAgentEntity.mock.calls[0];
+			expect(user).toBe(person);
+		});
+
+		it('does not use the agent account for a draft run', async () => {
+			const { service, agentRepository, reconstructionService, runtimeIdentity } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(makeRuntime());
+
+			await service.getRuntime({ agentId, projectId });
+
+			expect(runtimeIdentity.resolveRunIdentity).not.toHaveBeenCalled();
+		});
+
+		it('does not start a published run of a disabled agent', async () => {
+			const { service, agentRepository, reconstructionService, runtimeIdentity } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(publishedAgent());
+			runtimeIdentity.resolveRunIdentity.mockRejectedValue(new AgentDisabledError());
+
+			await expect(
+				service.getRuntime({ agentId, projectId, usePublishedVersion: true }),
+			).rejects.toThrow(AgentDisabledError);
+			expect(reconstructionService.reconstructFromAgentEntity).not.toHaveBeenCalled();
+		});
 	});
 });

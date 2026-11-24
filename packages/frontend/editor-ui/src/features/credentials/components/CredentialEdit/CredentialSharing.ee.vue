@@ -77,7 +77,10 @@ const credentialDataHomeProject = computed<ProjectSharingData | undefined>(() =>
 		: undefined;
 });
 
-const searchFn = useRemoteProjectSearch();
+// With runtime identity, an agent uses a credential shared with it, so agents are sharing targets.
+const searchFn = useRemoteProjectSearch({
+	includeServiceAccounts: settingsStore.isAgentsRuntimeIdentityEnabled,
+});
 const filterFn = (project: ProjectListItem) =>
 	project.id !== props.credential?.homeProject?.id &&
 	project.id !== credentialDataHomeProject.value?.id;

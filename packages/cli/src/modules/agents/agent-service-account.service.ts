@@ -1,5 +1,10 @@
 import { EventService, loginIdOf } from '@n8n/backend-services';
-import { type OperationContext, type User } from '@n8n/db';
+import {
+	type OperationContext,
+	type ServiceAccount,
+	ServiceAccountRepository,
+	type User,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError } from '@n8n/errors';
 
@@ -24,6 +29,7 @@ export class AgentServiceAccountService implements ServiceAccountProjectSource {
 		private readonly serviceAccountService: ServiceAccountService,
 		private readonly agentRepository: AgentRepository,
 		private readonly eventService: EventService,
+		private readonly serviceAccountRepository: ServiceAccountRepository,
 	) {}
 
 	/**
@@ -38,6 +44,40 @@ export class AgentServiceAccountService implements ServiceAccountProjectSource {
 
 		const { serviceAccount } = await this.serviceAccountService.create(agent.name, ctx);
 		agent.identityId = serviceAccount.id;
+		// The account gets what the project gives the agent, for runtime identity.
+		if (agent.projectId) {
+			await this.serviceAccountRepository.joinProjectAsAgent(
+				serviceAccount.id,
+				agent.projectId,
+				ctx,
+			);
+		}
+	}
+
+	/**
+	 * The account a published run of the agent acts as, with its role loaded.
+	 * Returns `undefined` for an agent in a personal project: a personal project
+	 * has no members, so the run keeps the access of the owner for now.
+	 */
+	async findActingAccount(
+		agent: Pick<Agent, 'identityId' | 'projectId'>,
+	): Promise<ServiceAccount | undefined> {
+		if (!agent.projectId) return undefined;
+		const isMember = await this.serviceAccountRepository.isAgentOfProject(
+			agent.identityId,
+			agent.projectId,
+		);
+		if (!isMember) return undefined;
+		return (await this.serviceAccountRepository.findActingAccount(agent.identityId)) ?? undefined;
+	}
+
+	async setDisabled(agent: Pick<Agent, 'identityId'>, disabled: boolean): Promise<void> {
+		await this.serviceAccountRepository.setDisabled(agent.identityId, disabled);
+	}
+
+	async isDisabled(agent: Pick<Agent, 'identityId'>): Promise<boolean> {
+		const account = await this.serviceAccountRepository.findById(agent.identityId);
+		return account?.disabled ?? false;
 	}
 
 	/**

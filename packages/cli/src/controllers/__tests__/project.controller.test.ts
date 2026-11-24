@@ -6,6 +6,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { ProjectController } from '@/controllers/project.controller';
 import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import type { ProjectAgentAccessService } from '@/services/project-agent-access.service';
 import type { ProjectService } from '@/services/project.service.ee';
 
 describe('ProjectController', () => {
@@ -15,6 +16,7 @@ describe('ProjectController', () => {
 	const controller = new ProjectController(
 		projectsService as unknown as ProjectService,
 		provisioningService as unknown as ProvisioningService,
+		mock<ProjectAgentAccessService>(),
 	);
 
 	const makeRes = () => {

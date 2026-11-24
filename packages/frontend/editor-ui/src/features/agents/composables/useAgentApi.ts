@@ -5,6 +5,7 @@ import type {
 	AgentBudgetSpend,
 	AgentBackgroundJobsResponse,
 	AgentCapabilitySummary,
+	AgentRuntimeIdentityStatus,
 	AgentChatListItem,
 	AgentChatListResponse,
 	AgentChatMessagesResponse,
@@ -809,6 +810,32 @@ export const getAgentCapabilitySummary = async (
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/summary`,
+	);
+};
+
+export const getAgentRuntimeIdentity = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentRuntimeIdentityStatus> => {
+	return await makeRestApiRequest<AgentRuntimeIdentityStatus>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/runtime-identity`,
+	);
+};
+
+export const updateAgentRuntimeIdentity = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	disabled: boolean,
+): Promise<AgentRuntimeIdentityStatus> => {
+	return await makeRestApiRequest<AgentRuntimeIdentityStatus>(
+		context,
+		'PATCH',
+		`/projects/${projectId}/agents/v2/${agentId}/runtime-identity`,
+		{ disabled },
 	);
 };
 

@@ -539,6 +539,12 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		return await this.find({ select: ['id', 'agentId'], where: { projectId } });
 	}
 
+	async findMemoryThreadsForAgent(
+		agentId: string,
+	): Promise<Array<Pick<AgentExecutionThread, 'id' | 'agentId'>>> {
+		return await this.find({ select: ['id', 'agentId'], where: { agentId } });
+	}
+
 	async findManyByIds(ids: string[]): Promise<AgentExecutionThread[]> {
 		if (ids.length === 0) return [];
 		return await this.findBy({ id: In(ids) });

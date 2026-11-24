@@ -15,6 +15,8 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AiConfig } from '@n8n/config';
+import type { User } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import { Service } from '@n8n/di';
 import { context } from '@opentelemetry/api';
 import type { JSONSchema7 } from 'json-schema';
@@ -36,6 +38,7 @@ import type {
 	AgentRuntimeInstrumentation,
 	PrepareWorkflowAgentForEval,
 } from './evaluation/agent-evaluation.contracts';
+import { AgentRuntimeIdentityService } from './agent-runtime-identity.service';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import { AgentsSettingsService } from './agents-settings.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
@@ -192,6 +195,7 @@ export class AgentWorkflowExecutionService {
 		private readonly integrationMessageContextService: IntegrationMessageContextService,
 		private readonly settingsService: AgentsSettingsService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly runtimeIdentity: AgentRuntimeIdentityService,
 	) {}
 
 	private normalizeWorkflowStreamError(error: unknown, outputSchema?: JSONSchema7): Error {
@@ -259,6 +263,9 @@ export class AgentWorkflowExecutionService {
 		extraTools?: BuiltTool[],
 		sandboxPrincipalHash?: AgentSandboxPrincipalHash,
 		instrumentation?: AgentRuntimeInstrumentation,
+		/** The agent's service account, when the run acts as it (runtime identity). */
+		actingAccount?: User,
+		security?: SecurityContext,
 	): Promise<{
 		ok: boolean;
 		agent?: BuiltAgent;
@@ -278,18 +285,19 @@ export class AgentWorkflowExecutionService {
 			// webhook/trigger-fired executions even that can be absent. This
 			// runtime also isn't cached (see the docstring above), so there's no
 			// cache-key concern here either — just no per-user tool filtering.
+			// With runtime identity on, a published agent runs as its account.
 			const reconstructed = await this.agentRuntimeReconstructionService.reconstructFromAgentEntity(
 				runSource,
 				credentialProvider,
 				runType,
 				undefined,
-				undefined,
+				actingAccount,
 				instrumentation,
 				'manual',
 				sandboxPrincipalHash,
 				// A workflow execution cannot resume a suspended run — it throws
 				// instead (see `recorder.suspended` below).
-				{ supportsHitl: false, allowPlanTools: false },
+				{ supportsHitl: false, allowPlanTools: false, ...(security ? { security } : {}) },
 			);
 			const applied = this.applyPerCallAgentExtras(reconstructed.agent, outputSchema, extraTools);
 			if (!applied.ok) return applied;
@@ -790,6 +798,8 @@ export class AgentWorkflowExecutionService {
 			extraTools?.length ? extraTools : undefined,
 			sandboxScope?.principalHash,
 			instrumentation,
+			loaded.actingAccount,
+			loaded.security,
 		);
 		if (!compiled.ok || !compiled.agent) {
 			const error = new OperationalError(
@@ -814,11 +824,17 @@ export class AgentWorkflowExecutionService {
 			throw new OperationalError('Agent not found or not accessible.');
 		}
 
+		const runIdentity = useDraftVersion
+			? undefined
+			: await this.runtimeIdentity.resolveRunIdentity(agentEntity);
+		const actingAccount = runIdentity?.account;
+		const security = runIdentity?.security;
 		const credentialProvider = createAgentCredentialProvider(
 			this.credentialsService,
 			projectId,
-			undefined,
+			actingAccount,
 			agentId,
+			security,
 		);
 
 		const runSource = await resolveAgentRunSource(
@@ -827,7 +843,7 @@ export class AgentWorkflowExecutionService {
 			this.agentSkillRefs,
 			{},
 		);
-		return { runSource, credentialProvider };
+		return { runSource, credentialProvider, actingAccount, security };
 	}
 
 	/** Chat integrations post through chat SDKs, which an eval cannot fake, so eval runs drop them. */

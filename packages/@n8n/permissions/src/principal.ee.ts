@@ -26,7 +26,12 @@ export type AuthMethod =
 	/** JWT issued by token exchange. It can carry an `act` claim. */
 	| 'scoped-jwt'
 	/** Any OAuth2 trusted source, internal or external. */
-	| 'oauth-access-token';
+	| 'oauth-access-token'
+	/**
+	 * A run of a published agent that n8n started. The subject is the agent's
+	 * service account. No token or claim proves it, because n8n itself starts the run.
+	 */
+	| 'agent-run';
 
 /** What a trust source asserted. (sourceId, subject) is the identity-binding key. */
 export type ClaimRef = {

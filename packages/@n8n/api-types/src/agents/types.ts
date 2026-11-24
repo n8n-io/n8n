@@ -803,3 +803,36 @@ export const AGENT_SANDBOX_FILES_FLAG = '137_agent_sandbox_files';
 /** Fixed tool names for the implicit in-app chat integration (no credential suffixes). */
 export const N8N_CHAT_ACTION_TOOL_NAME = 'chat_action' as const;
 export const N8N_CHAT_CONTEXT_TOOL_NAME = 'chat_context' as const;
+
+/**
+ * Whether a published agent runs as its own service account, and whether that
+ * account is disabled. A disabled agent does not reply on any channel.
+ */
+export interface AgentRuntimeIdentityStatus {
+	/** `N8N_AGENTS_RUNTIME_IDENTITY_ENABLED` is on. */
+	available: boolean;
+	/** The agent acts as its account. False for an agent in a personal project. */
+	actsAsServiceAccount: boolean;
+	disabled: boolean;
+}
+
+/** The agent that started a workflow execution through a workflow tool. */
+export interface ExecutionAgentRun {
+	agentId: string;
+	/** The name of the agent's service account, which is the agent's name. */
+	agentName: string;
+	/** The project of the agent. */
+	projectId: string;
+	/** Set when a sub-agent ran the tool for another agent. */
+	delegatingAgentId?: string;
+}
+
+/** An agent that can use the credentials and run the workflows of a project. */
+export interface ProjectAgentAccess {
+	/** The agent's service account. */
+	serviceAccountId: string;
+	/** The name of the agent. */
+	name: string;
+	/** The project the agent lives in. `null` for an instance agent. */
+	homeProject: { id: string; name: string } | null;
+}

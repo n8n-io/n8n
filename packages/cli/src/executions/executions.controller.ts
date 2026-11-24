@@ -83,6 +83,17 @@ export class ExecutionsController {
 			: await this.executionService.findOne(req, workflowIds);
 	}
 
+	/** The agent that started this execution, for the "Run by agent" label. */
+	@Get('/:id/agent-run')
+	async getAgentRun(req: ExecutionRequest.GetOne) {
+		this.assertKnownExecutionId(req.params.id);
+
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, ['execution:read']);
+		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
+
+		return await this.executionService.findAgentRun(req.params.id, workflowIds);
+	}
+
 	@Post('/:id/stop')
 	async stop(req: ExecutionRequest.Stop) {
 		const workflowIds = await this.getAccessibleWorkflowIds(req.user, ['workflow:execute']);

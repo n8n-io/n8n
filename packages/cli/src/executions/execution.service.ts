@@ -1,4 +1,4 @@
-import type { DeleteExecutionsDto } from '@n8n/api-types';
+import type { DeleteExecutionsDto, ExecutionAgentRun } from '@n8n/api-types';
 import { ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
@@ -25,7 +25,7 @@ import {
 	WorkflowHistoryRepository,
 	WorkflowRepository,
 } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { stringify } from 'flatted';
 import { validate as jsonSchemaValidate } from 'jsonschema';
@@ -62,6 +62,8 @@ import {
 	UserError,
 } from '@n8n/errors';
 import type { IExecutionFlattedResponse } from '@/interfaces';
+
+import { ExecutionAgentAttributionService } from './execution-agent-attribution.service';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -205,11 +207,40 @@ export class ExecutionService {
 			},
 		);
 
+		// Only an execution that an agent's workflow tool started carries the marker.
+		const agentRun = execution.data.parentAgentRun?.agentServiceAccountId
+			? await Container.get(ExecutionAgentAttributionService).describe(
+					execution.data,
+					execution.mode,
+				)
+			: undefined;
+
 		return {
 			...execution,
 			data: stringify(processedExecution.data),
 			dataTooLargeToDisplay: execution.dataTooLargeToDisplay,
+			...(agentRun && { agentRun }),
 		};
+	}
+
+	/**
+	 * The agent that started an execution through a workflow tool, or `null`.
+	 * The editor reads it for the header of the execution preview.
+	 */
+	async findAgentRun(
+		executionId: string,
+		workflowIds: string[],
+	): Promise<ExecutionAgentRun | null> {
+		const execution = await this.findOneAcrossEngines(executionId, workflowIds, {
+			includeData: true,
+			maxDataSizeBytes: this.globalConfig.executions.maxDisplaySize,
+		});
+		if (!execution || !('data' in execution)) return null;
+		const agentRun = await Container.get(ExecutionAgentAttributionService).describe(
+			execution.data,
+			execution.mode,
+		);
+		return agentRun ?? null;
 	}
 
 	async getLastSuccessfulExecution(

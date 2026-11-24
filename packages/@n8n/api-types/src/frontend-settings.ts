@@ -477,6 +477,11 @@ export type FrontendModuleSettings = {
 		knowledgeBaseEnabled: boolean;
 		/** Whether the AI Assistant proxy is available to the agents module. */
 		proxyEnabled: boolean;
+		/**
+		 * Whether a published agent runs as its own service account. Controlled
+		 * via `N8N_AGENTS_RUNTIME_IDENTITY_ENABLED`.
+		 */
+		runtimeIdentityEnabled?: boolean;
 	};
 
 	/**

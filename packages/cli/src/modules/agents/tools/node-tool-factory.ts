@@ -2,6 +2,7 @@ import type { BuiltTool } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import { createZodSchemaFromArgs, extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
 import type { AgentJsonToolConfig } from '@n8n/api-types';
+import type { SecurityContext } from '@n8n/permissions';
 import { Container } from '@n8n/di';
 import type { JSONSchema7 } from 'json-schema';
 import type {
@@ -29,6 +30,8 @@ export interface NodeToolFactoryContext {
 	agentId?: string;
 	/** Eval-only additionalData decoration — absent on every production path. */
 	instrumentToolAdditionalData?: InstrumentToolAdditionalData;
+	/** Set for a published run with runtime identity. The executor checks credentials against it. */
+	security?: SecurityContext;
 }
 
 /**
@@ -119,6 +122,7 @@ async function resolveInputSchema(
 	if (typeof nodeType.supplyData === 'function') {
 		const introspected = await ctx.executor.introspectSupplyDataToolSchema({
 			projectId: ctx.projectId,
+			...(ctx.security ? { security: ctx.security } : {}),
 			nodeType: nodeTypeName,
 			nodeTypeVersion: toolSchema.node.nodeTypeVersion,
 			nodeParameters: toolSchema.node.nodeParameters as INodeParameters,
@@ -192,6 +196,7 @@ export async function resolveNodeTool(
 					{ json: input as IDataObject, ...(inputFiles && { binary: inputFiles.binary }) },
 				],
 				projectId: ctx.projectId,
+				...(ctx.security ? { security: ctx.security } : {}),
 				...instrumentedExecution,
 			});
 			// A refusal is returned, not thrown: thrown errors reach the chat as plain text.

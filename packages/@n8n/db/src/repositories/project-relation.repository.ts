@@ -1,10 +1,11 @@
 import { Service } from '@n8n/di';
 import {
 	PROJECT_ADMIN_ROLE_SLUG,
+	PROJECT_AGENT_ROLE_SLUG,
 	PROJECT_OWNER_ROLE_SLUG,
 	type ProjectRole,
 } from '@n8n/permissions';
-import { DataSource, In } from '@n8n/typeorm';
+import { DataSource, EntityManager, In, Not } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
 import { ProjectRelation, Role } from '../entities';
@@ -99,6 +100,17 @@ export class ProjectRelationRepository extends BaseRepository<ProjectRelation> {
 	): Promise<boolean> {
 		if (roleSlugs.length === 0) return false;
 		return await this.existsBy({ userId, projectId, role: { slug: In(roleSlugs) } });
+	}
+
+	/**
+	 * Deletes the relations that people manage in a project. The relation of an
+	 * agent service account (`project:agent`) stays, because only n8n sets it.
+	 */
+	async deleteMemberRelations(projectId: string, em: EntityManager = this.manager) {
+		await em.delete(ProjectRelation, {
+			projectId,
+			role: { slug: Not(PROJECT_AGENT_ROLE_SLUG) },
+		});
 	}
 
 	/**

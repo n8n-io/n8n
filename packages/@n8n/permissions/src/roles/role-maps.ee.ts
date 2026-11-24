@@ -23,6 +23,7 @@ import {
 	PROJECT_EDITOR_SCOPES,
 	PROJECT_VIEWER_SCOPES,
 	PROJECT_CHAT_USER_SCOPES,
+	PROJECT_AGENT_SCOPES,
 } from './scopes/project-scopes.ee';
 import {
 	WORKFLOW_SHARING_OWNER_SCOPES,
@@ -47,6 +48,7 @@ export const PROJECT_SCOPE_MAP: Record<ProjectRole, Scope[]> = {
 	'project:editor': PROJECT_EDITOR_SCOPES,
 	'project:viewer': PROJECT_VIEWER_SCOPES,
 	'project:chatUser': PROJECT_CHAT_USER_SCOPES,
+	'project:agent': PROJECT_AGENT_SCOPES,
 };
 
 export const CREDENTIALS_SHARING_SCOPE_MAP: Record<CredentialSharingRole, Scope[]> = {

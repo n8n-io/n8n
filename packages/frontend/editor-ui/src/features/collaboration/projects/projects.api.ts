@@ -1,7 +1,7 @@
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
 import type { Project, ProjectListItem, ProjectsCount } from './projects.types';
-import type { CreateProjectDto, UpdateProjectDto } from '@n8n/api-types';
+import type { CreateProjectDto, ProjectAgentAccess, UpdateProjectDto } from '@n8n/api-types';
 import type { AssignableProjectRole } from '@n8n/permissions';
 
 export { addProjectMembers, getProject } from '@n8n/rest-api-client';
@@ -101,4 +101,40 @@ export const deleteProjectMember = async (
 	userId: string,
 ): Promise<void> => {
 	await makeRestApiRequest(context, 'DELETE', `/projects/${projectId}/users/${userId}`);
+};
+
+export const getProjectAgentAccess = async (
+	context: IRestApiContext,
+	projectId: string,
+): Promise<ProjectAgentAccess[]> => {
+	return await makeRestApiRequest(context, 'GET', `/projects/${projectId}/agent-access`);
+};
+
+export const getProjectAgentAccessCandidates = async (
+	context: IRestApiContext,
+	projectId: string,
+): Promise<ProjectAgentAccess[]> => {
+	return await makeRestApiRequest(context, 'GET', `/projects/${projectId}/agent-access/candidates`);
+};
+
+export const addProjectAgentAccess = async (
+	context: IRestApiContext,
+	projectId: string,
+	serviceAccountId: string,
+): Promise<void> => {
+	await makeRestApiRequest(context, 'POST', `/projects/${projectId}/agent-access`, {
+		serviceAccountId,
+	});
+};
+
+export const removeProjectAgentAccess = async (
+	context: IRestApiContext,
+	projectId: string,
+	serviceAccountId: string,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'DELETE',
+		`/projects/${projectId}/agent-access/${serviceAccountId}`,
+	);
 };

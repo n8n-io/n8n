@@ -279,6 +279,7 @@ export class AgentsModule implements ModuleInterface {
 			modules: [...config.modules],
 			knowledgeBaseEnabled: Container.get(KnowledgeAvailabilityService).isFileKnowledgeEnabled(),
 			proxyEnabled,
+			runtimeIdentityEnabled: config.runtimeIdentityEnabled,
 		};
 	}
 

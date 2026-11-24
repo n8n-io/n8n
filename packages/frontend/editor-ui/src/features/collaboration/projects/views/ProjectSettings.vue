@@ -18,6 +18,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import ProjectDeleteDialog from '../components/ProjectDeleteDialog.vue';
 import ProjectRoleUpgradeDialog from '../components/ProjectRoleUpgradeDialog.vue';
 import ProjectMembersTable from '../components/ProjectMembersTable.vue';
+import ProjectAgentAccessSection from '../components/ProjectAgentAccessSection.vue';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -867,6 +868,13 @@ onMounted(async () => {
 					</div>
 				</fieldset>
 			</template>
+
+			<ProjectAgentAccessSection
+				v-if="settingsStore.isAgentsRuntimeIdentityEnabled && projectsStore.currentProject"
+				:key="projectsStore.currentProject.id"
+				:project-id="projectsStore.currentProject.id"
+				:can-manage="canManageMembers"
+			/>
 
 			<template v-if="canUpdateProject">
 				<fieldset v-if="settingsStore.isOtelCustomSpanAttributesEnabled">

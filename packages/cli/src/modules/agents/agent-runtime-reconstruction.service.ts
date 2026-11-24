@@ -43,6 +43,7 @@ import { getN8nVersion, Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import { WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { UserError } from '@n8n/errors';
@@ -194,6 +195,12 @@ export interface ReconstructAgentRuntimeParams extends AgentRuntimeAssets {
 	 * integration parents, which keep the project-scoped trust boundary.
 	 */
 	user?: User;
+	/**
+	 * Set for a published run with runtime identity: the agent's account is the
+	 * subject. Node tools check credentials against it, and a sub-agent gets it
+	 * with itself as the actor.
+	 */
+	security?: SecurityContext;
 	attributionUserId?: string;
 	/**
 	 * The stored agent's service account (`agents.identityId`). Workflow tools stamp it
@@ -262,6 +269,7 @@ interface ToolRunIdentity {
 	publishedN8nChat?: boolean;
 	agentServiceAccountId?: string;
 	delegatingAgentId?: string;
+	security?: SecurityContext;
 	supportsHitl: boolean;
 	backgroundTasksEnabled: boolean;
 }
@@ -362,7 +370,7 @@ function toolRefName(ref: AgentJsonToolConfig): string {
 	return ref.type === 'workflow' ? (ref.name ?? ref.workflow) : ref.name;
 }
 
-/** Ids that workflow tools stamp for log attribution. The run does not act as the account. */
+/** Ids that workflow tools stamp for log and execution attribution. */
 function workflowToolAttribution({
 	agentServiceAccountId,
 	runtimeProfile,
@@ -371,7 +379,9 @@ function workflowToolAttribution({
 	ToolRunIdentity,
 	'agentServiceAccountId' | 'delegatingAgentId'
 > {
-	if (!agentServiceAccountId || !Container.get(AgentsConfig).serviceAccountsEnabled) return {};
+	const agentsConfig = Container.get(AgentsConfig);
+	const attributionOn = agentsConfig.serviceAccountsEnabled || agentsConfig.runtimeIdentityEnabled;
+	if (!agentServiceAccountId || !attributionOn) return {};
 	return {
 		agentServiceAccountId,
 		// Only a sub-agent runtime has a delegating agent; delegation is one level deep.
@@ -435,6 +445,7 @@ export class AgentRuntimeReconstructionService {
 			allowPlanTools = true,
 			attributionUserId,
 			abortSignal,
+			security,
 		}: {
 			/** Pass false when the caller cannot resume a suspended run (workflow executions). */
 			supportsHitl?: boolean;
@@ -445,6 +456,7 @@ export class AgentRuntimeReconstructionService {
 			allowPlanTools?: boolean;
 			attributionUserId?: string;
 			abortSignal?: AbortSignal;
+			security?: SecurityContext;
 		} = {},
 	): Promise<ReconstructedAgentRuntime & { userToolAccessSnapshot?: UserToolAccessSnapshot }> {
 		if (!agentEntity.schema) {
@@ -507,6 +519,7 @@ export class AgentRuntimeReconstructionService {
 			subAgentDelegation,
 			user,
 			attributionUserId,
+			...(security ? { security } : {}),
 			...(agentEntity.identityId ? { agentServiceAccountId: agentEntity.identityId } : {}),
 			instrumentation,
 			abortSignal,
@@ -604,6 +617,10 @@ export class AgentRuntimeReconstructionService {
 
 	/** Returns the credential IDs agents can use. */
 	private async loadAgentUsableCredentialIds(projectId: string, user: User): Promise<Set<string>> {
+		if (user.kind === 'service') {
+			const usable = await this.credentialsService.getCredentialsAnAgentAccountCanUse(user);
+			return new Set(usable.map((credential) => credential.id));
+		}
 		const usable = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
 			projectId,
 			excludePersonalRoute: true,
@@ -939,6 +956,7 @@ export class AgentRuntimeReconstructionService {
 			supportsHitl,
 			runtimeProfile,
 			instrumentation,
+			security,
 		} = options;
 		const canResume = supportsHitl ?? runtimeProfile === 'top-level';
 		return this.makeToolResolver(
@@ -949,13 +967,15 @@ export class AgentRuntimeReconstructionService {
 				usePublishedWorkflowVersion: runType === 'production',
 				agentId: memoryOwnerAgentId,
 				integrationType,
-				userId: attributionUserId ?? user?.id,
+				// An agent account is not the person who chats, so only a person goes here.
+				userId: attributionUserId ?? (user?.kind === 'person' ? user.id : undefined),
 				previewChat,
 				publishedN8nChat:
 					runType === 'production' &&
 					integrationType === N8N_CHAT_INTEGRATION_TYPE &&
 					attributionUserId !== undefined,
 				...workflowToolAttribution(options),
+				...(security ? { security } : {}),
 				// Sub-agent checkpoints are rejected on resume and inline agents have no
 				// checkpoint storage, so neither can be woken again.
 				supportsHitl: canResume,
@@ -1109,6 +1129,7 @@ export class AgentRuntimeReconstructionService {
 					projectId: runIdentity.projectId,
 					agentId: runIdentity.agentId,
 					instrumentToolAdditionalData,
+					...(runIdentity.security ? { security: runIdentity.security } : {}),
 				});
 			}
 			return null;
@@ -1393,6 +1414,7 @@ export class AgentRuntimeReconstructionService {
 			workflowToolExecutionMode,
 			subAgentDelegation,
 			user,
+			security,
 			instrumentation,
 			backgroundTasksEnabled,
 		} = params;
@@ -1405,6 +1427,7 @@ export class AgentRuntimeReconstructionService {
 			workflowToolExecutionMode,
 			delegation: subAgentDelegation,
 			user,
+			security,
 			instrumentation,
 			abortSignal: params.abortSignal,
 		};
@@ -1467,6 +1490,7 @@ export class AgentRuntimeReconstructionService {
 		delegation: SubAgentDelegationConfig;
 		parentWorkspaceHandle?: AgentSandboxRuntime;
 		user?: User;
+		security?: SecurityContext;
 		instrumentation?: AgentRuntimeInstrumentation;
 		rootSessionId?: string;
 		rootSessionCapUsd?: number;
@@ -1485,6 +1509,7 @@ export class AgentRuntimeReconstructionService {
 			delegation,
 			parentWorkspaceHandle,
 			user,
+			security,
 			instrumentation,
 			rootSessionId,
 			rootSessionCapUsd,
@@ -1509,6 +1534,7 @@ export class AgentRuntimeReconstructionService {
 				workflowToolExecutionMode,
 				...(parentWorkspaceHandle !== undefined ? { parentWorkspaceHandle } : {}),
 				user,
+				...(security ? { security } : {}),
 				instrumentation,
 				parentBudget: config.config?.guardrails?.budget,
 				runBackgroundSubAgent,
@@ -1565,6 +1591,7 @@ export class AgentRuntimeReconstructionService {
 		workflowToolExecutionMode: WorkflowToolExecutionMode;
 		delegation: SubAgentDelegationConfig;
 		user?: User;
+		security?: SecurityContext;
 		instrumentation?: AgentRuntimeInstrumentation;
 		parentWorkspaceHandle?: AgentSandboxRuntime;
 		rootSessionCapUsd?: number;

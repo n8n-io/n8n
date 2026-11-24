@@ -3,6 +3,8 @@ import {
 	DeleteProjectDto,
 	UpdateProjectDto,
 	AddUsersToProjectDto,
+	AddProjectAgentAccessDto,
+	type ProjectAgentAccess,
 	ChangeUserRoleInProject,
 	ListProjectsQueryDto,
 	ListSharingCandidatesQueryDto,
@@ -27,6 +29,7 @@ import { Response } from 'express';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import type { ProjectRequest } from '@/requests';
+import { ProjectAgentAccessService } from '@/services/project-agent-access.service';
 import {
 	ProjectService,
 	TeamProjectOverQuotaError,
@@ -51,6 +54,7 @@ export class ProjectController {
 	constructor(
 		private readonly projectsService: ProjectService,
 		private readonly provisioningService: ProvisioningService,
+		private readonly projectAgentAccessService: ProjectAgentAccessService,
 	) {}
 
 	@Get('/')
@@ -204,6 +208,51 @@ export class ProjectController {
 				'Project roles are managed automatically and cannot be changed manually',
 			);
 		}
+	}
+
+	/** The agents that can use the credentials and run the workflows of this project. */
+	@Get('/:projectId/agent-access')
+	@ProjectScope('project:read')
+	async listAgentAccess(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId') projectId: string,
+	): Promise<ProjectAgentAccess[]> {
+		return await this.projectAgentAccessService.list(projectId);
+	}
+
+	@Get('/:projectId/agent-access/candidates')
+	@ProjectScope('project:manageMembers')
+	async listAgentAccessCandidates(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId') projectId: string,
+	): Promise<ProjectAgentAccess[]> {
+		return await this.projectAgentAccessService.listCandidates(req.user, projectId);
+	}
+
+	@Post('/:projectId/agent-access')
+	@ProjectScope('project:manageMembers')
+	async addAgentAccess(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId') projectId: string,
+		@Body payload: AddProjectAgentAccessDto,
+	) {
+		await this.projectAgentAccessService.add(req.user, projectId, payload.serviceAccountId);
+		return { success: true };
+	}
+
+	@Delete('/:projectId/agent-access/:serviceAccountId')
+	@ProjectScope('project:manageMembers')
+	async removeAgentAccess(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId') projectId: string,
+		@Param('serviceAccountId') serviceAccountId: string,
+	) {
+		await this.projectAgentAccessService.remove(projectId, serviceAccountId);
+		return { success: true };
 	}
 
 	@Post('/:projectId/users')

@@ -17,6 +17,8 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import type { ExecutionAgentRun } from '@n8n/api-types';
+import { AGENT_BUILDER_VIEW } from '@n8n/frontend-constants/agents';
 import type { AnnotationVote, ExecutionSummary } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -28,6 +30,7 @@ import { useAddExecutionToDataset } from '@/features/ai/evaluation.ee/composable
 import {
 	N8nButton,
 	N8nDropdownMenu,
+	N8nIcon,
 	N8nIconButton,
 	N8nSpinner,
 	N8nText,
@@ -230,6 +233,25 @@ watch(
 	{ immediate: true },
 );
 
+// Runtime identity: name the agent when one of its workflow tools started this
+// execution. Published agents run their tools in `integrated` mode.
+const agentRun = ref<ExecutionAgentRun | null>(null);
+watch(
+	() => props.execution?.id,
+	async (executionId) => {
+		agentRun.value = null;
+		if (!executionId || !settingsStore.isAgentsRuntimeIdentityEnabled) return;
+		if (props.execution?.mode !== 'integrated') return;
+		try {
+			const run = await executionsStore.fetchExecutionAgentRun(executionId);
+			if (props.execution?.id === executionId) agentRun.value = run;
+		} catch {
+			// The label is optional. The preview still works without it.
+		}
+	},
+	{ immediate: true },
+);
+
 const activeExecution = computed(() => {
 	return executionsStore.activeExecution as ExecutionSummary & {
 		customData?: Record<string, string>;
@@ -394,6 +416,25 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 								</N8nTooltip>
 							</N8nText>
 						</template>
+					</N8nText>
+				</div>
+				<div
+					v-if="agentRun"
+					:class="$style.executionDetailsRetry"
+					data-test-id="execution-preview-agent-run"
+				>
+					<N8nText color="text-base" size="small" :class="$style.agentRun">
+						<N8nIcon icon="bot" size="small" />
+						{{ locale.baseText('executionDetails.runByAgent') }}
+						<RouterLink
+							:class="$style.executionLink"
+							:to="{
+								name: AGENT_BUILDER_VIEW,
+								params: { projectId: agentRun.projectId, agentId: agentRun.agentId },
+							}"
+						>
+							{{ agentRun.agentName }}
+						</RouterLink>
 					</N8nText>
 				</div>
 				<div v-if="execution.mode === 'retry'" :class="$style.executionDetailsRetry">
@@ -631,5 +672,10 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 
 .badge {
 	border: 0;
+}
+.agentRun {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 }
 </style>

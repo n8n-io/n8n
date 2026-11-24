@@ -12,6 +12,7 @@ import {
 	GLOBAL_CHAT_USER_ROLE_SLUG,
 	PROJECT_OWNER_ROLE_SLUG,
 	PROJECT_CHAT_USER_ROLE_SLUG,
+	PROJECT_AGENT_ROLE_SLUG,
 } from '@n8n/permissions';
 import * as rolesApi from '@n8n/rest-api-client/api/roles';
 import { defineStore } from 'pinia';
@@ -76,6 +77,8 @@ export const useRolesStore = defineStore('roles', () => {
 			.filter(
 				(role) =>
 					role.slug !== PROJECT_OWNER_ROLE_SLUG &&
+					// Only n8n gives an agent's service account this role.
+					role.slug !== PROJECT_AGENT_ROLE_SLUG &&
 					(settingsStore.isChatFeatureEnabled || role.slug !== PROJECT_CHAT_USER_ROLE_SLUG),
 			)
 			.sort(sortByOrderThenName(projectRoleOrderMap.value)),

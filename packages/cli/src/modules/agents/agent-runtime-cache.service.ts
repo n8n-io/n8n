@@ -2,6 +2,7 @@ import type { Agent as RuntimeAgent } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import { OnPubSubEvent, type PubSubCommandMap } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { UserError } from '@n8n/errors';
@@ -23,6 +24,7 @@ import type {
 	UserToolAccessSnapshot,
 } from './agent-runtime-reconstruction.service';
 import type { IAgentConfigurationTelemetryProperties } from './agent-telemetry.types';
+import { AgentRuntimeIdentityService } from './agent-runtime-identity.service';
 import { AgentRepository } from './repositories/agent.repository';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
@@ -72,6 +74,13 @@ export interface AgentRuntime extends ReconstructedAgentRuntime {
 	 * runtime.
 	 */
 	userToolAccessSnapshot?: UserToolAccessSnapshot;
+	/**
+	 * The agent's service account, when a published run acts as it (runtime
+	 * identity). Tool access is re-checked against it on cache hits.
+	 */
+	actingAccount?: User;
+	/** Who acts in a published run with runtime identity: the agent's account, and the person as actor. */
+	security?: SecurityContext;
 	/** Epoch ms of the last passing tool-access re-check (build counts as one). */
 	toolAccessCheckedAt: number;
 }
@@ -123,6 +132,7 @@ export class AgentRuntimeCacheService {
 		private readonly credentialsService: CredentialsService,
 		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly runtimeIdentity: AgentRuntimeIdentityService,
 	) {}
 
 	private computeRuntimeCacheKey(params: GetRuntimeParams): string {
@@ -264,7 +274,7 @@ export class AgentRuntimeCacheService {
 		params: GetRuntimeParams,
 	): Promise<boolean> {
 		const { userToolAccessSnapshot } = runtime;
-		const { user } = params;
+		const user = params.user ?? runtime.actingAccount;
 		if (!userToolAccessSnapshot || !user) return true;
 		if (Date.now() - runtime.toolAccessCheckedAt < TOOL_ACCESS_RECHECK_INTERVAL_MS) return true;
 
@@ -322,6 +332,18 @@ export class AgentRuntimeCacheService {
 			`Agent ${agentId} not found`,
 		);
 
+		// A published run without a person acts as the agent's account (runtime
+		// identity). The cache key does not change, so each agent keeps one entry.
+		const runIdentity =
+			!user && usePublishedVersion
+				? await this.runtimeIdentity.resolveRunIdentity(agentEntity, {
+						personId: attributionUserId,
+					})
+				: undefined;
+		const actingAccount = runIdentity?.account;
+		const security = runIdentity?.security;
+		const runtimeUser = user ?? actingAccount;
+
 		const runSource = await resolveAgentRunSource(
 			agentEntity,
 			usePublishedVersion === true,
@@ -329,28 +351,30 @@ export class AgentRuntimeCacheService {
 			{},
 		);
 
-		// `user` here is whatever `computeRuntimeCacheKey` above already keyed
-		// this build on — undefined for published/integration runs, set for
-		// in-app chat/resume/task-now. Forwarded to both the credential provider
+		// `runtimeUser` is the person that `computeRuntimeCacheKey` keyed this
+		// build on (in-app chat/resume/task-now), or the agent's account for a
+		// published run with runtime identity on. Undefined otherwise, which keeps
+		// the project-scoped runtime. Forwarded to both the credential provider
 		// (so credential lookups are scoped to what this user can access) and
 		// the reconstruction service (so node/workflow tools the user can't run
 		// are dropped before the runtime is built).
 		const credentialProvider = createAgentCredentialProvider(
 			this.credentialsService,
 			projectId,
-			user,
+			runtimeUser,
 			agentId,
+			security,
 		);
 		const reconstruction = this.agentRuntimeReconstructionService.reconstructFromAgentEntity(
 			runSource,
 			credentialProvider,
 			usePublishedVersion ? 'production' : 'test',
 			integrationType,
-			user,
+			runtimeUser,
 			undefined,
 			usePublishedVersion ? 'integrated' : 'manual',
 			sandboxPrincipalHash,
-			{ previewChat, allowBackgroundTasks, attributionUserId },
+			{ previewChat, allowBackgroundTasks, attributionUserId, ...(security ? { security } : {}) },
 		);
 		const {
 			agent: agentInstance,
@@ -373,6 +397,8 @@ export class AgentRuntimeCacheService {
 			projectId,
 			telemetryConfiguration: buildAgentConfigurationTelemetry(runSource),
 			...(userToolAccessSnapshot !== undefined ? { userToolAccessSnapshot } : {}),
+			...(actingAccount ? { actingAccount } : {}),
+			...(security ? { security } : {}),
 			toolAccessCheckedAt: Date.now(),
 		};
 	}

@@ -1,7 +1,7 @@
 import type { z } from 'zod';
 
 import type { RESOURCES, API_KEY_RESOURCES } from './constants.ee';
-import { PROJECT_OWNER_ROLE_SLUG } from './constants.ee';
+import { PROJECT_AGENT_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from './constants.ee';
 import type {
 	assignableGlobalRoleSchema,
 	credentialSharingRoleSchema,
@@ -69,11 +69,15 @@ export type AssignableProjectRole = z.infer<typeof assignableProjectRoleSchema>;
  *
  * Custom project roles are supported. We consider any slug that:
  * - starts with the `project:` prefix, and
- * - is not the personal owner role
+ * - is not the personal owner role or the agent role
  * to be an assignable project role.
  */
 export function isAssignableProjectRoleSlug(slug: string): slug is AssignableProjectRole {
-	return slug.startsWith('project:') && slug !== PROJECT_OWNER_ROLE_SLUG;
+	return (
+		slug.startsWith('project:') &&
+		slug !== PROJECT_OWNER_ROLE_SLUG &&
+		slug !== PROJECT_AGENT_ROLE_SLUG
+	);
 }
 
 /** Union of all possible role types in the system */

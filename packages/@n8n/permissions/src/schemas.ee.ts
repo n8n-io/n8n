@@ -35,6 +35,9 @@ export const personalRoleSchema = z.enum([
 	'project:personalOwner', // personalOwner is only used for personal projects
 ]);
 
+// The role of an agent's service account in its own project. Only n8n sets it.
+export const agentProjectRoleSchema = z.enum(['project:agent']);
+
 // Those are the system roles for projects assignable to a user
 export const teamRoleSchema = z.enum([
 	'project:admin',
@@ -52,9 +55,13 @@ export const customProjectRoleSchema = z
 	});
 
 // Those are all the system roles for projects
-export const systemProjectRoleSchema = z.union([personalRoleSchema, teamRoleSchema]);
+export const systemProjectRoleSchema = z.union([
+	personalRoleSchema,
+	teamRoleSchema,
+	agentProjectRoleSchema,
+]);
 
-// Those are the roles that can be assigned to a user for a project (all roles except personalOwner)
+// Those are the roles that can be assigned to a user for a project (all roles except personalOwner and agent)
 export const assignableProjectRoleSchema = z.union([teamRoleSchema, customProjectRoleSchema]);
 
 export const projectRoleSchema = z.union([systemProjectRoleSchema, customProjectRoleSchema]);

@@ -438,6 +438,40 @@ describe('EphemeralNodeExecutor', () => {
 			expect(credentialAccessRepository.findCredentialNames).not.toHaveBeenCalled();
 		});
 
+		it('checks the credential against the agent account in an agent run', async () => {
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mockNodeType({
+					description: toolDescription,
+					supplyData: vi.fn().mockResolvedValue({
+						response: { invoke: vi.fn().mockResolvedValue('ok') },
+					}),
+				}),
+			);
+			credentialsRepository.findCredentialsUsableByAccount.mockResolvedValue([
+				{ id: 'c1', name: 'Shared with agent', type: 'slackApi' },
+			]);
+
+			const result = await executor.executeInline({
+				nodeType: 'n8n-nodes-base.slack',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				credentialDetails: { slackApi: { id: 'c1', name: 'Shared with agent' } },
+				inputData: [],
+				projectId: 'p-1',
+				security: {
+					subject: { id: 'agent-account', type: 'service', role: mock() },
+					authMethod: 'agent-run',
+				},
+			});
+
+			expect(result.status).toBe('success');
+			expect(credentialsRepository.findCredentialsUsableByAccount).toHaveBeenCalledWith(
+				'agent-account',
+				['c1'],
+			);
+			expect(credentialsRepository.findCredentialsUsableInProject).not.toHaveBeenCalled();
+		});
+
 		it('throws when credentialDetails are missing an id', async () => {
 			mockToolNodeWithSupplyData();
 
