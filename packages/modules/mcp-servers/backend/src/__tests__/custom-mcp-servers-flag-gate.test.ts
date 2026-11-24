@@ -3,7 +3,7 @@ import type { PostHogClient } from '@n8n/backend-services';
 import { NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
-import { CustomMcpServersFlagGate } from '../custom-mcp-servers-flag-gate';
+import { CustomMcpServersFlagGate } from '../services/custom-mcp-servers-flag-gate';
 
 describe('CustomMcpServersFlagGate', () => {
 	const user = { id: 'user-1', createdAt: new Date('2026-01-01') };
