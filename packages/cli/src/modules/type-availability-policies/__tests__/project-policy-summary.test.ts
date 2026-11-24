@@ -13,7 +13,7 @@ import type {
 	TypeAvailabilityPolicyScopeRepository,
 } from '../database/repositories/type-availability-policy-scope.repository';
 import type { TypeAvailabilityPolicyRepository } from '../database/repositories/type-availability-policy.repository';
-import type { HiddenNodeTypes } from '../hidden-node-types';
+import { listedNodeTypes } from '../listed-node-types';
 import type { PolicyAction, PolicyRule } from '../policy-rule.types';
 import type { TypeAvailabilityPolicySnapshot } from '../type-availability-policy-snapshot';
 import { TypeAvailabilityPolicyService } from '../type-availability-policy.service';
@@ -28,19 +28,22 @@ const NODE_TYPES = [SLACK, GMAIL, NOTION, JIRA];
 
 const UPDATED_AT = new Date('2026-11-20T10:00:00.000Z');
 
-const deny = (id: string, value: string, kind: 'name' | 'package' | 'extends' = 'name') =>
-	({ id, action: 'deny', selector: { kind, value } }) satisfies PolicyRule;
-const allow = (id: string, value: string) =>
-	({ id, action: 'allow', selector: { kind: 'name', value } }) satisfies PolicyRule;
-const delegate = (id: string, value: string) =>
-	({ id, action: 'delegate', selector: { kind: 'name', value } }) satisfies PolicyRule;
+const rule =
+	(action: PolicyAction) =>
+	(id: string, value: string, kind: 'name' | 'package' | 'extends' = 'name'): PolicyRule => ({
+		id,
+		action,
+		selector: { kind, value },
+	});
+const deny = rule('deny');
+const allow = rule('allow');
+const delegate = rule('delegate');
 
 describe('TypeAvailabilityPolicyService.summarizeProjectPolicies', () => {
 	const scopeRepository = mock<TypeAvailabilityPolicyScopeRepository>();
 	const attachmentRepository = mock<TypeAvailabilityPolicyAttachmentRepository>();
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
 	const nodeTypes = mock<NodeTypes>();
-	const hiddenNodeTypes = mock<HiddenNodeTypes>();
 
 	const service = new TypeAvailabilityPolicyService(
 		mock<TypeAvailabilityPolicyRepository>(),
@@ -51,7 +54,6 @@ describe('TypeAvailabilityPolicyService.summarizeProjectPolicies', () => {
 		mock<TypeAvailabilityPolicySnapshot>(),
 		loadNodesAndCredentials,
 		nodeTypes,
-		hiddenNodeTypes,
 	);
 
 	let rulesByScope: Map<string, PolicyRule[]>;
@@ -81,10 +83,8 @@ describe('TypeAvailabilityPolicyService.summarizeProjectPolicies', () => {
 		for (const project of projects) rulesByScope.set(`scope-${project.id}`, project.rules);
 		scopeRepository.findProjectScopes.mockResolvedValue(
 			projects.map(
-				(project): ProjectPolicyScope =>
-					Object.assign(makeScope(`scope-${project.id}`, project.id, project.defaultAction), {
-						projectId: project.id,
-					}),
+				(project) =>
+					makeScope(`scope-${project.id}`, project.id, project.defaultAction) as ProjectPolicyScope,
 			),
 		);
 	}
@@ -114,10 +114,14 @@ describe('TypeAvailabilityPolicyService.summarizeProjectPolicies', () => {
 		);
 	});
 
-	const summarize = async (types = NODE_TYPES, hidden: string[] = []) => {
-		hiddenNodeTypes.get.mockResolvedValue(new Set(hidden));
-		return await service.summarizeProjectPolicies(NODE_TYPES_KIND, types);
-	};
+	const summarize = async (types = NODE_TYPES, hidden: string[] = []) =>
+		await service.summarizeProjectPolicies(NODE_TYPES_KIND, types, (verdicts, instanceRules) =>
+			listedNodeTypes(verdicts, {
+				resolveBaseName: (name) => nodeTypes.resolveBaseName(name),
+				hiddenTypes: new Set(hidden),
+				instanceRules,
+			}),
+		);
 	const projectSummary = (result: Awaited<ReturnType<typeof summarize>>, projectId = 'project-a') =>
 		result.byProject.get(projectId)?.summary;
 
@@ -262,7 +266,7 @@ describe('TypeAvailabilityPolicyService.summarizeProjectPolicies', () => {
 		});
 	});
 
-	it('lists every credential type, and reads no hidden node type for it', async () => {
+	it('lists every credential type when no filter is given', async () => {
 		Object.assign(loadNodesAndCredentials, {
 			knownCredentials: {
 				oAuth2Api: { className: 'oAuth2Api', sourcePath: '' },
@@ -278,7 +282,6 @@ describe('TypeAvailabilityPolicyService.summarizeProjectPolicies', () => {
 			'slackApi',
 		]);
 
-		expect(hiddenNodeTypes.get).not.toHaveBeenCalled();
 		expect(result.withoutProjectPolicy).toEqual({ allowed: 3, restricted: 0 });
 		expect(projectSummary(result)).toMatchObject({
 			restricted: 2,

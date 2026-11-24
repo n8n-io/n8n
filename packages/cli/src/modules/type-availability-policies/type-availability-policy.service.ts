@@ -30,8 +30,6 @@ import {
 	type EffectivePolicy,
 	type ProjectEffectivePolicy,
 } from './effective-policy';
-import { HiddenNodeTypes } from './hidden-node-types';
-import { listedNodeTypes } from './listed-node-types';
 import { loadedCheckFor, packageResolverFor, policedTypeFor } from './package-resolver';
 import {
 	evaluateComposedType,
@@ -59,6 +57,11 @@ export type ScopeAttachments = {
 
 /** One type's composed verdict, as `evaluateComposedTypes` reports it. */
 export type ComposedTypeVerdict = ComposedVerdict & { readonly name: string };
+
+type ListTypes = (
+	verdicts: ComposedTypeVerdict[],
+	instanceRules: readonly PolicyRule[],
+) => ComposedTypeVerdict[];
 
 /** One kind's counts for the project policy list. Projects without a scope row are absent. */
 export type ProjectPolicyKindSummaries = {
@@ -198,7 +201,6 @@ export class TypeAvailabilityPolicyService {
 		private readonly snapshot: TypeAvailabilityPolicySnapshot,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly nodeTypes: NodeTypes,
-		private readonly hiddenNodeTypes: HiddenNodeTypes,
 	) {}
 
 	/**
@@ -994,39 +996,31 @@ export class TypeAvailabilityPolicyService {
 	}
 
 	/**
-	 * Counts for the project policy list, over the types the instance policy page lists. Reads the
-	 * database, not the snapshot, so the counts and `updatedAt` come from one source.
+	 * Counts for the project policy list. Reads the database, not the snapshot, so the counts and
+	 * `updatedAt` come from one source. `listTypes` picks the types to count from the verdicts of a
+	 * project without a policy.
 	 */
 	async summarizeProjectPolicies(
 		kind: string,
 		typeNames: readonly string[],
+		listTypes: ListTypes = (verdicts) => verdicts,
 	): Promise<ProjectPolicyKindSummaries> {
 		const [instance, projects] = await Promise.all([
 			this.getEffectivePolicy(kind, null),
 			this.readProjectScopes(kind),
 		]);
 
-		const allVerdicts = this.verdictComposer(kind, typeNames)(
-			instance,
-			unconfiguredScope(kind, null),
+		const withoutProjectPolicy = listTypes(
+			this.verdictComposer(kind, typeNames)(instance, unconfiguredScope(kind, null)),
+			instance.rules,
 		);
-		const withoutProjectPolicy =
-			kind === NODE_TYPES_KIND
-				? listedNodeTypes(allVerdicts, {
-						resolveBaseName: (name) => this.nodeTypes.resolveBaseName(name),
-						hiddenTypes: await this.hiddenNodeTypes.get(),
-						instanceRules: instance.rules,
-					})
-				: allVerdicts;
 		const composeVerdicts = this.verdictComposer(
 			kind,
 			withoutProjectPolicy.map((verdict) => verdict.name),
 		);
 
-		const countAllowed = (verdicts: readonly ComposedTypeVerdict[]) =>
-			verdicts.filter((verdict) => verdict.action === 'allow').length;
 		const effectiveCounts = (verdicts: readonly ComposedTypeVerdict[]) => {
-			const allowed = countAllowed(verdicts);
+			const allowed = verdicts.filter((verdict) => verdict.action === 'allow').length;
 			return { allowed, restricted: verdicts.length - allowed };
 		};
 

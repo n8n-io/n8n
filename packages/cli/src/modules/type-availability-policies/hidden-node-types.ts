@@ -2,10 +2,8 @@ import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
-
-const CACHE_TTL_MS = 5 * 60 * 1000;
 
 function latestVersion(version: unknown): number {
 	if (typeof version === 'number') return version;
@@ -38,14 +36,17 @@ export function hiddenNodeTypeNames(descriptions: unknown): Set<string> {
  */
 @Service()
 export class HiddenNodeTypes {
-	private cache: { names: Promise<ReadonlySet<string>>; expiresAt: number } | null = null;
+	/** The file is large and rarely rewritten, so it is parsed again only when it changes. */
+	private cache: { names: Promise<ReadonlySet<string>>; modifiedAt: number } | null = null;
 
 	constructor(private readonly instanceSettings: InstanceSettings) {}
 
 	async get(): Promise<ReadonlySet<string>> {
-		if (this.cache && Date.now() < this.cache.expiresAt) return await this.cache.names;
+		const filePath = path.join(this.instanceSettings.staticCacheDir, 'types/nodes.json');
+		const modifiedAt = (await stat(filePath)).mtimeMs;
+		if (this.cache?.modifiedAt === modifiedAt) return await this.cache.names;
 
-		const cache = { names: this.read(), expiresAt: Date.now() + CACHE_TTL_MS };
+		const cache = { names: this.read(filePath), modifiedAt };
 		this.cache = cache;
 		cache.names.catch(() => {
 			if (this.cache === cache) this.cache = null;
@@ -53,8 +54,7 @@ export class HiddenNodeTypes {
 		return await cache.names;
 	}
 
-	private async read(): Promise<ReadonlySet<string>> {
-		const filePath = path.join(this.instanceSettings.staticCacheDir, 'types/nodes.json');
+	private async read(filePath: string): Promise<ReadonlySet<string>> {
 		return hiddenNodeTypeNames(jsonParse<unknown>(await readFile(filePath, 'utf-8')));
 	}
 }

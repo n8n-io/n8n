@@ -1,4 +1,8 @@
-import type { ProjectPoliciesResponse, ProjectPolicyKindSummary } from '@n8n/api-types';
+import type {
+	ProjectPoliciesResponse,
+	ProjectPolicyEffectiveCounts,
+	ProjectPolicyKindSummary,
+} from '@n8n/api-types';
 import { LICENSE_FEATURES, MISSING_SCOPE_ERROR_MESSAGE } from '@n8n/constants';
 import { AuthenticatedRequest, ProjectRepository } from '@n8n/db';
 import { Get, GlobalScope, Licensed, RestController } from '@n8n/decorators';
@@ -9,10 +13,9 @@ import { CredentialTypes } from '@/credential-types';
 import { NodeTypes } from '@/node-types';
 
 import { CREDENTIAL_TYPES_KIND, NODE_TYPES_KIND } from './constants';
-import {
-	TypeAvailabilityPolicyService,
-	type ProjectPolicyKindSummaries,
-} from './type-availability-policy.service';
+import { HiddenNodeTypes } from './hidden-node-types';
+import { listedNodeTypes } from './listed-node-types';
+import { TypeAvailabilityPolicyService } from './type-availability-policy.service';
 
 @RestController('/project-policies')
 export class ProjectPoliciesController {
@@ -21,6 +24,7 @@ export class ProjectPoliciesController {
 		private readonly projectRepository: ProjectRepository,
 		private readonly nodeTypes: NodeTypes,
 		private readonly credentialTypes: CredentialTypes,
+		private readonly hiddenNodeTypes: HiddenNodeTypes,
 	) {}
 
 	@Get('/')
@@ -34,10 +38,7 @@ export class ProjectPoliciesController {
 
 		const [projects, node, credential] = await Promise.all([
 			this.projectRepository.findTeamProjectsWithMemberCount(),
-			this.service.summarizeProjectPolicies(
-				NODE_TYPES_KIND,
-				Object.keys(this.nodeTypes.getKnownTypes()),
-			),
+			this.summarizeNodeTypes(),
 			this.service.summarizeProjectPolicies(
 				CREDENTIAL_TYPES_KIND,
 				Object.keys(this.credentialTypes.getKnownTypes()),
@@ -48,7 +49,7 @@ export class ProjectPoliciesController {
 			projects: projects.map((project) => {
 				const nodeSummary = node.byProject.get(project.id);
 				const credentialSummary = credential.byProject.get(project.id);
-				const updatedAt = latest(nodeSummary?.updatedAt, credentialSummary?.updatedAt);
+				const updatedAt = later(nodeSummary?.updatedAt, credentialSummary?.updatedAt);
 
 				return {
 					projectId: project.id,
@@ -57,26 +58,38 @@ export class ProjectPoliciesController {
 					memberCount: project.memberCount,
 					hasPolicy: updatedAt !== null,
 					updatedAt: updatedAt?.toISOString() ?? null,
-					node: toKindSummary(node, nodeSummary),
-					credential: toKindSummary(credential, credentialSummary),
+					node: kindSummary(nodeSummary?.summary, node.withoutProjectPolicy),
+					credential: kindSummary(credentialSummary?.summary, credential.withoutProjectPolicy),
 				};
 			}),
 		};
 	}
+
+	/** Counts the node types the instance policy page lists, so the totals match that page. */
+	private async summarizeNodeTypes() {
+		const hiddenTypes = await this.hiddenNodeTypes.get();
+
+		return await this.service.summarizeProjectPolicies(
+			NODE_TYPES_KIND,
+			Object.keys(this.nodeTypes.getKnownTypes()),
+			(verdicts, instanceRules) =>
+				listedNodeTypes(verdicts, {
+					resolveBaseName: (name) => this.nodeTypes.resolveBaseName(name),
+					hiddenTypes,
+					instanceRules,
+				}),
+		);
+	}
 }
 
-function toKindSummary(
-	summaries: ProjectPolicyKindSummaries,
-	project: { summary: ProjectPolicyKindSummary } | undefined,
+function kindSummary(
+	summary: ProjectPolicyKindSummary | undefined,
+	withoutProjectPolicy: ProjectPolicyEffectiveCounts,
 ): ProjectPolicyKindSummary {
-	return (
-		project?.summary ?? { restricted: 0, optedIn: 0, effective: summaries.withoutProjectPolicy }
-	);
+	return summary ?? { restricted: 0, optedIn: 0, effective: withoutProjectPolicy };
 }
 
-function latest(...dates: Array<Date | undefined>): Date | null {
-	const defined = dates.filter((date): date is Date => date !== undefined);
-	if (defined.length === 0) return null;
-
-	return new Date(Math.max(...defined.map((date) => date.getTime())));
+function later(a: Date | undefined, b: Date | undefined): Date | null {
+	if (!a || !b) return a ?? b ?? null;
+	return a > b ? a : b;
 }

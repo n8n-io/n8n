@@ -15,7 +15,6 @@ import type { TypeAvailabilityPolicyRepository } from '../database/repositories/
 import { TypeAvailabilityPolicy } from '../database/entities/type-availability-policy.entity';
 import { TypeAvailabilityPolicyScope } from '../database/entities/type-availability-policy-scope.entity';
 import { unconfiguredScope, type EffectivePolicy } from '../effective-policy';
-import type { HiddenNodeTypes } from '../hidden-node-types';
 import type { PolicyAttachment, PolicyRule } from '../policy-rule.types';
 import type { TypeAvailabilityPolicySnapshot } from '../type-availability-policy-snapshot';
 import { TypeAvailabilityPolicyService } from '../type-availability-policy.service';
@@ -97,7 +96,6 @@ describe('TypeAvailabilityPolicyService', () => {
 		snapshot,
 		loadNodesAndCredentials,
 		nodeTypes,
-		mock<HiddenNodeTypes>(),
 	);
 
 	beforeEach(() => {

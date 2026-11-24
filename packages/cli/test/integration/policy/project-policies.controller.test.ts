@@ -81,9 +81,11 @@ async function setUpdatedAt(scopeId: string, isoDate: string) {
 }
 
 /** SQLite stores `updatedAt` to the second, so an edit must start from a clearly older value. */
-async function backdate(scopeId: string) {
-	await setUpdatedAt(scopeId, '2020-01-01T00:00:00.000Z');
-	return new Date('2020-01-01T00:00:00.000Z');
+const PAST = '2020-01-01T00:00:00.000Z';
+
+async function expectUpdatedSincePast(projectId: string) {
+	const updatedAt = entryFor(await listProjectPolicies(), projectId)?.updatedAt;
+	expect(new Date(updatedAt ?? 0).getTime()).toBeGreaterThan(new Date(PAST).getTime());
 }
 
 beforeAll(async () => {
@@ -218,7 +220,7 @@ describe('GET /project-policies', () => {
 		const credential = await putProjectPolicy('credential', project.id, [deny('c1', 'slackApi')]);
 		const updatedAtOf = async () => entryFor(await listProjectPolicies(), project.id)?.updatedAt;
 
-		await setUpdatedAt(node.scopeId, '2020-01-01T00:00:00.000Z');
+		await setUpdatedAt(node.scopeId, PAST);
 		await setUpdatedAt(credential.scopeId, '2021-01-01T00:00:00.000Z');
 		expect(await updatedAtOf()).toBe('2021-01-01T00:00:00.000Z');
 
@@ -242,12 +244,11 @@ describe('GET /project-policies', () => {
 	test('moves updatedAt when only the rules of a project policy change', async () => {
 		const project = await createTeamProject('Rules only');
 		const { scopeId, version } = await putProjectPolicy('node', project.id, [deny('p1', NOTION)]);
-		const past = await backdate(scopeId);
+		await setUpdatedAt(scopeId, PAST);
 
 		await putProjectPolicy('node', project.id, [deny('p1', GMAIL)], version);
 
-		const updatedAt = entryFor(await listProjectPolicies(), project.id)?.updatedAt;
-		expect(new Date(updatedAt ?? 0).getTime()).toBeGreaterThan(past.getTime());
+		await expectUpdatedSincePast(project.id);
 	});
 
 	test('moves updatedAt when a document attached to the project policy changes', async () => {
@@ -262,7 +263,7 @@ describe('GET /project-policies', () => {
 			.authAgentFor(owner)
 			.get(`/node-type-policies/policies/${policyId}`)
 			.expect(200);
-		const past = await backdate(scopeId);
+		await setUpdatedAt(scopeId, PAST);
 
 		await testServer
 			.authAgentFor(owner)
@@ -270,7 +271,6 @@ describe('GET /project-policies', () => {
 			.send({ rules: [deny('p1', GMAIL)], version: document.body.data.version })
 			.expect(200);
 
-		const updatedAt = entryFor(await listProjectPolicies(), project.id)?.updatedAt;
-		expect(new Date(updatedAt ?? 0).getTime()).toBeGreaterThan(past.getTime());
+		await expectUpdatedSincePast(project.id);
 	});
 });

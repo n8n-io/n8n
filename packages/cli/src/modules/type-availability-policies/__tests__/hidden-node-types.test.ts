@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { InstanceSettings } from 'n8n-core';
@@ -41,13 +41,22 @@ describe('HiddenNodeTypes', () => {
 	};
 	const hidden = (name: string) => JSON.stringify([{ name, version: 1, hidden: true }]);
 
-	it('reads the static node types file once while the cache is fresh', async () => {
-		await writeTypes(hidden('first'));
+	it('parses the file again only when it changes', async () => {
+		const filePath = path.join(staticCacheDir, 'types/nodes.json');
+		const writeAt = async (content: string, time: Date) => {
+			await writeTypes(content);
+			await utimes(filePath, time, time);
+		};
 		const hiddenNodeTypes = create();
 
+		await writeAt(hidden('first'), new Date('2026-01-01T00:00:00Z'));
 		expect([...(await hiddenNodeTypes.get())]).toEqual(['first']);
-		await writeTypes(hidden('second'));
+
+		await writeAt(hidden('second'), new Date('2026-01-01T00:00:00Z'));
 		expect([...(await hiddenNodeTypes.get())]).toEqual(['first']);
+
+		await writeAt(hidden('second'), new Date('2026-01-01T00:00:01Z'));
+		expect([...(await hiddenNodeTypes.get())]).toEqual(['second']);
 	});
 
 	it('fails when the file cannot be read, and reads it again on the next call', async () => {
