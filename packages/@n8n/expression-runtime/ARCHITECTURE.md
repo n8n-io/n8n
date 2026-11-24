@@ -169,9 +169,8 @@ the expression read whole can be as large as one read. `BATCH_READ_LIMITS`
 holds the sizes.
 
 `readBatchAtPath` in `src/bridge/batch-read.ts` is the host side. It never
-calls an accessor and it only reads `$json`. All other roots stay lazy. A
-bridge passes it to the runtime as the `readBatch` callback. Without this
-callback, a proxy reads one value for each host call.
+calls an accessor and it only reads `$json`. All other roots stay lazy. Both
+bridges pass it to the runtime as the `readBatch` callback.
 
 ## Environment-Specific Implementations
 

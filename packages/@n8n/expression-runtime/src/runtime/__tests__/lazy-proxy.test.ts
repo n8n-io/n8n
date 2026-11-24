@@ -24,10 +24,18 @@ function createMockCallbacks(
 ) {
 	const getValueAtPath = overrides.getValueAtPath ?? mockApplySync();
 	const getArrayElement = overrides.getArrayElement ?? mockApplySync();
+	// A host that does not batch: one item for an array read, no field for a read of
+	// every field. The proxy reads every field from 0 and array items in order from 1.
+	const readBatch = vi.fn((path: string[], start: number) =>
+		start > 0
+			? (getArrayElement as (...args: unknown[]) => unknown)(path, start)
+			: { __n8nType: 'HostData', __value: {} },
+	);
 
 	const callbacks = {
 		getValueAtPath,
 		getArrayElement,
+		readBatch,
 	};
 
 	return { getValueAtPath, getArrayElement, callbacks };
@@ -1065,16 +1073,6 @@ describe('createDeepLazyProxy batched reads', () => {
 		expect([...rows]).toEqual([1, 1, 1]);
 		expect(Object.values(item)).toEqual([1]);
 		expect(callbacks.readBatch).not.toHaveBeenCalled();
-	});
-
-	it('reads one value at a time when the bridge has no batched read', () => {
-		const callbacks = { getValueAtPath: vi.fn(() => 1), getArrayElement: vi.fn(() => 1) };
-		const rows: any = createDeepLazyProxy(['$json'], { kind: 'array', length: 3 }, callbacks);
-		const item: any = createDeepLazyProxy(['$json'], { kind: 'object', keys: ['a'] }, callbacks);
-
-		expect([...rows]).toEqual([1, 1, 1]);
-		expect(Object.values(item)).toEqual([1]);
-		expect(callbacks.getArrayElement).toHaveBeenCalledTimes(3);
 	});
 
 	it('finds a key of a wide object without a host call', () => {

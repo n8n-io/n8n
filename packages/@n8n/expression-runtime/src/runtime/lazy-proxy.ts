@@ -40,6 +40,14 @@ export const WHOLE_VALUES = 1;
 /** What a batched read asks for. A list of names asks for only these fields of each array item. */
 export type BatchRequest = typeof SMALL_VALUES | typeof WHOLE_VALUES | string[];
 
+/** Reads a batch of item data values at `path` in one host call. */
+export type ReadBatch = (
+	path: string[],
+	start: number,
+	step: number,
+	request: BatchRequest,
+) => unknown;
+
 /** How an expression read the data of a lazy proxy so far. */
 interface ReadTrace {
 	/** The expression read every field, or read the array items in order. */
@@ -127,12 +135,12 @@ function isHostKey(keys: string[], prop: string): boolean {
 	return keys.length <= MAX_SEARCHED_KEYS ? keys.includes(prop) : keyLookupOf(keys)[prop] === true;
 }
 
-/**
- * The host batched read for a path. Undefined for a bridge without
- * one, and for a path outside item data, where the host gives no values.
- */
-function batchReadOf(basePath: string[], callbacks?: { readBatch?: any }): any {
-	return basePath[0] === '$json' ? callbacks?.readBatch : undefined;
+/** The host batched read for a path. Undefined for a path outside item data. */
+function batchReadOf(
+	basePath: string[],
+	callbacks: { readBatch: ReadBatch },
+): ReadBatch | undefined {
+	return basePath[0] === '$json' ? callbacks.readBatch : undefined;
 }
 
 /** Cache the whole items that a host read gave from `start`. An item that is already cached stays. */
@@ -302,7 +310,7 @@ export function createDeepLazyProxy(
 	callbacks?: {
 		getValueAtPath: any;
 		getArrayElement: any;
-		readBatch?: any;
+		readBatch: ReadBatch;
 	},
 	parentTrace?: ReadTrace,
 	trace: ReadTrace = { bulk: false },
@@ -312,6 +320,7 @@ export function createDeepLazyProxy(
 		throw new Error('createDeepLazyProxy requires callbacks parameter');
 	}
 	const { getValueAtPath, getArrayElement } = callbacks;
+	const batchRead = batchReadOf(basePath, callbacks);
 
 	const isArray = meta?.kind === 'array';
 	const arrayLength = isArray ? meta.length : 0;
@@ -427,7 +436,7 @@ export function createDeepLazyProxy(
 		const request = requestAfter(reads.itemTrace);
 		const readBatch =
 			idx === reads.nextInOrder && !(request === SMALL_VALUES && reads.smallItemsAreLazy)
-				? batchReadOf(basePath, callbacks)
+				? batchRead
 				: undefined;
 		reads.nextInOrder = idx + 1;
 		let element: unknown;
@@ -460,10 +469,9 @@ export function createDeepLazyProxy(
 
 	/** Read every field in one host call, one time for each request. */
 	function readEveryField(reads: ChildReads, request: BatchRequest): void {
-		if (request !== reads.fieldsRequest) {
+		if (batchRead !== undefined && request !== reads.fieldsRequest) {
 			reads.fieldsRequest = request;
-			givenFields =
-				fieldsOf(batchReadOf(basePath, callbacks)(basePath, 0, 0, request)) ?? givenFields;
+			givenFields = fieldsOf(batchRead(basePath, 0, 0, request)) ?? givenFields;
 		}
 	}
 
@@ -519,7 +527,7 @@ export function createDeepLazyProxy(
 			(target as unknown[]).length = arrayLength;
 		} else {
 			const reads = (childReads ??= newChildReads());
-			if (batchReadOf(basePath, callbacks) !== undefined && reads.fieldsRequest === undefined) {
+			if (batchRead !== undefined && reads.fieldsRequest === undefined) {
 				readEveryField(reads, SMALL_VALUES);
 			}
 			for (const key of resolveObjectKeys()) {
@@ -540,7 +548,7 @@ export function createDeepLazyProxy(
 				keys.push('length');
 				return keys;
 			}
-			if (batchReadOf(basePath, callbacks) !== undefined) {
+			if (batchRead !== undefined) {
 				(childReads ??= newChildReads()).keysWereListed = true;
 			}
 			return resolveObjectKeys();
