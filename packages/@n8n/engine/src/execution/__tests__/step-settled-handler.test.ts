@@ -544,6 +544,35 @@ describe('StepSettledHandler', () => {
 		},
 	);
 
+	it('does nothing when the execution is deleted after it is read and before its step is read', async () => {
+		const stepStore = makeStepStore(
+			{},
+			{ loadStep: vi.fn().mockRejectedValue(new StepNotFoundError('step-a')) },
+		);
+		const execution = await makeExecutionStore().loadExecution('exec-1');
+		const executionStore = makeExecutionStore(
+			{},
+			{
+				loadExecution: vi
+					.fn()
+					.mockResolvedValueOnce(execution)
+					.mockRejectedValueOnce(new ExecutionNotFoundError('exec-1')),
+			},
+		);
+		const { handler, stepQueue, orchestrationQueue, lifecycleEventPublisher, responseSender } =
+			makeHandler(stepStore, { executionStore });
+
+		await expect(handler.handle(event)).resolves.toBeUndefined();
+
+		expect(stepStore.createSteps).not.toHaveBeenCalled();
+		expect(stepQueue.publish).not.toHaveBeenCalled();
+		expect(orchestrationQueue.publish).not.toHaveBeenCalled();
+		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
+		expect(responseSender.send).not.toHaveBeenCalled();
+		expect(executionStore.finishExecution).not.toHaveBeenCalled();
+		expect(executionStore.refreshLiveStatus).not.toHaveBeenCalled();
+	});
+
 	it.each([
 		{
 			reason: 'the missing execution is another one',
