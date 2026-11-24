@@ -70,10 +70,10 @@ withDefaults(defineProps<LinkProps>(), {
 }
 
 .secondary {
-	color: var(--link--color--secondary);
+	color: var(--n8n-link--color--secondary);
 
 	&:active {
-		color: var(--link--color--secondary--hover);
+		color: var(--n8n-link--color--secondary--hover);
 	}
 }
 

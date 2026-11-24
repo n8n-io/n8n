@@ -76,7 +76,7 @@ const rows = computed(() => {
 <template>
 	<N8nCard
 		:class="[$style.card, { [$style.opaque]: isOpaque }]"
-		:style="{ '--card--padding': 'var(--spacing--md)' }"
+		:style="{ '--n8n-card--padding': 'var(--spacing--md)' }"
 		data-test-id="test-case-card"
 		:data-status="status"
 	>

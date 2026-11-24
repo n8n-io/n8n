@@ -36,7 +36,7 @@ const isClipboardSupported = computed(() => {
 const isExpanded = ref(false);
 const userContentRef = ref<HTMLElement | null>(null);
 const isOverflowing = ref(false);
-// Should match --assistant--text-message--collapsed--max-height in _tokens.scss
+// Should match --n8n-assistant--text-message--collapsed--max-height in _tokens.scss
 const MAX_HEIGHT = 200;
 
 function checkOverflow() {
@@ -166,16 +166,16 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 
 // User message container styles per Figma
 .userMessageContainer {
-	background-color: var(--assistant--color--background--user-bubble);
+	background-color: var(--n8n-assistant--color--background--user-bubble);
 	border-radius: var(--radius--lg);
 	padding: var(--spacing--2xs) var(--spacing--xs);
-	color: var(--assistant--color--text--user-bubble);
+	color: var(--n8n-assistant--color--text--user-bubble);
 	max-width: calc(100% - 40px);
 }
 
 .userContent {
 	&.collapsed {
-		max-height: var(--assistant--text-message--collapsed--max-height);
+		max-height: var(--n8n-assistant--text-message--collapsed--max-height);
 		overflow: hidden;
 	}
 }
@@ -185,7 +185,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 	border: none;
 	padding: 0;
 	margin-top: var(--spacing--2xs);
-	color: var(--assistant--color--text--subtle);
+	color: var(--n8n-assistant--color--text--subtle);
 	font-size: var(--font-size--sm);
 	font-weight: 500;
 	cursor: pointer;
@@ -237,7 +237,7 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 .assistantText {
 	display: inline-flex;
 	flex-direction: column;
-	color: var(--assistant--color--text);
+	color: var(--n8n-assistant--color--text);
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
 	max-width: calc(100% - 40px);

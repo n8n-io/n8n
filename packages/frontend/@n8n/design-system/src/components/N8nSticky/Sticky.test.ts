@@ -35,11 +35,11 @@ describe('N8nSticky', () => {
 				});
 
 				const stickyElement = wrapper.container.querySelector('.n8n-sticky') as HTMLElement;
-				expect(stickyElement?.style.getPropertyValue('--sticky--color--background')).toBe('');
-				expect(stickyElement?.style.getPropertyValue('--sticky--border-color--custom-light')).toBe(
-					'',
-				);
-				expect(stickyElement?.style.getPropertyValue('--sticky--color--text--custom')).toBe('');
+				expect(stickyElement?.style.getPropertyValue('--n8n-sticky--color--background')).toBe('');
+				expect(
+					stickyElement?.style.getPropertyValue('--n8n-sticky--border-color--custom-light'),
+				).toBe('');
+				expect(stickyElement?.style.getPropertyValue('--n8n-sticky--color--text--custom')).toBe('');
 			});
 		});
 
@@ -54,14 +54,18 @@ describe('N8nSticky', () => {
 				});
 
 				const stickyElement = wrapper.container.querySelector('.n8n-sticky') as HTMLElement;
-				expect(stickyElement?.style.getPropertyValue('--sticky--color--background')).toBe(hexColor);
+				expect(stickyElement?.style.getPropertyValue('--n8n-sticky--color--background')).toBe(
+					hexColor,
+				);
 				expect(
-					stickyElement?.style.getPropertyValue('--sticky--border-color--custom-light'),
+					stickyElement?.style.getPropertyValue('--n8n-sticky--border-color--custom-light'),
 				).toBeTruthy();
 				expect(
-					stickyElement?.style.getPropertyValue('--sticky--border-color--custom-dark'),
+					stickyElement?.style.getPropertyValue('--n8n-sticky--border-color--custom-dark'),
 				).toBeTruthy();
-				expect(stickyElement?.style.getPropertyValue('--sticky--color--text--custom')).toBeTruthy();
+				expect(
+					stickyElement?.style.getPropertyValue('--n8n-sticky--color--text--custom'),
+				).toBeTruthy();
 			});
 
 			it('does not apply color CSS class for hex colors', () => {
@@ -87,11 +91,11 @@ describe('N8nSticky', () => {
 				});
 
 				const stickyElement = wrapper.container.querySelector('.n8n-sticky') as HTMLElement;
-				expect(stickyElement?.style.getPropertyValue('--sticky--color--background')).toBe('');
-				expect(stickyElement?.style.getPropertyValue('--sticky--border-color--custom-light')).toBe(
-					'',
-				);
-				expect(stickyElement?.style.getPropertyValue('--sticky--color--text--custom')).toBe('');
+				expect(stickyElement?.style.getPropertyValue('--n8n-sticky--color--background')).toBe('');
+				expect(
+					stickyElement?.style.getPropertyValue('--n8n-sticky--border-color--custom-light'),
+				).toBe('');
+				expect(stickyElement?.style.getPropertyValue('--n8n-sticky--color--text--custom')).toBe('');
 			});
 
 			it('applies correct inline styles for multiple valid hex colors', () => {
@@ -106,7 +110,7 @@ describe('N8nSticky', () => {
 					});
 
 					const stickyElement = wrapper.container.querySelector('.n8n-sticky') as HTMLElement;
-					expect(stickyElement?.style.getPropertyValue('--sticky--color--background')).toBe(
+					expect(stickyElement?.style.getPropertyValue('--n8n-sticky--color--background')).toBe(
 						hexColor,
 					);
 				});

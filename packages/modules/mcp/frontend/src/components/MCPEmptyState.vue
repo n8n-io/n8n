@@ -88,8 +88,8 @@ const emptyStateIcon: EmptyStateIconCards = {
 	/* The DS card is transparent by default; keep the page's surface so it reads as a panel. */
 	background: var(--background--surface);
 	/* Fixed white tiles so the dark brand marks stay visible on the dark theme, as in the client rows. */
-	--empty-state-icon-cards--tile-background: var(--color--neutral-white);
-	--empty-state-icon-cards--tile-color: var(--color--neutral-black);
+	--n8n-empty-state-icon-cards--tile-background: var(--color--neutral-white);
+	--n8n-empty-state-icon-cards--tile-color: var(--color--neutral-black);
 	/* Gentle entrance for the enable/disable swap (empty state ⇄ full page). */
 	@include motion.fade-in-up;
 }

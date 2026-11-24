@@ -336,7 +336,7 @@ const handleTooltipClose = () => {
 .item.dragging:hover {
 	border: var(--border-width) var(--border-style) var(--color--secondary);
 	border-radius: var(--radius);
-	background-color: var(--callout--color--background--secondary);
+	background-color: var(--n8n-callout--color--background--secondary);
 
 	& a {
 		cursor: grabbing;
@@ -404,7 +404,7 @@ const handleTooltipClose = () => {
 
 	&.dragging li:hover {
 		cursor: grabbing;
-		background-color: var(--callout--color--background--secondary);
+		background-color: var(--n8n-callout--color--background--secondary);
 	}
 
 	li {

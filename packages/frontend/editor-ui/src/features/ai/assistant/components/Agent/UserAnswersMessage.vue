@@ -49,7 +49,7 @@ function formatAnswer(answer: PlanMode.QuestionResponse): string {
 
 <style lang="scss" module>
 .container {
-	background-color: var(--assistant--color--background--user-bubble);
+	background-color: var(--n8n-assistant--color--background--user-bubble);
 	border-radius: var(--radius--lg);
 	padding: var(--spacing--sm);
 	margin-top: var(--spacing--sm);

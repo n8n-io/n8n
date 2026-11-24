@@ -85,7 +85,7 @@ const onTryTemplate = () => {
 	a {
 		span {
 			span {
-				color: var(--callout--color--text--secondary);
+				color: var(--n8n-callout--color--text--secondary);
 			}
 		}
 	}

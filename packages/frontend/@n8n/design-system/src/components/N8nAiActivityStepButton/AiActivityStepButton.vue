@@ -58,20 +58,20 @@ function handleClick(event: MouseEvent) {
 .button {
 	max-width: 90%;
 	justify-content: flex-start;
-	color: var(--ai-activity-step--color, var(--text-color--subtler));
-	font-size: var(--button--font-size);
+	color: var(--n8n-ai-activity-step--color, var(--text-color--subtler));
+	font-size: var(--n8n-button--font-size);
 	position: relative;
-	padding: var(--ai-activity-step--padding, 0);
-	height: var(--ai-activity-step--height, var(--button--height));
-	min-height: var(--ai-activity-step--min-height, 0);
+	padding: var(--n8n-ai-activity-step--padding, 0);
+	height: var(--n8n-ai-activity-step--height, var(--n8n-button--height));
+	min-height: var(--n8n-ai-activity-step--min-height, 0);
 
-	--button--padding: 0;
-	--button--font-size: var(--font-size--sm);
-	--button--color--background-active: transparent;
-	--button--color--background-hover: transparent;
+	--n8n-button--padding: 0;
+	--n8n-button--font-size: var(--font-size--sm);
+	--n8n-button--color--background-active: transparent;
+	--n8n-button--color--background-hover: transparent;
 
 	&:hover {
-		color: var(--ai-activity-step--color, var(--text-color--subtle));
+		color: var(--n8n-ai-activity-step--color, var(--text-color--subtle));
 	}
 
 	&.nonInteractive {
@@ -121,10 +121,10 @@ function handleClick(event: MouseEvent) {
 	--animation--shimmer--duration: 1.5s;
 	--animation--shimmer--foreground: color-mix(
 		in oklch,
-		var(--ai-activity-step--color, var(--text-color--subtler)),
+		var(--n8n-ai-activity-step--color, var(--text-color--subtler)),
 		transparent 50%
 	);
-	--animation--shimmer--background: var(--ai-activity-step--color, var(--text-color--subtler));
+	--animation--shimmer--background: var(--n8n-ai-activity-step--color, var(--text-color--subtler));
 	@include motion.shimmer;
 }
 </style>

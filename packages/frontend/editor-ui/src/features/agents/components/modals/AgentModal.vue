@@ -308,7 +308,7 @@ function onOpenAutoFocus(event: Event) {
 	}
 
 	&.dividerWarning > .main {
-		border-top-color: var(--callout--border-color--warning);
+		border-top-color: var(--n8n-callout--border-color--warning);
 	}
 }
 

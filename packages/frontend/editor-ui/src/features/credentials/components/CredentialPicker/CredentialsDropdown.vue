@@ -437,7 +437,7 @@ const onCreateNewCredential = async () => {
 		&:hover {
 			background-color: light-dark(
 				var(--color--background--light-2),
-				var(--menu--color--background--hover)
+				var(--n8n-menu--color--background--hover)
 			);
 		}
 	}

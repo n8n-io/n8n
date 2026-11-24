@@ -374,7 +374,7 @@ watch(
 	}
 
 	.selected:not(:hover).error & {
-		background-color: var(--callout--color--background--danger);
+		background-color: var(--n8n-callout--color--background--danger);
 	}
 }
 

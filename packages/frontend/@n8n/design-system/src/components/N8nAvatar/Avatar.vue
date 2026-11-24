@@ -76,7 +76,7 @@ const getSize = (size: AvatarSize): number => AVATAR_SIZES[size];
 	position: absolute;
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--medium);
-	color: var(--avatar--color--text);
+	color: var(--n8n-avatar--color--text);
 	text-shadow: 0 1px 6px rgba(25, 11, 9, 0.3);
 	text-transform: uppercase;
 }

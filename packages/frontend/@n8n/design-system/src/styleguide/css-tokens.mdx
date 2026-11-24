@@ -38,7 +38,7 @@ These map to primitives (directly or through compatibility aliases), and have li
 
 ## Naming rules
 
-Naming is validated by `@n8n/css-var-naming` in `packages/@n8n/stylelint-config/src/rules/css-var-naming.ts` for files in `@n8n/design-system/src/css`.
+Naming is validated by `@n8n/css-var-naming` in `packages/@n8n/stylelint-config/src/rules/css-var-naming.ts` for token files in `@n8n/design-system/src/css`. Component override names are checked in all style files.
 
 ### Required format
 
@@ -64,7 +64,9 @@ Variable names must include a recognized property group such as `color`, `backgr
 
 ### Allowed exceptions
 
-- `--n8n--*` prefix bypasses validation for local/internal helper variables.
+- Public component overrides use `--n8n-<component>--<property>`, for example `--n8n-card--padding`. Use a single dash after `n8n`.
+- Reserve `--n8n-` for variables that a design system component exposes. Internal helpers do not need this prefix. Editor-only variables must not use it.
+- Component override names use lowercase alphanumerics and single dashes within groups. They do not use the global token property vocabulary.
 - Namespaces `--reka--*`, `--ag--*`, and `--chat--*` are ignored for third-party interoperability.
 - Single-group variables are only allowed for specific standalone properties (for example `--border`, `--radius`, `--shadow`, `--font-family`).
 

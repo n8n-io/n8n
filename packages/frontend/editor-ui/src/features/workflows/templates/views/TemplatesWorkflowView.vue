@@ -310,28 +310,28 @@ const previewDocumentId = computed(() =>
 // button; the doubled class selector outranks N8nButton's background rules.
 .startWithAi.startWithAi {
 	// Icon inherits currentColor; the label is repainted with the gradient below.
-	--button--color: var(--assistant--color--highlight-2);
+	--n8n-button--color: var(--assistant--color--highlight-2);
 	border: 1px solid transparent;
 	background:
-		var(--assistant--button--color--background--gradient) padding-box,
-		var(--assistant--color--highlight-gradient) border-box;
+		var(--n8n-assistant--button--color--background--gradient) padding-box,
+		var(--n8n-assistant--color--highlight-gradient) border-box;
 
 	&:hover {
 		background:
-			var(--assistant--button--color--background--hover) padding-box,
-			var(--assistant--button--color--background--gradient--hover) padding-box,
-			var(--assistant--color--highlight-gradient--reverse) border-box;
+			var(--n8n-assistant--button--color--background--hover) padding-box,
+			var(--n8n-assistant--button--color--background--gradient--hover) padding-box,
+			var(--n8n-assistant--color--highlight-gradient--reverse) border-box;
 	}
 
 	&:active {
 		background:
-			var(--assistant--button--color--background--active) padding-box,
-			var(--assistant--button--color--background--gradient--active) padding-box,
-			var(--assistant--color--highlight-gradient--reverse) border-box;
+			var(--n8n-assistant--button--color--background--active) padding-box,
+			var(--n8n-assistant--button--color--background--gradient--active) padding-box,
+			var(--n8n-assistant--color--highlight-gradient--reverse) border-box;
 	}
 
 	span {
-		background: var(--assistant--color--highlight-gradient);
+		background: var(--n8n-assistant--color--highlight-gradient);
 		background-clip: text;
 		-webkit-background-clip: text;
 		-webkit-text-fill-color: transparent;

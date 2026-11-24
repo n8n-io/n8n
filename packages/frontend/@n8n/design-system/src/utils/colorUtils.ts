@@ -3,7 +3,7 @@
  * Must stay in sync with the design system primitive tokens:
  * - DARK_TEXT matches --color--neutral-850 = hsl(0, 0%, 17%) from _primitives.scss
  * - LIGHT_TEXT matches --color--neutral-125 = hsl(0, 0%, 96%) from _primitives.scss
- * These are also the values used by --sticky--color--text in _tokens.scss / _tokens.dark.scss.
+ * These are also the values used by --n8n-sticky--color--text in _tokens.scss / _tokens.dark.scss.
  */
 const CONTRAST_TEXT_DARK = '#2B2B2B';
 const CONTRAST_TEXT_LIGHT = '#F5F5F5';

@@ -77,8 +77,8 @@ const onClick = () => {
 	overflow: hidden;
 
 	background:
-		var(--assistant--button--color--background--gradient) padding-box,
-		var(--assistant--color--highlight-gradient) border-box;
+		var(--n8n-assistant--button--color--background--gradient) padding-box,
+		var(--n8n-assistant--color--highlight-gradient) border-box;
 
 	> div {
 		height: 100%;
@@ -93,21 +93,21 @@ const onClick = () => {
 	&:hover {
 		cursor: pointer;
 		background:
-			var(--assistant--button--color--background--gradient--hover) padding-box,
-			var(--assistant--color--highlight-gradient--reverse) border-box;
+			var(--n8n-assistant--button--color--background--gradient--hover) padding-box,
+			var(--n8n-assistant--color--highlight-gradient--reverse) border-box;
 
 		> div {
-			background: var(--assistant--button--color--background--hover);
+			background: var(--n8n-assistant--button--color--background--hover);
 		}
 	}
 
 	&:active {
 		background:
-			var(--assistant--button--color--background--gradient--active) padding-box,
-			var(--assistant--color--highlight-gradient--reverse) border-box;
+			var(--n8n-assistant--button--color--background--gradient--active) padding-box,
+			var(--n8n-assistant--color--highlight-gradient--reverse) border-box;
 
 		> div {
-			background: var(--assistant--button--color--background--active);
+			background: var(--n8n-assistant--button--color--background--active);
 		}
 	}
 }

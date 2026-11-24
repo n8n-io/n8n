@@ -103,7 +103,7 @@ function handleThreadSelect(threadId: string) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	background-color: var(--n8n-ia-header--background, var(--background--surface));
+	background-color: var(--ia-header--background, var(--background--surface));
 }
 
 .headerActions {

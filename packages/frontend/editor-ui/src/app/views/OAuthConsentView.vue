@@ -611,9 +611,9 @@ watch(
    theme's own custom properties rather than the resolved colors keeps this working
    regardless of whether the callout's CSS is bundled before or after this file. */
 .redirect-note {
-	--callout--border-color--secondary: var(--border-color--subtle);
-	--callout--color--background--secondary: var(--background--subtle);
-	--callout--color--text--secondary: var(--text-color--subtle);
+	--n8n-callout--border-color--secondary: var(--border-color--subtle);
+	--n8n-callout--color--background--secondary: var(--background--subtle);
+	--n8n-callout--color--text--secondary: var(--text-color--subtle);
 }
 
 /* Both lines size themselves rather than restyling the callout's inner N8nText,

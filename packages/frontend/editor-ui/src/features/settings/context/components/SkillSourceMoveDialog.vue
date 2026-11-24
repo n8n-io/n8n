@@ -551,7 +551,7 @@ function close(open: boolean) {
 	}
 }
 .skillLink {
-	color: var(--link--color--secondary);
+	color: var(--n8n-link--color--secondary);
 	text-decoration: underline;
 	text-underline-offset: var(--spacing--5xs);
 }

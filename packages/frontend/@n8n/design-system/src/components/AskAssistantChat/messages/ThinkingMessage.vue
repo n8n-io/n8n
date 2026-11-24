@@ -101,7 +101,7 @@ function getIconForStatus(status: ChatUI.ThinkingItem['status']) {
 }
 
 .chevron {
-	color: var(--assistant--color--text--subtle);
+	color: var(--n8n-assistant--color--text--subtle);
 	flex-shrink: 0;
 	width: var(--font-size--lg);
 	height: var(--font-size--lg);
@@ -114,7 +114,7 @@ function getIconForStatus(status: ChatUI.ThinkingItem['status']) {
 }
 
 .statusText {
-	color: var(--assistant--color--text--subtle);
+	color: var(--n8n-assistant--color--text--subtle);
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--medium);
 	line-height: var(--line-height--xl);
@@ -145,7 +145,7 @@ function getIconForStatus(status: ChatUI.ThinkingItem['status']) {
 	flex-shrink: 0;
 	width: var(--font-size--md);
 	height: var(--font-size--md);
-	color: var(--assistant--icon-color--subtle);
+	color: var(--n8n-assistant--icon-color--subtle);
 
 	svg {
 		width: var(--font-size--md);
@@ -154,7 +154,7 @@ function getIconForStatus(status: ChatUI.ThinkingItem['status']) {
 }
 
 .itemText {
-	color: var(--assistant--color--text--subtle);
+	color: var(--n8n-assistant--color--text--subtle);
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
 	overflow: hidden;

@@ -145,7 +145,7 @@ const editorUpdateListener = EditorView.updateListener.of((update) => {
 const sharedThemeRules = {
 	'.cm-content': {
 		fontFamily: 'var(--font-family--monospace)',
-		color: 'var(--input--color--text, var(--color--text--shade-1))',
+		color: 'var(--n8n-input--color--text, var(--color--text--shade-1))',
 		caretColor: 'var(--code--caret--color)',
 	},
 	'.cm-cursor, .cm-dropCursor': {
@@ -170,7 +170,7 @@ function createInlineExtensions() {
 				fontSize: 'var(--font-size--sm)',
 				borderWidth: 'var(--border-width)',
 				borderStyle: 'var(--border-style)',
-				borderColor: 'var(--input--border-color, var(--border-color))',
+				borderColor: 'var(--n8n-input--border-color, var(--border-color))',
 				borderRadius: 'var(--radius)',
 				backgroundColor: 'var(--color--foreground--tint-2)',
 				height: '30px',
@@ -179,11 +179,11 @@ function createInlineExtensions() {
 			},
 			'&.cm-focused': {
 				outline: '0 !important',
-				borderColor: 'var(--color--foreground--shade-1, var(--input--border-color))',
+				borderColor: 'var(--color--foreground--shade-1, var(--n8n-input--border-color))',
 			},
 			'.cm-content': {
 				fontFamily: 'var(--font-family--monospace)',
-				color: 'var(--input--color--text, var(--color--text--shade-1))',
+				color: 'var(--n8n-input--color--text, var(--color--text--shade-1))',
 				caretColor: props.disabled ? 'transparent' : 'var(--code--caret--color)',
 				padding: '0 !important',
 				lineHeight: '28px',
@@ -219,7 +219,7 @@ function createExpandedExtensions() {
 				fontSize: 'var(--font-size--xs)',
 				borderWidth: 'var(--border-width)',
 				borderStyle: 'var(--border-style)',
-				borderColor: 'var(--input--border-color, var(--border-color))',
+				borderColor: 'var(--n8n-input--border-color, var(--border-color))',
 				borderRadius: 'var(--radius--lg)',
 				backgroundColor: 'var(--color--foreground--tint-2)',
 				minHeight: '120px',
@@ -228,11 +228,11 @@ function createExpandedExtensions() {
 			},
 			'&.cm-focused': {
 				outline: '0 !important',
-				borderColor: 'var(--color--foreground--shade-1, var(--input--border-color))',
+				borderColor: 'var(--color--foreground--shade-1, var(--n8n-input--border-color))',
 			},
 			'.cm-content': {
 				fontFamily: 'var(--font-family--monospace)',
-				color: 'var(--input--color--text, var(--color--text--shade-1))',
+				color: 'var(--n8n-input--color--text, var(--color--text--shade-1))',
 				caretColor: 'var(--code--caret--color)',
 				padding: 'var(--spacing--4xs) 0',
 			},

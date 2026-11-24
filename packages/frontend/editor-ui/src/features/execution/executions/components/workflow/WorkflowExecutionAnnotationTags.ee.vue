@@ -181,13 +181,13 @@ const onTagsEditEsc = () => {
 		align-items: center;
 		justify-content: center;
 		min-width: max-content;
-		height: var(--tag--height);
-		padding: var(--tag--padding);
-		line-height: var(--tag--line-height);
-		color: var(--tag--color--text);
-		background-color: var(--tag--color--background);
-		border: 1px solid var(--tag--border-color);
-		border-radius: var(--tag--radius);
+		height: var(--n8n-tag--height);
+		padding: var(--n8n-tag--padding);
+		line-height: var(--n8n-tag--line-height);
+		color: var(--n8n-tag--color--text);
+		background-color: var(--n8n-tag--color--background);
+		border: 1px solid var(--n8n-tag--border-color);
+		border-radius: var(--n8n-tag--radius);
 		font-size: var(--tag--font-size);
 	}
 }

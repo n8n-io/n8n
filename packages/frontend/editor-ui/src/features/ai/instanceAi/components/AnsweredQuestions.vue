@@ -75,7 +75,7 @@ function getAnswers(): DisplayAnswer[] {
 }
 
 .userBubble {
-	background: var(--assistant--color--background--user-bubble);
+	background: var(--n8n-assistant--color--background--user-bubble);
 	padding: var(--spacing--xs) var(--spacing--sm) var(--spacing--sm);
 	border-radius: var(--radius--xl);
 	white-space: pre-wrap;

@@ -453,7 +453,7 @@ const onCheckboxChange = (index: number) => {
 <style lang="scss" module>
 /** Stickies opt-out of base Markdown styling, so they provide their own **/
 .sticky {
-	color: var(--sticky--color--text);
+	color: var(--n8n-sticky--color--text);
 	overflow-wrap: break-word;
 
 	input[type='checkbox'] {
@@ -470,7 +470,7 @@ const onCheckboxChange = (index: number) => {
 	h4:not(:where(:global(.not-prose), :global(.not-prose) *)),
 	h5:not(:where(:global(.not-prose), :global(.not-prose) *)),
 	h6:not(:where(:global(.not-prose), :global(.not-prose) *)) {
-		color: var(--sticky--color--text);
+		color: var(--n8n-sticky--color--text);
 	}
 
 	h1:not(:where(:global(.not-prose), :global(.not-prose) *)),
@@ -527,15 +527,15 @@ const onCheckboxChange = (index: number) => {
 		display: block;
 		overflow-x: auto;
 		padding: var(--spacing--sm);
-		background-color: var(--sticky--code--color--background);
-		color: var(--sticky--code--color--text);
+		background-color: var(--n8n-sticky--code--color--background);
+		color: var(--n8n-sticky--code--color--text);
 	}
 
 	pre > code:not(:where(:global(.not-prose), :global(.not-prose) *)),
 	li > code:not(:where(:global(.not-prose), :global(.not-prose) *)),
 	p > code:not(:where(:global(.not-prose), :global(.not-prose) *)),
 	td > code:not(:where(:global(.not-prose), :global(.not-prose) *)) {
-		color: var(--sticky--code--color--text);
+		color: var(--n8n-sticky--code--color--text);
 	}
 
 	// Shared markdown link look, minus `font-weight: medium`: a weight change
@@ -558,7 +558,7 @@ const onCheckboxChange = (index: number) => {
 	blockquote:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 		margin-bottom: var(--spacing--2xs);
 		padding-left: var(--spacing--sm);
-		border-left: var(--spacing--4xs) solid var(--sticky--border-color, currentColor);
+		border-left: var(--spacing--4xs) solid var(--n8n-sticky--border-color, currentColor);
 		font-style: italic;
 
 		// The blockquote carries the bottom spacing; don't stack the paragraph's.
@@ -580,18 +580,18 @@ const onCheckboxChange = (index: number) => {
 	}
 
 	thead:not(:where(:global(.not-prose), :global(.not-prose) *)) {
-		border-bottom: 1px solid var(--sticky--border-color, currentColor);
+		border-bottom: 1px solid var(--n8n-sticky--border-color, currentColor);
 	}
 
 	thead th:not(:where(:global(.not-prose), :global(.not-prose) *)) {
-		color: var(--sticky--color--text);
+		color: var(--n8n-sticky--color--text);
 		font-weight: var(--font-weight--bold);
 		vertical-align: bottom;
 		padding: 0 0.6em 0.8em;
 	}
 
 	tbody tr:not(:where(:global(.not-prose), :global(.not-prose) *)) {
-		border-bottom: 1px solid var(--sticky--border-color, currentColor);
+		border-bottom: 1px solid var(--n8n-sticky--border-color, currentColor);
 
 		&:last-child:not(:where(:global(.not-prose), :global(.not-prose) *)) {
 			border-bottom-width: 0;

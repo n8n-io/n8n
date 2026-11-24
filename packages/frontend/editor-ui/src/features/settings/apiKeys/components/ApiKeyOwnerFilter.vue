@@ -290,9 +290,9 @@ watch(open, (isOpen, wasOpen) => {
 	padding: 0 var(--spacing--xs);
 	// Share N8nInput's resting surface, border and radius so the trigger and the
 	// search box are visually identical at rest; coral only appears on open.
-	background-color: var(--input--color--background, var(--color--foreground--tint-2));
+	background-color: var(--n8n-input--color--background, var(--color--foreground--tint-2));
 	border: var(--border-width) var(--border-style) var(--border-color);
-	border-radius: var(--input--radius, var(--radius));
+	border-radius: var(--n8n-input--radius, var(--radius));
 	cursor: pointer;
 	font-family: inherit;
 	transition:

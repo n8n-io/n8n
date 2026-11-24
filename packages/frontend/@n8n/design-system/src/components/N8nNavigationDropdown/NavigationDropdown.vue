@@ -262,12 +262,12 @@ defineExpose({
 	:global(.el-menu--horizontal .el-menu .el-menu-item),
 	:global(.el-menu--horizontal .el-menu .el-sub-menu__title) {
 		color: var(--color--text--shade-1);
-		background-color: var(--menu--color--background);
+		background-color: var(--n8n-menu--color--background);
 	}
 
 	:global(.el-menu--horizontal .el-menu .el-menu-item:not(.is-disabled):hover),
 	:global(.el-menu--horizontal .el-menu .el-sub-menu__title:not(.is-disabled):hover) {
-		background-color: var(--menu--color--background--hover);
+		background-color: var(--n8n-menu--color--background--hover);
 	}
 
 	:global(.el-popper) {

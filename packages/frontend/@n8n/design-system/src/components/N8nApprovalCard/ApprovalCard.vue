@@ -406,7 +406,7 @@ function onKeydown(event: KeyboardEvent) {
 	padding: var(--spacing--sm);
 	/* Long details (for example a batch of data table changes) scroll, so the decision options stay in view.
 	   The body is the focusable region, so keyboard users can scroll it too. */
-	max-height: var(--approval-card--body--max-height, 40vh);
+	max-height: var(--n8n-approval-card--body--max-height, 40vh);
 	overflow-y: auto;
 	overscroll-behavior: contain;
 	outline: none;
@@ -475,7 +475,10 @@ function onKeydown(event: KeyboardEvent) {
 
 /** Mark the destructive action when it is active. */
 .rowDestructive.highlighted {
-	background-color: light-dark(var(--color--red-100), var(--callout--color--background--danger));
+	background-color: light-dark(
+		var(--color--red-100),
+		var(--n8n-callout--color--background--danger)
+	);
 	color: light-dark(var(--color--red-800), var(--color--red-250));
 
 	.leadingIcon {

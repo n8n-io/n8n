@@ -182,7 +182,7 @@ defineExpose({ getValue: () => '=' + resolvedExpression.value });
 	padding: var(--spacing--xs);
 	border-width: var(--border-width);
 	border-style: var(--input--border-style, var(--border-style));
-	border-color: var(--input--border-color, var(--border-color));
-	border-radius: var(--input--radius, var(--radius));
+	border-color: var(--n8n-input--border-color, var(--border-color));
+	border-radius: var(--n8n-input--radius, var(--radius));
 }
 </style>

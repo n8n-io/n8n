@@ -86,9 +86,9 @@ const getIconSize = computed<IconSize>(() => {
 	border: var(--border-width) var(--border-style);
 	align-items: center;
 	line-height: var(--line-height--xl);
-	border-color: var(--callout--border-color--info);
-	background-color: var(--callout--color--background--info);
-	color: var(--callout--color--text--info);
+	border-color: var(--n8n-callout--border-color--info);
+	background-color: var(--n8n-callout--color--background--info);
+	color: var(--n8n-callout--color--text--info);
 
 	&.slim {
 		line-height: var(--line-height--xl);
@@ -96,7 +96,7 @@ const getIconSize = computed<IconSize>(() => {
 	}
 
 	a {
-		color: var(--link--color--secondary);
+		color: var(--n8n-link--color--secondary);
 		font-weight: var(--font-weight--medium);
 		text-decoration-line: underline;
 		text-decoration-style: solid;
@@ -128,42 +128,42 @@ const getIconSize = computed<IconSize>(() => {
 
 .info,
 .custom {
-	border-color: var(--callout--border-color--info);
-	background-color: var(--callout--color--background--info);
-	color: var(--callout--color--text--info);
+	border-color: var(--n8n-callout--border-color--info);
+	background-color: var(--n8n-callout--color--background--info);
+	color: var(--n8n-callout--color--text--info);
 
 	.icon {
-		color: var(--callout--icon-color--info);
+		color: var(--n8n-callout--icon-color--info);
 	}
 }
 
 .success {
-	border-color: var(--callout--border-color--success);
-	background-color: var(--callout--color--background--success);
-	color: var(--callout--color--text--success);
+	border-color: var(--n8n-callout--border-color--success);
+	background-color: var(--n8n-callout--color--background--success);
+	color: var(--n8n-callout--color--text--success);
 
 	.icon {
-		color: var(--callout--icon-color--success);
+		color: var(--n8n-callout--icon-color--success);
 	}
 }
 
 .warning {
-	border-color: var(--callout--border-color--warning);
-	background-color: var(--callout--color--background--warning);
-	color: var(--callout--color--text--warning);
+	border-color: var(--n8n-callout--border-color--warning);
+	background-color: var(--n8n-callout--color--background--warning);
+	color: var(--n8n-callout--color--text--warning);
 
 	.icon {
-		color: var(--callout--icon-color--warning);
+		color: var(--n8n-callout--icon-color--warning);
 	}
 }
 
 .danger {
-	border-color: var(--callout--border-color--danger);
-	background-color: var(--callout--color--background--danger);
-	color: var(--callout--color--text--danger);
+	border-color: var(--n8n-callout--border-color--danger);
+	background-color: var(--n8n-callout--color--background--danger);
+	color: var(--n8n-callout--color--text--danger);
 
 	.icon {
-		color: var(--callout--icon-color--danger);
+		color: var(--n8n-callout--icon-color--danger);
 	}
 }
 
@@ -175,16 +175,16 @@ const getIconSize = computed<IconSize>(() => {
 .secondary {
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--medium);
-	border-color: var(--callout--border-color--secondary);
-	background-color: var(--callout--color--background--secondary);
-	color: var(--callout--color--text--secondary);
+	border-color: var(--n8n-callout--border-color--secondary);
+	background-color: var(--n8n-callout--color--background--secondary);
+	color: var(--n8n-callout--color--text--secondary);
 
 	.messageSection > :global(.n8n-text) {
 		font-weight: inherit;
 	}
 
 	.icon {
-		color: var(--callout--icon-color--secondary);
+		color: var(--n8n-callout--icon-color--secondary);
 	}
 }
 </style>

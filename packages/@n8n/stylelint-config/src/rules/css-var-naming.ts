@@ -104,13 +104,14 @@ const MODES = new Set(['light', 'dark', 'hc', 'rtl', 'print']);
 
 const MEDIA = new Set(['sm', 'md', 'lg', 'xl', '2xl']);
 
-const N8N_BYPASS_PREFIX = '--n8n--';
+const COMPONENT_PREFIX = '--n8n-';
+const COMPONENT_PATTERN = /^--n8n-[a-z0-9]+(?:-[a-z0-9]+)*(?:--[a-z0-9]+(?:-[a-z0-9]+)*)+$/;
 
 // Ignore issues related to these namespaces
 const DISABLE_CHECK_FOR_NAMESPACES = new Set(['reka', 'ag', 'chat']);
 
 // Allowed namespaces
-const NAMESPACES = new Set(['n8n', 'p', ...DISABLE_CHECK_FOR_NAMESPACES]);
+const NAMESPACES = new Set(['p', ...DISABLE_CHECK_FOR_NAMESPACES]);
 
 // Semantic values and scales
 const SEMANTIC_VALUES = new Set([
@@ -154,7 +155,7 @@ interface ValidationResult {
 	reason?: string;
 }
 
-function shouldValidateFile(filePath: string | undefined) {
+function shouldValidateTokensInFile(filePath: string | undefined) {
 	if (!filePath) {
 		return false;
 	}
@@ -165,13 +166,6 @@ function shouldValidateFile(filePath: string | undefined) {
 }
 
 function shouldSkip(variable: string) {
-	if (variable.startsWith(N8N_BYPASS_PREFIX)) {
-		const groups = variable.slice(2).split('--').slice(1);
-		const hasKnownProperty = groups.some((group) => PROPERTY_VOCABULARY.has(group));
-
-		return !hasKnownProperty;
-	}
-
 	// Split into groups first (drop first empty element from leading --)
 	const parts = variable.slice(2).split('-');
 	if (DISABLE_CHECK_FOR_NAMESPACES.has(parts[0])) {
@@ -380,10 +374,6 @@ function validateCssVariable(variable: string): ValidationResult {
 
 const ruleFunction: Rule = (primary, secondaryOptions, context) => {
 	return (root, result) => {
-		if (root.source?.input.file && !shouldValidateFile(root.source.input.file)) {
-			return;
-		}
-
 		const validOptions = stylelint.utils.validateOptions(result, ruleName, {
 			actual: primary,
 		});
@@ -392,37 +382,36 @@ const ruleFunction: Rule = (primary, secondaryOptions, context) => {
 			return;
 		}
 
-		root.walkDecls((decl) => {
-			const prop = decl.prop;
+		const validateTokens =
+			!root.source?.input.file || shouldValidateTokensInFile(root.source.input.file);
 
-			// Only check CSS custom properties (variables)
-			if (!prop.startsWith('--')) {
+		root.walkDecls((decl) => {
+			if (
+				!validateTokens &&
+				!decl.prop.startsWith(COMPONENT_PREFIX) &&
+				!decl.value.includes(COMPONENT_PREFIX)
+			) {
 				return;
 			}
 
-			const validation = validateCssVariable(prop);
+			const variables = [
+				...(decl.prop.startsWith('--') ? [decl.prop] : []),
+				...Array.from(decl.value.matchAll(/var\(\s*(--[a-zA-Z0-9_-]+)/g), (match) => match[1]),
+			];
 
-			if (!validation.valid) {
-				stylelint.utils.report({
-					message: messages.rejected(prop, validation.reason!),
-					node: decl,
-					result,
-					ruleName,
-				});
-			}
-		});
+			for (const variable of variables) {
+				const isComponentVariable = variable.startsWith(COMPONENT_PREFIX);
+				if (!isComponentVariable && !validateTokens) {
+					continue;
+				}
 
-		// Also check variable usage in var() functions
-		root.walkDecls((decl) => {
-			const value = decl.value;
-
-			// Find all var() references
-			const varPattern = /var\((--[a-z0-9-]+)/g;
-			let match;
-
-			while ((match = varPattern.exec(value)) !== null) {
-				const variable = match[1];
-				const validation = validateCssVariable(variable);
+				const validation = isComponentVariable
+					? {
+							valid: COMPONENT_PATTERN.test(variable),
+							reason:
+								'Use --n8n-<component>--<property> with lowercase alphanumerics and single dashes within groups',
+						}
+					: validateCssVariable(variable);
 
 				if (!validation.valid) {
 					stylelint.utils.report({
@@ -430,6 +419,7 @@ const ruleFunction: Rule = (primary, secondaryOptions, context) => {
 						node: decl,
 						result,
 						ruleName,
+						...(isComponentVariable ? { severity: 'error' } : {}),
 					});
 				}
 			}

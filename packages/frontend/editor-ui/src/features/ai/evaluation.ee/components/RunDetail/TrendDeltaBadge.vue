@@ -54,12 +54,12 @@ const icon = computed(() => (tone.value === 'negative' ? 'trending-down' : 'tren
 }
 
 .positive {
-	background-color: var(--callout--color--background--success);
+	background-color: var(--n8n-callout--color--background--success);
 	color: var(--text-color--success);
 }
 
 .negative {
-	background-color: var(--callout--color--background--danger);
+	background-color: var(--n8n-callout--color--background--danger);
 	color: var(--text-color--danger);
 }
 </style>

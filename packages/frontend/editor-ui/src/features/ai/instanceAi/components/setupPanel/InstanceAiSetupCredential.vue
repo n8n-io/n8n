@@ -862,7 +862,7 @@ onScopeDispose(() => {
 .help {
 	// Offset the button padding so the label aligns with the content above.
 	margin-inline-start: calc(-1 * var(--spacing--2xs));
-	--button--color: var(--text-color--subtler);
+	--n8n-button--color: var(--text-color--subtler);
 	padding-inline: var(--spacing--2xs);
 }
 

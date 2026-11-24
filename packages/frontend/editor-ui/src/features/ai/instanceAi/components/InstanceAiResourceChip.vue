@@ -72,11 +72,11 @@ function handleRemoveKeydown(event: KeyboardEvent): void {
 	gap: var(--spacing--4xs);
 	max-width: 100%;
 	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border: var(--border-width, 1px) solid var(--tag--border-color);
+	border: var(--border-width, 1px) solid var(--n8n-tag--border-color);
 	border-radius: var(--radius);
-	background: var(--tag--color--background);
+	background: var(--n8n-tag--color--background);
 	font-size: var(--font-size--2xs);
-	color: var(--tag--color--text);
+	color: var(--n8n-tag--color--text);
 
 	&:focus-visible {
 		outline: var(--spacing--5xs) solid var(--color--primary);

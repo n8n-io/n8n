@@ -287,7 +287,7 @@ const onValueDrop = async (droppedExpression: string) => {
 	gap: var(--spacing--4xs);
 
 	&.hasIssues {
-		--input--border-color: var(--color--danger);
+		--n8n-input--border-color: var(--color--danger);
 	}
 
 	&.hasHint {

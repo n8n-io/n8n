@@ -155,6 +155,6 @@ onUnmounted(() => {
 	overflow: hidden;
 
 	/** Sets background to be the page background in InstanceAiHeader **/
-	--n8n-ia-header--background: transparent;
+	--ia-header--background: transparent;
 }
 </style>

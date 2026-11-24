@@ -300,10 +300,10 @@ function testIdForPath(path: string) {
 }
 
 .fileAdded {
-	color: var(--diff--color--new);
+	color: var(--n8n-code-diff--color--new);
 }
 
 .fileDeleted {
-	color: var(--diff--color--deleted);
+	color: var(--n8n-code-diff--color--deleted);
 }
 </style>

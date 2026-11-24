@@ -66,11 +66,11 @@
 }
 
 .deleted {
-	--workflow-diff--connector--color: var(--diff--color--deleted);
-	--canvas-node--color--background: var(--diff--color--deleted--faint);
-	--canvas-node--border-color: var(--diff--color--deleted);
-	--sticky--color--background: var(--diff--color--deleted--faint);
-	--sticky--border-color: var(--diff--color--deleted);
+	--workflow-diff--connector--color: var(--n8n-code-diff--color--deleted);
+	--canvas-node--color--background: var(--n8n-code-diff--color--deleted--faint);
+	--canvas-node--border-color: var(--n8n-code-diff--color--deleted);
+	--n8n-sticky--color--background: var(--n8n-code-diff--color--deleted--faint);
+	--n8n-sticky--border-color: var(--n8n-code-diff--color--deleted);
 
 	:global(> div) {
 		--canvas-node--border-width: 2px;
@@ -78,20 +78,20 @@
 
 	&::before {
 		content: 'D';
-		background-color: var(--diff--color--deleted);
+		background-color: var(--n8n-code-diff--color--deleted);
 	}
 
 	:global([class*='disabled']) {
-		--canvas-node--border-color: var(--diff--color--deleted) !important;
+		--canvas-node--border-color: var(--n8n-code-diff--color--deleted) !important;
 	}
 }
 
 .added {
-	--workflow-diff--connector--color: var(--diff--color--new);
-	--canvas-node--border-color: var(--diff--color--new);
-	--canvas-node--color--background: var(--diff--color--new--faint);
-	--sticky--color--background: var(--diff--color--new--faint);
-	--sticky--border-color: var(--diff--color--new);
+	--workflow-diff--connector--color: var(--n8n-code-diff--color--new);
+	--canvas-node--border-color: var(--n8n-code-diff--color--new);
+	--canvas-node--color--background: var(--n8n-code-diff--color--new--faint);
+	--n8n-sticky--color--background: var(--n8n-code-diff--color--new--faint);
+	--n8n-sticky--border-color: var(--n8n-code-diff--color--new);
 	position: relative;
 
 	:global(> div) {
@@ -100,11 +100,11 @@
 
 	&::before {
 		content: 'N';
-		background-color: var(--diff--color--new);
+		background-color: var(--n8n-code-diff--color--new);
 	}
 
 	:global([class*='disabled']) {
-		--canvas-node--border-color: var(--diff--color--new) !important;
+		--canvas-node--border-color: var(--n8n-code-diff--color--new) !important;
 	}
 }
 
@@ -113,9 +113,9 @@
 	position: relative;
 	pointer-events: none;
 	cursor: default;
-	--sticky--color--background: rgba(126, 129, 134, 0.2);
+	--n8n-sticky--color--background: rgba(126, 129, 134, 0.2);
 	--canvas-node--icon-color: var(--color--foreground--shade-2);
-	--sticky--border-color: var(--color--foreground--shade-2);
+	--n8n-sticky--border-color: var(--color--foreground--shade-2);
 	&:deep(img) {
 		filter: contrast(0) grayscale(100%);
 	}
@@ -126,8 +126,8 @@
 	--canvas-node--border-width: 2px;
 	--canvas-node--border-color: var(--diff--color--modified);
 	--canvas-node--color--background: var(--diff--color--modified--faint);
-	--sticky--color--background: var(--diff--color--modified--faint);
-	--sticky--border-color: var(--diff--color--modified);
+	--n8n-sticky--color--background: var(--diff--color--modified--faint);
+	--n8n-sticky--border-color: var(--diff--color--modified);
 	position: relative;
 
 	:global(> div) {
@@ -146,12 +146,12 @@
 
 /* Edge status styles */
 .edge-deleted {
-	--canvas-edge--color: var(--diff--color--deleted);
+	--canvas-edge--color: var(--n8n-code-diff--color--deleted);
 	--edge--color--highlight: var(--diff--color--deleted--light);
 }
 
 .edge-added {
-	--canvas-edge--color: var(--diff--color--new);
+	--canvas-edge--color: var(--n8n-code-diff--color--new);
 	--edge--color--highlight: var(--diff--color--new--light);
 }
 

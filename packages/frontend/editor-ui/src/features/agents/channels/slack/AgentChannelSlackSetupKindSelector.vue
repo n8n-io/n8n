@@ -47,7 +47,7 @@ const setupKind = computed<SlackSetupKind>({
 
 <style module lang="scss">
 .slackSetupKindSelector {
-	--input--radius: var(--radius--xs);
+	--n8n-input--radius: var(--radius--xs);
 
 	width: 240px;
 }

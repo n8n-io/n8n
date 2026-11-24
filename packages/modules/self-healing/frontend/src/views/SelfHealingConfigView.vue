@@ -676,7 +676,7 @@ onBeforeRouteUpdate(async (to, from) => {
 }
 
 .searchPicker [data-icon='search'] {
-	color: var(--input--placeholder--color);
+	color: var(--n8n-input--placeholder--color);
 }
 
 .person {

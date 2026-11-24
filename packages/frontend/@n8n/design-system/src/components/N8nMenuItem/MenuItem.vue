@@ -166,7 +166,7 @@ const tooltipPlacement = computed(() => {
 						]"
 						:style="
 							isLabelOverflowing
-								? { '--menu-item--label-overflow': labelOverflowDistance }
+								? { '--n8n-menu-item--label-overflow': labelOverflowDistance }
 								: undefined
 						"
 					>
@@ -309,7 +309,7 @@ const tooltipPlacement = computed(() => {
 		.menuItemText {
 			transform: translateX(min(0px, calc(-100% + 100cqi)));
 			transition-duration: calc(
-				var(--menu-item--label-overflow, 0) / var(--menu-item--label-scroll-speed) * 1s
+				var(--n8n-menu-item--label-overflow, 0) / var(--menu-item--label-scroll-speed) * 1s
 			);
 			transition-delay: var(--duration--base);
 			transition-timing-function: linear;

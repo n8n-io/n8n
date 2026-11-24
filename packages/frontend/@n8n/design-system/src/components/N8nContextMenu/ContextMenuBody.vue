@@ -72,7 +72,7 @@ const { t } = useI18n();
 @use '@n8n/design-system/css/mixins/mixins' as scrollbar-mixins;
 
 .scroll {
-	--context-menu--padding: var(--spacing--4xs);
+	--n8n-context-menu--padding: var(--spacing--4xs);
 
 	min-width: 0;
 	min-height: 0;
@@ -85,8 +85,8 @@ const { t } = useI18n();
 .items {
 	display: flex;
 	flex-direction: column;
-	gap: var(--context-menu--padding);
-	padding: var(--context-menu--padding);
+	gap: var(--n8n-context-menu--padding);
+	padding: var(--n8n-context-menu--padding);
 }
 
 .loadingItem {

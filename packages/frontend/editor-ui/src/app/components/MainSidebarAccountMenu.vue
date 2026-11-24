@@ -448,14 +448,14 @@ useKeybindings({ ctrl_alt_o: () => onHelpSelect('about') });
 		&:hover {
 			background: none;
 			box-shadow:
-				0 0 0 2px var(--menu--color--background),
+				0 0 0 2px var(--n8n-menu--color--background),
 				0 0 0 3px var(--border-color);
 		}
 
 		&[data-state='open'] {
 			background: none;
 			box-shadow:
-				0 0 0 2px var(--menu--color--background),
+				0 0 0 2px var(--n8n-menu--color--background),
 				0 0 0 3px var(--focus--border-color);
 		}
 	}
@@ -490,7 +490,7 @@ useKeybindings({ ctrl_alt_o: () => onHelpSelect('about') });
 	top: var(--spacing--5xs);
 	right: var(--spacing--5xs);
 	// The ring lifts the dot off the avatar, like a badge on an app icon.
-	box-shadow: 0 0 0 2px var(--menu--color--background);
+	box-shadow: 0 0 0 2px var(--n8n-menu--color--background);
 
 	.collapsed & {
 		top: 0;

@@ -119,7 +119,7 @@ const contentContainerStyle = computed(() => {
 		: {};
 
 	return {
-		'--n8n--dropdown-menu-width': props.width,
+		'--n8n-dropdown-menu--width': props.width,
 		...maxHeightStyle,
 	};
 });
@@ -597,17 +597,17 @@ defineExpose({ open, close, highlightFirstItem, handleExternalKeydown, focusTrig
 @use '../../css/mixins/motion';
 
 .content {
-	--n8n--dropdown--offset--slide-x: 0;
-	--n8n--dropdown--offset--slide-y: 0;
-	--n8n--dropdown--offset--origin-x: center;
-	--n8n--dropdown--offset--origin-y: center;
-	--animation--popover-in--translate-x: var(--n8n--dropdown--offset--slide-x);
-	--animation--popover-in--translate-y: var(--n8n--dropdown--offset--slide-y);
+	--dropdown--offset--slide-x: 0;
+	--dropdown--offset--slide-y: 0;
+	--dropdown--offset--origin-x: center;
+	--dropdown--offset--origin-y: center;
+	--animation--popover-in--translate-x: var(--dropdown--offset--slide-x);
+	--animation--popover-in--translate-y: var(--dropdown--offset--slide-y);
 	display: flex;
 	flex-direction: column;
 	width: fit-content;
 	min-width: var(--spacing--4xl);
-	max-width: var(--n8n--dropdown-menu-width);
+	max-width: var(--n8n-dropdown-menu--width);
 	/** This stops dropdown menus expanding beyond the viewport height **/
 	max-height: min(var(--reka-dropdown-menu-content-available-height), 75vh);
 	overflow-y: auto;
@@ -615,7 +615,7 @@ defineExpose({ open, close, highlightFirstItem, handleExternalKeydown, focusTrig
 	background-color: var(--background--surface);
 	box-shadow: var(--shadow--md), var(--shadow--outline);
 	will-change: transform, opacity;
-	transform-origin: var(--n8n--dropdown--offset--origin-x) var(--n8n--dropdown--offset--origin-y);
+	transform-origin: var(--dropdown--offset--origin-x) var(--dropdown--offset--origin-y);
 	z-index: var.$index-popper;
 	@include scrollbar-mixins.hoverable-scroll-bar;
 
@@ -633,47 +633,47 @@ defineExpose({ open, close, highlightFirstItem, handleExternalKeydown, focusTrig
 }
 
 .content[data-state='open'][data-side='top'] {
-	--n8n--dropdown--offset--slide-y: -2px;
-	--n8n--dropdown--offset--origin-y: bottom;
+	--dropdown--offset--slide-y: -2px;
+	--dropdown--offset--origin-y: bottom;
 }
 
 .content[data-state='open'][data-side='right'] {
-	--n8n--dropdown--offset--slide-x: 2px;
-	--n8n--dropdown--offset--origin-x: left;
+	--dropdown--offset--slide-x: 2px;
+	--dropdown--offset--origin-x: left;
 }
 
 .content[data-state='open'][data-side='bottom'] {
-	--n8n--dropdown--offset--slide-y: 2px;
-	--n8n--dropdown--offset--origin-y: top;
+	--dropdown--offset--slide-y: 2px;
+	--dropdown--offset--origin-y: top;
 }
 
 .content[data-state='open'][data-side='left'] {
-	--n8n--dropdown--offset--slide-x: -2px;
-	--n8n--dropdown--offset--origin-x: right;
+	--dropdown--offset--slide-x: -2px;
+	--dropdown--offset--origin-x: right;
 }
 
 .content[data-state='open'][data-side='top'][data-align='start'],
 .content[data-state='open'][data-side='bottom'][data-align='start'] {
-	--n8n--dropdown--offset--slide-x: -2px;
-	--n8n--dropdown--offset--origin-x: left;
+	--dropdown--offset--slide-x: -2px;
+	--dropdown--offset--origin-x: left;
 }
 
 .content[data-state='open'][data-side='top'][data-align='end'],
 .content[data-state='open'][data-side='bottom'][data-align='end'] {
-	--n8n--dropdown--offset--slide-x: 2px;
-	--n8n--dropdown--offset--origin-x: right;
+	--dropdown--offset--slide-x: 2px;
+	--dropdown--offset--origin-x: right;
 }
 
 .content[data-state='open'][data-side='left'][data-align='start'],
 .content[data-state='open'][data-side='right'][data-align='start'] {
-	--n8n--dropdown--offset--slide-y: -2px;
-	--n8n--dropdown--offset--origin-y: top;
+	--dropdown--offset--slide-y: -2px;
+	--dropdown--offset--origin-y: top;
 }
 
 .content[data-state='open'][data-side='left'][data-align='end'],
 .content[data-state='open'][data-side='right'][data-align='end'] {
-	--n8n--dropdown--offset--slide-y: 2px;
-	--n8n--dropdown--offset--origin-y: bottom;
+	--dropdown--offset--slide-y: 2px;
+	--dropdown--offset--origin-y: bottom;
 }
 
 .trigger {

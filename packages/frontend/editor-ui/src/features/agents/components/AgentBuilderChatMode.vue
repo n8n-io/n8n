@@ -76,11 +76,11 @@ const i18n = useI18n();
 	border-radius: var(--radius--full);
 	font-size: var(--font-size--xs);
 	font-weight: var(--font-weight--medium);
-	--button--color: var(--text-color--subtler);
+	--n8n-button--color: var(--text-color--subtler);
 
 	&:hover {
-		--button--color--background-hover: transparent;
-		--button--color: var(--text-color);
+		--n8n-button--color--background-hover: transparent;
+		--n8n-button--color: var(--text-color);
 	}
 }
 
@@ -93,10 +93,10 @@ const i18n = useI18n();
 
 .active,
 .active:hover {
-	--button--color--background: light-dark(var(--color--purple-50), var(--color--purple-950));
-	--button--color--background-hover: var(--button--color--background);
-	--button--color--background-active: var(--button--color--background);
-	--button--color: light-dark(var(--color--purple-500), var(--color--purple-300));
+	--n8n-button--color--background: light-dark(var(--color--purple-50), var(--color--purple-950));
+	--n8n-button--color--background-hover: var(--n8n-button--color--background);
+	--n8n-button--color--background-active: var(--n8n-button--color--background);
+	--n8n-button--color: light-dark(var(--color--purple-500), var(--color--purple-300));
 	font-weight: var(--font-weight--bold);
 }
 
