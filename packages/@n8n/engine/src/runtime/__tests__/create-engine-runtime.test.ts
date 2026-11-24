@@ -464,6 +464,36 @@ describe('createEngineRuntime', () => {
 		).not.toThrow();
 	});
 
+	it('waits for a retention pass in progress before it stops', async () => {
+		let releasePass = () => {};
+		const findPrunable = vi
+			.spyOn(TypeOrmExecutionStore.prototype, 'findPrunableExecutions')
+			.mockImplementation(
+				async () =>
+					await new Promise((resolve) => {
+						releasePass = () => resolve([]);
+					}),
+			);
+		const engine = createEngineRuntime({
+			dataSource: fakeDataSource(),
+			admittance: new AllowAllAdmittance(),
+			identityVerifier,
+			responseSender,
+			queues: createInMemoryWorkQueues(),
+			retention: { maxAgeMs: 1_000, intervalMs: 1 },
+		});
+		engine.start();
+		await vi.waitFor(() => expect(findPrunable).toHaveBeenCalled());
+
+		let stopped = false;
+		const stopping = engine.stop().then(() => (stopped = true));
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(stopped).toBe(false);
+
+		releasePass();
+		await stopping;
+	});
+
 	it.each([Number.NaN, Number.POSITIVE_INFINITY, 0, -1, 1.5])(
 		'refuses a staleness threshold of %s',
 		(queuedMs) => {
