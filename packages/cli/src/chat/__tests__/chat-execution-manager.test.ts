@@ -1,6 +1,5 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
-import { ExecutionRepository } from '@n8n/db';
 import type { IExecutionResponse } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -18,17 +17,18 @@ import { WorkflowRunner } from '@/workflow-runner';
 
 import { NodeTypes } from '../../node-types';
 import { OwnershipService } from '../../services/ownership.service';
+import type { ExecutionCancelService } from '../../executions/execution-cancel.service';
 import { ChatExecutionManager } from '../chat-execution-manager';
 import type { ChatMessage } from '../chat-service.types';
 
 describe('ChatExecutionManager', () => {
-	const executionRepository = mockInstance(ExecutionRepository);
+	const executionCancelService = mock<ExecutionCancelService>();
 	const executionPersistence = mock<ExecutionPersistence>();
 	const workflowRunner = mockInstance(WorkflowRunner);
 	const ownershipService = mockInstance(OwnershipService);
 	const nodeTypes = mockInstance(NodeTypes);
 	const chatExecutionManager = new ChatExecutionManager(
-		executionRepository,
+		executionCancelService,
 		executionPersistence,
 		workflowRunner,
 		ownershipService,
@@ -106,57 +106,18 @@ describe('ChatExecutionManager', () => {
 			vi.spyOn(chatExecutionManager as any, 'isChatDrivenExecution').mockReturnValue(true);
 		});
 
-		it('should update execution status to canceled if it is running', async () => {
-			const executionId = '1';
-			const execution = { id: executionId, status: 'running' } as any;
+		it('should cancel only a running, waiting or unknown execution', async () => {
+			executionPersistence.findSingleExecution.mockResolvedValue({
+				id: '1',
+				status: 'waiting',
+			} as any);
 
-			executionPersistence.findSingleExecution.mockResolvedValue(execution);
+			await chatExecutionManager.cancelExecution('1');
 
-			await chatExecutionManager.cancelExecution(executionId);
-
-			expect(executionRepository.update).toHaveBeenCalledWith(
-				{ id: executionId },
-				{ status: 'canceled' },
+			expect(executionCancelService.markAsCanceled).toHaveBeenCalledWith(
+				['1'],
+				['running', 'waiting', 'unknown'],
 			);
-		});
-
-		it('should update execution status to canceled if it is waiting', async () => {
-			const executionId = '2';
-			const execution = { id: executionId, status: 'waiting' } as any;
-
-			executionPersistence.findSingleExecution.mockResolvedValue(execution);
-
-			await chatExecutionManager.cancelExecution(executionId);
-
-			expect(executionRepository.update).toHaveBeenCalledWith(
-				{ id: executionId },
-				{ status: 'canceled' },
-			);
-		});
-
-		it('should update execution status to canceled if it is unknown', async () => {
-			const executionId = '3';
-			const execution = { id: executionId, status: 'unknown' } as any;
-
-			executionPersistence.findSingleExecution.mockResolvedValue(execution);
-
-			await chatExecutionManager.cancelExecution(executionId);
-
-			expect(executionRepository.update).toHaveBeenCalledWith(
-				{ id: executionId },
-				{ status: 'canceled' },
-			);
-		});
-
-		it('should not update execution status if it is not running', async () => {
-			const executionId = '1';
-			const execution = { id: executionId, status: 'completed' } as any;
-
-			executionPersistence.findSingleExecution.mockResolvedValue(execution);
-
-			await chatExecutionManager.cancelExecution(executionId);
-
-			expect(executionRepository.update).not.toHaveBeenCalled();
 		});
 
 		it('should not cancel a waiting execution the chat socket does not drive', async () => {
@@ -170,7 +131,7 @@ describe('ChatExecutionManager', () => {
 
 			await chatExecutionManager.cancelExecution(executionId);
 
-			expect(executionRepository.update).not.toHaveBeenCalled();
+			expect(executionCancelService.markAsCanceled).not.toHaveBeenCalled();
 		});
 
 		it('does not throw or cancel when the parked node type is unresolvable', async () => {
@@ -194,7 +155,7 @@ describe('ChatExecutionManager', () => {
 			executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 			await expect(chatExecutionManager.cancelExecution('9')).resolves.toBeUndefined();
-			expect(executionRepository.update).not.toHaveBeenCalled();
+			expect(executionCancelService.markAsCanceled).not.toHaveBeenCalled();
 		});
 	});
 

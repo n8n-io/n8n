@@ -1,14 +1,17 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeOperationError, requestPath, updateDisplayOptions } from 'n8n-workflow';
 
 import {
+	assertGenerateContentResponse,
+	assertResponseHasCandidates,
+} from '../../helpers/candidates';
+import {
 	type GenerateContentRequest,
-	type GenerateContentResponse,
 	type ImagenResponse,
 	Modality,
 } from '../../helpers/interfaces';
 import { getFilenameFromMimeType } from '../../helpers/utils';
-import { apiRequest } from '../../transport';
+import { apiRequest, modelPath } from '../../transport';
 import { modelRLC } from '../descriptions';
 
 const properties: INodeProperties[] = [
@@ -102,11 +105,20 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			generationConfig,
 		};
 
-		const response = (await apiRequest.call(this, 'POST', `/v1beta/${model}:generateContent`, {
-			body,
-		})) as GenerateContentResponse;
+		const response: unknown = await apiRequest.call(
+			this,
+			'POST',
+			requestPath`/v1beta${modelPath.call(this, model)}:generateContent`,
+			{
+				body,
+			},
+		);
+
+		assertGenerateContentResponse(response);
+		assertResponseHasCandidates(response);
+
 		const promises = response.candidates.map(async (candidate) => {
-			const imagePart = candidate.content.parts.find((part) => 'inlineData' in part);
+			const imagePart = candidate.content?.parts.find((part) => 'inlineData' in part);
 			const mimeType = imagePart?.inlineData.mimeType;
 			const fileName = getFilenameFromMimeType(mimeType, 'image', 'png');
 			const buffer = Buffer.from(imagePart?.inlineData.data ?? '', 'base64');
@@ -137,9 +149,14 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				sampleCount,
 			},
 		};
-		const response = (await apiRequest.call(this, 'POST', `/v1beta/${model}:predict`, {
-			body,
-		})) as ImagenResponse;
+		const response = (await apiRequest.call(
+			this,
+			'POST',
+			requestPath`/v1beta${modelPath.call(this, model)}:predict`,
+			{
+				body,
+			},
+		)) as ImagenResponse;
 
 		const promises = response.predictions.map(async (prediction) => {
 			const fileName = getFilenameFromMimeType(prediction.mimeType, 'image', 'png');

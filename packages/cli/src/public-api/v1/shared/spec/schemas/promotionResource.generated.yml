@@ -1,0 +1,83 @@
+type: object
+properties:
+  key:
+    type: string
+  type:
+    type: string
+    enum:
+      - project
+      - folder
+      - workflow
+      - credential
+      - dataTable
+      - variable
+      - tag
+  id:
+    type: string
+  name:
+    type: string
+  previousName:
+    type: string
+  previousId:
+    type: string
+  parentKey:
+    type: string
+    nullable: true
+    description: The `key` of the project or folder that holds the resource. `null` for instance-wide resources.
+  previousParentKey:
+    type: string
+    nullable: true
+  change:
+    type: string
+    enum:
+      - added
+      - modified
+      - archived
+      - deleted
+      - unchanged
+    description: How the operation changes the resource. `unchanged` resources give context, such as a parent folder or a workflow that uses a changed credential.
+  selectable:
+    type: boolean
+    description: 'Whether the resource can be selected for Promote or Apply: a workflow, or a project or folder that is added or modified. Credentials, data tables, variables and tags come with the workflows that use them.'
+  movedToProject:
+    type: object
+    properties:
+      id:
+        type: string
+        minLength: 1
+      name:
+        type: string
+    required:
+      - id
+  movedFromProject:
+    type: object
+    properties:
+      id:
+        type: string
+        minLength: 1
+      name:
+        type: string
+    required:
+      - id
+      - name
+  revision:
+    type: object
+    properties:
+      before:
+        type: string
+        nullable: true
+      after:
+        type: string
+        nullable: true
+    required:
+      - before
+      - after
+required:
+  - key
+  - type
+  - id
+  - name
+  - parentKey
+  - change
+  - selectable
+  - revision

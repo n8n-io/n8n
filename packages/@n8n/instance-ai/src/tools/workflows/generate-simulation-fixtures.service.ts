@@ -38,11 +38,14 @@ import { z } from 'zod';
 
 import { isTriggerNodeType } from './workflow-json-utils';
 import type { Logger } from '../../logger';
-import type { ModelConfig } from '../../types';
-import { SONNET_MODEL } from '../../utils/eval-agents';
+import type { AnthropicThinkingEffort, FetchFn } from '@n8n/agents';
+
+import type { HelperUsageHook, ModelConfig } from '../../types';
 import { generateValidatedJson } from '../../utils/generate-validated-json';
 import { itemsForNode } from '../../utils/node-keyed-items';
 import type { NodeSimulationVerdict } from '../../workflow-loop/workflow-loop-state';
+
+export const SIMULATION_FIXTURES_EFFORT: AnthropicThinkingEffort = 'low';
 
 /**
  * Fixture items per node name, stored UNWRAPPED (plain objects, not n8n's
@@ -61,8 +64,14 @@ export interface GenerateSimulationFixturesInput {
 	 * structure instead of the model's guess at the service's response shape.
 	 */
 	outputSchemaLookup?: OutputSchemaLookup;
-	/** Host-resolved model used when no eval model API key is configured in the environment. */
-	fallbackModelConfig?: ModelConfig;
+	/** Host-resolved main model for the run. */
+	model?: ModelConfig;
+	/** Host-resolved utility model. Fixture generation prefers it over `model`. */
+	utilityModel?: ModelConfig;
+	/** Transport for the helper's model call. */
+	modelFetch?: FetchFn;
+	/** Receives the helper call's token usage so the host can bill it. */
+	onHelperUsage?: HelperUsageHook;
 	logger?: Logger;
 }
 
@@ -152,8 +161,9 @@ function buildUpstreamContext(
  * Nodes that emit their INPUT, either unchanged or with a few fields of their
  * own added. Their output shape lives upstream, so a synthesized item has to
  * borrow it — pinning `{}` on a Wait wipes the fields every node below it
- * reads. (The classifier already lets short waits execute for exactly this
- * reason; a long wait has to be simulated, so it needs the borrowed shape.)
+ * reads. (The classifier lets time-based waits execute for exactly this
+ * reason. A webhook or form wait is simulated and emits its own resumed-event
+ * shape, so it is not listed here.)
  *
  * The list is short because it only has to cover node types that can BE
  * simulated. Transform/control nodes that also pass data through — noOp, set,
@@ -446,11 +456,13 @@ export async function generateSimulationFixtures(
 	].join('\n');
 
 	const result = await generateValidatedJson('verification-simulation-fixtures', {
-		model: SONNET_MODEL,
+		model: input.utilityModel ?? input.model,
+		effort: SIMULATION_FIXTURES_EFFORT,
 		instructions: SYSTEM_INSTRUCTIONS,
 		userText,
 		schema: FixturesResponseSchema,
-		fallbackModelConfig: input.fallbackModelConfig,
+		modelFetch: input.modelFetch,
+		onHelperUsage: input.onHelperUsage,
 	});
 	if (!result.ok) {
 		input.logger?.warn(

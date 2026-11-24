@@ -1,4 +1,5 @@
-import type { IWorkflowBase } from 'n8n-workflow';
+import type { INodeParameters, IWorkflowBase } from 'n8n-workflow';
+import { nanoid } from 'nanoid';
 
 import { test, expect } from '../../../fixtures/base';
 import { PublicFormPage } from '../../../pages/PublicFormPage';
@@ -73,6 +74,85 @@ test.describe(
 			await n8n.ndv.clickBackToCanvasButton();
 			await expect(n8n.canvas.nodeByName('On form submission')).toBeVisible();
 			await expect(n8n.canvas.nodeIssuesBadge('On form submission')).toBeHidden();
+		});
+
+		// NODE-5915: Textarea placeholders and entered text must use a sans-serif font.
+		test('should use sans-serif for textarea placeholders and entered text', async ({
+			api,
+			n8n,
+			backendUrl,
+		}) => {
+			const webhookId = nanoid();
+			const workflow: Partial<IWorkflowBase> = {
+				name: `Form textarea font ${nanoid()}`,
+				nodes: [
+					{
+						id: nanoid(),
+						name: 'On form submission',
+						type: 'n8n-nodes-base.formTrigger',
+						typeVersion: 2.5,
+						position: [0, 0],
+						webhookId,
+						parameters: {
+							formTitle: 'Contact us',
+							formFields: {
+								values: [
+									{
+										fieldLabel: 'Message',
+										fieldType: 'textarea',
+										placeholder: 'Enter your message',
+									},
+								],
+							},
+							options: {},
+						},
+					},
+				],
+				connections: {},
+			};
+			const { workflowId, createdWorkflow } = await api.workflows.createWorkflowFromDefinition(
+				workflow,
+				{ makeUnique: false },
+			);
+
+			try {
+				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
+				await expect
+					.poll(async () => await api.workflows.getPublicationStatus(workflowId), {
+						timeout: 15_000,
+					})
+					.toMatchObject({ status: 'published', liveVersionId: createdWorkflow.versionId });
+				const formPage = await PublicFormPage.fromNewTab(
+					n8n.page.context(),
+					`${backendUrl}/form/${webhookId}`,
+				);
+				try {
+					await expect(formPage.submitButton).toHaveCSS('font-family', /sans-serif/);
+					const textarea = formPage.getField('Message');
+					await expect(textarea).toBeVisible();
+					await expect(textarea).toHaveValue('');
+					await expect(textarea).toHaveAttribute('placeholder', 'Enter your message');
+					const placeholderFont = await textarea.evaluate(
+						(element) => getComputedStyle(element, '::placeholder').fontFamily,
+					);
+					expect.soft(placeholderFont, 'Textarea placeholder font').toMatch(/sans-serif/);
+
+					await formPage.fillField('Message', 'Please send more information.');
+					await expect(textarea).toHaveValue('Please send more information.');
+					await expect.soft(textarea).toHaveCSS('font-family', /sans-serif/);
+				} finally {
+					await formPage.close();
+				}
+			} finally {
+				await api.workflows.deactivate(workflowId);
+				await expect
+					.poll(async () => (await api.workflows.getPublicationStatus(workflowId)).status, {
+						timeout: 15_000,
+					})
+					.toBe('not_published');
+				await api.workflows.archive(workflowId);
+				await api.workflows.delete(workflowId);
+			}
 		});
 
 		test('should create and submit a multi-page form', async ({ n8n }) => {
@@ -319,5 +399,72 @@ test.describe(
 				await formPage.expectText('This worked');
 			});
 		});
+	},
+);
+
+test.describe(
+	'Form Trigger test popup',
+	{
+		annotation: [{ type: 'owner', description: 'NODES' }],
+	},
+	() => {
+		const formTriggerVersions = [
+			{
+				typeVersion: 1,
+				parameters: (path: string): INodeParameters => ({ path }),
+				testPath: (path: string) => `/webhook-test/${path}/n8n-form`,
+			},
+			{
+				typeVersion: 2,
+				parameters: (path: string): INodeParameters => ({ path: `={{ "${path}" }}` }),
+				testPath: (path: string) => `/form-test/${path}`,
+			},
+			{
+				typeVersion: 2.1,
+				parameters: (path: string): INodeParameters => ({ path: `={{ "${path}" }}` }),
+				testPath: (path: string) => `/form-test/${path}`,
+			},
+			{
+				typeVersion: 2.6,
+				parameters: (path: string): INodeParameters => ({ options: { path } }),
+				testPath: (path: string) => `/form-test/${path}`,
+			},
+		];
+
+		for (const { typeVersion, parameters, testPath } of formTriggerVersions) {
+			test(`should open the served test form for a v${typeVersion} Form Trigger`, async ({
+				n8n,
+			}) => {
+				const path = `form-${nanoid()}`;
+				const formTitle = `Form v${typeVersion}`;
+				const workflow = await n8n.api.workflows.createWorkflow({
+					name: `Form Trigger v${typeVersion} test popup`,
+					nodes: [
+						{
+							id: nanoid(),
+							name: 'Form',
+							type: 'n8n-nodes-base.formTrigger',
+							typeVersion,
+							position: [0, 0],
+							webhookId: crypto.randomUUID(),
+							parameters: {
+								...parameters(path),
+								formTitle,
+								formFields: { values: [{ fieldLabel: 'name' }] },
+							},
+						},
+					],
+					connections: {},
+				});
+				await n8n.start.fromExistingWorkflow(workflow.id);
+
+				const formPagePromise = PublicFormPage.fromPopup(n8n.page.context());
+				await n8n.canvas.clickExecuteWorkflowButton();
+				const formPage = await formPagePromise;
+
+				expect(new URL(formPage.url()).pathname).toBe(testPath(path));
+				await formPage.expectText(formTitle);
+			});
+		}
 	},
 );

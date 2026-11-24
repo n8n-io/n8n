@@ -3,6 +3,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { usePromotionsEnabled } from './usePromotionsEnabled';
 
 /**
@@ -10,33 +11,46 @@ import { usePromotionsEnabled } from './usePromotionsEnabled';
  * silently. Reading the real store from `activeModules` keeps the name honest.
  */
 describe('usePromotionsEnabled', () => {
-	const setup = ({ activeModules, flag }: { activeModules: string[]; flag: string }) => {
+	const setup = ({
+		activeModules = ['promotions'],
+		environmentsVersion,
+	}: {
+		activeModules?: string[];
+		environmentsVersion?: 'v1' | 'v2';
+	}) => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 
 		const settingsStore = useSettingsStore();
-		settingsStore.settings = {
-			activeModules,
-			envFeatureFlags: { N8N_ENV_FEAT_PROMOTIONS: flag },
-		} as unknown as FrontendSettings;
+		settingsStore.settings = { activeModules } as unknown as FrontendSettings;
+		useSourceControlStore().preferences.environmentsVersion = environmentsVersion;
 
 		return usePromotionsEnabled();
 	};
 
-	it('is enabled when the promotions module is active and the flag is on', () => {
-		const { isEnabled } = setup({ activeModules: ['promotions'], flag: 'true' });
+	it('is enabled when the promotions module is active and the instance uses v2', () => {
+		const { isAvailable, isEnabled } = setup({ environmentsVersion: 'v2' });
 
+		expect(isAvailable.value).toBe(true);
 		expect(isEnabled.value).toBe(true);
 	});
 
-	it('is disabled when the promotions module is not active', () => {
-		const { isEnabled } = setup({ activeModules: ['source-control'], flag: 'true' });
+	it.each(['v1', undefined] as const)(
+		'is available but not enabled while the instance uses %s',
+		(environmentsVersion) => {
+			const { isAvailable, isEnabled } = setup({ environmentsVersion });
 
-		expect(isEnabled.value).toBe(false);
-	});
+			expect(isAvailable.value).toBe(true);
+			expect(isEnabled.value).toBe(false);
+		},
+	);
 
-	it('is disabled when the flag is off', () => {
-		const { isEnabled } = setup({ activeModules: ['promotions'], flag: 'false' });
+	it('is not available when the promotions module is not active', () => {
+		const { isAvailable, isEnabled } = setup({
+			activeModules: ['source-control'],
+			environmentsVersion: 'v2',
+		});
 
+		expect(isAvailable.value).toBe(false);
 		expect(isEnabled.value).toBe(false);
 	});
 });

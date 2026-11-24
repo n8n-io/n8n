@@ -55,7 +55,7 @@ describe('ModelCatalogService', () => {
 			]),
 		);
 
-		const result = await service.search({ provider: 'OpenAI', limit: 2 });
+		const result = await service.search({ provider: 'OpenAI', limit: 2 }, fetch);
 
 		expect(result.status).toBe('ok');
 		expect(result.models.map((entry) => entry.id)).toEqual(['new-large', 'new-small']);
@@ -74,7 +74,7 @@ describe('ModelCatalogService', () => {
 			]),
 		);
 
-		const result = await service.search({ provider: 'openai', limit: 10 });
+		const result = await service.search({ provider: 'openai', limit: 10 }, fetch);
 
 		expect(result.models.map((entry) => entry.id)).toEqual([
 			'known-date',
@@ -106,18 +106,24 @@ describe('ModelCatalogService', () => {
 			),
 		);
 
-		const limited = await service.search({ provider: 'openrouter', query: ' CLAUDE ', limit: 1 });
+		const limited = await service.search(
+			{ provider: 'openrouter', query: ' CLAUDE ', limit: 1 },
+			fetch,
+		);
 		expect(limited.models.map(({ id }) => id)).toEqual(['anthropic/assistant']);
 		expect(limited.hasMore).toBe(true);
 
-		const all = await service.search({ provider: 'openrouter', query: 'claude', limit: 10 });
+		const all = await service.search({ provider: 'openrouter', query: 'claude', limit: 10 }, fetch);
 		expect(all.models.map(({ id }) => id)).toEqual([
 			'anthropic/assistant',
 			'anthropic/claude-small',
 		]);
 		expect(all.hasMore).toBe(false);
 
-		const other = await service.search({ provider: 'openrouter', query: 'other/', limit: 10 });
+		const other = await service.search(
+			{ provider: 'openrouter', query: 'other/', limit: 10 },
+			fetch,
+		);
 		expect(other.models).toHaveLength(10);
 		expect(other.hasMore).toBe(true);
 		expect(fetchCatalog).toHaveBeenCalledOnce();
@@ -125,15 +131,15 @@ describe('ModelCatalogService', () => {
 
 	it('returns no matches for an unmatched query and treats a blank query as unfiltered', async () => {
 		fetchCatalog.mockResolvedValue(catalog([model('example')]));
-		expect(await service.search({ provider: 'openai', query: 'missing', limit: 10 })).toMatchObject(
-			{
-				status: 'no_matching_models',
-				models: [],
-				hasMore: false,
-			},
-		);
-		const unfiltered = await service.search({ provider: 'openai', limit: 10 });
-		expect(await service.search({ provider: 'openai', query: '  ', limit: 10 })).toEqual(
+		expect(
+			await service.search({ provider: 'openai', query: 'missing', limit: 10 }, fetch),
+		).toMatchObject({
+			status: 'no_matching_models',
+			models: [],
+			hasMore: false,
+		});
+		const unfiltered = await service.search({ provider: 'openai', limit: 10 }, fetch);
+		expect(await service.search({ provider: 'openai', query: '  ', limit: 10 }, fetch)).toEqual(
 			unfiltered,
 		);
 		expect(unfiltered.models.map(({ id }) => id)).toEqual(['example']);
@@ -156,7 +162,7 @@ describe('ModelCatalogService', () => {
 			),
 		);
 
-		const result = await service.search({ provider: ' Google ', limit: 10 });
+		const result = await service.search({ provider: ' Google ', limit: 10 }, fetch);
 
 		expect(result).toMatchObject({
 			provider: 'google',
@@ -184,13 +190,13 @@ describe('ModelCatalogService', () => {
 			catalog([model('image', { modalities: { output: ['image'] } })]),
 		);
 
-		expect(await service.search({ provider: 'openai', limit: 10 })).toMatchObject({
+		expect(await service.search({ provider: 'openai', limit: 10 }, fetch)).toMatchObject({
 			status: 'no_matching_models',
 			models: [],
 			hasMore: false,
 		});
 		for (const provider of ['missing', 'constructor', '__proto__']) {
-			expect(await service.search({ provider, limit: 10 })).toMatchObject({
+			expect(await service.search({ provider, limit: 10 }, fetch)).toMatchObject({
 				status: 'unknown_provider',
 				models: [],
 			});
@@ -200,9 +206,9 @@ describe('ModelCatalogService', () => {
 
 	it('keeps cached metadata isolated from mutations to a returned result', async () => {
 		fetchCatalog.mockResolvedValue(catalog([model('example')]));
-		const first = await service.search({ provider: 'openai', limit: 10 });
+		const first = await service.search({ provider: 'openai', limit: 10 }, fetch);
 		first.models[0].modalities.output?.splice(0);
-		const second = await service.search({ provider: 'openai', limit: 10 });
+		const second = await service.search({ provider: 'openai', limit: 10 }, fetch);
 		expect(second.models[0].modalities.output).toEqual(['text']);
 		expect(fetchCatalog).toHaveBeenCalledOnce();
 	});
@@ -210,19 +216,19 @@ describe('ModelCatalogService', () => {
 	it('shares concurrent fetches and refreshes the snapshot after one hour', async () => {
 		const pending = createDeferredPromise<ProviderCatalog>();
 		fetchCatalog.mockReturnValueOnce(pending.promise);
-		const first = service.search({ provider: 'openai', limit: 10 });
-		const second = service.search({ provider: 'openai', limit: 1 });
+		const first = service.search({ provider: 'openai', limit: 10 }, fetch);
+		const second = service.search({ provider: 'openai', limit: 1 }, fetch);
 		expect(fetchCatalog).toHaveBeenCalledOnce();
 		pending.resolve(catalog([model('first')]));
 		await Promise.all([first, second]);
 
 		await vi.advanceTimersByTimeAsync(HOUR - 1);
-		await service.search({ provider: 'openai', limit: 10 });
+		await service.search({ provider: 'openai', limit: 10 }, fetch);
 		expect(fetchCatalog).toHaveBeenCalledOnce();
 		fetchCatalog.mockResolvedValue(catalog([model('second')]));
 		await vi.advanceTimersByTimeAsync(1);
 
-		const refreshed = await service.search({ provider: 'openai', limit: 10 });
+		const refreshed = await service.search({ provider: 'openai', limit: 10 }, fetch);
 		expect(refreshed.models[0].id).toBe('second');
 		expect(refreshed.fetchedAt).toBe('2026-09-16T13:00:00.000Z');
 		expect(fetchCatalog).toHaveBeenCalledTimes(2);
@@ -230,18 +236,18 @@ describe('ModelCatalogService', () => {
 
 	it('marks cached data stale on failure and refuses it at 24 hours', async () => {
 		fetchCatalog.mockResolvedValueOnce(catalog([model('first')]));
-		await service.search({ provider: 'openai', limit: 10 });
+		await service.search({ provider: 'openai', limit: 10 }, fetch);
 		fetchCatalog.mockRejectedValue(new Error('Unavailable'));
 		await vi.advanceTimersByTimeAsync(HOUR);
 
-		expect(await service.search({ provider: 'openai', limit: 10 })).toMatchObject({
+		expect(await service.search({ provider: 'openai', limit: 10 }, fetch)).toMatchObject({
 			status: 'ok',
 			freshness: 'stale',
 			fetchedAt: '2026-09-16T12:00:00.000Z',
 			models: [{ id: 'first' }],
 		});
 		await vi.advanceTimersByTimeAsync(23 * HOUR);
-		expect(await service.search({ provider: 'openai', limit: 10 })).toMatchObject({
+		expect(await service.search({ provider: 'openai', limit: 10 }, fetch)).toMatchObject({
 			status: 'catalog_unavailable',
 			freshness: 'unavailable',
 			fetchedAt: null,
@@ -251,39 +257,41 @@ describe('ModelCatalogService', () => {
 
 	it('keeps the last successful snapshot when the parser returns an empty catalog', async () => {
 		fetchCatalog.mockResolvedValueOnce(catalog([model('first')]));
-		await service.search({ provider: 'openai', limit: 10 });
+		await service.search({ provider: 'openai', limit: 10 }, fetch);
 		fetchCatalog.mockResolvedValue({});
 		await vi.advanceTimersByTimeAsync(HOUR);
-		expect(await service.search({ provider: 'openai', limit: 10 })).toMatchObject({
+		expect(await service.search({ provider: 'openai', limit: 10 }, fetch)).toMatchObject({
 			freshness: 'stale',
 			models: [{ id: 'first' }],
 		});
-		expect(await new ModelCatalogService().search({ provider: 'openai', limit: 10 })).toMatchObject(
-			{
-				status: 'catalog_unavailable',
-				models: [],
-			},
-		);
+		expect(
+			await new ModelCatalogService().search({ provider: 'openai', limit: 10 }, fetch),
+		).toMatchObject({
+			status: 'catalog_unavailable',
+			models: [],
+		});
 	});
 
 	it('bounds a stalled fetch to five seconds and retries on a later call', async () => {
 		const pending = createDeferredPromise<ProviderCatalog>();
 		fetchCatalog.mockReturnValueOnce(pending.promise);
-		const result = service.search({ provider: 'openai', limit: 10 });
+		const result = service.search({ provider: 'openai', limit: 10 }, fetch);
 		await vi.advanceTimersByTimeAsync(5000);
 		expect(await result).toMatchObject({ status: 'catalog_unavailable', models: [] });
 		expect(fetchCatalog.mock.calls[0][0]?.signal?.aborted).toBe(true);
 		pending.resolve(catalog([model('late')]));
 		fetchCatalog.mockResolvedValue(catalog([model('retry')]));
-		expect((await service.search({ provider: 'openai', limit: 10 })).models[0].id).toBe('retry');
+		expect((await service.search({ provider: 'openai', limit: 10 }, fetch)).models[0].id).toBe(
+			'retry',
+		);
 	});
 
 	it('cancels one caller without cancelling a shared fetch for another caller', async () => {
 		const pending = createDeferredPromise<ProviderCatalog>();
 		fetchCatalog.mockReturnValue(pending.promise);
 		const controller = new AbortController();
-		const cancelled = service.search({ provider: 'openai', limit: 10 }, controller.signal);
-		const active = service.search({ provider: 'openai', limit: 10 });
+		const cancelled = service.search({ provider: 'openai', limit: 10 }, fetch, controller.signal);
+		const active = service.search({ provider: 'openai', limit: 10 }, fetch);
 		const rejected = expect(cancelled).rejects.toMatchObject({ name: 'AbortError' });
 		controller.abort();
 		await rejected;
@@ -296,7 +304,7 @@ describe('ModelCatalogService', () => {
 		const controller = new AbortController();
 		controller.abort();
 		await expect(
-			service.search({ provider: 'openai', limit: 10 }, controller.signal),
+			service.search({ provider: 'openai', limit: 10 }, fetch, controller.signal),
 		).rejects.toMatchObject({ name: 'AbortError' });
 		expect(fetchCatalog).not.toHaveBeenCalled();
 	});

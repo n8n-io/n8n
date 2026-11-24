@@ -22,10 +22,18 @@ export interface ButtonProps {
 	iconOnly?: boolean;
 	/** If true, the button will be disabled */
 	disabled?: boolean;
+	/**
+	 * Keep a disabled button focusable for an explanation.
+	 * Use N8nTooltip as-child and visible help text linked with aria-describedby.
+	 * Does not apply to links or loading buttons.
+	 */
+	focusableWhenDisabled?: boolean;
 	/** Additional classes to apply to the button (accepts string, object, or array) */
 	class?: ClassValue;
 	/** @deprecated Use slot instead */
 	icon?: IconName;
+	/** Icon to draw when no icon set has `icon` */
+	fallbackIcon?: IconName;
 	iconSize?: IconSize;
 	/** @deprecated Use slot instead */
 	label?: string;

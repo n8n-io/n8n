@@ -6,6 +6,28 @@ export const DAYTONA_HOME = '/home/daytona';
 export const DAYTONA_WORKSPACE_ROOT = `${DAYTONA_HOME}/${WORKSPACE_DIR}`;
 export const N8N_SANDBOX_HOME = '/home/user';
 export const N8N_SANDBOX_WORKSPACE_ROOT = `${N8N_SANDBOX_HOME}/${WORKSPACE_DIR}`;
+/**
+ * Workspace root that is the same on every provider: the n8n sandbox service
+ * uses it natively, and current Daytona snapshots bake the workspace there.
+ * Sandboxes from older Daytona snapshots use {@link DAYTONA_WORKSPACE_ROOT}.
+ */
+export const PORTABLE_WORKSPACE_ROOT = N8N_SANDBOX_WORKSPACE_ROOT;
+
+/**
+ * Makes the portable root exist in a Daytona sandbox and prints the root to use. Sandboxes from
+ * older snapshots have their workspace at the Daytona root, so the portable root becomes a link
+ * to it. A link that another call made first also counts. The Daytona user needs sudo to create
+ * the parent directory. When that fails, the command prints the Daytona root.
+ */
+const ENSURE_DAYTONA_PORTABLE_WORKSPACE_ROOT_COMMAND = [
+	`if [ -d '${PORTABLE_WORKSPACE_ROOT}' ]; then echo '${PORTABLE_WORKSPACE_ROOT}';`,
+	'elif SUDO=$([ "$(id -u)" = 0 ] || echo \'sudo -n\')',
+	`&& $SUDO mkdir -p '${N8N_SANDBOX_HOME}'`,
+	`&& $SUDO chown "$(id -u):$(id -g)" '${N8N_SANDBOX_HOME}'`,
+	`&& if [ -d '${DAYTONA_WORKSPACE_ROOT}' ]; then ln -sn '${DAYTONA_WORKSPACE_ROOT}' '${PORTABLE_WORKSPACE_ROOT}' || [ -d '${PORTABLE_WORKSPACE_ROOT}' ]; else mkdir -p '${PORTABLE_WORKSPACE_ROOT}'; fi;`,
+	`then echo '${PORTABLE_WORKSPACE_ROOT}';`,
+	`else echo '${DAYTONA_WORKSPACE_ROOT}'; fi`,
+].join(' ');
 
 export function getSandboxHome(provider: SandboxProvider): string {
 	switch (provider) {
@@ -68,6 +90,18 @@ export async function getWorkspaceRoot(workspace: SandboxWorkspace): Promise<str
 	if (initializedLocalRoot) {
 		workspaceRootCache.set(workspace, initializedLocalRoot);
 		return initializedLocalRoot;
+	}
+
+	// The snapshot decides where the workspace is baked. Older snapshots get a link at the
+	// portable root, so the agent can use the same paths on every provider.
+	if (workspace.sandbox?.provider === 'daytona') {
+		const result = await runInSandbox(workspace, ENSURE_DAYTONA_PORTABLE_WORKSPACE_ROOT_COMMAND);
+		const root =
+			result.stdout.trim() === PORTABLE_WORKSPACE_ROOT
+				? PORTABLE_WORKSPACE_ROOT
+				: DAYTONA_WORKSPACE_ROOT;
+		workspaceRootCache.set(workspace, root);
+		return root;
 	}
 
 	const result = await runInSandbox(workspace, 'echo $HOME');

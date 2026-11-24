@@ -2,6 +2,8 @@ import {
 	AI_VENDOR_NODE_TYPES,
 	CHAT_TOOL_NODE_TYPE,
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
+	isToolType,
+	isTriggerNodeType,
 } from 'n8n-workflow';
 
 const AGENT_BUILDER_AI_UTILITY_TOOL_NODE_TYPES = [
@@ -30,3 +32,17 @@ export const AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES: readonly string[] =
 	// Provider nodes: an agent already has its own model
 	...AI_VENDOR_NODE_TYPES,
 ];
+
+const hiddenAgentToolNodeTypes = new Set<string>(AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES);
+
+const MCP_CLIENT_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpClientTool';
+const MCP_REGISTRY_PACKAGE_NAME = '@n8n/mcp-registry';
+
+export const isAgentToolNodeType = (nodeId: string): boolean => {
+	if (isTriggerNodeType(nodeId)) return false;
+	if (hiddenAgentToolNodeTypes.has(nodeId)) return false;
+	if (nodeId === MCP_CLIENT_TOOL_NODE_TYPE || nodeId.startsWith(MCP_REGISTRY_PACKAGE_NAME)) {
+		return false;
+	}
+	return isToolType(nodeId, { includeHitl: false });
+};

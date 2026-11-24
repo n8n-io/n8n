@@ -150,6 +150,13 @@ export function backendBySpecDir(
 
 export const BACKEND_BY_SPEC_DIR = backendBySpecDir();
 
+/**
+ * Backend code that ran while each n8n process started, one raw file for each
+ * process. The per-spec emitter turns the folder into the `BOOT_SPEC` entry of
+ * the impact map, which selection reads as every spec.
+ */
+export const BACKEND_BOOT_DIR = `${BACKEND_BY_SPEC_DIR}/_boot`;
+
 /** Spec id = project-relative path — the id the runner and impact map key on.
  *  Shared by the frontend and backend per-spec coverage fixtures. */
 export function specId(testInfo: TestInfo): string {

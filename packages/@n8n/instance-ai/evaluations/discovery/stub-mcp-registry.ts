@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------------
 // Stub MCP registry + connections for discovery evals. Fakes the registry
-// service; `stub-local-mcp.ts` fakes the computer-use gateway.
+// service; `stub-local-mcp.ts` fakes the Browser Use server.
 //
 // ---------------------------------------------------------------------------
 

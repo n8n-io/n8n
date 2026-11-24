@@ -3,6 +3,13 @@ import { defineComponent, h, ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { render, screen } from '@testing-library/vue';
 import type { INodeUi } from '@/Interface';
+import { CanvasRenderDataKey } from '@/app/constants/injectionKeys';
+import {
+	createCanvasNodeElement,
+	createCanvasNodeProps,
+	createCanvasProvide,
+} from '@/features/workflows/canvas/__tests__/utils';
+import { CanvasNodeRenderType, type CanvasNode } from '@/features/workflows/canvas/canvas.types';
 import { createEmptyCanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 
 interface CapturedCanvasProps {
@@ -20,14 +27,48 @@ vi.mock('@/features/workflows/workflowDiff/SyncedWorkflowCanvas.vue', () => ({
 	default: defineComponent({
 		name: 'SyncedWorkflowCanvas',
 		props: ['id', 'nodes', 'connections', 'applyLayout'],
-		setup(props) {
+		setup(props, { slots }) {
 			if (props.id === 'top') {
 				capturedSyncedCanvasProps.top = { ...props };
 			} else if (props.id === 'bottom') {
 				capturedSyncedCanvasProps.bottom = { ...props };
 			}
-			return () => h('div', { 'data-test-id': `synced-canvas-${props.id}` }, props.id);
+			return () =>
+				h('div', { 'data-test-id': `synced-canvas-${props.id}` }, [
+					props.id,
+					...props.nodes.flatMap((node: CanvasNode) =>
+						node.data
+							? (slots.node?.({
+									nodeProps: createCanvasNodeProps({ id: node.id, data: node.data }),
+								}) ?? [])
+							: [],
+					),
+				]);
 		},
+	}),
+}));
+
+vi.mock('@/app/composables/useWorkflowId', () => ({
+	useWorkflowId: () => ref(''),
+	useRouteWorkflowId: () => ref(''),
+}));
+
+vi.mock('@/app/composables/useRunWorkflow', () => ({
+	useRunWorkflow: () => ({ runEntireWorkflow: vi.fn() }),
+}));
+
+vi.mock('@/app/composables/useCanvasOperations', () => ({
+	useCanvasOperations: () => ({ startChat: vi.fn() }),
+}));
+
+vi.mock('@/app/stores/nodeTypes.store', () => ({
+	useNodeTypesStore: () => ({
+		getNodeType: () => ({ name: 'test', description: 'Test node' }),
+		getAllNodeTypes: () => ({
+			nodeTypes: {},
+			init: async () => {},
+			getByNameAndVersion: () => undefined,
+		}),
 	}),
 }));
 
@@ -108,6 +149,29 @@ describe('WorkflowDiffContent', () => {
 	};
 
 	describe('panels', () => {
+		it('does not expose workflow execution controls in either diff canvas', () => {
+			const trigger = createCanvasNodeElement({
+				data: {
+					name: 'Manual start',
+					type: 'n8n-nodes-base.manualTrigger',
+					render: { type: CanvasNodeRenderType.Default, options: { trigger: true } },
+				},
+			});
+			const renderData = createEmptyCanvasRenderData();
+			render(WorkflowDiffContent, {
+				props: { ...defaultProps, sourceNodes: [trigger], targetNodes: [trigger] },
+				global: {
+					provide: {
+						...createCanvasProvide(),
+						[CanvasRenderDataKey as symbol]: ref(renderData),
+					},
+				},
+			});
+
+			expect(screen.getAllByTestId('canvas-trigger-node')).toHaveLength(2);
+			expect(screen.queryAllByTestId('execute-workflow-button-Manual start')).toHaveLength(0);
+		});
+
 		it('should render two canvas panels when both workflows exist', () => {
 			render(WorkflowDiffContent, { props: defaultProps });
 

@@ -76,6 +76,9 @@ test.describe(
 				setupRequirements,
 			}) => {
 				await setupRequirements(aiEnabledWithHttpWorkflowRequirements);
+				// The imported workflow autosaves once. The save marks the workflow as changed,
+				// so it must finish before the first message, not between the first two.
+				await n8n.canvas.waitForSaveWorkflowCompleted();
 
 				const chatRequests: ChatRequestBody[] = [];
 				await n8n.page.route('**/rest/ai/chat', async (route) => {
@@ -104,7 +107,8 @@ test.describe(
 				await n8n.canvas.openNode(HTTP_REQUEST_NODE_NAME);
 				await n8n.ndv.setParameterInputValue('url', 'https://example.com');
 				await n8n.ndv.close();
-				await n8n.canvas.clickExecuteWorkflowButton();
+				// The run saves the workflow first. Wait for the run to start, so the next message has execution data.
+				await n8n.executionsComposer.createExecutions(1);
 
 				await n8n.aiAssistant.sendMessage('What about now?', 'enter-key');
 				await expect(n8n.aiAssistant.getChatMessagesAssistant()).toHaveCount(3);

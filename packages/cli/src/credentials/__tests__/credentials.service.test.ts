@@ -1,11 +1,12 @@
 import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
-import type { PostHogClient } from '@/posthog';
 import { CREDENTIAL_DESCRIPTION_MAX_LENGTH } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import {
+	type CredentialRestrictionsProviderProxy,
 	type EventService,
 	type RoleService,
 	type CredentialsFinderService,
+	type PostHogClient,
 } from '@n8n/backend-services';
 import type {
 	CredentialsRepository,
@@ -21,6 +22,7 @@ import type {
 	DbLockService,
 	TransactionRunner,
 	ProjectRelation,
+	OperationContext,
 } from '@n8n/db';
 import {
 	CredentialIdConflictError,
@@ -31,7 +33,8 @@ import {
 	type Role,
 } from '@n8n/db';
 import type { PolicyCleared } from '@n8n/decorators';
-import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
+import type { SecurityContext } from '@n8n/permissions';
+import type { EntityManager } from '@n8n/typeorm';
 import { CREDENTIAL_ERRORS, CredentialDataError, Credentials, type ErrorReporter } from 'n8n-core';
 import { OAuth2Api } from 'n8n-nodes-base/credentials/OAuth2Api.credentials';
 import {
@@ -137,6 +140,7 @@ describe('CredentialsService', () => {
 	const transactionRunner = mock<TransactionRunner>();
 	const policyEnforcementService = mock<PolicyEnforcementService>();
 	const cleared = mock<PolicyCleared<'credentialSave'>>();
+	const credentialRestrictions = mock<CredentialRestrictionsProviderProxy>();
 
 	const service = new CredentialsService(
 		credentialsRepository,
@@ -164,6 +168,8 @@ describe('CredentialsService', () => {
 		transactionRunner,
 		policyEnforcementService,
 		credentialDescriptions,
+		mock(), // credentialsPermissionChecker
+		credentialRestrictions,
 	);
 
 	beforeEach(() => {
@@ -321,6 +327,10 @@ describe('CredentialsService', () => {
 			);
 
 			expect(prepared.data).toMatchObject(DCR_FIELDS);
+			// The restored client ID counts as unchanged, so the token stays.
+			expect((prepared.data as unknown as ICredentialDataDecryptedObject).oauthTokenData).toEqual(
+				oauthTokenData,
+			);
 		});
 
 		it('drops them along with the token when the caller clears it', async () => {
@@ -449,13 +459,223 @@ describe('CredentialsService', () => {
 			expect(preparedData.oauthTokenData).toBeUndefined();
 		});
 
-		it('leaves the authorization code grant alone, which reconnects through its own flow', async () => {
-			const preparedData = await prepare(
-				{ ...storedClient, grantType: 'authorizationCode', clientId: 'new-client-id' },
-				{ ...storedClient, grantType: 'authorizationCode', oauthTokenData },
-			);
+		describe('with the authorization code grant', () => {
+			const storedAuthorizationCode = { ...storedClient, grantType: 'authorizationCode' };
 
-			expect(preparedData.oauthTokenData).toEqual(oauthTokenData);
+			it('drops the stored token when the client ID changes', async () => {
+				const preparedData = await prepare(
+					{ ...storedAuthorizationCode, clientId: 'new-client-id' },
+					{ ...storedAuthorizationCode, oauthTokenData },
+				);
+
+				expect(preparedData.oauthTokenData).toBeUndefined();
+			});
+
+			it('drops the stored token when the managed app replaces a custom app', async () => {
+				// Managed mode sends no client fields, so the instance overwrite supplies them.
+				const { clientId, clientSecret, ...managedData } = storedAuthorizationCode;
+				const preparedData = await prepare(managedData, {
+					...storedAuthorizationCode,
+					oauthTokenData,
+				});
+
+				expect(preparedData.oauthTokenData).toBeUndefined();
+				// The default merge does not add omitted fields back from the stored data.
+				expect(preparedData).not.toHaveProperty('clientId');
+				expect(preparedData).not.toHaveProperty('clientSecret');
+			});
+
+			it('keeps the stored token when only the client secret changes', async () => {
+				const preparedData = await prepare(
+					{ ...storedAuthorizationCode, clientSecret: 'rotated-client-secret' },
+					{ ...storedAuthorizationCode, oauthTokenData },
+				);
+
+				expect(preparedData.oauthTokenData).toEqual(oauthTokenData);
+			});
+		});
+	});
+
+	describe('updateDescription', () => {
+		let credential: CredentialsEntity;
+
+		beforeEach(() => {
+			credential = Object.assign(new CredentialsEntity(), {
+				id: 'description-credential',
+				name: 'Reporting',
+				type: 'postgres',
+				data: 'encrypted-value',
+				description: 'Old description',
+				isManaged: false,
+				isResolvable: false,
+				usageScope: 'project',
+			});
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+			sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue(
+				mock<Project>({ id: 'project-1' }),
+			);
+			credentialsRepository.updateDescription.mockResolvedValue(true);
+		});
+
+		it.each(
+			[false, true].flatMap((isManaged) =>
+				['  New description  ', '', '  ', null, 'x'.repeat(512)].map((description) => ({
+					isManaged,
+					description,
+				})),
+			),
+		)(
+			'saves a normalized description with isManaged=$isManaged: $description',
+			async ({ isManaged, description }) => {
+				credential.isManaged = isManaged;
+				await service.updateDescription(ownerUser, credential.id, description);
+				const saved = description?.trim() || null;
+				expect(credentialsRepository.updateDescription).toHaveBeenCalledWith(credential.id, saved, {
+					policyCleared: cleared,
+				});
+				expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+					credential.id,
+					ownerUser,
+					['credential:update'],
+					{ includeInstanceCredentials: true },
+				);
+				expect(policyEnforcementService.enforceCredentialSave).toHaveBeenCalledWith(
+					{
+						credential: { id: credential.id, type: credential.type },
+						storedCredential: { id: credential.id, type: credential.type },
+						projectId: 'project-1',
+					},
+					ownerActor,
+				);
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'credentials-updated',
+					expect.objectContaining({
+						credentialId: credential.id,
+						credentialDescriptionLength: saved?.length ?? 0,
+						descriptionOnly: true,
+					}),
+				);
+				expect(credential.data).toBe('encrypted-value');
+				expect(credential.description).toBe('Old description');
+				expect(credentialsHelper.getDecrypted).not.toHaveBeenCalled();
+				expect(credentialsRepository.updateContent).not.toHaveBeenCalled();
+				expect(connectionStatusProxy.deleteAllUserEntries).not.toHaveBeenCalled();
+			},
+		);
+
+		it.each(['disabled', 'invalid', 'missing', 'policy'])(
+			'rejects %s before hooks and writes',
+			async (reason) => {
+				if (reason === 'disabled') postHogClient.getFeatureFlagForInstance.mockResolvedValue(false);
+				if (reason === 'missing')
+					credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+				if (reason === 'policy')
+					policyEnforcementService.enforceCredentialSave.mockRejectedValue(
+						new Error('Policy rejected'),
+					);
+				await expect(
+					service.updateDescription(
+						ownerUser,
+						credential.id,
+						reason === 'invalid' ? 'x'.repeat(513) : 'New',
+					),
+				).rejects.toThrow();
+				expect(externalHooks.run).not.toHaveBeenCalled();
+				expect(credentialsRepository.updateDescription).not.toHaveBeenCalled();
+				expect(eventService.emit).not.toHaveBeenCalled();
+			},
+		);
+
+		it('passes the login id to the credentials-updated event', async () => {
+			const ctx: OperationContext = {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			};
+
+			await service.updateDescription(ownerUser, credential.id, 'New', ctx);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'credentials-updated',
+				expect.objectContaining({ loginId: 'login-1' }),
+			);
+		});
+
+		it('emits no login id without an operation context', async () => {
+			await service.updateDescription(ownerUser, credential.id, 'New');
+
+			const call = eventService.emit.mock.calls.find(([name]) => name === 'credentials-updated');
+			expect(call?.[1]).toMatchObject({ loginId: undefined });
+		});
+
+		it('uses and validates the description returned by the hook', async () => {
+			externalHooks.run.mockImplementation(async (_name, parameters) => {
+				const [payload] = parameters as [ICredentialsDb];
+				expect(payload.data).toBe('encrypted-value');
+				payload.description = '  Hook description  ';
+			});
+			await service.updateDescription(ownerUser, credential.id, 'New');
+			expect(credentialsRepository.updateDescription).toHaveBeenCalledWith(
+				credential.id,
+				'Hook description',
+				{ policyCleared: cleared },
+			);
+		});
+
+		it.each([
+			'data',
+			'name',
+			'type',
+			'isGlobal',
+			'extra',
+			'removed',
+			'invalid-description',
+			'missing-description',
+			'rejected',
+		])('does not save when the hook changes %s', async (change) => {
+			externalHooks.run.mockImplementation(async (_name, parameters) => {
+				const [payload] = parameters as [ICredentialsDb];
+				if (change === 'rejected') throw new Error('Hook rejected');
+				if (change === 'data') payload.data = 'changed';
+				if (change === 'name') payload.name = 'Changed';
+				if (change === 'type') payload.type = 'changed';
+				if (change === 'isGlobal') payload.isGlobal = true;
+				if (change === 'extra') Object.assign(payload, { extra: true });
+				if (change === 'removed') Reflect.deleteProperty(payload, 'name');
+				if (change === 'invalid-description') payload.description = 'x'.repeat(513);
+				if (change === 'missing-description') delete payload.description;
+			});
+			await expect(service.updateDescription(ownerUser, credential.id, 'New')).rejects.toThrow();
+			expect(credentialsRepository.updateDescription).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+			expect(credential.data).toBe('encrypted-value');
+		});
+
+		it('rejects nested hook changes while preserving the original credential', async () => {
+			credential.shared = [
+				{
+					role: 'credential:owner',
+					project: { id: 'project-1' },
+				} as SharedCredentials,
+			];
+			externalHooks.run.mockImplementation(async (_name, parameters) => {
+				const [payload] = parameters as [ICredentialsDb];
+				const project = payload.shared?.[0]?.project;
+				if (project) project.id = 'changed';
+			});
+
+			await expect(service.updateDescription(ownerUser, credential.id, 'New')).rejects.toThrow(
+				'Credential update hooks can only change the description',
+			);
+			expect(credential.shared[0].project.id).toBe('project-1');
+			expect(credentialsRepository.updateDescription).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('does not emit a success event when the row disappeared', async () => {
+			credentialsRepository.updateDescription.mockResolvedValue(false);
+			await expect(service.updateDescription(ownerUser, credential.id, 'New')).rejects.toThrow(
+				CredentialNotFoundError,
+			);
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1309,6 +1529,23 @@ describe('CredentialsService', () => {
 		});
 	});
 
+	describe('hasConnectionTest', () => {
+		it('is false when n8n has no test for the credential type', () => {
+			credentialsTester.getCredentialTestFunction.mockReturnValue(undefined);
+
+			expect(service.hasConnectionTest('httpHeaderAuth')).toBe(false);
+			expect(credentialsTester.getCredentialTestFunction).toHaveBeenCalledWith('httpHeaderAuth');
+		});
+
+		it('is true when n8n has a test for the credential type', () => {
+			credentialsTester.getCredentialTestFunction.mockReturnValue({
+				testRequest: { request: { url: '/auth.test' } },
+			});
+
+			expect(service.hasConnectionTest('slackApi')).toBe(true);
+		});
+	});
+
 	describe('testById', () => {
 		it('throws CredentialNotFoundError when the user cannot use the credential', async () => {
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
@@ -1354,6 +1591,7 @@ describe('CredentialsService', () => {
 				storedCredential.id,
 				ownerUser,
 				['credential:read'],
+				{ excludeSeeOnlyRoles: true },
 			);
 			expect(service.decrypt).toHaveBeenCalledWith(storedCredential, true);
 			expect(credentialsTester.testCredentials).toHaveBeenCalledWith(
@@ -1391,19 +1629,18 @@ describe('CredentialsService', () => {
 
 		it('does not return instance credentials without an explicit opt-in', async () => {
 			credentialsRepository.findOneBy.mockResolvedValue(instanceCredential);
-			sharedCredentialsRepository.findOne.mockResolvedValue(null);
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
 
 			await expect(service.getOne(ownerUser, instanceCredential.id, false)).rejects.toThrow(
 				`Credential with ID "${instanceCredential.id}" could not be found.`,
 			);
 			expect(credentialsRepository.findOneBy).not.toHaveBeenCalled();
-			expect(sharedCredentialsRepository.findOne).toHaveBeenCalledWith({
-				where: {
-					credentialsId: instanceCredential.id,
-					credentials: { usageScope: 'project' },
-				},
-				relations: { credentials: true },
-			});
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+				instanceCredential.id,
+				ownerUser,
+				['credential:read'],
+				{ visibilityOnly: true },
+			);
 		});
 
 		it('returns instance credentials to managers when explicitly requested', async () => {
@@ -1420,75 +1657,85 @@ describe('CredentialsService', () => {
 			});
 		});
 
-		describe('decryption gate', () => {
+		describe('access resolution', () => {
 			// `getOne` is the non-enterprise path, taken when sharing is unlicensed. It
-			// decrypts only when `getSharing` matches on both `credential:read` and
-			// `credential:update`, exactly as the enterprise path does. A see-only
-			// instance role holds read but not update, so it gets metadata only.
-			const credentialOwner = mock<User>({ id: 'cred-owner-id', role: GLOBAL_MEMBER_ROLE });
+			// resolves access through the credentials finder, like the enterprise path,
+			// so team project membership and shares count. It decrypts only when the
+			// user can both read and update the credential.
 			const credential = mock<CredentialsEntity>({
-				id: 'shared-credential',
+				id: 'project-credential',
 				data: 'encrypted-data',
 				isResolvable: false,
+				shared: [],
 			});
-			const sharing = mock<SharedCredentials>({ credentials: credential });
 			const decryptedData = { clientSecret: 'plaintext-secret' };
 
 			let decryptSpy: MockInstance<CredentialsService['decrypt']>;
 
 			beforeEach(() => {
 				decryptSpy = vi.spyOn(service, 'decrypt').mockResolvedValue(decryptedData);
-
-				// Stand in for the database: `getSharing` drops the ownership filter when
-				// the caller holds every global scope it asked for, so an unfiltered
-				// lookup matches, and a filtered one matches only for the owner.
-				sharedCredentialsRepository.findOne.mockImplementation(async (options) => {
-					const where = options.where as FindOptionsWhere<SharedCredentials>;
-					if (where.role !== 'credential:owner') return sharing;
-					const { projectRelations } = where.project as {
-						projectRelations: { userId: string };
-					};
-					return projectRelations.userId === credentialOwner.id ? sharing : null;
-				});
 			});
 
 			afterEach(() => {
 				decryptSpy.mockRestore();
 			});
 
-			it('withholds the secret from a role with global read but not update', async () => {
+			it('returns the secret when the user can read and update the credential', async () => {
+				credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(credential);
+
+				const result = await service.getOne(memberUser, credential.id, true);
+
+				expect(result).toMatchObject({ id: credential.id, data: decryptedData });
+				expect(decryptSpy).toHaveBeenCalledWith(credential);
+				expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledTimes(1);
+				expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+					credential.id,
+					memberUser,
+					['credential:read', 'credential:update'],
+				);
+			});
+
+			it('withholds the secret when the user can only read the credential', async () => {
+				credentialsFinderService.findCredentialForUser
+					.mockResolvedValueOnce(null)
+					.mockResolvedValueOnce(credential);
+
 				const result = await service.getOne(viewOnlyUser, credential.id, true);
+
+				expect(result).toMatchObject({ id: credential.id });
+				expect(result).not.toHaveProperty('data');
+				expect(decryptSpy).not.toHaveBeenCalled();
+				expect(credentialsFinderService.findCredentialForUser).toHaveBeenNthCalledWith(
+					2,
+					credential.id,
+					viewOnlyUser,
+					['credential:read'],
+					{ visibilityOnly: true },
+				);
+			});
+
+			it('does not look up update access when data is not requested', async () => {
+				credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(credential);
+
+				const result = await service.getOne(memberUser, credential.id, false);
 
 				expect(result).not.toHaveProperty('data');
 				expect(decryptSpy).not.toHaveBeenCalled();
-				// The decrypt lookup asked for update as well, which this role lacks, so
-				// it fell back to the ownership filter and matched nothing.
-				expect(sharedCredentialsRepository.findOne).toHaveBeenNthCalledWith(
-					1,
-					expect.objectContaining({
-						where: expect.objectContaining({ role: 'credential:owner' }),
-					}),
+				expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledTimes(1);
+				expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+					credential.id,
+					memberUser,
+					['credential:read'],
+					{ visibilityOnly: true },
 				);
 			});
 
-			it('returns the secret to a role with both global scopes', async () => {
-				const result = await service.getOne(ownerUser, credential.id, true);
+			it('throws when the user cannot see the credential', async () => {
+				credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
 
-				expect(result).toMatchObject({ data: decryptedData });
-				expect(decryptSpy).toHaveBeenCalledWith(credential);
-				expect(sharedCredentialsRepository.findOne).toHaveBeenNthCalledWith(
-					1,
-					expect.objectContaining({
-						where: expect.not.objectContaining({ role: 'credential:owner' }),
-					}),
+				await expect(service.getOne(memberUser, credential.id, true)).rejects.toThrow(
+					`Credential with ID "${credential.id}" could not be found.`,
 				);
-			});
-
-			it('returns the secret to the credential owner without any global scope', async () => {
-				const result = await service.getOne(credentialOwner, credential.id, true);
-
-				expect(result).toMatchObject({ data: decryptedData });
-				expect(decryptSpy).toHaveBeenCalledWith(credential);
 			});
 		});
 	});
@@ -1678,6 +1925,63 @@ describe('CredentialsService', () => {
 			});
 			const emittedEventNames = eventService.emit.mock.calls.map((call) => call[0]);
 			expect(emittedEventNames).not.toContain('private-credential-deleted');
+		});
+
+		describe('login id on the deleted event', () => {
+			const projectCredential = () => {
+				const credential = mock<CredentialsEntity>({
+					id: 'project-credential',
+					type: 'gmailOAuth2',
+					usageScope: 'project',
+					isResolvable: false,
+				});
+				credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+				credentialsRepository.remove.mockResolvedValue(credential);
+				return credential;
+			};
+
+			const ctx: OperationContext = {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			};
+
+			it('passes the login id to the credentials-deleted event', async () => {
+				const credential = projectCredential();
+
+				await service.delete(ownerUser, credential.id, {}, ctx);
+
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'credentials-deleted',
+					expect.objectContaining({ loginId: 'login-1' }),
+				);
+			});
+
+			it('passes the login id when an instance credential is deleted', async () => {
+				const credential = mock<CredentialsEntity>({
+					id: 'instance-credential',
+					usageScope: 'instance',
+					isResolvable: false,
+				});
+				credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+				credentialsRepository.deleteInstanceCredentialIfUnassigned.mockResolvedValue({
+					status: 'deleted',
+				});
+
+				await service.delete(ownerUser, credential.id, { includeInstanceCredentials: true }, ctx);
+
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'credentials-deleted',
+					expect.objectContaining({ loginId: 'login-1' }),
+				);
+			});
+
+			it('emits no login id without an operation context', async () => {
+				const credential = projectCredential();
+
+				await service.delete(ownerUser, credential.id);
+
+				const call = eventService.emit.mock.calls.find(([name]) => name === 'credentials-deleted');
+				expect(call?.[1]).toMatchObject({ loginId: undefined });
+			});
 		});
 	});
 
@@ -1957,6 +2261,114 @@ describe('CredentialsService', () => {
 			await service.update(credential.id, encrypted, ownerActor);
 
 			expect(connectionStatusProxy.findMyConnections).not.toHaveBeenCalled();
+		});
+
+		describe('description handling', () => {
+			const storedDescription = 'Stored reporting account';
+
+			const setUpUpdate = () => {
+				const stored = Object.assign(new CredentialsEntity(), {
+					id: 'described-credential',
+					name: 'Reporting',
+					type: 'apiKey',
+					description: storedDescription,
+				});
+				storeCredential(stored);
+				const transactionManager = mock<EntityManager>();
+				transactionManager.findOneBy.mockImplementation(async () =>
+					Object.assign(new CredentialsEntity(), stored),
+				);
+				setRepositoryTransaction(transactionManager);
+				return stored;
+			};
+
+			const buildPayload = (
+				stored: CredentialsEntity,
+				extra: Partial<ICredentialsDb> = {},
+			): ICredentialsDb => ({
+				id: stored.id,
+				name: stored.name,
+				type: stored.type,
+				data: 'encrypted',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				...extra,
+			});
+
+			const hookSetsDescription = (description: string) => {
+				externalHooks.run.mockImplementation(async (_hookName, params) => {
+					(params as [ICredentialsDb])[0].description = description;
+				});
+			};
+
+			it('persists and returns the description when the flag is enabled', async () => {
+				const stored = setUpUpdate();
+				const payload = buildPayload(stored, { description: 'New description' });
+
+				const result = await service.update(stored.id, payload, ownerActor);
+
+				expect(credentialsRepository.updateContent).toHaveBeenCalledWith(
+					stored.id,
+					expect.objectContaining({ description: 'New description' }),
+					expect.anything(),
+				);
+				expect(result?.description).toBe(storedDescription);
+				expect(postHogClient.getFeatureFlagForInstance).toHaveBeenCalledOnce();
+			});
+
+			it('keeps a hook-added description when the flag is enabled', async () => {
+				const stored = setUpUpdate();
+				hookSetsDescription('From hook');
+
+				await service.update(stored.id, buildPayload(stored), ownerActor);
+
+				expect(credentialsRepository.updateContent).toHaveBeenCalledWith(
+					stored.id,
+					expect.objectContaining({ description: 'From hook' }),
+					expect.anything(),
+				);
+			});
+
+			it.each([false, undefined])(
+				'keeps the description out of the write and the response when the flag is %s',
+				async (enabled) => {
+					postHogClient.getFeatureFlagForInstance.mockResolvedValue(enabled);
+					const stored = setUpUpdate();
+					let hookInput: ICredentialsDb | undefined;
+					externalHooks.run.mockImplementation(async (_hookName, params) => {
+						hookInput = { ...(params as [ICredentialsDb])[0] };
+					});
+					const payload = buildPayload(stored, { description: 'New description' });
+
+					const result = await service.update(stored.id, payload, ownerActor);
+
+					expect(hookInput).not.toHaveProperty('description');
+					const [, written] = credentialsRepository.updateContent.mock.calls[0];
+					expect(written).not.toHaveProperty('description');
+					expect(result).not.toBeNull();
+					expect(result).not.toHaveProperty('description');
+					expect(stored.description).toBe(storedDescription);
+					expect(postHogClient.getFeatureFlagForInstance).toHaveBeenCalledOnce();
+				},
+			);
+
+			it.each([false, undefined])(
+				'keeps a hook-added description out of the write and the response when the flag is %s',
+				async (enabled) => {
+					postHogClient.getFeatureFlagForInstance.mockResolvedValue(enabled);
+					const stored = setUpUpdate();
+					hookSetsDescription('From hook');
+
+					const result = await service.update(stored.id, buildPayload(stored), ownerActor);
+
+					const [, written] = credentialsRepository.updateContent.mock.calls[0];
+					expect(written).not.toHaveProperty('description');
+					expect(result).not.toBeNull();
+					expect(result).not.toHaveProperty('description');
+					expect(stored.description).toBe(storedDescription);
+					expect(postHogClient.getFeatureFlagForInstance).toHaveBeenCalledOnce();
+				},
+			);
 		});
 	});
 
@@ -2415,7 +2827,7 @@ describe('CredentialsService', () => {
 				payload.id,
 				ownerUser,
 				['credential:read'],
-				{ includeInstanceCredentials: true },
+				{ includeInstanceCredentials: true, excludeSeeOnlyRoles: true },
 			);
 			expect(service.decrypt).toHaveBeenCalledWith(storedCredential, true);
 			expect(service.unredact).toHaveBeenCalledWith(payload.data, decryptedData, []);
@@ -2580,6 +2992,102 @@ describe('CredentialsService', () => {
 				skip: 10,
 			});
 			expect(result).toEqual({ credentials, count: 1 });
+		});
+
+		describe('includeRestrictions', () => {
+			const credential = (id: string, homeProjectId: string | null) =>
+				({
+					id,
+					type: 'slackApi',
+					shared: [],
+					homeProject: homeProjectId ? { id: homeProjectId } : null,
+				}) as unknown as CredentialsEntity;
+			const restriction = {
+				reason: 'typeRestricted' as const,
+				restriction: { name: 'slackApi', available: false, scope: 'instance' as const },
+			};
+
+			beforeEach(() => {
+				ownershipService.addOwnedByAndSharedWith.mockImplementation((c: any) => c);
+			});
+
+			it('adds the restriction of each credential, judged by its home project', async () => {
+				credentialsRepository.findManyAndCount.mockResolvedValue([
+					[credential('cred-1', 'team-1'), credential('cred-2', null)],
+					2,
+				]);
+				credentialRestrictions.findRestrictions.mockResolvedValue([restriction, null]);
+
+				const { credentials } = await service.getManyAndCount(ownerUser, {
+					includeRestrictions: true,
+				});
+
+				expect(credentialRestrictions.findRestrictions).toHaveBeenCalledWith([
+					{ type: 'slackApi', projectId: 'team-1' },
+					{ type: 'slackApi', projectId: null },
+				]);
+				expect(credentials[0]).toHaveProperty('restriction', restriction);
+				expect(credentials[1]).not.toHaveProperty('restriction');
+			});
+
+			it('judges every credential of a project list by that project', async () => {
+				credentialsRepository.findManyAndCount.mockResolvedValue([
+					[credential('cred-1', 'team-1'), credential('cred-2', 'team-2')],
+					2,
+				]);
+				credentialRestrictions.findRestrictions.mockResolvedValue([null, null]);
+
+				await service.getManyAndCount(ownerUser, {
+					listQueryOptions: { filter: { projectId: 'team-1' } },
+					includeRestrictions: true,
+				});
+
+				expect(credentialRestrictions.findRestrictions).toHaveBeenCalledWith([
+					{ type: 'slackApi', projectId: 'team-1' },
+					{ type: 'slackApi', projectId: 'team-1' },
+				]);
+			});
+
+			it('does not judge credentials when a custom select can leave out the home project', async () => {
+				credentialsRepository.findManyAndCount.mockResolvedValue([
+					[credential('cred-1', 'team-1')],
+					1,
+				]);
+
+				await service.getManyAndCount(ownerUser, {
+					listQueryOptions: { select: { id: true, type: true } },
+					includeRestrictions: true,
+				});
+
+				expect(credentialRestrictions.findRestrictions).not.toHaveBeenCalled();
+			});
+
+			it('does not judge credentials unless asked to', async () => {
+				credentialsRepository.findManyAndCount.mockResolvedValue([
+					[credential('cred-1', 'team-1')],
+					1,
+				]);
+
+				await service.getManyAndCount(ownerUser, {});
+
+				expect(credentialRestrictions.findRestrictions).not.toHaveBeenCalled();
+			});
+
+			it('returns the list without restrictions when they cannot be resolved', async () => {
+				credentialsRepository.findManyAndCount.mockResolvedValue([
+					[credential('cred-1', 'team-1')],
+					1,
+				]);
+				credentialRestrictions.findRestrictions.mockRejectedValue(new Error('boom'));
+
+				const { credentials } = await service.getManyAndCount(ownerUser, {
+					includeRestrictions: true,
+				});
+
+				expect(credentials).toHaveLength(1);
+				expect(credentials[0]).not.toHaveProperty('restriction');
+				expect(logger.warn).toHaveBeenCalled();
+			});
 		});
 	});
 
@@ -3340,6 +3848,49 @@ describe('CredentialsService', () => {
 				},
 			);
 		});
+
+		it.each([true, false, undefined])(
+			'excludes end-user credentials only when requested (excludeResolvable=%s)',
+			async (excludeResolvable) => {
+				const projectEndUser = mock<CredentialsEntity>({
+					...regularCredential,
+					id: 'project-end-user',
+					isResolvable: true,
+				});
+				const fixedGlobal = mock<CredentialsEntity>({
+					...globalCredential,
+					id: 'global-fixed',
+					isResolvable: false,
+				});
+				credentialsFinderService.findCredentialsForUser.mockResolvedValue([
+					regularCredential,
+					projectEndUser,
+					fixedGlobal,
+					globalCredential,
+				]);
+				credentialsRepository.findAllCredentialsForProject.mockResolvedValue([
+					regularCredential,
+					projectEndUser,
+				]);
+				credentialsRepository.findAllCredentialsForWorkflow.mockResolvedValue([
+					regularCredential,
+					projectEndUser,
+				]);
+
+				for (const scope of [{ projectId: 'project-1' }, { workflowId: 'workflow-1' }]) {
+					const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+						...scope,
+						excludeResolvable,
+					});
+
+					expect(result.map(({ id }) => id)).toEqual(
+						excludeResolvable
+							? ['cred-1', 'global-fixed']
+							: ['cred-1', 'project-end-user', 'global-fixed', 'cred-2'],
+					);
+				}
+			},
+		);
 
 		it.each([null, 'x'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH)])(
 			'returns the stored description in a workflow-scoped list',
@@ -5273,6 +5824,7 @@ describe('CredentialsService', () => {
 				'cred-id',
 				memberUser,
 				['credential:read'],
+				{ excludeSeeOnlyRoles: true },
 			);
 		});
 

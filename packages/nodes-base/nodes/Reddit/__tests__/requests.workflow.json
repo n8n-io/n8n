@@ -1,0 +1,389 @@
+{
+	"name": "Reddit request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "00000000-0000-4000-8000-000000000000",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"postId": "1abc2d"
+			},
+			"type": "n8n-nodes-base.reddit",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "00000000-0000-4000-8000-000000000001",
+			"name": "Delete Post",
+			"credentials": {
+				"redditOAuth2Api": {
+					"id": "cred1",
+					"name": "Reddit account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"subreddit": "n8n",
+				"postId": "1abc2d"
+			},
+			"type": "n8n-nodes-base.reddit",
+			"typeVersion": 1,
+			"position": [220, 160],
+			"id": "00000000-0000-4000-8000-000000000002",
+			"name": "Get Post",
+			"credentials": {
+				"redditOAuth2Api": {
+					"id": "cred1",
+					"name": "Reddit account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"subreddit": "n8n",
+				"limit": 1,
+				"filters": {}
+			},
+			"type": "n8n-nodes-base.reddit",
+			"typeVersion": 1,
+			"position": [220, 320],
+			"id": "00000000-0000-4000-8000-000000000003",
+			"name": "Get Many Posts",
+			"credentials": {
+				"redditOAuth2Api": {
+					"id": "cred1",
+					"name": "Reddit account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"subreddit": "n8n",
+				"limit": 1,
+				"filters": {
+					"category": "hot"
+				}
+			},
+			"type": "n8n-nodes-base.reddit",
+			"typeVersion": 1,
+			"position": [220, 480],
+			"id": "00000000-0000-4000-8000-000000000004",
+			"name": "Get Many Hot Posts",
+			"credentials": {
+				"redditOAuth2Api": {
+					"id": "cred1",
+					"name": "Reddit account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "search",
+				"location": "subreddit",
+				"subreddit": "n8n",
+				"keyword": "workflow",
+				"limit": 1,
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.reddit",
+			"typeVersion": 1,
+			"position": [220, 640],
+			"id": "00000000-0000-4000-8000-000000000005",
+			"name": "Search Posts",
+			"credentials": {
+				"redditOAuth2Api": {
+					"id": "cred1",
+					"name": "Reddit account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "postComment",
+				"operation": "getAll",
+				"subreddit": "n8n",
+				"postId": "1abc2d",
+				"limit": 1
+			},
+			"type": "n8n-nodes-base.reddit",
+			"typeVersion": 1,
+			"position": [220, 800],
+			"id": "00000000-0000-4000-8000-000000000006",
+			"name": "Get Many Comments",
+			"credentials": {
+				"redditOAuth2Api": {
+					"id": "cred1",
+					"name": "Reddit account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "profile",
+				"operation": "get",
+				"details": "prefs"
+			},
+			"type": "n8n-nodes-base.reddit",
+			"typeVersion": 1,
+			"position": [220, 960],
+			"id": "00000000-0000-4000-8000-000000000007",
+			"name": "Get Profile Prefs",
+			"credentials": {
+				"redditOAuth2Api": {
+					"id": "cred1",
+					"name": "Reddit account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "profile",
+				"operation": "get",
+				"details": "saved",
+				"limit": 1
+			},
+			"type": "n8n-nodes-base.reddit",
+			"typeVersion": 1,
+			"position": [220, 1120],
+			"id": "00000000-0000-4000-8000-000000000008",
+			"name": "Get Profile Saved",
+			"credentials": {
+				"redditOAuth2Api": {
+					"id": "cred1",
+					"name": "Reddit account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "subreddit",
+				"operation": "get",
+				"content": "about",
+				"subreddit": "n8n"
+			},
+			"type": "n8n-nodes-base.reddit",
+			"typeVersion": 1,
+			"position": [220, 1280],
+			"id": "00000000-0000-4000-8000-000000000009",
+			"name": "Get Subreddit"
+		},
+		{
+			"parameters": {
+				"resource": "subreddit",
+				"operation": "getAll",
+				"limit": 1,
+				"filters": {}
+			},
+			"type": "n8n-nodes-base.reddit",
+			"typeVersion": 1,
+			"position": [220, 1440],
+			"id": "00000000-0000-4000-8000-000000000010",
+			"name": "Get Many Subreddits"
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "get",
+				"username": "n8n_io",
+				"details": "about"
+			},
+			"type": "n8n-nodes-base.reddit",
+			"typeVersion": 1,
+			"position": [220, 1600],
+			"id": "00000000-0000-4000-8000-000000000011",
+			"name": "Get User"
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "get",
+				"username": "n8n_io",
+				"details": "comments",
+				"limit": 1
+			},
+			"type": "n8n-nodes-base.reddit",
+			"typeVersion": 1,
+			"position": [220, 1760],
+			"id": "00000000-0000-4000-8000-000000000012",
+			"name": "Get User Comments"
+		}
+	],
+	"pinData": {
+		"Delete Post": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Get Post": [
+			{
+				"json": {
+					"id": "1abc2d",
+					"title": "Hello n8n",
+					"subreddit": "n8n"
+				}
+			}
+		],
+		"Get Many Posts": [
+			{
+				"json": {
+					"id": "1abc2d",
+					"title": "Hello n8n",
+					"subreddit": "n8n"
+				}
+			}
+		],
+		"Get Many Hot Posts": [
+			{
+				"json": {
+					"id": "1abc2d",
+					"title": "Hello n8n",
+					"subreddit": "n8n"
+				}
+			}
+		],
+		"Search Posts": [
+			{
+				"json": {
+					"id": "1abc2d",
+					"title": "Hello n8n",
+					"subreddit": "n8n"
+				}
+			}
+		],
+		"Get Many Comments": [
+			{
+				"json": {
+					"id": "c1",
+					"body": "Nice"
+				}
+			}
+		],
+		"Get Profile Prefs": [
+			{
+				"json": {
+					"lang": "en"
+				}
+			}
+		],
+		"Get Profile Saved": [
+			{
+				"json": {
+					"id": "1abc2d",
+					"title": "Hello n8n",
+					"subreddit": "n8n"
+				}
+			}
+		],
+		"Get Subreddit": [
+			{
+				"json": {
+					"display_name": "n8n"
+				}
+			}
+		],
+		"Get Many Subreddits": [
+			{
+				"json": {
+					"display_name": "n8n"
+				}
+			}
+		],
+		"Get User": [
+			{
+				"json": {
+					"name": "n8n_io"
+				}
+			}
+		],
+		"Get User Comments": [
+			{
+				"json": {
+					"id": "c2",
+					"body": "Thanks"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Delete Post",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Post",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Many Posts",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Many Hot Posts",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Search Posts",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Many Comments",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Profile Prefs",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Profile Saved",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Subreddit",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Many Subreddits",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get User",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get User Comments",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

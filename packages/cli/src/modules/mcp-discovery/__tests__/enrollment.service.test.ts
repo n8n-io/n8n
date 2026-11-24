@@ -64,7 +64,6 @@ describe('MCP discovery enrollment', () => {
 	it.each(['global:admin', 'global:member'])(
 		'does not enroll %s even with a Claude answer or saved eligibility',
 		async (slug) => {
-			vi.setSystemTime(start + 30 * 60 * 1000);
 			const saved = await visit('owner');
 			const user = mock<User>({ id: 'owner', role: mock<Role>({ slug }) });
 
@@ -77,33 +76,36 @@ describe('MCP discovery enrollment', () => {
 
 	it('waits for observed Assistant activity before it reads eligibility', async () => {
 		activityEvents.flush.mockImplementationOnce(async () => {
-			rows.set(discoveryUserKey('owner', 'assistantMutationAt'), String(start + 1000));
+			rows.set(discoveryUserKey('owner', 'assistantMutationAt'), String(start));
 		});
-		vi.setSystemTime(start + 30 * 60 * 1000);
 		expect((await visit('owner')).status).toBe('excluded');
 		expect(activityEvents.flush).toHaveBeenCalledOnce();
 	});
 
-	it('starts the clock once and enrolls at the deadline', async () => {
-		expect((await visit('owner')).status).toBe('waiting');
-		vi.setSystemTime(start + 30 * 60 * 1000);
+	it('enrolls on the first visit without a delay', async () => {
 		expect(await visit('owner')).toMatchObject({
 			status: 'assigned',
-			eligibleAt: start + 30 * 60 * 1000,
+			eligibleAt: start,
 		});
 		expect(rows.get(discoveryUserKey('owner', 'firstLoginAt'))).toBe(String(start));
 	});
 
 	it('keeps the saved eligibility after AI use', async () => {
-		await visit('owner');
-		vi.setSystemTime(start + 30 * 60 * 1000);
 		const assigned = await visit('owner');
+		vi.setSystemTime(start + 1000);
 		rows.set(discoveryUserKey('owner', 'assistantMutationAt'), String(Date.now()));
 		expect(await visit('owner')).toEqual(assigned);
 	});
 
+	it('enrolls an owner still inside the former waiting period', async () => {
+		vi.setSystemTime(start + 5 * 60 * 1000);
+		expect(await visit('owner')).toMatchObject({
+			status: 'assigned',
+			eligibleAt: start,
+		});
+	});
+
 	it('keeps an existing eligibility after upgrade', async () => {
-		vi.setSystemTime(start + 30 * 60 * 1000);
 		const assigned = await visit('owner');
 		expect(await service.visit(owner('owner'), { pickedClaude: true, isTrial: false })).toEqual(
 			assigned,
@@ -111,8 +113,8 @@ describe('MCP discovery enrollment', () => {
 		expect(await service.visit(owner('owner'))).toEqual(assigned);
 	});
 
-	it('does not assign a user who upgraded before returning', async () => {
-		await visit('owner');
+	it('does not assign a user who upgraded before eligibility was confirmed', async () => {
+		expect((await service.visit(owner('owner'), { isTrial: true })).status).toBe('unknown');
 		vi.setSystemTime(start + 60 * 60 * 1000);
 		expect(
 			await service.visit(owner('owner'), { pickedClaude: true, isTrial: false }),
@@ -122,15 +124,11 @@ describe('MCP discovery enrollment', () => {
 	it('recovers an empty eligibility claim after checking eligibility', async () => {
 		const key = discoveryUserKey('owner', 'eligibleAt');
 		rows.set(key, '');
-		expect((await visit('owner')).status).toBe('waiting');
-		expect(rows.get(key)).toBe('');
-		vi.setSystemTime(start + 30 * 60 * 1000);
 		expect((await visit('owner')).status).toBe('assigned');
 		expect(rows.get(key)).toBe(String(Date.now()));
 	});
 
 	it('stores eligibility without an instance or user variant assignment', async () => {
-		vi.setSystemTime(start + 30 * 60 * 1000);
 		const result = await visit('owner');
 		expect(result).not.toHaveProperty('assignment');
 		expect(rows.has(discoveryUserKey('owner', 'assignment'))).toBe(false);
@@ -154,25 +152,20 @@ describe('MCP discovery enrollment', () => {
 	});
 
 	it('checks a new owner against their own Assistant history', async () => {
-		await visit('builder');
-		await visit('other');
 		rows.set(discoveryUserKey('builder', 'assistantMutationAt'), String(start));
-		vi.setSystemTime(start + 30 * 60 * 1000);
 		expect((await visit('builder')).status).toBe('excluded');
 		expect((await visit('other')).status).toBe('assigned');
 	});
 
-	it('keeps first-login clocks separate when ownership changes', async () => {
-		rows.set(discoveryUserKey('second', 'firstLoginAt'), String(start + 20 * 60 * 1000));
-		vi.setSystemTime(start + 30 * 60 * 1000);
-		expect((await visit('first')).status).toBe('assigned');
-		expect((await visit('second')).status).toBe('waiting');
-		vi.setSystemTime(start + 50 * 60 * 1000);
-		expect((await visit('second')).status).toBe('assigned');
+	it('enrolls a new owner immediately after their own first login', async () => {
+		expect(await visit('first')).toMatchObject({ status: 'assigned', eligibleAt: start });
+		const secondLogin = start + 20 * 60 * 1000;
+		rows.set(discoveryUserKey('second', 'firstLoginAt'), String(secondLogin));
+		vi.setSystemTime(secondLogin);
+		expect(await visit('second')).toMatchObject({ status: 'assigned', eligibleAt: secondLogin });
 	});
 
 	it('excludes an owner whose onboarding answer does not include Claude', async () => {
-		vi.setSystemTime(start + 30 * 60 * 1000);
 		expect(
 			(await service.visit(owner('owner'), { pickedClaude: false, isTrial: true })).status,
 		).toBe('excluded');
@@ -180,13 +173,11 @@ describe('MCP discovery enrollment', () => {
 
 	it('enrolls a user who already connected an MCP client', async () => {
 		consents.findConnectedClients.mockResolvedValue({ rows: [], total: 1 });
-		vi.setSystemTime(start + 30 * 60 * 1000);
 		expect((await visit('owner')).status).toBe('assigned');
 	});
 
 	it('reports a new connection without changing the saved eligibility', async () => {
 		await visit('owner');
-		vi.setSystemTime(start + 30 * 60 * 1000);
 		const assigned = await visit('owner');
 		consents.findConnectedClients.mockResolvedValue({ rows: [], total: 1 });
 		expect(await visit('owner')).toEqual({
@@ -194,12 +185,12 @@ describe('MCP discovery enrollment', () => {
 		});
 	});
 
-	it('uses the fixed cutoff when the first evaluation happens on return', async () => {
+	it('keeps the first-login cutoff when the owner returns', async () => {
 		rows.set(discoveryUserKey('owner', 'assistantMutationAt'), String(start + 45 * 60 * 1000));
 		vi.setSystemTime(start + 60 * 60 * 1000);
 		expect(await visit('owner')).toMatchObject({
 			status: 'assigned',
-			eligibleAt: start + 30 * 60 * 1000,
+			eligibleAt: start,
 		});
 	});
 
@@ -209,7 +200,6 @@ describe('MCP discovery enrollment', () => {
 	});
 
 	it('preserves enrollment after successful MCP use', async () => {
-		vi.setSystemTime(start + 30 * 60 * 1000);
 		const before = await visit('owner');
 		rows.set(discoveryUserKey('owner', 'claudeMcpUsedAt'), String(Date.now()));
 		expect(await visit('owner')).toMatchObject({
@@ -220,7 +210,6 @@ describe('MCP discovery enrollment', () => {
 	});
 
 	it('returns to Connect after OAuth access is revoked', async () => {
-		vi.setSystemTime(start + 30 * 60 * 1000);
 		rows.set(discoveryUserKey('owner', 'claudeClient.claude-id'), '1000');
 		consents.findConnectedClients.mockResolvedValue({
 			rows: [mock<UserConsent>({ clientId: 'claude-id', client: { name: 'Custom client name' } })],
@@ -232,7 +221,6 @@ describe('MCP discovery enrollment', () => {
 	});
 
 	it('requires a new Claude connection after an API key rotation', async () => {
-		vi.setSystemTime(start + 30 * 60 * 1000);
 		rows.set(discoveryUserKey('owner', 'claudeApiKey.old-key'), '1000');
 		apiKeys.find.mockResolvedValue([mock<ApiKey>({ id: 'old-key' })]);
 		expect((await visit('owner')).hasConnectedClaude).toBe(true);
@@ -241,7 +229,6 @@ describe('MCP discovery enrollment', () => {
 	});
 
 	it('recognizes an existing Claude consent without waiting for a new request', async () => {
-		vi.setSystemTime(start + 30 * 60 * 1000);
 		consents.findConnectedClients.mockResolvedValue({
 			rows: [mock<UserConsent>({ clientId: 'claude-id', client: { name: 'Claude' } })],
 			total: 1,
@@ -250,7 +237,6 @@ describe('MCP discovery enrollment', () => {
 	});
 
 	it('leaves a missing onboarding answer unknown', async () => {
-		vi.setSystemTime(start + 30 * 60 * 1000);
 		expect((await service.visit(owner('owner'), { isTrial: true })).status).toBe('unknown');
 	});
 
@@ -274,7 +260,7 @@ describe('MCP discovery enrollment', () => {
 		rows.set(discoveryUserKey('owner', 'assistantMutationAt'), '');
 		expect((await visit('owner')).status).toBe('unknown');
 		expect(rows.has(discoveryUserKey('owner', 'eligibleAt'))).toBe(false);
-		rows.set(discoveryUserKey('owner', 'assistantMutationAt'), String(start + 20 * 60 * 1000));
+		rows.set(discoveryUserKey('owner', 'assistantMutationAt'), String(start));
 		expect((await visit('owner')).status).toBe('excluded');
 	});
 

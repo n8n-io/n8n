@@ -20,7 +20,7 @@ export function createBrowserTools(
 		...createSessionTools(connection),
 		...createTabTools(connection),
 		...createNavigationTools(connection),
-		...createInteractionTools(connection),
+		...createInteractionTools(connection, config?.mode),
 		...createInspectionTools(connection),
 		...createWaitTools(connection),
 		...createStateTools(connection),

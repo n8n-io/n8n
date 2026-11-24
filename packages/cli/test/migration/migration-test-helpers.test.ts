@@ -3,7 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 describe('Migration Test Helpers', () => {
 	let dataSource: DataSource;

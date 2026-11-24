@@ -1,4 +1,4 @@
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type { INodeExecutionData, IDataObject } from 'n8n-workflow';
 
 /**

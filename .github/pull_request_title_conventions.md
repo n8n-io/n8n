@@ -11,7 +11,7 @@ A PR title consists of these elements:
   |       |                        Capitalized
   |       |                        No period at the end.
   │       │
-  │       └─⫸ Scope: API | benchmark | core | editor | engine | * Node
+  │       └─⫸ Scope: API | ai-builder | benchmark | core | editor | engine | * Node
   │
   └─⫸ Type: build | ci | chore | docs | feat | fix | perf | refactor | test
 ```
@@ -50,11 +50,12 @@ Must be one of the following:
 The scope should specify the place of the commit change as long as the commit clearly addresses one of the following supported scopes. (Otherwise, omit the scope!)
 
 - `API` - changes to the _public_ API
+- `ai-builder` - changes to the AI Workflow Builder and Instance AI
 - `benchmark` - changes to the benchmark cli
 - `core` - changes to the core / private API / backend of n8n
 - `editor` - changes to the Editor UI
 - `engine` - changes to the new workflow execution engine v2
-- `* Node` - changes to a specific node or trigger node (”`*`” to be replaced with the node name, not its display name), e.g.
+- `* Node` - changes to a specific node or trigger node (”`*`” to be replaced with the node's display name, not its internal name), e.g.
   - mattermost → Mattermost Node
   - microsoftToDo → Microsoft To Do Node
   - n8n → n8n Node

@@ -53,7 +53,17 @@ describe('Agent package export scope', () => {
 		expect(CHAT_USER_API_KEY_SCOPES).not.toContain('agent:export');
 		expect(GLOBAL_MEMBER_SCOPES).not.toContain('agent:export');
 		expect(PROJECT_CUSTOM_ROLE_SCOPES.has('agent:export')).toBe(true);
-		expect(API_KEY_RESOURCES.agent).toEqual(['export']);
+		expect(API_KEY_RESOURCES.agent).toEqual([
+			'export',
+			'import',
+			'read',
+			'list',
+			'create',
+			'update',
+			'publish',
+			'unpublish',
+			'delete',
+		]);
 	});
 	it.each(
 		Object.entries({
@@ -65,6 +75,41 @@ describe('Agent package export scope', () => {
 	)('allows Agent export on a %s API key', (_role, scopes) => {
 		expect(scopes).toContain('agent:export');
 	});
+});
+
+it('grants Agent import to editors and owners, with selectable action grants', () => {
+	for (const scopes of [
+		GLOBAL_OWNER_SCOPES,
+		GLOBAL_ADMIN_SCOPES,
+		PERSONAL_PROJECT_OWNER_SCOPES,
+		REGULAR_PROJECT_ADMIN_SCOPES,
+		PROJECT_EDITOR_SCOPES,
+	])
+		expect(scopes).toContain('agent:import');
+	for (const scopes of [
+		PROJECT_VIEWER_SCOPES,
+		PROJECT_CHAT_USER_SCOPES,
+		CHAT_USER_API_KEY_SCOPES,
+	]) {
+		expect(scopes).not.toContain('agent:import');
+	}
+	expect(PROJECT_CUSTOM_ROLE_SCOPES.has('agent:import')).toBe(true);
+	const importScopes = [
+		'agent:import',
+		'agent:read',
+		'agent:create',
+		'agent:update',
+		'agent:publish',
+		'agent:unpublish',
+	];
+	for (const scopes of [
+		OWNER_API_KEY_SCOPES,
+		ADMIN_API_KEY_SCOPES,
+		MEMBER_API_KEY_SCOPES,
+		API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT,
+	]) {
+		expect(scopes).toEqual(expect.arrayContaining(importScopes));
+	}
 });
 
 describe('custom role scope whitelists', () => {
@@ -139,6 +184,11 @@ describe('custom role scope whitelists', () => {
 		expect(BASELINE_INSTANCE_SCOPES).toContain('chatHub:message');
 	});
 
+	it('grants Migration Report access to every instance role, but not running migrations', () => {
+		expect(MANDATORY_INSTANCE_SCOPES).toContain('breakingChanges:list');
+		expect(GLOBAL_CUSTOM_ROLE_SCOPES).not.toContain('breakingChanges:migrate');
+	});
+
 	it('exposes n8n Assistant and n8n Agent scopes as their own use/manage options', () => {
 		const { 'AiAssistant use': use, 'AiAssistant manage': manage } =
 			GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.settings;
@@ -153,7 +203,7 @@ describe('custom role scope whitelists', () => {
 
 	it('"AiAssistant use" matches GLOBAL_MEMBER_SCOPES\' instanceAi:* grants exactly', () => {
 		// Member's baseline n8n Assistant access is `instanceAi:message` +
-		// `instanceAi:gateway` (computer-use gateway pairing). A custom role built
+		// `instanceAi:gateway` (Browser Use pairing). A custom role built
 		// to mirror Member must get both, or it ends up strictly weaker than Member.
 		const use = GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.settings['AiAssistant use'];
 		const memberInstanceAiScopes = GLOBAL_MEMBER_SCOPES.filter((s) => s.startsWith('instanceAi:'));
@@ -383,6 +433,7 @@ describe('mandatory instance options', () => {
 describe('baseline instance scopes', () => {
 	it('lists the read scopes Member holds that have no option of their own', () => {
 		expect([...BASELINE_INSTANCE_SCOPES].sort()).toEqual([
+			'breakingChanges:list',
 			'chatHub:message',
 			'credentialResolver:list',
 			'dataTable:list',

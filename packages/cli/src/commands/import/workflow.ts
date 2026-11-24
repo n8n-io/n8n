@@ -13,7 +13,8 @@ import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import glob from 'fast-glob';
 import fs from 'fs';
 import type { IWorkflowBase, WorkflowId } from 'n8n-workflow';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { z } from 'zod';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';

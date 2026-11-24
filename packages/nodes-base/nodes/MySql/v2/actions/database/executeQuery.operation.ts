@@ -6,7 +6,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { getResolvables, updateDisplayOptions } from '@utils/utilities';
+import { resolveQueryReplacementSegments } from '@utils/sql-query-parameters';
+import { resolveExpressions, updateDisplayOptions } from '@utils/utilities';
 
 import type { QueryRunner, QueryWithValues } from '../../helpers/interfaces';
 import {
@@ -58,21 +59,21 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			let rawQuery = this.getNodeParameter('query', i) as string;
+			const nodeVersion = Number(nodeOptions.nodeVersion);
 
-			for (const resolvable of getResolvables(rawQuery)) {
-				rawQuery = rawQuery.replace(resolvable, this.evaluateExpression(resolvable, i) as string);
-			}
+			const rawQuery = resolveExpressions(
+				this.getNodeParameter('query', i) as string,
+				(resolvable) => this.evaluateExpression(resolvable, i),
+				{ legacy: nodeVersion < 2.6 },
+			);
 
 			const options = this.getNodeParameter('options', i, {});
-
-			const nodeVersion = Number(nodeOptions.nodeVersion);
 
 			let values;
 			let queryReplacement = options.queryReplacement || [];
 
 			if (typeof queryReplacement === 'string') {
-				queryReplacement = queryReplacement.split(',').map((entry) => entry.trim());
+				queryReplacement = resolveQueryReplacementSegments.call(this, i, queryReplacement);
 			}
 
 			if (Array.isArray(queryReplacement)) {

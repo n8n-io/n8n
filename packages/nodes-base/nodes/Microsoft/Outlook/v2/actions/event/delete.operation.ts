@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, INodeProperties } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -24,7 +25,7 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		}) as string,
 	);
 
-	await microsoftApiRequest.call(this, 'DELETE', `/calendar/events/${eventId}`, index);
+	await microsoftApiRequest.call(this, 'DELETE', requestPath`/calendar/events/${eventId}`, index);
 
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray({ success: true }),

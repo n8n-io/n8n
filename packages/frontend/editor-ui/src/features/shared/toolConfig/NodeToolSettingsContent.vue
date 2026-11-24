@@ -180,13 +180,14 @@ const hasCredentialIssues = computed(() => {
 		nodeTypeDescription.value,
 		node.value,
 		{ getNode: () => node.value } as unknown as Workflow,
-		['parameters', 'execution', 'typeUnknown', 'input'],
+		['parameters', 'typeUnknown', 'input'],
 	);
 
 	return Object.keys(credentialIssues?.credentials ?? {}).length > 0;
 });
 
-const toolWorkflowDocumentId = createWorkflowDocumentId('node-tool-workflow');
+// The tool document has a local key and no saved workflow ID.
+const toolWorkflowDocumentId = createWorkflowDocumentId('', 'node-tool-workflow');
 const toolWorkflowStore = useWorkflowDocumentStore(toolWorkflowDocumentId);
 const toolNdvStore = useNDVStore(toolWorkflowDocumentId);
 const workflowDocumentStore = computed(() => toolWorkflowStore);

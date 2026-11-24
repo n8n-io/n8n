@@ -156,6 +156,32 @@ describe('credentials.utils', () => {
 			);
 		});
 
+		describe('typed fields', () => {
+			const credentialsHelper = credentialsHelperWithProperties([
+				{ name: 'port', type: 'number', displayName: 'Port', default: 21 },
+				{ name: 'secure', type: 'boolean', displayName: 'Secure', default: false },
+				...CONDITIONAL_PROPERTIES,
+			]);
+
+			it.each([
+				['number', { port: '={{ $vars.PORT }}' }],
+				['boolean', { secure: '={{ $vars.SECURE }}' }],
+				['options', { authType: '={{ $vars.AUTH_TYPE }}' }],
+			])('accepts an expression in a %s field', (_, data) => {
+				expect(() => validateCredentialData(credentialsHelper, 'someType', data)).not.toThrow();
+			});
+
+			it.each([
+				['number', { port: '21' }],
+				['boolean', { secure: 'true' }],
+				['options', { authType: 'other' }],
+			])('rejects a non-expression value of the wrong type in a %s field', (_, data) => {
+				expect(() => validateCredentialData(credentialsHelper, 'someType', data)).toThrow(
+					/request\.body\.data/,
+				);
+			});
+		});
+
 		it('enforces conditionally-required fields when partialData is not set', () => {
 			const credentialsHelper = credentialsHelperWithProperties(CONDITIONAL_PROPERTIES);
 

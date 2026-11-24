@@ -1,7 +1,5 @@
-import { json as generateJsonSchema } from 'generate-schema';
-import type { SchemaObject } from 'generate-schema';
 import type { JSONSchema7 } from 'json-schema';
-import { jsonParse } from 'n8n-workflow';
+import { generateSchemaFromExample as generateJsonSchemaFromExample } from 'n8n-workflow';
 
 function makeAllPropertiesRequired(schema: JSONSchema7): JSONSchema7 {
 	function isPropertySchema(property: unknown): property is JSONSchema7 {
@@ -37,8 +35,7 @@ export function generateSchemaFromExample(
 	exampleJsonString: string,
 	allFieldsRequired = false,
 ): JSONSchema7 {
-	const parsedExample = jsonParse<SchemaObject>(exampleJsonString);
-	const schema = generateJsonSchema(parsedExample) as JSONSchema7;
+	const schema = generateJsonSchemaFromExample(exampleJsonString);
 
 	delete schema.$schema;
 

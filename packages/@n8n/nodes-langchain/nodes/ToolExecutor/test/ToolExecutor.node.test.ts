@@ -4,7 +4,8 @@ vi.mock('@utils/agent-execution', () => ({
 	buildResponseMetadata: vi.fn(),
 }));
 
-vi.mock('@utils/agent-execution/createEngineRequests', () => ({
+vi.mock('@utils/agent-execution/createEngineRequests', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@utils/agent-execution/createEngineRequests')>()),
 	hasGatedToolNodeName: vi.fn(),
 	extractHitlMetadata: vi.fn(),
 }));
@@ -284,6 +285,19 @@ describe('ToolExecutor Node', async () => {
 	});
 
 	describe('Gated tools handling', () => {
+		// Same schema shape as the gated tools built by createHitlToolkit
+		const createGatedTool = () =>
+			new DynamicStructuredTool({
+				name: 'gated_tool',
+				description: 'A gated tool',
+				schema: z.object({
+					toolParameters: z.object({ param: z.string() }),
+					hitlParameters: z.object({ approval: z.string(), query: z.unknown() }),
+				}),
+				func: vi.fn(),
+				metadata: { gatedToolNodeName: 'hitl_node' },
+			});
+
 		beforeEach(() => {
 			mockProcessHitlResponses.mockReset();
 			mockHasGatedToolNodeName.mockReset();
@@ -309,13 +323,7 @@ describe('ToolExecutor Node', async () => {
 			// @ts-expect-error - Mocking
 			mockBuildResponseMetadata.mockReturnValue({ test: 'metadata' });
 
-			const mockTool = new DynamicTool({
-				name: 'gated_tool',
-				description: 'A gated tool',
-				func: vi.fn(),
-			});
-
-			mockTool.metadata = { gatedToolNodeName: 'hitl_node' };
+			const mockTool = createGatedTool();
 
 			const toolkit = {
 				getTools: () => [mockTool],
@@ -360,6 +368,91 @@ describe('ToolExecutor Node', async () => {
 				approval: 'pending',
 			});
 		});
+
+		it('should set tool and toolParameters of the HITL input from the gated tool call', async () => {
+			mockHasGatedToolNodeName.mockReturnValue(true);
+			mockBuildResponseMetadata.mockReturnValue({});
+
+			const toolkit = { getTools: () => [createGatedTool()] };
+			mockExecuteFunction.getInputConnectionData.mockResolvedValue([toolkit]);
+			mockExecuteFunction.getNodeParameter.mockImplementation((param) => {
+				if (param === 'query')
+					return {
+						gated_tool: { param: 'value' },
+						hitl_node: {
+							approval: 'pending',
+							tool: 'other_tool',
+							toolParameters: { param: 'other' },
+							query: { tool: 'other_tool', toolParameters: { param: 'other' } },
+							extra: 'value',
+						},
+					};
+				if (param === 'toolName') return 'gated_tool';
+				if (param === 'node') return 'hitl_node';
+				return '';
+			});
+
+			const result = await node.execute.call(mockExecuteFunction);
+
+			if (!result || Array.isArray(result) || !('actions' in result)) {
+				throw new Error('Expected result to be an object with actions');
+			}
+			expect(result.actions[0].input).toEqual({
+				approval: 'pending',
+				tool: 'gated_tool',
+				toolParameters: { param: 'value' },
+			});
+		});
+
+		it.each([
+			[
+				'wrapped schema',
+				z.object({
+					toolParameters: new DynamicTool({ name: 'c', description: 'c', func: vi.fn() }).schema,
+					hitlParameters: z.object({ message: z.string() }),
+				}),
+			],
+			['schema without HITL parameters', { type: 'object', properties: {} }],
+		])(
+			'should pass the HITL parameters of a string input tool to the HITL node (%s)',
+			async (_, schema) => {
+				mockHasGatedToolNodeName.mockReturnValue(true);
+				mockBuildResponseMetadata.mockReturnValue({});
+
+				const codeTool = new DynamicTool({
+					name: 'code_tool',
+					description: 'A code tool',
+					func: vi.fn(),
+					metadata: { gatedToolNodeName: 'hitl_node' },
+				});
+				Object.defineProperty(codeTool, 'schema', { value: schema });
+
+				mockExecuteFunction.getInputConnectionData.mockResolvedValue([
+					{ getTools: () => [codeTool] },
+				]);
+				mockExecuteFunction.getNodeParameter.mockImplementation((param) => {
+					if (param === 'query')
+						return {
+							code_tool: { input: 'print(1)' },
+							hitl_node: { message: 'Approve?', query: { tool: 'other' }, tool: 'other' },
+						};
+					if (param === 'toolName') return 'code_tool';
+					if (param === 'node') return 'hitl_node';
+					return '';
+				});
+
+				const result = await node.execute.call(mockExecuteFunction);
+
+				if (!result || Array.isArray(result) || !('actions' in result)) {
+					throw new Error('Expected result to be an object with actions');
+				}
+				expect(result.actions[0].input).toEqual({
+					message: 'Approve?',
+					tool: 'code_tool',
+					toolParameters: { input: 'print(1)' },
+				});
+			},
+		);
 
 		it('should not treat tool as gated when hasGatedToolNodeName returns false', async () => {
 			mockHasGatedToolNodeName.mockReturnValue(false);

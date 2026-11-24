@@ -1,8 +1,9 @@
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import { Service } from '@n8n/di';
-import type { EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
+import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import type { EntityManager, FindOptionsWhere, SelectQueryBuilder } from '@n8n/typeorm';
 import { Brackets, DataSource, In, Not } from '@n8n/typeorm';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { BaseRepository } from './base-repository';
 import { Project, ProjectRelation } from '../entities';
@@ -23,6 +24,10 @@ export class ProjectRepository extends BaseRepository<Project> {
 		private readonly txRunner: TransactionRunner,
 	) {
 		super(Project, dataSource.manager, txRunner);
+	}
+
+	async removeProjectForDeletion(project: Project, ctx: OperationContext): Promise<Project> {
+		return await this.managerFor(ctx).remove(Project, project);
 	}
 
 	/** Returns null when the team project quota is full. */
@@ -138,6 +143,92 @@ export class ProjectRepository extends BaseRepository<Project> {
 		});
 	}
 
+	/**
+	 * Returns every project. With `serviceAccountIds`, it hides the personal
+	 * projects of service accounts that are not in the list. An empty list hides
+	 * all of them. Team projects and the personal projects of people always stay.
+	 */
+	async findAllProjects(options: { serviceAccountIds?: string[] } = {}): Promise<Project[]> {
+		const query = this.createQueryBuilder('project').leftJoin('project.creator', 'creator');
+		if (options.serviceAccountIds !== undefined) {
+			this.limitServiceAccountProjects(query, 'project', options.serviceAccountIds);
+		}
+		return await query.getMany();
+	}
+
+	/** An undefined role list allows global access. An empty list matches no projects. */
+	async findOneWithUserRoles(
+		projectId: string,
+		userId: string,
+		roleSlugs: string[] | undefined,
+		ctx: OperationContext = {},
+	): Promise<Project | null> {
+		return await this.managerFor(ctx).findOne(Project, {
+			where: {
+				id: projectId,
+				...(roleSlugs !== undefined && {
+					projectRelations: { userId, role: { slug: In(roleSlugs) } },
+				}),
+			},
+		});
+	}
+
+	async findIdsWithUserRoles(
+		userId: string,
+		roleSlugs: string[] | undefined,
+		projectIds?: string[],
+	): Promise<string[]> {
+		const where: FindOptionsWhere<Project> = {};
+		if (projectIds) where.id = In(projectIds);
+		if (roleSlugs !== undefined) {
+			// Without explicit IDs, scoped users can list only team projects.
+			if (!projectIds) where.type = 'team';
+			where.projectRelations = { userId, role: { slug: In(roleSlugs) } };
+		}
+
+		const projects = await this.find({
+			where,
+			select: ['id'],
+		});
+		return projects.map(({ id }) => id);
+	}
+
+	async findExistingIds(ids: string[]): Promise<string[]> {
+		if (ids.length === 0) return [];
+
+		const projects = await this.find({ select: ['id'], where: { id: In(ids) } });
+		return projects.map(({ id }) => id);
+	}
+
+	async findByIdsWithUserRoles(
+		ids: string[],
+		userId: string,
+		roleSlugs: string[] | undefined,
+	): Promise<Project[]> {
+		if (ids.length === 0) return [];
+
+		return await this.find({
+			where: {
+				id: In(ids),
+				...(roleSlugs !== undefined && {
+					projectRelations: { userId, role: { slug: In(roleSlugs) } },
+				}),
+			},
+			order: { createdAt: 'ASC', id: 'ASC' },
+		});
+	}
+
+	async findOwnedOrAdminByUser(userId: string): Promise<Project[]> {
+		return await this.find({
+			where: {
+				projectRelations: {
+					userId,
+					role: { slug: In([PROJECT_OWNER_ROLE_SLUG, PROJECT_ADMIN_ROLE_SLUG]) },
+				},
+			},
+		});
+	}
+
 	async findTeamProjects(): Promise<Project[]> {
 		return await this.findBy({ type: 'team' });
 	}
@@ -238,8 +329,12 @@ export class ProjectRepository extends BaseRepository<Project> {
 			idsQuery.andWhere('p.type = :type', { type: options.type });
 		}
 
+		if (options.activated === true || options.serviceAccountIds !== undefined) {
+			idsQuery.leftJoin('p.creator', 'creator');
+		}
+
 		if (options.activated === true) {
-			idsQuery.leftJoin('p.creator', 'creator').andWhere(
+			idsQuery.andWhere(
 				new Brackets((qb) => {
 					qb.where('p.type != :personalTypeFilter', {
 						personalTypeFilter: 'personal',
@@ -247,6 +342,31 @@ export class ProjectRepository extends BaseRepository<Project> {
 				}),
 			);
 		}
+
+		if (options.serviceAccountIds !== undefined) {
+			this.limitServiceAccountProjects(idsQuery, 'p', options.serviceAccountIds);
+		}
+	}
+
+	/**
+	 * Keeps the personal projects of these service accounts only, and of no other.
+	 * The `creator` relation must already be joined on the query.
+	 */
+	private limitServiceAccountProjects(
+		query: SelectQueryBuilder<Project>,
+		alias: string,
+		serviceAccountIds: string[],
+	): void {
+		query.andWhere(
+			new Brackets((qb) => {
+				qb.where(`${alias}.type != :personalTypeLimit`, { personalTypeLimit: 'personal' })
+					.orWhere('creator.id IS NULL')
+					.orWhere('creator.kind != :serviceKind', { serviceKind: 'service' });
+				if (serviceAccountIds.length > 0) {
+					qb.orWhere('creator.id IN (:...serviceAccountIds)', { serviceAccountIds });
+				}
+			}),
+		);
 	}
 
 	private async runProjectListByIdsQuery(
@@ -285,6 +405,10 @@ export class ProjectRepository extends BaseRepository<Project> {
 				}),
 			);
 		}
+
+		if (options.serviceAccountIds !== undefined) {
+			this.limitServiceAccountProjects(query, 'project', options.serviceAccountIds);
+		}
 	}
 
 	/**
@@ -313,6 +437,23 @@ export class ProjectRepository extends BaseRepository<Project> {
 		if (ids.length === 0) return;
 
 		await this.delete({ id: In(ids) });
+	}
+
+	/** Maps each of `projectIds` that is the personal project of a service account to that account. */
+	async findServiceAccountIdsByProject(projectIds: string[]): Promise<Map<string, string>> {
+		const accountIdByProject = new Map<string, string>();
+		for (const batch of chunkIds(projectIds)) {
+			const rows = await this.createQueryBuilder('project')
+				.select('project.id', 'projectId')
+				.addSelect('project.creatorId', 'accountId')
+				.innerJoin('project.creator', 'creator')
+				.where('project.id IN (:...batch)', { batch })
+				.andWhere('project.type = :type', { type: 'personal' })
+				.andWhere('creator.kind = :kind', { kind: 'service' })
+				.getRawMany<{ projectId: string; accountId: string }>();
+			for (const { projectId, accountId } of rows) accountIdByProject.set(projectId, accountId);
+		}
+		return accountIdByProject;
 	}
 
 	async getProjectCounts() {
@@ -346,4 +487,10 @@ export interface ProjectListOptions {
 	search?: string;
 	type?: 'personal' | 'team';
 	activated?: boolean;
+	/**
+	 * Limits the personal projects of service accounts to those of these accounts.
+	 * Team projects and the personal projects of persons stay. An empty list leaves
+	 * out every service account project. `undefined` keeps all of them.
+	 */
+	serviceAccountIds?: string[];
 }

@@ -9,7 +9,7 @@ import type {
 	JsonObject,
 	NodeParameterValue,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { stripeApiRequest } from './helpers';
 import { verifySignature } from './StripeTriggerHelpers';
@@ -18,6 +18,7 @@ export class StripeTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Stripe Trigger',
 		name: 'stripeTrigger',
+		schemaPath: 'Stripe',
 		icon: 'file:stripe.svg',
 		group: ['trigger'],
 		version: 1,
@@ -863,7 +864,7 @@ export class StripeTrigger implements INodeType {
 				}
 
 				// Webhook got created before so check if it still exists
-				const endpoint = `/webhook_endpoints/${webhookData.webhookId}`;
+				const endpoint = requestPath`/webhook_endpoints/${webhookData.webhookId}`;
 
 				try {
 					await stripeApiRequest.call(this, 'GET', endpoint, {});
@@ -891,7 +892,7 @@ export class StripeTrigger implements INodeType {
 
 				const events = this.getNodeParameter('events', []);
 
-				const endpoint = '/webhook_endpoints';
+				const endpoint = requestPath`/webhook_endpoints`;
 
 				interface StripeWebhookBody {
 					url: string | undefined;
@@ -936,7 +937,7 @@ export class StripeTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 
 				if (webhookData.webhookId !== undefined) {
-					const endpoint = `/webhook_endpoints/${webhookData.webhookId}`;
+					const endpoint = requestPath`/webhook_endpoints/${webhookData.webhookId}`;
 					const body = {};
 
 					try {

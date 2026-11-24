@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { N8nSwitch2, N8nText } from '@n8n/design-system';
+import { N8nSwitch2 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import AgentFormSettingRow from './AgentFormSettingRow.vue';
 
 defineProps<{
 	modelValue: boolean;
@@ -15,37 +16,18 @@ const i18n = useI18n();
 </script>
 
 <template>
-	<div :class="$style.approvalRow">
-		<div :class="$style.approvalText">
-			<N8nText size="small" :bold="true">
-				{{ i18n.baseText('agents.toolConfig.approval.label') }}
-			</N8nText>
-			<N8nText size="small" color="text-light">
-				{{ i18n.baseText('agents.toolConfig.approval.hint') }}
-			</N8nText>
-		</div>
+	<AgentFormSettingRow
+		control-id="agent-tool-approval-toggle"
+		:title="i18n.baseText('agents.toolConfig.approval.label')"
+		:description="i18n.baseText('agents.toolConfig.approval.hint')"
+	>
 		<N8nSwitch2
+			id="agent-tool-approval-toggle"
 			:model-value="modelValue"
 			:disabled="disabled"
+			:aria-label="i18n.baseText('agents.toolConfig.approval.label')"
 			data-test-id="agent-tool-approval-toggle"
 			@update:model-value="emit('update:modelValue', $event)"
 		/>
-	</div>
+	</AgentFormSettingRow>
 </template>
-
-<style lang="scss" module>
-.approvalRow {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--sm);
-	padding-top: var(--spacing--2xs);
-}
-
-.approvalText {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-	min-width: 0;
-}
-</style>

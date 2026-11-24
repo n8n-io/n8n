@@ -15,6 +15,7 @@ test.use({
 			N8N_SCHEDULER_ENABLED: 'true',
 			N8N_USE_WORKFLOW_PUBLICATION_SERVICE: 'true',
 			N8N_SCHEDULER_POLL_TRIGGERS_ENABLED: 'true',
+			N8N_POLLER_DURABLE_CURSORS_ENABLED: 'false',
 			N8N_SCHEDULER_MATERIALIZATION_INTERVAL: '1',
 			N8N_SCHEDULER_EXECUTOR_INTERVAL: '1',
 		},
@@ -24,7 +25,7 @@ test.use({
 test.describe(
 	'Poll Trigger cursor (unmigrated)',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Application' }],
 	},
 	() => {
 		test('should advance the cursor in the workflow static data', async ({ api, services }) => {

@@ -5,7 +5,7 @@ import type { VerificationClaim } from '../../../workflow-loop/workflow-loop-sta
 /**
  * Where the verification evidence came from:
  * - `verify`: a `workflow_builder_verify_built_workflow` run.
- * - `live_run`: a live `workflow_builder_executions(action="run")` that proved the whole workflow.
+ * - `live_run`: a live `run_workflow` that proved the whole workflow.
  * - `blocked`: verification did not run.
  */
 export type WorkflowVerificationSource = 'verify' | 'live_run' | 'blocked';

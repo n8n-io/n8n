@@ -54,6 +54,7 @@ erDiagram
   integer id
   bigint jsonSizeBytes
   varchar mode
+  smallint resumeAttempts
   varchar retryOf
   varchar retrySuccessId
   timestamp_3__with_time_zone startedAt

@@ -9,7 +9,7 @@ import type {
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { payPalApiRequest, upperFist } from './GenericFunctions';
 
@@ -17,6 +17,7 @@ export class PayPalTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'PayPal Trigger',
 		name: 'payPalTrigger',
+		schemaPath: 'PayPal',
 		icon: 'file:paypal.svg',
 		group: ['trigger'],
 		version: 1,
@@ -71,7 +72,7 @@ export class PayPalTrigger implements INodeType {
 				];
 				let events;
 				try {
-					const endpoint = '/notifications/webhooks-event-types';
+					const endpoint = requestPath`/notifications/webhooks-event-types`;
 					events = await payPalApiRequest.call(this, endpoint, 'GET');
 				} catch (error) {
 					throw new NodeApiError(this.getNode(), error as JsonObject);
@@ -100,7 +101,7 @@ export class PayPalTrigger implements INodeType {
 					// No webhook id is set so no webhook can exist
 					return false;
 				}
-				const endpoint = `/notifications/webhooks/${webhookData.webhookId}`;
+				const endpoint = requestPath`/notifications/webhooks/${webhookData.webhookId}`;
 				try {
 					await payPalApiRequest.call(this, endpoint, 'GET');
 				} catch (error) {
@@ -123,7 +124,7 @@ export class PayPalTrigger implements INodeType {
 						return { name: event };
 					}),
 				};
-				const endpoint = '/notifications/webhooks';
+				const endpoint = requestPath`/notifications/webhooks`;
 				const webhook = await payPalApiRequest.call(this, endpoint, 'POST', body);
 
 				if (webhook.id === undefined) {
@@ -137,7 +138,7 @@ export class PayPalTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				if (webhookData.webhookId !== undefined) {
-					const endpoint = `/notifications/webhooks/${webhookData.webhookId}`;
+					const endpoint = requestPath`/notifications/webhooks/${webhookData.webhookId}`;
 					try {
 						await payPalApiRequest.call(this, endpoint, 'DELETE', {});
 					} catch (error) {
@@ -155,7 +156,7 @@ export class PayPalTrigger implements INodeType {
 		const bodyData = this.getBodyData();
 		const req = this.getRequestObject();
 		const headerData = this.getHeaderData() as IDataObject;
-		const endpoint = '/notifications/verify-webhook-signature';
+		const endpoint = requestPath`/notifications/verify-webhook-signature`;
 
 		const { env } = await this.getCredentials<{ env: string }>('payPalApi');
 

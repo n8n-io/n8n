@@ -1,4 +1,5 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 vi.mock('../transport', () => ({
@@ -151,7 +152,7 @@ describe('AlibabaCloud listSearch', () => {
 			await textModelSearch.call(mockLoadOptionsFunctions);
 
 			expect(mockApiRequest).toHaveBeenCalledTimes(1);
-			expect(mockApiRequest).toHaveBeenCalledWith('GET', '/api/v1/models', {
+			expect(mockApiRequest).toHaveBeenCalledWith('GET', requestPath`/api/v1/models`, {
 				qs: { page_size: 200 },
 			});
 		});

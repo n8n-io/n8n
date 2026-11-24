@@ -1,10 +1,8 @@
 import { isRecord } from '@n8n/utils/is-record';
-import { DATA_TABLE_SYSTEM_COLUMNS } from 'n8n-workflow';
 
 import { findEnvelopeKey, TEXT_CLASSIFIER_NODE_TYPE } from './ai-root-shapes';
 import { readDataTableReadParameters } from './data-table-read';
 import type {
-	DataTableColumnInfo,
 	DeclaredFieldContract,
 	NodeSchemaContext,
 	OutputParserContext,
@@ -18,14 +16,11 @@ export const INFORMATION_EXTRACTOR_NODE_TYPE = '@n8n/n8n-nodes-langchain.informa
  * Assemble the per-node contexts the generation prompt is built from.
  * Schema enrichment happens through the injected lookup (consumers pass
  * n8n-core's `__schema__` resolver); absent lookup = no schema sections.
- * `dataTableColumns` (node name → real table columns) comes from consumers
- * with instance access — the pinned rows must mirror those exact keys.
  */
 export function buildSchemaContexts(
 	nodes: NodeJSON[],
 	outputSchemaLookup?: OutputSchemaLookup,
 	outputParserTargets?: Map<string, OutputParserContext>,
-	dataTableColumns?: Record<string, DataTableColumnInfo[]>,
 ): NodeSchemaContext[] {
 	return nodes.map((node) => {
 		const params = node.parameters as Record<string, unknown> | undefined;
@@ -49,20 +44,16 @@ export function buildSchemaContexts(
 			parameters: params,
 		});
 
-		const nodeName = node.name ?? node.type;
-		const columns = dataTableColumns?.[nodeName];
-
 		return {
-			nodeName,
+			nodeName: node.name ?? node.type,
 			nodeType: node.type,
 			typeVersion: node.typeVersion,
 			resource,
 			operation,
 			schema,
 			outputParser,
-			dataTableColumns: columns,
 			dataTableRead: readDataTableReadParameters(node),
-			declaredFields: buildDeclaredFieldContract(node.type, schema, outputParser, columns),
+			declaredFields: buildDeclaredFieldContract(node.type, schema, outputParser),
 			classifierReportsConfidence: classifierReportsConfidence(node.type, params),
 		};
 	});
@@ -94,28 +85,18 @@ export function resolveEnvelopeKey(
 
 /**
  * Derive the field-name contract pinned items are validated against.
- * Data Table columns are exact (real rows always carry every column);
- * schema-declared fields allow a subset (optional fields may be absent).
+ * Schema-declared fields allow a subset (optional fields may be absent).
  */
 function buildDeclaredFieldContract(
 	nodeType: string,
 	schema: Record<string, unknown> | undefined,
 	outputParser: OutputParserContext | undefined,
-	columns: DataTableColumnInfo[] | undefined,
 ): DeclaredFieldContract | undefined {
-	if (columns && columns.length > 0) {
-		return {
-			keys: [...DATA_TABLE_SYSTEM_COLUMNS, ...columns.map((c) => c.name)],
-			exact: true,
-			source: 'data-table-columns',
-		};
-	}
-
 	if (outputParser?.schemaText) {
 		const keys = deriveTopLevelKeys(outputParser.schemaText, outputParser.schemaIsExample);
 		if (keys.length > 0) {
 			const envelopeKey = resolveEnvelopeKey(nodeType, schema);
-			return { keys, envelopeKey, exact: false, source: 'declared-schema' };
+			return { keys, envelopeKey };
 		}
 	}
 

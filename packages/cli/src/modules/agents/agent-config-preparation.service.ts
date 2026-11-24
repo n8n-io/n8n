@@ -7,11 +7,14 @@ import {
 	type AgentJsonConfig,
 } from '@n8n/api-types';
 import { WorkflowRepository, type User } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { CredentialsFinderService, ProjectScopeService } from '@n8n/backend-services';
+import { Container, Service } from '@n8n/di';
+import { ForbiddenError, UserError } from '@n8n/errors';
 import { isRecord } from '@n8n/utils/is-record';
-import { UserError } from 'n8n-workflow';
+import { getStaticSubworkflowId } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { findUsableMcpCredential } from '@/modules/mcp-registry/mcp-credential-access';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 
 import {
@@ -23,17 +26,33 @@ import {
 import { AgentPolicyService } from './agent-policy.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
 import type { Agent, ProjectAgent } from './entities/agent.entity';
-import { decomposeJsonConfig } from './json-config/agent-config-composition';
+import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
+import { assertSingleConnections } from './integrations/single-connection';
+import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
 import { toAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
 import { pruneMissingConfigReferences } from './json-config/prune-missing-config-references';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { resolveUniqueSubAgents, type ResolvedSubAgentRef } from './utils/sub-agent-resolver';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { NodeToolAiGatewayService } from './json-config/node-tool-ai-gateway.service';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
-import { normalizeWorkflowToolRefs } from './tools/workflow-tool-workflow-resolver';
+import {
+	findWorkflowToolWorkflows,
+	normalizeWorkflowToolRefs,
+} from './tools/workflow-tool-workflow-resolver';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
+import {
+	findMissingAgentDefinitionBodies,
+	type CompleteAgentDefinition,
+	type PlannedAgentDestinations,
+} from './utils/agent-definition';
+import { extractAgentWorkflowRefs } from './utils/extract-agent-workflow-refs';
+import {
+	findChangedCredentialReferences,
+	visitAgentCredentialReferences,
+} from './utils/visit-agent-credential-references';
 import {
 	findHttpRequestToolUrlFromAiViolations,
 	validateNodeToolConfigs,
@@ -58,6 +77,7 @@ export class AgentConfigPreparationService {
 		private readonly agentTaskRepository: AgentTaskRepository,
 		private readonly agentSkillRefs: AgentSkillRefsService,
 		private readonly agentPolicyService: AgentPolicyService,
+		private readonly credentialsFinderService: CredentialsFinderService,
 	) {}
 
 	async prepareForSave(
@@ -79,6 +99,11 @@ export class AgentConfigPreparationService {
 		const { validatedConfig, credentialProvider } = await this.prepareConfig(
 			rawConfig,
 			entity.projectId,
+			user,
+		);
+		await this.assertUsableCredentialChanges(
+			validatedConfig,
+			isNew ? null : composeJsonConfig(entity, previousSkillRefs),
 			user,
 		);
 		const previousSchema = entity.schema ? toAgentDocument(entity.schema, previousSkillRefs) : null;
@@ -103,6 +128,192 @@ export class AgentConfigPreparationService {
 			actor,
 		);
 		return { validatedConfig, credentialProvider, replacement, existingTaskIds };
+	}
+
+	async assertCanSaveDefinition(projectId: string, user: User, action: 'create' | 'update') {
+		const projects = await Container.get(ProjectScopeService).getProjectIds(user, [
+			'agent:read',
+			`agent:${action}`,
+		]);
+		if (projects !== null && !projects.includes(projectId)) {
+			throw new ForbiddenError('You do not have permission to save Agents in this project.');
+		}
+	}
+
+	/** Use the same body and configuration checks for planning and complete saves. */
+	async validateDefinition(
+		agentId: string,
+		definition: CompleteAgentDefinition,
+	): Promise<CompleteAgentDefinition> {
+		const [{ AgentCustomToolsService }, { AgentTaskService }] = await Promise.all([
+			import('./agent-custom-tools.service.js'),
+			import('./agent-task.service.js'),
+		]);
+		for (const tool of Object.values(definition.tools)) {
+			Container.get(AgentCustomToolsService).validateDescriptor(tool.descriptor);
+		}
+		const tasks = Container.get(AgentTaskService);
+		tasks.validateTasks([...definition.tasks.values()]);
+		if (definition.tasks.size > 0) tasks.assertAgentHasConfig(definition.config !== null);
+		const prepared = structuredClone(definition);
+		if (prepared.config === null) return prepared;
+		const result = await this.validateConfig(prepared.config);
+		if (!result.valid) throw new UserError(result.error);
+		assertSingleConnections(
+			Container.get(ChatIntegrationRegistry),
+			result.config.integrations ?? [],
+		);
+		prepared.config = reconcileNativeWebSearch(result.config);
+		this.validateSubAgentRefs(prepared.config.subAgents?.agents ?? [], agentId);
+		const [missingBody] = findMissingAgentDefinitionBodies(prepared);
+		if (missingBody) {
+			throw new UserError(
+				`Agent references ${missingBody.kind} asset "${missingBody.id}" without a body.`,
+			);
+		}
+		return prepared;
+	}
+
+	/** Complete saves reject missing references. Editor repair must not erase bound content. */
+	async prepareDefinition(
+		agentId: string,
+		definition: CompleteAgentDefinition,
+		projectId: string,
+		user: User,
+		planned: PlannedAgentDestinations = {},
+		previousConfig: AgentJsonConfig | null = null,
+	) {
+		const prepared = await this.validateDefinition(agentId, definition);
+		const credentialProvider = createAgentCredentialProvider(
+			this.credentialsService,
+			projectId,
+			user,
+		);
+		if (prepared.config !== null) {
+			const accessibleCredentials = await credentialProvider.list();
+			const accessibleIds = new Set(accessibleCredentials.map(({ id }) => id));
+			visitAgentCredentialReferences(prepared.config, ({ id, path, managedToken }) => {
+				if (id && id !== managedToken && !accessibleIds.has(id)) {
+					throw new UserError(
+						`Credential "${id}" at ${path.join('.')} is missing or inaccessible.`,
+					);
+				}
+			});
+			await this.assertUsableCredentialChanges(prepared.config, previousConfig, user);
+			if (prepared.config.tools !== undefined) {
+				await this.nodeToolAiGatewayService.assignManagedCredentials(
+					prepared.config.tools.filter((tool) => tool.enabled !== false),
+					new Set(accessibleCredentials.map((credential) => credential.type)),
+				);
+			}
+			await this.validateAgentDestinations(prepared.config, projectId, user, planned);
+			await normalizeWorkflowToolRefs(this.workflowRepository, prepared.config, projectId);
+			await this.validateWorkflowDestinations(prepared.config, projectId, user, planned);
+		}
+		return { definition: prepared, credentialProvider };
+	}
+
+	private async validateAgentDestinations(
+		config: AgentJsonConfig,
+		projectId: string,
+		user: User,
+		planned: PlannedAgentDestinations,
+	): Promise<void> {
+		const ids = (config.subAgents?.agents ?? []).map(({ agentId }) => agentId);
+		if (ids.length === 0) return;
+		const existing = new Map(
+			(await Container.get(AgentRepository).findImportIdOwners(ids)).map((agent) => [
+				agent.id,
+				agent.projectId,
+			]),
+		);
+		for (const id of ids) {
+			if (existing.has(id)) {
+				if (existing.get(id) === projectId) continue;
+			} else if (planned.agents?.get(id) === projectId) {
+				await this.assertCanSaveDefinition(projectId, user, 'create');
+				continue;
+			}
+			throw new UserError(`Subagent "${id}" is missing or inaccessible in this project.`);
+		}
+	}
+
+	private async validateWorkflowDestinations(
+		config: AgentJsonConfig,
+		projectId: string,
+		user: User,
+		planned: PlannedAgentDestinations,
+	): Promise<void> {
+		const refs = extractAgentWorkflowRefs(config);
+		const workflows = await findWorkflowToolWorkflows(this.workflowRepository, refs, projectId);
+		const localIds = refs.map(
+			(ref) => workflows.get(ref.workflowId ?? ref.workflow)?.id ?? ref.workflowId,
+		);
+		if (localIds.some((id) => !id))
+			throw new UserError('A workflow tool references a missing workflow.');
+		const ids = new Set(localIds.filter((id): id is string => id !== undefined));
+		for (const tool of config.tools ?? []) {
+			if (tool.type !== 'node') continue;
+			const id = getStaticSubworkflowId({
+				type: tool.node.nodeType,
+				parameters: tool.node.nodeParameters,
+			});
+			if (id) ids.add(id);
+		}
+		if (ids.size === 0) return;
+		const projectLocal = new Set(ids);
+		const finder = Container.get(WorkflowFinderService);
+		const readable = await finder.findWorkflowIdsWithScopeForUser([...ids], user, [
+			'workflow:read',
+		]);
+		const local = await finder.findWorkflowIdsWithScopeForUser(
+			[...projectLocal],
+			user,
+			['workflow:read'],
+			projectId,
+		);
+		const existing = await finder.findExistingWorkflowIds([...ids]);
+		for (const id of ids) {
+			if (readable.has(id) && (!projectLocal.has(id) || local.has(id))) continue;
+			const destination = planned.workflows?.get(id);
+			if (
+				!existing.has(id) &&
+				destination &&
+				(!projectLocal.has(id) || destination === projectId)
+			) {
+				const projects = await Container.get(ProjectScopeService).getProjectIds(user, [
+					'workflow:read',
+					'workflow:create',
+				]);
+				if (projects === null || projects.includes(destination)) continue;
+			}
+			throw new UserError(`Workflow "${id}" is missing or inaccessible.`);
+		}
+	}
+
+	/**
+	 * Reading a credential does not grant its use. A user may keep a credential
+	 * that the config already holds, but needs usage rights to add one or to
+	 * change the entry that holds it.
+	 */
+	private async assertUsableCredentialChanges(next: unknown, previous: unknown, user: User) {
+		// Apply the schema defaults to the stored config too, so a default does not count as a change.
+		const normalized = previous ? await this.validateConfig(previous) : undefined;
+		const baseline = normalized?.valid ? normalized.config : previous;
+		for (const id of findChangedCredentialReferences(next, baseline)) {
+			if (!(await findUsableMcpCredential(this.credentialsFinderService, id, user))) {
+				throw new UserError(`Credential "${id}" is missing or inaccessible.`);
+			}
+		}
+	}
+
+	/** Returns the IDs of `credentialIds` that the user may use, not only read. */
+	async filterUsableCredentialIds(credentialIds: Iterable<string>, user: User) {
+		const usable = new Set<string>();
+		for (const id of credentialIds) {
+			if (await findUsableMcpCredential(this.credentialsFinderService, id, user)) usable.add(id);
+		}
+		return usable;
 	}
 
 	async prepareConfig(config: unknown, projectId: string, user: User) {
@@ -263,10 +474,11 @@ export class AgentConfigPreparationService {
 			);
 		}
 
-		// Both are trimmed by the schema; an empty string clears the stored value.
-		for (const field of ['description', 'modelDeploymentName'] as const) {
-			if (decomposedSchema[field] === '') delete nextSchema[field];
-		}
+		// Trimmed by the schema; an empty string clears the stored value.
+		if (decomposedSchema.description === '') delete nextSchema.description;
+		// Agents no longer use a separate deployment name. Older configs still
+		// carry it, so drop it here rather than keep it from `previousSchema`.
+		Reflect.deleteProperty(nextSchema, 'modelDeploymentName');
 		return nextSchema;
 	}
 
@@ -284,7 +496,7 @@ export class AgentConfigPreparationService {
 			taskIds: new Set(existingTaskIds),
 		});
 		const resolvedSubAgents = await this.reconcileSubAgentReferences(config, entity);
-		this.validateSubAgentRefs(resolvedSubAgents, entity);
+		this.validateSubAgentRefs(resolvedSubAgents, entity.id);
 		return existingTaskIds;
 	}
 
@@ -310,9 +522,9 @@ export class AgentConfigPreparationService {
 		return [];
 	}
 
-	private validateSubAgentRefs(resolvedSubAgents: ResolvedSubAgentRef[], entity: ProjectAgent) {
+	validateSubAgentRefs(resolvedSubAgents: Array<{ agentId: string }>, ownerAgentId: string) {
 		for (const { agentId } of resolvedSubAgents) {
-			if (agentId === entity.id) {
+			if (agentId === ownerAgentId) {
 				throw new UserError('Invalid agent config: An agent cannot use itself as a subagent');
 			}
 		}
@@ -348,7 +560,6 @@ function mergePersonalisationWithPreviousGradient(
 const OPTIONAL_SCHEMA_FIELDS = [
 	'credential',
 	'description',
-	'modelDeploymentName',
 	'personalisation',
 	'memory',
 	'subAgents',

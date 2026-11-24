@@ -1,9 +1,9 @@
 import {
-	MAX_INSTANCE_AI_THREAD_CLOSED_TABS,
-	MAX_INSTANCE_AI_THREAD_OPEN_TABS,
-	type InstanceAiThreadTab,
-	type InstanceAiThreadTabRef,
-	type InstanceAiThreadTabsState,
+	MAX_ASSISTANT_THREAD_CLOSED_TABS,
+	MAX_ASSISTANT_THREAD_OPEN_TABS,
+	type AssistantThreadTab,
+	type AssistantThreadTabRef,
+	type AssistantThreadTabsState,
 } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
@@ -13,19 +13,21 @@ import type { ArtifactTab } from '../useCanvasPreview';
 
 /** Loads and saves the open tabs of one thread. */
 export interface ThreadTabsStorage {
-	load: () => Promise<InstanceAiThreadTabsState | null>;
-	save: (state: InstanceAiThreadTabsState) => Promise<void>;
+	load: () => Promise<AssistantThreadTabsState | null>;
+	save: (state: AssistantThreadTabsState) => Promise<void>;
 }
 
 export const ARTIFACT_TAB_ICONS: Record<ArtifactTab['type'], IconName> = {
 	workflow: 'workflow',
 	'data-table': 'table',
 	agent: 'robot',
+	skill: 'book-open',
+	app: 'layout-template',
 };
 
-type TabsLayout = Pick<InstanceAiThreadTabsState, 'tabs' | 'closedTabs'>;
+type TabsLayout = Pick<AssistantThreadTabsState, 'tabs' | 'closedTabs'>;
 
-function tabKey(tab: InstanceAiThreadTabRef) {
+function tabKey(tab: AssistantThreadTabRef) {
 	return `${tab.type}:${tab.id}`;
 }
 
@@ -34,10 +36,10 @@ function tabKey(tab: InstanceAiThreadTabRef) {
  * A state over the limit fails to save, and the tabs would be lost on reload.
  */
 function fitWithinTabLimit(layout: TabsLayout, keepKeys: Set<string>): TabsLayout {
-	if (layout.tabs.length <= MAX_INSTANCE_AI_THREAD_OPEN_TABS) return layout;
+	if (layout.tabs.length <= MAX_ASSISTANT_THREAD_OPEN_TABS) return layout;
 	const tabs = [...layout.tabs];
-	const dropped: InstanceAiThreadTabRef[] = [];
-	for (let i = 0; i < tabs.length && tabs.length > MAX_INSTANCE_AI_THREAD_OPEN_TABS; ) {
+	const dropped: AssistantThreadTabRef[] = [];
+	for (let i = 0; i < tabs.length && tabs.length > MAX_ASSISTANT_THREAD_OPEN_TABS; ) {
 		if (keepKeys.has(tabKey(tabs[i]))) {
 			i++;
 			continue;
@@ -51,11 +53,11 @@ function fitWithinTabLimit(layout: TabsLayout, keepKeys: Set<string>): TabsLayou
 		closedTabs: [
 			...layout.closedTabs.filter((closed) => !droppedKeys.has(tabKey(closed))),
 			...dropped,
-		].slice(-MAX_INSTANCE_AI_THREAD_CLOSED_TABS),
+		].slice(-MAX_ASSISTANT_THREAD_CLOSED_TABS),
 	};
 }
 
-function toStoredTab(tab: ArtifactTab): InstanceAiThreadTab {
+function toStoredTab(tab: ArtifactTab): AssistantThreadTab {
 	return {
 		type: tab.type,
 		id: tab.id,
@@ -64,7 +66,12 @@ function toStoredTab(tab: ArtifactTab): InstanceAiThreadTab {
 	};
 }
 
-function fromStoredTab(tab: InstanceAiThreadTab): ArtifactTab {
+/** Stored tabs, without drafts: a draft is replaced by its saved workflow and must not outlive it. */
+function toStoredTabs(tabs: ArtifactTab[]): AssistantThreadTab[] {
+	return tabs.filter((tab) => !tab.draft).map(toStoredTab);
+}
+
+function fromStoredTab(tab: AssistantThreadTab): ArtifactTab {
 	return { ...tab, icon: ARTIFACT_TAB_ICONS[tab.type] };
 }
 
@@ -87,16 +94,20 @@ export function useOpenArtifactTabs({
 }) {
 	// `null` until a stored layout loads or the tabs are stored for the first time.
 	const layout = shallowRef<TabsLayout | null>(null);
-	const storedActiveTab = ref<InstanceAiThreadTabRef | null>(null);
+	const storedActiveTab = ref<AssistantThreadTabRef | null>(null);
 	// `undefined` when the stored state has no preview preference.
 	const storedPreviewOpen = ref<boolean>();
 	const isLoaded = ref(!storage);
 	// True only when the load succeeded and found no stored tabs. A failed load
 	// must not count, or storing the default tabs would overwrite the stored ones.
 	let hasNoStoredTabs = false;
+	// Closed draft tabs. Kept apart from the stored layout, as a draft never outlives the session.
+	const closedDraftIds = shallowRef(new Set<string>());
 
 	const openTabs = computed((): ArtifactTab[] => {
-		const artifacts = artifactTabs();
+		const artifacts = artifactTabs().filter(
+			(tab) => !(tab.draft && closedDraftIds.value.has(tab.id)),
+		);
 		const current = layout.value;
 		if (!current) return artifacts;
 
@@ -123,7 +134,7 @@ export function useOpenArtifactTabs({
 	});
 
 	function currentLayout(): TabsLayout {
-		return layout.value ?? { tabs: openTabs.value.map(toStoredTab), closedTabs: [] };
+		return layout.value ?? { tabs: toStoredTabs(openTabs.value), closedTabs: [] };
 	}
 
 	function findTab(tabId: string) {
@@ -131,6 +142,10 @@ export function useOpenArtifactTabs({
 			openTabs.value.find((tab) => tab.id === tabId) ??
 			artifactTabs().find((tab) => tab.id === tabId)
 		);
+	}
+
+	function hasTab(tabId: string) {
+		return findTab(tabId) !== undefined;
 	}
 
 	/**
@@ -143,32 +158,45 @@ export function useOpenArtifactTabs({
 		if (index === -1) return undefined;
 
 		const closed = tabs[index];
+		const nextTabId = (tabs[index + 1] ?? tabs[index - 1])?.id;
+		if (closed.draft) {
+			closedDraftIds.value = new Set([...closedDraftIds.value, closed.id]);
+			return nextTabId;
+		}
 		const closedKey = tabKey(closed);
 		const { closedTabs } = currentLayout();
 		layout.value = {
-			tabs: tabs.filter((_, i) => i !== index).map(toStoredTab),
+			tabs: toStoredTabs(tabs.filter((_, i) => i !== index)),
 			closedTabs: [
 				...closedTabs.filter((tab) => tabKey(tab) !== closedKey),
 				{ type: closed.type, id: closed.id },
-			].slice(-MAX_INSTANCE_AI_THREAD_CLOSED_TABS),
+			].slice(-MAX_ASSISTANT_THREAD_CLOSED_TABS),
 		};
-		return (tabs[index + 1] ?? tabs[index - 1])?.id;
+		return nextTabId;
 	}
 
-	/** Open a closed artifact again. Returns true when the tabs changed. */
+	/** Open a closed artifact again, at the end. Returns true when the tabs changed. */
 	function reopenTab(tabId: string): boolean {
+		if (closedDraftIds.value.has(tabId)) {
+			// The stored tabs do not change, as they never hold a draft.
+			closedDraftIds.value = new Set([...closedDraftIds.value].filter((id) => id !== tabId));
+			return false;
+		}
 		const current = layout.value;
 		if (!current) return false;
 		const tab = findTab(tabId);
-		if (!tab) return false;
+		if (!tab || tab.draft) return false;
 
 		const key = tabKey(tab);
 		const isClosed = current.closedTabs.some((closed) => tabKey(closed) === key);
-		const isOpen = current.tabs.some((open) => tabKey(open) === key);
-		if (!isClosed && isOpen) return false;
+		const isInLayout = current.tabs.some((open) => tabKey(open) === key);
+		if (!isClosed && isInLayout) return false;
 
+		// A closed tab opens at the end. A tab that joined after the stored tabs is open
+		// already: it keeps its place, and the layout takes the order on screen.
+		const shown = openTabs.value.map(toStoredTab);
 		layout.value = {
-			tabs: isOpen ? current.tabs : [...current.tabs, toStoredTab(tab)],
+			tabs: isClosed ? [...shown, toStoredTab(tab)] : shown,
 			closedTabs: current.closedTabs.filter((closed) => tabKey(closed) !== key),
 		};
 		return true;
@@ -184,7 +212,7 @@ export function useOpenArtifactTabs({
 		const isOpen = openTabs.value.some((open) => tabKey(open) === key);
 		layout.value = fitWithinTabLimit(
 			{
-				tabs: isOpen ? current.tabs : [...openTabs.value.map(toStoredTab), toStoredTab(tab)],
+				tabs: isOpen ? current.tabs : [...toStoredTabs(openTabs.value), toStoredTab(tab)],
 				closedTabs: current.closedTabs.filter((closed) => tabKey(closed) !== key),
 			},
 			new Set([key]),
@@ -201,7 +229,7 @@ export function useOpenArtifactTabs({
 
 		const [moved] = tabs.splice(fromIndex, 1);
 		tabs.splice(target, 0, moved);
-		layout.value = { tabs: tabs.map(toStoredTab), closedTabs: currentLayout().closedTabs };
+		layout.value = { tabs: toStoredTabs(tabs), closedTabs: currentLayout().closedTabs };
 	}
 
 	// --- Storage ---
@@ -209,11 +237,11 @@ export function useOpenArtifactTabs({
 	let saveTimer: ReturnType<typeof setTimeout> | undefined;
 	let pendingActiveTabId: string | undefined;
 
-	function buildState(activeTabId: string | undefined): InstanceAiThreadTabsState {
-		const active = openTabs.value.find((tab) => tab.id === activeTabId);
+	function buildState(activeTabId: string | undefined): AssistantThreadTabsState {
+		const active = openTabs.value.find((tab) => tab.id === activeTabId && !tab.draft);
 		// New artifacts join the tabs on their own, so the tabs can pass the limit here too.
 		const current = {
-			tabs: openTabs.value.map(toStoredTab),
+			tabs: toStoredTabs(openTabs.value),
 			closedTabs: currentLayout().closedTabs,
 		};
 		const fitted = fitWithinTabLimit(current, new Set(active ? [tabKey(active)] : []));
@@ -296,6 +324,7 @@ export function useOpenArtifactTabs({
 		isLoaded,
 		storedActiveTab,
 		storedPreviewOpen,
+		hasTab,
 		closeTab,
 		reopenTab,
 		openTab,

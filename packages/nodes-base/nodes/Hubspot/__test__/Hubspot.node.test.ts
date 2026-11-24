@@ -370,4 +370,101 @@ describe('Hubspot Node', () => {
 			workflowFiles: ['engagements.workflow.json'],
 		});
 	});
+
+	describe('request URLs', () => {
+		const contactList = { updated: [204727], discarded: [], invalidVids: [], invalidEmails: [] };
+		const engagement = {
+			engagement: { id: 29090716, type: 'TASK' },
+			associations: {},
+			metadata: {},
+		};
+		const ticket = { objectId: 176602, properties: { subject: { value: 'Printer issue' } } };
+		const company = { companyId: 5832271, properties: { name: { value: 'Acme Corp' } } };
+		const deal = { dealId: 1645820, properties: { dealname: { value: 'Acme deal' } } };
+		const formFields = [{ name: 'email', label: 'Email' }];
+		const formSubmit = { inlineMessage: 'Thanks for submitting the form.' };
+		const formsNock = nock('https://api.hsforms.com');
+
+		beforeAll(() => {
+			hubspotNock
+				.post('/contacts/v1/lists/7/add', { emails: [], vids: [204727] })
+				.reply(200, contactList)
+				.post('/contacts/v1/lists/7/remove', { vids: [204727] })
+				.reply(200, contactList)
+				.get('/engagements/v1/engagements/29090716')
+				.reply(200, engagement)
+				.delete('/engagements/v1/engagements/29090716')
+				.reply(204)
+				.get('/crm-objects/v1/objects/tickets/176602')
+				.reply(200, ticket)
+				.put('/crm-objects/v1/objects/tickets/176602', [
+					{ name: 'subject', value: 'Printer issue' },
+				])
+				.reply(200, ticket)
+				.delete('/crm-objects/v1/objects/tickets/176602')
+				.reply(204)
+				.post('/contacts/v1/lists/8/add', { emails: [], vids: [204728] })
+				.reply(200, contactList)
+				.post('/contacts/v1/lists/8/remove', { vids: [204728] })
+				.reply(200, contactList)
+				.delete('/contacts/v1/contact/vid/204728')
+				.reply(200, { vid: 204728, deleted: true })
+				.get('/companies/v2/companies/5832272')
+				.reply(200, company)
+				.put('/companies/v2/companies/5832272', {
+					properties: [{ name: 'name', value: 'Acme Corp' }],
+				})
+				.reply(200, company)
+				.post('/companies/v2/domains/acme.example.com/companies', {
+					requestOptions: {},
+					limit: 2,
+				})
+				.reply(200, { results: [company] })
+				.get('/deals/v1/deal/1645821')
+				.reply(200, deal)
+				.put('/deals/v1/deal/1645821', {
+					properties: [{ name: 'dealname', value: 'Acme deal' }],
+				})
+				.reply(200, deal)
+				.get('/engagements/v1/engagements/29090717')
+				.reply(200, engagement)
+				.delete('/engagements/v1/engagements/29090717')
+				.reply(204)
+				.get('/forms/v2/fields/b1b2c3d4-5e6f-4a1b-8c2d-3e4f5a6b7c8d')
+				.reply(200, formFields)
+				.get('/forms/v2/forms/b1b2c3d4-5e6f-4a1b-8c2d-3e4f5a6b7c8d')
+				.reply(200, { portalId: 62516 })
+				.get('/crm-objects/v1/objects/tickets/176603')
+				.reply(200, ticket)
+				.put('/crm-objects/v1/objects/tickets/176603', [
+					{ name: 'subject', value: 'Printer issue' },
+				])
+				.reply(200, ticket)
+				.delete('/crm-objects/v1/objects/tickets/176603')
+				.reply(204)
+				.post('/contacts/v1/contact/createOrUpdate/email/a%2Bb@example.com', { properties: [] })
+				.reply(200, { vid: 1 })
+				.post('/contacts/v1/contact/createOrUpdate/email/c%2Bd@example.com', { properties: [] })
+				.reply(200, { vid: 2 })
+				.get('/contacts/v1/contact/vid/2/profile')
+				.reply(200, { vid: 2 })
+				.post('/contacts/v1/contact/createOrUpdate/email/e%252Bf@example.com', { properties: [] })
+				.reply(200, { vid: 3 })
+				.get('/contacts/v1/contact/vid/3/profile')
+				.reply(200, { vid: 3 });
+			formsNock
+				.post('/submissions/v3/integration/submit/62516/b1b2c3d4-5e6f-4a1b-8c2d-3e4f5a6b7c8d')
+				.reply(200, formSubmit);
+		});
+
+		afterAll(() => {
+			hubspotNock.done();
+			formsNock.done();
+		});
+
+		new NodeTestHarness().setupTests({
+			credentials: { hubspotAppToken: { appToken: 'fake-token' } },
+			workflowFiles: ['requests.workflow.json'],
+		});
+	});
 });

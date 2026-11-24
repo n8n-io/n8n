@@ -9,6 +9,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { deleteAgentTask, getAgentTasks } from '../composables/useAgentApi';
 import { AGENT_TASK_MODAL_KEY } from '../constants';
 import { describeSchedule, getNextScheduleOccurrence } from '../utils/scheduleBuilder';
+import { resolveAgentValidationIssueMessageKey } from '../utils/agentValidationIssueMessages';
 import AgentChipButton from './AgentChipButton.vue';
 import AgentItemContextMenu from './AgentItemContextMenu.vue';
 
@@ -25,6 +26,7 @@ const props = withDefaults(
 		agentUnsaved?: boolean;
 		ensureAgentPersisted?: () => Promise<void>;
 		validationIssues?: AgentConfigValidationIssue[];
+		previewDisabledReason?: string;
 	}>(),
 	{
 		taskRefs: () => [],
@@ -64,21 +66,11 @@ type TaskRow = AgentTaskDto & {
 	invalidReasons: string[];
 };
 
-const ISSUE_KEYS: Record<AgentConfigValidationIssue['code'], BaseTextKey> = {
-	missing_required: 'agents.builder.validation.issue.missingRequired' as BaseTextKey,
-	invalid_value: 'agents.builder.validation.issue.task.invalidValue' as BaseTextKey,
-	missing_credential: 'agents.builder.validation.issue.missingCredential' as BaseTextKey,
-	invalid_credential: 'agents.builder.validation.issue.invalidCredential' as BaseTextKey,
-	incompatible_credential: 'agents.builder.validation.issue.incompatibleCredential' as BaseTextKey,
-	missing_reference: 'agents.builder.validation.issue.missingReference' as BaseTextKey,
-	incompatible_reference: 'agents.builder.validation.issue.incompatibleReference' as BaseTextKey,
-};
-
 const taskIssueMessages = computed(() => {
 	const messages = new Map<string, string[]>();
 	for (const issue of props.validationIssues) {
 		if (issue.capability.kind !== 'task' || !issue.capability.id) continue;
-		const message = i18n.baseText(ISSUE_KEYS[issue.code], {
+		const message = i18n.baseText(resolveAgentValidationIssueMessageKey(issue), {
 			interpolate: { id: issue.capability.id },
 		});
 		messages.set(issue.capability.id, [
@@ -151,6 +143,8 @@ async function removeTask(task: TaskRow) {
 }
 
 function openTaskModal(task: TaskRow | null) {
+	if (props.disabled) return;
+
 	const { projectId, agentId } = props;
 	uiStore.openModalWithData({
 		name: AGENT_TASK_MODAL_KEY,
@@ -162,6 +156,7 @@ function openTaskModal(task: TaskRow | null) {
 			isPublished: props.isPublished,
 			isRunnable: props.isRunnable,
 			validationIssues: props.validationIssues,
+			getPreviewDisabledReason: () => props.previewDisabledReason,
 			taskState: task
 				? {
 						enabled: task.enabled,
@@ -202,7 +197,7 @@ watch(
 </script>
 
 <template>
-	<div :class="$style.scheduleRow" :inert="props.disabled || undefined">
+	<div :class="$style.scheduleRow">
 		<N8nText v-if="taskRows.length > 0" bold :class="$style.rowLabel">
 			{{ i18n.baseText('agents.builder.tasks.title') }}
 		</N8nText>
@@ -233,6 +228,7 @@ watch(
 
 				<N8nTooltip
 					v-if="taskIndex === taskRows.length - 1"
+					as-child
 					:content="i18n.baseText('agents.builder.tasks.add')"
 					placement="top"
 				>
@@ -241,6 +237,8 @@ watch(
 						size="medium"
 						icon-only
 						:disabled="props.disabled"
+						focusable-when-disabled
+						:aria-label="i18n.baseText('agents.builder.tasks.add')"
 						data-testid="agent-capabilities-add-task"
 						@click="openTaskModal(null)"
 					>
@@ -260,6 +258,9 @@ watch(
 				data-testid="agent-capabilities-add-task"
 				@click="openTaskModal(null)"
 			>
+				<template #icon>
+					<N8nIcon icon="plus" :size="16" />
+				</template>
 				{{ i18n.baseText('agents.builder.tasks.add') }}
 			</N8nButton>
 

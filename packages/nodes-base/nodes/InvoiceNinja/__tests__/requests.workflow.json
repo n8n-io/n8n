@@ -1,0 +1,1059 @@
+{
+	"name": "Invoice Ninja request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "00000000-0000-4000-8000-000000000000",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "client",
+				"operation": "create",
+				"additionalFields": {
+					"clientName": "Acme Corp"
+				}
+			},
+			"type": "n8n-nodes-base.invoiceNinja",
+			"typeVersion": 2,
+			"position": [220, 0],
+			"id": "00000000-0000-4000-8000-000000000001",
+			"name": "Create Client",
+			"credentials": {
+				"invoiceNinjaApi": {
+					"id": "cred1",
+					"name": "Invoice Ninja account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "client",
+				"operation": "get",
+				"clientId": "VolejRejNm",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.invoiceNinja",
+			"typeVersion": 2,
+			"position": [220, 200],
+			"id": "00000000-0000-4000-8000-000000000002",
+			"name": "Get Client",
+			"credentials": {
+				"invoiceNinjaApi": {
+					"id": "cred1",
+					"name": "Invoice Ninja account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "client",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 5,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.invoiceNinja",
+			"typeVersion": 2,
+			"position": [220, 400],
+			"id": "00000000-0000-4000-8000-000000000003",
+			"name": "Get Many Clients",
+			"credentials": {
+				"invoiceNinjaApi": {
+					"id": "cred1",
+					"name": "Invoice Ninja account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "client",
+				"operation": "getAll",
+				"returnAll": true,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.invoiceNinja",
+			"typeVersion": 2,
+			"position": [220, 600],
+			"id": "00000000-0000-4000-8000-000000000004",
+			"name": "Get All Clients",
+			"credentials": {
+				"invoiceNinjaApi": {
+					"id": "cred1",
+					"name": "Invoice Ninja account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "client",
+				"operation": "delete",
+				"clientId": "VolejRejNm"
+			},
+			"type": "n8n-nodes-base.invoiceNinja",
+			"typeVersion": 2,
+			"position": [220, 800],
+			"id": "00000000-0000-4000-8000-000000000005",
+			"name": "Delete Client",
+			"credentials": {
+				"invoiceNinjaApi": {
+					"id": "cred1",
+					"name": "Invoice Ninja account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "invoice",
+				"operation": "create",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.invoiceNinja",
+			"typeVersion": 2,
+			"position": [220, 1000],
+			"id": "00000000-0000-4000-8000-000000000006",
+			"name": "Create Invoice",
+			"credentials": {
+				"invoiceNinjaApi": {
+					"id": "cred1",
+					"name": "Invoice Ninja account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "invoice",
+				"operation": "email",
+				"invoiceId": "Wpmbk5ezJn"
+			},
+			"type": "n8n-nodes-base.invoiceNinja",
+			"typeVersion": 2,
+			"position": [220, 1200],
+			"id": "00000000-0000-4000-8000-000000000007",
+			"name": "Email Invoice",
+			"credentials": {
+				"invoiceNinjaApi": {
+					"id": "cred1",
+					"name": "Invoice Ninja account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "invoice",
+				"operation": "get",
+				"invoiceId": "Wpmbk5ezJn",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.invoiceNinja",
+			"typeVersion": 2,
+			"position": [220, 1400],
+			"id": "00000000-0000-4000-8000-000000000008",
+			"name": "Get Invoice",
+			"credentials": {
+				"invoiceNinjaApi": {
+					"id": "cred1",
+					"name": "Invoice Ninja account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "invoice",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 5,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.invoiceNinja",
+			"typeVersion": 2,
+			"position": [220, 1600],
+			"id": "00000000-0000-4000-8000-000000000009",
+			"name": "Get Many Invoices",
+			"credentials": {
+				"invoiceNinjaApi": {
+					"id": "cred1",
+					"name": "Invoice Ninja account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "invoice",
+				"operation": "delete",
+				"invoiceId": "Wpmbk5ezJn"
+			},
+			"type": "n8n-nodes-base.invoiceNinja",
+			"typeVersion": 2,
+			"position": [220, 1800],
+			"id": "00000000-0000-4000-8000-000000000010",
+			"name": "Delete Invoice",
+			"credentials": {
+				"invoiceNinjaApi": {
+					"id": "cred1",
+					"name": "Invoice Ninja account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "create",
+				"additionalFields": {
+					"description": "Design review"
+				}
+			},
+			"type": "n8n-nodes-base.invoiceNinja",
+			"typeVersion": 2,
+			"position": [220, 2000],
+			"id": "00000000-0000-4000-8000-000000000011",
+			"name": "Create Task",
+			"credentials": {
+				"invoiceNinjaApi": {
+					"id": "cred1",
+					"name": "Invoice Ninja account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "get",
+				"taskId": "Opnel5aKBz",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.invoiceNinja",
+			"typeVersion": 2,
+			"position": [220, 2200],
+			"id": "00000000-0000-4000-8000-000000000012",
+			"name": "Get Task",
+			"credentials": {
+				"invoiceNinjaApi": {
+					"id": "cred1",
+					"name": "Invoice Ninja account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 5,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.invoiceNinja",
+			"typeVersion": 2,
+			"position": [220, 2400],
+			"id": "00000000-0000-4000-8000-000000000013",
+			"name": "Get Many Tasks",
+			"credentials": {
+				"invoiceNinjaApi": {
+					"id": "cred1",
+					"name": "Invoice Ninja account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "delete",
+				"taskId": "Opnel5aKBz"
+			},
+			"type": "n8n-nodes-base.invoiceNinja",
+			"typeVersion": 2,
+			"position": [220, 2600],
+			"id": "00000000-0000-4000-8000-000000000014",
+			"name": "Delete Task",
+			"credentials": {
+				"invoiceNinjaApi": {
+					"id": "cred1",
+					"name": "Invoice Ninja account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "payment",
+				"operation": "create",
+				"invoice": "Wpmbk5ezJn",
+				"amount": 100,
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.invoiceNinja",
+			"typeVersion": 2,
+			"position": [220, 2800],
+			"id": "00000000-0000-4000-8000-000000000015",
+			"name": "Create Payment",
+			"credentials": {
+				"invoiceNinjaApi": {
+					"id": "cred1",
+					"name": "Invoice Ninja account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "payment",
+				"operation": "get",
+				"paymentId": "xYRdG7dDzO",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.invoiceNinja",
+			"typeVersion": 2,
+			"position": [220, 3000],
+			"id": "00000000-0000-4000-8000-000000000016",
+			"name": "Get Payment",
+			"credentials": {
+				"invoiceNinjaApi": {
+					"id": "cred1",
+					"name": "Invoice Ninja account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "payment",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 5,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.invoiceNinja",
+			"typeVersion": 2,
+			"position": [220, 3200],
+			"id": "00000000-0000-4000-8000-000000000017",
+			"name": "Get Many Payments",
+			"credentials": {
+				"invoiceNinjaApi": {
+					"id": "cred1",
+					"name": "Invoice Ninja account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "payment",
+				"operation": "delete",
+				"paymentId": "xYRdG7dDzO"
+			},
+			"type": "n8n-nodes-base.invoiceNinja",
+			"typeVersion": 2,
+			"position": [220, 3400],
+			"id": "00000000-0000-4000-8000-000000000018",
+			"name": "Delete Payment",
+			"credentials": {
+				"invoiceNinjaApi": {
+					"id": "cred1",
+					"name": "Invoice Ninja account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "expense",
+				"operation": "create",
+				"additionalFields": {
+					"amount": 25
+				}
+			},
+			"type": "n8n-nodes-base.invoiceNinja",
+			"typeVersion": 2,
+			"position": [220, 3600],
+			"id": "00000000-0000-4000-8000-000000000019",
+			"name": "Create Expense",
+			"credentials": {
+				"invoiceNinjaApi": {
+					"id": "cred1",
+					"name": "Invoice Ninja account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "expense",
+				"operation": "get",
+				"expenseId": "k8mep2bMyJ"
+			},
+			"type": "n8n-nodes-base.invoiceNinja",
+			"typeVersion": 2,
+			"position": [220, 3800],
+			"id": "00000000-0000-4000-8000-000000000020",
+			"name": "Get Expense",
+			"credentials": {
+				"invoiceNinjaApi": {
+					"id": "cred1",
+					"name": "Invoice Ninja account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "expense",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 5
+			},
+			"type": "n8n-nodes-base.invoiceNinja",
+			"typeVersion": 2,
+			"position": [220, 4000],
+			"id": "00000000-0000-4000-8000-000000000021",
+			"name": "Get Many Expenses",
+			"credentials": {
+				"invoiceNinjaApi": {
+					"id": "cred1",
+					"name": "Invoice Ninja account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "expense",
+				"operation": "delete",
+				"expenseId": "k8mep2bMyJ"
+			},
+			"type": "n8n-nodes-base.invoiceNinja",
+			"typeVersion": 2,
+			"position": [220, 4200],
+			"id": "00000000-0000-4000-8000-000000000022",
+			"name": "Delete Expense",
+			"credentials": {
+				"invoiceNinjaApi": {
+					"id": "cred1",
+					"name": "Invoice Ninja account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "bank_transaction",
+				"operation": "create",
+				"additionalFields": {
+					"amount": 100
+				}
+			},
+			"type": "n8n-nodes-base.invoiceNinja",
+			"typeVersion": 2,
+			"position": [220, 4400],
+			"id": "00000000-0000-4000-8000-000000000023",
+			"name": "Create Bank Transaction",
+			"credentials": {
+				"invoiceNinjaApi": {
+					"id": "cred1",
+					"name": "Invoice Ninja account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "bank_transaction",
+				"operation": "delete",
+				"bankTransactionId": "gl9avmeG1v"
+			},
+			"type": "n8n-nodes-base.invoiceNinja",
+			"typeVersion": 2,
+			"position": [220, 4600],
+			"id": "00000000-0000-4000-8000-000000000024",
+			"name": "Delete Bank Transaction",
+			"credentials": {
+				"invoiceNinjaApi": {
+					"id": "cred1",
+					"name": "Invoice Ninja account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "bank_transaction",
+				"operation": "matchPayment",
+				"bankTransactionId": "gl9avmeG1v",
+				"paymentId": "xYRdG7dDzO"
+			},
+			"type": "n8n-nodes-base.invoiceNinja",
+			"typeVersion": 2,
+			"position": [220, 4800],
+			"id": "00000000-0000-4000-8000-000000000025",
+			"name": "Match Payment",
+			"credentials": {
+				"invoiceNinjaApi": {
+					"id": "cred1",
+					"name": "Invoice Ninja account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "quote",
+				"operation": "create",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.invoiceNinja",
+			"typeVersion": 2,
+			"position": [220, 5000],
+			"id": "00000000-0000-4000-8000-000000000026",
+			"name": "Create Quote",
+			"credentials": {
+				"invoiceNinjaApi": {
+					"id": "cred1",
+					"name": "Invoice Ninja account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "quote",
+				"operation": "email",
+				"quoteId": "zDnB4gaoXK"
+			},
+			"type": "n8n-nodes-base.invoiceNinja",
+			"typeVersion": 2,
+			"position": [220, 5200],
+			"id": "00000000-0000-4000-8000-000000000027",
+			"name": "Email Quote",
+			"credentials": {
+				"invoiceNinjaApi": {
+					"id": "cred1",
+					"name": "Invoice Ninja account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "quote",
+				"operation": "get",
+				"quoteId": "zDnB4gaoXK",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.invoiceNinja",
+			"typeVersion": 2,
+			"position": [220, 5400],
+			"id": "00000000-0000-4000-8000-000000000028",
+			"name": "Get Quote",
+			"credentials": {
+				"invoiceNinjaApi": {
+					"id": "cred1",
+					"name": "Invoice Ninja account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "quote",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 5,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.invoiceNinja",
+			"typeVersion": 2,
+			"position": [220, 5600],
+			"id": "00000000-0000-4000-8000-000000000029",
+			"name": "Get Many Quotes",
+			"credentials": {
+				"invoiceNinjaApi": {
+					"id": "cred1",
+					"name": "Invoice Ninja account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "quote",
+				"operation": "delete",
+				"quoteId": "zDnB4gaoXK"
+			},
+			"type": "n8n-nodes-base.invoiceNinja",
+			"typeVersion": 2,
+			"position": [220, 5800],
+			"id": "00000000-0000-4000-8000-000000000030",
+			"name": "Delete Quote",
+			"credentials": {
+				"invoiceNinjaApi": {
+					"id": "cred1",
+					"name": "Invoice Ninja account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "quote",
+				"operation": "get",
+				"quoteId": "17",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.invoiceNinja",
+			"typeVersion": 1,
+			"position": [220, 6000],
+			"id": "00000000-0000-4000-8000-000000000031",
+			"name": "Get Quote v4",
+			"credentials": {
+				"invoiceNinjaApi": {
+					"id": "cred1",
+					"name": "Invoice Ninja account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "invoice",
+				"operation": "email",
+				"invoiceId": "12"
+			},
+			"type": "n8n-nodes-base.invoiceNinja",
+			"typeVersion": 1,
+			"position": [220, 6200],
+			"id": "00000000-0000-4000-8000-000000000032",
+			"name": "Email Invoice v4",
+			"credentials": {
+				"invoiceNinjaApi": {
+					"id": "cred1",
+					"name": "Invoice Ninja account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Create Client": [
+			{
+				"json": {
+					"id": "VolejRejNm",
+					"name": "Acme Corp"
+				}
+			}
+		],
+		"Get Client": [
+			{
+				"json": {
+					"id": "VolejRejNm",
+					"name": "Acme Corp"
+				}
+			}
+		],
+		"Get Many Clients": [
+			{
+				"json": {
+					"id": "VolejRejNm",
+					"name": "Acme Corp"
+				}
+			}
+		],
+		"Get All Clients": [
+			{
+				"json": {
+					"id": "VolejRejNm",
+					"name": "Acme Corp"
+				}
+			},
+			{
+				"json": {
+					"id": "MpmbkGezJn",
+					"name": "Globex"
+				}
+			}
+		],
+		"Delete Client": [
+			{
+				"json": {
+					"id": "VolejRejNm",
+					"name": "Acme Corp"
+				}
+			}
+		],
+		"Create Invoice": [
+			{
+				"json": {
+					"id": "Wpmbk5ezJn",
+					"number": "0001",
+					"client_id": "VolejRejNm"
+				}
+			}
+		],
+		"Email Invoice": [
+			{
+				"json": {
+					"message": "Email sent"
+				}
+			}
+		],
+		"Get Invoice": [
+			{
+				"json": {
+					"id": "Wpmbk5ezJn",
+					"number": "0001",
+					"client_id": "VolejRejNm"
+				}
+			}
+		],
+		"Get Many Invoices": [
+			{
+				"json": {
+					"id": "Wpmbk5ezJn",
+					"number": "0001",
+					"client_id": "VolejRejNm"
+				}
+			}
+		],
+		"Delete Invoice": [
+			{
+				"json": {
+					"id": "Wpmbk5ezJn",
+					"number": "0001",
+					"client_id": "VolejRejNm"
+				}
+			}
+		],
+		"Create Task": [
+			{
+				"json": {
+					"id": "Opnel5aKBz",
+					"description": "Design review"
+				}
+			}
+		],
+		"Get Task": [
+			{
+				"json": {
+					"id": "Opnel5aKBz",
+					"description": "Design review"
+				}
+			}
+		],
+		"Get Many Tasks": [
+			{
+				"json": {
+					"id": "Opnel5aKBz",
+					"description": "Design review"
+				}
+			}
+		],
+		"Delete Task": [
+			{
+				"json": {
+					"id": "Opnel5aKBz",
+					"description": "Design review"
+				}
+			}
+		],
+		"Create Payment": [
+			{
+				"json": {
+					"id": "xYRdG7dDzO",
+					"amount": 100
+				}
+			}
+		],
+		"Get Payment": [
+			{
+				"json": {
+					"id": "xYRdG7dDzO",
+					"amount": 100
+				}
+			}
+		],
+		"Get Many Payments": [
+			{
+				"json": {
+					"id": "xYRdG7dDzO",
+					"amount": 100
+				}
+			}
+		],
+		"Delete Payment": [
+			{
+				"json": {
+					"id": "xYRdG7dDzO",
+					"amount": 100
+				}
+			}
+		],
+		"Create Expense": [
+			{
+				"json": {
+					"id": "k8mep2bMyJ",
+					"amount": 25
+				}
+			}
+		],
+		"Get Expense": [
+			{
+				"json": {
+					"id": "k8mep2bMyJ",
+					"amount": 25
+				}
+			}
+		],
+		"Get Many Expenses": [
+			{
+				"json": {
+					"id": "k8mep2bMyJ",
+					"amount": 25
+				}
+			}
+		],
+		"Delete Expense": [
+			{
+				"json": {
+					"id": "k8mep2bMyJ",
+					"amount": 25
+				}
+			}
+		],
+		"Create Bank Transaction": [
+			{
+				"json": {
+					"id": "gl9avmeG1v",
+					"amount": 100
+				}
+			}
+		],
+		"Delete Bank Transaction": [
+			{
+				"json": {
+					"id": "gl9avmeG1v",
+					"amount": 100
+				}
+			}
+		],
+		"Match Payment": [
+			{
+				"json": {
+					"data": [
+						{
+							"id": "gl9avmeG1v",
+							"amount": 100
+						}
+					]
+				}
+			}
+		],
+		"Create Quote": [
+			{
+				"json": {
+					"id": "zDnB4gaoXK",
+					"number": "Q-0001"
+				}
+			}
+		],
+		"Email Quote": [
+			{
+				"json": {
+					"message": "Email sent"
+				}
+			}
+		],
+		"Get Quote": [
+			{
+				"json": {
+					"id": "zDnB4gaoXK",
+					"number": "Q-0001"
+				}
+			}
+		],
+		"Get Many Quotes": [
+			{
+				"json": {
+					"id": "zDnB4gaoXK",
+					"number": "Q-0001"
+				}
+			}
+		],
+		"Delete Quote": [
+			{
+				"json": {
+					"id": "zDnB4gaoXK",
+					"number": "Q-0001"
+				}
+			}
+		],
+		"Get Quote v4": [
+			{
+				"json": {
+					"id": 17,
+					"is_quote": true
+				}
+			}
+		],
+		"Email Invoice v4": [
+			{
+				"json": {
+					"message": "Email sent"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Create Client",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Client",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Many Clients",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get All Clients",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Client",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create Invoice",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Email Invoice",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Invoice",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Many Invoices",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Invoice",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create Task",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Task",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Many Tasks",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Task",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create Payment",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Payment",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Many Payments",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Payment",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create Expense",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Expense",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Many Expenses",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Expense",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create Bank Transaction",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Bank Transaction",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Match Payment",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create Quote",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Email Quote",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Quote",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Many Quotes",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Quote",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Quote v4",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Email Invoice v4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

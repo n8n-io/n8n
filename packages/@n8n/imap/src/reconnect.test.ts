@@ -52,8 +52,15 @@ const handOut = (...transports: FakeTransport[]) => {
 	return () => transports[Math.min(index++, transports.length - 1)] as unknown as ImapTransport;
 };
 
-beforeEach(() => vi.useFakeTimers());
-afterEach(() => vi.useRealTimers());
+beforeEach(() => {
+	vi.useFakeTimers();
+	// Centres the backoff jitter, so every wait is the plain doubling the timings below assume.
+	vi.spyOn(Math, 'random').mockReturnValue(0.5);
+});
+afterEach(() => {
+	vi.useRealTimers();
+	vi.restoreAllMocks();
+});
 
 describe('reconnecting', () => {
 	it('restores itself when the transport drops', async () => {
@@ -325,6 +332,95 @@ describe('reconnecting', () => {
 		);
 	});
 
+	describe('when the server hangs up right after every SELECT', () => {
+		const hangsUpAfterSelect = (times = Infinity) =>
+			vi.fn(() => {
+				const transport = new FakeTransport();
+				if (times-- <= 0) return transport as unknown as ImapTransport;
+				transport.mailboxOpen.mockImplementation(async () => {
+					setTimeout(() => {
+						transport.emit('error', new Error('read ECONNRESET'));
+						transport.emit('close');
+					}, 50);
+					return { exists: 0 };
+				});
+				return transport as unknown as ImapTransport;
+			});
+
+		it('backs off across the drops and closes as dropped once the budget is spent', async () => {
+			const createTransport = hangsUpAfterSelect();
+			const onClose = vi.fn();
+			const connection = await openWatching(createTransport);
+			connection.onError(vi.fn()).onClose(onClose).onArrival(vi.fn());
+
+			// The first redial goes out at once; the next waits out a second of backoff.
+			await vi.advanceTimersByTimeAsync(900);
+			expect(createTransport).toHaveBeenCalledTimes(2);
+
+			await vi.advanceTimersByTimeAsync(ALL_BACKOFF);
+			expect(createTransport).toHaveBeenCalledTimes(1 + 6);
+			expect(onClose).toHaveBeenCalledExactlyOnceWith(
+				'dropped',
+				expect.objectContaining({ message: 'read ECONNRESET' }),
+			);
+		});
+
+		it('lets a scheduled replace start a fresh budget', async () => {
+			// Six dials spend the budget on drops, the seventh stays up, and the replace lands
+			// within the stable period of it.
+			const createTransport = hangsUpAfterSelect(6);
+			const onClose = vi.fn();
+			const connection = await openWatching(createTransport, { interval: ALL_BACKOFF + 4000 });
+			connection.onError(vi.fn()).onClose(onClose).onArrival(vi.fn());
+
+			await vi.advanceTimersByTimeAsync(ALL_BACKOFF + 4001);
+
+			expect(createTransport).toHaveBeenCalledTimes(1 + 6 + 1);
+			expect(onClose).not.toHaveBeenCalled();
+			connection.end();
+		});
+
+		it.each([
+			{ random: 0, dialledBy: 900 },
+			{ random: 0.999, notYetAt: 1300, dialledBy: 1400 },
+		])(
+			'spreads the redials of connections that dropped together ($random)',
+			async ({ random, notYetAt, dialledBy }) => {
+				vi.mocked(Math.random).mockReturnValue(random);
+				const createTransport = hangsUpAfterSelect();
+				const connection = await openWatching(createTransport);
+				connection.onError(vi.fn()).onClose(vi.fn()).onArrival(vi.fn());
+
+				// The second drop lands at about 100ms and waits out a second, give or take a quarter.
+				if (notYetAt !== undefined) {
+					await vi.advanceTimersByTimeAsync(notYetAt);
+					expect(createTransport).toHaveBeenCalledTimes(2);
+				}
+				await vi.advanceTimersByTimeAsync(dialledBy - (notYetAt ?? 0));
+				expect(createTransport).toHaveBeenCalledTimes(3);
+
+				connection.end();
+			},
+		);
+
+		it('gives a connection that stayed up a while a fresh budget', async () => {
+			const createTransport = vi.fn(() => {
+				const transport = new FakeTransport();
+				setTimeout(() => transport.emit('close'), 15_000);
+				return transport as unknown as ImapTransport;
+			});
+			const onClose = vi.fn();
+			const connection = await openWatching(createTransport);
+			connection.onClose(onClose).onArrival(vi.fn());
+
+			await vi.advanceTimersByTimeAsync(10 * 15_000 + 1000);
+
+			expect(createTransport).toHaveBeenCalledTimes(1 + 10);
+			expect(onClose).not.toHaveBeenCalled();
+			connection.end();
+		});
+	});
+
 	it('gives up on an attempt that outlives the timeout', async () => {
 		const [first, second] = [new FakeTransport(), new FakeTransport()];
 		second.connect.mockImplementation(neverSettles);
@@ -545,6 +641,52 @@ describe('reconnecting', () => {
 			expect(first.close).toHaveBeenCalled();
 			expect(onReconnect).toHaveBeenCalledTimes(1);
 			expect(second.mailboxOpen).toHaveBeenCalledWith('INBOX');
+		});
+
+		it('redials at once when the server drops right after a replace', async () => {
+			const [first, second, third] = [
+				new FakeTransport(),
+				new FakeTransport(),
+				new FakeTransport(),
+			];
+
+			await openWatching(handOut(first, second, third), { interval: REPLACE_INTERVAL });
+			await vi.advanceTimersByTimeAsync(REPLACE_INTERVAL + 1);
+
+			second.emit('close');
+			await vi.advanceTimersByTimeAsync(1);
+
+			expect(third.mailboxOpen).toHaveBeenCalledWith('INBOX');
+		});
+
+		it('lets a drop restore the replace overtook leave the budget alone', async () => {
+			const [first, second, third, fourth] = [
+				new FakeTransport(),
+				new FakeTransport(),
+				new FakeTransport(),
+				new FakeTransport(),
+			];
+			let releaseSelect!: () => void;
+			second.mailboxOpen.mockReturnValue(
+				new Promise((resolve) => {
+					releaseSelect = () => resolve({ exists: 0 });
+				}),
+			);
+
+			await openWatching(handOut(first, second, third, fourth), { interval: REPLACE_INTERVAL });
+			await vi.advanceTimersByTimeAsync(REPLACE_INTERVAL - 10);
+
+			// The drop's restore hangs on its SELECT while the scheduled replace installs `third`.
+			first.emit('close');
+			await vi.advanceTimersByTimeAsync(11);
+			releaseSelect();
+			await vi.advanceTimersByTimeAsync(1);
+
+			third.emit('close');
+			await vi.advanceTimersByTimeAsync(1);
+
+			expect(second.close).toHaveBeenCalled();
+			expect(fourth.mailboxOpen).toHaveBeenCalledWith('INBOX');
 		});
 
 		it('does not let a slow replace stack up behind the next tick', async () => {

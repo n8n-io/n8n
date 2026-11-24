@@ -80,6 +80,10 @@ export class InboundResourceAdmission extends ResourceAdmission {
 }
 
 /** Keeps the request, and with it the credential, out of the result. */
-function advertisedOf({ surface, resource, acceptedSourceIds }: Inbound): AdvertisedResource {
+export function advertisedOf({
+	surface,
+	resource,
+	acceptedSourceIds,
+}: Inbound): AdvertisedResource {
 	return { surface, resource, ...(acceptedSourceIds !== undefined && { acceptedSourceIds }) };
 }

@@ -1,3 +1,4 @@
+import { NODE_ID_MAX_LENGTH } from '@n8n/constants';
 import type { CredentialsRepository, User, WorkflowRepository } from '@n8n/db';
 import type {
 	INode,
@@ -1773,6 +1774,27 @@ describe('WorkflowValidationService', () => {
 			expect(result.isValid).toBe(false);
 			expect(result.error).toContain('Cannot publish workflow');
 			expect(result.error).toContain('"Webhook"');
+		});
+
+		it('rejects a trigger node whose id is longer than NODE_ID_MAX_LENGTH', () => {
+			const result = service.validateTriggerNodeIds([
+				triggerNode('Cron', 'n'.repeat(NODE_ID_MAX_LENGTH)),
+				triggerNode('Webhook', 'n'.repeat(NODE_ID_MAX_LENGTH + 1)),
+			]);
+
+			expect(result).toEqual({
+				isValid: false,
+				error:
+					'Cannot publish workflow: trigger "Webhook" has a node ID longer than 64 characters. Remove and re-add the affected nodes to give them new IDs.',
+			});
+		});
+
+		it('counts trigger node id length in characters, not UTF-16 code units', () => {
+			const result = service.validateTriggerNodeIds([
+				triggerNode('Cron', '😀'.repeat(NODE_ID_MAX_LENGTH)),
+			]);
+
+			expect(result).toEqual({ isValid: true });
 		});
 	});
 	describe('validateRequiredInputsConnected', () => {

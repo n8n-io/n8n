@@ -19,6 +19,7 @@ const step = (overrides: Partial<StepDetail> = {}): StepDetail => ({
 	iteration: 0,
 	status: 'completed',
 	outputs: [[{ json: { hello: 'world' } }]],
+	outputSources: null,
 	error: null,
 	createdAt: '2026-08-25T10:00:00.000Z',
 	updatedAt: '2026-08-25T10:00:00.000Z',
@@ -44,6 +45,7 @@ const snapshot = (overrides: Partial<ExecutionSnapshot> = {}): ExecutionSnapshot
 	hostMode: 'manual',
 	graph: { nodes: [{ id: 'trigger-id', name: 'Trigger', type: 'trigger' }], edges: [], seeded: [] },
 	workflow: workflowDocument(),
+	parent: null,
 	createdAt: '2026-08-25T10:00:00.000Z',
 	updatedAt: '2026-08-25T10:00:05.000Z',
 	finishedAt: '2026-08-25T10:00:05.000Z',
@@ -63,14 +65,28 @@ describe('EngineV2ExecutionReader', () => {
 	describe('findMany', () => {
 		const query: EngineV2SearchQuery = { limit: 2 };
 		it.each(['manual', 'webhook', 'trigger'] as const)(
-			'forwards the mode %s without conversion',
+			'forwards the mode %s as the host mode of a top-level execution',
 			async (mode) => {
 				await reader.findMany({ ...query, mode }, ['wf-1']);
 				expect(dataPlane.searchExecutions).toHaveBeenCalledWith(
-					expect.objectContaining({ hostMode: mode }),
+					expect.objectContaining({ hostMode: mode, hasParent: false }),
 				);
 			},
 		);
+
+		it('asks for sub-executions, whatever their host mode, for the integrated mode', async () => {
+			await reader.findMany({ ...query, mode: 'integrated' }, ['wf-1']);
+			const [request] = dataPlane.searchExecutions.mock.calls[0];
+			expect(request.hasParent).toBe(true);
+			expect(request.hostMode).toBeUndefined();
+		});
+
+		it('sends no mode filter when the caller asked for none', async () => {
+			await reader.findMany(query, ['wf-1']);
+			const [request] = dataPlane.searchExecutions.mock.calls[0];
+			expect(request.hasParent).toBeUndefined();
+			expect(request.hostMode).toBeUndefined();
+		});
 
 		it('maps supported statuses and drops statuses that the DP cannot match', async () => {
 			await reader.findMany({ ...query, status: ['success', 'crashed', 'waiting'] }, 'all');
@@ -123,6 +139,26 @@ describe('EngineV2ExecutionReader', () => {
 			expect(dataPlane.getExecution).not.toHaveBeenCalled();
 		});
 
+		it('lists a sub-execution in integrated mode, whatever host mode it inherited', async () => {
+			dataPlane.searchExecutions.mockResolvedValue({
+				items: [
+					snapshot({ mode: 'production', hostMode: 'webhook' }),
+					snapshot({
+						id: '01a038ae-c4a8-7799-8a3e-e3c2ca055cfb',
+						mode: 'production',
+						hostMode: 'webhook',
+						parent: { executionId: EXECUTION_ID, stepId: 'step-1', awaited: true },
+					}),
+				],
+				total: 2,
+				nextCursor: null,
+			});
+
+			const result = await reader.findMany(query, ['wf-1']);
+
+			expect(result.items.map((item) => item.mode)).toEqual(['webhook', 'integrated']);
+		});
+
 		// Splitting a wider scope across searches can come later; until then the
 		// request fails rather than silently reporting a partial list.
 		it('rejects a scope wider than one search takes', async () => {
@@ -171,6 +207,66 @@ describe('EngineV2ExecutionReader', () => {
 		});
 	});
 
+	describe('findLatest', () => {
+		beforeEach(() => {
+			dataPlane.findLatestExecution.mockResolvedValue(snapshot({ steps: [step()] }));
+		});
+
+		it('reads the newest match and its run data in one round trip', async () => {
+			const result = await reader.findLatest({ status: ['success'] }, [WORKFLOW_ID]);
+
+			expect(dataPlane.findLatestExecution).toHaveBeenCalledTimes(1);
+			expect(dataPlane.findLatestExecution).toHaveBeenCalledWith({
+				workflowIds: [WORKFLOW_ID],
+				status: ['completed'],
+				hostMode: undefined,
+				createdAfter: undefined,
+				createdBefore: undefined,
+			});
+			expect(dataPlane.searchExecutions).not.toHaveBeenCalled();
+			expect(dataPlane.getExecution).not.toHaveBeenCalled();
+			expect(result).toMatchObject({
+				id: EXECUTION_ID,
+				workflowId: WORKFLOW_ID,
+				status: 'success',
+				data: expect.objectContaining({
+					resultData: expect.objectContaining({
+						runData: { Trigger: [expect.objectContaining({ executionStatus: 'success' })] },
+					}),
+				}),
+				workflowData: expect.objectContaining({ id: WORKFLOW_ID }),
+			});
+		});
+
+		it('returns undefined when nothing matches', async () => {
+			dataPlane.findLatestExecution.mockResolvedValue(undefined);
+
+			await expect(reader.findLatest({}, [WORKFLOW_ID])).resolves.toBeUndefined();
+		});
+
+		it('asks nothing for an empty scope', async () => {
+			await expect(reader.findLatest({}, [])).resolves.toBeUndefined();
+
+			expect(dataPlane.findLatestExecution).not.toHaveBeenCalled();
+		});
+
+		it('asks nothing for a status the data plane cannot match', async () => {
+			await expect(
+				reader.findLatest({ status: ['crashed' as ExecutionStatusV1] }, [WORKFLOW_ID]),
+			).resolves.toBeUndefined();
+
+			expect(dataPlane.findLatestExecution).not.toHaveBeenCalled();
+		});
+
+		it('returns undefined when the stored workflow cannot be read', async () => {
+			dataPlane.findLatestExecution.mockResolvedValue(
+				snapshot({ workflow: { nodes: 'not-a-list' } }),
+			);
+
+			await expect(reader.findLatest({}, [WORKFLOW_ID])).resolves.toBeUndefined();
+		});
+	});
+
 	describe('findReference', () => {
 		it('returns only execution identity without requesting steps', async () => {
 			await expect(reader.findReference(EXECUTION_ID)).resolves.toEqual({
@@ -215,6 +311,17 @@ describe('EngineV2ExecutionReader', () => {
 		});
 	});
 
+	describe('fromSnapshot', () => {
+		it('maps a snapshot the caller already holds, without a read', async () => {
+			const result = await reader.fromSnapshot(snapshot({ status: 'waiting', finishedAt: null }));
+
+			expect(dataPlane.getExecution).not.toHaveBeenCalled();
+			expect(result).toEqual(
+				expect.objectContaining({ id: EXECUTION_ID, status: 'waiting', finished: false }),
+			);
+		});
+	});
+
 	describe('findOne', () => {
 		it('should map the snapshot onto an execution response', async () => {
 			const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID]);
@@ -252,6 +359,19 @@ describe('EngineV2ExecutionReader', () => {
 
 			// The policy that was in force when the run started, not the current one.
 			expect(result?.workflowData.settings?.redactionPolicy).toBe('all');
+		});
+
+		it('should report the pin data the run used, the way v1 does', async () => {
+			const pinData = { Trigger: [{ json: { pinned: true } }] };
+			dataPlane.getExecution.mockResolvedValue(
+				snapshot({ workflow: workflowDocument({ pinData }) }),
+			);
+
+			const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID]);
+
+			expect(result?.data.resultData.pinData).toEqual(pinData);
+			// The editor reads the pin marker off `resultData`, not off the workflow.
+			expect(result?.workflowData).not.toHaveProperty('pinData');
 		});
 
 		it('should report the same narrow workflow projection the v1 path reports', async () => {
@@ -296,6 +416,20 @@ describe('EngineV2ExecutionReader', () => {
 				expect(result?.mode).toBe(mode);
 			},
 		);
+
+		it('should report a sub-execution in integrated mode, whatever host mode it inherited', async () => {
+			dataPlane.getExecution.mockResolvedValue(
+				snapshot({
+					mode: 'production',
+					hostMode: 'webhook',
+					parent: { executionId: 'parent-id', stepId: 'step-1', awaited: true },
+				}),
+			);
+
+			const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID]);
+
+			expect(result?.mode).toBe('integrated');
+		});
 
 		it('should leave stoppedAt unset while the execution is unfinished', async () => {
 			dataPlane.getExecution.mockResolvedValue(snapshot({ status: 'running', finishedAt: null }));
@@ -348,6 +482,48 @@ describe('EngineV2ExecutionReader', () => {
 			await expect(reader.findOne(EXECUTION_ID, [WORKFLOW_ID])).resolves.toBeUndefined();
 		});
 
+		describe('without the run data', () => {
+			it('should not ask the data plane for the steps', async () => {
+				const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID], { includeData: false });
+
+				expect(dataPlane.getExecution).toHaveBeenCalledWith(EXECUTION_ID, { includeSteps: false });
+				expect(result).toEqual({
+					id: EXECUTION_ID,
+					workflowId: WORKFLOW_ID,
+					mode: 'manual',
+					status: 'success',
+					finished: true,
+					createdAt: new Date('2026-08-25T10:00:00.000Z'),
+					startedAt: new Date('2026-08-25T10:00:00.000Z'),
+					stoppedAt: new Date('2026-08-25T10:00:05.000Z'),
+					storedAt: 'db',
+				});
+			});
+
+			// Absent data and empty data must stay tellable apart.
+			it('should report no data at all, rather than empty data', async () => {
+				const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID], { includeData: false });
+
+				expect(result).not.toHaveProperty('data');
+			});
+
+			it('should return undefined when the stored workflow is unusable', async () => {
+				// The same reads as the data mode, so a status cannot appear in one
+				// mode and vanish in the other.
+				dataPlane.getExecution.mockResolvedValue(snapshot({ workflow: { nodes: 'Trigger' } }));
+
+				await expect(
+					reader.findOne(EXECUTION_ID, [WORKFLOW_ID], { includeData: false }),
+				).resolves.toBeUndefined();
+			});
+
+			it('should return undefined when the workflow is not accessible to the caller', async () => {
+				await expect(
+					reader.findOne(EXECUTION_ID, ['other-wf'], { includeData: false }),
+				).resolves.toBeUndefined();
+			});
+		});
+
 		describe('reporting the workflow that ran', () => {
 			it('should report the node name from the run, not a later rename', async () => {
 				dataPlane.getExecution.mockResolvedValue(snapshot({ steps: [step()] }));
@@ -389,6 +565,47 @@ describe('EngineV2ExecutionReader', () => {
 				// workflow repository to reach for.
 				expect(dataPlane.getExecution).toHaveBeenCalledTimes(1);
 			});
+		});
+	});
+
+	describe('findOne with an access check', () => {
+		it('asks the check about the workflow of the execution, then maps the snapshot', async () => {
+			const canRead = vi.fn().mockResolvedValue(true);
+
+			const result = await reader.findOne(EXECUTION_ID, canRead);
+
+			expect(canRead).toHaveBeenCalledWith(WORKFLOW_ID);
+			expect(dataPlane.getExecution).toHaveBeenCalledWith(EXECUTION_ID, { includeSteps: true });
+			expect(result?.id).toBe(EXECUTION_ID);
+			expect(result?.data.resultData.runData).toEqual({});
+		});
+
+		it('returns undefined when the check refuses the workflow', async () => {
+			const canRead = vi.fn().mockResolvedValue(false);
+
+			await expect(reader.findOne(EXECUTION_ID, canRead)).resolves.toBeUndefined();
+			await expect(
+				reader.findOne(EXECUTION_ID, canRead, { includeData: false }),
+			).resolves.toBeUndefined();
+		});
+
+		it('does not run the check when the data plane holds no such execution', async () => {
+			dataPlane.getExecution.mockResolvedValue(undefined);
+			const canRead = vi.fn().mockResolvedValue(true);
+
+			await expect(reader.findOne(EXECUTION_ID, canRead)).resolves.toBeUndefined();
+			expect(canRead).not.toHaveBeenCalled();
+		});
+
+		it('reads the status without the steps', async () => {
+			dataPlane.getExecution.mockResolvedValue(snapshot({ status: 'running', finishedAt: null }));
+
+			const result = await reader.findOne(EXECUTION_ID, async () => true, {
+				includeData: false,
+			});
+
+			expect(dataPlane.getExecution).toHaveBeenCalledWith(EXECUTION_ID, { includeSteps: false });
+			expect(result?.status).toBe('running');
 		});
 	});
 });

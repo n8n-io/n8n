@@ -185,6 +185,21 @@ describe('runScriptedGateVerification — merge consistency', () => {
 		]);
 	});
 
+	it('discloses that a redacted pass was not inspected, whichever pass it was', async () => {
+		const run = vi
+			.fn()
+			.mockResolvedValueOnce({
+				...approvePassResult,
+				redaction: { reason: 'workflow_redaction_policy', canReveal: false },
+			})
+			.mockResolvedValueOnce(declinePassResult);
+
+		const { analysis } = await runScriptedGateVerification(makeArgs(run));
+
+		expect(analysis.success).toBe(true);
+		expect(analysis.redactionNote).toContain('output was not inspected');
+	});
+
 	it('discloses simulated nodes reached only in an earlier pass', async () => {
 		const run = vi
 			.fn()
@@ -216,6 +231,45 @@ describe('runScriptedGateVerification — merge consistency', () => {
 		expect(analysis.workflowPinnedNodeNames).toEqual(['Router']);
 		expect(analysis.reachedSimulatedNodes.map((node) => node.nodeName)).toContain('Router');
 		expect(analysis.simulationNote).toContain('Router');
+	});
+
+	it('discloses a wait that ran without its delay in any pass', async () => {
+		const run = vi
+			.fn()
+			.mockResolvedValueOnce({
+				...approvePassResult,
+				executedNodeNames: [...approvePassResult.executedNodeNames, 'Wait Before Publish'],
+				skippedWaitNodeNames: ['Wait Before Publish'],
+			})
+			.mockResolvedValueOnce(declinePassResult);
+
+		const { analysis } = await runScriptedGateVerification(makeArgs(run));
+
+		expect(analysis.simulationNote).toContain('Wait Before Publish');
+	});
+
+	it('names a wait once when several passes reach it', async () => {
+		const withWait = {
+			executedNodeNames: ['Wait Before Publish'],
+			skippedWaitNodeNames: ['Wait Before Publish'],
+		};
+		const run = vi
+			.fn()
+			.mockResolvedValueOnce({
+				...approvePassResult,
+				...withWait,
+				executedNodeNames: [...approvePassResult.executedNodeNames, 'Wait Before Publish'],
+			})
+			.mockResolvedValueOnce({
+				...declinePassResult,
+				...withWait,
+				executedNodeNames: [...declinePassResult.executedNodeNames, 'Wait Before Publish'],
+			});
+
+		const { analysis } = await runScriptedGateVerification(makeArgs(run));
+
+		expect(analysis.simulationNote).toContain('Ran 1 time-based Wait node(s)');
+		expect(analysis.simulationNote?.match(/Wait Before Publish/g)).toHaveLength(1);
 	});
 
 	it('does not double-count a pinned node that the plan already simulates', async () => {
