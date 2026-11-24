@@ -16,7 +16,6 @@ import { useAssistantAwayTelemetry } from '../composables/useAssistantAwayTeleme
 import { getCurrentTurn } from '../assistantTurn';
 import {
 	N8nActionDropdown,
-	N8nAttachment,
 	N8nChatRating,
 	N8nIconButton,
 	N8nResizeWrapper,
@@ -130,7 +129,11 @@ import { assistantSharedFilesExtension } from './assistantSharedFiles';
 import { assistantToolResultTableExtension } from './assistantToolResultTables';
 import { useAssistantAgentThreadsStore } from './assistantAgentThreads.store';
 import { stagedElementAppId, toElementComposerAttachment } from './assistantElementAttachments';
-import { readMessageReferences, toMentionComposerAttachment } from './assistantMentionAttachments';
+import {
+	mentionChipId,
+	readMessageReferences,
+	toMentionComposerAttachment,
+} from './assistantMentionAttachments';
 import {
 	countSentNodes,
 	readNodesAttachment,
@@ -837,13 +840,21 @@ watch(
 	},
 );
 
-/** The staged chips. A nodes chip carries its nodes, so the user can drop single nodes. */
-const composerChips = computed(() =>
-	(panel.value?.composerAttachments ?? []).map((staged) => ({
-		chip: staged.chip,
-		nodes: readNodesAttachment(staged),
-	})),
+/** The staged nodes chips. The panel shows the other chips as cards. */
+const stagedNodes = computed(() =>
+	(panel.value?.composerAttachments ?? []).flatMap((staged) => {
+		const nodes = readNodesAttachment(staged);
+		return nodes ? [{ id: staged.chip.id, nodes }] : [];
+	}),
 );
+
+/** A removed handoff workflow must not come back when the page reloads. */
+function onComposerChipRemoved(chipId: string): void {
+	mentions.handleChipRemoved(chipId);
+	if (handoff.workflowChip && chipId === mentionChipId(handoff.workflowChip)) {
+		clearPendingWorkflowAttachment(props.threadId);
+	}
+}
 
 /** The user removed some of the nodes from a chip. */
 function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
@@ -1025,6 +1036,7 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 						@message-accepted="onMessageAccepted"
 						@update:streaming="onStreamingChange"
 						@update:input-draft="mentions.handleTextChange"
+						@composer-attachment-removed="onComposerChipRemoved"
 					>
 						<!-- Passed only with an offer, so the chat keeps its empty state and spacing. -->
 						<template v-if="activeFixWithAiOffer" #inline-offers>
@@ -1059,24 +1071,16 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 								@rate="feedback.rate(executionId, $event)"
 							/>
 						</template>
-						<!-- Nodes chips can drop single nodes. The other chips look as the panel draws them. -->
-						<template v-if="composerChips.length > 0" #composer-attachments>
-							<template v-for="{ chip, nodes } in composerChips" :key="chip.id">
-								<NodesAttachmentChips
-									v-if="nodes"
-									:attachment="nodes"
-									is-removable
-									@update:attachment="updateStagedNodes"
-									@remove-all="mentions.handleChipRemoved(chip.id)"
-								/>
-								<N8nAttachment
-									v-else
-									:file-name="chip.label"
-									:icon="chip.icon"
-									data-test-id="agent-chat-composer-chip"
-									@remove="mentions.handleChipRemoved(chip.id)"
-								/>
-							</template>
+						<!-- Nodes chips can drop single nodes, so they are not cards. -->
+						<template v-if="stagedNodes.length > 0" #composer-attachments>
+							<NodesAttachmentChips
+								v-for="{ id, nodes } in stagedNodes"
+								:key="id"
+								:attachment="nodes"
+								is-removable
+								@update:attachment="updateStagedNodes"
+								@remove-all="mentions.handleChipRemoved(id)"
+							/>
 						</template>
 						<template #user-message-references="{ message }">
 							<AttachmentPreview

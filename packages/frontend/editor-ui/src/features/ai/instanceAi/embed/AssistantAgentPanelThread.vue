@@ -15,7 +15,7 @@ import {
 	type InstanceAiHandoffContext,
 	type InstanceAiPrefillPayload,
 } from '@n8n/api-types';
-import { N8nAttachment, N8nChatRating } from '@n8n/design-system';
+import { N8nChatRating } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, provide, ref, useTemplateRef, watch, type Ref } from 'vue';
@@ -336,7 +336,7 @@ defineExpose({
 				@rate="feedback.rate(executionId, $event)"
 			/>
 		</template>
-		<template v-if="handoffChip" #composer-attachments="{ chips, removeChip }">
+		<template v-if="handoffChip" #composer-attachments>
 			<InstanceAiResourceChip
 				:label="handoffChip.label"
 				:icon="handoffChip.icon"
@@ -345,15 +345,6 @@ defineExpose({
 				remove-test-id="instance-ai-handoff-context-chip-dismiss"
 				removable
 				@remove="dismissHandoff"
-			/>
-			<!-- The slot replaces the default chips, so render them too. -->
-			<N8nAttachment
-				v-for="chip in chips"
-				:key="chip.id"
-				:file-name="chip.label"
-				:icon="chip.icon"
-				data-test-id="agent-chat-composer-chip"
-				@remove="removeChip(chip.id)"
 			/>
 		</template>
 		<template v-if="slots['composer-start']" #composer-start>

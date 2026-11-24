@@ -2199,6 +2199,24 @@ describe('AssistantAgentThreadView', () => {
 			expect(getPendingComposerDraft('thread-new')).toBeNull();
 		});
 
+		it('does not stage a removed handed-off workflow again after a reload', async () => {
+			stashPendingWorkflowAttachment('thread-new', { type: 'workflow', id: 'wf-7' });
+			const { unmount } = await renderNewThread();
+			const onRemoved = panelProps.current.onComposerAttachmentRemoved as (id: string) => void;
+
+			onRemoved('mention:workflow:other');
+			expect(getPendingWorkflowAttachment('thread-new')).toEqual({ type: 'workflow', id: 'wf-7' });
+
+			onRemoved('mention:workflow:wf-7');
+			expect(getPendingWorkflowAttachment('thread-new')).toBeNull();
+
+			unmount();
+			// A reload starts with an empty composer.
+			composerAttachments.value = [];
+			await renderNewThread();
+			expect(composerAttachments.value).toEqual([]);
+		});
+
 		it('drops the launch marker once the server accepts the first message', async () => {
 			await renderNewThread();
 			expect(getAssistantAgentLaunch('thread-new')).toEqual({ projectId: 'project-1' });
@@ -2635,7 +2653,7 @@ describe('AssistantAgentThreadView', () => {
 		});
 
 		it('stages a mentioned workflow or agent as a chip that sends it in the client context', async () => {
-			const { getByTestId, getAllByTestId } = renderView({
+			const { getByTestId } = renderView({
 				props: { threadId: 'thread-1', projectId: 'project-1' },
 			});
 			await flushPromises();
@@ -2647,10 +2665,10 @@ describe('AssistantAgentThreadView', () => {
 				{ id: 'mention:workflow:wf-1', attachments: [workflowMention.attachment] },
 				{ id: 'mention:agent:agent-1', attachments: [agentMention.attachment] },
 			]);
-			const cards = getAllByTestId('agent-chat-composer-chip');
-			expect(cards).toHaveLength(2);
-			expect(cards[0]).toHaveTextContent('Uptime monitor');
-			expect(cards[1]).toHaveTextContent('Support agent');
+			expect(composerAttachments.value.map(({ chip }) => chip.label)).toEqual([
+				'Uptime monitor',
+				'Support agent',
+			]);
 			expect(mentionPickerProps.current?.['excluded-keys']).toEqual([
 				'workflow:wf-1:wf-1',
 				'agent:agent-1',
@@ -2761,7 +2779,7 @@ describe('AssistantAgentThreadView', () => {
 		});
 
 		it('gives a sent message the resources of its client context, and shows them', async () => {
-			const { getAllByTestId, getByTestId } = renderView({
+			const { getAllByTestId } = renderView({
 				props: { threadId: 'thread-1', projectId: 'project-1' },
 			});
 			await flushPromises();
