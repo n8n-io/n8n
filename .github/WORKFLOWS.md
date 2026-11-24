@@ -970,14 +970,13 @@ The format is strict, enforced by `node .github/scripts/owners/owners.mjs --chec
 Team existence is not checked by `--check` (it needs an org read token, which
 fork PRs do not have); a separate workflow covers it (DEVP-891).
 
-The file drives four workflows:
+The file drives three workflows:
 
 | Workflow                          | Purpose                                                                  |
 |-----------------------------------|--------------------------------------------------------------------------|
 | `ci-owners-validation.yml`        | Validates OWNERS (syntax, dead paths) via `owners.mjs --check` |
-| `ci-owners-review-recommendations.yml` | Calls DevHub: advisory PR comment with owning teams, line stats, required teams |
 | `ci-owners-assign-reviewers.yml`  | Opt-in reviewer auto-assignment (label-triggered)                        |
-| `ci-owners-required-reviews.yml`  | Calls DevHub: enforces `required` and `involved` entries through the "Required Reviews" commit status |
+| `ci-owners-required-reviews.yml`  | Enforces `required` and `involved` entries through the "Required Reviews" commit status, and calls DevHub for the advisory PR comment |
 
 ### Auto-assign reviewers
 
@@ -1006,62 +1005,68 @@ Without `(k)`, the count is 1. When the files of one team have different
 options, the team must satisfy all of them. An approval from the author never
 counts.
 
-DevHub evaluates this rule. `ci-owners-required-reviews.yml` calls the shared
-`ownership-checks` workflow in `n8n-io/github-actions`, which sends the PR
-number to DevHub. The workflow authenticates with its GitHub Actions OIDC
-token. It uses no secret and checks out no code. DevHub reads OWNERS from
-`master`, checks the approvals and the team membership, and writes a commit
-status named **Required Reviews** on the head SHA as its own GitHub App. See
-the `ownership-checks/README.md` file in `n8n-io/github-actions` and the
-DevHub README.
+`ci-owners-required-reviews.yml` calls the SHA-pinned `ownership-checks`
+workflow in `n8n-io/github-actions`. The shared workflow reads OWNERS from
+`master`, checks live approvals and team membership, and writes a commit status
+named **Required Reviews** on the head SHA. It uses the n8n Assistant GitHub
+App credentials and runs no PR code. The same call also asks DevHub, through
+OIDC, to post the PR review overview comment: owning teams, line stats and
+required teams. The comment is advisory: if DevHub fails, the status is not
+affected. See `ownership-checks/README.md` in `n8n-io/github-actions`.
 
 A missing approval reports `pending` ("Waiting for approval from: …"), not
 `failure`, so an unreviewed PR does not show red CI. Any state other than
 `success` blocks the merge. The ruleset for a branch must require that status
-from DevHub's GitHub App, or the block has no effect. In the merge queue,
-DevHub writes `success` on the queue head and does not evaluate again: a PR
-cannot enter the queue unless the status is green on its head, and the queue
-does not change approvals.
+from the configured GitHub App, or the block has no effect. In the merge queue,
+the shared workflow writes `success` on the queue head and does not evaluate
+again. A PR cannot enter the queue unless the status is green on its head,
+and the queue does not change approvals.
 
 The status is evaluated for a PR into any base branch, from a same-repo head
 or a fork. Both are necessary because the ruleset that gates a PR is not always
 the ruleset of its base branch: GitHub applies the ruleset of a stack's target
 branch to every PR in the stack, so the `master` ruleset gates a stacked PR into
 a feature branch. When no run writes a required status, the PR stays blocked
-on "Expected". The routes that skip the evaluation are in DevHub, in
-`REQUIRED_REVIEW_EXEMPTIONS` in `server/services/required-reviews.ts`. An
+on "Expected". The routes that skip the evaluation are in the shared workflow's
+`ownership-checks/actions/required-reviews/evaluate.mjs` file. An
 exempt PR reports `success`. Only heads in this repository can match a route,
-so DevHub still evaluates a fork branch with a matching name. Add a route only
-when somebody already reviewed every commit that it carries, as with
+so the shared workflow still evaluates a fork branch with a matching name.
+Add a route only when somebody already reviewed every commit that it carries, as with
 `sync/master-to-3x -> 3.x`: its commits landed on `master` first.
 
-DevHub reads OWNERS from `master` only, never from the base branch or the PR,
-so a PR cannot lift its own review requirement. A retarget evaluates the PR
-again, so a verdict for the old base does not stay.
+The shared workflow reads OWNERS from `master` only, never from the base branch
+or the PR. Thus, a PR cannot lift its own review requirement. A retarget
+evaluates the PR again, so a verdict for the old base does not stay.
 
 Members of the `large-scale-changes` GitHub team can make the **Required
 Reviews** status succeed without required OWNERS team approvals. A team member
-must apply the `large-scale-change` label. DevHub checks the actor of the
-label event and their current team membership. The label alone is not
+must apply the `large-scale-change` label. The shared workflow checks the actor
+of the label event and their current team membership. The label alone is not
 sufficient. Label changes evaluate the status again. When you remove the
 label, the exemption stops.
 
 An approval from the n8n Release Helper makes the **Required Reviews** status
-succeed without required OWNERS team approvals. DevHub uses the latest review
-state from `n8n-release-helper[bot]`. When you dismiss its approval, the skip
-stops.
+succeed without required OWNERS team approvals. The shared workflow uses the
+latest review state from `n8n-release-helper[bot]`. When you dismiss its approval,
+the skip stops.
 
-PR changes arrive through `pull_request_target`, which is safe here because
-the workflow checks out and runs no PR code. Review events on a same-repo PR
-arrive through `pull_request_review`. A review event on a fork PR gets no
-OIDC token, so it arrives through the `workflow_run` of
-`util-notify-pr-status.yml`, which receives every submitted or dismissed
-review. The shared workflow finds the PR from the head of that run and skips
-same-repo heads, which the direct event already covers. A first contribution
-whose runs still wait for approval gets no evaluation on review events until a
-maintainer approves the runs. To evaluate a PR again, for example after a team
-membership change, run `ci-owners-required-reviews.yml` with
-`workflow_dispatch` and the PR number.
+PR changes arrive through `pull_request_target`, which uses the base branch's
+caller rather than the PR's copy. Ownership comments use this event too. Neither
+workflow checks out or runs PR code.
+
+All review events arrive through the `workflow_run` of
+`util-notify-pr-status.yml`. The dispatcher runs from the default branch,
+finds open PRs for the run's head repository and branch, and dispatches
+`ci-owners-required-reviews.yml` explicitly on `master`. This uses the current
+external workflow pin on `master` without a PR rebase. It handles both
+same-repository and fork PRs. It reads no artifacts from the triggering run.
+A first contribution whose runs still wait for approval gets no evaluation on
+review events until a maintainer approves the runs.
+
+Updating the pin does not re-evaluate existing statuses. To evaluate a PR again,
+for example after a pin or team membership change, run
+`ci-owners-required-reviews.yml` on `master` with `workflow_dispatch` and the
+PR number.
 
 ---
 

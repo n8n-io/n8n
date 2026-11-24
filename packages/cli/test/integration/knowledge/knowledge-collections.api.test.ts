@@ -168,6 +168,47 @@ describe('knowledge collection routes', () => {
 		});
 	});
 
+	describe('GET /projects/:projectId/knowledge/collections/:collectionId', () => {
+		async function get(user: User, collectionId: string, projectId = project.id) {
+			return await server
+				.authAgentFor(user)
+				.get(`/projects/${projectId}/knowledge/collections/${collectionId}`);
+		}
+
+		it('returns the collection to a user who can read agents in the project', async () => {
+			const created = (await create(editor, input())).body.data;
+
+			const response = await get(viewer, created.id);
+
+			expect(response.status).toBe(200);
+			expect(response.body.data).toEqual(created);
+		});
+
+		it('answers 404 for a collection of another project', async () => {
+			const otherProject = await getPersonalProject(editor);
+			const created = (await create(editor, input(), otherProject.id)).body.data;
+
+			expect((await get(editor, created.id)).status).toBe(404);
+		});
+
+		it('answers 404 for a collection that does not exist', async () => {
+			expect((await get(editor, 'missing')).status).toBe(404);
+		});
+
+		it('answers 403 to a user who is not in the project', async () => {
+			const created = (await create(editor, input())).body.data;
+
+			expect((await get(outsider, created.id)).status).toBe(403);
+		});
+
+		it('answers 404 when collections are off', async () => {
+			const created = (await create(editor, input())).body.data;
+			Container.get(KnowledgeConfig).collectionsEnabled = false;
+
+			expect((await get(editor, created.id)).status).toBe(404);
+		});
+	});
+
 	describe('GET /knowledge/collections', () => {
 		async function list(user: User) {
 			return await server.authAgentFor(user).get('/knowledge/collections');

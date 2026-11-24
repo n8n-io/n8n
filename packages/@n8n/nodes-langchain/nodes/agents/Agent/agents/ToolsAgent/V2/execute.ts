@@ -20,6 +20,7 @@ import type { IExecuteFunctions, INodeExecutionData, ISupplyDataFunctions } from
 import assert from 'node:assert';
 
 import { loadMemory } from '@utils/agent-execution';
+import { createRunCancellation } from '@utils/agent-execution/createRunCancellation';
 import { getPromptInputByType } from '@utils/helpers';
 import {
 	getFailureType,
@@ -383,8 +384,9 @@ export async function toolsAgentExecute(
 						'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
 				};
 				const toolCounter = new ToolCallCounterCallback();
+				const runCancellation = createRunCancellation(this.getExecutionCancelSignal());
 				const executeOptions = {
-					signal: this.getExecutionCancelSignal(),
+					signal: runCancellation.signal,
 					callbacks: [toolCounter, ...(hooks.createCallbacks?.(itemIndex) ?? [])],
 				};
 
@@ -413,16 +415,15 @@ export async function toolsAgentExecute(
 						},
 					);
 
-					const response = await processEventStream(
-						this,
-						eventStream,
-						itemIndex,
-						options.returnIntermediateSteps,
+					const response = await runCancellation.abortOnFailure(
+						processEventStream(this, eventStream, itemIndex, options.returnIntermediateSteps),
 					);
 					return { response, toolCallsCounted: toolCounter.count };
 				} else {
 					// Handle regular execution
-					const response = await executorWithTracing.invoke(invokeParams, executeOptions);
+					const response = await runCancellation.abortOnFailure(
+						executorWithTracing.invoke(invokeParams, executeOptions),
+					);
 					return { response, toolCallsCounted: toolCounter.count };
 				}
 			};
