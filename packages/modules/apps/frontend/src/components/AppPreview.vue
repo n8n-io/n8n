@@ -10,6 +10,7 @@ import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nBadge,
+	N8nButton,
 	N8nEmptyState,
 	N8nIconButton,
 	N8nLoading,
@@ -218,55 +219,87 @@ onBeforeUnmount(() => {
 	<div :class="$style.preview" data-test-id="app-preview">
 		<div :class="$style.toolbar">
 			<div :class="$style.left">
-				<N8nTooltip :content="i18n.baseText('apps.preview.reload')">
-					<N8nIconButton
-						icon="refresh-cw"
-						variant="ghost"
-						size="small"
-						:aria-label="i18n.baseText('apps.preview.reload')"
-						:loading="loading"
-						data-test-id="app-preview-reload"
-						@click="reload"
-					/>
-				</N8nTooltip>
-				<N8nBadge v-if="building" variant="info" data-test-id="app-preview-status">
-					{{ i18n.baseText('apps.preview.building') }}
-				</N8nBadge>
-				<N8nBadge v-else-if="buildFailed" variant="danger" data-test-id="app-preview-status">
-					{{ i18n.baseText('apps.preview.buildFailed') }}
-				</N8nBadge>
-			</div>
-			<N8nText
-				v-if="inspecting"
-				size="small"
-				color="text-light"
-				:class="$style.version"
-				data-test-id="app-preview-inspect-hint"
-			>
-				{{ i18n.baseText('apps.preview.inspect.hint') }}
-			</N8nText>
-			<N8nText
-				v-else-if="versionLabel"
-				size="small"
-				color="text-light"
-				:class="$style.version"
-				data-test-id="app-preview-version"
-			>
-				{{ i18n.baseText('apps.preview.version', { interpolate: { version: versionLabel } }) }}
-			</N8nText>
-			<div :class="$style.right">
 				<AppPreviewOptionMenu
 					v-model="screenSize"
 					:options="sizeOptions"
 					:label="i18n.baseText('apps.preview.size.label')"
+					:disabled="!preview"
 					data-test-id="app-preview-size"
 				/>
 				<AppPreviewOptionMenu
 					v-model="theme"
 					:options="themeOptions"
 					:label="i18n.baseText('apps.preview.theme.label')"
+					:disabled="!preview"
 					data-test-id="app-preview-theme"
 				/>
+			</div>
+			<div :class="$style.center">
+				<template v-if="inspecting">
+					<N8nText
+						size="small"
+						color="text-light"
+						:class="$style.hint"
+						data-test-id="app-preview-inspect-hint"
+					>
+						{{ i18n.baseText('apps.preview.inspect.hint') }}
+					</N8nText>
+					<N8nButton
+						variant="outline"
+						size="xsmall"
+						data-test-id="app-preview-inspect-cancel"
+						@click="setInspecting(false)"
+					>
+						{{ i18n.baseText('generic.cancel') }}
+					</N8nButton>
+				</template>
+				<template v-else>
+					<N8nBadge v-if="building" variant="info" data-test-id="app-preview-status">
+						{{ i18n.baseText('apps.preview.building') }}
+					</N8nBadge>
+					<N8nBadge v-else-if="buildFailed" variant="danger" data-test-id="app-preview-status">
+						{{ i18n.baseText('apps.preview.buildFailed') }}
+					</N8nBadge>
+					<N8nText
+						v-if="versionLabel"
+						size="small"
+						color="text-light"
+						:class="$style.hint"
+						data-test-id="app-preview-version"
+					>
+						{{ i18n.baseText('apps.preview.version', { interpolate: { version: versionLabel } }) }}
+					</N8nText>
+				</template>
+			</div>
+			<div :class="$style.right">
+				<N8nTooltip v-if="inspectable" :content="i18n.baseText('apps.preview.inspect.select')">
+					<N8nButton
+						icon="mouse-pointer"
+						variant="ghost"
+						size="small"
+						:class="{ [$style.active]: inspecting }"
+						:aria-pressed="inspecting"
+						:disabled="!preview"
+						data-test-id="app-preview-select"
+						@click="setInspecting(!inspecting)"
+					>
+						{{ i18n.baseText('apps.preview.inspect.selectLabel') }}
+					</N8nButton>
+				</N8nTooltip>
+				<!-- A wider gap separates the page actions from Select. -->
+				<N8nTooltip :content="i18n.baseText('apps.preview.reload')">
+					<N8nIconButton
+						icon="refresh-cw"
+						variant="ghost"
+						size="small"
+						:class="$style.groupStart"
+						:aria-label="i18n.baseText('apps.preview.reload')"
+						:loading="loading"
+						:disabled="building && !preview"
+						data-test-id="app-preview-reload"
+						@click="reload"
+					/>
+				</N8nTooltip>
 				<N8nTooltip :content="i18n.baseText('apps.preview.openInNewTab')">
 					<N8nIconButton
 						icon="external-link"
@@ -328,32 +361,6 @@ onBeforeUnmount(() => {
 				:description="i18n.baseText('apps.preview.empty.description')"
 				data-test-id="app-preview-empty"
 			/>
-			<div v-if="inspectable && preview" :class="$style.modes" data-test-id="app-preview-modes">
-				<N8nTooltip :content="i18n.baseText('apps.preview.inspect.browse')">
-					<N8nIconButton
-						icon="mouse-pointer"
-						variant="ghost"
-						size="small"
-						:class="{ [$style.active]: !inspecting }"
-						:aria-label="i18n.baseText('apps.preview.inspect.browse')"
-						:aria-pressed="!inspecting"
-						data-test-id="app-preview-mode-browse"
-						@click="setInspecting(false)"
-					/>
-				</N8nTooltip>
-				<N8nTooltip :content="i18n.baseText('apps.preview.inspect.select')">
-					<N8nIconButton
-						icon="crosshair"
-						variant="ghost"
-						size="small"
-						:class="{ [$style.active]: inspecting }"
-						:aria-label="i18n.baseText('apps.preview.inspect.select')"
-						:aria-pressed="inspecting"
-						data-test-id="app-preview-mode-select"
-						@click="setInspecting(true)"
-					/>
-				</N8nTooltip>
-			</div>
 		</div>
 		<AppFeedbackLink :app="app" />
 	</div>
@@ -372,10 +379,11 @@ onBeforeUnmount(() => {
 	grid-template-columns: minmax(max-content, 1fr) minmax(0, auto) minmax(max-content, 1fr);
 	align-items: center;
 	gap: var(--spacing--xs);
-	padding: var(--spacing--2xs) var(--spacing--md) var(--spacing--2xs) var(--spacing--2xs);
+	padding: var(--spacing--2xs) var(--spacing--xs);
 }
 
 .left,
+.center,
 .right {
 	display: flex;
 	align-items: center;
@@ -396,26 +404,20 @@ onBeforeUnmount(() => {
 	}
 }
 
-.modes {
-	position: absolute;
-	bottom: calc(var(--spacing--xs) * 2);
-	left: 50%;
-	transform: translateX(-50%);
-	display: flex;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--4xs);
-	border: var(--border);
-	border-radius: var(--radius--lg);
-	background: var(--background--surface);
-	box-shadow: var(--shadow--sm);
+.center {
+	grid-column: 2;
+	justify-content: center;
 }
 
 .active {
-	background: var(--background--subtle);
+	background: var(--background--active);
 }
 
-.version {
-	grid-column: 2;
+.groupStart {
+	margin-left: calc(var(--spacing--sm) - var(--spacing--2xs));
+}
+
+.hint {
 	min-width: 0;
 	white-space: nowrap;
 	overflow: hidden;

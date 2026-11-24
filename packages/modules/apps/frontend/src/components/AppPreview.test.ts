@@ -157,10 +157,14 @@ describe('AppPreview', () => {
 			attempts: 1,
 			statusUpdatedAt: null,
 		});
-		const { findByTestId, getByTestId } = renderComponent();
+		const { findByTestId, getByTestId, getByLabelText } = renderComponent();
 
 		expect(await findByTestId('app-preview-first-build')).toBeInTheDocument();
 		expect(getByTestId('app-preview-status')).toHaveTextContent('Building');
+		expect(getByLabelText('Screen size')).toBeDisabled();
+		expect(getByLabelText('Theme')).toBeDisabled();
+		expect(getByTestId('app-preview-reload')).toBeDisabled();
+		expect(getByTestId('app-preview-open')).toBeDisabled();
 
 		await vi.advanceTimersByTimeAsync(3000);
 		expect(getAppBuild).toHaveBeenCalledTimes(1);
@@ -360,32 +364,63 @@ describe('AppPreview', () => {
 			element: payload,
 		});
 
-		it('hides the mode toggle unless the preview is inspectable', async () => {
+		it('hides the select toggle unless the preview is inspectable', async () => {
 			vi.mocked(listAppVersions).mockResolvedValue([version('v2', 'succeeded')]);
 			const { findByTestId, queryByTestId } = renderComponent();
 			await findByTestId('app-preview-frame');
 
-			expect(queryByTestId('app-preview-mode-select')).not.toBeInTheDocument();
+			expect(queryByTestId('app-preview-select')).not.toBeInTheDocument();
 		});
 
-		it('starts and stops element selection in the frame', async () => {
+		it('disables the select toggle until the app has a build', async () => {
+			vi.useFakeTimers();
+			vi.mocked(listAppVersions).mockResolvedValue([version('v1', 'running')]);
+			vi.mocked(getAppBuild).mockResolvedValue({
+				versionId: 'v1',
+				status: 'running',
+				attempts: 1,
+				statusUpdatedAt: null,
+			});
+			const { findByTestId, getByTestId } = renderComponent({
+				props: { app: app(), inspectable: true },
+			});
+
+			await findByTestId('app-preview-first-build');
+
+			expect(getByTestId('app-preview-select')).toBeDisabled();
+		});
+
+		it('starts and stops element selection with the select toggle', async () => {
 			const { getByTestId, queryByTestId, postMessage } = await renderInspectable();
 
-			await userEvent.click(getByTestId('app-preview-mode-select'));
+			await userEvent.click(getByTestId('app-preview-select'));
 
 			expect(postMessage).toHaveBeenLastCalledWith(command('inspect:enable'), PREVIEW_ORIGIN);
-			expect(getByTestId('app-preview-mode-select')).toHaveAttribute('aria-pressed', 'true');
+			expect(getByTestId('app-preview-select')).toHaveAttribute('aria-pressed', 'true');
 			expect(getByTestId('app-preview-inspect-hint')).toBeInTheDocument();
+			expect(queryByTestId('app-preview-version')).not.toBeInTheDocument();
 
-			await userEvent.click(getByTestId('app-preview-mode-browse'));
+			await userEvent.click(getByTestId('app-preview-select'));
 
 			expect(postMessage).toHaveBeenLastCalledWith(command('inspect:disable'), PREVIEW_ORIGIN);
+			expect(getByTestId('app-preview-select')).toHaveAttribute('aria-pressed', 'false');
 			expect(queryByTestId('app-preview-inspect-hint')).not.toBeInTheDocument();
+			expect(getByTestId('app-preview-version')).toBeInTheDocument();
+		});
+
+		it('stops element selection with the cancel button', async () => {
+			const { getByTestId, queryByTestId, postMessage } = await renderInspectable();
+			await userEvent.click(getByTestId('app-preview-select'));
+
+			await userEvent.click(getByTestId('app-preview-inspect-cancel'));
+
+			expect(postMessage).toHaveBeenLastCalledWith(command('inspect:disable'), PREVIEW_ORIGIN);
+			expect(queryByTestId('app-preview-inspect-cancel')).not.toBeInTheDocument();
 		});
 
 		it('emits the picked element once and leaves selection mode', async () => {
 			const { getByTestId, queryByTestId, emitted, fromFrame } = await renderInspectable();
-			await userEvent.click(getByTestId('app-preview-mode-select'));
+			await userEvent.click(getByTestId('app-preview-select'));
 
 			fromFrame(selected());
 
@@ -393,12 +428,12 @@ describe('AppPreview', () => {
 				expect(queryByTestId('app-preview-inspect-hint')).not.toBeInTheDocument(),
 			);
 			expect(emitted('element-selected')).toEqual([[element]]);
-			expect(getByTestId('app-preview-mode-browse')).toHaveAttribute('aria-pressed', 'true');
+			expect(getByTestId('app-preview-select')).toHaveAttribute('aria-pressed', 'false');
 		});
 
 		it('leaves selection mode when the frame cancels it', async () => {
 			const { getByTestId, queryByTestId, emitted, fromFrame } = await renderInspectable();
-			await userEvent.click(getByTestId('app-preview-mode-select'));
+			await userEvent.click(getByTestId('app-preview-select'));
 
 			fromFrame(command('inspect:cancelled'));
 
@@ -414,7 +449,7 @@ describe('AppPreview', () => {
 			['another source', { ...selected(), source: 'other' }, PREVIEW_ORIGIN],
 		])('ignores a message from %s', async (_label, data, origin) => {
 			const { getByTestId, emitted, fromFrame } = await renderInspectable();
-			await userEvent.click(getByTestId('app-preview-mode-select'));
+			await userEvent.click(getByTestId('app-preview-select'));
 
 			fromFrame(data, origin);
 
@@ -431,12 +466,12 @@ describe('AppPreview', () => {
 			fromFrame(data);
 
 			expect(emitted('element-selected')).toBeUndefined();
-			expect(getByTestId('app-preview-mode-browse')).toHaveAttribute('aria-pressed', 'true');
+			expect(getByTestId('app-preview-select')).toHaveAttribute('aria-pressed', 'false');
 		});
 
 		it('ignores a message from another window', async () => {
 			const { getByTestId, emitted } = await renderInspectable();
-			await userEvent.click(getByTestId('app-preview-mode-select'));
+			await userEvent.click(getByTestId('app-preview-select'));
 
 			window.dispatchEvent(
 				new MessageEvent('message', { data: selected(), origin: PREVIEW_ORIGIN, source: window }),
@@ -447,7 +482,7 @@ describe('AppPreview', () => {
 
 		it('stops selection with Escape', async () => {
 			const { getByTestId, queryByTestId, postMessage } = await renderInspectable();
-			await userEvent.click(getByTestId('app-preview-mode-select'));
+			await userEvent.click(getByTestId('app-preview-select'));
 
 			await userEvent.keyboard('{Escape}');
 
@@ -457,7 +492,7 @@ describe('AppPreview', () => {
 
 		it('starts selection again after the frame reloads', async () => {
 			const { getByTestId, frame, postMessage } = await renderInspectable();
-			await userEvent.click(getByTestId('app-preview-mode-select'));
+			await userEvent.click(getByTestId('app-preview-select'));
 			postMessage.mockClear();
 
 			await fireEvent.load(frame);
