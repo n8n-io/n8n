@@ -19,8 +19,9 @@ Flag:
   recreation;
 - the same SQLite table recreated more than once in one migration;
 - a CHECK added to a busy Postgres table without `NOT VALID`;
-- a `NOT VALID` constraint with no later migration that runs
-  `VALIDATE CONSTRAINT`;
+- a `NOT VALID` constraint with no migration in a later release that runs
+  `VALIDATE CONSTRAINT`. On Postgres, all pending migrations run in one
+  transaction, so a validation in the same release keeps the lock;
 - an index built on a busy table with no measured build time in the PR;
 - a `LIKE '%…%'` scan over a JSON column;
 - a large blob column added to a busy table.
