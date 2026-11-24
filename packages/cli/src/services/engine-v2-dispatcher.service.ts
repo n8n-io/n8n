@@ -306,7 +306,7 @@ export class EngineV2Dispatcher {
 		// shows its run from `flattedRunData`. v1 reports no run of it either.
 		const reusedTrigger =
 			trigger.name !== undefined &&
-			runData[trigger.name] !== undefined &&
+			Object.hasOwn(runData, trigger.name) &&
 			data.triggerToStartFrom?.data === undefined;
 
 		this.pushRegistry.register(executionId, {
