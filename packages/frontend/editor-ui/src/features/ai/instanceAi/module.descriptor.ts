@@ -12,6 +12,7 @@ import { INSTANCE_AI_MODALS } from './modals';
 import {
 	INSTANCE_AI_VIEW,
 	INSTANCE_AI_THREAD_VIEW,
+	INSTANCE_AI_THREAD_SESSION_VIEW,
 	INSTANCE_AI_SETTINGS_VIEW,
 	INSTANCE_AI_NEW_VIEW,
 	INSTANCE_AI_THREADS_VIEW,
@@ -85,6 +86,8 @@ const InstanceAiView = async () => await import('./InstanceAiView.vue');
 const InstanceAiEmptyView = async () => await import('./InstanceAiEmptyView.vue');
 const InstanceAiThreadRouteView = async () => await import('./InstanceAiThreadRouteView.vue');
 const InstanceAiThreadsView = async () => await import('./InstanceAiThreadsView.vue');
+const AssistantAgentSessionView = async () =>
+	await import('./assistantAgent/AssistantAgentSessionView.vue');
 const SettingsInstanceAiView = async () => await import('./views/SettingsInstanceAiView.vue');
 
 const SelfHealingConfigView = async () =>
@@ -222,6 +225,12 @@ export const InstanceAiModule = defineFrontendModule({
 					name: INSTANCE_AI_THREAD_VIEW,
 					path: ':threadId',
 					component: InstanceAiThreadRouteView,
+					props: true,
+				},
+				{
+					name: INSTANCE_AI_THREAD_SESSION_VIEW,
+					path: ':threadId/session',
+					component: AssistantAgentSessionView,
 					props: true,
 				},
 			],

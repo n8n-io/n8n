@@ -5,6 +5,7 @@ import {
 	type AppResponse,
 	type AppVersionResponse,
 } from '@n8n/api-types';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, waitFor } from '@testing-library/vue';
@@ -97,6 +98,7 @@ describe('AppPreview', () => {
 	});
 
 	afterEach(() => {
+		capabilityRegistry.clear();
 		vi.clearAllMocks();
 		vi.restoreAllMocks();
 		vi.useRealTimers();
@@ -118,6 +120,18 @@ describe('AppPreview', () => {
 		expect(createAppPreview).toHaveBeenCalledWith(expect.anything(), 'project-1', 'app-1', 'v2');
 		expect(getByTestId('app-preview-version')).toHaveTextContent('Label v2');
 		expect(getByTestId('app-preview-status')).toHaveTextContent('Build failed');
+	});
+
+	it('shows the feedback button under the preview when the app has no build', async () => {
+		capabilityRegistry.provide(
+			capabilities.appsFeedbackFormUrl,
+			() => 'https://forms.example.com/apps-feedback',
+		);
+		vi.mocked(listAppVersions).mockResolvedValue([]);
+		const { findByTestId, getByTestId } = renderComponent({ props: { app: app(null) } });
+
+		expect(await findByTestId('app-preview-empty')).toBeInTheDocument();
+		expect(getByTestId('app-preview-feedback')).toHaveTextContent('Give feedback');
 	});
 
 	it('shows an empty state when the app has no build', async () => {

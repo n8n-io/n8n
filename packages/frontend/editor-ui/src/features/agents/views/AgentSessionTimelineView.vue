@@ -5,7 +5,6 @@ import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentSessionStop } from '../composables/useAgentSessionStop';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { MODAL_CONFIRM } from '@/app/constants';
-import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useAgentProjectBreadcrumb } from '@/features/agents/composables/useAgentProjectBreadcrumb';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import {
@@ -18,6 +17,8 @@ import { useAgentSessionLangSmithExport } from '@/features/agents/composables/us
 import { useAgentSessionUsage } from '@/features/agents/composables/useAgentSessionUsage';
 import { useAgentExecutionUpdates } from '@/features/agents/composables/useAgentExecutionUpdates';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
+import { formatSessionDateTime } from '@/features/agents/utils/timeline-time';
+import { formatDuration, threadTokenBreakdownOf } from '@/features/agents/session-timeline.utils';
 import {
 	defaultAgentSessionFilters,
 	type AgentExecution,
@@ -249,7 +250,7 @@ const sessionOptions = computed<Array<DropdownMenuItemProps<string, SessionDropd
 		label: truncate(threadTitleOf(session), 64),
 		class: session.id === threadId.value ? 'session-dropdown-item-active' : undefined,
 		data: {
-			date: formatDate(session.updatedAt),
+			date: formatSessionDateTime(session.updatedAt),
 			active: session.id === threadId.value,
 		},
 	}));
@@ -288,6 +289,7 @@ const sessionMetadata = computed<SessionTimelineMetadata>(() => ({
 		label: triggerLabel.value,
 	},
 	totalTokens: totalTokens.value,
+	usage: threadTokenBreakdownOf(executions.value),
 	totalCost: totalCost.value,
 	durationLabel: durationLabel.value,
 }));
@@ -309,18 +311,6 @@ watch(
 	},
 	{ immediate: true },
 );
-
-function formatDuration(ms: number): string {
-	if (!Number.isFinite(ms) || ms <= 0) return '';
-	if (ms < 1000) return `${ms}ms`;
-	return `${(ms / 1000).toFixed(1)}s`;
-}
-
-function formatDate(fullDate: string): string {
-	if (!fullDate) return '';
-	const { date, time } = convertToDisplayDate(fullDate);
-	return `${date} ${time}`;
-}
 
 const closeTimeline = useBackOrFallback(() => ({
 	name: AGENT_SESSIONS_LIST_VIEW,

@@ -113,6 +113,7 @@ export class WorkflowReviewInboxService {
 			viewerCanDecide: eligibility.canDecide,
 			viewerDecisionIneligibilityReason: eligibility.decisionIneligibilityReason,
 			viewerCanComment: eligibility.canComment,
+			viewerCanClose: eligibility.canClose,
 		};
 	}
 
