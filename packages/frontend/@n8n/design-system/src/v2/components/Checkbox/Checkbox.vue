@@ -122,7 +122,7 @@ function onUpdate(value: boolean | 'indeterminate') {
 	cursor: inherit;
 
 	&[data-disabled] {
-		color: var(--color--text--tint-1);
+		color: var(--checkbox--label--color--disabled);
 	}
 }
 </style>
