@@ -752,6 +752,7 @@ export class SkillSourceService {
 		sourceId: string,
 		{ keepSkills = false, onlySkillId }: DeleteSkillSourceQueryDto = {},
 	): Promise<void> {
+		this.skillService.assertWritable();
 		await this.flagGate.assertEnabled(user);
 		const source = isUuid(sourceId) ? await this.sourceRepository.findById(sourceId) : null;
 		if (!source || !(await this.skillAccess.canOnSource(user, source, 'view'))) {

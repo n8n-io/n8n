@@ -1,4 +1,5 @@
 import {
+	ImportBlockedErrorDto,
 	isWorkflowPublishBlockedDetails,
 	PROMOTIONS_WORKFLOWS_MOVED_CROSS_PROJECT_CODE,
 } from '@n8n/api-types';
@@ -6,6 +7,7 @@ import {
 import { RestErrorKind, type RestErrorDescriptor } from './rest-error-classifier';
 
 const GENERIC_PUBLIC_MESSAGE = 'Internal server error';
+const skillImportFailureSchema = ImportBlockedErrorDto.schema.pick({ skills: true, counts: true });
 
 export type InternalRestErrorBody = {
 	code: number;
@@ -29,6 +31,8 @@ export function serializePublicApiError(descriptor: RestErrorDescriptor): {
 			if (descriptor.meta?.issues !== undefined) {
 				body.issues = descriptor.meta.issues;
 			}
+			const skillResults = skillImportFailureSchema.safeParse(descriptor.meta);
+			if (skillResults.success) Object.assign(body, skillResults.data);
 			// Same reasoning for policy violations: the caller is the one who has to fix
 			// them, so the whole list travels with the response rather than the message alone.
 			if (descriptor.meta?.violations !== undefined) {

@@ -1,6 +1,6 @@
 import { skillNameKey, type ImportedSkillSummary } from '@n8n/api-types';
 import { Container } from '@n8n/di';
-import { BadRequestError, UnprocessableRequestError } from '@n8n/errors';
+import { BadRequestError } from '@n8n/errors';
 
 import { countSkillOutcomes, type StandaloneSkillPlan } from '../entities/skill/skill-import.types';
 import type { ImportRequest, ImportResult } from '../n8n-packages.types';
@@ -8,6 +8,7 @@ import type { PackageManifest } from '../spec/manifest.schema';
 import type { SerializedSkill } from '../spec/serialized/skill.schema';
 import { assertPackageImportApiKeyScopes, assertSharedSkillWritesAllowed } from './import-gates';
 import type { ImportPlan } from './import-orchestrator';
+import { SkillImportFailedError } from './import-blocked.error';
 
 export async function planStandaloneSkills(
 	request: ImportRequest,
@@ -139,15 +140,5 @@ export function addSkillResults(
 
 export function throwWithSkillResults(error: unknown, skills: ImportedSkillSummary[]): never {
 	if (!skills.some(({ status }) => ['created', 'updated', 'deleted'].includes(status))) throw error;
-	const failure = new UnprocessableRequestError(
-		'Package import failed after Skill changes were saved.',
-		undefined,
-		{
-			skills,
-			issues: [],
-			counts: { skills: countSkillOutcomes(skills) },
-		},
-	);
-	failure.cause = error;
-	throw failure;
+	throw new SkillImportFailedError(error, skills);
 }

@@ -367,6 +367,16 @@ describe('N8nClient packages', () => {
 	});
 
 	describe('exportPackage', () => {
+		it.each([{ skillIds: ['skill-1'] }, { projectIds: ['project-1'], includeSkills: true }])(
+			'forwards the Skill export options %j',
+			async (fields) => {
+				fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+				await client.exportPackage(fields);
+				const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+				expect(JSON.parse(init.body as string)).toEqual(fields);
+			},
+		);
+
 		it('posts Agent and workflow IDs as JSON and returns the archive bytes', async () => {
 			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1, 2, 3])));
 

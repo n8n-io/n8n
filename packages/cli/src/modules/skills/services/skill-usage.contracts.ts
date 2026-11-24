@@ -53,6 +53,7 @@ export abstract class SkillUsage {
 		oldName: string,
 		newName: string,
 		ctx: OperationContext,
+		plannedNames?: ReadonlyMap<string, string>,
 	): Promise<void>;
 
 	/** The agents whose drafts follow the latest skill version. Write no agent data. */

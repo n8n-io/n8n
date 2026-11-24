@@ -44,8 +44,9 @@ Provide at least one `--skill-id`, `--agent-id`, `--workflow-id`, `--folder-id`,
 Explicit Agent selections require `agent:export`. Workflow and folder selections
 require `workflow:export`. Mixed selections require both grants. Whole-project
 exports require `project:export`, including projects with Agents.
-Explicit Skill selection and `--include-skills` also require `skill:read`.
-The caller must have read access to each exported Skill.
+Explicit Skill selection and `--include-skills` also require the `skill:read` API-key grant.
+The caller must separately have `projectSkill:read` permission on each selected
+project, or read access to the selected instance Skill.
 
 Export summaries include Agent counts from the server, including added dependencies.
 JSON output includes these counts and the selected Agent IDs.

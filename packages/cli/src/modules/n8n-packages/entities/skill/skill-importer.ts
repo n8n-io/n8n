@@ -1,7 +1,7 @@
 import { skillNameKey, type ImportedSkillSummary } from '@n8n/api-types';
 import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ConflictError, ForbiddenError, UserError, UnprocessableRequestError } from '@n8n/errors';
+import { ConflictError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { createHash } from 'node:crypto';
 
 import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
@@ -21,7 +21,6 @@ import {
 
 import {
 	skillIssue,
-	countSkillOutcomes,
 	type SkillImportPlan,
 	type SkillWrite,
 	type StandaloneSkillPlan,
@@ -34,6 +33,7 @@ import type {
 	AgentPlanItem,
 } from '../agent/agent-import.types';
 import { decideImportConflictAction } from '../import-conflict-policy';
+import { SkillImportFailedError } from '../../engine/import-blocked.error';
 
 /** `id` and `name` are the skill ID and the skill name the Agents use after the import. */
 type SkillDecision =
@@ -101,7 +101,8 @@ export class SkillImporter {
 				continue;
 			}
 			if (row && !(await this.skillAccess.canAccess(user, target, 'read'))) {
-				throw new ForbiddenError('You cannot read the destination Skill.');
+				issue(skill.id, 'You cannot read the destination Skill.');
+				continue;
 			}
 			if (row && (await this.skillService.isSourceManaged(skill.id))) {
 				issue(skill.id, 'The destination Skill is managed by a source.');
@@ -116,16 +117,19 @@ export class SkillImporter {
 			if (row) plan.checked.push(row);
 			if (decision.kind === 'write') {
 				const problem = row
-					? await this.renameProblem(skill.id, target, row.skill.name, skill.skill.name)
+					? undefined
 					: await this.createNameProblem(skill.id, target, skill.skill.name);
 				if (problem) issue(skill.id, problem);
 				if (!claimName(names, decision.write))
 					issue(skill.id, 'Two selected Skills have the same name in this scope.');
-				await this.assertCanWrite(
-					user,
-					[decision.write],
-					target.projectId !== null && options.pendingProjectIds?.has(target.projectId),
-				);
+				if (
+					!(await this.canWrite(
+						user,
+						decision.write,
+						target.projectId !== null && options.pendingProjectIds?.has(target.projectId) === true,
+					))
+				)
+					issue(skill.id, 'You cannot create or edit this Skill.');
 				addWrite(plan.writes, decision.write, skill.id, []);
 			}
 			plan.outcomes.push({
@@ -144,6 +148,21 @@ export class SkillImporter {
 				followingAgentCount: row ? await this.skillService.countFollowingAgents(row.id) : 0,
 			});
 		}
+		const plannedNames = new Map(
+			plan.writes.shared.map(({ skill }) => [skill.id, skill.skill.name]),
+		);
+		for (const { skill, target, base } of plan.writes.shared) {
+			const row = existing.get(skill.id);
+			if (!base || !row) continue;
+			const problem = await this.renameProblem(
+				skill.id,
+				target,
+				row.skill.name,
+				skill.skill.name,
+				plannedNames,
+			);
+			if (problem) issue(skill.id, problem);
+		}
 		for (const id of new Set(deletedSkillIds)) {
 			const row = existing.get(id);
 			if (!row) {
@@ -158,15 +177,22 @@ export class SkillImporter {
 				issue(id, 'The Skill is outside the selected destination projects.');
 				continue;
 			}
-			await this.skillAccess.requireAccess(user, id, 'delete');
 			try {
-				await this.skillService.assertCanDelete(user, id);
+				await this.skillAccess.requireAccess(user, id, 'delete');
+				await this.skillService.assertCanDelete(id);
 				if (await this.skillService.isSourceManaged(id)) {
 					issue(id, 'The destination Skill is managed by a source.');
 					continue;
 				}
 			} catch (error) {
-				if (!(error instanceof ConflictError)) throw error;
+				if (
+					!(
+						error instanceof ConflictError ||
+						error instanceof ForbiddenError ||
+						error instanceof NotFoundError
+					)
+				)
+					throw error;
 				issue(id, error.message);
 				continue;
 			}
@@ -181,7 +207,14 @@ export class SkillImporter {
 				followingAgentCount: 0,
 			});
 		}
-		if (plan.writes.shared.length || plan.removals.length) this.skillService.assertWritable();
+		if (plan.writes.shared.length) {
+			try {
+				this.skillService.assertWritable();
+			} catch (error) {
+				if (!(error instanceof ForbiddenError)) throw error;
+				for (const { skill } of plan.writes.shared) issue(skill.id, error.message);
+			}
+		}
 		return plan;
 	}
 
@@ -191,6 +224,7 @@ export class SkillImporter {
 		if (plan.outcomes.length === 0) return [];
 		if (!this.skillsGate.isEnabled) throw new UserError('Skills are unavailable on this instance.');
 		await this.assertCanWrite(user, plan.writes.shared);
+		for (const row of plan.removals) await this.skillAccess.requireAccess(user, row.id, 'delete');
 		const following = await this.transactionRunner.run({}, async (ctx) => {
 			await this.skillRuntime.lockForEdit(
 				plan.checked.map(({ id }) => id),
@@ -216,23 +250,13 @@ export class SkillImporter {
 			const followingIds: string[] = [];
 			for (const write of plan.writes.shared)
 				followingIds.push(...(await this.write(user, write, ctx)));
-			for (const row of plan.removals) await this.skillService.deleteChecked(user, row, ctx);
+			for (const row of plan.removals) await this.skillService.deleteChecked(row, ctx);
 			return followingIds;
 		});
 		try {
 			await this.skillService.refreshFollowingAgents([...new Set(following)]);
 		} catch (error) {
-			const failure = new UnprocessableRequestError(
-				'Skill changes were saved, but consumers could not be refreshed.',
-				undefined,
-				{
-					skills: plan.outcomes,
-					counts: { skills: countSkillOutcomes(plan.outcomes) },
-					issues: [],
-				},
-			);
-			failure.cause = error;
-			throw failure;
+			throw new SkillImportFailedError(error, plan.outcomes);
 		}
 		return plan.outcomes;
 	}
@@ -405,9 +429,10 @@ export class SkillImporter {
 		target: SkillTarget,
 		oldName: string,
 		newName: string,
+		plannedNames?: ReadonlyMap<string, string>,
 	): Promise<string | undefined> {
 		try {
-			await this.skillService.assertCanRename(skillId, target, oldName, newName);
+			await this.skillService.assertCanRename(skillId, target, oldName, newName, {}, plannedNames);
 			return undefined;
 		} catch (error) {
 			if (error instanceof UserError || error instanceof ConflictError) return error.message;

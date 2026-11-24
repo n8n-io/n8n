@@ -69,8 +69,9 @@ export class SkillUsageProxy extends SkillUsage {
 		oldName: string,
 		newName: string,
 		ctx: OperationContext = {},
+		plannedNames?: ReadonlyMap<string, string>,
 	) {
-		await this.impl?.assertRenameKeepsNamesApart(skillId, oldName, newName, ctx);
+		await this.impl?.assertRenameKeepsNamesApart(skillId, oldName, newName, ctx, plannedNames);
 	}
 
 	async findFollowingAgentIds(skillId: string, ctx: OperationContext = {}) {

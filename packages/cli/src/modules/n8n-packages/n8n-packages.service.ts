@@ -645,14 +645,6 @@ export class N8nPackagesService {
 		{ allowAgents = false } = {},
 	): Promise<PackageManifest> {
 		const manifest = await this.packageParser.getManifest(reader);
-		if (manifest.skills?.length) {
-			const { SkillsGate } = await import('../skills/index.js');
-			if (!Container.get(SkillsGate).isEnabled) {
-				throw new BadRequestError(
-					'Skills are unavailable. The requested import cannot be completed.',
-				);
-			}
-		}
 		if (manifest.agents?.length) {
 			if (!allowAgents) {
 				throw new BadRequestError('Agent packages require the ordinary archive import endpoint.');
@@ -660,6 +652,14 @@ export class N8nPackagesService {
 
 			if (!this.moduleRegistry.isActive('agents')) {
 				throw new BadRequestError('The Agents module is not enabled.');
+			}
+		}
+		if (manifest.skills?.length) {
+			const { SkillsGate } = await import('../skills/index.js');
+			if (!Container.get(SkillsGate).isEnabled) {
+				throw new BadRequestError(
+					'Skills are unavailable. The requested import cannot be completed.',
+				);
 			}
 		}
 

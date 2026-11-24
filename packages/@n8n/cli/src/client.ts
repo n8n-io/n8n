@@ -797,6 +797,8 @@ export class N8nClient {
 	async exportPackage(fields: ExportPackageFields): Promise<ExportPackageResult> {
 		// Empty collections are dropped so the API's per-field "at least one" rule isn't tripped.
 		const body: ExportPackageFields = {};
+		if (fields.skillIds?.length) body.skillIds = fields.skillIds;
+		if (fields.includeSkills) body.includeSkills = true;
 		if (fields.agentIds?.length) body.agentIds = fields.agentIds;
 		if (fields.workflowIds?.length) body.workflowIds = fields.workflowIds;
 		if (fields.folderIds?.length) body.folderIds = fields.folderIds;

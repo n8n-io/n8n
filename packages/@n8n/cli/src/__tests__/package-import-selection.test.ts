@@ -138,6 +138,8 @@ describe('package import-selection command', () => {
 				'--selected-project-id=sp-1',
 				'--selected-workflow-ids=w-1,w-2',
 				'--deleted-workflow-ids=w-3,w-4',
+				'--selected-skill-ids=s-1,s-2',
+				'--deleted-skill-ids=s-3,s-4',
 			]);
 
 			expect(importPackageSelection).toHaveBeenCalledWith(
@@ -145,6 +147,8 @@ describe('package import-selection command', () => {
 				expect.objectContaining({
 					selectedWorkflowIds: ['w-1', 'w-2'],
 					deletedWorkflowIds: ['w-3', 'w-4'],
+					selectedSkillIds: ['s-1', 's-2'],
+					deletedSkillIds: ['s-3', 's-4'],
 				}),
 			);
 		});
@@ -155,6 +159,10 @@ describe('package import-selection command', () => {
 				'--selected-project-id=sp-1',
 				'--selected-workflow-ids=w-1',
 				'--selected-workflow-ids=w-2',
+				'--selected-skill-ids=s-1',
+				'--selected-skill-ids=s-2',
+				'--deleted-skill-ids=s-3',
+				'--deleted-skill-ids=s-4',
 				'--conflict-policy=skip',
 				'--id-policy=source',
 			]);
@@ -164,6 +172,8 @@ describe('package import-selection command', () => {
 				expect.objectContaining({
 					selectedWorkflowIds: ['w-1', 'w-2'],
 					conflictPolicy: 'skip',
+					selectedSkillIds: ['s-1', 's-2'],
+					deletedSkillIds: ['s-3', 's-4'],
 					idPolicy: 'source',
 				}),
 			);
@@ -219,22 +229,4 @@ describe('package import-selection command', () => {
 			);
 		});
 	});
-});
-
-it('forwards a Skill-only selection and explicit removals', async () => {
-	const { command, importPackageSelection } = stubCommand({
-		file: '/tmp/skills.n8np',
-		selectedProjectId: 'project',
-		selectedSkillIds: ['one'],
-		deletedSkillIds: ['two'],
-	});
-	await command.run();
-	expect(importPackageSelection).toHaveBeenCalledWith(
-		expect.anything(),
-		expect.objectContaining({
-			selectedWorkflowIds: [],
-			selectedSkillIds: ['one'],
-			deletedSkillIds: ['two'],
-		}),
-	);
 });

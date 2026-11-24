@@ -1,6 +1,34 @@
-import { ConflictError, UnprocessableRequestError } from '@n8n/errors';
+import type { ImportedSkillSummary } from '@n8n/api-types';
+import { ConflictError, ResponseError, UnprocessableRequestError, UserError } from '@n8n/errors';
 
+import { countSkillOutcomes } from '../entities/skill/skill-import.types';
 import type { BlockingIssue } from '../n8n-packages.types';
+
+/** Keep the failure and the committed changes in the same response. */
+export class SkillImportFailedError extends ResponseError {
+	override readonly meta: Record<string, unknown>;
+
+	constructor(cause: unknown, skills: ImportedSkillSummary[]) {
+		const response = cause instanceof ResponseError ? cause : undefined;
+		super(
+			response && response.httpStatusCode < 500
+				? response.message
+				: cause instanceof UserError
+					? cause.message
+					: 'Package import failed after Skill changes were saved.',
+			response?.httpStatusCode ?? (cause instanceof UserError ? 400 : 500),
+			response?.errorCode,
+			response?.hint,
+			cause,
+		);
+		this.meta = {
+			issues: [],
+			...(response?.metaIsInternal ? {} : response?.meta),
+			skills,
+			counts: { skills: countSkillOutcomes(skills) },
+		};
+	}
+}
 
 export function toImportBlockedError(
 	issues: BlockingIssue[],

@@ -9,7 +9,8 @@ import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-
 import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
-import { SkillService } from '@/modules/skills';
+import { SkillAccessService, SkillService } from '@/modules/skills';
+import { ForbiddenError } from '@n8n/errors';
 import {
 	createSkill,
 	createSkillVersion,
@@ -43,6 +44,11 @@ const content = {
 	frontmatter: { license: 'MIT', metadata: { audience: 'team' } },
 	files: [{ path: 'references/style.md', content: '# Style\nUse short sentences.\n' }],
 };
+const agentSchema = storedAgentConfig({
+	name: 'Test agent',
+	model: 'openai/gpt-4.1-mini',
+	instructions: 'Use the attached Skills.',
+});
 
 beforeAll(async () => {
 	await testModules.loadModules(['skills', 'agents', 'n8n-packages']);
@@ -68,8 +74,8 @@ afterAll(async () => {
 async function archive(skills: SerializedSkill[], version = '2') {
 	const writer = new TarPackageWriter();
 	for (const skill of skills)
-		await writer.writeFile(`skills/${skill.id}/skill.json`, JSON.stringify(skill));
-	await writer.writeFile(
+		writer.writeFile(`skills/${skill.id}/skill.json`, JSON.stringify(skill));
+	writer.writeFile(
 		'manifest.json',
 		JSON.stringify({
 			packageFormatVersion: version,
@@ -163,6 +169,53 @@ it('updates content and names through a new local version', async () => {
 	});
 });
 
+it('normalizes names before comparing content and rejects blank names before writes', async () => {
+	const skill = packaged();
+	skill.skill.name = `  ${content.name}  `;
+	const buffer = await archive([skill]);
+	await importSkills(buffer);
+	const repeated = await importSkills(buffer, { conflictPolicy: 'fail' });
+	expect(repeated.counts.skills).toMatchObject({ unchanged: 1, updated: 0 });
+	expect(await findLatestSkillVersion(skill.id)).toMatchObject({ name: content.name, version: 1 });
+	const blank = packaged('blank');
+	blank.skill.name = '   ';
+	await expect(importSkills(await archive([packaged('new'), blank]))).rejects.toThrow();
+	expect(await findSkillIds()).toEqual([skill.id]);
+});
+
+it('reports batch rename conflicts across scopes before applying the plan', async () => {
+	const projectSkill = packaged('project-skill');
+	const instanceSkill = packaged('instance-skill', 'instance');
+	instanceSkill.skill.name = 'Instance guide';
+	await importSkills(await archive([projectSkill, instanceSkill]));
+	const follower = await createAgent({ projectId: destination.id, schema: agentSchema });
+	await Container.get(AgentSkillRefsService).replaceDraftRefs(
+		follower,
+		[
+			{ type: 'skill', id: projectSkill.id },
+			{ type: 'skill', id: instanceSkill.id },
+		],
+		{},
+	);
+	projectSkill.skill.name = instanceSkill.skill.name = 'New guide';
+	const importer = Container.get(SkillImporter);
+	const plan = await importer.planStandalone(
+		owner,
+		[projectSkill, instanceSkill].map((skill) => ({ skill, projectId: destination.id })),
+		[],
+		'new-version',
+	);
+	expect(plan.issues).toEqual([
+		expect.objectContaining({ type: 'skill-conflict', skillId: projectSkill.id }),
+		expect.objectContaining({ type: 'skill-conflict', skillId: instanceSkill.id }),
+	]);
+	await expect(importer.applyStandalone(owner, plan)).rejects.toThrow(
+		'Resolve the Skill conflicts',
+	);
+	for (const { id } of [projectSkill, instanceSkill])
+		expect(await findLatestSkillVersion(id)).toMatchObject({ version: 1 });
+});
+
 it('imports only the explicit selection and preserves unrelated Skills', async () => {
 	await createSkill({
 		id: 'unselected',
@@ -205,14 +258,23 @@ it('requires the scope for each planned action', async () => {
 	expect(await findSkill('skill_one')).not.toBeNull();
 });
 
-it('rejects creation without resource permission', async () => {
+it('reports missing resource permission as a plan issue', async () => {
 	const member = await createMember();
+	const plan = await Container.get(SkillImporter).planStandalone(
+		member,
+		[{ skill: packaged('instance', 'instance'), projectId: null }],
+		[],
+		'new-version',
+	);
+	expect(plan.issues).toEqual([
+		expect.objectContaining({ type: 'skill-conflict', skillId: 'instance' }),
+	]);
 	await expect(
 		importSkills(await archive([packaged('instance', 'instance')]), {
 			user: member,
 			projectId: undefined,
 		}),
-	).rejects.toThrow();
+	).rejects.toThrow('Import blocked');
 	expect(await findSkillIds()).toEqual([]);
 });
 
@@ -225,6 +287,18 @@ it('removes only explicitly selected destination Skills', async () => {
 	});
 	expect(result.counts.skills?.deleted).toBe(1);
 	expect(await findSkillIds()).toEqual(['keep']);
+});
+
+it('rechecks delete access before applying a reviewed plan', async () => {
+	await importSkills(await archive([packaged()]));
+	const importer = Container.get(SkillImporter);
+	const plan = await importer.planStandalone(owner, [], ['skill_one'], 'new-version');
+	expect(plan.issues).toEqual([]);
+	vi.spyOn(Container.get(SkillAccessService), 'requireAccess').mockRejectedValue(
+		new ForbiddenError('Access changed'),
+	);
+	await expect(importer.applyStandalone(owner, plan)).rejects.toThrow('Access changed');
+	expect(await findSkill('skill_one')).not.toBeNull();
 });
 
 it('rejects source-managed destinations before writes', async () => {
@@ -254,9 +328,16 @@ it('detects edits between planning and applying', async () => {
 });
 
 it('rejects ordinary imports and edits on a protected instance', async () => {
-	const { id } = await createSkill({ projectId: destination.id, content });
+	const { id } = await createSkill({
+		projectId: destination.id,
+		content: { ...content, name: 'Existing guide' },
+	});
 	Container.get(InstanceWriteAccessService).setReadOnly(true);
-	await expect(importSkills(await archive([packaged()]))).rejects.toThrow('protected instance');
+	await expect(importSkills(await archive([packaged()]))).rejects.toMatchObject({
+		meta: {
+			issues: [expect.objectContaining({ message: expect.stringContaining('protected instance') })],
+		},
+	});
 	await expect(Container.get(SkillService).delete(owner, id)).rejects.toThrow('protected instance');
 	expect(await findSkillIds()).toEqual([id]);
 });
@@ -275,8 +356,8 @@ it('keeps published pins and updates only consumers that follow latest', async (
 	const skill = packaged();
 	await importSkills(await archive([skill]));
 	const refs = Container.get(AgentSkillRefsService);
-	const follower = await createAgent({ projectId: destination.id, schema: storedAgentConfig({}) });
-	await refs.replaceDraftRefs(follower, [{ id: skill.id }], {});
+	const follower = await createAgent({ projectId: destination.id, schema: agentSchema });
+	await refs.replaceDraftRefs(follower, [{ type: 'skill', id: skill.id }], {});
 	const pins = await refs.versionSnapshot(follower, {});
 	const version = await Container.get(AgentHistoryRepository).saveVersion(
 		{
@@ -289,8 +370,12 @@ it('keeps published pins and updates only consumers that follow latest', async (
 		{},
 	);
 	await refs.pinVersion(version.versionId, pins, {});
-	const pinned = await createAgent({ projectId: destination.id, schema: storedAgentConfig({}) });
-	await refs.replaceDraftRefs(pinned, [{ id: skill.id, versionId: pins.get(skill.id)! }], {});
+	const pinned = await createAgent({ projectId: destination.id, schema: agentSchema });
+	await refs.replaceDraftRefs(
+		pinned,
+		[{ type: 'skill', id: skill.id, versionId: pins.get(skill.id)! }],
+		{},
+	);
 	skill.skill.instructions = 'Use the new guide.';
 	const importer = Container.get(SkillImporter);
 	const plan = await importer.planStandalone(
