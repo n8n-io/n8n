@@ -17,9 +17,7 @@ export class WorkflowToolAdapter extends WorkflowToolPort {
 	}
 
 	async check(projectId: string, workflowId: string): Promise<WorkflowToolCheck> {
-		const checked = await this.runner.check(projectId, workflowId);
-		// The module gets the verdict, never the workflow entity.
-		return checked.callable ? { callable: true } : checked;
+		return await this.runner.check(projectId, workflowId);
 	}
 
 	async describe(projectId: string, workflowId: string): Promise<WorkflowToolDescription> {

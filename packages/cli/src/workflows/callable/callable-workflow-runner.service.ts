@@ -48,7 +48,7 @@ export type CallableWorkflowRefusal =
 type CallableTrigger = ReturnType<typeof detectTriggerNode>;
 
 export type CallableWorkflowCheck =
-	| { callable: true; workflow: WorkflowEntity }
+	| { callable: true }
 	| { callable: false; reason: CallableWorkflowRefusal };
 
 /** A JSON schema of the tool input. It always describes an object. */
@@ -135,9 +135,8 @@ export class CallableWorkflowRunner {
 
 	async check(projectId: string, workflowId: string): Promise<CallableWorkflowCheck> {
 		const checked = await this.load(projectId, workflowId);
-		return 'reason' in checked
-			? { callable: false, reason: checked.reason }
-			: { callable: true, workflow: checked.workflow };
+		// The entity stays in the runner, so a caller cannot hand it to its module.
+		return 'reason' in checked ? { callable: false, reason: checked.reason } : { callable: true };
 	}
 
 	/** The name and the description are not versioned. The inputs come from the published version. */

@@ -234,13 +234,9 @@ describe('CallableWorkflowRunner', () => {
 
 		it('accepts a published workflow of the project with the right trigger', async () => {
 			const { runner, loader } = setup();
-			const workflow = makeWorkflow();
-			loader.loadWorkflow.mockResolvedValue(workflow);
+			loader.loadWorkflow.mockResolvedValue(makeWorkflow());
 
-			await expect(runner.check(PROJECT_ID, WORKFLOW_ID)).resolves.toEqual({
-				callable: true,
-				workflow,
-			});
+			await expect(runner.check(PROJECT_ID, WORKFLOW_ID)).resolves.toEqual({ callable: true });
 		});
 
 		it('passes on an unexpected error of the loader', async () => {
