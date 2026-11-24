@@ -216,6 +216,7 @@ describe('CredentialTypesTab', () => {
 
 		await waitFor(() => expect(accessCell(getByTestId)).toHaveTextContent('Restricted'));
 		expect(getByRole('combobox', { name: 'Filter by access' })).not.toHaveFocus();
+		await waitFor(() => expect(accessCell(getByTestId)).toHaveFocus());
 	});
 
 	it('shows the saved value again when the save fails', async () => {

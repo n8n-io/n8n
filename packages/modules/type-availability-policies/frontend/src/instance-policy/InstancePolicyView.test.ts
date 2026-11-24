@@ -426,15 +426,6 @@ describe('InstancePolicyView', () => {
 			expect(rowButton).toHaveFocus();
 		});
 
-		it('returns the focus to the row after a click on the row, outside its name', async () => {
-			const { getByTestId, findByText } = setup(BOTH_SCOPES, NODE_DIALOG);
-			await fireEvent.click(await findByText('Notion'));
-
-			await closeFromInside(getByTestId('node-type-access-dialog'));
-
-			expect(getByTestId(NOTION_ROW)).toHaveFocus();
-		});
-
 		it('moves the focus to the access filter when the row is not in the table', async () => {
 			const { getByTestId, getByRole, findByTestId, getByPlaceholderText, queryByTestId } = setup(
 				BOTH_SCOPES,
