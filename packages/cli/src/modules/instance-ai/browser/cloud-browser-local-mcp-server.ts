@@ -302,8 +302,8 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 	private userControlNotes: string[] = [];
 
 	/**
-	 * The logins the user chose to save, from every session that has ended, by site: whether the
-	 * login was saved. A site that is saved stays saved, also when a later save for it fails.
+	 * The logins the user chose to save, from every session that has ended, by site: what happened
+	 * to the login. A site that is saved stays saved, also when a later save for it fails.
 	 */
 	private readonly loginSaveResults = new Map<string, CloudBrowserLoginSaveStatus>();
 
