@@ -53,9 +53,11 @@ jobs:
           owner: n8n-io
           repositories: n8n-nodes-starter
           # Scope the token to what create-pull-request does: push the branch,
-          # open the PR.
+          # open the PR, and push the regenerated `.github/workflows/*` files, which
+          # GitHub rejects from an app token without the workflows permission.
           permission-contents: write
           permission-pull-requests: write
+          permission-workflows: write
 
       - name: Checkout n8n
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

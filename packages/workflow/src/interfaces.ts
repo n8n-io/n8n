@@ -1627,6 +1627,8 @@ export interface IPollFunctions
 	 * runs out, return what it has, and leave the rest to the next poll.
 	 */
 	getPollBudgetMs(): number;
+	/** Marks this poll as fetching in bounded batches, so it keeps its cursor when its run is refused. */
+	declareBoundedPoll?(): void;
 	__emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
 	getNodeParameter(
 		parameterName: string,

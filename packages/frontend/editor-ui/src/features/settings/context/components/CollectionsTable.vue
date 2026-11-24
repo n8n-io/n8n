@@ -2,8 +2,10 @@
 import { computed } from 'vue';
 import type { KnowledgeCollectionDto } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import { N8nBadge, N8nDataTableServer, N8nText } from '@n8n/design-system';
+import { N8nActionToggle, N8nBadge, N8nDataTableServer, N8nText } from '@n8n/design-system';
 import type { IconOrEmoji, TableHeader } from '@n8n/design-system';
+import { getResourcePermissions } from '@n8n/permissions';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
@@ -12,6 +14,10 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { splitName } from '@/features/collaboration/projects/projects.utils';
 
 type HomeProject = KnowledgeCollectionDto['homeProject'];
+type CollectionAction = 'edit' | 'delete';
+
+/** The fields of the action toggle item that this menu uses. */
+type CollectionActionItem = { value: CollectionAction; label: string; destructive?: boolean };
 
 const PERSONAL_ICON: IconOrEmoji = { type: 'icon', value: 'user' };
 
@@ -22,8 +28,51 @@ const props = defineProps<{
 	showEmpty?: boolean;
 }>();
 
+const emit = defineEmits<{
+	edit: [collection: KnowledgeCollectionDto];
+	delete: [collection: KnowledgeCollectionDto];
+}>();
+
 const i18n = useI18n();
 const projectsStore = useProjectsStore();
+const rbacStore = useRBACStore();
+
+function projectScopes(projectId: string) {
+	const personal = projectsStore.personalProject;
+	if (personal?.id === projectId) {
+		return personal.scopes;
+	}
+
+	return projectsStore.myProjects.find((project) => project.id === projectId)?.scopes;
+}
+
+// The server checks `agent:update` in the home project, or the global scope of an instance owner.
+function canChange(collection: KnowledgeCollectionDto): boolean {
+	const hasGlobalScope = rbacStore.hasScope('agent:update');
+	if (hasGlobalScope) {
+		return true;
+	}
+
+	const scopes = projectScopes(collection.homeProject.id);
+	return getResourcePermissions(scopes).agent?.update === true;
+}
+
+const rowActions = computed<CollectionActionItem[]>(() => [
+	{ value: 'edit', label: i18n.baseText('settings.context.collections.actions.edit') },
+	{
+		value: 'delete',
+		label: i18n.baseText('settings.context.collections.actions.delete'),
+		destructive: true,
+	},
+]);
+
+function onAction(collection: KnowledgeCollectionDto, action: CollectionAction) {
+	if (action === 'edit') {
+		emit('edit', collection);
+	} else {
+		emit('delete', collection);
+	}
+}
 
 function projectLabel(project: HomeProject): string {
 	if (project.id === projectsStore.personalProject?.id) {
@@ -92,6 +141,15 @@ const headers = computed<Array<TableHeader<KnowledgeCollectionDto>>>(() => [
 		width: 130,
 		disableSort: true,
 		resize: false,
+	},
+	{
+		title: '',
+		key: 'actions',
+		align: 'end',
+		width: 64,
+		disableSort: true,
+		resize: false,
+		value: () => undefined,
 	},
 ]);
 </script>
@@ -166,6 +224,18 @@ const headers = computed<Array<TableHeader<KnowledgeCollectionDto>>>(() => [
 					<TimeAgo :date="item.updatedAt" />
 				</N8nText>
 			</template>
+
+			<!-- A row the user cannot change has no menu. -->
+			<template #[`item.actions`]="{ item }">
+				<div v-if="canChange(item)" :class="$style.actions">
+					<N8nActionToggle
+						:actions="rowActions"
+						:aria-label="i18n.baseText('node.moreActions')"
+						data-test-id="collection-row-actions"
+						@action="(action: CollectionAction) => onAction(item, action)"
+					/>
+				</div>
+			</template>
 		</N8nDataTableServer>
 	</div>
 </template>
@@ -207,5 +277,10 @@ const headers = computed<Array<TableHeader<KnowledgeCollectionDto>>>(() => [
 
 .number {
 	font-variant-numeric: tabular-nums;
+}
+
+.actions {
+	display: flex;
+	justify-content: flex-end;
 }
 </style>

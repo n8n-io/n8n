@@ -5,6 +5,9 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
+
 import SettingsCollectionsView from './SettingsCollectionsView.vue';
 import { useCollectionsStore } from '../collections.store';
 
@@ -22,29 +25,53 @@ vi.mock('@n8n/composables/useToast', () => ({
 }));
 
 /**
- * The dialog is a page-local child. The stub shows its open state and buttons that play
- * the dialog's `saved` and `created` events back to the page.
+ * The dialog is a page-local child. The stub shows its open state, the collection it edits, and
+ * buttons that play the dialog's `saved` and `created` events back to the page.
  */
 const CollectionModalStub = {
-	props: ['open'],
+	props: ['open', 'collection'],
 	emits: ['saved', 'created', 'update:open'],
 	template: `
-		<div data-test-id="collection-modal-stub" :data-open="String(open)">
+		<div
+			data-test-id="collection-modal-stub"
+			:data-open="String(open)"
+			:data-collection="collection?.id ?? ''"
+		>
 			<button
 				data-test-id="collection-modal-stub-saved"
 				@click="$emit('saved', { id: 'c1', name: 'Customer support' })"
 			/>
 			<button
 				data-test-id="collection-modal-stub-created"
-				@click="$emit('created', { id: 'c1', name: 'Customer support' })"
+				@click="$emit('created', { id: 'c1', name: 'Customer support', homeProject: { id: 'p1' } })"
 			/>
 			<button data-test-id="collection-modal-stub-close" @click="$emit('update:open', false)" />
 		</div>
 	`,
 };
 
+/** The stub shows the collection it deletes and plays its `deleted` and `close` events back. */
+const DeleteCollectionDialogStub = {
+	props: ['collection'],
+	emits: ['deleted', 'close'],
+	template: `
+		<div data-test-id="collection-delete-dialog-stub" :data-collection="collection.id">
+			<button
+				data-test-id="collection-delete-dialog-stub-deleted"
+				@click="$emit('deleted', collection)"
+			/>
+			<button data-test-id="collection-delete-dialog-stub-close" @click="$emit('close')" />
+		</div>
+	`,
+};
+
 const renderView = createComponentRenderer(SettingsCollectionsView, {
-	global: { stubs: { CollectionModal: CollectionModalStub } },
+	global: {
+		stubs: {
+			CollectionModal: CollectionModalStub,
+			DeleteCollectionDialog: DeleteCollectionDialogStub,
+		},
+	},
 });
 
 function collection(id: string, name: string): KnowledgeCollectionDto {
@@ -64,6 +91,28 @@ function collection(id: string, name: string): KnowledgeCollectionDto {
 
 function rowNames(getAllByTestId: (id: string) => HTMLElement[]) {
 	return getAllByTestId('collection-name').map((cell) => cell.textContent?.trim());
+}
+
+/** One collection in a project where the user can edit agents, so its row has a menu. */
+async function renderWithEditableRow() {
+	mockedStore(useProjectsStore).myProjects = [
+		{ id: 'team-1', name: 'Support team', type: 'team', scopes: ['agent:update'] },
+	] as ProjectListItem[];
+	const collectionsStore = mockedStore(useCollectionsStore);
+	collectionsStore.collections = [collection('c1', 'Customer support')];
+	collectionsStore.count = 1;
+
+	const rendered = renderView();
+	await new Promise(process.nextTick);
+	return { ...rendered, collectionsStore };
+}
+
+async function pickRowAction(getByTestId: (id: string) => HTMLElement, action: 'edit' | 'delete') {
+	await userEvent.click(getByTestId('collection-row-actions').querySelector('button')!);
+	await waitFor(() =>
+		expect(document.querySelector(`[data-test-id="action-${action}"]`)).toBeInTheDocument(),
+	);
+	await userEvent.click(document.querySelector(`[data-test-id="action-${action}"]`)!);
 }
 
 describe('SettingsCollectionsView', () => {
@@ -101,14 +150,17 @@ describe('SettingsCollectionsView', () => {
 		expect(getByTestId('collection-modal-stub')).toHaveAttribute('data-open', 'true');
 	});
 
-	it('closes the dialog after a create', async () => {
+	it('closes the dialog and opens the new collection after a create', async () => {
 		const { getByTestId } = renderView();
 		await userEvent.click(getByTestId('collections-create-button'));
 
 		await userEvent.click(getByTestId('collection-modal-stub-created'));
 
 		expect(getByTestId('collection-modal-stub')).toHaveAttribute('data-open', 'false');
-		expect(push).not.toHaveBeenCalled();
+		expect(push).toHaveBeenCalledWith({
+			name: 'KnowledgeCollection',
+			params: { projectId: 'p1', collectionId: 'c1' },
+		});
 	});
 
 	it('closes the dialog on cancel', async () => {
@@ -202,5 +254,65 @@ describe('SettingsCollectionsView', () => {
 
 		expect(collectionsStore.fetchCollections).toHaveBeenCalledTimes(2);
 		await waitFor(() => expect(rowNames(getAllByTestId)).toEqual(['Customer support', 'Oldest']));
+	});
+
+	it('opens the dialog in edit mode for the collection of the row', async () => {
+		const { getByTestId } = await renderWithEditableRow();
+
+		await pickRowAction(getByTestId, 'edit');
+
+		const modal = getByTestId('collection-modal-stub');
+		expect(modal).toHaveAttribute('data-open', 'true');
+		expect(modal).toHaveAttribute('data-collection', 'c1');
+	});
+
+	it('reloads the list after an edit', async () => {
+		const { getByTestId, collectionsStore } = await renderWithEditableRow();
+		await pickRowAction(getByTestId, 'edit');
+
+		await userEvent.click(getByTestId('collection-modal-stub-saved'));
+
+		expect(collectionsStore.fetchCollections).toHaveBeenCalledTimes(2);
+	});
+
+	it('opens the create dialog with no collection after an edit', async () => {
+		const { getByTestId } = await renderWithEditableRow();
+		await pickRowAction(getByTestId, 'edit');
+		await userEvent.click(getByTestId('collection-modal-stub-close'));
+
+		await userEvent.click(getByTestId('collections-create-button'));
+
+		const modal = getByTestId('collection-modal-stub');
+		expect(modal).toHaveAttribute('data-open', 'true');
+		expect(modal).toHaveAttribute('data-collection', '');
+	});
+
+	it('opens the delete dialog for the collection of the row', async () => {
+		const { getByTestId, queryByTestId } = await renderWithEditableRow();
+		expect(queryByTestId('collection-delete-dialog-stub')).toBeNull();
+
+		await pickRowAction(getByTestId, 'delete');
+
+		expect(getByTestId('collection-delete-dialog-stub')).toHaveAttribute('data-collection', 'c1');
+	});
+
+	it('closes the delete dialog and reloads the list after a delete', async () => {
+		const { getByTestId, queryByTestId, collectionsStore } = await renderWithEditableRow();
+		await pickRowAction(getByTestId, 'delete');
+
+		await userEvent.click(getByTestId('collection-delete-dialog-stub-deleted'));
+
+		expect(queryByTestId('collection-delete-dialog-stub')).toBeNull();
+		expect(collectionsStore.fetchCollections).toHaveBeenCalledTimes(2);
+	});
+
+	it('closes the delete dialog on cancel without loading the list again', async () => {
+		const { getByTestId, queryByTestId, collectionsStore } = await renderWithEditableRow();
+		await pickRowAction(getByTestId, 'delete');
+
+		await userEvent.click(getByTestId('collection-delete-dialog-stub-close'));
+
+		expect(queryByTestId('collection-delete-dialog-stub')).toBeNull();
+		expect(collectionsStore.fetchCollections).toHaveBeenCalledTimes(1);
 	});
 });
