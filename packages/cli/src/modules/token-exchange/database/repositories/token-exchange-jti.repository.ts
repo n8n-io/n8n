@@ -46,7 +46,7 @@ export class TokenExchangeJtiRepository {
 		const tableName = this.escapedTableName;
 
 		if (this.dbType === 'postgresdb') {
-			const [row] = (await this.table.managerFor(ctx).query(
+			const [row] = await this.table.managerFor(ctx).query<Array<{ inserted: boolean }>>(
 				`WITH ins AS (
 					INSERT INTO ${tableName} (${esc('jti')}, ${esc('expiresAt')}, ${esc('createdAt')})
 					VALUES ($1, $2, NOW())
@@ -55,7 +55,7 @@ export class TokenExchangeJtiRepository {
 				)
 				SELECT EXISTS (SELECT 1 FROM ins) AS inserted`,
 				[jti, expiresAt],
-			)) as Array<{ inserted: boolean }>;
+			);
 
 			return row.inserted;
 		} else if (this.dbType === 'sqlite') {
@@ -95,7 +95,7 @@ export class TokenExchangeJtiRepository {
 		const tableName = this.escapedTableName;
 
 		if (this.dbType === 'postgresdb') {
-			const [row] = (await this.table.managerFor(ctx).query(
+			const [row] = await this.table.managerFor(ctx).query<Array<{ count: string | number }>>(
 				`WITH deleted AS (
 					DELETE FROM ${tableName}
 					WHERE ${esc('jti')} IN (
@@ -108,7 +108,7 @@ export class TokenExchangeJtiRepository {
 				)
 				SELECT COUNT(*) AS ${esc('count')} FROM deleted`,
 				[batchSize],
-			)) as Array<{ count: string | number }>;
+			);
 
 			return Number(row.count);
 		} else if (this.dbType === 'sqlite') {
