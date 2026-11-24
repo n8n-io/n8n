@@ -15,9 +15,17 @@ export function resolveBackendHealthEndpointPath(globalConfig: GlobalConfig): st
  * Prepends N8N_PATH (with proper slash normalization) so the browser
  * fetches the correct URL through a reverse proxy.
  *
- * N8N_PATH is always prepended, also when N8N_ENDPOINT_HEALTH is set, because
- * the backend always serves the health endpoint without N8N_PATH.
+ * Priority order:
+ * 1. N8N_ENDPOINT_HEALTH (if explicitly set) - absolute override
+ * 2. N8N_PATH + default health endpoint (if N8N_PATH is set)
+ * 3. Default health endpoint (/healthz)
  */
 export function resolveFrontendHealthEndpointPath(globalConfig: GlobalConfig): string {
-	return path.posix.join('/', globalConfig.path, globalConfig.endpoints.health);
+	const isHealthEndpointCustomized = process.env.N8N_ENDPOINT_HEALTH !== undefined;
+
+	if (!isHealthEndpointCustomized && globalConfig.path !== '/') {
+		return path.posix.join(globalConfig.path, globalConfig.endpoints.health);
+	}
+
+	return globalConfig.endpoints.health;
 }
