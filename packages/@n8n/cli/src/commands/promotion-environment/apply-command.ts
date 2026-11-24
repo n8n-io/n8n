@@ -143,12 +143,13 @@ export function environmentContinueCommand(environmentId: string): ContinueComma
  */
 export function selectionContinueCommand(
 	projectId: string,
-	{ workflowIds = [], folderIds = [] }: PromotionSelection,
+	{ workflowIds = [], folderIds = [], credentialIds = [] }: PromotionSelection,
 ): ContinueCommand {
 	return (result) =>
 		`n8n-cli promotion-environment apply-selection-continue ${shellQuote(projectId)}` +
 		workflowIds.map((id) => ` -w ${shellQuote(id)}`).join('') +
 		folderIds.map((id) => ` --folder ${shellQuote(id)}`).join('') +
+		credentialIds.map((id) => ` --credential-id ${shellQuote(id)}`).join('') +
 		expectedSourceArgs(result);
 }
 

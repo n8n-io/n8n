@@ -33,6 +33,10 @@ export default class PromotionEnvironmentApplySelectionContinue extends Promotio
 			description: 'Folder ID to apply (repeat for more than one)',
 			multiple: true,
 		}),
+		credentialId: Flags.string({
+			description: 'Credential ID to apply (repeat for more than one)',
+			multiple: true,
+		}),
 		...expectedSourceFlags({ required: true }),
 		...expectedPreviewRevisionFlag,
 		confirmDestructiveChanges: Flags.boolean({
@@ -47,7 +51,11 @@ export default class PromotionEnvironmentApplySelectionContinue extends Promotio
 		const expectedSource = toExpectedSource(flags);
 		// oclif enforces the required flags, so this only narrows the type.
 		if (!expectedSource) this.error('Pass all three --expected-* flags');
-		const selection = { workflowIds: flags.workflow, folderIds: flags.folder };
+		const selection = {
+			workflowIds: flags.workflow,
+			folderIds: flags.folder,
+			credentialIds: flags.credentialId,
+		};
 		await this.execute(async () => {
 			const result = await this.getClient(flags).continueApplyProjectSelection(
 				args.projectId,

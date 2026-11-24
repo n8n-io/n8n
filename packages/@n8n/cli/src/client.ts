@@ -135,6 +135,8 @@ export interface PromotionExpectedSource {
 export interface PromotionSelection {
 	workflowIds?: string[];
 	folderIds?: string[];
+	/** Credentials that the project owns. They carry names and types, never secret values. */
+	credentialIds?: string[];
 }
 
 /** References in a package that must be set up on this instance before Apply can import it. */

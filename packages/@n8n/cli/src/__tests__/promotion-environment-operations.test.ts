@@ -459,6 +459,31 @@ describe('promotion-environment promote-selection command', () => {
 		);
 	});
 
+	it('sends the credential ids of --credential-id as credentialIds', async () => {
+		const command = new PromotionEnvironmentPromoteSelection([], {} as Config);
+		const internals = command as unknown as OperationInternals & {
+			parse: () => Promise<{ args: { projectId: string }; flags: Record<string, unknown> }>;
+		};
+		const promoteProjectSelection = vi.fn().mockResolvedValue(PROMOTE_SELECTION_RESULT);
+		vi.spyOn(internals, 'parse').mockResolvedValue({
+			args: { projectId: 'proj-1' },
+			flags: { credentialId: ['c-1', 'c-2'] },
+		});
+		vi.spyOn(internals, 'getClient').mockReturnValue({
+			promoteProjectSelection,
+		} as unknown as N8nClient);
+		vi.spyOn(internals, 'succeed').mockImplementation(() => {});
+
+		await command.run();
+
+		expect(promoteProjectSelection).toHaveBeenCalledWith(
+			'proj-1',
+			{ credentialIds: ['c-1', 'c-2'] },
+			undefined,
+			undefined,
+		);
+	});
+
 	it('passes the message flag as the commit message', async () => {
 		const command = new PromotionEnvironmentPromoteSelection([], {} as Config);
 		const internals = command as unknown as OperationInternals & {
@@ -640,6 +665,26 @@ describe('promotion-environment apply-selection command', () => {
 			`n8n-cli promotion-environment apply-selection-continue proj-1 -w wf-1 -w wf-2 --folder f-1 --expected-environment-id=env-1 --expected-branch=release --expected-commit-sha=${SHA}`,
 		);
 		expect(exit).toHaveBeenCalledWith(4);
+	});
+
+	it('resends the credential ids in the Continue command', async () => {
+		const { run, applyProjectSelection, logToStderr } = runApplySelection(BLOCKED_RESULT, {
+			format: 'table',
+			workflow: ['wf-1'],
+			credentialId: ['c-1', 'c-2'],
+		});
+
+		await run();
+
+		expect(applyProjectSelection).toHaveBeenCalledWith(
+			'proj-1',
+			{ workflowIds: ['wf-1'], credentialIds: ['c-1', 'c-2'] },
+			undefined,
+			undefined,
+		);
+		expect(logToStderr.mock.calls[0][0]).toContain(
+			'apply-selection-continue proj-1 -w wf-1 --credential-id c-1 --credential-id c-2 --expected-environment-id=env-1',
+		);
 	});
 });
 

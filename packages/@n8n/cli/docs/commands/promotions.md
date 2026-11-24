@@ -342,11 +342,15 @@ The table lists each changed resource:
 | `SELECTABLE` | `true` when you can select the resource. |
 
 To select a workflow, pass its ID to `-w`. To select a folder, pass its ID to
-`--folder`. Both flags work in `promote-selection` and `apply-selection`. The
-project is always included. You can't select a credential, data table,
-variable, or tag. To send one, select a workflow from its `USEDBY` column. With
+`--folder`. To select a credential, pass its ID to `--credential-id`. The flags
+work in `promote-selection` and `apply-selection`. The project is always
+included. You can select a credential only when `SELECTABLE` is `true`: the
+project owns it, and it is added or modified. Promote and Apply send its name,
+type, description, expression values, and the plain values that decide which
+fields show, never its secret values. You can't select a data table, variable, or
+tag. To send one, select a workflow from its `USEDBY` column. With
 `--format id-only`, the output lists the IDs of all types. Pass only the
-workflow and folder IDs to `-w` and `--folder`.
+workflow, folder, and credential IDs to `-w`, `--folder`, and `--credential-id`.
 
 When an open review holds the changes of the project, the command names the
 review and lists nothing. You can promote again when the review is merged or
@@ -410,6 +414,7 @@ instance Promote environment.
 n8n-cli promotion-environment promote-selection proj-abc -w wf-1 -w wf-2
 n8n-cli promotion-environment promote-selection proj-abc -w wf-1 -m "Promote checkout flow"
 n8n-cli promotion-environment promote-selection proj-abc --folder folder-1
+n8n-cli promotion-environment promote-selection proj-abc --credential-id cred-1
 n8n-cli promotion-environment promote-selection proj-abc
 n8n-cli promotion-environment promote-selection proj-abc -w wf-1 \
   --expected-preview-revision=<revision>
@@ -419,6 +424,7 @@ n8n-cli promotion-environment promote-selection proj-abc -w wf-1 \
 |------|-------------|
 | `-w, --workflow` | Workflow ID to promote. Repeat the flag for more than one. |
 | `--folder` | Folder ID to promote. Repeat the flag for more than one. |
+| `--credential-id` | ID of a credential that the project owns. Repeat the flag for more than one. |
 | `-m, --message` | Commit message. If you omit it, the commit uses a generated message. |
 | `--expected-preview-revision` | `revision` of the Promote preview that you reviewed, from `list-changes proj-abc promote --json`. |
 
@@ -428,8 +434,10 @@ n8n-cli promotion-environment promote-selection proj-abc -w wf-1 \
 | `preview-changed` | `3` | Only with `--expected-preview-revision`: the project on this instance or its branch changed since you reviewed the preview. Nothing was pushed. Review the changes again. |
 
 The project's own details (name, icon, description, and telemetry tags) are
-always pushed. Without `-w` and `--folder`, the command promotes only the
-project, for example a new empty project. A selected folder is pushed with the
+always pushed. Without `-w`, `--folder`, and `--credential-id`, the command
+promotes only the project, for example a new empty project. A selected
+credential is written under the folder of its owner project. It never carries
+secret values. You need `credential:read` for it, and the project must own it. A selected folder is pushed with the
 folders above it. A renamed or moved folder moves the workflows inside it on the
 branch, without changing their content. When the branch already matches the
 selection, the command fails with "Nothing to promote".
@@ -548,9 +556,9 @@ n8n-cli promotion-environment apply env-2 \
 
 ## `promotion-environment apply-selection`
 
-Apply a chosen set of a project's workflow and folder changes from its Apply
-branch. This is the apply counterpart of `promote-selection`. Use the workflow
-and folder IDs that [`list-changes proj-abc apply`](#promotion-environment-list-changes)
+Apply a chosen set of a project's workflow, folder, and credential changes from
+its Apply branch. This is the apply counterpart of `promote-selection`. Use the
+workflow, folder, and credential IDs that [`list-changes proj-abc apply`](#promotion-environment-list-changes)
 lists.
 
 ```bash
@@ -559,6 +567,7 @@ n8n-cli promotion-environment apply-selection proj-abc -w wf-1 \
   --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<full sha> \
   --expected-preview-revision=<revision>
 n8n-cli promotion-environment apply-selection proj-abc --folder folder-1
+n8n-cli promotion-environment apply-selection proj-abc --credential-id cred-1
 n8n-cli promotion-environment apply-selection proj-abc
 ```
 
@@ -566,14 +575,20 @@ n8n-cli promotion-environment apply-selection proj-abc
 |------|-------------|
 | `-w, --workflow` | Workflow ID to apply. Repeat the flag for more than one. |
 | `--folder` | Folder ID to apply. Repeat the flag for more than one. |
+| `--credential-id` | ID of a credential that the branch holds under the project. Repeat the flag for more than one. |
 | `--expected-environment-id` | ID of the Apply environment that you reviewed. |
 | `--expected-branch` | Branch that you reviewed. |
 | `--expected-commit-sha` | Full commit SHA that you reviewed (40 or 64 lowercase hex characters). |
 | `--expected-preview-revision` | `revision` of the Apply preview that you reviewed, from `list-changes proj-abc apply --json`. |
 
 The project's name, icon, description, and telemetry tags always come from the
-branch. Without `-w` and `--folder`, the command applies only the project.
-Selected IDs on the branch are imported. A selected workflow that this project
+branch. Without `-w`, `--folder`, and `--credential-id`, the command applies only
+the project. Selected IDs on the branch are imported. A selected credential gets
+its name, description, expression values, and the plain values that decide
+which fields show. Apply creates it when the project lacks it. For a credential
+that the project owns, Apply merges these values in, so the stored secrets stay.
+Apply never writes a secret, never changes the type, and leaves a credential of
+another project as it is. A selected workflow that this project
 owns but the branch does not hold is removed. Unselected content stays unchanged. A selected
 workflow or folder is created, or moves within the project to match the branch,
 together with the folders above it, and those folders take the name on the
@@ -603,7 +618,7 @@ n8n-cli promotion-environment apply-selection-continue proj-abc -w wf-1 -w wf-2 
   --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<full sha>
 ```
 
-Resend the same `-w` and `--folder` flags. The three `--expected-environment-id`,
+Resend the same `-w`, `--folder`, and `--credential-id` flags. The three `--expected-environment-id`,
 `--expected-branch`, and `--expected-commit-sha` flags are required: use the
 `environmentId`, `git.branchName`, and `git.commitSha` that the blocked Apply
 reported. Setting up bindings changes the preview, so an earlier

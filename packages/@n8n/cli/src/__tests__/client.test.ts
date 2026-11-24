@@ -132,6 +132,16 @@ describe('N8nClient packages', () => {
 				body: { workflowIds: ['wf-1', 'wf-2'] },
 			},
 			{
+				title: 'applies a selection with credential ids',
+				send: async () =>
+					await client.applyProjectSelection('proj-1', {
+						workflowIds: ['wf-1'],
+						credentialIds: ['c-1'],
+					}),
+				path: 'apply',
+				body: { workflowIds: ['wf-1'], credentialIds: ['c-1'] },
+			},
+			{
 				title: 'pins the reviewed source when applying a selection',
 				send: async () =>
 					await client.applyProjectSelection('proj-1', { workflowIds: ['wf-1'] }, expectedSource),
