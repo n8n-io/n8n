@@ -308,6 +308,22 @@ describe('PlanHydrator', () => {
 		expect(prompts[1]).toContain('the gym refused it: $.a: bad');
 	});
 
+	it('does not record what the gym ignored on the last attempt', async () => {
+		const plan = JSON.stringify({
+			overlay: { native: { linear: { issues: [{ ref: 'issue:i', id: ID }] } } },
+		});
+		const ignoredReport = {
+			report: { warnings: [{ path: '$.native.linear.issues', message: 'unknown field' }] },
+		};
+		const { hydrator, seeds } = setup([plan, plan, plan, plan], undefined, undefined, (n) =>
+			n <= 3 ? ignoredReport : undefined,
+		);
+		await hydrator.hydrate('get_issue', { id: 'TRUST-1209' }, real);
+		await hydrator.hydrate('get_issue', { id: 'TRUST-1210' }, real);
+		// The gym dropped the issue on all three attempts, so the next call must seed it again.
+		expect(JSON.stringify(seeds[3])).toContain(ID);
+	});
+
 	it('repairs when the gym answer lacks an id of the call', async () => {
 		const plan = JSON.stringify({ overlay: { a: 1 } });
 		const { hydrator, prompts, gymCalls } = setup([plan, plan], (n) =>

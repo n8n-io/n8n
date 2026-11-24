@@ -462,12 +462,12 @@ export class PlanHydrator implements Hydrator {
 		}
 		try {
 			const report = overlay ? await admin.seed(tenant, overlay) : undefined;
-			const ignored = last ? undefined : ignoredBySeed(report);
+			const ignored = ignoredBySeed(report);
 			// The gym holds what it took. Record that before a repair, which must not seed it again.
 			if (isRecord(overlay)) {
 				this.seeded.record(ignored ? withoutPaths(overlay, ignored.paths) : overlay, shallow);
 			}
-			if (ignored) return `the gym ignored parts of it: ${ignored.message}`;
+			if (ignored && !last) return `the gym ignored parts of it: ${ignored.message}`;
 			for (const event of events) await admin.event(tenant, event);
 		} catch (e) {
 			return `the gym refused it: ${errText(e)}`;
