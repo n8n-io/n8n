@@ -166,8 +166,8 @@ sequenceDiagram
   repairs both, not a wider transaction. It announces stale queued spawned steps again, and it
   wakes a waiting declaring step whose round's actions have all settled.
 - A crash after a fatal error fails a declaring step, and before the engine cancels the pending
-  actions of the round, leaves those actions unsettled. Reconciliation cancels an unsettled
-  spawned step whose declaring step has settled.
+  actions of the round, leaves those actions unsettled. Reconciliation cancels a queued or waiting
+  spawned step whose declaring step has settled. A running spawned step finishes, as on a cancel.
 - An engine error before the run leaves a spawned step `running`, as it does a graph step.
   Reconciliation fails a stale running spawned step, and that failure wakes the declaring step.
 - A tool that calls a stored workflow fails until a record allows its node type to call a

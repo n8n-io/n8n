@@ -22,16 +22,17 @@ derives inputs.
 
 ## Decision
 
-1. **Each round is one row in a new table, `workflow_step_round`.** The primary key is the step id
-   and the round number. The row holds the execution id, the actions (which the engine reads) and
-   the round payload (which the engine does not read). For a round with actions, one transaction
-   writes the row, suspends the step and creates one queued spawned step for each action. So the
-   execution never shows a round without its spawned steps. The transaction also locks the
-   execution row, so a round never adds spawned steps to an execution that has ended. A round
-   that ends with
-   outputs settles the step as any step does. A round without actions is written in the same way,
-   with an empty list of actions and no spawned step. So a crash before the continue leaves a
-   waiting step, which reconciliation wakes. A duplicate write does nothing.
+1. **Each round that does not end with outputs is one row in a new table, `workflow_step_round`.**
+   The primary key is the step id and the round number. The row holds the execution id, the
+   actions (which the engine reads) and the round payload (which the engine does not read). For a
+   round with actions, one transaction writes the row, suspends the step and creates one queued
+   spawned step for each action. So the execution never shows a round without its spawned steps.
+   The transaction also locks the execution row and checks under the lock that the execution has
+   not ended. If it has ended, the transaction writes nothing, so a round never adds spawned steps
+   to an execution that has ended. A round that ends with outputs writes no row and settles the
+   step as any step does. A round without actions is written as a round with actions is, with an
+   empty list of actions and no spawned step. So a crash before the continue leaves a waiting
+   step, which reconciliation wakes. A duplicate write does nothing.
 2. **A round row should hold only what is new in that round.** The engine builds the continuation
    from all round rows and their spawned steps: each action's outcome is its spawned step's outputs
    or error. A round without actions has no outcomes. The node rebuilds its whole conversation from
