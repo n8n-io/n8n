@@ -1,0 +1,21 @@
+packages/cli/src/webhooks/__tests__/webhook-request-handler.test.ts
+  s_f659dd55e67427::t_fe24e5e3e32722 199-246
+packages/cli/src/webhooks/webhook-request-handler.ts
+  s_f659dd55e67427::t_02c854d1f8a57e 234
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cf4b12e7827c5d2a2ac0ee912fb7b8ddb2e39914",
+  "prompts": {},
+  "sessions": {
+    "s_f659dd55e67427": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "622320d4-b7a1-4f17-8cfd-00e4f4bef753",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
