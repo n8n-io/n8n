@@ -94,9 +94,12 @@ function onUpdate(value: boolean | 'indeterminate') {
 
 		&[data-disabled] {
 			background: var(--color--foreground);
-			border-color: var(--color--foreground);
 			color: var(--color--text--tint-1);
 		}
+	}
+
+	&[data-disabled] {
+		border-color: var(--border-color--subtle);
 	}
 
 	&:focus-visible {
