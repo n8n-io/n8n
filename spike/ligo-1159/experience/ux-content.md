@@ -1,6 +1,6 @@
 # Content: cross-project promotion
 
-Status: draft 2, 2026-11-23. Not reviewed. Follows `ux-principles.md` and
+Status: draft 3, 2026-11-24. The dialog copy (section 5) follows the Playground. Not reviewed. Follows `ux-principles.md` and
 `ux-surfaces.md`.
 
 Each moment shows the text on master today, then a proposal. Items marked
@@ -94,32 +94,33 @@ It opens only when "Outside your access" dependencies remain. It lists them
 again, because they may be the only issues, and the user may not have opened
 the Issues tab. Group by type. Show the first 5, and scroll for more.
 
-**Apply (draft):**
-> **Apply without 2 dependencies?**
-> These are outside your access, so you cannot apply them. Workflows that use
-> them cannot be published until they exist here.
->
-> Credential: CRM key. Used by Sync orders.
-> Workflow: Normalize. Used by Sync orders.
->
-> [Cancel] [Apply 3 changes]
+**Decided (built in the Playground).** The confirmation is not a separate dialog. On Promote it is
+the existing commit message dialog. On Apply it is one dialog that replaces the generic question.
+When a reviewer approves, the same warning shows in the approve dialog. The title never mentions
+the dependencies.
 
-**Promote (draft):**
-> **Promote without 2 dependencies?**
-> These are outside your access, so you cannot promote them. Workflows that use
-> them cannot be published until they exist where they are applied.
->
-> *(same list)*
->
-> [Cancel] [Promote 3 changes]
+| Where | Title |
+|---|---|
+| Promote | Promote 3 changes? |
+| Apply | Apply 3 changes? |
+
+The warning sits above the commit message field. It has an alert icon, one sentence and a list.
+The sentence names the workflows that cannot be published, and says why:
+
+> 4 workflows can't be published because their dependencies can't be promoted. *(Promote)*
+> 4 workflows can't be published because their dependencies don't exist here. *(Apply)*
+
+Singular: "1 workflow can't be published because its dependency can't be promoted."
+
+The list has one row for each workflow, with what it misses:
+
+> **Sync orders**
+> Missing Billing database, Normalize contact data and 1 more.
+
+When no workflow uses the dependencies, the sentence counts the dependencies ("1 dependency is not
+promoted.") and the list names them. The list scrolls. It does not say "in a personal project".
 
 The confirm button repeats the label of the button that opened the dialog.
-**?** The Promote consequence is a guess.
-
-**Built (Playground).** The confirmation is not a separate dialog. On Promote it is the existing
-commit message dialog, which shows the unresolved dependencies above the message field. On Apply it
-is one dialog that replaces the generic question. A credential in a personal project gets its own
-sentence in the same dialog.
 
 ## 6. The result
 
@@ -157,8 +158,8 @@ Where the project is known, the row shows its name. Where it is hidden, the work
 
 | Where | Text |
 |---|---|
-| Locked row in the selection | Required by Lead enrichment |
-| Hint on a row | Uses 3 dependencies |
+| Group heading in the selection tree | Workflows (12). The number is the total, not the selected count. |
+| Changes tab of a review | Changes, with the number of changes |
 | The list changed after the preview | The list has changed. Review it before you continue. |
 | Credential in a personal project | This credential is in a personal project. Move it to a team project to promote it. |
 
