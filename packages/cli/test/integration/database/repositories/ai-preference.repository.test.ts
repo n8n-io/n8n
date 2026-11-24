@@ -4,6 +4,7 @@ import { AiPreferenceService } from '@n8n/backend-services';
 import type { AiPreference, Project, User } from '@n8n/db';
 import { AiPreferenceRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { v4 as uuid } from 'uuid';
 
 import { createMember, createOwner } from '../../shared/db/users';
@@ -222,20 +223,51 @@ describe('AiPreferenceRepository', () => {
 			}
 		});
 
-		it('refuses a row that moved after the permission check', async () => {
-			const id = await insertPreference({ content: 'Original', userId: owner.id });
-			const previous = await repository.findByIdWithRelations(id);
-			if (!previous) throw new Error('Expected the seeded Preference');
-			await repository.update(id, { userId: null, projectId: marketing.id });
+		it.each(['update', 'updateContent'] as const)(
+			'refuses %s when a move commits after its permission check',
+			async (method) => {
+				const id = await insertPreference({ content: 'Original', userId: owner.id });
+				const reachedLock = createDeferredPromise<undefined>();
+				const continueEdit = createDeferredPromise<undefined>();
+				const withWriteLock = repository.withWriteLock.bind(repository);
+				const lock = vi
+					.spyOn(repository, 'withWriteLock')
+					.mockImplementationOnce(async (targets, ctx, write) => {
+						reachedLock.resolve(undefined);
+						await continueEdit.promise;
+						return await withWriteLock(targets, ctx, write);
+					});
 
-			await expect(
-				repository.withWriteLock(
-					[{ scope: 'user', userId: owner.id }],
-					{},
-					async (ctx) => await repository.assertUnchanged(previous, ctx),
-				),
-			).rejects.toThrow('The Preference changed. Reload it and try again.');
-		});
+				const edit =
+					method === 'update'
+						? service().update(owner, id, { content: 'Stale edit' })
+						: service().updateContent(owner, id, 'Stale edit');
+				const outcome = edit.catch((error: unknown) => error);
+				try {
+					await reachedLock.promise;
+					await service().update(owner, id, {
+						scope: 'project',
+						projectId: marketing.id,
+						content: 'Moved',
+					});
+					continueEdit.resolve(undefined);
+
+					expect(await outcome).toMatchObject({
+						httpStatusCode: 409,
+						message: 'The Preference changed. Reload it and try again.',
+					});
+					expect(await repository.findOneByOrFail({ id })).toMatchObject({
+						userId: null,
+						projectId: marketing.id,
+						content: 'Moved',
+					});
+				} finally {
+					continueEdit.resolve(undefined);
+					await outcome;
+					lock.mockRestore();
+				}
+			},
+		);
 	});
 
 	describe('existsForTargetWithContent', () => {

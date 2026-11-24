@@ -12,7 +12,7 @@ import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, Person } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { AiPreferenceScopeFullError } from '../../errors/response-errors/ai-preference-scope-full.error';
-import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 import {
 	AI_PREFERENCES_CLEARED_BLOCK,
 	AI_PREFERENCES_REPLACES_EARLIER,
@@ -547,6 +547,12 @@ describe('AiPreferenceService', () => {
 
 			await service.create(owner, { content: 'Rule.', scope: 'user', userId: 'user-2' }, 'ui');
 
+			expect(aiPreferenceRepository.withWriteLock).toHaveBeenCalledWith(
+				[{ scope: 'user', userId: 'user-2' }],
+				{},
+				expect.any(Function),
+			);
+
 			expect(aiPreferenceRepository.countForTarget).toHaveBeenCalledWith(
 				{
 					scope: 'user',
@@ -602,6 +608,12 @@ describe('AiPreferenceService', () => {
 			);
 
 			await service.update(owner, 'pref-1', { content: 'Rule.', scope: 'instance' });
+
+			expect(aiPreferenceRepository.withWriteLock).toHaveBeenCalledWith(
+				[{ scope: 'user', userId: 'owner-1' }, { scope: 'instance' }],
+				{},
+				expect.any(Function),
+			);
 
 			expect(aiPreferenceRepository.countForTarget).toHaveBeenCalledWith({ scope: 'instance' }, {});
 		});
@@ -739,6 +751,27 @@ describe('AiPreferenceService', () => {
 	});
 
 	/** For callers that hold an id and no scope, such as an MCP client. */
+	it.each(['update', 'updateContent'] as const)(
+		'refuses a changed row in %s without saving it',
+		async (method) => {
+			const user = makePerson({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
+			const previous = row({ id: 'pref-1', content: 'Original', userId: user.id });
+			const conflict = new ConflictError('The Preference changed. Reload it and try again.');
+			aiPreferenceRepository.findByIdWithRelations.mockResolvedValue(previous);
+			aiPreferenceRepository.assertUnchanged.mockRejectedValue(conflict);
+
+			const update =
+				method === 'update'
+					? service.update(user, previous.id, { content: 'Changed' })
+					: service.updateContent(user, previous.id, 'Changed');
+
+			await expect(update).rejects.toBe(conflict);
+			expect(aiPreferenceRepository.assertUnchanged).toHaveBeenCalledWith(previous, {});
+			expect(aiPreferenceRepository.savePreference).not.toHaveBeenCalled();
+			expect(previous.content).toBe('Original');
+		},
+	);
+
 	describe('updateContent', () => {
 		const member = makePerson({ id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 
