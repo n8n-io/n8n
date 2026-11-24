@@ -116,7 +116,6 @@ function setup() {
 		gym: gym as unknown as McpCaller,
 		hydrator,
 		profile: OUTLOOK_PROFILE,
-		context: { origin: '' },
 	});
 	return { router, upstream, gym, hydrator };
 }
