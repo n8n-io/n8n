@@ -42,6 +42,7 @@ packages/nodes-base/nodes/NextCloud/GenericFunctions.ts
   s_69d18b007d0835::t_edad051a8697d9 80-88
   s_69d18b007d0835::t_eec0eb77d917e1 244-262,265-267,270-301
   s_69d18b007d0835::t_f1a7081e5b2c81 268-269
+  s_69d18b007d0835::t_9869802bd18599 79,263-264
 packages/nodes-base/credentials/NextCloudApi.credentials.ts
   s_50795f9787e625::t_eec0727b850cca 55
   s_0481ab2872e2f7::t_544df26a686270 9-10
@@ -99,6 +100,7 @@ packages/nodes-base/utils/query-escaping.ts
   s_e48526bb13ba4b::t_3dacc9f6845c85 57-68
 packages/nodes-base/nodes/NextCloud/actions/file/createFromText.operation.ts
   s_69d18b007d0835::t_f2fa4ee9988cbf 8
+  s_69d18b007d0835::t_68cbb99fa05cf8 183
 packages/nodes-base/nodes/NextCloud/test/update.operation.test.ts
   s_69d18b007d0835::t_b51f7a1f4e09f3 259,264-269,277-279,287-293,374-402,404,407-425,485
   s_69d18b007d0835::t_f1a7081e5b2c81 140-143,553
