@@ -3167,6 +3167,13 @@ describe('createThreadRuntime - session always-allow', () => {
 		expect(runtime.sessionAlwaysAllowKeys.size).toBe(0);
 	});
 
+	it('never offers or stores Always allow for publishing an agent', () => {
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		expect(runtime.canAlwaysAllow('agent_builder_publish_agent', {})).toBe(false);
+		runtime.addAlwaysAllowKey('agent_builder_publish_agent', {});
+		expect(runtime.sessionAlwaysAllowKeys.size).toBe(0);
+	});
+
 	it('reports canAlwaysAllow false for unscoped workflow edits', () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
 		expect(

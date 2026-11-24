@@ -4185,6 +4185,25 @@ describe('LogStreamingEventRelay', () => {
 				payload: { ...redactedReviewer, projectId: 'project-1' },
 			});
 		});
+
+		it('should log `workflow-review.closed-by-user` with the closer and the reviewed version', () => {
+			eventService.emit('workflow-review-closed-by-user', {
+				user: reviewer,
+				workflowReviewRequestId: 'review-1',
+				workflowId: 'wf-1',
+				workflowVersionId: 'ver-1',
+			});
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow-review.closed-by-user',
+				payload: {
+					...redactedReviewer,
+					workflowId: 'wf-1',
+					versionId: 'ver-1',
+					workflowReviewRequestId: 'review-1',
+				},
+			});
+		});
 	});
 
 	describe('redaction enforcement events', () => {
