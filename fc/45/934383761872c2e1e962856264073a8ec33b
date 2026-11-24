@@ -1,0 +1,98 @@
+packages/@n8n/api-types/src/index.ts
+  s_9bfb59a67dd544::t_096e9489cce18a 1181
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_9bfb59a67dd544::t_a1e1a826ee4b6f 11,108-109,340-342
+packages/cli/src/modules/agents/utils/execution-to-message-mapper.ts
+  s_9bfb59a67dd544::t_4d2ca24666a705 64,99
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_9bfb59a67dd544::t_ba60270fb158b7 8,257-258,453,457,758-761,782,816
+  s_9bfb59a67dd544::t_69d5ab38a0bfaa 454-456
+packages/cli/src/modules/agents/agent-test-run.controller.ts
+  s_9bfb59a67dd544::t_66802cb7420041 1,3-4,7,31-52
+  s_d7ab831e88c758::t_decc05f03db9cd 53
+packages/frontend/editor-ui/src/features/agents/__tests__/wouldHaveHappenedBuilder.test.ts
+  s_9bfb59a67dd544::t_d4139944c22654 1-198
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatSafeTesting.test.ts
+  s_9bfb59a67dd544::t_4cf6865713410d 1-11,13-26,28-168,171-195,199-214
+  s_9bfb59a67dd544::t_3aa44d25b3f1e2 12,169-170
+  s_9bfb59a67dd544::t_69d5ab38a0bfaa 27,196-198
+packages/cli/src/modules/agents/__tests__/agent-test-run.controller.test.ts
+  s_9bfb59a67dd544::t_123f1b5767d525 40-74,76-89
+  s_9bfb59a67dd544::t_e00dde01ef01c4 75
+packages/@n8n/api-types/src/schemas/agent-safe-testing.schema.ts
+  s_9bfb59a67dd544::t_d398aa9d36904d 132-135
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_9bfb59a67dd544::t_e800c09eec8bff 323,1409-1414,1593-1598,1964
+packages/cli/src/modules/agents/simulation/simulation-session.service.ts
+  s_9bfb59a67dd544::t_d9283b570c649e 288-301
+packages/cli/src/modules/agents/__tests__/agent-test-run-persistence.test.ts
+  s_9bfb59a67dd544::t_ecfd8b13197103 57
+  s_9bfb59a67dd544::t_333845fafca126 1-56,58-77
+packages/frontend/editor-ui/src/features/agents/components/AgentTestDock.vue
+  s_9bfb59a67dd544::t_766ba35f1c891a 355
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_9bfb59a67dd544::t_48a26297e2df50 6,392-395,407
+packages/frontend/editor-ui/src/features/agents/composables/useAgentTestRunTools.ts
+  s_9bfb59a67dd544::t_0b52379155071d 1-65
+packages/frontend/editor-ui/src/features/agents/toolCallSimulation.types.ts
+  s_9bfb59a67dd544::t_561aa2d29b89d5 1-6,8
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_9bfb59a67dd544::t_0696ef0a1bde5e 7,62-63
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_9bfb59a67dd544::t_d32eba598ae4e7 22,1403-1408
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_9bfb59a67dd544::t_b72464cc9518cf 1765-1772
+  s_9bfb59a67dd544::t_7107c4520910f7 47,74-76,110,113,265,335,1761-1764,1773-1802,2211-2218,2290-2293,2316-2319,2599-2609
+packages/frontend/editor-ui/src/features/agents/components/AgentTestChatPage.vue
+  s_9bfb59a67dd544::t_a58a46e8d70b11 58,129
+packages/frontend/editor-ui/src/features/agents/components/testRun/wouldHaveHappenedBuilder.ts
+  s_9bfb59a67dd544::t_fd4bc0ec92047a 1-176,182-201,206-260,270-281,290-295,306-374
+  s_9bfb59a67dd544::t_69d5ab38a0bfaa 177-181,202-205,261-269,282-289,296-305
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_9bfb59a67dd544::t_15f0026864850c 6500-6560
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_9bfb59a67dd544::t_145d25f1d56816 11,52-55
+packages/cli/src/modules/agents/simulation/simulation-session.ts
+  s_9bfb59a67dd544::t_f1458497237512 189-192
+packages/frontend/editor-ui/src/features/agents/components/AgentChatToolSteps.vue
+  s_9bfb59a67dd544::t_173fd9bf4ed0e3 49-53,116,141-157,500-518,617-627
+packages/frontend/editor-ui/src/features/agents/testRunTools.types.ts
+  s_9bfb59a67dd544::t_ad3a38449a31ab 1,3,6
+packages/@n8n/api-types/src/agents/types.ts
+  s_9bfb59a67dd544::t_9c794bc1b8472d 6,584-585
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_9bfb59a67dd544::t_09d237f49248db 39-40,1177-1201
+  s_e6d1666a157806::t_6509b9e1947955 1202
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fc45934383761872c2e1e962856264073a8ec33b",
+  "prompts": {},
+  "sessions": {
+    "s_9bfb59a67dd544": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20dd9-5b4e-774e-8ba5-335d42ebd6ea",
+        "model": "gemini-4-neon"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    },
+    "s_d7ab831e88c758": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20dd9-5b7a-777b-ab39-735799c75615",
+        "model": "gemini-4-neon"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    },
+    "s_e6d1666a157806": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20dd9-5b5b-7345-8bf2-414deeb1bc60",
+        "model": "gemini-4-neon"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

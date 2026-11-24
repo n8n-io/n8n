@@ -1,0 +1,26 @@
+packages/cli/src/modules/mcp-guard/__tests__/plan-hydrator.test.ts
+  s_d7ab831e88c758::t_7d745acd5888de 1-34,40-51,58-71,75-108,114-161
+  s_d7ab831e88c758::t_e41b06d9f1f2fe 35-39,52-57,72-74,109-113
+packages/cli/src/modules/mcp-guard/seeded-entities.ts
+  s_d7ab831e88c758::t_d490a8c7906209 102-107,111-113
+packages/cli/src/modules/mcp-guard/__tests__/seeded-entities.test.ts
+  s_d7ab831e88c758::t_db7c37c363ac3b 1-124
+packages/cli/src/modules/mcp-guard/plan-hydrator.ts
+  s_d7ab831e88c758::t_620f3e4d5164a2 102-103,451
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4891f3b3ba8fb63ed55917465735a5052d2d978a",
+  "prompts": {},
+  "sessions": {
+    "s_d7ab831e88c758": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20dd9-5b7a-777b-ab39-735799c75615",
+        "model": "gemini-4-neon"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

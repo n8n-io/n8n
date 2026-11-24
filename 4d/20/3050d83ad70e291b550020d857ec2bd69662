@@ -1,0 +1,28 @@
+packages/nodes-base/utils/workflow-backtracking.ts
+  s_ee257bd3aa5f17::t_ac3ce95daa043d 143-144
+  s_ee257bd3aa5f17::t_9bb382ca0d28b9 5
+  s_ee257bd3aa5f17::t_02a4dffbc42dbd 47-65
+packages/nodes-base/utils/workflow-backtracking.test.ts
+  s_ee257bd3aa5f17::t_41d049f43d516a 603
+  s_ee257bd3aa5f17::t_8b76102a38d0d4 599-602,604-648
+packages/cli/test/integration/sub-workflow-paired-item.test.ts
+  s_ee257bd3aa5f17::t_24923145d30a7d 35
+  s_ee257bd3aa5f17::t_7ffe9f74661cd0 290-320
+  s_ee257bd3aa5f17::t_b5d59fc53c9d5e 107-141
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4d203050d83ad70e291b550020d857ec2bd69662",
+  "prompts": {},
+  "sessions": {
+    "s_ee257bd3aa5f17": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9afdedee-89bd-4956-bc5d-7218bb0f47a5",
+        "model": "unknown"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

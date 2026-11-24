@@ -1,0 +1,50 @@
+packages/@n8n/cli/src/__tests__/promotion-environment-operations.test.ts
+  s_c51b71bedc600f::t_7bdd3654b6c44a 462-486,669-687
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
+  ai_agent 8
+packages/@n8n/cli/docs/commands/promotions.md
+  s_c51b71bedc600f::t_50d1990c1b8aaa 333-338,340,404,414,424-427,547-549,558,566,607
+  s_c51b71bedc600f::t_e667d78f072e1d 573-577
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_c51b71bedc600f::t_e667d78f072e1d 724,789,820,852
+packages/@n8n/cli/src/commands/promotion-environment/apply-selection.ts
+  s_c51b71bedc600f::t_c7d2662ba8a453 50-53
+  s_c51b71bedc600f::t_e667d78f072e1d 17
+  s_c51b71bedc600f::t_3be975ccaf6b36 39-42,49
+packages/cli/test/integration/public-api/promotions.test.ts
+  s_c51b71bedc600f::t_41a971ad7b81e4 2449-2478,2584-2601
+packages/@n8n/cli/src/commands/promotion-environment/apply-command.ts
+  s_c51b71bedc600f::t_3be975ccaf6b36 146,152
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionChanges.generated.yml
+  ai_agent 8
+packages/@n8n/cli/src/commands/promotion-environment/promote-selection.ts
+  s_c51b71bedc600f::t_e667d78f072e1d 8
+  s_c51b71bedc600f::t_3be975ccaf6b36 32-35,48-52
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_c51b71bedc600f::t_7bdd3654b6c44a 135-143
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyProjectSelection.generated.yml
+  ai_agent 8
+packages/@n8n/cli/src/commands/promotion-environment/apply-selection-continue.ts
+  s_c51b71bedc600f::t_3be975ccaf6b36 36-39,54
+  s_c51b71bedc600f::t_c7d2662ba8a453 55-58
+packages/@n8n/cli/src/client.ts
+  s_c51b71bedc600f::t_3be975ccaf6b36 138-139
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
+  ai_agent 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8a2105ae9c5dcd429c8eb940fdb56f2cca56d613",
+  "prompts": {},
+  "sessions": {
+    "s_c51b71bedc600f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2399fe73-cf74-480a-bdbb-a1eca36c6f59",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
