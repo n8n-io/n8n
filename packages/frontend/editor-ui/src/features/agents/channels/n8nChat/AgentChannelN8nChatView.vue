@@ -94,7 +94,7 @@ defineExpose({ description });
 .chatLink {
 	display: inline-flex;
 	align-items: center;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--3xs);
 	white-space: nowrap;
 }
 
