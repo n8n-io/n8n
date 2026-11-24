@@ -80,6 +80,11 @@ export interface WorkspaceFilesystem {
 
 	readFile(path: string, options?: ReadOptions): Promise<string | Buffer>;
 	writeFile(path: string, content: FileContent, options?: WriteOptions): Promise<void>;
+	/** Upload many files in one request, creating missing parent directories. */
+	writeFiles?(
+		files: Array<{ path: string; content: FileContent }>,
+		options?: AbortableOptions,
+	): Promise<void>;
 	appendFile(path: string, content: FileContent, options?: AppendOptions): Promise<void>;
 	deleteFile(path: string, options?: RemoveOptions): Promise<void>;
 	copyFile(src: string, dest: string, options?: CopyOptions): Promise<void>;

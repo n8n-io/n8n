@@ -48,11 +48,27 @@ export interface ScopedWorkspaceOptions {
 type EnsureRoot = (abortSignal?: AbortSignal) => Promise<void>;
 
 class ScopedFilesystem implements WorkspaceFilesystem {
+	readonly writeFiles?: NonNullable<WorkspaceFilesystem['writeFiles']>;
+
 	constructor(
 		private readonly filesystem: WorkspaceFilesystem,
 		private readonly root: string,
 		private readonly ensureRoot?: EnsureRoot,
-	) {}
+	) {
+		if (filesystem.writeFiles) {
+			const writeFiles = filesystem.writeFiles.bind(filesystem);
+			this.writeFiles = async (files, options) => {
+				const resolvedPaths = await this.preparePaths(
+					files.map((file) => file.path),
+					options,
+				);
+				await writeFiles(
+					files.map((file, index) => ({ path: resolvedPaths[index], content: file.content })),
+					options,
+				);
+			};
+		}
+	}
 
 	get id() {
 		return `${this.filesystem.id}:scoped`;
