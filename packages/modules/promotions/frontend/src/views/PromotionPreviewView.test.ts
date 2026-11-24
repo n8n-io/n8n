@@ -1665,13 +1665,16 @@ describe('PromotionPreviewView', () => {
 		it('should list both groups, with the sub-workflows that the user can access under "Needs your action"', async () => {
 			const { getAllByRole, getAllByTestId, getByRole, getByTestId } = await renderIssues({
 				missingBindings: [missingVariable],
+				// A dependency that does not stop the Apply shows only for a selected workflow. The
+				// variable and the credential stop "Weekly KPI report" (w3), and nothing stops the
+				// workflow that uses the others.
 				missingDependencies: [
 					repeatedBinding(missingVariable),
 					archivedWorkflow,
 					{ ...archivedWorkflow, id: 'w10', name: 'Notify finance', reason: 'caller-policy' },
 					{ ...archivedWorkflow, id: 'w11', name: 'Close month', reason: 'not-on-instance' },
-					unreachableCredential,
-					unreachableWorkflow,
+					{ ...unreachableCredential, consumers: missingVariable.consumers },
+					{ ...unreachableWorkflow, consumers: archivedWorkflow.consumers },
 				],
 			});
 
@@ -1793,12 +1796,13 @@ describe('PromotionPreviewView', () => {
 				name: 'Currency API',
 				consumers: consumers('w1'),
 			};
-			// No row of these two has an "Add" button.
+			// No row of these two has an "Add" button. The credential stops "w1", so a selected
+			// workflow uses the sub-workflow.
 			const { getAllByTestId, unmount } = await renderIssues({
 				accessRequirements: [access],
 				missingDependencies: [
 					{ ...repeatedBinding(access), reason: 'not-shared' },
-					archivedWorkflow,
+					{ ...archivedWorkflow, consumers: unreachableWorkflow.consumers },
 				],
 			});
 			const withoutCreate = section(getAllByTestId, 'Needs your action (2)');
@@ -1998,7 +2002,12 @@ describe('PromotionPreviewView', () => {
 
 		it('should show no project and no owner of a dependency', async () => {
 			const { getAllByTestId, getByTestId } = await renderIssues({
-				missingDependencies: [unreachableCredential, unreachableWorkflow, archivedWorkflow],
+				missingDependencies: [
+					unreachableCredential,
+					unreachableWorkflow,
+					// The credential stops the workflow that uses this one in the fixture.
+					{ ...archivedWorkflow, consumers: unreachableWorkflow.consumers },
+				],
 			});
 
 			// "Billing" is the project of the workflows. The API sends no project for a dependency.
@@ -2027,6 +2036,49 @@ describe('PromotionPreviewView', () => {
 					}),
 				)[1],
 			).toBe('w3');
+		});
+
+		it('should list a dependency that does not stop the Apply only for the selected workflows that use it', async () => {
+			// "Weekly KPI report" (w3) uses the two sub-workflows, and "Format currency" (w4) uses one
+			// of them. "Invoice reconciliation" (w1) uses the credential, which stops it.
+			const { getAllByTestId, getByRole, queryByRole } = await renderIssues({
+				missingDependencies: [
+					unreachableCredential,
+					unreachableWorkflow,
+					{ ...archivedWorkflow, consumers: consumers('w3', 'w4') },
+				],
+			});
+			const issuesTab = getByRole('tab', { name: /Issues/ });
+			const usedBy = (name: RegExp) => cells(getByRole('row', { name }))[1];
+			const toggle = async (key: string) => {
+				await userEvent.click(getByRole('tab', { name: /Changes/ }));
+				await userEvent.click(treeRow(getAllByTestId, key).getByRole('checkbox'));
+				await userEvent.click(issuesTab);
+			};
+
+			expect(issuesTab).toHaveTextContent(/^Issues\s*3$/);
+			expect(getAllByTestId('promotion-preview-blocker-row')).toHaveLength(3);
+			expect(usedBy(/Archive invoices/)).toBe('w3w4');
+
+			await toggle('workflow:w3');
+
+			// No selected workflow uses "Send audit log" now. "Format currency" uses the other one.
+			expect(issuesTab).toHaveTextContent(/^Issues\s*2$/);
+			expect(queryByRole('row', { name: /Send audit log/ })).not.toBeInTheDocument();
+			expect(usedBy(/Archive invoices/)).toBe('w4');
+			// The user cannot select the workflow that the credential stops, so its row stays.
+			expect(usedBy(/Stripe/)).toBe('Invoice reconciliation');
+
+			await toggle('workflow:w4');
+
+			expect(issuesTab).toHaveTextContent(/^Issues\s*1$/);
+			expect(getAllByTestId('promotion-preview-blocker-row')).toHaveLength(1);
+
+			await toggle('workflow:w3');
+
+			expect(issuesTab).toHaveTextContent(/^Issues\s*3$/);
+			expect(usedBy(/Send audit log/)).toBe('Weekly KPI report');
+			expect(usedBy(/Archive invoices/)).toBe('w3');
 		});
 
 		it('should say that a credential that stops a workflow is not on the branch', async () => {
@@ -2236,6 +2288,21 @@ describe('PromotionPreviewView', () => {
 			expect(getByTestId('promotion-preview-submit-blocked')).toHaveTextContent(
 				'Resolve the issues that need your action, then apply.',
 			);
+		});
+
+		it('should list a dependency that does not stop the Apply, on a workflow that the Apply does not change', async () => {
+			vi.mocked(api.getPromotionEnvironmentChanges).mockResolvedValue(
+				instancePreview({
+					missingDependencies: [{ ...archivedWorkflow, consumers: consumers('w-unchanged') }],
+				}),
+			);
+
+			const { getAllByTestId, getByRole } = await renderInstance();
+
+			// The Apply has no selection, so the tab lists the dependency for every workflow.
+			expect(getByRole('tab', { name: /Issues/ })).toHaveTextContent(/^Issues\s*1$/);
+			await userEvent.click(getByRole('tab', { name: /Issues/ }));
+			expect(getAllByTestId('promotion-preview-blocker-row')).toHaveLength(1);
 		});
 
 		it('should show the new issues after an Apply that only a dependency outside the access of the user stops', async () => {

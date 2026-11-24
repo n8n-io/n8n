@@ -43,6 +43,7 @@ import {
 	crossProjectMoveBlockers,
 	toOperationRequest,
 	scopeCheck,
+	scopeNonBlockingToSelection,
 	scopeToSelection,
 	touchesDestructiveChange,
 } from '../promotionOperation';
@@ -117,12 +118,17 @@ watch(
 // The missing dependencies that the Issues tab lists as rows of their own. Promote: what the
 // selected workflows use, and the branch does not hold after the Promote. Nothing there stops the
 // Promote. Apply: the dependencies that the other lists of the check do not detail, and that hold
-// for the selection.
-const missingDependencies = computed(() =>
-	props.direction === 'apply'
-		? listOnlyDependencies(scopedCheck.value?.missingDependencies ?? [], selectedKeys.value)
-		: scopeToSelection(preview.value?.missingDependencies ?? [], selection.selected.value),
-);
+// for the selection. A whole-instance Apply has no selection.
+const missingDependencies = computed(() => {
+	if (props.direction === 'promote') {
+		return scopeToSelection(preview.value?.missingDependencies ?? [], selection.selected.value);
+	}
+	const listed = listOnlyDependencies(
+		scopedCheck.value?.missingDependencies ?? [],
+		selectedKeys.value,
+	);
+	return isInstance.value ? listed : scopeNonBlockingToSelection(listed, selectedKeys.value);
+});
 const dependencyWarnings = computed(() =>
 	scopeToSelection(preview.value?.warnings ?? [], selection.selected.value),
 );

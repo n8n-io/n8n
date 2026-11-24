@@ -21,6 +21,7 @@ import {
 	listOnlyDependencies,
 	crossProjectMoveBlockers,
 	scopeCheck,
+	scopeNonBlockingToSelection,
 	scopeToSelection,
 	toOperationRequest,
 	touchesDestructiveChange,
@@ -264,6 +265,18 @@ describe('promotion operation', () => {
 			['outside', 'not-on-instance', 'credential:c1'],
 			['outside', 'not-on-branch', 'credential:c9'],
 		]);
+	});
+
+	it('should keep a dependency that does not stop the Apply only for the selected workflows, and keep one that stops it whole', () => {
+		// "w1" and "w3" use each dependency. Only the first one stops the Apply.
+		const stops = { ...unreachableCredential, consumers: consumer('w1', 'w3') };
+		const accepted = { ...archivedWorkflow, consumers: consumer('w1', 'w3') };
+		const scoped = (selected: string[]) =>
+			scopeNonBlockingToSelection([stops, accepted, unreachableWorkflow], new Set(selected));
+
+		expect(scoped(['workflow:w1', 'workflow:w3'])).toEqual([stops, accepted, unreachableWorkflow]);
+		expect(scoped(['workflow:w1'])).toEqual([stops, { ...accepted, consumers: consumer('w1') }]);
+		expect(scoped([])).toEqual([stops]);
 	});
 
 	it('should not count a credential or a variable twice when the check also details it', () => {

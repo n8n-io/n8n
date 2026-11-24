@@ -144,6 +144,19 @@ export const listOnlyDependencies = (
 	});
 
 /**
+ * Narrows the list of `listOnlyDependencies` to the selection of a project Apply. An entry that
+ * does not stop the Apply shows only for the selected workflows that use it. An entry that stops
+ * the Apply stays whole: its workflows cannot be selected, and the user must see why.
+ */
+export const scopeNonBlockingToSelection = (
+	dependencies: PromotionMissingDependency[],
+	selected: ReadonlySet<ResourceKey>,
+) =>
+	dependencies.flatMap((dependency) =>
+		dependency.blocking ? [dependency] : scopeToSelection([dependency], selected),
+	);
+
+/**
  * Keeps the blockers of workflows that the preview lists. The check also covers unchanged
  * workflows, which users cannot select, so their blockers stop nothing on the page.
  */
