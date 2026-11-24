@@ -5,6 +5,7 @@ import type {
 	KnowledgeCollectionFileDto,
 	KnowledgeCollectionFileListResponse,
 	KnowledgeCollectionListResponse,
+	UpdateKnowledgeCollectionDto,
 } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
@@ -30,6 +31,33 @@ export async function createCollection(
 		'POST',
 		`/projects/${projectId}/knowledge/collections`,
 		payload,
+	);
+}
+
+/** A field that is not in the payload keeps its current value. */
+export async function updateCollection(
+	context: IRestApiContext,
+	projectId: string,
+	collectionId: string,
+	payload: UpdateKnowledgeCollectionDto,
+): Promise<KnowledgeCollectionDto> {
+	return await makeRestApiRequest<KnowledgeCollectionDto>(
+		context,
+		'PATCH',
+		`/projects/${projectId}/knowledge/collections/${collectionId}`,
+		payload,
+	);
+}
+
+export async function deleteCollection(
+	context: IRestApiContext,
+	projectId: string,
+	collectionId: string,
+): Promise<{ success: true }> {
+	return await makeRestApiRequest<{ success: true }>(
+		context,
+		'DELETE',
+		`/projects/${projectId}/knowledge/collections/${collectionId}`,
 	);
 }
 

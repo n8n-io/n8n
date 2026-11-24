@@ -154,6 +154,7 @@ describe('PromotionChangeService preview permission', () => {
 		mock(),
 		mock(),
 		mock(),
+		mock(),
 	);
 	// A setup scope does not grant the preview.
 	const reader = {
