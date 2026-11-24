@@ -18,7 +18,7 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| CHK_app_visibility | CHECK | CHECK (((visibility)::text = 'project'::text)) |
+| CHK_app_visibility | CHECK | CHECK (((visibility)::text = 'project'::text)) NOT VALID |
 | FK_f84dd7eb539e46e0c233fa09b20 | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
 | PK_9478629fc093d229df09e560aea | PRIMARY KEY | PRIMARY KEY (id) |
 | app_createdAt_not_null | n | NOT NULL "createdAt" |

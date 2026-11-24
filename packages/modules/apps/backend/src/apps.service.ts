@@ -58,7 +58,11 @@ export class AppsService {
 		}
 		await this.assertProjectExists(projectId);
 		this.assertValidNamespace(dto.namespace);
-		const app = await this.appRepository.createApp(projectId, { ...dto, id: options.id });
+		const app = await this.appRepository.createApp(projectId, {
+			...dto,
+			id: options.id,
+			visibility: 'project',
+		});
 		this.logger.debug('Created app.', { projectId, appId: app.id });
 		this.events.emit('app-created', {
 			...options.actor,

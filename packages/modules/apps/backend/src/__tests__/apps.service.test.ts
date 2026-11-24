@@ -87,6 +87,7 @@ describe('AppsService', () => {
 			id: '11111111-1111-4111-8111-111111111111',
 			projectId: 'project-1',
 			...dto,
+			visibility: 'project',
 			draftVersionId: null,
 			publishedVersionId: null,
 			createdAt: new Date('2026-10-13T00:00:00.000Z'),
@@ -114,7 +115,11 @@ describe('AppsService', () => {
 
 		await service.createApp('project-1', dto, { id });
 
-		expect(appRepository.createApp).toHaveBeenCalledExactlyOnceWith('project-1', { ...dto, id });
+		expect(appRepository.createApp).toHaveBeenCalledExactlyOnceWith('project-1', {
+			...dto,
+			id,
+			visibility: 'project',
+		});
 	});
 
 	it('rejects a caller-provided id that is not a UUID', async () => {
@@ -213,7 +218,10 @@ describe('AppsService', () => {
 		await expect(service.updateApp('project-1', appId, { namespace })).resolves.toMatchObject({
 			namespace,
 		});
-		expect(appRepository.createApp).toHaveBeenCalledExactlyOnceWith('project-1', dto);
+		expect(appRepository.createApp).toHaveBeenCalledExactlyOnceWith('project-1', {
+			...dto,
+			visibility: 'project',
+		});
 		expect(appRepository.updateApp).toHaveBeenCalledExactlyOnceWith('project-1', appId, {
 			namespace,
 		});
@@ -382,6 +390,7 @@ describe('AppsService', () => {
 		const appRow = (fields: Partial<App>) =>
 			mock<App>({
 				id: appId,
+				visibility: 'project',
 				publishedVersionId: null,
 				createdAt: new Date('2026-10-13T00:00:00.000Z'),
 				updatedAt: new Date('2026-10-13T00:00:00.000Z'),
