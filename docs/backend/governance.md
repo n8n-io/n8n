@@ -1,6 +1,6 @@
 ---
 title: Governance
-last_reviewed: 2026-11-06
+last_reviewed: 2026-11-20
 contact: kgrhartlage
 ---
 
@@ -12,15 +12,17 @@ Governance features help the admins of large teams. Admins use them to review wo
 
 A user can ask for a review of a workflow before they publish it. While a review request is open, n8n refuses to publish the workflow. A review request where the reviewer asks for changes also stays open.
 
+An instance can also require an approved review for the version that a user publishes in a team project. A source control pull still checks for an open review, but it does not require an approved review.
+
 ## Data redaction
 
 <!-- contact: afitzek -->
 
-Data redaction hides the node data of executions from users. n8n stores the full data, and redacts it only when a user reads an execution. New code that shows execution data must therefore read it through the execution services.
+Data redaction hides the node data of executions from users. n8n stores the full execution data and redacts it when a user reads it. New code that shows execution data must read it through the execution services. The redaction policy also applies to execution errors in log streaming, telemetry, and error reports. It also applies to AI event data in log streaming.
 
 ## Insights and usage
 
-Insights shows admins how many executions ran, and how many failed. Insights and billing use [one file](../../packages/@n8n/backend-services/src/executions/counting-rules.ts) to decide which executions count. A new execution mode needs an entry there, and your code must not keep its own list of modes.
+Insights shows admins how many executions ran, and how many failed. Insights, billing, and execution limits use [one file](../../packages/@n8n/backend-services/src/executions/counting-rules.ts) to decide which executions count. A new execution mode needs an entry there, and your code must not keep its own list of modes.
 
 ## Environments
 

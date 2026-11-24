@@ -18,6 +18,11 @@ export const DropdownMenuSubMaxHeightKey: InjectionKey<Ref<string | undefined>> 
 /** Injection key for preserving the root menu width across portaled sub-menus. */
 export const DropdownMenuWidthKey: InjectionKey<Ref<string>> = Symbol('DropdownMenuWidth');
 
+/** Keeps content classes on nested submenus that render in separate portals. */
+export const DropdownMenuExtraPopperClassKey: InjectionKey<Ref<string | undefined>> = Symbol(
+	'DropdownMenuExtraPopperClass',
+);
+
 export interface DropdownMenuExternalNavigationController {
 	/** Handles a key for one visible menu level. */
 	handleExternalKeydown: (event: KeyboardEvent) => boolean;
@@ -166,7 +171,7 @@ export interface DropdownMenuProps<T = string, D = never> {
 	loading?: boolean;
 	/** Number of skeleton items to show when loading */
 	loadingItemCount?: number;
-	/** Additional CSS class for the dropdown popper */
+	/** Additional CSS class for the dropdown popper and its submenu poppers. */
 	extraPopperClass?: string;
 	/** Test id rendered on the dropdown trigger element */
 	dataTestId?: string;

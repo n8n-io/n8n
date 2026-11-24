@@ -61,6 +61,13 @@ describe('CloudBrowserLocalMcpServer', () => {
 		description: `Browser: ${host}`,
 	});
 
+	/** The payload of a confirmation request, or `undefined` for any other result. */
+	const confirmationRequest = (result: McpToolCallResult): unknown => {
+		const text = result.content[0]?.type === 'text' ? result.content[0].text : '';
+		if (!result.isError || !text.startsWith(GATEWAY_CONFIRMATION_REQUIRED_PREFIX)) return;
+		return JSON.parse(text.slice(GATEWAY_CONFIRMATION_REQUIRED_PREFIX.length));
+	};
+
 	function fakeToolkit() {
 		const navigate = {
 			name: 'browser_navigate',
@@ -89,11 +96,14 @@ describe('CloudBrowserLocalMcpServer', () => {
 			getPageUrl: Mock<(pageId: string) => string | undefined>;
 			getTargetId: Mock<(pageId: string) => Promise<string | undefined>>;
 			clearSiteDataExcept: Mock<(domain: string) => Promise<void>>;
+			hasVisitedOnlySite: Mock<(domain: string) => boolean>;
 		} = {
 			onDisconnect: connectionOnDisconnect,
 			getPageUrl: vi.fn(),
 			getTargetId: vi.fn(async (pageId: string) => `target-${pageId}`),
 			clearSiteDataExcept: vi.fn().mockResolvedValue(undefined),
+			// Most tests visit other sites, or do not care.
+			hasVisitedOnlySite: vi.fn().mockReturnValue(false),
 		};
 		const state = { activePageId: 'page-1', adapter };
 		const click = {
@@ -174,6 +184,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 			openSessions.delete(id);
 		});
 		sessionProvider.createLoginProfile.mockResolvedValue('login-profile-1');
+		sessionProvider.listSavedLoginProfiles.mockResolvedValue([]);
 		const toolkits: Array<ReturnType<typeof fakeToolkit>> = [];
 		const createToolkit = vi.fn((connectUrl?: string) => {
 			const toolkit = fakeToolkit();
@@ -247,12 +258,6 @@ describe('CloudBrowserLocalMcpServer', () => {
 		};
 		const toolOn = (toolkit: ReturnType<typeof fakeToolkit>, name: string) =>
 			toolkit.tools.find((tool) => tool.name === name)!;
-		/** The payload of a confirmation request, or `undefined` for any other result. */
-		const confirmationRequest = (result: McpToolCallResult): unknown => {
-			const text = result.content[0]?.type === 'text' ? result.content[0].text : '';
-			if (!result.isError || !text.startsWith(GATEWAY_CONFIRMATION_REQUIRED_PREFIX)) return;
-			return JSON.parse(text.slice(GATEWAY_CONFIRMATION_REQUIRED_PREFIX.length));
-		};
 		const noHostResult = {
 			content: [
 				{
@@ -855,15 +860,17 @@ describe('CloudBrowserLocalMcpServer', () => {
 
 		it('logs that the session used a saved login, and the region it was saved in', async () => {
 			const { sessionProvider, logger, start } = setup();
-			sessionProvider.findSavedLoginProfileForDomain.mockResolvedValue({
-				id: 'saved-login-1',
-				domain: 'example.com',
-				savedAt: new Date('2026-11-01T10:00:00Z'),
-				savedLocation: { regionId: 'eu-central-1' },
-			});
+			sessionProvider.listSavedLoginProfiles.mockResolvedValue([
+				{
+					id: 'saved-login-1',
+					domain: 'example.com',
+					savedAt: new Date('2026-11-01T10:00:00Z'),
+					savedLocation: { regionId: 'eu-central-1' },
+				},
+			]);
 			sessionProvider.createSession.mockRejectedValue(new Error('HTTP 500'));
 
-			await start({ url: 'https://example.com' });
+			await start({ url: 'https://example.com', _confirmation: 'allowWithSavedLogin' });
 
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to create a cloud browser session',
@@ -2316,7 +2323,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 
 				await start({ url: 'https://example.com' });
 
-				expect(sessionProvider.findSavedLoginProfileForDomain).not.toHaveBeenCalled();
+				expect(sessionProvider.listSavedLoginProfiles).not.toHaveBeenCalled();
 				expect(sessionProvider.createLoginProfile).not.toHaveBeenCalled();
 				expect(sessionProvider.createSession).toHaveBeenCalledWith(
 					scope,
@@ -2336,7 +2343,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 					const result = await start({ url });
 
 					expect(result.isError).toBeUndefined();
-					expect(sessionProvider.findSavedLoginProfileForDomain).not.toHaveBeenCalled();
+					expect(sessionProvider.listSavedLoginProfiles).not.toHaveBeenCalled();
 					expect(sessionProvider.createLoginProfile).not.toHaveBeenCalled();
 					expect(sessionProvider.createSession).toHaveBeenCalledWith(
 						scope,
@@ -2356,10 +2363,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 
 					await start({ url });
 
-					expect(sessionProvider.findSavedLoginProfileForDomain).toHaveBeenCalledWith(
-						scope,
-						'example.com',
-					);
+					expect(sessionProvider.listSavedLoginProfiles).toHaveBeenCalledWith(scope, 'example.com');
 					expect(sessionProvider.createSession).toHaveBeenCalledWith(
 						scope,
 						expect.objectContaining({ loginProfileId: 'login-profile-1' }),
@@ -2576,6 +2580,202 @@ describe('CloudBrowserLocalMcpServer', () => {
 				);
 				expect(sessionProvider.deleteLoginProfile).toHaveBeenCalledWith(scope, 'login-profile-1');
 			});
+
+			describe('one saved login for each site', () => {
+				/** The saved logins for the site, with the new one, as the gateway lists them. */
+				const savedLoginProfiles = [
+					{ ...savedResult, id: 'login-profile-1' },
+					{ ...savedResult, id: 'old-login-1' },
+					{ ...savedResult, id: 'old-login-2' },
+				];
+
+				it('deletes the other saved logins for the site after the save', async () => {
+					const { server, sessionProvider } = await setupSavedLogin();
+					sessionProvider.listSavedLoginProfiles.mockResolvedValue(savedLoginProfiles);
+
+					await server.release();
+
+					expect(sessionProvider.listSavedLoginProfiles).toHaveBeenCalledWith(scope, 'example.com');
+					expect(sessionProvider.deleteLoginProfile.mock.calls).toEqual([
+						[scope, 'old-login-1'],
+						[scope, 'old-login-2'],
+					]);
+					// Listed after the save, not only when the session opened.
+					expect(sessionProvider.saveLoginProfile.mock.invocationCallOrder[0]).toBeLessThan(
+						sessionProvider.listSavedLoginProfiles.mock.invocationCallOrder.at(-1)!,
+					);
+				});
+
+				it('reports the login as saved when the other saved logins cannot be listed', async () => {
+					const { server, sessionProvider, logger } = await setupSavedLogin();
+					sessionProvider.listSavedLoginProfiles.mockRejectedValue(new Error('HTTP 502'));
+
+					await server.release();
+
+					expect(logger.warn).toHaveBeenCalledWith(
+						'Failed to list the other saved cloud browser logins for a site',
+						expect.objectContaining({ errorName: 'Error' }),
+					);
+					expect(server.getLoginSaveResults()).toEqual([
+						{ domain: 'example.com', status: 'saved' },
+					]);
+				});
+
+				it('deletes no other saved login when the save fails', async () => {
+					const { server, sessionProvider } = await setupSavedLogin();
+					sessionProvider.listSavedLoginProfiles.mockResolvedValue(savedLoginProfiles);
+					sessionProvider.saveLoginProfile.mockRejectedValue(new Error('HTTP 502'));
+
+					await server.release();
+
+					expect(sessionProvider.deleteLoginProfile.mock.calls).toEqual([
+						[scope, 'login-profile-1'],
+					]);
+				});
+
+				it('tries every old one and reports the login as saved when one cannot be deleted', async () => {
+					const { server, sessionProvider, logger } = await setupSavedLogin();
+					sessionProvider.listSavedLoginProfiles.mockResolvedValue(savedLoginProfiles);
+					sessionProvider.deleteLoginProfile.mockRejectedValueOnce(new Error('HTTP 502'));
+
+					await server.release();
+
+					expect(sessionProvider.deleteLoginProfile).toHaveBeenCalledTimes(2);
+					expect(logger.warn).toHaveBeenCalledWith(
+						'Failed to delete a cloud browser login profile',
+						expect.objectContaining({ isSaved: true, errorName: 'Error' }),
+					);
+					expect(server.getLoginSaveResults()).toEqual([
+						{ domain: 'example.com', status: 'saved' },
+					]);
+				});
+			});
+		});
+
+		describe('getLoginSaveResults', () => {
+			it('returns a login that was saved when its session ended', async () => {
+				const { server } = await setupSavedLogin();
+
+				await server.release();
+
+				expect(server.getLoginSaveResults()).toEqual([{ domain: 'example.com', status: 'saved' }]);
+			});
+
+			it('returns a login that was not saved when the save failed', async () => {
+				const { server, sessionProvider } = await setupSavedLogin();
+				sessionProvider.saveLoginProfile.mockRejectedValue(new Error('HTTP 502'));
+
+				await server.release();
+
+				expect(server.getLoginSaveResults()).toEqual([
+					{ domain: 'example.com', status: 'notSaved' },
+				]);
+			});
+
+			it('returns a login that was not saved because the connection dropped', async () => {
+				const { server, toolkits } = await setupSavedLogin();
+				toolkits[0].connection.isConnected = false;
+				toolkits[0].adapter.onDisconnect?.('browser_closed');
+
+				await server.release();
+
+				expect(server.getLoginSaveResults()).toEqual([
+					{ domain: 'example.com', status: 'notSaved' },
+				]);
+			});
+
+			it('returns a site once when the user saved its login in two sessions', async () => {
+				const { server, sessionProvider, toolkits, start } = await setupSavedLogin();
+				sessionProvider.createSession.mockResolvedValueOnce({
+					id: 'sess-2',
+					connectUrl: 'wss://connect/2',
+					regionId: 'eu-central-1',
+				});
+				sessionProvider.createLoginProfile.mockResolvedValueOnce('login-profile-2');
+				await start({ url: 'https://example.com' });
+				toolkits[1].adapter.getPageUrl.mockReturnValue('https://example.com/');
+				sessionProvider.saveLoginProfile.mockRejectedValue(new Error('HTTP 502'));
+				await askToSignIn(server);
+				await server.returnControlToAgent(undefined, true);
+
+				await server.release();
+
+				expect(sessionProvider.saveLoginProfile).toHaveBeenCalledTimes(2);
+				expect(server.getLoginSaveResults()).toEqual([{ domain: 'example.com', status: 'saved' }]);
+			});
+
+			it('returns nothing when the user did not choose to save a login', async () => {
+				const { server } = await setupSignIn();
+				await askToSignIn(server);
+				await server.returnControlToAgent();
+
+				await server.release();
+
+				expect(server.getLoginSaveResults()).toEqual([]);
+			});
+		});
+
+		describe('getLoginToSave', () => {
+			it('returns the site of the login after a sign-in request on that site', async () => {
+				const { server } = await setupSignIn();
+				await askToSignIn(server);
+
+				expect(await server.getLoginToSave()).toEqual({ domain: 'example.com' });
+			});
+
+			it('returns when the user saved the login that a save replaces', async () => {
+				const { server, sessionProvider } = await setupSignIn();
+				await askToSignIn(server);
+				sessionProvider.listSavedLoginProfiles.mockResolvedValue([savedResult]);
+
+				expect(await server.getLoginToSave()).toEqual({
+					domain: 'example.com',
+					replacesSavedLoginFrom: savedResult.savedAt,
+				});
+				expect(sessionProvider.listSavedLoginProfiles).toHaveBeenLastCalledWith(
+					scope,
+					'example.com',
+				);
+			});
+
+			it('returns nothing when the current page is on another site', async () => {
+				const { server, pageUrl } = await setupSignIn();
+				await askToSignIn(server);
+				pageUrl.mockReturnValue('https://other.example.org/');
+
+				expect(await server.getLoginToSave()).toBeUndefined();
+			});
+
+			it('returns nothing when the agent did not ask the user to sign in', async () => {
+				const { server } = await setupSignIn();
+				server.giveControlToUser();
+
+				expect(await server.getLoginToSave()).toBeUndefined();
+			});
+
+			it('returns nothing when the login is already marked to be saved', async () => {
+				const { server } = await setupSavedLogin();
+				await askToSignIn(server);
+
+				expect(await server.getLoginToSave()).toBeUndefined();
+			});
+
+			it('returns nothing when no session is open', async () => {
+				const { server } = setup();
+
+				expect(await server.getLoginToSave()).toBeUndefined();
+			});
+
+			it('does not mark the login to be saved', async () => {
+				const { server } = await setupSignIn();
+				await askToSignIn(server);
+
+				await server.getLoginToSave();
+
+				expect(await server.getLiveView()).not.toMatchObject({
+					loginProfile: { willBeSavedOnSessionEnd: true },
+				});
+			});
 		});
 
 		describe('ending a session', () => {
@@ -2731,6 +2931,380 @@ describe('CloudBrowserLocalMcpServer', () => {
 
 				expect(sessionProvider.saveLoginProfile).not.toHaveBeenCalled();
 				expect(sessionProvider.deleteLoginProfile).toHaveBeenCalledWith(scope, 'login-profile-1');
+			});
+		});
+
+		describe('asking before a saved login is used', () => {
+			const savedLogin = {
+				id: 'saved-login-1',
+				domain: 'example.com',
+				savedAt: new Date('2026-11-01T10:00:00Z'),
+				savedLocation: { regionId: 'us-west-2', proxyCountry: 'US' },
+			};
+			const savedLoginRequest = (host: string) => ({
+				toolGroup: 'browser',
+				kind: 'host-with-saved-login',
+				resource: host,
+				description: `Browser: ${host}`,
+				options: ['allowWithSavedLogin', 'allowWithoutSavedLogin', 'denyOnce'],
+				savedLogin: { domain: 'example.com', savedAt: '2026-11-01T10:00:00.000Z' },
+			});
+
+			function setupWithSavedLogin() {
+				const context = setup();
+				context.sessionProvider.listSavedLoginProfiles.mockResolvedValue([savedLogin]);
+				return context;
+			}
+
+			it('asks the user and opens no session, also when the site is approved', async () => {
+				const { sessionProvider, start } = setupWithSavedLogin();
+
+				const result = await start({ url: 'https://mail.example.com/inbox' });
+
+				expect(confirmationRequest(result)).toEqual(savedLoginRequest('mail.example.com'));
+				expect(sessionProvider.listSavedLoginProfiles).toHaveBeenCalledWith(scope, 'example.com');
+				expect(sessionProvider.createSession).not.toHaveBeenCalled();
+			});
+
+			it('asks the user when the admin allows every site', async () => {
+				const { domainGate, start } = setupWithSavedLogin();
+				domainGate.permissionMode = 'always_allow';
+
+				const result = await start({ url: 'https://example.com' });
+
+				expect(confirmationRequest(result)).toEqual(savedLoginRequest('example.com'));
+			});
+
+			it('refuses without asking when the admin blocks browser access', async () => {
+				const { sessionProvider, domainGate, start } = setupWithSavedLogin();
+				domainGate.permissionMode = 'blocked';
+
+				const result = await start({
+					url: 'https://example.com',
+					_confirmation: 'allowWithSavedLogin',
+				});
+
+				expect(result).toEqual({
+					content: [{ type: 'text', text: 'Browser access blocked by admin' }],
+					isError: true,
+				});
+				expect(sessionProvider.createSession).not.toHaveBeenCalled();
+			});
+
+			it('opens the session with the saved login where it was saved', async () => {
+				const { sessionProvider, tracker, start } = setupWithSavedLogin();
+
+				const result = await start({
+					url: 'https://example.com',
+					proxyCountry: 'DE',
+					_confirmation: 'allowWithSavedLogin',
+				});
+
+				expect(result.isError).toBeUndefined();
+				expect(tracker.approveOnce).toHaveBeenCalledWith('run-1', 'example.com');
+				expect(sessionProvider.createLoginProfile).not.toHaveBeenCalled();
+				expect(sessionProvider.createSession).toHaveBeenCalledWith(scope, {
+					regionId: 'us-west-2',
+					proxyCountry: 'US',
+					loginProfileId: 'saved-login-1',
+				});
+			});
+
+			it('opens the session with a new login profile without the saved login', async () => {
+				const { server, sessionProvider, tracker, start } = setupWithSavedLogin();
+
+				const result = await start({
+					url: 'https://example.com',
+					proxyCountry: 'DE',
+					_confirmation: 'allowWithoutSavedLogin',
+				});
+
+				expect(result.isError).toBeUndefined();
+				expect(tracker.approveOnce).toHaveBeenCalledWith('run-1', 'example.com');
+				expect(sessionProvider.createSession).toHaveBeenCalledWith(scope, {
+					proxyCountry: 'DE',
+					loginProfileId: 'login-profile-1',
+				});
+				expect(await server.getLiveView()).toMatchObject({
+					loginProfile: { domain: 'example.com' },
+				});
+			});
+
+			it('opens no session when the user denies, and asks again on the next start', async () => {
+				const { sessionProvider, start } = setupWithSavedLogin();
+
+				const denied = await start({ url: 'https://example.com', _confirmation: 'denyOnce' });
+				const next = await start({ url: 'https://example.com' });
+
+				expect(denied).toEqual({
+					content: [{ type: 'text', text: 'Access denied by user' }],
+					isError: true,
+				});
+				expect(confirmationRequest(next)).toEqual(savedLoginRequest('example.com'));
+				expect(sessionProvider.createSession).not.toHaveBeenCalled();
+			});
+
+			it('keeps the answer for the host for the rest of the task', async () => {
+				const { sessionProvider, start } = setupWithSavedLogin();
+				await start({ url: 'https://example.com', _confirmation: 'allowWithoutSavedLogin' });
+
+				const result = await start({ url: 'https://example.com/invoices' });
+
+				expect(result.isError).toBeUndefined();
+				expect(sessionProvider.createSession).toHaveBeenCalledTimes(2);
+				expect(sessionProvider.createSession).toHaveBeenLastCalledWith(
+					scope,
+					expect.objectContaining({ loginProfileId: 'login-profile-1' }),
+				);
+			});
+
+			it('asks again on another host of the same site', async () => {
+				const { start } = setupWithSavedLogin();
+				await start({ url: 'https://example.com', _confirmation: 'allowWithSavedLogin' });
+
+				const result = await start({ url: 'https://mail.example.com' });
+
+				expect(confirmationRequest(result)).toEqual(savedLoginRequest('mail.example.com'));
+			});
+
+			it('asks again on another site', async () => {
+				const { sessionProvider, start } = setupWithSavedLogin();
+				await start({ url: 'https://example.com', _confirmation: 'allowWithSavedLogin' });
+				sessionProvider.listSavedLoginProfiles.mockResolvedValue([
+					{
+						...savedLogin,
+						id: 'saved-login-2',
+						domain: 'other.com',
+					},
+				]);
+
+				const result = await start({ url: 'https://other.com' });
+
+				expect(confirmationRequest(result)).toMatchObject({
+					kind: 'host-with-saved-login',
+					resource: 'other.com',
+				});
+			});
+
+			it('opens with a new login profile when the saved login is gone after the answer', async () => {
+				const { sessionProvider, tracker, start } = setup();
+				tracker.isHostAllowed.mockReturnValue(false);
+
+				const result = await start({
+					url: 'https://example.com',
+					_confirmation: 'allowWithSavedLogin',
+				});
+
+				expect(result.isError).toBeUndefined();
+				expect(tracker.approveOnce).toHaveBeenCalledWith('run-1', 'example.com');
+				expect(sessionProvider.createSession).toHaveBeenCalledWith(
+					scope,
+					expect.objectContaining({ loginProfileId: 'login-profile-1' }),
+				);
+			});
+
+			describe('browser tools after the answer', () => {
+				/** Answers the card, then drops the run's grants, as the end of the chat run does. */
+				async function setupAnswered() {
+					const context = setupWithSavedLogin();
+					await context.start({
+						url: 'https://example.com',
+						_confirmation: 'allowWithSavedLogin',
+					});
+					context.tracker.isHostAllowed.mockReturnValue(false);
+					return context;
+				}
+				const navigate = { name: 'browser_navigate', arguments: { url: 'https://example.com/a' } };
+
+				it('runs them on the host without asking again', async () => {
+					const { server } = await setupAnswered();
+
+					const result = await server.callTool(navigate);
+
+					expect(result).toEqual({
+						content: [{ type: 'text', text: 'opened https://example.com/a' }],
+					});
+				});
+
+				it('runs them in a later run of the task', async () => {
+					const { server, tracker } = await setupAnswered();
+					server.setDomainGate({ tracker, runId: 'run-2' });
+
+					const result = await server.callTool(navigate);
+
+					expect(result.isError).toBeUndefined();
+				});
+
+				it('still asks about another host of the same site', async () => {
+					const { server } = await setupAnswered();
+
+					// browser_click acts on current.example.com.
+					const result = await server.callTool({ name: 'browser_click', arguments: { ref: 'e1' } });
+
+					expect(confirmationRequest(result)).toMatchObject({
+						kind: 'host',
+						resource: 'current.example.com',
+					});
+				});
+
+				it('still asks about another site', async () => {
+					const { server } = await setupAnswered();
+
+					const result = await server.callTool({
+						name: 'browser_navigate',
+						arguments: { url: 'https://other.org' },
+					});
+
+					expect(confirmationRequest(result)).toMatchObject({
+						kind: 'host',
+						resource: 'other.org',
+					});
+				});
+
+				it('refuses them when the admin blocks browser access later', async () => {
+					const { server, tracker } = await setupAnswered();
+					server.setDomainGate({ tracker, runId: 'run-2', permissionMode: 'blocked' });
+
+					const result = await server.callTool(navigate);
+
+					expect(result).toEqual({
+						content: [{ type: 'text', text: 'Browser access blocked by admin' }],
+						isError: true,
+					});
+				});
+			});
+
+			it.each([
+				['there are no saved login rules', undefined],
+				[
+					"the admin's rules do not allow the site",
+					{ mode: 'except' as const, sites: ['example.com'] },
+				],
+			])('does not ask when %s', async (_, savedLoginPolicy) => {
+				const { sessionProvider, start } = setup({ savedLoginPolicy });
+				sessionProvider.listSavedLoginProfiles.mockResolvedValue([savedLogin]);
+
+				const result = await start({ url: 'https://example.com' });
+
+				expect(result.isError).toBeUndefined();
+				expect(sessionProvider.listSavedLoginProfiles).not.toHaveBeenCalled();
+				expect(sessionProvider.createSession).toHaveBeenCalledWith(
+					scope,
+					expect.objectContaining({ loginProfileId: undefined }),
+				);
+			});
+		});
+
+		describe('a saved login that the session uses', () => {
+			const savedLogin = {
+				id: 'saved-login-1',
+				domain: 'example.com',
+				savedAt: new Date('2026-11-01T10:00:00Z'),
+				savedLocation: { regionId: 'eu-central-1' },
+			};
+
+			async function setupReusedLogin() {
+				const context = setup();
+				context.sessionProvider.listSavedLoginProfiles.mockResolvedValue([savedLogin]);
+				await context.start({ url: 'https://example.com', _confirmation: 'allowWithSavedLogin' });
+				return context;
+			}
+
+			function dropConnection(toolkit: ReturnType<typeof fakeToolkit>) {
+				toolkit.connection.isConnected = false;
+				toolkit.adapter.onDisconnect?.('browser_closed');
+			}
+
+			it('keeps the saved login and reports nothing after a clean release', async () => {
+				const { server, sessionProvider } = await setupReusedLogin();
+
+				await server.release();
+
+				expect(sessionProvider.deleteLoginProfile).not.toHaveBeenCalled();
+				expect(server.getLoginSaveResults()).toEqual([]);
+			});
+
+			it('deletes the saved login after a drop and reports it as removed', async () => {
+				const { server, sessionProvider, toolkits } = await setupReusedLogin();
+
+				dropConnection(toolkits[0]);
+				await server.release();
+
+				expect(sessionProvider.deleteLoginProfile).toHaveBeenCalledWith(scope, 'saved-login-1');
+				expect(server.getLoginSaveResults()).toEqual([
+					{ domain: 'example.com', status: 'removed' },
+				]);
+			});
+
+			it('does not report a saved login as removed when its delete fails', async () => {
+				const { server, sessionProvider, toolkits } = await setupReusedLogin();
+				sessionProvider.deleteLoginProfile.mockRejectedValue(new Error('HTTP 502'));
+
+				dropConnection(toolkits[0]);
+				await server.release();
+
+				expect(sessionProvider.deleteLoginProfile).toHaveBeenCalledWith(scope, 'saved-login-1');
+				expect(server.getLoginSaveResults()).toEqual([]);
+			});
+
+			it('keeps the saved login after a drop when the session stayed on its site', async () => {
+				const { server, sessionProvider, toolkits } = await setupReusedLogin();
+				toolkits[0].adapter.hasVisitedOnlySite.mockReturnValue(true);
+
+				dropConnection(toolkits[0]);
+				await server.release();
+
+				expect(toolkits[0].adapter.hasVisitedOnlySite).toHaveBeenCalledWith('example.com');
+				expect(sessionProvider.deleteLoginProfile).not.toHaveBeenCalled();
+				expect(server.getLoginSaveResults()).toEqual([]);
+			});
+
+			it('saves a new login after a drop when the session stayed on its site', async () => {
+				const { server, sessionProvider, toolkits } = await setupSavedLogin();
+				toolkits[0].adapter.hasVisitedOnlySite.mockReturnValue(true);
+				toolkits[0].connection.isConnected = false;
+				toolkits[0].adapter.onDisconnect?.('browser_closed');
+
+				await server.release();
+
+				expect(toolkits[0].adapter.clearSiteDataExcept).not.toHaveBeenCalled();
+				expect(sessionProvider.saveLoginProfile).toHaveBeenCalledTimes(1);
+				expect(server.getLoginSaveResults()).toEqual([{ domain: 'example.com', status: 'saved' }]);
+			});
+
+			it('reports a login as removed when it was saved earlier in the task', async () => {
+				const { server, sessionProvider, toolkits, start } = await setupSavedLogin();
+				sessionProvider.listSavedLoginProfiles.mockResolvedValue([savedLogin]);
+				// The new session replaces the first one, which saves its login.
+				await start({ url: 'https://example.com', _confirmation: 'allowWithSavedLogin' });
+
+				dropConnection(toolkits[1]);
+				await server.release();
+
+				expect(sessionProvider.saveLoginProfile).toHaveBeenCalledTimes(1);
+				expect(server.getLoginSaveResults()).toEqual([
+					{ domain: 'example.com', status: 'removed' },
+				]);
+			});
+
+			it('opens the next session only after the dropped saved login is deleted', async () => {
+				const { sessionProvider, toolkits, start } = await setupReusedLogin();
+				let isDeleted = false;
+				sessionProvider.deleteLoginProfile.mockImplementation(async () => {
+					await new Promise((resolve) => setTimeout(resolve, 10));
+					isDeleted = true;
+				});
+				sessionProvider.listSavedLoginProfiles.mockImplementation(async () =>
+					isDeleted ? [] : [savedLogin],
+				);
+
+				dropConnection(toolkits[0]);
+				await start({ url: 'https://example.com' });
+
+				expect(sessionProvider.createSession).toHaveBeenLastCalledWith(
+					scope,
+					expect.objectContaining({ loginProfileId: 'login-profile-1' }),
+				);
 			});
 		});
 	});

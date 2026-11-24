@@ -1,4 +1,5 @@
 import { SamlConfigurationPublicDto, UpdateSamlConfigurationPublicDto } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
@@ -19,6 +20,7 @@ import type { Response } from 'express';
 
 import { ConflictError } from '@n8n/errors';
 import { SamlService } from '@/modules/sso-saml/saml.service.ee';
+import { getChangedFields } from '@/utils/changed-fields';
 
 import { toSamlConfigurationResponse, toSamlPreferencesUpdate } from './sso-saml.mapper';
 
@@ -29,6 +31,7 @@ export class SamlSsoPublicController {
 	constructor(
 		private readonly samlService: SamlService,
 		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
+		private readonly eventService: EventService,
 	) {}
 
 	@Get('/')
@@ -55,7 +58,7 @@ export class SamlSsoPublicController {
 	@ApiResponse(200, SamlConfigurationPublicDto)
 	@ApiErrorResponse(409)
 	async updateSamlConfiguration(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Body body: UpdateSamlConfigurationPublicDto,
 	): Promise<SamlConfigurationPublicDto> {
@@ -65,8 +68,18 @@ export class SamlSsoPublicController {
 			);
 		}
 
+		const previous = this.samlService.samlPreferences;
 		await this.samlService.setSamlPreferences(toSamlPreferencesUpdate(body));
+		const current = this.samlService.samlPreferences;
 
-		return toSamlConfigurationResponse(this.samlService.samlPreferences);
+		this.eventService.emit('sso-settings-updated', {
+			user: req.user,
+			protocol: 'saml',
+			loginEnabled: current.loginEnabled ?? false,
+			fieldsChanged: getChangedFields(previous, current),
+			publicApi: true,
+		});
+
+		return toSamlConfigurationResponse(current);
 	}
 }

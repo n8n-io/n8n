@@ -1,0 +1,127 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"base": {
+			"type": "string"
+		},
+		"clouds": {
+			"properties": {
+				"all": {
+					"type": "number"
+				}
+			},
+			"type": "object"
+		},
+		"cod": {
+			"type": "number"
+		},
+		"coord": {
+			"properties": {
+				"lat": {
+					"type": "number"
+				},
+				"lon": {
+					"type": "number"
+				}
+			},
+			"type": "object"
+		},
+		"dt": {
+			"type": "number"
+		},
+		"id": {
+			"type": "number"
+		},
+		"main": {
+			"properties": {
+				"feels_like": {
+					"type": "number"
+				},
+				"grnd_level": {
+					"type": "number"
+				},
+				"humidity": {
+					"type": "number"
+				},
+				"pressure": {
+					"type": "number"
+				},
+				"sea_level": {
+					"type": "number"
+				},
+				"temp": {
+					"type": "number"
+				},
+				"temp_max": {
+					"type": "number"
+				},
+				"temp_min": {
+					"type": "number"
+				}
+			},
+			"type": "object"
+		},
+		"name": {
+			"type": "string"
+		},
+		"sys": {
+			"properties": {
+				"country": {
+					"type": "string"
+				},
+				"id": {
+					"type": "number"
+				},
+				"sunrise": {
+					"type": "number"
+				},
+				"sunset": {
+					"type": "number"
+				},
+				"type": {
+					"type": "number"
+				}
+			},
+			"type": "object"
+		},
+		"timezone": {
+			"type": "number"
+		},
+		"visibility": {
+			"type": "number"
+		},
+		"weather": {
+			"items": {
+				"properties": {
+					"description": {
+						"type": "string"
+					},
+					"icon": {
+						"type": "string"
+					},
+					"id": {
+						"type": "number"
+					},
+					"main": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"wind": {
+			"additionalProperties": true,
+			"properties": {
+				"deg": {
+					"type": "number"
+				},
+				"speed": {
+					"type": "number"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

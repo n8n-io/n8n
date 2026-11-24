@@ -265,6 +265,8 @@ export interface FrontendSettings {
 	};
 	ai: {
 		allowSendingParameterValues: boolean;
+		/** Whether n8n may train models on this instance's Assistant traces. */
+		allowModelTraining: boolean;
 	};
 	aiPreferences: {
 		enabled: boolean;
@@ -359,6 +361,12 @@ export type FrontendModuleSettings = {
 		serverUrl?: string;
 		/** Whether newly created workflows are auto-exposed to MCP. */
 		autoExposeNewWorkflows: boolean;
+		preferencesEnabled: boolean;
+	};
+
+	skills?: {
+		skillSyncEnabled: boolean;
+		skillSyncManagedByEnv: boolean;
 	};
 
 	/**

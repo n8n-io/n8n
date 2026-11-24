@@ -80,13 +80,13 @@ catalog:
   # Exact pin: the adapters share an internal protocol with `chat`, and a range
   # that resolves higher than the locked `chat` pulls a second copy of it into
   # the tree. Bump this together with `chat` and the other adapters below.
-  '@chat-adapter/discord': 4.37.0
-  '@chat-adapter/linear': 4.37.0
-  '@chat-adapter/slack': 4.37.0
-  '@chat-adapter/state-memory': 4.37.0
-  '@chat-adapter/teams': 4.37.0
-  '@chat-adapter/telegram': 4.37.0
-  '@chat-adapter/whatsapp': 4.37.0
+  '@chat-adapter/discord': 4.39.0
+  '@chat-adapter/linear': 4.39.0
+  '@chat-adapter/slack': 4.39.0
+  '@chat-adapter/state-memory': 4.39.0
+  '@chat-adapter/teams': 4.39.0
+  '@chat-adapter/telegram': 4.39.0
+  '@chat-adapter/whatsapp': 4.39.0
   '@codemirror/autocomplete': 6.20.0
   '@codemirror/commands': 6.10.1
   '@codemirror/lang-css': 6.3.1
@@ -128,6 +128,7 @@ catalog:
   '@opentelemetry/sdk-trace-base': 2.10.0
   '@pinecone-database/pinecone': ^5.0.2
   '@qdrant/js-client-rest': ^1.19.0
+  '@redocly/cli': ^2.76.0
   '@rudderstack/rudder-sdk-node': 3.1.1
   # Must satisfy openai's ">=5.4.0 <6" optional peer: an unmet range gives openai a second peer
   # context, which splits @langchain/core into two physical copies.
@@ -171,6 +172,7 @@ catalog:
   '@types/ms': 2.1.0
   '@types/node': 24.10.1
   '@types/oracledb': 6.10.3
+  '@types/pluralize': ^0.0.33
   '@types/proxy-from-env': ^1.0.4
   '@types/qs': 6.9.15
   '@types/sanitize-html': ^2.11.0
@@ -200,7 +202,7 @@ catalog:
   cache-manager: 5.2.3
   callsites: 3.1.0
   change-case: ^5.4.4
-  chat: 4.37.0
+  chat: 4.39.0
   cheerio: 1.1.0
   chokidar: 4.0.3
   citty: ^0.1.6
@@ -266,6 +268,7 @@ catalog:
   pg: 8.21.0
   picocolors: 1.0.1
   playwright-core: 1.62.1
+  pluralize: ^8.0.0
   posthog-node: 5.49.1
   prettier: 3.6.2
   proxy-from-env: ^1.1.0
@@ -310,6 +313,8 @@ catalog:
   ioredis-mock: ^8.8.1
   '@types/ioredis-mock': 8.2.2
   '@microsoft/opentelemetry': 1.5.0
+  pg-copy-streams: 7.0.0
+  '@types/pg-copy-streams': 1.2.5
 
 catalogMode: strict
 
@@ -524,6 +529,8 @@ overrides:
   # The @icetee/ftp patch replaces xregexp with native RegExp.
   '@icetee/ftp>xregexp': npm:empty-npm-package@1.0.0
   'toml@<5.0.1': 5.0.1
+  # get-uri still asks for basic-ftp 5. Version 6 only blocks separate transfer hosts by default.
+  'get-uri>basic-ftp': 6.2.6
   # Keep the copies that langchain brings in on the catalog version.
   '@langchain/langgraph': 'catalog:'
   '@langchain/langgraph-checkpoint': 'catalog:'
@@ -549,8 +556,8 @@ patchedDependencies:
   '@langchain/google-common@2.1.24': patches/@langchain__google-common@2.1.24.patch
   '@confluentinc/kafka-javascript@1.9.1': patches/@confluentinc__kafka-javascript@1.9.1.patch
   imapflow@1.7.1: patches/imapflow@1.7.1.patch
-  '@chat-adapter/teams@4.37.0': patches/@chat-adapter__teams@4.37.0.patch
-  '@chat-adapter/whatsapp@4.37.0': patches/@chat-adapter__whatsapp@4.37.0.patch
+  '@chat-adapter/teams@4.39.0': patches/@chat-adapter__teams@4.39.0.patch
+  '@chat-adapter/whatsapp@4.39.0': patches/@chat-adapter__whatsapp@4.39.0.patch
   pdf-parse@2.4.5: patches/pdf-parse@2.4.5.patch
   '@icetee/ftp@0.3.15': patches/@icetee__ftp@0.3.15.patch
   xml2js@0.6.2: patches/xml2js@0.6.2.patch

@@ -29,7 +29,8 @@ own summary table, and a fold step fills it from the ledger.
 
 1. The ledger stores facts, not counts. One row records one event of one run: `started` or
    `ended`, with the project at the time of the event, the mode, the source, the outcome and the
-   reason for a block. Workflow runs and agent messages use the same table.
+   reason for a block. A row has no project when the workflow has no owner project. Workflow runs
+   and agent messages use the same table.
 2. Every run writes a `started` row in the same transaction as its execution row, and an `ended`
    row when it ends. One event writes one row. No run updates a row that other runs also update.
 3. A fold runs every 5 s. It claims a batch of rows, runs every fold step in one transaction, and
@@ -85,6 +86,8 @@ its own write path, and no run waits on a shared row.
    same autovacuum settings as `workflow_statistics_delta`.
 9. A change to a counting rule applies to new runs only. A change to a past number needs a
    migration of that summary table.
+10. A row with no project counts for the instance and for no project. A fold step that counts for
+    each project skips the row.
 
 ## Links
 

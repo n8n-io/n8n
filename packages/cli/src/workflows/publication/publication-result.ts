@@ -87,6 +87,8 @@ export type PublicationResult =
 	| {
 			type: 'partial';
 			triggerStatuses: TriggerPublicationStatus[];
+			/** The failures of the failed triggers, combined as on `failed`. */
+			error: Error;
 			teardownFailures?: TriggerTeardownFailure[];
 	  }
 	/**

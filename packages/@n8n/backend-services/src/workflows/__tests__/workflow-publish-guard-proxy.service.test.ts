@@ -9,7 +9,9 @@ describe('WorkflowPublishGuardProxy', () => {
 	test('allows publication when no review provider is registered', async () => {
 		const proxy = new WorkflowPublishGuardProxy();
 
-		await expect(proxy.assertCanPublish('workflow-1')).resolves.toBeUndefined();
+		await expect(
+			proxy.assertCanPublish('workflow-1', { versionId: 'v1' }),
+		).resolves.toBeUndefined();
 	});
 
 	test('asks the registered review provider before publication', async () => {
@@ -17,9 +19,9 @@ describe('WorkflowPublishGuardProxy', () => {
 		const provider = mock<WorkflowPublishGuard>();
 		proxy.registerProvider(provider);
 
-		await proxy.assertCanPublish('workflow-1');
+		await proxy.assertCanPublish('workflow-1', { versionId: 'v1' });
 
 		expect(provider.assertCanPublish).toHaveBeenCalledOnce();
-		expect(provider.assertCanPublish).toHaveBeenCalledWith('workflow-1');
+		expect(provider.assertCanPublish).toHaveBeenCalledWith('workflow-1', { versionId: 'v1' });
 	});
 });

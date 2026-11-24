@@ -141,16 +141,8 @@ function onSelect(agentId: string) {
 </script>
 
 <template>
-	<N8nText
-		v-if="props.skill.usedByAgents === 0"
-		size="small"
-		color="text-light"
-		data-test-id="skill-agents-none"
-	>
-		—
-	</N8nText>
 	<!-- The row opens the skill on click, so the menu keeps its clicks to itself. -->
-	<span v-else @click.stop>
+	<span v-if="props.skill.usedByAgents > 0" @click.stop>
 		<N8nDropdownMenu
 			:items="items"
 			:loading="loading"
@@ -186,7 +178,9 @@ function onSelect(agentId: string) {
 					:aria-label="i18n.baseText('settings.context.skills.agents.label')"
 					data-test-id="skill-agents-trigger"
 				>
-					<N8nText size="small" color="text-base">{{ props.skill.usedByAgents }}</N8nText>
+					<N8nText :class="$style.count" size="small" color="text-base">{{
+						props.skill.usedByAgents
+					}}</N8nText>
 					<N8nIcon icon="chevron-down" size="small" color="text-light" />
 				</button>
 			</template>
@@ -199,7 +193,7 @@ function onSelect(agentId: string) {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	padding: var(--spacing--4xs) var(--spacing--3xs);
+	padding: var(--spacing--4xs) 0;
 	border: none;
 	border-radius: var(--radius);
 	background: none;
@@ -212,5 +206,11 @@ function onSelect(agentId: string) {
 	&[aria-expanded='true'] {
 		background-color: var(--background--active);
 	}
+}
+
+.count {
+	min-width: var(--spacing--lg);
+	text-align: right;
+	font-variant-numeric: tabular-nums;
 }
 </style>

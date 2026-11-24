@@ -74,6 +74,24 @@ describe('converter rules', () => {
 			kind: 'temporary',
 		},
 		{
+			shape: 'a node with Retry On Fail',
+			target: node({ retryOnFail: true }),
+			code: 'RETRY_ON_FAIL',
+			kind: 'temporary',
+		},
+		{
+			shape: 'a node with Always Output Data',
+			target: node({ alwaysOutputData: true }),
+			code: 'ALWAYS_OUTPUT_DATA',
+			kind: 'temporary',
+		},
+		{
+			shape: 'a node with Execute Once',
+			target: node({ executeOnce: true }),
+			code: 'EXECUTE_ONCE',
+			kind: 'temporary',
+		},
+		{
 			shape: 'a Merge node in chooseBranch mode',
 			target: merge(3, 'chooseBranch'),
 			code: 'MERGE_CHOOSE_BRANCH',
@@ -183,6 +201,14 @@ describe('converter rules', () => {
 		{
 			shape: 'a node with onError continueRegularOutput',
 			target: node({ onError: 'continueRegularOutput' }),
+		},
+		{
+			shape: 'a node with the execution settings explicitly off',
+			target: node({ retryOnFail: false, alwaysOutputData: false, executeOnce: false }),
+		},
+		{
+			shape: 'a disabled node with Retry On Fail',
+			target: node({ retryOnFail: true, disabled: true }),
 		},
 		{ shape: 'a Merge node in append mode', target: merge(3, 'append') },
 		// Merge v1 predates chooseBranch, so the converter allows an expression mode there.

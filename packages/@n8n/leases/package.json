@@ -1,7 +1,6 @@
 {
   "name": "@n8n/leases",
   "version": "0.1.0",
-  "private": true,
   "description": "Contracts for leases held by one process in a cluster",
   "scripts": {
     "clean": "rimraf dist .turbo",

@@ -404,6 +404,34 @@ describe('createToolsFromLocalMcpServer', () => {
 			});
 		});
 
+		it('keeps the saved login and its options in a host-with-saved-login confirmation', async () => {
+			const savedLoginPayload = {
+				toolGroup: 'browser',
+				kind: 'host-with-saved-login',
+				resource: 'mail.google.com',
+				description: 'Browser: mail.google.com',
+				options: ['allowWithSavedLogin', 'allowWithoutSavedLogin', 'denyOnce'],
+				savedLogin: { domain: 'google.com', savedAt: '2026-11-12T10:00:00.000Z' },
+			};
+			const server = makeMockServer();
+			server.callTool.mockResolvedValue({
+				content: [
+					{
+						type: 'text',
+						text: `${GATEWAY_CONFIRMATION_REQUIRED_PREFIX}${JSON.stringify(savedLoginPayload)}`,
+					},
+				],
+				isError: true,
+			});
+			const suspend = vi.fn().mockResolvedValue(undefined);
+			const execute = getExecute(server);
+
+			await execute({}, makeCtx({ suspend }));
+
+			expect(suspend).toHaveBeenCalledTimes(1);
+			expect(suspend.mock.calls[0][0].resourceDecision).toEqual(savedLoginPayload);
+		});
+
 		it('calls suspend() for a JSON-envelope GATEWAY_CONFIRMATION_REQUIRED error', async () => {
 			const server = makeMockServer();
 			server.callTool.mockResolvedValue(JSON_ENVELOPE_CONFIRMATION_ERROR);
@@ -450,6 +478,22 @@ describe('createToolsFromLocalMcpServer', () => {
 					name: 'write_file',
 					arguments: { filePath: 'test.ts', _confirmation: 'allowForSession' },
 				},
+				{ abortSignal: undefined },
+			);
+		});
+
+		it('re-calls the server with a saved-login decision', async () => {
+			const server = makeMockServer();
+			server.callTool.mockResolvedValue(SUCCESS_RESULT);
+			const execute = getExecute(server);
+
+			await execute(
+				{},
+				makeCtx({ resumeData: { approved: true, resourceDecision: 'allowWithoutSavedLogin' } }),
+			);
+
+			expect(server.callTool).toHaveBeenCalledWith(
+				{ name: 'write_file', arguments: { _confirmation: 'allowWithoutSavedLogin' } },
 				{ abortSignal: undefined },
 			);
 		});

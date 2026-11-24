@@ -7,3 +7,31 @@ export class LeaseEndedError extends Error {
 		this.name = 'LeaseEndedError';
 	}
 }
+
+export class InvalidLeaseKindError extends Error {
+	constructor(name: string) {
+		super(`Invalid lease kind name: ${name}`);
+		this.name = 'InvalidLeaseKindError';
+	}
+}
+
+export class InvalidLeaseKindOptionsError extends Error {
+	constructor(name: string, option: string, value: unknown) {
+		super(`Invalid lease kind option ${option} for ${name}: ${String(value)}`);
+		this.name = 'InvalidLeaseKindOptionsError';
+	}
+}
+
+export class DuplicateLeaseKindError extends Error {
+	constructor(name: string) {
+		super(`Lease kind already registered: ${name}`);
+		this.name = 'DuplicateLeaseKindError';
+	}
+}
+
+export class UnknownLeaseKindError extends Error {
+	constructor(name: string) {
+		super(`Unknown lease kind: ${name}`);
+		this.name = 'UnknownLeaseKindError';
+	}
+}

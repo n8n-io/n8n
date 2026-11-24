@@ -1,5 +1,17 @@
 import { parseFlatted } from '@n8n/backend-common';
-import { EventService, ExecutionLedger, ExecutionRetentionService } from '@n8n/backend-services';
+import {
+	EventService,
+	ExecutionLedger,
+	ExecutionRetentionService,
+	CorruptedExecutionDataError,
+	ExecutionDataJsonStore,
+	isExecutionDataPayload,
+	type BlobStorageLocation,
+	type BundleWorkflowSnapshot,
+	type ExecutionDataPayload,
+	type ExecutionRef,
+	toWorkflowSnapshot,
+} from '@n8n/backend-services';
 import { DatabaseConfig, ExecutionsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type {
@@ -35,18 +47,8 @@ import {
 } from 'n8n-workflow';
 import { UnexpectedError } from '@n8n/errors';
 
-import { CorruptedExecutionDataError } from './execution-data/corrupted-execution-data.error';
 import { DbStore } from './execution-data/db-store';
-import { ExecutionDataJsonStore } from './execution-data/execution-data-json-store';
 import { MissingExecutionDataError } from './execution-data/missing-execution-data.error';
-import {
-	isExecutionDataPayload,
-	type BlobStorageLocation,
-	type BundleWorkflowSnapshot,
-	type ExecutionDataPayload,
-	type ExecutionRef,
-	toWorkflowSnapshot,
-} from './execution-data/types';
 import { UnreadableRunDataError } from './execution-data/unreadable-run-data.error';
 import { sumBinaryDataBytes } from './sum-binary-data-bytes';
 import { DuplicateExecutionError } from '../errors/duplicate-execution.error';
@@ -58,6 +60,8 @@ type ReclaimedTombstone = DeletionTarget & { mode: WorkflowExecuteMode };
 export type CreateExecutionOptions = {
 	/** Who started the run. The execution row does not store it, so the ledger gets it here. */
 	source?: WorkflowExecutionSource;
+	/** The owner project of the workflow. The ledger looks it up when this is unset or empty. */
+	projectId?: string;
 	/** For rows that copy a run from elsewhere: that run is not a run of this instance. */
 	skipLedger?: true;
 };
@@ -177,6 +181,7 @@ export class ExecutionPersistence {
 								workflowName: workflowData.name,
 								mode: executionEntity.mode,
 								source: options.source,
+								projectId: options.projectId || undefined,
 								occurredAt: executionEntity.createdAt,
 							},
 							status: executionEntity.status,

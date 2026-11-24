@@ -18,6 +18,18 @@ paths:
       $ref: ./handlers/agents/spec/paths/updateAgent.generated.yml
     delete:
       $ref: ./handlers/agents/spec/paths/deleteAgent.generated.yml
+  /ai-preferences:
+    get:
+      $ref: ./handlers/ai-preferences/spec/paths/listAiPreferences.generated.yml
+    post:
+      $ref: ./handlers/ai-preferences/spec/paths/createAiPreference.generated.yml
+  /ai-preferences/{aiPreferenceId}:
+    get:
+      $ref: ./handlers/ai-preferences/spec/paths/getAiPreference.generated.yml
+    put:
+      $ref: ./handlers/ai-preferences/spec/paths/updateAiPreference.generated.yml
+    delete:
+      $ref: ./handlers/ai-preferences/spec/paths/deleteAiPreference.generated.yml
   /community-packages:
     get:
       $ref: ./handlers/community-packages/spec/paths/getInstalledPackages.generated.yml
@@ -480,6 +492,9 @@ paths:
   /workflows/{workflowId}/dependencies:
     get:
       $ref: ./handlers/workflows/spec/paths/getWorkflowDependencies.generated.yml
+  /workflows/{workflowId}/run:
+    post:
+      $ref: ./handlers/workflows/spec/paths/runWorkflow.generated.yml
   /workflows/{workflowId}/{workflowVersionId}:
     get:
       $ref: ./handlers/workflows/spec/paths/getDeprecatedWorkflowVersion.generated.yml

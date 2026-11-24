@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import type { GatewayConfirmationRequiredPayload } from '@n8n/api-types';
 import { N8nButton, N8nCard, N8nText } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -29,7 +30,7 @@ function isInstanceGatewayResourceDecision(
 const props = defineProps<{
 	resource: string;
 	description: string;
-	options: InstanceGatewayResourceDecision[];
+	options: GatewayConfirmationRequiredPayload['options'];
 	/** The thread that the telemetry reports. */
 	threadId: string;
 	/** Joins the telemetry with the "Builder asked for input" event of this card. */

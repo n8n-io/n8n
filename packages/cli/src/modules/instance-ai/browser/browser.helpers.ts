@@ -1,6 +1,7 @@
 import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { safeJoinPath } from '@n8n/backend-common';
 import type {
+	GatewayConfirmationRequiredWirePayload,
 	InstanceAiPermissionMode,
 	InstanceGatewayResourceDecision,
 	McpTool,
@@ -25,6 +26,10 @@ import { mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+
+const BROWSER_ACCESS_BLOCKED_MESSAGE = 'Browser access blocked by admin';
+
+const ACCESS_DENIED_MESSAGE = 'Access denied by user';
 
 export interface BrowserDomainGate {
 	tracker: DomainAccessTracker;
@@ -164,6 +169,51 @@ export function isBrowserAccessAllowed(
 	);
 }
 
+/** The user's answers on the card for a site where they have a saved login. */
+export type SavedLoginDecision = Extract<
+	InstanceGatewayResourceDecision,
+	'allowWithSavedLogin' | 'allowWithoutSavedLogin'
+>;
+
+export function isSavedLoginDecision(value: unknown): value is SavedLoginDecision {
+	return value === 'allowWithSavedLogin' || value === 'allowWithoutSavedLogin';
+}
+
+/**
+ * Checks a new session on a site where the user has a saved login. Asks the user also when the
+ * site is approved or the mode is `always_allow`: the session acts as the user, and that needs the
+ * user's own consent. An answer that opens the site approves it for this run, like `allowOnce`.
+ * `decision` is the user's answer, from the card or kept from earlier in the task.
+ */
+export function gateSavedLoginAccess(
+	gate: BrowserDomainGate,
+	affected: AffectedResource,
+	savedLogin: { domain: string; savedAt: Date },
+	decision: unknown,
+): McpToolCallResult | undefined {
+	// Checked before the user's answer, so a block set while a request waits still applies.
+	if (gate.permissionMode === 'blocked') {
+		return browserErrorResult(BROWSER_ACCESS_BLOCKED_MESSAGE);
+	}
+
+	if (isSavedLoginDecision(decision)) {
+		gate.tracker.approveOnce(gate.runId, affected.resource);
+		return undefined;
+	}
+	if (decision !== undefined) {
+		return browserErrorResult(ACCESS_DENIED_MESSAGE);
+	}
+
+	return toConfirmationRequiredResult({
+		toolGroup: affected.toolGroup,
+		kind: 'host-with-saved-login',
+		resource: affected.resource,
+		description: affected.description,
+		options: ['allowWithSavedLogin', 'allowWithoutSavedLogin', 'denyOnce'],
+		savedLogin: { domain: savedLogin.domain, savedAt: savedLogin.savedAt.toISOString() },
+	});
+}
+
 async function gateDomainAccess(
 	gate: BrowserDomainGate,
 	affected: AffectedResource,
@@ -173,7 +223,7 @@ async function gateDomainAccess(
 
 	// Checked before the user's answer, so a block set while a request waits still applies.
 	if (gate.permissionMode === 'blocked') {
-		return browserErrorResult('Browser access blocked by admin');
+		return browserErrorResult(BROWSER_ACCESS_BLOCKED_MESSAGE);
 	}
 
 	if (typeof confirmation === 'string') {
@@ -185,7 +235,7 @@ async function gateDomainAccess(
 				gate.tracker.approveOnce(gate.runId, host);
 				return undefined;
 			default:
-				return browserErrorResult('Access denied by user');
+				return browserErrorResult(ACCESS_DENIED_MESSAGE);
 		}
 	}
 
@@ -210,7 +260,7 @@ function gateCredentialCreation(
 	}
 
 	if (typeof confirmation === 'string') {
-		return confirmation === 'allowOnce' ? undefined : browserErrorResult('Access denied by user');
+		return confirmation === 'allowOnce' ? undefined : browserErrorResult(ACCESS_DENIED_MESSAGE);
 	}
 
 	if (gate.createCredentialPermissionMode !== 'always_allow') {
@@ -223,13 +273,18 @@ function confirmationRequiredResult(
 	affected: AffectedResource,
 	options: InstanceGatewayResourceDecision[],
 ): McpToolCallResult {
-	const payload = {
+	return toConfirmationRequiredResult({
 		toolGroup: affected.toolGroup,
 		kind: affected.kind,
 		resource: affected.resource,
 		description: affected.description,
 		options,
-	};
+	});
+}
+
+function toConfirmationRequiredResult(
+	payload: GatewayConfirmationRequiredWirePayload,
+): McpToolCallResult {
 	return {
 		content: [
 			{ type: 'text', text: `${GATEWAY_CONFIRMATION_REQUIRED_PREFIX}${JSON.stringify(payload)}` },

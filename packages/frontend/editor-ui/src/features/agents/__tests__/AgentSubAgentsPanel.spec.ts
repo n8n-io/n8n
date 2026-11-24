@@ -2,6 +2,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
 import { ref } from 'vue';
+import type * as DesignSystem from '@n8n/design-system';
 import {
 	AI_GATEWAY_MANAGED_TAG,
 	SUB_AGENT_MAX_CHILDREN_DEFAULT,
@@ -74,7 +75,7 @@ vi.mock('../composables/useModelCatalog', async () => {
 			getModelsForPicker: (credentials?: Record<string, string | null> | null) => ({
 				anthropic: {
 					models: [
-						anthropicModel('claude-sonnet-4-5', 'Claude Sonnet 4.5'),
+						anthropicModel('claude-sonnet-5-5', 'Claude Sonnet 5.5'),
 						// n8n Connect serves an allowlist; a user's own credential sees the
 						// provider's full catalog.
 						...(credentials?.anthropic === managedTag
@@ -139,11 +140,8 @@ vi.mock('../components/AgentModelSelector.vue', () => ({
 	},
 }));
 
-vi.mock('@n8n/design-system', () => ({
-	N8nIconButton: {
-		template: '<button :disabled="disabled" v-bind="$attrs"><slot /></button>',
-		props: ['disabled', 'ariaLabel', 'icon', 'variant', 'size', 'iconSize'],
-	},
+vi.mock('@n8n/design-system', async (importOriginal) => ({
+	N8nIconButton: (await importOriginal<typeof DesignSystem>()).N8nIconButton,
 	N8nInputNumber: {
 		props: ['modelValue', 'disabled', 'min', 'max', 'precision'],
 		emits: ['update:modelValue'],
@@ -162,7 +160,7 @@ vi.mock('@n8n/design-system', () => ({
 
 const defaultConfig: AgentJsonConfig = {
 	name: 'Agent',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	instructions: 'Help the user.',
 };
 
@@ -244,7 +242,7 @@ describe('AgentSubAgentsPanel', () => {
 			...defaultConfig,
 			subAgents: {
 				modelsByDifficulty: {
-					low: { model: 'anthropic/claude-sonnet-4-5', credential: AI_GATEWAY_MANAGED_TAG },
+					low: { model: 'anthropic/claude-sonnet-5-5', credential: AI_GATEWAY_MANAGED_TAG },
 				},
 			},
 		} as AgentJsonConfig);
@@ -266,8 +264,8 @@ describe('AgentSubAgentsPanel', () => {
 			...defaultConfig,
 			subAgents: {
 				modelsByDifficulty: {
-					low: { model: 'anthropic/claude-sonnet-4-5', credential: AI_GATEWAY_MANAGED_TAG },
-					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'anthropic-cred' },
+					low: { model: 'anthropic/claude-sonnet-5-5', credential: AI_GATEWAY_MANAGED_TAG },
+					high: { model: 'anthropic/claude-sonnet-5-5', credential: 'anthropic-cred' },
 				},
 			},
 		} as AgentJsonConfig);
@@ -302,7 +300,7 @@ describe('AgentSubAgentsPanel', () => {
 		// A model picked for a different difficulty still gets the global credential.
 		emitDifficultyModelChange('agent-sub-agents-difficulty-medium-model', {
 			provider: 'anthropic',
-			model: 'claude-sonnet-4-5',
+			model: 'claude-sonnet-5-5',
 		});
 
 		const updates = wrapper.emitted('update:config') as
@@ -321,7 +319,7 @@ describe('AgentSubAgentsPanel', () => {
 
 		emitDifficultyModelChange('agent-sub-agents-difficulty-low-model', {
 			provider: 'anthropic',
-			model: 'claude-sonnet-4-5',
+			model: 'claude-sonnet-5-5',
 		});
 
 		const updates = wrapper.emitted('update:config') as
@@ -346,7 +344,7 @@ describe('AgentSubAgentsPanel', () => {
 		);
 		emitDifficultyModelChange('agent-sub-agents-difficulty-low-model', {
 			provider: 'anthropic',
-			model: 'claude-sonnet-4-5',
+			model: 'claude-sonnet-5-5',
 		});
 
 		const updates = wrapper.emitted('update:config') as
@@ -378,7 +376,7 @@ describe('AgentSubAgentsPanel', () => {
 		// 3. Pick a model — the stale own credential must not shadow the managed tag.
 		emitDifficultyModelChange('agent-sub-agents-difficulty-low-model', {
 			provider: 'anthropic',
-			model: 'claude-sonnet-4-5',
+			model: 'claude-sonnet-5-5',
 		});
 
 		const updates = wrapper.emitted('update:config') as
@@ -413,7 +411,7 @@ describe('AgentSubAgentsPanel', () => {
 			...defaultConfig,
 			subAgents: {
 				modelsByDifficulty: {
-					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'anthropic-cred' },
+					high: { model: 'anthropic/claude-sonnet-5-5', credential: 'anthropic-cred' },
 				},
 			},
 		});
@@ -434,7 +432,7 @@ describe('AgentSubAgentsPanel', () => {
 			...defaultConfig,
 			subAgents: {
 				modelsByDifficulty: {
-					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'anthropic-cred' },
+					high: { model: 'anthropic/claude-sonnet-5-5', credential: 'anthropic-cred' },
 				},
 			},
 		});
@@ -565,7 +563,7 @@ describe('AgentSubAgentsPanel', () => {
 				agents: [{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' }],
 				modelsByDifficulty: {
 					low: { model: 'openai/gpt-4o-mini', credential: 'openai-cred' },
-					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'anthropic-cred' },
+					high: { model: 'anthropic/claude-sonnet-5-5', credential: 'anthropic-cred' },
 				},
 			},
 		});
@@ -589,7 +587,7 @@ describe('AgentSubAgentsPanel', () => {
 			subAgents: {
 				modelsByDifficulty: {
 					low: { model: 'openai/gpt-4o-mini', credential: 'openai-cred' },
-					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'anthropic-cred' },
+					high: { model: 'anthropic/claude-sonnet-5-5', credential: 'anthropic-cred' },
 				},
 			},
 		});
@@ -608,7 +606,7 @@ describe('AgentSubAgentsPanel', () => {
 				subAgents: {
 					modelsByDifficulty: {
 						low: { model: 'openai/gpt-4o-mini', credential: 'openai-cred' },
-						high: { model: 'anthropic/claude-sonnet-4-5', credential: 'anthropic-cred-2' },
+						high: { model: 'anthropic/claude-sonnet-5-5', credential: 'anthropic-cred-2' },
 					},
 				},
 			},
@@ -620,7 +618,7 @@ describe('AgentSubAgentsPanel', () => {
 			...defaultConfig,
 			subAgents: {
 				modelsByDifficulty: {
-					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'anthropic-cred' },
+					high: { model: 'anthropic/claude-sonnet-5-5', credential: 'anthropic-cred' },
 				},
 			},
 		});
@@ -670,8 +668,10 @@ describe('AgentSubAgentsPanel', () => {
 
 		const clearButton = wrapper.find('[data-testid="agent-sub-agents-difficulty-low-clear"]');
 		expect(clearButton.exists()).toBe(true);
-		expect(clearButton.attributes('disabled')).toBeDefined();
+		expect(clearButton.attributes('aria-disabled')).toBe('true');
+		expect(clearButton.attributes('disabled')).toBeUndefined();
 		expect(wrapper.findComponent({ name: 'AgentModelSelector' }).props('disabled')).toBe(true);
+		await clearButton.trigger('click');
 
 		emitDifficultyModelChange('agent-sub-agents-difficulty-low-model', {
 			provider: 'openai',
