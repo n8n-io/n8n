@@ -2849,7 +2849,7 @@ describe('executeWebhook on engine v2', () => {
 		/** The response headers configured on the webhook node, as an expression. */
 		responseHeaders?: string;
 		response?: express.Response;
-		method?: string;
+		method?: 'GET' | 'POST';
 		/** The nodes after the start node. */
 		childNodes?: INode[];
 	} = {}) => {
@@ -3505,7 +3505,7 @@ describe('executeWebhook on engine v2', () => {
 
 		// The GET only renders the form, so a refusal on the submit alone would come
 		// after the person filled it in.
-		it.each(['GET', 'POST'])(
+		it.each(['GET', 'POST'] as const)(
 			'answers 400 for a %s to a form trigger followed by a Form Ending',
 			async (method) => {
 				const { responseCallback } = await startWebhook({
