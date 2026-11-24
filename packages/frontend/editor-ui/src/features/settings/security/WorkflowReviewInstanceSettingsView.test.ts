@@ -113,11 +113,16 @@ describe('WorkflowReviewInstanceSettingsView', () => {
 		);
 	});
 
-	it('shows each team project with its option', async () => {
-		renderView();
+	it('shows each team project with its option and a lock icon', async () => {
+		const { getByRole } = renderView();
 
-		expect(await approvalSelect('Alpha')).toHaveTextContent('Required');
-		expect(await approvalSelect('Beta')).toHaveTextContent('Not required');
+		const alpha = await approvalSelect('Alpha');
+		const beta = await approvalSelect('Beta');
+		expect(alpha).toHaveTextContent('Required');
+		expect(alpha.querySelector('[data-icon="lock"]')).not.toBeNull();
+		expect(beta).toHaveTextContent('Not required');
+		expect(beta.querySelector('[data-icon="lock-unlocked"]')).not.toBeNull();
+		expect(getByRole('heading', { name: 'Publish reviews' })).toBeInTheDocument();
 	});
 
 	it('shows Required by project admin on a Not required row whose project opted in', async () => {
@@ -222,9 +227,6 @@ describe('WorkflowReviewInstanceSettingsView', () => {
 
 		it('reloads the first page with the search term and the filter', async () => {
 			const { findByTestId, getByTestId } = renderView();
-			expect(await findByTestId('workflow-review-instance-settings-count')).toHaveTextContent(
-				'25 projects',
-			);
 			await userEvent.click(await findByTestId('pagination-next'));
 			await waitFor(() =>
 				expect(getWorkflowReviewInstanceSettings).toHaveBeenLastCalledWith(expect.anything(), {
@@ -290,14 +292,16 @@ describe('WorkflowReviewInstanceSettingsView', () => {
 
 	it('shows every row as Required and locked, naming the instance setting, while the instance always requires approval', async () => {
 		setInstancePolicy(true);
-		const { findByTestId } = renderView();
+		const { findAllByText } = renderView();
 
 		const beta = await approvalSelect('Beta');
 		expect(beta).toHaveTextContent('Required');
 		expect(beta).toHaveAttribute('data-disabled');
-		expect(await findByTestId('workflow-review-instance-settings-locked-notice')).toHaveTextContent(
-			'Require approval is set to "Always required" for all projects.',
-		);
+
+		await userEvent.hover(beta.parentElement!);
+		expect(
+			await findAllByText('Require approval is set to "Always required" for all projects.'),
+		).not.toHaveLength(0);
 	});
 
 	it('shows the rows read-only while the security policy is managed by environment variables', async () => {

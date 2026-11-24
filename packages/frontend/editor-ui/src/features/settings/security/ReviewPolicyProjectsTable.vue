@@ -57,8 +57,13 @@ const approvalOptions = computed<Array<SelectOptionBase<ApprovalOption>>>(() => 
 	{
 		value: 'notRequired',
 		label: i18n.baseText('settings.reviewPolicy.projects.option.notRequired'),
+		icon: 'lock-unlocked',
 	},
-	{ value: 'required', label: i18n.baseText('settings.reviewPolicy.projects.option.required') },
+	{
+		value: 'required',
+		label: i18n.baseText('settings.reviewPolicy.projects.option.required'),
+		icon: 'lock',
+	},
 ]);
 
 function approvalOf(project: ReviewPolicyProject): ApprovalOption {

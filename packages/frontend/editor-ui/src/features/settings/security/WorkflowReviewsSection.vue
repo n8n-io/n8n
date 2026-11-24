@@ -79,10 +79,12 @@ const requireApprovalOptions = computed<Array<SelectOptionBase<RequireApprovalOp
 	{
 		value: 'whenConfigured',
 		label: i18n.baseText('settings.security.workflowReviews.requireApproval.option.whenConfigured'),
+		icon: 'lock-unlocked',
 	},
 	{
 		value: 'always',
 		label: i18n.baseText('settings.security.workflowReviews.requireApproval.option.always'),
+		icon: 'lock',
 	},
 ]);
 
@@ -190,7 +192,9 @@ function confirmDisable() {
 					</N8nText>
 				</template>
 				<template #action>
-					<N8nSettingsRowConfigure :value="i18n.baseText('generic.configure')" />
+					<N8nSettingsRowConfigure
+						:value="i18n.baseText('settings.security.workflowReviews.instanceSettings.viewAll')"
+					/>
 				</template>
 			</N8nSettingsRow>
 		</N8nSettingsRowGroup>

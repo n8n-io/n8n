@@ -1087,7 +1087,9 @@ describe('SecuritySettings', () => {
 			});
 			const { findByTestId } = renderView();
 
-			await userEvent.click(await findByTestId('security-workflow-reviews-projects-row'));
+			const row = await findByTestId('security-workflow-reviews-projects-row');
+			expect(row).toHaveTextContent('View all');
+			await userEvent.click(row);
 
 			expect(routerPush).toHaveBeenCalledWith({ name: 'SecurityWorkflowReviewInstanceSettings' });
 		});
@@ -1118,6 +1120,7 @@ describe('SecuritySettings', () => {
 			const { findByTestId, findByRole } = renderView();
 			const select = await findByTestId('security-workflow-reviews-require-approval-select');
 			expect(select).toHaveTextContent('Set per project or workflow');
+			expect(select.querySelector('[data-icon="lock-unlocked"]')).not.toBeNull();
 
 			await userEvent.click(select);
 			await userEvent.click(await findByRole('option', { name: 'Always required' }));

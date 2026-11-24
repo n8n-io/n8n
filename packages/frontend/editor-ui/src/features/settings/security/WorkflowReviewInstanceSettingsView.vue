@@ -202,11 +202,6 @@ onMounted(load);
 			:content="i18n.baseText('settings.security.managedByEnv')"
 			data-test-id="workflow-review-instance-settings-managed-by-env-notice"
 		/>
-		<N8nNotice
-			v-if="lockedReason"
-			:content="lockedReason"
-			data-test-id="workflow-review-instance-settings-locked-notice"
-		/>
 
 		<div :class="$style.toolbar">
 			<N8nInput
@@ -256,20 +251,6 @@ onMounted(load);
 					</N8nSelect>
 				</div>
 			</ResourceFiltersDropdown>
-			<!-- Hidden during the first load, so it never shows 0 before the count arrives. -->
-			<N8nText
-				v-if="!loadFailed && (!loading || count > 0)"
-				size="small"
-				color="text-light"
-				data-test-id="workflow-review-instance-settings-count"
-			>
-				{{
-					i18n.baseText('settings.security.workflowReviews.instanceSettings.count', {
-						adjustToNumber: count,
-						interpolate: { count: String(count) },
-					})
-				}}
-			</N8nText>
 		</div>
 
 		<N8nText
@@ -321,10 +302,14 @@ onMounted(load);
 	align-items: center;
 	gap: var(--spacing--xs);
 	width: 100%;
+	min-width: 0;
 }
 
-/* Same width as the other settings search fields. No width token exists for it. */
+/* Same width as the other settings search fields. No width token exists for it.
+   It shrinks on narrow pages, so the filter button stays inside the toolbar. */
 .search {
+	flex: 1 1 auto;
+	min-width: 0;
 	max-width: 20rem;
 }
 
