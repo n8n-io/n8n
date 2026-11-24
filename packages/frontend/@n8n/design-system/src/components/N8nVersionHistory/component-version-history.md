@@ -43,7 +43,7 @@ A group that contains the open version starts open. The user can close it. It op
 
 - `select(id: string)` — The user opens a version. A disabled version does not emit this.
 - `compare(id: string)` — The user compares a version. This does not select the row. A hidden or disabled compare control does not emit this.
-- `action(value: VersionHistoryActionPayload)` — The user chooses an action from a version menu. This does not select the row. A disabled action does not emit this.
+- `action(value: VersionHistoryActionPayload)` — The user chooses an action from a version menu. `itemId` is the version item. `actionId` is the chosen `ActionDropdownItem`. This does not select the row. A disabled action does not emit this.
 - `toggle(value: VersionHistoryTogglePayload)` — The user opens or closes a group.
 - `loadMore()` — The end of the list is near the bottom of the scroll area and more versions can be loaded.
 
@@ -147,8 +147,10 @@ type VersionHistoryHeading = {
 type VersionHistoryEntry = VersionHistoryItem | VersionHistoryGroup | VersionHistoryHeading;
 
 type VersionHistoryActionPayload = {
-	id: string;
-	action: string;
+	/** Id of the version item that owns the menu. */
+	itemId: string;
+	/** Id of the chosen `ActionDropdownItem`. */
+	actionId: string;
 };
 
 type VersionHistoryTogglePayload = {
@@ -177,7 +179,7 @@ The compare tooltip and the accessible name are "Compare" (`versionHistory.compa
 
 A click on the row emits `select`. A click on compare emits `compare` and does not select the row. A menu choice emits `action` and does not select the row.
 
-`action` is the id of the chosen `ActionDropdownItem`. `id` on `VersionHistoryActionPayload` is the version id.
+`itemId` on `VersionHistoryActionPayload` is the version item id. `actionId` is the id of the chosen `ActionDropdownItem`.
 
 **Keyboard**
 
