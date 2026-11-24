@@ -299,6 +299,20 @@ export class SimulationSessionService {
 		return await this.capabilitiesFor(await this.describeAgent(agentId, projectId));
 	}
 
+	/** Drops the cached simulation session for a test chat and closes its backend world. */
+	resetForTestChat(input: {
+		userId: string;
+		projectId: string;
+		agentId: string;
+		testChatId: string;
+	}): void {
+		const key = `${input.userId}:${input.projectId}:${input.agentId}:${input.testChatId}`;
+		const cached = this.sessions.get(key);
+		if (!cached) return;
+		this.sessions.delete(key);
+		this.closeWorld(cached.session);
+	}
+
 	private async describeAgent(agentId: string, projectId: string): Promise<DescribedAgent> {
 		const saved = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!saved?.schema) throw new NotFoundError(`Agent ${agentId} not found`);

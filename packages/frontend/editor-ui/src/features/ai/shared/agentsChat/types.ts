@@ -4,6 +4,7 @@ import {
 	type AgentBackgroundJobSignal,
 	type InstanceAiApprovalAskReason,
 	type N8N_CHAT_ACTION_TOOL_NAME,
+	type ToolCallSimulation,
 	type WAIT_TOOL_NAME,
 } from '@n8n/api-types';
 
@@ -58,6 +59,8 @@ export interface ToolCall {
 		reasoningSegments: ThinkingSegment[];
 		steps: Array<{ toolCallId: string; toolName: string; running: boolean }>;
 	};
+	/** How the tool call ran in a test run (safe testing). */
+	simulation?: ToolCallSimulation;
 }
 
 interface InteractivePayloadBase {

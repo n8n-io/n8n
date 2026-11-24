@@ -46,6 +46,8 @@ import { parseToolPolicyRefusal } from '@/features/ai/shared/agentsChat/toolPoli
 import AgentChatToolPolicyRefusal from './AgentChatToolPolicyRefusal.vue';
 import AgentChatHostEvents from './AgentChatHostEvents.vue';
 import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
+import AgentToolCallRouteList from './AgentToolCallRouteList.vue';
+import type { AgentToolCallRouteItem } from '@/features/agents/toolCallSimulation.types';
 import { getToolOutputAttachments } from '../utils/tool-output-files';
 
 const props = defineProps<{
@@ -108,6 +110,7 @@ const fixableFailures = computed<AgentFixWithAssistantFailure[]>(() => {
 		if (isCanceledToolCall(toolCall)) continue;
 
 		if (toolCall.state !== TOOL_CALL_STATE.ERROR) continue;
+		if (toolCall.simulation?.route === 'blocked') continue;
 		if (isRecoverablePlanError(toolCall)) continue;
 		// The assistant cannot lift a policy.
 		if (toolStepRefusal(toolCall)) continue;
@@ -131,6 +134,21 @@ const fixableFailures = computed<AgentFixWithAssistantFailure[]>(() => {
 const fixableErrorTexts = computed(() => {
 	return [...new Set(fixableFailures.value.map(({ error }) => error))];
 });
+
+const simulatedRouteItems = computed<AgentToolCallRouteItem[]>(() =>
+	props.toolCalls
+		.filter((tc) => tc.simulation !== undefined)
+		.map((tc) => ({
+			toolCallId: tc.toolCallId,
+			toolName: toolStepLabel(tc),
+			simulation: tc.simulation,
+		})),
+);
+
+/** Keep raw tool calls collapsed under "N tool calls >" when multiple calls or a test run ran. */
+const collapseRawSteps = computed(
+	() => props.toolCalls.length > 1 || simulatedRouteItems.value.length > 0,
+);
 
 function toolCallsNeedSubAgentNames(toolCalls: ToolCall[]): boolean {
 	return toolCalls.some((tc) => {
@@ -304,7 +322,7 @@ function hasActiveToolCall(): boolean {
 
 <template>
 	<div :class="$style.toolSteps">
-		<template v-if="toolCalls.length > 1">
+		<template v-if="collapseRawSteps">
 			<N8nAiActivityStepGroup :label="groupLabel()" size="medium" :loading="hasActiveToolCall()">
 				<template v-for="tc in toolCalls" :key="tc.toolCallId">
 					<AgentChatHostEvents :items="hostEventsFor(tc)" />
@@ -474,6 +492,12 @@ function hasActiveToolCall(): boolean {
 			</template>
 		</template>
 
+		<AgentToolCallRouteList
+			v-if="simulatedRouteItems.length > 0"
+			:class="$style.routeList"
+			:calls="simulatedRouteItems"
+		/>
+
 		<Transition name="fix-callout">
 			<N8nCallout
 				v-if="fixableErrorTexts.length > 0"
@@ -571,6 +595,10 @@ function hasActiveToolCall(): boolean {
 	gap: var(--spacing--xs);
 	margin-bottom: var(--spacing--xs);
 	max-width: min(520px, calc(100vw - var(--spacing--4xl)));
+}
+
+.routeList {
+	margin-top: var(--spacing--2xs);
 }
 </style>
 

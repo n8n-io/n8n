@@ -8,6 +8,7 @@ import { AGENT_SESSION_DETAIL_VIEW } from '../constants';
 import { AGENT_SUMMARY_WAIT_TIMEOUT } from '@/app/constants/durations';
 import {
 	AGENT_CHAT_DATA_ATTACHMENT_ACCEPT,
+	AGENT_SANDBOX_FILES_FLAG,
 	APPROVAL_TOOL_NAME,
 	N8N_CHAT_ACTION_TOOL_NAME,
 	WAIT_TOOL_NAME,
@@ -48,7 +49,10 @@ type FocusVm = { focusOpenInteraction: () => void; isAwaitingUserApproval: boole
 const isMacOsMock = ref(false);
 const sessionFilesFlag = vi.hoisted(() => ({ value: true }));
 vi.mock('@/app/stores/posthog.store', () => ({
-	usePostHog: () => ({ isFeatureEnabled: () => sessionFilesFlag.value }),
+	usePostHog: () => ({
+		isFeatureEnabled: (flag?: string) =>
+			flag === AGENT_SANDBOX_FILES_FLAG ? sessionFilesFlag.value : false,
+	}),
 }));
 
 vi.mock('@n8n/composables/useDeviceSupport', () => ({

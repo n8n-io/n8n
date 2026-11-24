@@ -130,6 +130,10 @@ export interface AgentTestRunToolsResponse {
 	tools: ToolTestCapability[];
 }
 
+export interface AgentTestRunResetResponse {
+	reset: boolean;
+}
+
 /** Request body to replay held write actions from a test run against real services. */
 export const agentTestRunCommitRequestSchema = z.object({
 	testChatId: z.string().min(1),

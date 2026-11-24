@@ -8,7 +8,7 @@ import type {
 	SideCallUsageReport,
 	StreamChunk,
 } from '@n8n/agents';
-import type { AgentBackgroundJobSignal } from '@n8n/api-types';
+import type { AgentBackgroundJobSignal, ToolCallSimulation } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from '@n8n/errors';
@@ -105,6 +105,8 @@ interface ExecuteTurnConfig {
 	formatError?: (error: unknown) => Promise<FormattedTurnError | undefined>;
 	/** Called once with the recorder of the turn, so that a host can record its own events. */
 	onRecorderCreated?: (recorder: ExecutionRecorder) => void;
+	/** Reads the test-run route of a settled tool call so the timeline persists it. */
+	getToolSimulation?: (toolCallId: string) => ToolCallSimulation | undefined;
 }
 
 interface TurnExecutionState {
@@ -335,6 +337,9 @@ export class AgentTurnExecutionService {
 			if (chunk.type === 'error') {
 				const formatted = await config.formatError?.(chunk.error);
 				recorder.record({ ...chunk, error: formatted?.message ?? chunk.error });
+			} else if (chunk.type === 'tool-result') {
+				const simulation = config.getToolSimulation?.(chunk.toolCallId);
+				recorder.record(simulation ? { ...chunk, simulation } : chunk);
 			} else {
 				recorder.record(chunk);
 			}

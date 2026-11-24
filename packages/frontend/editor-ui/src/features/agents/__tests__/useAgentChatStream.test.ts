@@ -6497,4 +6497,65 @@ describe('useAgentChatStream — first message of a new session', () => {
 		expect(hook.messages.value).toEqual([]);
 		expect(hook.messagingState.value).toBe('idle');
 	});
+
+	it('attaches validated simulation metadata from live tool-result SSE events', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'execution-started', executionId: 'exec-sim-1', sessionId: 'thread-sim' },
+			{ type: 'start-step' },
+			{
+				type: 'tool-call',
+				toolCallId: 'call-email',
+				toolName: 'gmail_send',
+				input: { to: 'ana@example.com', subject: 'Refund', body: 'Issued $42.' },
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'call-email',
+				toolName: 'gmail_send',
+				output: { sent: true },
+				simulation: {
+					route: 'simulated',
+					reason: 'served_from_world',
+					evidence: ['world_write'],
+				},
+			},
+			{
+				type: 'tool-call',
+				toolCallId: 'call-slack',
+				toolName: 'slack_post_message',
+				input: { channel: '#support', text: 'Refund processed.' },
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'call-slack',
+				toolName: 'slack_post_message',
+				output: { ok: true },
+				simulation: {
+					route: 'simulated_made_up',
+					reason: 'invented_by_llm',
+				},
+			},
+			{ type: 'finish-step' },
+		];
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => makeSseResponse(events)),
+		);
+		const hook = buildHook('thread-sim');
+
+		await hook.sendMessage('Send the refund email and notify Slack');
+		await flushPromises();
+
+		const assistant = hook.messages.value.find((m) => m.role === 'assistant');
+		expect(assistant?.toolCalls).toHaveLength(2);
+		expect(assistant?.toolCalls?.[0].simulation).toEqual({
+			route: 'simulated',
+			reason: 'served_from_world',
+			evidence: ['world_write'],
+		});
+		expect(assistant?.toolCalls?.[1].simulation).toEqual({
+			route: 'simulated_made_up',
+			reason: 'invented_by_llm',
+		});
+	});
 });

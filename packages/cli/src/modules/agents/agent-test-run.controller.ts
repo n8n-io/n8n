@@ -1,13 +1,16 @@
 import {
 	agentTestRunCommitRequestSchema,
 	type AgentTestRunCommitResponse,
+	type AgentTestRunResetResponse,
 	type AgentTestRunToolsResponse,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
 import { BadRequestError } from '@n8n/errors';
+import { isRecord } from '@n8n/utils/is-record';
 import type { Response } from 'express';
 
+import { chatThreadId } from './agent-test-chat.service';
 import { HeldActionCommitService } from './simulation/held-action-commit.service';
 import { SafeTestingFlagGate } from './simulation/safe-testing-flag-gate';
 import { SimulationSessionService } from './simulation/simulation-session.service';
@@ -57,5 +60,28 @@ export class AgentTestRunController {
 			user: req.user,
 			...parsed.data,
 		});
+	}
+
+	/** Closes the current test chat's simulated world so the next run starts fresh. */
+	@Post('/:agentId/test-run/reset')
+	@ProjectScope('agent:execute')
+	async resetTestRun(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('projectId') projectId: string,
+		@Param('agentId') agentId: string,
+	): Promise<AgentTestRunResetResponse> {
+		await this.flagGate.assertEnabled(req.user);
+		const bodySessionId =
+			isRecord(req.body) && typeof req.body.sessionId === 'string' && req.body.sessionId.trim()
+				? req.body.sessionId.trim()
+				: undefined;
+		this.simulationSessions.resetForTestChat({
+			userId: req.user.id,
+			projectId,
+			agentId,
+			testChatId: bodySessionId ?? chatThreadId(agentId, req.user.id),
+		});
+		return { reset: true };
 	}
 }

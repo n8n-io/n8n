@@ -352,6 +352,7 @@ defineExpose({ clearBudgetStops });
 				@send-to-assistant="emit('send-to-assistant', $event)"
 				@initial-consumed="emit('initial-consumed')"
 				@message-sent="emit('message-sent')"
+				@new-session="createNewSession('test-panel')"
 			>
 				<template v-if="$slots['composer-start']" #composer-start>
 					<slot name="composer-start" />

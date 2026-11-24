@@ -213,6 +213,10 @@ export class SimulationSession {
 		}
 	}
 
+	peekDecision(toolCallId: string): ToolCallSimulation | undefined {
+		return this.decisions.get(toolCallId);
+	}
+
 	takeDecision(toolCallId: string): ToolCallSimulation | undefined {
 		const decision = this.decisions.get(toolCallId);
 		this.decisions.delete(toolCallId);

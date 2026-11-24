@@ -55,6 +55,7 @@ const emit = defineEmits<{
 	'send-to-assistant': [event?: AgentSendToAssistantEvent];
 	'initial-consumed': [];
 	'message-sent': [];
+	'new-session': [];
 }>();
 
 const inputDraft = ref('');
@@ -125,6 +126,7 @@ defineExpose({ focusInput, getConversationMarkdown, clearBudgetStops });
 				@open-build="emit('open-build')"
 				@send-to-assistant="emit('send-to-assistant', $event)"
 				@first-user-message="onFirstUserMessage"
+				@new-test-run="emit('new-session')"
 			>
 				<template v-if="$slots['composer-start']" #composer-start>
 					<slot name="composer-start" />

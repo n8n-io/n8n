@@ -184,4 +184,66 @@ describe('AgentTestRunController', () => {
 		]);
 		expect(realHandler).toHaveBeenCalledTimes(1);
 	});
+
+	it('resets the simulation world for an explicit sessionId', async () => {
+		const sessions = mock<SimulationSessionService>();
+		const controller = new AgentTestRunController(
+			mock<SafeTestingFlagGate>(),
+			sessions,
+			mock<HeldActionCommitService>(),
+		);
+		const resetReq = mock<AuthenticatedRequest<{ projectId: string }>>({
+			user,
+			body: { sessionId: 'session-42' },
+		});
+
+		await expect(
+			controller.resetTestRun(resetReq, mock<Response>(), 'project-1', 'agent-1'),
+		).resolves.toEqual({ reset: true });
+		expect(sessions.resetForTestChat).toHaveBeenCalledWith({
+			userId: 'user-1',
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			testChatId: 'session-42',
+		});
+	});
+
+	it('falls back to the default test chat thread when sessionId is omitted on reset', async () => {
+		const sessions = mock<SimulationSessionService>();
+		const controller = new AgentTestRunController(
+			mock<SafeTestingFlagGate>(),
+			sessions,
+			mock<HeldActionCommitService>(),
+		);
+		const resetReq = mock<AuthenticatedRequest<{ projectId: string }>>({
+			user,
+			body: {},
+		});
+
+		await expect(
+			controller.resetTestRun(resetReq, mock<Response>(), 'project-1', 'agent-1'),
+		).resolves.toEqual({ reset: true });
+		expect(sessions.resetForTestChat).toHaveBeenCalledWith({
+			userId: 'user-1',
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			testChatId: 'test-agent-1:user-1',
+		});
+	});
+
+	it('returns 404 on reset while the flag is off', async () => {
+		const sessions = mock<SimulationSessionService>();
+		const flagGate = mock<SafeTestingFlagGate>();
+		flagGate.assertEnabled.mockRejectedValue(new NotFoundError('Not found'));
+		const controller = new AgentTestRunController(
+			flagGate,
+			sessions,
+			mock<HeldActionCommitService>(),
+		);
+
+		await expect(
+			controller.resetTestRun(req, mock<Response>(), 'project-1', 'agent-1'),
+		).rejects.toThrow(NotFoundError);
+		expect(sessions.resetForTestChat).not.toHaveBeenCalled();
+	});
 });

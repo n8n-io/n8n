@@ -5,6 +5,7 @@ import {
 	settleChildTrace,
 	type PersistedChildTrace,
 	type AgentBackgroundJobSignal,
+	type ToolCallSimulation,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
@@ -253,6 +254,8 @@ export type TimelineEvent =
 			childTrace?: PersistedChildTrace;
 			/** Host-only data from the tool's `toTraceOutput`, e.g. recalled memory entry ids. */
 			traceOutput?: unknown;
+			/** How the tool call ran in a test run (safe testing). */
+			simulation?: ToolCallSimulation;
 	  }
 	| {
 			type: 'suspension';
@@ -447,7 +450,11 @@ export class ExecutionRecorder {
 	}
 
 	/** Feed a stream chunk into the recorder. */
-	record(chunk: StreamChunk): void {
+	record(
+		chunk:
+			| StreamChunk
+			| ((StreamChunk & { type: 'tool-result' }) & { simulation?: ToolCallSimulation }),
+	): void {
 		switch (chunk.type) {
 			case 'text-delta':
 				this.flushReasoningBuffer();
@@ -748,8 +755,10 @@ export class ExecutionRecorder {
 	 * timeline entry to close. In that case we synthesize one from the
 	 * registry so workflow rows and execution-log links still render.
 	 */
-	private recordToolResult(chunk: StreamChunk & { type: 'tool-result' }): void {
-		const { toolCallId, toolName: name, output } = chunk;
+	private recordToolResult(
+		chunk: (StreamChunk & { type: 'tool-result' }) & { simulation?: ToolCallSimulation },
+	): void {
+		const { toolCallId, toolName: name, output, simulation } = chunk;
 		const isError = chunk.isError === true;
 		const canceled = chunk.canceled === true;
 		const recordedOutput = sanitizeExecutionLogValue(
@@ -770,6 +779,7 @@ export class ExecutionRecorder {
 			pendingTimeline.success = !isError;
 			if (canceled) pendingTimeline.canceled = true;
 			if (traceOutput !== undefined) pendingTimeline.traceOutput = traceOutput;
+			if (simulation) pendingTimeline.simulation = simulation;
 			// `tool-execution-end` (real per-tool finish) normally closed this entry
 			// already; only fall back to the batched result time if it never fired.
 			if (pendingTimeline.endTime === 0) {
@@ -803,6 +813,7 @@ export class ExecutionRecorder {
 			success: !isError,
 			...(canceled ? { canceled: true } : {}),
 			...(traceOutput !== undefined ? { traceOutput } : {}),
+			...(simulation ? { simulation } : {}),
 			workflowId: entry?.workflowId,
 			workflowName: entry?.workflowName,
 			triggerType: entry?.triggerType,
