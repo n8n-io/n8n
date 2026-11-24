@@ -96,8 +96,8 @@ function toTaskData(request: CodeTaskRequest): unknown {
 }
 
 /**
- * Builds the content of `task.json` for a JS task. The file holds all the data
- * that the code can read, because n8n does not yet find which data the code uses.
+ * Builds the content of `task.json` for a JS task. It sends all the data, because n8n
+ * does not yet parse the code to send only the data that the code uses.
  */
 export function buildTaskInput(taskId: string, request: CodeTaskRequest): Buffer {
 	if (request.taskType !== 'javascript') {
