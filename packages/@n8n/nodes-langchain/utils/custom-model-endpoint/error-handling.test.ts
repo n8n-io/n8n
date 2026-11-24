@@ -39,6 +39,11 @@ describe('wrapCustomModelEndpointErrorFetch', () => {
 		],
 		['the detail a FastAPI gateway sends', { detail: 'Not authenticated' }, 'Not authenticated'],
 		[
+			'the first field that actually says something, past the blank ones',
+			{ error_description: '', error: '   ', message: 'Subscription key is invalid' },
+			'Subscription key is invalid',
+		],
+		[
 			'a message ahead of the detail beside it',
 			{ message: 'Subscription key is invalid', detail: 'Not authenticated' },
 			'Subscription key is invalid',
@@ -310,6 +315,22 @@ describe('a gateway that repeats what it was sent', () => {
 		const endpoint = endpointWith({ type: 'none' }, { 'x-api-key': padded });
 
 		expect(await bodyFrom(endpoint, padded)).not.toContain(SECRET);
+	});
+
+	// A row with a name and no value puts '' in the list, and splitting on '' shreds the body
+	it('survives a header row the user left blank', async () => {
+		const endpoint = endpointWith({ type: 'none' });
+		const body = JSON.stringify({ error: { message: 'denied' } });
+
+		expect(await bodyFrom(endpoint, body, { 'x-api-key': '' })).toContain('denied');
+	});
+
+	// The gateway is sent the trimmed value, so that is the spelling it can echo
+	it('keeps a user header value the gateway received trimmed out of the error', async () => {
+		const endpoint = endpointWith({ type: 'none' });
+		const body = JSON.stringify({ error: { message: `bad key ${SECRET}` } });
+
+		expect(await bodyFrom(endpoint, body, { 'x-api-key': ` ${SECRET}\n` })).not.toContain(SECRET);
 	});
 
 	// A header the user typed can hold a key, and the gateway can echo that too

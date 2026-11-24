@@ -185,6 +185,20 @@ describe('LmChatCustomEndpoint', () => {
 
 			expect(configOptions().requestHeaders).toEqual(expected);
 		});
+
+		// Only what the user typed is a candidate secret. n8n's own context headers carry the
+		// workflow name and the execution id, which an error is allowed to name.
+		it('marks only the headers the user typed as secret', async () => {
+			await node.supplyData.call(
+				contextWith({
+					sendContextHeaders: true,
+					'headers.header': [{ name: 'x-api-key', value: 'typed-secret' }],
+				}),
+				0,
+			);
+
+			expect(configOptions().secretHeaders).toEqual({ 'x-api-key': 'typed-secret' });
+		});
 	});
 
 	it('gives the transport the timeout, so one request cannot hang the execution', async () => {

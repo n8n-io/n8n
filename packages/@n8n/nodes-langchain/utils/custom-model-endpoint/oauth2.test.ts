@@ -186,6 +186,45 @@ describe('createClientCredentialsTokenSource', () => {
 			await expect(source.getToken()).rejects.toThrow(expected);
 		});
 
+		// A body that is not JSON is passed through whole, so the only chance to match the
+		// padded spelling is before the trim
+		it('keeps a padded client secret out of a plain-text refusal', async () => {
+			const padded = `${SECRET}\u00a0`;
+			const source = createClientCredentialsTokenSource(
+				login({ clientSecret: padded }),
+				refusing(`  rejected ${padded}  `, 401),
+			);
+
+			const error = await source.getToken().then(
+				() => undefined,
+				(reason: UserError) => reason,
+			);
+
+			expect(error?.message).toContain('rejected');
+			expect(`${error?.message} ${error?.description ?? ''}`).not.toContain(SECRET);
+		});
+
+		// Trimming the body first would take the padding with it, and the secret is stored
+		// untrimmed, so the padded spelling is the one the login server was sent
+		it.each([
+			['a trailing space', `${SECRET} `],
+			['a trailing newline', `${SECRET}\n`],
+			['a no-break space', `${SECRET}\u00a0`],
+		])('keeps a client secret padded with %s out of the error', async (_name, padded) => {
+			const source = createClientCredentialsTokenSource(
+				login({ clientSecret: padded }),
+				refusing(JSON.stringify({ error_description: `the value given was ${padded}` }), 401),
+			);
+
+			const error = await source.getToken().then(
+				() => undefined,
+				(reason: UserError) => reason,
+			);
+
+			expect(error?.message).toContain('the value given was');
+			expect(`${error?.message} ${error?.description ?? ''}`).not.toContain(SECRET);
+		});
+
 		// Sent in the request body the secret is form-encoded, so that is the spelling echoed back
 		it('keeps a form-encoded secret out of the error', async () => {
 			const special = 'cs/9f2a+71c4=ab';

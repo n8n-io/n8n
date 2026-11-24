@@ -73,8 +73,13 @@ function withoutTheCredential(text: string, login: OAuth2Login): string {
 }
 
 function refusedToSignIn(text: string, status: number, login: OAuth2Login): UserError {
-	const stated = messageFromBody(withoutTheCredential(text.trim(), login));
-	const reason = stated ? truncateMessage(stated) : `the login server answered ${status}`;
+	// Filtered before trimming, as the gateway path is: `String.trim` takes a no-break space,
+	// and a client secret is stored untrimmed, so trimming first leaves that spelling unmatched.
+	// Filtered again after extraction, because that decodes the escapes a reader would see.
+	const stated = messageFromBody(withoutTheCredential(text, login).trim());
+	const reason = stated
+		? truncateMessage(withoutTheCredential(stated, login))
+		: `the login server answered ${status}`;
 
 	return new UserError(`Could not sign in to the gateway: ${reason}`, {
 		description: 'Check the token URL, client ID, client secret and scope on the credential.',
