@@ -8,6 +8,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import type {
 	AgentBuilderOpenSuspension,
 	AgentChatMessagesResponse,
+	AgentChatMode,
 	AgentChatQueueItem,
 	AgentPersistedMessageDto,
 	AgentSseEvent,
@@ -96,6 +97,12 @@ export interface UseAgentChatStreamParams {
 	 * between channels.
 	 */
 	channel?: Ref<AgentChatChannel>;
+	/**
+	 * Preview chat execution mode when safe testing is enabled (`'test'` runs
+	 * simulated; `'live'` runs against real services). Omitted when safe testing
+	 * is disabled so the request body stays unchanged.
+	 */
+	chatMode?: Ref<AgentChatMode | undefined>;
 	onHistoryLoaded?: (count: number) => void;
 	onSessionCreated?: (sessionId: string) => void;
 	onUsageUpdated?: (update: AgentUsageUpdate) => void;
@@ -1390,6 +1397,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				if (found) {
 					const toolResultEvent = event as typeof event & { canceled?: boolean };
 					found.tc.output = event.output;
+					if (event.simulation) found.tc.simulation = event.simulation;
 					const failed =
 						event.isError ||
 						isFailedDelegateOutput(found.tc.tool, event.output) ||
@@ -1860,6 +1868,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			body.sessionId = sessionId;
 			body.messageId = userMessage?.id;
 			if (newSession) body.newSession = true;
+		}
+		if (channel.value === 'chat' && params.chatMode?.value) {
+			body.mode = params.chatMode.value;
 		}
 		if (clientContext) body.clientContext = clientContext;
 		if (files?.length) {

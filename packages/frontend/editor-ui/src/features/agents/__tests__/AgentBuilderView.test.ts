@@ -4,6 +4,7 @@ import { mount, flushPromises } from '@vue/test-utils';
 import { nextTick, ref, computed, reactive, type Component } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import {
+	AGENT_SAFE_TESTING_FLAG,
 	MAX_AGENT_FILE_SIZE_BYTES,
 	MAX_AGENT_FILES_PER_UPLOAD,
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
@@ -713,7 +714,7 @@ const commonStubs = {
 	AgentTestDock: {
 		name: 'AgentTestDock',
 		template:
-			'<aside data-testid="stub-agent-preview-dock"><slot name="composer-start" /><slot name="composer-footer" /></aside>',
+			'<aside data-testid="stub-agent-preview-dock"><slot name="empty-state" /><slot name="composer-start" /><slot name="composer-footer" /></aside>',
 		props: [
 			'isOpen',
 			'overlay',
@@ -737,6 +738,7 @@ const commonStubs = {
 			'canDeleteSession',
 			'isDeletingSession',
 			'increaseBudget',
+			'chatMode',
 		],
 		emits: [
 			'view-trace',
@@ -7874,4 +7876,48 @@ describe('chat-first builder', () => {
 			}
 		},
 	);
+});
+
+describe('AgentBuilderView — safe testing', () => {
+	beforeEach(() => {
+		resetViewMocks();
+		agentPermissionsMock.canUpdate.value = true;
+		agentPermissionsMock.canExecute.value = true;
+	});
+
+	it('is a complete no-op when the safe-testing flag is off', async () => {
+		const wrapper = await renderView();
+		const dock = wrapper.getComponent({ name: 'AgentTestDock' });
+
+		expect(dock.props('chatMode')).toBeUndefined();
+		expect(wrapper.find('[data-testid="agent-test-run-empty-state"]').exists()).toBe(false);
+		wrapper.unmount();
+	});
+
+	it('runs in test mode with the safe testing empty state and starter chips when the flag is on', async () => {
+		const wrapper = await renderView({
+			seedStores: () => {
+				usePostHog().overrides = { [AGENT_SAFE_TESTING_FLAG]: { value: true } };
+			},
+		});
+
+		const dock = wrapper.getComponent({ name: 'AgentTestDock' });
+		expect(dock.props('chatMode')).toBe('test');
+		expect(wrapper.get('[data-testid="agent-test-run-empty-title"]').text()).toBe(
+			'agents.testRun.holdReplay.emptyState.title',
+		);
+		expect(wrapper.get('[data-testid="agent-test-run-empty-bullets"]').text()).toContain(
+			'agents.testRun.holdReplay.emptyState.bulletReads',
+		);
+		expect(wrapper.get('[data-testid="agent-test-run-empty-bullets"]').text()).toContain(
+			'agents.testRun.holdReplay.emptyState.bulletHolds',
+		);
+
+		const firstChip = wrapper.findAll('[data-testid="agent-test-run-starter-chip"]')[0];
+		expect(firstChip).toBeDefined();
+		await firstChip.trigger('click');
+		await nextTick();
+		expect(dock.props('initialPrompt')).toBe(firstChip.text());
+		wrapper.unmount();
+	});
 });

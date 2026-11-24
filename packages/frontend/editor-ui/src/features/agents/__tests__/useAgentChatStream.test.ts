@@ -235,6 +235,7 @@ function buildHook(
 		onAgentUnavailable?: () => void;
 		budgetCards?: boolean;
 		channel?: Ref<'chat' | 'n8n-chat' | 'system'>;
+		chatMode?: UseAgentChatStreamParams['chatMode'];
 		interactionExtensions?: readonly AgentsChatInteractionExtension[];
 		onStreamEvent?: UseAgentChatStreamParams['onStreamEvent'];
 		messageReferences?: UseAgentChatStreamParams['messageReferences'];
@@ -6557,5 +6558,35 @@ describe('useAgentChatStream — first message of a new session', () => {
 			route: 'simulated_made_up',
 			reason: 'invented_by_llm',
 		});
+	});
+
+	it('sends mode in the preview chat body when chatMode is set and omits it when undefined', async () => {
+		const fetchMock = vi.fn<typeof fetch>(async () => makeSseResponse([{ type: 'done' }]));
+		vi.stubGlobal('fetch', fetchMock);
+
+		const chatMode = ref<'test' | 'live' | undefined>('test');
+		const hook = buildHook('thread-mode-1', { chatMode });
+		await hook.sendMessage('Run in test mode');
+		await flushPromises();
+
+		const readBody = (callIndex: number) => {
+			const raw = fetchMock.mock.calls[callIndex]?.[1]?.body;
+			return JSON.parse(typeof raw === 'string' ? raw : '') as Record<string, unknown>;
+		};
+
+		const firstBody = readBody(0);
+		expect(firstBody.mode).toBe('test');
+
+		chatMode.value = 'live';
+		await hook.sendMessage('Run in live mode');
+		await flushPromises();
+		const secondBody = readBody(1);
+		expect(secondBody.mode).toBe('live');
+
+		chatMode.value = undefined;
+		await hook.sendMessage('Flag off');
+		await flushPromises();
+		const thirdBody = readBody(2);
+		expect('mode' in thirdBody).toBe(false);
 	});
 });
