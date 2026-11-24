@@ -24,7 +24,7 @@ flowchart LR
     subgraph hosts["Host call sites (packages/cli)"]
         save["workflowSave<br/>WorkflowCreationService, WorkflowService,<br/>chat hub, instance AI, public API"]
         publish["workflowPublish<br/>WorkflowService.activateWorkflow,<br/>WorkflowPublicationApplier, ActiveWorkflowManager"]
-        admission["executionAdmission<br/>WorkflowPreExecute, before<br/>the execution row"]
+        admission["executionAdmission<br/>WorkflowPreExecute, before<br/>a run starts"]
         start["workflowStart<br/>PolicyLifecycleHandler on<br/>workflowExecuteBefore"]
         other["workflowTransfer<br/>credentialSave<br/>credentialTransfer<br/>contentImport<br/>credentialDecrypt"]
     end
@@ -95,7 +95,7 @@ request. A check can compare it with `workflow` to judge only what the save adds
 | ------------------- | -------- | --------------------------------- | --------------------------------------------------------------------- |
 | `workflowSave`      | 1000 ms  | row id, or node hash for a create | editor, public API, chat hub, instance AI, eval thread restore        |
 | `workflowPublish`   | 1000 ms  | row id                            | activate, publication applier, activation on startup                  |
-| `executionAdmission` | 250 ms  | artifact id (workflow or agent)   | `WorkflowPreExecute.run`, before an engine v1 run gets its row        |
+| `executionAdmission` | 250 ms  | artifact id (workflow or agent)   | `WorkflowPreExecute.run`, before an engine v1 run starts              |
 | `workflowStart`     | 250 ms   | row id                            | `workflowExecuteBefore` on main, workers, sub-executions, manual runs |
 | `workflowTransfer`  | 1000 ms  | row id                            | move to another project                                               |
 | `credentialSave`    | 1000 ms  | row id, or type hash for a create | editor, public API, package import stubs, provider connections        |
@@ -105,9 +105,13 @@ request. A check can compare it with `workflow` to judge only what the save adds
 
 Deadlines are tight on the points on the execution path. A wedged policy store
 there pins worker slots instead of failing one request. A check on
-`executionAdmission` must read memory only. It runs before every engine v1
-execution. A refusal there leaves no execution row, no queue job, and no worker
-slot.
+`executionAdmission` must read memory only. It runs each time an engine v1 run
+is about to start. A refusal there leaves no execution row, no queue job, and
+no worker slot.
+
+The point guards the start of a run, not each write to the execution table.
+Some execution rows record a failure and have no run. The point does not
+evaluate those rows.
 
 `admitExecution` in `src/policy` enforces the point. `WorkflowPreExecute.run`
 calls it before the `workflow.preExecute` hook, so a refused run does not reach
@@ -117,9 +121,12 @@ the hook. This covers `WorkflowRunner.run`, sub-workflows, and polls.
 - **A run that has a row is not evaluated again.** Wait resumes, poll claims,
   enqueued recovery, and worker jobs do not call `WorkflowPreExecute.run`.
 - **A sub-workflow of a queued run is evaluated on the worker.**
-- **Rows that record a failure are not evaluated.** These are the rows for a
-  credential permission failure, a context hook failure, a trigger error, and
-  an error workflow that the caller policy refused. No run starts for them.
+- **A row that has no run is not evaluated.** These rows are:
+  - a credential permission failure and a context hook failure, which
+    `WorkflowRunner.run` records before the run can start
+  - an error that a trigger or a poll reports
+  - an error workflow that the caller policy refused
+  - a copy of a failed run that an Instance AI evaluation imports
 - **Engine v2 runs and agent runs do not call the point yet.**
 
 A one-off CLI command registers no check unless it calls
@@ -168,7 +175,8 @@ package, a source-control pull skips and reports the workflow.
 
 An agent has no enforcement point of its own. It goes through the workflow
 points, so every check that reads `nodes` covers agents with no change.
-`executionAdmission` covers agent runs with `artifact.kind: 'agent'`.
+The `executionAdmission` context can name an agent with `artifact.kind: 'agent'`.
+No host calls the point for an agent run yet.
 
 - **An agent is a `PolicedWorkflow` with `artifactKind: 'agent'`.** Its `nodes`
   are its node tools, one node each, built by `toPolicedNodes` in
