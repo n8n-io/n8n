@@ -1488,7 +1488,10 @@ describe(`Integration: ${engineName} error handling`, () => {
 		}
 	});
 
-	it('should concat workflow data arrays within a small memory limit', async () => {
+	it.each([
+		'{{ $json.list.concat($json.list).length }}',
+		'{{ (() => { const list = $json.list; list[Symbol.isConcatSpreadable] = true; return list.concat(list).length; })() }}',
+	])('should concat workflow data arrays within a small memory limit: %s', async (expression) => {
 		const evaluator = new ExpressionEvaluator({
 			createBridge: () => newBridge({ memoryLimit: 16, timeout: 5000 }),
 			maxCodeCacheSize: 64,
@@ -1498,9 +1501,7 @@ describe(`Integration: ${engineName} error handling`, () => {
 		await evaluator.initialize();
 		await evaluator.acquire(caller);
 		try {
-			expect(evaluator.evaluate('{{ $json.list.concat($json.list).length }}', data, caller)).toBe(
-				400_000,
-			);
+			expect(evaluator.evaluate(expression, data, caller)).toBe(400_000);
 		} finally {
 			await evaluator.release(caller);
 			await evaluator.dispose();

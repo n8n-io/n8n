@@ -5,12 +5,17 @@ const nativeConcat = Array.prototype.concat;
 
 const { apply } = Reflect;
 
+/** Say whether `concat` spreads an array that has this `Symbol.isConcatSpreadable` value. */
+function spreadsArray(spreadable: unknown): boolean {
+	return spreadable === undefined || Boolean(spreadable);
+}
+
 /** Say whether `concat` spreads the value and the value is a lazy array. */
 function isSpreadLazyArray(value: unknown): value is unknown[] {
 	return (
 		isLazyProxy(value) &&
 		isArray(value) &&
-		reflectGet(value, Symbol.isConcatSpreadable) === undefined
+		spreadsArray(reflectGet(value, Symbol.isConcatSpreadable))
 	);
 }
 
