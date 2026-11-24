@@ -3,6 +3,7 @@ import type { ApplyCheckResult } from './promotions.types';
 import { credential, destructiveChange, variable } from './__tests__/bindings.fixtures';
 import {
 	archivedWorkflow,
+	notOnBranchCredential,
 	otherProjectCredential,
 	outsideAccessWorkflow,
 	personalCredential,
@@ -243,7 +244,25 @@ describe('promotion operation', () => {
 		expect([...index.blocked]).toEqual(['workflow:w1']);
 		expect(index.byWorkflow.has('workflow:w3')).toBe(false);
 		expect(index.byResource.get('credential:c1')).toEqual([
-			{ kind: 'outside', resourceKey: 'credential:c1', workflowKeys: ['workflow:w1'] },
+			{
+				kind: 'outside',
+				reason: 'not-on-instance',
+				resourceKey: 'credential:c1',
+				workflowKeys: ['workflow:w1'],
+			},
+		]);
+	});
+
+	it('should give the blocker of a missing dependency the reason of the dependency', () => {
+		const blockers = listBlockers(
+			check({ missingDependencies: [unreachableCredential, notOnBranchCredential] }),
+			[],
+			noSelection,
+		);
+
+		expect(blockers.map(({ kind, reason, resourceKey }) => [kind, reason, resourceKey])).toEqual([
+			['outside', 'not-on-instance', 'credential:c1'],
+			['outside', 'not-on-branch', 'credential:c9'],
 		]);
 	});
 

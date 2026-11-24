@@ -2029,6 +2029,43 @@ describe('PromotionPreviewView', () => {
 			).toBe('w3');
 		});
 
+		it('should say that a credential that stops a workflow is not on the branch', async () => {
+			// The branch holds "Stripe" (c1) under no project.
+			const notOnBranch = { ...unreachableCredential, reason: 'not-on-branch' as const };
+			vi.mocked(api.getPromotionPreview).mockResolvedValue(
+				previewWithCheck(check({ missingDependencies: [notOnBranch] })),
+			);
+
+			const { getAllByTestId } = await renderApply();
+			const workflow = treeRow(getAllByTestId, 'workflow:w1');
+
+			expect(workflow.getByRole('checkbox')).toBeDisabled();
+			expect(workflow.getByTestId('promotion-preview-tree-blocker')).toHaveAccessibleName(
+				'1 dependency is not on the branch and stops this workflow.',
+			);
+			expect(
+				treeRow(getAllByTestId, 'credential:c1').getByTestId('promotion-preview-tree-blocker'),
+			).toHaveAccessibleName(
+				'The branch does not hold this credential, and 1 workflow depends on it.',
+			);
+		});
+
+		it('should give each reason its own text when dependencies of both reasons stop a workflow', async () => {
+			vi.mocked(api.getPromotionPreview).mockResolvedValue(
+				previewWithCheck(
+					check({ missingDependencies: [unreachableCredential, notOnBranchCredential] }),
+				),
+			);
+
+			const { getAllByTestId } = await renderApply();
+
+			expect(
+				treeRow(getAllByTestId, 'workflow:w1').getByTestId('promotion-preview-tree-blocker'),
+			).toHaveAccessibleName(
+				'1 dependency is outside your access. Someone with access must add it to this instance before you can apply this workflow. 1 dependency is not on the branch and stops this workflow.',
+			);
+		});
+
 		it('should apply only the workflows that no dependency outside the access of the user stops', async () => {
 			vi.mocked(api.getPromotionPreview).mockResolvedValue(
 				previewWithCheck(check({ missingDependencies: [unreachableCredential] })),

@@ -2,6 +2,7 @@ import type {
 	PromotionBindingConflict,
 	PromotionBindingConsumer,
 	PromotionMissingDependency,
+	PromotionMissingDependencyReason,
 	PromotionResource,
 	PromotionVariableScope,
 } from '@n8n/api-types';
@@ -61,6 +62,8 @@ export type BlockerKind =
 
 export type Blocker = {
 	kind: BlockerKind;
+	/** Why an `outside` dependency stops the operation. The text of the blocker depends on it. */
+	reason?: PromotionMissingDependencyReason;
 	/** The preview row of the resource. `null` when no row matches, as for a nameless reference. */
 	resourceKey: ResourceKey | null;
 	workflowKeys: ResourceKey[];
@@ -250,6 +253,7 @@ export function listBlockers(
 		if (!dependency.blocking) continue;
 		blockers.push({
 			kind: 'outside',
+			reason: dependency.reason,
 			// Only a credential has a preview row to mark.
 			resourceKey:
 				dependency.kind === 'credential' && dependency.id !== undefined
