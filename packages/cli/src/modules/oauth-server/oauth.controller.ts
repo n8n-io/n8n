@@ -47,8 +47,9 @@ const PIPELINE_SURFACES: ReadonlySet<SurfaceId> = new Set<SurfaceId>([
 /**
  * Pre-check guard for the unauthenticated DCR endpoint. Short-circuits with
  * a structured `server_error` response when the instance is at the
- * registered-client cap. Returns HTTP 503 because limit exhaustion is a
- * temporary capacity condition, not an internal failure.
+ * registered-client cap and no unconsented client can be deleted to make
+ * room. Returns HTTP 503 because limit exhaustion is a temporary capacity
+ * condition, not an internal failure.
  *
  * The post-insert rollback in `enforceClientLimit` throws
  * `OAuthClientLimitReachedError` (a `ServerError` subclass) so the SDK
@@ -57,7 +58,7 @@ const PIPELINE_SURFACES: ReadonlySet<SurfaceId> = new Set<SurfaceId>([
  * an identical body.
  */
 const oauthClientLimitGuard: RequestHandler = async (_req, res, next) => {
-	if (await oauthServerService.isClientLimitReached()) {
+	if (!(await oauthServerService.hasRoomForNewClient())) {
 		const limit = globalConfig.endpoints.mcpMaxRegisteredClients;
 		logger.warn('OAuth client registration rejected: instance limit reached (pre-check)', {
 			limit,

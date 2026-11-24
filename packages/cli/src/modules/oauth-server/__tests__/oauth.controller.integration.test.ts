@@ -1,5 +1,6 @@
 import { testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import type { Person } from '@n8n/db';
 import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -17,6 +18,7 @@ import { createOwner } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
 import { OAuthClient } from '../database/entities/oauth-client.entity';
+import { UserConsent } from '../database/entities/oauth-user-consent.entity';
 import { OAuthServerConfig } from '../oauth-server.config';
 import type { OAuthController as OAuthControllerClass } from '../oauth.controller';
 import { pendingFlowFrom } from './oauth-flow-test-utils';
@@ -415,6 +417,58 @@ describe('POST /mcp-oauth/register', () => {
 		}
 	});
 
+	describe('at the instance client limit', () => {
+		const clientData = {
+			client_name: 'Test Client',
+			redirect_uris: ['https://example.com/callback'],
+			grant_types: ['authorization_code'],
+			token_endpoint_auth_method: 'none',
+		};
+		const twentyMinutesAgo = () => new Date(Date.now() - 20 * Time.minutes.toMilliseconds);
+		let originalLimit: number;
+
+		beforeEach(() => {
+			const globalConfig = Container.get(GlobalConfig);
+			originalLimit = globalConfig.endpoints.mcpMaxRegisteredClients;
+			globalConfig.endpoints.mcpMaxRegisteredClients = 1;
+		});
+
+		afterEach(() => {
+			Container.get(GlobalConfig).endpoints.mcpMaxRegisteredClients = originalLimit;
+		});
+
+		test('should delete clients that never received consent to make room', async () => {
+			const clients = Container.get(DataSource).getRepository(OAuthClient);
+			const first = await testServer.restlessAgent.post('/mcp-oauth/register').send(clientData);
+			expect(first.statusCode).toBe(201);
+			await clients.update({ id: first.body.client_id }, { createdAt: twentyMinutesAgo() });
+
+			const second = await testServer.restlessAgent.post('/mcp-oauth/register').send(clientData);
+
+			expect(second.statusCode).toBe(201);
+			expect(await clients.findOneBy({ id: first.body.client_id })).toBeNull();
+			expect(await clients.findOneBy({ id: second.body.client_id })).not.toBeNull();
+		});
+
+		test('should keep rejecting when the registered client has a consent', async () => {
+			const clients = Container.get(DataSource).getRepository(OAuthClient);
+			const first = await testServer.restlessAgent.post('/mcp-oauth/register').send(clientData);
+			expect(first.statusCode).toBe(201);
+			await Container.get(DataSource).getRepository(UserConsent).save({
+				userId: owner.id,
+				clientId: first.body.client_id,
+				grantedAt: Date.now(),
+				scope: [],
+			});
+			await clients.update({ id: first.body.client_id }, { createdAt: twentyMinutesAgo() });
+
+			const second = await testServer.restlessAgent.post('/mcp-oauth/register').send(clientData);
+
+			expect(second.statusCode).toBe(503);
+			expect(await clients.findOneBy({ id: first.body.client_id })).not.toBeNull();
+		});
+	});
+
 	test('should reject with descriptive server_error on the post-insert rollback (race path)', async () => {
 		const { OAuthServerService } = await import('../oauth-server.service.js');
 		const globalConfig = Container.get(GlobalConfig);
@@ -424,8 +478,8 @@ describe('POST /mcp-oauth/register', () => {
 		// Stub the pre-check guard to always pass, simulating two concurrent
 		// registrations that both saw count < limit and made it past the guard.
 		const guardSpy = vi
-			.spyOn(OAuthServerService.prototype, 'isClientLimitReached')
-			.mockResolvedValue(false);
+			.spyOn(OAuthServerService.prototype, 'hasRoomForNewClient')
+			.mockResolvedValue(true);
 
 		try {
 			const clientData = {
