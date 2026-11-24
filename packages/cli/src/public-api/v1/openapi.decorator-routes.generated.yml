@@ -18,6 +18,12 @@ paths:
       $ref: ./handlers/agents/spec/paths/updateAgent.generated.yml
     delete:
       $ref: ./handlers/agents/spec/paths/deleteAgent.generated.yml
+  /agents/{agentId}/versions:
+    get:
+      $ref: ./handlers/agents/spec/paths/listAgentVersions.generated.yml
+  /agents/{agentId}/versions/{versionId}:
+    get:
+      $ref: ./handlers/agents/spec/paths/getAgentVersion.generated.yml
   /ai-preferences:
     get:
       $ref: ./handlers/ai-preferences/spec/paths/listAiPreferences.generated.yml

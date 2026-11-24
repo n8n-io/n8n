@@ -1,12 +1,17 @@
 import {
 	agentIdParamSchema,
+	agentVersionIdParamSchema,
 	AgentListPublicDto,
 	AgentPublicDto,
+	AgentVersionListPublicDto,
+	AgentVersionPublicDto,
 	CreatedAgentPublicDto,
 	CreateAgentPublicDto,
 	DeletedAgentPublicDto,
+	ListAgentVersionsPublicQueryDto,
 	ListAgentsPublicQueryDto,
 	UpdateAgentPublicDto,
+	type AgentVersionListItemDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -30,6 +35,7 @@ import type { Response } from 'express';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
+import { AgentPublishService } from '@/modules/agents/agent-publish.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
 import { AgentDefaultModelResolverService } from '@/modules/agents/agent-default-model-resolver.service';
 import {
@@ -51,6 +57,7 @@ export class AgentsPublicController {
 		private readonly agentDefaultModelResolverService: AgentDefaultModelResolverService,
 		private readonly agentCustomToolsService: AgentCustomToolsService,
 		private readonly agentConfigService: AgentConfigService,
+		private readonly agentPublishService: AgentPublishService,
 	) {}
 
 	@Post('/')
@@ -118,6 +125,75 @@ export class AgentsPublicController {
 		}
 
 		return await this.agentResponseMapper.toPublicDto(agent, agent.projectId ?? '', req.user);
+	}
+
+	@Get('/:agentId/versions')
+	@ApiKeyScope('agent:read')
+	@ProjectScope('agent:read')
+	@ApiSummary('Retrieve agent version history')
+	@ApiDescription(
+		'Returns a paginated list of saved agent versions for an agent. ' +
+			'The response is one cursor page: read the next page with the cursor query parameter.',
+	)
+	@ApiTags(['Agent'])
+	@ApiResponse(200, AgentVersionListPublicDto)
+	@ApiErrorResponse(404)
+	async listAgentVersions(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('agentId', agentIdParamSchema) agentId: string,
+		@Query query: ListAgentVersionsPublicQueryDto,
+	): Promise<AgentVersionListPublicDto> {
+		const agent = await this.requireProjectAgent(agentId);
+		const { offset, limit } = resolveOffsetPagination({ cursor: query.cursor, limit: query.limit });
+		const versions = await this.agentPublishService.listVersions(
+			agentId,
+			agent.projectId,
+			limit + 1,
+			offset,
+		);
+		const hasMore = versions.length > limit;
+		const data = hasMore ? versions.slice(0, limit) : versions;
+
+		return {
+			data: data.map(toPublicAgentVersion),
+			nextCursor: encodeNextCursor({
+				offset,
+				limit,
+				numberOfTotalRecords: hasMore ? offset + limit + 1 : offset + data.length,
+			}),
+		};
+	}
+
+	@Get('/:agentId/versions/:versionId')
+	@ApiKeyScope('agent:read')
+	@ProjectScope('agent:read')
+	@ApiSummary('Retrieve an agent version')
+	@ApiDescription(
+		'Retrieve one saved version of an agent, including its configuration, tools, and skills.',
+	)
+	@ApiTags(['Agent'])
+	@ApiResponse(200, AgentVersionPublicDto)
+	@ApiErrorResponse(404)
+	async getAgentVersion(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('agentId', agentIdParamSchema) agentId: string,
+		@Param('versionId', agentVersionIdParamSchema) versionId: string,
+	): Promise<AgentVersionPublicDto> {
+		const agent = await this.requireProjectAgent(agentId);
+		// The summary owns list metadata. The version read owns the saved document.
+		const [summary, { definition }] = await Promise.all([
+			this.agentPublishService.getVersionSummary(agentId, agent.projectId, versionId),
+			this.agentPublishService.getVersion(agentId, agent.projectId, versionId),
+		]);
+
+		return {
+			...toPublicAgentVersion(summary),
+			config: definition.schema,
+			tools: definition.tools ?? {},
+			skills: definition.skills,
+		};
 	}
 
 	@Get('/')
@@ -230,6 +306,14 @@ export class AgentsPublicController {
 		return this.toDeletedAgentPublicDto(deleted);
 	}
 
+	private async requireProjectAgent(agentId: string) {
+		const agent = await this.agentsService.findById(agentId);
+		if (!agent?.projectId) {
+			throw new NotFoundError('Not Found');
+		}
+		return agent;
+	}
+
 	private toDeletedAgentPublicDto(agent: DeletedAgentSnapshot): DeletedAgentPublicDto {
 		return {
 			id: agent.id,
@@ -242,6 +326,21 @@ export class AgentsPublicController {
 			updatedAt: toIsoTimestamp(agent.updatedAt),
 		};
 	}
+}
+
+function toPublicAgentVersion(item: AgentVersionListItemDto) {
+	return {
+		versionId: item.versionId,
+		agentId: item.agentId,
+		name: item.name ?? null,
+		description: item.description ?? null,
+		author: item.author,
+		createdAt: item.createdAt,
+		updatedAt: item.updatedAt,
+		isActive: item.isActive,
+		isCurrent: item.isCurrent ?? false,
+		...(item.lastPublished ? { lastPublished: item.lastPublished } : {}),
+	};
 }
 
 function toIsoTimestamp(value: Date | string | undefined): string {
