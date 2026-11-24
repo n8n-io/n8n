@@ -708,4 +708,22 @@ describe('SimulationSession', () => {
 			expect.objectContaining({ signal: controller.signal }),
 		);
 	});
+	it('forwards MCP session headers to the world and never auth headers', async () => {
+		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
+		const session = new SimulationSession({
+			testChatId: 't',
+			world,
+			capabilities: [{ toolName: 'linear', kind: 'mcp', testability: 'simulated' }],
+		});
+
+		await session.instrumentation().mcpFetch!('linear')('https://x.test/mcp', {
+			method: 'POST',
+			body: '{}',
+			headers: { 'Mcp-Session-Id': 'session-1', Authorization: 'Bearer secret-token' },
+		});
+
+		const [request] = world.handleRequest.mock.calls[0];
+		expect(request).toMatchObject({ headers: { 'mcp-session-id': 'session-1' } });
+		expect(JSON.stringify(request)).not.toContain('secret-token');
+	});
 });

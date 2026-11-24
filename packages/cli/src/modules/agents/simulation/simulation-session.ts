@@ -346,8 +346,15 @@ export class SimulationSession {
 				init?.body ?? (input instanceof Request ? await input.clone().text() : undefined);
 			const body = typeof rawBody === 'string' ? parseJson(rawBody) : rawBody;
 			const signal = init?.signal ?? (input instanceof Request ? input.signal : undefined);
+			// Stateful MCP needs headers such as `mcp-session-id`. Redaction removes auth headers.
+			const headers = Object.fromEntries(
+				new Headers({
+					...Object.fromEntries(input instanceof Request ? input.headers : []),
+					...Object.fromEntries(new Headers(init?.headers)),
+				}),
+			);
 			const reply = await this.ask(
-				redactOutboundRequest({ protocol: 'mcp', server, method, body }),
+				redactOutboundRequest({ protocol: 'mcp', server, method, headers, body }),
 				undefined,
 				signal ?? undefined,
 			);
