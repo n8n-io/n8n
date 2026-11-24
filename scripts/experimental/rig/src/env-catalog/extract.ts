@@ -10,7 +10,7 @@ import { RigError } from '../errors';
  * Packages whose `typescript` dependency has the JavaScript compiler API
  * (TS 6). The root may get the native TS 7 compiler, which has no such API.
  */
-const TYPESCRIPT_HOSTS = ['packages/quality/environments/rig', 'packages/cli', '.'];
+const TYPESCRIPT_HOSTS = ['scripts/experimental/rig', 'packages/cli', '.'];
 
 let ts: typeof TS;
 

@@ -34,7 +34,7 @@ pnpm stack --tunnel
 When started, you'll see the URL: `http://localhost:[port]`
 
 To run a persistent topology from your checkout as local processes, with
-env vars for each component, use [`rig`](../rig/README.md).
+env vars for each component, use [`rig`](../../../../scripts/experimental/rig/README.md).
 
 ## Using in Playwright Tests
 

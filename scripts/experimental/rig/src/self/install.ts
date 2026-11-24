@@ -20,7 +20,7 @@ import { RigError } from '../errors';
 import { type BuildInfo, versionId } from './build-info';
 
 /** The rig package inside an n8n checkout. */
-export const RIG_PACKAGE_DIR = 'packages/quality/environments/rig';
+export const RIG_PACKAGE_DIR = 'scripts/experimental/rig';
 /** The number of installed versions to keep for rollbacks. */
 const KEEP_VERSIONS = 5;
 const SHIM_MARKER = '# rig-shim';

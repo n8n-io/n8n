@@ -1887,7 +1887,7 @@
 				"hash": "d8f14a75499b"
 			}
 		],
-		"packages/quality/environments/rig/package.json": [
+		"scripts/experimental/rig/package.json": [
 			{
 				"rule": "catalog-violations",
 				"line": 21,

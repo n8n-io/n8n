@@ -149,7 +149,7 @@ export function loadTopology(file: string): Topology {
 export function saveTopology(file: string, topology: Topology): void {
 	const header =
 		'# Topology of this rig environment. Run `rig status` after you change it.\n' +
-		'# Reference: packages/quality/environments/rig/README.md in the n8n repository.\n';
+		'# Reference: scripts/experimental/rig/README.md in the n8n repository.\n';
 	writeFileSync(file, header + stringify(topology));
 }
 

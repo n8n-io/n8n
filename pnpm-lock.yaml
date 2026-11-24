@@ -9910,61 +9910,6 @@ importers:
         specifier: 'catalog:'
         version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
-  packages/quality/environments/rig:
-    dependencies:
-      '@clack/prompts':
-        specifier: ^1.9.0
-        version: 1.9.0
-      '@n8n/utils':
-        specifier: workspace:*
-        version: link:../../../@n8n/utils
-      chokidar:
-        specifier: 4.0.3
-        version: 4.0.3
-      citty:
-        specifier: 'catalog:'
-        version: 0.1.6
-      n8n-containers:
-        specifier: workspace:*
-        version: link:../containers
-      picocolors:
-        specifier: 'catalog:'
-        version: 1.0.1
-      tsx:
-        specifier: 'catalog:'
-        version: 4.19.3
-      typescript:
-        specifier: catalog:typescript-tooling
-        version: '@typescript/typescript6@6.0.2'
-      yaml:
-        specifier: 'catalog:'
-        version: 2.8.3
-    devDependencies:
-      '@n8n/eslint-config':
-        specifier: workspace:*
-        version: link:../../../@n8n/eslint-config
-      '@n8n/oxlint-config':
-        specifier: workspace:*
-        version: link:../../../@n8n/oxlint-config
-      '@typescript/native':
-        specifier: catalog:typescript-tooling
-        version: typescript@7.0.2
-      oxlint:
-        specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
-      oxlint-tsgolint:
-        specifier: 'catalog:'
-        version: 0.21.1
-      tsdown:
-        specifier: catalog:typescript
-        version: 0.22.8(@typescript/typescript6@6.0.2)(tsx@4.19.3)(unrun@0.2.10(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3))(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(@typescript/typescript6@6.0.2))
-      vitest:
-        specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
-      zod:
-        specifier: 3.25.76
-        version: 3.25.76
-
   packages/quality/policy/code-health:
     dependencies:
       '@n8n/rules-engine':
@@ -10425,6 +10370,61 @@ importers:
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
+      zod:
+        specifier: 3.25.76
+        version: 3.25.76
+
+  scripts/experimental/rig:
+    dependencies:
+      '@clack/prompts':
+        specifier: ^1.9.0
+        version: 1.9.0
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../../../packages/@n8n/utils
+      chokidar:
+        specifier: 4.0.3
+        version: 4.0.3
+      citty:
+        specifier: 'catalog:'
+        version: 0.1.6
+      n8n-containers:
+        specifier: workspace:*
+        version: link:../../../packages/quality/environments/containers
+      picocolors:
+        specifier: 'catalog:'
+        version: 1.0.1
+      tsx:
+        specifier: 'catalog:'
+        version: 4.19.3
+      typescript:
+        specifier: catalog:typescript-tooling
+        version: '@typescript/typescript6@6.0.2'
+      yaml:
+        specifier: 'catalog:'
+        version: 2.8.3
+    devDependencies:
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../../../packages/@n8n/eslint-config
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../../../packages/@n8n/oxlint-config
+      '@typescript/native':
+        specifier: catalog:typescript-tooling
+        version: typescript@7.0.2
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 7.0.2007
+      tsdown:
+        specifier: catalog:typescript
+        version: 0.22.8(@typescript/typescript6@6.0.2)(oxc-resolver@11.21.2)(tsx@4.19.3)(unrun@0.2.10(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3))(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(@typescript/typescript6@6.0.2))
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       zod:
         specifier: 3.25.76
         version: 3.25.76
@@ -45511,7 +45511,7 @@ snapshots:
     transitivePeerDependencies:
       - oxc-resolver
 
-  rolldown-plugin-dts@0.27.9(@typescript/typescript6@6.0.2)(rolldown@1.1.5)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(@typescript/typescript6@6.0.2)):
+  rolldown-plugin-dts@0.27.9(@typescript/typescript6@6.0.2)(oxc-resolver@11.21.2)(rolldown@1.1.5)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(@typescript/typescript6@6.0.2)):
     dependencies:
       dts-resolver: 3.0.0(oxc-resolver@11.21.2)
       get-tsconfig: 5.0.0-beta.5
@@ -47220,7 +47220,7 @@ snapshots:
       - synckit
       - vue-tsc
 
-  tsdown@0.22.8(@typescript/typescript6@6.0.2)(tsx@4.19.3)(unrun@0.2.10(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3))(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(@typescript/typescript6@6.0.2)):
+  tsdown@0.22.8(@typescript/typescript6@6.0.2)(oxc-resolver@11.21.2)(tsx@4.19.3)(unrun@0.2.10(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3))(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(@typescript/typescript6@6.0.2)):
     dependencies:
       ansis: 4.3.1
       cac: 7.0.0
@@ -47231,7 +47231,7 @@ snapshots:
       obug: 2.1.3
       picomatch: 4.0.4
       rolldown: 1.1.5
-      rolldown-plugin-dts: 0.27.9(@typescript/typescript6@6.0.2)(rolldown@1.1.5)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(@typescript/typescript6@6.0.2))
+      rolldown-plugin-dts: 0.27.9(@typescript/typescript6@6.0.2)(oxc-resolver@11.21.2)(rolldown@1.1.5)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(@typescript/typescript6@6.0.2))
       semver: 7.7.3
       tinyexec: 1.2.4
       tinyglobby: 0.2.17

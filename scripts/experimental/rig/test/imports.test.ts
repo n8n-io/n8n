@@ -3,7 +3,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 
 const srcDir = resolve(__dirname, '../src');
-const containersDir = resolve(__dirname, '../../containers');
+const containersDir = resolve(__dirname, '../../../../packages/quality/environments/containers');
 
 function sourceFiles(dir: string): string[] {
 	return readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
