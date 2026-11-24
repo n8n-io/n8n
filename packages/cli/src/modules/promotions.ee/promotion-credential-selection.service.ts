@@ -55,6 +55,18 @@ export class PromotionCredentialSelectionService {
 		}
 	}
 
+	/**
+	 * The credentials of the project that the user cannot read. Apply hides them, so that the
+	 * preview shows no name or type of a credential the user cannot see, and refuses to select them.
+	 */
+	async findUnreadableOwnedIds(user: User, projectId: string): Promise<Set<string>> {
+		const ids = (await this.findOwned(projectId)).map(({ id }) => id);
+		const readable = await this.credentialsFinder.findCredentialIdsWithScopeForUser(ids, user, [
+			'credential:read',
+		]);
+		return new Set(ids.filter((id) => !readable.has(id)));
+	}
+
 	/** Credentials that this project owns and that only this project can use. */
 	private async findOwned(projectId: string): Promise<CredentialsEntity[]> {
 		const owned = await this.sharedCredentialsRepository.findOwnedCredentialsByProjects([

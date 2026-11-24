@@ -107,6 +107,8 @@ describe('workflow publication scopes', () => {
 	});
 });
 
+const noSelected = { creations: [], renames: [], ownedElsewhere: [], unchanged: [] };
+
 describe('assertCredentialUpdatesAllowed', () => {
 	const update: CredentialUpdateCandidate = {
 		sourceId: 'source-1',
@@ -120,33 +122,53 @@ describe('assertCredentialUpdatesAllowed', () => {
 
 	it('requires no scope when no plan updates a credential', () => {
 		expect(() =>
-			assertCredentialUpdatesAllowed(['workflow:import'], 'overwrite', [{ updates: [] }]),
+			assertCredentialUpdatesAllowed(['workflow:import'], 'overwrite', [
+				{ updates: [], selected: noSelected },
+			]),
 		).not.toThrow();
 	});
 
 	it('requires credential:update when a plan updates a credential under overwrite', () => {
 		expect(() =>
 			assertCredentialUpdatesAllowed(['workflow:import'], 'overwrite', [
-				{ updates: [] },
-				{ updates: [update] },
+				{ updates: [], selected: noSelected },
+				{ updates: [update], selected: noSelected },
 			]),
 		).toThrow(ForbiddenError);
 		expect(() =>
 			assertCredentialUpdatesAllowed(['workflow:import', 'credential:update'], 'overwrite', [
-				{ updates: [update] },
+				{ updates: [update], selected: noSelected },
 			]),
 		).not.toThrow();
 	});
 
+	it.each(['fail', 'keep-existing', 'overwrite'] as const)(
+		'requires credential:update for a selected rename under %s',
+		(policy) => {
+			const plans = [{ updates: [], selected: { ...noSelected, renames: [update] } }];
+
+			expect(() => assertCredentialUpdatesAllowed(['workflow:import'], policy, plans)).toThrow(
+				ForbiddenError,
+			);
+			expect(() =>
+				assertCredentialUpdatesAllowed(['credential:update'], policy, plans),
+			).not.toThrow();
+		},
+	);
+
 	it('skips the check without API key scopes', () => {
 		expect(() =>
-			assertCredentialUpdatesAllowed(undefined, 'overwrite', [{ updates: [update] }]),
+			assertCredentialUpdatesAllowed(undefined, 'overwrite', [
+				{ updates: [update], selected: noSelected },
+			]),
 		).not.toThrow();
 	});
 
 	it.each(['fail', 'keep-existing'] as const)('requires no scope under %s', (policy) => {
 		expect(() =>
-			assertCredentialUpdatesAllowed(['workflow:import'], policy, [{ updates: [update] }]),
+			assertCredentialUpdatesAllowed(['workflow:import'], policy, [
+				{ updates: [update], selected: noSelected },
+			]),
 		).not.toThrow();
 	});
 });

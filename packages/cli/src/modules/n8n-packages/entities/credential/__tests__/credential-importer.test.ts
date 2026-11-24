@@ -1206,10 +1206,46 @@ describe('CredentialImporter', () => {
 
 			const { selected, forbidden } = await importer.plan(context, selectedRequest());
 
-			expect(selected.renames).toEqual([
-				{ id: 'cred-sel', name: 'Stripe', previousName: 'Old name' },
+			expect(selected.renames).toMatchObject([
+				{ sourceId: 'cred-sel', targetId: 'cred-sel', name: 'Stripe', targetName: 'Old name' },
 			]);
 			expect(forbidden).toEqual([]);
+		});
+
+		it('does not apply a type that differs from the package', async () => {
+			credentialsFinder.findById.mockResolvedValue({
+				...owned(targetProject.id, 'Stripe'),
+				type: 'otherApi',
+			} as CredentialsEntity);
+
+			const { selected } = await importer.plan(context, selectedRequest());
+
+			expect(selected).toMatchObject({ renames: [], creations: [] });
+			expect(selected.unchanged).toEqual([{ id: 'cred-sel', name: 'Stripe' }]);
+		});
+
+		it('leaves an instance credential of the project as it is', async () => {
+			credentialsFinder.findById.mockResolvedValue({
+				...owned(targetProject.id, 'Old name'),
+				usageScope: 'instance',
+			} as CredentialsEntity);
+
+			const { selected } = await importer.plan(context, selectedRequest());
+
+			expect(selected.renames).toEqual([]);
+			expect(selected.ownedElsewhere).toEqual([{ id: 'cred-sel', name: 'Old name' }]);
+		});
+
+		it('prepares a planned rename before any write', async () => {
+			credentialsFinder.findById.mockResolvedValue(owned(targetProject.id, 'Old name'));
+			const plan = await importer.plan(context, selectedRequest());
+			credentialsService.decryptOrFail.mockResolvedValue({});
+			credentialsService.prepareUpdateData.mockRejectedValue(new ForbiddenError('Not allowed'));
+
+			await expect(importer.assertCanUpdate(context, selectedRequest(), plan)).rejects.toThrow(
+				ForbiddenError,
+			);
+			expect(credentialsService.update).not.toHaveBeenCalled();
 		});
 
 		it('plans nothing for a credential that another project owns', async () => {

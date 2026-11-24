@@ -105,8 +105,11 @@ export interface CredentialUpdateCandidate extends CredentialMatch {
 export interface SelectedCredentialPlan {
 	/** Credentials the destination lacks. Each is created empty in the project. */
 	creations: Array<{ sourceId: string; name: string; type: string }>;
-	/** Credentials of the project that the package names differently. */
-	renames: Array<{ id: string; name: string; previousName: string }>;
+	/**
+	 * Credentials of the project that the package names differently. A rename writes the name only:
+	 * the type and the stored values stay.
+	 */
+	renames: CredentialUpdateCandidate[];
 	/** Credentials that another project owns. They stay as they are. */
 	ownedElsewhere: Array<{ id: string; name: string }>;
 	/** Credentials of the project that the destination already holds with the package name. */

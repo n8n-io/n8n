@@ -27,6 +27,7 @@ import type {
 	CredentialBindingRequest,
 	CredentialImportPlan,
 	CredentialResolutionFailure,
+	CredentialUpdateCandidate,
 } from '../entities/credential/credential.types';
 import {
 	columnIdConflictError,
@@ -348,7 +349,13 @@ export class ImportOrchestrator {
 			}
 			issues.push(
 				...(await this.credentialSavePolicyGate.refusedUpdates(
-					plannedCredentialUpdates(credentialRequest.conflictPolicy, credentialPlans),
+					// A selected rename is a save like an update, so the policy gate sees it too.
+					new Map([
+						...plannedCredentialUpdates(credentialRequest.conflictPolicy, credentialPlans),
+						...credentialPlans
+							.flatMap(({ selected }) => selected.renames)
+							.map((rename): [string, CredentialUpdateCandidate[]] => [rename.targetId, [rename]]),
+					]),
 					contentImportTransport(importSource),
 					{ kind: 'user', user: context.user },
 					mode,
