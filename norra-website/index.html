@@ -2048,6 +2048,86 @@
     white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.25; overflow-wrap: anywhere;
   }
 
+  /* ---------- process timeline (NORRA.processTimeline) ---------- */
+  /* Narrow container: vertical, line on the left. Wide container (>= 760 px): horizontal nodes on one line. */
+  .ptl { container-type: inline-size; margin-top: 56px; }
+  .ptl-compact { margin-top: 28px; }
+  .ptl-list { list-style: none; margin: 0; padding: 0; display: grid; }
+  .ptl-step { position: relative; display: grid; grid-template-columns: 40px minmax(0, 1fr); column-gap: 16px; padding-bottom: 14px; }
+  .ptl-step:last-child { padding-bottom: 0; }
+  .ptl-rail { position: relative; }
+  .ptl-node { position: relative; z-index: 1; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 999px;
+    background: hsl(var(--card)); border: 1.5px solid hsl(var(--border)); color: hsl(var(--muted-foreground));
+    font: 600 13px/1 var(--font-mono); font-variant-numeric: tabular-nums;
+    transition: background .5s var(--ease-out), border-color .5s var(--ease-out), color .5s var(--ease-out), box-shadow .5s var(--ease-out); }
+  .ptl-node::after { content: ''; position: absolute; inset: -1.5px; border-radius: inherit; pointer-events: none; }
+  .ptl-seg { position: absolute; left: 19px; top: 48px; bottom: -6px; width: 2px; border-radius: 2px; overflow: hidden; background: hsl(var(--border)); }
+  .ptl-seg i { position: absolute; inset: 0; background: hsl(var(--primary)); transform: scaleY(0); transform-origin: 50% 0;
+    transition: transform .7s var(--ease-out); }
+  .ptl-step:last-child .ptl-seg { display: none; }
+  .ptl-step.lit .ptl-node { background: hsl(var(--primary)); border-color: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+  .ptl-step.seg .ptl-seg i { transform: none; }
+  .ptl-step.now .ptl-node { box-shadow: 0 0 0 5px hsl(var(--primary) / .13); }
+  .ptl.vis .ptl-step.now .ptl-node::after { animation: ptlPulse 2.6s var(--ease-out) infinite; }
+  @keyframes ptlPulse { 0% { box-shadow: 0 0 0 0 hsl(var(--primary) / .32); } 70%, 100% { box-shadow: 0 0 0 14px hsl(var(--primary) / 0); } }
+
+  .ptl-card { position: relative; border-radius: 20px; padding: 18px 18px 20px; background: hsl(var(--card));
+    border: 1px solid hsl(var(--border) / .85); box-shadow: var(--shadow-soft);
+    transition: opacity .7s var(--ease-out), transform .7s var(--ease-out), border-color .5s var(--ease-out); }
+  .ptl.arm .ptl-card { opacity: 0; transform: translateY(14px); }
+  .ptl.arm .ptl-step.lit .ptl-card { opacity: 1; transform: none; }
+  .ptl-cta .ptl-card { border-color: hsl(var(--primary) / .22);
+    background: linear-gradient(165deg, hsl(var(--surface-sage)) 0%, hsl(var(--card)) 62%); }
+  .ptl-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .ptl-ico { flex: none; width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center;
+    background: hsl(var(--surface-band)); color: hsl(var(--primary)); }
+  .ptl-cta .ptl-ico { background: hsl(var(--card)); box-shadow: var(--shadow-soft); }
+  .ptl-ico svg { width: 18px; height: 18px; }
+  .ptl-dur { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 4px 10px; white-space: nowrap;
+    font: 500 11px/1.2 var(--font-mono); background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); transition: background .5s, color .5s; }
+  .ptl-dur svg { width: 12px; height: 12px; }
+  .ptl-step.lit .ptl-dur { background: hsl(var(--accent)); color: hsl(var(--accent-foreground)); }
+  .ptl-card h3 { margin-top: 14px; font-family: var(--font-display); font-size: 19px; font-weight: 500; line-height: 1.25; letter-spacing: -0.015em; }
+  .ptl-text { margin-top: 6px; font-size: 14px; line-height: 1.6; color: hsl(var(--muted-foreground)); }
+  .ptl-meta { margin-top: 10px; display: flex; align-items: center; gap: 6px; font-size: 12px; color: hsl(var(--success)); }
+  .ptl-meta svg { flex: none; width: 13px; height: 13px; }
+  .ptl-acts { margin-top: 18px; display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+  .ptl-alt { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; line-height: 1.55; color: hsl(var(--muted-foreground)); text-decoration: none; border-radius: 6px; }
+  .ptl-alt-t { text-decoration: underline; text-decoration-color: hsl(var(--border)); text-underline-offset: 3px; transition: color .25s, text-decoration-color .25s; }
+  .ptl-alt:hover .ptl-alt-t { color: hsl(var(--foreground)); text-decoration-color: currentColor; }
+  .ptl-alt:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; }
+  .ptl-opt { flex: none; display: inline-block; margin-top: 1px; line-height: 1.4; border-radius: 999px; padding: 1px 7px; border: 1px solid hsl(var(--border));
+    font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: hsl(var(--muted-foreground)); background: hsl(var(--card) / .7); }
+  .ptl-more { margin-top: 14px; }
+  .ptl-more .nfold-body p { font-size: 13px; line-height: 1.55; }
+  .ptl-more .nfold-body b { color: hsl(var(--foreground)); font-weight: 600; }
+  .ptl-note { margin-top: 28px; text-align: center; }
+  /* compact: inside another layout */
+  .ptl-compact .ptl-card { padding: 14px 16px 16px; border-radius: 16px; box-shadow: none; }
+  .ptl-compact .ptl-ico { width: 30px; height: 30px; border-radius: 9px; }
+  .ptl-compact .ptl-ico svg { width: 16px; height: 16px; }
+  .ptl-compact .ptl-card h3 { margin-top: 10px; font-size: 16px; }
+  .ptl-compact .ptl-text { font-size: 13px; }
+  .ptl-compact .ptl-acts { margin-top: 14px; }
+  .ptl-compact .ptl-step { padding-bottom: 10px; }
+  .ptl-compact .ptl-step:last-child { padding-bottom: 0; }
+
+  @container (min-width: 760px) {
+    .ptl-list { grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); column-gap: 20px; }
+    .ptl-list.ptl-wide1 { grid-template-columns: minmax(0, 1.42fr); }
+    .ptl-step { display: flex; flex-direction: column; padding-bottom: 0; }
+    .ptl-rail { flex: none; height: 40px; }
+    .ptl-seg { left: 52px; right: -8px; top: 19px; bottom: auto; width: auto; height: 2px; }
+    .ptl-seg i { transform: scaleX(0); transform-origin: 0 50%; }
+    .ptl-card { flex: 1; margin-top: 20px; display: flex; flex-direction: column; }
+    .ptl-more { margin-top: auto; padding-top: 14px; }
+    .ptl-step:not(.ptl-cta) .ptl-card { background: hsl(var(--card) / .72); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ptl-node, .ptl-seg i, .ptl-card, .ptl-dur { transition: none !important; }
+    .ptl .ptl-step.now .ptl-node::after { animation: none !important; }
+  }
+
 /* ===== src/content/07-alle-funktionen.css ===== */
   /* ---------- Alle Funktionen im Überblick (end of every product page) ---------- */
   .af-grid { margin-top: 44px; columns: 1; column-gap: 16px; }
@@ -3753,6 +3833,25 @@ a.br-card:hover .br-mini .nst-tile { scale: 1.06; }
 
   .pk-formcard { min-width: 0; border: 1px solid hsl(var(--border)); border-radius: 26px; background: hsl(var(--card)); padding: 24px 18px; box-shadow: var(--shadow-lg); }
   @media (min-width: 640px) { .pk-formcard { padding: 32px; } }
+  /* direct start: onboarding questionnaire, above the request form */
+  .pk-ob { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 16px 16px 16px 14px;
+    border-radius: 18px; text-decoration: none; color: hsl(var(--foreground)); border: 1px solid hsl(var(--primary) / .22);
+    background: linear-gradient(150deg, hsl(var(--surface-sage)) 0%, hsl(var(--card)) 78%);
+    transition: border-color .3s var(--ease-out), box-shadow .3s var(--ease-out), transform .3s var(--ease-out); }
+  .pk-ob:hover { border-color: hsl(var(--primary) / .45); box-shadow: var(--shadow-soft); transform: translateY(-1px); }
+  .pk-ob:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; }
+  .pk-ob-ico { width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center; background: hsl(var(--card)); color: hsl(var(--primary)); box-shadow: var(--shadow-soft); }
+  .pk-ob-ico svg { width: 20px; height: 20px; }
+  .pk-ob-copy { display: grid; gap: 3px; min-width: 0; }
+  .pk-ob-t { font-weight: 600; font-size: 15px; line-height: 1.35; }
+  .pk-ob-s { font-size: 13px; line-height: 1.45; color: hsl(var(--muted-foreground)); }
+  .pk-ob-go { width: 34px; height: 34px; border-radius: 999px; display: grid; place-items: center; background: hsl(var(--primary)); color: hsl(var(--primary-foreground));
+    transition: transform .3s var(--ease-out); }
+  .pk-ob-go svg { width: 16px; height: 16px; }
+  .pk-ob:hover .pk-ob-go { transform: translateX(2px); }
+  .pk-ob-or { display: flex; align-items: center; gap: 12px; margin: 22px 0 20px; font-size: 12px; color: hsl(var(--muted-foreground)); text-align: center; }
+  .pk-ob-or::before, .pk-ob-or::after { content: ''; flex: 1; height: 1px; background: hsl(var(--border)); }
+  @media (prefers-reduced-motion: reduce) { .pk-ob, .pk-ob-go { transition: none; } .pk-ob:hover { transform: none; } }
   .pk-form { display: grid; grid-template-columns: 1fr; gap: 18px 16px; }
   @media (min-width: 640px) { .pk-form { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .pk-full { grid-column: 1 / -1; }
@@ -3858,6 +3957,11 @@ a.br-card:hover .br-mini .nst-tile { scale: 1.06; }
     .pk-ln, .pk-area, .pk-be, .pk-endg, .pk-pop, .pk-result, .pk-draw, .pk-tw.open .pk-extra, .pk-chip.on .bx svg { animation: none !important; }
     .pk-draw { stroke-dashoffset: 0; }
   }
+
+  /* process timeline on #kontakt: the optional Erstgespräch is a button (jumps to the form), styled like the shared link */
+  button.ptl-alt { appearance: none; background: none; border: 0; padding: 0; margin: 0; font: inherit; font-size: 13px;
+    line-height: 1.55; text-align: left; color: hsl(var(--muted-foreground)); cursor: pointer; }
+  .pk-ablauf { padding-top: 0; }
 
 /* ===== src/content/70-onboarding.css ===== */
   /* ---------- #onboarding: Tally full-page embed below the nav ---------- */
@@ -3997,7 +4101,7 @@ a.br-card:hover .br-mini .nst-tile { scale: 1.06; }
     </div>
   </div>
 </footer>
-<script>window.NORRA_ENV = 'hosting'; window.NORRA_I18N_LAZY = true; window.NORRA_I18N_VER = 'e29702782c';</script>
+<script>window.NORRA_ENV = 'hosting'; window.NORRA_I18N_LAZY = true; window.NORRA_I18N_VER = '4f3a6b9ff3';</script>
 <script>
 /* ===== src/core.js ===== */
 /* =========================================================================
@@ -4538,6 +4642,7 @@ NORRA.ICONS = {
   scroll: '<path d="M8 21h12a2 2 0 0 0 2-2v-2H10v2a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v3h4"/>',
   wand: '<path d="M15 4V2M15 16v-2M8 9h2M20 9h2M17.8 11.8L19 13M17.8 6.2L19 5M3 21l9-9M12.2 6.2L11 5"/>',
   blocks: '<rect x="3" y="3" width="7" height="7" rx="1"/><path d="M14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/>',
+  clipboard: '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M9 12h6M9 16h4"/>',
   userCheck: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M16 11l2 2 4-4"/>',
   /* additions */
   calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
@@ -4988,8 +5093,8 @@ NORRA._defineKit = function (K) {
     metric: { label: 'Anfragen ohne Wartezeit beantwortet', value: 97.3, dec: 1, suffix: ' %', note: 'Beispielwerte · alle drei Kanäle zusammen' },
     trend: [64.0, 79.2, 86.5, 90.8, 93.6, 95.4, 96.5, 97.3],
     reply: 'Gerne! Ich habe Ihnen den Termin eingetragen und die Bestätigung geschickt.' });
-  put('contact', { eyebrow: 'So geht es weiter', title: 'Vom Erstgespräch bis zum ersten Anruf', lede: 'Wenige Schritte, bis Ihr Agent die erste Anfrage beantwortet.', pill: 'Einrichtung',
-    steps: [{ label: 'Gespräch', detail: 'Wir klären in rund 20 Minuten, welcher Agent zu Ihrem Betrieb passt.' },
+  put('contact', { eyebrow: 'So geht es weiter', title: 'Vom Onboarding bis zum ersten Anruf', lede: 'Wenige Schritte, bis Ihr Agent die erste Anfrage beantwortet.', pill: 'Einrichtung',
+    steps: [{ label: 'Onboarding', detail: 'Ein Online-Fragebogen, 15–20 Minuten. Lieber persönlich? Ein Erstgespräch ist optional.' },
       { label: 'Bau', detail: 'Wir schreiben die Gesprächsführung, hinterlegen Ihr Wissen und verbinden Ihre Systeme.' },
       { label: 'Test', detail: 'Sie rufen selbst an oder schreiben und hören, wie er klingt.' },
       { label: 'Live', detail: 'Rufumleitung oder Chat-Fenster aktivieren, wir lesen weiter mit.' }],
@@ -5496,6 +5601,84 @@ NORRA.stepsBlock = function (steps, o) {
     '<ol class="steps">' + steps.map(function (s, i) {
       return '<li class="step-hiw reveal" data-step="' + i + '"><span class="n">' + String(i + 1).padStart(2, '0') + '</span><h3>' + s[0] + '</h3><p>' + s[1] + '</p></li>';
     }).join('') + '</ol></section>';
+};
+
+/* ---------- NORRA.processTimeline: the Norra process, shared by every page ----------
+   Step 1 is the online onboarding (#onboarding); the Erstgespräch is an optional alternative, never required.
+   o: {id, eyebrow, title, lede, note, cls,
+       compact (no section head, quieter cards, no folds), bare (only the component, no section),
+       steps (override: entries merge over NORRA.PROCESS_STEPS by index; set a field to '' or false to drop it)}
+   step: {icon, title, text (one short sentence), dur (chip), meta (small tick line), more (html, folded "Details"),
+          actions ('onboarding' = "Onboarding starten" + optional Erstgespräch link, or own html)}
+   Wide (>= 760 px container): horizontal, numbered nodes on a line that fills step by step once in view, soft pulse on
+   the active node. Narrow: vertical, line on the left. Reduced motion: finished state at once, no pulse. */
+NORRA.PROCESS_STEPS = [
+  { icon: 'clipboard', title: 'Onboarding', dur: '15–20 Min.', text: 'Ein Online-Fragebogen zu Ihrem Betrieb, wann es Ihnen passt.',
+    meta: 'Fortschritt wird gespeichert', actions: 'onboarding' },
+  { icon: 'blocks', title: 'Wir bauen', dur: '3–5 Tage', text: 'Gesprächsführung, Wissen, Anbindungen.' },
+  { icon: 'test', title: 'Testphase', dur: '2–3 Tage', text: 'Hunderte Testgespräche, dann Ihr Anruf.' },
+  { icon: 'zap', title: 'Live', dur: 'ab Tag 7', text: 'Erst mit Ihrem Okay. Danach schärfen wir laufend nach.' }
+];
+NORRA.processActions = function () {
+  return '<div class="ptl-acts">' +
+    NORRA.btn({ label: 'Onboarding starten', href: '#onboarding', arrow: true, lg: false, cls: 'ptl-go' }) +
+    '<a class="ptl-alt" href="#kontakt"><span class="ptl-opt">Optional</span><span class="ptl-alt-t">Lieber ein Erstgespräch? Kostenlos, 20 Minuten</span></a></div>';
+};
+NORRA.processTimeline = function (o) {
+  o = o || {};
+  var ico = NORRA.ico, base = NORRA.PROCESS_STEPS;
+  var steps = o.steps ? o.steps.map(function (s, i) { return Object.assign({}, base[i] || {}, s || {}); }) : base;
+  var wide = steps[0] && steps[0].actions;
+  var items = steps.map(function (s, i) {
+    var acts = s.actions === 'onboarding' ? NORRA.processActions() : (s.actions || '');
+    return '<li class="ptl-step' + (acts ? ' ptl-cta' : '') + '" style="--i:' + i + '">' +
+      '<div class="ptl-rail" aria-hidden="true"><span class="ptl-node"><span class="ptl-num">' + (i + 1) + '</span></span>' +
+      '<span class="ptl-seg"><i></i></span></div>' +
+      '<div class="ptl-card">' +
+        '<div class="ptl-top"><span class="ptl-ico">' + ico(s.icon || 'check', 18) + '</span>' +
+        (s.dur ? '<span class="ptl-dur">' + ico('clock', 12) + '<span>' + s.dur + '</span></span>' : '') + '</div>' +
+        '<h3>' + s.title + '</h3>' + (s.text ? '<p class="ptl-text">' + s.text + '</p>' : '') +
+        (s.meta ? '<p class="ptl-meta">' + ico('tick', 13) + '<span>' + s.meta + '</span></p>' : '') + acts +
+        (s.more && !o.compact ? NORRA.fold(s.more, { summary: 'Details', cls: 'nfold-sm ptl-more' }) : '') +
+      '</div></li>';
+  }).join('');
+  var body = '<div class="ptl' + (o.compact ? ' ptl-compact' : '') + '" data-ptl>' +
+    '<ol class="ptl-list' + (wide ? ' ptl-wide1' : '') + '">' + items + '</ol></div>';
+  if (o.bare) return body;
+  return '<section class="wrap sect ptl-sect' + (o.cls ? ' ' + o.cls : '') + '"' + (o.id ? ' id="' + o.id + '"' : '') + '>' +
+    (o.compact ? '' : NORRA.sectHead({ eyebrow: o.eyebrow === undefined ? 'Ablauf' : o.eyebrow, title: o.title || 'In sieben Tagen live.', lede: o.lede })) +
+    body + (o.note ? '<p class="note ptl-note">' + o.note + '</p>' : '') + '</section>';
+};
+/* Fill the line step by step once the timeline is in view; the pulse travels with it and rests on step 1. */
+NORRA.wireTimelines = function (root) {
+  root.querySelectorAll('[data-ptl]').forEach(function (t) {
+    if (t.__w) return;
+    t.__w = true;
+    var steps = Array.prototype.slice.call(t.querySelectorAll('.ptl-step')), n = steps.length;
+    var now = function (k) { steps.forEach(function (s, i) { s.classList.toggle('now', i === k); }); };
+    var finish = function () {
+      steps.forEach(function (s) { s.classList.add('lit', 'seg'); });
+      now(0);
+      t.classList.add('in', 'done');
+    };
+    if (NORRA.reduced || !('IntersectionObserver' in window)) { t.classList.add('still'); finish(); return; }
+    t.classList.add('arm');
+    var started = false, beat = NORRA.paced(520);
+    NORRA._io(t, function (v) {
+      t.classList.toggle('vis', v);
+      if (!v || started) return;
+      started = true;
+      t.classList.add('in');
+      steps.forEach(function (s, i) {
+        setTimeout(function () {
+          s.classList.add('lit');
+          now(i);
+          if (i < n - 1) setTimeout(function () { s.classList.add('seg'); }, 140);
+        }, i * beat);
+      });
+      setTimeout(function () { now(0); t.classList.add('done'); }, n * beat + 240);
+    }, { threshold: 0.2 });
+  });
 };
 
 /* Console gallery with tabs. shots: [{key, label, img, cap}], o: {eyebrow, title, lede, id} */
@@ -6291,7 +6474,7 @@ NORRA.wire = function (el) {
     NORRA.wireCounters, NORRA.wireVignettes, NORRA.wirePcards, NORRA.wireSteps, NORRA.wireCarousels,
     NORRA.wireGalleries, NORRA.wireFaq, NORRA.wireChannelTabs, NORRA.wireShowcase, NORRA.wireCapGrid,
     NORRA.wireHeroDemo, NORRA.wireSegments, NORRA.wireStages, NORRA.wireExplorers, NORRA.wireUsp,
-    NORRA.wireMatrix, NORRA.wireLlm, NORRA.wireFolds].concat(NORRA.wireHooks);
+    NORRA.wireMatrix, NORRA.wireLlm, NORRA.wireFolds, NORRA.wireTimelines].concat(NORRA.wireHooks);
   steps.forEach(function (fn) {
     try { fn(el); } catch (e) { if (window.console) console.error('[norra] wire', e); }
   });
@@ -9494,7 +9677,7 @@ NORRA.pricing = {
     usageLabel: 'Danach Hosting und Pflege', live: 'ca. 14 Tage', liveDays: 14,
     points: ['Design, Aufbau und Texte von uns', 'Schnell auf dem Handy, auffindbar bei Google', 'Ihr Agent ist schon eingebaut'] }
 };
-NORRA.PRICING_TERMS = ['Keine Mindestlaufzeit', 'Monatlich kündbar, zum Monatsende', 'Kleine Änderungen nach der Einrichtung inklusive', 'Festpreis nach dem Erstgespräch'];
+NORRA.PRICING_TERMS = ['Keine Mindestlaufzeit', 'Monatlich kündbar, zum Monatsende', 'Kleine Änderungen nach der Einrichtung inklusive', 'Festpreis nach dem Onboarding'];
 </script>
 <script>
 /* ===== src/content/07-alle-funktionen.js ===== */
@@ -9723,7 +9906,7 @@ NORRA.start.why = function () {
     '<div class="start-why" data-start-why>' +
     '<div class="start-part reveal" style="--i:0"><p class="start-part-k"><span>1</span>Ihr Teil</p>' +
     '<p class="start-part-q">«Termine annehmen, Preise nennen, abends rangehen.»</p>' +
-    '<p class="start-part-m">' + NORRA.ico('clock', 14) + 'Ein Gespräch, ca. 20 Minuten</p></div>' +
+    '<p class="start-part-m">' + NORRA.ico('clock', 14) + 'Ein Fragebogen, 15–20 Minuten</p></div>' +
     '<div class="start-part ours reveal" style="--i:1"><p class="start-part-k"><span>2</span>Unser Teil</p><ol class="start-build">' +
     ours.map(function (o) { return '<li>' + NORRA.ico('tick', 14) + '<span>' + o + '</span></li>'; }).join('') +
     '</ol><span class="start-build-bar" aria-hidden="true"><i></i></span></div>' +
@@ -9871,28 +10054,25 @@ NORRA.start.savings = function () {
     NORRA.btn({ label: 'Preise ansehen', href: '#preise', kind: 'ghost', lg: false }) + '</div></div></div></section>';
 };
 
-/* ---------- 14. How it works ---------- */
+/* ---------- 14. How it works: the shared process timeline (onboarding first, Erstgespräch optional) ---------- */
 NORRA.start.steps = function () {
-  var S = [
-    ['Erstgespräch', '20 Min.', 'Wo bleiben heute Anfragen liegen?', 'Was Kunden fragen, was der Agent darf.', 'Empfehlung und Festpreis.', 'Oder per Fragebogen, wann es Ihnen passt.'],
-    ['Wir bauen', '3–5 Tage', 'Gesprächsführung, Wissen, Anbindungen.', 'Preisliste, Öffnungszeiten, Kalenderzugang.', 'Ein Agent, der Ihre Fälle kennt.'],
-    ['Testphase', '2–3 Tage', 'Hunderte Testgespräche, dann Ihr Anruf.', 'Ein Testanruf und Ihr «so nicht».', 'Live erst, wenn Sie zufrieden sind.'],
-    ['Live', 'ab Tag 7', 'Wir lesen mit und schärfen nach.', 'Ein Satz, wenn sich etwas ändert.', 'Monatsbericht. Kündbar zum Monatsende.']
-  ];
-  return '<section class="wrap sect" id="ablauf">' +
-    NORRA.sectHead({ eyebrow: 'Ablauf', title: 'In sieben Tagen live.', lede: 'Ihr Anteil: etwa eine halbe Stunde.' }) +
-    '<ol class="steps start-steps">' + S.map(function (s, i) {
-      return '<li class="step-hiw reveal" data-step="' + i + '"><p class="start-step-top"><span class="n">' + ('0' + (i + 1)) + '</span><span class="start-step-t">' + s[1] + '</span></p>' +
-        '<h3>' + s[0] + '</h3><p>' + s[2] + '</p>' +
-        NORRA.fold('<p><b>Von Ihnen:</b> ' + s[3] + '</p><p><b>Danach:</b> ' + s[4] + '</p>' + (s[5] ? '<p>' + s[5] + '</p>' : ''), { summary: 'Details', cls: 'nfold-sm' }) + '</li>';
-    }).join('') + '</ol></section>';
+  var d = function (you, then, extra) {
+    return '<p><b>Von Ihnen:</b> ' + you + '</p><p><b>Danach:</b> ' + then + '</p>' + (extra ? '<p>' + extra + '</p>' : '');
+  };
+  return NORRA.processTimeline({ id: 'ablauf', eyebrow: 'Ablauf', title: 'In sieben Tagen live.', lede: 'Ihr Anteil: etwa eine halbe Stunde.',
+    steps: [
+      { more: d('Angebot, Preise und was der Agent darf.', 'Empfehlung und Festpreis.') },
+      { more: d('Preisliste, Öffnungszeiten, Kalenderzugang.', 'Ein Agent, der Ihre Fälle kennt.') },
+      { more: d('Ein Testanruf und Ihr «so nicht».', 'Live erst, wenn Sie zufrieden sind.') },
+      { text: 'Wir lesen mit und schärfen nach.', more: d('Ein Satz, wenn sich etwas ändert.', 'Monatsbericht. Kündbar zum Monatsende.') }
+    ] });
 };
 
 /* ---------- 15. Pricing teaser: no figures on the home page (client rule), the numbers live on #preise ---------- */
 NORRA.start.pricing = function () {
   return '<section class="wrap sect" id="preise-start">' +
     NORRA.sectHead({ eyebrow: 'Preise', title: 'Fester Preis. Keine Mindestlaufzeit.', lede: 'Einmal einrichten, danach nach Nutzung. Alles Weitere auf der Preisseite.' }) +
-    '<ul class="pills start-terms">' + ['Festpreis nach dem Erstgespräch', 'Monatlich kündbar', 'Kleine Änderungen inklusive'].map(function (t) { return '<li class="pill">' + NORRA.ico('tick') + '<span>' + t + '</span></li>'; }).join('') + '</ul>' +
+    '<ul class="pills start-terms">' + ['Festpreis nach dem Onboarding', 'Monatlich kündbar', 'Kleine Änderungen inklusive'].map(function (t) { return '<li class="pill">' + NORRA.ico('tick') + '<span>' + t + '</span></li>'; }).join('') + '</ul>' +
     '<div class="start-more reveal">' + NORRA.btn({ label: 'Preise ansehen', href: '#preise', kind: 'outline', arrow: true }) + '</div></section>';
 };
 
@@ -9913,11 +10093,11 @@ NORRA.start.cta = function () {
   return NORRA.ctaBlock({
     eyebrow: 'Kontakt',
     title: 'Sprechen wir über Ihren ersten Agent.',
-    lede: 'Im Erstgespräch bauen wir einen Test-Agenten mit Ihren Daten. Sie rufen ihn an, bevor Sie entscheiden.',
-    primary: { label: 'Kostenlose Demo anfragen', href: '#kontakt', arrow: true },
-    secondary: { label: 'Preise ansehen', href: '#preise', kind: 'outline' },
+    lede: 'Nach dem Onboarding bauen wir einen Test-Agenten mit Ihren Daten. Sie rufen ihn an, bevor Sie entscheiden.',
+    primary: { label: 'Onboarding starten', href: '#onboarding', arrow: true },
+    secondary: { label: 'Kostenlose Demo anfragen', href: '#kontakt', kind: 'outline' },
     pills: [['clock', 'Antwort innerhalb von 24 Stunden'], ['tick', 'Keine Kosten, keine Verpflichtung'], ['users', 'Persönlich, kein Callcenter']]
-  }).replace(/<\/section>$/, '<p class="start-mail">Keine Zeit für ein Gespräch? Wir schicken Ihnen den Fragebogen per E-Mail.</p>' +
+  }).replace(/<\/section>$/, '<p class="start-mail">Lieber persönlich? Ein Erstgespräch ist optional, kostenlos und dauert 20 Minuten.</p>' +
     '<p class="start-mail">Oder direkt per E-Mail ' + NORRA.copyLine(NORRA.CONTACT.email) + '</p></section>');
 };
 
@@ -10207,7 +10387,7 @@ NORRA.produkte.compare = function (list) {
     '<div class="lsx-cmp reveal" data-lsx-cmp data-col="0">' + pick +
     '<div class="lsx-cmp-scroll"><table class="lsx-cmp-t"><caption class="sr-only">Vergleich der vier Leistungen</caption>' + head + '<tbody>' + body + '</tbody></table></div>' +
     '<button type="button" class="lsx-cmp-tg" aria-expanded="false"><span>Alle Merkmale</span>' + ico('chevron', 15) + '</button></div>' +
-    '<p class="note lsx-center">Festpreis nach dem Erstgespräch.</p>' + NORRA.priceNoteHtml('lsx-center') +
+    '<p class="note lsx-center">Festpreis nach dem Onboarding.</p>' + NORRA.priceNoteHtml('lsx-center') +
     inclHtml + '</div></section>';
 };
 
@@ -10955,16 +11135,15 @@ NORRA.va.handoverSect = function () {
     ticks: ['Warm übergeben oder direkt verbinden'] });
 };
 
-NORRA.va.STEPS = [['Erstgespräch', '20 Minuten'], ['Wir bauen', '3–5 Tage'], ['Testphase', '2–3 Tage'], ['Live', 'ab Tag 7']];
+NORRA.va.STEPS = [['Onboarding', '15–20 Min.'], ['Wir bauen', '3–5 Tage'], ['Testphase', '2–3 Tage'], ['Live', 'ab Tag 7']];
 NORRA.va.buildSect = function () {
   var card = '<ol class="va-steps" data-va-steps aria-hidden="true">' + NORRA.va.STEPS.map(function (s, i) {
     return '<li class="' + (i === 0 ? 'on' : '') + '"><span class="n">' + (i + 1) + '</span><span class="t">' + s[0] + '</span><span class="d">' + s[1] + '</span></li>';
   }).join('') + '</ol>';
-  var list = '<ol class="va-steps-list">' + NORRA.va.STEPS.map(function (s) { return '<li><b>' + s[0] + '</b> · ' + s[1] + '</li>'; }).join('') + '</ol>';
   return NORRA.va.clip({ id: 'va-start', reverse: true, src: 'media/agent-builder.mp4', alt: 'Produktansicht: Ein Agent entsteht aus einer kurzen Beschreibung.',
     card: card, eyebrow: 'Ablauf', title: 'In rund sieben Tagen live.',
     lede: 'Wir bauen und testen. Live geht er erst mit Ihrem Okay.',
-    more: NORRA.fold(list, { summary: 'Die vier Schritte', cls: 'nfold-sm' }) });
+    more: NORRA.processTimeline({ compact: true, bare: true }) });
 };
 
 /* pricing: setup once + per minute, with a live minute calculator */
@@ -12471,7 +12650,7 @@ NORRA.website.priceSection = function () {
   /* "Kein Abo" would read as a contradiction next to a monthly fee: use the monthly-cancellable term */
   var terms = ['Keine Mindestlaufzeit, monatlich kündbar', 'Live in ' + NORRA.website.liveIn(pr)];
   return '<section class="wrap sect ws-price-sect" id="ws-preis">' +
-    NORRA.sectHead({ eyebrow: 'Preis', title: 'Einmal bauen. Dann {{p:website.monthly}} im Monat.', lede: 'Festpreis nach dem Erstgespräch.' }) +
+    NORRA.sectHead({ eyebrow: 'Preis', title: 'Einmal bauen. Dann {{p:website.monthly}} im Monat.', lede: 'Festpreis nach dem Onboarding.' }) +
     '<div class="ws-price reveal"><div class="ws-prow">' +
       '<div class="ws-pcol"><p class="k">Einrichtung, einmalig</p><p class="v">' + (pr.setup || '') + '</p><p class="n">Je nach Umfang</p></div>' +
       '<span class="ws-plus" aria-hidden="true">+</span>' +
@@ -12500,17 +12679,17 @@ NORRA.pages.website = function () {
     NORRA.uspStrip([
       { icon: 'msg', title: 'Antwortet, statt nur zu zeigen', text: 'Chat und Buchung eingebaut.' },
       { icon: 'book', title: 'Eine Wissensbasis', text: 'Website, Chat und Telefon antworten gleich.' },
-      { icon: 'clock', title: 'Schnell online', text: 'Vom Erstgespräch bis live.',
+      { icon: 'clock', title: 'Schnell online', text: 'Vom Onboarding bis live.',
         stat: { to: pr.liveDays || 14, dec: 0, pre: 'ca. ', suf: ' Tage', label: 'Richtwert' } }
     ], { eyebrow: 'Warum Norra', title: 'Mehr als eine Visitenkarte' }) +
     NORRA.integrationMatrix(NORRA.website.integrations(), { id: 'ws-anbindungen', eyebrow: 'Anbindungen', title: 'Passt zu Ihren Werkzeugen',
       filters: false, limit: 2, perGroup: 4 }) +
-    NORRA.stepsBlock([
-      ['Erstgespräch', 'Danach Festpreis.'],
-      ['Wir bauen', 'Sie liefern Leistungen und Preise.'],
-      ['Freigabe', 'Sie lesen gegen, wir passen an.'],
-      ['Live', 'Nach ' + W.liveIn(pr) + '.']
-    ], { id: 'ws-ablauf', eyebrow: 'Ablauf', title: 'Vier Schritte bis online' }) +
+    NORRA.processTimeline({ id: 'ws-ablauf', eyebrow: 'Ablauf', title: 'Vier Schritte bis online', steps: [
+      { text: 'Ein Online-Fragebogen zu Ihrem Betrieb. Danach gilt ein Festpreis.' },
+      { icon: 'monitor', dur: '', text: 'Sie liefern Leistungen und Preise, wir schreiben und bauen.' },
+      { icon: 'pen', title: 'Freigabe', dur: '', text: 'Sie lesen gegen, wir passen an.' },
+      { icon: 'globe', dur: pr.live || 'ca. 14 Tage', text: 'Ihre Seite geht online, Hosting und Pflege inklusive.' }
+    ] }) +
     W.priceSection() +
     NORRA.faqBlock([
       ['Ich habe schon eine Website.', 'Schicken Sie sie uns. Wir sagen ehrlich, ob Neubau oder Überarbeitung.'],
@@ -13216,7 +13395,7 @@ NORRA.preise.calc = function () {
 };
 
 NORRA.preise.FAQ = [
-  ['Wovon hängt der Preis ab?', 'Von Anbindungen, Sprachen und Standorten. Nach dem Erstgespräch gilt ein Festpreis.'],
+  ['Wovon hängt der Preis ab?', 'Von Anbindungen, Sprachen und Standorten. Nach dem Onboarding gilt ein Festpreis.'],
   ['Was kostet der Verbrauch?', 'Ein Anruf von vier Minuten {{p:voice-agent.perUnit*4}}, ein Chat mit 14 Nachrichten rund {{p:chatbot.perUnit*14~2}}.'],
   ['Gibt es eine Grundgebühr?', 'Nur beim Voice Agent: {{p:voice-agent.monthly}} pro Monat für Rufnummer und Betrieb. Die Website kostet {{p:website.monthly}} pro Monat für Hosting und Pflege.'],
   ['Gibt es eine Mindestlaufzeit?', 'Nein. Kündbar zum Monatsende, ohne Restzahlung.'],
@@ -13226,10 +13405,11 @@ NORRA.preise.FAQ = [
 NORRA.pages.preise = function (el) {
   var P = NORRA.preise;
   el.innerHTML = P.hero() + P.plans() + P.included() + P.calc() + P.compare() +
+    NORRA.processTimeline({ id: 'preise-ablauf', eyebrow: 'Ablauf', title: 'In sieben Tagen live.', lede: 'Festpreis nach dem Onboarding.' }) +
     NORRA.faqBlock(P.FAQ, { eyebrow: 'FAQ', title: 'Fragen zu den Preisen', id: 'preise-faq' }) +
     NORRA.ctaBlock({ title: 'Welcher Agent lohnt sich zuerst?',
-      lede: 'Das klären wir im kostenlosen Erstgespräch.',
-      primary: { label: 'Demo anfragen', href: '#kontakt', arrow: true },
+      lede: 'Das klären wir im Onboarding oder, wenn Sie möchten, in einem kostenlosen Erstgespräch.',
+      primary: { label: 'Onboarding starten', href: '#onboarding', arrow: true },
       secondary: { label: 'Alle Funktionen', href: '#produkte', kind: 'outline' }, pills: false });
 };
 NORRA.pages.preise.wire = function (el) { NORRA.preise.wire(el); };
@@ -13469,17 +13649,17 @@ NORRA.kontakt.canPost = function () { return NORRA.canPost() && typeof window.fe
 
 NORRA.kontakt.stage = function () {
   return NORRA.stage({
-    tint: 'mist', size: 'sm', tiles: ['mail', 'calendar', 'phone', 'check'], dwell: 2600,
+    tint: 'mist', size: 'sm', tiles: ['mail', 'clipboard', 'phone', 'check'], dwell: 2600,
     label: 'So geht es nach Ihrer Anfrage weiter',
     scenes: [
       { icon: 'mail', title: 'Ihre Anfrage', lines: [
         { who: 'user', text: 'Wir verpassen abends viele Anrufe.', label: 'Sie' },
-        { who: 'agent', text: 'Danke! Wir melden uns mit einem Terminvorschlag.', label: 'Norra' }],
+        { who: 'agent', text: 'Danke! Wir melden uns mit den nächsten Schritten.', label: 'Norra' }],
         chip: { icon: 'clock', text: 'Antwort in 24 Stunden' } },
-      { icon: 'calendar', title: 'Erstgespräch · 20 Minuten', lines: [
+      { icon: 'clipboard', title: 'Onboarding · 15–20 Minuten', lines: [
         { who: 'note', text: 'Was fragen Kunden am häufigsten?' },
         { who: 'action', text: 'Empfehlung und Festpreis', icon: 'euro' }],
-        chip: { icon: 'tick', text: 'Kostenlos' } },
+        chip: { icon: 'calendar', text: 'Optional: Erstgespräch, 20 Minuten' } },
       { icon: 'phone', kind: 'call', title: 'Ihr Test-Agent · Anruf', duration: '00:21', lines: [
         { who: 'user', text: 'Haben Sie morgen um 10 Uhr frei?' },
         { who: 'agent', text: 'Ja, 10 Uhr ist frei. Darf ich Ihren Namen notieren?' }],
@@ -13495,8 +13675,17 @@ NORRA.kontakt.side = function () {
     '<div class="pk-side-stage reveal">' + NORRA.kontakt.stage() + '</div>' +
     '<div class="pk-mailbox reveal"><p class="pk-label">Oder direkt per E-Mail</p>' + NORRA.copyLine(mail) +
     '<a class="pk-mailto" href="mailto:' + NORRA.esc(mail) + '?subject=' + encodeURIComponent(NORRA.tr('Anfrage über die Norra-Website')) + '">' + ico('mail', 14) + '<span>Im E-Mail-Programm öffnen</span></a>' +
-    NORRA.fold('<p>Wir schicken Ihnen den Fragebogen per E-Mail. Sie füllen ihn aus, wann es passt.</p>',
-      { summary: 'Keine Zeit für ein Gespräch?', cls: 'nfold-sm' }) + '</div></div>';
+    '</div></div>';
+};
+
+/* Direct start: the online onboarding is the first step; the request form below is for questions or an optional Erstgespräch. */
+NORRA.kontakt.onboardingCta = function () {
+  var ico = NORRA.ico;
+  return '<a class="pk-ob" href="#onboarding"><span class="pk-ob-ico">' + ico('clipboard', 20) + '</span>' +
+    '<span class="pk-ob-copy"><span class="pk-ob-t">Direkt starten: Onboarding-Fragebogen</span>' +
+    '<span class="pk-ob-s">15–20 Minuten, online. Ihr Fortschritt wird gespeichert.</span></span>' +
+    '<span class="pk-ob-go">' + NORRA._arrowSvg + '</span></a>' +
+    '<p class="pk-ob-or"><span>oder Anfrage und optionales Erstgespräch</span></p>';
 };
 
 NORRA.kontakt.form = function () {
@@ -13510,7 +13699,7 @@ NORRA.kontakt.form = function () {
     return '<div class="pk-f' + (full ? ' pk-full' : '') + '"><label class="pk-lb" for="pk-' + id + '">' + label + (req ? ' <span class="pk-req" aria-hidden="true">*</span>' : '') + '</label>' +
       input + '<p class="pk-err" id="pk-' + id + '-err"></p></div>';
   };
-  return '<div class="pk-formcard reveal">' +
+  return '<div class="pk-formcard reveal">' + K.onboardingCta() +
     '<form id="pk-form" class="pk-form" novalidate>' +
     '<div class="pk-full pk-form-head"><h2>Anfrage</h2></div>' +
     field('name', 'Name', true, '<input class="pk-in" type="text" id="pk-name" name="name" autocomplete="name" placeholder="Anna Muster" required aria-required="true" aria-describedby="pk-name-err">') +
@@ -13542,7 +13731,17 @@ NORRA.pages.kontakt = function (el) {
       chips: [['euro', 'Kostenlos und unverbindlich'], ['users', 'Persönlich, kein Callcenter']],
       ctas: [{ label: 'Zum Formular', goto: 'anfrage', arrow: true },
         { label: 'E-Mail kopieren', kind: 'onvideo', icon: 'copy', attrs: ' data-copy="' + mail + '"' }] }) +
-    '<section class="wrap sect pk-contact" id="anfrage"><div class="pk-cgrid">' + K.form() + K.side() + '</div></section>';
+    '<section class="wrap sect pk-contact" id="anfrage"><div class="pk-cgrid">' + K.form() + K.side() + '</div></section>' +
+    K.process();
+};
+/* The shared process timeline: onboarding first; the optional Erstgespräch link jumps to the request form on this page. */
+NORRA.kontakt.process = function () {
+  var acts = '<div class="ptl-acts">' +
+    NORRA.btn({ label: 'Onboarding starten', href: '#onboarding', arrow: true, lg: false, cls: 'ptl-go' }) +
+    '<button type="button" class="ptl-alt" data-goto="anfrage"><span class="ptl-opt">Optional</span>' +
+    '<span class="ptl-alt-t">Lieber ein Erstgespräch? Kostenlos, 20 Minuten</span></button></div>';
+  return NORRA.processTimeline({ id: 'kontakt-ablauf', eyebrow: 'Ablauf', title: 'So geht es weiter',
+    lede: 'Ihr Anteil: etwa eine halbe Stunde.', cls: 'pk-ablauf', steps: [{ actions: acts }, {}, {}, {}] });
 };
 NORRA.pages.kontakt.wire = function (el) { NORRA.kontakt.wire(el); };
 
@@ -13845,7 +14044,7 @@ NORRA.pages.impressum = function (el) {
           'Alle Preise auf dieser Website sind Nettopreise in der Währung der gewählten Region. Mehrwertsteuer stellen wir nur in Rechnung, soweit wir steuerpflichtig sind und die Leistung im Inland steuerbar ist; bei Leistungen an Unternehmen im Ausland gilt in der Regel das Empfängerortprinzip (Reverse Charge).',
           'Es gelten unsere <a href="#agb">Allgemeinen Geschäftsbedingungen (AGB)</a>.')],
       ['im-vertrag', 'Kein Vertragsschluss über die Website',
-        p('Über diese Website kommt kein Vertrag zustande. Das Kontaktformular dient nur Ihrer Anfrage. Einen Vertrag schliessen wir individuell: Erstgespräch, schriftliches Angebot per E-Mail und Ihre Annahme in Textform. Den Ablauf beschreiben die <a href="#agb">AGB</a>.')],
+        p('Über diese Website kommt kein Vertrag zustande. Das Kontaktformular dient nur Ihrer Anfrage. Einen Vertrag schliessen wir individuell: Klärung des Bedarfs (Onboarding-Fragebogen oder, auf Wunsch, Erstgespräch), schriftliches Angebot per E-Mail und Ihre Annahme in Textform. Den Ablauf beschreiben die <a href="#agb">AGB</a>.')],
       ['im-ki', 'Hinweis zu KI-Agenten',
         p('Die von uns gebauten Voice Agents, Chatbots und Social-Media-Agenten sind KI-Systeme. Sie geben sich zu Beginn jedes Gesprächs als KI-Assistent zu erkennen (Art. 50 Abs. 1 KI-Verordnung der EU). Unsere Kundinnen und Kunden dürfen diesen Hinweis nicht entfernen.',
           'Automatisch erstellte Beiträge und Nachrichten in sozialen Netzwerken werden als automatisiert gekennzeichnet, wo dies vorgeschrieben ist (z. B. § 18 Abs. 3 MStV).',
@@ -14027,7 +14226,7 @@ NORRA.pages.agb = function (el) {
       ['agb-vertrag', 'Vertragsschluss',
         p('Darstellungen auf der Website sind kein verbindliches Angebot. Der Vertrag kommt so zustande:') +
         list(['Anfrage des Kunden über das Kontaktformular, per E-Mail oder Telefon',
-          'Erstgespräch zum Bedarf',
+          'Klärung des Bedarfs über den Onboarding-Fragebogen oder, auf Wunsch, in einem Erstgespräch',
           'schriftliches Angebot von Norra per E-Mail oder als PDF mit Leistungsumfang, Preisen und Verweis auf diese AGB',
           'Annahme durch den Kunden in Textform (E-Mail, Unterschrift oder Bestätigung in einem Online-Formular)',
           'Bestätigung des Vertragsschlusses durch Norra per E-Mail']) +
