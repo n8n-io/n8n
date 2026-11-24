@@ -124,7 +124,7 @@ CI checks the items marked **(CI)** on each migration file that a PR adds. The `
 - [ ] **Entity ↔ migration parity**: column types, `notNull`, defaults, FKs, `@Index` decorators all match. — [Schema/Entity Drift](#schemaentity-drift)
 - [ ] **If using `addColumns`, `dropColumns`, `addNotNull`, `dropNotNull`, `addEnumCheck`, or `dropEnumCheck`:** verified whether the target table has incoming FKs. If so, either set `withFKsDisabled = true as const` (in a `sqlite/` subclass if this is a `common/` migration) or use raw `ALTER TABLE ADD COLUMN` for nullable/defaulted columns. — [SQLite table recreation risk](#sqlite-table-recreation-risk)
 - [ ] **Each SQLite table is rebuilt at most once.** Several recreating calls on the same table copy it several times. Combine them, or use raw `ALTER TABLE ADD COLUMN` for nullable columns. — [SQLite table recreation risk](#sqlite-table-recreation-risk)
-- [ ] **A CHECK added to an existing Postgres table is `NOT VALID`.** An index on a large table has a measured build time in the PR description. — [Locks on existing Postgres tables](#locks-on-existing-postgres-tables)
+- [ ] **A CHECK added to a busy Postgres table is `NOT VALID`, and a second migration runs `VALIDATE CONSTRAINT`.** An index on a busy table has a measured build time in the PR description. — [Locks on existing Postgres tables](#locks-on-existing-postgres-tables)
 - [ ] **The migration cannot block startup.** A new `NOT NULL` column without a default has its rows cleared or backfilled first. Every loop ends. A failed precondition throws, and does not skip the work silently. — [Do not block startup](#do-not-block-startup)
 - [ ] **No live-app value imports** in the migration body. Inline types/utility code locally. This includes types such as `IUserSettings` and helpers such as `isRecord`. **(CI)** — [Never import entities as values](#never-import-entities-as-values)
 - [ ] **Each `runInBatches` query has `ORDER BY`** on a unique column. **(CI)** — [Use Batch Operations](#use-batch-operations)
@@ -447,23 +447,31 @@ All six require a final options parameter with `recreatesOnSqlite: true` — Typ
 
 ### Locks on existing Postgres tables
 
-On Postgres, some changes scan the whole table while they hold a lock. Large tables such as `execution_entity` and `workflow_entity` hold millions of rows.
+On Postgres, some changes scan the whole table while they hold a lock. This is a problem on a busy table. A busy table can hold millions of rows, or the app writes to it often. `DEFAULT_BUSY_TABLES` in the [`migration-busy-table`](../../../packages/quality/policy/code-health/src/rules/migration-busy-table.rule.ts) code-health rule lists the busy tables, for example `execution_entity` and `workflow_entity`. Use that list. Do not keep a second list in this skill.
 
-**Add a CHECK to an existing table as `NOT VALID`.** A normal `ADD CONSTRAINT … CHECK` reads every row while it holds the `ALTER TABLE` lock. `NOT VALID` skips the existing rows and checks only new writes. Use it when the existing rows already obey the check, for example because the column is new and has a valid default. Keep the inline CHECK on SQLite. This applies to `addEnumCheck` too.
+**Add a CHECK to a busy table as `NOT VALID`, then validate it in a second migration.** A normal `ADD CONSTRAINT … CHECK` reads every row while it holds an `ACCESS EXCLUSIVE` lock. This lock blocks all reads and writes. On a table that is not busy, the scan is fast, so a normal CHECK is correct. This applies to `addEnumCheck` too. Keep the inline CHECK on SQLite.
+
+`NOT VALID` skips the existing rows and checks only new writes. Postgres does not assume that the constraint holds for the old rows, so the planner cannot use it. If you use `NOT VALID`, you MUST add a second migration that runs `VALIDATE CONSTRAINT`. Each migration runs in its own transaction. `VALIDATE CONSTRAINT` takes a `SHARE UPDATE EXCLUSIVE` lock, which does not block reads or writes. If you run it in the same transaction as the `ADD CONSTRAINT`, the `ACCESS EXCLUSIVE` lock is still held and you get no benefit.
 
 ```typescript
+// Migration 1: add the constraint. This is fast and does not scan the table.
 if (isPostgres) {
 	const checkName = escape.columnName(`CHK_${tablePrefix}user_kind`);
-	// `NOT VALID` skips the scan of existing rows. They all get the default.
 	await runQuery(
 		`ALTER TABLE ${table} ADD CONSTRAINT ${checkName} CHECK (${kind} IN ('person', 'service')) NOT VALID`,
 	);
 }
+
+// Migration 2: validate the existing rows. This does not block reads or writes.
+if (isPostgres) {
+	const checkName = escape.columnName(`CHK_${tablePrefix}user_kind`);
+	await runQuery(`ALTER TABLE ${table} VALIDATE CONSTRAINT ${checkName}`);
+}
 ```
 
-See `1792742505679-AddKindToUserTable.ts` for a full example. A CHECK on a table that this migration creates does not need `NOT VALID`.
+A CHECK on a table that this migration creates does not need `NOT VALID`.
 
-**Measure an index on a large table.** `CREATE INDEX` blocks writes until it finishes. `CREATE INDEX CONCURRENTLY` cannot run inside a transaction, and TypeORM runs each migration in a transaction. Use a normal index, measure the build time on a realistic row count, and write the result in the PR description.
+**Measure an index on a busy table.** `CREATE INDEX` blocks writes until it finishes. `CREATE INDEX CONCURRENTLY` cannot run inside a transaction, and TypeORM runs each migration in a transaction. Use a normal index, measure the build time on a realistic row count, and write the result in the PR description.
 
 ### Column types
 
@@ -788,13 +796,13 @@ Skip the gap only when the old location is genuinely throwaway (e.g. a temp tabl
 
 Where data is duplicated across two tables (e.g. `workflow_entity.nodes` vs `workflow_history.nodes`), the backfill must update both copies. Out-of-sync denormalized data tends to be discovered weeks later, usually in production.
 
-### Don't add JSON-substring scans on hot tables
+### Don't add JSON-substring scans on busy tables
 
 Add a real column (e.g. `isDraft`, similar to `isArchived`) instead of `WHERE settings::text LIKE '%foo%'`. Substring scans on JSON blobs degrade into full table scans and don't index.
 
-### Avoid storing large blobs inline on hot rows
+### Avoid storing large blobs inline on busy tables
 
-Move opt-out large columns to a side table — backups, replication, and read performance all benefit. The row-level lock on a hot table also shrinks when the row payload is smaller.
+Move opt-out large columns to a side table — backups, replication, and read performance all benefit. The row-level lock on a busy table also shrinks when the row payload is smaller.
 
 ### Verify data integrity when copying tables
 
