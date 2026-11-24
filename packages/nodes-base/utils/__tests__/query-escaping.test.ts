@@ -6,6 +6,7 @@ import { mock } from 'vitest-mock-extended';
 import {
 	assertNoQueryDelimiters,
 	escapeBackslashQuotedValue,
+	escapeDavLikeValue,
 	escapeCognitoFilterValue,
 	escapeODataSearchValue,
 	escapeODataValue,
@@ -71,6 +72,19 @@ describe('escapeSgqlLikeValue', () => {
 
 	it('keeps a wildcard from widening the operand', () => {
 		expect(`email LIKE '${escapeSgqlLikeValue('%')}'`).toBe("email LIKE '%%'");
+	});
+});
+
+describe('escapeDavLikeValue', () => {
+	it.each([
+		['', ''],
+		['plain', 'plain'],
+		['50%', '50\\%'],
+		['report_v2', 'report\\_v2'],
+		['back\\slash', 'back\\\\slash'],
+		["<a & 'b'>", "<a & 'b'>"],
+	])('escapes %j as %j', (input, expected) => {
+		expect(escapeDavLikeValue(input)).toBe(expected);
 	});
 });
 

@@ -12,6 +12,7 @@ import {
 	NodeApiError,
 	NodeConnectionTypes,
 	NodeOperationError,
+	READ_ONLY_ANNOTATIONS,
 	requestPath,
 	requestUrl,
 	sanitizeXmlName,
@@ -29,6 +30,7 @@ import {
 } from './GenericFunctions';
 import { wrapData } from '../../utils/utilities';
 import * as createFromText from './actions/file/createFromText.operation';
+import * as search from './actions/folder/search.operation';
 
 export class NextCloud implements INodeType {
 	description: INodeTypeDescription = {
@@ -204,6 +206,13 @@ export class NextCloud implements INodeType {
 						value: 'move',
 						description: 'Move a folder',
 						action: 'Move a folder',
+					},
+					{
+						name: 'Search',
+						value: 'search',
+						description: 'Search for files and folders by name, type and date',
+						action: 'Search for files and folders',
+						annotations: READ_ONLY_ANNOTATIONS,
 					},
 					{
 						name: 'Share',
@@ -675,6 +684,11 @@ export class NextCloud implements INodeType {
 			},
 
 			// ----------------------------------
+			//         folder:search
+			// ----------------------------------
+			...search.description,
+
+			// ----------------------------------
 			//         user
 			// ----------------------------------
 
@@ -933,6 +947,16 @@ export class NextCloud implements INodeType {
 					continue;
 				}
 
+				if (resource === 'folder' && operation === 'search') {
+					returnData.push(
+						...this.helpers.constructExecutionMetaData(
+							wrapData(await search.execute.call(this, i)),
+							{ itemData: { item: i } },
+						),
+					);
+					continue;
+				}
+
 				if (resource === 'file') {
 					if (operation === 'download') {
 						// ----------------------------------
@@ -964,15 +988,14 @@ export class NextCloud implements INodeType {
 						//         create
 						// ----------------------------------
 
-						requestMethod = 'MKCOL' as IHttpRequestMethods;
+						requestMethod = 'MKCOL';
 						endpoint = webDavPath(this.getNodeParameter('path', i) as string);
 					} else if (operation === 'list') {
 						// ----------------------------------
 						//         list
 						// ----------------------------------
 
-						// PROPFIND is not in the IHttpRequestMethods enum but is required for WebDAV PROPFIND requests
-						requestMethod = 'PROPFIND' as IHttpRequestMethods;
+						requestMethod = 'PROPFIND';
 						endpoint = webDavPath(this.getNodeParameter('path', i) as string);
 					}
 				}
@@ -983,7 +1006,7 @@ export class NextCloud implements INodeType {
 						//         copy
 						// ----------------------------------
 
-						requestMethod = 'COPY' as IHttpRequestMethods;
+						requestMethod = 'COPY';
 						endpoint = webDavPath(this.getNodeParameter('path', i) as string);
 						const toPath = this.getNodeParameter('toPath', i) as string;
 						headers.Destination =
@@ -1000,7 +1023,7 @@ export class NextCloud implements INodeType {
 						//         move
 						// ----------------------------------
 
-						requestMethod = 'MOVE' as IHttpRequestMethods;
+						requestMethod = 'MOVE';
 						endpoint = webDavPath(this.getNodeParameter('path', i) as string);
 						const toPath = this.getNodeParameter('toPath', i) as string;
 						headers.Destination =
@@ -1015,8 +1038,7 @@ export class NextCloud implements INodeType {
 
 						if (shareType === 200) {
 							// Internal Link: not a real OCS share, derive the link from oc:fileid via PROPFIND.
-							// PROPFIND is not in the IHttpRequestMethods enum but is required for WebDAV PROPFIND requests
-							requestMethod = 'PROPFIND' as IHttpRequestMethods;
+							requestMethod = 'PROPFIND';
 							endpoint = webDavPath(sharePath);
 							headers['Content-Type'] = 'application/xml';
 							headers.Depth = '0';
