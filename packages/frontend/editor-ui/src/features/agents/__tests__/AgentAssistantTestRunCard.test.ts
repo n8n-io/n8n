@@ -5,8 +5,8 @@ import { describe, expect, it } from 'vitest';
 import { defineComponent } from 'vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
-import AgentAssistantTestRunCard from '../components/AgentAssistantTestRunCard.vue';
-import type { AgentAssistantTestRunCall as Call } from '../assistantTestRun.types';
+import AgentAssistantTestRunCard from '@/features/agents/components/AgentAssistantTestRunCard.vue';
+import type { AgentAssistantTestRunCall as Call } from '@/features/agents/assistantTestRun.types';
 
 const render = createComponentRenderer(AgentAssistantTestRunCard);
 const email: Call = {
@@ -102,6 +102,21 @@ describe('AgentAssistantTestRunCard', () => {
 		await userEvent.click(getByRole('button', { name: 'Test run details' }));
 		expect(queryByText('Refund update')).not.toBeInTheDocument();
 		expect(queryByText('Not sent in this test run')).not.toBeInTheDocument();
+	});
+
+	it('renders a simulated call whose preview is null', async () => {
+		const { getByRole, getAllByTestId, queryByText } = setup([{ ...email, preview: null }]);
+		await userEvent.click(getByRole('button', { name: 'Test run details' }));
+		expect(getAllByTestId('agent-tool-call-route-row')).toHaveLength(1);
+		expect(queryByText('Not sent in this test run')).not.toBeInTheDocument();
+	});
+
+	it('marks the open action for analytics', () => {
+		const { getByTestId } = setup([email], 'chat-1');
+		expect(getByTestId('agent-assistant-test-run-open-chat')).toHaveAttribute(
+			'data-attr',
+			'agent-assistant-test-run-open-chat',
+		);
 	});
 
 	it('opens only the supplied chat when the user selects the action', async () => {
