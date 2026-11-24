@@ -162,11 +162,13 @@ describe('engine TLS', () => {
 	it('should give each plane its certificate and use https between them', () => {
 		const topology = parseTopology({
 			name: 't',
-			...PRESETS['engine-remote'].topology,
+			...PRESETS['enginev2-remote'].topology,
 			engineTls: true,
 		});
 		const paths = new EnvPaths('/envs/t');
-		const [main, engine] = processComponents(topology);
+		const processes = processComponents(topology);
+		const main = processes.find((p) => p.name === 'main-1')!;
+		const engine = processes.find((p) => p.name === 'engine')!;
 		const mainEnv = resolveProcessEnv({ topology, paths }, main).env;
 		const engineEnv = resolveProcessEnv({ topology, paths }, engine).env;
 
@@ -176,7 +178,7 @@ describe('engine TLS', () => {
 			N8N_ENGINE_TLS_CA_FILE: '/envs/t/engine-tls/ca.crt',
 		});
 		expect(engineEnv).toMatchObject({
-			N8N_ENGINE_CONTROL_PLANE_BASE_URL: 'https://127.0.0.1:3001',
+			N8N_ENGINE_CONTROL_PLANE_BASE_URL: 'https://127.0.0.1:5684',
 			N8N_ENGINE_TLS_KEY_FILE: '/envs/t/engine-tls/engine.key',
 		});
 		expect(mainEnv.N8N_ENGINE_TLS_INSECURE_ALLOW_PLAIN_HTTP).toBeUndefined();
@@ -187,7 +189,7 @@ describe('engine TLS', () => {
 	});
 
 	it('should allow plain HTTP without TLS', () => {
-		const topology = parseTopology({ name: 't', ...PRESETS['engine-remote'].topology });
+		const topology = parseTopology({ name: 't', ...PRESETS['enginev2-remote'].topology });
 		const [main] = processComponents(topology);
 		const mainEnv = resolveProcessEnv({ topology, paths: new EnvPaths('/envs/t') }, main).env;
 		expect(mainEnv.N8N_ENGINE_TLS_INSECURE_ALLOW_PLAIN_HTTP).toBe('true');

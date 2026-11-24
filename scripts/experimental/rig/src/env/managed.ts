@@ -186,7 +186,7 @@ export function managedProcessEnv(
 			N8N_ENGINE_DEFAULT_TYPE: 'v2',
 			// The main also runs the engine listeners. The slot keeps them apart from other environments.
 			N8N_ENGINE_PORT: String(engineHttpPort(topology)),
-			N8N_ENGINE_CONTROL_PLANE_PORT: String(engineControlPlanePort(topology)),
+			N8N_ENGINE_CONTROL_PLANE_PORT: String(component.ports.controlPlane),
 		});
 	} else if (topology.engine === 'remote') {
 		Object.assign(
@@ -196,7 +196,7 @@ export function managedProcessEnv(
 				N8N_ENGINE_MODE: 'remote',
 				N8N_ENGINE_DEFAULT_TYPE: 'v2',
 				N8N_ENGINE_BASE_URL: `${engineScheme(topology)}://127.0.0.1:${engineHttpPort(topology)}`,
-				N8N_ENGINE_CONTROL_PLANE_PORT: String(engineControlPlanePort(topology)),
+				N8N_ENGINE_CONTROL_PLANE_PORT: String(component.ports.controlPlane),
 				...planeTlsEnv(topology, paths, 'main'),
 			},
 			sharedStorageEnv(paths),

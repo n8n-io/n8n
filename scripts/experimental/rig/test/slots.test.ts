@@ -27,13 +27,15 @@ function saveEnv(name: string, slot: number) {
 
 describe('port slots', () => {
 	it('should move n8n ports by 1000, engine ports by 10, and service ports by 1', () => {
-		const topology = parseTopology({ name: 's', ...PRESETS['engine-remote'].topology, slot: 2 });
-		const [main, engine] = processComponents(topology);
+		const topology = parseTopology({ name: 's', ...PRESETS['enginev2-remote'].topology, slot: 2 });
+		const processes = processComponents(topology);
+		const main = processes.find((p) => p.name === 'main-1')!;
+		const engine = processes.find((p) => p.name === 'engine')!;
 		expect(main.ports).toMatchObject({ http: 7678, broker: 7679, inspect: 7683 });
 		expect(engine.ports.http).toBe(3020);
-		expect(engineControlPlanePort(topology)).toBe(3021);
+		expect(engineControlPlanePort(topology)).toBe(7684);
 		expect(engineHttpPort(topology)).toBe(3020);
-		expect(portsOf(main, topology)).toEqual([7678, 7679, 3021]);
+		expect(portsOf(main, topology)).toEqual([7678, 7679, 7684]);
 		expect(servicePort(topology, 'postgres')).toBe(5434);
 		expect(servicePort(topology, 'redis')).toBe(6381);
 

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { parseTopology, requiredServices } from '../src/config/env-yaml';
+import { EnvPaths } from '../src/config/paths';
 import { PRESETS } from '../src/config/presets';
+import { resolveProcessEnv } from '../src/env/resolve';
 import { RigError } from '../src/errors';
 import {
 	launcherComponents,
@@ -22,8 +24,8 @@ describe('validateTopology', () => {
 		[{ mains: 2 }, 'Multi-main needs queue mode.'],
 		[{ queue: true }, 'Queue mode needs Postgres.'],
 		[
-			{ engine: 'remote', db: 'postgres', queue: true, workers: 1 },
-			'Engine v2 does not support queue mode',
+			{ engine: 'in-process', db: 'postgres', queue: true },
+			'Engine v2 in-process mode does not support queue mode',
 		],
 		[{ engine: 'in-process' }, 'Engine v2 needs Postgres'],
 	])('should reject %j', (input, message) => {
@@ -86,19 +88,37 @@ describe('components', () => {
 	});
 
 	it('should add the engine and the control plane port in remote mode', () => {
-		const topology = parseTopology({ name: 'ev', ...PRESETS['engine-remote'].topology });
+		const topology = parseTopology({ name: 'ev', ...PRESETS['enginev2-remote'].topology });
 		const processes = processComponents(topology);
-		expect(processes.map((p) => p.name)).toEqual(['main-1', 'engine']);
-		expect(portsOf(processes[0], topology)).toEqual([5678, 5679, 3001]);
-		expect(portsOf(processes[1], topology)).toEqual([3000, 5879]);
+		expect(processes.map((p) => p.name)).toEqual(['main-1', 'worker-1', 'engine']);
+		expect(portsOf(processes[0], topology)).toEqual([5678, 5679, 5684]);
+		expect(portsOf(processes[2], topology)).toEqual([3000, 5879]);
 		expect(requiredServices(topology)).toEqual(['postgres', 'redis']);
 	});
 
+	it('should give each main its own control plane port, and point the engine at main-1', () => {
+		const topology = parseTopology({
+			name: 'mm',
+			...PRESETS['enginev2-remote'].topology,
+			mains: 2,
+		});
+		expect(() => validateTopology(topology)).not.toThrow();
+		const processes = processComponents(topology);
+		const byName = (name: string) => processes.find((p) => p.name === name)!;
+		const paths = new EnvPaths('/envs/mm');
+		const env = (name: string) => resolveProcessEnv({ topology, paths }, byName(name)).env;
+
+		expect(env('main-1').N8N_ENGINE_CONTROL_PLANE_PORT).toBe('5684');
+		expect(env('main-2').N8N_ENGINE_CONTROL_PLANE_PORT).toBe('5694');
+		expect(env('engine').N8N_ENGINE_CONTROL_PLANE_BASE_URL).toBe('http://127.0.0.1:5684');
+		expect(env('worker-1').N8N_ENGINE_MODE).toBeUndefined();
+	});
+
 	it('should give the main the engine ports of its slot in in-process mode', () => {
-		const topology = parseTopology({ name: 'ei', ...PRESETS.engine.topology, slot: 2 });
+		const topology = parseTopology({ name: 'ei', ...PRESETS['enginev2-local'].topology, slot: 2 });
 		const [main] = processComponents(topology);
 		expect(portsOf(main, topology)).toEqual(
-			expect.arrayContaining([3020, 3021, main.ports.http, main.ports.broker]),
+			expect.arrayContaining([3020, 7684, main.ports.http, main.ports.broker]),
 		);
 	});
 });

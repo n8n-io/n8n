@@ -83,7 +83,7 @@ describe('resolveProcessEnv', () => {
 	});
 
 	it('should keep engine-v2 when a layer sets other modules', () => {
-		const { ctx, byName } = setup(PRESETS.engine.topology);
+		const { ctx, byName } = setup(PRESETS['enginev2-local'].topology);
 		layer('shared', 'N8N_ENABLED_MODULES=instance-ai\n');
 		const { env, trace } = resolveProcessEnv(ctx, byName('main-1'));
 		expect(env.N8N_ENABLED_MODULES).toBe('instance-ai,engine-v2');
@@ -91,7 +91,7 @@ describe('resolveProcessEnv', () => {
 	});
 
 	it('should keep control plane keys away from the remote engine', () => {
-		const { ctx, byName } = setup(PRESETS['engine-remote'].topology);
+		const { ctx, byName } = setup(PRESETS['enginev2-remote'].topology);
 		layer('shared', 'DB_LOGGING_ENABLED=true\nX=1\n');
 		writeFileSync(
 			paths.secrets,

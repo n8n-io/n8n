@@ -44,19 +44,29 @@ async function customTopology(): Promise<Omit<TopologyInput, 'name'>> {
 		{ value: true, label: 'Queue', hint: 'workers run executions, adds Redis' },
 	]);
 
-	if (queue) {
-		const mains = await select(
-			'Mains',
-			counts(1, 4, (n) => (n > 1 ? 'multi-main, needs a license' : undefined)),
-			1,
-		);
-		const workers = await select('Workers', counts(0, 4), 1);
-		return { db, queue, mains, workers, ...(await runnerSetup()) };
-	}
+	const scale = queue
+		? {
+				mains: await select(
+					'Mains',
+					counts(1, 4, (n) => (n > 1 ? 'multi-main, needs a license' : undefined)),
+					1,
+				),
+				workers: await select('Workers', counts(0, 4), 1),
+			}
+		: {};
 
+	// The in-process engine cannot share queue mode.
 	const engine = await select<EngineMode>('Engine v2', [
 		{ value: 'off', label: 'Off' },
-		{ value: 'in-process', label: 'In-process', hint: 'the data plane runs in the main' },
+		...(queue
+			? []
+			: [
+					{
+						value: 'in-process' as const,
+						label: 'In-process',
+						hint: 'the data plane runs in the main',
+					},
+				]),
 		{ value: 'remote', label: 'Remote', hint: 'separate `n8n engine` process, adds Redis' },
 	]);
 	const engineTls =
@@ -65,7 +75,7 @@ async function customTopology(): Promise<Omit<TopologyInput, 'name'>> {
 			{ value: false, label: 'Off', hint: 'plain HTTP on 127.0.0.1' },
 			{ value: true, label: 'On', hint: 'mutual TLS with certificates from rig, needs openssl' },
 		]));
-	return { db, queue, engine, engineTls, ...(await runnerSetup()) };
+	return { db, queue, ...scale, engine, engineTls, ...(await runnerSetup()) };
 }
 
 async function runnerSetup(): Promise<Pick<TopologyInput, 'runners'>> {

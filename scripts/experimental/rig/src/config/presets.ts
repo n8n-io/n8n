@@ -13,13 +13,13 @@ export const PRESETS = {
 		description: 'Postgres, queue mode, 2 mains, 1 worker',
 		topology: { db: 'postgres', queue: true, mains: 2, workers: 1 },
 	},
-	engine: {
-		description: 'Postgres, 1 main, engine v2 in-process',
+	'enginev2-local': {
+		description: 'Postgres, regular mode, 1 main, engine v2 in-process',
 		topology: { db: 'postgres', engine: 'in-process' },
 	},
-	'engine-remote': {
-		description: 'Postgres, Redis, 1 main, engine v2 as a separate data plane',
-		topology: { db: 'postgres', engine: 'remote' },
+	'enginev2-remote': {
+		description: 'Postgres, queue mode, 1 main, 1 worker, engine v2 as a separate data plane',
+		topology: { db: 'postgres', queue: true, workers: 1, engine: 'remote' },
 	},
 } satisfies Record<string, { description: string; topology: PresetTopology }>;
 

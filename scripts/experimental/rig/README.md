@@ -29,7 +29,7 @@ flowchart LR
 | Execution mode | Regular, queue |
 | Processes | One or more mains, workers |
 | Task runners | Through the launcher, or `direct` |
-| Engine v2 | Off, remote (optional mutual TLS) |
+| Engine v2 | Off, in-process (regular mode only), remote (also queue mode, optional mutual TLS) |
 | Extras | Public HTTPS URL, Mailpit |
 
 ## Setup
@@ -100,6 +100,15 @@ pnpm rig up                            # services and all components, merged log
 pnpm rig clone <env> <new>             # copy an environment with fresh data
 ```
 
+| Preset | Topology |
+|---|---|
+| `sqlite` | SQLite, regular mode, 1 main |
+| `postgres` | Postgres, regular mode, 1 main |
+| `queue` | Postgres, queue mode, 1 main, 1 worker |
+| `multi-main` | Postgres, queue mode, 2 mains, 1 worker |
+| `enginev2-local` | Postgres, regular mode, 1 main, engine v2 in the main |
+| `enginev2-remote` | Postgres, queue mode, 1 main, 1 worker, engine v2 as a separate process |
+
 The last line of `rig up` and `rig run` shows the state of each component:
 
 | Symbol | State |
@@ -129,12 +138,15 @@ keep the raw lines. `rig logs --raw` shows them.
 |---|---|
 | Regular mode | `main-1`, `launcher@main-1` |
 | Queue mode | `main-N`, `worker-N`, `launcher@worker-N` |
-| Engine v2 remote | `main-1`, `engine`, `launcher@main-1`, `launcher@engine` |
+| Engine v2 remote | The components of the mode, plus `engine` and `launcher@engine` |
 | `runners.via: direct` | No launchers. `runner-js@<host>` and `runner-py@<host>` for each process that runs tasks |
 
 - In queue mode, mains send manual executions to the workers, so mains get no
   launcher. `rig` sets `OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true` in every
   environment. Set it to `false` on a main to give that main a launcher.
+- With engine v2, each main runs a control plane server on its port block
+  `+6` (`main-1`: `5684`). The engine connects to `main-1`. Workers run the
+  legacy engine only.
 - Use `runners.via: direct` (`--runners direct`) to debug a runner or to see
   its logs separately. `rig` gets the grant token from the broker, as the
   launcher does. A restart of a process also restarts its runners.

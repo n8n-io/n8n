@@ -30,13 +30,14 @@ export interface PortBlock {
 	pyHealth: number;
 	/** The Node inspector with `--inspect`. */
 	inspect: number;
+	/** The engine v2 control plane server of a main. The engine dials the one of main-1. */
+	controlPlane: number;
 }
 
 export const MAIN_PORT_BASE = 5678;
 export const WORKER_PORT_BASE = 5778;
 export const ENGINE_PORT_BASE = 5878;
 export const ENGINE_HTTP_PORT = 3000;
-export const ENGINE_CONTROL_PLANE_PORT = 3001;
 /** Slot k moves every n8n port by this step times k. */
 export const SLOT_PORT_STEP = 1000;
 
@@ -54,10 +55,6 @@ export function engineHttpPort(topology: Topology): number {
 	return ENGINE_HTTP_PORT + ENGINE_SLOT_STEP * topology.slot;
 }
 
-export function engineControlPlanePort(topology: Topology): number {
-	return ENGINE_CONTROL_PLANE_PORT + ENGINE_SLOT_STEP * topology.slot;
-}
-
 function block(base: number, http = base): PortBlock {
 	return {
 		base,
@@ -67,7 +64,17 @@ function block(base: number, http = base): PortBlock {
 		jsHealth: base + 3,
 		pyHealth: base + 4,
 		inspect: base + 5,
+		controlPlane: base + 6,
 	};
+}
+
+function mainBlock(topology: Topology, index: number): PortBlock {
+	return block(slotOffset(topology) + MAIN_PORT_BASE + 10 * (index - 1));
+}
+
+/** The control plane port that the engine dials: the one of main-1. */
+export function engineControlPlanePort(topology: Topology): number {
+	return mainBlock(topology, 1).controlPlane;
 }
 
 export interface ProcessComponent {
@@ -115,7 +122,7 @@ export function processComponents(topology: Topology): ProcessComponent[] {
 			name: `main-${i}`,
 			role: 'main',
 			index: i,
-			ports: block(offset + MAIN_PORT_BASE + 10 * (i - 1)),
+			ports: mainBlock(topology, i),
 			dependsOn: i === 1 ? [] : ['main-1'],
 		});
 	}
@@ -231,9 +238,9 @@ export function portsOf(component: Component, topology: Topology): number[] {
 		// The broker also listens in internal mode, where n8n starts the runners itself.
 		const ports = [component.ports.http, component.ports.broker];
 		if (component.role === 'main' && topology.engine === 'in-process') {
-			ports.push(engineHttpPort(topology), engineControlPlanePort(topology));
+			ports.push(engineHttpPort(topology), component.ports.controlPlane);
 		} else if (component.role === 'main' && topology.engine === 'remote') {
-			ports.push(engineControlPlanePort(topology));
+			ports.push(component.ports.controlPlane);
 		}
 		return ports;
 	}
