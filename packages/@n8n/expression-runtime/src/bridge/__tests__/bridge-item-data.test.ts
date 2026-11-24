@@ -370,6 +370,24 @@ describe.each(bridges)('$label item data', ({ create }) => {
 		expect(read).not.toHaveBeenCalled();
 	});
 
+	it('throws the error of a host read in a batched read', () => {
+		const rows = [
+			{ id: 0 },
+			new Proxy(
+				{ id: 1 },
+				{
+					getPrototypeOf() {
+						throw new Error('trap');
+					},
+				},
+			),
+		];
+
+		expect(() =>
+			evaluate('return $json.rows.map(function (r) { return r.id; });', { rows }),
+		).toThrow('trap');
+	});
+
 	it('reads an item of another node one field at a time', () => {
 		const rows = rowsOf(50);
 		const data = { $json: {}, $other: { rows } };

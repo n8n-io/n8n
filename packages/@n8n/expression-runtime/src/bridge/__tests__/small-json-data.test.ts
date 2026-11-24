@@ -45,6 +45,10 @@ describe('smallJsonCopy, for an object or an array', () => {
 			label: 'an array with a key that is not enumerable',
 			value: Object.defineProperty([1], 'hidden', { value: 2, enumerable: false }),
 		},
+		{
+			label: 'an array with an index that is not enumerable',
+			value: Object.defineProperty([1, 2], 1, { enumerable: false }),
+		},
 		{ label: 'a symbol key', value: { a: 1, [Symbol('s')]: 2 } },
 		{ label: 'a transfer type key', value: { a: { __n8nType: 'HostData' } } },
 		{ label: 'an error flag key', value: { __isError: true } },

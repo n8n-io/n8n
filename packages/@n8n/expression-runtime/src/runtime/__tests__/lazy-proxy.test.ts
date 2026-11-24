@@ -951,6 +951,9 @@ describe('createDeepLazyProxy batched reads', () => {
 			expect(values[0]).toBe(1);
 			expect(getProxyPath(values[1] as object)).toEqual(['$json', 'big']);
 			expect(callbacks.readBatch).toHaveBeenCalledTimes(1);
+			expect(
+				getProxyPath(Object.values(objectProxy(callbacks, ['a', 'constructor']))[1] as object),
+			).toEqual(['$json', 'constructor']);
 		});
 
 		it('makes no host call for the key list alone', () => {

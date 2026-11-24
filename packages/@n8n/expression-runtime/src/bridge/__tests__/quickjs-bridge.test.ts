@@ -426,6 +426,7 @@ describe('QuickJsBridge workflow data', () => {
 		{ label: 'a Date', $json: { at: new Date(0), b: 1 } },
 		{ label: 'undefined', $json: { a: undefined, list: [undefined, 1] } },
 		{ label: 'NaN', $json: { nan: NaN, b: 1 } },
+		{ label: 'an escape key', $json: { __isEscaped: 1, b: 2 } },
 	])('returns a small item with $label as the same data', async ({ $json }) => {
 		const bridge = await newBridge();
 

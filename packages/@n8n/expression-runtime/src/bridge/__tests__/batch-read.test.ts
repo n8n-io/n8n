@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { SMALL_VALUES, WHOLE_VALUES } from '../../runtime/lazy-proxy';
 import type { BatchRequest } from '../../runtime/lazy-proxy';
-import { readBatchAtPath } from '../batch-read';
+import { BATCH_READ_LIMITS, readBatchAtPath } from '../batch-read';
 import { HostDataResolver } from '../host-data-resolver';
 
 const limits = { smallValueChars: 100, firstBatchChars: 60, maxBatchChars: 1000 };
@@ -75,6 +75,19 @@ describe('readBatchAtPath on an array', () => {
 		const rows = [{ text: 'x'.repeat(200) }];
 
 		expect(readItems(rows, 0, 0, SMALL_VALUES)).toEqual({ __isObject: true, __keys: ['text'] });
+	});
+
+	it('describes the item at the start index when it is over the small size of the bridges', () => {
+		expect(
+			readBatchAtPath(
+				new HostDataResolver({ $json: { rows: [{ text: 'x'.repeat(2000) }] } }),
+				['$json', 'rows'],
+				0,
+				0,
+				SMALL_VALUES,
+				BATCH_READ_LIMITS,
+			),
+		).toEqual({ __isObject: true, __keys: ['text'] });
 	});
 
 	it('returns a long string at the start index as it is', () => {
@@ -197,6 +210,9 @@ describe('readBatchAtPath on an array, for a request of named fields', () => {
 		const item = Object.defineProperty({ id: 1 }, 'computed', { get: read, enumerable: true });
 
 		expect(readItems([item], 0, 0, ['id', 'computed'])).toEqual(whole([{ id: 1 }]));
+		const rows = [{ id: 1 }];
+		Object.defineProperty(rows, 1, { get: read, enumerable: true });
+		expect(readItems(rows, 0, 0, ['id'])).toEqual(whole([{ id: 1 }]));
 		expect(read).not.toHaveBeenCalled();
 	});
 
@@ -280,6 +296,9 @@ describe('readBatchAtPath on an object', () => {
 		const $json = { a: 'x'.repeat(600), b: 'y'.repeat(600), c: 1 };
 
 		expect(readFields($json, WHOLE_VALUES)).toEqual(whole({ a: $json.a, c: 1 }));
+		expect(readFields({ ['a'.repeat(600)]: 1, ['b'.repeat(600)]: 2 }, WHOLE_VALUES)).toEqual(
+			whole({ ['a'.repeat(600)]: 1 }),
+		);
 	});
 
 	it('leaves out a framing key and keeps an own __proto__ key as data', () => {
@@ -299,7 +318,7 @@ describe('readBatchAtPath on an object', () => {
 	});
 
 	it.each([
-		{ label: 'a class instance', $json: new (class Item {})() },
+		{ label: 'a class instance', $json: Object.assign(new (class Item {})(), { id: 1 }) },
 		{ label: 'a Date', $json: new Date(0) },
 		{ label: 'a primitive', $json: 5 },
 		{ label: 'null', $json: null },
