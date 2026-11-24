@@ -1,0 +1,37 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  ai_agent 7137-7149
+packages/frontend/editor-ui/src/features/settings/security/WorkflowReviewProjectsView.vue
+  s_19070995b483fa::t_9a3b1fa4a010c5 1-292
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.vue
+  ai_agent 516-521,530,550,1002,1007,1012
+packages/frontend/editor-ui/src/app/router.ts
+  ai_agent 32,126-127,709-735
+packages/frontend/editor-ui/src/features/settings/security/SecuritySettings.test.ts
+  ai_agent 1065,1073-1085
+packages/frontend/@n8n/frontend-constants/src/views.ts
+  ai_agent 49
+packages/frontend/editor-ui/src/features/settings/security/WorkflowReviewsSection.vue
+  ai_agent 3,9,20,28,124-127,179-193
+packages/frontend/editor-ui/src/features/settings/security/WorkflowReviewProjectsView.test.ts
+  s_19070995b483fa::t_2969b965b47d02 1-215
+packages/frontend/editor-ui/src/features/settings/security/ReviewPolicyProjectsTable.vue
+  s_19070995b483fa::t_4df25553a466dc 1-153
+packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
+  ai_agent 6,9,89-110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2db903759214f72beb9aa0f020777a34984f273c",
+  "prompts": {},
+  "sessions": {
+    "s_19070995b483fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e69b9d5e-e265-4fc8-a560-29a9eeb806c6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}
