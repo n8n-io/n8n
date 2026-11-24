@@ -715,6 +715,11 @@ watch(
 			>
 				<component
 					:is="isSetupMode ? currentPlatform.setupComponent : currentPlatform.editComponent"
+					v-bind="
+						isN8nChatSelected
+							? { availableInChat: isIntegrationConnected(N8N_CHAT_INTEGRATION_TYPE) }
+							: {}
+					"
 					:key="viewSession"
 					ref="channelViewRef"
 					v-model="selectedCredentials[currentIntegration.type]"

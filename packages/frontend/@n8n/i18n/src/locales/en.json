@@ -11293,6 +11293,7 @@
 	"agents.channels.n8nChat.available": "Available",
 	"agents.channels.n8nChat.edit": "Edit",
 	"agents.channels.n8nChat.callout": "This agent will be available to everyone in the {projectName} project.",
+	"agents.channels.n8nChat.talkToAgent": "Talk to agent",
 	"agents.channels.n8nChat.description.label": "Description",
 	"agents.channels.n8nChat.description.optional": "(optional)",
 	"agents.channels.n8nChat.description.hint": "Help people understand what this agent can help with.",
