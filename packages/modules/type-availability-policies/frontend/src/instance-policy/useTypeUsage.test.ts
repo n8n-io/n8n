@@ -1,4 +1,5 @@
 import type { TypeUsage } from '@n8n/api-types';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { describe, expect, it, vi } from 'vitest';
 
 import { useTypeUsage } from './useTypeUsage';
@@ -38,5 +39,18 @@ describe('useTypeUsage', () => {
 		await load();
 
 		expect(usageOf(SLACK)).toBeNull();
+	});
+
+	it('sends one request for loads that overlap', async () => {
+		const response = createDeferredPromise<Record<string, TypeUsage>>();
+		const fetchUsage = vi.fn().mockReturnValue(response.promise);
+		const { load, usageOf } = useTypeUsage(fetchUsage);
+
+		const loads = Promise.all([load(), load()]);
+		response.resolve({ [SLACK]: SLACK_USAGE });
+		await loads;
+
+		expect(fetchUsage).toHaveBeenCalledTimes(1);
+		expect(usageOf(SLACK)).toEqual(SLACK_USAGE);
 	});
 });
