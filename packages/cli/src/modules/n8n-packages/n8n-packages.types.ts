@@ -432,6 +432,9 @@ export type PromotionLayoutProperties = {
 	 * For such a credential that this instance does not hold, the import raises no issue and
 	 * creates nothing, and the workflows keep the reference of the package. Each other
 	 * unresolved credential blocks the import.
+	 *
+	 * The option never prevents a match. A credential that the matching mode of the caller
+	 * finds, by id or by name, is used. Promotions match by id only.
 	 */
 	allowUnresolvedCredentialIds?: string[];
 };

@@ -94,7 +94,7 @@ export class CredentialImporter {
 	 * Leaves out the failures of the credentials that the request lets stay unresolved, so that
 	 * they block nothing and the import creates nothing for them. Only a credential that this
 	 * instance does not hold qualifies. A reference to a credential that exists, and that the
-	 * project cannot use, still blocks.
+	 * project cannot use, still blocks. A credential that the matcher found stays matched.
 	 */
 	private async withoutAllowedUnresolved(
 		request: CredentialBindingRequest,
