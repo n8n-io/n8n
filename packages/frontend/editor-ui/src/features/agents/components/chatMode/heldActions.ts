@@ -229,11 +229,6 @@ export function actionOutcome(
 	return SEND_VERBS.has(verb) || SENT_OBJECTS.has(actionObject(action)) ? 'sent' : 'saved';
 }
 
-/** The app and the target of an action on one line, such as `Gmail · alex@acme.io`. */
-export function formatActionMeta(action: Pick<AgentHeldAction, 'appName' | 'target'>): string {
-	return [action.appName, action.target].filter(Boolean).join(' · ');
-}
-
 export function formatPreviewEntries(input: unknown): Array<{ key: string; value: string }> {
 	if (!isRecord(input)) {
 		if (input === undefined || input === null) return [];
