@@ -24,8 +24,8 @@ export interface ExecutionRetentionPolicy {
  *
  * Each process runs its own sweeper, without coordination. The first pass
  * starts after a random part of the interval, so processes that start together
- * do not sweep together. The passes of one sweeper do not overlap: the next
- * timer is set after the current pass ends.
+ * spread their passes. The passes of one sweeper do not overlap: the sweeper
+ * sets the next timer after the current pass ends.
  */
 export class RetentionSweeper {
 	private readonly maxAgeMs: number;
