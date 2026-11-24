@@ -13,6 +13,8 @@ const uploadCollectionFiles = vi.fn();
 const deleteCollectionFile = vi.fn();
 const listCollectionAgents = vi.fn();
 const fetchCollections = vi.fn();
+const updateCollection = vi.fn();
+const deleteCollection = vi.fn();
 
 vi.mock('./collections.api', () => ({
 	createCollection: async (...args: unknown[]) => await createCollection(...args),
@@ -22,6 +24,8 @@ vi.mock('./collections.api', () => ({
 	deleteCollectionFile: async (...args: unknown[]) => await deleteCollectionFile(...args),
 	listCollectionAgents: async (...args: unknown[]) => await listCollectionAgents(...args),
 	fetchCollections: async (...args: unknown[]) => await fetchCollections(...args),
+	updateCollection: async (...args: unknown[]) => await updateCollection(...args),
+	deleteCollection: async (...args: unknown[]) => await deleteCollection(...args),
 }));
 
 function collection(id: string): KnowledgeCollectionDto {
@@ -165,5 +169,44 @@ describe('useCollectionsStore', () => {
 		expect(uploadCollectionFiles).toHaveBeenCalledWith(context, 'proj-1', 'c1', files);
 		expect(deleteCollectionFile).toHaveBeenCalledWith(context, 'proj-1', 'c1', 'f1');
 		expect(listCollectionAgents).toHaveBeenCalledWith(context, 'proj-1', 'c1');
+	});
+
+	it('updates a collection with the REST context and returns it', async () => {
+		const updated = { id: 'c1', name: 'Support handbook' } as KnowledgeCollectionDto;
+		updateCollection.mockResolvedValue(updated);
+		const store = useCollectionsStore();
+
+		await expect(
+			store.updateCollection('proj-1', 'c1', { name: 'Support handbook' }),
+		).resolves.toBe(updated);
+
+		expect(updateCollection).toHaveBeenCalledWith(useRootStore().restApiContext, 'proj-1', 'c1', {
+			name: 'Support handbook',
+		});
+	});
+
+	it('passes a refused update on to the caller', async () => {
+		const error = new Error('conflict');
+		updateCollection.mockRejectedValue(error);
+		const store = useCollectionsStore();
+
+		await expect(store.updateCollection('proj-1', 'c1', { name: 'Taken' })).rejects.toBe(error);
+	});
+
+	it('deletes a collection with the REST context', async () => {
+		deleteCollection.mockResolvedValue({ success: true });
+		const store = useCollectionsStore();
+
+		await expect(store.deleteCollection('proj-1', 'c1')).resolves.toBeUndefined();
+
+		expect(deleteCollection).toHaveBeenCalledWith(useRootStore().restApiContext, 'proj-1', 'c1');
+	});
+
+	it('passes a failed delete on to the caller', async () => {
+		const error = new Error('offline');
+		deleteCollection.mockRejectedValue(error);
+		const store = useCollectionsStore();
+
+		await expect(store.deleteCollection('proj-1', 'c1')).rejects.toBe(error);
 	});
 });
