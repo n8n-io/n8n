@@ -11,6 +11,7 @@ import type { Readable } from 'stream';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { getNewEmails } from './utils';
+import { toSearchObject, type SearchCriteria } from '../search-criteria';
 import {
 	BOTH_BODIES,
 	bodyOf,
@@ -382,7 +383,8 @@ describe('getNewEmails UID tracking', () => {
 
 			await getNewEmails.call(trigger, {
 				imapConnection: connection,
-				searchCriteria: ['UNSEEN', ['UID', '20:*']],
+				searchCriteria: ['UNSEEN'],
+				newMailWindow: ['UID', '20:*'],
 				postProcessAction: 'nothing',
 				onEmailBatch: async () => {},
 			});
@@ -392,6 +394,46 @@ describe('getNewEmails UID tracking', () => {
 				{ seen: false, uid: '10,15' },
 				expect.anything(),
 			);
+		});
+
+		it.each([
+			{ rule: ['UID', '50:*'] satisfies SearchCriteria },
+			{ rule: ['SINCE', '01-Nov-2026'] satisfies SearchCriteria },
+		])('keeps the user rule $rule.0 in every search', async ({ rule }) => {
+			const userCriteria: SearchCriteria[] = ['UNSEEN', rule];
+			const firstPage = Array.from({ length: 20 }, (_, i) => ({
+				uid: i + 21,
+				headers: headers('a@b.com'),
+			}));
+			const connection = mock<ImapSimple>({
+				search: vi
+					.fn()
+					.mockResolvedValueOnce([])
+					.mockResolvedValueOnce(firstPage)
+					.mockResolvedValue([]),
+			});
+
+			trigger.getNode.mockReturnValue(mock<INode>({ typeVersion: 2.1 }));
+			trigger.getNodeParameter.calledWith('format').mockReturnValue('simple');
+			trigger.getNodeParameter.calledWith('downloadAttachments').mockReturnValue(false);
+			trigger.getWorkflowStaticData.mockReturnValue({
+				lastMessageUid: 20,
+				pendingMessageUids: [10],
+			});
+
+			await getNewEmails.call(trigger, {
+				imapConnection: connection,
+				searchCriteria: userCriteria,
+				newMailWindow: ['UID', '20:*'],
+				postProcessAction: 'nothing',
+				onEmailBatch: async () => {},
+			});
+
+			expect(connection.search.mock.calls.map(([query]) => query)).toEqual([
+				toSearchObject([...userCriteria, ['UID', '10']]),
+				toSearchObject([...userCriteria, ['UID', '20:*']]),
+				toSearchObject([...userCriteria, ['UID', '40:*']]),
+			]);
 		});
 
 		it('emits a pending message once it makes an item, and forgets it', async () => {

@@ -75,9 +75,11 @@ export async function getNewEmails(
 		imapConnection,
 		postProcessAction,
 		searchCriteria,
+		newMailWindow,
 	}: {
 		imapConnection: ImapSimple;
 		searchCriteria: SearchCriteria[];
+		newMailWindow?: SearchCriteria;
 		postProcessAction: string;
 		onEmailBatch: (data: INodeExecutionData[]) => Promise<void>;
 	},
@@ -129,7 +131,7 @@ export async function getNewEmails(
 	let pendingUids = (staticData.pendingMessageUids as number[] | undefined) ?? [];
 	if (pendingUids.length > 0) {
 		const results = await imapConnection.search(
-			toSearchObject([...withoutWindow(searchCriteria), ['UID', pendingUids.join(',')]]),
+			toSearchObject([...searchCriteria, ['UID', pendingUids.join(',')]]),
 			fetchQuery,
 		);
 		const { items, skippedUids } = await processBatch(results, buildRetryItem);
@@ -138,14 +140,13 @@ export async function getNewEmails(
 		await onEmailBatch(items);
 	}
 
-	let criteria = searchCriteria;
+	let pageWindow = newMailWindow;
 	let results: FetchMessageObject[] = [];
 	let maxUid = 0;
 
 	do {
-		if (maxUid) {
-			criteria = [...withoutWindow(criteria), ['UID', `${maxUid}:*`]];
-		}
+		if (maxUid) pageWindow = ['UID', `${maxUid}:*`];
+		const criteria = pageWindow ? [...searchCriteria, pageWindow] : searchCriteria;
 		results = await imapConnection.search(toSearchObject(criteria), fetchQuery, limit);
 
 		this.logger.debug(`Process ${results.length} new emails in node "EmailReadImap"`);
@@ -180,13 +181,6 @@ export async function getNewEmails(
 
 		await onEmailBatch(items);
 	} while (results.length >= EMAIL_BATCH_SIZE);
-}
-
-/** Removes the criteria that limit a search to new mail. */
-function withoutWindow(criteria: SearchCriteria[]): SearchCriteria[] {
-	return criteria.filter(
-		(criterion) => !Array.isArray(criterion) || !['UID', 'SINCE'].includes(criterion[0]),
-	);
 }
 
 function itemBuilderFor(
