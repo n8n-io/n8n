@@ -331,14 +331,7 @@ describe('PromotionsSettingsView', () => {
 		const remove = await screen.findByTestId('action-remove');
 		const separators = screen.getAllByRole('separator');
 		expect(separators).toHaveLength(1);
-		// The divider comes right before Remove and after every other action.
-		expect(
-			separators[0].compareDocumentPosition(remove) & Node.DOCUMENT_POSITION_FOLLOWING,
-		).toBeTruthy();
-		expect(
-			screen.getByTestId('action-edit').compareDocumentPosition(separators[0]) &
-				Node.DOCUMENT_POSITION_FOLLOWING,
-		).toBeTruthy();
+		expect(separators[0].nextElementSibling).toBe(remove);
 	});
 
 	it('hides the connection test from a user who cannot connect', async () => {
