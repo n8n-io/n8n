@@ -149,9 +149,11 @@ function mountDock(
 		}>;
 	}> = {},
 	attachTo?: HTMLElement,
+	slots?: Record<string, string>,
 ) {
 	return mount(AgentTestDock, {
 		...(attachTo ? { attachTo } : {}),
+		...(slots ? { slots } : {}),
 		props: {
 			isOpen: true,
 			sessionTitle: 'Order help',
@@ -194,6 +196,15 @@ describe('AgentTestDock', () => {
 		expect(localStorage.getItem('N8N_AGENT_PREVIEW_LAYOUT')).toBe('fullpage');
 		await wrapper.get('[data-testid="agent-preview-close-btn"]').trigger('click');
 		expect(wrapper.emitted('close')).toEqual([[]]);
+	});
+
+	it('renders the sub-header between the header and the chat', () => {
+		const wrapper = mountDock({}, undefined, {
+			'sub-header': '<div data-testid="dock-sub-header">Test chat</div>',
+		});
+		const html = wrapper.html();
+		expect(wrapper.get('[data-testid="dock-sub-header"]').text()).toBe('Test chat');
+		expect(html.indexOf('agent-preview-dock-header')).toBeLessThan(html.indexOf('dock-sub-header'));
 	});
 
 	it('keeps inline test chat in the shared column regardless of the saved dock layout', () => {

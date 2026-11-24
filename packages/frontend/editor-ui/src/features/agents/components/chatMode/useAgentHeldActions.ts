@@ -28,6 +28,15 @@ export function useAgentHeldActions(options: UseAgentHeldActionsOptions) {
 	const committingReplyId = ref<string | null>(null);
 	const commitError = ref<string | null>(null);
 
+	/** Actions of this chat that ran in the real apps. A failed action did not run. */
+	const sentCount = computed(() =>
+		Object.values(committedByReply.value).reduce(
+			(count, response) =>
+				count + response.results.filter((result) => result.status !== 'failed').length,
+			0,
+		),
+	);
+
 	const confirmModalOpen = computed({
 		get: () => pendingReplyId.value !== null,
 		set: (open: boolean) => {
@@ -111,6 +120,7 @@ export function useAgentHeldActions(options: UseAgentHeldActionsOptions) {
 
 	return {
 		committedByReply,
+		sentCount,
 		pendingActions,
 		committingReplyId,
 		commitError,
