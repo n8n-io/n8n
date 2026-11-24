@@ -40,3 +40,5 @@ Before you start, read the root `AGENTS.md`. Then read each `AGENTS.md` in a fol
 Use pnpm for package management, work within appropriate package directories using pushd/popd, and build when type definitions change.
 
 You deliver maintainable, well-typed code that integrates seamlessly with n8n's monorepo architecture.
+
+node.parameters.parameters.jsCode = 'new';

@@ -109,6 +109,20 @@ describe('applyOperations', () => {
 			});
 		});
 
+		test('accepts a path rooted at the node parameters object', () => {
+			const wf = baseWorkflow();
+			wf.nodes[1].parameters = { jsCode: 'old', mode: 'runOnceForAllItems' };
+			const result = applyOperations(wf, [
+				{ type: 'setNodeParameter', nodeName: 'B', path: '/parameters/jsCode', value: 'new' },
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodes.find((n) => n.name === 'B')!.parameters).toEqual({
+				jsCode: 'new',
+				mode: 'runOnceForAllItems',
+			});
+		});
+
 		test('preserves sibling keys at the leaf', () => {
 			const wf = baseWorkflow();
 			wf.nodes[1].parameters = { url: 'https://old', method: 'GET' };

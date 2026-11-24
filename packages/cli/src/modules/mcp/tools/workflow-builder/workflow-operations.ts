@@ -142,7 +142,7 @@ export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 			.string()
 			.min(2)
 			.describe(
-				'JSON Pointer (RFC 6901) path, e.g. "/options/systemMessage" or "/assignments/assignments/0/value". Numeric segments index into an existing array element only — to add or remove elements, set the whole array (or its parent) instead. Prefer over `updateNodeParameters` for a single nested key — the payload stays small regardless of the rest of the parameters object.',
+				'JSON Pointer (RFC 6901) path relative to the node parameters, e.g. "/options/systemMessage" or "/assignments/assignments/0/value". A path may also start with "/parameters", e.g. "/parameters/jsCode". Numeric segments index into an existing array element only — to add or remove elements, set the whole array (or its parent) instead. Prefer over `updateNodeParameters` for a single nested key — the payload stays small regardless of the rest of the parameters object.',
 			),
 		value: z
 			.unknown()
@@ -791,8 +791,10 @@ const handleSetNodeParameter: OpHandler<'setNodeParameter'> = (op, ctx) => {
 		return `path '${op.path}' is invalid or contains unsafe segments`;
 	}
 
+	const parameterSegments =
+		segments[0] === 'parameters' && segments.length > 1 ? segments.slice(1) : segments;
 	const params = (node.parameters ?? {}) as Record<string, unknown>;
-	const setError = setAtPointer(params, segments, op.value);
+	const setError = setAtPointer(params, parameterSegments, op.value);
 	if (setError) {
 		return setError;
 	}
