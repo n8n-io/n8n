@@ -284,6 +284,23 @@ describe('createCustomModelEndpointConfig', () => {
 			{ credentialType: CUSTOM_MODEL_ENDPOINT_CREDENTIAL, ...overrides },
 		);
 
+	// The secret list is built from this, so a caller that passes it must reach the filter
+	it('carries the headers the user typed into the redaction of an error', async () => {
+		const typed = 'Zx7Qw2Lm9Rt4Bv6N';
+		gateway.reply = new Response(JSON.stringify({ error: { message: `bad key ${typed}` } }), {
+			status: 401,
+			headers: { 'content-type': 'application/json' },
+		});
+		const { configuration } = withKey({
+			requestHeaders: { 'x-api-key': typed },
+			secretHeaders: { 'x-api-key': typed },
+		});
+
+		const response = await configuration.fetch!('https://gateway.example.com/v1/chat/completions');
+
+		expect(await response.text()).not.toContain(typed);
+	});
+
 	it('carries the login, the per-request headers and the timeout to the wire', async () => {
 		const { configuration } = withKey({
 			timeout: 1_500,

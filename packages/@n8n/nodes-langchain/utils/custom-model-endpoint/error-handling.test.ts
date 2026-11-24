@@ -645,6 +645,8 @@ describe('every shape a gateway can answer with', () => {
 		['a null output beside a detail', `{"output":null,"detail":"invalid api key ${KEY}"}`],
 		['an empty choices array', `{"choices":[],"detail":"invalid api key ${KEY}"}`],
 		['a data array of things that are not models', `{"data":[{"detail":"bad key ${KEY}"}]}`],
+		// `idOf` drops a blank id, so a list that names nothing is not a model list
+		['a data array of blank ids', `{"data":[{"id":""}],"detail":"bad key ${KEY}"}`],
 		// The failure event of the Responses stream nests its error one level down
 		[
 			'a response.failed event',

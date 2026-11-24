@@ -156,12 +156,16 @@ function withoutSecretsInJson(raw: string, secrets: string[]): string {
 /** What `modelIdsIn` in `models.ts` accepts: an empty list, or entries that name a model. */
 function isModelList(value: unknown): boolean {
 	if (!Array.isArray(value)) return false;
-	return (
-		value.length === 0 ||
-		value.some(
-			(entry) => typeof entry === 'string' || (isRecord(entry) && typeof entry.id === 'string'),
-		)
-	);
+	// `idOf` drops a blank id, and a non-empty list that names nothing is a shape
+	// `modelIdsIn` rejects, so a blank one does not make this a list either.
+	const names = (entry: unknown) =>
+		typeof entry === 'string'
+			? entry
+			: isRecord(entry) && typeof entry.id === 'string'
+				? entry.id
+				: '';
+
+	return value.length === 0 || value.some((entry) => names(entry).length > 0);
 }
 
 /**
