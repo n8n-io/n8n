@@ -2825,6 +2825,17 @@ describe('CloudBrowserLocalMcpServer', () => {
 				]);
 			});
 
+			it('does not report a saved login as removed when its delete fails', async () => {
+				const { server, sessionProvider, toolkits } = await setupReusedLogin();
+				sessionProvider.deleteLoginProfile.mockRejectedValue(new Error('HTTP 502'));
+
+				dropConnection(toolkits[0]);
+				await server.release();
+
+				expect(sessionProvider.deleteLoginProfile).toHaveBeenCalledWith(scope, 'saved-login-1');
+				expect(server.getLoginSaveResults()).toEqual([]);
+			});
+
 			it('keeps the saved login after a drop when the session stayed on its site', async () => {
 				const { server, sessionProvider, toolkits } = await setupReusedLogin();
 				toolkits[0].adapter.hasVisitedOnlySite.mockReturnValue(true);

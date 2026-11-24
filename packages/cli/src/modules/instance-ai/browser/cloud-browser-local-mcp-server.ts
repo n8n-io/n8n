@@ -905,22 +905,25 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 		await session.connection.disconnect();
 		await this.releaseSessionById(sessionId);
 
-		const isLoginKept =
-			shouldKeepLoginProfile && !!loginProfile
-				? await this.keepLoginProfile(loginProfile, location)
-				: false;
-
-		const status = this.loginSaveStatusOf(session, isLoginKept);
-		if (loginProfile && status) this.loginSaveResults.set(loginProfile.domain, status);
-		if (!isLoginKept) {
-			await this.deleteLoginProfile(loginProfile);
+		let isLoginKept = false;
+		if (shouldKeepLoginProfile && loginProfile) {
+			isLoginKept = await this.keepLoginProfile(loginProfile, location);
 		}
+
+		let isLoginDeleted = false;
+		if (!isLoginKept) {
+			isLoginDeleted = await this.deleteLoginProfile(loginProfile);
+		}
+
+		const status = this.loginSaveStatusOf(session, isLoginKept, isLoginDeleted);
+		if (loginProfile && status) this.loginSaveResults.set(loginProfile.domain, status);
 	}
 
 	/** What to tell the user about the login of a session that ended, or nothing. */
 	private loginSaveStatusOf(
 		session: ActiveSession,
 		isLoginKept: boolean,
+		isLoginDeleted: boolean,
 	): CloudBrowserLoginSaveStatus | undefined {
 		const { loginProfile } = session;
 		if (!loginProfile) return undefined;
@@ -930,8 +933,9 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 			if (existingStatus === 'saved') return 'saved';
 			return isLoginKept ? 'saved' : 'notSaved';
 		}
-		// A saved login that the session used, but that could not be kept, for example after a drop.
-		if (loginProfile.savedAt && !isLoginKept) return 'removed';
+		// A saved login that the session used, and that was deleted because it could not be kept, for
+		// example after a drop.
+		if (loginProfile.savedAt && isLoginDeleted) return 'removed';
 		return undefined;
 	}
 
@@ -1023,20 +1027,22 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 	}
 
 	/**
-	 * Deletes a login profile. The gateway deletes an unsaved one a few hours after its last use in
-	 * any case, so a failure is only logged.
+	 * Deletes a login profile. Returns whether it did. The gateway deletes an unsaved one a few hours
+	 * after its last use in any case, so a failure is only logged.
 	 */
-	private async deleteLoginProfile(loginProfile?: CloudBrowserLoginProfile): Promise<void> {
-		if (!loginProfile) return;
+	private async deleteLoginProfile(loginProfile?: CloudBrowserLoginProfile): Promise<boolean> {
+		if (!loginProfile) return false;
 		const { scope, sessionProvider, logger } = this.options;
 		try {
 			await sessionProvider.deleteLoginProfile(scope, loginProfile.id);
+			return true;
 		} catch (error) {
 			logger.warn('Failed to delete a cloud browser login profile', {
 				taskId: scope.taskId,
 				isSaved: !!loginProfile.savedAt,
 				...safeErrorDetails(error),
 			});
+			return false;
 		}
 	}
 
