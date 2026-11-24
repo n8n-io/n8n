@@ -1,4 +1,6 @@
 import type { ExecutionsConfig } from '@n8n/config';
+import type { Project } from '@n8n/db';
+import type { PolicyViolation } from '@n8n/decorators';
 import type { IConnections, IWorkflowBase, Workflow } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
@@ -8,6 +10,9 @@ import { WorkflowPreExecute } from '../workflow-pre-execute';
 import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
 import type { ExternalHooks } from '@/external-hooks';
 import type { NodeTypes } from '@/node-types';
+import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
+import type { OwnershipService } from '@/services/ownership.service';
 import type { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
 describe('WorkflowPreExecute', () => {
@@ -15,11 +20,15 @@ describe('WorkflowPreExecute', () => {
 	const workflowContext = mock<WorkflowHookContextService>();
 	const nodeTypes = mock<NodeTypes>();
 	const executionsConfig = mock<ExecutionsConfig>({ preExecuteErrorCreatesExecution: false });
+	const policyEnforcementService = mock<PolicyEnforcementService>();
+	const ownershipService = mock<OwnershipService>();
 	const preExecute = new WorkflowPreExecute(
 		externalHooks,
 		workflowContext,
 		nodeTypes,
 		executionsConfig,
+		policyEnforcementService,
+		ownershipService,
 	);
 
 	const workflowData = mock<IWorkflowBase>({
@@ -38,6 +47,9 @@ describe('WorkflowPreExecute', () => {
 		executionsConfig.preExecuteErrorCreatesExecution = false;
 		externalHooks.hasHook.mockReturnValue(true);
 		externalHooks.run.mockResolvedValue(undefined);
+		policyEnforcementService.hasChecksFor.mockReturnValue(false);
+		policyEnforcementService.enforceExecutionAdmission.mockReset();
+		ownershipService.getWorkflowProjectCached.mockResolvedValue(mock<Project>({ id: 'project-1' }));
 	});
 
 	it('runs workflow.preExecute before a row would be created', async () => {
@@ -172,5 +184,60 @@ describe('WorkflowPreExecute', () => {
 
 		expect(externalHooks.hasHook).not.toHaveBeenCalled();
 		expect(externalHooks.run).not.toHaveBeenCalled();
+	});
+
+	describe('execution admission', () => {
+		const refusal = () =>
+			new PolicyViolationError([{ message: 'Execution blocked' } as PolicyViolation]);
+
+		beforeEach(() => {
+			policyEnforcementService.hasChecksFor.mockReturnValue(true);
+		});
+
+		it('enforces admission before the hook runs', async () => {
+			await preExecute.run(workflowData, 'webhook', 'user');
+
+			const [enforceOrder] =
+				policyEnforcementService.enforceExecutionAdmission.mock.invocationCallOrder;
+			const [hookOrder] = externalHooks.run.mock.invocationCallOrder;
+			expect(enforceOrder).toBeLessThan(hookOrder);
+		});
+
+		it('enforces admission when the hook is deferred until after persist', async () => {
+			executionsConfig.preExecuteErrorCreatesExecution = true;
+
+			await preExecute.run(workflowData, 'webhook');
+
+			expect(policyEnforcementService.enforceExecutionAdmission).toHaveBeenCalledTimes(1);
+			expect(externalHooks.run).not.toHaveBeenCalled();
+		});
+
+		it('enforces admission when no hook is registered', async () => {
+			externalHooks.hasHook.mockReturnValue(false);
+
+			await preExecute.run(workflowData, 'webhook');
+
+			expect(policyEnforcementService.enforceExecutionAdmission).toHaveBeenCalledTimes(1);
+			expect(externalHooks.run).not.toHaveBeenCalled();
+		});
+
+		it('rejects with the policy violation itself and does not run the hook', async () => {
+			const error = refusal();
+			policyEnforcementService.enforceExecutionAdmission.mockRejectedValue(error);
+
+			await expect(preExecute.run(workflowData, 'webhook')).rejects.toBe(error);
+
+			expect(externalHooks.run).not.toHaveBeenCalled();
+		});
+
+		it('passes the project id to the admission context', async () => {
+			await preExecute.run(workflowData, 'webhook', undefined, undefined, 'project-1');
+
+			expect(policyEnforcementService.enforceExecutionAdmission).toHaveBeenCalledWith(
+				expect.objectContaining({ projectId: 'project-1', mode: 'webhook' }),
+				{ kind: 'system', reason: 'execution' },
+			);
+			expect(ownershipService.getWorkflowProjectCached).not.toHaveBeenCalled();
+		});
 	});
 });

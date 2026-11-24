@@ -661,6 +661,7 @@ export class WorkflowRunner {
 			data.executionMode,
 			data.source,
 			this.resolvePinData(data),
+			data.projectId,
 		);
 	}
 

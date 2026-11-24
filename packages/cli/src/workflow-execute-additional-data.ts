@@ -365,21 +365,23 @@ export async function executeWorkflow(
 			additionalData.rootExecutionMode ?? options.executionMode;
 	}
 
-	try {
-		await Container.get(WorkflowPreExecute).run(
-			workflowData,
-			runData.executionMode,
-			runData.source,
-		);
-	} catch (error) {
-		throw PreExecuteBlockedError.unwrap(error);
-	}
-
 	const { OwnershipService } = await import('@/services/ownership.service.js');
 	const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
 		Container.get(OwnershipService),
 		workflowData.id,
 	);
+
+	try {
+		await Container.get(WorkflowPreExecute).run(
+			workflowData,
+			runData.executionMode,
+			runData.source,
+			undefined,
+			projectId,
+		);
+	} catch (error) {
+		throw PreExecuteBlockedError.unwrap(error);
+	}
 
 	const executionId = await activeExecutions.add({ ...runData, projectId });
 

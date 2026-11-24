@@ -2156,6 +2156,18 @@ describe('pre-persist context establishment', () => {
 		expect(addSpy).not.toHaveBeenCalled();
 	});
 
+	it('passes the project id of the run to preExecute', async () => {
+		const workflowPreExecute = Container.get(WorkflowPreExecute);
+		gateSpy = vi.spyOn(workflowPreExecute, 'run').mockRejectedValue(new Error('blocked'));
+
+		const data = buildRunData(buildExecutionDataWithHeader());
+		data.projectId = 'project-1';
+
+		await expect(runner.run(data)).rejects.toThrow('blocked');
+
+		expect(gateSpy.mock.calls[0][4]).toBe('project-1');
+	});
+
 	it('does not run preExecute when credential authorization fails', async () => {
 		const unauthorized = new Error('unauthorized');
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
