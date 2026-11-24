@@ -37,7 +37,7 @@ export default class PromotionEnvironmentApplySelection extends PromotionApplyCo
 			multiple: true,
 		}),
 		...expectedSourceFlags({ required: false }),
-		...expectedPreviewRevisionFlag,
+		...expectedPreviewRevisionFlag('applySelection'),
 	};
 
 	async run() {

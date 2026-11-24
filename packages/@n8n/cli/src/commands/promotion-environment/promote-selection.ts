@@ -37,7 +37,7 @@ export default class PromotionEnvironmentPromoteSelection extends PromotionPromo
 			char: 'm',
 			description: 'Commit message. If you omit it, the commit uses a generated message.',
 		}),
-		...expectedPreviewRevisionFlag,
+		...expectedPreviewRevisionFlag('promoteSelection'),
 		...confirmMissingDependenciesFlag('Promote'),
 	};
 

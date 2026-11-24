@@ -36,7 +36,7 @@ export default class PromotionEnvironmentApplySelectionContinue extends Promotio
 			multiple: true,
 		}),
 		...expectedSourceFlags({ required: true }),
-		...expectedPreviewRevisionFlag,
+		...expectedPreviewRevisionFlag('applySelection'),
 		confirmDestructiveChanges: Flags.boolean({
 			description:
 				'Also apply data table changes that remove or retype columns. The values in those columns are removed.',

@@ -57,20 +57,34 @@ export function expectedSourceFlags({ required }: { required: boolean }) {
 
 const PREVIEW_REVISION = /^[0-9a-f]{64}$/;
 
-/** Pins Promote or Apply to the reviewed preview. They stop when the preview changed since then. */
-export const expectedPreviewRevisionFlag = {
-	expectedPreviewRevision: Flags.string({
-		description:
-			'Revision of the reviewed preview, from `list-changes <projectId> <promote|apply> --json`, `list-apply-changes <id> --json` or `promote-check <id> --json`',
-		aliases: ['expected-preview-revision'],
-		parse: async (input: string) => {
-			if (!PREVIEW_REVISION.test(input)) {
-				throw new Error(`Expected a preview revision of 64 hex characters, got "${input}"`);
-			}
-			return input;
-		},
-	}),
+/**
+ * The server compares the revision with one preview for each operation, so a revision from a
+ * different command never matches.
+ */
+const PREVIEW_REVISION_DESCRIPTIONS = {
+	promote: 'Revision of the reviewed Promote check, from `promote-check <id> --json`',
+	promoteSelection:
+		'Revision of the reviewed Promote preview, from `list-changes <projectId> promote --json`',
+	apply: 'Revision of the reviewed Apply preview, from `list-apply-changes <id> --json`',
+	applySelection:
+		'Revision of the reviewed Apply preview, from `list-changes <projectId> apply --json`',
 };
+
+/** Pins Promote or Apply to the reviewed preview. They stop when the preview changed since then. */
+export function expectedPreviewRevisionFlag(operation: keyof typeof PREVIEW_REVISION_DESCRIPTIONS) {
+	return {
+		expectedPreviewRevision: Flags.string({
+			description: PREVIEW_REVISION_DESCRIPTIONS[operation],
+			aliases: ['expected-preview-revision'],
+			parse: async (input: string) => {
+				if (!PREVIEW_REVISION.test(input)) {
+					throw new Error(`Expected a preview revision of 64 hex characters, got "${input}"`);
+				}
+				return input;
+			},
+		}),
+	};
+}
 
 export function toExpectedSource(flags: {
 	expectedEnvironmentId?: string;

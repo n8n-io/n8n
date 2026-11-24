@@ -29,7 +29,7 @@ export default class PromotionEnvironmentPromote extends PromotionPromoteCommand
 			description: 'Overwrite the remote branch even if it has diverged',
 			default: false,
 		}),
-		...expectedPreviewRevisionFlag,
+		...expectedPreviewRevisionFlag('promote'),
 		...confirmMissingDependenciesFlag('Promote'),
 	};
 

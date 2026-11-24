@@ -28,7 +28,7 @@ export default class PromotionEnvironmentApplyContinue extends PromotionApplyCom
 	static override flags = {
 		...BaseCommand.baseFlags,
 		...expectedSourceFlags({ required: true }),
-		...expectedPreviewRevisionFlag,
+		...expectedPreviewRevisionFlag('apply'),
 		confirmDestructiveChanges: Flags.boolean({
 			description:
 				'Also apply data table changes that remove or retype columns, and delete the team projects that the package does not hold. The values in those columns and everything in those projects are removed.',

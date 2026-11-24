@@ -27,7 +27,7 @@ export default class PromotionEnvironmentApply extends PromotionApplyCommand {
 	static override flags = {
 		...BaseCommand.baseFlags,
 		...expectedSourceFlags({ required: false }),
-		...expectedPreviewRevisionFlag,
+		...expectedPreviewRevisionFlag('apply'),
 	};
 
 	async run() {
