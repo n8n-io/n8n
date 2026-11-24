@@ -818,7 +818,7 @@ describe('AgentMessageQueueService', () => {
 			);
 		});
 
-		function steerTestMessage(testChat: boolean) {
+		async function steerTestMessage(testChat: boolean) {
 			threadRepository.lockById.mockResolvedValue(makeThread({ testChat }));
 			executionRepository.findFirstSourceByThreadIds.mockResolvedValue(
 				new Map([['thread-1', 'chat']]),
@@ -833,7 +833,7 @@ describe('AgentMessageQueueService', () => {
 			);
 			steering.findEligible.mockResolvedValue(mock<AgentExecution>({ id: 'execution-1' }));
 			repository.reserveSteering.mockResolvedValue(true);
-			return service.steer({
+			return await service.steer({
 				projectId: 'project-1',
 				agentId: 'agent-1',
 				threadId: 'thread-1',
