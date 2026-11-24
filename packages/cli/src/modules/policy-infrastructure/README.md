@@ -106,8 +106,9 @@ request. A check can compare it with `workflow` to judge only what the save adds
 Deadlines are tight on the points on the execution path. A wedged policy store
 there pins worker slots instead of failing one request. A check on
 `executionAdmission` must read memory only. It runs each time an engine v1 run
-is about to start. A refusal there leaves no execution row, no queue job, and
-no worker slot.
+is about to start. A refused run gets no execution row, no queue job, and no
+worker slot of its own. A refused sub-workflow of a queued run does not free the
+worker slot that its parent holds.
 
 The point guards the start of a run, not each write to the execution table.
 Some execution rows record a failure and have no run. The point does not
