@@ -15,8 +15,10 @@ export interface PointerContext {
 function walk(root: unknown, path: string): unknown {
 	let cur = root;
 	for (const m of path.matchAll(STEP)) {
-		if (cur === null || typeof cur !== 'object') return undefined;
-		cur = (cur as Record<string, unknown>)[m[1] ?? m[2]];
+		const step = m[1] ?? m[2];
+		// Own properties only: `$result.constructor` names nothing.
+		if (cur === null || typeof cur !== 'object' || !Object.hasOwn(cur, step)) return undefined;
+		cur = (cur as Record<string, unknown>)[step];
 	}
 	return cur;
 }
@@ -51,6 +53,9 @@ const KEY = /\b[A-Z][A-Z0-9]+-\d+\b/g;
 // An issue key without its dash: trust1209.
 const KEY_ID = /^[a-z][a-z0-9]{1,30}\d$/;
 const squash = (s: string): string => s.toLowerCase().replace(/-/g, '');
+// A UUID without dashes is 32 hex characters and can look like a squashed issue key.
+const DASHLESS_UUID = /^[0-9a-f]{32}$/;
+const isIssueKeyId = (id: string): boolean => KEY_ID.test(id) && !DASHLESS_UUID.test(id);
 
 /** The ids a call names in its args: UUIDs (also inside urls) and issue keys such as TRUST-1209. */
 export function idsInArgs(args: unknown): string[] {
@@ -75,9 +80,7 @@ export function missingIds(ids: string[], text: string): string[] {
 			squash(m[0]),
 		),
 	);
-	return ids.filter(
-		(id) => !(id.length < 32 && KEY_ID.test(id) ? keys.has(id) : haystack.includes(id)),
-	);
+	return ids.filter((id) => !(isIssueKeyId(id) ? keys.has(id) : haystack.includes(id)));
 }
 
 const ID_KEYS: ReadonlySet<string> = new Set(['id', 'data_source_id']);
@@ -111,20 +114,13 @@ export function dropUnprovenIds(value: unknown, proven: ReadonlySet<string>): un
 }
 
 // Keys whose string values the model writes itself, because they name the gym's structure and not data.
+// Keys that name people, teams, projects or labels are not here: their values are real data, and a
+// reference to another entity passes as a ref ("team:eng").
 const STRUCTURE_KEYS: ReadonlySet<string> = new Set([
 	'ref',
 	'type',
 	'color',
 	'parent',
-	'team',
-	'project',
-	'assignee',
-	'lead',
-	'labels',
-	'by',
-	'user',
-	'creator',
-	'owner',
 	'data_source',
 	'dual',
 	'timezone',

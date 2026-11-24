@@ -44,7 +44,11 @@ export function createMcpCaller(
 	};
 }
 
-const hostFetch: typeof fetch = async (input, init) => {
+// A Response with one of these statuses must have a null body, or its constructor throws.
+// 202 is the gym's empty acknowledgement of a notification.
+const NO_BODY_STATUSES: ReadonlySet<number> = new Set([202, 204, 205, 304]);
+
+export const hostFetch: typeof fetch = async (input, init) => {
 	const url = new URL(input instanceof Request ? input.url : String(input));
 	const headers: Record<string, string> = {};
 	new Headers(init?.headers).forEach((v, k) => (headers[k] = v));
@@ -63,7 +67,7 @@ const hostFetch: typeof fetch = async (input, init) => {
 				for (const [k, v] of Object.entries(res.headers)) {
 					if (typeof v === 'string') out.set(k, v);
 				}
-				const noBody = res.statusCode === 202 || res.statusCode === 204;
+				const noBody = NO_BODY_STATUSES.has(res.statusCode ?? 0);
 				// Buffer the body. The gym answers each call with one finite response.
 				const chunks: Buffer[] = [];
 				res.on('data', (chunk: Buffer) => chunks.push(chunk));

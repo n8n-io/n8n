@@ -121,4 +121,52 @@ describe('SeededEntities', () => {
 
 		expect(SeededEntities.isEmpty(deduped)).toBe(true);
 	});
+
+	const linear = (collection: string, items: Array<Record<string, unknown>>) => ({
+		world_version: 1,
+		native: { linear: { [collection]: items } },
+	});
+
+	it('knows ids that it holds whatever their dashes and case', () => {
+		const seeded = new SeededEntities();
+		seeded.hold(['FIN-412']);
+		expect(seeded.knows(['FIN-412'])).toBe(true);
+		expect(seeded.knows(['fin412'])).toBe(true);
+		expect(seeded.knows(['FIN-413'])).toBe(false);
+	});
+
+	it('writes references to an entity without a ref with its id as the gym received it', () => {
+		const seeded = new SeededEntities();
+		seeded.record(linear('teams', [{ id: 'Team-ABC', name: 'Finance' }]));
+
+		const deduped = seeded.dedupe(
+			linear('issues', [{ id: 'issue-1', ref: 'issue:1', team: 'team-abc' }]),
+		);
+
+		expect(deduped).toEqual(
+			linear('issues', [{ id: 'issue-1', ref: 'issue:1', team: 'Team-ABC' }]),
+		);
+	});
+
+	it('does not seed again an entity that a later result shows by its ref only', () => {
+		const seeded = new SeededEntities();
+		seeded.record(linear('teams', [{ id: 'team-uuid-1', ref: 'team:fin', name: 'Finance' }]));
+
+		expect(seeded.dedupe(linear('teams', [{ ref: 'team:FIN', name: 'Finance' }]))).toEqual(
+			linear('teams', []),
+		);
+	});
+
+	it('keeps a parent with new children under the ref that the gym stored', () => {
+		const seeded = new SeededEntities({ keepParents: true });
+		seeded.record(linear('databases', [{ id: 'db-1', ref: 'db:tasks', title: 'Tasks' }]));
+
+		const deduped = seeded.dedupe(
+			linear('databases', [{ id: 'db-1', ref: 'db:alias', rows: [{ id: 'row-1', name: 'New' }] }]),
+		);
+
+		expect(deduped).toEqual(
+			linear('databases', [{ id: 'db-1', ref: 'db:tasks', rows: [{ id: 'row-1', name: 'New' }] }]),
+		);
+	});
 });

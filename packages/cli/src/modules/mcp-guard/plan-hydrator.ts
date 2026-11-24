@@ -1,9 +1,9 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 import type { GymAdmin } from './gym-admin';
-import { isRecord } from './gym-admin';
 import type { McpCaller } from './mcp-upstream';
 import { OnceByKey } from './once-by-key';
 import {
