@@ -1,0 +1,78 @@
+packages/@n8n/telemetry/src/telemetry-events.ts
+  s_1f81abe09807b5::t_ea6d80d2d588a2 39
+  s_1f81abe09807b5::t_c47b36f6e96c81 10
+packages/frontend/@n8n/rest-api-client/src/utils.ts
+  s_1f81abe09807b5::t_6dc1e4f723f79c 162,165,167
+  s_1f81abe09807b5::t_0ea670edd08bb1 1
+  s_1f81abe09807b5::t_c66148c20a0a3d 326
+packages/cli/src/telemetry/index.ts
+  s_1f81abe09807b5::t_cb2ecf42304ca7 664-667
+  s_1f81abe09807b5::t_057366048fb411 128-129
+  s_1f81abe09807b5::t_226302923e5d8a 95-116
+  s_1f81abe09807b5::t_ea91b5f770ba8c 243
+  s_1f81abe09807b5::t_5d6115a769b7aa 438-455,457-467
+  s_1f81abe09807b5::t_88a6353df602ce 456
+  s_1f81abe09807b5::t_5936bd1422ac63 296-308
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_1f81abe09807b5::t_2f0453542b3302 1166-1171
+  s_1f81abe09807b5::t_94020f508108a9 307
+  s_1f81abe09807b5::t_31d99a1d04e71a 1164-1165,1172-1181
+packages/@n8n/telemetry/src/index.ts
+  s_1f81abe09807b5::t_9e6da7ed460c65 13
+packages/cli/src/telemetry/__tests__/telemetry.test.ts
+  s_1f81abe09807b5::t_64c58cc1c44aa2 14
+  s_1f81abe09807b5::t_2f0453542b3302 758-767,770-774,777-782,784,786-788,790-794,796-801,804-809,811-853,855-872,874-875,877,1439-1450,1452-1471
+  s_1f81abe09807b5::t_071c9a9021ed84 757,768-769,775-776,783,785,789,795,802-803,810,854,873,876,878
+  s_1f81abe09807b5::t_dcaed487a957c6 1438,1451,1472
+packages/cli/src/controller.registry.ts
+  s_1f81abe09807b5::t_951e5954823805 27-28
+  s_1f81abe09807b5::t_20ddb60481c157 46
+  s_1f81abe09807b5::t_2f0453542b3302 149-154
+  s_1f81abe09807b5::t_00d6d1f09dd7fa 237,239-241
+  s_1f81abe09807b5::t_ae20f46325b455 204
+  s_1f81abe09807b5::t_3e1b112a4479ea 1,3
+  s_1f81abe09807b5::t_3e6c03bb954b7f 238
+  s_1f81abe09807b5::t_8b108aaa157c0c 148
+  s_1f81abe09807b5::t_72df3b47c21482 276-296
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_1f81abe09807b5::t_3de08ced783c58 2024-2041
+packages/cli/src/events/maps/relay.event-map.ts
+  s_1f81abe09807b5::t_d749f580db24fa 567-577
+packages/@n8n/telemetry/src/__tests__/internal-api-usage.test.ts
+  s_1f81abe09807b5::t_9c6f560c9e2f6b 1-44
+packages/cli/src/__tests__/controller.registry.test.ts
+  s_1f81abe09807b5::t_8d53314c9d4d8f 45
+  s_1f81abe09807b5::t_6d04bd669001e7 141
+  s_1f81abe09807b5::t_178533cf4d2798 532-537,539-547,549-633
+  s_1f81abe09807b5::t_638fbf0ba9ee86 61
+  s_1f81abe09807b5::t_f2adbee8567a4a 538
+  s_1f81abe09807b5::t_a7a2184c90d690 8-9
+  s_1f81abe09807b5::t_1a23fc0506b6c0 34
+  s_1f81abe09807b5::t_5f201529ba72d9 548
+  s_1f81abe09807b5::t_0e010b9dd7dd3e 121
+packages/@n8n/telemetry/src/events/internal-api.ts
+  s_1f81abe09807b5::t_6b38f2d984a187 1-42
+packages/cli/src/__tests__/controller.registry.body-media.test.ts
+  s_1f81abe09807b5::t_9e71760559e864 33
+  s_1f81abe09807b5::t_e41fd8796611e1 1
+packages/frontend/@n8n/rest-api-client/src/utils.test.ts
+  s_1f81abe09807b5::t_1b8ad55828df00 269,324,502
+  s_1f81abe09807b5::t_63384c2fb60692 8-9
+  s_1f81abe09807b5::t_fed3630e432b56 114-128,139-169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "01179d7b591237953e96da81a099085caad91750",
+  "prompts": {},
+  "sessions": {
+    "s_1f81abe09807b5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "66abfa0d-c819-44a1-b320-43149bbebabb",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

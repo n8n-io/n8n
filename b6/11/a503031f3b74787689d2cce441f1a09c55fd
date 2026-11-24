@@ -1,0 +1,21 @@
+packages/cli/src/workflows/workflow-execution.service.ts
+  s_db592e6e0f1163::t_af485177efaf45 206-212,216,222-227
+packages/cli/src/workflows/triggers/poll-cursor.service.ts
+  s_db592e6e0f1163::t_07f2dc29319764 182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b611a503031f3b74787689d2cce441f1a09c55fd",
+  "prompts": {},
+  "sessions": {
+    "s_db592e6e0f1163": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "264e98ab-ca1e-4cf8-a11b-64febeab544c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
