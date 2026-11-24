@@ -49,7 +49,7 @@ describe('readBatchAtPath on an array', () => {
 		expect(readItems(numbers, 5, 0, SMALL_VALUES)).toEqual(whole(numbers.slice(5, 12)));
 	});
 
-	it('takes four times more items at each step', () => {
+	it('grows the read four times at each step', () => {
 		expect(readItems(numbers, 0, 1, SMALL_VALUES)).toEqual(whole(numbers.slice(0, 30)));
 	});
 
@@ -147,7 +147,7 @@ describe('readBatchAtPath on an array', () => {
 		expect(readItems(rows, 1, 0, SMALL_VALUES)).toBeUndefined();
 	});
 
-	it('never calls an accessor', () => {
+	it('stops at an accessor', () => {
 		const read = vi.fn(() => 1);
 		const rows = [1];
 		Object.defineProperty(rows, 1, { get: read, enumerable: true });

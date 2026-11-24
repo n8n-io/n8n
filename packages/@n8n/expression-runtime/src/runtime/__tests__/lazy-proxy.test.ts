@@ -704,7 +704,7 @@ describe('createDeepLazyProxy batched reads', () => {
 			expect(callbacks.readBatch.mock.calls).toEqual([[['$json', 'rows'], 1, 0, SMALL_VALUES]]);
 		});
 
-		it('counts each read in order, so the host gives more items each time', () => {
+		it('counts each read in order', () => {
 			const callbacks = createCallbacks();
 			callbacks.getArrayElement.mockReturnValue(0);
 			callbacks.readBatch.mockReturnValueOnce(hostData([1, 2])).mockReturnValueOnce(hostData([3]));
@@ -1054,6 +1054,7 @@ describe('createDeepLazyProxy batched reads', () => {
 			item.c = 3;
 
 			expect({ ...item }).toEqual({ a: 1, b: 2, c: 3 });
+			expect(callbacks.readBatch).toHaveBeenCalledTimes(1);
 			expect(callbacks.getValueAtPath).not.toHaveBeenCalled();
 		});
 

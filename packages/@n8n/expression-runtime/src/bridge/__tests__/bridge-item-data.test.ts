@@ -247,7 +247,7 @@ const expressions: Array<{ label: string; code: string }> = [
 	},
 ];
 
-/** Runs the code on a copy of the data as plain JavaScript. */
+/** Runs the code as plain JavaScript. */
 function evaluatePlain(code: string, $json: Json): unknown {
 	// eslint-disable-next-line @typescript-eslint/no-implied-eval -- the code is a fixed test expression
 	return new Function('$json', code)($json);

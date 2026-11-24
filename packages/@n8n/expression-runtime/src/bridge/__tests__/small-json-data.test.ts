@@ -92,7 +92,7 @@ describe('smallJsonCopy, for an object or an array', () => {
 		expect(isSmall(value, 1000)).toBe(false);
 	});
 
-	it('counts the characters of keys and strings', () => {
+	it('counts the characters of a string', () => {
 		const value = { text: 'x'.repeat(100) };
 
 		expect(isSmall(value, 200)).toBe(true);
