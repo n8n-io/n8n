@@ -92,11 +92,51 @@ describe('LmChatOpenAi', () => {
 				displayName: 'OpenAI Chat Model',
 				name: 'lmChatOpenAi',
 				group: ['transform'],
-				version: [1, 1.1, 1.2, 1.3],
+				version: [1, 1.1, 1.2, 1.3, 1.4],
 				description:
 					'Run GPT models, with optional Responses API for web search, file search, and code execution',
 			});
 		});
+
+		it.each([
+			[1, 'gpt-5-mini'],
+			[1.1, 'gpt-5-mini'],
+			[1.2, { __rl: true, mode: 'list', value: 'gpt-5-mini' }],
+			[1.3, { __rl: true, mode: 'list', value: 'gpt-5-mini' }],
+			[1.4, { __rl: true, mode: 'list', value: 'gpt-5.4-mini' }],
+		])('resolves the model default for node version %s', (typeVersion, expectedModel) => {
+			const { description } = lmChatOpenAi;
+
+			const parameters = NodeHelpers.getNodeParameters(
+				description.properties.filter((property) => property !== undefined),
+				{},
+				true,
+				false,
+				{ typeVersion },
+				description,
+			);
+
+			expect(parameters?.model).toEqual(expectedModel);
+		});
+
+		it.each(['gpt-5-mini', 'gpt-6.1-terra', 'custom-chat-model'])(
+			'preserves the explicit model ID %s on version 1.4',
+			(value) => {
+				const { description } = lmChatOpenAi;
+				const model = { __rl: true as const, mode: 'id', value };
+
+				const parameters = NodeHelpers.getNodeParameters(
+					description.properties.filter((property) => property !== undefined),
+					{ model },
+					false,
+					false,
+					{ typeVersion: 1.4 },
+					description,
+				);
+
+				expect(parameters?.model).toEqual(model);
+			},
+		);
 
 		it('should have correct credentials configuration', () => {
 			expect(lmChatOpenAi.description.credentials).toEqual([
@@ -175,6 +215,55 @@ describe('LmChatOpenAi', () => {
 	});
 
 	describe('supplyData', () => {
+		it('uses the new default model with Responses for new nodes', async () => {
+			mockedCommon.formatBuiltInTools.mockReturnValueOnce([]);
+			const context = setupMockContext({ typeVersion: 1.4 });
+			const { description } = lmChatOpenAi;
+			const parameters = NodeHelpers.getNodeParameters(
+				description.properties.filter((property) => property !== undefined),
+				{},
+				true,
+				false,
+				{ typeVersion: 1.4 },
+				description,
+			);
+			context.getNodeParameter.mockImplementation((name, _index, fallback) => {
+				if (name === 'model.value') return (parameters?.model as IDataObject).value;
+				return parameters?.[name] ?? fallback;
+			});
+
+			await lmChatOpenAi.supplyData.call(context, 0);
+
+			expect(MockedChatOpenAI).toHaveBeenCalledWith(
+				expect.objectContaining({
+					model: 'gpt-5.4-mini',
+					useResponsesApi: true,
+					modelKwargs: {},
+				}),
+			);
+		});
+
+		it.each([
+			['https://models.example.org/v1', 'local-chat'],
+			['https://ai-assistant.n8n.io/gateway/openAI/v1', 'gpt-5-mini'],
+		])('keeps the selected model and credential URL %s on new nodes', async (url, model) => {
+			const context = setupMockContext({ typeVersion: 1.4 });
+			context.getCredentials.mockResolvedValue({ apiKey: 'test-api-key', url });
+			context.getNodeParameter.mockImplementation((name, _index, fallback) => {
+				if (name === 'model.value') return model;
+				return fallback;
+			});
+
+			await lmChatOpenAi.supplyData.call(context, 0);
+
+			expect(MockedChatOpenAI).toHaveBeenCalledWith(
+				expect.objectContaining({
+					model,
+					configuration: expect.objectContaining({ baseURL: url }),
+				}),
+			);
+		});
+
 		it('should create ChatOpenAI instance with basic configuration (version >= 1.2)', async () => {
 			const mockContext = setupMockContext({ typeVersion: 1.2 });
 
