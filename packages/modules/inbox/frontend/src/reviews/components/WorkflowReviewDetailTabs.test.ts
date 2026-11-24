@@ -129,11 +129,11 @@ describe('WorkflowReviewDetailTabs', () => {
 	});
 
 	it('lets the viewer switch between the Activity and Changes tabs', async () => {
-		const { getByText, emitted } = renderComponent({
+		const { getByRole, emitted } = renderComponent({
 			props: { review: makeDetail(), tab: 'activity', deciding: false },
 		});
 
-		getByText('Changes').click();
+		await userEvent.click(getByRole('tab', { name: 'Changes' }));
 
 		expect(emitted('update:tab')).toEqual([['changes']]);
 	});

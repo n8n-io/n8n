@@ -1609,28 +1609,24 @@ describe('getAppArtifactFromToolCall', () => {
 	const expected = { appId: 'app-1', name: 'Todos', projectId: 'project-1' };
 
 	test.each([
-		['create', { action: 'create', name: 'Todos', namespace: 'todos' }, { app }],
-		['commit', { action: 'commit', appId: 'app-1', label: 'Add list' }, { app, versionId: 'v1' }],
-	])('returns the app of a successful %s', (_label, args, result) => {
-		expect(getAppArtifactFromToolCall(makeToolCall({ toolName: 'apps', args, result }))).toEqual(
-			expected,
-		);
+		['create_app', { blueprint: { name: 'Todos', namespace: 'todos' } }, { app }],
+		['commit_app', { appId: 'app-1', label: 'Add list' }, { app, versionId: 'v1' }],
+	])('returns the app of a successful %s', (toolName, args, result) => {
+		expect(getAppArtifactFromToolCall(makeToolCall({ toolName, args, result }))).toEqual(expected);
 	});
 
 	test.each([
-		['a get', { action: 'get', appId: 'app-1' }, { app }],
-		['an open', { action: 'open', appId: 'app-1' }, { app, path: 'apps/app-1' }],
-		['an error', { action: 'commit', appId: 'app-1' }, { error: 'There are no staged changes.' }],
-	])('returns undefined for %s', (_label, args, result) => {
-		expect(
-			getAppArtifactFromToolCall(makeToolCall({ toolName: 'apps', args, result })),
-		).toBeUndefined();
+		['get_app', { appId: 'app-1' }, { app }],
+		['open_app', { appId: 'app-1' }, { app, path: 'apps/app-1' }],
+		['commit_app', { appId: 'app-1' }, { error: 'There are no staged changes.' }],
+	])('returns undefined for a %s call without a written app', (toolName, args, result) => {
+		expect(getAppArtifactFromToolCall(makeToolCall({ toolName, args, result }))).toBeUndefined();
 	});
 
 	test('returns undefined for a call that is still running', () => {
 		expect(
 			getAppArtifactFromToolCall(
-				makeToolCall({ toolName: 'apps', args: { action: 'create' }, isLoading: true }),
+				makeToolCall({ toolName: 'create_app', args: {}, isLoading: true }),
 			),
 		).toBeUndefined();
 	});
@@ -1642,8 +1638,8 @@ describe('getLatestAppArtifactResult', () => {
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-create',
-					toolName: 'apps',
-					args: { action: 'create' },
+					toolName: 'create_app',
+					args: {},
 					result: { app: { id: 'app-1', name: 'One', projectId: 'project-1' } },
 				}),
 			],
@@ -1653,8 +1649,8 @@ describe('getLatestAppArtifactResult', () => {
 					toolCalls: [
 						makeToolCall({
 							toolCallId: 'tc-commit',
-							toolName: 'apps',
-							args: { action: 'commit', appId: 'app-2' },
+							toolName: 'commit_app',
+							args: { appId: 'app-2' },
 							result: { app: { id: 'app-2', name: 'Two', projectId: 'project-1' } },
 						}),
 					],

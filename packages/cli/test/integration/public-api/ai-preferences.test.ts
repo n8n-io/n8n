@@ -1,4 +1,8 @@
-import { AI_PREFERENCE_CONTENT_MAX_LENGTH, AI_PREFERENCE_MAX_PER_SCOPE } from '@n8n/api-types';
+import {
+	AI_PREFERENCE_CONTENT_MAX_LENGTH,
+	AI_PREFERENCE_MAX_PER_SCOPE,
+	type AiPreferenceSource,
+} from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import {
 	createTeamProject,
@@ -54,6 +58,7 @@ const repository = () => Container.get(AiPreferenceRepository);
 
 async function seed(attributes: {
 	content: string;
+	source?: AiPreferenceSource;
 	userId?: string | null;
 	projectId?: string | null;
 }) {
@@ -61,7 +66,7 @@ async function seed(attributes: {
 		repository().create({
 			id: crypto.randomUUID(),
 			content: attributes.content,
-			source: 'ui',
+			source: attributes.source ?? 'ui',
 			userId: attributes.userId ?? null,
 			projectId: attributes.projectId ?? null,
 		}),
@@ -160,11 +165,12 @@ describe('Public API /ai-preferences', () => {
 			}
 		});
 
-		test('returns only the public fields of a row', async () => {
-			const row = await seed({ content: 'mine', userId: member.id });
+		test.each(['ui', 'import'] as const)('lists public fields for source %s', async (source) => {
+			const row = await seed({ content: 'mine', userId: member.id, source });
 
 			const response = await testServer.publicApiAgentFor(member).get('/ai-preferences');
 
+			expect(response.statusCode).toBe(200);
 			expect(response.body.data).toEqual([
 				{
 					id: row.id,
@@ -172,7 +178,7 @@ describe('Public API /ai-preferences', () => {
 					scope: 'user',
 					userId: member.id,
 					projectId: null,
-					source: 'ui',
+					source,
 					createdAt: row.createdAt.toISOString(),
 					updatedAt: row.updatedAt.toISOString(),
 				},
@@ -332,8 +338,8 @@ describe('Public API /ai-preferences', () => {
 	});
 
 	describe('GET /ai-preferences/:aiPreferenceId', () => {
-		test('returns one preference with only its public fields', async () => {
-			const row = await seed({ content: 'mine', userId: member.id });
+		test.each(['ui', 'import'] as const)('returns public fields for source %s', async (source) => {
+			const row = await seed({ content: 'mine', userId: member.id, source });
 
 			const response = await testServer.publicApiAgentFor(member).get(`/ai-preferences/${row.id}`);
 
@@ -344,7 +350,7 @@ describe('Public API /ai-preferences', () => {
 				scope: 'user',
 				userId: member.id,
 				projectId: null,
-				source: 'ui',
+				source,
 				createdAt: row.createdAt.toISOString(),
 				updatedAt: row.updatedAt.toISOString(),
 			});
@@ -529,13 +535,14 @@ describe('Public API /ai-preferences', () => {
 			);
 		});
 
-		test('refuses an unknown field', async () => {
+		test.each(['aia', 'import'])('refuses a caller-supplied source of %s', async (source) => {
 			const response = await testServer
 				.publicApiAgentFor(member)
 				.post('/ai-preferences')
-				.send({ content: 'Short names', scope: 'user', source: 'aia' });
+				.send({ content: 'Short names', scope: 'user', source });
 
 			expect(response.statusCode).toBe(400);
+			expect(await repository().count()).toBe(0);
 		});
 
 		test('refuses an API key without the aiPreference:create scope', async () => {
