@@ -117,16 +117,16 @@ describe('CloudBrowserTaskStorage', () => {
 			outcome: 'succeeded',
 			summary: '$20',
 			loginSaveResults: [
-				{ domain: 'example.com', saved: true },
-				{ domain: 'example.org', saved: false },
+				{ domain: 'example.com', status: 'saved' },
+				{ domain: 'example.org', status: 'notSaved' },
 			],
 		});
 
 		expect(await storage.list(THREAD_ID)).toEqual([
 			expect.objectContaining({
 				loginSaveResults: [
-					{ domain: 'example.com', saved: true },
-					{ domain: 'example.org', saved: false },
+					{ domain: 'example.com', status: 'saved' },
+					{ domain: 'example.org', status: 'notSaved' },
 				],
 			}),
 		]);

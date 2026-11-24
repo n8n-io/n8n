@@ -2520,7 +2520,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 
 				await server.release();
 
-				expect(server.getLoginSaveResults()).toEqual([{ domain: 'example.com', saved: true }]);
+				expect(server.getLoginSaveResults()).toEqual([{ domain: 'example.com', status: 'saved' }]);
 			});
 
 			it('returns a login that was not saved when the save failed', async () => {
@@ -2529,7 +2529,9 @@ describe('CloudBrowserLocalMcpServer', () => {
 
 				await server.release();
 
-				expect(server.getLoginSaveResults()).toEqual([{ domain: 'example.com', saved: false }]);
+				expect(server.getLoginSaveResults()).toEqual([
+					{ domain: 'example.com', status: 'notSaved' },
+				]);
 			});
 
 			it('returns a login that was not saved because the connection dropped', async () => {
@@ -2539,7 +2541,9 @@ describe('CloudBrowserLocalMcpServer', () => {
 
 				await server.release();
 
-				expect(server.getLoginSaveResults()).toEqual([{ domain: 'example.com', saved: false }]);
+				expect(server.getLoginSaveResults()).toEqual([
+					{ domain: 'example.com', status: 'notSaved' },
+				]);
 			});
 
 			it('returns a site once when the user saved its login in two sessions', async () => {
@@ -2559,7 +2563,7 @@ describe('CloudBrowserLocalMcpServer', () => {
 				await server.release();
 
 				expect(sessionProvider.saveLoginProfile).toHaveBeenCalledTimes(2);
-				expect(server.getLoginSaveResults()).toEqual([{ domain: 'example.com', saved: true }]);
+				expect(server.getLoginSaveResults()).toEqual([{ domain: 'example.com', status: 'saved' }]);
 			});
 
 			it('returns nothing when the user did not choose to save a login', async () => {
@@ -2774,6 +2778,83 @@ describe('CloudBrowserLocalMcpServer', () => {
 
 				expect(sessionProvider.saveLoginProfile).not.toHaveBeenCalled();
 				expect(sessionProvider.deleteLoginProfile).toHaveBeenCalledWith(scope, 'login-profile-1');
+			});
+		});
+
+		describe('a saved login that the session uses', () => {
+			const savedLogin = {
+				id: 'saved-login-1',
+				domain: 'example.com',
+				savedAt: new Date('2026-11-01T10:00:00Z'),
+				savedLocation: { regionId: 'eu-central-1' },
+			};
+
+			async function setupReusedLogin() {
+				const context = setup();
+				context.sessionProvider.findSavedLoginProfileForDomain.mockResolvedValue(savedLogin);
+				await context.start({ url: 'https://example.com' });
+				return context;
+			}
+
+			function dropConnection(toolkit: ReturnType<typeof fakeToolkit>) {
+				toolkit.connection.isConnected = false;
+				toolkit.adapter.onDisconnect?.('browser_closed');
+			}
+
+			it('keeps the saved login and reports nothing after a clean release', async () => {
+				const { server, sessionProvider } = await setupReusedLogin();
+
+				await server.release();
+
+				expect(sessionProvider.deleteLoginProfile).not.toHaveBeenCalled();
+				expect(server.getLoginSaveResults()).toEqual([]);
+			});
+
+			it('deletes the saved login after a drop and reports it as removed', async () => {
+				const { server, sessionProvider, toolkits } = await setupReusedLogin();
+
+				dropConnection(toolkits[0]);
+				await server.release();
+
+				expect(sessionProvider.deleteLoginProfile).toHaveBeenCalledWith(scope, 'saved-login-1');
+				expect(server.getLoginSaveResults()).toEqual([
+					{ domain: 'example.com', status: 'removed' },
+				]);
+			});
+
+			it('reports a login as removed when it was saved earlier in the task', async () => {
+				const { server, sessionProvider, toolkits, start } = await setupSavedLogin();
+				sessionProvider.findSavedLoginProfileForDomain.mockResolvedValue(savedLogin);
+				// The new session replaces the first one, which saves its login.
+				await start({ url: 'https://example.com' });
+
+				dropConnection(toolkits[1]);
+				await server.release();
+
+				expect(sessionProvider.saveLoginProfile).toHaveBeenCalledTimes(1);
+				expect(server.getLoginSaveResults()).toEqual([
+					{ domain: 'example.com', status: 'removed' },
+				]);
+			});
+
+			it('opens the next session only after the dropped saved login is deleted', async () => {
+				const { sessionProvider, toolkits, start } = await setupReusedLogin();
+				let isDeleted = false;
+				sessionProvider.deleteLoginProfile.mockImplementation(async () => {
+					await new Promise((resolve) => setTimeout(resolve, 10));
+					isDeleted = true;
+				});
+				sessionProvider.findSavedLoginProfileForDomain.mockImplementation(async () =>
+					isDeleted ? undefined : savedLogin,
+				);
+
+				dropConnection(toolkits[0]);
+				await start({ url: 'https://example.com' });
+
+				expect(sessionProvider.createSession).toHaveBeenLastCalledWith(
+					scope,
+					expect.objectContaining({ loginProfileId: 'login-profile-1' }),
+				);
 			});
 		});
 	});

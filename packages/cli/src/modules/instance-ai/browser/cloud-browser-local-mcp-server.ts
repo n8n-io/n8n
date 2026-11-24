@@ -160,10 +160,15 @@ export type CloudBrowserReturnControlResult =
 	| { returned: false; error: string }
 	| { returned: true; loginWillBeSaved: boolean };
 
-/** A login the user chose to save, and whether it was saved when its session ended. */
+/**
+ * What happened to a login when its session ended: a login the user chose to save was saved or not
+ * saved, or a saved login that the session used was removed because it could not be kept.
+ */
+export type CloudBrowserLoginSaveStatus = 'saved' | 'notSaved' | 'removed';
+
 export interface CloudBrowserLoginSaveResult {
 	domain: string;
-	saved: boolean;
+	status: CloudBrowserLoginSaveStatus;
 }
 
 /**
@@ -295,7 +300,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 	 * The logins the user chose to save, from every session that has ended, by site: whether the
 	 * login was saved. A site that is saved stays saved, also when a later save for it fails.
 	 */
-	private readonly loginSaveResults = new Map<string, boolean>();
+	private readonly loginSaveResults = new Map<string, CloudBrowserLoginSaveStatus>();
 
 	constructor(private readonly options: CloudBrowserLocalMcpServerOptions) {
 		this.domainGate = options.domainGate;
@@ -451,7 +456,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 	 * session ends, so release the server first to get every login of the task.
 	 */
 	getLoginSaveResults(): CloudBrowserLoginSaveResult[] {
-		return [...this.loginSaveResults].map(([domain, saved]) => ({ domain, saved }));
+		return [...this.loginSaveResults].map(([domain, status]) => ({ domain, status }));
 	}
 
 	drainUserControlNotes(): string[] {
@@ -720,7 +725,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 		logger.warn('Cloud browser session lost', { taskId: scope.taskId, sessionId: session.id });
 		this.activeSession = undefined;
 		this.sessionUnavailableReason = 'connectionLost';
-		await this.releaseSessionAndLoginProfile(session);
+		await this.withSessionLock(async () => await this.releaseSessionAndLoginProfile(session));
 		return undefined;
 	}
 
@@ -869,7 +874,8 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 		this.sessionUnavailableReason = 'connectionLost';
 		this.clearIdleTimer();
 		this.endUserControl({ returned: false, error: SESSION_UNAVAILABLE_MESSAGES.connectionLost });
-		await this.releaseSessionAndLoginProfile(session);
+		// Under the lock, so a new session cannot open on a saved login that this release deletes.
+		await this.withSessionLock(async () => await this.releaseSessionAndLoginProfile(session));
 	}
 
 	/** Releases the active session, if one is open. */
@@ -898,14 +904,29 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 				? await this.keepLoginProfile(loginProfile, location)
 				: false;
 
-		if (loginProfile && session.saveLoginProfileOnSessionEnd) {
-			const { domain } = loginProfile;
-			const isSavedAlready = this.loginSaveResults.get(domain) === true;
-			if (!isSavedAlready) this.loginSaveResults.set(domain, isLoginKept);
-		}
+		const status = this.loginSaveStatusOf(session, isLoginKept);
+		if (loginProfile && status) this.loginSaveResults.set(loginProfile.domain, status);
 		if (!isLoginKept) {
 			await this.deleteLoginProfile(loginProfile);
 		}
+	}
+
+	/** What to tell the user about the login of a session that ended, or nothing. */
+	private loginSaveStatusOf(
+		session: ActiveSession,
+		isLoginKept: boolean,
+	): CloudBrowserLoginSaveStatus | undefined {
+		const { loginProfile } = session;
+		if (!loginProfile) return undefined;
+		if (session.saveLoginProfileOnSessionEnd) {
+			// A login that was saved earlier in the task still exists, so a failed save later does not change that.
+			const existingStatus = this.loginSaveResults.get(loginProfile.domain);
+			if (existingStatus === 'saved') return 'saved';
+			return isLoginKept ? 'saved' : 'notSaved';
+		}
+		// A saved login that the session used, but that could not be kept, for example after a drop.
+		if (loginProfile.savedAt && !isLoginKept) return 'removed';
+		return undefined;
 	}
 
 	/** Releases a session with the provider. A failure is only logged. */

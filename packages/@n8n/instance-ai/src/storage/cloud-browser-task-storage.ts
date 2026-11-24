@@ -33,8 +33,13 @@ const cloudBrowserTaskRecordSchema = z.object({
 	/** How the task ended, in the agent's own words, for example "succeeded" or "blocked". */
 	outcome: z.string().optional(),
 	summary: z.string().optional(),
-	/** The logins the user chose to save in the task, and whether each was saved. */
-	loginSaveResults: z.array(z.object({ domain: z.string(), saved: z.boolean() })).optional(),
+	/**
+	 * What happened to the logins of the task: a login the user chose to save was saved or not, or a
+	 * saved login that the task used was removed.
+	 */
+	loginSaveResults: z
+		.array(z.object({ domain: z.string(), status: z.enum(['saved', 'notSaved', 'removed']) }))
+		.optional(),
 	finishedAt: z.string().optional(),
 	/** Set while a delivery holds the finished task. See `CLAIM_LEASE_MS`. */
 	claimedAt: z.string().optional(),

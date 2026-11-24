@@ -33,6 +33,8 @@ describe('getSystemPrompt — cloud browser', () => {
 		expect(section).toContain('Your login for example.com is saved, so I can use it next time.');
 		expect(section).toContain('[Saved logins](/settings/personal?savedLogins=open)');
 		expect(section).toContain('Sign in again next time to save it.');
+		expect(section).toContain('`Saved logins removed:`');
+		expect(section).toContain("it couldn't be updated, so it's no longer saved");
 		expect(section).not.toContain('n8n Assistant can reuse');
 	});
 
