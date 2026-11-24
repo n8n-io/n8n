@@ -705,15 +705,24 @@ n8n-cli promotion-environment promote env-1 -m "Nightly promote" \
   --expected-preview-revision="$(jq -r .revision check.json)" --confirm-missing-dependencies
 # Exit 3: the list changed since the review. Nothing was pushed. Review again.
 
-# Apply the branch tip. Continue without the dependencies that only need a confirmation.
-n8n-cli promotion-environment apply env-2 --json > result.json || true
-if [ "$(jq -r .status result.json)" = "blocked" ]; then
+# Apply the branch tip. Exit 4 is a blocked Apply, and result.json holds the cause.
+# Every other failure stops the job with its exit code.
+if n8n-cli promotion-environment apply env-2 --json > result.json; then
+  apply_exit=0
+else
+  apply_exit=$?
+  [ "$apply_exit" -eq 4 ] || exit "$apply_exit"
+fi
+
+# Continue a blocked Apply with the confirmation, on the commit that result.json reports.
+if [ "$apply_exit" -eq 4 ]; then
   n8n-cli promotion-environment apply-continue env-2 \
     --expected-environment-id="$(jq -r .environmentId result.json)" \
     --expected-branch="$(jq -r .git.branchName result.json)" \
     --expected-commit-sha="$(jq -r .git.commitSha result.json)" \
     --confirm-missing-dependencies
-  # Exit 0: applied. Exit 4: a cause that the confirmation does not cover remains.
+  # Exit 0: applied. Exit 3: the branch has a newer commit. Nothing was imported.
+  # Exit 4: a cause that the confirmation does not cover remains. Nothing was imported.
 fi
 ```
 
