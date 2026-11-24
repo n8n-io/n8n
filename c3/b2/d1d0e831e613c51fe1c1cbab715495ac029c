@@ -1,0 +1,18 @@
+OWNERS
+  h_52a137d26d774c 495
+package.json
+  h_52a137d26d774c 105-106
+packages/@n8n/db/src/migrations/migration-types.ts
+  h_52a137d26d774c 8-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c3b2d1d0e831e613c51fe1c1cbab715495ac029c",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
