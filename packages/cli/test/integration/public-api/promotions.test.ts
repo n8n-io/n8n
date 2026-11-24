@@ -2446,6 +2446,36 @@ describe('Promotions in Public API', () => {
 			expect(response.status).toBe(400);
 		});
 
+		it('rejects a selection with a duplicate credential id with 400', async () => {
+			const project = await createTeamProject('Team project', owner);
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post(`/promotions/projects/${project.id}/promote`)
+				.send({ credentialIds: ['c1', 'c1'] });
+			expect(response.status).toBe(400);
+		});
+
+		it('forwards the selected credential ids to the service', async () => {
+			const project = await createTeamProject('Team project', owner);
+			const promote = vi
+				.spyOn(Container.get(PromotionsService), 'promoteProjectSelection')
+				.mockResolvedValue(promoteResult);
+			try {
+				const response = await testServer
+					.publicApiAgentFor(owner)
+					.post(`/promotions/projects/${project.id}/promote`)
+					.send({ credentialIds: ['c1', 'c2'] });
+				expect(response.status, JSON.stringify(response.body)).toBe(200);
+				expect(promote).toHaveBeenLastCalledWith(
+					project.id,
+					expect.anything(),
+					expect.objectContaining({ credentialIds: ['c1', 'c2'] }),
+				);
+			} finally {
+				promote.mockRestore();
+			}
+		});
+
 		it('forwards the selection and the variable-list grant to the service', async () => {
 			const project = await createTeamProject('Team project', owner);
 			const promote = vi
@@ -2551,24 +2581,24 @@ describe('Promotions in Public API', () => {
 			},
 		);
 
-		it.each([{ selection: 'a duplicate', workflowIds: ['w1', 'w1'] }])(
-			'rejects $selection selection before calling either Apply service',
-			async ({ workflowIds }) => {
-				const service = Container.get(PromotionsService);
-				const initial = vi.spyOn(service, 'applyProjectSelection');
-				const continuation = vi.spyOn(service, 'continueApplyProjectSelection');
-				const agent = testServer.publicApiAgentFor(owner);
-				for (const route of ['apply', 'apply/continue']) {
-					const response = await agent.post(`/promotions/projects/proj1/${route}`).send({
-						workflowIds,
-						expectedSource: selectionBody.expectedSource,
-					});
-					expect(response.status, JSON.stringify(response.body)).toBe(400);
-				}
-				expect(initial).not.toHaveBeenCalled();
-				expect(continuation).not.toHaveBeenCalled();
-			},
-		);
+		it.each([
+			{ selection: 'a duplicate workflow', body: { workflowIds: ['w1', 'w1'] } },
+			{ selection: 'a duplicate credential', body: { credentialIds: ['c1', 'c1'] } },
+		])('rejects $selection selection before calling either Apply service', async ({ body }) => {
+			const service = Container.get(PromotionsService);
+			const initial = vi.spyOn(service, 'applyProjectSelection');
+			const continuation = vi.spyOn(service, 'continueApplyProjectSelection');
+			const agent = testServer.publicApiAgentFor(owner);
+			for (const route of ['apply', 'apply/continue']) {
+				const response = await agent.post(`/promotions/projects/proj1/${route}`).send({
+					...body,
+					expectedSource: selectionBody.expectedSource,
+				});
+				expect(response.status, JSON.stringify(response.body)).toBe(400);
+			}
+			expect(initial).not.toHaveBeenCalled();
+			expect(continuation).not.toHaveBeenCalled();
+		});
 
 		it('requires a supported source and no unknown fields on Continue', async () => {
 			const agent = testServer.publicApiAgentFor(owner);
