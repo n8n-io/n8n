@@ -109,5 +109,41 @@ describe('SystemAgentEvalService', () => {
 				messages,
 			});
 		});
+
+		it('reads active observational memory entries and cursor for a thread', async () => {
+			const { service, n8nMemory, impl } = setup();
+			impl.getObservationLog.mockResolvedValue([
+				{
+					id: 'obs-1',
+					observationScopeId: THREAD_ID,
+					marker: 'm1',
+					text: 'Remembered fact',
+					tokenCount: 42,
+					status: 'active',
+				} as never,
+			]);
+			impl.getCursor.mockResolvedValue({
+				threadId: THREAD_ID,
+				lastObservedMessageId: 'msg-9',
+				lastObservedAt: new Date('2026-01-02T03:04:05.000Z'),
+			} as never);
+
+			const result = await service.getThreadMemory(AGENT_ID, THREAD_ID);
+
+			expect(n8nMemory.getImplementation).toHaveBeenCalledWith(AGENT_ID);
+			expect(impl.getObservationLog).toHaveBeenCalledWith({
+				observationScopeId: THREAD_ID,
+				status: 'active',
+				order: 'asc',
+			});
+			expect(impl.getCursor).toHaveBeenCalledWith(THREAD_ID);
+			expect(result).toEqual({
+				observations: [{ marker: 'm1', text: 'Remembered fact', tokenCount: 42 }],
+				cursor: {
+					lastObservedMessageId: 'msg-9',
+					lastObservedAt: '2026-01-02T03:04:05.000Z',
+				},
+			});
+		});
 	});
 });

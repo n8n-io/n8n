@@ -7,9 +7,10 @@ import {
 	InstanceAiEvalRestoreExecutionRequest,
 	InstanceAiEvalRestoreThreadRequest,
 	InstanceAiEvalSeedDataTableRowsRequest,
+	type InstanceAiEvalThreadMemoryResponse,
 } from '@n8n/api-types';
 import { AuthenticatedRequest, type User } from '@n8n/db';
-import { Body, Delete, GlobalScope, Param, Post, Put, RestController } from '@n8n/decorators';
+import { Body, Delete, Get, GlobalScope, Param, Post, Put, RestController } from '@n8n/decorators';
 import { ForbiddenError } from '@n8n/errors';
 import { clearedAgentBuilderTargetMetadata } from '@n8n/instance-ai';
 import type { Response } from 'express';
@@ -104,6 +105,19 @@ export class AssistantAgentEvalController {
 		await this.getThread(req.user, threadId);
 		this.turnOverrides.setThreadOverrides(threadId, payload);
 		return { ok: true };
+	}
+
+	/** Observational memory for a thread, for a context eval to assert on. */
+	@Get('/eval/threads/:threadId/memory')
+	@GlobalScope('instanceAi:manage')
+	async getEvalThreadMemory(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+	): Promise<InstanceAiEvalThreadMemoryResponse> {
+		this.requireInstanceAiEnabled();
+		await this.getThread(req.user, threadId);
+		return await this.systemAgentEval.getThreadMemory(ASSISTANT_AGENT_ID, threadId);
 	}
 
 	/**

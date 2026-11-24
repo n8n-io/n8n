@@ -18,6 +18,7 @@ import type { Response } from 'express';
 import { AssistantAgentFeedbackService } from './assistant-agent-feedback.service';
 import { AssistantAgentTargetsService } from './assistant-agent-targets.service';
 import { AssistantPreferenceCardsService } from './assistant-preference-cards.service';
+import { AssistantRunDebugService } from './assistant-run-debug.service';
 import { AssistantThreadCreditsService } from './assistant-thread-credits.service';
 import { AssistantThreadTabsService } from './assistant-thread-tabs.service';
 
@@ -39,6 +40,7 @@ export class AssistantAgentController {
 		private readonly agentTargets: AssistantAgentTargetsService,
 		private readonly preferenceCards: AssistantPreferenceCardsService,
 		private readonly feedback: AssistantAgentFeedbackService,
+		private readonly runDebug: AssistantRunDebugService,
 	) {}
 
 	@Get('/threads/:threadId/credits')
@@ -168,5 +170,24 @@ export class AssistantAgentController {
 	): Promise<{ ok: true }> {
 		await this.feedback.submit(req.user, threadId, payload);
 		return { ok: true };
+	}
+
+	@Get('/debug/runs/:runId')
+	@GlobalScope('instanceAi:message')
+	async getRunDebug(req: AuthenticatedRequest, _res: Response, @Param('runId') runId: string) {
+		return await this.runDebug.getRunDebug(req.user, runId);
+	}
+
+	@Get('/debug/threads/:threadId/runs')
+	@GlobalScope('instanceAi:message')
+	async listThreadDebugRuns(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+	) {
+		return {
+			threadId,
+			runs: await this.runDebug.listThreadDebugRuns(req.user, threadId),
+		};
 	}
 }

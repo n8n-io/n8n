@@ -44,4 +44,9 @@ export class AssistantTurnOverrides {
 	getPromptVersion(_threadId: string): string | undefined {
 		return undefined;
 	}
+
+	/** Observer compaction threshold for the thread. `undefined` uses the configured default. */
+	getObserverThresholdTokens(_threadId: string): number | undefined {
+		return undefined;
+	}
 }

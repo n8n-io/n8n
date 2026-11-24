@@ -85,7 +85,11 @@ describe('AssistantAgentEvalController', () => {
 				await controller.createThread(req, res, { threadId: THREAD_ID, projectId: PROJECT_ID }),
 			deleteThread: async () => await controller.deleteThread(req, res, THREAD_ID),
 			setThreadOverrides: async () =>
-				await controller.setThreadOverrides(req, res, THREAD_ID, { promptVersion: 'v2' }),
+				await controller.setThreadOverrides(req, res, THREAD_ID, {
+					promptVersion: 'v2',
+					observerThresholdTokens: 12000,
+				}),
+			getEvalThreadMemory: async () => await controller.getEvalThreadMemory(req, res, THREAD_ID),
 			setThreadCredentialAllowlist: async () =>
 				await controller.setThreadCredentialAllowlist(req, res, {
 					threadId: THREAD_ID,
@@ -131,6 +135,7 @@ describe('AssistantAgentEvalController', () => {
 			['createThread', 'post', '/eval/threads'],
 			['deleteThread', 'delete', '/eval/threads/:threadId'],
 			['setThreadOverrides', 'put', '/eval/threads/:threadId/overrides'],
+			['getEvalThreadMemory', 'get', '/eval/threads/:threadId/memory'],
 			['setThreadCredentialAllowlist', 'post', '/eval/thread-credential-allowlist'],
 			['setThreadCredentialTestTarget', 'post', '/eval/thread-credential-test-target'],
 			['exportExecution', 'post', '/eval/export-execution'],
@@ -280,11 +285,41 @@ describe('AssistantAgentEvalController', () => {
 	it('replaces the turn overrides of the thread', async () => {
 		const ctx = setup();
 
-		await ctx.controller.setThreadOverrides(ctx.req, ctx.res, THREAD_ID, { promptVersion: 'v2' });
+		await ctx.controller.setThreadOverrides(ctx.req, ctx.res, THREAD_ID, {
+			promptVersion: 'v2',
+			observerThresholdTokens: 12000,
+		});
+		expect(ctx.overrides.getPromptVersion(THREAD_ID)).toBe('v2');
+		expect(ctx.overrides.getObserverThresholdTokens(THREAD_ID)).toBe(12000);
+
 		const result = await ctx.controller.setThreadOverrides(ctx.req, ctx.res, THREAD_ID, {});
 
 		expect(result).toEqual({ ok: true });
 		expect(ctx.overrides.getPromptVersion(THREAD_ID)).toBeUndefined();
+		expect(ctx.overrides.getObserverThresholdTokens(THREAD_ID)).toBeUndefined();
+	});
+
+	it('returns the active observational memory entries and cursor for a thread', async () => {
+		const ctx = setup();
+		ctx.systemAgents.getThreadMemory.mockResolvedValue({
+			observations: [{ marker: 'info', text: 'Note', tokenCount: 10 }],
+			cursor: {
+				lastObservedMessageId: 'msg-1',
+				lastObservedAt: '2026-01-01T00:00:00.000Z',
+			},
+		});
+
+		const result = await routes(ctx).getEvalThreadMemory();
+
+		expect(ctx.systemAgents.getUsableThread).toHaveBeenCalledWith('assistant', ctx.user, THREAD_ID);
+		expect(ctx.systemAgents.getThreadMemory).toHaveBeenCalledWith('assistant', THREAD_ID);
+		expect(result).toEqual({
+			observations: [{ marker: 'info', text: 'Note', tokenCount: 10 }],
+			cursor: {
+				lastObservedMessageId: 'msg-1',
+				lastObservedAt: '2026-01-01T00:00:00.000Z',
+			},
+		});
 	});
 
 	it('pins the credential view of the thread', async () => {

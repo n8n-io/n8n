@@ -21,6 +21,7 @@ import { AssistantAgentController } from '../assistant-agent.controller';
 import type { AssistantAgentFeedbackService } from '../assistant-agent-feedback.service';
 import type { AssistantAgentTargetsService } from '../assistant-agent-targets.service';
 import type { AssistantPreferenceCardsService } from '../assistant-preference-cards.service';
+import type { AssistantRunDebugService } from '../assistant-run-debug.service';
 import type { AssistantThreadCreditsService } from '../assistant-thread-credits.service';
 import type { AssistantThreadTabsService } from '../assistant-thread-tabs.service';
 
@@ -32,12 +33,14 @@ describe('AssistantAgentController', () => {
 	const agentTargets = mock<AssistantAgentTargetsService>();
 	const preferenceCards = mock<AssistantPreferenceCardsService>();
 	const feedback = mock<AssistantAgentFeedbackService>();
+	const runDebug = mock<AssistantRunDebugService>();
 	const controller = new AssistantAgentController(
 		threadTabs,
 		threadCredits,
 		agentTargets,
 		preferenceCards,
 		feedback,
+		runDebug,
 	);
 
 	const user = mock<User>({ id: 'user-1' });
@@ -72,6 +75,8 @@ describe('AssistantAgentController', () => {
 			undoPreference: '/threads/:threadId/preferences/:preferenceId/undo',
 			editPreference: '/threads/:threadId/preferences/:preferenceId/edit',
 			submitFeedback: '/threads/:threadId/feedback',
+			getRunDebug: '/debug/runs/:runId',
+			listThreadDebugRuns: '/debug/threads/:threadId/runs',
 		};
 		for (const [handler, path] of Object.entries(paths)) {
 			expect(metadata.routes.get(handler)?.path).toBe(path);

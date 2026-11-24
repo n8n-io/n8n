@@ -81,4 +81,33 @@ export class SystemAgentEvalService {
 			messages,
 		});
 	}
+
+	/**
+	 * Read the active observational memory entries and cursor for a thread.
+	 * The caller checks thread access first.
+	 */
+	async getThreadMemory(agentId: string, threadId: string) {
+		const memory = this.n8nMemory.getImplementation(agentId);
+		const [observations, cursor] = await Promise.all([
+			memory.getObservationLog({
+				observationScopeId: threadId,
+				status: 'active',
+				order: 'asc',
+			}),
+			memory.getCursor(threadId),
+		]);
+		return {
+			observations: observations.map(({ marker, text, tokenCount }) => ({
+				marker,
+				text,
+				tokenCount,
+			})),
+			cursor: cursor
+				? {
+						lastObservedMessageId: cursor.lastObservedMessageId,
+						lastObservedAt: cursor.lastObservedAt.toISOString(),
+					}
+				: null,
+		};
+	}
 }
