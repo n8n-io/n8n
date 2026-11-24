@@ -20,7 +20,7 @@ import type { Response } from 'express';
 import { WorkflowReviewProjectSettingsService } from './workflow-review-project-settings.service';
 
 @RestController('/workflow-review-settings/projects')
-export class WorkflowReviewProjectsController {
+export class WorkflowReviewInstanceSettingsController {
 	constructor(private readonly projectSettingsService: WorkflowReviewProjectSettingsService) {}
 
 	@Get('/')
