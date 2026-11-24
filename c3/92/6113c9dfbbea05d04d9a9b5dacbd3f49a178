@@ -18,12 +18,12 @@ packages/cli/src/modules/promotions.ee/promote-dependency-check.service.ts
 packages/nodes-base/nodes/N8n/n8n-api-coverage.json
   s_4a494bfdece475::t_e55aa5339f1a51 329-331
 packages/cli/src/modules/promotions.ee/promotions.service.ts
-  s_4a494bfdece475::t_720cf0603bb8af 352-355,357-359
+  s_4a494bfdece475::t_720cf0603bb8af 352-355,352-360,357-359
   s_4a494bfdece475::t_cb995697613a3c 20
   s_4a494bfdece475::t_078c44f422c43a 361-362
   s_4a494bfdece475::t_7fd217d9eb13ad 1112,1200,1351,1355-1356,1366
 packages/cli/src/modules/promotions.ee/promote-preview.service.ts
-  s_4a494bfdece475::t_720cf0603bb8af 1,15,25,42,131-139,150-151,162-163,165,168-176
+  s_4a494bfdece475::t_720cf0603bb8af 1,15,25,42,131-139,150-151,162-163,162-176,165,168-176
   s_4a494bfdece475::t_8ccc8ccc9d9394 177-178
 packages/cli/src/modules/promotions.ee/__tests__/promote-dependency-check.test.ts
   s_4a494bfdece475::t_98e2e534c23980 1-46,48-349,351-407,409-460
@@ -37,7 +37,7 @@ packages/cli/src/modules/promotions.ee/package-references.ts
   s_4a494bfdece475::t_71e8d6153edda3 128
   s_3327c391716409::t_72dc542516d439 33-34,116-118
 packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
-  s_4a494bfdece475::t_cb995697613a3c 27,586-592,594-605
+  s_4a494bfdece475::t_cb995697613a3c 27,586-592,594-605,594-606
   s_4a494bfdece475::t_8d8b52bc3887aa 593
   s_4a494bfdece475::t_65b79a8d710da1 607-608
   s_4a494bfdece475::t_ca16ee1d54788c 683,739
@@ -49,7 +49,7 @@ packages/cli/src/modules/promotions.ee/promote-dependency-check.ts
 packages/cli/src/modules/promotions.ee/promotion-preview.ts
   s_4a494bfdece475::t_720cf0603bb8af 3,5,8,582,606-607,609-619
 packages/cli/src/modules/promotions.ee/__tests__/promote-dependency-check.integration.test.ts
-  s_4a494bfdece475::t_498aec99e34c37 1-56,57-247,249-257,259-280,282-295,296-306,307-456,457-517,519-536,538-555,556-557,559-578
+  s_4a494bfdece475::t_498aec99e34c37 1-56,57-247,249-257,259-280,282-295,296-306,307-456,457-517,519-536,538-555,538-557,556-557,559-578
 packages/cli/src/modules/promotions.ee/__tests__/promotion-preview.revision.test.ts
   s_4a494bfdece475::t_2bbdcd471980d9 6-54,92-107
   s_4a494bfdece475::t_b0cd2eb238e83a 1-5,55-89
