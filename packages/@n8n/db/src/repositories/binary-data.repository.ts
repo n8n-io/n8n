@@ -45,6 +45,11 @@ export class BinaryDataRepository extends Repository<BinaryDataFile> {
 		}
 	}
 
+	/** Whether at least one execution file holds `sourceId`. */
+	async hasExecutionFilesWithSourceId(sourceId: string): Promise<boolean> {
+		return await this.existsBy({ sourceType: 'execution', sourceId });
+	}
+
 	async deleteByFileIds(fileIds: string[]): Promise<void> {
 		if (fileIds.length === 0) return;
 

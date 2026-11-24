@@ -762,6 +762,35 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		return false;
 	}
 
+	/** Highest execution ID, or 0 when there is no execution. */
+	async findHighestId(): Promise<number> {
+		const row = await this.createQueryBuilder('execution')
+			.select('MAX(execution.id)', 'highestId')
+			.getRawOne<{ highestId: string | number | null }>();
+
+		return Number(row?.highestId ?? 0);
+	}
+
+	/**
+	 * IDs of the executions that ran in `mode` and whose ID is above `afterId`,
+	 * up to and including `throughId`, in ascending order.
+	 */
+	async findIdsByModeInIdRange(
+		mode: WorkflowExecuteMode,
+		afterId: number,
+		throughId: number,
+	): Promise<string[]> {
+		const executions = await this.createQueryBuilder('execution')
+			.select('execution.id')
+			.where('execution.mode = :mode', { mode })
+			.andWhere('execution.id > :afterId', { afterId })
+			.andWhere('execution.id <= :throughId', { throughId })
+			.orderBy('execution.id', 'ASC')
+			.getMany();
+
+		return executions.map(({ id }) => id);
+	}
+
 	async findExecutionsToDelete({
 		filters,
 		accessibleWorkflowIds,
