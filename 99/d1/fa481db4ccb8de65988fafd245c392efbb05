@@ -1,0 +1,19 @@
+packages/cli/test/migration/1795524706285-allow-import-source-on-ai-preference.test.ts
+  s_dcf0a1bb209389::t_a9735b116f2cb2 122,143,162,165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "99d1fa481db4ccb8de65988fafd245c392efbb05",
+  "prompts": {},
+  "sessions": {
+    "s_dcf0a1bb209389": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a20d54-46f7-7da1-9a09-3f6dc52b844b",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
