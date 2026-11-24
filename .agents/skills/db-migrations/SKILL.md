@@ -729,7 +729,7 @@ A sequential scan on the entire table is very slow on larger instances. If you m
 
 ### Fail closed on ambiguous rows
 
-A backfill sets a value for each old row. When the old data cannot tell the correct value, choose the safe value, not the convenient one. For example, a flag that makes a resource public must not be `false` when the signal for "needs a credential" is gone. Write which rows are ambiguous in the migration comment.
+A backfill sets a value for each old row. When the old data cannot tell the correct value, choose the safe value, not the convenient one. For example, a flag that makes a resource public must stay `false` when the signal for "needs a credential" is gone. Write which rows are ambiguous in the migration comment.
 
 ### Prefer a read-time default to a large backfill
 
