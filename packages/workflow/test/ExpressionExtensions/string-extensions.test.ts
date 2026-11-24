@@ -424,5 +424,33 @@ describe('Data Transformation Functions', () => {
 		test('.base64Decode should work on a string', () => {
 			expect(evaluate('={{ "bjhuIHRlc3Q=".base64Decode() }}')).toBe('n8n test');
 		});
+
+		test.each([
+			["'😀'.substring(0, 1)", '77+9'],
+			["'𐀀'[0]", '77+9'],
+			["'é😀'", 'w6nwn5iA'],
+		])(
+			'.base64Encode should encode %s as UTF-8 with U+FFFD for lone surrogates',
+			(value, expected) => {
+				expect(evaluate(`={{ ${value}.base64Encode() }}`)).toBe(expected);
+				expect(evaluate(`={{ ${value}.hash('base64') }}`)).toBe(expected);
+			},
+		);
+
+		test.each([
+			['/w==', '\uFFFD'],
+			['wA==', '\uFFFD'],
+			['7aCA', '\uFFFD\uFFFD\uFFFD'],
+			['w6nwn5iA', 'é😀'],
+			['a@b.com', 'i\uFFFD('],
+			['a-b_c', 'k\uFFFD\uFFFD'],
+			['aGVs bG8=', 'hello'],
+			['!!!', ''],
+		])(
+			'.base64Decode should decode %s, skip non-base64 characters and give U+FFFD for invalid UTF-8',
+			(value, expected) => {
+				expect(evaluate(`={{ "${value}".base64Decode() }}`)).toBe(expected);
+			},
+		);
 	});
 });

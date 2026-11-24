@@ -28,7 +28,7 @@ const LEGACY_KEY_SEGMENT = '/binary_data/';
  * Stores agent knowledge file bytes wherever the execution data storage mode
  * points: in `db` mode the bytes go into the `binary_data` table keyed by a
  * uuid, otherwise into a byte store keyed by a path. The `fs` byte store is
- * always available; `s3` and `az` are registered at module init when configured.
+ * always available; `s3` and `az` require registration through `registerByteStore`.
  *
  * Keys are generated on write and persisted, so files written by the former
  * BinaryDataService layout keep resolving under their original key.

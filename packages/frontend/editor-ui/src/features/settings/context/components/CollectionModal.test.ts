@@ -178,6 +178,7 @@ describe('CollectionModal', () => {
 			description: 'Refunds and pricing',
 		});
 		await waitFor(() => expect(emitted('created')).toEqual([[created]]));
+		expect(emitted('saved')).toEqual([[created]]);
 		expect(showMessage).toHaveBeenCalledWith({
 			title: 'Collection “Customer support” created.',
 			type: 'success',
@@ -274,6 +275,7 @@ describe('CollectionModal', () => {
 				type: 'success',
 			}),
 		);
+		expect(emitted('saved')).toEqual([[created]]);
 		expect(emitted('created')).toBeUndefined();
 	});
 
