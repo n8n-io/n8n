@@ -25,8 +25,12 @@ describe('snapshot', () => {
 			mkdirSync(join(taskDir, 'out'));
 			writeFileSync(
 				join(taskDir, 'in', TASK_INPUT_PATH),
-				// The process must outlive a rejection that the user code does not handle
-				JSON.stringify(newTaskInput('Promise.reject(new Error("x")); return [1]')),
+				// The process must outlive a throw and a rejection that the user code does not handle
+				JSON.stringify(
+					newTaskInput(
+						'setTimeout(() => { throw new Error("x") }); Promise.reject(new Error("y")); await new Promise((r) => setTimeout(r, 10)); return [1]',
+					),
+				),
 			);
 
 			// As the daemon does, give the process one end of a socket pair on FD 3

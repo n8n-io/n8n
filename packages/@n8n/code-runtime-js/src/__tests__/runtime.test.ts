@@ -5,7 +5,8 @@ import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { duplexPair } from 'node:stream';
 
-import { MAX_CONTROL_MESSAGE_BYTES, serveTasks } from '../runtime';
+import { MAX_CONTROL_MESSAGE_BYTES } from '../control-protocol';
+import { serveTasks } from '../runtime';
 import { newTaskInput } from './fixtures';
 
 let workDir: string;

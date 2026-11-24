@@ -13,47 +13,16 @@ import { Socket } from 'node:net';
 import { join } from 'node:path';
 import type { Duplex } from 'node:stream';
 
+import {
+	parseStartMessage,
+	serializeMessage,
+	type RuntimeMessage,
+	type StartMessage,
+} from './control-protocol';
 import { runTask, type TaskOutcome } from './run-task';
 import { createTaskConsole } from './task-console';
 
 const CONTROL_FD = 3;
-
-/** Max size of a control message, including its newline. The same as in the code daemon. */
-export const MAX_CONTROL_MESSAGE_BYTES = 512 * 1024;
-
-/**
- * Cut length of the error fields in a control message. JSON can escape one character
- * to 6 bytes, so two cut fields fit in the max size.
- */
-const MAX_CUT_ERROR_FIELD_LENGTH = 32 * 1024;
-
-/** The daemon tells the runtime to run the task that it wrote to `dir`. */
-interface StartMessage {
-	type: 'start';
-	taskId: string;
-	dir: string;
-}
-
-type RuntimeMessage =
-	| { type: 'ready' }
-	| { type: 'done'; taskId: string }
-	| { type: 'error'; taskId: string; error: CodeTaskUserError };
-
-function parseStartMessage(line: string): StartMessage | undefined {
-	let message: unknown;
-	try {
-		message = JSON.parse(line);
-	} catch {
-		return undefined;
-	}
-
-	return isRecord(message) &&
-		message.type === 'start' &&
-		typeof message.taskId === 'string' &&
-		typeof message.dir === 'string'
-		? { type: 'start', taskId: message.taskId, dir: message.dir }
-		: undefined;
-}
 
 /** A value from user code can throw on any access, so this never throws. */
 function errorMessage(error: unknown): string {
@@ -133,29 +102,6 @@ async function runTaskInDir(dir: string): Promise<CodeTaskUserError | undefined>
 	return error;
 }
 
-function cutText(text: string): string {
-	return text.length > MAX_CUT_ERROR_FIELD_LENGTH
-		? text.slice(0, MAX_CUT_ERROR_FIELD_LENGTH)
-		: text;
-}
-
-/** An error that is too large keeps only its main fields, cut to fit. */
-function serializeMessage(message: RuntimeMessage): string {
-	const line = `${JSON.stringify(message)}\n`;
-	if (message.type !== 'error' || Buffer.byteLength(line) <= MAX_CONTROL_MESSAGE_BYTES) return line;
-
-	// The result file keeps the full error. `isUserError` checked the types of these fields.
-	const { message: text, description, lineNumber, itemIndex } = message.error;
-	const error: CodeTaskUserError = {
-		message: cutText(text),
-		description: typeof description === 'string' ? cutText(description) : description,
-		lineNumber,
-		itemIndex,
-	};
-
-	return `${JSON.stringify({ ...message, error })}\n`;
-}
-
 /**
  * Each message is one line of JSON. Tasks run at the same time, and each task ends
  * with exactly one `done` or `error`.
@@ -197,8 +143,9 @@ export function startRuntime(): void {
 	control.once('close', () => process.exit(0));
 	control.once('error', () => process.exit(1));
 
-	// As in the task runner, an unhandled rejection in user code does not stop the process.
-	// The reason can hold user data, so the runtime does not log it.
+	// A stray throw or rejection in user code, e.g. in a timer, must not stop the process
+	// and the other tasks. The error can hold user data, so the runtime does not log it.
+	process.on('uncaughtException', () => {});
 	process.on('unhandledRejection', () => {});
 
 	serveTasks(control);
