@@ -4,6 +4,8 @@ import { isQuotaExhaustedError } from '../../stream/map-chunk';
 import type { WorkspaceFileTarget } from '../workspace-files';
 import { readWorkspaceFile, writeWorkspaceFile, writeWorkspaceFileMap } from '../workspace-files';
 
+type WriteFiles = NonNullable<NonNullable<WorkspaceFileTarget['filesystem']>['writeFiles']>;
+
 class TransientWriteError extends Error {
 	statusCode = 524;
 }
@@ -194,6 +196,55 @@ describe('workspace-files', () => {
 		expect(writes.get('/tmp/a.txt')).toBe('alpha');
 		expect(writes.get('/tmp/b.txt')).toBe('beta');
 		expect(writes.get('/tmp/c.txt')).toBe('gamma');
+	});
+
+	it('writes a batch in one request when the filesystem supports it', async () => {
+		const writeFile = vi.fn(async () => {});
+		const writeFiles = vi.fn<WriteFiles>(async () => {});
+		const target: WorkspaceFileTarget = { filesystem: { writeFile, writeFiles } };
+
+		await writeWorkspaceFileMap(
+			target,
+			new Map([
+				['/tmp/b.txt', 'beta'],
+				['/tmp/c.txt', 'gamma'],
+			]),
+		);
+
+		expect(writeFiles).toHaveBeenCalledTimes(1);
+		expect(writeFiles.mock.calls[0][0]).toEqual([
+			{ path: '/tmp/b.txt', content: 'beta' },
+			{ path: '/tmp/c.txt', content: 'gamma' },
+		]);
+		expect(writeFile).not.toHaveBeenCalled();
+	});
+
+	it('writes the files one by one when the batch fails', async () => {
+		const writeFile = vi.fn(async () => {});
+		const writeFiles = vi.fn<WriteFiles>(async () => await Promise.reject(new Error('not found')));
+		const target: WorkspaceFileTarget = { filesystem: { writeFile, writeFiles } };
+
+		await writeWorkspaceFileMap(
+			target,
+			new Map([
+				['/tmp/b.txt', 'beta'],
+				['/tmp/c.txt', 'gamma'],
+			]),
+		);
+
+		expect(writeFiles).toHaveBeenCalledTimes(1);
+		expect(writeFile).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not batch a single file', async () => {
+		const writeFile = vi.fn(async () => {});
+		const writeFiles = vi.fn<WriteFiles>(async () => {});
+		const target: WorkspaceFileTarget = { filesystem: { writeFile, writeFiles } };
+
+		await writeWorkspaceFileMap(target, new Map([['/tmp/b.txt', 'beta']]));
+
+		expect(writeFiles).not.toHaveBeenCalled();
+		expect(writeFile).toHaveBeenCalledTimes(1);
 	});
 
 	it('logs each read with its transport and result', async () => {
