@@ -247,10 +247,12 @@ export class EmailReadImapV2 implements INodeType {
 		if (node.typeVersion <= 2) {
 			// before v 2.1 staticData.lastMessageUid was never set, preserve that behavior
 			staticData.lastMessageUid = undefined;
+			staticData.pendingMessageUids = undefined;
 		}
 
 		if (options.trackLastMessageId === false) {
 			staticData.lastMessageUid = undefined;
+			staticData.pendingMessageUids = undefined;
 		}
 
 		this.logger.debug('Loaded static data for node "EmailReadImap"', { staticData });
