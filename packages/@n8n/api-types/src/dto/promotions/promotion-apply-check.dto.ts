@@ -258,6 +258,83 @@ export const promotionBindingConflictSchema = z.discriminatedUnion('code', [
 	}),
 ]);
 
+export const promotionMissingDependencyKindSchema = z.enum(['credential', 'variable', 'workflow']);
+
+/**
+ * Where a missing dependency stands for the user:
+ * - `needs-action`: Apply only. The user can resolve it on this instance.
+ * - `outside-access`: it is in a project that the user cannot access.
+ * - `other-project`: Promote only. It is in another project that the user can access. Promote does not include it.
+ * - `personal`: Promote only. It is in a personal project, which a promotion does not carry.
+ */
+export const promotionMissingDependencyGroupSchema = z.enum([
+	'needs-action',
+	'outside-access',
+	'other-project',
+	'personal',
+]);
+
+/** Promote reports `not-on-branch` and `personal-project`. Apply reports the other reasons. */
+export const promotionMissingDependencyReasonSchema = z.enum([
+	'not-on-branch',
+	'personal-project',
+	'not-on-instance',
+	'not-shared',
+	'type-mismatch',
+	'unknown-type',
+	'incompatible-usage-scope',
+	'archived',
+	'caller-policy',
+]);
+
+/**
+ * A credential, variable, sub-workflow or error workflow that a workflow of the operation uses,
+ * and that is not on the branch after a Promote, or not usable on this instance after an Apply.
+ * It never names the project or the owner of the dependency.
+ */
+export const promotionMissingDependencySchema = z
+	.object({
+		kind: promotionMissingDependencyKindSchema.openapi({
+			description: 'A sub-workflow and an error workflow are both `workflow`.',
+		}),
+		id: sourceId.optional().openapi({
+			description: 'The id that the workflows reference. A variable has no id.',
+		}),
+		name: z.string(),
+		credentialType: z.string().min(1).optional(),
+		group: promotionMissingDependencyGroupSchema.openapi({
+			description:
+				'`needs-action` (Apply): you can resolve it on this instance. ' +
+				'`outside-access`: it is in a project that you cannot access. ' +
+				'`other-project` (Promote): it is in another project that you can access, and this Promote does not include it. ' +
+				'`personal` (Promote): it is in a personal project, which a promotion does not carry.',
+		}),
+		reason: promotionMissingDependencyReasonSchema,
+		accessible: z.boolean().openapi({
+			description: 'Whether you can access the project that holds the dependency.',
+		}),
+		blocking: z.boolean().openapi({
+			description:
+				'Whether the operation stops on this dependency. When false, the operation continues without it.',
+		}),
+		consumers: consumersSchema,
+	})
+	.openapi('PromotionMissingDependency');
+
+/** A dependency that a workflow references and that does not exist on the source instance. */
+export const promotionDependencyWarningSchema = z
+	.object({
+		kind: promotionMissingDependencyKindSchema,
+		code: z.literal('missing-on-source'),
+		id: sourceId.optional(),
+		name: z.string(),
+		blocking: z.boolean().openapi({
+			description: 'Whether the operation stops on this reference.',
+		}),
+		consumers: consumersSchema,
+	})
+	.openapi('PromotionDependencyWarning');
+
 export const promotionBindingWarningSchema = z.object({
 	kind: z.literal('variable'),
 	code: z.literal('variable-shadowed'),
@@ -314,3 +391,10 @@ export type PromotionBindingConflict = z.infer<typeof promotionBindingConflictSc
 export type PromotionDataTableChange = z.infer<typeof promotionDataTableChangeSchema>;
 export type PromotionApplyCheck = z.infer<typeof promotionApplyCheckSchema>;
 export type PromotionPreviewCheck = z.infer<typeof promotionPreviewCheckSchema>;
+export type PromotionMissingDependencyKind = z.infer<typeof promotionMissingDependencyKindSchema>;
+export type PromotionMissingDependencyGroup = z.infer<typeof promotionMissingDependencyGroupSchema>;
+export type PromotionMissingDependencyReason = z.infer<
+	typeof promotionMissingDependencyReasonSchema
+>;
+export type PromotionMissingDependency = z.infer<typeof promotionMissingDependencySchema>;
+export type PromotionDependencyWarning = z.infer<typeof promotionDependencyWarningSchema>;

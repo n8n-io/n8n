@@ -1,4 +1,4 @@
-import type { PromotionPreview, PromotionResource } from '@n8n/api-types';
+import type { PromotionPreview, PromotionPromoteCheck, PromotionResource } from '@n8n/api-types';
 import { SharedWorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
@@ -11,6 +11,7 @@ import { projectHolding } from './branch-placement';
 import { PACKAGE_SUBFOLDER } from './constants';
 import { toInstanceProject, type InstanceProject } from './cross-project-moves';
 import { exportInstancePackage } from './instance-package';
+import { PromoteDependencyCheckService } from './promote-dependency-check.service';
 import { PromotionCredentialSelectionService } from './promotion-credential-selection.service';
 import {
 	blobsByPath,
@@ -19,6 +20,7 @@ import {
 	previewEnvironment,
 	previewRevision,
 	previewSource,
+	promoteCheckRevision,
 	scopeManifestToProject,
 } from './promotion-preview';
 import { PromotionReviewGateService } from './promotion-review-gate.service';
@@ -35,6 +37,7 @@ export class PromotePreviewService {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly reviewGate: PromotionReviewGateService,
 		private readonly credentialSelection: PromotionCredentialSelectionService,
+		private readonly dependencyCheck: PromoteDependencyCheckService,
 	) {}
 
 	/** `readBranch` is a callback, so a project with an open review skips the git and export work. */
@@ -106,6 +109,15 @@ export class PromotePreviewService {
 		const resources = promoteBase
 			? await this.markCrossProjectMoves(projectId, compared, promoteBase)
 			: compared;
+		// The lists cover the whole project. A client uses `consumers` to keep the entries of a selection.
+		const { missingDependencies, warnings } = await this.dependencyCheck.check({
+			user,
+			manifest: instance.manifest,
+			projectIds: [projectId],
+			branchManifest: promoteBase,
+			// A project Promote writes the reference and continues.
+			stopsOnWorkflowOutsideExport: false,
+		});
 		// The branch read resolves the environment again. Name the one it read.
 		const source = previewSource(branch.input);
 		const environment = previewEnvironment(branch.input);
@@ -116,8 +128,33 @@ export class PromotePreviewService {
 			environment,
 			resources,
 			dependencies,
-			revision: previewRevision({ source, createBranchOnPromotion, resources }),
+			missingDependencies,
+			warnings,
+			revision: previewRevision({
+				source,
+				createBranchOnPromotion,
+				resources,
+				missingDependencies,
+				warnings,
+			}),
 		};
+	}
+
+	/**
+	 * What an instance Promote of these projects leaves out. It does not read the branch, because
+	 * an instance Promote replaces the whole package.
+	 */
+	async buildInstanceCheck(user: User, projectIds: string[]): Promise<PromotionPromoteCheck> {
+		const { manifest } = await exportInstancePackage(this.packagesService, user, projectIds);
+		const check = await this.dependencyCheck.check({
+			user,
+			manifest,
+			projectIds,
+			branchManifest: null,
+			// The instance Promote exports with the `fail` dependency policy.
+			stopsOnWorkflowOutsideExport: true,
+		});
+		return { ...check, revision: promoteCheckRevision(check) };
 	}
 
 	/**

@@ -1,0 +1,86 @@
+type: object
+properties:
+  kind:
+    type: string
+    enum:
+      - credential
+      - variable
+      - workflow
+    description: A sub-workflow and an error workflow are both `workflow`.
+  id:
+    type: string
+    minLength: 1
+    description: The id that the workflows reference. A variable has no id.
+  name:
+    type: string
+  credentialType:
+    type: string
+    minLength: 1
+  group:
+    type: string
+    enum:
+      - needs-action
+      - outside-access
+      - other-project
+      - personal
+    description: '`needs-action` (Apply): you can resolve it on this instance. `outside-access`: it is in a project that you cannot access. `other-project` (Promote): it is in another project that you can access, and this Promote does not include it. `personal` (Promote): it is in a personal project, which a promotion does not carry.'
+  reason:
+    type: string
+    enum:
+      - not-on-branch
+      - personal-project
+      - not-on-instance
+      - not-shared
+      - type-mismatch
+      - unknown-type
+      - incompatible-usage-scope
+      - archived
+      - caller-policy
+  accessible:
+    type: boolean
+    description: Whether you can access the project that holds the dependency.
+  blocking:
+    type: boolean
+    description: Whether the operation stops on this dependency. When false, the operation continues without it.
+  consumers:
+    type: array
+    items:
+      type: object
+      properties:
+        project:
+          type: object
+          properties:
+            id:
+              type: string
+              minLength: 1
+            name:
+              type: string
+          required:
+            - id
+            - name
+        workflows:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                minLength: 1
+              name:
+                type: string
+            required:
+              - id
+              - name
+          minItems: 1
+      required:
+        - project
+        - workflows
+    minItems: 1
+required:
+  - kind
+  - name
+  - group
+  - reason
+  - accessible
+  - blocking
+  - consumers

@@ -1,0 +1,60 @@
+type: object
+properties:
+  kind:
+    type: string
+    enum:
+      - credential
+      - variable
+      - workflow
+  code:
+    type: string
+    enum:
+      - missing-on-source
+  id:
+    type: string
+    minLength: 1
+  name:
+    type: string
+  blocking:
+    type: boolean
+    description: Whether the operation stops on this reference.
+  consumers:
+    type: array
+    items:
+      type: object
+      properties:
+        project:
+          type: object
+          properties:
+            id:
+              type: string
+              minLength: 1
+            name:
+              type: string
+          required:
+            - id
+            - name
+        workflows:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                minLength: 1
+              name:
+                type: string
+            required:
+              - id
+              - name
+          minItems: 1
+      required:
+        - project
+        - workflows
+    minItems: 1
+required:
+  - kind
+  - code
+  - name
+  - blocking
+  - consumers
