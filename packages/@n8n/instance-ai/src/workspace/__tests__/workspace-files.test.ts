@@ -1,3 +1,4 @@
+import { createAbortError } from '@n8n/agents';
 import { OperationalError } from '@n8n/errors';
 
 import { isQuotaExhaustedError } from '../../stream/map-chunk';
@@ -242,6 +243,28 @@ describe('workspace-files', () => {
 				{ path: '/tmp/c.txt', content: 'gamma' },
 			]),
 		);
+	});
+
+	it('passes the abort signal to the batch and does not fall back when it aborts', async () => {
+		const writeFile = vi.fn<WriteFile>(async () => {});
+		const abortError = createAbortError();
+		const writeFiles = vi.fn<WriteFiles>(async () => await Promise.reject(abortError));
+		const target: WorkspaceFileTarget = { filesystem: { writeFile, writeFiles } };
+		const abortSignal = new AbortController().signal;
+
+		await expect(
+			writeWorkspaceFileMap(
+				target,
+				new Map([
+					['/tmp/b.txt', 'beta'],
+					['/tmp/c.txt', 'gamma'],
+				]),
+				{ logger: createLogger(), abortSignal },
+			),
+		).rejects.toBe(abortError);
+
+		expect(writeFiles.mock.calls[0][1]).toEqual({ abortSignal });
+		expect(writeFile).not.toHaveBeenCalled();
 	});
 
 	it('does not batch a single file', async () => {
