@@ -3,9 +3,9 @@ import { N8nBadge, N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref, useId } from 'vue';
 
-import type { AgentAssistantTestRunCall } from '../assistantTestRun.types';
-import AgentToolCallRouteRow from './AgentToolCallRouteRow.vue';
-import WouldHaveHappenedPreview from './testRun/WouldHaveHappenedPreview.vue';
+import type { AgentAssistantTestRunCall } from '@/features/agents/assistantTestRun.types';
+import AgentToolCallRouteList from '@/features/agents/components/AgentToolCallRouteList.vue';
+import WouldHaveHappenedPreview from '@/features/agents/components/testRun/WouldHaveHappenedPreview.vue';
 
 /** Presentational only. The caller must confirm that this is a simulated test run. */
 const props = defineProps<{
@@ -34,10 +34,10 @@ function showsPreview(call: AgentAssistantTestRunCall): call is AgentAssistantTe
 	preview: NonNullable<AgentAssistantTestRunCall['preview']>;
 } {
 	const route = call.simulation?.route;
+	// Also false for `preview: null`, which JSON payloads often carry.
 	return (
-		call.preview !== undefined &&
 		(route === 'simulated' || route === 'simulated_made_up') &&
-		call.preview.toolName === call.toolName
+		call.preview?.toolName === call.toolName
 	);
 }
 
@@ -65,6 +65,7 @@ const openableTestChatId = computed(() => props.testChatId?.trim() ?? '');
 				size="small"
 				:aria-expanded="expanded"
 				:aria-controls="detailsId"
+				data-test-id="agent-assistant-test-run-toggle"
 				@click="expanded = !expanded"
 			>
 				<N8nIcon :icon="expanded ? 'chevron-down' : 'chevron-right'" size="small" />
@@ -74,6 +75,8 @@ const openableTestChatId = computed(() => props.testChatId?.trim() ?? '');
 				v-if="openableTestChatId"
 				variant="ghost"
 				size="small"
+				data-test-id="agent-assistant-test-run-open-chat"
+				data-attr="agent-assistant-test-run-open-chat"
 				@click="emit('openTestChat', openableTestChatId)"
 			>
 				{{ i18n.baseText('agents.assistantTestRun.openChat') }}
@@ -83,17 +86,11 @@ const openableTestChatId = computed(() => props.testChatId?.trim() ?? '');
 			<N8nText v-if="calls.length === 0" size="small" color="text-light">
 				{{ i18n.baseText('agents.assistantTestRun.noCalls') }}
 			</N8nText>
-			<ul v-else :class="$style.calls" data-test-id="agent-assistant-test-run-calls">
-				<li
-					v-for="call in calls"
-					:key="call.toolCallId"
-					:class="$style.call"
-					:data-tool-call-id="call.toolCallId"
-				>
-					<AgentToolCallRouteRow :call="call" />
+			<AgentToolCallRouteList v-else :calls="calls">
+				<template #after="{ call }">
 					<WouldHaveHappenedPreview v-if="showsPreview(call)" :preview="call.preview" />
-				</li>
-			</ul>
+				</template>
+			</AgentToolCallRouteList>
 		</div>
 	</section>
 </template>
@@ -132,22 +129,5 @@ const openableTestChatId = computed(() => props.testChatId?.trim() ?? '');
 	flex-direction: column;
 	gap: var(--spacing--xs);
 	margin-top: var(--spacing--xs);
-}
-
-.calls {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--xs);
-	margin: 0;
-	padding: 0;
-	list-style: none;
-	min-width: 0;
-}
-
-.call {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--3xs);
-	min-width: 0;
 }
 </style>
