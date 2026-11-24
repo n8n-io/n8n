@@ -17,7 +17,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError, requestUrl } from 'n8n-workflow';
 
-import { N8N_CLIENT_HEADER, N8N_CLIENT_N8N_NODE } from './constants';
+import { N8N_CLIENT_HEADER, N8N_CLIENT_N8N_NODE } from '@n8n/constants';
 
 /**
  * A custom API request function to be used with the resourceLocator lookup queries.
