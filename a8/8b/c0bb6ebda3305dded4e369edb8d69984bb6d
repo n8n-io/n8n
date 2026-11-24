@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/src/app/App.vue
+  s_1b279b1934f6ba::t_b40ba4c63c76a3 30,42-46
+  s_1b279b1934f6ba::t_94be0752b4cb4e 47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a88bc0bb6ebda3305dded4e369edb8d69984bb6d",
+  "prompts": {},
+  "sessions": {
+    "s_1b279b1934f6ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d587a90-f43c-4aaf-90cd-8f1f40ac1be8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

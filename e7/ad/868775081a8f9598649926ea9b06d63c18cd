@@ -1,0 +1,35 @@
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_4e8100d4ba14d2::t_623a9af66c51c3 965-968
+packages/cli/src/modules/agents/json-config/__tests__/mcp-client-factory.test.ts
+  s_4e8100d4ba14d2::t_2579a7b221a428 825-903
+packages/cli/src/modules/agents/json-config/mcp-client-factory.ts
+  s_4e8100d4ba14d2::t_aa900a75f54b17 105-110,141,144-156,250-265,267
+packages/cli/src/modules/agents/simulation/__tests__/node-n8n-state-helpers.test.ts
+  s_4e8100d4ba14d2::t_36b5c159d717dc 1-81
+packages/cli/src/modules/agents/simulation/__tests__/non-http-node-types.test.ts
+  s_4e8100d4ba14d2::t_067573e7dc0907 28-30,56-72
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session.test.ts
+  s_4e8100d4ba14d2::t_6cef34495cbf8e 597-698
+packages/cli/src/modules/agents/simulation/non-http-node-types.ts
+  s_4e8100d4ba14d2::t_b1c823ee0f8481 27-35,53-56,82-87
+packages/cli/src/modules/agents/simulation/simulation-session.ts
+  s_4e8100d4ba14d2::t_d1784b5c2b500c 72-87,176-184,197,215,219,224,228,270-271,276,283-290,323-324,348,351-352,356,395-412
+packages/cli/src/modules/agents/simulation/tool-simulation.contracts.ts
+  s_4e8100d4ba14d2::t_aebc1e20fa5ae8 65-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e7ad868775081a8f9598649926ea9b06d63c18cd",
+  "prompts": {},
+  "sessions": {
+    "s_4e8100d4ba14d2": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20889-233d-7672-8300-b96f5d9f857d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
