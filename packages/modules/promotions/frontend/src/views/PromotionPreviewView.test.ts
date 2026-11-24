@@ -530,7 +530,7 @@ describe('PromotionPreviewView', () => {
 			heading: "Couldn't load the changes",
 		},
 	] as const)(
-		'should show ? for the unknown count and retry when $name fails to load for $direction',
+		'should hide unknown counts and retry when $name fails to load for $direction',
 		async ({ direction, fail, heading }) => {
 			fail();
 			const { getByTestId, getByRole } = await render(
@@ -541,8 +541,7 @@ describe('PromotionPreviewView', () => {
 			const tabs = getByTestId('promotion-preview-tabs');
 			const submit = getByTestId('promotion-preview-submit');
 			expect(getByTestId('promotion-preview-error')).toHaveTextContent(heading);
-			expect(tabs).toHaveTextContent(/^Changes\s*\?$/);
-			expect(tabs).not.toHaveTextContent(/Changes\s*0/);
+			expect(tabs).toHaveTextContent(/^Changes$/);
 			expect(submit).toHaveTextContent(new RegExp(`^${action} changes$`));
 			expect(submit).toBeDisabled();
 
@@ -551,6 +550,19 @@ describe('PromotionPreviewView', () => {
 			expect(getByTestId('promotion-preview-tree')).toBeInTheDocument();
 			expect(tabs).toHaveTextContent(/Changes\s*5/);
 			expect(submit).toHaveTextContent(`${action} 5 changes`);
+		},
+	);
+
+	it.each(['promote', 'apply'] as const)(
+		'puts Refresh and the submit button in the title row for %s',
+		async (direction) => {
+			const { getByTestId } = await render(`/projects/p1/promotions/${direction}`, direction);
+
+			const titleRow = within(getByTestId('promotion-preview-title-row'));
+			expect(titleRow.getByRole('heading', { level: 1 })).toBeInTheDocument();
+			expect(titleRow.getByTestId('promotion-preview-refresh')).toBeInTheDocument();
+			expect(titleRow.getByTestId('promotion-preview-submit')).toBeInTheDocument();
+			expect(within(getByTestId('promotion-preview-tabs')).queryByRole('button')).toBeNull();
 		},
 	);
 
@@ -630,8 +642,7 @@ describe('PromotionPreviewView', () => {
 
 		// "Nothing to promote" could be out of date, so the page asks for a retry.
 		expect(getByTestId('promotion-preview-error')).toHaveTextContent("Couldn't load the changes");
-		// The count is unknown, so the tab shows ? and not 0.
-		expect(getByTestId('promotion-preview-tabs')).toHaveTextContent(/^Changes\s*\?$/);
+		expect(getByTestId('promotion-preview-tabs')).toHaveTextContent(/^Changes$/);
 	});
 
 	it('should promote the selection to a branch that has no commit yet, then go back to the project', async () => {
