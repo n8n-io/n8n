@@ -112,7 +112,10 @@ function wholeItemsFrom(
 	return whole;
 }
 
-/** The fields in `names` that go across whole, each in at most `childChars` characters. */
+/**
+ * The fields in `names` that go across whole, each in at most `childChars` characters.
+ * A field that is there but does not go across counts as `childChars`.
+ */
 function namedFieldsOf(
 	item: Record<string, unknown>,
 	names: string[],
@@ -121,10 +124,14 @@ function namedFieldsOf(
 	const fields: Record<string, unknown> = {};
 	let chars = PARTIAL_ITEM_CHARS;
 	for (const name of names) {
-		const field = TRANSFER_FRAMING_KEYS.includes(name)
-			? undefined
-			: wholeChild(item, name, childChars);
-		if (field !== undefined) {
+		if (TRANSFER_FRAMING_KEYS.includes(name) || !isDataKey(item, name)) {
+			continue;
+		}
+		const field = smallJsonCopy(item[name], childChars);
+		if (field === undefined) {
+			// The size check of a large field can cost more than its limit, for example to list many keys.
+			chars += childChars;
+		} else {
 			chars += name.length + field.chars;
 			defineOwnValue(fields, name, field.copy);
 		}

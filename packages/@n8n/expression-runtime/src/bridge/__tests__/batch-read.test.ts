@@ -220,6 +220,15 @@ describe('readBatchAtPath on an array, for a request of named fields', () => {
 		expect(readItems(items, 0, 9, [name])).toEqual(whole(items.slice(0, 3)));
 	});
 
+	it('counts a field over the small size as the small size, and a missing field as nothing', () => {
+		const items = Array.from({ length: 200 }, () => ({ meta: { text: 'x'.repeat(200) } }));
+
+		// Each item takes 108 characters of the read limit of 1000.
+		expect(readItems(items, 0, 9, ['meta', 'nope'])).toEqual(
+			whole(Array.from({ length: 9 }, () => ({}))),
+		);
+	});
+
 	it.each([
 		{ label: 'a primitive', item: 5, lazy: 5 },
 		{ label: 'an array', item: [1], lazy: { __isArray: true, __length: 1, __data: null } },
