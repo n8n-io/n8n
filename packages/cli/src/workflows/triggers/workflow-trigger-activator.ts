@@ -1075,7 +1075,7 @@ export class WorkflowTriggerActivator {
 			}
 		} else {
 			this.logger.info(
-				`Ignored a runtime error from a replaced connection of trigger node "${node.name}"`,
+				`Ignored a runtime error of trigger node "${node.name}" from a connection that is not the current one`,
 				{ workflowId, nodeId: node.id, nodeName: node.name, error },
 			);
 		}

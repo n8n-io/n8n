@@ -1425,7 +1425,7 @@ describe('WorkflowTriggerActivator', () => {
 			await flushPromises();
 
 			expect(logger.info).toHaveBeenCalledWith(
-				'Ignored a runtime error from a replaced connection of trigger node "t"',
+				'Ignored a runtime error of trigger node "t" from a connection that is not the current one',
 				expect.objectContaining({ workflowId: 'wf-1', nodeId: 't' }),
 			);
 			expect(errorReporter.warn).not.toHaveBeenCalled();
