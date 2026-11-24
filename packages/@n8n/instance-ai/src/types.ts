@@ -52,6 +52,8 @@ import type {
 	McpToolCallRequest,
 	McpToolCallResult,
 	WorkflowReviewBlockedDetails,
+	InstanceAiAgentFeedbackCategory,
+	InstanceAiAgentFeedbackSeverity,
 } from '@n8n/api-types';
 import type { NodeJSON, OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
 import type {
@@ -98,6 +100,7 @@ import type {
 	WorkflowVerificationEvidence,
 	WorkflowTriggerVerificationProgress,
 } from './workflow-loop/workflow-loop-state';
+import type { WorkflowDraftPublisher } from './tools/workflows/workflow-draft-publisher';
 
 // ── Data shapes ──────────────────────────────────────────────────────────────
 
@@ -1257,6 +1260,21 @@ export interface InstanceAiPreferenceService {
 	): void;
 }
 
+/** One report from the `send_feedback` tool. */
+export interface InstanceAiAgentFeedback {
+	category: InstanceAiAgentFeedbackCategory;
+	severity: InstanceAiAgentFeedbackSeverity;
+	summary: string;
+	toolName?: string;
+	threadId?: string;
+	runId?: string;
+}
+
+export interface InstanceAiAgentFeedbackService {
+	/** Records the report for the n8n team. Nothing replies to it. */
+	send(feedback: InstanceAiAgentFeedback): void;
+}
+
 export interface InstanceAiSkillService {
 	assistantSkillsEnabled: boolean;
 	sources?: {
@@ -1865,6 +1883,8 @@ export interface InstanceAiContext {
 	/** Present only when saved preferences are enabled for this user; its
 	 *  absence hides the `save_user_preference` tool. */
 	aiPreferenceService?: InstanceAiPreferenceService;
+	/** Present when the host can record agent feedback; its absence hides `send_feedback`. */
+	agentFeedbackService?: InstanceAiAgentFeedbackService;
 	skillService?: InstanceAiSkillService;
 	appService?: InstanceAiAppService;
 	/** Per-run inventory behind `mcp-servers`' `connected` action. Captured when the
@@ -1959,6 +1979,8 @@ export interface InstanceAiContext {
 	 * paths stay in effect.
 	 */
 	setupItemsEmitter?: SetupItemsEmitter;
+	/** Shows each compiled workflow on the canvas before the build saves it. Present only while the draft preview gate is on. */
+	workflowDraftPublisher?: WorkflowDraftPublisher;
 	/**
 	 * Setup panel v2: the setup tool announced a workflow's final checklist
 	 * instead of suspending, so the host must treat that build's setup as

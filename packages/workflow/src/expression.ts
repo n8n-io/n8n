@@ -43,6 +43,15 @@ const isExpressionError = (error: unknown): error is ExpressionError =>
 
 export type { NativeVerifyMismatch } from './expressions/native-evaluation/verify';
 
+const JSON_STRING_OR_SEPARATOR = /"(?:[^"\\]|\\.)*"|:|,(?=")/g;
+
+/**
+ * Adds a space after each key colon and before each string or key that follows a comma.
+ * The contents of string values and keys stay unchanged.
+ */
+const addReadableJsonSpacing = (json: string): string =>
+	json.replace(JSON_STRING_OR_SEPARATOR, (token) => (token.startsWith('"') ? token : `${token} `));
+
 const isTypeError = (error: unknown): error is TypeError =>
 	error instanceof TypeError || (error instanceof Error && error.name === 'TypeError');
 
@@ -858,12 +867,8 @@ export class Expression {
 		} else if (DateTime.isDateTime(value)) {
 			result = value.toString();
 		} else {
-			result = JSON.stringify(value);
+			result = addReadableJsonSpacing(JSON.stringify(value));
 		}
-
-		result = result
-			.replace(/,"/g, ', "') // spacing for
-			.replace(/":/g, '": '); // readability
 
 		return `[${typeName}: ${result}]`;
 	}
