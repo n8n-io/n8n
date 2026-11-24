@@ -1,0 +1,150 @@
+packages/cli/src/public-api/v1/shared/spec/schemas/importResultDto.generated.yml
+  ai_agent 124-149,153-168
+packages/@n8n/backend-services/src/services/ai-preference.md
+  s_1b3760c92ccdfb::t_229875a23d7550 229-244
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_1b3760c92ccdfb::t_229875a23d7550 16-17,105-115,118-123,195-197,253-258,260-262
+packages/@n8n/cli/src/commands/package/import-selection.ts
+  s_1b3760c92ccdfb::t_229875a23d7550 21-39,97,100-101
+packages/@n8n/backend-services/src/index.ts
+  s_1b3760c92ccdfb::t_229875a23d7550 211-215
+packages/@n8n/backend-services/src/services/__tests__/ai-preference.service.test.ts
+  s_1b3760c92ccdfb::t_229875a23d7550 26,66,893,913,923,940
+packages/cli/src/modules/n8n-packages/engine/import-blocked.error.ts
+  s_1b3760c92ccdfb::t_229875a23d7550 15
+packages/@n8n/backend-services/src/services/ai-preference.service.ts
+  s_1b3760c92ccdfb::t_5d0e56d6154f70 1103
+  s_1b3760c92ccdfb::t_229875a23d7550 12-16,24-26,129,240,245,297,302,304,343,358-366,385-393,404-609,684,1098-1102
+packages/cli/src/modules/n8n-packages/spec/manifest.schema.ts
+  s_1b3760c92ccdfb::t_229875a23d7550 5,50-66,68-73,75-84
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_1b3760c92ccdfb::t_229875a23d7550 9,23,79,89,144,178-186,406-411,414-415,439-440,755,857
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_1b3760c92ccdfb::t_229875a23d7550 52-93
+packages/cli/src/modules/n8n-packages/spec/constants.ts
+  s_1b3760c92ccdfb::t_229875a23d7550 2
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_1b3760c92ccdfb::t_229875a23d7550 8-9,122-155,308
+packages/cli/src/public-api/v1/controllers/openapi/n8n-packages.openapi.ts
+  s_1b3760c92ccdfb::t_229875a23d7550 4,26-30,46,88-93
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/exportPackage.generated.yml
+  ai_agent 4,31-34,44-54
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackage.generated.yml
+  ai_agent 8,20-21,24-25,35-44
+packages/@n8n/cli/src/__tests__/package-import.test.ts
+  s_1b3760c92ccdfb::t_7cbaa6ef1e523f 201-203,207,215-216
+  s_1b3760c92ccdfb::t_229875a23d7550 100-101
+  s_1b3760c92ccdfb::t_cf568e2ae84ae6 204-206,208-214
+packages/@n8n/cli/README.md
+  s_1b3760c92ccdfb::t_229875a23d7550 141-152
+packages/@n8n/api-types/src/dto/packages/export-package-request.openapi.ts
+  s_1b3760c92ccdfb::t_229875a23d7550 4-11
+packages/@n8n/api-types/src/dto/packages/preference.schema.ts
+  s_1b3760c92ccdfb::t_c07ae32233d2cf 1-14
+packages/cli/src/modules/n8n-packages/entities/preference/preference.importer.ts
+  s_1b3760c92ccdfb::t_b78f0ab24d8f2c 1-3,5-6,8-34,36-63,65-69,83-86,88-92,94-99,102-107,109-112,114-139,141-146,148-162
+  s_1b3760c92ccdfb::t_81b433e6c32399 7,70-78,80-82
+  s_1b3760c92ccdfb::t_5d0e56d6154f70 4,35,64,79,87,93,100-101,108,113,140,147
+packages/cli/src/modules/n8n-packages/entities/preference/__tests__/preference.serializer.test.ts
+  s_1b3760c92ccdfb::t_c07ae32233d2cf 1-51
+packages/cli/src/modules/promotions.ee/base-branch-files.ts
+  s_1b3760c92ccdfb::t_229875a23d7550 16
+packages/@n8n/cli/src/client.ts
+  s_1b3760c92ccdfb::t_229875a23d7550 44,800-802,844-845,862,872-875
+packages/@n8n/api-types/src/dto/packages/__tests__/preference.schema.test.ts
+  s_1b3760c92ccdfb::t_c07ae32233d2cf 1-17,20-41
+  s_1b3760c92ccdfb::t_5d0e56d6154f70 18-19
+packages/cli/src/modules/n8n-packages/spec/__tests__/manifest.schema.test.ts
+  s_1b3760c92ccdfb::t_229875a23d7550 238-284
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_1b3760c92ccdfb::t_229875a23d7550 10-13,73,87,177-184,214-221,233-234,320-323,325
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-gates.test.ts
+  s_1b3760c92ccdfb::t_229875a23d7550 28-33,42-45,55-56
+  s_1b3760c92ccdfb::t_cf568e2ae84ae6 34-41,46-54
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_1b3760c92ccdfb::t_229875a23d7550 264-267,269-271,308-309,340-341,362,576,697,905-909,913,916-919
+  s_1b3760c92ccdfb::t_ef3903b81e6bd3 910-911
+packages/@n8n/api-types/src/dto/index.ts
+  s_1b3760c92ccdfb::t_229875a23d7550 602
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-selection-request.dto.test.ts
+  s_1b3760c92ccdfb::t_229875a23d7550 188-190,200-218
+packages/@n8n/cli/src/__tests__/package-import-selection.test.ts
+  s_1b3760c92ccdfb::t_7cbaa6ef1e523f 139-142,147-148,157-158
+  s_1b3760c92ccdfb::t_229875a23d7550 69-71,91-93
+  s_1b3760c92ccdfb::t_cf568e2ae84ae6 143-146,149-156
+packages/cli/src/modules/n8n-packages/engine/import-gates.ts
+  s_1b3760c92ccdfb::t_229875a23d7550 22-40,43-46
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_1b3760c92ccdfb::t_229875a23d7550 20-22,26,52,64-72,173,196-199,201
+packages/@n8n/api-types/src/dto/packages/export-package-request.dto.ts
+  s_1b3760c92ccdfb::t_229875a23d7550 9-18
+packages/@n8n/cli/src/__tests__/package-export.test.ts
+  s_1b3760c92ccdfb::t_7cbaa6ef1e523f 67-78,86,90-92
+  s_1b3760c92ccdfb::t_cf568e2ae84ae6 79-85,88-89
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.schema.ts
+  s_1b3760c92ccdfb::t_229875a23d7550 425-428
+  s_1b3760c92ccdfb::t_9948de33ee8833 424
+packages/@n8n/db/src/repositories/ai-preference.repository.ts
+  s_1b3760c92ccdfb::t_229875a23d7550 118-132
+packages/cli/src/modules/n8n-packages/io/manifest-entry.ts
+  s_1b3760c92ccdfb::t_229875a23d7550 29,52
+packages/@n8n/api-types/src/dto/packages/import-result.dto.ts
+  s_1b3760c92ccdfb::t_229875a23d7550 327-336,338-345
+packages/cli/src/modules/n8n-packages/entities/preference/preference.serializer.ts
+  s_1b3760c92ccdfb::t_c07ae32233d2cf 1-25
+packages/cli/src/modules/n8n-packages/entities/preference/preference.exporter.ts
+  s_1b3760c92ccdfb::t_5d0e56d6154f70 4,26,33,35-36,43,54,65-68,75-76
+  s_1b3760c92ccdfb::t_ef3903b81e6bd3 1-3,5-25,27-32,34,37-42,44-53,55-64,69-74,77-81
+packages/cli/test/integration/public-api/n8n-packages-preferences.test.ts
+  s_1b3760c92ccdfb::t_5d0e56d6154f70 34-35,39,49,62-63,67-68,73,78,81,87,93,102,104,109-110,116,122,128-129
+  s_1b3760c92ccdfb::t_3eb6056490f675 1-33,36-38,40-48,50-61,64-66,69-72,74-77,79-80,82-86,88-92,94-101,103,105-108,111-115,117-121,123-127,130-135
+packages/@n8n/cli/src/commands/package/import.ts
+  s_1b3760c92ccdfb::t_229875a23d7550 22-34,181-182
+packages/cli/src/public-api/v1/controllers/n8n-packages.public.controller.ts
+  s_1b3760c92ccdfb::t_229875a23d7550 110-119,165-173,201-202,220-221,235-237,265,267,286-289
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_1b3760c92ccdfb::t_5d0e56d6154f70 317
+  s_1b3760c92ccdfb::t_229875a23d7550 10,79,96-109,297-316
+packages/@n8n/backend-services/src/services/ai-preference-changes.ts
+  s_1b3760c92ccdfb::t_c610f41d49dfa1 1-20
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackageSelection.generated.yml
+  ai_agent 14-15,25-34,39-41
+packages/cli/src/public-api/v1/shared/spec/schemas/importBlockingIssue.generated.yml
+  ai_agent 7-14
+packages/cli/src/modules/n8n-packages/engine/__tests__/n8n-package-parser.preference.test.ts
+  s_1b3760c92ccdfb::t_4f560223ab8865 11-16,19-23,25-31,39-43,53-59,63-71,75-81
+  s_1b3760c92ccdfb::t_65fab18ca1232b 1-10,17-18,24,32-38,44-52,60-62,72-74,82-83
+packages/cli/src/modules/n8n-packages/__tests__/preferences.integration.test.ts
+  s_1b3760c92ccdfb::t_3706d70e30f798 241-244
+  s_1b3760c92ccdfb::t_81b433e6c32399 369-370,372,378,380-381,383-390,392-395,397-401
+  s_1b3760c92ccdfb::t_7cbaa6ef1e523f 371,379,382
+  s_1b3760c92ccdfb::t_f5f93332e831e1 373-377
+  s_1b3760c92ccdfb::t_5d0e56d6154f70 1-235,240,245-334,338-368,391,396
+  s_1b3760c92ccdfb::t_3a7be14d959dfc 236-239
+  s_1b3760c92ccdfb::t_cf568e2ae84ae6 335-337
+packages/@n8n/cli/src/commands/package/export.ts
+  s_1b3760c92ccdfb::t_229875a23d7550 16,46-55,143,145,157-160,172-175
+packages/@n8n/cli/docs/commands/package.md
+  s_1b3760c92ccdfb::t_7cbaa6ef1e523f 273
+  s_1b3760c92ccdfb::t_229875a23d7550 286-333,336-354
+packages/@n8n/api-types/src/dto/packages/import-package-request.openapi.ts
+  s_1b3760c92ccdfb::t_229875a23d7550 4-11,270-273
+packages/cli/src/modules/n8n-packages/__tests__/blocking-issue-schema-contract.test.ts
+  s_1b3760c92ccdfb::t_229875a23d7550 8-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0238fe13383acfe993fe856be38f1c343bd227d8",
+  "prompts": {},
+  "sessions": {
+    "s_1b3760c92ccdfb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a20df9-cb98-7aa1-a82b-883694996695",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
