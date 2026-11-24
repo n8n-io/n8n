@@ -1,0 +1,40 @@
+packages/cli/src/modules/n8n-packages/engine/import-gates.ts
+  s_c51b71bedc600f::t_864bf6d9f99de2 162,165
+packages/cli/src/modules/n8n-packages/entities/credential/credential-importer.ts
+  s_c51b71bedc600f::t_864bf6d9f99de2 1,102-107,115,123-124,144-148,151-165,170-189,191,193-205,329-330,337-347,376-377,494-497,499-502,504-512,515-516,518-519,521,630-639
+packages/cli/src/modules/n8n-packages/entities/credential/credential.types.ts
+  s_c51b71bedc600f::t_864bf6d9f99de2 101-112,114-117,120-121,123-124,126,129,142
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-importer.test.ts
+  ai_agent 1262-1264
+  s_c51b71bedc600f::t_456c81b9a9dac4 1151-1154,1156,1158,1164,1169-1170,1173,1176-1183,1186-1195,1202,1209,1216-1251,1258,1261,1265-1266,1268,1270-1271,1276-1282,1305,1309,1333,1339,1343
+  s_c51b71bedc600f::t_e208694137fb76 96,758,1196,1293,1327
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-gates.test.ts
+  s_c51b71bedc600f::t_e208694137fb76 110,148
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_c51b71bedc600f::t_db0344655f6f2d 3251-3286
+packages/cli/src/modules/n8n-packages/__tests__/import-package-selection.integration.test.ts
+  ai_agent 961-965
+  s_c51b71bedc600f::t_98b3b0c63f87dc 830-837,846,848,910-960,966
+packages/cli/src/modules/promotions.ee/__tests__/apply-preview.credentials.test.ts
+  s_c51b71bedc600f::t_e208694137fb76 36
+packages/cli/src/modules/promotions.ee/apply-preview.ts
+  ai_agent 77,80
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_c51b71bedc600f::t_864bf6d9f99de2 352,356-357
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b92c7c36128a8f63a9e54f672c0a9f16ad6f7d1f",
+  "prompts": {},
+  "sessions": {
+    "s_c51b71bedc600f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2399fe73-cf74-480a-bdbb-a1eca36c6f59",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
