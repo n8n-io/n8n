@@ -1312,4 +1312,15 @@ describe('carryOverNodeParameters', () => {
 			expect(result.parameters).toEqual({});
 		});
 	});
+
+	describe('saved key with the name of an inherited property', () => {
+		it('should set aside the key as one entry', () => {
+			const description = desc(1, [{ displayName: 'S', name: 's', type: 'string', default: '' }]);
+			const parameters: INodeParameters = JSON.parse('{"s":"x","__proto__":{}}');
+			const result = carry(node(1, parameters), description, description, 1);
+
+			expect(result.parameters).toEqual({ s: 'x' });
+			expect(result.setAside).toEqual([{ name: '__proto__', displayName: '__proto__', value: {} }]);
+		});
+	});
 });
