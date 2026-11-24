@@ -22,6 +22,7 @@ import { LicenseMocker } from '@test-integration/license';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { AgentAccountStatusService } from '@/modules/agents/agent-account-status.service';
+import { onBehalfOfParent } from '@/modules/agents/agent-run-security';
 import {
 	AgentDisabledError,
 	AgentRuntimeIdentityService,
@@ -38,6 +39,7 @@ import { ServiceAccountProjects } from '@/services/service-account-projects';
 import { License } from '@/license';
 import { ProjectAgentAccessService } from '@/services/project-agent-access.service';
 import { ProjectService } from '@/services/project.service.ee';
+import { RuntimeAccessService } from '@/services/runtime-access.service';
 import { Telemetry } from '@/telemetry';
 import { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
 
@@ -171,10 +173,14 @@ describe('Agent runtime identity', () => {
 			const project = await createTeamProject();
 			const agent = await createAgentIn(project.id);
 
-			expect(await runtimeIdentity.resolveWorkflowToolAccountId(agent)).toBe(agent.identityId);
+			const security = await runtimeIdentity.resolveWorkflowToolSecurity(agent);
+			expect(security).toMatchObject({
+				subject: { id: agent.identityId },
+				authMethod: 'agent-run',
+			});
 
 			await Container.get(AgentServiceAccountService).setDisabled(agent, true);
-			expect(await runtimeIdentity.resolveWorkflowToolAccountId(agent)).toBeUndefined();
+			expect(await runtimeIdentity.resolveWorkflowToolSecurity(agent)).toBeUndefined();
 		});
 
 		it('refuses a disabled agent', async () => {
@@ -449,6 +455,51 @@ describe('Agent runtime identity', () => {
 			const agent = await createAgentIn(home.id);
 
 			expect(await runtimeIdentity.toolProjectIds(agent)).toEqual([home.id]);
+		});
+	});
+	describe('runtime access by identity', () => {
+		it('decides workflows and data tables by what the agent account can use', async () => {
+			const owner = await createOwner();
+			const home = await createTeamProject();
+			const sales = await createTeamProject();
+			const agent = await createAgentIn(home.id);
+			const identity = await runtimeIdentity.resolveRunIdentity(agent);
+			if (!identity) throw new Error('Expected a run identity');
+			const { security } = identity;
+			const homeWorkflow = await createWorkflow({ name: 'Home tool' }, home);
+			const salesWorkflow = await createWorkflow({ name: 'Sales tool' }, sales);
+			const access = Container.get(RuntimeAccessService);
+			const homeTable = { type: 'dataTable', projectId: home.id, access: 'write' } as const;
+			const salesTable = { type: 'dataTable', projectId: sales.id, access: 'write' } as const;
+
+			expect(await access.canUse(security, { type: 'workflow', id: homeWorkflow.id })).toBe(true);
+			expect(await access.canUse(security, homeTable)).toBe(true);
+			expect(await access.canUse(security, { type: 'workflow', id: salesWorkflow.id })).toBe(false);
+			expect(await access.canUse(security, salesTable)).toBe(false);
+
+			await Container.get(ProjectAgentAccessService).add(owner, sales.id, agent.identityId);
+
+			expect(await access.canUse(security, { type: 'workflow', id: salesWorkflow.id })).toBe(true);
+			expect(await access.canUse(security, salesTable)).toBe(true);
+		});
+
+		it('lets a sub-agent use the access of its parent', async () => {
+			const home = await createTeamProject();
+			const parent = await createAgentIn(home.id, 'Parent');
+			const other = await createTeamProject();
+			const child = await createAgentIn(other.id, 'Child');
+			const parentIdentity = await runtimeIdentity.resolveRunIdentity(parent);
+			const childAccount = await runtimeIdentity.resolveActingAccount(child);
+			if (!parentIdentity || !childAccount) throw new Error('Expected accounts');
+			const homeWorkflow = await createWorkflow({ name: 'Home tool' }, home);
+			const security = onBehalfOfParent(parentIdentity.security, childAccount);
+
+			expect(
+				await Container.get(RuntimeAccessService).canUse(security, {
+					type: 'workflow',
+					id: homeWorkflow.id,
+				}),
+			).toBe(true);
 		});
 	});
 });

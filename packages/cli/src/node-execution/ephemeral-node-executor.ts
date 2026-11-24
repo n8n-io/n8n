@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { CredentialAccessRepository, CredentialsRepository } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import type { SecurityContext } from '@n8n/permissions';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { Tool as LangChainTool, type Tool as LangChainToolType } from '@langchain/core/tools';
@@ -31,6 +31,7 @@ import { NodeTypes } from '@/node-types';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { findPolicyViolations, type NonEmptyViolations } from '@/policy/policy-violation.error';
 import { stripToolSuffix, withExpressionIsolate } from '@/utils';
+import { RuntimeAccessService } from '@/services/runtime-access.service';
 import { getBase } from '@/workflow-execute-additional-data';
 
 import {
@@ -241,9 +242,7 @@ export class EphemeralNodeExecutor {
 			// An agent run acts as the agent's account, so its access counts, not the project's.
 			const [credential] =
 				security?.authMethod === 'agent-run'
-					? await this.credentialsRepository.findCredentialsUsableByAccount(security.subject.id, [
-							d.id,
-						])
+					? await Container.get(RuntimeAccessService).findUsableCredentials(security, [d.id])
 					: await this.credentialsRepository.findCredentialsUsableInProject(projectId, [d.id]);
 
 			if (!credential) {
@@ -350,6 +349,9 @@ export class EphemeralNodeExecutor {
 		if (tool.nodeType === DATA_TABLE_TOOL_NODE_TYPE) {
 			// Data Table uses separate project authorization and an ephemeral workflow has no owner fallback.
 			additionalData.dataTableProjectId = tool.projectId;
+			if (tool.security?.authMethod === 'agent-run') {
+				scopeDataTablesToIdentity(additionalData, tool.security, tool.projectId);
+			}
 		}
 		tool.configureAdditionalData?.(additionalData);
 		const runExecutionData = createEmptyRunExecutionData();
@@ -706,4 +708,50 @@ export class EphemeralNodeExecutor {
 
 		return result.value;
 	}
+}
+
+/** Data Table row operations that only read. Every other operation writes. */
+const DATA_TABLE_READ_OPERATIONS = new Set(['get', 'rowExists', 'rowNotExists']);
+
+/**
+ * An agent run reaches a data table by who runs, not by the agent's project:
+ * the table can live in any project where the agent's account has the data
+ * table scopes. Table operations (create, delete, ...) stay in the agent's own
+ * project.
+ */
+export function scopeDataTablesToIdentity(
+	additionalData: IWorkflowExecuteAdditionalData,
+	security: SecurityContext,
+	homeProjectId: string,
+) {
+	const provider = additionalData['data-table']?.dataTableProxyProvider;
+	if (!provider) return;
+	additionalData['data-table'] = {
+		dataTableProxyProvider: {
+			getDataTableAggregateProxy: async (workflow, node) =>
+				await provider.getDataTableAggregateProxy(workflow, node, homeProjectId),
+			getDataTableProxy: async (workflow, node, dataTableId) => {
+				const { DataTableService } = await import('@n8n/backend-module-data-table');
+				const projectId =
+					await Container.get(DataTableService).getProjectIdForDataTable(dataTableId);
+				const isRowOperation = node.parameters.resource !== 'table';
+				const access = DATA_TABLE_READ_OPERATIONS.has(String(node.parameters.operation))
+					? 'read'
+					: 'write';
+				const allowed =
+					(projectId === homeProjectId || isRowOperation) &&
+					(await Container.get(RuntimeAccessService).canUse(security, {
+						type: 'dataTable',
+						projectId,
+						access,
+					}));
+				if (!allowed) {
+					throw new UserError('The agent cannot use this data table', {
+						extra: { dataTableId, projectId },
+					});
+				}
+				return await provider.getDataTableProxy(workflow, node, dataTableId, projectId);
+			},
+		},
+	};
 }

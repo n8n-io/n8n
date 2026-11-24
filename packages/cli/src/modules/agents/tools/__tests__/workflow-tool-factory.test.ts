@@ -199,7 +199,12 @@ describe('executeWorkflow → execution classification', () => {
 
 		await expect(executeWorkflow(workflow, triggerNode, {}, context)).rejects.toThrow('denied');
 
-		expect(subworkflowPolicyChecker.checkForProject).toHaveBeenCalledWith(workflow, 'p1');
+		expect(subworkflowPolicyChecker.checkForProject).toHaveBeenCalledWith(
+			workflow,
+			'p1',
+			undefined,
+			{ identityCanRun: false },
+		);
 		expect(run).not.toHaveBeenCalled();
 	});
 

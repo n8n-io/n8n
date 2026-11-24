@@ -287,6 +287,8 @@ export class AgentRuntimeCacheService {
 					userToolAccessSnapshot,
 					params.projectId,
 					user,
+					// A run as the agent rechecks by its identity, a person's run by the person.
+					params.user ? undefined : runtime.security,
 				);
 				if (stillGranted) runtime.toolAccessCheckedAt = Date.now();
 				return stillGranted;
@@ -343,9 +345,9 @@ export class AgentRuntimeCacheService {
 		const runtimeUser = user ?? actingAccount;
 		// A test run keeps the builder's access, but its workflow tools act as the
 		// agent, like a published run does.
-		const workflowToolActingUserId = usePublishedVersion
+		const workflowToolSecurity = usePublishedVersion
 			? undefined
-			: await this.runtimeIdentity.resolveWorkflowToolAccountId(agentEntity);
+			: await this.runtimeIdentity.resolveWorkflowToolSecurity(agentEntity);
 
 		const runSource = await resolveAgentRunSource(
 			agentEntity,
@@ -381,7 +383,7 @@ export class AgentRuntimeCacheService {
 				previewChat,
 				allowBackgroundTasks,
 				attributionUserId,
-				...(workflowToolActingUserId ? { workflowToolActingUserId } : {}),
+				...(workflowToolSecurity ? { workflowToolSecurity } : {}),
 				...(security ? { security } : {}),
 			},
 		);

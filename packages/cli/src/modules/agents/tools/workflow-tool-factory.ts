@@ -14,6 +14,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { SecurityContext } from '@n8n/permissions';
 import { isRecord } from '@n8n/utils/is-record';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { sleep } from '@n8n/utils/sleep';
@@ -48,6 +49,7 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { EphemeralNodeExecutor } from '@/node-execution/ephemeral-node-executor';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
+import { RuntimeAccessService } from '@/services/runtime-access.service';
 import type { WorkflowRunner } from '@/workflow-runner';
 import {
 	detectTriggerNode,
@@ -203,6 +205,12 @@ export interface WorkflowToolContext {
 	 * credentials the agent can use. `userId` stays the person, for attribution.
 	 */
 	actingUserId?: string;
+	/**
+	 * The identity the workflow tool acts as (runtime identity). The caller
+	 * policy then asks whether this identity may run the workflow, not whether
+	 * the agent lives in the workflow's project.
+	 */
+	security?: SecurityContext;
 	/** See `RelatedAgentRun.agentServiceAccountId`. */
 	agentServiceAccountId?: string;
 	/** Projects whose workflows the agent can call. Defaults to `projectId`. */
@@ -334,7 +342,15 @@ export async function executeWorkflow(
 	const { workflowRunner, subworkflowPolicyChecker, activeExecutions } = context;
 
 	context.abortSignal?.throwIfAborted();
-	await subworkflowPolicyChecker.checkForProject(workflow, context.projectId);
+	const identityCanRun = context.security
+		? await Container.get(RuntimeAccessService).canUse(context.security, {
+				type: 'workflow',
+				id: workflow.id,
+			})
+		: false;
+	await subworkflowPolicyChecker.checkForProject(workflow, context.projectId, undefined, {
+		identityCanRun,
+	});
 	context.abortSignal?.throwIfAborted();
 
 	// Build pin data for the trigger
@@ -647,6 +663,7 @@ function agentRunOf(
 		toolCallId: ctx.toolCallId,
 		...(context.integrationType ? { integrationType: context.integrationType } : {}),
 		...(context.userId ? { userId: context.userId } : {}),
+		...(context.actingUserId ? { actingUserId: context.actingUserId } : {}),
 		...(context.previewChat ? { previewChat: true } : {}),
 		...(context.publishedN8nChat ? { publishedN8nChat: true } : {}),
 		...(context.agentServiceAccountId

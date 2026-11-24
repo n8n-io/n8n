@@ -17,6 +17,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { NodeTypes } from '@/node-types';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { RuntimeAccessService } from '@/services/runtime-access.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 
 import {
@@ -103,6 +104,7 @@ describe('EphemeralNodeExecutor', () => {
 	const credentialAccessRepository = mockInstance(CredentialAccessRepository);
 	const logger = mockInstance(Logger);
 	const policyEnforcementService = mockInstance(PolicyEnforcementService);
+	const runtimeAccess = mockInstance(RuntimeAccessService);
 	// Node execution constructs `SSHClientsManager` via DI, whose constructor does
 	// `logger.scoped(...)` and registers a `process.on('exit')` shutdown handler. Without a real
 	// return here, `scoped()` is undefined and the handler throws at worker teardown — an uncaught
@@ -447,7 +449,7 @@ describe('EphemeralNodeExecutor', () => {
 					}),
 				}),
 			);
-			credentialsRepository.findCredentialsUsableByAccount.mockResolvedValue([
+			runtimeAccess.findUsableCredentials.mockResolvedValue([
 				{ id: 'c1', name: 'Shared with agent', type: 'slackApi' },
 			]);
 
@@ -465,8 +467,8 @@ describe('EphemeralNodeExecutor', () => {
 			});
 
 			expect(result.status).toBe('success');
-			expect(credentialsRepository.findCredentialsUsableByAccount).toHaveBeenCalledWith(
-				'agent-account',
+			expect(runtimeAccess.findUsableCredentials).toHaveBeenCalledWith(
+				expect.objectContaining({ subject: expect.objectContaining({ id: 'agent-account' }) }),
 				['c1'],
 			);
 			expect(credentialsRepository.findCredentialsUsableInProject).not.toHaveBeenCalled();

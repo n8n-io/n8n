@@ -36,6 +36,7 @@ export type BackgroundSubAgentRunContext = Pick<
 	| 'workflowToolExecutionMode'
 	| 'user'
 	| 'security'
+	| 'toolProjectIds'
 	| 'instrumentation'
 	| 'parentWorkspaceHandle'
 	| 'rootSessionCapUsd'
@@ -165,6 +166,7 @@ export class SubAgentBackgroundRunner {
 					workflowToolExecutionMode: context.workflowToolExecutionMode,
 					user: context.user,
 					...(context.security ? { security: context.security } : {}),
+					...(context.toolProjectIds ? { toolProjectIds: context.toolProjectIds } : {}),
 					instrumentation: context.instrumentation,
 					abortSignal: abortController.signal,
 					backgroundJobId: jobId,

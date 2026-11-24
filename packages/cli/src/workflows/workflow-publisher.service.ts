@@ -48,10 +48,14 @@ export class WorkflowPublisherService {
 	 */
 	async findActingUserIdForRestart(execution: {
 		workflowData: Pick<IWorkflowBase, 'id' | 'versionId'>;
-		data: Pick<IRunExecutionData, 'manualData'>;
+		data: Pick<IRunExecutionData, 'manualData' | 'parentAgentRun'>;
 	}): Promise<string | undefined> {
 		const manualUserId = execution.data.manualData?.userId;
 		if (manualUserId) return manualUserId;
+
+		// A workflow tool run of an agent acts as the agent's account.
+		const agentAccountId = execution.data.parentAgentRun?.actingUserId;
+		if (agentAccountId) return agentAccountId;
 
 		if (!execution.workflowData.id) return undefined;
 

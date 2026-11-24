@@ -90,10 +90,16 @@ export class SubworkflowPolicyChecker {
 	}
 
 	/** Check whether a project-scoped caller, such as an Agent, may call the subworkflow. */
+	/**
+	 * @param options.identityCanRun - the caller's identity may run the
+	 * sub-workflow (runtime identity). It then counts as the same project, so a
+	 * project that gave an agent access does not also need "Any workflow".
+	 */
 	async checkForProject(
 		subworkflow: WorkflowWithCallerPolicy,
 		parentProjectId: string,
 		userId?: string,
+		options: { identityCanRun?: boolean } = {},
 	) {
 		const { id: subworkflowId } = subworkflow;
 
@@ -105,7 +111,12 @@ export class SubworkflowPolicyChecker {
 
 		const subworkflowProject = await this.ownershipService.getWorkflowProjectCached(subworkflowId);
 
-		if (policy === 'workflowsFromSameOwner' && parentProjectId === subworkflowProject.id) return;
+		if (
+			policy === 'workflowsFromSameOwner' &&
+			(parentProjectId === subworkflowProject.id || options.identityCanRun === true)
+		) {
+			return;
+		}
 
 		this.logDenial({ parentProjectId, subworkflowId, policy });
 

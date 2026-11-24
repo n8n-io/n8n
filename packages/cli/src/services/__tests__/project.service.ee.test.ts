@@ -404,7 +404,11 @@ describe('ProjectService', () => {
 				relations: { projectRelations: { role: true } },
 			});
 
-			expect(manager.delete).toHaveBeenCalled();
+			// Agent memberships stay, so only the member relations are replaced.
+			expect(projectRelationRepository.deleteMemberRelations).toHaveBeenCalledWith(
+				projectId,
+				manager,
+			);
 			expect(manager.insert).toHaveBeenCalled();
 		});
 

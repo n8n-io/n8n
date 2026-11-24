@@ -113,6 +113,27 @@ describe('WorkflowPublisherService', () => {
 			expect(publishHistoryRepository.findPublisherUserId).not.toHaveBeenCalled();
 		});
 
+		it('resumes a workflow tool run of an agent as the agent account', async () => {
+			await expect(
+				service.findActingUserIdForRestart({
+					workflowData: { id: workflowId, versionId: 'version-9' },
+					data: {
+						parentAgentRun: {
+							agentId: 'agent-1',
+							projectId: 'project-1',
+							threadId: 'thread-1',
+							runId: 'run-1',
+							toolCallId: 'call-1',
+							userId: 'the-person',
+							actingUserId: 'agent-account',
+						},
+					},
+				}),
+			).resolves.toBe('agent-account');
+
+			expect(publishHistoryRepository.findPublisherUserId).not.toHaveBeenCalled();
+		});
+
 		it('falls back to the publisher of the version being run', async () => {
 			publishHistoryRepository.findPublisherUserId.mockResolvedValue('the-publisher');
 

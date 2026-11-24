@@ -123,6 +123,11 @@ export interface SubAgentRunContext {
 	 */
 	security?: SecurityContext;
 	/**
+	 * Projects whose workflows the parent can use as tools. The child acts on
+	 * behalf of the parent, so its workflow tools come from the same projects.
+	 */
+	toolProjectIds?: string[];
+	/**
 	 * Runtime instrumentation of the delegating parent run. Threaded into the
 	 * child's reconstruction so delegated runs share the parent's seams
 	 * (model fetch, MCP fetch, tool execution contexts).
@@ -399,6 +404,7 @@ export class SubAgentRunner {
 				budgetForwarded: context.budgetForwarded,
 				user: context.user,
 				...(security ? { security } : {}),
+				...(context.toolProjectIds ? { toolProjectIds: context.toolProjectIds } : {}),
 				instrumentation: context.instrumentation,
 				...(sandboxPrincipalHash !== undefined ? { sandboxPrincipalHash } : {}),
 				...(context.parentWorkspaceHandle !== undefined

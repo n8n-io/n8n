@@ -60,6 +60,7 @@ import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
+import { RuntimeAccessService } from '@/services/runtime-access.service';
 import { createAiMcpFetch, createAiProxyFetch, createWebSearchFetch } from '@/utils/ai-proxy-fetch';
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import type { KnowledgeConsumerScope } from '@/modules/knowledge/knowledge-consumer-scope';
@@ -118,6 +119,7 @@ import {
 	READ_BINARY_DATA_TOOL_NAME,
 } from './tools/read-binary-data.tool';
 import type { WorkflowToolExecutionMode } from './tools/workflow-tool-factory';
+import { isAgentRun } from './agent-run-security';
 import { resolveToolProjectIds } from './agent-runtime-identity.service';
 import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolver';
 import type { AgentRunSource } from './utils/agent-published-snapshot';
@@ -209,11 +211,11 @@ export interface ReconstructAgentRuntimeParams extends AgentRuntimeAssets {
 	toolProjectIds?: string[];
 	attributionUserId?: string;
 	/**
-	 * The account that workflow tool runs act as, for their credential check.
-	 * A test run sets the agent's account here, so it gets the same result as a
-	 * published run. Defaults to the runtime user when that is an account.
+	 * The identity that workflow tool runs act as. A test run sets the agent's
+	 * identity here, so it gets the same result as a published run. Defaults to
+	 * `security`.
 	 */
-	workflowToolActingUserId?: string;
+	workflowToolSecurity?: SecurityContext;
 	/**
 	 * The stored agent's service account (`agents.identityId`). Workflow tools stamp it
 	 * for attribution in log events only. Absent for inline agents.
@@ -278,6 +280,7 @@ interface ToolRunIdentity {
 	integrationType?: string;
 	userId?: string;
 	actingUserId?: string;
+	workflowToolSecurity?: SecurityContext;
 	previewChat?: boolean;
 	publishedN8nChat?: boolean;
 	agentServiceAccountId?: string;
@@ -458,7 +461,7 @@ export class AgentRuntimeReconstructionService {
 			allowBackgroundTasks = true,
 			allowPlanTools = true,
 			attributionUserId,
-			workflowToolActingUserId,
+			workflowToolSecurity,
 			abortSignal,
 			security,
 		}: {
@@ -470,7 +473,7 @@ export class AgentRuntimeReconstructionService {
 			allowBackgroundTasks?: boolean;
 			allowPlanTools?: boolean;
 			attributionUserId?: string;
-			workflowToolActingUserId?: string;
+			workflowToolSecurity?: SecurityContext;
 			abortSignal?: AbortSignal;
 			security?: SecurityContext;
 		} = {},
@@ -492,7 +495,13 @@ export class AgentRuntimeReconstructionService {
 			const tools = config.tools;
 			const filtered = await raceWithAbort(
 				async () =>
-					await this.filterToolsForUser(tools, agentEntity.projectId, user, toolProjectIds),
+					await this.filterToolsForUser(
+						tools,
+						agentEntity.projectId,
+						user,
+						toolProjectIds,
+						security,
+					),
 				abortSignal,
 			);
 			config = { ...config, tools: filtered.tools };
@@ -537,7 +546,7 @@ export class AgentRuntimeReconstructionService {
 			subAgentDelegation,
 			user,
 			attributionUserId,
-			...(workflowToolActingUserId ? { workflowToolActingUserId } : {}),
+			...(workflowToolSecurity ? { workflowToolSecurity } : {}),
 			...(security ? { security } : {}),
 			toolProjectIds,
 			...(agentEntity.identityId ? { agentServiceAccountId: agentEntity.identityId } : {}),
@@ -570,6 +579,7 @@ export class AgentRuntimeReconstructionService {
 		projectId: string,
 		user: User,
 		toolProjectIds: string[] = [projectId],
+		security?: SecurityContext,
 	): Promise<{
 		tools: AgentJsonToolConfig[];
 		snapshot?: UserToolAccessSnapshot;
@@ -599,6 +609,7 @@ export class AgentRuntimeReconstructionService {
 				canExecute,
 				loadUsableIds,
 				toolProjectIds,
+				security,
 			);
 			if (access && 'reason' in access) {
 				unavailable.push(access);
@@ -664,6 +675,7 @@ export class AgentRuntimeReconstructionService {
 		canExecute: boolean,
 		loadUsableIds: () => Promise<Set<string>>,
 		toolProjectIds: string[] = [projectId],
+		security?: SecurityContext,
 	): Promise<UserToolAccessSnapshot | UnavailableTool | undefined> {
 		const denied = (message: string): UnavailableTool => ({
 			toolName: toolRefName(ref),
@@ -671,6 +683,9 @@ export class AgentRuntimeReconstructionService {
 			reason: 'no_access',
 			message,
 		});
+		if (isAgentRun(security)) {
+			return await this.checkToolAccessByIdentity(ref, security, toolProjectIds, denied);
+		}
 		if (!canExecute) return denied('The user lacks workflow:execute on the project');
 
 		if (ref.type === 'node') {
@@ -710,6 +725,36 @@ export class AgentRuntimeReconstructionService {
 	}
 
 	/**
+	 * The tool check of a run as the agent: what the agent's identity can use,
+	 * not what its project holds.
+	 */
+	private async checkToolAccessByIdentity(
+		ref: Exclude<AgentJsonToolConfig, { type: 'custom' }>,
+		security: SecurityContext,
+		toolProjectIds: string[],
+		denied: (message: string) => UnavailableTool,
+	): Promise<UserToolAccessSnapshot | UnavailableTool | undefined> {
+		const access = Container.get(RuntimeAccessService);
+		if (ref.type === 'node') {
+			const credentialIds = Object.values(ref.node.credentials ?? {})
+				.map((credential) => credential.id)
+				.filter((id): id is string => Boolean(id));
+			const usable = await access.usableCredentialIds(security, credentialIds);
+			if (!credentialIds.every((id) => usable.has(id))) {
+				return denied('The agent cannot use a credential the tool uses');
+			}
+			return { credentialIds, workflowIds: [] };
+		}
+
+		const workflow = await findWorkflowToolWorkflow(this.workflowRepository, ref, toolProjectIds);
+		if (!workflow) return undefined;
+		if (!(await access.canUse(security, { type: 'workflow', id: workflow.id }))) {
+			return denied(`The agent cannot run workflow "${workflow.name}"`);
+		}
+		return { credentialIds: [], workflowIds: [workflow.id] };
+	}
+
+	/**
 	 * Re-run the access checks recorded in `snapshot` against current DB state.
 	 * Returns false when any grant no longer holds — a runtime built from that
 	 * snapshot is over-privileged and must be rebuilt so its tool list is
@@ -719,7 +764,21 @@ export class AgentRuntimeReconstructionService {
 		snapshot: UserToolAccessSnapshot,
 		projectId: string,
 		user: User,
+		security?: SecurityContext,
 	): Promise<boolean> {
+		if (isAgentRun(security)) {
+			const access = Container.get(RuntimeAccessService);
+			const credentialIds = [
+				...snapshot.credentialIds,
+				...(snapshot.integrationCredentialIds ?? []),
+			];
+			const usable = await access.usableCredentialIds(security, credentialIds);
+			if (!credentialIds.every((id) => usable.has(id))) return false;
+			for (const id of snapshot.workflowIds) {
+				if (!(await access.canUse(security, { type: 'workflow', id }))) return false;
+			}
+			return true;
+		}
 		const requiresExecute = snapshot.requiresWorkflowExecute !== false;
 		if (
 			requiresExecute &&
@@ -981,7 +1040,7 @@ export class AgentRuntimeReconstructionService {
 			integrationType,
 			user,
 			attributionUserId,
-			workflowToolActingUserId,
+			workflowToolSecurity,
 			previewChat,
 			supportsHitl,
 			runtimeProfile,
@@ -989,10 +1048,11 @@ export class AgentRuntimeReconstructionService {
 			security,
 		} = options;
 		const canResume = supportsHitl ?? runtimeProfile === 'top-level';
-		// Workflow tools act as the agent's account: in a run as that account, and
-		// in a test run that names it.
+		// Workflow tools act as the agent's identity: in a run as the agent, and in
+		// a test run that names it.
+		const toolSecurity = workflowToolSecurity ?? security;
 		const actingUserId =
-			workflowToolActingUserId ?? (user?.kind === 'service' ? user.id : undefined);
+			toolSecurity?.subject.id ?? (user?.kind === 'service' ? user.id : undefined);
 		return this.makeToolResolver(
 			{
 				projectId,
@@ -1004,6 +1064,7 @@ export class AgentRuntimeReconstructionService {
 				// An agent account is not the person who chats, so only a person goes here.
 				userId: attributionUserId ?? (user?.kind === 'person' ? user.id : undefined),
 				...(actingUserId ? { actingUserId } : {}),
+				...(toolSecurity ? { workflowToolSecurity: toolSecurity } : {}),
 				previewChat,
 				publishedN8nChat:
 					runType === 'production' &&
@@ -1186,6 +1247,7 @@ export class AgentRuntimeReconstructionService {
 			integrationType,
 			userId,
 			actingUserId,
+			workflowToolSecurity,
 			previewChat,
 			publishedN8nChat,
 			agentServiceAccountId,
@@ -1211,6 +1273,7 @@ export class AgentRuntimeReconstructionService {
 			integrationType,
 			userId,
 			actingUserId,
+			...(workflowToolSecurity ? { security: workflowToolSecurity } : {}),
 			previewChat,
 			publishedN8nChat,
 			agentServiceAccountId,
@@ -1455,6 +1518,7 @@ export class AgentRuntimeReconstructionService {
 			subAgentDelegation,
 			user,
 			security,
+			toolProjectIds,
 			instrumentation,
 			backgroundTasksEnabled,
 		} = params;
@@ -1468,6 +1532,7 @@ export class AgentRuntimeReconstructionService {
 			delegation: subAgentDelegation,
 			user,
 			security,
+			toolProjectIds,
 			instrumentation,
 			abortSignal: params.abortSignal,
 		};
@@ -1531,6 +1596,7 @@ export class AgentRuntimeReconstructionService {
 		parentWorkspaceHandle?: AgentSandboxRuntime;
 		user?: User;
 		security?: SecurityContext;
+		toolProjectIds?: string[];
 		instrumentation?: AgentRuntimeInstrumentation;
 		rootSessionId?: string;
 		rootSessionCapUsd?: number;
@@ -1550,6 +1616,7 @@ export class AgentRuntimeReconstructionService {
 			parentWorkspaceHandle,
 			user,
 			security,
+			toolProjectIds,
 			instrumentation,
 			rootSessionId,
 			rootSessionCapUsd,
@@ -1575,6 +1642,7 @@ export class AgentRuntimeReconstructionService {
 				...(parentWorkspaceHandle !== undefined ? { parentWorkspaceHandle } : {}),
 				user,
 				...(security ? { security } : {}),
+				...(toolProjectIds ? { toolProjectIds } : {}),
 				instrumentation,
 				parentBudget: config.config?.guardrails?.budget,
 				runBackgroundSubAgent,
@@ -1632,6 +1700,7 @@ export class AgentRuntimeReconstructionService {
 		delegation: SubAgentDelegationConfig;
 		user?: User;
 		security?: SecurityContext;
+		toolProjectIds?: string[];
 		instrumentation?: AgentRuntimeInstrumentation;
 		parentWorkspaceHandle?: AgentSandboxRuntime;
 		rootSessionCapUsd?: number;

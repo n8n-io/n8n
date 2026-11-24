@@ -147,6 +147,34 @@ describe('SubworkflowPolicyChecker', () => {
 			});
 		});
 
+		it('should allow a workflow of another project that the agent identity may run', async () => {
+			const subworkflow = mock<Workflow>({
+				id: 'subworkflow-id',
+				settings: { callerPolicy: 'workflowsFromSameOwner' },
+			});
+			ownershipService.getWorkflowProjectCached.mockResolvedValue(
+				mock<Project>({ id: uuid(), type: 'team' }),
+			);
+
+			await expect(
+				checker.checkForProject(subworkflow, uuid(), undefined, { identityCanRun: true }),
+			).resolves.not.toThrow();
+		});
+
+		it('should still deny the `none` caller policy when the agent identity may run it', async () => {
+			const subworkflow = mock<Workflow>({
+				id: 'subworkflow-id',
+				settings: { callerPolicy: 'none' },
+			});
+			ownershipService.getWorkflowProjectCached.mockResolvedValue(
+				mock<Project>({ id: uuid(), type: 'team' }),
+			);
+
+			await expect(
+				checker.checkForProject(subworkflow, uuid(), undefined, { identityCanRun: true }),
+			).rejects.toThrowError(SubworkflowPolicyDenialError);
+		});
+
 		it.each(['none', 'workflowsFromAList'] as const)(
 			'should deny the `%s` caller policy',
 			async (callerPolicy) => {

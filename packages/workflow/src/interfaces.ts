@@ -3662,6 +3662,11 @@ export interface RelatedAgentRun {
 	 */
 	userId?: string;
 	/**
+	 * The account the workflow run acts as (agent runtime identity). A resumed
+	 * run acts as it again, not as the workflow's publisher.
+	 */
+	actingUserId?: string;
+	/**
 	 * The agent's service account (`agents.identityId`), for attribution in workflow
 	 * log events only: the execution does not run as this account. Set only when
 	 * agent service accounts are enabled and the agent has one.
