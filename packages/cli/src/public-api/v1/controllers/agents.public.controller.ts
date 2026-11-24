@@ -216,6 +216,7 @@ export class AgentsPublicController {
 	@ApiTags(['Agent'])
 	@ApiResponse(200, AgentPublicDto)
 	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
 	@ApiErrorResponse(422)
 	async publishAgent(
 		req: AuthenticatedRequest,
@@ -259,6 +260,7 @@ export class AgentsPublicController {
 	@ApiTags(['Agent'])
 	@ApiResponse(200, AgentPublicDto)
 	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
 	async unpublishAgent(
 		req: AuthenticatedRequest,
 		_res: Response,

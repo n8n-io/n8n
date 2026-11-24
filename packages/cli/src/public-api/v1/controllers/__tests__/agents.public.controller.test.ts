@@ -114,11 +114,12 @@ describe('AgentsPublicController route metadata', () => {
 		});
 	});
 
-	it('publishAgent answers 200 and declares not-found and unprocessable responses', () => {
+	it('publishAgent answers 200 and declares not-found, conflict, and unprocessable responses', () => {
 		const route = routes.get('publishAgent');
 		expect(route?.successStatus).toBe(200);
 		expect(route?.responseDto).toBeDefined();
 		expect(route?.errorResponses?.some((response) => response.status === 404)).toBe(true);
+		expect(route?.errorResponses?.some((response) => response.status === 409)).toBe(true);
 		expect(route?.errorResponses?.some((response) => response.status === 422)).toBe(true);
 	});
 
@@ -130,11 +131,12 @@ describe('AgentsPublicController route metadata', () => {
 		});
 	});
 
-	it('unpublishAgent answers 200 and declares the not-found response', () => {
+	it('unpublishAgent answers 200 and declares not-found and conflict responses', () => {
 		const route = routes.get('unpublishAgent');
 		expect(route?.successStatus).toBe(200);
 		expect(route?.responseDto).toBeDefined();
 		expect(route?.errorResponses?.some((response) => response.status === 404)).toBe(true);
+		expect(route?.errorResponses?.some((response) => response.status === 409)).toBe(true);
 	});
 });
 
