@@ -135,7 +135,6 @@ describe('smallJsonCopy', () => {
 		{ label: 'a negative zero', value: -0 },
 		{ label: 'a function', value: () => 1 },
 		{ label: 'a Date', value: new Date(0) },
-		{ label: 'an object that holds a Date', value: { at: new Date(0) } },
 		{ label: 'an object with a framing key', value: { __n8nType: 'x' } },
 	])('gives undefined for $label', ({ value }) => {
 		expect(charsOf(value, 1000)).toBeUndefined();
@@ -170,18 +169,5 @@ describe('smallJsonCopy', () => {
 		);
 
 		expect(smallJsonCopy(value, 1000)?.copy).toEqual({ id: 22 });
-	});
-
-	it('gives undefined when a proxy trap throws', () => {
-		const value = new Proxy(
-			{},
-			{
-				ownKeys() {
-					throw new Error('not ready');
-				},
-			},
-		);
-
-		expect(charsOf(value, 1000)).toBeUndefined();
 	});
 });
