@@ -225,7 +225,7 @@ async function remove(environment: PromotionEnvironment) {
 							"
 							@remove="remove(environments[direction])"
 						/>
-						<div v-else :class="$style.column">
+						<div v-else :class="[$style.column, $style.emptyColumn]">
 							<N8nSettingsRow
 								:title="i18n.baseText(`settings.promotions.environments.${direction}.title`)"
 								:show-divider="false"
@@ -330,9 +330,24 @@ async function remove(environment: PromotionEnvironment) {
 	cursor: pointer;
 }
 
+// The title and the button share one grid cell, so the button centers in the whole column
+// instead of in the space below the title. The minimum height keeps the title clear of it.
+.emptyColumn {
+	display: grid;
+	grid-template-areas: 'stack';
+	min-height: calc(var(--spacing--4xl) + var(--spacing--sm));
+
+	> * {
+		grid-area: stack;
+	}
+
+	> :first-child {
+		align-self: start;
+	}
+}
+
 .empty {
 	display: flex;
-	flex: 1;
 	align-items: center;
 	justify-content: center;
 	padding: var(--spacing--lg) var(--spacing--sm);
