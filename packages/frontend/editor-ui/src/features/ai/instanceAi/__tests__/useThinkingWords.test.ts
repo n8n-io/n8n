@@ -24,12 +24,15 @@ function setup(initial: { active: boolean; building?: boolean; threadId?: string
 			threadId: () => threadId.value,
 		}),
 	)!;
-	/** The words that show over `count` rotations, the current one first. */
+	/**
+	 * The `count` words that show, the current one first. It rotates only between
+	 * the reads, because each rotation marks a word as shown.
+	 */
 	const collect = (count: number) => {
 		const words: Array<string | undefined> = [];
 		for (let i = 0; i < count; i++) {
+			if (i > 0) vi.advanceTimersByTime(THINKING_WORD_ROTATION_MS);
 			words.push(word.value);
-			vi.advanceTimersByTime(THINKING_WORD_ROTATION_MS);
 		}
 		return words;
 	};
