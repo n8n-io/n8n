@@ -7759,6 +7759,9 @@ importers:
       '@n8n/backend-services':
         specifier: workspace:*
         version: link:../../../@n8n/backend-services
+      '@n8n/code-task-contract':
+        specifier: workspace:*
+        version: link:../../../@n8n/code-task-contract
       '@n8n/config':
         specifier: workspace:*
         version: link:../../../@n8n/config
@@ -7771,6 +7774,9 @@ importers:
       '@n8n/utils':
         specifier: workspace:*
         version: link:../../../@n8n/utils
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../../workflow
     devDependencies:
       '@n8n/backend-test-utils':
         specifier: workspace:*

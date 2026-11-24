@@ -31,6 +31,7 @@ import {
 	ASSISTANT_AGENT_THREAD_ID,
 } from '../assistantAgent/assistantAgentThreads';
 import { useAssistantAgentThreadsStore } from '../assistantAgent/assistantAgentThreads.store';
+import { assistantAnsweredQuestionsExtension } from '@/features/ai/instanceAi/assistantAgent/assistantAnsweredQuestions';
 import { assistantConfirmationExtension } from '../assistantAgent/assistantConfirmation';
 import {
 	ASSISTANT_PREFERENCE_CARDS,
@@ -255,6 +256,7 @@ watch(
 
 const interactionExtensions = [
 	assistantConfirmationExtension,
+	assistantAnsweredQuestionsExtension,
 	assistantPreferenceCardExtension,
 	assistantSharedFilesExtension,
 ];
