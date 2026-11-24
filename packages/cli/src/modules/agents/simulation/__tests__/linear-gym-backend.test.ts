@@ -302,25 +302,21 @@ describe('LinearGymBackend route evidence', () => {
 		expect(services.upstreamTools).toEqual(['get_issue']);
 	});
 
-	// KNOWN GAP. This is the target behaviour. The pinned router reads upstream before each
-	// lookup, so the last two assertions fail today. Remove `.fails` when the router serves a
-	// hydrated issue from the Gym alone.
-	it.fails(
-		'TARGET: serves a lookup by ID after a Gym-only edit with zero upstream calls',
-		async () => {
-			const services = fakeServices();
-			const world = await backend.openWorld(input);
-			await call(world, 'get_issue', args);
-			await call(world, 'save_issue', { ...args, title: 'Fixture edit' });
-			services.upstreamTools.length = 0;
+	// The guard reads the real service before every read. It does not seed an issue that the Gym holds.
+	// The Gym keeps the edit and answers.
+	it('serves a lookup by ID after a Gym-only edit from the Gym, after one upstream read', async () => {
+		const services = fakeServices();
+		const world = await backend.openWorld(input);
+		await call(world, 'get_issue', args);
+		await call(world, 'save_issue', { ...args, title: 'Fixture edit' });
+		services.upstreamTools.length = 0;
 
-			const reply = await call(world, 'get_issue', args);
+		const reply = await call(world, 'get_issue', args);
 
-			expect(JSON.stringify(reply)).toContain('Fixture edit');
-			expect(services.upstreamTools).toEqual([]);
-			expect(evidenceOf(reply)).toEqual(['world_read']);
-		},
-	);
+		expect(JSON.stringify(reply)).toContain('Fixture edit');
+		expect(services.upstreamTools).toEqual(['get_issue']);
+		expect(evidenceOf(reply)).toEqual(['real_read', 'world_read']);
+	});
 });
 
 // Runs only under the Gym launcher (`deploy/e2e/linear-spike.mjs`), which sets these variables.
