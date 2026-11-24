@@ -22,6 +22,7 @@ import type * as ResumableStreamExecutorMod from './runtime/resumable-stream-exe
 import type * as RunStateRegistryMod from './runtime/run-state-registry';
 import type * as StreamRunnerMod from './runtime/stream-runner';
 import type * as TerminalResponseGuardMod from './runtime/terminal-response-guard';
+import type * as CloudBrowserAgentMod from './agent/cloud-browser-agent';
 import type * as SkillsMod from './skills/skills';
 import type * as StorageMod from './storage';
 import type * as InstanceContextReachMod from './stream/instance-context-reach';
@@ -47,6 +48,7 @@ import type * as ChatModelValidationMod from './tools/workflows/chat-model-valid
 import type * as WorkflowValidationWarningsMod from './tools/workflows/workflow-validation-warnings';
 import type * as SanitizeWebContentMod from './tools/web-research/sanitize-web-content';
 import type * as AgentSnapshotEventMod from './tracing/agent-snapshot-event';
+import type * as ApprovalReviewEventMod from './tracing/approval-review-event';
 import type * as BuilderMetricEventMod from './tracing/builder-metric-event';
 import type * as BuilderToolsMod from './tools/orchestration/builder-tools';
 import type * as LangsmithTracingMod from './tracing/langsmith-tracing';
@@ -57,7 +59,6 @@ import type * as EvalUsageMod from './utils/eval-usage';
 import type * as StreamHelpersMod from './utils/stream-helpers';
 import type * as WorkflowLoopMod from './workflow-loop';
 import type * as WorkflowLoopRuntimeMod from './workflow-loop/runtime';
-import type * as BuilderTemplatesServiceMod from './workspace/builder-templates-service';
 import type * as CreateWorkspaceMod from './workspace/create-workspace';
 import type * as LazyRuntimeWorkspaceMod from './workspace/lazy-runtime-workspace';
 import type * as SandboxSetupMod from './workspace/sandbox-setup';
@@ -112,6 +113,9 @@ const loadTraceReplay = lazyModule(
 );
 const loadAgentSnapshotEvent = lazyModule(
 	() => require('./tracing/agent-snapshot-event') as typeof AgentSnapshotEventMod,
+);
+const loadApprovalReviewEvent = lazyModule(
+	() => require('./tracing/approval-review-event') as typeof ApprovalReviewEventMod,
 );
 const loadBuilderMetricEvent = lazyModule(
 	() => require('./tracing/builder-metric-event') as typeof BuilderMetricEventMod,
@@ -221,9 +225,6 @@ const loadPromptProfiles = lazyModule(
 const loadEvalAgents = lazyModule(() => require('./utils/eval-agents') as typeof EvalAgentsMod);
 const loadEvalUsage = lazyModule(() => require('./utils/eval-usage') as typeof EvalUsageMod);
 const loadAgentTree = lazyModule(() => require('./utils/agent-tree') as typeof AgentTreeMod);
-const loadBuilderTemplatesService = lazyModule(
-	() => require('./workspace/builder-templates-service') as typeof BuilderTemplatesServiceMod,
-);
 const loadCreateWorkspace = lazyModule(
 	() => require('./workspace/create-workspace') as typeof CreateWorkspaceMod,
 );
@@ -241,6 +242,9 @@ const loadRunStateRegistry = lazyModule(
 );
 const loadBackgroundTaskManager = lazyModule(
 	() => require('./runtime/background-task-manager') as typeof BackgroundTaskManagerMod,
+);
+const loadCloudBrowserAgent = lazyModule(
+	() => require('./agent/cloud-browser-agent') as typeof CloudBrowserAgentMod,
 );
 const loadTerminalResponseGuard = lazyModule(
 	() => require('./runtime/terminal-response-guard') as typeof TerminalResponseGuardMod,
@@ -300,14 +304,18 @@ export {
 	saveAgentBuilderTarget,
 	threadAuthorizesAgentAdoption,
 	threadTargetsAgent,
-	withAttachedAgentTarget,
 	withBoundAgentTarget,
 } from './tools/orchestration/agent-target-binding';
 export type {
 	AgentBuilderTarget,
 	AgentTargetsMetadata,
 } from './tools/orchestration/agent-target-binding';
+export type {
+	CloudBrowserTaskInput,
+	CloudBrowserTaskStartResult,
+} from './tools/orchestration/start-cloud-browser-task.tool';
 export { parseAppTargets, parsePendingAppTarget } from './tools/apps/app-target-binding';
+export { withThreadSubject } from './tools/thread-subject-binding';
 export {
 	resolveAgentPreviewSession,
 	saveAgentPreviewSession,
@@ -348,6 +356,9 @@ export const snapshotAgent: typeof BuilderToolsMod.snapshotAgent = lazyFunction(
 	() => loadBuilderTools().snapshotAgent,
 );
 
+export const emitApprovalReviewTraceEvent: typeof ApprovalReviewEventMod.emitApprovalReviewTraceEvent =
+	lazyFunction(() => loadApprovalReviewEvent().emitApprovalReviewTraceEvent);
+
 export const emitBuilderMetric: typeof BuilderMetricEventMod.emitBuilderMetric = lazyFunction(
 	() => loadBuilderMetricEvent().emitBuilderMetric,
 );
@@ -382,6 +393,10 @@ export const setTracePromptVersion: typeof LangsmithTracingMod.setTracePromptVer
 
 export const setTraceModelId: typeof LangsmithTracingMod.setTraceModelId = lazyFunction(
 	() => loadLangsmithTracing().setTraceModelId,
+);
+
+export const setTraceApprovalMode: typeof LangsmithTracingMod.setTraceApprovalMode = lazyFunction(
+	() => loadLangsmithTracing().setTraceApprovalMode,
 );
 
 export const modelIdTraceMetadata: typeof LangsmithTracingMod.modelIdTraceMetadata = lazyFunction(
@@ -465,6 +480,11 @@ export const ThreadTaskStorage: typeof StorageMod.ThreadTaskStorage = lazyClass(
 	() => loadStorage().ThreadTaskStorage,
 );
 export const getThread: typeof StorageMod.getThread = lazyFunction(() => loadStorage().getThread);
+export type CloudBrowserTaskStorage = StorageMod.CloudBrowserTaskStorage;
+export const CloudBrowserTaskStorage: typeof StorageMod.CloudBrowserTaskStorage = lazyClass(
+	() => loadStorage().CloudBrowserTaskStorage,
+);
+export type { CloudBrowserTaskRecord } from './storage/cloud-browser-task-storage';
 export type TerminalOutcomeStorage = StorageMod.TerminalOutcomeStorage;
 export const TerminalOutcomeStorage: typeof StorageMod.TerminalOutcomeStorage = lazyClass(
 	() => loadStorage().TerminalOutcomeStorage,
@@ -556,15 +576,6 @@ export const setupSandboxWorkspace: typeof SandboxSetupMod.setupSandboxWorkspace
 );
 export const isSandboxWorkspaceInitialized: typeof SandboxSetupMod.isSandboxWorkspaceInitialized =
 	lazyFunction(() => loadSandboxSetup().isSandboxWorkspaceInitialized);
-export type BuilderTemplatesService = BuilderTemplatesServiceMod.BuilderTemplatesService;
-export const BuilderTemplatesService: typeof BuilderTemplatesServiceMod.BuilderTemplatesService =
-	lazyClass(() => loadBuilderTemplatesService().BuilderTemplatesService);
-export const builderTemplatesOptionsFromEnv: typeof BuilderTemplatesServiceMod.builderTemplatesOptionsFromEnv =
-	lazyFunction(() => loadBuilderTemplatesService().builderTemplatesOptionsFromEnv);
-export type {
-	BuilderTemplatesBundle,
-	BuilderTemplatesServiceOptions,
-} from './workspace/builder-templates-service';
 export const createSandbox: typeof CreateWorkspaceMod.createSandbox = lazyFunction(
 	() => loadCreateWorkspace().createSandbox,
 );
@@ -599,6 +610,10 @@ export declare const suspendedInstanceContextSchema: typeof InstanceContextState
 export type { HubSkillTelemetryState } from './runtime/instance-context-state';
 export { createSetupItemsEmitter, isSetupPanelEnabled } from './tools/workflows/setup-items';
 export {
+	createWorkflowDraftPublisher,
+	type WorkflowDraftPublisher,
+} from './tools/workflows/workflow-draft-publisher';
+export {
 	formatWorkflowSetupStateNote,
 	observeWorkflowSetupStates,
 } from './tools/workflows/setup-panel-state';
@@ -626,6 +641,18 @@ export type {
 	TerminalResponseStatus,
 	TerminalVisibilitySource,
 } from './runtime/terminal-response-guard';
+export const runCloudBrowserAgent: typeof CloudBrowserAgentMod.runCloudBrowserAgent = lazyFunction(
+	() => loadCloudBrowserAgent().runCloudBrowserAgent,
+);
+export type {
+	CloudBrowserAgentBrief,
+	CloudBrowserCredentialToCreate,
+	CloudBrowserAgentOutcome,
+	CloudBrowserAgentResult,
+	CloudBrowserUserActionHost,
+	CloudBrowserUserControlResult,
+	RunCloudBrowserAgentOptions,
+} from './agent/cloud-browser-agent';
 export const executeResumableStream: typeof ResumableStreamExecutorMod.executeResumableStream =
 	lazyFunction(() => loadResumableStreamExecutor().executeResumableStream);
 export type {
@@ -742,6 +769,7 @@ export const WorkflowLoopRuntime: typeof WorkflowLoopRuntimeMod.WorkflowLoopRunt
 export type {
 	InstanceAiChangedArtifact,
 	InstanceAiContext,
+	InstanceAiEngineSetup,
 	InstanceAiToolRegistry,
 	InstanceAiWorkflowService,
 	InstanceAiExecutionService,
@@ -844,6 +872,9 @@ export type {
 	AgentSessionSummary,
 	AgentContextLookup,
 	InstanceAiAgentContextReader,
+	InstanceAiConversationFile,
+	InstanceAiImportedFile,
+	InstanceAiSandboxFiles,
 	InstanceAiStoredFile,
 	InstanceAiStoredFileReader,
 	InstanceAiSkillService,

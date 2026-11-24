@@ -103,6 +103,13 @@ const { isValidConnection } = useNodeConnections({
 // Statuses rendered as a status mark; running/waiting render as the animated border.
 const MARK_STATUSES = ['success', 'error', 'warning'] as const;
 const markStatus = computed(() => MARK_STATUSES.find((status) => status === executionStatus.value));
+// Validation statuses mirror the single node icon: red triangle, or the amber setup key.
+const ISSUE_ICONS = { issues: 'node-validation-error', setup: 'key-round' } as const;
+const issueStatus = computed(() =>
+	executionStatus.value === 'issues' || executionStatus.value === 'setup'
+		? executionStatus.value
+		: undefined,
+);
 
 const wrapperClasses = computed(() => [
 	$style.wrapper,
@@ -623,11 +630,11 @@ function onWrapperPointerDown(event: PointerEvent) {
 				<CanvasNodeStatusMark :status="markStatus" />
 			</div>
 			<div
-				v-else-if="isCollapsed && executionStatus === 'issues'"
-				:class="[$style.statusIcons, $style.issues]"
-				data-test-id="canvas-node-group-status-issues"
+				v-else-if="isCollapsed && issueStatus"
+				:class="[$style.statusIcons, $style[issueStatus]]"
+				:data-test-id="`canvas-node-group-status-${issueStatus}`"
 			>
-				<N8nIcon icon="node-validation-error" size="large" />
+				<N8nIcon :icon="ISSUE_ICONS[issueStatus]" size="large" />
 			</div>
 		</div>
 
@@ -950,9 +957,13 @@ function onWrapperPointerDown(event: PointerEvent) {
 	align-items: center;
 }
 
-// Validation issues mirror the single node: red triangle, no status border.
+// Validation statuses have no status border, only the icon colour.
 .issues {
 	color: var(--color--danger);
+}
+
+.setup {
+	color: var(--color--warning);
 }
 
 .toolbar {

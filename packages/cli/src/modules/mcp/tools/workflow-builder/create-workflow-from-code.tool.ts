@@ -37,6 +37,8 @@ import { topLevelItemsWarning } from './top-level-items-warning';
 import {
 	buildCreateVersionMetadata,
 	resolveVersionMetadata,
+	VERSION_DESCRIPTION_GUIDANCE,
+	VERSION_NAME_GUIDANCE,
 	versionDescriptionInputSchema,
 	versionNameInputSchema,
 } from './version-metadata';
@@ -100,10 +102,10 @@ const inputSchema = {
 		.optional()
 		.describe('Workflow description. Longer text is shortened to 255 chars before saving.'),
 	versionName: versionNameInputSchema.describe(
-		'Short summary of this initial version, shown in the workflow\'s version history (e.g. "Initial Slack notification workflow"). Always provide it.',
+		`Short title of this initial version, shown in the workflow's version history (e.g. "Initial Slack notification workflow"). ${VERSION_NAME_GUIDANCE}`,
 	),
 	versionDescription: versionDescriptionInputSchema.describe(
-		'Longer description of what this version does, shown in the version history alongside the version name.',
+		`Detailed description of what this initial version does, shown in the version history below the title. ${VERSION_DESCRIPTION_GUIDANCE}`,
 	),
 	projectId: z
 		.string()

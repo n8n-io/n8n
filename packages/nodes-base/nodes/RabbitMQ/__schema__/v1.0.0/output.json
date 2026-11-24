@@ -1,0 +1,39 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"content": {
+			"type": ["object", "string"]
+		},
+		"fields": {
+			"additionalProperties": true,
+			"properties": {
+				"deliveryTag": {
+					"type": "number"
+				},
+				"exchange": {
+					"type": "string"
+				},
+				"messageCount": {
+					"type": "number"
+				},
+				"redelivered": {
+					"type": "boolean"
+				},
+				"routingKey": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"properties": {
+			"additionalProperties": true,
+			"properties": {
+				"headers": {
+					"type": "object"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

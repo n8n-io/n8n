@@ -446,6 +446,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const openExistingCredential = (
 		id: string,
 		options: {
+			fixedCredentialsOnly?: boolean;
 			hideAskAssistant?: boolean;
 			appendToBody?: boolean;
 			instanceAiCredentialHelp?: NewCredentialsModal['instanceAiCredentialHelp'];
@@ -468,6 +469,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			closeOnSave: false,
 			workflowId: options.workflowId,
 			onCredentialCreated: undefined,
+			fixedCredentialsOnly: options.fixedCredentialsOnly,
 			hideAskAssistant: options.hideAskAssistant,
 			appendToBody: options.appendToBody,
 			instanceAiCredentialHelp: options.instanceAiCredentialHelp,
@@ -485,6 +487,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		nodeName?: string,
 		contextNode?: INodeUi,
 		options: {
+			fixedCredentialsOnly?: boolean;
 			hideAskAssistant?: boolean;
 			appendToBody?: boolean;
 			closeOnSave?: boolean;
@@ -512,6 +515,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			workflowId: options.workflowId,
 			nodeName,
 			contextNode,
+			fixedCredentialsOnly: options.fixedCredentialsOnly,
 			hideAskAssistant: options.hideAskAssistant,
 			appendToBody: options.appendToBody,
 			instanceAiCredentialHelp: options.instanceAiCredentialHelp,

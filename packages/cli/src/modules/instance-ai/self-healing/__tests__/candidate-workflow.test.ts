@@ -406,6 +406,59 @@ describe('compileCandidateWorkflow', () => {
 		},
 	);
 
+	describe('workflow engine', () => {
+		function addExecuteOnce(workflow: WorkflowJSON) {
+			const request = workflow.nodes.find((node) => node.id === 'request');
+			if (!request) throw new Error('The request node is missing.');
+			request.executeOnce = true;
+		}
+
+		it('checks a candidate without engineType against the engine v2 of the baseline', async () => {
+			baseline.original.settings = { ...baseline.original.settings, engineType: 'v2' };
+			const workflow = generatedWorkflow();
+			delete workflow.settings?.engineType;
+			addExecuteOnce(workflow);
+			await writeCandidate(workflow);
+
+			const result = await compile();
+
+			expect(result).toMatchObject({ success: false, reason: 'candidate_invalid' });
+			if (result.success) return;
+			expect(result.errors.join('\n')).toContain('engine v2 does not support Execute Once yet');
+		});
+
+		it('keeps the v1 checks for a baseline without engineType', async () => {
+			const workflow = generatedWorkflow();
+			addExecuteOnce(workflow);
+			await writeCandidate(workflow);
+
+			expect(await compile()).toMatchObject({ success: true });
+		});
+
+		it.each([
+			{ baselineEngine: 'v2', codeEngine: 'v1' },
+			{ baselineEngine: undefined, codeEngine: 'v2' },
+		] as const)(
+			'rejects a candidate that moves a $baselineEngine baseline to $codeEngine',
+			async ({ baselineEngine, codeEngine }) => {
+				if (baselineEngine) {
+					baseline.original.settings = {
+						...baseline.original.settings,
+						engineType: baselineEngine,
+					};
+				}
+				const workflow = generatedWorkflow();
+				workflow.settings = { ...workflow.settings, engineType: codeEngine };
+				await writeCandidate(workflow);
+
+				expect(await compile()).toMatchObject({
+					success: false,
+					reason: 'candidate_engine_changed',
+				});
+			},
+		);
+	});
+
 	it('rejects a connection to a missing node', async () => {
 		const workflow = generatedWorkflow();
 		workflow.connections.Start = { main: [[{ node: 'Missing', type: 'main', index: 0 }]] };

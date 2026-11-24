@@ -125,13 +125,13 @@ describe('sanitizeUnknownAgentCredentials', () => {
 
 	it('preserves known credential fields', () => {
 		const result = sanitizeUnknownAgentCredentials(
-			{ credential: 'known-cred', model: 'anthropic/claude-sonnet-4-5', name: 'Agent' },
+			{ credential: 'known-cred', model: 'anthropic/claude-sonnet-5-5', name: 'Agent' },
 			accessibleCredentialIds,
 		);
 
 		expect(result).toEqual({
 			credential: 'known-cred',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			name: 'Agent',
 		});
 	});
@@ -447,12 +447,12 @@ describe('sanitizeUnknownAgentCredentials', () => {
 
 	it('preserves a top-level credential when model is set', () => {
 		const result = sanitizeUnknownAgentCredentials(
-			{ model: 'anthropic/claude-sonnet-4-5', credential: 'known-cred' },
+			{ model: 'anthropic/claude-sonnet-5-5', credential: 'known-cred' },
 			accessibleCredentialIds,
 		);
 
 		expect(result).toEqual({
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			credential: 'known-cred',
 		});
 	});

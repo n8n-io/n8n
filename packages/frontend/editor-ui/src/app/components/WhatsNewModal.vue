@@ -113,14 +113,16 @@ function onDialogOpenUpdate(open: boolean) {
 
 			<N8nTooltip
 				v-if="versionsStore.hasVersionUpdates"
+				as-child
 				:disabled="usersStore.canUserUpdateVersion"
-				:content="i18n.baseText('whatsNew.updateNudgeTooltip')"
 				placement="bottom"
 			>
+				<template #content>{{ i18n.baseText('whatsNew.updateNudgeTooltip') }}</template>
 				<N8nButton
 					:size="'large'"
 					:label="i18n.baseText('whatsNew.update')"
 					:disabled="!usersStore.canUserUpdateVersion"
+					focusable-when-disabled
 					data-test-id="whats-new-modal-update-button"
 					@click="onUpdateClick"
 				/>

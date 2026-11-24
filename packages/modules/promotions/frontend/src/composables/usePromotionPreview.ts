@@ -4,17 +4,15 @@ import { computed, ref, shallowRef, watch, type Ref } from 'vue';
 
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 
-import { getPromotionPreview } from '../promotions.api';
+import { getPromotionEnvironmentChanges, getPromotionPreview } from '../promotions.api';
+import { fetchPromotionEnvironments } from '../promotionsSettings.api';
+import { isPreviewNotConfigured } from '../promotionErrors';
 import type { ApplyCheckResult } from '../promotions.types';
 import { buildSelectionGraph } from '../promotionPreview.selection';
-import { repositoryDisplayName } from '../promotionsSettings.utils';
-import { useInstancePromotionConnection } from './useInstancePromotionConnection';
 
 type PromotionPreviewState =
 	| 'loading'
-	/** The connection lookup failed. This is not the same as "no connection". */
-	| 'connectionFailed'
-	/** The instance has no environment for this direction. */
+	/** The project has no environment for this direction. */
 	| 'disconnected'
 	| 'error'
 	/** An open review holds the changes, so the preview lists none. */
@@ -23,17 +21,16 @@ type PromotionPreviewState =
 	| 'ready';
 
 /**
- * Loads the preview of one project and direction for the preview page. On Apply, the preview
- * also holds the blockers, so both describe the same source.
+ * Loads the preview of one project and direction for the preview page. Without a project, it
+ * loads the Apply of the whole instance. On Apply, the preview also holds the blockers, so both
+ * describe the same source.
  */
-export function usePromotionPreview(projectId: Ref<string>, direction: Ref<PromotionDirection>) {
+export function usePromotionPreview(
+	projectId: Ref<string | undefined>,
+	direction: Ref<PromotionDirection>,
+) {
 	const rootStore = useRootStore();
 	const { next } = useLatestFetch();
-	const {
-		environments,
-		failed: connectionFailed,
-		load: loadConnection,
-	} = useInstancePromotionConnection();
 
 	const state = ref<PromotionPreviewState>('loading');
 	const preview = shallowRef<PromotionPreview | null>(null);
@@ -55,12 +52,10 @@ export function usePromotionPreview(projectId: Ref<string>, direction: Ref<Promo
 	const graph = computed(() =>
 		preview.value ? buildSelectionGraph(preview.value, direction.value) : null,
 	);
-	const environment = computed(
-		() => environments.value.find((candidate) => candidate.direction === direction.value) ?? null,
-	);
-	const repositoryName = computed(() =>
-		environment.value ? repositoryDisplayName(environment.value.remote) : null,
-	);
+	/** The environment and branch that the preview reads. */
+	const source = computed(() => preview.value?.source ?? null);
+	/** How that environment presents itself: its name, provider and branch setting. */
+	const environment = computed(() => preview.value?.environment ?? null);
 
 	async function load() {
 		const isLatest = next();
@@ -70,27 +65,37 @@ export function usePromotionPreview(projectId: Ref<string>, direction: Ref<Promo
 		refreshFailed.value = false;
 
 		try {
-			await loadConnection();
-			if (!isLatest()) return;
-			if (connectionFailed.value || !environment.value) {
-				state.value = connectionFailed.value ? 'connectionFailed' : 'disconnected';
-				preview.value = null;
-				return;
+			let result: PromotionPreview;
+			if (requested.projectId === undefined) {
+				const environments = await fetchPromotionEnvironments(rootStore.publicApiContext, {
+					scope: 'instance',
+				});
+				if (!isLatest()) return;
+				const environment = environments.find(({ direction }) => direction === requested.direction);
+				if (!environment) {
+					preview.value = null;
+					state.value = 'disconnected';
+					return;
+				}
+				result = await getPromotionEnvironmentChanges(rootStore.publicApiContext, environment.id);
+			} else {
+				result = await getPromotionPreview(
+					rootStore.publicApiContext,
+					requested.projectId,
+					requested.direction,
+				);
 			}
-
-			const result = await getPromotionPreview(
-				rootStore.publicApiContext,
-				requested.projectId,
-				requested.direction,
-			);
 			if (!isLatest()) return;
 			preview.value = result;
 			lastRefreshedAt.value = new Date();
 			state.value = result.blocker ? 'blocked' : result.resources.length === 0 ? 'empty' : 'ready';
-		} catch {
+		} catch (error) {
 			if (!isLatest()) return;
-			// Only the changes view shows the refresh warning. Other states show the error.
-			if (state.value === 'ready') {
+			if (isPreviewNotConfigured(error)) {
+				preview.value = null;
+				state.value = 'disconnected';
+			} else if (state.value === 'ready') {
+				// Only the changes view shows the refresh warning. Other states show the error.
 				refreshFailed.value = true;
 			} else {
 				preview.value = null;
@@ -116,8 +121,8 @@ export function usePromotionPreview(projectId: Ref<string>, direction: Ref<Promo
 		preview,
 		check,
 		graph,
+		source,
 		environment,
-		repositoryName,
 		refreshing,
 		refreshFailed,
 		lastRefreshedAt,

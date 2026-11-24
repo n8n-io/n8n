@@ -93,6 +93,12 @@ vi.mock('../instanceAi.memory.api', async (importOriginal) => ({
 	}),
 }));
 
+const fetchCloudBrowserLiveViewSpy = vi.hoisted(() => vi.fn());
+vi.mock('../instanceAi.api', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../instanceAi.api')>()),
+	fetchCloudBrowserLiveView: fetchCloudBrowserLiveViewSpy,
+}));
+
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: telemetryTrackSpy }),
 }));
@@ -187,6 +193,21 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 let workflowPreviewEmit:
 	| ((event: 'workflow-failures', payload: WorkflowFailuresReport) => void)
 	| null = null;
+let workflowLoadedEmit: ((event: 'workflow-loaded', workflowId: string) => void) | null = null;
+
+const InstanceAiWorkflowDraftPreviewStub = defineComponent({
+	name: 'InstanceAiWorkflowDraftPreviewStub',
+	props: {
+		draft: { type: Object, required: true },
+		building: Boolean,
+	},
+	setup: (props) => () =>
+		h('div', {
+			'data-test-id': 'instance-ai-workflow-draft-preview-stub',
+			'data-file-path': (props.draft as { filePath: string }).filePath,
+			'data-building': String(props.building),
+		}),
+});
 
 const InstanceAiWorkflowPreviewStub = defineComponent({
 	name: 'InstanceAiWorkflowPreviewStub',
@@ -194,9 +215,10 @@ const InstanceAiWorkflowPreviewStub = defineComponent({
 		workflowId: { type: String, required: true },
 		initialNodeId: { type: String, required: false },
 	},
-	emits: ['initial-node-id-consumed', 'workflow-failures'],
+	emits: ['initial-node-id-consumed', 'workflow-failures', 'workflow-loaded'],
 	setup(props, { emit, expose }) {
 		workflowPreviewEmit = emit as typeof workflowPreviewEmit;
+		workflowLoadedEmit = emit as typeof workflowLoadedEmit;
 		const openWorkflowPreview = inject<((id: string) => boolean) | undefined>(
 			'openWorkflowPreview',
 			undefined,
@@ -416,6 +438,7 @@ const defaultViewStubs = {
 	InstanceAiSetupPanel: InstanceAiSetupPanelStub,
 	InstanceAiInput: InstanceAiInputStub,
 	InstanceAiWorkflowPreview: InstanceAiWorkflowPreviewStub,
+	InstanceAiWorkflowDraftPreview: InstanceAiWorkflowDraftPreviewStub,
 	InstanceAiAgentPreview: InstanceAiAgentPreviewStub,
 	InstanceAiConfirmationPanel: InstanceAiConfirmationPanelStub,
 	AgentSection: AgentSectionStub,
@@ -855,14 +878,20 @@ describe('InstanceAiThreadView', () => {
 	});
 
 	it('shows no resource picker until the stored tabs load', async () => {
+		const user = userEvent.setup();
 		vi.mocked(fetchThreadTabs).mockReturnValueOnce(new Promise(() => {}));
 		const { findAllByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 		const toggles = await findAllByTestId('instance-ai-artifacts-preview-toggle');
 		expect(queryByTestId('instance-ai-open-resource-picker')).toBeNull();
-		expect(
-			toggles.find((toggle) => toggle.getAttribute('aria-pressed') === 'false'),
-		).toBeDisabled();
+		const toggle = toggles.find((toggle) => toggle.getAttribute('aria-pressed') === 'false')!;
+		expect(toggle).toHaveAttribute('aria-disabled', 'true');
+		expect(toggle).not.toBeDisabled();
+		toggle.focus();
+		expect(toggle).toHaveFocus();
+		await user.keyboard('{Enter} ');
+		await user.click(toggle);
+		expect(toggle).toHaveAttribute('aria-pressed', 'false');
 	});
 
 	it('shows the preview toggle, not the picker, while tabs are open', async () => {
@@ -2496,6 +2525,64 @@ describe('InstanceAiThreadView', () => {
 		expect(queryByTestId('instance-ai-assistant-message')).not.toBeInTheDocument();
 	});
 
+	it('fetches live views only for running browser tasks', async () => {
+		fetchCloudBrowserLiveViewSpy.mockResolvedValue({ status: 'starting' });
+		const browserAgent = (agentId: string, taskId: string, status: 'active' | 'completed') => ({
+			agentId,
+			role: 'cloud-browser',
+			kind: 'cloud-browser',
+			title: 'Find the price',
+			taskId,
+			status,
+			textContent: '',
+			reasoning: '',
+			timeline: [],
+			children: [],
+			// Both tasks opened a session, so only the task state decides which one is fetched.
+			toolCalls: [
+				{
+					toolCallId: `start-${taskId}`,
+					toolName: 'browser_start_session',
+					args: {},
+					isLoading: false,
+				},
+			],
+		});
+		thread.messages = [
+			{
+				id: 'msg-browser',
+				role: 'assistant',
+				content: '',
+				reasoning: '',
+				isStreaming: false,
+				createdAt: '2026-04-01T00:00:00.000Z',
+				agentTree: {
+					agentId: 'orchestrator-1',
+					role: 'orchestrator',
+					status: 'completed',
+					textContent: '',
+					reasoning: '',
+					timeline: [],
+					toolCalls: [],
+					children: [
+						browserAgent('browser-running', 'task-running', 'active'),
+						browserAgent('browser-done', 'task-done', 'completed'),
+					],
+				},
+			},
+		] as never;
+
+		renderView({ props: { threadId: 'thread-1' } });
+		await flushPromises();
+
+		expect(fetchCloudBrowserLiveViewSpy).toHaveBeenCalledTimes(1);
+		expect(fetchCloudBrowserLiveViewSpy).toHaveBeenCalledWith(
+			expect.anything(),
+			'thread-1',
+			'task-running',
+		);
+	});
+
 	it('closes the agent artifact preview from the wrapper toggle', async () => {
 		const { getByTestId, queryByTestId, user } = await renderAgentArtifact();
 		const previewPanel = getByTestId('instance-ai-preview-panel');
@@ -2611,6 +2698,61 @@ describe('InstanceAiThreadView', () => {
 
 		expect(reopenedPreview).toHaveAttribute('data-workflow-id', 'workflow-1');
 		expect(reopenedPreview).not.toHaveAttribute('data-initial-node-id');
+	});
+
+	describe('workflow drafts', () => {
+		const filePath = 'src/workflows/demo.workflow.ts';
+		const draft = (overrides: Record<string, unknown> = {}) => ({
+			filePath,
+			revision: 1,
+			workflow: { name: 'Demo', nodes: [], connections: {} },
+			...overrides,
+		});
+
+		it('shows the draft canvas for a new workflow before it is saved', async () => {
+			const { findByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			thread.workflowDrafts = { [filePath]: draft() };
+
+			const preview = await findByTestId('instance-ai-workflow-draft-preview-stub');
+			expect(preview).toHaveAttribute('data-file-path', filePath);
+			expect(queryByTestId('instance-ai-workflow-preview-stub')).toBeNull();
+		});
+
+		it('does not tell the agent about the tab of an unsaved draft', async () => {
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			thread.workflowDrafts = { [filePath]: draft() };
+			await findByTestId('instance-ai-workflow-draft-preview-stub');
+
+			const sentTabs = vi
+				.mocked(thread.setOpenTabs)
+				.mock.calls.flatMap(([tabs]) => (Array.isArray(tabs) ? tabs : []));
+			expect(sentTabs.map((tab) => tab.id)).not.toContain(`draft:${filePath}`);
+			expect(vi.mocked(thread.setActiveArtifactId).mock.calls).not.toContainEqual([
+				`draft:${filePath}`,
+			]);
+		});
+
+		it('covers the saved canvas with its draft until the saved workflow loads', async () => {
+			thread.producedArtifacts = new Map([
+				['wf-1', { type: 'workflow', id: 'wf-1', name: 'Demo' }],
+			]) as typeof thread.producedArtifacts;
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			thread.isStreaming = true;
+
+			thread.workflowDrafts = { [filePath]: draft({ workflowId: 'wf-1' }) };
+			await findByTestId('instance-ai-workflow-draft-preview-stub');
+			await findByTestId('instance-ai-workflow-preview-stub');
+
+			thread.workflowDrafts = {
+				[filePath]: draft({ workflowId: 'wf-1', savedWorkflowId: 'wf-1' }),
+			};
+			await vi.waitFor(() => expect(workflowLoadedEmit).not.toBeNull());
+			workflowLoadedEmit?.('workflow-loaded', 'wf-1');
+
+			expect(thread.dismissWorkflowDrafts).toHaveBeenCalledWith('wf-1');
+		});
 	});
 
 	describe('Fix with AI card', () => {
@@ -2743,7 +2885,7 @@ describe('InstanceAiThreadView', () => {
 			testAgentOfferState.capabilitySummary = {
 				id: 'agent-1',
 				name: 'Trip Planner',
-				model: { provider: 'anthropic', model: 'claude-sonnet-4-5' },
+				model: { provider: 'anthropic', model: 'claude-sonnet-5-5' },
 				channels: [],
 				tools: [{ type: 'custom', name: 'search' }],
 				mcpServers: [],
@@ -3115,7 +3257,7 @@ describe('InstanceAiThreadView', () => {
 			testAgentOfferState.capabilitySummary = {
 				id: 'agent-1',
 				name: 'Trip Planner',
-				model: { provider: 'anthropic', model: 'claude-sonnet-4-5' },
+				model: { provider: 'anthropic', model: 'claude-sonnet-5-5' },
 				channels: [],
 				tools: [{ type: 'custom', name: 'search' }],
 				mcpServers: [],
@@ -3434,5 +3576,132 @@ describe('InstanceAiThreadView', () => {
 			handoffContext: undefined,
 		});
 		expect(thread.confirmAction).not.toHaveBeenCalled();
+	});
+
+	describe('cloud browser tabs', () => {
+		const OpenBrowserTabButtons = {
+			setup() {
+				const openCloudBrowserTab = inject<((taskId: string) => void) | undefined>(
+					'openCloudBrowserTab',
+					undefined,
+				);
+				return () =>
+					['task-1', 'task-2'].map((taskId) =>
+						h(
+							'button',
+							{
+								'data-test-id': `open-browser-tab-${taskId}`,
+								onClick: () => openCloudBrowserTab?.(taskId),
+							},
+							taskId,
+						),
+					);
+			},
+		};
+
+		const InstanceAiBrowserPreviewStub = defineComponent({
+			props: { taskId: { type: String, required: true } },
+			setup(props) {
+				return () =>
+					h('div', [
+						h('div', {
+							'data-test-id': 'instance-ai-browser-preview-stub',
+							'data-task-id': props.taskId,
+						}),
+						h(OpenBrowserTabButtons),
+					]);
+			},
+		});
+
+		const browserStubs = {
+			...defaultViewStubs,
+			InstanceAiArtifactsPanel: OpenBrowserTabButtons,
+			InstanceAiBrowserPreview: InstanceAiBrowserPreviewStub,
+		};
+
+		function seedBrowserTasks() {
+			const browserAgent = (taskId: string) => ({
+				agentId: `browser-${taskId}`,
+				role: 'cloud-browser',
+				kind: 'cloud-browser',
+				title: `Task ${taskId}`,
+				taskId,
+				status: 'active',
+				textContent: '',
+				reasoning: '',
+				timeline: [],
+				children: [],
+				toolCalls: [],
+			});
+			fetchCloudBrowserLiveViewSpy.mockResolvedValue({ status: 'starting' });
+			thread.hasMessages = true;
+			thread.messages = [
+				{
+					id: 'msg-browser',
+					role: 'assistant',
+					content: '',
+					reasoning: '',
+					isStreaming: false,
+					createdAt: '2026-04-01T00:00:00.000Z',
+					agentTree: {
+						agentId: 'orchestrator-1',
+						role: 'orchestrator',
+						status: 'completed',
+						textContent: '',
+						reasoning: '',
+						timeline: [],
+						toolCalls: [],
+						children: [browserAgent('task-1'), browserAgent('task-2')],
+					},
+				},
+			] as never;
+		}
+
+		it('does not send browser tabs to the agent as open tabs or as the active artifact', async () => {
+			seedBrowserTasks();
+			thread.producedArtifacts = new Map([
+				['workflow-1', { type: 'workflow', id: 'workflow-1', name: 'Orders workflow' }],
+			]) as typeof thread.producedArtifacts;
+			const user = userEvent.setup();
+			const { findByTestId } = renderView({
+				props: { threadId: 'thread-1' },
+				global: { stubs: browserStubs },
+			});
+			await flushPromises();
+
+			await user.click(await findByTestId('open-browser-tab-task-1'));
+			await flushPromises();
+
+			expect(await findByTestId('instance-ai-browser-preview-stub')).toBeVisible();
+			expect(vi.mocked(thread.setOpenTabs).mock.lastCall?.[0]).toEqual([
+				expect.objectContaining({ id: 'workflow-1' }),
+			]);
+			expect(vi.mocked(thread.setActiveArtifactId).mock.lastCall).toEqual([undefined]);
+			for (const [tabs] of vi.mocked(thread.setOpenTabs).mock.calls) {
+				expect(tabs?.some((tab) => tab.id.startsWith('browser:'))).toBeFalsy();
+			}
+			for (const [artifactId] of vi.mocked(thread.setActiveArtifactId).mock.calls) {
+				expect(artifactId?.startsWith('browser:')).toBeFalsy();
+			}
+		});
+
+		it('keeps one preview for each browser tab and shows only the active one', async () => {
+			seedBrowserTasks();
+			const user = userEvent.setup();
+			const { findByTestId, findAllByTestId } = renderView({
+				props: { threadId: 'thread-1' },
+				global: { stubs: browserStubs },
+			});
+			await flushPromises();
+
+			await user.click(await findByTestId('open-browser-tab-task-1'));
+			const [firstPreview] = await findAllByTestId('instance-ai-browser-preview-stub');
+			await user.click(within(firstPreview.parentElement!).getByTestId('open-browser-tab-task-2'));
+
+			const previews = await findAllByTestId('instance-ai-browser-preview-stub');
+			expect(previews.map((preview) => preview.dataset.taskId)).toEqual(['task-1', 'task-2']);
+			expect(previews[0]).not.toBeVisible();
+			expect(previews[1]).toBeVisible();
+		});
 	});
 });

@@ -42,6 +42,7 @@ import '@/controllers/binary-data.controller';
 import '@/controllers/change-email.controller';
 import '@/controllers/ai.controller';
 import '@/controllers/ai-preference.controller';
+import '@/controllers/ai-preference-settings.controller';
 import '@/controllers/dynamic-node-parameters.controller';
 import '@/controllers/invitation.controller';
 import '@/controllers/me.controller';
@@ -555,6 +556,7 @@ export class Server extends AbstractServer {
 					next();
 				}
 			};
+			await this.mountExtensionRoutes();
 			this.app.use(
 				'/',
 				historyApiHandler,
@@ -562,6 +564,7 @@ export class Server extends AbstractServer {
 				express.static(EDITOR_UI_DIST_DIR, cacheOptions),
 			);
 		} else {
+			await this.mountExtensionRoutes();
 			this.app.use('/', express.static(staticCacheDir, cacheOptions));
 		}
 	}

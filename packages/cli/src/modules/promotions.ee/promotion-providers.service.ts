@@ -16,15 +16,13 @@ import {
 	promotionProviderTypeCapabilities,
 	supportsPromotionAuthType,
 } from '@n8n/api-types';
-import { EventService } from '@n8n/backend-services';
+import { EventService, loginIdOf } from '@n8n/backend-services';
 import type { OperationContext, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
-
-import { loginIdOf } from '@/events/login-id';
 
 import type { PromotionProvider } from './database/entities/promotion-provider.entity';
 import { PromotionEnvironmentRepository } from './database/repositories/promotion-environment.repository';

@@ -309,6 +309,28 @@ describe('Microsoft SharePoint v2 — Item: Update', () => {
 		);
 	});
 
+	it('sends the collection type with a multi-choice value on the fields route', async () => {
+		setParams(
+			baseParams({
+				value: { id: ITEM_ID, Tags: ['A', 'B'] } as unknown as ResourceMapperValue['value'],
+				matchingColumns: ['id'],
+			}),
+		);
+		apiRequest.mockResolvedValueOnce({}).mockResolvedValueOnce({ ...GRAPH_ITEM_REPLY });
+
+		await node.execute.call(ctx);
+
+		expect(apiRequest).toHaveBeenNthCalledWith(
+			1,
+			'PATCH',
+			requestPath`${ITEMS_PATH}/${ITEM_ID}/fields`,
+			{ 'Tags@odata.type': 'Collection(Edm.String)', Tags: ['A', 'B'] },
+			{},
+			undefined,
+			{},
+		);
+	});
+
 	it('rejects an empty List value', async () => {
 		setParams({
 			...baseParams({ value: { id: ITEM_ID }, matchingColumns: ['id'] }),
@@ -444,6 +466,53 @@ describe('buildItemFieldsPayload', () => {
 		expect(buildItemFieldsPayload({ 'Link.Url': 'https://x', 'Other.Url': 'y' }, schema)).toEqual({
 			fields: { Link: { Url: 'https://x' }, 'Other.Url': 'y' },
 			hasHyperlink: true,
+		});
+	});
+
+	it('writes the collection type before a string array, even when the schema types the column as string', () => {
+		const schema = [{ id: 'Tags', type: 'string' }] as ResourceMapperValue['schema'];
+		const { fields, hasHyperlink } = buildItemFieldsPayload({ Tags: ['A', 'B'] }, schema);
+		expect(fields).toEqual({ 'Tags@odata.type': 'Collection(Edm.String)', Tags: ['A', 'B'] });
+		expect(Object.keys(fields)).toEqual(['Tags@odata.type', 'Tags']);
+		expect(hasHyperlink).toBe(false);
+	});
+
+	it('adds no collection type to a single choice string', () => {
+		expect(buildItemFieldsPayload({ Choice: 'A' }, []).fields).toEqual({ Choice: 'A' });
+	});
+
+	it('types an empty array as a string collection', () => {
+		expect(buildItemFieldsPayload({ Tags: [] }, []).fields).toEqual({
+			'Tags@odata.type': 'Collection(Edm.String)',
+			Tags: [],
+		});
+	});
+
+	it.each([[[]], [['1', '2']]])('adds no collection type to a lookup ID field: %j', (array) => {
+		const schema = [{ id: 'PersonLookupId', type: 'number' }] as ResourceMapperValue['schema'];
+		expect(buildItemFieldsPayload({ PersonLookupId: array }, schema).fields).toEqual({
+			PersonLookupId: array,
+		});
+	});
+
+	it.each([[['a', 1]], [[1, 2]]])(
+		'leaves an array that contains a non-string untyped: %j',
+		(array) => {
+			expect(buildItemFieldsPayload({ PersonLookupId: array }, []).fields).toEqual({
+				PersonLookupId: array,
+			});
+		},
+	);
+
+	it('writes neither the value nor a collection type for an unsafe key', () => {
+		const value = jsonParse<IDataObject>('{"__proto__": ["x"], "Title": "A"}');
+		expect(buildItemFieldsPayload(value, []).fields).toEqual({ Title: 'A' });
+	});
+
+	it('adds no collection type to a folded hyperlink part', () => {
+		const schema = [{ id: 'Link.Url', type: 'url' }] as ResourceMapperValue['schema'];
+		expect(buildItemFieldsPayload({ 'Link.Description': ['a'] }, schema).fields).toEqual({
+			Link: { Description: ['a'] },
 		});
 	});
 

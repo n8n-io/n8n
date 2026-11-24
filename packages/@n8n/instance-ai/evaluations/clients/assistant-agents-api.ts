@@ -226,8 +226,11 @@ export class AssistantAgentsApi {
 		}
 		const projectId = this.projectByThread.get(threadId);
 		const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : '';
+		// An attached Agent stands for the Agent Builder hand-off, which also binds the thread to it.
+		const subject = options.attachments?.find((attachment) => attachment.type === 'agent');
 		const clientContext = {
 			...(options.attachments?.length ? { attachments: options.attachments } : {}),
+			...(subject ? { subject } : {}),
 			...(options.context ? { context: options.context } : {}),
 		};
 		const first = await this.transport.postSseUntil(
