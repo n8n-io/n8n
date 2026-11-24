@@ -199,6 +199,17 @@ describe('collectWorkflowReferences', () => {
 			{ id: 'sub', workflows: [other, caller] },
 		]);
 	});
+
+	it('lists a workflow one time for a workflow that it references more than one time', () => {
+		const caller = workflow('caller', ALPHA.id, {
+			calls: ['sub', 'sub'],
+			settings: { errorWorkflow: 'sub' },
+		});
+
+		expect(collectWorkflowReferences({ workflows: [caller] } as PackageDirectoryInventory)).toEqual(
+			[{ id: 'sub', workflows: [caller] }],
+		);
+	});
 });
 
 describe('missingWorkflowDependencies', () => {
