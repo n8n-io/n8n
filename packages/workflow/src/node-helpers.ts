@@ -2,8 +2,11 @@
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+import { isRecord } from '@n8n/utils/is-record';
 import get from 'lodash/get';
+import has from 'lodash/has';
 import isEqual from 'lodash/isEqual';
+import unset from 'lodash/unset';
 import { v4 as uuid } from 'uuid';
 
 import {
@@ -36,6 +39,8 @@ import type {
 	IParameterDependencies,
 	IVersionedNodeType,
 	NodeParameterValue,
+	NodeParameterValueType,
+	NodeParametersCarryOver,
 	ResourceMapperValue,
 	INodeTypeDescription,
 	INodeOutputConfiguration,
@@ -52,6 +57,8 @@ import { validateFilterParameter } from './node-parameters/filter-parameter';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
 import {
 	isFilterValue,
+	isINodePropertiesList,
+	isINodePropertyCollectionList,
 	isINodePropertyOptionsList,
 	isResourceLocatorValue,
 	isResourceMapperValue,
@@ -1066,6 +1073,10 @@ export function getNodeParameters(
 						continue;
 					}
 
+					if (!Array.isArray((propertyValues as INodeParameters)[itemName])) {
+						continue;
+					}
+
 					// Iterate over all items as it contains multiple ones
 					for (const nodeValue of (propertyValues as INodeParameters)[
 						itemName
@@ -1411,6 +1422,254 @@ export function getNodeParametersIssues(
 	}
 
 	return foundIssues;
+}
+
+type ParameterPath = Array<string | number>;
+
+const isParameterRecord = (value: unknown): value is INodeParameters => isRecord(value);
+
+/** Checks a value that is not an expression against a parameter that is not a collection. */
+function isValidParameterValue(property: INodeProperties, value: unknown): boolean {
+	const { type, options, typeOptions } = property;
+
+	if (type === 'boolean' || type === 'number') return typeof value === type;
+
+	if (type === 'options' || type === 'multiOptions') {
+		// A dynamic list is not known here.
+		if (
+			typeOptions?.loadOptionsMethod ||
+			typeOptions?.loadOptions ||
+			!isINodePropertyOptionsList(options) ||
+			!options.length
+		) {
+			return true;
+		}
+		const chosen = type === 'multiOptions' ? value : [value];
+		return (
+			Array.isArray(chosen) &&
+			chosen.every((entry) => options.some((option) => option.value === entry))
+		);
+	}
+
+	if (type === 'filter') return isFilterValue(value);
+	if (type === 'resourceMapper') return isResourceMapperValue(value);
+	if (type === 'assignmentCollection') return isRecord(value) && Array.isArray(value.assignments);
+
+	return true;
+}
+
+/** Returns the paths in `value` that one definition of the parameter rejects. */
+function getInvalidParameterPaths(
+	property: INodeProperties,
+	value: unknown,
+	path: ParameterPath,
+	root: INodeParameters,
+	node: INode,
+	nodeType: INodeTypeDescription,
+	saved: INodeParameters,
+): ParameterPath[] {
+	const { type, options, typeOptions } = property;
+
+	if (type === 'collection') {
+		if (typeOptions?.multipleValues) return Array.isArray(value) ? [] : [path];
+		if (!isRecord(value)) return [path];
+		return isINodePropertiesList(options)
+			? findInvalidParameterPaths(options, value, path, root, node, nodeType, saved)
+			: [];
+	}
+
+	if (type === 'fixedCollection') {
+		if (!isParameterRecord(value)) return [path];
+		if (!isINodePropertyCollectionList(options)) return [];
+		const invalid: ParameterPath[] = [];
+		for (const group of options) {
+			const groupValue = value[group.name];
+			// A group holds one item, or an array of items if `multipleValues` is set.
+			const items: Array<[unknown, ParameterPath]> = Array.isArray(groupValue)
+				? groupValue.map((item, index) => [item, [...path, group.name, index]])
+				: [[groupValue, [...path, group.name]]];
+			for (const [item, itemPath] of items) {
+				invalid.push(
+					...findInvalidParameterPaths(group.values, item, itemPath, root, node, nodeType, saved),
+				);
+			}
+		}
+		return invalid;
+	}
+
+	// `getNodeParameters` removed the `=`, because the parameter has `noDataExpression`.
+	const savedValue: unknown = get(saved, path);
+	if (typeof savedValue === 'string' && savedValue !== value) return [path];
+	if (isExpression(value)) return [];
+
+	return isValidParameterValue(property, value) ? [] : [path];
+}
+
+/** Returns the paths of the values that no displayed definition of their parameter accepts. */
+function findInvalidParameterPaths(
+	properties: INodeProperties[],
+	values: unknown,
+	path: ParameterPath,
+	root: INodeParameters,
+	node: INode,
+	nodeType: INodeTypeDescription,
+	saved: INodeParameters,
+): ParameterPath[] {
+	if (!isParameterRecord(values)) return [];
+
+	return Object.entries(values).flatMap(([name, value]) => {
+		// An expression on a controlling parameter can display more than one definition.
+		const results = properties
+			.filter(
+				(property) =>
+					property.name === name && displayParameter(values, property, node, nodeType, root),
+			)
+			.map((property) =>
+				getInvalidParameterPaths(property, value, [...path, name], root, node, nodeType, saved),
+			);
+		return results.length > 0 && results.every((result) => result.length > 0) ? results[0] : [];
+	});
+}
+
+/** Collects the old values that are not in `newValue`. Does not descend into a removed path. */
+function collectSetAside(
+	oldValue: NodeParameterValueType,
+	newValue: NodeParameterValueType,
+	path: ParameterPath,
+	removed: Set<string>,
+	entries: Array<{ path: ParameterPath; value: NodeParameterValueType }>,
+) {
+	if (isEqual(oldValue, newValue)) return;
+
+	const descend = !removed.has(JSON.stringify(path));
+	// A type guard on the union type does not narrow to `INodeParameters`.
+	const oldRecord: unknown = oldValue;
+	const newRecord: unknown = newValue;
+	if (descend && isParameterRecord(oldRecord) && isParameterRecord(newRecord)) {
+		for (const key of Object.keys(oldRecord)) {
+			collectSetAside(oldRecord[key], newRecord[key], [...path, key], removed, entries);
+		}
+	} else if (
+		descend &&
+		Array.isArray(oldValue) &&
+		Array.isArray(newValue) &&
+		oldValue.every(isRecord)
+	) {
+		for (const [index, item] of oldValue.entries()) {
+			collectSetAside(item, newValue[index], [...path, index], removed, entries);
+		}
+	} else {
+		entries.push({ path, value: deepCopy(oldValue) });
+	}
+}
+
+/**
+ * Returns the parameters of a node for a different version of its node type.
+ * A value that the target version does not accept is set aside and not converted.
+ * Does not change `node`.
+ */
+export function carryOverNodeParameters(
+	node: INode,
+	currentNodeType: INodeTypeDescription,
+	targetNodeType: INodeTypeDescription,
+	targetVersion: number,
+): NodeParametersCarryOver {
+	// `getNodeParametersIssues` returns null for a disabled node.
+	const targetNode: INode = { ...node, typeVersion: targetVersion, disabled: false };
+	const resolve = (params: INodeParameters, returnDefaults: boolean) =>
+		getNodeParameters(
+			targetNodeType.properties,
+			params,
+			returnDefaults,
+			false,
+			targetNode,
+			targetNodeType,
+		) ?? {};
+
+	const oldFull =
+		getNodeParameters(
+			currentNodeType.properties,
+			node.parameters,
+			true,
+			false,
+			node,
+			currentNodeType,
+		) ?? {};
+
+	// A removed value can change which definition of a parameter is displayed, so check again.
+	let parameters = deepCopy(node.parameters);
+	const removed = new Set<string>();
+	for (;;) {
+		const resolved = resolve(parameters, true);
+		const invalid = findInvalidParameterPaths(
+			targetNodeType.properties,
+			resolved,
+			[],
+			resolved,
+			targetNode,
+			targetNodeType,
+			parameters,
+		).filter((path) => has(parameters, path));
+		if (invalid.length === 0) break;
+		for (const path of invalid) {
+			unset(parameters, path);
+			removed.add(JSON.stringify(path));
+		}
+	}
+
+	parameters = resolve(parameters, false);
+	const full = resolve(parameters, true);
+
+	const entries: Array<{ path: ParameterPath; value: NodeParameterValueType }> = [];
+	collectSetAside(node.parameters, full, [], removed, entries);
+	const setAside = entries.map(({ path, value }) => {
+		// The saved form can keep raw values, so remove each set-aside value here.
+		unset(parameters, path);
+		const name = path.reduce<string>(
+			(joined, segment) =>
+				typeof segment === 'number'
+					? `${joined}[${segment}]`
+					: joined
+						? `${joined}.${segment}`
+						: segment,
+			'',
+		);
+		// `findDisplayedProperty` splits its path on `.` and `[`.
+		const property = path.some((segment) => typeof segment === 'string' && /[.[]/.test(segment))
+			? undefined
+			: findDisplayedProperty(name, currentNodeType.properties, oldFull, node, currentNodeType);
+		return {
+			name,
+			displayName: property && 'displayName' in property ? property.displayName : name,
+			value,
+		};
+	});
+
+	const changedDefaults = Object.keys(full)
+		.filter(
+			(name) =>
+				!Object.hasOwn(node.parameters, name) &&
+				Object.hasOwn(oldFull, name) &&
+				!isEqual(oldFull[name], full[name]),
+		)
+		.map((name) => ({
+			name,
+			displayName:
+				targetNodeType.properties.find(
+					(property) =>
+						property.name === name && displayParameter(full, property, targetNode, targetNodeType),
+				)?.displayName ?? name,
+			oldDefault: oldFull[name],
+			newDefault: full[name],
+		}));
+
+	const issues = getNodeParametersIssues(
+		targetNodeType.properties,
+		{ ...targetNode, parameters: full },
+		targetNodeType,
+	);
+
+	return { parameters, setAside, changedDefaults, issues };
 }
 
 /**
