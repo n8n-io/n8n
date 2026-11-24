@@ -611,8 +611,6 @@ export function buildSubWorkflowOutput(
 /**
  * Stop an awaited sub-workflow when its parent is cancelled.
  *
- * The child runs in the parent's process and the parent waits for it, so a child
- * that keeps running also keeps the parent's job, and its worker slot, busy.
  * Returns a function that removes the listener.
  */
 function cancelWithParent(parentSignal: AbortSignal | undefined, executionId: string) {
