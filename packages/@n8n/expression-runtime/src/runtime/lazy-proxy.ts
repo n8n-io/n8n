@@ -50,7 +50,10 @@ export type ReadBatch = (
 
 /** How an expression read the data of a lazy proxy so far. */
 interface ReadTrace {
-	/** The expression read every field of an object, or read an array in order to its last item. */
+	/**
+	 * The expression read an item that shares this trace in full: every host key
+	 * of an object, or an array in order to its last item.
+	 */
 	bulk: boolean;
 	/** The first names of the fields the expression read by name. */
 	names?: string[];
@@ -79,15 +82,7 @@ function requestAfter(itemTrace: ReadTrace | undefined): BatchRequest {
 	return itemTrace?.bulk === true ? WHOLE_VALUES : (itemTrace?.names ?? SMALL_VALUES);
 }
 
-/** What the fields of an object are asked for, from how the expression read its parent. */
-function requestUnder(parentTrace: ReadTrace | undefined): BatchRequest {
-	return parentTrace?.bulk === true ? WHOLE_VALUES : SMALL_VALUES;
-}
-
-/**
- * What a lazy proxy knows about the reads of its values. An object proxy that
- * reads one field makes none.
- */
+/** What a lazy proxy knows about the reads of its values. */
 interface ChildReads {
 	/** The index after the last item that a host read gave. A read of this index is a read in order. */
 	nextInOrder: number;
@@ -112,10 +107,22 @@ interface ChildReads {
 	 * its end.
 	 */
 	endKey?: string;
+	/**
+	 * The count of host keys of an object that the expression read. A read of
+	 * every one sets `bulk` on the trace. A read before the key list is known does
+	 * not count.
+	 */
+	hostKeysRead: number;
 }
 
 function newChildReads(): ChildReads {
-	return { nextInOrder: -1, readAheadStep: 0, smallItemsAreLazy: false, keysWereListed: false };
+	return {
+		nextInOrder: -1,
+		readAheadStep: 0,
+		smallItemsAreLazy: false,
+		keysWereListed: false,
+		hostKeysRead: 0,
+	};
 }
 
 const MAX_SEARCHED_KEYS = 64;
@@ -300,7 +307,6 @@ export type ProxyMeta = { kind: 'object'; keys?: string[] } | { kind: 'array'; l
  * @param basePath - Current path in object tree (e.g., ['$json', 'user'])
  * @param meta - Optional shape descriptor (object/array + known keys/length)
  * @param callbacks - ivm.Callback functions for cross-isolate communication
- * @param parentTrace - How the expression read the proxy that holds this one
  * @param trace - Where this proxy records how the expression reads it
  * @param firstFields - Fields of the object that a host read already gave
  * @returns Proxy object with lazy loading behavior
@@ -313,7 +319,6 @@ export function createDeepLazyProxy(
 		getArrayElement: any;
 		readBatch: ReadBatch;
 	},
-	parentTrace?: ReadTrace,
 	trace: ReadTrace = { bulk: false },
 	firstFields?: Record<string, unknown>,
 ): Record<string | symbol, unknown> {
@@ -325,21 +330,18 @@ export function createDeepLazyProxy(
 
 	const isArray = meta?.kind === 'array';
 	const arrayLength = isArray ? meta.length : 0;
-	const objectKeys = meta?.kind === 'object' ? meta.keys : undefined;
-
-	// Cache for keys fetched from the bridge (root object proxies without known keys).
-	// Shared by ownKeys, getOwnPropertyDescriptor, and materialize() so all three
-	// see the same key list.
-	let fetchedKeys: string[] | undefined;
+	// The host keys of an object. Without a key list in `meta`, the first call of
+	// resolveObjectKeys fetches it. Shared by ownKeys, getOwnPropertyDescriptor,
+	// and materialize() so all three see the same key list.
+	let knownKeys = meta?.kind === 'object' ? meta.keys : undefined;
 
 	function resolveObjectKeys(): string[] {
-		if (objectKeys) return objectKeys;
-		if (fetchedKeys) return fetchedKeys;
+		if (knownKeys) return knownKeys;
 		const value = getValueAtPath(basePath);
 		throwIfErrorSentinel(value);
 		if (isObjectMetadata(value)) {
-			fetchedKeys = value.__keys;
-			return fetchedKeys;
+			knownKeys = value.__keys;
+			return knownKeys;
 		}
 		return [];
 	}
@@ -374,7 +376,6 @@ export function createDeepLazyProxy(
 				path,
 				{ kind: 'array', length: value.__length },
 				callbacks,
-				trace,
 				childTrace,
 			);
 		}
@@ -384,7 +385,6 @@ export function createDeepLazyProxy(
 				path,
 				{ kind: 'object', keys: value.__keys },
 				callbacks,
-				trace,
 				childTrace,
 			);
 		}
@@ -416,7 +416,6 @@ export function createDeepLazyProxy(
 			[...basePath, prop],
 			{ kind: 'object' },
 			callbacks,
-			trace,
 			reads.itemTrace,
 			fields,
 		);
@@ -643,13 +642,18 @@ export function createDeepLazyProxy(
 
 			if (childReads?.keysWereListed === true) {
 				childReads.keysWereListed = false;
-				trace.bulk = true;
-				readEveryField(childReads, requestUnder(parentTrace));
+				readEveryField(childReads, trace.bulk ? WHOLE_VALUES : SMALL_VALUES);
 			}
 
 			// A host array can carry named keys, for example a key that a Set node
 			// writes on an item whose json is an array.
-			return cacheObjectValue(prop);
+			const value = cacheObjectValue(prop);
+			// Only object items have a trace with names, and only items use the mark.
+			if (trace.names !== undefined && knownKeys !== undefined && isHostKey(knownKeys, prop)) {
+				const reads = (childReads ??= newChildReads());
+				if (++reads.hostKeysRead === knownKeys.length) trace.bulk = true;
+			}
+			return value;
 		},
 
 		// Expression code runs in sloppy mode (the eval wrapper adds no

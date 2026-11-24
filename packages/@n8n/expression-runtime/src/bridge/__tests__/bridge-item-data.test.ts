@@ -193,6 +193,10 @@ const expressions: Array<{ label: string; code: string }> = [
 		code: 'return $json.rows.map(function (r) { return r && typeof r === "object" ? Object.keys(r) : r; });',
 	},
 	{
+		label: 'lists the keys of each row, then reads one field',
+		code: 'return $json.rows.filter(function (r) { return r !== null && typeof r === "object" && Object.keys(r).length > 0; }).map(function (r) { return r.id; });',
+	},
+	{
 		label: 'checks a key of each row',
 		code: 'return $json.rows.map(function (r) { return r !== null && typeof r === "object" && [r.id, "name" in r, "nope" in r]; });',
 	},
