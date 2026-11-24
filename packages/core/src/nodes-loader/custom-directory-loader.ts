@@ -12,7 +12,7 @@ async function collectCustomFiles(
 ): Promise<{ nodes: string[]; credentials: string[] }> {
 	const nodes: string[] = [];
 	const credentials: string[] = [];
-	const visitedRealDirs = new Set<string>([rootDir]);
+	const ancestorRealDirs = new Set<string>([rootDir]);
 
 	const walk = async (dir: string, realDir: string): Promise<void> => {
 		const entries = await readDirectoryEntries(dir);
@@ -33,10 +33,13 @@ async function collectCustomFiles(
 						continue;
 					}
 				}
-				if (visitedRealDirs.has(nextRealDir)) continue;
-				visitedRealDirs.add(nextRealDir);
-
-				await walk(fullPath, nextRealDir);
+				if (ancestorRealDirs.has(nextRealDir)) continue;
+				ancestorRealDirs.add(nextRealDir);
+				try {
+					await walk(fullPath, nextRealDir);
+				} finally {
+					ancestorRealDirs.delete(nextRealDir);
+				}
 			} else if (await isFileEntry(dir, entry)) {
 				if (entry.name.endsWith('.node.js')) {
 					nodes.push(fullPath);

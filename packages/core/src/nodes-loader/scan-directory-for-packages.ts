@@ -17,10 +17,11 @@ async function findInstalledPackagePaths(nodeModulesDir: string): Promise<string
 	const scoped: string[] = [];
 
 	for (const entry of topLevelEntries) {
-		if (BACKUP_DIRECTORY_PATTERN.test(entry.name)) continue;
-
 		if (entry.name.startsWith('n8n-nodes-')) {
-			if (await isDirectoryEntry(nodeModulesDir, entry)) {
+			if (
+				!BACKUP_DIRECTORY_PATTERN.test(entry.name) &&
+				(await isDirectoryEntry(nodeModulesDir, entry))
+			) {
 				unscoped.push(entry.name);
 			}
 		} else if (entry.name.startsWith('@')) {

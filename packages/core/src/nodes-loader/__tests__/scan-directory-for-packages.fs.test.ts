@@ -133,6 +133,18 @@ describe('scanDirectoryForPackages (real filesystem)', () => {
 		expect(logger.warn).not.toHaveBeenCalled();
 	});
 
+	it('discovers packages under a scope whose name ends with .backup-<digits>', async () => {
+		writePackage('@acme.backup-123/n8n-nodes-example');
+		writePackage('@acme.backup-123/n8n-nodes-example.backup-1700000000000');
+
+		const loaders = await scanDirectoryForPackages(nodeModulesDir);
+
+		expect(loaders.map((loader) => loader.packageName)).toEqual([
+			'@acme.backup-123/n8n-nodes-example',
+		]);
+		expect(logger.warn).not.toHaveBeenCalled();
+	});
+
 	it('follows symlinked package directories and ignores files and broken symlinks', async () => {
 		const externalRoot = mkdtempSync(path.join(tmpdir(), 'n8n-scan-linked-'));
 		try {

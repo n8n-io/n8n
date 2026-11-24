@@ -14,6 +14,7 @@ import path from 'node:path';
 import { mockInstance } from '@test/utils';
 
 import { CustomDirectoryLoader } from '../custom-directory-loader';
+import * as classLoader from '../load-class-in-isolation';
 
 // NODE-6005: Dependency build files can use n8n node and credential file suffixes.
 describe('CustomDirectoryLoader dependencies', () => {
@@ -375,5 +376,57 @@ describe('CustomDirectoryLoader dependencies', () => {
 
 		expectCustomFilesLoaded(files);
 		expect(logger.warn).not.toHaveBeenCalled();
+	});
+
+	it('still loads from the real directory when an earlier symlink alias fails to load', async () => {
+		const files = writeCustomFiles(customDir);
+		const nodesAlias = path.join(customDir, 'Alink-nodes');
+		const credentialsAlias = path.join(customDir, 'Alink-credentials');
+		symlinkSync(path.join(customDir, 'nodes'), nodesAlias, 'dir');
+		symlinkSync(path.join(customDir, 'credentials'), credentialsAlias, 'dir');
+
+		const originalLoad = classLoader.loadClassInIsolation;
+		vi.spyOn(classLoader, 'loadClassInIsolation').mockImplementation((filePath, className) => {
+			if (filePath.startsWith(nodesAlias) || filePath.startsWith(credentialsAlias)) {
+				throw new SyntaxError(`Failed to load alias ${filePath}`);
+			}
+			return originalLoad(filePath, className);
+		});
+
+		await expect(loader.loadAll()).resolves.toBeUndefined();
+
+		expectCustomFilesLoaded(files);
+		expect(logger.warn).toHaveBeenCalledTimes(2);
+	});
+
+	it('resolves relative icon paths through the real directory when an earlier alias escapes the root', async () => {
+		writeFile(customDir, 'Pkg/icons/my.svg', '<svg/>');
+		const realNodePath = writeFile(
+			customDir,
+			'Pkg/nodes/MyNode/MyNode.node.js',
+			`module.exports.MyNode = class MyNode {
+				constructor() {
+					this.description = {
+						displayName: 'My Node',
+						name: 'myNode',
+						icon: 'file:../../icons/my.svg',
+						group: ['transform'],
+						version: 1,
+						description: 'Test node',
+						defaults: { name: 'My Node' },
+						inputs: ['main'],
+						outputs: ['main'],
+						properties: [],
+					};
+				}
+			};`,
+		);
+		symlinkSync(path.join(customDir, 'Pkg/nodes/MyNode'), path.join(customDir, 'Alink'), 'dir');
+
+		await expect(loader.loadAll()).resolves.toBeUndefined();
+
+		expect(loader.getNode('myNode').sourcePath).toBe(realNodePath);
+		expect(loader.getNode('myNode').type.description.iconUrl).toBe('icons/CUSTOM/Pkg/icons/my.svg');
+		expect(logger.warn).toHaveBeenCalledTimes(1);
 	});
 });
