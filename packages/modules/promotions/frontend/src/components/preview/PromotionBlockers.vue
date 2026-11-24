@@ -2,6 +2,8 @@
 import type {
 	PromotionBindingConflict,
 	PromotionBindingConsumer,
+	PromotionDependencyWarning,
+	PromotionMissingDependency,
 	PromotionResourceType,
 } from '@n8n/api-types';
 import {
@@ -10,6 +12,7 @@ import {
 	N8nHeading,
 	N8nIcon,
 	N8nText,
+	N8nTooltip,
 	type IconName,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -22,11 +25,21 @@ import type { ApplyCheckResult, BlockedApplyResult } from '../../promotions.type
 import { resourceIcon } from '../../promotionPreview.tree';
 import PromotionWorkflowLinks from './PromotionWorkflowLinks.vue';
 
-const props = defineProps<{
-	/** The Apply check, scoped to the workflows that the preview lists. Moved folders stay unscoped. */
-	check: ApplyCheckResult;
-	busy: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		/**
+		 * The Apply check, scoped to the workflows that the preview lists. Moved folders stay unscoped.
+		 * `null` on Promote, which has no check.
+		 */
+		check: ApplyCheckResult | null;
+		/** Promote only: what the selected workflows use and the branch does not hold after the Promote. */
+		missingDependencies?: PromotionMissingDependency[];
+		/** Promote only: what the selected workflows reference and this instance does not have. */
+		dependencyWarnings?: PromotionDependencyWarning[];
+		busy: boolean;
+	}>(),
+	{ missingDependencies: () => [], dependencyWarnings: () => [] },
+);
 
 const emit = defineEmits<{
 	/** A binding was created, so the preview and the check must load again. */
@@ -48,11 +61,16 @@ const asBlockedResult = ({
 // The binding session lives as long as the commit. A later check for the same commit keeps the
 // created bindings in the table as resolved.
 const bindings = usePromotionBindings();
-const creation = usePromotionBindingCreation(asBlockedResult(props.check), () => {});
+// Only Apply has a check, and so bindings to create. The page mounts this component again for
+// each direction.
+const creation = props.check
+	? usePromotionBindingCreation(asBlockedResult(props.check), () => {})
+	: undefined;
 let sessionCommit: string | undefined;
 watch(
 	() => props.check,
 	(check) => {
+		if (!check || !creation) return;
 		const result = asBlockedResult(check);
 		creation.updateCheck(result.check);
 		if (sessionCommit === check.git.commitSha) {
@@ -72,11 +90,13 @@ type BlockerRow = {
 	name: string;
 	type: PromotionResourceType;
 	usedBy: Array<{ key: string; name: string }>;
-	status: { label: string; tone: 'warning' | 'success' };
+	status: { label: string } & StatusStyle;
 	/** The next step for blockers that users resolve outside this page. */
 	detail?: string;
 	/** The button that adds a missing binding. */
 	createLabel?: string;
+	/** A button for an action that users cannot take, with the reason in its tooltip. */
+	disabledAction?: { label: string; reason: string };
 };
 
 const usedBy = (consumers: PromotionBindingConsumer[]) =>
@@ -84,11 +104,28 @@ const usedBy = (consumers: PromotionBindingConsumer[]) =>
 		workflows.map(({ id, name }) => ({ key: `workflow:${id}`, name })),
 	);
 
-type StatusKey = 'missing' | 'resolved' | 'access' | 'conflict' | 'moved';
+type StatusKey =
+	| 'missing'
+	| 'resolved'
+	| 'access'
+	| 'conflict'
+	| 'moved'
+	| 'otherProject'
+	| 'outside'
+	| 'personal';
+type StatusStyle = { tone: 'warning' | 'success' | 'neutral'; icon: IconName };
+
+const WARNING_STYLE: StatusStyle = { tone: 'warning', icon: 'circle-alert' };
+// A dependency that Promote leaves out does not stop it, so its status is not a warning.
+const STATUS_STYLES: Partial<Record<StatusKey, StatusStyle>> = {
+	resolved: { tone: 'success', icon: 'circle-check' },
+	otherProject: { tone: 'neutral', icon: 'circle-minus' },
+	outside: { tone: 'neutral', icon: 'lock' },
+};
 
 const status = (key: StatusKey) => ({
 	label: i18n.baseText(`promotions.preview.blockers.status.${key}`),
-	tone: key === 'resolved' ? ('success' as const) : ('warning' as const),
+	...(STATUS_STYLES[key] ?? WARNING_STYLE),
 });
 
 type HardConflict = Exclude<
@@ -166,6 +203,7 @@ function movedRow(
 }
 
 const blockerRows = computed<BlockerRow[]>(() => {
+	if (!props.check) return [];
 	const { accessRequirements, movedWorkflows, movedFolders } = props.check;
 	return [
 		...bindings.rows.value.map(({ key, binding, status: bindingStatus }) => ({
@@ -195,6 +233,109 @@ const blockerRows = computed<BlockerRow[]>(() => {
 	];
 });
 
+/** The sections of the missing dependencies, in the order that the page shows them. */
+const DEPENDENCY_SECTIONS = [
+	{
+		group: 'other-project',
+		id: 'otherProject',
+		status: 'otherProject',
+		reason: 'promotions.preview.blockers.disabled.otherProject',
+	},
+	{
+		group: 'outside-access',
+		id: 'outsideAccess',
+		status: 'outside',
+		reason: 'promotions.preview.blockers.disabled.outside.promote',
+	},
+	{
+		group: 'personal',
+		id: 'notPromoted',
+		status: 'personal',
+		reason: 'promotions.preview.blockers.disabled.personal',
+	},
+] as const;
+
+type DependencySection = (typeof DEPENDENCY_SECTIONS)[number];
+
+function dependencyDescription(
+	id: DependencySection['id'],
+	dependencies: PromotionMissingDependency[],
+) {
+	if (id === 'otherProject') {
+		return i18n.baseText('promotions.preview.blockers.section.otherProject.description');
+	}
+	if (id === 'outsideAccess') {
+		return i18n.baseText('promotions.preview.blockers.section.outsideAccess.description.promote');
+	}
+	// A user cannot move what is in a personal project that the user cannot access.
+	if (dependencies.some(({ accessible }) => !accessible)) {
+		return i18n.baseText('promotions.preview.blockers.section.notPromoted.description.noAccess');
+	}
+	return i18n.baseText(
+		dependencies.every(({ kind }) => kind === 'credential')
+			? 'promotions.preview.blockers.section.notPromoted.description'
+			: 'promotions.preview.blockers.section.notPromoted.description.mixed',
+	);
+}
+
+// The same rule for one row: the tooltip must not tell the user to move what the user cannot reach.
+const disabledReason = (
+	{ group, accessible }: PromotionMissingDependency,
+	reason: DependencySection['reason'],
+) =>
+	group === 'personal' && !accessible
+		? 'promotions.preview.blockers.disabled.personal.noAccess'
+		: reason;
+
+// The row shows the name, the type and the workflows that use the dependency. The API sends no
+// owner and no project for it.
+const dependencyRow = (
+	dependency: PromotionMissingDependency,
+	{ id, status: statusKey, reason }: DependencySection,
+): BlockerRow => ({
+	key: `${id}:${dependency.kind}:${dependency.id ?? dependency.name}`,
+	icon: resourceIcon(dependency.kind),
+	name: dependency.name,
+	type: dependency.kind,
+	usedBy: usedBy(dependency.consumers),
+	status: status(statusKey),
+	// "Include" is not available yet, so the button only says why.
+	disabledAction: {
+		label: i18n.baseText('promotions.preview.blockers.include'),
+		reason: i18n.baseText(disabledReason(dependency, reason), {
+			interpolate: {
+				type: i18n.baseText(`promotions.preview.blockers.type.${dependency.kind}`).toLowerCase(),
+			},
+		}),
+	},
+});
+
+// The kinds of issue, in the order that users read them. Only the first one stops the operation.
+const sections = computed(() =>
+	[
+		{
+			id: 'blockers' as const,
+			title: i18n.baseText('promotions.preview.blockers.section.blockers', {
+				adjustToNumber: blockerRows.value.length,
+				interpolate: { count: String(blockerRows.value.length) },
+			}),
+			description: undefined,
+			rows: blockerRows.value,
+		},
+		...DEPENDENCY_SECTIONS.map((section) => {
+			const dependencies = props.missingDependencies.filter(({ group }) => group === section.group);
+			return {
+				id: section.id,
+				title: i18n.baseText(`promotions.preview.blockers.section.${section.id}`, {
+					interpolate: { count: String(dependencies.length) },
+				}),
+				description: dependencyDescription(section.id, dependencies),
+				rows: dependencies.map((dependency) => dependencyRow(dependency, section)),
+			};
+		}),
+	].filter(({ rows }) => rows.length > 0),
+);
+
 const unresolvedCount = computed(
 	() => blockerRows.value.filter((row) => row.status.tone === 'warning').length,
 );
@@ -209,15 +350,25 @@ function removedColumns(
 		.join(', ');
 }
 
-const warnings = computed(() => props.check.warnings);
+const warnings = computed(() => props.check?.warnings ?? []);
 
-// Data table changes and variable warnings do not block Apply, so they share one section.
+// Data table changes and warnings do not block the operation, so they share one section.
 const warningCount = computed(
-	() => bindings.destructiveChanges.value.length + warnings.value.length,
+	() =>
+		bindings.destructiveChanges.value.length +
+		warnings.value.length +
+		props.dependencyWarnings.length,
 );
-const open = ref({ blockers: true, warnings: true });
+const open = ref({
+	blockers: true,
+	otherProject: true,
+	outsideAccess: true,
+	notPromoted: true,
+	warnings: true,
+});
 
 async function create(key: string) {
+	if (!creation) return;
 	await bindings.createBinding(key, creation.createBinding);
 	if (bindings.rows.value.some((row) => row.key === key && row.status === 'resolved')) {
 		emit('refresh');
@@ -231,11 +382,15 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 	<div :class="$style.blockers" data-test-id="promotion-preview-blockers">
 		<slot />
 		<N8nText tag="p" color="text-base">
-			{{ i18n.baseText('promotions.preview.blockers.intro') }}
+			{{
+				i18n.baseText(
+					check ? 'promotions.preview.blockers.intro' : 'promotions.preview.blockers.intro.promote',
+				)
+			}}
 		</N8nText>
 
 		<N8nCallout
-			v-if="unresolvedCount === 0"
+			v-if="check && unresolvedCount === 0"
 			theme="success"
 			slim
 			role="status"
@@ -248,24 +403,25 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 			{{ i18n.baseText('promotions.bindings.error.creationMismatch') }}
 		</N8nCallout>
 
-		<section v-if="blockerRows.length > 0" :class="$style.section">
+		<section
+			v-for="section in sections"
+			:key="section.id"
+			:class="$style.section"
+			data-test-id="promotion-preview-blockers-section"
+		>
 			<button
 				type="button"
 				:class="$style.sectionHeader"
-				:aria-expanded="open.blockers"
-				@click="open.blockers = !open.blockers"
+				:aria-expanded="open[section.id]"
+				@click="open[section.id] = !open[section.id]"
 			>
-				<N8nIcon :icon="open.blockers ? 'chevron-down' : 'chevron-right'" size="small" />
-				<N8nHeading tag="h2" size="medium">
-					{{
-						i18n.baseText('promotions.preview.blockers.section.blockers', {
-							adjustToNumber: blockerRows.length,
-							interpolate: { count: String(blockerRows.length) },
-						})
-					}}
-				</N8nHeading>
+				<N8nIcon :icon="open[section.id] ? 'chevron-down' : 'chevron-right'" size="small" />
+				<N8nHeading tag="h2" size="medium">{{ section.title }}</N8nHeading>
 			</button>
-			<div v-show="open.blockers">
+			<div v-show="open[section.id]">
+				<N8nText v-if="section.description" tag="p" color="text-base" :class="$style.description">
+					{{ section.description }}
+				</N8nText>
 				<table
 					:class="[$style.table, $style.fixedColumns]"
 					data-test-id="promotion-preview-blockers-table"
@@ -291,7 +447,7 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 					</thead>
 					<tbody>
 						<tr
-							v-for="row in blockerRows"
+							v-for="row in section.rows"
 							:key="row.key"
 							data-test-id="promotion-preview-blocker-row"
 							:data-blocker-key="row.key"
@@ -327,10 +483,7 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 							</td>
 							<td aria-live="polite">
 								<N8nText size="medium" :class="[$style.status, $style[row.status.tone]]">
-									<N8nIcon
-										:icon="row.status.tone === 'success' ? 'circle-check' : 'circle-alert'"
-										size="small"
-									/>
+									<N8nIcon :icon="row.status.icon" size="small" />
 									{{ row.status.label }}
 								</N8nText>
 							</td>
@@ -339,12 +492,29 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 									v-if="row.createLabel"
 									variant="outline"
 									size="small"
+									:class="$style.createAction"
 									:disabled="isCreateDisabled"
 									data-test-id="promotion-preview-blocker-create"
 									@click="create(row.key)"
 								>
 									{{ row.createLabel }}
 								</N8nButton>
+								<!-- A disabled button gets no pointer events and no focus, so its wrapper is the
+								tooltip trigger. -->
+								<N8nTooltip v-else-if="row.disabledAction" placement="left" as-child>
+									<template #content>{{ row.disabledAction.reason }}</template>
+									<span
+										tabindex="0"
+										role="group"
+										:class="$style.disabledAction"
+										:aria-label="`${row.disabledAction.label}. ${row.disabledAction.reason}`"
+										data-test-id="promotion-preview-blocker-disabled-action"
+									>
+										<N8nButton variant="outline" size="small" disabled>
+											{{ row.disabledAction.label }}
+										</N8nButton>
+									</span>
+								</N8nTooltip>
 							</td>
 						</tr>
 					</tbody>
@@ -457,6 +627,58 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 						</tbody>
 					</table>
 				</div>
+				<div v-if="dependencyWarnings.length > 0" :class="$style.group">
+					<N8nCallout theme="warning" :class="$style.callout">
+						<N8nText bold tag="p">{{
+							i18n.baseText('promotions.preview.blockers.missingOnSource.title')
+						}}</N8nText>
+						{{ i18n.baseText('promotions.preview.blockers.missingOnSource.description') }}
+					</N8nCallout>
+					<table :class="$style.table">
+						<thead>
+							<tr>
+								<th scope="col">{{ i18n.baseText('promotions.preview.blockers.column.name') }}</th>
+								<th scope="col">
+									{{ i18n.baseText('promotions.preview.blockers.column.usedBy') }}
+								</th>
+								<th scope="col">{{ i18n.baseText('promotions.preview.blockers.column.type') }}</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr
+								v-for="warning in dependencyWarnings"
+								:key="`${warning.kind}:${warning.id ?? warning.name}`"
+								data-test-id="promotion-preview-dependency-warning"
+							>
+								<td>
+									<div :class="$style.name">
+										<N8nIcon :icon="resourceIcon(warning.kind)" size="small" :class="$style.icon" />
+										<N8nText step="xs" color="text-dark">{{ warning.name }}</N8nText>
+									</div>
+									<N8nText tag="p" step="2xs" color="text-light" :class="$style.detail">
+										{{
+											i18n.baseText(`promotions.preview.blockers.missingOnSource.${warning.kind}`)
+										}}
+									</N8nText>
+								</td>
+								<td>
+									<N8nText step="2xs" color="text-light">
+										<PromotionWorkflowLinks
+											:workflows="usedBy(warning.consumers)"
+											list
+											@inspect="emit('inspect', $event)"
+										/>
+									</N8nText>
+								</td>
+								<td>
+									<N8nText step="xs" color="text-base">
+										{{ i18n.baseText(`promotions.preview.blockers.type.${warning.kind}`) }}
+									</N8nText>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
 			</div>
 		</section>
 
@@ -560,6 +782,11 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 	td {
 		border-top: var(--border);
 	}
+
+	/* The actions sit at the right edge. This rule needs the weight of the cell rule above. */
+	td.action {
+		text-align: right;
+	}
 }
 
 /* Fixed widths keep the columns in place when the last action button goes away. */
@@ -571,9 +798,13 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 	width: 36%;
 }
 
-.typeColumn,
+.typeColumn {
+	width: 10%;
+}
+
+/* Wide enough for the longest status, so it never runs into the action. */
 .statusColumn {
-	width: 12%;
+	width: 16%;
 }
 
 .actionColumn {
@@ -602,6 +833,14 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 	white-space: nowrap;
 }
 
+.description {
+	margin: 0 0 var(--spacing--2xs);
+}
+
+.neutral {
+	color: var(--text-color--subtler);
+}
+
 .warning {
 	color: var(--text-color--warning);
 }
@@ -611,7 +850,15 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 }
 
 .action {
-	text-align: right;
 	white-space: nowrap;
+}
+
+.disabledAction {
+	display: inline-block;
+}
+
+/* The button is block-level, so the text alignment of the cell does not move it. */
+.createAction {
+	margin-left: auto;
 }
 </style>

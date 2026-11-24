@@ -3,8 +3,13 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { within } from '@testing-library/vue';
 
+import {
+	otherProjectCredential,
+	outsideAccessWorkflow,
+	personalCredential,
+} from '../../__tests__/missingDependencies.fixtures';
 import { billingPreview } from '../../__tests__/preview.fixtures';
-import { crossProjectMoveBlockers, indexBlockers } from '../../promotionOperation';
+import { crossProjectMoveBlockers, indexBlockers, indexByWorkflow } from '../../promotionOperation';
 import { buildSelectionGraph, resolveInclusion } from '../../promotionPreview.selection';
 import { buildPreviewTree } from '../../promotionPreview.tree';
 import PromotionResourceTree from './PromotionResourceTree.vue';
@@ -127,6 +132,85 @@ describe('PromotionResourceTree', () => {
 		expect(await findByTestId('tooltip-content')).toHaveTextContent(
 			'moved to Ops on this instance',
 		);
+	});
+
+	describe('missing dependencies', () => {
+		const renderWithMissing = (
+			dependencies = [
+				otherProjectCredential,
+				outsideAccessWorkflow,
+				{ ...personalCredential, consumers: otherProjectCredential.consumers },
+			],
+		) => {
+			const selected = new Set(['workflow:w1', 'workflow:w3']);
+			return renderComponent({
+				pinia: createTestingPinia(),
+				props: {
+					tree,
+					graph,
+					selected,
+					inclusion: resolveInclusion(graph, selected),
+					includedChanges: 0,
+					totalChanges: 0,
+					disabled: new Set(),
+					locked: false,
+					direction: 'promote',
+					blockers: indexBlockers([]),
+					missingDependencies: indexByWorkflow(dependencies),
+				},
+			});
+		};
+
+		it('should mark a workflow that uses missing dependencies, and keep its checkbox active', async () => {
+			const { getAllByTestId, emitted } = renderWithMissing();
+
+			// "Weekly KPI report" (w3) uses only the sub-workflow that the user cannot access.
+			const outside = row(getAllByTestId, 'workflow:w3');
+			const marker = outside.getByTestId('promotion-preview-tree-dependencies');
+			expect(marker).toHaveAccessibleName('1 dependency is outside your access.');
+			expect(outside.queryByTestId('promotion-preview-tree-blocker')).not.toBeInTheDocument();
+			expect(outside.getByRole('checkbox')).toBeChecked();
+			expect(outside.getByRole('checkbox')).toBeEnabled();
+
+			await userEvent.click(marker);
+			expect(emitted('showBlockers')).toHaveLength(1);
+		});
+
+		it('should count every missing dependency of a workflow when not all are outside the access of the user', () => {
+			const { getAllByTestId } = renderWithMissing();
+
+			expect(
+				row(getAllByTestId, 'workflow:w1').getByTestId('promotion-preview-tree-dependencies'),
+			).toHaveAccessibleName('3 dependencies are not included in this Promote.');
+		});
+
+		// "Invoice reconciliation" (w1) uses each of these dependencies.
+		it.each([
+			['lock', 'every dependency is outside the access of the user', [outsideAccessWorkflow]],
+			[
+				'circle-minus',
+				'only some dependencies are outside the access of the user',
+				[otherProjectCredential, outsideAccessWorkflow],
+			],
+			['circle-minus', 'no dependency is outside the access of the user', [otherProjectCredential]],
+		])('should show the %s icon when %s', (icon, _case, dependencies) => {
+			const { getAllByTestId } = renderWithMissing(dependencies);
+
+			expect(
+				row(getAllByTestId, 'workflow:w1')
+					.getByTestId('promotion-preview-tree-dependencies')
+					.querySelector('[data-icon]'),
+			).toHaveAttribute('data-icon', icon);
+		});
+
+		it('should show no marker on a workflow without missing dependencies', () => {
+			const { getAllByTestId, queryAllByTestId } = renderWithMissing();
+
+			expect(
+				row(getAllByTestId, 'workflow:w2').queryByTestId('promotion-preview-tree-dependencies'),
+			).not.toBeInTheDocument();
+			expect(queryAllByTestId('promotion-preview-tree-dependencies')).toHaveLength(2);
+		});
 	});
 
 	it('should show a folder as partly selected and toggle the workflows inside it', async () => {

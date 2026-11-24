@@ -1,23 +1,30 @@
 <script setup lang="ts">
-import type { PromotePackageResultDto, PromotionProviderType } from '@n8n/api-types';
+import type {
+	PromotePackageResultDto,
+	PromotionPromoteCheck,
+	PromotionProviderType,
+} from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
+	N8nCallout,
 	N8nDialog,
 	N8nDialogBody,
 	N8nDialogFooter,
 	N8nDialogHeader,
 	N8nDialogTitle,
+	N8nIcon,
 	N8nLink,
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, nextTick, ref, useTemplateRef } from 'vue';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 
 import { httpUrl, warningSegments } from '../promotionResult';
-import { promotePackage } from '../promotionsSettings.api';
+import { fetchPromoteCheck, promotePackage } from '../promotionsSettings.api';
 import PromotionCommitMessageField from './PromotionCommitMessageField.vue';
+import PromotionMissingDependencyList from './PromotionMissingDependencyList.vue';
 
 const props = defineProps<{
 	open: boolean;
@@ -40,6 +47,34 @@ const commitMessage = ref('');
 const isSubmitting = ref(false);
 const result = ref<PromotePackageResultDto | null>(null);
 const messageField = useTemplateRef('messageField');
+
+// The instance Promote has no preview, so the dialog reads what the Promote leaves out.
+const check = ref<PromotionPromoteCheck | null>(null);
+// The check can take seconds on a large instance. It does not stop the user from promoting.
+const isChecking = ref(false);
+watch(
+	() => props.open,
+	async (open) => {
+		if (!open) return;
+		isChecking.value = true;
+		try {
+			check.value = await fetchPromoteCheck(rootStore.publicApiContext, props.environmentId);
+		} catch {
+			// The list only informs. Without it, the dialog shows as it does when nothing is missing.
+			check.value = null;
+		} finally {
+			isChecking.value = false;
+		}
+	},
+	{ immediate: true },
+);
+const leftOut = computed(() => [
+	...(check.value?.missingDependencies ?? []),
+	...(check.value?.warnings ?? []),
+]);
+const blockingNames = computed(() =>
+	leftOut.value.filter(({ blocking }) => blocking).map(({ name }) => `"${name}"`),
+);
 
 const dialogTitle = computed(() =>
 	i18n.baseText(
@@ -134,6 +169,35 @@ async function submit() {
 				<form id="promote-instance-form" :class="$style.body" @submit.prevent="submit">
 					<N8nText color="text-base">{{ bodyText }}</N8nText>
 
+					<!-- The region is in the page before the list, so a list that arrives later is announced. -->
+					<div v-if="isChecking || leftOut.length > 0" role="status">
+						<div v-if="isChecking" :class="$style.checking" data-test-id="promote-check-loading">
+							<N8nIcon icon="loader-circle" size="small" color="text-light" spin />
+							<N8nText size="small" color="text-light">
+								{{ i18n.baseText('settings.promotions.promote.dialog.missing.checking') }}
+							</N8nText>
+						</div>
+						<div v-else :class="$style.missing" data-test-id="promote-missing-dependencies">
+							<N8nText color="text-base">
+								{{ i18n.baseText('settings.promotions.promote.dialog.missing.description') }}
+							</N8nText>
+							<PromotionMissingDependencyList :dependencies="leftOut" />
+							<!-- The server still decides. The callout says what stops the Promote today. -->
+							<N8nCallout
+								v-if="blockingNames.length > 0"
+								theme="warning"
+								data-test-id="promote-missing-blocking"
+							>
+								{{
+									i18n.baseText('settings.promotions.promote.dialog.missing.blocking', {
+										adjustToNumber: blockingNames.length,
+										interpolate: { names: blockingNames.join(', ') },
+									})
+								}}
+							</N8nCallout>
+						</div>
+					</div>
+
 					<PromotionCommitMessageField
 						ref="messageField"
 						v-model="commitMessage"
@@ -209,5 +273,17 @@ async function submit() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
+}
+
+.checking {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.missing {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
 }
 </style>

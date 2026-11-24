@@ -1,4 +1,9 @@
-import type { PromotionDirection, PromotionResource } from '@n8n/api-types';
+import type {
+	PromotionDirection,
+	PromotionMissingDependency,
+	PromotionResource,
+} from '@n8n/api-types';
+import type { IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import { isBlocking, type Blocker } from '../promotionOperation';
@@ -95,6 +100,24 @@ export function usePromotionPreviewLabels() {
 		return i18n.baseText('promotions.preview.marker.conflict', options);
 	}
 
+	/** What a workflow shows about the dependencies that Promote leaves out. They do not stop it. */
+	function missingDependencyMarker(dependencies: readonly PromotionMissingDependency[]): {
+		message: string;
+		icon: IconName;
+	} {
+		const options = {
+			adjustToNumber: dependencies.length,
+			interpolate: { count: String(dependencies.length) },
+		};
+		// The icons are those of the statuses in the Issues tab. The lock is only for "No access".
+		return dependencies.every(({ group }) => group === 'outside-access')
+			? { message: i18n.baseText('promotions.preview.marker.outside', options), icon: 'lock' }
+			: {
+					message: i18n.baseText('promotions.preview.marker.notIncluded', options),
+					icon: 'circle-minus',
+				};
+	}
+
 	/** The checkbox of a project or folder selects it and everything inside it. */
 	function selectLabel(resource: PromotionResource): string {
 		const interpolate = { name: resource.name };
@@ -117,5 +140,5 @@ export function usePromotionPreviewLabels() {
 		});
 	}
 
-	return { changeLabel, blockerMessage, selectLabel, moveDetail };
+	return { changeLabel, blockerMessage, missingDependencyMarker, selectLabel, moveDetail };
 }

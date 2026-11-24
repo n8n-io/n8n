@@ -1,12 +1,19 @@
 import type { ApplyCheckResult } from './promotions.types';
 
 import { credential, destructiveChange, variable } from './__tests__/bindings.fixtures';
+import {
+	otherProjectCredential,
+	outsideAccessWorkflow,
+	personalCredential,
+} from './__tests__/missingDependencies.fixtures';
 import { billingPreview, billingResources, resource } from './__tests__/preview.fixtures';
 import {
 	indexBlockers,
+	indexByWorkflow,
 	listBlockers,
 	crossProjectMoveBlockers,
 	scopeCheck,
+	scopeToSelection,
 	toOperationRequest,
 	touchesDestructiveChange,
 } from './promotionOperation';
@@ -200,5 +207,34 @@ describe('promotion operation', () => {
 
 		expect(scoped.accessRequirements).toEqual([]);
 		expect(scoped.missingBindings[0].consumers[0].workflows).toEqual([{ id: 'w1', name: 'w1' }]);
+	});
+
+	it('should keep the missing dependencies that a selected workflow uses, with only the selected workflows', () => {
+		const dependencies = [otherProjectCredential, outsideAccessWorkflow, personalCredential];
+
+		// "Weekly KPI report" (w3) is selected. "Invoice reconciliation" (w1) is not.
+		const scoped = scopeToSelection(dependencies, new Set(['workflow:w3', 'folder:f1']));
+
+		expect(scoped.map(({ name }) => name)).toEqual(['Send audit log', 'Personal Gmail']);
+		expect(scoped[0].consumers[0].workflows).toEqual([{ id: 'w3', name: 'Weekly KPI report' }]);
+		expect(scopeToSelection(dependencies, new Set())).toEqual([]);
+	});
+
+	it('should list the missing dependencies of each workflow', () => {
+		const byWorkflow = indexByWorkflow([
+			otherProjectCredential,
+			outsideAccessWorkflow,
+			personalCredential,
+		]);
+
+		expect([...byWorkflow.keys()]).toEqual(['workflow:w1', 'workflow:w3']);
+		expect(byWorkflow.get('workflow:w1')?.map(({ name }) => name)).toEqual([
+			'CRM key',
+			'Send audit log',
+		]);
+		expect(byWorkflow.get('workflow:w3')?.map(({ name }) => name)).toEqual([
+			'Send audit log',
+			'Personal Gmail',
+		]);
 	});
 });

@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import type { PromotionDirection, PromotionResource } from '@n8n/api-types';
+import type {
+	PromotionDirection,
+	PromotionMissingDependency,
+	PromotionResource,
+} from '@n8n/api-types';
 import { N8nButton, N8nCheckbox, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
@@ -32,6 +36,8 @@ const props = withDefaults(
 		locked: boolean;
 		direction: PromotionDirection;
 		blockers: BlockerIndex;
+		/** By workflow: the dependencies that Promote leaves out. They do not block the workflow. */
+		missingDependencies?: ReadonlyMap<ResourceKey, readonly PromotionMissingDependency[]>;
 		/** False for a list that users only read, such as a review. Rows then only open their card. */
 		selectable?: boolean;
 	}>(),
@@ -49,7 +55,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const { blockerMessage, selectLabel } = usePromotionPreviewLabels();
+const { blockerMessage, missingDependencyMarker, selectLabel } = usePromotionPreviewLabels();
 
 function markers(resource: PromotionResource) {
 	const blockers = blockersOf(props.blockers, resource);
@@ -58,7 +64,12 @@ function markers(resource: PromotionResource) {
 		resource.type !== 'workflow' && blockers?.some(({ kind }) => kind === 'warning')
 			? i18n.baseText('promotions.preview.marker.warning')
 			: undefined;
-	return { blocked, meta: blocked ? undefined : meta };
+	const missing = props.missingDependencies?.get(resource.key);
+	return {
+		blocked,
+		meta: blocked ? undefined : meta,
+		missing: missing?.length ? missingDependencyMarker(missing) : undefined,
+	};
 }
 
 const rows = computed(() =>
@@ -207,8 +218,8 @@ function onToggle(resource: PromotionResource) {
 							</N8nText>
 						</span>
 					</button>
-					<!-- Only Apply has a Blockers tab to open, so Promote shows a plain marker. As the
-					trigger itself, each one opens the tooltip on keyboard focus. -->
+					<!-- Only the Issues tab of Apply lists these blockers, so Promote shows a plain marker. As
+					the trigger itself, each one opens the tooltip on keyboard focus. -->
 					<N8nTooltip v-if="marker.blocked" placement="right" as-child>
 						<!-- Plain text: a personal project name such as `Name <email>` is not HTML. -->
 						<template #content>{{ marker.blocked }}</template>
@@ -235,6 +246,23 @@ function onToggle(resource: PromotionResource) {
 						>
 							<N8nIcon icon="circle-alert" size="small" color="warning" />
 						</span>
+					</N8nTooltip>
+					<!-- A missing dependency does not stop the workflow, so the row keeps its colors and gets
+					a quiet marker. -->
+					<N8nTooltip v-else-if="marker.missing" placement="right" as-child>
+						<template #content>{{ marker.missing.message }}</template>
+						<N8nButton
+							variant="ghost"
+							size="xsmall"
+							icon-only
+							:aria-label="marker.missing.message"
+							data-test-id="promotion-preview-tree-dependencies"
+							@click="emit('showBlockers')"
+						>
+							<template #icon>
+								<N8nIcon :icon="marker.missing.icon" size="small" color="text-light" />
+							</template>
+						</N8nButton>
 					</N8nTooltip>
 				</li>
 			</template>

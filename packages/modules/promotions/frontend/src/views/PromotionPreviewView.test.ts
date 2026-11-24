@@ -24,6 +24,13 @@ import {
 	variable,
 } from '../__tests__/bindings.fixtures';
 import {
+	deletedWorkflowWarning,
+	otherProjectCredential,
+	outsideAccessWorkflow,
+	personalCredential,
+	personalWorkflow,
+} from '../__tests__/missingDependencies.fixtures';
+import {
 	billingPreview,
 	billingResources,
 	COMMIT_SHA,
@@ -1035,7 +1042,7 @@ describe('PromotionPreviewView', () => {
 		);
 
 		const { getByTestId, getByRole } = await renderApply();
-		await userEvent.click(getByRole('tab', { name: /Blockers/ }));
+		await userEvent.click(getByRole('tab', { name: /Issues/ }));
 		const row = within(getByTestId('promotion-preview-blockers-table')).getByRole('row', {
 			name: /Payment reminders/,
 		});
@@ -1072,7 +1079,7 @@ describe('PromotionPreviewView', () => {
 		);
 
 		const { getByTestId, getByRole } = await renderApply();
-		await userEvent.click(getByRole('tab', { name: /Blockers/ }));
+		await userEvent.click(getByRole('tab', { name: /Issues/ }));
 		const table = within(getByTestId('promotion-preview-blockers-table'));
 
 		expect(table.getByRole('row', { name: /Orders/ })).toHaveTextContent(
@@ -1158,7 +1165,7 @@ describe('PromotionPreviewView', () => {
 		await userEvent.click(
 			treeRow(getAllByTestId, 'workflow:w3').getByTestId('promotion-preview-tree-blocker'),
 		);
-		expect(getByRole('tab', { name: /Blockers/ })).toHaveAttribute('aria-selected', 'true');
+		expect(getByRole('tab', { name: /Issues/ })).toHaveAttribute('aria-selected', 'true');
 		const row = within(getByTestId('promotion-preview-blockers-table')).getByRole('row', {
 			name: /API_URL/,
 		});
@@ -1167,11 +1174,301 @@ describe('PromotionPreviewView', () => {
 
 		expect(createBinding).toHaveBeenCalledWith(missing);
 		expect(row).toHaveTextContent('Resolved');
-		expect(getByTestId('promotion-preview-blockers-status')).toHaveTextContent('No blockers');
-		// The refreshed check has no blockers, so the workflow joins the selection again.
+		expect(getByTestId('promotion-preview-blockers-status')).toHaveTextContent('No issues');
+		// The refreshed check has no issues, so the workflow joins the selection again.
 		await userEvent.click(getByRole('tab', { name: /Changes/ }));
 		expect(treeRow(getAllByTestId, 'workflow:w3').getByRole('checkbox')).toBeChecked();
 		expect(getByTestId('promotion-preview-submit')).toBeEnabled();
+	});
+
+	describe('missing dependencies on Promote', () => {
+		const section = (getAllByTestId: (id: string) => HTMLElement[], title: string) => {
+			const element = getAllByTestId('promotion-preview-blockers-section').find(
+				(candidate) => within(candidate).queryByRole('heading', { name: title }) !== null,
+			);
+			if (!element) throw new Error(`No section ${title}`);
+			return within(element);
+		};
+		const cells = (row: HTMLElement) =>
+			within(row)
+				.getAllByRole('cell')
+				.map((cell) => cell.textContent?.trim());
+
+		it.each([
+			['the preview has empty lists', { missingDependencies: [], warnings: [] }],
+			['the preview has no lists', {}],
+		])('should show the page as before when %s', async (_case, lists) => {
+			vi.mocked(api.getPromotionPreview).mockResolvedValue(billingPreview(lists));
+
+			const { getAllByRole, getByTestId, queryByTestId, queryAllByTestId } = await render();
+
+			expect(getAllByRole('tab')).toHaveLength(1);
+			expect(getAllByRole('tab')[0]).toHaveTextContent('Changes');
+			expect(queryByTestId('promotion-preview-blockers')).not.toBeInTheDocument();
+			expect(queryAllByTestId('promotion-preview-tree-dependencies')).toHaveLength(0);
+			expect(getByTestId('promotion-preview-submit')).toHaveTextContent(/^Promote \d+ changes$/);
+		});
+
+		it('should list the missing dependencies of the selection in one section for each group', async () => {
+			vi.mocked(api.getPromotionPreview).mockResolvedValue(
+				billingPreview({
+					missingDependencies: [personalCredential, outsideAccessWorkflow, otherProjectCredential],
+				}),
+			);
+
+			const { findByTestId, getAllByRole, getAllByTestId, getByRole, getByTestId, queryByTestId } =
+				await render();
+			const tab = getByRole('tab', { name: /Issues/ });
+			expect(tab).toHaveTextContent(/^Issues\s*3$/);
+			await userEvent.click(tab);
+
+			expect(getByTestId('promotion-preview-blockers')).toHaveTextContent(
+				'Issues may stop you from promoting some changes.',
+			);
+			expect(
+				getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent?.trim()),
+			).toEqual(['In another project (1)', 'Outside your access (1)', 'Cannot be promoted (1)']);
+			// Apply says "No issues" or counts the issues to resolve. Promote has nothing to resolve here.
+			expect(queryByTestId('promotion-preview-blockers-status')).not.toBeInTheDocument();
+
+			const otherProject = section(getAllByTestId, 'In another project (1)');
+			expect(
+				otherProject.getByText(
+					'These dependencies are in other projects that you can access. This Promote does not include them. Promote them from their own project. You can promote without them.',
+				),
+			).toBeVisible();
+			expect(cells(otherProject.getByRole('row', { name: /CRM key/ }))).toEqual([
+				'CRM key',
+				'Invoice reconciliation',
+				'Credential',
+				'Not included',
+				'Include',
+			]);
+			expect(
+				otherProject.getByTestId('promotion-preview-blocker-disabled-action'),
+			).toHaveAccessibleName(
+				'Include. This dependency is in another project. Promote it from that project.',
+			);
+
+			const outside = section(getAllByTestId, 'Outside your access (1)');
+			expect(
+				outside.getByText(
+					'You do not have access to these dependencies. You can promote without them.',
+				),
+			).toBeVisible();
+			expect(cells(outside.getByRole('row', { name: /Send audit log/ }))).toEqual([
+				'Send audit log',
+				'Invoice reconciliationWeekly KPI report',
+				'Workflow',
+				'No access',
+				'Include',
+			]);
+			expect(outside.getByTestId('promotion-preview-blocker-disabled-action')).toHaveAccessibleName(
+				'Include. This workflow is in a project that you do not have access to, so you cannot include it.',
+			);
+
+			const personal = section(getAllByTestId, 'Cannot be promoted (1)');
+			expect(
+				personal.getByText(
+					'These credentials are in a personal project. Move them to a team project to promote them.',
+				),
+			).toBeVisible();
+			expect(cells(personal.getByRole('row', { name: /Personal Gmail/ }))).toEqual([
+				'Personal Gmail',
+				'Weekly KPI report',
+				'Credential',
+				'Personal project',
+				'Include',
+			]);
+			const action = personal.getByTestId('promotion-preview-blocker-disabled-action');
+			expect(action).toHaveAccessibleName(
+				'Include. This credential is in a personal project. Move it to a team project to promote it.',
+			);
+			expect(within(action).getByRole('button', { name: 'Include' })).toBeDisabled();
+			// The disabled button takes no focus, so its wrapper opens the reason for keyboard users.
+			expect(action).toHaveAttribute('tabindex', '0');
+			action.focus();
+			expect(await findByTestId('tooltip-content')).toHaveTextContent(
+				'This credential is in a personal project. Move it to a team project to promote it.',
+			);
+		});
+
+		it('should not name credentials when a personal sub-workflow cannot be promoted', async () => {
+			vi.mocked(api.getPromotionPreview).mockResolvedValue(
+				billingPreview({
+					missingDependencies: [personalCredential, { ...personalWorkflow, blocking: false }],
+				}),
+			);
+
+			const { getAllByTestId, getByRole } = await render();
+			await userEvent.click(getByRole('tab', { name: /Issues/ }));
+
+			const personal = section(getAllByTestId, 'Cannot be promoted (2)');
+			expect(
+				personal.getByText(
+					'These dependencies are in a personal project. Move them to a team project to promote them.',
+				),
+			).toBeVisible();
+			expect(
+				within(personal.getByRole('row', { name: /Draft helper/ })).getByTestId(
+					'promotion-preview-blocker-disabled-action',
+				),
+			).toHaveAccessibleName(
+				'Include. This workflow is in a personal project. Move it to a team project to promote it.',
+			);
+		});
+
+		it('should say that someone with access must move a personal dependency that the user cannot access', async () => {
+			vi.mocked(api.getPromotionPreview).mockResolvedValue(
+				billingPreview({
+					missingDependencies: [
+						personalCredential,
+						{ ...personalWorkflow, accessible: false, blocking: false },
+					],
+				}),
+			);
+
+			const { getAllByTestId, getByRole } = await render();
+			await userEvent.click(getByRole('tab', { name: /Issues/ }));
+
+			const personal = section(getAllByTestId, 'Cannot be promoted (2)');
+			expect(
+				personal.getByText(
+					'These dependencies are in a personal project. Someone with access must move them to a team project to promote them.',
+				),
+			).toBeVisible();
+			const action = (name: RegExp) =>
+				within(personal.getByRole('row', { name })).getByTestId(
+					'promotion-preview-blocker-disabled-action',
+				);
+			expect(action(/Draft helper/)).toHaveAccessibleName(
+				'Include. This workflow is in a personal project that you do not have access to. Someone with access must move it to a team project to promote it.',
+			);
+			// The user can access the personal project of this credential, and so can move it.
+			expect(action(/Personal Gmail/)).toHaveAccessibleName(
+				'Include. This credential is in a personal project. Move it to a team project to promote it.',
+			);
+		});
+
+		it('should show no project and no owner of a dependency', async () => {
+			vi.mocked(api.getPromotionPreview).mockResolvedValue(
+				billingPreview({
+					missingDependencies: [otherProjectCredential, outsideAccessWorkflow],
+					warnings: [deletedWorkflowWarning],
+				}),
+			);
+
+			const { getAllByTestId, getByRole, getByTestId } = await render();
+			await userEvent.click(getByRole('tab', { name: /Issues/ }));
+
+			// "Billing" is the project of the workflows. The API sends no project for a dependency.
+			expect(getByTestId('promotion-preview-blockers')).not.toHaveTextContent('Billing');
+			for (const row of getAllByTestId('promotion-preview-blocker-row')) {
+				expect(row).not.toHaveTextContent(/project|owner/i);
+			}
+			expect(getByTestId('promotion-preview-dependency-warning')).not.toHaveTextContent(
+				/project|owner/i,
+			);
+		});
+
+		it('should keep only the issues of the selected workflows, and remove the tab when none is left', async () => {
+			vi.mocked(api.getPromotionPreview).mockResolvedValue(
+				billingPreview({
+					missingDependencies: [otherProjectCredential, outsideAccessWorkflow, personalCredential],
+				}),
+			);
+			const { getAllByTestId, getByRole, queryByRole, queryByText } = await render();
+
+			// Only "Weekly KPI report" (w3) uses "Personal Gmail".
+			await userEvent.click(treeRow(getAllByTestId, 'workflow:w3').getByRole('checkbox'));
+			expect(getByRole('tab', { name: /Issues/ })).toHaveTextContent(/^Issues\s*2$/);
+			await userEvent.click(getByRole('tab', { name: /Issues/ }));
+			expect(queryByText('Personal Gmail')).not.toBeInTheDocument();
+			expect(
+				cells(
+					section(getAllByTestId, 'Outside your access (1)').getByRole('row', {
+						name: /Send audit log/,
+					}),
+				)[1],
+			).toBe('Invoice reconciliation');
+
+			await userEvent.click(getByRole('tab', { name: /Changes/ }));
+			await userEvent.click(treeRow(getAllByTestId, 'workflow:w1').getByRole('checkbox'));
+			expect(queryByRole('tab', { name: /Issues/ })).not.toBeInTheDocument();
+		});
+
+		it('should mark the selected workflows that use a missing dependency, and open the Issues tab from the marker', async () => {
+			vi.mocked(api.getPromotionPreview).mockResolvedValue(
+				billingPreview({ missingDependencies: [otherProjectCredential, outsideAccessWorkflow] }),
+			);
+			const { getAllByTestId, getByRole, queryAllByTestId } = await render();
+
+			expect(queryAllByTestId('promotion-preview-tree-dependencies')).toHaveLength(2);
+			expect(
+				treeRow(getAllByTestId, 'workflow:w1').getByTestId('promotion-preview-tree-dependencies'),
+			).toHaveAccessibleName('2 dependencies are not included in this Promote.');
+			const row = treeRow(getAllByTestId, 'workflow:w3');
+			const marker = row.getByTestId('promotion-preview-tree-dependencies');
+			expect(marker).toHaveAccessibleName('1 dependency is outside your access.');
+			// The dependency does not stop the workflow, so users can still clear and select it.
+			expect(row.getByRole('checkbox')).toBeChecked();
+			expect(row.getByRole('checkbox')).toBeEnabled();
+
+			await userEvent.click(marker);
+			expect(getByRole('tab', { name: /Issues/ })).toHaveAttribute('aria-selected', 'true');
+
+			// A workflow name in the tab opens the card of the workflow.
+			await userEvent.click(getByRole('button', { name: 'Weekly KPI report' }));
+			expect(getByRole('tab', { name: /Changes/ })).toHaveAttribute('aria-selected', 'true');
+			expect(router.currentRoute.value.query.resource).toBe('workflow:w3');
+
+			await userEvent.click(row.getByRole('checkbox'));
+			expect(row.queryByTestId('promotion-preview-tree-dependencies')).not.toBeInTheDocument();
+		});
+
+		it('should list a reference to a deleted workflow as a warning, and not count it', async () => {
+			vi.mocked(api.getPromotionPreview).mockResolvedValue(
+				billingPreview({ missingDependencies: [], warnings: [deletedWorkflowWarning] }),
+			);
+			const { getByRole, getByTestId, queryAllByTestId } = await render();
+
+			const tab = getByRole('tab', { name: /Issues/ });
+			expect(tab).toHaveTextContent(/^Issues$/);
+			await userEvent.click(tab);
+
+			expect(getByRole('heading', { level: 2, name: '1 warning' })).toBeVisible();
+			expect(queryAllByTestId('promotion-preview-blocker-row')).toHaveLength(0);
+			expect(cells(getByTestId('promotion-preview-dependency-warning'))).toEqual([
+				'Archive invoicesThis workflow does not exist on this instance. Workflows that use it will fail where this is applied.',
+				'Invoice reconciliation',
+				'Workflow',
+			]);
+		});
+
+		it('should promote the selection as before when it has missing dependencies', async () => {
+			vi.mocked(api.getPromotionPreview).mockResolvedValue(
+				billingPreview({
+					missingDependencies: [otherProjectCredential, outsideAccessWorkflow, personalCredential],
+					warnings: [deletedWorkflowWarning],
+				}),
+			);
+			vi.mocked(api.promoteProjectSelection).mockResolvedValue({
+				git: { branchName: 'main', commitSha: COMMIT_SHA },
+			} as Awaited<ReturnType<typeof api.promoteProjectSelection>>);
+
+			const { getByTestId, getByRole } = await render();
+			expect(getByTestId('promotion-preview-submit')).toHaveTextContent(/^Promote \d+ changes$/);
+			await userEvent.click(getByTestId('promotion-preview-submit'));
+			expect(getByRole('heading', { name: /^Promote \d+ changes\?$/ })).toBeVisible();
+			await userEvent.click(getByTestId('promote-confirm-button'));
+
+			expect(api.promoteProjectSelection).toHaveBeenCalledWith(expect.anything(), 'p1', {
+				workflowIds: ['w1', 'w2', 'w3', 'w4'],
+				folderIds: [],
+				credentialIds: [],
+				expectedPreviewRevision: REVISION,
+			});
+		});
 	});
 
 	describe('whole-instance Apply', () => {
@@ -1222,7 +1519,7 @@ describe('PromotionPreviewView', () => {
 
 			expect(getByTestId('promotion-preview-submit')).toBeDisabled();
 			expect(getByTestId('promotion-preview-submit-blocked')).toHaveTextContent(
-				'Some changes have blockers',
+				'Resolve the issues that need your action, then apply.',
 			);
 		});
 
