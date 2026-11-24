@@ -1282,15 +1282,20 @@ describe('GET /agents/:agentId/executions', () => {
 	const personalProjectId = async (user: User) =>
 		(await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(user.id)).id;
 
-	const insertThread = async (projectId: string, id: string, agentId = 'agent-1') =>
+	const insertThread = async (
+		projectId: string,
+		id: string,
+		access: { ownerId: string | null; accessScope: 'user' | 'project' },
+		agentId = 'agent-1',
+	) =>
 		await threads.save(
 			threads.create({
 				id,
 				agentId,
 				agentName: 'My Agent',
 				projectId,
-				ownerId: null,
-				accessScope: 'project',
+				ownerId: access.ownerId,
+				accessScope: access.accessScope,
 				sessionNumber: 1,
 			}),
 		);
@@ -1348,8 +1353,8 @@ describe('GET /agents/:agentId/executions', () => {
 		const projectId = await personalProjectId(owner);
 		await createAgent(projectId, 'agent-1');
 		await createAgent(projectId, 'agent-2');
-		await insertThread(projectId, 'thread-1');
-		await insertThread(projectId, 'thread-2', 'agent-2');
+		await insertThread(projectId, 'thread-1', { ownerId: null, accessScope: 'project' });
+		await insertThread(projectId, 'thread-2', { ownerId: null, accessScope: 'project' }, 'agent-2');
 
 		await insertExecution({
 			id: 'execution-old',
@@ -1424,8 +1429,8 @@ describe('GET /agents/:agentId/executions', () => {
 		const owner = await createOwnerWithApiKey();
 		const projectId = await personalProjectId(owner);
 		await createAgent(projectId, 'agent-1');
-		await insertThread(projectId, 'thread-1');
-		await insertThread(projectId, 'thread-2');
+		await insertThread(projectId, 'thread-1', { ownerId: null, accessScope: 'project' });
+		await insertThread(projectId, 'thread-2', { ownerId: null, accessScope: 'project' });
 
 		await insertExecution({
 			id: 'execution-a',
@@ -1480,7 +1485,7 @@ describe('GET /agents/:agentId/executions', () => {
 		const owner = await createOwnerWithApiKey();
 		const projectId = await personalProjectId(owner);
 		await createAgent(projectId, 'agent-1');
-		await insertThread(projectId, 'thread-1');
+		await insertThread(projectId, 'thread-1', { ownerId: null, accessScope: 'project' });
 
 		await insertExecution({
 			id: 'execution-1',
@@ -1523,5 +1528,73 @@ describe('GET /agents/:agentId/executions', () => {
 			'execution-1',
 		]);
 		expect(secondPage.body.nextCursor).toBeNull();
+	});
+
+	test('should hide the private sessions of another member', async () => {
+		const owner = await createOwnerWithApiKey();
+		const memberA = await createMemberWithApiKey();
+		const memberB = await createMemberWithApiKey();
+		const customRole = await createCustomRoleWithScopeSlugs(['agent:read'], {
+			roleType: 'project',
+			displayName: 'Agent Reader',
+			description: 'Can read agents',
+		});
+		const teamProject = await createTeamProject('Test Project', owner);
+		await linkUserToProject(memberA, teamProject, customRole.slug);
+		await linkUserToProject(memberB, teamProject, customRole.slug);
+		await createAgent(teamProject.id, 'agent-1');
+
+		// A project session every member shares, and one private session per member.
+		await insertThread(teamProject.id, 'thread-shared', { ownerId: null, accessScope: 'project' });
+		await insertThread(teamProject.id, 'thread-a', {
+			ownerId: memberA.id,
+			accessScope: 'user',
+		});
+		await insertThread(teamProject.id, 'thread-b', {
+			ownerId: memberB.id,
+			accessScope: 'user',
+		});
+		await insertExecution({
+			id: 'execution-shared',
+			threadId: 'thread-shared',
+			status: 'success',
+			source: 'public_api',
+			createdAt: new Date('2026-11-19T10:00:00Z'),
+		});
+		await insertExecution({
+			id: 'execution-a',
+			threadId: 'thread-a',
+			status: 'success',
+			source: 'public_api',
+			createdAt: new Date('2026-11-19T11:00:00Z'),
+		});
+		await insertExecution({
+			id: 'execution-b',
+			threadId: 'thread-b',
+			status: 'success',
+			source: 'n8n_chat',
+			createdAt: new Date('2026-11-19T12:00:00Z'),
+		});
+
+		const listA = await testServer.publicApiAgentFor(memberA).get('/agents/agent-1/executions');
+		expect(listA.statusCode, JSON.stringify(listA.body)).toBe(200);
+		expect(listA.body.data.map((row: { executionId: string }) => row.executionId)).toEqual([
+			'execution-a',
+			'execution-shared',
+		]);
+
+		// The session filter must not turn a private session into a readable one.
+		const foreignSession = await testServer
+			.publicApiAgentFor(memberA)
+			.get('/agents/agent-1/executions')
+			.query({ sessionId: 'thread-b' });
+		expect(foreignSession.statusCode, JSON.stringify(foreignSession.body)).toBe(200);
+		expect(foreignSession.body).toEqual({ data: [], nextCursor: null });
+
+		const listB = await testServer.publicApiAgentFor(memberB).get('/agents/agent-1/executions');
+		expect(listB.body.data.map((row: { executionId: string }) => row.executionId)).toEqual([
+			'execution-b',
+			'execution-shared',
+		]);
 	});
 });

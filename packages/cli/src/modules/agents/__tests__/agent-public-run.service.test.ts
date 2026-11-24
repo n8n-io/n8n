@@ -291,7 +291,7 @@ describe('AgentPublicRunService', () => {
 	});
 
 	describe('listExecutions', () => {
-		it('lists the runs of an agent with filters and pagination', async () => {
+		it('lists the runs the user can see, with filters and pagination', async () => {
 			executionRepository.findListForAgent.mockResolvedValue([
 				[
 					{
@@ -312,7 +312,7 @@ describe('AgentPublicRunService', () => {
 			]);
 
 			await expect(
-				service.listExecutions('agent-1', {
+				service.listExecutions(user, 'agent-1', {
 					sessionId: 'thread-1',
 					status: 'running',
 					offset: 0,
@@ -335,6 +335,7 @@ describe('AgentPublicRunService', () => {
 			});
 			expect(executionRepository.findListForAgent).toHaveBeenCalledWith(
 				'agent-1',
+				'user-1',
 				{ sessionId: 'thread-1', status: 'running' },
 				{ offset: 0, limit: 100 },
 			);
@@ -343,9 +344,9 @@ describe('AgentPublicRunService', () => {
 		it('returns 404 for an unknown agent', async () => {
 			agentsService.findById.mockResolvedValue(null);
 
-			await expect(service.listExecutions('missing', { offset: 0, limit: 100 })).rejects.toThrow(
-				NotFoundError,
-			);
+			await expect(
+				service.listExecutions(user, 'missing', { offset: 0, limit: 100 }),
+			).rejects.toThrow(NotFoundError);
 			expect(executionRepository.findListForAgent).not.toHaveBeenCalled();
 		});
 	});

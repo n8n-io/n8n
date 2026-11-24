@@ -122,10 +122,14 @@ export class AgentPublicRunService {
 	}
 
 	/**
-	 * The top-level runs of one agent, newest first. `@ProjectScope` on the
-	 * route has already authorized the caller for the agent's project.
+	 * The top-level runs of one agent that the user can see, newest first. A
+	 * project session is visible to every project member, a user session only
+	 * to its owner — the same rule as the session list in the editor. The
+	 * `@ProjectScope` on the route has already authorized the caller for the
+	 * agent's project.
 	 */
 	async listExecutions(
+		user: User,
 		agentId: string,
 		options: {
 			sessionId?: string;
@@ -139,6 +143,7 @@ export class AgentPublicRunService {
 
 		const [rows, count] = await this.executionRepository.findListForAgent(
 			agentId,
+			user.id,
 			{ sessionId: options.sessionId, status: options.status },
 			{ offset: options.offset, limit: options.limit },
 		);

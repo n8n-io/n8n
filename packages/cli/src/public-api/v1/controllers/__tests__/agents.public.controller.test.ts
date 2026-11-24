@@ -727,7 +727,7 @@ describe('AgentsPublicController run and stop', () => {
 		await expect(
 			controller.listAgentExecutions(req, res, 'agent-1', { limit: 100 }),
 		).resolves.toEqual({ data: [row], nextCursor: null });
-		expect(agentPublicRunService.listExecutions).toHaveBeenCalledWith('agent-1', {
+		expect(agentPublicRunService.listExecutions).toHaveBeenCalledWith(req.user, 'agent-1', {
 			offset: 0,
 			limit: 100,
 			sessionId: undefined,

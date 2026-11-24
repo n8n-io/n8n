@@ -216,7 +216,8 @@ export class AgentsPublicController {
 	@ProjectScope('agent:read')
 	@ApiSummary('List agent executions')
 	@ApiDescription(
-		'List the runs of one agent, newest first. The response is one cursor page: read the next page with the cursor query parameter. ' +
+		'List the runs of one agent that you can see, newest first. Project sessions are visible to every project member, private sessions only to their owner. ' +
+			'The response is one cursor page: read the next page with the cursor query parameter. ' +
 			'Narrow the list to one session with sessionId, or to one run status with status. ' +
 			'Runs of a sub-agent do not appear in this list.',
 	)
@@ -224,14 +225,14 @@ export class AgentsPublicController {
 	@ApiResponse(200, AgentExecutionListPublicDto)
 	@ApiErrorResponse(404)
 	async listAgentExecutions(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('agentId', agentIdParamSchema) agentId: string,
 		@Query query: ListAgentExecutionsPublicQueryDto,
 	): Promise<AgentExecutionListPublicDto> {
 		const { offset, limit } = resolveOffsetPagination({ cursor: query.cursor, limit: query.limit });
 
-		const { count, data } = await this.agentPublicRunService.listExecutions(agentId, {
+		const { count, data } = await this.agentPublicRunService.listExecutions(req.user, agentId, {
 			offset,
 			limit,
 			sessionId: query.sessionId,
