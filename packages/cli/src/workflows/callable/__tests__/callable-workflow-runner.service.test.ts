@@ -341,6 +341,25 @@ describe('CallableWorkflowRunner', () => {
 			expect(runData.pinData).toEqual({ Start: [{ json: { email: 'a@b.c' } }] });
 		});
 
+		it('keeps the success setting of the owner and always saves a failed run', async () => {
+			const ctx = setup();
+			ctx.loader.loadWorkflow.mockResolvedValue(
+				makeWorkflow({
+					settings: { saveDataSuccessExecution: 'none', saveDataErrorExecution: 'none' },
+				}),
+			);
+			startExecution(ctx);
+
+			void ctx.runner.run(PROJECT_ID, WORKFLOW_ID, {}, WAIT);
+			await vi.waitFor(() => expect(ctx.workflowRunner.run).toHaveBeenCalledTimes(1));
+
+			const [runData] = ctx.workflowRunner.run.mock.calls[0] as [IWorkflowExecutionDataProcess];
+			expect(runData.workflowData.settings).toMatchObject({
+				saveDataSuccessExecution: 'none',
+				saveDataErrorExecution: 'all',
+			});
+		});
+
 		it('returns the error message and the node type of a failed run', async () => {
 			const ctx = setup();
 			ctx.loader.loadWorkflow.mockResolvedValue(makeWorkflow());

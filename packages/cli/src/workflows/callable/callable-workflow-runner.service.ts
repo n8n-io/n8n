@@ -303,12 +303,9 @@ function toRunData(
 		executionMode: 'integrated',
 		workflowData: {
 			...workflow,
-			// A run that ends before the wait starts is read back from the execution row.
-			settings: {
-				...workflow.settings,
-				saveDataSuccessExecution: 'all',
-				saveDataErrorExecution: 'all',
-			},
+			// Only a run that fails to start ends before the wait, and it is read back from its
+			// execution row. A success comes from memory, so the owner's success setting stays.
+			settings: { ...workflow.settings, saveDataErrorExecution: 'all' },
 		},
 		startNodes: [{ name: triggerNode.name, sourceData: null }],
 		pinData,
