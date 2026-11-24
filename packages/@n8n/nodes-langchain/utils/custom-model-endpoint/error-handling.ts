@@ -85,8 +85,10 @@ export function messageFromBody(text: string): string | undefined {
 	);
 }
 
+/** Longest first: replacing a secret that prefixes another would leave the other's tail. */
 function withoutKnownSecrets(text: string, secrets: string[]): string {
-	return secrets.reduce((carried, secret) => carried.split(secret).join('***'), text);
+	const longestFirst = [...secrets].sort((left, right) => right.length - left.length);
+	return longestFirst.reduce((carried, secret) => carried.split(secret).join('***'), text);
 }
 
 /**
@@ -116,8 +118,13 @@ function sentCredential(input: RequestInfo | URL, init?: RequestInit): string[] 
 /** A blank line ends a frame, and the spec allows all three line terminators for it. */
 const EVENT_BOUNDARY = /\r\n\r\n|\n\n|\r\r/g;
 
-/** Nothing is held past this without a frame boundary, so an odd gateway cannot grow it. */
-const MAX_CARRIED = 64 * 1024;
+/**
+ * A memory guard, not a framing rule. A release forced by it cannot be read, so it is
+ * filtered, and filtering an answer corrupts it. The bound therefore sits well above the
+ * largest frame a gateway really sends: a `response.completed` frame carries the whole
+ * answer, which 64 KiB does not cover.
+ */
+export const MAX_CARRIED = 4 * 1024 * 1024;
 
 /**
  * A refusal filtered in place, with the escaped spellings covered. `\u006f` in a JSON
@@ -146,6 +153,17 @@ function withoutSecretsInJson(raw: string, secrets: string[]): string {
 	return changed ? JSON.stringify(filtered) : withoutKnownSecrets(raw, secrets);
 }
 
+/** What `modelIdsIn` in `models.ts` accepts: an empty list, or entries that name a model. */
+function isModelList(value: unknown): boolean {
+	if (!Array.isArray(value)) return false;
+	return (
+		value.length === 0 ||
+		value.some(
+			(entry) => typeof entry === 'string' || (isRecord(entry) && typeof entry.id === 'string'),
+		)
+	);
+}
+
 /**
  * What this node reads as an answer, and nothing else.
  *
@@ -164,10 +182,11 @@ function isAnswer(parsed: unknown): boolean {
 	if (isRecord(parsed.response) && parsed.response.error) return false;
 
 	return (
-		Array.isArray(parsed.choices) ||
-		Array.isArray(parsed.data) ||
+		// No choices is what the client reports as an empty answer, so it is not one
+		(Array.isArray(parsed.choices) && parsed.choices.length > 0) ||
+		isModelList(parsed.data) ||
 		parsed.object === 'response' ||
-		'output' in parsed ||
+		Array.isArray(parsed.output) ||
 		(typeof parsed.type === 'string' && parsed.type.startsWith('response.'))
 	);
 }
@@ -195,13 +214,19 @@ function endOfLastFrame(text: string): number {
 	return end;
 }
 
-/** A frame is `data:` lines around a payload, so the payload is filtered and put back. */
+/**
+ * The bytes always, and the decoded payload on top when it can be put back. A payload
+ * carried over several `data:` lines is joined from them, so it is not a substring of the
+ * frame and the splice finds nothing; such a frame keeps the byte pass alone, which means
+ * an escaped spelling inside one is the case this does not reach.
+ */
 function withoutSecretsInFrame(frame: string, secrets: string[]): string {
+	const filtered = withoutKnownSecrets(frame, secrets);
 	const data = frameData(frame);
-	if (data === undefined) return withoutKnownSecrets(frame, secrets);
+	if (data === undefined) return filtered;
 
 	const safe = withoutSecretsInJson(data, secrets);
-	return safe === data ? withoutKnownSecrets(frame, secrets) : frame.split(data).join(safe);
+	return safe === data ? filtered : withoutKnownSecrets(frame.split(data).join(safe), secrets);
 }
 
 /** Splits on the boundary and keeps it, so the bytes out are the bytes in. */
@@ -233,6 +258,13 @@ function withoutSecretsInStream(
 	const encoder = new TextEncoder();
 	// A secret can straddle a release, so this much of the tail waits for the next chunk
 	const overlap = Math.max(...secrets.map((secret) => secret.length)) - 1;
+	/** Backs off a half character, which would otherwise re-encode as two U+FFFD. */
+	const safeCut = (text: string) => {
+		const at = text.length - overlap;
+		const leadsAPair =
+			at > 0 && text.charCodeAt(at - 1) >= 0xd800 && text.charCodeAt(at - 1) <= 0xdbff;
+		return leadsAPair ? at - 1 : at;
+	};
 	let carried = '';
 
 	/**
@@ -255,7 +287,7 @@ function withoutSecretsInStream(
 
 				const frameEnd = endOfLastFrame(carried);
 				const release =
-					frameEnd !== -1 ? frameEnd : carried.length > MAX_CARRIED ? carried.length - overlap : -1;
+					frameEnd !== -1 ? frameEnd : carried.length > MAX_CARRIED ? safeCut(carried) : -1;
 				if (release <= 0) return;
 
 				const complete = carried.slice(0, release);

@@ -2,7 +2,11 @@ import type { INode, NodeEgressFilter } from 'n8n-workflow';
 
 import { createCustomModelEndpointAuthFetch } from './auth-fetch';
 import type { CustomModelEndpointFetchContext } from './auth-fetch';
-import { clientErrorMessage, wrapCustomModelEndpointErrorFetch } from './error-handling';
+import {
+	clientErrorMessage,
+	MAX_CARRIED,
+	wrapCustomModelEndpointErrorFetch,
+} from './error-handling';
 import type { EndpointCredential } from './types';
 
 const BASE_URL = 'https://gateway.example.com/v1';
@@ -422,13 +426,13 @@ describe('a gateway that repeats what it was sent', () => {
 
 		// Without a bound a gateway that never ends a frame would hold the whole body in memory
 		it('releases a body that never ends a frame, rather than holding it whole', async () => {
-			const filler = 'x'.repeat(70 * 1024);
+			const filler = 'x'.repeat(MAX_CARRIED + 1024);
 
 			const released = await releasedWhileProducing('text/event-stream', filler);
 
 			expect(released.length).toBeGreaterThan(0);
 			expect(released.length).toBeLessThan(filler.length);
-		}, 2000);
+		}, 20000);
 
 		// An answer is the user's own content. A credential that is also an ordinary word, as
 		// Ollama and LM Studio document, must not be cut out of it.
@@ -587,6 +591,10 @@ describe('every shape a gateway can answer with', () => {
 		['a top-level message', `{"message":"Access denied for ${KEY}"}`],
 		['the vLLM flat shape', `{"object":"error","message":"bad key ${KEY}","code":401}`],
 		['an errors array', `{"errors":[{"message":"bad key ${KEY}"}]}`],
+		// An answer-shaped key with a value no reader accepts is not an answer
+		['a null output beside a detail', `{"output":null,"detail":"invalid api key ${KEY}"}`],
+		['an empty choices array', `{"choices":[],"detail":"invalid api key ${KEY}"}`],
+		['a data array of things that are not models', `{"data":[{"detail":"bad key ${KEY}"}]}`],
 		// The failure event of the Responses stream nests its error one level down
 		[
 			'a response.failed event',
@@ -644,6 +652,12 @@ describe('every shape a gateway can answer with', () => {
 			`data: {"type":"response.completed","response":{"object":"response","error":null,"output":[{"content":[{"text":"${KEY}"}]}]}}\n\n`,
 			'text/event-stream',
 		],
+		// A real Responses frame leads with an event line, which the payload reader must skip
+		[
+			'a Responses frame behind its event line',
+			`event: response.completed\ndata: {"type":"response.completed","response":{"object":"response","error":null,"output":[{"content":[{"text":"${KEY}"}]}]}}\n\n`,
+			'text/event-stream',
+		],
 		// A background response is accepted before it has produced any output
 		[
 			'a queued Responses body that has no output yet',
@@ -670,6 +684,54 @@ describe('every shape a gateway can answer with', () => {
 		['in a frame', 'text/event-stream', 'data: {"error":{"message":"bad key \\u006fllama"}}\n\n'],
 	])('loses a credential spelled with a JSON escape %s', async (_name, contentType, body) => {
 		expect(decodedMessage(await through(body, 200, contentType))).not.toContain(KEY);
+	});
+
+	// A payload may be carried over several data lines, and the join is then not a
+	// substring of the frame, so splicing it back would replace nothing
+	it('loses a credential from a refusal carried over two data lines', async () => {
+		const frame = `data: {"error":\ndata: {"message":"bad key ${KEY}"}}\n\n`;
+		const baseFetch = (async () =>
+			new Response(frame, {
+				status: 200,
+				headers: { 'content-type': 'text/event-stream' },
+			})) as typeof fetch;
+
+		const surfaced = await (
+			await wrapCustomModelEndpointErrorFetch(baseFetch, [KEY])(BASE_URL)
+		).text();
+
+		expect(surfaced).not.toContain(KEY);
+	});
+
+	// The size-bound cut must not land between the halves of an astral character
+	it('keeps an astral character whole across the size-bound release', async () => {
+		const overlap = KEY.length - 1;
+		const head = 'x'.repeat(MAX_CARRIED + 1024 - overlap);
+		const body = `${head}\u{1F600}${'y'.repeat(overlap - 1)}`;
+		const baseFetch = (async () =>
+			new Response(body, {
+				status: 200,
+				headers: { 'content-type': 'text/event-stream' },
+			})) as typeof fetch;
+
+		const surfaced = await (
+			await wrapCustomModelEndpointErrorFetch(baseFetch, [KEY])(BASE_URL)
+		).text();
+
+		expect(surfaced).toContain('\u{1F600}');
+		expect(surfaced).not.toContain('\uFFFD');
+	}, 20000);
+
+	// Replacing the shorter one first would leave the longer one's tail in the clear
+	it('loses a secret that another secret is a prefix of', async () => {
+		const baseFetch = (async () =>
+			new Response('{"error":{"message":"rejected tok-abc-long"}}', {
+				status: 401,
+				headers: { 'content-type': 'application/json' },
+			})) as typeof fetch;
+		const wrapped = wrapCustomModelEndpointErrorFetch(baseFetch, ['tok-abc', 'tok-abc-long']);
+
+		expect(await (await wrapped(BASE_URL)).text()).not.toContain('long');
 	});
 
 	// A minted token is free to contain a space, and the scheme is only the first word.
