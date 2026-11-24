@@ -1,8 +1,8 @@
 import {
-	ListWorkflowReviewProjectsQueryDto,
-	UpdateWorkflowReviewProjectDto,
-	type WorkflowReviewProjectList,
-	type WorkflowReviewProjectUpdateResponse,
+	ListWorkflowReviewInstanceSettingsQueryDto,
+	UpdateWorkflowReviewInstanceSettingsDto,
+	type WorkflowReviewInstanceSettingsList,
+	type WorkflowReviewInstanceSettingsResponse,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -29,8 +29,8 @@ export class WorkflowReviewInstanceSettingsController {
 	async list(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Query query: ListWorkflowReviewProjectsQueryDto,
-	): Promise<WorkflowReviewProjectList> {
+		@Query query: ListWorkflowReviewInstanceSettingsQueryDto,
+	): Promise<WorkflowReviewInstanceSettingsList> {
 		return await this.projectSettingsService.listProjects(query);
 	}
 
@@ -42,8 +42,8 @@ export class WorkflowReviewInstanceSettingsController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('projectId') projectId: string,
-		@Body dto: UpdateWorkflowReviewProjectDto,
-	): Promise<WorkflowReviewProjectUpdateResponse> {
+		@Body dto: UpdateWorkflowReviewInstanceSettingsDto,
+	): Promise<WorkflowReviewInstanceSettingsResponse> {
 		return await this.projectSettingsService.setRequiredByInstance(req.user, projectId, dto);
 	}
 }

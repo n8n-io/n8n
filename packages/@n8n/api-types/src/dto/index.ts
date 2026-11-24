@@ -724,12 +724,14 @@ export {
 	type ProjectWorkflowReviewSettingsResponse,
 } from './workflow-reviews/update-project-workflow-review-settings.dto';
 export {
-	ListWorkflowReviewProjectsQueryDto,
-	UpdateWorkflowReviewProjectDto,
-	type WorkflowReviewProject,
-	type WorkflowReviewProjectList,
-	type WorkflowReviewProjectUpdateResponse,
-} from './workflow-reviews/workflow-review-projects.dto';
+	ListWorkflowReviewInstanceSettingsQueryDto,
+	type WorkflowReviewInstanceSettingsList,
+	type WorkflowReviewInstanceSettingsProject,
+} from './workflow-reviews/list-workflow-review-instance-settings-query.dto';
+export {
+	UpdateWorkflowReviewInstanceSettingsDto,
+	type WorkflowReviewInstanceSettingsResponse,
+} from './workflow-reviews/update-workflow-review-instance-settings.dto';
 export type { WorkflowReviewInboxItem } from './workflow-reviews/list-workflow-review-inbox.dto';
 export { ListInboxQueryDto } from './inbox/list-inbox.dto';
 export type * from './workflow-reviews/get-workflow-review-request-detail.dto';

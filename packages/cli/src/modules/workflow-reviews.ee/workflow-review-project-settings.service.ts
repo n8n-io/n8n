@@ -1,10 +1,10 @@
 import type {
-	ListWorkflowReviewProjectsQueryDto,
+	ListWorkflowReviewInstanceSettingsQueryDto,
 	ProjectWorkflowReviewSettingsResponse,
 	UpdateProjectWorkflowReviewSettingsDto,
-	UpdateWorkflowReviewProjectDto,
-	WorkflowReviewProjectList,
-	WorkflowReviewProjectUpdateResponse,
+	UpdateWorkflowReviewInstanceSettingsDto,
+	WorkflowReviewInstanceSettingsList,
+	WorkflowReviewInstanceSettingsResponse,
 } from '@n8n/api-types';
 import { EventService } from '@n8n/backend-services';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
@@ -60,7 +60,7 @@ export class WorkflowReviewProjectSettingsService {
 		requiredByInstance,
 		skip,
 		take,
-	}: ListWorkflowReviewProjectsQueryDto): Promise<WorkflowReviewProjectList> {
+	}: ListWorkflowReviewInstanceSettingsQueryDto): Promise<WorkflowReviewInstanceSettingsList> {
 		await this.featureGate.assertAvailable();
 		const [data, count] = await this.settingsRepository.findTeamProjectPage(
 			{ search, requiredByInstance, skip, take },
@@ -76,8 +76,8 @@ export class WorkflowReviewProjectSettingsService {
 	async setRequiredByInstance(
 		user: User,
 		projectId: string,
-		{ requiredByInstance }: UpdateWorkflowReviewProjectDto,
-	): Promise<WorkflowReviewProjectUpdateResponse> {
+		{ requiredByInstance }: UpdateWorkflowReviewInstanceSettingsDto,
+	): Promise<WorkflowReviewInstanceSettingsResponse> {
 		await this.featureGate.assertAvailable();
 		if (this.instanceSettingsLoaderConfig.securityPolicyManagedByEnv) {
 			throw new ForbiddenError(

@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useDebounceFn } from '@vueuse/core';
-import type { WorkflowReviewProject } from '@n8n/api-types';
+import type { WorkflowReviewInstanceSettingsProject } from '@n8n/api-types';
 import {
 	N8nIcon,
 	N8nInput,
@@ -43,7 +43,7 @@ const rootStore = useRootStore();
 const { showToast, showError } = useToast();
 const { isInstanceApprovalRequired } = useWorkflowReviewsFeature();
 
-const projects = ref<WorkflowReviewProject[]>([]);
+const projects = ref<WorkflowReviewInstanceSettingsProject[]>([]);
 const count = ref(0);
 const managedByEnv = ref(false);
 const loading = ref(true);

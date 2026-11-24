@@ -5,17 +5,13 @@ import type { ProjectIcon } from '../../schemas/project.schema';
 import { Z } from '../../zod-class';
 import { paginationSchema } from '../pagination/pagination.dto';
 
-export class ListWorkflowReviewProjectsQueryDto extends Z.class({
+export class ListWorkflowReviewInstanceSettingsQueryDto extends Z.class({
 	...paginationSchema,
 	search: z.string().trim().max(255).optional(),
 	requiredByInstance: booleanFromString.optional(),
 }) {}
 
-export class UpdateWorkflowReviewProjectDto extends Z.class({
-	requiredByInstance: z.boolean(),
-}) {}
-
-export type WorkflowReviewProject = {
+export type WorkflowReviewInstanceSettingsProject = {
 	id: string;
 	name: string;
 	icon: ProjectIcon | null;
@@ -23,10 +19,8 @@ export type WorkflowReviewProject = {
 	requiredByProject: boolean;
 };
 
-export type WorkflowReviewProjectUpdateResponse = Pick<WorkflowReviewProject, 'requiredByInstance'>;
-
-export type WorkflowReviewProjectList = {
+export type WorkflowReviewInstanceSettingsList = {
 	count: number;
-	data: WorkflowReviewProject[];
+	data: WorkflowReviewInstanceSettingsProject[];
 	managedByEnv: boolean;
 };
