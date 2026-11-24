@@ -622,6 +622,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 	async findCredentialsUsableByAccount(
 		accountId: string,
 		credentialIds: string[],
+		{ sharedOnly = false }: { sharedOnly?: boolean } = {},
 	): Promise<Array<Pick<CredentialsEntity, 'id' | 'name' | 'type'>>> {
 		if (credentialIds.length === 0) return [];
 
@@ -629,10 +630,14 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 			usageScope: 'project',
 			id: In(credentialIds),
 		});
+		// Shared only: the account's own personal project, not the projects it is a member of.
+		const project = sharedOnly
+			? { type: 'personal' as const, projectRelations: { userId: accountId } }
+			: { projectRelations: { userId: accountId } };
 
 		return await this.find({
 			where: [
-				{ ...filter, shared: { project: { projectRelations: { userId: accountId } } } },
+				{ ...filter, shared: { project } },
 				{ ...filter, isGlobal: true },
 			],
 			select: ['id', 'name', 'type'],

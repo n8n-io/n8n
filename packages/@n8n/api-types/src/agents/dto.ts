@@ -352,7 +352,9 @@ export class AddProjectAgentAccessDto extends Z.class({
 }) {}
 
 export class UpdateAgentRuntimeIdentityDto extends Z.class({
-	disabled: z.boolean(),
+	disabled: z.boolean().optional(),
+	/** The agent uses only credentials shared with it directly, and global ones. */
+	sharedCredentialsOnly: z.boolean().optional(),
 }) {}
 
 export class MoveAgentDto extends Z.class({

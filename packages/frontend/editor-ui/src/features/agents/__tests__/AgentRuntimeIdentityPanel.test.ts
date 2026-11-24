@@ -29,6 +29,8 @@ const status = (overrides: Partial<AgentRuntimeIdentityStatus> = {}) => ({
 	available: true,
 	actsAsServiceAccount: true,
 	disabled: false,
+	sharedCredentialsOnly: false,
+	otherProjects: [],
 	...overrides,
 });
 
@@ -74,7 +76,7 @@ describe('AgentRuntimeIdentityPanel', () => {
 			expect.anything(),
 			'project-1',
 			'agent-1',
-			true,
+			{ disabled: true },
 		);
 		expect(await findByTestId('agent-disabled-callout')).toBeInTheDocument();
 	});
@@ -89,6 +91,34 @@ describe('AgentRuntimeIdentityPanel', () => {
 		await flushPromises();
 
 		expect(updateAgentRuntimeIdentity).not.toHaveBeenCalled();
+	});
+
+	it('lets a project admin limit the agent to the credentials shared with it', async () => {
+		setProjectScopes(['project:manageMembers']);
+		getAgentRuntimeIdentity.mockResolvedValue(status());
+		updateAgentRuntimeIdentity.mockResolvedValue(status({ sharedCredentialsOnly: true }));
+
+		const { getByTestId } = renderComponent();
+		await flushPromises();
+		await fireEvent.click(getByTestId('agent-shared-only-toggle'));
+		await flushPromises();
+
+		expect(confirm).not.toHaveBeenCalled();
+		expect(updateAgentRuntimeIdentity).toHaveBeenCalledWith(
+			expect.anything(),
+			'project-1',
+			'agent-1',
+			{ sharedCredentialsOnly: true },
+		);
+	});
+
+	it('has no shared-only switch for an agent in a personal project', async () => {
+		getAgentRuntimeIdentity.mockResolvedValue(status({ actsAsServiceAccount: false }));
+
+		const { queryByTestId } = renderComponent();
+		await flushPromises();
+
+		expect(queryByTestId('agent-shared-only-toggle')).not.toBeInTheDocument();
 	});
 
 	it('says that an agent in a personal project keeps the access of its owner', async () => {

@@ -34,7 +34,7 @@ import type {
 	ProjectRelation,
 } from '@n8n/db';
 import type { PolicyCleared } from '@n8n/decorators';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { In, type EntityManager } from '@n8n/typeorm';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -781,7 +781,8 @@ export class CredentialsService {
 	 * The credentials an agent service account can use when its agent runs: the
 	 * credentials of each project the account belongs to, the ones shared with
 	 * the account directly, and the global ones. Unlike for a person, the
-	 * credential does not have to be in the project of the agent.
+	 * credential does not have to be in the project of the agent. An agent set
+	 * to "shared credentials only" gets none from its project memberships.
 	 */
 	async getCredentialsAnAgentAccountCanUse(account: User): Promise<CredentialsEntity[]> {
 		const credentials = await this.credentialsFinderService.findCredentialsForUser(account, [
@@ -791,7 +792,12 @@ export class CredentialsService {
 		for (const credential of credentials) {
 			if (!credential.isResolvable) usable.set(credential.id, credential);
 		}
-		return [...usable.values()];
+		const { RuntimeAccessService } = await import('@/services/runtime-access.service.js');
+		const allowed = await Container.get(RuntimeAccessService).usableCredentialIdsOfAccount(
+			account.id,
+			[...usable.keys()],
+		);
+		return [...usable.values()].filter((credential) => allowed.has(credential.id));
 	}
 
 	/**

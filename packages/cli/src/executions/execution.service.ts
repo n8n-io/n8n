@@ -33,6 +33,7 @@ import type {
 	ExecutionError,
 	ExecutionStatus,
 	INode,
+	IRunExecutionData,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 	WorkflowExecuteMode,
@@ -209,7 +210,9 @@ export class ExecutionService {
 		);
 
 		// Only an execution that an agent's workflow tool started carries the marker.
-		const agentRun = execution.data.parentAgentRun?.agentServiceAccountId
+		// The data can be missing, for example when it is too large to load.
+		const runData: IRunExecutionData | undefined = execution.data;
+		const agentRun = runData?.parentAgentRun?.agentServiceAccountId
 			? await Container.get(ExecutionAgentAttributionService).describe(
 					execution.data,
 					execution.mode,

@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import type { Project, User } from '@n8n/db';
 import { CredentialsRepository, SharedCredentialsRepository, UserRepository } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { getActiveCredentialTypes } from 'n8n-workflow';
@@ -460,11 +460,13 @@ export class CredentialsPermissionChecker {
 		// instance-wide `credential:use` does not reach a credential nobody gave the
 		// project.
 		const unusableForActingUser =
-			await this.credentialsFinderService.findUnusableCredentialsForUser(
-				actingUser,
-				rejectedByProject,
-				{ ignoreGlobalUseScope: homeProject.type === 'team' },
-			);
+			actingUser.kind === 'service'
+				? await this.findUnusableForAccount(actingUser.id, rejectedByProject)
+				: await this.credentialsFinderService.findUnusableCredentialsForUser(
+						actingUser,
+						rejectedByProject,
+						{ ignoreGlobalUseScope: homeProject.type === 'team' },
+					);
 
 		const unusableIds = new Set(unusableForActingUser.map((c) => c.id));
 
@@ -474,6 +476,21 @@ export class CredentialsPermissionChecker {
 			unusableForActingUser,
 			personalRouteIds: rejectedByProject.filter((id) => !unusableIds.has(id)),
 		};
+	}
+
+	/**
+	 * A service account, such as an agent's, uses the runtime access check, so a
+	 * workflow it runs follows the same credential rules as the agent itself.
+	 */
+	private async findUnusableForAccount(accountId: string, credentialIds: string[]) {
+		const { RuntimeAccessService } = await import('@/services/runtime-access.service.js');
+		const usable = await Container.get(RuntimeAccessService).usableCredentialIdsOfAccount(
+			accountId,
+			credentialIds,
+		);
+		return await this.credentialsFinderService.describeCredentials(
+			credentialIds.filter((id) => !usable.has(id)),
+		);
 	}
 
 	/**

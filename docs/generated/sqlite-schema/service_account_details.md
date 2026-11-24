@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "service_account_details" ("userId" varchar PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_service_account_details_userId" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE CASCADE)
+CREATE TABLE "service_account_details" ("userId" varchar PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "sharedCredentialsOnly" BOOLEAN NOT NULL DEFAULT FALSE, CONSTRAINT "FK_service_account_details_userId" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE CASCADE)
 ```
 
 </details>
@@ -17,6 +17,7 @@ CREATE TABLE "service_account_details" ("userId" varchar PRIMARY KEY NOT NULL, "
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | name | varchar(128) |  | false |  |  |  |
+| sharedCredentialsOnly | BOOLEAN | FALSE | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | userId | varchar |  | false |  | [user](user.md) |  |
 
@@ -44,6 +45,7 @@ erDiagram
 "service_account_details" {
   datetime_3_ createdAt
   varchar_128_ name
+  BOOLEAN sharedCredentialsOnly
   datetime_3_ updatedAt
   varchar userId PK
 }

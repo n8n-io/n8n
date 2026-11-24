@@ -69,6 +69,25 @@ export class ServiceAccountRepository {
 		await this.table.managerFor(ctx).update(ServiceAccount, { id }, { disabled });
 	}
 
+	async setSharedCredentialsOnly(
+		id: string,
+		sharedCredentialsOnly: boolean,
+		ctx: OperationContext = {},
+	): Promise<void> {
+		await this.table
+			.managerFor(ctx)
+			.update(ServiceAccountDetails, { userId: id }, { sharedCredentialsOnly });
+	}
+
+	/** Whether the account can use only credentials shared with it directly. */
+	async usesSharedCredentialsOnly(id: string): Promise<boolean> {
+		const details = await this.table.manager.findOne(ServiceAccountDetails, {
+			where: { userId: id },
+			select: { userId: true, sharedCredentialsOnly: true },
+		});
+		return details?.sharedCredentialsOnly ?? false;
+	}
+
 	/** Whether the account has the `project:agent` role in the project. */
 	async isAgentOfProject(id: string, projectId: string): Promise<boolean> {
 		return await this.table.manager.existsBy(ProjectRelation, {

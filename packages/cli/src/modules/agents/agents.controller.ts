@@ -201,8 +201,9 @@ export class AgentsController {
 	}
 
 	/**
-	 * Disables or enables the agent on every channel. The agent's account is a
-	 * member of the project, so only people who manage members can change it.
+	 * Disables or enables the agent on every channel, or limits it to the
+	 * credentials shared with it. The agent's account is a member of the
+	 * project, so only people who manage members can change it.
 	 */
 	@Patch('/:agentId/runtime-identity')
 	@ProjectScope('agent:update')
@@ -213,15 +214,26 @@ export class AgentsController {
 	): Promise<AgentRuntimeIdentityStatus> {
 		const { projectId, agentId } = req.params;
 		if (!(await userHasScopes(req.user, ['project:manageMembers'], false, { projectId }))) {
-			throw new ForbiddenError('Only project admins can disable or enable an agent');
+			throw new ForbiddenError('Only project admins can change the identity of an agent');
 		}
-		return await this.agentAccountStatusService.setDisabled(
-			agentId,
-			projectId,
-			payload.disabled,
-			req.user,
-			req.ctx,
-		);
+		let status: AgentRuntimeIdentityStatus | undefined;
+		if (payload.sharedCredentialsOnly !== undefined) {
+			status = await this.agentAccountStatusService.setSharedCredentialsOnly(
+				agentId,
+				projectId,
+				payload.sharedCredentialsOnly,
+			);
+		}
+		if (payload.disabled !== undefined) {
+			status = await this.agentAccountStatusService.setDisabled(
+				agentId,
+				projectId,
+				payload.disabled,
+				req.user,
+				req.ctx,
+			);
+		}
+		return status ?? (await this.agentAccountStatusService.getStatus(agentId, projectId));
 	}
 
 	@Patch('/:agentId/move')

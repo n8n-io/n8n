@@ -1,5 +1,5 @@
 import { ProjectScopeService } from '@n8n/backend-services';
-import { CredentialsRepository } from '@n8n/db';
+import { CredentialsRepository, ServiceAccountRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope, SecurityContext } from '@n8n/permissions';
 
@@ -29,6 +29,7 @@ export class RuntimeAccessService {
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly projectService: ProjectService,
+		private readonly serviceAccountRepository: ServiceAccountRepository,
 	) {}
 
 	async canUse(security: SecurityContext, resource: RuntimeResource): Promise<boolean> {
@@ -58,11 +59,28 @@ export class RuntimeAccessService {
 		return new Set(usable.map((credential) => credential.id));
 	}
 
-	/** Like {@link usableCredentialIds}, with the name and type of each credential. */
+	/**
+	 * Like {@link usableCredentialIds}, with the name and type of each credential.
+	 * An agent set to "shared credentials only" gets no credentials from its
+	 * project memberships.
+	 */
 	async findUsableCredentials(security: SecurityContext, credentialIds: string[]) {
+		return await this.findCredentialsUsableByAccount(security.subject.id, credentialIds);
+	}
+
+	/** Like {@link usableCredentialIds}, for an account known by its id. */
+	async usableCredentialIdsOfAccount(accountId: string, credentialIds: string[]) {
+		const usable = await this.findCredentialsUsableByAccount(accountId, credentialIds);
+		return new Set(usable.map((credential) => credential.id));
+	}
+
+	private async findCredentialsUsableByAccount(accountId: string, credentialIds: string[]) {
+		if (credentialIds.length === 0) return [];
+		const sharedOnly = await this.serviceAccountRepository.usesSharedCredentialsOnly(accountId);
 		return await this.credentialsRepository.findCredentialsUsableByAccount(
-			security.subject.id,
+			accountId,
 			credentialIds,
+			{ sharedOnly },
 		);
 	}
 

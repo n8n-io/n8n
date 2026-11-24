@@ -30,17 +30,49 @@ export class AgentAccountStatusService {
 		const agent = await this.findAgentOrFail(agentId, projectId);
 		const available = this.runtimeIdentity.isEnabled();
 		if (!available) {
-			return { available, actsAsServiceAccount: false, disabled: false, otherProjects: [] };
+			return {
+				available,
+				actsAsServiceAccount: false,
+				disabled: false,
+				sharedCredentialsOnly: false,
+				otherProjects: [],
+			};
 		}
 
-		const [account, disabled, toolProjectIds] = await Promise.all([
+		const [account, disabled, sharedCredentialsOnly, toolProjectIds] = await Promise.all([
 			this.agentServiceAccount.findActingAccount(agent),
 			this.agentServiceAccount.isDisabled(agent),
+			this.agentServiceAccount.usesSharedCredentialsOnly(agent),
 			this.runtimeIdentity.toolProjectIds(agent),
 		]);
 		const otherIds = toolProjectIds.filter((id) => id !== projectId);
 		const otherProjects = await this.projectRepository.findNamesByIds(otherIds);
-		return { available, actsAsServiceAccount: account !== undefined, disabled, otherProjects };
+		return {
+			available,
+			actsAsServiceAccount: account !== undefined,
+			disabled,
+			sharedCredentialsOnly,
+			otherProjects,
+		};
+	}
+
+	/**
+	 * Limits the agent to credentials shared with it directly, or lifts the
+	 * limit. Its project memberships keep giving it workflows and data tables.
+	 */
+	async setSharedCredentialsOnly(
+		agentId: string,
+		projectId: string,
+		value: boolean,
+	): Promise<AgentRuntimeIdentityStatus> {
+		if (!this.runtimeIdentity.isEnabled()) {
+			throw new BadRequestError('Agent runtime identity is not enabled on this instance');
+		}
+		const agent = await this.findAgentOrFail(agentId, projectId);
+		await this.agentServiceAccount.setSharedCredentialsOnly(agent, value);
+		// The next run rebuilds the runtime, so its tools are filtered again.
+		this.runtimeCache.clearRuntimes(agent.id);
+		return await this.getStatus(agentId, projectId);
 	}
 
 	async setDisabled(

@@ -75,6 +75,14 @@ export class AgentServiceAccountService implements ServiceAccountProjectSource {
 		await this.serviceAccountRepository.setDisabled(agent.identityId, disabled);
 	}
 
+	async setSharedCredentialsOnly(agent: Pick<Agent, 'identityId'>, value: boolean): Promise<void> {
+		await this.serviceAccountRepository.setSharedCredentialsOnly(agent.identityId, value);
+	}
+
+	async usesSharedCredentialsOnly(agent: Pick<Agent, 'identityId'>): Promise<boolean> {
+		return await this.serviceAccountRepository.usesSharedCredentialsOnly(agent.identityId);
+	}
+
 	async isDisabled(agent: Pick<Agent, 'identityId'>): Promise<boolean> {
 		const account = await this.serviceAccountRepository.findById(agent.identityId);
 		return account?.disabled ?? false;

@@ -12,6 +12,7 @@ import { EventService } from '@n8n/backend-services';
 import { AgentsConfig } from '@n8n/config';
 import {
 	CredentialsRepository,
+	ExecutionRepository,
 	ProjectRelationRepository,
 	ServiceAccountRepository,
 } from '@n8n/db';
@@ -43,7 +44,6 @@ import { RuntimeAccessService } from '@/services/runtime-access.service';
 import { AgentDirectory } from '@/services/agent-directory';
 import { ExecutionAgentAttributionService } from '@/executions/execution-agent-attribution.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { ExecutionRepository } from '@n8n/db';
 import { createRunExecutionData } from 'n8n-workflow';
 import { createExecution } from '../shared/db/executions';
 import { Telemetry } from '@/telemetry';
@@ -243,6 +243,67 @@ describe('Agent runtime identity', () => {
 			expect(ids).not.toContain(elsewhere.id);
 		});
 
+		it('limits an agent set to shared credentials only to its shares and global ones', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject();
+			const agent = await createAgentIn(project.id);
+			const identity = await runtimeIdentity.resolveRunIdentity(agent);
+			if (!identity) throw new Error('Expected a run identity');
+			const { account, security } = identity;
+
+			const inProject = await createCredentials({ name: 'Stripe', type: 'a', data: '' }, project);
+			const shared = await createCredentials(
+				{ name: 'Google Sheets', type: 'a', data: '' },
+				project,
+			);
+			await shareCredentialWithProjects(shared, [await getPersonalProject(account)]);
+			const global = await createCredentials(
+				{ name: 'Global', type: 'a', data: '', isGlobal: true },
+				await getPersonalProject(owner),
+			);
+			const ids = [inProject.id, shared.id, global.id];
+			const access = Container.get(RuntimeAccessService);
+			const statusService = Container.get(AgentAccountStatusService);
+
+			expect([...(await access.usableCredentialIds(security, ids))].sort()).toEqual(
+				[...ids].sort(),
+			);
+
+			const status = await statusService.setSharedCredentialsOnly(agent.id, project.id, true);
+			expect(status.sharedCredentialsOnly).toBe(true);
+
+			expect([...(await access.usableCredentialIds(security, ids))].sort()).toEqual(
+				[shared.id, global.id].sort(),
+			);
+			const listed =
+				await Container.get(CredentialsService).getCredentialsAnAgentAccountCanUse(account);
+			expect(listed.map((c) => c.id)).not.toContain(inProject.id);
+			expect(listed.map((c) => c.id)).toContain(shared.id);
+
+			// A workflow tool of another project follows the same rule.
+			const sales = await createTeamProject();
+			const nodes = [
+				{
+					id: 'node',
+					name: 'Stripe',
+					type: 'n8n-nodes-base.stripe',
+					typeVersion: 1,
+					position: [0, 0] as [number, number],
+					parameters: {},
+					credentials: { a: { id: inProject.id, name: inProject.name } },
+				},
+			];
+			const salesWorkflow = await createWorkflow({ name: 'Sales tool', nodes }, sales);
+			const checker = Container.get(CredentialsPermissionChecker);
+			await expect(checker.check(salesWorkflow.id, nodes, account.id)).rejects.toThrow(
+				'which you cannot use',
+			);
+
+			await statusService.setSharedCredentialsOnly(agent.id, project.id, false);
+			expect(await access.canUse(security, { type: 'credential', id: inProject.id })).toBe(true);
+			await expect(checker.check(salesWorkflow.id, nodes, account.id)).resolves.toBeDefined();
+		});
+
 		it('lets the account use the credentials of another project that it joins', async () => {
 			const project = await createTeamProject();
 			const otherProject = await createTeamProject();
@@ -284,6 +345,7 @@ describe('Agent runtime identity', () => {
 				available: true,
 				actsAsServiceAccount: true,
 				disabled: true,
+				sharedCredentialsOnly: false,
 				otherProjects: [],
 			});
 			expect(emit).toHaveBeenCalledWith('agent-service-account-disabled-changed', {

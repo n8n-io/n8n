@@ -829,13 +829,13 @@ export const updateAgentRuntimeIdentity = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-	disabled: boolean,
+	changes: { disabled?: boolean; sharedCredentialsOnly?: boolean },
 ): Promise<AgentRuntimeIdentityStatus> => {
 	return await makeRestApiRequest<AgentRuntimeIdentityStatus>(
 		context,
 		'PATCH',
 		`/projects/${projectId}/agents/v2/${agentId}/runtime-identity`,
-		{ disabled },
+		changes,
 	);
 };
 

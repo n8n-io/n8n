@@ -814,6 +814,8 @@ export interface AgentRuntimeIdentityStatus {
 	/** The agent acts as its account. False for an agent in a personal project. */
 	actsAsServiceAccount: boolean;
 	disabled: boolean;
+	/** The agent uses only credentials shared with it directly, and global ones. */
+	sharedCredentialsOnly: boolean;
 	/** Other projects that gave the agent access. Their workflows can be the agent's tools. */
 	otherProjects: Array<{ id: string; name: string }>;
 }

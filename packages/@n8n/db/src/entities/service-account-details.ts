@@ -16,4 +16,11 @@ export class ServiceAccountDetails extends WithTimestamps {
 	/** The name that the UI shows for the service account. */
 	@Column({ type: 'varchar', length: 128 })
 	name: string;
+
+	/**
+	 * The account can use only credentials shared with it directly, and global
+	 * ones. Its project memberships give it no credentials.
+	 */
+	@Column({ type: 'boolean', default: false })
+	sharedCredentialsOnly: boolean;
 }

@@ -10392,6 +10392,8 @@
 	"agents.builder.runtimeIdentity.disabledCallout": "This agent is disabled. It does not reply on any channel.",
 	"agents.builder.runtimeIdentity.personalProjectHint": "This agent is in a personal project, so it runs with the access of its owner.",
 	"agents.builder.runtimeIdentity.error": "Could not change the agent status",
+	"agents.builder.runtimeIdentity.sharedOnly.label": "Use only credentials shared with this agent",
+	"agents.builder.runtimeIdentity.sharedOnly.hint": "The agent stops using the other credentials of its projects. Share each credential it needs with the agent. Workflows and data tables stay available.",
 	"agents.builder.memory.title": "Session memory",
 	"agents.builder.memory.description": "Remembers the conversation within the current session",
 	"agents.builder.memory.alwaysOn": "Always on",

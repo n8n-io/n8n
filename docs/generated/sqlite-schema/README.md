@@ -154,7 +154,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [self_healing_configuration_workflow](self_healing_configuration_workflow.md) | 3 |  | table |
 | [self_healing_investigation](self_healing_investigation.md) | 13 |  | table |
 | [self_healing_result](self_healing_result.md) | 14 |  | table |
-| [service_account_details](service_account_details.md) | 4 |  | table |
+| [service_account_details](service_account_details.md) | 5 |  | table |
 | [settings](settings.md) | 3 |  | table |
 | [shared_credentials](shared_credentials.md) | 5 |  | table |
 | [shared_knowledge_collection](shared_knowledge_collection.md) | 5 |  | table |
@@ -2023,6 +2023,7 @@ erDiagram
 "service_account_details" {
   datetime_3_ createdAt
   varchar_128_ name
+  BOOLEAN sharedCredentialsOnly
   datetime_3_ updatedAt
   varchar userId PK
 }

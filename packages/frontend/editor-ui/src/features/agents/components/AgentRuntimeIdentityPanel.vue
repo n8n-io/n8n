@@ -52,6 +52,26 @@ onMounted(async () => {
 	}
 });
 
+async function save(changes: { disabled?: boolean; sharedCredentialsOnly?: boolean }) {
+	saving.value = true;
+	try {
+		status.value = await updateAgentRuntimeIdentity(
+			rootStore.restApiContext,
+			props.projectId,
+			props.agentId,
+			changes,
+		);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.builder.runtimeIdentity.error'));
+	} finally {
+		saving.value = false;
+	}
+}
+
+async function onToggleSharedOnly(sharedCredentialsOnly: boolean) {
+	await save({ sharedCredentialsOnly });
+}
+
 async function onToggle(disabled: boolean) {
 	if (disabled) {
 		const choice = await message.confirm(
@@ -66,19 +86,7 @@ async function onToggle(disabled: boolean) {
 		if (choice !== MODAL_CONFIRM) return;
 	}
 
-	saving.value = true;
-	try {
-		status.value = await updateAgentRuntimeIdentity(
-			rootStore.restApiContext,
-			props.projectId,
-			props.agentId,
-			disabled,
-		);
-	} catch (error) {
-		toast.showError(error, i18n.baseText('agents.builder.runtimeIdentity.error'));
-	} finally {
-		saving.value = false;
-	}
+	await save({ disabled });
 }
 </script>
 
@@ -108,6 +116,24 @@ async function onToggle(disabled: boolean) {
 					data-testid="agent-disable-toggle"
 					data-attr="agent-disable-toggle"
 					@update:model-value="onToggle"
+				/>
+			</div>
+			<div v-if="status.actsAsServiceAccount" :class="shared.settingRow">
+				<div :class="shared.settingLabel">
+					<N8nText step="sm" bold :class="shared.dataEntryLabel">
+						{{ i18n.baseText('agents.builder.runtimeIdentity.sharedOnly.label') }}
+					</N8nText>
+					<N8nText size="small" :class="shared.dataEntrySubLabel">
+						{{ i18n.baseText('agents.builder.runtimeIdentity.sharedOnly.hint') }}
+					</N8nText>
+				</div>
+				<N8nSwitch2
+					:model-value="status.sharedCredentialsOnly"
+					:disabled="!canManage || saving"
+					:class="shared.settingControl"
+					data-testid="agent-shared-only-toggle"
+					data-attr="agent-shared-only-toggle"
+					@update:model-value="onToggleSharedOnly"
 				/>
 			</div>
 			<N8nText

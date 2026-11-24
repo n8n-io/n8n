@@ -549,6 +549,7 @@ erDiagram
 "service_account_details" {
   datetime_3_ createdAt
   varchar_128_ name
+  BOOLEAN sharedCredentialsOnly
   datetime_3_ updatedAt
   varchar userId PK
 }
