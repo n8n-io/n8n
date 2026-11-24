@@ -1,6 +1,6 @@
 import { createTestingPinia } from '@pinia/testing';
 import { onTestFinished } from 'vitest';
-import { screen, waitFor, within } from '@testing-library/vue';
+import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type {
 	FrontendSettings,
@@ -245,7 +245,7 @@ describe('WorkflowReviewInstanceSettingsView', () => {
 
 			await userEvent.click(getByTestId('resources-list-filters-trigger'));
 			const filter = await findByTestId('workflow-review-instance-settings-filter-approval');
-			await userEvent.click(within(filter).getAllByRole('combobox')[0]);
+			await userEvent.click(filter);
 			await userEvent.click(await screen.findByRole('option', { name: 'Required' }));
 			await waitFor(() =>
 				expect(getWorkflowReviewInstanceSettings).toHaveBeenLastCalledWith(expect.anything(), {
@@ -271,7 +271,7 @@ describe('WorkflowReviewInstanceSettingsView', () => {
 
 		await userEvent.click(await findByTestId('resources-list-filters-trigger'));
 		const filter = await findByTestId('workflow-review-instance-settings-filter-approval');
-		await userEvent.click(within(filter).getAllByRole('combobox')[0]);
+		await userEvent.click(filter);
 		await userEvent.click(await screen.findByRole('option', { name: 'Required' }));
 		await approvalSelect('Project 01');
 		await userEvent.click(getByTestId('pagination-next'));

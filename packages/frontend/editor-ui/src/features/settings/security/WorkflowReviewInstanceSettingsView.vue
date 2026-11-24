@@ -8,13 +8,12 @@ import {
 	N8nInput,
 	N8nInputLabel,
 	N8nNotice,
-	N8nOption,
-	N8nSelect,
+	N8nSelect2,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nText,
 } from '@n8n/design-system';
-import type { TableOptions } from '@n8n/design-system';
+import type { SelectOptionBase, TableOptions } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
@@ -55,6 +54,19 @@ const filters = ref<{ approval: ApprovalFilter }>({ approval: '' });
 const tableOptions = ref<TableOptions>({ page: 0, itemsPerPage: PAGE_SIZE, sortBy: [] });
 /** Whether the shown page was loaded with a search term or a filter. */
 const loadedFiltered = ref(false);
+
+const approvalFilterOptions = computed<Array<SelectOptionBase<ApprovalFilter>>>(() => [
+	{
+		value: 'notRequired',
+		label: i18n.baseText('settings.reviewPolicy.projects.option.notRequired'),
+		icon: 'lock-unlocked',
+	},
+	{
+		value: 'required',
+		label: i18n.baseText('settings.reviewPolicy.projects.option.required'),
+		icon: 'lock',
+	},
+]);
 
 const lockedReason = computed(() =>
 	isInstanceApprovalRequired.value
@@ -230,8 +242,9 @@ onMounted(load);
 						size="small"
 						color="text-base"
 					/>
-					<N8nSelect
-						:model-value="filters.approval"
+					<N8nSelect2
+						:model-value="filters.approval || undefined"
+						:items="approvalFilterOptions"
 						size="medium"
 						clearable
 						:placeholder="
@@ -239,16 +252,7 @@ onMounted(load);
 						"
 						data-test-id="workflow-review-instance-settings-filter-approval"
 						@update:model-value="onApprovalFilter"
-					>
-						<N8nOption
-							value="notRequired"
-							:label="i18n.baseText('settings.reviewPolicy.projects.option.notRequired')"
-						/>
-						<N8nOption
-							value="required"
-							:label="i18n.baseText('settings.reviewPolicy.projects.option.required')"
-						/>
-					</N8nSelect>
+					/>
 				</div>
 			</ResourceFiltersDropdown>
 		</div>
