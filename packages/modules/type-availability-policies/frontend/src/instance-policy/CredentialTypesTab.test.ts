@@ -160,6 +160,8 @@ describe('CredentialTypesTab', () => {
 	});
 
 	it('saves a rule for only the changed credential type', async () => {
+		// No workflow uses the type, so the change applies with no review.
+		mocks.fetchCredentialTypeUsage.mockResolvedValue({});
 		mocks.fetchInstancePolicy.mockResolvedValue(policy(1, EXISTING_RULES));
 		mocks.saveInstancePolicy.mockResolvedValue({ ...policy(2), warnings: [] });
 		const { findByText, getByTestId } = await setup(() =>
@@ -219,6 +221,8 @@ describe('CredentialTypesTab', () => {
 	});
 
 	it('shows the saved value again when the save fails', async () => {
+		// No workflow uses the type, so the change applies with no review.
+		mocks.fetchCredentialTypeUsage.mockResolvedValue({});
 		mocks.saveInstancePolicy.mockRejectedValue(new ResponseError('boom', { httpStatusCode: 500 }));
 		const { findByText, getByTestId } = await setup();
 		await findByText('Bitly API');
@@ -231,6 +235,8 @@ describe('CredentialTypesTab', () => {
 	});
 
 	it('loads the access list again when the policy changed after the page loaded', async () => {
+		// No workflow uses the type, so the change applies with no review.
+		mocks.fetchCredentialTypeUsage.mockResolvedValue({});
 		mocks.saveInstancePolicy.mockRejectedValue(new ResponseError('stale', { httpStatusCode: 409 }));
 		mocks.fetchInstancePolicy.mockResolvedValueOnce(policy(1)).mockResolvedValue(policy(5));
 		const { findByText, getByTestId } = await setup(() =>
@@ -251,6 +257,8 @@ describe('CredentialTypesTab', () => {
 	});
 
 	it('shows the saved value again when the page cannot edit the policy', async () => {
+		// No workflow uses the type, so the change applies with no review.
+		mocks.fetchCredentialTypeUsage.mockResolvedValue({});
 		mocks.saveInstancePolicy.mockRejectedValue(
 			new ResponseError('several documents', { httpStatusCode: 409 }),
 		);
@@ -290,6 +298,8 @@ describe('CredentialTypesTab', () => {
 	});
 
 	it('keeps rows editable when the default action leaves types open to project opt-in', async () => {
+		// No workflow uses the type, so the change applies with no review.
+		mocks.fetchCredentialTypeUsage.mockResolvedValue({});
 		mocks.fetchInstanceAccess.mockResolvedValue(
 			access(1, [{ name: 'bitlyApi', access: 'delegate', matchedRuleId: null }]),
 		);

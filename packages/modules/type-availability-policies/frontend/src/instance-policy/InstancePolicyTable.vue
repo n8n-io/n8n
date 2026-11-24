@@ -38,7 +38,8 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	change: [name: string, access: PolicyAction];
+	/** `label` is the display name, for the review before a type in use is restricted. */
+	change: [name: string, access: PolicyAction, label: string];
 	open: [name: string];
 }>();
 
@@ -254,7 +255,7 @@ function onRowClick(_event: MouseEvent, { item }: { item: InstancePolicyTableRow
 
 async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction) {
 	if (access === row.access) return;
-	emit('change', row.name, access);
+	emit('change', row.name, access, row.displayName);
 	await nextTick();
 	// The menu returns the focus to its trigger, which a row that left the filter took with it.
 	if (!pageRows.value.some(({ name }) => name === row.name)) focusFilter();

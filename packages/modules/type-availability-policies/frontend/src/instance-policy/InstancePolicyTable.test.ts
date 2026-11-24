@@ -242,7 +242,7 @@ describe('InstancePolicyTable', () => {
 		await userEvent.click(accessTrigger(getByTestId, 'airtableApi'));
 		await userEvent.click(await findPopupItem(MENU_ITEM, 'Restricted'));
 
-		expect(emitted('change')).toEqual([['airtableApi', 'deny']]);
+		expect(emitted('change')).toEqual([['airtableApi', 'deny', 'Airtable API']]);
 	});
 
 	it('emits open for a click on a row, but not for a click on its Access menu', async () => {
@@ -338,7 +338,7 @@ describe('InstancePolicyTable', () => {
 		await userEvent.click(accessTrigger(getByTestId, 'airtableApi'));
 		await userEvent.click(await findPopupItem(MENU_ITEM, 'Restricted'));
 
-		expect(emitted('change')).toEqual([['airtableApi', 'deny']]);
+		expect(emitted('change')).toEqual([['airtableApi', 'deny', 'Airtable API']]);
 		expect(emitted('open')).toBeUndefined();
 	});
 

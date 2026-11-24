@@ -12,6 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import CredentialTypeAccessDialog from './CredentialTypeAccessDialog.vue';
 import { useInstancePolicyStore } from '../instance-policy.store';
+import { useRestrictReviewStore } from '../restrict-review/restrict-review.store';
 
 const mocks = vi.hoisted(() => ({
 	fetchInstancePolicy: vi.fn(),
@@ -283,6 +284,9 @@ describe('CredentialTypeAccessDialog', () => {
 	});
 
 	it('saves only the changed related node type, not the credential type', async () => {
+		// No workflow uses a type, so a change applies with no review.
+		mocks.fetchNodeTypeUsage.mockResolvedValue({});
+		mocks.fetchCredentialTypeUsage.mockResolvedValue({});
 		const { getByTestId } = await setup('airtableApi');
 
 		await fireEvent.click(selectsIn(getByTestId('credential-type-access-related-node'))[0]);
@@ -305,6 +309,55 @@ describe('CredentialTypeAccessDialog', () => {
 		expect(
 			within(getByTestId('credential-type-access-credential')).getByTestId('type-access-select'),
 		).toHaveAttribute('data-value', 'allow');
+	});
+
+	it('asks before it restricts a related node type in use, and keeps Allowed when the admin cancels', async () => {
+		const { getByTestId } = await setup('airtableApi');
+		const review = useRestrictReviewStore();
+		const airtableSelect = () => selectsIn(getByTestId('credential-type-access-related-node'))[0];
+
+		await fireEvent.click(airtableSelect());
+
+		await waitFor(() =>
+			expect(review.request).toEqual({
+				kind: 'node',
+				name: 'n8n-nodes-base.airtable',
+				label: 'Airtable',
+				usage: { uses: 1, workflows: 1, activeWorkflows: 1, projects: 1 },
+			}),
+		);
+		expect(airtableSelect()).toHaveAttribute('data-value', 'allow');
+
+		review.resolve(false);
+		await waitFor(() => expect(review.request).toBeNull());
+		expect(airtableSelect()).toHaveAttribute('data-value', 'allow');
+		expect(mocks.saveInstancePolicy).not.toHaveBeenCalled();
+	});
+
+	it('restricts the credential type in use when the admin confirms', async () => {
+		const { getByTestId } = await setup('airtableTokenApi');
+		const review = useRestrictReviewStore();
+
+		await fireEvent.click(
+			within(getByTestId('credential-type-access-credential')).getByTestId('type-access-select'),
+		);
+		await waitFor(() =>
+			expect(review.request).toMatchObject({ kind: 'credential', name: 'airtableTokenApi' }),
+		);
+		review.resolve(true);
+
+		await waitFor(() => expect(mocks.saveInstancePolicy).toHaveBeenCalledTimes(1));
+		expect(mocks.saveInstancePolicy).toHaveBeenCalledWith(expect.anything(), 'credential', {
+			rules: [
+				{
+					id: expect.any(String),
+					action: 'deny',
+					selector: { kind: 'name', value: 'airtableTokenApi' },
+				},
+			],
+			defaultAction: 'allow',
+			version: 1,
+		});
 	});
 
 	it('shows node types without access for a user who cannot manage them', async () => {
@@ -340,6 +393,9 @@ describe('CredentialTypeAccessDialog', () => {
 	});
 
 	it('shows an error and the saved access again when the save of a related node fails', async () => {
+		// No workflow uses a type, so a change applies with no review.
+		mocks.fetchNodeTypeUsage.mockResolvedValue({});
+		mocks.fetchCredentialTypeUsage.mockResolvedValue({});
 		mocks.saveInstancePolicy.mockRejectedValue(new Error('offline'));
 		const { getByTestId } = await setup('airtableApi');
 		const airtableSelect = () => selectsIn(getByTestId('credential-type-access-related-node'))[0];

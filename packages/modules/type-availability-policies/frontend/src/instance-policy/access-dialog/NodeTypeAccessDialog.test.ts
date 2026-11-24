@@ -12,6 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import NodeTypeAccessDialog from './NodeTypeAccessDialog.vue';
 import { useInstancePolicyStore } from '../instance-policy.store';
+import { useRestrictReviewStore } from '../restrict-review/restrict-review.store';
 
 const mocks = vi.hoisted(() => ({
 	fetchInstancePolicy: vi.fn(),
@@ -375,6 +376,9 @@ describe('NodeTypeAccessDialog', () => {
 	});
 
 	it('keeps the rule that decides for the Tool variant when the node changes', async () => {
+		// No workflow uses a type, so a change applies with no review.
+		mocks.fetchNodeTypeUsage.mockResolvedValue({});
+		mocks.fetchCredentialTypeUsage.mockResolvedValue({});
 		const denyNotionTool = {
 			id: 'deny-notion-tool',
 			action: 'deny',
@@ -408,6 +412,9 @@ describe('NodeTypeAccessDialog', () => {
 	});
 
 	it('keeps showing the latest choice when an earlier save on the same row ends', async () => {
+		// No workflow uses a type, so a change applies with no review.
+		mocks.fetchNodeTypeUsage.mockResolvedValue({});
+		mocks.fetchCredentialTypeUsage.mockResolvedValue({});
 		const firstSave = createDeferredPromise<unknown>();
 		const secondSave = createDeferredPromise<unknown>();
 		mocks.saveInstancePolicy
@@ -435,6 +442,54 @@ describe('NodeTypeAccessDialog', () => {
 		await waitFor(() => expect(mocks.saveInstancePolicy).toHaveBeenCalledTimes(2));
 
 		expect(nodeSelect()).toHaveAttribute('data-value', 'allow');
+	});
+
+	it('asks before it restricts a node type in use, and keeps Allowed when the admin cancels', async () => {
+		const { getByTestId } = await setup('n8n-nodes-base.notion');
+		const review = useRestrictReviewStore();
+		const nodeSelect = () =>
+			within(getByTestId('node-type-access-node')).getByTestId('type-access-select');
+
+		await fireEvent.click(nodeSelect());
+
+		await waitFor(() =>
+			expect(review.request).toEqual({
+				kind: 'node',
+				name: 'n8n-nodes-base.notion',
+				label: 'Notion',
+				usage: { uses: 3, workflows: 2, activeWorkflows: 1, projects: 1 },
+			}),
+		);
+		expect(nodeSelect()).toHaveAttribute('data-value', 'allow');
+
+		review.resolve(false);
+		await waitFor(() => expect(review.request).toBeNull());
+		expect(nodeSelect()).toHaveAttribute('data-value', 'allow');
+		expect(mocks.saveInstancePolicy).not.toHaveBeenCalled();
+	});
+
+	it('restricts a node type in use when the admin confirms', async () => {
+		const { getByTestId } = await setup('n8n-nodes-base.notion');
+		const review = useRestrictReviewStore();
+
+		await fireEvent.click(
+			within(getByTestId('node-type-access-node')).getByTestId('type-access-select'),
+		);
+		await waitFor(() => expect(review.request).not.toBeNull());
+		review.resolve(true);
+
+		await waitFor(() => expect(mocks.saveInstancePolicy).toHaveBeenCalledTimes(1));
+		expect(mocks.saveInstancePolicy).toHaveBeenCalledWith(expect.anything(), 'node', {
+			rules: [
+				{
+					id: expect.any(String),
+					action: 'deny',
+					selector: { kind: 'name', value: 'n8n-nodes-base.notion' },
+				},
+			],
+			defaultAction: 'allow',
+			version: 1,
+		});
 	});
 
 	it('shows no Credentials tab advice to a user who cannot manage credential types', async () => {

@@ -10,6 +10,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import InstancePolicyView from './InstancePolicyView.vue';
 import { useInstancePolicyStore } from './instance-policy.store';
 import { accessFilter } from '../__tests__/table';
+import { useRestrictReviewStore } from './restrict-review/restrict-review.store';
 import { POLICIES_LANDING_VIEW } from '../type-availability-policies.constants';
 
 const { route, push, replace, fetchInstancePolicy, fetchInstanceAccess } = vi.hoisted(() => ({
@@ -451,5 +452,14 @@ describe('InstancePolicyView', () => {
 
 			expect(rowButton).toHaveFocus();
 		});
+	});
+
+	it('cancels the open review and each review that still loads when the admin leaves', () => {
+		const { unmount } = setup();
+		const cancelAll = vi.spyOn(useRestrictReviewStore(), 'cancelAll');
+
+		unmount();
+
+		expect(cancelAll).toHaveBeenCalledTimes(1);
 	});
 });
