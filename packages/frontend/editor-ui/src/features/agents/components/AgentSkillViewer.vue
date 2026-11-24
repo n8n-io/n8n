@@ -16,6 +16,7 @@ import {
 } from '@n8n/design-system';
 import type { IValidator, Validatable } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import type { PluginSimple } from 'markdown-it';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
@@ -25,6 +26,20 @@ import AgentSkillMermaidDiagram from './AgentSkillMermaidDiagram.vue';
 import type { SkillMermaidResult } from './skillMermaidRenderer';
 
 const SKILL_FILE = 'SKILL.md';
+const SKILL_LINK_ORIGIN = 'https://skill.invalid';
+const LINK_THAT_SANITIZER_KEEPS = /^([a-z][a-z0-9+.-]*:|\.{0,2}\/|#)/i;
+const keepRelativeLinksThroughSanitizer: PluginSimple = (parser) => {
+	parser.core.ruler.after('inline', 'skill-relative-links', (state) => {
+		for (const blockToken of state.tokens) {
+			for (const token of blockToken.children ?? []) {
+				if (token.type !== 'link_open') continue;
+				const href = token.attrGet('href');
+				if (href && !LINK_THAT_SANITIZER_KEEPS.test(href)) token.attrSet('href', `./${href}`);
+			}
+		}
+	});
+};
+const READ_ONLY_MARKDOWN_PLUGINS = [keepRelativeLinksThroughSanitizer];
 const READ_ONLY_MARKDOWN_OPTIONS = {
 	tasklists: { enabled: false, label: true, labelAfter: false },
 };
@@ -178,6 +193,23 @@ const referencesError = computed(() => {
 	});
 });
 
+function onLinkClick(event: MouseEvent) {
+	if (!(event.target instanceof Element)) return;
+	const href = event.target.closest('a')?.getAttribute('href');
+	const openFileUrl = `${SKILL_LINK_ORIGIN}/${props.selectedPath}`;
+	if (!href || !URL.canParse(href, openFileUrl)) return;
+
+	const linkUrl = new URL(href, openFileUrl);
+	if (linkUrl.origin !== SKILL_LINK_ORIGIN) return;
+
+	event.preventDefault();
+	const linkedPath = decodeURIComponent(linkUrl.pathname.slice(1));
+	const isFileOfSkill =
+		linkedPath === SKILL_FILE ||
+		(props.skill.references ?? []).some((reference) => reference.path === linkedPath);
+	if (isFileOfSkill) emit('select:path', linkedPath);
+}
+
 function onDescriptionInput(value: string | number | boolean | null | undefined) {
 	const next = typeof value === 'string' ? value : String(value ?? '');
 	description.value = next;
@@ -321,7 +353,7 @@ function onDiagramRenderEnd(outcome: SkillMermaidResult['outcome']) {
 </script>
 
 <template>
-	<div :class="$style.panel" data-testid="agent-skill-viewer">
+	<div :class="$style.panel" data-testid="agent-skill-viewer" @click="onLinkClick">
 		<template v-if="props.readOnly">
 			<N8nInputLabel
 				v-if="isSkillFileSelected"
@@ -352,6 +384,7 @@ function onDiagramRenderEnd(outcome: SkillMermaidResult['outcome']) {
 				<N8nMarkdown
 					:class="$style.readOnlyMarkdown"
 					:options="READ_ONLY_MARKDOWN_OPTIONS"
+					:plugins="READ_ONLY_MARKDOWN_PLUGINS"
 					:content="isSkillFileSelected ? props.skill.instructions : selectedReference?.content"
 					:data-testid="
 						isSkillFileSelected ? 'agent-skill-instructions-text' : 'agent-skill-reference-text'

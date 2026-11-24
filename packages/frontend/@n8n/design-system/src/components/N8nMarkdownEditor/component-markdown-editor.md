@@ -82,7 +82,7 @@ Extensions are assembled from a design-system owned registry. The `extensions` p
 
 ```ts
 const markdownEditorExtensions = {
-	starterKit: StarterKit,
+	starterKit: StarterKit.configure({ link: false }),
 	markdown: Markdown.configure({
 		markedOptions: {
 			gfm: true,
