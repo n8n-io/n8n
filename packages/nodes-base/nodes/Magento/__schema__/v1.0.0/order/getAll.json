@@ -1,0 +1,1053 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"applied_rule_ids": {
+			"type": "string"
+		},
+		"base_currency_code": {
+			"type": "string"
+		},
+		"base_discount_amount": {
+			"type": "number"
+		},
+		"base_discount_invoiced": {
+			"type": "number"
+		},
+		"base_discount_tax_compensation_amount": {
+			"type": "number"
+		},
+		"base_discount_tax_compensation_invoiced": {
+			"type": "number"
+		},
+		"base_grand_total": {
+			"type": "number"
+		},
+		"base_shipping_amount": {
+			"type": "number"
+		},
+		"base_shipping_discount_amount": {
+			"type": "number"
+		},
+		"base_shipping_discount_tax_compensation_amnt": {
+			"type": "number"
+		},
+		"base_shipping_incl_tax": {
+			"type": "number"
+		},
+		"base_shipping_invoiced": {
+			"type": "number"
+		},
+		"base_shipping_tax_amount": {
+			"type": "number"
+		},
+		"base_subtotal": {
+			"type": "number"
+		},
+		"base_subtotal_incl_tax": {
+			"type": "number"
+		},
+		"base_subtotal_invoiced": {
+			"type": "number"
+		},
+		"base_tax_amount": {
+			"type": "number"
+		},
+		"base_tax_invoiced": {
+			"type": "number"
+		},
+		"base_to_global_rate": {
+			"type": "number"
+		},
+		"base_to_order_rate": {
+			"type": "number"
+		},
+		"base_total_due": {
+			"type": "number"
+		},
+		"base_total_invoiced": {
+			"type": "number"
+		},
+		"base_total_invoiced_cost": {
+			"type": "number"
+		},
+		"base_total_paid": {
+			"type": "number"
+		},
+		"billing_address": {
+			"additionalProperties": true,
+			"properties": {
+				"address_type": {
+					"type": "string"
+				},
+				"city": {
+					"type": "string"
+				},
+				"country_id": {
+					"type": "string"
+				},
+				"email": {
+					"type": "string"
+				},
+				"entity_id": {
+					"type": "number"
+				},
+				"firstname": {
+					"type": "string"
+				},
+				"lastname": {
+					"type": "string"
+				},
+				"parent_id": {
+					"type": "number"
+				},
+				"postcode": {
+					"type": "string"
+				},
+				"region": {
+					"type": "string"
+				},
+				"region_code": {
+					"type": "string"
+				},
+				"street": {
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"telephone": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"billing_address_id": {
+			"type": "number"
+		},
+		"created_at": {
+			"type": "string"
+		},
+		"customer_email": {
+			"type": "string"
+		},
+		"customer_firstname": {
+			"type": "string"
+		},
+		"customer_group_id": {
+			"type": "number"
+		},
+		"customer_id": {
+			"type": "number"
+		},
+		"customer_is_guest": {
+			"type": "number"
+		},
+		"customer_lastname": {
+			"type": "string"
+		},
+		"customer_note_notify": {
+			"type": "number"
+		},
+		"discount_amount": {
+			"type": "number"
+		},
+		"discount_invoiced": {
+			"type": "number"
+		},
+		"discount_tax_compensation_amount": {
+			"type": "number"
+		},
+		"discount_tax_compensation_invoiced": {
+			"type": "number"
+		},
+		"email_sent": {
+			"type": "number"
+		},
+		"entity_id": {
+			"type": "number"
+		},
+		"extension_attributes": {
+			"additionalProperties": true,
+			"properties": {
+				"additional_itemized_taxes": {
+					"items": {
+						"properties": {
+							"amount": {
+								"type": "number"
+							},
+							"base_amount": {
+								"type": "number"
+							},
+							"real_amount": {
+								"type": "number"
+							},
+							"real_base_amount": {
+								"type": "number"
+							},
+							"tax_code": {
+								"type": "string"
+							},
+							"tax_id": {
+								"type": "number"
+							},
+							"tax_item_id": {
+								"type": "number"
+							},
+							"tax_percent": {
+								"type": "number"
+							},
+							"taxable_item_type": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				},
+				"applied_taxes": {
+					"items": {
+						"properties": {
+							"amount": {
+								"type": "number"
+							},
+							"base_amount": {
+								"type": "number"
+							},
+							"code": {
+								"type": "string"
+							},
+							"percent": {
+								"type": "number"
+							},
+							"title": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				},
+				"converting_from_quote": {
+					"type": "boolean"
+				},
+				"item_applied_taxes": {
+					"items": {
+						"properties": {
+							"applied_taxes": {
+								"items": {
+									"properties": {
+										"amount": {
+											"type": "number"
+										},
+										"base_amount": {
+											"type": "number"
+										},
+										"code": {
+											"type": "string"
+										},
+										"percent": {
+											"type": "number"
+										},
+										"title": {
+											"type": "string"
+										}
+									},
+									"type": "object"
+								},
+								"type": "array"
+							},
+							"item_id": {
+								"type": "number"
+							},
+							"type": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				},
+				"payment_additional_info": {
+					"items": {
+						"properties": {
+							"key": {
+								"type": "string"
+							},
+							"value": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				},
+				"shipping_assignments": {
+					"items": {
+						"properties": {
+							"items": {
+								"items": {
+									"additionalProperties": true,
+									"properties": {
+										"amount_refunded": {
+											"type": "number"
+										},
+										"applied_rule_ids": {
+											"type": "string"
+										},
+										"base_amount_refunded": {
+											"type": "number"
+										},
+										"base_discount_amount": {
+											"type": "number"
+										},
+										"base_discount_invoiced": {
+											"type": "number"
+										},
+										"base_discount_tax_compensation_amount": {
+											"type": "number"
+										},
+										"base_discount_tax_compensation_invoiced": {
+											"type": "number"
+										},
+										"base_original_price": {
+											"type": "number"
+										},
+										"base_price": {
+											"type": "number"
+										},
+										"base_price_incl_tax": {
+											"type": "number"
+										},
+										"base_row_invoiced": {
+											"type": "number"
+										},
+										"base_row_total": {
+											"type": "number"
+										},
+										"base_row_total_incl_tax": {
+											"type": "number"
+										},
+										"base_tax_amount": {
+											"type": "number"
+										},
+										"base_tax_invoiced": {
+											"type": "number"
+										},
+										"created_at": {
+											"type": "string"
+										},
+										"discount_amount": {
+											"type": "number"
+										},
+										"discount_invoiced": {
+											"type": "number"
+										},
+										"discount_percent": {
+											"type": "number"
+										},
+										"discount_tax_compensation_amount": {
+											"type": "number"
+										},
+										"discount_tax_compensation_invoiced": {
+											"type": "number"
+										},
+										"extension_attributes": {
+											"additionalProperties": true,
+											"properties": {
+												"itemized_taxes": {
+													"items": {
+														"properties": {
+															"amount": {
+																"type": "number"
+															},
+															"base_amount": {
+																"type": "number"
+															},
+															"item_id": {
+																"type": "number"
+															},
+															"real_amount": {
+																"type": "number"
+															},
+															"real_base_amount": {
+																"type": "number"
+															},
+															"tax_code": {
+																"type": "string"
+															},
+															"tax_id": {
+																"type": "number"
+															},
+															"tax_item_id": {
+																"type": "number"
+															},
+															"tax_percent": {
+																"type": "number"
+															},
+															"taxable_item_type": {
+																"type": "string"
+															}
+														},
+														"type": "object"
+													},
+													"type": "array"
+												}
+											},
+											"type": "object"
+										},
+										"free_shipping": {
+											"type": "number"
+										},
+										"is_qty_decimal": {
+											"type": "number"
+										},
+										"is_virtual": {
+											"type": "number"
+										},
+										"item_id": {
+											"type": "number"
+										},
+										"name": {
+											"type": "string"
+										},
+										"no_discount": {
+											"type": "number"
+										},
+										"order_id": {
+											"type": "number"
+										},
+										"original_price": {
+											"type": "number"
+										},
+										"price": {
+											"type": "number"
+										},
+										"price_incl_tax": {
+											"type": "number"
+										},
+										"product_id": {
+											"type": "number"
+										},
+										"product_type": {
+											"type": "string"
+										},
+										"qty_canceled": {
+											"type": "number"
+										},
+										"qty_invoiced": {
+											"type": "number"
+										},
+										"qty_ordered": {
+											"type": "number"
+										},
+										"qty_refunded": {
+											"type": "number"
+										},
+										"qty_shipped": {
+											"type": "number"
+										},
+										"quote_item_id": {
+											"type": "number"
+										},
+										"row_invoiced": {
+											"type": "number"
+										},
+										"row_total": {
+											"type": "number"
+										},
+										"row_total_incl_tax": {
+											"type": "number"
+										},
+										"row_weight": {
+											"type": "number"
+										},
+										"sku": {
+											"type": "string"
+										},
+										"store_id": {
+											"type": "number"
+										},
+										"tax_amount": {
+											"type": "number"
+										},
+										"tax_invoiced": {
+											"type": "number"
+										},
+										"tax_percent": {
+											"type": "number"
+										},
+										"updated_at": {
+											"type": "string"
+										},
+										"weee_tax_applied": {
+											"type": "string"
+										},
+										"weight": {
+											"type": "number"
+										}
+									},
+									"type": "object"
+								},
+								"type": "array"
+							},
+							"shipping": {
+								"properties": {
+									"address": {
+										"additionalProperties": true,
+										"properties": {
+											"address_type": {
+												"type": "string"
+											},
+											"city": {
+												"type": "string"
+											},
+											"company": {
+												"type": "string"
+											},
+											"country_id": {
+												"type": "string"
+											},
+											"email": {
+												"type": "string"
+											},
+											"entity_id": {
+												"type": "number"
+											},
+											"firstname": {
+												"type": "string"
+											},
+											"lastname": {
+												"type": "string"
+											},
+											"parent_id": {
+												"type": "number"
+											},
+											"postcode": {
+												"type": "string"
+											},
+											"region": {
+												"type": "string"
+											},
+											"region_code": {
+												"type": "string"
+											},
+											"region_id": {
+												"type": "number"
+											},
+											"street": {
+												"items": {
+													"type": "string"
+												},
+												"type": "array"
+											},
+											"telephone": {
+												"type": "string"
+											}
+										},
+										"type": "object"
+									},
+									"method": {
+										"type": "string"
+									},
+									"total": {
+										"additionalProperties": true,
+										"properties": {
+											"base_shipping_amount": {
+												"type": "number"
+											},
+											"base_shipping_discount_amount": {
+												"type": "number"
+											},
+											"base_shipping_discount_tax_compensation_amnt": {
+												"type": "number"
+											},
+											"base_shipping_incl_tax": {
+												"type": "number"
+											},
+											"base_shipping_invoiced": {
+												"type": "number"
+											},
+											"base_shipping_tax_amount": {
+												"type": "number"
+											},
+											"shipping_amount": {
+												"type": "number"
+											},
+											"shipping_discount_amount": {
+												"type": "number"
+											},
+											"shipping_discount_tax_compensation_amount": {
+												"type": "number"
+											},
+											"shipping_incl_tax": {
+												"type": "number"
+											},
+											"shipping_invoiced": {
+												"type": "number"
+											},
+											"shipping_tax_amount": {
+												"type": "number"
+											}
+										},
+										"type": "object"
+									}
+								},
+								"type": "object"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				},
+				"taxes": {
+					"items": {
+						"properties": {
+							"amount": {
+								"type": "number"
+							},
+							"base_amount": {
+								"type": "number"
+							},
+							"base_real_amount": {
+								"type": "number"
+							},
+							"code": {
+								"type": "string"
+							},
+							"order_id": {
+								"type": "number"
+							},
+							"percent": {
+								"type": "number"
+							},
+							"position": {
+								"type": "number"
+							},
+							"priority": {
+								"type": "number"
+							},
+							"process": {
+								"type": "number"
+							},
+							"tax_id": {
+								"type": "number"
+							},
+							"title": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				}
+			},
+			"type": "object"
+		},
+		"global_currency_code": {
+			"type": "string"
+		},
+		"grand_total": {
+			"type": "number"
+		},
+		"increment_id": {
+			"type": "string"
+		},
+		"is_virtual": {
+			"type": "number"
+		},
+		"items": {
+			"items": {
+				"additionalProperties": true,
+				"properties": {
+					"amount_refunded": {
+						"type": "number"
+					},
+					"applied_rule_ids": {
+						"type": "string"
+					},
+					"base_amount_refunded": {
+						"type": "number"
+					},
+					"base_discount_amount": {
+						"type": "number"
+					},
+					"base_discount_invoiced": {
+						"type": "number"
+					},
+					"base_discount_tax_compensation_amount": {
+						"type": "number"
+					},
+					"base_discount_tax_compensation_invoiced": {
+						"type": "number"
+					},
+					"base_original_price": {
+						"type": "number"
+					},
+					"base_price": {
+						"type": "number"
+					},
+					"base_price_incl_tax": {
+						"type": "number"
+					},
+					"base_row_invoiced": {
+						"type": "number"
+					},
+					"base_row_total": {
+						"type": "number"
+					},
+					"base_row_total_incl_tax": {
+						"type": "number"
+					},
+					"base_tax_amount": {
+						"type": "number"
+					},
+					"base_tax_invoiced": {
+						"type": "number"
+					},
+					"created_at": {
+						"type": "string"
+					},
+					"discount_amount": {
+						"type": "number"
+					},
+					"discount_invoiced": {
+						"type": "number"
+					},
+					"discount_percent": {
+						"type": "number"
+					},
+					"discount_tax_compensation_amount": {
+						"type": "number"
+					},
+					"discount_tax_compensation_invoiced": {
+						"type": "number"
+					},
+					"extension_attributes": {
+						"additionalProperties": true,
+						"properties": {
+							"itemized_taxes": {
+								"items": {
+									"properties": {
+										"amount": {
+											"type": "number"
+										},
+										"base_amount": {
+											"type": "number"
+										},
+										"item_id": {
+											"type": "number"
+										},
+										"real_amount": {
+											"type": "number"
+										},
+										"real_base_amount": {
+											"type": "number"
+										},
+										"tax_code": {
+											"type": "string"
+										},
+										"tax_id": {
+											"type": "number"
+										},
+										"tax_item_id": {
+											"type": "number"
+										},
+										"tax_percent": {
+											"type": "number"
+										},
+										"taxable_item_type": {
+											"type": "string"
+										}
+									},
+									"type": "object"
+								},
+								"type": "array"
+							}
+						},
+						"type": "object"
+					},
+					"free_shipping": {
+						"type": "number"
+					},
+					"is_qty_decimal": {
+						"type": "number"
+					},
+					"is_virtual": {
+						"type": "number"
+					},
+					"item_id": {
+						"type": "number"
+					},
+					"name": {
+						"type": "string"
+					},
+					"no_discount": {
+						"type": "number"
+					},
+					"order_id": {
+						"type": "number"
+					},
+					"original_price": {
+						"type": "number"
+					},
+					"price": {
+						"type": "number"
+					},
+					"price_incl_tax": {
+						"type": "number"
+					},
+					"product_id": {
+						"type": "number"
+					},
+					"product_type": {
+						"type": "string"
+					},
+					"qty_canceled": {
+						"type": "number"
+					},
+					"qty_invoiced": {
+						"type": "number"
+					},
+					"qty_ordered": {
+						"type": "number"
+					},
+					"qty_refunded": {
+						"type": "number"
+					},
+					"qty_shipped": {
+						"type": "number"
+					},
+					"quote_item_id": {
+						"type": "number"
+					},
+					"row_invoiced": {
+						"type": "number"
+					},
+					"row_total": {
+						"type": "number"
+					},
+					"row_total_incl_tax": {
+						"type": "number"
+					},
+					"row_weight": {
+						"type": "number"
+					},
+					"sku": {
+						"type": "string"
+					},
+					"store_id": {
+						"type": "number"
+					},
+					"tax_amount": {
+						"type": "number"
+					},
+					"tax_invoiced": {
+						"type": "number"
+					},
+					"tax_percent": {
+						"type": "number"
+					},
+					"updated_at": {
+						"type": "string"
+					},
+					"weee_tax_applied": {
+						"type": "string"
+					},
+					"weight": {
+						"type": "number"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"order_currency_code": {
+			"type": "string"
+		},
+		"payment": {
+			"additionalProperties": true,
+			"properties": {
+				"account_status": {},
+				"additional_information": {
+					"items": {
+						"type": ["null", "string"]
+					},
+					"type": "array"
+				},
+				"amount_ordered": {
+					"type": "number"
+				},
+				"amount_paid": {
+					"type": "number"
+				},
+				"base_amount_ordered": {
+					"type": "number"
+				},
+				"base_amount_paid": {
+					"type": "number"
+				},
+				"base_amount_paid_online": {
+					"type": "number"
+				},
+				"base_shipping_amount": {
+					"type": "number"
+				},
+				"base_shipping_captured": {
+					"type": "number"
+				},
+				"cc_exp_year": {
+					"type": "string"
+				},
+				"cc_last4": {},
+				"cc_ss_start_month": {
+					"type": "string"
+				},
+				"cc_ss_start_year": {
+					"type": "string"
+				},
+				"entity_id": {
+					"type": "number"
+				},
+				"last_trans_id": {
+					"type": "string"
+				},
+				"method": {
+					"type": "string"
+				},
+				"parent_id": {
+					"type": "number"
+				},
+				"shipping_amount": {
+					"type": "number"
+				},
+				"shipping_captured": {
+					"type": "number"
+				}
+			},
+			"type": "object"
+		},
+		"protect_code": {
+			"type": "string"
+		},
+		"quote_id": {
+			"type": "number"
+		},
+		"remote_ip": {
+			"type": "string"
+		},
+		"shipping_amount": {
+			"type": "number"
+		},
+		"shipping_description": {
+			"type": "string"
+		},
+		"shipping_discount_amount": {
+			"type": "number"
+		},
+		"shipping_discount_tax_compensation_amount": {
+			"type": "number"
+		},
+		"shipping_incl_tax": {
+			"type": "number"
+		},
+		"shipping_invoiced": {
+			"type": "number"
+		},
+		"shipping_tax_amount": {
+			"type": "number"
+		},
+		"state": {
+			"type": "string"
+		},
+		"status": {
+			"type": "string"
+		},
+		"status_histories": {
+			"items": {
+				"properties": {
+					"comment": {
+						"type": ["null", "string"]
+					},
+					"created_at": {
+						"type": "string"
+					},
+					"entity_id": {
+						"type": "number"
+					},
+					"entity_name": {
+						"type": "string"
+					},
+					"is_customer_notified": {
+						"type": ["null", "number"]
+					},
+					"is_visible_on_front": {
+						"type": "number"
+					},
+					"parent_id": {
+						"type": "number"
+					},
+					"status": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"store_currency_code": {
+			"type": "string"
+		},
+		"store_id": {
+			"type": "number"
+		},
+		"store_name": {
+			"type": "string"
+		},
+		"store_to_base_rate": {
+			"type": "number"
+		},
+		"store_to_order_rate": {
+			"type": "number"
+		},
+		"subtotal": {
+			"type": "number"
+		},
+		"subtotal_incl_tax": {
+			"type": "number"
+		},
+		"subtotal_invoiced": {
+			"type": "number"
+		},
+		"tax_amount": {
+			"type": "number"
+		},
+		"tax_invoiced": {
+			"type": "number"
+		},
+		"total_due": {
+			"type": "number"
+		},
+		"total_invoiced": {
+			"type": "number"
+		},
+		"total_item_count": {
+			"type": "number"
+		},
+		"total_paid": {
+			"type": "number"
+		},
+		"total_qty_ordered": {
+			"type": "number"
+		},
+		"updated_at": {
+			"type": "string"
+		},
+		"weight": {
+			"type": "number"
+		},
+		"x_forwarded_for": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

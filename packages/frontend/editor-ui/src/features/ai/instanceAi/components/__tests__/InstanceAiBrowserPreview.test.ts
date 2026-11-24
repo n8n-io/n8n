@@ -6,6 +6,7 @@ import type { RouteLocationRaw } from 'vue-router';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { VIEWS } from '@/app/constants';
+import { CLOUD_BROWSER_LOGIN_TO_SAVE_TIMEOUT } from '@/app/constants/durations';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 
 import type { CloudBrowserLiveView } from '../../composables/useCloudBrowserLiveViews';
@@ -13,7 +14,11 @@ import {
 	CloudBrowserLiveViewRefreshKey,
 	CloudBrowserLiveViewsKey,
 } from '../../composables/useCloudBrowserLiveViews';
-import { postCloudBrowserReturnControl, postCloudBrowserTakeOver } from '../../instanceAi.api';
+import {
+	fetchCloudBrowserLoginToSave,
+	postCloudBrowserReturnControl,
+	postCloudBrowserTakeOver,
+} from '../../instanceAi.api';
 import InstanceAiBrowserPreview from '../InstanceAiBrowserPreview.vue';
 
 const { showError, showMessage } = vi.hoisted(() => ({
@@ -21,6 +26,7 @@ const { showError, showMessage } = vi.hoisted(() => ({
 	showMessage: vi.fn(),
 }));
 vi.mock('../../instanceAi.api', () => ({
+	fetchCloudBrowserLoginToSave: vi.fn(),
 	postCloudBrowserTakeOver: vi.fn(),
 	postCloudBrowserReturnControl: vi.fn(),
 }));
@@ -86,6 +92,9 @@ describe('InstanceAiBrowserPreview', () => {
 		vi.mocked(postCloudBrowserReturnControl)
 			.mockReset()
 			.mockResolvedValue({ ok: true, loginWillBeSaved: false });
+		vi.mocked(fetchCloudBrowserLoginToSave)
+			.mockReset()
+			.mockResolvedValue({ domain: 'shop.example.com' });
 		showError.mockReset();
 		showMessage.mockReset();
 	});
@@ -560,6 +569,108 @@ describe('InstanceAiBrowserPreview', () => {
 			const dialog = getByTestId('instance-ai-browser-preview-save-login-dialog');
 			expect(dialog).toHaveTextContent('Save your login?');
 			expect(dialog).toHaveTextContent('n8n Assistant can reuse your login for shop.example.com.');
+			expect(fetchCloudBrowserLoginToSave).toHaveBeenCalledExactlyOnceWith(
+				{},
+				'thread-1',
+				'task-1',
+			);
+			expect(postCloudBrowserReturnControl).not.toHaveBeenCalled();
+		});
+
+		it('names the site that the server says the user can save', async () => {
+			vi.mocked(fetchCloudBrowserLoginToSave).mockResolvedValue({ domain: 'example.com' });
+
+			const { getByTestId } = await takeOverAndFinish(liveWithLogin, loginRequest);
+
+			expect(getByTestId('instance-ai-browser-preview-save-login-dialog')).toHaveTextContent(
+				'n8n Assistant can reuse your login for example.com.',
+			);
+		});
+
+		it('returns control without asking when the server says the user cannot save a login', async () => {
+			vi.mocked(fetchCloudBrowserLoginToSave).mockResolvedValue({});
+
+			const { queryByTestId } = await takeOverAndFinish(liveWithLogin, loginRequest);
+
+			expect(
+				queryByTestId('instance-ai-browser-preview-save-login-dialog'),
+			).not.toBeInTheDocument();
+			expect(postCloudBrowserReturnControl).toHaveBeenCalledExactlyOnceWith(
+				{},
+				'thread-1',
+				'task-1',
+				{ note: undefined, shouldSaveLogin: false },
+			);
+		});
+
+		it('returns control without asking when the server check fails', async () => {
+			vi.mocked(fetchCloudBrowserLoginToSave).mockRejectedValue(new Error('Request failed'));
+
+			const { queryByTestId } = await takeOverAndFinish(liveWithLogin, loginRequest);
+
+			expect(
+				queryByTestId('instance-ai-browser-preview-save-login-dialog'),
+			).not.toBeInTheDocument();
+			expect(postCloudBrowserReturnControl).toHaveBeenCalledExactlyOnceWith(
+				{},
+				'thread-1',
+				'task-1',
+				{ note: undefined, shouldSaveLogin: false },
+			);
+		});
+
+		it('returns control without asking when the server is too slow', async () => {
+			vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+			try {
+				vi.mocked(fetchCloudBrowserLoginToSave).mockReturnValue(new Promise(() => {}));
+				const { getByTestId, queryByTestId } = render(liveWithLogin, { userAction: loginRequest });
+				await fireEvent.click(getByTestId('instance-ai-browser-preview-take-over'));
+				await flushPromises();
+				await fireEvent.click(getByTestId('instance-ai-browser-preview-done'));
+				await flushPromises();
+				expect(
+					queryByTestId('instance-ai-browser-preview-save-login-dialog'),
+				).not.toBeInTheDocument();
+
+				await vi.advanceTimersByTimeAsync(CLOUD_BROWSER_LOGIN_TO_SAVE_TIMEOUT);
+				await flushPromises();
+
+				expect(
+					queryByTestId('instance-ai-browser-preview-save-login-dialog'),
+				).not.toBeInTheDocument();
+				expect(postCloudBrowserReturnControl).toHaveBeenCalledExactlyOnceWith(
+					{},
+					'thread-1',
+					'task-1',
+					{ note: undefined, shouldSaveLogin: false },
+				);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('does not ask to save the login when control ended while it asked the server', async () => {
+			let answer: (value: { domain?: string }) => void = () => {};
+			vi.mocked(fetchCloudBrowserLoginToSave).mockReturnValue(
+				new Promise((resolve) => {
+					answer = resolve;
+				}),
+			);
+			const { getByTestId, queryByTestId, rerender } = render(liveWithLogin, {
+				userAction: loginRequest,
+			});
+			await fireEvent.click(getByTestId('instance-ai-browser-preview-take-over'));
+			await flushPromises();
+			await fireEvent.click(getByTestId('instance-ai-browser-preview-done'));
+			await flushPromises();
+
+			await rerender({ taskId: 'task-1', userAction: undefined });
+			answer({ domain: 'shop.example.com' });
+			await flushPromises();
+
+			expect(
+				queryByTestId('instance-ai-browser-preview-save-login-dialog'),
+			).not.toBeInTheDocument();
 			expect(postCloudBrowserReturnControl).not.toHaveBeenCalled();
 		});
 
@@ -585,6 +696,7 @@ describe('InstanceAiBrowserPreview', () => {
 			expect(
 				queryByTestId('instance-ai-browser-preview-save-login-dialog'),
 			).not.toBeInTheDocument();
+			expect(fetchCloudBrowserLoginToSave).not.toHaveBeenCalled();
 			expect(postCloudBrowserReturnControl).toHaveBeenCalledWith({}, 'thread-1', 'task-1', {
 				note: undefined,
 				shouldSaveLogin: false,

@@ -9,7 +9,7 @@ import {
 	type PublishAgentDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService, TelemetryProxy } from '@n8n/backend-services';
+import { EventService, TelemetryProxy, loginIdOf } from '@n8n/backend-services';
 import {
 	TransactionRunner,
 	isUniqueConstraintError,
@@ -22,7 +22,6 @@ import isEqual from 'lodash/isEqual';
 import { v4 as uuid } from 'uuid';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { loginIdOf } from '@/events/login-id';
 import { BadRequestError, ConflictError, NotFoundError, UserError } from '@n8n/errors';
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import {
@@ -55,7 +54,7 @@ import { ChatIntegrationService } from './integrations/chat-integration.service'
 import { toAgentDocument } from './json-config/agent-document';
 import { AgentPublishHistoryRepository } from './repositories/agent-publish-history.repository';
 import { AgentHistoryRepository } from './repositories/agent-history.repository';
-import { AgentRepository } from './repositories/agent.repository';
+import { AgentRepository, hasN8nChatChannel } from './repositories/agent.repository';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
 
@@ -718,7 +717,10 @@ export class AgentPublishService {
 		const version = await this.agentHistoryRepository.findSummary(agentId, versionId, {});
 		if (!version) throw new NotFoundError(`Version "${versionId}" not found`);
 		const publications = await this.publishHistory.findLatestForVersions(agentId, [versionId], {});
-		return await this.versionSummary(agent, version, publications.get(versionId));
+		return {
+			...(await this.versionSummary(agent, version, publications.get(versionId))),
+			includesN8nChat: hasN8nChatChannel(version.schema?.integrations),
+		};
 	}
 
 	async hasVersionHistory(agentId: string): Promise<boolean> {

@@ -1,7 +1,7 @@
 import type { InstanceAiThreadSubject } from '@n8n/api-types';
 
-import { withAttachedAppTarget } from './apps/app-target-binding';
-import { withAttachedAgentTarget } from './orchestration/agent-target-binding';
+import { withAppSubject } from './apps/app-target-binding';
+import { withAgentSubject } from './orchestration/agent-target-binding';
 
 /**
  * The thread metadata that binds the resource that a thread starts on. Each kind
@@ -14,8 +14,8 @@ export function withThreadSubject(
 ): Record<string, unknown> | undefined {
 	switch (subject.type) {
 		case 'agent':
-			return withAttachedAgentTarget(metadata, subject);
+			return withAgentSubject(metadata, subject);
 		case 'app':
-			return withAttachedAppTarget(metadata, subject);
+			return withAppSubject(metadata, subject);
 	}
 }

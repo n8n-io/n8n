@@ -11,12 +11,18 @@ const props = withDefaults(
 		active: boolean;
 		awaitingInput?: boolean;
 		activityLabel?: string;
+		/** Where a long activity label is cut. `start` keeps the newest words of a streaming text. */
+		activityLabelTruncate?: 'start' | 'end';
+		/** Replaces the generic "Thinking" in the title and the subline. */
+		idleLabel?: string;
 		durationSec?: number;
 		testId?: string;
 	}>(),
 	{
 		awaitingInput: false,
 		activityLabel: undefined,
+		activityLabelTruncate: 'end',
+		idleLabel: undefined,
 		durationSec: undefined,
 		testId: 'ai-thinking-block',
 	},
@@ -112,7 +118,10 @@ const title = computed<{ key: string; text: string }>(() => {
 		if (sentence) return { key: `segment-${index}`, text: sentence };
 	}
 
-	return { key: 'active', text: i18n.baseText('ai.thinking.active') };
+	// Each idle word has its own key, so a new word fades in.
+	return props.idleLabel
+		? { key: `idle:${props.idleLabel}`, text: props.idleLabel }
+		: { key: 'active', text: i18n.baseText('ai.thinking.active') };
 });
 </script>
 
@@ -143,8 +152,18 @@ const title = computed<{ key: string; text: string }>(() => {
 			:class="$style.subline"
 			data-test-id="thinking-block-subline"
 		>
-			<span :class="$style.sublineLabel">
-				{{ props.activityLabel ?? i18n.baseText('ai.thinking.active') }}
+			<span
+				:class="[
+					$style.sublineLabel,
+					{ [$style.truncateStart]: props.activityLabelTruncate === 'start' },
+				]"
+				:data-truncate="props.activityLabelTruncate"
+				data-test-id="thinking-block-subline-label"
+			>
+				<!-- The label stays left to right inside the right-to-left box that moves the cut. -->
+				<bdi dir="ltr">{{
+					props.activityLabel ?? props.idleLabel ?? i18n.baseText('ai.thinking.active')
+				}}</bdi>
 			</span>
 			<span v-if="elapsedLabel" :class="$style.sublineElapsed"> &middot; {{ elapsedLabel }} </span>
 		</div>
@@ -225,6 +244,12 @@ const title = computed<{ key: string; text: string }>(() => {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+// A right-to-left box overflows at its left side, so the ellipsis cuts the oldest words.
+.truncateStart {
+	direction: rtl;
+	text-align: left;
 }
 
 .content {

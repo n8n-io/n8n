@@ -4,6 +4,7 @@ import type {
 	ParentLink,
 	StepError,
 	StepSlots,
+	StepOutputSources,
 	StepStatus,
 	WorkflowDocument,
 } from '../execution';
@@ -85,6 +86,8 @@ export interface StepDetail {
 	iteration: number;
 	status: StepStatus;
 	outputs: StepSlots | null;
+	/** Where the outputs' items came from. Only a loop node that ran states it. Otherwise `null`. */
+	outputSources: StepOutputSources | null;
 	error: StepError | null;
 	createdAt: string;
 	updatedAt: string;

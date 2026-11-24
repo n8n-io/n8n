@@ -170,7 +170,7 @@ export type ObservationLogReflectFn = (
 /** Reported after an observation-log observer/reflector LLM call completes, for hosts that meter usage. */
 export interface MemoryTaskUsageReport {
 	task: ObservationLogTaskKind;
-	/** Stable model id string (e.g. 'anthropic/claude-sonnet-4-5'). */
+	/** Stable model id string (e.g. 'anthropic/claude-sonnet-5-5'). */
 	model: string;
 	usage: TokenUsage;
 	/** Stable per-LLM-call id, generated once at the call site so hosts can build idempotent billing dedupe keys. */

@@ -78,10 +78,6 @@ vi.mock('../utils/agent-tree', () => ({
 	buildAgentTreeFromEvents: () => ({ agentId: 'root', children: [] }),
 	findAgentNodeInTree: () => ({ agentId: 'root', children: [] }),
 }));
-vi.mock('../workspace/builder-templates-service', () => ({
-	BuilderTemplatesService: class BuilderTemplatesService {},
-	builderTemplatesOptionsFromEnv: () => ({ enabled: true }),
-}));
 vi.mock('../workspace/create-workspace', () => ({
 	createSandbox: () => ({ type: 'sandbox' }),
 	createWorkspace: () => ({ type: 'workspace' }),
@@ -233,10 +229,6 @@ describe('@n8n/instance-ai public entrypoint', () => {
 
 		expect(call(entrypoint.createLazyRuntimeWorkspace)).toEqual({ type: 'lazy-workspace' });
 		expect(call(entrypoint.setupSandboxWorkspace)).toBeUndefined();
-		expect(construct(entrypoint.BuilderTemplatesService)).toBeInstanceOf(
-			entrypoint.BuilderTemplatesService,
-		);
-		expect(call(entrypoint.builderTemplatesOptionsFromEnv)).toEqual({ enabled: true });
 		expect(call(entrypoint.createSandbox)).toEqual({ type: 'sandbox' });
 		expect(call(entrypoint.createWorkspace)).toEqual({ type: 'workspace' });
 		expect(construct(entrypoint.SnapshotManager)).toBeInstanceOf(entrypoint.SnapshotManager);

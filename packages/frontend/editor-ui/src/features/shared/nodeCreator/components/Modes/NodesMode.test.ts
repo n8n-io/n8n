@@ -23,6 +23,9 @@ import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.s
 import { createComponentRenderer } from '@/__tests__/render';
 import { waitAllPromises } from '@n8n/frontend-test-utils';
 import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
+import { mockEngineV2Compatibility } from '@n8n/frontend-module-engine-v2/__tests__/mocks';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import type { IWorkflowSettings } from 'n8n-workflow';
 import { mockSimplifiedNodeType } from '../../__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import NodesMode from './NodesMode.vue';
@@ -31,6 +34,8 @@ const mockIsFeatureEnabled = vi.hoisted(() => vi.fn(() => true));
 
 const mockDocumentStoreState = {
 	allNodes: [],
+	connectionsBySourceNode: {},
+	settings: {} as IWorkflowSettings,
 	workflowTriggerNodes: [],
 	aiNodes: [],
 	getExpressionHandler: () => null,
@@ -276,6 +281,53 @@ describe('NodesMode', () => {
 			await pressEnterOnFirstItem();
 
 			expect(emitted('nodeTypeSelected')).toEqual([[[{ type: 'n8n-nodes-base.set' }]]]);
+		});
+
+		describe('engine v2 compatibility', () => {
+			beforeEach(() => {
+				mockEngineV2Compatibility({ unsupportedNodeTypes: ['n8n-nodes-base.set'] });
+				useSettingsStore().settings.activeModules = ['engine-v2'];
+				mockDocumentStoreState.settings = { engineType: 'v2' };
+			});
+
+			afterEach(() => {
+				mockDocumentStoreState.settings = {};
+			});
+
+			it('does not add an incompatible node on click', async () => {
+				pushSearchStackWith([setNodeElement()]);
+
+				const { emitted } = render({ pinia });
+				await nextTick();
+
+				await userEvent.click(screen.getByText('Edit Fields'));
+
+				expect(emitted('nodeTypeSelected')).toBeUndefined();
+				expect(useViewStacks().activeViewStack.mode).toBe('nodes');
+			});
+
+			it('does not add an incompatible node on Enter', async () => {
+				pushSearchStackWith([setNodeElement()]);
+
+				const { emitted } = render({ pinia });
+				await nextTick();
+
+				await pressEnterOnFirstItem();
+
+				expect(emitted('nodeTypeSelected')).toBeUndefined();
+			});
+
+			it('adds the node when the workflow runs on engine v1', async () => {
+				mockDocumentStoreState.settings = { engineType: 'v1' };
+				pushSearchStackWith([setNodeElement()]);
+
+				const { emitted } = render({ pinia });
+				await nextTick();
+
+				await userEvent.click(screen.getByText('Edit Fields'));
+
+				expect(emitted('nodeTypeSelected')).toEqual([[[{ type: 'n8n-nodes-base.set' }]]]);
+			});
 		});
 	});
 

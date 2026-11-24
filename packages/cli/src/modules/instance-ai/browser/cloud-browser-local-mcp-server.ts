@@ -160,6 +160,12 @@ export type CloudBrowserReturnControlResult =
 	| { returned: false; error: string }
 	| { returned: true; loginWillBeSaved: boolean };
 
+/** A login the user chose to save, and whether it was saved when its session ended. */
+export interface CloudBrowserLoginSaveResult {
+	domain: string;
+	saved: boolean;
+}
+
 /**
  * The result of a tool call that waited while the user had control. The call is skipped, because
  * the page may have changed.
@@ -284,6 +290,12 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 	 * the agent treats those as untrusted page content. The agent takes them as user messages.
 	 */
 	private userControlNotes: string[] = [];
+
+	/**
+	 * The logins the user chose to save, from every session that has ended, by site: whether the
+	 * login was saved. A site that is saved stays saved, also when a later save for it fails.
+	 */
+	private readonly loginSaveResults = new Map<string, boolean>();
 
 	constructor(private readonly options: CloudBrowserLocalMcpServerOptions) {
 		this.domainGate = options.domainGate;
@@ -434,6 +446,14 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 		return { returned: true, loginWillBeSaved };
 	}
 
+	/**
+	 * The logins the user chose to save, and whether each was saved. A login is saved when its
+	 * session ends, so release the server first to get every login of the task.
+	 */
+	getLoginSaveResults(): CloudBrowserLoginSaveResult[] {
+		return [...this.loginSaveResults].map(([domain, saved]) => ({ domain, saved }));
+	}
+
 	drainUserControlNotes(): string[] {
 		return this.userControlNotes.splice(0);
 	}
@@ -450,6 +470,13 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 		const userControl = this.userControl;
 		if (isLoginRequest && userControl) userControl.isLoginRequest = true;
 		return (await userControl?.result.promise) ?? { returned: true };
+	}
+
+	/** The site of the login the user can save now, or nothing when they cannot save one. */
+	async getLoginDomainToSave(): Promise<string | undefined> {
+		const session = this.activeSession;
+		if (!session?.loginProfile || !(await this.canSaveLogin(session))) return undefined;
+		return session.loginProfile.domain;
 	}
 
 	/** Whether the user can save the login they just made in the session. */
@@ -871,6 +898,11 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer, CloudBrowserU
 				? await this.keepLoginProfile(loginProfile, location)
 				: false;
 
+		if (loginProfile && session.saveLoginProfileOnSessionEnd) {
+			const { domain } = loginProfile;
+			const isSavedAlready = this.loginSaveResults.get(domain) === true;
+			if (!isSavedAlready) this.loginSaveResults.set(domain, isLoginKept);
+		}
 		if (!isLoginKept) {
 			await this.deleteLoginProfile(loginProfile);
 		}

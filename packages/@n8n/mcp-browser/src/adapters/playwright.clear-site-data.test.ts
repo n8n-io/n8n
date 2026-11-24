@@ -37,15 +37,31 @@ function setup({
 		send: vi.fn().mockResolvedValue({}),
 		detach: vi.fn().mockResolvedValue(undefined),
 	};
-	const pages = urls.map(fakePage);
+	// The pages that are open in the browser. Closing a page takes it out.
+	const openPages: Page[] = [];
+	const openPage = (url: string) => {
+		const page = Object.assign(fakePage(url), {
+			close: vi.fn(async () => {
+				openPages.splice(openPages.indexOf(page), 1);
+			}),
+		});
+		openPages.push(page);
+		return page;
+	};
+	const pages = urls.map(openPage);
+	const blankPage = fakePage('about:blank');
 	const context = {
 		cookies: vi.fn().mockResolvedValue(cookies.map(cookie)),
 		clearCookies: vi.fn().mockResolvedValue(undefined),
-		pages: vi.fn().mockReturnValue(pages),
+		pages: vi.fn(() => [...openPages]),
+		newPage: vi.fn(async () => {
+			openPages.push(blankPage);
+			return blankPage;
+		}),
 		newCDPSession: vi.fn().mockResolvedValue(session),
 	} satisfies Partial<BrowserContext>;
 	setTestContext(adapter, context);
-	return { adapter, session, context, pages };
+	return { adapter, session, context, pages, blankPage, openPages };
 }
 
 /** A page that reports frame navigations to the handler that the adapter registers. */
@@ -109,14 +125,14 @@ describe('PlaywrightAdapter.clearSiteDataExcept', () => {
 	});
 
 	it('clears the storage of other cookie sites and other open pages over CDP', async () => {
-		const { adapter, session, context, pages } = setup({
+		const { adapter, session, context, blankPage } = setup({
 			cookies: ['example.com', '.ads.io'],
 			urls: ['https://app.example.com/home', 'https://shop.test:8443/cart', 'about:blank'],
 		});
 
 		await adapter.clearSiteDataExcept('example.com');
 
-		expect(context.newCDPSession).toHaveBeenCalledWith(pages[0]);
+		expect(context.newCDPSession).toHaveBeenCalledWith(blankPage);
 		expect(clearedOrigins(session).sort()).toEqual([
 			'http://ads.io',
 			'https://ads.io',
@@ -137,13 +153,38 @@ describe('PlaywrightAdapter.clearSiteDataExcept', () => {
 		expect(context.newCDPSession).not.toHaveBeenCalled();
 	});
 
-	it('clears cookies but opens no CDP session without an open page', async () => {
-		const { adapter, context } = setup({ cookies: ['tracker.net'] });
+	it('clears the cookies and the storage of other sites when no page is open', async () => {
+		const { adapter, session, context, blankPage } = setup({ cookies: ['tracker.net'] });
 
 		await adapter.clearSiteDataExcept('example.com');
 
 		expect(context.clearCookies).toHaveBeenCalledWith({ domain: 'tracker.net' });
-		expect(context.newCDPSession).not.toHaveBeenCalled();
+		expect(context.newCDPSession).toHaveBeenCalledWith(blankPage);
+		expect(clearedOrigins(session).sort()).toEqual(['http://tracker.net', 'https://tracker.net']);
+	});
+
+	it('closes every open page and keeps one blank page before it reads and clears the data', async () => {
+		const { adapter, context, pages, blankPage, openPages } = setup({
+			cookies: ['tracker.net'],
+			urls: ['https://example.com/', 'https://other.org/'],
+		});
+
+		await adapter.clearSiteDataExcept('example.com');
+
+		expect(openPages).toEqual([blankPage]);
+		const lastClose = Math.max(
+			...pages.map((page) => vi.mocked(page.close).mock.invocationCallOrder[0]),
+		);
+		expect(context.cookies.mock.invocationCallOrder[0]).toBeGreaterThan(lastClose);
+		expect(context.clearCookies.mock.invocationCallOrder[0]).toBeGreaterThan(lastClose);
+	});
+
+	it('clears the storage of a page that it closed', async () => {
+		const { adapter, session } = setup({ urls: ['https://other.org/'] });
+
+		await adapter.clearSiteDataExcept('example.com');
+
+		expect(clearedOrigins(session)).toEqual(['https://other.org']);
 	});
 
 	it('skips a page whose URL cannot be read', async () => {
@@ -183,6 +224,45 @@ describe('PlaywrightAdapter.clearSiteDataExcept', () => {
 			'https://second.org',
 			'https://third.org',
 		]);
+	});
+
+	describe('hasVisitedOnlySite', () => {
+		function setupSiteVisits() {
+			const context = setup({ trackVisitedOrigins: true });
+			const tab = navigablePage('https://app.example.com/');
+			context.context.pages.mockReturnValue([tab.page]);
+			Object.assign(context.context, { on: vi.fn() });
+			trackVisitedOriginsIn(context.adapter, context.context);
+			return { ...context, tab };
+		}
+
+		it('is true when every page and frame was on the site or its subdomains', () => {
+			const { adapter, tab } = setupSiteVisits();
+			tab.navigate('https://example.com/login');
+			tab.navigate('https://accounts.example.com/frame');
+
+			expect(adapter.hasVisitedOnlySite('example.com')).toBe(true);
+		});
+
+		it('is false when a page or frame was on another site', () => {
+			const { adapter, tab } = setupSiteVisits();
+			tab.navigate('https://widget.other.org/frame');
+
+			expect(adapter.hasVisitedOnlySite('example.com')).toBe(false);
+		});
+
+		it('is false when it did not record every origin', () => {
+			const { adapter, tab } = setupSiteVisits();
+			for (let index = 0; index < 1000; index++) tab.navigate(`https://s${index}.example.com/`);
+
+			expect(adapter.hasVisitedOnlySite('example.com')).toBe(false);
+		});
+
+		it('is false when it does not track visited origins', () => {
+			const adapter = new PlaywrightAdapter(ADAPTER_TEST_CONFIG);
+
+			expect(adapter.hasVisitedOnlySite('example.com')).toBe(false);
+		});
 	});
 
 	describe('visited origins', () => {

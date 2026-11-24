@@ -942,38 +942,32 @@ export class PlaywrightAdapter {
 		}
 	}
 
+	/** Whether every page and frame loaded was on `domain`. False if not all were recorded. */
+	hasVisitedOnlySite(domain: string): boolean {
+		if (!this.trackVisitedOrigins || this.hasVisitedUntrackedOrigins) return false;
+		return [...this.visitedOrigins].every((origin) =>
+			isDomainOfHost(domain, new URL(origin).hostname),
+		);
+	}
+
 	/**
 	 * Clears the site data in the browser for every site except `domain` and its subdomains: the
 	 * cookies, and the storage of the sites that set cookies, have a page open, or were visited
-	 * (with `trackVisitedOrigins`).
+	 * (with `trackVisitedOrigins`). It closes every page and leaves one blank page, so call it only
+	 * before the browser closes.
 	 */
 	async clearSiteDataExcept(domain: string): Promise<void> {
 		const context = this.requireContext();
 		if (this.hasVisitedUntrackedOrigins) {
 			throw new Error('Cannot clear the site data of untracked origins');
 		}
-		const isOtherSite = (host: string) => {
-			const bare = host.replace(/^\./, '');
-			return bare !== domain && !bare.endsWith(`.${domain}`);
-		};
-
-		const otherCookieHosts = new Set(
-			(await context.cookies()).map((cookie) => cookie.domain).filter(isOtherSite),
-		);
-		for (const host of otherCookieHosts) {
-			await context.clearCookies({ domain: host });
-		}
+		const isOtherSite = (host: string) => !isDomainOfHost(domain, host);
 
 		// CDP cannot list the origins that hold storage, so this clears the ones we know of: the
 		// sites that set cookies, the pages that are open, and the visited origins.
 		const otherOrigins = new Set<string>();
 		for (const origin of this.visitedOrigins) {
 			if (isOtherSite(new URL(origin).hostname)) otherOrigins.add(origin);
-		}
-		for (const host of otherCookieHosts) {
-			const bare = host.replace(/^\./, '');
-			otherOrigins.add(`https://${bare}`);
-			otherOrigins.add(`http://${bare}`);
 		}
 		for (const page of context.pages()) {
 			try {
@@ -983,8 +977,23 @@ export class PlaywrightAdapter {
 				// A page without a URL has no site data.
 			}
 		}
-		const [page] = context.pages();
-		if (!page || otherOrigins.size === 0) return;
+
+		// A page that stays open can write its site data again after the clear.
+		const page = await context.newPage();
+		for (const openPage of context.pages()) {
+			if (openPage !== page) await openPage.close();
+		}
+
+		const otherCookieHosts = new Set(
+			(await context.cookies()).map((cookie) => cookie.domain).filter(isOtherSite),
+		);
+		for (const host of otherCookieHosts) {
+			await context.clearCookies({ domain: host });
+			const bare = host.replace(/^\./, '');
+			otherOrigins.add(`https://${bare}`);
+			otherOrigins.add(`http://${bare}`);
+		}
+		if (otherOrigins.size === 0) return;
 
 		const session = await context.newCDPSession(page);
 		let results: Array<PromiseSettledResult<unknown>>;
@@ -1397,4 +1406,10 @@ export class PlaywrightAdapter {
 			.replace(/\?/g, '.');
 		return new RegExp(`^${escaped}$`);
 	}
+}
+
+/** Whether `host`, or a cookie domain like `.example.com`, is `domain` or one of its subdomains. */
+function isDomainOfHost(domain: string, host: string): boolean {
+	const bare = host.replace(/^\./, '');
+	return bare === domain || bare.endsWith(`.${domain}`);
 }

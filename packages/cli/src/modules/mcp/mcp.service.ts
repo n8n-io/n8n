@@ -21,6 +21,7 @@ import {
 	NodeTypesProxy,
 	PostHogClient,
 	TelemetryProxy,
+	loginIdOf,
 } from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import { type OperationContext, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
@@ -41,13 +42,11 @@ import type z from 'zod';
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { loginIdOf } from '@/events/login-id';
 import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@n8n/backend-module-data-table';
 import { SkillsGate } from '@/modules/skills';
-import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import { NodeCatalogService } from '@/node-catalog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { FolderService } from '@/services/folder.service';
@@ -80,6 +79,7 @@ import {
 import { FOLDER_FEATURE_TOOLS, getAllowedToolNames } from './mcp-scopes';
 import {
 	areAgentToolsAvailable,
+	areMcpPreferencesAvailable,
 	canReadMigrationReport,
 	isCommunityNodeInstallAvailable,
 } from './mcp-tool-availability';
@@ -545,7 +545,7 @@ export class McpService {
 		const contextToolsAllowed = allowedToolNames?.has(GET_INSTANCE_CONTEXT_TOOL_NAME) ?? true;
 		// Gates the sentence and the preference tools below, which also go through
 		// `registerIfAllowed`. No RBAC check: a user's own preferences need no scope.
-		const preferencesEnabled = Container.get(AiPreferenceSettingsService).isEnabled;
+		const preferencesEnabled = areMcpPreferencesAvailable(this.moduleRegistry);
 		const userPreferencesInstructionsEnabled =
 			preferencesEnabled && (allowedToolNames?.has(MCP_GET_USER_PREFERENCES_TOOL_NAME) ?? true);
 		// The same rationale again: only a caller whose role and grant reach the report is

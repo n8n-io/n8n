@@ -10,17 +10,23 @@ import { FocusScope, N8nButton, N8nIcon, N8nInput, N8nLink, N8nText } from '@n8n
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { withTimeout } from '@n8n/utils/promise/with-timeout';
 import { computed, inject, ref, watch } from 'vue';
 
 import { VIEWS } from '@/app/constants';
+import { CLOUD_BROWSER_LOGIN_TO_SAVE_TIMEOUT } from '@/app/constants/durations';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
+import {
+	fetchCloudBrowserLoginToSave,
+	postCloudBrowserReturnControl,
+	postCloudBrowserTakeOver,
+} from '@/features/ai/instanceAi/instanceAi.api';
 
 import {
 	CloudBrowserLiveViewRefreshKey,
 	CloudBrowserLiveViewsKey,
 	embeddedLiveViewUrl,
 } from '../composables/useCloudBrowserLiveViews';
-import { postCloudBrowserReturnControl, postCloudBrowserTakeOver } from '../instanceAi.api';
 import { SAVED_LOGINS_QUERY } from '../constants';
 import { useThread } from '../instanceAi.store';
 
@@ -66,15 +72,21 @@ const savedLoginDate = computed(() => {
 		: convertToDisplayDate(savedAt).date;
 });
 
-/** The domain to save a login for. Decides whether the save dialog is shown. */
-const loginDomainToSave = computed(() => {
+/**
+ * Whether the user can maybe save a login: the agent asked them to sign in, and the session has a
+ * login profile that is not saved yet. Only the server knows the site of the current page, so it
+ * decides the rest when the user clicks "I'm done".
+ */
+const canMaybeSaveLogin = computed(() => {
 	const profile = loginProfile.value;
 	// The agent did not ask the user to sign in, or the session has no login profile.
-	if (!props.userAction?.isLoginRequest || !profile) return undefined;
+	if (!props.userAction?.isLoginRequest || !profile) return false;
 	// The login is saved, or the user already chose to save it.
-	if (profile.savedAt || profile.willBeSavedOnSessionEnd) return undefined;
-	return profile.domain;
+	return !profile.savedAt && !profile.willBeSavedOnSessionEnd;
 });
+
+/** The site of the login that the save dialog offers to save. */
+const loginDomainToSave = ref<string>();
 
 const isDisconnected = computed(
 	() => liveView.value?.status === 'disconnected' || liveView.value?.status === 'not-found',
@@ -141,6 +153,7 @@ watch(hasControl, (inControl) => {
 	if (inControl) return;
 	isNoteDialogOpen.value = false;
 	isSaveLoginDialogOpen.value = false;
+	loginDomainToSave.value = undefined;
 	note.value = '';
 });
 
@@ -166,16 +179,40 @@ async function takeOver() {
 	}
 }
 
-function onDone() {
+async function onDone() {
 	if (isUserTakeover.value) {
 		isNoteDialogOpen.value = true;
 		return;
 	}
-	if (loginDomainToSave.value) {
+	if (isBusy.value) return;
+	const domain = await findLoginDomainToSave();
+	// Control ended elsewhere while we asked, for example on a timeout.
+	if (!hasControl.value) return;
+	if (domain) {
+		loginDomainToSave.value = domain;
 		isSaveLoginDialogOpen.value = true;
 		return;
 	}
 	void returnControl();
+}
+
+/** Asks the server which login the user can save now. Nothing when they cannot save one. */
+async function findLoginDomainToSave(): Promise<string | undefined> {
+	if (!canMaybeSaveLogin.value) return undefined;
+	isBusy.value = true;
+	try {
+		const { domain } = await withTimeout(
+			fetchCloudBrowserLoginToSave(rootStore.restApiContext, thread.id, props.taskId),
+			CLOUD_BROWSER_LOGIN_TO_SAVE_TIMEOUT,
+			() => new Error('Timed out while checking which login can be saved'),
+		);
+		return domain;
+	} catch {
+		// Only the server knows the site of the current page, so without its answer we offer no save.
+		return undefined;
+	} finally {
+		isBusy.value = false;
+	}
 }
 
 async function returnControl(userNote?: string, shouldSaveLogin = false) {

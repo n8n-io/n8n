@@ -9,6 +9,8 @@ import type { InstanceSettings } from 'n8n-core';
 import { v4 as uuid, v7 as uuidv7 } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
+import { createAgent, createAgentIdentity } from '@test-integration/db/agents';
+
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { Publisher } from '@n8n/backend-services';
 import { AgentConversationStateService } from '@/modules/agents/agent-conversation-state.service';
@@ -28,7 +30,6 @@ import {
 	REPLACED_PAUSE_GROUP_NOTICE,
 } from '@/modules/agents/background/background-job-messages';
 import type { AgentBackgroundJob } from '@/modules/agents/entities/agent-background-job.entity';
-import type { ProjectAgent } from '@/modules/agents/entities/agent.entity';
 import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
 import type { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
 import { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
@@ -56,15 +57,14 @@ describe('AgentBackgroundJobRepository', () => {
 
 	beforeEach(async () => {
 		const project = await createTeamProject();
-		const agent = agentRepository.create({
+		const agent = await createAgent({
 			id: uuid(),
 			name: 'Test Agent',
 			projectId: project.id,
 			integrations: [],
 			tools: {},
 			skills: {},
-		} as Partial<ProjectAgent>);
-		await agentRepository.save(agent);
+		});
 		agentId = agent.id;
 	});
 
@@ -443,6 +443,7 @@ describe('AgentBackgroundJobRepository', () => {
 			await agentRepository.findOneByOrFail({ id: agentId }),
 		);
 		otherAgent.id = uuid();
+		otherAgent.identityId = await createAgentIdentity();
 		await agentRepository.save(otherAgent);
 		await insertJob({ id: uuid(), parentThreadId: 'thread-1', parentAgentId: otherAgent.id });
 		await insertJob({ id: uuid(), parentThreadId: 'thread-2' });

@@ -1245,6 +1245,56 @@ describe('InstanceAiController', () => {
 		});
 	});
 
+	describe('cloudBrowserLoginToSave', () => {
+		it('should require instanceAi:message scope', () => {
+			expect(scopeOf('cloudBrowserLoginToSave')).toEqual({
+				scope: 'instanceAi:message',
+				globalOnly: true,
+			});
+		});
+
+		it('should return the site of the login the user can save', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			cloudBrowserService.getLoginDomainToSave.mockResolvedValue('example.com');
+
+			const result = await controller.cloudBrowserLoginToSave(req, res, THREAD_ID, 'task-1');
+
+			expect(result).toEqual({ domain: 'example.com' });
+			expect(cloudBrowserService.getLoginDomainToSave).toHaveBeenCalledWith(
+				USER_ID,
+				THREAD_ID,
+				'task-1',
+			);
+		});
+
+		it('should return no site when the user cannot save a login', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			cloudBrowserService.getLoginDomainToSave.mockResolvedValue(undefined);
+
+			const result = await controller.cloudBrowserLoginToSave(req, res, THREAD_ID, 'task-1');
+
+			expect(result).toEqual({});
+		});
+
+		it('should not check a browser in a thread the user does not own', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
+
+			await expect(
+				controller.cloudBrowserLoginToSave(req, res, THREAD_ID, 'task-1'),
+			).rejects.toThrow(ForbiddenError);
+			expect(cloudBrowserService.getLoginDomainToSave).not.toHaveBeenCalled();
+		});
+
+		it('should not check when Instance AI is disabled', async () => {
+			settingsService.isInstanceAiEnabled.mockReturnValue(false);
+
+			await expect(
+				controller.cloudBrowserLoginToSave(req, res, THREAD_ID, 'task-1'),
+			).rejects.toThrow(ForbiddenError);
+			expect(cloudBrowserService.getLoginDomainToSave).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('returnCloudBrowserControl', () => {
 		const payload = (note?: string) =>
 			mock<InstanceAiCloudBrowserReturnControlRequest>({ note, shouldSaveLogin: undefined });

@@ -3,7 +3,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { AdmittanceRejectedError, type AdmittanceService } from '../../admittance';
 import { GraphValidationError, type WorkflowGraph } from '../../graph';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
-import { ExecutionNotFoundError, type ExecutionStore } from '../execution-store';
+import {
+	ExecutionNotFoundError,
+	ParentExecutionEndedError,
+	type ExecutionStore,
+} from '../execution-store';
 import type {
 	ExecutionStatus,
 	SeededSteps,
@@ -41,6 +45,9 @@ function makeStore(overrides: Partial<ExecutionStore> = {}): ExecutionStore {
 		findStaleQueuedExecutions: vi.fn(),
 		renewQueuedExecution: vi.fn(),
 		refreshLiveStatus: vi.fn(),
+		loadLiveSubExecutionIds: vi.fn().mockResolvedValue([]),
+		findPrunableExecutions: vi.fn(),
+		deleteEndedExecutions: vi.fn(),
 		...overrides,
 	};
 }
@@ -132,6 +139,23 @@ describe('StartExecutionService', () => {
 			expect(store.loadExecution).not.toHaveBeenCalled();
 			expect(stepStore.loadStep).toHaveBeenCalledWith('step-1');
 			expect(store.createExecution).toHaveBeenCalledWith(expect.objectContaining({ parent }));
+		});
+
+		it('refuses the link when the parent ended before the row was written', async () => {
+			// Live at the check, ended by the time the store holds the row.
+			const { store, stepStore } = parentRows('running', 'waiting');
+			store.createExecution = vi
+				.fn()
+				.mockRejectedValue(new ParentExecutionEndedError('exec-parent', 'cancelled'));
+			const queue = makeQueue();
+			const service = new StartExecutionService(admittance, store, stepStore, queue);
+			const parent = { executionId: 'exec-parent', stepId: 'step-1', awaited: true };
+
+			await expect(service.start({ ...base, parent })).rejects.toMatchObject({
+				name: 'InvalidParentLinkError',
+				reason: 'execution-not-live',
+			});
+			expect(queue.publish).not.toHaveBeenCalled();
 		});
 
 		it.each([

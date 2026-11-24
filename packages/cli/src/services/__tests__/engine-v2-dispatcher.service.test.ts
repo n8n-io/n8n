@@ -669,6 +669,23 @@ describe('EngineV2Dispatcher', () => {
 				await expect(attempt).rejects.toThrow(message);
 				expect(proxy.startExecution).not.toHaveBeenCalled();
 			});
+
+			it('rejects an AI tool run before the planner can hide the cause', async () => {
+				manualRunPlanner.applies.mockReturnValue(true);
+				manualRunPlanner.plan.mockImplementation(() => {
+					throw new UserError("Connect a trigger and make sure it's enabled to run this node");
+				});
+
+				const attempt = dispatcher.start(
+					runData({
+						destinationNode: { nodeName: SET_NODE.name, mode: 'inclusive' },
+						agentRequest: { query: { [SET_NODE.name]: 'do it' }, tool: { name: 'tool' } },
+					}),
+				);
+
+				await expect(attempt).rejects.toThrow('Engine v2 cannot run a workflow as an AI tool yet.');
+				expect(manualRunPlanner.plan).not.toHaveBeenCalled();
+			});
 		});
 
 		describe('a planned manual run', () => {

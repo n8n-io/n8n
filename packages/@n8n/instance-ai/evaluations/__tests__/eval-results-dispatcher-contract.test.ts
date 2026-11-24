@@ -52,7 +52,7 @@ const agentArtifact = {
 	agentId: 'agent-1',
 	config: {
 		name: 'Digest agent',
-		model: 'anthropic/claude-sonnet-4-5',
+		model: 'anthropic/claude-sonnet-5-5',
 		instructions: 'Use sk-abc123DEF456ghi789jkl012 to call the provider.',
 		credentials: { slack: { id: 'credential-1' } },
 		futureDisplayMode: { density: 'compact' },
@@ -216,7 +216,7 @@ describe('eval-results.json — dispatcher contract', () => {
 			agentId: 'agent-1',
 			config: {
 				name: 'Digest agent',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: 'Use [REDACTED] to call the provider.',
 				credentials: '[REDACTED]',
 				futureDisplayMode: { density: 'compact' },
@@ -342,7 +342,7 @@ describe('eval-results.json — dispatcher contract', () => {
 			agentId: `agent-${index}`,
 			config: {
 				name: `Large agent ${index}`,
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				instructions: '界'.repeat(60_000),
 			},
 			skills: {},
@@ -357,7 +357,7 @@ describe('eval-results.json — dispatcher contract', () => {
 							agentId: 'agent-3',
 							config: {
 								name: 'Small agent',
-								model: 'anthropic/claude-sonnet-4-5',
+								model: 'anthropic/claude-sonnet-5-5',
 								instructions: 'Keep the digest concise.',
 							},
 							skills: {},

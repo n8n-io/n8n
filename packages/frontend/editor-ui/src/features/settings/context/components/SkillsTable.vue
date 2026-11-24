@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { computed, useCssModule } from 'vue';
-import type { SkillListCollapsedSource, SkillListItem, SkillSourceListItem } from '@n8n/api-types';
+import type {
+	SkillListCollapsedSource,
+	SkillListItem,
+	SkillListSourceRange,
+	SkillSourceListItem,
+} from '@n8n/api-types';
 import {
 	N8nActionToggle,
 	N8nBadge,
@@ -58,6 +63,7 @@ const props = defineProps<{
 	collapsedSourceIds?: string[];
 	/** Where each folded or empty source sits on the page. */
 	collapsedSources?: SkillListCollapsedSource[];
+	sourceRanges?: SkillListSourceRange[];
 	checkingSourceIds?: string[];
 }>();
 
@@ -142,12 +148,14 @@ const sourcesById = computed(
 
 const collapsed = computed(() => new Set(props.collapsedSourceIds ?? []));
 
-const emptySourceIds = computed(
+const sourceRangesById = computed(
+	() => new Map((props.sourceRanges ?? []).map((range) => [range.sourceId, range])),
+);
+
+const collapsedSourceCounts = computed(
 	() =>
-		new Set(
-			(props.collapsedSources ?? [])
-				.filter(({ skillCount }) => skillCount === 0)
-				.map(({ sourceId }) => sourceId),
+		new Map(
+			(props.collapsedSources ?? []).map(({ sourceId, skillCount }) => [sourceId, skillCount]),
 		),
 );
 
@@ -161,7 +169,35 @@ const extraGroups = computed(() =>
 
 /** A source with no synced skills has nothing to fold. */
 function canFold(sourceId: string): boolean {
-	return !emptySourceIds.value.has(sourceId);
+	return collapsedSourceCounts.value.get(sourceId) !== 0;
+}
+
+function sourceNote(sourceId: string): string | undefined {
+	const range = sourceRangesById.value.get(sourceId);
+	if (collapsed.value.has(sourceId)) {
+		const count =
+			range?.total ??
+			collapsedSourceCounts.value.get(sourceId) ??
+			sourcesById.value.get(sourceId)?.skillCount;
+		if (!count) return undefined;
+		return i18n.baseText('settings.context.skills.sources.collapsedCount', {
+			interpolate: { count: count.toLocaleString(i18n.locale) },
+			adjustToNumber: count,
+		});
+	}
+	if (!range || (range.start === 1 && range.end === range.total)) return undefined;
+	return i18n.baseText(
+		range.start === range.end
+			? 'settings.context.skills.sources.pagePosition'
+			: 'settings.context.skills.sources.pageRange',
+		{
+			interpolate: {
+				start: range.start.toLocaleString(i18n.locale),
+				end: range.end.toLocaleString(i18n.locale),
+				count: range.total.toLocaleString(i18n.locale),
+			},
+		},
+	);
 }
 
 function toggleSource(sourceId: string) {
@@ -293,7 +329,8 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 	{
 		title: i18n.baseText('settings.context.skills.columns.updatedAt'),
 		key: 'updatedAt',
-		width: props.sources ? 180 : 130,
+		// Wide enough for the health icon, "N new" and "N updates" in one row.
+		width: props.sources ? 240 : 130,
 	},
 	{
 		title: '',
@@ -344,6 +381,7 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 						:class="$style.groupToggle"
 						:aria-expanded="!collapsed.has(group)"
 						:aria-label="sourceName(group)"
+						:aria-describedby="sourceNote(group) ? `skill-source-count-${group}` : undefined"
 						data-test-id="skill-group-toggle"
 						@click.stop="toggleSource(group)"
 					>
@@ -355,25 +393,37 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 					</button>
 					<span v-else :class="$style.groupToggleSpace" />
 					<N8nIcon icon="git-branch" size="small" color="text-light" />
-					<N8nText
-						size="small"
-						color="text-dark"
-						bold
-						:class="$style.groupTitle"
-						:title="sourceName(group)"
-						data-test-id="skill-group-title"
-					>
-						{{ sourceName(group) }}
-					</N8nText>
-					<N8nText
-						v-if="!canFold(group)"
-						size="small"
-						color="text-light"
-						:class="$style.groupNote"
-						data-test-id="skill-group-empty"
-					>
-						{{ i18n.baseText('settings.context.skills.sources.noSyncedSkills') }}
-					</N8nText>
+					<div :class="$style.groupLabel">
+						<N8nText
+							size="small"
+							color="text-dark"
+							bold
+							:class="$style.groupTitle"
+							:title="sourceName(group)"
+							data-test-id="skill-group-title"
+						>
+							{{ sourceName(group) }}
+						</N8nText>
+						<N8nText
+							v-if="!canFold(group)"
+							size="xsmall"
+							color="text-light"
+							:class="$style.groupNote"
+							data-test-id="skill-group-empty"
+						>
+							{{ i18n.baseText('settings.context.skills.sources.noSyncedSkills') }}
+						</N8nText>
+						<N8nText
+							v-else-if="sourceNote(group)"
+							:id="`skill-source-count-${group}`"
+							size="xsmall"
+							color="text-light"
+							:class="$style.groupNote"
+							data-test-id="skill-group-count"
+						>
+							{{ sourceNote(group) }}
+						</N8nText>
+					</div>
 				</div>
 			</template>
 
@@ -422,21 +472,29 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 						type="button"
 						:class="$style.updateButton"
 						data-test-id="skill-group-review-updates"
+						data-attr="skill-group-review-updates"
 						@click.stop="emit('reviewSource', sourcesById.get(group)!)"
 					>
-						<N8nBadge variant="outline" data-test-id="skill-group-updates">
+						<N8nBadge variant="outline">
 							<template #leading>
 								<N8nStatusDot
 									:variant="sourcesById.get(group)!.updatesAvailable > 0 ? 'warning' : 'danger'"
-									data-test-id="skill-group-updates-dot"
+									data-test-id="skill-group-update-status"
 								/>
 							</template>
-							{{
-								i18n.baseText('settings.context.skills.sources.updates', {
-									interpolate: { count: updateCount(sourcesById.get(group)!) },
-									adjustToNumber: updateCount(sourcesById.get(group)!),
-								})
-							}}
+							<span data-test-id="skill-group-updates">
+								{{
+									i18n.baseText(
+										sourcesById.get(group)!.updatesAvailable > 0
+											? 'settings.context.skills.sources.updates'
+											: 'settings.context.skills.sources.updatesBlocked',
+										{
+											interpolate: { count: updateCount(sourcesById.get(group)!) },
+											adjustToNumber: updateCount(sourcesById.get(group)!),
+										},
+									)
+								}}
+							</span>
 						</N8nBadge>
 					</button>
 				</div>
@@ -592,7 +650,13 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 	min-width: 0;
 }
 
-/* One line: the repository shortens with an ellipsis, and the note keeps its words. */
+.groupLabel {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	min-width: 0;
+}
+
 .groupTitle {
 	min-width: 0;
 	overflow: hidden;
@@ -601,7 +665,7 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 }
 
 .groupNote {
-	flex-shrink: 0;
+	font-variant-numeric: tabular-nums;
 	white-space: nowrap;
 }
 
@@ -631,11 +695,12 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 	cursor: pointer;
 }
 
+/* One row of same-size badges, which wraps only when the column is too narrow. */
 .sourceStatus {
 	display: flex;
-	align-items: center;
 	flex-wrap: wrap;
-	gap: var(--spacing--5xs) var(--spacing--2xs);
+	align-items: center;
+	gap: var(--spacing--4xs) var(--spacing--2xs);
 	padding-block: var(--spacing--5xs);
 }
 </style>

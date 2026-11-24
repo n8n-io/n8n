@@ -14,8 +14,7 @@ import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { VariableValidationError } from '@/errors/variable-validation.error';
-import { loginIdOf } from '@/events/login-id';
-import { CacheService, EventService } from '@n8n/backend-services';
+import { CacheService, EventService, loginIdOf } from '@n8n/backend-services';
 import { ProjectService } from '@/services/project.service.ee';
 import { toUserLike } from '@/utils/to-user-like';
 

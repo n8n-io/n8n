@@ -1,0 +1,17 @@
+{
+	"properties": {
+		"created_at": {
+			"type": "number"
+		},
+		"id": {
+			"type": "string"
+		},
+		"metadata": {
+			"type": "object"
+		},
+		"object": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}
