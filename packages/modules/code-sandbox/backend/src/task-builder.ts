@@ -71,7 +71,7 @@ function toTaskData(request: CodeTaskRequest): unknown {
 		siblingParameters: request.siblingParameters,
 		mode: request.mode,
 		envProviderState: request.envProviderState,
-		// A Code node task never sets these three
+		// The Code node does not pass these, so they get the defaults of the task request
 		defaultReturnRunIndex: -1,
 		selfData: {},
 		contextNodeName: request.activeNodeName,
