@@ -334,45 +334,103 @@ describe('PromoteInstanceDialog', () => {
 			expect(await findByTestId('promote-result-summary')).toBeVisible();
 		});
 
-		it('shows the list of the answer when the check fails and the Promote finds missing dependencies', async () => {
-			api.fetchPromoteCheck.mockRejectedValue(new Error('The check is not available'));
-			api.promotePackage
-				.mockResolvedValueOnce({
-					status: 'missing-dependencies',
-					environmentId: 'environment-1',
-					missingDependencies: [otherProjectCredential],
-					warnings: [deletedWorkflowWarning],
-				})
-				.mockResolvedValue(promoted({ missingDependencies: [otherProjectCredential] }));
-			const { findByRole, findByTestId, getAllByTestId, getByTestId, queryByTestId } =
-				renderComponent();
-			await waitFor(() => expect(queryByTestId('promote-check-loading')).not.toBeInTheDocument());
+		describe('when the check fails and the Promote answers with a list', () => {
+			const refused = {
+				status: 'missing-dependencies' as const,
+				environmentId: 'environment-1',
+				missingDependencies: [otherProjectCredential],
+				warnings: [deletedWorkflowWarning],
+			};
 
-			await userEvent.click(getByTestId('promote-confirm-button'));
+			/** Opens the dialog, promotes without a list, and waits for the list of the answer. */
+			async function showListOfAnswer() {
+				api.fetchPromoteCheck.mockRejectedValue(new Error('The check is not available'));
+				api.promotePackage
+					.mockResolvedValueOnce(refused)
+					.mockResolvedValue(promoted({ missingDependencies: [otherProjectCredential] }));
+				const rendered = renderComponent();
+				await waitFor(() =>
+					expect(rendered.queryByTestId('promote-check-loading')).not.toBeInTheDocument(),
+				);
+				await userEvent.click(rendered.getByTestId('promote-confirm-button'));
+				await rendered.findByRole('heading', { name: 'Promote with 1 unresolved dependency?' });
+				return rendered;
+			}
 
-			// The user confirmed nothing, because the dialog showed no list.
-			expect(api.promotePackage).toHaveBeenLastCalledWith(expect.anything(), 'environment-1', {});
-			expect(await findByTestId('promote-missing-changed')).toBeVisible();
-			expect(
-				await findByRole('heading', { name: 'Promote with 1 unresolved dependency?' }),
-			).toBeVisible();
-			expect(rows(getAllByTestId)).toEqual([
-				'CRM keyCredential · Used by Invoice reconciliation',
-				'Archive invoicesWorkflow · Used by Invoice reconciliation',
-			]);
-			expect(queryByTestId('promote-result-summary')).not.toBeInTheDocument();
+			it('shows the list of the answer', async () => {
+				const { findByTestId, getAllByTestId, queryByTestId } = await showListOfAnswer();
 
-			await userEvent.click(getByTestId('promote-confirm-button'));
+				// The user confirmed nothing, because the dialog showed no list.
+				expect(api.promotePackage).toHaveBeenLastCalledWith(expect.anything(), 'environment-1', {});
+				expect(await findByTestId('promote-missing-changed')).toBeVisible();
+				expect(rows(getAllByTestId)).toEqual([
+					'CRM keyCredential · Used by Invoice reconciliation',
+					'Archive invoicesWorkflow · Used by Invoice reconciliation',
+				]);
+				expect(queryByTestId('promote-result-summary')).not.toBeInTheDocument();
+			});
 
-			// The answer has no revision, so the confirmation covers the list when the Promote runs.
-			await waitFor(() =>
-				expect(api.promotePackage).toHaveBeenLastCalledWith(expect.anything(), 'environment-1', {
-					confirmMissingDependencies: true,
-				}),
-			);
-			expect(await findByTestId('promote-result-not-included')).toHaveTextContent(
-				'1 dependency is not included.',
-			);
+			it('reads the check again and confirms the same list with its revision', async () => {
+				const { findByTestId, getByTestId } = await showListOfAnswer();
+				api.fetchPromoteCheck.mockResolvedValue(
+					promoteCheck({ missingDependencies: [otherProjectCredential] }),
+				);
+
+				await userEvent.click(getByTestId('promote-confirm-button'));
+
+				await waitFor(() =>
+					expect(api.promotePackage).toHaveBeenLastCalledWith(expect.anything(), 'environment-1', {
+						confirmMissingDependencies: true,
+						expectedPreviewRevision: REVISION,
+					}),
+				);
+				expect(await findByTestId('promote-result-not-included')).toHaveTextContent(
+					'1 dependency is not included.',
+				);
+			});
+
+			it('does not promote and shows the new list when the check has a different list', async () => {
+				const { findByRole, getAllByTestId, getByTestId, queryByTestId } = await showListOfAnswer();
+				api.fetchPromoteCheck.mockResolvedValue(
+					promoteCheck({ missingDependencies: [otherProjectCredential, outsideAccessWorkflow] }),
+				);
+
+				await userEvent.click(getByTestId('promote-confirm-button'));
+
+				expect(
+					await findByRole('heading', { name: 'Promote with 2 unresolved dependencies?' }),
+				).toBeVisible();
+				expect(api.promotePackage).toHaveBeenCalledTimes(1);
+				expect(getByTestId('promote-missing-changed')).toBeVisible();
+				expect(rows(getAllByTestId)).toHaveLength(2);
+				expect(queryByTestId('promote-result-summary')).not.toBeInTheDocument();
+				expect(mockShowError).not.toHaveBeenCalled();
+
+				await userEvent.click(getByTestId('promote-confirm-button'));
+
+				await waitFor(() =>
+					expect(api.promotePackage).toHaveBeenLastCalledWith(expect.anything(), 'environment-1', {
+						confirmMissingDependencies: true,
+						expectedPreviewRevision: REVISION,
+					}),
+				);
+			});
+
+			it('does not promote and keeps the list when the check fails again', async () => {
+				const { getAllByTestId, getByTestId, queryByTestId } = await showListOfAnswer();
+				const failure = new Error('The check is not available');
+				api.fetchPromoteCheck.mockRejectedValue(failure);
+
+				await userEvent.click(getByTestId('promote-confirm-button'));
+
+				await waitFor(() =>
+					expect(mockShowError).toHaveBeenCalledWith(failure, expect.any(String)),
+				);
+				expect(api.promotePackage).toHaveBeenCalledTimes(1);
+				expect(rows(getAllByTestId)).toHaveLength(2);
+				expect(queryByTestId('promote-result-summary')).not.toBeInTheDocument();
+				expect(getByTestId('promote-confirm-button')).toBeEnabled();
+			});
 		});
 
 		it('does not show the project of a dependency or of the workflows that use it', async () => {

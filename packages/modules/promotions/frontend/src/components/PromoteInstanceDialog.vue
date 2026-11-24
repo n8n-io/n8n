@@ -15,6 +15,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import isEqual from 'lodash/isEqual';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 
 import { httpUrl, notIncludedNote, warningSegments } from '../promotionResult';
@@ -154,19 +155,36 @@ function onOpenAutoFocus(event: Event) {
 	void nextTick(() => messageField.value?.focus());
 }
 
+/**
+ * The confirmation of the list that the dialog shows, with the revision of its check. `null` when
+ * the dialog now shows a different list. The user must see that list first.
+ */
+async function confirmShownList() {
+	const shown = unresolved.value;
+	// Without a list, as while the check loads, the Promote sends no confirmation.
+	if (shown.length === 0) return {};
+	let revision = reviewed.value?.revision;
+	if (!revision) {
+		// The list of a Promote that pushed nothing has no revision. A confirmation without a
+		// revision covers the list that the next Promote finds, so the check runs again first.
+		const current = ++generation;
+		const loaded = await fetchPromoteCheck(rootStore.publicApiContext, props.environmentId);
+		if (current !== generation) return null;
+		check.value = loaded;
+		if (!isEqual(loaded.missingDependencies, shown)) return null;
+		revision = loaded.revision;
+	}
+	return { confirmMissingDependencies: true, expectedPreviewRevision: revision };
+}
+
 async function submit() {
 	if (isSubmitting.value) return;
 
 	const message = commitMessage.value.trim();
-	// The user confirms only a list that the dialog shows. While the check loads, or after it
-	// failed, the Promote sends no confirmation.
-	const revision = reviewed.value?.revision;
-	const confirmation =
-		unresolved.value.length > 0
-			? { confirmMissingDependencies: true, ...(revision && { expectedPreviewRevision: revision }) }
-			: {};
 	isSubmitting.value = true;
 	try {
+		const confirmation = await confirmShownList();
+		if (!confirmation) return;
 		const answer = await promotePackage(rootStore.publicApiContext, props.environmentId, {
 			...(message && { commitMessage: message }),
 			...confirmation,
