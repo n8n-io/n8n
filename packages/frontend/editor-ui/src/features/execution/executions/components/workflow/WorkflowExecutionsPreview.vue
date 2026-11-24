@@ -234,14 +234,16 @@ watch(
 );
 
 // Runtime identity: name the agent when one of its workflow tools started this
-// execution. Published agents run their tools in `integrated` mode.
+// execution. A workflow tool runs in `integrated` mode (published chat and
+// channels) or `manual` mode (test chat and Message an Agent).
+const AGENT_TOOL_MODES = new Set(['integrated', 'manual']);
 const agentRun = ref<ExecutionAgentRun | null>(null);
 watch(
 	() => props.execution?.id,
 	async (executionId) => {
 		agentRun.value = null;
 		if (!executionId || !settingsStore.isAgentsRuntimeIdentityEnabled) return;
-		if (props.execution?.mode !== 'integrated') return;
+		if (!AGENT_TOOL_MODES.has(props.execution?.mode ?? '')) return;
 		try {
 			const run = await executionsStore.fetchExecutionAgentRun(executionId);
 			if (props.execution?.id === executionId) agentRun.value = run;
