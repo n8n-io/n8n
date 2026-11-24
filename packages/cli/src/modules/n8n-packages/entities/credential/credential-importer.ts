@@ -424,17 +424,23 @@ export class CredentialImporter {
 	/**
 	 * Writes the selected credentials that no workflow requires. A missing one is created empty
 	 * in the project. A renamed one keeps its stored values, because the write carries no package
-	 * data. Run after {@link planSelected} found no issue.
+	 * data. Run after {@link planSelected} found no issue. Returns the ids that it wrote.
 	 */
-	async applySelected(context: ImportContext, plan: CredentialImportPlan): Promise<void> {
+	async applySelected(
+		context: ImportContext,
+		plan: CredentialImportPlan,
+	): Promise<{ created: string[]; renamed: string[] }> {
+		const created: string[] = [];
+		const renamed: string[] = [];
 		for (const { sourceId, name, type } of plan.selected.creations) {
 			await this.credentialsService.createStubCredential(
 				{ id: sourceId, name, type, projectId: context.projectId },
 				context.user,
 			);
+			created.push(sourceId);
 		}
 		for (const { id, name, previousName } of plan.selected.renames) {
-			await this.writeUpdate(context, {
+			const written = await this.writeUpdate(context, {
 				sourceId: id,
 				targetId: id,
 				targetName: previousName,
@@ -444,7 +450,9 @@ export class CredentialImporter {
 				ownerProjectId: context.projectId,
 				name,
 			});
+			if (written) renamed.push(id);
 		}
+		return { created, renamed };
 	}
 
 	/**

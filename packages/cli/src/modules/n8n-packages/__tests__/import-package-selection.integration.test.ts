@@ -851,8 +851,13 @@ describe('importPackageSelectionFromDirectory with selected credentials', () => 
 	it('creates a missing credential without values in the project', async () => {
 		const project = await createTeamProject('Alpha', owner);
 
-		await importCredentials(project.id, [{ id: 'CRED1', name: 'GitHub' }], ['CRED1']);
+		const result = await importCredentials(
+			project.id,
+			[{ id: 'CRED1', name: 'GitHub' }],
+			['CRED1'],
+		);
 
+		expect(result.credentials.stubbed).toEqual(['CRED1']);
 		const stored = await Container.get(CredentialsRepository).findOneByOrFail({ id: 'CRED1' });
 		expect(stored.name).toBe('GitHub');
 		const sharing = await Container.get(SharedCredentialsRepository).findOneByOrFail({
@@ -883,8 +888,13 @@ describe('importPackageSelectionFromDirectory with selected credentials', () => 
 		};
 		const before = (await read()).data;
 
-		await importCredentials(project.id, [{ id: existing.id, name: 'New name' }], [existing.id]);
+		const result = await importCredentials(
+			project.id,
+			[{ id: existing.id, name: 'New name' }],
+			[existing.id],
+		);
 
+		expect(result.credentials.updated).toEqual([existing.id]);
 		const after = await read();
 		expect(after.row.name).toBe('New name');
 		expect(after.data).toEqual(before);
@@ -898,8 +908,13 @@ describe('importPackageSelectionFromDirectory with selected credentials', () => 
 			role: 'credential:owner',
 		});
 
-		await importCredentials(project.id, [{ id: foreign.id, name: 'New name' }], [foreign.id]);
+		const result = await importCredentials(
+			project.id,
+			[{ id: foreign.id, name: 'New name' }],
+			[foreign.id],
+		);
 
+		expect(result.credentials).toMatchObject({ stubbed: [], updated: [] });
 		const stored = await Container.get(CredentialsRepository).findOneByOrFail({ id: foreign.id });
 		expect(stored.name).toBe('Other name');
 	});

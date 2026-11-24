@@ -1182,8 +1182,9 @@ describe('CredentialImporter', () => {
 			credentialsService.createStubCredential.mockResolvedValue(mock<CredentialsEntity>());
 			const plan = await importer.plan(context, selectedRequest());
 
-			await importer.applySelected(context, plan);
+			const written = await importer.applySelected(context, plan);
 
+			expect(written).toEqual({ created: ['cred-sel'], renamed: [] });
 			expect(credentialsService.createStubCredential).toHaveBeenCalledWith(
 				{ id: 'cred-sel', name: 'Stripe', type: 'stripeApi', projectId: targetProject.id },
 				user,
