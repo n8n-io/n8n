@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { GymAdmin } from '../gym-admin';
 import type { McpCaller } from '../mcp-upstream';
-import { PlanHydrator } from '../plan-hydrator';
+import { nestDottedKeys, PlanHydrator } from '../plan-hydrator';
 
 class StubGymAdmin extends GymAdmin {
 	readonly seeds: unknown[] = [];
@@ -158,4 +158,25 @@ describe('PlanHydrator', () => {
 		// and no repair turn is triggered.
 		expect(llm).toHaveBeenCalledTimes(1);
 	});
+});
+
+describe('nestDottedKeys', () => {
+	it('nests a dotted key and merges it with the same level', () => {
+		expect(
+			nestDottedKeys({ native: { notion: { pages: [] } }, 'native.linear': { issues: [] } }),
+		).toEqual({ native: { notion: { pages: [] }, linear: { issues: [] } } });
+	});
+
+	it.each(['__proto__.polluted', 'constructor.prototype.polluted', 'native.__proto__.polluted'])(
+		'drops %s and does not touch any prototype',
+		(key) => {
+			const overlay = JSON.parse(`{"${key}": "yes", "native": {}}`) as Record<string, unknown>;
+
+			const out = nestDottedKeys(overlay);
+
+			expect(out).toEqual({ native: {} });
+			expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+			expect(Object.getPrototypeOf(out)).toBe(Object.prototype);
+		},
+	);
 });

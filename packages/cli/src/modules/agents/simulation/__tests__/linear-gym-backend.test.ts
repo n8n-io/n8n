@@ -149,6 +149,8 @@ function fakeServices() {
 			},
 		});
 
+	const deleted: Array<{ tenant: string; authorization: string | null }> = [];
+	let tenantAnswer: unknown;
 	vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
 		if (url === `${gymBase}/_sim/v1/manifest?service=linear`)
 			return reply({
@@ -156,8 +158,15 @@ function fakeServices() {
 				service: 'linear',
 				interfaces: { mcp: [{ url: 'https://mcp.linear.app/mcp', status: 'implemented' }] },
 			});
-		const body = JSON.parse(String(init.body));
 		const headers = new Headers(init.headers);
+		if (init.method === 'DELETE') {
+			const tenant = /^\/_sim\/v1\/tenants\/([^/]+)$/.exec(new URL(url).pathname);
+			if (!tenant) throw new Error(`Unexpected DELETE ${url}`);
+			deleted.push({ tenant: tenant[1], authorization: headers.get('authorization') });
+			titles.delete(tenant[1]);
+			return new Response(null, { status: 204 });
+		}
+		const body = JSON.parse(String(init.body));
 		if (url === upstreamUrl) {
 			upstreamTools.push(body.params.name);
 			if (upstreamDown) throw new Error('No prerequisite');
@@ -169,7 +178,7 @@ function fakeServices() {
 		if (tenant) {
 			if (tenant[2]) titles.set(tenant[1], body.native.linear.issues[0].title);
 			else titles.set(tenant[1], undefined);
-			return reply({ n8n_credentials: { linearApi: { apiKey: tenant[1] } } });
+			return reply(tenantAnswer ?? { n8n_credentials: { linearApi: { apiKey: tenant[1] } } });
 		}
 		if (pathname !== '/mcp') throw new Error(`Unexpected Gym path ${pathname}`);
 		const worldId = (headers.get('authorization') ?? '').replace('Bearer ', '');
@@ -184,6 +193,10 @@ function fakeServices() {
 	return {
 		upstreamTools,
 		gymTools,
+		deleted,
+		answerTenantWith: (value: unknown) => {
+			tenantAnswer = value;
+		},
 		failUpstream: () => {
 			upstreamDown = true;
 		},
@@ -382,3 +395,29 @@ it.skipIf(!process.env.GYM_BASE_URL)(
 		}
 	},
 );
+
+describe('LinearGymBackend world cleanup', () => {
+	const backend = new LinearGymBackend();
+
+	it('deletes the Gym tenant of a world when the world closes', async () => {
+		const services = fakeServices();
+		const world = await backend.openWorld(input);
+
+		await backend.closeWorld(world.worldId);
+
+		expect(services.deleted).toEqual([
+			{ tenant: world.worldId, authorization: 'Bearer synthetic-loopback-harness' },
+		]);
+	});
+
+	it('deletes the tenant when the world cannot open after the tenant was made', async () => {
+		const services = fakeServices();
+		services.answerTenantWith({ n8n_credentials: {} });
+
+		await expect(backend.openWorld(input)).rejects.toThrow(
+			'The local Linear fixture is unavailable.',
+		);
+
+		expect(services.deleted).toHaveLength(1);
+	});
+});
