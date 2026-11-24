@@ -1,10 +1,11 @@
 import { createTestingPinia } from '@pinia/testing';
+import { onTestFinished } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type {
 	FrontendSettings,
-	WorkflowReviewProject,
-	WorkflowReviewProjectList,
+	WorkflowReviewInstanceSettingsProject,
+	WorkflowReviewInstanceSettingsList,
 } from '@n8n/api-types';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 
@@ -40,7 +41,9 @@ const renderView = createComponentRenderer(WorkflowReviewProjectsView, {
 	pinia: createTestingPinia({ stubActions: false }),
 });
 
-function project(overrides: Partial<WorkflowReviewProject>): WorkflowReviewProject {
+function project(
+	overrides: Partial<WorkflowReviewInstanceSettingsProject>,
+): WorkflowReviewInstanceSettingsProject {
 	return {
 		id: 'p1',
 		name: 'Alpha',
@@ -52,14 +55,14 @@ function project(overrides: Partial<WorkflowReviewProject>): WorkflowReviewProje
 }
 
 function projectList(
-	data: WorkflowReviewProject[],
-	overrides: Partial<WorkflowReviewProjectList> = {},
-): WorkflowReviewProjectList {
+	data: WorkflowReviewInstanceSettingsProject[],
+	overrides: Partial<WorkflowReviewInstanceSettingsList> = {},
+): WorkflowReviewInstanceSettingsList {
 	return { count: data.length, data, managedByEnv: false, ...overrides };
 }
 
 /** Serves the list and the saves from `stored`, so a reload reads what a save wrote. */
-function serveStoredProjects(stored: WorkflowReviewProject[]) {
+function serveStoredProjects(stored: WorkflowReviewInstanceSettingsProject[]) {
 	getWorkflowReviewProjects.mockImplementation(
 		async (_context, query: { skip: number; take: number; requiredByInstance?: boolean }) => {
 			const matches = stored.filter(
@@ -158,6 +161,38 @@ describe('WorkflowReviewProjectsView', () => {
 		expect(showToast).not.toHaveBeenCalled();
 	});
 
+	it('keeps a saved option when an older list request returns after the save', async () => {
+		vi.useFakeTimers({ shouldAdvanceTime: true });
+		onTestFinished(() => {
+			vi.useRealTimers();
+		});
+		const stored = [
+			project({ id: 'p1', name: 'Alpha', requiredByInstance: true }),
+			project({ id: 'p2', name: 'Beta' }),
+		];
+		serveStoredProjects(stored);
+		const staleList = projectList(stored.map((row) => ({ ...row })));
+		const { getByTestId } = renderView();
+		await approvalSelect('Beta');
+
+		let returnStaleList: (list: WorkflowReviewInstanceSettingsList) => void = () => {};
+		getWorkflowReviewProjects.mockImplementationOnce(
+			async () => await new Promise((resolve) => (returnStaleList = resolve)),
+		);
+		await userEvent.type(getByTestId('workflow-review-projects-search'), 'a');
+		await vi.runAllTimersAsync();
+
+		await userEvent.click(await approvalSelect('Beta'));
+		await userEvent.click(await screen.findByRole('option', { name: 'Required' }));
+		await waitFor(() => expect(showToast).toHaveBeenCalled());
+		returnStaleList(staleList);
+		await vi.runAllTimersAsync();
+
+		const beta = await approvalSelect('Beta');
+		expect(beta).toHaveTextContent('Required');
+		expect(beta).not.toHaveTextContent('Not required');
+	});
+
 	describe('search and filter', () => {
 		beforeEach(() => {
 			vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -168,34 +203,6 @@ describe('WorkflowReviewProjectsView', () => {
 
 		afterEach(() => {
 			vi.useRealTimers();
-		});
-
-		it('keeps a saved option when an older list request returns after the save', async () => {
-			const stored = [
-				project({ id: 'p1', name: 'Alpha', requiredByInstance: true }),
-				project({ id: 'p2', name: 'Beta' }),
-			];
-			serveStoredProjects(stored);
-			const staleList = projectList(stored.map((row) => ({ ...row })));
-			const { getByTestId } = renderView();
-			await approvalSelect('Beta');
-
-			let returnStaleList: (list: WorkflowReviewProjectList) => void = () => {};
-			getWorkflowReviewProjects.mockImplementationOnce(
-				async () => await new Promise((resolve) => (returnStaleList = resolve)),
-			);
-			await userEvent.type(getByTestId('workflow-review-projects-search'), 'a');
-			await vi.runAllTimersAsync();
-
-			await userEvent.click(await approvalSelect('Beta'));
-			await userEvent.click(await screen.findByRole('option', { name: 'Required' }));
-			await waitFor(() => expect(showToast).toHaveBeenCalled());
-			returnStaleList(staleList);
-			await vi.runAllTimersAsync();
-
-			const beta = await approvalSelect('Beta');
-			expect(beta).toHaveTextContent('Required');
-			expect(beta).not.toHaveTextContent('Not required');
 		});
 
 		it('says when no project matches the search', async () => {

@@ -4173,21 +4173,18 @@ describe('LogStreamingEventRelay', () => {
 				false,
 				'n8n.audit.workflow-reviews.project-approval-required-by-instance.disabled',
 			],
-		])(
-			'should log the instance approval option %s for a project as `%s`',
-			(_option, requiredByInstance, eventName) => {
-				eventService.emit('project-workflow-review-required-by-instance-updated', {
-					user: reviewer,
-					projectId: 'project-1',
-					requiredByInstance,
-				});
+		])('should log %s for a project as `%s`', (_option, requiredByInstance, eventName) => {
+			eventService.emit('project-workflow-review-required-by-instance-updated', {
+				user: reviewer,
+				projectId: 'project-1',
+				requiredByInstance,
+			});
 
-				expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
-					eventName,
-					payload: { ...redactedReviewer, projectId: 'project-1' },
-				});
-			},
-		);
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName,
+				payload: { ...redactedReviewer, projectId: 'project-1' },
+			});
+		});
 	});
 
 	describe('redaction enforcement events', () => {
