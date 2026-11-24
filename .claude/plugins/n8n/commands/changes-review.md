@@ -53,4 +53,6 @@ Also run one **unbriefed run-it pass**. Start a fresh `general-purpose` agent. G
 
 **Routing.** Route a finding to "fix here" when the fix is small (tens of lines) and a human reviewer would raise it anyway; deferring it costs a review round. "Follow-up" is for work that needs its own design or crosses owners.
 
+**Probe the fix that you suggest.** A suggested fix is a claim. Before you list it, run it on the cases next to the case that showed the bug. Use a value below, at and above each limit that the fix adds. Let each side misbehave alone, then both together. If the fix ran on one example only, write "run on one case" next to it.
+
 Deduplicate overlapping findings and resolve contradictions, flagging any unresolved. Output the synthesis as your final message. Modify code only if I explicitly ask afterward.
