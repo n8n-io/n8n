@@ -170,14 +170,18 @@ registerKeyHook('NodeCreatorCloseEscape', {
 	handler: () => emit('closeNodeCreator'),
 });
 
-watch(
-	() => ({
-		httpOnlyCredentials: useCredentialsStore().httpOnlyCredentialTypes,
-		nodeTypes: useNodeTypesStore().visibleNodeTypes,
-	}),
-	({ nodeTypes, httpOnlyCredentials }) => {
-		const { actions, mergedNodes } = generateMergedNodesAndActions(nodeTypes, httpOnlyCredentials);
+// A computed tracks every store the generator reads, including type availability
+// policies that load after this component mounts.
+const mergedNodesAndActions = computed(() =>
+	generateMergedNodesAndActions(
+		useNodeTypesStore().visibleNodeTypes,
+		useCredentialsStore().httpOnlyCredentialTypes,
+	),
+);
 
+watch(
+	mergedNodesAndActions,
+	({ actions, mergedNodes }) => {
 		setActions(actions);
 		setMergeNodes(mergedNodes);
 	},

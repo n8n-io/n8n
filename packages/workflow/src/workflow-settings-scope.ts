@@ -43,6 +43,11 @@ export type VersionedWorkflowSettingKey = {
 
 export type VersionedWorkflowSettings = Pick<IWorkflowSettings, VersionedWorkflowSettingKey>;
 
+/** Tagged so the full workflow settings cannot reach a workflow history write. */
+export type StoredVersionedSettings = Required<VersionedWorkflowSettings> & {
+	readonly __brand: 'StoredVersionedSettings';
+};
+
 const isVersionedEntry = (
 	entry: [string, WorkflowSettingScope],
 ): entry is [VersionedWorkflowSettingKey, 'version'] => entry[1] === 'version';
@@ -67,8 +72,8 @@ const versionedSettingsSchema = z
  * Returns the version-scoped settings, with the default for each setting that is missing
  * or invalid. So a new version always stores its engine, and `v1` compares equal to no engine.
  */
-export function pickVersionedSettings(settings: unknown): Required<VersionedWorkflowSettings> {
-	return versionedSettingsSchema.parse(settings);
+export function pickVersionedSettings(settings: unknown): StoredVersionedSettings {
+	return versionedSettingsSchema.parse(settings) as StoredVersionedSettings;
 }
 
 export function versionedSettingsEqual(

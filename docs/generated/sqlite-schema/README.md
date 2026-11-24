@@ -136,6 +136,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [project_pool_settings](project_pool_settings.md) | 4 |  | table |
 | [project_relation](project_relation.md) | 5 |  | table |
 | [project_secrets_provider_access](project_secrets_provider_access.md) | 5 |  | table |
+| [project_workflow_review_settings](project_workflow_review_settings.md) | 5 |  | table |
 | [promotion_environment](promotion_environment.md) | 9 |  | table |
 | [promotion_environment_project](promotion_environment_project.md) | 5 |  | table |
 | [promotion_provider](promotion_provider.md) | 8 |  | table |
@@ -292,9 +293,9 @@ erDiagram
 "agents_tags" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "ai_builder_temporary_workflow" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "ai_builder_temporary_workflow" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"ai_preference" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"ai_preference" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "ai_preference" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"ai_preference" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"ai_preference" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "app" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "app" }o--o| "app_version" : "FOREIGN KEY (draftVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "app" }o--o| "app_version" : "FOREIGN KEY (publishedVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
@@ -403,6 +404,7 @@ erDiagram
 "project_relation" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "project_secrets_provider_access" |o--|| "secrets_provider_connection" : "FOREIGN KEY (secretsProviderConnectionId) REFERENCES secrets_provider_connection (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "project_secrets_provider_access" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"project_workflow_review_settings" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "promotion_environment" }o--|| "promotion_provider" : "FOREIGN KEY (providerId) REFERENCES promotion_provider (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 "promotion_environment_project" }o--|| "promotion_environment" : "FOREIGN KEY (environmentId) REFERENCES promotion_environment (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "promotion_environment_project" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -1827,6 +1829,13 @@ erDiagram
   varchar_36_ projectId PK
   varchar_128_ role
   INTEGER secretsProviderConnectionId PK
+  datetime_3_ updatedAt
+}
+"project_workflow_review_settings" {
+  datetime_3_ createdAt
+  varchar_36_ projectId PK
+  boolean requiredByInstance
+  boolean requiredByProject
   datetime_3_ updatedAt
 }
 "promotion_environment" {

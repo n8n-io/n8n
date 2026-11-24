@@ -31,6 +31,30 @@ const readOnly = (checked: boolean) => ({ checked, indeterminate: false, disable
 
 const cases: Case[] = [
 	{
+		name: 'a credential on Promote with the note that values are not promoted',
+		direction: 'promote',
+		resource: resource({
+			key: 'credential:c9',
+			name: 'CRM key',
+			parentKey: 'project:p1',
+			change: 'added',
+			selectable: true,
+		}),
+		shows: ['Credential values are not promoted'],
+	},
+	{
+		name: 'a credential on Apply without that note',
+		direction: 'apply',
+		resource: resource({
+			key: 'credential:c9',
+			name: 'CRM key',
+			parentKey: 'project:p1',
+			change: 'added',
+		}),
+		shows: ['CRM key'],
+		hides: ['Credential values are not promoted'],
+	},
+	{
 		name: 'a renamed project with its old and new name',
 		direction: 'promote',
 		resource: resource({ key: 'project:p1', name: 'Billing', change: 'modified' }),

@@ -35,10 +35,18 @@ flowchart LR
   names, and their groups.
 - `packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml` gives
   the operations. The `generate` script bundle it with Redocly into `dist/routes.yml`.
-- `packages/nodes-base/nodes/N8n/v2/overrides.ts` gives the decisions about the node:
-  - `exclude`: the operations that are not in the node, each with a reason.
-  - `flatten`: the operations that send one item of a list. See
+- `packages/nodes-base/nodes/N8n/v2/overrides.ts` gives the decisions about the node.
+  It has one entry for each `operationId` that needs a decision. An entry can have:
+  - `exclude`: the reason why the operation is not in the node.
+  - `flatten`: the list that the operation sends with one item. See
     [Send one item of a list](#send-one-item-of-a-list).
+  - `fields`: changes to the fields of the operation. See
+    [Change a field](#change-a-field).
+  - `default: true`: the operation is the default operation of its resource.
+
+  The entry `'*'` has only `fields`. These fields apply to all operations.
+  The file also exports `defaultResource`, the default resource of the node.
+  See [Defaults](#defaults).
 
 The generator makes these parts of the node:
 
@@ -46,11 +54,13 @@ The generator makes these parts of the node:
 |------|------|
 | Tag `Executions` | Resource `execution`, with the display name `Execution`. The generator makes the tag name and `x-displayName` singular |
 | `operationId` | Operation ID |
-| `summary` | Operation name. A deprecated operation gets ` (deprecated)` |
-| Required parameter | Required field, with the parameter name |
+| `summary` | Operation name in title case, and the action as it is. A deprecated operation gets ` (deprecated)` |
+| Parameter name | Field name. The display name is the parameter name in title case, for example `workflowVersionId` gives `Workflow Version ID` |
+| Parameter description | Field description, as it is in the spec |
+| Required parameter | Required field |
 | Optional parameter | Field in the `Options` collection. The node sends it only when the user adds it |
 | Path parameter | Part of the URL, through `toPathSegment`. A number path parameter, for example `executionId`, becomes a string field with an empty default |
-| `cursor` query parameter | `Return All` field. When it is off, `limit` sets the number of items |
+| `cursor` query parameter | `Return All` field. When it is off, `limit` sets the number of items, from 1. The node does not show `offset` |
 | Successful response without a body | The node returns `{ "success": true }` |
 
 The schema of a parameter gives the type and the default of its field. If the
@@ -62,24 +72,61 @@ The tests in `src/__tests__/build-properties.test.ts` show each rule.
 
 ### Add an operation to the node
 
-1. Remove the operation from `exclude` in
-   `packages/nodes-base/nodes/N8n/v2/overrides.ts`.
+1. Remove `exclude` from the entry of the operation in
+   `packages/nodes-base/nodes/N8n/v2/overrides.ts`. If the entry has no other
+   keys, remove the entry.
 2. Run `generate`. If it shows errors, correct them. See [Errors](#errors).
-3. Commit `overrides.ts` and `properties.generated.ts` together.
+3. If the operation sends a request in a way that no workflow test covers, for
+   example the first flattened list or the first empty response, add one test
+   to `packages/nodes-base/nodes/N8n/test/v2/node/N8nV2.test.ts`.
+4. Commit `overrides.ts` and `properties.generated.ts` together.
 
-To keep an operation out of the node, add its `operationId` to `exclude` and
-give a reason.
+To keep an operation out of the node, give its entry `exclude` with a reason.
 
 ### Send one item of a list
 
 Some operations take a list of objects, but in a workflow each item is one
 action. For example, `addUsersToProject` takes `relations`, a list of users and
-roles. With `flatten: { addUsersToProject: 'relations' }`, the fields of one
+roles. With `addUsersToProject: { flatten: 'relations' }`, the fields of one
 list item (`userId` and `role`) become fields of the node. The node sends a
 list with one item. To add two users, give the node two input items.
 
 Flatten only a list of independent actions. Do not flatten a list that sets the
 full new state, for example the tags of a workflow.
+
+### Defaults
+
+A saved workflow does not store the resource and the operation when they are
+equal to the default. The order of the list does not set the default:
+`defaultResource` sets the default resource, and `default: true` sets the
+default operation of a resource. Each resource in the node needs one operation
+with `default: true`. Without them, `generate` fails. Choose the defaults
+before the first release, and do not change them after it.
+
+### Change a field
+
+`fields` maps a parameter name to node field properties. The generator puts
+these properties over the field that it makes from the spec.
+
+```ts
+export const overrides = {
+	'*': { fields: { workflowId: workflowIdLocator } },
+	getWorkflow: { fields: { workflowId: { ...workflowIdLocator, description: 'Workflow to get' } } },
+	stopManyExecutions: { fields: { workflowId: { type: 'string' } } },
+};
+```
+
+- A field in `'*'` applies to each operation with a parameter of that name.
+- A field in the entry of an operation replaces the field from `'*'`. It does
+  not add to it. To change one property of the `'*'` field, spread the `'*'`
+  field into the new field.
+- `{ type: 'string' }` in an entry gives the field from the spec without the
+  `'*'` change.
+- Do not set `name`, `displayOptions`, `required`, or `routing`. The generator
+  sets them.
+- A resource locator on a path parameter gets the request URL, so that the URL
+  mode sends the ID. An operation can have one resource locator in its path.
+  The list mode needs its search method in `methods.listSearch` of the node.
 
 ## Limits
 
@@ -125,6 +172,8 @@ you add it to the node.
 | Add or remove the `cursor` parameter | `Return All` appears or disappears, and `limit` moves. |
 | Add a body to an empty response, or the opposite | The node returns different data. |
 | Add an operation to `flatten`, or remove it | The fields of the operation change. |
+| Change `defaultResource`, or move `default: true` to another operation | A workflow that kept the default gets another resource or operation. |
+| Add, change, or remove a field in `fields` or in `'*'` | The type, the default, or the stored format of the field can change. |
 | Remove an operation from the node or from the spec | The node cannot find the operation. |
 
 These changes are safe:
@@ -146,8 +195,17 @@ new version.
 ### Other limits
 
 - The generator writes one version of the node.
-- A field name is the API parameter name, and an operation name is the
-  `summary`. To change a text in the node, change it in the spec.
+- The texts of the node come from the spec: the field names come from the
+  parameter names, and the operation names come from the `summary`.
+- To change a text in the node, prefer a change in the spec to an entry in
+  `overrides.ts`. A change in the spec also corrects the API docs, and a text
+  change does not change the API. Use `fields` when the node needs a different
+  field, for example a resource locator, or a text that only the node needs.
+- The node lint checks the texts in `properties.generated.ts`. If it reports a
+  text, correct the text in the spec. For example, a description with one
+  sentence must not end with a period, and `id` must be `ID`. If the text
+  contains code, for example the field `id`, change the words around the code,
+  or give the node its own text in `fields`.
 
 ### Test version 2 locally
 
@@ -156,8 +214,8 @@ The editor does not show version 2 yet. To test it on your computer:
 1. In `packages/nodes-base/nodes/N8n/N8n.node.ts`, uncomment the import of
    `N8nV2` and the line `2: new N8nV2(baseDescription)`. Set `defaultVersion`
    to `2`.
-2. Remove the operations that you want to test from `exclude` and run
-   `generate`.
+2. Remove `exclude` from the entries of the operations that you want to test,
+   and run `generate`.
 3. Build `n8n-nodes-base` and start n8n:
 
    ```bash

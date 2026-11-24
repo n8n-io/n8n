@@ -10,28 +10,28 @@ export class ProjectTabsComponent {
 	async clickCredentialsTab() {
 		await this.page
 			.getByTestId('project-tabs')
-			.getByRole('link', { name: /credentials/i })
+			.getByRole('tab', { name: /credentials/i })
 			.click();
 	}
 
 	async clickWorkflowsTab() {
 		await this.page
 			.getByTestId('project-tabs')
-			.getByRole('link', { name: /workflows/i })
+			.getByRole('tab', { name: /workflows/i })
 			.click();
 	}
 
 	async clickDataTablesTab() {
 		await this.page
 			.getByTestId('project-tabs')
-			.getByRole('link', { name: /data tables/i })
+			.getByRole('tab', { name: /data tables/i })
 			.click();
 	}
 
 	async clickVariablesTab() {
 		await this.page
 			.getByTestId('project-tabs')
-			.getByRole('link', { name: /variables/i })
+			.getByRole('tab', { name: /variables/i })
 			.click();
 	}
 }

@@ -183,7 +183,8 @@ export class StepReadyHandler {
 			return;
 		}
 
-		// Before the settled event, or the execution could announce its end first.
+		// Before the settled event, so an orchestrator in this process cannot
+		// announce the execution's end first.
 		// Outputs ride along so a consumer needs no read to render them.
 		lifecycleEventPublisher.publish(
 			run.kind === 'outputs'
