@@ -1,0 +1,51 @@
+packages/cli/src/workflows/triggers/__tests__/workflow-trigger-activator.test.ts
+  s_7e504039b73188::t_1e29451bacff27 59,69-73
+  s_7e504039b73188::t_ffed0a8fa1a54d 1380-1385
+  s_7e504039b73188::t_76195c1fa35ca3 20
+  s_7e504039b73188::t_3157de271b7698 1414,1422,1427
+  s_7e504039b73188::t_81f8e8c7bc9522 1302-1303
+  s_7e504039b73188::t_e0dfb9042697f0 1342
+  s_7e504039b73188::t_5fdae08a2ee599 1410,1412,1417,1421,1423-1426,1428-1467,1469-1485,1495-1527,1597-1606,1608-1616
+  s_7e504039b73188::t_8d712c4ce9a837 1528-1545,1548-1577
+  s_7e504039b73188::t_f83c85331cfc67 1578-1596
+  s_7e504039b73188::t_4bdfe71daf5b43 1318
+  s_7e504039b73188::t_cd3622f723ed4f 81
+  s_7e504039b73188::t_b31b5686b579b7 1486-1491
+packages/core/src/execution-engine/__tests__/active-workflow-triggers.test.ts
+  s_7e504039b73188::t_c08f7d5e114c2c 1221-1239
+  s_7e504039b73188::t_e899e50f721005 1184-1220
+packages/core/src/execution-engine/active-workflow-triggers.ts
+  s_7e504039b73188::t_c9d00523958254 218-220,222-224
+  s_7e504039b73188::t_e944a4869e8c82 221
+packages/cli/src/workflows/triggers/workflow-trigger-activator.ts
+  s_7e504039b73188::t_cba990089e11ce 154-156
+  s_7e504039b73188::t_315baa923ccae8 45
+  s_7e504039b73188::t_428170752f9190 1066,1082-1096
+  s_7e504039b73188::t_dbfb02b381f8d8 1103-1106
+  s_7e504039b73188::t_e39de3346cecfd 6
+  s_7e504039b73188::t_0d6d12fb428407 1071,1075-1081,1099
+  s_7e504039b73188::t_8f8afef20b3a52 171
+  s_7e504039b73188::t_3d6eb78e990b47 12
+  s_7e504039b73188::t_775adac680bfc5 1039-1044,1046-1047,1053,1055,1057-1058,1060,1067-1070,1072-1074,1097,1100-1102,1107-1121
+  s_7e504039b73188::t_e7814b55bee54f 1010
+  s_7e504039b73188::t_ddc3a4012b38dd 31
+  s_7e504039b73188::t_b31b5686b579b7 1048-1052
+  s_7e504039b73188::t_cd1026aedeb199 1065
+  s_7e504039b73188::t_e119793cc901d6 1098
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4707701af8ab6885dfbebb8fc42700ddc6ddfb24",
+  "prompts": {},
+  "sessions": {
+    "s_7e504039b73188": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65dfb1ce-bf47-4b7e-a7af-3adac7fe13d3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
