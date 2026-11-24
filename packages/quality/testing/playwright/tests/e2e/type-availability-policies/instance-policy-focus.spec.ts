@@ -22,14 +22,16 @@ test.describe(
 
 		test.beforeEach(async ({ api }) => {
 			await prepareTypePolicyInstance(api);
-			await api.nodeTypePolicies.setInstancePolicy({
-				rules: [rule('deny', NO_OP.type)],
-				defaultAction: 'allow',
-			});
-			await api.credentialTypePolicies.setInstancePolicy({
-				rules: [rule('deny', SLACK_CREDENTIAL.type)],
-				defaultAction: 'allow',
-			});
+			await Promise.all([
+				api.nodeTypePolicies.setInstancePolicy({
+					rules: [rule('deny', NO_OP.type)],
+					defaultAction: 'allow',
+				}),
+				api.credentialTypePolicies.setInstancePolicy({
+					rules: [rule('deny', SLACK_CREDENTIAL.type)],
+					defaultAction: 'allow',
+				}),
+			]);
 		});
 
 		test('should return the focus to the node row when the row stays in the table', async ({
@@ -38,8 +40,7 @@ test.describe(
 			const page = n8n.instancePolicy;
 			await page.goto('node');
 			await page.search(NO_OP.type);
-			await page.getRowButton(NO_OP.type).focus();
-			await n8n.page.keyboard.press('Enter');
+			await page.openDialogFromRow(NO_OP.type);
 
 			await page.setDialogAccess('node', 'Allowed');
 			await page.getDoneButton('node').click();
@@ -54,8 +55,7 @@ test.describe(
 			const page = n8n.instancePolicy;
 			await page.goto('credential');
 			await page.search(SLACK_CREDENTIAL.type);
-			await page.getRowButton(SLACK_CREDENTIAL.type).focus();
-			await n8n.page.keyboard.press('Enter');
+			await page.openDialogFromRow(SLACK_CREDENTIAL.type);
 
 			await page.setDialogAccess('credential', 'Allowed');
 			await n8n.page.keyboard.press('Escape');
@@ -70,8 +70,7 @@ test.describe(
 			const page = n8n.instancePolicy;
 			await page.goto('node');
 			await page.filterByAccess('Restricted');
-			await page.getRowButton(NO_OP.type).focus();
-			await n8n.page.keyboard.press('Enter');
+			await page.openDialogFromRow(NO_OP.type);
 			const releaseSave = await page.holdPolicySaves('node');
 
 			await page.setDialogAccess('node', 'Allowed');
@@ -90,8 +89,7 @@ test.describe(
 			const page = n8n.instancePolicy;
 			await page.goto('node');
 			await page.filterByAccess('Restricted');
-			await page.getRowButton(NO_OP.type).focus();
-			await n8n.page.keyboard.press('Enter');
+			await page.openDialogFromRow(NO_OP.type);
 
 			await page.setDialogAccess('node', 'Allowed');
 			await expect(page.getRowButton(NO_OP.type)).toBeHidden();
@@ -107,8 +105,7 @@ test.describe(
 			const page = n8n.instancePolicy;
 			await page.goto('node');
 			await page.filterByAccess('Restricted');
-			await page.getRowButton(NO_OP.type).focus();
-			await n8n.page.keyboard.press('Enter');
+			await page.openDialogFromRow(NO_OP.type);
 
 			await page.setDialogAccess('node', 'Allowed');
 			await expect(page.getRowButton(NO_OP.type)).toBeHidden();
@@ -124,8 +121,7 @@ test.describe(
 			const page = n8n.instancePolicy;
 			await page.goto('credential');
 			await page.filterByAccess('Restricted');
-			await page.getRowButton(SLACK_CREDENTIAL.type).focus();
-			await n8n.page.keyboard.press('Enter');
+			await page.openDialogFromRow(SLACK_CREDENTIAL.type);
 
 			await page.setDialogAccess('credential', 'Allowed');
 			await expect(page.getRowButton(SLACK_CREDENTIAL.type)).toBeHidden();

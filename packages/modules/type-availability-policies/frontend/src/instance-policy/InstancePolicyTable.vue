@@ -200,27 +200,18 @@ watch(
 	},
 );
 
-// `N8nSelect2` exposes its trigger component, whose element is the focusable combobox.
-const filter = useTemplateRef<{ triggerRef?: { $el?: unknown } | null }>('filter');
-// Keeps the last button of each row. `returnFocus` skips one that has left the page.
-const rowButtons = new Map<string, HTMLElement>();
-
-function setRowButton(name: string, element: unknown) {
-	if (element instanceof HTMLElement) rowButtons.set(name, element);
-}
+const filter = useTemplateRef<{ focus: () => void }>('filter');
+const root = useTemplateRef<HTMLElement>('root');
 
 /**
  * Puts the focus on the name button of a type. When its row is not on the page, the focus goes to the
  * access filter, which decides which rows the table shows.
  */
 function returnFocus(name: string | undefined) {
-	const button = name === undefined ? undefined : rowButtons.get(name);
-	if (button?.isConnected) {
-		button.focus();
-		return;
-	}
-	const trigger = filter.value?.triggerRef?.$el;
-	if (trigger instanceof HTMLElement) trigger.focus();
+	const buttons = root.value?.querySelectorAll<HTMLElement>('[data-type-name]') ?? [];
+	const button = [...buttons].find((element) => element.dataset.typeName === name);
+	if (button) button.focus();
+	else filter.value?.focus();
 }
 
 // A change of access can take the focused row out of the table, or move it when the table is sorted
@@ -229,7 +220,7 @@ watch(
 	pageRows,
 	async () => {
 		const focused = document.activeElement;
-		const focusedRow = [...rowButtons].find(([, button]) => button === focused)?.[0];
+		const focusedRow = focused instanceof HTMLElement ? focused.dataset.typeName : undefined;
 		if (focusedRow === undefined) return;
 		await nextTick();
 		if (document.activeElement === document.body) returnFocus(focusedRow);
@@ -267,7 +258,7 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 </script>
 
 <template>
-	<div :class="$style.table">
+	<div ref="root" :class="$style.table">
 		<div :class="$style.controls">
 			<slot name="toolbar-start" />
 			<N8nInput
@@ -311,10 +302,10 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 			<template #[`item.displayName`]="{ item }">
 				<!-- A row is not focusable, so the name is the button that keyboard users reach. -->
 				<button
-					:ref="(element) => setRowButton(item.name, element)"
 					type="button"
 					:class="$style.name"
 					:data-test-id="`instance-policy-open-${item.name}`"
+					:data-type-name="item.name"
 					@click.stop="emit('open', item.name)"
 				>
 					<N8nNodeIcon v-bind="item.icon" :size="20" :class="$style.nameIcon" />

@@ -12,7 +12,7 @@ export class InstancePolicyPage extends BasePage {
 
 	/** The table lists every type, so a row past the first page needs a search. */
 	async search(text: string) {
-		await this.page.getByTestId('instance-policy-search').fill(text);
+		await this.fillByTestId('instance-policy-search', text);
 	}
 
 	getAccessFilter(): Locator {
@@ -37,6 +37,12 @@ export class InstancePolicyPage extends BasePage {
 			.getByRole('menuitemcheckbox', { name: access, exact: true })
 			.or(this.page.getByRole('menuitem', { name: access, exact: true }))
 			.click();
+	}
+
+	/** Opens the access dialog of a type from the keyboard, so the dialog has a trigger to return to. */
+	async openDialogFromRow(typeName: string) {
+		await this.getRowButton(typeName).focus();
+		await this.page.keyboard.press('Enter');
 	}
 
 	getDialog(kind: TypeKind): Locator {

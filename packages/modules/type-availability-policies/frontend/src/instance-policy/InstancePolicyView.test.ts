@@ -9,6 +9,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import InstancePolicyView from './InstancePolicyView.vue';
 import { useInstancePolicyStore } from './instance-policy.store';
+import { accessFilter } from '../__tests__/table';
 import { POLICIES_LANDING_VIEW } from '../type-availability-policies.constants';
 
 const { route, push, replace, fetchInstancePolicy, fetchInstanceAccess } = vi.hoisted(() => ({
@@ -414,8 +415,6 @@ describe('InstancePolicyView', () => {
 			dialog.focus();
 			await fireEvent.click(dialog);
 		};
-		const filterOf = (getByRole: (role: string, options?: object) => HTMLElement) =>
-			getByRole('combobox', { name: 'Filter by access' });
 
 		it('returns the focus to the row of the type', async () => {
 			const { getByTestId, findByTestId } = setup(BOTH_SCOPES, NODE_DIALOG);
@@ -437,7 +436,7 @@ describe('InstancePolicyView', () => {
 
 			await closeFromInside(getByTestId('node-type-access-dialog'));
 
-			expect(filterOf(getByRole)).toHaveFocus();
+			expect(accessFilter(getByRole)).toHaveFocus();
 		});
 
 		it('returns the focus on the Credentials tab too', async () => {

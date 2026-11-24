@@ -64,27 +64,10 @@ const details = computed(() => {
 });
 
 // Only one tab renders at a time, so both share this ref.
-const tab = useTemplateRef<{ returnFocus: (name: string | undefined) => void }>('tab');
+const tab = useTemplateRef<InstanceType<typeof NodeTypesTab | typeof CredentialTypesTab>>('tab');
 
 function openDetails(name: string) {
 	void router.replace({ query: { ...route.query, tab: activeTab.value, details: name } });
-}
-
-// Kept after the dialog closes, because its close runs once `details` no longer names it.
-let dialogType: string | undefined;
-watch(
-	details,
-	(value) => {
-		if (value) dialogType = value.name;
-	},
-	{ immediate: true },
-);
-
-// The dialog would return the focus later, to the element that had it when the dialog opened. A
-// change of access can take that row out of the filtered table by then, and a link has no such element.
-function onDialogCloseAutoFocus(event: Event) {
-	event.preventDefault();
-	tab.value?.returnFocus(dialogType);
 }
 
 function queryWithoutDetails() {
@@ -92,8 +75,19 @@ function queryWithoutDetails() {
 	return query;
 }
 
+// The dialog's close focus runs after `details` no longer names it, so the close keeps the name.
+let closedType: string | undefined;
+
 function closeDetails() {
+	closedType = details.value?.name;
 	void router.replace({ query: queryWithoutDetails() });
+}
+
+// The dialog would return the focus later, to the element that had it when the dialog opened. A
+// change of access can take that row out of the filtered table by then, and a link has no such element.
+function onDialogCloseAutoFocus(event: Event) {
+	event.preventDefault();
+	tab.value?.returnFocus(closedType);
 }
 
 // The server lists every type of a kind, so the dialog of a name that it does not list closes. The

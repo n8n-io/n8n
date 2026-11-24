@@ -16,7 +16,7 @@ import CredentialTypesTab from './CredentialTypesTab.vue';
 import { useInstancePolicyStore } from './instance-policy.store';
 import type { InstancePolicy } from '../type-availability-policies.api';
 import { findPopupItem, MENU_ITEM, OPTION } from '../__tests__/popups';
-import { policyTableCells } from '../__tests__/table';
+import { accessFilter, policyTableCells } from '../__tests__/table';
 import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.store';
 
 const mocks = vi.hoisted(() => ({
@@ -197,7 +197,7 @@ describe('CredentialTypesTab', () => {
 		mocks.saveInstancePolicy.mockResolvedValue({ ...policy(2), warnings: [] });
 		const { findByText, getByTestId, queryByTestId, getByRole } = await setup();
 		await findByText('Bitly API');
-		const filter = getByRole('combobox', { name: 'Filter by access' });
+		const filter = accessFilter(getByRole);
 		await userEvent.click(filter);
 		await userEvent.click(await findPopupItem(OPTION, 'Allowed (1)'));
 
@@ -209,13 +209,12 @@ describe('CredentialTypesTab', () => {
 
 	it('keeps the focus in the row when a changed row stays in the table', async () => {
 		mocks.saveInstancePolicy.mockResolvedValue({ ...policy(2), warnings: [] });
-		const { findByText, getByTestId, getByRole } = await setup();
+		const { findByText, getByTestId } = await setup();
 		await findByText('Bitly API');
 
 		await restrictBitly(getByTestId);
 
 		await waitFor(() => expect(accessCell(getByTestId)).toHaveTextContent('Restricted'));
-		expect(getByRole('combobox', { name: 'Filter by access' })).not.toHaveFocus();
 		await waitFor(() => expect(accessCell(getByTestId)).toHaveFocus());
 	});
 

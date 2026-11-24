@@ -6,6 +6,7 @@ import { describe, it, expect } from 'vitest';
 
 import InstancePolicyTable, { type InstancePolicyTableRow } from './InstancePolicyTable.vue';
 import { findPopupItem, MENU_ITEM, OPTION, popupLabels } from '../__tests__/popups';
+import { accessFilter } from '../__tests__/table';
 
 const row = (
 	name: string,
@@ -46,11 +47,8 @@ const setup = (rows = ROWS) =>
 const accessTrigger = (getByTestId: (id: string) => HTMLElement, name: string) =>
 	getByTestId(`instance-policy-access-${name}`);
 
-const filterTrigger = (getByRole: (role: string, options?: object) => HTMLElement) =>
-	getByRole('combobox', { name: 'Filter by access' });
-
 const openFilter = async (getByRole: (role: string, options?: object) => HTMLElement) =>
-	await userEvent.click(filterTrigger(getByRole));
+	await userEvent.click(accessFilter(getByRole));
 
 const rowNames = (container: HTMLElement) =>
 	Array.from(container.querySelectorAll<HTMLTableRowElement>('tbody tr'), (tableRow) =>
@@ -354,7 +352,7 @@ describe('InstancePolicyTable', () => {
 			await rerender({ rows: [row('bitlyApi', 'Bitly API', 'allow'), ...ROWS.slice(1)] });
 
 			expect(queryByTestId('instance-policy-open-bitlyApi')).not.toBeInTheDocument();
-			await waitFor(() => expect(filterTrigger(getByRole)).toHaveFocus());
+			await waitFor(() => expect(accessFilter(getByRole)).toHaveFocus());
 		});
 
 		it('keeps the focus on the search box while the search changes the rows', async () => {
@@ -380,14 +378,13 @@ describe('InstancePolicyTable', () => {
 		});
 
 		it('does not move the focus of a control that is not a row', async () => {
-			const { getByTestId, getByRole, rerender } = setup(paginationRows(30));
+			const { getByTestId, rerender } = setup(paginationRows(30));
 			getByTestId('pagination-next').focus();
 
 			// With ten rows or fewer, the table shows no pagination.
 			await rerender({ rows: paginationRows(5) });
 
 			expect(document.activeElement).toBe(document.body);
-			expect(filterTrigger(getByRole)).not.toHaveFocus();
 		});
 
 		it('does not move a focus that is outside the table', async () => {
