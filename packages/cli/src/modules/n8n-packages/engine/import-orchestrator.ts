@@ -572,7 +572,11 @@ export class ImportOrchestrator {
 		const agentBlockers = publishingBlockers(plan, credentialBindResult, 'agent');
 
 		const { outcomes, bindings } = await this.workflowImporter.apply(
-			{ ...context, droppedTagIds: droppedTagIds(tagPlan) },
+			{
+				...context,
+				droppedTagIds: droppedTagIds(tagPlan),
+				unresolvedCredentials: unresolvedCredentials(credentialRequest),
+			},
 			workflowPlan,
 			createBindings({
 				credentials: credentialBindResult.bindings,
@@ -796,6 +800,16 @@ function withoutChannelOnlyConsumers<
 			),
 		}))
 		.filter((requirement) => requirement.usedBy.length > 0);
+}
+
+/** The credentials that the request lets stay unresolved, with the name on their requirement row. */
+function unresolvedCredentials({
+	allowUnresolvedIds,
+	requirements,
+}: CredentialBindingRequest): Map<string, string | undefined> | undefined {
+	if (!allowUnresolvedIds?.size) return undefined;
+	const names = new Map((requirements ?? []).map(({ id, name }) => [id, name]));
+	return new Map([...allowUnresolvedIds].map((id) => [id, names.get(id)]));
 }
 
 function publishingBlockers(

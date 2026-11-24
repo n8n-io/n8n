@@ -1,6 +1,6 @@
 import { WorkflowEntity, type OperationContext, type User } from '@n8n/db';
 import type { SecurityContext } from '@n8n/permissions';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse, type INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type {
@@ -121,6 +121,8 @@ describe('WorkflowImporter.apply', () => {
 			['folder-1'],
 			[createEntity],
 			bindings.credentials,
+			// The import leaves no credential unresolved.
+			undefined,
 		);
 		expect(createWorkflow).toHaveBeenCalledWith(
 			user,
@@ -179,6 +181,97 @@ describe('WorkflowImporter.apply', () => {
 		await importer.apply(context, plan, bindings);
 
 		expect(prepareBatchContext).not.toHaveBeenCalled();
+	});
+
+	it('gives the credentials that the import leaves unresolved to each workflow write, and keeps their references', async () => {
+		const prepareBatchContext = vi.fn<WorkflowCreationService['prepareBatchContext']>();
+		const createWorkflow = vi.fn<WorkflowCreationService['createWorkflow']>();
+		const updateWorkflow = vi.fn<WorkflowService['update']>();
+		const importer = new WorkflowImporter(
+			mock<WorkflowImportMatchService>(),
+			mock<WorkflowCreationService>({ prepareBatchContext, createWorkflow }),
+			mock<WorkflowService>({ update: updateWorkflow }),
+			mock<WorkflowFinderService>(),
+		);
+		const usesCredentials = (id: string) => {
+			const workflow = makeWorkflow(id);
+			workflow.nodes = [
+				{
+					id: 'http',
+					name: 'HTTP',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+					// A package workflow holds a credential reference without its name.
+					credentials: {
+						httpHeaderAuth: { id: 'unresolved' },
+						httpBasicAuth: { id: 'matched' },
+					} as unknown as INode['credentials'],
+				},
+			];
+			return workflow;
+		};
+		const existing = makeWorkflow('existing');
+		const item = {
+			parentFolderId: null,
+			sourcePublished: false,
+			sourceArchived: false,
+			publishingAction: 'noop',
+		} as const;
+		const plan: WorkflowImportPlan = {
+			items: [
+				{
+					...item,
+					action: 'create',
+					sourceWorkflowId: 'source-create',
+					entity: usesCredentials('source-create'),
+					decidedId: 'source-create',
+				},
+				{
+					...item,
+					action: 'update',
+					archiveTransition: null,
+					sourceWorkflowId: 'source-update',
+					entity: usesCredentials('source-update'),
+					existing,
+				},
+			] satisfies WorkflowPlanItem[],
+			conflicts: [],
+			lineageConflicts: [],
+			idConflicts: [],
+			folderConflicts: [],
+			archiveForbidden: [],
+		};
+		const unresolvedCredentials = new Map([['unresolved', 'Name on the source']]);
+		const unresolvedCredentialIds = new Set(['unresolved']);
+		const credentials = new Map([['matched', 'target']]);
+		createWorkflow.mockResolvedValue(makeWorkflow('created'));
+		updateWorkflow.mockResolvedValue(existing);
+
+		await importer.apply({ ...context, unresolvedCredentials }, plan, {
+			...bindings,
+			credentials,
+		});
+
+		expect(prepareBatchContext).toHaveBeenCalledExactlyOnceWith(
+			user,
+			'project-1',
+			['fallback-folder'],
+			[plan.items[0].entity],
+			credentials,
+			unresolvedCredentialIds,
+		);
+		expect(updateWorkflow.mock.calls[0][3]).toMatchObject({
+			allowMissingCredentialIds: unresolvedCredentialIds,
+		});
+		for (const written of [createWorkflow.mock.calls[0][1], updateWorkflow.mock.calls[0][1]]) {
+			// The reference keeps its id and takes the name of its requirement row.
+			expect(written.nodes[0].credentials).toEqual({
+				httpHeaderAuth: { id: 'unresolved', name: 'Name on the source' },
+				httpBasicAuth: { id: 'target' },
+			});
+		}
 	});
 
 	it('applies credential bindings recursively to inline workflows', async () => {

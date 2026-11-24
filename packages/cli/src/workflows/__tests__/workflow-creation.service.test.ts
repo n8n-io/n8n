@@ -179,6 +179,39 @@ describe('WorkflowCreationService', () => {
 				['credential:read'],
 			);
 			expect(context.allowedCredentialIds).toEqual(new Set(['target-credential']));
+			expect(enterpriseWorkflowServiceMock.findMissingCredentialIds).not.toHaveBeenCalled();
+		});
+
+		it('allows a credential that a package import leaves unresolved only while no credential has its id', async () => {
+			const user = mock<User>();
+			const project = { id: 'project-1' } as Project;
+			projectServiceMock.getProjectWithScope.mockResolvedValue(project);
+			folderServiceMock.getFoldersByIds.mockResolvedValue([]);
+			credentialsFinderServiceMock.findCredentialIdsWithScopeForUser.mockResolvedValue(
+				new Set(['usable']),
+			);
+			mcpSettingsService.getAutoExposeNewWorkflows.mockResolvedValue(false);
+			enterpriseWorkflowServiceMock.collectCredentialReferences.mockReturnValue({
+				ids: new Set(['usable', 'missing', 'exists-without-access', 'not-allowed']),
+				hasUnresolved: false,
+				hasUninspectableSource: false,
+			});
+			enterpriseWorkflowServiceMock.findMissingCredentialIds.mockResolvedValue(['missing']);
+
+			const context = await workflowCreationService.prepareBatchContext(
+				user,
+				project.id,
+				[],
+				[makeWorkflow()],
+				new Map(),
+				new Set(['missing', 'exists-without-access', 'not-referenced']),
+			);
+
+			expect(enterpriseWorkflowServiceMock.findMissingCredentialIds).toHaveBeenCalledWith([
+				'missing',
+				'exists-without-access',
+			]);
+			expect(context.allowedCredentialIds).toEqual(new Set(['usable', 'missing']));
 		});
 
 		it.each([new Error('cache down'), 'cache down'])(

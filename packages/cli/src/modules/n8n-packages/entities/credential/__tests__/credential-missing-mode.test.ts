@@ -1,4 +1,8 @@
-import { credentialBlockingFailures, credentialsToStub } from '../credential-missing-mode';
+import {
+	canStayUnresolved,
+	credentialBlockingFailures,
+	credentialsToStub,
+} from '../credential-missing-mode';
 import { createFailure } from '../credential.types';
 
 describe('credentialBlockingFailures', () => {
@@ -165,5 +169,30 @@ describe('credentialsToStub', () => {
 				failures: [notFound('cred-1', ['wf-1']), other, repeated],
 			}),
 		).toEqual([repeated, other]);
+	});
+});
+
+describe('canStayUnresolved', () => {
+	const failure = createFailure(
+		{ id: 'cred-1', name: 'X', type: 'githubApi', usedBy: [{ kind: 'workflow', id: 'wf-1' }] },
+		'not_found',
+	);
+
+	it('accepts a credential that the request allows and that the matcher did not find', () => {
+		expect(canStayUnresolved(failure, new Set(['cred-1']))).toBe(true);
+	});
+
+	it.each([
+		['the request allows no credential', failure, undefined],
+		['the request allows other credentials', failure, new Set(['cred-2'])],
+		[
+			'an explicit binding names the target',
+			{ ...failure, targetId: 'target' },
+			new Set(['cred-1']),
+		],
+		['the type is unknown', { ...failure, kind: 'unknown_type' as const }, new Set(['cred-1'])],
+		['the type differs', { ...failure, kind: 'type_mismatch' as const }, new Set(['cred-1'])],
+	])('refuses when %s', (_case, candidate, allowedIds) => {
+		expect(canStayUnresolved(candidate, allowedIds)).toBe(false);
 	});
 });

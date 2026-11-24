@@ -386,6 +386,9 @@ export class ProjectPackageImporter {
 			personalRoute: request.credentialPersonalRoute,
 			packageCredentials: importWide.packageCredentials,
 			updateScope: importWide.credentialUpdateScope,
+			...(request.allowUnresolvedCredentialIds?.length
+				? { allowUnresolvedIds: new Set(request.allowUnresolvedCredentialIds) }
+				: {}),
 		};
 
 		const dataTableRequest: DataTableImportRequest = {

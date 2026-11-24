@@ -76,6 +76,24 @@ describe('ImportPackageSelectionRequestDto', () => {
 		expect(ImportPackageSelectionRequestDto.safeParse(rest).success).toBe(false);
 	});
 
+	it('rejects the promotion-only allowUnresolvedCredentialIds field', () => {
+		const result = ImportPackageSelectionRequestDto.safeParse({
+			...base,
+			allowUnresolvedCredentialIds: '["credential-1"]',
+		});
+
+		expect(result.success).toBe(false);
+		expect(result.error?.issues).toEqual([
+			expect.objectContaining({
+				code: 'unrecognized_keys',
+				keys: ['allowUnresolvedCredentialIds'],
+			}),
+		]);
+		expect(IMPORT_PACKAGE_SELECTION_REQUEST_FORM_FIELDS).not.toContain(
+			'allowUnresolvedCredentialIds',
+		);
+	});
+
 	it('rejects an absent selectedWorkflowIds key', () => {
 		const { selectedWorkflowIds: _selectedWorkflowIds, ...rest } = base;
 		expect(ImportPackageSelectionRequestDto.safeParse(rest).success).toBe(false);

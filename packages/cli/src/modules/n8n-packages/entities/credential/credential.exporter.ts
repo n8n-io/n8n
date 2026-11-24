@@ -43,6 +43,11 @@ export interface CredentialExportRequest {
 	 * manifest entry but no requirement row. An id that a requirement already covers is skipped.
 	 */
 	additionalCredentialIds?: string[];
+	/**
+	 * Writes a required credential only when a project of `projectTargetsById` owns it. Another
+	 * required credential keeps its requirement row and gets no file.
+	 */
+	omitCredentialsOutsideExportedProjects?: boolean;
 }
 
 export interface CredentialExportResult {
@@ -80,7 +85,7 @@ export class CredentialExporter {
 				type: fallback.credentialType,
 			};
 
-			if (credential) {
+			if (credential && this.isWritten(credential, request)) {
 				entries.push(await this.writeCredential(credential, request, includeDescription));
 			}
 
@@ -168,6 +173,13 @@ export class CredentialExporter {
 			exported[name] = value;
 		}
 		return exported;
+	}
+
+	/** A promotion carries a credential only inside the project that owns it. */
+	private isWritten(credential: CredentialsEntity, request: CredentialExportRequest): boolean {
+		if (!request.omitCredentialsOutsideExportedProjects) return true;
+		const ownerProjectId = this.ownerProjectId(credential);
+		return ownerProjectId !== undefined && !!request.projectTargetsById?.has(ownerProjectId);
 	}
 
 	/** A credential has no owner column: its owner is the project on the `credential:owner` sharing. */

@@ -13,6 +13,21 @@ export function canStubNotFoundFailure(failure: CredentialResolutionFailure): bo
 }
 
 /**
+ * Whether the request lets this reference stay unresolved: the matcher looked for the
+ * credential that the package names, and found none that the project can use.
+ */
+export function canStayUnresolved(
+	failure: CredentialResolutionFailure,
+	allowedIds: ReadonlySet<string> | undefined,
+): boolean {
+	return (
+		failure.kind === 'not_found' &&
+		failure.targetId === undefined &&
+		allowedIds?.has(failure.sourceId) === true
+	);
+}
+
+/**
  * Classifies which unresolved credential references block the import, per missing-mode
  * policy. Read-only — never writes.
  */

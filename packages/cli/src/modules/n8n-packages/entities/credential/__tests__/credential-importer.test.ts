@@ -75,6 +75,7 @@ describe('CredentialImporter', () => {
 			conflictPolicy?: CredentialBindingRequest['conflictPolicy'];
 			packageCredentials?: CredentialBindingRequest['packageCredentials'];
 			updateScope?: CredentialBindingRequest['updateScope'];
+			allowUnresolvedIds?: CredentialBindingRequest['allowUnresolvedIds'];
 		} = {},
 	): CredentialBindingRequest => ({
 		requirements,
@@ -84,6 +85,7 @@ describe('CredentialImporter', () => {
 		conflictPolicy: options.conflictPolicy ?? 'keep-existing',
 		packageCredentials: options.packageCredentials,
 		updateScope: options.updateScope ?? { projectIds: new Set([targetProject.id]) },
+		...(options.allowUnresolvedIds ? { allowUnresolvedIds: options.allowUnresolvedIds } : {}),
 	});
 
 	const emptyPlan = (): CredentialImportPlan => ({
@@ -266,6 +268,117 @@ describe('CredentialImporter', () => {
 				targetId: 'target-missing',
 			},
 		]);
+	});
+
+	describe('credentials that can stay unresolved', () => {
+		const allowed = packageCredential({ id: 'cred-allowed' });
+		const other = packageCredential({ id: 'cred-other' });
+		const allowUnresolvedIds = new Set([allowed.id]);
+		const member = mock<User>({ id: 'user-2', role: { slug: 'global:member', scopes: [] } });
+
+		it('raises no failure and creates nothing for an allowed id that this instance does not hold', async () => {
+			const request = bindingRequest([allowed, other], { allowUnresolvedIds });
+
+			const plan = await importer.plan(context, request);
+			const result = await importer.apply(context, request, plan);
+
+			// Another id still fails.
+			const failure = notFoundFailure(other, { reason: 'not-on-instance' });
+			expect(plan.failures).toEqual([failure]);
+			expect(importer.blockingFailures(request, plan)).toEqual([failure]);
+			expect(plan.stubIds.size).toBe(0);
+			expect(result).toEqual({
+				bindings: new Map(),
+				matched: [],
+				stubbed: [],
+				seeded: [],
+				incomplete: [],
+			});
+			expect(credentialsService.createStubCredential).not.toHaveBeenCalled();
+		});
+
+		it('plans a stub for the other missing credentials only, in a mode that creates credentials', async () => {
+			const request = bindingRequest([allowed, other], {
+				missingMode: 'create-stub',
+				allowUnresolvedIds,
+			});
+			credentialsService.createStubCredential.mockResolvedValue({ id: other.id } as never);
+
+			const plan = await importer.plan(context, request);
+			const result = await importer.apply(context, request, plan);
+
+			expect([...plan.stubIds.keys()]).toEqual([other.id]);
+			expect(credentialsService.createStubCredential).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ id: other.id }),
+				user,
+			);
+			expect(result.stubbed).toEqual([other.id]);
+		});
+
+		it('does not depend on what the user can read', async () => {
+			const request = bindingRequest([allowed], { allowUnresolvedIds });
+
+			const plan = await importer.plan({ ...context, user: member }, request);
+
+			expect(plan.failures).toEqual([]);
+			expect(credentialsService.findUsageScopes).toHaveBeenCalledExactlyOnceWith([allowed.id]);
+		});
+
+		it.each([
+			['a user who can read all credentials', user, { reason: 'access-required' as const }],
+			['a user who cannot', member, {}],
+		])(
+			'still fails for an allowed id of a credential that exists on this instance, for %s',
+			async (_case, actor, reason) => {
+				credentialsService.findUsageScopes.mockResolvedValue(new Map([[allowed.id, 'project']]));
+				const request = bindingRequest([allowed], { allowUnresolvedIds });
+
+				const plan = await importer.plan({ ...context, user: actor }, request);
+
+				expect(importer.blockingFailures(request, plan)).toEqual([
+					notFoundFailure(allowed, reason),
+				]);
+			},
+		);
+
+		it('still fails for an allowed id that an explicit binding sends to a credential the project cannot use', async () => {
+			const request = bindingRequest([allowed], {
+				allowUnresolvedIds,
+				credentialBindings: new Map([[allowed.id, 'target-missing']]),
+			});
+
+			const plan = await importer.plan(context, request);
+
+			expect(importer.blockingFailures(request, plan)).toEqual([
+				notFoundFailure(allowed, { reason: 'not-on-instance', targetId: 'target-missing' }),
+			]);
+		});
+
+		it('still fails for an allowed id of a credential type that this instance does not know', async () => {
+			credentialTypes.recognizes.mockReturnValue(false);
+			const request = bindingRequest([allowed], { allowUnresolvedIds });
+
+			const plan = await importer.plan(context, request);
+
+			expect(importer.blockingFailures(request, plan)).toEqual([
+				expect.objectContaining({ kind: 'unknown_type', sourceId: allowed.id }),
+			]);
+		});
+
+		it.each([[undefined], [new Set<string>()]])(
+			'fails for every missing credential when the option is %o, and reads nothing more',
+			async (ids) => {
+				const request = bindingRequest([allowed, other], { allowUnresolvedIds: ids });
+
+				const plan = await importer.plan({ ...context, user: member }, request);
+
+				expect(importer.blockingFailures(request, plan)).toEqual([
+					notFoundFailure(allowed),
+					notFoundFailure(other),
+				]);
+				expect(credentialsService.findUsageScopes).not.toHaveBeenCalled();
+			},
+		);
 	});
 
 	describe('create-stub', () => {

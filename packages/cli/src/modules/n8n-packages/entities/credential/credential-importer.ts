@@ -22,6 +22,7 @@ import {
 } from './credential-conflict-policy';
 import { CredentialMatcherFactory } from './credential-matcher-factory';
 import {
+	canStayUnresolved,
 	credentialBlockingFailures,
 	credentialMissingModeUsesPackageData,
 	credentialsToStub,
@@ -60,14 +61,17 @@ export class CredentialImporter {
 		context: ImportContext,
 		request: CredentialBindingRequest,
 	): Promise<CredentialImportPlan> {
-		const resolution = await this.credentialMatcherFactory
-			.getMatcher(request.matchingMode)
-			.match(request.requirements, {
-				projectId: context.projectId,
-				user: context.user,
-				credentialBindings: request.credentialBindings,
-				excludePersonalRoute: request.personalRoute === 'exclude',
-			});
+		const resolution = await this.withoutAllowedUnresolved(
+			request,
+			await this.credentialMatcherFactory
+				.getMatcher(request.matchingMode)
+				.match(request.requirements, {
+					projectId: context.projectId,
+					user: context.user,
+					credentialBindings: request.credentialBindings,
+					excludePersonalRoute: request.personalRoute === 'exclude',
+				}),
+		);
 		const stubIds = new Map(
 			credentialsToStub(request.missingMode, resolution).map(({ sourceId }) => [
 				sourceId,
@@ -83,6 +87,32 @@ export class CredentialImporter {
 			...resolution,
 			stubIds,
 			...(await this.planUpdates(context.user, request, resolution)),
+		};
+	}
+
+	/**
+	 * Leaves out the failures of the credentials that the request lets stay unresolved, so that
+	 * they block nothing and the import creates nothing for them. Only a credential that this
+	 * instance does not hold qualifies. A reference to a credential that exists, and that the
+	 * project cannot use, still blocks.
+	 */
+	private async withoutAllowedUnresolved(
+		request: CredentialBindingRequest,
+		resolution: CredentialResolution,
+	): Promise<CredentialResolution> {
+		const candidates = resolution.failures.filter((failure) =>
+			canStayUnresolved(failure, request.allowUnresolvedIds),
+		);
+		if (candidates.length === 0) return resolution;
+
+		// Not limited to what the user can read: the answer decides a write, and it is not reported.
+		const onInstance = await this.credentialsService.findUsageScopes(
+			candidates.map(({ sourceId }) => sourceId),
+		);
+		const allowed = new Set(candidates.filter(({ sourceId }) => !onInstance.has(sourceId)));
+		return {
+			...resolution,
+			failures: resolution.failures.filter((failure) => !allowed.has(failure)),
 		};
 	}
 

@@ -48,6 +48,8 @@ export interface WorkflowCreateBatchContext {
 	project: Project;
 	allowedCredentialIds: Set<string>;
 	checkedCredentialIds: Set<string>;
+	/** Referenced ids that a package import leaves unresolved, and that no credential has. */
+	missingCredentialIds: ReadonlySet<string>;
 	credentialResolutionCache: WorkflowHelpers.ReplaceInvalidCredentialsCache;
 	redactionFloor: RedactionFloor;
 	autoExposeNewWorkflows: boolean;
@@ -89,6 +91,11 @@ export class WorkflowCreationService {
 		parentFolderIds: string[],
 		workflows: WorkflowEntity[],
 		credentialBindings: ReadonlyMap<string, string>,
+		/**
+		 * Credential ids that a package import leaves unresolved. A node can reference one of them
+		 * while this instance holds no credential with the id.
+		 */
+		allowMissingCredentialIds: ReadonlySet<string> = new Set(),
 	): Promise<WorkflowCreateBatchContext> {
 		const project = await this.projectService.getProjectWithScope(user, projectId, [
 			'workflow:create',
@@ -131,12 +138,24 @@ export class WorkflowCreationService {
 				'credential:read',
 			]),
 		]);
-		const allowedCredentialIds = new Set([...validatedCredentialIds, ...accessibleCredentialIds]);
+		const unresolvedCredentialIds = credentialIdsToCheck.filter((id) =>
+			allowMissingCredentialIds.has(id),
+		);
+		const missingCredentialIds =
+			unresolvedCredentialIds.length > 0
+				? await this.enterpriseWorkflowService.findMissingCredentialIds(unresolvedCredentialIds)
+				: [];
+		const allowedCredentialIds = new Set([
+			...validatedCredentialIds,
+			...accessibleCredentialIds,
+			...missingCredentialIds,
+		]);
 
 		return {
 			project,
 			allowedCredentialIds,
 			checkedCredentialIds: new Set([...validatedCredentialIds, ...referencedCredentialIds]),
+			missingCredentialIds: new Set(missingCredentialIds),
 			credentialResolutionCache: new Map(),
 			redactionFloor,
 			autoExposeNewWorkflows,
@@ -220,6 +239,7 @@ export class WorkflowCreationService {
 			newWorkflow,
 			effectiveProjectId,
 			batchContext?.credentialResolutionCache,
+			batchContext?.missingCredentialIds,
 		);
 
 		WorkflowHelpers.addNodeIds(newWorkflow);

@@ -171,6 +171,60 @@ describe('CredentialExporter', () => {
 		});
 	});
 
+	describe('with `omitCredentialsOutsideExportedProjects`', () => {
+		const ownedBy = (projectId: string) =>
+			makeCredential({ shared: [{ role: 'credential:owner', projectId }] as never });
+		const exportWith = async (credential: CredentialsEntity) => {
+			const { exporter, finder } = makeExporter();
+			finder.findCredentialForUser.mockResolvedValue(credential);
+			const writer = new CapturingWriter();
+			const result = await exporter.export({
+				user,
+				requirements: [makeRequirement()],
+				writer,
+				credentialExportPolicy: 'no-values',
+				projectTargetsById: new Map([['proj-1', 'projects/alpha-proj-1']]),
+				omitCredentialsOutsideExportedProjects: true,
+			});
+			return { result, writer };
+		};
+		const requirementRow = {
+			id: 'cred_1',
+			name: 'My Credential',
+			type: 'httpHeaderAuth',
+			usedBy: [{ kind: 'workflow', id: 'wf-1' }],
+		};
+
+		it('writes a credential of an exported project under the folder of that project', async () => {
+			const { result, writer } = await exportWith(ownedBy('proj-1'));
+
+			expect(result.entries).toEqual([
+				{
+					id: 'cred_1',
+					name: 'My Credential',
+					target: 'projects/alpha-proj-1/credentials/my-credential-cred_1',
+				},
+			]);
+			expect(result.requirements).toEqual([requirementRow]);
+			expect(writer.files).toHaveLength(1);
+		});
+
+		it.each([
+			['another project owns', () => ownedBy('proj-2')],
+			['no project owns', () => makeCredential()],
+		])(
+			'keeps the requirement row and writes no file for a credential that %s',
+			async (_, makeOwned) => {
+				const { result, writer } = await exportWith(makeOwned());
+
+				expect(result.entries).toEqual([]);
+				expect(result.requirements).toEqual([requirementRow]);
+				expect(writer.files).toEqual([]);
+				expect(writer.directories).toEqual([]);
+			},
+		);
+	});
+
 	describe('empty input', () => {
 		it('returns empty result and writes nothing when given no requirements', async () => {
 			const { exporter, finder } = makeExporter();

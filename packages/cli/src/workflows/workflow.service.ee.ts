@@ -101,6 +101,12 @@ export type CredentialGuardOptions = {
 	readOnlyNodeEdits?: 'restore' | 'reject';
 	/** Node fields the caller's payload never carries. The credential guard strips these when comparing with a saved node. */
 	unsentNodeFields?: readonly string[];
+	/**
+	 * Credential ids that a node can reference while this instance holds no credential with the
+	 * id. A package import sets it for a credential that it leaves unresolved. The guard still
+	 * refuses the id of a credential that exists and that the user cannot use.
+	 */
+	allowMissingCredentialIds?: ReadonlySet<string>;
 };
 
 const EDITABLE_NODE_FIELDS = ['name', 'position', 'disabled'] as const;
@@ -307,7 +313,13 @@ export class EnterpriseWorkflowService {
 		workflowId: string,
 		user: User,
 		restoredNodes: INode[] = [],
-		guardOptions: Pick<CredentialGuardOptions, 'readOnlyNodeEdits' | 'unsentNodeFields'> = {},
+		{
+			allowMissingCredentialIds,
+			...guardOptions
+		}: Pick<
+			CredentialGuardOptions,
+			'readOnlyNodeEdits' | 'unsentNodeFields' | 'allowMissingCredentialIds'
+		> = {},
 	) {
 		const previousVersion = await this.workflowRepository.get({ id: workflowId });
 
@@ -315,10 +327,12 @@ export class EnterpriseWorkflowService {
 			throw new NotFoundError('Workflow not found');
 		}
 
-		const allCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
-			user,
-			{ workflowId },
-		);
+		const allCredentials: Array<{ id: string }> = [
+			...(await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
+				workflowId,
+			})),
+			...(await this.findMissingCredentialIds(allowMissingCredentialIds)).map((id) => ({ id })),
+		];
 
 		const options = {
 			allowUninspectableSource: this.canUseEveryCredential(user),
@@ -355,6 +369,17 @@ export class EnterpriseWorkflowService {
 				'Invalid workflow credentials - make sure you have access to all credentials and try again.',
 			);
 		}
+	}
+
+	/**
+	 * The ids among `ids` that no credential on this instance has. A reference to such an id gives
+	 * access to no credential.
+	 */
+	async findMissingCredentialIds(ids: Iterable<string> = []): Promise<string[]> {
+		const candidates = [...new Set(ids)];
+		if (candidates.length === 0) return [];
+		const existing = new Set(await this.credentialsRepository.findExistingIds(candidates));
+		return candidates.filter((id) => !existing.has(id));
 	}
 
 	private async findNodesAsHistoryStoredThem(

@@ -137,6 +137,18 @@ const CHERRY_PICK_IMPORT_POLICY = {
 	| 'publishingPolicy'
 >;
 
+/**
+ * Removes the option that lets an import leave a credential unresolved. Only promotions set it,
+ * through `planPackage` and `planPackageSelection`. The public request types refuse the option.
+ * This removal covers a caller that the compiler does not check.
+ */
+function withoutUnresolvedCredentials<T extends { allowUnresolvedCredentialIds?: unknown }>(
+	request: T,
+): Omit<T, 'allowUnresolvedCredentialIds'> {
+	const { allowUnresolvedCredentialIds: _, ...rest } = request;
+	return rest;
+}
+
 @Service()
 export class N8nPackagesService {
 	constructor(
@@ -355,6 +367,7 @@ export class N8nPackagesService {
 			// Routes project-owned credentials into their project namespace; others stay top-level.
 			projectTargetsById,
 			additionalCredentialIds: request.projectCredentialIds,
+			omitCredentialsOutsideExportedProjects: request.omitCredentialsOutsideExportedProjects,
 		});
 
 		const dataTableExportResult = await this.dataTableExporter.export({
@@ -524,7 +537,8 @@ export class N8nPackagesService {
 		return { folderExportResult, workflowExportResult, projectExportResult, agentExportResult };
 	}
 
-	async importPackage(request: ImportPackageRequest): Promise<ImportResult> {
+	async importPackage(publicRequest: ImportPackageRequest): Promise<ImportResult> {
+		const request = withoutUnresolvedCredentials(publicRequest);
 		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
 		const manifest = await this.readImportManifest(reader, { allowAgents: true });
 		assertPackageImportApiKeyScopes(request.apiKeyScopes, packageImportScopes(manifest));
@@ -581,9 +595,10 @@ export class N8nPackagesService {
 
 	/** Emit import telemetry for public API requests. Directory imports use the Git pull path. */
 	async importPackageSelection(
-		request: ImportPackageSelectionRequest,
+		publicRequest: ImportPackageSelectionRequest,
 		selection: ImportSelection,
 	): Promise<ImportResult> {
+		const request = withoutUnresolvedCredentials(publicRequest);
 		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
 		const manifest = await this.readImportManifest(reader);
 		if (!isProjectPackage(manifest)) {
@@ -747,6 +762,9 @@ export class N8nPackagesService {
 			layoutConflictPolicy: request.layoutConflictPolicy ?? LayoutConflictPolicy.Fail,
 			...(request.credentialPersonalRoute !== undefined
 				? { credentialPersonalRoute: request.credentialPersonalRoute }
+				: {}),
+			...(request.allowUnresolvedCredentialIds !== undefined
+				? { allowUnresolvedCredentialIds: request.allowUnresolvedCredentialIds }
 				: {}),
 			publishingPolicy: request.publishingPolicy ?? WorkflowPublishingPolicy.MatchSource,
 			selection,

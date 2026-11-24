@@ -1269,6 +1269,53 @@ describe('EnterpriseWorkflowService', () => {
 			]);
 		});
 
+		describe('with credentials that a package import leaves unresolved', () => {
+			beforeEach(() => {
+				workflowHistoryRepository.findNewestVersionNodes.mockResolvedValue([]);
+			});
+
+			it('saves a new node whose credential is allowed and does not exist on this instance', async () => {
+				credentialsRepository.findExistingIds.mockResolvedValue([]);
+				const submitted = httpNode('missing-cred', 'https://v2.test');
+
+				const result = await service.preventTampering(
+					{ nodes: [submitted] } as IWorkflowBase,
+					'w1',
+					user,
+					[],
+					{ allowMissingCredentialIds: new Set(['missing-cred']) },
+				);
+
+				expect(result.nodes).toEqual([submitted]);
+				expect(credentialsRepository.findExistingIds).toHaveBeenCalledWith(['missing-cred']);
+			});
+
+			it('refuses an allowed credential that exists on this instance and that the user cannot use', async () => {
+				credentialsRepository.findExistingIds.mockResolvedValue(['foreign-cred']);
+
+				await expect(
+					service.preventTampering(
+						{ nodes: [httpNode('foreign-cred')] } as IWorkflowBase,
+						'w1',
+						user,
+						[],
+						{ allowMissingCredentialIds: new Set(['foreign-cred']) },
+					),
+				).rejects.toThrow(BadRequestError);
+			});
+
+			it('refuses a missing credential that the import did not allow, and reads no credential without an allowed id', async () => {
+				await expect(
+					service.preventTampering(
+						{ nodes: [httpNode('missing-cred')] } as IWorkflowBase,
+						'w1',
+						user,
+					),
+				).rejects.toThrow(BadRequestError);
+				expect(credentialsRepository.findExistingIds).not.toHaveBeenCalled();
+			});
+		});
+
 		it('saves a node switched back to a credential an earlier version stored, with its position', async () => {
 			workflowHistoryRepository.findNewestVersionNodes.mockResolvedValue([
 				version('v3', [httpNode('own-cred')]),

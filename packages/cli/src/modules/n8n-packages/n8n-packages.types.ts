@@ -283,6 +283,12 @@ export interface ExportPackageRequest {
 	 * of `projectIds`: the caller checks it.
 	 */
 	projectCredentialIds?: string[];
+	/**
+	 * Promotions only. Writes a required credential only when one of `projectIds` owns it, in the
+	 * folder of that project. A credential of another project, or without an owner project, keeps
+	 * its requirement row and gets no file. Default: every readable credential gets a file.
+	 */
+	omitCredentialsOutsideExportedProjects?: boolean;
 	/** Internal opt-out for callers that cannot import Agents or Agent folders yet. */
 	includeAgents?: boolean;
 	includeVariableValues?: boolean;
@@ -316,9 +322,18 @@ export type ImportRequest = {
 	ImportVariableProperties &
 	ImportTagProperties;
 
-export type ImportPackageRequest = ImportRequest & {
-	packageBuffer: Buffer;
+/**
+ * Only promotions can leave a credential unresolved. A public import request with this option
+ * does not compile.
+ */
+type WithoutUnresolvedCredentials = {
+	allowUnresolvedCredentialIds?: never;
 };
+
+export type ImportPackageRequest = ImportRequest &
+	WithoutUnresolvedCredentials & {
+		packageBuffer: Buffer;
+	};
 
 /**
  * Import only the selected workflows and folders. Do not add referenced sub-workflows to the
@@ -370,9 +385,10 @@ export type ImportSelectionRequest = {
 	projectConflictPolicy?: ProjectConflictPolicy;
 } & PromotionLayoutProperties;
 
-export type ImportPackageSelectionRequest = ImportSelectionRequest & {
-	packageBuffer: Buffer;
-};
+export type ImportPackageSelectionRequest = ImportSelectionRequest &
+	WithoutUnresolvedCredentials & {
+		packageBuffer: Buffer;
+	};
 
 export type ImportCredentialProperties = {
 	credentialMatchingMode: CredentialMatchingMode;
@@ -411,11 +427,18 @@ export type PromotionLayoutProperties = {
 	layoutConflictPolicy?: LayoutConflictPolicy;
 	/** Omitted means `allow`. */
 	credentialPersonalRoute?: CredentialPersonalRoute;
+	/**
+	 * Source ids of the credentials that the import can leave unresolved. Omitted means none.
+	 * For such a credential that this instance does not hold, the import raises no issue and
+	 * creates nothing, and the workflows keep the reference of the package. Each other
+	 * unresolved credential blocks the import.
+	 */
+	allowUnresolvedCredentialIds?: string[];
 };
 
 export type ResolvedImportRequest = ImportRequest & ResolvedImportFolderProperties;
 
-export type ResolvedImportPackageRequest = ImportPackageRequest & ResolvedImportFolderProperties;
+export type ResolvedImportPackageRequest = ResolvedImportRequest & { packageBuffer: Buffer };
 
 /**
  * Whether a matched folder or workflow that sits somewhere else in the package moves to that place.

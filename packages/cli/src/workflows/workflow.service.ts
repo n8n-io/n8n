@@ -169,6 +169,11 @@ type WorkflowUpdateOptions = {
 	readOnlyNodeEdits?: 'restore' | 'reject';
 	/** Node fields the caller's payload never carries. The credential guard strips these when comparing with a saved node. */
 	unsentNodeFields?: readonly string[];
+	/**
+	 * Credential ids that a package import leaves unresolved. A node can reference one of them
+	 * while this instance holds no credential with the id.
+	 */
+	allowMissingCredentialIds?: ReadonlySet<string>;
 	/** The version-scoped settings of a restored version, such as its engine. */
 	restoredVersionSettings?: VersionedWorkflowSettings;
 };
@@ -632,6 +637,7 @@ export class WorkflowService {
 			restoredFromVersionId,
 			readOnlyNodeEdits = 'restore',
 			unsentNodeFields = [],
+			allowMissingCredentialIds,
 		} = options;
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:update',
@@ -671,7 +677,12 @@ export class WorkflowService {
 
 		// check credentials for old format - scope to the workflow's owner project
 		const ownerProject = await this.ownershipService.getWorkflowProjectCached(workflowId);
-		await WorkflowHelpers.replaceInvalidCredentials(workflowUpdateData, ownerProject.id);
+		await WorkflowHelpers.replaceInvalidCredentials(
+			workflowUpdateData,
+			ownerProject.id,
+			undefined,
+			allowMissingCredentialIds,
+		);
 
 		// Central credential guard for every workflow write path. With sharing
 		// enabled, reject new nodes that reference credentials the acting user
@@ -708,7 +719,7 @@ export class WorkflowService {
 				workflowId,
 				user,
 				restoredNodes,
-				{ readOnlyNodeEdits, unsentNodeFields },
+				{ readOnlyNodeEdits, unsentNodeFields, allowMissingCredentialIds },
 			);
 		}
 
