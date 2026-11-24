@@ -1636,7 +1636,7 @@ export class WorkflowExecute {
 						// TODO: Remove the hardcoded default-values here and also in NodeSettings.vue
 						waitBetweenTries = Math.min(
 							5000,
-							Math.max(0, executionData.node.waitBetweenTries || 1000),
+							Math.max(0, executionData.node.waitBetweenTries ?? 1000),
 						);
 					}
 
