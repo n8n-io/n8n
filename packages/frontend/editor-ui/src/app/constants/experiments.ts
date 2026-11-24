@@ -214,6 +214,9 @@ export const PREFERENCES_EMPTY_STATE_EXPERIMENT = createExperiment('127_preferen
 
 export const RECOMMENDED_SKILLS_EXPERIMENT = createExperiment('143_recommended_skills');
 
+/** Boolean flag. It gates the node version picker in the node settings. */
+export const NODE_VERSION_PICKER_EXPERIMENT = createExperiment('154_node_version_picker');
+
 export const MCP_PREFERENCES_ENTRY_POINTS_EXPERIMENT = createExperiment(
 	'150_mcp_preferences_entry_points',
 	{
