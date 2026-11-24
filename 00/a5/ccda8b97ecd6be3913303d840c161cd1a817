@@ -1,0 +1,25 @@
+packages/workflow/src/extensions/array-extensions.ts
+  s_22034c4b2641a6::t_d1f90b1fbc84aa 61-65
+packages/@n8n/expression-runtime/src/extensions/array-extensions.ts
+  s_22034c4b2641a6::t_63b9e7784f826c 61-65
+packages/@n8n/expression-runtime/src/extensions/__tests__/array-extensions.test.ts
+  s_22034c4b2641a6::t_49227f9fddf150 39-67
+packages/workflow/test/ExpressionExtensions/array-extensions.test.ts
+  s_22034c4b2641a6::t_e57f16f2f38ae9 58-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "00a5ccda8b97ecd6be3913303d840c161cd1a817",
+  "prompts": {},
+  "sessions": {
+    "s_22034c4b2641a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "151f5925-9042-41ae-801a-404bc440f97d",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
