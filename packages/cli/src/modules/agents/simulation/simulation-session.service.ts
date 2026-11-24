@@ -70,6 +70,20 @@ export class SimulationSessionService {
 		private readonly credentialsFinder: CredentialsFinderService,
 	) {}
 
+	/** Returns the active simulation session bound to this owner, project, agent, and test chat. */
+	getSession(params: {
+		userId: string;
+		projectId: string;
+		agentId: string;
+		testChatId: string;
+	}): SimulationSession | undefined {
+		const key = sessionKeyFromIds(params);
+		const cached = this.sessions.get(key);
+		if (!cached) return undefined;
+		this.sessions.touch(key);
+		return cached.session;
+	}
+
 	async openForDraftRun(input: OpenSimulationInput): Promise<SimulationSession | undefined> {
 		const key = sessionKey(input);
 		// Such a world belongs to the connections of the draft, so each turn checks them again.
@@ -490,7 +504,16 @@ interface DescribedAgent {
 
 /** A session belongs to one chat of one agent and user, so a reused chat ID never shares a world. */
 function sessionKey({ user, projectId, agentId, testChatId }: OpenSimulationInput): string {
-	return `${user.id}:${projectId}:${agentId}:${testChatId}`;
+	return sessionKeyFromIds({ userId: user.id, projectId, agentId, testChatId });
+}
+
+function sessionKeyFromIds(params: {
+	userId: string;
+	projectId: string;
+	agentId: string;
+	testChatId: string;
+}): string {
+	return `${params.userId}:${params.projectId}:${params.agentId}:${params.testChatId}`;
 }
 
 /**

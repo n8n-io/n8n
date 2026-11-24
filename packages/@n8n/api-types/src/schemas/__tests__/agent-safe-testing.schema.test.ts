@@ -1,4 +1,7 @@
 import {
+	agentTestRunCommitActionResultSchema,
+	agentTestRunCommitRequestSchema,
+	agentTestRunCommitResponseSchema,
 	toolCallEvidenceSchema,
 	toolCallSimulationSchema,
 	toolTestCapabilitySchema,
@@ -75,5 +78,60 @@ describe('toolTestCapabilitySchema', () => {
 		{ toolName: 'send_slack', kind: 'node', testability: 'read_for_real' },
 	])('rejects a contradictory capability (%o)', (capability) => {
 		expect(toolTestCapabilitySchema.safeParse(capability).success).toBe(false);
+	});
+});
+
+describe('agentTestRunCommitRequestSchema', () => {
+	it('accepts a valid commit request with and without executionId', () => {
+		expect(
+			agentTestRunCommitRequestSchema.safeParse({
+				testChatId: 'chat-1',
+				actionIds: ['tc-1', 'tc-2'],
+			}).success,
+		).toBe(true);
+		expect(
+			agentTestRunCommitRequestSchema.safeParse({
+				testChatId: 'chat-1',
+				executionId: 'exec-1',
+				actionIds: ['tc-1'],
+			}).success,
+		).toBe(true);
+	});
+
+	it.each([
+		{ name: 'empty actionIds', body: { testChatId: 'chat-1', actionIds: [] } },
+		{ name: 'blank actionId', body: { testChatId: 'chat-1', actionIds: [''] } },
+		{ name: 'missing testChatId', body: { actionIds: ['tc-1'] } },
+		{ name: 'blank testChatId', body: { testChatId: '', actionIds: ['tc-1'] } },
+		{
+			name: 'blank executionId',
+			body: { testChatId: 'chat-1', executionId: '', actionIds: ['tc-1'] },
+		},
+	])('rejects $name', ({ body }) => {
+		expect(agentTestRunCommitRequestSchema.safeParse(body).success).toBe(false);
+	});
+});
+
+describe('agentTestRunCommitResponseSchema', () => {
+	it('accepts per-action done, failed, and already_committed results', () => {
+		const payload = {
+			committedAt: '2026-11-24T09:30:00.000Z',
+			results: [
+				{ actionId: 'tc-1', toolName: 'send_slack', status: 'done' },
+				{ actionId: 'tc-2', toolName: 'send_email', status: 'failed', error: 'Rate limited' },
+				{ actionId: 'tc-3', toolName: 'create_issue', status: 'already_committed' },
+			],
+		};
+		expect(agentTestRunCommitResponseSchema.safeParse(payload).success).toBe(true);
+	});
+
+	it('rejects an unknown action status', () => {
+		expect(
+			agentTestRunCommitActionResultSchema.safeParse({
+				actionId: 'tc-1',
+				toolName: 'send_slack',
+				status: 'pending',
+			}).success,
+		).toBe(false);
 	});
 });

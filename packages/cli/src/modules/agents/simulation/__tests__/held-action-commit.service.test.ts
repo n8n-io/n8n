@@ -1,0 +1,299 @@
+import type { Agent as RuntimeAgent, BuiltTool } from '@n8n/agents';
+import type { Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
+import { NotFoundError } from '@n8n/errors';
+import type { INode, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
+
+import type { AgentRuntime, AgentRuntimeCacheService } from '../../agent-runtime-cache.service';
+import { HeldActionCommitService } from '../held-action-commit.service';
+import { SimulationSession } from '../simulation-session';
+import type { SimulationSessionService } from '../simulation-session.service';
+import type { SimulationWorld } from '../tool-simulation.contracts';
+
+const user = mock<User>({ id: 'user-1' });
+const slackNode = mock<INode>({ type: 'n8n-nodes-base.slack', name: 'Slack' });
+
+function createSimulatedSession() {
+	const world: SimulationWorld = {
+		worldId: 'world-1',
+		backend: 'llm-mock',
+		handleRequest: vi.fn().mockResolvedValue({
+			outcome: 'served',
+			source: 'world_state',
+			status: 200,
+			body: { ok: true },
+		}),
+	};
+
+	const session = new SimulationSession({
+		testChatId: 'chat-1',
+		world,
+		capabilities: [
+			{ toolName: 'slack_post_message', kind: 'node', testability: 'simulated' },
+			{ toolName: 'gmail_send_email', kind: 'node', testability: 'simulated' },
+		],
+	});
+
+	return { session, world };
+}
+
+async function captureHeldWrite(
+	session: SimulationSession,
+	toolName: string,
+	toolCallId: string,
+	input: Record<string, unknown>,
+	realExecutor: (input: unknown) => Promise<unknown>,
+) {
+	const additionalData = mock<IWorkflowExecuteAdditionalData>();
+	session.instrumentation().configureToolAdditionalData?.(additionalData, {
+		toolName,
+		toolKind: 'node',
+	});
+
+	const tool: BuiltTool = {
+		name: toolName,
+		description: toolName,
+		metadata: {
+			kind: 'node',
+			nodeType: 'n8n-nodes-base.slack',
+			nodeParameters: { operation: 'post' },
+		},
+		handler: async () => {
+			// During test run, outbound HTTP hits the mock handler and never calls realExecutor.
+			const res = await additionalData.evalLlmMockHandler!(
+				{ url: 'https://slack.com/api/chat.postMessage', method: 'POST', body: input },
+				slackNode,
+			);
+			if (res === undefined) {
+				await realExecutor(input);
+			}
+			return res;
+		},
+	};
+
+	await session.interceptor(
+		{ tool, toolCallId, input },
+		async () => await tool.handler!(input, {}),
+	);
+}
+
+function makeRuntime(tools: BuiltTool[]) {
+	const agent = { declaredTools: tools } as unknown as RuntimeAgent;
+	const runtime = mock<AgentRuntime>({ agent });
+	const runtimeCache = mock<AgentRuntimeCacheService>();
+	runtimeCache.getRuntime.mockResolvedValue(runtime);
+	return { agent, runtime, runtimeCache };
+}
+
+describe('HeldActionCommitService', () => {
+	it('holds writes during test run, replays them in order once, and returns already_committed on duplicate calls', async () => {
+		const { session, world } = createSimulatedSession();
+		const callOrder: string[] = [];
+		const realSlack = vi.fn(async (input: unknown) => {
+			callOrder.push(`slack:${JSON.stringify(input)}`);
+			return { ok: true };
+		});
+		const realGmail = vi.fn(async (input: unknown) => {
+			callOrder.push(`gmail:${JSON.stringify(input)}`);
+			return { sent: true };
+		});
+
+		await captureHeldWrite(session, 'slack_post_message', 'tc-1', { text: 'Hello' }, realSlack);
+		await captureHeldWrite(session, 'gmail_send_email', 'tc-2', { to: 'a@b.com' }, realGmail);
+
+		// Writes did NOT fire during the test run.
+		expect(realSlack).not.toHaveBeenCalled();
+		expect(realGmail).not.toHaveBeenCalled();
+		expect(world.handleRequest).toHaveBeenCalledTimes(2);
+		expect(session.listHeldActions().map((a) => a.actionId)).toEqual(['tc-1', 'tc-2']);
+
+		const simulationSessions = mock<SimulationSessionService>();
+		simulationSessions.getSession.mockReturnValue(session);
+
+		const { agent, runtimeCache } = makeRuntime([
+			{ name: 'slack_post_message', description: 'Slack', handler: realSlack },
+			{ name: 'gmail_send_email', description: 'Gmail', handler: realGmail },
+		]);
+
+		const service = new HeldActionCommitService(mock<Logger>(), simulationSessions, runtimeCache);
+
+		const first = await service.commitHeldActions({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			user,
+			testChatId: 'chat-1',
+			executionId: 'exec-1',
+			actionIds: ['tc-1', 'tc-2'],
+		});
+
+		expect(Date.parse(first.committedAt)).not.toBeNaN();
+		expect(first.results).toEqual([
+			{ actionId: 'tc-1', toolName: 'slack_post_message', status: 'done' },
+			{ actionId: 'tc-2', toolName: 'gmail_send_email', status: 'done' },
+		]);
+		expect(callOrder).toEqual(['slack:{"text":"Hello"}', 'gmail:{"to":"a@b.com"}']);
+		expect(runtimeCache.getRuntime).toHaveBeenCalledWith({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			user,
+			usePublishedVersion: false,
+		});
+		expect(runtimeCache.releaseRuntimeLease).toHaveBeenCalledWith(agent);
+
+		// Duplicate commit call: idempotent one-shot guard prevents re-execution.
+		const second = await service.commitHeldActions({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			user,
+			testChatId: 'chat-1',
+			actionIds: ['tc-1', 'tc-2'],
+		});
+
+		expect(second.results).toEqual([
+			{ actionId: 'tc-1', toolName: 'slack_post_message', status: 'already_committed' },
+			{ actionId: 'tc-2', toolName: 'gmail_send_email', status: 'already_committed' },
+		]);
+		expect(realSlack).toHaveBeenCalledTimes(1);
+		expect(realGmail).toHaveBeenCalledTimes(1);
+		// No runtime lease needed when every action is already committed.
+		expect(runtimeCache.getRuntime).toHaveBeenCalledTimes(1);
+	});
+
+	it('prevents double execution when duplicate actionIds arrive in the same request or concurrently', async () => {
+		const { session } = createSimulatedSession();
+		let releaseTool!: () => void;
+		const realSlack = vi.fn(
+			async () =>
+				await new Promise<void>((resolve) => {
+					releaseTool = resolve;
+				}),
+		);
+
+		await captureHeldWrite(session, 'slack_post_message', 'tc-1', { text: 'Once' }, realSlack);
+
+		const simulationSessions = mock<SimulationSessionService>();
+		simulationSessions.getSession.mockReturnValue(session);
+		const { runtimeCache } = makeRuntime([
+			{ name: 'slack_post_message', description: 'Slack', handler: realSlack },
+		]);
+
+		const service = new HeldActionCommitService(mock<Logger>(), simulationSessions, runtimeCache);
+
+		const req1 = service.commitHeldActions({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			user,
+			testChatId: 'chat-1',
+			actionIds: ['tc-1', 'tc-1'],
+		});
+		const req2 = service.commitHeldActions({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			user,
+			testChatId: 'chat-1',
+			actionIds: ['tc-1'],
+		});
+
+		// Flush microtasks until tool handler starts.
+		await vi.waitFor(() => expect(realSlack).toHaveBeenCalledTimes(1));
+		releaseTool();
+
+		const [res1, res2] = await Promise.all([req1, req2]);
+		expect(res1.results).toEqual([
+			{ actionId: 'tc-1', toolName: 'slack_post_message', status: 'done' },
+			{ actionId: 'tc-1', toolName: 'slack_post_message', status: 'already_committed' },
+		]);
+		expect(res2.results).toEqual([
+			{ actionId: 'tc-1', toolName: 'slack_post_message', status: 'already_committed' },
+		]);
+		expect(realSlack).toHaveBeenCalledTimes(1);
+	});
+
+	it('captures per-action failure with a safe error message and keeps remaining actions running', async () => {
+		const { session } = createSimulatedSession();
+		const realSlack = vi
+			.fn()
+			.mockRejectedValueOnce(new Error('Slack API error with Bearer sk-secret-token-12345\nstack'))
+			.mockResolvedValueOnce({ ok: true });
+		const realGmail = vi.fn().mockResolvedValue({ ok: true });
+
+		await captureHeldWrite(session, 'slack_post_message', 'tc-1', { text: 'Fail' }, vi.fn());
+		await captureHeldWrite(session, 'gmail_send_email', 'tc-2', { to: 'a@b.com' }, vi.fn());
+
+		const simulationSessions = mock<SimulationSessionService>();
+		simulationSessions.getSession.mockReturnValue(session);
+		const { runtimeCache } = makeRuntime([
+			{ name: 'slack_post_message', description: 'Slack', handler: realSlack },
+			{ name: 'gmail_send_email', description: 'Gmail', handler: realGmail },
+		]);
+
+		const service = new HeldActionCommitService(mock<Logger>(), simulationSessions, runtimeCache);
+
+		const first = await service.commitHeldActions({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			user,
+			testChatId: 'chat-1',
+			actionIds: ['tc-1', 'tc-2', 'tc-missing'],
+		});
+
+		expect(first.results[0]).toMatchObject({
+			actionId: 'tc-1',
+			toolName: 'slack_post_message',
+			status: 'failed',
+		});
+		expect(first.results[0].error).not.toContain('sk-secret-token-12345');
+		expect(first.results[0].error).not.toContain('\n');
+		expect(first.results[1]).toEqual({
+			actionId: 'tc-2',
+			toolName: 'gmail_send_email',
+			status: 'done',
+		});
+		expect(first.results[2]).toEqual({
+			actionId: 'tc-missing',
+			toolName: 'unknown',
+			status: 'failed',
+			error: 'Held action not found in this test chat.',
+		});
+
+		// Retrying: tc-1 can retry and succeed, while tc-2 stays already_committed.
+		const retry = await service.commitHeldActions({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			user,
+			testChatId: 'chat-1',
+			actionIds: ['tc-1', 'tc-2'],
+		});
+
+		expect(retry.results).toEqual([
+			{ actionId: 'tc-1', toolName: 'slack_post_message', status: 'done' },
+			{ actionId: 'tc-2', toolName: 'gmail_send_email', status: 'already_committed' },
+		]);
+	});
+
+	it('throws NotFoundError when no simulation session is bound to the caller, agent, and test chat', async () => {
+		const simulationSessions = mock<SimulationSessionService>();
+		simulationSessions.getSession.mockReturnValue(undefined);
+		const runtimeCache = mock<AgentRuntimeCacheService>();
+
+		const service = new HeldActionCommitService(mock<Logger>(), simulationSessions, runtimeCache);
+
+		await expect(
+			service.commitHeldActions({
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				user,
+				testChatId: 'other-chat',
+				actionIds: ['tc-1'],
+			}),
+		).rejects.toThrow(NotFoundError);
+		expect(simulationSessions.getSession).toHaveBeenCalledWith({
+			userId: 'user-1',
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			testChatId: 'other-chat',
+		});
+		expect(runtimeCache.getRuntime).not.toHaveBeenCalled();
+	});
+});
