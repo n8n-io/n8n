@@ -7993,7 +7993,7 @@ describe('AgentBuilderView — safe testing Hold & Replay (V1)', () => {
 			}),
 		);
 		expect(wrapper.get('[data-testid="agent-held-actions-committed-banner"]').text()).toBe(
-			'agents.testRun.holdReplay.committedBanner',
+			'agents.testRun.holdReplay.doneCount',
 		);
 		expect(wrapper.get('[data-testid="agent-held-actions-done-summary"]').text()).toBe(
 			'agents.testRun.holdReplay.doneSummary',

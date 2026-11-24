@@ -281,10 +281,10 @@ describe('AgentRunHeldActionsModal', () => {
 		expect(screen.getByTestId('agent-run-held-actions-description')).toHaveTextContent(
 			"These actions from this test will run in your real apps. This can't be undone.",
 		);
-		expect(items[0]).toHaveTextContent('Post message');
-		expect(items[0]).toHaveTextContent('Slack · #ops');
-		expect(items[1]).toHaveTextContent('Create issue');
-		expect(items[1]).toHaveTextContent('Linear · ENG-123');
+		expect(items[0]).toHaveTextContent('Slack: message');
+		expect(items[0]).toHaveTextContent('#ops');
+		expect(items[1]).toHaveTextContent('Linear: issue');
+		expect(items[1]).toHaveTextContent('ENG-123');
 
 		await fireEvent.click(screen.getByTestId('agent-run-held-actions-confirm'));
 		expect(emitted('confirm')).toHaveLength(1);

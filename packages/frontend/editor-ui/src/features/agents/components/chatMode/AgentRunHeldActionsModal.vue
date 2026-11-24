@@ -5,7 +5,7 @@ import { computed } from 'vue';
 
 import AgentModal from '../modals/AgentModal.vue';
 import AgentHeldActionIcon from './AgentHeldActionIcon.vue';
-import { formatActionMeta, type AgentHeldAction } from './heldActions';
+import { actionObject, type AgentHeldAction } from './heldActions';
 
 const props = withDefaults(
 	defineProps<{
@@ -69,10 +69,12 @@ function onConfirm() {
 				>
 					<AgentHeldActionIcon :action="action" :size="18" :class="$style.itemIcon" />
 					<span :class="$style.itemText">
-						<span :class="$style.itemLabel">{{ action.actionLabel }}</span>
-						<span v-if="formatActionMeta(action)" :class="$style.itemMeta">
-							{{ formatActionMeta(action) }}
-						</span>
+						<span :class="$style.itemLabel">{{
+							i18n.baseText('agents.testRun.holdReplay.actionRow', {
+								interpolate: { app: action.appName, object: actionObject(action) },
+							})
+						}}</span>
+						<span v-if="action.target" :class="$style.itemMeta">{{ action.target }}</span>
 					</span>
 				</li>
 			</ul>
