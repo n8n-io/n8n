@@ -45,14 +45,15 @@ export const expectedPreviewRevisionSchema = z
 			'When it differs, the operation returns status `preview-changed` and changes nothing.',
 	});
 
-/** The caller accepts that the operation continues without the missing dependencies. */
+/** The caller accepts the missing dependencies that the operation can continue without. */
 export const confirmMissingDependenciesSchema = z
 	.boolean()
 	.optional()
 	.openapi({
 		description:
-			'Confirms the `missingDependencies` that the preview reports, so that the operation continues without them. ' +
-			'Without this confirmation, an operation that has missing dependencies changes nothing and returns them. ' +
+			'Confirms the `missingDependencies` that a Promote leaves out, and the ones that an Apply can continue without (`blocking: false`). ' +
+			'An Apply still stops on an entry with `blocking: true`, with and without this confirmation. ' +
+			'Without this confirmation, an operation that has confirmable entries changes nothing and returns them. ' +
 			'Send it with `expectedPreviewRevision` to confirm exactly the list of the reviewed preview. ' +
-			'Without `expectedPreviewRevision`, the confirmation covers every missing dependency when the operation runs.',
+			'Without `expectedPreviewRevision`, the confirmation covers every confirmable missing dependency when the operation runs.',
 	});

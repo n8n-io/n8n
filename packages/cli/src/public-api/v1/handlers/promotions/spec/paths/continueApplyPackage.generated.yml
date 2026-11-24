@@ -52,7 +52,7 @@ requestBody:
             description: 'Also applies destructive data table changes, which a `destructive-change` conflict reports: removed or retyped columns. The values in those columns are removed. Rows and other columns are kept. On a full apply, also deletes the team projects that a `project-deletion` conflict reports, with everything in them. Without `expectedPreviewRevision`, the confirmation covers every such change and deletion when Continue runs, including those that are not in the reviewed result.'
           confirmMissingDependencies:
             type: boolean
-            description: Confirms the `missingDependencies` that the preview reports, so that the operation continues without them. Without this confirmation, an operation that has missing dependencies changes nothing and returns them. Send it with `expectedPreviewRevision` to confirm exactly the list of the reviewed preview. Without `expectedPreviewRevision`, the confirmation covers every missing dependency when the operation runs.
+            description: 'Confirms the `missingDependencies` that a Promote leaves out, and the ones that an Apply can continue without (`blocking: false`). An Apply still stops on an entry with `blocking: true`, with and without this confirmation. Without this confirmation, an operation that has confirmable entries changes nothing and returns them. Send it with `expectedPreviewRevision` to confirm exactly the list of the reviewed preview. Without `expectedPreviewRevision`, the confirmation covers every confirmable missing dependency when the operation runs.'
         required:
           - expectedSource
         additionalProperties: false

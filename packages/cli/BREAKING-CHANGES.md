@@ -96,6 +96,8 @@ The change preview now always returns `revision`, also for `promote`.
 A Promote that has missing dependencies now needs `confirmMissingDependencies: true`.
 This applies to `POST /api/v1/promotions/projects/{projectId}/promote` and to `POST /api/v1/promotions/environments/{promotionEnvironmentId}/promote`.
 Without the confirmation, the Promote returns the status `missing-dependencies` with the list, and it pushes nothing.
+Send it with `expectedPreviewRevision` to confirm only the reviewed list.
+Without `expectedPreviewRevision`, the Promote confirms every missing dependency that it finds when it runs.
 A warning needs no confirmation.
 The instance Promote now returns a `status`, as the selective Promote does. Read `status` before you read `counts` and `git`.
 The status `promoted` now has `missingDependencies`. It lists the confirmed entries.
@@ -114,6 +116,8 @@ A missing credential in a project where you cannot create a credential is now on
 An Apply that has an entry with `blocking: false` in `missingDependencies` now returns `blocked` and changes nothing.
 This includes a missing sub-workflow and a missing error workflow, which did not stop an Apply before.
 Send `confirmMissingDependencies: true` with Continue to apply without these entries.
+Send it with `expectedPreviewRevision` to confirm only the reviewed list.
+Without `expectedPreviewRevision`, Continue confirms every such entry that it finds when it runs.
 This applies to `POST /api/v1/promotions/projects/{projectId}/apply/continue` and to `POST /api/v1/promotions/environments/{promotionEnvironmentId}/apply/continue`.
 An entry with `blocking: true` stops the Apply with and without the confirmation.
 An Apply no longer stops for good on a missing credential that you cannot create. Such an entry now has `blocking: false`.
