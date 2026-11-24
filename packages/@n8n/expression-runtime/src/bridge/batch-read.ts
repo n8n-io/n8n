@@ -14,8 +14,8 @@ import { smallJsonCopy } from './small-json-data';
 import type { SmallJsonCopy } from './small-json-data';
 
 /**
- * Only `$json` has batched reads. It holds item data, so reading it runs no host code.
- * Other roots are host proxies, where a read can evaluate a parameter or throw.
+ * Only `$json` has batched reads. It holds item data. Other roots are host
+ * proxies, where a read can evaluate a parameter or throw.
  */
 const ITEM_DATA_ROOT = '$json';
 
@@ -27,19 +27,37 @@ export interface BatchReadLimits {
 	firstBatchChars: number;
 	/** The most that one read takes. */
 	maxBatchChars: number;
+	/**
+	 * The bytes of the memory limit of the bridge for each character of the
+	 * budget of one evaluation. A batched read starts only while the reads of the
+	 * evaluation took less than the budget, so they can take up to one read more.
+	 * After that, each read gives one value.
+	 */
+	memoryBytesPerChar: number;
 }
 
-/** The limits that the bridges use for one batched read of item data. */
+/** The limits that the bridges use for the batched reads of item data. */
 export const BATCH_READ_LIMITS: BatchReadLimits = {
 	smallValueChars: 1024,
 	firstBatchChars: 512,
 	maxBatchChars: 262_144,
+	// Half the limit: one-byte strings of as many characters as the limit has bytes fill the isolate.
+	memoryBytesPerChar: 2,
 };
+
+/** The characters that the batched reads of one evaluation can still take. */
+export interface BatchReadBudget {
+	remaining: number;
+}
+
+/** The budget of one evaluation in a bridge with a memory limit of `memoryLimitMb`. */
+export function batchReadBudget(memoryLimitMb: number, limits: BatchReadLimits): BatchReadBudget {
+	return { remaining: Math.floor((memoryLimitMb * 1024 * 1024) / limits.memoryBytesPerChar) };
+}
 
 /** The characters counted for an array item that goes across with only some of its fields. */
 const PARTIAL_ITEM_CHARS = 8;
 
-/** The most field names that one request can hold. */
 const MAX_REQUEST_NAMES = 16;
 
 /** No read of array items grows after this many reads. */
@@ -56,7 +74,7 @@ function valueCharsFor(request: unknown, limits: BatchReadLimits): number {
 	return request === WHOLE_VALUES ? limits.maxBatchChars : limits.smallValueChars;
 }
 
-/** The field names of a request. Undefined for a request that sizes whole values. */
+/** The field names of a request. Undefined for a request that is not a list. */
 function namesOf(request: unknown): string[] | undefined {
 	return Array.isArray(request)
 		? request.filter((name): name is string => typeof name === 'string').slice(0, MAX_REQUEST_NAMES)
@@ -97,6 +115,7 @@ function wholeItemsFrom(
 	start: number,
 	readChars: number,
 	childChars: number,
+	budget: BatchReadBudget,
 ): unknown[] {
 	const whole: unknown[] = [];
 	let remaining = readChars;
@@ -109,10 +128,14 @@ function wholeItemsFrom(
 		remaining -= item.chars;
 		whole.push(item.copy);
 	}
+	budget.remaining -= readChars - remaining;
 	return whole;
 }
 
-/** The fields in `names` that go across whole, each in at most `childChars` characters. */
+/**
+ * The fields in `names` that go across whole, each in at most `childChars` characters.
+ * A field that is there but does not go across counts as `childChars`.
+ */
 function namedFieldsOf(
 	item: Record<string, unknown>,
 	names: string[],
@@ -121,11 +144,15 @@ function namedFieldsOf(
 	const fields: Record<string, unknown> = {};
 	let chars = PARTIAL_ITEM_CHARS;
 	for (const name of names) {
-		const field = TRANSFER_FRAMING_KEYS.includes(name)
-			? undefined
-			: wholeChild(item, name, childChars);
-		if (field !== undefined) {
-			chars += field.chars;
+		if (TRANSFER_FRAMING_KEYS.includes(name) || !isDataKey(item, name)) {
+			continue;
+		}
+		const field = smallJsonCopy(item[name], childChars);
+		if (field === undefined) {
+			// The size check of a large field can cost more than its limit, for example to list many keys.
+			chars += childChars;
+		} else {
+			chars += name.length + field.chars;
 			defineOwnValue(fields, name, field.copy);
 		}
 	}
@@ -147,6 +174,7 @@ function namedFieldsOfItemsFrom(
 	readChars: number,
 	names: string[],
 	childChars: number,
+	budget: BatchReadBudget,
 ): Array<Record<string, unknown>> {
 	const rows: Array<Record<string, unknown>> = [];
 	let remaining = readChars;
@@ -162,6 +190,7 @@ function namedFieldsOfItemsFrom(
 		remaining -= chars;
 		rows.push(fields);
 	}
+	budget.remaining -= readChars - remaining;
 	return rows;
 }
 
@@ -173,6 +202,7 @@ function wholeFieldsOf(
 	record: Record<string, unknown>,
 	readChars: number,
 	childChars: number,
+	budget: BatchReadBudget,
 ): Record<string, unknown> {
 	const whole: Record<string, unknown> = {};
 	let remaining = readChars;
@@ -187,6 +217,7 @@ function wholeFieldsOf(
 			defineOwnValue(whole, key, field.copy);
 		}
 	}
+	budget.remaining -= readChars - remaining;
 	return whole;
 }
 
@@ -197,6 +228,7 @@ function itemsOfRead(
 	step: number,
 	request: unknown,
 	limits: BatchReadLimits,
+	budget: BatchReadBudget,
 ): unknown[] {
 	const names = namesOf(request);
 	const readChars = readAheadChars(step, limits);
@@ -206,8 +238,8 @@ function itemsOfRead(
 		return [];
 	}
 	return names === undefined
-		? wholeItemsFrom(items, start, readChars, childChars)
-		: namedFieldsOfItemsFrom(items, start, readChars, names, childChars);
+		? wholeItemsFrom(items, start, readChars, childChars, budget)
+		: namedFieldsOfItemsFrom(items, start, readChars, names, childChars, budget);
 }
 
 /** The values of one read. Empty when a proxy trap throws, so the values stay lazy. */
@@ -230,6 +262,9 @@ function valuesOfRead<T extends unknown[] | Record<string, unknown>>(empty: T, r
  *
  * For any other value, the result is a data wrapper around the fields that can
  * go across whole. It holds no field for a path outside `$json`.
+ *
+ * A read takes its characters from `budget`. When the budget is spent, a read
+ * gives what a read of one value gives.
  */
 export function readBatchAtPath(
 	resolver: HostDataResolver,
@@ -238,22 +273,23 @@ export function readBatchAtPath(
 	step: number,
 	request: BatchRequest,
 	limits: BatchReadLimits,
+	budget: BatchReadBudget,
 ): unknown {
-	const isItemData = pathArr[0] === ITEM_DATA_ROOT;
+	const canBatch = pathArr[0] === ITEM_DATA_ROOT && budget.remaining > 0;
 	const container = resolver.resolve(pathArr);
 	if (Array.isArray(container)) {
 		if (!Number.isInteger(start) || start < 0) {
 			return undefined;
 		}
-		const items = isItemData
-			? valuesOfRead([], () => itemsOfRead(container, start, step, request, limits))
+		const items = canBatch
+			? valuesOfRead([], () => itemsOfRead(container, start, step, request, limits, budget))
 			: [];
 		return items.length > 0 ? toHostData(items) : toHostMetadata(container[start]);
 	}
 	return toHostData(
-		isItemData && isPlainRecord(container)
+		canBatch && isPlainRecord(container)
 			? valuesOfRead({}, () =>
-					wholeFieldsOf(container, limits.maxBatchChars, valueCharsFor(request, limits)),
+					wholeFieldsOf(container, limits.maxBatchChars, valueCharsFor(request, limits), budget),
 				)
 			: {},
 	);

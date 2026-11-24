@@ -1,6 +1,8 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import type { RuntimeBridge } from '../../types';
+import { DEFAULT_BRIDGE_CONFIG } from '../../types';
+import { BATCH_READ_LIMITS } from '../batch-read';
 import { HostDataResolver } from '../host-data-resolver';
 import { IsolatedVmBridge } from '../isolated-vm-bridge';
 import { QuickJsBridge } from '../quickjs-bridge';
@@ -119,6 +121,15 @@ const items: Array<{ label: string; $json: () => Json }> = [
 		}),
 	},
 	{
+		label: 'rows of long number arrays',
+		$json: () => ({
+			id: 1,
+			rows: Array.from({ length: 12 }, (_, index) =>
+				Array.from({ length: 300 }, (_item, column) => index * column),
+			),
+		}),
+	},
+	{
 		label: 'rows that read as other values through a proxy',
 		$json: () => ({
 			id: 1,
@@ -181,6 +192,10 @@ const expressions: Array<{ label: string; code: string }> = [
 	{
 		label: 'maps each row to its keys',
 		code: 'return $json.rows.map(function (r) { return r && typeof r === "object" ? Object.keys(r) : r; });',
+	},
+	{
+		label: 'lists the keys of each row, then reads one field',
+		code: 'return $json.rows.filter(function (r) { return r !== null && typeof r === "object" && Object.keys(r).length > 0; }).map(function (r) { return r.id; });',
 	},
 	{
 		label: 'checks a key of each row',
@@ -246,7 +261,7 @@ const expressions: Array<{ label: string; code: string }> = [
 	},
 ];
 
-/** Runs the code on a copy of the data as plain JavaScript. */
+/** Runs the code as plain JavaScript. */
 function evaluatePlain(code: string, $json: Json): unknown {
 	// eslint-disable-next-line @typescript-eslint/no-implied-eval -- the code is a fixed test expression
 	return new Function('$json', code)($json);
@@ -368,6 +383,41 @@ describe.each(bridges)('$label item data', ({ create }) => {
 			rows.map((row) => row.id),
 		);
 		expect(read).not.toHaveBeenCalled();
+	});
+
+	it('reads one value for each host call after the batched reads spend the budget of the evaluation', () => {
+		const $json = { rows: rowsOf(100) };
+		const code = 'return $json.rows.map(function (r) { return r.id; });';
+		const bytesPerChar = BATCH_READ_LIMITS.memoryBytesPerChar;
+		// A budget of one character.
+		BATCH_READ_LIMITS.memoryBytesPerChar = DEFAULT_BRIDGE_CONFIG.memoryLimit * 1024 * 1024;
+		try {
+			const hostReads = countHostReads();
+
+			expect(evaluate(code, $json)).toStrictEqual(evaluatePlain(code, $json));
+			// The first batched read spends the budget. Each next row takes two host reads.
+			expect(hostReads()).toBeGreaterThan(100);
+		} finally {
+			BATCH_READ_LIMITS.memoryBytesPerChar = bytesPerChar;
+		}
+	});
+
+	it('throws the error of a host read in a batched read', () => {
+		const rows = [
+			{ id: 0 },
+			new Proxy(
+				{ id: 1 },
+				{
+					getPrototypeOf() {
+						throw new Error('trap');
+					},
+				},
+			),
+		];
+
+		expect(() =>
+			evaluate('return $json.rows.map(function (r) { return r.id; });', { rows }),
+		).toThrow('trap');
 	});
 
 	it('reads an item of another node one field at a time', () => {
