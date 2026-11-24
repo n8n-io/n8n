@@ -1,3 +1,10 @@
+// NOTE: This file is intentionally mirrored in @n8n/expression-runtime/src/extensions/
+// for use inside the isolated VM. Changes here must be reflected there and vice versa.
+// TODO: Eliminate the duplication. The blocker is that @n8n/expression-runtime is
+// Vite-stubbed for browser builds (to exclude isolated-vm), which prevents n8n-workflow
+// from importing these extension utilities directly from the runtime package. Fix by
+// splitting @n8n/expression-runtime into a browser-safe extensions subpath (not stubbed)
+// and a node-only VM entry (stubbed).
 // @vitest-environment jsdom
 import { DateTime } from 'luxon';
 
@@ -96,7 +103,8 @@ ceil.doc = {
 	description: 'Rounds the number up to the next whole number',
 	examples: [{ example: '(1.234).ceil()', evaluated: '2' }],
 	returnType: 'number',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/numbers/#number-ceil',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/number#numberceil',
 };
 
 floor.doc = {
@@ -104,7 +112,8 @@ floor.doc = {
 	description: 'Rounds the number down to the nearest whole number',
 	examples: [{ example: '(1.234).floor()', evaluated: '1' }],
 	returnType: 'number',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/numbers/#number-floor',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/number#numberfloor',
 };
 
 isEven.doc = {
@@ -116,7 +125,8 @@ isEven.doc = {
 		{ example: '(42).isEven()', evaluated: 'true' },
 	],
 	returnType: 'boolean',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/numbers/#number-isEven',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/number#numberiseven',
 };
 
 isOdd.doc = {
@@ -128,13 +138,14 @@ isOdd.doc = {
 		{ example: '(42).isOdd()', evaluated: 'false' },
 	],
 	returnType: 'boolean',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/numbers/#number-isOdd',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/number#numberisodd',
 };
 
 format.doc = {
 	name: 'format',
 	description:
-		'Returns a formatted string representing the number. Useful for formatting for a specific language or currency. The same as <a target="_blank" href=”https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/NumberFormat/NumberFormat”><code>Intl.NumberFormat()</code></a>.',
+		'Returns a formatted string representing the number. Useful for formatting for a specific language or currency. The same as <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/NumberFormat/NumberFormat"><code>Intl.NumberFormat()</code></a>.',
 	examples: [
 		{ example: "(123456.789).format('de-DE')", evaluated: '123.456,789' },
 		{
@@ -148,7 +159,7 @@ format.doc = {
 			name: 'locale',
 			optional: true,
 			description:
-				'A <a target="_blank" href=”https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl#locales_argument”>locale tag</a> for formatting the number, e.g. <code>fr-FR</code>, <code>en-GB</code>, <code>pr-BR</code>',
+				'A <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl#locales_argument">locale tag</a> for formatting the number, e.g. <code>fr-FR</code>, <code>en-GB</code>, <code>pt-BR</code>',
 			default: '"en-US"',
 			type: 'string',
 		},
@@ -160,7 +171,8 @@ format.doc = {
 			type: 'object',
 		},
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/numbers/#number-format',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/number#numberformat',
 };
 
 round.doc = {
@@ -181,7 +193,8 @@ round.doc = {
 			type: 'number',
 		},
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/numbers/#number-round',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/number#numberround',
 };
 
 toBoolean.doc = {
@@ -196,7 +209,7 @@ toBoolean.doc = {
 	section: 'cast',
 	returnType: 'boolean',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/numbers/#number-toBoolean',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/number#numbertoboolean',
 };
 
 toDateTime.doc = {
@@ -222,7 +235,7 @@ toDateTime.doc = {
 		},
 	],
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/numbers/#number-toDateTime',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/number#numbertodatetime',
 };
 
 abs.doc = {
@@ -233,7 +246,8 @@ abs.doc = {
 		{ example: '(1.7).abs()', evaluated: '1.7' },
 	],
 	returnType: 'number',
-	docURL: 'https://docs.n8n.io/code/builtin/data-transformation-functions/numbers/#number-abs',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/number#numberabs',
 };
 
 isInteger.doc = {
@@ -246,7 +260,7 @@ isInteger.doc = {
 	],
 	returnType: 'boolean',
 	docURL:
-		'https://docs.n8n.io/code/builtin/data-transformation-functions/numbers/#number-isInteger',
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/number#numberisinteger',
 };
 
 export const numberExtensions: ExtensionMap = {

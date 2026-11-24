@@ -5,6 +5,7 @@ import type {
 	ILoadOptionsFunctions,
 	INode,
 } from 'n8n-workflow';
+import { requestPath, requestUrl } from 'n8n-workflow';
 
 import { webflowApiRequest, webflowApiRequestAllItems } from '../GenericFunctions';
 
@@ -33,15 +34,15 @@ describe('Webflow -> webflowApiRequestAllItems', () => {
 
 	const setupMockFunctions = (typeVersion: number) => {
 		mockExecuteFunctions = {
-			getNode: jest.fn().mockReturnValue({ typeVersion }),
-			getNodeParameter: jest.fn(),
+			getNode: vi.fn().mockReturnValue({ typeVersion }),
+			getNodeParameter: vi.fn(),
 			helpers: {
-				httpRequestWithAuthentication: jest
+				httpRequestWithAuthentication: vi
 					.fn()
 					.mockResolvedValue(typeVersion === 1 ? v1Response : v2Response),
 			},
 		} as unknown as IExecuteFunctions | ILoadOptionsFunctions;
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	};
 
 	beforeEach(() => {
@@ -52,7 +53,7 @@ describe('Webflow -> webflowApiRequestAllItems', () => {
 		const result = await webflowApiRequestAllItems.call(
 			mockExecuteFunctions,
 			'GET',
-			'/collections/collection_id/items',
+			requestPath`/collections/collection_id/items`,
 		);
 
 		expect(result).toEqual(v1Response.items);
@@ -64,7 +65,7 @@ describe('Webflow -> webflowApiRequestAllItems', () => {
 		const result = await webflowApiRequestAllItems.call(
 			mockExecuteFunctions,
 			'GET',
-			'/collections/collection_id/items',
+			requestPath`/collections/collection_id/items`,
 		);
 
 		expect(result).toEqual(v2Response.body.items);
@@ -95,16 +96,16 @@ describe('Webflow -> webflowApiRequest', () => {
 	it('should use live in the url for v2 when live is true', async () => {
 		const mockThis = {
 			helpers: {
-				httpRequestWithAuthentication: jest.fn().mockResolvedValue({ statusCode: 200, data: 'x' }),
+				httpRequestWithAuthentication: vi.fn().mockResolvedValue({ statusCode: 200, data: 'x' }),
 			},
 			getNode() {
 				return node;
 			},
-			getNodeParameter: jest.fn(),
+			getNodeParameter: vi.fn(),
 		} as unknown as IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions;
 
 		const method: IHttpRequestMethods = 'PATCH';
-		const resource = `/collections/${node.parameters.collectionId}/items/${node.parameters.itemId}${node.parameters.live ? '/live' : ''}`;
+		const resource = requestPath`/collections/${node.parameters.collectionId}/items/${node.parameters.itemId}/live`;
 
 		await webflowApiRequest.call(mockThis, method, resource);
 
@@ -113,26 +114,24 @@ describe('Webflow -> webflowApiRequest', () => {
 			{
 				method: 'PATCH',
 				returnFullResponse: true,
-				url: 'https://api.webflow.com/v2/collections/zzz/items/xxx/live',
+				url: requestUrl`https://api.webflow.com/v2/collections/zzz/items/xxx/live`,
 				json: true,
 			},
 		);
 	});
-	it('should skip live in the url for v2 when live is false', async () => {
+	it('should send the item path without live for v2', async () => {
 		const mockThis = {
 			helpers: {
-				httpRequestWithAuthentication: jest.fn().mockResolvedValue({ statusCode: 200, data: 'x' }),
+				httpRequestWithAuthentication: vi.fn().mockResolvedValue({ statusCode: 200, data: 'x' }),
 			},
 			getNode() {
 				return node;
 			},
-			getNodeParameter: jest.fn(),
+			getNodeParameter: vi.fn(),
 		} as unknown as IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions;
 
-		node.parameters.live = false;
-
 		const method: IHttpRequestMethods = 'PATCH';
-		const resource = `/collections/${node.parameters.collectionId}/items/${node.parameters.itemId}${node.parameters.live ? '/live' : ''}`;
+		const resource = requestPath`/collections/${node.parameters.collectionId}/items/${node.parameters.itemId}`;
 
 		await webflowApiRequest.call(mockThis, method, resource);
 
@@ -141,7 +140,7 @@ describe('Webflow -> webflowApiRequest', () => {
 			{
 				method: 'PATCH',
 				returnFullResponse: true,
-				url: 'https://api.webflow.com/v2/collections/zzz/items/xxx',
+				url: requestUrl`https://api.webflow.com/v2/collections/zzz/items/xxx`,
 				json: true,
 			},
 		);

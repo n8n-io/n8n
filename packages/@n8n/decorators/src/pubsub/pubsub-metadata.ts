@@ -1,28 +1,10 @@
 import type { InstanceRole, InstanceType } from '@n8n/constants';
 import { Service } from '@n8n/di';
 
+import type { PubSubEventMap } from './pubsub.event-map';
 import type { EventHandler } from '../types';
 
-export type PubSubEventName =
-	| 'add-webhooks-triggers-and-pollers'
-	| 'remove-triggers-and-pollers'
-	| 'clear-test-webhooks'
-	| 'display-workflow-activation'
-	| 'display-workflow-deactivation'
-	| 'display-workflow-activation-error'
-	| 'community-package-install'
-	| 'community-package-uninstall'
-	| 'community-package-update'
-	| 'get-worker-status'
-	| 'reload-external-secrets-providers'
-	| 'reload-license'
-	| 'reload-oidc-config'
-	| 'reload-saml-config'
-	| 'reload-overwrite-credentials'
-	| 'response-to-get-worker-status'
-	| 'restart-event-bus'
-	| 'relay-execution-lifecycle-event'
-	| 'reload-sso-provisioning-configuration';
+export type PubSubEventName = keyof PubSubEventMap;
 
 export type PubSubEventFilter =
 	| {

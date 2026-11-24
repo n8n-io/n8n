@@ -1,0 +1,345 @@
+import type { InvalidToolInputError, NoSuchToolError } from 'ai';
+import { z } from 'zod';
+
+import type { BuiltTool } from '../../types';
+import { fixToolCall } from '../tools/fix-tool-call';
+import { buildToolMap, findDispatcherForCall } from '../tools/tool-adapter';
+import { CALL_TOOL_TOOL_NAME, ToolCatalog } from '../tools/tool-catalog';
+
+function makeTool(overrides: Partial<BuiltTool> = {}): BuiltTool {
+	return {
+		name: 'get_environment',
+		description: 'test tool',
+		...overrides,
+	};
+}
+
+function makeToolCall(
+	overrides: {
+		toolCallId?: string;
+		toolName?: string;
+		input?: unknown;
+		providerExecuted?: boolean;
+		dynamic?: boolean;
+	} = {},
+) {
+	return {
+		toolCallId: 'tc-1',
+		toolName: 'get_environment',
+		input: null,
+		providerExecuted: false,
+		dynamic: false,
+		...overrides,
+	};
+}
+
+function makeInvalidToolInputError() {
+	return { name: 'AI_InvalidToolInputError' } as unknown as InvalidToolInputError;
+}
+
+function makeNoSuchToolError() {
+	return { name: 'AI_NoSuchToolError' } as unknown as NoSuchToolError;
+}
+
+// ---------------------------------------------------------------------------
+// fixToolCall
+// ---------------------------------------------------------------------------
+
+describe('fixToolCall — early-exit guards', () => {
+	it('returns null when the tool is not found in toolMap', async () => {
+		const result = await fixToolCall(
+			{ toolCall: makeToolCall(), error: makeInvalidToolInputError() },
+			new Map(),
+		);
+		expect(result).toBeNull();
+	});
+
+	it('returns null when error is not AI_InvalidToolInputError', async () => {
+		const toolMap = new Map([['get_environment', makeTool({ inputSchema: z.object({}) })]]);
+		const result = await fixToolCall(
+			{ toolCall: makeToolCall(), error: makeNoSuchToolError() },
+			toolMap,
+		);
+		expect(result).toBeNull();
+	});
+
+	it('returns null for AI_NoSuchToolError when the name is not a former tool name', async () => {
+		const result = await fixToolCall(
+			{ toolCall: makeToolCall({ toolName: 'unknown_tool' }), error: makeNoSuchToolError() },
+			new Map([['get_environment', makeTool()]]),
+		);
+		expect(result).toBeNull();
+	});
+
+	it('returns null when toolCall.providerExecuted is true', async () => {
+		const toolMap = new Map([['get_environment', makeTool({ inputSchema: z.object({}) })]]);
+		const result = await fixToolCall(
+			{
+				toolCall: makeToolCall({ providerExecuted: true }),
+				error: makeInvalidToolInputError(),
+			},
+			toolMap,
+		);
+		expect(result).toBeNull();
+	});
+});
+
+describe('fixToolCall — schema / input guards', () => {
+	it('returns null when tool schema is a non-empty Zod object', async () => {
+		const toolMap = new Map([
+			['get_environment', makeTool({ inputSchema: z.object({ q: z.string() }) })],
+		]);
+		const result = await fixToolCall(
+			{ toolCall: makeToolCall({ input: null }), error: makeInvalidToolInputError() },
+			toolMap,
+		);
+		expect(result).toBeNull();
+	});
+
+	it('returns null when tool schema is a non-object Zod type', async () => {
+		const toolMap = new Map([['get_environment', makeTool({ inputSchema: z.string() })]]);
+		const result = await fixToolCall(
+			{ toolCall: makeToolCall({ input: null }), error: makeInvalidToolInputError() },
+			toolMap,
+		);
+		expect(result).toBeNull();
+	});
+
+	it('returns null when tool schema is a plain JSON Schema object (not Zod)', async () => {
+		const toolMap = new Map([
+			['get_environment', makeTool({ inputSchema: { type: 'object', properties: {} } })],
+		]);
+		const result = await fixToolCall(
+			{ toolCall: makeToolCall({ input: null }), error: makeInvalidToolInputError() },
+			toolMap,
+		);
+		expect(result).toBeNull();
+	});
+
+	it('returns null when input is not null and not the string "null"', async () => {
+		const toolMap = new Map([['get_environment', makeTool({ inputSchema: z.object({}) })]]);
+		const result = await fixToolCall(
+			{ toolCall: makeToolCall({ input: '{}' }), error: makeInvalidToolInputError() },
+			toolMap,
+		);
+		expect(result).toBeNull();
+	});
+
+	it('returns null when input is an empty object (not null)', async () => {
+		const toolMap = new Map([['get_environment', makeTool({ inputSchema: z.object({}) })]]);
+		const result = await fixToolCall(
+			{ toolCall: makeToolCall({ input: {} }), error: makeInvalidToolInputError() },
+			toolMap,
+		);
+		expect(result).toBeNull();
+	});
+});
+
+describe('fixToolCall — common tool schemas that must NOT trigger repair', () => {
+	// Each entry: [label, schema]. All are called with null input + InvalidToolInputError
+	// so the ONLY reason repair is skipped is that the schema is not an empty Zod object.
+	it.each([
+		// Typical single-field tools
+		['z.object with a required string field', z.object({ query: z.string() })],
+		[
+			'z.object with multiple typed fields',
+			z.object({ url: z.string(), method: z.enum(['GET', 'POST']) }),
+		],
+		['z.object with an optional field', z.object({ limit: z.number().optional() })],
+		['z.object with an array field', z.object({ items: z.array(z.string()) })],
+		['z.object with a nested object', z.object({ filters: z.object({ active: z.boolean() }) })],
+		['z.object with a default value', z.object({ page: z.number().default(1) })],
+		// Non-object Zod roots
+		['z.string() root schema', z.string()],
+		['z.record() root schema', z.record(z.string(), z.unknown())],
+		// Wrapping an empty object in another Zod type changes the typeName
+		['z.object({}).optional()', z.object({}).optional()],
+		['z.object({}).nullable()', z.object({}).nullable()],
+		// Raw JSON Schema (not a Zod type at all)
+		[
+			'JSON Schema object with properties',
+			{ type: 'object', properties: { q: { type: 'string' } } },
+		],
+		[
+			'JSON Schema object with required fields',
+			{ type: 'object', required: ['name'], properties: { name: { type: 'string' } } },
+		],
+	])('returns null for %s', async (_, schema) => {
+		const toolMap = new Map([
+			['get_environment', makeTool({ inputSchema: schema as BuiltTool['inputSchema'] })],
+		]);
+		const result = await fixToolCall(
+			{ toolCall: makeToolCall({ input: null }), error: makeInvalidToolInputError() },
+			toolMap,
+		);
+		expect(result).toBeNull();
+	});
+});
+
+describe('fixToolCall — successful repair', () => {
+	it('repairs when tool has z.object({}) schema and input is null', async () => {
+		const toolMap = new Map([['get_environment', makeTool({ inputSchema: z.object({}) })]]);
+		const result = await fixToolCall(
+			{ toolCall: makeToolCall({ input: null }), error: makeInvalidToolInputError() },
+			toolMap,
+		);
+		expect(result).toEqual({
+			type: 'tool-call',
+			toolCallId: 'tc-1',
+			toolName: 'get_environment',
+			input: '{}',
+			providerExecuted: false,
+			dynamic: false,
+		});
+	});
+
+	it('repairs when tool has z.object({}) schema and input is the string "null"', async () => {
+		const toolMap = new Map([['get_environment', makeTool({ inputSchema: z.object({}) })]]);
+		const result = await fixToolCall(
+			{ toolCall: makeToolCall({ input: 'null' }), error: makeInvalidToolInputError() },
+			toolMap,
+		);
+		expect(result).toMatchObject({ type: 'tool-call', input: '{}' });
+	});
+
+	it('renames a call to a former tool name to the current tool name', async () => {
+		const tool = makeTool({ name: 'workflow_builder_workflows', legacyNames: ['workflows'] });
+		const toolMap = new Map([
+			['workflow_builder_workflows', tool],
+			['workflows', tool],
+		]);
+		const result = await fixToolCall(
+			{
+				toolCall: makeToolCall({ toolName: 'workflows', input: '{"action":"list"}' }),
+				error: makeNoSuchToolError(),
+			},
+			toolMap,
+		);
+		expect(result).toEqual({
+			type: 'tool-call',
+			toolCallId: 'tc-1',
+			toolName: 'workflow_builder_workflows',
+			input: '{"action":"list"}',
+			providerExecuted: false,
+			dynamic: false,
+		});
+	});
+
+	it('repairs a direct call to a deferred tool into a call_tool call', async () => {
+		const catalog = new ToolCatalog([
+			makeTool({ name: 'list_workflows', inputSchema: z.object({}) }),
+		]);
+		const result = await fixToolCall(
+			{
+				toolCall: makeToolCall({ toolName: 'list_workflows', input: '{"limit":5}' }),
+				error: makeNoSuchToolError(),
+			},
+			buildToolMap(catalog.getControllerTools()),
+		);
+		expect(result).toEqual({
+			type: 'tool-call',
+			toolCallId: 'tc-1',
+			toolName: CALL_TOOL_TOOL_NAME,
+			input: JSON.stringify({ tool: 'list_workflows', arguments: { limit: 5 } }),
+			providerExecuted: false,
+			dynamic: false,
+		});
+	});
+
+	it('repairs a deferred tool called by a former name with an action into a call_tool call', async () => {
+		const catalog = new ToolCatalog([
+			makeTool({
+				name: 'list_workflows',
+				inputSchema: z.object({}),
+				legacyActions: { workflows: ['list'] },
+			}),
+		]);
+		const result = await fixToolCall(
+			{
+				toolCall: makeToolCall({
+					toolName: 'workflows',
+					input: '{"action":"list","limit":5}',
+				}),
+				error: makeNoSuchToolError(),
+			},
+			buildToolMap(catalog.getControllerTools()),
+		);
+		expect(result?.toolName).toBe(CALL_TOOL_TOOL_NAME);
+		expect(JSON.parse(result!.input)).toEqual({
+			tool: 'list_workflows',
+			arguments: { limit: 5 },
+		});
+	});
+
+	it('does not change the input of a former-name call when it drops the action', () => {
+		const catalog = new ToolCatalog([
+			makeTool({ name: 'list_workflows', legacyActions: { workflows: ['list'] } }),
+		]);
+		const input = { action: 'list', limit: 5 };
+		const routed = findDispatcherForCall(
+			buildToolMap(catalog.getControllerTools()),
+			'workflows',
+			input,
+		);
+		expect(routed?.input).toEqual({ tool: 'list_workflows', arguments: { limit: 5 } });
+		expect(input).toEqual({ action: 'list', limit: 5 });
+	});
+
+	it('preserves dynamic flag from the original tool call', async () => {
+		const toolMap = new Map([['get_environment', makeTool({ inputSchema: z.object({}) })]]);
+		const result = await fixToolCall(
+			{
+				toolCall: makeToolCall({ input: null, dynamic: true }),
+				error: makeInvalidToolInputError(),
+			},
+			toolMap,
+		);
+		expect(result).toMatchObject({ dynamic: true });
+	});
+
+	describe('a tool whose former names are for resume only', () => {
+		const resumeOnly = makeTool({
+			name: 'change_items',
+			inputSchema: z.object({}),
+			legacyNames: ['create_item'],
+			legacyActions: { items: ['create'] },
+			legacyResumeOnly: { convert: (_formerName, input) => input },
+		});
+		const calls = [
+			{ name: 'a former name', toolName: 'create_item', input: '{"id":"1"}' },
+			{ name: 'a former split tool action', toolName: 'items', input: '{"action":"create"}' },
+		];
+
+		it.each(calls)('does not repair a model call by $name', async ({ toolName, input }) => {
+			const result = await fixToolCall(
+				{ toolCall: makeToolCall({ toolName, input }), error: makeNoSuchToolError() },
+				buildToolMap([resumeOnly]),
+			);
+			expect(result).toBeNull();
+		});
+
+		it.each(calls)(
+			'does not route a model call by $name to the tool catalog',
+			async ({ toolName, input }) => {
+				const catalog = new ToolCatalog([resumeOnly]);
+				const result = await fixToolCall(
+					{ toolCall: makeToolCall({ toolName, input }), error: makeNoSuchToolError() },
+					buildToolMap(catalog.getControllerTools()),
+				);
+				expect(result).toBeNull();
+			},
+		);
+
+		it('still repairs a model call by the former name of another tool', async () => {
+			const other = makeTool({ name: 'list_items', legacyNames: ['get_items'] });
+			const result = await fixToolCall(
+				{
+					toolCall: makeToolCall({ toolName: 'get_items', input: '{}' }),
+					error: makeNoSuchToolError(),
+				},
+				buildToolMap([resumeOnly, other]),
+			);
+			expect(result?.toolName).toBe('list_items');
+		});
+	});
+});

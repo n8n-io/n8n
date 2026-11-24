@@ -1,7 +1,7 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 
-import { downloadFile } from '../../helpers/utils';
+import { downloadFile, getCredentialHostname, getFilenameFromMimeType } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	{
@@ -47,10 +47,16 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		'data',
 	) as string;
 	const credentials = await this.getCredentials('googlePalmApi');
-	const { fileContent, mimeType } = await downloadFile.call(this, url, 'video/mp4', {
-		key: credentials.apiKey as string,
-	});
-	const binaryData = await this.helpers.prepareBinaryData(fileContent, 'video.mp4', mimeType);
+	const allowedDomains = getCredentialHostname.call(this, credentials.host as string);
+	const { fileContent, mimeType } = await downloadFile.call(
+		this,
+		url,
+		'video/mp4',
+		{ key: credentials.apiKey as string },
+		allowedDomains,
+	);
+	const fileName = getFilenameFromMimeType(mimeType, 'video', 'mp4');
+	const binaryData = await this.helpers.prepareBinaryData(fileContent, fileName, mimeType);
 	return [
 		{
 			binary: { [binaryPropertyOutput]: binaryData },

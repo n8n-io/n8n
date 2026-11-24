@@ -8,7 +8,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import {
 	meetingFields,
@@ -30,6 +30,7 @@ export class CiscoWebex implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume the Cisco Webex API',
+		schemaPath: 'Cisco/Webex',
 		defaults: {
 			name: 'Webex by Cisco',
 		},
@@ -77,7 +78,7 @@ export class CiscoWebex implements INodeType {
 		loadOptions: {
 			async getRooms(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const rooms = await webexApiRequestAllItems.call(this, 'items', 'GET', '/rooms');
+				const rooms = await webexApiRequestAllItems.call(this, 'items', 'GET', requestPath`/rooms`);
 				for (const room of rooms) {
 					returnData.push({
 						name: room.title,
@@ -92,7 +93,7 @@ export class CiscoWebex implements INodeType {
 					this,
 					'sites',
 					'GET',
-					'/meetingPreferences/sites',
+					requestPath`/meetingPreferences/sites`,
 				);
 				for (const site of sites) {
 					returnData.push({
@@ -193,14 +194,14 @@ export class CiscoWebex implements INodeType {
 							responseData = await webexApiRequest.call(
 								this,
 								'POST',
-								'/messages',
+								requestPath`/messages`,
 								{},
 								{},
 								undefined,
 								{ formData: body },
 							);
 						} else {
-							responseData = await webexApiRequest.call(this, 'POST', '/messages', body);
+							responseData = await webexApiRequest.call(this, 'POST', requestPath`/messages`, body);
 						}
 						responseData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(responseData as IDataObject[]),
@@ -214,7 +215,7 @@ export class CiscoWebex implements INodeType {
 						// https://developer.webex.com/docs/api/v1/messages/delete-a-message
 						const messageId = this.getNodeParameter('messageId', i);
 
-						const endpoint = `/messages/${messageId}`;
+						const endpoint = requestPath`/messages/${messageId}`;
 						responseData = await webexApiRequest.call(this, 'DELETE', endpoint);
 						responseData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray({ success: true }),
@@ -228,7 +229,7 @@ export class CiscoWebex implements INodeType {
 						// https://developer.webex.com/docs/api/v1/messages/get-message-details
 						const messageId = this.getNodeParameter('messageId', i);
 
-						const endpoint = `/messages/${messageId}`;
+						const endpoint = requestPath`/messages/${messageId}`;
 						responseData = await webexApiRequest.call(this, 'GET', endpoint);
 						responseData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(responseData as IDataObject[]),
@@ -255,13 +256,19 @@ export class CiscoWebex implements INodeType {
 								this,
 								'items',
 								'GET',
-								'/messages',
+								requestPath`/messages`,
 								{},
 								qs,
 							);
 						} else {
 							qs.max = this.getNodeParameter('limit', i);
-							responseData = await webexApiRequest.call(this, 'GET', '/messages', {}, qs);
+							responseData = await webexApiRequest.call(
+								this,
+								'GET',
+								requestPath`/messages`,
+								{},
+								qs,
+							);
 							responseData = responseData.items;
 						}
 						responseData = this.helpers.constructExecutionMetaData(
@@ -277,7 +284,7 @@ export class CiscoWebex implements INodeType {
 						const messageId = this.getNodeParameter('messageId', i) as string;
 						const markdown = this.getNodeParameter('markdown', i) as boolean;
 
-						const endpoint = `/messages/${messageId}`;
+						const endpoint = requestPath`/messages/${messageId}`;
 
 						responseData = await webexApiRequest.call(this, 'GET', endpoint);
 
@@ -331,7 +338,7 @@ export class CiscoWebex implements INodeType {
 							delete body.inviteesUi;
 						}
 
-						responseData = await webexApiRequest.call(this, 'POST', '/meetings', body);
+						responseData = await webexApiRequest.call(this, 'POST', requestPath`/meetings`, body);
 						responseData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
@@ -349,7 +356,7 @@ export class CiscoWebex implements INodeType {
 						responseData = await webexApiRequest.call(
 							this,
 							'DELETE',
-							`/meetings/${meetingId}`,
+							requestPath`/meetings/${meetingId}`,
 							{},
 							qs,
 						);
@@ -377,7 +384,7 @@ export class CiscoWebex implements INodeType {
 						responseData = await webexApiRequest.call(
 							this,
 							'GET',
-							`/meetings/${meetingId}`,
+							requestPath`/meetings/${meetingId}`,
 							{},
 							qs,
 							undefined,
@@ -414,13 +421,19 @@ export class CiscoWebex implements INodeType {
 								this,
 								'items',
 								'GET',
-								'/meetings',
+								requestPath`/meetings`,
 								{},
 								qs,
 							);
 						} else {
 							qs.max = this.getNodeParameter('limit', i);
-							responseData = await webexApiRequest.call(this, 'GET', '/meetings', {}, qs);
+							responseData = await webexApiRequest.call(
+								this,
+								'GET',
+								requestPath`/meetings`,
+								{},
+								qs,
+							);
 							responseData = responseData.items;
 						}
 						responseData = this.helpers.constructExecutionMetaData(
@@ -441,7 +454,7 @@ export class CiscoWebex implements INodeType {
 						const { title, password, start, end } = await webexApiRequest.call(
 							this,
 							'GET',
-							`/meetings/${meetingId}`,
+							requestPath`/meetings/${meetingId}`,
 						);
 
 						const body: IDataObject = {
@@ -480,7 +493,12 @@ export class CiscoWebex implements INodeType {
 							body.password = password;
 						}
 
-						responseData = await webexApiRequest.call(this, 'PUT', `/meetings/${meetingId}`, body);
+						responseData = await webexApiRequest.call(
+							this,
+							'PUT',
+							requestPath`/meetings/${meetingId}`,
+							body,
+						);
 						responseData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },

@@ -5,12 +5,8 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import {
-	ApplicationError,
-	NodeApiError,
-	NodeConnectionTypes,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { generateGarbageMemory, runGarbageCollector } from './functions';
 import {
@@ -278,7 +274,7 @@ export class DebugHelper implements INodeType {
 									message: throwErrorMessage,
 								});
 							case 'Error':
-								throw new ApplicationError(throwErrorMessage);
+								throw new UnexpectedError(throwErrorMessage);
 							default:
 								break;
 						}

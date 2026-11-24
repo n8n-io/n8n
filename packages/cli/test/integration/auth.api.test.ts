@@ -1,21 +1,21 @@
+import { EventService, JwtService } from '@n8n/backend-services';
 import { randomValidPassword, testDb } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import type { Person } from '@n8n/db';
 import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import validator from 'validator';
 
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { MfaService } from '@/mfa/mfa.service';
 
 import { LOGGED_OUT_RESPONSE_BODY } from './shared/constants';
 import { createUser, createUserShell } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
-import { EventService } from '@/events/event.service';
-import type { RelayEventMap } from '@/events/maps/relay.event-map';
 
-let owner: User;
+let owner: Person;
 let authOwnerAgent: SuperAgentTest;
 const ownerPassword = randomValidPassword();
 
@@ -334,11 +334,13 @@ describe('GET /resolve-signup-token', () => {
 
 	test('should validate invite token', async () => {
 		const memberShell = await createUserShell(GLOBAL_MEMBER_ROLE);
+		const token = Container.get(JwtService).sign(
+			'invite',
+			{ inviterId: owner.id, inviteeId: memberShell.id },
+			{ expiresIn: '90d' },
+		);
 
-		const response = await authOwnerAgent
-			.get('/resolve-signup-token')
-			.query({ inviterId: owner.id })
-			.query({ inviteeId: memberShell.id });
+		const response = await authOwnerAgent.get('/resolve-signup-token').query({ token });
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toEqual({
@@ -354,40 +356,40 @@ describe('GET /resolve-signup-token', () => {
 	test('should return 403 if user quota reached', async () => {
 		license.setQuota('quota:users', 0);
 		const memberShell = await createUserShell(GLOBAL_MEMBER_ROLE);
+		const token = Container.get(JwtService).sign(
+			'invite',
+			{ inviterId: owner.id, inviteeId: memberShell.id },
+			{ expiresIn: '90d' },
+		);
 
-		const response = await authOwnerAgent
-			.get('/resolve-signup-token')
-			.query({ inviterId: owner.id })
-			.query({ inviteeId: memberShell.id });
+		const response = await authOwnerAgent.get('/resolve-signup-token').query({ token });
 
 		expect(response.statusCode).toBe(403);
 	});
 
 	test('should fail with invalid inputs', async () => {
 		const { id: inviteeId } = await createUser({ role: { slug: 'global:member' } });
+		const validToken = Container.get(JwtService).sign(
+			'invite',
+			{ inviterId: owner.id, inviteeId },
+			{ expiresIn: '90d' },
+		);
 
-		const first = await authOwnerAgent.get('/resolve-signup-token').query({ inviterId: owner.id });
+		const first = await authOwnerAgent.get('/resolve-signup-token').query({});
 
-		const second = await authOwnerAgent.get('/resolve-signup-token').query({ inviteeId });
+		const second = await authOwnerAgent.get('/resolve-signup-token').query({ token: '' });
 
 		const third = await authOwnerAgent.get('/resolve-signup-token').query({
-			inviterId: '5531199e-b7ae-425b-a326-a95ef8cca59d',
-			inviteeId: 'cb133beb-7729-4c34-8cd1-a06be8834d9d',
+			token: 'invalid-jwt-token',
 		});
 
 		// user is already set up, so call should error
-		const fourth = await authOwnerAgent
-			.get('/resolve-signup-token')
-			.query({ inviterId: owner.id })
-			.query({ inviteeId });
+		const fourth = await authOwnerAgent.get('/resolve-signup-token').query({ token: validToken });
 
 		// cause inconsistent DB state
 		owner.email = '';
 		await Container.get(UserRepository).save(owner, { listeners: false });
-		const fifth = await authOwnerAgent
-			.get('/resolve-signup-token')
-			.query({ inviterId: owner.id })
-			.query({ inviteeId });
+		const fifth = await authOwnerAgent.get('/resolve-signup-token').query({ token: validToken });
 
 		for (const response of [first, second, third, fourth, fifth]) {
 			expect(response.statusCode).toBe(400);
@@ -396,15 +398,16 @@ describe('GET /resolve-signup-token', () => {
 
 	test('should send roles for user-invite-email-click event', async () => {
 		const memberShell = await createUserShell(GLOBAL_MEMBER_ROLE);
+		const token = Container.get(JwtService).sign(
+			'invite',
+			{ inviterId: owner.id, inviteeId: memberShell.id },
+			{ expiresIn: '90d' },
+		);
 
 		const eventService = Container.get(EventService);
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 
-		await authOwnerAgent
-			.get('/resolve-signup-token')
-			.query({ inviterId: owner.id })
-			.query({ inviteeId: memberShell.id })
-			.expect(200);
+		await authOwnerAgent.get('/resolve-signup-token').query({ token }).expect(200);
 
 		// Check all emitted events
 		let foundEvent = false;
@@ -426,6 +429,10 @@ describe('GET /resolve-signup-token', () => {
 });
 
 describe('POST /logout', () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
 	test('should log user out', async () => {
 		const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
 		const ownerAgent = testServer.authAgentFor(owner);
@@ -442,5 +449,34 @@ describe('POST /logout', () => {
 
 		ownerAgent.jar.setCookie(`${AUTH_COOKIE_NAME}=${cookie!.value}`);
 		await ownerAgent.get('/login').expect(401);
+	});
+
+	test('should emit `user-logged-out` once and not again for the revoked cookie', async () => {
+		const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
+		const ownerAgent = testServer.authAgentFor(owner);
+		// @ts-expect-error `accessInfo` types are incorrect
+		const cookie = ownerAgent.jar.getCookie(AUTH_COOKIE_NAME, { path: '/' });
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+		const logoutEvents = () =>
+			emitSpy.mock.calls.filter(([eventName]) => eventName === 'user-logged-out');
+
+		await ownerAgent.post('/logout').expect(200);
+
+		expect(logoutEvents()).toEqual([
+			['user-logged-out', { user: expect.objectContaining({ id: owner.id }) }],
+		]);
+
+		ownerAgent.jar.setCookie(`${AUTH_COOKIE_NAME}=${cookie!.value}`);
+		await ownerAgent.post('/logout').expect(401);
+
+		expect(logoutEvents()).toHaveLength(1);
+	});
+
+	test('should return 401 and emit nothing without a session', async () => {
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+		await testServer.authlessAgent.post('/logout').expect(401);
+
+		expect(emitSpy).not.toHaveBeenCalledWith('user-logged-out', expect.anything());
 	});
 });

@@ -1,4 +1,5 @@
 import type { IDataObject, ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { theHiveApiRequest } from '../transport';
 
@@ -35,7 +36,7 @@ async function listResource(
 		to,
 	});
 
-	const response = await theHiveApiRequest.call(this, 'POST', '/v1/query', { query });
+	const response = await theHiveApiRequest.call(this, 'POST', requestPath`/v1/query`, { query });
 
 	if (response.length === 0) {
 		return {
@@ -54,7 +55,7 @@ async function listResource(
 			url:
 				urlPlaceholder !== undefined ? `${url}/${urlPlaceholder}/${entry._id}/details` : undefined,
 		})),
-		paginationToken: to,
+		paginationToken: String(to),
 	};
 }
 
@@ -173,7 +174,7 @@ export async function pageSearch(
 		to,
 	});
 
-	const response = await theHiveApiRequest.call(this, 'POST', '/v1/query', { query });
+	const response = await theHiveApiRequest.call(this, 'POST', requestPath`/v1/query`, { query });
 
 	if (response.length === 0) {
 		return {
@@ -187,7 +188,7 @@ export async function pageSearch(
 			name: entry.title,
 			value: entry._id,
 		})),
-		paginationToken: to,
+		paginationToken: String(to),
 	};
 }
 
@@ -252,7 +253,7 @@ export async function observableSearch(
 		to,
 	});
 
-	const response = await theHiveApiRequest.call(this, 'POST', '/v1/query', { query });
+	const response = await theHiveApiRequest.call(this, 'POST', requestPath`/v1/query`, { query });
 
 	if (response.length === 0) {
 		return {
@@ -266,6 +267,6 @@ export async function observableSearch(
 			name: entry.data || (entry.attachment as IDataObject)?.name || entry.message || entry._id,
 			value: entry._id,
 		})),
-		paginationToken: to,
+		paginationToken: String(to),
 	};
 }

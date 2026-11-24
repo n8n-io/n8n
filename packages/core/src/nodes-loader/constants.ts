@@ -2,6 +2,7 @@ import type { INodeProperties } from 'n8n-workflow';
 import { cronNodeOptions } from 'n8n-workflow';
 
 export const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
+export const CUSTOM_NODES_PACKAGE_NAME = 'CUSTOM';
 
 export const commonPollingParameters: INodeProperties[] = [
 	{

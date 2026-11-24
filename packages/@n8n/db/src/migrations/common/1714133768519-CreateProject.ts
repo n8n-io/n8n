@@ -1,9 +1,7 @@
 import type { ProjectRole } from '@n8n/permissions';
-import { UserError } from 'n8n-workflow';
-import { nanoid } from 'nanoid';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
+import { UserError } from '@n8n/errors';
 
-import type { User } from '../../entities';
-import { generateNanoId } from '../../utils/generators';
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const projectAdminRole: ProjectRole = 'project:personalOwner';
@@ -76,13 +74,12 @@ export class CreateProject1714133768519 implements ReversibleMigration {
 		relationTableName: RelationTable,
 		{
 			escape,
-			isMysql,
 			runQuery,
 			schemaBuilder: { addForeignKey, addColumns, addNotNull, createIndex, column },
 		}: MigrationContext,
 	) {
 		const projectIdColumn = column('projectId').varchar(36).default('NULL');
-		await addColumns(relationTableName, [projectIdColumn]);
+		await addColumns(relationTableName, [projectIdColumn], { recreatesOnSqlite: true });
 
 		const relationTable = escape.tableName(relationTableName);
 		const { t, c } = escapeNames(escape);
@@ -97,11 +94,7 @@ export class CreateProject1714133768519 implements ReversibleMigration {
 				ON T.${c.userId} = S.${c.userId}
 				WHERE P.id IS NOT NULL
 		`;
-		const swQuery = isMysql
-			? `UPDATE ${relationTable}, (${subQuery}) as mapping
-				    SET ${relationTable}.${c.projectId} = mapping.${c.projectId}
-				    WHERE ${relationTable}.${c.userId} = mapping.${c.userId}`
-			: `UPDATE ${relationTable}
+		const swQuery = `UPDATE ${relationTable}
 						SET ${c.projectId} = mapping.${c.projectId}
 				    FROM (${subQuery}) as mapping
 				    WHERE ${relationTable}.${c.userId} = mapping.${c.userId}`;
@@ -110,7 +103,7 @@ export class CreateProject1714133768519 implements ReversibleMigration {
 
 		await addForeignKey(relationTableName, 'projectId', ['project', 'id']);
 
-		await addNotNull(relationTableName, 'projectId');
+		await addNotNull(relationTableName, 'projectId', { recreatesOnSqlite: true });
 
 		// Index the new projectId column
 		await createIndex(relationTableName, ['projectId']);
@@ -185,7 +178,7 @@ export class CreateProject1714133768519 implements ReversibleMigration {
 	async createUserPersonalProjects({ runQuery, runInBatches, escape }: MigrationContext) {
 		const { c, t } = escapeNames(escape);
 		const getUserQuery = `SELECT id, ${c.firstName}, ${c.lastName}, email FROM ${t.user}`;
-		await runInBatches<Pick<User, 'id' | 'firstName' | 'lastName' | 'email'>>(
+		await runInBatches<{ id: string; firstName: string; lastName: string; email: string }>(
 			getUserQuery,
 			async (users) => {
 				await Promise.all(
@@ -237,7 +230,7 @@ export class CreateProject1714133768519 implements ReversibleMigration {
 		await this.alterSharedWorkflow(context);
 	}
 
-	async down({ isMysql, logger, escape, runQuery, schemaBuilder: sb }: MigrationContext) {
+	async down({ logger, escape, runQuery, schemaBuilder: sb }: MigrationContext) {
 		const { t, c } = escapeNames(escape);
 
 		// 0. check if all projects are personal projects
@@ -264,11 +257,7 @@ export class CreateProject1714133768519 implements ReversibleMigration {
 				tableName: 'workflow_entity',
 				columnName: 'id',
 				onDelete: 'CASCADE',
-				// In MySQL foreignKey names must be unique across all tables and
-				// TypeORM creates predictable names based on the columnName.
-				// So the current shared_workflow table's foreignKey for workflowId would
-				// clash with this one if we don't create a random name.
-				name: isMysql ? nanoid() : undefined,
+				name: undefined,
 			})
 			.withForeignKey('userId', {
 				tableName: table.user,
@@ -302,11 +291,7 @@ export class CreateProject1714133768519 implements ReversibleMigration {
 				tableName: 'credentials_entity',
 				columnName: 'id',
 				onDelete: 'CASCADE',
-				// In MySQL foreignKey names must be unique across all tables and
-				// TypeORM creates predictable names based on the columnName.
-				// So the current shared_credentials table's foreignKey for credentialsId would
-				// clash with this one if we don't create a random name.
-				name: isMysql ? nanoid() : undefined,
+				name: undefined,
 			})
 			.withForeignKey('userId', {
 				tableName: table.user,

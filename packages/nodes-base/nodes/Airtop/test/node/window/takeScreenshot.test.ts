@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import * as takeScreenshot from '../../../actions/window/takeScreenshot.operation';
 import { ERROR_MESSAGES } from '../../../constants';
 import * as GenericFunctions from '../../../GenericFunctions';
@@ -38,11 +39,11 @@ const expectedBinaryResult = {
 	},
 };
 
-jest.mock('../../../transport', () => {
-	const originalModule = jest.requireActual<typeof transport>('../../../transport');
+vi.mock('../../../transport', async () => {
+	const originalModule = await vi.importActual<typeof transport>('../../../transport');
 	return {
 		...originalModule,
-		apiRequest: jest.fn(async function () {
+		apiRequest: vi.fn(async function () {
 			return {
 				status: 'success',
 				...mockResponse,
@@ -51,22 +52,19 @@ jest.mock('../../../transport', () => {
 	};
 });
 
-jest.mock('../../../GenericFunctions', () => {
-	const originalModule = jest.requireActual<typeof GenericFunctions>('../../../GenericFunctions');
+vi.mock('../../../GenericFunctions', async () => {
+	const originalModule = await vi.importActual<typeof GenericFunctions>(
+		'../../../GenericFunctions',
+	);
 	return {
 		...originalModule,
-		convertScreenshotToBinary: jest.fn(() => mockBinaryBuffer),
+		convertScreenshotToBinary: vi.fn(() => mockBinaryBuffer),
 	};
 });
 
 describe('Test Airtop, take screenshot operation', () => {
-	afterAll(() => {
-		jest.unmock('../../../transport');
-		jest.unmock('../../../GenericFunctions');
-	});
-
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should take screenshot in base64 format', async () => {
@@ -78,7 +76,7 @@ describe('Test Airtop, take screenshot operation', () => {
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/screenshot',
+			requestPath`/sessions/test-session-123/windows/win-123/screenshot`,
 		);
 
 		expect(result).toEqual([{ ...expectedJsonResult }]);
@@ -96,7 +94,7 @@ describe('Test Airtop, take screenshot operation', () => {
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/screenshot',
+			requestPath`/sessions/test-session-123/windows/win-123/screenshot`,
 		);
 
 		expect(GenericFunctions.convertScreenshotToBinary).toHaveBeenCalledWith(

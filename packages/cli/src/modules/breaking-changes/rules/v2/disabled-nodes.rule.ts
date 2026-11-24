@@ -1,6 +1,6 @@
 import type { BreakingChangeAffectedWorkflow, BreakingChangeRecommendation } from '@n8n/api-types';
 import type { WorkflowEntity } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { BreakingChangeRule } from '@n8n/decorators';
 import type { INode } from 'n8n-workflow';
 
 import type {
@@ -10,7 +10,7 @@ import type {
 } from '../../types';
 import { BreakingChangeCategory } from '../../types';
 
-@Service()
+@BreakingChangeRule({ version: 'v2' })
 export class DisabledNodesRule implements IBreakingChangeWorkflowRule {
 	private readonly DISABLED_NODES = [
 		'n8n-nodes-base.executeCommand',
@@ -26,7 +26,7 @@ export class DisabledNodesRule implements IBreakingChangeWorkflowRule {
 			description:
 				'ExecuteCommand and LocalFileTrigger nodes are now disabled by default for security reasons',
 			category: BreakingChangeCategory.workflow,
-			severity: 'medium',
+			impact: 'executionsFail',
 			documentationUrl:
 				'https://docs.n8n.io/2-0-breaking-changes/#disable-executecommand-and-localfiletrigger-nodes-by-default',
 		};

@@ -1,13 +1,17 @@
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { mockDeep } from 'jest-mock-extended';
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import * as sharedUtils from '../../shared/utils';
+import { getTools } from '../listSearch';
 import { McpClient } from '../McpClient.node';
+import { getToolParameters } from '../resourceMapping';
 
 describe('McpClient', () => {
-	const getAuthHeaders = jest.spyOn(sharedUtils, 'getAuthHeaders');
-	const connectMcpClient = jest.spyOn(sharedUtils, 'connectMcpClient');
+	let mapToNodeOperationError: MockInstance;
+	let connectMcpClientForCredential: MockInstance;
 	const executeFunctions = mockDeep<IExecuteFunctions>();
 	const client = mockDeep<Client>();
 	const defaultParams = {
@@ -21,7 +25,10 @@ describe('McpClient', () => {
 	};
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
+
+		mapToNodeOperationError = vi.spyOn(sharedUtils, 'mapToNodeOperationError');
+		connectMcpClientForCredential = vi.spyOn(sharedUtils, 'connectMcpClientForCredential');
 
 		executeFunctions.getNode.mockReturnValue({
 			id: '123',
@@ -32,11 +39,100 @@ describe('McpClient', () => {
 			parameters: {},
 		});
 		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
-		getAuthHeaders.mockResolvedValue({ headers: {} });
-		connectMcpClient.mockResolvedValue({
+		connectMcpClientForCredential.mockResolvedValue({
 			ok: true,
 			result: client,
 		});
+	});
+
+	it('should describe the generic OAuth2 option and credential picker', () => {
+		const { properties, credentials } = new McpClient().description;
+		const authentication = properties.find((property) => property.name === 'authentication');
+
+		expect({
+			authenticationOption: authentication?.options?.find(
+				(option) => 'value' in option && option.value === 'oAuth2Api',
+			),
+			credential: credentials?.find((credential) => credential.name === 'oAuth2Api'),
+			credentialPicker: properties.find((property) => property.name === 'credentials'),
+		}).toMatchInlineSnapshot(`
+			{
+			  "authenticationOption": {
+			    "description": "Use a generic OAuth2 API credential. It has no Resource URL field. If your server needs one, use MCP OAuth2.",
+			    "name": "Generic OAuth2 API",
+			    "value": "oAuth2Api",
+			  },
+			  "credential": {
+			    "displayOptions": {
+			      "show": {
+			        "authentication": [
+			          "oAuth2Api",
+			        ],
+			      },
+			    },
+			    "name": "oAuth2Api",
+			    "required": true,
+			  },
+			  "credentialPicker": {
+			    "default": "",
+			    "displayName": "Credentials",
+			    "displayOptions": {
+			      "show": {
+			        "authentication": [
+			          "headerAuth",
+			          "bearerAuth",
+			          "mcpOAuth2Api",
+			          "oAuth2Api",
+			          "multipleHeadersAuth",
+			        ],
+			      },
+			    },
+			    "name": "credentials",
+			    "type": "credentials",
+			  },
+			}
+		`);
+	});
+
+	it('should pass the execution cancel signal to connectMcpClientForCredential', async () => {
+		const abort = new AbortController();
+		executeFunctions.getExecutionCancelSignal.mockReturnValue(abort.signal);
+		executeFunctions.getNodeParameter.mockImplementation(
+			(key, _idx, defaultValue) => defaultParams[key as keyof typeof defaultParams] ?? defaultValue,
+		);
+		client.callTool.mockResolvedValue({
+			content: [{ type: 'text', text: 'Weather in Berlin is sunny' }],
+		});
+
+		await new McpClient().execute.call(executeFunctions);
+
+		expect(connectMcpClientForCredential).toHaveBeenCalledWith(
+			executeFunctions,
+			expect.objectContaining({
+				signal: abort.signal,
+			}),
+		);
+	});
+
+	it('should map and throw cancelled connection results', async () => {
+		const abortError = new Error('aborted');
+		abortError.name = 'AbortError';
+		executeFunctions.getNodeParameter.mockImplementation(
+			(key, _idx, defaultValue) => defaultParams[key as keyof typeof defaultParams] ?? defaultValue,
+		);
+		connectMcpClientForCredential.mockResolvedValue({
+			ok: false,
+			error: { type: 'cancelled', error: abortError },
+		});
+
+		await expect(new McpClient().execute.call(executeFunctions)).rejects.toThrow(
+			'Execution was cancelled',
+		);
+
+		expect(mapToNodeOperationError).toHaveBeenCalledWith(
+			executeFunctions.getNode(),
+			expect.objectContaining({ type: 'cancelled', error: abortError }),
+		);
 	});
 
 	it('should handle json input mode', async () => {
@@ -109,6 +205,52 @@ describe('McpClient', () => {
 			[
 				{
 					json: { content: [{ type: 'text', text: { answer: 'Weather in Berlin is sunny' } }] },
+					pairedItem: { item: 0 },
+				},
+			],
+		]);
+	});
+
+	it('should merge structuredContent with content', async () => {
+		executeFunctions.getNodeParameter.mockImplementation(
+			(key, _idx, defaultValue) => defaultParams[key as keyof typeof defaultParams] ?? defaultValue,
+		);
+		client.callTool.mockResolvedValue({
+			content: [{ type: 'text', text: 'Success' }],
+			structuredContent: { id: '123', status: 'active' },
+		});
+
+		const result = await new McpClient().execute.call(executeFunctions);
+
+		expect(result).toEqual([
+			[
+				{
+					json: {
+						structuredContent: { id: '123', status: 'active' },
+						content: [{ type: 'text', text: 'Success' }],
+					},
+					pairedItem: { item: 0 },
+				},
+			],
+		]);
+	});
+
+	it('should ignore structuredContent if it is an array', async () => {
+		executeFunctions.getNodeParameter.mockImplementation(
+			(key, _idx, defaultValue) => defaultParams[key as keyof typeof defaultParams] ?? defaultValue,
+		);
+		client.callTool.mockResolvedValue({
+			content: [{ type: 'text', text: 'Success' }],
+			toolResult: undefined,
+			structuredContent: ['should', 'be', 'ignored'],
+		});
+
+		const result = await new McpClient().execute.call(executeFunctions);
+
+		expect(result).toEqual([
+			[
+				{
+					json: { content: [{ type: 'text', text: 'Success' }] },
 					pairedItem: { item: 0 },
 				},
 			],
@@ -194,6 +336,184 @@ describe('McpClient', () => {
 		]);
 	});
 
+	it('should treat isError: true as success on version 1 (legacy behavior)', async () => {
+		executeFunctions.getNode.mockReturnValue({
+			id: '123',
+			name: 'MCP Client',
+			type: '@n8n/n8n-nodes-langchain.mcpClient',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		});
+		executeFunctions.getNodeParameter.mockImplementation(
+			(key, _idx, defaultValue) => defaultParams[key as keyof typeof defaultParams] ?? defaultValue,
+		);
+		client.callTool.mockResolvedValue({
+			isError: true,
+			content: [{ type: 'text', text: 'simulated tool-level error' }],
+		});
+
+		const result = await new McpClient().execute.call(executeFunctions);
+
+		expect(result).toEqual([
+			[
+				{
+					json: { content: [{ type: 'text', text: 'simulated tool-level error' }] },
+					pairedItem: { item: 0 },
+				},
+			],
+		]);
+	});
+
+	it('should throw an error if the tool result has isError: true (version 1.1+)', async () => {
+		executeFunctions.getNode.mockReturnValue({
+			id: '123',
+			name: 'MCP Client',
+			type: '@n8n/n8n-nodes-langchain.mcpClient',
+			typeVersion: 1.1,
+			position: [0, 0],
+			parameters: {},
+		});
+		executeFunctions.getNodeParameter.mockImplementation(
+			(key, _idx, defaultValue) => defaultParams[key as keyof typeof defaultParams] ?? defaultValue,
+		);
+		client.callTool.mockResolvedValue({
+			isError: true,
+			content: [{ type: 'text', text: 'simulated tool-level error' }],
+		});
+
+		await expect(new McpClient().execute.call(executeFunctions)).rejects.toThrow(
+			'MCP server returned an error for tool "get_weather"',
+		);
+	});
+
+	describe('tool-call error context (version 1.1)', () => {
+		beforeEach(() => {
+			executeFunctions.getNode.mockReturnValue({
+				...executeFunctions.getNode(),
+				typeVersion: 1.1,
+			});
+			executeFunctions.getNodeParameter.mockImplementation(
+				(key, _idx, defaultValue) =>
+					defaultParams[key as keyof typeof defaultParams] ?? defaultValue,
+			);
+		});
+
+		it('should return a successful tool result after connecting', async () => {
+			const content = [{ type: 'text' as const, text: 'Weather in Berlin is sunny' }];
+			client.callTool.mockResolvedValue({ isError: false, content });
+
+			await expect(new McpClient().execute.call(executeFunctions)).resolves.toEqual([
+				[{ json: { content }, pairedItem: { item: 0 } }],
+			]);
+		});
+
+		it('should identify the MCP server and failed tool and preserve the remote error as a description', async () => {
+			// NODE-5528: A tool can deny an operation after the connection succeeds.
+			const remoteMessage = 'The caller does not have permission';
+			client.callTool.mockResolvedValue({
+				isError: true,
+				content: [{ type: 'text', text: remoteMessage }],
+			});
+
+			const execution = new McpClient().execute.call(executeFunctions);
+
+			await expect(execution).rejects.toBeInstanceOf(NodeOperationError);
+			expect(client.callTool).toHaveBeenCalledWith(
+				{ name: defaultParams['tool.value'], arguments: defaultParams.jsonInput },
+				undefined,
+				{ timeout: defaultParams.options.timeout },
+			);
+			await expect(execution).rejects.toMatchObject({
+				message: expect.stringMatching(/MCP server/i),
+				description: expect.stringContaining(remoteMessage),
+				context: { itemIndex: 0 },
+			});
+			await expect(execution).rejects.toHaveProperty(
+				'message',
+				expect.stringContaining(defaultParams['tool.value']),
+			);
+		});
+	});
+
+	it.each([
+		{
+			scenario: 'remote text',
+			content: [{ type: 'text' as const, text: 'The caller does not have permission' }],
+			message: 'The caller does not have permission',
+		},
+		{
+			scenario: 'no text content',
+			content: [],
+			message: 'Tool "get_weather" returned an error',
+		},
+	])(
+		'should preserve the error message with $scenario when continuing on fail (version 1.1+)',
+		async ({ content, message }) => {
+			executeFunctions.getNode.mockReturnValue({
+				id: '123',
+				name: 'MCP Client',
+				type: '@n8n/n8n-nodes-langchain.mcpClient',
+				typeVersion: 1.1,
+				position: [0, 0],
+				parameters: {},
+			});
+			executeFunctions.getNodeParameter.mockImplementation(
+				(key, _idx, defaultValue) =>
+					defaultParams[key as keyof typeof defaultParams] ?? defaultValue,
+			);
+			client.callTool.mockResolvedValue({
+				isError: true,
+				content,
+			});
+			executeFunctions.continueOnFail.mockReturnValue(true);
+
+			const result = await new McpClient().execute.call(executeFunctions);
+
+			expect(result).toEqual([
+				[
+					{
+						json: {
+							error: {
+								message,
+								description: expect.stringContaining(
+									'MCP server returned an error for tool "get_weather"',
+								),
+							},
+						},
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+			expect(result).toMatchObject([
+				[{ json: { error: { description: expect.stringContaining(message) } } }],
+			]);
+		},
+	);
+
+	it('should throw a generic error if isError: true with no text content (version 1.1+)', async () => {
+		executeFunctions.getNode.mockReturnValue({
+			id: '123',
+			name: 'MCP Client',
+			type: '@n8n/n8n-nodes-langchain.mcpClient',
+			typeVersion: 1.1,
+			position: [0, 0],
+			parameters: {},
+		});
+		executeFunctions.getNodeParameter.mockImplementation(
+			(key, _idx, defaultValue) => defaultParams[key as keyof typeof defaultParams] ?? defaultValue,
+		);
+		client.callTool.mockResolvedValue({
+			isError: true,
+			content: [{ type: 'image', data: 'abc', mimeType: 'image/png' }],
+		});
+
+		await expect(new McpClient().execute.call(executeFunctions)).rejects.toMatchObject({
+			message: 'MCP server returned an error for tool "get_weather"',
+			description: expect.stringContaining('Tool "get_weather" returned an error'),
+		});
+	});
+
 	it('should throw an error if the tool call fails', async () => {
 		executeFunctions.getNodeParameter.mockImplementation(
 			(key, _idx, defaultValue) => defaultParams[key as keyof typeof defaultParams] ?? defaultValue,
@@ -217,5 +537,306 @@ describe('McpClient', () => {
 		expect(result).toEqual([
 			[{ json: { error: { message: 'Tool call failed' } }, pairedItem: { item: 0 } }],
 		]);
+	});
+
+	it('should close client connection after successful execution', async () => {
+		executeFunctions.getNodeParameter.mockImplementation(
+			(key, _idx, defaultValue) => defaultParams[key as keyof typeof defaultParams] ?? defaultValue,
+		);
+		client.callTool.mockResolvedValue({
+			content: [{ type: 'text', text: 'result' }],
+		});
+
+		await new McpClient().execute.call(executeFunctions);
+
+		expect(client.close).toHaveBeenCalledTimes(1);
+	});
+
+	it('should close client connection even when tool call fails', async () => {
+		executeFunctions.getNodeParameter.mockImplementation(
+			(key, _idx, defaultValue) => defaultParams[key as keyof typeof defaultParams] ?? defaultValue,
+		);
+		client.callTool.mockRejectedValue(new Error('Tool call failed'));
+
+		await expect(new McpClient().execute.call(executeFunctions)).rejects.toThrow(
+			'Tool call failed',
+		);
+
+		expect(client.close).toHaveBeenCalledTimes(1);
+	});
+
+	describe('listSearch: getTools', () => {
+		it('should close client after listing tools', async () => {
+			client.listTools.mockResolvedValue({
+				tools: [
+					{
+						name: 'tool1',
+						description: 'A tool',
+						inputSchema: { type: 'object' },
+					},
+				],
+			});
+
+			const loadOptionsFunctions = mock<ILoadOptionsFunctions>({
+				getNode: vi.fn().mockReturnValue({
+					id: '123',
+					name: 'MCP Client',
+					type: '@n8n/n8n-nodes-langchain.mcpClient',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				}),
+				getNodeParameter: vi.fn().mockImplementation((key: string) => {
+					const params: Record<string, unknown> = {
+						authentication: 'none',
+						serverTransport: 'httpStreamable',
+						endpointUrl: 'https://test.com/mcp',
+					};
+					return params[key];
+				}),
+			});
+
+			await getTools.call(loadOptionsFunctions);
+
+			expect(client.close).toHaveBeenCalledTimes(1);
+		});
+
+		it('should close client when listTools throws', async () => {
+			client.listTools.mockRejectedValue(new Error('listTools failed'));
+
+			const loadOptionsFunctions = mock<ILoadOptionsFunctions>({
+				getNode: vi.fn().mockReturnValue({
+					id: '123',
+					name: 'MCP Client',
+					type: '@n8n/n8n-nodes-langchain.mcpClient',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				}),
+				getNodeParameter: vi.fn().mockImplementation((key: string) => {
+					const params: Record<string, unknown> = {
+						authentication: 'none',
+						serverTransport: 'httpStreamable',
+						endpointUrl: 'https://test.com/mcp',
+					};
+					return params[key];
+				}),
+			});
+
+			await expect(getTools.call(loadOptionsFunctions)).rejects.toThrow('listTools failed');
+
+			expect(client.close).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('resourceMapping: getToolParameters', () => {
+		it('should close client after getting tool parameters', async () => {
+			client.listTools.mockResolvedValue({
+				tools: [
+					{
+						name: 'tool1',
+						description: 'A tool',
+						inputSchema: {
+							type: 'object',
+							properties: {
+								input: { type: 'string' },
+							},
+						},
+					},
+				],
+			});
+
+			const loadOptionsFunctions = mock<ILoadOptionsFunctions>({
+				getNode: vi.fn().mockReturnValue({
+					id: '123',
+					name: 'MCP Client',
+					type: '@n8n/n8n-nodes-langchain.mcpClient',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				}),
+				getNodeParameter: vi.fn().mockImplementation((key: string) => {
+					const params: Record<string, unknown> = {
+						tool: 'tool1',
+						authentication: 'none',
+						serverTransport: 'httpStreamable',
+						endpointUrl: 'https://test.com/mcp',
+					};
+					return params[key];
+				}),
+			});
+
+			await getToolParameters.call(loadOptionsFunctions);
+
+			expect(client.close).toHaveBeenCalledTimes(1);
+		});
+
+		it('should close client when getAllTools throws', async () => {
+			client.listTools.mockRejectedValue(new Error('getAllTools failed'));
+
+			const loadOptionsFunctions = mock<ILoadOptionsFunctions>({
+				getNode: vi.fn().mockReturnValue({
+					id: '123',
+					name: 'MCP Client',
+					type: '@n8n/n8n-nodes-langchain.mcpClient',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				}),
+				getNodeParameter: vi.fn().mockImplementation((key: string) => {
+					const params: Record<string, unknown> = {
+						tool: 'tool1',
+						authentication: 'none',
+						serverTransport: 'httpStreamable',
+						endpointUrl: 'https://test.com/mcp',
+					};
+					return params[key];
+				}),
+			});
+
+			await expect(getToolParameters.call(loadOptionsFunctions)).rejects.toThrow(
+				'getAllTools failed',
+			);
+
+			expect(client.close).toHaveBeenCalledTimes(1);
+		});
+
+		it('should close client when tool not found', async () => {
+			client.listTools.mockResolvedValue({
+				tools: [
+					{
+						name: 'other_tool',
+						description: 'A different tool',
+						inputSchema: { type: 'object' },
+					},
+				],
+			});
+
+			const loadOptionsFunctions = mock<ILoadOptionsFunctions>({
+				getNode: vi.fn().mockReturnValue({
+					id: '123',
+					name: 'MCP Client',
+					type: '@n8n/n8n-nodes-langchain.mcpClient',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				}),
+				getNodeParameter: vi.fn().mockImplementation((key: string) => {
+					const params: Record<string, unknown> = {
+						tool: 'nonexistent_tool',
+						authentication: 'none',
+						serverTransport: 'httpStreamable',
+						endpointUrl: 'https://test.com/mcp',
+					};
+					return params[key];
+				}),
+			});
+
+			await expect(getToolParameters.call(loadOptionsFunctions)).rejects.toThrow('Tool not found');
+
+			expect(client.close).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('allowed domains', () => {
+		it('execute passes "MCP Client" surface to the credential-aware connect helper', async () => {
+			executeFunctions.getNodeParameter.mockImplementation(
+				(key, _idx, defaultValue) =>
+					defaultParams[key as keyof typeof defaultParams] ?? defaultValue,
+			);
+			client.callTool.mockResolvedValue({
+				content: [{ type: 'text', text: 'ok' }],
+			});
+
+			await new McpClient().execute.call(executeFunctions);
+
+			expect(connectMcpClientForCredential).toHaveBeenCalledWith(
+				executeFunctions,
+				expect.objectContaining({
+					surface: 'MCP Client',
+					endpointUrl: 'https://test.com/mcp',
+				}),
+			);
+		});
+
+		it('execute surfaces a disallowed-domain rejection from the connect helper', async () => {
+			executeFunctions.getNodeParameter.mockImplementation(
+				(key, _idx, defaultValue) =>
+					defaultParams[key as keyof typeof defaultParams] ?? defaultValue,
+			);
+			connectMcpClientForCredential.mockRejectedValueOnce(
+				new Error('Domain not allowed: attacker.example is not in allowed.example'),
+			);
+
+			await expect(new McpClient().execute.call(executeFunctions)).rejects.toThrow(
+				/Domain not allowed/,
+			);
+			expect(client.callTool).not.toHaveBeenCalled();
+		});
+
+		it('getTools passes "MCP Client" surface and rejects on disallowed domain', async () => {
+			const loadOptionsFunctions = mock<ILoadOptionsFunctions>({
+				getNode: vi.fn().mockReturnValue({
+					id: '123',
+					name: 'MCP Client',
+					type: '@n8n/n8n-nodes-langchain.mcpClient',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				}),
+				getNodeParameter: vi.fn().mockImplementation((key: string) => {
+					const params: Record<string, unknown> = {
+						authentication: 'bearerAuth',
+						serverTransport: 'httpStreamable',
+						endpointUrl: 'https://attacker.example/mcp',
+					};
+					return params[key];
+				}),
+			});
+			connectMcpClientForCredential.mockRejectedValueOnce(
+				new Error('Domain not allowed: attacker.example is not in allowed.example'),
+			);
+
+			await expect(getTools.call(loadOptionsFunctions)).rejects.toThrow(/Domain not allowed/);
+			expect(connectMcpClientForCredential).toHaveBeenCalledWith(
+				loadOptionsFunctions,
+				expect.objectContaining({ surface: 'MCP Client' }),
+			);
+			expect(client.listTools).not.toHaveBeenCalled();
+		});
+
+		it('getToolParameters passes "MCP Client" surface and rejects on disallowed domain', async () => {
+			const loadOptionsFunctions = mock<ILoadOptionsFunctions>({
+				getNode: vi.fn().mockReturnValue({
+					id: '123',
+					name: 'MCP Client',
+					type: '@n8n/n8n-nodes-langchain.mcpClient',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				}),
+				getNodeParameter: vi.fn().mockImplementation((key: string) => {
+					const params: Record<string, unknown> = {
+						tool: 'tool1',
+						authentication: 'bearerAuth',
+						serverTransport: 'httpStreamable',
+						endpointUrl: 'https://attacker.example/mcp',
+					};
+					return params[key];
+				}),
+			});
+			connectMcpClientForCredential.mockRejectedValueOnce(
+				new Error('Domain not allowed: attacker.example is not in allowed.example'),
+			);
+
+			await expect(getToolParameters.call(loadOptionsFunctions)).rejects.toThrow(
+				/Domain not allowed/,
+			);
+			expect(connectMcpClientForCredential).toHaveBeenCalledWith(
+				loadOptionsFunctions,
+				expect.objectContaining({ surface: 'MCP Client' }),
+			);
+			expect(client.listTools).not.toHaveBeenCalled();
+		});
 	});
 });

@@ -1,13 +1,6 @@
 import { DynamicStructuredTool, DynamicTool } from '@langchain/core/tools';
-import { TaskRunnersConfig } from '@n8n/config';
-import { Container } from '@n8n/di';
-import type { JSONSchema7 } from 'json-schema';
-import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
 import { JsTaskRunnerSandbox } from 'n8n-nodes-base/dist/nodes/Code/JsTaskRunnerSandbox';
-import { PythonSandbox } from 'n8n-nodes-base/dist/nodes/Code/PythonSandbox';
 import { PythonTaskRunnerSandbox } from 'n8n-nodes-base/dist/nodes/Code/PythonTaskRunnerSandbox';
-import type { Sandbox } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
-import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 import type {
 	ExecutionError,
 	IDataObject,
@@ -18,12 +11,7 @@ import type {
 	ISupplyDataFunctions,
 	SupplyData,
 } from 'n8n-workflow';
-import {
-	jsonParse,
-	NodeConnectionTypes,
-	nodeNameToToolName,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { NodeConnectionTypes, nodeNameToToolName, NodeOperationError } from 'n8n-workflow';
 
 import {
 	buildInputSchemaField,
@@ -31,8 +19,12 @@ import {
 	buildJsonSchemaExampleNotice,
 	schemaTypeField,
 } from '@utils/descriptions';
-import { convertJsonSchemaToZod, generateSchemaFromExample } from '@utils/schemaParsing';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import {
+	convertJsonSchemaToZod,
+	generateSchemaFromExample,
+	parseJsonSchemaParameter,
+} from '@utils/schemaParsing';
+import { getConnectionHintNoticeField, logAiEvent } from '@n8n/ai-utilities';
 
 import type { DynamicZodObject } from '../../../types/zod.types';
 
@@ -57,10 +49,6 @@ function getTool(
 	const node = ctx.getNode();
 	const workflowMode = ctx.getMode();
 
-	const runnersConfig = Container.get(TaskRunnersConfig);
-	const isJsRunnerEnabled = runnersConfig.enabled;
-	const isPyRunnerEnabled = runnersConfig.isNativePythonRunnerEnabled;
-
 	const { typeVersion } = node;
 	const name =
 		typeVersion <= 1.1
@@ -79,42 +67,13 @@ function getTool(
 		code = ctx.getNodeParameter('pythonCode', itemIndex) as string;
 	}
 
-	// @deprecated - TODO: Remove this after a new python runner is implemented
-	const getSandbox = (query: string | IDataObject, index = 0) => {
-		const context = getSandboxContext.call(ctx, index);
-		context.query = query;
-
-		let sandbox: Sandbox;
-		if (language === 'javaScript') {
-			sandbox = new JavaScriptSandbox(context, code, ctx.helpers);
-		} else {
-			sandbox = new PythonSandbox(context, code, ctx.helpers);
-		}
-
-		sandbox.on(
-			'output',
-			workflowMode === 'manual'
-				? ctx.sendMessageToUI.bind(ctx)
-				: (...args: unknown[]) =>
-						console.log(`[Workflow "${ctx.getWorkflow().id}"][Node "${node.name}"]`, ...args),
-		);
-		return sandbox;
-	};
-
 	const runFunction = async (query: string | IDataObject): Promise<unknown> => {
-		if (language === 'javaScript' && isJsRunnerEnabled) {
-			const sandbox = new JsTaskRunnerSandbox(
-				code,
-				'runOnceForAllItems',
-				workflowMode,
-				ctx,
-				undefined,
-				{
-					query,
-				},
-			);
-			return await sandbox.runCodeForTool();
-		} else if (language === 'python' && isPyRunnerEnabled) {
+		if (language === 'javaScript') {
+			const sandbox = new JsTaskRunnerSandbox(workflowMode, ctx, /*chunkSize=*/ undefined, {
+				query,
+			});
+			return await sandbox.runCodeForTool(code);
+		} else {
 			const sandbox = new PythonTaskRunnerSandbox(
 				code,
 				'runOnceForAllItems',
@@ -125,10 +84,6 @@ function getTool(
 				},
 			);
 			return await sandbox.runCodeForTool();
-		} else {
-			// use old vm2-based sandbox when runners disabled
-			const sandbox = getSandbox(query, itemIndex);
-			return await sandbox.runCode<string>();
 		}
 	};
 
@@ -164,6 +119,18 @@ function getTool(
 			void ctx.addOutputData(NodeConnectionTypes.AiTool, index, [[{ json: { response } }]]);
 		}
 
+		if (log) {
+			logAiEvent(ctx, 'ai-tool-called', { query, response });
+		}
+
+		// When invoked from `execute` (log=false) the engine, not the agent, is
+		// driving execution: throw so workflow-execute can record the error
+		// against the tool run. Continue-on-fail for AI tools still lets the
+		// agent receive the error and decide whether to retry.
+		if (executionError && !log) {
+			throw executionError;
+		}
+
 		return response;
 	};
 
@@ -179,15 +146,15 @@ function getTool(
 		try {
 			// We initialize these even though one of them will always be empty
 			// it makes it easier to navigate the ternary operator
-			const jsonExample = ctx.getNodeParameter('jsonSchemaExample', itemIndex, '') as string;
-			const inputSchema = ctx.getNodeParameter('inputSchema', itemIndex, '') as string;
+			const jsonExample = ctx.getNodeParameter('jsonSchemaExample', itemIndex, '') as unknown;
+			const inputSchema = ctx.getNodeParameter('inputSchema', itemIndex, '') as unknown;
 
 			const schemaType = ctx.getNodeParameter('schemaType', itemIndex) as 'fromJson' | 'manual';
 
 			const jsonSchema =
 				schemaType === 'fromJson'
 					? generateSchemaFromExample(jsonExample, ctx.getNode().typeVersion >= 1.3)
-					: jsonParse<JSONSchema7>(inputSchema);
+					: parseJsonSchemaParameter(inputSchema);
 
 			const zodSchema = convertJsonSchemaToZod<DynamicZodObject>(jsonSchema);
 

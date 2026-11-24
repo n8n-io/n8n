@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "content": {
+            "type": "string"
+        },
         "description": {
             "type": "string"
         },
@@ -11,28 +14,6 @@
                     "type": "object",
                     "properties": {
                         "https://techcrunch.com/feed/": {
-                            "type": "object",
-                            "properties": {
-                                "title": {
-                                    "type": "string"
-                                },
-                                "type": {
-                                    "type": "string"
-                                }
-                            }
-                        },
-                        "https://techcrunch.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Ftechcrunch.com%2F2025%2F09%2F26%2Fdiscover-how-developer-tools-are-shifting-fast-with-lauri-moore-and-david-cramer-at-techcrunch-disrupt-2025%2F": {
-                            "type": "object",
-                            "properties": {
-                                "title": {
-                                    "type": "string"
-                                },
-                                "type": {
-                                    "type": "string"
-                                }
-                            }
-                        },
-                        "https://techcrunch.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Ftechcrunch.com%2F2025%2F09%2F26%2Fdiscover-how-developer-tools-are-shifting-fast-with-lauri-moore-and-david-cramer-at-techcrunch-disrupt-2025%2F&format=xml": {
                             "type": "object",
                             "properties": {
                                 "title": {
@@ -58,34 +39,59 @@
                 },
                 "icon": {
                     "type": "object",
-                    "properties": {
-                        "https://techcrunch.com/wp-content/uploads/2015/02/cropped-cropped-favicon-gradient.png?w=192": {
-                            "type": "object",
-                            "properties": {
-                                "sizes": {
-                                    "type": "string"
-                                }
-                            }
-                        },
-                        "https://techcrunch.com/wp-content/uploads/2015/02/cropped-cropped-favicon-gradient.png?w=32": {
-                            "type": "object",
-                            "properties": {
-                                "sizes": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    }
+                    "properties": {}
                 }
             }
+        },
+        "httpStatus": {
+            "type": "integer"
+        },
+        "httpStatusText": {
+            "type": "string"
         },
         "metadata": {
             "type": "object",
             "properties": {
+                "CreationDate": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "IsAcroFormPresent": {
+                    "type": "boolean"
+                },
+                "IsCollectionPresent": {
+                    "type": "boolean"
+                },
+                "IsLinearized": {
+                    "type": "boolean"
+                },
+                "IsSignaturesPresent": {
+                    "type": "boolean"
+                },
+                "IsXFAPresent": {
+                    "type": "boolean"
+                },
                 "lang": {
                     "type": "string"
                 },
+                "ModDate": {
+                    "type": "string"
+                },
+                "og:description": {
+                    "type": "string"
+                },
+                "og:image": {
+                    "type": "string"
+                },
                 "og:locale": {
+                    "type": "string"
+                },
+                "og:site_name": {
+                    "type": "string"
+                },
+                "og:title": {
                     "type": "string"
                 },
                 "og:type": {
@@ -93,8 +99,35 @@
                 },
                 "og:url": {
                     "type": "string"
+                },
+                "PDFFormatVersion": {
+                    "type": "string"
+                },
+                "Producer": {
+                    "type": "string"
+                },
+                "robots": {
+                    "type": "string"
+                },
+                "twitter:card": {
+                    "type": "string"
+                },
+                "twitter:description": {
+                    "type": "string"
+                },
+                "twitter:image": {
+                    "type": "string"
+                },
+                "twitter:title": {
+                    "type": "string"
+                },
+                "viewport": {
+                    "type": "string"
                 }
             }
+        },
+        "publishedTime": {
+            "type": "string"
         },
         "title": {
             "type": "string"
@@ -105,11 +138,20 @@
         "usage": {
             "type": "object",
             "properties": {
+                "measuredTokens": {
+                    "type": "integer"
+                },
+                "outputTokens": {
+                    "type": "integer"
+                },
+                "scaledTokens": {
+                    "type": "integer"
+                },
                 "tokens": {
                     "type": "integer"
                 }
             }
         }
     },
-    "version": 4
+    "version": 10
 }

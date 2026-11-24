@@ -21,7 +21,7 @@ describe('Test AWS Comprehend Node', () => {
 		};
 
 		beforeAll(async () => {
-			jest.useFakeTimers({ doNotFake: ['nextTick'], now });
+			vi.useFakeTimers({ now });
 
 			const baseUrl = 'https://comprehend.eu-central-1.amazonaws.com';
 

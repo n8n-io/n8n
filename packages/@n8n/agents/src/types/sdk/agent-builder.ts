@@ -1,0 +1,58 @@
+import type {
+	ExecutionOptions,
+	ModelConfig,
+	NativeToolDeferralConfig,
+	ToolDeferralConfig,
+} from './agent';
+import type { BuiltEval } from './eval';
+import type { BuiltGuardrail } from './guardrail';
+import type { CheckpointStore } from './memory';
+import type { ReasoningLevel } from './reasoning';
+import type { BuiltProviderTool, BuiltTool } from './tool';
+import type { ContextCueProvider, VolatileInstructionsProvider } from '../runtime/agent-runtime';
+import type { ScopedMemoryTaskEvent } from '../../runtime/memory/scoped-memory-task-runner';
+import type { RuntimeSkill, RuntimeSkillSource } from '../../skills';
+import type { ContextCueProviderOptions, ContextCueSet } from '../../context-cues';
+
+/**
+ * Interface describing the fluent builder methods used to configure an agent.
+ *
+ * This exists as a standalone interface so that `fromSchema()` can accept an
+ * agent to configure without importing the concrete `Agent` class (which would
+ * create a circular dependency: agent.ts → from-schema.ts → agent.ts).
+ *
+ * The `Agent` class implements this interface.
+ */
+export interface AgentBuilder {
+	model(providerOrIdOrConfig: string | ModelConfig, modelName?: string): this;
+	instructions(text: string): this;
+	volatileInstructionsProvider(provider: VolatileInstructionsProvider): this;
+	contextCueProvider(provider: ContextCueProvider): this;
+	contextCues(
+		sets: readonly ContextCueSet[],
+		options?: Omit<ContextCueProviderOptions, 'sets'>,
+	): this;
+	tool(t: BuiltTool | BuiltTool[]): this;
+	nativeToolDeferral(config: NativeToolDeferralConfig): this;
+	toolDeferral(config: ToolDeferralConfig): this;
+	deferredTool(
+		t: BuiltTool | BuiltTool[],
+		options?: { search?: { topK?: number }; group?: string; groupDescription?: string },
+	): this;
+	skills(sourceOrSkills: RuntimeSkillSource | RuntimeSkill[]): this;
+	providerTool(t: BuiltProviderTool): this;
+	thinking(provider: string, config?: Record<string, unknown>): this;
+	reasoning(level?: ReasoningLevel): this;
+	toolCallConcurrency(n: number): this;
+	memory(m: unknown): this;
+	fileStore(store: unknown): this;
+	memoryTaskObserver(observer: (event: ScopedMemoryTaskEvent) => void): this;
+	checkpoint(storage: 'memory' | CheckpointStore): this;
+	inputGuardrail(g: BuiltGuardrail): this;
+	outputGuardrail(g: BuiltGuardrail): this;
+	eval(e: BuiltEval): this;
+	structuredOutput(schema: unknown): this;
+	telemetry(t: unknown): this;
+	mcp(client: unknown): this;
+	configuration(options: ExecutionOptions): this;
+}

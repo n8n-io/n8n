@@ -1,6 +1,24 @@
-import type { IExecuteFunctions, INodeTypeBaseDescription } from 'n8n-workflow';
+import FormData from 'form-data';
+import { IncomingMessage } from 'http';
+import {
+	NodeApiError,
+	NodeHelpers,
+	READ_ONLY_ANNOTATIONS,
+	resolveNodeAnnotations,
+} from 'n8n-workflow';
+import { Socket } from 'net';
+import type {
+	IExecuteFunctions,
+	INodeParameters,
+	INodePropertyOptions,
+	INodeTypeBaseDescription,
+	JsonObject,
+	JsonValue,
+} from 'n8n-workflow';
 
 import { HttpRequestV3 } from '../../V3/HttpRequestV3.node';
+import { createErrorDetails } from '../../V3/utils/error-details';
+import type { Mock } from 'vitest';
 
 describe('HttpRequestV3', () => {
 	let node: HttpRequestV3;
@@ -27,18 +45,18 @@ describe('HttpRequestV3', () => {
 		};
 		node = new HttpRequestV3(baseDescription);
 		executeFunctions = {
-			getInputData: jest.fn(),
-			getNodeParameter: jest.fn(),
-			getNode: jest.fn(() => {
+			getInputData: vi.fn(),
+			getNodeParameter: vi.fn(),
+			getNode: vi.fn(() => {
 				return {
 					type: 'n8n-nodes-base.httpRequest',
 					typeVersion: 3,
 				};
 			}),
-			getCredentials: jest.fn(),
+			getCredentials: vi.fn(),
 			helpers: {
-				request: jest.fn(),
-				requestOAuth1: jest.fn(
+				request: vi.fn(),
+				requestOAuth1: vi.fn(
 					async () =>
 						await Promise.resolve({
 							statusCode: 200,
@@ -46,7 +64,7 @@ describe('HttpRequestV3', () => {
 							body: Buffer.from(JSON.stringify({ success: true })),
 						}),
 				),
-				requestOAuth2: jest.fn(
+				requestOAuth2: vi.fn(
 					async () =>
 						await Promise.resolve({
 							statusCode: 200,
@@ -54,26 +72,212 @@ describe('HttpRequestV3', () => {
 							body: Buffer.from(JSON.stringify({ success: true })),
 						}),
 				),
-				requestWithAuthentication: jest.fn(),
-				requestWithAuthenticationPaginated: jest.fn(),
-				assertBinaryData: jest.fn(),
-				getBinaryStream: jest.fn(),
-				getBinaryMetadata: jest.fn(),
-				binaryToString: jest.fn((buffer: Buffer) => {
+				requestWithAuthentication: vi.fn(),
+				requestWithAuthenticationPaginated: vi.fn(),
+				assertBinaryData: vi.fn(),
+				getBinaryStream: vi.fn(),
+				getBinaryMetadata: vi.fn(),
+				binaryToString: vi.fn((buffer: Buffer) => {
 					return buffer.toString();
 				}),
-				prepareBinaryData: jest.fn(),
+				prepareBinaryData: vi.fn(),
 			},
-			getContext: jest.fn(),
-			sendMessageToUI: jest.fn(),
-			continueOnFail: jest.fn(),
-			getMode: jest.fn(),
+			getContext: vi.fn(),
+			sendMessageToUI: vi.fn(),
+			continueOnFail: vi.fn(),
+			getMode: vi.fn(),
+			getExecutionCancelSignal: vi.fn(),
 		} as unknown as IExecuteFunctions;
 	});
 
+	describe('Method dropdown', () => {
+		const webdavMethods = ['PROPFIND', 'MKCOL', 'MOVE', 'COPY', 'REPORT', 'SEARCH'];
+
+		const visibleMethods = (nodeParameters: INodeParameters) => {
+			const methodProperty = node.description.properties.find((p) => p.name === 'method');
+			expect(methodProperty?.type).toBe('options');
+
+			return ((methodProperty?.options ?? []) as INodePropertyOptions[])
+				.filter((option) => NodeHelpers.displayParameter(nodeParameters, option, null, null))
+				.map((option) => option.value);
+		};
+
+		it('should hide WebDAV methods until the option is enabled', () => {
+			const visible = visibleMethods({ method: 'GET', options: {} });
+
+			expect(visible).toEqual(expect.arrayContaining(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']));
+			for (const method of webdavMethods) {
+				expect(visible).not.toContain(method);
+			}
+		});
+
+		it('should show WebDAV methods once the option is enabled', () => {
+			const visible = visibleMethods({ method: 'GET', options: { webdavMethods: true } });
+
+			for (const method of webdavMethods) {
+				expect(visible.filter((value) => value === method)).toEqual([method]);
+			}
+		});
+
+		it.each(webdavMethods)(
+			'should keep %s visible when it is selected but the option is disabled',
+			(method) => {
+				const visible = visibleMethods({ method, options: {} });
+
+				expect(visible.filter((value) => value === method)).toEqual([method]);
+
+				for (const other of webdavMethods.filter((m) => m !== method)) {
+					expect(visible).not.toContain(other);
+				}
+			},
+		);
+
+		it('should not duplicate a selected WebDAV method when the option is enabled', () => {
+			const visible = visibleMethods({ method: 'PROPFIND', options: { webdavMethods: true } });
+
+			expect(visible.filter((value) => value === 'PROPFIND')).toEqual(['PROPFIND']);
+		});
+
+		it('should not duplicate WebDAV methods when Method holds an expression', () => {
+			const visible = visibleMethods({
+				method: '={{ $json.method }}',
+				options: { webdavMethods: true },
+			});
+
+			for (const method of webdavMethods) {
+				expect(visible.filter((value) => value === method)).toEqual([method]);
+			}
+		});
+	});
+
+	describe('Annotations', () => {
+		it.each([
+			['GET', {}, READ_ONLY_ANNOTATIONS],
+			['PROPFIND', { webdavMethods: true }, READ_ONLY_ANNOTATIONS],
+			['SEARCH', { webdavMethods: true }, READ_ONLY_ANNOTATIONS],
+			['PUT', {}, { effect: 'write', destructive: true, idempotent: true }],
+			['DELETE', {}, { effect: 'write', destructive: true, idempotent: false }],
+			[
+				'MKCOL',
+				{ webdavMethods: true },
+				{ effect: 'write', destructive: false, idempotent: false },
+			],
+			['POST', {}, { effect: 'write', destructive: true, idempotent: false }],
+			['={{ $json.method }}', {}, { effect: 'write', destructive: true, idempotent: false }],
+		])('should resolve method %s', (method, methodOptions, expected) => {
+			expect(
+				resolveNodeAnnotations(node.description, {
+					parameters: { method, options: methodOptions },
+					typeVersion: 4.5,
+				}),
+			).toEqual(expected);
+		});
+	});
+
+	it('should add an "Enable WebDAV Methods" option to Options, disabled by default', () => {
+		const optionsProperty = node.description.properties.find((p) => p.name === 'options');
+		expect(optionsProperty).toBeDefined();
+
+		const webdavOption = (optionsProperty?.options ?? []).find((o) => o.name === 'webdavMethods');
+		expect(webdavOption).toMatchObject({
+			displayName: 'Enable WebDAV Methods',
+			type: 'boolean',
+			default: false,
+		});
+	});
+
+	it.each(['PROPFIND', 'MKCOL', 'MOVE', 'COPY', 'REPORT', 'SEARCH'])(
+		'should make a %s request',
+		async (method) => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return method;
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+
+			const response = {
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			};
+			(executeFunctions.helpers.request as Mock).mockResolvedValue(response);
+
+			await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.helpers.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					method,
+					uri: baseUrl,
+				}),
+			);
+		},
+	);
+
+	describe('Body content-type conversion per method', () => {
+		const executeFormRequest = async (method: string) => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return method;
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'sendBody':
+						return true;
+					case 'contentType':
+						return 'form-urlencoded';
+					case 'specifyBody':
+						return 'keypair';
+					case 'bodyParameters.parameters':
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						return [{ name: 'depth', value: '1' }];
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+			(executeFunctions.helpers.request as Mock).mockResolvedValue({
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			});
+
+			await node.execute.call(executeFunctions);
+			return (executeFunctions.helpers.request as Mock).mock.calls[0][0];
+		};
+
+		it('should convert the body for WebDAV methods that send one', async () => {
+			const requestArgs = await executeFormRequest('PROPFIND');
+			expect(requestArgs.form).toEqual({ depth: '1' });
+			expect(requestArgs.body).toBeUndefined();
+		});
+
+		it('should keep converting the body for GET requests', async () => {
+			const requestArgs = await executeFormRequest('GET');
+			expect(requestArgs.form).toEqual({ depth: '1' });
+			expect(requestArgs.body).toBeUndefined();
+		});
+
+		it('should not convert the body for methods that never carry one', async () => {
+			const requestArgs = await executeFormRequest('HEAD');
+			expect(requestArgs.form).toBeUndefined();
+		});
+	});
+
 	it('should make a GET request', async () => {
-		(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
-		(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+		(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+		(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
 			switch (paramName) {
 				case 'method':
 					return 'GET';
@@ -92,16 +296,69 @@ describe('HttpRequestV3', () => {
 			body: Buffer.from(JSON.stringify({ success: true })),
 		};
 
-		(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
+		(executeFunctions.helpers.request as Mock).mockResolvedValue(response);
 
 		const result = await node.execute.call(executeFunctions);
 
 		expect(result).toEqual([[{ json: { success: true }, pairedItem: { item: 0 } }]]);
 	});
 
+	describe('Batching and execution cancellation', () => {
+		const mockThreeItems = (batchInterval: number) => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([
+				{ json: {} },
+				{ json: {} },
+				{ json: {} },
+			]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return { ...options, batching: { batch: { batchSize: 1, batchInterval } } };
+					default:
+						return undefined;
+				}
+			});
+			(executeFunctions.helpers.request as Mock).mockResolvedValue({
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			});
+		};
+
+		it('should stop sending requests when the execution is cancelled during the batch interval', async () => {
+			mockThreeItems(60_000);
+			const controller = new AbortController();
+			(executeFunctions.getExecutionCancelSignal as Mock).mockReturnValue(controller.signal);
+
+			const execution = node.execute.call(executeFunctions);
+			setTimeout(() => controller.abort(), 10);
+
+			await expect(execution).rejects.toThrow('The execution was canceled');
+			expect(executeFunctions.helpers.request).toHaveBeenCalledTimes(1);
+		});
+
+		it('should not continue with the next items when "Continue On Fail" is enabled', async () => {
+			mockThreeItems(60_000);
+			(executeFunctions.continueOnFail as Mock).mockReturnValue(true);
+			const controller = new AbortController();
+			(executeFunctions.getExecutionCancelSignal as Mock).mockReturnValue(controller.signal);
+
+			const execution = node.execute.call(executeFunctions);
+			setTimeout(() => controller.abort(), 10);
+
+			await expect(execution).rejects.toThrow('The execution was canceled');
+			expect(executeFunctions.helpers.request).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	it('should handle authentication', async () => {
-		(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
-		(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+		(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+		(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
 			switch (paramName) {
 				case 'method':
 					return 'GET';
@@ -117,7 +374,7 @@ describe('HttpRequestV3', () => {
 					return undefined;
 			}
 		});
-		(executeFunctions.getCredentials as jest.Mock).mockResolvedValue({
+		(executeFunctions.getCredentials as Mock).mockResolvedValue({
 			user: 'username',
 			password: 'password',
 		});
@@ -125,7 +382,7 @@ describe('HttpRequestV3', () => {
 			headers: { 'content-type': 'application/json' },
 			body: Buffer.from(JSON.stringify({ success: true })),
 		};
-		(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
+		(executeFunctions.helpers.request as Mock).mockResolvedValue(response);
 
 		const result = await node.execute.call(executeFunctions);
 
@@ -138,6 +395,116 @@ describe('HttpRequestV3', () => {
 				},
 			}),
 		);
+	});
+
+	it('should pass multipart binary uploads as FormData', async () => {
+		(executeFunctions.getNode as Mock).mockReturnValue({
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.4,
+		});
+		(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+		(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+			switch (paramName) {
+				case 'method':
+					return 'POST';
+				case 'url':
+					return baseUrl;
+				case 'authentication':
+					return 'none';
+				case 'sendBody':
+					return true;
+				case 'contentType':
+					return 'multipart-form-data';
+				case 'specifyBody':
+					return 'keypair';
+				case 'bodyParameters.parameters':
+					return [
+						{
+							parameterType: 'formBinaryData',
+							// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+							name: 'file',
+							value: '',
+							inputDataFieldName: 'data0',
+						},
+					];
+				case 'options':
+					return options;
+				default:
+					return undefined;
+			}
+		});
+		(executeFunctions.helpers.assertBinaryData as Mock).mockReturnValue({
+			data: Buffer.from('test file').toString('base64'),
+			fileName: 'invoice.pdf',
+			mimeType: 'application/pdf',
+		});
+		const response = {
+			headers: { 'content-type': 'application/json' },
+			body: Buffer.from(JSON.stringify({ success: true })),
+		};
+		(executeFunctions.helpers.request as Mock).mockResolvedValue(response);
+
+		await node.execute.call(executeFunctions);
+
+		expect(executeFunctions.helpers.request).toHaveBeenCalledWith(
+			expect.objectContaining({
+				formData: expect.any(FormData),
+			}),
+		);
+	});
+
+	it('should include a fallback filename for multipart binary uploads without fileName', async () => {
+		(executeFunctions.getNode as Mock).mockReturnValue({
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.4,
+		});
+		(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+		(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+			switch (paramName) {
+				case 'method':
+					return 'POST';
+				case 'url':
+					return baseUrl;
+				case 'authentication':
+					return 'none';
+				case 'sendBody':
+					return true;
+				case 'contentType':
+					return 'multipart-form-data';
+				case 'specifyBody':
+					return 'keypair';
+				case 'bodyParameters.parameters':
+					return [
+						{
+							parameterType: 'formBinaryData',
+							// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+							name: 'file',
+							value: '',
+							inputDataFieldName: 'data0',
+						},
+					];
+				case 'options':
+					return options;
+				default:
+					return undefined;
+			}
+		});
+		(executeFunctions.helpers.assertBinaryData as Mock).mockReturnValue({
+			data: Buffer.from('test file').toString('base64'),
+			mimeType: 'application/pdf',
+		});
+		const response = {
+			headers: { 'content-type': 'application/json' },
+			body: Buffer.from(JSON.stringify({ success: true })),
+		};
+		(executeFunctions.helpers.request as Mock).mockResolvedValue(response);
+
+		await node.execute.call(executeFunctions);
+
+		const requestOptions = (executeFunctions.helpers.request as Mock).mock.calls[0][0];
+		const body = (requestOptions.formData as FormData).getBuffer().toString('utf8');
+
+		expect(body).toContain('filename="file"');
 	});
 
 	describe('Authentication Handling', () => {
@@ -167,6 +534,21 @@ describe('HttpRequestV3', () => {
 				authValue: { Authorization: 'Bearer token' },
 			},
 			{
+				genericCredentialType: 'httpMultipleHeadersAuth',
+				credentials: {
+					headers: {
+						values: [
+							{ name: 'X-Service-Token', value: 'first-test-value' },
+							{ name: 'X-Account-Key', value: 'second-test-value' },
+						],
+					},
+					allowedHttpRequestDomains: 'domains',
+					allowedDomains: 'example.com',
+				},
+				authField: 'headers',
+				authValue: { 'X-Service-Token': 'first-test-value', 'X-Account-Key': 'second-test-value' },
+			},
+			{
 				genericCredentialType: 'httpQueryAuth',
 				credentials: { name: 'Token', value: 'secretToken' },
 				authField: 'qs',
@@ -189,8 +571,8 @@ describe('HttpRequestV3', () => {
 		it.each(authenticationTypes)(
 			'should handle $genericCredentialType authentication',
 			async ({ genericCredentialType, credentials, authField, authValue }) => {
-				(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
-				(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+				(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
 					switch (paramName) {
 						case 'method':
 							return 'GET';
@@ -202,17 +584,27 @@ describe('HttpRequestV3', () => {
 							return genericCredentialType;
 						case 'options':
 							return options;
+						case 'sendQuery':
+							return genericCredentialType === 'httpMultipleHeadersAuth';
+						case 'specifyQuery':
+							return 'keypair';
+						case 'queryParameters.parameters':
+							return [
+								{ name: 'First', value: 'first-test-value' },
+								{ name: 'Second', value: 'prefix-second-test-value' },
+								{ name: 'Keep', value: 'visible' },
+							];
 						default:
 							return undefined;
 					}
 				});
 
-				(executeFunctions.getCredentials as jest.Mock).mockResolvedValue(credentials);
+				(executeFunctions.getCredentials as Mock).mockResolvedValue(credentials);
 				const response = {
 					headers: { 'content-type': 'application/json' },
 					body: Buffer.from(JSON.stringify({ success: true })),
 				};
-				(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
+				(executeFunctions.helpers.request as Mock).mockResolvedValue(response);
 
 				const result = await node.execute.call(executeFunctions);
 
@@ -228,14 +620,34 @@ describe('HttpRequestV3', () => {
 						}),
 					);
 				}
+				if (genericCredentialType === 'httpMultipleHeadersAuth') {
+					expect(executeFunctions.sendMessageToUI).toHaveBeenCalledWith(
+						expect.objectContaining({
+							headers: expect.objectContaining(
+								Object.fromEntries(Object.keys(authValue).map((name) => [name, '**hidden**'])),
+							),
+							qs: { First: '**hidden**', Second: 'prefix-**hidden**', Keep: 'visible' },
+						}),
+					);
+					expect(executeFunctions.helpers.request).toHaveBeenCalledWith(
+						expect.objectContaining({
+							allowedDomains: 'example.com',
+							qs: {
+								First: 'first-test-value',
+								Second: 'prefix-second-test-value',
+								Keep: 'visible',
+							},
+						}),
+					);
+				}
 			},
 		);
 	});
 
 	describe('URL Parameter Validation', () => {
 		it('should throw error when URL is undefined', async () => {
-			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
-			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
 				switch (paramName) {
 					case 'method':
 						return 'GET';
@@ -256,8 +668,8 @@ describe('HttpRequestV3', () => {
 		});
 
 		it('should throw error when URL is null', async () => {
-			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
-			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
 				switch (paramName) {
 					case 'method':
 						return 'GET';
@@ -278,8 +690,8 @@ describe('HttpRequestV3', () => {
 		});
 
 		it('should throw error when URL is a number', async () => {
-			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
-			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
 				switch (paramName) {
 					case 'method':
 						return 'GET';
@@ -297,6 +709,1520 @@ describe('HttpRequestV3', () => {
 			await expect(node.execute.call(executeFunctions)).rejects.toThrow(
 				'URL parameter must be a string, got number',
 			);
+		});
+		it('should throw error when URL is only whitespace', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return '   ';
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+				'URL parameter cannot be empty',
+			);
+		});
+
+		it('should trim whitespace from valid URL', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return '  http://example.com  ';
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+			const response = {
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			};
+			(executeFunctions.helpers.request as Mock).mockResolvedValue(response);
+
+			const result = await node.execute.call(executeFunctions);
+			expect(result).toEqual([[{ json: { success: true }, pairedItem: { item: 0 } }]]);
+			expect(executeFunctions.helpers.request).toHaveBeenCalledTimes(1);
+			const requestArgs = (executeFunctions.helpers.request as Mock).mock.calls[0][0];
+			expect(requestArgs.uri ?? requestArgs.url).toBe('http://example.com');
+		});
+	});
+
+	describe('JSON Parameter Validation', () => {
+		it.each([
+			{
+				field: 'body',
+				params: {
+					sendBody: true,
+					specifyBody: 'json',
+					jsonBody: '{"valid": true}',
+					'bodyParameters.parameters': [],
+				},
+			},
+			{
+				field: 'query',
+				params: {
+					sendQuery: true,
+					specifyQuery: 'json',
+					jsonQuery: '{"key": "value"}',
+					'queryParameters.parameters': [],
+				},
+			},
+			{
+				field: 'headers',
+				params: {
+					sendHeaders: true,
+					specifyHeaders: 'json',
+					jsonHeaders: '{"X-Custom": "header"}',
+					'headerParameters.parameters': [],
+				},
+			},
+		])('should accept valid JSON in $field parameter', async ({ params }) => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'POST';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return options;
+					default:
+						return params[paramName as keyof typeof params] ?? undefined;
+				}
+			});
+			const response = {
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			};
+			(executeFunctions.helpers.request as Mock).mockResolvedValue(response);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toBeDefined();
+		});
+
+		it.each([
+			{
+				field: 'body',
+				fieldName: 'JSON Body',
+				params: {
+					sendBody: true,
+					specifyBody: 'json',
+					jsonBody: '{"invalid: json}',
+					'bodyParameters.parameters': [],
+				},
+			},
+			{
+				field: 'query',
+				fieldName: 'JSON Query Parameters',
+				params: {
+					sendQuery: true,
+					specifyQuery: 'json',
+					jsonQuery: '{not valid}',
+					'queryParameters.parameters': [],
+				},
+			},
+			{
+				field: 'headers',
+				fieldName: 'JSON Headers',
+				params: {
+					sendHeaders: true,
+					specifyHeaders: 'json',
+					jsonHeaders: 'not json at all',
+					'headerParameters.parameters': [],
+				},
+			},
+		])(
+			'should throw descriptive error for invalid JSON in $field parameter',
+			async ({ fieldName, params }) => {
+				(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+				(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+					switch (paramName) {
+						case 'method':
+							return 'POST';
+						case 'url':
+							return baseUrl;
+						case 'authentication':
+							return 'none';
+						case 'options':
+							return options;
+						default:
+							return params[paramName as keyof typeof params] ?? undefined;
+					}
+				});
+				const response = {
+					headers: { 'content-type': 'application/json' },
+					body: Buffer.from(JSON.stringify({ success: true })),
+				};
+				(executeFunctions.helpers.request as Mock).mockResolvedValue(response);
+
+				await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+					`The value in the "${fieldName}" field is not valid JSON`,
+				);
+			},
+		);
+	});
+
+	describe('Response parsing', () => {
+		it('should return empty object for autodetect JSON response with empty body', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+			const response = {
+				headers: { 'content-type': 'application/json', 'content-length': '0' },
+				body: Buffer.from(''),
+			};
+			(executeFunctions.helpers.request as Mock).mockResolvedValue(response);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: {}, pairedItem: { item: 0 } }]]);
+		});
+
+		it('should return empty object for JSON response format with empty body', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return {
+							...options,
+							response: {
+								response: {
+									responseFormat: 'json',
+								},
+							},
+						};
+					case 'options.response.response.responseFormat':
+						return 'json';
+					default:
+						return undefined;
+				}
+			});
+			const response = {
+				headers: { 'content-type': 'application/json', 'content-length': '0' },
+				body: '',
+			};
+			(executeFunctions.helpers.request as Mock).mockResolvedValue(response);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: {}, pairedItem: { item: 0 } }]]);
+		});
+
+		it('should return an empty object for a paginated JSON response with no body', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				(paramName: string, _itemIndex: number, defaultValue: unknown) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return baseUrl;
+						case 'authentication':
+							return 'none';
+						case 'options':
+							return { ...options, response: { response: { responseFormat: 'json' } } };
+						case 'options.pagination.pagination':
+							return {
+								paginationMode: 'responseContainsNextURL',
+								nextURL: '={{ $response.body?.next }}',
+								paginationCompleteWhen: 'other',
+								completeExpression: '={{ !$response.body?.next }}',
+								limitPagesFetched: false,
+								requestInterval: 0,
+							};
+						case 'options.response.response.responseFormat':
+							return 'json';
+						default:
+							return defaultValue;
+					}
+				},
+			);
+			(executeFunctions.helpers.requestWithAuthenticationPaginated as Mock).mockResolvedValue([
+				{ headers: {}, body: undefined, statusCode: 204 },
+			]);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: {}, pairedItem: { item: 0 } }]]);
+		});
+	});
+
+	describe('Continued request errors', () => {
+		beforeEach(() => {
+			(executeFunctions.getNode as Mock).mockReturnValue({
+				typeVersion: 4.5,
+			});
+		});
+
+		it('should return null details if response parsing fails', () => {
+			const requestError: JsonObject = {};
+			Object.defineProperty(requestError, 'response', {
+				get: () => {
+					throw new Error('Unable to read response');
+				},
+			});
+
+			expect(createErrorDetails(executeFunctions.getNode(), requestError, 0)).toBeNull();
+		});
+
+		it('should use the body from a legacy request error', () => {
+			const responseBody = { error: 'Bad Request' };
+			const requestError: JsonObject = {
+				statusCode: 400,
+				error: responseBody,
+				response: {
+					headers: { 'x-request-id': 'request-1' },
+					status: 400,
+				},
+			};
+
+			expect(createErrorDetails(executeFunctions.getNode(), requestError, 0)).toMatchObject({
+				httpCode: '400',
+				body: responseBody,
+				context: { itemIndex: 0 },
+			});
+		});
+
+		it('should remove request options from continued errors', async () => {
+			const headerName = 'x-custom-header-name';
+			const headerValue = 'header-value';
+
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.continueOnFail as Mock).mockReturnValue(true);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'genericCredentialType';
+					case 'genericAuthType':
+						return 'httpHeaderAuth';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+			(executeFunctions.getCredentials as Mock).mockResolvedValue({
+				name: headerName,
+				value: headerValue,
+			});
+			(executeFunctions.helpers.request as Mock).mockImplementation(
+				async (requestOptions: { headers: Record<string, unknown> }) => {
+					expect(requestOptions.headers[headerName]).toBe(headerValue);
+
+					throw Object.assign(new Error('Request failed'), {
+						statusCode: 400,
+						error: { message: 'Bad Request' },
+						options: { headers: requestOptions.headers },
+					});
+				},
+			);
+
+			const result = await node.execute.call(executeFunctions);
+			const outputError = result[0][0].json.error;
+
+			expect(outputError).toMatchObject({ message: 'Request failed', statusCode: 400 });
+			expect(outputError).not.toHaveProperty('options');
+			expect(JSON.stringify(outputError)).not.toContain(headerValue);
+		});
+
+		it('should remove request options from the cause of continued errors', async () => {
+			const headerValue = 'header-value';
+
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.continueOnFail as Mock).mockReturnValue(true);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'predefinedCredentialType';
+					case 'nodeCredentialType':
+						return 'testApi';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+			(executeFunctions.getCredentials as Mock).mockResolvedValue({ apiKey: headerValue });
+			(executeFunctions.helpers.requestWithAuthentication as Mock).mockImplementation(async () => {
+				const cause = Object.assign(new Error('Request failed'), {
+					statusCode: 401,
+					error: { message: 'Unauthorized' },
+					options: { headers: { Authorization: `Bearer ${headerValue}` } },
+				});
+
+				throw new NodeApiError(executeFunctions.getNode(), cause as unknown as JsonObject);
+			});
+
+			const result = await node.execute.call(executeFunctions);
+			const outputError = result[0][0].json.error as NodeApiError;
+
+			expect(outputError).toBeInstanceOf(NodeApiError);
+			expect(outputError.cause).toMatchObject({ message: 'Request failed', statusCode: 401 });
+			expect(outputError.cause).not.toHaveProperty('options');
+			expect(JSON.stringify(outputError.cause)).not.toContain(headerValue);
+		});
+
+		const errorResponseBodies: Array<{
+			name: string;
+			body: JsonValue | Buffer;
+			expectedBody: JsonValue;
+		}> = [
+			{
+				name: 'an object response body',
+				body: { error: 'Bad Request' },
+				expectedBody: { error: 'Bad Request' },
+			},
+			{
+				name: 'a JSON response body encoded as text',
+				body: '{"error":"Bad Request"}',
+				expectedBody: { error: 'Bad Request' },
+			},
+			{
+				name: 'a plain-text response body',
+				body: 'The supplied value is invalid',
+				expectedBody: 'The supplied value is invalid',
+			},
+			{
+				name: 'a Buffer-backed response body',
+				body: Buffer.from('{"error":"Bad Request"}'),
+				expectedBody: { error: 'Bad Request' },
+			},
+			{
+				name: 'a null response body',
+				body: null,
+				expectedBody: null,
+			},
+			{
+				name: 'an array response body',
+				body: ['Bad Request'],
+				expectedBody: ['Bad Request'],
+			},
+			{
+				name: 'an invalid JSON response body',
+				body: '{"error":"Bad Request"',
+				expectedBody: '{"error":"Bad Request"',
+			},
+		];
+
+		it.each(errorResponseBodies)(
+			'should expose $name without changing the legacy error',
+			async ({ body, expectedBody }) => {
+				(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+				(executeFunctions.continueOnFail as Mock).mockReturnValue(true);
+				(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return baseUrl;
+						case 'authentication':
+							return 'none';
+						case 'options':
+							return options;
+						default:
+							return undefined;
+					}
+				});
+
+				const requestError = {
+					message: 'Request failed with status code 400',
+					name: 'RequestError',
+					status: 400,
+					statusCode: 400,
+					response: {
+						headers: { 'x-request-id': 'request-1' },
+						data: body,
+					},
+				};
+				(executeFunctions.helpers.request as Mock).mockRejectedValue(requestError);
+
+				const result = await node.execute.call(executeFunctions);
+				const expectedContext = {
+					itemIndex: 0,
+					...(body !== null &&
+						!Buffer.isBuffer(body) &&
+						!Array.isArray(body) &&
+						typeof body === 'object' && {
+							data: body,
+						}),
+				};
+
+				expect(result[0][0]).toMatchObject({
+					json: {
+						error: requestError,
+						details: {
+							httpCode: '400',
+							body: expectedBody,
+							context: expectedContext,
+						},
+					},
+					pairedItem: { item: 0 },
+				});
+				expect(Object.keys(result[0][0].json)).toEqual(['error', 'details']);
+			},
+		);
+
+		it('should retain the matching response body when requests complete out of order', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }, { json: {} }]);
+			(executeFunctions.continueOnFail as Mock).mockReturnValue(true);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				(paramName: string, itemIndex: number) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return `${baseUrl}/${itemIndex}`;
+						case 'authentication':
+							return 'none';
+						case 'options':
+							return options;
+						default:
+							return undefined;
+					}
+				},
+			);
+
+			(executeFunctions.helpers.request as Mock).mockImplementation(
+				async (requestOptions: { uri: string }) =>
+					await new Promise((_, reject) => {
+						const delay = requestOptions.uri.endsWith('/0') ? 10 : 0;
+						setTimeout(() => {
+							reject({
+								message: 'Request failed',
+								statusCode: 400,
+								response: { data: { request: requestOptions.uri } },
+							});
+						}, delay);
+					}),
+			);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result[0][0].json.details).toMatchObject({
+				body: { request: `${baseUrl}/0` },
+			});
+			expect(result[0][1].json.details).toMatchObject({
+				body: { request: `${baseUrl}/1` },
+			});
+		});
+
+		it('should retain the matching sanitized request when requests complete out of order', async () => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }, { json: {} }]);
+			(executeFunctions.continueOnFail as Mock).mockReturnValue(false);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				(paramName: string, itemIndex: number) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return `${baseUrl}/${itemIndex}`;
+						case 'authentication':
+							return 'none';
+						case 'options':
+							return {
+								...options,
+								batching: { batch: { batchSize: 1, batchInterval: 0 } },
+							};
+						default:
+							return undefined;
+					}
+				},
+			);
+
+			const rejectRequests: Array<(error: Error) => void> = [];
+			(executeFunctions.helpers.request as Mock).mockImplementation(
+				async () =>
+					await new Promise((_, reject) => {
+						rejectRequests.push(reject);
+					}),
+			);
+
+			const execution = node.execute.call(executeFunctions);
+			const requestError = Object.assign(new Error('Request failed'), { statusCode: 400 });
+			rejectRequests[1](requestError);
+			rejectRequests[0](requestError);
+
+			await expect(execution).rejects.toMatchObject({
+				context: {
+					itemIndex: 0,
+					request: {
+						uri: `${baseUrl}/0`,
+					},
+				},
+			});
+		});
+	});
+
+	describe('Cross-Origin Redirects', () => {
+		it('should pass sendCredentialsOnCrossOriginRedirect = true to the request by default for node versions < 4.4', async () => {
+			(executeFunctions.getNode as Mock).mockReturnValue({
+				typeVersion: 4.3,
+			});
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'genericCredentialType';
+					case 'genericAuthType':
+						return 'httpBasicAuth';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+			(executeFunctions.getCredentials as Mock).mockResolvedValue({
+				user: 'username',
+				password: 'password',
+			});
+			const response = {
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			};
+			(executeFunctions.helpers.request as Mock).mockResolvedValue(response);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: { success: true }, pairedItem: { item: 0 } }]]);
+			expect(executeFunctions.helpers.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					sendCredentialsOnCrossOriginRedirect: true,
+				}),
+			);
+		});
+
+		it('should pass sendCredentialsOnCrossOriginRedirect = false to the request by default for node versions >= 4.4', async () => {
+			(executeFunctions.getNode as Mock).mockReturnValue({
+				typeVersion: 4.4,
+			});
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'genericCredentialType';
+					case 'genericAuthType':
+						return 'httpBasicAuth';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+			(executeFunctions.getCredentials as Mock).mockResolvedValue({
+				user: 'username',
+				password: 'password',
+			});
+			const response = {
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			};
+			(executeFunctions.helpers.request as Mock).mockResolvedValue(response);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: { success: true }, pairedItem: { item: 0 } }]]);
+			expect(executeFunctions.helpers.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					sendCredentialsOnCrossOriginRedirect: false,
+				}),
+			);
+		});
+
+		it('should use the sendCredentialsOnCrossOriginRedirect parameter to the request if provided', async () => {
+			(executeFunctions.getNode as Mock).mockReturnValue({
+				typeVersion: 4.4,
+			});
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'genericCredentialType';
+					case 'genericAuthType':
+						return 'httpBasicAuth';
+					case 'options':
+						return { ...options, sendCredentialsOnCrossOriginRedirect: true };
+					default:
+						return undefined;
+				}
+			});
+			(executeFunctions.getCredentials as Mock).mockResolvedValue({
+				user: 'username',
+				password: 'password',
+			});
+			const response = {
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			};
+			(executeFunctions.helpers.request as Mock).mockResolvedValue(response);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: { success: true }, pairedItem: { item: 0 } }]]);
+			expect(executeFunctions.helpers.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					sendCredentialsOnCrossOriginRedirect: true,
+				}),
+			);
+		});
+	});
+
+	describe('Pagination parameter validation', () => {
+		it('should keep valid pagination parameters and ignore invalid parameter names', async () => {
+			const paginationTestOptions = {
+				...options,
+				response: {
+					response: {
+						neverError: false,
+						responseFormat: 'json',
+						fullResponse: false,
+						outputPropertyName: 'data',
+					},
+				},
+			};
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				(paramName: string, _itemIndex: number, defaultValue: unknown) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return baseUrl;
+						case 'authentication':
+							return 'none';
+						case 'options':
+							return paginationTestOptions;
+						case 'options.pagination.pagination':
+							return {
+								paginationMode: 'updateAParameterInEachRequest',
+								parameters: {
+									parameters: [
+										{
+											type: 'qs',
+											// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+											name: 'page',
+											value: '1',
+										},
+										{
+											type: 'qs',
+											name: 'constructor',
+											value: 'ignored',
+										},
+									],
+								},
+								paginationCompleteWhen: 'responseIsEmpty',
+								statusCodesWhenComplete: '',
+								completeExpression: '',
+								limitPagesFetched: false,
+								maxRequests: 10,
+								requestInterval: 0,
+							};
+						case 'options.response.response.responseFormat':
+							return 'json';
+						default:
+							return defaultValue;
+					}
+				},
+			);
+			(executeFunctions.helpers.requestWithAuthenticationPaginated as Mock).mockResolvedValue([
+				{
+					headers: { 'content-type': 'application/json' },
+					body: { success: true },
+					statusCode: 200,
+				},
+			]);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: { success: true }, pairedItem: { item: 0 } }]]);
+			expect(executeFunctions.helpers.requestWithAuthenticationPaginated).toHaveBeenCalledTimes(1);
+			const paginationData = (executeFunctions.helpers.requestWithAuthenticationPaginated as Mock)
+				.mock.calls[0][2] as {
+				request: {
+					qs: Record<string, unknown>;
+				};
+			};
+			expect(paginationData.request.qs).toEqual({ page: '1' });
+			expect(Object.prototype.hasOwnProperty.call(paginationData.request.qs, 'constructor')).toBe(
+				false,
+			);
+		});
+
+		it('should reject invalid pagination parameter type values', async () => {
+			const paginationTestOptions = {
+				...options,
+				response: {
+					response: {
+						neverError: false,
+						responseFormat: 'json',
+						fullResponse: false,
+						outputPropertyName: 'data',
+					},
+				},
+			};
+
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.helpers.requestWithAuthenticationPaginated as Mock).mockResolvedValue([
+				{
+					headers: { 'content-type': 'application/json' },
+					body: { success: true },
+					statusCode: 200,
+				},
+			]);
+			(executeFunctions.helpers.request as Mock).mockResolvedValue({
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			});
+
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				(paramName: string, _itemIndex: number, defaultValue: unknown) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return baseUrl;
+						case 'authentication':
+							return 'none';
+						case 'options':
+							return paginationTestOptions;
+						case 'options.pagination.pagination':
+							return {
+								paginationMode: 'updateAParameterInEachRequest',
+								parameters: {
+									parameters: [
+										{
+											type: '__proto__' as unknown as 'qs',
+											// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+											name: 'page',
+											value: '1',
+										},
+									],
+								},
+								paginationCompleteWhen: 'responseIsEmpty',
+								statusCodesWhenComplete: '',
+								completeExpression: '',
+								limitPagesFetched: false,
+								maxRequests: 10,
+								requestInterval: 0,
+							};
+						default:
+							return defaultValue;
+					}
+				},
+			);
+
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+				'Parameter type must be one of: body, headers, qs for parameter [1] in pagination settings',
+			);
+			expect(executeFunctions.helpers.requestWithAuthenticationPaginated).not.toHaveBeenCalled();
+		});
+
+		it.each(['httpHeaderAuth', 'httpMultipleHeadersAuth'])(
+			'should pass a redacted request snapshot to the paginated helper for %s',
+			async (genericAuthType) => {
+				const headerName = 'x-owner-domain-secret';
+				const headerValue = 'super-secret-value';
+
+				const paginationTestOptions = {
+					...options,
+					response: {
+						response: {
+							neverError: false,
+							responseFormat: 'json',
+							fullResponse: false,
+							outputPropertyName: 'data',
+						},
+					},
+				};
+
+				(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+				(executeFunctions.getNodeParameter as Mock).mockImplementation(
+					(paramName: string, _itemIndex: number, defaultValue: unknown) => {
+						switch (paramName) {
+							case 'method':
+								return 'GET';
+							case 'url':
+								return baseUrl;
+							case 'authentication':
+								return 'genericCredentialType';
+							case 'genericAuthType':
+								return genericAuthType;
+							case 'options':
+								return paginationTestOptions;
+							case 'options.pagination.pagination':
+								return {
+									paginationMode: 'responseContainsNextURL',
+									nextURL: `={{ $request.headers['${headerName}'] }}`,
+									paginationCompleteWhen: 'receiveSpecificStatusCodes',
+									statusCodesWhenComplete: '200',
+									completeExpression: '',
+									limitPagesFetched: true,
+									maxRequests: 1,
+									requestInterval: 0,
+								};
+							default:
+								return defaultValue;
+						}
+					},
+				);
+				(executeFunctions.getCredentials as Mock).mockResolvedValue(
+					genericAuthType === 'httpHeaderAuth'
+						? { name: headerName, value: headerValue }
+						: {
+								headers: {
+									values: [
+										{ name: headerName, value: headerValue },
+										{ name: 'x-secondary-secret', value: 'second-secret-value' },
+									],
+								},
+							},
+				);
+				(executeFunctions.helpers.requestWithAuthenticationPaginated as Mock).mockResolvedValue([
+					{
+						headers: { 'content-type': 'application/json' },
+						body: { success: true },
+						statusCode: 200,
+					},
+				]);
+
+				await node.execute.call(executeFunctions);
+
+				expect(executeFunctions.helpers.requestWithAuthenticationPaginated).toHaveBeenCalledTimes(
+					1,
+				);
+
+				// The live request options (1st arg) keep the credential header so the
+				// actual outgoing requests stay authenticated.
+				const liveRequest = (executeFunctions.helpers.requestWithAuthenticationPaginated as Mock)
+					.mock.calls[0][0] as { headers: Record<string, unknown> };
+				expect(liveRequest.headers[headerName]).toBe(headerValue);
+
+				// The sanitized snapshot (6th arg) exposed to pagination expressions has
+				// the credential-derived header redacted.
+				const sanitizedRequest = (
+					executeFunctions.helpers.requestWithAuthenticationPaginated as Mock
+				).mock.calls[0][5] as { headers: Record<string, unknown> };
+				expect(sanitizedRequest.headers[headerName]).toBe('**hidden**');
+				if (genericAuthType === 'httpMultipleHeadersAuth') {
+					expect(liveRequest.headers['x-secondary-secret']).toBe('second-secret-value');
+					expect(sanitizedRequest.headers['x-secondary-secret']).toBe('**hidden**');
+				}
+			},
+		);
+	});
+
+	describe('Parallel item scoping fixes', () => {
+		// Build the nested options object the node reads via getNodeParameter('options', itemIndex)
+		const makeOptions = (item: Record<string, unknown>) => ({
+			batching: { batch: { batchSize: 1, batchInterval: 0 } },
+			redirect: '',
+			proxy: '',
+			timeout: '',
+			allowUnauthorizedCerts: false,
+			queryParameterArrays: '',
+			lowercaseHeaders: true,
+			response: {
+				response: {
+					responseFormat: item.responseFormat ?? 'autodetect',
+					outputPropertyName: item.outputPropertyName ?? 'data',
+					fullResponse: item.fullResponse ?? false,
+					neverError: item.neverError ?? false,
+				},
+			},
+		});
+
+		// Configures getInputData and getNodeParameter for multiple items.
+		// Per-item values (url, responseFormat, outputPropertyName, fullResponse, neverError)
+		// are stored in each item's json and returned based on itemIndex.
+		const setupItems = (items: Array<{ json: Record<string, unknown> }>) => {
+			(executeFunctions.getInputData as Mock).mockReturnValue(items);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				(paramName: string, itemIndex: number, fallback: unknown) => {
+					const item = items[itemIndex]?.json ?? {};
+					switch (paramName) {
+						case 'url':
+							return item.url;
+						case 'method':
+							return 'GET';
+						case 'authentication':
+							return 'none';
+						case 'options':
+							return makeOptions(item);
+						case 'options.response.response.responseFormat':
+							return item.responseFormat ?? fallback;
+						case 'options.response.response.fullResponse':
+							return item.fullResponse ?? fallback;
+						case 'options.response.response.neverError':
+							return item.neverError ?? fallback;
+						case 'options.response.response.outputPropertyName':
+							return item.outputPropertyName ?? fallback;
+						default:
+							return fallback;
+					}
+				},
+			);
+		};
+
+		// Mimics prepareBinaryData: derives fileExtension from mimeType but does NOT set fileName.
+		// This lets setFilename() derive the name from requestOptions.uri or responseFileName.
+		const mimeToExt: Record<string, string> = {
+			'image/png': 'png',
+			'text/plain': 'txt',
+			'application/pdf': 'pdf',
+		};
+
+		beforeEach(() => {
+			(executeFunctions.helpers.prepareBinaryData as Mock).mockImplementation(
+				async (buffer: Buffer, _filePath?: string, mimeType?: string) => {
+					const fileExtension = mimeType ? mimeToExt[mimeType] : undefined;
+					const bin: Record<string, unknown> = { data: buffer.toString('base64'), mimeType };
+					if (fileExtension) bin.fileExtension = fileExtension;
+					return bin;
+				},
+			);
+		});
+
+		it('should preserve a fileName already set by prepareBinaryData', async () => {
+			setupItems([
+				{
+					json: {
+						url: 'http://example.com/download',
+						responseFormat: 'file',
+						outputPropertyName: 'data',
+					},
+				},
+			]);
+			(executeFunctions.helpers.request as Mock).mockResolvedValue({
+				statusCode: 200,
+				headers: { 'content-type': 'application/octet-stream' },
+				body: Buffer.from('data'),
+			});
+			// Simulate prepareBinaryData parsing Content-Disposition and setting fileName directly
+			(executeFunctions.helpers.prepareBinaryData as Mock).mockResolvedValueOnce({
+				data: 'ZGF0YQ==',
+				mimeType: 'application/octet-stream',
+				fileName: 'custom.txt',
+			});
+
+			const result = await node.execute.call(executeFunctions);
+			// setFilename returns preparedBinaryData.fileName unchanged when already set
+			expect(result[0][0].binary?.data.fileName).toBe('custom.txt');
+		});
+
+		it('should derive filename from the original request URI when no Content-Disposition is present', async () => {
+			setupItems([
+				{
+					json: {
+						url: 'http://example.com/file1.png',
+						responseFormat: 'file',
+						outputPropertyName: 'data',
+					},
+				},
+				{
+					json: {
+						url: 'http://example.com/file2.png',
+						responseFormat: 'file',
+						outputPropertyName: 'data',
+					},
+				},
+			]);
+			(executeFunctions.helpers.request as Mock).mockResolvedValue({
+				statusCode: 200,
+				headers: { 'content-type': 'image/png' },
+				body: Buffer.from('img'),
+			});
+
+			const result = await node.execute.call(executeFunctions);
+			// setFilename: fileExtension='png', uri ends with 'png' → uri.split('/').pop()
+			expect(result[0][0].binary?.data.fileName).toBe('file1.png');
+			expect(result[0][1].binary?.data.fileName).toBe('file2.png');
+		});
+
+		it('should use per-item original request URI as filename fallback', async () => {
+			setupItems([
+				{
+					json: {
+						url: 'http://example.com/fileA.txt',
+						responseFormat: 'file',
+						outputPropertyName: 'data',
+					},
+				},
+				{
+					json: {
+						url: 'http://example.com/fileB.txt',
+						responseFormat: 'file',
+						outputPropertyName: 'data',
+					},
+				},
+			]);
+			// Both redirect to same URL; requests[itemIndex].options.uri stays as the original
+			(executeFunctions.helpers.request as Mock).mockResolvedValue({
+				statusCode: 200,
+				headers: { 'content-type': 'text/plain' },
+				body: Buffer.from('txt'),
+			});
+
+			const result = await node.execute.call(executeFunctions);
+			expect(result[0][0].binary?.data.fileName).toBe('fileA.txt');
+			expect(result[0][1].binary?.data.fileName).toBe('fileB.txt');
+		});
+
+		it('should not crash when an earlier item fails with continueOnFail (requests[] alignment)', async () => {
+			// Item 0 has an invalid URL → fails in request-build loop → continueOnFail
+			// Item 1 has a valid URL → must still be processed correctly
+			// Without the requests[] placeholder fix, requests[1] === undefined → TypeError
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }, { json: {} }]);
+			(executeFunctions.continueOnFail as Mock).mockReturnValue(true);
+
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				(paramName: string, itemIndex: number, fallback: unknown) => {
+					if (paramName === 'url') {
+						// Item 0 → null URL (triggers NodeOperationError in build loop)
+						// Item 1 → valid URL
+						return itemIndex === 0 ? null : 'http://example.com/ok';
+					}
+					if (paramName === 'method') return 'GET';
+					if (paramName === 'authentication') return 'none';
+					if (paramName === 'options') {
+						return {
+							batching: { batch: { batchSize: 1, batchInterval: 0 } },
+							redirect: '',
+							proxy: '',
+							timeout: '',
+							allowUnauthorizedCerts: false,
+							queryParameterArrays: '',
+							lowercaseHeaders: true,
+							response: {
+								response: {
+									responseFormat: 'json',
+									outputPropertyName: 'data',
+									fullResponse: false,
+									neverError: false,
+								},
+							},
+						};
+					}
+					if (paramName === 'options.response.response.responseFormat') return 'json';
+					if (paramName === 'options.response.response.fullResponse') return false;
+					if (paramName === 'options.response.response.neverError') return false;
+					if (paramName === 'options.response.response.outputPropertyName') return 'data';
+					return fallback;
+				},
+			);
+
+			(executeFunctions.helpers.request as Mock).mockResolvedValue({
+				statusCode: 200,
+				headers: { 'content-type': 'application/json' },
+				body: { ok: true },
+			});
+
+			const result = await node.execute.call(executeFunctions);
+
+			// Item 0 → error output (continueOnFail)
+			expect(result[0][0].json.error).toBeDefined();
+			// Item 1 → valid response, no crash
+			expect(result[0][1].json.ok).toBe(true);
+		});
+	});
+
+	describe('Node context on manual runs', () => {
+		const REQUEST_HEADER = 'X-Custom-Header: custom-value';
+
+		// A response stream references its socket, and the socket references the raw request headers.
+		const createStreamWithRequestHeaders = () => {
+			const socket = new Socket();
+			Object.assign(socket, {
+				_httpMessage: { _header: `GET /photo/1 HTTP/1.1\r\n${REQUEST_HEADER}\r\n` },
+			});
+			return new IncomingMessage(socket);
+		};
+
+		let nodeContext: Record<string, unknown>;
+
+		const paginationOptions = {
+			paginationMode: 'responseContainsNextURL',
+			nextURL: '={{ $response.body.next }}',
+			paginationCompleteWhen: 'responseIsEmpty',
+			statusCodesWhenComplete: '',
+			completeExpression: '',
+			limitPagesFetched: false,
+			maxRequests: 10,
+			requestInterval: 0,
+		};
+
+		const setup = (responseOptions: Record<string, unknown>, pagination?: unknown) => {
+			nodeContext = {};
+			(executeFunctions.getMode as Mock).mockReturnValue('manual');
+			(executeFunctions.getContext as Mock).mockReturnValue(nodeContext);
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				(paramName: string, _itemIndex: number, fallback: unknown) => {
+					switch (paramName) {
+						case 'url':
+							return baseUrl;
+						case 'method':
+							return 'GET';
+						case 'authentication':
+							return 'none';
+						case 'options':
+							return { ...options, response: { response: responseOptions } };
+						case 'options.pagination.pagination':
+							return pagination ?? fallback;
+						case 'options.response.response.responseFormat':
+							return responseOptions.responseFormat ?? fallback;
+						case 'options.response.response.fullResponse':
+							return responseOptions.fullResponse ?? fallback;
+						default:
+							return fallback;
+					}
+				},
+			);
+			(executeFunctions.helpers.prepareBinaryData as Mock).mockResolvedValue({
+				data: '',
+				mimeType: 'image/png',
+			});
+		};
+
+		it.each([false, true])(
+			'should not keep the response stream in the context for file format (fullResponse: %s)',
+			async (fullResponse) => {
+				setup({ responseFormat: 'file', fullResponse });
+				(executeFunctions.helpers.request as Mock).mockResolvedValue({
+					statusCode: 200,
+					statusMessage: 'OK',
+					headers: { 'content-type': 'image/png' },
+					body: createStreamWithRequestHeaders(),
+				});
+
+				await node.execute.call(executeFunctions);
+
+				expect(nodeContext.response).toEqual({
+					statusCode: 200,
+					statusMessage: 'OK',
+					headers: { 'content-type': 'image/png' },
+					body: expect.any(String),
+				});
+				expect(JSON.stringify(nodeContext)).not.toContain(REQUEST_HEADER);
+			},
+		);
+
+		it('should not keep the response stream in the context for an autodetected binary response', async () => {
+			setup({});
+			(executeFunctions.helpers.request as Mock).mockResolvedValue({
+				statusCode: 200,
+				headers: { 'content-type': 'image/png' },
+				body: createStreamWithRequestHeaders(),
+			});
+
+			await node.execute.call(executeFunctions);
+
+			expect(JSON.stringify(nodeContext)).not.toContain(REQUEST_HEADER);
+		});
+
+		it('should keep the resolved body in the context for an autodetected JSON response', async () => {
+			setup({});
+			(executeFunctions.helpers.request as Mock).mockResolvedValue({
+				statusCode: 200,
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ next: 'page-2' })),
+			});
+
+			await node.execute.call(executeFunctions);
+
+			expect(nodeContext.response).toMatchObject({
+				statusCode: 200,
+				headers: { 'content-type': 'application/json' },
+				body: { next: 'page-2' },
+			});
+		});
+
+		it('should keep only the first page in the context for paginated requests', async () => {
+			setup({ responseFormat: 'json' }, paginationOptions);
+			const pages = [
+				{ statusCode: 200, headers: { 'content-type': 'application/json' }, body: { next: 'p2' } },
+				{ statusCode: 200, headers: { 'content-type': 'application/json' }, body: { next: '' } },
+			];
+			(executeFunctions.helpers.requestWithAuthenticationPaginated as Mock).mockResolvedValue(
+				pages,
+			);
+
+			await node.execute.call(executeFunctions);
+
+			expect(Array.isArray(nodeContext.response)).toBe(false);
+			expect(nodeContext.response).toMatchObject(pages[0]);
+		});
+
+		it('should not keep the response stream in the context for paginated file requests', async () => {
+			setup({ responseFormat: 'file' }, paginationOptions);
+			(executeFunctions.helpers.requestWithAuthenticationPaginated as Mock).mockResolvedValue([
+				{
+					statusCode: 200,
+					headers: { 'content-type': 'image/png' },
+					body: createStreamWithRequestHeaders(),
+				},
+			]);
+
+			await node.execute.call(executeFunctions);
+
+			expect(nodeContext.response).toMatchObject({ statusCode: 200, body: expect.any(String) });
+			expect(JSON.stringify(nodeContext)).not.toContain(REQUEST_HEADER);
+		});
+
+		it('should not write to the context outside of manual runs', async () => {
+			setup({ responseFormat: 'file' });
+			(executeFunctions.getMode as Mock).mockReturnValue('trigger');
+			(executeFunctions.helpers.request as Mock).mockResolvedValue({
+				statusCode: 200,
+				headers: { 'content-type': 'image/png' },
+				body: createStreamWithRequestHeaders(),
+			});
+
+			await node.execute.call(executeFunctions);
+
+			expect(nodeContext).toEqual({});
+		});
+	});
+
+	describe('Raw request body', () => {
+		const REQUEST_HEADER = 'X-Custom-Header: custom-value';
+
+		// A response stream references its socket, and the socket references the raw request headers.
+		const createStream = (content: string) => {
+			const socket = new Socket();
+			Object.assign(socket, {
+				_httpMessage: { _header: `POST / HTTP/1.1\r\n${REQUEST_HEADER}\r\n` },
+			});
+			const message = new IncomingMessage(socket);
+			message.push(content);
+			message.push(null);
+			return message;
+		};
+
+		const paginationOptions = {
+			paginationMode: 'responseContainsNextURL',
+			nextURL: '={{ $response.body.next }}',
+			paginationCompleteWhen: 'responseIsEmpty',
+			statusCodesWhenComplete: '',
+			completeExpression: '',
+			limitPagesFetched: false,
+			maxRequests: 10,
+			requestInterval: 0,
+		};
+
+		beforeEach(() => {
+			Object.assign(executeFunctions.helpers, {
+				binaryToBuffer: vi.fn(async (stream: AsyncIterable<Buffer | string>) => {
+					const chunks: Buffer[] = [];
+					for await (const chunk of stream) chunks.push(Buffer.from(chunk));
+					return Buffer.concat(chunks);
+				}),
+				detectBinaryEncoding: vi.fn(() => 'utf-8'),
+			});
+		});
+
+		const setupRawBody = (responseFormat?: string, fullResponse = false, pagination?: unknown) => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation(
+				(paramName: string, _itemIndex: number, fallback: unknown) => {
+					switch (paramName) {
+						case 'method':
+							return 'POST';
+						case 'url':
+							return baseUrl;
+						case 'authentication':
+							return 'none';
+						case 'sendBody':
+							return true;
+						case 'contentType':
+							return 'raw';
+						case 'rawContentType':
+							return 'application/json';
+						case 'body':
+							return '{"a":1}';
+						case 'options':
+							return { ...options, response: { response: { responseFormat, fullResponse } } };
+						case 'options.pagination.pagination':
+							return pagination ?? fallback;
+						case 'options.response.response.responseFormat':
+							return responseFormat ?? fallback;
+						case 'options.response.response.fullResponse':
+							return fullResponse;
+						default:
+							return fallback;
+					}
+				},
+			);
+		};
+
+		const mockResponse = (body: unknown, contentType = 'application/json') => {
+			(executeFunctions.helpers.request as Mock).mockResolvedValue({
+				statusCode: 200,
+				headers: { 'content-type': contentType },
+				body,
+			});
+		};
+
+		it.each(['json', 'text', undefined, 'file'])(
+			'should request a stream for the %s response format',
+			async (responseFormat) => {
+				setupRawBody(responseFormat);
+				mockResponse(createStream('{"a":1}'));
+				(executeFunctions.helpers.prepareBinaryData as Mock).mockResolvedValue({
+					data: '',
+					mimeType: 'application/json',
+				});
+
+				await node.execute.call(executeFunctions);
+
+				const requestOptions = (executeFunctions.helpers.request as Mock).mock.calls[0][0] as {
+					useStream?: boolean;
+				};
+				expect(requestOptions.useStream).toBe(true);
+			},
+		);
+
+		it('should return the parsed body for the json response format', async () => {
+			setupRawBody('json');
+			mockResponse(createStream('{"a":1}'));
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: { a: 1 }, pairedItem: { item: 0 } }]]);
+			expect(JSON.stringify(result)).not.toContain(REQUEST_HEADER);
+		});
+
+		it('should return the parsed body for the json response format with full response', async () => {
+			setupRawBody('json', true);
+			mockResponse(createStream('{"a":1}'));
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result[0][0].json.body).toEqual({ a: 1 });
+			expect(JSON.stringify(result)).not.toContain(REQUEST_HEADER);
+		});
+
+		it('should return an empty object for the json response format with an empty body', async () => {
+			setupRawBody('json');
+			mockResponse(createStream(''));
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: {}, pairedItem: { item: 0 } }]]);
+		});
+
+		it('should throw for the json response format with a body that is not json', async () => {
+			setupRawBody('json');
+			mockResponse(createStream('not json'));
+
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow('not valid JSON');
+		});
+
+		it.each([false, true])(
+			'should return the body as text for the text response format (fullResponse: %s)',
+			async (fullResponse) => {
+				setupRawBody('text', fullResponse);
+				mockResponse(createStream('{"a":1}'));
+
+				const result = await node.execute.call(executeFunctions);
+
+				expect(result[0][0].json.data).toBe('{"a":1}');
+				expect(JSON.stringify(result)).not.toContain(REQUEST_HEADER);
+			},
+		);
+
+		it('should keep the body that the pagination helper resolved', async () => {
+			setupRawBody('json', false, paginationOptions);
+			(executeFunctions.helpers.requestWithAuthenticationPaginated as Mock).mockResolvedValue([
+				{
+					statusCode: 200,
+					headers: { 'content-type': 'application/json' },
+					body: { a: 1 },
+					__bodyResolved: true,
+				},
+			]);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toEqual([[{ json: { a: 1 }, pairedItem: { item: 0 } }]]);
+			const paginatedRequestOptions = (
+				executeFunctions.helpers.requestWithAuthenticationPaginated as Mock
+			).mock.calls[0][0] as { useStream?: boolean };
+			expect(paginatedRequestOptions.useStream).toBe(true);
+			expect(executeFunctions.helpers.binaryToBuffer).not.toHaveBeenCalled();
+		});
+
+		it('should keep the response stream for the file response format', async () => {
+			setupRawBody('file');
+			const stream = createStream('data');
+			mockResponse(stream, 'image/png');
+			(executeFunctions.helpers.prepareBinaryData as Mock).mockResolvedValue({
+				data: '',
+				mimeType: 'image/png',
+			});
+
+			await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.helpers.prepareBinaryData).toHaveBeenCalledWith(
+				stream,
+				undefined,
+				'image/png',
+			);
+			expect(executeFunctions.helpers.binaryToBuffer).not.toHaveBeenCalled();
 		});
 	});
 });

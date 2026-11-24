@@ -9,9 +9,11 @@ import type {
 export class OpenAiApi implements ICredentialType {
 	name = 'openAiApi';
 
-	displayName = 'OpenAi';
+	displayName = 'OpenAI';
 
 	documentationUrl = 'openai';
+
+	icon = { light: 'file:icons/openAi.svg', dark: 'file:icons/openAi.dark.svg' } as const;
 
 	properties: INodeProperties[] = [
 		{
@@ -48,6 +50,9 @@ export class OpenAiApi implements ICredentialType {
 			displayName: 'Header Name',
 			name: 'headerName',
 			type: 'string',
+			typeOptions: {
+				ignoreCredentialExpressionResolveError: true,
+			},
 			displayOptions: {
 				show: {
 					header: [true],
@@ -60,6 +65,7 @@ export class OpenAiApi implements ICredentialType {
 			name: 'headerValue',
 			type: 'string',
 			typeOptions: {
+				ignoreCredentialExpressionResolveError: true,
 				password: true,
 			},
 			displayOptions: {

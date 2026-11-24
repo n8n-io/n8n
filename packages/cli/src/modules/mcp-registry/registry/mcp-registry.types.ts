@@ -1,0 +1,225 @@
+import type { McpRegistryBindingEndpoint } from 'n8n-workflow';
+import { z } from 'zod';
+
+import type { McpRegistryServerEntity } from './mcp-registry-server.entity';
+
+export type McpRegistryServerUpsertRow = Pick<
+	McpRegistryServerEntity,
+	'slug' | 'status' | 'version' | 'registryUpdatedAt' | 'data'
+>;
+
+const serverStatuses = ['active', 'deprecated'] as const;
+
+/** `authType` of a row made from an AI Gateway MCP server. Stored in the database. */
+export const AI_GATEWAY_MANAGED_AUTH_TYPE = '__aiGatewayManaged';
+
+/** Slug prefix of AI Gateway rows. Reserved: the refresh ignores registry rows that use it. */
+export const AI_GATEWAY_MCP_SLUG_PREFIX = 'n8n-connect-';
+
+/** Registry capability of AI Gateway rows. The instance supports it while Gateway credits are on. */
+export const AI_GATEWAY_MCP_CAPABILITY = 'n8n-connect';
+
+export const mcpRegistryIconMimeTypeSchema = z.enum([
+	'image/png',
+	'image/jpeg',
+	'image/jpg',
+	'image/svg+xml',
+	'image/webp',
+]);
+
+const optionalField = <T extends z.ZodType>(schema: T) =>
+	schema.nullish().transform((value) => value ?? undefined);
+
+/**
+ * Override values for the credential identified by `extends`. Only properties
+ * defined on `oAuth2Api`/`mcpOAuth2Api` are accepted; `null`/missing values are
+ * treated as "no override" and dropped before the synthetic credential is built.
+ */
+export const mcpRegistryExtendsCredentialSchema = z.object({
+	extends: z.string(),
+	authUrl: z.string().nullish(),
+	accessTokenUrl: z.string().nullish(),
+	scope: z.string().nullish(),
+	authQueryParameters: z.string().nullish(),
+	grantType: z.enum(['authorizationCode', 'clientCredentials', 'pkce']).nullish(),
+	authentication: z.enum(['body', 'header']).nullish(),
+	useDynamicClientRegistration: z.boolean().nullish(),
+	serverUrl: z.string().nullish(),
+	// Lets a row that fixes `scope` also hide the parent's "Custom Scopes"
+	// toggle (and its dependent notice/enabledScopes fields), which would
+	// otherwise render with no effect once `scope` is overridden.
+	customScopes: z.boolean().nullish(),
+});
+
+export type McpRegistryExtendsCredential = z.infer<typeof mcpRegistryExtendsCredentialSchema>;
+
+export const mcpRegistryUsesCredentialSchema = z.object({
+	credentialType: z.string().min(1),
+	name: z.string().min(1),
+	value: z.string().min(1),
+});
+
+export const mcpRegistryUsesCredentialsSchema = z
+	.array(mcpRegistryUsesCredentialSchema)
+	.min(1)
+	.superRefine((credentials, ctx) => {
+		const credentialTypes = new Set<string>();
+		const values = new Set<string>();
+
+		for (const [index, credential] of credentials.entries()) {
+			if (credentialTypes.has(credential.credentialType)) {
+				ctx.addIssue({
+					code: 'custom',
+					message: 'Credential types must be unique',
+					path: [index, 'credentialType'],
+				});
+			}
+			if (values.has(credential.value)) {
+				ctx.addIssue({
+					code: 'custom',
+					message: 'Credential selector values must be unique',
+					path: [index, 'value'],
+				});
+			}
+			credentialTypes.add(credential.credentialType);
+			values.add(credential.value);
+		}
+	});
+
+export type McpRegistryUsesCredential = z.infer<typeof mcpRegistryUsesCredentialSchema>;
+
+const mcpRegistryServerBaseSchema = z.object({
+	name: z.string(),
+	slug: z.string(),
+	title: z.string(),
+	description: z.string(),
+	tagline: z.string(),
+	// Appended to every tool result from this server, for partners that require
+	// their attribution on the content the agent shows.
+	attribution: optionalField(z.string()),
+	version: z.string(),
+	updatedAt: z.string(),
+	icons: z.array(
+		z.object({
+			src: z.string(),
+			mimeType: optionalField(mcpRegistryIconMimeTypeSchema),
+			theme: optionalField(z.enum(['light', 'dark'])),
+		}),
+	),
+	websiteUrl: optionalField(z.string()),
+	remotes: z.array(
+		z.object({
+			type: z.enum(['streamable-http', 'sse', 'streamable-http-templated']),
+			url: z.string(),
+			// Sent as-is on every request to this remote, e.g. a partner User-Agent.
+			headers: optionalField(z.record(z.string(), z.string())),
+		}),
+	),
+	tools: z.array(
+		z.object({
+			name: z.string(),
+			title: optionalField(z.string()),
+			annotations: optionalField(
+				z.object({
+					readOnlyHint: optionalField(z.boolean()),
+					destructiveHint: optionalField(z.boolean()),
+					idempotentHint: optionalField(z.boolean()),
+					openWorldHint: optionalField(z.boolean()),
+				}),
+			),
+		}),
+	),
+	isOfficial: z.boolean(),
+	origin: z.literal('registry'),
+	status: z.enum(serverStatuses),
+	requiredCapabilities: optionalField(z.array(z.string())),
+	// The API returns either a bare array or a `{ data }` envelope, and omits
+	// `data` entirely when there are no tags. Anything stricter drops the whole
+	// server over optional metadata.
+	tags: z
+		.union([z.array(z.string()), z.object({ data: z.array(z.string()).nullish() })])
+		.nullish()
+		.transform((value) => (Array.isArray(value) ? value : (value?.data ?? undefined))),
+});
+
+const mcpRegistryServerAuthSchema = z.discriminatedUnion('authType', [
+	z.object({ authType: z.literal('oauth2') }),
+	z.object({
+		authType: z.literal('extendsCredential'),
+		extendsCredential: mcpRegistryExtendsCredentialSchema,
+	}),
+	z.object({
+		authType: z.literal('usesCredentials'),
+		usesCredentials: mcpRegistryUsesCredentialsSchema,
+	}),
+	// No user credential: the token is minted for Gateway credits on each use.
+	z.object({ authType: z.literal(AI_GATEWAY_MANAGED_AUTH_TYPE) }),
+]);
+
+export const mcpRegistryServerSchema = mcpRegistryServerBaseSchema.and(mcpRegistryServerAuthSchema);
+
+/** Set by `pairAiGatewayServers` when the server is read. Never stored. */
+export interface McpRegistryAiGatewayPair {
+	/** Slug of the AI Gateway row. */
+	slug: string;
+	endpoint: McpRegistryBindingEndpoint;
+}
+
+export type McpRegistryServer = z.output<typeof mcpRegistryServerSchema> & {
+	/** On a registry row: the AI Gateway row that offers Gateway credits for it. */
+	aiGateway?: McpRegistryAiGatewayPair;
+	/** On an AI Gateway row: the slug of the registry row that offers it. */
+	pairedSlug?: string;
+};
+export type McpRegistryIcon = McpRegistryServer['icons'][number];
+export type McpRegistryRemote = McpRegistryServer['remotes'][number];
+export type McpRegistryRemoteType = McpRegistryRemote['type'];
+export type McpRegistryTool = McpRegistryServer['tools'][number];
+export type McpRegistryToolAnnotations = NonNullable<McpRegistryTool['annotations']>;
+
+/** Whether a row comes from the AI Gateway, not from the MCP registry. */
+export function isAiGatewayMcpServer(server: Pick<McpRegistryServer, 'authType'>): boolean {
+	return server.authType === AI_GATEWAY_MANAGED_AUTH_TYPE;
+}
+
+export function parseMcpRegistryServer(value: unknown): McpRegistryServer | null {
+	const result = mcpRegistryServerSchema.safeParse(value);
+	return result.success ? result.data : null;
+}
+
+export function toEntity(server: McpRegistryServer): McpRegistryServerUpsertRow {
+	// The pair fields are derived when the server is read, so they are never stored.
+	const {
+		slug,
+		status,
+		version,
+		updatedAt,
+		aiGateway: _pair,
+		pairedSlug: _pairedSlug,
+		...rest
+	} = server;
+	let mappedStatus = status;
+	// make sure that unknown statuses get mapped to a valid value
+	if (!serverStatuses.includes(status)) {
+		mappedStatus = 'deprecated';
+	}
+
+	return {
+		slug,
+		status: mappedStatus,
+		version,
+		registryUpdatedAt: new Date(updatedAt),
+		data: rest,
+	};
+}
+
+export function fromEntity(entity: McpRegistryServerEntity): McpRegistryServer {
+	const { slug, status, version, registryUpdatedAt, data } = entity;
+	return {
+		slug,
+		status,
+		version,
+		updatedAt: registryUpdatedAt.toISOString(),
+		...data,
+	} as McpRegistryServer;
+}

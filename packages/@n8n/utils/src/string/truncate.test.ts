@@ -34,6 +34,15 @@ describe(truncateBeforeLast, () => {
 		expect(truncateBeforeLast('I love 👨‍👩‍👧‍👦', 7)).toBe('I lov…👨‍👩‍👧‍👦');
 	});
 
+	it('should fall through to fixed-suffix when last word is shorter than minLastWordLength', () => {
+		expect(truncateBeforeLast('Akhenaten - Wikipedia.pdf, page 3', 25, 11, 4)).toBe(
+			'Akhenaten - W…pdf, page 3',
+		);
+		expect(truncateBeforeLast('Akhenaten - Wikipedia.pdf, page 123', 25, 11, 4)).toBe(
+			'Akhenaten - W…f, page 123',
+		);
+	});
+
 	it('should preserve last 5 characters if the last word is longer than 15 characters', () => {
 		expect(truncateBeforeLast('I love internationalization', 25)).toBe('I love internationa…ation');
 		expect(truncateBeforeLast('I love "internationalization"', 25)).toBe(

@@ -1,0 +1,185 @@
+{
+	"properties": {
+		"created_at": {
+			"type": "string"
+		},
+		"created_by": {
+			"type": "string"
+		},
+		"event": {
+			"type": "string"
+		},
+		"payload": {
+			"additionalProperties": true,
+			"properties": {
+				"cancel_url": {
+					"type": "string"
+				},
+				"created_at": {
+					"type": "string"
+				},
+				"email": {
+					"type": "string"
+				},
+				"event": {
+					"type": "string"
+				},
+				"first_name": {
+					"type": ["null", "string"]
+				},
+				"invitee_scheduled_by": {
+					"type": ["null", "string"]
+				},
+				"last_name": {
+					"type": ["null", "string"]
+				},
+				"name": {
+					"type": "string"
+				},
+				"new_invitee": {},
+				"no_show": {},
+				"old_invitee": {},
+				"payment": {},
+				"questions_and_answers": {
+					"items": {
+						"properties": {
+							"answer": {
+								"type": "string"
+							},
+							"position": {
+								"type": "number"
+							},
+							"question": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				},
+				"reconfirmation": {},
+				"reschedule_url": {
+					"type": "string"
+				},
+				"rescheduled": {
+					"type": "boolean"
+				},
+				"routing_form_submission": {
+					"type": ["null", "string"]
+				},
+				"scheduled_event": {
+					"properties": {
+						"created_at": {
+							"type": "string"
+						},
+						"end_time": {
+							"type": "string"
+						},
+						"event_guests": {
+							"items": {},
+							"type": "array"
+						},
+						"event_memberships": {
+							"items": {
+								"properties": {
+									"user": {
+										"type": "string"
+									},
+									"user_email": {
+										"type": "string"
+									},
+									"user_name": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						},
+						"event_type": {
+							"type": "string"
+						},
+						"invitees_counter": {
+							"properties": {
+								"active": {
+									"type": "number"
+								},
+								"limit": {
+									"type": "number"
+								},
+								"total": {
+									"type": "number"
+								}
+							},
+							"type": "object"
+						},
+						"location": {
+							"additionalProperties": true,
+							"properties": {
+								"join_url": {
+									"type": "string"
+								},
+								"status": {
+									"type": "string"
+								},
+								"type": {
+									"type": "string"
+								}
+							},
+							"type": "object"
+						},
+						"meeting_notes_html": {},
+						"meeting_notes_plain": {},
+						"name": {
+							"type": "string"
+						},
+						"start_time": {
+							"type": "string"
+						},
+						"status": {
+							"type": "string"
+						},
+						"updated_at": {
+							"type": "string"
+						},
+						"uri": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"scheduling_method": {
+					"type": ["null", "string"]
+				},
+				"status": {
+					"type": "string"
+				},
+				"text_reminder_number": {
+					"type": ["null", "string"]
+				},
+				"timezone": {
+					"type": "string"
+				},
+				"tracking": {
+					"properties": {
+						"salesforce_uuid": {},
+						"utm_campaign": {},
+						"utm_content": {},
+						"utm_medium": {},
+						"utm_source": {},
+						"utm_term": {}
+					},
+					"type": "object"
+				},
+				"updated_at": {
+					"type": "string"
+				},
+				"uri": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

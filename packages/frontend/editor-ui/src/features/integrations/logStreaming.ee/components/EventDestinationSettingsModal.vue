@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, useTemplateRef } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, toRaw, useTemplateRef, watch } from 'vue';
 import get from 'lodash/get';
+import isEqual from 'lodash/isEqual';
 import set from 'lodash/set';
 import unset from 'lodash/unset';
 
@@ -9,9 +10,7 @@ import type {
 	MessageEventBusDestinationOptions,
 	INodeParameters,
 	NodeParameterValueType,
-	MessageEventBusDestinationSentryOptions,
-	MessageEventBusDestinationSyslogOptions,
-	MessageEventBusDestinationWebhookOptions,
+	INodeProperties,
 } from 'n8n-workflow';
 import {
 	deepCopy,
@@ -21,26 +20,27 @@ import {
 	MessageEventBusDestinationTypeNames,
 	defaultMessageEventBusDestinationSyslogOptions,
 	defaultMessageEventBusDestinationSentryOptions,
+	NodeHelpers,
 } from 'n8n-workflow';
 import type { EventBus } from '@n8n/utils/event-bus';
-import { createEventBus } from '@n8n/utils/event-bus';
 
 import { useLogStreamingStore } from '../logStreaming.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { provideWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import type { IMenuItem, IUpdateInformation, ModalKey } from '@/Interface';
-import { LOG_STREAM_MODAL_KEY, MODAL_CONFIRM } from '@/app/constants';
-import Modal from '@/app/components/Modal.vue';
+import { MODAL_CONFIRM } from '@/app/constants';
+import { LOG_STREAM_MODAL_KEY } from '../modals';
 import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/app/composables/useMessage';
 import { useUIStore } from '@/app/stores/ui.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
-import { destinationToFakeINodeUi } from '../logStreaming.utils';
+import { destinationToFakeINodeUi, isDestinationComplete } from '../logStreaming.utils';
 import type { BaseTextKey } from '@n8n/i18n';
 import SaveButton from '@/app/components/SaveButton.vue';
 import EventSelection from './EventSelection.vue';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import {
@@ -52,21 +52,21 @@ import { useElementSize } from '@vueuse/core';
 
 import {
 	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogHeader,
+	N8nDialogTitle,
 	N8nIconButton,
 	N8nInlineTextEdit,
 	N8nInputLabel,
 	N8nMenuItem,
 	N8nOption,
 	N8nSelect,
+	N8nSpinner,
 	N8nText,
 } from '@n8n/design-system';
-import {
-	injectWorkflowState,
-	type WorkflowStateBusEvents,
-	workflowStateEventBus,
-} from '@/app/composables/useWorkflowState';
 
-defineOptions({ name: 'EventDestinationSettingsModal' });
+defineOptions({ name: 'EventDestinationSettingsModal', inheritAttrs: false });
 
 const props = withDefaults(
 	defineProps<{
@@ -84,17 +84,25 @@ const { modalName, destination, isNew, eventBus } = props;
 
 const i18n = useI18n();
 const { confirm } = useMessage();
+const { showError } = useToast();
 const telemetry = useTelemetry();
 const logStreamingStore = useLogStreamingStore();
-const ndvStore = useNDVStore();
-const workflowsStore = useWorkflowsStore();
-const workflowState = injectWorkflowState();
+// The log-streaming settings modal can open outside the workflow editor, where
+// no workflow document is provided. Re-provide the resolved document store so
+// the reused NDV parameter components resolve a valid scoped store, and derive
+// this modal's own NDV store from it (it cannot inject what it provides).
+const workflowDocumentStore = provideWorkflowDocumentStore();
+const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 const uiStore = useUIStore();
 
 const unchanged = ref(!isNew);
 const activeTab = ref('settings');
 const hasOnceBeenSaved = ref(!isNew);
 const isSaving = ref(false);
+let modalClosed = false;
+onBeforeUnmount(() => {
+	modalClosed = true;
+});
 const isDeleting = ref(false);
 const loading = ref(false);
 const typeSelectValue = ref('');
@@ -103,7 +111,6 @@ const nodeParameters = ref(deepCopy(defaultMessageEventBusDestinationOptions) as
 const webhookDescription = ref(webhookModalDescription);
 const sentryDescription = ref(sentryModalDescription);
 const syslogDescription = ref(syslogModalDescription);
-const modalBus = ref(createEventBus());
 const headerLabel = ref(destination.label!);
 const testMessageSent = ref(false);
 const testMessageResult = ref(false);
@@ -166,23 +173,48 @@ const canManageLogStreaming = computed(() =>
 	hasPermission(['rbac'], { rbac: { scope: 'logStreaming:manage' } }),
 );
 
-function onUpdateNodeProperties(event: WorkflowStateBusEvents['updateNodeProperties']) {
-	const updateInformation = event[1];
-	if (updateInformation.name === destination.id) {
-		if ('credentials' in updateInformation.properties) {
-			unchanged.value = false;
-			nodeParameters.value.credentials = updateInformation.properties
-				.credentials as NodeParameterValueType;
-		}
+const isFormValid = computed(() => {
+	if (isTypeAbstract.value) return false;
+
+	let parameterDescription: INodeProperties[];
+	if (isTypeWebhook.value) {
+		parameterDescription = webhookDescription.value;
+	} else if (isTypeSentry.value) {
+		parameterDescription = sentryDescription.value;
+	} else if (isTypeSyslog.value) {
+		parameterDescription = syslogDescription.value;
+	} else {
+		return false;
 	}
-}
+
+	const issues = NodeHelpers.getNodeParametersIssues(parameterDescription, node.value, null);
+
+	//	No issues - then we are valid!
+	return issues === null;
+});
+
+const destinationNode = computed(() =>
+	workflowDocumentStore.value.getNodeByName(destination.id ?? ''),
+);
+
+watch(
+	() =>
+		Object.keys(destinationNode.value?.credentials ?? {}).length === 0
+			? null
+			: destinationNode.value?.credentials,
+	(newCredentials) => {
+		unchanged.value = false;
+		if (newCredentials) {
+			nodeParameters.value.credentials = newCredentials as unknown as NodeParameterValueType;
+		} else {
+			nodeParameters.value.credentials = {};
+		}
+	},
+);
 
 onMounted(() => {
 	setupNode(Object.assign(deepCopy(defaultMessageEventBusDestinationOptions), destination));
-	workflowStateEventBus.on('updateNodeProperties', onUpdateNodeProperties);
 });
-
-onUnmounted(() => workflowStateEventBus.off('updateNodeProperties', onUpdateNodeProperties));
 
 function onInput() {
 	unchanged.value = false;
@@ -200,9 +232,9 @@ function onLabelChange(value: string) {
 }
 
 function setupNode(options: MessageEventBusDestinationOptions) {
-	workflowsStore.removeNode(node.value);
-	ndvStore.setActiveNodeName(options.id ?? 'thisshouldnothappen', 'other');
-	workflowsStore.addNode(destinationToFakeINodeUi(options));
+	workflowDocumentStore.value.removeNode(node.value);
+	ndvStore.value.setActiveNodeName(options.id ?? 'thisshouldnothappen', 'other');
+	workflowDocumentStore.value.addNode(destinationToFakeINodeUi(options));
 	nodeParameters.value = options as INodeParameters;
 	logStreamingStore.items[destination.id!].destination = options;
 }
@@ -267,7 +299,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 	}
 
 	nodeParameters.value = deepCopy(nodeParametersCopy);
-	workflowState.updateNodeProperties({
+	workflowDocumentStore.value.updateNodeProperties({
 		name: node.value.name,
 		properties: { parameters: nodeParameters.value, position: [0, 0] },
 	});
@@ -301,69 +333,81 @@ async function removeThis() {
 	} else {
 		callEventBus('remove', destination.id);
 		uiStore.closeModal(LOG_STREAM_MODAL_KEY);
-		uiStore.stateIsDirty = false;
+		uiStore.markStateClean();
 	}
 }
 
 function onModalClose() {
+	modalClosed = true;
 	if (!hasOnceBeenSaved.value) {
-		workflowsStore.removeNode(node.value);
-		if (nodeParameters.value.id && typeof nodeParameters.value.id !== 'object') {
+		workflowDocumentStore.value.removeNode(node.value);
+		// A pending first save decides whether the new destination stays in the list.
+		if (!isSaving.value && nodeParameters.value.id && typeof nodeParameters.value.id !== 'object') {
 			logStreamingStore.removeDestination(nodeParameters.value.id.toString());
 		}
 	}
-	ndvStore.unsetActiveNodeName();
+	ndvStore.value.unsetActiveNodeName();
 	callEventBus('closing', destination.id);
-	uiStore.stateIsDirty = false;
+	uiStore.markStateClean();
+}
+
+const modalOpen = computed(() => uiStore.modalsById[modalName]?.open === true);
+
+function closeDialog() {
+	onModalClose();
+	uiStore.closeModal(modalName);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) closeDialog();
 }
 
 async function saveDestination() {
-	if (unchanged.value || !destination.id) {
+	if (modalClosed || isSaving.value || unchanged.value || !destination.id || !isFormValid.value) {
 		return;
 	}
-	const saveResult = await logStreamingStore.saveDestination(nodeParameters.value);
-	if (saveResult) {
-		hasOnceBeenSaved.value = true;
-		testMessageSent.value = false;
-		unchanged.value = true;
+	const submittedParameters = deepCopy(nodeParameters.value);
+	const submittedEvents = logStreamingStore.getSelectedEvents(destination.id);
+	isSaving.value = true;
+	try {
+		const saveResult = await logStreamingStore.saveDestination(submittedParameters);
+		if (!saveResult) return;
+
+		// Cards refresh their copy from this event, so it must fire even after close.
 		callEventBus('destinationWasSaved', destination.id);
-		uiStore.stateIsDirty = false;
+		if (!modalClosed) {
+			hasOnceBeenSaved.value = true;
+			testMessageSent.value = false;
+			unchanged.value =
+				isEqual(nodeParameters.value, submittedParameters) &&
+				isEqual(logStreamingStore.getSelectedEvents(destination.id), submittedEvents);
+			if (unchanged.value) uiStore.markStateClean();
+		}
 
 		const destinationType = (
-			nodeParameters.value.__type && typeof nodeParameters.value.__type !== 'object'
-				? `${nodeParameters.value.__type}`
+			submittedParameters.__type && typeof submittedParameters.__type !== 'object'
+				? `${submittedParameters.__type}`
 				: 'unknown'
 		)
 			.replace('$MessageEventBusDestination', '')
 			.toLowerCase();
 
-		const isComplete = () => {
-			if (isTypeWebhook.value) {
-				const webhookDestination = destination as MessageEventBusDestinationWebhookOptions;
-				return webhookDestination.url !== '';
-			} else if (isTypeSentry.value) {
-				const sentryDestination = destination as MessageEventBusDestinationSentryOptions;
-				return sentryDestination.dsn !== '';
-			} else if (isTypeSyslog.value) {
-				const syslogDestination = destination as MessageEventBusDestinationSyslogOptions;
-				return (
-					syslogDestination.host !== '' &&
-					syslogDestination.port !== undefined &&
-					// @ts-expect-error TODO: fix this typing
-					syslogDestination.protocol !== '' &&
-					syslogDestination.facility !== undefined &&
-					syslogDestination.app_name !== ''
-				);
-			}
-			return false;
-		};
-
 		telemetry.track('User updated log streaming destination', {
 			instance_id: useRootStore().instanceId,
 			destination_type: destinationType,
-			is_complete: isComplete(),
-			is_active: destination.enabled,
+			is_complete: isDestinationComplete(submittedParameters),
+			is_active: submittedParameters.enabled,
 		});
+	} catch (error) {
+		// A reopened modal or the card swaps the stored object, so then the item is no longer ours.
+		const ownsStoreItem =
+			toRaw(logStreamingStore.items[destination.id]?.destination) === toRaw(nodeParameters.value);
+		if (modalClosed && !hasOnceBeenSaved.value && ownsStoreItem) {
+			logStreamingStore.removeDestination(destination.id);
+		}
+		showError(error, i18n.baseText('settings.log-streaming.destinationSave.error'));
+	} finally {
+		isSaving.value = false;
 	}
 }
 
@@ -378,41 +422,37 @@ const { width } = useElementSize(defNameRef);
 </script>
 
 <template>
-	<Modal
-		:name="modalName"
-		:event-bus="modalBus"
-		:before-close="onModalClose"
-		:scrollable="true"
-		:center="true"
-		:loading="loading"
-		:min-width="isTypeAbstract ? '460px' : '70%'"
-		:max-width="isTypeAbstract ? '460px' : '70%'"
-		:min-height="isTypeAbstract ? '160px' : '650px'"
-		:max-height="isTypeAbstract ? '300px' : '650px'"
-		data-test-id="destination-modal"
+	<N8nDialog
+		:open="modalOpen"
+		:size="isTypeAbstract ? 'medium' : '2xlarge'"
+		:container-class="isTypeAbstract ? undefined : $style.settingsDialog"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #header>
-			<template v-if="isTypeAbstract">
-				<div :class="$style.headerCreate">
-					<span>Add new destination</span>
-				</div>
-			</template>
-			<template v-else>
-				<div :class="$style.header">
+		<N8nDialogBody v-if="loading">
+			<N8nSpinner />
+		</N8nDialogBody>
+		<template v-else>
+			<N8nDialogHeader :class="isTypeAbstract ? undefined : $style.dialogHeader">
+				<template v-if="isTypeAbstract">
+					<N8nDialogTitle>Add new destination</N8nDialogTitle>
+				</template>
+				<template v-else>
 					<div ref="defNameRef" :class="$style.destinationInfo">
-						<N8nInlineTextEdit
-							:max-width="width - 10"
-							data-test-id="subtitle-showing-type"
-							:model-value="headerLabel"
-							:readonly="isTypeAbstract"
-							@update:model-value="onLabelChange"
-						/>
-						<N8nText size="small" tag="p" color="text-light">{{
-							!isTypeAbstract ? i18n.baseText(typeLabelName) : 'Select type'
-						}}</N8nText>
+						<N8nDialogTitle as-child>
+							<N8nInlineTextEdit
+								:max-width="width - 10"
+								data-test-id="subtitle-showing-type"
+								:model-value="headerLabel"
+								@update:model-value="onLabelChange"
+							/>
+						</N8nDialogTitle>
+						<N8nText size="small" tag="p" color="text-light" :class="$style.typeName">
+							{{ i18n.baseText(typeLabelName) }}
+						</N8nText>
 					</div>
 					<div :class="$style.destinationActions">
 						<N8nButton
+							variant="outline"
 							v-if="nodeParameters && hasOnceBeenSaved && unchanged"
 							:icon="testMessageSent ? (testMessageResult ? 'check' : 'triangle-alert') : undefined"
 							:title="
@@ -420,7 +460,6 @@ const { width } = useElementSize(defNameRef);
 									? 'Event sent and returned OK'
 									: 'Event returned with error'
 							"
-							type="tertiary"
 							label="Send Test-Event"
 							:disabled="!hasOnceBeenSaved || !unchanged"
 							data-test-id="destination-test-button"
@@ -428,10 +467,10 @@ const { width } = useElementSize(defNameRef);
 						/>
 						<template v-if="canManageLogStreaming">
 							<N8nIconButton
+								variant="outline"
 								v-if="nodeParameters && hasOnceBeenSaved"
 								:title="i18n.baseText('settings.log-streaming.delete')"
 								icon="trash-2"
-								type="tertiary"
 								:disabled="isSaving"
 								:loading="isDeleting"
 								data-test-id="destination-delete-button"
@@ -439,20 +478,18 @@ const { width } = useElementSize(defNameRef);
 							/>
 							<SaveButton
 								:saved="unchanged && hasOnceBeenSaved"
-								:disabled="isTypeAbstract || unchanged"
+								:is-saving="isSaving"
+								:disabled="unchanged || !isFormValid"
 								:saving-label="i18n.baseText('settings.log-streaming.saving')"
 								data-test-id="destination-save-button"
 								@click="saveDestination"
 							/>
 						</template>
 					</div>
-				</div>
-				<hr />
-			</template>
-		</template>
-		<template #content>
-			<div :class="$style.container">
-				<template v-if="isTypeAbstract">
+				</template>
+			</N8nDialogHeader>
+			<N8nDialogBody :class="isTypeAbstract ? undefined : $style.body">
+				<div v-if="isTypeAbstract" data-test-id="destination-modal">
 					<N8nInputLabel
 						:class="$style.typeSelector"
 						:label="i18n.baseText('settings.log-streaming.selecttype')"
@@ -476,7 +513,7 @@ const { width } = useElementSize(defNameRef);
 								:label="i18n.baseText(option.label)"
 							/>
 						</N8nSelect>
-						<div class="mt-m text-right">
+						<div :class="$style.continueRow">
 							<N8nButton
 								size="large"
 								data-test-id="select-destination-button"
@@ -487,9 +524,9 @@ const { width } = useElementSize(defNameRef);
 							</N8nButton>
 						</div>
 					</N8nInputLabel>
-				</template>
-				<template v-else>
-					<div :class="$style.sidebar">
+				</div>
+				<div v-else :class="$style.modalLayout" data-test-id="destination-modal">
+					<nav :class="$style.sidebar">
 						<N8nMenuItem
 							v-for="item in sidebarItems"
 							:key="item.id"
@@ -497,71 +534,86 @@ const { width } = useElementSize(defNameRef);
 							:active="activeTab === item.id"
 							@click="() => onTabSelect(item.id)"
 						/>
-					</div>
-					<div v-if="activeTab === 'settings'" ref="content" :class="$style.mainContent">
-						<template v-if="isTypeWebhook">
-							<ParameterInputList
-								:parameters="webhookDescription"
-								:hide-delete="true"
-								:node-values="nodeParameters"
-								:is-read-only="!canManageLogStreaming"
-								path=""
-								@value-changed="valueChanged"
-							/>
-						</template>
-						<template v-else-if="isTypeSyslog">
-							<ParameterInputList
-								:parameters="syslogDescription"
-								:hide-delete="true"
-								:node-values="nodeParameters"
-								:is-read-only="!canManageLogStreaming"
-								path=""
-								@value-changed="valueChanged"
-							/>
-						</template>
-						<template v-else-if="isTypeSentry">
-							<ParameterInputList
-								:parameters="sentryDescription"
-								:hide-delete="true"
-								:node-values="nodeParameters"
-								:is-read-only="!canManageLogStreaming"
-								path=""
-								@value-changed="valueChanged"
-							/>
-						</template>
-					</div>
-					<div v-if="activeTab === 'events'" :class="$style.mainContent">
-						<div class="">
-							<N8nInputLabel
-								class="mb-m mt-m"
-								:label="i18n.baseText('settings.log-streaming.tab.events.title')"
-								:bold="true"
-								size="medium"
-								:underline="false"
-							/>
-							<EventSelection
-								:destination-id="destination.id"
-								:readonly="!canManageLogStreaming"
-								@input="onInput"
-								@change="valueChanged"
-							/>
+					</nav>
+					<div :class="$style.contentArea">
+						<div v-if="activeTab === 'settings'" ref="content">
+							<template v-if="isTypeWebhook">
+								<ParameterInputList
+									:parameters="webhookDescription"
+									:hide-delete="true"
+									:node-values="nodeParameters"
+									:is-read-only="!canManageLogStreaming"
+									path=""
+									@value-changed="valueChanged"
+								/>
+							</template>
+							<template v-else-if="isTypeSyslog">
+								<ParameterInputList
+									:parameters="syslogDescription"
+									:hide-delete="true"
+									:node-values="nodeParameters"
+									:is-read-only="!canManageLogStreaming"
+									path=""
+									@value-changed="valueChanged"
+								/>
+							</template>
+							<template v-else-if="isTypeSentry">
+								<ParameterInputList
+									:parameters="sentryDescription"
+									:hide-delete="true"
+									:node-values="nodeParameters"
+									:is-read-only="!canManageLogStreaming"
+									path=""
+									@value-changed="valueChanged"
+								/>
+							</template>
+						</div>
+						<div v-if="activeTab === 'events'" :class="$style.mainContent">
+							<div class="">
+								<N8nInputLabel
+									class="mb-m mt-m"
+									:label="i18n.baseText('settings.log-streaming.tab.events.title')"
+									:bold="true"
+									size="medium"
+									:underline="false"
+								/>
+								<EventSelection
+									:destination-id="destination.id"
+									:readonly="!canManageLogStreaming"
+									@input="onInput"
+									@change="valueChanged"
+								/>
+							</div>
 						</div>
 					</div>
-				</template>
-			</div>
+				</div>
+			</N8nDialogBody>
 		</template>
-	</Modal>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
-.labelMargins {
-	margin-bottom: 1em;
-	margin-top: 1em;
+.continueRow {
+	display: flex;
+	justify-content: flex-end;
+	margin-top: var(--spacing--md);
 }
+
+.settingsDialog {
+	height: min(650px, calc(100dvh - var(--spacing--lg)));
+	max-height: min(650px, calc(100dvh - var(--spacing--lg)));
+	--log-stream-dialog-header--height: calc(
+		var(--n8n-dialog-region--padding) * 2 + var(--n8n-dialog-title--line) + var(--spacing--4xs) +
+			var(--font-size--2xs) * var(--line-height--lg)
+	);
+	/* Center the close button on the save button. */
+	--n8n-dialog-close--inset-block-start: calc(
+		(var(--log-stream-dialog-header--height) - var(--n8n-dialog-close--size)) / 2
+	);
+}
+
 .typeSelector {
 	width: 100%;
-	margin-bottom: 1em;
-	margin-top: 1em;
 }
 
 .sidebarSwitches {
@@ -576,64 +628,71 @@ const { width } = useElementSize(defNameRef);
 	margin-bottom: 1em;
 }
 
-.mainContent {
-	flex: 1;
-	overflow: auto;
-	padding-left: 1em;
-	padding-right: 1em;
-	padding-bottom: 2em;
+.dialogHeader {
+	align-items: center;
+	min-height: var(--log-stream-dialog-header--height);
+	padding-block: var(--n8n-dialog-region--padding);
+}
+
+.body {
+	--n8n-dialog-body--padding-block-start: 0;
+	--n8n-dialog-body--padding-block-end: 0;
+	--n8n-dialog-body--padding-inline: 0;
+	border-block: var(--border);
+}
+
+.modalLayout {
+	display: flex;
+	flex: 1 1 auto;
+	overflow: hidden;
 }
 
 .sidebar {
-	padding-top: 1em;
-	max-width: 170px;
-	min-width: 170px;
-	margin-right: var(--spacing--lg);
-	flex-grow: 1;
+	display: flex;
+	flex: 0 0 calc(var(--spacing--4xl) + var(--spacing--3xl));
+	flex-direction: column;
+	min-height: 0;
+	overflow: auto;
+	padding: var(--spacing--xs);
+	border-inline-end: var(--border);
 
 	ul {
 		padding: 0 !important;
 	}
 }
 
+.contentArea {
+	flex: 1 1 auto;
+	overflow: auto;
+	padding: var(--n8n-dialog-region--padding, var(--spacing--md));
+}
+
 .cardTitle {
 	font-size: 14px;
-	font-weight: var(--font-weight--bold);
-}
-
-.header {
-	display: flex;
-	min-height: 61px;
-}
-
-.headerCreate {
-	display: flex;
-	font-size: 20px;
-}
-
-.container {
-	display: flex;
-	height: 100%;
+	font-weight: var(--font-weight--medium);
 }
 
 .destinationInfo {
-	flex-grow: 1;
 	display: flex;
-	width: 100%;
+	flex: 1 1 auto;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
-	margin-bottom: var(--spacing--lg);
+	min-width: 0;
+	overflow: hidden;
+}
+
+.typeName {
+	margin: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .destinationActions {
 	display: flex;
 	flex-direction: row;
 	align-items: center;
-	margin-right: var(--spacing--xl);
-	margin-bottom: var(--spacing--lg);
-
-	> * {
-		margin-left: var(--spacing--2xs);
-	}
+	flex-shrink: 0;
+	gap: var(--spacing--2xs);
 }
 </style>

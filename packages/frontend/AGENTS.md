@@ -1,116 +1,130 @@
 # AGENTS.md
 
-Extra information, specific to the frontend codebase.
+Rules for frontend work in `packages/frontend` and `packages/modules/*/frontend`.
+Read the root `AGENTS.md` first. This file does not repeat its rules.
 
-### CSS Variables Reference
+## Commands
 
-Use the following CSS variables to maintain consistency across the
-application. These variables cover colors, spacing, typography, and borders.
+- Run one test from the package folder: `pnpm test <file> --maxWorkers=1`.
+- Start the editor with hot reload from the repository root: `pnpm dev:fe:editor`.
+  "Local development" in the root `AGENTS.md` tells how to start the backend.
+- Start Storybook: `pnpm dev` in `@n8n/design-system`.
+- Do not run a full frontend typecheck. CI runs it.
+- Format and lint the files that you changed. See [Checks](#checks).
 
-#### Colors
-```css
-/* Primary Colors */
---color--primary--shade-1
---color--primary
---color--primary--tint-1
---color--primary--tint-2
---color--primary--tint-3
+## Skills and review rules
 
-/* Secondary Colors */
---color--secondary--shade-1
---color--secondary
---color--secondary--tint-1
---color--secondary--tint-2
+Skills are in `.agents/skills/<name>`. Load a skill when the task matches:
 
-/* Success Colors */
---color--success--shade-1
---color--success
---color--success--tint-1
---color--success--tint-2
---color--success--tint-3
---color--success--tint-4
+- `ui-design`: you build, change or style UI in `editor-ui`, `@n8n/design-system` or a module frontend.
+- `content-design`: you write or change UI text.
+- `experiments`: you add, change or remove an experiment or a PostHog feature flag in `editor-ui`.
+- `agent-design-language`: you change the Agent Builder UI.
+- `telemetry`: you add or change a telemetry event.
 
-/* Warning Colors */
---color--warning--shade-1
---color--warning
---color--warning--tint-1
---color--warning--tint-2
+`.agents/review-rules/frontend/*.md` lists the problems that code review flags.
+Read these files before you hand back the work.
 
-/* Danger Colors */
---color--danger--shade-1
---color--danger
---color--danger--tint-3
---color--danger--tint-4
+## Where code goes
 
-/* Text Colors */
---color--text--shade-1
---color--text
---color--text--tint-1
---color--text--tint-2
---color--text--tint-3
---color--text--danger
+- `editor-ui/src/app` is the shell. It holds the router, the app-wide stores, components and composables.
+- Existing features are in `editor-ui/src/features/<area>`. Code that more than one feature uses is in `editor-ui/src/features/shared`.
+- Frontend feature modules are at `packages/modules/<name>/frontend`, and not in `editor-ui/src/features`.
+  Scaffold one with `pnpm n8n-module-sdk create`. Then obey `packages/@n8n/module-cli/frontend-module-guide.md`.
+  A module owns its tsconfig, its lint config and its vitest config.
+  A module must never import `@/…` or another `@n8n/frontend-module-*`.
+- Pure Vue components go in `@n8n/design-system`.
+- Shared frontend packages are in `packages/frontend/@n8n`: `composables`, `stores`, `i18n`, `frontend-constants`, `frontend-utils` and `rest-api-client`.
 
-/* Foreground Colors */
---color--foreground--shade-2
---color--foreground--shade-1
---color--foreground
---color--foreground--tint-1
---color--foreground--tint-2
+## Imports
 
-/* Background Colors */
---color--background--shade-2
---color--background--shade-1
---color--background
---color--background--light-2
---color--background--light-3
+- In `editor-ui`, import a file from a different folder with the `@/` alias. `@/` is `editor-ui/src/`.
+  Do not add `../` imports in new or changed code. Old code still has them. Do not copy them.
+- A `./` import of a file in the same folder is correct.
+- Import a different package by its package name, not by a relative path.
+- `@n8n/composables`, `@n8n/frontend-constants`, `@n8n/frontend-utils` and `@n8n/utils` have no root entry.
+  Import a subpath, for example `@n8n/composables/useToast`.
+- The `@/` rule is not for `@n8n/design-system`, which uses relative imports, or for feature modules.
+
+## Reuse before you build
+
+Before you write a component or a composable, look for one that exists:
+
+- `@n8n/design-system/src/components`, and its stories in Storybook (`pnpm dev` in `@n8n/design-system`)
+- `editor-ui/src/app/components` and `editor-ui/src/app/composables`
+- `editor-ui/src/features/shared`
+- `@n8n/composables`
+
+If an existing component is almost correct, extend it. Do not make a copy.
+The lint rule `@n8n/design-system/no-direct-component-imports` stops most direct `element-plus` and `reka-ui` imports.
+Its message names the design-system component to use, or tells you to add one to `@n8n/design-system`.
+
+## Vue and Pinia
+
+- Write components with `<script setup lang="ts">`.
+- Write Pinia stores as setup stores: `defineStore(<id>, () => { ... })`.
+- `.agents/review-rules/frontend/vue-correctness.md` lists the Vue errors that no check finds.
+
+## Design system
+
+- To select a CSS token, use the narrowest token layer that fits.
+  `.agents/review-rules/frontend/design-system.md` lists the layers. `ui-design` tells how to find a token.
+- Available icon names are in `packages/frontend/@n8n/design-system/src/components/N8nIcon/icons.ts`.
+  Use keys from `updatedIconSet` only — `deprecatedIconSet` entries must not be used in new code.
+- When rendering `el-plus` popovers/dropdowns/selects inside `N8nDialog`, prefer to keep them in the dialog stacking context with `:teleported="false"` unless they intentionally need to escape.
+
+## UI text
+
+- Get the translator with `useI18n()` from `@n8n/i18n`. Show a string with `i18n.baseText('<key>')`.
+- Add `editor-ui` and module keys to `packages/frontend/@n8n/i18n/src/locales/en.json`.
+- Add design-system keys to `packages/frontend/@n8n/design-system/src/locale/lang/en.ts`.
+
+## Stores and timing
+
+- When you change a Pinia store, check for unused computed properties.
+- Use centralized debounce times from `@n8n/frontend-constants/durations` instead of hardcoding:
+
+```typescript
+import { DEBOUNCE_TIME } from '@n8n/frontend-constants/durations';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+
+useDebounceFn(() => { ... }, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 ```
 
-#### Spacing
-```css
---spacing--5xs: 2px
---spacing--4xs: 4px
---spacing--3xs: 6px
---spacing--2xs: 8px
---spacing--xs: 12px
---spacing--sm: 16px
---spacing--md: 20px
---spacing--lg: 24px
---spacing--xl: 32px
---spacing--2xl: 48px
---spacing--3xl: 64px
---spacing--4xl: 128px
---spacing--5xl: 256px
-```
+Categories: `UI`, `INPUT`, `API`, `TELEMETRY`, `COLLABORATION`, `CONNECTION`.
+Other `editor-ui` timing constants are in `@/app/constants/durations`.
 
-#### Typography
-```css
---font-size--3xs: 10px
---font-size--2xs: 12px
---font-size--xs: 13px
---font-size--sm: 14px
---font-size--md: 16px
---font-size--lg: 18px
---font-size--xl: 20px
---font-size--2xl: 28px
+## Tests and analytics attributes
 
---line-height--sm: 1.25
---line-height--md: 1.3
---line-height--lg: 1.35
---line-height--xl: 1.5
+- Set `data-test-id` for tests. Vitest and Playwright `getByTestId` find elements by `data-test-id`.
+  Some tests, most of them in `features/agents`, change `testIdAttribute` with `configure()`.
+  For a component that these tests cover, use the attribute that its tests use.
+- Set `data-attr` for analytics. `data-test-id` and `data-attr` can hold the same value.
+  PostHog autocapture masks the text of the clicked element, so it identifies an element by its `data-attr`.
+  When an element has no `data-attr`, analytics may use its test id, but this is brittle. A test change can rename it.
+  Add a `data-attr` to each element that analytics needs to identify.
+- Render a component in a test with `createComponentRenderer`:
+  from `@/__tests__/render` in `editor-ui`, from `@n8n/frontend-test-utils` in a feature module,
+  and from `src/__tests__/render.ts` in `@n8n/design-system`.
 
---font-weight--regular: 400
---font-weight--bold: 600
---font-family: InterVariable, sans-serif
-```
+## Checks
 
-#### Borders
-```css
---radius--sm: 2px
---radius: 4px
---radius--lg: 8px
---radius--xl: 12px
+Run each check from the package folder, on the files that you changed:
 
---border-width: 1px
---border-style: solid
---border: var(--border-width) var(--border-style) var(--color--foreground)
-```
+| Files | Format | Lint |
+| --- | --- | --- |
+| `.ts` | `pnpm exec biome check --write <files>` | `pnpm exec oxlint --quiet <files>` |
+| `.vue` | `pnpm exec prettier --write <files>` | `pnpm exec oxlint --quiet <files>`, then `pnpm exec vize lint -c vize-lint.config.mjs <files>` |
+| `.scss`, `.vue` styles | `pnpm exec prettier --write <files>` | `pnpm exec stylelint <files>` |
+
+The lint configs load from `dist`. In a new checkout, build them first, from the repository root:
+`pnpm turbo run build --filter='@n8n/oxlint-config...' --filter='@n8n/stylelint-config...'`.
+
+## Local agent files
+
+Some folders have their own `AGENTS.md`. Read it before you change a file in that folder:
+
+- `packages/frontend/@n8n/design-system/AGENTS.md`
+- `packages/modules/AGENTS.md`
+- `packages/frontend/editor-ui/src/features/agents/AGENTS.md`
+- `packages/frontend/editor-ui/src/app/stores/workflowDocument/AGENTS.md`

@@ -11,8 +11,9 @@ import {
 	type NumericLicenseFeature,
 } from '@n8n/constants';
 import { SettingsRepository } from '@n8n/db';
-import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
+import { OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { TEntitlement, TLicenseBlock } from '@n8n_io/license-sdk';
 import { LicenseManager } from '@n8n_io/license-sdk';
 import { InstanceSettings } from 'n8n-core';
@@ -24,6 +25,9 @@ import { N8N_VERSION, SETTINGS_LICENSE_CERT_KEY } from './constants';
 const LICENSE_RENEWAL_DISABLED_WARNING =
 	'Automatic license renewal is disabled. The license will not renew automatically, and access to licensed features may be lost!';
 
+/** The license server rejects device fingerprints shorter than this. */
+const MIN_DEVICE_FINGERPRINT_LENGTH = 32;
+
 export type FeatureReturnType = Partial<
 	{
 		planName: string;
@@ -32,6 +36,21 @@ export type FeatureReturnType = Partial<
 
 type LicenseRefreshCallback = (cert: string) => void;
 
+/** A free add-on that can be activated next to a paid plan. Lowercased, as the frontend compares it. */
+const REGISTERED_COMMUNITY_PLAN_NAME = 'registered community';
+
+/** Same precedence as the SDK's merge for a single entitlement: overrides win over features. */
+function entitlementPlanName(entitlement: TEntitlement): string | undefined {
+	const planName = entitlement.featureOverrides?.planName ?? entitlement.features?.planName;
+	return typeof planName === 'string' ? planName : undefined;
+}
+
+function isMainPlanFlag(entitlement: TEntitlement): boolean | undefined {
+	const terms = entitlement.productMetadata?.terms;
+	if (typeof terms !== 'object' || terms === null || !('isMainPlan' in terms)) return undefined;
+	return typeof terms.isMainPlan === 'boolean' ? terms.isMainPlan : undefined;
+}
+
 @Service()
 export class License implements LicenseProvider {
 	private manager: LicenseManager | undefined;
@@ -39,6 +58,10 @@ export class License implements LicenseProvider {
 	private isShuttingDown = false;
 
 	private refreshCallbacks: LicenseRefreshCallback[] = [];
+
+	private hasWarnedShortDeviceFingerprint = false;
+
+	private readonly loggedPlanNameMismatches = new Set<string>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -101,15 +124,18 @@ export class License implements LicenseProvider {
 				server,
 				tenantId: this.globalConfig.license.tenantId,
 				productIdentifier: `n8n-${N8N_VERSION}`,
-				autoRenewEnabled: shouldRenew,
+				autoRenewEnabled: autoRenewalEnabled,
+				autoRenewTimer: false,
 				renewOnInit: shouldRenew,
 				autoRenewOffset,
-				detachFloatingOnShutdown: this.globalConfig.license.detachFloatingOnShutdown,
+				detachFloatingOnShutdown:
+					this.globalConfig.license.detachFloatingOnShutdown && !this.instanceSettings.isMultiMain,
 				offlineMode,
 				logger: this.logger,
 				loadCertStr: async () => await this.loadCertStr(),
 				saveCertStr,
-				deviceFingerprint: () => this.instanceSettings.instanceId,
+				deviceFingerprint: () => this.deviceFingerprint(),
+				installId: this.instanceSettings.installId,
 				collectUsageMetrics,
 				collectPassthroughData,
 				onFeatureChange,
@@ -128,6 +154,27 @@ export class License implements LicenseProvider {
 		}
 	}
 
+	/**
+	 * `instanceId` can be pinned to an arbitrary value via `N8N_INSTANCE_ID` or
+	 * the `instance.id` deployment-key row, but the license server rejects
+	 * fingerprints shorter than 32 characters. Fall back to the
+	 * encryption-key-derived id — the fingerprint every instance used before
+	 * pinning existed — so activation and renewal keep working.
+	 */
+	private deviceFingerprint(): string {
+		const { instanceId, derivedInstanceId } = this.instanceSettings;
+		if (instanceId.length >= MIN_DEVICE_FINGERPRINT_LENGTH) return instanceId;
+
+		if (!this.hasWarnedShortDeviceFingerprint) {
+			this.hasWarnedShortDeviceFingerprint = true;
+			this.logger.warn(
+				`Instance ID is shorter than ${MIN_DEVICE_FINGERPRINT_LENGTH} characters, so it cannot be used as the license device fingerprint. Falling back to the encryption-key-derived ID. Check the N8N_INSTANCE_ID env var and the 'instance.id' deployment key.`,
+			);
+		}
+
+		return derivedInstanceId;
+	}
+
 	async loadCertStr(): Promise<TLicenseBlock> {
 		// if we have an ephemeral license, we don't want to load it from the database
 		const ephemeralLicense = this.globalConfig.license.cert;
@@ -144,7 +191,12 @@ export class License implements LicenseProvider {
 	}
 
 	private async onFeatureChange() {
-		void this.broadcastReloadLicenseCommand();
+		// The entitlement timer fires on every main at once, so without this check each main publishes the same reload.
+		// `onLicenseRenewed` has no check, because the renewal runs on any main and only that main stored the new cert.
+		// TODO(leaderless): Remove this publish. Each process already updates its own features on this timer.
+		if (this.instanceSettings.isLeader) {
+			void this.broadcastReloadLicenseCommand();
+		}
 		await this.notifyRefreshCallbacks();
 	}
 
@@ -154,8 +206,8 @@ export class License implements LicenseProvider {
 	}
 
 	private async broadcastReloadLicenseCommand() {
-		if (this.globalConfig.executions.mode === 'queue' && this.instanceSettings.isLeader) {
-			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+		if (this.globalConfig.executions.mode === 'queue') {
+			const { Publisher } = await import('@n8n/backend-services');
 			await Container.get(Publisher).publishCommand({ command: 'reload-license' });
 		}
 	}
@@ -198,23 +250,38 @@ export class License implements LicenseProvider {
 		}
 	}
 
-	async activate(activationKey: string, eulaUri?: string): Promise<void> {
+	async activate(activationKey: string): Promise<void>;
+	async activate(activationKey: string, eulaUri: string, userEmail: string): Promise<void>;
+	async activate(activationKey: string, eulaUri?: string, userEmail?: string): Promise<void> {
 		if (!this.manager) {
 			return;
 		}
 
-		await this.manager.activate(activationKey, eulaUri);
+		await this.manager.activate(activationKey, { eulaUri, email: userEmail });
 		this.logger.debug('License activated');
 	}
 
+	/** Loads the cert another instance stored. Never renews. */
 	@OnPubSubEvent('reload-license')
 	async reload(): Promise<void> {
 		if (!this.manager) {
 			return;
 		}
-		await this.manager.reload();
+		try {
+			await this.manager.reloadStoredCert();
+		} catch (error: unknown) {
+			this.logger.warn('Failed to reload the stored license cert', {
+				error: ensureError(error).message,
+			});
+			return;
+		}
 		await this.notifyRefreshCallbacks();
 		this.logger.debug('License reloaded');
+	}
+
+	/** Runs one auto-renewal pass. */
+	async renewIfDue(): Promise<void> {
+		await this.manager?.renewIfDue();
 	}
 
 	async renew() {
@@ -253,6 +320,14 @@ export class License implements LicenseProvider {
 		return this.manager?.hasFeatureEnabled(feature) ?? false;
 	}
 
+	isCertValid(): boolean {
+		return this.manager?.isValid(false /* useLogger */) ?? false;
+	}
+
+	hasFeatureInCert(feature: BooleanLicenseFeature): boolean {
+		return this.manager?.hasFeatureEnabled(feature, false) ?? false;
+	}
+
 	/** @deprecated Use `LicenseState.isDynamicCredentialsLicensed` instead. */
 	isDynamicCredentialsEnabled() {
 		return this.isLicensed(LICENSE_FEATURES.DYNAMIC_CREDENTIALS);
@@ -276,11 +351,6 @@ export class License implements LicenseProvider {
 	/** @deprecated Use `LicenseState.isSamlLicensed` instead. */
 	isSamlEnabled() {
 		return this.isLicensed(LICENSE_FEATURES.SAML);
-	}
-
-	/** @deprecated Use `LicenseState.isApiKeyScopesLicensed` instead. */
-	isApiKeyScopesEnabled() {
-		return this.isLicensed(LICENSE_FEATURES.API_KEY_SCOPES);
 	}
 
 	/** @deprecated Use `LicenseState.isAiAssistantLicensed` instead. */
@@ -412,6 +482,14 @@ export class License implements LicenseProvider {
 		return this.manager?.getConsumerId() ?? 'unknown';
 	}
 
+	isEphemeral() {
+		return this.manager?.isEphemeral() ?? false;
+	}
+
+	getDeviceFingerprint() {
+		return this.manager?.getDeviceFingerprint();
+	}
+
 	// Helper functions for computed data
 
 	/** @deprecated Use `LicenseState` instead. */
@@ -447,8 +525,111 @@ export class License implements LicenseProvider {
 		return this.getValue(LICENSE_QUOTAS.TEAM_PROJECT_LIMIT) ?? 0;
 	}
 
+	/**
+	 * The SDK merges all active entitlements and lets the newest one win, so an add-on that
+	 * started later (such as Registered Community) would otherwise rename a paid plan.
+	 */
 	getPlanName(): string {
-		return this.getValue('planName') ?? 'Community';
+		const mergedPlanName = this.getValue('planName');
+		// Empty when the cert is missing, invalid or expired; the entitlements alone can't tell.
+		if (mergedPlanName === undefined) return 'Community';
+
+		const planEntitlement = this.getPlanEntitlement();
+		const planName = planEntitlement && entitlementPlanName(planEntitlement);
+
+		if (planEntitlement && planName && planName !== mergedPlanName) {
+			this.logPlanNameMismatch(planEntitlement, planName, mergedPlanName);
+		}
+
+		return planName ?? mergedPlanName;
+	}
+
+	/**
+	 * The newest entitlement that names a plan and is not an add-on. Sales-led products such as
+	 * Enterprise are not marked as main plans, so a marked plan must not outrank a newer unmarked one.
+	 */
+	private getPlanEntitlement(): TEntitlement | undefined {
+		return this.getCurrentEntitlements()
+			.filter((entitlement) => {
+				const planName = entitlementPlanName(entitlement);
+				return (
+					planName !== undefined &&
+					// TODO(LIC-230): Drop the name check once sales-led products are marked as main plans.
+					planName.toLowerCase() !== REGISTERED_COMMUNITY_PLAN_NAME &&
+					isMainPlanFlag(entitlement) !== false
+				);
+			})
+			.sort((a, b) => b.validFrom.getTime() - a.validFrom.getTime())[0];
+	}
+
+	private logPlanNameMismatch(
+		planEntitlement: TEntitlement,
+		planName: string,
+		mergedPlanName: string,
+	) {
+		const key = `${planName}|${mergedPlanName}`;
+		if (this.loggedPlanNameMismatches.has(key)) return;
+		this.loggedPlanNameMismatches.add(key);
+
+		this.logger.info('License has another active entitlement that names a different plan', {
+			planName,
+			mergedPlanName,
+			planEntitlementId: planEntitlement.id,
+			overridingEntitlementIds: this.getCurrentEntitlements()
+				.filter((entitlement) => entitlementPlanName(entitlement) === mergedPlanName)
+				.map((entitlement) => entitlement.id),
+		});
+	}
+
+	/** Uses `getPlanName()` so that overrides of it, such as in E2E mode, also apply. */
+	isEnterprisePlan(): boolean {
+		return this.getPlanName() === 'Enterprise';
+	}
+
+	getExpiryDate(): Date | null {
+		try {
+			return this.manager?.getExpiryDate() ?? null;
+		} catch {
+			return null;
+		}
+	}
+
+	getTerminationDate(): Date | null {
+		try {
+			return this.manager?.getTerminationDate() ?? null;
+		} catch {
+			return null;
+		}
+	}
+
+	getExpiringInDays(): number | undefined {
+		const expiryDate = this.getExpiryDate();
+		if (!expiryDate) return undefined;
+
+		const expiryTime = expiryDate.getTime();
+		if (Number.isNaN(expiryTime)) return undefined;
+
+		const now = new Date();
+		const diffMs = expiryTime - now.getTime();
+		const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+		// Return 0 for already expired licenses instead of negative values
+		return Math.max(0, diffDays);
+	}
+
+	getTerminatingInDays(): number | undefined {
+		const terminationDate = this.getTerminationDate();
+		if (!terminationDate) return undefined;
+
+		const terminationTime = terminationDate.getTime();
+		if (Number.isNaN(terminationTime)) return undefined;
+
+		const now = new Date();
+		const diffMs = terminationTime - now.getTime();
+		const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+		// Return 0 for already terminated licenses instead of negative values
+		return Math.max(0, diffDays);
 	}
 
 	getInfo(): string {
@@ -461,17 +642,8 @@ export class License implements LicenseProvider {
 
 	/** @deprecated Use `LicenseState` instead. */
 	isWithinUsersLimit() {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return this.getUsersLimit() === UNLIMITED_LICENSE_QUOTA;
-	}
-
-	@OnLeaderTakeover()
-	enableAutoRenewals() {
-		this.manager?.enableAutoRenewals();
-	}
-
-	@OnLeaderStepdown()
-	disableAutoRenewals() {
-		this.manager?.disableAutoRenewals();
 	}
 
 	private onExpirySoon() {

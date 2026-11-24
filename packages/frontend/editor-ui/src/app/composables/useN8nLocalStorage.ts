@@ -1,3 +1,4 @@
+import type { SlotResourcesListTabKey } from '@n8n/frontend-module-sdk';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { LOCAL_STORAGE_WORKFLOW_LIST_PREFERENCES_KEY } from '@/app/constants';
 import { useLocalStorage } from '@vueuse/core';
@@ -8,11 +9,13 @@ type TabSettings = {
 	pageSize?: number;
 };
 
+export type LocalStorageTabKey = SlotResourcesListTabKey;
+
 // We are currently only saving workflow tab settings
 // but we are keeping the credentials tab settings here for future use
 export type WorkflowListPreferences = {
 	[projectId: string]: {
-		[tabName in 'workflows' | 'credentials']: TabSettings;
+		[tabName in LocalStorageTabKey]: TabSettings;
 	};
 };
 
@@ -30,7 +33,7 @@ export function useN8nLocalStorage() {
 
 	const saveProjectPreferencesToLocalStorage = (
 		projectId: string,
-		tabKey: 'workflows' | 'credentials',
+		tabKey: LocalStorageTabKey,
 		preferences: TabSettings,
 	) => {
 		const projectKey = getProjectKey(projectId);
@@ -55,7 +58,7 @@ export function useN8nLocalStorage() {
 
 	const loadProjectPreferencesFromLocalStorage = (
 		projectId: string,
-		tabKey: 'workflows' | 'credentials',
+		tabKey: LocalStorageTabKey,
 	) => {
 		const projectKey = getProjectKey(projectId);
 		if (!projectKey) {

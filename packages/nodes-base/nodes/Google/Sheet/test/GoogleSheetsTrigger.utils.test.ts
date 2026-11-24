@@ -1,6 +1,8 @@
+import * as XLSX from '@e965/xlsx';
 import type { IPollFunctions } from 'n8n-workflow';
-import * as XLSX from 'xlsx';
+import { requestPath, requestUrl } from 'n8n-workflow';
 
+import type { Mock } from 'vitest';
 import {
 	BINARY_MIME_TYPE,
 	arrayOfArraysToJson,
@@ -10,22 +12,22 @@ import {
 } from '../GoogleSheetsTrigger.utils';
 import { apiRequest } from '../v2/transport';
 
-jest.mock('../v2/transport', () => ({
+vi.mock('../v2/transport', () => ({
 	apiRequest: {
-		call: jest.fn(),
+		call: vi.fn(),
 	},
 }));
 
-jest.mock('xlsx', () => ({
-	read: jest.fn(),
+vi.mock('@e965/xlsx', () => ({
+	read: vi.fn(),
 	utils: {
-		sheet_to_json: jest.fn(),
+		sheet_to_json: vi.fn(),
 	},
 }));
 
 describe('GoogleSheetsTrigger.utils', () => {
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('BINARY_MIME_TYPE', () => {
@@ -37,49 +39,61 @@ describe('GoogleSheetsTrigger.utils', () => {
 	});
 
 	describe('getRevisionFile', () => {
+		const documentId = 'doc1';
+		const exportLink = `https://docs.google.com/spreadsheets/export?id=${documentId}&exportFormat=xlsx`;
+		const mockPollFunctions: Partial<IPollFunctions> = {
+			getNode: vi.fn(),
+		};
+
 		it('should make correct API call and return buffer', async () => {
-			const mockPollFunctions: Partial<IPollFunctions> = {
-				getNode: jest.fn(),
-			};
-			const exportLink = 'https://example.com/export';
-			const mockResponse = {
-				body: 'mock binary data',
-			};
+			(apiRequest.call as Mock).mockResolvedValue({ body: 'mock binary data' });
 
-			(apiRequest.call as jest.Mock).mockResolvedValue(mockResponse);
-
-			const result = await getRevisionFile.call(mockPollFunctions as IPollFunctions, exportLink);
+			const result = await getRevisionFile.call(
+				mockPollFunctions as IPollFunctions,
+				exportLink,
+				documentId,
+			);
 
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockPollFunctions,
 				'GET',
-				'',
+				requestPath``,
 				undefined,
-				{ mimeType: BINARY_MIME_TYPE },
-				exportLink,
+				{ mimeType: BINARY_MIME_TYPE, id: documentId, exportFormat: 'xlsx' },
+				requestUrl`https://docs.google.com/spreadsheets/export`,
 				undefined,
 				{
 					resolveWithFullResponse: true,
 					encoding: null,
 					json: false,
 				},
+				'sheetV2Trigger',
 			);
 
 			expect(result).toEqual(Buffer.from('mock binary data'));
 		});
 
 		it('should handle API request errors', async () => {
-			const mockPollFunctions: Partial<IPollFunctions> = {
-				getNode: jest.fn(),
-			};
-			const exportLink = 'https://example.com/export';
-			const error = new Error('API request failed');
-
-			(apiRequest.call as jest.Mock).mockRejectedValue(error);
+			(apiRequest.call as Mock).mockRejectedValue(new Error('API request failed'));
 
 			await expect(
-				getRevisionFile.call(mockPollFunctions as IPollFunctions, exportLink),
+				getRevisionFile.call(mockPollFunctions as IPollFunctions, exportLink, documentId),
 			).rejects.toThrow('API request failed');
+		});
+
+		it.each([
+			'https://example.com/spreadsheets/export?id=doc1',
+			'http://docs.google.com/spreadsheets/export?id=doc1',
+			'https://docs.google.com/other?id=doc1',
+			'https://docs.google.com/spreadsheets/export?id=doc2',
+			'https://docs.google.com/spreadsheets/export',
+			'not a url',
+		])('should send no request for the link %s', async (link) => {
+			await expect(
+				getRevisionFile.call(mockPollFunctions as IPollFunctions, link, documentId),
+			).rejects.toThrow('Unexpected revision export link');
+
+			expect(apiRequest.call).not.toHaveBeenCalled();
 		});
 	});
 
@@ -87,7 +101,7 @@ describe('GoogleSheetsTrigger.utils', () => {
 		const mockBuffer = Buffer.from('mock data');
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should process sheet with data correctly', () => {
@@ -106,8 +120,8 @@ describe('GoogleSheetsTrigger.utils', () => {
 				['Jane', '25', ''],
 			];
 
-			(XLSX.read as jest.Mock).mockReturnValue(mockWorkbook);
-			(XLSX.utils.sheet_to_json as jest.Mock).mockReturnValue(mockSheetData);
+			(XLSX.read as Mock).mockReturnValue(mockWorkbook);
+			(XLSX.utils.sheet_to_json as Mock).mockReturnValue(mockSheetData);
 
 			const result = sheetBinaryToArrayOfArrays(mockBuffer, 'Sheet1', 'A1:C3');
 
@@ -131,7 +145,7 @@ describe('GoogleSheetsTrigger.utils', () => {
 				},
 			};
 
-			(XLSX.read as jest.Mock).mockReturnValue(mockWorkbook);
+			(XLSX.read as Mock).mockReturnValue(mockWorkbook);
 
 			const result = sheetBinaryToArrayOfArrays(mockBuffer, 'Sheet1', undefined);
 
@@ -156,8 +170,8 @@ describe('GoogleSheetsTrigger.utils', () => {
 				['', '', ''],
 			];
 
-			(XLSX.read as jest.Mock).mockReturnValue(mockWorkbook);
-			(XLSX.utils.sheet_to_json as jest.Mock).mockReturnValue(mockSheetData);
+			(XLSX.read as Mock).mockReturnValue(mockWorkbook);
+			(XLSX.utils.sheet_to_json as Mock).mockReturnValue(mockSheetData);
 
 			const result = sheetBinaryToArrayOfArrays(mockBuffer, 'Sheet1', undefined);
 
@@ -180,8 +194,8 @@ describe('GoogleSheetsTrigger.utils', () => {
 
 			const mockSheetData = [['Name', 'Age', 'City']];
 
-			(XLSX.read as jest.Mock).mockReturnValue(mockWorkbook);
-			(XLSX.utils.sheet_to_json as jest.Mock).mockReturnValue(mockSheetData);
+			(XLSX.read as Mock).mockReturnValue(mockWorkbook);
+			(XLSX.utils.sheet_to_json as Mock).mockReturnValue(mockSheetData);
 
 			const result = sheetBinaryToArrayOfArrays(mockBuffer, 'Sheet1', undefined);
 

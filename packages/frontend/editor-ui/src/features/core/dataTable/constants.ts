@@ -1,14 +1,18 @@
 import { DATA_TABLE_COLUMN_REGEX } from '@n8n/api-types';
 
-// Route and view identifiers
-export const DATA_TABLE_VIEW = 'data-tables';
-export const PROJECT_DATA_TABLES = 'project-data-tables';
-export const DATA_TABLE_DETAILS = 'data-table-details';
+export {
+	DATA_TABLE_VIEW,
+	PROJECT_DATA_TABLES,
+	DATA_TABLE_DETAILS,
+} from '@n8n/frontend-constants/data-tables';
+
 export const DATA_TABLE_STORE = 'dataTableStore';
 
 export const DEFAULT_DATA_TABLE_PAGE_SIZE = 10;
 
 export const DATA_TABLE_ID_COLUMN_WIDTH = 60;
+
+export const MIN_ADD_COLUMN_BUTTON_COLUMN_WIDTH = 50;
 
 export const DEFAULT_COLUMN_WIDTH = 250;
 
@@ -22,9 +26,13 @@ export const DATA_TABLE_CARD_ACTIONS = {
 	DELETE: 'delete',
 	CLEAR: 'clear',
 	DOWNLOAD_CSV: 'download-csv',
+	FAVORITE: 'favorite',
+	IMPORT_CSV: 'import-csv',
 };
 
 export const ADD_DATA_TABLE_MODAL_KEY = 'addDataTableModal';
+export const DOWNLOAD_DATA_TABLE_MODAL_KEY = 'downloadDataTableModal';
+export const IMPORT_CSV_MODAL_KEY = 'importCsvModal';
 
 export const DEFAULT_ID_COLUMN_NAME = 'id';
 
@@ -36,6 +44,7 @@ export const MIN_LOADING_TIME = 500; // ms
 
 export const NULL_VALUE = 'Null';
 export const EMPTY_VALUE = 'Empty';
+export const MAX_CELL_DISPLAY_LENGTH = 10000;
 
 export const DATA_TABLE_MODULE_NAME = 'data-table';
 

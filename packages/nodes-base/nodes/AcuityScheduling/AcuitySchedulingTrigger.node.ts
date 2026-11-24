@@ -6,14 +6,16 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
+import { verifySignature } from './AcuitySchedulingTriggerHelpers';
 import { acuitySchedulingApiRequest } from './GenericFunctions';
 
 export class AcuitySchedulingTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Acuity Scheduling Trigger',
 		name: 'acuitySchedulingTrigger',
+		schemaPath: 'AcuityScheduling',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:acuityScheduling.png',
 		group: ['trigger'],
@@ -122,7 +124,7 @@ export class AcuitySchedulingTrigger implements INodeType {
 				if (webhookData.webhookId === undefined) {
 					return false;
 				}
-				const endpoint = '/webhooks';
+				const endpoint = requestPath`/webhooks`;
 				const webhooks = await acuitySchedulingApiRequest.call(this, 'GET', endpoint);
 				if (Array.isArray(webhooks)) {
 					for (const webhook of webhooks) {
@@ -137,7 +139,7 @@ export class AcuitySchedulingTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const event = this.getNodeParameter('event') as string;
-				const endpoint = '/webhooks';
+				const endpoint = requestPath`/webhooks`;
 				const body: IDataObject = {
 					target: webhookUrl,
 					event,
@@ -148,7 +150,7 @@ export class AcuitySchedulingTrigger implements INodeType {
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
-				const endpoint = `/webhooks/${webhookData.webhookId}`;
+				const endpoint = requestPath`/webhooks/${webhookData.webhookId}`;
 				try {
 					await acuitySchedulingApiRequest.call(this, 'DELETE', endpoint);
 				} catch (error) {
@@ -161,6 +163,12 @@ export class AcuitySchedulingTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		if (!(await verifySignature.call(this))) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
+			return { noWebhookResponse: true };
+		}
+
 		const req = this.getRequestObject();
 
 		const resolveData = this.getNodeParameter('resolveData', false) as boolean;
@@ -175,7 +183,7 @@ export class AcuitySchedulingTrigger implements INodeType {
 		// Resolve the data by requesting the information via API
 		const event = this.getNodeParameter('event', false) as string;
 		const eventType = event.split('.').shift();
-		const endpoint = `/${eventType}s/${req.body.id}`;
+		const endpoint = requestPath`/${eventType}s/${req.body.id}`;
 		const responseData = await acuitySchedulingApiRequest.call(this, 'GET', endpoint, {});
 
 		return {

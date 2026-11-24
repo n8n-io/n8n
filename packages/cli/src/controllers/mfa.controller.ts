@@ -1,13 +1,22 @@
-import { AuthenticatedRequest, UserRepository } from '@n8n/db';
-import { Get, GlobalScope, Post, RestController } from '@n8n/decorators';
+import { EventService } from '@n8n/backend-services';
+import { InstanceSettingsLoaderConfig } from '@n8n/config';
+import { AuthenticatedRequest, PersonRepository } from '@n8n/db';
+import {
+	createUserKeyedRateLimiter,
+	Get,
+	GlobalScope,
+	Post,
+	RestController,
+} from '@n8n/decorators';
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
 import { MfaService } from '@/mfa/mfa.service';
 import { MFA } from '@/requests';
+import { assertPerson } from '@/utils/assert-person';
+import { toUserLike } from '@/utils/to-user-like';
 
 @RestController('/mfa')
 export class MFAController {
@@ -15,13 +24,20 @@ export class MFAController {
 		private mfaService: MfaService,
 		private externalHooks: ExternalHooks,
 		private authService: AuthService,
-		private userRepository: UserRepository,
+		private personRepository: PersonRepository,
 		private eventService: EventService,
+		private instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
 	) {}
 
 	@Post('/enforce-mfa')
 	@GlobalScope('user:enforceMfa')
 	async enforceMFA(req: MFA.Enforce) {
+		if (this.instanceSettingsLoaderConfig.securityPolicyManagedByEnv) {
+			throw new ForbiddenError(
+				'MFA enforcement is managed via environment variables and cannot be modified through the API',
+			);
+		}
+
 		if (req.body.enforce && !(req.authInfo?.usedMfa ?? false)) {
 			// The current user tries to enforce MFA, but does not have
 			// MFA set up for them self. We are forbidding this, to
@@ -31,6 +47,13 @@ export class MFAController {
 			);
 		}
 		await this.mfaService.enforceMFA(req.body.enforce);
+
+		this.eventService.emit('instance-policies-updated', {
+			user: toUserLike(req.user),
+			settingName: '2fa_enforcement',
+			value: req.body.enforce,
+		});
+
 		return;
 	}
 
@@ -46,6 +69,8 @@ export class MFAController {
 		allowSkipMFA: true,
 	})
 	async getQRCode(req: AuthenticatedRequest) {
+		assertPerson(req.user);
+
 		const { email, id, mfaEnabled } = req.user;
 
 		if (mfaEnabled)
@@ -84,8 +109,13 @@ export class MFAController {
 		};
 	}
 
-	@Post('/enable', { rateLimit: true, allowSkipMFA: true })
+	@Post('/enable', {
+		allowSkipMFA: true,
+		keyedRateLimit: createUserKeyedRateLimiter({}),
+	})
 	async activateMFA(req: MFA.Activate, res: Response) {
+		assertPerson(req.user);
+
 		const { mfaCode = null } = req.body;
 		const { id, mfaEnabled } = req.user;
 
@@ -107,22 +137,19 @@ export class MFAController {
 		if (!verified)
 			throw new BadRequestError('MFA code expired. Close the modal and enable MFA again', 997);
 
-		const updatedUser = await this.mfaService.enableMfa(id);
+		const updatedPerson = await this.mfaService.enableMfa(id);
 
 		this.eventService.emit('user-mfa-enabled', {
-			user: {
-				id: req.user.id,
-				email: req.user.email,
-				firstName: req.user.firstName,
-				lastName: req.user.lastName,
-				role: req.user.role,
-			},
+			user: toUserLike(req.user),
 		});
 
-		this.authService.issueCookie(res, updatedUser, verified, req.browserId);
+		this.authService.issueCookie(res, updatedPerson, verified, req.browserId);
 	}
 
-	@Post('/disable', { rateLimit: true })
+	@Post('/disable', {
+		ipRateLimit: true,
+		keyedRateLimit: createUserKeyedRateLimiter({}),
+	})
 	async disableMFA(req: MFA.Disable, res: Response) {
 		const { id: userId } = req.user;
 
@@ -145,25 +172,20 @@ export class MFAController {
 		}
 
 		this.eventService.emit('user-mfa-disabled', {
-			user: {
-				id: req.user.id,
-				email: req.user.email,
-				firstName: req.user.firstName,
-				lastName: req.user.lastName,
-				role: req.user.role,
-			},
+			user: toUserLike(req.user),
 			disableMethod: mfaCodeDefined ? 'mfaCode' : 'recoveryCode',
 		});
 
-		const updatedUser = await this.userRepository.findOneOrFail({
-			where: { id: userId },
-			relations: ['role'],
-		});
+		const updatedPerson = await this.personRepository.findByIdWithRole(userId);
+		if (!updatedPerson) throw new NotFoundError('User not found');
 
-		this.authService.issueCookie(res, updatedUser, false, req.browserId);
+		this.authService.issueCookie(res, updatedPerson, false, req.browserId);
 	}
 
-	@Post('/verify', { rateLimit: true, allowSkipMFA: true })
+	@Post('/verify', {
+		allowSkipMFA: true,
+		keyedRateLimit: createUserKeyedRateLimiter({}),
+	})
 	async verifyMFA(req: MFA.Verify) {
 		const { id } = req.user;
 		const { mfaCode } = req.body;

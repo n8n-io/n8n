@@ -44,6 +44,9 @@ const createMockExecuteFunction = (
 		getNode() {
 			return node;
 		},
+		getWorkflowSettings() {
+			return {};
+		},
 		helpers: { constructExecutionMetaData },
 		continueOnFail: () => continueOnFail,
 	} as unknown as IExecuteFunctions;
@@ -74,7 +77,7 @@ describe('test Set2, manual Mode', () => {
 		},
 	};
 
-	afterEach(() => jest.resetAllMocks());
+	afterEach(() => vi.resetAllMocks());
 
 	describe('fixed mode', () => {
 		const assignments = {

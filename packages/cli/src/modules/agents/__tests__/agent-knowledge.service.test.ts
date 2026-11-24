@@ -1,0 +1,257 @@
+import type { OperationContext, Transaction } from '@n8n/db';
+import { NotFoundError } from '@n8n/errors';
+import { access, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+
+import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
+import type { KnowledgeFileCleanupService } from '@/modules/knowledge/files/knowledge-file-cleanup.service';
+import type {
+	KnowledgeFileService,
+	KnowledgeFileUploadResult,
+} from '@/modules/knowledge/files/knowledge-file.service';
+import type { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
+import type { KnowledgeConsumerScope } from '@/modules/knowledge/knowledge-consumer-scope';
+import type { KnowledgeRetrievalService } from '@/modules/knowledge/retrieval/knowledge-retrieval.service';
+
+import { AgentKnowledgeService } from '../agent-knowledge.service';
+import type { AgentProjectDeletionRepository } from '../repositories/agent-project-deletion.repository';
+import type { AgentRepository } from '../repositories/agent.repository';
+
+vi.unmock('node:fs');
+vi.unmock('node:fs/promises');
+
+const agentId = 'agent-1';
+const projectId = 'project-1';
+const scope: KnowledgeConsumerScope = { kind: 'agent', projectId, agentId };
+
+function makeMulterFile(overrides: Partial<Express.Multer.File> = {}): Express.Multer.File {
+	return {
+		fieldname: 'files',
+		originalname: 'document.txt',
+		encoding: '7bit',
+		mimetype: 'text/plain',
+		buffer: Buffer.from('hello'),
+		size: 5,
+		stream: null as never,
+		destination: '',
+		filename: '',
+		path: '',
+		...overrides,
+	};
+}
+
+const uploadedFile: KnowledgeFileUploadResult = {
+	file: {
+		id: 'file-1',
+		agentId,
+		fileName: 'document.txt',
+		mimeType: 'text/plain',
+		fileSizeBytes: 5,
+		createdAt: '2026-06-01T10:00:00.000Z',
+	},
+	contentHash: 'hash',
+};
+
+describe('AgentKnowledgeService', () => {
+	let agentRepository: Mocked<AgentRepository>;
+	let knowledgeFileService: Mocked<KnowledgeFileService>;
+	let knowledgeRetrievalService: Mocked<KnowledgeRetrievalService>;
+	let projectDeletion: Mocked<AgentProjectDeletionRepository>;
+	let knowledgeFileCleanupService: Mocked<KnowledgeFileCleanupService>;
+	let service: AgentKnowledgeService;
+
+	function makeService(
+		knowledgeAvailabilityService: KnowledgeAvailabilityService = makeKnowledgeAvailabilityService(),
+	) {
+		return new AgentKnowledgeService(
+			agentRepository,
+			knowledgeFileService,
+			knowledgeRetrievalService,
+			knowledgeAvailabilityService,
+			projectDeletion,
+			knowledgeFileCleanupService,
+		);
+	}
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		agentRepository = mock<AgentRepository>();
+		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
+		knowledgeFileService = mock<KnowledgeFileService>();
+		knowledgeRetrievalService = mock<KnowledgeRetrievalService>();
+		projectDeletion = mock<AgentProjectDeletionRepository>();
+		projectDeletion.withWritableProject.mockImplementation(
+			async (_projectId, write, ctx = {}) => await write(ctx),
+		);
+		knowledgeFileCleanupService = mock<KnowledgeFileCleanupService>();
+		service = makeService();
+	});
+
+	it('uploads with the agent scope and reserves each row inside the project-deletion fence', async () => {
+		const ctx: OperationContext = { trx: mock<Transaction>() };
+		projectDeletion.withWritableProject.mockImplementation(
+			async (_projectId, write) => await write(ctx),
+		);
+		const files = [makeMulterFile()];
+		knowledgeFileService.uploadFiles.mockImplementation(async (_scope, _files, reserveRow) => {
+			await expect(reserveRow(async (writeCtx) => writeCtx)).resolves.toBe(ctx);
+			return [uploadedFile];
+		});
+
+		await expect(service.uploadFiles(agentId, projectId, files)).resolves.toEqual([uploadedFile]);
+
+		expect(knowledgeFileService.uploadFiles).toHaveBeenCalledWith(
+			scope,
+			files,
+			expect.any(Function),
+		);
+		expect(projectDeletion.withWritableProject).toHaveBeenCalledWith(
+			projectId,
+			expect.any(Function),
+		);
+	});
+
+	it('lists the files of the agent through the knowledge module', async () => {
+		knowledgeFileService.listFiles.mockResolvedValue([uploadedFile.file]);
+
+		await expect(service.listFiles(agentId, projectId)).resolves.toEqual([uploadedFile.file]);
+
+		expect(knowledgeFileService.listFiles).toHaveBeenCalledWith(scope);
+	});
+
+	it('warms the knowledge sandbox of the agent through the knowledge module', async () => {
+		await expect(service.warmKnowledgeSandbox(agentId, projectId)).resolves.toBeUndefined();
+
+		expect(knowledgeRetrievalService.warmSandbox).toHaveBeenCalledWith(scope);
+	});
+
+	it.each([true, false])(
+		'deletes a file with the agent scope and the project-deletion fence, and returns %s from the knowledge module',
+		async (deleted) => {
+			const ctx: OperationContext = { trx: mock<Transaction>() };
+			projectDeletion.withWritableProject.mockImplementation(
+				async (_projectId, write) => await write(ctx),
+			);
+			knowledgeFileService.deleteFile.mockImplementation(async (_scope, _fileId, writeFence) => {
+				await expect(writeFence(async (writeCtx) => writeCtx)).resolves.toBe(ctx);
+				return deleted;
+			});
+
+			await expect(service.deleteFile(agentId, projectId, 'file-1')).resolves.toBe(deleted);
+
+			expect(knowledgeFileService.deleteFile).toHaveBeenCalledWith(
+				scope,
+				'file-1',
+				expect.any(Function),
+			);
+			expect(projectDeletion.withWritableProject).toHaveBeenCalledWith(
+				projectId,
+				expect.any(Function),
+			);
+		},
+	);
+
+	it('deletes all files of the agent through the knowledge module', async () => {
+		await expect(service.deleteAllFilesForAgent(projectId, agentId)).resolves.toBeUndefined();
+
+		expect(knowledgeFileService.deleteAll).toHaveBeenCalledWith(scope);
+		expect(knowledgeFileCleanupService.deleteStoredBytes).not.toHaveBeenCalled();
+	});
+
+	it('destroys the knowledge sandbox on request', async () => {
+		await service.destroyKnowledgeSandbox(projectId, agentId);
+
+		expect(knowledgeRetrievalService.destroySandbox).toHaveBeenCalledWith(scope);
+	});
+
+	it.each([
+		['uploadFiles', async () => await service.uploadFiles(agentId, projectId, [makeMulterFile()])],
+		['listFiles', async () => await service.listFiles(agentId, projectId)],
+		['warmKnowledgeSandbox', async () => await service.warmKnowledgeSandbox(agentId, projectId)],
+		['deleteFile', async () => await service.deleteFile(agentId, projectId, 'file-1')],
+	])('rejects %s for an agent outside the project before delegating', async (_name, call) => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+
+		await expect(call()).rejects.toThrow(NotFoundError);
+
+		expect(knowledgeFileService.uploadFiles).not.toHaveBeenCalled();
+		expect(knowledgeFileService.listFiles).not.toHaveBeenCalled();
+		expect(knowledgeRetrievalService.warmSandbox).not.toHaveBeenCalled();
+		expect(knowledgeFileService.deleteFile).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		['uploadFiles', async () => await service.uploadFiles(agentId, projectId, [makeMulterFile()])],
+		['deleteFile', async () => await service.deleteFile(agentId, projectId, 'file-1')],
+	])('rejects %s for an archived agent, and still lists its files', async (_name, call) => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue({
+			id: agentId,
+			projectId,
+			isArchived: true,
+		} as never);
+
+		await expect(call()).rejects.toThrow('Cannot update an archived agent');
+		expect(knowledgeFileService.uploadFiles).not.toHaveBeenCalled();
+		expect(knowledgeFileService.deleteFile).not.toHaveBeenCalled();
+
+		await service.listFiles(agentId, projectId);
+		expect(knowledgeFileService.listFiles).toHaveBeenCalled();
+	});
+
+	it('removes the temp files of an upload that is rejected before it reaches the knowledge module', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+		const tempDirectory = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-facade-'));
+		try {
+			const tempFilePath = path.join(tempDirectory, 'notes.txt');
+			await writeFile(tempFilePath, 'hello');
+
+			await expect(
+				service.uploadFiles(agentId, projectId, [makeMulterFile({ path: tempFilePath })]),
+			).rejects.toThrow(NotFoundError);
+
+			await expect(access(tempFilePath)).rejects.toThrow();
+		} finally {
+			await rm(tempDirectory, { recursive: true, force: true });
+		}
+	});
+
+	describe('with the knowledge module inactive', () => {
+		beforeEach(() => {
+			service = makeService(makeKnowledgeAvailabilityService({ isKnowledgeActive: false }));
+		});
+
+		it.each([
+			[
+				'uploadFiles',
+				async () => await service.uploadFiles(agentId, projectId, [makeMulterFile()]),
+			],
+			['listFiles', async () => await service.listFiles(agentId, projectId)],
+			['warmKnowledgeSandbox', async () => await service.warmKnowledgeSandbox(agentId, projectId)],
+			['deleteFile', async () => await service.deleteFile(agentId, projectId, 'file-1')],
+		])('rejects %s before delegating', async (_name, call) => {
+			await expect(call()).rejects.toThrow(NotFoundError);
+
+			expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
+			expect(knowledgeFileService.uploadFiles).not.toHaveBeenCalled();
+			expect(knowledgeFileService.listFiles).not.toHaveBeenCalled();
+			expect(knowledgeFileService.deleteFile).not.toHaveBeenCalled();
+			expect(knowledgeRetrievalService.warmSandbox).not.toHaveBeenCalled();
+		});
+
+		it('deletes stored bytes without the file entity before the agent deletion cascade', async () => {
+			await service.deleteAllFilesForAgent(projectId, agentId);
+
+			expect(knowledgeFileService.deleteAll).not.toHaveBeenCalled();
+			expect(knowledgeFileCleanupService.deleteStoredBytes).toHaveBeenCalledWith(scope);
+		});
+
+		it('still destroys the sandbox, which needs no module entity', async () => {
+			await service.destroyKnowledgeSandbox(projectId, agentId);
+
+			expect(knowledgeRetrievalService.destroySandbox).toHaveBeenCalledWith(scope);
+		});
+	});
+});

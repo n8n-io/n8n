@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { createMockExecuteFunction } from './node/helpers';
@@ -5,11 +6,11 @@ import { SESSION_MODE } from '../actions/common/fields';
 import { executeRequestWithSessionManagement } from '../actions/common/session.utils';
 import * as transport from '../transport';
 
-jest.mock('../transport', () => {
-	const originalModule = jest.requireActual<typeof transport>('../transport');
+vi.mock('../transport', async () => {
+	const originalModule = await vi.importActual<typeof transport>('../transport');
 	return {
 		...originalModule,
-		apiRequest: jest.fn(async () => {
+		apiRequest: vi.fn(async () => {
 			return {
 				success: true,
 			};
@@ -17,29 +18,25 @@ jest.mock('../transport', () => {
 	};
 });
 
-jest.mock('../GenericFunctions', () => ({
-	shouldCreateNewSession: jest.fn(function (this: IExecuteFunctions, index: number) {
+vi.mock('../GenericFunctions', () => ({
+	shouldCreateNewSession: vi.fn(function (this: IExecuteFunctions, index: number) {
 		const sessionMode = this.getNodeParameter('sessionMode', index);
 		return sessionMode === SESSION_MODE.NEW;
 	}),
-	createSessionAndWindow: jest.fn(async () => ({
+	createSessionAndWindow: vi.fn(async () => ({
 		sessionId: 'new-session-123',
 		windowId: 'new-window-123',
 	})),
-	validateSessionAndWindowId: jest.fn(() => ({
+	validateSessionAndWindowId: vi.fn(() => ({
 		sessionId: 'existing-session-123',
 		windowId: 'existing-window-123',
 	})),
-	validateAirtopApiResponse: jest.fn(),
+	validateAirtopApiResponse: vi.fn(),
 }));
 
 describe('executeRequestWithSessionManagement', () => {
-	afterAll(() => {
-		jest.unmock('../transport');
-	});
-
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe("When 'sessionMode' is 'new'", () => {
@@ -55,7 +52,8 @@ describe('executeRequestWithSessionManagement', () => {
 				0,
 				{
 					method: 'POST',
-					path: '/sessions/{sessionId}/windows/{windowId}/action',
+					path: (sessionId, windowId) =>
+						requestPath`/sessions/${sessionId}/windows/${windowId}/action`,
 					body: {},
 				},
 			);
@@ -77,14 +75,15 @@ describe('executeRequestWithSessionManagement', () => {
 				0,
 				{
 					method: 'POST',
-					path: '/sessions/{sessionId}/windows/{windowId}/action',
+					path: (sessionId, windowId) =>
+						requestPath`/sessions/${sessionId}/windows/${windowId}/action`,
 					body: {},
 				},
 			);
 
 			expect(transport.apiRequest).not.toHaveBeenCalledWith(
 				'DELETE',
-				'/sessions/existing-session-123',
+				requestPath`/sessions/existing-session-123`,
 			);
 
 			expect(result).toEqual({
@@ -103,14 +102,15 @@ describe('executeRequestWithSessionManagement', () => {
 
 			await executeRequestWithSessionManagement.call(createMockExecuteFunction(nodeParameters), 0, {
 				method: 'POST',
-				path: '/sessions/{sessionId}/windows/{windowId}/action',
+				path: (sessionId, windowId) =>
+					requestPath`/sessions/${sessionId}/windows/${windowId}/action`,
 				body: {},
 			});
 
 			expect(transport.apiRequest).toHaveBeenNthCalledWith(
 				2,
 				'DELETE',
-				'/sessions/new-session-123',
+				requestPath`/sessions/new-session-123`,
 			);
 		});
 
@@ -123,7 +123,8 @@ describe('executeRequestWithSessionManagement', () => {
 
 			await executeRequestWithSessionManagement.call(createMockExecuteFunction(nodeParameters), 0, {
 				method: 'POST',
-				path: '/sessions/{sessionId}/windows/{windowId}/action',
+				path: (sessionId, windowId) =>
+					requestPath`/sessions/${sessionId}/windows/${windowId}/action`,
 				body: {
 					operation: 'test-operation',
 				},
@@ -132,7 +133,7 @@ describe('executeRequestWithSessionManagement', () => {
 			expect(transport.apiRequest).toHaveBeenNthCalledWith(
 				1,
 				'POST',
-				'/sessions/new-session-123/windows/new-window-123/action',
+				requestPath`/sessions/new-session-123/windows/new-window-123/action`,
 				{
 					operation: 'test-operation',
 				},
@@ -151,7 +152,8 @@ describe('executeRequestWithSessionManagement', () => {
 
 			await executeRequestWithSessionManagement.call(createMockExecuteFunction(nodeParameters), 0, {
 				method: 'POST',
-				path: '/sessions/{sessionId}/windows/{windowId}/action',
+				path: (sessionId, windowId) =>
+					requestPath`/sessions/${sessionId}/windows/${windowId}/action`,
 				body: {},
 			});
 
@@ -159,7 +161,7 @@ describe('executeRequestWithSessionManagement', () => {
 
 			expect(transport.apiRequest).toHaveBeenCalledWith(
 				'POST',
-				'/sessions/existing-session-123/windows/existing-window-123/action',
+				requestPath`/sessions/existing-session-123/windows/existing-window-123/action`,
 				{},
 			);
 		});
@@ -174,7 +176,8 @@ describe('executeRequestWithSessionManagement', () => {
 
 			await executeRequestWithSessionManagement.call(createMockExecuteFunction(nodeParameters), 0, {
 				method: 'POST',
-				path: '/sessions/{sessionId}/windows/{windowId}/action',
+				path: (sessionId, windowId) =>
+					requestPath`/sessions/${sessionId}/windows/${windowId}/action`,
 				body: {
 					operation: 'test-operation',
 				},
@@ -183,7 +186,7 @@ describe('executeRequestWithSessionManagement', () => {
 			expect(transport.apiRequest).toHaveBeenNthCalledWith(
 				1,
 				'POST',
-				'/sessions/existing-session-123/windows/existing-window-123/action',
+				requestPath`/sessions/existing-session-123/windows/existing-window-123/action`,
 				{
 					operation: 'test-operation',
 				},

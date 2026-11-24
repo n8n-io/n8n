@@ -27,7 +27,11 @@ const visible = computed(() =>
 </script>
 
 <template>
-	<N8nTooltip placement="bottom-end" :visible="visible">
+	<N8nTooltip
+		:as-child="!props.disabled || props.tooltipContentsVisibility.binaryDataTooltipContent"
+		placement="bottom-end"
+		:visible="visible"
+	>
 		<template #content>
 			<div v-if="props.tooltipContentsVisibility.binaryDataTooltipContent">
 				{{ locale.baseText('ndv.pinData.pin.binary') }}
@@ -52,11 +56,18 @@ const visible = computed(() =>
 			</div>
 		</template>
 		<N8nIconButton
+			variant="outline"
+			size="small"
 			:class="$style.pinDataButton"
-			type="tertiary"
 			:active="props.pinnedData.hasData.value"
 			icon="pin"
+			:aria-label="
+				locale.baseText(
+					pinnedData.hasData.value ? 'ndv.pinData.unpin.title' : 'ndv.pinData.pin.title',
+				)
+			"
 			:disabled="props.disabled"
+			:focusable-when-disabled="props.tooltipContentsVisibility.binaryDataTooltipContent"
 			data-test-id="ndv-pin-data"
 			@click="emit('togglePinData')"
 		/>

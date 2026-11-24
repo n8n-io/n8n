@@ -6,26 +6,30 @@ import type {
 	IDataObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	RequestUrl,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
+import { jsonParse, requestPath, requestUrl } from 'n8n-workflow';
 
 import { Eq } from './QueryFunctions';
 
 export async function theHiveApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject = {},
 	query: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
+	uri?: RequestUrl,
+	option: Pick<IRequestOptions, 'formData'> = {},
 ) {
 	const credentials = await this.getCredentials('theHiveApi');
 
-	let options: IRequestOptions = {
+	let options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
 		qs: query,
-		uri: uri || `${credentials.url}/api${resource}`,
+		uri: uri ?? requestUrl`${credentials.url}/api${resource}`,
 		body,
 		rejectUnauthorized: !credentials.allowUnauthorizedCerts,
 		json: true,
@@ -67,6 +71,25 @@ export function splitTags(tags: string): string[] {
 	return tags.split(',').filter((tag) => tag !== ' ' && tag);
 }
 
+// The "Analyzers" field is a multiOptions parameter, so it normally resolves to
+// an array of "analyzerId::cortexId" entries. When its value comes from an
+// expression wrapped in surrounding text/whitespace, n8n switches to string
+// interpolation and the array is coerced to a comma-joined string. Normalize
+// both shapes so the operation does not throw "(...).map is not a function".
+export function parseAnalyzers(value: string | string[]) {
+	const entries = Array.isArray(value)
+		? value
+		: value
+				.split(',')
+				.map((entry) => entry.trim())
+				.filter((entry) => entry);
+
+	return entries.map((analyzer) => {
+		const [analyzerId, cortexId] = analyzer.split('::');
+		return { analyzerId, cortexId };
+	});
+}
+
 export function prepareOptional(optionals: IDataObject): IDataObject {
 	const response: IDataObject = {};
 	for (const key in optionals) {
@@ -79,7 +102,7 @@ export function prepareOptional(optionals: IDataObject): IDataObject {
 				try {
 					response[key] = jsonParse(optionals[key] as string);
 				} catch (error) {
-					throw new ApplicationError('Invalid JSON for artifacts', { level: 'warning' });
+					throw new UserError('Invalid JSON for artifacts', { level: 'warning' });
 				}
 			} else if (key === 'tags') {
 				response[key] = splitTags(optionals[key] as string);
@@ -107,7 +130,7 @@ export async function prepareCustomFields(
 			try {
 				customFieldsJson = jsonParse(customFieldsJson);
 			} catch (error) {
-				throw new ApplicationError('Invalid JSON for customFields', { level: 'warning' });
+				throw new UserError('Invalid JSON for customFields', { level: 'warning' });
 			}
 		}
 
@@ -119,15 +142,16 @@ export async function prepareCustomFields(
 
 			return customFields;
 		} else if (customFieldsJson) {
-			throw new ApplicationError('customFieldsJson value is invalid', { level: 'warning' });
+			throw new UserError('customFieldsJson value is invalid', { level: 'warning' });
 		}
 	} else if (additionalFields.customFieldsUi) {
 		// Get Custom Field Types from TheHive
 		const credentials = await this.getCredentials('theHiveApi');
 		const version = credentials.apiVersion;
-		const endpoint = version === 'v1' ? '/customField' : '/list/custom_fields';
+		const endpoint =
+			version === 'v1' ? requestPath`/customField` : requestPath`/list/custom_fields`;
 
-		const requestResult = await theHiveApiRequest.call(this, 'GET', endpoint as string);
+		const requestResult = await theHiveApiRequest.call(this, 'GET', endpoint);
 
 		// Convert TheHive3 response to the same format as TheHive 4
 		// [{name, reference, type}]

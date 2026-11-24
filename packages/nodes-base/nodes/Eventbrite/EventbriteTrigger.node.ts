@@ -9,9 +9,14 @@ import type {
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
-import { eventbriteApiRequest, eventbriteApiRequestAllItems } from './GenericFunctions';
+import {
+	eventbriteApiRequest,
+	eventbriteObjectPath,
+	eventbriteApiRequestAllItems,
+	isValidEventbriteUrl,
+} from './GenericFunctions';
 
 export class EventbriteTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -190,7 +195,7 @@ export class EventbriteTrigger implements INodeType {
 					this,
 					'organizations',
 					'GET',
-					'/users/me/organizations',
+					requestPath`/users/me/organizations`,
 				);
 				for (const organization of organizations) {
 					const organizationName = organization.name;
@@ -211,7 +216,7 @@ export class EventbriteTrigger implements INodeType {
 					this,
 					'events',
 					'GET',
-					`/organizations/${organization}/events`,
+					requestPath`/organizations/${organization}/events`,
 				);
 				for (const event of events) {
 					const eventName = event.name.text;
@@ -234,7 +239,7 @@ export class EventbriteTrigger implements INodeType {
 				const organisation = this.getNodeParameter('organization') as string;
 				const actions = this.getNodeParameter('actions') as string[];
 
-				const endpoint = `/organizations/${organisation}/webhooks/`;
+				const endpoint = requestPath`/organizations/${organisation}/webhooks/`;
 
 				const { webhooks } = await eventbriteApiRequest.call(this, 'GET', endpoint);
 
@@ -262,7 +267,7 @@ export class EventbriteTrigger implements INodeType {
 				const organisation = this.getNodeParameter('organization') as string;
 				const event = this.getNodeParameter('event') as string;
 				const actions = this.getNodeParameter('actions') as string[];
-				const endpoint = `/organizations/${organisation}/webhooks/`;
+				const endpoint = requestPath`/organizations/${organisation}/webhooks/`;
 				const body: IDataObject = {
 					endpoint_url: webhookUrl,
 					actions: actions.join(','),
@@ -278,8 +283,8 @@ export class EventbriteTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				let responseData;
 				const webhookData = this.getWorkflowStaticData('node');
-				const endpoint = `/webhooks/${webhookData.webhookId}/`;
 				try {
+					const endpoint = requestPath`/webhooks/${webhookData.webhookId}/`;
 					responseData = await eventbriteApiRequest.call(this, 'DELETE', endpoint);
 				} catch (error) {
 					return false;
@@ -296,9 +301,10 @@ export class EventbriteTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 
-		if (req.body.api_url === undefined) {
+		const apiUrl = (req.body as IDataObject).api_url;
+		if (!isValidEventbriteUrl(apiUrl)) {
 			throw new NodeApiError(this.getNode(), req.body as JsonObject, {
-				message: 'The received data does not contain required "api_url" property!',
+				message: 'The received data does not contain a valid Eventbrite API URL!',
 			});
 		}
 
@@ -322,14 +328,14 @@ export class EventbriteTrigger implements INodeType {
 			};
 		}
 
-		const responseData = await eventbriteApiRequest.call(
-			this,
-			'GET',
-			'',
-			{},
-			undefined,
-			req.body.api_url as string,
-		);
+		const objectPath = eventbriteObjectPath(apiUrl);
+		if (!objectPath) {
+			throw new NodeApiError(this.getNode(), req.body as JsonObject, {
+				message: 'The received data does not contain a valid Eventbrite API URL!',
+			});
+		}
+
+		const responseData = await eventbriteApiRequest.call(this, 'GET', objectPath);
 
 		return {
 			workflowData: [this.helpers.returnJsonArray(responseData as IDataObject)],

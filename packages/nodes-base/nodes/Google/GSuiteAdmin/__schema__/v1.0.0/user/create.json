@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "changePasswordAtNextLogin": {
+            "type": "boolean"
+        },
         "creationTime": {
             "type": "string"
         },
@@ -43,5 +46,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

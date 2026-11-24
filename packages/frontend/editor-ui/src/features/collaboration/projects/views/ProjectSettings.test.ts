@@ -1,5 +1,6 @@
 import { defineComponent, nextTick, reactive } from 'vue';
 import userEvent from '@testing-library/user-event';
+import { waitFor, within } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import {
@@ -11,35 +12,43 @@ import {
 } from '@/__tests__/utils';
 import ProjectSettings from './ProjectSettings.vue';
 import { useProjectsStore } from '../projects.store';
-import { VIEWS } from '@/app/constants';
+import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import type { Project } from '../projects.types';
 import { ProjectTypes } from '../projects.types';
 import { createProjectListItem } from '../__tests__/utils';
 import { createUser } from '@/__tests__/data/users';
-import { useUsersStore } from '@/features/settings/users/users.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useRolesStore } from '@/app/stores/roles.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import type { FrontendSettings } from '@n8n/api-types';
 
 const mockTrack = vi.fn();
 const mockShowMessage = vi.fn();
 const mockShowError = vi.fn();
 const mockRouterPush = vi.fn();
+type RouteLeaveGuard = (to: unknown, from: unknown, next: (arg?: unknown) => void) => unknown;
+let routeLeaveGuard: RouteLeaveGuard | undefined;
 const { emitters, addEmitter } = useEmitters<
 	'projectMembersTable' | 'n8nUserSelect' | 'n8nIconPicker'
 >();
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
 		track: mockTrack,
 	}),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: mockShowMessage,
 		showError: mockShowError,
 	}),
+}));
+
+const mockConfirm = vi.fn();
+vi.mock('@/app/composables/useMessage', () => ({
+	useMessage: () => ({ confirm: mockConfirm }),
 }));
 
 vi.mock('vue-router', async () => {
@@ -59,6 +68,9 @@ vi.mock('vue-router', async () => {
 				params: {},
 				query: {},
 			}),
+		onBeforeRouteLeave: (guard: RouteLeaveGuard) => {
+			routeLeaveGuard = guard;
+		},
 	};
 });
 
@@ -71,25 +83,20 @@ vi.mock('../components/ProjectMembersTable.vue', () => ({
 			currentUserId: { type: String, required: false },
 			projectRoles: { type: Array, required: true },
 			actions: { type: Array, required: false },
+			canEditRole: { type: Boolean, required: false },
+			tableOptions: { type: Object, required: false },
 		},
 		emits: ['update:options', 'update:role', 'action', 'show-upgrade-dialog'],
 		setup(_, { emit }) {
 			addEmitter('projectMembersTable', emit as unknown as Emitter);
 			return {};
 		},
-		data() {
-			return {
-				tableOptions: {
-					page: 0,
-					itemsPerPage: 10,
-					sortBy: [] as Array<{ id: string; desc: boolean }>,
-				},
-			};
-		},
 		template:
-			'<div data-test-id="project-members-table">' +
+			'<div data-test-id="project-members-table" :data-can-edit-role="canEditRole" :data-actions-count="actions?.length">' +
 			'<div data-test-id="members-count">{{ data.items.length }}</div>' +
-			'<div data-test-id="members-page">{{ tableOptions.page }}</div>' +
+			'<div data-test-id="members-total">{{ data.count }}</div>' +
+			'<div data-test-id="members-ids">{{ data.items.map((item) => item.id).join(",") }}</div>' +
+			'<div data-test-id="members-page">{{ tableOptions?.page }}</div>' +
 			'</div>',
 	}),
 }));
@@ -101,9 +108,9 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 		N8nInput: defineComponent({
 			name: 'N8nInputStub',
 			props: { modelValue: { type: String, required: false } },
-			emits: ['update:model-value'],
+			emits: ['update:model-value', 'blur'],
 			template:
-				'<div data-test-id="n8n-input-stub"><input :value="modelValue" @input="$emit(\'update:model-value\', $event.target.value)" /></div>',
+				'<div data-test-id="n8n-input-stub"><input :value="modelValue" @input="$emit(\'update:model-value\', $event.target.value)" @blur="$emit(\'blur\')" /></div>',
 		}),
 		N8nUserSelect: defineComponent({
 			name: 'N8nUserSelectStub',
@@ -111,13 +118,19 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 				users: { type: Array, required: true },
 				currentUserId: { type: String, required: false },
 				placeholder: { type: String, required: false },
+				disabled: { type: Boolean, required: false },
+				remoteMethod: { type: Function, required: false },
+				loading: { type: Boolean, required: false },
 			},
 			emits: ['update:model-value'],
 			setup(_, { emit }) {
 				addEmitter('n8nUserSelect', emit as unknown as Emitter);
 				return {};
 			},
-			template: '<div data-test-id="project-members-select"></div>',
+			template:
+				'<div data-test-id="project-members-select" :data-disabled="disabled" :data-loading="loading" :data-user-ids="users.map((u) => u.id).join(\',\')">' +
+				'<input data-test-id="project-members-select-query" @input="remoteMethod?.($event.target.value)" />' +
+				'</div>',
 		}),
 		N8nIconPicker: defineComponent({
 			name: 'N8nIconPickerStub',
@@ -164,11 +177,16 @@ describe('ProjectSettings', () => {
 		mockShowMessage.mockClear();
 		mockShowError.mockClear();
 		mockRouterPush.mockClear();
+		routeLeaveGuard = undefined;
+		mockConfirm.mockReset();
 
 		mockShowMessage.mockReturnValue({ id: 'test', close: vi.fn() });
 		createTestingPinia();
 
 		projectsStore = mockedStore(useProjectsStore);
+		projectsStore.searchProjects.mockResolvedValue({ count: projects.length, data: projects });
+		projectsStore.fetchProjectPoolSettings.mockResolvedValue(undefined);
+		projectsStore.globalProjectPermissions = { list: true };
 		usersStore = mockedStore(useUsersStore);
 		settingsStore = mockedStore(useSettingsStore);
 		rolesStore = mockedStore(useRolesStore);
@@ -229,7 +247,8 @@ describe('ProjectSettings', () => {
 					role: 'project:admin',
 				},
 			],
-			scopes: ['project:read'],
+			scopes: ['project:read', 'project:update', 'project:manageMembers'],
+			rolesManaged: false,
 		};
 
 		projectsStore.currentProject = mockProject;
@@ -277,7 +296,7 @@ describe('ProjectSettings', () => {
 		await nextTick();
 		expect(r1.getByTestId('project-settings-delete-confirm-button')).toBeInTheDocument();
 
-		const transferRadio = document.querySelector('input[value="transfer"]') as HTMLInputElement;
+		const [transferRadio] = r1.getAllByRole('radio');
 		await userEvent.click(transferRadio);
 		await nextTick();
 
@@ -325,6 +344,90 @@ describe('ProjectSettings', () => {
 		const actualDesc = getTextarea(descriptionInput);
 		expect(actualName.value).toBe('Test Project');
 		expect(actualDesc.value).toBe('');
+	});
+
+	describe('Managed project roles', () => {
+		it('disables member management and shows notice when roles are managed', async () => {
+			projectsStore.currentProject = {
+				...projectsStore.currentProject!,
+				rolesManaged: true,
+			};
+
+			const { getByTestId, queryByTestId } = renderComponent();
+			await nextTick();
+
+			expect(queryByTestId('project-roles-managed-notice')).toBeInTheDocument();
+			expect(getByTestId('project-members-select')).toHaveAttribute('data-disabled', 'true');
+			expect(getByTestId('project-members-table')).toHaveAttribute('data-can-edit-role', 'false');
+			// remove action is suppressed -> empty actions array
+			expect(getByTestId('project-members-table')).toHaveAttribute('data-actions-count', '0');
+		});
+
+		it('allows member management and hides notice when roles are not managed', async () => {
+			projectsStore.currentProject = {
+				...projectsStore.currentProject!,
+				rolesManaged: false,
+			};
+
+			const { getByTestId, queryByTestId } = renderComponent();
+			await nextTick();
+
+			expect(queryByTestId('project-roles-managed-notice')).not.toBeInTheDocument();
+			expect(getByTestId('project-members-select')).toHaveAttribute('data-disabled', 'false');
+			expect(getByTestId('project-members-table')).toHaveAttribute('data-can-edit-role', 'true');
+			// remove action is available -> non-empty actions array
+			expect(getByTestId('project-members-table')).toHaveAttribute('data-actions-count', '1');
+		});
+
+		it('blocks member management when the project role lacks project:manageMembers', async () => {
+			projectsStore.currentProject = {
+				...projectsStore.currentProject!,
+				scopes: ['project:read', 'project:update'],
+				rolesManaged: false,
+			};
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('project-members-select')).toHaveAttribute('data-disabled', 'true');
+			expect(getByTestId('project-members-table')).toHaveAttribute('data-can-edit-role', 'false');
+			// removing a member needs the same scope -> no actions offered
+			expect(getByTestId('project-members-table')).toHaveAttribute('data-actions-count', '0');
+		});
+
+		it('still shows member management when the role has project:manageMembers but not project:update', async () => {
+			projectsStore.currentProject = {
+				...projectsStore.currentProject!,
+				scopes: ['project:read', 'project:manageMembers'],
+				rolesManaged: false,
+			};
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('project-members-select')).toHaveAttribute('data-disabled', 'false');
+			expect(getByTestId('project-members-table')).toHaveAttribute('data-can-edit-role', 'true');
+			expect(getByTestId('project-members-table')).toHaveAttribute('data-actions-count', '1');
+		});
+
+		it('exposes only member management to a project:manageMembers role, not project editing', async () => {
+			projectsStore.currentProject = {
+				...projectsStore.currentProject!,
+				scopes: ['project:read', 'project:manageMembers'],
+				rolesManaged: false,
+			};
+
+			const { getByTestId, queryByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('project-members-table')).toBeInTheDocument();
+			// Editing project details and deleting the project both need project:update
+			expect(queryByTestId('project-settings-name-input')).not.toBeInTheDocument();
+			expect(queryByTestId('project-settings-description-input')).not.toBeInTheDocument();
+			expect(queryByTestId('project-settings-save-button')).not.toBeInTheDocument();
+			expect(queryByTestId('project-settings-cancel-button')).not.toBeInTheDocument();
+			expect(queryByTestId('project-settings-delete-button')).not.toBeInTheDocument();
+		});
 	});
 
 	describe('Form interactions', () => {
@@ -524,6 +627,41 @@ describe('ProjectSettings', () => {
 			expect(wrapper.getByTestId('members-count').textContent).toBe('1');
 		});
 
+		it('matches each search term against any name or email field', async () => {
+			const people = [
+				{ id: '1', firstName: 'José', lastName: 'Smith', email: 'jose@example.com' },
+				{ id: '2', firstName: 'Bob', lastName: 'Johnson', email: 'bob@example.com' },
+				...Array.from({ length: 8 }, (_, i) => ({
+					id: String(i + 3),
+					firstName: `User${i + 3}`,
+					lastName: 'Test',
+					email: `user${i + 3}@example.com`,
+				})),
+			];
+			projectsStore.currentProject = {
+				...projectsStore.currentProject!,
+				relations: people.map((person) => ({ ...person, role: 'project:editor' })),
+			};
+			usersStore.allUsers = people.map((person) => createUser(person));
+			usersStore.usersById = Object.fromEntries(usersStore.allUsers.map((u) => [u.id, u]));
+
+			const wrapper = renderComponent();
+			await nextTick();
+			const searchInput = getInput(wrapper.getByTestId('project-members-search'));
+			const countFor = async (query: string) => {
+				await userEvent.clear(searchInput);
+				if (query) await userEvent.type(searchInput, query);
+				await nextTick();
+				return wrapper.getByTestId('members-count').textContent;
+			};
+
+			expect(await countFor('jose smith')).toBe('1');
+			expect(await countFor('Smith José')).toBe('1');
+			expect(await countFor(' smith ')).toBe('1');
+			expect(await countFor('jose johnson')).toBe('0');
+			expect(await countFor('test example.com')).toBe('8');
+		});
+
 		it('inline role change saves immediately with telemetry', async () => {
 			const roleSpy = vi.spyOn(projectsStore, 'updateMemberRole').mockResolvedValue(undefined);
 			renderComponent();
@@ -611,38 +749,6 @@ describe('ProjectSettings', () => {
 			expect(mockShowMessage).toHaveBeenCalled();
 		});
 
-		it('resets pagination to first page on search', async () => {
-			// Set up project with 10+ members to make search visible
-			const mockProjectWith10Members: Project = {
-				...projectsStore.currentProject!,
-				relations: Array.from({ length: 10 }, (_, i) => ({
-					id: String(i + 1),
-					firstName: `User${i + 1}`,
-					lastName: 'Test',
-					email: `user${i + 1}@example.com`,
-					role: 'project:editor',
-				})),
-			};
-			projectsStore.currentProject = mockProjectWith10Members;
-
-			const wrapper = renderComponent();
-			await nextTick();
-			emitters.projectMembersTable.emit('update:options', {
-				page: 2,
-				itemsPerPage: 10,
-				sortBy: [],
-			});
-			await nextTick();
-			const searchContainer = wrapper.getByTestId('project-members-search');
-			const searchInput = searchContainer.querySelector('input')!;
-			await userEvent.type(searchInput, 'john');
-			await nextTick();
-			// unmount first to avoid duplicate elements
-			wrapper.unmount();
-			const wrapper2 = renderComponent();
-			expect(wrapper2.getByTestId('members-page').textContent).toBe('0');
-		});
-
 		it('clears search when member count drops below threshold', async () => {
 			const removeSpy = vi.spyOn(projectsStore, 'removeMember').mockResolvedValue(undefined);
 
@@ -683,6 +789,176 @@ describe('ProjectSettings', () => {
 		});
 	});
 
+	describe('User search for member invitation', () => {
+		it.each(['keyboard', 'mouse'])(
+			'adds consecutive members after a %s selection without clicking the input again',
+			async (selectionMethod) => {
+				const { N8nUserSelect } =
+					await vi.importActual<typeof import('@n8n/design-system')>('@n8n/design-system');
+				const user = userEvent.setup();
+				const bob = createUser({
+					id: '3',
+					firstName: 'Bob',
+					lastName: 'Smith',
+					email: 'bob@example.com',
+				});
+				usersStore.allUsers = [...usersStore.allUsers, bob];
+				usersStore.usersById = { ...usersStore.usersById, [bob.id]: bob };
+				projectsStore.addMember.mockResolvedValue(undefined);
+				const { getByTestId, findByRole, queryByRole } = renderComponent({
+					global: { stubs: { N8nUserSelectStub: N8nUserSelect } },
+				});
+				const input = within(getByTestId('project-members-select')).getByRole('combobox');
+
+				await user.click(input);
+				await user.keyboard('jane');
+				await waitFor(() =>
+					expect(usersStore.fetchUsers).toHaveBeenLastCalledWith({
+						take: 50,
+						filter: { fullText: 'jane' },
+					}),
+				);
+				const janeOption = await findByRole('option', { name: /Jane Roe/ });
+				if (selectionMethod === 'mouse') {
+					await user.click(janeOption);
+				} else {
+					await user.hover(janeOption);
+					await user.keyboard('{Enter}');
+				}
+				await waitFor(() => expect(getByTestId('members-count')).toHaveTextContent('2'));
+				expect(projectsStore.addMember).toHaveBeenNthCalledWith(1, '123', {
+					userId: '2',
+					role: 'project:admin',
+				});
+				expect(input).toHaveValue('');
+				expect(input).toHaveFocus();
+				expect(queryByRole('option', { name: /Jane Roe/ })).not.toBeInTheDocument();
+
+				await user.keyboard('bob');
+				expect(input).toHaveValue('bob');
+				await waitFor(() =>
+					expect(usersStore.fetchUsers).toHaveBeenLastCalledWith({
+						take: 50,
+						filter: { fullText: 'bob' },
+					}),
+				);
+				await user.click(await findByRole('option', { name: /Bob Smith/ }));
+				await waitFor(() => expect(getByTestId('members-count')).toHaveTextContent('3'));
+				expect(projectsStore.addMember).toHaveBeenNthCalledWith(2, '123', {
+					userId: '3',
+					role: 'project:admin',
+				});
+				expect(projectsStore.addMember).toHaveBeenCalledTimes(2);
+				expect(mockShowError).not.toHaveBeenCalled();
+
+				await user.click(document.body);
+				await user.click(input);
+				expect(await findByRole('listbox')).toBeVisible();
+			},
+		);
+
+		it('preloads all users without projectId filter on mount when user has project:manageMembers scope', async () => {
+			renderComponent();
+			await nextTick();
+
+			expect(usersStore.fetchUsers).toHaveBeenCalledWith({ take: 50, filter: {} });
+		});
+
+		it('preloads all users when the role has project:manageMembers but not project:update', async () => {
+			projectsStore.currentProject = {
+				...projectsStore.currentProject!,
+				scopes: ['project:read', 'project:manageMembers'],
+			};
+
+			renderComponent();
+			await nextTick();
+
+			expect(usersStore.fetchUsers).toHaveBeenCalledWith({ take: 50, filter: {} });
+		});
+
+		it('ignores the results of an older search that resolves after a newer one', async () => {
+			const alice = createUser({ id: 'a', firstName: 'Alice', lastName: 'Old' });
+			const bob = createUser({ id: 'b', firstName: 'Bob', lastName: 'New' });
+			const resolvers: Array<() => void> = [];
+			vi.mocked(usersStore.fetchUsers).mockImplementation(
+				async () => await new Promise<void>((resolve) => resolvers.push(resolve)),
+			);
+
+			const { getByTestId } = renderComponent();
+			await vi.waitFor(() => expect(resolvers).toHaveLength(1));
+			usersStore.allUsers = [alice, bob];
+			resolvers[0]();
+
+			const queryInput = getInput(getByTestId('project-members-select'));
+			const search = async (query: string, expectedCalls: number) => {
+				queryInput.value = query;
+				queryInput.dispatchEvent(new Event('input'));
+				await vi.waitFor(() => expect(resolvers).toHaveLength(expectedCalls));
+			};
+			await search('alice', 2);
+			await search('bob', 3);
+
+			resolvers[2]();
+			await vi.waitFor(() =>
+				expect(getByTestId('project-members-select').dataset.userIds).toBe('b'),
+			);
+			resolvers[1]();
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(getByTestId('project-members-select').dataset.userIds).toBe('b');
+		});
+
+		it('keeps loading until the latest of two identical searches resolves', async () => {
+			const resolvers: Array<() => void> = [];
+			vi.mocked(usersStore.fetchUsers).mockImplementation(
+				async () => await new Promise<void>((resolve) => resolvers.push(resolve)),
+			);
+
+			const { getByTestId } = renderComponent();
+			await vi.waitFor(() => expect(resolvers).toHaveLength(1));
+			resolvers[0]();
+
+			const select = getByTestId('project-members-select');
+			const queryInput = getInput(select);
+			for (const expectedCalls of [2, 3]) {
+				queryInput.value = 'bob';
+				queryInput.dispatchEvent(new Event('input'));
+				await vi.waitFor(() => expect(resolvers).toHaveLength(expectedCalls));
+			}
+
+			resolvers[1]();
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			expect(select.dataset.loading).toBe('true');
+
+			resolvers[2]();
+			await vi.waitFor(() => expect(select.dataset.loading).toBe('false'));
+		});
+
+		it('skips user preloading on mount when user cannot manage members', async () => {
+			projectsStore.currentProject = {
+				...projectsStore.currentProject!,
+				scopes: ['project:read'],
+			};
+
+			renderComponent();
+			await nextTick();
+
+			expect(usersStore.fetchUsers).not.toHaveBeenCalled();
+		});
+
+		it('skips user preloading when the role has project:update but not project:manageMembers', async () => {
+			projectsStore.currentProject = {
+				...projectsStore.currentProject!,
+				scopes: ['project:read', 'project:update'],
+			};
+
+			renderComponent();
+			await nextTick();
+
+			expect(usersStore.fetchUsers).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('Icon updates', () => {
 		it('updates project icon and shows success toast', async () => {
 			const updateSpy = vi.spyOn(projectsStore, 'updateProject').mockResolvedValue(undefined);
@@ -692,6 +968,112 @@ describe('ProjectSettings', () => {
 			await nextTick();
 			expect(updateSpy).toHaveBeenCalled();
 			expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+		});
+	});
+
+	describe('Unsaved changes', () => {
+		// The icon saves on change, but name and description need "Save".
+		// Leaving the page must not silently drop the typed name and description.
+		const editNameDescriptionAndIcon = async (getByTestId: (id: string) => HTMLElement) => {
+			projectsStore.updateProject.mockResolvedValue(undefined);
+			await userEvent.type(getInput(getByTestId('project-settings-name-input')), ' Renamed');
+			await userEvent.type(
+				getTextarea(getByTestId('project-settings-description-input')),
+				'Typed description',
+			);
+			emitters.n8nIconPicker.emit('update:model-value', { type: 'icon', value: 'zap' });
+			await nextTick();
+
+			// The icon is persisted on its own, the name and description are still pending
+			expect(projectsStore.updateProject).toHaveBeenCalledTimes(1);
+			expect(projectsStore.updateProject).toHaveBeenCalledWith('123', {
+				icon: { type: 'icon', value: 'zap' },
+			});
+			expect(getByTestId('project-settings-save-button')).toBeEnabled();
+		};
+
+		const leave = async (response?: string) => {
+			mockConfirm.mockResolvedValue(response);
+			const next = vi.fn();
+			await routeLeaveGuard?.({ name: VIEWS.HOMEPAGE }, { name: VIEWS.PROJECT_SETTINGS }, next);
+			return next;
+		};
+
+		it('blocks navigation when the user closes the dialog', async () => {
+			const { getByTestId } = renderComponent();
+			await nextTick();
+			await editNameDescriptionAndIcon(getByTestId);
+
+			const next = await leave(MODAL_CLOSE);
+
+			expect(mockConfirm).toHaveBeenCalledTimes(1);
+			expect(next).toHaveBeenCalledExactlyOnceWith(false);
+		});
+
+		it('discards the changes and leaves when the user does not save', async () => {
+			const { getByTestId } = renderComponent();
+			await nextTick();
+			await editNameDescriptionAndIcon(getByTestId);
+
+			const next = await leave(MODAL_CANCEL);
+
+			expect(next).toHaveBeenCalledExactlyOnceWith();
+			expect(projectsStore.updateProject).toHaveBeenCalledTimes(1);
+			expect(getInput(getByTestId('project-settings-name-input'))).toHaveValue('Test Project');
+			expect(getTextarea(getByTestId('project-settings-description-input'))).toHaveValue('');
+		});
+
+		it('saves and then leaves when the user confirms', async () => {
+			const { getByTestId } = renderComponent();
+			await nextTick();
+			await editNameDescriptionAndIcon(getByTestId);
+
+			const next = await leave(MODAL_CONFIRM);
+
+			expect(projectsStore.updateProject).toHaveBeenCalledTimes(2);
+			expect(projectsStore.updateProject).toHaveBeenLastCalledWith(
+				'123',
+				expect.objectContaining({
+					name: 'Test Project Renamed',
+					description: 'Typed description',
+				}),
+			);
+			expect(next).toHaveBeenCalledExactlyOnceWith(true);
+		});
+
+		it('stays on the page when saving fails', async () => {
+			const { getByTestId } = renderComponent();
+			await nextTick();
+			await editNameDescriptionAndIcon(getByTestId);
+
+			const error = new Error('Save failed');
+			projectsStore.updateProject.mockRejectedValue(error);
+			const next = await leave(MODAL_CONFIRM);
+
+			expect(mockShowError).toHaveBeenCalledWith(error, expect.any(String));
+			expect(next).toHaveBeenCalledExactlyOnceWith(false);
+			expect(getByTestId('project-settings-save-button')).toBeEnabled();
+		});
+
+		it('does not ask when there are no unsaved changes', async () => {
+			renderComponent();
+			await nextTick();
+
+			const next = await leave();
+
+			expect(mockConfirm).not.toHaveBeenCalled();
+			expect(next).toHaveBeenCalledExactlyOnceWith();
+		});
+
+		it('warns before the browser tab closes when name and description are not saved', async () => {
+			const { getByTestId } = renderComponent();
+			await nextTick();
+			await editNameDescriptionAndIcon(getByTestId);
+
+			const event = new Event('beforeunload', { cancelable: true });
+			window.dispatchEvent(event);
+
+			expect(event.defaultPrevented).toBe(true);
 		});
 	});
 
@@ -717,22 +1099,469 @@ describe('ProjectSettings', () => {
 		});
 	});
 
-	describe('Upgrade dialog', () => {
-		it('should open upgrade dialog when show-upgrade-dialog event is emitted', async () => {
-			const { queryByRole, getByRole } = renderComponent();
+	describe('Custom span attributes', () => {
+		beforeEach(() => {
+			settingsStore.isOtelCustomSpanAttributesEnabled = true;
+			projectsStore.updateProject.mockResolvedValue(undefined);
+		});
 
+		it('should not render telemetry tags section when OTel is disabled', () => {
+			settingsStore.isOtelCustomSpanAttributesEnabled = false;
+			const { queryByTestId } = renderComponent();
+			expect(queryByTestId('project-telemetry-tag-add')).not.toBeInTheDocument();
+		});
+
+		it('should render telemetry tags section when OTel is enabled', () => {
+			const { getByTestId } = renderComponent();
+			expect(getByTestId('project-telemetry-tag-add')).toBeInTheDocument();
+		});
+
+		it('should have no tags by default', async () => {
+			const { queryAllByTestId } = renderComponent();
+			expect(queryAllByTestId('project-telemetry-tag-key')).toHaveLength(0);
+		});
+
+		it('should add a new attribute row when clicking Add attribute', async () => {
+			const { getByTestId, getAllByTestId } = renderComponent();
+			await userEvent.click(getByTestId('project-telemetry-tag-add'));
+			await nextTick();
+			expect(getAllByTestId('project-telemetry-tag-key')).toHaveLength(1);
+		});
+
+		it('should remove a tag row when clicking Remove', async () => {
+			const { getByTestId, queryAllByTestId } = renderComponent();
+			await userEvent.click(getByTestId('project-telemetry-tag-add'));
+			await nextTick();
+			await userEvent.click(getByTestId('project-telemetry-tag-remove'));
+			await nextTick();
+			expect(queryAllByTestId('project-telemetry-tag-key')).toHaveLength(0);
+		});
+
+		it('should show empty key error after blur', async () => {
+			const { getByTestId, queryByTestId } = renderComponent();
+			await userEvent.click(getByTestId('project-telemetry-tag-add'));
 			await nextTick();
 
-			// Dialog should not be visible initially
-			expect(queryByRole('dialog')).not.toBeInTheDocument();
+			expect(queryByTestId('project-telemetry-tag-key-error')).not.toBeInTheDocument();
 
-			// Emit the show-upgrade-dialog event from the members table
-			emitters.projectMembersTable.emit('show-upgrade-dialog');
-
+			const keyInput = getByTestId('project-telemetry-tag-key').querySelector('input')!;
+			await userEvent.click(keyInput); // focus
+			await userEvent.tab(); // moves focus away, triggering blur
 			await nextTick();
 
-			// The upgrade dialog should now be visible
-			expect(getByRole('dialog')).toBeInTheDocument();
+			expect(getByTestId('project-telemetry-tag-key-error')).toBeInTheDocument();
+			expect(getByTestId('project-telemetry-tag-key-error').textContent).toContain(
+				'Key must not be empty',
+			);
+		});
+
+		it('should hide key error after clicking Cancel', async () => {
+			const { getByTestId, queryByTestId } = renderComponent();
+			await userEvent.click(getByTestId('project-telemetry-tag-add'));
+			await nextTick();
+
+			const keyInput = getByTestId('project-telemetry-tag-key').querySelector('input')!;
+			await userEvent.click(keyInput);
+			await userEvent.tab();
+			await nextTick();
+
+			expect(getByTestId('project-telemetry-tag-key-error')).toBeInTheDocument();
+
+			await userEvent.click(getByTestId('project-settings-cancel-button'));
+			await nextTick();
+
+			expect(queryByTestId('project-telemetry-tag-key-error')).not.toBeInTheDocument();
+		});
+
+		it('should show duplicate key error after blur', async () => {
+			const { getByTestId, getAllByTestId } = renderComponent();
+
+			await userEvent.click(getByTestId('project-telemetry-tag-add'));
+			await userEvent.click(getByTestId('project-telemetry-tag-add'));
+			await nextTick();
+
+			const [firstKeyWrapper, secondKeyWrapper] = getAllByTestId('project-telemetry-tag-key');
+
+			await userEvent.type(firstKeyWrapper.querySelector('input')!, 'env');
+			await userEvent.tab();
+			await userEvent.type(secondKeyWrapper.querySelector('input')!, 'env');
+			await userEvent.tab();
+			await nextTick();
+
+			const errors = getAllByTestId('project-telemetry-tag-key-error');
+			expect(errors[0].textContent).toContain('Duplicate keys are not allowed');
+		});
+
+		it('should disable Save button when a tag has an empty key', async () => {
+			const { getByTestId } = renderComponent();
+			await userEvent.click(getByTestId('project-telemetry-tag-add'));
+			await nextTick();
+
+			expect(getByTestId('project-settings-save-button')).toBeDisabled();
+		});
+
+		it('should not include customTelemetryTags in payload when OTel is disabled', async () => {
+			settingsStore.isOtelCustomSpanAttributesEnabled = false;
+			const updateSpy = vi.spyOn(projectsStore, 'updateProject').mockResolvedValue(undefined);
+			const { getByTestId } = renderComponent();
+
+			const nameInput = getByTestId('project-settings-name-input');
+			await userEvent.type(getInput(nameInput), ' Updated');
+			await userEvent.click(getByTestId('project-settings-save-button'));
+			await nextTick();
+
+			expect(updateSpy).toHaveBeenCalledWith(
+				'123',
+				expect.not.objectContaining({ customTelemetryTags: expect.anything() }),
+			);
+		});
+
+		it('should load existing tags from currentProject on mount and not show errors before blur', async () => {
+			projectsStore.currentProject = {
+				...projectsStore.currentProject!,
+				customTelemetryTags: [{ key: 'env', value: 'prod' }],
+			};
+			const { getAllByTestId, queryAllByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getAllByTestId('project-telemetry-tag-key')).toHaveLength(1);
+			expect(queryAllByTestId('project-telemetry-tag-key-error')).toHaveLength(0);
+		});
+
+		it('should submit with customTelemetryTags when tags are valid', async () => {
+			const updateSpy = vi.spyOn(projectsStore, 'updateProject').mockResolvedValue(undefined);
+			const { getByTestId } = renderComponent();
+
+			await userEvent.click(getByTestId('project-telemetry-tag-add'));
+			await nextTick();
+
+			const keyInput = getByTestId('project-telemetry-tag-key').querySelector('input')!;
+			const valueInput = getByTestId('project-telemetry-tag-value').querySelector('input')!;
+			await userEvent.type(keyInput, 'env');
+			await userEvent.type(valueInput, 'production');
+			await nextTick();
+
+			await userEvent.click(getByTestId('project-settings-save-button'));
+			await nextTick();
+
+			expect(updateSpy).toHaveBeenCalledWith(
+				'123',
+				expect.objectContaining({
+					customTelemetryTags: [{ key: 'env', value: 'production' }],
+				}),
+			);
+		});
+	});
+
+	describe('External secrets permission (no project:update)', () => {
+		beforeEach(() => {
+			projectsStore.currentProject = {
+				...projectsStore.currentProject!,
+				scopes: ['project:read', 'externalSecretsProvider:read', 'externalSecretsProvider:list'],
+			};
+			settingsStore.moduleSettings = {
+				'external-secrets': {
+					multipleConnections: false,
+					forProjects: true,
+					roleBasedAccess: false,
+					systemRolesEnabled: false,
+				},
+			};
+			const rbacStore = mockedStore(useRBACStore);
+			rbacStore.hasScope.mockReturnValue(false);
+			projectsStore.getProjectSecretProviders.mockResolvedValue([]);
+		});
+
+		it('hides name, description, members, and danger zone sections', async () => {
+			const { queryByTestId } = renderComponent();
+			await nextTick();
+
+			expect(queryByTestId('project-settings-name-input')).not.toBeInTheDocument();
+			expect(queryByTestId('project-settings-description-input')).not.toBeInTheDocument();
+			expect(queryByTestId('project-members-select')).not.toBeInTheDocument();
+			expect(queryByTestId('project-settings-delete-button')).not.toBeInTheDocument();
+		});
+
+		it('hides the save and cancel buttons', async () => {
+			const { queryByTestId } = renderComponent();
+			await nextTick();
+
+			expect(queryByTestId('project-settings-save-button')).not.toBeInTheDocument();
+			expect(queryByTestId('project-settings-cancel-button')).not.toBeInTheDocument();
+		});
+
+		it('renders the external secrets section', async () => {
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('external-secrets-section')).toBeInTheDocument();
+		});
+	});
+	describe('member order and pagination', () => {
+		const member = (id: string, firstName: string | null, lastName: string | null) => ({
+			id,
+			firstName,
+			lastName,
+			email: `${id}@example.com`,
+			role: 'project:editor',
+		});
+		const currentUserRelation = member('current-user', 'Current', 'User');
+		const others = (count: number) =>
+			Array.from({ length: count }, (_, i) =>
+				member(`user-${String(i).padStart(2, '0')}`, `User${String(i).padStart(2, '0')}`, 'Test'),
+			);
+
+		const setProject = (relations: Project['relations'], creatorId: string | null) => {
+			projectsStore.currentProject = {
+				...(projectsStore.currentProject as Project),
+				relations,
+				creatorId,
+			};
+		};
+
+		it('lists the creator first, then the current user, then the rest by name', async () => {
+			setProject(
+				[
+					member('zoe', 'Zoe', 'Zed'),
+					currentUserRelation,
+					member('pending', null, null),
+					member('creator', 'Yuri', 'Creator'),
+					member('adam', 'Adam', 'Able'),
+				],
+				'creator',
+			);
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			// The pending user has no name, so their email sorts them.
+			expect(getByTestId('members-ids').textContent).toBe('creator,current-user,adam,pending,zoe');
+		});
+
+		it('sorts names without regard to case or accents', async () => {
+			setProject(
+				[
+					member('zoe', 'Zoe', 'Zed'),
+					member('emile', 'émile', 'Dupont'),
+					member('bea', 'bea', 'Brown'),
+				],
+				null,
+			);
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('members-ids').textContent).toBe('bea,emile,zoe');
+		});
+
+		it('pins only the current user when the project has no creator', async () => {
+			setProject(
+				[member('zoe', 'Zoe', 'Zed'), member('adam', 'Adam', 'Able'), currentUserRelation],
+				null,
+			);
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('members-ids').textContent).toBe('current-user,adam,zoe');
+		});
+
+		it('shows 10 members for each page', async () => {
+			setProject([currentUserRelation, ...others(11)], null);
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('members-count').textContent).toBe('10');
+			expect(getByTestId('members-total').textContent).toBe('12');
+
+			emitters.projectMembersTable.emit('update:options', {
+				page: 1,
+				itemsPerPage: 10,
+				sortBy: [],
+			});
+			await nextTick();
+
+			expect(getByTestId('members-count').textContent).toBe('2');
+			expect(getByTestId('members-ids').textContent).toBe('user-09,user-10');
+		});
+
+		it('keeps the pinned order while searching and resets to the first page', async () => {
+			setProject(
+				[
+					...others(10),
+					member('creator', 'Zed', 'Creator'),
+					currentUserRelation,
+					member('bob', 'Bob', 'Smith'),
+				],
+				'creator',
+			);
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			emitters.projectMembersTable.emit('update:options', {
+				page: 1,
+				itemsPerPage: 10,
+				sortBy: [],
+			});
+			await nextTick();
+			expect(getByTestId('members-page').textContent).toBe('1');
+
+			// Bob is the only member without an "r" in the name or email.
+			await userEvent.type(getInput(getByTestId('project-members-search')), 'r');
+
+			await vi.waitFor(() => expect(getByTestId('members-page').textContent).toBe('0'));
+			expect(getByTestId('members-total').textContent).toBe('12');
+			expect(getByTestId('members-ids').textContent?.split(',').slice(0, 2)).toEqual([
+				'creator',
+				'current-user',
+			]);
+		});
+
+		it('steps back one page when a removal empties the last page', async () => {
+			vi.spyOn(projectsStore, 'removeMember').mockResolvedValue(undefined);
+			setProject([currentUserRelation, ...others(10)], null);
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			emitters.projectMembersTable.emit('update:options', {
+				page: 1,
+				itemsPerPage: 10,
+				sortBy: [],
+			});
+			await nextTick();
+			expect(getByTestId('members-ids').textContent).toBe('user-09');
+
+			emitters.projectMembersTable.emit('action', { action: 'remove', userId: 'user-09' });
+			await nextTick();
+
+			expect(getByTestId('members-page').textContent).toBe('0');
+			expect(getByTestId('members-count').textContent).toBe('10');
+		});
+	});
+	describe('members with access from a global role', () => {
+		const ownerImplicitMember = {
+			id: 'owner-1',
+			email: 'olive@example.com',
+			firstName: 'Olive',
+			lastName: 'Owner',
+			globalRole: { slug: 'global:owner', displayName: 'Owner' },
+		};
+
+		it('adds implicit members to the table alongside the real relations', async () => {
+			projectsStore.currentProject = {
+				...(projectsStore.currentProject as Project),
+				implicitMembers: [ownerImplicitMember],
+			};
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('members-count').textContent).toBe('2');
+		});
+
+		it('shows one row for a user who is both a relation and an implicit member', async () => {
+			projectsStore.currentProject = {
+				...(projectsStore.currentProject as Project),
+				implicitMembers: [
+					{
+						id: '1',
+						email: 'john@example.com',
+						firstName: 'John',
+						lastName: 'Doe',
+						globalRole: { slug: 'global:admin', displayName: 'Admin' },
+					},
+				],
+			};
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('members-count').textContent).toBe('1');
+		});
+
+		it('renders the table for a project whose only members are implicit', async () => {
+			projectsStore.currentProject = {
+				...(projectsStore.currentProject as Project),
+				relations: [],
+				implicitMembers: [ownerImplicitMember],
+			};
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('members-count').textContent).toBe('1');
+		});
+
+		it('leaves implicit members out of the add-member dropdown', async () => {
+			projectsStore.currentProject = {
+				...(projectsStore.currentProject as Project),
+				implicitMembers: [
+					{
+						id: '2',
+						email: 'jane@example.com',
+						firstName: 'Jane',
+						lastName: 'Roe',
+						globalRole: { slug: 'global:admin', displayName: 'Admin' },
+					},
+				],
+			};
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			// Jane already has access, and the merged row offers no way to undo an add.
+			expect(getByTestId('project-members-select').getAttribute('data-user-ids')).toBe(
+				'current-user',
+			);
+		});
+
+		it('ignores a remove action for a member who has no relation', async () => {
+			projectsStore.currentProject = {
+				...(projectsStore.currentProject as Project),
+				implicitMembers: [ownerImplicitMember],
+			};
+			const removeSpy = vi.spyOn(projectsStore, 'removeMember').mockResolvedValue(undefined);
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			emitters.projectMembersTable.emit('action', {
+				action: 'remove',
+				userId: ownerImplicitMember.id,
+			});
+			await nextTick();
+
+			expect(removeSpy).not.toHaveBeenCalled();
+			expect(getByTestId('members-count').textContent).toBe('2');
+		});
+
+		it('counts implicit members towards the search threshold and filters them', async () => {
+			const relations = Array.from({ length: 9 }, (_, i) => ({
+				id: `relation-${i}`,
+				firstName: `Member${i}`,
+				lastName: 'Relation',
+				email: `member${i}@example.com`,
+				role: 'project:editor',
+			}));
+			projectsStore.currentProject = {
+				...(projectsStore.currentProject as Project),
+				relations,
+				implicitMembers: [ownerImplicitMember],
+			};
+
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('members-count').textContent).toBe('10');
+
+			const search = getByTestId('project-members-search');
+			await userEvent.type(getInput(search), 'Olive');
+			await nextTick();
+
+			expect(getByTestId('members-count').textContent).toBe('1');
 		});
 	});
 });

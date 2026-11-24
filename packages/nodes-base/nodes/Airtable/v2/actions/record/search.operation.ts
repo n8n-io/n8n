@@ -4,10 +4,11 @@ import type {
 	INodeProperties,
 	IExecuteFunctions,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { generatePairedItemData, updateDisplayOptions } from '../../../../../utils/utilities';
 import type { IRecord } from '../../helpers/interfaces';
-import { flattenOutput } from '../../helpers/utils';
+import { legacyFlattenOutput } from '../../helpers/utils';
 import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from '../../transport';
 import { viewRLC } from '../common.descriptions';
 
@@ -153,7 +154,7 @@ export async function execute(
 	const returnData: INodeExecutionData[] = [];
 	const nodeVersion = this.getNode().typeVersion;
 
-	const endpoint = `${base}/${table}`;
+	const endpoint = requestPath`${base}/${table}`;
 
 	let itemsLength = items.length ? 1 : 0;
 	let fallbackPairedItems;
@@ -210,14 +211,19 @@ export async function execute(
 					options.downloadFields as string[],
 					fallbackPairedItems || [{ item: i }],
 				);
-				returnData.push(...itemWithAttachments);
+				returnData.push(
+					...itemWithAttachments.map((item) => ({
+						...item,
+						json: legacyFlattenOutput(item.json, nodeVersion),
+					})),
+				);
 				continue;
 			}
 
 			let records = responseData.records;
 
 			records = (records as IDataObject[]).map((record) => ({
-				json: flattenOutput(record),
+				json: legacyFlattenOutput(record, nodeVersion),
 			})) as INodeExecutionData[];
 
 			const itemData = fallbackPairedItems || [{ item: i }];

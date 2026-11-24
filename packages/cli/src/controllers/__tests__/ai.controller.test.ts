@@ -3,31 +3,53 @@ import type {
 	AiApplySuggestionRequestDto,
 	AiChatRequestDto,
 	AiBuilderChatRequestDto,
-	AiSessionRetrievalRequestDto,
-	AiSessionMetadataResponseDto,
+	AiGatewayUsageQueryDto,
 } from '@n8n/api-types';
-import type { AuthenticatedRequest } from '@n8n/db';
-import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
-import { mock } from 'jest-mock-extended';
+import type { GlobalConfig } from '@n8n/config';
+import { Person, type AuthenticatedRequest } from '@n8n/db';
+import { APIResponseError, NetworkError, type AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
+import { mock } from 'vitest-mock-extended';
 
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import {
+	BadRequestError,
+	ForbiddenError,
+	InternalServerError,
+	NotFoundError,
+	ServiceUnavailableError,
+} from '@n8n/errors';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
+import type { AiUsageService } from '@/services/ai-usage.service';
 import type { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import type { AiService } from '@/services/ai.service';
+import type { FreeAiCreditsService } from '@/services/free-ai-credits.service';
 
 import { AiController, type FlushableResponse } from '../ai.controller';
 
 describe('AiController', () => {
 	const aiService = mock<AiService>();
 	const workflowBuilderService = mock<WorkflowBuilderService>();
-	const controller = new AiController(aiService, workflowBuilderService, mock(), mock());
+	const freeAiCreditsService = mock<FreeAiCreditsService>();
+	const aiUsageService = mock<AiUsageService>();
+	const aiGatewayService = mock<AiGatewayService>();
+	const globalConfig = mock<GlobalConfig>({ ai: { allowSendingParameterValues: true } });
+	const controller = new AiController(
+		aiService,
+		workflowBuilderService,
+		freeAiCreditsService,
+		aiUsageService,
+		aiGatewayService,
+		globalConfig,
+	);
 
 	const request = mock<AuthenticatedRequest>({
-		user: { id: 'user123' },
+		user: Object.assign(new Person(), { id: 'user123' }),
 	});
 	const response = mock<FlushableResponse>();
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
+		aiGatewayService.assertEnabled.mockImplementation(() => {});
+		globalConfig.ai.allowSendingParameterValues = true;
 
 		response.header.mockReturnThis();
 		response.status.mockReturnThis();
@@ -40,7 +62,7 @@ describe('AiController', () => {
 			aiService.chat.mockResolvedValue(
 				mock<Response>({
 					body: mock({
-						pipeTo: jest.fn().mockImplementation(async (writableStream) => {
+						pipeTo: vi.fn().mockImplementation(async (writableStream) => {
 							// Simulate stream writing
 							const writer = writableStream.getWriter();
 							await writer.write(JSON.stringify({ message: 'test response' }));
@@ -52,7 +74,7 @@ describe('AiController', () => {
 
 			await controller.chat(request, response, payload);
 
-			expect(aiService.chat).toHaveBeenCalledWith(payload, request.user);
+			expect(aiService.chat).toHaveBeenCalledWith(payload, request.user.toIUser());
 			expect(response.header).toHaveBeenCalledWith('Content-type', 'application/json-lines');
 			expect(response.flush).toHaveBeenCalled();
 			expect(response.end).toHaveBeenCalled();
@@ -67,6 +89,83 @@ describe('AiController', () => {
 				InternalServerError,
 			);
 		});
+
+		it('should map missing AI assistant sessions to NotFoundError', async () => {
+			aiService.chat.mockRejectedValue(new APIResponseError('Session not found', 404));
+
+			await expect(controller.chat(request, response, payload)).rejects.toThrow(NotFoundError);
+		});
+
+		it('should map an unreachable AI assistant service to ServiceUnavailableError', async () => {
+			aiService.chat.mockRejectedValue(new NetworkError(new TypeError('fetch failed')));
+
+			await expect(controller.chat(request, response, payload)).rejects.toThrow(
+				ServiceUnavailableError,
+			);
+		});
+
+		it('should register a close handler on the response for abort', async () => {
+			aiService.chat.mockResolvedValue(
+				mock<Response>({
+					body: mock({
+						pipeTo: vi.fn().mockResolvedValue(undefined),
+					}),
+				}),
+			);
+
+			await controller.chat(request, response, payload);
+
+			expect(response.on).toHaveBeenCalledWith('close', expect.any(Function));
+		});
+
+		it('should remove close handler after streaming completes', async () => {
+			aiService.chat.mockResolvedValue(
+				mock<Response>({
+					body: mock({
+						pipeTo: vi.fn().mockResolvedValue(undefined),
+					}),
+				}),
+			);
+
+			await controller.chat(request, response, payload);
+
+			expect(response.off).toHaveBeenCalledWith('close', expect.any(Function));
+		});
+
+		it('should silently return when pipeTo throws an AbortError', async () => {
+			const abortError = new DOMException('The operation was aborted', 'AbortError');
+
+			aiService.chat.mockResolvedValue(
+				mock<Response>({
+					body: mock({
+						pipeTo: vi.fn().mockRejectedValue(abortError),
+					}),
+				}),
+			);
+
+			// Should not throw
+			await controller.chat(request, response, payload);
+
+			expect(response.end).not.toHaveBeenCalled();
+		});
+
+		it('should pass abort signal to pipeTo', async () => {
+			const pipeToMock = vi.fn().mockResolvedValue(undefined);
+
+			aiService.chat.mockResolvedValue(
+				mock<Response>({
+					body: mock({
+						pipeTo: pipeToMock,
+					}),
+				}),
+			);
+
+			await controller.chat(request, response, payload);
+
+			expect(pipeToMock).toHaveBeenCalledWith(expect.any(WritableStream), {
+				signal: expect.any(AbortSignal),
+			});
+		});
 	});
 
 	describe('applySuggestion', () => {
@@ -78,7 +177,7 @@ describe('AiController', () => {
 
 			const result = await controller.applySuggestion(request, response, payload);
 
-			expect(aiService.applySuggestion).toHaveBeenCalledWith(payload, request.user);
+			expect(aiService.applySuggestion).toHaveBeenCalledWith(payload, request.user.toIUser());
 			expect(result).toEqual(clientResponse);
 		});
 
@@ -101,7 +200,7 @@ describe('AiController', () => {
 
 			const result = await controller.askAi(request, response, payload);
 
-			expect(aiService.askAi).toHaveBeenCalledWith(payload, request.user);
+			expect(aiService.askAi).toHaveBeenCalledWith(payload, request.user.toIUser());
 			expect(result).toEqual(clientResponse);
 		});
 
@@ -156,7 +255,7 @@ describe('AiController', () => {
 						executionSchema: undefined,
 					},
 				},
-				request.user,
+				request.user.toIUser(),
 				expect.any(AbortSignal),
 			);
 			expect(response.header).toHaveBeenCalledWith('Content-type', 'application/json-lines');
@@ -254,7 +353,7 @@ describe('AiController', () => {
 				let abortSignalPassed: AbortSignal | undefined;
 
 				// Mock response.on to capture the close handler
-				response.on.mockImplementation((event: string, handler: () => void) => {
+				response.on.mockImplementation((event: string | symbol, handler: () => void) => {
 					if (event === 'close') {
 						abortHandler = handler;
 					}
@@ -325,7 +424,7 @@ describe('AiController', () => {
 				expect(capturedSignal).toBeInstanceOf(AbortSignal);
 				expect(workflowBuilderService.chat).toHaveBeenCalledWith(
 					expect.any(Object),
-					request.user,
+					request.user.toIUser(),
 					capturedSignal,
 				);
 			});
@@ -334,7 +433,7 @@ describe('AiController', () => {
 				let abortHandler: (() => void) | undefined;
 				let abortSignalPassed: AbortSignal | undefined;
 
-				response.on.mockImplementation((event: string, handler: () => void) => {
+				response.on.mockImplementation((event: string | symbol, handler: () => void) => {
 					if (event === 'close') {
 						abortHandler = handler;
 					}
@@ -383,8 +482,8 @@ describe('AiController', () => {
 			});
 
 			it('should cleanup abort listener on successful completion', async () => {
-				const onSpy = jest.spyOn(response, 'on');
-				const offSpy = jest.spyOn(response, 'off');
+				const onSpy = response.on;
+				const offSpy = response.off;
 
 				async function* mockGenerator() {
 					yield { messages: [{ role: 'assistant', type: 'message', text: 'Complete' } as const] };
@@ -401,6 +500,23 @@ describe('AiController', () => {
 		});
 	});
 
+	describe('aiCredits', () => {
+		it('keeps the 403 when a service account claims the free credits', async () => {
+			const forbidden = new ForbiddenError('Only a person can do this action');
+			freeAiCreditsService.claim.mockRejectedValue(forbidden);
+
+			await expect(controller.aiCredits(request, response, {})).rejects.toBe(forbidden);
+		});
+
+		it('turns an unexpected failure into a 500', async () => {
+			freeAiCreditsService.claim.mockRejectedValue(new Error('Something went wrong'));
+
+			await expect(controller.aiCredits(request, response, {})).rejects.toThrow(
+				InternalServerError,
+			);
+		});
+	});
+
 	describe('getBuilderCredits', () => {
 		it('should return builder instance credits successfully', async () => {
 			const expectedCredits: AiAssistantSDK.BuilderInstanceCreditsResponse = {
@@ -412,7 +528,9 @@ describe('AiController', () => {
 
 			const result = await controller.getBuilderCredits(request, response);
 
-			expect(workflowBuilderService.getBuilderInstanceCredits).toHaveBeenCalledWith(request.user);
+			expect(workflowBuilderService.getBuilderInstanceCredits).toHaveBeenCalledWith(
+				request.user.toIUser(),
+			);
 			expect(result).toEqual(expectedCredits);
 		});
 
@@ -423,57 +541,94 @@ describe('AiController', () => {
 			await expect(controller.getBuilderCredits(request, response)).rejects.toThrow(
 				InternalServerError,
 			);
-			expect(workflowBuilderService.getBuilderInstanceCredits).toHaveBeenCalledWith(request.user);
+			expect(workflowBuilderService.getBuilderInstanceCredits).toHaveBeenCalledWith(
+				request.user.toIUser(),
+			);
+		});
+
+		it('should map an unreachable AI assistant service to ServiceUnavailableError', async () => {
+			workflowBuilderService.getBuilderInstanceCredits.mockRejectedValue(
+				new NetworkError(new TypeError('fetch failed')),
+			);
+
+			await expect(controller.getBuilderCredits(request, response)).rejects.toThrow(
+				ServiceUnavailableError,
+			);
 		});
 	});
 
-	describe('getSessionsMetadata', () => {
-		const payload: AiSessionRetrievalRequestDto = {
-			workflowId: 'workflow123',
-		};
-
-		it('should return sessions metadata successfully when messages exist', async () => {
-			const expectedMetadata: AiSessionMetadataResponseDto = {
-				hasMessages: true,
+	describe('clearSession', () => {
+		it('should call workflowBuilderService.clearSession with correct parameters', async () => {
+			const payload = {
+				workflowId: 'workflow123',
 			};
 
-			workflowBuilderService.getSessionsMetadata.mockResolvedValue(expectedMetadata);
+			workflowBuilderService.clearSession.mockResolvedValue(undefined);
 
-			const result = await controller.getSessionsMetadata(request, response, payload);
+			const result = await controller.clearSession(request, response, payload);
 
-			expect(workflowBuilderService.getSessionsMetadata).toHaveBeenCalledWith(
+			expect(workflowBuilderService.clearSession).toHaveBeenCalledWith(
 				payload.workflowId,
-				request.user,
+				request.user.toIUser(),
 			);
-			expect(result).toEqual(expectedMetadata);
+			expect(result).toEqual({ success: true });
 		});
 
-		it('should return sessions metadata successfully when no messages exist', async () => {
-			const expectedMetadata: AiSessionMetadataResponseDto = {
-				hasMessages: false,
+		it('should throw InternalServerError when service throws an error', async () => {
+			const payload = {
+				workflowId: 'workflow123',
 			};
 
-			workflowBuilderService.getSessionsMetadata.mockResolvedValue(expectedMetadata);
+			const mockError = new Error('Database error');
+			workflowBuilderService.clearSession.mockRejectedValue(mockError);
 
-			const result = await controller.getSessionsMetadata(request, response, payload);
-
-			expect(workflowBuilderService.getSessionsMetadata).toHaveBeenCalledWith(
-				payload.workflowId,
-				request.user,
-			);
-			expect(result).toEqual(expectedMetadata);
-		});
-
-		it('should throw InternalServerError if getting sessions metadata fails', async () => {
-			const mockError = new Error('Failed to get sessions metadata');
-			workflowBuilderService.getSessionsMetadata.mockRejectedValue(mockError);
-
-			await expect(controller.getSessionsMetadata(request, response, payload)).rejects.toThrow(
+			await expect(controller.clearSession(request, response, payload)).rejects.toThrow(
 				InternalServerError,
 			);
-			expect(workflowBuilderService.getSessionsMetadata).toHaveBeenCalledWith(
+		});
+	});
+
+	describe('getSessions', () => {
+		it('should call workflowBuilderService.getSessions with correct parameters', async () => {
+			const mockSessions = { sessions: [] };
+			const payload = { workflowId: 'workflow123' };
+
+			workflowBuilderService.getSessions.mockResolvedValue(mockSessions);
+
+			const result = await controller.getSessions(request, response, payload);
+
+			expect(workflowBuilderService.getSessions).toHaveBeenCalledWith(
 				payload.workflowId,
-				request.user,
+				request.user.toIUser(),
+				undefined,
+			);
+			expect(result).toEqual(mockSessions);
+		});
+
+		it('should forward the codeBuilder flag to the service', async () => {
+			const mockSessions = { sessions: [] };
+			const payload = { workflowId: 'workflow123', codeBuilder: true as const };
+
+			workflowBuilderService.getSessions.mockResolvedValue(mockSessions);
+
+			const result = await controller.getSessions(request, response, payload);
+
+			expect(workflowBuilderService.getSessions).toHaveBeenCalledWith(
+				payload.workflowId,
+				request.user.toIUser(),
+				true,
+			);
+			expect(result).toEqual(mockSessions);
+		});
+
+		it('should throw InternalServerError when service throws an error', async () => {
+			const payload = { workflowId: 'workflow123' };
+			const mockError = new Error('Database error');
+
+			workflowBuilderService.getSessions.mockRejectedValue(mockError);
+
+			await expect(controller.getSessions(request, response, payload)).rejects.toThrow(
+				InternalServerError,
 			);
 		});
 	});
@@ -483,6 +638,7 @@ describe('AiController', () => {
 			const payload = {
 				workflowId: 'workflow123',
 				messageId: 'message456',
+				codeBuilder: true,
 			};
 
 			workflowBuilderService.truncateMessagesAfter.mockResolvedValue(true);
@@ -491,8 +647,9 @@ describe('AiController', () => {
 
 			expect(workflowBuilderService.truncateMessagesAfter).toHaveBeenCalledWith(
 				payload.workflowId,
-				request.user,
+				request.user.toIUser(),
 				payload.messageId,
+				undefined,
 			);
 			expect(result).toEqual({ success: true });
 		});
@@ -537,9 +694,86 @@ describe('AiController', () => {
 			);
 			expect(workflowBuilderService.truncateMessagesAfter).toHaveBeenCalledWith(
 				payload.workflowId,
-				request.user,
+				request.user.toIUser(),
 				payload.messageId,
+				undefined,
 			);
+		});
+	});
+
+	describe('getGatewayWallet', () => {
+		it('should reject gateway requests when n8n Connect is disabled', async () => {
+			aiGatewayService.assertEnabled.mockImplementation(() => {
+				throw new BadRequestError('Gateway credits are not enabled on this instance');
+			});
+			const query = mock<AiGatewayUsageQueryDto>({ offset: 0, limit: 10 });
+
+			await expect(controller.getGatewayConfig()).rejects.toThrow(BadRequestError);
+			await expect(controller.getGatewayWallet(request)).rejects.toThrow(BadRequestError);
+			await expect(controller.getGatewayUsage(request, response, query)).rejects.toThrow(
+				BadRequestError,
+			);
+
+			expect(aiGatewayService.getGatewayConfig).not.toHaveBeenCalled();
+			expect(aiGatewayService.getWallet).not.toHaveBeenCalled();
+			expect(aiGatewayService.getUsage).not.toHaveBeenCalled();
+		});
+
+		it('should return wallet from aiGatewayService', async () => {
+			const walletData = { budget: 10, balance: 7, hasEverToppedUp: false };
+			aiGatewayService.getWallet.mockResolvedValue(walletData);
+
+			const result = await controller.getGatewayWallet(request);
+
+			expect(aiGatewayService.getWallet).toHaveBeenCalledWith(request.user.id);
+			expect(result).toEqual(walletData);
+		});
+
+		it('should throw InternalServerError when aiGatewayService throws', async () => {
+			aiGatewayService.getWallet.mockRejectedValue(new Error('Gateway unreachable'));
+
+			await expect(controller.getGatewayWallet(request)).rejects.toThrow(InternalServerError);
+		});
+	});
+
+	describe('updateUsageSettings', () => {
+		it('should reject turning sharing off and store nothing', async () => {
+			await expect(
+				controller.updateUsageSettings(request, response, {
+					allowSendingParameterValues: false,
+				}),
+			).rejects.toThrow(BadRequestError);
+
+			expect(aiUsageService.updateAiUsageSettings).not.toHaveBeenCalled();
+		});
+
+		it('should reject turning sharing on while the env var turns it off', async () => {
+			globalConfig.ai.allowSendingParameterValues = false;
+
+			const promise = controller.updateUsageSettings(request, response, {
+				allowSendingParameterValues: true,
+			});
+
+			await expect(promise).rejects.toThrow(BadRequestError);
+			await expect(promise).rejects.toThrow(/N8N_AI_ALLOW_SENDING_PARAMETER_VALUES/);
+
+			expect(aiUsageService.updateAiUsageSettings).not.toHaveBeenCalled();
+		});
+
+		it('should store the setting when turning sharing on', async () => {
+			await controller.updateUsageSettings(request, response, {
+				allowSendingParameterValues: true,
+			});
+
+			expect(aiUsageService.updateAiUsageSettings).toHaveBeenCalledWith(true);
+		});
+	});
+
+	describe('updateModelTrainingSettings', () => {
+		it.each([true, false])('should store allowModelTraining=%s', async (allowModelTraining) => {
+			await controller.updateModelTrainingSettings(request, response, { allowModelTraining });
+
+			expect(aiUsageService.updateModelTrainingSetting).toHaveBeenCalledWith(allowModelTraining);
 		});
 	});
 });

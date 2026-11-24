@@ -5,36 +5,30 @@ import { ProjectTypes, type Project } from '@/features/collaboration/projects/pr
 import { useI18n } from '@n8n/i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { VIEWS } from '@/app/constants';
-import type { UserAction, FolderResource } from '@/Interface';
+import type { FolderResource } from '@/Interface';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
-import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import type { PathItem } from '@n8n/design-system';
 import { useFoldersStore } from '../folders.store';
-import { type IUser } from 'n8n-workflow';
-import TimeAgo from '@/app/components/TimeAgo.vue';
+import FolderCardActions, { type FolderCardAction } from './FolderCardActions.vue';
+import FolderCardSubtitle from './FolderCardSubtitle.vue';
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
 
-import {
-	N8nActionToggle,
-	N8nBadge,
-	N8nBreadcrumbs,
-	N8nCard,
-	N8nHeading,
-	N8nIcon,
-	N8nText,
-} from '@n8n/design-system';
+import { N8nBadge, N8nBreadcrumbs, N8nCard, N8nHeading, N8nIcon } from '@n8n/design-system';
 
 type Props = {
 	data: FolderResource;
 	personalProject: Project | null;
-	actions?: Array<UserAction<IUser>>;
+	actions?: FolderCardAction[];
 	readOnly?: boolean;
 	showOwnershipBadge?: boolean;
+	showMcpAccessActions?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	actions: () => [],
 	readOnly: true,
 	showOwnershipBadge: false,
+	showMcpAccessActions: false,
 });
 
 const i18n = useI18n();
@@ -77,7 +71,7 @@ const cardBreadcrumbs = computed<PathItem[]>(() => {
 						projectId: props.data.homeProject?.id,
 						folderId: props.data.parentFolder.id,
 					},
-				}).href,
+				}).fullPath,
 			},
 		];
 	}
@@ -96,15 +90,17 @@ const getFolderUrl = (folderId: string) => {
 			folderId,
 		},
 		query: route.query,
-	}).href;
+	}).fullPath;
 };
 
 const onAction = async (action: string) => {
 	if (action === FOLDER_LIST_ITEM_ACTIONS.OPEN) {
 		emit('folderOpened', { folder: props.data });
 		await router.push(cardUrl.value);
+
 		return;
 	}
+
 	emit('action', { action, folderId: props.data.id });
 };
 
@@ -135,14 +131,13 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 <template>
 	<div data-test-id="folder-card">
 		<RouterLink :to="cardUrl" @click="() => emit('folderOpened', { folder: props.data })">
-			<N8nCard :class="$style.card">
+			<N8nCard :class="$style.card" hoverable>
 				<template #prepend>
 					<N8nIcon
 						data-test-id="folder-card-icon"
+						size="xlarge"
 						:class="$style['folder-icon']"
 						icon="folder"
-						size="xlarge"
-						:stroke-width="1"
 					/>
 				</template>
 				<template #header>
@@ -150,59 +145,24 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 						<N8nHeading tag="h2" bold size="small" data-test-id="folder-card-name">
 							{{ data.name }}
 						</N8nHeading>
-						<N8nBadge v-if="readOnly" class="ml-3xs" theme="tertiary" bold>
+						<N8nBadge v-if="readOnly" class="ml-3xs" variant="outline">
 							{{ i18n.baseText('workflows.item.readonly') }}
 						</N8nBadge>
 					</div>
 				</template>
 				<template #footer>
-					<div :class="$style['card-footer']">
-						<N8nText
-							v-if="data.workflowCount > 0"
-							size="small"
-							color="text-light"
-							:class="[$style['info-cell'], $style['info-cell--workflow-count']]"
-							data-test-id="folder-card-folder-count"
-						>
-							{{
-								i18n.baseText('generic.workflow', { interpolate: { count: data.workflowCount } })
-							}}
-						</N8nText>
-						<N8nText
-							v-if="data.subFolderCount > 0"
-							size="small"
-							color="text-light"
-							:class="[$style['info-cell'], $style['info-cell--workflow-count']]"
-							data-test-id="folder-card-workflow-count"
-						>
-							{{
-								i18n.baseText('generic.folderCount', {
-									interpolate: { count: data.subFolderCount },
-								})
-							}}
-						</N8nText>
-						<N8nText
-							size="small"
-							color="text-light"
-							:class="[$style['info-cell'], $style['info-cell--updated']]"
-							data-test-id="folder-card-last-updated"
-						>
-							{{ i18n.baseText('workerList.item.lastUpdated') }}
-							<TimeAgo :date="String(data.updatedAt)" />
-						</N8nText>
-						<N8nText
-							size="small"
-							color="text-light"
-							:class="[$style['info-cell'], $style['info-cell--created']]"
-							data-test-id="folder-card-created"
-						>
-							{{ i18n.baseText('workflows.item.created') }}
-							<TimeAgo :date="String(data.createdAt)" />
-						</N8nText>
-					</div>
+					<FolderCardSubtitle
+						:resource-count="data.workflowCount"
+						:resource-label="
+							i18n.baseText('generic.workflow', { interpolate: { count: data.workflowCount } })
+						"
+						:sub-folder-count="data.subFolderCount"
+						:updated-at="data.updatedAt"
+						:created-at="data.createdAt"
+					/>
 				</template>
 				<template #append>
-					<div :class="$style['card-actions']" @click.prevent>
+					<div :class="$style['card-actions']" @click.stop.prevent>
 						<div v-if="data.homeProject && showOwnershipBadge">
 							<ProjectCardBadge
 								:class="{
@@ -236,11 +196,10 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 								</div>
 							</ProjectCardBadge>
 						</div>
-						<N8nActionToggle
-							v-if="actions.length"
+						<FolderCardActions
+							:folder="data"
 							:actions="actions"
-							theme="dark"
-							data-test-id="folder-card-actions"
+							:show-mcp-access-actions="showMcpAccessActions"
 							@action="onAction"
 						/>
 					</div>
@@ -251,18 +210,9 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 </template>
 
 <style lang="scss" module>
-.card {
-	transition: box-shadow 0.3s ease;
-	cursor: pointer;
-
-	&:hover {
-		box-shadow: 0 2px 8px rgba(#441c17, 0.1);
-	}
-}
+@use '@n8n/design-system/css/mixins/breakpoints';
 
 .folder-icon {
-	width: var(--spacing--xl);
-	height: var(--spacing--xl);
 	flex-shrink: 0;
 	color: var(--color--text);
 	align-content: center;
@@ -275,19 +225,6 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 	justify-content: space-between;
 	padding-right: var(--spacing--xs);
 	margin-bottom: var(--spacing--5xs);
-}
-
-.card-footer {
-	display: flex;
-}
-
-.info-cell {
-	& + & {
-		&::before {
-			content: '|';
-			margin: 0 var(--spacing--4xs);
-		}
-	}
 }
 
 .cardBadge.with-breadcrumbs {
@@ -304,7 +241,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 	gap: var(--spacing--xs);
 }
 
-@include mixins.breakpoint('sm-and-down') {
+@include breakpoints.breakpoint('sm-and-down') {
 	.card {
 		flex-wrap: wrap;
 
@@ -317,9 +254,6 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 			width: 100%;
 			justify-content: space-between;
 		}
-	}
-	.info-cell--created {
-		display: none;
 	}
 }
 </style>

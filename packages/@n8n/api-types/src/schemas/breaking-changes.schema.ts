@@ -1,13 +1,86 @@
 import { z } from 'zod';
 
+import { projectTypeSchema } from './project.schema';
+
 // Enums
-export const breakingChangeRuleSeveritySchema = z.enum(['low', 'medium', 'critical']);
-export type BreakingChangeRuleSeverity = z.infer<typeof breakingChangeRuleSeveritySchema>;
+
+/**
+ * What happens if the user does not fix a breaking change before the update.
+ *
+ * - `upgradeBlocked`: the instance does not start, or the update cannot proceed.
+ * - `executionsFail`: affected executions error.
+ * - `executionsMightFail`: a default changes, so affected executions can error, depending on the
+ *   workload. The admin can keep the current value through configuration.
+ * - `behaviorChanges`: executions keep running, but with a different result.
+ * - `capabilityRemoved`: no runtime impact, a removed capability is no longer available.
+ */
+export const breakingChangeRuleImpactSchema = z.enum([
+	'executionsFail',
+	'executionsMightFail',
+	'behaviorChanges',
+	'capabilityRemoved',
+	'upgradeBlocked',
+]);
+export type BreakingChangeRuleImpact = z.infer<typeof breakingChangeRuleImpactSchema>;
+
+/** What n8n Assistant can do with a workflow rule's findings. See the breaking-changes module README. */
+export const breakingChangeAssistantActionSchema = z.enum(['fix', 'review', 'none']);
+export type BreakingChangeAssistantAction = z.infer<typeof breakingChangeAssistantActionSchema>;
 
 export const breakingChangeIssueLevelSchema = z.enum(['info', 'warning', 'error']);
 
-const breakingChangeVersionSchema = z.enum(['v2']);
+export const breakingChangeVersionSchema = z.enum(['v2', 'v3']);
 export type BreakingChangeVersion = z.infer<typeof breakingChangeVersionSchema>;
+
+/**
+ * Triage state of one migration finding (one workflow x one rule x one target version).
+ *
+ * - `open`: the scan found the issue and nobody acted on it yet.
+ * - `notified`: the owner received a notification about the finding.
+ * - `fixed`: the scan finds the issue in neither the draft nor the published version. A workflow with nothing published needs only a clean draft.
+ * - `fixed_unpublished`: the scan no longer detects the issue in the draft, but the fix is not published.
+ * - `wont_fix`: a user dismissed the finding.
+ */
+export const migrationFindingStatusSchema = z.enum([
+	'open',
+	'notified',
+	'fixed',
+	'fixed_unpublished',
+	'wont_fix',
+]);
+export type MigrationFindingStatus = z.infer<typeof migrationFindingStatusSchema>;
+
+/** The statuses a user can set on a finding. The scan sets the other statuses. */
+export const migrationFindingTriageStatusSchema = migrationFindingStatusSchema.extract([
+	'open',
+	'wont_fix',
+]);
+export type MigrationFindingTriageStatus = z.infer<typeof migrationFindingTriageStatusSchema>;
+
+/**
+ * The statuses the rule detail lists. A `notified` finding is still unresolved:
+ * only the notification sets it apart from `open`. A `fixed_unpublished` finding
+ * is unresolved too, because the published version still has the issue.
+ */
+export const migrationFindingListedStatusSchema = migrationFindingStatusSchema.extract([
+	'open',
+	'notified',
+	'fixed_unpublished',
+	'wont_fix',
+]);
+export type MigrationFindingListedStatus = z.infer<typeof migrationFindingListedStatusSchema>;
+
+/**
+ * The target n8n major version for the migration/breaking-changes report.
+ *
+ * Set this to a version (e.g. 'v2') to enable the migration report on both
+ * frontend (settings sidebar + page) and backend (controller + service).
+ * Set to `null` to disable it entirely on both sides.
+ *
+ * When a new major version is released, update this value and add the
+ * corresponding breaking-change rules on the backend.
+ */
+export const MIGRATION_REPORT_TARGET_VERSION: BreakingChangeVersion | null = 'v3';
 
 // Common schemas
 const recommendationSchema = z.object({
@@ -16,18 +89,38 @@ const recommendationSchema = z.object({
 });
 export type BreakingChangeRecommendation = z.infer<typeof recommendationSchema>;
 
-const instanceIssueSchema = z.object({
+export const breakingChangeInstanceIssueSchema = z.object({
 	title: z.string(),
 	description: z.string(),
 	level: breakingChangeIssueLevelSchema,
 });
-export type BreakingChangeInstanceIssue = z.infer<typeof instanceIssueSchema>;
+export type BreakingChangeInstanceIssue = z.infer<typeof breakingChangeInstanceIssueSchema>;
 
-const workflowIssueSchema = instanceIssueSchema.extend({
+export const breakingChangeWorkflowIssueSchema = breakingChangeInstanceIssueSchema.extend({
 	nodeId: z.string().optional(),
 	nodeName: z.string().optional(),
 });
-export type BreakingChangeWorkflowIssue = z.infer<typeof workflowIssueSchema>;
+export type BreakingChangeWorkflowIssue = z.infer<typeof breakingChangeWorkflowIssueSchema>;
+
+/** `suggested` by the owner heuristic, or `assigned` by a person. */
+export const migrationOwnerSourceSchema = z.enum(['suggested', 'assigned']);
+export type MigrationOwnerSource = z.infer<typeof migrationOwnerSourceSchema>;
+
+/** The user responsible for fixing a workflow's findings. The name and email columns of a user are nullable. */
+const workflowOwnerSchema = z.object({
+	id: z.string(),
+	firstName: z.string().nullable(),
+	lastName: z.string().nullable(),
+	email: z.string().nullable(),
+	source: migrationOwnerSourceSchema,
+});
+export type BreakingChangeWorkflowOwner = z.infer<typeof workflowOwnerSchema>;
+
+/** The owner of a workflow after a change to it. `null` when nobody owns it. */
+export type MigrationWorkflowOwnerResponse = { owner: BreakingChangeWorkflowOwner | null };
+
+/** A user who can read the workflow, so they can be its owner. */
+export type MigrationOwnerCandidate = Omit<BreakingChangeWorkflowOwner, 'source'>;
 
 const affectedWorkflowSchema = z.object({
 	id: z.string(),
@@ -36,7 +129,13 @@ const affectedWorkflowSchema = z.object({
 	numberOfExecutions: z.number(),
 	lastUpdatedAt: z.date(),
 	lastExecutedAt: z.date().optional(),
-	issues: z.array(workflowIssueSchema),
+	issues: z.array(breakingChangeWorkflowIssueSchema),
+	// Absent when no owner is known for the workflow.
+	owner: workflowOwnerSchema.optional(),
+	// The project that owns the workflow, so an owner picker can list its members.
+	homeProjectId: z.string().optional(),
+	homeProjectName: z.string().optional(),
+	homeProjectType: projectTypeSchema.optional(),
 });
 export type BreakingChangeAffectedWorkflow = z.infer<typeof affectedWorkflowSchema>;
 
@@ -44,13 +143,16 @@ const ruleResultBaseSchema = z.object({
 	ruleId: z.string(),
 	ruleTitle: z.string(),
 	ruleDescription: z.string(),
-	ruleSeverity: breakingChangeRuleSeveritySchema,
+	ruleImpact: breakingChangeRuleImpactSchema,
 	ruleDocumentationUrl: z.string().optional(),
 	recommendations: z.array(recommendationSchema),
+	// True when an automated migration is registered for this rule, so the UI
+	// can offer a "Migrate" action instead of prose-only advice.
+	migratable: z.boolean(),
 });
 
 const instanceRuleResultsSchema = ruleResultBaseSchema.extend({
-	instanceIssues: z.array(instanceIssueSchema),
+	instanceIssues: z.array(breakingChangeInstanceIssueSchema),
 });
 export type BreakingChangeInstanceRuleResult = z.infer<typeof instanceRuleResultsSchema>;
 
@@ -58,6 +160,22 @@ const workflowRuleResultsSchema = ruleResultBaseSchema.extend({
 	affectedWorkflows: z.array(affectedWorkflowSchema),
 });
 export type BreakingChangeWorkflowRuleResult = z.infer<typeof workflowRuleResultsSchema>;
+
+// The rule detail lists each workflow with the status of its finding.
+const ruleDetailWorkflowSchema = affectedWorkflowSchema.extend({
+	status: migrationFindingListedStatusSchema,
+	// The report hides archived workflows unless the user includes them.
+	isArchived: z.boolean(),
+	// When the owner was last notified about the finding. Absent until the first notification.
+	notifiedAt: z.date().optional(),
+});
+export type BreakingChangeRuleDetailWorkflow = z.infer<typeof ruleDetailWorkflowSchema>;
+
+const ruleDetailResultSchema = workflowRuleResultsSchema.extend({
+	affectedWorkflows: z.array(ruleDetailWorkflowSchema),
+	assistantAction: breakingChangeAssistantActionSchema,
+});
+export type BreakingChangeRuleDetailResult = z.infer<typeof ruleDetailResultSchema>;
 
 const breakingChangeReportDataSchema = {
 	generatedAt: z.date(),
@@ -70,13 +188,17 @@ const breakingChangeReportDataSchema = {
 const breakingChangeReportSchema = z.object(breakingChangeReportDataSchema).strict();
 
 const breakingChangeLightReportDataSchema = {
-	generatedAt: z.date(),
+	// Absent until the first sync of the target version completes.
+	generatedAt: z.date().optional(),
 	targetVersion: z.string(),
 	currentVersion: z.string(),
 	instanceResults: z.array(instanceRuleResultsSchema),
 	workflowResults: z.array(
 		workflowRuleResultsSchema.omit({ affectedWorkflows: true }).extend({
+			// Workflows with an open or notified finding for the rule.
 			nbAffectedWorkflows: z.number(),
+			// Workflows with a won't fix finding for the rule.
+			nbWontFixWorkflows: z.number(),
 		}),
 	),
 } as const;
@@ -93,8 +215,48 @@ export type BreakingChangeReportResult = z.infer<typeof breakingChangeReportResu
 const breakingChangeLightReportResultDataSchema = z.object({
 	report: breakingChangeLightReportSchema,
 	totalWorkflows: z.number(),
+	// Distinct workflows affected by at least one rule. Summing per-rule
+	// nbAffectedWorkflows counts a workflow once for each rule it breaks.
+	totalAffectedWorkflows: z.number(),
 	shouldCache: z.boolean(),
 });
 export type BreakingChangeLightReportResult = z.infer<
 	typeof breakingChangeLightReportResultDataSchema
 >;
+
+// Result of applying an automated node migration to a single workflow.
+const workflowMigrationResultSchema = z.object({
+	workflowId: z.string(),
+	// versionId of the new workflow version created by the migration.
+	newVersionId: z.string(),
+	// Ids of the nodes that were rewritten.
+	migratedNodeIds: z.array(z.string()),
+	// Parameters that could not be carried over (empty for lossless migrations).
+	unmapped: z.array(z.string()),
+	// Behavior/output changes the user should be aware of.
+	notes: z.array(z.string()),
+	// True when the migration can be published in one click: it was lossless (no
+	// unmapped/notes), the migrated version was the one currently published, and
+	// the result still validates for activation (real trigger, no node errors).
+	republishable: z.boolean(),
+});
+export type WorkflowMigrationResult = z.infer<typeof workflowMigrationResultSchema>;
+
+/**
+ * Why a workflow was left out of a notification: it has no owner with an email,
+ * its finding is no longer open, the email could not be sent, or its owner was
+ * notified less than a minute ago.
+ */
+export const migrationNotifySkipReasonSchema = z.enum([
+	'no_owner',
+	'no_finding',
+	'send_failed',
+	'recently_notified',
+]);
+export type MigrationNotifySkipReason = z.infer<typeof migrationNotifySkipReasonSchema>;
+
+/** The outcome of notifying the owners of the findings of one rule. */
+export type MigrationNotifyResult = {
+	notifiedWorkflowIds: string[];
+	skipped: Array<{ workflowId: string; reason: MigrationNotifySkipReason }>;
+};

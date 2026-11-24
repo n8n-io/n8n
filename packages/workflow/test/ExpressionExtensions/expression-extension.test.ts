@@ -5,6 +5,8 @@
 import { evaluate, evaluateParam } from './helpers';
 import { ExpressionExtensionError } from '../../src/errors/expression-extension.error';
 import { extendTransform, extend, hasArrayWildcardSyntax } from '../../src/extensions';
+import { extendedFunctions } from '../../src/extensions/extended-functions';
+import { extendSyntax } from '../../src/extensions/expression-extension';
 import { joinExpression, splitExpression } from '../../src/extensions/expression-parser';
 
 describe('Expression Extension Transforms', () => {
@@ -69,6 +71,17 @@ describe('Expression Parser', () => {
 				{ type: 'code', text: ' code.test("}}") ', hasClosingBrackets: true },
 			]);
 		});
+
+		test('Multiple escaped closing brackets', () => {
+			expect(splitExpression('{{ [{ a: { b: 1 \\}}, { a: { b: 2 \\}}] }}')).toEqual([
+				{ type: 'text', text: '' },
+				{ type: 'code', text: ' [{ a: { b: 1 }}, { a: { b: 2 }}] ', hasClosingBrackets: true },
+			]);
+		});
+
+		test('Empty input (CAT-3075)', () => {
+			expect(splitExpression('')).toEqual([{ type: 'text', text: '' }]);
+		});
 	});
 
 	describe('Compatible joining', () => {
@@ -100,6 +113,15 @@ describe('Expression Parser', () => {
 			expect(joinExpression(splitExpression('test {{ code.test("\\}}") }}'))).toEqual(
 				'test {{ code.test("\\}}") }}',
 			);
+		});
+
+		test('Multiple escaped closing brackets', () => {
+			expect(
+				joinExpression([
+					{ type: 'text', text: '' },
+					{ type: 'code', text: ' [{ a: { b: 1 }}, { a: { b: 2 }}] ', hasClosingBrackets: true },
+				]),
+			).toEqual('{{ [{ a: { b: 1 \\}}, { a: { b: 2 \\}}] }}');
 		});
 	});
 
@@ -155,16 +177,43 @@ describe('Expression Parser', () => {
 		});
 
 		test('Multiple optional chains in an expression', () => {
-			expect(extendTransform('$json.test?.test2($json.test?.test2)')?.code).toBe(`window.chainCancelToken2 = ((window.chainValue2 = $json.test) ?? undefined) === undefined, window.chainCancelToken2 === true ? undefined : window.chainValue2.test2(
+			expect(extendTransform('$json.test?.test2($json.test?.test2)')?.code)
+				.toBe(`window.chainCancelToken2 = ((window.chainValue2 = $json.test) ?? undefined) === undefined, window.chainCancelToken2 === true ? undefined : window.chainValue2.test2(
   (window.chainCancelToken1 = ((window.chainValue1 = $json.test) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainValue1.test2)
 );`);
 
-			expect(extendTransform('$json.test?.test2($json.test.sum?.())')?.code).toBe(`window.chainCancelToken2 = ((window.chainValue2 = $json.test) ?? undefined) === undefined, window.chainCancelToken2 === true ? undefined : window.chainValue2.test2(
+			expect(extendTransform('$json.test?.test2($json.test.sum?.())')?.code)
+				.toBe(`window.chainCancelToken2 = ((window.chainValue2 = $json.test) ?? undefined) === undefined, window.chainCancelToken2 === true ? undefined : window.chainValue2.test2(
   (window.chainCancelToken1 = ((window.chainValue1 = extendOptional($json.test, "sum")) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainValue1())
 );`);
 		});
 
-		expect(evaluate('={{ [1, 2, 3, 4]?.sum((undefined)?.test) }}')).toBe(10);
+		test('Optional chaining with undefined argument', () => {
+			expect(evaluate('={{ [1, 2, 3, 4]?.sum((undefined)?.test) }}')).toBe(10);
+		});
+
+		describe('Nullish coalescing with an && or || operand next to an optional chain', () => {
+			test.each([
+				['$json.a?.[0] ?? ($json.a.last() && 1)', { a: [5, 6] }, 5],
+				['$json.a?.[0] ?? ($json.a.last() && 1)', { a: [null, 6] }, 1],
+				['$json.a?.[0] ?? ($json.a.last() || 1)', { a: [null, 0] }, 1],
+				['($json.a.last() && 1) ?? $json.a?.[0]', { a: [5, 6] }, 1],
+				['($json.a?.[0] || $json.b) ?? $json.a.last()', { a: [0, 6], b: null }, 6],
+				['$json.a?.[0] ?? ($json.b && ($json.c || $json.a.last()))', { a: [null, 6], b: 1 }, 6],
+			])('should keep the parentheses around the operand of "??" in %s', (code, data, result) => {
+				expect(extendTransform(code)?.code).toBeDefined();
+				expect(evaluate(`={{ ${code} }}`, [data])).toBe(result);
+			});
+
+			test('should print the parentheses once', () => {
+				expect(extendTransform('$json.a?.[0] ?? ($json.a.last() && 1)')?.code).toBe(
+					'(window.chainCancelToken1 = ((window.chainValue1 = $json.a) ?? undefined) === undefined, window.chainCancelToken1 === true ? undefined : window.chainValue1[0]) ?? (extend($json.a, "last", []) && 1)',
+				);
+				expect(extendTransform('1 ?? ($json.a.last() && 2)')?.code).toBe(
+					'1 ?? (extend($json.a, "last", []) && 2)',
+				);
+			});
+		});
 	});
 
 	describe('Non dot extensions', () => {
@@ -198,21 +247,59 @@ describe('Expression Parser', () => {
 			});
 		});
 
+		test('zip should reject non-array keys', () => {
+			expect(() =>
+				evaluate(
+					'={{ (function(){ obj = { length: 1, reduce: (fn) => fn({}, "a", "constructor") }; return zip(obj, Object); })() }}',
+				),
+			).toThrow('keys and values must be arrays');
+		});
+
+		test('zip should reject non-array values', () => {
+			expect(() =>
+				evaluate(
+					'={{ (function(){ arr = ["a"]; arr.reduce = (fn) => fn({}, "a", "constructor"); return zip(arr, Object); })() }}',
+				),
+			).toThrow('keys and values must be arrays');
+		});
+
+		test('zip should ignore overridden reduce on array instances', () => {
+			// Even if an attacker overrides .reduce on an array, we use Array.prototype.reduce
+			expect(
+				evaluate(
+					'={{ (function(){ keys = ["a"]; keys.reduce = () => "not a"; return zip(keys, [1]); })() }}',
+				),
+			).toEqual({ a: 1 });
+		});
+
+		test('zip should treat a key named __proto__ as an ordinary field', () => {
+			const result = extendedFunctions.zip(['__proto__'], [{ marker: 'set' }]) as Record<
+				string,
+				unknown
+			>;
+
+			expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
+			expect(Object.prototype.hasOwnProperty.call(result, '__proto__')).toBe(true);
+			expect(({} as Record<string, unknown>).marker).toBeUndefined();
+		});
+
 		test('$if', () => {
 			expect(evaluate('={{ $if("a"==="a", 1, 2) }}')).toEqual(1);
 			expect(evaluate('={{ $if("a"==="b", 1, 2) }}')).toEqual(2);
 			expect(evaluate('={{ $if("a"==="a", 1) }}')).toEqual(1);
 			expect(evaluate('={{ $if("a"==="b", 1) }}')).toEqual(false);
+			expect(evaluate('={{ $if("a"==="a", 1, 2) }}')).toEqual(1);
+			expect(evaluate('={{ $if("a"==="b", 1, 2) }}')).toEqual(2);
 
-			// This will likely break when sandboxing is implemented but it works for now.
-			// If you're implementing sandboxing maybe provide a way to add functions to
-			// sandbox we can check instead?
-			const mockCallback = vi.fn(() => false);
-			evaluate('={{ $if("a"==="a", true, $data.cb()) }}', [{ cb: mockCallback }]);
-			expect(mockCallback.mock.calls.length).toEqual(0);
-
-			evaluate('={{ $if("a"==="b", true, $data.cb()) }}', [{ cb: mockCallback }]);
-			expect(mockCallback.mock.calls.length).toEqual(1);
+			// Short-circuit: $if is AST-rewritten to a JS ternary, so the
+			// unselected branch is not evaluated. Probe with a throwing IIFE
+			// in the else position — the throw is swallowed by the
+			// evaluator's E() handler, but a non-undefined result for the
+			// true case proves the IIFE didn't run, and the undefined
+			// result for the false case proves it did.
+			const throwingExpr = "(function(){ throw new Error('side effect'); })()";
+			expect(evaluate(`={{ $if(true, 1, ${throwingExpr}) }}`)).toEqual(1);
+			expect(evaluate(`={{ $if(false, 1, ${throwingExpr}) }}`)).toBeUndefined();
 		});
 
 		test('$not', () => {
@@ -281,30 +368,48 @@ describe('Expression Parser', () => {
 
 		describe('extendTransform for [*] syntax', () => {
 			test('transforms simple [*] access to $jmesPath', () => {
-				expect(extendTransform('items[*].name')?.code).toBe('$jmesPath(items, "[*].name")');
+				expect(extendTransform('items[*].name')?.code).toBe(
+					'$jmesPath(items, "map(&\\"name\\", [*] || `[]`)")',
+				);
 			});
 
 			test('transforms $json prefixed [*] access', () => {
 				expect(extendTransform('$json.items[*].title')?.code).toBe(
-					'$jmesPath($json.items, "[*].title")',
+					'$jmesPath($json.items, "map(&\\"title\\", [*] || `[]`)")',
 				);
 			});
 
 			test('transforms nested path after [*]', () => {
 				expect(extendTransform('$json.orders[*].customer.name')?.code).toBe(
-					'$jmesPath($json.orders, "[*].customer.name")',
+					'$jmesPath($json.orders, "map(&\\"customer\\".\\"name\\", [*] || `[]`)")',
 				);
 			});
 
 			test('transforms deeply nested path after [*]', () => {
 				expect(extendTransform('data[*].address.city.zipCode')?.code).toBe(
-					'$jmesPath(data, "[*].address.city.zipCode")',
+					'$jmesPath(data, "map(&\\"address\\".\\"city\\".\\"zipCode\\", [*] || `[]`)")',
 				);
 			});
 
-			test('transforms with computed property access after [*]', () => {
+			test('quotes computed property names after [*]', () => {
 				expect(extendTransform('items[*]["field-name"]')?.code).toBe(
-					'$jmesPath(items, "[*].field-name")',
+					'$jmesPath(items, "map(&\\"field-name\\", [*] || `[]`)")',
+				);
+			});
+
+			test('transforms a trailing [*] with no path after it', () => {
+				expect(extendTransform('$json.orders[*]')?.code).toBe('$jmesPath($json.orders, "[*]")');
+			});
+
+			test('leaves [*] inside string literals unchanged', () => {
+				expect(hasArrayWildcardSyntax('"prefix" + "[*]"')).toBe(false);
+				expect(hasArrayWildcardSyntax("$json['[*]']")).toBe(false);
+				expect(hasArrayWildcardSyntax('$json.items[*].name + "[*]"')).toBe(true);
+			});
+
+			test('runs a method called after the path on the resulting array', () => {
+				expect(extendTransform("items[*].name.join(', ')")?.code).toBe(
+					'$jmesPath(items, "map(&\\"name\\", [*] || `[]`)").join(\', \')',
 				);
 			});
 		});
@@ -332,10 +437,32 @@ describe('Expression Parser', () => {
 				expect(evaluate('={{ $json.items[*].name }}', data)).toEqual([]);
 			});
 
-			test('filters out items with missing fields (JMESPath behavior)', () => {
+			test('keeps null for items without the field', () => {
 				// JMESPath filters out items that don't have the requested field
 				const data = [{ items: [{ name: 'Alice' }, { other: 'value' }, { name: 'Charlie' }] }];
-				expect(evaluate('={{ $json.items[*].name }}', data)).toEqual(['Alice', 'Charlie']);
+				expect(evaluate('={{ $json.items[*].name }}', data)).toEqual(['Alice', null, 'Charlie']);
+			});
+
+			test('returns the array itself for a trailing [*]', () => {
+				const data = [{ items: [{ name: 'Alice' }, { name: 'Bob' }] }];
+				expect(evaluate('={{ $json.items[*] }}', data)).toEqual([
+					{ name: 'Alice' },
+					{ name: 'Bob' },
+				]);
+			});
+
+			test('runs array methods on the result', () => {
+				const data = [{ items: [{ name: 'Alice' }, { name: 'Bob' }] }];
+				expect(evaluate("={{ $json.items[*].name.join(', ') }}", data)).toBe('Alice, Bob');
+			});
+
+			test('selects quoted field names', () => {
+				const data = [{ items: [{ 'field-name': 'a' }, { 'field-name': 'b' }] }];
+				expect(evaluate('={{ $json.items[*]["field-name"] }}', data)).toEqual(['a', 'b']);
+			});
+
+			test('keeps [*] inside a string literal as text', () => {
+				expect(evaluate('={{ "prefix" + "[*]" }}', [{}])).toBe('prefix[*]');
 			});
 		});
 
@@ -420,13 +547,32 @@ describe('Expression Parser', () => {
 
 				const result = evaluateParam(paramValue, data);
 
-				// JMESPath filters out items without the requested field,
-				// so we get 3 names but only 2 prices
+				// An item without the field gets null, so values stay on their own row
 				expect(result).toEqual({
 					lineItemValues: [
 						{ productName: 'A', amount: 10 },
 						{ productName: 'B', amount: 20 },
-						{ productName: 'C', amount: undefined },
+						{ productName: 'C', amount: null },
+					],
+				});
+			});
+
+			test('keeps sibling arrays that do not use [*] unchanged', () => {
+				const data = [{ items: [{ name: 'A' }, { name: 'B' }], tags: ['x', 'y', 'z'] }];
+
+				const result = evaluateParam(
+					{
+						lineItemValues: [
+							{ productName: '={{ $json.items[*].name }}', tags: '={{ $json.tags }}' },
+						],
+					},
+					data,
+				);
+
+				expect(result).toEqual({
+					lineItemValues: [
+						{ productName: 'A', tags: ['x', 'y', 'z'] },
+						{ productName: 'B', tags: ['x', 'y', 'z'] },
 					],
 				});
 			});
@@ -512,4 +658,14 @@ describe('Expression Parser', () => {
 			});
 		});
 	});
+});
+
+describe('extendSyntax', () => {
+	test.each(['toString', 'constructor'])(
+		'should return the bracketed text %s unchanged, both uncached and cached',
+		(bracketedExpression) => {
+			expect(extendSyntax(bracketedExpression, true)).toBe(bracketedExpression);
+			expect(extendSyntax(bracketedExpression, true)).toBe(bracketedExpression);
+		},
+	);
 });

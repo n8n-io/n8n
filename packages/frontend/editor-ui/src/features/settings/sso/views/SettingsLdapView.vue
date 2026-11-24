@@ -3,7 +3,7 @@ import type { CSSProperties } from 'vue';
 import { computed, onMounted, ref } from 'vue';
 import { capitalizeFirstLetter } from '@/app/utils/htmlUtils';
 import { convertToDisplayDate } from '@/app/utils/typesUtils';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import type { IFormInput, IFormInputs } from '@/Interface';
@@ -13,15 +13,22 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import humanizeDuration from 'humanize-duration';
 import type { Events } from 'v3-infinite-loading';
 import InfiniteLoading from 'v3-infinite-loading';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { createFormEventBus } from '@n8n/design-system/utils';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { createFormEventBus } from '@n8n/design-system';
 import type { TableColumnCtx } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useSSOStore } from '../sso.store';
 
 import { ElTable, ElTableColumn } from 'element-plus';
-import { N8nActionBox, N8nButton, N8nFormInputs, N8nHeading, N8nInfoTip } from '@n8n/design-system';
+import {
+	N8nEmptyState,
+	N8nButton,
+	N8nFormInputs,
+	N8nHeading,
+	N8nInfoTip,
+} from '@n8n/design-system';
+import AuthenticationBackLink from '../components/AuthenticationBackLink.vue';
 type TableRow = {
 	status: string;
 	startAt: string;
@@ -52,6 +59,7 @@ type LDAPConfigForm = {
 	pageSize: string;
 	searchTimeout: string;
 	enforceEmailUniqueness: boolean;
+	linkExistingAccountsByEmail: boolean;
 };
 
 type CellClassStyleMethodParams<T> = {
@@ -169,6 +177,7 @@ const onSubmit = async () => {
 		searchPageSize: +formValues.pageSize,
 		searchTimeout: +formValues.searchTimeout,
 		enforceEmailUniqueness: formValues.enforceEmailUniqueness,
+		linkExistingAccountsByEmail: formValues.linkExistingAccountsByEmail,
 	};
 
 	let saveForm = true;
@@ -561,13 +570,24 @@ const getLdapConfig = async () => {
 				},
 				shouldDisplay: whenLoginEnabled,
 			},
+			{
+				name: 'linkExistingAccountsByEmail',
+				initialValue: adConfig.value.linkExistingAccountsByEmail,
+				properties: {
+					type: 'toggle',
+					label: i18n.baseText('settings.ldap.form.linkExistingAccountsByEmail.label'),
+					tooltipText: i18n.baseText('settings.ldap.form.linkExistingAccountsByEmail.tooltip'),
+					required: false,
+				},
+				shouldDisplay: whenLoginEnabled,
+			},
 		];
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.ldap.configurationError'));
 	}
 };
 
-const getLdapSynchronizations = async (state: Parameters<Events['infinite']>[0]) => {
+const loadSyncPage = async (): Promise<boolean> => {
 	try {
 		loadingTable.value = true;
 		const data = await ssoStore.getLdapSynchronizations({
@@ -577,13 +597,23 @@ const getLdapSynchronizations = async (state: Parameters<Events['infinite']>[0])
 		if (data.length !== 0) {
 			dataTable.value.push(...data.map(syncDataMapper));
 			page.value += 1;
-			state.loaded();
-		} else {
-			state.complete();
+			return true;
 		}
-		loadingTable.value = false;
+		return false;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.ldap.synchronizationError'));
+		return false;
+	} finally {
+		loadingTable.value = false;
+	}
+};
+
+const getLdapSynchronizations = async (state: Parameters<Events['infinite']>[0]) => {
+	const hasData = await loadSyncPage();
+	if (hasData) {
+		state.loaded();
+	} else {
+		state.complete();
 	}
 };
 
@@ -592,6 +622,8 @@ const reloadLdapSynchronizations = async () => {
 		page.value = 0;
 		tableKey.value += 1;
 		dataTable.value = [];
+		// Reload the first page of data
+		await loadSyncPage();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.ldap.synchronizationError'));
 	}
@@ -601,11 +633,16 @@ onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.ldap'));
 	if (!isLDAPFeatureEnabled.value) return;
 	await getLdapConfig();
+	// Load initial sync data if login is enabled
+	if (loginEnabled.value) {
+		await loadSyncPage();
+	}
 });
 </script>
 
 <template>
 	<div v-if="!isLDAPFeatureEnabled">
+		<AuthenticationBackLink />
 		<div :class="[$style.header, 'mb-2xl']">
 			<N8nHeading size="2xlarge">
 				{{ i18n.baseText('settings.ldap') }}
@@ -615,7 +652,7 @@ onMounted(async () => {
 		<N8nInfoTip type="note" theme="info" tooltip-placement="right" class="mb-l">
 			{{ i18n.baseText('settings.ldap.note') }}
 		</N8nInfoTip>
-		<N8nActionBox
+		<N8nEmptyState
 			:description="i18n.baseText('settings.ldap.disabled.description')"
 			:button-text="i18n.baseText('settings.ldap.disabled.buttonText')"
 			@click:button="goToUpgrade"
@@ -623,9 +660,10 @@ onMounted(async () => {
 			<template #heading>
 				<span>{{ i18n.baseText('settings.ldap.disabled.title') }}</span>
 			</template>
-		</N8nActionBox>
+		</N8nEmptyState>
 	</div>
 	<div v-else>
+		<AuthenticationBackLink />
 		<div :class="$style.container">
 			<div :class="$style.header">
 				<N8nHeading size="2xlarge">
@@ -650,7 +688,7 @@ onMounted(async () => {
 					@submit="onSubmit"
 				/>
 			</div>
-			<div>
+			<div :class="$style.buttonContainer">
 				<N8nButton
 					v-if="loginEnabled"
 					:label="
@@ -716,10 +754,10 @@ onMounted(async () => {
 					</template>
 				</ElTable>
 			</div>
-			<div class="pb-3xl">
+			<div :class="['pb-3xl', $style.buttonContainer]">
 				<N8nButton
+					variant="outline"
 					:label="i18n.baseText('settings.ldap.dryRun')"
-					type="secondary"
 					size="large"
 					class="mr-s"
 					:disabled="hasAnyChanges || !readyToSubmit"
@@ -764,7 +802,7 @@ onMounted(async () => {
 
 	> span {
 		font-size: var(--font-size--sm);
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 		padding: 0;
 	}
 
@@ -788,5 +826,11 @@ onMounted(async () => {
 	& > div {
 		margin-bottom: var(--spacing--xl);
 	}
+}
+
+.buttonContainer {
+	display: flex;
+	align-items: center;
+	justify-content: start;
 }
 </style>

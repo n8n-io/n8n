@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import z from 'zod';
 
 import { CliParser } from '../cli-parser';

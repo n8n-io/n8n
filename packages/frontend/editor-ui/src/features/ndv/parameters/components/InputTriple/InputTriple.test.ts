@@ -9,7 +9,7 @@ describe('InputTriple.vue', () => {
 	});
 
 	it('renders layout correctly', async () => {
-		const { container } = renderComponent({
+		const { getByText } = renderComponent({
 			props: { middleWidth: '200px' },
 			slots: {
 				left: '<div>left</div>',
@@ -18,13 +18,17 @@ describe('InputTriple.vue', () => {
 			},
 		});
 
-		expect(container.querySelector('.triple')).toBeInTheDocument();
-		expect(container.querySelectorAll('.item')).toHaveLength(3);
-		expect(container.querySelector('.middle')).toHaveStyle('flex-basis: 200px');
+		expect(getByText('left')).toBeInTheDocument();
+		expect(getByText('middle')).toBeInTheDocument();
+		expect(getByText('right')).toBeInTheDocument();
+
+		// Check that middle slot has custom width via inline style
+		const middleSlot = getByText('middle').parentElement;
+		expect(middleSlot).toHaveStyle('flex-basis: 200px');
 	});
 
 	it('does not render missing slots', async () => {
-		const { container } = renderComponent({
+		const { getByText, queryByText } = renderComponent({
 			props: { middleWidth: '200px' },
 			slots: {
 				left: '<div>left</div>',
@@ -32,7 +36,8 @@ describe('InputTriple.vue', () => {
 			},
 		});
 
-		expect(container.querySelector('.triple')).toBeInTheDocument();
-		expect(container.querySelectorAll('.item')).toHaveLength(2);
+		expect(getByText('left')).toBeInTheDocument();
+		expect(getByText('middle')).toBeInTheDocument();
+		expect(queryByText('right')).not.toBeInTheDocument();
 	});
 });

@@ -11,7 +11,7 @@ export const versionDescription: INodeTypeDescription = {
 	group: ['transform'],
 	version: 1,
 	subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
-	description: 'Interact with Ollama AI models',
+	description: 'Message local models and analyze images with Ollama',
 	defaults: {
 		name: 'Ollama',
 	},

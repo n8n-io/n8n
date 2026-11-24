@@ -11,13 +11,15 @@ import type {
 	IN8nHttpFullResponse,
 	INodeExecutionData,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function gongApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	query: IDataObject = {},
 ) {
@@ -27,9 +29,9 @@ export async function gongApiRequest(
 		baseUrl: string;
 	}>(credentialsType);
 
-	const options: IHttpRequestOptions = {
+	const options: WithRequestTarget<IHttpRequestOptions> = {
 		method,
-		url: baseUrl.replace(new RegExp('/$'), '') + endpoint,
+		url: requestUrl`${baseUrl.replace(new RegExp('/$'), '')}${endpoint}`,
 		json: true,
 		headers: {
 			'Content-Type': 'application/json',
@@ -48,7 +50,7 @@ export async function gongApiRequest(
 export async function gongApiPaginateRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	query: IDataObject = {},
 	itemIndex: number = 0,
@@ -60,9 +62,9 @@ export async function gongApiPaginateRequest(
 		baseUrl: string;
 	}>(credentialsType);
 
-	const options: IHttpRequestOptions = {
+	const options: WithRequestTarget<IHttpRequestOptions> = {
 		method,
-		url: baseUrl.replace(new RegExp('/$'), '') + endpoint,
+		url: requestUrl`${baseUrl.replace(new RegExp('/$'), '')}${endpoint}`,
 		json: true,
 		headers: {
 			'Content-Type': 'application/json',
@@ -85,7 +87,7 @@ export async function gongApiPaginateRequest(
 			request: {
 				[method === 'POST' ? 'body' : 'qs']:
 					'={{ $if($response.body?.records.cursor, { cursor: $response.body.records.cursor }, {}) }}',
-				url: options.url,
+				url: String(options.url),
 			},
 		},
 		credentialsType,

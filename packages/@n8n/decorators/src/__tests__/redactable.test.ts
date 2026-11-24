@@ -1,4 +1,4 @@
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { Redactable, RedactableError } from '../redactable';
 
@@ -200,7 +200,7 @@ describe('Redactable Decorator', () => {
 		});
 
 		it('should correctly apply the original method', () => {
-			const spy = jest.spyOn(instance, 'methodWithUser');
+			const spy = vi.spyOn(instance, 'methodWithUser');
 
 			const input = {
 				user: {

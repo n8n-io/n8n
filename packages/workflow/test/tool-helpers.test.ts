@@ -61,6 +61,41 @@ describe('nodeNameToToolName', () => {
 		expect(nodeNameToToolName(getNodeWithName('Test 👨‍💻 Node 🔥'))).toBe('Test_Node_');
 	});
 
+	describe('truncation to 64 characters', () => {
+		it('should not truncate names that are exactly 64 characters', () => {
+			const name = 'a'.repeat(64);
+			expect(nodeNameToToolName(name)).toBe(name);
+			expect(nodeNameToToolName(name)).toHaveLength(64);
+		});
+
+		it('should truncate names longer than 64 characters', () => {
+			const name = 'a'.repeat(100);
+			expect(nodeNameToToolName(name)).toBe('a'.repeat(64));
+			expect(nodeNameToToolName(name)).toHaveLength(64);
+		});
+
+		it('should truncate the firecrawl-like name from the bug report', () => {
+			const name = 'Scrape a URL and get content as markdown or other formats in Firecrawl';
+			const result = nodeNameToToolName(name);
+			expect(result.length).toBeLessThanOrEqual(64);
+		});
+
+		it('should remove trailing underscores after truncation', () => {
+			// 63 chars of 'a' + space (becomes underscore at position 64) + more text
+			const name = 'a'.repeat(63) + ' more text';
+			const result = nodeNameToToolName(name);
+			expect(result).toBe('a'.repeat(63));
+			expect(result.length).toBeLessThanOrEqual(64);
+		});
+
+		it('should remove trailing hyphens after truncation', () => {
+			const name = 'a'.repeat(63) + '-more text';
+			const result = nodeNameToToolName(name);
+			expect(result.length).toBeLessThanOrEqual(64);
+			expect(result).not.toMatch(/[-_]$/);
+		});
+	});
+
 	describe('when passed a string directly', () => {
 		it('should replace spaces with underscores', () => {
 			expect(nodeNameToToolName('Test Node')).toBe('Test_Node');
@@ -82,6 +117,22 @@ describe('nodeNameToToolName', () => {
 
 		it('should replace various special characters with underscores', () => {
 			expect(nodeNameToToolName('Test#+*()[]{}:;,<>/\\\'"%$Node')).toBe('Test_Node');
+		});
+	});
+
+	describe('truncation must not produce an empty name', () => {
+		it('should keep a non-empty name when truncation leaves only hyphens', () => {
+			const name = '-'.repeat(64) + 'Suffix';
+			expect(nodeNameToToolName(name)).toBe('-'.repeat(64));
+		});
+
+		it('should keep a non-empty name when truncation leaves only underscores', () => {
+			const name = '_'.repeat(64) + 'Suffix';
+			expect(nodeNameToToolName(name)).toBe('_'.repeat(64));
+		});
+
+		it('should still trim trailing separators for ordinary long names', () => {
+			expect(nodeNameToToolName('a'.repeat(63) + ' more text')).toBe('a'.repeat(63));
 		});
 	});
 });

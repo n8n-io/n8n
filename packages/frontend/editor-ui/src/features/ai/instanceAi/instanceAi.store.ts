@@ -1,0 +1,461 @@
+import { defineStore } from 'pinia';
+import {
+	ref,
+	effectScope,
+	inject,
+	provide,
+	shallowReactive,
+	type EffectScope,
+	type InjectionKey,
+} from 'vue';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { useToast } from '@n8n/composables/useToast';
+import { i18n } from '@n8n/i18n';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import {
+	type InstanceAiThreadHistoryResponse,
+	type InstanceAiThreadInfo,
+	type InstanceAiThreadSummary,
+	type InstanceAiAttachment,
+	type InstanceAiElementAttachment,
+	type InstanceAiNodesAttachment,
+} from '@n8n/api-types';
+import { selfHealingLaunchTelemetry } from './assistantAgent/assistantAgentThreads';
+import { ensureThread, type InstanceAiThreadLaunchInput } from './instanceAi.api';
+import {
+	fetchThreads as fetchThreadsApi,
+	fetchThreadHistory,
+	fetchThread,
+	deleteThread as deleteThreadApi,
+	renameThread as renameThreadApi,
+	updateThreadMetadata as updateThreadMetadataApi,
+} from './instanceAi.memory.api';
+import { NEW_CONVERSATION_TITLE } from './constants';
+import {
+	createThreadRuntime,
+	type OnboardingExitOutcome,
+	type ThreadRuntime,
+} from './instanceAi.threadRuntime';
+import { mergeNodeSets } from './utils/buildNodesAttachment';
+
+export type { PendingConfirmationItem, ThreadRuntime } from './instanceAi.threadRuntime';
+
+const THREAD_HISTORY_PAGE_SIZE = 30;
+
+const emptyThreadHistory = (search = '') => ({
+	search,
+	threads: [] as InstanceAiThreadSummary[],
+	hasMore: true,
+	loading: false,
+	error: false,
+});
+
+export const useInstanceAiStore = defineStore('instanceAi', () => {
+	const rootStore = useRootStore();
+	const toast = useToast();
+	const telemetry = useTelemetry();
+	const persistedThreadIds = new Set<string>();
+
+	// --- Instance-level state ---
+	const threads = ref<InstanceAiThreadSummary[]>([]);
+	// The chat history page: cursor-paginated and searchable, kept apart from the sidebar list.
+	const threadHistory = ref(emptyThreadHistory());
+	const debugMode = ref(false);
+
+	// --- Thread runtimes ---
+	const runtimes = shallowReactive(new Map<string, ThreadRuntime>());
+	// Detached scopes owning each runtime's watchers. The runtime must outlive the
+	// component that created it: a Suspense duplicate of the thread view can create
+	// it in setup and be discarded, and a component scope would take the watchers
+	// (e.g. the resource registry) down with it.
+	const runtimeScopes = new Map<string, EffectScope>();
+	const runtimeHooks = {
+		onTitleUpdated: (threadId, title) => {
+			for (const thread of localThreadEntries(threadId)) thread.title = title;
+		},
+		// Refresh thread list to pick up auto-generated titles
+		onRunFinish: () => {
+			void loadThreads();
+		},
+		getThreadMetadata: (threadId) => threads.value.find((t) => t.id === threadId)?.metadata,
+		onOnboardingLeft: leaveOnboarding,
+	} satisfies Parameters<typeof createThreadRuntime>[1];
+
+	function getOrCreateRuntime(threadId: string, projectId?: string): ThreadRuntime {
+		const existingRuntime = runtimes.get(threadId);
+		if (existingRuntime) return existingRuntime;
+
+		const scope = effectScope(true);
+		const runtime = scope.run(() => createThreadRuntime(threadId, runtimeHooks, projectId));
+		if (!runtime) throw new Error('Failed to create thread runtime');
+		runtimes.set(threadId, runtime);
+		runtimeScopes.set(threadId, scope);
+		return runtime;
+	}
+
+	function getRuntime(threadId: string): ThreadRuntime | undefined {
+		return runtimes.get(threadId);
+	}
+
+	function disposeRuntime(threadId: string): void {
+		const runtime = runtimes.get(threadId);
+		if (!runtime) return;
+
+		runtime.dispose();
+		runtimeScopes.get(threadId)?.stop();
+		runtimeScopes.delete(threadId);
+		runtimes.delete(threadId);
+	}
+
+	// The instance credits are in `useAssistantCreditsStore`. This store keeps
+	// only the credit total of its own threads.
+
+	/** Writes the running credit total of a thread from an `updateInstanceAiCredits` push. */
+	function setThreadCreditsUsed(threadId: string, totalCreditsUsed: number): void {
+		const thread = threads.value.find((t) => t.id === threadId);
+		if (thread) thread.metadata = { ...thread.metadata, creditsUsed: totalCreditsUsed };
+	}
+
+	// --- Thread list & lifecycle ---
+
+	function toThreadSummary(thread: InstanceAiThreadInfo): InstanceAiThreadSummary {
+		return {
+			id: thread.id,
+			title: thread.title || NEW_CONVERSATION_TITLE,
+			createdAt: thread.createdAt,
+			updatedAt: thread.updatedAt,
+			metadata: thread.metadata ?? undefined,
+		};
+	}
+
+	/** Every local copy of a thread; the sidebar list and the history page can both hold one. */
+	function localThreadEntries(threadId: string): InstanceAiThreadSummary[] {
+		return [...threads.value, ...threadHistory.value.threads].filter((t) => t.id === threadId);
+	}
+
+	async function loadThreads(): Promise<boolean> {
+		try {
+			const result = await fetchThreadsApi(rootStore.restApiContext);
+			for (const thread of result.threads) {
+				persistedThreadIds.add(thread.id);
+			}
+			// Merge server threads into local list, preserving any local-only threads
+			// (e.g. a freshly created thread that hasn't been persisted yet)
+			const serverIds = new Set(result.threads.map((t) => t.id));
+			const localOnly = threads.value.filter((t) => !serverIds.has(t.id));
+			threads.value = [...localOnly, ...result.threads.map(toThreadSummary)];
+			return true;
+		} catch {
+			// Silently ignore — threads will remain client-side only
+			return false;
+		}
+	}
+
+	/** Fetch a thread the sidebar list does not hold, e.g. an older one opened by URL. */
+	async function loadThread(threadId: string): Promise<void> {
+		const { thread } = await fetchThread(rootStore.restApiContext, threadId);
+		persistedThreadIds.add(thread.id);
+		if (!threads.value.some((t) => t.id === thread.id)) {
+			threads.value.push(toThreadSummary(thread));
+		}
+	}
+
+	let threadHistoryCursor: string | undefined;
+	// Bumped by every reset so a response still in flight for the old state is dropped.
+	let threadHistoryRequest = 0;
+
+	function resetThreadHistory(search = ''): void {
+		threadHistoryRequest++;
+		threadHistoryCursor = undefined;
+		threadHistory.value = emptyThreadHistory(search);
+	}
+
+	async function loadThreadHistoryPage(): Promise<void> {
+		const history = threadHistory.value;
+		if (history.loading || !history.hasMore) return;
+		const request = threadHistoryRequest;
+		history.loading = true;
+		history.error = false;
+		let result: InstanceAiThreadHistoryResponse | undefined;
+		try {
+			result = await fetchThreadHistory(rootStore.restApiContext, {
+				limit: THREAD_HISTORY_PAGE_SIZE,
+				search: history.search || undefined,
+				cursor: threadHistoryCursor,
+			});
+		} catch {
+			// Reported through `error` below
+		}
+		if (request !== threadHistoryRequest) return;
+		history.loading = false;
+		if (!result) {
+			history.error = true;
+			return;
+		}
+		for (const thread of result.threads) {
+			persistedThreadIds.add(thread.id);
+		}
+		// A thread that gets activity while paging moves onto a later page; keep each row once.
+		const known = new Set(history.threads.map((t) => t.id));
+		history.threads.push(...result.threads.filter((t) => !known.has(t.id)).map(toThreadSummary));
+		threadHistoryCursor = result.nextCursor ?? undefined;
+		history.hasMore = result.hasMore;
+	}
+
+	async function syncThread(
+		threadId: string,
+		projectId: string,
+		launch: InstanceAiThreadLaunchInput,
+	): Promise<void> {
+		if (persistedThreadIds.has(threadId)) return;
+
+		const result = await ensureThread(rootStore.restApiContext, threadId, projectId, launch);
+		persistedThreadIds.add(result.thread.id);
+
+		const templateId = launch.sourceContext?.templateId;
+		telemetry.track('User launched Instance AI thread', {
+			thread_id: result.thread.id,
+			instance_id: rootStore.instanceId,
+			source: launch.source,
+			origin: launch.origin ?? 'internal',
+			...(typeof templateId === 'string' || typeof templateId === 'number'
+				? { template_id: templateId }
+				: {}),
+			...selfHealingLaunchTelemetry(launch),
+		});
+
+		const existingThread = threads.value.find((thread) => thread.id === threadId);
+		if (existingThread) {
+			existingThread.createdAt = result.thread.createdAt;
+			existingThread.updatedAt = result.thread.updatedAt;
+			existingThread.title = result.thread.title || existingThread.title;
+			existingThread.metadata = result.thread.metadata ?? existingThread.metadata;
+			return;
+		}
+
+		threads.value.unshift(toThreadSummary(result.thread));
+	}
+
+	/**
+	 * Delete a thread. Returns false if the backend refused, in which case the thread is
+	 * left in the list because it genuinely still exists.
+	 *
+	 * `silent` suppresses the failure toast, for callers cleaning up after some other
+	 * failure they have already reported -- a second, unrelated "delete failed" on top of
+	 * the real error only confuses. Those callers should handle `false` themselves.
+	 * `preserveRuntime` keeps a mounted draft available after failed provisioning.
+	 */
+	async function deleteThread(
+		threadId: string,
+		options: { silent?: boolean; preserveRuntime?: boolean } = {},
+	): Promise<boolean> {
+		// Only call API for threads that have been persisted to the backend
+		if (persistedThreadIds.has(threadId)) {
+			try {
+				await deleteThreadApi(rootStore.restApiContext, threadId);
+				persistedThreadIds.delete(threadId);
+			} catch {
+				if (!options.silent) {
+					toast.showError(new Error('Failed to delete thread. Try again.'), 'Delete failed');
+				}
+				return false;
+			}
+		}
+
+		// Remove thread from list
+		threads.value = threads.value.filter((t) => t.id !== threadId);
+		threadHistory.value.threads = threadHistory.value.threads.filter((t) => t.id !== threadId);
+		if (!options.preserveRuntime) disposeRuntime(threadId);
+
+		return true;
+	}
+
+	async function renameThread(threadId: string, title: string): Promise<void> {
+		const entries = localThreadEntries(threadId);
+		const previousTitle = entries[0]?.title;
+		for (const entry of entries) entry.title = title;
+
+		// Only call API for threads that have been persisted to the backend
+		if (!persistedThreadIds.has(threadId)) return;
+		try {
+			await renameThreadApi(rootStore.restApiContext, threadId, title);
+		} catch (error) {
+			// Roll back the optimistic title so the list does not keep a name the server rejected
+			if (previousTitle !== undefined) {
+				for (const entry of entries) entry.title = previousTitle;
+			}
+			throw error;
+		}
+	}
+
+	function getThreadMetadata(threadId: string): Record<string, unknown> | undefined {
+		return threads.value.find((t) => t.id === threadId)?.metadata;
+	}
+
+	/** Reactive per-thread credit total (decimal), or undefined if none recorded yet. */
+	function threadCreditsUsed(threadId: string): number | undefined {
+		const used = threads.value.find((t) => t.id === threadId)?.metadata?.creditsUsed;
+		return typeof used === 'number' ? used : undefined;
+	}
+
+	/**
+	 * Replace a thread's metadata with an authoritative server copy — used after a
+	 * write the server itself made (e.g. persisting a pending agent binds it),
+	 * where a merge would keep locally-known keys the server just removed.
+	 */
+	function setThreadMetadata(threadId: string, metadata: Record<string, unknown> | undefined) {
+		const thread = threads.value.find((t) => t.id === threadId);
+		if (thread) thread.metadata = metadata;
+	}
+
+	async function updateThreadMetadata(
+		threadId: string,
+		metadata: Record<string, unknown>,
+	): Promise<void> {
+		// Optimistic update, on every local copy
+		for (const thread of localThreadEntries(threadId)) {
+			thread.metadata = { ...thread.metadata, ...metadata };
+		}
+
+		if (persistedThreadIds.has(threadId)) {
+			await updateThreadMetadataApi(rootStore.restApiContext, threadId, metadata);
+		}
+	}
+
+	const pendingComposerAttachments = ref<InstanceAiAttachment[]>([]);
+
+	function stageNodeSets(workflowId: string, newSets: InstanceAiNodesAttachment['sets']): void {
+		const existing = pendingComposerAttachments.value.find(
+			(a): a is InstanceAiNodesAttachment => a.type === 'nodes' && a.workflowId === workflowId,
+		);
+		if (existing) {
+			existing.sets = mergeNodeSets(existing.sets, newSets);
+		} else {
+			pendingComposerAttachments.value = [
+				...pendingComposerAttachments.value,
+				{ type: 'nodes', workflowId, sets: newSets },
+			];
+		}
+	}
+
+	function stageElement(element: InstanceAiElementAttachment): void {
+		pendingComposerAttachments.value = [...pendingComposerAttachments.value, element];
+	}
+
+	const composerElementAppId = ref<string | null>(null);
+	function setComposerElementAppId(appId: string | null): void {
+		composerElementAppId.value = appId;
+	}
+	function hasComposerElementFor(appId: string): boolean {
+		return composerElementAppId.value === appId;
+	}
+
+	function consumePendingAttachments(): InstanceAiAttachment[] {
+		const staged = pendingComposerAttachments.value;
+		pendingComposerAttachments.value = [];
+		return staged;
+	}
+
+	const composerFocusRequest = ref(0);
+	function requestComposerFocus(): void {
+		composerFocusRequest.value++;
+	}
+
+	const clearCanvasSelectionRequest = ref(0);
+	function requestClearCanvasSelection(): void {
+		clearCanvasSelectionRequest.value++;
+	}
+
+	// ponytail: the exits of this session, so a thread-list refresh that races the metadata write
+	// (`onRunFinish` reloads the list on the same event as the `run_failed` exit) cannot hide the
+	// chrome again.
+	const leftOnboardingThreadIds = new Set<string>();
+	/** An onboarding thread hides the host chrome (chat header, sidebar, artifacts) until the user leaves it. */
+	function isOnboardingChromeHidden(threadId: string): boolean {
+		return (
+			!leftOnboardingThreadIds.has(threadId) &&
+			localThreadEntries(threadId).some(
+				(t) => t.metadata?.source === 'onboarding' && !t.metadata.onboardingLeft,
+			)
+		);
+	}
+	/** The exit lives in thread metadata, so a reload keeps it. Idempotent. */
+	function leaveOnboarding(
+		threadId: string,
+		outcome: OnboardingExitOutcome,
+		leaveReason?: string,
+	): void {
+		if (!isOnboardingChromeHidden(threadId)) return;
+		leftOnboardingThreadIds.add(threadId);
+		updateThreadMetadata(threadId, { onboardingLeft: true }).catch((error: unknown) => {
+			toast.showError(error, i18n.baseText('generic.error'));
+		});
+		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.AI_ASSISTANT_ONBOARDING_ENDED, {
+			thread_id: threadId,
+			instance_id: rootStore.instanceId,
+			outcome,
+			leave_reason: leaveReason ?? null,
+		});
+	}
+
+	return {
+		// Instance-level state
+		threads,
+		debugMode,
+
+		// Thread-list actions
+		deleteThread,
+		renameThread,
+		getThreadMetadata,
+		threadCreditsUsed,
+		updateThreadMetadata,
+		setThreadMetadata,
+		loadThreads,
+		loadThread,
+		threadHistory,
+		resetThreadHistory,
+		loadThreadHistoryPage,
+		setThreadCreditsUsed,
+		getOrCreateRuntime,
+		getRuntime,
+		disposeRuntime,
+		syncThread,
+		pendingComposerAttachments,
+		stageNodeSets,
+		stageElement,
+		setComposerElementAppId,
+		hasComposerElementFor,
+		consumePendingAttachments,
+		composerFocusRequest,
+		requestComposerFocus,
+		clearCanvasSelectionRequest,
+		isOnboardingChromeHidden,
+		leaveOnboarding,
+		requestClearCanvasSelection,
+	};
+});
+
+const ThreadKey: InjectionKey<ThreadRuntime> = Symbol('instanceAiThread');
+
+export function provideThread(thread: ThreadRuntime | string): ThreadRuntime {
+	if (typeof thread === 'string') {
+		const runtime = useInstanceAiStore().getOrCreateRuntime(thread);
+		provide(ThreadKey, runtime);
+		return runtime;
+	}
+	provide(ThreadKey, thread);
+	return thread;
+}
+
+export function useThread(threadId?: string): ThreadRuntime {
+	if (threadId) {
+		return useInstanceAiStore().getOrCreateRuntime(threadId);
+	}
+
+	const thread = inject(ThreadKey, null);
+	if (!thread) {
+		throw new Error('useThread() requires a provideThread() ancestor.');
+	}
+	return thread;
+}

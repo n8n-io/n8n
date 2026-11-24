@@ -1,9 +1,27 @@
 {
     "type": "object",
     "properties": {
+        "creation": {
+            "type": "string"
+        },
+        "docstatus": {
+            "type": "integer"
+        },
+        "idx": {
+            "type": "integer"
+        },
+        "modified": {
+            "type": "string"
+        },
+        "modified_by": {
+            "type": "string"
+        },
         "name": {
+            "type": "string"
+        },
+        "owner": {
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

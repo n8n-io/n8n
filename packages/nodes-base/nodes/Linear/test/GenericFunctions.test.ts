@@ -1,15 +1,16 @@
 import type {
 	IExecuteFunctions,
+	INode,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { capitalizeFirstLetter, linearApiRequest, sort } from '../GenericFunctions';
 
 describe('Linear -> GenericFunctions', () => {
-	const mockHttpRequestWithAuthentication = jest.fn();
+	const mockHttpRequestWithAuthentication = vi.fn();
 
 	describe('linearApiRequest', () => {
 		let mockExecuteFunctions:
@@ -20,17 +21,17 @@ describe('Linear -> GenericFunctions', () => {
 
 		const setupMockFunctions = (authentication: string) => {
 			mockExecuteFunctions = {
-				getNodeParameter: jest.fn().mockReturnValue(authentication),
+				getNodeParameter: vi.fn().mockReturnValue(authentication),
 				helpers: {
 					httpRequestWithAuthentication: mockHttpRequestWithAuthentication,
 				},
-				getNode: jest.fn().mockReturnValue({}),
+				getNode: vi.fn().mockReturnValue({}),
 			} as unknown as
 				| IExecuteFunctions
 				| IWebhookFunctions
 				| IHookFunctions
 				| ILoadOptionsFunctions;
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		};
 
 		beforeEach(() => {
@@ -85,6 +86,19 @@ describe('Linear -> GenericFunctions', () => {
 					body: { query: '{ viewer { id } }' },
 				}),
 			);
+		});
+
+		it('should keep the original message when the error has no response data', async () => {
+			mockHttpRequestWithAuthentication.mockRejectedValue(
+				new NodeOperationError(
+					{} as INode,
+					'Node "Linear" does not have any credentials of type "linearApi" set',
+				),
+			);
+
+			await expect(
+				linearApiRequest.call(mockExecuteFunctions, { query: '{ viewer { id } }' }),
+			).rejects.toThrow('Node "Linear" does not have any credentials of type "linearApi" set');
 		});
 	});
 

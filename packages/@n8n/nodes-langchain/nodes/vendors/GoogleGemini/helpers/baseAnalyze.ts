@@ -1,12 +1,42 @@
 import {
+	NodeOperationError,
+	requestPath,
 	validateNodeParameters,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 } from 'n8n-workflow';
 
+import { assertResponseHasCandidates } from './candidates';
 import type { Content, GenerateContentResponse } from './interfaces';
-import { downloadFile, uploadFile } from './utils';
-import { apiRequest } from '../transport';
+import { downloadFile, getCredentialHostname, uploadFile } from './utils';
+import { apiRequest, modelPath } from '../transport';
+
+export async function getFilesDataFromUrls(
+	this: IExecuteFunctions,
+	urls: string,
+	fallbackMimeType: string,
+) {
+	const credentials = await this.getCredentials('googlePalmApi');
+	const allowedDomains = getCredentialHostname.call(this, credentials.host as string);
+	const credentialOrigin = new URL(credentials.host as string).origin;
+	const filesDataPromises = urls
+		.split(',')
+		.map((url) => url.trim())
+		.filter((url) => url)
+		.map(async (url) => {
+			if (URL.canParse(url) && new URL(url).origin === credentialOrigin) {
+				const { mimeType } = (await apiRequest.call(this, 'GET', { url }, { allowedDomains })) as {
+					mimeType: string;
+				};
+				return { fileUri: url, mimeType };
+			} else {
+				const { fileContent, mimeType } = await downloadFile.call(this, url, fallbackMimeType);
+				return await uploadFile.call(this, fileContent, mimeType);
+			}
+		});
+
+	return await Promise.all(filesDataPromises);
+}
 
 export async function baseAnalyze(
 	this: IExecuteFunctions,
@@ -17,6 +47,11 @@ export async function baseAnalyze(
 	const model = this.getNodeParameter('modelId', i, '', { extractValue: true }) as string;
 	const inputType = this.getNodeParameter('inputType', i, 'url') as string;
 	const text = this.getNodeParameter('text', i, '') as string;
+	if (!text.trim()) {
+		throw new NodeOperationError(this.getNode(), 'A non-empty prompt is required.', {
+			itemIndex: i,
+		});
+	}
 	const simplify = this.getNodeParameter('simplify', i, true) as boolean;
 	const options = this.getNodeParameter('options', i, {});
 	validateNodeParameters(
@@ -31,23 +66,7 @@ export async function baseAnalyze(
 	let contents: Content[];
 	if (inputType === 'url') {
 		const urls = this.getNodeParameter(urlsPropertyName, i, '') as string;
-		const filesDataPromises = urls
-			.split(',')
-			.map((url) => url.trim())
-			.filter((url) => url)
-			.map(async (url) => {
-				if (url.startsWith('https://generativelanguage.googleapis.com')) {
-					const { mimeType } = (await apiRequest.call(this, 'GET', '', {
-						option: { url },
-					})) as { mimeType: string };
-					return { fileUri: url, mimeType };
-				} else {
-					const { fileContent, mimeType } = await downloadFile.call(this, url, fallbackMimeType);
-					return await uploadFile.call(this, fileContent, mimeType);
-				}
-			});
-
-		const filesData = await Promise.all(filesDataPromises);
+		const filesData = await getFilesDataFromUrls.call(this, urls, fallbackMimeType);
 		contents = [
 			{
 				role: 'user',
@@ -86,9 +105,14 @@ export async function baseAnalyze(
 		generationConfig,
 	};
 
-	const response = (await apiRequest.call(this, 'POST', `/v1beta/${model}:generateContent`, {
-		body,
-	})) as GenerateContentResponse;
+	const response = (await apiRequest.call(
+		this,
+		'POST',
+		requestPath`/v1beta${modelPath.call(this, model)}:generateContent`,
+		{ body },
+	)) as GenerateContentResponse;
+
+	assertResponseHasCandidates(response);
 
 	if (simplify) {
 		return response.candidates.map((candidate) => ({

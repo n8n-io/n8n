@@ -1,49 +1,49 @@
 import { useI18n } from '@n8n/i18n';
-import { type FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
+import { defineFrontendModule } from '@n8n/frontend-module-sdk';
 import {
-	ADD_DATA_TABLE_MODAL_KEY,
 	DATA_TABLE_DETAILS,
 	DATA_TABLE_VIEW,
 	PROJECT_DATA_TABLES,
 } from '@/features/core/dataTable/constants';
-import { useInsightsStore } from '@/features/execution/insights/insights.store';
+import {
+	DATA_TABLE_AD_HOC_MODAL_KEY_PREFIXES,
+	DATA_TABLE_MODALS,
+} from '@/features/core/dataTable/modals';
 
 const i18n = useI18n();
 
-const MainSidebar = async () => await import('@/app/components/MainSidebar.vue');
 const DataTableView = async () => await import('@/features/core/dataTable/DataTableView.vue');
 const DataTableDetailsView = async () =>
 	await import('@/features/core/dataTable/DataTableDetailsView.vue');
 
-export const DataTableModule: FrontendModuleDescription = {
+export const DataTableModule = defineFrontendModule({
 	id: 'data-table',
 	name: 'Data Table',
 	description: 'Manage and store data efficiently with the Data Table module.',
 	icon: 'database',
-	modals: [
-		{
-			key: ADD_DATA_TABLE_MODAL_KEY,
-			component: async () => await import('./components/AddDataTableModal.vue'),
-			initialState: { open: false },
-		},
-	],
+	modals: DATA_TABLE_MODALS,
+	adHocModalKeyPrefixes: DATA_TABLE_AD_HOC_MODAL_KEY_PREFIXES,
 	routes: [
 		{
 			name: DATA_TABLE_VIEW,
 			path: '/home/datatables',
-			components: {
-				default: DataTableView,
-				sidebar: MainSidebar,
-			},
+			component: DataTableView,
 			meta: {
 				middleware: ['authenticated', 'custom'],
 			},
 			beforeEnter: (_to, _from, next) => {
-				const insightsStore = useInsightsStore();
-				if (insightsStore.isSummaryEnabled) {
-					// refresh the weekly summary when entering the datatables route
-					void insightsStore.weeklySummary.execute();
-				}
+				// Refresh the weekly summary when entering the datatables route. The import is
+				// lazy and unawaited: this descriptor is in the boot graph through the shell
+				// manifest, and a chunk that fails to load must not hold up navigation.
+				void import('@n8n/frontend-module-insights')
+					.then(({ useInsightsStore }) => {
+						const insightsStore = useInsightsStore();
+						if (insightsStore.isSummaryEnabled) {
+							void insightsStore.weeklySummary.execute();
+						}
+					})
+					.catch(() => {});
+
 				next();
 			},
 		},
@@ -51,10 +51,7 @@ export const DataTableModule: FrontendModuleDescription = {
 			name: PROJECT_DATA_TABLES,
 			path: 'datatables/:new(new)?',
 			props: true,
-			components: {
-				default: DataTableView,
-				sidebar: MainSidebar,
-			},
+			component: DataTableView,
 			meta: {
 				projectRoute: true,
 				middleware: ['authenticated', 'custom'],
@@ -64,10 +61,7 @@ export const DataTableModule: FrontendModuleDescription = {
 			name: DATA_TABLE_DETAILS,
 			path: 'datatables/:id',
 			props: true,
-			components: {
-				default: DataTableDetailsView,
-				sidebar: MainSidebar,
-			},
+			component: DataTableDetailsView,
 			meta: {
 				projectRoute: true,
 				middleware: ['authenticated', 'custom'],
@@ -101,4 +95,4 @@ export const DataTableModule: FrontendModuleDescription = {
 			displayName: 'Data Table',
 		},
 	],
-};
+});

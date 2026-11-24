@@ -6,8 +6,10 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 export type Context = IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions;
 
@@ -20,18 +22,20 @@ export function FormatDueDatetime(isoString: string): string {
 export async function todoistApiRequest(
 	this: Context,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ): Promise<any> {
 	const authentication = this.getNodeParameter('authentication', 0) as string;
 
-	const endpoint = 'api.todoist.com/rest/v2';
+	const nodeVersion = this.getNode().typeVersion;
+	const endpoint =
+		nodeVersion >= 2.2 ? 'https://api.todoist.com/api/v1' : 'https://api.todoist.com/rest/v2';
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
 		qs,
-		uri: `https://${endpoint}${resource}`,
+		uri: requestUrl`${endpoint}${resource}`,
 		json: true,
 	};
 
@@ -51,15 +55,19 @@ export async function todoistSyncRequest(
 	this: Context,
 	body: any = {},
 	qs: IDataObject = {},
-	endpoint: string = '/sync',
+	endpoint: RequestPath = requestPath`/sync`,
 ): Promise<any> {
 	const authentication = this.getNodeParameter('authentication', 0, 'oAuth2');
 
-	const options: IRequestOptions = {
+	const nodeVersion = this.getNode().typeVersion;
+	const baseUrl =
+		nodeVersion >= 2.2 ? 'https://api.todoist.com/api/v1' : 'https://api.todoist.com/sync/v9';
+
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {},
 		method: 'POST',
 		qs,
-		uri: `https://api.todoist.com/sync/v9${endpoint}`,
+		uri: requestUrl`${baseUrl}${endpoint}`,
 		json: true,
 	};
 
@@ -73,4 +81,56 @@ export async function todoistSyncRequest(
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
+}
+
+export async function todoistApiGetAllRequest(
+	ctx: Context,
+	resource: RequestPath,
+	qs: IDataObject = {},
+	limit?: number,
+) {
+	const nodeVersion = ctx.getNode().typeVersion;
+
+	if (nodeVersion < 2.2) {
+		let response = await todoistApiRequest.call(ctx, 'GET', resource, {}, qs);
+		if (limit) response = response.splice(0, limit);
+		return response;
+	}
+
+	if (limit !== undefined && limit <= 0) return [];
+
+	const results: IDataObject[] = [];
+	let nextCursor: string | null = null;
+
+	do {
+		const requestQs = { ...qs };
+		if (nextCursor) requestQs.cursor = nextCursor;
+
+		if (limit !== undefined && limit > 0) {
+			const remainingItems = limit - results.length;
+			if (remainingItems <= 0) break;
+
+			requestQs.limit = Math.min(remainingItems, 200);
+		}
+
+		const response = await todoistApiRequest.call(ctx, 'GET', resource, {}, requestQs);
+
+		if (response?.results && Array.isArray(response.results)) {
+			if (limit !== undefined && limit > 0) {
+				const remainingItems = limit - results.length;
+				const itemsToAdd = response.results.slice(0, remainingItems);
+				results.push(...itemsToAdd);
+
+				if (results.length >= limit) break;
+			} else {
+				results.push(...response.results);
+			}
+
+			nextCursor = response.next_cursor ?? null;
+		} else {
+			break;
+		}
+	} while (nextCursor !== null);
+
+	return results;
 }

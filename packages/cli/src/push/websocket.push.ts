@@ -1,7 +1,7 @@
 import { heartbeatMessageSchema } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import type WebSocket from 'ws';
 
 import { AbstractPush } from './abstract.push';
@@ -35,7 +35,7 @@ export class WebSocketPush extends AbstractPush<WebSocket> {
 					return;
 				}
 
-				this.onMessageReceived(pushRef, msg);
+				this.onMessageReceived(pushRef, userId, msg);
 			} catch (error) {
 				this.errorReporter.error(
 					new UnexpectedError('Error parsing push message', {
@@ -54,11 +54,15 @@ export class WebSocketPush extends AbstractPush<WebSocket> {
 			}
 		};
 
-		// Makes sure to remove the session if the connection is closed
+		// Makes sure to remove the session if the connection is closed.
+		// Only remove if this connection is still the active one for this pushRef and user —
+		// a newer connection may have already replaced it via add().
 		connection.once('close', () => {
 			connection.off('pong', heartbeat);
 			connection.off('message', onMessage);
-			this.remove(pushRef);
+			if (this.getConnection(pushRef, userId) === connection) {
+				this.remove(pushRef, userId);
+			}
 		});
 
 		connection.on('message', onMessage);

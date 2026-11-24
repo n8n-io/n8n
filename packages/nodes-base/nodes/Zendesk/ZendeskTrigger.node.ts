@@ -8,19 +8,21 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { conditionFields } from './ConditionDescription';
 import { zendeskApiRequest, zendeskApiRequestAllItems } from './GenericFunctions';
 import { triggerPlaceholders } from './TriggerPlaceholders';
+import { verifySignature } from './ZendeskTriggerHelpers';
 
 export class ZendeskTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Zendesk Trigger',
 		name: 'zendeskTrigger',
+		schemaPath: 'Zendesk',
 		icon: 'file:zendesk.svg',
 		group: ['trigger'],
-		version: 1,
+		version: [1, 1.1],
 		description: 'Handle Zendesk events via webhooks',
 		defaults: {
 			name: 'Zendesk Trigger',
@@ -71,6 +73,44 @@ export class ZendeskTrigger implements INodeType {
 					},
 				],
 				default: 'apiToken',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+			},
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'API Token',
+						value: 'apiToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'oAuth2',
+				displayOptions: {
+					show: {
+						'@version': [1.1],
+					},
+				},
+			},
+			{
+				displayName:
+					'Zendesk is retiring API token authentication. Switch this node to OAuth2. <a href="https://developer.zendesk.com/documentation/authentication/oauth-migration/#migration-timeline" target="_blank">Learn more about OAuth migration (Zendesk)</a>',
+				name: 'apiTokenRetirementNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						authentication: ['apiToken'],
+					},
+				},
 			},
 			{
 				displayName: 'Service',
@@ -161,7 +201,7 @@ export class ZendeskTrigger implements INodeType {
 					this,
 					'ticket_fields',
 					'GET',
-					'/ticket_fields',
+					requestPath`/ticket_fields`,
 				);
 				for (const field of fields) {
 					if (customFields.includes(field.type as string) && field.removable && field.active) {
@@ -180,7 +220,12 @@ export class ZendeskTrigger implements INodeType {
 			// select them easily
 			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const groups = await zendeskApiRequestAllItems.call(this, 'groups', 'GET', '/groups');
+				const groups = await zendeskApiRequestAllItems.call(
+					this,
+					'groups',
+					'GET',
+					requestPath`/groups`,
+				);
 				for (const group of groups) {
 					const groupName = group.name;
 					const groupId = group.id;
@@ -195,7 +240,12 @@ export class ZendeskTrigger implements INodeType {
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const users = await zendeskApiRequestAllItems.call(this, 'users', 'GET', '/users');
+				const users = await zendeskApiRequestAllItems.call(
+					this,
+					'users',
+					'GET',
+					requestPath`/users`,
+				);
 				for (const user of users) {
 					const userName = user.name;
 					const userId = user.id;
@@ -219,81 +269,68 @@ export class ZendeskTrigger implements INodeType {
 
 	webhookMethods = {
 		default: {
+			/**
+			 * Checks whether the Zendesk webhook and trigger created by this workflow
+			 * still exist. Returns true only when both are confirmed present, which
+			 * prevents unnecessary recreation and avoids the scenario where a failed
+			 * create() call causes clearWebhooks() to delete the Zendesk webhook.
+			 *
+			 * We intentionally do NOT delete triggers owned by other workflows.
+			 * Duplicated n8n workflows share the same webhook URL, so cleaning up
+			 * "unknown" triggers would silently destroy a sibling workflow's setup.
+			 */
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 				const webhookData = this.getWorkflowStaticData('node');
-				const conditions = this.getNodeParameter('conditions') as IDataObject;
 
-				let endpoint = '';
-				const resultAll = [],
-					resultAny = [];
-
-				const conditionsAll = conditions.all as [IDataObject];
-				if (conditionsAll) {
-					for (const conditionAll of conditionsAll) {
-						const aux: IDataObject = {};
-						aux.field = conditionAll.field;
-						aux.operator = conditionAll.operation;
-						if (conditionAll.operation !== 'changed' && conditionAll.operation !== 'not_changed') {
-							aux.value = conditionAll.value;
-						} else {
-							aux.value = null;
-						}
-						resultAll.push(aux);
-					}
-				}
-
-				const conditionsAny = conditions.any as [IDataObject];
-				if (conditionsAny) {
-					for (const conditionAny of conditionsAny) {
-						const aux: IDataObject = {};
-						aux.field = conditionAny.field;
-						aux.operator = conditionAny.operation;
-						if (conditionAny.operation !== 'changed' && conditionAny.operation !== 'not_changed') {
-							aux.value = conditionAny.value;
-						} else {
-							aux.value = null;
-						}
-						resultAny.push(aux);
-					}
-				}
-
-				// get all webhooks
+				// ── Step 1: find the Zendesk webhook by endpoint URL ────────────────
 				// https://developer.zendesk.com/api-reference/event-connectors/webhooks/webhooks/#list-webhooks
-				const { webhooks } = await zendeskApiRequest.call(this, 'GET', '/webhooks');
-				for (const webhook of webhooks) {
-					if (webhook.endpoint === webhookUrl) {
-						webhookData.targetId = webhook.id;
-						break;
-					}
-				}
+				const webhooksResponse = await zendeskApiRequest.call(this, 'GET', requestPath`/webhooks`);
+				const webhooks: Array<{ id: string; endpoint: string }> = webhooksResponse.webhooks ?? [];
 
-				// no target was found
-				if (webhookData.targetId === undefined) {
+				const matchingWebhook = webhooks.find((w) => w.endpoint === webhookUrl);
+
+				if (!matchingWebhook) {
+					// Webhook is gone — clear any stale references so create() starts fresh
+					delete webhookData.targetId;
+					delete webhookData.webhookId;
 					return false;
 				}
 
-				endpoint = '/triggers/active';
-				const triggers = await zendeskApiRequestAllItems.call(this, 'triggers', 'GET', endpoint);
+				// Keep targetId in sync with Zendesk (the ID is stable, but be defensive)
+				webhookData.targetId = matchingWebhook.id;
 
-				for (const trigger of triggers) {
-					const toDeleteTriggers = [];
-					// this trigger belong to the current target
-					if (trigger.actions[0].value[0].toString() === webhookData.targetId?.toString()) {
-						toDeleteTriggers.push(trigger.id);
-					}
-					// delete all trigger attach to this target;
-					if (toDeleteTriggers.length !== 0) {
-						await zendeskApiRequest.call(
-							this,
-							'DELETE',
-							'/triggers/destroy_many',
-							{},
-							{ ids: toDeleteTriggers.join(',') },
-						);
-					}
+				// ── Step 2: confirm our specific trigger still exists ────────────────
+				// If we have no stored trigger ID this is a fresh activation (e.g. first
+				// run, or the workflow was duplicated). Fall through to create().
+				if (webhookData.webhookId === undefined) {
+					return false;
 				}
 
+				// https://developer.zendesk.com/api-reference/ticketing/business-rules/triggers/#list-triggers
+				const triggers: Array<{
+					id: string | number;
+					actions: Array<{ field: string; value: string[] }>;
+				}> = await zendeskApiRequestAllItems.call(
+					this,
+					'triggers',
+					'GET',
+					requestPath`/triggers/active`,
+				);
+
+				const ourTriggerExists = triggers.some(
+					(trigger) =>
+						trigger.id.toString() === (webhookData.webhookId as string).toString() &&
+						trigger.actions[0]?.field === 'notification_webhook' &&
+						trigger.actions[0]?.value[0]?.toString() === matchingWebhook.id,
+				);
+
+				if (ourTriggerExists) {
+					return true;
+				}
+
+				// Trigger is gone — clear the stale ID so create() makes a fresh one
+				delete webhookData.webhookId;
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
@@ -393,8 +430,21 @@ export class ZendeskTrigger implements INodeType {
 					} else {
 						// create a webhook
 						// https://developer.zendesk.com/api-reference/event-connectors/webhooks/webhooks/#create-or-clone-webhook
-						target = (await zendeskApiRequest.call(this, 'POST', '/webhooks', bodyTarget))
-							.webhook as IDataObject;
+						target = (
+							await zendeskApiRequest.call(this, 'POST', requestPath`/webhooks`, bodyTarget)
+						).webhook as IDataObject;
+					}
+
+					// Fetch the signing secret for webhook signature verification
+					// https://developer.zendesk.com/api-reference/event-connectors/webhooks/webhooks/#show-webhook-signing-secret
+					const signingSecretResponse = await zendeskApiRequest.call(
+						this,
+						'GET',
+						requestPath`/webhooks/${String(target.id)}/signing_secret`,
+					);
+					const secret: string | undefined = signingSecretResponse?.signing_secret?.secret;
+					if (secret) {
+						webhookData.webhookSecret = secret;
 					}
 
 					((bodyTrigger.trigger as IDataObject).actions as IDataObject[])[0].value = [
@@ -402,7 +452,12 @@ export class ZendeskTrigger implements INodeType {
 						JSON.stringify(message),
 					];
 
-					const { trigger } = await zendeskApiRequest.call(this, 'POST', '/triggers', bodyTrigger);
+					const { trigger } = await zendeskApiRequest.call(
+						this,
+						'POST',
+						requestPath`/triggers`,
+						bodyTrigger,
+					);
 					webhookData.webhookId = trigger.id;
 					webhookData.targetId = target.id;
 				}
@@ -410,20 +465,67 @@ export class ZendeskTrigger implements INodeType {
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
+				let deletionSucceeded = true;
 				try {
-					await zendeskApiRequest.call(this, 'DELETE', `/triggers/${webhookData.webhookId}`);
-					await zendeskApiRequest.call(this, 'DELETE', `/webhooks/${webhookData.targetId}`);
-				} catch (error) {
-					return false;
+					await zendeskApiRequest.call(
+						this,
+						'DELETE',
+						requestPath`/triggers/${webhookData.webhookId}`,
+					);
+
+					// Only delete the Zendesk webhook if no other triggers still reference it.
+					// A duplicated n8n workflow shares the same webhook URL and may have its
+					// own trigger pointing at the same Zendesk webhook — deleting the webhook
+					// would silently break the sibling workflow's incoming events.
+					const remainingTriggers: Array<{
+						actions: Array<{ field: string; value: unknown[] }>;
+					}> = await zendeskApiRequestAllItems.call(
+						this,
+						'triggers',
+						'GET',
+						requestPath`/triggers/active`,
+					);
+
+					const webhookStillInUse = remainingTriggers.some(
+						(trigger) =>
+							trigger.actions[0]?.field === 'notification_webhook' &&
+							String(trigger.actions[0]?.value[0]) === String(webhookData.targetId),
+					);
+
+					if (!webhookStillInUse) {
+						await zendeskApiRequest.call(
+							this,
+							'DELETE',
+							requestPath`/webhooks/${webhookData.targetId}`,
+						);
+					}
+				} catch {
+					// The remote resource may already be gone (e.g. deleted in Zendesk
+					// manually, or removed when a duplicated workflow was deactivated).
+					// We still fall through to the finally block so stale IDs are cleared,
+					// ensuring the next activation starts with a clean slate instead of
+					// trying to reuse a webhook that no longer exists.
+					deletionSucceeded = false;
+				} finally {
+					delete webhookData.webhookId;
+					delete webhookData.targetId;
+					delete webhookData.webhookSecret;
 				}
-				delete webhookData.triggerId;
-				delete webhookData.targetId;
-				return true;
+				return deletionSucceeded;
 			},
 		},
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		// Verify the webhook signature before processing
+		if (!verifySignature.call(this)) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
+			return {
+				noWebhookResponse: true,
+			};
+		}
+
 		const req = this.getRequestObject();
 		return {
 			workflowData: [this.helpers.returnJsonArray(req.body as IDataObject)],

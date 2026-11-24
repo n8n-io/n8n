@@ -6,7 +6,7 @@ import type {
 	INodeProperties,
 	IPollFunctions,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 
 import {
 	arrayOfArraysToJson,
@@ -18,6 +18,7 @@ import {
 import { GOOGLE_DRIVE_FILE_URL_REGEX, GOOGLE_SHEETS_SHEET_URL_REGEX } from '../constants';
 import { GoogleSheet } from './v2/helpers/GoogleSheet';
 import type { ResourceLocator, ValueRenderOption } from './v2/helpers/GoogleSheets.types';
+import { googleApiCredentialTest } from './v2/methods/credentialTest';
 import { sheetsSearch, spreadSheetsSearch } from './v2/methods/listSearch';
 import { getSheetHeaderRowAndSkipEmpty } from './v2/methods/loadOptions';
 import { apiRequest } from './v2/transport';
@@ -145,6 +146,16 @@ export class GoogleSheetsTrigger implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
+				name: 'googleApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['serviceAccount'],
+					},
+				},
+				testedBy: 'googleApiCredentialTest',
+			},
+			{
 				name: 'googleSheetsTriggerOAuth2Api',
 				required: true,
 				displayOptions: {
@@ -160,8 +171,12 @@ export class GoogleSheetsTrigger implements INodeType {
 			{
 				displayName: 'Authentication',
 				name: 'authentication',
-				type: 'hidden',
+				type: 'options',
 				options: [
+					{
+						name: 'Service Account',
+						value: 'serviceAccount',
+					},
 					{
 						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'OAuth2 (recommended)',
@@ -393,6 +408,7 @@ export class GoogleSheetsTrigger implements INodeType {
 	methods = {
 		listSearch: { spreadSheetsSearch, sheetsSearch },
 		loadOptions: { getSheetHeaderRowAndSkipEmpty },
+		credentialTest: { googleApiCredentialTest },
 	};
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
@@ -438,23 +454,45 @@ export class GoogleSheetsTrigger implements INodeType {
 			if (event !== 'rowAdded') {
 				let pageToken;
 				do {
+					// Run the Drive revisions listing with the broader trigger scope
+					// (drive.readonly). The default sheetV2 scope (drive.metadata) lists
+					// revisions but omits exportLinks, which are required to download the
+					// previous revision below.
 					const { revisions, nextPageToken } = await apiRequest.call(
 						this,
 						'GET',
-						'',
+						requestPath``,
 						undefined,
 						{
 							fields: 'revisions(id, exportLinks), nextPageToken',
 							pageToken,
 							pageSize: 1000,
 						},
-						`https://www.googleapis.com/drive/v3/files/${documentId}/revisions`,
+						requestUrl`https://www.googleapis.com/drive/v3/files/${documentId}/revisions`,
+						{},
+						{},
+						'sheetV2Trigger',
 					);
 
 					if (nextPageToken) {
 						pageToken = nextPageToken as string;
 					} else {
 						pageToken = undefined;
+
+						if (!Array.isArray(revisions)) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Could not retrieve document revisions',
+								{
+									description:
+										'Use OAuth2 authentication, or enable "Impersonate a User" in your service account credential. For impersonation, configure domain-wide delegation in Google Workspace.',
+								},
+							);
+						}
+
+						if (revisions.length === 0) {
+							return null;
+						}
 
 						const lastRevision = +revisions[revisions.length - 1].id;
 						if (lastRevision <= previousRevision) {
@@ -521,7 +559,7 @@ export class GoogleSheetsTrigger implements INodeType {
 					(await apiRequest.call(
 						this,
 						'GET',
-						`/v4/spreadsheets/${documentId}/values/${encodeURIComponent(sheetName)}!${keyRange}`,
+						requestPath`/v4/spreadsheets/${documentId}/values/${sheetName}!${keyRange}`,
 					)) as IDataObject
 				).values as string[][]) || [[]];
 
@@ -622,7 +660,11 @@ export class GoogleSheetsTrigger implements INodeType {
 					}
 				}
 
-				const previousRevisionBinaryData = await getRevisionFile.call(this, previousRevisionLink);
+				const previousRevisionBinaryData = await getRevisionFile.call(
+					this,
+					previousRevisionLink,
+					documentId,
+				);
 
 				const previousRevisionSheetData =
 					sheetBinaryToArrayOfArrays(

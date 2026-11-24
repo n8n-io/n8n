@@ -1,5 +1,5 @@
-import { mock } from 'jest-mock-extended';
 import type { INodeParameters } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { SimpleWorkflow } from '@/types';
 import { validateCredentials } from '@/validation/checks/credentials';
@@ -109,29 +109,32 @@ describe('validateCredentials', () => {
 			expect(violations).toContainEqual(
 				expect.objectContaining({
 					name: 'http-request-hardcoded-credentials',
-					type: 'major',
+					type: 'minor',
 				}),
 			);
 			expect(violations[0].description).toContain('Authorization');
 		});
 
-		it('should flag hardcoded X-API-Key header', () => {
-			const workflow = createWorkflow([
-				createHttpRequestNode({
-					headers: [{ name: 'X-API-Key', value: 'my-secret-api-key-12345' }],
-				}),
-			]);
+		it.each(['X-API-Key', 'Proxy-Authorization'])(
+			'should flag hardcoded %s header',
+			(headerName) => {
+				const workflow = createWorkflow([
+					createHttpRequestNode({
+						headers: [{ name: headerName, value: 'my-secret-api-key-12345' }],
+					}),
+				]);
 
-			const violations = validateCredentials(workflow);
+				const violations = validateCredentials(workflow);
 
-			expect(violations).toContainEqual(
-				expect.objectContaining({
-					name: 'http-request-hardcoded-credentials',
-					type: 'major',
-				}),
-			);
-			expect(violations[0].description).toContain('X-API-Key');
-		});
+				expect(violations).toContainEqual(
+					expect.objectContaining({
+						name: 'http-request-hardcoded-credentials',
+						type: 'minor',
+					}),
+				);
+				expect(violations[0].description).toContain(headerName);
+			},
+		);
 
 		it('should allow Authorization header with expression', () => {
 			const workflow = createWorkflow([
@@ -172,7 +175,7 @@ describe('validateCredentials', () => {
 			expect(violations).toContainEqual(
 				expect.objectContaining({
 					name: 'http-request-hardcoded-credentials',
-					type: 'major',
+					type: 'minor',
 				}),
 			);
 			expect(violations[0].description).toContain('api_key');
@@ -217,7 +220,7 @@ describe('validateCredentials', () => {
 			expect(violations).toContainEqual(
 				expect.objectContaining({
 					name: 'set-node-credential-field',
-					type: 'major',
+					type: 'minor',
 				}),
 			);
 			expect(violations[0].description).toContain(fieldName);

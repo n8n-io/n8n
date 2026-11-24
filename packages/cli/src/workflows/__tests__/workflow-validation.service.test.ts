@@ -1,16 +1,45 @@
-import type { WorkflowRepository } from '@n8n/db';
-import type { INode } from 'n8n-workflow';
-import { mock } from 'jest-mock-extended';
+import { NODE_ID_MAX_LENGTH } from '@n8n/constants';
+import type { CredentialsRepository, User, WorkflowRepository } from '@n8n/db';
+import type {
+	INode,
+	IConnections,
+	INodeType,
+	INodeTypeDescription,
+	ICredentialType,
+} from 'n8n-workflow';
+import { deepCopy, NodeConnectionTypes } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
+import type { CredentialTypes } from '@/credential-types';
+import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
+import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
+import type { NodeTypes } from '@/node-types';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 
 describe('WorkflowValidationService', () => {
 	let service: WorkflowValidationService;
 	let mockWorkflowRepository: ReturnType<typeof mock<WorkflowRepository>>;
+	let mockCredentialsRepository: ReturnType<typeof mock<CredentialsRepository>>;
+	let mockDynamicCredentialsProxy: ReturnType<typeof mock<DynamicCredentialsProxy>>;
+	let mockCredentialsPermissionChecker: ReturnType<typeof mock<CredentialsPermissionChecker>>;
 
 	beforeEach(() => {
 		mockWorkflowRepository = mock<WorkflowRepository>();
-		service = new WorkflowValidationService(mockWorkflowRepository);
+		mockCredentialsRepository = mock<CredentialsRepository>();
+		mockDynamicCredentialsProxy = mock<DynamicCredentialsProxy>();
+		mockCredentialsPermissionChecker = mock<CredentialsPermissionChecker>();
+		// Default to the real semantics with no system resolver seeded:
+		// pass through the workflow override if any, otherwise null.
+		mockDynamicCredentialsProxy.getEffectiveResolverId.mockImplementation(
+			(settings) => settings?.credentialResolverId ?? null,
+		);
+		service = new WorkflowValidationService(
+			mockWorkflowRepository,
+			mockCredentialsRepository,
+			mockDynamicCredentialsProxy,
+			mock<CredentialTypes>(),
+			mockCredentialsPermissionChecker,
+		);
 	});
 
 	describe('validateSubWorkflowReferences', () => {
@@ -198,7 +227,7 @@ describe('WorkflowValidationService', () => {
 			];
 
 			mockWorkflowRepository.get.mockImplementation(async ({ id }) => {
-				if (id === 'workflow-2') return null;
+				if (id === 'workflow-2') return undefined;
 				return {
 					id: id as string,
 					name: id === 'workflow-3' ? 'Draft Workflow 3' : 'Workflow',
@@ -223,6 +252,2249 @@ describe('WorkflowValidationService', () => {
 
 			expect(result.isValid).toBe(true);
 			expect(mockWorkflowRepository.get).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('validateForActivation', () => {
+		let mockNodeTypes: ReturnType<typeof mock<NodeTypes>>;
+
+		beforeEach(() => {
+			mockNodeTypes = mock<NodeTypes>();
+		});
+
+		const createNode = (
+			name: string,
+			type: string,
+			options?: {
+				disabled?: boolean;
+				credentials?: Record<string, { id: string; name?: string }>;
+				parameters?: Record<string, unknown>;
+			},
+		): INode => ({
+			name,
+			type,
+			id: `node-${name}`,
+			typeVersion: 1,
+			position: [0, 0],
+			disabled: options?.disabled,
+			credentials: options?.credentials as any,
+			parameters: (options?.parameters as any) || {},
+		});
+
+		const createConnections = (connections: Array<[string, string]>): IConnections => {
+			const result: IConnections = {};
+			connections.forEach(([from, to]) => {
+				if (!result[from]) {
+					result[from] = { main: [[]] as any };
+				}
+				if (result[from].main?.[0]) {
+					result[from].main[0].push({ node: to, type: 'main', index: 0 });
+				}
+			});
+			return result;
+		};
+
+		const createMockNodeType = (
+			credentials?: Array<{ name: string; displayName: string; required: boolean }>,
+			properties?: Array<{ name: string; required?: boolean }>,
+			isTrigger = false,
+		): INodeType => {
+			const description: INodeTypeDescription = {
+				displayName: 'Test Node',
+				name: 'testNode',
+				group: ['transform'],
+				version: 1,
+				description: 'Test node',
+				defaults: { name: 'Test Node' },
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: (properties || []) as any,
+				credentials: credentials || [],
+			};
+
+			const nodeType: INodeType = {
+				description,
+			} as INodeType;
+
+			// Add trigger method if it's a trigger node
+			if (isTrigger) {
+				nodeType.trigger = async function () {
+					return {
+						closeFunction: async () => {},
+						manualTriggerFunction: async () => {},
+					};
+				};
+			}
+
+			return nodeType;
+		};
+
+		it('should return valid for workflow with no connected nodes', async () => {
+			const nodes = {
+				Webhook: createNode('Webhook', 'n8n-nodes-base.webhook'),
+			};
+			const connections: IConnections = {};
+
+			mockNodeTypes.getByNameAndVersion.mockReturnValue(createMockNodeType([], [], true));
+
+			const result = await service.validateForActivation(nodes, connections, mockNodeTypes);
+
+			expect(result.isValid).toBe(true);
+		});
+
+		it('should return valid for workflow with all valid connected nodes', async () => {
+			const nodes = {
+				Webhook: createNode('Webhook', 'n8n-nodes-base.webhook'),
+				'HTTP Request': createNode('HTTP Request', 'n8n-nodes-base.httpRequest', {
+					credentials: { httpAuth: { id: 'cred-1' } },
+					parameters: { url: 'https://example.com' },
+				}),
+			};
+			const connections = createConnections([['Webhook', 'HTTP Request']]);
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((
+				type: string,
+			): INodeType | undefined => {
+				if (type === 'n8n-nodes-base.webhook') {
+					return createMockNodeType([], [], true);
+				}
+				if (type === 'n8n-nodes-base.httpRequest') {
+					return createMockNodeType(
+						[{ name: 'httpAuth', displayName: 'HTTP Auth', required: true }],
+						[{ name: 'url', required: true }],
+					);
+				}
+				return undefined;
+			}) as any);
+
+			const result = await service.validateForActivation(nodes, connections, mockNodeTypes);
+
+			expect(result.isValid).toBe(true);
+		});
+
+		it('should return invalid when connected node is missing required credential', async () => {
+			const nodes = {
+				Webhook: createNode('Webhook', 'n8n-nodes-base.webhook'),
+				Agent: createNode('Agent', 'n8n-nodes-base.agent', {
+					parameters: {},
+				}),
+			};
+			const connections = createConnections([['Webhook', 'Agent']]);
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((
+				type: string,
+			): INodeType | undefined => {
+				if (type === 'n8n-nodes-base.webhook') {
+					return createMockNodeType([], [], true);
+				}
+				if (type === 'n8n-nodes-base.agent') {
+					return createMockNodeType(
+						[{ name: 'openAiApi', displayName: 'OpenAI API', required: true }],
+						[],
+					);
+				}
+				return undefined;
+			}) as any);
+
+			const result = await service.validateForActivation(nodes, connections, mockNodeTypes);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain('Cannot publish workflow');
+			expect(result.error).toContain('1 node have configuration issues');
+			expect(result.error).toContain('Node "Agent"');
+			expect(result.error).toContain('Missing required credential: OpenAI API');
+		});
+
+		it('should return invalid when connected node has credential without ID', async () => {
+			const nodes = {
+				Webhook: createNode('Webhook', 'n8n-nodes-base.webhook'),
+				Agent: createNode('Agent', 'n8n-nodes-base.agent', {
+					credentials: { openAiApi: { id: '' } },
+					parameters: {},
+				}),
+			};
+			const connections = createConnections([['Webhook', 'Agent']]);
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((
+				type: string,
+			): INodeType | undefined => {
+				if (type === 'n8n-nodes-base.webhook') {
+					return createMockNodeType([], [], true);
+				}
+				if (type === 'n8n-nodes-base.agent') {
+					return createMockNodeType(
+						[{ name: 'openAiApi', displayName: 'OpenAI API', required: true }],
+						[],
+					);
+				}
+				return undefined;
+			}) as any);
+
+			const result = await service.validateForActivation(nodes, connections, mockNodeTypes);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain('Credential not configured: OpenAI API');
+		});
+
+		it('should skip validation for disabled nodes', async () => {
+			const nodes = {
+				Webhook: createNode('Webhook', 'n8n-nodes-base.webhook'),
+				Agent: createNode('Agent', 'n8n-nodes-base.agent', {
+					disabled: true,
+					parameters: {},
+				}),
+			};
+			const connections = createConnections([['Webhook', 'Agent']]);
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((
+				type: string,
+			): INodeType | undefined => {
+				if (type === 'n8n-nodes-base.webhook') {
+					return createMockNodeType([], [], true);
+				}
+				if (type === 'n8n-nodes-base.agent') {
+					return createMockNodeType(
+						[{ name: 'openAiApi', displayName: 'OpenAI API', required: true }],
+						[],
+					);
+				}
+				return undefined;
+			}) as any);
+
+			const result = await service.validateForActivation(nodes, connections, mockNodeTypes);
+
+			expect(result.isValid).toBe(true);
+		});
+
+		it('should skip validation for disconnected nodes', async () => {
+			const nodes = {
+				Webhook: createNode('Webhook', 'n8n-nodes-base.webhook'),
+				Agent: createNode('Agent', 'n8n-nodes-base.agent', {
+					parameters: {},
+				}),
+			};
+			// Agent is not connected to anything
+			const connections: IConnections = {};
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((
+				type: string,
+			): INodeType | undefined => {
+				if (type === 'n8n-nodes-base.webhook') {
+					return createMockNodeType([], [], true);
+				}
+				if (type === 'n8n-nodes-base.agent') {
+					return createMockNodeType(
+						[{ name: 'openAiApi', displayName: 'OpenAI API', required: true }],
+						[],
+					);
+				}
+				return undefined;
+			}) as any);
+
+			const result = await service.validateForActivation(nodes, connections, mockNodeTypes);
+
+			expect(result.isValid).toBe(true);
+		});
+
+		it('should skip validation for an island with no path from a trigger', async () => {
+			const nodes = {
+				Webhook: createNode('Webhook', 'n8n-nodes-base.webhook'),
+				Agent: createNode('Agent', 'n8n-nodes-base.agent', { parameters: {} }),
+				Helper: createNode('Helper', 'n8n-nodes-base.agent', { parameters: {} }),
+			};
+			// Wired to each other but never reached by the webhook, so neither runs.
+			const connections: IConnections = {
+				Helper: { main: [[{ node: 'Agent', type: NodeConnectionTypes.Main, index: 0 }]] },
+			};
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((
+				type: string,
+			): INodeType | undefined => {
+				if (type === 'n8n-nodes-base.webhook') {
+					return createMockNodeType([], [], true);
+				}
+				if (type === 'n8n-nodes-base.agent') {
+					return createMockNodeType(
+						[{ name: 'openAiApi', displayName: 'OpenAI API', required: true }],
+						[],
+					);
+				}
+				return undefined;
+			}) as any);
+
+			const result = await service.validateForActivation(nodes, connections, mockNodeTypes);
+
+			expect(result.isValid).toBe(true);
+		});
+
+		it('should validate multiple nodes with issues', async () => {
+			const nodes = {
+				Webhook: createNode('Webhook', 'n8n-nodes-base.webhook'),
+				Agent1: createNode('Agent1', 'n8n-nodes-base.agent', {
+					parameters: {},
+				}),
+				Agent2: createNode('Agent2', 'n8n-nodes-base.agent', {
+					parameters: {},
+				}),
+			};
+			const connections = createConnections([
+				['Webhook', 'Agent1'],
+				['Agent1', 'Agent2'],
+			]);
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((
+				type: string,
+			): INodeType | undefined => {
+				if (type === 'n8n-nodes-base.webhook') {
+					return createMockNodeType([], [], true);
+				}
+				if (type === 'n8n-nodes-base.agent') {
+					return createMockNodeType(
+						[{ name: 'openAiApi', displayName: 'OpenAI API', required: true }],
+						[],
+					);
+				}
+				return undefined;
+			}) as any);
+
+			const result = await service.validateForActivation(nodes, connections, mockNodeTypes);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain('2 nodes have configuration issues');
+			expect(result.error).toContain('Node "Agent1"');
+			expect(result.error).toContain('Node "Agent2"');
+		});
+
+		it('should return invalid when node type is not found', async () => {
+			const nodes = {
+				Webhook: createNode('Webhook', 'n8n-nodes-base.webhook'),
+				Unknown: createNode('Unknown', 'n8n-nodes-base.unknownNode'),
+			};
+			const connections = createConnections([['Webhook', 'Unknown']]);
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((
+				type: string,
+			): INodeType | undefined => {
+				if (type === 'n8n-nodes-base.webhook') {
+					return createMockNodeType([], [], true);
+				}
+				return undefined;
+			}) as any);
+
+			const result = await service.validateForActivation(nodes, connections, mockNodeTypes);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain('Node "Unknown"');
+			expect(result.error).toContain('Node type not found');
+		});
+
+		it('should return invalid when workflow has no trigger node', async () => {
+			const nodes = {
+				Set: createNode('Set', 'n8n-nodes-base.set'),
+			};
+			const connections: IConnections = {};
+
+			mockNodeTypes.getByNameAndVersion.mockReturnValue(createMockNodeType([], []));
+
+			const result = await service.validateForActivation(nodes, connections, mockNodeTypes);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain('no trigger node');
+		});
+
+		it('should respect displayOptions when validating credentials', async () => {
+			// Simulates a Webhook node with authentication parameter set to 'none'
+			const nodes = {
+				Webhook: createNode('Webhook', 'n8n-nodes-base.webhook', {
+					parameters: { authentication: 'none' },
+				}),
+			};
+			const connections: IConnections = {};
+
+			// Mock node type with credentials that have displayOptions
+			const nodeType = createMockNodeType([], [], true);
+			nodeType.description.credentials = [
+				{
+					name: 'httpBasicAuth',
+					displayName: 'Basic Auth',
+					required: true,
+					displayOptions: {
+						show: {
+							authentication: ['basicAuth'],
+						},
+					},
+				},
+				{
+					name: 'httpHeaderAuth',
+					displayName: 'Header Auth',
+					required: true,
+					displayOptions: {
+						show: {
+							authentication: ['headerAuth'],
+						},
+					},
+				},
+			];
+
+			mockNodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			const result = await service.validateForActivation(nodes, connections, mockNodeTypes);
+
+			// Should be valid because authentication='none', so no credentials are required
+			expect(result.isValid).toBe(true);
+		});
+
+		it('should validate credentials when displayOptions match', async () => {
+			// Simulates a Webhook node with authentication='basicAuth' but missing credential
+			const nodes = {
+				Webhook: createNode('Webhook', 'n8n-nodes-base.webhook', {
+					parameters: { authentication: 'basicAuth' },
+				}),
+			};
+			const connections: IConnections = {};
+
+			// Mock node type with credentials that have displayOptions
+			const nodeType = createMockNodeType([], [], true);
+			nodeType.description.credentials = [
+				{
+					name: 'httpBasicAuth',
+					displayName: 'Basic Auth',
+					required: true,
+					displayOptions: {
+						show: {
+							authentication: ['basicAuth'],
+						},
+					},
+				},
+			];
+
+			mockNodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			const result = await service.validateForActivation(nodes, connections, mockNodeTypes);
+
+			// Should be invalid because authentication='basicAuth' but no credential is set
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain('Missing required credential: Basic Auth');
+		});
+	});
+
+	describe('validateDynamicCredentials', () => {
+		let mockNodeTypes: ReturnType<typeof mock<NodeTypes>>;
+
+		const createNode = (
+			name: string,
+			type: string,
+			options?: {
+				disabled?: boolean;
+				credentials?: Record<string, { id: string; name?: string }>;
+				parameters?: Record<string, unknown>;
+			},
+		): INode => ({
+			name,
+			type,
+			id: `node-${name}`,
+			typeVersion: 1,
+			position: [0, 0],
+			disabled: options?.disabled,
+			credentials: options?.credentials as any,
+			parameters: (options?.parameters as any) || {},
+		});
+
+		const hooksParameters = {
+			executionsHooksVersion: 1,
+			contextEstablishmentHooks: {
+				hooks: [{ hookName: 'credentials.bearerToken' }],
+			},
+		};
+
+		const createTriggerNodeType = (): INodeType =>
+			({
+				description: {
+					group: ['trigger'],
+				},
+				trigger: async () => ({ closeFunction: async () => {} }),
+			}) as unknown as INodeType;
+
+		// A "Send and Wait for Response" (HITL) action node — or its AI-tool variant.
+		// It carries a `webhook` method for the approval callback but is NOT a trigger
+		// (group is `transform`/`output`, not `trigger`).
+		const createSendAndWaitNodeType = (): INodeType =>
+			({
+				description: {
+					group: ['transform'],
+				},
+				webhook: async () => ({}),
+			}) as unknown as INodeType;
+
+		const SYSTEM_RESOLVER = 'system-resolver';
+		const CUSTOM_RESOLVER = 'custom-resolver';
+
+		// The effective resolver is decided at the workflow level (settings override or
+		// the seeded system resolver); the credential's own resolverId is not consulted.
+		const useSystemResolver = () => {
+			mockDynamicCredentialsProxy.getSystemResolverId.mockReturnValue(SYSTEM_RESOLVER);
+			mockDynamicCredentialsProxy.getEffectiveResolverId.mockReturnValue(SYSTEM_RESOLVER);
+		};
+		const useCustomResolver = () => {
+			mockDynamicCredentialsProxy.getSystemResolverId.mockReturnValue(SYSTEM_RESOLVER);
+			mockDynamicCredentialsProxy.getEffectiveResolverId.mockReturnValue(CUSTOM_RESOLVER);
+		};
+		const useNoResolver = () => {
+			mockDynamicCredentialsProxy.getSystemResolverId.mockReturnValue(null);
+			mockDynamicCredentialsProxy.getEffectiveResolverId.mockReturnValue(null);
+		};
+
+		beforeEach(() => {
+			mockNodeTypes = mock<NodeTypes>();
+		});
+
+		it('should return valid when no credentials are used', async () => {
+			const nodes: INode[] = [createNode('Set', 'n8n-nodes-base.set')];
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.isValid).toBe(true);
+			expect(mockCredentialsRepository.find).not.toHaveBeenCalled();
+		});
+
+		it('should return valid when no credentials are resolvable', async () => {
+			const nodes: INode[] = [
+				createNode('Webhook', 'n8n-nodes-base.webhook'),
+				createNode('HTTP', 'n8n-nodes-base.httpRequest', {
+					credentials: { httpAuth: { id: 'cred-1' } },
+				}),
+			];
+
+			mockCredentialsRepository.find.mockResolvedValue([]);
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.isValid).toBe(true);
+		});
+
+		it('should return invalid when no resolver is configured', async () => {
+			const nodes: INode[] = [
+				createNode('Webhook', 'n8n-nodes-base.webhook', {
+					parameters: hooksParameters,
+				}),
+				createNode('HTTP', 'n8n-nodes-base.httpRequest', {
+					credentials: { oAuth2Api: { id: 'cred-1' } },
+				}),
+			];
+
+			mockCredentialsRepository.find.mockResolvedValue([
+				{ id: 'cred-1', name: 'My OAuth2' } as any,
+			]);
+			useNoResolver();
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain('end-user credentials');
+			expect(result.error).toContain('"My OAuth2"');
+			expect(result.error).toContain('resolver');
+		});
+
+		it('should return valid when the proxy provides a system resolver and the trigger is compatible', async () => {
+			const nodes: INode[] = [
+				createNode('Manual', 'n8n-nodes-base.manualTrigger'),
+				createNode('HTTP', 'n8n-nodes-base.httpRequest', {
+					credentials: { oAuth2Api: { id: 'cred-1' } },
+				}),
+			];
+
+			mockCredentialsRepository.find.mockResolvedValue([
+				{ id: 'cred-1', name: 'My OAuth2' } as any,
+			]);
+			useSystemResolver();
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+				if (type === 'n8n-nodes-base.manualTrigger') return createTriggerNodeType();
+				return {} as INodeType;
+			}) as any);
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.isValid).toBe(true);
+		});
+
+		it('should return valid when workflow settings provide a custom resolver and a trigger has extractor hooks', async () => {
+			const nodes: INode[] = [
+				createNode('Webhook', 'n8n-nodes-base.webhook', {
+					parameters: hooksParameters,
+				}),
+				createNode('HTTP', 'n8n-nodes-base.httpRequest', {
+					credentials: { oAuth2Api: { id: 'cred-1' } },
+				}),
+			];
+
+			mockCredentialsRepository.find.mockResolvedValue([
+				{ id: 'cred-1', name: 'My OAuth2' } as any,
+			]);
+			useCustomResolver();
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+				if (type === 'n8n-nodes-base.webhook') return createTriggerNodeType();
+				return {} as INodeType;
+			}) as any);
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.isValid).toBe(true);
+		});
+
+		it('should return invalid when a custom resolver is used with a trigger without extractor hooks', async () => {
+			const nodes: INode[] = [
+				createNode('Schedule', 'n8n-nodes-base.scheduleTrigger'),
+				createNode('HTTP', 'n8n-nodes-base.httpRequest', {
+					credentials: { oAuth2Api: { id: 'cred-1' } },
+				}),
+			];
+
+			mockCredentialsRepository.find.mockResolvedValue([
+				{ id: 'cred-1', name: 'My OAuth2' } as any,
+			]);
+			useCustomResolver();
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+				if (type === 'n8n-nodes-base.scheduleTrigger') return createTriggerNodeType();
+				return {} as INodeType;
+			}) as any);
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain('end-user credentials');
+			expect(result.error).toContain('"My OAuth2"');
+			expect(result.error).toContain('identity extractor');
+		});
+
+		it('should return invalid when a custom resolver is used with a webhook trigger without hooks', async () => {
+			const nodes: INode[] = [
+				createNode('Webhook', 'n8n-nodes-base.webhook'),
+				createNode('HTTP', 'n8n-nodes-base.httpRequest', {
+					credentials: { oAuth2Api: { id: 'cred-1' } },
+				}),
+			];
+
+			mockCredentialsRepository.find.mockResolvedValue([
+				{ id: 'cred-1', name: 'My OAuth2' } as any,
+			]);
+			useCustomResolver();
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+				if (type === 'n8n-nodes-base.webhook') return createTriggerNodeType();
+				return {} as INodeType;
+			}) as any);
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain('end-user credentials');
+			expect(result.error).toContain('identity extractor');
+		});
+
+		it('should return invalid when a system-resolved credential is used under a schedule trigger', async () => {
+			const nodes: INode[] = [
+				createNode('Schedule', 'n8n-nodes-base.scheduleTrigger'),
+				createNode('HTTP', 'n8n-nodes-base.httpRequest', {
+					credentials: { oAuth2Api: { id: 'cred-1' } },
+				}),
+			];
+
+			mockCredentialsRepository.find.mockResolvedValue([
+				{ id: 'cred-1', name: 'My OAuth2' } as any,
+			]);
+			useSystemResolver();
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+				if (type === 'n8n-nodes-base.scheduleTrigger') return createTriggerNodeType();
+				return {} as INodeType;
+			}) as any);
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain('end-user credentials');
+			expect(result.error).toContain('"My OAuth2"');
+			expect(result.error).toContain(
+				'only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, form, or webhook triggers with n8n user authentication',
+			);
+		});
+
+		it('should return valid when a system-resolved credential is used under a manual trigger', async () => {
+			const nodes: INode[] = [
+				createNode('Manual', 'n8n-nodes-base.manualTrigger'),
+				createNode('HTTP', 'n8n-nodes-base.httpRequest', {
+					credentials: { oAuth2Api: { id: 'cred-1' } },
+				}),
+			];
+
+			mockCredentialsRepository.find.mockResolvedValue([
+				{ id: 'cred-1', name: 'My OAuth2' } as any,
+			]);
+			useSystemResolver();
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+				if (type === 'n8n-nodes-base.manualTrigger') return createTriggerNodeType();
+				return {} as INodeType;
+			}) as any);
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.isValid).toBe(true);
+		});
+
+		it('should not treat a Send-and-Wait action node (webhook method, non-trigger group) as a trigger', async () => {
+			// Regression: an MCP trigger (n8n identity) alongside a Gmail tool node using
+			// "Send and Wait for Response". The tool carries a HITL `webhook`, so the old
+			// method-based check mistook it for an identity-less trigger and blocked publish.
+			const nodes: INode[] = [
+				createNode('MCP Server Trigger', '@n8n/n8n-nodes-langchain.mcpTrigger', {
+					parameters: { authentication: 'n8nOAuth2' },
+				}),
+				createNode('Send a message in Gmail', 'n8n-nodes-base.gmailTool', {
+					credentials: { gmailOAuth2: { id: 'cred-1' } },
+				}),
+			];
+
+			mockCredentialsRepository.find.mockResolvedValue([
+				{ id: 'cred-1', name: 'Gmail account' } as any,
+			]);
+			useSystemResolver();
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+				if (type === '@n8n/n8n-nodes-langchain.mcpTrigger') return createTriggerNodeType();
+				if (type === 'n8n-nodes-base.gmailTool') return createSendAndWaitNodeType();
+				return {} as INodeType;
+			}) as any);
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.isValid).toBe(true);
+		});
+
+		it('should return invalid when a compatible trigger is combined with an unsupported trigger', async () => {
+			const nodes: INode[] = [
+				createNode('Manual', 'n8n-nodes-base.manualTrigger'),
+				createNode('Schedule', 'n8n-nodes-base.scheduleTrigger'),
+				createNode('HTTP', 'n8n-nodes-base.httpRequest', {
+					credentials: { oAuth2Api: { id: 'cred-1' } },
+				}),
+			];
+
+			mockCredentialsRepository.find.mockResolvedValue([
+				{ id: 'cred-1', name: 'My OAuth2' } as any,
+			]);
+			useSystemResolver();
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+				if (type === 'n8n-nodes-base.manualTrigger' || type === 'n8n-nodes-base.scheduleTrigger')
+					return createTriggerNodeType();
+				return {} as INodeType;
+			}) as any);
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain('end-user credentials');
+			expect(result.error).toContain('"My OAuth2"');
+			// The compatible manual trigger doesn't mask the incompatible schedule one.
+			expect(result.error).toContain('are only supported with manual and sub-workflow triggers');
+		});
+
+		it('should return valid when a system-resolved credential is used under an Execute Workflow Trigger', async () => {
+			const nodes: INode[] = [
+				createNode('When Executed by Another Workflow', 'n8n-nodes-base.executeWorkflowTrigger'),
+				createNode('HTTP', 'n8n-nodes-base.httpRequest', {
+					credentials: { oAuth2Api: { id: 'cred-1' } },
+				}),
+			];
+
+			mockCredentialsRepository.find.mockResolvedValue([
+				{ id: 'cred-1', name: 'My OAuth2' } as any,
+			]);
+			useSystemResolver();
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+				if (type === 'n8n-nodes-base.executeWorkflowTrigger') return createTriggerNodeType();
+				return {} as INodeType;
+			}) as any);
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.isValid).toBe(true);
+		});
+
+		it('should return valid when the trigger is an Execute Workflow Trigger (sub-workflow inherits identity context)', async () => {
+			const nodes: INode[] = [
+				createNode('When Executed by Another Workflow', 'n8n-nodes-base.executeWorkflowTrigger'),
+				createNode('Google Drive', 'n8n-nodes-base.googleDrive', {
+					credentials: { googleDriveOAuth2Api: { id: 'cred-1' } },
+				}),
+			];
+
+			mockCredentialsRepository.find.mockResolvedValue([
+				{ id: 'cred-1', name: 'Google Drive account 45' } as any,
+			]);
+			useCustomResolver();
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+				if (type === 'n8n-nodes-base.executeWorkflowTrigger') return createTriggerNodeType();
+				return {} as INodeType;
+			}) as any);
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.isValid).toBe(true);
+		});
+
+		it('should return valid when Chat Trigger with availableInChat is the trigger', async () => {
+			const nodes: INode[] = [
+				createNode('Chat Trigger', '@n8n/n8n-nodes-langchain.chatTrigger', {
+					parameters: { availableInChat: true },
+				}),
+				createNode('Google Calendar', 'n8n-nodes-base.googleCalendar', {
+					credentials: { googleCalendarOAuth2Api: { id: 'cred-1' } },
+				}),
+			];
+
+			mockCredentialsRepository.find.mockResolvedValue([
+				{ id: 'cred-1', name: 'Google Calendar account 56' } as any,
+			]);
+			useCustomResolver();
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+				if (type === '@n8n/n8n-nodes-langchain.chatTrigger') return createTriggerNodeType();
+				return {} as INodeType;
+			}) as any);
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.isValid).toBe(true);
+		});
+
+		it('should return invalid when a custom resolver is used with a Chat Trigger without availableInChat', async () => {
+			const nodes: INode[] = [
+				createNode('Chat Trigger', '@n8n/n8n-nodes-langchain.chatTrigger'),
+				createNode('Google Calendar', 'n8n-nodes-base.googleCalendar', {
+					credentials: { googleCalendarOAuth2Api: { id: 'cred-1' } },
+				}),
+			];
+
+			mockCredentialsRepository.find.mockResolvedValue([
+				{ id: 'cred-1', name: 'Google Calendar account 56' } as any,
+			]);
+			useCustomResolver();
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+				if (type === '@n8n/n8n-nodes-langchain.chatTrigger') return createTriggerNodeType();
+				return {} as INodeType;
+			}) as any);
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain('identity extractor');
+		});
+
+		it('should return invalid when the system resolver is used with a Chat Trigger not available in Chat Hub', async () => {
+			const nodes: INode[] = [
+				createNode('Chat Trigger', '@n8n/n8n-nodes-langchain.chatTrigger'),
+				createNode('Outlook', 'n8n-nodes-base.microsoftOutlook', {
+					credentials: { microsoftOutlookOAuth2Api: { id: 'cred-1' } },
+				}),
+			];
+
+			mockCredentialsRepository.find.mockResolvedValue([
+				{ id: 'cred-1', name: 'Outlook account' } as any,
+			]);
+			useSystemResolver();
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+				if (type === '@n8n/n8n-nodes-langchain.chatTrigger') return createTriggerNodeType();
+				return {} as INodeType;
+			}) as any);
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain('are only supported with manual and sub-workflow triggers');
+		});
+
+		it('should return valid when the system resolver is used with a Chat Trigger available in Chat Hub', async () => {
+			const nodes: INode[] = [
+				createNode('Chat Trigger', '@n8n/n8n-nodes-langchain.chatTrigger', {
+					parameters: { availableInChat: true },
+				}),
+				createNode('Outlook', 'n8n-nodes-base.microsoftOutlook', {
+					credentials: { microsoftOutlookOAuth2Api: { id: 'cred-1' } },
+				}),
+			];
+
+			mockCredentialsRepository.find.mockResolvedValue([
+				{ id: 'cred-1', name: 'Outlook account' } as any,
+			]);
+			useSystemResolver();
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+				if (type === '@n8n/n8n-nodes-langchain.chatTrigger') return createTriggerNodeType();
+				return {} as INodeType;
+			}) as any);
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.isValid).toBe(true);
+		});
+
+		it('should return invalid when the system resolver is used with an MCP trigger on bearer auth', async () => {
+			const nodes: INode[] = [
+				createNode('MCP Server Trigger', '@n8n/n8n-nodes-langchain.mcpTrigger', {
+					parameters: { authentication: 'bearerAuth' },
+				}),
+				createNode('Outlook', 'n8n-nodes-base.microsoftOutlook', {
+					credentials: { microsoftOutlookOAuth2Api: { id: 'cred-1' } },
+				}),
+			];
+
+			mockCredentialsRepository.find.mockResolvedValue([
+				{ id: 'cred-1', name: 'Outlook account' } as any,
+			]);
+			useSystemResolver();
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+				if (type === '@n8n/n8n-nodes-langchain.mcpTrigger') return createTriggerNodeType();
+				return {} as INodeType;
+			}) as any);
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain('are only supported with manual and sub-workflow triggers');
+		});
+
+		it('should return valid when the system resolver is used with an MCP trigger on n8nOAuth2', async () => {
+			const nodes: INode[] = [
+				createNode('MCP Server Trigger', '@n8n/n8n-nodes-langchain.mcpTrigger', {
+					parameters: { authentication: 'n8nOAuth2' },
+				}),
+				createNode('Outlook', 'n8n-nodes-base.microsoftOutlook', {
+					credentials: { microsoftOutlookOAuth2Api: { id: 'cred-1' } },
+				}),
+			];
+
+			mockCredentialsRepository.find.mockResolvedValue([
+				{ id: 'cred-1', name: 'Outlook account' } as any,
+			]);
+			useSystemResolver();
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+				if (type === '@n8n/n8n-nodes-langchain.mcpTrigger') return createTriggerNodeType();
+				return {} as INodeType;
+			}) as any);
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.isValid).toBe(true);
+		});
+
+		describe('webhook trigger', () => {
+			const validateWithOAuth2Webhook = async () => {
+				const nodes: INode[] = [
+					createNode('Webhook', 'n8n-nodes-base.webhook', {
+						parameters: { authentication: 'n8nOAuth2' },
+					}),
+					createNode('HTTP', 'n8n-nodes-base.httpRequest', {
+						credentials: { oAuth2Api: { id: 'cred-1' } },
+					}),
+				];
+
+				mockCredentialsRepository.find.mockResolvedValue([
+					{ id: 'cred-1', name: 'My OAuth2' } as any,
+				]);
+				useSystemResolver();
+
+				mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+					if (type === 'n8n-nodes-base.webhook') return createTriggerNodeType();
+					return {} as INodeType;
+				}) as any);
+
+				return await service.validateDynamicCredentials(nodes, mockNodeTypes);
+			};
+
+			it('should return valid for n8nOAuth2', async () => {
+				const result = await validateWithOAuth2Webhook();
+
+				expect(result.isValid).toBe(true);
+			});
+		});
+
+		describe('form trigger', () => {
+			const FORM_TRIGGER = 'n8n-nodes-base.formTrigger';
+
+			const validateWithFormTrigger = async (authentication: string) => {
+				const nodes: INode[] = [
+					createNode('On form submission', FORM_TRIGGER, {
+						parameters: { authentication },
+					}),
+					createNode('HTTP', 'n8n-nodes-base.httpRequest', {
+						credentials: { oAuth2Api: { id: 'cred-1' } },
+					}),
+				];
+
+				mockCredentialsRepository.find.mockResolvedValue([
+					{ id: 'cred-1', name: 'My OAuth2' } as any,
+				]);
+				useSystemResolver();
+
+				mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+					if (type === FORM_TRIGGER) return createTriggerNodeType();
+					return {} as INodeType;
+				}) as any);
+
+				return await service.validateDynamicCredentials(nodes, mockNodeTypes);
+			};
+
+			it('should return valid for n8nUserAuth', async () => {
+				const result = await validateWithFormTrigger('n8nUserAuth');
+
+				expect(result.isValid).toBe(true);
+			});
+
+			it.each(['none', 'basicAuth'])('should reject authentication %s', async (authentication) => {
+				const result = await validateWithFormTrigger(authentication);
+
+				expect(result.isValid).toBe(false);
+				expect(result.error).toBe(
+					'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, form, or webhook triggers with n8n user authentication. To use another trigger, switch the credential to Fixed.',
+				);
+			});
+
+			it('should offer the form option in the generic message', async () => {
+				const nodes: INode[] = [
+					createNode('Schedule', 'n8n-nodes-base.scheduleTrigger'),
+					createNode('HTTP', 'n8n-nodes-base.httpRequest', {
+						credentials: { oAuth2Api: { id: 'cred-1' } },
+					}),
+				];
+
+				mockCredentialsRepository.find.mockResolvedValue([
+					{ id: 'cred-1', name: 'My OAuth2' } as any,
+				]);
+				useSystemResolver();
+
+				mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+					if (type === 'n8n-nodes-base.scheduleTrigger') return createTriggerNodeType();
+					return {} as INodeType;
+				}) as any);
+
+				const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+				expect(result.isValid).toBe(false);
+				expect(result.error).toContain(
+					'only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, form, or webhook triggers with n8n user authentication',
+				);
+			});
+		});
+
+		describe('chat trigger', () => {
+			const CHAT_TRIGGER = '@n8n/n8n-nodes-langchain.chatTrigger';
+
+			const validateWithChatTrigger = async (parameters: Record<string, unknown>) => {
+				const nodes: INode[] = [
+					createNode('When chat message received', CHAT_TRIGGER, { parameters }),
+					createNode('HTTP', 'n8n-nodes-base.httpRequest', {
+						credentials: { oAuth2Api: { id: 'cred-1' } },
+					}),
+				];
+
+				mockCredentialsRepository.find.mockResolvedValue([
+					{ id: 'cred-1', name: 'My OAuth2' } as any,
+				]);
+				useSystemResolver();
+
+				mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+					if (type === CHAT_TRIGGER) return createTriggerNodeType();
+					return {} as INodeType;
+				}) as any);
+
+				return await service.validateDynamicCredentials(nodes, mockNodeTypes);
+			};
+
+			// A chat trigger establishes no identity at runtime through `none`/`basicAuth`.
+			it.each(['none', 'basicAuth'])('should reject authentication %s', async (authentication) => {
+				const result = await validateWithChatTrigger({ authentication });
+
+				expect(result.isValid).toBe(false);
+				expect(result.error).toBe(
+					'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, form, or webhook triggers with n8n user authentication. To use another trigger, switch the credential to Fixed.',
+				);
+			});
+
+			it.each([{}, { mode: 'hostedChat' }])(
+				'should return valid for public n8nUserAuth in hosted-chat mode (%o)',
+				async (modeParams) => {
+					const result = await validateWithChatTrigger({
+						public: true,
+						authentication: 'n8nUserAuth',
+						...modeParams,
+					});
+
+					expect(result.isValid).toBe(true);
+				},
+			);
+
+			// A non-public trigger 404s on every production request and skips auth entirely
+			// in test mode, so it never reaches the code that establishes identity.
+			it('should reject n8nUserAuth in hosted-chat mode when not public', async () => {
+				const result = await validateWithChatTrigger({ authentication: 'n8nUserAuth' });
+
+				expect(result.isValid).toBe(false);
+			});
+
+			// Embedded/webhook-mode chat has no hosted page to run the OAuth2 handshake on, so
+			// `n8nUserAuth` establishes no identity there despite being selected.
+			it('should reject authentication n8nUserAuth in webhook mode', async () => {
+				const result = await validateWithChatTrigger({
+					public: true,
+					authentication: 'n8nUserAuth',
+					mode: 'webhook',
+				});
+
+				expect(result.isValid).toBe(false);
+				expect(result.error).toBe(
+					'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, form, or webhook triggers with n8n user authentication. To use another trigger, switch the credential to Fixed.',
+				);
+			});
+		});
+
+		it('should state the identity-extractor requirement for a custom resolver', async () => {
+			const nodes: INode[] = [
+				createNode('Every 5 minutes', 'n8n-nodes-base.scheduleTrigger'),
+				createNode('HTTP', 'n8n-nodes-base.httpRequest', {
+					credentials: { oAuth2Api: { id: 'cred-1' } },
+				}),
+			];
+
+			mockCredentialsRepository.find.mockResolvedValue([
+				{ id: 'cred-1', name: 'My OAuth2' } as any,
+			]);
+			useCustomResolver();
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+				if (type === 'n8n-nodes-base.scheduleTrigger') return createTriggerNodeType();
+				return {} as INodeType;
+			}) as any);
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.error).toBe(
+				'Cannot publish workflow: end-user credentials ("My OAuth2") require a trigger with an identity extractor configured. Please configure an identity extractor on the trigger node.',
+			);
+		});
+
+		it('should reject a workflow with no trigger at all', async () => {
+			const nodes: INode[] = [
+				createNode('HTTP', 'n8n-nodes-base.httpRequest', {
+					credentials: { oAuth2Api: { id: 'cred-1' } },
+				}),
+			];
+
+			mockCredentialsRepository.find.mockResolvedValue([
+				{ id: 'cred-1', name: 'My OAuth2' } as any,
+			]);
+			useSystemResolver();
+			mockNodeTypes.getByNameAndVersion.mockReturnValue({} as INodeType);
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.error).toBe(
+				'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, form, or webhook triggers with n8n user authentication. To use another trigger, switch the credential to Fixed.',
+			);
+		});
+
+		it('should skip disabled nodes when collecting credentials', async () => {
+			const nodes: INode[] = [
+				createNode('Schedule', 'n8n-nodes-base.scheduleTrigger'),
+				createNode('HTTP', 'n8n-nodes-base.httpRequest', {
+					disabled: true,
+					credentials: { oAuth2Api: { id: 'cred-1' } },
+				}),
+			];
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.isValid).toBe(true);
+			expect(mockCredentialsRepository.find).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('validatePublisherCredentialAccess', () => {
+		const user = mock<User>({ id: 'user-1' });
+		const nodes: INode[] = [
+			{
+				name: 'HTTP',
+				type: 'n8n-nodes-base.httpRequest',
+				id: 'node-1',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+				credentials: { httpBasicAuth: { id: 'cred-1', name: 'Cred One' } },
+			},
+		];
+
+		it('is valid when the publisher can use every referenced credential', async () => {
+			mockCredentialsPermissionChecker.findInaccessibleForUser.mockResolvedValueOnce([]);
+
+			const result = await service.validatePublisherCredentialAccess(user, nodes, 'workflow-1');
+
+			expect(result).toEqual({ isValid: true });
+			expect(mockCredentialsPermissionChecker.findInaccessibleForUser).toHaveBeenCalledWith(
+				user.id,
+				nodes,
+				'workflow-1',
+			);
+		});
+
+		it('names the credential the publisher cannot use', async () => {
+			mockCredentialsPermissionChecker.findInaccessibleForUser.mockResolvedValueOnce([
+				{ id: 'cred-1', name: 'Cred One', exists: true },
+			]);
+
+			const result = await service.validatePublisherCredentialAccess(user, nodes, 'workflow-1');
+
+			expect(result).toEqual({
+				isValid: false,
+				error:
+					'Cannot publish workflow: You do not have access to credential "Cred One". Ask its owner to share it with you.',
+			});
+		});
+
+		it('gives a different message for a credential that no longer exists', async () => {
+			mockCredentialsPermissionChecker.findInaccessibleForUser.mockResolvedValueOnce([
+				{ id: 'cred-1', name: 'Cred One', exists: false },
+			]);
+
+			const result = await service.validatePublisherCredentialAccess(user, nodes, 'workflow-1');
+
+			expect(result).toEqual({
+				isValid: false,
+				error:
+					'Cannot publish workflow: Credential "Cred One" no longer exists. Update the node to use a different credential.',
+			});
+		});
+
+		it('combines both messages when some credentials are unshared and others no longer exist', async () => {
+			mockCredentialsPermissionChecker.findInaccessibleForUser.mockResolvedValueOnce([
+				{ id: 'cred-1', name: 'Cred One', exists: true },
+				{ id: 'cred-2', name: 'Cred Two', exists: false },
+			]);
+
+			const result = await service.validatePublisherCredentialAccess(user, nodes, 'workflow-1');
+
+			expect(result).toEqual({
+				isValid: false,
+				error:
+					'Cannot publish workflow: You do not have access to credential "Cred One". Ask its owner to share it with you. Credential "Cred Two" no longer exists. Update the node to use a different credential.',
+			});
+		});
+
+		it('pluralizes the message when the publisher cannot use several credentials', async () => {
+			mockCredentialsPermissionChecker.findInaccessibleForUser.mockResolvedValueOnce([
+				{ id: 'cred-1', name: 'Cred One', exists: true },
+				{ id: 'cred-2', name: 'Cred Two', exists: true },
+			]);
+
+			const result = await service.validatePublisherCredentialAccess(user, nodes, 'workflow-1');
+
+			expect(result).toEqual({
+				isValid: false,
+				error:
+					'Cannot publish workflow: You do not have access to credentials "Cred One", "Cred Two". Ask their owners to share them with you.',
+			});
+		});
+	});
+
+	describe('validateCredentialNodeRestrictions', () => {
+		const buildService = (credentialTypes: CredentialTypes) =>
+			new WorkflowValidationService(
+				mock<WorkflowRepository>(),
+				mock<CredentialsRepository>(),
+				mock<DynamicCredentialsProxy>(),
+				credentialTypes,
+				mock<CredentialsPermissionChecker>(),
+			);
+
+		// The loader sets `supportedNodes` on the credential class to *short* names
+		// (e.g. "restrictedConsumer"); the FQ list comes via `getSupportedNodes`.
+		// Mocks reflect that split so tests catch a regression of the FQ-vs-short bug.
+		const restrictedType = {
+			name: 'restrictedApi',
+			restrictToSupportedNodes: true,
+			supportedNodes: ['restrictedConsumer'],
+		} as ICredentialType;
+
+		const buildCredentialTypes = (
+			typeName: string,
+			typeDef: ICredentialType,
+			supportedNodes: string[],
+		) => {
+			const credentialTypes = mock<CredentialTypes>();
+			credentialTypes.getByName.calledWith(typeName).mockReturnValue(typeDef);
+			credentialTypes.getSupportedNodes.calledWith(typeName).mockReturnValue(supportedNodes);
+			return credentialTypes;
+		};
+
+		// Helper for HTTP-Request-shaped nodes — the editor sets `authentication`
+		// + `nodeCredentialType` on the parameter object to indicate which
+		// credential is actively selected on the node.
+		const httpRequestNodeWith = (
+			activeCredentialType: string | null,
+			boundCredentials: INode['credentials'],
+			overrides: Partial<INode> = {},
+		): INode =>
+			mock<INode>({
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				disabled: false,
+				parameters: activeCredentialType
+					? { authentication: 'predefinedCredentialType', nodeCredentialType: activeCredentialType }
+					: { authentication: 'none' },
+				credentials: boundCredentials,
+				...overrides,
+			});
+
+		it('rejects a workflow binding a restricted credential to a non-supported node', () => {
+			const credentialTypes = buildCredentialTypes('restrictedApi', restrictedType, [
+				'n8n-nodes-base.restrictedConsumer',
+			]);
+
+			const httpNode = httpRequestNodeWith('restrictedApi', {
+				restrictedApi: { id: 'cred-1', name: 'Restricted creds' },
+			});
+
+			const result = buildService(credentialTypes).validateCredentialNodeRestrictions([httpNode]);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toMatch(/restrictedApi/);
+			expect(result.error).toMatch(/HTTP Request/);
+			expect(result.error).toMatch(/n8n-nodes-base\.restrictedConsumer/);
+		});
+
+		it('accepts a workflow binding a restricted credential to a supported node', () => {
+			const credentialTypes = buildCredentialTypes('restrictedApi', restrictedType, [
+				'n8n-nodes-base.restrictedConsumer',
+			]);
+
+			const consumerNode = mock<INode>({
+				name: 'Consumer',
+				type: 'n8n-nodes-base.restrictedConsumer',
+				disabled: false,
+			});
+			consumerNode.credentials = { restrictedApi: { id: 'cred-1', name: 'Restricted creds' } };
+
+			expect(
+				buildService(credentialTypes).validateCredentialNodeRestrictions([consumerNode]).isValid,
+			).toBe(true);
+		});
+
+		it('renders "(no nodes)" when the FQ supportedNodes list is empty', () => {
+			const credentialTypes = buildCredentialTypes('restrictedApi', restrictedType, []);
+
+			const httpNode = httpRequestNodeWith('restrictedApi', {
+				restrictedApi: { id: 'cred-1', name: 'Restricted creds' },
+			});
+
+			const result = buildService(credentialTypes).validateCredentialNodeRestrictions([httpNode]);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toMatch(/\(no nodes\)/);
+		});
+
+		it('ignores credentials that do not opt into restriction', () => {
+			const unrestricted = {
+				name: 'slackApi',
+				supportedNodes: ['slack'],
+			} as ICredentialType;
+			const credentialTypes = buildCredentialTypes('slackApi', unrestricted, [
+				'n8n-nodes-base.slack',
+			]);
+
+			const httpNode = httpRequestNodeWith('slackApi', {
+				slackApi: { id: 'cred-2', name: 'Slack creds' },
+			});
+
+			expect(
+				buildService(credentialTypes).validateCredentialNodeRestrictions([httpNode]).isValid,
+			).toBe(true);
+		});
+
+		it('validates disabled nodes too — illegal bindings must never be persisted', () => {
+			const credentialTypes = buildCredentialTypes('restrictedApi', restrictedType, [
+				'n8n-nodes-base.restrictedConsumer',
+			]);
+
+			const httpNode = httpRequestNodeWith(
+				'restrictedApi',
+				{ restrictedApi: { id: 'cred-1', name: 'Restricted creds' } },
+				{ disabled: true },
+			);
+
+			const result = buildService(credentialTypes).validateCredentialNodeRestrictions([httpNode]);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toMatch(/restrictedApi/);
+			expect(result.error).toMatch(/HTTP Request/);
+		});
+
+		it('ignores a stale credential entry left over from a prior selection on HTTP Request', () => {
+			// User picked restrictedApi, then switched to slackApi. The editor spreads
+			// node.credentials so the old key sticks around even though only slackApi
+			// is selected per parameters.nodeCredentialType. We must not flag the
+			// inactive restrictedApi binding — the user sees Slack in the UI.
+			const credentialTypes = buildCredentialTypes('restrictedApi', restrictedType, [
+				'n8n-nodes-base.restrictedConsumer',
+			]);
+
+			const httpNode = httpRequestNodeWith('slackApi', {
+				restrictedApi: { id: 'cred-r1', name: 'Stale restricted' },
+				slackApi: { id: 'cred-s1', name: 'Active Slack' },
+			});
+
+			expect(
+				buildService(credentialTypes).validateCredentialNodeRestrictions([httpNode]).isValid,
+			).toBe(true);
+		});
+
+		it('rejects a restricted credential that IS the active selection on HTTP Request', () => {
+			// Sibling of the stale-entry test: when nodeCredentialType points AT the
+			// restricted type, the validator must fire — defense vs. someone POSTing
+			// an illegal binding through the API.
+			const credentialTypes = buildCredentialTypes('restrictedApi', restrictedType, [
+				'n8n-nodes-base.restrictedConsumer',
+			]);
+
+			const httpNode = httpRequestNodeWith('restrictedApi', {
+				restrictedApi: { id: 'cred-r1', name: 'Active restricted' },
+				slackApi: { id: 'cred-s1', name: 'Stale Slack' },
+			});
+
+			const result = buildService(credentialTypes).validateCredentialNodeRestrictions([httpNode]);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toMatch(/restrictedApi/);
+		});
+
+		it('ignores all entries on HTTP Request when authentication is "none"', () => {
+			const credentialTypes = buildCredentialTypes('restrictedApi', restrictedType, [
+				'n8n-nodes-base.restrictedConsumer',
+			]);
+
+			const httpNode = httpRequestNodeWith(null, {
+				restrictedApi: { id: 'cred-r1', name: 'Leftover from earlier auth setup' },
+			});
+
+			expect(
+				buildService(credentialTypes).validateCredentialNodeRestrictions([httpNode]).isValid,
+			).toBe(true);
+		});
+
+		it('aggregates violations across multiple nodes', () => {
+			const credentialTypes = buildCredentialTypes('restrictedApi', restrictedType, [
+				'n8n-nodes-base.restrictedConsumer',
+			]);
+
+			const httpNode = httpRequestNodeWith('restrictedApi', {
+				restrictedApi: { id: 'cred-1', name: 'Restricted creds' },
+			});
+
+			const slackNode = mock<INode>({
+				name: 'Slack',
+				type: 'n8n-nodes-base.slack',
+				disabled: false,
+			});
+			slackNode.credentials = { restrictedApi: { id: 'cred-1', name: 'Restricted creds' } };
+
+			const result = buildService(credentialTypes).validateCredentialNodeRestrictions([
+				httpNode,
+				slackNode,
+			]);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toMatch(/HTTP Request/);
+			expect(result.error).toMatch(/Slack/);
+		});
+	});
+
+	describe('validateTriggerNodeIds', () => {
+		const triggerNode = (name: string, id?: string): INode =>
+			({
+				name,
+				id,
+				type: 'n8n-nodes-base.cron',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			}) as INode;
+
+		it('accepts trigger nodes that each carry a distinct id', () => {
+			const result = service.validateTriggerNodeIds([
+				triggerNode('Cron', 'node-1'),
+				triggerNode('Webhook', 'node-2'),
+			]);
+
+			expect(result.isValid).toBe(true);
+		});
+
+		it('accepts a workflow with no trigger nodes', () => {
+			const result = service.validateTriggerNodeIds([]);
+
+			expect(result.isValid).toBe(true);
+		});
+
+		it('rejects trigger nodes that share an id, naming each node and the id', () => {
+			const result = service.validateTriggerNodeIds([
+				triggerNode('Cron', 'node-1'),
+				triggerNode('Webhook', 'node-1'),
+			]);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain('Cannot publish workflow');
+			expect(result.error).toContain('"Cron"');
+			expect(result.error).toContain('"Webhook"');
+			expect(result.error).toContain('"node-1"');
+		});
+
+		it('rejects a trigger node that carries no id', () => {
+			const result = service.validateTriggerNodeIds([
+				triggerNode('Cron', 'node-1'),
+				triggerNode('Webhook', undefined),
+			]);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain('Cannot publish workflow');
+			expect(result.error).toContain('"Webhook"');
+		});
+
+		it('rejects a trigger node whose id is longer than NODE_ID_MAX_LENGTH', () => {
+			const result = service.validateTriggerNodeIds([
+				triggerNode('Cron', 'n'.repeat(NODE_ID_MAX_LENGTH)),
+				triggerNode('Webhook', 'n'.repeat(NODE_ID_MAX_LENGTH + 1)),
+			]);
+
+			expect(result).toEqual({
+				isValid: false,
+				error:
+					'Cannot publish workflow: trigger "Webhook" has a node ID longer than 64 characters. Remove and re-add the affected nodes to give them new IDs.',
+			});
+		});
+
+		it('counts trigger node id length in characters, not UTF-16 code units', () => {
+			const result = service.validateTriggerNodeIds([
+				triggerNode('Cron', '😀'.repeat(NODE_ID_MAX_LENGTH)),
+			]);
+
+			expect(result).toEqual({ isValid: true });
+		});
+	});
+	describe('validateRequiredInputsConnected', () => {
+		const nodeTypes = mock<NodeTypes>();
+
+		const node = (name: string, type: string, disabled = false): INode => ({
+			name,
+			type,
+			id: `node-${name}`,
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+			...(disabled ? { disabled } : {}),
+		});
+
+		/** Parser-like node whose `Model` input is declared required. */
+		const parserType = {
+			description: {
+				displayName: 'Parser',
+				name: 'parser',
+				group: ['transform'],
+				version: 1,
+				description: '',
+				defaults: { name: 'Parser' },
+				inputs: [{ displayName: 'Model', type: 'ai_languageModel', required: true }],
+				outputs: ['ai_outputParser'],
+				properties: [],
+			} as unknown as INodeTypeDescription,
+		} as INodeType;
+
+		/** A parent with no required gated inputs of its own. */
+		const agentType = {
+			description: {
+				displayName: 'Agent',
+				name: 'agent',
+				group: ['transform'],
+				version: 1,
+				description: '',
+				defaults: { name: 'Agent' },
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [],
+			} as unknown as INodeTypeDescription,
+		} as INodeType;
+
+		const modelType = {
+			description: {
+				displayName: 'Model',
+				name: 'model',
+				group: ['transform'],
+				version: 1,
+				description: '',
+				defaults: { name: 'Model' },
+				inputs: [],
+				outputs: ['ai_languageModel'],
+				properties: [],
+			} as unknown as INodeTypeDescription,
+		} as INodeType;
+
+		/** An entry point, so nodes wired behind it are reachable by a run. */
+		const triggerType = {
+			description: {
+				displayName: 'Trigger',
+				name: 'trigger',
+				group: ['trigger'],
+				version: 1,
+				description: '',
+				defaults: { name: 'Trigger' },
+				inputs: [],
+				outputs: ['main'],
+				properties: [],
+			} as unknown as INodeTypeDescription,
+			trigger: async () => undefined,
+		} as unknown as INodeType;
+
+		/** Wires the trigger into `target`, the way an activatable workflow would. */
+		const startedAt = (target: string) => ({
+			Trigger: { main: [[{ node: target, type: 'main', index: 0 }]] },
+		});
+
+		beforeEach(() => {
+			nodeTypes.getByNameAndVersion.mockImplementation((type: string) => {
+				if (type === 'trigger') return triggerType;
+				if (type === 'parser') return parserType;
+				if (type === 'agent') return agentType;
+				return modelType;
+			});
+		});
+
+		it('rejects activation when a required input has nothing connected', async () => {
+			const result = await service.validateRequiredInputsConnected(
+				[node('Trigger', 'trigger'), node('Parser', 'parser'), node('Agent', 'agent')],
+				{
+					...startedAt('Agent'),
+					Parser: {
+						ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
+					},
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain(
+				"'Parser' has no node connected to its required 'Model' input",
+			);
+		});
+
+		it('ignores an island of wired nodes with no path from a trigger', async () => {
+			// The parser is connected, so it is not a floating node, but nothing
+			// reaches its agent. The island never runs, so it must not block
+			// publishing.
+			const result = await service.validateRequiredInputsConnected(
+				[
+					node('Trigger', 'trigger'),
+					node('Tail', 'agent'),
+					node('Parser', 'parser'),
+					node('Island', 'agent'),
+				],
+				{
+					...startedAt('Tail'),
+					Parser: {
+						ai_outputParser: [[{ node: 'Island', type: 'ai_outputParser', index: 0 }]],
+					},
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result).toEqual({ isValid: true });
+		});
+
+		it('ignores a chain behind a disabled trigger', async () => {
+			// A disabled trigger starts nothing, so nothing downstream of it runs.
+			nodeTypes.getByNameAndVersion.mockImplementation((type: string) => {
+				if (type === 'trigger') return triggerType;
+				if (type === 'mainParser') {
+					return {
+						description: {
+							...parserType.description,
+							outputs: ['main'],
+						} as unknown as INodeTypeDescription,
+					} as INodeType;
+				}
+				return modelType;
+			});
+
+			const result = await service.validateRequiredInputsConnected(
+				[node('Trigger', 'trigger', true), node('Parser', 'mainParser')],
+				startedAt('Parser') as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result).toEqual({ isValid: true });
+		});
+
+		it('still checks a node behind a disabled node on the main path', async () => {
+			// A disabled node passes its input through, so what follows it still runs.
+			nodeTypes.getByNameAndVersion.mockImplementation((type: string) => {
+				if (type === 'trigger') return triggerType;
+				if (type === 'mainParser') {
+					return {
+						description: {
+							...parserType.description,
+							outputs: ['main'],
+						} as unknown as INodeTypeDescription,
+					} as INodeType;
+				}
+				if (type === 'agent') return agentType;
+				return modelType;
+			});
+
+			const result = await service.validateRequiredInputsConnected(
+				[node('Trigger', 'trigger'), node('Skipped', 'agent', true), node('Parser', 'mainParser')],
+				{
+					...startedAt('Skipped'),
+					Skipped: { main: [[{ node: 'Parser', type: 'main', index: 0 }]] },
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain("'Parser'");
+		});
+
+		it('ignores a node that is wired to nothing', async () => {
+			// A floating node cannot break a run, so it must not block publishing.
+			const result = await service.validateRequiredInputsConnected(
+				[node('Parser', 'parser')],
+				{},
+				nodeTypes,
+			);
+
+			expect(result).toEqual({ isValid: true });
+		});
+
+		it('ignores a subnode whose only consumer is disabled', async () => {
+			// The trigger reaches the disabled agent, so the parser counts as
+			// executable. A disabled agent never resolves it though, so only the
+			// disabled-consumer exemption keeps this workflow publishable.
+			const result = await service.validateRequiredInputsConnected(
+				[node('Trigger', 'trigger'), node('Parser', 'parser'), node('Agent', 'agent', true)],
+				{
+					...startedAt('Agent'),
+					Parser: {
+						ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
+					},
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result).toEqual({ isValid: true });
+		});
+
+		it('ignores a subnode nested behind a disabled consumer', async () => {
+			// 'Inner' feeds 'Outer', which is enabled, so looking only one hop out
+			// reads it as live. 'Outer' only feeds the disabled agent though, so
+			// nothing ever resolves either of them.
+			const result = await service.validateRequiredInputsConnected(
+				[
+					node('Trigger', 'trigger'),
+					node('Inner', 'parser'),
+					node('Outer', 'parser'),
+					node('Agent', 'agent', true),
+				],
+				{
+					...startedAt('Agent'),
+					Outer: {
+						ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
+					},
+					Inner: {
+						ai_outputParser: [[{ node: 'Outer', type: 'ai_outputParser', index: 0 }]],
+					},
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result).toEqual({ isValid: true });
+		});
+
+		it('still checks a subnode nested behind an enabled consumer', async () => {
+			// Same shape with the agent enabled, so the whole chain resolves.
+			const result = await service.validateRequiredInputsConnected(
+				[
+					node('Trigger', 'trigger'),
+					node('Inner', 'parser'),
+					node('Outer', 'parser'),
+					node('Agent', 'agent'),
+				],
+				{
+					...startedAt('Agent'),
+					Outer: {
+						ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
+					},
+					Inner: {
+						ai_outputParser: [[{ node: 'Outer', type: 'ai_outputParser', index: 0 }]],
+					},
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain("'Inner'");
+			expect(result.error).toContain("'Outer'");
+		});
+
+		it('ignores a subnode whose consumer chain loops back on itself', async () => {
+			// A cycle between two supply nodes must not hang the consumer walk.
+			const result = await service.validateRequiredInputsConnected(
+				[
+					node('Trigger', 'trigger'),
+					node('Left', 'parser'),
+					node('Right', 'parser'),
+					node('Agent', 'agent', true),
+				],
+				{
+					...startedAt('Agent'),
+					Left: {
+						ai_outputParser: [
+							[
+								{ node: 'Right', type: 'ai_outputParser', index: 0 },
+								{ node: 'Agent', type: 'ai_outputParser', index: 0 },
+							],
+						],
+					},
+					Right: {
+						ai_outputParser: [[{ node: 'Left', type: 'ai_outputParser', index: 0 }]],
+					},
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result).toEqual({ isValid: true });
+		});
+
+		it('still checks a subnode that also supplies an enabled consumer', async () => {
+			const result = await service.validateRequiredInputsConnected(
+				[
+					node('Trigger', 'trigger'),
+					node('Parser', 'parser'),
+					node('Off', 'agent', true),
+					node('On', 'agent'),
+				],
+				{
+					...startedAt('On'),
+					Parser: {
+						ai_outputParser: [
+							[
+								{ node: 'Off', type: 'ai_outputParser', index: 0 },
+								{ node: 'On', type: 'ai_outputParser', index: 0 },
+							],
+						],
+					},
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result.isValid).toBe(false);
+		});
+
+		it('still checks a node that can output main but has only a disabled subnode consumer', async () => {
+			// Its main output happens to be unwired, so the connection record shows
+			// only the ai_ edge. Declared outputs are what decide, not the wiring.
+			nodeTypes.getByNameAndVersion.mockImplementation((type: string) => {
+				if (type === 'trigger') return triggerType;
+				if (type === 'dualOutput') {
+					return {
+						description: {
+							...parserType.description,
+							outputs: ['main', 'ai_tool'],
+						} as unknown as INodeTypeDescription,
+					} as INodeType;
+				}
+				return agentType;
+			});
+
+			const result = await service.validateRequiredInputsConnected(
+				[node('Trigger', 'trigger'), node('Store', 'dualOutput'), node('Agent', 'agent', true)],
+				{
+					...startedAt('Store'),
+					Store: { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain("'Store'");
+		});
+
+		it('still checks a node on the main path when its consumer is disabled', async () => {
+			// Unlike a subnode, a node with a main output runs whatever happens
+			// downstream, so its own unmet input still blocks publishing.
+			nodeTypes.getByNameAndVersion.mockImplementation((type: string) => {
+				if (type === 'trigger') return triggerType;
+				if (type === 'mainParser') {
+					return {
+						description: {
+							...parserType.description,
+							outputs: ['main'],
+						} as unknown as INodeTypeDescription,
+					} as INodeType;
+				}
+				return agentType;
+			});
+
+			const result = await service.validateRequiredInputsConnected(
+				[node('Trigger', 'trigger'), node('Parser', 'mainParser'), node('Next', 'agent', true)],
+				{
+					...startedAt('Parser'),
+					Parser: { main: [[{ node: 'Next', type: 'main', index: 0 }]] },
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result.isValid).toBe(false);
+		});
+
+		describe('with a fallback model declared on a second input of the same type', () => {
+			const agentWithFallbackType = {
+				description: {
+					displayName: 'Agent',
+					name: 'agentWithFallback',
+					group: ['transform'],
+					version: 1,
+					description: '',
+					defaults: { name: 'Agent' },
+					inputs: [
+						'main',
+						{ displayName: 'Chat Model', type: 'ai_languageModel', required: true },
+						{ displayName: 'Fallback Model', type: 'ai_languageModel', required: true },
+					],
+					outputs: ['main'],
+					properties: [],
+				} as unknown as INodeTypeDescription,
+			} as INodeType;
+
+			beforeEach(() => {
+				nodeTypes.getByNameAndVersion.mockImplementation((type: string) => {
+					if (type === 'trigger') return triggerType;
+					return type === 'agentWithFallback' ? agentWithFallbackType : modelType;
+				});
+			});
+
+			it('rejects activation when only the primary model is connected', async () => {
+				const result = await service.validateRequiredInputsConnected(
+					[node('Trigger', 'trigger'), node('Agent', 'agentWithFallback'), node('Model', 'model')],
+					{
+						...startedAt('Agent'),
+						Model: {
+							ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
+						},
+					} as unknown as IConnections,
+					nodeTypes,
+				);
+
+				expect(result.isValid).toBe(false);
+				expect(result.error).toContain("'Fallback Model'");
+			});
+
+			it('allows activation once each model sits on its own input', async () => {
+				const result = await service.validateRequiredInputsConnected(
+					[
+						node('Trigger', 'trigger'),
+						node('Agent', 'agentWithFallback'),
+						node('Primary', 'model'),
+						node('Fallback', 'model'),
+					],
+					{
+						...startedAt('Agent'),
+						Primary: {
+							ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
+						},
+						Fallback: {
+							ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 1 }]],
+						},
+					} as unknown as IConnections,
+					nodeTypes,
+				);
+
+				expect(result).toEqual({ isValid: true });
+			});
+
+			it('treats a disabled fallback as not connected', async () => {
+				const result = await service.validateRequiredInputsConnected(
+					[
+						node('Trigger', 'trigger'),
+						node('Agent', 'agentWithFallback'),
+						node('Primary', 'model'),
+						node('Fallback', 'model', true),
+					],
+					{
+						...startedAt('Agent'),
+						Primary: {
+							ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
+						},
+						Fallback: {
+							ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 1 }]],
+						},
+					} as unknown as IConnections,
+					nodeTypes,
+				);
+
+				expect(result.isValid).toBe(false);
+				expect(result.error).toContain("'Fallback Model'");
+			});
+		});
+
+		it('still checks a trigger that is wired to nothing', async () => {
+			// A trigger starts the run whether or not anything feeds it, so the
+			// floating-node exemption must not cover it.
+			nodeTypes.getByNameAndVersion.mockImplementation((type: string) => {
+				if (type === 'trigger') return triggerType;
+				if (type === 'triggerParser') {
+					return { ...parserType, trigger: async () => undefined } as unknown as INodeType;
+				}
+				return modelType;
+			});
+
+			const result = await service.validateRequiredInputsConnected(
+				[node('Trigger', 'triggerParser')],
+				{},
+				nodeTypes,
+			);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain("'Trigger'");
+		});
+
+		it('does not rewrite the parameters of the nodes it was given', async () => {
+			// These are the nodes about to be persisted as the active version.
+			const parser = node('Parser', 'parser');
+			const before = parser.parameters;
+
+			await service.validateRequiredInputsConnected(
+				[parser, node('Model', 'model')],
+				{
+					Model: {
+						ai_languageModel: [[{ node: 'Parser', type: 'ai_languageModel', index: 0 }]],
+					},
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(parser.parameters).toBe(before);
+		});
+
+		it('allows activation once the required input is connected', async () => {
+			const result = await service.validateRequiredInputsConnected(
+				[node('Parser', 'parser'), node('Model', 'model')],
+				{
+					Model: {
+						ai_languageModel: [[{ node: 'Parser', type: 'ai_languageModel', index: 0 }]],
+					},
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result).toEqual({ isValid: true });
+		});
+
+		it('treats a disabled source as not connected', async () => {
+			const result = await service.validateRequiredInputsConnected(
+				[node('Trigger', 'trigger'), node('Parser', 'parser'), node('Model', 'model', true)],
+				{
+					...startedAt('Parser'),
+					Model: {
+						ai_languageModel: [[{ node: 'Parser', type: 'ai_languageModel', index: 0 }]],
+					},
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result.isValid).toBe(false);
+		});
+
+		it('ignores disabled nodes with unmet requirements', async () => {
+			const result = await service.validateRequiredInputsConnected(
+				[node('Parser', 'parser', true), node('Agent', 'agent')],
+				{
+					Parser: {
+						ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
+					},
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result).toEqual({ isValid: true });
+		});
+
+		it('reports every unmet required input at once', async () => {
+			const result = await service.validateRequiredInputsConnected(
+				[
+					node('Trigger', 'trigger'),
+					node('Parser A', 'parser'),
+					node('Parser B', 'parser'),
+					node('Agent', 'agent'),
+				],
+				{
+					...startedAt('Agent'),
+					'Parser A': {
+						ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
+					},
+					'Parser B': {
+						ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
+					},
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result.error).toContain("'Parser A'");
+			expect(result.error).toContain("'Parser B'");
+		});
+
+		describe('with a dynamic inputs expression', () => {
+			/** `inputs` is an expression, so it resolves against the node's parameters. */
+			const gatedParserType = {
+				description: {
+					displayName: 'Parser',
+					name: 'gatedParser',
+					group: ['transform'],
+					version: 1,
+					description: '',
+					defaults: { name: 'Parser' },
+					inputs:
+						'={{ $parameter.autoFix ? [{ displayName: "Model", type: "ai_languageModel", required: true }] : [] }}',
+					outputs: ['ai_outputParser'],
+					properties: [
+						{ name: 'autoFix', displayName: 'Auto-fix', type: 'boolean', default: true },
+					],
+				} as unknown as INodeTypeDescription,
+			} as INodeType;
+
+			/**
+			 * Same shape, but the expression hits a runtime error. Mirrors the
+			 * LangChain Code node, which maps over its `Inputs` collection — empty
+			 * by default, so the map throws on `undefined`.
+			 */
+			const brokenParserType = {
+				description: {
+					...gatedParserType.description,
+					name: 'brokenParser',
+					inputs: '={{ $parameter.inputs.input.map((i) => ({ type: i.type })) }}',
+				} as unknown as INodeTypeDescription,
+			} as INodeType;
+
+			/** Same shape, but the expression cannot be parsed at all. */
+			const malformedParserType = {
+				description: {
+					...gatedParserType.description,
+					name: 'malformedParser',
+					inputs: '={{ ( }}',
+				} as unknown as INodeTypeDescription,
+			} as INodeType;
+
+			beforeEach(() => {
+				nodeTypes.getByNameAndVersion.mockImplementation((type: string) => {
+					if (type === 'trigger') return triggerType;
+					if (type === 'gatedParser') return gatedParserType;
+					if (type === 'brokenParser') return brokenParserType;
+					if (type === 'malformedParser') return malformedParserType;
+					if (type === 'agent') return agentType;
+					return modelType;
+				});
+			});
+
+			it('resolves the expression against parameter defaults the caller never set', async () => {
+				// The node omits `autoFix`; only the type default makes the input
+				// required. The transient workflow fills defaults in, so the
+				// expression must see the filled-in value, not the caller's bare node.
+				const parser = node('Parser', 'gatedParser');
+				expect(parser.parameters).toEqual({});
+
+				const result = await service.validateRequiredInputsConnected(
+					[node('Trigger', 'trigger'), parser, node('Agent', 'agent')],
+					{
+						...startedAt('Agent'),
+						Parser: {
+							ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
+						},
+					} as unknown as IConnections,
+					nodeTypes,
+				);
+
+				expect(result.isValid).toBe(false);
+				expect(result.error).toContain("'Parser'");
+				// Filling defaults must not leak back onto the version being saved.
+				expect(parser.parameters).toEqual({});
+			});
+
+			it('reads a runtime error in the expression the way the engine does', async () => {
+				// The engine swallows it and runs the node with no inputs, so refusing
+				// to publish here would block a workflow the runtime is happy with.
+				// The real case is the LangChain Code node, which maps over its
+				// `Inputs` collection — empty by default.
+				const result = await service.validateRequiredInputsConnected(
+					[node('Trigger', 'trigger'), node('Parser', 'brokenParser'), node('Agent', 'agent')],
+					{
+						...startedAt('Agent'),
+						Parser: {
+							ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
+						},
+					} as unknown as IConnections,
+					nodeTypes,
+				);
+
+				expect(result.isValid).toBe(true);
+			});
+
+			it('reports an input it could not determine instead of treating it as absent', async () => {
+				// An unparseable expression is a bug in the node type, not a state a
+				// user can configure, so it is worth surfacing.
+				const result = await service.validateRequiredInputsConnected(
+					[node('Trigger', 'trigger'), node('Parser', 'malformedParser'), node('Agent', 'agent')],
+					{
+						...startedAt('Agent'),
+						Parser: {
+							ai_outputParser: [[{ node: 'Agent', type: 'ai_outputParser', index: 0 }]],
+						},
+					} as unknown as IConnections,
+					nodeTypes,
+				);
+
+				expect(result.isValid).toBe(false);
+				expect(result.error).toContain('could not be determined');
+			});
+		});
+
+		it('does not mutate the connections it was given', async () => {
+			const connections = {
+				Model: {
+					ai_languageModel: [[{ node: 'Parser', type: 'ai_languageModel', index: 0 }]],
+				},
+			} as unknown as IConnections;
+			const snapshot = deepCopy(connections);
+
+			await service.validateRequiredInputsConnected(
+				[node('Parser', 'parser'), node('Model', 'model')],
+				connections,
+				nodeTypes,
+			);
+
+			expect(connections).toEqual(snapshot);
 		});
 	});
 });

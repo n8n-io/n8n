@@ -1,138 +1,119 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, nextTick } from 'vue';
-import { useRouter } from 'vue-router';
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import ClaudeEntryPoint from '@/experiments/surfaceMcpToClaudeTrialUsers/McpDiscoveryEntry.vue';
+// EOF Experiment cleanup
+
+import { computed, onBeforeUnmount, onMounted, ref, nextTick, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nScrollArea, N8nResizeWrapper, type IMenuItem } from '@n8n/design-system';
-import {
-	ABOUT_MODAL_KEY,
-	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
-	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
-	VIEWS,
-	WHATS_NEW_MODAL_KEY,
-	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
-} from '@/app/constants';
-import { EXTERNAL_LINKS } from '@/app/constants/externalLinks';
+import { VIEWS } from '@/app/constants';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useVersionsStore } from '@/app/stores/versions.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useBugReporting } from '@/app/composables/useBugReporting';
-import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { useBecomeTemplateCreatorStore } from '@/app/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useKeybindings } from '@/app/composables/useKeybindings';
-import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
-import { useSidebarLayout } from '@/app/composables/useSidebarLayout';
+import {
+	MAX_SIDEBAR_WIDTH,
+	MIN_SIDEBAR_WIDTH,
+	useSidebarLayout,
+} from '@/app/composables/useSidebarLayout';
 import { useSettingsItems } from '@/app/composables/useSettingsItems';
-import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
-import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTemplatesV3/stores/personalizedTemplatesV3.store';
-import { useTemplatesDataQualityStore } from '@/experiments/templatesDataQuality/stores/templatesDataQuality.store';
 import MainSidebarHeader from '@/app/components/MainSidebarHeader.vue';
 import BottomMenu from '@/app/components/BottomMenu.vue';
+import MainSidebarAccountMenu from '@/app/components/MainSidebarAccountMenu.vue';
 import MainSidebarSourceControl from '@/app/components/MainSidebarSourceControl.vue';
-import MainSidebarTrialUpgrade from '@/app/components/MainSidebarTrialUpgrade.vue';
 import ProjectNavigation from '@/features/collaboration/projects/components/ProjectNavigation.vue';
-import TemplateTooltip from '@/experiments/personalizedTemplatesV3/components/TemplateTooltip.vue';
-import { TemplateClickSource, trackTemplatesClick } from '@/experiments/utils';
+import { useResourceCenterStore } from '@/experiments/resourceCenter/stores/resourceCenter.store';
+import { LOCAL_STORAGE_SIDEBAR_WIDTH } from '@/app/constants';
+import { useSidebarExpandedExperiment } from '@/experiments/sidebarExpanded';
+import { trackTemplatesClick, TemplateClickSource } from '@/experiments/utils';
 
-const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 const templatesStore = useTemplatesStore();
 const uiStore = useUIStore();
-const versionsStore = useVersionsStore();
-const workflowsStore = useWorkflowsStore();
-const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
-const personalizedTemplatesV3Store = usePersonalizedTemplatesV3Store();
-const templatesDataQualityStore = useTemplatesDataQualityStore();
+const resourceCenterStore = useResourceCenterStore();
 
 const i18n = useI18n();
-const router = useRouter();
 const telemetry = useTelemetry();
-const pageRedirectionHelper = usePageRedirectionHelper();
-const { getReportingURL } = useBugReporting();
-const calloutHelpers = useCalloutHelpers();
-const { isCollapsed, sidebarWidth, onResizeStart, onResize, onResizeEnd, toggleCollapse } =
-	useSidebarLayout();
+
+const { applyExperiment: applySidebarExpandedExperiment } = useSidebarExpandedExperiment();
+applySidebarExpandedExperiment();
+
+// RC-1: auto-expand sidebar once if not already expanded
+if (resourceCenterStore.shouldAutoExpandSidebar) {
+	if (uiStore.sidebarMenuCollapsed) {
+		uiStore.sidebarMenuCollapsed = false;
+		localStorage.setItem(LOCAL_STORAGE_SIDEBAR_WIDTH, '200');
+	}
+	resourceCenterStore.markSidebarAutoExpanded();
+}
+
+const {
+	isCollapsed,
+	isResizing,
+	sidebarWidth,
+	onResizeStart,
+	onResize,
+	onResizeEnd,
+	toggleCollapse,
+} = useSidebarLayout();
 
 const { settingsItems } = useSettingsItems();
 
 // Component data
 const basePath = ref('');
+const scrollAreaRef = ref<InstanceType<typeof N8nScrollArea>>();
+const hasOverflow = ref(false);
+const hasScrolledFromTop = ref(false);
+let resizeObserver: ResizeObserver | null = null;
 
-const showWhatsNewNotification = computed(
-	() =>
-		versionsStore.hasVersionUpdates ||
-		versionsStore.whatsNewArticles.some(
-			(article) => !versionsStore.isWhatsNewArticleRead(article.id),
-		),
+const isResourceCenterEnabled = computed(() => resourceCenterStore.isFeatureEnabled());
+
+// The user's own pages open from the account menu; the row leads to the first page about the
+// instance. `/settings` itself is not used: it redirects to Personal settings when the usage
+// page is hidden.
+const instanceSettingsRoute = computed(
+	() => settingsItems.value.find((item) => item.section !== 'personal' && item.route)?.route,
 );
-
-const isTemplatesExperimentEnabled = computed(() => {
-	return (
-		personalizedTemplatesV2Store.isFeatureEnabled() ||
-		personalizedTemplatesV3Store.isFeatureEnabled() ||
-		templatesDataQualityStore.isFeatureEnabled()
-	);
-});
 
 const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
-		id: 'cloud-admin',
+		// Resource Center - replaces Templates when experiment is enabled
+		id: 'resource-center',
+		icon: { type: 'icon', value: 'lightbulb', color: 'primary' },
+		label: i18n.baseText('experiments.resourceCenter.sidebar'),
 		position: 'bottom',
-		label: 'Admin Panel',
-		icon: 'cloud',
-		available: settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
+		available: isResourceCenterEnabled.value,
+		route: { to: { name: VIEWS.RESOURCE_CENTER } },
 	},
 	{
-		// Link to in-app pre-built agent templates, available experiment is enabled
+		// Link to in-app templates, available if custom templates are enabled and resource center is disabled
 		id: 'templates',
-		icon: 'package-open',
+		icon: 'grid-2x2',
 		label: i18n.baseText('generic.templates'),
 		position: 'bottom',
 		available:
 			settingsStore.isTemplatesEnabled &&
-			calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
-			!isTemplatesExperimentEnabled.value,
-		route: { to: { name: VIEWS.PRE_BUILT_AGENT_TEMPLATES } },
-	},
-	{
-		// Link to personalized template modal, available when V2, V3 or data quality experiment is enabled
-		id: 'templates',
-		icon: 'package-open',
-		label: i18n.baseText('generic.templates'),
-		position: 'bottom',
-		available: settingsStore.isTemplatesEnabled && isTemplatesExperimentEnabled.value,
-	},
-	{
-		// Link to in-app templates, available if custom templates are enabled and experiment is disabled
-		id: 'templates',
-		icon: 'package-open',
-		label: i18n.baseText('generic.templates'),
-		position: 'bottom',
-		available:
-			settingsStore.isTemplatesEnabled &&
-			!calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
 			templatesStore.hasCustomTemplatesHost &&
-			!isTemplatesExperimentEnabled.value,
+			!isResourceCenterEnabled.value,
 		route: { to: { name: VIEWS.TEMPLATES } },
 	},
 	{
-		// Link to website templates, available if custom templates are not enabled
+		// Link to website templates, available if custom templates host is not configured and resource center is disabled
 		id: 'templates',
-		icon: 'package-open',
+		icon: 'grid-2x2',
 		label: i18n.baseText('generic.templates'),
 		position: 'bottom',
 		available:
 			settingsStore.isTemplatesEnabled &&
-			!calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
 			!templatesStore.hasCustomTemplatesHost &&
-			!isTemplatesExperimentEnabled.value,
+			!isResourceCenterEnabled.value,
 		link: {
 			href: templatesStore.websiteTemplateRepositoryURL,
 			target: '_blank',
@@ -141,7 +122,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		id: 'insights',
 		icon: 'chart-column-decreasing',
-		label: 'Insights',
+		label: i18n.baseText('mainSidebar.insights'),
 		position: 'bottom',
 		route: { to: { name: VIEWS.INSIGHTS } },
 		available:
@@ -149,71 +130,13 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 			hasPermission(['rbac'], { rbac: { scope: 'insights:list' } }),
 	},
 	{
-		id: 'help',
-		icon: 'circle-help',
-		label: i18n.baseText('mainSidebar.help'),
-		notification: showWhatsNewNotification.value,
-		position: 'bottom',
-		children: [
-			{
-				id: 'quickstart',
-				icon: 'video',
-				label: i18n.baseText('mainSidebar.helpMenuItems.quickstart'),
-				link: {
-					href: EXTERNAL_LINKS.QUICKSTART_VIDEO,
-					target: '_blank',
-				},
-			},
-			{
-				id: 'docs',
-				icon: 'book',
-				label: i18n.baseText('mainSidebar.helpMenuItems.documentation'),
-				link: {
-					href: EXTERNAL_LINKS.DOCUMENTATION,
-					target: '_blank',
-				},
-			},
-			{
-				id: 'forum',
-				icon: 'users',
-				label: i18n.baseText('mainSidebar.helpMenuItems.forum'),
-				link: {
-					href: EXTERNAL_LINKS.FORUM,
-					target: '_blank',
-				},
-			},
-			{
-				id: 'examples',
-				icon: 'graduation-cap',
-				label: i18n.baseText('mainSidebar.helpMenuItems.course'),
-				link: {
-					href: EXTERNAL_LINKS.COURSES,
-					target: '_blank',
-				},
-			},
-			{
-				id: 'report-bug',
-				icon: 'bug',
-				label: i18n.baseText('mainSidebar.helpMenuItems.reportBug'),
-				link: {
-					href: getReportingURL(),
-					target: '_blank',
-				},
-			},
-			{
-				id: 'about',
-				icon: 'info',
-				label: i18n.baseText('mainSidebar.aboutN8n'),
-				position: 'bottom',
-			},
-		],
-	},
-	{
+		// A plain link: the settings layout has its own left nav for the individual pages.
 		id: 'settings',
-		label: i18n.baseText('mainSidebar.settings'),
-		icon: 'settings',
-		available: true,
-		children: settingsItems.value,
+		label: i18n.baseText('mainSidebar.instanceSettings'),
+		icon: 'wrench',
+		position: 'bottom',
+		available: instanceSettingsRoute.value !== undefined,
+		route: instanceSettingsRoute.value,
 	},
 ]);
 
@@ -221,22 +144,51 @@ const visibleMenuItems = computed<IMenuItem[]>(() =>
 	mainMenuItems.value.filter((item) => item.available !== false),
 );
 
+const checkOverflow = () => {
+	const position = scrollAreaRef.value?.getScrollPosition();
+	if (position && scrollAreaRef.value?.$el) {
+		const element = scrollAreaRef.value.$el as HTMLElement;
+		const hasVerticalOverflow = position.height > element.clientHeight;
+		hasOverflow.value = hasVerticalOverflow;
+		// Check if scrolled from top - only show border if there's overflow AND scrolled
+		hasScrolledFromTop.value = hasVerticalOverflow && position.top > 0;
+	}
+};
+
+// Re-check overflow when sidebar collapse state changes
+watch(isCollapsed, () => {
+	void nextTick(() => {
+		checkOverflow();
+	});
+});
+
 onMounted(() => {
 	basePath.value = rootStore.baseUrl;
 
-	becomeTemplateCreatorStore.startMonitoringCta();
+	void nextTick(() => {
+		checkOverflow();
+
+		if (scrollAreaRef.value?.$el) {
+			const element = scrollAreaRef.value.$el as HTMLElement;
+			resizeObserver = new ResizeObserver(() => {
+				checkOverflow();
+			});
+			resizeObserver.observe(element);
+			checkOverflow();
+		}
+	});
+
+	window.addEventListener('resize', checkOverflow);
 });
 
 onBeforeUnmount(() => {
-	becomeTemplateCreatorStore.stopMonitoringCta();
-});
+	if (resizeObserver) {
+		resizeObserver.disconnect();
+		resizeObserver = null;
+	}
 
-const trackHelpItemClick = (itemType: string) => {
-	telemetry.track('User clicked help resource', {
-		type: itemType,
-		workflow_id: workflowsStore.workflowId,
-	});
-};
+	window.removeEventListener('resize', checkOverflow);
+});
 
 function openCommandBar(event: MouseEvent) {
 	event.stopPropagation();
@@ -256,70 +208,22 @@ function openCommandBar(event: MouseEvent) {
 const handleSelect = (key: string) => {
 	switch (key) {
 		case 'templates':
-			if (templatesDataQualityStore.isFeatureEnabled()) {
-				uiStore.openModal(EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY);
-				trackTemplatesClick(TemplateClickSource.sidebarButton);
-			} else if (personalizedTemplatesV3Store.isFeatureEnabled()) {
-				personalizedTemplatesV3Store.markTemplateRecommendationInteraction();
-				uiStore.openModalWithData({
-					name: EXPERIMENT_TEMPLATE_RECO_V3_KEY,
-					data: {},
-				});
-				trackTemplatesClick(TemplateClickSource.sidebarButton);
-			} else if (personalizedTemplatesV2Store.isFeatureEnabled()) {
-				uiStore.openModalWithData({
-					name: EXPERIMENT_TEMPLATE_RECO_V2_KEY,
-					data: {},
-				});
-				trackTemplatesClick(TemplateClickSource.sidebarButton);
-			} else if (settingsStore.isTemplatesEnabled && !templatesStore.hasCustomTemplatesHost) {
-				trackTemplatesClick(TemplateClickSource.sidebarButton);
-			}
+			trackTemplatesClick(TemplateClickSource.sidebarButton);
 			break;
-		case 'about': {
-			trackHelpItemClick('about');
-			uiStore.openModal(ABOUT_MODAL_KEY);
-			break;
-		}
-		case 'cloud-admin': {
-			void pageRedirectionHelper.goToDashboard();
-			break;
-		}
-		case 'quickstart':
-		case 'docs':
-		case 'forum':
-		case 'examples': {
-			trackHelpItemClick(key);
-			break;
-		}
 		case 'insights':
 			telemetry.track('User clicked insights link from side menu');
 			break;
+		case 'settings':
+			telemetry.track(TELEMETRY_EVENT.PLATFORM.USER_CLICKED_INSTANCE_SETTINGS_LINK, {
+				sidebar_collapsed: isCollapsed.value,
+			});
+			break;
 		default:
-			if (key.startsWith('whats-new-article-')) {
-				const articleId = Number(key.replace('whats-new-article-', ''));
-
-				telemetry.track("User clicked on what's new section", {
-					article_id: articleId,
-				});
-				uiStore.openModalWithData({
-					name: WHATS_NEW_MODAL_KEY,
-					data: {
-						articleId,
-					},
-				});
-			}
-
 			break;
 	}
 };
 
-const onLogout = () => {
-	void router.push({ name: VIEWS.SIGNOUT });
-};
-
 useKeybindings({
-	ctrl_alt_o: () => handleSelect('about'),
 	['bracketleft']: () => toggleCollapse(),
 });
 </script>
@@ -330,12 +234,13 @@ useKeybindings({
 		:class="{
 			[$style.sideMenu]: true,
 			[$style.sideMenuCollapsed]: isCollapsed,
+			[$style.sideMenuResizing]: isResizing,
 		}"
 		:width="sidebarWidth"
-		:style="{ width: `${sidebarWidth}px` }"
+		:style="isCollapsed ? {} : { width: `${sidebarWidth}px` }"
 		:supported-directions="['right']"
-		:min-width="200"
-		:max-width="500"
+		:min-width="MIN_SIDEBAR_WIDTH"
+		:max-width="MAX_SIDEBAR_WIDTH"
 		:grid-size="8"
 		@resizestart="onResizeStart"
 		@resize="onResize"
@@ -346,27 +251,32 @@ useKeybindings({
 			@collapse="toggleCollapse"
 			@open-command-bar="openCommandBar"
 		/>
-		<N8nScrollArea as-child>
-			<div :class="$style.scrollArea">
+		<div
+			:class="{
+				[$style.scrollAreaWrapper]: true,
+				[$style.scrollAreaWrapperWithBottomBorder]: hasOverflow && !isCollapsed,
+				[$style.scrollAreaWrapperWithTopBorder]: hasScrolledFromTop && !isCollapsed,
+			}"
+		>
+			<N8nScrollArea ref="scrollAreaRef" @scroll-capture="checkOverflow">
 				<ProjectNavigation
 					:collapsed="isCollapsed"
 					:plan-name="cloudPlanStore.currentPlanData?.displayName"
 				/>
-				<BottomMenu
-					:items="visibleMenuItems"
-					:is-collapsed="isCollapsed"
-					@logout="onLogout"
-					@select="handleSelect"
-				/>
-			</div>
-		</N8nScrollArea>
+			</N8nScrollArea>
+		</div>
+		<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
+		<ClaudeEntryPoint placement="sidebar" :collapsed="isCollapsed" />
+		<!-- EOF Experiment cleanup -->
+		<BottomMenu :items="visibleMenuItems" :is-collapsed="isCollapsed" @select="handleSelect" />
 		<MainSidebarSourceControl :is-collapsed="isCollapsed" />
-		<MainSidebarTrialUpgrade />
-		<TemplateTooltip />
+		<MainSidebarAccountMenu :is-collapsed="isCollapsed" />
 	</N8nResizeWrapper>
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as *;
+
 .sideMenu {
 	position: relative;
 	height: 100%;
@@ -374,16 +284,33 @@ useKeybindings({
 	flex-direction: column;
 	border-right: var(--border);
 	background-color: var(--menu--color--background, var(--color--background--light-2));
+	transition: width var(--duration--snappy) var(--easing--ease-out);
+	will-change: width;
 
 	&.sideMenuCollapsed {
 		width: $sidebar-width;
 		min-width: auto;
 	}
+
+	&.sideMenuResizing {
+		transition: none;
+	}
 }
 
-.scrollArea {
-	height: 100%;
+.scrollAreaWrapper {
+	position: relative;
+	flex: 1;
+	min-height: 0;
 	display: flex;
 	flex-direction: column;
+	padding-top: var(--spacing--2xs);
+}
+
+.scrollAreaWrapperWithBottomBorder {
+	border-bottom: var(--border);
+}
+
+.scrollAreaWrapperWithTopBorder {
+	border-top: var(--border);
 }
 </style>

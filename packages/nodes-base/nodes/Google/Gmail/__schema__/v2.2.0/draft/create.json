@@ -1,0 +1,26 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "message": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "labelIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "threadId": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 1
+}

@@ -1,0 +1,198 @@
+{
+	"name": "SeaTable v1 request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "31e7aa43-fa28-532c-862d-ad1d7a7b43c7",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"tableName": "Table1",
+				"columnsUi": {
+					"columnValues": [
+						{
+							"columnName": "Name",
+							"columnValue": "Nathan"
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.seaTable",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"id": "b49e6851-985f-5021-aeda-6446997e0f92",
+			"name": "Row > Create",
+			"credentials": {
+				"seaTableApi": {
+					"id": "Xq3ZbT9kLm2Pw7Rd",
+					"name": "SeaTable account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"tableId": "0000",
+				"rowId": "Qtf7xPmoRaiFyQPO1aENTA"
+			},
+			"type": "n8n-nodes-base.seaTable",
+			"typeVersion": 1,
+			"position": [300, 200],
+			"id": "ff6d9c76-9b03-5c6d-bf03-d6209f83a325",
+			"name": "Row > Get",
+			"credentials": {
+				"seaTableApi": {
+					"id": "Xq3ZbT9kLm2Pw7Rd",
+					"name": "SeaTable account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"tableName": "Table1",
+				"returnAll": false,
+				"limit": 2,
+				"filters": {},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.seaTable",
+			"typeVersion": 1,
+			"position": [300, 400],
+			"id": "4e6abfd3-0f97-54ac-9de5-8985feb9c600",
+			"name": "Row > Get Many",
+			"credentials": {
+				"seaTableApi": {
+					"id": "Xq3ZbT9kLm2Pw7Rd",
+					"name": "SeaTable account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"tableName": "Table1",
+				"rowId": "Qtf7xPmoRaiFyQPO1aENTA",
+				"columnsUi": {
+					"columnValues": [
+						{
+							"columnName": "Name",
+							"columnValue": "Nathan 2"
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.seaTable",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"id": "d36405b3-4e3d-57cf-86d1-ba52b0034b6d",
+			"name": "Row > Update",
+			"credentials": {
+				"seaTableApi": {
+					"id": "Xq3ZbT9kLm2Pw7Rd",
+					"name": "SeaTable account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"tableName": "Table1",
+				"rowId": "Qtf7xPmoRaiFyQPO1aENTA"
+			},
+			"type": "n8n-nodes-base.seaTable",
+			"typeVersion": 1,
+			"position": [300, 800],
+			"id": "a0aa7955-5c51-503f-ab7d-6eac17dd1689",
+			"name": "Row > Delete",
+			"credentials": {
+				"seaTableApi": {
+					"id": "Xq3ZbT9kLm2Pw7Rd",
+					"name": "SeaTable account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Row > Create": [
+			{
+				"json": {
+					"Name": "Nathan",
+					"_id": "Qtf7xPmoRaiFyQPO1aENTA",
+					"_ctime": "2024-05-02T10:00:00.000+00:00",
+					"_mtime": "2024-05-02T10:00:00.000+00:00"
+				}
+			}
+		],
+		"Row > Get": [
+			{
+				"json": {
+					"_id": "Qtf7xPmoRaiFyQPO1aENTA",
+					"Name": "Nathan"
+				}
+			}
+		],
+		"Row > Get Many": [
+			{
+				"json": {
+					"Name": "Nathan",
+					"_id": "Qtf7xPmoRaiFyQPO1aENTA",
+					"_ctime": null,
+					"_mtime": null
+				}
+			}
+		],
+		"Row > Update": [
+			{
+				"json": {
+					"_id": "Qtf7xPmoRaiFyQPO1aENTA",
+					"success": true
+				}
+			}
+		],
+		"Row > Delete": [
+			{
+				"json": {
+					"deleted_rows": 1
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Row > Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Row > Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Row > Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Row > Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Row > Delete",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

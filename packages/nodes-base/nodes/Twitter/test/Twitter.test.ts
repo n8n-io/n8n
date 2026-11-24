@@ -81,7 +81,7 @@ describe('Test Twitter Request Node', () => {
 	};
 
 	beforeAll(() => {
-		const baseUrl = 'https://api.twitter.com/2';
+		const baseUrl = 'https://api.x.com/2';
 		//GET
 		nock(baseUrl).get('/users/me').reply(200, meResult);
 
@@ -90,7 +90,10 @@ describe('Test Twitter Request Node', () => {
 			.reply(200, searchResult);
 	});
 
-	new NodeTestHarness().setupTests({ credentials });
+	new NodeTestHarness().setupTests({
+		credentials,
+		workflowFiles: ['Workflow_Twitter_UnitTest.json'],
+	});
 });
 
 describe('X / Twitter Node unit tests', () => {

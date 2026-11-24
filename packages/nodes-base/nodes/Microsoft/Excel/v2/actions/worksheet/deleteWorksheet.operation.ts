@@ -1,8 +1,10 @@
 import type { INodeExecutionData, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { microsoftApiRequest } from '../../transport';
+import { stampItemIndexOnError } from '../../../../GenericFunctions';
+import { microsoftApiRequest, toWorkbookId } from '../../transport';
 import { workbookRLC, worksheetRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [workbookRLC, worksheetRLC];
@@ -24,9 +26,12 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const workbookId = this.getNodeParameter('workbook', i, undefined, {
-				extractValue: true,
-			}) as string;
+			const workbookId = toWorkbookId.call(
+				this,
+				this.getNodeParameter('workbook', i, undefined, {
+					extractValue: true,
+				}) as string,
+			);
 
 			const worksheetId = this.getNodeParameter('worksheet', i, undefined, {
 				extractValue: true,
@@ -35,7 +40,12 @@ export async function execute(
 			await microsoftApiRequest.call(
 				this,
 				'DELETE',
-				`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}`,
+				requestPath`/items/${workbookId}/workbook/worksheets/${worksheetId}`,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				i,
 			);
 
 			const executionData = this.helpers.constructExecutionMetaData(
@@ -53,7 +63,8 @@ export async function execute(
 				returnData.push(...executionErrorData);
 				continue;
 			}
-			throw error;
+			// A NodeError from the transport may be missing the itemIndex, add it
+			throw stampItemIndexOnError(error, i);
 		}
 	}
 

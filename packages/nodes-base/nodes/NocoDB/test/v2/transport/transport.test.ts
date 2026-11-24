@@ -1,0 +1,318 @@
+import type { IDataObject, IHttpRequestMethods } from 'n8n-workflow';
+import { requestPath, requestUrl } from 'n8n-workflow';
+
+import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from '../../../v2/transport';
+
+describe('NocoDB Transport API', () => {
+	let mockThis: any;
+
+	beforeEach(() => {
+		mockThis = {
+			getNodeParameter: vi.fn(),
+			getCredentials: vi.fn(),
+			helpers: {
+				httpRequestWithAuthentication: vi.fn(),
+				prepareBinaryData: vi.fn(),
+			},
+			getNode: vi.fn(() => ({ id: 'node1' })),
+		};
+	});
+
+	describe('apiRequest', () => {
+		it('should make a successful API request with authentication', async () => {
+			mockThis.getNodeParameter.mockReturnValue('nocoDbApiToken');
+			mockThis.getCredentials.mockResolvedValue({
+				host: 'http://localhost:8080',
+				apiKey: 'test-api-key',
+			});
+			mockThis.helpers.httpRequestWithAuthentication.mockResolvedValue({ success: true });
+
+			const method: IHttpRequestMethods = 'GET';
+			const endpoint = requestPath`/api/v2/test`;
+			const body: IDataObject = {};
+			const query: IDataObject = { param: 'value' };
+
+			const result = await apiRequest.call(mockThis, method, endpoint, body, query);
+
+			expect(mockThis.getNodeParameter).toHaveBeenCalledWith('authentication', 0);
+			expect(mockThis.getCredentials).toHaveBeenCalledWith('nocoDbApiToken');
+			expect(mockThis.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+				'nocoDbApiToken',
+				{
+					method: 'GET',
+					qs: { param: 'value' },
+					url: requestUrl`http://localhost:8080/api/v2/test`,
+					json: true,
+				},
+			);
+			expect(result).toEqual({ success: true });
+		});
+
+		it('should handle empty body correctly', async () => {
+			mockThis.getNodeParameter.mockReturnValue('nocoDbApiToken');
+			mockThis.getCredentials.mockResolvedValue({
+				host: 'http://localhost:8080',
+				apiKey: 'test-api-key',
+			});
+			mockThis.helpers.httpRequestWithAuthentication.mockResolvedValue({ success: true });
+
+			const method: IHttpRequestMethods = 'POST';
+			const endpoint = requestPath`/api/v2/test`;
+			const body: IDataObject = {}; // Empty body
+			const query: IDataObject = {};
+
+			await apiRequest.call(mockThis, method, endpoint, body, query);
+
+			expect(mockThis.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+				'nocoDbApiToken',
+				{
+					method: 'POST',
+					qs: {},
+					url: requestUrl`http://localhost:8080/api/v2/test`,
+					json: true,
+				},
+			);
+		});
+	});
+
+	describe('apiRequestAllItems', () => {
+		it('should fetch all items from a paginated endpoint', async () => {
+			mockThis.getNodeParameter.mockReturnValue('nocoDbApiToken');
+			mockThis.getCredentials.mockResolvedValue({
+				host: 'http://localhost:8080',
+				apiKey: 'test-api-key',
+			});
+
+			// Mock apiRequest to simulate pagination
+			mockThis.helpers.httpRequestWithAuthentication
+				.mockResolvedValueOnce({ records: [{ id: 1 }, { id: 2 }], next: 'next-page-url' })
+				.mockResolvedValueOnce({ records: [{ id: 3 }], next: null });
+
+			const method: IHttpRequestMethods = 'GET';
+			const endpoint = requestPath`/api/v2/data`;
+			const body: IDataObject = {};
+			const query: IDataObject = {};
+
+			const result = await apiRequestAllItems.call(mockThis, method, endpoint, body, query);
+
+			expect(mockThis.helpers.httpRequestWithAuthentication).toHaveBeenCalledTimes(2);
+			expect(result).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }]);
+		});
+	});
+
+	describe('downloadRecordAttachments', () => {
+		it('should download attachments for records', async () => {
+			mockThis.getNodeParameter.mockReturnValue('nocoDbApiToken');
+			mockThis.getCredentials.mockResolvedValue({
+				host: 'http://localhost:8080',
+				apiKey: 'test-api-key',
+			});
+
+			const mockFileBuffer = Buffer.from('test file content');
+			mockThis.helpers.httpRequestWithAuthentication.mockResolvedValue(mockFileBuffer);
+			mockThis.helpers.prepareBinaryData.mockResolvedValue({
+				data: mockFileBuffer.toString('base64'),
+				mimeType: 'image/jpeg',
+				fileName: 'image.jpg',
+			});
+
+			const records = [
+				{
+					id: 1,
+					fields: {
+						attachments: [
+							{
+								url: 'http://localhost:8080/file1.jpg',
+								title: 'image.jpg',
+								mimetype: 'image/jpeg',
+								size: 100,
+							},
+						],
+					},
+				},
+			];
+			const fieldNames = ['attachments'];
+
+			const result = await downloadRecordAttachments.call(mockThis, records, fieldNames);
+
+			expect(mockThis.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+				'nocoDbApiToken',
+				{
+					method: 'GET',
+					url: 'http://localhost:8080/file1.jpg',
+					json: false,
+					qs: {},
+					encoding: 'arraybuffer',
+					disableFollowRedirect: true,
+				},
+			);
+			expect(mockThis.helpers.prepareBinaryData).toHaveBeenCalledWith(
+				mockFileBuffer,
+				'image.jpg',
+				'image/jpeg',
+			);
+			expect(result).toEqual([
+				{
+					json: {
+						id: 1,
+						fields: {
+							attachments: [
+								{
+									url: 'http://localhost:8080/file1.jpg',
+									title: 'image.jpg',
+									mimetype: 'image/jpeg',
+									size: 100,
+								},
+							],
+						},
+					},
+					binary: {
+						attachments_0: {
+							data: mockFileBuffer.toString('base64'),
+							mimeType: 'image/jpeg',
+							fileName: 'image.jpg',
+						},
+					},
+				},
+			]);
+		});
+
+		it('should handle attachments as string (json parsed)', async () => {
+			mockThis.getNodeParameter.mockReturnValue('nocoDbApiToken');
+			mockThis.getCredentials.mockResolvedValue({
+				host: 'http://localhost:8080',
+				apiKey: 'test-api-key',
+			});
+
+			const mockFileBuffer = Buffer.from('another file content');
+			mockThis.helpers.httpRequestWithAuthentication.mockResolvedValue(mockFileBuffer);
+			mockThis.helpers.prepareBinaryData.mockResolvedValue({
+				data: mockFileBuffer.toString('base64'),
+				mimeType: 'application/pdf',
+				fileName: 'doc.pdf',
+			});
+
+			const records = [
+				{
+					id: 1,
+					fields: {
+						attachments: JSON.stringify([
+							{
+								url: 'http://localhost:8080/file3.pdf',
+								title: 'doc.pdf',
+								mimetype: 'application/pdf',
+								size: 300,
+							},
+						]),
+					},
+				},
+			];
+			const fieldNames = ['attachments'];
+
+			const result = await downloadRecordAttachments.call(mockThis, records, fieldNames);
+
+			expect(mockThis.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+				'nocoDbApiToken',
+				{
+					method: 'GET',
+					url: 'http://localhost:8080/file3.pdf',
+					json: false,
+					qs: {},
+					encoding: 'arraybuffer',
+					disableFollowRedirect: true,
+				},
+			);
+			expect(mockThis.helpers.prepareBinaryData).toHaveBeenCalledWith(
+				mockFileBuffer,
+				'doc.pdf',
+				'application/pdf',
+			);
+			expect(result).toEqual([
+				{
+					json: {
+						id: 1,
+						fields: {
+							attachments: JSON.stringify([
+								{
+									url: 'http://localhost:8080/file3.pdf',
+									title: 'doc.pdf',
+									mimetype: 'application/pdf',
+									size: 300,
+								},
+							]),
+						},
+					},
+					binary: {
+						attachments_0: {
+							data: mockFileBuffer.toString('base64'),
+							mimeType: 'application/pdf',
+							fileName: 'doc.pdf',
+						},
+					},
+				},
+			]);
+		});
+
+		it('should download attachments on another host without credentials', async () => {
+			mockThis.getNodeParameter.mockReturnValue('nocoDbApiToken');
+			mockThis.getCredentials.mockResolvedValue({
+				host: 'http://localhost:8080',
+				apiKey: 'test-api-key',
+			});
+
+			const mockFileBuffer = Buffer.from('external file content');
+			mockThis.helpers.httpRequest = vi.fn().mockResolvedValue(mockFileBuffer);
+			mockThis.helpers.prepareBinaryData.mockResolvedValue({ data: 'data' });
+
+			const records = [
+				{
+					id: 1,
+					fields: {
+						attachments: [
+							{
+								url: 'http://localhost:8080/file1.jpg',
+								signedUrl: 'http://other-host.example/file1.jpg',
+								title: 'image.jpg',
+								mimetype: 'image/jpeg',
+								size: 100,
+							},
+						],
+					},
+				},
+			];
+
+			await downloadRecordAttachments.call(mockThis, records, ['attachments']);
+
+			expect(mockThis.helpers.httpRequestWithAuthentication).not.toHaveBeenCalled();
+			expect(mockThis.helpers.httpRequest).toHaveBeenCalledWith({
+				method: 'GET',
+				url: 'http://other-host.example/file1.jpg',
+				json: false,
+				qs: {},
+				encoding: 'arraybuffer',
+			});
+			expect(mockThis.helpers.prepareBinaryData).toHaveBeenCalledWith(
+				mockFileBuffer,
+				'image.jpg',
+				'image/jpeg',
+			);
+		});
+
+		it('should handle records without attachments', async () => {
+			mockThis.getNodeParameter.mockReturnValue('nocoDbApiToken');
+			mockThis.getCredentials.mockResolvedValue({
+				host: 'http://localhost:8080',
+				apiKey: 'test-api-key',
+			});
+
+			const records = [{ id: 1, fields: { attachments: [] } }];
+			const fieldNames = ['attachments'];
+
+			const result = await downloadRecordAttachments.call(mockThis, records, fieldNames);
+
+			expect(mockThis.helpers.httpRequestWithAuthentication).not.toHaveBeenCalled();
+			expect(mockThis.helpers.prepareBinaryData).not.toHaveBeenCalled();
+			expect(result).toEqual([{ json: { id: 1, fields: { attachments: [] } } }]);
+		});
+	});
+});

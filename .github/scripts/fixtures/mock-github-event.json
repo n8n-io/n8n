@@ -1,0 +1,5 @@
+{
+	"pull_request": {
+		"labels": ["release", "Backport to Stable"]
+	}
+}

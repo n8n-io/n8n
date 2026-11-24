@@ -1,5 +1,6 @@
-import { mock } from 'jest-mock-extended';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { modelSearch } from './listSearch';
 import * as transport from '../transport';
@@ -17,10 +18,11 @@ const mockResponse = {
 
 describe('Anthropic -> listSearch', () => {
 	const mockExecuteFunctions = mock<ILoadOptionsFunctions>();
-	const apiRequestMock = jest.spyOn(transport, 'apiRequest');
+	let apiRequestMock: MockInstance;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
+		apiRequestMock = vi.spyOn(transport, 'apiRequest');
 	});
 
 	describe('modelSearch', () => {

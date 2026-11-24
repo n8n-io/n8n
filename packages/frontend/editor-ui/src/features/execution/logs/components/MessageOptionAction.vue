@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useAttrs } from 'vue';
-import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { type IconName } from '@n8n/design-system';
 
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 defineProps<{ label: string; icon: IconName; placement: 'left' | 'right' | 'top' | 'bottom' }>();
@@ -32,7 +32,7 @@ const onClick = () => {
 }
 
 .icon {
-	color: var(--color--foreground--shade-1);
+	color: var(--color--text--tint-1);
 	cursor: pointer;
 
 	&:hover {

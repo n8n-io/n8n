@@ -1,3 +1,7 @@
+import { useUsersStore } from '@n8n/stores/users.store';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { fireEvent, waitFor, within } from '@testing-library/vue';
+import { defineComponent } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import VariableModal from './VariableModal.vue';
@@ -9,6 +13,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import useEnvironmentsStore from '../environments.store';
 import type { EnvironmentVariable } from '../environments.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({
@@ -21,16 +26,23 @@ vi.mock('vue-router', () => ({
 	RouterLink: vi.fn(),
 }));
 
-const ModalStub = {
+// N8nDialog closes on backdrop click and Escape unless the caller prevents the event.
+// This stub reports that close so the test can check VariableModal still honors it.
+const DialogStub = defineComponent({
+	inheritAttrs: false,
+	props: {
+		header: { type: String, default: '' },
+	},
+	emits: ['update:open'],
 	template: `
-		<div>
-			<slot name="header" />
-			<slot name="title" />
-			<slot name="content" />
-			<slot name="footer" />
+		<div role="dialog" v-bind="$attrs" @keydown.esc="$emit('update:open', false)">
+			<h2 v-if="header">{{ header }}</h2>
+			<slot />
 		</div>
 	`,
-};
+});
+
+const dialogPartStub = { template: '<div><slot /></div>' };
 
 const mockVariables: EnvironmentVariable[] = [
 	{
@@ -51,7 +63,7 @@ const mockVariables: EnvironmentVariable[] = [
 
 const initialState = {
 	[STORES.UI]: {
-		modalsById: {
+		modalStateById: {
 			[VARIABLE_MODAL_KEY]: {
 				open: true,
 			},
@@ -60,16 +72,30 @@ const initialState = {
 	},
 	[STORES.PROJECTS]: {
 		currentProjectId: null,
-		availableProjects: [
+		personalProject: {
+			id: 'project-2',
+			name: 'Personal Project',
+			type: 'personal',
+			scopes: ['projectVariable:create'],
+		},
+		myProjects: [
 			{
 				id: 'project-1',
 				name: 'Test Project',
 				type: 'team',
+				scopes: ['projectVariable:create'],
 			},
 			{
 				id: 'project-2',
 				name: 'Personal Project',
 				type: 'personal',
+				scopes: ['projectVariable:create'],
+			},
+			{
+				id: 'project-3',
+				name: 'No Access Project',
+				type: 'team',
+				scopes: [],
 			},
 		],
 	},
@@ -77,7 +103,11 @@ const initialState = {
 
 const global = {
 	stubs: {
-		Modal: ModalStub,
+		Dialog: DialogStub,
+		DialogHeader: dialogPartStub,
+		DialogTitle: dialogPartStub,
+		DialogFooter: dialogPartStub,
+		DialogDescription: dialogPartStub,
 	},
 };
 
@@ -95,6 +125,9 @@ describe('VariableModal', () => {
 		uiStore = mockedStore(useUIStore);
 
 		environmentsStore.variables = mockVariables;
+		environmentsStore.getVariablesInScope.mockImplementation((id) =>
+			mockVariables.filter((variable) => (variable.project?.id ?? null) === (id || null)),
+		);
 		environmentsStore.createVariable = vi.fn().mockResolvedValue({
 			id: '3',
 			key: 'NEW_VAR',
@@ -105,6 +138,45 @@ describe('VariableModal', () => {
 			key: 'UPDATED_VAR',
 			value: 'updated value',
 		});
+	});
+
+	it('keeps a fixed global key and blocks a second save while saving', async () => {
+		const pending = createDeferredPromise<EnvironmentVariable>();
+		const onCreate = vi.fn(() => pending.promise);
+		mockedStore(useUsersStore).currentUser = { globalScopes: ['variable:create'] } as ReturnType<
+			typeof useUsersStore
+		>['currentUser'];
+		projectsStore.currentProjectId = 'project-1';
+		const { getByTestId, queryByTestId } = renderModal({
+			props: {
+				mode: 'new',
+				projectId: null,
+				initialValues: { key: 'FIXED_KEY', value: '' },
+				fixedKey: true,
+				onCreate,
+			},
+			global,
+			pinia,
+		});
+		const key = getByTestId('variable-modal-key-input').querySelector('input')!;
+		const value = getByTestId('variable-modal-value-input').querySelector('textarea')!;
+		expect(key).toHaveValue('FIXED_KEY');
+		expect(key).toBeDisabled();
+		expect(value).toHaveValue('');
+		expect(queryByTestId('variable-modal-scope-select')).not.toBeInTheDocument();
+		await userEvent.click(value);
+		await userEvent.tab();
+		const save = getByTestId('variable-modal-save-button');
+		await userEvent.click(save);
+		await waitFor(() =>
+			expect(onCreate).toHaveBeenCalledWith({ key: 'FIXED_KEY', value: '', projectId: null }),
+		);
+		await userEvent.type(value, '{Enter}');
+		await userEvent.click(getByTestId('variable-modal-cancel-button'));
+		expect(onCreate).toHaveBeenCalledTimes(1);
+		expect(uiStore.closeModal).not.toHaveBeenCalled();
+		pending.resolve({ id: 'saved', key: 'FIXED_KEY', value: '' });
+		await waitFor(() => expect(uiStore.closeModal).toHaveBeenCalledWith(VARIABLE_MODAL_KEY));
 	});
 
 	describe('mode: new', () => {
@@ -119,8 +191,9 @@ describe('VariableModal', () => {
 
 			expect(getByTestId('variable-modal-key-input')).toBeInTheDocument();
 			expect(getByTestId('variable-modal-value-input')).toBeInTheDocument();
-			expect(getByTestId('variable-modal-save-button')).toBeInTheDocument();
-			expect(getByTestId('variable-modal-cancel-button')).toBeInTheDocument();
+			const modal = getByTestId('variableModal-modal');
+			expect(within(modal).getByTestId('variable-modal-save-button')).toBeInTheDocument();
+			expect(within(modal).getByTestId('variable-modal-cancel-button')).toBeInTheDocument();
 		});
 
 		it('should create a new global variable', async () => {
@@ -155,6 +228,35 @@ describe('VariableModal', () => {
 				value: 'new value',
 			});
 			expect(uiStore.closeModal).toHaveBeenCalledWith(VARIABLE_MODAL_KEY);
+		});
+
+		it('should create a global variable with empty projectId when pre-scoped to global', async () => {
+			const { getByTestId } = renderModal({
+				props: {
+					mode: 'new',
+					projectId: '',
+				},
+				global,
+				pinia,
+			});
+
+			const keyInput = getByTestId('variable-modal-key-input').querySelector('input');
+			const valueInput = getByTestId('variable-modal-value-input').querySelector('textarea');
+
+			if (!keyInput || !valueInput) {
+				throw new Error('Input elements not found');
+			}
+
+			await userEvent.type(keyInput, 'NEW_VAR');
+			await userEvent.type(valueInput, 'new value');
+			await userEvent.click(getByTestId('variable-modal-save-button'));
+
+			// Must send an empty string, never null (backend DTO rejects null)
+			expect(environmentsStore.createVariable).toHaveBeenCalledWith({
+				key: 'NEW_VAR',
+				value: 'new value',
+				projectId: '',
+			});
 		});
 
 		it('should disable save button when key is invalid', async () => {
@@ -226,6 +328,29 @@ describe('VariableModal', () => {
 			expect(saveButton).toBeDisabled();
 		});
 
+		it('should show error when key starts with number', async () => {
+			const { getByTestId } = renderModal({
+				props: {
+					mode: 'new',
+				},
+				global,
+				pinia,
+			});
+
+			const keyInputContainer = getByTestId('variable-modal-key-input');
+			const saveButton = getByTestId('variable-modal-save-button');
+
+			const keyInput = keyInputContainer.querySelector('input');
+			if (!keyInput) throw new Error('Input not found');
+
+			// Enter key that starts with number
+			await userEvent.type(keyInput, '1startswithnumber');
+			await userEvent.click(saveButton); // simulate blur on input
+
+			expect(saveButton).toBeDisabled();
+			expect(keyInputContainer).toHaveTextContent('The key cannot start with a number');
+		});
+
 		it('should show warning overriding global variable in project context', async () => {
 			projectsStore.currentProjectId = 'project-1';
 			const { getByTestId, queryByTestId } = renderModal({
@@ -292,6 +417,92 @@ describe('VariableModal', () => {
 
 			expect(getByTestId('variable-modal-scope-select')).toBeInTheDocument();
 		});
+
+		it('disables scope options where the user cannot create variables', () => {
+			projectsStore.currentProjectId = undefined;
+
+			renderModal({
+				props: {
+					mode: 'new',
+				},
+				global,
+				pinia,
+			});
+
+			const items = Array.from(document.querySelectorAll('li.el-select-dropdown__item'));
+			const find = (label: string) => items.find((li) => li.textContent?.includes(label));
+
+			// has projectVariable:create → enabled
+			expect(find('Test Project')?.className).not.toContain('is-disabled');
+			// no create scope → disabled
+			expect(find('No Access Project')?.className).toContain('is-disabled');
+		});
+
+		it('should hide scope field when scope is pre-selected via projectId prop', () => {
+			projectsStore.currentProjectId = undefined;
+
+			const { queryByTestId } = renderModal({
+				props: {
+					mode: 'new',
+					projectId: 'project-1',
+				},
+				global,
+				pinia,
+			});
+
+			expect(queryByTestId('variable-modal-scope-select')).not.toBeInTheDocument();
+		});
+
+		it('should list Global, Personal and team projects from myProjects in the scope dropdown', () => {
+			projectsStore.currentProjectId = undefined;
+
+			const { getByText } = renderModal({
+				props: {
+					mode: 'new',
+				},
+				global,
+				pinia,
+			});
+
+			expect(getByText('Global')).toBeInTheDocument();
+			expect(getByText('Personal')).toBeInTheDocument();
+			expect(getByText('Test Project')).toBeInTheDocument();
+		});
+
+		it('should hide scope field when global scope is pre-selected via projectId prop', () => {
+			projectsStore.currentProjectId = undefined;
+
+			const { queryByTestId } = renderModal({
+				props: {
+					mode: 'new',
+					projectId: '', // empty string = global, pre-selected from the menu
+				},
+				global,
+				pinia,
+			});
+
+			expect(queryByTestId('variable-modal-scope-select')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('close behaviour', () => {
+		it.each(['new', 'edit'] as const)(
+			'closes the store modal when the dialog closes in %s mode',
+			async (mode) => {
+				const { getByTestId } = renderModal({
+					props: {
+						mode,
+						variable: { id: '1', key: 'EXISTING_VAR', value: 'existing value' },
+					},
+					global,
+					pinia,
+				});
+
+				await fireEvent.keyDown(getByTestId(`${VARIABLE_MODAL_KEY}-modal`), { key: 'Escape' });
+
+				expect(uiStore.closeModal).toHaveBeenCalledWith(VARIABLE_MODAL_KEY);
+			},
+		);
 	});
 
 	describe('mode: edit', () => {
@@ -536,6 +747,97 @@ describe('VariableModal', () => {
 
 			// Modal should still be open
 			expect(uiStore.closeModal).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('protected instance', () => {
+		const existingVariable: EnvironmentVariable = {
+			id: '1',
+			key: 'EXISTING_VAR',
+			value: 'existing value',
+		};
+
+		beforeEach(() => {
+			mockedStore(useSourceControlStore).preferences.branchReadOnly = true;
+		});
+
+		it.each([
+			['without a create handler', false],
+			['with a create handler', true],
+		])('should block saving a new variable %s', async (_name, withHandler) => {
+			// Grant create permission so only the protected-instance guard can block the save.
+			mockedStore(useUsersStore).currentUser = {
+				globalScopes: ['variable:create'],
+			} as ReturnType<typeof useUsersStore>['currentUser'];
+			const onCreate = vi.fn();
+			const { getByTestId } = renderModal({
+				props: { mode: 'new', ...(withHandler ? { onCreate } : {}) },
+				global,
+				pinia,
+			});
+
+			const keyInput = getByTestId('variable-modal-key-input').querySelector('input')!;
+			const valueInput = getByTestId('variable-modal-value-input').querySelector('textarea')!;
+			await userEvent.type(keyInput, 'NEW_VAR');
+			await userEvent.type(valueInput, 'new value');
+
+			expect(getByTestId('variable-modal-save-button')).toBeDisabled();
+
+			// Enter submits the form even when the save button is disabled.
+			await userEvent.type(keyInput, '{Enter}');
+
+			expect(onCreate).not.toHaveBeenCalled();
+			expect(environmentsStore.createVariable).not.toHaveBeenCalled();
+		});
+
+		it('should save a new variable when the caller allows it on a protected instance', async () => {
+			mockedStore(useUsersStore).currentUser = {
+				globalScopes: ['variable:create'],
+			} as ReturnType<typeof useUsersStore>['currentUser'];
+			const onCreate = vi.fn().mockResolvedValue({ id: '3', key: 'FIXED_KEY', value: '' });
+			const { getByTestId } = renderModal({
+				props: {
+					mode: 'new',
+					projectId: null,
+					initialValues: { key: 'FIXED_KEY', value: '' },
+					fixedKey: true,
+					onCreate,
+					allowOnProtectedInstance: true,
+				},
+				global,
+				pinia,
+			});
+
+			await userEvent.click(getByTestId('variable-modal-value-input').querySelector('textarea')!);
+			await userEvent.tab();
+			await userEvent.click(getByTestId('variable-modal-save-button'));
+
+			await waitFor(() =>
+				expect(onCreate).toHaveBeenCalledWith({ key: 'FIXED_KEY', value: '', projectId: null }),
+			);
+		});
+
+		it('should lock the key and allow editing the value', async () => {
+			const { getByTestId } = renderModal({
+				props: { mode: 'edit', variable: existingVariable },
+				global,
+				pinia,
+			});
+
+			const keyInput = getByTestId('variable-modal-key-input').querySelector('input')!;
+			const valueInput = getByTestId('variable-modal-value-input').querySelector('textarea')!;
+			expect(keyInput).toBeDisabled();
+			expect(valueInput).toBeEnabled();
+
+			await userEvent.clear(valueInput);
+			await userEvent.type(valueInput, 'updated value');
+			await userEvent.click(getByTestId('variable-modal-save-button'));
+
+			expect(environmentsStore.updateVariable).toHaveBeenCalledWith({
+				id: '1',
+				key: 'EXISTING_VAR',
+				value: 'updated value',
+			});
 		});
 	});
 });

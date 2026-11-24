@@ -1,0 +1,338 @@
+<script setup lang="ts">
+import type { SelfHealingResultDetail } from '@n8n/api-types';
+import { N8nAssistantAvatar, N8nCard, N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
+import { VIEWS } from '@n8n/frontend-constants/views';
+import { useI18n } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { computed } from 'vue';
+
+const props = defineProps<{
+	detail: SelfHealingResultDetail;
+	workflowNames: Map<string, string>;
+	statusLabel: string;
+	statusClass: 'fixReady' | 'needsAttention' | 'closed';
+}>();
+const i18n = useI18n();
+const rootStore = useRootStore();
+
+const workflowName = computed(
+	() => props.workflowNames.get(props.detail.workflowId) ?? props.detail.workflowId,
+);
+const subWorkflows = computed(() =>
+	props.detail.suggestions
+		.filter(({ workflowId }) => workflowId !== props.detail.workflowId)
+		.map(({ workflowId }) => ({
+			id: workflowId,
+			name: props.workflowNames.get(workflowId) ?? workflowId,
+		})),
+);
+
+const usageRows = computed(() => {
+	const usage = props.detail.usage;
+	const measurements =
+		'credits' in usage
+			? [
+					{
+						key: 'credits',
+						label: i18n.baseText('inbox.selfHealing.usage.credits'),
+						value: usage.credits,
+					},
+				]
+			: [
+					{
+						key: 'promptTokens',
+						label: i18n.baseText('inbox.selfHealing.usage.promptTokens'),
+						value: usage.promptTokens,
+					},
+					{
+						key: 'completionTokens',
+						label: i18n.baseText('inbox.selfHealing.usage.completionTokens'),
+						value: usage.completionTokens,
+					},
+					{
+						key: 'totalTokens',
+						label: i18n.baseText('inbox.selfHealing.usage.totalTokens'),
+						value: usage.totalTokens,
+					},
+				];
+
+	const rows = measurements.flatMap((row) => {
+		if (row.value === null) return [];
+
+		return [{ ...row, value: row.value.toLocaleString(rootStore.defaultLocale) }];
+	});
+
+	if (usage.durationSeconds !== null) {
+		rows.push({
+			key: 'duration',
+			label: i18n.baseText('inbox.selfHealing.usage.duration'),
+			value: i18n.baseText('inbox.selfHealing.usage.durationValue', {
+				interpolate: {
+					minutes: String(Math.floor(usage.durationSeconds / 60)),
+					seconds: String(Math.floor(usage.durationSeconds % 60)),
+				},
+			}),
+		});
+	}
+
+	return rows;
+});
+</script>
+
+<template>
+	<aside :class="$style.metadata" data-test-id="self-healing-metadata">
+		<N8nCard :class="$style.card" data-test-id="self-healing-status-card">
+			<template #header>
+				<N8nText bold color="text-light" size="medium">{{
+					i18n.baseText('inbox.selfHealing.metadata.status')
+				}}</N8nText>
+			</template>
+			<div :class="$style.status">
+				<span :class="[$style.statusDot, $style[statusClass]]" aria-hidden="true" />
+				<N8nText size="medium">{{ statusLabel }}</N8nText>
+			</div>
+		</N8nCard>
+		<N8nCard :class="$style.card">
+			<div :class="$style.section">
+				<N8nText bold color="text-light" size="medium">{{
+					i18n.baseText('inbox.selfHealing.metadata.createdBy')
+				}}</N8nText>
+				<div :class="$style.person">
+					<N8nAssistantAvatar size="small" />
+					<N8nText size="medium">{{
+						i18n.baseText('inbox.selfHealing.metadata.assistant')
+					}}</N8nText>
+				</div>
+			</div>
+		</N8nCard>
+		<N8nCard :class="$style.card">
+			<template #header>
+				<N8nText bold color="text-light" size="medium">{{
+					i18n.baseText('inbox.selfHealing.metadata.workflow')
+				}}</N8nText>
+			</template>
+			<div :class="$style.section">
+				<N8nLink
+					:to="{ name: VIEWS.WORKFLOW, params: { workflowId: detail.workflowId } }"
+					theme="text"
+					size="medium"
+					:underline="false"
+					:class="$style.plainLink"
+					data-test-id="self-healing-workflow-link"
+				>
+					<span :class="$style.link">
+						<N8nIcon icon="workflow" size="medium" :class="$style.linkIcon" />
+						<span :class="$style.linkLabel">{{ workflowName }}</span>
+					</span>
+				</N8nLink>
+			</div>
+			<div v-if="subWorkflows.length > 0" :class="$style.section">
+				<N8nText bold color="text-light" size="medium">{{
+					i18n.baseText('inbox.selfHealing.metadata.subWorkflows')
+				}}</N8nText>
+				<N8nLink
+					v-for="subWorkflow in subWorkflows"
+					:key="subWorkflow.id"
+					:to="{ name: VIEWS.WORKFLOW, params: { workflowId: subWorkflow.id } }"
+					theme="text"
+					size="medium"
+					:underline="false"
+					:class="$style.plainLink"
+					data-test-id="self-healing-sub-workflow-link"
+				>
+					<span :class="$style.link">
+						<N8nIcon icon="workflow" size="medium" :class="$style.linkIcon" />
+						<span :class="$style.linkLabel">{{ subWorkflow.name }}</span>
+					</span>
+				</N8nLink>
+			</div>
+			<div :class="$style.section">
+				<N8nText bold color="text-light" size="medium">{{
+					i18n.baseText('inbox.selfHealing.metadata.execution')
+				}}</N8nText>
+				<N8nLink
+					v-if="detail.execution.status === 'available'"
+					:to="{
+						name: VIEWS.EXECUTION_PREVIEW,
+						params: { workflowId: detail.workflowId, executionId: detail.execution.id },
+					}"
+					theme="text"
+					size="medium"
+					:underline="false"
+					:class="$style.plainLink"
+					data-test-id="self-healing-execution-link"
+				>
+					<span :class="$style.link">
+						<N8nIcon icon="flag-hole" size="medium" :class="$style.linkIcon" />
+						<span :class="$style.linkLabel">{{
+							i18n.baseText('inbox.selfHealing.metadata.executionLink', {
+								interpolate: { id: detail.execution.id },
+							})
+						}}</span>
+					</span>
+				</N8nLink>
+				<N8nText
+					v-else
+					size="medium"
+					:class="$style.link"
+					data-test-id="self-healing-execution-unavailable"
+				>
+					<N8nIcon icon="flag-hole" size="medium" :class="$style.linkIcon" />
+					<span>{{ i18n.baseText('inbox.selfHealing.metadata.executionUnavailable') }}</span>
+				</N8nText>
+			</div>
+		</N8nCard>
+		<N8nCard v-if="usageRows.length" :class="$style.card" data-test-id="self-healing-usage">
+			<template #header>
+				<N8nText bold color="text-light" size="medium">{{
+					i18n.baseText('inbox.selfHealing.usage.title')
+				}}</N8nText>
+			</template>
+			<dl :class="$style.usage">
+				<div
+					v-for="row in usageRows"
+					:key="row.key"
+					:class="$style.measurement"
+					:data-test-id="`self-healing-usage-${row.key}`"
+				>
+					<N8nText tag="dt" size="medium">{{ row.label }}</N8nText>
+					<N8nText tag="dd" size="medium">{{ row.value }}</N8nText>
+				</div>
+			</dl>
+		</N8nCard>
+	</aside>
+</template>
+
+<style module lang="scss">
+.metadata {
+	display: flex;
+	/* Match the prototype's metadata rail. The design system has no column-width token. */
+	flex: 0 0 min(18rem, 30%);
+	min-width: 14rem;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	padding-top: var(--spacing--5xs);
+	overflow: auto;
+}
+
+.card {
+	--card--padding: var(--spacing--xs);
+	--n8n--card-body--gap: var(--spacing--2xs);
+	align-items: stretch;
+	border-color: var(--border-color);
+	background-color: transparent;
+
+	/* Match the title-to-value gap of the sections inside the card body. */
+	> div {
+		gap: var(--spacing--2xs);
+	}
+}
+
+/* Match the status row of workflow reviews. */
+.status {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.statusDot {
+	flex-shrink: 0;
+	width: var(--font-size--3xs);
+	height: var(--font-size--3xs);
+	border-radius: 50%;
+}
+
+.fixReady {
+	background-color: var(--color--blue-500);
+}
+
+.needsAttention {
+	background-color: var(--color--yellow-500);
+}
+
+.closed {
+	background-color: var(--color--neutral-500);
+}
+
+.section {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+}
+
+/* Each later group in a card gets the same space above its title. */
+.section + .section {
+	margin-top: var(--spacing--2xs);
+}
+
+.person,
+.link {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+}
+
+.link {
+	align-items: flex-start;
+	gap: var(--spacing--3xs);
+}
+
+/* The text link theme uses a lighter shade. Values in this rail use the regular text color. */
+.plainLink .link {
+	color: var(--text-color);
+}
+
+.plainLink:hover,
+.plainLink:focus-visible {
+	text-decoration: underline;
+}
+
+.linkIcon {
+	flex-shrink: 0;
+	/* Align the icon with the first line, as in the prototype. */
+	margin-top: calc((1lh - 1em) / 2);
+}
+
+.linkLabel {
+	white-space: normal;
+	overflow-wrap: anywhere;
+}
+
+.usage {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	margin: 0;
+}
+
+.measurement {
+	display: flex;
+	justify-content: space-between;
+	gap: var(--spacing--2xs);
+
+	dd {
+		margin: 0;
+		text-align: right;
+		font-variant-numeric: tabular-nums;
+	}
+}
+
+/* Match the prototype's sidebar widths. There are no column-width tokens. */
+@media (max-width: 75rem) {
+	.metadata {
+		flex-basis: 15rem;
+		min-width: 12rem;
+	}
+}
+
+/* Match the prototype's detail breakpoint. Container queries cannot use CSS variables. */
+@container assistant-detail (max-width: 44rem) {
+	.metadata {
+		flex: 0 0 auto;
+		min-width: 0;
+		overflow: visible;
+	}
+}
+</style>

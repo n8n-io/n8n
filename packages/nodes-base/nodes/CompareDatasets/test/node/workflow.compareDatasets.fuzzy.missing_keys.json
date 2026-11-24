@@ -11,21 +11,32 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return {id: 1, data: null, data2: [], bar: 'bar', spam: []};"
+				"data": {
+					"id": 1,
+					"data": null,
+					"data2": [],
+					"bar": "bar",
+					"spam": []
+				}
 			},
 			"id": "c3c13247-1b60-4713-855e-bbddec8d02d0",
 			"name": "Code2",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [660, 460]
 		},
 		{
 			"parameters": {
-				"jsCode": "return {id: 1, data: [], data2: null ,foo: 'foo'};"
+				"data": {
+					"id": 1,
+					"data": [],
+					"data2": null,
+					"foo": "foo"
+				}
 			},
 			"id": "d8a8f3de-86cc-4a46-ac6b-db67c3442280",
 			"name": "Code3",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [660, 600]
 		},

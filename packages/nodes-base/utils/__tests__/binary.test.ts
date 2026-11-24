@@ -1,20 +1,26 @@
-import { mock } from 'jest-mock-extended';
-import type { IBinaryData, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { BINARY_ENCODING } from 'n8n-workflow';
-import { type WorkSheet, utils as xlsxUtils, write as xlsxWrite } from 'xlsx';
+import { type WorkSheet, utils as xlsxUtils, write as xlsxWrite } from '@e965/xlsx';
+import {
+	convertJsonToSpreadsheetBinary,
+	createBinaryFromJson,
+	extractDataFromPDF,
+	prepareBinariesDataList,
+	routeBinaryProperties,
+} from '@utils/binary';
+import type { IBinaryData, IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import { BINARY_ENCODING, jsonParse, NodeOperationError } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
-import { convertJsonToSpreadsheetBinary, extractDataFromPDF } from '@utils/binary';
-
-jest.mock('xlsx', () => ({
+vi.mock('@e965/xlsx', () => ({
 	utils: {
-		json_to_sheet: jest.fn(),
+		json_to_sheet: vi.fn(),
 	},
-	write: jest.fn(),
+	write: vi.fn(),
 }));
 
-jest.mock('pdfjs-dist/legacy/build/pdf.mjs', () => ({
-	getDocument: jest.fn(),
-	version: '5.3.31',
+vi.mock('pdfjs-dist/legacy/build/pdf.mjs', () => ({
+	getDocument: vi.fn(),
+	version: '6.3.289',
 }));
 
 describe('convertJsonToSpreadsheetBinary', () => {
@@ -35,9 +41,9 @@ describe('convertJsonToSpreadsheetBinary', () => {
 	const mockBinaryData = mock<IBinaryData>({ id: 'binaryId' });
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		(xlsxUtils.json_to_sheet as jest.Mock).mockReturnValue(mockSheet);
-		(xlsxWrite as jest.Mock).mockReturnValue(mockBuffer);
+		vi.clearAllMocks();
+		(xlsxUtils.json_to_sheet as Mock).mockReturnValue(mockSheet);
+		(xlsxWrite as Mock).mockReturnValue(mockBuffer);
 		helpers.prepareBinaryData.mockResolvedValue(mockBinaryData);
 	});
 
@@ -104,7 +110,7 @@ describe('extractDataFromPDF', () => {
 	const originalDOMMatrix = globalThis.DOMMatrix;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	afterEach(() => {
@@ -116,6 +122,36 @@ describe('extractDataFromPDF', () => {
 		}
 	});
 
+	it('should return custom document info entries as a plain object', async () => {
+		const mockDocument = {
+			numPages: 0,
+			getMetadata: vi.fn().mockResolvedValue({
+				info: { Title: 'Report', Custom: new Map([['Department', 'Finance']]) },
+				metadata: null,
+			}),
+			getPage: vi.fn(),
+		};
+		const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs');
+		(getDocument as Mock).mockReturnValue({
+			promise: Promise.resolve(mockDocument),
+		});
+		helpers.assertBinaryData.mockReturnValue({
+			data: Buffer.from('fake pdf content').toString(BINARY_ENCODING),
+			mimeType: 'application/pdf',
+		});
+
+		const result = await extractDataFromPDF.call(
+			executeFunctions,
+			'data',
+			undefined,
+			undefined,
+			true,
+			0,
+		);
+
+		expect(result.info).toEqual({ Title: 'Report', Custom: { Department: 'Finance' } });
+	});
+
 	describe('DOMMatrix polyfill', () => {
 		it('should polyfill DOMMatrix when it is undefined', async () => {
 			// @ts-expect-error - Intentionally deleting for test
@@ -123,15 +159,15 @@ describe('extractDataFromPDF', () => {
 			expect(globalThis.DOMMatrix).toBeUndefined();
 
 			const mockPage = {
-				getTextContent: jest.fn().mockResolvedValue({ items: [] }),
+				getTextContent: vi.fn().mockResolvedValue({ items: [] }),
 			};
 			const mockDocument = {
 				numPages: 1,
-				getMetadata: jest.fn().mockResolvedValue({ info: {}, metadata: null }),
-				getPage: jest.fn().mockResolvedValue(mockPage),
+				getMetadata: vi.fn().mockResolvedValue({ info: {}, metadata: null }),
+				getPage: vi.fn().mockResolvedValue(mockPage),
 			};
 			const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs');
-			(getDocument as jest.Mock).mockReturnValue({
+			(getDocument as Mock).mockReturnValue({
 				promise: Promise.resolve(mockDocument),
 			});
 
@@ -151,15 +187,15 @@ describe('extractDataFromPDF', () => {
 			globalThis.DOMMatrix = mockDOMMatrix as unknown as typeof DOMMatrix;
 
 			const mockPage = {
-				getTextContent: jest.fn().mockResolvedValue({ items: [] }),
+				getTextContent: vi.fn().mockResolvedValue({ items: [] }),
 			};
 			const mockDocument = {
 				numPages: 1,
-				getMetadata: jest.fn().mockResolvedValue({ info: {}, metadata: null }),
-				getPage: jest.fn().mockResolvedValue(mockPage),
+				getMetadata: vi.fn().mockResolvedValue({ info: {}, metadata: null }),
+				getPage: vi.fn().mockResolvedValue(mockPage),
 			};
 			const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs');
-			(getDocument as jest.Mock).mockReturnValue({
+			(getDocument as Mock).mockReturnValue({
 				promise: Promise.resolve(mockDocument),
 			});
 
@@ -173,5 +209,341 @@ describe('extractDataFromPDF', () => {
 
 			expect(globalThis.DOMMatrix).toBe(mockDOMMatrix);
 		});
+	});
+});
+
+describe('prepareBinariesDataList', () => {
+	describe('string input', () => {
+		it('should split comma-separated string with spaces', () => {
+			const input = 'file1, file2, file3';
+			const result = prepareBinariesDataList(input);
+			expect(result).toEqual(['file1', 'file2', 'file3']);
+		});
+
+		it('should split comma-separated string without spaces', () => {
+			const input = 'file1,file2,file3';
+			const result = prepareBinariesDataList(input);
+			expect(result).toEqual(['file1', 'file2', 'file3']);
+		});
+
+		it('should trim whitespace from property names', () => {
+			const input = 'file1  ,  file2  ,  file3';
+			const result = prepareBinariesDataList(input);
+			expect(result).toEqual(['file1', 'file2', 'file3']);
+		});
+
+		it('should return single item as array', () => {
+			const input = 'singleFile';
+			const result = prepareBinariesDataList(input);
+			expect(result).toEqual(['singleFile']);
+		});
+
+		it('should return array with empty string for empty input', () => {
+			const input = '';
+			const result = prepareBinariesDataList(input);
+			expect(result).toEqual(['']);
+		});
+
+		it('should handle trailing comma', () => {
+			const input = 'file1, file2,';
+			const result = prepareBinariesDataList(input);
+			expect(result).toEqual(['file1', 'file2', '']);
+		});
+	});
+
+	describe('array input', () => {
+		it('should return string array as-is', () => {
+			const input = ['file1', 'file2', 'file3'];
+			const result = prepareBinariesDataList(input);
+			expect(result).toEqual(['file1', 'file2', 'file3']);
+		});
+
+		it('should return empty array as-is', () => {
+			const input: string[] = [];
+			const result = prepareBinariesDataList(input);
+			expect(result).toEqual([]);
+		});
+
+		it('should return IBinaryData array as-is', () => {
+			const input = [
+				{ data: 'data1', mimeType: 'text/plain' },
+				{ data: 'data2', mimeType: 'text/plain' },
+			];
+			const result = prepareBinariesDataList(input);
+			expect(result).toEqual(input);
+		});
+
+		it('should return IBinaryData array with multiple items', () => {
+			const input = [
+				{ data: 'data1', mimeType: 'text/plain', fileName: 'file1.txt' },
+				{ data: 'data2', mimeType: 'image/png', fileName: 'file2.png' },
+				{ data: 'data3', mimeType: 'application/pdf', fileName: 'file3.pdf' },
+			];
+			const result = prepareBinariesDataList(input);
+			expect(result).toEqual(input);
+			expect(result).toHaveLength(3);
+		});
+
+		it('should return single-item IBinaryData array as-is', () => {
+			const input = [{ data: 'data1', mimeType: 'text/plain', fileName: 'single.txt' }];
+			const result = prepareBinariesDataList(input);
+			expect(result).toEqual(input);
+			expect(result).toHaveLength(1);
+		});
+	});
+
+	describe('object input', () => {
+		it('should wrap single IBinaryData object in array', () => {
+			const input = { data: 'data1', mimeType: 'text/plain' };
+			const result = prepareBinariesDataList(input);
+			expect(result).toEqual([input]);
+		});
+
+		it('should wrap IBinaryData object with fileName property in array', () => {
+			const input = { data: 'data1', mimeType: 'text/plain', fileName: 'test.txt' };
+			const result = prepareBinariesDataList(input);
+			expect(result).toEqual([input]);
+			expect(result).toHaveLength(1);
+		});
+
+		it('should wrap IBinaryData object with all properties in array', () => {
+			const input = {
+				data: 'base64data',
+				mimeType: 'application/pdf',
+				fileName: 'document.pdf',
+				fileExtension: 'pdf',
+			};
+			const result = prepareBinariesDataList(input);
+			expect(result).toEqual([input]);
+			expect(result[0]).toMatchObject(input);
+		});
+	});
+});
+
+describe('routeBinaryProperties', () => {
+	const helpers = mock<IExecuteFunctions['helpers']>();
+	const executeFunctions = mock<IExecuteFunctions>({ helpers });
+	const binaryData = mock<IBinaryData>({ id: 'binaryId' });
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		helpers.prepareBinaryData.mockResolvedValue(binaryData);
+	});
+
+	it('should deep-serialize non-binary fields so Dates become ISO strings', async () => {
+		const { json, binary } = await routeBinaryProperties.call(executeFunctions, {
+			id: 1,
+			createdAt: new Date('2020-01-01T12:00:00.000Z'),
+		});
+
+		expect(json).toEqual({ id: 1, createdAt: '2020-01-01T12:00:00.000Z' });
+		expect(binary).toEqual({});
+	});
+
+	it('should route Buffer fields to binary via prepareBinaryData', async () => {
+		const buffer = Buffer.from('file-bytes');
+		const { json, binary } = await routeBinaryProperties.call(executeFunctions, {
+			name: 'doc',
+			file: buffer,
+		});
+
+		expect(json).toEqual({ name: 'doc' });
+		expect(helpers.prepareBinaryData).toHaveBeenCalledWith(buffer, 'file');
+		expect(binary.file).toBe(binaryData);
+	});
+
+	it('should keep unsafe field names as own properties without touching the prototype', async () => {
+		const row = jsonParse<IDataObject>('{"id":1,"__proto__":{"polluted":true},"file":null}');
+		row.file = Buffer.from('file-bytes');
+
+		const { json, binary } = await routeBinaryProperties.call(executeFunctions, row);
+
+		expect(Object.getPrototypeOf(json)).toBe(Object.prototype);
+		expect(Object.getPrototypeOf(binary)).toBe(Object.prototype);
+		expect(({} as IDataObject).polluted).toBeUndefined();
+		expect(Object.getOwnPropertyDescriptor(json, '__proto__')?.value).toEqual({ polluted: true });
+		expect(json.id).toBe(1);
+		expect(binary.file).toBe(binaryData);
+	});
+
+	it('should recognize custom binary wrappers via toBuffer', async () => {
+		const buffer = Buffer.from('wrapped');
+		const wrapped = { buffer };
+		const { json, binary } = await routeBinaryProperties.call(
+			executeFunctions,
+			{ id: 1, blob: wrapped },
+			(value) => (value === wrapped ? buffer : undefined),
+		);
+
+		expect(json).toEqual({ id: 1 });
+		expect(helpers.prepareBinaryData).toHaveBeenCalledWith(buffer, 'blob');
+		expect(binary.blob).toBe(binaryData);
+	});
+});
+
+describe('createBinaryFromJson base64 decoding', () => {
+	const helpers = mock<IExecuteFunctions['helpers']>();
+	const context = mock<IExecuteFunctions>({ helpers });
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		helpers.prepareBinaryData.mockResolvedValue({ data: '', mimeType: 'application/octet-stream' });
+	});
+
+	it.each([
+		['aGVsbG8=', 'hello'],
+		['aGVsbG8', 'hello'],
+		[' aGVs\n bG8= ', 'hello'],
+		['-_8=', '\xfb\xff'],
+		['', ''],
+		['data:text/plain;base64,aGVsbG8=', 'hello'],
+		['data:text/plain;charset=utf-8;base64,aGVsbG8=', 'hello'],
+		['data:;base64,aGVsbG8=', 'hello'],
+	])('decodes %j without changing the bytes', async (payload, expected) => {
+		await createBinaryFromJson.call(
+			context,
+			{ payload },
+			{ sourceKey: 'payload', dataIsBase64: true, strictBase64: true },
+		);
+		expect(helpers.prepareBinaryData.mock.calls[0][0]).toEqual(Buffer.from(expected, 'latin1'));
+	});
+
+	it.each([undefined, '', 'application/octet-stream'])(
+		'respects MIME override %j',
+		async (mimeType) => {
+			await createBinaryFromJson.call(
+				context,
+				{ payload: 'data:text/plain;base64,aGk=' },
+				{
+					sourceKey: 'payload',
+					dataIsBase64: true,
+					mimeType,
+					fileName: 'example.txt',
+				},
+			);
+			expect(helpers.prepareBinaryData).toHaveBeenCalledWith(
+				Buffer.from('hi'),
+				'example.txt',
+				mimeType || 'text/plain',
+			);
+		},
+	);
+
+	it.each(['A', 'AA=A', '====', 'aGk===', 'aGk!', 'data:text/plain,hello', 1234, true, null, {}])(
+		'rejects invalid input %j before creating a file',
+		async (payload) => {
+			await expect(
+				createBinaryFromJson.call(
+					context,
+					{ payload },
+					{
+						sourceKey: 'payload',
+						dataIsBase64: true,
+						strictBase64: true,
+						itemIndex: 2,
+					},
+				),
+			).rejects.toBeInstanceOf(NodeOperationError);
+			expect(helpers.prepareBinaryData).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each(['"aGVsbG8="', 'aGVsbG8=.', 'aGk=='])(
+		'preserves permissive decoding for existing workflows with input %j',
+		async (payload) => {
+			await createBinaryFromJson.call(
+				context,
+				{ payload },
+				{ sourceKey: 'payload', dataIsBase64: true },
+			);
+			expect(helpers.prepareBinaryData.mock.calls[0][0]).toEqual(
+				Buffer.from(payload, BINARY_ENCODING),
+			);
+		},
+	);
+
+	it.each([
+		{ payload: Buffer.from('hi') },
+		{ payload: [104, 105] },
+		{ payload: { type: 'Buffer', data: [104, 105] } },
+	])('preserves buffer-shaped input %#', async ({ payload }) => {
+		await createBinaryFromJson.call(
+			context,
+			{ payload },
+			{ sourceKey: 'payload', dataIsBase64: true, strictBase64: true },
+		);
+		expect(helpers.prepareBinaryData.mock.calls[0][0]).toEqual(Buffer.from('hi'));
+	});
+
+	it.each([{ payload: [0, 255] }, { payload: { type: 'Buffer', data: [0, 255] } }])(
+		'accepts byte-array boundaries in strict mode for input %#',
+		async ({ payload }) => {
+			await createBinaryFromJson.call(
+				context,
+				{ payload },
+				{ sourceKey: 'payload', dataIsBase64: true, strictBase64: true },
+			);
+			expect(helpers.prepareBinaryData.mock.calls[0][0]).toEqual(Buffer.from([0, 255]));
+		},
+	);
+
+	it.each([
+		{ payload: ['aGk='] },
+		{ payload: [300, -1] },
+		{ payload: [1.5] },
+		{ payload: new Array(1) },
+		{ payload: { type: 'Buffer', data: ['aGk='] } },
+		{ payload: { type: 'Buffer', data: [300, -1] } },
+		{ payload: { type: 'Buffer', data: [1.5] } },
+		{ payload: { type: 'Buffer', data: new Array(1) } },
+	])('rejects invalid byte-array input %# in strict mode', async ({ payload }) => {
+		await expect(
+			createBinaryFromJson.call(
+				context,
+				{ payload },
+				{ sourceKey: 'payload', dataIsBase64: true, strictBase64: true },
+			),
+		).rejects.toBeInstanceOf(NodeOperationError);
+		expect(helpers.prepareBinaryData).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{ payload: ['aGk='], expected: [0] },
+		{ payload: [300, -1], expected: [44, 255] },
+		{ payload: { type: 'Buffer', data: [300, -1] }, expected: [44, 255] },
+	])('preserves permissive byte-array conversion for existing workflows %#', async (testCase) => {
+		await createBinaryFromJson.call(
+			context,
+			{ payload: testCase.payload },
+			{ sourceKey: 'payload', dataIsBase64: true },
+		);
+		expect(helpers.prepareBinaryData.mock.calls[0][0]).toEqual(Buffer.from(testCase.expected));
+	});
+
+	it('decodes the reported PNG data URI to the original 70 bytes', async () => {
+		const payload =
+			'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+		await createBinaryFromJson.call(
+			context,
+			{ payload: `data:image/png;base64,${payload}` },
+			{
+				sourceKey: 'payload',
+				dataIsBase64: true,
+			},
+		);
+		const output = helpers.prepareBinaryData.mock.calls[0][0];
+		expect(output).toEqual(Buffer.from(payload, 'base64'));
+		expect(output).toHaveLength(70);
+	});
+
+	it('preserves text conversion', async () => {
+		await createBinaryFromJson.call(
+			context,
+			{ payload: 'data:text/plain,hello' },
+			{ sourceKey: 'payload', dataIsBase64: false },
+		);
+		expect(helpers.prepareBinaryData.mock.calls[0][0]).toEqual(
+			Buffer.from('data:text/plain,hello'),
+		);
 	});
 });

@@ -3,10 +3,13 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import N8nPulse from './Pulse.vue';
 
 export default {
-	title: 'Atoms/Pulse',
+	title: 'Core/Pulse',
 	component: N8nPulse,
 	argTypes: {},
 	parameters: {
+		docs: {
+			description: { component: 'A pulsing status indicator for active or live states.' },
+		},
 		backgrounds: { default: '--color--background--light-2' },
 	},
 };

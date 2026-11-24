@@ -8,7 +8,7 @@ import {
 	jsonSchemaExampleField,
 	schemaTypeField,
 } from '../../../../utils/descriptions';
-import { getConnectionHintNoticeField } from '../../../../utils/sharedFields';
+import { getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Call n8n Workflow Tool',

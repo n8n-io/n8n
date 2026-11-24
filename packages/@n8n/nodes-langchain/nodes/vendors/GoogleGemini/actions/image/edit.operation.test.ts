@@ -1,5 +1,5 @@
-import { mock, mockDeep } from 'jest-mock-extended';
 import type { IBinaryData, ICredentialDataDecryptedObject, IExecuteFunctions } from 'n8n-workflow';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { execute } from './edit.operation';
 
@@ -10,6 +10,10 @@ const getMockedExecuteFunctions = ({
 	outputBuffer = Buffer.from('edited image'),
 	mimeType = 'image/png',
 	invalidApiResponse = false,
+	malformedCandidates = false,
+	blockedApiResponse = false,
+	emptyApiResponse = false,
+	filteredCandidate = false,
 }: {
 	prompt?: string;
 	outputProperty?: string;
@@ -17,12 +21,18 @@ const getMockedExecuteFunctions = ({
 	outputBuffer?: Buffer<ArrayBuffer>;
 	mimeType?: string;
 	invalidApiResponse?: boolean;
+	malformedCandidates?: boolean;
+	blockedApiResponse?: boolean;
+	emptyApiResponse?: boolean;
+	filteredCandidate?: boolean;
 } = {}): IExecuteFunctions => {
 	const executeFunctions = mockDeep<IExecuteFunctions>();
 
 	executeFunctions.getCredentials
 		.calledWith('googlePalmApi')
-		.mockResolvedValue(mock<ICredentialDataDecryptedObject>());
+		.mockResolvedValue(
+			mock<ICredentialDataDecryptedObject>({ host: 'https://generativelanguage.googleapis.com' }),
+		);
 	executeFunctions.getNodeParameter.calledWith('prompt', 0).mockReturnValue(prompt);
 	executeFunctions.getNodeParameter
 		.calledWith('options.binaryPropertyOutput', 0)
@@ -64,21 +74,44 @@ const getMockedExecuteFunctions = ({
 		.calledWith(
 			'googlePalmApi',
 			expect.objectContaining({
-				url: expect.stringContaining('generateContent'),
+				url: expect.objectContaining({ value: expect.stringContaining('generateContent') }),
 			}),
 		)
 		.mockResolvedValue(
-			invalidApiResponse
-				? { invalid: 'response' }
-				: {
-						candidates: [
-							{
-								content: {
-									parts: [{ inlineData: { data: outputBuffer.toString('base64'), mimeType } }],
+			blockedApiResponse
+				? {
+						promptFeedback: {
+							blockReason: 'PROHIBITED_CONTENT',
+							blockReasonMessage: 'The prompt is not allowed',
+						},
+					}
+				: filteredCandidate
+					? {
+							candidates: [
+								{
+									finishReason: 'PROHIBITED_CONTENT',
+									index: 0,
+									finishMessage: 'Unable to show the generated image.',
 								},
-							},
-						],
-					},
+							],
+						}
+					: emptyApiResponse
+						? {}
+						: malformedCandidates
+							? { candidates: 'invalid' }
+							: invalidApiResponse
+								? { invalid: 'response' }
+								: {
+										candidates: [
+											{
+												content: {
+													parts: [
+														{ inlineData: { data: outputBuffer.toString('base64'), mimeType } },
+													],
+												},
+											},
+										],
+									},
 		);
 
 	executeFunctions.helpers.httpRequest
@@ -171,7 +204,7 @@ describe('Gemini Node image edit', () => {
 		);
 	});
 
-	it('should throw error for invalid API response format', async () => {
+	it('should report an object without candidates or block reason as an empty response', async () => {
 		const executeFunctions = getMockedExecuteFunctions({
 			prompt: 'test prompt',
 			outputProperty: 'edited',
@@ -180,29 +213,56 @@ describe('Gemini Node image edit', () => {
 		});
 
 		await expect(execute.call(executeFunctions, 0)).rejects.toThrow(
+			'Gemini returned an empty response',
+		);
+	});
+
+	it('should throw error for a non-array candidates field', async () => {
+		const executeFunctions = getMockedExecuteFunctions({ malformedCandidates: true });
+
+		await expect(execute.call(executeFunctions, 0)).rejects.toThrow(
 			'Invalid response format from Gemini API',
 		);
 	});
 
-	it('should handle empty prompt', async () => {
+	it('should report the block reason when Gemini blocks the prompt', async () => {
+		const executeFunctions = getMockedExecuteFunctions({ blockedApiResponse: true });
+
+		await expect(execute.call(executeFunctions, 0)).rejects.toThrow(
+			'Gemini blocked the prompt (reason: PROHIBITED_CONTENT)',
+		);
+	});
+
+	it('should report the finish reason when Gemini filters the generated image', async () => {
+		const executeFunctions = getMockedExecuteFunctions({ filteredCandidate: true });
+
+		await expect(execute.call(executeFunctions, 0)).rejects.toThrow(
+			'Gemini returned no content (finish reason: PROHIBITED_CONTENT)',
+		);
+	});
+
+	it('should report an empty Gemini response with the shared error', async () => {
+		const executeFunctions = getMockedExecuteFunctions({ emptyApiResponse: true });
+
+		await expect(execute.call(executeFunctions, 0)).rejects.toThrow(
+			'Gemini returned an empty response',
+		);
+	});
+
+	it('should throw error for empty prompt', async () => {
 		const executeFunctions = getMockedExecuteFunctions({ prompt: '' });
 
-		const result = await execute.call(executeFunctions, 0);
+		await expect(execute.call(executeFunctions, 0)).rejects.toThrow(
+			'A non-empty prompt is required.',
+		);
+	});
 
-		expect(result).toEqual([
-			{
-				binary: {
-					edited: {
-						data: 'ZWRpdGVkIGltYWdl',
-						fileName: 'image.png',
-						fileSize: '12',
-						mimeType: 'image/png',
-					},
-				},
-				json: { fileName: 'image.png', fileSize: '12', mimeType: 'image/png', data: undefined },
-				pairedItem: { item: 0 },
-			},
-		]);
+	it('should throw error for whitespace-only prompt', async () => {
+		const executeFunctions = getMockedExecuteFunctions({ prompt: '   ' });
+
+		await expect(execute.call(executeFunctions, 0)).rejects.toThrow(
+			'A non-empty prompt is required.',
+		);
 	});
 
 	it('should handle different MIME types', async () => {
@@ -217,7 +277,9 @@ describe('Gemini Node image edit', () => {
 		const result = await execute.call(executeFunctions, 0);
 
 		expect(result[0]?.binary?.enhanced?.mimeType).toBe('image/jpeg');
+		expect(result[0]?.binary?.enhanced?.fileName).toBe('image.jpg');
 		expect(result[0]?.json?.mimeType).toBe('image/jpeg');
+		expect(result[0]?.json?.fileName).toBe('image.jpg');
 	});
 
 	it('should handle empty images array when no valid binary property names', async () => {

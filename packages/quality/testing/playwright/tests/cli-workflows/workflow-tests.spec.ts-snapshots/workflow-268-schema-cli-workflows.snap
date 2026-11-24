@@ -1,0 +1,242 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "number"
+        },
+        "startData": {
+          "type": "object",
+          "properties": {}
+        },
+        "resultData": {
+          "type": "object",
+          "properties": {
+            "runData": {
+              "type": "object",
+              "properties": {
+                "When clicking ‘Execute workflow’": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Code": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            },
+                            "previousNodeOutput": {
+                              "type": "number"
+                            },
+                            "previousNodeRun": {
+                              "type": "number"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "Sort": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "startTime": {
+                        "type": "number"
+                      },
+                      "executionIndex": {
+                        "type": "number"
+                      },
+                      "source": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "previousNode": {
+                              "type": "string"
+                            },
+                            "previousNodeOutput": {
+                              "type": "number"
+                            },
+                            "previousNodeRun": {
+                              "type": "number"
+                            }
+                          }
+                        }
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {}
+                      },
+                      "executionTime": {
+                        "type": "number"
+                      },
+                      "executionStatus": {
+                        "type": "string"
+                      },
+                      "data": {
+                        "type": "object",
+                        "properties": {
+                          "main": {
+                            "type": "array",
+                            "items": {
+                              "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "lastNodeExecuted": {
+              "type": "string"
+            }
+          }
+        },
+        "executionData": {
+          "type": "object",
+          "properties": {
+            "contextData": {
+              "type": "object",
+              "properties": {}
+            },
+            "nodeExecutionStack": {
+              "type": "array",
+              "items": {}
+            },
+            "metadata": {
+              "type": "object",
+              "properties": {}
+            },
+            "waitingExecution": {
+              "type": "object",
+              "properties": {}
+            },
+            "waitingExecutionSource": {
+              "type": "object",
+              "properties": {}
+            },
+            "runtimeData": {
+              "type": "object",
+              "properties": {
+                "version": {
+                  "type": "number"
+                },
+                "establishedAt": {
+                  "type": "number"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "triggerNode": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "mode": {
+      "type": "string"
+    },
+    "startedAt": {
+      "type": "string"
+    },
+    "stoppedAt": {
+      "type": "string"
+    },
+    "storedAt": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "finished": {
+      "type": "boolean"
+    }
+  }
+}

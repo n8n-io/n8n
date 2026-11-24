@@ -14,7 +14,7 @@ describe('Ownership Service integration test', () => {
 	beforeEach(async () => {
 		await testDb.truncate(['User']);
 		await createUserShell(GLOBAL_OWNER_ROLE);
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	beforeAll(async () => {

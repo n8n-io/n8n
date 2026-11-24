@@ -1,4 +1,11 @@
 import { Logger } from '@n8n/backend-common';
+import { OutboundHttp } from '@n8n/backend-network';
+import {
+	InstanceRegistryProxyService,
+	PostHogClient,
+	TelemetryProxy,
+	type TelemetryTracker,
+} from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
 	ProjectRelationRepository,
@@ -6,19 +13,27 @@ import {
 	WorkflowRepository,
 	UserRepository,
 } from '@n8n/db';
-import { OnShutdown } from '@n8n/decorators';
+import { LOWEST_SHUTDOWN_PRIORITY, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import type { InferTelemetryProps, TelemetryEventDef } from '@n8n/telemetry';
+import { redactTelemetryProperties, TELEMETRY_EVENT } from '@n8n/telemetry';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
-import axios from 'axios';
+import type { AxiosRequestConfig } from 'axios';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 
-import { LOWEST_SHUTDOWN_PRIORITY, N8N_VERSION } from '@/constants';
+import { N8N_VERSION } from '@/constants';
 import type { IExecutionTrackProperties } from '@/interfaces';
 import { License } from '@/license';
-import { PostHogClient } from '@/posthog';
+import type { PublicApiClient } from '@/public-api/public-api-client';
+import type { PublicApiResult } from '@/public-api/types';
 
-import { SourceControlPreferencesService } from '../environments.ee/source-control/source-control-preferences.service.ee';
+import { SourceControlPreferencesService } from '../modules/source-control.ee/source-control-preferences.service.ee';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../modules/mcp/mcp.constants';
+import { summarizeFootprint } from './cluster-footprint';
+
+/** A full queue of 500 events takes under 2 s on a healthy server. */
+const SHUTDOWN_FLUSH_TIMEOUT_MS = 10_000;
 
 type ExecutionTrackDataKey =
 	| 'manual_error'
@@ -26,32 +41,72 @@ type ExecutionTrackDataKey =
 	| 'prod_error'
 	| 'prod_success'
 	| 'manual_crashed'
-	| 'prod_crashed';
+	| 'prod_crashed'
+	| `${'instance_ai'}_${'mock' | 'real'}_${'manual' | 'prod'}_${'error' | 'success' | 'crashed'}`
+	| `personal_credentials_${'manual' | 'prod'}`;
 
 interface IExecutionTrackData {
 	count: number;
 	first: Date;
 }
 
+type IExecutionsBufferEntry = Partial<Record<ExecutionTrackDataKey, IExecutionTrackData>> & {
+	user_id: string | undefined;
+};
+
 interface IExecutionsBuffer {
-	[workflowId: string]: {
-		manual_error?: IExecutionTrackData;
-		manual_success?: IExecutionTrackData;
-		prod_error?: IExecutionTrackData;
-		prod_success?: IExecutionTrackData;
-		manual_crashed?: IExecutionTrackData;
-		prod_crashed?: IExecutionTrackData;
-		user_id: string | undefined;
+	[workflowId: string]: IExecutionsBufferEntry;
+}
+
+interface IApiInvocationProperties {
+	user_id: string;
+	route: string;
+	result: PublicApiResult;
+	api_version: string;
+	user_agent?: string;
+	client: PublicApiClient;
+}
+
+/** One row for each route, result and caller. A flat list is easier to query in Hex. */
+interface IApiRouteCalls {
+	route: string;
+	result: PublicApiResult;
+	caller: PublicApiClient;
+	calls: number;
+}
+
+interface IApiInvocationsBufferEntry {
+	total_calls: number;
+	first: Date;
+	endpoints: Record<string, number>;
+	endpoints_by_client: {
+		editor_ui: Record<string, number>;
+		n8n_node: Record<string, number>;
 	};
+	routes: IApiRouteCalls[];
+	user_agents: Record<string, number>;
+	clients: Record<PublicApiClient, number>;
+}
+
+interface IApiInvocationsBuffer {
+	[userId: string]: IApiInvocationsBufferEntry;
 }
 
 @Service()
-export class Telemetry {
+export class Telemetry implements TelemetryTracker {
 	private rudderStack?: RudderStack;
 
-	private pulseIntervalReference: NodeJS.Timeout;
+	private userCloudId?: string;
 
-	private executionCountsBuffer: IExecutionsBuffer = {};
+	// No prototype, so every workflow id is an own key.
+	private executionCountsBuffer: IExecutionsBuffer = Object.create(null);
+
+	private apiInvocationsBuffer: IApiInvocationsBuffer = {};
+
+	private readonly bufferFlushers: (() => void)[] = [];
+
+	/** Event names already reported by `warnAboutMissingUserId`, so each one is said once. */
+	private readonly eventsMissingUserId = new Set<string>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -61,9 +116,58 @@ export class Telemetry {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly globalConfig: GlobalConfig,
 		private readonly errorReporter: ErrorReporter,
+		private readonly outboundHttp: OutboundHttp,
 	) {}
 
+	// PostHog groupIdentify only accepts flat objects with string or number values, function sanitizes objects to match that format.
+	sanitizeTelemetryProperties(
+		obj: Record<string, any>,
+		depth = 0,
+		maxDepth = 10,
+	): Record<string, string | number> {
+		try {
+			const result: Record<string, string | number> = {};
+
+			for (const [key, value] of Object.entries(obj)) {
+				if (value === null || value === undefined) {
+					continue;
+				} else if (typeof value === 'boolean') {
+					result[key] = value ? 'true' : 'false';
+				} else if (typeof value === 'number') {
+					result[key] = value;
+				} else if (typeof value === 'string') {
+					result[key] = value;
+				} else if (Array.isArray(value)) {
+					result[key] = JSON.stringify(value);
+				} else if (typeof value === 'object' && value.constructor === Object) {
+					if (depth >= maxDepth) {
+						result[key] = JSON.stringify(value);
+					} else {
+						// Recursively flatten nested objects
+						Object.assign(
+							result,
+							this.sanitizeTelemetryProperties(
+								value as Record<string, unknown>,
+								depth + 1,
+								maxDepth,
+							),
+						);
+					}
+				} else {
+					continue;
+				}
+			}
+
+			return result;
+		} catch (e) {
+			this.logger.error('Error sanitizing telemetry properties', { error: e, object: obj });
+			return {};
+		}
+	}
+
 	async init() {
+		Container.get(TelemetryProxy).registerProvider(this);
+
 		const { enabled, backendConfig } = this.globalConfig.diagnostics;
 		if (enabled) {
 			const [key, dataPlaneUrl] = backendConfig.split(';');
@@ -76,13 +180,20 @@ export class Telemetry {
 			const logLevel = this.globalConfig.logging.level;
 
 			const { default: RudderStack } = await import('@rudderstack/rudder-sdk-node');
-			const axiosInstance = axios.create();
-			axiosInstance.interceptors.request.use((cfg) => {
-				cfg.headers.setContentType('application/json', false);
-				return cfg;
-			});
+
+			const { httpAgent, httpsAgent } = this.outboundHttp
+				.transport({
+					useDefaultSsrfPolicy: 'unsafe', // The data-plane host is fixed and the SDK owns the request lifecycle, so SSRF is disabled.
+				})
+				.getNodeAgent();
+			const axiosConfig: AxiosRequestConfig = {
+				httpAgent,
+				httpsAgent,
+				headers: { 'Content-Type': 'application/json' },
+			};
+
 			this.rudderStack = new RudderStack(key, {
-				axiosInstance,
+				axiosConfig,
 				logLevel,
 				dataPlaneUrl,
 				gzip: false,
@@ -90,25 +201,74 @@ export class Telemetry {
 					this.errorReporter.error(error);
 				},
 			});
-
-			this.startPulse();
 		}
 	}
 
-	private startPulse() {
-		this.pulseIntervalReference = setInterval(
-			async () => {
-				void this.pulse();
-			},
-			6 * 60 * 60 * 1000,
-		); // every 6 hours
-	}
-
-	private async pulse() {
+	/**
+	 * Sends the events buffered in this process and empties the buffers. Does
+	 * nothing while diagnostics are off, because nothing buffers then.
+	 */
+	flushBuffers(): void {
 		if (!this.rudderStack) {
 			return;
 		}
 
+		this.flushWorkflowExecutionCounts();
+		for (const flush of this.bufferFlushers) flush();
+		this.flushApiInvocations();
+	}
+
+	/**
+	 * Sends one `pulse` packet of license and usage counters. The counters
+	 * describe the whole instance, so a second sender reports the same numbers
+	 * again. Does nothing while diagnostics are off.
+	 */
+	async sendPulsePacket(): Promise<void> {
+		if (!this.rudderStack) {
+			return;
+		}
+
+		const sourceControlPreferences = Container.get(
+			SourceControlPreferencesService,
+		).getPreferences();
+
+		// License info
+		const pulsePacket = {
+			plan_name_current: this.license.getPlanName(),
+			quota: this.license.getTriggerLimit(),
+			usage: await this.workflowRepository.getActiveTriggerCount(),
+			role_count: await Container.get(UserRepository).countUsersByRole('person'),
+			source_control_set_up: Container.get(SourceControlPreferencesService).isSourceControlSetup(),
+			branchName: sourceControlPreferences.branchName,
+			read_only_instance: sourceControlPreferences.branchReadOnly,
+			team_projects: (await Container.get(ProjectRepository).getProjectCounts()).team,
+			project_role_count: await Container.get(ProjectRelationRepository).countPeopleByRole(),
+			...summarizeFootprint(await Container.get(InstanceRegistryProxyService).getAllInstances()),
+		};
+
+		this.track('pulse', pulsePacket);
+	}
+
+	private flushApiInvocations() {
+		for (const userId of Object.keys(this.apiInvocationsBuffer)) {
+			const entry = this.apiInvocationsBuffer[userId];
+			if (entry.total_calls > 0) {
+				this.track(TELEMETRY_EVENT.PUBLIC_API.PUBLIC_API_USAGE, {
+					user_id: userId,
+					total_calls: entry.total_calls,
+					first: entry.first.toISOString(),
+					endpoints: JSON.stringify(entry.endpoints),
+					endpoints_by_client: JSON.stringify(entry.endpoints_by_client),
+					routes: JSON.stringify(entry.routes),
+					user_agents: JSON.stringify(entry.user_agents),
+					clients: JSON.stringify(entry.clients),
+				});
+			}
+		}
+		this.apiInvocationsBuffer = {};
+	}
+
+	private flushWorkflowExecutionCounts() {
 		const workflowIdsToReport = Object.keys(this.executionCountsBuffer).filter((workflowId) => {
 			const data = this.executionCountsBuffer[workflowId];
 			const sum =
@@ -130,26 +290,7 @@ export class Telemetry {
 			});
 		}
 
-		this.executionCountsBuffer = {};
-
-		const sourceControlPreferences = Container.get(
-			SourceControlPreferencesService,
-		).getPreferences();
-
-		// License info
-		const pulsePacket = {
-			plan_name_current: this.license.getPlanName(),
-			quota: this.license.getTriggerLimit(),
-			usage: await this.workflowRepository.getActiveTriggerCount(),
-			role_count: await Container.get(UserRepository).countUsersByRole(),
-			source_control_set_up: Container.get(SourceControlPreferencesService).isSourceControlSetup(),
-			branchName: sourceControlPreferences.branchName,
-			read_only_instance: sourceControlPreferences.branchReadOnly,
-			team_projects: (await Container.get(ProjectRepository).getProjectCounts()).team,
-			project_role_count: await Container.get(ProjectRelationRepository).countUsersByRole(),
-		};
-
-		this.track('pulse', pulsePacket);
+		this.executionCountsBuffer = Object.create(null);
 	}
 
 	trackWorkflowExecution(properties: IExecutionTrackProperties) {
@@ -170,15 +311,28 @@ export class Telemetry {
 				}`;
 			}
 
-			const executionTrackDataKey = this.executionCountsBuffer[workflowId][key];
+			this.addExecutionTrackData(workflowId, key, execTime);
 
-			if (!executionTrackDataKey) {
-				this.executionCountsBuffer[workflowId][key] = {
-					count: 1,
-					first: execTime,
-				};
-			} else {
-				executionTrackDataKey.count++;
+			const executionStatus = properties.crashed
+				? 'crashed'
+				: properties.success
+					? 'success'
+					: 'error';
+			const executionMode = properties.is_manual ? 'manual' : 'prod';
+
+			if (properties.execution_source === 'instance_ai') {
+				const instanceAiDataType = properties.mock_data_sources ? 'mock' : 'real';
+				const sourceKey: ExecutionTrackDataKey = `instance_ai_${instanceAiDataType}_${executionMode}_${executionStatus}`;
+				this.addExecutionTrackData(workflowId, sourceKey, execTime);
+			}
+
+			// Counted in the per-workflow aggregate, not as an event for each run.
+			if (properties.personal_credentials_count) {
+				this.addExecutionTrackData(workflowId, `personal_credentials_${executionMode}`, execTime);
+			}
+
+			if (properties.used_end_user_credentials) {
+				this.track('Workflow execution with end-user credentials', properties);
 			}
 
 			if (
@@ -191,40 +345,193 @@ export class Telemetry {
 		}
 	}
 
+	private addExecutionTrackData(workflowId: string, key: ExecutionTrackDataKey, execTime: Date) {
+		const executionTrackData = this.executionCountsBuffer[workflowId][key];
+
+		if (!executionTrackData) {
+			this.executionCountsBuffer[workflowId][key] = {
+				count: 1,
+				first: execTime,
+			};
+		} else {
+			executionTrackData.count++;
+		}
+	}
+
+	trackApiInvocation(properties: IApiInvocationProperties) {
+		if (!this.rudderStack) return;
+
+		const { user_id, route, result, user_agent, client } = properties;
+
+		const entry = (this.apiInvocationsBuffer[user_id] ??= {
+			total_calls: 0,
+			first: new Date(),
+			endpoints: {},
+			endpoints_by_client: { editor_ui: {}, n8n_node: {} },
+			routes: [],
+			user_agents: {},
+			clients: { editor_ui: 0, n8n_node: 0, other: 0 },
+		});
+		entry.total_calls++;
+		entry.clients[client]++;
+
+		entry.endpoints[route] = (entry.endpoints[route] ?? 0) + 1;
+
+		// other is left out here. The routes list already counts it.
+		if (client !== 'other') {
+			const clientEndpoints = entry.endpoints_by_client[client];
+			clientEndpoints[route] = (clientEndpoints[route] ?? 0) + 1;
+		}
+
+		const existingRow = entry.routes.find(
+			(row) => row.route === route && row.result === result && row.caller === client,
+		);
+		if (existingRow) {
+			existingRow.calls++;
+		} else {
+			entry.routes.push({ route, result, caller: client, calls: 1 });
+		}
+
+		if (user_agent) {
+			entry.user_agents[user_agent] = (entry.user_agents[user_agent] ?? 0) + 1;
+		}
+	}
+
+	isEnabled(): boolean {
+		return this.rudderStack !== undefined;
+	}
+
+	addBufferFlusher(flusher: () => void): void {
+		this.bufferFlushers.push(flusher);
+	}
+
+	/** Sends the queued events now, instead of at the next flush interval. */
+	async flushQueue(): Promise<void> {
+		await this.rudderStack?.flush();
+	}
+
 	@OnShutdown(LOWEST_SHUTDOWN_PRIORITY)
 	async stopTracking(): Promise<void> {
-		clearInterval(this.pulseIntervalReference);
-
-		await Promise.all([this.postHog.stop(), this.rudderStack?.flush()]);
+		this.flushBuffers();
+		await Promise.all([this.postHog.stop(), this.flushQueueBeforeExit()]);
 	}
 
-	identify(traits?: { [key: string]: string | number | boolean | object | undefined | null }) {
-		if (!this.rudderStack) {
-			return;
-		}
+	/**
+	 * flush() sends every queued batch and retries each one, so a telemetry server
+	 * that does not answer can hold it past the graceful shutdown timeout. Give up
+	 * after a fixed time; the events are lost either way.
+	 */
+	private async flushQueueBeforeExit(): Promise<void> {
+		if (!this.rudderStack) return;
 
-		const { instanceId } = this.instanceSettings;
-
-		this.rudderStack.identify({
-			userId: instanceId,
-			traits: { ...traits, instanceId },
-			context: {
-				// provide a fake IP address to instruct RudderStack to not use the user's IP address
-				ip: '0.0.0.0',
-			},
+		let timer: NodeJS.Timeout | undefined;
+		const deadline = new Promise<void>((resolve) => {
+			timer = setTimeout(resolve, SHUTDOWN_FLUSH_TIMEOUT_MS);
 		});
+		try {
+			await Promise.race([this.rudderStack.flush(), deadline]);
+		} finally {
+			clearTimeout(timer);
+		}
 	}
 
-	track(eventName: string, properties: ITelemetryTrackProperties = {}) {
+	// Sets instance group properties and attaches user to instance group.
+	groupIdentify({
+		userId,
+		traits,
+		postHog = { userId, traits },
+	}: {
+		userId?: string;
+		traits?: Record<string, string | number>;
+		/**
+		 * PostHog-only override. PostHog refuses a group update with no real person
+		 * behind it, while RudderStack accepts the bare instance ID. Use it when the
+		 * two destinations must diverge, e.g. to attribute startup facts to the owner.
+		 */
+		postHog?: { userId?: string; traits?: Record<string, string | number> };
+	}): void {
+		const { instanceId } = this.instanceSettings;
+		if (!instanceId) return;
+
+		if (this.postHog && postHog.userId) {
+			this.postHog.groupIdentify({
+				distinctId: `${instanceId}#${postHog.userId}`,
+				instanceId,
+				properties: this.withInstallId(postHog.traits),
+			});
+		}
+
+		if (this.rudderStack) {
+			this.rudderStack.group({
+				groupId: instanceId,
+				userId: userId ? `${instanceId}#${userId}` : instanceId, // Rudderstack requires a userId for group calls, using instanceId as fallback
+				traits: this.withInstallId(traits),
+				context: {
+					ip: '0.0.0.0',
+				},
+			});
+		}
+	}
+
+	identify(
+		traits?: { [key: string]: string | number | boolean | object | undefined | null },
+		userId?: string,
+	): void {
+		const { instanceId, installId } = this.instanceSettings;
+		if (!instanceId) return;
+
+		if (this.rudderStack) {
+			this.rudderStack.identify({
+				userId: userId ? `${instanceId}#${userId}` : instanceId, // If no userId provided, falling back to instanceId for cross-compatibility
+				traits: { ...traits, instanceId, ...(installId && { installId }) },
+				context: {
+					ip: '0.0.0.0',
+				},
+			});
+		}
+
+		if (this.postHog && userId) {
+			this.postHog.identify({
+				distinctId: `${instanceId}#${userId}`,
+				properties: traits,
+			});
+		}
+	}
+
+	/** Instance group traits with the install ID added, when there are traits to send. */
+	private withInstallId(
+		traits: Record<string, string | number> | undefined,
+	): Record<string, string | number> | undefined {
+		const { installId } = this.instanceSettings;
+		return traits && { ...traits, ...(installId && { install_id: installId }) };
+	}
+
+	setUserCloudId(userCloudId?: string) {
+		this.userCloudId = userCloudId;
+	}
+
+	track<T extends TelemetryEventDef>(event: T, properties: InferTelemetryProps<T>): void;
+	track(eventName: string, properties?: ITelemetryTrackProperties): void;
+	track(event: string | TelemetryEventDef, properties: ITelemetryTrackProperties = {}) {
+		const eventName = typeof event === 'string' ? event : event.name;
+
+		if (typeof event !== 'string') {
+			const validationError = event.getValidationError(properties);
+			if (validationError) this.logger.warn(validationError);
+		}
+
 		if (!this.rudderStack) {
 			return;
 		}
 
-		const { instanceId } = this.instanceSettings;
+		const { instanceId, installId } = this.instanceSettings;
 		const { user_id } = properties;
 		const updatedProperties = {
-			...properties,
+			...(eventName === USER_CALLED_MCP_TOOL_EVENT
+				? redactTelemetryProperties(properties)
+				: properties),
 			instance_id: instanceId,
+			...(installId && { install_id: installId }),
 			user_id: user_id ?? undefined,
 			version_cli: N8N_VERSION,
 		};
@@ -233,7 +540,7 @@ export class Telemetry {
 			userId: `${instanceId}${user_id ? `#${user_id}` : ''}`,
 			event: eventName,
 			properties: updatedProperties,
-			context: {},
+			context: this.userCloudId ? { traits: { user_cloud_id: this.userCloudId } } : {},
 		};
 
 		// Build the actual payload that will be sent to RudderStack (with fake IP)
@@ -248,20 +555,11 @@ export class Telemetry {
 		const maxPayloadSize = 32 << 10; // 32 KB
 
 		if (payloadSize > maxPayloadSize) {
-			this.errorReporter.warn(
-				new Error(
-					`Telemetry event "${eventName}" payload size (${payloadSize} bytes) exceeds limit (${maxPayloadSize} bytes). Skipping event.`,
-				),
-				{
-					extra: {
-						eventName,
-						payloadSize,
-						maxPayloadSize,
-						userId: payload.userId,
-					},
-				},
-			);
 			return;
+		}
+
+		if (typeof event !== 'string' && !user_id) {
+			this.warnAboutMissingUserId(eventName);
 		}
 
 		this.postHog?.track(payload);
@@ -269,8 +567,30 @@ export class Telemetry {
 		return this.rudderStack.track(rudderStackPayload);
 	}
 
+	/**
+	 * A registered event whose properties carry no `user_id` composes a distinct id of the bare
+	 * instance id, which `PostHogClient.track` drops to keep a phantom person profile out of
+	 * PostHog (#32344). The event still reaches RudderStack, so the loss is silent and only a
+	 * warehouse comparison finds it. This says so once for each event name, which is enough to
+	 * name the emit site and few enough to leave the logs readable.
+	 *
+	 * Only registered events are checked. A plain string event has no schema stating that it
+	 * describes a user action, and some of them are instance-level on purpose.
+	 */
+	private warnAboutMissingUserId(eventName: string): void {
+		if (this.eventsMissingUserId.has(eventName)) return;
+		this.eventsMissingUserId.add(eventName);
+		this.logger.warn(
+			`Telemetry event "${eventName}" carries no user_id, so PostHog drops it. Pass user_id in the event properties at the emit site.`,
+		);
+	}
+
 	// test helpers
 	getCountsBuffer(): IExecutionsBuffer {
 		return this.executionCountsBuffer;
+	}
+
+	getApiInvocationsBuffer(): IApiInvocationsBuffer {
+		return this.apiInvocationsBuffer;
 	}
 }

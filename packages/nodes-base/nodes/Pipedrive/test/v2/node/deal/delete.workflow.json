@@ -1,0 +1,57 @@
+{
+	"name": "Pipedrive v2 deal delete test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "dd444444-ee55-ff66-aa77-bb8888888888",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"authentication": "apiToken",
+				"resource": "deal",
+				"operation": "delete",
+				"dealId": 8
+			},
+			"id": "ee555555-ff66-aa77-bb88-cc9999999999",
+			"name": "Pipedrive",
+			"type": "n8n-nodes-base.pipedrive",
+			"typeVersion": 2,
+			"position": [200, 0],
+			"credentials": {
+				"pipedriveApi": {
+					"id": "cred-1",
+					"name": "Pipedrive API"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "ff666666-aa77-bb88-cc99-dd0000000000",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, 0]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [[{ "node": "Pipedrive", "type": "main", "index": 0 }]]
+		},
+		"Pipedrive": {
+			"main": [[{ "node": "No Operation, do nothing", "type": "main", "index": 0 }]]
+		}
+	}
+}

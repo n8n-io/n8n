@@ -1,22 +1,26 @@
 import type { IHttpRequestMethods } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import * as upload from '../../../../v2/actions/file/upload.operation';
 import * as utils from '../../../../v2/helpers/utils';
 import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction, createTestStream, driveNode } from '../helpers';
+import type * as _importType0 from '../../../../v2/transport';
+import type * as _importType1 from '../../../../v2/helpers/utils';
 
 const fileContent = Buffer.from('Hello Drive!');
 const originalFilename = 'original.txt';
 const contentLength = 123;
 const mimeType = 'text/plain';
 
-jest.mock('../../../../v2/transport', () => {
-	const originalModule = jest.requireActual('../../../../v2/transport');
+vi.mock('../../../../v2/transport', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../../../../v2/transport');
 	return {
 		...originalModule,
-		googleApiRequest: jest.fn(async function (method: IHttpRequestMethods) {
+		googleApiRequest: vi.fn(async function (method: IHttpRequestMethods) {
 			if (method === 'POST') {
 				return {
+					id: 'uploadIDxxxxxx',
 					headers: { location: 'someLocation' },
 				};
 			}
@@ -25,11 +29,11 @@ jest.mock('../../../../v2/transport', () => {
 	};
 });
 
-jest.mock('../../../../v2/helpers/utils', () => {
-	const originalModule = jest.requireActual('../../../../v2/helpers/utils');
+vi.mock('../../../../v2/helpers/utils', async () => {
+	const originalModule = await vi.importActual<typeof _importType1>('../../../../v2/helpers/utils');
 	return {
 		...originalModule,
-		getItemBinaryData: jest.fn(async function () {
+		getItemBinaryData: vi.fn(async function () {
 			return {
 				contentLength,
 				fileContent,
@@ -42,7 +46,7 @@ jest.mock('../../../../v2/helpers/utils', () => {
 
 describe('test GoogleDriveV2: file upload', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should upload buffers', async () => {
@@ -70,7 +74,7 @@ describe('test GoogleDriveV2: file upload', () => {
 
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/upload/drive/v3/files',
+			requestPath`/upload/drive/v3/files`,
 			expect.any(Buffer),
 			{ uploadType: 'multipart', supportsAllDrives: true },
 			undefined,
@@ -83,7 +87,7 @@ describe('test GoogleDriveV2: file upload', () => {
 		);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'PATCH',
-			'/drive/v3/files/undefined',
+			requestPath`/drive/v3/files/uploadIDxxxxxx`,
 			{ mimeType, name, originalFilename },
 			{
 				addParents: parent,
@@ -118,10 +122,12 @@ describe('test GoogleDriveV2: file upload', () => {
 		};
 
 		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, driveNode);
-		const httpRequestSpy = jest.spyOn(fakeExecuteFunction.helpers, 'httpRequest');
+		const httpRequestSpy = vi
+			.spyOn(fakeExecuteFunction.helpers, 'httpRequest')
+			.mockResolvedValue({ id: 'uploadIDxxxxxx' });
 
 		const fileSize = 7 * 1024 * 1024; // 7MB
-		jest.mocked(utils.getItemBinaryData).mockResolvedValue({
+		vi.mocked(utils.getItemBinaryData).mockResolvedValue({
 			mimeType,
 			originalFilename,
 			contentLength: fileSize,
@@ -138,7 +144,7 @@ describe('test GoogleDriveV2: file upload', () => {
 		expect(transport.googleApiRequest).toBeCalledTimes(2);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/upload/drive/v3/files',
+			requestPath`/upload/drive/v3/files`,
 			{ name, parents: [parent] },
 			{ uploadType: 'resumable', supportsAllDrives: true },
 			undefined,
@@ -146,7 +152,7 @@ describe('test GoogleDriveV2: file upload', () => {
 		);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'PATCH',
-			'/drive/v3/files/undefined',
+			requestPath`/drive/v3/files/uploadIDxxxxxx`,
 			{ mimeType, name, originalFilename },
 			{
 				addParents: parent,

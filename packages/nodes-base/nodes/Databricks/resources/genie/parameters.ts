@@ -1,0 +1,110 @@
+import type { INodeProperties } from 'n8n-workflow';
+
+export const genieParameters: INodeProperties[] = [
+	{
+		displayName: 'Agent ID',
+		name: 'spaceId',
+		type: 'string',
+		required: true,
+		default: '',
+		description:
+			"The Agent ID shown on the Genie agent's About page in Databricks (the space ID in the URL)",
+		displayOptions: {
+			show: {
+				resource: ['genie'],
+				operation: [
+					'startConversation',
+					'getSpace',
+					'createMessage',
+					'getQueryResults',
+					'executeMessageQuery',
+					'getMessage',
+				],
+			},
+		},
+	},
+	{
+		displayName: 'Conversation ID',
+		name: 'conversationId',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'The ID of the conversation',
+		displayOptions: {
+			show: {
+				resource: ['genie'],
+				operation: ['createMessage', 'getQueryResults', 'executeMessageQuery', 'getMessage'],
+			},
+		},
+	},
+	{
+		displayName: 'Message ID',
+		name: 'messageId',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'The ID of the message',
+		displayOptions: {
+			show: {
+				resource: ['genie'],
+				operation: ['getMessage', 'executeMessageQuery', 'getQueryResults'],
+			},
+		},
+	},
+	{
+		displayName: 'Attachment ID',
+		name: 'attachmentId',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'The ID of the message attachment',
+		displayOptions: {
+			show: {
+				resource: ['genie'],
+				operation: ['executeMessageQuery', 'getQueryResults'],
+			},
+		},
+	},
+	{
+		displayName: 'Message',
+		name: 'message',
+		type: 'string',
+		typeOptions: {
+			rows: 4,
+		},
+		required: true,
+		default: '',
+		description: 'The message to send to the Genie agent',
+		displayOptions: {
+			show: {
+				resource: ['genie'],
+				operation: ['createMessage'],
+			},
+		},
+	},
+	{
+		displayName: 'Initial Message',
+		name: 'initialMessage',
+		type: 'string',
+		typeOptions: {
+			rows: 4,
+		},
+		required: true,
+		default: '',
+		description: 'The initial message to start the conversation',
+		displayOptions: {
+			show: {
+				resource: ['genie'],
+				operation: ['startConversation'],
+			},
+		},
+	},
+	// The agent appends this to its reply when the node runs as a tool (ENT-527)
+	{
+		displayName: 'Tool Attribution',
+		name: 'toolAttribution',
+		type: 'hidden',
+		default: 'Powered by Databricks Genie',
+		displayOptions: { show: { resource: ['genie'] } },
+	},
+];

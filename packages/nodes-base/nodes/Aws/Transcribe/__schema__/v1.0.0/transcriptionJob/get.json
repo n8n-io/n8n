@@ -1,43 +1,231 @@
 {
-	"type": "object",
-	"properties": {
-		"CreationTime": {
-			"type": "number"
-		},
-		"Media": {
-			"type": "object",
-			"properties": {
-				"MediaFileUri": {
-					"type": "string"
-				}
-			},
-			"required": [
-				"MediaFileUri"
-			]
-		},
-		"Settings": {
-			"type": "object",
-			"properties": {
-				"ChannelIdentification": {
-					"type": "boolean"
-				},
-				"ShowAlternatives": {
-					"type": "boolean"
-				}
-			},
-			"required": [
-				"ChannelIdentification",
-				"ShowAlternatives"
-			]
-		},
-		"StartTime": {
-			"type": "number"
-		},
-		"TranscriptionJobName": {
-			"type": "string"
-		},
-		"TranscriptionJobStatus": {
-			"type": "string"
-		}
-	}
+    "type": "object",
+    "properties": {
+        "accountId": {
+            "type": "string"
+        },
+        "CreationTime": {
+            "type": "number"
+        },
+        "jobName": {
+            "type": "string"
+        },
+        "Media": {
+            "type": "object",
+            "properties": {
+                "MediaFileUri": {
+                    "type": "string"
+                }
+            }
+        },
+        "results": {
+            "type": "object",
+            "properties": {
+                "audio_segments": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "channel_label": {
+                                "type": "string"
+                            },
+                            "end_time": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "integer"
+                            },
+                            "items": {
+                                "type": "array",
+                                "items": {
+                                    "type": "integer"
+                                }
+                            },
+                            "speaker_label": {
+                                "type": "string"
+                            },
+                            "start_time": {
+                                "type": "string"
+                            },
+                            "transcript": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "channel_labels": {
+                    "type": "object",
+                    "properties": {
+                        "channels": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "channel_label": {
+                                        "type": "string"
+                                    },
+                                    "items": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "alternatives": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {}
+                                                    }
+                                                },
+                                                "channel_label": {
+                                                    "type": "string"
+                                                },
+                                                "end_time": {
+                                                    "type": "string"
+                                                },
+                                                "speaker_label": {
+                                                    "type": "string"
+                                                },
+                                                "start_time": {
+                                                    "type": "string"
+                                                },
+                                                "type": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "number_of_channels": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "alternatives": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "confidence": {
+                                            "type": "string"
+                                        },
+                                        "content": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            },
+                            "channel_label": {
+                                "type": "string"
+                            },
+                            "end_time": {
+                                "type": "string"
+                            },
+                            "id": {
+                                "type": "integer"
+                            },
+                            "speaker_label": {
+                                "type": "string"
+                            },
+                            "start_time": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "speaker_labels": {
+                    "type": "object",
+                    "properties": {
+                        "channel_label": {
+                            "type": "string"
+                        },
+                        "segments": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "end_time": {
+                                        "type": "string"
+                                    },
+                                    "items": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "end_time": {
+                                                    "type": "string"
+                                                },
+                                                "speaker_label": {
+                                                    "type": "string"
+                                                },
+                                                "start_time": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "speaker_label": {
+                                        "type": "string"
+                                    },
+                                    "start_time": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        },
+                        "speakers": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "transcripts": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "transcript": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "Settings": {
+            "type": "object",
+            "properties": {
+                "ChannelIdentification": {
+                    "type": "boolean"
+                },
+                "ShowAlternatives": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "StartTime": {
+            "type": "number"
+        },
+        "status": {
+            "type": "string"
+        },
+        "transcript": {
+            "type": "string"
+        },
+        "TranscriptionJobName": {
+            "type": "string"
+        },
+        "TranscriptionJobStatus": {
+            "type": "string"
+        }
+    },
+    "version": 3
 }

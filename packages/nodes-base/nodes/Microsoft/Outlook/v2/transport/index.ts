@@ -7,36 +7,123 @@ import type {
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	IPollFunctions,
+	RequestPath,
+	RequestUrl,
+	WithRequestTarget,
 } from 'n8n-workflow';
+import { NodeOperationError, isResourceLocatorValue, requestPath, requestUrl } from 'n8n-workflow';
 
-import { prepareApiError } from '../helpers/utils';
+import { prepareApiError, validateMailbox } from '../helpers/utils';
 
+export type OutlookCredentialType =
+	| 'microsoftOutlookOAuth2Api'
+	| 'microsoftOAuth2Api'
+	| 'microsoftEntraServicePrincipalApi';
+
+/**
+ * Resolves which credential type the node is configured to use. Defaults to the
+ * node-specific `microsoftOutlookOAuth2Api` so existing workflows (and nodes
+ * without the `authentication` selector) keep working unchanged, while allowing
+ * the generic `microsoftOAuth2Api` (Graph) credential or the app-only
+ * `microsoftEntraServicePrincipalApi` credential to be selected.
+ */
+export function getOutlookCredentialType(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
+): OutlookCredentialType {
+	const authentication = this.getNodeParameter('authentication', 0);
+	if (authentication === 'microsoftOAuth2Api') return 'microsoftOAuth2Api';
+	if (authentication === 'microsoftEntraServicePrincipalApi')
+		return 'microsoftEntraServicePrincipalApi';
+	return 'microsoftOutlookOAuth2Api';
+}
+
+/**
+ * Resolves the mailbox the request should target. Returns `undefined` for OAuth2
+ * (which uses `/me` or the credential's shared mailbox). For the Service Principal
+ * credential, app-only Graph has no `/me`, so the node's `mailbox` parameter is
+ * read, validated, and returned as the bare (un-encoded) UPN/ID.
+ *
+ * The mailbox accepts expressions and is resolved per item: execute call sites pass
+ * the loop's item index; poll/loadOptions call sites pass a literal 0 — in those
+ * contexts `getNodeParameter`'s 2nd arg is a fallback, not an index. Encoding happens
+ * once at the URL-build site in `microsoftApiRequest`.
+ */
+export function resolveMailbox(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
+	credentialType: OutlookCredentialType,
+	itemIndex: number,
+): string | undefined {
+	if (credentialType !== 'microsoftEntraServicePrincipalApi') return undefined;
+	// loadOptions'/poll's getNodeParameter has no itemIndex arg (only execute does), so
+	// the { extractValue: true } overload can't be shared across all three contexts.
+	// Read the raw param and take the id-mode RLC value directly (this RLC has no
+	// extractValue regex, so .value is already the bare mailbox id).
+	const raw = this.getNodeParameter('mailbox', itemIndex);
+	const value = isResourceLocatorValue(raw) ? raw.value : raw;
+	// A non-string or whitespace-only value collapses to '', which validateMailbox
+	// reports as the "mailbox required" error (not "not valid"). A validation error
+	// gets its item index stamped in the router's catch.
+	const mailbox = (typeof value === 'string' ? value : '').trim();
+	validateMailbox(mailbox, this.getNode());
+	return mailbox;
+}
+
+// `itemIndex` is REQUIRED (and placed before the defaulted params so call sites
+// need no positional padding): execute call sites pass the loop index; non-execute
+// call sites (poll/loadOptions) pass a literal 0, where `getNodeParameter`'s 2nd
+// arg is a fallback, not an index.
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
+	itemIndex: number,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
-	option: IDataObject = { json: true },
+	option: Pick<IRequestOptions, 'json' | 'encoding' | 'resolveWithFullResponse'> = { json: true },
 ) {
-	const credentials = await this.getCredentials('microsoftOutlookOAuth2Api');
+	const credentialType = getOutlookCredentialType.call(this);
+	const credentials = await this.getCredentials(credentialType);
 
-	let apiUrl = `https://graph.microsoft.com/v1.0/me${resource}`;
-	// If accessing shared mailbox
-	if (credentials.useShared && credentials.userPrincipalName) {
-		apiUrl = `https://graph.microsoft.com/v1.0/users/${credentials.userPrincipalName}${resource}`;
+	const baseUrl = (
+		typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
+			? credentials.graphApiBaseUrl
+			: 'https://graph.microsoft.com'
+	).replace(/\/+$/, '');
+
+	if (!URL.canParse(baseUrl) || new URL(baseUrl).origin === 'null') {
+		throw new NodeOperationError(this.getNode(), 'The Graph API base URL is not a valid URL');
+	}
+	if (uri && (!URL.canParse(uri) || new URL(uri).origin !== new URL(baseUrl).origin)) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Refusing to send credentials to an unexpected host',
+		);
 	}
 
-	const options: IRequestOptions = {
+	const mailbox = resolveMailbox.call(this, credentialType, itemIndex);
+
+	let apiUrl: RequestUrl;
+	if (mailbox !== undefined) {
+		// Service Principal (app-only): target the chosen mailbox. The value was already validated.
+		apiUrl = requestUrl`${baseUrl}/v1.0/users/${mailbox}${resource}`;
+	} else if (credentials.useShared && credentials.userPrincipalName) {
+		// OAuth2 accessing a shared mailbox (existing behavior).
+		apiUrl = requestUrl`${baseUrl}/v1.0/users/${credentials.userPrincipalName}${resource}`;
+	} else {
+		// OAuth2 default (existing behavior).
+		apiUrl = requestUrl`${baseUrl}/v1.0/me${resource}`;
+	}
+
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
 		qs,
-		uri: uri || apiUrl,
+		uri: apiUrl,
 	};
 	try {
 		Object.assign(options, option);
@@ -51,8 +138,8 @@ export async function microsoftApiRequest(
 
 		return await this.helpers.requestWithAuthentication.call(
 			this,
-			'microsoftOutlookOAuth2Api',
-			options,
+			credentialType,
+			uri ? { ...options, uri } : options,
 		);
 	} catch (error) {
 		if (
@@ -63,7 +150,7 @@ export async function microsoftApiRequest(
 			let updatedError;
 			// Try to return the error prettier, otherwise return the original one replacing the message with the description
 			try {
-				updatedError = prepareApiError.call(this, error);
+				updatedError = prepareApiError.call(this, error, itemIndex);
 			} catch (e) {}
 
 			if (updatedError) throw updatedError;
@@ -80,7 +167,8 @@ export async function microsoftApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
+	itemIndex: number,
 	body: IDataObject = {},
 	query: IDataObject = {},
 	headers: IDataObject = {},
@@ -96,6 +184,7 @@ export async function microsoftApiRequestAllItems(
 			this,
 			method,
 			endpoint,
+			itemIndex,
 			body,
 			nextLink ? undefined : query, // Do not add query parameters as nextLink already contains them
 			nextLink,
@@ -112,6 +201,7 @@ export async function downloadAttachments(
 	this: IExecuteFunctions | IPollFunctions,
 	messages: IDataObject[] | IDataObject,
 	prefix: string,
+	itemIndex: number,
 ) {
 	const elements: INodeExecutionData[] = [];
 	if (!Array.isArray(messages)) {
@@ -127,14 +217,16 @@ export async function downloadAttachments(
 				this,
 				'value',
 				'GET',
-				`/messages/${message.id}/attachments`,
+				requestPath`/messages/${message.id}/attachments`,
+				itemIndex,
 				{},
 			);
 			for (const [index, attachment] of attachments.entries()) {
 				const response = await microsoftApiRequest.call(
 					this,
 					'GET',
-					`/messages/${message.id}/attachments/${attachment.id}/$value`,
+					requestPath`/messages/${message.id}/attachments/${attachment.id}/$value`,
+					itemIndex,
 					undefined,
 					{},
 					undefined,
@@ -162,12 +254,14 @@ export async function getMimeContent(
 	this: IExecuteFunctions,
 	messageId: string,
 	binaryPropertyName: string,
+	itemIndex: number,
 	outputFileName?: string,
 ) {
 	const response = await microsoftApiRequest.call(
 		this,
 		'GET',
-		`/messages/${messageId}/$value`,
+		requestPath`/messages/${messageId}/$value`,
+		itemIndex,
 		undefined,
 		{},
 		undefined,
@@ -195,30 +289,36 @@ export async function getMimeContent(
 export async function getSubfolders(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	folders: IDataObject[],
+	itemIndex: number,
 	addPathToDisplayName = false,
 ) {
 	const returnData: IDataObject[] = [...folders];
 	for (const folder of folders) {
 		if ((folder.childFolderCount as number) > 0) {
-			let subfolders = await microsoftApiRequest.call(
+			let subfolders = await microsoftApiRequestAllItems.call(
 				this,
+				'value',
 				'GET',
-				`/mailFolders/${folder.id}/childFolders`,
+				requestPath`/mailFolders/${folder.id}/childFolders`,
+				itemIndex,
 			);
 
 			if (addPathToDisplayName) {
-				subfolders = subfolders.value.map((subfolder: IDataObject) => {
+				subfolders = subfolders.map((subfolder: IDataObject) => {
 					return {
 						...subfolder,
 						displayName: `${folder.displayName}/${subfolder.displayName}`,
 					};
 				});
-			} else {
-				subfolders = subfolders.value;
 			}
 
 			returnData.push(
-				...(await getSubfolders.call(this, subfolders as IDataObject[], addPathToDisplayName)),
+				...(await getSubfolders.call(
+					this,
+					subfolders as IDataObject[],
+					itemIndex,
+					addPathToDisplayName,
+				)),
 			);
 		}
 	}

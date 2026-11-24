@@ -1,0 +1,140 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a helpful assistant. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "My favorite color is purple. Just acknowledge this."
+						}
+					]
+				}
+			]
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000a75914d6bc3300c86ff4aa6b33392ac65ccb731c6c6c6a0ecb2c31846b3d5c6d4b1535b2e2d25ff7da434ec8b9e0ceff34858d201ba60c88104ed301b2a5bb4eb5cceca79d954cdbcaeaa1a04580312bab452557ddfbfbd5ef5b39b5d73bb5837cf2f4fcddde3660f0278dfd368514ab8221010831b034cc92646cf204007cfe419e4fb61f2997623393e121e0217962f8a458ebda3c2a6621f722c96b80dd132153ab8102f61f8109038f42a12a6e0410279a338470f27906893c96b02e9b373a7d010a37569caf2f1a3f200d6f799158735f904b2b916a051b7a47424641bbcfa2d54138f84e61c9b6ac7fed4b7d45144a7e6dd7fff9bd6ed5f3a0808997f4675232051dc5a4d8a2d4590306ed76034e3a1fc92e238b75a5100093eb0c22d5a879f8e6018be0064b55f20ef010000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "3999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:39:15Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:39:15Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-22T08:39:14Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4799000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:39:15Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0f9f0fb9cf1da34-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Mon, 22 Jun 2026 08:39:15 GMT",
+			"request-id": "req_011CcHznBREHvZTDboinyv4N",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=kfLLC9Mt8FAwwVkhqvifJ7ryUWQUju9bHrvJCjY7e6Q-1782117554.493151-1.0.1.1-KB7K_.1Ll6AUsrQudt_2TaltiZqDPDmEMEIgF16j4uc; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-f8c61337dba12d76b9af2640af5b7e12-6782cb730c8a068f-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a helpful assistant. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "My favorite color is purple. Just acknowledge this."
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "Got it! Purple is your favorite color."
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "What is my favorite color?"
+						}
+					]
+				}
+			]
+		},
+		"status": 200,
+		"response": [
+			"1f8b080000000000000a75914d4b03311086ffca32e7acecd61634778ba01ef42245248cc9b41b9a4db6c9a47e94fdef92d2c52f3c05dee799213373803e187220413bcc86ea0eed36d7f37a51cf9ad9a26d9a1604580312fab4514d7bb3ed1f771fe776757dfbe0ef97737abd5beeae4000bf0f542c4a09370402627025c0946c62f40c0274f04c9e413e1d269fe9ad90e323611572acd6b80fd132553ab8102b9baa21c7c1d1198ccf0212874145c2143c48206f14e7e8e10412ed32794d207d76ee141a62b42e4d593e7e501ec0fa21b3e2b0259f40ce2f0468d41d291d09d906af7e0acdc423a1f98f4db5a53f0d1df514d1a945ffd7ffa26df79b8e0242e6efd1a58044716f3529b614414259aac168ca7dfc9a62195b6d2880041f58e11eadc31747308e9f5347d49ae6010000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "4000000",
+			"anthropic-ratelimit-input-tokens-remaining": "4000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-22T08:39:15Z",
+			"anthropic-ratelimit-output-tokens-limit": "800000",
+			"anthropic-ratelimit-output-tokens-remaining": "800000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-22T08:39:15Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-22T08:39:15Z",
+			"anthropic-ratelimit-tokens-limit": "4800000",
+			"anthropic-ratelimit-tokens-remaining": "4800000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-22T08:39:15Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a0f9f1012b98da34-WAW",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Mon, 22 Jun 2026 08:39:16 GMT",
+			"request-id": "req_011CcHznFCgx92AUQFVvXPAf",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=dGSng8HshwmMwFZbjXwb6zXh2T6IqvlubM6AI.4wnSQ-1782117555.384565-1.0.1.1-o2o.3rty8AHaf9JpdASNRyXLSrxtwG6UuAZen8mcdew; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-f2519862cb952c4d45a4ec7977d9fe90-85b2bac25143c2c0-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

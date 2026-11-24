@@ -5,12 +5,14 @@ import type pg from 'pg-promise/typescript/pg-subset';
 
 export type QueryMode = 'single' | 'transaction' | 'independently';
 
-export type QueryValue = string | number | IDataObject | string[];
+export type QueryValue = string | number | boolean | null | IDataObject | string[];
 export type QueryValues = QueryValue[];
 export type QueryWithValues = { query: string; values?: QueryValues; options?: IFormattingOptions };
 
 export type WhereClause = { column: string; condition: string; value: string | number };
 export type SortRule = { column: string; direction: string };
+/** An empty `value` asks for the first page. */
+export type StartAfter = { column: string; value?: string };
 export type ColumnInfo = {
 	column_name: string;
 	data_type: string;
@@ -49,6 +51,7 @@ export type PostgresNodeOptions = {
 	skipOnConflict?: boolean;
 	replaceEmptyStrings?: boolean;
 	treatQueryParametersInSingleQuotesAsText?: boolean;
+	useCopy?: boolean;
 };
 
 export type PostgresNodeCredentials = {
@@ -60,6 +63,9 @@ export type PostgresNodeCredentials = {
 	maxConnections: number;
 	allowUnauthorizedCerts?: boolean;
 	ssl?: 'disable' | 'allow' | 'require' | 'verify' | 'verify-full';
+	caCertificate?: string;
+	clientCertificate?: string;
+	clientPrivateKey?: string;
 } & (
 	| { sshTunnel: false }
 	| ({

@@ -1,15 +1,13 @@
 {
-	"extends": "@n8n/typescript-config/tsconfig.common.json",
+	"extends": "@n8n/typescript-config/tsconfig.common.go.json",
 	"compilerOptions": {
-		"rootDir": ".",
-		"types": ["node", "jest"],
-		"baseUrl": "src",
-		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
+		"types": ["node", "vitest/globals", "vite/client"]
 	},
 	"include": ["src/**/*.ts"],
 	"references": [
 		{ "path": "../../workflow/tsconfig.build.esm.json" },
 		{ "path": "../config/tsconfig.build.json" },
-		{ "path": "../permissions/tsconfig.build.json" }
+		{ "path": "../permissions/tsconfig.build.json" },
+		{ "path": "../inbound-auth/tsconfig.build.json" }
 	]
 }

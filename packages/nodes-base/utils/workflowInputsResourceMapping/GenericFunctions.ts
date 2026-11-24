@@ -1,4 +1,3 @@
-import { json as generateSchemaFromExample, type SchemaObject } from 'generate-schema';
 import type { JSONSchema7 } from 'json-schema';
 import pickBy from 'lodash/pickBy';
 import type {
@@ -13,7 +12,11 @@ import type {
 	IExecuteFunctions,
 	ISupplyDataFunctions,
 } from 'n8n-workflow';
-import { jsonParse, NodeOperationError, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import {
+	generateSchemaFromExample,
+	NodeOperationError,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+} from 'n8n-workflow';
 
 import {
 	JSON_EXAMPLE,
@@ -73,9 +76,8 @@ function parseJsonSchema(schema: JSONSchema7): FieldValueOption[] | string {
 
 function parseJsonExample(context: IWorkflowNodeContext): JSONSchema7 {
 	const jsonString = context.getNodeParameter(JSON_EXAMPLE, 0, '') as string;
-	const json = jsonParse<SchemaObject>(jsonString);
 
-	return generateSchemaFromExample(json) as JSONSchema7;
+	return generateSchemaFromExample(jsonString);
 }
 
 export function getFieldEntries(context: IWorkflowNodeContext): {
@@ -168,10 +170,9 @@ export function getCurrentWorkflowInputData(this: IExecuteFunctions | ISupplyDat
 export async function loadWorkflowInputMappings(
 	this: ILocalLoadOptionsFunctions,
 ): Promise<WorkflowInputsData> {
-	const nodeLoadContext = await this.getWorkflowNodeContext(
-		EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-		true,
-	);
+	// Use the draft subworkflow so the parent editor reflects unsaved/unpublished
+	// trigger input changes (manual runs already resolve against draft).
+	const nodeLoadContext = await this.getWorkflowNodeContext(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE);
 	let fields: ResourceMapperField[] = [];
 	let dataMode: string = PASSTHROUGH;
 	let subworkflowInfo: { workflowId?: string; triggerId?: string } | undefined;

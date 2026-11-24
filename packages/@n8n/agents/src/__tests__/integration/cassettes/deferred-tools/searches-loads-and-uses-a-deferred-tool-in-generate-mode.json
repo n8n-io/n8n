@@ -1,0 +1,447 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "<built_in_rules>\n- <tool_catalog_rules>\nMost of your tools are not in your toolset. The \"Tool catalog\" section in the conversation lists them by tool group, with their names only, not their arguments. When that section changes, a newer one replaces it.\n- To use one, get its input schema with find_tools, then run it with call_tool. Do this even when you know the name, and even when a skill names the tool.\n- Skills and instructions often name a tool from the tool catalog directly, such as \"call `some_tool` with the IDs\". Read that as call_tool with tool \"some_tool\" and those arguments. Never emit a tool call whose name is a tool from the tool catalog.\n- Look up every tool the task will need in one find_tools call at the start, not one at a time as each step comes up. You can make this call in the same response as other calls that do not need its result.\n- When you do not know a tool's name, search by query or list a tool group.\n</tool_catalog_rules>\n</built_in_rules>\n\nYou are testing deferred tool discovery. For arithmetic requests, first call find_tools, then call call_tool with the exact returned tool name. Do not answer from mental math."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "<context>\n# Tool catalog\n- tools: multiply_numbers\n</context>"
+						},
+						{
+							"type": "text",
+							"text": "Use deferred tools to multiply 6 and 7. Find the tool, call it, then answer with the product."
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "find_tools",
+					"description": "Look up tools from the tool catalog: their descriptions and input schemas. Look a tool up before you call it with call_tool. Look up several in one call when you will need several.\n- tools: the full description and input schema of each named tool.\n- group alone: every tool in that tool group, briefly.\n- query, optionally with group: the tools that best match the keywords, best first.\n- pattern, optionally with group: tools whose name or description matches the regular expression.\nA lookup that returns 5 tools or fewer includes their full schemas.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"group": {
+								"type": "string",
+								"description": "A tool group, as the tool catalog lists it"
+							},
+							"tools": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								},
+								"description": "Tool names to get in full, with their input schemas. Name every tool you will need in one lookup."
+							},
+							"query": {
+								"type": "string",
+								"description": "Keywords for what you want to do, matched against names and descriptions"
+							},
+							"pattern": {
+								"type": "string",
+								"description": "Regular expression matched against tool names and descriptions"
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "call_tool",
+					"description": "Run a tool from the tool catalog. Get its input schema with find_tools first. Pass its input as arguments, with the argument names and types the schema gives.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"tool": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The tool's name, as the tool catalog lists it"
+							},
+							"arguments": {
+								"type": "object",
+								"additionalProperties": {},
+								"description": "The tool's input as an object that matches its input schema. Pass arrays and objects as JSON values, not as strings."
+							}
+						},
+						"required": ["tool"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011CgrM9y3nqLt4NoDH4h2uE\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I'll help you multiply 6 and 7 using deferred tools. Let me start by finding the multiply_numbers tool.\"},{\"type\":\"tool_use\",\"id\":\"toolu_013eQjiGJe9JkXQMU6hgb7zr\",\"name\":\"find_tools\",\"input\":{\"tools\":[\"multiply_numbers\"]},\"caller\":{\"type\":\"direct\"}}],\"container\":null,\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1309,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":86,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\",\"speed\":\"standard\"},\"diagnostics\":null}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "9999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-11-08T23:43:18Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-11-08T23:43:18Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-11-08T23:43:17Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "11999000",
+			"anthropic-ratelimit-tokens-reset": "2026-11-08T23:43:18Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a57870681bb4d7b4-TXL",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Sun, 08 Nov 2026 23:43:18 GMT",
+			"request-id": "req_011CgrM9xsNCfTXjXuTsmZRS",
+			"server": "cloudflare",
+			"server-timing": "x-originResponse;dur=946",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-abebe1359720fdb7b45d576f46c29ba1-073d96d90fe4f631-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "<built_in_rules>\n- <tool_catalog_rules>\nMost of your tools are not in your toolset. The \"Tool catalog\" section in the conversation lists them by tool group, with their names only, not their arguments. When that section changes, a newer one replaces it.\n- To use one, get its input schema with find_tools, then run it with call_tool. Do this even when you know the name, and even when a skill names the tool.\n- Skills and instructions often name a tool from the tool catalog directly, such as \"call `some_tool` with the IDs\". Read that as call_tool with tool \"some_tool\" and those arguments. Never emit a tool call whose name is a tool from the tool catalog.\n- Look up every tool the task will need in one find_tools call at the start, not one at a time as each step comes up. You can make this call in the same response as other calls that do not need its result.\n- When you do not know a tool's name, search by query or list a tool group.\n</tool_catalog_rules>\n</built_in_rules>\n\nYou are testing deferred tool discovery. For arithmetic requests, first call find_tools, then call call_tool with the exact returned tool name. Do not answer from mental math."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "<context>\n# Tool catalog\n- tools: multiply_numbers\n</context>"
+						},
+						{
+							"type": "text",
+							"text": "Use deferred tools to multiply 6 and 7. Find the tool, call it, then answer with the product."
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "I'll help you multiply 6 and 7 using deferred tools. Let me start by finding the multiply_numbers tool."
+						},
+						{
+							"type": "tool_use",
+							"id": "toolu_013eQjiGJe9JkXQMU6hgb7zr",
+							"name": "find_tools",
+							"input": {
+								"tools": ["multiply_numbers"]
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_013eQjiGJe9JkXQMU6hgb7zr",
+							"content": "{\"tools\":[{\"name\":\"multiply_numbers\",\"group\":\"tools\",\"description\":\"Multiply two numbers and return their product\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"a\":{\"type\":\"number\",\"description\":\"First number\"},\"b\":{\"type\":\"number\",\"description\":\"Second number\"}},\"required\":[\"a\",\"b\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"}}],\"missing\":[]}"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "find_tools",
+					"description": "Look up tools from the tool catalog: their descriptions and input schemas. Look a tool up before you call it with call_tool. Look up several in one call when you will need several.\n- tools: the full description and input schema of each named tool.\n- group alone: every tool in that tool group, briefly.\n- query, optionally with group: the tools that best match the keywords, best first.\n- pattern, optionally with group: tools whose name or description matches the regular expression.\nA lookup that returns 5 tools or fewer includes their full schemas.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"group": {
+								"type": "string",
+								"description": "A tool group, as the tool catalog lists it"
+							},
+							"tools": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								},
+								"description": "Tool names to get in full, with their input schemas. Name every tool you will need in one lookup."
+							},
+							"query": {
+								"type": "string",
+								"description": "Keywords for what you want to do, matched against names and descriptions"
+							},
+							"pattern": {
+								"type": "string",
+								"description": "Regular expression matched against tool names and descriptions"
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "call_tool",
+					"description": "Run a tool from the tool catalog. Get its input schema with find_tools first. Pass its input as arguments, with the argument names and types the schema gives.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"tool": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The tool's name, as the tool catalog lists it"
+							},
+							"arguments": {
+								"type": "object",
+								"additionalProperties": {},
+								"description": "The tool's input as an object that matches its input schema. Pass arrays and objects as JSON values, not as strings."
+							}
+						},
+						"required": ["tool"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011CgrMA3rGJuQC36bQ7sogU\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Now I'll call the multiply_numbers tool with 6 and 7:\"},{\"type\":\"tool_use\",\"id\":\"toolu_01UBV4hCUJ156q5riykVLrbK\",\"name\":\"call_tool\",\"input\":{\"tool\":\"multiply_numbers\",\"arguments\":{\"a\":6,\"b\":7}},\"caller\":{\"type\":\"direct\"}}],\"container\":null,\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1509,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":100,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\",\"speed\":\"standard\"},\"diagnostics\":null}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "9999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-11-08T23:43:19Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-11-08T23:43:19Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-11-08T23:43:19Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "11999000",
+			"anthropic-ratelimit-tokens-reset": "2026-11-08T23:43:19Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a578706f186cd7b4-TXL",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Sun, 08 Nov 2026 23:43:19 GMT",
+			"request-id": "req_011CgrMA3fMczyprL913t3ko",
+			"server": "cloudflare",
+			"server-timing": "x-originResponse;dur=935",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-aa15b0ba36b4643415e2fc29d6c46ff7-ee4b21f041b740c7-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "<built_in_rules>\n- <tool_catalog_rules>\nMost of your tools are not in your toolset. The \"Tool catalog\" section in the conversation lists them by tool group, with their names only, not their arguments. When that section changes, a newer one replaces it.\n- To use one, get its input schema with find_tools, then run it with call_tool. Do this even when you know the name, and even when a skill names the tool.\n- Skills and instructions often name a tool from the tool catalog directly, such as \"call `some_tool` with the IDs\". Read that as call_tool with tool \"some_tool\" and those arguments. Never emit a tool call whose name is a tool from the tool catalog.\n- Look up every tool the task will need in one find_tools call at the start, not one at a time as each step comes up. You can make this call in the same response as other calls that do not need its result.\n- When you do not know a tool's name, search by query or list a tool group.\n</tool_catalog_rules>\n</built_in_rules>\n\nYou are testing deferred tool discovery. For arithmetic requests, first call find_tools, then call call_tool with the exact returned tool name. Do not answer from mental math."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "<context>\n# Tool catalog\n- tools: multiply_numbers\n</context>"
+						},
+						{
+							"type": "text",
+							"text": "Use deferred tools to multiply 6 and 7. Find the tool, call it, then answer with the product."
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "I'll help you multiply 6 and 7 using deferred tools. Let me start by finding the multiply_numbers tool."
+						},
+						{
+							"type": "tool_use",
+							"id": "toolu_013eQjiGJe9JkXQMU6hgb7zr",
+							"name": "find_tools",
+							"input": {
+								"tools": ["multiply_numbers"]
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_013eQjiGJe9JkXQMU6hgb7zr",
+							"content": "{\"tools\":[{\"name\":\"multiply_numbers\",\"group\":\"tools\",\"description\":\"Multiply two numbers and return their product\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"a\":{\"type\":\"number\",\"description\":\"First number\"},\"b\":{\"type\":\"number\",\"description\":\"Second number\"}},\"required\":[\"a\",\"b\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"}}],\"missing\":[]}"
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "Now I'll call the multiply_numbers tool with 6 and 7:"
+						},
+						{
+							"type": "tool_use",
+							"id": "toolu_01UBV4hCUJ156q5riykVLrbK",
+							"name": "call_tool",
+							"input": {
+								"tool": "multiply_numbers",
+								"arguments": {
+									"a": 6,
+									"b": 7
+								}
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01UBV4hCUJ156q5riykVLrbK",
+							"content": "{\"product\":42}"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "find_tools",
+					"description": "Look up tools from the tool catalog: their descriptions and input schemas. Look a tool up before you call it with call_tool. Look up several in one call when you will need several.\n- tools: the full description and input schema of each named tool.\n- group alone: every tool in that tool group, briefly.\n- query, optionally with group: the tools that best match the keywords, best first.\n- pattern, optionally with group: tools whose name or description matches the regular expression.\nA lookup that returns 5 tools or fewer includes their full schemas.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"group": {
+								"type": "string",
+								"description": "A tool group, as the tool catalog lists it"
+							},
+							"tools": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								},
+								"description": "Tool names to get in full, with their input schemas. Name every tool you will need in one lookup."
+							},
+							"query": {
+								"type": "string",
+								"description": "Keywords for what you want to do, matched against names and descriptions"
+							},
+							"pattern": {
+								"type": "string",
+								"description": "Regular expression matched against tool names and descriptions"
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "call_tool",
+					"description": "Run a tool from the tool catalog. Get its input schema with find_tools first. Pass its input as arguments, with the argument names and types the schema gives.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"tool": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The tool's name, as the tool catalog lists it"
+							},
+							"arguments": {
+								"type": "object",
+								"additionalProperties": {},
+								"description": "The tool's input as an object that matches its input schema. Pass arrays and objects as JSON values, not as strings."
+							}
+						},
+						"required": ["tool"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011CgrMA8czt6KhTcaPbsoix\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"The product of 6 and 7 is **42**.\"}],\"container\":null,\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1625,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":17,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\",\"speed\":\"standard\"},\"diagnostics\":null}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "9999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-11-08T23:43:20Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-11-08T23:43:20Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-11-08T23:43:20Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "11999000",
+			"anthropic-ratelimit-tokens-reset": "2026-11-08T23:43:20Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a57870761d46d7b4-TXL",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Sun, 08 Nov 2026 23:43:20 GMT",
+			"request-id": "req_011CgrMA8TKgUBYTauCnhq84",
+			"server": "cloudflare",
+			"server-timing": "x-originResponse;dur=409",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-889c3cf6646964c029c92865241482bc-7ad09be7c732eea8-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

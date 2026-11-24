@@ -3,22 +3,27 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
 	displayForm,
 	executionFilterToQueryFilter,
+	getDefaultExecutionFilters,
+	getExecutionEngine,
+	hasCancellableExecutions,
+	isEngineV2ExecutionId,
 	waitingNodeTooltip,
 	getExecutionErrorMessage,
 	getExecutionErrorToastConfiguration,
 	findTriggerNodeToAutoSelect,
+	buildExecutionResponseFromSchema,
+	generatePlaceholderValue,
+	generateFakeDataFromSchema,
 } from './executions.utils';
 import type {
-	INode,
-	IRunData,
-	IPinData,
 	ExecutionError,
 	INodeTypeDescription,
 	Workflow,
+	ExecutionSummary,
 } from 'n8n-workflow';
-import { type INodeUi } from '@/Interface';
+import { EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import { type INodeUi, type IWorkflowDb } from '@/Interface';
 import {
-	CHAT_TRIGGER_NODE_TYPE,
 	CORE_NODES_CATEGORY,
 	FORM_TRIGGER_NODE_TYPE,
 	GITHUB_NODE_TYPE,
@@ -28,9 +33,8 @@ import {
 import { createTestNode, mockNodeTypeDescription } from '@/__tests__/mocks';
 import type { VNode } from 'vue';
 
-const WAIT_NODE_TYPE = 'waitNode';
-
-const windowOpenSpy = vi.spyOn(window, 'open');
+// `restoreMocks` restores spies before each test, so this is (re)established in beforeEach.
+let windowOpenSpy: MockInstance;
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({
@@ -41,6 +45,12 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 
 vi.mock('@/app/stores/workflows.store', () => ({
 	useWorkflowsStore: () => ({
+		workflowId: 'test-workflow',
+	}),
+}));
+
+vi.mock('@/app/stores/workflowExecutionState.store', () => ({
+	useWorkflowExecutionStateStore: () => ({
 		activeExecutionId: '123',
 	}),
 }));
@@ -49,11 +59,6 @@ vi.mock('@n8n/i18n', () => ({
 	i18n: {
 		baseText: (key: string, options?: { interpolate?: { error?: string; details?: string } }) => {
 			const texts: { [key: string]: string } = {
-				'ndv.output.waitNodeWaiting.description.timer': 'Waiting for execution to resume...',
-				'ndv.output.waitNodeWaiting.description.form': 'Waiting for form submission: ',
-				'ndv.output.waitNodeWaiting.description.webhook': 'Waiting for webhook call: ',
-				'ndv.output.githubNodeWaitingForWebhook': 'Waiting for webhook call: ',
-				'ndv.output.sendAndWaitWaitingApproval': 'Waiting for approval...',
 				'pushConnection.executionError': `Execution error${options?.interpolate?.error}`,
 				'pushConnection.executionError.details': `Details: ${options?.interpolate?.details}`,
 			};
@@ -88,264 +93,53 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 }));
 
 describe('displayForm', () => {
-	const getTestUrlMock = vi.fn();
-	let fetchMock: MockInstance;
-	const successResponse = {
-		ok: true,
-	} as unknown as Response;
-
-	beforeAll(() => {
-		fetchMock = vi.spyOn(global, 'fetch');
-	});
-
-	afterAll(() => {
-		fetchMock.mockRestore();
-	});
+	const formTestUrl = 'http://localhost:5678/form-test/form-path';
+	let fetchSpy: MockInstance;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		// `restoreMocks` restores spies before each test, so re-establish them here.
+		windowOpenSpy = vi.spyOn(window, 'open').mockReturnValue(null);
+		fetchSpy = vi.spyOn(global, 'fetch');
 	});
 
-	it('should not call openPopUpWindow if node has already run or is pinned', async () => {
-		const nodes: INode[] = [
-			{
-				id: '1',
-				name: 'Node1',
-				typeVersion: 1,
-				type: FORM_TRIGGER_NODE_TYPE,
-				position: [0, 0],
-				parameters: {},
-			},
-			{
-				id: '2',
-				name: 'Node2',
-				typeVersion: 1,
-				type: WAIT_NODE_TYPE,
-				position: [0, 0],
-				parameters: {},
-			},
-		];
+	it('should open the popup for each form test URL', () => {
+		const otherFormTestUrl = 'http://localhost:5678/webhook-test/other-form/n8n-form';
 
-		const runData: IRunData = { Node1: [] };
-		const pinData: IPinData = { Node2: [{ json: { data: {} } }] };
+		displayForm({ formTestUrls: [formTestUrl, otherFormTestUrl], source: undefined });
 
-		fetchMock.mockResolvedValue(successResponse);
+		expect(windowOpenSpy).toHaveBeenCalledTimes(2);
+		expect(windowOpenSpy).toHaveBeenNthCalledWith(
+			1,
+			formTestUrl,
+			expect.any(String),
+			expect.any(String),
+		);
+		expect(windowOpenSpy).toHaveBeenNthCalledWith(
+			2,
+			otherFormTestUrl,
+			expect.any(String),
+			expect.any(String),
+		);
+	});
 
-		await displayForm({
-			nodes,
-			runData,
-			pinData,
-			destinationNode: undefined,
-			triggerNode: undefined,
-			directParentNodes: [],
-			source: undefined,
-			getTestUrl: getTestUrlMock,
-		});
+	it('should not open the popup if there are no form test URLs', () => {
+		displayForm({ formTestUrls: [], source: undefined });
 
 		expect(windowOpenSpy).not.toHaveBeenCalled();
 	});
 
-	it('should not call openPopUpWindow if node has run data and is not a form trigger node', async () => {
-		const nodes: INode[] = [
-			{
-				id: '1',
-				name: 'RegularNode',
-				typeVersion: 1,
-				type: 'n8n-nodes-base.httpRequest',
-				position: [0, 0],
-				parameters: {},
-			},
-		];
-
-		const runData: IRunData = { RegularNode: [] };
-		const pinData: IPinData = {};
-
-		fetchMock.mockResolvedValue(successResponse);
-
-		await displayForm({
-			nodes,
-			runData,
-			pinData,
-			destinationNode: undefined,
-			triggerNode: undefined,
-			directParentNodes: [],
-			source: undefined,
-			getTestUrl: getTestUrlMock,
-		});
+	it('should not open the popup if source is "RunData.ManualChatMessage"', () => {
+		displayForm({ formTestUrls: [formTestUrl], source: 'RunData.ManualChatMessage' });
 
 		expect(windowOpenSpy).not.toHaveBeenCalled();
 	});
 
-	it('should call openPopUpWindow for form trigger node even if it has run data', async () => {
-		const nodes: INode[] = [
-			{
-				id: '1',
-				name: 'FormTrigger',
-				typeVersion: 1,
-				type: FORM_TRIGGER_NODE_TYPE,
-				position: [0, 0],
-				parameters: {},
-			},
-		];
+	it('should not send a request to the form test URL', () => {
+		displayForm({ formTestUrls: [formTestUrl], source: undefined });
 
-		const runData: IRunData = { FormTrigger: [] };
-		const pinData: IPinData = {};
-
-		getTestUrlMock.mockReturnValue('http://test-url.com');
-		fetchMock.mockResolvedValue(successResponse);
-
-		await displayForm({
-			nodes,
-			runData,
-			pinData,
-			destinationNode: undefined,
-			triggerNode: undefined,
-			directParentNodes: [],
-			source: undefined,
-			getTestUrl: getTestUrlMock,
-		});
-
-		expect(windowOpenSpy).toHaveBeenCalled();
-	});
-
-	it('should skip nodes if destinationNode does not match and node is not a directParentNode', async () => {
-		const nodes: INode[] = [
-			{
-				id: '1',
-				name: 'Node1',
-				typeVersion: 1,
-				type: FORM_TRIGGER_NODE_TYPE,
-				position: [0, 0],
-				parameters: {},
-			},
-			{
-				id: '2',
-				name: 'Node2',
-				typeVersion: 1,
-				type: WAIT_NODE_TYPE,
-				position: [0, 0],
-				parameters: {},
-			},
-		];
-
-		fetchMock.mockResolvedValue(successResponse);
-		await displayForm({
-			nodes,
-			runData: undefined,
-			pinData: {},
-			destinationNode: 'Node3',
-			triggerNode: undefined,
-			directParentNodes: ['Node4'],
-			source: undefined,
-			getTestUrl: getTestUrlMock,
-		});
-
-		expect(windowOpenSpy).not.toHaveBeenCalled();
-	});
-
-	it('should not open pop-up if source is "RunData.ManualChatMessage"', async () => {
-		const nodes: INode[] = [
-			{
-				id: '1',
-				name: 'Node1',
-				typeVersion: 1,
-				type: FORM_TRIGGER_NODE_TYPE,
-				position: [0, 0],
-				parameters: {},
-			},
-		];
-
-		getTestUrlMock.mockReturnValue('http://test-url.com');
-
-		fetchMock.mockResolvedValue(successResponse);
-
-		await displayForm({
-			nodes,
-			runData: undefined,
-			pinData: {},
-			destinationNode: undefined,
-			triggerNode: undefined,
-			directParentNodes: [],
-			source: 'RunData.ManualChatMessage',
-			getTestUrl: getTestUrlMock,
-		});
-
-		expect(windowOpenSpy).not.toHaveBeenCalled();
-	});
-
-	describe('with trigger node', () => {
-		const nodes: INode[] = [
-			createTestNode({ name: 'Node1', type: FORM_TRIGGER_NODE_TYPE }),
-			createTestNode({ name: 'Node2', type: CHAT_TRIGGER_NODE_TYPE }),
-		];
-
-		beforeEach(() => {
-			getTestUrlMock.mockReturnValue('http://test-url.com');
-		});
-
-		it('should open pop-up if the trigger node is a form node', async () => {
-			fetchMock.mockResolvedValue(successResponse);
-			await displayForm({
-				nodes,
-				runData: undefined,
-				pinData: {},
-				destinationNode: undefined,
-				triggerNode: 'Node1',
-				directParentNodes: [],
-				source: undefined,
-				getTestUrl: getTestUrlMock,
-			});
-
-			expect(windowOpenSpy).toHaveBeenCalled();
-		});
-
-		it('should not open pop-up if the trigger node is a form node but webhook url is not live', async () => {
-			fetchMock.mockResolvedValue({ ok: false });
-			await displayForm({
-				nodes,
-				runData: undefined,
-				pinData: {},
-				destinationNode: undefined,
-				triggerNode: 'Node1',
-				directParentNodes: [],
-				source: undefined,
-				getTestUrl: getTestUrlMock,
-			});
-
-			expect(windowOpenSpy).not.toHaveBeenCalled();
-		});
-
-		it('should not open pop-up if the trigger node is a form node but fetch of webhook url throws', async () => {
-			fetchMock.mockRejectedValue(new Error());
-			await displayForm({
-				nodes,
-				runData: undefined,
-				pinData: {},
-				destinationNode: undefined,
-				triggerNode: 'Node1',
-				directParentNodes: [],
-				source: undefined,
-				getTestUrl: getTestUrlMock,
-			});
-
-			expect(windowOpenSpy).not.toHaveBeenCalled();
-		});
-
-		it("should not open pop-up if the trigger node is specified and it isn't a form node", async () => {
-			fetchMock.mockResolvedValue(successResponse);
-			await displayForm({
-				nodes,
-				runData: undefined,
-				pinData: {},
-				destinationNode: undefined,
-				triggerNode: 'Node2',
-				directParentNodes: [],
-				source: undefined,
-				getTestUrl: getTestUrlMock,
-			});
-
-			expect(windowOpenSpy).not.toHaveBeenCalled();
-		});
+		expect(windowOpenSpy).toHaveBeenCalledTimes(1);
+		expect(fetchSpy).not.toHaveBeenCalled();
 	});
 });
 
@@ -354,6 +148,15 @@ describe('executionFilterToQueryFilter()', () => {
 		expect(executionFilterToQueryFilter({ status: 'new' }).status).toStrictEqual(
 			expect.arrayContaining(['new']),
 		);
+	});
+
+	it('adds no engine for any engine, the default', () => {
+		expect(getDefaultExecutionFilters().engine).toBe('all');
+		expect(executionFilterToQueryFilter(getDefaultExecutionFilters())).not.toHaveProperty('engine');
+	});
+
+	it.each(['v1', 'v2'] as const)('adds the %s engine', (engine) => {
+		expect(executionFilterToQueryFilter({ engine }).engine).toBe(engine);
 	});
 });
 
@@ -535,6 +338,54 @@ describe('waitingNodeTooltip', () => {
 		// Test without workflow - should return the raw tooltip string
 		expect(waitingNodeTooltip(node)).toBe('Waiting for approval...');
 	});
+
+	it('should use metadata.resumeUrl when provided for webhook resume type', () => {
+		const node: INodeUi = {
+			id: '1',
+			name: 'Wait',
+			type: 'n8n-nodes-base.wait',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {
+				resume: 'webhook',
+			},
+		};
+		const metadata = { resumeUrl: 'http://signed.com/wait/123?signature=abc123' };
+		const result = waitingNodeTooltip(node, mockWorkflow, metadata);
+		expect(result).toContain('http://signed.com/wait/123?signature=abc123');
+	});
+
+	it('should use metadata.resumeFormUrl when provided for form resume type', () => {
+		const node: INodeUi = {
+			id: '1',
+			name: 'Wait',
+			type: 'n8n-nodes-base.wait',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {
+				resume: 'form',
+			},
+		};
+		const metadata = { resumeFormUrl: 'http://signed.com/form/123?signature=xyz789' };
+		const result = waitingNodeTooltip(node, mockWorkflow, metadata);
+		expect(result).toContain('http://signed.com/form/123?signature=xyz789');
+	});
+
+	it('should fall back to constructed URL when metadata is not provided', () => {
+		const node: INodeUi = {
+			id: '1',
+			name: 'Wait',
+			type: 'n8n-nodes-base.wait',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {
+				resume: 'webhook',
+			},
+		};
+		// No metadata passed - should use constructed URL from store
+		const result = waitingNodeTooltip(node, mockWorkflow);
+		expect(result).toContain('http://localhost:5678/webhook-waiting/123');
+	});
 });
 
 const executionErrorFactory = (error: Record<string, unknown>) =>
@@ -591,6 +442,23 @@ describe('getExecutionErrorToastConfiguration', () => {
 			title: 'Subworkflow failed',
 			message: 'Workflow XYZ failed',
 		});
+	});
+
+	it('returns config for WorkflowHasIssuesError with multi-line message preserved', () => {
+		const result = getExecutionErrorToastConfiguration({
+			error: executionErrorFactory({
+				name: 'WorkflowHasIssuesError',
+				message: 'The \'HTTP Request\' node has issues:\n- Parameter "URL" is required.',
+			}),
+			lastNodeExecuted: 'HTTP Request',
+		});
+
+		expect(result.title).toBe('pushConnection.workflowHasIssues.title');
+		const message = result.message as VNode;
+		expect(message.props?.style).toBe('white-space: pre-line');
+		expect(message.children).toBe(
+			'The \'HTTP Request\' node has issues:\n- Parameter "URL" is required.',
+		);
 	});
 
 	it('returns config for configuration-node error with node name', () => {
@@ -702,5 +570,373 @@ describe(findTriggerNodeToAutoSelect, () => {
 				getNodeType,
 			),
 		).toEqual(expect.objectContaining({ name: 'B' }));
+	});
+
+	// The shipped codex categorises the evaluation trigger as "Utility" rather than
+	// "Core Nodes", so isCoreNode() is false for it and it would otherwise fall through
+	// to the priority reserved for third-party app triggers.
+	function getNodeTypeWithShippedCategories(type: string): INodeTypeDescription {
+		if (type === EVALUATION_TRIGGER_NODE_TYPE) {
+			return mockNodeTypeDescription({ name: type, codex: { categories: ['Utility'] } });
+		}
+		return getNodeType(type);
+	}
+
+	it('should not auto-select an evaluation trigger over another trigger', () => {
+		expect(
+			findTriggerNodeToAutoSelect(
+				[
+					createTestNode({ name: 'A', type: EVALUATION_TRIGGER_NODE_TYPE }),
+					createTestNode({ name: 'B', type: MANUAL_TRIGGER_NODE_TYPE }),
+				],
+				getNodeTypeWithShippedCategories,
+			),
+		).toEqual(expect.objectContaining({ name: 'B' }));
+
+		expect(
+			findTriggerNodeToAutoSelect(
+				[
+					createTestNode({ name: 'A', type: EVALUATION_TRIGGER_NODE_TYPE }),
+					createTestNode({ name: 'B', type: APP_TRIGGER_TYPE }),
+				],
+				getNodeTypeWithShippedCategories,
+			),
+		).toEqual(expect.objectContaining({ name: 'B' }));
+	});
+
+	it('should still auto-select an evaluation trigger when it is the only one', () => {
+		expect(
+			findTriggerNodeToAutoSelect(
+				[createTestNode({ name: 'A', type: EVALUATION_TRIGGER_NODE_TYPE })],
+				getNodeTypeWithShippedCategories,
+			),
+		).toEqual(expect.objectContaining({ name: 'A' }));
+	});
+});
+
+describe('buildExecutionResponseFromSchema', () => {
+	const mockWorkflow = {
+		id: 'test-workflow',
+		name: 'Test Workflow',
+		nodes: [
+			createTestNode({ name: 'Start', type: MANUAL_TRIGGER_NODE_TYPE }),
+			createTestNode({ name: 'HTTP Request', type: 'n8n-nodes-base.httpRequest' }),
+		],
+		connections: {},
+	} as unknown as IWorkflowDb;
+
+	it('builds execution response with all nodes success', () => {
+		const result = buildExecutionResponseFromSchema({
+			workflow: mockWorkflow,
+			nodeExecutionSchema: {
+				Start: { executionStatus: 'success', executionTime: 10 },
+				'HTTP Request': { executionStatus: 'success', executionTime: 200 },
+			},
+			executionStatus: 'success',
+		});
+
+		expect(result.id).toBe('preview');
+		expect(result.finished).toBe(true);
+		expect(result.mode).toBe('manual');
+		expect(result.status).toBe('success');
+		expect(result.workflowData).toBe(mockWorkflow);
+
+		const runData = result.data?.resultData.runData;
+		expect(runData).toBeDefined();
+		expect(runData?.Start).toHaveLength(1);
+		expect(runData?.Start[0].executionStatus).toBe('success');
+		expect(runData?.Start[0].executionTime).toBe(10);
+		expect(runData?.Start[0].data).toBeUndefined();
+		expect(runData?.['HTTP Request'][0].executionStatus).toBe('success');
+		expect(runData?.['HTTP Request'][0].executionTime).toBe(200);
+		expect(runData?.['HTTP Request'][0].data).toBeUndefined();
+	});
+
+	it('builds execution response with node error', () => {
+		const result = buildExecutionResponseFromSchema({
+			workflow: mockWorkflow,
+			nodeExecutionSchema: {
+				Start: { executionStatus: 'success', executionTime: 5 },
+				'HTTP Request': {
+					executionStatus: 'error',
+					error: { message: 'Connection refused', name: 'NodeApiError' },
+				},
+			},
+			executionStatus: 'error',
+			lastNodeExecuted: 'HTTP Request',
+		});
+
+		expect(result.finished).toBe(false);
+		expect(result.status).toBe('error');
+
+		const runData = result.data?.resultData.runData;
+		expect(runData?.['HTTP Request'][0].error).toBeDefined();
+		expect(runData?.['HTTP Request'][0].error?.message).toBe('Connection refused');
+		expect(result.data?.resultData.lastNodeExecuted).toBe('HTTP Request');
+	});
+
+	it('builds execution response with mixed statuses', () => {
+		const result = buildExecutionResponseFromSchema({
+			workflow: mockWorkflow,
+			nodeExecutionSchema: {
+				Start: { executionStatus: 'success', executionTime: 5 },
+				'HTTP Request': { executionStatus: 'canceled' },
+			},
+			executionStatus: 'canceled',
+		});
+
+		const runData = result.data?.resultData.runData;
+		expect(runData?.Start[0].executionStatus).toBe('success');
+		expect(runData?.['HTTP Request'][0].executionStatus).toBe('canceled');
+		expect(runData?.['HTTP Request'][0].executionTime).toBe(0);
+	});
+
+	it('builds execution response with empty schema', () => {
+		const result = buildExecutionResponseFromSchema({
+			workflow: mockWorkflow,
+			nodeExecutionSchema: {},
+			executionStatus: 'success',
+		});
+
+		expect(result.data?.resultData.runData).toEqual({});
+		expect(result.finished).toBe(true);
+	});
+
+	it('builds execution response with top-level execution error', () => {
+		const result = buildExecutionResponseFromSchema({
+			workflow: mockWorkflow,
+			nodeExecutionSchema: {
+				Start: { executionStatus: 'success' },
+			},
+			executionStatus: 'error',
+			executionError: { message: 'Workflow timed out', name: 'WorkflowOperationError' },
+		});
+
+		expect(result.data?.resultData.error).toBeDefined();
+		expect(result.data?.resultData.error?.message).toBe('Workflow timed out');
+		expect(result.finished).toBe(false);
+	});
+
+	it('includes fake data when outputSchema is provided', () => {
+		const result = buildExecutionResponseFromSchema({
+			workflow: mockWorkflow,
+			nodeExecutionSchema: {
+				'HTTP Request': {
+					executionStatus: 'success',
+					executionTime: 100,
+					outputSchema: {
+						itemCount: 2,
+						fields: [
+							{ name: 'id', type: 'number' },
+							{ name: 'name', type: 'string' },
+						],
+					},
+				},
+			},
+			executionStatus: 'success',
+		});
+
+		const taskData = result.data?.resultData.runData?.['HTTP Request']?.[0];
+		expect(taskData?.data).toBeDefined();
+		expect(taskData?.data?.main).toHaveLength(1);
+		expect(taskData?.data?.main[0]).toHaveLength(2);
+		expect(taskData?.data?.main[0]?.[0].json).toEqual({ id: 0, name: '' });
+	});
+
+	it('omits data when outputSchema has empty fields', () => {
+		const result = buildExecutionResponseFromSchema({
+			workflow: mockWorkflow,
+			nodeExecutionSchema: {
+				Start: {
+					executionStatus: 'success',
+					outputSchema: { fields: [] },
+				},
+			},
+			executionStatus: 'success',
+		});
+
+		expect(result.data?.resultData.runData?.Start?.[0].data).toBeUndefined();
+	});
+});
+
+describe('generatePlaceholderValue', () => {
+	it('returns empty string for string type', () => {
+		expect(generatePlaceholderValue({ name: 'x', type: 'string' })).toBe('');
+	});
+
+	it('returns 0 for number type', () => {
+		expect(generatePlaceholderValue({ name: 'x', type: 'number' })).toBe(0);
+	});
+
+	it('returns false for boolean type', () => {
+		expect(generatePlaceholderValue({ name: 'x', type: 'boolean' })).toBe(false);
+	});
+
+	it('returns empty object for object type with no fields', () => {
+		expect(generatePlaceholderValue({ name: 'x', type: 'object' })).toEqual({});
+	});
+
+	it('returns nested object for object type with fields', () => {
+		expect(
+			generatePlaceholderValue({
+				name: 'address',
+				type: 'object',
+				fields: [
+					{ name: 'street', type: 'string' },
+					{ name: 'zip', type: 'number' },
+				],
+			}),
+		).toEqual({ street: '', zip: 0 });
+	});
+
+	it('returns empty array for array type with no itemSchema', () => {
+		expect(generatePlaceholderValue({ name: 'x', type: 'array' })).toEqual([]);
+	});
+
+	it('returns array with one element matching itemSchema', () => {
+		expect(
+			generatePlaceholderValue({
+				name: 'tags',
+				type: 'array',
+				itemSchema: [
+					{ name: 'id', type: 'number' },
+					{ name: 'label', type: 'string' },
+				],
+			}),
+		).toEqual([{ id: 0, label: '' }]);
+	});
+
+	it('truncates at max nesting depth', () => {
+		let field: {
+			name: string;
+			type: 'object';
+			fields: Array<{ name: string; type: 'object'; fields?: unknown[] }>;
+		} = {
+			name: 'level0',
+			type: 'object',
+			fields: [{ name: 'leaf', type: 'object' }],
+		};
+		for (let i = 1; i < 7; i++) {
+			field = { name: `level${i}`, type: 'object', fields: [field] };
+		}
+		const result = generatePlaceholderValue(field as never);
+		expect(result).toBeDefined();
+	});
+});
+
+describe('generateFakeDataFromSchema', () => {
+	it('generates single item by default', () => {
+		const result = generateFakeDataFromSchema({
+			fields: [
+				{ name: 'id', type: 'number' },
+				{ name: 'name', type: 'string' },
+			],
+		});
+		expect(result).toHaveLength(1);
+		expect(result[0].json).toEqual({ id: 0, name: '' });
+	});
+
+	it('generates specified number of items', () => {
+		const result = generateFakeDataFromSchema({
+			itemCount: 3,
+			fields: [{ name: 'active', type: 'boolean' }],
+		});
+		expect(result).toHaveLength(3);
+		for (const item of result) {
+			expect(item.json).toEqual({ active: false });
+		}
+	});
+
+	it('clamps itemCount to max 10', () => {
+		const result = generateFakeDataFromSchema({
+			itemCount: 100,
+			fields: [{ name: 'x', type: 'string' }],
+		});
+		expect(result).toHaveLength(10);
+	});
+
+	it('uses minimum of 1 item for itemCount <= 0', () => {
+		const result = generateFakeDataFromSchema({
+			itemCount: 0,
+			fields: [{ name: 'x', type: 'string' }],
+		});
+		expect(result).toHaveLength(1);
+	});
+
+	it('generates items with complex nested schema', () => {
+		const result = generateFakeDataFromSchema({
+			fields: [
+				{ name: 'id', type: 'number' },
+				{
+					name: 'profile',
+					type: 'object',
+					fields: [
+						{ name: 'email', type: 'string' },
+						{ name: 'verified', type: 'boolean' },
+					],
+				},
+				{
+					name: 'roles',
+					type: 'array',
+					itemSchema: [{ name: 'name', type: 'string' }],
+				},
+			],
+		});
+		expect(result[0].json).toEqual({
+			id: 0,
+			profile: { email: '', verified: false },
+			roles: [{ name: '' }],
+		});
+	});
+
+	it('returns items with empty json when fields array is empty', () => {
+		const result = generateFakeDataFromSchema({ fields: [] });
+		expect(result).toHaveLength(1);
+		expect(result[0].json).toEqual({});
+	});
+});
+
+describe('hasCancellableExecutions', () => {
+	const executionWithStatus = (status: string) => ({ status }) as ExecutionSummary;
+
+	it.each(['new', 'running', 'waiting'])(
+		'returns true when at least one execution is %s',
+		(status) => {
+			expect(hasCancellableExecutions([executionWithStatus(status)])).toBe(true);
+		},
+	);
+
+	it.each(['success', 'error', 'crashed', 'canceled', 'unknown'])(
+		'returns false when executions are only %s',
+		(status) => {
+			expect(hasCancellableExecutions([executionWithStatus(status)])).toBe(false);
+		},
+	);
+
+	it('returns false for an empty executions list', () => {
+		expect(hasCancellableExecutions([])).toBe(false);
+	});
+});
+
+describe('isEngineV2ExecutionId', () => {
+	it('returns true for a UUID v7', () => {
+		expect(isEngineV2ExecutionId('019a3b2c-4d5e-7f60-8a1b-2c3d4e5f6a7b')).toBe(true);
+	});
+
+	it.each([
+		['a numeric v1 ID', '123'],
+		['a UUID v4', '3b241101-e2bb-4255-8caf-4136c566a962'],
+		['an empty string', ''],
+	])('returns false for %s', (_label, executionId) => {
+		expect(isEngineV2ExecutionId(executionId)).toBe(false);
+	});
+});
+
+describe('getExecutionEngine', () => {
+	it.each([
+		['v1', '123'],
+		['v2', '019a3b2c-4d5e-7f60-8a1b-2c3d4e5f6a7b'],
+	])('returns %s for execution %s', (engine, executionId) => {
+		expect(getExecutionEngine(executionId)).toBe(engine);
 	});
 });

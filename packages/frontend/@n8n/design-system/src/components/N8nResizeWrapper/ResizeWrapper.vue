@@ -1,49 +1,50 @@
 <script lang="ts" setup>
-import { computed, ref, useCssModule } from 'vue';
+import { computed, onBeforeUnmount, toRef, useTemplateRef } from 'vue';
 
+import { useI18n } from '../../composables/useI18n';
+import { useResizablePanel, type ResizablePanel } from '../../composables/useResizablePanel';
 import { directionsCursorMaps, type Direction, type ResizeData } from '../../types';
+import type { Placement } from '../N8nTooltip/Tooltip.types';
+import N8nTooltip from '../N8nTooltip/Tooltip.vue';
 
-function closestNumber(value: number, divisor: number): number {
-	const q = value / divisor;
-	const n1 = divisor * q;
+const TOOLTIP_DELAY = 750;
+const { t } = useI18n();
 
-	const n2 = value * divisor > 0 ? divisor * (q + 1) : divisor * (q - 1);
-
-	if (Math.abs(value - n1) < Math.abs(value - n2)) return n1;
-
-	return n2;
-}
-
-function getSize(min: number, virtual: number, gridSize: number, max: number): number {
-	if (virtual <= 0) {
-		return min;
-	}
-
-	const target = closestNumber(virtual, gridSize);
-
-	if (target <= min) {
-		return min;
-	}
-	if (target >= max) {
-		return max;
-	}
-
-	return target;
-}
+type DirectionLimit = 'min' | 'max' | undefined;
 
 interface ResizeProps {
+	/** Use an existing resize controller instead of creating one. */
+	resizer?: ResizablePanel;
+	/** Show resize handles when enabled. */
 	isResizingEnabled?: boolean;
+	/** Current height in pixels. */
 	height?: number;
+	/** Current width in pixels. */
 	width?: number;
+	/** Height restored on double-click. */
+	defaultHeight?: number;
+	/** Width restored on double-click. */
+	defaultWidth?: number;
+	/** Minimum height in pixels. */
 	minHeight?: number;
+	/** Maximum height in pixels. */
 	maxHeight?: number;
+	/** Minimum width in pixels. */
 	minWidth?: number;
+	/** Maximum width in pixels. */
 	maxWidth?: number;
+	/** Scale applied to pointer movement. */
 	scale?: number;
+	/** Grid interval in pixels. */
 	gridSize?: number;
+	/** Handles to show. An empty list shows all handles. */
 	supportedDirections?: Direction[];
-	outset?: boolean;
+	/** Window that receives the drag events. */
 	window?: Window;
+	/** Allow the panel to collapse to a small size. */
+	allowCollapse?: boolean;
+	/** Allow the panel to expand to full width. */
+	allowFullWidth?: boolean;
 }
 
 const props = withDefaults(defineProps<ResizeProps>(), {
@@ -56,12 +57,13 @@ const props = withDefaults(defineProps<ResizeProps>(), {
 	maxWidth: Number.POSITIVE_INFINITY,
 	scale: 1,
 	gridSize: 20,
-	outset: false,
 	window: undefined,
-	supportedDirections: () => [],
+	allowCollapse: false,
+	allowFullWidth: false,
+	supportedDirections: function getSupportedDirections() {
+		return [];
+	},
 });
-
-const $style = useCssModule();
 
 const emit = defineEmits<{
 	resizestart: [];
@@ -69,125 +71,180 @@ const emit = defineEmits<{
 	resizeend: [];
 }>();
 
-const enabledDirections = computed((): Direction[] => {
+const enabledDirections = computed(function getEnabledDirections(): Direction[] {
 	const availableDirections = Object.keys(directionsCursorMaps) as Direction[];
-
 	if (!props.isResizingEnabled) return [];
 	if (props.supportedDirections.length === 0) return availableDirections;
-
 	return props.supportedDirections;
 });
 
-const state = {
-	dir: ref<Direction | ''>(''),
-	dHeight: ref(0),
-	dWidth: ref(0),
-	vHeight: ref(0),
-	vWidth: ref(0),
-	x: ref(0),
-	y: ref(0),
+const tooltipPlacements: Record<Direction, Placement> = {
+	right: 'right',
+	left: 'left',
+	top: 'top',
+	bottom: 'bottom',
+	topLeft: 'left-start',
+	topRight: 'right-start',
+	bottomLeft: 'left-end',
+	bottomRight: 'right-end',
 };
 
-const classes = computed(() => ({
-	[$style.resize]: true,
-	[$style.outset]: props.outset,
-}));
+function getTooltipPlacement(direction: Direction): Placement {
+	return tooltipPlacements[direction];
+}
 
-const mouseMove = (event: MouseEvent) => {
-	event.preventDefault();
-	event.stopPropagation();
-	let dWidth = 0;
-	let dHeight = 0;
-	let top = false;
-	let left = false;
+const resizeWrapper = useTemplateRef<HTMLDivElement>('resizeWrapper');
+const resizer =
+	props.resizer ??
+	useResizablePanel({
+		width: {
+			size: toRef(props, 'width'),
+			allowCollapse: toRef(props, 'allowCollapse'),
+			allowFullSize: toRef(props, 'allowFullWidth'),
+			minSize: function getMinWidth() {
+				return props.minWidth;
+			},
+			maxSize: function getMaxWidth() {
+				return props.maxWidth;
+			},
+		},
+		height: {
+			size: toRef(props, 'height'),
+			allowCollapse: toRef(props, 'allowCollapse'),
+			allowFullSize: toRef(props, 'allowFullWidth'),
+			minSize: function getMinHeight() {
+				return props.minHeight;
+			},
+			maxSize: function getMaxHeight() {
+				return props.maxHeight;
+			},
+		},
+		scale: toRef(props, 'scale'),
+		gridSize: toRef(props, 'gridSize'),
+	});
+const { activeDirection } = resizer;
+let cancelDrag: (() => void) | undefined;
 
-	if (state.dir.value.includes('right')) {
-		dWidth = event.pageX - state.x.value;
+onBeforeUnmount(function cancelWrapperDrag() {
+	cancelDrag?.();
+});
+
+function startResize(event: MouseEvent): void {
+	const element = resizeWrapper.value;
+	if (!element) return;
+	cancelDrag = resizer.startResize(event, {
+		window: props.window,
+		displayedSize: { width: element.offsetWidth, height: element.offsetHeight },
+		onResizeStart: function emitResizeStart() {
+			emit('resizestart');
+		},
+		onResize: function emitResize(data: ResizeData) {
+			emit('resize', data);
+		},
+		onResizeEnd: function emitResizeEnd() {
+			emit('resizeend');
+		},
+	});
+}
+
+function resetSize(event: MouseEvent, direction: Direction): void {
+	if (!props.resizer && props.defaultWidth === undefined && props.defaultHeight === undefined) {
+		if (import.meta.env.IS_DEV) {
+			console.warn(
+				'[N8nResizeWrapper]: Set defaultWidth, defaultHeight, or resizer to enable double-click reset.',
+			);
+		}
+		return;
 	}
-	if (state.dir.value.includes('left')) {
-		dWidth = state.x.value - event.pageX;
-		left = true;
-	}
-	if (state.dir.value.includes('top')) {
-		dHeight = state.y.value - event.pageY;
-		top = true;
-	}
-	if (state.dir.value.includes('bottom')) {
-		dHeight = event.pageY - state.y.value;
-	}
+	resizer.resetSize({ width: props.defaultWidth, height: props.defaultHeight });
+	emit('resize', {
+		width: resizer.width.value,
+		height: resizer.height.value,
+		dX: 0,
+		dY: 0,
+		x: event.clientX,
+		y: event.clientY,
+		direction,
+	});
+}
 
-	const deltaWidth = (dWidth - state.dWidth.value) / props.scale;
-	const deltaHeight = (dHeight - state.dHeight.value) / props.scale;
+function getIsAtDirectionLimit(direction: Direction): DirectionLimit {
+	const resizesWidth = direction !== 'top' && direction !== 'bottom';
+	const resizesHeight = direction !== 'left' && direction !== 'right';
+	const isAtMin =
+		(resizesWidth && (resizer.isWidthCollapsed.value || resizer.width.value <= props.minWidth)) ||
+		(resizesHeight && (resizer.isHeightCollapsed.value || resizer.height.value <= props.minHeight));
+	const isAtMax =
+		(resizesWidth && (resizer.isWidthFullSize.value || resizer.width.value >= props.maxWidth)) ||
+		(resizesHeight && (resizer.isHeightFullSize.value || resizer.height.value >= props.maxHeight));
 
-	state.vHeight.value = state.vHeight.value + deltaHeight;
-	state.vWidth.value = state.vWidth.value + deltaWidth;
-	const height = getSize(props.minHeight, state.vHeight.value, props.gridSize, props.maxHeight);
-	const width = getSize(props.minWidth, state.vWidth.value, props.gridSize, props.maxWidth);
-
-	const dX = left && width !== props.width ? -1 * (width - props.width) : 0;
-	const dY = top && height !== props.height ? -1 * (height - props.height) : 0;
-	const x = event.x;
-	const y = event.y;
-	const direction = state.dir.value as Direction;
-
-	emit('resize', { height, width, dX, dY, x, y, direction });
-	state.dHeight.value = dHeight;
-	state.dWidth.value = dWidth;
-};
-
-const mouseUp = (event: MouseEvent) => {
-	event.preventDefault();
-	event.stopPropagation();
-	emit('resizeend');
-	(props.window ?? window).removeEventListener('mousemove', mouseMove);
-	(props.window ?? window).removeEventListener('mouseup', mouseUp);
-	document.body.style.cursor = 'unset';
-	state.dir.value = '';
-};
-
-const resizerMove = (event: MouseEvent) => {
-	event.preventDefault();
-	event.stopPropagation();
-
-	const targetResizer = event.target as { dataset: { dir: string } } | null;
-	if (targetResizer) {
-		state.dir.value = targetResizer.dataset.dir.toLocaleLowerCase() as Direction;
-	}
-
-	document.body.style.cursor = directionsCursorMaps[state.dir.value as Direction];
-
-	state.x.value = event.pageX;
-	state.y.value = event.pageY;
-	state.dWidth.value = 0;
-	state.dHeight.value = 0;
-	state.vHeight.value = props.height;
-	state.vWidth.value = props.width;
-
-	(props.window ?? window).addEventListener('mousemove', mouseMove);
-	(props.window ?? window).addEventListener('mouseup', mouseUp);
-	emit('resizestart');
-};
+	if (isAtMin) return 'min';
+	if (isAtMax) return 'max';
+	return undefined;
+}
 </script>
 
 <template>
-	<div :class="classes">
-		<div
+	<div ref="resizeWrapper" :class="$style.resize">
+		<N8nTooltip
 			v-for="direction in enabledDirections"
 			:key="direction"
-			:data-dir="direction"
-			:class="{ [$style.resizer]: true, [$style[direction]]: true }"
-			data-test-id="resize-handle"
-			@mousedown="resizerMove"
-		/>
+			:placement="getTooltipPlacement(direction)"
+			:show-after="TOOLTIP_DELAY"
+			as-child
+		>
+			<template #content>
+				<div :class="$style.tooltipContent">
+					<span :class="$style.tooltipLabel">{{ t('resizeWrapper.resize') }}</span>
+					<span :class="$style.dragShortcut">{{ t('resizeWrapper.drag') }}</span>
+				</div>
+			</template>
+			<div
+				:data-dir="direction"
+				:class="{
+					[$style.resizer]: true,
+					[$style[direction]]: true,
+					[$style.active]: activeDirection === direction,
+					[$style.atMinLimit]: getIsAtDirectionLimit(direction) === 'min',
+					[$style.atMaxLimit]: getIsAtDirectionLimit(direction) === 'max',
+				}"
+				data-test-id="resize-handle"
+				@mousedown="startResize"
+				@dblclick="resetSize($event, direction)"
+			/>
+		</N8nTooltip>
 		<slot></slot>
 	</div>
 </template>
 
 <style lang="scss" module>
+.tooltipContent {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.tooltipLabel {
+	min-width: 0;
+	font-size: var(--font-size--xs);
+}
+
+.dragShortcut {
+	padding: 0 var(--spacing--4xs);
+	border: solid 1px transparent;
+	border-radius: var(--radius--sm);
+	background: var(--color--white-alpha-300);
+	color: var(--color--neutral-200);
+	font-size: var(--font-size--3xs);
+	line-height: 16px;
+}
+
 .resize {
 	--resizer--size: 4px;
-	--resizer--spacing--side: -2px;
+	--resizer--spacing--side: calc(var(--resizer--size) / -2);
 	--resizer--spacing--corner: -3px;
+	--resizer--indicator--thickness: var(--spacing--3xs);
+	--resizer--indicator--color: light-dark(var(--color--neutral-250), var(--color--neutral-700));
 
 	position: relative;
 	width: 100%;
@@ -205,7 +262,9 @@ const resizerMove = (event: MouseEvent) => {
 	height: 100%;
 	top: var(--resizer--spacing--side);
 	right: var(--resizer--spacing--side);
-	cursor: ew-resize;
+	cursor: col-resize;
+	border-color: var(--border-color);
+	border-color: var(--color--neutral-400);
 }
 
 .top {
@@ -213,7 +272,7 @@ const resizerMove = (event: MouseEvent) => {
 	height: var(--resizer--size);
 	top: var(--resizer--spacing--side);
 	left: var(--resizer--spacing--side);
-	cursor: ns-resize;
+	cursor: row-resize;
 }
 
 .bottom {
@@ -221,7 +280,7 @@ const resizerMove = (event: MouseEvent) => {
 	height: var(--resizer--size);
 	bottom: var(--resizer--spacing--side);
 	left: var(--resizer--spacing--side);
-	cursor: ns-resize;
+	cursor: row-resize;
 }
 
 .left {
@@ -229,7 +288,7 @@ const resizerMove = (event: MouseEvent) => {
 	height: 100%;
 	top: var(--resizer--spacing--side);
 	left: var(--resizer--spacing--side);
-	cursor: ew-resize;
+	cursor: col-resize;
 }
 
 .topLeft {
@@ -264,8 +323,95 @@ const resizerMove = (event: MouseEvent) => {
 	cursor: se-resize;
 }
 
-.outset {
-	--resizer--spacing--side: calc(-1 * var(--resizer--size) + 2px);
-	--resizer--spacing--corner: calc(-1 * var(--resizer--size) + 3px);
+.right,
+.left {
+	top: 0;
+}
+
+.top,
+.bottom {
+	left: 0;
+}
+
+.right,
+.left,
+.top,
+.bottom {
+	&::after {
+		content: '';
+		position: absolute;
+		background-color: var(--resizer--indicator--color);
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	&:hover::after,
+	&.active::after {
+		opacity: 1;
+	}
+}
+
+.right::after,
+.left::after {
+	top: 0;
+	bottom: 0;
+	left: 50%;
+	transform: translateX(-50%);
+	width: var(--resizer--indicator--thickness);
+}
+
+.top::after,
+.bottom::after {
+	left: 0;
+	right: 0;
+	top: 50%;
+	transform: translateY(-50%);
+	height: var(--resizer--indicator--thickness);
+}
+
+.right.atMinLimit,
+.left.atMaxLimit {
+	cursor: e-resize;
+}
+
+.left.atMinLimit,
+.right.atMaxLimit {
+	cursor: w-resize;
+}
+
+.top.atMinLimit,
+.bottom.atMaxLimit {
+	cursor: n-resize;
+}
+
+.bottom.atMinLimit,
+.top.atMaxLimit {
+	cursor: s-resize;
+}
+
+.topLeft.atMinLimit,
+.bottomRight.atMaxLimit {
+	cursor: nw-resize;
+}
+
+.topRight.atMinLimit,
+.bottomLeft.atMaxLimit {
+	cursor: ne-resize;
+}
+
+.bottomLeft.atMinLimit,
+.topRight.atMaxLimit {
+	cursor: sw-resize;
+}
+
+.bottomRight.atMinLimit,
+.topLeft.atMaxLimit {
+	cursor: se-resize;
+}
+</style>
+
+<style lang="scss">
+body.n8n-resizing iframe {
+	pointer-events: none;
 }
 </style>

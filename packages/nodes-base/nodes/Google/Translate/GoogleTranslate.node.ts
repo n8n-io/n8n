@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { googleApiRequest } from './GenericFunctions';
 
@@ -26,6 +26,7 @@ export class GoogleTranslate implements INodeType {
 		version: [1, 2],
 		description: 'Translate data using Google Translate',
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+		schemaPath: 'Google/Translate',
 		defaults: {
 			name: 'Google Translate',
 		},
@@ -172,7 +173,7 @@ export class GoogleTranslate implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const {
 					data: { languages },
-				} = await googleApiRequest.call(this, 'GET', '/language/translate/v2/languages');
+				} = await googleApiRequest.call(this, 'GET', requestPath`/language/translate/v2/languages`);
 				for (const language of languages) {
 					returnData.push({
 						name: language.language.toUpperCase(),
@@ -197,10 +198,15 @@ export class GoogleTranslate implements INodeType {
 					const text = this.getNodeParameter('text', i) as string;
 					const translateTo = this.getNodeParameter('translateTo', i) as string;
 
-					const response = await googleApiRequest.call(this, 'POST', '/language/translate/v2', {
-						q: text,
-						target: translateTo,
-					});
+					const response = await googleApiRequest.call(
+						this,
+						'POST',
+						requestPath`/language/translate/v2`,
+						{
+							q: text,
+							target: translateTo,
+						},
+					);
 
 					const [translation] = response.data.translations;
 

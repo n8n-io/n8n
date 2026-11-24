@@ -1,4 +1,4 @@
-import type { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
 
 const stmtBatchOptions = [
 	{
@@ -264,6 +264,22 @@ export const optionsCollection: INodeProperties[] = [
 					'This property is a query tuning option to set the number of additional rows the underlying Oracle driver fetches during the internal initial statement execution phase of a query',
 			},
 			{
+				displayName: 'String OUT Bind Max Size',
+				name: 'stringOutBindMaxSize',
+				type: 'number',
+				default: 4000,
+				typeOptions: {
+					minValue: 1,
+				},
+				displayOptions: {
+					show: {
+						'/operation': ['execute'],
+					},
+				},
+				description:
+					'Maximum byte size for string OUT and IN-OUT bind parameters in execute statements',
+			},
+			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
 				displayName: 'Output Columns',
 				name: 'outputColumns',
@@ -381,6 +397,47 @@ export const tableRLC: INodeProperties = {
 	],
 };
 
+// Single source of truth for the WHERE Operator dropdown; the query builder derives
+// its allow-list from this so adding an operator here also permits it at runtime.
+export const operatorOptions: INodePropertyOptions[] = [
+	{
+		name: 'Equal',
+		value: 'equal',
+	},
+	{
+		name: 'Not Equal',
+		value: '!=',
+	},
+	{
+		name: 'Like',
+		value: 'LIKE',
+	},
+	{
+		name: 'Greater Than',
+		value: '>',
+	},
+	{
+		name: 'Less Than',
+		value: '<',
+	},
+	{
+		name: 'Greater Than Or Equal',
+		value: '>=',
+	},
+	{
+		name: 'Less Than Or Equal',
+		value: '<=',
+	},
+	{
+		name: 'Is Null',
+		value: 'IS NULL',
+	},
+	{
+		name: 'Is Not Null',
+		value: 'IS NOT NULL',
+	},
+];
+
 export const whereFixedCollection: INodeProperties = {
 	displayName: 'Select Rows',
 	name: 'where',
@@ -417,45 +474,7 @@ export const whereFixedCollection: INodeProperties = {
 					type: 'options',
 					description:
 						"The operator to check the column against. When using 'LIKE' operator percent sign ( %) matches zero or more characters, underscore ( _ ) matches any single character.",
-					// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
-					options: [
-						{
-							name: 'Equal',
-							value: 'equal',
-						},
-						{
-							name: 'Not Equal',
-							value: '!=',
-						},
-						{
-							name: 'Like',
-							value: 'LIKE',
-						},
-						{
-							name: 'Greater Than',
-							value: '>',
-						},
-						{
-							name: 'Less Than',
-							value: '<',
-						},
-						{
-							name: 'Greater Than Or Equal',
-							value: '>=',
-						},
-						{
-							name: 'Less Than Or Equal',
-							value: '<=',
-						},
-						{
-							name: 'Is Null',
-							value: 'IS NULL',
-						},
-						{
-							name: 'Is Not Null',
-							value: 'IS NOT NULL',
-						},
-					],
+					options: operatorOptions,
 					default: 'equal',
 				},
 				{

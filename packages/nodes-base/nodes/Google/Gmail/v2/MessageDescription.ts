@@ -1,6 +1,7 @@
 import { SEND_AND_WAIT_OPERATION, type INodeProperties } from 'n8n-workflow';
 
 import { appendAttributionOption } from '../../../../utils/descriptions';
+import { simplifyMemoryNotice, simplifyOutputShapeHint } from '../utils/descriptions';
 
 export const messageOperations: INodeProperties[] = [
 	{
@@ -299,7 +300,13 @@ export const messageFields: INodeProperties[] = [
 		},
 		default: true,
 		description: 'Whether to return a simplified version of the response instead of the raw data',
+		builderHint: {
+			propertyHint: simplifyOutputShapeHint,
+		},
 	},
+	simplifyMemoryNotice({
+		displayOptions: { show: { operation: ['get'], resource: ['message'], simple: [false] } },
+	}),
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -381,7 +388,13 @@ export const messageFields: INodeProperties[] = [
 		},
 		default: true,
 		description: 'Whether to return a simplified version of the response instead of the raw data',
+		builderHint: {
+			propertyHint: simplifyOutputShapeHint,
+		},
 	},
+	simplifyMemoryNotice({
+		displayOptions: { show: { operation: ['getAll'], resource: ['message'], simple: [false] } },
+	}),
 	{
 		displayName:
 			'Fetching a lot of messages may take a long time. Consider using filters to speed things up',

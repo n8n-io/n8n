@@ -1,6 +1,7 @@
 import { z } from 'zod';
-import { Z } from 'zod-class';
 
+import { TimeZoneSchema } from '../../schemas/timezone.schema';
+import { Z } from '../../zod-class';
 import { createTakeValidator, paginationSchema } from '../pagination/pagination.dto';
 
 export const MAX_ITEMS_PER_PAGE = 100;
@@ -39,4 +40,5 @@ export class ListInsightsWorkflowQueryDto extends Z.class({
 	endDate: z.coerce.date().optional(),
 	sortBy: sortByValidator,
 	projectId: z.string().optional(),
+	timeZone: TimeZoneSchema,
 }) {}

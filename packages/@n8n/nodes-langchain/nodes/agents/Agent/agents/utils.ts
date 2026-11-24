@@ -1,8 +1,25 @@
-import type { BaseOutputParser } from '@langchain/core/output_parsers';
 import type { DynamicStructuredTool, Tool } from '@langchain/classic/tools';
-import { NodeOperationError, type IExecuteFunctions, type INode } from 'n8n-workflow';
+import type { BaseOutputParser } from '@langchain/core/output_parsers';
+import {
+	NodeOperationError,
+	type IExecuteFunctions,
+	type INode,
+	type ISupplyDataFunctions,
+} from 'n8n-workflow';
 
 import type { ZodObjectAny } from '../../../../types/types';
+
+/**
+ * `IExecuteFunctions` vs `ISupplyDataFunctions` (e.g. agent as a tool). Discriminate on
+ * `cloneWith`, which only the sub-node context adds: `SupplyDataContext` extends the same
+ * base class as `ExecuteContext`, so every member of that base (`getExecuteData`, …) is on
+ * both and cannot tell them apart.
+ */
+export function isExecuteFunctions(
+	context: IExecuteFunctions | ISupplyDataFunctions,
+): context is IExecuteFunctions {
+	return !('cloneWith' in context);
+}
 
 export async function extractParsedOutput(
 	ctx: IExecuteFunctions,

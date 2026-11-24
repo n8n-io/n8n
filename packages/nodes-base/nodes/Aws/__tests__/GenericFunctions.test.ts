@@ -1,19 +1,25 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, ILoadOptionsFunctions, IWebhookFunctions } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 
-import { awsApiRequest, awsApiRequestREST, awsApiRequestSOAP } from '../GenericFunctions';
+import {
+	awsApiRequest,
+	awsApiRequestREST,
+	awsApiRequestSOAP,
+	awsRequestPath,
+} from '../GenericFunctions';
+import type { Mock, Mocked } from 'vitest';
 
 describe('AWS GenericFunctions', () => {
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
-	let mockLoadOptionsFunctions: jest.Mocked<ILoadOptionsFunctions>;
-	let mockWebhookFunctions: jest.Mocked<IWebhookFunctions>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+	let mockLoadOptionsFunctions: Mocked<ILoadOptionsFunctions>;
+	let mockWebhookFunctions: Mocked<IWebhookFunctions>;
 
 	beforeEach(() => {
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
 		mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>();
 		mockWebhookFunctions = mockDeep<IWebhookFunctions>();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockExecuteFunctions.getNode.mockReturnValue({
 			id: 'test-node',
@@ -26,7 +32,7 @@ describe('AWS GenericFunctions', () => {
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('awsApiRequest', () => {
@@ -40,7 +46,7 @@ describe('AWS GenericFunctions', () => {
 				const mockResponse = { success: true, data: 'test response' };
 
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 					mockResponse,
 				);
 
@@ -48,7 +54,7 @@ describe('AWS GenericFunctions', () => {
 					mockExecuteFunctions,
 					's3',
 					'GET',
-					'/test-path',
+					requestPath`/test-path`,
 					undefined,
 					{ 'Content-Type': 'application/json' },
 				);
@@ -76,7 +82,7 @@ describe('AWS GenericFunctions', () => {
 				const mockResponse = { result: 'lambda response' };
 
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 					mockResponse,
 				);
 
@@ -84,7 +90,7 @@ describe('AWS GenericFunctions', () => {
 					mockExecuteFunctions,
 					'lambda',
 					'POST',
-					'/2015-03-31/functions/test/invocations',
+					requestPath`/2015-03-31/functions/test/invocations`,
 					testBody,
 				);
 
@@ -108,7 +114,7 @@ describe('AWS GenericFunctions', () => {
 				const mockResponse = { success: true };
 
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 					mockResponse,
 				);
 
@@ -116,7 +122,7 @@ describe('AWS GenericFunctions', () => {
 					mockExecuteFunctions,
 					's3',
 					'PUT',
-					'/bucket/object',
+					requestPath`/bucket/object`,
 					testBody as any,
 				);
 
@@ -133,7 +139,7 @@ describe('AWS GenericFunctions', () => {
 				const mockResponse = ['option1', 'option2'];
 
 				mockLoadOptionsFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 					mockResponse,
 				);
 				mockLoadOptionsFunctions.getNode.mockReturnValue({
@@ -149,7 +155,7 @@ describe('AWS GenericFunctions', () => {
 					mockLoadOptionsFunctions,
 					'ec2',
 					'GET',
-					'/instances',
+					requestPath`/instances`,
 				);
 
 				expect(result).toEqual(mockResponse);
@@ -160,7 +166,7 @@ describe('AWS GenericFunctions', () => {
 				const mockResponse = { webhook: 'processed' };
 
 				mockWebhookFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockWebhookFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				(mockWebhookFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 					mockResponse,
 				);
 				mockWebhookFunctions.getNode.mockReturnValue({
@@ -176,7 +182,7 @@ describe('AWS GenericFunctions', () => {
 					mockWebhookFunctions,
 					'apigateway',
 					'GET',
-					'/webhooks',
+					requestPath`/webhooks`,
 				);
 
 				expect(result).toEqual(mockResponse);
@@ -187,11 +193,11 @@ describe('AWS GenericFunctions', () => {
 				const mockResponse = { success: true };
 
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 					mockResponse,
 				);
 
-				await awsApiRequest.call(mockExecuteFunctions, 's3', 'GET', '/list-buckets');
+				await awsApiRequest.call(mockExecuteFunctions, 's3', 'GET', requestPath`/list-buckets`);
 
 				expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 					'aws',
@@ -206,11 +212,11 @@ describe('AWS GenericFunctions', () => {
 				const mockResponse = { success: true };
 
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 					mockResponse,
 				);
 
-				await awsApiRequest.call(mockExecuteFunctions, 's3', 'GET', '/list-buckets');
+				await awsApiRequest.call(mockExecuteFunctions, 's3', 'GET', requestPath`/list-buckets`);
 
 				expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 					'aws',
@@ -227,7 +233,7 @@ describe('AWS GenericFunctions', () => {
 				mockExecuteFunctions.getCredentials.mockRejectedValue(credentialError);
 
 				await expect(
-					awsApiRequest.call(mockExecuteFunctions, 's3', 'GET', '/test-path'),
+					awsApiRequest.call(mockExecuteFunctions, 's3', 'GET', requestPath`/test-path`),
 				).rejects.toThrow('Failed to get AWS credentials');
 
 				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('aws');
@@ -238,12 +244,12 @@ describe('AWS GenericFunctions', () => {
 				const apiError = new Error('AWS API Error');
 
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
+				(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mockRejectedValue(
 					apiError,
 				);
 
 				await expect(
-					awsApiRequest.call(mockExecuteFunctions, 's3', 'GET', '/test-path'),
+					awsApiRequest.call(mockExecuteFunctions, 's3', 'GET', requestPath`/test-path`),
 				).rejects.toThrow(NodeApiError);
 
 				expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalled();
@@ -258,12 +264,12 @@ describe('AWS GenericFunctions', () => {
 				};
 
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockRejectedValue(
+				(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mockRejectedValue(
 					authError,
 				);
 
 				await expect(
-					awsApiRequest.call(mockExecuteFunctions, 's3', 'GET', '/test-path'),
+					awsApiRequest.call(mockExecuteFunctions, 's3', 'GET', requestPath`/test-path`),
 				).rejects.toThrow(NodeApiError);
 			});
 		});
@@ -274,11 +280,11 @@ describe('AWS GenericFunctions', () => {
 				const mockResponse = { success: true };
 
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 					mockResponse,
 				);
 
-				await awsApiRequest.call(mockExecuteFunctions, '', 'GET', '/test');
+				await awsApiRequest.call(mockExecuteFunctions, '', 'GET', requestPath`/test`);
 
 				expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 					'aws',
@@ -296,11 +302,11 @@ describe('AWS GenericFunctions', () => {
 				const mockResponse = { success: true };
 
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 					mockResponse,
 				);
 
-				await awsApiRequest.call(mockExecuteFunctions, 's3', 'GET', '/test');
+				await awsApiRequest.call(mockExecuteFunctions, 's3', 'GET', requestPath`/test`);
 
 				expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 					'aws',
@@ -315,14 +321,14 @@ describe('AWS GenericFunctions', () => {
 				const mockResponse = { success: true };
 
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 					mockResponse,
 				);
 
 				const methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'] as const;
 
 				for (const method of methods) {
-					await awsApiRequest.call(mockExecuteFunctions, 's3', method, '/test');
+					await awsApiRequest.call(mockExecuteFunctions, 's3', method, requestPath`/test`);
 
 					expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 						'aws',
@@ -345,7 +351,7 @@ describe('AWS GenericFunctions', () => {
 				const expectedParsed = { result: 'success', data: [1, 2, 3] };
 
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 					jsonResponse,
 				);
 
@@ -353,7 +359,7 @@ describe('AWS GenericFunctions', () => {
 					mockExecuteFunctions,
 					'lambda',
 					'POST',
-					'/2015-03-31/functions/test/invocations',
+					requestPath`/2015-03-31/functions/test/invocations`,
 					'{"test": "data"}',
 				);
 
@@ -366,7 +372,7 @@ describe('AWS GenericFunctions', () => {
 				const invalidJsonResponse = 'Not valid JSON content';
 
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 					invalidJsonResponse,
 				);
 
@@ -374,7 +380,7 @@ describe('AWS GenericFunctions', () => {
 					mockExecuteFunctions,
 					's3',
 					'GET',
-					'/bucket/object.txt',
+					requestPath`/bucket/object.txt`,
 				);
 
 				expect(result).toBe(invalidJsonResponse);
@@ -385,7 +391,7 @@ describe('AWS GenericFunctions', () => {
 				const emptyResponse = '';
 
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 					emptyResponse,
 				);
 
@@ -393,7 +399,7 @@ describe('AWS GenericFunctions', () => {
 					mockExecuteFunctions,
 					'lambda',
 					'POST',
-					'/test',
+					requestPath`/test`,
 				);
 
 				expect(result).toBe(emptyResponse);
@@ -404,7 +410,7 @@ describe('AWS GenericFunctions', () => {
 				const nullResponse = null;
 
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 					nullResponse,
 				);
 
@@ -412,7 +418,7 @@ describe('AWS GenericFunctions', () => {
 					mockExecuteFunctions,
 					's3',
 					'DELETE',
-					'/bucket',
+					requestPath`/bucket`,
 				);
 
 				expect(result).toBeNull();
@@ -423,7 +429,7 @@ describe('AWS GenericFunctions', () => {
 				const numberResponse = 42;
 
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 					numberResponse,
 				);
 
@@ -431,7 +437,7 @@ describe('AWS GenericFunctions', () => {
 					mockExecuteFunctions,
 					'cloudwatch',
 					'GET',
-					'/metrics',
+					requestPath`/metrics`,
 				);
 
 				expect(result).toBe(numberResponse);
@@ -442,7 +448,7 @@ describe('AWS GenericFunctions', () => {
 				const booleanResponse = true;
 
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 					booleanResponse,
 				);
 
@@ -450,7 +456,7 @@ describe('AWS GenericFunctions', () => {
 					mockExecuteFunctions,
 					's3',
 					'HEAD',
-					'/bucket/exists',
+					requestPath`/bucket/exists`,
 				);
 
 				expect(result).toBe(booleanResponse);
@@ -461,7 +467,7 @@ describe('AWS GenericFunctions', () => {
 				const jsonResponse = '["option1", "option2", "option3"]';
 
 				mockLoadOptionsFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 					jsonResponse,
 				);
 				mockLoadOptionsFunctions.getNode.mockReturnValue({
@@ -477,7 +483,7 @@ describe('AWS GenericFunctions', () => {
 					mockLoadOptionsFunctions,
 					'ec2',
 					'GET',
-					'/instances',
+					requestPath`/instances`,
 				);
 
 				expect(result).toEqual(['option1', 'option2', 'option3']);
@@ -490,7 +496,7 @@ describe('AWS GenericFunctions', () => {
 				mockExecuteFunctions.getCredentials.mockRejectedValue(apiError);
 
 				await expect(
-					awsApiRequestREST.call(mockExecuteFunctions, 's3', 'GET', '/test'),
+					awsApiRequestREST.call(mockExecuteFunctions, 's3', 'GET', requestPath`/test`),
 				).rejects.toThrow('API request failed');
 			});
 
@@ -499,7 +505,7 @@ describe('AWS GenericFunctions', () => {
 				const malformedJson = '{"incomplete": json';
 
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 					malformedJson,
 				);
 
@@ -507,7 +513,7 @@ describe('AWS GenericFunctions', () => {
 					mockExecuteFunctions,
 					'lambda',
 					'POST',
-					'/test',
+					requestPath`/test`,
 				);
 
 				expect(result).toBe(malformedJson);
@@ -522,7 +528,7 @@ describe('AWS GenericFunctions', () => {
 				const xmlResponse = '<response><status>success</status><data>test</data></response>';
 
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 					xmlResponse,
 				);
 
@@ -530,7 +536,7 @@ describe('AWS GenericFunctions', () => {
 					mockExecuteFunctions,
 					'ses',
 					'POST',
-					'/send-email',
+					requestPath`/send-email`,
 					'<email>test</email>',
 				);
 
@@ -547,7 +553,7 @@ describe('AWS GenericFunctions', () => {
 				const invalidXmlResponse = 'Not valid XML content';
 
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 					invalidXmlResponse,
 				);
 
@@ -555,7 +561,7 @@ describe('AWS GenericFunctions', () => {
 					mockExecuteFunctions,
 					'ses',
 					'POST',
-					'/send-email',
+					requestPath`/send-email`,
 				);
 
 				expect(result).toBe(invalidXmlResponse);
@@ -566,11 +572,16 @@ describe('AWS GenericFunctions', () => {
 				const emptyResponse = '';
 
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 					emptyResponse,
 				);
 
-				const result = await awsApiRequestSOAP.call(mockExecuteFunctions, 'ses', 'GET', '/status');
+				const result = await awsApiRequestSOAP.call(
+					mockExecuteFunctions,
+					'ses',
+					'GET',
+					requestPath`/status`,
+				);
 
 				expect(result).toBeNull();
 			});
@@ -581,7 +592,7 @@ describe('AWS GenericFunctions', () => {
 					'<ListQueuesResult><QueueUrl>url1</QueueUrl><QueueUrl>url2</QueueUrl></ListQueuesResult>';
 
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 					complexXml,
 				);
 
@@ -589,7 +600,7 @@ describe('AWS GenericFunctions', () => {
 					mockExecuteFunctions,
 					'sqs',
 					'GET',
-					'/list-queues',
+					requestPath`/list-queues`,
 				);
 
 				expect(result).toEqual({
@@ -604,7 +615,7 @@ describe('AWS GenericFunctions', () => {
 				const xmlResponse = '<options><item>opt1</item><item>opt2</item></options>';
 
 				mockLoadOptionsFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+				(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 					xmlResponse,
 				);
 				mockLoadOptionsFunctions.getNode.mockReturnValue({
@@ -620,7 +631,7 @@ describe('AWS GenericFunctions', () => {
 					mockLoadOptionsFunctions,
 					'ses',
 					'GET',
-					'/options',
+					requestPath`/options`,
 				);
 
 				expect(result).toEqual({
@@ -635,9 +646,28 @@ describe('AWS GenericFunctions', () => {
 				mockExecuteFunctions.getCredentials.mockRejectedValue(apiError);
 
 				await expect(
-					awsApiRequestSOAP.call(mockExecuteFunctions, 'ses', 'POST', '/test'),
+					awsApiRequestSOAP.call(mockExecuteFunctions, 'ses', 'POST', requestPath`/test`),
 				).rejects.toThrow('SOAP API request failed');
 			});
+		});
+	});
+
+	describe('awsRequestPath', () => {
+		it('should append encoded query values to the path', () => {
+			expect(
+				awsRequestPath(requestPath`/2015-03-31/functions/${'orders/sync?x=1'}/invocations`, {
+					Qualifier: '$LATEST',
+					Message: 'a b&Action=DeleteTopic#x',
+					MaxItems: 50,
+				}),
+			).toBe(
+				'/2015-03-31/functions/orders%2Fsync%3Fx=1/invocations?Qualifier=%24LATEST&Message=a%20b%26Action%3DDeleteTopic%23x&MaxItems=50',
+			);
+		});
+
+		it('should return the path without a query', () => {
+			expect(awsRequestPath(requestPath`/`)).toBe('/');
+			expect(awsRequestPath(requestPath`/`, {})).toBe('/');
 		});
 	});
 });

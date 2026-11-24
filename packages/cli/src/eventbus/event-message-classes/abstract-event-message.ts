@@ -102,8 +102,15 @@ export abstract class AbstractEventMessage {
 		this.setOptionsOrDefault(options);
 	}
 
-	abstract deserialize(data: JsonObject): this;
 	abstract setPayload(payload: AbstractEventPayload): this;
+
+	deserialize(data: JsonObject): this {
+		if (isEventMessageOptionsWithType(data, this.__type)) {
+			this.setOptionsOrDefault(data);
+			if (data.payload) this.setPayload(data.payload);
+		}
+		return this;
+	}
 
 	anonymize(): AbstractEventPayload {
 		const anonymizedPayload = modifyUnderscoredKeys(this.payload);
@@ -114,7 +121,7 @@ export abstract class AbstractEventMessage {
 		return {
 			__type: this.__type,
 			id: this.id,
-			ts: this.ts.toISO(),
+			ts: this.ts.toISO() ?? undefined,
 			eventName: this.eventName,
 			message: this.message,
 			payload: this.payload,

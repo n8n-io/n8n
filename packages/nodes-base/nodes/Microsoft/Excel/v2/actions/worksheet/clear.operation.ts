@@ -1,8 +1,10 @@
 import type { INodeExecutionData, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { microsoftApiRequest } from '../../transport';
+import { stampItemIndexOnError } from '../../../../GenericFunctions';
+import { microsoftApiRequest, toWorkbookId } from '../../transport';
 import { workbookRLC, worksheetRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
@@ -71,9 +73,12 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const workbookId = this.getNodeParameter('workbook', i, undefined, {
-				extractValue: true,
-			}) as string;
+			const workbookId = toWorkbookId.call(
+				this,
+				this.getNodeParameter('workbook', i, undefined, {
+					extractValue: true,
+				}) as string,
+			);
 
 			const worksheetId = this.getNodeParameter('worksheet', i, undefined, {
 				extractValue: true,
@@ -81,23 +86,25 @@ export async function execute(
 
 			const applyTo = this.getNodeParameter('applyTo', i) as string;
 			const useRange = this.getNodeParameter('useRange', i, false) as boolean;
+			const range = useRange ? (this.getNodeParameter('range', i, '') as string) : '';
 
-			if (!useRange) {
-				await microsoftApiRequest.call(
-					this,
-					'POST',
-					`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range/clear`,
-					{ applyTo },
-				);
-			} else {
-				const range = this.getNodeParameter('range', i, '') as string;
-				await microsoftApiRequest.call(
-					this,
-					'POST',
-					`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')/clear`,
-					{ applyTo },
-				);
+			let rangePath = requestPath`/range`;
+			if (useRange) {
+				rangePath = range
+					? requestPath`/range(address='${range}')`
+					: requestPath`/range(address='')`;
 			}
+
+			await microsoftApiRequest.call(
+				this,
+				'POST',
+				requestPath`/items/${workbookId}/workbook/worksheets/${worksheetId}${rangePath}/clear`,
+				{ applyTo },
+				undefined,
+				undefined,
+				undefined,
+				i,
+			);
 
 			const executionData = this.helpers.constructExecutionMetaData(
 				this.helpers.returnJsonArray({ success: true }),
@@ -114,7 +121,8 @@ export async function execute(
 				returnData.push(...executionErrorData);
 				continue;
 			}
-			throw error;
+			// A NodeError from the transport may be missing the itemIndex, add it
+			throw stampItemIndexOnError(error, i);
 		}
 	}
 

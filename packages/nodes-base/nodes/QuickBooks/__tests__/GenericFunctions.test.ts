@@ -1,9 +1,116 @@
+import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
-import { processLines } from '../GenericFunctions';
+import { getSyncToken, processLines, quickBooksApiRequest } from '../GenericFunctions';
+
+describe('quickBooksApiRequest', () => {
+	const mockExecuteFunctions = mockDeep<IExecuteFunctions>();
+
+	beforeEach(() => {
+		vi.resetAllMocks();
+		mockExecuteFunctions.getNodeParameter.mockReturnValue('invoice');
+		mockExecuteFunctions.getCredentials.mockResolvedValue({
+			environment: 'production',
+		});
+	});
+
+	it('should initialize headers for send operation', async () => {
+		mockExecuteFunctions.getNodeParameter
+			.mockReturnValueOnce('invoice')
+			.mockReturnValueOnce('send');
+
+		await quickBooksApiRequest.call(mockExecuteFunctions, 'POST', requestPath`/test`, {}, {});
+
+		expect(mockExecuteFunctions.helpers.requestOAuth2).toHaveBeenCalledWith(
+			'quickBooksOAuth2Api',
+			expect.objectContaining({
+				headers: expect.objectContaining({
+					'Content-Type': 'application/octet-stream',
+				}),
+			}),
+		);
+	});
+
+	it('should initialize headers for void operation', async () => {
+		mockExecuteFunctions.getNodeParameter
+			.mockReturnValueOnce('invoice')
+			.mockReturnValueOnce('void');
+
+		await quickBooksApiRequest.call(mockExecuteFunctions, 'POST', requestPath`/test`, {}, {});
+
+		expect(mockExecuteFunctions.helpers.requestOAuth2).toHaveBeenCalledWith(
+			'quickBooksOAuth2Api',
+			expect.objectContaining({
+				headers: expect.objectContaining({
+					'Content-Type': 'application/json',
+				}),
+			}),
+		);
+	});
+
+	it('should initialize headers for delete operation', async () => {
+		mockExecuteFunctions.getNodeParameter
+			.mockReturnValueOnce('payment')
+			.mockReturnValueOnce('delete');
+
+		await quickBooksApiRequest.call(mockExecuteFunctions, 'POST', requestPath`/test`, {}, {});
+
+		expect(mockExecuteFunctions.helpers.requestOAuth2).toHaveBeenCalledWith(
+			'quickBooksOAuth2Api',
+			expect.objectContaining({
+				headers: expect.objectContaining({
+					'Content-Type': 'application/json',
+				}),
+			}),
+		);
+	});
+
+	it('should initialize headers for download operation', async () => {
+		mockExecuteFunctions.getNodeParameter
+			.mockReturnValueOnce('invoice')
+			.mockReturnValueOnce('get')
+			.mockReturnValueOnce(true);
+
+		await quickBooksApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/test`, {}, {});
+
+		expect(mockExecuteFunctions.helpers.requestOAuth2).toHaveBeenCalledWith(
+			'quickBooksOAuth2Api',
+			expect.objectContaining({
+				headers: expect.objectContaining({
+					Accept: 'application/pdf',
+				}),
+			}),
+		);
+	});
+});
+
+describe('getSyncToken', () => {
+	it('should encode the resource ID as one path segment', async () => {
+		const context = mockDeep<IExecuteFunctions>();
+		context.getNodeParameter.mockImplementation((name: string) =>
+			name === 'invoiceId' ? '130/send?x=1' : 'invoice',
+		);
+		context.getCredentials.mockResolvedValue({ environment: 'production' });
+		context.helpers.requestOAuth2.mockResolvedValue({ Invoice: { SyncToken: '2' } });
+
+		await getSyncToken.call(context, 0, '9130357766900000', 'invoice');
+
+		expect(context.helpers.requestOAuth2).toHaveBeenCalledWith(
+			'quickBooksOAuth2Api',
+			expect.objectContaining({
+				uri: expect.objectContaining({
+					value:
+						'https://quickbooks.api.intuit.com/v3/company/9130357766900000/invoice/130%2Fsend%3Fx=1',
+				}),
+			}),
+		);
+	});
+});
+
 describe('processLines', () => {
 	const mockExecuteFunctions: Partial<IExecuteFunctions> = {
-		getNodeParameter: jest.fn(),
+		getNodeParameter: vi.fn(),
 	};
 
 	test('should process AccountBasedExpenseLineDetail for bill resource', () => {

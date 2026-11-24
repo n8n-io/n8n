@@ -1,0 +1,462 @@
+import { createNodeReplacementRule } from './node-replacement-rule';
+
+export const BinaryInputLoaderRemovedRule = createNodeReplacementRule({
+	id: 'binary-input-loader-removed',
+	removedNodeName: 'Binary Input Loader',
+	removedNodeType: '@n8n/n8n-nodes-langchain.documentBinaryInputLoader',
+	recommendations: [
+		{
+			action: 'Replace with Default Data Loader',
+			description: 'Replace this node with Default Data Loader and set Type of Data to Binary.',
+		},
+	],
+});
+
+export const ChatMessagesRetrieverRemovedRule = createNodeReplacementRule({
+	id: 'chat-messages-retriever-removed',
+	removedNodeName: 'Chat Messages Retriever',
+	removedNodeType: '@n8n/n8n-nodes-langchain.memoryChatRetriever',
+	assistant: 'fix',
+	recommendations: [
+		{
+			action: 'Replace with Memory Manager',
+			description:
+				'Replace this node with Memory Manager and set Operation Mode to Get Many Messages.',
+		},
+	],
+});
+
+export const ConvertToFromBinaryDataRemovedRule = createNodeReplacementRule({
+	id: 'convert-to-from-binary-data-removed',
+	removedNodeName: 'Convert to/from binary data',
+	removedNodeType: 'n8n-nodes-base.moveBinaryData',
+	assistant: 'fix',
+	recommendations: [
+		{
+			action: 'Replace with Extract From File',
+			description:
+				'For Binary to JSON with Set All Data on, replace this node with Extract From File and select Extract From JSON. The new node puts the data under the Destination Output Field, not at the root of the item. Update the expressions that read the data, or add an Edit Fields node. If Keep Source is on, set the Keep Source option to Binary.',
+		},
+		{
+			action: 'Replace with Extract From File',
+			description:
+				'For Binary to JSON with Set All Data off, replace this node with Extract From File. Select Move File to Base64 String if Keep As Base64 is on, Extract From JSON if JSON Parse is on, or else Extract From Text File. To keep the other fields of the item, set the Keep Source option to JSON, or to Both if Keep Source is on.',
+		},
+		{
+			action: 'Replace with Convert to File',
+			description:
+				'For JSON to Binary with Convert All Data on, replace this node with Convert to File, select Convert to JSON, and set Mode to Each Item to Separate File. The default mode writes all items to one file.',
+		},
+		{
+			action: 'Replace with Convert to File',
+			description:
+				'For JSON to Binary with Convert All Data off, replace this node with Convert to File. Select Move Base64 String to File if Data Is Base64 is on, or else Convert to Text File. Convert to Text File writes a text value without the JSON quotes that the old node added when Use Raw Data was off. In both JSON to Binary modes, Convert to File does not keep the other fields of the item. To keep them, add a Merge node that combines the items by position.',
+		},
+		{
+			action: 'Check items without the input field',
+			description:
+				'Except for JSON to Binary with Convert All Data on, the new node fails when the input field is missing, but the old node skipped the item.',
+		},
+	],
+});
+
+export const CronRemovedRule = createNodeReplacementRule({
+	id: 'cron-removed',
+	removedNodeName: 'Cron',
+	removedNodeType: 'n8n-nodes-base.cron',
+	assistant: 'fix',
+	recommendations: [
+		{
+			action: 'Replace with Schedule Trigger',
+			description: 'Replace this node with Schedule Trigger and recreate its schedule rules.',
+		},
+	],
+});
+
+export const FunctionRemovedRule = createNodeReplacementRule({
+	id: 'function-removed',
+	removedNodeName: 'Function',
+	removedNodeType: 'n8n-nodes-base.function',
+	assistant: 'fix',
+	recommendations: [
+		{
+			action: 'Replace with Code',
+			description: 'Replace this node with Code and set Mode to Run Once for All Items.',
+		},
+	],
+});
+
+export const FunctionItemRemovedRule = createNodeReplacementRule({
+	id: 'function-item-removed',
+	removedNodeName: 'Function Item',
+	removedNodeType: 'n8n-nodes-base.functionItem',
+	assistant: 'fix',
+	recommendations: [
+		{
+			action: 'Replace with Code',
+			description: 'Replace this node with Code and set Mode to Run Once for Each Item.',
+		},
+	],
+});
+
+export const HtmlExtractRemovedRule = createNodeReplacementRule({
+	id: 'html-extract-removed',
+	removedNodeName: 'HTML Extract',
+	removedNodeType: 'n8n-nodes-base.htmlExtract',
+	assistant: 'fix',
+	recommendations: [
+		{
+			action: 'Replace with HTML',
+			description: 'Replace this node with HTML and select Extract HTML Content.',
+		},
+	],
+});
+
+export const HttpRequestToolRemovedRule = createNodeReplacementRule({
+	id: 'http-request-tool-removed',
+	removedNodeName: 'HTTP Request Tool',
+	removedNodeType: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+	assistant: 'fix',
+	recommendations: [
+		{
+			action: 'Replace with HTTP Request',
+			description:
+				'Replace this node with HTTP Request and connect it to the Tool input of the AI Agent.',
+		},
+	],
+});
+
+export const ICalendarRemovedRule = createNodeReplacementRule({
+	id: 'i-calendar-removed',
+	removedNodeName: 'iCalendar',
+	removedNodeType: 'n8n-nodes-base.iCal',
+	recommendations: [
+		{
+			action: 'Replace with Convert to File',
+			description: 'Replace this node with Convert to File and select Convert to ICS.',
+		},
+	],
+});
+
+export const ItemListsRemovedRule = createNodeReplacementRule({
+	id: 'item-lists-removed',
+	removedNodeName: 'Item Lists',
+	removedNodeType: 'n8n-nodes-base.itemLists',
+	assistant: 'fix',
+	recommendations: [
+		{
+			action: 'Replace with Aggregate',
+			description: 'For Concatenate Items, replace this node with Aggregate.',
+		},
+		{
+			action: 'Replace with Limit',
+			description: 'For Limit, replace this node with Limit.',
+		},
+		{
+			action: 'Replace with Remove Duplicates',
+			description: 'For Remove Duplicates, replace this node with Remove Duplicates.',
+		},
+		{
+			action: 'Replace with Sort',
+			description: 'For Sort, replace this node with Sort.',
+		},
+		{
+			action: 'Replace with Split Out',
+			description: 'For Split Out Items, replace this node with Split Out.',
+		},
+		{
+			action: 'Replace with Summarize',
+			description: 'For Summarize, replace this node with Summarize.',
+		},
+	],
+});
+
+export const InMemoryVectorStoreInsertRemovedRule = createNodeReplacementRule({
+	id: 'in-memory-vector-store-insert-removed',
+	removedNodeName: 'In Memory Vector Store Insert',
+	removedNodeType: '@n8n/n8n-nodes-langchain.vectorStoreInMemoryInsert',
+	recommendations: [
+		{
+			action: 'Replace with In-Memory Vector Store',
+			description: 'Replace this node with In-Memory Vector Store and select Insert Documents.',
+		},
+	],
+});
+
+export const InMemoryVectorStoreLoadRemovedRule = createNodeReplacementRule({
+	id: 'in-memory-vector-store-load-removed',
+	removedNodeName: 'In Memory Vector Store Load',
+	removedNodeType: '@n8n/n8n-nodes-langchain.vectorStoreInMemoryLoad',
+	recommendations: [
+		{
+			action: 'Replace with In-Memory Vector Store',
+			description: 'Replace this node with In-Memory Vector Store and select Get Many.',
+		},
+	],
+});
+
+export const IntervalRemovedRule = createNodeReplacementRule({
+	id: 'interval-removed',
+	removedNodeName: 'Interval',
+	removedNodeType: 'n8n-nodes-base.interval',
+	assistant: 'fix',
+	recommendations: [
+		{
+			action: 'Replace with Schedule Trigger',
+			description:
+				'Replace this node with Schedule Trigger and set the interval again. Schedule Trigger runs at fixed clock times and supports 1–59 seconds, 1–59 minutes, 1–23 hours, or 1-31 days. For an even gap in seconds, use a value that divides 60, such as 5, 15, or 30.',
+		},
+	],
+});
+
+export const JsonInputLoaderRemovedRule = createNodeReplacementRule({
+	id: 'json-input-loader-removed',
+	removedNodeName: 'JSON Input Loader',
+	removedNodeType: '@n8n/n8n-nodes-langchain.documentJsonInputLoader',
+	recommendations: [
+		{
+			action: 'Replace with Default Data Loader',
+			description: 'Replace this node with Default Data Loader and set Type of Data to JSON.',
+		},
+	],
+});
+
+export const ManualChatTriggerRemovedRule = createNodeReplacementRule({
+	id: 'manual-chat-trigger-removed',
+	removedNodeName: 'Manual Chat Trigger',
+	removedNodeType: '@n8n/n8n-nodes-langchain.manualChatTrigger',
+	assistant: 'fix',
+	recommendations: [
+		{
+			action: 'Replace with Chat Trigger',
+			description: 'Replace this node with Chat Trigger and recreate its chat settings.',
+		},
+	],
+});
+
+export const OpenAiAssistantRemovedRule = createNodeReplacementRule({
+	id: 'openai-assistant-removed',
+	removedNodeName: 'OpenAI Assistant',
+	removedNodeType: '@n8n/n8n-nodes-langchain.openAiAssistant',
+	recommendations: [
+		{
+			action: 'Replace with OpenAI',
+			description: 'Replace this node with OpenAI and select the Assistant resource.',
+		},
+	],
+});
+
+export const OpenAiRemovedRule = createNodeReplacementRule({
+	id: 'openai-removed',
+	removedNodeName: 'OpenAI',
+	removedNodeType: 'n8n-nodes-base.openAi',
+	assistant: 'fix',
+	recommendations: [
+		{
+			action: 'Replace with OpenAI',
+			description: 'Replace this node with the new OpenAI node and recreate its settings.',
+		},
+	],
+});
+
+export const OpenAiModelRemovedRule = createNodeReplacementRule({
+	id: 'openai-model-removed',
+	removedNodeName: 'OpenAI Model',
+	removedNodeType: '@n8n/n8n-nodes-langchain.lmOpenAi',
+	assistant: 'fix',
+	recommendations: [
+		{
+			action: 'Replace with OpenAI Chat Model',
+			description: 'Replace this node with OpenAI Chat Model and recreate its model settings.',
+		},
+	],
+});
+
+export const PineconeInsertRemovedRule = createNodeReplacementRule({
+	id: 'pinecone-insert-removed',
+	removedNodeName: 'Pinecone: Insert',
+	removedNodeType: '@n8n/n8n-nodes-langchain.vectorStorePineconeInsert',
+	recommendations: [
+		{
+			action: 'Replace with Pinecone Vector Store',
+			description: 'Replace this node with Pinecone Vector Store and select Insert Documents.',
+		},
+	],
+});
+
+export const PineconeLoadRemovedRule = createNodeReplacementRule({
+	id: 'pinecone-load-removed',
+	removedNodeName: 'Pinecone: Load',
+	removedNodeType: '@n8n/n8n-nodes-langchain.vectorStorePineconeLoad',
+	recommendations: [
+		{
+			action: 'Replace with Pinecone Vector Store',
+			description: 'Replace this node with Pinecone Vector Store and select Get Many.',
+		},
+	],
+});
+
+export const ReadBinaryFileRemovedRule = createNodeReplacementRule({
+	id: 'read-binary-file-removed',
+	removedNodeName: 'Read Binary File',
+	removedNodeType: 'n8n-nodes-base.readBinaryFile',
+	assistant: 'fix',
+	recommendations: [
+		{
+			action: 'Replace with Read/Write Files from Disk',
+			description:
+				'Replace this node with Read/Write Files from Disk and select Read File(s) From Disk.',
+		},
+	],
+});
+
+export const ReadBinaryFilesRemovedRule = createNodeReplacementRule({
+	id: 'read-binary-files-removed',
+	removedNodeName: 'Read Binary Files',
+	removedNodeType: 'n8n-nodes-base.readBinaryFiles',
+	assistant: 'fix',
+	recommendations: [
+		{
+			action: 'Replace with Read/Write Files from Disk',
+			description:
+				'Replace this node with Read/Write Files from Disk and select Read File(s) From Disk.',
+		},
+	],
+});
+
+export const ReadPdfRemovedRule = createNodeReplacementRule({
+	id: 'read-pdf-removed',
+	removedNodeName: 'Read PDF',
+	removedNodeType: 'n8n-nodes-base.readPDF',
+	assistant: 'fix',
+	recommendations: [
+		{
+			action: 'Replace with Extract From File',
+			description: 'Replace this node with Extract From File and select Extract From PDF.',
+		},
+	],
+});
+
+export const SerpApiGoogleSearchRemovedRule = createNodeReplacementRule({
+	id: 'serpapi-google-search-removed',
+	removedNodeName: 'SerpApi (Google Search)',
+	removedNodeType: '@n8n/n8n-nodes-langchain.toolSerpApi',
+	recommendations: [
+		{
+			action: 'Replace with SerpApi',
+			description:
+				'Replace this node with the verified SerpApi community node and recreate its search settings.',
+		},
+	],
+});
+
+export const SupabaseInsertRemovedRule = createNodeReplacementRule({
+	id: 'supabase-insert-removed',
+	removedNodeName: 'Supabase: Insert',
+	removedNodeType: '@n8n/n8n-nodes-langchain.vectorStoreSupabaseInsert',
+	recommendations: [
+		{
+			action: 'Replace with Supabase Vector Store',
+			description: 'Replace this node with Supabase Vector Store and select Insert Documents.',
+		},
+	],
+});
+
+export const SupabaseLoadRemovedRule = createNodeReplacementRule({
+	id: 'supabase-load-removed',
+	removedNodeName: 'Supabase: Load',
+	removedNodeType: '@n8n/n8n-nodes-langchain.vectorStoreSupabaseLoad',
+	recommendations: [
+		{
+			action: 'Replace with Supabase Vector Store',
+			description: 'Replace this node with Supabase Vector Store and select Get Many.',
+		},
+	],
+});
+
+export const WorkflowTriggerRemovedRule = createNodeReplacementRule({
+	id: 'workflow-trigger-removed',
+	removedNodeName: 'Workflow Trigger',
+	removedNodeType: 'n8n-nodes-base.workflowTrigger',
+	assistant: 'fix',
+	recommendations: [
+		{
+			action: 'Replace with n8n Trigger',
+			description: 'Replace this node with n8n Trigger and recreate its event settings.',
+		},
+	],
+});
+
+export const WriteBinaryFileRemovedRule = createNodeReplacementRule({
+	id: 'write-binary-file-removed',
+	removedNodeName: 'Write Binary File',
+	removedNodeType: 'n8n-nodes-base.writeBinaryFile',
+	recommendations: [
+		{
+			action: 'Replace with Read/Write Files from Disk',
+			description:
+				'Replace this node with Read/Write Files from Disk and select Write File to Disk.',
+		},
+	],
+});
+
+export const directNodeReplacementRules = [
+	{
+		rule: BinaryInputLoaderRemovedRule,
+		removedNodeType: '@n8n/n8n-nodes-langchain.documentBinaryInputLoader',
+	},
+	{
+		rule: ChatMessagesRetrieverRemovedRule,
+		removedNodeType: '@n8n/n8n-nodes-langchain.memoryChatRetriever',
+	},
+	{ rule: ConvertToFromBinaryDataRemovedRule, removedNodeType: 'n8n-nodes-base.moveBinaryData' },
+	{ rule: CronRemovedRule, removedNodeType: 'n8n-nodes-base.cron' },
+	{ rule: FunctionRemovedRule, removedNodeType: 'n8n-nodes-base.function' },
+	{ rule: FunctionItemRemovedRule, removedNodeType: 'n8n-nodes-base.functionItem' },
+	{ rule: HtmlExtractRemovedRule, removedNodeType: 'n8n-nodes-base.htmlExtract' },
+	{ rule: HttpRequestToolRemovedRule, removedNodeType: '@n8n/n8n-nodes-langchain.toolHttpRequest' },
+	{ rule: ICalendarRemovedRule, removedNodeType: 'n8n-nodes-base.iCal' },
+	{ rule: ItemListsRemovedRule, removedNodeType: 'n8n-nodes-base.itemLists' },
+	{
+		rule: InMemoryVectorStoreInsertRemovedRule,
+		removedNodeType: '@n8n/n8n-nodes-langchain.vectorStoreInMemoryInsert',
+	},
+	{
+		rule: InMemoryVectorStoreLoadRemovedRule,
+		removedNodeType: '@n8n/n8n-nodes-langchain.vectorStoreInMemoryLoad',
+	},
+	{ rule: IntervalRemovedRule, removedNodeType: 'n8n-nodes-base.interval' },
+	{
+		rule: JsonInputLoaderRemovedRule,
+		removedNodeType: '@n8n/n8n-nodes-langchain.documentJsonInputLoader',
+	},
+	{
+		rule: ManualChatTriggerRemovedRule,
+		removedNodeType: '@n8n/n8n-nodes-langchain.manualChatTrigger',
+	},
+	{ rule: OpenAiAssistantRemovedRule, removedNodeType: '@n8n/n8n-nodes-langchain.openAiAssistant' },
+	{ rule: OpenAiRemovedRule, removedNodeType: 'n8n-nodes-base.openAi' },
+	{ rule: OpenAiModelRemovedRule, removedNodeType: '@n8n/n8n-nodes-langchain.lmOpenAi' },
+	{
+		rule: PineconeInsertRemovedRule,
+		removedNodeType: '@n8n/n8n-nodes-langchain.vectorStorePineconeInsert',
+	},
+	{
+		rule: PineconeLoadRemovedRule,
+		removedNodeType: '@n8n/n8n-nodes-langchain.vectorStorePineconeLoad',
+	},
+	{ rule: ReadBinaryFileRemovedRule, removedNodeType: 'n8n-nodes-base.readBinaryFile' },
+	{ rule: ReadBinaryFilesRemovedRule, removedNodeType: 'n8n-nodes-base.readBinaryFiles' },
+	{ rule: ReadPdfRemovedRule, removedNodeType: 'n8n-nodes-base.readPDF' },
+	{ rule: SerpApiGoogleSearchRemovedRule, removedNodeType: '@n8n/n8n-nodes-langchain.toolSerpApi' },
+	{
+		rule: SupabaseInsertRemovedRule,
+		removedNodeType: '@n8n/n8n-nodes-langchain.vectorStoreSupabaseInsert',
+	},
+	{
+		rule: SupabaseLoadRemovedRule,
+		removedNodeType: '@n8n/n8n-nodes-langchain.vectorStoreSupabaseLoad',
+	},
+	{ rule: WorkflowTriggerRemovedRule, removedNodeType: 'n8n-nodes-base.workflowTrigger' },
+	{ rule: WriteBinaryFileRemovedRule, removedNodeType: 'n8n-nodes-base.writeBinaryFile' },
+];

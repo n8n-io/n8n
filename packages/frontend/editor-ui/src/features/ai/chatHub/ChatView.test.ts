@@ -1,10 +1,11 @@
 import { createComponentRenderer } from '@/__tests__/render';
+import { registerToastNotifier } from '@/app/init/toastNotifier';
 import { emptyChatModelsResponse } from '@n8n/api-types';
 import { within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { reactive } from 'vue';
+import { nextTick, reactive } from 'vue';
 import {
 	createChatHubModuleSettings,
 	createMockAgent,
@@ -12,14 +13,13 @@ import {
 	createMockMessageDto,
 	createMockModelsResponse,
 	createMockSession,
-	wrapOnMessageUpdate,
-	type SimulateStreamChunkFn,
 } from './__test__/data';
+import type { useChatStore } from './chat.store';
 import * as chatApi from './chat.api';
 import ChatView from './ChatView.vue';
 
 // Mock external stores and modules
-vi.mock('@/features/settings/users/users.store', () => ({
+vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: () => ({
 		currentUserId: 'user-123',
 		currentUser: {
@@ -41,7 +41,7 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
 		fetchCredentialTypes: vi.fn().mockResolvedValue(undefined),
 		fetchAllCredentials: vi.fn().mockResolvedValue(undefined),
-		fetchAllCredentialsForWorkflow: vi.fn().mockResolvedValue([]),
+		fetchUsableCredentials: vi.fn().mockResolvedValue([]),
 		getCredentialById: vi.fn().mockReturnValue(undefined),
 		getCredentialsByType: vi.fn().mockReturnValue([]),
 		getCredentialTypeByName: vi.fn().mockReturnValue(undefined),
@@ -52,14 +52,28 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 
 vi.mock('./chat.api');
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: () => ({
 		settings: {},
 		moduleSettings: {
 			'chat-hub': createChatHubModuleSettings(),
 		},
+		isChatFeatureEnabled: true,
+		isModuleActive: vi.fn().mockReturnValue(false),
 	}),
 }));
+
+const { mockHasRole } = vi.hoisted(() => ({
+	mockHasRole: vi.fn(() => true),
+}));
+
+vi.mock('@/app/utils/rbac/checks', async (importOriginal) => {
+	const actual = await importOriginal();
+	return {
+		...(actual as object),
+		hasRole: mockHasRole,
+	};
+});
 
 vi.mock('@/features/collaboration/projects/projects.store', () => ({
 	useProjectsStore: () => ({
@@ -72,6 +86,21 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => ({
 		loadNodeTypesIfNotLoaded: vi.fn().mockResolvedValue(undefined),
 		nodeTypes: [],
+		getNodeType: vi.fn(() => null),
+		getAllNodeTypes: vi.fn().mockReturnValue({
+			nodeTypes: {},
+			init: async () => {},
+			getByNameAndVersion: () => undefined,
+		}),
+	}),
+}));
+
+vi.mock('@/app/stores/pushConnection.store', () => ({
+	usePushConnectionStore: () => ({
+		pushConnect: vi.fn(),
+		pushDisconnect: vi.fn(),
+		addEventListener: vi.fn(() => vi.fn()),
+		isConnected: { value: true },
 	}),
 }));
 
@@ -88,7 +117,6 @@ const mockRouterPush = vi.fn((route) => {
 });
 
 vi.mock('vue-router', async (importOriginal) => {
-	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 	const actual = await importOriginal<typeof import('vue-router')>();
 
 	return {
@@ -105,40 +133,97 @@ const renderComponent = createComponentRenderer(ChatView);
 
 describe('ChatView', () => {
 	let pinia: ReturnType<typeof createPinia>;
-	let simulateStreamChunk: SimulateStreamChunkFn;
-	let simulateStreamDone: () => void;
+	let chatStore: ReturnType<typeof useChatStore>;
 
-	beforeEach(() => {
+	// Helper to simulate WebSocket stream events
+	function simulateStreamChunk(
+		type: 'begin' | 'item' | 'end',
+		content: string,
+		metadata: {
+			messageId: string;
+			previousMessageId: string | null;
+			retryOfMessageId?: string | null;
+		},
+	) {
+		if (type === 'begin') {
+			chatStore.handleWebSocketStreamBegin({
+				sessionId: chatStore.streaming?.sessionId ?? '',
+				messageId: metadata.messageId,
+				previousMessageId: metadata.previousMessageId,
+				retryOfMessageId: metadata.retryOfMessageId ?? null,
+			});
+		} else if (type === 'item') {
+			chatStore.handleWebSocketStreamChunk({
+				sessionId: chatStore.streaming?.sessionId ?? '',
+				messageId: metadata.messageId,
+				content,
+			});
+		} else if (type === 'end') {
+			chatStore.handleWebSocketStreamEnd({
+				sessionId: chatStore.streaming?.sessionId ?? '',
+				messageId: metadata.messageId,
+				status: 'success',
+			});
+		}
+	}
+
+	function simulateStreamDone() {
+		chatStore.handleWebSocketExecutionEnd({
+			sessionId: chatStore.streaming?.sessionId ?? '',
+			status: 'success',
+		});
+	}
+
+	// Helper to simulate human message created event (sent from backend when message is accepted)
+	function simulateHumanMessageCreated(metadata: {
+		sessionId: string;
+		messageId: string;
+		previousMessageId: string | null;
+		content: string;
+	}) {
+		chatStore.handleHumanMessageCreated({
+			sessionId: metadata.sessionId,
+			messageId: metadata.messageId,
+			previousMessageId: metadata.previousMessageId,
+			content: metadata.content,
+			attachments: [],
+			timestamp: Date.now(),
+		});
+	}
+
+	beforeEach(async () => {
+		// The error-toast test below asserts on rendered toast content, which needs
+		// the notifier the app registers at bootstrap. Explicit here because it no
+		// longer arrives as a side effect of importing
+		// `@n8n/composables/useToast` (N8N-104).
+		registerToastNotifier();
+
 		pinia = createPinia();
 		setActivePinia(pinia);
-		simulateStreamChunk = () => {};
-		simulateStreamDone = () => {};
+
+		// Import chat store dynamically to get fresh instance with active pinia
+		const { useChatStore: useChatStoreImport } = await import('./chat.store');
+		chatStore = useChatStoreImport();
 
 		mockRoute.params = {};
 		mockRoute.query = {};
 		mockRouterPush.mockClear();
+		mockHasRole.mockClear();
+		mockHasRole.mockReturnValue(true);
 		localStorage.clear();
+		// Skip welcome screen in tests by marking user as having had a conversation before
+		localStorage.setItem('user-123_N8N_CHAT_HUB_HAD_CONVERSATION_BEFORE', 'true');
 
 		vi.mocked(chatApi.sendMessageApi).mockClear();
-		vi.mocked(chatApi.sendMessageApi).mockImplementation((_ctx, _, onMessageUpdated_, onDone_) => {
-			simulateStreamChunk = wrapOnMessageUpdate(onMessageUpdated_);
-			simulateStreamDone = onDone_;
-		});
+		vi.mocked(chatApi.sendMessageApi).mockResolvedValue({ status: 'streaming' });
 		vi.mocked(chatApi.editMessageApi).mockClear();
-		vi.mocked(chatApi.editMessageApi).mockImplementation(
-			(_ctx, _request, onMessageUpdated_, onDone_) => {
-				simulateStreamChunk = wrapOnMessageUpdate(onMessageUpdated_);
-				simulateStreamDone = onDone_;
-			},
-		);
+		vi.mocked(chatApi.editMessageApi).mockResolvedValue({ status: 'streaming' });
 		vi.mocked(chatApi.regenerateMessageApi).mockClear();
-		vi.mocked(chatApi.regenerateMessageApi).mockImplementation(
-			(_ctx, _request, onMessageUpdated_, onDone_) => {
-				simulateStreamChunk = wrapOnMessageUpdate(onMessageUpdated_);
-				simulateStreamDone = onDone_;
-			},
-		);
+		vi.mocked(chatApi.regenerateMessageApi).mockResolvedValue({
+			status: 'streaming',
+		});
 		vi.mocked(chatApi.stopGenerationApi).mockClear();
+		vi.mocked(chatApi.fetchToolsApi).mockResolvedValue([]);
 
 		vi.mocked(chatApi.fetchChatModelsApi).mockResolvedValue(
 			createMockModelsResponse({
@@ -214,7 +299,13 @@ describe('ChatView', () => {
 		it('displays greeting message', async () => {
 			const rendered = renderComponent({ pinia });
 
-			expect(await rendered.findByText('Hello, Test!')).toBeInTheDocument();
+			const greetingText = await rendered.findByText('Start a chat with');
+			expect(greetingText).toBeInTheDocument();
+
+			// Find the agent name within the greetings container
+			const greetingsContainer = greetingText.closest('.greetings') as HTMLElement;
+			expect(greetingsContainer).not.toBeNull();
+			expect(within(greetingsContainer).getByText('GPT-4')).toBeInTheDocument();
 		});
 
 		it('preselects agent from agentId query parameter', async () => {
@@ -281,6 +372,40 @@ describe('ChatView', () => {
 			expect(await rendered.findByText('select a model')).toBeInTheDocument();
 			expect(await rendered.findByRole('textbox')).toBeDisabled();
 		});
+
+		it('displays welcome screen for first-time users and allows dismissing it', async () => {
+			const user = userEvent.setup();
+
+			// Make welcome screen visible for first-time user
+			localStorage.removeItem('user-123_N8N_CHAT_HUB_HAD_CONVERSATION_BEFORE');
+			mockHasRole.mockReturnValue(false);
+
+			const rendered = renderComponent({ pinia });
+
+			// Manually trigger sessions fetch since the sidebar (which normally does this) isn't rendered in this test
+			const { useChatStore } = await import('./chat.store');
+			const chatStore = useChatStore();
+			await chatStore.fetchSessions(true);
+
+			// Verify welcome screen is displayed
+			expect(await rendered.findByText('Your agents, any model')).toBeInTheDocument();
+			expect(
+				rendered.getByText("One place to talk to everything you've built or connected"),
+			).toBeInTheDocument();
+			expect(rendered.getByTestId('welcome-card-workflow-agents')).toBeInTheDocument();
+			expect(rendered.getByTestId('welcome-card-personal-agents')).toBeInTheDocument();
+			expect(rendered.getByTestId('welcome-card-base-models')).toBeInTheDocument();
+
+			// Verify chat input is not visible while welcome screen is shown
+			expect(rendered.queryByRole('textbox')).not.toBeInTheDocument();
+
+			// Click "Start new chat" to dismiss welcome screen
+			await user.click(rendered.getByTestId('welcome-start-new-chat'));
+
+			// Verify chat interface is now shown
+			expect(await rendered.findByRole('textbox')).toBeInTheDocument();
+			expect(rendered.queryByText('Your agents, any model')).not.toBeInTheDocument();
+		});
 	});
 
 	describe('Rendering existing sessions', () => {
@@ -295,20 +420,23 @@ describe('ChatView', () => {
 						lastMessageAt: new Date().toISOString(),
 						provider: 'custom-agent',
 						agentId: 'agent-123',
+						// Deliberately differs from the live agent's name, so tests can tell
+						// which of the two the UI rendered
+						agentName: 'Name Cached On Session',
 					}),
 					conversation: {
 						messages: {
 							'msg-1': createMockMessageDto({
 								id: 'msg-1',
 								sessionId: 'existing-session-123',
-								content: 'What is the weather today?',
+								content: [{ type: 'text', content: 'What is the weather today?' }],
 							}),
 							'msg-2': createMockMessageDto({
 								id: 'msg-2',
 								sessionId: 'existing-session-123',
 								type: 'ai',
 								name: 'Assistant',
-								content: 'The weather is sunny today.',
+								content: [{ type: 'text', content: 'The weather is sunny today.' }],
 								provider: 'custom-agent',
 								agentId: 'agent-123',
 								previousMessageId: 'msg-1',
@@ -351,17 +479,65 @@ describe('ChatView', () => {
 			await vi.waitFor(() => expect(mockRouterPush).toHaveBeenCalledWith({ name: 'chat' }));
 		});
 
-		it.todo(
-			'handles when the agent selected for the conversation is not available anymore',
-			async () => {
-				vi.mocked(chatApi.fetchChatModelsApi).mockResolvedValue(emptyChatModelsResponse);
+		// An agent can drop out of the model list (credentials revoked, provider disabled)
+		// while the session keeps its reference to it. `chatStore.getAgent` then falls back
+		// to a placeholder built from the name cached on the session, so the conversation
+		// stays readable and usable rather than blanking out. A deleted agent differs:
+		// `agentId` goes NULL and the reselect-a-model callout renders instead.
+		it('keeps the conversation usable when the selected agent is missing from the model list', async () => {
+			vi.mocked(chatApi.fetchChatModelsApi).mockResolvedValue(emptyChatModelsResponse);
 
-				const rendered = renderComponent({ pinia });
+			const rendered = renderComponent({ pinia });
 
-				expect(await rendered.findByText(/reselect a model/i)).toBeInTheDocument();
-				expect(await rendered.findByRole('textbox')).toBeDisabled();
-			},
-		);
+			// Wait for both fetches to settle before asserting. The header shows the cached
+			// name transiently while the agent list is still in flight, whether or not the
+			// agent still exists, so asserting earlier would pass either way.
+			await vi.waitFor(() => {
+				expect(chatStore.agentsReady).toBe(true);
+				expect(rendered.container.querySelectorAll('[data-message-id]')).toHaveLength(2);
+			});
+			await nextTick();
+
+			// The live agent is gone, so the header keeps the name cached on the session
+			expect(rendered.queryByRole('button', { name: /Test Custom Agent/i })).toBeNull();
+			expect(rendered.getByRole('button', { name: /Name Cached On Session/i })).toBeInTheDocument();
+
+			// ...and the conversation stays usable: no callout, input not disabled
+			expect(rendered.queryByText(/reselect a model/i)).not.toBeInTheDocument();
+			expect(rendered.getByRole('textbox')).not.toBeDisabled();
+		});
+
+		// The deleted-agent half of the pair above: the agent row is gone, so the session's
+		// `agentId` goes to NULL (`FK_chat_hub_sessions_agentId`, ON DELETE SET NULL).
+		// `unflattenModel` then has nothing to rebuild a model from, `selectedModel` is null
+		// and `messagingState` becomes 'missingAgent'. This is the path that reaches the
+		// `selectModel.existing` callout — ChatPrompt.test.ts covers the prop, nothing
+		// covered the path (N8N-155).
+		it('asks the user to reselect a model when the agent of the conversation was deleted', async () => {
+			vi.mocked(chatApi.fetchSingleConversationApi).mockResolvedValue(
+				createMockConversationResponse({
+					session: createMockSession({
+						id: 'existing-session-123',
+						title: 'Test Conversation',
+						lastMessageAt: new Date().toISOString(),
+						provider: 'custom-agent',
+						agentId: null,
+						agentName: 'Name Cached On Session',
+					}),
+					conversation: { messages: {} },
+				}),
+			);
+
+			const rendered = renderComponent({ pinia });
+
+			// The callout is gated on the agent list having arrived, so asserting before
+			// that would pass for the wrong reason
+			await vi.waitFor(() => expect(chatStore.agentsReady).toBe(true));
+			await nextTick();
+
+			expect(await rendered.findByText(/reselect a model/i)).toBeInTheDocument();
+			expect(rendered.getByRole('textbox')).toBeDisabled();
+		});
 	});
 
 	describe('Sending messages', () => {
@@ -385,14 +561,19 @@ describe('ChatView', () => {
 					sessionId: expect.any(String),
 					credentials: {},
 				}),
-				expect.any(Function),
-				expect.any(Function),
-				expect.any(Function),
 			);
 
 			const apiCallArgs = vi.mocked(chatApi.sendMessageApi).mock.calls[0];
 			const messageIdFromApi = apiCallArgs[1].messageId;
 			const sessionIdFromApi = apiCallArgs[1].sessionId;
+
+			// Simulate human message created event (sent from backend when message is accepted)
+			simulateHumanMessageCreated({
+				sessionId: sessionIdFromApi,
+				messageId: messageIdFromApi,
+				previousMessageId: null,
+				content: 'What is n8n?',
+			});
 
 			simulateStreamChunk('begin', '', {
 				messageId: 'ai-message-123',
@@ -460,14 +641,14 @@ describe('ChatView', () => {
 							'msg-1': createMockMessageDto({
 								id: 'msg-1',
 								sessionId: 'existing-session-123',
-								content: 'Previous question',
+								content: [{ type: 'text', content: 'Previous question' }],
 							}),
 							'msg-2': createMockMessageDto({
 								id: 'msg-2',
 								sessionId: 'existing-session-123',
 								type: 'ai',
 								name: 'Assistant',
-								content: 'Previous answer',
+								content: [{ type: 'text', content: 'Previous answer' }],
 								provider: 'openai',
 								model: 'gpt-4',
 								previousMessageId: 'msg-1',
@@ -493,13 +674,18 @@ describe('ChatView', () => {
 					credentials: {},
 					previousMessageId: 'msg-2',
 				}),
-				expect.any(Function),
-				expect.any(Function),
-				expect.any(Function),
 			);
 
 			const apiCallArgs = vi.mocked(chatApi.sendMessageApi).mock.calls[0];
 			const messageIdFromApi = apiCallArgs[1].messageId;
+
+			// Simulate human message created event (sent from backend when message is accepted)
+			simulateHumanMessageCreated({
+				sessionId: 'existing-session-123',
+				messageId: messageIdFromApi,
+				previousMessageId: 'msg-2',
+				content: 'New question',
+			});
 
 			simulateStreamChunk('begin', '', {
 				messageId: 'ai-message-456',
@@ -557,13 +743,132 @@ describe('ChatView', () => {
 				previousMessageId: messageIdFromApi,
 			});
 
-			await user.click(await rendered.findByRole('button', { name: /stop generating/i }));
+			await user.click(await rendered.findByRole('button', { name: /stop/i }));
 
 			expect(chatApi.stopGenerationApi).toHaveBeenCalledWith(
 				expect.anything(),
 				sessionId,
 				'ai-message-123',
 			);
+		});
+	});
+
+	describe('Suggested prompts', () => {
+		it('clicking a suggested prompt populates the input with the prompt text', async () => {
+			const user = userEvent.setup();
+
+			mockRoute.query = { workflowId: 'workflow-with-prompts' };
+
+			vi.mocked(chatApi.fetchChatModelsApi).mockResolvedValueOnce(
+				createMockModelsResponse({
+					n8n: {
+						models: [
+							createMockAgent({
+								name: 'Prompt Agent',
+								model: { provider: 'n8n', workflowId: 'workflow-with-prompts' },
+								suggestedPrompts: [
+									{ text: 'Summarize this document' },
+									{ text: 'Translate to Spanish' },
+								],
+							}),
+						],
+					},
+				}),
+			);
+
+			const rendered = renderComponent({ pinia });
+
+			// Wait for the suggested prompts to appear
+			const promptButton = await rendered.findByRole('button', {
+				name: /Summarize this document/,
+			});
+
+			await user.click(promptButton);
+
+			const textarea = rendered.getByRole('textbox');
+			expect(textarea).toHaveValue('Summarize this document');
+		});
+
+		it('renders all suggested prompts for the selected agent', async () => {
+			mockRoute.query = { workflowId: 'workflow-with-prompts' };
+
+			vi.mocked(chatApi.fetchChatModelsApi).mockResolvedValueOnce(
+				createMockModelsResponse({
+					n8n: {
+						models: [
+							createMockAgent({
+								name: 'Multi Prompt Agent',
+								model: { provider: 'n8n', workflowId: 'workflow-with-prompts' },
+								suggestedPrompts: [
+									{ text: 'Help me write an email' },
+									{ text: 'Explain this code' },
+									{ text: 'Create a summary' },
+								],
+							}),
+						],
+					},
+				}),
+			);
+
+			const rendered = renderComponent({ pinia });
+
+			expect(
+				await rendered.findByRole('button', { name: /Help me write an email/ }),
+			).toBeInTheDocument();
+			expect(rendered.getByRole('button', { name: /Explain this code/ })).toBeInTheDocument();
+			expect(rendered.getByRole('button', { name: /Create a summary/ })).toBeInTheDocument();
+		});
+
+		it('does not render suggested prompts for base LLM models', async () => {
+			mockRoute.query = {};
+
+			vi.mocked(chatApi.fetchChatModelsApi).mockResolvedValueOnce(
+				createMockModelsResponse({
+					openai: {
+						models: [
+							createMockAgent({
+								name: 'GPT-4',
+								model: { provider: 'openai', model: 'gpt-4' },
+								suggestedPrompts: [{ text: 'Should not appear' }], // Perhaps we'll implement this one day
+							}),
+						],
+					},
+				}),
+			);
+
+			const rendered = renderComponent({ pinia });
+
+			// Wait for the greeting to appear (LLM models show "Start a chat with")
+			await rendered.findByText('Start a chat with');
+
+			expect(rendered.queryByRole('button', { name: /Should not appear/ })).not.toBeInTheDocument();
+		});
+
+		it('does not render suggested prompts when agent has none', async () => {
+			mockRoute.query = { agentId: 'agent-no-prompts' };
+
+			vi.mocked(chatApi.fetchChatModelsApi).mockResolvedValueOnce(
+				createMockModelsResponse({
+					'custom-agent': {
+						models: [
+							createMockAgent({
+								name: 'No Prompt Agent',
+								model: { provider: 'custom-agent', agentId: 'agent-no-prompts' },
+							}),
+						],
+					},
+				}),
+			);
+
+			const rendered = renderComponent({ pinia });
+
+			// Wait for the agent card to render with the agent name
+			await rendered.findAllByText('No Prompt Agent');
+
+			// No suggested prompt buttons should exist (only non-prompt buttons like send, model selector)
+			expect(
+				rendered.queryByRole('button', { name: /Summarize|Translate|Help|Explain|Create/ }),
+			).not.toBeInTheDocument();
 		});
 	});
 
@@ -583,7 +888,7 @@ describe('ChatView', () => {
 							'msg-1': createMockMessageDto({
 								id: 'msg-1',
 								sessionId: 'existing-session-123',
-								content: 'Please analyze these files',
+								content: [{ type: 'text', content: 'Please analyze these files' }],
 								attachments: [
 									{ fileName: 'file1.txt', mimeType: 'text/plain' },
 									{ fileName: 'file2.pdf', mimeType: 'application/pdf' },
@@ -595,7 +900,7 @@ describe('ChatView', () => {
 								sessionId: 'existing-session-123',
 								type: 'ai',
 								name: 'Assistant',
-								content: 'Analysis complete',
+								content: [{ type: 'text', content: 'Analysis complete' }],
 								provider: 'custom-agent',
 								agentId: 'agent-123',
 								previousMessageId: 'msg-1',
@@ -618,7 +923,7 @@ describe('ChatView', () => {
 
 			const attachments = within(humanMessage).getAllByTestId('chat-file');
 			const fileInput = within(humanMessage).getByTestId('message-edit-file-input');
-			const newFile = new File(['new content'], 'new-file.txt', { type: 'text/plain' });
+			const newFile = new File(['new content'], 'new-file.md', { type: 'text/markdown' });
 
 			expect(within(humanMessage).getByRole('textbox')).toHaveValue('Please analyze these files');
 			expect(attachments).toHaveLength(3);
@@ -629,28 +934,22 @@ describe('ChatView', () => {
 
 			await vi.waitFor(() => expect(chatApi.editMessageApi).toHaveBeenCalled());
 
-			expect(chatApi.editMessageApi).toHaveBeenCalledWith(
-				expect.anything(),
-				{
-					sessionId: 'existing-session-123',
-					editId: 'msg-1',
-					payload: expect.objectContaining({
-						message: 'Please analyze these files',
-						model: { provider: 'custom-agent', agentId: 'agent-123' },
-						keepAttachmentIndices: [0, 2], // Kept file1.txt (index 0) and file3.jpg (index 2)
-						newAttachments: [
-							expect.objectContaining({
-								fileName: 'new-file.txt',
-								mimeType: 'text/plain',
-								data: expect.any(String), // base64 data
-							}),
-						],
-					}),
-				},
-				expect.any(Function),
-				expect.any(Function),
-				expect.any(Function),
-			);
+			expect(chatApi.editMessageApi).toHaveBeenCalledWith(expect.anything(), {
+				sessionId: 'existing-session-123',
+				editId: 'msg-1',
+				payload: expect.objectContaining({
+					message: 'Please analyze these files',
+					model: { provider: 'custom-agent', agentId: 'agent-123' },
+					keepAttachmentIndices: [0, 2], // Kept file1.txt (index 0) and file3.jpg (index 2)
+					newAttachments: [
+						expect.objectContaining({
+							fileName: 'new-file.md',
+							mimeType: 'text/markdown',
+							data: expect.any(String), // base64 data
+						}),
+					],
+				}),
+			});
 
 			const promptId = vi.mocked(chatApi.editMessageApi).mock.calls[0][1].payload.messageId;
 

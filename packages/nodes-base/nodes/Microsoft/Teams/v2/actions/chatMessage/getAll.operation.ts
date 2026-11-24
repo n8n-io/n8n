@@ -4,7 +4,7 @@ import { returnAllOrLimit } from '@utils/descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { chatRLC } from '../../descriptions';
-import { microsoftApiRequestAllItems } from '../../transport';
+import { buildTeamsPath, microsoftApiRequestAllItems, SP_HIDE } from '../../transport';
 
 const properties: INodeProperties[] = [chatRLC, ...returnAllOrLimit];
 
@@ -12,6 +12,9 @@ const displayOptions = {
 	show: {
 		resource: ['chatMessage'],
 		operation: ['getAll'],
+	},
+	hide: {
+		...SP_HIDE,
 	},
 };
 
@@ -28,17 +31,18 @@ export async function execute(this: IExecuteFunctions, i: number) {
 			this,
 			'value',
 			'GET',
-			`/v1.0/chats/${chatId}/messages`,
+			buildTeamsPath.call(this, ['/v1.0/chats/', { id: chatId }, '/messages']),
 		);
 	} else {
 		const limit = this.getNodeParameter('limit', i);
-		const responseData = await microsoftApiRequestAllItems.call(
+		return await microsoftApiRequestAllItems.call(
 			this,
 			'value',
 			'GET',
-			`/v1.0/chats/${chatId}/messages`,
+			buildTeamsPath.call(this, ['/v1.0/chats/', { id: chatId }, '/messages']),
 			{},
+			{ $top: limit },
+			limit,
 		);
-		return responseData.splice(0, limit);
 	}
 }

@@ -1,9 +1,4 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
@@ -14,9 +9,8 @@ import type {
 	QueriesRunner,
 	QueryValues,
 	QueryWithValues,
-	WhereClause,
 } from '../../helpers/interfaces';
-import { addWhereClauses } from '../../helpers/utils';
+import { addWhereClauses, getWhereClauses } from '../../helpers/utils';
 import {
 	combineConditionsCollection,
 	optionsCollection,
@@ -34,17 +28,20 @@ const properties: INodeProperties[] = [
 				name: 'Truncate',
 				value: 'truncate',
 				description: "Only removes the table's data and preserves the table's structure",
+				annotations: { effect: 'write', destructive: true, idempotent: true },
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description:
 					"Delete the rows that match the 'Select Rows' conditions below. If no selection is made, all rows in the table are deleted.",
+				annotations: { effect: 'write', destructive: true, idempotent: true },
 			},
 			{
 				name: 'Drop',
 				value: 'drop',
 				description: "Deletes the table's data and also the table's structure permanently",
+				annotations: { effect: 'write', destructive: true, idempotent: true },
 			},
 		],
 	},
@@ -130,8 +127,7 @@ export async function execute(
 		}
 
 		if (deleteCommand === 'delete') {
-			const whereClauses =
-				((this.getNodeParameter('where', i, []) as IDataObject).values as WhereClause[]) || [];
+			const whereClauses = getWhereClauses(this, i);
 
 			const combineConditions = this.getNodeParameter('combineConditions', i, 'AND') as string;
 

@@ -2,7 +2,7 @@ import type { ApiKeyScope } from '@n8n/permissions';
 import { Column, Entity, Index, ManyToOne, Unique } from '@n8n/typeorm';
 import { ApiKeyAudience } from 'n8n-workflow';
 
-import { JsonColumn, WithTimestampsAndStringId } from './abstract-entity';
+import { DateTimeColumn, JsonColumn, WithTimestampsAndStringId } from './abstract-entity';
 import { User } from './user';
 
 @Entity('user_api_keys')
@@ -30,4 +30,7 @@ export class ApiKey extends WithTimestampsAndStringId {
 
 	@Column({ type: String, default: 'public-api' })
 	audience: ApiKeyAudience;
+
+	@DateTimeColumn({ nullable: true })
+	lastUsedAt: Date | null;
 }

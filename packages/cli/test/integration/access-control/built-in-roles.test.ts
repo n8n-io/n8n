@@ -56,8 +56,8 @@ let member3Agent: SuperAgentTest;
 describe('Built-in Role Matrix Testing', () => {
 	beforeAll(async () => {
 		mockInstance(UserManagementMailer, {
-			invite: jest.fn(),
-			passwordReset: jest.fn(),
+			invite: vi.fn(),
+			passwordReset: vi.fn(),
 		});
 
 		await utils.initCredentialsTypes();
@@ -340,7 +340,7 @@ describe('Built-in Role Matrix Testing', () => {
 			await member3Agent
 				.post('/credentials')
 				.send({ ...randomCredentialPayload(), projectId: teamProjectA.id })
-				.expect(400);
+				.expect(403);
 
 			// Test credential update access (should be forbidden)
 			await member3Agent

@@ -164,10 +164,17 @@ describe('useSourceControlStore', () => {
 	});
 
 	describe('disconnect', () => {
-		it('should call API and reset preferences', async () => {
+		it('should call API, reset active source control state, and keep reconnect inputs', async () => {
 			sourceControlStore.preferences.connected = true;
-			sourceControlStore.preferences.repositoryUrl = 'https://github.com/user/repo.git';
+			sourceControlStore.preferences.repositoryUrl = 'git@github.com:user/repo.git';
+			sourceControlStore.preferences.connectionType = 'ssh';
+			sourceControlStore.preferences.keyGeneratorType = 'rsa';
+			sourceControlStore.preferences.publicKey = 'ssh-rsa AAAATestKey n8n deploy key';
 			sourceControlStore.preferences.branchName = 'main';
+			sourceControlStore.preferences.currentBranch = 'main';
+			sourceControlStore.preferences.branchReadOnly = true;
+			sourceControlStore.preferences.branchColor = '#ff0000';
+			sourceControlStore.preferences.branches = ['main', 'develop'];
 
 			const mockDisconnect = vi.mocked(vcApi.disconnect);
 			mockDisconnect.mockResolvedValue('Disconnected successfully');
@@ -177,6 +184,14 @@ describe('useSourceControlStore', () => {
 			expect(mockDisconnect).toHaveBeenCalledWith({}, false);
 			expect(sourceControlStore.preferences.connected).toBe(false);
 			expect(sourceControlStore.preferences.branches).toEqual([]);
+			expect(sourceControlStore.preferences.branchName).toBe('');
+			expect(sourceControlStore.preferences.currentBranch).toBe('');
+			expect(sourceControlStore.preferences.branchReadOnly).toBe(false);
+			expect(sourceControlStore.preferences.branchColor).toBe('#5296D6');
+			expect(sourceControlStore.preferences.repositoryUrl).toBe('git@github.com:user/repo.git');
+			expect(sourceControlStore.preferences.connectionType).toBe('ssh');
+			expect(sourceControlStore.preferences.keyGeneratorType).toBe('rsa');
+			expect(sourceControlStore.preferences.publicKey).toBe('ssh-rsa AAAATestKey n8n deploy key');
 		});
 	});
 
@@ -201,7 +216,14 @@ describe('useSourceControlStore', () => {
 			};
 
 			const mockPushWorkfolder = vi.mocked(vcApi.pushWorkfolder);
-			mockPushWorkfolder.mockResolvedValue(undefined);
+			mockPushWorkfolder.mockResolvedValue({
+				files: data.fileNames,
+				commit: {
+					hash: 'abc123',
+					message: data.commitMessage,
+					branch: 'main',
+				},
+			});
 
 			await sourceControlStore.pushWorkfolder(data);
 
@@ -237,9 +259,9 @@ describe('useSourceControlStore', () => {
 			const mockPullWorkfolder = vi.mocked(vcApi.pullWorkfolder);
 			mockPullWorkfolder.mockResolvedValue(mockResult);
 
-			const result = await sourceControlStore.pullWorkfolder(force);
+			const result = await sourceControlStore.pullWorkfolder(force, 'none');
 
-			expect(mockPullWorkfolder).toHaveBeenCalledWith({}, { force });
+			expect(mockPullWorkfolder).toHaveBeenCalledWith({}, { force, autoPublish: 'none' });
 			expect(result).toEqual(mockResult);
 		});
 	});
@@ -265,7 +287,7 @@ describe('useSourceControlStore', () => {
 
 			const result = await sourceControlStore.getAggregatedStatus();
 
-			expect(mockGetAggregatedStatus).toHaveBeenCalledWith({});
+			expect(mockGetAggregatedStatus).toHaveBeenCalledWith({}, undefined);
 			expect(result).toEqual(mockStatus);
 		});
 	});

@@ -3,9 +3,10 @@ import { type ILoadOptionsFunctions } from 'n8n-workflow';
 
 import { getSheetHeaderRow } from '../../Google/Sheet/v2/methods/loadOptions';
 import { getSheetHeaderRowWithGeneratedColumnNames } from '../methods/loadOptions';
+import type { Mock } from 'vitest';
 
-jest.mock('../../Google/Sheet/v2/methods/loadOptions', () => ({
-	getSheetHeaderRow: jest.fn(),
+vi.mock('../../Google/Sheet/v2/methods/loadOptions', () => ({
+	getSheetHeaderRow: vi.fn(),
 }));
 
 describe('getSheetHeaderRowWithGeneratedColumnNames', () => {
@@ -13,15 +14,15 @@ describe('getSheetHeaderRowWithGeneratedColumnNames', () => {
 
 	beforeEach(() => {
 		mockThis = {
-			getNodeParameter: jest.fn(),
-			getCredentials: jest.fn(),
+			getNodeParameter: vi.fn(),
+			getCredentials: vi.fn(),
 		} as unknown as ILoadOptionsFunctions;
 
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should return column names as-is if they are not empty', async () => {
-		(getSheetHeaderRow as jest.Mock).mockResolvedValue([
+		(getSheetHeaderRow as Mock).mockResolvedValue([
 			{ name: 'Column1', value: 'Column1' },
 			{ name: 'Column2', value: 'Column2' },
 		]);
@@ -36,7 +37,7 @@ describe('getSheetHeaderRowWithGeneratedColumnNames', () => {
 	});
 
 	it('should generate column names for empty values', async () => {
-		(getSheetHeaderRow as jest.Mock).mockResolvedValue([
+		(getSheetHeaderRow as Mock).mockResolvedValue([
 			{ name: '', value: '' },
 			{ name: 'Column2', value: 'Column2' },
 			{ name: '', value: '' },
@@ -53,7 +54,7 @@ describe('getSheetHeaderRowWithGeneratedColumnNames', () => {
 	});
 
 	it('should handle an empty header row gracefully', async () => {
-		(getSheetHeaderRow as jest.Mock).mockResolvedValue([]);
+		(getSheetHeaderRow as Mock).mockResolvedValue([]);
 
 		const result = await getSheetHeaderRowWithGeneratedColumnNames.call(mockThis);
 

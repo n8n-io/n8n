@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import nock from 'nock';
 
@@ -26,18 +27,18 @@ const mockResponse = {
 const mockJsonSchema =
 	'{"type":"object","properties":{"title":{"type":"string"},"price":{"type":"string"}}}';
 
-jest.mock('../../../transport', () => {
-	const originalModule = jest.requireActual<typeof transport>('../../../transport');
+vi.mock('../../../transport', async () => {
+	const originalModule = await vi.importActual<typeof transport>('../../../transport');
 	return {
 		...originalModule,
-		apiRequest: jest.fn(async (method: string, endpoint: string) => {
+		apiRequest: vi.fn(async (method: string, endpoint: string) => {
 			// For paginated extraction requests
-			if (endpoint.includes('/paginated-extraction')) {
+			if (String(endpoint).includes('/paginated-extraction')) {
 				return mockResponse;
 			}
 
 			// For session deletion
-			if (method === 'DELETE' && endpoint.includes('/sessions/')) {
+			if (method === 'DELETE' && String(endpoint).includes('/sessions/')) {
 				return { status: 'success' };
 			}
 
@@ -46,24 +47,26 @@ jest.mock('../../../transport', () => {
 	};
 });
 
-jest.mock('../../../GenericFunctions', () => {
-	const originalModule = jest.requireActual<typeof GenericFunctions>('../../../GenericFunctions');
+vi.mock('../../../GenericFunctions', async () => {
+	const originalModule = await vi.importActual<typeof GenericFunctions>(
+		'../../../GenericFunctions',
+	);
 	return {
 		...originalModule,
-		createSessionAndWindow: jest.fn().mockImplementation(async () => {
+		createSessionAndWindow: vi.fn().mockImplementation(async () => {
 			return {
 				sessionId: 'new-session-123',
 				windowId: 'new-window-123',
 			};
 		}),
-		shouldCreateNewSession: jest.fn().mockImplementation(function (
+		shouldCreateNewSession: vi.fn().mockImplementation(function (
 			this: IExecuteFunctions,
 			index: number,
 		) {
 			const sessionMode = this.getNodeParameter('sessionMode', index) as string;
 			return sessionMode === 'new';
 		}),
-		validateAirtopApiResponse: jest.fn(),
+		validateAirtopApiResponse: vi.fn(),
 	};
 });
 
@@ -74,12 +77,10 @@ describe('Test Airtop, getPaginated operation', () => {
 
 	afterAll(() => {
 		nock.restore();
-		jest.unmock('../../../transport');
-		jest.unmock('../../../GenericFunctions');
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should extract data with minimal parameters', async () => {
@@ -95,7 +96,7 @@ describe('Test Airtop, getPaginated operation', () => {
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/paginated-extraction',
+			requestPath`/sessions/test-session-123/windows/win-123/paginated-extraction`,
 			{
 				prompt: 'Extract all product titles and prices',
 				configuration: {},
@@ -129,7 +130,7 @@ describe('Test Airtop, getPaginated operation', () => {
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/paginated-extraction',
+			requestPath`/sessions/test-session-123/windows/win-123/paginated-extraction`,
 			{
 				prompt: 'Extract all product titles and prices',
 				configuration: {
@@ -164,7 +165,7 @@ describe('Test Airtop, getPaginated operation', () => {
 			expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 			expect(transport.apiRequest).toHaveBeenCalledWith(
 				'POST',
-				'/sessions/test-session-123/windows/win-123/paginated-extraction',
+				requestPath`/sessions/test-session-123/windows/win-123/paginated-extraction`,
 				{
 					prompt: 'Extract all product titles and prices',
 					configuration: {
@@ -200,7 +201,7 @@ describe('Test Airtop, getPaginated operation', () => {
 			expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 			expect(transport.apiRequest).toHaveBeenCalledWith(
 				'POST',
-				'/sessions/test-session-123/windows/win-123/paginated-extraction',
+				requestPath`/sessions/test-session-123/windows/win-123/paginated-extraction`,
 				{
 					prompt: 'Extract all product titles and prices',
 					configuration: {
@@ -238,7 +239,7 @@ describe('Test Airtop, getPaginated operation', () => {
 		expect(transport.apiRequest).toHaveBeenNthCalledWith(
 			1,
 			'POST',
-			'/sessions/new-session-123/windows/new-window-123/paginated-extraction',
+			requestPath`/sessions/new-session-123/windows/new-window-123/paginated-extraction`,
 			{
 				prompt: 'Extract all product titles and prices',
 				configuration: {},

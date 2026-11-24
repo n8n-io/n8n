@@ -1,0 +1,58 @@
+name: 'CI: Owners Assign Reviewers'
+
+# Request all owning teams or only required teams, depending on the label.
+
+on:
+  pull_request:
+    types:
+      - labeled
+      - synchronize
+      - reopened
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  assign-reviewers:
+    name: Assign reviewers
+    # Skipped for:
+    #  - PRs from forks (no token to assign with)
+    #  - Bot-authored PRs (Dependabot, etc.), except cat-bot which
+    #    opts in explicitly so a human-applied label can route its PRs to the
+    #    owning team
+    if: |
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      (github.event.pull_request.user.type != 'Bot' ||
+       github.event.pull_request.user.login == 'n8n-cat-bot[bot]') &&
+      (contains(github.event.pull_request.labels.*.name, 'Auto-assign reviewers') ||
+       contains(github.event.pull_request.labels.*.name, 'Auto-assign required reviewers'))
+    concurrency:
+      group: owners-assign-reviewers-${{ github.event.pull_request.number }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Generate App Token
+        id: app-token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+
+      # The script reads only `.github/` and the root OWNERS file, which cone
+      # mode always includes.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: .github
+
+      - name: Assign reviewer teams
+        uses: ./.github/actions/run-workflow-script
+        env:
+          PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
+        with:
+          script: .github/scripts/owners/assign-reviewers.mjs
+          github-token: ${{ steps.app-token.outputs.token }}

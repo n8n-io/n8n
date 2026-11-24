@@ -1,13 +1,14 @@
+import { binaryToBuffer } from '@n8n/backend-network';
 import { BinaryDataRepository, In, SourceTypeSchema, type SourceType } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	BinaryDataConfig,
 	type BinaryData,
 	BinaryDataFileNotFoundError,
-	binaryToBuffer,
 	FileTooLargeError,
 	InvalidSourceTypeError,
 	MissingSourceIdError,
+	TEMP_EXECUTION_ID,
 } from 'n8n-core';
 import { readFile } from 'node:fs/promises';
 import { Readable } from 'node:stream';
@@ -173,7 +174,7 @@ export class DatabaseManager implements BinaryData.Manager {
 		if (location.type === 'execution') {
 			return {
 				sourceType: 'execution',
-				sourceId: location.executionId || 'temp', // missing only in edge case, see PR #7244
+				sourceId: location.executionId || TEMP_EXECUTION_ID, // missing for triggers and webhooks, see PR #7244
 			};
 		}
 

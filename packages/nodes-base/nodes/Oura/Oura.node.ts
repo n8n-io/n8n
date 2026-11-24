@@ -6,7 +6,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { ouraApiRequest } from './GenericFunctions';
 import { profileOperations } from './ProfileDescription';
@@ -74,21 +74,23 @@ export class Oura implements INodeType {
 					//                             profile
 					// *********************************************************************
 
-					// https://cloud.ouraring.com/docs/personal-info
+					// https://cloud.ouraring.com/v2/docs#operation/Single_Personal_Info_Document_v2_usercollection_personal_info_get
 
 					if (operation === 'get') {
 						// ----------------------------------
 						//         profile: get
 						// ----------------------------------
 
-						responseData = await ouraApiRequest.call(this, 'GET', '/usercollection/personal_info');
+						responseData = await ouraApiRequest.call(
+							this,
+							'GET',
+							requestPath`/usercollection/personal_info`,
+						);
 					}
 				} else if (resource === 'summary') {
 					// *********************************************************************
 					//                             summary
 					// *********************************************************************
-
-					// https://cloud.ouraring.com/docs/daily-summaries
 
 					const qs: IDataObject = {};
 
@@ -112,10 +114,12 @@ export class Oura implements INodeType {
 						//       profile: getActivity
 						// ----------------------------------
 
+						// https://cloud.ouraring.com/v2/docs#operation/Multiple_daily_activity_Documents_v2_usercollection_daily_activity_get
+
 						responseData = await ouraApiRequest.call(
 							this,
 							'GET',
-							'/usercollection/daily_activity',
+							requestPath`/usercollection/daily_activity`,
 							{},
 							qs,
 						);
@@ -130,10 +134,12 @@ export class Oura implements INodeType {
 						//       profile: getReadiness
 						// ----------------------------------
 
+						// https://cloud.ouraring.com/v2/docs#operation/Multiple_daily_readiness_Documents_v2_usercollection_daily_readiness_get
+
 						responseData = await ouraApiRequest.call(
 							this,
 							'GET',
-							'/usercollection/daily_readiness',
+							requestPath`/usercollection/daily_readiness`,
 							{},
 							qs,
 						);
@@ -148,10 +154,12 @@ export class Oura implements INodeType {
 						//         profile: getSleep
 						// ----------------------------------
 
+						// https://cloud.ouraring.com/v2/docs#operation/Multiple_daily_sleep_Documents_v2_usercollection_daily_sleep_get
+
 						responseData = await ouraApiRequest.call(
 							this,
 							'GET',
-							'/usercollection/daily_sleep',
+							requestPath`/usercollection/daily_sleep`,
 							{},
 							qs,
 						);

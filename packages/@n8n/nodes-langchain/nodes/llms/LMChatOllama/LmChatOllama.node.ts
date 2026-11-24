@@ -1,6 +1,12 @@
 import type { ChatOllamaInput } from '@langchain/ollama';
-import { ChatOllama } from '@langchain/ollama';
 import {
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	proxyFetch,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
+import {
+	assertCredentialAllowsUrl,
 	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
@@ -8,11 +14,10 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { wrapChatModelMessageInput } from '@utils/chatModelMessageWrapper';
 
 import { ollamaModel, ollamaOptions, ollamaDescription } from '../LMOllama/description';
-import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
-import { N8nLlmTracing } from '../N8nLlmTracing';
+import { N8nChatOllama } from './N8nChatOllama';
 
 export class LmChatOllama implements INodeType {
 	description: INodeTypeDescription = {
@@ -55,6 +60,14 @@ export class LmChatOllama implements INodeType {
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('ollamaApi');
+		const baseUrl = credentials.baseUrl as string;
+
+		assertCredentialAllowsUrl({
+			node: this.getNode(),
+			credentialData: credentials,
+			url: baseUrl,
+			surface: 'Ollama',
+		});
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as ChatOllamaInput;
@@ -64,18 +77,23 @@ export class LmChatOllama implements INodeType {
 				}
 			: undefined;
 
-		const model = new ChatOllama({
+		const egressFilter = this.helpers.getSecureEgressFilter();
+		const fetchWithTimeout = async (input: RequestInfo | URL, init?: RequestInit) =>
+			await proxyFetch({ input, init, egressFilter });
+
+		const model = new N8nChatOllama({
 			...options,
-			baseUrl: credentials.baseUrl as string,
+			baseUrl,
 			model: modelName,
 			format: options.format === 'default' ? undefined : options.format,
 			callbacks: [new N8nLlmTracing(this)],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 			headers,
+			fetch: fetchWithTimeout,
 		});
 
 		return {
-			response: model,
+			response: wrapChatModelMessageInput(model),
 		};
 	}
 }

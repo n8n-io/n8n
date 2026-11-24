@@ -1,8 +1,9 @@
 import { setActivePinia, createPinia } from 'pinia';
 import { describe, test, expect, vi } from 'vitest';
 import { usePushConnectionStore } from './pushConnection.store';
+import { useBackendConnectionStore } from './backendConnection.store';
 import { useWebSocketClient } from '@/app/push-connection/useWebSocketClient';
-import { ref } from 'vue';
+import { nextTick, ref } from 'vue';
 
 type WebSocketClient = ReturnType<typeof useWebSocketClient>;
 
@@ -26,15 +27,20 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	}),
 }));
 
-vi.mock('./settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn().mockReturnValue({
 		pushBackend: 'websocket',
 	}),
 }));
 
 describe('usePushConnectionStore', () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+	});
+
 	afterEach(() => {
 		vi.clearAllMocks();
+		vi.useRealTimers();
 	});
 
 	const createTestInitialState = ({
@@ -85,16 +91,101 @@ describe('usePushConnectionStore', () => {
 	});
 
 	describe('connection handling', () => {
-		test('should connect and disconnect', () => {
+		test('should connect and disconnect with debounce', () => {
 			const { store, mockWebSocketClient } = createTestInitialState();
 
 			store.pushConnect();
 			expect(store.isConnectionRequested).toBe(true);
 			expect(mockWebSocketClient.connect).toHaveBeenCalled();
 
+			// Wait for the connect intent to expire (500ms debounce window)
+			vi.advanceTimersByTime(500);
+
 			store.pushDisconnect();
+			// Disconnect is debounced, so it won't happen immediately
+			expect(store.isConnectionRequested).toBe(true);
+			expect(mockWebSocketClient.disconnect).not.toHaveBeenCalled();
+
+			// Wait for disconnect debounce to complete
+			vi.advanceTimersByTime(500);
 			expect(store.isConnectionRequested).toBe(false);
 			expect(mockWebSocketClient.disconnect).toHaveBeenCalled();
+		});
+
+		test('should not disconnect if connect is called within debounce window (new view mounts before old unmounts)', () => {
+			const { store, mockWebSocketClient } = createTestInitialState();
+
+			// Initial connect
+			store.pushConnect();
+			expect(store.isConnectionRequested).toBe(true);
+			expect(mockWebSocketClient.connect).toHaveBeenCalledTimes(1);
+
+			// Simulate route transition: disconnect called but connect follows quickly
+			store.pushDisconnect();
+			// Disconnect should be ignored because recentConnectIntent is still true
+			vi.advanceTimersByTime(500);
+			expect(mockWebSocketClient.disconnect).not.toHaveBeenCalled();
+			expect(store.isConnectionRequested).toBe(true);
+		});
+
+		test('should keep the connection open until the last owner disconnects', () => {
+			const { store, mockWebSocketClient } = createTestInitialState();
+
+			store.pushConnect();
+			store.pushConnect();
+			expect(mockWebSocketClient.connect).toHaveBeenCalledTimes(1);
+			expect(store.isConnectionRequested).toBe(true);
+
+			vi.advanceTimersByTime(500);
+
+			store.pushDisconnect();
+			expect(mockWebSocketClient.disconnect).not.toHaveBeenCalled();
+			expect(store.isConnectionRequested).toBe(true);
+
+			store.pushDisconnect();
+			vi.advanceTimersByTime(500);
+			expect(mockWebSocketClient.disconnect).toHaveBeenCalledTimes(1);
+			expect(store.isConnectionRequested).toBe(false);
+		});
+
+		test('should ignore disconnect calls that exceed connect calls', () => {
+			const { store, mockWebSocketClient } = createTestInitialState();
+
+			store.pushConnect();
+			vi.advanceTimersByTime(500);
+
+			store.pushDisconnect();
+			store.pushDisconnect();
+			vi.advanceTimersByTime(500);
+
+			expect(mockWebSocketClient.disconnect).toHaveBeenCalledTimes(1);
+		});
+
+		test('should not disconnect if connect is called during disconnect debounce window', () => {
+			const { store, mockWebSocketClient } = createTestInitialState();
+
+			// Initial connect
+			store.pushConnect();
+			expect(mockWebSocketClient.connect).toHaveBeenCalledTimes(1);
+
+			// Wait for connect intent to expire
+			vi.advanceTimersByTime(500);
+
+			// Start disconnect (debounced)
+			store.pushDisconnect();
+			expect(mockWebSocketClient.disconnect).not.toHaveBeenCalled();
+
+			// Before disconnect completes, connect is called again
+			vi.advanceTimersByTime(250);
+			store.pushConnect();
+			expect(mockWebSocketClient.connect).toHaveBeenCalledTimes(2);
+
+			// Wait for what would have been the disconnect timeout
+			vi.advanceTimersByTime(250);
+
+			// Disconnect should NOT have been called because connect was called
+			expect(mockWebSocketClient.disconnect).not.toHaveBeenCalled();
+			expect(store.isConnectionRequested).toBe(true);
 		});
 
 		test('should show correct connection status', () => {
@@ -107,6 +198,65 @@ describe('usePushConnectionStore', () => {
 
 			mockWebSocketClient.isConnected.value = false;
 			expect(store.isConnected).toBe(false);
+		});
+	});
+
+	describe('backend connection recovery', () => {
+		const setBackendOnline = async (isOnline: boolean) => {
+			useBackendConnectionStore().setOnline(isOnline);
+			await nextTick();
+		};
+
+		test('should not reconnect when the backend comes back online without a requested connection', async () => {
+			const { mockWebSocketClient } = createTestInitialState({ isConnected: true });
+
+			await setBackendOnline(false);
+			await setBackendOnline(true);
+
+			expect(mockWebSocketClient.connect).toHaveBeenCalledTimes(0);
+		});
+
+		test('should not reconnect when the backend goes offline', async () => {
+			const { store, mockWebSocketClient } = createTestInitialState({ isConnected: true });
+
+			store.pushConnect();
+			await setBackendOnline(false);
+
+			expect(mockWebSocketClient.connect).toHaveBeenCalledTimes(1);
+		});
+
+		test('should not reconnect when the push client already lost the connection', async () => {
+			const { store, mockWebSocketClient } = createTestInitialState();
+
+			store.pushConnect();
+			await setBackendOnline(false);
+			await setBackendOnline(true);
+
+			expect(mockWebSocketClient.connect).toHaveBeenCalledTimes(1);
+		});
+
+		test('should reconnect the push client when the backend comes back online', async () => {
+			const { store, mockWebSocketClient } = createTestInitialState();
+
+			store.pushConnect();
+			mockWebSocketClient.isConnected.value = true;
+			await nextTick();
+			await setBackendOnline(false);
+			await setBackendOnline(true);
+
+			expect(mockWebSocketClient.connect).toHaveBeenCalledTimes(2);
+		});
+
+		test('should mark the push connection as connecting when it reconnects after the backend comes back online', async () => {
+			const { store, mockWebSocketClient } = createTestInitialState();
+
+			store.pushConnect();
+			mockWebSocketClient.isConnected.value = true;
+			await nextTick();
+			await setBackendOnline(false);
+			await setBackendOnline(true);
+
+			expect(store.isConnecting).toBe(true);
 		});
 	});
 
@@ -133,8 +283,8 @@ describe('usePushConnectionStore', () => {
 
 			mockWebSocketClient.isConnected.value = true;
 
-			// Wait for the queue to be processed
-			await new Promise(setImmediate);
+			// Wait for the queue to be processed (flush microtasks and timers)
+			await vi.runAllTimersAsync();
 
 			expect(mockWebSocketClient.sendMessage).toHaveBeenCalledTimes(2);
 		});

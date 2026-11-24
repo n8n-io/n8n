@@ -1,12 +1,14 @@
+import { requestPath } from 'n8n-workflow';
 import * as share from '../../../../v2/actions/folder/share.operation';
 import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction, driveNode } from '../helpers';
+import type * as _importType0 from '../../../../v2/transport';
 
-jest.mock('../../../../v2/transport', () => {
-	const originalModule = jest.requireActual('../../../../v2/transport');
+vi.mock('../../../../v2/transport', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../../../../v2/transport');
 	return {
 		...originalModule,
-		googleApiRequest: jest.fn(async function () {
+		googleApiRequest: vi.fn(async function () {
 			return {};
 		}),
 	};
@@ -43,7 +45,7 @@ describe('test GoogleDriveV2: folder share', () => {
 		expect(transport.googleApiRequest).toBeCalledTimes(1);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/drive/v3/files/folderIDxxxxxx/permissions',
+			requestPath`/drive/v3/files/folderIDxxxxxx/permissions`,
 			{ allowFileDiscovery: true, role: 'reader', type: 'anyone' },
 			{ moveToNewOwnersRoot: true, supportsAllDrives: true },
 		);

@@ -9,12 +9,18 @@ import {
 import { autocompletableNodeNames, longestCommonPrefix } from '../../completions/utils';
 import { typescriptWorkerFacet } from './facet';
 import { blockCommentSnippet, snippets } from './snippets';
-import { TARGET_NODE_PARAMETER_FACET } from '../../completions/constants';
+import { TARGET_NODE_PARAMETER_FACET, WORKFLOW_DOCUMENT_FACET } from '../../completions/constants';
 import type { AliasCompletion, Alias } from 'n8n-workflow';
 import { sortCompletionsByInput } from '../../completions/datatype.completions';
 
 const START_CHARACTERS = ['"', "'", '(', '.', '@'];
 const START_CHARACTERS_REGEX = /[\.\(\'\"\@]/;
+
+type StringQuote = '"' | "'" | '`';
+
+function isStringQuote(char: string): char is StringQuote {
+	return char === '"' || char === "'" || char === '`';
+}
 
 export const matchText = (context: CompletionContext) => {
 	let word = context.matchBefore(START_CHARACTERS_REGEX);
@@ -27,9 +33,35 @@ export const matchText = (context: CompletionContext) => {
 	return word;
 };
 
+export function escapeForStringLiteral(value: string, quote: StringQuote): string {
+	const escaped = JSON.stringify(value).slice(1, -1);
+	if (quote === '"') return escaped;
+	const unescapedDoubleQuotes = escaped.replace(/\\"/g, '"');
+	if (quote === "'") return unescapedDoubleQuotes.replace(/'/g, "\\'");
+	return unescapedDoubleQuotes.replace(/`|\$\{/g, '\\$&');
+}
+
+/**
+ * TypeScript returns property names raw, so a key inserted after an opening quote
+ * (e.g. `json["`) must be escaped. String-literal suggestions (e.g. node names in `$("`)
+ * are already escaped by TypeScript and must not use this.
+ */
+const applyPropertyCompletion: Completion['apply'] = (view, completion, from, to) => {
+	const quote = view.state.sliceDoc(from - 1, from);
+	const text = isStringQuote(quote)
+		? escapeForStringLiteral(completion.label, quote)
+		: completion.label;
+	view.dispatch({
+		...insertCompletionText(view.state, text, from, to),
+		annotations: pickedCompletion.of(completion),
+	});
+};
+
 export const typescriptCompletionSource: CompletionSource = async (context) => {
 	const { worker } = context.state.facet(typescriptWorkerFacet);
 	const targetNodeParameter = context.state.facet(TARGET_NODE_PARAMETER_FACET);
+	const workflowDocumentId = context.state.facet(WORKFLOW_DOCUMENT_FACET);
+	if (!workflowDocumentId) return null;
 	const word = matchText(context);
 
 	const blockComment = context.matchBefore(/\/\*?\*?/);
@@ -96,7 +128,7 @@ export const typescriptCompletionSource: CompletionSource = async (context) => {
 				if (opt.label === '$()') {
 					return [
 						opt,
-						...autocompletableNodeNames(targetNodeParameter).map((name) => ({
+						...autocompletableNodeNames(workflowDocumentId, targetNodeParameter).map((name) => ({
 							...opt,
 							label: `$('${escapeMappingString(name)}')`,
 						})),
@@ -131,7 +163,8 @@ export const typescriptCompletionSource: CompletionSource = async (context) => {
 			return [0, lcp.length];
 		},
 		options: filteredOptions.map((completion) => {
-			if (completion.label.endsWith('()')) {
+			const isCallable = completion.type === 'method' || completion.type === 'function';
+			if (isCallable && completion.label.endsWith('()')) {
 				completion.apply = (view, _, from, to) => {
 					const cursorPosition = from + completion.label.length - 1;
 					view.dispatch({
@@ -140,6 +173,8 @@ export const typescriptCompletionSource: CompletionSource = async (context) => {
 						selection: { anchor: cursorPosition, head: cursorPosition },
 					});
 				};
+			} else if (completion.type === 'property' && !completion.apply) {
+				completion.apply = applyPropertyCompletion;
 			}
 			return completion;
 		}),

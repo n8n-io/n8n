@@ -1,23 +1,43 @@
 {
     "type": "object",
     "properties": {
-        "id": {
-            "type": "integer"
-        },
-        "name": {
-            "type": "string"
-        },
-        "url": {
-            "type": "string"
-        },
-        "description": {
-            "type": "string"
-        },
-        "link": {
-            "type": "string"
-        },
-        "slug": {
-            "type": "string"
+        "_links": {
+            "type": "object",
+            "properties": {
+                "collection": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "self": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            },
+                            "targetHints": {
+                                "type": "object",
+                                "properties": {
+                                    "allow": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         },
         "avatar_urls": {
             "type": "object",
@@ -31,60 +51,26 @@
                 "96": {
                     "type": "string"
                 }
-            },
-            "required": [
-                "24",
-                "48",
-                "96"
-            ]
+            }
         },
-        "_links": {
-            "type": "object",
-            "properties": {
-                "self": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "href": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "href"
-                        ]
-                    }
-                },
-                "collection": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "href": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "href"
-                        ]
-                    }
-                }
-            },
-            "required": [
-                "self",
-                "collection"
-            ]
+        "description": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "link": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "slug": {
+            "type": "string"
+        },
+        "url": {
+            "type": "string"
         }
     },
-    "required": [
-        "id",
-        "name",
-        "url",
-        "description",
-        "link",
-        "slug",
-        "meta",
-        "_links"
-    ],
-    "version": 1
+    "version": 2
 }

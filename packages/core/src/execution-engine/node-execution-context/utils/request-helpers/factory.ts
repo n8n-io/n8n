@@ -1,0 +1,242 @@
+import { OutboundHttp } from '@n8n/backend-network';
+import { Container } from '@n8n/di';
+import type {
+	IAllExecuteFunctions,
+	IExecuteData,
+	IExecuteFunctions,
+	IHttpRequestOptions,
+	INode,
+	INodeExecutionData,
+	IOAuth2Options,
+	IRunExecutionData,
+	IWorkflowDataProxyAdditionalKeys,
+	IWorkflowExecuteAdditionalData,
+	LegacyRequestOptions,
+	NodeParameterValueType,
+	RequestHelperFunctions,
+	WithRequestTarget,
+	Workflow,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
+
+import { callEvalMockHandler, normalizeLegacyRequest } from '@/execution-engine/eval-mock-helpers';
+
+import { getNonWorkflowAdditionalKeys } from '../get-additional-keys';
+import { httpRequestWithAuthentication, requestWithAuthentication } from './authentication';
+import { proxyRequestToAxios } from './legacy-request-adapter';
+import { refreshOAuth2Token, requestOAuth1, requestOAuth2 } from './oauth';
+import { sendHttpRequest } from './outbound-request';
+import { requestWithAuthenticationPaginated } from './pagination';
+import { toHttpRequestOptions, toLegacyRequestOptions } from './request-target';
+import { getTraceHeaders } from './trace-headers';
+
+export const getRequestHelperFunctions = (
+	workflow: Workflow,
+	node: INode,
+	additionalData: IWorkflowExecuteAdditionalData,
+	runExecutionData: IRunExecutionData | null = null,
+	connectionInputData: INodeExecutionData[] = [],
+): RequestHelperFunctions => {
+	const getResolvedValue = (
+		parameterValue: NodeParameterValueType,
+		itemIndex: number,
+		runIndex: number,
+		executeData: IExecuteData,
+		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
+		returnObjectAsString = false,
+	): NodeParameterValueType => {
+		const mode: WorkflowExecuteMode = 'internal';
+
+		if (
+			typeof parameterValue === 'object' ||
+			(typeof parameterValue === 'string' && parameterValue.charAt(0) === '=')
+		) {
+			return workflow.expression.getParameterValue(
+				parameterValue,
+				runExecutionData,
+				runIndex,
+				itemIndex,
+				node.name,
+				connectionInputData,
+				mode,
+				{ ...getNonWorkflowAdditionalKeys(additionalData), ...additionalKeys },
+				executeData,
+				returnObjectAsString,
+			);
+		}
+
+		return parameterValue;
+	};
+
+	// Eval LLM mock handler: extract once for use in direct helpers below
+	const evalLlmMock = additionalData.evalLlmMockHandler;
+
+	return {
+		getTraceHeaders: () => getTraceHeaders(additionalData, node),
+		httpRequest: async (
+			requestOptionsWithTarget: IHttpRequestOptions | WithRequestTarget<IHttpRequestOptions>,
+		) => {
+			const requestOptions = toHttpRequestOptions(requestOptionsWithTarget);
+			if (evalLlmMock) {
+				const evalMockResponse = await callEvalMockHandler(
+					evalLlmMock,
+					requestOptions,
+					node,
+					requestOptions.returnFullResponse,
+				);
+				if (evalMockResponse !== undefined) return evalMockResponse;
+			}
+			return await sendHttpRequest(requestOptions, additionalData, node);
+		},
+		getSecureEgressFilter: (useDefaultSsrfPolicy) =>
+			Container.get(OutboundHttp).egressFilter(useDefaultSsrfPolicy),
+		async requestWithAuthenticationPaginated(
+			this: IExecuteFunctions,
+			requestOptions,
+			itemIndex,
+			paginationOptions,
+			credentialsType,
+			additionalCredentialOptions,
+			sanitizedRequest,
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		): Promise<any[]> {
+			return await requestWithAuthenticationPaginated.call(
+				this,
+				toLegacyRequestOptions(requestOptions),
+				itemIndex,
+				paginationOptions,
+				getResolvedValue,
+				node,
+				credentialsType,
+				additionalCredentialOptions,
+				sanitizedRequest,
+			);
+		},
+		async httpRequestWithAuthentication(
+			this,
+			credentialsType,
+			requestOptions,
+			additionalCredentialOptions,
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		): Promise<any> {
+			return await httpRequestWithAuthentication.call(
+				this,
+				credentialsType,
+				requestOptions,
+				workflow,
+				node,
+				additionalData,
+				additionalCredentialOptions,
+			);
+		},
+		async refreshOAuth2Token(
+			this: IAllExecuteFunctions,
+			credentialsType: string,
+			oAuth2Options?: IOAuth2Options,
+		) {
+			return await refreshOAuth2Token.call(
+				this,
+				credentialsType,
+				node,
+				additionalData,
+				oAuth2Options,
+			);
+		},
+
+		// oxlint-disable-next-line typescript/no-deprecated -- Keep this helper for existing node implementations.
+		request: async (uriOrObjectWithTarget, optionsWithTarget) => {
+			const uriOrObject =
+				typeof uriOrObjectWithTarget === 'string'
+					? uriOrObjectWithTarget
+					: toLegacyRequestOptions(uriOrObjectWithTarget);
+			const options = optionsWithTarget && toLegacyRequestOptions(optionsWithTarget);
+			if (evalLlmMock) {
+				const wantsFull = typeof uriOrObject !== 'string' && uriOrObject.resolveWithFullResponse;
+				const evalMockResponse = await callEvalMockHandler(
+					evalLlmMock,
+					normalizeLegacyRequest(uriOrObject, options),
+					node,
+					wantsFull,
+					'legacy',
+				);
+				if (evalMockResponse !== undefined) return evalMockResponse;
+			}
+			// oxlint-disable-next-line typescript/no-deprecated
+			return await proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);
+		},
+
+		// oxlint-disable-next-line typescript/no-deprecated -- Keep this helper for existing node implementations.
+		async requestWithAuthentication(
+			this,
+			credentialsType,
+			requestOptions,
+			additionalCredentialOptions,
+			itemIndex,
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		): Promise<any> {
+			// oxlint-disable-next-line typescript/no-deprecated
+			return await requestWithAuthentication.call(
+				this,
+				credentialsType,
+				requestOptions,
+				workflow,
+				node,
+				additionalData,
+				additionalCredentialOptions,
+				itemIndex,
+			);
+		},
+
+		// oxlint-disable-next-line typescript/no-deprecated -- Keep this helper for existing node implementations.
+		async requestOAuth1(
+			this: IAllExecuteFunctions,
+			credentialsType: string,
+			requestOptionsWithTarget: LegacyRequestOptions,
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		): Promise<any> {
+			const requestOptions = toLegacyRequestOptions(requestOptionsWithTarget);
+			if (evalLlmMock) {
+				const evalMockResponse = await callEvalMockHandler(
+					evalLlmMock,
+					normalizeLegacyRequest(requestOptions),
+					node,
+					requestOptions.resolveWithFullResponse,
+					'legacy',
+				);
+				if (evalMockResponse !== undefined) return evalMockResponse;
+			}
+			// oxlint-disable-next-line typescript/no-deprecated
+			return await requestOAuth1.call(this, credentialsType, requestOptions);
+		},
+
+		// oxlint-disable-next-line typescript/no-deprecated -- Keep this helper for existing node implementations.
+		async requestOAuth2(
+			this: IAllExecuteFunctions,
+			credentialsType: string,
+			requestOptionsWithTarget: LegacyRequestOptions,
+			oAuth2Options?: IOAuth2Options,
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		): Promise<any> {
+			const requestOptions = toLegacyRequestOptions(requestOptionsWithTarget);
+			if (evalLlmMock) {
+				const evalMockResponse = await callEvalMockHandler(
+					evalLlmMock,
+					normalizeLegacyRequest(requestOptions),
+					node,
+					requestOptions.resolveWithFullResponse,
+					'legacy',
+				);
+				if (evalMockResponse !== undefined) return evalMockResponse;
+			}
+			// oxlint-disable-next-line typescript/no-deprecated
+			return await requestOAuth2.call(
+				this,
+				credentialsType,
+				requestOptions,
+				node,
+				additionalData,
+				oAuth2Options,
+			);
+		},
+	};
+};

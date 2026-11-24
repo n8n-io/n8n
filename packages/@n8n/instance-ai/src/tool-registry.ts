@@ -1,0 +1,38 @@
+import type { BuiltTool } from '@n8n/agents';
+
+import type { InstanceAiToolRegistry } from './types';
+
+export function createToolRegistry(
+	entries: Iterable<readonly [string, BuiltTool]> = [],
+): InstanceAiToolRegistry {
+	const registry = new Map<string, BuiltTool>();
+	for (const [name, tool] of entries) {
+		registry.set(name, tool);
+	}
+	return registry;
+}
+
+export function createToolRegistryFromTools(tools: Iterable<BuiltTool>): InstanceAiToolRegistry {
+	const registry = createToolRegistry();
+	for (const tool of tools) {
+		registry.set(tool.name, tool);
+	}
+	return registry;
+}
+
+export function mergeToolRegistries(
+	...registries: Array<InstanceAiToolRegistry | undefined>
+): InstanceAiToolRegistry {
+	const merged = createToolRegistry();
+	for (const registry of registries) {
+		if (!registry) continue;
+		for (const [name, tool] of registry) {
+			merged.set(name, tool);
+		}
+	}
+	return merged;
+}
+
+export function toolRegistryValues(registry: InstanceAiToolRegistry): BuiltTool[] {
+	return Array.from(registry.values());
+}

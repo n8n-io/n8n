@@ -4,37 +4,72 @@ import type {
 	WorkflowRepository,
 	CredentialsRepository,
 	SettingsRepository,
-	UserRepository,
+	PersonRepository,
+	Role,
 } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { Person, ServiceAccount, ServiceAccountDetails } from '@n8n/db';
+import type { Repository } from '@n8n/typeorm';
 import type { ErrorReporter } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
+import { mock } from 'vitest-mock-extended';
 
-import { ExternalHooks } from '@/external-hooks';
+import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';
+import type { WorkflowHookContextService } from '@/workflow-hook-context.service';
+
+// `ExternalHooks` loads hook files via `require(<path>)`. Vitest cannot mock a
+// path that doesn't resolve to a real module, so write a real fixture that
+// delegates to a per-test global, letting the test assert on its own spy.
+const { validHookPath, registerHookPath } = vi.hoisted(() => {
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	const { mkdtempSync, writeFileSync } = require('fs');
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	const { tmpdir } = require('os');
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	const { join } = require('path');
+	const dir = mkdtempSync(join(tmpdir(), 'ext-hooks-'));
+	const p = join(dir, 'valid-hook.js');
+	writeFileSync(
+		p,
+		'module.exports = { workflow: { create: [(...args) => globalThis.__extHookFn(...args)] } };',
+	);
+	const registerHookPath = join(dir, 'register-hook.js');
+	writeFileSync(
+		registerHookPath,
+		'module.exports = { register: async () => {}, workflow: { create: [async () => {}] } };',
+	);
+	return { validHookPath: p as string, registerHookPath: registerHookPath as string };
+});
+
+vi.mock('/path/to/non-existent-hook.js', () => {
+	throw new Error('File not found');
+});
 
 describe('ExternalHooks', () => {
 	const logger = mock<Logger>();
 	const errorReporter = mock<ErrorReporter>();
 	const globalConfig = mock<GlobalConfig>();
-	const userRepository = mock<UserRepository>();
+	const personRepository = mock<PersonRepository>();
+	const personCollection = mock<Repository<Person>>();
 	const settingsRepository = mock<SettingsRepository>();
 	const credentialsRepository = mock<CredentialsRepository>();
 	const workflowRepository = mock<WorkflowRepository>();
 
 	const workflowData = mock<IWorkflowBase>({ id: '123', name: 'Test Workflow' });
-	const hookFn = jest.fn();
+	const workflowContext = mock<WorkflowHookContextService>();
+	const hookFn = vi.fn();
 
 	let externalHooks: ExternalHooks;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		globalConfig.externalHooks.files = [];
+		personRepository.forCloudHooks.mockReturnValue(personCollection);
 		externalHooks = new ExternalHooks(
 			logger,
 			errorReporter,
 			globalConfig,
-			userRepository,
+			personRepository,
 			settingsRepository,
 			credentialsRepository,
 			workflowRepository,
@@ -43,8 +78,7 @@ describe('ExternalHooks', () => {
 
 	describe('init()', () => {
 		it('should not load hooks if no external hook files are configured', async () => {
-			// @ts-expect-error private method
-			const loadHooksSpy = jest.spyOn(externalHooks, 'loadHooks');
+			const loadHooksSpy = vi.spyOn(externalHooks, 'loadHooks');
 			await externalHooks.init();
 			expect(loadHooksSpy).not.toHaveBeenCalled();
 		});
@@ -52,35 +86,50 @@ describe('ExternalHooks', () => {
 		it('should throw an error if hook file cannot be loaded', async () => {
 			globalConfig.externalHooks.files = ['/path/to/non-existent-hook.js'];
 
-			jest.mock(
-				'/path/to/non-existent-hook.js',
-				() => {
-					throw new Error('File not found');
-				},
-				{ virtual: true },
-			);
-
 			await expect(externalHooks.init()).rejects.toThrow(UnexpectedError);
 		});
 
 		it('should successfully load hooks from valid hook file', async () => {
-			const mockHookFile = {
-				workflow: {
-					create: [hookFn],
-				},
-			};
+			(globalThis as unknown as { __extHookFn: typeof hookFn }).__extHookFn = hookFn;
 
-			globalConfig.externalHooks.files = ['/path/to/valid-hook.js'];
-			jest.mock('/path/to/valid-hook.js', () => mockHookFile, { virtual: true });
+			globalConfig.externalHooks.files = [validHookPath];
 
 			await externalHooks.init();
 
 			expect(externalHooks['registered']['workflow.create']).toHaveLength(1);
 
-			await externalHooks.run('workflow.create', [workflowData]);
+			await externalHooks.run('workflow.create', [workflowData, workflowContext]);
 
 			expect(hookFn).toHaveBeenCalledTimes(1);
-			expect(hookFn).toHaveBeenCalledWith(workflowData);
+			expect(hookFn).toHaveBeenCalledWith(workflowData, workflowContext);
+		});
+	});
+
+	describe('versioned hooks API', () => {
+		it('should collect the register export and still load legacy hooks from the same file', async () => {
+			globalConfig.externalHooks.files = [registerHookPath];
+
+			await externalHooks.init();
+
+			expect(externalHooks.registerFunctions).toHaveLength(1);
+			expect(externalHooks.hasHook('workflow.create')).toBe(true);
+		});
+
+		it('should not collect a register function from a legacy hook file', async () => {
+			globalConfig.externalHooks.files = [validHookPath];
+
+			await externalHooks.init();
+
+			expect(externalHooks.registerFunctions).toHaveLength(0);
+		});
+
+		it('should run hooks added with registerHook()', async () => {
+			const fn = vi.fn();
+			externalHooks.registerHook('workflow.delete', fn);
+
+			await externalHooks.run('workflow.delete', ['workflow-1']);
+
+			expect(fn).toHaveBeenCalledWith('workflow-1');
 		});
 	});
 
@@ -92,14 +141,14 @@ describe('ExternalHooks', () => {
 		it('should execute registered hooks', async () => {
 			externalHooks['registered']['workflow.create'] = [hookFn];
 
-			await externalHooks.run('workflow.create', [workflowData]);
+			await externalHooks.run('workflow.create', [workflowData, workflowContext]);
 
 			expect(hookFn).toHaveBeenCalledTimes(1);
 
-			const hookInvocationContext = hookFn.mock.instances[0];
+			const hookInvocationContext = hookFn.mock.instances[0] as Record<string, unknown>;
 			expect(hookInvocationContext).toHaveProperty('dbCollections');
 			expect(hookInvocationContext.dbCollections).toEqual({
-				User: userRepository,
+				User: personCollection,
 				Settings: settingsRepository,
 				Credentials: credentialsRepository,
 				Workflow: workflowRepository,
@@ -112,7 +161,9 @@ describe('ExternalHooks', () => {
 
 			externalHooks['registered']['workflow.create'] = [hookFn];
 
-			await expect(externalHooks.run('workflow.create', [workflowData])).rejects.toThrow(error);
+			await expect(
+				externalHooks.run('workflow.create', [workflowData, workflowContext]),
+			).rejects.toThrow(error);
 			expect(errorReporter.error).toHaveBeenCalledWith(
 				expect.objectContaining({
 					message: 'External hook "workflow.create" failed',
@@ -123,6 +174,76 @@ describe('ExternalHooks', () => {
 			expect(logger.error).toHaveBeenCalledWith(
 				'There was a problem running hook "workflow.create"',
 			);
+		});
+	});
+
+	describe('toWorkflowLifecycleHookActor()', () => {
+		it('should return undefined when there is no acting user', () => {
+			expect(toWorkflowLifecycleHookActor(undefined)).toBeUndefined();
+		});
+
+		it('should project a fully populated user', () => {
+			const person = Object.assign(new Person(), {
+				id: 'user-1',
+				email: 'actor@example.com',
+				firstName: 'Ada',
+				lastName: 'Lovelace',
+				role: mock<Role>({ slug: 'global:admin' }),
+			});
+
+			expect(toWorkflowLifecycleHookActor(person)).toEqual({
+				id: 'user-1',
+				email: 'actor@example.com',
+				firstName: 'Ada',
+				lastName: 'Lovelace',
+				role: 'global:admin',
+			});
+		});
+
+		it('should preserve null email and names for a user without them', () => {
+			const person = Object.assign(new Person(), {
+				id: 'user-1',
+				email: null as unknown as string,
+				firstName: null as unknown as string,
+				lastName: null as unknown as string,
+				role: mock<Role>({ slug: 'global:member' }),
+			});
+
+			expect(toWorkflowLifecycleHookActor(person)).toEqual({
+				id: 'user-1',
+				email: null,
+				firstName: null,
+				lastName: null,
+				role: 'global:member',
+			});
+		});
+
+		it('should project a service account without email or names', () => {
+			const serviceAccount = Object.assign(new ServiceAccount(), {
+				id: 'sa-1',
+				details: Object.assign(new ServiceAccountDetails(), { name: 'Deploy bot' }),
+				role: mock<Role>({ slug: 'global:member' }),
+			});
+
+			expect(toWorkflowLifecycleHookActor(serviceAccount)).toEqual({
+				id: 'sa-1',
+				email: null,
+				firstName: null,
+				lastName: null,
+				role: 'global:member',
+			});
+		});
+
+		it('should leave role undefined when the user has no role', () => {
+			const person = Object.assign(new Person(), {
+				id: 'user-1',
+				email: 'actor@example.com',
+				firstName: 'Ada',
+				lastName: 'Lovelace',
+				role: undefined,
+			});
+
+			expect(toWorkflowLifecycleHookActor(person)?.role).toBeUndefined();
 		});
 	});
 });

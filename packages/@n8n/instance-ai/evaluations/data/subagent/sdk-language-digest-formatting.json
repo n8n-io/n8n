@@ -1,0 +1,4 @@
+{
+	"id": "sdk-language-digest-formatting",
+	"prompt": "Build a workflow that runs every weekday at 8am, reads Gmail messages from the last 24 hours, creates a prioritized daily action-item digest with bullet lines for each message, and sends that digest to manager@example.com. The digest formatting can use n8n expressions or a Code node for runtime aggregation, but the workflow SDK builder code must stay in the supported SDK subset and must not use native top-level array/string helpers like .join(), .map(), .filter(), or .reduce(). Configure all nodes completely and don't ask for credentials."
+}

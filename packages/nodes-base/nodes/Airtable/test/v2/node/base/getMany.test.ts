@@ -1,6 +1,8 @@
+import { requestPath } from 'n8n-workflow';
 import * as getMany from '../../../../v2/actions/base/getMany.operation';
 import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction } from '../helpers';
+import type * as _importType0 from '../../../../v2/transport';
 
 const bases = [
 	{
@@ -20,11 +22,11 @@ const bases = [
 	},
 ];
 
-jest.mock('../../../../v2/transport', () => {
-	const originalModule = jest.requireActual('../../../../v2/transport');
+vi.mock('../../../../v2/transport', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../../../../v2/transport');
 	return {
 		...originalModule,
-		apiRequest: jest.fn(async function () {
+		apiRequest: vi.fn(async function () {
 			return { bases };
 		}),
 	};
@@ -40,7 +42,7 @@ describe('Test AirtableV2, base => getMany', () => {
 
 		const response = await getMany.execute.call(createMockExecuteFunction(nodeParameters));
 
-		expect(transport.apiRequest).toHaveBeenCalledWith('GET', 'meta/bases');
+		expect(transport.apiRequest).toHaveBeenCalledWith('GET', requestPath`meta/bases`);
 
 		expect(response).toEqual([
 			{
@@ -92,7 +94,7 @@ describe('Test AirtableV2, base => getMany', () => {
 
 		const response = await getMany.execute.call(createMockExecuteFunction(nodeParameters));
 
-		expect(transport.apiRequest).toHaveBeenCalledWith('GET', 'meta/bases');
+		expect(transport.apiRequest).toHaveBeenCalledWith('GET', requestPath`meta/bases`);
 
 		expect(response).toEqual([
 			{

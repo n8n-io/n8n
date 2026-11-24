@@ -1,26 +1,33 @@
 <script setup lang="ts">
-import Modal from '@/app/components/Modal.vue';
 import {
 	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
 	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
 } from '../communityNodes.constants';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useCommunityNodesStore } from '../communityNodes.store';
-import { createEventBus } from '@n8n/utils/event-bus';
+import { findVettedCommunityNodeAttributes, isNodesApiVersionError } from '../communityNodes.utils';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { computed, onMounted, ref } from 'vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { CommunityNodeType } from '@n8n/api-types';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import semver from 'semver';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { WorkflowResource } from '@/Interface';
 
-import { N8nButton, N8nNotice, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nNotice,
+	N8nText,
+} from '@n8n/design-system';
 import NodesInWorkflowTable from './NodesInWorkflowTable.vue';
 
+defineOptions({ inheritAttrs: false });
 export type CommunityPackageManageMode = 'uninstall' | 'update' | 'view-documentation';
 
 interface Props {
@@ -34,9 +41,12 @@ const props = defineProps<Props>();
 const communityNodesStore = useCommunityNodesStore();
 const nodeTypesStore = useNodeTypesStore();
 const settingsStore = useSettingsStore();
-const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
+const uiStore = useUIStore();
 
-const modalBus = createEventBus();
+const modalOpen = computed(
+	() => uiStore.modalsById[COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY]?.open === true,
+);
 
 const toast = useToast();
 const i18n = useI18n();
@@ -105,9 +115,14 @@ const getModalContent = computed(() => {
 	};
 });
 
-const onModalClose = () => {
-	return !loading.value;
-};
+function closeDialog() {
+	uiStore.closeModal(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	// The request must finish. Escape and the overlay stay ignored until it does.
+	if (!open && !loading.value) closeDialog();
+}
 
 const onConfirmButtonClick = async () => {
 	if (props.mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL) {
@@ -128,7 +143,10 @@ const onUninstall = async () => {
 		});
 		loading.value = true;
 		await communityNodesStore.uninstallPackage(props.activePackageName);
-		await useNodeTypesStore().getNodeTypes();
+		await Promise.all([
+			useNodeTypesStore().getNodeTypes(),
+			useNodeTypesStore().fetchCommunityNodePreviews(),
+		]);
 		toast.showMessage({
 			title: i18n.baseText('settings.communityNodes.messages.uninstall.success.title'),
 			type: 'success',
@@ -137,7 +155,7 @@ const onUninstall = async () => {
 		toast.showError(error, i18n.baseText('settings.communityNodes.messages.uninstall.error'));
 	} finally {
 		loading.value = false;
-		modalBus.emit('close');
+		closeDialog();
 	}
 };
 
@@ -156,11 +174,7 @@ const onUpdate = async () => {
 		if (settingsStore.isUnverifiedPackagesEnabled) {
 			await communityNodesStore.updatePackage(props.activePackageName);
 		} else if (settingsStore.isCommunityNodesFeatureEnabled) {
-			await communityNodesStore.updatePackage(
-				props.activePackageName,
-				updateVersion.value,
-				nodeTypeStorePackage.value?.checksum,
-			);
+			await communityNodesStore.updatePackage(props.activePackageName, updateVersion.value);
 		} else {
 			throw new Error('Community nodes feature is not correctly enabled.');
 		}
@@ -177,24 +191,27 @@ const onUpdate = async () => {
 			type: 'success',
 		});
 	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.communityNodes.messages.update.error.title'));
+		toast.showError(
+			error,
+			i18n.baseText(
+				isNodesApiVersionError(error)
+					? 'settings.communityNodes.messages.update.error.incompatible.title'
+					: 'settings.communityNodes.messages.update.error.title',
+			),
+		);
 	} finally {
 		loading.value = false;
-		modalBus.emit('close');
+		closeDialog();
 	}
 };
 
-async function fetchPackageInfo(packageName: string) {
-	await nodeTypesStore.loadNodeTypesIfNotLoaded();
-	const nodeType = nodeTypesStore.visibleNodeTypes.find((nodeType) =>
-		nodeType.name.includes(packageName),
+async function fetchPackageInfo() {
+	const nodeTypes = communityStorePackage.value?.installedNodes.map((node) => node.type) ?? [];
+	const communityNodeAttributes = await findVettedCommunityNodeAttributes(
+		nodeTypes,
+		nodeTypesStore.getCommunityNodeAttributes,
 	);
-
-	if (nodeType) {
-		const communityNodeAttributes = await nodeTypesStore.getCommunityNodeAttributes(nodeType?.name);
-
-		nodeTypeStorePackage.value = communityNodeAttributes ?? undefined;
-	}
+	nodeTypeStorePackage.value = communityNodeAttributes ?? undefined;
 }
 
 function setIsVerifiedLatestPackage() {
@@ -216,18 +233,14 @@ function setPackageVersion() {
 	}
 }
 
-const onClick = async () => {
-	useUIStore().closeModal(COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY);
-};
-
 onMounted(async () => {
 	if (props.activePackageName) {
-		await fetchPackageInfo(props.activePackageName);
+		await fetchPackageInfo();
 	}
 
 	if (communityStorePackage.value?.installedNodes.length) {
 		const nodeTypes = communityStorePackage.value.installedNodes.map((node) => node.type);
-		const response = await workflowsStore.fetchWorkflowsWithNodesIncluded(nodeTypes);
+		const response = await workflowsListStore.fetchWorkflowsWithNodesIncluded(nodeTypes);
 		workflowsWithPackageNodes.value = response?.data ?? [];
 	}
 
@@ -237,19 +250,20 @@ onMounted(async () => {
 </script>
 
 <template>
-	<Modal
-		width="640px"
-		:name="COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY"
-		:title="getModalContent.title"
-		:event-bus="modalBus"
-		:center="true"
-		:show-close="!loading"
-		:before-close="onModalClose"
+	<N8nDialog
+		:open="modalOpen"
+		:size="props.mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL ? 'medium' : 'large'"
+		:header="getModalContent.title"
+		:close-on-overlay-click="!loading"
+		:close-on-escape="!loading"
+		:show-close-button="!loading"
+		:data-test-id="`${COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY}-modal`"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #content>
+		<N8nDialogBody>
 			<N8nText color="text-dark" :bold="true">{{ getModalContent.message }}</N8nText>
 			<N8nNotice
-				v-if="!isLatestPackageVerified"
+				v-if="!isLatestPackageVerified && getModalContent.warning"
 				data-test-id="communityPackageManageConfirmModal-warning"
 				:content="getModalContent.warning"
 			/>
@@ -263,26 +277,23 @@ onMounted(async () => {
 				v-if="workflowsWithPackageNodes?.length"
 				:data="workflowsWithPackageNodes"
 			/>
-		</template>
-		<template #footer>
+		</N8nDialogBody>
+		<N8nDialogFooter>
 			<N8nButton
+				variant="outline"
+				:disabled="loading"
 				:label="i18n.baseText('settings.communityNodes.confirmModal.cancel')"
-				size="large"
-				float="left"
-				type="secondary"
 				data-test-id="close-button"
-				@click="onClick"
+				@click="closeDialog"
 			/>
 			<N8nButton
 				:loading="loading"
 				:disabled="loading"
 				:label="loading ? getModalContent.buttonLoadingLabel : getModalContent.buttonLabel"
-				size="large"
-				float="right"
 				@click="onConfirmButtonClick"
 			/>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style module lang="scss">

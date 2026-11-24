@@ -20,8 +20,8 @@ abstract class IndexOperation extends LazyPromise<void> {
 		queryRunner: QueryRunner,
 		protected customIndexName?: string,
 	) {
-		super((resolve) => {
-			void this.execute(queryRunner).then(resolve);
+		super((resolve, reject) => {
+			void this.execute(queryRunner).then(resolve).catch(reject);
 		});
 	}
 }
@@ -34,15 +34,21 @@ export class CreateIndex extends IndexOperation {
 		tablePrefix: string,
 		queryRunner: QueryRunner,
 		customIndexName?: string,
+		protected whereClause?: string,
 	) {
 		super(tableName, columnNames, tablePrefix, queryRunner, customIndexName);
 	}
 
 	async execute(queryRunner: QueryRunner) {
-		const { columnNames, isUnique } = this;
+		const { columnNames, isUnique, whereClause } = this;
 		return await queryRunner.createIndex(
 			this.fullTableName,
-			new TableIndex({ name: this.customIndexName ?? this.fullIndexName, columnNames, isUnique }),
+			new TableIndex({
+				name: this.customIndexName ?? this.fullIndexName,
+				columnNames,
+				isUnique,
+				where: whereClause,
+			}),
 		);
 	}
 }

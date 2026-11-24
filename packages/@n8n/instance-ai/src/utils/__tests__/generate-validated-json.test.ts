@@ -1,0 +1,220 @@
+import type { MockedFunction } from 'vitest';
+import { z } from 'zod';
+
+vi.mock('../../tracing/langsmith-tracing', () => ({ getCurrentHelperTelemetry: vi.fn() }));
+
+vi.mock('../eval-agents', async () => {
+	const actual: object = await vi.importActual('../eval-agents');
+	return { ...actual, createEvalAgent: vi.fn(), extractText: vi.fn() };
+});
+
+import { getCurrentHelperTelemetry } from '../../tracing/langsmith-tracing';
+import { createEvalAgent, extractText } from '../eval-agents';
+import { generateValidatedJson } from '../generate-validated-json';
+
+const mockCreateEvalAgent = createEvalAgent as MockedFunction<typeof createEvalAgent>;
+const mockExtractText = extractText as MockedFunction<typeof extractText>;
+
+const schema = z.object({ ok: z.boolean() });
+
+function setupAgentMock(responseText: string) {
+	const generate = vi.fn().mockResolvedValue({ messages: [] });
+	mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
+		typeof createEvalAgent
+	>);
+	mockExtractText.mockReturnValue(responseText);
+	return generate;
+}
+
+async function generate(userText = 'do it') {
+	return await generateValidatedJson('test-agent', {
+		model: 'anthropic/claude-haiku-5-5',
+		instructions: 'instructions',
+		userText,
+		schema,
+	});
+}
+
+describe('generateValidatedJson', () => {
+	beforeEach(() => vi.clearAllMocks());
+
+	it('returns validated data for a plain JSON response', async () => {
+		setupAgentMock('{"ok": true}');
+		expect(await generate()).toEqual({ ok: true, data: { ok: true } });
+	});
+
+	it('strips markdown fences around the JSON', async () => {
+		setupAgentMock('```json\n{"ok": false}\n```');
+		expect(await generate()).toEqual({ ok: true, data: { ok: false } });
+	});
+
+	it('sends the user text as a single user message', async () => {
+		const generateMock = setupAgentMock('{"ok": true}');
+		await generate('classify this');
+		expect(generateMock).toHaveBeenCalledWith([
+			{ role: 'user', content: [{ type: 'text', text: 'classify this' }] },
+		]);
+	});
+
+	it('reports invalid_json on unparseable output', async () => {
+		setupAgentMock('not json');
+		expect(await generate()).toEqual({ ok: false, reason: 'invalid_json' });
+	});
+
+	it('reports schema_mismatch with issues on shape errors', async () => {
+		setupAgentMock('{"ok": "yes"}');
+		const result = await generate();
+		expect(result).toMatchObject({ ok: false, reason: 'schema_mismatch' });
+		expect(result.ok).toBe(false);
+		if (!result.ok) expect(result.issues?.length).toBeGreaterThan(0);
+	});
+
+	it('still calls the model, without telemetry, when tracing fails', async () => {
+		vi.mocked(getCurrentHelperTelemetry).mockImplementationOnce(() => {
+			throw new Error('tracing unavailable');
+		});
+		setupAgentMock('{"ok": true}');
+		expect(await generate()).toEqual({ ok: true, data: { ok: true } });
+		expect(mockCreateEvalAgent).toHaveBeenCalledWith(
+			'test-agent',
+			expect.objectContaining({ telemetry: undefined }),
+		);
+	});
+
+	it('reports generation_failed when the LLM call throws', async () => {
+		const generateMock = vi.fn().mockRejectedValue(new Error('boom'));
+		mockCreateEvalAgent.mockReturnValue({ generate: generateMock } as unknown as ReturnType<
+			typeof createEvalAgent
+		>);
+		expect(await generate()).toEqual({ ok: false, reason: 'generation_failed', message: 'boom' });
+	});
+
+	it('reports generation_failed with the model error when the call returned an error', async () => {
+		setupAgentMock('');
+		mockExtractText.mockImplementation(() => {
+			throw new Error('Eval model provider call failed (HTTP 401): invalid x-api-key');
+		});
+		expect(await generate()).toEqual({
+			ok: false,
+			reason: 'generation_failed',
+			message: 'Eval model provider call failed (HTTP 401): invalid x-api-key',
+		});
+	});
+
+	it('reports generation_failed when agent creation throws', async () => {
+		mockCreateEvalAgent.mockImplementation(() => {
+			throw new Error('no api key');
+		});
+		expect(await generate()).toEqual({
+			ok: false,
+			reason: 'generation_failed',
+			message: 'no api key',
+		});
+	});
+
+	it('forwards the model as a resolved model to agent creation', async () => {
+		setupAgentMock('{"ok": true}');
+		const model = {
+			id: 'anthropic/claude-haiku-5-5' as const,
+			url: 'https://proxy.example.com/anthropic/v1',
+			apiKey: 'proxy-token',
+		};
+		const modelFetch = vi.fn();
+		await generateValidatedJson('test-agent', {
+			model,
+			effort: 'low',
+			instructions: 'instructions',
+			userText: 'do it',
+			schema,
+			modelFetch,
+		});
+		expect(mockCreateEvalAgent).toHaveBeenCalledWith(
+			'test-agent',
+			expect.objectContaining({ resolvedModel: model, effort: 'low', modelFetch }),
+		);
+	});
+
+	it('reports the token usage of the call with the catalog model id', async () => {
+		const usage = { promptTokens: 900, completionTokens: 120, totalTokens: 1020 };
+		mockCreateEvalAgent.mockReturnValue({
+			generate: vi.fn().mockResolvedValue({ messages: [], usage }),
+		} as unknown as ReturnType<typeof createEvalAgent>);
+		mockExtractText.mockReturnValue('{"ok": true}');
+		const onHelperUsage = vi.fn().mockResolvedValue(undefined);
+
+		await generateValidatedJson('test-agent', {
+			model: 'anthropic/claude-haiku-5-5',
+			instructions: 'instructions',
+			userText: 'do it',
+			schema,
+			onHelperUsage,
+		});
+
+		expect(onHelperUsage).toHaveBeenCalledWith({
+			helper: 'test-agent',
+			model: 'anthropic/claude-haiku-5-5',
+			usage,
+			reportId: expect.any(String),
+		});
+	});
+
+	it('keeps the result when usage reporting fails', async () => {
+		mockCreateEvalAgent.mockReturnValue({
+			generate: vi.fn().mockResolvedValue({
+				messages: [],
+				usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+			}),
+		} as unknown as ReturnType<typeof createEvalAgent>);
+		mockExtractText.mockReturnValue('{"ok": true}');
+
+		const result = await generateValidatedJson('test-agent', {
+			model: 'anthropic/claude-haiku-5-5',
+			instructions: 'instructions',
+			userText: 'do it',
+			schema,
+			onHelperUsage: vi.fn().mockRejectedValue(new Error('billing down')),
+		});
+
+		expect(result).toEqual({ ok: true, data: { ok: true } });
+	});
+
+	it('does not report usage when the result has none', async () => {
+		setupAgentMock('{"ok": true}');
+		const onHelperUsage = vi.fn();
+		await generateValidatedJson('test-agent', {
+			model: 'anthropic/claude-haiku-5-5',
+			instructions: 'instructions',
+			userText: 'do it',
+			schema,
+			onHelperUsage,
+		});
+		expect(onHelperUsage).not.toHaveBeenCalled();
+	});
+
+	it('reports generation_failed without calling a model when none is available', async () => {
+		const result = await generateValidatedJson('test-agent', {
+			model: undefined,
+			instructions: 'instructions',
+			userText: 'do it',
+			schema,
+		});
+		expect(result).toEqual({
+			ok: false,
+			reason: 'generation_failed',
+			message: 'No model is available',
+		});
+		expect(mockCreateEvalAgent).not.toHaveBeenCalled();
+	});
+});
+
+it('passes the current product trace to verification helpers', async () => {
+	const telemetry = { enabled: true, recordInputs: false, recordOutputs: false, integrations: [] };
+	vi.mocked(getCurrentHelperTelemetry).mockReturnValueOnce(telemetry);
+	setupAgentMock('{"ok": true}');
+	await generate();
+	expect(getCurrentHelperTelemetry).toHaveBeenCalledWith('test-agent');
+	expect(mockCreateEvalAgent).toHaveBeenCalledWith(
+		'test-agent',
+		expect.objectContaining({ telemetry }),
+	);
+});

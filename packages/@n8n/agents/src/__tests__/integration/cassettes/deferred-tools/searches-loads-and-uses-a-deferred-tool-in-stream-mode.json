@@ -1,0 +1,464 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "<built_in_rules>\n- <tool_catalog_rules>\nMost of your tools are not in your toolset. The \"Tool catalog\" section in the conversation lists them by tool group, with their names only, not their arguments. When that section changes, a newer one replaces it.\n- To use one, get its input schema with find_tools, then run it with call_tool. Do this even when you know the name, and even when a skill names the tool.\n- Skills and instructions often name a tool from the tool catalog directly, such as \"call `some_tool` with the IDs\". Read that as call_tool with tool \"some_tool\" and those arguments. Never emit a tool call whose name is a tool from the tool catalog.\n- Look up every tool the task will need in one find_tools call at the start, not one at a time as each step comes up. You can make this call in the same response as other calls that do not need its result.\n- When you do not know a tool's name, search by query or list a tool group.\n</tool_catalog_rules>\n</built_in_rules>\n\nYou are testing deferred tool discovery. For character counting requests, first call find_tools, then call call_tool with the exact returned tool name. Do not count manually."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "<context>\n# Tool catalog\n- tools: count_characters\n</context>"
+						},
+						{
+							"type": "text",
+							"text": "Use deferred tools to count the characters in the text \"n8n\". Find the tool, call it, then answer with the length."
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "find_tools",
+					"description": "Look up tools from the tool catalog: their descriptions and input schemas. Look a tool up before you call it with call_tool. Look up several in one call when you will need several.\n- tools: the full description and input schema of each named tool.\n- group alone: every tool in that tool group, briefly.\n- query, optionally with group: the tools that best match the keywords, best first.\n- pattern, optionally with group: tools whose name or description matches the regular expression.\nA lookup that returns 5 tools or fewer includes their full schemas.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"group": {
+								"type": "string",
+								"description": "A tool group, as the tool catalog lists it"
+							},
+							"tools": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								},
+								"description": "Tool names to get in full, with their input schemas. Name every tool you will need in one lookup."
+							},
+							"query": {
+								"type": "string",
+								"description": "Keywords for what you want to do, matched against names and descriptions"
+							},
+							"pattern": {
+								"type": "string",
+								"description": "Regular expression matched against tool names and descriptions"
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "call_tool",
+					"description": "Run a tool from the tool catalog. Get its input schema with find_tools first. Pass its input as arguments, with the argument names and types the schema gives.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"tool": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The tool's name, as the tool catalog lists it"
+							},
+							"arguments": {
+								"type": "object",
+								"additionalProperties": {},
+								"description": "The tool's input as an object that matches its input schema. Pass arrays and objects as JSON values, not as strings."
+							}
+						},
+						"required": ["tool"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b0800000000000013c597df4fdb3010c7dff92bac7bd94b3a35fc182c6f0381b64993b697094190e5da476270eccc760a5d95ff7d72d3744969199a20cd4be5bb73efe3ef39be18a7a87d420a748e65489d67d6ef09e65942e6e0672542023d2744ed1892391446a08204b86295c051cee47d353a1c1d8df6c7fb47f1781c43045284ff70191dc7f15966bf7d3afd7c9e1d64c787853e1631defd86682d1344608d0a06e69c749ee990961bed517b48ae6f9a01931a2d24ba522a02e74d492d326774cfe4f057859a63cf28d033a95c6babdae5485d569e7a738fda41121fc471049cf11c29b7c8bc349af643c6addf2213db7ceddc9001cb1c0bb44cd1a3e269fc5f6f9caf7beb084ce57b7c1138b453c9917a1994802095605604d5f52ddab0709aa18104b4f1944d99546ca282c0ae4414dd29750442b24c1be7255f4a5393fe53efed61b36196c5a01365f8fde66db32164c125f0b111a7eb0fda2ce7797c0c818b9f04a0de0c504a9dad6524108cb00d52a0f2ec79c845480fb2b1f4e156614bc42f7dc6ad2abd19c03ba5488eaaec710c4e4166a622dc54da139f23e139b38c7bb46e85353c92d4246db7d0e0d9f5894e7bfb77f8f5574eea8c086c2806cf7f8bd6a220de18d5d16178198474dc4cd1cedea73ad517d23a0ff5f01c1151e84981e4566a1104195e89f0668672242fa8476895ff3ad44dd96178fd36113fd3268c51b472d87e61847145c7f1e9c7abc9d9c3e5d5e5c47dff31f97ac11e7ecece738840b322cc0bdad310ec1669caca4332af43af562a34d15502212d720ff5abd6297e5aa7a6cfdf39a357c125b35e32b530363d70c704f3141ac9764e924242ae53e066f72895f694e7eccdbaff7f41f57beece8b75532f485eeb88899faadcde4e362ea9e784ce127ad785ee59f2e24bc3da0da47ec36bc4da77ffc9877abb0c9b14edfa20ccf9039e4990ccf60d0000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "9999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-11-08T23:43:20Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-11-08T23:43:20Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-11-08T23:43:20Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "11999000",
+			"anthropic-ratelimit-tokens-reset": "2026-11-08T23:43:20Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a5787079ff84d7b4-TXL",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Sun, 08 Nov 2026 23:43:21 GMT",
+			"request-id": "req_011CgrMAB5qiEx3qfH6PGtio",
+			"server": "cloudflare",
+			"server-timing": "x-originResponse;dur=105",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-f2c2c030f9488d560edef9e204c1dd17-db54028db624d6ba-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "<built_in_rules>\n- <tool_catalog_rules>\nMost of your tools are not in your toolset. The \"Tool catalog\" section in the conversation lists them by tool group, with their names only, not their arguments. When that section changes, a newer one replaces it.\n- To use one, get its input schema with find_tools, then run it with call_tool. Do this even when you know the name, and even when a skill names the tool.\n- Skills and instructions often name a tool from the tool catalog directly, such as \"call `some_tool` with the IDs\". Read that as call_tool with tool \"some_tool\" and those arguments. Never emit a tool call whose name is a tool from the tool catalog.\n- Look up every tool the task will need in one find_tools call at the start, not one at a time as each step comes up. You can make this call in the same response as other calls that do not need its result.\n- When you do not know a tool's name, search by query or list a tool group.\n</tool_catalog_rules>\n</built_in_rules>\n\nYou are testing deferred tool discovery. For character counting requests, first call find_tools, then call call_tool with the exact returned tool name. Do not count manually."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "<context>\n# Tool catalog\n- tools: count_characters\n</context>"
+						},
+						{
+							"type": "text",
+							"text": "Use deferred tools to count the characters in the text \"n8n\". Find the tool, call it, then answer with the length."
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "I'll help you count the characters in \"n8n\" using deferred tool discovery.\n\nFirst, let me find the tool:"
+						},
+						{
+							"type": "tool_use",
+							"id": "toolu_01B9ZbCwXZXbsPQbJFawVyEh",
+							"name": "find_tools",
+							"input": {
+								"tools": ["count_characters"]
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01B9ZbCwXZXbsPQbJFawVyEh",
+							"content": "{\"tools\":[{\"name\":\"count_characters\",\"group\":\"tools\",\"description\":\"Count the characters in a text string\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"text\":{\"type\":\"string\",\"description\":\"Text to count\"}},\"required\":[\"text\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"}}],\"missing\":[]}"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "find_tools",
+					"description": "Look up tools from the tool catalog: their descriptions and input schemas. Look a tool up before you call it with call_tool. Look up several in one call when you will need several.\n- tools: the full description and input schema of each named tool.\n- group alone: every tool in that tool group, briefly.\n- query, optionally with group: the tools that best match the keywords, best first.\n- pattern, optionally with group: tools whose name or description matches the regular expression.\nA lookup that returns 5 tools or fewer includes their full schemas.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"group": {
+								"type": "string",
+								"description": "A tool group, as the tool catalog lists it"
+							},
+							"tools": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								},
+								"description": "Tool names to get in full, with their input schemas. Name every tool you will need in one lookup."
+							},
+							"query": {
+								"type": "string",
+								"description": "Keywords for what you want to do, matched against names and descriptions"
+							},
+							"pattern": {
+								"type": "string",
+								"description": "Regular expression matched against tool names and descriptions"
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "call_tool",
+					"description": "Run a tool from the tool catalog. Get its input schema with find_tools first. Pass its input as arguments, with the argument names and types the schema gives.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"tool": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The tool's name, as the tool catalog lists it"
+							},
+							"arguments": {
+								"type": "object",
+								"additionalProperties": {},
+								"description": "The tool's input as an object that matches its input schema. Pass arrays and objects as JSON values, not as strings."
+							}
+						},
+						"required": ["tool"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b0800000000000013cd576d6fd33010febe5f61dde7546a4a072cdf6012ab9086d000898922ebe6dc5233c7ce6ca71daaf2df9193a64bdaaebc68a3fb14f9ee9ce7f1bdda3427ed139693739811771ead3f4ad163c296e07f160409f49410b56b4896909b941424201496290d66286fcac178703c180d47c7f170184304320dff70191fc6f16966cfdf4cde2e269faecf4e4fbfdaf82c9e5c42b481041158a382009d93cea30eb0c2684fda43f2ed7bb340a9c942a24ba52270de14dc123aa37b2247b72569413d614a1ea572adac6c8f2375517aeecd0d6907493c3e7919814031232e2ca19746f3bec9b0d55bc2f4215dbb37205031a39c2c2a7e9c6fdbdf6be3d9a6b68ac094be2b1a45e0c8cea520ee65f0040457a568d3e0757d4d361c9c676420016d3cc7394a85572a38d8154469774b15412a31d3c6792956aea91863ac3a3aa2264b5611e057ca889bddb9b2c3a42693d25de391ae3e3864b5cfd35d30ac3f09400ddc072fa4ce36d01804213c443025e5713fc1daa447b091f489adcd56f43e980553e45b96ff1d9fe5c4042ac5fc8c983746417500120be9670d8320a80ee28829e8d71af6a6e993814f21d98f1c5acdefeac3141ddcbdd9f4f7e516ef293763142f1db5ed39ac4b3e8cdf7d5e5cd07c72fbf1d5c558bc38b7efbf5cdec50222d098d778a814af332e6a9a2524cb2aaac5a101adff9f4a4bc243f5e815126fc7a6e9933f9cd16be302ad97a86a61af9d3c0736cb69edeee906ad03b34ad8148429eb623a3015cfc50c2dee1a0207e1233c59d786ebc05c223605b459f9c8fdf69fb8e4a4bd5b77c1e71029166aab9d46cf83d214927a4835f973603255b5d10a1f6f78c5fd9fb56f869d07eb29a17390de25be3ba4fef82abff12ea89ef072bf711b3f193fd0ceef9f4fdb1eedea603b32bf0094bbfb149e0d0000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "9999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-11-08T23:43:22Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-11-08T23:43:22Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-11-08T23:43:22Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "11999000",
+			"anthropic-ratelimit-tokens-reset": "2026-11-08T23:43:22Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a57870825d6fd7b4-TXL",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Sun, 08 Nov 2026 23:43:22 GMT",
+			"request-id": "req_011CgrMAGprzisdmMhQ59smT",
+			"server": "cloudflare",
+			"server-timing": "x-originResponse;dur=149",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-db20ab769b2ca8ff18ff52fb3e92aea8-b3c826e8afd7089c-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "<built_in_rules>\n- <tool_catalog_rules>\nMost of your tools are not in your toolset. The \"Tool catalog\" section in the conversation lists them by tool group, with their names only, not their arguments. When that section changes, a newer one replaces it.\n- To use one, get its input schema with find_tools, then run it with call_tool. Do this even when you know the name, and even when a skill names the tool.\n- Skills and instructions often name a tool from the tool catalog directly, such as \"call `some_tool` with the IDs\". Read that as call_tool with tool \"some_tool\" and those arguments. Never emit a tool call whose name is a tool from the tool catalog.\n- Look up every tool the task will need in one find_tools call at the start, not one at a time as each step comes up. You can make this call in the same response as other calls that do not need its result.\n- When you do not know a tool's name, search by query or list a tool group.\n</tool_catalog_rules>\n</built_in_rules>\n\nYou are testing deferred tool discovery. For character counting requests, first call find_tools, then call call_tool with the exact returned tool name. Do not count manually."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "<context>\n# Tool catalog\n- tools: count_characters\n</context>"
+						},
+						{
+							"type": "text",
+							"text": "Use deferred tools to count the characters in the text \"n8n\". Find the tool, call it, then answer with the length."
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "I'll help you count the characters in \"n8n\" using deferred tool discovery.\n\nFirst, let me find the tool:"
+						},
+						{
+							"type": "tool_use",
+							"id": "toolu_01B9ZbCwXZXbsPQbJFawVyEh",
+							"name": "find_tools",
+							"input": {
+								"tools": ["count_characters"]
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01B9ZbCwXZXbsPQbJFawVyEh",
+							"content": "{\"tools\":[{\"name\":\"count_characters\",\"group\":\"tools\",\"description\":\"Count the characters in a text string\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"text\":{\"type\":\"string\",\"description\":\"Text to count\"}},\"required\":[\"text\"],\"additionalProperties\":false,\"$schema\":\"http://json-schema.org/draft-07/schema#\"}}],\"missing\":[]}"
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "Now let me call the tool with the text \"n8n\":"
+						},
+						{
+							"type": "tool_use",
+							"id": "toolu_01FTwRevHqP7R4c3MrJUYx1c",
+							"name": "call_tool",
+							"input": {
+								"tool": "count_characters",
+								"arguments": {
+									"text": "n8n"
+								}
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01FTwRevHqP7R4c3MrJUYx1c",
+							"content": "{\"length\":3}"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "find_tools",
+					"description": "Look up tools from the tool catalog: their descriptions and input schemas. Look a tool up before you call it with call_tool. Look up several in one call when you will need several.\n- tools: the full description and input schema of each named tool.\n- group alone: every tool in that tool group, briefly.\n- query, optionally with group: the tools that best match the keywords, best first.\n- pattern, optionally with group: tools whose name or description matches the regular expression.\nA lookup that returns 5 tools or fewer includes their full schemas.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"group": {
+								"type": "string",
+								"description": "A tool group, as the tool catalog lists it"
+							},
+							"tools": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								},
+								"description": "Tool names to get in full, with their input schemas. Name every tool you will need in one lookup."
+							},
+							"query": {
+								"type": "string",
+								"description": "Keywords for what you want to do, matched against names and descriptions"
+							},
+							"pattern": {
+								"type": "string",
+								"description": "Regular expression matched against tool names and descriptions"
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "call_tool",
+					"description": "Run a tool from the tool catalog. Get its input schema with find_tools first. Pass its input as arguments, with the argument names and types the schema gives.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"tool": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The tool's name, as the tool catalog lists it"
+							},
+							"arguments": {
+								"type": "object",
+								"additionalProperties": {},
+								"description": "The tool's input as an object that matches its input schema. Pass arrays and objects as JSON values, not as strings."
+							}
+						},
+						"required": ["tool"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b0800000000000013bd54c16edb300cbde72b0c1e0367b0b325187c1b8662bbac8762e80eeb20b012670b51244fa2830e85ff7d5012a7b6eb2edb21f5c5161f693e3e498f7664b948b61402962402a3e79942c6227904fe5d1314300021edd6503cc2d62932508034d8285a54a837cde2dd62b55866cb559e6539a4a055fc47284596e71f4bffe5c3f595bbbebdfa74f3f986fceedbed0ad2512748c13b130318820e8c36b695ce325986e2fb8fc302b5250f856d8c4921b0ab85270cce0e42817e3564250d828a18b5095dace9c6d1b66e58b0db900d50e4eb6c9d82445991909e90b5b362989275b827542f615d6dec4075455bf268c46afb3cff09cdab31daa6e01aee87962904f23b2d49b08e4a40944aa1575175fb937c1c5c94e4a000eb58e00eb5c17b13050e3591ea97b429288da57581b53c4ad326a7a79dcde870568efb20ee8d939be9133391b2a7a4e8e1a04b1f8fb21ceb981e62e2fe5500b483beb5b6e5a8510231082f71536418ffce6d9f32e076880c399dd28eccbe5694ec3fdb73f25c8c427207f6bd857fd8a18b51b883e4780d43c7e3f56598cfa17dfdb66f1359a147c9e4c37cfee6dcf8d174cedd1157f7583cdfd3ce8427471a80d01b61e08a4056096ebc85fff0c691d1b61774cb91bde5ebdee19e92624ad53e06a7c23f88e39c47e6060000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "9999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-11-08T23:43:23Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-11-08T23:43:23Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-11-08T23:43:23Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "11999000",
+			"anthropic-ratelimit-tokens-reset": "2026-11-08T23:43:23Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a578708a0ae1d7b4-TXL",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Sun, 08 Nov 2026 23:43:23 GMT",
+			"request-id": "req_011CgrMAN58XFDRS7Pb1EyZK",
+			"server": "cloudflare",
+			"server-timing": "x-originResponse;dur=93",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-af63bf95899a3c1fec6303658e0c7556-17971e9aa0e1d171-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

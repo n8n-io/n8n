@@ -3,11 +3,15 @@ import { computed, nextTick, ref, onMounted, watch, onBeforeUnmount } from 'vue'
 
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/app/components/layouts/PageViewLayoutList.vue';
+import ResourcesListSkeleton from '@/app/components/layouts/ResourcesListSkeleton.vue';
 import ResourceFiltersDropdown from '@/app/components/forms/ResourceFiltersDropdown.vue';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import ResourcesListEmptyState, {
+	isEmptyStateResourceKey,
+} from '@/app/components/layouts/ResourcesListEmptyState.vue';
 import type { DatatableColumn } from '@n8n/design-system';
-import { useDebounce } from '@/app/composables/useDebounce';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import type { SlotResourcesListLayoutProps } from '@n8n/frontend-module-sdk';
+import { useDebounce } from '@n8n/composables/useDebounce';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRoute, useRouter } from 'vue-router';
 
 import type { BaseFilters, Resource, SortingAndPaginationUpdates } from '@/Interface';
@@ -15,85 +19,49 @@ import { isSharedResource, isResourceSortableByDate } from '@/app/utils/typeGuar
 import { useN8nLocalStorage } from '@/app/composables/useN8nLocalStorage';
 import { useResourcesListI18n } from '@/app/composables/useResourcesListI18n';
 
-import { ElPagination } from 'element-plus';
 import {
-	N8nActionBox,
 	N8nDatatable,
 	N8nIcon,
 	N8nInfoTip,
 	N8nInput,
 	N8nLink,
-	N8nLoading,
 	N8nOption,
+	N8nPagination,
 	N8nRecycleScroller,
 	N8nSelect,
 	N8nText,
 } from '@n8n/design-system';
-type UIConfig = {
-	searchEnabled: boolean;
-	showFiltersDropdown: boolean;
-	sortEnabled: boolean;
-};
-
 const route = useRoute();
 const router = useRouter();
 const { callDebounced } = useDebounce();
-const usersStore = useUsersStore();
 const telemetry = useTelemetry();
 const n8nLocalStorage = useN8nLocalStorage();
 
-const props = withDefaults(
-	defineProps<{
-		resourceKey: string;
-		displayName?: (resource: ResourceType) => string;
-		resources: ResourceType[];
-		disabled: boolean;
-		initialize?: () => Promise<void>;
-		filters?: BaseFilters;
-		additionalFiltersHandler?: (
-			resource: ResourceType,
-			filters: BaseFilters,
-			matches: boolean,
-		) => boolean;
-		shareable?: boolean;
-		sortFns?: Record<string, (a: ResourceType, b: ResourceType) => number>;
-		sortOptions?: string[];
-		type?: 'datatable' | 'list-full' | 'list-paginated';
-		typeProps: { itemSize: number } | { columns: DatatableColumn[] };
-		loading: boolean;
-		customPageSize?: number;
-		availablePageSizeOptions?: number[];
-		totalItems?: number;
-		resourcesRefreshing?: boolean;
-		// Set to true if sorting and filtering is done outside of the component
-		dontPerformSortingAndFiltering?: boolean;
-		hasEmptyState?: boolean;
-		uiConfig?: UIConfig;
-	}>(),
-	{
-		displayName: (resource: ResourceType) => resource.name || '',
-		initialize: async () => {},
-		filters: () => ({ search: '', homeProject: '' }),
-		sortFns: () => ({}),
-		sortOptions: () => ['lastUpdated', 'lastCreated', 'nameAsc', 'nameDesc'],
-		type: 'list-full',
-		typeProps: () => ({ itemSize: 80 }),
-		loading: true,
-		additionalFiltersHandler: undefined,
-		shareable: true,
-		customPageSize: 25,
-		availablePageSizeOptions: () => [10, 25, 50, 100],
-		totalItems: 0,
-		dontPerformSortingAndFiltering: false,
-		resourcesRefreshing: false,
-		hasEmptyState: true,
-		uiConfig: () => ({
-			searchEnabled: true,
-			showFiltersDropdown: true,
-			sortEnabled: true,
-		}),
-	},
-);
+const props = withDefaults(defineProps<SlotResourcesListLayoutProps<ResourceType>>(), {
+	displayName: (resource: ResourceType) => resource.name || '',
+	initialize: async () => {},
+	filters: () => ({ search: '', homeProject: '' }),
+	sortFns: () => ({}),
+	sortOptions: () => ['lastUpdated', 'lastCreated', 'nameAsc', 'nameDesc'],
+	type: 'list-full',
+	typeProps: () => ({ itemSize: 80 }),
+	loading: true,
+	additionalFiltersHandler: undefined,
+	shareable: true,
+	customPageSize: 25,
+	availablePageSizeOptions: () => [10, 25, 50, 100],
+	totalItems: 0,
+	dontPerformSortingAndFiltering: false,
+	resourcesRefreshing: false,
+	hasEmptyState: true,
+	uiConfig: () => ({
+		searchEnabled: true,
+		showFiltersDropdown: true,
+		sortEnabled: true,
+	}),
+	tabKey: 'workflows',
+	persistKeyExclusions: () => [],
+});
 
 const { getResourceText } = useResourcesListI18n(props.resourceKey);
 
@@ -139,6 +107,7 @@ const slots = defineSlots<{
 	}): unknown;
 	item(props: { item: unknown; index: number }): unknown;
 	breadcrumbs(): unknown;
+	'list-prepend'(): unknown;
 }>();
 
 //computed
@@ -155,6 +124,19 @@ const showEmptyState = computed(() => {
 		!hasFilters.value &&
 		!filtersModel.value.search &&
 		!props.resourcesRefreshing
+	);
+});
+
+// Skeleton instead of list chrome while a refresh is deciding whether an
+// unfiltered list is empty — prevents a chrome flash before the empty state.
+const showLoadingState = computed(() => {
+	return (
+		props.loading ||
+		(props.hasEmptyState &&
+			props.resourcesRefreshing &&
+			props.resources.length === 0 &&
+			!hasFilters.value &&
+			!filtersModel.value.search)
 	);
 });
 
@@ -310,6 +292,7 @@ onBeforeUnmount(() => {
 
 //methods
 const captureSearchHotKey = (e: KeyboardEvent) => {
+	if (!props.uiConfig.searchEnabled) return;
 	if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
 		e.preventDefault();
 		focusSearchInput();
@@ -492,7 +475,7 @@ const savePaginationPreferences = async () => {
 		delete currentQuery.pageSize;
 	}
 
-	if (sortBy.value !== preferredSort.value) {
+	if (sortBy.value !== preferredSort.value && !props.persistKeyExclusions.includes(sortBy.value)) {
 		currentQuery.sort = sortBy.value;
 		preferredSort.value = sortBy.value;
 	} else {
@@ -501,9 +484,9 @@ const savePaginationPreferences = async () => {
 
 	n8nLocalStorage.saveProjectPreferencesToLocalStorage(
 		(route.params.projectId as string) ?? '',
-		'workflows',
+		props.tabKey,
 		{
-			sort: sortBy.value,
+			sort: props.persistKeyExclusions.includes(sortBy.value) ? preferredSort.value : sortBy.value,
 			pageSize: rowsPerPage.value,
 		},
 	);
@@ -527,7 +510,7 @@ const loadPaginationPreferences = async () => {
 	// For now, only load workflow list preferences from local storage
 	const localStorageValues = n8nLocalStorage.loadProjectPreferencesFromLocalStorage(
 		(route.params.projectId as string) ?? '',
-		'workflows',
+		props.tabKey,
 	);
 
 	const emitPayload: SortingAndPaginationUpdates = {};
@@ -587,32 +570,16 @@ defineExpose({
 		<template #header>
 			<slot name="header" />
 		</template>
-		<div v-if="loading" class="resource-list-loading">
-			<N8nLoading :rows="25" :shrink-last="false" />
-		</div>
+		<ResourcesListSkeleton v-if="showLoadingState" />
 		<template v-else>
 			<div v-if="showEmptyState">
 				<slot name="empty">
-					<N8nActionBox
-						data-test-id="empty-resources-list"
-						:icon="{ type: 'emoji', value: '👋' }"
-						:heading="
-							getResourceText(
-								usersStore.currentUser?.firstName ? 'empty.heading' : 'empty.heading.userNotSetup',
-								usersStore.currentUser?.firstName ? 'empty.heading' : 'empty.heading.userNotSetup',
-								{ name: usersStore.currentUser?.firstName ?? '' },
-							)
-						"
-						:description="getResourceText('empty.description')"
-						:button-text="getResourceText('empty.button')"
-						button-type="secondary"
+					<ResourcesListEmptyState
+						v-if="isEmptyStateResourceKey(props.resourceKey)"
+						:resource-key="props.resourceKey"
 						:button-disabled="disabled"
 						@click:button="onAddButtonClick"
-					>
-						<template #disabledButtonTooltip>
-							{{ getResourceText('empty.button.disabled.tooltip') }}
-						</template>
-					</N8nActionBox>
+					/>
 				</slot>
 			</div>
 			<PageViewLayoutList v-else>
@@ -626,7 +593,7 @@ defineExpose({
 								:model-value="filtersModel.search"
 								:class="$style.search"
 								:placeholder="getResourceText('search.placeholder', 'search.placeholder')"
-								size="small"
+								size="medium"
 								clearable
 								data-test-id="resources-list-search"
 								@update:model-value="onSearch"
@@ -639,6 +606,7 @@ defineExpose({
 								<N8nSelect
 									v-model="sortBy"
 									size="small"
+									:class="$style.resourceList"
 									data-test-id="resources-list-sort"
 									@change="setSorting(sortBy)"
 								>
@@ -695,11 +663,9 @@ defineExpose({
 
 				<slot name="preamble" />
 
-				<div v-if="resourcesRefreshing" class="resource-list-loading resource-list-loading-instant">
-					<N8nLoading :rows="rowsPerPage" :shrink-last="false" />
-				</div>
+				<ResourcesListSkeleton v-if="resourcesRefreshing" :rows="rowsPerPage" immediate />
 				<div
-					v-else-if="filteredAndSortedResources.length > 0"
+					v-else-if="filteredAndSortedResources.length > 0 || slots['list-prepend']"
 					ref="listWrapperRef"
 					data-test-id="resources-list-wrapper"
 					:class="$style.listWrapper"
@@ -723,24 +689,23 @@ defineExpose({
 						data-test-id="paginated-list"
 					>
 						<div ref="listItemsRef" :class="$style.listItems">
+							<slot name="list-prepend" />
 							<div v-for="(item, index) in resources" :key="index" :class="$style.listItem">
 								<slot name="item" :item="item" :index="index">
 									{{ item }}
 								</slot>
 							</div>
 						</div>
-						<div :class="$style.listPagination">
-							<ElPagination
-								v-model:current-page="currentPage"
-								v-model:page-size="rowsPerPage"
-								background
+						<div v-if="!slots['list-prepend'] || totalItems > 0" :class="$style.listPagination">
+							<N8nPagination
+								:page="currentPage"
+								:items-per-page="rowsPerPage"
 								:total="totalItems"
 								:page-sizes="availablePageSizeOptions"
-								layout="total, prev, pager, next, sizes"
 								data-test-id="resources-list-pagination"
-								@update:current-page="setCurrentPage"
-								@size-change="setRowsPerPage"
-							></ElPagination>
+								@update:page="setCurrentPage"
+								@update:items-per-page="setRowsPerPage"
+							/>
 						</div>
 					</div>
 					<!-- DATATABLE -->
@@ -781,6 +746,9 @@ defineExpose({
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/breakpoints';
+@use '@n8n/design-system/css/mixins/mixins' as mixins;
+
 .filters-row {
 	display: flex;
 	flex-direction: row;
@@ -803,12 +771,22 @@ defineExpose({
 		display: flex;
 		gap: var(--spacing--4xs);
 		align-items: center;
+
+		input {
+			min-height: 0;
+			width: 196px;
+			height: 32px;
+		}
 	}
 
-	@include mixins.breakpoint('xs-only') {
+	@include breakpoints.breakpoint('xs-only') {
 		grid-auto-flow: row;
 		grid-auto-columns: unset;
 		grid-template-columns: 1fr;
+
+		.sort-and-filter input {
+			width: 100%;
+		}
 	}
 }
 
@@ -816,11 +794,7 @@ defineExpose({
 	max-width: 196px;
 	justify-self: end;
 
-	input {
-		height: 30px;
-	}
-
-	@include mixins.breakpoint('sm-and-down') {
+	@include breakpoints.breakpoint('sm-and-down') {
 		max-width: 100%;
 	}
 }
@@ -841,82 +815,27 @@ defineExpose({
 
 .listItems {
 	overflow-y: auto;
+	padding-inline: var(--spacing--4xs);
+
+	@include mixins.scroll-bar;
+	scrollbar-gutter: stable;
 }
 
 .listPagination {
 	display: flex;
 	justify-content: flex-end;
 	margin-bottom: var(--spacing--lg);
-
-	:global(.el-pagination__sizes) {
-		height: 100%;
-		position: relative;
-		top: -1px;
-
-		input {
-			height: 100%;
-			min-height: 28px;
-		}
-
-		:global(.el-input__suffix) {
-			width: var(--spacing--md);
-		}
-	}
 }
 
 .sort-and-filter {
 	white-space: nowrap;
 
-	@include mixins.breakpoint('sm-and-down') {
+	@include breakpoints.breakpoint('sm-and-down') {
 		width: 100%;
 	}
 }
 
 .datatable {
 	padding-bottom: var(--spacing--sm);
-}
-</style>
-
-<style lang="scss" scoped>
-.resource-list-loading {
-	position: relative;
-	height: 0;
-	width: 100%;
-	overflow: hidden;
-	/*
-	Show the loading skeleton only if the loading takes longer than 300ms
-	*/
-	animation: 0.01s linear 0.3s forwards changeVisibility;
-	:deep(.el-skeleton) {
-		position: absolute;
-		height: 100%;
-		width: 100%;
-		overflow: hidden;
-
-		> div {
-			> div:first-child {
-				.el-skeleton__item {
-					height: 42px;
-					margin: 0;
-				}
-			}
-		}
-
-		.el-skeleton__item {
-			height: 69px;
-		}
-	}
-}
-.resource-list-loading-instant {
-	animation: 0.01s linear 0s forwards changeVisibility;
-}
-
-@keyframes changeVisibility {
-	from {
-		height: 0;
-	}
-	to {
-		height: 100%;
-	}
 }
 </style>

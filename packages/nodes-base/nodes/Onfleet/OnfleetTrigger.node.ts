@@ -7,10 +7,11 @@ import type {
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { eventDisplay, eventNameField } from './descriptions/OnfleetWebhookDescription';
 import { onfleetApiRequest } from './GenericFunctions';
+import { verifySignature } from './OnfleetTriggerHelpers';
 import { webhookMapping } from './WebhookMapping';
 
 export class OnfleetTrigger implements INodeType {
@@ -58,7 +59,7 @@ export class OnfleetTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 
 				// Webhook got created before so check if it still exists
-				const endpoint = '/webhooks';
+				const endpoint = requestPath`/webhooks`;
 
 				const webhooks = await onfleetApiRequest.call(this, 'GET', endpoint);
 
@@ -79,7 +80,7 @@ export class OnfleetTrigger implements INodeType {
 				if (webhookUrl.includes('//localhost')) {
 					throw new NodeOperationError(
 						this.getNode(),
-						'The Webhook can not work on "localhost". Please, either setup n8n on a custom domain or start with "--tunnel"!',
+						'The Webhook can not work on "localhost". Please setup n8n on a custom domain.',
 					);
 				}
 				// Webhook name according to the field
@@ -89,7 +90,7 @@ export class OnfleetTrigger implements INodeType {
 					newWebhookName = `n8n-webhook:${name}`;
 				}
 
-				const path = '/webhooks';
+				const path = requestPath`/webhooks`;
 				const body = {
 					name: newWebhookName,
 					url: webhookUrl,
@@ -121,7 +122,7 @@ export class OnfleetTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				// Get the data of the already registered webhook
-				const endpoint = `/webhooks/${webhookData.id}`;
+				const endpoint = requestPath`/webhooks/${webhookData.id}`;
 				await onfleetApiRequest.call(this, 'DELETE', endpoint);
 				return true;
 			},
@@ -138,7 +139,14 @@ export class OnfleetTrigger implements INodeType {
 			/*                             Validation request                             */
 			/* -------------------------------------------------------------------------- */
 			const res = this.getResponseObject();
-			res.status(200).send(req.query.check);
+			res.status(200).type('text/plain').send(req.query.check);
+			return { noWebhookResponse: true };
+		}
+
+		const isSignatureValid = await verifySignature.call(this);
+		if (!isSignatureValid) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
 			return { noWebhookResponse: true };
 		}
 

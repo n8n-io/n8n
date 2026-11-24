@@ -1,16 +1,32 @@
 import { setActivePinia, createPinia } from 'pinia';
-import { reactive } from 'vue';
+import { nextTick, reactive } from 'vue';
 import { vi } from 'vitest';
 import { useProjectsStore } from './projects.store';
 import * as projectsApi from './projects.api';
-import type { Project, ProjectListItem } from './projects.types';
+import * as workflowsEEApi from '@/app/api/workflows.ee';
+import * as credentialsEEApi from '@/features/credentials/credentials.ee.api';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import type { Project, ProjectListItem, ProjectType } from './projects.types';
 import { ProjectTypes } from './projects.types';
 import type { ProjectRole, Scope } from '@n8n/permissions';
+import type { FrontendSettings } from '@n8n/api-types';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+
+type MockRoute = {
+	params: Record<string, string>;
+	query: Record<string, string>;
+	path: string;
+};
 
 // Minimal router mock to satisfy useRoute usage in the store
+const { mockRoute } = vi.hoisted(() => ({
+	mockRoute: { params: {}, query: {}, path: '' } as MockRoute,
+}));
+
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
-	useRoute: () => reactive({ params: {}, query: {}, path: '' }),
+	useRoute: () => reactive(mockRoute),
 }));
 
 vi.mock('./projects.api', () => ({
@@ -19,6 +35,11 @@ vi.mock('./projects.api', () => ({
 	addProjectMembers: vi.fn(),
 	updateProjectMemberRole: vi.fn(),
 	deleteProjectMember: vi.fn(),
+}));
+
+vi.mock('@/app/api/workflows.ee', () => ({ moveWorkflowToProject: vi.fn() }));
+vi.mock('@/features/credentials/credentials.ee.api', () => ({
+	moveCredentialToProject: vi.fn(),
 }));
 
 // Typed mocked facade for the API module
@@ -59,6 +80,7 @@ describe('useProjectsStore.updateProject (partial payloads)', () => {
 				{ id: 'u1', email: 'x@y.z', firstName: 'X', lastName: 'Y', role: 'project:editor' },
 			],
 			scopes: ['project:read' as Scope],
+			rolesManaged: false,
 		};
 		store.currentProject = project;
 		return store;
@@ -79,6 +101,46 @@ describe('useProjectsStore.updateProject (partial payloads)', () => {
 		expect(store.currentProject?.description).toBe('desc');
 		// No relations refetch
 		expect(mockedProjectsApi.getProject).not.toHaveBeenCalled();
+	});
+
+	it('includes customTelemetryTags in payload and updates currentProject when provided', async () => {
+		const store = makeStoreWithProject();
+		mockedProjectsApi.updateProject.mockResolvedValue(undefined);
+		const tags = [{ key: 'env', value: 'production' }];
+
+		await store.updateProject('p1', { customTelemetryTags: tags });
+
+		expect(mockedProjectsApi.updateProject).toHaveBeenCalledWith(expect.anything(), 'p1', {
+			customTelemetryTags: tags,
+		});
+		expect(store.currentProject?.customTelemetryTags).toEqual(tags);
+	});
+
+	it('updates icon in myProjects and currentProject when provided', async () => {
+		const store = makeStoreWithProject();
+		mockedProjectsApi.updateProject.mockResolvedValue(undefined);
+		const newIcon = { type: 'emoji' as const, value: '🚀' };
+
+		await store.updateProject('p1', { icon: newIcon });
+
+		expect(store.myProjects[0].icon).toEqual(newIcon);
+		expect(store.currentProject?.icon).toEqual(newIcon);
+	});
+
+	it('omits customTelemetryTags from payload when not provided', async () => {
+		const store = makeStoreWithProject();
+		mockedProjectsApi.updateProject.mockResolvedValue(undefined);
+
+		await store.updateProject('p1', { name: 'B' });
+
+		expect(mockedProjectsApi.updateProject).toHaveBeenCalledWith(expect.anything(), 'p1', {
+			name: 'B',
+		});
+		expect(mockedProjectsApi.updateProject).not.toHaveBeenCalledWith(
+			expect.anything(),
+			expect.anything(),
+			expect.objectContaining({ customTelemetryTags: expect.anything() }),
+		);
 	});
 
 	it('updates description only when provided', async () => {
@@ -114,6 +176,7 @@ describe('useProjectsStore.updateProject (partial payloads)', () => {
 				{ id: 'u2', email: 'a@b.c', firstName: 'A', lastName: 'B', role: 'project:viewer' },
 			],
 			scopes: ['project:read' as Scope],
+			rolesManaged: false,
 		};
 		mockedProjectsApi.getProject.mockResolvedValue(serverProject);
 
@@ -141,6 +204,7 @@ describe('useProjectsStore.updateProject (partial payloads)', () => {
 				{ id: 'u1', email: 'x@y.z', firstName: 'X', lastName: 'Y', role: 'project:viewer' },
 			],
 			scopes: ['project:read' as Scope],
+			rolesManaged: false,
 		};
 		mockedProjectsApi.getProject.mockResolvedValue(serverProject);
 
@@ -168,6 +232,7 @@ describe('useProjectsStore.updateProject (partial payloads)', () => {
 			updatedAt: now,
 			relations: [],
 			scopes: ['project:read' as Scope],
+			rolesManaged: false,
 		};
 		mockedProjectsApi.getProject.mockResolvedValue(serverProject);
 
@@ -179,5 +244,178 @@ describe('useProjectsStore.updateProject (partial payloads)', () => {
 		);
 		expect(mockedProjectsApi.getProject).toHaveBeenCalledWith(expect.anything(), 'p1');
 		expect(store.currentProject?.relations.length).toBe(0);
+	});
+});
+
+describe('useProjectsStore.setProjectNavActiveIdByWorkflowHomeProject', () => {
+	const route = reactive(mockRoute);
+
+	beforeEach(() => {
+		setActivePinia(createPinia());
+		vi.clearAllMocks();
+		route.params = {};
+		route.query = {};
+		route.path = '';
+	});
+
+	const now = new Date().toISOString();
+	const makeProject = (id: string, type: ProjectType = ProjectTypes.Team): Project => ({
+		id,
+		name: `Project ${id}`,
+		description: null,
+		icon: { type: 'icon', value: 'layers' },
+		type,
+		createdAt: now,
+		updatedAt: now,
+		relations: [],
+		scopes: [] as Scope[],
+		rolesManaged: false,
+	});
+
+	const makeStore = () => {
+		const store = useProjectsStore();
+		store.personalProject = makeProject('personal-1', ProjectTypes.Personal);
+		return store;
+	};
+
+	it('fetches the workflow home project when none is loaded', async () => {
+		const store = makeStore();
+		const teamProject = makeProject('team-1');
+		mockedProjectsApi.getProject.mockResolvedValue(teamProject);
+
+		await store.setProjectNavActiveIdByWorkflowHomeProject(teamProject);
+
+		expect(mockedProjectsApi.getProject).toHaveBeenCalledWith(expect.anything(), 'team-1');
+		expect(store.currentProject?.id).toBe('team-1');
+		expect(store.projectNavActiveId).toBe('team-1');
+	});
+
+	it('fetches the workflow home project even when the route has a projectId query param', async () => {
+		route.query = { projectId: 'team-1' };
+		const store = makeStore();
+		const teamProject = makeProject('team-1');
+		mockedProjectsApi.getProject.mockResolvedValue(teamProject);
+
+		await store.setProjectNavActiveIdByWorkflowHomeProject(teamProject);
+
+		expect(mockedProjectsApi.getProject).toHaveBeenCalledWith(expect.anything(), 'team-1');
+		expect(store.currentProject?.id).toBe('team-1');
+	});
+
+	it('replaces a previously loaded project that does not match the workflow home project', async () => {
+		const store = makeStore();
+		store.currentProject = makeProject('team-2');
+		const teamProject = makeProject('team-1');
+		mockedProjectsApi.getProject.mockResolvedValue(teamProject);
+
+		await store.setProjectNavActiveIdByWorkflowHomeProject(teamProject);
+
+		expect(mockedProjectsApi.getProject).toHaveBeenCalledWith(expect.anything(), 'team-1');
+		expect(store.currentProject?.id).toBe('team-1');
+	});
+
+	it('does not refetch when the workflow home project is already loaded', async () => {
+		const store = makeStore();
+		store.currentProject = makeProject('team-1');
+
+		await store.setProjectNavActiveIdByWorkflowHomeProject(makeProject('team-1'));
+
+		expect(mockedProjectsApi.getProject).not.toHaveBeenCalled();
+		expect(store.currentProject?.id).toBe('team-1');
+	});
+
+	it('sets the personal project as current for own personal workflows', async () => {
+		route.query = { projectId: 'personal-1' };
+		const store = makeStore();
+
+		await store.setProjectNavActiveIdByWorkflowHomeProject(
+			makeProject('personal-1', ProjectTypes.Personal),
+		);
+
+		expect(mockedProjectsApi.getProject).not.toHaveBeenCalled();
+		expect(store.currentProject?.id).toBe('personal-1');
+		expect(store.projectNavActiveId).toBe('personal-1');
+	});
+
+	it('marks workflows shared with the user as shared context', async () => {
+		const store = makeStore();
+
+		await store.setProjectNavActiveIdByWorkflowHomeProject(
+			makeProject('other-personal', ProjectTypes.Personal),
+			[makeProject('personal-1', ProjectTypes.Personal)],
+		);
+
+		expect(mockedProjectsApi.getProject).not.toHaveBeenCalled();
+		expect(store.currentProject).toBeNull();
+		expect(store.projectNavActiveId).toBe('shared');
+	});
+
+	it('clears the workflow project context when opening Reviews', async () => {
+		const store = makeStore();
+		store.currentProject = makeProject('team-1');
+		await store.setProjectNavActiveIdByWorkflowHomeProject(store.currentProject);
+
+		route.path = '/inbox';
+		await nextTick();
+
+		expect(store.projectNavActiveId).toBe('inbox');
+		expect(store.currentProject).toBeNull();
+	});
+});
+
+describe('useProjectsStore.hasTeamProjectQuota', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+	});
+
+	it('keeps team project quota available on a protected instance', () => {
+		useSettingsStore().settings = {
+			enterprise: { projects: { team: { limit: 1 } } },
+		} as FrontendSettings;
+		useSourceControlStore().setPreferences({ branchReadOnly: true });
+		const store = useProjectsStore();
+
+		expect(store.hasTeamProjectQuota).toBe(true);
+		expect(store.canCreateProjects).toBe(false);
+	});
+});
+
+describe('useProjectsStore.moveResourceToProject', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+		vi.clearAllMocks();
+	});
+
+	it('should return the workflow transfer result from the API', async () => {
+		const result = { unpublishReasons: [] };
+		vi.mocked(workflowsEEApi.moveWorkflowToProject).mockResolvedValue(result);
+		const store = useProjectsStore();
+
+		const returned = await store.moveResourceToProject('workflow', 'w1', 'p2', 'f1', ['c1']);
+
+		expect(returned).toBe(result);
+		expect(workflowsEEApi.moveWorkflowToProject).toHaveBeenCalledWith(expect.anything(), 'w1', {
+			destinationProjectId: 'p2',
+			destinationParentFolderId: 'f1',
+			shareCredentials: ['c1'],
+		});
+	});
+
+	it('should move a credential and return undefined', async () => {
+		vi.mocked(credentialsEEApi.moveCredentialToProject).mockResolvedValue(undefined);
+		const store = useProjectsStore();
+		const credentialsStore = useCredentialsStore();
+		vi.spyOn(credentialsStore, 'fetchAllCredentials').mockResolvedValue([]);
+
+		const returned = await store.moveResourceToProject('credential', 'c1', 'p2');
+
+		expect(returned).toBeUndefined();
+		expect(credentialsEEApi.moveCredentialToProject).toHaveBeenCalledWith(
+			expect.anything(),
+			'c1',
+			'p2',
+		);
+		expect(workflowsEEApi.moveWorkflowToProject).not.toHaveBeenCalled();
+		expect(credentialsStore.fetchAllCredentials).toHaveBeenCalled();
 	});
 });

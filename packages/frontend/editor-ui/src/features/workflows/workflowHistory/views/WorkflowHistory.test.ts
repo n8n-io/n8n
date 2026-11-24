@@ -3,29 +3,35 @@ import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { defineComponent } from 'vue';
+import { defineComponent, type PropType } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { faker } from '@faker-js/faker';
 import { createComponentRenderer } from '@/__tests__/render';
+import { createTestWorkflow } from '@/__tests__/mocks';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import WorkflowHistoryPage from './WorkflowHistory.vue';
 import { useWorkflowHistoryStore } from '../workflowHistory.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { STORES } from '@n8n/stores';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { VIEWS } from '@/app/constants';
 import { workflowHistoryDataFactory, workflowVersionDataFactory } from '../__tests__/utils';
 import type { WorkflowVersion } from '@n8n/rest-api-client/api/workflowHistory';
 import type { IWorkflowDb } from '@/Interface';
 import { telemetry } from '@/app/plugins/telemetry';
+import { registerToastNotifier } from '@/app/init/toastNotifier';
 
-vi.mock('vue-router', () => {
-	const params = {};
+vi.mock('vue-router', async () => {
+	const { reactive } = await import('vue');
+	const params = reactive({});
+	const query = {};
 	const push = vi.fn();
 	const replace = vi.fn();
 	const resolve = vi.fn().mockImplementation(() => ({ href: '' }));
 	return {
 		useRoute: () => ({
 			params,
+			query,
 		}),
 		useRouter: () => ({
 			push,
@@ -47,8 +53,24 @@ const versionId = faker.string.nanoid();
 const renderComponent = createComponentRenderer(WorkflowHistoryPage, {
 	global: {
 		stubs: {
+			Modal: defineComponent({
+				template: '<div><slot name="content" /></div>',
+			}),
+			WorkflowHistoryDiff: defineComponent({
+				emits: ['versionsChange', 'close'],
+				template: `<div>
+					<button
+						data-test-id="stub-diff-emit-same"
+						@click="$emit('versionsChange', { sourceVersionId: 'v-source', targetVersionId: 'v-target' })"
+					/>
+					<button
+						data-test-id="stub-diff-emit-other"
+						@click="$emit('versionsChange', { sourceVersionId: 'v-other-source', targetVersionId: 'v-other-target' })"
+					/>
+				</div>`,
+			}),
 			WorkflowHistoryContent: true,
-			WorkflowHistoryList: defineComponent({
+			WorkflowPublishTimelineContent: defineComponent({
 				props: {
 					id: {
 						type: String,
@@ -56,10 +78,31 @@ const renderComponent = createComponentRenderer(WorkflowHistoryPage, {
 					},
 				},
 				template: `<div>
+						<button data-test-id="stub-publish-timeline-select" @click="() => $emit('selectVersion', id)" />
+					</div>`,
+			}),
+			WorkflowHistoryList: defineComponent({
+				props: {
+					id: {
+						type: String,
+						default: versionId,
+					},
+					actions: {
+						type: Array as PropType<Array<{ value: string; disabled?: boolean }>>,
+						default: () => [],
+					},
+				},
+				template: `<div>
+						<span
+							data-test-id="stub-restore-action"
+							:data-disabled="String(actions.find((action) => action.value === 'restore')?.disabled)"
+						/>
 						<button data-test-id="stub-preview-button" @click="event => $emit('preview', {id, event})" />
+						<button data-test-id="stub-compare-button" @click="() => $emit('compare', { id })" />
 						<button data-test-id="stub-open-button" @click="() => $emit('action', { action: 'open', id })" />
 						<button data-test-id="stub-clone-button" @click="() => $emit('action', { action: 'clone', id })" />
 						<button data-test-id="stub-download-button" @click="() => $emit('action', { action: 'download', id })" />
+						<button data-test-id="stub-name-button" @click="() => $emit('action', { action: 'name', id, data: { formattedCreatedAt: '2024-01-01', versionName: 'Test Version', description: 'Test description' } })" />
 					</div>`,
 			}),
 		},
@@ -70,22 +113,29 @@ let pinia: ReturnType<typeof createTestingPinia>;
 let router: ReturnType<typeof useRouter>;
 let route: ReturnType<typeof useRoute>;
 let workflowHistoryStore: ReturnType<typeof useWorkflowHistoryStore>;
-let workflowsStore: ReturnType<typeof useWorkflowsStore>;
+let workflowsListStore: ReturnType<typeof useWorkflowsListStore>;
+let settingsStore: ReturnType<typeof useSettingsStore>;
 let windowOpenSpy: MockInstance;
 
 describe('WorkflowHistory', () => {
 	beforeEach(() => {
+		// This suite asserts on rendered toast content, which needs the notifier the
+		// app registers at bootstrap. Explicit here because it no longer arrives as a
+		// side effect of importing `@n8n/composables/useToast` (N8N-104).
+		registerToastNotifier();
+
 		pinia = createTestingPinia({
 			initialState: {
 				[STORES.SETTINGS]: SETTINGS_STORE_DEFAULT_STATE,
 			},
 		});
 		workflowHistoryStore = useWorkflowHistoryStore();
-		workflowsStore = useWorkflowsStore();
+		workflowsListStore = useWorkflowsListStore();
+		settingsStore = useSettingsStore();
 		route = useRoute();
 		router = useRouter();
 
-		vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({} as IWorkflowDb);
+		vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({} as IWorkflowDb);
 		vi.spyOn(workflowHistoryStore, 'getWorkflowHistory').mockResolvedValue(historyData);
 		vi.spyOn(workflowHistoryStore, 'getWorkflowVersion').mockResolvedValue(versionData);
 		vi.spyOn(telemetry, 'track').mockImplementation(() => {});
@@ -94,6 +144,23 @@ describe('WorkflowHistory', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+	});
+
+	describe('restore action', () => {
+		it.each([
+			[['workflow:read'], 'true'],
+			[['workflow:read', 'workflow:update'], 'false'],
+		])('with scopes %j, is disabled: %s', async (scopes, disabled) => {
+			route.params.workflowId = workflowId;
+			// Only this workflow carries the scopes, so the view must ask for it by id.
+			vi.spyOn(workflowsListStore, 'getWorkflowById').mockImplementation((id) =>
+				id === workflowId ? ({ scopes } as unknown as IWorkflowDb) : undefined,
+			);
+
+			const { findByTestId } = renderComponent({ pinia });
+
+			expect(await findByTestId('stub-restore-action')).toHaveAttribute('data-disabled', disabled);
+		});
 	});
 
 	it('should replace url path to contain /:versionId', async () => {
@@ -105,6 +172,7 @@ describe('WorkflowHistory', () => {
 			expect(router.replace).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOW_HISTORY,
 				params: { workflowId, versionId: versionData.versionId },
+				query: route.query,
 			});
 			expect(telemetry.track).toHaveBeenCalledWith('User opened workflow history', {
 				instance_id: '',
@@ -204,7 +272,7 @@ describe('WorkflowHistory', () => {
 		await waitFor(() => {
 			expect(router.resolve).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOW,
-				params: { name: newWorkflowId },
+				params: { workflowId: newWorkflowId },
 			});
 			expect(telemetry.track).toHaveBeenCalledWith('User cloned version', {
 				instance_id: '',
@@ -213,6 +281,195 @@ describe('WorkflowHistory', () => {
 		});
 
 		expect(within(getByRole('alert')).getByRole('link')).toBeInTheDocument();
+	});
+
+	describe('slow actions', () => {
+		const renderPreview = createComponentRenderer(WorkflowHistoryPage, {
+			global: {
+				stubs: {
+					Modal: defineComponent({
+						template: '<div><slot name="content" /></div>',
+					}),
+					WorkflowHistoryDiff: true,
+					WorkflowPublishTimelineContent: true,
+					WorkflowPreviewHost: true,
+				},
+			},
+		});
+
+		const shownVersion = { ...versionData, ...historyData[1] };
+		const slowActions = ['clone', 'restore', 'download'] as const;
+
+		const openListActions = async (
+			getAllByTestId: ReturnType<typeof renderPreview>['getAllByTestId'],
+			index: number,
+		) => {
+			const item = getAllByTestId('workflow-history-list-item')[index];
+			const button = within(within(item).getByTestId('action-toggle')).getByRole('button');
+			await userEvent.click(button);
+			const dropdown = document.getElementById(button.getAttribute('aria-controls') as string);
+			expect(dropdown).toBeInTheDocument();
+			return within(dropdown as HTMLElement);
+		};
+
+		const prepareSlowAction = () => {
+			route.params.workflowId = workflowId;
+			route.params.versionId = shownVersion.versionId;
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
+				id: workflowId,
+				versionId: 'current-version',
+			} as IWorkflowDb);
+			vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
+				id: workflowId,
+				scopes: ['workflow:read', 'workflow:create', 'workflow:update'],
+			} as unknown as IWorkflowDb);
+			vi.spyOn(workflowHistoryStore, 'getWorkflowVersion').mockResolvedValue(shownVersion);
+		};
+
+		const mockPendingActions = () => {
+			const pending = Promise.withResolvers<IWorkflowDb>();
+			const spies = {
+				cloneIntoNewWorkflow: vi
+					.spyOn(workflowHistoryStore, 'cloneIntoNewWorkflow')
+					.mockReturnValue(pending.promise),
+				restoreWorkflow: vi
+					.spyOn(workflowHistoryStore, 'restoreWorkflow')
+					.mockReturnValue(pending.promise),
+				downloadVersion: vi
+					.spyOn(workflowHistoryStore, 'downloadVersion')
+					.mockImplementation(async () => {
+						await pending.promise;
+					}),
+			};
+			return {
+				spies,
+				finish: () => pending.resolve(createTestWorkflow({ id: 'done', versionId: 'next' })),
+			};
+		};
+
+		it.each([
+			['Clone to new workflow', 'cloneIntoNewWorkflow'],
+			['Restore version', 'restoreWorkflow'],
+			['Download', 'downloadVersion'],
+		] as const)(
+			'shows a loading Actions button while %s runs, then returns to idle',
+			async (label, method) => {
+				prepareSlowAction();
+				const { spies, finish } = mockPendingActions();
+				const spy = spies[method];
+
+				const { findByTestId, findByText, getByTestId, getAllByTestId } = renderPreview({ pinia });
+				await userEvent.click(await findByTestId('action-toggle-button'));
+				await userEvent.click(await findByText(label));
+
+				await waitFor(() => {
+					expect(spy).toHaveBeenCalledTimes(1);
+					const pendingButton = getByTestId('action-toggle-button');
+					expect(pendingButton).toHaveTextContent('Actions');
+					expect(pendingButton).toBeDisabled();
+					expect(pendingButton).toHaveAttribute('aria-busy', 'true');
+					expect(pendingButton.querySelector('.n8n-spinner')).toBeInTheDocument();
+				});
+				const pendingActions = await openListActions(getAllByTestId, 2);
+				for (const action of slowActions) {
+					expect(pendingActions.getByTestId(`action-${action}`)).toHaveAttribute('data-disabled');
+				}
+				await userEvent.keyboard('{Escape}');
+
+				finish();
+				await waitFor(() => {
+					const idleButton = getByTestId('action-toggle-button');
+					expect(idleButton).toHaveTextContent('Actions');
+					expect(idleButton).not.toBeDisabled();
+					expect(idleButton).not.toHaveAttribute('aria-busy', 'true');
+				});
+				const idleActions = await openListActions(getAllByTestId, 1);
+				expect(idleActions.getByTestId('action-clone')).not.toHaveAttribute('data-disabled');
+				await userEvent.keyboard('{Escape}');
+			},
+		);
+
+		it.each([
+			['Clone to new workflow', 'cloneIntoNewWorkflow', 'clone'],
+			['Restore version', 'restoreWorkflow', 'restore'],
+			['Download', 'downloadVersion', 'download'],
+		] as const)(
+			'shows a spinner on an unselected row while %s runs and ignores repeat actions',
+			async (_label, method, action) => {
+				prepareSlowAction();
+				const { spies, finish } = mockPendingActions();
+				const spy = spies[method];
+				const { getAllByTestId, findAllByTestId, queryByTestId } = renderPreview({ pinia });
+				await findAllByTestId('workflow-history-list-item');
+				const initialActions = await openListActions(getAllByTestId, 2);
+				await userEvent.click(initialActions.getByTestId(`action-${action}`));
+				await waitFor(() => {
+					expect(spy).toHaveBeenCalledTimes(1);
+					const pendingRow = getAllByTestId('workflow-history-list-item')[2];
+					const spinner = within(pendingRow).getByTestId('workflow-history-list-item-pending');
+					expect(spinner).toBeDisabled();
+					expect(spinner).toHaveAttribute('aria-busy', 'true');
+				});
+
+				for (const index of [1, 3]) {
+					const pendingActions = await openListActions(getAllByTestId, index);
+					for (const pendingAction of slowActions) {
+						const entry = pendingActions.getByTestId(`action-${pendingAction}`);
+						expect(entry).toHaveAttribute('data-disabled');
+						expect(entry).toHaveAttribute('aria-disabled', 'true');
+						await userEvent.click(entry);
+					}
+					await userEvent.keyboard('{Escape}');
+				}
+				expect(spy).toHaveBeenCalledTimes(1);
+				for (const [otherMethod, otherSpy] of Object.entries(spies)) {
+					if (otherMethod !== method) {
+						expect(otherSpy).not.toHaveBeenCalled();
+					}
+				}
+
+				finish();
+				// Restore adds rows to the top of the list, so check every row, not one index.
+				await waitFor(() =>
+					expect(queryByTestId('workflow-history-list-item-pending')).not.toBeInTheDocument(),
+				);
+				for (const index of [1, 2]) {
+					const idleActions = await openListActions(getAllByTestId, index);
+					for (const idleAction of slowActions) {
+						const entry = idleActions.getByTestId(`action-${idleAction}`);
+						expect(entry).not.toHaveAttribute('data-disabled');
+						expect(entry).not.toHaveAttribute('aria-disabled', 'true');
+					}
+					await userEvent.keyboard('{Escape}');
+				}
+			},
+		);
+
+		it('clears the loading state after a clone error and allows another clone', async () => {
+			prepareSlowAction();
+			const cloneSpy = vi
+				.spyOn(workflowHistoryStore, 'cloneIntoNewWorkflow')
+				.mockRejectedValueOnce(new Error('Clone failed'))
+				.mockResolvedValueOnce({ id: 'cloned-after-error' } as IWorkflowDb);
+
+			const { findByTestId, findByText, getByTestId, getAllByTestId } = renderPreview({ pinia });
+			await userEvent.click(await findByTestId('action-toggle-button'));
+			await userEvent.click(await findByText('Clone to new workflow'));
+
+			expect(await findByText('Failed to clone to new workflow')).toBeInTheDocument();
+			await waitFor(() => {
+				expect(getByTestId('action-toggle-button')).not.toBeDisabled();
+			});
+			const idleActions = await openListActions(getAllByTestId, 1);
+			expect(idleActions.getByTestId('action-clone')).not.toHaveAttribute('data-disabled');
+			await userEvent.keyboard('{Escape}');
+
+			await userEvent.click(getByTestId('action-toggle-button'));
+			await userEvent.click(await findByText('Clone to new workflow'));
+			await waitFor(() => {
+				expect(cloneSpy).toHaveBeenCalledTimes(2);
+			});
+		});
 	});
 
 	it('should download workflow version', async () => {
@@ -229,8 +486,200 @@ describe('WorkflowHistory', () => {
 		});
 	});
 
+	describe('publish timeline', () => {
+		const cleanRouteState = () => {
+			Object.keys(route.params).forEach((key) => delete route.params[key]);
+			Object.keys(route.query).forEach((key) => delete route.query[key]);
+		};
+
+		beforeEach(cleanRouteState);
+		afterEach(cleanRouteState);
+
+		it('should remount the timeline only when the workflow route changes', async () => {
+			route.params.workflowId = workflowId;
+			route.query.tab = 'publishTimeline';
+			const { findByTestId, getByTestId } = renderComponent({ pinia });
+			const oldTimeline = await findByTestId('stub-publish-timeline-select');
+			route.params.versionId = 'another-version';
+			await flushPromises();
+			expect(getByTestId('stub-publish-timeline-select')).toBe(oldTimeline);
+			route.params.workflowId = 'another-workflow';
+			await flushPromises();
+			expect(oldTimeline.isConnected).toBe(false);
+			expect(getByTestId('stub-publish-timeline-select')).not.toBe(oldTimeline);
+		});
+
+		it('should track telemetry when landing on the publish timeline tab via query param', async () => {
+			route.params.workflowId = workflowId;
+			route.query.tab = 'publishTimeline';
+
+			renderComponent({ pinia });
+
+			await waitFor(() => {
+				expect(telemetry.track).toHaveBeenCalledWith('User opened publish timeline', {
+					instance_id: '',
+					workflow_id: workflowId,
+				});
+			});
+		});
+
+		it('should not track publish timeline telemetry when landing on the history tab', async () => {
+			route.params.workflowId = workflowId;
+
+			renderComponent({ pinia });
+
+			await waitFor(() => {
+				expect(telemetry.track).toHaveBeenCalledWith(
+					'User opened workflow history',
+					expect.anything(),
+				);
+			});
+			expect(telemetry.track).not.toHaveBeenCalledWith(
+				'User opened publish timeline',
+				expect.anything(),
+			);
+		});
+
+		it('should track telemetry when switching to the publish timeline tab', async () => {
+			route.params.workflowId = workflowId;
+
+			const { getByTestId } = renderComponent({ pinia });
+			await flushPromises();
+
+			await userEvent.click(
+				within(getByTestId('tab-publishTimeline')).getByText('Publish Timeline'),
+			);
+
+			await waitFor(() => {
+				expect(telemetry.track).toHaveBeenCalledWith('User opened publish timeline', {
+					instance_id: '',
+					workflow_id: workflowId,
+				});
+			});
+		});
+
+		it('should track telemetry when selecting a version from the publish timeline', async () => {
+			route.params.workflowId = workflowId;
+			route.query.tab = 'publishTimeline';
+
+			const { getByTestId } = renderComponent({ pinia });
+			await flushPromises();
+
+			await userEvent.click(getByTestId('stub-publish-timeline-select'));
+
+			await waitFor(() => {
+				expect(telemetry.track).toHaveBeenCalledWith(
+					'User selected version from publish timeline',
+					{
+						instance_id: '',
+						workflow_id: workflowId,
+					},
+				);
+				expect(router.push).toHaveBeenCalledWith({
+					name: VIEWS.WORKFLOW_HISTORY,
+					params: { workflowId, versionId },
+				});
+			});
+		});
+	});
+
+	it('should open compare view for item and active version', async () => {
+		const activeVersionId = faker.string.nanoid();
+		const selectedVersionId = faker.string.nanoid();
+		const selectedVersion = { ...versionData, versionId: selectedVersionId };
+		settingsStore.settings.enterprise.workflowDiffs = true;
+
+		route.params.workflowId = workflowId;
+		route.params.versionId = selectedVersionId;
+
+		vi.spyOn(workflowHistoryStore, 'getWorkflowVersion').mockResolvedValue(selectedVersion);
+		vi.spyOn(workflowsListStore, 'getWorkflowById').mockReturnValue({
+			id: workflowId,
+			activeVersion: { versionId: activeVersionId },
+		} as IWorkflowDb);
+
+		const { getByTestId } = renderComponent({ pinia });
+		await flushPromises();
+
+		await userEvent.click(getByTestId('stub-compare-button'));
+
+		expect(router.push).toHaveBeenCalledWith({
+			name: VIEWS.WORKFLOW_HISTORY,
+			params: {
+				workflowId,
+				versionId: selectedVersionId,
+			},
+			query: {
+				diffWith: versionId,
+			},
+		});
+		expect(telemetry.track).toHaveBeenCalledWith('user_clicks_compare_workflows', {
+			instance_id: '',
+			workflow_id: workflowId,
+			source: 'version_history',
+		});
+	});
+
+	it('should not open compare view when workflow diffs are not licensed', async () => {
+		settingsStore.settings.enterprise.workflowDiffs = false;
+		route.params.workflowId = workflowId;
+		route.params.versionId = versionId;
+
+		const { getByTestId } = renderComponent({ pinia });
+		await flushPromises();
+		await userEvent.click(getByTestId('stub-compare-button'));
+
+		expect(router.push).not.toHaveBeenCalledWith(
+			expect.objectContaining({
+				query: expect.objectContaining({ diffWith: expect.anything() }),
+			}),
+		);
+	});
+
+	describe('diff versions route sync', () => {
+		const setupDiffRouteSyncState = () => {
+			Object.keys(route.params).forEach((key) => delete route.params[key]);
+			Object.keys(route.query).forEach((key) => delete route.query[key]);
+			settingsStore.settings.enterprise.workflowDiffs = true;
+			route.params.workflowId = workflowId;
+			route.params.versionId = 'v-target';
+			route.query.diffWith = 'v-source';
+		};
+
+		it('should not push route when emitted diff versions already match current URL', async () => {
+			setupDiffRouteSyncState();
+
+			const { getByTestId } = renderComponent({ pinia });
+			await flushPromises();
+			await userEvent.click(getByTestId('stub-diff-emit-same'));
+
+			expect(router.push).not.toHaveBeenCalled();
+		});
+
+		it('should push route when emitted diff versions differ from current URL', async () => {
+			setupDiffRouteSyncState();
+			route.query.preserve = 'yes';
+
+			const { getByTestId } = renderComponent({ pinia });
+			await flushPromises();
+			await userEvent.click(getByTestId('stub-diff-emit-other'));
+
+			expect(router.push).toHaveBeenCalledWith({
+				name: VIEWS.WORKFLOW_HISTORY,
+				params: {
+					workflowId,
+					versionId: 'v-other-target',
+				},
+				query: {
+					diffWith: 'v-other-source',
+					preserve: 'yes',
+				},
+			});
+		});
+	});
+
 	it('should display archived tag on header if workflow is archived', async () => {
-		vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+		vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
 			id: workflowId,
 			name: 'Test Workflow',
 			isArchived: true,
@@ -246,7 +695,7 @@ describe('WorkflowHistory', () => {
 	});
 
 	it('should not display archived tag on header if workflow is not archived', async () => {
-		vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+		vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
 			id: workflowId,
 			name: 'Test Workflow',
 			isArchived: false,
@@ -259,5 +708,17 @@ describe('WorkflowHistory', () => {
 
 		expect(queryByTestId('workflow-archived-tag')).not.toBeInTheDocument();
 		expect(container.textContent).toContain('Test Workflow');
+	});
+
+	it('should open name version modal when name action is triggered', async () => {
+		route.params.workflowId = workflowId;
+		vi.spyOn(workflowHistoryStore, 'updateWorkflowHistoryVersion').mockResolvedValue(undefined);
+
+		const { getByTestId, container } = renderComponent({ pinia });
+		await userEvent.click(getByTestId('stub-name-button'));
+
+		await flushPromises();
+
+		expect(container).toBeInTheDocument();
 	});
 });

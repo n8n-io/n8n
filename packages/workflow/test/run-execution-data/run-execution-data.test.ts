@@ -1,4 +1,8 @@
-import { migrateRunExecutionData } from '../../src/run-execution-data/run-execution-data';
+import type { IRunData } from '../../src/interfaces';
+import {
+	hasExecutionRunNodes,
+	migrateRunExecutionData,
+} from '../../src/run-execution-data/run-execution-data';
 import type { IRunExecutionDataV0 } from '../../src/run-execution-data/run-execution-data.v0';
 import type { IRunExecutionDataV1 } from '../../src/run-execution-data/run-execution-data.v1';
 
@@ -24,7 +28,7 @@ describe('migrateRunExecutionData', () => {
 				waitingExecution: {},
 				waitingExecutionSource: null,
 			},
-			validateSignature: true,
+			resumeToken: 'test-token-123',
 			pushRef: 'test-ref',
 		};
 
@@ -74,12 +78,30 @@ describe('migrateRunExecutionData', () => {
 				waitingExecution: {},
 				waitingExecutionSource: null,
 			},
-			validateSignature: true,
+			resumeToken: 'test-token-123',
 			pushRef: 'test-ref',
 		};
 
 		const result = migrateRunExecutionData(v1Data);
 
 		expect(result).toEqual(v1Data);
+	});
+});
+
+describe('hasExecutionRunNodes', () => {
+	const earlier: IRunData = {
+		Earlier: [{ startTime: 0, executionIndex: 0, executionTime: 0, source: [] }],
+	};
+
+	it('counts the run data of a resumed execution', () => {
+		expect(hasExecutionRunNodes(earlier, true)).toBe(true);
+	});
+
+	it('ignores run data that a retry copied from the original execution', () => {
+		expect(hasExecutionRunNodes(earlier, false)).toBe(false);
+	});
+
+	it.each([{}, undefined])('returns false for a resume without run data (%s)', (runData) => {
+		expect(hasExecutionRunNodes(runData, true)).toBe(false);
 	});
 });

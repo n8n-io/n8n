@@ -1,10 +1,7 @@
-import { mock } from 'jest-mock-extended';
 import { normalizeItems } from 'n8n-core';
-import {
-	ApplicationError,
-	type ISupplyDataFunctions,
-	type IWorkflowDataProxyData,
-} from 'n8n-workflow';
+import type { ISupplyDataFunctions, IWorkflowDataProxyData } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
+import { mock } from 'vitest-mock-extended';
 
 import { N8nItemListOutputParser } from '@utils/output_parsers/N8nItemListOutputParser';
 
@@ -31,7 +28,7 @@ describe('OutputParserItemList', () => {
 				if (parameterName === 'options') {
 					return {};
 				}
-				throw new ApplicationError('Not implemented');
+				throw new UnexpectedError('Not implemented');
 			});
 
 			const { response } = await outputParser.supplyData.call(thisArg, 0);
@@ -44,7 +41,7 @@ describe('OutputParserItemList', () => {
 				if (parameterName === 'options') {
 					return { numberOfItems: 5 };
 				}
-				throw new ApplicationError('Not implemented');
+				throw new UnexpectedError('Not implemented');
 			});
 
 			const { response } = await outputParser.supplyData.call(thisArg, 0);
@@ -58,7 +55,7 @@ describe('OutputParserItemList', () => {
 					return { numberOfItems: -1 };
 				}
 
-				throw new ApplicationError('Not implemented');
+				throw new UnexpectedError('Not implemented');
 			});
 
 			const { response } = await outputParser.supplyData.call(thisArg, 0);
@@ -71,7 +68,7 @@ describe('OutputParserItemList', () => {
 				if (parameterName === 'options') {
 					return { separator: ',' };
 				}
-				throw new ApplicationError('Not implemented');
+				throw new UnexpectedError('Not implemented');
 			});
 
 			const { response } = await outputParser.supplyData.call(thisArg, 0);
@@ -86,7 +83,7 @@ describe('OutputParserItemList', () => {
 				if (parameterName === 'options') {
 					return {};
 				}
-				throw new ApplicationError('Not implemented');
+				throw new UnexpectedError('Not implemented');
 			});
 
 			const { response } = await outputParser.supplyData.call(thisArg, 0);
@@ -99,7 +96,7 @@ describe('OutputParserItemList', () => {
 				if (parameterName === 'options') {
 					return { separator: ',' };
 				}
-				throw new ApplicationError('Not implemented');
+				throw new UnexpectedError('Not implemented');
 			});
 
 			const { response } = await outputParser.supplyData.call(thisArg, 0);
@@ -112,7 +109,7 @@ describe('OutputParserItemList', () => {
 				if (parameterName === 'options') {
 					return { numberOfItems: 2 };
 				}
-				throw new ApplicationError('Not implemented');
+				throw new UnexpectedError('Not implemented');
 			});
 
 			const { response } = await outputParser.supplyData.call(thisArg, 0);
@@ -127,7 +124,7 @@ describe('OutputParserItemList', () => {
 				if (parameterName === 'options') {
 					return { numberOfItems: 5 };
 				}
-				throw new ApplicationError('Not implemented');
+				throw new UnexpectedError('Not implemented');
 			});
 
 			const { response } = await outputParser.supplyData.call(thisArg, 0);

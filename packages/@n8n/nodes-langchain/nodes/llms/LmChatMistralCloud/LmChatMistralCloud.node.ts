@@ -1,5 +1,12 @@
 import type { ChatMistralAIInput } from '@langchain/mistralai';
 import { ChatMistralAI } from '@langchain/mistralai';
+import { HTTPClient } from '@mistralai/mistralai/lib/http.js';
+import {
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	proxyFetch,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -8,10 +15,8 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
-
-import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
-import { N8nLlmTracing } from '../N8nLlmTracing';
+import { getRequiredApiKey } from '@utils/helpers';
+import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
 const deprecatedMagistralModelsWithTextOutput = ['magistral-small-2506', 'magistral-medium-2506'];
 
@@ -110,6 +115,11 @@ export class LmChatMistralCloud implements INodeType {
 					},
 				},
 				default: 'mistral-small',
+				builderHint: {
+					propertyHint:
+						"Prefer a stable Mistral model or rolling alias from the connected credential's model list. " +
+						MODEL_SELECTION_HINT,
+				},
 			},
 			{
 				displayName: 'Options',
@@ -188,10 +198,16 @@ export class LmChatMistralCloud implements INodeType {
 			randomSeed: undefined,
 		}) as Partial<ChatMistralAIInput>;
 
+		const egressFilter = this.helpers.getSecureEgressFilter();
+		const fetchWithTimeout = async (input: RequestInfo | URL, init?: RequestInit) =>
+			await proxyFetch({ input, init, timeoutOptions: {}, egressFilter });
+		const httpClient = new HTTPClient({ fetcher: fetchWithTimeout });
+
 		const model = new ChatMistralAI({
-			apiKey: credentials.apiKey as string,
+			apiKey: getRequiredApiKey(this.getNode(), credentials.apiKey),
 			model: modelName,
 			...options,
+			httpClient,
 			callbacks: [new N8nLlmTracing(this)],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 			metadata: {

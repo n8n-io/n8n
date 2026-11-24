@@ -12,6 +12,9 @@
                         },
                         "email": {
                             "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
                         }
                     }
                 }
@@ -61,6 +64,9 @@
                         },
                         "email": {
                             "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
                         }
                     }
                 }
@@ -102,5 +108,5 @@
             "type": "string"
         }
     },
-    "version": 6
+    "version": 7
 }

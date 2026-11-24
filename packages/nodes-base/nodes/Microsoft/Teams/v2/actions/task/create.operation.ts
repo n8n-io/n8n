@@ -1,15 +1,31 @@
 import { DateTime } from 'luxon';
 import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { bucketRLC, groupRLC, memberRLC, planRLC } from '../../descriptions';
-import { microsoftApiRequest } from '../../transport';
+import { microsoftApiRequest, SP_HIDE, validateTaskBodyIdsUnderSp } from '../../transport';
+import { byIdUnderSp } from './helpers';
 
 const properties: INodeProperties[] = [
-	groupRLC,
-	planRLC,
-	bucketRLC,
+	// OAuth2 pickers: list mode with group/plan dependency — hidden under SP.
+	{
+		...groupRLC,
+		displayOptions: { hide: { ...SP_HIDE } },
+	},
+	{
+		...planRLC,
+		displayOptions: { hide: { ...SP_HIDE } },
+	},
+	{
+		...bucketRLC,
+		displayOptions: { hide: { ...SP_HIDE } },
+	},
+	// SP pickers: By-ID plan + bucket (group is not needed once By-ID). `groupRLC` is
+	// hidden under SP above.
+	byIdUnderSp(planRLC),
+	byIdUnderSp(bucketRLC),
 	{
 		displayName: 'Title',
 		name: 'title',
@@ -26,15 +42,24 @@ const properties: INodeProperties[] = [
 		default: {},
 		placeholder: 'Add option',
 		options: [
+			// OAuth2 assignee picker (list, scoped by the group) — hidden under SP, which
+			// uses the By-ID copy below (the group picker it depends on is hidden under SP).
 			{
 				...memberRLC,
 				displayName: 'Assigned To',
 				name: 'assignedTo',
 				description: 'Who the task should be assigned to',
 				typeOptions: {
-					loadOptionsDependsOn: ['groupId.balue'],
+					loadOptionsDependsOn: ['groupId.value'],
 				},
+				displayOptions: { hide: { ...SP_HIDE } },
 			},
+			// SP assignee picker: By-ID (Planner assignment is app-only-capable with a user ID).
+			byIdUnderSp(memberRLC, {
+				displayName: 'Assigned To',
+				name: 'assignedTo',
+				description: 'Who the task should be assigned to',
+			}),
 			{
 				displayName: 'Due Date Time',
 				name: 'dueDateTime',
@@ -76,6 +101,8 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	const planId = this.getNodeParameter('planId', i, '', { extractValue: true }) as string;
 	const bucketId = this.getNodeParameter('bucketId', i, '', { extractValue: true }) as string;
 
+	validateTaskBodyIdsUnderSp.call(this, { planId, bucketId });
+
 	const title = this.getNodeParameter('title', i) as string;
 	const options = this.getNodeParameter('options', i);
 
@@ -107,5 +134,5 @@ export async function execute(this: IExecuteFunctions, i: number) {
 		delete body.assignedTo;
 	}
 
-	return await microsoftApiRequest.call(this, 'POST', '/v1.0/planner/tasks', body);
+	return await microsoftApiRequest.call(this, 'POST', requestPath`/v1.0/planner/tasks`, body);
 }

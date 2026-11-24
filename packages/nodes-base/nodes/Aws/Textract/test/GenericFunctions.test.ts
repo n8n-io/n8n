@@ -1,6 +1,76 @@
-import { simplify, type IExpenseDocument } from '../GenericFunctions';
+import { mock } from 'vitest-mock-extended';
+import type { ICredentialTestFunctions } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
+
+vi.mock('aws4', () => ({
+	sign: vi.fn(),
+}));
+
+import { sign } from 'aws4';
+import { simplify, validateCredentials, type IExpenseDocument } from '../GenericFunctions';
 
 describe('AWS Textract Generic Functions', () => {
+	const mockSign = vi.mocked(sign);
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	describe('validateCredentials region validation', () => {
+		const buildContext = () => {
+			const helpers = { request: vi.fn() };
+			const context = mock<ICredentialTestFunctions>({
+				helpers: helpers as never,
+			});
+			return { context, helpers };
+		};
+
+		const baseCredentials = {
+			accessKeyId: 'AKIA-test',
+			secretAccessKey: 'secret-test',
+			temporaryCredentials: false,
+		};
+
+		it.each([
+			'@example.com#',
+			'us-fake-1',
+			'',
+			'us-east-1/foo',
+			'us-east-1#frag',
+			'us-east-1:8080',
+			' us-east-1 ',
+		])('rejects unsupported region value %s without signing or sending', async (region) => {
+			const { context, helpers } = buildContext();
+			const credentials = { ...baseCredentials, region };
+
+			await expect(validateCredentials.call(context, credentials, 'textract')).rejects.toThrow(
+				UserError,
+			);
+			await expect(validateCredentials.call(context, credentials, 'textract')).rejects.toThrow(
+				'Unsupported AWS region',
+			);
+
+			expect(mockSign).not.toHaveBeenCalled();
+			expect(helpers.request).not.toHaveBeenCalled();
+		});
+
+		it('should send the request to the STS endpoint of the region', async () => {
+			const { context, helpers } = buildContext();
+			helpers.request.mockResolvedValue('<GetCallerIdentityResponse />');
+
+			await validateCredentials.call(
+				context,
+				{ ...baseCredentials, region: 'eu-central-1' },
+				'sts',
+			);
+
+			const [options] = helpers.request.mock.calls[0];
+			expect(String(options.uri)).toBe(
+				'https://sts.eu-central-1.amazonaws.com/?Action=GetCallerIdentity&Version=2011-06-15',
+			);
+		});
+	});
+
 	describe('simplify function', () => {
 		it('should simplify expense document response correctly', () => {
 			const input = {

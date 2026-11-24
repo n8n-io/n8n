@@ -5,10 +5,15 @@ import N8nTabs from './Tabs.vue';
 import type { TabOptions } from '../../types/tabs';
 
 export default {
-	title: 'Atoms/Tabs',
+	title: 'Core/Tabs',
 	component: N8nTabs,
 	argTypes: {},
 	parameters: {
+		docs: {
+			description: {
+				component: 'A tab navigation component for switching between content panels.',
+			},
+		},
 		backgrounds: { default: '--color--background--light-3' },
 	},
 };
@@ -33,8 +38,8 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	},
 });
 
-export const Example = Template.bind({});
-Example.args = {
+export const Default = Template.bind({});
+Default.args = {
 	modelValue: 'first',
 	options: [
 		{
@@ -96,6 +101,11 @@ const options: Array<TabOptions<string>> = [
 		notification: true,
 	},
 	{
+		label: 'Count',
+		value: 'count',
+		tag: '2',
+	},
+	{
 		label: 'Settings',
 		value: 'settings',
 		icon: 'cog',
@@ -103,30 +113,82 @@ const options: Array<TabOptions<string>> = [
 	},
 ];
 
-export const TabVariants = Template.bind({});
-TabVariants.args = {
+export const Variants = Template.bind({});
+Variants.args = {
 	modelValue: 'first',
 	options,
 };
 
-export const WithSmallSize = Template.bind({});
-WithSmallSize.args = {
-	modelValue: 'first',
-	options,
-	size: 'small',
-};
+export const Overflow: StoryFn = () => ({
+	components: { N8nTabs },
+	data() {
+		return { val: 'first', options };
+	},
+	template: `
+		<div style="width: 40%; min-width: var(--spacing--xl); display: flex; flex-direction: column; gap: var(--spacing--xl);">
+			<n8n-tabs v-model="val" :options="options" />
+			<n8n-tabs v-model="val" size="small" :options="options" />
+			<n8n-tabs v-model="val" variant="modern" :options="options" />
+			<n8n-tabs v-model="val" variant="modern" size="small" :options="options" />
+		</div>
+	`,
+});
 
-export const WithModernVariant = Template.bind({});
-WithModernVariant.args = {
-	modelValue: 'first',
-	variant: 'modern',
-	options,
-};
+export const OversizedTab: StoryFn = () => ({
+	components: { N8nTabs },
+	data() {
+		return {
+			val: 'wide',
+			options: [
+				{
+					value: 'wide',
+					label:
+						'A very long tab label that is wider than its container and needs several scroll steps to read',
+					tag: '2',
+				},
+			],
+		};
+	},
+	template: `
+		<div style="width: 40%;">
+			<n8n-tabs v-model="val" :options="options" />
+		</div>
+	`,
+});
 
-export const WithSmallAndModern = Template.bind({});
-WithSmallAndModern.args = {
-	modelValue: 'first',
-	variant: 'modern',
-	options,
-	size: 'small',
-};
+export const Justified: StoryFn = () => ({
+	components: { N8nTabs },
+	data() {
+		return {
+			val: 'first',
+			options: [
+				{ value: 'first', label: 'A long first tab label', notification: true },
+				{ value: 'second', label: 'Second tab' },
+				{ value: 'third', label: 'A long third tab label' },
+			],
+		};
+	},
+	template: `
+		<div style="width: 40%;">
+			<n8n-tabs v-model="val" justified :options="options" />
+		</div>
+	`,
+});
+
+export const Sizes: StoryFn = () => ({
+	components: { N8nTabs },
+	data() {
+		return {
+			val: 'first',
+			options,
+		};
+	},
+	template: `
+		<div style="display: flex; flex-direction: column; gap: 24px;">
+			<n8n-tabs v-model="val" size="medium" :options="options" />
+			<n8n-tabs v-model="val" size="small" :options="options" />
+			<n8n-tabs v-model="val" variant="modern" size="medium" :options="options" />
+			<n8n-tabs v-model="val" variant="modern" size="small" :options="options" />
+		</div>
+	`,
+});

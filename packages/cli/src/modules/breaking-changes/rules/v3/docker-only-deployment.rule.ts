@@ -1,0 +1,54 @@
+import { BreakingChangeRule } from '@n8n/decorators';
+import { InstanceSettings } from 'n8n-core';
+
+import { NOT_AFFECTED_INSTANCE } from '../../detection-report';
+import type {
+	BreakingChangeRuleMetadata,
+	IBreakingChangeInstanceRule,
+	InstanceDetectionReport,
+} from '../../types';
+import { BreakingChangeCategory } from '../../types';
+
+@BreakingChangeRule({ version: 'v3' })
+export class DockerOnlyDeploymentRule implements IBreakingChangeInstanceRule {
+	constructor(private readonly instanceSettings: InstanceSettings) {}
+
+	id: string = 'docker-only-deployment-v3';
+
+	getMetadata(): BreakingChangeRuleMetadata {
+		return {
+			version: 'v3',
+			title: 'Docker becomes the only supported deployment method',
+			description:
+				'Support for running n8n via npm is removed. Move this instance to the official Docker image before you update.',
+			category: BreakingChangeCategory.infrastructure,
+			impact: 'upgradeBlocked',
+			documentationUrl: 'https://docs.n8n.io/deploy/host-n8n',
+		};
+	}
+
+	async detect(): Promise<InstanceDetectionReport> {
+		if (this.instanceSettings.isDocker) {
+			return NOT_AFFECTED_INSTANCE;
+		}
+
+		return {
+			isAffected: true,
+			instanceIssues: [
+				{
+					title: 'Instance is not running in a container',
+					description:
+						'This instance appears to run outside a container (e.g. installed via npm). The new version can only be run via the official Docker image.',
+					level: 'warning',
+				},
+			],
+			recommendations: [
+				{
+					action: 'Migrate to a Docker-based deployment',
+					description:
+						'Move this instance to the official Docker image before updating. Copy or mount your existing n8n data directory at /home/node/.n8n, connect it to the same external database if you use one, and set N8N_ENCRYPTION_KEY to your current encryption key so that n8n can read your saved credentials.',
+				},
+			],
+		};
+	}
+}

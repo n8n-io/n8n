@@ -1,0 +1,190 @@
+import type * as Vue from 'vue';
+import { createTestingPinia } from '@pinia/testing';
+import { createComponentRenderer } from '@/__tests__/render';
+import { type MockedStore, mockedStore } from '@/__tests__/utils';
+import { defaultSettings } from '@n8n/frontend-test-utils';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import NodeCreation from './NodeCreation.vue';
+import type { AddedNodesAndConnections } from '@/Interface';
+import { NODE_CREATOR_OPEN_SOURCES } from '@/app/constants';
+import { useNodeCreatorStore } from '../nodeCreator.store';
+
+const mockGetAddedNodesAndConnections = vi.fn<() => AddedNodesAndConnections>(() => ({
+	nodes: [],
+	connections: [],
+}));
+
+vi.mock('../composables/useActions', () => ({
+	useActions: () => ({
+		getAddedNodesAndConnections: mockGetAddedNodesAndConnections,
+	}),
+}));
+
+// NodeCreator.vue pulls in a large composable/store surface unrelated to the
+// wiring under test. Stubbing `defineAsyncComponent` sidesteps loading it (and
+// the Suspense boundary) so we can drive `@node-type-selected` directly.
+vi.mock('vue', async (importOriginal) => {
+	const actual = await importOriginal<typeof Vue>();
+	return {
+		...actual,
+		defineAsyncComponent: () => ({
+			name: 'NodeCreatorStub',
+			emits: ['node-type-selected', 'empty-group-selected', 'close-node-creator'],
+			setup(_: unknown, { emit }: { emit: (event: string, ...args: unknown[]) => void }) {
+				return { emit };
+			},
+			template: `<>
+				<button data-test-id="node-creator-stub-select" @click="emit('node-type-selected', [{ type: 'n8n-nodes-base.slack' }])" />
+				<button data-test-id="node-creator-stub-group" @click="emit('empty-group-selected')" />
+			</>`,
+		}),
+	};
+});
+
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal<typeof import('vue-router')>()),
+	useRoute: () => ({ name: 'NodeViewExisting' }),
+}));
+
+vi.mock('@/app/composables/useWorkflowId', () => ({
+	useWorkflowId: () => ({ value: 'test-workflow-id' }),
+	useRouteWorkflowId: () => ({ value: 'test-workflow-id' }),
+}));
+
+vi.mock('@/app/composables/useEditorContext', () => ({
+	useEditorContext: () => ({
+		aiAssistant: { value: false },
+		aiBuilder: { value: false },
+		instanceAi: { value: false },
+	}),
+}));
+
+vi.mock('@/app/composables/useInstanceAiEditorCapability', () => ({
+	useInstanceAiEditorCapability: () => ({ openWorkflow: undefined }),
+}));
+
+vi.mock('../composables/useNodeCreatorShortcutCoachmark', () => ({
+	useNodeCreatorShortcutCoachmark: () => ({
+		shouldShowCoachmark: false,
+		onDismissCoachmark: vi.fn(),
+	}),
+}));
+
+const renderComponent = createComponentRenderer(NodeCreation, {
+	props: {
+		nodeViewScale: 1,
+		createNodeActive: true,
+		focusPanelActive: false,
+	},
+});
+
+let settingsStore: MockedStore<typeof useSettingsStore>;
+let pinia: ReturnType<typeof createTestingPinia>;
+
+describe('NodeCreation', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		pinia = createTestingPinia();
+		settingsStore = mockedStore(useSettingsStore);
+		settingsStore.settings = defaultSettings;
+	});
+
+	it('emits addNodes with the result of getAddedNodesAndConnections when a node type is selected', async () => {
+		const addedNodesAndConnections = {
+			nodes: [{ type: 'n8n-nodes-base.slack' }],
+			connections: [],
+		};
+		mockGetAddedNodesAndConnections.mockReturnValue(addedNodesAndConnections);
+
+		const { findByTestId, emitted } = renderComponent({ pinia });
+		const selectButton = await findByTestId('node-creator-stub-select');
+
+		selectButton.click();
+
+		await vi.waitFor(() => {
+			expect(mockGetAddedNodesAndConnections).toHaveBeenCalled();
+		});
+
+		expect(mockGetAddedNodesAndConnections).toHaveBeenCalledWith([
+			{ type: 'n8n-nodes-base.slack' },
+		]);
+		expect(emitted('addNodes')).toEqual([[addedNodesAndConnections]]);
+	});
+
+	it('renders the command bar button by default', () => {
+		const { queryByTestId } = renderComponent({
+			pinia,
+			props: { nodeViewScale: 1, createNodeActive: false, focusPanelActive: false },
+		});
+
+		expect(queryByTestId('command-bar-button')).toBeInTheDocument();
+	});
+
+	it('uses regular node placement when Group is selected in the node creator', async () => {
+		const { getByTestId, emitted } = renderComponent({ pinia });
+
+		getByTestId('node-creator-stub-group').click();
+
+		await vi.waitFor(() => expect(emitted('addEmptyGroup')).toHaveLength(1));
+		expect(emitted('addEmptyGroup')).toEqual([[false]]);
+		expect(emitted('toggleNodeCreator')).toEqual([
+			[{ createNodeActive: false, hasAddedNodes: true }],
+		]);
+	});
+
+	it('connects Group when the node creator was opened from a connection', async () => {
+		const nodeCreatorStore = useNodeCreatorStore();
+		nodeCreatorStore.openSource = NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION;
+		const { getByTestId, emitted } = renderComponent({ pinia });
+
+		getByTestId('node-creator-stub-group').click();
+
+		await vi.waitFor(() => expect(emitted('addEmptyGroup')).toHaveLength(1));
+		expect(emitted('addEmptyGroup')).toEqual([[true]]);
+	});
+	it('hides the command bar button in canvas-only mode', () => {
+		settingsStore.settings = { ...defaultSettings, canvasOnly: true };
+
+		const { queryByTestId } = renderComponent({
+			pinia,
+			props: { nodeViewScale: 1, createNodeActive: false, focusPanelActive: false },
+		});
+
+		expect(queryByTestId('command-bar-button')).not.toBeInTheDocument();
+	});
+
+	describe('content above the toolbar', () => {
+		const closed = { nodeViewScale: 1, createNodeActive: false, focusPanelActive: false };
+		const aboveToolbar = { 'above-toolbar': '<div data-test-id="above-toolbar-content" />' };
+
+		it('renders the toolbar alone in its column when the host passes nothing', () => {
+			const { getByTestId } = renderComponent({ pinia, props: closed });
+
+			const column = getByTestId('canvas-toolbar-column');
+			expect(column.children).toHaveLength(1);
+			expect(column).toContainElement(getByTestId('node-creator-plus-button'));
+		});
+
+		it('renders the content first in the same column as the toolbar', () => {
+			const { getByTestId } = renderComponent({ pinia, props: closed, slots: aboveToolbar });
+
+			const column = getByTestId('canvas-toolbar-column');
+			const content = getByTestId('above-toolbar-content');
+			const plus = getByTestId('node-creator-plus-button');
+			expect(column.firstElementChild).toBe(content);
+			expect(column).toContainElement(plus);
+			expect(content.compareDocumentPosition(plus) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+		});
+
+		it('keeps the content while the node creator is open', () => {
+			const { getByTestId, queryByTestId } = renderComponent({
+				pinia,
+				props: { ...closed, createNodeActive: true },
+				slots: aboveToolbar,
+			});
+
+			expect(getByTestId('above-toolbar-content')).toBeInTheDocument();
+			expect(queryByTestId('node-creator-plus-button')).not.toBeInTheDocument();
+		});
+	});
+});

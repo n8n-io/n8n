@@ -4,7 +4,8 @@ import type { BaseRetriever } from '@langchain/core/retrievers';
 import { FakeChatModel, FakeLLM, FakeRetriever } from '@langchain/core/utils/testing';
 import get from 'lodash/get';
 import type { IDataObject, IExecuteFunctions, NodeConnectionType } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError, UnexpectedError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { ChainRetrievalQa } from '../ChainRetrievalQa.node';
 
@@ -49,7 +50,7 @@ const createExecuteFunctionsMock = (
 		continueOnFail() {
 			return false;
 		},
-		logger: { debug: jest.fn() },
+		logger: { debug: vi.fn() },
 	} as unknown as IExecuteFunctions;
 };
 
@@ -109,7 +110,7 @@ describe('ChainRetrievalQa', () => {
 			// Mock a text completion model that returns a predefined answer
 			const mockTextModel = new FakeLLM({ response: 'Paris is the capital of France.' });
 
-			const modelCallSpy = jest.spyOn(mockTextModel, '_call');
+			const modelCallSpy = vi.spyOn(mockTextModel, '_call');
 
 			const params = {
 				promptType: 'define',

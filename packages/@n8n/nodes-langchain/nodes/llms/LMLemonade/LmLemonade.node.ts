@@ -9,11 +9,14 @@ import {
 
 import type { LemonadeApiCredentialsType } from '../../../credentials/LemonadeApi.credentials';
 
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
-
 import { lemonadeDescription, lemonadeModel, lemonadeOptions } from './description';
-import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
-import { N8nLlmTracing } from '../N8nLlmTracing';
+import {
+	aiClientFetch,
+	getProxyAgent,
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
 
 export class LmLemonade implements INodeType {
 	description: INodeTypeDescription = {
@@ -82,7 +85,11 @@ export class LmLemonade implements INodeType {
 
 		// Build configuration object separately like official OpenAI node
 		const configuration: any = {
+			fetch: aiClientFetch,
 			baseURL: credentials.baseUrl,
+			fetchOptions: {
+				dispatcher: getProxyAgent(credentials.baseUrl, {}, this.helpers.getSecureEgressFilter()),
+			},
 		};
 
 		// Add custom headers if API key is provided

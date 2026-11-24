@@ -2,29 +2,58 @@ import { NodeConnectionTypes } from '../interfaces';
 import type { IConnections, NodeConnectionType } from '../interfaces';
 
 /**
- * Gets all the nodes which are connected nodes starting from
- * the given one
+ * Returns the names of all nodes reachable from `nodeName` by following the
+ * given connection type, excluding `nodeName` itself. Each node appears once,
+ * ordered deepest-descendant first. Cycles are safe — a node is never listed as
+ * its own descendant.
  *
- * @param {NodeConnectionType} [type='main']
- * @param {*} [depth=-1]
+ * @param {NodeConnectionType} [connectionType='main'] a specific type, or 'ALL' / 'ALL_NON_MAIN'
+ * @param {number} [depth=-1] how many hops to follow; -1 for unlimited
  */
 export function getConnectedNodes(
 	connections: IConnections,
 	nodeName: string,
 	connectionType: NodeConnectionType | 'ALL' | 'ALL_NON_MAIN' = NodeConnectionTypes.Main,
 	depth = -1,
-	checkedNodesIncoming?: string[],
 ): string[] {
-	const newDepth = depth === -1 ? depth : depth - 1;
+	return collectConnectedNodes(
+		connections,
+		nodeName,
+		connectionType,
+		depth,
+		new Set<string>(),
+		new Map<string, string[]>(),
+	);
+}
+
+function collectConnectedNodes(
+	connections: IConnections,
+	nodeName: string,
+	connectionType: NodeConnectionType | 'ALL' | 'ALL_NON_MAIN',
+	depth: number,
+	currentPath: Set<string>,
+	memo: Map<string, string[]>,
+): string[] {
 	if (depth === 0) {
 		// Reached max depth
 		return [];
 	}
 
 	if (!connections.hasOwnProperty(nodeName)) {
-		// Node does not have incoming connections
+		// Node has no connections to follow
 		return [];
 	}
+
+	// The expansion of a node depends only on the node and the remaining depth,
+	// so cache by both. With unlimited depth (-1) the key is stable, so every
+	// node is expanded exactly once.
+	const memoKey = `${depth}:${nodeName}`;
+	const cached = memo.get(memoKey);
+	if (cached !== undefined) {
+		return cached;
+	}
+
+	const newDepth = depth === -1 ? depth : depth - 1;
 
 	let types: NodeConnectionType[];
 	if (connectionType === 'ALL') {
@@ -43,36 +72,38 @@ export function getConnectedNodes(
 	let parentNodeName: string;
 	const returnNodes: string[] = [];
 
+	currentPath.add(nodeName);
+
 	types.forEach((type) => {
 		if (!connections[nodeName].hasOwnProperty(type)) {
-			// Node does not have incoming connections of given type
+			// Node does not have any connections of given type
 			return;
 		}
-
-		const checkedNodes = checkedNodesIncoming ? [...checkedNodesIncoming] : [];
-
-		if (checkedNodes.includes(nodeName)) {
-			// Node got checked already before
-			return;
-		}
-
-		checkedNodes.push(nodeName);
 
 		connections[nodeName][type].forEach((connectionsByIndex) => {
 			connectionsByIndex?.forEach((connection) => {
-				if (checkedNodes.includes(connection.node)) {
-					// Node got checked already before
+				if (currentPath.has(connection.node)) {
+					// Node is an ancestor on the current path, so skip it
 					return;
 				}
 
+				// A node can be both a direct connection and a transitive descendant
+				// via another branch (a shortcut diamond). If it was already collected
+				// through a sibling branch, move it to the front instead of adding a
+				// duplicate — mirroring the dedup done for `addNodes` below.
+				const existingIndex = returnNodes.indexOf(connection.node);
+				if (existingIndex !== -1) {
+					returnNodes.splice(existingIndex, 1);
+				}
 				returnNodes.unshift(connection.node);
 
-				addNodes = getConnectedNodes(
+				addNodes = collectConnectedNodes(
 					connections,
 					connection.node,
 					connectionType,
 					newDepth,
-					checkedNodes,
+					currentPath,
+					memo,
 				);
 
 				for (i = addNodes.length; i--; i > 0) {
@@ -93,6 +124,9 @@ export function getConnectedNodes(
 			});
 		});
 	});
+
+	currentPath.delete(nodeName);
+	memo.set(memoKey, returnNodes);
 
 	return returnNodes;
 }

@@ -1,20 +1,30 @@
-import { MANUAL_TRIGGER_NODE_TYPE, TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
+import {
+	EVALUATION_TRIGGER_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	createRunExecutionData,
+	isTrimmedNodeExecutionData,
+} from 'n8n-workflow';
+import { UUID_V7_PATTERN } from '@n8n/constants';
+import { CANCELLABLE_EXECUTION_STATUSES } from './executions.constants';
 import type {
 	ITaskData,
 	ExecutionStatus,
+	ExecutionSummary,
 	IDataObject,
-	INode,
-	IPinData,
 	IRunData,
 	ExecutionError,
 	INodeTypeBaseDescription,
 	INodeExecutionData,
-	Workflow,
 	IWorkflowDataProxyAdditionalKeys,
+	WorkflowEngineType,
 } from 'n8n-workflow';
-import type { INodeUi } from '@/Interface';
+import type { INodeUi, IWorkflowDb } from '@/Interface';
+import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 import type {
 	ExecutionFilterType,
+	ExecutionPreviewNodeSchema,
+	ExecutionPreviewOutputSchema,
+	ExecutionPreviewSchemaField,
 	ExecutionsQueryFilter,
 	IExecutionFlattedResponse,
 	IExecutionResponse,
@@ -29,6 +39,8 @@ import {
 	WORKFLOW_TRIGGER_NODE_TYPE,
 } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { i18n } from '@n8n/i18n';
 import { h } from 'vue';
@@ -36,16 +48,23 @@ import NodeExecutionErrorMessage from '@/app/components/NodeExecutionErrorMessag
 import { parse } from 'flatted';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
+export function hasCancellableExecutions(executions: ExecutionSummary[]): boolean {
+	const cancellableStatuses = new Set<ExecutionStatus>(CANCELLABLE_EXECUTION_STATUSES);
+
+	return executions.some((execution) => cancellableStatuses.has(execution.status));
+}
+
 export function getDefaultExecutionFilters(): ExecutionFilterType {
 	return {
 		workflowId: 'all',
 		status: 'all',
 		startDate: '',
 		endDate: '',
-		tags: [],
 		annotationTags: [],
 		metadata: [],
 		vote: 'all',
+		workflowVersionId: 'all',
+		engine: 'all',
 	};
 }
 
@@ -57,16 +76,20 @@ export const executionFilterToQueryFilter = (
 		queryFilter.workflowId = filter.workflowId;
 	}
 
-	if (!isEmpty(filter.tags)) {
-		queryFilter.tags = filter.tags;
-	}
-
 	if (!isEmpty(filter.annotationTags)) {
 		queryFilter.annotationTags = filter.annotationTags;
 	}
 
 	if (filter.vote !== 'all') {
 		queryFilter.vote = filter.vote;
+	}
+
+	if (filter.workflowVersionId !== 'all') {
+		queryFilter.workflowVersionId = filter.workflowVersionId;
+	}
+
+	if (filter.engine && filter.engine !== 'all') {
+		queryFilter.engine = filter.engine;
 	}
 
 	if (!isEmpty(filter.metadata)) {
@@ -122,82 +145,59 @@ export const openFormPopupWindow = (url: string) => {
 
 export const clearPopupWindowState = () => (formPopupWindow = false);
 
-export async function displayForm({
-	nodes,
-	runData,
-	pinData,
-	destinationNode,
-	triggerNode,
-	directParentNodes,
+/** Opens the test form popup for each Form Trigger the backend registered in this manual run. */
+export function displayForm({
+	formTestUrls,
 	source,
-	getTestUrl,
 }: {
-	nodes: INode[];
-	runData: IRunData | undefined;
-	pinData: IPinData;
-	destinationNode: string | undefined;
-	triggerNode: string | undefined;
-	directParentNodes: string[];
+	formTestUrls: string[];
 	source: string | undefined;
-	getTestUrl: (node: INode) => string;
 }) {
-	for (const node of nodes) {
-		if (triggerNode !== undefined && triggerNode !== node.name) continue;
+	if (source === 'RunData.ManualChatMessage') return;
 
-		const hasNodeRunAndIsNotFormTrigger =
-			runData?.hasOwnProperty(node.name) && node.type !== FORM_TRIGGER_NODE_TYPE;
-
-		if (hasNodeRunAndIsNotFormTrigger || pinData[node.name]) continue;
-
-		if (![FORM_TRIGGER_NODE_TYPE].includes(node.type)) continue;
-
-		if (destinationNode && destinationNode !== node.name && !directParentNodes.includes(node.name))
-			continue;
-
-		if (node.name === destinationNode || !node.disabled) {
-			let testUrl = '';
-			if (node.type === FORM_TRIGGER_NODE_TYPE) testUrl = getTestUrl(node);
-
-			try {
-				const res = await fetch(testUrl, { method: 'GET' });
-				if (!res.ok) continue;
-			} catch (error) {
-				continue;
-			}
-
-			if (testUrl && source !== 'RunData.ManualChatMessage') {
-				clearPopupWindowState();
-				openFormPopupWindow(testUrl);
-			}
-		}
+	for (const formTestUrl of formTestUrls) {
+		clearPopupWindowState();
+		openFormPopupWindow(formTestUrl);
 	}
 }
 
-export const waitingNodeTooltip = (node: INodeUi | null | undefined, workflow?: Workflow) => {
+export const waitingNodeTooltip = (
+	node: INodeUi | null | undefined,
+	workflow?: WorkflowObjectAccessors,
+	metadata?: { resumeUrl?: string; resumeFormUrl?: string },
+) => {
 	if (!node) return '';
 	try {
-		const waitingNodeTooltip = useNodeTypesStore().getNodeType(node.type)?.waitingNodeTooltip;
-		if (waitingNodeTooltip) {
-			const activeExecutionId = useWorkflowsStore().activeExecutionId as string;
+		const waitingNodeTooltipFromNodeType = useNodeTypesStore().getNodeType(
+			node.type,
+		)?.waitingNodeTooltip;
+		if (waitingNodeTooltipFromNodeType) {
+			const activeExecutionId = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(useWorkflowsStore().workflowId),
+			).activeExecutionId as string;
+			// Use signed URLs from metadata if available
+			// otherwise fall back to constructing URLs without token
 			const additionalData: IWorkflowDataProxyAdditionalKeys = {
 				$execution: {
 					id: activeExecutionId,
 					mode: 'test',
-					resumeUrl: `${useRootStore().webhookWaitingUrl}/${activeExecutionId}`,
-					resumeFormUrl: `${useRootStore().formWaitingUrl}/${activeExecutionId}`,
+					resumeUrl:
+						metadata?.resumeUrl ?? `${useRootStore().webhookWaitingUrl}/${activeExecutionId}`,
+					resumeFormUrl:
+						metadata?.resumeFormUrl ?? `${useRootStore().formWaitingUrl}/${activeExecutionId}`,
 				},
 			};
 			if (workflow) {
 				const tooltip = workflow.expression.getSimpleParameterValue(
 					node,
-					waitingNodeTooltip,
+					waitingNodeTooltipFromNodeType,
 					'internal',
 					additionalData,
 				);
 
 				return String(tooltip);
-			} else if (waitingNodeTooltip) {
-				return waitingNodeTooltip;
+			} else if (waitingNodeTooltipFromNodeType) {
+				return waitingNodeTooltipFromNodeType;
 			}
 		}
 	} catch (error) {
@@ -207,12 +207,7 @@ export const waitingNodeTooltip = (node: INodeUi | null | undefined, workflow?: 
 	return '';
 };
 
-/**
- * Check whether node execution data contains a trimmed item.
- */
-export function isTrimmedNodeExecutionData(data: INodeExecutionData[] | null) {
-	return data?.some((entry) => entry.json?.[TRIMMED_TASK_DATA_CONNECTIONS_KEY]);
-}
+export { isTrimmedNodeExecutionData };
 
 /**
  * Check whether task data contains a trimmed item.
@@ -243,6 +238,21 @@ export function hasTrimmedTaskData(taskData: ITaskData[]) {
  */
 export function hasTrimmedRunData(runData: IRunData) {
 	return Object.keys(runData).some((nodeName) => hasTrimmedTaskData(runData[nodeName]));
+}
+
+/**
+ * Check whether an execution ID belongs to engine v2.
+ *
+ * The ID shape names the engine, as in the backend: engine v2 uses a UUID v7,
+ * and v1 uses a number. No push message or REST response names the engine.
+ */
+export function isEngineV2ExecutionId(executionId: string): boolean {
+	return UUID_V7_PATTERN.test(executionId);
+}
+
+/** The engine that ran an execution, read from its ID. */
+export function getExecutionEngine(executionId: string): WorkflowEngineType {
+	return isEngineV2ExecutionId(executionId) ? 'v2' : 'v1';
 }
 
 export function executionRetryMessage(executionStatus: ExecutionStatus):
@@ -347,6 +357,13 @@ export function getExecutionErrorToastConfiguration({
 }) {
 	const message = getExecutionErrorMessage({ error, lastNodeExecuted });
 
+	if (error.name === 'WorkflowHasIssuesError') {
+		return {
+			title: i18n.baseText('pushConnection.workflowHasIssues.title'),
+			message: h('div', { style: 'white-space: pre-line' }, error.message),
+		};
+	}
+
 	if (error.name === 'SubworkflowOperationError') {
 		return { title: error.message, message: error.description ?? '' };
 	}
@@ -409,6 +426,11 @@ export function findTriggerNodeToAutoSelect(
 		[MANUAL_TRIGGER_NODE_TYPE]: 6,
 		[WORKFLOW_TRIGGER_NODE_TYPE]: 5,
 		[ERROR_TRIGGER_NODE_TYPE]: 4,
+		// Ranked below the core-node fallback: selecting this trigger runs the whole
+		// evaluation dataset, so it should never win over a trigger the user can run
+		// interactively. Its codex category is "Utility", so without this entry it
+		// would fall through to the 8 reserved for third-party app triggers.
+		[EVALUATION_TRIGGER_NODE_TYPE]: -1,
 	};
 
 	function isCoreNode(node: INodeUi): boolean {
@@ -425,4 +447,132 @@ export function findTriggerNodeToAutoSelect(
 			return bPriority - aPriority;
 		})
 		.find((node) => !node.disabled);
+}
+
+const MAX_ITEM_COUNT = 10;
+const MAX_NESTING_DEPTH = 5;
+
+export function generatePlaceholderValue(field: ExecutionPreviewSchemaField, depth = 0): unknown {
+	if (depth > MAX_NESTING_DEPTH) {
+		return field.type === 'object' ? {} : field.type === 'array' ? [] : '';
+	}
+
+	switch (field.type) {
+		case 'string':
+			return '';
+		case 'number':
+			return 0;
+		case 'boolean':
+			return false;
+		case 'object': {
+			if (!field.fields?.length) return {};
+			const obj: IDataObject = {};
+			for (const child of field.fields) {
+				obj[child.name] = generatePlaceholderValue(child, depth + 1) as IDataObject[string];
+			}
+			return obj;
+		}
+		case 'array': {
+			if (!field.itemSchema?.length) return [];
+			const element: IDataObject = {};
+			for (const itemField of field.itemSchema) {
+				element[itemField.name] = generatePlaceholderValue(
+					itemField,
+					depth + 1,
+				) as IDataObject[string];
+			}
+			return [element];
+		}
+		default:
+			return '';
+	}
+}
+
+export function generateFakeDataFromSchema(
+	outputSchema: ExecutionPreviewOutputSchema,
+): INodeExecutionData[] {
+	const itemCount = Math.max(1, Math.min(outputSchema.itemCount ?? 1, MAX_ITEM_COUNT));
+	const items: INodeExecutionData[] = [];
+
+	for (let i = 0; i < itemCount; i++) {
+		const json: IDataObject = {};
+		for (const field of outputSchema.fields) {
+			json[field.name] = generatePlaceholderValue(field) as IDataObject[string];
+		}
+		items.push({ json });
+	}
+
+	return items;
+}
+
+/**
+ * Builds a synthetic IExecutionResponse from a lightweight per-node execution schema.
+ * When an outputSchema is provided, placeholder data is generated so the NDV can
+ * display realistic columns/rows without exposing sensitive real data.
+ */
+export function buildExecutionResponseFromSchema({
+	workflow,
+	nodeExecutionSchema,
+	executionStatus,
+	executionError,
+	lastNodeExecuted,
+}: {
+	workflow: IWorkflowDb;
+	nodeExecutionSchema: Record<string, ExecutionPreviewNodeSchema>;
+	executionStatus: ExecutionStatus;
+	executionError?: {
+		message: string;
+		description?: string;
+		name?: string;
+		stack?: string;
+	};
+	lastNodeExecuted?: string;
+}): IExecutionResponse {
+	const runData: IRunData = {};
+
+	for (const [nodeName, schema] of Object.entries(nodeExecutionSchema)) {
+		const taskData: ITaskData = {
+			startTime: 0,
+			executionIndex: 0,
+			executionTime: schema.executionTime ?? 0,
+			executionStatus: schema.executionStatus,
+			source: [],
+		};
+
+		if (schema.error) {
+			// Preview errors are plain JSON objects from postMessage, not class instances.
+			// They structurally match ExecutionError for rendering purposes.
+			taskData.error = schema.error as unknown as ExecutionError;
+		}
+
+		if (schema.outputSchema && schema.outputSchema.fields.length > 0) {
+			taskData.data = { main: [generateFakeDataFromSchema(schema.outputSchema)] };
+		}
+
+		runData[nodeName] = [taskData];
+	}
+
+	// Same as above: preview error is a serialized plain object, not an Error subclass instance.
+	const resultError = executionError ? (executionError as unknown as ExecutionError) : undefined;
+
+	const data = createRunExecutionData({
+		resultData: {
+			runData,
+			error: resultError,
+			lastNodeExecuted,
+		},
+		executionData: null,
+	});
+
+	return {
+		id: 'preview',
+		finished: executionStatus === 'success',
+		mode: 'manual',
+		status: executionStatus,
+		startedAt: new Date().toISOString(),
+		createdAt: new Date().toISOString(),
+		stoppedAt: new Date().toISOString(),
+		data,
+		workflowData: workflow,
+	};
 }

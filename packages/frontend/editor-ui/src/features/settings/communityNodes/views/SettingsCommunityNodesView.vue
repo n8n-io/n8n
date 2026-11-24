@@ -4,8 +4,9 @@ import {
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 } from '../communityNodes.constants';
 import CommunityPackageCard from '../components/CommunityPackageCard.vue';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { usePrefetchModals } from '@/app/composables/usePrefetchModals';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 
 import { useCommunityNodesStore } from '../communityNodes.store';
@@ -16,10 +17,12 @@ import { useRouter } from 'vue-router';
 import { usePushConnection } from '@/app/composables/usePushConnection';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useTypeAvailability } from '@n8n/frontend-module-type-availability-policies';
 
-import { N8nActionBox, N8nButton, N8nHeading } from '@n8n/design-system';
+import { N8nEmptyState, N8nButton, N8nHeading, N8nNotice } from '@n8n/design-system';
 const PACKAGE_COUNT_THRESHOLD = 31;
 
 const loading = ref(false);
@@ -36,6 +39,17 @@ const documentTitle = useDocumentTitle();
 const communityNodesStore = useCommunityNodesStore();
 const uiStore = useUIStore();
 const settingsStore = useSettingsStore();
+const projectsStore = useProjectsStore();
+
+const isManagedByEnv = computed((): boolean => {
+	return settingsStore.settings.communityNodesManagedByEnv ?? false;
+});
+
+const canInstall = computed((): boolean => {
+	return settingsStore.isUnverifiedPackagesEnabled && !isManagedByEnv.value;
+});
+
+usePrefetchModals([COMMUNITY_PACKAGE_INSTALL_MODAL_KEY], { enabled: () => canInstall.value });
 
 const getEmptyStateTitle = computed(() => {
 	if (!settingsStore.isUnverifiedPackagesEnabled) {
@@ -67,7 +81,7 @@ const getEmptyStateDescription = computed(() => {
 });
 
 const getEmptyStateButtonText = computed(() => {
-	if (!settingsStore.isUnverifiedPackagesEnabled) return '';
+	if (!canInstall.value) return '';
 	return i18n.baseText('settings.communityNodes.empty.installPackageLabel');
 });
 
@@ -129,11 +143,9 @@ onMounted(async () => {
 			number_of_updates_available: packagesToUpdate.length,
 		});
 	} catch (error) {
-		toast.showError(
-			error,
-			i18n.baseText('settings.communityNodes.fetchError.title'),
-			i18n.baseText('settings.communityNodes.fetchError.message'),
-		);
+		toast.showError(error, i18n.baseText('settings.communityNodes.fetchError.title'), {
+			message: i18n.baseText('settings.communityNodes.fetchError.message'),
+		});
 	} finally {
 		loading.value = false;
 	}
@@ -148,6 +160,10 @@ onBeforeUnmount(() => {
 	pushStore.pushDisconnect();
 	pushConnection.terminate();
 });
+
+// Node type availability is project-scoped, but this page has no project context of its own.
+// The personal project is only used to carry the instance-wide verdicts the cards need.
+useTypeAvailability(() => projectsStore.personalProject?.id);
 </script>
 
 <template>
@@ -155,16 +171,18 @@ onBeforeUnmount(() => {
 		<div :class="$style.headingContainer">
 			<N8nHeading size="2xlarge">{{ i18n.baseText('settings.communityNodes') }}</N8nHeading>
 			<N8nButton
-				v-if="
-					settingsStore.isUnverifiedPackagesEnabled &&
-					communityNodesStore.getInstalledPackages.length > 0 &&
-					!loading
-				"
+				v-if="canInstall && communityNodesStore.getInstalledPackages.length > 0 && !loading"
 				:label="i18n.baseText('settings.communityNodes.installModal.installButton.label')"
 				size="large"
 				@click="openInstallModal"
 			/>
 		</div>
+		<N8nNotice
+			v-if="isManagedByEnv"
+			class="mb-l"
+			:content="i18n.baseText('settings.communityNodes.managedByEnv')"
+			data-test-id="community-nodes-managed-by-env"
+		/>
 		<div v-if="loading" :class="$style.cardsContainer">
 			<CommunityPackageCard
 				v-for="n in 2"
@@ -176,7 +194,7 @@ onBeforeUnmount(() => {
 			v-else-if="communityNodesStore.getInstalledPackages.length === 0"
 			:class="$style.actionBoxContainer"
 		>
-			<N8nActionBox
+			<N8nEmptyState
 				:heading="getEmptyStateTitle"
 				:description="getEmptyStateDescription"
 				:button-text="getEmptyStateButtonText"

@@ -1,15 +1,18 @@
-import { mock } from 'jest-mock-extended';
-import * as mssql from 'mssql';
+import { mock } from 'vitest-mock-extended';
+import mssqlDefault from 'mssql';
+import type * as mssql from 'mssql';
 import { constructExecutionMetaData, returnJsonArray } from 'n8n-core';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
+import { configurePool } from '../GenericFunctions';
 import { MicrosoftSql } from '../MicrosoftSql.node';
+import type { MockedClass } from 'vitest';
 
-jest.mock('mssql');
+vi.mock('mssql');
 
 function getMockedExecuteFunctions(overrides: Partial<IExecuteFunctions> = {}) {
 	return mock<IExecuteFunctions>({
-		getCredentials: jest.fn().mockResolvedValue({
+		getCredentials: vi.fn().mockResolvedValue({
 			server: 'localhost',
 			database: 'testdb',
 			user: 'testuser',
@@ -21,33 +24,57 @@ function getMockedExecuteFunctions(overrides: Partial<IExecuteFunctions> = {}) {
 			connectTimeout: 1000,
 			requestTimeout: 10000,
 		}),
-		getInputData: jest.fn().mockReturnValue([{ json: {} }]),
-		getNode: jest.fn().mockReturnValue({ typeVersion: 1.1 }),
-		continueOnFail: jest.fn().mockReturnValue(true),
+		getInputData: vi.fn().mockReturnValue([{ json: {} }]),
+		getNode: vi.fn().mockReturnValue({ typeVersion: 1.1, parameters: {} }),
+		continueOnFail: vi.fn().mockReturnValue(true),
 		helpers: {
 			constructExecutionMetaData,
 			returnJsonArray,
 		},
-		evaluateExpression: jest.fn((_val) => _val),
+		evaluateExpression: vi.fn((_val) => _val),
 		...overrides,
 	});
 }
 
 describe('MicrosoftSql Node', () => {
-	let mockedConnectionPool: jest.MockedClass<typeof mssql.ConnectionPool>;
+	let mockedConnectionPool: MockedClass<typeof mssql.ConnectionPool>;
 
 	beforeEach(() => {
-		mockedConnectionPool = mssql.ConnectionPool as jest.MockedClass<typeof mssql.ConnectionPool>;
+		mockedConnectionPool = mssqlDefault.ConnectionPool as MockedClass<typeof mssql.ConnectionPool>;
+	});
+
+	test('converts numeric credential strings in the pool configuration', () => {
+		configurePool({ port: '1433', connectTimeout: '1000', requestTimeout: '10000' });
+
+		expect(mockedConnectionPool).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				port: 1433,
+				connectionTimeout: 1000,
+				requestTimeout: 10000,
+			}),
+		);
+	});
+
+	test('preserves driver defaults for empty numeric credentials', () => {
+		configurePool({ port: undefined, connectTimeout: '', requestTimeout: null });
+
+		expect(mockedConnectionPool).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				port: undefined,
+				connectionTimeout: undefined,
+				requestTimeout: undefined,
+			}),
+		);
 	});
 
 	test('handles connection error with continueOnFail', async () => {
 		const fakeError = new Error('Connection failed');
-		mockedConnectionPool.mockReturnValue(
-			mock<mssql.ConnectionPool>({
-				connect: jest.fn().mockRejectedValue(fakeError),
-				close: jest.fn(),
-			}),
-		);
+		mockedConnectionPool.mockImplementation(function () {
+			return mock<mssql.ConnectionPool>({
+				connect: vi.fn().mockRejectedValue(fakeError),
+				close: vi.fn(),
+			});
+		});
 
 		const node = new MicrosoftSql();
 		const context = getMockedExecuteFunctions();
@@ -58,21 +85,25 @@ describe('MicrosoftSql Node', () => {
 
 	test('executes query on happy path', async () => {
 		const queryResult = { recordsets: [[{ value: 1 }]] };
-		const mockRequest = { query: jest.fn().mockResolvedValue(queryResult) };
+		const mockRequest = { query: vi.fn().mockResolvedValue(queryResult) };
 		const mockPool = mock<mssql.ConnectionPool>({
-			connect: jest.fn().mockResolvedValue(undefined),
-			close: jest.fn(),
-			request: jest.fn().mockReturnValue(mockRequest),
+			connect: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn(),
+			request: vi.fn().mockReturnValue(mockRequest),
 		});
 
-		mockedConnectionPool.mockReturnValue(mockPool);
+		mockedConnectionPool.mockImplementation(function () {
+			return mockPool;
+		});
 
 		const node = new MicrosoftSql();
 		const context = getMockedExecuteFunctions({
-			getNodeParameter: jest
-				.fn()
-				.mockReturnValueOnce('executeQuery')
-				.mockReturnValueOnce('SELECT 1 AS value'),
+			getNodeParameter: vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'operation') return 'executeQuery';
+				if (paramName === 'query') return 'SELECT 1 AS value';
+				if (paramName === 'options.queryReplacement') return '';
+				return undefined;
+			}),
 		});
 		const result = await node.execute.call(context);
 
@@ -83,26 +114,433 @@ describe('MicrosoftSql Node', () => {
 
 	test('correctly resolves expressions (does not remove $ characters)', async () => {
 		const queryResult = { recordsets: [[{ value: 1 }]] };
-		const mockRequest = { query: jest.fn().mockResolvedValue(queryResult) };
+		const mockRequest = { query: vi.fn().mockResolvedValue(queryResult) };
 		const mockPool = mock<mssql.ConnectionPool>({
-			connect: jest.fn().mockResolvedValue(undefined),
-			close: jest.fn(),
-			request: jest.fn().mockReturnValue(mockRequest),
+			connect: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn(),
+			request: vi.fn().mockReturnValue(mockRequest),
 		});
 
-		mockedConnectionPool.mockReturnValue(mockPool);
+		mockedConnectionPool.mockImplementation(function () {
+			return mockPool;
+		});
 
 		const node = new MicrosoftSql();
 		const context = getMockedExecuteFunctions({
-			getNodeParameter: jest
-				.fn()
-				.mockReturnValueOnce('executeQuery')
-				.mockReturnValueOnce("SELECT '{{ '$$$' }}'"),
+			getNodeParameter: vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'operation') return 'executeQuery';
+				if (paramName === 'query') return "SELECT '{{ '$$$' }}'";
+				if (paramName === 'options.queryReplacement') return '';
+				return undefined;
+			}),
 		});
 		context.evaluateExpression.mockReturnValue('$$$');
 
 		await node.execute.call(context);
 
 		expect(mockRequest.query).toHaveBeenCalledWith("SELECT '$$$'");
+	});
+
+	test.each([
+		{ typeVersion: 1.3, expected: "SELECT '{{ $json.b }}$$', 'b'" },
+		{ typeVersion: 1.2, expected: "SELECT 'b$$', '{{ $json.b }}'" },
+		{ typeVersion: 1, expected: "SELECT 'b$$', '{{ $json.b }}'" },
+	])(
+		'resolves each expression once for version $typeVersion',
+		async ({ typeVersion, expected }) => {
+			const mockRequest = { query: vi.fn().mockResolvedValue({ recordsets: [[]] }) };
+			mockedConnectionPool.mockImplementation(function () {
+				return mock<mssql.ConnectionPool>({
+					connect: vi.fn().mockResolvedValue(undefined),
+					close: vi.fn(),
+					request: vi.fn().mockReturnValue(mockRequest),
+				});
+			});
+			const values: Record<string, string> = {
+				'{{ $json.a }}': '{{ $json.b }}$$',
+				'{{ $json.b }}': 'b',
+			};
+			const context = getMockedExecuteFunctions({
+				getNode: vi.fn().mockReturnValue({ typeVersion, parameters: {} }),
+				getNodeParameter: vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'operation') return 'executeQuery';
+					if (paramName === 'query') return "SELECT '{{ $json.a }}', '{{ $json.b }}'";
+					if (paramName === 'options.queryReplacement') return '';
+					return undefined;
+				}),
+				evaluateExpression: vi.fn((expression: string) => values[expression]),
+			});
+
+			await new MicrosoftSql().execute.call(context);
+
+			expect(mockRequest.query).toHaveBeenCalledWith(expected);
+		},
+	);
+
+	test.each([
+		{
+			label: 'comma-separated string',
+			rawQueryReplacement: '5, Alice',
+			evaluatedQueryReplacement: '5, Alice',
+			query: 'SELECT * FROM users WHERE id = $1 AND name = $2',
+			expectedQuery: 'SELECT * FROM users WHERE id = @p1 AND name = @p2',
+			expectedInputs: [
+				['p1', '5'],
+				['p2', 'Alice'],
+			] as Array<[string, unknown]>,
+		},
+		{
+			label: 'array of strings',
+			rawQueryReplacement: undefined,
+			evaluatedQueryReplacement: ['5', 'Alice'],
+			query: 'SELECT * FROM users WHERE id = $1 AND name = $2',
+			expectedQuery: 'SELECT * FROM users WHERE id = @p1 AND name = @p2',
+			expectedInputs: [
+				['p1', '5'],
+				['p2', 'Alice'],
+			] as Array<[string, unknown]>,
+		},
+		{
+			label: 'single number',
+			rawQueryReplacement: undefined,
+			evaluatedQueryReplacement: 42,
+			query: 'SELECT * FROM users WHERE id = $1',
+			expectedQuery: 'SELECT * FROM users WHERE id = @p1',
+			expectedInputs: [['p1', 42]] as Array<[string, unknown]>,
+		},
+		{
+			label: 'single boolean',
+			rawQueryReplacement: undefined,
+			evaluatedQueryReplacement: true,
+			query: 'SELECT * FROM users WHERE active = $1',
+			expectedQuery: 'SELECT * FROM users WHERE active = @p1',
+			expectedInputs: [['p1', true]] as Array<[string, unknown]>,
+		},
+		{
+			label: 'undefined',
+			rawQueryReplacement: undefined,
+			evaluatedQueryReplacement: undefined,
+			query: 'SELECT * FROM users WHERE id = $1',
+			expectedQuery: 'SELECT * FROM users WHERE id = @p1',
+			expectedInputs: [['p1', null]] as Array<[string, unknown]>,
+		},
+	])(
+		'executes query with parameters supplied as $label',
+		async ({
+			query,
+			rawQueryReplacement,
+			evaluatedQueryReplacement,
+			expectedQuery,
+			expectedInputs,
+		}) => {
+			const queryResult = { recordsets: [[{ id: 1 }]] };
+			const mockRequest = {
+				query: vi.fn().mockResolvedValue(queryResult),
+				input: vi.fn(),
+			};
+			const mockPool = mock<mssql.ConnectionPool>({
+				connect: vi.fn().mockResolvedValue(undefined),
+				close: vi.fn(),
+				request: vi.fn().mockReturnValue(mockRequest),
+			});
+
+			mockedConnectionPool.mockImplementation(function () {
+				return mockPool;
+			});
+
+			const node = new MicrosoftSql();
+			const context = getMockedExecuteFunctions({
+				getNode: vi.fn().mockReturnValue({
+					typeVersion: 1.1,
+					parameters: { options: { queryReplacement: rawQueryReplacement } },
+				}),
+				getNodeParameter: vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'operation') return 'executeQuery';
+					if (paramName === 'query') return query;
+					if (paramName === 'options.queryReplacement') return evaluatedQueryReplacement;
+					return undefined;
+				}),
+			});
+			await node.execute.call(context);
+
+			expect(mockRequest.query).toHaveBeenCalledWith(expectedQuery);
+			for (const [param, value] of expectedInputs) {
+				expect(mockRequest.input).toHaveBeenCalledWith(param, value);
+			}
+		},
+	);
+
+	test('keeps a resolved value out of another parameter slot', async () => {
+		const queryResult = { recordsets: [[{ id: 1 }]] };
+		const mockRequest = { query: vi.fn().mockResolvedValue(queryResult), input: vi.fn() };
+		const mockPool = mock<mssql.ConnectionPool>({
+			connect: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn(),
+			request: vi.fn().mockReturnValue(mockRequest),
+		});
+
+		mockedConnectionPool.mockImplementation(function () {
+			return mockPool;
+		});
+
+		const node = new MicrosoftSql();
+		const context = getMockedExecuteFunctions({
+			getNode: vi.fn().mockReturnValue({
+				typeVersion: 1.1,
+				parameters: { options: { queryReplacement: '={{ $json.name }},Springfield' } },
+			}),
+			getNodeParameter: vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'operation') return 'executeQuery';
+				if (paramName === 'query') return 'UPDATE users SET city = $2 WHERE name = $1';
+				if (paramName === 'options.queryReplacement') return 'Doe, Jane,Springfield';
+				return undefined;
+			}),
+		});
+		context.evaluateExpression.mockImplementation((expr: string) =>
+			expr === '{{ $json.name }}' ? 'Doe, Jane' : expr,
+		);
+
+		await node.execute.call(context);
+
+		expect(mockRequest.query).toHaveBeenCalledWith('UPDATE users SET city = @p2 WHERE name = @p1');
+		expect(mockRequest.input).toHaveBeenCalledWith('p1', 'Doe, Jane');
+		expect(mockRequest.input).toHaveBeenCalledWith('p2', 'Springfield');
+	});
+
+	test('rejects a query referencing more placeholders than query parameters are set', async () => {
+		const mockRequest = { query: vi.fn(), input: vi.fn() };
+		const mockPool = mock<mssql.ConnectionPool>({
+			connect: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn(),
+			request: vi.fn().mockReturnValue(mockRequest),
+		});
+		mockedConnectionPool.mockImplementation(function () {
+			return mockPool;
+		});
+
+		const node = new MicrosoftSql();
+		const context = getMockedExecuteFunctions({
+			continueOnFail: vi.fn().mockReturnValue(false),
+			getNode: vi.fn().mockReturnValue({
+				typeVersion: 1.1,
+				parameters: { options: { queryReplacement: "={{ [$json.a, $json.b].join(',') }}" } },
+			}),
+			getNodeParameter: vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'operation') return 'executeQuery';
+				if (paramName === 'query') return 'SELECT * FROM users WHERE name = $1 OR id = $2';
+				if (paramName === 'options.queryReplacement') return 'a,2';
+				return undefined;
+			}),
+		});
+		context.evaluateExpression.mockImplementation(() => 'a,2');
+
+		await expect(node.execute.call(context)).rejects.toThrow(
+			'The query references $2, but only 1 query parameter(s) are set',
+		);
+		expect(mockRequest.query).not.toHaveBeenCalled();
+	});
+
+	test('does not mistake a dollar amount inside a quoted string for a placeholder', async () => {
+		const mockRequest = { query: vi.fn().mockResolvedValue({ recordsets: [[]] }), input: vi.fn() };
+		const mockPool = mock<mssql.ConnectionPool>({
+			connect: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn(),
+			request: vi.fn().mockReturnValue(mockRequest),
+		});
+		mockedConnectionPool.mockImplementation(function () {
+			return mockPool;
+		});
+
+		const node = new MicrosoftSql();
+		const context = getMockedExecuteFunctions({
+			getNode: vi.fn().mockReturnValue({
+				typeVersion: 1.1,
+				parameters: { options: { queryReplacement: '=1' } },
+			}),
+			getNodeParameter: vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'operation') return 'executeQuery';
+				if (paramName === 'query') {
+					return "SELECT * FROM products WHERE id = $1 AND note = 'Price: $500'";
+				}
+				if (paramName === 'options.queryReplacement') return '1';
+				return undefined;
+			}),
+		});
+		context.evaluateExpression.mockImplementation(() => '1');
+
+		await node.execute.call(context);
+
+		expect(mockRequest.query).toHaveBeenCalledWith(
+			"SELECT * FROM products WHERE id = @p1 AND note = 'Price: $500'",
+		);
+	});
+
+	describe('executeQuery on typeVersion 1', () => {
+		const getV1MockedExecuteFunctions = (overrides: Partial<IExecuteFunctions> = {}) =>
+			getMockedExecuteFunctions({
+				getNode: vi.fn().mockReturnValue({ typeVersion: 1, parameters: {} }),
+				...overrides,
+			});
+
+		test('leaves the query byte-identical when no query parameters are set', async () => {
+			const queryResult = { recordsets: [[{ value: 1 }]] };
+			const mockRequest = { query: vi.fn().mockResolvedValue(queryResult), input: vi.fn() };
+			const mockPool = mock<mssql.ConnectionPool>({
+				connect: vi.fn().mockResolvedValue(undefined),
+				close: vi.fn(),
+				request: vi.fn().mockReturnValue(mockRequest),
+			});
+
+			mockedConnectionPool.mockImplementation(function () {
+				return mockPool;
+			});
+
+			const node = new MicrosoftSql();
+			const context = getV1MockedExecuteFunctions({
+				getNodeParameter: vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'operation') return 'executeQuery';
+					if (paramName === 'query') return 'SELECT * FROM product WHERE quantity > 100';
+					if (paramName === 'options.queryReplacement') return '';
+					return undefined;
+				}),
+			});
+
+			await node.execute.call(context);
+
+			expect(mockRequest.query).toHaveBeenCalledWith('SELECT * FROM product WHERE quantity > 100');
+			expect(mockRequest.input).not.toHaveBeenCalled();
+		});
+
+		test('rejects a query that references a placeholder with no query parameters set at all', async () => {
+			const mockRequest = { query: vi.fn(), input: vi.fn() };
+			const mockPool = mock<mssql.ConnectionPool>({
+				connect: vi.fn().mockResolvedValue(undefined),
+				close: vi.fn(),
+				request: vi.fn().mockReturnValue(mockRequest),
+			});
+			mockedConnectionPool.mockImplementation(function () {
+				return mockPool;
+			});
+
+			const node = new MicrosoftSql();
+			const context = getV1MockedExecuteFunctions({
+				continueOnFail: vi.fn().mockReturnValue(false),
+				getNodeParameter: vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'operation') return 'executeQuery';
+					if (paramName === 'query') return 'SELECT * FROM product WHERE id = $1';
+					if (paramName === 'options.queryReplacement') return '';
+					return undefined;
+				}),
+			});
+
+			await expect(node.execute.call(context)).rejects.toThrow(
+				'The query references $1, but only 0 query parameter(s) are set',
+			);
+			expect(mockRequest.query).not.toHaveBeenCalled();
+		});
+
+		test('binds query parameters instead of interpolating them into the query text', async () => {
+			const queryResult = { recordsets: [[{ id: 1 }]] };
+			const mockRequest = { query: vi.fn().mockResolvedValue(queryResult), input: vi.fn() };
+			const mockPool = mock<mssql.ConnectionPool>({
+				connect: vi.fn().mockResolvedValue(undefined),
+				close: vi.fn(),
+				request: vi.fn().mockReturnValue(mockRequest),
+			});
+
+			mockedConnectionPool.mockImplementation(function () {
+				return mockPool;
+			});
+
+			const node = new MicrosoftSql();
+			const context = getV1MockedExecuteFunctions({
+				getNode: vi.fn().mockReturnValue({
+					typeVersion: 1,
+					parameters: { options: { queryReplacement: "note' OR '1'='1" } },
+				}),
+				getNodeParameter: vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'operation') return 'executeQuery';
+					if (paramName === 'query') return 'SELECT id, note FROM probe WHERE note = $1';
+					if (paramName === 'options.queryReplacement') {
+						return "note' OR '1'='1";
+					}
+					return undefined;
+				}),
+			});
+
+			await node.execute.call(context);
+
+			expect(mockRequest.query).toHaveBeenCalledWith('SELECT id, note FROM probe WHERE note = @p1');
+			expect(mockRequest.input).toHaveBeenCalledWith('p1', "note' OR '1'='1");
+		});
+
+		test('does not mangle $ characters from a resolved expression', async () => {
+			const queryResult = { recordsets: [[{ value: 1 }]] };
+			const mockRequest = { query: vi.fn().mockResolvedValue(queryResult), input: vi.fn() };
+			const mockPool = mock<mssql.ConnectionPool>({
+				connect: vi.fn().mockResolvedValue(undefined),
+				close: vi.fn(),
+				request: vi.fn().mockReturnValue(mockRequest),
+			});
+
+			mockedConnectionPool.mockImplementation(function () {
+				return mockPool;
+			});
+
+			const node = new MicrosoftSql();
+			const context = getV1MockedExecuteFunctions({
+				getNodeParameter: vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'operation') return 'executeQuery';
+					if (paramName === 'query') return "SELECT '{{ '$$$' }}'";
+					if (paramName === 'options.queryReplacement') return '';
+					return undefined;
+				}),
+			});
+			context.evaluateExpression.mockReturnValue('$$$');
+
+			await node.execute.call(context);
+
+			expect(mockRequest.query).toHaveBeenCalledWith("SELECT '$$$'");
+		});
+	});
+
+	describe('delete operation parameter validation', () => {
+		const buildPoolMock = () => {
+			const mockRequest = {
+				query: vi.fn().mockResolvedValue({ rowsAffected: [1] }),
+				input: vi.fn(),
+			};
+			const mockPool = mock<mssql.ConnectionPool>({
+				connect: vi.fn().mockResolvedValue(undefined),
+				close: vi.fn(),
+				request: vi.fn().mockReturnValue(mockRequest),
+			});
+			return mockPool;
+		};
+
+		it('should not alter shared object state when delete parameters contain reserved tokens', async () => {
+			const protoKeysBefore = Object.getOwnPropertyNames(Object.prototype);
+
+			mockedConnectionPool.mockImplementation(function () {
+				return buildPoolMock();
+			});
+			const node = new MicrosoftSql();
+
+			for (const reserved of ['__proto__', 'constructor', 'prototype']) {
+				const context = getMockedExecuteFunctions({
+					getInputData: vi.fn().mockReturnValue([{ json: { id: 1 }, pairedItem: { item: 0 } }]),
+					getNodeParameter: vi.fn().mockImplementation((paramName: string) => {
+						if (paramName === 'operation') return 'delete';
+						if (paramName === 'table') return reserved;
+						if (paramName === 'deleteKey') return 'id';
+						return undefined;
+					}),
+					continueOnFail: vi.fn().mockReturnValue(false),
+				});
+				await node.execute.call(context);
+			}
+
+			expect(Object.getOwnPropertyNames(Object.prototype)).toEqual(protoKeysBefore);
+		});
 	});
 });

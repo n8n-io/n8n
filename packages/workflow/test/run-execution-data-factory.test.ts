@@ -19,7 +19,7 @@ describe('RunExecutionDataFactory', () => {
 				manualData: undefined,
 				parentExecution: undefined,
 				pushRef: undefined,
-				validateSignature: undefined,
+				resumeToken: expect.stringMatching(/^[a-f0-9]{64}$/),
 				waitTill: undefined,
 				resultData: {
 					error: undefined,
@@ -61,7 +61,7 @@ describe('RunExecutionDataFactory', () => {
 					executionId: 'parent-123',
 					workflowId: 'workflow-456',
 				},
-				validateSignature: true,
+				resumeToken: 'custom-token-for-test',
 				waitTill: new Date('2023-01-01'),
 			} satisfies CreateFullRunExecutionDataOptions;
 
@@ -75,7 +75,7 @@ describe('RunExecutionDataFactory', () => {
 			);
 			expect(result.executionData?.runtimeData).toEqual(options.executionData.runtimeData);
 			expect(result.parentExecution).toEqual(options.parentExecution);
-			expect(result.validateSignature).toBe(true);
+			expect(result.resumeToken).toBe('custom-token-for-test');
 			expect(result.waitTill).toEqual(options.waitTill);
 		});
 
@@ -87,6 +87,13 @@ describe('RunExecutionDataFactory', () => {
 			expect(result.executionData).toBeUndefined();
 			expect(result.startData).toEqual({});
 			expect(result.resultData.runData).toEqual({});
+		});
+
+		it('preserves the sub-workflow output policy through serialization and reconstruction', () => {
+			const data = createRunExecutionData({ subWorkflowOutput: { lastRunOnly: true } });
+			const saved: CreateFullRunExecutionDataOptions = JSON.parse(JSON.stringify(data));
+			expect(createRunExecutionData(saved).subWorkflowOutput).toEqual({ lastRunOnly: true });
+			expect(createRunExecutionData().subWorkflowOutput).toBeUndefined();
 		});
 
 		it('should omit `resultData.runData` if null is passed', () => {

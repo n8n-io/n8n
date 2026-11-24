@@ -1,0 +1,16 @@
+{
+	"npm": {
+		"minimumPackageAgeExclusions": [
+			"@n8n/*",
+			"@n8n_io/*",
+			"n8n",
+			"n8n-containers",
+			"n8n-core",
+			"n8n-editor-ui",
+			"n8n-node-dev",
+			"n8n-nodes-base",
+			"n8n-playwright",
+			"n8n-workflow"
+		]
+	}
+}

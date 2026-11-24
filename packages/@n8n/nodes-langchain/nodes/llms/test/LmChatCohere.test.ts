@@ -1,0 +1,233 @@
+import type { ChatCohere } from '@langchain/cohere';
+import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
+import { ChatPromptTemplate } from '@langchain/core/prompts';
+import { DynamicStructuredTool } from '@langchain/core/tools';
+import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
+import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
+import { z } from 'zod';
+
+import { createAgentExecutor } from '../../agents/Agent/agents/ToolsAgent/V2/execute';
+import { LmChatCohere } from '../LmChatCohere/LmChatCohere.node';
+
+// Keep the real `@langchain/cohere` so the actual Cohere HTTP client runs and we can
+// observe which chat endpoint it targets. Only stub the n8n tracing helpers.
+vi.mock('@n8n/ai-utilities', () => ({
+	// Regular function so it can be used as a constructor (`new N8nLlmTracing(...)`);
+	// the callback handler itself can be a no-op object for this test.
+	N8nLlmTracing: vi.fn(function () {}),
+	makeN8nLlmFailedAttemptHandler: vi.fn(),
+	getConnectionHintNoticeField: vi.fn(() => ({})),
+}));
+
+describe('LmChatCohere', () => {
+	let lmChatCohere: LmChatCohere;
+
+	const mockNode: INode = {
+		id: '1',
+		name: 'Cohere Chat Model',
+		typeVersion: 1,
+		type: 'n8n-nodes-langchain.lmChatCohere',
+		position: [0, 0],
+		parameters: {},
+	};
+
+	const setupMockContext = () => {
+		const context = createMockExecuteFunction<ISupplyDataFunctions>(
+			{},
+			mockNode,
+		) as Mocked<ISupplyDataFunctions>;
+
+		context.getCredentials = vi.fn().mockResolvedValue({
+			apiKey: 'test-api-key',
+			url: 'https://api.cohere.com',
+		});
+		context.getNode = vi.fn().mockReturnValue(mockNode);
+		context.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+			if (paramName === 'model') return 'command-a-03-2025';
+			if (paramName === 'options') return { maxRetries: 0 };
+			return undefined;
+		});
+
+		return context;
+	};
+
+	beforeEach(() => {
+		lmChatCohere = new LmChatCohere();
+		vi.clearAllMocks();
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it('should call the Cohere v2 chat endpoint when invoked', async () => {
+		const context = setupMockContext();
+
+		const requestedUrls: string[] = [];
+		const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
+			const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+			requestedUrls.push(url);
+			await Promise.resolve();
+			// Minimal successful Cohere chat response so `.invoke()` resolves cleanly.
+			return new Response(
+				JSON.stringify({ text: 'hi', meta: { tokens: { inputTokens: 1, outputTokens: 1 } } }),
+				{ status: 200, headers: { 'content-type': 'application/json' } },
+			);
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+
+		const { response } = await lmChatCohere.supplyData.call(context, 0);
+
+		// `response` is the ChatCohere model instance; invoking it performs the real HTTP call.
+		await (response as { invoke: (input: unknown) => Promise<unknown> }).invoke([
+			new HumanMessage('hello'),
+		]);
+
+		const chatUrl = requestedUrls.find((url) => url.includes('/chat'));
+		expect(chatUrl).toBeDefined();
+		// Cohere requires `/v2/chat` for current models; `/v1/chat` returns a 400
+		// "this model is not supported with '/v1/chat', please use '/v2/chat'".
+		expect(new URL(chatUrl ?? '').pathname).toBe('/v2/chat');
+	});
+
+	it('should preserve tool calls and results in the Cohere v2 request', async () => {
+		const context = setupMockContext();
+		let requestBody: unknown;
+		const fetchSpy = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+			requestBody = JSON.parse(init?.body?.toString() ?? '{}');
+			return new Response(JSON.stringify({ text: 'The calculator returned 4.' }), {
+				status: 200,
+				headers: { 'content-type': 'application/json' },
+			});
+		});
+		vi.stubGlobal('fetch', fetchSpy);
+
+		const { response } = await lmChatCohere.supplyData.call(context, 0);
+		await (response as { invoke: (input: unknown) => Promise<unknown> }).invoke([
+			new HumanMessage('What is 2 + 2?'),
+			new AIMessage({
+				content: '',
+				tool_calls: [{ id: 'call_1', name: 'calculator', args: { expression: '2 + 2' } }],
+			}),
+			new ToolMessage({ content: '4', tool_call_id: 'call_1' }),
+		]);
+
+		expect(requestBody).toMatchObject({
+			messages: [
+				{ role: 'user', content: 'What is 2 + 2?' },
+				{
+					role: 'assistant',
+					tool_calls: [
+						{
+							id: 'tool_call_1_0',
+							function: { name: 'calculator', arguments: '{"expression":"2 + 2"}' },
+						},
+					],
+				},
+				{ role: 'tool', tool_call_id: 'tool_call_1_0', content: '[{"output":"4"}]' },
+			],
+		});
+	});
+
+	it('should run a tool and use its result in a streaming agent', async () => {
+		const context = setupMockContext();
+		const requests: unknown[] = [];
+		const responses = [
+			[
+				{
+					type: 'tool-call-start',
+					index: 0,
+					delta: {
+						message: {
+							tool_calls: {
+								id: 'call_1',
+								type: 'function',
+								function: { name: 'calculator', arguments: '{"expression":' },
+							},
+						},
+					},
+				},
+				{
+					type: 'tool-call-delta',
+					index: 0,
+					delta: { message: { tool_calls: { function: { arguments: '"2 + 2"}' } } } },
+				},
+				{ type: 'tool-call-end', index: 0 },
+				{ type: 'message-end', delta: { finish_reason: 'TOOL_CALL' } },
+			],
+			[
+				{
+					type: 'content-delta',
+					delta: { message: { content: { text: 'The calculator returned 4.' } } },
+				},
+				{ type: 'message-end', delta: { finish_reason: 'COMPLETE' } },
+			],
+		];
+		vi.stubGlobal('fetch', async (_input: RequestInfo | URL, init?: RequestInit) => {
+			const events = responses[requests.length];
+			requests.push(JSON.parse(init?.body?.toString() ?? '{}'));
+			return new Response(events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join(''), {
+				headers: { 'content-type': 'text/event-stream' },
+			});
+		});
+
+		const calculate = vi.fn().mockResolvedValue('4');
+		const calculator = new DynamicStructuredTool({
+			name: 'calculator',
+			description: 'Evaluate a math expression',
+			schema: z.object({ expression: z.string() }),
+			func: calculate,
+		});
+		const { response } = await lmChatCohere.supplyData.call(context, 0);
+		const prompt = ChatPromptTemplate.fromMessages([
+			['human', '{input}'],
+			['placeholder', '{agent_scratchpad}'],
+		]);
+		const executor = createAgentExecutor(response as ChatCohere, [calculator], prompt, {
+			maxIterations: 2,
+			returnIntermediateSteps: true,
+		});
+
+		let result: unknown;
+		for await (const event of executor.streamEvents(
+			{ input: 'What is 2 + 2?' },
+			{ version: 'v2' },
+		)) {
+			if (event.event === 'on_chain_stream' && event.name === 'AgentExecutor') {
+				result = event.data.chunk;
+			}
+		}
+
+		expect(calculate).toHaveBeenCalledOnce();
+		expect(calculate.mock.calls[0][0]).toEqual({ expression: '2 + 2' });
+		expect(result).toMatchObject({
+			output: 'The calculator returned 4.',
+			intermediateSteps: [
+				{
+					action: { tool: 'calculator', toolInput: { expression: '2 + 2' } },
+					observation: '4',
+				},
+			],
+		});
+		expect(requests).toEqual([
+			expect.objectContaining({ stream: true }),
+			expect.objectContaining({
+				stream: true,
+				messages: [
+					{ role: 'user', content: 'What is 2 + 2?' },
+					expect.objectContaining({
+						role: 'assistant',
+						tool_calls: [
+							expect.objectContaining({
+								id: 'tool_call_1_0',
+								function: { name: 'calculator', arguments: '{"expression":"2 + 2"}' },
+							}),
+						],
+					}),
+					{ role: 'tool', tool_call_id: 'tool_call_1_0', content: '[{"output":"4"}]' },
+				],
+			}),
+		]);
+	});
+});

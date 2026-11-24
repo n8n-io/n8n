@@ -7,25 +7,30 @@ import type {
 	IWebhookFunctions,
 	IHttpRequestOptions,
 	IHttpRequestMethods,
+	IRequestOptions,
+	RequestPath,
 } from 'n8n-workflow';
+import { sanitizeXmlName } from 'n8n-workflow';
 import { parseString } from 'xml2js';
+
+type S3RequestOption = Pick<IRequestOptions, 'encoding' | 'resolveWithFullResponse'>;
 
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	service: string,
 	method: IHttpRequestMethods,
-	path: string,
+	path: RequestPath,
 	body?: string | Buffer,
 	query: IDataObject = {},
 	headers?: object,
-	option: IDataObject = {},
+	option: S3RequestOption = {},
 	_region?: string,
 ): Promise<any> {
 	const requestOptions = {
 		qs: {
 			...query,
 			service,
-			path,
+			path: path.value,
 			query,
 		},
 		method,
@@ -45,11 +50,11 @@ export async function awsApiRequestREST(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	service: string,
 	method: IHttpRequestMethods,
-	path: string,
+	path: RequestPath,
 	body?: string,
 	query: IDataObject = {},
 	headers?: object,
-	options: IDataObject = {},
+	options: S3RequestOption = {},
 	region?: string,
 ): Promise<any> {
 	const response = await awsApiRequest.call(
@@ -74,11 +79,11 @@ export async function awsApiRequestSOAP(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	service: string,
 	method: IHttpRequestMethods,
-	path: string,
+	path: RequestPath,
 	body?: string | Buffer,
 	query: IDataObject = {},
 	headers?: object,
-	option: IDataObject = {},
+	option: S3RequestOption = {},
 	region?: string,
 ): Promise<any> {
 	const response = await awsApiRequest.call(
@@ -94,12 +99,20 @@ export async function awsApiRequestSOAP(
 	);
 	try {
 		return await new Promise((resolve, reject) => {
-			parseString(response as string, { explicitArray: false }, (err, data) => {
-				if (err) {
-					return reject(err);
-				}
-				resolve(data);
-			});
+			parseString(
+				response as string,
+				{
+					explicitArray: false,
+					tagNameProcessors: [sanitizeXmlName],
+					attrNameProcessors: [sanitizeXmlName],
+				},
+				(err, data) => {
+					if (err) {
+						return reject(err);
+					}
+					resolve(data);
+				},
+			);
 		});
 	} catch (error) {
 		return error;
@@ -111,11 +124,11 @@ export async function awsApiRequestSOAPAllItems(
 	propertyName: string,
 	service: string,
 	method: IHttpRequestMethods,
-	path: string,
+	path: RequestPath,
 	body?: string,
 	query: IDataObject = {},
 	headers: IDataObject = {},
-	option: IDataObject = {},
+	option: S3RequestOption = {},
 	region?: string,
 ): Promise<any> {
 	const returnData: IDataObject[] = [];

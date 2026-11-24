@@ -7,8 +7,21 @@ import type {
 	INodeTypeDescription,
 	IRequestOptions,
 	JsonObject,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import {
+	NodeApiError,
+	NodeConnectionTypes,
+	NodeOperationError,
+	decodePathValue,
+	requestPath,
+	requestUrl,
+} from 'n8n-workflow';
+
+const HOST_URL_OPTIONS = [
+	{ name: 'Default', value: 'graph.facebook.com' },
+	{ name: 'Video Uploads', value: 'graph-video.facebook.com' },
+];
 
 export class FacebookGraphApi implements INodeType {
 	description: INodeTypeDescription = {
@@ -16,7 +29,8 @@ export class FacebookGraphApi implements INodeType {
 		name: 'facebookGraphApi',
 		icon: 'file:facebook.svg',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		description: 'Interacts with Facebook using the Graph API',
 		defaults: {
 			name: 'Facebook Graph API',
@@ -28,23 +42,45 @@ export class FacebookGraphApi implements INodeType {
 			{
 				name: 'facebookGraphApi',
 				required: true,
+				displayOptions: {
+					show: {
+						authType: ['accessToken'],
+					},
+				},
+			},
+			{
+				name: 'facebookGraphApiOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authType: ['oAuth2'],
+					},
+				},
 			},
 		],
 		properties: [
 			{
-				displayName: 'Host URL',
-				name: 'hostUrl',
+				displayName: 'Authentication',
+				name: 'authType',
 				type: 'options',
 				options: [
 					{
-						name: 'Default',
-						value: 'graph.facebook.com',
+						name: 'Access Token',
+						value: 'accessToken',
 					},
 					{
-						name: 'Video Uploads',
-						value: 'graph-video.facebook.com',
+						name: 'OAuth2',
+						value: 'oAuth2',
 					},
 				],
+				default: 'accessToken',
+				description: 'The authentication method to use',
+			},
+			{
+				displayName: 'Host URL',
+				name: 'hostUrl',
+				type: 'options',
+				options: HOST_URL_OPTIONS,
 				default: 'graph.facebook.com',
 				description:
 					'The Host URL of the request. Almost all requests are passed to the graph.facebook.com host URL. The single exception is video uploads, which use graph-video.facebook.com.',
@@ -80,6 +116,14 @@ export class FacebookGraphApi implements INodeType {
 					{
 						name: 'Default',
 						value: '',
+					},
+					{
+						name: 'v25.0',
+						value: 'v25.0',
+					},
+					{
+						name: 'v24.0',
+						value: 'v24.0',
 					},
 					{
 						name: 'v23.0',
@@ -219,7 +263,8 @@ export class FacebookGraphApi implements INodeType {
 				},
 				default: false,
 				required: true,
-				description: 'Whether binary data should be sent as body',
+				hint: 'Page <code>/photos</code> and <code>/videos</code> edges accept binary uploads. Instagram container endpoints (e.g. <code>/media</code>) require <code>image_url</code> or <code>video_url</code> as Query Parameters instead.',
+				description: 'Whether to upload binary data as multipart/form-data',
 			},
 			{
 				displayName: 'Input Binary Field',
@@ -237,7 +282,7 @@ export class FacebookGraphApi implements INodeType {
 				},
 				hint: 'The name of the input binary field containing the file to be uploaded',
 				description:
-					'For Form-Data Multipart, they can be provided in the format: <code>"sendKey1:binaryProperty1,sendKey2:binaryProperty2</code>',
+					'For Form-Data Multipart, multiple files can be provided in the format: <code>sendKey1:binaryProperty1,sendKey2:binaryProperty2</code>',
 			},
 			{
 				displayName: 'Options',
@@ -325,41 +370,39 @@ export class FacebookGraphApi implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
+		const toPathValue = (value: string) =>
+			this.getNode().typeVersion < 1.1 ? decodePathValue(value) : value;
 
 		let response: any;
 		const returnItems: INodeExecutionData[] = [];
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			const graphApiCredentials = await this.getCredentials('facebookGraphApi');
+			const authType = this.getNodeParameter('authType', itemIndex, 'accessToken') as string;
+			const qs: IDataObject = {};
+
+			let graphApiAccessToken: string | undefined;
+			if (authType === 'accessToken') {
+				const graphApiCredentials = await this.getCredentials('facebookGraphApi');
+				graphApiAccessToken = graphApiCredentials.accessToken as string;
+				qs.access_token = graphApiAccessToken;
+			}
+			// OAuth2: token is injected automatically via requestWithAuthentication
 
 			const hostUrl = this.getNodeParameter('hostUrl', itemIndex) as string;
 			const httpRequestMethod = this.getNodeParameter(
 				'httpRequestMethod',
 				itemIndex,
 			) as IHttpRequestMethods;
-			let graphApiVersion = this.getNodeParameter('graphApiVersion', itemIndex) as string;
-			const node = this.getNodeParameter('node', itemIndex) as string;
-			const edge = this.getNodeParameter('edge', itemIndex) as string;
+			const graphApiVersion = this.getNodeParameter('graphApiVersion', itemIndex) as string;
+			const node = String(this.getNodeParameter('node', itemIndex));
+			const edge = String(this.getNodeParameter('edge', itemIndex) ?? '');
 			const options = this.getNodeParameter('options', itemIndex, {});
 
-			if (graphApiVersion !== '') {
-				graphApiVersion += '/';
-			}
-
-			let uri = `https://${hostUrl}/${graphApiVersion}${node}`;
-			if (edge) {
-				uri = `${uri}/${edge}`;
-			}
-
-			const qs: IDataObject = {
-				access_token: graphApiCredentials.accessToken,
-			};
-			const requestOptions: IRequestOptions = {
+			const requestOptions: Omit<IRequestOptions, 'uri' | 'url' | 'baseURL'> = {
 				headers: {
 					accept: 'application/json,text/*;q=0.99',
 				},
 				method: httpRequestMethod,
-				uri,
 				json: true,
 				gzip: true,
 				rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false),
@@ -432,11 +475,42 @@ export class FacebookGraphApi implements INodeType {
 			}
 
 			try {
+				if (!HOST_URL_OPTIONS.some((option) => option.value === hostUrl)) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`The Host URL "${hostUrl}" is not supported`,
+						{ itemIndex },
+					);
+				}
+				const base = graphApiVersion !== '' ? requestPath`/${graphApiVersion}` : requestPath``;
+				let path = node
+					.split('/')
+					.reduce(
+						(parent, part) =>
+							part ? requestPath`${parent}/${toPathValue(part)}` : requestPath`${parent}/`,
+						base,
+					);
+				if (edge) {
+					path = requestPath`${path}/${toPathValue(edge)}`;
+				}
+				const request: WithRequestTarget<IRequestOptions, 'uri'> = {
+					...requestOptions,
+					uri: requestUrl`https://${hostUrl}${path}`,
+				};
 				// Now that the options are all set make the actual http request
-				response = await this.helpers.request(requestOptions);
+				if (authType === 'oAuth2') {
+					response = await this.helpers.requestWithAuthentication.call(
+						this,
+						'facebookGraphApiOAuth2Api',
+						request,
+					);
+				} else {
+					response = await this.helpers.request(request);
+				}
 			} catch (error) {
+				const apiError = new NodeApiError(this.getNode(), error as JsonObject);
 				if (!this.continueOnFail()) {
-					throw new NodeApiError(this.getNode(), error as JsonObject);
+					throw apiError;
 				}
 
 				let errorItem;
@@ -454,23 +528,36 @@ export class FacebookGraphApi implements INodeType {
 					// Unknown Graph API response, we'll dump everything in the response item
 					errorItem = error;
 				}
-				returnItems.push({ json: { ...errorItem } });
+				// Attach the error and pairedItem so the engine can route this item to
+				// the error output when "Continue (using error output)" is selected.
+				returnItems.push({
+					json: { ...errorItem },
+					error: apiError,
+					pairedItem: { item: itemIndex },
+				});
 
 				continue;
 			}
 
 			if (typeof response === 'string') {
+				const invalidJsonError = new NodeOperationError(
+					this.getNode(),
+					'Response body is not valid JSON.',
+					{ itemIndex },
+				);
 				if (!this.continueOnFail()) {
-					throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON.', {
-						itemIndex,
-					});
+					throw invalidJsonError;
 				}
 
-				returnItems.push({ json: { message: response } });
+				returnItems.push({
+					json: { message: response },
+					error: invalidJsonError,
+					pairedItem: { item: itemIndex },
+				});
 				continue;
 			}
 
-			returnItems.push({ json: response });
+			returnItems.push({ json: response, pairedItem: { item: itemIndex } });
 		}
 
 		return [returnItems];

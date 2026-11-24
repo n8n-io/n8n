@@ -126,7 +126,6 @@ export async function execute(
 					userGuilds,
 					isOAuth2,
 					body,
-					items,
 					files,
 					itemIndex: i,
 				})),

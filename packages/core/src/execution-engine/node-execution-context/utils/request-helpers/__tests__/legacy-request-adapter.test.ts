@@ -1,0 +1,200 @@
+import { OutboundHttp } from '@n8n/backend-network';
+import type { HttpRequestClient } from '@n8n/backend-network';
+import { Container } from '@n8n/di';
+import type {
+	INode,
+	IRequestOptions,
+	IWorkflowExecuteAdditionalData,
+	Workflow,
+} from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
+
+import { proxyRequestToAxios } from '../legacy-request-adapter';
+
+type OnFetchedCallbacks = { onFetched?: () => Promise<void> | void };
+
+/**
+ * `proxyRequestToAxios` is a thin adapter over {@link OutboundHttp}: it
+ * normalises the call arguments, requests the default (safe) client, and wires
+ * the `nodeFetchedData` hook to the client's `onFetched` callback. The actual
+ * request behaviour (SSRF enforcement, redirects, error shapes, domain
+ * allowlist) lives with `executeLegacyRequest` and is covered in
+ * `@n8n/backend-network`'s `legacy-request.test.ts`. These tests only assert
+ * the adapter's wiring contract, so the facade is mocked.
+ */
+describe('proxyRequestToAxios', () => {
+	const workflow = mock<Workflow>({ id: 'workflow-id' });
+	const node = mock<INode>();
+
+	const requestLegacy = vi.fn();
+	const requests = vi.fn();
+	const outboundHttp = mock<OutboundHttp>({ requests });
+
+	beforeEach(() => {
+		vi.resetAllMocks();
+		requestLegacy.mockResolvedValue('response-body');
+		requests.mockReturnValue(mock<HttpRequestClient>({ requestLegacy }));
+		Container.set(OutboundHttp, outboundHttp);
+	});
+
+	describe('SSRF policy mapping', () => {
+		it('always requests the default safe client', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+
+			await proxyRequestToAxios(workflow, additionalData, node, 'https://example.test');
+
+			expect(requests).toHaveBeenCalledWith();
+		});
+
+		it('requests the default safe client when there is no additionalData at all', async () => {
+			await proxyRequestToAxios(workflow, undefined, node, 'https://example.test');
+
+			expect(requests).toHaveBeenCalledWith();
+		});
+	});
+
+	describe('eval simulated-services runs', () => {
+		it('sends the request through the run egress proxy', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				ssrfBridge: undefined,
+				evalEgressProxy: 'http://127.0.0.1:4567',
+			});
+
+			await proxyRequestToAxios(workflow, additionalData, node, 'https://api.example.test/x');
+
+			expect(requestLegacy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					uri: 'https://api.example.test/x',
+					proxy: 'http://127.0.0.1:4567',
+				}),
+				expect.anything(),
+			);
+		});
+
+		it('leaves the proxy alone in a normal run', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				ssrfBridge: undefined,
+				evalEgressProxy: undefined,
+			});
+
+			await proxyRequestToAxios(workflow, additionalData, node, 'https://api.example.test/x');
+
+			expect(requestLegacy.mock.calls[0][0]).not.toHaveProperty('proxy');
+		});
+	});
+
+	describe('request config normalisation', () => {
+		const additionalData = mock<IWorkflowExecuteAdditionalData>({ ssrfBridge: undefined });
+
+		it('wraps a string uri into a config object', async () => {
+			await proxyRequestToAxios(workflow, additionalData, node, 'https://example.test/path');
+
+			expect(requestLegacy).toHaveBeenCalledWith(
+				{ uri: 'https://example.test/path' },
+				expect.anything(),
+			);
+		});
+
+		it('merges options into the config when a string uri is given', async () => {
+			await proxyRequestToAxios(workflow, additionalData, node, 'https://example.test/path', {
+				method: 'POST',
+			});
+
+			expect(requestLegacy).toHaveBeenCalledWith(
+				{ uri: 'https://example.test/path', method: 'POST' },
+				expect.anything(),
+			);
+		});
+
+		it('passes an options object straight through', async () => {
+			const options: IRequestOptions = { uri: 'https://example.test/path', method: 'PUT' };
+
+			await proxyRequestToAxios(workflow, additionalData, node, options);
+
+			expect(requestLegacy).toHaveBeenCalledWith(options, expect.anything());
+		});
+
+		it('returns the client response', async () => {
+			const result = await proxyRequestToAxios(
+				workflow,
+				additionalData,
+				node,
+				'https://example.test',
+			);
+
+			expect(result).toBe('response-body');
+		});
+	});
+
+	describe('nodeFetchedData hook', () => {
+		it('fires the hook through the onFetched callback', async () => {
+			const runHook = vi.fn();
+			const hooks = mock<NonNullable<IWorkflowExecuteAdditionalData['hooks']>>({ runHook });
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({ ssrfBridge: undefined, hooks });
+			requestLegacy.mockImplementation(async (_opts: unknown, callbacks?: OnFetchedCallbacks) => {
+				await callbacks?.onFetched?.();
+				return 'ok';
+			});
+
+			await proxyRequestToAxios(workflow, additionalData, node, 'https://example.test');
+
+			expect(runHook).toHaveBeenCalledWith('nodeFetchedData', [workflow.id, node]);
+		});
+
+		it('does not throw when no hooks are configured', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				ssrfBridge: undefined,
+				hooks: undefined,
+			});
+			requestLegacy.mockImplementation(async (_opts: unknown, callbacks?: OnFetchedCallbacks) => {
+				await callbacks?.onFetched?.();
+				return 'ok';
+			});
+
+			await expect(
+				proxyRequestToAxios(workflow, additionalData, node, 'https://example.test'),
+			).resolves.toBe('ok');
+		});
+	});
+
+	describe('trace headers', () => {
+		const traceparent = '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01';
+		const tracedData = () =>
+			mock<IWorkflowExecuteAdditionalData>({
+				ssrfBridge: undefined,
+				executionId: 'exec-1',
+				otel: {
+					injectTraceHeaders: (_id: string, _node: string | undefined, headers: object) =>
+						Object.assign(headers, { traceparent }),
+					extractInboundBaggage: vi.fn(),
+				},
+			});
+
+		it('adds the trace headers of the node next to its own headers', async () => {
+			await proxyRequestToAxios(workflow, tracedData(), node, {
+				uri: 'https://example.test',
+				headers: { Authorization: 'Bearer x' },
+			});
+
+			expect(requestLegacy.mock.calls[0][0].headers).toEqual({
+				Authorization: 'Bearer x',
+				traceparent,
+			});
+		});
+
+		it('adds the trace headers when the call passes a URI string', async () => {
+			await proxyRequestToAxios(workflow, tracedData(), node, 'https://example.test');
+
+			expect(requestLegacy.mock.calls[0][0]).toMatchObject({
+				uri: 'https://example.test',
+				headers: { traceparent },
+			});
+		});
+
+		it('adds no trace headers without a node', async () => {
+			await proxyRequestToAxios(workflow, tracedData(), undefined, 'https://example.test');
+
+			expect(requestLegacy.mock.calls[0][0].headers).toBeUndefined();
+		});
+	});
+});

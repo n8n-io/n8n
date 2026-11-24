@@ -1,26 +1,41 @@
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { isRecord } from '@n8n/utils/is-record';
 import type {
-	IExecuteFunctions,
 	INodeType,
 	INodeTypeDescription,
 	IHookFunctions,
 	IWebhookFunctions,
 	IWebhookResponseData,
 	IDataObject,
-	ILoadOptionsFunctions,
-	JsonObject,
-	INodeExecutionData,
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
-import type { WebhookNotification, SubscriptionResponse } from './v2/helpers/types';
-import { createSubscription, getResourcePath } from './v2/helpers/utils-trigger';
+import type { SubscriptionResponse, WebhookNotification } from './v2/helpers/types';
+import {
+	createSubscriptions,
+	deleteSubscriptions,
+	generateClientState,
+	getResourcePath,
+	getStoredIds,
+	getStoredSecret,
+	handleLifecycleNotifications,
+	isLifecycleNotification,
+	listOwnSubscriptions,
+	logTrigger,
+	markPendingReconcile,
+	reconcileSubscriptions,
+	renewSubscriptions,
+	storedSubscriptionsCover,
+	verifyWebhook,
+} from './v2/helpers/utils-trigger';
 import { listSearch } from './v2/methods';
-import { microsoftApiRequest, microsoftApiRequestAllItems } from './v2/transport';
+import { SERVICE_PRINCIPAL_AUTH, SP_HIDE } from './v2/transport';
 
 export class MicrosoftTeamsTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Microsoft Teams Trigger',
 		name: 'microsoftTeamsTrigger',
+		schemaPath: 'Microsoft/Teams',
 		icon: 'file:teams.svg',
 		group: ['trigger'],
 		version: 1,
@@ -34,6 +49,29 @@ export class MicrosoftTeamsTrigger implements INodeType {
 			{
 				name: 'microsoftTeamsOAuth2Api',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['microsoftTeamsOAuth2Api'],
+					},
+				},
+			},
+			{
+				name: 'microsoftOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['microsoftOAuth2Api'],
+					},
+				},
+			},
+			{
+				name: SERVICE_PRINCIPAL_AUTH,
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: [SERVICE_PRINCIPAL_AUTH],
+					},
+				},
 			},
 		],
 		inputs: [],
@@ -47,6 +85,31 @@ export class MicrosoftTeamsTrigger implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Teams OAuth2',
+						value: 'microsoftTeamsOAuth2Api',
+					},
+					{
+						name: 'Microsoft OAuth2 (Graph)',
+						value: 'microsoftOAuth2Api',
+						description:
+							'Generic Microsoft Graph credential. Add the Teams change-notification scopes (Team.ReadBasic.All, Channel.ReadBasic.All, Chat.Read, ChannelMessage.Read.All, TeamMember.Read.All) and grant admin consent on the credential. See the docs for the full scope string.',
+					},
+					{
+						name: 'Service Principal (App-Only)',
+						value: SERVICE_PRINCIPAL_AUTH,
+						description:
+							'App-only access via a Microsoft Entra app registration. App-only Graph cannot subscribe to the chats of a signed-in user, so chat triggers are unavailable. Grant the relevant application permissions (e.g. ChannelMessage.Read.All) and admin consent on the credential.',
+					},
+				],
+				default: 'microsoftTeamsOAuth2Api',
+			},
 			{
 				displayName: 'Trigger On',
 				name: 'event',
@@ -82,6 +145,19 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				description: 'Select the event to trigger the workflow',
 			},
 			{
+				displayName:
+					'Chat triggers (New Chat, New Chat Message) are not available with the Service Principal credential. App-only Microsoft Graph cannot subscribe to the chats of a signed-in user; use an OAuth2 credential for chat triggers.',
+				name: 'chatTriggerServicePrincipalNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						event: ['newChat', 'newChatMessage'],
+						authentication: [SERVICE_PRINCIPAL_AUTH],
+					},
+				},
+			},
+			{
 				displayName: 'Watch All Teams',
 				name: 'watchAllTeams',
 				type: 'boolean',
@@ -90,6 +166,9 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						event: ['newChannel', 'newChannelMessage', 'newTeamMember'],
+					},
+					hide: {
+						...SP_HIDE,
 					},
 				},
 			},
@@ -135,7 +214,10 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						event: ['newChannel', 'newChannelMessage', 'newTeamMember'],
-						watchAllTeams: [false],
+						// `_cnd: { not: true }` matches both `false` and `undefined`. Under SP the
+						// watch-all toggle is hidden (SP_HIDE) and resolves to `undefined`; a plain
+						// `[false]` would not match, so this picker would wrongly disappear.
+						watchAllTeams: [{ _cnd: { not: true } }],
 					},
 				},
 			},
@@ -149,6 +231,9 @@ export class MicrosoftTeamsTrigger implements INodeType {
 					show: {
 						event: ['newChannelMessage'],
 						watchAllTeams: [false],
+					},
+					hide: {
+						...SP_HIDE,
 					},
 				},
 			},
@@ -193,8 +278,10 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						event: ['newChannelMessage'],
-						watchAllTeams: [false],
-						watchAllChannels: [false],
+						// `_cnd: { not: true }` matches `false` and the `undefined` that the SP-hidden
+						// watch-all toggles resolve to, so the channel picker still renders under SP.
+						watchAllTeams: [{ _cnd: { not: true } }],
+						watchAllChannels: [{ _cnd: { not: true } }],
 					},
 				},
 			},
@@ -207,6 +294,9 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						event: ['newChatMessage'],
+					},
+					hide: {
+						...SP_HIDE,
 					},
 				},
 			},
@@ -253,6 +343,9 @@ export class MicrosoftTeamsTrigger implements INodeType {
 						event: ['newChatMessage'],
 						watchAllChats: [false],
 					},
+					hide: {
+						...SP_HIDE,
+					},
 				},
 			},
 		],
@@ -268,45 +361,85 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				const event = this.getNodeParameter('event', 0) as string;
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
+				// `create()` owns the "Invalid Notification URL" error.
+				if (!webhookUrl?.startsWith('https://')) return false;
 
+				const storedIds = getStoredIds(webhookData);
+				const clientState = getStoredSecret(webhookData);
+
+				// An activation that cannot see Graph must not create blind. A throw reaches core: it
+				// runs `delete()`, which also removes the stored subscriptions, and tries the
+				// activation up to 5 times before it marks the trigger failed. When the activation at
+				// instance start fails, the legacy activation manager queues retries instead. So
+				// stored subscriptions that GET by id shows live stay: the listing allows only 40
+				// requests per 20 s for an app across all tenants, and the next listing reconciles.
+				// Where exactly one stored id on a required resource shows the stored secret, the node
+				// tries to renew it. A failure other than a 404 only warns, and the subscription keeps
+				// its expiry. A 404 means the subscription is gone: its id leaves the stored ids, and
+				// the stored subscriptions stay while another stored id still covers its resource. A
+				// throw here is costly: `delete()` also removes the stored secret, so the next attempt
+				// cannot keep anything without a listing.
+				let subscriptions: SubscriptionResponse[];
 				try {
-					const subscriptions = (await microsoftApiRequestAllItems.call(
-						this as unknown as ILoadOptionsFunctions,
-						'value',
-						'GET',
-						'/v1.0/subscriptions',
-					)) as SubscriptionResponse[];
-
-					const matchingSubscriptions = subscriptions.filter(
-						(subscription) => subscription.notificationUrl === webhookUrl,
-					);
-
-					const now = new Date();
-					const thresholdMs = 5 * 60 * 1000;
-					const validSubscriptions = matchingSubscriptions.filter((subscription) => {
-						const expiration = new Date(subscription.expirationDateTime);
-						return expiration.getTime() - now.getTime() > thresholdMs;
-					});
-
-					const resourcePaths = await getResourcePath.call(this, event);
-					const requiredResources = Array.isArray(resourcePaths) ? resourcePaths : [resourcePaths];
-
-					const subscribedResources = validSubscriptions.map((sub) => sub.resource);
-					const allResourcesSubscribed = requiredResources.every((resource) =>
-						subscribedResources.includes(resource),
-					);
-
-					if (allResourcesSubscribed) {
-						webhookData.subscriptionIds = validSubscriptions.map((sub) => sub.id);
-						return true;
-					}
-
-					return false;
+					subscriptions = await listOwnSubscriptions.call(this, webhookUrl);
 				} catch (error) {
+					const cover =
+						clientState === undefined
+							? undefined
+							: await storedSubscriptionsCover.call(this, webhookUrl, clientState, event);
+					if (cover !== undefined) {
+						const { gone } = await renewSubscriptions.call(this, cover.renew);
+						if (cover.covering.every((ids) => ids.some((id) => !gone.has(id)))) {
+							if (gone.size > 0) {
+								webhookData.subscriptionIds = storedIds.filter((id) => !gone.has(id));
+							}
+							logTrigger.call(this, 'warn', 'failed to list subscriptions, kept the stored ones', {
+								error: ensureError(error).message,
+							});
+							markPendingReconcile(webhookData, true);
+							return true;
+						}
+					}
+					throw error;
+				}
+
+				if (clientState === undefined) {
+					// Without the secret nothing own can be verified and no stored id can be trusted,
+					// so `create()` starts with a fresh secret. A subscription that cannot be removed
+					// keeps a secret the node does not hold, so its deliveries are rejected until it
+					// expires.
+					await deleteSubscriptions.call(this, [
+						...subscriptions.map((subscription) => subscription.id),
+						...storedIds,
+					]);
+					delete webhookData.subscriptionIds;
 					return false;
 				}
+
+				const requiredResources = [await getResourcePath.call(this, event)].flat();
+				const {
+					errors: [createError],
+					retry,
+				} = await reconcileSubscriptions.call(this, {
+					webhookUrl,
+					clientState,
+					requiredResources,
+					subscriptions,
+					// An unproven leftover is replaced: a failed create here throws, and core retries.
+					holdUnproven: false,
+					renewKeepers: true,
+				});
+				// A resource without a live subscription is a dark trigger, so the activation
+				// fails with the Graph error. A failed removal only warns: the next reconcile
+				// retries it, from the listing or from the stored ids.
+				if (createError) throw createError;
+				markPendingReconcile(webhookData, retry);
+				return true;
 			},
 
+			// Runs only after `checkExists` returned false: after the no-secret sweep, or on an
+			// invalid URL, which the guard below rejects before any create. So a fresh secret
+			// never strands a trusted subscription.
 			async create(this: IHookFunctions): Promise<boolean> {
 				const event = this.getNodeParameter('event', 0) as string;
 				const webhookUrl = this.getNodeWebhookUrl('default');
@@ -319,57 +452,59 @@ export class MicrosoftTeamsTrigger implements INodeType {
 					});
 				}
 
-				const resourcePaths = await getResourcePath.call(this, event);
-				const subscriptionIds: string[] = [];
-
-				if (Array.isArray(resourcePaths)) {
-					await Promise.all(
-						resourcePaths.map(async (resource) => {
-							const subscription = await createSubscription.call(this, webhookUrl, resource);
-							subscriptionIds.push(subscription.id);
-							return subscription;
-						}),
-					);
-
-					webhookData.subscriptionIds = subscriptionIds;
-				} else {
-					const subscription = await createSubscription.call(this, webhookUrl, resourcePaths);
-					webhookData.subscriptionIds = [subscription.id];
+				const clientState = generateClientState();
+				const requiredResources = [await getResourcePath.call(this, event)].flat();
+				const { ids, errors } = await createSubscriptions.call(
+					this,
+					webhookUrl,
+					requiredResources,
+					clientState,
+				);
+				if (errors.length > 0) {
+					// The activation fails, so the subscriptions that landed go now. Only the ones Graph
+					// refused to remove stay stored: the publication service runs `delete()` on this
+					// workflow next, while the legacy manager reloads the static data from the database.
+					webhookData.subscriptionIds = await deleteSubscriptions.call(this, ids);
+					throw errors[0];
 				}
 
+				webhookData.subscriptionIds = ids;
+				webhookData.webhookSecret = clientState;
+				markPendingReconcile(webhookData, false);
 				return true;
 			},
 
 			async delete(this: IHookFunctions): Promise<boolean> {
+				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
-				const storedIds = webhookData.subscriptionIds as string[] | undefined;
 
-				if (!Array.isArray(storedIds)) {
-					return false;
+				const ids = new Set(getStoredIds(webhookData));
+				// Earlier versions kept the ids that they could not remove at activation.
+				if (Array.isArray(webhookData.staleSubscriptionIds)) {
+					for (const id of webhookData.staleSubscriptionIds) {
+						if (typeof id === 'string') ids.add(id);
+					}
 				}
-
 				try {
-					await Promise.all(
-						storedIds.map(async (subscriptionId) => {
-							try {
-								await microsoftApiRequest.call(
-									this as unknown as IExecuteFunctions,
-									'DELETE',
-									`/v1.0/subscriptions/${subscriptionId}`,
-								);
-							} catch (error) {
-								if ((error as JsonObject).httpStatusCode !== 404) {
-									throw error;
-								}
-							}
-						}),
-					);
-
-					delete webhookData.subscriptionIds;
-					return true;
+					for (const { id } of await listOwnSubscriptions.call(this, webhookUrl)) ids.add(id);
 				} catch (error) {
-					return false;
+					logTrigger.call(
+						this,
+						'warn',
+						'failed to list subscriptions, removing the stored ids only',
+						{
+							error: ensureError(error).message,
+						},
+					);
 				}
+				const refused = await deleteSubscriptions.call(this, ids);
+				// A leftover at this URL is removed by the next publish, one at an old URL expires
+				// within three days, and core ignores the result.
+				delete webhookData.subscriptionIds;
+				delete webhookData.webhookSecret;
+				delete webhookData.staleSubscriptionIds;
+				delete webhookData.pendingReconcile;
+				return refused.length === 0;
 			},
 		},
 	};
@@ -380,19 +515,66 @@ export class MicrosoftTeamsTrigger implements INodeType {
 
 		// Handle Microsoft Graph validation request
 		if (req.query.validationToken) {
-			res.status(200).send(req.query.validationToken);
+			res.status(200).type('text/plain').send(req.query.validationToken);
 			return { noWebhookResponse: true };
 		}
 
-		const eventNotifications = req.body.value as WebhookNotification[];
-		const response: IWebhookResponseData = {
-			workflowData: eventNotifications.map((event) => [
-				{
-					json: (event.resourceData as IDataObject) ?? event,
-				} as INodeExecutionData,
-			]),
-		};
+		const accepted = verifyWebhook.call(this);
+		if (accepted.length === 0) {
+			res.status(401).send('Unauthorized').end();
+			return { noWebhookResponse: true };
+		}
 
-		return response;
+		// `verifyWebhook` proved a non-empty array and dropped the items without the stored
+		// clientState. When the batch also carries an accepted lifecycle item, the handler
+		// lists and reconciles for the dropped ones (not in a manual run). Only records become
+		// workflow items.
+		const notifications: unknown[] = req.body.value;
+		const rejected = notifications.length - accepted.length;
+		if (rejected > 0) {
+			// The ids name the leftover subscriptions; the values are capped like other logged input.
+			const acceptedItems = new Set(accepted);
+			const subscriptionIds = notifications
+				.filter((item) => !acceptedItems.has(item))
+				.flatMap((item) =>
+					isRecord(item) && typeof item.subscriptionId === 'string'
+						? [item.subscriptionId.slice(0, 64)]
+						: [],
+				)
+				.slice(0, 20);
+			logTrigger.call(this, 'debug', 'rejected notifications without the stored clientState', {
+				rejected,
+				subscriptionIds,
+			});
+		}
+		const lifecycleNotifications = accepted.filter(isLifecycleNotification);
+		const changeNotifications = accepted.filter(
+			(item) => isRecord(item) && !isLifecycleNotification(item),
+		) as WebhookNotification[];
+		// `workflowData` has one array for each output. The node has one output, so all change
+		// notifications go in one array. `clientState` is the stored secret. The items do not
+		// include it.
+		const workflowData = [
+			changeNotifications.map(({ clientState, ...notification }) => ({
+				json: (notification.resourceData ?? notification) as IDataObject,
+			})),
+		];
+
+		if (lifecycleNotifications.length === 0) {
+			return { workflowData };
+		}
+
+		// Ack before any Graph call: a slow answer makes Graph re-deliver.
+		res.status(202).end();
+		// A test run would list by the production URL and write production ids into the
+		// test static data.
+		if (this.getMode() !== 'manual') {
+			await handleLifecycleNotifications.call(this, lifecycleNotifications, rejected);
+		}
+
+		// A lifecycle-only batch must leave `workflowData` undefined: any value starts an execution.
+		return changeNotifications.length > 0
+			? { noWebhookResponse: true, workflowData }
+			: { noWebhookResponse: true };
 	}
 }

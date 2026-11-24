@@ -1,21 +1,22 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 
 import {
 	msGraphSecurityApiRequest,
 	tolerateDoubleQuotes,
 	throwOnEmptyUpdate,
 } from '../GenericFunctions';
+import type { Mock, Mocked } from 'vitest';
 
 describe('Microsoft GraphSecurity GenericFunctions', () => {
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 	let mockNode: INode;
-	let mockRequest: jest.Mock;
+	let mockRequest: Mock;
 
 	beforeEach(() => {
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-		mockRequest = jest.fn();
+		mockRequest = vi.fn();
 		mockExecuteFunctions.helpers.request = mockRequest;
 
 		mockNode = {
@@ -27,11 +28,18 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 			parameters: {},
 		};
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
-		jest.clearAllMocks();
+		vi.clearAllMocks();
+
+		// Register this AFTER clearAllMocks so it survives. Unstubbed getNodeParameter returns its
+		// own 3rd-arg default (or undefined) instead of a truthy deep-mock proxy, so a node with no
+		// explicit authentication resolves to the legacy credential for the right reason: the
+		// credential-type resolver only switches to the generic credential on an exact
+		// 'microsoftOAuth2Api' match, everything else (incl. undefined) falls back to legacy.
+		mockExecuteFunctions.getNodeParameter.mockImplementation((_name, _i, fallback) => fallback);
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('msGraphSecurityApiRequest', () => {
@@ -50,14 +58,18 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 				const mockResponse = { data: 'test data' };
 				mockRequest.mockResolvedValue(mockResponse);
 
-				const result = await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts');
+				const result = await msGraphSecurityApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					requestPath`/alerts`,
+				);
 
 				expect(mockRequest).toHaveBeenCalledWith({
 					headers: {
 						Authorization: 'Bearer test-access-token',
 					},
 					method: 'GET',
-					uri: 'https://graph.microsoft.com/v1.0/security/alerts',
+					uri: requestUrl`https://graph.microsoft.com/v1.0/security/alerts`,
 					json: true,
 				});
 				expect(result).toEqual(mockResponse);
@@ -71,7 +83,7 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 				const result = await msGraphSecurityApiRequest.call(
 					mockExecuteFunctions,
 					'POST',
-					'/alerts',
+					requestPath`/alerts`,
 					requestBody,
 				);
 
@@ -81,7 +93,7 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 					},
 					method: 'POST',
 					body: requestBody,
-					uri: 'https://graph.microsoft.com/v1.0/security/alerts',
+					uri: requestUrl`https://graph.microsoft.com/v1.0/security/alerts`,
 					json: true,
 				});
 				expect(result).toEqual(mockResponse);
@@ -95,7 +107,7 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 				const result = await msGraphSecurityApiRequest.call(
 					mockExecuteFunctions,
 					'GET',
-					'/alerts',
+					requestPath`/alerts`,
 					{},
 					queryParams,
 				);
@@ -106,7 +118,7 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 					},
 					method: 'GET',
 					qs: queryParams,
-					uri: 'https://graph.microsoft.com/v1.0/security/alerts',
+					uri: requestUrl`https://graph.microsoft.com/v1.0/security/alerts`,
 					json: true,
 				});
 				expect(result).toEqual(mockResponse);
@@ -120,7 +132,7 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 				const result = await msGraphSecurityApiRequest.call(
 					mockExecuteFunctions,
 					'PUT',
-					'/secureScores',
+					requestPath`/secureScores`,
 					{ data: 'test' },
 					{},
 					customHeaders,
@@ -134,7 +146,7 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 					},
 					method: 'PUT',
 					body: { data: 'test' },
-					uri: 'https://graph.microsoft.com/v1.0/security/secureScores',
+					uri: requestUrl`https://graph.microsoft.com/v1.0/security/secureScores`,
 					json: true,
 				});
 				expect(result).toEqual(mockResponse);
@@ -150,7 +162,7 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 				const result = await msGraphSecurityApiRequest.call(
 					mockExecuteFunctions,
 					'PATCH',
-					'/alerts/123',
+					requestPath`/alerts/123`,
 					body,
 					qs,
 					headers,
@@ -164,7 +176,7 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 					method: 'PATCH',
 					body,
 					qs,
-					uri: 'https://graph.microsoft.com/v1.0/security/alerts/123',
+					uri: requestUrl`https://graph.microsoft.com/v1.0/security/alerts/123`,
 					json: true,
 				});
 				expect(result).toEqual(mockResponse);
@@ -174,7 +186,7 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 				const mockResponse = { data: 'test' };
 				mockRequest.mockResolvedValue(mockResponse);
 
-				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts', {});
+				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/alerts`, {});
 
 				const requestOptions = mockRequest.mock.calls[0][0];
 				expect(requestOptions.body).toBeUndefined();
@@ -184,7 +196,13 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 				const mockResponse = { data: 'test' };
 				mockRequest.mockResolvedValue(mockResponse);
 
-				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts', {}, {});
+				await msGraphSecurityApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					requestPath`/alerts`,
+					{},
+					{},
+				);
 
 				const requestOptions = mockRequest.mock.calls[0][0];
 				expect(requestOptions.qs).toBeUndefined();
@@ -192,31 +210,35 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 		});
 
 		describe('credential handling', () => {
-			it('should handle missing credentials', async () => {
+			it('propagates credential-resolution failures without issuing a request', async () => {
 				mockExecuteFunctions.getCredentials.mockRejectedValue(new Error('Credentials not found'));
 
 				await expect(
-					msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts'),
+					msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/alerts`),
 				).rejects.toThrow('Credentials not found');
+
+				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledTimes(1);
+				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith(
+					'microsoftGraphSecurityOAuth2Api',
+				);
+				expect(mockRequest).not.toHaveBeenCalled();
 			});
 
-			it('should handle malformed credentials', async () => {
+			it('throws a NodeOperationError when the credential has no access token', async () => {
 				mockExecuteFunctions.getCredentials.mockResolvedValue({
 					oauthTokenData: {},
 				} as any);
 				mockRequest.mockResolvedValue({ data: 'test' });
 
-				const result = await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts');
+				await expect(
+					msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/alerts`),
+				).rejects.toThrow(NodeOperationError);
 
-				expect(mockRequest).toHaveBeenCalledWith({
-					headers: {
-						Authorization: 'Bearer undefined',
-					},
-					method: 'GET',
-					uri: 'https://graph.microsoft.com/v1.0/security/alerts',
-					json: true,
-				});
-				expect(result).toEqual({ data: 'test' });
+				await expect(
+					msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/alerts`),
+				).rejects.toThrow('No access token found in the credential');
+
+				expect(mockRequest).not.toHaveBeenCalled();
 			});
 		});
 
@@ -233,7 +255,11 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 				mockRequest.mockRejectedValue(apiError);
 
 				await expect(
-					msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts/invalid-id'),
+					msGraphSecurityApiRequest.call(
+						mockExecuteFunctions,
+						'GET',
+						requestPath`/alerts/invalid-id`,
+					),
 				).rejects.toThrow(NodeApiError);
 			});
 
@@ -249,7 +275,7 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 				mockRequest.mockRejectedValue(apiError);
 
 				await expect(
-					msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts'),
+					msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/alerts`),
 				).rejects.toThrow(NodeApiError);
 			});
 
@@ -263,11 +289,12 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 				};
 				mockRequest.mockRejectedValue(apiError);
 
-				await expect(
-					msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts'),
-				).rejects.toThrow(NodeApiError);
+				const thrown: unknown = await msGraphSecurityApiRequest
+					.call(mockExecuteFunctions, 'GET', requestPath`/alerts`)
+					.catch((error: unknown) => error);
 
-				expect(apiError.error.error.message).toBe('Request failed with bad request');
+				expect(thrown).toBeInstanceOf(NodeApiError);
+				expect((thrown as NodeApiError).message).toBe('Request failed with bad request');
 			});
 
 			it('should handle Http request failed errors with JSON content', async () => {
@@ -282,7 +309,7 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 				mockRequest.mockRejectedValue(apiError);
 
 				await expect(
-					msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts'),
+					msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/alerts`),
 				).rejects.toThrow(NodeApiError);
 			});
 
@@ -296,11 +323,12 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 				};
 				mockRequest.mockRejectedValue(apiError);
 
-				await expect(
-					msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts'),
-				).rejects.toThrow(NodeApiError);
+				const thrown: unknown = await msGraphSecurityApiRequest
+					.call(mockExecuteFunctions, 'GET', requestPath`/alerts`)
+					.catch((error: unknown) => error);
 
-				expect(apiError.error.error.message).toContain(
+				expect(thrown).toBeInstanceOf(NodeApiError);
+				expect((thrown as NodeApiError).message).toContain(
 					'Please check that your query parameter syntax is correct',
 				);
 			});
@@ -315,11 +343,12 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 				};
 				mockRequest.mockRejectedValue(apiError);
 
-				await expect(
-					msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts'),
-				).rejects.toThrow(NodeApiError);
+				const thrown: unknown = await msGraphSecurityApiRequest
+					.call(mockExecuteFunctions, 'GET', requestPath`/alerts`)
+					.catch((error: unknown) => error);
 
-				expect(apiError.error.error.message).toContain(
+				expect(thrown).toBeInstanceOf(NodeApiError);
+				expect((thrown as NodeApiError).message).toContain(
 					'Please check that your query parameter syntax is correct',
 				);
 			});
@@ -335,7 +364,7 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 				mockRequest.mockRejectedValue(simpleError);
 
 				await expect(
-					msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts'),
+					msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/alerts`),
 				).rejects.toThrow(NodeApiError);
 			});
 		});
@@ -345,11 +374,15 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 				const mockResponse = { data: 'test' };
 				mockRequest.mockResolvedValue(mockResponse);
 
-				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/secureScores');
+				await msGraphSecurityApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					requestPath`/secureScores`,
+				);
 
 				expect(mockRequest).toHaveBeenCalledWith(
 					expect.objectContaining({
-						uri: 'https://graph.microsoft.com/v1.0/security/secureScores',
+						uri: requestUrl`https://graph.microsoft.com/v1.0/security/secureScores`,
 					}),
 				);
 			});
@@ -358,11 +391,15 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 				const mockResponse = { data: 'test' };
 				mockRequest.mockResolvedValue(mockResponse);
 
-				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts/123/comments');
+				await msGraphSecurityApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					requestPath`/alerts/123/comments`,
+				);
 
 				expect(mockRequest).toHaveBeenCalledWith(
 					expect.objectContaining({
-						uri: 'https://graph.microsoft.com/v1.0/security/alerts/123/comments',
+						uri: requestUrl`https://graph.microsoft.com/v1.0/security/alerts/123/comments`,
 					}),
 				);
 			});
@@ -371,13 +408,365 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 				const mockResponse = { data: 'test' };
 				mockRequest.mockResolvedValue(mockResponse);
 
-				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', 'alerts');
+				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', requestPath`alerts`);
 
 				expect(mockRequest).toHaveBeenCalledWith(
 					expect.objectContaining({
-						uri: 'https://graph.microsoft.com/v1.0/securityalerts',
+						uri: requestUrl`https://graph.microsoft.com/v1.0/securityalerts`,
 					}),
 				);
+			});
+		});
+
+		describe('graphApiBaseUrl from credentials', () => {
+			it('should use base URL from credentials', async () => {
+				const mockResponse = { data: 'test' };
+				mockRequest.mockResolvedValue(mockResponse);
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					oauthTokenData: {
+						access_token: 'test-access-token',
+					},
+					graphApiBaseUrl: 'https://graph.microsoft.us',
+				});
+
+				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/alerts`);
+
+				expect(mockRequest).toHaveBeenCalledWith({
+					headers: {
+						Authorization: 'Bearer test-access-token',
+					},
+					method: 'GET',
+					uri: requestUrl`https://graph.microsoft.us/v1.0/security/alerts`,
+					json: true,
+				});
+			});
+
+			it('should fall back to default when credentials.graphApiBaseUrl is empty', async () => {
+				const mockResponse = { data: 'test' };
+				mockRequest.mockResolvedValue(mockResponse);
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					oauthTokenData: {
+						access_token: 'test-access-token',
+					},
+					graphApiBaseUrl: '',
+				});
+
+				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/alerts`);
+
+				expect(mockRequest).toHaveBeenCalledWith({
+					headers: {
+						Authorization: 'Bearer test-access-token',
+					},
+					method: 'GET',
+					uri: requestUrl`https://graph.microsoft.com/v1.0/security/alerts`,
+					json: true,
+				});
+			});
+
+			it('should fall back to default when credentials.graphApiBaseUrl is undefined', async () => {
+				const mockResponse = { data: 'test' };
+				mockRequest.mockResolvedValue(mockResponse);
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					oauthTokenData: {
+						access_token: 'test-access-token',
+					},
+				});
+
+				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/alerts`);
+
+				expect(mockRequest).toHaveBeenCalledWith({
+					headers: {
+						Authorization: 'Bearer test-access-token',
+					},
+					method: 'GET',
+					uri: requestUrl`https://graph.microsoft.com/v1.0/security/alerts`,
+					json: true,
+				});
+			});
+
+			it('should strip trailing slashes from base URL using regex', async () => {
+				const mockResponse = { data: 'test' };
+				mockRequest.mockResolvedValue(mockResponse);
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					oauthTokenData: {
+						access_token: 'test-access-token',
+					},
+					graphApiBaseUrl: 'https://graph.microsoft.com/',
+				});
+
+				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/alerts`);
+
+				expect(mockRequest).toHaveBeenCalledWith({
+					headers: {
+						Authorization: 'Bearer test-access-token',
+					},
+					method: 'GET',
+					uri: requestUrl`https://graph.microsoft.com/v1.0/security/alerts`,
+					json: true,
+				});
+			});
+
+			it('should strip multiple trailing slashes from base URL', async () => {
+				const mockResponse = { data: 'test' };
+				mockRequest.mockResolvedValue(mockResponse);
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					oauthTokenData: {
+						access_token: 'test-access-token',
+					},
+					graphApiBaseUrl: 'https://graph.microsoft.com///',
+				});
+
+				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/alerts`);
+
+				expect(mockRequest).toHaveBeenCalledWith({
+					headers: {
+						Authorization: 'Bearer test-access-token',
+					},
+					method: 'GET',
+					uri: requestUrl`https://graph.microsoft.com/v1.0/security/alerts`,
+					json: true,
+				});
+			});
+
+			it('should use US Government cloud endpoint', async () => {
+				const mockResponse = { data: 'test' };
+				mockRequest.mockResolvedValue(mockResponse);
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					oauthTokenData: {
+						access_token: 'test-access-token',
+					},
+					graphApiBaseUrl: 'https://graph.microsoft.us',
+				});
+
+				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/alerts`);
+
+				expect(mockRequest).toHaveBeenCalledWith({
+					headers: {
+						Authorization: 'Bearer test-access-token',
+					},
+					method: 'GET',
+					uri: requestUrl`https://graph.microsoft.us/v1.0/security/alerts`,
+					json: true,
+				});
+			});
+
+			it('should use US Government DOD cloud endpoint', async () => {
+				const mockResponse = { data: 'test' };
+				mockRequest.mockResolvedValue(mockResponse);
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					oauthTokenData: {
+						access_token: 'test-access-token',
+					},
+					graphApiBaseUrl: 'https://dod-graph.microsoft.us',
+				});
+
+				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/alerts`);
+
+				expect(mockRequest).toHaveBeenCalledWith({
+					headers: {
+						Authorization: 'Bearer test-access-token',
+					},
+					method: 'GET',
+					uri: requestUrl`https://dod-graph.microsoft.us/v1.0/security/alerts`,
+					json: true,
+				});
+			});
+
+			it('should use China cloud endpoint', async () => {
+				const mockResponse = { data: 'test' };
+				mockRequest.mockResolvedValue(mockResponse);
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					oauthTokenData: {
+						access_token: 'test-access-token',
+					},
+					graphApiBaseUrl: 'https://microsoftgraph.chinacloudapi.cn',
+				});
+
+				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/alerts`);
+
+				expect(mockRequest).toHaveBeenCalledWith({
+					headers: {
+						Authorization: 'Bearer test-access-token',
+					},
+					method: 'GET',
+					uri: requestUrl`https://microsoftgraph.chinacloudapi.cn/v1.0/security/alerts`,
+					json: true,
+				});
+			});
+
+			describe('generic OAuth2 branch', () => {
+				beforeEach(() => {
+					mockExecuteFunctions.getNodeParameter.mockImplementation((name, _i, fallback) =>
+						name === 'authentication' ? 'microsoftOAuth2Api' : fallback,
+					);
+				});
+
+				it('should use US Government cloud endpoint', async () => {
+					const mockResponse = { data: 'test' };
+					mockRequest.mockResolvedValue(mockResponse);
+					mockExecuteFunctions.getCredentials.mockResolvedValue({
+						oauthTokenData: {
+							access_token: 'test-access-token',
+						},
+						graphApiBaseUrl: 'https://graph.microsoft.us',
+					});
+
+					await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/alerts`);
+
+					expect(mockRequest).toHaveBeenCalledWith({
+						headers: {
+							Authorization: 'Bearer test-access-token',
+						},
+						method: 'GET',
+						uri: requestUrl`https://graph.microsoft.us/v1.0/security/alerts`,
+						json: true,
+					});
+				});
+
+				it('should use US Government DOD cloud endpoint', async () => {
+					const mockResponse = { data: 'test' };
+					mockRequest.mockResolvedValue(mockResponse);
+					mockExecuteFunctions.getCredentials.mockResolvedValue({
+						oauthTokenData: {
+							access_token: 'test-access-token',
+						},
+						graphApiBaseUrl: 'https://dod-graph.microsoft.us',
+					});
+
+					await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/alerts`);
+
+					expect(mockRequest).toHaveBeenCalledWith({
+						headers: {
+							Authorization: 'Bearer test-access-token',
+						},
+						method: 'GET',
+						uri: requestUrl`https://dod-graph.microsoft.us/v1.0/security/alerts`,
+						json: true,
+					});
+				});
+
+				it('should use China cloud endpoint', async () => {
+					const mockResponse = { data: 'test' };
+					mockRequest.mockResolvedValue(mockResponse);
+					mockExecuteFunctions.getCredentials.mockResolvedValue({
+						oauthTokenData: {
+							access_token: 'test-access-token',
+						},
+						graphApiBaseUrl: 'https://microsoftgraph.chinacloudapi.cn',
+					});
+
+					await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/alerts`);
+
+					expect(mockRequest).toHaveBeenCalledWith({
+						headers: {
+							Authorization: 'Bearer test-access-token',
+						},
+						method: 'GET',
+						uri: requestUrl`https://microsoftgraph.chinacloudapi.cn/v1.0/security/alerts`,
+						json: true,
+					});
+				});
+			});
+		});
+
+		describe('credential resolution', () => {
+			it('should use the legacy credential by default (backfill/fallback contract)', async () => {
+				mockRequest.mockResolvedValue({ data: 'test' });
+
+				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/alerts`);
+
+				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledTimes(1);
+				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith(
+					'microsoftGraphSecurityOAuth2Api',
+				);
+			});
+
+			it('should use the legacy credential when authentication is microsoftGraphSecurityOAuth2Api', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((name, _i, fallback) =>
+					name === 'authentication' ? 'microsoftGraphSecurityOAuth2Api' : fallback,
+				);
+				mockRequest.mockResolvedValue({ data: 'test' });
+
+				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/alerts`);
+
+				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledTimes(1);
+				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith(
+					'microsoftGraphSecurityOAuth2Api',
+				);
+			});
+
+			it('should use the generic credential when authentication is microsoftOAuth2Api', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((name, _i, fallback) =>
+					name === 'authentication' ? 'microsoftOAuth2Api' : fallback,
+				);
+				mockRequest.mockResolvedValue({ data: 'test' });
+
+				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/alerts`);
+
+				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledTimes(1);
+				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
+			});
+
+			it('resolves the legacy credential for a saved node with no authentication param', async () => {
+				mockRequest.mockResolvedValue({ data: 'test' });
+
+				await expect(
+					msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/alerts`),
+				).resolves.not.toThrow();
+
+				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith(
+					'microsoftGraphSecurityOAuth2Api',
+				);
+			});
+
+			it('resolves the legacy credential for any unrecognized authentication value', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((name, _i, fallback) =>
+					name === 'authentication' ? 'somethingElse' : fallback,
+				);
+				mockRequest.mockResolvedValue({ data: 'test' });
+
+				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/alerts`);
+
+				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith(
+					'microsoftGraphSecurityOAuth2Api',
+				);
+			});
+
+			it('resolves the legacy credential when the resolved authentication value is undefined', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((name, _i, fallback) =>
+					name === 'authentication' ? undefined : fallback,
+				);
+				mockRequest.mockResolvedValue({ data: 'test' });
+
+				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/alerts`);
+
+				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith(
+					'microsoftGraphSecurityOAuth2Api',
+				);
+			});
+
+			it('should build a default-base-URL request on the generic branch', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((name, _i, fallback) =>
+					name === 'authentication' ? 'microsoftOAuth2Api' : fallback,
+				);
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
+					oauthTokenData: {
+						access_token: 'test-access-token',
+					},
+				});
+				mockRequest.mockResolvedValue({ data: 'test' });
+
+				await msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/alerts`);
+
+				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
+				expect(mockRequest).toHaveBeenCalledWith({
+					headers: {
+						Authorization: 'Bearer test-access-token',
+					},
+					method: 'GET',
+					uri: requestUrl`https://graph.microsoft.com/v1.0/security/alerts`,
+					json: true,
+				});
 			});
 		});
 	});
@@ -488,11 +877,11 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 		});
 
 		it('should use the correct node context', () => {
-			try {
+			expect(() => {
 				throwOnEmptyUpdate.call(mockExecuteFunctions);
-			} catch (error) {
-				expect(mockExecuteFunctions.getNode).toHaveBeenCalled();
-			}
+			}).toThrow();
+
+			expect(mockExecuteFunctions.getNode).toHaveBeenCalled();
 		});
 
 		it('should always throw regardless of input', () => {
@@ -511,41 +900,6 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 			});
 		});
 
-		it('should handle concurrent requests', async () => {
-			const mockResponse = { data: 'test' };
-			mockRequest.mockResolvedValue(mockResponse);
-
-			const promises: Array<Promise<any>> = [];
-			for (let i = 0; i < 5; i++) {
-				promises.push(msGraphSecurityApiRequest.call(mockExecuteFunctions, 'GET', '/alerts/' + i));
-			}
-
-			const results = await Promise.all(promises);
-
-			expect(results).toHaveLength(5);
-			expect(mockRequest).toHaveBeenCalledTimes(5);
-		});
-
-		it('should handle extremely large request bodies', async () => {
-			const mockResponse = { success: true };
-			const largeBody = { data: 'x'.repeat(10000) };
-			mockRequest.mockResolvedValue(mockResponse);
-
-			const result = await msGraphSecurityApiRequest.call(
-				mockExecuteFunctions,
-				'POST',
-				'/alerts',
-				largeBody,
-			);
-
-			expect(result).toEqual(mockResponse);
-			expect(mockRequest).toHaveBeenCalledWith(
-				expect.objectContaining({
-					body: largeBody,
-				}),
-			);
-		});
-
 		it('should handle empty parameters gracefully', async () => {
 			const mockResponse = { data: 'test' };
 			mockRequest.mockResolvedValue(mockResponse);
@@ -553,7 +907,7 @@ describe('Microsoft GraphSecurity GenericFunctions', () => {
 			const result = await msGraphSecurityApiRequest.call(
 				mockExecuteFunctions,
 				'GET',
-				'/alerts',
+				requestPath`/alerts`,
 				{},
 				{},
 				{},

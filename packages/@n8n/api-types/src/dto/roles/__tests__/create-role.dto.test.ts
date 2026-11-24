@@ -39,22 +39,6 @@ describe('createRoleDtoSchema', () => {
 				},
 			},
 			{
-				name: 'with wildcard scopes',
-				request: {
-					displayName: 'Admin Role',
-					roleType: 'project',
-					scopes: ['project:*', 'workflow:*'],
-				},
-			},
-			{
-				name: 'with global wildcard scope',
-				request: {
-					displayName: 'Super Admin',
-					roleType: 'project',
-					scopes: ['*'],
-				},
-			},
-			{
 				name: 'displayName at minimum length',
 				request: {
 					displayName: 'My',
@@ -242,6 +226,24 @@ describe('createRoleDtoSchema', () => {
 					scopes: 123,
 				},
 				expectedErrorPath: ['scopes'],
+			},
+			{
+				name: 'resource wildcard scope',
+				request: {
+					displayName: 'Admin Role',
+					roleType: 'project',
+					scopes: ['project:*', 'workflow:*'],
+				},
+				expectedErrorPath: ['scopes', 0],
+			},
+			{
+				name: 'global wildcard scope',
+				request: {
+					displayName: 'Super Admin',
+					roleType: 'project',
+					scopes: ['*'],
+				},
+				expectedErrorPath: ['scopes', 0],
 			},
 			{
 				name: 'invalid scope in array',

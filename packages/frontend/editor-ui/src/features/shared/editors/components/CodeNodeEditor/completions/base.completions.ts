@@ -3,9 +3,10 @@ import { addInfoRenderer } from '../utils';
 import { addVarType } from '@/features/settings/environments.ee/completions/variables.completions';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { INodeUi } from '@/Interface';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { escapeMappingString } from '@/app/utils/mappingUtils';
 import { useI18n } from '@n8n/i18n';
+import { matchBeforeCursor } from './utils';
 
 function getAutoCompletableNodeNames(nodes: INodeUi[]) {
 	return nodes
@@ -18,12 +19,11 @@ export function useBaseCompletions(
 	language: string,
 ) {
 	const i18n = useI18n();
-	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	const itemCompletions = (context: CompletionContext): CompletionResult | null => {
-		const preCursor = context.matchBefore(/i\w*/);
-
-		if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
+		const preCursor = matchBeforeCursor(context, /i\w*/);
+		if (!preCursor) return null;
 
 		const options: Completion[] = [];
 
@@ -52,9 +52,8 @@ export function useBaseCompletions(
 	 */
 	const baseCompletions = (context: CompletionContext): CompletionResult | null => {
 		const prefix = language === 'python' ? '_' : '$';
-		const preCursor = context.matchBefore(new RegExp(`\\${prefix}\\w*`));
-
-		if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
+		const preCursor = matchBeforeCursor(context, new RegExp(`\\${prefix}\\w*`));
+		if (!preCursor) return null;
 
 		const TOP_LEVEL_COMPLETIONS_IN_BOTH_MODES: Completion[] = [
 			{
@@ -103,15 +102,17 @@ export function useBaseCompletions(
 		const options: Completion[] = TOP_LEVEL_COMPLETIONS_IN_BOTH_MODES.map(addVarType);
 
 		options.push(
-			...getAutoCompletableNodeNames(workflowsStore.allNodes).map((nodeName) => {
-				return {
-					label: `${prefix}('${escapeMappingString(nodeName)}')`,
-					type: 'variable',
-					info: i18n.baseText('codeNodeEditor.completer.$()', {
-						interpolate: { nodeName },
-					}),
-				};
-			}),
+			...getAutoCompletableNodeNames(workflowDocumentStore?.value?.allNodes ?? []).map(
+				(nodeName) => {
+					return {
+						label: `${prefix}('${escapeMappingString(nodeName)}')`,
+						type: 'variable',
+						info: i18n.baseText('codeNodeEditor.completer.$()', {
+							interpolate: { nodeName },
+						}),
+					};
+				},
+			),
 		);
 
 		if (mode === 'runOnceForEachItem') {
@@ -138,21 +139,20 @@ export function useBaseCompletions(
 	 */
 	const nodeSelectorCompletions = (context: CompletionContext): CompletionResult | null => {
 		const prefix = language === 'python' ? '_' : '$';
-		const preCursor = context.matchBefore(new RegExp(`\\${prefix}\\(.*`));
+		const preCursor = matchBeforeCursor(context, new RegExp(`\\${prefix}\\(.*`));
+		if (!preCursor) return null;
 
-		if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
-
-		const options: Completion[] = getAutoCompletableNodeNames(workflowsStore.allNodes).map(
-			(nodeName) => {
-				return {
-					label: `${prefix}('${escapeMappingString(nodeName)}')`,
-					type: 'variable',
-					info: i18n.baseText('codeNodeEditor.completer.$()', {
-						interpolate: { nodeName },
-					}),
-				};
-			},
-		);
+		const options: Completion[] = getAutoCompletableNodeNames(
+			workflowDocumentStore?.value?.allNodes ?? [],
+		).map((nodeName) => {
+			return {
+				label: `${prefix}('${escapeMappingString(nodeName)}')`,
+				type: 'variable',
+				info: i18n.baseText('codeNodeEditor.completer.$()', {
+					interpolate: { nodeName },
+				}),
+			};
+		});
 
 		return {
 			from: preCursor.from,

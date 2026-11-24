@@ -1,6 +1,7 @@
 import type { IWebhookFunctions } from 'n8n-workflow';
 
 import { Github } from '../../Github.node';
+import type { Mock } from 'vitest';
 
 describe('Github Node - Webhook Method', () => {
 	let githubNode: Github;
@@ -10,12 +11,12 @@ describe('Github Node - Webhook Method', () => {
 		githubNode = new Github();
 
 		mockWebhookFunctions = {
-			getRequestObject: jest.fn(),
-			getResponseObject: jest.fn(),
-			getNodeParameter: jest.fn(),
-			getNode: jest.fn(),
+			getRequestObject: vi.fn(),
+			getResponseObject: vi.fn(),
+			getNodeParameter: vi.fn(),
+			getNode: vi.fn(),
 			helpers: {
-				returnJsonArray: jest.fn(),
+				returnJsonArray: vi.fn(),
 			},
 		} as unknown as IWebhookFunctions;
 	});
@@ -47,10 +48,8 @@ describe('Github Node - Webhook Method', () => {
 			},
 		};
 
-		(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue(mockRequestObject);
-		(mockWebhookFunctions.helpers.returnJsonArray as jest.Mock).mockReturnValue([
-			sampleWebhookBody,
-		]);
+		(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue(mockRequestObject);
+		(mockWebhookFunctions.helpers.returnJsonArray as Mock).mockReturnValue([sampleWebhookBody]);
 
 		const result = await githubNode.webhook.call(mockWebhookFunctions);
 

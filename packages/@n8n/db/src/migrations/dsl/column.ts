@@ -1,4 +1,5 @@
 import type { Driver, TableColumnOptions } from '@n8n/typeorm';
+import assert from 'node:assert';
 
 export class Column {
 	private type:
@@ -9,6 +10,7 @@ export class Column {
 		| 'json'
 		| 'timestamptz'
 		| 'timestamp'
+		| 'date'
 		| 'uuid'
 		| 'double'
 		| 'bigint'
@@ -30,6 +32,8 @@ export class Column {
 	private primaryKeyConstraintName: string | undefined;
 
 	private commentValue: string | undefined;
+
+	private enumCheckValues: string[] | undefined;
 
 	constructor(private name: string) {}
 
@@ -95,6 +99,12 @@ export class Column {
 		return this;
 	}
 
+	/** A calendar day with no time and no time zone. */
+	get date() {
+		this.type = 'date';
+		return this;
+	}
+
 	get uuid() {
 		this.type = 'uuid';
 		return this;
@@ -127,18 +137,20 @@ export class Column {
 	}
 
 	/**
-	 * @deprecated, use autoGenerate2 instead
+	 * @deprecated Use `autoGenerate2` instead
 	 **/
 	get autoGenerate() {
+		this.assertCanAutogenerate('autoGenerate');
 		this.isGenerated = true;
 		return this;
 	}
 
 	/**
-	 * Prefers `identity` over `increment` (which turns to `serial` for pg)
+	 * Prefers `identity` over `increment` (which turns to `serial` for pg).
 	 * See https://wiki.postgresql.org/wiki/Don%27t_Do_This#Don.27t_use_serial
 	 **/
 	get autoGenerate2() {
+		this.assertCanAutogenerate('autoGenerate2');
 		this.isGenerated2 = true;
 		return this;
 	}
@@ -146,6 +158,18 @@ export class Column {
 	comment(comment: string) {
 		this.commentValue = comment;
 		return this;
+	}
+
+	withEnumCheck(values: string[]) {
+		this.enumCheckValues = values;
+		return this;
+	}
+
+	getEnumCheck(): { columnName: string; values: string[] } | undefined {
+		if (this.enumCheckValues) {
+			return { columnName: this.name, values: this.enumCheckValues };
+		}
+		return undefined;
 	}
 
 	toOptions(driver: Driver): TableColumnOptions {
@@ -159,7 +183,6 @@ export class Column {
 			length,
 			primaryKeyConstraintName,
 		} = this;
-		const isMysql = 'mysql' in driver;
 		const isPostgres = 'postgres' in driver;
 		const isSqlite = 'sqlite' in driver;
 
@@ -173,8 +196,6 @@ export class Column {
 
 		if (options.type === 'int' && isSqlite) {
 			options.type = 'integer';
-		} else if (type === 'boolean' && isMysql) {
-			options.type = 'tinyint(1)';
 		} else if (type === 'timestamptz') {
 			options.type = isPostgres ? 'timestamptz' : 'datetime';
 		} else if (type === 'timestamp') {
@@ -182,15 +203,11 @@ export class Column {
 		} else if (type === 'json' && isSqlite) {
 			options.type = 'text';
 		} else if (type === 'uuid') {
-			// mysql does not support uuid type
-			if (isMysql) options.type = 'varchar(36)';
 			// we haven't been defining length on "uuid" varchar on sqlite
 			if (isSqlite) options.type = 'varchar';
 		} else if (type === 'double') {
 			if (isPostgres) {
 				options.type = 'double precision';
-			} else if (isMysql) {
-				options.type = 'double';
 			} else if (isSqlite) {
 				options.type = 'real';
 			}
@@ -199,8 +216,6 @@ export class Column {
 		} else if (type === 'binary') {
 			if (isPostgres) {
 				options.type = 'bytea';
-			} else if (isMysql) {
-				options.type = 'longblob';
 			} else if (isSqlite) {
 				options.type = 'blob';
 			}
@@ -214,13 +229,15 @@ export class Column {
 		}
 
 		if (isGenerated) {
+			this.assertCanAutogenerate('autoGenerate');
 			options.isGenerated = true;
-			options.generationStrategy = type === 'uuid' ? 'uuid' : 'increment';
+			options.generationStrategy = 'increment';
 		}
 
 		if (isGenerated2) {
+			this.assertCanAutogenerate('autoGenerate2');
 			options.isGenerated = true;
-			options.generationStrategy = type === 'uuid' ? 'uuid' : isMysql ? 'increment' : 'identity';
+			options.generationStrategy = 'identity';
 		}
 
 		if (isPrimary || isGenerated || isGenerated2) {
@@ -242,5 +259,12 @@ export class Column {
 		}
 
 		return options;
+	}
+
+	private assertCanAutogenerate(method: string) {
+		assert(
+			this.type !== 'uuid',
+			`${method} on UUID columns emits DEFAULT uuid_generate_v4(), which fails on managed Postgres (e.g. Supabase). Use column.uuid.primary and generate UUIDs in application code instead.`,
+		);
 	}
 }

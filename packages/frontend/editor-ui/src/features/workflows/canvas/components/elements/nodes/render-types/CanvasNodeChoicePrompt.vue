@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import {
-	NODE_CREATOR_OPEN_SOURCES,
-	VIEWS,
-	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
-} from '@/app/constants';
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import ClaudeEntryPoint from '@/experiments/surfaceMcpToClaudeTrialUsers/McpDiscoveryEntry.vue';
+import { useMcpDiscovery } from '@/experiments/surfaceMcpToClaudeTrialUsers/useMcpDiscovery';
+// EOF Experiment cleanup
+
+import { NODE_CREATOR_OPEN_SOURCES, VIEWS } from '@/app/constants';
 import {
 	isExtraTemplateLinksExperimentEnabled,
 	TemplateClickSource,
@@ -11,27 +12,44 @@ import {
 } from '@/experiments/utils';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { N8nIcon, N8nLink } from '@n8n/design-system';
-import { useUIStore } from '@/app/stores/ui.store';
-import { useTemplatesDataQualityStore } from '@/experiments/templatesDataQuality/stores/templatesDataQuality.store';
+import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
+import { useEditorContext } from '@/app/composables/useEditorContext';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
+import { useInstanceAiEditorCapability } from '@/app/composables/useInstanceAiEditorCapability';
 
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+const { showMcpDiscovery } = useMcpDiscovery();
+// EOF Experiment cleanup
 const nodeCreatorStore = useNodeCreatorStore();
 const chatPanelStore = useChatPanelStore();
 const i18n = useI18n();
 const settingsStore = useSettingsStore();
 const templatesStore = useTemplatesStore();
 const router = useRouter();
-const uiStore = useUIStore();
-const templatesDataQualityStore = useTemplatesDataQualityStore();
+const assistantStore = useAssistantStore();
+const workflowId = useWorkflowId();
 
 const isChatWindowOpen = computed(
 	() => chatPanelStore.isOpen && chatPanelStore.isBuilderModeActive,
 );
+
+// AI builder availability: the instance-wide flag ANDed with any per-editor
+// host override. `instanceAi` is the new entry-point feature; when it's on, the
+// "Build with AI" choice opens Instance AI (the host's capability decides what
+// that does) and the legacy builder choice hides.
+const { aiBuilder, instanceAi } = useEditorContext();
+const instanceAiCapability = useInstanceAiEditorCapability();
+
+const showInstanceAiBuildWithAi = computed(
+	() => instanceAi.value && !!instanceAiCapability.openWorkflow,
+);
+const showLegacyBuildWithAi = computed(() => aiBuilder.value && !instanceAi.value);
 
 const templatesLinkEnabled = computed(() => {
 	return isExtraTemplateLinksExperimentEnabled() && settingsStore.isTemplatesEnabled;
@@ -42,12 +60,23 @@ const onAddFirstStepClick = () => {
 		nodeCreatorStore.isCreateNodeActive = false;
 	} else {
 		nodeCreatorStore.openNodeCreatorForTriggerNodes(
+			workflowId.value,
 			NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON,
 		);
 	}
 };
 
+async function onInstanceAiBuildWithAIClick() {
+	await instanceAiCapability.openWorkflow?.('canvas_choice_prompt');
+}
+
 async function onBuildWithAIClick() {
+	assistantStore.trackUserOpenedAssistant({
+		source: 'build_with_ai',
+		task: 'placeholder',
+		has_existing_session: !assistantStore.isSessionEnded,
+		workflowId: workflowId.value,
+	});
 	await chatPanelStore.toggle({ mode: 'builder' });
 }
 
@@ -55,11 +84,6 @@ async function onClickTemplatesLink() {
 	trackTemplatesClick(TemplateClickSource.emptyWorkflowLink);
 	if (templatesStore.hasCustomTemplatesHost) {
 		await router.push({ name: VIEWS.TEMPLATES });
-		return;
-	}
-
-	if (templatesDataQualityStore.isFeatureEnabled()) {
-		uiStore.openModal(EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY);
 		return;
 	}
 
@@ -99,26 +123,50 @@ async function onClickTemplatesLink() {
 			</p>
 		</div>
 
-		<!-- Or Divider -->
-		<div :class="$style.orDivider">
-			<span :class="$style.orText">{{ i18n.baseText('generic.or') }}</span>
-		</div>
-
-		<!-- Build with AI Button -->
-		<div :class="$style.option">
-			<div :class="[$style.selectedButtonHighlight, { [$style.highlighted]: isChatWindowOpen }]">
-				<button
-					:class="[$style.button]"
-					data-test-id="canvas-build-with-ai-button"
-					@mousedown.stop.prevent="onBuildWithAIClick"
-				>
-					<N8nIcon icon="wand-sparkles" color="foreground-xdark" :size="40" />
-				</button>
+		<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
+		<template v-if="showMcpDiscovery">
+			<div :class="$style.orDivider">
+				<span :class="$style.orText">{{ i18n.baseText('generic.or') }}</span>
 			</div>
-			<p :class="$style.label">
-				{{ i18n.baseText('aiAssistant.builder.canvasPrompt.buildWithAI') }}
-			</p>
-		</div>
+			<div :class="$style.option">
+				<ClaudeEntryPoint placement="canvas" />
+			</div>
+		</template>
+		<!-- EOF Experiment cleanup -->
+		<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore v-if on the existing Build with AI option. -->
+		<template v-else-if="showInstanceAiBuildWithAi || showLegacyBuildWithAi">
+			<!-- Or Divider -->
+			<div :class="$style.orDivider">
+				<span :class="$style.orText">{{ i18n.baseText('generic.or') }}</span>
+			</div>
+
+			<!-- Build with AI Button -->
+			<div :class="$style.option">
+				<div :class="[$style.selectedButtonHighlight, { [$style.highlighted]: isChatWindowOpen }]">
+					<!-- Instance AI hand-off (mimics the builder choice) -->
+					<button
+						v-if="showInstanceAiBuildWithAi"
+						:class="[$style.button]"
+						data-test-id="canvas-instance-ai-build-with-ai-button"
+						@mousedown.stop.prevent="onInstanceAiBuildWithAIClick"
+					>
+						<N8nIcon icon="sparkles" color="foreground-xdark" :size="40" />
+					</button>
+					<!-- Legacy builder — only while Instance AI is off -->
+					<button
+						v-else
+						:class="[$style.button]"
+						data-test-id="canvas-build-with-ai-button"
+						@mousedown.stop.prevent="onBuildWithAIClick"
+					>
+						<N8nIcon icon="sparkles" color="foreground-xdark" :size="40" />
+					</button>
+				</div>
+				<p :class="$style.label">
+					{{ i18n.baseText('aiAssistant.builder.canvasPrompt.buildWithAI') }}
+				</p>
+			</div>
+		</template>
 	</div>
 </template>
 

@@ -5,40 +5,75 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	RequestUrl,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function wordpressApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
+	option: Pick<IRequestOptions, 'resolveWithFullResponse'> & {
+		uri?: never;
+		url?: never;
+		baseURL?: never;
+	} = {},
 ): Promise<any> {
-	const credentials = await this.getCredentials('wordpressApi');
+	const authType = this.getNodeParameter('authType', 0, 'basicAuth') as string;
+	const isOAuth2 = authType === 'oAuth2';
 
-	let options: IRequestOptions = {
-		headers: {
-			Accept: 'application/json',
-			'Content-Type': 'application/json',
-			'User-Agent': 'n8n',
-		},
+	let uri: RequestUrl;
+	let credentialType: string;
+	let rejectUnauthorized: boolean | undefined;
+
+	if (isOAuth2) {
+		const credentials = await this.getCredentials('wordpressOAuth2Api');
+		credentialType = 'wordpressOAuth2Api';
+		let site = credentials.wordpressSite as string;
+		try {
+			site = new URL(site).hostname;
+		} catch {
+			site = site.split('/')[0];
+		}
+		uri = requestUrl`https://public-api.wordpress.com/wp/v2/sites/${site}${resource}`;
+	} else {
+		const credentials = await this.getCredentials('wordpressApi');
+		credentialType = 'wordpressApi';
+		uri = requestUrl`${credentials.url}/wp-json/wp/v2${resource}`;
+		rejectUnauthorized = !(credentials.allowUnauthorizedCerts as boolean);
+	}
+
+	const headers: IDataObject = {
+		Accept: 'application/json',
+		'Content-Type': 'application/json',
+	};
+	// Some WordPress caching plugins ignore the request method and serve a cached
+	// GET response to writes, which silently returns existing posts instead of creating one.
+	if (!['GET', 'HEAD'].includes(method)) {
+		headers['Cache-Control'] = 'no-cache';
+	}
+
+	let options: WithRequestTarget<IRequestOptions, 'uri'> = {
+		headers,
 		method,
 		qs,
 		body,
-		uri: uri || `${credentials.url}/wp-json/wp/v2${resource}`,
-		rejectUnauthorized: !credentials.allowUnauthorizedCerts,
+		uri,
 		json: true,
 	};
+	if (rejectUnauthorized !== undefined) {
+		options.rejectUnauthorized = rejectUnauthorized;
+	}
 	options = Object.assign({}, options, option);
 	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
 	try {
-		const credentialType = 'wordpressApi';
 		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
@@ -48,7 +83,7 @@ export async function wordpressApiRequest(
 export async function wordpressApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
@@ -62,7 +97,7 @@ export async function wordpressApiRequestAllItems(
 
 	do {
 		query.page++;
-		responseData = await wordpressApiRequest.call(this, method, endpoint, body, query, undefined, {
+		responseData = await wordpressApiRequest.call(this, method, endpoint, body, query, {
 			resolveWithFullResponse: true,
 		});
 		returnData.push.apply(returnData, responseData.body as IDataObject[]);

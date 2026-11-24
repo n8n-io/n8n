@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import nock from 'nock';
 
 import * as close from '../../../actions/window/close.operation';
@@ -5,11 +6,11 @@ import { ERROR_MESSAGES } from '../../../constants';
 import * as transport from '../../../transport';
 import { createMockExecuteFunction } from '../helpers';
 
-jest.mock('../../../transport', () => {
-	const originalModule = jest.requireActual<typeof transport>('../../../transport');
+vi.mock('../../../transport', async () => {
+	const originalModule = await vi.importActual<typeof transport>('../../../transport');
 	return {
 		...originalModule,
-		apiRequest: jest.fn(async function () {
+		apiRequest: vi.fn(async function () {
 			return {
 				status: 'success',
 				data: {
@@ -27,11 +28,10 @@ describe('Test Airtop, window close operation', () => {
 
 	afterAll(() => {
 		nock.restore();
-		jest.unmock('../../../transport');
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should close a window successfully', async () => {
@@ -47,7 +47,7 @@ describe('Test Airtop, window close operation', () => {
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'DELETE',
-			'/sessions/test-session-123/windows/win-123',
+			requestPath`/sessions/test-session-123/windows/win-123`,
 		);
 
 		expect(result).toEqual([

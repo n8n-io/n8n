@@ -1,17 +1,75 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { inDevelopment, Logger } from '@n8n/backend-common';
+import {
+	classifyRestError,
+	isResponseError,
+	serializeInternalRestError,
+} from '@n8n/backend-services';
+import { isUniqueConstraintError, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { type ReportingOptions } from '@n8n/errors';
 import type { Request, Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { FORM_TRIGGER_PATH_IDENTIFIER, NodeApiError } from 'n8n-workflow';
 import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import picocolors from 'picocolors';
 
-import { ResponseError } from './errors/response-errors/abstract/response.error';
+import { applySandboxCSP } from './webhooks/webhook-response-headers';
+
+/**
+ * Sends `stream` as the body of `res` and destroys `stream` however the call ends.
+ *
+ * Resolves when the body is sent or the client disconnected. Rejects with the stream
+ * error when the stream fails or ends early. A failure before the first chunk leaves
+ * the headers unsent, so the caller can still send an error response. A later failure
+ * destroys `res`, so the client sees an incomplete download instead of waiting.
+ *
+ * @param setHeaders Sets the status and headers. Runs after the first chunk is read.
+ */
+export async function sendStreamToResponse(
+	res: Response,
+	stream: Readable,
+	setHeaders?: () => void,
+): Promise<void> {
+	if (res.destroyed) {
+		stream.destroy();
+		return;
+	}
+
+	// Runs before pipeline's own listener, so the stream is still open when the client left first.
+	// A stream that was read to the end is destroyed too (autoDestroy), but that is not a failure.
+	let clientDisconnected = false;
+	const onClose = () => {
+		clientDisconnected = !res.writableFinished && (stream.readableEnded || !stream.destroyed);
+		stream.destroy();
+	};
+	res.once('close', onClose);
+
+	try {
+		const chunks = stream[Symbol.asyncIterator]();
+		const first = await chunks.next();
+
+		setHeaders?.();
+
+		async function* body() {
+			if (!first.done) yield first.value;
+			yield* { [Symbol.asyncIterator]: () => chunks };
+		}
+		await pipeline(Readable.from(body()), res);
+	} catch (error) {
+		if (clientDisconnected) return;
+		// pipeline can reject with the response's premature close instead of the stream's own error.
+		throw stream.errored ?? error;
+	} finally {
+		res.off('close', onClose);
+		stream.destroy();
+	}
+}
 
 export function sendSuccessResponse(
 	res: Response,
-	data: any,
+	data: unknown,
 	raw?: boolean,
 	responseCode?: number,
 	responseHeader?: object,
@@ -25,7 +83,11 @@ export function sendSuccessResponse(
 	}
 
 	if (data instanceof Readable) {
-		data.pipe(res);
+		void sendStreamToResponse(res, data).catch((e: unknown) => {
+			const error = ensureError(e);
+			reportError(error);
+			sendErrorResponse(res, error);
+		});
 		return;
 	}
 
@@ -42,43 +104,12 @@ export function sendSuccessResponse(
 	}
 }
 
-/**
- * Checks if the given error is a ResponseError. It can be either an
- * instance of ResponseError or an error which has the same properties.
- * The latter case is for external hooks.
- */
-function isResponseError(error: Error): error is ResponseError {
-	if (error instanceof ResponseError) {
-		return true;
-	}
-
-	if (error instanceof Error) {
-		return (
-			'httpStatusCode' in error &&
-			typeof error.httpStatusCode === 'number' &&
-			'errorCode' in error &&
-			typeof error.errorCode === 'number'
-		);
-	}
-
-	return false;
-}
-
-interface ErrorResponse {
-	code: number;
-	message: string;
-	hint?: string;
-	stacktrace?: string;
-	meta?: Record<string, unknown>;
-}
-
 export function sendErrorResponse(res: Response, error: Error) {
-	let httpStatusCode = 500;
-
-	const response: ErrorResponse = {
-		code: 0,
-		message: error.message ?? 'Unknown error',
-	};
+	if (res.headersSent) {
+		// Part of the body is already sent. Destroying the response tells the client it is incomplete.
+		res.destroy();
+		return;
+	}
 
 	if (isResponseError(error)) {
 		if (inDevelopment) {
@@ -95,6 +126,8 @@ export function sendErrorResponse(res: Response, error: Error) {
 			if (isFormTrigger || isLegacyFormTrigger) {
 				const isTestWebhook = basePath.includes('test');
 				res.status(404);
+				// The setting of the route decides: a webhook path can look like a form path.
+				applySandboxCSP(res, 'form');
 				return res.render('form-trigger-404', { isTestWebhook });
 			}
 		}
@@ -102,23 +135,15 @@ export function sendErrorResponse(res: Response, error: Error) {
 		if (error.errorCode === 409 && originalUrl && originalUrl.includes('form-waiting')) {
 			//codes other than 200  breaks redirection to form-waiting page from form trigger
 			//render form page instead of json
+			applySandboxCSP(res, 'form');
 			return res.render('form-trigger-409', {
 				message: error.message,
 			});
 		}
-
-		httpStatusCode = error.httpStatusCode;
-
-		if (error.errorCode) {
-			response.code = error.errorCode;
-		}
-		if (error.hint) {
-			response.hint = error.hint;
-		}
-		if (error.meta) {
-			response.meta = error.meta;
-		}
 	}
+
+	const descriptor = classifyRestError(error);
+	const { status, body: response } = serializeInternalRestError(descriptor);
 
 	if (error instanceof NodeApiError) {
 		if (inDevelopment) {
@@ -132,15 +157,17 @@ export function sendErrorResponse(res: Response, error: Error) {
 		response.stacktrace = error.stack;
 	}
 
-	res.status(httpStatusCode).json(response);
+	// res.json() does not override a Content-Type set earlier; force JSON here.
+	res.setHeader('Content-Type', 'application/json');
+	res.status(status).json(response);
 }
 
-export const isUniqueConstraintError = (error: Error) =>
-	['unique', 'duplicate'].some((s) => error.message.toLowerCase().includes(s));
+// Re-exported from `@n8n/db` so existing `@/response-helper` importers keep working.
+export { isUniqueConstraintError };
 
-export function reportError(error: Error) {
-	if (!(error instanceof ResponseError) || error.httpStatusCode > 404) {
-		Container.get(ErrorReporter).error(error);
+export function reportError(error: Error, options?: ReportingOptions) {
+	if (!isResponseError(error) || error.httpStatusCode > 404) {
+		Container.get(ErrorReporter).error(error, options);
 	}
 }
 
@@ -161,16 +188,21 @@ export function send<T, R extends Request, S extends Response>(
 			const data = await processFunction(req, res);
 
 			if (!res.headersSent) sendSuccessResponse(res, data, raw);
-		} catch (error) {
-			if (error instanceof Error) {
-				reportError(error);
+		} catch (e) {
+			const error = ensureError(e);
+			const user = (req as Request & { user?: User }).user;
+			reportError(error, {
+				extra: {
+					method: req.method,
+					path: req.path,
+					user: user ? { id: user.id } : undefined,
+				},
+			});
 
-				if (isUniqueConstraintError(error)) {
-					error.message = 'There is already an entry with this name';
-				}
+			if (isUniqueConstraintError(error)) {
+				error.message = 'There is already an entry with this name';
 			}
 
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			sendErrorResponse(res, error);
 		}
 	};

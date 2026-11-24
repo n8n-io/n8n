@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { useCredentialDescriptionsExperiment } from '@/experiments/credentialDescriptions/useCredentialDescriptionsExperiment';
+import { computed, ref, useTemplateRef } from 'vue';
 import dateformat from 'dateformat';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
+import { useDependencies } from '@/app/composables/useDependencies';
 import { useMessage } from '@/app/composables/useMessage';
+import { useToast } from '@n8n/composables/useToast';
 import CredentialIcon from './CredentialIcon.vue';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -11,19 +14,43 @@ import { useCredentialsStore } from '../credentials.store';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
+import DependencyPill from '@/app/components/DependencyPill.vue';
 import { useI18n } from '@n8n/i18n';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import type { CredentialsResource } from '@/Interface';
+import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
+import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCredentialIcon.vue';
+import { useCredentialOAuth } from '../composables/useCredentialOAuth';
+import { useCredentialTypeUsability } from '../composables/useCredentialTypeUsability';
+import {
+	ContactAdminModal,
+	RestrictedNodePopover,
+	useTypeAvailabilityPoliciesStore,
+	type ContactAudience,
+} from '@n8n/frontend-module-type-availability-policies';
+import type { Project } from '@n8n/rest-api-client';
+import { useContactAdminDialog } from '../composables/useContactAdminDialog';
 
-import { N8nActionToggle, N8nBadge, N8nCard, N8nText } from '@n8n/design-system';
+import {
+	N8nActionToggle,
+	N8nBadge,
+	N8nButton,
+	N8nCard,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
+const { isEnabled: credentialDescriptionsEnabled } = useCredentialDescriptionsExperiment();
+
 const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	DELETE: 'delete',
 	MOVE: 'move',
+	DISCONNECT: 'disconnect',
 };
 
 const emit = defineEmits<{
 	click: [credentialId: string];
+	connected: [credentialId: string];
 }>();
 
 const props = withDefaults(
@@ -40,15 +67,62 @@ const props = withDefaults(
 
 const locale = useI18n();
 const message = useMessage();
+const toast = useToast();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
+const policiesStore = useTypeAvailabilityPoliciesStore();
+const { isEnabled: isPrivateCredentialsEnabled } = usePrivateCredentials();
+const { hasDependencies } = useDependencies();
+const { authorize, isOAuthCredentialType } = useCredentialOAuth();
+
+const { describeCredentialTypeUsability } = useCredentialTypeUsability();
+
+const {
+	isOpen: isContactAdminOpen,
+	state: contactAdmin,
+	request: requestContactAdmin,
+} = useContactAdminDialog(() => {});
+
+const isConnecting = ref(false);
+const restrictedBadgeRef = useTemplateRef<HTMLElement>('restrictedBadgeRef');
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.credential').toLowerCase());
 const credentialType = computed(() =>
 	credentialsStore.getCredentialTypeByName(props.data.type ?? ''),
 );
+const credentialTypeDisplayName = computed(
+	() => credentialType.value?.displayName ?? props.data.type,
+);
+const restriction = computed(() =>
+	props.data.restriction
+		? describeCredentialTypeUsability(props.data.restriction, credentialTypeDisplayName.value)
+		: null,
+);
+/** Whose admins the dialog lists. `undefined` keeps the dialog's default: the open policy project. */
+const contactProject = ref<Project | null | undefined>(undefined);
+
+// For restricted nodes the admin must allow the nodes, so the request names them, not the type.
+async function onContactAdmin(audience: ContactAudience) {
+	if (!restriction.value) return;
+	const { id } = props.data.restrictionProject ?? {};
+	contactProject.value =
+		audience === 'project' && id && id !== policiesStore.policyProject?.id
+			? await projectsStore.fetchProject(id).catch(() => null)
+			: undefined;
+	requestContactAdmin(restriction.value.contactSubject, audience, restriction.value.kind);
+}
+
 const credentialPermissions = computed(() => getResourcePermissions(props.data.scopes).credential);
+
+const isPrivateUnconnected = computed(
+	() =>
+		isPrivateCredentialsEnabled.value &&
+		props.data.isResolvable === true &&
+		props.data.connectedByMe === false &&
+		credentialPermissions.value.connect === true,
+);
+
 const actions = computed(() => {
 	const items = [
 		{
@@ -57,7 +131,12 @@ const actions = computed(() => {
 		},
 	];
 
-	if (credentialPermissions.value.delete) {
+	// Deleting an end-user credential removes every user's own connection,
+	// so it additionally requires the createEndUser permission.
+	if (
+		credentialPermissions.value.delete &&
+		(!props.data.isResolvable || credentialPermissions.value.createEndUser)
+	) {
 		items.push({
 			label: locale.baseText('credentials.item.delete'),
 			value: CREDENTIAL_LIST_ITEM_ACTIONS.DELETE,
@@ -68,6 +147,13 @@ const actions = computed(() => {
 		items.push({
 			label: locale.baseText('credentials.item.move'),
 			value: CREDENTIAL_LIST_ITEM_ACTIONS.MOVE,
+		});
+	}
+
+	if (isPrivateCredentialsEnabled.value && props.data.isResolvable && props.data.connectedByMe) {
+		items.push({
+			label: locale.baseText('credentials.item.disconnect'),
+			value: CREDENTIAL_LIST_ITEM_ACTIONS.DISCONNECT,
 		});
 	}
 
@@ -82,8 +168,33 @@ const formattedCreatedAtDate = computed(() => {
 	);
 });
 
+const credentialHasDependents = computed(() => hasDependencies(props.data.id, 'credential'));
+
 function onClick() {
 	emit('click', props.data.id);
+}
+
+async function onConnect() {
+	const credential = credentialsStore.getCredentialById(props.data.id);
+	if (!credential) return;
+
+	// Direct OAuth flow only applies to OAuth credential types. Fall back to
+	// the edit modal for anything else — today only OAuth credentials can be
+	// resolvable, but this keeps the button safe if that ever changes.
+	if (!isOAuthCredentialType(credential.type)) {
+		onClick();
+		return;
+	}
+
+	isConnecting.value = true;
+	try {
+		const success = await authorize(credential);
+		if (success) {
+			emit('connected', props.data.id);
+		}
+	} finally {
+		isConnecting.value = false;
+	}
 }
 
 async function onAction(action: string) {
@@ -96,6 +207,9 @@ async function onAction(action: string) {
 			break;
 		case CREDENTIAL_LIST_ITEM_ACTIONS.MOVE:
 			moveResource();
+			break;
+		case CREDENTIAL_LIST_ITEM_ACTIONS.DISCONNECT:
+			await disconnectResource();
 			break;
 	}
 }
@@ -118,6 +232,35 @@ async function deleteResource() {
 	}
 }
 
+async function disconnectResource() {
+	const confirmed = await message.confirm(
+		locale.baseText('credentialEdit.credentialEdit.confirmMessage.disconnectCredential.message', {
+			interpolate: { savedCredentialName: props.data.name },
+		}),
+		locale.baseText('credentialEdit.credentialEdit.confirmMessage.disconnectCredential.headline'),
+		{
+			confirmButtonText: locale.baseText(
+				'credentialEdit.credentialEdit.confirmMessage.disconnectCredential.confirmButtonText',
+			),
+		},
+	);
+
+	if (confirmed !== MODAL_CONFIRM) return;
+
+	try {
+		await credentialsStore.disconnectMyConnection({ id: props.data.id });
+		toast.showMessage({
+			title: locale.baseText('credentialEdit.credentialEdit.showMessage.disconnected.title'),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(
+			error,
+			locale.baseText('credentialEdit.credentialEdit.showError.disconnectCredential.title'),
+		);
+	}
+}
+
 function moveResource() {
 	uiStore.openModalWithData({
 		name: PROJECT_MOVE_RESOURCE_MODAL,
@@ -131,22 +274,59 @@ function moveResource() {
 </script>
 
 <template>
-	<N8nCard :class="$style.cardLink" @click.stop="onClick">
+	<N8nCard :class="[$style.cardLink, { [$style.restricted]: restriction }]" @click.stop="onClick">
 		<template #prepend>
-			<CredentialIcon :credential-type-name="credentialType?.name ?? ''" />
+			<CredentialIcon :class="$style.dimmable" :credential-type-name="credentialType?.name ?? ''" />
 		</template>
 		<template #header>
 			<N8nText tag="h2" bold :class="$style.cardHeading">
-				{{ data.name }}
-				<N8nBadge v-if="readOnly" class="ml-3xs" theme="tertiary" bold>
+				<span :class="$style.dimmable">{{ data.name }}</span>
+				<N8nBadge v-if="readOnly" class="ml-3xs" variant="outline">
 					{{ locale.baseText('credentials.item.readonly') }}
 				</N8nBadge>
-				<N8nBadge v-if="needsSetup" class="ml-3xs" theme="warning">
+				<N8nBadge v-if="needsSetup" class="ml-3xs" variant="warning">
 					{{ locale.baseText('credentials.item.needsSetup') }}
 				</N8nBadge>
+				<!-- The card stays clickable, so a press on the badge must not open it. -->
+				<span
+					v-if="restriction"
+					ref="restrictedBadgeRef"
+					:class="['ml-3xs', $style.restrictedBadge]"
+					data-test-id="credential-card-restricted"
+					@click.stop
+				>
+					<N8nBadge>
+						<RestrictedNodePopover
+							:kind="restriction.kind"
+							side="right"
+							marker-size="xsmall"
+							:node-type-name="credentialTypeDisplayName"
+							:restriction="restriction.restriction"
+							:scope-label="restriction.popoverScopeLabel"
+							:description="restriction.description"
+							:project-type="data.restrictionProject?.type"
+							:anchor="restrictedBadgeRef"
+							@contact-admin="onContactAdmin"
+						/>
+						{{ locale.baseText('credentials.item.restricted') }}
+					</N8nBadge>
+					<ContactAdminModal
+						v-model:open="isContactAdminOpen"
+						:kind="contactAdmin.kind"
+						:type-name="contactAdmin.subject"
+						:audience="contactAdmin.audience"
+						:project="contactProject"
+					/>
+				</span>
 			</N8nText>
 		</template>
-		<div :class="$style.cardDescription">
+		<div
+			:class="[
+				$style.cardDescription,
+				$style.dimmable,
+				{ [$style.hasDescription]: data.description },
+			]"
+		>
 			<N8nText color="text-light" size="small">
 				<span v-if="credentialType">{{ credentialType.displayName }} | </span>
 				<span v-show="data"
@@ -156,9 +336,39 @@ function moveResource() {
 					>{{ locale.baseText('credentials.item.created') }} {{ formattedCreatedAtDate }}
 				</span>
 			</N8nText>
+			<span
+				v-if="isPrivateCredentialsEnabled && data.isResolvable"
+				:class="$style.privateCredentialIndicator"
+				data-test-id="credential-card-dynamic"
+			>
+				<PrivateCredentialIcon
+					:tooltip-title="locale.baseText('credentials.private.tooltipTitle')"
+					:tooltip-text="locale.baseText('credentials.private.tooltip')"
+					size="small"
+				/>
+			</span>
 		</div>
+		<N8nTooltip v-if="credentialDescriptionsEnabled && data.description" placement="top" as-child>
+			<template #content>{{ data.description }}</template>
+			<N8nText
+				tag="p"
+				size="small"
+				color="text-light"
+				:class="$style.credentialDescription"
+				data-test-id="credential-card-description"
+			>
+				{{ data.description }}
+			</N8nText>
+		</N8nTooltip>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
+				<DependencyPill
+					v-if="credentialHasDependents"
+					resource-type="credential"
+					:resource-id="data.id"
+					source="credential_card"
+					data-test-id="credential-card-dependents"
+				/>
 				<ProjectCardBadge
 					:class="$style.cardBadge"
 					:resource="data"
@@ -168,6 +378,19 @@ function moveResource() {
 					:show-badge-border="false"
 					:global="data.isGlobal"
 				/>
+				<N8nTooltip v-if="isPrivateUnconnected" placement="top">
+					<template #content>
+						{{ locale.baseText('credentials.item.connect.tooltip') }}
+					</template>
+					<N8nButton
+						size="mini"
+						:loading="isConnecting"
+						data-test-id="credential-card-connect"
+						@click="onConnect"
+					>
+						{{ locale.baseText('credentials.item.connect') }}
+					</N8nButton>
+				</N8nTooltip>
 				<N8nActionToggle
 					data-test-id="credential-card-actions"
 					:actions="actions"
@@ -180,6 +403,8 @@ function moveResource() {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/breakpoints';
+
 .cardLink {
 	--card--padding: 0 0 0 var(--spacing--sm);
 
@@ -188,13 +413,29 @@ function moveResource() {
 	align-items: stretch;
 
 	&:hover {
-		box-shadow: 0 2px 8px rgba(#441c17, 0.1);
+		box-shadow: var(--shadow--card-hover);
 	}
 }
 
 .cardHeading {
+	display: flex;
+	align-items: center;
 	font-size: var(--font-size--sm);
 	padding: var(--spacing--sm) 0 0;
+}
+
+.restrictedBadge {
+	display: inline-flex;
+
+	// The lock is the badge's leading icon. Its own padding already spaces it from the label.
+	:global(.n8n-badge) {
+		--n8n-badge--gap: 0;
+		--n8n-badge--padding-inline-start: var(--spacing--4xs);
+	}
+}
+
+.restricted .dimmable {
+	opacity: 0.5;
 }
 
 .cardDescription {
@@ -204,8 +445,29 @@ function moveResource() {
 	padding: 0 0 var(--spacing--sm);
 }
 
+.hasDescription {
+	padding-bottom: var(--spacing--3xs);
+}
+
+.credentialDescription {
+	display: block;
+	width: 0;
+	min-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	padding-bottom: var(--spacing--sm);
+}
+
+.privateCredentialIndicator {
+	display: inline-flex;
+	align-items: center;
+	margin-left: var(--spacing--2xs);
+}
+
 .cardActions {
 	display: flex;
+	gap: var(--spacing--2xs);
 	flex-direction: row;
 	justify-content: center;
 	align-items: center;
@@ -214,7 +476,7 @@ function moveResource() {
 	cursor: default;
 }
 
-@include mixins.breakpoint('sm-and-down') {
+@include breakpoints.breakpoint('sm-and-down') {
 	.cardLink {
 		--card--padding: 0 var(--spacing--sm) var(--spacing--sm);
 		--card--append--width: 100%;

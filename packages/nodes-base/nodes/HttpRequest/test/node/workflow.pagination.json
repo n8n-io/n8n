@@ -887,6 +887,114 @@
 			"position": [80, 1660],
 			"id": "d5a16020-25e6-4756-be2e-0203345651b3",
 			"name": "Set Page Limit"
+		},
+		{
+			"parameters": {
+				"url": "https://dummyjson.com/users",
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "limit",
+							"value": "3"
+						}
+					]
+				},
+				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "json"
+						}
+					},
+					"pagination": {
+						"pagination": {
+							"parameters": {
+								"parameters": [
+									{
+										"name": "skip",
+										"value": "={{ $pageCount * 3 }}"
+									}
+								]
+							},
+							"paginationCompleteWhen": "other",
+							"completeExpression": "={{ $response.statusCode === 404 }}"
+						}
+					}
+				}
+			},
+			"id": "1cb26727-1f98-4ba8-bd29-9ec64e7134f4",
+			"name": "Other Non2xx Should Fail",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"position": [260, 2160],
+			"continueOnFail": true
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "247fdef8-f15d-4e30-bf20-dfb71dd9a58e",
+							"name": "statusCode",
+							"value": "={{ $json.error.statusCode }}",
+							"type": "number"
+						},
+						{
+							"id": "5f7f3225-3868-440b-b330-fe352d802951",
+							"name": "isAxiosError",
+							"value": "={{ $json.error.isAxiosError }}",
+							"type": "boolean"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [520, 2160],
+			"id": "66fef6f3-a9d3-4e7a-8f7b-f2c1cf203f77",
+			"name": "Extract Non2xx Error"
+		},
+		{
+			"parameters": {
+				"url": "https://dummyjson.com/users",
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "limit",
+							"value": "3"
+						}
+					]
+				},
+				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "json",
+							"neverError": true
+						}
+					},
+					"pagination": {
+						"pagination": {
+							"parameters": {
+								"parameters": [
+									{
+										"name": "skip",
+										"value": "={{ $pageCount * 3 }}"
+									}
+								]
+							},
+							"paginationCompleteWhen": "other",
+							"completeExpression": "={{ $response.statusCode === 404 }}"
+						}
+					}
+				}
+			},
+			"id": "ff918e93-676c-4f84-a2f1-8279e9ca2d59",
+			"name": "Other Non2xx Never Error",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"position": [260, 2340]
 		}
 	],
 	"pinData": {
@@ -1732,6 +1840,91 @@
 					"id": 8
 				}
 			}
+		],
+		"Extract Non2xx Error": [
+			{
+				"json": {
+					"statusCode": 404,
+					"isAxiosError": true
+				}
+			}
+		],
+		"Other Non2xx Never Error": [
+			{
+				"json": {
+					"id": 0
+				}
+			},
+			{
+				"json": {
+					"id": 1
+				}
+			},
+			{
+				"json": {
+					"id": 2
+				}
+			},
+			{
+				"json": {
+					"id": 3
+				}
+			},
+			{
+				"json": {
+					"id": 4
+				}
+			},
+			{
+				"json": {
+					"id": 5
+				}
+			},
+			{
+				"json": {
+					"id": 6
+				}
+			},
+			{
+				"json": {
+					"id": 7
+				}
+			},
+			{
+				"json": {
+					"id": 8
+				}
+			},
+			{
+				"json": {
+					"id": 9
+				}
+			},
+			{
+				"json": {
+					"id": 10
+				}
+			},
+			{
+				"json": {
+					"id": 11
+				}
+			},
+			{
+				"json": {
+					"id": 12
+				}
+			},
+			{
+				"json": {
+					"id": 13
+				}
+			},
+			{
+				"json": {
+					"id": 14
+				}
+			}
 		]
 	},
 	"connections": {
@@ -1818,6 +2011,16 @@
 						"node": "Set Page Limit",
 						"type": "main",
 						"index": 0
+					},
+					{
+						"node": "Other Non2xx Should Fail",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Other Non2xx Never Error",
+						"type": "main",
+						"index": 0
 					}
 				]
 			]
@@ -1882,6 +2085,23 @@
 					}
 				]
 			]
+		},
+		"Other Non2xx Should Fail": {
+			"main": [
+				[
+					{
+						"node": "Extract Non2xx Error",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract Non2xx Error": {
+			"main": [[]]
+		},
+		"Other Non2xx Never Error": {
+			"main": [[]]
 		}
 	},
 	"active": false,

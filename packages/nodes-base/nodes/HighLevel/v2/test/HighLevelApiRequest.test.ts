@@ -1,11 +1,14 @@
+import { requestPath, requestUrl } from 'n8n-workflow';
+
 import { highLevelApiRequest } from '../GenericFunctions';
+import type { Mock } from 'vitest';
 
 describe('GenericFunctions - highLevelApiRequest', () => {
 	let mockContext: any;
-	let mockHttpRequestWithAuthentication: jest.Mock;
+	let mockHttpRequestWithAuthentication: Mock;
 
 	beforeEach(() => {
-		mockHttpRequestWithAuthentication = jest.fn();
+		mockHttpRequestWithAuthentication = vi.fn();
 		mockContext = {
 			helpers: {
 				httpRequestWithAuthentication: mockHttpRequestWithAuthentication,
@@ -18,28 +21,21 @@ describe('GenericFunctions - highLevelApiRequest', () => {
 		mockHttpRequestWithAuthentication.mockResolvedValueOnce(mockResponse);
 
 		const method = 'POST';
-		const resource = '/example-resource';
+		const resource = requestPath`/example-resource`;
 		const body = { key: 'value' };
 		const qs = { query: 'test' };
-		const url = 'https://custom-url.example.com/api';
-		const option = { headers: { Authorization: 'Bearer test-token' } };
 
-		const result = await highLevelApiRequest.call(
-			mockContext,
-			method,
-			resource,
-			body,
-			qs,
-			url,
-			option,
-		);
+		const result = await highLevelApiRequest.call(mockContext, method, resource, body, qs);
 
 		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledWith('highLevelOAuth2Api', {
-			headers: { Authorization: 'Bearer test-token' },
+			headers: {
+				'Content-Type': 'application/json',
+				Version: '2021-07-28',
+			},
 			method: 'POST',
 			body: { key: 'value' },
 			qs: { query: 'test' },
-			url: 'https://custom-url.example.com/api',
+			url: requestUrl`https://services.leadconnectorhq.com/example-resource`,
 			json: true,
 		});
 
@@ -51,7 +47,7 @@ describe('GenericFunctions - highLevelApiRequest', () => {
 		mockHttpRequestWithAuthentication.mockResolvedValueOnce(mockResponse);
 
 		const method = 'GET';
-		const resource = '/default-resource';
+		const resource = requestPath`/default-resource`;
 
 		const result = await highLevelApiRequest.call(mockContext, method, resource);
 
@@ -61,7 +57,7 @@ describe('GenericFunctions - highLevelApiRequest', () => {
 				Version: '2021-07-28',
 			},
 			method: 'GET',
-			url: 'https://services.leadconnectorhq.com/default-resource',
+			url: requestUrl`https://services.leadconnectorhq.com/default-resource`,
 			json: true,
 		});
 
@@ -73,7 +69,7 @@ describe('GenericFunctions - highLevelApiRequest', () => {
 		mockHttpRequestWithAuthentication.mockResolvedValueOnce(mockResponse);
 
 		const method = 'DELETE';
-		const resource = '/example-resource';
+		const resource = requestPath`/example-resource`;
 		const body = {};
 
 		const result = await highLevelApiRequest.call(mockContext, method, resource, body);
@@ -84,7 +80,7 @@ describe('GenericFunctions - highLevelApiRequest', () => {
 				Version: '2021-07-28',
 			},
 			method: 'DELETE',
-			url: 'https://services.leadconnectorhq.com/example-resource',
+			url: requestUrl`https://services.leadconnectorhq.com/example-resource`,
 			json: true,
 		});
 
@@ -96,7 +92,7 @@ describe('GenericFunctions - highLevelApiRequest', () => {
 		mockHttpRequestWithAuthentication.mockResolvedValueOnce(mockResponse);
 
 		const method = 'PATCH';
-		const resource = '/example-resource';
+		const resource = requestPath`/example-resource`;
 		const qs = {};
 
 		const result = await highLevelApiRequest.call(mockContext, method, resource, {}, qs);
@@ -107,7 +103,7 @@ describe('GenericFunctions - highLevelApiRequest', () => {
 				Version: '2021-07-28',
 			},
 			method: 'PATCH',
-			url: 'https://services.leadconnectorhq.com/example-resource',
+			url: requestUrl`https://services.leadconnectorhq.com/example-resource`,
 			json: true,
 		});
 

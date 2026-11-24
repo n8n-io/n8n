@@ -1,3 +1,5 @@
+import { N8N_CLIENT_EDITOR_UI, N8N_CLIENT_HEADER } from '@n8n/api-types';
+import { EventService, InstanceWriteAccessService } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -7,40 +9,59 @@ import {
 	createActiveWorkflow,
 	createWorkflowWithHistory,
 	linkUserToProject,
+	shareWorkflowWithUsers,
 } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
-import type { Project, TagEntity, User, WorkflowHistory } from '@n8n/db';
+import { EngineConfig, GlobalConfig, NodesConfig } from '@n8n/config';
+import type { Person, Project, TagEntity, User, WorkflowHistory } from '@n8n/db';
 import {
+	ExecutionRepository,
 	WorkflowRepository,
 	ProjectRepository,
 	WorkflowHistoryRepository,
 	SharedWorkflowRepository,
 	ProjectRelationRepository,
+	UserRepository,
+	WorkflowPublishedVersionRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Not } from '@n8n/typeorm';
 import { InstanceSettings } from 'n8n-core';
-import type { INode } from 'n8n-workflow';
+import type { IConnections, IDataObject, INode, ITaskData } from 'n8n-workflow';
+import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
-import { createTag } from '../shared/db/tags';
-import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
-import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
-import type { SuperAgentTest } from '../shared/types';
-import * as utils from '../shared/utils/';
-
+import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { STARTING_NODES } from '@/constants';
 import { ExecutionService } from '@/executions/execution.service';
+import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { Telemetry } from '@/telemetry';
+import { TestWebhooks } from '@/webhooks/test-webhooks';
+
+import { saveCredential } from '../shared/db/credentials';
+import { getAllExecutions } from '../shared/db/executions';
+import { createFolder } from '../shared/db/folders';
+import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
+import { createTag } from '../shared/db/tags';
+import {
+	addApiKey,
+	createMemberWithApiKey,
+	createOwnerWithApiKey,
+	createUser,
+} from '../shared/db/users';
+import {
+	createManyWorkflowHistoryItems,
+	createWorkflowHistoryItem,
+} from '../shared/db/workflow-history';
+import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils/';
 
 mockInstance(Telemetry);
 
 let ownerPersonalProject: Project;
-let owner: User;
-let member: User;
+let owner: Person;
+let member: Person;
 let memberPersonalProject: Project;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
@@ -54,7 +75,21 @@ const globalConfig = Container.get(GlobalConfig);
 
 mockInstance(ExecutionService);
 
+// The API response omits the parent folder, so read the persisted placement directly.
+const getStoredParentFolderId = async (workflowId: string) => {
+	const stored = await workflowRepository.findOne({
+		where: { id: workflowId },
+		relations: { parentFolder: true },
+	});
+	return stored?.parentFolder?.id ?? null;
+};
+
+// This suite runs a real `ActiveWorkflowManager` and asserts on the legacy activation
+// path; the one publication-service case below enables the service itself.
+const originalUseWorkflowPublicationService = globalConfig.workflows.useWorkflowPublicationService;
+
 beforeAll(async () => {
+	globalConfig.workflows.useWorkflowPublicationService = false;
 	owner = await createOwnerWithApiKey();
 	Container.get(InstanceSettings).markAsLeader();
 	ownerPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
@@ -91,7 +126,7 @@ beforeEach(async () => {
 
 	const projectRepository = Container.get(ProjectRepository);
 	const projectRelationRepository = Container.get(ProjectRelationRepository);
-	const createPersonalProject = async (user: User) => {
+	const createPersonalProject = async (user: Person) => {
 		const project = await projectRepository.save(
 			projectRepository.create({
 				type: 'personal',
@@ -121,21 +156,45 @@ beforeEach(async () => {
 	globalConfig.tags.disabled = false;
 });
 
-afterEach(async () => {
-	await activeWorkflowManager?.removeAll();
+afterAll(() => {
+	globalConfig.workflows.useWorkflowPublicationService = originalUseWorkflowPublicationService;
 });
 
-const testWithAPIKey =
-	(method: 'get' | 'post' | 'put' | 'delete', url: string, apiKey: string | null) => async () => {
-		void authOwnerAgent.set({ 'X-N8N-API-KEY': apiKey });
-		const response = await authOwnerAgent[method](url);
-		expect(response.statusCode).toBe(401);
-	};
+afterEach(async () => {
+	await activeWorkflowManager?.removeAll();
+	if (createdGlobalRoleUserIds.length) {
+		await Container.get(UserRepository).update(createdGlobalRoleUserIds, {
+			role: { slug: 'global:member' },
+		});
+		createdGlobalRoleUserIds.length = 0;
+	}
+});
+
+// Custom GLOBAL role carrying the given scopes, plus an API key whose scopes are
+// derived from those role scopes. Proves the public-API bypass is scope-driven.
+// Created users are reset to global:member in afterEach so cleanupRolesAndScopes
+// can delete the custom role (the User table is not truncated between tests).
+const createdGlobalRoleUserIds: string[] = [];
+const makeGlobalRoleUserAgent = async (scopeSlugs: string[]) => {
+	const role = await createCustomRoleWithScopeSlugs(scopeSlugs, { roleType: 'global' });
+	const user = await createUser({ role });
+	createdGlobalRoleUserIds.push(user.id);
+	user.apiKeys = [await addApiKey(user)];
+	return testServer.publicApiAgentFor(user);
+};
 
 describe('GET /workflows', () => {
-	test('should fail due to missing API Key', testWithAPIKey('get', '/workflows', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().get('/workflows');
 
-	test('should fail due to invalid API Key', testWithAPIKey('get', '/workflows', 'abcXYZ'));
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').get('/workflows');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should return all owned workflows', async () => {
 		await Promise.all([
@@ -158,10 +217,15 @@ describe('GET /workflows', () => {
 				activeVersionId,
 				staticData,
 				nodes,
+				nodeGroups,
 				settings,
 				name,
 				createdAt,
 				updatedAt,
+				isArchived,
+				versionId,
+				triggerCount,
+				meta,
 				tags,
 			} = workflow;
 
@@ -172,11 +236,44 @@ describe('GET /workflows', () => {
 			expect(activeVersionId).toBeNull();
 			expect(staticData).toBeDefined();
 			expect(nodes).toBeDefined();
+			expect(nodeGroups).toBeDefined();
 			expect(tags).toBeDefined();
 			expect(settings).toBeDefined();
 			expect(createdAt).toBeDefined();
 			expect(updatedAt).toBeDefined();
+			expect(isArchived).toBe(false);
+			expect(versionId).toBeDefined();
+			expect(triggerCount).toBeDefined();
+			expect(meta).toBeDefined();
 		}
+	});
+
+	test('should include node groups when returning owned workflows', async () => {
+		const workflow = await createWorkflowWithHistory(
+			{
+				nodes: [
+					{
+						id: 'uuid-1234',
+						name: 'Schedule Trigger',
+						parameters: {},
+						position: [-20, 260],
+						type: 'n8n-nodes-base.scheduleTrigger',
+						typeVersion: 1,
+					},
+				],
+				nodeGroups: [{ id: 'group-1', name: 'Processing', nodeIds: ['uuid-1234'] }],
+			},
+			member,
+		);
+
+		const response = await authMemberAgent.get('/workflows');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(1);
+		expect(response.body.data[0].id).toBe(workflow.id);
+		expect(response.body.data[0].nodeGroups).toEqual([
+			{ id: 'group-1', name: 'Processing', nodeIds: ['uuid-1234'] },
+		]);
 	});
 
 	test('should return all owned workflows with pagination', async () => {
@@ -215,6 +312,10 @@ describe('GET /workflows', () => {
 				name,
 				createdAt,
 				updatedAt,
+				isArchived,
+				versionId,
+				triggerCount,
+				meta,
 				tags,
 			} = workflow;
 
@@ -229,10 +330,54 @@ describe('GET /workflows', () => {
 			expect(settings).toBeDefined();
 			expect(createdAt).toBeDefined();
 			expect(updatedAt).toBeDefined();
+			expect(isArchived).toBe(false);
+			expect(versionId).toBeDefined();
+			expect(triggerCount).toBeDefined();
+			expect(meta).toBeDefined();
 		}
 
 		// check that we really received a different result
 		expect(response.body.data[0].id).not.toEqual(response2.body.data[0].id);
+	});
+
+	test('should reject a cursor that does not decode to JSON', async () => {
+		await createWorkflowWithHistory({}, member);
+
+		const cursor = Buffer.from('not json').toString('base64');
+		const response = await authMemberAgent.get(`/workflows?cursor=${cursor}`);
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe('An invalid cursor was provided');
+	});
+
+	test('should take the limit from a cursor that carries no offset', async () => {
+		await Promise.all([
+			createWorkflowWithHistory({}, member),
+			createWorkflowWithHistory({}, member),
+			createWorkflowWithHistory({}, member),
+		]);
+
+		const cursor = Buffer.from(JSON.stringify({ lastId: 'abc', limit: 2 })).toString('base64');
+		const response = await authMemberAgent.get(`/workflows?cursor=${cursor}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(2);
+		expect(response.body.nextCursor).not.toBeNull();
+	});
+
+	test('should fall back to the default limit for a cursor that carries none', async () => {
+		await Promise.all([
+			createWorkflowWithHistory({}, member),
+			createWorkflowWithHistory({}, member),
+			createWorkflowWithHistory({}, member),
+		]);
+
+		const cursor = Buffer.from(JSON.stringify({ offset: 1 })).toString('base64');
+		const response = await authMemberAgent.get(`/workflows?cursor=${cursor}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(2);
+		expect(response.body.nextCursor).toBeNull();
 	});
 
 	test('should return all owned workflows filtered by tag', async () => {
@@ -277,8 +422,25 @@ describe('GET /workflows', () => {
 		expect(wfTags[0].id).toBe(tag.id);
 	});
 
+	test('should omit tags entirely when tags are disabled', async () => {
+		globalConfig.tags.disabled = true;
+
+		try {
+			const tag = await createTag({ name: 'production' });
+			await createWorkflowWithHistory({ tags: [tag] }, member);
+
+			const response = await authMemberAgent.get('/workflows');
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data).toHaveLength(1);
+			expect(response.body.data[0]).not.toHaveProperty('tags');
+		} finally {
+			globalConfig.tags.disabled = false;
+		}
+	});
+
 	test('should return all owned workflows filtered by tags', async () => {
-		const tags = await Promise.all([await createTag({}), await createTag({})]);
+		const tags = [await createTag({}), await createTag({})];
 		const tagNames = tags.map((tag) => tag.name).join(',');
 
 		const [workflow1, workflow2] = await Promise.all([
@@ -412,6 +574,59 @@ describe('GET /workflows', () => {
 		expect(tags).toEqual([]);
 	});
 
+	test('should match `name` as a substring of the workflow name', async () => {
+		await Promise.all([
+			createWorkflowWithHistory({ name: 'Monthly invoice sync' }, member),
+			createWorkflowWithHistory({ name: 'Daily report' }, member),
+		]);
+
+		const response = await authMemberAgent.get('/workflows?name=invoice');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.map((w: { name: string }) => w.name)).toEqual([
+			'Monthly invoice sync',
+		]);
+	});
+
+	test('should not match `name` against the workflow description', async () => {
+		await createWorkflowWithHistory(
+			{ name: 'Daily report', description: 'Sends the invoice summary' },
+			member,
+		);
+
+		const response = await authMemberAgent.get('/workflows?name=invoice');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toEqual([]);
+	});
+
+	test('should treat a multi-word `name` as one literal substring, not separate terms', async () => {
+		await Promise.all([
+			createWorkflowWithHistory({ name: 'My Workflow' }, member),
+			createWorkflowWithHistory({ name: 'Workflow for my team' }, member),
+		]);
+
+		const response = await authMemberAgent.get('/workflows?name=My Workflow');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.map((w: { name: string }) => w.name)).toEqual(['My Workflow']);
+	});
+
+	test('should return all workflows for custom global role with workflow:read', async () => {
+		await Promise.all([
+			createWorkflowWithHistory({}, owner),
+			createWorkflowWithHistory({}, member),
+			createWorkflowWithHistory({}, owner),
+		]);
+
+		const agent = await makeGlobalRoleUserAgent(['workflow:list', 'workflow:read']);
+		const response = await agent.get('/workflows');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(3);
+		expect(response.body.nextCursor).toBeNull();
+	});
+
 	test('should return all workflows for owner', async () => {
 		await Promise.all([
 			createWorkflowWithHistory({}, owner),
@@ -529,6 +744,129 @@ describe('GET /workflows', () => {
 		expect(activeInResponse.activeVersion.connections).toEqual(activeWorkflow.connections);
 	});
 
+	test('should return activeVersion shaped to the OpenAPI schema', async () => {
+		const activeWorkflow = await createWorkflowWithTriggerAndHistory({}, member);
+		await authMemberAgent.post(`/workflows/${activeWorkflow.id}/activate`);
+
+		await Container.get(WorkflowHistoryRepository).update(
+			{ workflowId: activeWorkflow.id },
+			{ name: 'Version name', description: 'Version description', autosaved: true },
+		);
+
+		const listResponse = await authMemberAgent.get('/workflows');
+		const singleResponse = await authMemberAgent.get(`/workflows/${activeWorkflow.id}`);
+
+		expect(listResponse.statusCode).toBe(200);
+		expect(singleResponse.statusCode).toBe(200);
+
+		const fromList = listResponse.body.data[0].activeVersion;
+		const documentedFields = [
+			'versionId',
+			'workflowId',
+			'nodes',
+			'connections',
+			'nodeGroups',
+			'authors',
+			'name',
+			'description',
+			'autosaved',
+			'createdAt',
+			'updatedAt',
+		] as const;
+
+		expect(Object.keys(fromList).sort()).toEqual([...documentedFields].sort());
+
+		for (const field of documentedFields) {
+			expect(fromList[field]).toEqual(singleResponse.body.activeVersion[field]);
+		}
+	});
+
+	test('should return workflows ordered by id', async () => {
+		const first = await createWorkflowWithHistory({ id: 'sortid01', name: 'First' }, member);
+		const second = await createWorkflowWithHistory({ id: 'sortid02', name: 'Second' }, member);
+		const third = await createWorkflowWithHistory({ id: 'sortid03', name: 'Third' }, member);
+
+		// Editing must not change id order (would move the row under updatedAt sort).
+		const editResponse = await authMemberAgent.put(`/workflows/${second.id}`).send({
+			name: 'Second (edited)',
+			nodes: second.nodes,
+			connections: second.connections,
+			settings: second.settings,
+		});
+		expect(editResponse.statusCode).toBe(200);
+
+		const response = await authMemberAgent.get('/workflows');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.map((w: { id: string }) => w.id)).toEqual([
+			first.id,
+			second.id,
+			third.id,
+		]);
+	});
+
+	test('should return share rows without the owning project', async () => {
+		await createWorkflowWithHistory({}, member);
+
+		const response = await authMemberAgent.get('/workflows');
+
+		expect(response.statusCode).toBe(200);
+		// `shared[].project` is deliberately absent: callers that need the home
+		// project derive it themselves, and this endpoint has never returned it.
+		expect(Object.keys(response.body.data[0].shared[0]).sort()).toEqual([
+			'createdAt',
+			'projectId',
+			'role',
+			'updatedAt',
+			'workflowId',
+		]);
+	});
+
+	test('should return tags with their timestamps', async () => {
+		const tag = await createTag({ name: 'production' });
+		await createWorkflowWithHistory({ tags: [tag] }, member);
+
+		const response = await authMemberAgent.get('/workflows');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data[0].tags).toEqual([
+			{
+				id: tag.id,
+				name: 'production',
+				createdAt: tag.createdAt.toISOString(),
+				updatedAt: tag.updatedAt.toISOString(),
+			},
+		]);
+	});
+
+	test('should not return parentFolder unless includeParentFolder is set', async () => {
+		const folder = await createFolder(memberPersonalProject, { name: 'List Folder' });
+		await createWorkflowWithHistory({}, member);
+		await createWorkflowWithHistory({ parentFolder: folder }, member);
+
+		const response = await authMemberAgent.get('/workflows');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(2);
+		for (const item of response.body.data) {
+			expect(item).not.toHaveProperty('parentFolder');
+		}
+	});
+
+	test('should return only the parent folder id when includeParentFolder is true', async () => {
+		const folder = await createFolder(memberPersonalProject, { name: 'List Folder' });
+		const rootWorkflow = await createWorkflowWithHistory({}, member);
+		const folderWorkflow = await createWorkflowWithHistory({ parentFolder: folder }, member);
+
+		const response = await authMemberAgent.get('/workflows?includeParentFolder=true');
+
+		expect(response.statusCode).toBe(200);
+		const rootItem = response.body.data.find((w: { id: string }) => w.id === rootWorkflow.id);
+		const folderItem = response.body.data.find((w: { id: string }) => w.id === folderWorkflow.id);
+		expect(rootItem.parentFolder).toBeNull();
+		expect(folderItem.parentFolder).toEqual({ id: folder.id });
+	});
+
 	test('should return activeVersion when filtering by active=true', async () => {
 		await createWorkflowWithHistory({}, member);
 		const activeWorkflow = await createWorkflowWithTriggerAndHistory({}, member);
@@ -550,9 +888,17 @@ describe('GET /workflows', () => {
 });
 
 describe('GET /workflows/:id', () => {
-	test('should fail due to missing API Key', testWithAPIKey('get', '/workflows/2', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().get('/workflows/2');
 
-	test('should fail due to invalid API Key', testWithAPIKey('get', '/workflows/2', 'abcXYZ'));
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').get('/workflows/2');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should fail due to non-existing workflow', async () => {
 		const response = await authOwnerAgent.get('/workflows/2');
@@ -578,7 +924,14 @@ describe('GET /workflows/:id', () => {
 			name,
 			createdAt,
 			updatedAt,
+			isArchived,
+			versionId,
+			versionCounter,
+			sourceWorkflowId,
+			triggerCount,
+			meta,
 			tags,
+			shared,
 		} = response.body;
 
 		expect(id).toEqual(workflow.id);
@@ -592,6 +945,62 @@ describe('GET /workflows/:id', () => {
 		expect(settings).toEqual(workflow.settings);
 		expect(createdAt).toEqual(workflow.createdAt.toISOString());
 		expect(updatedAt).toEqual(workflow.updatedAt.toISOString());
+		expect(isArchived).toBe(false);
+		expect(versionId).toBeDefined();
+		expect(versionCounter).toEqual(workflow.versionCounter);
+		expect(sourceWorkflowId).toEqual(workflow.sourceWorkflowId);
+		expect(triggerCount).toBe(0);
+		expect(meta).toBeDefined();
+		expect(shared).toEqual([
+			expect.objectContaining({
+				role: 'workflow:owner',
+				workflowId: workflow.id,
+				project: expect.objectContaining({
+					id: memberPersonalProject.id,
+					name: memberPersonalProject.name,
+					type: memberPersonalProject.type,
+					icon: memberPersonalProject.icon,
+					description: memberPersonalProject.description,
+					customTelemetryTags: memberPersonalProject.customTelemetryTags ?? [],
+					creatorId: memberPersonalProject.creatorId,
+				}),
+			}),
+		]);
+	});
+
+	test('should retrieve workflow with its tags', async () => {
+		const tag = await createTag({ name: 'production' });
+		const workflow = await createWorkflowWithHistory({ tags: [tag] }, member);
+
+		const response = await authMemberAgent.get(`/workflows/${workflow.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.tags).toEqual([expect.objectContaining({ id: tag.id, name: tag.name })]);
+	});
+
+	test('should omit tags entirely when tags are disabled', async () => {
+		globalConfig.tags.disabled = true;
+
+		try {
+			const workflow = await createWorkflowWithHistory({}, member);
+
+			const response = await authMemberAgent.get(`/workflows/${workflow.id}`);
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body).not.toHaveProperty('tags');
+		} finally {
+			globalConfig.tags.disabled = false;
+		}
+	});
+
+	test('should retrieve non-owned workflow for custom global role with workflow:read', async () => {
+		const workflow = await createWorkflowWithHistory({}, member);
+
+		const agent = await makeGlobalRoleUserAgent(['workflow:read']);
+		const response = await agent.get(`/workflows/${workflow.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.id).toEqual(workflow.id);
 	});
 
 	test('should retrieve non-owned workflow for owner', async () => {
@@ -613,6 +1022,10 @@ describe('GET /workflows/:id', () => {
 			name,
 			createdAt,
 			updatedAt,
+			isArchived,
+			versionId,
+			triggerCount,
+			meta,
 		} = response.body;
 
 		expect(id).toEqual(workflow.id);
@@ -625,6 +1038,10 @@ describe('GET /workflows/:id', () => {
 		expect(settings).toEqual(workflow.settings);
 		expect(createdAt).toEqual(workflow.createdAt.toISOString());
 		expect(updatedAt).toEqual(workflow.updatedAt.toISOString());
+		expect(isArchived).toBe(false);
+		expect(versionId).toBeDefined();
+		expect(triggerCount).toBe(0);
+		expect(meta).toBeDefined();
 	});
 
 	test('should retrieve workflow without pinned data', async () => {
@@ -673,23 +1090,107 @@ describe('GET /workflows/:id', () => {
 		expect(response.body.activeVersion.versionId).toBe(workflow.versionId);
 		expect(response.body.activeVersion.nodes).toEqual(workflow.nodes);
 		expect(response.body.activeVersion.connections).toEqual(workflow.connections);
+		expect(response.body.activeVersion.workflowPublishHistory).toEqual([
+			expect.objectContaining({
+				workflowId: workflow.id,
+				versionId: workflow.versionId,
+				event: 'activated',
+				userId: member.id,
+			}),
+		]);
+	});
+
+	test('should return every publish event of the active version in order', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
+		await authMemberAgent.post(`/workflows/${workflow.id}/deactivate`);
+		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
+
+		const response = await authMemberAgent.get(`/workflows/${workflow.id}`);
+
+		expect(response.statusCode).toBe(200);
+		const events = (
+			response.body.activeVersion.workflowPublishHistory as Array<{ event: string }>
+		).map(({ event }) => event);
+		expect(events).toEqual(['activated', 'deactivated', 'activated']);
+	});
+
+	test('should return a null parentFolder for a workflow at the project root', async () => {
+		const workflow = await createWorkflowWithHistory({}, member);
+
+		const response = await authMemberAgent.get(`/workflows/${workflow.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.parentFolder).toBeNull();
+	});
+
+	test('should return the parent folder of a workflow in a folder', async () => {
+		const folder = await createFolder(memberPersonalProject, { name: 'Read Folder' });
+		const workflow = await createWorkflowWithHistory({ parentFolder: folder }, member);
+
+		const response = await authMemberAgent.get(`/workflows/${workflow.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(Object.keys(response.body.parentFolder).sort()).toEqual([
+			'createdAt',
+			'id',
+			'name',
+			'parentFolderId',
+			'updatedAt',
+		]);
+		expect(response.body.parentFolder).toEqual({
+			id: folder.id,
+			name: 'Read Folder',
+			parentFolderId: null,
+			createdAt: folder.createdAt.toISOString(),
+			updatedAt: folder.updatedAt.toISOString(),
+		});
+	});
+
+	test('should return the immediate parent folder for a workflow in a subfolder', async () => {
+		const outerFolder = await createFolder(memberPersonalProject, { name: 'Outer Folder' });
+		const innerFolder = await createFolder(memberPersonalProject, {
+			name: 'Inner Folder',
+			parentFolder: outerFolder,
+		});
+		const workflow = await createWorkflowWithHistory({ parentFolder: innerFolder }, member);
+
+		const response = await authMemberAgent.get(`/workflows/${workflow.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.parentFolder).toMatchObject({
+			id: innerFolder.id,
+			name: 'Inner Folder',
+			parentFolderId: outerFolder.id,
+		});
 	});
 });
 
 describe('GET /workflows/:id/:versionId', () => {
-	test(
-		'should fail due to missing API Key',
-		testWithAPIKey('get', '/workflows/123/version-123', null),
-	);
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer
+			.publicApiAgentWithoutApiKey()
+			.get('/workflows/123/version-123');
 
-	test(
-		'should fail due to invalid API Key',
-		testWithAPIKey('get', '/workflows/123/version-123', 'abcXYZ'),
-	);
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.get('/workflows/123/version-123');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should fail due to non-existing workflow', async () => {
 		const response = await authOwnerAgent.get('/workflows/non-existing/version-123');
+
 		expect(response.statusCode).toBe(404);
+		expect(response.headers.deprecation).toBe('@1787702400');
+		// The deprecated path keeps one message for both cases. Callers may match on it.
+		expect(response.body.message).toBe('Version not found');
 	});
 
 	test('should fail due to non-existing version', async () => {
@@ -725,6 +1226,9 @@ describe('GET /workflows/:id/:versionId', () => {
 
 		const response = await authOwnerAgent.get(`/workflows/${workflow.id}/${versionId}`);
 
+		expect(response.statusCode).toBe(200);
+		expect(response.headers.deprecation).toBe('@1787702400');
+
 		const body = response.body as Partial<WorkflowHistory>;
 		expect(body).toEqual({
 			workflowId: workflow.id,
@@ -733,6 +1237,7 @@ describe('GET /workflows/:id/:versionId', () => {
 			description: 'Version Description',
 			nodes: versionData.nodes,
 			connections: versionData.connections,
+			nodeGroups: [],
 			authors: 'Test User',
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			createdAt: expect.any(String),
@@ -765,10 +1270,218 @@ describe('GET /workflows/:id/:versionId', () => {
 	});
 });
 
-describe('DELETE /workflows/:id', () => {
-	test('should fail due to missing API Key', testWithAPIKey('delete', '/workflows/2', null));
+describe('GET /workflows/:workflowId/versions/:workflowVersionId', () => {
+	test('should fail due to non-existing workflow', async () => {
+		const response = await authOwnerAgent.get('/workflows/non-existing/versions/version-123');
 
-	test('should fail due to invalid API Key', testWithAPIKey('delete', '/workflows/2', 'abcXYZ'));
+		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Workflow not found');
+	});
+
+	test('should fail due to non-existing version', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		const response = await authOwnerAgent.get(
+			`/workflows/${workflow.id}/versions/non-existing-version`,
+		);
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Version not found');
+	});
+
+	test('should retrieve workflow version', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		const versionId = uuid();
+		const versionData = {
+			versionId,
+			workflowId: workflow.id,
+			nodes: [
+				{
+					id: 'node1',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					parameters: {},
+					position: [0, 0] as [number, number],
+					typeVersion: 1,
+				},
+			],
+			connections: {},
+			authors: 'Test User',
+			name: 'Version Name',
+			description: 'Version Description',
+		};
+		await createWorkflowHistoryItem(workflow.id, versionData);
+
+		const response = await authOwnerAgent.get(`/workflows/${workflow.id}/versions/${versionId}`);
+
+		expect(response.statusCode).toBe(200);
+		const body = response.body as Partial<WorkflowHistory>;
+		expect(body).toEqual({
+			workflowId: workflow.id,
+			versionId,
+			name: 'Version Name',
+			description: 'Version Description',
+			nodes: versionData.nodes,
+			connections: versionData.connections,
+			nodeGroups: [],
+			authors: 'Test User',
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			createdAt: expect.any(String),
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			updatedAt: expect.any(String),
+		});
+	});
+
+	test('should retrieve version for non-owned workflow when owner', async () => {
+		const workflow = await createWorkflow({}, member);
+
+		const versionId = uuid();
+		const versionName = 'Version Name';
+		await createWorkflowHistoryItem(workflow.id, { versionId, name: versionName });
+
+		const response = await authOwnerAgent.get(`/workflows/${workflow.id}/versions/${versionId}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.name).toBe(versionName);
+	});
+
+	test('should fail to retrieve version without read permission', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const versionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId });
+
+		const response = await authMemberAgent.get(`/workflows/${workflow.id}/versions/${versionId}`);
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should return the same body as the deprecated path', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const versionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId, name: 'Version Name' });
+
+		const deprecatedPath = await authOwnerAgent.get(`/workflows/${workflow.id}/${versionId}`);
+		const currentPath = await authOwnerAgent.get(`/workflows/${workflow.id}/versions/${versionId}`);
+
+		expect(deprecatedPath.statusCode).toBe(200);
+		expect(currentPath.statusCode).toBe(200);
+		expect(currentPath.body).toEqual(deprecatedPath.body);
+	});
+});
+
+describe('GET /workflows/:id/history', () => {
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().get('/workflows/123/history');
+
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.get('/workflows/123/history');
+
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to non-existing workflow', async () => {
+		const response = await authOwnerAgent.get('/workflows/non-existing/history');
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return empty list when workflow has no versions', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		const response = await authOwnerAgent.get(`/workflows/${workflow.id}/history`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual({ data: [], nextCursor: null });
+	});
+
+	test('should retrieve workflow version history', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const versions = await createManyWorkflowHistoryItems(workflow.id, 5);
+
+		const last = versions.sort((a, b) => b.createdAt.valueOf() - a.createdAt.valueOf())[0];
+
+		const response = await authOwnerAgent.get(`/workflows/${workflow.id}/history`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(5);
+		expect(response.body.nextCursor).toBeNull();
+		expect(response.body.data[0]).toEqual({
+			versionId: last.versionId,
+			workflowId: last.workflowId,
+			authors: last.authors,
+			name: last.name,
+			description: last.description,
+			createdAt: expect.any(String),
+			updatedAt: expect.any(String),
+		});
+	});
+
+	test('should paginate with limit and cursor', async () => {
+		const workflow = await createWorkflow({}, owner);
+		await createManyWorkflowHistoryItems(workflow.id, 5);
+
+		const firstPage = await authOwnerAgent.get(`/workflows/${workflow.id}/history`).query({
+			limit: '2',
+		});
+		expect(firstPage.statusCode).toBe(200);
+		expect(firstPage.body.data).toHaveLength(2);
+		expect(firstPage.body.nextCursor).toBeTruthy();
+
+		const secondPage = await authOwnerAgent.get(`/workflows/${workflow.id}/history`).query({
+			limit: '2',
+			cursor: firstPage.body.nextCursor,
+		});
+		expect(secondPage.statusCode).toBe(200);
+		expect(secondPage.body.data).toHaveLength(2);
+		expect(secondPage.body.data[0].versionId).not.toBe(firstPage.body.data[0].versionId);
+		expect(secondPage.body.nextCursor).toBeTruthy();
+
+		const thirdPage = await authOwnerAgent.get(`/workflows/${workflow.id}/history`).query({
+			cursor: secondPage.body.nextCursor,
+		});
+		expect(thirdPage.statusCode).toBe(200);
+		expect(thirdPage.body.data).toHaveLength(1);
+		expect(thirdPage.body.nextCursor).toBeNull();
+	});
+
+	test('should retrieve history for non-owned workflow when owner', async () => {
+		const workflow = await createWorkflow({}, member);
+		await createWorkflowHistoryItem(workflow.id, { name: 'Member Version' });
+
+		const response = await authOwnerAgent.get(`/workflows/${workflow.id}/history`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toHaveLength(1);
+		expect(response.body.data[0].name).toBe('Member Version');
+	});
+
+	test('should fail to retrieve history without read permission', async () => {
+		const workflow = await createWorkflow({}, owner);
+		await createWorkflowHistoryItem(workflow.id);
+
+		const response = await authMemberAgent.get(`/workflows/${workflow.id}/history`);
+
+		expect(response.statusCode).toBe(403);
+	});
+});
+
+describe('DELETE /workflows/:id', () => {
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().delete('/workflows/2');
+
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').delete('/workflows/2');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should fail due to non-existing workflow', async () => {
 		const response = await authOwnerAgent.delete('/workflows/2');
@@ -854,28 +1567,97 @@ describe('DELETE /workflows/:id', () => {
 
 		expect(sharedWorkflow).toBeNull();
 	});
+
+	test('should return 409 when deleting a published workflow', async () => {
+		const publishedVersionRepository = Container.get(WorkflowPublishedVersionRepository);
+		globalConfig.workflows.useWorkflowPublicationService = true;
+
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+		await workflowRepository.update(workflow.id, {
+			active: true,
+			activeVersionId: workflow.versionId,
+		});
+		await publishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
+
+		try {
+			const response = await authMemberAgent.delete(`/workflows/${workflow.id}`);
+
+			expect(response.statusCode).toBe(409);
+
+			// workflow must still exist
+			const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOneBy({
+				workflowId: workflow.id,
+			});
+			expect(sharedWorkflow).not.toBeNull();
+		} finally {
+			await publishedVersionRepository.removePublishedVersion(workflow.id);
+			globalConfig.workflows.useWorkflowPublicationService = false;
+		}
+	});
+
+	test('should not return activeVersion', async () => {
+		// Active on the legacy path only: `createActiveWorkflow` also records a published
+		// version, whose RESTRICT FK would block the delete.
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+		await workflowRepository.update(workflow.id, {
+			active: true,
+			activeVersionId: workflow.versionId,
+		});
+
+		const response = await authMemberAgent.delete(`/workflows/${workflow.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).not.toHaveProperty('activeVersion');
+		expect(response.body.activeVersionId).toBe(workflow.versionId);
+	});
+
+	test('should report the calling client on the workflow-deleted event', async () => {
+		const workflow = await createWorkflowWithHistory({}, member);
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
+
+		try {
+			await authMemberAgent
+				.delete(`/workflows/${workflow.id}`)
+				.set(N8N_CLIENT_HEADER, N8N_CLIENT_EDITOR_UI);
+
+			expect(emit).toHaveBeenCalledWith(
+				'workflow-deleted',
+				expect.objectContaining({ workflowId: workflow.id, publicApi: 'editor_ui' }),
+			);
+		} finally {
+			emit.mockRestore();
+		}
+	});
 });
 
-describe('POST /workflows/:id/activate', () => {
-	test('should fail due to missing API Key', testWithAPIKey('post', '/workflows/2/activate', null));
+// `/publish` is a canonical alias of `/activate` sharing the exact same handler
+describe.each(['activate', 'publish'])('POST /workflows/:id/%s', (action) => {
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().post(`/workflows/2/${action}`);
 
-	test(
-		'should fail due to invalid API Key',
-		testWithAPIKey('post', '/workflows/2/activate', 'abcXYZ'),
-	);
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.post(`/workflows/2/${action}`);
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should fail due to non-existing workflow', async () => {
-		const response = await authOwnerAgent.post('/workflows/2/activate');
+		const response = await authOwnerAgent.post(`/workflows/2/${action}`);
 		expect(response.statusCode).toBe(404);
 	});
 
-	test('should fail due to trying to activate a workflow without any nodes', async () => {
+	test('should fail when the workflow has no nodes', async () => {
 		const workflow = await createWorkflowWithHistory({ nodes: [] }, owner);
-		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/activate`);
+		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/${action}`);
 		expect(response.statusCode).toBe(400);
 	});
 
-	test('should fail due to trying to activate a workflow without a trigger', async () => {
+	test('should fail when the workflow has no trigger', async () => {
 		const workflow = await createWorkflowWithHistory(
 			{
 				nodes: [
@@ -891,16 +1673,22 @@ describe('POST /workflows/:id/activate', () => {
 			},
 			owner,
 		);
-		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/activate`);
+		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/${action}`);
 		expect(response.statusCode).toBe(400);
 	});
 
 	test('should set workflow as active', async () => {
 		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
 
-		const response = await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/${action}`);
 
 		expect(response.statusCode).toBe(200);
+		expect(emit).toHaveBeenCalledWith(
+			'workflow-activated',
+			expect.objectContaining({ workflowId: workflow.id, publicApi: 'other' }),
+		);
+		emit.mockRestore();
 
 		const {
 			id,
@@ -941,10 +1729,19 @@ describe('POST /workflows/:id/activate', () => {
 		expect(await workflowRepository.isActive(workflow.id)).toBe(true);
 	});
 
-	test('should set activeVersionId when activating workflow', async () => {
+	test('should not return the shared field', async () => {
 		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
 
-		const response = await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/${action}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).not.toHaveProperty('shared');
+	});
+
+	test('should set activeVersionId', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/${action}`);
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.active).toBe(true);
@@ -967,7 +1764,7 @@ describe('POST /workflows/:id/activate', () => {
 	test('should set non-owned workflow as active when owner', async () => {
 		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
 
-		const response = await authMemberAgent.post(`/workflows/${workflow.id}/activate`).expect(200);
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/${action}`).expect(200);
 
 		const {
 			id,
@@ -1030,7 +1827,7 @@ describe('POST /workflows/:id/activate', () => {
 
 		const workflow = await createWorkflowWithTriggerAndHistory({}, teamProject);
 
-		const response = await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/${action}`);
 
 		expect(response.statusCode).toBe(403);
 
@@ -1040,29 +1837,34 @@ describe('POST /workflows/:id/activate', () => {
 	});
 });
 
-describe('POST /workflows/:id/deactivate', () => {
-	test(
-		'should fail due to missing API Key',
-		testWithAPIKey('post', '/workflows/2/deactivate', null),
-	);
+// `/unpublish` is a canonical alias of `/deactivate` sharing the exact same handler
+describe.each(['deactivate', 'unpublish'])('POST /workflows/:id/%s', (action) => {
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().post(`/workflows/2/${action}`);
 
-	test(
-		'should fail due to invalid API Key',
-		testWithAPIKey('post', '/workflows/2/deactivate', 'abcXYZ'),
-	);
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.post(`/workflows/2/${action}`);
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should fail due to non-existing workflow', async () => {
-		const response = await authOwnerAgent.post('/workflows/2/deactivate');
+		const response = await authOwnerAgent.post(`/workflows/2/${action}`);
 		expect(response.statusCode).toBe(404);
 	});
 
-	test('should deactivate workflow', async () => {
+	test(`should ${action} workflow`, async () => {
 		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
 
 		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
 
 		const workflowDeactivationResponse = await authMemberAgent.post(
-			`/workflows/${workflow.id}/deactivate`,
+			`/workflows/${workflow.id}/${action}`,
 		);
 
 		const {
@@ -1117,10 +1919,16 @@ describe('POST /workflows/:id/deactivate', () => {
 		});
 
 		expect(sharedWorkflow?.workflow.activeVersionId).toBe(workflow.versionId);
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
 
-		const deactivateResponse = await authMemberAgent.post(`/workflows/${workflow.id}/deactivate`);
+		const deactivateResponse = await authMemberAgent.post(`/workflows/${workflow.id}/${action}`);
 
 		expect(deactivateResponse.statusCode).toBe(200);
+		expect(emit).toHaveBeenCalledWith(
+			'workflow-deactivated',
+			expect.objectContaining({ workflowId: workflow.id, publicApi: 'other' }),
+		);
+		emit.mockRestore();
 		expect(deactivateResponse.body.active).toBe(false);
 		expect(deactivateResponse.body.activeVersionId).toBe(null);
 
@@ -1133,6 +1941,21 @@ describe('POST /workflows/:id/deactivate', () => {
 		});
 
 		expect(sharedWorkflow?.workflow.activeVersionId).toBeNull();
+	});
+
+	test('should return the shared field', async () => {
+		const workflow = await createActiveWorkflow({}, member);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/${action}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.shared).toEqual([
+			expect.objectContaining({
+				workflowId: workflow.id,
+				projectId: memberPersonalProject.id,
+				project: expect.objectContaining({ id: memberPersonalProject.id }),
+			}),
+		]);
 	});
 
 	test('should return 403 when user lacks workflow:publish permission', async () => {
@@ -1148,7 +1971,7 @@ describe('POST /workflows/:id/deactivate', () => {
 
 		const workflow = await createActiveWorkflow({}, teamProject);
 
-		const response = await authMemberAgent.post(`/workflows/${workflow.id}/deactivate`);
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/${action}`);
 
 		expect(response.statusCode).toBe(403);
 
@@ -1163,7 +1986,7 @@ describe('POST /workflows/:id/deactivate', () => {
 		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
 
 		const workflowDeactivationResponse = await authMemberAgent.post(
-			`/workflows/${workflow.id}/deactivate`,
+			`/workflows/${workflow.id}/${action}`,
 		);
 
 		const {
@@ -1214,18 +2037,239 @@ describe('POST /workflows/:id/deactivate', () => {
 	});
 });
 
-describe('POST /workflows', () => {
-	test('should fail due to missing API Key', testWithAPIKey('post', '/workflows', null));
+describe('Deprecation header on legacy paths', () => {
+	// RFC 9745 structured-field Date: "@" followed by unix seconds. Assert the contract, not a
+	// specific date, so the test doesn't couple to the (release-owned) deprecation date.
+	const rfc9745Date = /^@\d+$/;
 
-	test('should fail due to invalid API Key', testWithAPIKey('post', '/workflows', 'abcXYZ'));
+	test('should return a Deprecation header on activate', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.headers.deprecation).toMatch(rfc9745Date);
+	});
+
+	test('should return a Deprecation header on deactivate', async () => {
+		const workflow = await createActiveWorkflow({}, member);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/deactivate`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.headers.deprecation).toMatch(rfc9745Date);
+	});
+
+	test('should not return a Deprecation header on publish', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/publish`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.headers.deprecation).toBeUndefined();
+	});
+
+	test('should not return a Deprecation header on unpublish', async () => {
+		const workflow = await createActiveWorkflow({}, member);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/unpublish`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.headers.deprecation).toBeUndefined();
+	});
+
+	test('should return a Deprecation header on the two-variable version path', async () => {
+		const workflow = await createWorkflow({}, member);
+		const versionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId });
+
+		const response = await authMemberAgent.get(`/workflows/${workflow.id}/${versionId}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.headers.deprecation).toMatch(rfc9745Date);
+	});
+
+	test('should not return a Deprecation header on the versions path', async () => {
+		const workflow = await createWorkflow({}, member);
+		const versionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId });
+
+		const response = await authMemberAgent.get(`/workflows/${workflow.id}/versions/${versionId}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.headers.deprecation).toBeUndefined();
+	});
+});
+
+describe('POST /workflows/:id/archive', () => {
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().post('/workflows/2/archive');
+
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.post('/workflows/2/archive');
+
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should return 404 when workflow does not exist', async () => {
+		const response = await authOwnerAgent.post(
+			'/workflows/00000000-0000-0000-0000-000000000000/archive',
+		);
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should archive workflow and return 200', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/archive`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.isArchived).toBe(true);
+		expect(response.body.id).toBe(workflow.id);
+		expect(response.body.active).toBe(false);
+		expect(response.body.activeVersionId).toBeNull();
+		expect(response.body.activeVersion).toBeNull();
+	});
+
+	test('should return 200 when already archived (idempotent)', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		await authMemberAgent.post(`/workflows/${workflow.id}/archive`);
+
+		const second = await authMemberAgent.post(`/workflows/${workflow.id}/archive`);
+		expect(second.statusCode).toBe(200);
+		expect(second.body.isArchived).toBe(true);
+	});
+
+	test('should return 403 when user lacks workflow:delete permission', async () => {
+		const customRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update'], {
+			roleType: 'project',
+			displayName: 'Custom Workflow Editor No Delete',
+			description: 'Can read and update workflows but not delete or archive them',
+		});
+
+		const teamProject = await createTeamProject('Test Project', owner);
+		await linkUserToProject(member, teamProject, customRole.slug);
+
+		const workflow = await createWorkflowWithTriggerAndHistory({}, teamProject);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/archive`);
+
+		expect(response.statusCode).toBe(403);
+
+		const workflowAfter = await workflowRepository.findOne({ where: { id: workflow.id } });
+		expect(workflowAfter?.isArchived).toBe(false);
+	});
+});
+
+describe('POST /workflows/:id/unarchive', () => {
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().post('/workflows/2/unarchive');
+
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.post('/workflows/2/unarchive');
+
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should return 404 when workflow does not exist', async () => {
+		const response = await authOwnerAgent.post(
+			'/workflows/00000000-0000-0000-0000-000000000000/unarchive',
+		);
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 400 when workflow is not archived', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/unarchive`);
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should return 403 when user lacks workflow:delete permission', async () => {
+		const customRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update'], {
+			roleType: 'project',
+			displayName: 'Custom Workflow Editor No Delete',
+			description: 'Can read and update workflows but not delete or archive them',
+		});
+
+		const teamProject = await createTeamProject('Test Project Unarchive', owner);
+		await linkUserToProject(member, teamProject, customRole.slug);
+
+		const workflow = await createWorkflowWithTriggerAndHistory({}, teamProject);
+
+		await authOwnerAgent.post(`/workflows/${workflow.id}/archive`);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/unarchive`);
+
+		expect(response.statusCode).toBe(403);
+
+		const workflowAfter = await workflowRepository.findOne({ where: { id: workflow.id } });
+		expect(workflowAfter?.isArchived).toBe(true);
+	});
+
+	test('should unarchive workflow and return 200', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		await authMemberAgent.post(`/workflows/${workflow.id}/archive`);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/unarchive`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.isArchived).toBe(false);
+		expect(response.body.id).toBe(workflow.id);
+		expect(response.body.activeVersion).toBeNull();
+	});
+});
+
+describe('POST /workflows', () => {
+	const triggerNode = {
+		id: 'uuid-1234',
+		parameters: {},
+		name: 'Start',
+		type: 'n8n-nodes-base.manualTrigger',
+		typeVersion: 1,
+		position: [240, 300],
+	} as const;
+
+	const mockPostWorkflowPayload = (name = 'testing') => ({
+		name,
+		nodes: [triggerNode],
+		connections: {},
+		settings: { executionOrder: 'v1' },
+	});
+
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().post('/workflows');
+
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').post('/workflows');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should fail due to invalid body', async () => {
 		const response = await authOwnerAgent.post('/workflows').send({});
 		expect(response.statusCode).toBe(400);
 	});
 
-	test('should create workflow', async () => {
-		const payload = {
+	test('should reject workflow with pinData exceeding size limit', async () => {
+		const largeValue = 'x'.repeat(1024 * 1024 * 12 + 1); // > 12 MB
+		const response = await authOwnerAgent.post('/workflows').send({
 			name: 'testing',
 			nodes: [
 				{
@@ -1238,6 +2282,40 @@ describe('POST /workflows', () => {
 				},
 			],
 			connections: {},
+			settings: {},
+			pinData: { Start: [{ json: { data: largeValue } }] },
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('Pinned data exceeds');
+	});
+
+	test('should create workflow', async () => {
+		Container.get(EngineConfig).defaultType = 'v1';
+		const payload = {
+			...mockPostWorkflowPayload(),
+			nodes: [
+				triggerNode,
+				{
+					id: 'uuid-5678',
+					parameters: {},
+					name: 'Tagged NoOp',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [460, 300],
+					customTelemetryTags: {
+						tag: [
+							{ key: 'node-env', value: 'production' },
+							{ key: 'node-team', value: 'engineering' },
+						],
+					},
+				},
+			],
+			connections: {
+				Start: {
+					main: [[{ node: 'Tagged NoOp', type: 'main', index: 0 }]],
+				},
+			},
 			staticData: null,
 			settings: {
 				saveExecutionProgress: true,
@@ -1249,6 +2327,10 @@ describe('POST /workflows', () => {
 				executionOrder: 'v1',
 				callerPolicy: 'workflowsFromSameOwner',
 				availableInMCP: false,
+				customTelemetryTags: [
+					{ key: 'env', value: 'production' },
+					{ key: 'category', value: 'data-cleaning' },
+				],
 			},
 		};
 
@@ -1291,23 +2373,125 @@ describe('POST /workflows', () => {
 
 		expect(sharedWorkflow?.workflow.name).toBe(name);
 		expect(sharedWorkflow?.workflow.createdAt.toISOString()).toBe(createdAt);
+		expect(sharedWorkflow?.workflow.nodes).toEqual(payload.nodes);
+		expect(sharedWorkflow?.workflow.settings).toEqual(payload.settings);
 		expect(sharedWorkflow?.role).toEqual('workflow:owner');
+	});
+
+	test('should create a workflow with a description', async () => {
+		const description = 'What this workflow does';
+		const response = await authMemberAgent.post('/workflows').send({
+			...mockPostWorkflowPayload(),
+			description,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.description).toBe(description);
+		const stored = await workflowRepository.findOneBy({ id: response.body.id });
+		expect(stored?.description).toBe(description);
+	});
+
+	test.each([
+		{ key: 'binaryMode', value: 'combined' },
+		{ key: 'engineType', value: 'v2' },
+		{ key: 'credentialResolverId', value: 'some-resolver-id' },
+	] as const)('should ignore $key when creating a workflow', async ({ key, value }) => {
+		Container.get(EngineConfig).defaultType = 'v1';
+		const payload = {
+			...mockPostWorkflowPayload(),
+			settings: {
+				executionOrder: 'v1',
+				[key]: value,
+			},
+		};
+
+		const response = await authOwnerAgent.post('/workflows').send(payload);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.settings[key]).toBeUndefined();
+
+		const workflow = await workflowRepository.findOneBy({ id: response.body.id });
+
+		expect(workflow?.settings?.[key]).toBeUndefined();
+	});
+
+	test('should create workflow with node groups', async () => {
+		const payload = {
+			name: 'grouped',
+			nodes: [
+				triggerNode,
+				{
+					id: 'uuid-5678',
+					parameters: {},
+					name: 'Step A',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [460, 300],
+				},
+				{
+					id: 'uuid-9012',
+					parameters: {},
+					name: 'Step B',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [680, 300],
+				},
+			],
+			connections: {
+				Start: { main: [[{ node: 'Step A', type: 'main', index: 0 }]] },
+				'Step A': { main: [[{ node: 'Step B', type: 'main', index: 0 }]] },
+			},
+			settings: { executionOrder: 'v1' },
+			nodeGroups: [{ id: 'group-1', name: 'Processing', nodeIds: ['uuid-5678', 'uuid-9012'] }],
+		};
+
+		const response = await authOwnerAgent.post('/workflows').send(payload);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.nodeGroups).toEqual(payload.nodeGroups);
+	});
+
+	test('should reject workflow with a node group referencing a missing node', async () => {
+		const payload = {
+			...mockPostWorkflowPayload('bad-group'),
+			nodeGroups: [{ id: 'group-1', name: 'Ghost', nodeIds: ['does-not-exist'] }],
+		};
+
+		const response = await authOwnerAgent.post('/workflows').send(payload);
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('does not exist in the workflow');
+	});
+
+	test('should assign webhookId to webhook nodes created via public API', async () => {
+		const payload = {
+			name: 'webhook-test',
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: { path: 'test-hook', httpMethod: 'POST' },
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 2,
+					position: [250, 300],
+				},
+			],
+			connections: {},
+			settings: {
+				executionOrder: 'v1',
+			},
+		};
+
+		const response = await authOwnerAgent.post('/workflows').send(payload);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.nodes[0].webhookId).toBeDefined();
+		expect(typeof response.body.nodes[0].webhookId).toBe('string');
 	});
 
 	test('should always create workflow history version', async () => {
 		const payload = {
-			name: 'testing',
-			nodes: [
-				{
-					id: 'uuid-1234',
-					parameters: {},
-					name: 'Start',
-					type: 'n8n-nodes-base.manualTrigger',
-					typeVersion: 1,
-					position: [240, 300],
-				},
-			],
-			connections: {},
+			...mockPostWorkflowPayload(),
 			staticData: null,
 			settings: {
 				saveExecutionProgress: true,
@@ -1316,6 +2500,7 @@ describe('POST /workflows', () => {
 				saveDataSuccessExecution: 'all',
 				executionTimeout: 3600,
 				timezone: 'America/New_York',
+				timeSavedMode: 'dynamic',
 			},
 		};
 
@@ -1337,6 +2522,63 @@ describe('POST /workflows', () => {
 		expect(historyVersion).not.toBeNull();
 		expect(historyVersion!.connections).toEqual(payload.connections);
 		expect(historyVersion!.nodes).toEqual(payload.nodes);
+	});
+
+	test('should create workflow in a team project when projectId is provided', async () => {
+		const teamProject = await createTeamProject(undefined, member);
+
+		const payload = mockPostWorkflowPayload('testing-in-project');
+
+		const response = await authMemberAgent.post('/workflows').send({
+			...payload,
+			projectId: teamProject.id,
+		});
+
+		expect(response.statusCode).toBe(200);
+
+		const { name, createdAt } = response.body;
+
+		expect(name).toBe(payload.name);
+		expect(createdAt).toBeDefined();
+
+		const workflowInProject = await Container.get(SharedWorkflowRepository).findOne({
+			where: {
+				projectId: teamProject.id,
+				workflowId: response.body.id,
+			},
+			relations: ['workflow'],
+		});
+
+		expect(workflowInProject?.workflow.name).toBe(payload.name);
+		expect(workflowInProject?.workflow.createdAt.toISOString()).toBe(createdAt);
+		expect(workflowInProject?.role).toEqual('workflow:owner');
+	});
+
+	test('should return 404 when projectId does not exist', async () => {
+		const payload = mockPostWorkflowPayload();
+
+		const response = await authMemberAgent.post('/workflows').send({
+			...payload,
+			projectId: 'non-existing-id',
+		});
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 403 when user has no access to the project', async () => {
+		const teamProject = await createTeamProject(undefined, owner);
+
+		const payload = mockPostWorkflowPayload();
+
+		const response = await authMemberAgent.post('/workflows').send({
+			...payload,
+			projectId: teamProject.id,
+		});
+
+		expect(response.statusCode).toBe(403);
+		expect(response.body).toMatchObject({
+			message: "You don't have the permissions to save the workflow in this project.",
+		});
 	});
 
 	test('should not add a starting node if the payload has no starting nodes', async () => {
@@ -1367,12 +2609,429 @@ describe('POST /workflows', () => {
 
 		expect(found).toBeUndefined();
 	});
+
+	describe('parentFolderId placement', () => {
+		test('should place the new workflow in the given folder', async () => {
+			const folder = await createFolder(memberPersonalProject, { name: 'Target Folder' });
+
+			const response = await authMemberAgent
+				.post('/workflows')
+				.send({ ...mockPostWorkflowPayload(), parentFolderId: folder.id });
+
+			expect(response.statusCode).toBe(200);
+			expect(await getStoredParentFolderId(response.body.id)).toBe(folder.id);
+		});
+
+		test('should default to the project root when parentFolderId is omitted', async () => {
+			const response = await authMemberAgent.post('/workflows').send(mockPostWorkflowPayload());
+
+			expect(response.statusCode).toBe(200);
+			expect(await getStoredParentFolderId(response.body.id)).toBeNull();
+		});
+
+		test('should place the new workflow at the project root when parentFolderId is null', async () => {
+			const response = await authMemberAgent
+				.post('/workflows')
+				.send({ ...mockPostWorkflowPayload(), parentFolderId: null });
+
+			expect(response.statusCode).toBe(200);
+			expect(await getStoredParentFolderId(response.body.id)).toBeNull();
+		});
+
+		test('should reject a non-existent parentFolderId', async () => {
+			const name = 'reject-nonexistent-no-orphan';
+
+			const response = await authMemberAgent
+				.post('/workflows')
+				.send({ ...mockPostWorkflowPayload(name), parentFolderId: 'does-not-exist' });
+
+			expect(response.statusCode).toBe(404);
+			// The folder is validated before the workflow is persisted, so nothing is created.
+			expect(await workflowRepository.findOneBy({ name })).toBeNull();
+		});
+
+		test('should reject a parentFolderId from another project', async () => {
+			const name = 'reject-cross-project-no-orphan';
+			const otherProject = await createTeamProject();
+			const otherFolder = await createFolder(otherProject, { name: 'Other Project Folder' });
+
+			const response = await authMemberAgent
+				.post('/workflows')
+				.send({ ...mockPostWorkflowPayload(name), parentFolderId: otherFolder.id });
+
+			expect(response.statusCode).toBe(404);
+			expect(await workflowRepository.findOneBy({ name })).toBeNull();
+		});
+	});
+
+	describe('response contract', () => {
+		const expectedResponseKeys = [
+			'active',
+			'activeVersion',
+			'activeVersionId',
+			'connections',
+			'createdAt',
+			'description',
+			'id',
+			'isArchived',
+			'meta',
+			'name',
+			'nodeGroups',
+			'nodes',
+			'parentFolder',
+			'pinData',
+			'settings',
+			'shared',
+			'sourceWorkflowId',
+			'staticData',
+			'tags',
+			'triggerCount',
+			'updatedAt',
+			'versionCounter',
+			'versionId',
+		];
+
+		test('should return exactly the documented set of workflow fields', async () => {
+			const response = await authMemberAgent.post('/workflows').send(mockPostWorkflowPayload());
+
+			expect(response.statusCode).toBe(200);
+			expect(Object.keys(response.body).sort()).toEqual(expectedResponseKeys);
+			expect(response.body.parentFolder).toBeNull();
+			expect(response.body.tags).toEqual([]);
+			expect(response.body.activeVersion).toBeNull();
+			expect(response.body.shared).toHaveLength(1);
+			expect(Object.keys(response.body.shared[0]).sort()).toEqual([
+				'createdAt',
+				'project',
+				'projectId',
+				'role',
+				'updatedAt',
+				'workflowId',
+			]);
+			expect(Object.keys(response.body.shared[0].project).sort()).toEqual([
+				'createdAt',
+				'creatorId',
+				'customTelemetryTags',
+				'description',
+				'icon',
+				'id',
+				'name',
+				'type',
+				'updatedAt',
+			]);
+		});
+
+		test('should return the parent folder when parentFolderId is given', async () => {
+			const folder = await createFolder(memberPersonalProject, { name: 'Response Folder' });
+
+			const response = await authMemberAgent
+				.post('/workflows')
+				.send({ ...mockPostWorkflowPayload(), parentFolderId: folder.id });
+
+			expect(response.statusCode).toBe(200);
+			expect(Object.keys(response.body.parentFolder).sort()).toEqual([
+				'createdAt',
+				'id',
+				'name',
+				'parentFolderId',
+				'updatedAt',
+			]);
+			expect(response.body.parentFolder).toMatchObject({
+				id: folder.id,
+				name: 'Response Folder',
+				parentFolderId: null,
+			});
+		});
+	});
+
+	describe('request contract', () => {
+		test.each([
+			{ key: 'id', value: '2tUt1wbLX592XDdX' },
+			{ key: 'active', value: false },
+			{ key: 'createdAt', value: '2026-01-01T00:00:00.000Z' },
+			{ key: 'updatedAt', value: '2026-01-01T00:00:00.000Z' },
+			{ key: 'isArchived', value: false },
+			{ key: 'versionId', value: 'a-version-id' },
+			{ key: 'triggerCount', value: 0 },
+			{ key: 'meta', value: {} },
+			{ key: 'tags', value: [] },
+			{ key: 'activeVersion', value: null },
+		] as const)('should reject the read-only field $key', async ({ key, value }) => {
+			const response = await authMemberAgent
+				.post('/workflows')
+				.send({ ...mockPostWorkflowPayload(), [key]: value });
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.message).toBe(`request/body/${key} is read-only`);
+		});
+
+		test('should accept and ignore a supplied shared list', async () => {
+			const response = await authMemberAgent
+				.post('/workflows')
+				.send({ ...mockPostWorkflowPayload(), shared: [] });
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.shared).toHaveLength(1);
+			expect(response.body.shared[0].role).toBe('workflow:owner');
+		});
+
+		test('should reject a read-only field nested in a node', async () => {
+			const response = await authMemberAgent.post('/workflows').send({
+				...mockPostWorkflowPayload(),
+				nodes: [{ ...triggerNode, createdAt: '2026-01-01T00:00:00.000Z' }],
+			});
+
+			expect(response.statusCode).toBe(400);
+		});
+
+		test('should reject an unknown top-level field', async () => {
+			const response = await authMemberAgent
+				.post('/workflows')
+				.send({ ...mockPostWorkflowPayload(), notAWorkflowField: 'x' });
+
+			expect(response.statusCode).toBe(400);
+		});
+
+		test('should reject an unknown settings key', async () => {
+			const response = await authMemberAgent.post('/workflows').send({
+				...mockPostWorkflowPayload(),
+				settings: { executionOrder: 'v1', notASetting: true },
+			});
+
+			expect(response.statusCode).toBe(400);
+		});
+
+		test('should reject an unknown node key', async () => {
+			const response = await authMemberAgent.post('/workflows').send({
+				...mockPostWorkflowPayload(),
+				nodes: [{ ...triggerNode, notANodeField: 'x' }],
+			});
+
+			expect(response.statusCode).toBe(400);
+		});
+
+		test('should accept staticData as a JSON string', async () => {
+			const response = await authMemberAgent
+				.post('/workflows')
+				.send({ ...mockPostWorkflowPayload(), staticData: '{"lastId":1}' });
+
+			expect(response.statusCode).toBe(200);
+		});
+
+		test('should reject staticData as a string that is not JSON', async () => {
+			const response = await authMemberAgent
+				.post('/workflows')
+				.send({ ...mockPostWorkflowPayload(), staticData: 'not json' });
+
+			expect(response.statusCode).toBe(400);
+		});
+
+		test('should reject a node group description over the length limit', async () => {
+			const response = await authMemberAgent.post('/workflows').send({
+				...mockPostWorkflowPayload(),
+				nodeGroups: [
+					{
+						id: 'group-1',
+						name: 'Too long',
+						nodeIds: [triggerNode.id],
+						description: 'x'.repeat(156),
+					},
+				],
+			});
+
+			expect(response.statusCode).toBe(400);
+		});
+	});
+});
+
+describe('POST /workflows redaction floor enforcement', () => {
+	const redactionTrigger = {
+		id: 'uuid-redaction',
+		parameters: {},
+		name: 'Start',
+		type: 'n8n-nodes-base.manualTrigger',
+		typeVersion: 1,
+		position: [240, 300],
+	} as const;
+
+	const postWorkflow = async (settings: Record<string, unknown>) =>
+		await authOwnerAgent.post('/workflows').send({
+			name: 'redaction-floor',
+			nodes: [redactionTrigger],
+			connections: {},
+			settings,
+		});
+
+	beforeEach(() => {
+		// Floor = Production, with data redaction licensed so accepted policies are
+		// persisted/seeded rather than stripped on save. The spy survives the global
+		// restoreMocks reset by being set per-test.
+		license.enable('feat:dataRedaction');
+		vi.spyOn(Container.get(InstanceRedactionEnforcementService), 'get').mockResolvedValue(
+			'production',
+		);
+	});
+
+	const savedRedactionPolicy = async (workflowId: string) =>
+		(await workflowRepository.findOneBy({ id: workflowId }))?.settings?.redactionPolicy;
+
+	test('rejects a workflow whose redaction policy is weaker than the floor with 422', async () => {
+		const response = await postWorkflow({ redactionPolicy: 'none' });
+
+		expect(response.statusCode).toBe(422);
+		expect(response.body.message).toBe(
+			'Workflow redaction policy cannot be weaker than the instance floor.',
+		);
+
+		await expect(workflowRepository.countBy({ name: 'redaction-floor' })).resolves.toBe(0);
+	});
+
+	test('seeds the floor policy when the redaction policy is omitted', async () => {
+		const response = await postWorkflow({ executionOrder: 'v1' });
+
+		expect(response.statusCode).toBe(200);
+		expect(await savedRedactionPolicy(response.body.id)).toBe('non-manual');
+	});
+
+	test('persists a redaction policy that exceeds the floor', async () => {
+		const response = await postWorkflow({ redactionPolicy: 'all' });
+
+		expect(response.statusCode).toBe(200);
+		expect(await savedRedactionPolicy(response.body.id)).toBe('all');
+	});
+
+	test('rejects manual-only, which does not redact production, with 422', async () => {
+		const response = await postWorkflow({ redactionPolicy: 'manual-only' });
+
+		expect(response.statusCode).toBe(422);
+	});
+
+	test('persists non-manual, which exactly meets the production floor', async () => {
+		const response = await postWorkflow({ redactionPolicy: 'non-manual' });
+
+		expect(response.statusCode).toBe(200);
+		expect(await savedRedactionPolicy(response.body.id)).toBe('non-manual');
+	});
+
+	test('persists and returns the setting that stops redacting calling executions', async () => {
+		const response = await postWorkflow({ redactionPolicy: 'all', redactCallerExecutions: false });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.settings.redactCallerExecutions).toBe(false);
+		const saved = await workflowRepository.findOneBy({ id: response.body.id });
+		expect(saved?.settings?.redactCallerExecutions).toBe(false);
+	});
+
+	test('reports the floor violation even when the payload is also otherwise invalid', async () => {
+		const response = await authOwnerAgent.post('/workflows').send({
+			name: 'redaction-floor-precedence',
+			nodes: [redactionTrigger],
+			connections: {},
+			settings: { redactionPolicy: 'none' },
+			nodeGroups: [{ id: 'group-1', name: 'Ghost', nodeIds: ['does-not-exist'] }],
+		});
+
+		expect(response.statusCode).toBe(422);
+	});
+});
+
+describe('PUT /workflows/:id redaction floor enforcement', () => {
+	const redactionTrigger = {
+		id: 'uuid-redaction',
+		parameters: {},
+		name: 'Start',
+		type: 'n8n-nodes-base.manualTrigger',
+		typeVersion: 1,
+		position: [240, 300],
+	} as const;
+
+	const putWorkflow = async (id: string, settings: Record<string, unknown>) =>
+		await authOwnerAgent.put(`/workflows/${id}`).send({
+			name: 'redaction-floor',
+			nodes: [redactionTrigger],
+			connections: {},
+			staticData: null,
+			settings,
+		});
+
+	beforeEach(() => {
+		license.enable('feat:dataRedaction');
+		vi.spyOn(Container.get(InstanceRedactionEnforcementService), 'get').mockResolvedValue(
+			'production',
+		);
+	});
+
+	const savedRedactionPolicy = async (workflowId: string) =>
+		(await workflowRepository.findOneBy({ id: workflowId }))?.settings?.redactionPolicy;
+
+	// Parity with POST: the update endpoint already enforced the floor; these prove the
+	// two endpoints reject and accept the same payloads (the ticket's consistency claim).
+	test('rejects a sub-floor redaction policy with 422', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const response = await putWorkflow(workflow.id, { redactionPolicy: 'none' });
+
+		expect(response.statusCode).toBe(422);
+		expect(response.body.message).toBe(
+			'Workflow redaction policy cannot be weaker than the instance floor.',
+		);
+		expect(await savedRedactionPolicy(workflow.id)).toBeUndefined();
+	});
+
+	test('rejects manual-only, which does not redact production, with 422', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const response = await putWorkflow(workflow.id, { redactionPolicy: 'manual-only' });
+
+		expect(response.statusCode).toBe(422);
+	});
+
+	test('does not seed a redaction policy when the update omits it', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const response = await putWorkflow(workflow.id, { executionOrder: 'v1' });
+
+		expect(response.statusCode).toBe(200);
+		// Unlike create, update never seeds — an absent field leaves the policy unset.
+		expect(await savedRedactionPolicy(workflow.id)).toBeUndefined();
+	});
+
+	test('persists a redaction policy that meets the floor', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const response = await putWorkflow(workflow.id, { redactionPolicy: 'all' });
+
+		expect(response.statusCode).toBe(200);
+		expect(await savedRedactionPolicy(workflow.id)).toBe('all');
+	});
+
+	test('persists and returns the setting that stops redacting calling executions', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const response = await putWorkflow(workflow.id, {
+			redactionPolicy: 'all',
+			redactCallerExecutions: false,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.settings.redactCallerExecutions).toBe(false);
+		const saved = await workflowRepository.findOneBy({ id: workflow.id });
+		expect(saved?.settings?.redactCallerExecutions).toBe(false);
+	});
 });
 
 describe('PUT /workflows/:id', () => {
-	test('should fail due to missing API Key', testWithAPIKey('put', '/workflows/1', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().put('/workflows/1');
 
-	test('should fail due to invalid API Key', testWithAPIKey('put', '/workflows/1', 'abcXYZ'));
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').put('/workflows/1');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should fail due to non-existing workflow', async () => {
 		const response = await authOwnerAgent.put('/workflows/1').send({
@@ -1429,6 +3088,103 @@ describe('PUT /workflows/:id', () => {
 		expect(response.statusCode).toBe(400);
 	});
 
+	test('should reject a body carrying an unknown field', async () => {
+		const workflow = await createWorkflowWithHistory({}, member);
+
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send({
+			name: 'testing',
+			nodes: [],
+			connections: {},
+			settings: {},
+			unexpectedField: 'nope',
+		});
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should reject projectId, which only create accepts', async () => {
+		const workflow = await createWorkflowWithHistory({}, member);
+
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send({
+			name: 'testing',
+			nodes: [],
+			connections: {},
+			settings: {},
+			projectId: memberPersonalProject.id,
+		});
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should update the description', async () => {
+		const workflow = await createWorkflowWithHistory({}, member);
+
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send({
+			name: workflow.name,
+			description: 'What this workflow does',
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			settings: workflow.settings,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.description).toBe('What this workflow does');
+
+		const stored = await workflowRepository.findOneBy({ id: workflow.id });
+		expect(stored?.description).toBe('What this workflow does');
+	});
+
+	test('should reject workflow update with pinData exceeding size limit', async () => {
+		const workflow = await createWorkflowWithHistory({}, member);
+		const largeValue = 'x'.repeat(1024 * 1024 * 12 + 1); // > 12 MB
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send({
+			name: 'testing',
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+			],
+			connections: {},
+			settings: {},
+			pinData: { Start: [{ json: { data: largeValue } }] },
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('Pinned data exceeds');
+	});
+
+	test('should allow update without pinData on workflow that has oversized pinData', async () => {
+		const largeValue = 'x'.repeat(1024 * 1024 * 12 + 1);
+		const workflow = await createWorkflowWithHistory(
+			{ pinData: { Start: [{ json: { data: largeValue } }] } },
+			member,
+		);
+
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send({
+			name: 'updated name',
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+			],
+			connections: {},
+			settings: {},
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.name).toBe('updated name');
+	});
+
 	test('should update workflow', async () => {
 		const workflow = await createWorkflowWithHistory({}, member);
 		const payload = {
@@ -1443,12 +3199,18 @@ describe('PUT /workflows/:id', () => {
 					position: [240, 300],
 				},
 				{
-					id: 'uuid-1234',
+					id: 'uuid-5678',
 					parameters: {},
 					name: 'Cron',
 					type: 'n8n-nodes-base.cron',
 					typeVersion: 1,
 					position: [400, 300],
+					customTelemetryTags: {
+						tag: [
+							{ key: 'node-env', value: 'production' },
+							{ key: 'node-team', value: 'engineering' },
+						],
+					},
 				},
 			],
 			connections: {},
@@ -1462,6 +3224,10 @@ describe('PUT /workflows/:id', () => {
 				timezone: 'America/New_York',
 				callerPolicy: 'workflowsFromSameOwner',
 				availableInMCP: false,
+				customTelemetryTags: [
+					{ key: 'env', value: 'production' },
+					{ key: 'category', value: 'data-cleaning' },
+				],
 			},
 		};
 
@@ -1503,6 +3269,8 @@ describe('PUT /workflows/:id', () => {
 		});
 
 		expect(sharedWorkflow?.workflow.name).toBe(payload.name);
+		expect(sharedWorkflow?.workflow.nodes).toEqual(payload.nodes);
+		expect(sharedWorkflow?.workflow.settings).toEqual(payload.settings);
 		expect(sharedWorkflow?.workflow.updatedAt.getTime()).toBeGreaterThan(
 			workflow.updatedAt.getTime(),
 		);
@@ -1550,6 +3318,94 @@ describe('PUT /workflows/:id', () => {
 		expect(versionInTheDb!.nodes).toEqual(updatedPayload.nodes);
 	});
 
+	test('should publish a pending engine change with the draft', async () => {
+		const workflow = await createActiveWorkflow({ settings: { engineType: 'v1' } }, member);
+		// An engine change saved in the editor is a draft version with the new engine.
+		const engineDraft = await createWorkflowHistoryItem(workflow.id, {
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			settings: { engineType: 'v2' },
+		});
+		await Container.get(WorkflowRepository).update(workflow.id, {
+			versionId: engineDraft.versionId,
+			settings: { engineType: 'v2' },
+		});
+
+		const updateResponse = await authMemberAgent.put(`/workflows/${workflow.id}`).send({
+			name: workflow.name,
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			staticData: workflow.staticData,
+			settings: {},
+		});
+
+		expect(updateResponse.statusCode).toBe(200);
+		expect(updateResponse.body.activeVersionId).not.toBe(workflow.versionId);
+		const activeVersion = await Container.get(WorkflowHistoryRepository).findOneByOrFail({
+			versionId: updateResponse.body.activeVersionId,
+		});
+		expect(activeVersion.settings).toEqual({ engineType: 'v2' });
+	});
+
+	test('should save as draft without republishing when publishIfActive=false', async () => {
+		const workflow = await createActiveWorkflow({}, member);
+
+		const updatedPayload = {
+			name: 'Updated active workflow',
+			nodes: [
+				{
+					id: 'uuid-updated',
+					parameters: { triggerTimes: { item: [{ mode: 'everyMinute' }] } },
+					name: 'Updated Cron',
+					type: 'n8n-nodes-base.cron',
+					typeVersion: 1,
+					position: [300, 400],
+				},
+			],
+			connections: {},
+			staticData: workflow.staticData,
+			settings: workflow.settings,
+		};
+
+		const updateResponse = await authMemberAgent
+			.put(`/workflows/${workflow.id}?publishIfActive=false`)
+			.send(updatedPayload);
+
+		expect(updateResponse.statusCode).toBe(200);
+		expect(updateResponse.body.active).toBe(true);
+		expect(updateResponse.body.activeVersionId).toBe(workflow.versionId);
+		expect(updateResponse.body.nodes).toEqual(updatedPayload.nodes);
+
+		const versionInTheDb = await Container.get(WorkflowHistoryRepository).findOne({
+			where: {
+				workflowId: workflow.id,
+				versionId: Not(workflow.versionId),
+			},
+		});
+
+		expect(versionInTheDb).not.toBeNull();
+		expect(versionInTheDb!.nodes).toEqual(updatedPayload.nodes);
+
+		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
+			where: {
+				projectId: memberPersonalProject.id,
+				workflowId: workflow.id,
+			},
+			relations: ['workflow'],
+		});
+
+		// The published version itself is untouched: its history record still has the old content.
+		expect(sharedWorkflow?.workflow.activeVersionId).toBe(workflow.versionId);
+		const activeVersionInTheDb = await Container.get(WorkflowHistoryRepository).findOne({
+			where: {
+				workflowId: workflow.id,
+				versionId: workflow.versionId,
+			},
+		});
+		expect(activeVersionInTheDb!.nodes).toEqual(workflow.nodes);
+		expect(activeVersionInTheDb!.nodes).not.toEqual(updatedPayload.nodes);
+	});
+
 	test('should not allow updating active field', async () => {
 		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
 
@@ -1580,6 +3436,66 @@ describe('PUT /workflows/:id', () => {
 
 		expect(sharedWorkflow?.workflow.activeVersionId).toBeNull();
 	});
+
+	test('should accept the settings that GET returned and keep the stored engine', async () => {
+		const workflow = await createWorkflowWithHistory(
+			{ settings: { executionOrder: 'v1', engineType: 'v2' } },
+			member,
+		);
+		const getResponse = await authMemberAgent.get(`/workflows/${workflow.id}`);
+		expect(getResponse.body.settings.engineType).toBe('v2');
+
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send({
+			name: getResponse.body.name,
+			nodes: getResponse.body.nodes,
+			connections: getResponse.body.connections,
+			settings: getResponse.body.settings,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.settings.engineType).toBe('v2');
+
+		const workflowAfter = await workflowRepository.findOneBy({ id: workflow.id });
+
+		expect(workflowAfter?.settings?.engineType).toBe('v2');
+	});
+
+	test.each([
+		{ key: 'binaryMode', original: 'combined', attempted: 'separate' },
+		{ key: 'engineType', original: 'v2', attempted: 'v1' },
+		{
+			key: 'credentialResolverId',
+			original: 'original-resolver-id',
+			attempted: 'attempted-new-resolver-id',
+		},
+	] as const)(
+		'should ignore $key when updating a workflow',
+		async ({ key, original, attempted }) => {
+			const workflow = await createWorkflowWithHistory(
+				{ settings: { executionOrder: 'v1', [key]: original } },
+				member,
+			);
+
+			const payload = {
+				name: workflow.name,
+				nodes: workflow.nodes,
+				connections: workflow.connections,
+				settings: {
+					executionOrder: 'v1',
+					[key]: attempted,
+				},
+			};
+
+			const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send(payload);
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.settings[key]).toBe(original);
+
+			const workflowAfter = await workflowRepository.findOneBy({ id: workflow.id });
+
+			expect(workflowAfter?.settings?.[key]).toBe(original);
+		},
+	);
 
 	test('should update non-owned workflow if owner', async () => {
 		const workflow = await createWorkflowWithHistory({}, member);
@@ -1613,6 +3529,7 @@ describe('PUT /workflows/:id', () => {
 				saveDataSuccessExecution: 'all',
 				executionTimeout: 3600,
 				timezone: 'America/New_York',
+				timeSavedMode: 'dynamic',
 				callerPolicy: 'workflowsFromSameOwner',
 				availableInMCP: false,
 			},
@@ -1714,12 +3631,417 @@ describe('PUT /workflows/:id', () => {
 			callerPolicy: 'workflowsFromSameOwner', // Added
 		});
 	});
+
+	test('should preserve availableInMCP when settings are updated without it', async () => {
+		const workflow = await createWorkflowWithHistory(
+			{
+				name: 'Test Workflow',
+				nodes: [],
+				connections: {},
+				settings: { availableInMCP: true },
+			},
+			member,
+		);
+
+		const payload = {
+			name: workflow.name,
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			settings: { saveManualExecutions: true },
+		};
+
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.settings.availableInMCP).toBe(true);
+	});
+
+	test('should allow explicitly setting availableInMCP to false', async () => {
+		const workflow = await createWorkflowWithHistory(
+			{
+				name: 'Test Workflow',
+				nodes: [],
+				connections: {},
+				settings: { availableInMCP: true },
+			},
+			member,
+		);
+
+		const payload = {
+			name: workflow.name,
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			settings: { availableInMCP: false },
+		};
+
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.settings.availableInMCP).toBe(false);
+	});
+
+	test('should preserve non-default callerPolicy when settings are updated without it', async () => {
+		const workflow = await createWorkflowWithHistory(
+			{
+				name: 'Test Workflow',
+				nodes: [],
+				connections: {},
+				settings: { callerPolicy: 'none' },
+			},
+			member,
+		);
+
+		const payload = {
+			name: workflow.name,
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			settings: { saveManualExecutions: true },
+		};
+
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.settings.callerPolicy).toBe('none');
+	});
+
+	describe('credential access on shared workflows', () => {
+		// The shared httpRequest stub declares no parameters, so the guard cannot see a
+		// parameter edit. Declare the URL for this block only.
+		beforeAll(async () => {
+			const defaultNodes = utils.buildDefaultNodes();
+			const customHttpRequestNode = utils.minimalNodeType('n8n-nodes-base.httpRequest', [
+				{ displayName: 'URL', name: 'url', type: 'string', default: '' },
+			]);
+
+			await utils.initNodeTypes({
+				...defaultNodes,
+				'n8n-nodes-base.httpRequest': customHttpRequestNode,
+			});
+		});
+
+		afterAll(async () => {
+			await utils.initNodeTypes();
+		});
+
+		const ownerCredentialPayload = {
+			name: 'Owner Header Auth',
+			type: 'httpHeaderAuth',
+			data: { name: 'X-Header', value: 'owner-value' },
+		};
+
+		const triggerNode: INode = {
+			id: 'trigger-node',
+			name: 'Manual Trigger',
+			type: 'n8n-nodes-base.manualTrigger',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		};
+
+		const httpNodeWithCredential = (
+			credentialId: string,
+			credentialName: string,
+			url = 'https://example.com',
+		): INode => ({
+			id: 'http-node',
+			name: 'HTTP Request',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.2,
+			position: [200, 0],
+			parameters: {
+				url,
+				authentication: 'genericCredentialType',
+				genericAuthType: 'httpHeaderAuth',
+			},
+			credentials: {
+				httpHeaderAuth: { id: credentialId, name: credentialName },
+			},
+		});
+
+		// Old-format string credential reference (legacy `{ type: "name" }` shape)
+		const httpNodeWithStringCredential = (credentialName: string): INode =>
+			({
+				id: 'string-credential-node',
+				name: 'String Credential Node',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				position: [200, 0],
+				parameters: {
+					url: 'https://example.com',
+					authentication: 'genericCredentialType',
+					genericAuthType: 'httpHeaderAuth',
+				},
+				credentials: { httpHeaderAuth: credentialName },
+			}) as unknown as INode;
+
+		test('should reject an update that references an inaccessible credential by id', async () => {
+			license.enable('feat:sharing');
+
+			const ownerCredential = await saveCredential(ownerCredentialPayload, {
+				user: owner,
+				role: 'credential:owner',
+			});
+
+			const workflow = await createWorkflow({ nodes: [triggerNode], connections: {} }, owner);
+			await shareWorkflowWithUsers(workflow, [member]);
+
+			const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send({
+				name: workflow.name,
+				nodes: [triggerNode, httpNodeWithCredential(ownerCredential.id, 'anything')],
+				connections: {},
+				settings: {},
+			});
+
+			expect(response.statusCode).toBe(400);
+
+			// The foreign credential reference must not be persisted
+			const persisted = await workflowRepository.findOneBy({ id: workflow.id });
+			const referencesOwnerCredential = persisted?.nodes.some(
+				(node) => node.credentials?.httpHeaderAuth?.id === ownerCredential.id,
+			);
+			expect(referencesOwnerCredential).toBe(false);
+		});
+
+		test('should reject an update that references an inaccessible credential by name', async () => {
+			license.enable('feat:sharing');
+
+			const ownerCredential = await saveCredential(ownerCredentialPayload, {
+				user: owner,
+				role: 'credential:owner',
+			});
+
+			const workflow = await createWorkflow({ nodes: [triggerNode], connections: {} }, owner);
+			await shareWorkflowWithUsers(workflow, [member]);
+
+			const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send({
+				name: workflow.name,
+				nodes: [triggerNode, httpNodeWithStringCredential(ownerCredential.name)],
+				connections: {},
+				settings: {},
+			});
+
+			expect(response.statusCode).toBe(400);
+
+			// The name reference must not be resolved into a persisted credential id
+			const persisted = await workflowRepository.findOneBy({ id: workflow.id });
+			const referencesOwnerCredential = persisted?.nodes.some(
+				(node) => node.credentials?.httpHeaderAuth?.id === ownerCredential.id,
+			);
+			expect(referencesOwnerCredential).toBe(false);
+		});
+
+		test('should allow the owner to update a workflow referencing their own credential', async () => {
+			license.enable('feat:sharing');
+
+			const ownerCredential = await saveCredential(ownerCredentialPayload, {
+				user: owner,
+				role: 'credential:owner',
+			});
+
+			const workflow = await createWorkflow({ nodes: [triggerNode], connections: {} }, owner);
+
+			const response = await authOwnerAgent.put(`/workflows/${workflow.id}`).send({
+				name: workflow.name,
+				nodes: [triggerNode, httpNodeWithCredential(ownerCredential.id, 'anything')],
+				connections: {},
+				settings: {},
+			});
+
+			expect(response.statusCode).toBe(200);
+			const { nodes } = response.body as { nodes: INode[] };
+			const httpNode = nodes.find((node) => node.id === 'http-node');
+			expect(httpNode?.credentials?.httpHeaderAuth?.id).toBe(ownerCredential.id);
+			// the supplied name is normalized back to the real credential name within the project
+			expect(httpNode?.credentials?.httpHeaderAuth?.name).toBe(ownerCredential.name);
+		});
+
+		test('should reject an edit to a node whose credential the sharee cannot use', async () => {
+			license.enable('feat:sharing');
+
+			const ownerCredential = await saveCredential(ownerCredentialPayload, {
+				user: owner,
+				role: 'credential:owner',
+			});
+
+			const originalUrl = 'https://original.example.com';
+			const workflow = await createWorkflow(
+				{
+					nodes: [
+						triggerNode,
+						httpNodeWithCredential(ownerCredential.id, ownerCredential.name, originalUrl),
+					],
+					connections: {},
+				},
+				owner,
+			);
+			await shareWorkflowWithUsers(workflow, [member]);
+
+			const workflowHistoryRepository = Container.get(WorkflowHistoryRepository);
+			const historyCountBeforeUpdate = await workflowHistoryRepository.count({
+				where: { workflowId: workflow.id },
+			});
+			const storedBeforeUpdate = await workflowRepository.findOneByOrFail({ id: workflow.id });
+
+			const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send({
+				name: 'renamed by sharee',
+				nodes: [
+					triggerNode,
+					httpNodeWithCredential(
+						ownerCredential.id,
+						ownerCredential.name,
+						'https://changed.example.com',
+					),
+				],
+				connections: {},
+				settings: {},
+			});
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.message).toBe(
+				"You don't have access to the credentials in the 'HTTP Request' node. Ask the owner to share them with you.",
+			);
+
+			const storedAfterUpdate = await workflowRepository.findOneByOrFail({ id: workflow.id });
+			const httpNode = storedAfterUpdate.nodes.find((node) => node.id === 'http-node');
+			expect(storedAfterUpdate.name).toBe(storedBeforeUpdate.name);
+			expect(httpNode?.parameters?.url).toBe(originalUrl);
+			expect(storedAfterUpdate.versionId).toBe(storedBeforeUpdate.versionId);
+			expect(storedAfterUpdate.updatedAt).toEqual(storedBeforeUpdate.updatedAt);
+			await expect(
+				workflowHistoryRepository.count({ where: { workflowId: workflow.id } }),
+			).resolves.toBe(historyCountBeforeUpdate);
+		});
+	});
+
+	describe('parentFolderId placement', () => {
+		const triggerNode = {
+			id: 'uuid-1234',
+			parameters: {},
+			name: 'Start',
+			type: 'n8n-nodes-base.manualTrigger',
+			typeVersion: 1,
+			position: [240, 300],
+		} as const;
+
+		const updatePayload = (name: string) => ({
+			name,
+			nodes: [triggerNode],
+			connections: {},
+			settings: { executionOrder: 'v1' },
+		});
+
+		test('should move an existing workflow into the given folder', async () => {
+			const workflow = await createWorkflowWithHistory({}, member);
+			const folder = await createFolder(memberPersonalProject, { name: 'Move Target' });
+
+			const response = await authMemberAgent
+				.put(`/workflows/${workflow.id}`)
+				.send({ ...updatePayload(workflow.name), parentFolderId: folder.id });
+
+			expect(response.statusCode).toBe(200);
+			expect(await getStoredParentFolderId(workflow.id)).toBe(folder.id);
+		});
+
+		test('should move a workflow back to the project root when parentFolderId is null', async () => {
+			const workflow = await createWorkflowWithHistory({}, member);
+			const folder = await createFolder(memberPersonalProject, { name: 'Round Trip Folder' });
+
+			// Move the workflow into the folder first.
+			const intoFolderResponse = await authMemberAgent
+				.put(`/workflows/${workflow.id}`)
+				.send({ ...updatePayload(workflow.name), parentFolderId: folder.id });
+
+			expect(intoFolderResponse.statusCode).toBe(200);
+			expect(await getStoredParentFolderId(workflow.id)).toBe(folder.id);
+
+			// Sending null should move it back out to the project root.
+			const toRootResponse = await authMemberAgent
+				.put(`/workflows/${workflow.id}`)
+				.send({ ...updatePayload(workflow.name), parentFolderId: null });
+
+			expect(toRootResponse.statusCode).toBe(200);
+			expect(await getStoredParentFolderId(workflow.id)).toBeNull();
+		});
+
+		test('should leave the workflow in its folder when parentFolderId is omitted', async () => {
+			const workflow = await createWorkflowWithHistory({}, member);
+			const folder = await createFolder(memberPersonalProject, { name: 'Untouched Folder' });
+
+			// Move the workflow into the folder first.
+			const intoFolderResponse = await authMemberAgent
+				.put(`/workflows/${workflow.id}`)
+				.send({ ...updatePayload(workflow.name), parentFolderId: folder.id });
+
+			expect(intoFolderResponse.statusCode).toBe(200);
+			expect(await getStoredParentFolderId(workflow.id)).toBe(folder.id);
+
+			// Updating without parentFolderId must not move the workflow out of the folder.
+			const omittedResponse = await authMemberAgent
+				.put(`/workflows/${workflow.id}`)
+				.send(updatePayload(workflow.name));
+
+			expect(omittedResponse.statusCode).toBe(200);
+			expect(await getStoredParentFolderId(workflow.id)).toBe(folder.id);
+		});
+
+		test('should reject a non-existent parentFolderId', async () => {
+			const workflow = await createWorkflowWithHistory({}, member);
+			const folder = await createFolder(memberPersonalProject, { name: 'Existing Folder' });
+
+			// Place the workflow in a folder first, so the rejection assertion proves the
+			// placement is left untouched rather than merely reading the initial root state.
+			const intoFolderResponse = await authMemberAgent
+				.put(`/workflows/${workflow.id}`)
+				.send({ ...updatePayload(workflow.name), parentFolderId: folder.id });
+
+			expect(intoFolderResponse.statusCode).toBe(200);
+			expect(await getStoredParentFolderId(workflow.id)).toBe(folder.id);
+
+			const response = await authMemberAgent
+				.put(`/workflows/${workflow.id}`)
+				.send({ ...updatePayload(workflow.name), parentFolderId: 'does-not-exist' });
+
+			expect(response.statusCode).toBe(404);
+			expect(await getStoredParentFolderId(workflow.id)).toBe(folder.id);
+		});
+
+		test('should reject a parentFolderId from another project', async () => {
+			const workflow = await createWorkflowWithHistory({}, member);
+			const folder = await createFolder(memberPersonalProject, { name: 'Existing Folder' });
+			const otherProject = await createTeamProject();
+			const otherFolder = await createFolder(otherProject, { name: 'Other Project Folder' });
+
+			// Place the workflow in a folder first, so the rejection assertion proves the
+			// placement is left untouched rather than merely reading the initial root state.
+			const intoFolderResponse = await authMemberAgent
+				.put(`/workflows/${workflow.id}`)
+				.send({ ...updatePayload(workflow.name), parentFolderId: folder.id });
+
+			expect(intoFolderResponse.statusCode).toBe(200);
+			expect(await getStoredParentFolderId(workflow.id)).toBe(folder.id);
+
+			const response = await authMemberAgent
+				.put(`/workflows/${workflow.id}`)
+				.send({ ...updatePayload(workflow.name), parentFolderId: otherFolder.id });
+
+			expect(response.statusCode).toBe(404);
+			expect(await getStoredParentFolderId(workflow.id)).toBe(folder.id);
+		});
+	});
 });
 
 describe('GET /workflows/:id/tags', () => {
-	test('should fail due to missing API Key', testWithAPIKey('get', '/workflows/2/tags', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().get('/workflows/2/tags');
 
-	test('should fail due to invalid API Key', testWithAPIKey('get', '/workflows/2/tags', 'abcXYZ'));
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').get('/workflows/2/tags');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should fail if N8N_WORKFLOW_TAGS_DISABLED', async () => {
 		globalConfig.tags.disabled = true;
@@ -1737,13 +4059,14 @@ describe('GET /workflows/:id/tags', () => {
 	});
 
 	test('should return all tags of owned workflow', async () => {
-		const tags = await Promise.all([await createTag({}), await createTag({})]);
+		const tags = [await createTag({}), await createTag({})];
 
 		const workflow = await createWorkflowWithHistory({ tags }, member);
 
 		const response = await authMemberAgent.get(`/workflows/${workflow.id}/tags`);
 
 		expect(response.statusCode).toBe(200);
+		expect(Array.isArray(response.body)).toBe(true);
 		expect(response.body.length).toBe(2);
 
 		for (const tag of response.body) {
@@ -1766,14 +4089,23 @@ describe('GET /workflows/:id/tags', () => {
 		const response = await authMemberAgent.get(`/workflows/${workflow.id}/tags`);
 
 		expect(response.statusCode).toBe(200);
+		expect(Array.isArray(response.body)).toBe(true);
 		expect(response.body.length).toBe(0);
 	});
 });
 
 describe('PUT /workflows/:id/tags', () => {
-	test('should fail due to missing API Key', testWithAPIKey('put', '/workflows/2/tags', null));
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().put('/workflows/2/tags');
 
-	test('should fail due to invalid API Key', testWithAPIKey('put', '/workflows/2/tags', 'abcXYZ'));
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer.publicApiAgentWithApiKey('abcXYZ').put('/workflows/2/tags');
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should fail if N8N_WORKFLOW_TAGS_DISABLED', async () => {
 		globalConfig.tags.disabled = true;
@@ -1790,9 +4122,27 @@ describe('PUT /workflows/:id/tags', () => {
 		expect(response.statusCode).toBe(404);
 	});
 
+	test('should reject a tag reference carrying anything but an id', async () => {
+		const workflow = await createWorkflow({}, member);
+		const tag = await createTag({ name: 'production' });
+
+		const response = await authMemberAgent
+			.put(`/workflows/${workflow.id}/tags`)
+			.send([{ id: tag.id, name: 'renamed' }]);
+
+		expect(response.statusCode).toBe(400);
+
+		const stored = await Container.get(SharedWorkflowRepository).findOne({
+			where: { projectId: memberPersonalProject.id, workflowId: workflow.id },
+			relations: ['workflow.tags'],
+		});
+
+		expect(stored?.workflow.tags).toEqual([]);
+	});
+
 	test('should add the tags, workflow have not got tags previously', async () => {
 		const workflow = await createWorkflow({}, member);
-		const tags = await Promise.all([await createTag({}), await createTag({})]);
+		const tags = [await createTag({}), await createTag({})];
 
 		const payload = [
 			{
@@ -1806,6 +4156,7 @@ describe('PUT /workflows/:id/tags', () => {
 		const response = await authMemberAgent.put(`/workflows/${workflow.id}/tags`).send(payload);
 
 		expect(response.statusCode).toBe(200);
+		expect(Array.isArray(response.body)).toBe(true);
 		expect(response.body.length).toBe(2);
 
 		for (const tag of response.body) {
@@ -1849,7 +4200,7 @@ describe('PUT /workflows/:id/tags', () => {
 	});
 
 	test('should add the tags, workflow have some tags previously', async () => {
-		const tags = await Promise.all([await createTag({}), await createTag({}), await createTag({})]);
+		const tags = [await createTag({}), await createTag({}), await createTag({})];
 		const oldTags = [tags[0], tags[1]];
 		const newTags = [tags[0], tags[2]];
 		const workflow = await createWorkflow({ tags: oldTags }, member);
@@ -1935,7 +4286,7 @@ describe('PUT /workflows/:id/tags', () => {
 	});
 
 	test('should fail to add the tags as one does not exist, workflow should maintain previous tags', async () => {
-		const tags = await Promise.all([await createTag({}), await createTag({})]);
+		const tags = [await createTag({}), await createTag({})];
 		const oldTags = [tags[0], tags[1]];
 		const workflow = await createWorkflow({ tags: oldTags }, member);
 
@@ -2008,6 +4359,50 @@ describe('PUT /workflows/:id/tags', () => {
 });
 
 describe('PUT /workflows/:id/transfer', () => {
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer.publicApiAgentWithoutApiKey().put('/workflows/2/transfer');
+
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.put('/workflows/2/transfer');
+
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should return 404 when workflow does not exist', async () => {
+		const destinationProject = await createTeamProject('destination-project-404', member);
+
+		const response = await authOwnerAgent
+			.put('/workflows/00000000-0000-0000-0000-000000000000/transfer')
+			.send({ destinationProjectId: destinationProject.id });
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 403 when user lacks workflow:move permission', async () => {
+		const customRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update'], {
+			roleType: 'project',
+			displayName: 'Custom Workflow Editor No Move',
+			description: 'Can read and update workflows but not move them',
+		});
+
+		const teamProject = await createTeamProject('Test Project Transfer', owner);
+		await linkUserToProject(member, teamProject, customRole.slug);
+
+		const workflow = await createWorkflow({}, teamProject);
+		const destinationProject = await createTeamProject('destination-project-403', member);
+
+		const response = await authMemberAgent
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id });
+
+		expect(response.statusCode).toBe(403);
+	});
+
 	test('should transfer workflow to project', async () => {
 		/**
 		 * Arrange
@@ -2056,6 +4451,278 @@ describe('PUT /workflows/:id/transfer', () => {
 		 * Assert
 		 */
 		expect(response.statusCode).toBe(400);
+	});
+});
+
+describe('POST /workflows/:workflowId/run', () => {
+	const TRIGGER_NODE_NAME = 'When clicking Execute';
+	const SET_NAME_NODE_NAME = 'Edit Fields';
+	const SET_LAST_NAME_NODE_NAME = 'Edit Fields 2';
+	const WEBHOOK_NODE_NAME = 'Webhook';
+
+	const toLastNode = { nodeName: SET_LAST_NAME_NODE_NAME, mode: 'inclusive' };
+
+	const taskData = (json: IDataObject): ITaskData[] => [
+		{ startTime: 0, executionTime: 0, executionIndex: 0, source: [], data: { main: [[{ json }]] } },
+	];
+
+	const createManualTriggerNode = (): INode => ({
+		id: uuid(),
+		name: TRIGGER_NODE_NAME,
+		type: 'n8n-nodes-base.manualTrigger',
+		parameters: {},
+		typeVersion: 1,
+		position: [0, 0],
+	});
+
+	const createSetFieldNode = (name: string, position: [number, number]): INode => ({
+		id: uuid(),
+		name,
+		type: 'n8n-nodes-base.set',
+		parameters: {},
+		typeVersion: 3.4,
+		position,
+	});
+
+	const workflowConnections: IConnections = {
+		[TRIGGER_NODE_NAME]: { main: [[{ node: SET_NAME_NODE_NAME, type: 'main', index: 0 }]] },
+		[SET_NAME_NODE_NAME]: { main: [[{ node: SET_LAST_NAME_NODE_NAME, type: 'main', index: 0 }]] },
+	};
+
+	const createMockWorkflow = async (userOrProject: User | Project = ownerPersonalProject) =>
+		await createWorkflow(
+			{
+				nodes: [
+					createManualTriggerNode(),
+					createSetFieldNode(SET_NAME_NODE_NAME, [200, 0]),
+					createSetFieldNode(SET_LAST_NAME_NODE_NAME, [400, 0]),
+				],
+				connections: workflowConnections,
+			},
+			userOrProject,
+		);
+
+	const waitForExecution = async (executionId: string) => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		if (activeExecutions.has(executionId)) {
+			await activeExecutions.getPostExecutePromise(executionId);
+		}
+	};
+
+	const fetchExecutionsForWorkflow = async (workflowId: string) => {
+		const executions = await getAllExecutions();
+		return executions.filter((execution) => execution.workflowId === workflowId);
+	};
+
+	afterEach(async () => {
+		await testDb.truncate(['ExecutionEntity']);
+	});
+
+	describe('starting an execution', () => {
+		test('should start a manual execution from run data', async () => {
+			const workflow = await createMockWorkflow();
+			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+			const response = await authOwnerAgent.post(`/workflows/${workflow.id}/run`).send({
+				runData: { [TRIGGER_NODE_NAME]: taskData({}) },
+				destinationNode: toLastNode,
+			});
+
+			expect(response.statusCode).toBe(200);
+
+			const { executionId } = response.body;
+			expect(executionId).toMatch(/^\d+$/);
+			expect(emitSpy).toHaveBeenCalledWith(
+				'workflow-executed',
+				expect.objectContaining({ workflowId: workflow.id, executionId, source: 'user-manual' }),
+			);
+
+			await waitForExecution(executionId);
+
+			const executions = await fetchExecutionsForWorkflow(workflow.id);
+			expect(executions).toEqual([expect.objectContaining({ id: executionId, mode: 'manual' })]);
+		});
+
+		test('should accept dirty node names', async () => {
+			const workflow = await createMockWorkflow();
+
+			const response = await authOwnerAgent.post(`/workflows/${workflow.id}/run`).send({
+				runData: {
+					[TRIGGER_NODE_NAME]: taskData({}),
+					[SET_NAME_NODE_NAME]: taskData({ stale: true }),
+				},
+				destinationNode: toLastNode,
+				dirtyNodeNames: [SET_NAME_NODE_NAME],
+			});
+
+			expect(response.statusCode).toBe(200);
+			const { executionId } = response.body;
+
+			await waitForExecution(executionId);
+		});
+
+		// The suite mocks ExecutionService, so read the stored data instead of GET /executions/:id.
+		test('should reuse run data from an earlier execution', async () => {
+			const workflow = await createMockWorkflow();
+
+			const firstRun = await authOwnerAgent.post(`/workflows/${workflow.id}/run`).send({
+				runData: { [TRIGGER_NODE_NAME]: taskData({ from: 'earlier' }) },
+				destinationNode: toLastNode,
+			});
+
+			expect(firstRun.statusCode).toBe(200);
+
+			await waitForExecution(firstRun.body.executionId);
+
+			const earlierExecution = await Container.get(ExecutionRepository).findSingleExecution(
+				firstRun.body.executionId,
+				{ includeData: true, unflattenData: true },
+			);
+			const reusedRunData = earlierExecution?.data.resultData.runData;
+			const secondRun = await authOwnerAgent
+				.post(`/workflows/${workflow.id}/run`)
+				.send({ runData: reusedRunData, destinationNode: toLastNode });
+
+			expect(secondRun.statusCode).toBe(200);
+
+			await waitForExecution(secondRun.body.executionId);
+
+			const executions = await fetchExecutionsForWorkflow(workflow.id);
+			expect(executions).toHaveLength(2);
+		});
+	});
+
+	test('should return 400 when the destination node is not in the workflow', async () => {
+		const workflow = await createMockWorkflow();
+
+		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/run`).send({
+			runData: {},
+			destinationNode: { nodeName: 'Missing node', mode: 'inclusive' },
+		});
+
+		expect(response.statusCode).toBe(400);
+
+		const executions = await fetchExecutionsForWorkflow(workflow.id);
+		expect(executions).toHaveLength(0);
+	});
+
+	test('should return 404 for a workflow that does not exist', async () => {
+		const response = await authOwnerAgent.post(`/workflows/${uuid()}/run`).send({
+			runData: {},
+			destinationNode: toLastNode,
+		});
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test("should return 403 for a workflow in another user's personal project", async () => {
+		const workflow = await createMockWorkflow(ownerPersonalProject);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/run`).send({
+			runData: {},
+			destinationNode: toLastNode,
+		});
+
+		expect(response.statusCode).toBe(403);
+
+		const executions = await fetchExecutionsForWorkflow(workflow.id);
+		expect(executions).toHaveLength(0);
+	});
+
+	test('should return 403 when the API key lacks workflow:execute', async () => {
+		const readOnlyKeyOwner = await createOwnerWithApiKey({ scopes: ['workflow:read'] });
+		const workflow = await createMockWorkflow(readOnlyKeyOwner);
+
+		const response = await testServer
+			.publicApiAgentFor(readOnlyKeyOwner)
+			.post(`/workflows/${workflow.id}/run`)
+			.send({ runData: {}, destinationNode: toLastNode });
+
+		expect(response.statusCode).toBe(403);
+
+		const executions = await fetchExecutionsForWorkflow(workflow.id);
+		expect(executions).toHaveLength(0);
+	});
+
+	test('should return 403 for a user who is only a viewer of the project', async () => {
+		const teamProject = await createTeamProject('Test Project', owner);
+		await linkUserToProject(member, teamProject, 'project:viewer');
+
+		const workflow = await createMockWorkflow(teamProject);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/run`).send({
+			runData: {},
+			destinationNode: toLastNode,
+		});
+
+		expect(response.statusCode).toBe(403);
+
+		const executions = await fetchExecutionsForWorkflow(workflow.id);
+		expect(executions).toHaveLength(0);
+	});
+
+	test('should return 403 on a read-only instance', async () => {
+		const workflow = await createMockWorkflow();
+
+		const instanceWriteAccess = Container.get(InstanceWriteAccessService);
+		instanceWriteAccess.setReadOnly(true);
+
+		try {
+			const response = await authOwnerAgent.post(`/workflows/${workflow.id}/run`).send({
+				runData: {},
+				destinationNode: toLastNode,
+			});
+
+			expect(response.statusCode).toBe(403);
+
+			const executions = await fetchExecutionsForWorkflow(workflow.id);
+			expect(executions).toHaveLength(0);
+		} finally {
+			instanceWriteAccess.setReadOnly(false);
+		}
+	});
+
+	describe('when the run must wait for a trigger event', () => {
+		test('should return 409, register no test webhook, and start no execution', async () => {
+			const webhookId = uuid();
+			const webhookWorkflow = await createWorkflow(
+				{
+					nodes: [
+						{
+							id: uuid(),
+							name: WEBHOOK_NODE_NAME,
+							type: WEBHOOK_NODE_TYPE,
+							typeVersion: 2,
+							position: [0, 0],
+							webhookId,
+							parameters: { httpMethod: 'POST', path: webhookId, options: {} },
+						},
+						createSetFieldNode(SET_NAME_NODE_NAME, [200, 0]),
+					],
+					connections: {
+						[WEBHOOK_NODE_NAME]: { main: [[{ node: SET_NAME_NODE_NAME, type: 'main', index: 0 }]] },
+					},
+				},
+				ownerPersonalProject,
+			);
+			const registerWebhooks = vi.spyOn(Container.get(TestWebhooks), 'registerWebhooks');
+			const cancelWebhook = vi.spyOn(Container.get(TestWebhooks), 'cancelWebhook');
+
+			const response = await authOwnerAgent.post(`/workflows/${webhookWorkflow.id}/run`).send({
+				runData: {},
+				destinationNode: { nodeName: SET_NAME_NODE_NAME, mode: 'inclusive' },
+			});
+
+			expect(response.statusCode).toBe(409);
+			expect(registerWebhooks).not.toHaveBeenCalled();
+			expect(cancelWebhook).not.toHaveBeenCalled();
+
+			const executions = await fetchExecutionsForWorkflow(webhookWorkflow.id);
+			expect(executions).toHaveLength(0);
+
+			registerWebhooks.mockRestore();
+			cancelWebhook.mockRestore();
+		});
 	});
 });
 
@@ -2275,5 +4942,94 @@ return [{ json: result }];
 		expect(retrievedUpdatedNode.parameters.jsCode).toBe(updatedCode);
 		expect(retrievedUpdatedNode.parameters.mode).toBe('runOnceForEachItem');
 		expect(retrievedUpdatedNode.parameters.language).toBe('javaScript');
+	});
+});
+
+describe('deprecated nodes', () => {
+	const nodesConfig = Container.get(NodesConfig);
+	let previousBlockDeprecated: boolean;
+	beforeAll(() => {
+		previousBlockDeprecated = nodesConfig.blockDeprecated;
+		nodesConfig.blockDeprecated = true;
+	});
+	afterAll(() => {
+		nodesConfig.blockDeprecated = previousBlockDeprecated;
+	});
+
+	const deprecatedNode: INode = {
+		id: uuid(),
+		name: 'Function',
+		type: 'n8n-nodes-base.function',
+		typeVersion: 1,
+		position: [0, 0],
+		parameters: { functionCode: 'return items;' },
+	};
+
+	test('POST /workflows rejects a workflow with a deprecated node', async () => {
+		const response = await authOwnerAgent.post('/workflows').send({
+			name: 'has deprecated',
+			nodes: [deprecatedNode],
+			connections: {},
+			settings: {},
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toMatch(/deprecated/i);
+	});
+
+	test('PUT /workflows/:id rejects editing a deprecated node', async () => {
+		const workflow = await createWorkflowWithHistory({ nodes: [deprecatedNode] }, owner);
+
+		const response = await authOwnerAgent.put(`/workflows/${workflow.id}`).send({
+			name: workflow.name,
+			nodes: [{ ...deprecatedNode, parameters: { functionCode: 'return [];' } }],
+			connections: workflow.connections,
+			settings: workflow.settings,
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toMatch(/deprecated/i);
+	});
+
+	test('PUT /workflows/:id allows editing other nodes while a deprecated node stays unchanged', async () => {
+		const otherNode: INode = {
+			id: uuid(),
+			name: 'Start',
+			type: 'n8n-nodes-base.manualTrigger',
+			typeVersion: 1,
+			position: [200, 0],
+			parameters: {},
+		};
+		const workflow = await createWorkflowWithHistory({ nodes: [deprecatedNode, otherNode] }, owner);
+
+		const response = await authOwnerAgent.put(`/workflows/${workflow.id}`).send({
+			name: workflow.name,
+			nodes: [deprecatedNode, { ...otherNode, notes: 'edited' }],
+			connections: workflow.connections,
+			settings: workflow.settings,
+		});
+
+		expect(response.statusCode).toBe(200);
+	});
+
+	test('PUT /workflows/:id allows removing a deprecated node', async () => {
+		const otherNode: INode = {
+			id: uuid(),
+			name: 'Start',
+			type: 'n8n-nodes-base.manualTrigger',
+			typeVersion: 1,
+			position: [200, 0],
+			parameters: {},
+		};
+		const workflow = await createWorkflowWithHistory({ nodes: [deprecatedNode, otherNode] }, owner);
+
+		const response = await authOwnerAgent.put(`/workflows/${workflow.id}`).send({
+			name: workflow.name,
+			nodes: [otherNode],
+			connections: {},
+			settings: workflow.settings,
+		});
+
+		expect(response.statusCode).toBe(200);
 	});
 });

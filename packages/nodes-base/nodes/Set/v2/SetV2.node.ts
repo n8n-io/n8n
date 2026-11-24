@@ -6,7 +6,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, READ_ONLY_ANNOTATIONS } from 'n8n-workflow';
 
 import type { IncludeMods, SetField, SetNodeOptions } from './helpers/interfaces';
 import { INCLUDE } from './helpers/interfaces';
@@ -20,7 +20,8 @@ const versionDescription: INodeTypeDescription = {
 	name: 'set',
 	iconColor: 'blue',
 	group: ['input'],
-	version: [3, 3.1, 3.2, 3.3, 3.4],
+	version: [3, 3.1, 3.2, 3.3, 3.4, 3.5],
+	annotations: READ_ONLY_ANNOTATIONS,
 	description: 'Modify, add, or remove item fields',
 	subtitle: '={{$parameter["mode"]}}',
 	defaults: {

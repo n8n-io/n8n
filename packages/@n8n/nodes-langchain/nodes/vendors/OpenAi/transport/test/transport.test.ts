@@ -1,17 +1,18 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
+import { requestPath, requestUrl } from 'n8n-workflow';
 
 import { apiRequest } from '../index';
 
 const mockedExecutionContext = {
-	getCredentials: jest.fn(),
+	getCredentials: vi.fn(),
 	helpers: {
-		requestWithAuthentication: jest.fn(),
+		requestWithAuthentication: vi.fn(),
 	},
 };
 
 describe('apiRequest', () => {
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	it('should call requestWithAuthentication with credentials URL if one is provided', async () => {
@@ -20,9 +21,14 @@ describe('apiRequest', () => {
 		});
 
 		// Act
-		await apiRequest.call(mockedExecutionContext as unknown as IExecuteFunctions, 'GET', '/test', {
-			headers: { 'Content-Type': 'application/json' },
-		});
+		await apiRequest.call(
+			mockedExecutionContext as unknown as IExecuteFunctions,
+			'GET',
+			requestPath`/test`,
+			{
+				headers: { 'Content-Type': 'application/json' },
+			},
+		);
 
 		// Assert
 
@@ -32,7 +38,7 @@ describe('apiRequest', () => {
 			{
 				headers: { 'Content-Type': 'application/json' },
 				method: 'GET',
-				uri: 'http://www.test/url/v1/test',
+				uri: requestUrl`http://www.test/url/v1/test`,
 				json: true,
 			},
 		);
@@ -42,9 +48,14 @@ describe('apiRequest', () => {
 		mockedExecutionContext.getCredentials.mockResolvedValue({});
 
 		// Act
-		await apiRequest.call(mockedExecutionContext as unknown as IExecuteFunctions, 'GET', '/test', {
-			headers: { 'Content-Type': 'application/json' },
-		});
+		await apiRequest.call(
+			mockedExecutionContext as unknown as IExecuteFunctions,
+			'GET',
+			requestPath`/test`,
+			{
+				headers: { 'Content-Type': 'application/json' },
+			},
+		);
 
 		// Assert
 
@@ -54,9 +65,42 @@ describe('apiRequest', () => {
 			{
 				headers: { 'Content-Type': 'application/json' },
 				method: 'GET',
-				uri: 'https://api.openai.com/v1/test',
+				uri: requestUrl`https://api.openai.com/v1/test`,
 				json: true,
 			},
 		);
+	});
+
+	it('should encode path values that contain a slash', async () => {
+		mockedExecutionContext.getCredentials.mockResolvedValue({});
+
+		await apiRequest.call(
+			mockedExecutionContext as unknown as IExecuteFunctions,
+			'DELETE',
+			requestPath`/files/${'file-abc123/models'}`,
+		);
+
+		expect(
+			String(mockedExecutionContext.helpers.requestWithAuthentication.mock.calls[0][1].uri),
+		).toBe('https://api.openai.com/v1/files/file-abc123%2Fmodels');
+	});
+
+	it('should normalize error: null to error: undefined', async () => {
+		// Arrange
+		mockedExecutionContext.getCredentials.mockResolvedValue({});
+		mockedExecutionContext.helpers.requestWithAuthentication.mockResolvedValue({
+			id: 'test',
+			error: null,
+		});
+
+		// Act
+		const response = await apiRequest.call(
+			mockedExecutionContext as unknown as IExecuteFunctions,
+			'GET',
+			requestPath`/test`,
+		);
+
+		// Assert
+		expect(response.error).toBeUndefined();
 	});
 });

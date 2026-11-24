@@ -1,16 +1,131 @@
-import { type ASTAfterHook, type ASTBeforeHook, astBuilders as b, astVisit } from '@n8n/tournament';
+import {
+	type ASTAfterHook,
+	type ASTBeforeHook,
+	type TournamentHooks,
+	astBuilders as b,
+	astVisit,
+} from '@n8n/tournament';
 
-import { ExpressionError } from './errors';
+import {
+	ExpressionClassExtensionError,
+	ExpressionComputedDestructuringError,
+	ExpressionDestructuringError,
+	ExpressionError,
+	ExpressionReservedVariableError,
+	ExpressionWithStatementError,
+} from './errors';
 import { isSafeObjectProperty } from './utils';
 
 export const sanitizerName = '__sanitize';
 const sanitizerIdentifier = b.identifier(sanitizerName);
 
+const DATA_NODE_NAME = '___n8n_data';
+
+const RESERVED_VARIABLE_NAMES = new Set([DATA_NODE_NAME, sanitizerName]);
+
+type AstNode = { type: string } & Record<string, unknown>;
+
+const isAstNode = (value: unknown): value is AstNode =>
+	typeof value === 'object' && value !== null && 'type' in value && typeof value.type === 'string';
+
+// `Array.isArray` widens an `unknown` to `any[]`, which loses type safety on the elements
+const isNodeList = (value: unknown): value is unknown[] => Array.isArray(value);
+
+const getBoundIdentifiers = (node: unknown, acc: string[] = []): string[] => {
+	if (!isAstNode(node)) return acc;
+
+	switch (node.type) {
+		case 'Identifier': {
+			if (typeof node.name === 'string') acc.push(node.name);
+			break;
+		}
+		case 'ObjectPattern': {
+			if (!Array.isArray(node.properties)) break;
+			for (const property of node.properties) {
+				if (!isAstNode(property)) continue;
+				if (property.type === 'Property') {
+					getBoundIdentifiers(property.value, acc);
+				} else if (property.type === 'RestElement') {
+					getBoundIdentifiers(property.argument, acc);
+				}
+			}
+			break;
+		}
+		case 'ArrayPattern': {
+			if (!Array.isArray(node.elements)) break;
+			for (const element of node.elements) {
+				getBoundIdentifiers(element, acc);
+			}
+			break;
+		}
+		case 'AssignmentPattern': {
+			getBoundIdentifiers(node.left, acc);
+			break;
+		}
+		case 'RestElement': {
+			getBoundIdentifiers(node.argument, acc);
+			break;
+		}
+		case 'VariableDeclaration': {
+			if (!Array.isArray(node.declarations)) break;
+			for (const declaration of node.declarations) {
+				if (!isAstNode(declaration) || declaration.type !== 'VariableDeclarator') continue;
+				getBoundIdentifiers(declaration.id, acc);
+			}
+			break;
+		}
+	}
+
+	return acc;
+};
+
+const getReservedIdentifier = (node: unknown): string | undefined =>
+	getBoundIdentifiers(node).find((name) => RESERVED_VARIABLE_NAMES.has(name));
+
+const getStaticTemplateValue = (node: AstNode): string | undefined => {
+	const { expressions, quasis } = node;
+	if (!isNodeList(expressions) || expressions.length !== 0) return undefined;
+	if (!isNodeList(quasis) || quasis.length !== 1) return undefined;
+
+	const quasi = quasis[0];
+	if (!isAstNode(quasi)) return undefined;
+	const { value } = quasi;
+	if (typeof value !== 'object' || value === null || !('cooked' in value)) return undefined;
+	const { cooked } = value;
+	return typeof cooked === 'string' ? cooked : undefined;
+};
+
+const getReservedMemberKey = (key: unknown): string | undefined => {
+	if (!isAstNode(key)) return undefined;
+
+	let keyName: string | undefined;
+	if (key.type === 'Identifier' && typeof key.name === 'string') {
+		keyName = key.name;
+	} else if (
+		(key.type === 'StringLiteral' || key.type === 'Literal') &&
+		typeof key.value === 'string'
+	) {
+		keyName = key.value;
+	} else if (key.type === 'TemplateLiteral') {
+		// A template literal with no substitutions names the member statically
+		keyName = getStaticTemplateValue(key);
+	}
+
+	return keyName !== undefined && RESERVED_VARIABLE_NAMES.has(keyName) ? keyName : undefined;
+};
+
 export const DOLLAR_SIGN_ERROR = 'Cannot access "$" without calling it as a function';
 
 const EMPTY_CONTEXT = b.objectExpression([
 	b.property('init', b.identifier('process'), b.objectExpression([])),
+	b.property('init', b.identifier('require'), b.objectExpression([])),
+	b.property('init', b.identifier('module'), b.objectExpression([])),
+	b.property('init', b.identifier('Buffer'), b.objectExpression([])),
 ]);
+
+const SAFE_GLOBAL = b.objectExpression([]);
+
+const SAFE_THIS = b.sequenceExpression([b.literal(0), EMPTY_CONTEXT]);
 
 /**
  * Helper to check if an expression is a valid property access with $ as the property.
@@ -53,10 +168,58 @@ const isValidDollarPropertyAccess = (expr: unknown): boolean => {
 	return isPropertyDollar && !isObjectDollar && isObjectValid;
 };
 
+const GLOBAL_IDENTIFIERS = new Set(['globalThis']);
+
+/**
+ * Backstop, not the containment: the polyfill already resolves a free base class
+ * identifier through the data context. Listed here because a subclass inherits
+ * the static side of its base, so these are the costliest to ever let through.
+ */
+const blockedBaseClasses = new Set([
+	'Function',
+	'GeneratorFunction',
+	'AsyncFunction',
+	'AsyncGeneratorFunction',
+	'Buffer',
+]);
+
+/**
+ * Rejects `class X extends <expr>` unless the base class is a plain identifier
+ * that is not one of {@link blockedBaseClasses}.
+ *
+ * Must stay a before hook: the polyfill rewrites a free base class identifier
+ * into a data-context lookup, after which the two cases are indistinguishable.
+ */
+export const ClassExtensionValidator: ASTBeforeHook = (ast, _dataNode) => {
+	const validate = (superClass: unknown) => {
+		if (isAstNode(superClass)) {
+			if (superClass.type !== 'Identifier') {
+				throw new ExpressionError('Cannot use dynamic class extension due to security concerns');
+			}
+
+			if (typeof superClass.name === 'string' && blockedBaseClasses.has(superClass.name)) {
+				throw new ExpressionClassExtensionError(superClass.name);
+			}
+		}
+	};
+
+	astVisit(ast, {
+		visitClassDeclaration(path) {
+			this.traverse(path);
+			validate(path.node.superClass);
+		},
+
+		visitClassExpression(path) {
+			this.traverse(path);
+			validate(path.node.superClass);
+		},
+	});
+};
+
 /**
  * Prevents regular functions from binding their `this` to the Node.js global.
  */
-export const FunctionThisSanitizer: ASTBeforeHook = (ast, dataNode) => {
+export const ThisSanitizer: ASTBeforeHook = (ast, dataNode) => {
 	astVisit(ast, {
 		visitCallExpression(path) {
 			const { node } = path;
@@ -112,6 +275,44 @@ export const FunctionThisSanitizer: ASTBeforeHook = (ast, dataNode) => {
 			]);
 			path.replace(boundFunction);
 			return false;
+		},
+
+		visitIdentifier(path) {
+			this.traverse(path);
+			const { node } = path;
+
+			if (GLOBAL_IDENTIFIERS.has(node.name)) {
+				const parent: unknown = path.parent;
+				const isPropertyName =
+					typeof parent === 'object' &&
+					parent !== null &&
+					'name' in parent &&
+					parent.name === 'property';
+
+				if (!isPropertyName) path.replace(SAFE_GLOBAL);
+			}
+		},
+
+		visitThisExpression(path) {
+			this.traverse(path);
+
+			/**
+			 * Replace `this` with a safe context object.
+			 * This prevents arrow functions from accessing the real global context:
+			 *
+			 * ```js
+			 * (() => this?.process)()  // becomes (() => (0, { process: {} })?.process)()
+			 * ```
+			 *
+			 * Arrow functions don't have their own `this` binding - they inherit from
+			 * the outer lexical scope. Without this fix, `this` inside an arrow function
+			 * would resolve to the Node.js global object, exposing process.env and other
+			 * sensitive data.
+			 *
+			 * We use SAFE_THIS (a sequence expression) instead of EMPTY_CONTEXT directly
+			 * to ensure the object literal is unambiguously parsed as an expression.
+			 */
+			path.replace(SAFE_THIS);
 		},
 	});
 };
@@ -187,6 +388,112 @@ export const DollarSignValidator: ASTAfterHook = (ast, _dataNode) => {
 
 export const PrototypeSanitizer: ASTAfterHook = (ast, dataNode) => {
 	astVisit(ast, {
+		visitVariableDeclarator(path) {
+			this.traverse(path);
+			const node = path.node;
+
+			const reservedIdentifier = getReservedIdentifier(node.id);
+			if (reservedIdentifier === undefined) return;
+			throw new ExpressionReservedVariableError(reservedIdentifier);
+		},
+
+		visitFunction(path) {
+			this.traverse(path);
+			const node = path.node;
+
+			const functionName = getReservedIdentifier(node.id);
+			if (functionName !== undefined) {
+				throw new ExpressionReservedVariableError(functionName);
+			}
+
+			for (const param of node.params) {
+				const paramName = getReservedIdentifier(param);
+				if (paramName !== undefined) {
+					throw new ExpressionReservedVariableError(paramName);
+				}
+			}
+		},
+
+		visitCatchClause(path) {
+			this.traverse(path);
+			const node = path.node;
+
+			const catchParamName = getReservedIdentifier(node.param);
+			if (catchParamName === undefined) return;
+			throw new ExpressionReservedVariableError(catchParamName);
+		},
+
+		visitClassDeclaration(path) {
+			this.traverse(path);
+
+			const className = getReservedIdentifier(path.node.id);
+			if (className === undefined) return;
+			throw new ExpressionReservedVariableError(className);
+		},
+
+		visitClassExpression(path) {
+			this.traverse(path);
+
+			const className = getReservedIdentifier(path.node.id);
+			if (className !== undefined) {
+				throw new ExpressionReservedVariableError(className);
+			}
+		},
+
+		visitClassBody(path) {
+			this.traverse(path);
+
+			const members = path.node.body;
+			if (!Array.isArray(members)) return;
+
+			for (const member of members) {
+				if (!isAstNode(member)) continue;
+				// A computed identifier key is a variable reference, not a name we can resolve
+				// statically; a computed string literal still names the member, so check it.
+				if (member.computed && isAstNode(member.key) && member.key.type === 'Identifier') continue;
+				const memberKey = getReservedMemberKey(member.key);
+				if (memberKey !== undefined) {
+					throw new ExpressionReservedVariableError(memberKey);
+				}
+			}
+		},
+
+		visitAssignmentExpression(path) {
+			this.traverse(path);
+			const node = path.node;
+
+			const assignedIdentifier = getReservedIdentifier(node.left);
+			if (assignedIdentifier === undefined) return;
+			throw new ExpressionReservedVariableError(assignedIdentifier);
+		},
+
+		visitUpdateExpression(path) {
+			this.traverse(path);
+			const node = path.node;
+
+			const updatedIdentifier = getReservedIdentifier(node.argument);
+			if (updatedIdentifier === undefined) return;
+			throw new ExpressionReservedVariableError(updatedIdentifier);
+		},
+
+		visitForOfStatement(path) {
+			this.traverse(path);
+			const node = path.node;
+
+			const loopBinding = getReservedIdentifier(node.left);
+			if (loopBinding === undefined) return;
+			throw new ExpressionReservedVariableError(loopBinding);
+		},
+
+		visitForInStatement(path) {
+			this.traverse(path);
+			const node = path.node;
+
+			const loopBinding = getReservedIdentifier(node.left);
+			if (loopBinding === undefined) return;
+			throw new ExpressionReservedVariableError(loopBinding);
+		},
+
 		visitMemberExpression(path) {
 			this.traverse(path);
 			const node = path.node;
@@ -214,23 +521,63 @@ export const PrototypeSanitizer: ASTAfterHook = (ast, dataNode) => {
 				path.replace(
 					b.memberExpression(
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
-						node.object as any,
+						node.object,
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 						b.callExpression(b.memberExpression(dataNode, sanitizerIdentifier), [
 							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							node.property as any,
+							node.property,
 						]),
 						true,
 					),
 				);
 			}
 		},
+
+		visitObjectPattern(path) {
+			this.traverse(path);
+			const node = path.node;
+
+			for (const prop of node.properties) {
+				if (prop.type === 'Property') {
+					if (prop.computed) {
+						throw new ExpressionComputedDestructuringError();
+					}
+
+					let keyName: string | undefined;
+
+					if (prop.key.type === 'Identifier') {
+						keyName = prop.key.name;
+					} else if (prop.key.type === 'StringLiteral' || prop.key.type === 'Literal') {
+						keyName = String(prop.key.value);
+					}
+
+					if (keyName !== undefined && !isSafeObjectProperty(keyName)) {
+						throw new ExpressionDestructuringError(keyName);
+					}
+				}
+			}
+		},
+
+		visitWithStatement() {
+			throw new ExpressionWithStatementError();
+		},
 	});
 };
 
+/**
+ * The complete set of AST hooks an expression evaluator must run. Evaluators take
+ * this object rather than assembling their own, so a hook added here cannot be
+ * missed by one of them.
+ */
+export const expressionSandboxHooks: TournamentHooks = {
+	before: [ClassExtensionValidator, ThisSanitizer],
+	after: [PrototypeSanitizer, DollarSignValidator],
+};
+
 export const sanitizer = (value: unknown): unknown => {
-	if (!isSafeObjectProperty(value as string)) {
-		throw new ExpressionError(`Cannot access "${value as string}" due to security concerns`);
+	const propertyKey = String(value);
+	if (!isSafeObjectProperty(propertyKey)) {
+		throw new ExpressionError(`Cannot access "${propertyKey}" due to security concerns`);
 	}
-	return value;
+	return propertyKey;
 };

@@ -8,13 +8,14 @@ import type {
 	WorkflowHistoryRequestParams,
 } from '@n8n/rest-api-client/api/workflowHistory';
 import WorkflowHistoryListItem from './WorkflowHistoryListItem.vue';
+import WorkflowHistoryUpgradeFooter from './WorkflowHistoryUpgradeFooter.vue';
 import type { IUser } from 'n8n-workflow';
-import { I18nT } from 'vue-i18n';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 import { N8nLoading, N8nIcon, N8nText } from '@n8n/design-system';
 import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
 import {
 	computeTimelineEntries,
+	getVersionLabel,
 	type TimelineEntry,
 } from '@/features/workflows/workflowHistory/utils';
 
@@ -24,10 +25,12 @@ const props = defineProps<{
 	actions: Array<UserAction<IUser>>;
 	requestNumberOfItems: number;
 	lastReceivedItemsLength: number;
-	evaluatedPruneDays: number;
+	evaluatedPruneTimeInHours: number;
 	shouldUpgrade?: boolean;
 	isListLoading?: boolean;
-	activeVersionId?: string;
+	publishedVersionId?: string;
+	pendingVersionId?: string | null;
+	isWorkflowDiffsEnabled?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -35,6 +38,7 @@ const emit = defineEmits<{
 	preview: [value: { event: MouseEvent; id: WorkflowVersionId }];
 	loadMore: [value: WorkflowHistoryRequestParams];
 	upgrade: [];
+	compare: [value: { id: WorkflowVersionId }];
 }>();
 
 const i18n = useI18n();
@@ -83,7 +87,7 @@ const getActions = (item: WorkflowHistory, index: number) => {
 		filteredActions = filteredActions.filter((action) => action.value !== 'restore');
 	}
 
-	if (item.versionId === props.activeVersionId) {
+	if (item.versionId === props.publishedVersionId) {
 		filteredActions = filteredActions.filter((action) => action.value !== 'publish');
 	} else {
 		filteredActions = filteredActions.filter((action) => action.value !== 'unpublish');
@@ -102,6 +106,49 @@ const onPreview = ({ event, id }: { event: MouseEvent; id: WorkflowVersionId }) 
 	emit('preview', { event, id });
 };
 
+const onCompare = ({ id }: { id: WorkflowVersionId }) => {
+	shouldAutoScroll.value = false;
+	emit('compare', { id });
+};
+
+const getHistoryVersionLabel = (workflowHistory: WorkflowHistory): string => {
+	const currentVersionId = props.items[0]?.versionId;
+
+	return getVersionLabel({ workflowHistory, currentVersionId });
+};
+
+const getItemToCompareWith = (
+	item: WorkflowHistory,
+	index: number,
+): { name: string; versionId: WorkflowVersionId } | null => {
+	if (!props.isWorkflowDiffsEnabled) {
+		return null;
+	}
+
+	if (!props.selectedItem) {
+		return null;
+	}
+
+	const isSelected = props.items[index]?.versionId === props.selectedItem?.versionId;
+
+	if (isSelected) {
+		const previousVersion = props.items[index + 1];
+		if (!previousVersion) {
+			return null;
+		}
+
+		return {
+			name: getHistoryVersionLabel(previousVersion),
+			versionId: previousVersion.versionId,
+		};
+	}
+
+	return {
+		name: getHistoryVersionLabel(props.selectedItem),
+		versionId: item.versionId,
+	};
+};
+
 const onItemMounted = ({
 	offsetTop,
 	isSelected,
@@ -115,6 +162,21 @@ const onItemMounted = ({
 		listElement.value?.scrollTo({ top: offsetTop, behavior: 'smooth' });
 	}
 };
+
+const pruneTimeDisplay = computed(() => {
+	const timeInHours = props.evaluatedPruneTimeInHours;
+
+	if (timeInHours < 24) {
+		const key = timeInHours === 1 ? 'workflowHistory.limitHour' : 'workflowHistory.limitHours';
+		return i18n.baseText(key, {
+			interpolate: { hours: String(timeInHours) },
+		});
+	} else {
+		const days = Math.round(timeInHours / 24);
+		const key = days === 1 ? 'workflowHistory.limitDay' : 'workflowHistory.limitDays';
+		return i18n.baseText(key, { interpolate: { days: String(days) } });
+	}
+});
 </script>
 
 <template>
@@ -132,12 +194,14 @@ const onItemMounted = ({
 				data-test-id="workflow-history-group-header"
 				@click="toggleGroup(entry.groupId)"
 			>
-				<N8nIcon
-					:class="[$style.groupTimelineColumn, $style.groupChevron]"
-					:icon="expandedGroups.has(entry.groupId) ? 'chevron-down' : 'chevron-right'"
-					size="small"
-				/>
-				<N8nText color="text-base" size="small">
+				<span :class="$style.groupTimelineColumn">
+					<N8nIcon
+						:class="$style.groupChevron"
+						:icon="expandedGroups.has(entry.groupId) ? 'chevron-down' : 'chevron-right'"
+						size="small"
+					/>
+				</span>
+				<N8nText color="text-base" size="small" :class="$style.groupLabel">
 					{{
 						i18n.baseText('workflowHistory.group.unnamedVersions', {
 							adjustToNumber: entry.count,
@@ -154,12 +218,16 @@ const onItemMounted = ({
 					:key="versionEntry.item.versionId"
 					:index="versionEntry.originalIndex"
 					:item="versionEntry.item"
+					:compare-with="getItemToCompareWith(versionEntry.item, versionEntry.originalIndex)"
 					:is-selected="versionEntry.item.versionId === props.selectedItem?.versionId"
-					:is-version-active="versionEntry.item.versionId === props.activeVersionId"
+					:is-published="versionEntry.item.versionId === props.publishedVersionId"
+					:is-pending="versionEntry.item.versionId === props.pendingVersionId"
 					:actions="getActions(versionEntry.item, versionEntry.originalIndex)"
+					:is-workflow-diffs-enabled="props.isWorkflowDiffsEnabled"
 					:is-grouped="true"
 					@action="onAction"
 					@preview="onPreview"
+					@compare="onCompare"
 					@mounted="onItemMounted"
 				/>
 			</template>
@@ -169,11 +237,15 @@ const onItemMounted = ({
 				v-if="entry.type === 'version'"
 				:index="entry.originalIndex"
 				:item="entry.item"
+				:compare-with="getItemToCompareWith(entry.item, entry.originalIndex)"
 				:is-selected="entry.item.versionId === props.selectedItem?.versionId"
-				:is-version-active="entry.item.versionId === props.activeVersionId"
+				:is-published="entry.item.versionId === props.publishedVersionId"
+				:is-pending="entry.item.versionId === props.pendingVersionId"
 				:actions="getActions(entry.item, entry.originalIndex)"
+				:is-workflow-diffs-enabled="props.isWorkflowDiffsEnabled"
 				@action="onAction"
 				@preview="onPreview"
+				@compare="onCompare"
 				@mounted="onItemMounted"
 			/>
 		</template>
@@ -195,21 +267,11 @@ const onItemMounted = ({
 			<N8nLoading :rows="3" class="mb-xs" />
 			<N8nLoading :rows="3" class="mb-xs" />
 		</li>
-		<li v-if="props.shouldUpgrade" :class="$style.retention">
-			<span>
-				{{
-					i18n.baseText('workflowHistory.limit', {
-						interpolate: { days: String(props.evaluatedPruneDays) },
-					})
-				}}
-			</span>
-			<I18nT keypath="workflowHistory.upgrade" tag="span" scope="global">
-				<template #link>
-					<a href="#" @click="emit('upgrade')">
-						{{ i18n.baseText('workflowHistory.upgrade.link') }}
-					</a>
-				</template>
-			</I18nT>
+		<li v-if="props.shouldUpgrade">
+			<WorkflowHistoryUpgradeFooter
+				:prune-time-display="pruneTimeDisplay"
+				@upgrade="emit('upgrade')"
+			/>
 		</li>
 	</ul>
 </template>
@@ -235,31 +297,39 @@ const onItemMounted = ({
 	height: 1px;
 }
 
-.retention {
-	display: grid;
-	padding: var(--spacing--sm);
-	font-size: var(--font-size--2xs);
-	line-height: var(--line-height--lg);
-	text-align: center;
-}
-
 .groupHeader {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	padding: var(--spacing--2xs) var(--spacing--3xs);
+	padding: 0 var(--spacing--3xs);
 	margin-top: var(--spacing--lg);
 	cursor: pointer;
 	position: relative;
 
-	// Line segment in the gap above this item (not for first item)
-	&:not(:first-child)::before {
-		@include timeline-gap-line;
-	}
+	// The gap above the header. The timeline line spans it.
+	--timeline-gap: var(--spacing--lg);
 }
 
 .groupTimelineColumn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	align-self: stretch;
+	position: relative;
+	width: var(--spacing--lg);
 	min-width: var(--spacing--lg);
+
+	@include timeline-line;
+	--timeline-hole: var(--spacing--sm);
+
+	// Nothing is above the first header, so no line runs above its chevron.
+	.groupHeader:first-child &::before {
+		display: none;
+	}
+}
+
+.groupLabel {
+	padding: var(--spacing--2xs) 0;
 }
 
 .groupChevron {

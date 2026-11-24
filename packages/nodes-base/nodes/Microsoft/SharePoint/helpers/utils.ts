@@ -1,279 +1,216 @@
-import type {
-	IDataObject,
-	IExecuteSingleFunctions,
-	IHttpRequestOptions,
-	IN8nHttpFullResponse,
-	INodeExecutionData,
-	JsonObject,
-	ResourceMapperValue,
-} from 'n8n-workflow';
-import { jsonParse, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INode, ResourceMapperField } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import type { IErrorResponse } from './interfaces';
-import { microsoftSharePointApiRequest } from '../transport';
+import { escapeODataValue } from '@utils/query-escaping';
 
-export const escapeFilterValue = (value: string) => value.replaceAll("'", "''");
+/** v1's Simplify $select list — the exact trimmed fields v2 keeps returning; Get Many reuses it. */
+export const LIST_SIMPLIFY_SELECT =
+	'id,name,displayName,description,createdDateTime,lastModifiedDateTime,webUrl';
 
-export async function simplifyItemPostReceive(
-	this: IExecuteSingleFunctions,
-	items: INodeExecutionData[],
-	_response: IN8nHttpFullResponse,
-): Promise<INodeExecutionData[]> {
-	if (items.length === 0) {
-		return items;
-	}
+/** v1's item Simplify request shape — the trimmed top-level fields v2 keeps returning. */
+export const ITEM_SIMPLIFY_SELECT = 'id,createdDateTime,lastModifiedDateTime,webUrl';
+// Not v1's `fields(select=Title)`: through this request stack Graph only accepts
+// the nested option $-prefixed, else it rejects the whole query as unparseable.
+export const ITEM_SIMPLIFY_EXPAND = 'fields($select=Title)';
 
-	const simplify = this.getNodeParameter('simplify') as boolean;
-	if (simplify) {
-		for (const item of items) {
-			delete item.json['@odata.context'];
-			delete item.json['@odata.etag'];
-			delete item.json['fields@odata.navigationLink'];
-			delete (item.json.fields as IDataObject)?.['@odata.etag'];
-		}
-	}
-
-	return items;
+/** Match v1's simplifyItemPostReceive exactly: only these annotation keys are stripped. */
+export function simplifyItem(item: IDataObject): IDataObject {
+	delete item['@odata.context'];
+	delete item['@odata.etag'];
+	delete item['fields@odata.navigationLink'];
+	delete (item.fields as IDataObject | undefined)?.['@odata.etag'];
+	return item;
 }
 
-export async function simplifyListPostReceive(
-	this: IExecuteSingleFunctions,
-	items: INodeExecutionData[],
-	_response: IN8nHttpFullResponse,
-): Promise<INodeExecutionData[]> {
-	if (items.length === 0) {
-		return items;
+/**
+ * Validates and trims a value used verbatim as a URL path segment. Rejects
+ * empty, `.` and `..`, which would address a different resource than intended.
+ */
+export function assertPathSegment(node: INode, value: string, paramName: string): string {
+	const trimmed = value.trim();
+	if (trimmed === '') {
+		throw new NodeOperationError(node, `The '${paramName}' parameter is empty`, {
+			description: `Set the ${paramName.toLowerCase()} and try again.`,
+		});
 	}
-
-	const simplify = this.getNodeParameter('simplify') as boolean;
-	if (simplify) {
-		for (const item of items) {
-			delete item.json['@odata.context'];
-			delete item.json['@odata.etag'];
-		}
+	if (trimmed === '.' || trimmed === '..') {
+		throw new NodeOperationError(node, `The '${paramName}' value '${trimmed}' is not valid`, {
+			description: `Set a specific ${paramName.toLowerCase()} and try again.`,
+		});
 	}
-
-	return items;
+	return trimmed;
 }
 
-export async function downloadFilePostReceive(
-	this: IExecuteSingleFunctions,
-	_items: INodeExecutionData[],
-	response: IN8nHttpFullResponse,
-): Promise<INodeExecutionData[]> {
-	let fileName: string | undefined;
-	if (response.headers['content-disposition']) {
-		let fileNameMatch = /filename\*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/g.exec(
-			response.headers['content-disposition'] as string,
-		);
-		fileName =
-			fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[3] || fileNameMatch[2] : undefined;
-		if (fileName) {
-			fileName = decodeURIComponent(fileName);
-		} else {
-			fileNameMatch = /filename="?([^"]*?)"?(;|$)/g.exec(
-				response.headers['content-disposition'] as string,
-			);
-			fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
-		}
-	}
+/** Shape shared by every Graph collection reply a listSearch method here consumes. */
+export type GraphSearchReply<T> = { '@odata.nextLink'?: string; value?: T[] };
 
-	const newItem: INodeExecutionData = {
-		json: {},
-		binary: {
-			data: await this.helpers.prepareBinaryData(
-				response.body as Buffer,
-				fileName,
-				response.headers['content-type'] as string,
-			),
+/**
+ * Builds a `fields/{column} eq '{value}'` OData $filter clause. The value is
+ * always compared as a quoted string literal, where the only special character
+ * is the single quote, escaped by doubling; URL encoding is the transport's job.
+ */
+export const odataFieldEqualsClause = (column: string, value: unknown) =>
+	`fields/${column} eq '${escapeODataValue(value ?? '')}'`;
+
+/** SharePoint refuses to filter on non-indexed columns without this opt-in. */
+export const NON_INDEXED_QUERY_HEADERS: IDataObject = {
+	Prefer: 'HonorNonIndexedQueriesWarningMayFailRandomly',
+};
+
+/** Graph rejects hyperlink field writes without this (see list/columns.ts). */
+export const HYPERLINK_WRITE_HEADERS: IDataObject = { Prefer: 'apiversion=2.1' };
+
+/**
+ * Translates Graph's list-view-threshold failure (a non-indexed $filter on a
+ * >5,000-item list) into an error naming the filtered column(s); the run must
+ * never return a silent partial result. Returns `undefined` for other errors.
+ */
+export function nonIndexedFilterThresholdError(
+	node: INode,
+	error: unknown,
+	filter: string,
+): NodeOperationError | undefined {
+	if (filter === '' || !(error instanceof NodeApiError) || !/threshold/i.test(error.message)) {
+		return undefined;
+	}
+	const columns = [...filter.matchAll(/fields\/(\w+)/g)].map((match) => match[1]);
+	const subject = columns.length > 0 ? `column(s) '${columns.join("', '")}'` : 'this filter';
+	return new NodeOperationError(
+		node,
+		`SharePoint could not finish filtering on ${subject}: large lists can only be filtered on indexed columns`,
+		{
+			description:
+				'Add an index to the column in SharePoint (List settings → Indexed columns) or filter on an indexed column, then try again.',
 		},
-	};
-
-	return [newItem];
+	);
 }
 
-export async function uploadFilePreSend(
-	this: IExecuteSingleFunctions,
-	requestOptions: IHttpRequestOptions,
-): Promise<IHttpRequestOptions> {
-	const binaryProperty = this.getNodeParameter('fileContents') as string;
-	this.helpers.assertBinaryData(binaryProperty);
-	const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(binaryProperty);
-	requestOptions.body = binaryDataBuffer;
-	return requestOptions;
+/** Graph's unique-constraint rejection names no column; point the user at the mapper. */
+export function addUniqueConstraintHint(error: unknown): void {
+	if (error instanceof NodeApiError && error.message.includes('unique constraints')) {
+		error.description = "Double-check the value(s) in 'Columns' and try again";
+	}
 }
 
-export async function itemGetAllFieldsPreSend(
-	this: IExecuteSingleFunctions,
-	requestOptions: IHttpRequestOptions,
-): Promise<IHttpRequestOptions> {
-	const fields = this.getNodeParameter('options.fields') as string[];
-	requestOptions.qs ??= {};
-	if (fields.some((x) => x === 'fields')) {
-		requestOptions.qs.$expand = 'fields';
-	}
-	requestOptions.qs.$select = fields.map((x) => x);
-	return requestOptions;
+export function isForbiddenError(error: unknown): boolean {
+	return error instanceof NodeApiError && error.httpCode === '403';
 }
 
-export async function itemColumnsPreSend(
-	this: IExecuteSingleFunctions,
-	requestOptions: IHttpRequestOptions,
-): Promise<IHttpRequestOptions> {
-	const mapperValue = this.getNodeParameter('columns') as ResourceMapperValue;
-	const operation = this.getNodeParameter('operation') as string;
+// SharePoint refuses the content types read with 403 after a column rename in a
+// non-default site language. The columns endpoint still works but omits `type`.
+const COLUMN_TYPE_BY_FACET: Record<string, string> = {
+	text: 'text',
+	number: 'number',
+	currency: 'currency',
+	boolean: 'boolean',
+	dateTime: 'dateTime',
+	choice: 'choice',
+	personOrGroup: 'user',
+	lookup: 'lookup',
+};
 
-	if (['upsert', 'update'].includes(operation) && mapperValue.matchingColumns?.length > 0) {
-		if (!mapperValue.matchingColumns.includes('id')) {
-			const site = this.getNodeParameter('site', undefined, { extractValue: true }) as string;
-			const list = this.getNodeParameter('list', undefined, { extractValue: true }) as string;
-
-			const response = await microsoftSharePointApiRequest.call(
-				this,
-				'GET',
-				`/sites/${site}/lists/${list}/items`,
-				{},
-				{
-					$filter: mapperValue.matchingColumns
-						.map((x) => `fields/${x} eq '${mapperValue.value![x]}'`)
-						.join(' and'),
-				},
-				{
-					Prefer: 'HonorNonIndexedQueriesWarningMayFailRandomly',
-				},
-			);
-			if (response.value?.length === 1) {
-				mapperValue.matchingColumns.push('id');
-				mapperValue.value ??= {};
-				mapperValue.value.id = response.value[0].id;
-			}
+export function withColumnTypes<T extends { type?: string; choice?: object }>(columns: T[]): T[] {
+	return columns.flatMap((column) => {
+		const facet = Object.keys(COLUMN_TYPE_BY_FACET).find((key) => key in column);
+		if (facet === undefined) {
+			return [];
 		}
-
-		if (operation === 'upsert') {
-			if (mapperValue.matchingColumns.includes('id')) {
-				if (!mapperValue.value?.id) {
-					throw new NodeOperationError(
-						this.getNode(),
-						"The column(s) don't match any existing item",
-						{
-							description: 'Double-check the value(s) for the columns to match and try again',
-						},
-					);
-				}
-				requestOptions.url += '/' + mapperValue.value.id;
-				delete mapperValue.value.id;
-				requestOptions.method = 'PATCH';
-			}
-		} else if (operation === 'update') {
-			if (mapperValue.matchingColumns.includes('id') && mapperValue.value?.id) {
-				requestOptions.url += '/' + mapperValue.value.id;
-				delete mapperValue.value.id;
-			} else {
-				throw new NodeOperationError(
-					this.getNode(),
-					"The column(s) don't match any existing item",
-					{
-						description: 'Double-check the value(s) for the columns to match and try again',
-					},
-				);
-			}
-		}
-	}
-
-	const fields = {} as IDataObject;
-	for (const [key, value] of Object.entries(mapperValue.value ?? {})) {
-		if (mapperValue.schema.find((x) => x.id === key)?.type === 'url') {
-			fields[key] = {
-				Description: value,
-				Url: value,
-			};
-		} else {
-			fields[key] = value;
-		}
-	}
-	requestOptions.body ??= {};
-	(requestOptions.body as IDataObject).fields = fields;
-
-	return requestOptions;
+		// SharePoint offers checkboxes only for a choice column with multiple selections.
+		const isMultiChoice =
+			column.choice !== undefined &&
+			'displayAs' in column.choice &&
+			column.choice.displayAs === 'checkBoxes';
+		return [{ ...column, type: isMultiChoice ? 'multichoice' : COLUMN_TYPE_BY_FACET[facet] }];
+	});
 }
 
-export async function handleErrorPostReceive(
-	this: IExecuteSingleFunctions,
-	data: INodeExecutionData[],
-	response: IN8nHttpFullResponse,
-): Promise<INodeExecutionData[]> {
-	if (String(response.statusCode).startsWith('4') || String(response.statusCode).startsWith('5')) {
-		const resource = this.getNodeParameter('resource') as string;
-		const operation = this.getNodeParameter('operation') as string;
+// An empty schema would drop every property and write an empty item.
+export function autoMapInputData(
+	node: INode,
+	schema: ResourceMapperField[] | undefined,
+	json: IDataObject,
+	itemIndex: number,
+): IDataObject {
+	const columnIds = new Set(
+		(schema ?? []).filter((field) => !field.readOnly || field.id === 'id').map((field) => field.id),
+	);
+	if (columnIds.size === 0) {
+		throw new NodeOperationError(node, 'Could not map the input data to the list columns', {
+			description:
+				'The node has no columns for this list. Open the node so that it loads the columns, then save the workflow.',
+			itemIndex,
+		});
+	}
+	return Object.fromEntries(Object.entries(json).filter(([key]) => columnIds.has(key)));
+}
 
-		if (resource === 'file' && operation === 'download' && Buffer.isBuffer(response.body)) {
-			response.body = jsonParse((response.body as Buffer).toString());
-		}
-		const error = (response.body as IErrorResponse)?.error ?? ({} as IErrorResponse['error']);
+/** Characters SharePoint forbids in file names; Graph rejects them with a misleading 400. */
+export const SHAREPOINT_ILLEGAL_FILE_NAME_CHARS = ['"', '*', ':', '<', '>', '?', '/', '\\', '|'];
 
-		if (resource === 'file') {
-			if (operation === 'download') {
-			} else if (operation === 'update') {
-			} else if (operation === 'upload') {
-			}
-		} else if (resource === 'item') {
-			if (operation === 'create') {
-				if (error.code === 'invalidRequest') {
-					if (
-						error.message ===
-						'One or more fields with unique constraints already has the provided value.'
-					) {
-						throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-							message: 'One or more fields with unique constraints already has the provided value',
-							description: "Double-check the value(s) in 'Values to Send' and try again",
-						});
-					} else {
-						throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-							message: error.message,
-							description: "Double-check the value(s) in 'Values to Send' and try again",
-						});
-					}
-				}
-			} else if (operation === 'delete') {
-			} else if (operation === 'get') {
-			} else if (operation === 'getAll') {
-			} else if (operation === 'update') {
-				if (error.code === 'invalidRequest') {
-					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-						message: error.message,
-						description: "Double-check the value(s) in 'Values to Update' and try again",
-					});
-				}
-			} else if (operation === 'upsert') {
-				if (error.code === 'invalidRequest') {
-					throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-						message: error.message,
-						description: "Double-check the value(s) in 'Values to Send' and try again",
-					});
-				}
-			}
-		} else if (resource === 'list') {
-			if (operation === 'get') {
-			} else if (operation === 'getAll') {
-			}
-		}
+/** Graph's cap for a single-request `PUT …:/content` upload; larger files need an upload session. */
+export const MAX_SIMPLE_UPLOAD_BYTES = 250 * 1024 * 1024;
 
-		if (error.code === 'itemNotFound') {
-			if (error.message.includes('list item')) {
-				throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-					message: "The required item doesn't match any existing one",
-					description: "Double-check the value in the parameter 'Item' and try again",
-				});
-			} else if (error.message.includes('list')) {
-				throw new NodeApiError(this.getNode(), response as unknown as JsonObject, {
-					message: "The required list doesn't match any existing one",
-					description: "Double-check the value in the parameter 'List' and try again",
-				});
-			}
-		}
-
-		throw new NodeApiError(this.getNode(), response as unknown as JsonObject);
+export function validateSharePointFileName(
+	node: INode,
+	fileName: string | undefined,
+	itemIndex: number,
+): asserts fileName is string {
+	if (fileName === undefined || fileName.trim() === '') {
+		throw new NodeOperationError(node, 'File name must be set!', { itemIndex });
 	}
 
-	return data;
+	const illegalChars = SHAREPOINT_ILLEGAL_FILE_NAME_CHARS.filter((char) => fileName.includes(char));
+	if (illegalChars.length > 0) {
+		throw new NodeOperationError(
+			node,
+			`The file name "${fileName}" contains characters that SharePoint doesn't allow: ${illegalChars.join(' ')}`,
+			{
+				itemIndex,
+				description:
+					`SharePoint file names can't contain any of these characters: ${SHAREPOINT_ILLEGAL_FILE_NAME_CHARS.join(' ')}. Remove them from the file name and try again.` +
+					(illegalChars.includes(':')
+						? " If you're inserting a timestamp, use a colon-free format such as {{ $now.toFormat('yyyy-MM-dd_HH-mm-ss') }}."
+						: ''),
+			},
+		);
+	}
+}
+
+/**
+ * Asserts the input binary exists, enforces the simple-upload size cap, and
+ * returns the payload with its content type. Out-of-process binary data is
+ * size-checked from its metadata — oversized files are rejected without ever
+ * being read.
+ */
+export async function getUploadBufferWithinCap(
+	ctx: IExecuteFunctions,
+	itemIndex: number,
+	binaryPropertyName: string,
+): Promise<{ body: Buffer; contentType: string }> {
+	const binaryData = ctx.helpers.assertBinaryData(itemIndex, binaryPropertyName);
+
+	let body: Buffer | undefined;
+	let fileSize: number;
+	if (binaryData.id) {
+		({ fileSize } = await ctx.helpers.getBinaryMetadata(binaryData.id));
+	} else {
+		body = Buffer.from(binaryData.data, BINARY_ENCODING);
+		fileSize = body.byteLength;
+	}
+	if (fileSize > MAX_SIMPLE_UPLOAD_BYTES) {
+		// Ceil so a just-over-the-cap file never reads as "250 MB is larger than 250 MB"
+		const sizeMb = Math.ceil(fileSize / (1024 * 1024));
+		throw new NodeOperationError(
+			ctx.getNode(),
+			`The file is ${sizeMb} MB, which is larger than the 250 MB limit for SharePoint uploads`,
+			{
+				itemIndex,
+				description:
+					'Files over 250 MB need to be uploaded in pieces, which this operation does not support yet.',
+			},
+		);
+	}
+
+	body ??= await ctx.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName);
+	return { body, contentType: binaryData.mimeType ?? 'application/octet-stream' };
 }

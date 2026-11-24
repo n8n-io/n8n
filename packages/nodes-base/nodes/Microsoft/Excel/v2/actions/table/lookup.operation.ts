@@ -5,11 +5,12 @@ import type {
 	INodeProperties,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { microsoftApiRequestAllItemsSkip } from '../../transport';
+import { stampItemIndexOnError } from '../../../../GenericFunctions';
+import { microsoftApiRequestAllItemsSkip, toWorkbookId } from '../../transport';
 import { tableRLC, workbookRLC, worksheetRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
@@ -72,9 +73,12 @@ export async function execute(
 	for (let i = 0; i < items.length; i++) {
 		const qs: IDataObject = {};
 		try {
-			const workbookId = this.getNodeParameter('workbook', i, undefined, {
-				extractValue: true,
-			}) as string;
+			const workbookId = toWorkbookId.call(
+				this,
+				this.getNodeParameter('workbook', i, undefined, {
+					extractValue: true,
+				}) as string,
+			);
 
 			const worksheetId = this.getNodeParameter('worksheet', i, undefined, {
 				extractValue: true,
@@ -92,9 +96,10 @@ export async function execute(
 				this,
 				'value',
 				'GET',
-				`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/rows`,
+				requestPath`/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/rows`,
 				{},
 				{},
+				i,
 			);
 
 			qs.$select = 'name';
@@ -103,9 +108,10 @@ export async function execute(
 				this,
 				'value',
 				'GET',
-				`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/columns`,
+				requestPath`/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/columns`,
 				{},
 				qs,
+				i,
 			);
 			columns = columns.map((column: IDataObject) => column.name);
 
@@ -155,7 +161,8 @@ export async function execute(
 				returnData.push(...executionErrorData);
 				continue;
 			}
-			throw error;
+			// A NodeError from the transport may be missing the itemIndex, add it
+			throw stampItemIndexOnError(error, i);
 		}
 	}
 

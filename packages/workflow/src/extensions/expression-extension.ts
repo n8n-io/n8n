@@ -10,13 +10,14 @@ import { arrayExtensions } from './array-extensions';
 import { booleanExtensions } from './boolean-extensions';
 import { dateExtensions } from './date-extensions';
 import { joinExpression, splitExpression } from './expression-parser';
-import type { ExpressionChunk, ExpressionCode } from './expression-parser';
+import type { ExpressionChunk } from './expression-parser';
 import type { ExtensionMap } from './extensions';
 import { numberExtensions } from './number-extensions';
 import { objectExtensions } from './object-extensions';
 import { stringExtensions } from './string-extensions';
 import { checkIfValueDefinedOrThrow } from './utils';
 import { ExpressionExtensionError } from '../errors/expression-extension.error';
+import { isSafeObjectProperty } from '../utils';
 
 const EXPRESSION_EXTENDER = 'extend';
 const EXPRESSION_EXTENDER_OPTIONAL = 'extendOptional';
@@ -55,30 +56,69 @@ const EXPRESSION_EXTENSION_METHODS = Array.from(
 		...Object.keys(genericExtensions),
 	]),
 );
-
+// eslint-disable-next-line n8n-local-rules/no-dynamic-regexp -- static pattern
 const EXPRESSION_EXTENSION_REGEX = new RegExp(
 	`(\\$if|\\.(${EXPRESSION_EXTENSION_METHODS.join('|')})\\s*(\\?\\.)?)\\s*\\(`,
 );
 
-// Regex to detect [*] array mapping syntax (e.g., items[*].field)
-// Note: No 'g' flag here - used with .test() which has stateful behavior with global regexes
-const ARRAY_WILDCARD_REGEX = /\[\s*\*\s*\]/;
+const ARRAY_WILDCARD_AT_START = /^\[\s*\*\s*\]/;
 
 // Placeholder used to make [*] parseable by esprima
 const ARRAY_WILDCARD_PLACEHOLDER = '__n8n_array_wildcard__';
+
+// Positions of [*] in code, skipping string and template literals
+const findArrayWildcards = (code: string): Array<{ index: number; length: number }> => {
+	const found: Array<{ index: number; length: number }> = [];
+	let quote: string | null = null;
+	for (let i = 0; i < code.length; i++) {
+		const char = code[i];
+		if (quote) {
+			if (char === '\\') i++;
+			else if (char === quote) quote = null;
+			continue;
+		}
+		if (char === "'" || char === '"' || char === '`') {
+			quote = char;
+		} else if (char === '[') {
+			const match = ARRAY_WILDCARD_AT_START.exec(code.slice(i));
+			if (match) {
+				found.push({ index: i, length: match[0].length });
+				i += match[0].length - 1;
+			}
+		}
+	}
+	return found;
+};
 
 const isExpressionExtension = (str: string) => EXPRESSION_EXTENSION_METHODS.some((m) => m === str);
 
 export const hasExpressionExtension = (str: string): boolean =>
 	EXPRESSION_EXTENSION_REGEX.test(str);
 
-export const hasArrayWildcardSyntax = (str: string): boolean => ARRAY_WILDCARD_REGEX.test(str);
+export const countArrayWildcards = (code: string): number => findArrayWildcards(code).length;
+
+export const hasArrayWildcardSyntax = (code: string): boolean => countArrayWildcards(code) > 0;
 
 /**
- * Replaces all [*] occurrences with the placeholder for parsing
+ * Replaces every [*] outside string and template literals
  */
-const replaceArrayWildcards = (str: string): string =>
-	str.replace(/\[\s*\*\s*\]/g, `["${ARRAY_WILDCARD_PLACEHOLDER}"]`);
+export const replaceArrayWildcards = (code: string, replacement: string): string => {
+	let result = '';
+	let last = 0;
+	for (const { index, length } of findArrayWildcards(code)) {
+		result += code.slice(last, index) + replacement;
+		last = index + length;
+	}
+	return result + code.slice(last);
+};
+
+/**
+ * Checks the code parts of a bracketed expression such as `Total: {{ $json.items[*].price }}`
+ */
+export const expressionUsesArrayWildcard = (bracketedExpression: string): boolean =>
+	splitExpression(bracketedExpression).some(
+		(chunk) => chunk.type === 'code' && hasArrayWildcardSyntax(chunk.text),
+	);
 
 export const hasNativeMethod = (method: string): boolean => {
 	if (hasExpressionExtension(method)) {
@@ -147,65 +187,68 @@ function containsArrayWildcard(node: ExpressionKind): boolean {
 }
 
 /**
- * Collects the JMESPath query string from member expressions following [*]
- * Returns the path string like ".field" or ".address.city"
+ * Turns the member chain after [*] into a JMESPath query.
  *
- * For expression like: $json.orders[*].customer.name
- * - baseObject = $json.orders
- * - jmesPath = "[*].customer.name"
+ * For `$json.orders[*].customer.name`, baseObject is `$json.orders` and the query is
+ * `map(&"customer"."name", [*] || `[]`)`. `map` keeps a null for an element without the
+ * field, so values from several [*] expressions on the same array stay aligned.
+ * With `dropLastSegment`, used when the chain is the callee of a call such as
+ * `orders[*].name.join(', ')`, the method is left to run on the resulting array.
  */
 function collectJmesPathFromChain(
 	node: types.namedTypes.MemberExpression,
+	dropLastSegment: boolean,
 ): { baseObject: ExpressionKind; jmesPath: string } | null {
-	// First, check if this is the topmost expression containing [*]
-	// by verifying that node contains [*] but is not itself inside another [*] chain
 	if (!containsArrayWildcard(node)) {
 		return null;
 	}
 
-	const pathParts: string[] = [];
+	const segments: string[] = [];
 	let baseObject: ExpressionKind | null = null;
 
-	// Walk down the member expression chain to find [*] and collect all paths after it
-	const collectPath = (n: ExpressionKind): 'before_wildcard' | 'after_wildcard' => {
-		if (n.type === 'MemberExpression') {
-			const memberNode = n;
-
-			// Check if this is the [*] node
-			if (isArrayWildcardAccess(memberNode)) {
-				baseObject = memberNode.object;
-				return 'after_wildcard';
-			}
-
-			// Recurse into the object (go deeper first)
-			const result = collectPath(memberNode.object);
-
-			if (result === 'after_wildcard') {
-				// We're past the [*], collect this property
-				if (memberNode.property.type === 'Identifier') {
-					pathParts.push(memberNode.property.name);
-				} else if (memberNode.property.type === 'Literal') {
-					// Handle computed properties like ['field']
-					pathParts.push(String(memberNode.property.value));
-				}
-				return 'after_wildcard';
-			}
-
-			return 'before_wildcard';
+	const collectPath = (n: ExpressionKind): boolean => {
+		if (n.type !== 'MemberExpression') {
+			return false;
 		}
-		return 'before_wildcard';
+		if (isArrayWildcardAccess(n)) {
+			baseObject = n.object;
+			return true;
+		}
+		if (!collectPath(n.object)) {
+			return false;
+		}
+		if (!n.computed && n.property.type === 'Identifier') {
+			segments.push(JSON.stringify(n.property.name));
+		} else if (n.property.type === 'Literal' && typeof n.property.value === 'number') {
+			segments.push(`[${n.property.value}]`);
+		} else if (n.property.type === 'Literal' && typeof n.property.value === 'string') {
+			segments.push(JSON.stringify(n.property.value));
+		} else {
+			throw new ExpressionExtensionError('[*] supports only fixed property names after it');
+		}
+		return true;
 	};
 
 	collectPath(node);
 
-	if (!baseObject || pathParts.length === 0) {
+	if (!baseObject) {
 		return null;
 	}
 
-	// Build JMESPath query: [*].field1.field2
-	const jmesPath = '[*].' + pathParts.join('.');
+	if (dropLastSegment) {
+		segments.pop();
+	}
 
-	return { baseObject, jmesPath };
+	if (segments.length === 0) {
+		return { baseObject, jmesPath: '[*]' };
+	}
+
+	const path = segments.reduce(
+		(query, segment) =>
+			segment.startsWith('[') || !query ? query + segment : `${query}.${segment}`,
+		'',
+	);
+	return { baseObject, jmesPath: `map(&${path}, [*] || \`[]\`)` };
 }
 
 /**
@@ -230,7 +273,10 @@ export const extendTransform = (expression: string): { code: string } | undefine
 	try {
 		// Preprocess: Replace [*] with ["__n8n_array_wildcard__"] to make it parseable
 		// JavaScript doesn't allow [*] as it interprets * as multiplication operator
-		const preprocessedExpression = replaceArrayWildcards(expression);
+		const preprocessedExpression = replaceArrayWildcards(
+			expression,
+			`["${ARRAY_WILDCARD_PLACEHOLDER}"]`,
+		);
 
 		const ast = parse(preprocessedExpression, {
 			parser: { parse: parseWithEsprimaNext },
@@ -256,16 +302,22 @@ export const extendTransform = (expression: string): { code: string } | undefine
 					return;
 				}
 
-				// Check if this expression contains [*]
-				const result = collectJmesPathFromChain(node);
+				// A method called after the path, e.g. orders[*].name.join(', '), runs on the result
+				const isCallee =
+					types.namedTypes.CallExpression.check(parentNode) && parentNode.callee === node;
+				const result = collectJmesPathFromChain(node, isCallee);
+				if (!result) {
+					return;
+				}
 
-				if (result) {
-					// Create $jmesPath(baseObject, '[*].path')
-					const jmesPathCall = types.builders.callExpression(
-						types.builders.identifier('$jmesPath'),
-						[result.baseObject, types.builders.literal(result.jmesPath)],
-					);
+				const jmesPathCall = types.builders.callExpression(types.builders.identifier('$jmesPath'), [
+					result.baseObject,
+					types.builders.literal(result.jmesPath),
+				]);
 
+				if (isCallee) {
+					path.replace(types.builders.memberExpression(jmesPathCall, node.property, node.computed));
+				} else {
 					path.replace(jmesPathCall);
 				}
 			},
@@ -564,13 +616,30 @@ export const extendTransform = (expression: string): { code: string } | undefine
 					path.replace(
 						types.builders.conditionalExpression(
 							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
-							test as any,
+							test,
 							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
-							consequent as any,
+							consequent,
 							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
-							alternative as any,
+							alternative,
 						),
 					);
+				}
+			},
+		});
+
+		// recast adds parentheses by operator precedence only, but JavaScript
+		// rejects `&&` or `||` as an operand of `??` without parentheses.
+		// The ast-types definitions do not declare `extra`, which recast reads.
+		visit(ast, {
+			visitLogicalExpression(path) {
+				this.traverse(path);
+
+				if (path.node.operator !== '??') return;
+
+				for (const operand of [path.node.left, path.node.right]) {
+					if (operand.type === 'LogicalExpression' && operand.operator !== '??') {
+						Object.assign(operand, { extra: { parenthesized: true } });
+					}
 				}
 			},
 		});
@@ -599,26 +668,36 @@ interface FoundFunction {
 }
 
 function findExtendedFunction(input: unknown, functionName: string): FoundFunction | undefined {
+	// Coerce to string early so the name is stable for the property check below
+	const name = typeof functionName === 'string' ? functionName : String(functionName);
+
+	// Ensure the property name is in the allowed set before looking it up
+	if (!isSafeObjectProperty(name)) {
+		throw new ExpressionExtensionError(
+			`Cannot access "${name}" via expression extension due to security concerns`,
+		);
+	}
+
 	// eslint-disable-next-line @typescript-eslint/no-restricted-types
 	let foundFunction: Function | undefined;
 	if (Array.isArray(input)) {
-		foundFunction = arrayExtensions.functions[functionName];
-	} else if (isDate(input) && functionName !== 'toDate' && functionName !== 'toDateTime') {
+		foundFunction = arrayExtensions.functions[name];
+	} else if (isDate(input) && name !== 'toDate' && name !== 'toDateTime') {
 		// If it's a string date (from $json), convert it to a Date object,
 		// unless that function is `toDate`, since `toDate` does something
 		// very different on date objects
 		input = new Date(input as string);
-		foundFunction = dateExtensions.functions[functionName];
+		foundFunction = dateExtensions.functions[name];
 	} else if (typeof input === 'string') {
-		foundFunction = stringExtensions.functions[functionName];
+		foundFunction = stringExtensions.functions[name];
 	} else if (typeof input === 'number') {
-		foundFunction = numberExtensions.functions[functionName];
+		foundFunction = numberExtensions.functions[name];
 	} else if (input && (DateTime.isDateTime(input) || input instanceof Date)) {
-		foundFunction = dateExtensions.functions[functionName];
+		foundFunction = dateExtensions.functions[name];
 	} else if (input !== null && typeof input === 'object') {
-		foundFunction = objectExtensions.functions[functionName];
+		foundFunction = objectExtensions.functions[name];
 	} else if (typeof input === 'boolean') {
-		foundFunction = booleanExtensions.functions[functionName];
+		foundFunction = booleanExtensions.functions[name];
 	}
 
 	// Look for generic or builtin
@@ -627,13 +706,13 @@ function findExtendedFunction(input: unknown, functionName: string): FoundFuncti
 		const inputAny: any = input;
 		// This is likely a builtin we're implementing for another type
 		// (e.g. toLocaleString). We'll return that instead
-		if (inputAny && functionName && typeof inputAny[functionName] === 'function') {
+		if (inputAny && name && typeof inputAny[name] === 'function') {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			return { type: 'native', function: inputAny[functionName] };
+			return { type: 'native', function: inputAny[name] };
 		}
 
 		// Use a generic version if available
-		foundFunction = genericExtensions[functionName];
+		foundFunction = genericExtensions[name];
 	}
 
 	if (!foundFunction) {
@@ -708,7 +787,7 @@ export function extendOptional(
 	};
 }
 
-const EXTENDED_SYNTAX_CACHE: Record<string, string> = {};
+const EXTENDED_SYNTAX_CACHE = new Map<string, string>();
 
 export function extendSyntax(bracketedExpression: string, forceExtend = false): string {
 	const chunks = splitExpression(bracketedExpression);
@@ -728,8 +807,9 @@ export function extendSyntax(bracketedExpression: string, forceExtend = false): 
 	}
 
 	// If we've seen this expression before grab it from the cache
-	if (bracketedExpression in EXTENDED_SYNTAX_CACHE) {
-		return EXTENDED_SYNTAX_CACHE[bracketedExpression];
+	const cachedExpression = EXTENDED_SYNTAX_CACHE.get(bracketedExpression);
+	if (cachedExpression !== undefined) {
+		return cachedExpression;
 	}
 
 	const extendedChunks = chunks.map((chunk): ExpressionChunk => {
@@ -758,13 +838,13 @@ export function extendSyntax(bracketedExpression: string, forceExtend = false): 
 			return {
 				...chunk,
 				text,
-			} as ExpressionCode;
+			};
 		}
 		return chunk;
 	});
 
 	const expression = joinExpression(extendedChunks);
 	// Cache the expression so we don't have to do this transform again
-	EXTENDED_SYNTAX_CACHE[bracketedExpression] = expression;
+	EXTENDED_SYNTAX_CACHE.set(bracketedExpression, expression);
 	return expression;
 }

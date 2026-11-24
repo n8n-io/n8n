@@ -42,10 +42,6 @@ const stubs = {
 	},
 	N8nIcon: true,
 	N8nHeading: { template: '<h4><slot /></h4>' },
-	N8nTag: {
-		props: ['text'],
-		template: '<span>{{ text }}</span>',
-	},
 	N8nCallout: {
 		props: ['theme'],
 		template: '<div data-test-id="n8n-callout" :class="theme"><slot /></div>',
@@ -54,6 +50,27 @@ const stubs = {
 };
 
 describe('N8nSuggestedActions', () => {
+	it('renders a count badge and updates its active state', async function testCountBadge() {
+		const { getByText, container, rerender } = render(N8nSuggestedActions, {
+			props: {
+				actions: [{ ...mockActions[0], completed: true }, mockActions[1]],
+				open: false,
+				title: 'Test Title',
+			},
+			global: { stubs },
+		});
+
+		const badge = getByText('1 / 2').closest('.n8n-badge');
+		expect(badge).toBeVisible();
+		expect(badge?.tagName).toBe('SPAN');
+		expect(badge).not.toHaveClass('activeTrigger');
+		expect(container.querySelector('.n8n-tag')).not.toBeInTheDocument();
+
+		await rerender({ open: true });
+
+		expect(badge).toHaveClass('activeTrigger');
+	});
+
 	it('renders the suggested actions count', () => {
 		const wrapper = render(N8nSuggestedActions, {
 			props: {
@@ -68,7 +85,7 @@ describe('N8nSuggestedActions', () => {
 		expect(wrapper.getByTestId('suggested-action-count')).toHaveTextContent('0 / 2');
 	});
 
-	it('does not render the suggested actions count if all are completed', () => {
+	it('still renders the suggested actions count if all are completed', () => {
 		const wrapper = render(N8nSuggestedActions, {
 			props: {
 				actions: [
@@ -81,7 +98,7 @@ describe('N8nSuggestedActions', () => {
 			global: { stubs },
 		});
 
-		expect(wrapper.baseElement).not.toContainHTML('data-test-id="suggested-action-count"');
+		expect(wrapper.getByTestId('suggested-action-count')).toHaveTextContent('2 / 2');
 	});
 
 	it('renders the suggested actions count with completed actions', async () => {
@@ -157,6 +174,40 @@ describe('N8nSuggestedActions', () => {
 		expect(wrapper.emitted('action-click')[0]).toEqual(['action1']);
 	});
 
+	it('emits update:open false when the close button is clicked', async () => {
+		const wrapper = render(N8nSuggestedActions, {
+			props: {
+				actions: mockActions,
+				open: true,
+				title: 'Test Title',
+			},
+			global: { stubs },
+		});
+
+		await fireEvent.click(wrapper.getByTestId('suggested-actions-close'));
+
+		expect(wrapper.emitted('update:open')).toBeTruthy();
+		expect(wrapper.emitted('update:open')[0]).toEqual([false]);
+	});
+
+	it('emits update:open event when popover state changes', async () => {
+		const wrapper = render(N8nSuggestedActions, {
+			props: {
+				actions: mockActions,
+				open: false,
+				title: 'Test Title',
+			},
+			global: { stubs },
+		});
+
+		const countTag = wrapper.getByTestId('suggested-action-count');
+		await fireEvent.click(countTag);
+
+		// Check that update:open event was emitted
+		expect(wrapper.emitted('update:open')).toBeTruthy();
+		expect(wrapper.emitted('update:open')[0]).toEqual([true]);
+	});
+
 	it('emits ignore-click event when ignore link is clicked', async () => {
 		vi.useFakeTimers();
 
@@ -181,22 +232,22 @@ describe('N8nSuggestedActions', () => {
 		vi.useRealTimers();
 	});
 
-	it('emits update:open event when popover state changes', async () => {
+	it('applies ignoring class when action is being ignored', async () => {
 		const wrapper = render(N8nSuggestedActions, {
 			props: {
 				actions: mockActions,
-				open: false,
+				open: true,
 				title: 'Test Title',
 			},
 			global: { stubs },
 		});
 
-		const countTag = wrapper.getByTestId('suggested-action-count');
-		await fireEvent.click(countTag);
+		const actionItems = wrapper.getAllByTestId('suggested-action-item');
+		const ignoreLinks = wrapper.getAllByTestId('suggested-action-ignore');
 
-		// Check that update:open event was emitted
-		expect(wrapper.emitted('update:open')).toBeTruthy();
-		expect(wrapper.emitted('update:open')[0]).toEqual([true]);
+		await fireEvent.click(ignoreLinks[0]);
+
+		expect(actionItems[0]).toHaveClass('ignoring');
 	});
 
 	it('shows custom ignore all text when ignoreAllLabel is provided', async () => {
@@ -214,7 +265,7 @@ describe('N8nSuggestedActions', () => {
 		expect(wrapper.getByText('Ignore for all')).toBeInTheDocument();
 	});
 
-	it('emits ignore-all event when turn off link is clicked', async () => {
+	it('emits ignore-all event when ignore all link is clicked', async () => {
 		const wrapper = render(N8nSuggestedActions, {
 			props: {
 				actions: mockActions,
@@ -225,9 +276,7 @@ describe('N8nSuggestedActions', () => {
 			global: { stubs },
 		});
 
-		const turnOffLink = wrapper.getByTestId('suggested-action-ignore-all');
-		expect(wrapper.getByText('Ignore for all')).toBeInTheDocument();
-		await fireEvent.click(turnOffLink);
+		await fireEvent.click(wrapper.getByTestId('suggested-action-ignore-all'));
 
 		expect(wrapper.emitted('ignore-all')).toBeTruthy();
 	});
@@ -247,26 +296,6 @@ describe('N8nSuggestedActions', () => {
 
 		const link = moreInfoLinks[0].closest('a') as HTMLAnchorElement;
 		expect(link.getAttribute('href')).toBe('https://docs.n8n.io/evaluations');
-	});
-
-	it('applies ignoring class when action is being ignored', async () => {
-		const wrapper = render(N8nSuggestedActions, {
-			props: {
-				actions: mockActions,
-				open: true,
-				title: 'Test Title',
-			},
-			global: { stubs },
-		});
-
-		const actionItems = wrapper.getAllByTestId('suggested-action-item');
-		const ignoreLinks = wrapper.getAllByTestId('suggested-action-ignore');
-
-		// Click ignore on first action
-		await fireEvent.click(ignoreLinks[0]);
-
-		// Check if the action item has the ignoring class
-		expect(actionItems[0]).toHaveClass('ignoring');
 	});
 
 	it('respects popoverAlignment prop', async () => {

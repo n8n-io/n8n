@@ -1,0 +1,21 @@
+{
+    "type": "object",
+    "properties": {
+        "displayName": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "isOwner": {
+            "type": "boolean"
+        },
+        "isShared": {
+            "type": "boolean"
+        },
+        "wellknownListName": {
+            "type": "string"
+        }
+    },
+    "version": 2
+}

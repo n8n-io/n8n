@@ -8,8 +8,9 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
+import { verifySignature } from './FigmaTriggerHelpers';
 import { figmaApiRequest } from './GenericFunctions';
 
 export class FigmaTrigger implements INodeType {
@@ -30,6 +31,20 @@ export class FigmaTrigger implements INodeType {
 			{
 				name: 'figmaApi',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['accessToken'],
+					},
+				},
+			},
+			{
+				name: 'figmaOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['oAuth2'],
+					},
+				},
 			},
 		],
 		webhooks: [
@@ -41,6 +56,22 @@ export class FigmaTrigger implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Access Token',
+						value: 'accessToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'accessToken',
+			},
 			{
 				displayName: 'Team ID',
 				name: 'teamId',
@@ -102,7 +133,7 @@ export class FigmaTrigger implements INodeType {
 				const { webhooks } = await figmaApiRequest.call(
 					this,
 					'GET',
-					`/v2/teams/${teamId}/webhooks`,
+					requestPath`/v2/teams/${teamId}/webhooks`,
 				);
 				for (const webhook of webhooks) {
 					if (
@@ -122,14 +153,16 @@ export class FigmaTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const triggerOn = this.getNodeParameter('triggerOn') as string;
 				const teamId = this.getNodeParameter('teamId') as string;
-				const endpoint = '/v2/webhooks';
+				const endpoint = requestPath`/v2/webhooks`;
+
+				const passcode = randomBytes(32).toString('hex');
 
 				const body: IDataObject = {
 					event_type: snakeCase(triggerOn).toUpperCase(),
 					team_id: teamId,
 					description: `n8n-webhook:${webhookUrl}`,
 					endpoint: webhookUrl,
-					passcode: randomBytes(10).toString('hex'),
+					passcode,
 				};
 
 				const responseData = await figmaApiRequest.call(this, 'POST', endpoint, body);
@@ -140,13 +173,14 @@ export class FigmaTrigger implements INodeType {
 				}
 
 				webhookData.webhookId = responseData.id as string;
+				webhookData.webhookSecret = passcode;
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				if (webhookData.webhookId !== undefined) {
-					const endpoint = `/v2/webhooks/${webhookData.webhookId}`;
 					try {
+						const endpoint = requestPath`/v2/webhooks/${webhookData.webhookId}`;
 						await figmaApiRequest.call(this, 'DELETE', endpoint);
 					} catch (error) {
 						return false;
@@ -154,13 +188,23 @@ export class FigmaTrigger implements INodeType {
 					// Remove from the static workflow data so that it is clear
 					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
+					delete webhookData.webhookSecret;
 				}
 				return true;
 			},
 		},
 	};
 
+	// eslint-disable-next-line @typescript-eslint/require-await
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		if (!verifySignature.call(this)) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
+			return {
+				noWebhookResponse: true,
+			};
+		}
+
 		const bodyData = this.getBodyData();
 
 		if (bodyData.event_type === 'PING') {

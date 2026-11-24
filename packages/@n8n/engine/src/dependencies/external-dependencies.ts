@@ -1,0 +1,171 @@
+import type {
+	CallerContext,
+	SubExecutionResumeCause,
+	ExecutionMode,
+	StepSlots,
+	TriggerOutputs,
+	ExecutorWaitDeclaration,
+	WorkflowDocument,
+} from '../execution';
+import type { GraphNode, WorkflowGraph } from '../graph';
+import type { LifecycleEventCallback } from '../lifecycle-events';
+import type { ResponseEmitter, ResponseExpectation } from '../response-channel';
+
+/**
+ * Host integration seam — how the engine reaches capabilities it does not own.
+ *
+ * The engine runs steps but has no knowledge of what a `v1-node` step actually
+ * is: executing one requires the v1 node runtime (node types, expressions,
+ * credentials), which lives outside this package. In integrated mode the host
+ * supplies an `IStepExecutor` for those step types; the engine only ever sees
+ * the interfaces below.
+ *
+ * `inputs` and `outputs` are `StepSlots` (`JsonValue[]`), not `unknown`: the
+ * engine routes data slot to slot and persists it to a `jsonb` column, so it
+ * owns exactly one level of structure — the slot list — and anything crossing
+ * this seam must survive a JSON round-trip. A slot's contents are
+ * step-type-specific (for `v1-node`, the items of one v1 connection, i.e. one
+ * element of `INodeExecutionData[][]`); keeping them opaque is what keeps this
+ * package free of `n8n-workflow` / `n8n-core`.
+ *
+ * The legacy engine passes live objects between nodes in memory, whereas all
+ * non-JSON values inside step data (e.g. `Date`) are coerced by the round-trip
+ * on every hop. This coercion is an accepted behavioural divergence from legacy.
+ */
+
+/** Ambient facts about the execution a step belongs to. */
+export interface StepExecutionContext {
+	executionId: string;
+	stepId: string;
+	workflowId: string;
+	mode: ExecutionMode;
+	iteration: number;
+	/** Supplied by the host at start. Opaque to the engine, which only forwards it. */
+	callerContext: CallerContext;
+	/**
+	 * What kind of a response the caller expects. A step executor reads it to
+	 * decide whether a node may stream. The emitter in `respond` obeys it too.
+	 */
+	responseExpectation: ResponseExpectation;
+}
+
+/** A single step handed to an executor. */
+export interface StepExecutionRequest {
+	/** The graph node to run; `node.config` is the step-type-specific payload. */
+	node: GraphNode;
+	/** Input slots gathered from predecessor steps; slot contents are opaque. */
+	inputs: StepSlots;
+	context: StepExecutionContext;
+	/**
+	 * Response emitter allows the step executor to send messages to the control
+	 * plane side via the execution response channel.
+	 */
+	respond: ResponseEmitter;
+	/**
+	 * Set when a sub-execution the step waited for has ended. The executor
+	 * answers the node's sub-execution call from it instead of asking for a sub-execution again.
+	 */
+	resume?: SubExecutionResumeCause;
+}
+
+/**
+ * A sub-execution the step asks for. The executor minted the id and had the
+ * workflow resolved; the engine starts it. One run of a step asks for at most
+ * one.
+ */
+export type SubExecutionDeclaration = {
+	executionId: string;
+	workflowId: string;
+	graph: WorkflowGraph;
+	workflow: WorkflowDocument;
+	triggerOutputs?: TriggerOutputs | null;
+} & SubExecutionMode;
+
+/** Whether the step waits for the sub-execution, and what it completes with if not. */
+export type SubExecutionMode =
+	| {
+			/** The step suspends until the sub-execution ends, and has no outputs yet. */
+			awaited: true;
+			outputs?: never;
+	  }
+	| {
+			/** Nothing waits for the sub-execution. It ends with the parent. */
+			awaited: false;
+			/** The step completes with these once the sub-execution has started. */
+			outputs: StepSlots;
+	  };
+
+/**
+ * What running a step produced: its output slots, a wait, or a sub-execution.
+ * Exclusive — a step that waits has no outputs yet, and the outputs a deadline
+ * or a detached sub-execution would emit ride inside the declaration.
+ *
+ * The `?: never` members give every branch the same keys, so `result.wait`
+ * reads on the union and narrows it — without them a caller could only test
+ * `'wait' in result`, and a value carrying two fields would type-check.
+ */
+export type StepExecutionResult =
+	| {
+			/** Output slots; persisted by the engine without inspecting slot contents. */
+			outputs: StepSlots;
+			wait?: never;
+			subExecution?: never;
+	  }
+	| {
+			wait: ExecutorWaitDeclaration;
+			outputs?: never;
+			subExecution?: never;
+	  }
+	| {
+			subExecution: SubExecutionDeclaration;
+			outputs?: never;
+			wait?: never;
+	  };
+
+/**
+ * Executes a step whose behaviour the engine does not implement itself.
+ * Implemented by the host (for `v1-node`, by the node-engine-compatibility
+ * layer, which adapts v1 nodes to this interface).
+ *
+ * A failed step signals by throwing. The engine catches, records the error
+ * on the step row, and classifies it as retryable or not. If `continueOnFail`
+ * is enabled, errors travel as data inside `outputs`.
+ */
+export interface IStepExecutor {
+	execute(request: StepExecutionRequest): Promise<StepExecutionResult>;
+}
+
+/**
+ * Capabilities the host injects at engine construction time. Standalone mode
+ * omits them and falls back to default behaviour; concrete shapes for other
+ * hooks (pre-fetch) are introduced with the tickets that first need them.
+ *
+ * Step types that are native to the engine (`wait`, `subworkflow`, `batch`)
+ * do not go through this interface.
+ */
+/** Where the files of one execution are stored: the pair every binary file path starts with. */
+export interface ExecutionLocation {
+	workflowId: string;
+	executionId: string;
+}
+
+/**
+ * Deletes every file stored under the location of an execution. The engine
+ * calls it before it deletes the execution's rows, so a rejection keeps the
+ * rows for a later retry. A repeat call for the same execution must succeed,
+ * as the files may be gone.
+ */
+export type ExecutionFilesDeleter = (execution: ExecutionLocation) => Promise<void>;
+
+export interface ExternalDependencies {
+	/** Executes `v1-node` steps — supplied by the host in integrated mode. */
+	v1StepExecutor?: IStepExecutor;
+	/** Ships lifecycle events to the host. A failed delivery never fails a step. */
+	lifecycleEventCallback?: LifecycleEventCallback;
+	/**
+	 * Deletes the binary files of a pruned execution. The engine has no store of
+	 * its own, so the host that owns the store deletes them. A host that runs no
+	 * `v1-node` steps writes no files and can omit it.
+	 */
+	deleteExecutionFiles?: ExecutionFilesDeleter;
+}

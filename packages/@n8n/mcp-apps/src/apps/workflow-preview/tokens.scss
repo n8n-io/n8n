@@ -1,0 +1,29 @@
+@use '@n8n/design-system/css/_primitives' as primitives;
+@use '@n8n/design-system/css/_tokens' as tokens;
+@use '@n8n/design-system/css/fonts/geist';
+
+:root {
+	color-scheme: light dark;
+	@include primitives.primitives;
+	@include tokens.theme;
+}
+
+@media (prefers-color-scheme: dark) {
+	body:not([data-theme]) {
+		@include tokens.theme-dark;
+	}
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+	font-family: var(--font-family);
+	-webkit-font-smoothing: antialiased;
+	background: transparent;
+	color: var(--color--text--shade-1);
+}

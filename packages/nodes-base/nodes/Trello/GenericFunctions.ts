@@ -5,7 +5,10 @@ import type {
 	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 
 /**
  * Make an API request to Trello
@@ -14,22 +17,30 @@ import type {
 export async function apiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: object,
 	query?: IDataObject,
 ): Promise<any> {
 	query = query || {};
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
 		body,
 		qs: query,
-		uri: `https://api.trello.com/1/${endpoint}`,
+		uri: requestUrl`https://api.trello.com/1/${endpoint}`,
 		json: true,
 	};
 
 	if (method === 'GET') {
 		delete options.body;
+	}
+
+	const authentication = this.getNodeParameter('authentication', 0, 'apiKey') as
+		| 'apiKey'
+		| 'oAuth1';
+
+	if (authentication === 'oAuth1') {
+		return await this.helpers.requestOAuth1.call(this, 'trelloOAuth1Api', options);
 	}
 
 	return await this.helpers.requestWithAuthentication.call(this, 'trelloApi', options);
@@ -38,7 +49,7 @@ export async function apiRequest(
 export async function apiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject,
 	query: IDataObject = {},
 ): Promise<any> {

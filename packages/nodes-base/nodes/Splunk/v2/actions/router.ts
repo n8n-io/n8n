@@ -42,7 +42,10 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			}
 		} catch (error) {
 			if (this.continueOnFail()) {
-				returnData.push({ json: { error: error.cause.error }, pairedItem: { item: i } });
+				returnData.push({
+					json: { error: error.cause?.error ?? error.message },
+					pairedItem: { item: i },
+				});
 				continue;
 			}
 

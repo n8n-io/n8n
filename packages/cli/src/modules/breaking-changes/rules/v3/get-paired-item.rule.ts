@@ -1,0 +1,60 @@
+import type { BreakingChangeAffectedWorkflow, BreakingChangeRecommendation } from '@n8n/api-types';
+import type { WorkflowEntity } from '@n8n/db';
+import { BreakingChangeRule } from '@n8n/decorators';
+import type { INode } from 'n8n-workflow';
+
+import { reportAffectedNodes } from '../../detection-report';
+import type {
+	BreakingChangeRuleMetadata,
+	IBreakingChangeWorkflowRule,
+	WorkflowDetectionReport,
+} from '../../types';
+import { BreakingChangeCategory } from '../../types';
+
+const HELPER_NAME = '$getPairedItem';
+
+@BreakingChangeRule({ version: 'v3' })
+export class GetPairedItemRule implements IBreakingChangeWorkflowRule {
+	id: string = 'get-paired-item-v3';
+
+	getMetadata(): BreakingChangeRuleMetadata {
+		return {
+			version: 'v3',
+			title: '$getPairedItem expression helper is removed',
+			description:
+				'The $getPairedItem expression helper is removed. Expressions using it will fail to evaluate.',
+			category: BreakingChangeCategory.workflow,
+			impact: 'executionsFail',
+			assistant: 'fix',
+		};
+	}
+
+	// eslint-disable-next-line @typescript-eslint/require-await
+	async getRecommendations(
+		_workflowResults: BreakingChangeAffectedWorkflow[],
+	): Promise<BreakingChangeRecommendation[]> {
+		return [
+			{
+				action: 'Replace $getPairedItem usages',
+				description:
+					"Use $('Node').item for the item paired with the current item. Use $('Node').pairedItem(n) or $('Node').itemMatching(n) for the item paired with input item n of this node. Node is the name of the node that produced the item.",
+			},
+		];
+	}
+
+	// eslint-disable-next-line @typescript-eslint/require-await
+	async detectWorkflow(
+		workflow: WorkflowEntity,
+		_nodesGroupedByType: Map<string, INode[]>,
+	): Promise<WorkflowDetectionReport> {
+		const affectedNodes = workflow.nodes.filter((node) =>
+			JSON.stringify(node.parameters ?? {}).includes(HELPER_NAME),
+		);
+
+		return reportAffectedNodes(affectedNodes, (node) => ({
+			title: `Node '${node.name}' uses the removed ${HELPER_NAME} helper`,
+			description: `Expressions in this node call ${HELPER_NAME}, which is removed. They will fail to evaluate after the update.`,
+			level: 'error',
+		}));
+	}
+}

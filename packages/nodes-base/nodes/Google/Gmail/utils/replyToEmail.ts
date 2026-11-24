@@ -1,5 +1,11 @@
 import uniq from 'lodash/uniq';
-import { NodeOperationError, type IDataObject, type IExecuteFunctions } from 'n8n-workflow';
+import {
+	NodeOperationError,
+	requestPath,
+	type IDataObject,
+	type IExecuteFunctions,
+} from 'n8n-workflow';
+import addressparser from 'nodemailer/lib/addressparser';
 
 import type { IEmail } from '@utils/sendAndWait/interfaces';
 
@@ -54,7 +60,7 @@ export async function replyToEmail(
 		}
 	}
 
-	const endpoint = `/gmail/v1/users/me/messages/${gmailId}`;
+	const endpoint = requestPath`/gmail/v1/users/me/messages/${gmailId}`;
 
 	qs.format = 'metadata';
 	const { payload, threadId } = (await googleApiRequest.call(
@@ -78,7 +84,7 @@ export async function replyToEmail(
 	const { emailAddress } = (await googleApiRequest.call(
 		this,
 		'GET',
-		'/gmail/v1/users/me/profile',
+		requestPath`/gmail/v1/users/me/profile`,
 	)) as GmailUserProfile;
 
 	const to: string[] = [];
@@ -89,12 +95,16 @@ export async function replyToEmail(
 			? false
 			: (options.replyToRecipientsOnly as boolean);
 
-	const prepareEmailString = (email: string) => {
-		if (email.includes(emailAddress)) return;
-		if (email.includes('<') && email.includes('>')) {
-			to.push(email);
-		} else {
-			to.push(`<${email}>`);
+	// If the name contains an RFC 5322 special, wrap it in quotes and escape any
+	// embedded `"` or `\`; otherwise it can be used as-is.
+	const formatDisplayName = (name: string) =>
+		/["(),:;<>@[\]\\]/.test(name) ? `"${name.replace(/["\\]/g, '\\$&')}"` : name;
+
+	const addRecipients = (headerValue: string, excludeSelf: boolean) => {
+		for (const { address, name } of addressparser(headerValue, { flatten: true })) {
+			if (!address) continue;
+			if (excludeSelf && address.toLowerCase() === emailAddress.toLowerCase()) continue;
+			to.push(name ? `${formatDisplayName(name)} <${address}>` : `<${address}>`);
 		}
 	};
 
@@ -106,17 +116,11 @@ export async function replyToEmail(
 	for (const header of payload.headers) {
 		const headerName = (header.name || '').toLowerCase();
 		if (headerName === replyToHeaderName && !replyToRecipientsOnly) {
-			const replyToEmail = header.value;
-			if (replyToEmail.includes('<') && replyToEmail.includes('>')) {
-				to.push(replyToEmail);
-			} else {
-				to.push(`<${replyToEmail}>`);
-			}
+			addRecipients(header.value, false);
 		}
 
 		if (headerName === 'to' && !replyToSenderOnly) {
-			const toEmails = header.value;
-			toEmails.split(',').forEach(prepareEmailString);
+			addRecipients(header.value, true);
 		}
 	}
 
@@ -147,7 +151,7 @@ export async function replyToEmail(
 	return (await googleApiRequest.call(
 		this,
 		'POST',
-		'/gmail/v1/users/me/messages/send',
+		requestPath`/gmail/v1/users/me/messages/send`,
 		body,
 		qs,
 	)) as GmailMessage;

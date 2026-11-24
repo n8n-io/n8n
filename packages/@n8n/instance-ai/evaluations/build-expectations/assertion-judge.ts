@@ -1,0 +1,147 @@
+import type { Message } from '@n8n/agents';
+import { z } from 'zod';
+
+import { JUDGE_MODEL, createEvalAgent } from '../../src/utils/eval-agents';
+import { BUILD_EXPECTATIONS_VERIFY_PROMPT } from '../system-prompts/build-expectations-verify';
+import type { BuildExpectationResult } from '../types';
+
+// ---------------------------------------------------------------------------
+// Structured output schema
+// ---------------------------------------------------------------------------
+
+export const expectationResultSchema = z.object({
+	results: z.array(
+		z.object({
+			// Kept as a plain number on purpose: adding zod constraints (.int() etc.) to a
+			// schema handed to the SDK's structured output has broken it wholesale before,
+			// making every verdict come back empty. The integer check lives in the range
+			// guard below instead, where a bad index just drops out and triggers a retry.
+			index: z.number(),
+			// `reason` before `pass`: the model writes keys in schema order, and a verdict
+			// written first can disagree with the reason that follows it.
+			reason: z.string(),
+			pass: z.boolean(),
+			applicable: z.boolean().optional(),
+		}),
+	),
+});
+
+type JudgeVerdict = Omit<z.infer<typeof expectationResultSchema>['results'][number], 'index'>;
+
+function toResult(expectation: string, verdict: JudgeVerdict | undefined): BuildExpectationResult {
+	if (!verdict) {
+		return { expectation, pass: false, reason: 'no verdict returned', incomplete: true };
+	}
+	// A not-applicable expectation has no verdict, so it stays out of the pass rate.
+	if (verdict.applicable === false) {
+		return {
+			expectation,
+			pass: false,
+			reason: `not applicable: ${verdict.reason}`,
+			incomplete: true,
+		};
+	}
+	return { expectation, pass: verdict.pass, reason: verdict.reason };
+}
+
+const MAX_VERIFY_ATTEMPTS = 2;
+const VERIFY_ATTEMPT_TIMEOUT_MS = 120_000;
+
+/** Numbered assertions block + the trailer instructing the judge to answer by index. */
+export function buildAssertionsBlock(assertions: string[]): string {
+	return [
+		'## Expectations',
+		'',
+		assertions.map((e, i) => `${String(i)}. ${e}`).join('\n'),
+		'',
+		'Return a verdict for every numbered expectation, using its 0-based index.',
+	].join('\n');
+}
+
+/**
+ * Shared judge core: sends caller-built messages to the expectations judge and maps
+ * the structured verdicts back onto `assertions` by index. Used by both the
+ * workflow/conversation judge (`verifyBuildExpectations`) and static artifact handlers
+ * (`runAssertionJudge`) so retry/timeout/parsing behavior stays in one place.
+ */
+export async function judgeExpectations(
+	messages: Message[],
+	assertions: string[],
+): Promise<BuildExpectationResult[]> {
+	if (assertions.length === 0) return [];
+
+	for (let attempt = 1; attempt <= MAX_VERIFY_ATTEMPTS; attempt++) {
+		const agent = createEvalAgent('eval-build-expectations-verifier', {
+			instructions: BUILD_EXPECTATIONS_VERIFY_PROMPT,
+			cache: true,
+			model: JUDGE_MODEL,
+			judge: true,
+		}).structuredOutput(expectationResultSchema);
+
+		const abortController = new AbortController();
+		const timer = setTimeout(
+			() =>
+				abortController.abort(
+					new Error(`expectations judge timed out after ${VERIFY_ATTEMPT_TIMEOUT_MS}ms`),
+				),
+			VERIFY_ATTEMPT_TIMEOUT_MS,
+		);
+		let result;
+		try {
+			result = await agent.generate(messages, { abortSignal: abortController.signal });
+		} catch (error: unknown) {
+			const msg = error instanceof Error ? error.message : String(error);
+			console.warn(`[expectations] attempt ${attempt}/${MAX_VERIFY_ATTEMPTS} failed: ${msg}`);
+			continue;
+		} finally {
+			clearTimeout(timer);
+		}
+
+		// generate() never throws — API failures land in result.error and would otherwise
+		// read as an unexplained "produced no parseable results".
+		if (result.error !== undefined) {
+			const msg =
+				result.error instanceof Error ? result.error.message : JSON.stringify(result.error);
+			console.warn(`[expectations] attempt ${attempt}/${MAX_VERIFY_ATTEMPTS} model error: ${msg}`);
+		}
+
+		const parsed = expectationResultSchema.safeParse(result.structuredOutput);
+		const byIndex = new Map<number, JudgeVerdict>();
+		if (parsed.success) {
+			for (const { index, ...verdict } of parsed.data.results) {
+				// Schema validated the types; the index must still be an in-range integer.
+				// A fractional index leaves byIndex short, so the attempt retries instead of
+				// silently returning "no verdict" for real expectations.
+				if (Number.isInteger(index) && index >= 0 && index < assertions.length) {
+					byIndex.set(index, verdict);
+				}
+			}
+		}
+
+		if (byIndex.size > 0) {
+			// Omitted expectations are marked `incomplete` (not a genuine fail).
+			return assertions.map((expectation, i) => toResult(expectation, byIndex.get(i)));
+		}
+
+		console.warn(
+			`[expectations] attempt ${attempt}/${MAX_VERIFY_ATTEMPTS} produced no parseable results`,
+		);
+	}
+
+	console.warn(`[expectations] exhausted ${MAX_VERIFY_ATTEMPTS} attempts, returning all-fail`);
+	return allFailVerdicts(assertions, 'judge produced no result');
+}
+
+/**
+ * Verdicts when the judge produced nothing (exhausted attempts, or callers'
+ * `.catch()`). Marked `incomplete` so a dead judge renders as neutral "no
+ * verdict" rather than every expectation failing.
+ */
+export function allFailVerdicts(assertions: string[], reason: string): BuildExpectationResult[] {
+	return assertions.map((expectation) => ({
+		expectation,
+		pass: false,
+		reason,
+		incomplete: true,
+	}));
+}

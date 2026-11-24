@@ -1,4 +1,4 @@
-import { Service } from '@n8n/di';
+import { BreakingChangeRule } from '@n8n/decorators';
 import { constants } from 'node:fs';
 import { access } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -10,7 +10,7 @@ import type {
 } from '../../types';
 import { BreakingChangeCategory } from '../../types';
 
-@Service()
+@BreakingChangeRule({ version: 'v2' })
 export class DotenvUpgradeRule implements IBreakingChangeInstanceRule {
 	id: string = 'dotenv-upgrade-v2';
 	getMetadata(): BreakingChangeRuleMetadata {
@@ -20,7 +20,7 @@ export class DotenvUpgradeRule implements IBreakingChangeInstanceRule {
 			description:
 				'The dotenv library has been upgraded, which may affect how .env files are parsed',
 			category: BreakingChangeCategory.environment,
-			severity: 'low',
+			impact: 'behaviorChanges',
 			documentationUrl: 'https://docs.n8n.io/2-0-breaking-changes/#upgrade-dotenv',
 		};
 	}

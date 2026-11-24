@@ -1,0 +1,274 @@
+import type {
+	GraphNode,
+	IStepExecutor,
+	StepExecutionRequest,
+	StepExecutionResult,
+} from '@n8n/engine';
+import { attachStepErrorDetails } from '@n8n/engine';
+import { UnrecognizedNodeTypeError } from 'n8n-core';
+import type { INodeExecutionData } from 'n8n-workflow';
+import {
+	CHAT_NODE_TYPE,
+	Expression,
+	isNodeClassInstance,
+	WAIT_FOR_SUB_EXECUTION,
+	WAIT_INDEFINITELY,
+} from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
+
+import {
+	EngineRequestNotSupportedError,
+	InvalidWaitDateError,
+	MalformedStepConfigError,
+	UnsupportedNodeTypeError,
+	UnendingWaitError,
+	UnsupportedStepTypeError,
+	UnsupportedWaitError,
+	VmExpressionEngineRequiredError,
+} from './errors';
+import { isV1NodeStepConfig } from './guards';
+import { fromStepInputs, toStepOutputs } from './io';
+import { SubWorkflowCalls } from './sub-workflow-calls';
+import { attachResponseHooks } from './v1-response-hooks';
+import type {
+	ExecutableNodeType,
+	NodeRunResult,
+	RunNodeParams,
+	V1NodeStepConfig,
+	V1StepExecutorDeps,
+} from './types';
+import type { DurableWaitExecuteContext } from './v1-adapters';
+import { toV1ErrorDetails } from './v1-error-details';
+import {
+	toAdditionalDataContext,
+	toV1ExecuteContext,
+	toV1Execution,
+	toV1Node,
+	toV1Sources,
+	toV1Workflow,
+} from './v1-adapters';
+
+/**
+ * Turns what the node recorded into a wait declaration.
+ * v1 resumes a timed wait by marking the node disabled before it re-enters it,
+ * and a disabled node does not run: it passes its first input through. So the
+ * step emits that input at the deadline, not what the node returned before it
+ * paused.
+ */
+function toStepResult(
+	context: DurableWaitExecuteContext,
+	nodeResult: INodeExecutionData[][],
+): StepExecutionResult {
+	// The node declared a sub-execution. Awaited, the node ran to the end on an empty
+	// result and runs again once the sub-execution ends. Detached, its outputs stand.
+	const { declaration } = context.subWorkflowCalls;
+	if (declaration) {
+		return declaration.awaited
+			? { subExecution: declaration }
+			: { subExecution: { ...declaration, outputs: toStepOutputs(nodeResult) } };
+	}
+
+	const { waitTill } = context.runExecutionData;
+	if (waitTill === undefined) return { outputs: toStepOutputs(nodeResult) };
+	if (waitTill.getTime() === WAIT_INDEFINITELY.getTime()) {
+		if (!context.acceptsResumeRequest) throw new UnendingWaitError(context.getNode().name);
+		return { wait: { resumeBinding: context.resumeBinding } };
+	}
+	if (waitTill.getTime() === WAIT_FOR_SUB_EXECUTION.getTime()) {
+		throw new UnsupportedWaitError(context.getNode().name, 'a sub-execution');
+	}
+	// `toISOString` throws a bare RangeError on an invalid date.
+	if (Number.isNaN(waitTill.getTime())) {
+		throw new InvalidWaitDateError(context.getNode().name);
+	}
+
+	return {
+		wait: {
+			resumeAt: waitTill.toISOString(),
+			outputsAtDeadline: toStepOutputs([context.getInputData()]),
+			...(context.acceptsResumeRequest ? { resumeBinding: context.resumeBinding } : {}),
+		},
+	};
+}
+
+/**
+ * Runs `v1-node` steps by adapting them to the v1 node runtime.
+ *
+ * A step is executable when its type is `v1-node`, its config is a valid
+ * `V1NodeStepConfig`, and the config names a registered node type with an
+ * `execute` method.
+ */
+export class V1StepExecutor implements IStepExecutor {
+	constructor(private readonly deps: V1StepExecutorDeps) {}
+
+	async execute(request: StepExecutionRequest): Promise<StepExecutionResult> {
+		this.validateExpressionEngine();
+		const stepConfig = this.validateStepConfig(request.node);
+		const nodeType = this.resolveNodeType(stepConfig);
+		const stepData = await this.deps.loadStepData(request.context);
+
+		const node = toV1Node(request.node, stepConfig);
+		// Engine v2 cannot route a chat reply to a step yet. Fail before the node
+		// sends the message. The Chat node waits in every version and operation.
+		if (node.type === CHAT_NODE_TYPE) {
+			throw new UnsupportedWaitError(node.name, 'an approval');
+		}
+
+		const execution = toV1Execution(
+			stepData.graph,
+			stepData.outputsByNode,
+			request.node.id,
+			request.context.iteration,
+			stepData.outputSourcesByNode,
+		);
+		const workflow = toV1Workflow(request.context.workflowId, node, execution, this.deps.nodeTypes);
+
+		const additionalData = await this.deps.additionalDataFactory(
+			toAdditionalDataContext(request.context),
+		);
+		attachResponseHooks(additionalData, request);
+
+		const context = toV1ExecuteContext({
+			node,
+			workflow,
+			execution,
+			source: toV1Sources(
+				stepData.graph,
+				stepData.outputsByNode,
+				node.id,
+				request.context.iteration,
+			),
+			additionalData,
+			stepContext: request.context,
+			itemsByConnection: fromStepInputs(request.inputs),
+			resumeToken: this.deps.resumeToken?.({ executionId: request.context.executionId }),
+			subWorkflowCalls: new SubWorkflowCalls(node, request.context, this.deps.resolveSubWorkflow),
+			subExecutionResume: request.resume,
+			resumeMinters: {
+				stepBoundResumeToken: this.deps.stepBoundResumeToken,
+				approvalCallback: this.deps.approvalCallback,
+			},
+		});
+
+		return await workflow.expression.withIsolate(async () => {
+			const nodeResult = await this.runNode({ nodeType, context });
+			return toStepResult(context, nodeResult);
+		});
+	}
+
+	private validateExpressionEngine(): void {
+		// Any isolated engine works here — v1 steps only need the pooled
+		// evaluator that initExpressionEngine() sets up; 'legacy' has none.
+		if (Expression.getActiveImplementation() === 'legacy') {
+			throw new VmExpressionEngineRequiredError();
+		}
+	}
+
+	private validateStepConfig({ type, name, config }: GraphNode): V1NodeStepConfig {
+		if (type !== 'v1-node') throw new UnsupportedStepTypeError(type);
+		if (!isV1NodeStepConfig(config)) throw new MalformedStepConfigError(name);
+
+		return config;
+	}
+
+	private resolveNodeType({
+		nodeType: typeName,
+		typeVersion,
+	}: V1NodeStepConfig): ExecutableNodeType {
+		const nodeType = this.deps.nodeTypes.getByNameAndVersion(typeName, typeVersion);
+
+		if (!nodeType) {
+			const [packageName, name = typeName] = typeName.split('.');
+			throw new UnrecognizedNodeTypeError(packageName, name);
+		}
+
+		if (typeof nodeType.execute !== 'function') throw new UnsupportedNodeTypeError(typeName);
+
+		return nodeType as ExecutableNodeType;
+	}
+
+	/**
+	 * Runs the node and settles its cleanup functions.
+	 *
+	 * Cleanup errors propagate only when the node itself succeeded. A node
+	 * failure with `continueOnFail` passes the input items through as output.
+	 * A null result yields no output.
+	 */
+	private async runNode({ nodeType, context }: RunNodeParams): Promise<INodeExecutionData[][]> {
+		let result: NodeRunResult;
+		try {
+			const value = isNodeClassInstance(nodeType)
+				? await nodeType.execute(context)
+				: await nodeType.execute.call(context);
+			result = { ok: true, value };
+		} catch (error) {
+			result = { ok: false, error };
+		}
+
+		const { closeFunctions } = context;
+		if (closeFunctions.length > 0) {
+			const closeResults = await Promise.allSettled(closeFunctions.map(async (fn) => await fn()));
+			if (result.ok) {
+				const rejected = closeResults.find(
+					(closeResult): closeResult is PromiseRejectedResult => closeResult.status === 'rejected',
+				);
+				if (rejected) {
+					throw rejected.reason instanceof Error
+						? rejected.reason
+						: new UnexpectedError("Error on node's close function", {
+								extra: { nodeName: context.getNode().name },
+							});
+				}
+			}
+		}
+
+		if (!result.ok) {
+			const description = this.describeNodeError(result.error);
+			try {
+				await context.sendChunk('error', 0, description);
+			} catch {
+				// The node's own error is the one to report. The response channel
+				// already tells the caller when it cannot carry the error chunk.
+			}
+			// The node failed, so do not start a sub-execution it may have declared
+			// before failing. This holds for continueOnFail too.
+			context.subWorkflowCalls.declaration = undefined;
+			if (!context.continueOnFail()) throw withV1ErrorDetails(result.error);
+			return [context.getInputData()];
+		}
+
+		if (result.value === null || result.value === undefined) return [];
+
+		if (Array.isArray(result.value)) return result.value as INodeExecutionData[][];
+
+		throw new EngineRequestNotSupportedError(context.getNode().type);
+	}
+
+	/**
+	 * The text of the error chunk for a failed node. Only a node error's
+	 * `description` goes to the caller, as in v1. The `message` can hold
+	 * request details, so it stays in the logs and the execution data.
+	 * Without a description, the caller gets a generic text, so the chunk
+	 * always has content.
+	 */
+	private describeNodeError(error: unknown): string {
+		if (
+			typeof error === 'object' &&
+			error !== null &&
+			'description' in error &&
+			typeof error.description === 'string' &&
+			error.description !== ''
+		) {
+			return error.description;
+		}
+
+		return 'Node execution failed';
+	}
+}
+
+/** A v1 error has more to tell the editor than its message; any other error crosses as it is. */
+function withV1ErrorDetails(error: unknown): unknown {
+	if (!(error instanceof Error)) return error;
+	const details = toV1ErrorDetails(error);
+	return details === undefined ? error : attachStepErrorDetails(error, details);
+}

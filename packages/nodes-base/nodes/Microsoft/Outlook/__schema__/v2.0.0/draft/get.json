@@ -1,12 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "@odata.context": {
-            "type": "string"
-        },
-        "@odata.etag": {
-            "type": "string"
-        },
         "body": {
             "type": "object",
             "properties": {
@@ -21,6 +15,12 @@
         "bodyPreview": {
             "type": "string"
         },
+        "categories": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
         "conversationId": {
             "type": "string"
         },
@@ -30,9 +30,31 @@
         "id": {
             "type": "string"
         },
+        "isDraft": {
+            "type": "boolean"
+        },
         "subject": {
             "type": "string"
+        },
+        "toRecipients": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "emailAddress": {
+                        "type": "object",
+                        "properties": {
+                            "address": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
-    "version": 1
+    "version": 4
 }

@@ -25,10 +25,9 @@ function isDateLike(v: unknown): v is DateLike {
 }
 
 // Helper function to resolve data table ID from resourceLocator
-async function resolveDataTableId(
+export async function resolveDataTableId(
 	ctx: IExecuteFunctions | ILoadOptionsFunctions,
 	resourceLocator: { mode: 'list' | 'id' | 'name'; value: string },
-	index?: number,
 ): Promise<string> {
 	if (resourceLocator.mode === 'name') {
 		// Look up table by name
@@ -47,10 +46,8 @@ async function resolveDataTableId(
 
 		return response.data[0].id;
 	} else {
-		// For 'list' and 'id' modes, extract the value directly
-		return ctx.getNodeParameter(DATA_TABLE_ID_FIELD, index, undefined, {
-			extractValue: true,
-		}) as string;
+		// For 'list' and 'id' modes, use the value from the resource locator
+		return resourceLocator.value;
 	}
 }
 
@@ -71,7 +68,7 @@ export async function getDataTableProxyExecute(
 		value: string;
 	};
 
-	const dataTableId = await resolveDataTableId(ctx, resourceLocator, index);
+	const dataTableId = await resolveDataTableId(ctx, resourceLocator);
 
 	return await ctx.helpers.getDataTableProxy(dataTableId);
 }
@@ -129,15 +126,18 @@ export function buildGetManyFilter(
 	const filters = fieldEntries.map((x) => {
 		switch (x.condition) {
 			case 'isEmpty':
+				// For string columns "empty" means NULL or '', handled by the dedicated
+				// backend condition. Other types can only be NULL, so map to `eq null`.
 				return {
 					columnName: x.keyName,
-					condition: 'eq' as const,
+					condition: columnTypeMap[x.keyName] === 'string' ? ('isEmpty' as const) : ('eq' as const),
 					value: null,
 				};
 			case 'isNotEmpty':
 				return {
 					columnName: x.keyName,
-					condition: 'neq' as const,
+					condition:
+						columnTypeMap[x.keyName] === 'string' ? ('isNotEmpty' as const) : ('neq' as const),
 					value: null,
 				};
 			case 'isTrue':

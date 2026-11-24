@@ -3,16 +3,10 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { createEngineRequests } from '../createEngineRequests';
-import type { ToolCallRequest } from '../types';
+import type { ToolCallRequest, ToolMetadata } from '../types';
 
 describe('createEngineRequests', () => {
-	const createMockTool = (
-		name: string,
-		metadata?: {
-			sourceNodeName?: string;
-			isFromToolkit?: boolean;
-		},
-	) => {
+	const createMockTool = (name: string, metadata?: ToolMetadata) => {
 		return new DynamicStructuredTool({
 			name,
 			description: `A test tool named ${name}`,
@@ -39,7 +33,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0]).toEqual({
@@ -50,6 +44,7 @@ describe('createEngineRequests', () => {
 				id: 'call_123',
 				metadata: {
 					itemIndex: 0,
+					toolName: 'calculator',
 				},
 			});
 		});
@@ -73,7 +68,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 1, tools);
+			const result = createEngineRequests(toolCalls, 1, tools);
 
 			expect(result).toHaveLength(2);
 			expect(result[0]).toEqual({
@@ -84,6 +79,7 @@ describe('createEngineRequests', () => {
 				id: 'call_123',
 				metadata: {
 					itemIndex: 1,
+					toolName: 'calculator',
 				},
 			});
 			expect(result[1]).toEqual({
@@ -94,6 +90,7 @@ describe('createEngineRequests', () => {
 				id: 'call_124',
 				metadata: {
 					itemIndex: 1,
+					toolName: 'search',
 				},
 			});
 		});
@@ -114,7 +111,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].nodeName).toBe('Calculator');
@@ -139,7 +136,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].nodeName).toBe('Calculator');
@@ -149,7 +146,7 @@ describe('createEngineRequests', () => {
 			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
 			const toolCalls: ToolCallRequest[] = [];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(0);
 		});
@@ -164,7 +161,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(0);
 		});
@@ -187,7 +184,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].input).toEqual({
@@ -212,7 +209,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].input).toEqual({
@@ -245,7 +242,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(2);
 			expect(result[0].input).toEqual({
@@ -270,7 +267,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 5, tools);
+			const result = createEngineRequests(toolCalls, 5, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].metadata.itemIndex).toBe(5);
@@ -297,7 +294,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].input).toEqual({
@@ -328,7 +325,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].input).toEqual({
@@ -337,6 +334,278 @@ describe('createEngineRequests', () => {
 				param3: true,
 				param4: null,
 				param5: undefined,
+			});
+		});
+	});
+
+	describe('HITL (Human-in-the-Loop) tools handling', () => {
+		// Same schema shape as the gated tools built by createHitlToolkit
+		const createHitlTool = (name: string, metadata: ToolMetadata) =>
+			new DynamicStructuredTool({
+				name,
+				description: `A gated tool named ${name}`,
+				schema: z.object({
+					toolParameters: z.object({}).passthrough(),
+					hitlParameters: z.object({
+						hitlParam1: z.string(),
+						hitlParam2: z.string(),
+						query: z.unknown(),
+					}),
+				}),
+				func: async () => '',
+				metadata,
+			});
+
+		it('should extract HITL metadata when gatedToolNodeName is present', async () => {
+			const tools = [
+				createMockTool('gated_tool', {
+					sourceNodeName: 'ToolNode',
+					gatedToolNodeName: 'HITLNode',
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'gated_tool',
+					toolInput: {
+						toolParameters: {
+							param1: 'value1',
+							param2: 'value2',
+						},
+						hitlParameters: {
+							hitlParam1: 'hitlValue1',
+						},
+					},
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.hitl).toEqual({
+				gatedToolNodeName: 'HITLNode',
+				toolName: 'gated_tool',
+				originalInput: {
+					param1: 'value1',
+					param2: 'value2',
+				},
+			});
+		});
+
+		it('should merge hitlParameters into input when HITL metadata is present', async () => {
+			const tools = [
+				createHitlTool('gated_tool', {
+					sourceNodeName: 'ToolNode',
+					gatedToolNodeName: 'HITLNode',
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'gated_tool',
+					toolInput: {
+						toolParameters: {
+							param1: 'value1',
+						},
+						hitlParameters: {
+							hitlParam1: 'hitlValue1',
+							hitlParam2: 'hitlValue2',
+						},
+					},
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].input).toEqual({
+				toolParameters: { param1: 'value1' },
+				tool: 'gated_tool',
+				hitlParam1: 'hitlValue1',
+				hitlParam2: 'hitlValue2',
+			});
+		});
+
+		it('should not extract HITL metadata when gatedToolNodeName is not present', async () => {
+			const tools = [
+				createMockTool('regular_tool', {
+					sourceNodeName: 'ToolNode',
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'regular_tool',
+					toolInput: {
+						param1: 'value1',
+					},
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.hitl).toBeUndefined();
+			expect(result[0].input).toEqual({
+				param1: 'value1',
+			});
+		});
+
+		it('should handle HITL tool with toolkit flag', async () => {
+			const tools = [
+				createHitlTool('gated_toolkit_tool', {
+					sourceNodeName: 'ToolkitNode',
+					gatedToolNodeName: 'HITLNode',
+					isFromToolkit: true,
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'gated_toolkit_tool',
+					toolInput: {
+						toolParameters: {
+							param1: 'value1',
+						},
+						hitlParameters: {
+							hitlParam1: 'hitlValue1',
+						},
+					},
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].input).toEqual({
+				toolParameters: { param1: 'value1' },
+				tool: 'gated_toolkit_tool',
+				hitlParam1: 'hitlValue1',
+			});
+			expect(result[0].metadata.hitl).toEqual({
+				gatedToolNodeName: 'HITLNode',
+				toolName: 'gated_toolkit_tool',
+				originalInput: {
+					param1: 'value1',
+				},
+			});
+		});
+
+		it('should handle HITL tool without hitlParameters', async () => {
+			const tools = [
+				createMockTool('gated_tool', {
+					sourceNodeName: 'ToolNode',
+					gatedToolNodeName: 'HITLNode',
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'gated_tool',
+					toolInput: {
+						toolParameters: {
+							param1: 'value1',
+						},
+					},
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.hitl).toEqual({
+				gatedToolNodeName: 'HITLNode',
+				toolName: 'gated_tool',
+				originalInput: {
+					param1: 'value1',
+				},
+			});
+			expect(result[0].input).toEqual({
+				toolParameters: { param1: 'value1' },
+				tool: 'gated_tool',
+			});
+		});
+
+		it('should handle multiple tool calls with mixed HITL and non-HITL tools', async () => {
+			const tools = [
+				createMockTool('gated_tool', {
+					sourceNodeName: 'GatedNode',
+					gatedToolNodeName: 'HITLNode',
+				}),
+				createMockTool('regular_tool', {
+					sourceNodeName: 'RegularNode',
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'gated_tool',
+					toolInput: {
+						toolParameters: { param1: 'value1' },
+						hitlParameters: { hitlParam1: 'hitlValue1' },
+					},
+					toolCallId: 'call_123',
+				},
+				{
+					tool: 'regular_tool',
+					toolInput: { param2: 'value2' },
+					toolCallId: 'call_124',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].metadata.hitl).toBeDefined();
+			expect(result[0].metadata.hitl?.gatedToolNodeName).toBe('HITLNode');
+			expect(result[1].metadata.hitl).toBeUndefined();
+		});
+
+		it('should preserve originalInput structure in HITL metadata', async () => {
+			const tools = [
+				createMockTool('gated_tool', {
+					sourceNodeName: 'ToolNode',
+					gatedToolNodeName: 'HITLNode',
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'gated_tool',
+					toolInput: {
+						toolParameters: {
+							nested: {
+								level1: {
+									level2: 'value',
+								},
+							},
+							array: [1, 2, 3],
+							string: 'test',
+						},
+						hitlParameters: {
+							hitlNested: { data: 'hitlData' },
+						},
+					},
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.hitl?.originalInput).toEqual({
+				nested: {
+					level1: {
+						level2: 'value',
+					},
+				},
+				array: [1, 2, 3],
+				string: 'test',
 			});
 		});
 	});
@@ -370,7 +639,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].metadata.anthropic?.thinkingContent).toBe(
@@ -378,6 +647,42 @@ describe('createEngineRequests', () => {
 			);
 			expect(result[0].metadata.anthropic?.thinkingType).toBe('thinking');
 			expect(result[0].metadata.anthropic?.thinkingSignature).toBe('test_signature_123');
+		});
+
+		it('should preserve thinking blocks with empty thinking text', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_omitted_1',
+					messageLog: [
+						{
+							content: [
+								{
+									type: 'thinking',
+									thinking: '',
+									signature: 'encrypted_signature_abc',
+								},
+								{
+									type: 'tool_use',
+									id: 'call_omitted_1',
+									name: 'calculator',
+									input: { expression: '2+2' },
+								},
+							],
+						},
+					],
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result[0].metadata.anthropic).toEqual({
+				thinkingContent: '',
+				thinkingType: 'thinking',
+				thinkingSignature: 'encrypted_signature_abc',
+			});
 		});
 
 		it('should extract redacted_thinking content from Anthropic message', async () => {
@@ -407,7 +712,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].metadata.anthropic?.thinkingContent).toBe(
@@ -432,7 +737,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].metadata.anthropic).toBeUndefined();
@@ -465,7 +770,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].metadata.anthropic).toBeUndefined();
@@ -496,13 +801,637 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].metadata.google?.thoughtSignature).toBe('Gemini thought signature');
 			expect(result[0].metadata.anthropic?.thinkingContent).toBe('Anthropic thinking content');
 			expect(result[0].metadata.anthropic?.thinkingType).toBe('thinking');
 			expect(result[0].metadata.anthropic?.thinkingSignature).toBe('anthropic_sig_456');
+		});
+	});
+
+	describe('DeepSeek reasoning_content extraction', () => {
+		it('should extract reasoning_content from toolCall.additionalKwargs (streaming path)', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_123',
+					additionalKwargs: {
+						reasoning_content: 'The user wants me to add 2+2, I should call the calculator.',
+					},
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.deepseek?.reasoningContent).toBe(
+				'The user wants me to add 2+2, I should call the calculator.',
+			);
+		});
+
+		it('should extract reasoning_content from messageLog additional_kwargs (non-streaming path)', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_123',
+					messageLog: [
+						{
+							content: '',
+							additional_kwargs: {
+								reasoning_content: 'Reasoning from the raw AIMessage.',
+							},
+						},
+					],
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.deepseek?.reasoningContent).toBe(
+				'Reasoning from the raw AIMessage.',
+			);
+		});
+
+		it('should not set deepseek metadata when reasoning_content is absent', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_123',
+					messageLog: [{ content: '' }],
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.deepseek).toBeUndefined();
+		});
+	});
+
+	describe('Gemini thought_signature from additionalKwargs', () => {
+		it('should extract thought_signature from additionalKwargs on toolCall', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_123',
+					additionalKwargs: {
+						__gemini_function_call_thought_signatures__: {
+							call_123: 'gemini_signature_from_kwargs',
+						},
+					},
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.google?.thoughtSignature).toBe('gemini_signature_from_kwargs');
+		});
+
+		it('should extract thought_signature from message additional_kwargs', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_456',
+					messageLog: [
+						{
+							content: 'Some content',
+							additional_kwargs: {
+								__gemini_function_call_thought_signatures__: {
+									call_456: 'gemini_signature_from_message_kwargs',
+								},
+							},
+						},
+					],
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.google?.thoughtSignature).toBe(
+				'gemini_signature_from_message_kwargs',
+			);
+		});
+
+		it('should prefer additionalKwargs over content block thoughtSignature', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_123',
+					additionalKwargs: {
+						__gemini_function_call_thought_signatures__: {
+							call_123: 'signature_from_kwargs',
+						},
+					},
+					messageLog: [
+						{
+							content: [
+								{
+									thoughtSignature: 'signature_from_content_block',
+								},
+							],
+						},
+					],
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			// Should prefer additionalKwargs over content block
+			expect(result[0].metadata.google?.thoughtSignature).toBe('signature_from_kwargs');
+		});
+
+		it('should fallback to any available signature for parallel tool calls', async () => {
+			// For parallel tool calls, Gemini only provides thought_signature on the first call.
+			// When a different call_id is in the map, we should still use that signature
+			// because all parallel calls need the same signature.
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_123',
+					additionalKwargs: {
+						__gemini_function_call_thought_signatures__: {
+							different_call_id: 'some_signature',
+						},
+					},
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			// Should use the available signature even though call ID doesn't match
+			// This supports parallel tool calls where only first call has the signature
+			expect(result[0].metadata.google?.thoughtSignature).toBe('some_signature');
+		});
+
+		it('should handle truly missing thought_signature gracefully', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_123',
+					additionalKwargs: {
+						__gemini_function_call_thought_signatures__: {},
+					},
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.google).toBeUndefined();
+		});
+	});
+
+	describe('Tool argument collision handling', () => {
+		it('stashes user `tool` argument before injecting routing key', () => {
+			const tools = [
+				createMockTool('MCP_Client_search', {
+					sourceNodeName: 'MCP_Client',
+					isFromToolkit: true,
+					isMcpTool: true,
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'MCP_Client_search',
+					toolInput: { tool: 'user-value', extra: 123 },
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].input).toEqual({
+				tool: 'MCP_Client_search',
+				extra: 123,
+				_n8nOriginalToolArg: { tool: 'user-value' },
+			});
+		});
+
+		it('does not stash arguments for toolkit tools without the MCP marker', () => {
+			const tools = [
+				createMockTool('Toolkit_search', {
+					sourceNodeName: 'Toolkit',
+					isFromToolkit: true,
+				}),
+			];
+
+			const result = createEngineRequests(
+				[
+					{
+						tool: 'Toolkit_search',
+						toolInput: { tool: 'user-value', query: 'test' },
+						toolCallId: 'call_123',
+					},
+				],
+				0,
+				tools,
+			);
+
+			expect(result[0].input).toEqual({ tool: 'Toolkit_search', query: 'test' });
+			expect(result[0].input).not.toHaveProperty('_n8nOriginalToolArg');
+		});
+
+		it('stashes user `toolCallId` arguments before the engine overwrites them', () => {
+			const tools = [
+				createMockTool('MCP_Client_search', {
+					sourceNodeName: 'MCP_Client',
+					isFromToolkit: true,
+					isMcpTool: true,
+				}),
+			];
+
+			const result = createEngineRequests(
+				[
+					{
+						tool: 'MCP_Client_search',
+						toolInput: { toolCallId: 'user-id', query: 'test' },
+						toolCallId: 'call_123',
+					},
+				],
+				0,
+				tools,
+			);
+
+			expect(result[0].input).toEqual({
+				tool: 'MCP_Client_search',
+				toolCallId: 'user-id',
+				query: 'test',
+				_n8nOriginalToolArg: { toolCallId: 'user-id' },
+			});
+		});
+
+		it('does not stash when user `tool` is absent', () => {
+			const tools = [
+				createMockTool('MCP_Client_search', {
+					sourceNodeName: 'MCP_Client',
+					isFromToolkit: true,
+					isMcpTool: true,
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'MCP_Client_search',
+					toolInput: { extra: 123 },
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].input).toEqual({
+				tool: 'MCP_Client_search',
+				extra: 123,
+			});
+			expect('_n8nOriginalToolArg' in (result[0].input as Record<string, unknown>)).toBe(false);
+		});
+
+		it('discards an incoming stash key before stashing the user `tool` argument', () => {
+			const tools = [
+				createMockTool('MCP_Client_search', {
+					sourceNodeName: 'MCP_Client',
+					isFromToolkit: true,
+					isMcpTool: true,
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'MCP_Client_search',
+					toolInput: { tool: 'user', _n8nOriginalToolArg: 'injected', extra: 1 },
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].input).toEqual({
+				tool: 'MCP_Client_search',
+				_n8nOriginalToolArg: { tool: 'user' },
+				extra: 1,
+			});
+		});
+
+		it('does not let a model-supplied stash key override the user `tool` argument', () => {
+			const tools = [
+				createMockTool('MCP_Client_search', {
+					sourceNodeName: 'MCP_Client',
+					isFromToolkit: true,
+					isMcpTool: true,
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'MCP_Client_search',
+					toolInput: { tool: 'REAL', _n8nOriginalToolArg: 'INJECTED' },
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].input).toEqual({
+				tool: 'MCP_Client_search',
+				_n8nOriginalToolArg: { tool: 'REAL' },
+			});
+			expect(JSON.stringify(result)).not.toContain('INJECTED');
+		});
+
+		it('discards an incoming stash key when user `tool` is absent', () => {
+			const tools = [
+				createMockTool('MCP_Client_search', {
+					sourceNodeName: 'MCP_Client',
+					isFromToolkit: true,
+					isMcpTool: true,
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'MCP_Client_search',
+					toolInput: { _n8nOriginalToolArg: 'INJECTED', extra: 1 },
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].input).toEqual({ tool: 'MCP_Client_search', extra: 1 });
+			expect(JSON.stringify(result)).not.toContain('INJECTED');
+		});
+
+		it.each([
+			{ label: 'empty string', value: '' },
+			{ label: 'null', value: null },
+		])('stashes tool when value is $label', ({ value }) => {
+			const tools = [
+				createMockTool('MCP_Client_search', {
+					sourceNodeName: 'MCP_Client',
+					isFromToolkit: true,
+					isMcpTool: true,
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'MCP_Client_search',
+					toolInput: { tool: value },
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].input).toEqual({
+				tool: 'MCP_Client_search',
+				_n8nOriginalToolArg: { tool: value },
+			});
+		});
+
+		it('non-MCP tools remain unchanged (no stash)', () => {
+			const tools = [
+				createMockTool('MCP_Client_search', {
+					sourceNodeName: 'MCP_Client',
+					isFromToolkit: false,
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'MCP_Client_search',
+					toolInput: { tool: 'user-value', extra: 1 },
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].input).toEqual({
+				tool: 'user-value',
+				extra: 1,
+			});
+			expect('_n8nOriginalToolArg' in (result[0].input as Record<string, unknown>)).toBe(false);
+		});
+
+		it('stashes non-primitive tool values exactly', () => {
+			const tools = [
+				createMockTool('MCP_Client_search', {
+					sourceNodeName: 'MCP_Client',
+					isFromToolkit: true,
+					isMcpTool: true,
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'MCP_Client_search',
+					toolInput: { tool: { nested: 'value' }, extra: 1 },
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].input).toEqual({
+				tool: 'MCP_Client_search',
+				extra: 1,
+				_n8nOriginalToolArg: { tool: { nested: 'value' } },
+			});
+		});
+
+		it('stashes only for colliding tool calls in a batch', () => {
+			const tools = [
+				createMockTool('MCP_Client_search', {
+					sourceNodeName: 'MCP_Client',
+					isFromToolkit: true,
+					isMcpTool: true,
+				}),
+				createMockTool('MCP_Client_other', {
+					sourceNodeName: 'MCP_Client',
+					isFromToolkit: true,
+					isMcpTool: true,
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'MCP_Client_search',
+					toolInput: { tool: 'a', extra: 'one' },
+					toolCallId: 'call_1',
+				},
+				{
+					tool: 'MCP_Client_other',
+					toolInput: { extra: 'two' },
+					toolCallId: 'call_2',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].input).toEqual({
+				tool: 'MCP_Client_search',
+				extra: 'one',
+				_n8nOriginalToolArg: { tool: 'a' },
+			});
+			expect(result[1].input).toEqual({
+				tool: 'MCP_Client_other',
+				extra: 'two',
+			});
+			expect('_n8nOriginalToolArg' in (result[1].input as Record<string, unknown>)).toBe(false);
+		});
+	});
+
+	describe('Parallel tool calls signature sharing', () => {
+		it('should share messageLog from first tool call to subsequent calls', async () => {
+			const tools = [
+				createMockTool('calculator', { sourceNodeName: 'Calculator' }),
+				createMockTool('weather', { sourceNodeName: 'Weather' }),
+			];
+
+			// Simulates LangChain behavior where only first tool call has messageLog
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_1',
+					messageLog: [
+						{
+							content: [{ type: 'text', text: 'thinking...' }],
+							additional_kwargs: {
+								signatures: ['', 'shared_signature'],
+							},
+						},
+					],
+				},
+				{
+					tool: 'weather',
+					toolInput: { location: 'NYC' },
+					toolCallId: 'call_2',
+					messageLog: [], // Empty messageLog on second call
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(2);
+			// Both should get the signature from the shared messageLog
+			expect(result[0].metadata.google?.thoughtSignature).toBe('shared_signature');
+			expect(result[1].metadata.google?.thoughtSignature).toBe('shared_signature');
+		});
+
+		it('should share additionalKwargs from first tool call to subsequent calls', async () => {
+			const tools = [
+				createMockTool('calculator', { sourceNodeName: 'Calculator' }),
+				createMockTool('weather', { sourceNodeName: 'Weather' }),
+			];
+
+			// Simulates case where additionalKwargs is only on first call
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_1',
+					additionalKwargs: {
+						signatures: ['', 'shared_sig_from_kwargs'],
+					},
+				},
+				{
+					tool: 'weather',
+					toolInput: { location: 'NYC' },
+					toolCallId: 'call_2',
+					// No additionalKwargs on second call
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(2);
+			// Both should get the signature from the shared additionalKwargs
+			expect(result[0].metadata.google?.thoughtSignature).toBe('shared_sig_from_kwargs');
+			expect(result[1].metadata.google?.thoughtSignature).toBe('shared_sig_from_kwargs');
+		});
+
+		it('should extract signature from signatures array format', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_1',
+					additionalKwargs: {
+						signatures: ['first_signature', 'second_signature'],
+					},
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			// Should get the first non-empty signature
+			expect(result[0].metadata.google?.thoughtSignature).toBe('first_signature');
+		});
+
+		it('should skip empty strings when finding signature in array', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_1',
+					additionalKwargs: {
+						signatures: ['', '', 'actual_signature'],
+					},
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.google?.thoughtSignature).toBe('actual_signature');
 		});
 	});
 });

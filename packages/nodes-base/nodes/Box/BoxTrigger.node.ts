@@ -5,14 +5,17 @@ import {
 	type INodeTypeDescription,
 	type IWebhookResponseData,
 	NodeConnectionTypes,
+	requestPath,
 } from 'n8n-workflow';
 
-import { boxApiRequest, boxApiRequestAllItems } from './GenericFunctions';
+import { verifySignature } from './BoxTriggerHelpers';
+import { boxApiRequest, boxApiRequestAllItemsMarker } from './GenericFunctions';
 
 export class BoxTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Box Trigger',
 		name: 'boxTrigger',
+		schemaPath: 'Box',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:box.png',
 		group: ['trigger'],
@@ -262,40 +265,58 @@ export class BoxTrigger implements INodeType {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
-				const events = this.getNodeParameter('events') as string;
+				const events = this.getNodeParameter('events') as string[];
 				const targetId = this.getNodeParameter('targetId') as string;
 				const targetType = this.getNodeParameter('targetType') as string;
 				// Check all the webhooks which exist already if it is identical to the
 				// one that is supposed to get created.
-				const endpoint = '/webhooks';
-				const webhooks = await boxApiRequestAllItems.call(this, 'entries', 'GET', endpoint, {});
+				const endpoint = requestPath`/webhooks`;
+				// Box webhook list API uses marker-based pagination (not offset)
+				const webhooks = await boxApiRequestAllItemsMarker.call(
+					this,
+					'entries',
+					'GET',
+					endpoint,
+					{},
+				);
 
 				for (const webhook of webhooks) {
+					// Skip full fetch if target doesn't match — target is available in the mini object
 					if (
-						webhook.address === webhookUrl &&
-						webhook.target.id === targetId &&
-						webhook.target.type === targetType
+						(webhook.target as { id: string; type: string }).id !== targetId ||
+						(webhook.target as { id: string; type: string }).type !== targetType
 					) {
-						for (const event of events) {
-							if (!webhook.triggers.includes(event)) {
-								return false;
-							}
-						}
+						continue;
 					}
-					// Set webhook-id to be sure that it can be deleted
-					webhookData.webhookId = webhook.id as string;
-					return true;
+
+					// Fetch full details to access address and triggers (not in mini object)
+					const fullWebhook = await boxApiRequest.call(
+						this,
+						'GET',
+						requestPath`/webhooks/${webhook.id}`,
+					);
+
+					if (fullWebhook.address === webhookUrl) {
+						const allEventsMatch = events.every((event) =>
+							(fullWebhook.triggers as string[]).includes(event),
+						);
+						if (!allEventsMatch) {
+							return false;
+						}
+						webhookData.webhookId = fullWebhook.id as string;
+						return true;
+					}
 				}
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
-				const events = this.getNodeParameter('events') as string;
+				const events = this.getNodeParameter('events') as string[];
 				const targetId = this.getNodeParameter('targetId') as string;
 				const targetType = this.getNodeParameter('targetType') as string;
 
-				const endpoint = '/webhooks';
+				const endpoint = requestPath`/webhooks`;
 
 				const body = {
 					address: webhookUrl,
@@ -319,7 +340,7 @@ export class BoxTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				if (webhookData.webhookId !== undefined) {
-					const endpoint = `/webhooks/${webhookData.webhookId}`;
+					const endpoint = requestPath`/webhooks/${webhookData.webhookId}`;
 
 					try {
 						await boxApiRequest.call(this, 'DELETE', endpoint);
@@ -337,6 +358,15 @@ export class BoxTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		const isSignatureValid = await verifySignature.call(this);
+		if (!isSignatureValid) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
+			return {
+				noWebhookResponse: true,
+			};
+		}
+
 		const bodyData = this.getBodyData();
 
 		return {

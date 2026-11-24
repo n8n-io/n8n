@@ -1,4 +1,3 @@
-import get from 'lodash/get';
 import type {
 	IExecuteFunctions,
 	IHookFunctions,
@@ -6,52 +5,50 @@ import type {
 	IDataObject,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
+import { decodePathValue, requestUrl } from 'n8n-workflow';
 
 export async function customerIoApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: object,
 	baseApi?: string,
 	_query?: IDataObject,
 ) {
 	const credentials = await this.getCredentials('customerIoApi');
-	const options: IHttpRequestOptions = {
+	const isEu = credentials.region === 'track-eu.customer.io';
+
+	const options: WithRequestTarget<IHttpRequestOptions> = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
-		url: '',
+		url:
+			baseApi === 'tracking'
+				? requestUrl`https://${isEu ? 'track-eu' : 'track'}.customer.io/api/v1${endpoint}`
+				: requestUrl`https://${isEu ? 'api-eu' : 'api'}.customer.io/v1${endpoint}`,
 		json: true,
 	};
-
-	if (baseApi === 'tracking') {
-		const region = credentials.region;
-		options.url = `https://${region}/api/v1${endpoint}`;
-	} else if (baseApi === 'api') {
-		const region = credentials.region;
-		// Special handling for EU region
-		if (region === 'track-eu.customer.io') {
-			options.url = `https://api-eu.customer.io/v1/api${endpoint}`;
-		} else {
-			options.url = `https://api.customer.io/v1/api${endpoint}`;
-		}
-	} else if (baseApi === 'beta') {
-		options.url = `https://beta-api.customer.io/v1/api${endpoint}`;
-	}
 
 	return await this.helpers.requestWithAuthentication.call(this, 'customerIoApi', options);
 }
 
-export function eventExists(currentEvents: string[], webhookEvents: IDataObject) {
-	for (const currentEvent of currentEvents) {
-		if (get(webhookEvents, [currentEvent.split('.')[0], currentEvent.split('.')[1]]) !== true) {
-			return false;
-		}
-	}
-	return true;
+export const toPathValue = (version: number, value: string) =>
+	version < 1.1 ? decodePathValue(value) : value;
+
+/** Convert dot-separated event names to underscore-separated API format */
+export function toApiEventName(event: string): string {
+	return event.replaceAll('.', '_');
+}
+
+/** Check if all current events exist in the webhook's event list */
+export function eventExists(currentEvents: string[], webhookEvents: string[]) {
+	const webhookEventSet = new Set(webhookEvents);
+	return currentEvents.every((event) => webhookEventSet.has(toApiEventName(event)));
 }
 
 export function validateJSON(json: string | undefined): any {

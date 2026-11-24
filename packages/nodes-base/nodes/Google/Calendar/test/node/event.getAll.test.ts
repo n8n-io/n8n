@@ -1,26 +1,28 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { INode, IExecuteFunctions, IDataObject } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import * as genericFunctions from '../../GenericFunctions';
 import { GoogleCalendar } from '../../GoogleCalendar.node';
+import type * as _importType0 from '../../GenericFunctions';
 
 let response: IDataObject[] | undefined = [];
 let responseWithRetries: IDataObject | undefined = {};
 
-jest.mock('../../GenericFunctions', () => {
-	const originalModule = jest.requireActual('../../GenericFunctions');
+vi.mock('../../GenericFunctions', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../../GenericFunctions');
 	return {
 		...originalModule,
-		getTimezones: jest.fn(),
-		googleApiRequest: jest.fn(),
-		googleApiRequestAllItems: jest.fn(async function () {
+		getTimezones: vi.fn(),
+		googleApiRequest: vi.fn(),
+		googleApiRequestAllItems: vi.fn(async function () {
 			return (() => response)();
 		}),
-		googleApiRequestWithRetries: jest.fn(async function () {
+		googleApiRequestWithRetries: vi.fn(async function () {
 			return (() => responseWithRetries)();
 		}),
-		addNextOccurrence: jest.fn(function (data: IDataObject[]) {
+		addNextOccurrence: vi.fn(function (data: IDataObject[]) {
 			return data;
 		}),
 	};
@@ -33,12 +35,12 @@ describe('Google Calendar Node', () => {
 	beforeEach(() => {
 		googleCalendar = new GoogleCalendar();
 		mockExecuteFunctions = mock<IExecuteFunctions>({
-			getInputData: jest.fn(),
-			getNode: jest.fn(),
-			getNodeParameter: jest.fn(),
-			getTimezone: jest.fn(),
+			getInputData: vi.fn(),
+			getNode: vi.fn(),
+			getNodeParameter: vi.fn(),
+			getTimezone: vi.fn(),
 			helpers: {
-				constructExecutionMetaData: jest.fn().mockReturnValue([]),
+				constructExecutionMetaData: vi.fn().mockReturnValue([]),
 			},
 		});
 		response = undefined;
@@ -46,7 +48,7 @@ describe('Google Calendar Node', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('Google Calendar > Event > Get Many', () => {
@@ -80,7 +82,7 @@ describe('Google Calendar Node', () => {
 			expect(genericFunctions.googleApiRequestAllItems).toHaveBeenCalledWith(
 				'items',
 				'GET',
-				'/calendar/v3/calendars/myCalendar/events',
+				requestPath`/calendar/v3/calendars/myCalendar/events`,
 				{},
 				{
 					iCalUID: 'uid',
@@ -118,6 +120,7 @@ describe('Google Calendar Node', () => {
 
 			response = [
 				{
+					id: 'event1',
 					recurrence: ['RRULE:FREQ=DAILY;COUNT=5'],
 				},
 			];
@@ -129,7 +132,7 @@ describe('Google Calendar Node', () => {
 			expect(genericFunctions.googleApiRequestAllItems).toHaveBeenCalledWith(
 				'items',
 				'GET',
-				'/calendar/v3/calendars/myCalendar/events',
+				requestPath`/calendar/v3/calendars/myCalendar/events`,
 				{},
 				{
 					timeMax: '2024-12-25T23:00:00Z',
@@ -141,7 +144,7 @@ describe('Google Calendar Node', () => {
 				expect.objectContaining({
 					method: 'GET',
 					itemIndex: 0,
-					resource: '/calendar/v3/calendars/myCalendar/events/undefined/instances',
+					resource: requestPath`/calendar/v3/calendars/myCalendar/events/event1/instances`,
 				}),
 			);
 

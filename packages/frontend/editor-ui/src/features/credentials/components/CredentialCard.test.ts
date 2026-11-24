@@ -1,14 +1,53 @@
+import { usePostHog } from '@/app/stores/posthog.store';
 import { setActivePinia } from 'pinia';
-import { within } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
+import { mockedStore } from '@/__tests__/utils';
 import CredentialCard from './CredentialCard.vue';
 import type { CredentialsResource } from '@/Interface';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useCredentialsStore } from '../credentials.store';
+import type { FrontendSettings } from '@n8n/api-types';
+import type { ICredentialsResponse } from '../credentials.types';
+import { MODAL_CONFIRM } from '@/app/constants';
+import { defineComponent } from 'vue';
+import type { Project } from '@n8n/rest-api-client';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+
+const mockAuthorize = vi.fn();
+const mockIsOAuthCredentialType = vi.fn();
+
+vi.mock('../composables/useCredentialOAuth', () => ({
+	useCredentialOAuth: () => ({
+		authorize: mockAuthorize,
+		isOAuthCredentialType: mockIsOAuthCredentialType,
+	}),
+}));
+
+const mockConfirm = vi.fn();
+vi.mock('@/app/composables/useMessage', () => ({
+	useMessage: () => ({
+		confirm: mockConfirm,
+	}),
+}));
+
+const showMessage = vi.fn();
+const showError = vi.fn();
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({
+		showMessage,
+		showError,
+	}),
+}));
 
 const renderComponent = createComponentRenderer(CredentialCard);
+
+const findContactModal = async (getByTestId: (id: string) => HTMLElement) =>
+	await waitFor(() => getByTestId('contact-admin-modal'));
 
 const createCredential = (overrides = {}): CredentialsResource =>
 	({
@@ -24,11 +63,53 @@ const createCredential = (overrides = {}): CredentialsResource =>
 
 describe('CredentialCard', () => {
 	let projectsStore: ReturnType<typeof useProjectsStore>;
+	let settingsStore: ReturnType<typeof useSettingsStore>;
 
 	beforeEach(() => {
 		const pinia = createTestingPinia();
 		setActivePinia(pinia);
+		mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
 		projectsStore = useProjectsStore();
+		settingsStore = useSettingsStore();
+		settingsStore.settings = {
+			envFeatureFlags: {
+				N8N_ENV_FEAT_DYNAMIC_CREDENTIALS: true,
+			},
+			activeModules: ['dynamic-credentials'],
+		} as unknown as FrontendSettings;
+		vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+		mockAuthorize.mockReset();
+		mockIsOAuthCredentialType.mockReset();
+		mockIsOAuthCredentialType.mockReturnValue(true);
+	});
+
+	it.each([false, undefined])('hides stored descriptions when the flag is %s', (enabled) => {
+		mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(Boolean(enabled));
+		const data = createCredential({ description: 'Stored description' });
+		const { queryByTestId } = renderComponent({ props: { data } });
+
+		expect(queryByTestId('credential-card-description')).not.toBeInTheDocument();
+		expect(data.description).toBe('Stored description');
+	});
+
+	it('shows the full description as plain text on hover', async () => {
+		const description = '<b>Production reports</b>. '.repeat(15);
+		const data = createCredential({ description });
+		const { getByTestId, findByTestId } = renderComponent({ props: { data } });
+		const descriptionText = getByTestId('credential-card-description');
+
+		expect(descriptionText).toHaveTextContent(description.trim());
+		await userEvent.hover(descriptionText);
+		const tooltip = await findByTestId('tooltip-content');
+		expect(tooltip).toHaveTextContent(description.trim());
+		expect(tooltip.querySelector('b')).toBeNull();
+	});
+
+	it.each([undefined, null, ''])('omits an empty description (%s)', (description) => {
+		const data = createCredential({ description });
+		const { queryByTestId } = renderComponent({ props: { data } });
+
+		expect(queryByTestId('credential-card-description')).not.toBeInTheDocument();
 	});
 
 	it('should render name and home project name', () => {
@@ -79,12 +160,48 @@ describe('CredentialCard', () => {
 
 		const controllingId = cardActionsOpener.getAttribute('aria-controls');
 
-		await userEvent.click(cardActions);
+		await userEvent.click(cardActionsOpener);
 		const actions = document.querySelector(`#${controllingId}`);
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
-		expect(actions).toHaveTextContent('Change owner');
+		expect(actions).toHaveTextContent('Move');
+	});
+
+	it('should hide the Delete action for an end-user credential without the createEndUser permission', async () => {
+		const data = createCredential({
+			isResolvable: true,
+			scopes: ['credential:delete'],
+		});
+		const { getByTestId } = renderComponent({ props: { data } });
+		const cardActions = getByTestId('credential-card-actions');
+		const cardActionsOpener = within(cardActions).getByRole('button');
+		const controllingId = cardActionsOpener.getAttribute('aria-controls');
+
+		await userEvent.click(cardActionsOpener);
+		const actions = document.querySelector(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+		expect(actions).not.toHaveTextContent('Delete');
+	});
+
+	it('should show the Delete action for an end-user credential with the createEndUser permission', async () => {
+		const data = createCredential({
+			isResolvable: true,
+			scopes: ['credential:delete', 'credential:createEndUser'],
+		});
+		const { getByTestId } = renderComponent({ props: { data } });
+		const cardActions = getByTestId('credential-card-actions');
+		const cardActionsOpener = within(cardActions).getByRole('button');
+		const controllingId = cardActionsOpener.getAttribute('aria-controls');
+
+		await userEvent.click(cardActionsOpener);
+		const actions = document.querySelector(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+		expect(actions).toHaveTextContent('Delete');
 	});
 
 	it('should set readOnly variant based on prop', () => {
@@ -155,6 +272,429 @@ describe('CredentialCard', () => {
 			const globalBadge = getByTestId('credential-global-badge');
 			expect(globalBadge).toBeInTheDocument();
 			expect(globalBadge).toHaveTextContent('Global');
+		});
+	});
+
+	describe('disconnect action', () => {
+		beforeEach(() => {
+			mockConfirm.mockReset();
+			showMessage.mockReset();
+			showError.mockReset();
+		});
+
+		const openCardActions = async (data: CredentialsResource) => {
+			const result = renderComponent({ props: { data } });
+			const cardActions = result.getByTestId('credential-card-actions');
+			const opener = within(cardActions).getByRole('button');
+			const controllingId = opener.getAttribute('aria-controls');
+			await userEvent.click(opener);
+			const actions = document.querySelector(`#${controllingId}`);
+			if (!actions) throw new Error('Actions menu not found');
+			return { ...result, actions };
+		};
+
+		it('shows Disconnect when credential is resolvable and connectedByMe', async () => {
+			const data = createCredential({ isResolvable: true, connectedByMe: true });
+			const { actions } = await openCardActions(data);
+			expect(actions).toHaveTextContent('Disconnect');
+		});
+
+		it('hides Disconnect when credential is not connectedByMe', async () => {
+			const data = createCredential({ isResolvable: true, connectedByMe: false });
+			const { actions } = await openCardActions(data);
+			expect(actions).not.toHaveTextContent('Disconnect');
+		});
+
+		it('hides Disconnect for non-resolvable credentials', async () => {
+			const data = createCredential({ isResolvable: false, connectedByMe: true });
+			const { actions } = await openCardActions(data);
+			expect(actions).not.toHaveTextContent('Disconnect');
+		});
+
+		it('calls store action and shows success toast when confirmed', async () => {
+			const data = createCredential({
+				id: 'cred-1',
+				name: 'My Slack',
+				isResolvable: true,
+				connectedByMe: true,
+			});
+			mockConfirm.mockResolvedValue(MODAL_CONFIRM);
+			const credentialsStore = useCredentialsStore();
+			const disconnectSpy = vi
+				.spyOn(credentialsStore, 'disconnectMyConnection')
+				.mockResolvedValue(undefined);
+
+			const { actions } = await openCardActions(data);
+			await userEvent.click(within(actions as HTMLElement).getByText('Disconnect'));
+
+			expect(disconnectSpy).toHaveBeenCalledWith({ id: 'cred-1' });
+			expect(showMessage).toHaveBeenCalled();
+		});
+
+		it('does not call store action when confirmation is dismissed', async () => {
+			const data = createCredential({
+				id: 'cred-1',
+				name: 'My Slack',
+				isResolvable: true,
+				connectedByMe: true,
+			});
+			mockConfirm.mockResolvedValue(false);
+			const credentialsStore = useCredentialsStore();
+			const disconnectSpy = vi
+				.spyOn(credentialsStore, 'disconnectMyConnection')
+				.mockResolvedValue(undefined);
+
+			const { actions } = await openCardActions(data);
+			await userEvent.click(within(actions as HTMLElement).getByText('Disconnect'));
+
+			expect(disconnectSpy).not.toHaveBeenCalled();
+		});
+
+		it('shows error toast when the disconnect call fails', async () => {
+			const data = createCredential({
+				id: 'cred-1',
+				name: 'My Slack',
+				isResolvable: true,
+				connectedByMe: true,
+			});
+			mockConfirm.mockResolvedValue(MODAL_CONFIRM);
+			const credentialsStore = useCredentialsStore();
+			vi.spyOn(credentialsStore, 'disconnectMyConnection').mockRejectedValue(new Error('boom'));
+
+			const { actions } = await openCardActions(data);
+			await userEvent.click(within(actions as HTMLElement).getByText('Disconnect'));
+
+			expect(showError).toHaveBeenCalled();
+		});
+	});
+
+	describe('resolvable credentials', () => {
+		it('should display dynamic icon when credential has isResolvable true', () => {
+			const data = createCredential({
+				isResolvable: true,
+				homeProject: {
+					name: 'Test Project',
+				},
+			});
+
+			const { getByTestId } = renderComponent({ props: { data } });
+
+			expect(getByTestId('credential-card-dynamic')).toBeInTheDocument();
+		});
+
+		it('should not display dynamic icon when credential has isResolvable false', () => {
+			const data = createCredential({
+				isResolvable: false,
+				homeProject: {
+					name: 'Test Project',
+				},
+			});
+
+			const { queryByTestId } = renderComponent({ props: { data } });
+
+			expect(queryByTestId('credential-card-dynamic')).not.toBeInTheDocument();
+		});
+
+		it('should not display dynamic icon when isResolvable is undefined', () => {
+			const data = createCredential({
+				homeProject: {
+					name: 'Test Project',
+				},
+			});
+
+			const { queryByTestId } = renderComponent({ props: { data } });
+
+			expect(queryByTestId('credential-card-dynamic')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('private credentials connect flow', () => {
+		const privateUnconnectedData = (overrides = {}) =>
+			createCredential({
+				id: 'cred-1',
+				isResolvable: true,
+				connectedByMe: false,
+				scopes: ['credential:connect'],
+				homeProject: { name: 'Test Project' },
+				...overrides,
+			});
+
+		it('should show the Connect button when private and not connected', () => {
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: { data: privateUnconnectedData() },
+			});
+
+			expect(getByTestId('credential-card-connect')).toBeInTheDocument();
+			expect(queryByTestId('credential-card-not-connected')).not.toBeInTheDocument();
+		});
+
+		it('should hide the Connect button when the user lacks connect permission', () => {
+			const { queryByTestId } = renderComponent({
+				props: {
+					data: privateUnconnectedData({ scopes: ['credential:read', 'credential:update'] }),
+				},
+			});
+
+			expect(queryByTestId('credential-card-connect')).not.toBeInTheDocument();
+		});
+
+		it('should show the Connect button for a user with only the connect permission', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					data: privateUnconnectedData({ scopes: ['credential:read', 'credential:connect'] }),
+				},
+			});
+
+			expect(getByTestId('credential-card-connect')).toBeInTheDocument();
+		});
+
+		it('should still show project badge alongside the Connect button', () => {
+			const { getByTestId } = renderComponent({
+				props: { data: privateUnconnectedData() },
+			});
+
+			expect(getByTestId('card-badge')).toBeInTheDocument();
+			expect(getByTestId('credential-card-connect')).toBeInTheDocument();
+		});
+
+		it('should not show Connect button or Connected label when private and connected', () => {
+			const data = createCredential({
+				isResolvable: true,
+				connectedByMe: true,
+				homeProject: { name: 'Test Project' },
+			});
+
+			const { getByTestId, queryByTestId } = renderComponent({ props: { data } });
+
+			// Once connected, a private credential is just a regular credential with a
+			// Private label — no connect prompt and no separate connected state.
+			expect(queryByTestId('credential-card-connect')).not.toBeInTheDocument();
+			expect(queryByTestId('credential-card-connected')).not.toBeInTheDocument();
+			expect(getByTestId('card-badge')).toBeInTheDocument();
+		});
+
+		it('should not show Connected label for non-resolvable credentials', () => {
+			const data = createCredential({
+				isResolvable: false,
+				connectedByMe: true,
+				homeProject: { name: 'Test Project' },
+			});
+
+			const { queryByTestId, getByTestId } = renderComponent({ props: { data } });
+
+			expect(queryByTestId('credential-card-connected')).not.toBeInTheDocument();
+			expect(getByTestId('card-badge')).toBeInTheDocument();
+		});
+
+		it('should show sharing badge when credential is not resolvable', () => {
+			const data = createCredential({
+				isResolvable: false,
+				connectedByMe: false,
+				homeProject: { name: 'Test Project' },
+			});
+
+			const { queryByTestId, getByTestId } = renderComponent({ props: { data } });
+
+			expect(queryByTestId('credential-card-connect')).not.toBeInTheDocument();
+			expect(getByTestId('card-badge')).toBeInTheDocument();
+		});
+
+		it('should call authorize with the credential and emit "connected" on success', async () => {
+			const data = privateUnconnectedData();
+			const credential = { id: data.id, type: 'oAuth2Api' } as ICredentialsResponse;
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue(credential);
+			mockAuthorize.mockResolvedValue(true);
+
+			const { getByTestId, emitted } = renderComponent({ props: { data } });
+
+			await userEvent.click(getByTestId('credential-card-connect'));
+
+			expect(mockAuthorize).toHaveBeenCalledWith(credential);
+			expect(emitted('connected')).toEqual([[data.id]]);
+		});
+
+		it('should fall back to opening the edit modal when the credential is not an OAuth type', async () => {
+			const data = privateUnconnectedData();
+			const credential = { id: data.id, type: 'notOAuthApi' } as ICredentialsResponse;
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue(credential);
+			mockIsOAuthCredentialType.mockReturnValue(false);
+
+			const { getByTestId, emitted } = renderComponent({ props: { data } });
+
+			await userEvent.click(getByTestId('credential-card-connect'));
+
+			expect(mockIsOAuthCredentialType).toHaveBeenCalledWith('notOAuthApi');
+			expect(mockAuthorize).not.toHaveBeenCalled();
+			expect(emitted('click')).toEqual([[data.id]]);
+			expect(emitted('connected')).toBeUndefined();
+		});
+
+		it('should not emit "connected" if authorize fails', async () => {
+			const data = privateUnconnectedData();
+			const credential = { id: data.id, type: 'oAuth2Api' } as ICredentialsResponse;
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue(credential);
+			mockAuthorize.mockResolvedValue(false);
+
+			const { getByTestId, emitted } = renderComponent({ props: { data } });
+
+			await userEvent.click(getByTestId('credential-card-connect'));
+
+			expect(mockAuthorize).toHaveBeenCalled();
+			expect(emitted('connected')).toBeUndefined();
+		});
+
+		it('should not open the edit modal when Connect button is clicked', async () => {
+			const data = privateUnconnectedData();
+			const credential = { id: data.id, type: 'oAuth2Api' } as ICredentialsResponse;
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue(credential);
+			mockAuthorize.mockResolvedValue(true);
+
+			const { getByTestId, emitted } = renderComponent({ props: { data } });
+
+			await userEvent.click(getByTestId('credential-card-connect'));
+
+			expect(emitted('click')).toBeUndefined();
+		});
+	});
+
+	describe('restricted credential', () => {
+		const typeRestricted = {
+			reason: 'typeRestricted' as const,
+			restriction: { name: 'slackApi', available: false, scope: 'instance' as const },
+		};
+		const nodesRestricted = {
+			reason: 'nodesRestricted' as const,
+			restriction: { name: 'n8n-nodes-base.slack', available: false, scope: 'instance' as const },
+			nodeTypeNames: ['Slack'],
+		};
+
+		it('shows no badge when nothing restricts the credential', () => {
+			const { queryByTestId } = renderComponent({ props: { data: createCredential() } });
+
+			expect(queryByTestId('credential-card-restricted')).not.toBeInTheDocument();
+		});
+
+		it.each([typeRestricted, nodesRestricted])(
+			'shows the Restricted badge when the $reason',
+			(restriction) => {
+				const { getByTestId } = renderComponent({
+					props: { data: createCredential({ type: 'slackApi', restriction }) },
+				});
+
+				expect(getByTestId('credential-card-restricted')).toHaveTextContent('Restricted');
+			},
+		);
+
+		it('still opens a credential of a blocked type', async () => {
+			const { getByRole, emitted } = renderComponent({
+				props: {
+					data: createCredential({ id: 'cred-1', name: 'Slack', restriction: typeRestricted }),
+				},
+			});
+
+			await userEvent.click(getByRole('heading', { name: /Slack/ }));
+
+			expect(emitted('click')).toEqual([['cred-1']]);
+		});
+
+		it('does not open the credential on a press of the lock marker', async () => {
+			const { getByTestId, emitted } = renderComponent({
+				props: { data: createCredential({ id: 'cred-1', restriction: typeRestricted }) },
+			});
+
+			await userEvent.click(getByTestId('node-restricted-icon'));
+
+			expect(emitted('click')).toBeUndefined();
+		});
+
+		it.each([typeRestricted, nodesRestricted])('dims a $reason credential', (restriction) => {
+			const { container } = renderComponent({
+				props: { data: createCredential({ restriction }) },
+			});
+
+			expect(container.firstElementChild?.className).toMatch(/restricted/);
+		});
+
+		it.each([
+			[typeRestricted, 'slackApi', 'credential'],
+			[nodesRestricted, 'Slack', 'node'],
+		])(
+			'asks the admin about what blocks a $reason credential',
+			async (restriction, subject, kind) => {
+				const { getByTestId } = renderComponent({
+					props: { data: createCredential({ type: 'slackApi', restriction }) },
+					global: {
+						stubs: {
+							RestrictedNodePopover: defineComponent({
+								emits: ['contactAdmin'],
+								template:
+									'<button data-test-id="contact-admin" @click="$emit(\'contactAdmin\', \'instance\')" />',
+							}),
+							ContactAdminModal: defineComponent({
+								props: ['open', 'typeName', 'kind'],
+								template:
+									'<div v-if="open" data-test-id="contact-admin-modal">{{ kind }}: {{ typeName }}</div>',
+							}),
+						},
+					},
+				});
+
+				await userEvent.click(getByTestId('contact-admin'));
+
+				expect(getByTestId('contact-admin-modal')).toHaveTextContent(`${kind}: ${subject}`);
+			},
+		);
+
+		it.each([
+			['another project', 'team-2', 'Team 2'],
+			['the open policy project', 'team-1', 'default'],
+		])(
+			'lists the admins of the project that set a project restriction, for %s',
+			async (_, projectId, listed) => {
+				mockedStore(useTypeAvailabilityPoliciesStore).policyProject = {
+					id: 'team-1',
+				} as Project;
+				mockedStore(useProjectsStore).fetchProject.mockResolvedValue({
+					id: 'team-2',
+					name: 'Team 2',
+				} as Project);
+				const { getByTestId } = renderComponent({
+					props: {
+						data: createCredential({
+							restriction: typeRestricted,
+							restrictionProject: { id: projectId, type: 'team' },
+						}),
+					},
+					global: {
+						stubs: {
+							RestrictedNodePopover: defineComponent({
+								emits: ['contactAdmin'],
+								template:
+									'<button data-test-id="contact-admin" @click="$emit(\'contactAdmin\', \'project\')" />',
+							}),
+							ContactAdminModal: defineComponent({
+								props: ['open', 'project'],
+								template:
+									'<div v-if="open" data-test-id="contact-admin-modal">{{ project === undefined ? "default" : project.name }}</div>',
+							}),
+						},
+					},
+				});
+
+				await userEvent.click(getByTestId('contact-admin'));
+
+				expect(await findContactModal(getByTestId)).toHaveTextContent(listed);
+			},
+		);
+
+		it('does not dim a usable credential', () => {
+			const { container } = renderComponent({ props: { data: createCredential() } });
+
+			expect(container.firstElementChild?.className).not.toMatch(/restricted/);
 		});
 	});
 });

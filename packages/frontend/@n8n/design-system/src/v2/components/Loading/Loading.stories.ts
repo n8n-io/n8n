@@ -4,7 +4,7 @@ import { SKELETON_VARIANTS } from './Loading.types';
 import Loading from './Loading.vue';
 
 const meta = {
-	title: 'Components V2/Loading',
+	title: 'Experimental/Loading',
 	component: Loading,
 	parameters: {
 		docs: {

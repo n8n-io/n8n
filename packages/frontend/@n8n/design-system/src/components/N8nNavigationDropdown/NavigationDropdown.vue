@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { ElMenu, ElSubMenu, ElMenuItem, type MenuItemRegistered } from 'element-plus';
-import { ref } from 'vue';
+import { computed, defineComponent, ref, useSlots } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 
-import type { IconSize } from '@n8n/design-system/types';
-
+import type { IconSize } from '../../types';
 import ConditionalRouterLink from '../ConditionalRouterLink';
 import N8nIcon from '../N8nIcon';
 import type { IconName } from '../N8nIcon/icons';
@@ -31,7 +30,7 @@ defineOptions({
 	name: 'N8nNavigationDropdown',
 });
 
-defineProps<{
+const props = defineProps<{
 	menu: Array<Item | Divider>;
 	disabled?: boolean;
 	teleport?: boolean;
@@ -41,10 +40,35 @@ defineProps<{
 const menuRef = ref<typeof ElMenu | null>(null);
 const ROOT_MENU_INDEX = '-1';
 
+// Passing both expand-close-icon and expand-open-icon to ElSubMenu disables
+// Element Plus's default 180° chevron rotation. The displayed chevron for
+// nested submenus is fixed to ArrowRight by Element Plus, so this no-op
+// component is never actually rendered.
+const NoopIcon = defineComponent({ name: 'NoopIcon', render: () => null });
+
 const emit = defineEmits<{
 	itemClick: [item: MenuItemRegistered];
 	select: [id: Item['id']];
 }>();
+
+const slots = useSlots();
+const hasAppendSlot = (id: string) => Boolean(slots[`item.append.${id}`]);
+
+const orderedMenu = computed(() => {
+	const workflowIndex = props.menu.findIndex((item) => !item.isDivider && item.id === 'workflow');
+	const agentIndex = props.menu.findIndex((item) => !item.isDivider && item.id === 'agent');
+
+	if (workflowIndex === -1 || agentIndex === -1 || agentIndex === workflowIndex + 1) {
+		return props.menu;
+	}
+
+	const ordered = [...props.menu];
+	const [agentItem] = ordered.splice(agentIndex, 1);
+	const nextWorkflowIndex = ordered.findIndex((item) => !item.isDivider && item.id === 'workflow');
+	ordered.splice(nextWorkflowIndex + 1, 0, agentItem);
+
+	return ordered;
+});
 
 defineSlots<{
 	default?: () => unknown;
@@ -102,13 +126,15 @@ defineExpose({
 				<slot />
 			</template>
 
-			<template v-for="item in menu" :key="item.id">
+			<template v-for="item in orderedMenu" :key="item.id">
 				<hr v-if="item.isDivider" />
 				<template v-else-if="item.submenu">
 					<ElSubMenu
 						:popper-class="$style.nestedSubmenu"
 						:index="item.id"
 						:popper-offset="-10"
+						:expand-close-icon="NoopIcon"
+						:expand-open-icon="NoopIcon"
 						data-test-id="navigation-submenu"
 					>
 						<template #title>
@@ -169,7 +195,9 @@ defineExpose({
 									>
 										<N8nIcon icon="info" size="medium" :class="$style.infoIcon" />
 									</N8nTooltip>
-									<slot :name="`item.append.${item.id}`" v-bind="{ item }" />
+									<span v-if="hasAppendSlot(item.id)" :class="$style.menuItemAppend">
+										<slot :name="`item.append.${item.id}`" v-bind="{ item }" />
+									</span>
 								</ElMenuItem>
 							</ConditionalRouterLink>
 						</template>
@@ -182,7 +210,9 @@ defineExpose({
 						data-test-id="navigation-menu-item"
 					>
 						{{ item.title }}
-						<slot :name="`item.append.${item.id}`" v-bind="{ item }" />
+						<span v-if="hasAppendSlot(item.id)" :class="$style.menuItemAppend">
+							<slot :name="`item.append.${item.id}`" v-bind="{ item }" />
+						</span>
 					</ElMenuItem>
 				</ConditionalRouterLink>
 			</template>
@@ -201,6 +231,11 @@ defineExpose({
 			line-height: initial;
 			border-bottom: 0 !important;
 			padding: 0;
+			&,
+			&:hover,
+			&:focus {
+				background-color: transparent;
+			}
 			:global(.el-sub-menu__icon-arrow) {
 				display: none;
 			}
@@ -278,6 +313,13 @@ defineExpose({
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	min-width: 0;
+}
+
+.menuItemAppend {
+	display: inline-flex;
+	align-items: center;
+	margin-left: auto;
+	padding-left: var(--spacing--2xs);
 }
 
 .infoTooltip {

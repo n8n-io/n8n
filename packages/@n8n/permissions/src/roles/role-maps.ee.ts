@@ -1,9 +1,9 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import type {
 	CredentialSharingRole,
 	GlobalRole,
 	ProjectRole,
 	Scope,
+	SecretsProviderConnectionSharingRole,
 	WorkflowSharingRole,
 } from '../types.ee';
 import {
@@ -15,6 +15,7 @@ import {
 	GLOBAL_ADMIN_SCOPES,
 	GLOBAL_MEMBER_SCOPES,
 	GLOBAL_CHAT_USER_SCOPES,
+	GLOBAL_AGENT_SCOPES,
 } from './scopes/global-scopes.ee';
 import {
 	REGULAR_PROJECT_ADMIN_SCOPES,
@@ -27,12 +28,17 @@ import {
 	WORKFLOW_SHARING_OWNER_SCOPES,
 	WORKFLOW_SHARING_EDITOR_SCOPES,
 } from './scopes/workflow-sharing-scopes.ee';
+import {
+	SECRETS_PROVIDER_CONNECTION_SHARING_OWNER_SCOPES,
+	SECRETS_PROVIDER_CONNECTION_SHARING_USER_SCOPES,
+} from './scopes/secrets-provider-connection-sharing-scopes.ee';
 
 export const GLOBAL_SCOPE_MAP: Record<GlobalRole, Scope[]> = {
 	'global:owner': GLOBAL_OWNER_SCOPES,
 	'global:admin': GLOBAL_ADMIN_SCOPES,
 	'global:member': GLOBAL_MEMBER_SCOPES,
 	'global:chatUser': GLOBAL_CHAT_USER_SCOPES,
+	'global:agent': GLOBAL_AGENT_SCOPES,
 };
 
 export const PROJECT_SCOPE_MAP: Record<ProjectRole, Scope[]> = {
@@ -53,9 +59,18 @@ export const WORKFLOW_SHARING_SCOPE_MAP: Record<WorkflowSharingRole, Scope[]> = 
 	'workflow:editor': WORKFLOW_SHARING_EDITOR_SCOPES,
 };
 
+export const SECRETS_PROVIDER_CONNECTION_SHARING_SCOPE_MAP: Record<
+	SecretsProviderConnectionSharingRole,
+	Scope[]
+> = {
+	'secretsProviderConnection:owner': SECRETS_PROVIDER_CONNECTION_SHARING_OWNER_SCOPES,
+	'secretsProviderConnection:user': SECRETS_PROVIDER_CONNECTION_SHARING_USER_SCOPES,
+};
+
 export const ALL_ROLE_MAPS = {
 	global: GLOBAL_SCOPE_MAP,
 	project: PROJECT_SCOPE_MAP,
 	credential: CREDENTIALS_SHARING_SCOPE_MAP,
 	workflow: WORKFLOW_SHARING_SCOPE_MAP,
+	secretsProviderConnection: SECRETS_PROVIDER_CONNECTION_SHARING_SCOPE_MAP,
 } as const;

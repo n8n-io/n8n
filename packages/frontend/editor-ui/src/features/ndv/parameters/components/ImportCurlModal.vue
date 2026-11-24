@@ -1,44 +1,59 @@
 <script lang="ts" setup>
-import Modal from '@/app/components/Modal.vue';
 import { IMPORT_CURL_MODAL_KEY } from '@/app/constants';
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import { createEventBus } from '@n8n/utils/event-bus';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 
-import { N8nButton, N8nInput, N8nInputLabel, N8nNotice } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nInput,
+	N8nInputLabel,
+	N8nNotice,
+} from '@n8n/design-system';
+
+defineOptions({ inheritAttrs: false });
 const telemetry = useTelemetry();
+const toast = useToast();
 const i18n = useI18n();
 
 const uiStore = useUIStore();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 
 const curlCommand = ref('');
-const modalBus = createEventBus();
+const modalOpen = computed(() => uiStore.modalsById[IMPORT_CURL_MODAL_KEY]?.open === true);
 
-const inputRef = ref<HTMLTextAreaElement | null>(null);
+const inputRef = ref<{ focus: () => void; blur: () => void; select: () => void } | null>(null);
 
 onMounted(() => {
 	const curlCommands = uiStore.modalsById[IMPORT_CURL_MODAL_KEY].data?.curlCommands as Record<
 		string,
 		string
 	>;
-	const nodeId = ndvStore.activeNode?.id ?? '';
+	const nodeId = ndvStore.value.activeNode?.id ?? '';
 	const command = curlCommands?.[nodeId];
 	curlCommand.value = command ?? '';
-	setTimeout(() => {
-		inputRef.value?.focus();
-	});
 });
 
 function onInput(value: string): void {
 	curlCommand.value = value;
 }
 
+function onFocus(): void {
+	inputRef.value?.select();
+}
+
 function closeDialog(): void {
-	modalBus.emit('close');
+	uiStore.closeModal(IMPORT_CURL_MODAL_KEY);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) closeDialog();
 }
 
 function onImportSuccess() {
@@ -51,13 +66,15 @@ function onImportFailure(data: { invalidProtocol: boolean; protocol?: string }) 
 }
 
 function onAfterImport() {
-	const nodeId = ndvStore.activeNode?.id as string;
-	const curlCommands =
-		(uiStore.modalsById[IMPORT_CURL_MODAL_KEY].data?.curlCommands as Record<string, string>) ?? {};
-	curlCommands[nodeId] = curlCommand.value;
+	const nodeId = ndvStore.value.activeNode?.id as string;
+	const curlCommands = uiStore.modalsById[IMPORT_CURL_MODAL_KEY].data?.curlCommands as
+		| Record<string, string>
+		| undefined;
+	// Copied rather than mutated: what the store resolves is derived state, and for
+	// an untouched modal it comes from the shared initial-state catalogue.
 	uiStore.setModalData({
 		name: IMPORT_CURL_MODAL_KEY,
-		data: { curlCommands },
+		data: { curlCommands: { ...curlCommands, [nodeId]: curlCommand.value } },
 	});
 }
 
@@ -76,74 +93,69 @@ function sendTelemetry(
 }
 
 async function onImport() {
-	const { useImportCurlCommand } = await import('@/app/composables/useImportCurlCommand');
-	const { importCurlCommand } = useImportCurlCommand({
-		onImportSuccess,
-		onImportFailure,
-		onAfterImport,
-	});
-	importCurlCommand(curlCommand);
+	try {
+		const { useImportCurlCommand } = await import('@/app/composables/useImportCurlCommand');
+		const { importCurlCommand } = useImportCurlCommand({
+			onImportSuccess,
+			onImportFailure,
+			onAfterImport,
+		});
+		importCurlCommand(curlCommand);
+	} catch {
+		// Handles WASM loading failures (e.g. wrong MIME type for tree-sitter.wasm)
+		toast.showToast({
+			title: i18n.baseText('importCurlParameter.showError.failedToLoad.title'),
+			message: i18n.baseText('importCurlParameter.showError.failedToLoad.message'),
+			type: 'error',
+			duration: 0,
+		});
+		onImportFailure({ invalidProtocol: false });
+	}
 }
 </script>
 
 <template>
-	<Modal
-		width="700px"
-		:title="i18n.baseText('importCurlModal.title')"
-		:event-bus="modalBus"
-		:name="IMPORT_CURL_MODAL_KEY"
-		:center="true"
+	<N8nDialog
+		:open="modalOpen"
+		size="large"
+		:header="i18n.baseText('importCurlModal.title')"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #content>
-			<div :class="$style.container">
-				<N8nInputLabel :label="i18n.baseText('importCurlModal.input.label')" color="text-dark">
-					<N8nInput
-						ref="inputRef"
-						:model-value="curlCommand"
-						type="textarea"
-						:rows="5"
-						data-test-id="import-curl-modal-input"
-						:placeholder="i18n.baseText('importCurlModal.input.placeholder')"
-						@update:model-value="onInput"
-						@focus="$event.target.select()"
-					/>
-				</N8nInputLabel>
-			</div>
-		</template>
-		<template #footer>
-			<div :class="$style.modalFooter">
-				<N8nNotice
-					:class="$style.notice"
-					:content="i18n.baseText('ImportCurlModal.notice.content')"
+		<N8nDialogBody>
+			<N8nInputLabel :label="i18n.baseText('importCurlModal.input.label')" color="text-dark">
+				<N8nInput
+					ref="inputRef"
+					:model-value="curlCommand"
+					type="textarea"
+					:rows="5"
+					data-test-id="import-curl-modal-input"
+					:placeholder="i18n.baseText('importCurlModal.input.placeholder')"
+					@update:model-value="onInput"
+					@focus="onFocus"
 				/>
-				<div>
-					<N8nButton
-						float="right"
-						:label="i18n.baseText('importCurlModal.button.label')"
-						data-test-id="import-curl-modal-button"
-						@click="onImport"
-					/>
-				</div>
-			</div>
-		</template>
-	</Modal>
+			</N8nInputLabel>
+		</N8nDialogBody>
+		<N8nDialogFooter :class="$style.footer">
+			<N8nNotice
+				:class="$style.notice"
+				:content="i18n.baseText('ImportCurlModal.notice.content')"
+			/>
+
+			<N8nButton
+				:label="i18n.baseText('importCurlModal.button.label')"
+				data-test-id="import-curl-modal-button"
+				@click="onImport"
+			/>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style module lang="scss">
-.modalFooter {
+.footer {
 	justify-content: space-between;
-	display: flex;
-	flex-direction: row;
 }
 
 .notice {
 	margin: 0;
-}
-
-.container > * {
-	margin-bottom: var(--spacing--sm);
-	&:last-child {
-		margin-bottom: 0;
-	}
 }
 </style>

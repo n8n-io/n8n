@@ -1,15 +1,17 @@
-import { mockDeep } from 'jest-mock-extended';
+import { requestPath } from 'n8n-workflow';
+import { mockDeep } from 'vitest-mock-extended';
 import get from 'lodash/get';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import * as getSchema from '../../../../v2/actions/base/getSchema.operation';
 import * as transport from '../../../../v2/transport';
+import type * as _importType0 from '../../../../v2/transport';
 
-jest.mock('../../../../v2/transport', () => {
-	const originalModule = jest.requireActual('../../../../v2/transport');
+vi.mock('../../../../v2/transport', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../../../../v2/transport');
 	return {
 		...originalModule,
-		apiRequest: jest.fn(async function () {
+		apiRequest: vi.fn(async function () {
 			return { tables: [] };
 		}),
 	};
@@ -36,8 +38,8 @@ describe('Test AirtableV2, base => getSchema', () => {
 
 		await getSchema.execute.call(
 			mockDeep<IExecuteFunctions>({
-				getInputData: jest.fn(() => items),
-				getNodeParameter: jest.fn((param: string, itemIndex: number) => {
+				getInputData: vi.fn(() => items),
+				getNodeParameter: vi.fn((param: string, itemIndex: number) => {
 					if (param === 'base') {
 						return items[itemIndex].json.id;
 					}
@@ -49,7 +51,13 @@ describe('Test AirtableV2, base => getSchema', () => {
 		);
 
 		expect(transport.apiRequest).toBeCalledTimes(2);
-		expect(transport.apiRequest).toHaveBeenCalledWith('GET', 'meta/bases/appYobase1/tables');
-		expect(transport.apiRequest).toHaveBeenCalledWith('GET', 'meta/bases/appYobase2/tables');
+		expect(transport.apiRequest).toHaveBeenCalledWith(
+			'GET',
+			requestPath`meta/bases/appYobase1/tables`,
+		);
+		expect(transport.apiRequest).toHaveBeenCalledWith(
+			'GET',
+			requestPath`meta/bases/appYobase2/tables`,
+		);
 	});
 });

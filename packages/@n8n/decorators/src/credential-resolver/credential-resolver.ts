@@ -50,6 +50,7 @@ export interface ICredentialResolver {
 		credentialId: string,
 		context: ICredentialContext,
 		handle: CredentialResolverHandle,
+		executionId?: string,
 	): Promise<ICredentialDataDecryptedObject>;
 
 	/**
@@ -61,6 +62,7 @@ export interface ICredentialResolver {
 		context: ICredentialContext,
 		data: ICredentialDataDecryptedObject,
 		handle: CredentialResolverHandle,
+		executionId?: string,
 	): Promise<void>;
 
 	/**
@@ -72,7 +74,15 @@ export interface ICredentialResolver {
 		credentialId: string,
 		context: ICredentialContext,
 		handle: CredentialResolverHandle,
+		executionId?: string,
 	): Promise<void>;
+
+	/**
+	 * Deletes all credential data for the resolver.
+	 * Optional - not all resolvers support deletion.
+	 * @throws {CredentialResolverError} When deletion operation fails
+	 */
+	deleteAllSecrets?(handle: CredentialResolverHandle): Promise<void>;
 
 	/**
 	 * Validates resolver configuration before saving.
@@ -84,10 +94,30 @@ export interface ICredentialResolver {
 	/**
 	 * Validates if the userIdentity provided has access to the resolver capable credential
 	 *
-	 * @param identity - The identity of the entity to validate access for
+	 * @param context - The identity of the entity to validate access for
 	 * @throws {CredentialResolverAccessValidationError} When access is invalid
 	 */
-	validateIdentity?(identity: string, handle: CredentialResolverHandle): Promise<void>;
+	validateIdentity?(
+		context: ICredentialContext,
+		handle: CredentialResolverHandle,
+		executionId?: string,
+	): Promise<void>;
+
+	/**
+	 * Returns the n8n user id the resolved credentials belong to, when this
+	 * resolver maps the context identity to an n8n user (e.g. the n8n JWT
+	 * resolver). Resolvers keyed on external identities (Slack, OAuth subjects)
+	 * leave this unimplemented, so the execution has no attributable n8n user.
+	 *
+	 * Consumed by the redaction layer to grant the executing user access to
+	 * their own data on executions that resolved private credentials.
+	 * Optional - not all resolvers map to n8n users.
+	 */
+	resolveOwningUserId?(
+		context: ICredentialContext,
+		handle: CredentialResolverHandle,
+		executionId?: string,
+	): Promise<string | undefined>;
 
 	/**
 	 * Runs initialization logic for the resolver. This might be called multiple times!

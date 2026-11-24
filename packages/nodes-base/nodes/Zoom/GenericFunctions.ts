@@ -1,3 +1,4 @@
+import { sleep } from '@n8n/utils/sleep';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -5,31 +6,31 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function zoomApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: object = {},
 	query: IDataObject = {},
 	headers: IDataObject | undefined = undefined,
-	option: IDataObject = {},
 ) {
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
 
-	let options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
 		headers: headers || {
 			'Content-Type': 'application/json',
 		},
 		body,
 		qs: query,
-		uri: `https://api.zoom.us/v2${resource}`,
+		uri: requestUrl`https://api.zoom.us/v2${resource}`,
 		json: true,
 	};
-	options = Object.assign({}, options, option);
 	if (Object.keys(body).length === 0) {
 		delete options.body;
 	}
@@ -48,19 +49,11 @@ export async function zoomApiRequest(
 	}
 }
 
-async function wait() {
-	return await new Promise((resolve, _reject) => {
-		setTimeout(() => {
-			resolve(true);
-		}, 1000);
-	});
-}
-
 export async function zoomApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	query: IDataObject = {},
 ) {
@@ -73,7 +66,7 @@ export async function zoomApiRequestAllItems(
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 		// zoom free plan rate limit is 1 request/second
 		// TODO just wait when the plan is free
-		await wait();
+		await sleep(1000);
 	} while (responseData.page_count !== responseData.page_number);
 
 	return returnData;

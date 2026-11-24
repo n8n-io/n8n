@@ -1,4 +1,9 @@
-import type { OidcConfigDto, SamlPreferences, SamlToggleDto } from '@n8n/api-types';
+import type {
+	OidcConfigDto,
+	SamlPreferences,
+	SamlToggleDto,
+	TestOidcConfigResponseDto,
+} from '@n8n/api-types';
 
 import type { IRestApiContext } from '../types';
 import { makeRestApiRequest } from '../utils';
@@ -9,7 +14,8 @@ export type SamlPreferencesExtractedData = {
 };
 
 export const initSSO = async (context: IRestApiContext, redirectUrl = ''): Promise<string> => {
-	return await makeRestApiRequest(context, 'GET', `/sso/saml/initsso?redirect=${redirectUrl}`);
+	const query = redirectUrl ? `?${new URLSearchParams({ redirect: redirectUrl })}` : '';
+	return await makeRestApiRequest(context, 'GET', `/sso/saml/initsso${query}`);
 };
 
 export const getSamlMetadata = async (context: IRestApiContext): Promise<SamlPreferences> => {
@@ -36,8 +42,11 @@ export const toggleSamlConfig = async (
 	return await makeRestApiRequest(context, 'POST', '/sso/saml/config/toggle', data);
 };
 
-export const testSamlConfig = async (context: IRestApiContext): Promise<string> => {
-	return await makeRestApiRequest(context, 'GET', '/sso/saml/config/test');
+export const testSamlConfig = async (
+	context: IRestApiContext,
+	data: Partial<SamlPreferences>,
+): Promise<string> => {
+	return await makeRestApiRequest(context, 'POST', '/sso/saml/config/test', data);
 };
 
 export const getOidcConfig = async (context: IRestApiContext): Promise<OidcConfigDto> => {
@@ -51,6 +60,25 @@ export const saveOidcConfig = async (
 	return await makeRestApiRequest(context, 'POST', '/sso/oidc/config', data);
 };
 
+export const testOidcConfig = async (
+	context: IRestApiContext,
+): Promise<TestOidcConfigResponseDto> => {
+	return await makeRestApiRequest(context, 'POST', '/sso/oidc/config/test');
+};
+
 export const initOidcLogin = async (context: IRestApiContext): Promise<string> => {
 	return await makeRestApiRequest(context, 'GET', '/sso/oidc/login');
+};
+
+export type OidcLogoutResponse = {
+	/**
+	 * OIDC RP-Initiated Logout URL to redirect the browser to, or `null` when
+	 * the session was not established through OIDC or the provider does not
+	 * support RP-initiated logout. The n8n session is terminated either way.
+	 */
+	redirectUrl: string | null;
+};
+
+export const oidcLogout = async (context: IRestApiContext): Promise<OidcLogoutResponse> => {
+	return await makeRestApiRequest(context, 'POST', '/sso/oidc/logout');
 };

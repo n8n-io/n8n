@@ -1,10 +1,20 @@
 import type { WorkflowHistory } from '@n8n/rest-api-client/api/workflowHistory';
 import {
 	computeTimelineEntries,
+	generateVersionLabelFromId,
+	getVersionLabel,
+	toVersionDiffWorkflow,
 	type TimelineGroupHeader,
 	type TimelineVersionEntry,
 } from './utils';
-import { workflowHistoryDataFactory } from './__tests__/utils';
+import { workflowHistoryDataFactory, workflowVersionDataFactory } from './__tests__/utils';
+import type { IWorkflowDb } from '@/Interface';
+
+vi.mock('@n8n/i18n', () => ({
+	useI18n: () => ({
+		baseText: (key: string) => key,
+	}),
+}));
 
 const createNamedItem = (overrides: Partial<WorkflowHistory> = {}): WorkflowHistory => ({
 	...workflowHistoryDataFactory(),
@@ -165,7 +175,7 @@ describe('computeTimelineEntries', () => {
 		const items = [createNamedItem(), createUnnamedItem(), createNamedItem(), createUnnamedItem()];
 
 		const result = computeTimelineEntries(items);
-		const groupHeaders = result.filter((e) => e.type === 'group-header') as TimelineGroupHeader[];
+		const groupHeaders = result.filter((e) => e.type === 'group-header');
 
 		expect(groupHeaders).toHaveLength(2);
 		expect(groupHeaders[0].groupId).not.toBe(groupHeaders[1].groupId);
@@ -180,5 +190,117 @@ describe('computeTimelineEntries', () => {
 
 		expect(versionEntry.item).toBe(items[0]);
 		expect(groupHeader.versions[0].item).toBe(items[1]);
+	});
+});
+
+describe('toVersionDiffWorkflow', () => {
+	const createWorkflow = (settings: IWorkflowDb['settings']): IWorkflowDb => ({
+		id: 'wf-1',
+		name: 'Workflow',
+		active: false,
+		isArchived: false,
+		createdAt: '2024-01-01T00:00:00.000Z',
+		updatedAt: '2024-01-01T00:00:00.000Z',
+		versionId: 'live',
+		activeVersionId: null,
+		nodes: [],
+		connections: {},
+		settings,
+	});
+
+	it('should use the default engine for a version with no engine', () => {
+		const version = { ...workflowVersionDataFactory(), settings: {} };
+
+		const result = toVersionDiffWorkflow(
+			createWorkflow({ engineType: 'v2', executionOrder: 'v1' }),
+			version,
+		);
+
+		expect(result.settings?.engineType).toBe('v1');
+	});
+
+	it('should use the engine of the version and keep the live settings', () => {
+		const version = { ...workflowVersionDataFactory(), settings: { engineType: 'v2' as const } };
+
+		const result = toVersionDiffWorkflow(
+			createWorkflow({ engineType: 'v1', timezone: 'UTC', executionOrder: 'v1' }),
+			version,
+		);
+
+		expect(result.settings).toEqual({ engineType: 'v2', timezone: 'UTC', executionOrder: 'v1' });
+		expect(result.versionId).toBe(version.versionId);
+	});
+
+	it('should use the legacy execution order for a workflow with no settings', () => {
+		const result = toVersionDiffWorkflow(createWorkflow(undefined), workflowVersionDataFactory());
+
+		expect(result.settings).toEqual({ engineType: 'v1', executionOrder: 'v0' });
+	});
+});
+
+describe('generateVersionLabelFromId', () => {
+	it('should generate version name with first 8 characters of versionId', () => {
+		const versionId = '12345678abcdef';
+		const result = generateVersionLabelFromId(versionId);
+
+		expect(result).toBe('Version 12345678');
+	});
+
+	it('should handle versionId shorter than 8 characters', () => {
+		const versionId = 'abc123';
+		const result = generateVersionLabelFromId(versionId);
+
+		expect(result).toBe('Version abc123');
+	});
+
+	it('should handle versionId exactly 8 characters', () => {
+		const versionId = '12345678';
+		const result = generateVersionLabelFromId(versionId);
+
+		expect(result).toBe('Version 12345678');
+	});
+
+	it('should truncate versionId longer than 8 characters', () => {
+		const versionId = '123456789abcdefghijklmnop';
+		const result = generateVersionLabelFromId(versionId);
+
+		expect(result).toBe('Version 12345678');
+	});
+});
+
+describe('getVersionLabel', () => {
+	it('returns the version name when current version is named', () => {
+		const result = getVersionLabel({
+			workflowHistory: { versionId: 'v1', name: 'Named Version' },
+			currentVersionId: 'v1',
+		});
+
+		expect(result).toBe('Named Version');
+	});
+
+	it('returns generated label when version has no name', () => {
+		const result = getVersionLabel({
+			workflowHistory: { versionId: '12345678abcdef', name: null },
+			currentVersionId: 'other',
+		});
+
+		expect(result).toBe('Version 12345678');
+	});
+
+	it('returns generated label when no current version is provided', () => {
+		const result = getVersionLabel({
+			workflowHistory: { versionId: '87654321abcdef', name: null },
+		});
+
+		expect(result).toBe('Version 87654321');
+	});
+
+	it('returns current changes label for unnamed current version', () => {
+		const result = getVersionLabel({
+			workflowHistory: { versionId: 'v1', name: null },
+			currentVersionId: 'v1',
+		});
+
+		expect(result).toBe('workflowHistory.item.currentChanges');
 	});
 });

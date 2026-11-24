@@ -1,5 +1,7 @@
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
+import { generatePairedItemData } from '@utils/utilities';
 import { createWriteStream } from 'fs';
-import { BINARY_ENCODING, NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
+import { BINARY_ENCODING, deepCopy, NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -19,8 +21,6 @@ import sftpClient from 'ssh2-sftp-client';
 import type { Readable } from 'stream';
 import { pipeline } from 'stream/promises';
 import { file as tmpFile } from 'tmp-promise';
-
-import { formatPrivateKey, generatePairedItemData } from '@utils/utilities';
 
 interface ReturnFtpItem {
 	type: string;
@@ -110,6 +110,8 @@ function normalizeFtpItem(input: ftpClient.ListingElement, path: string, recursi
 	item.date = undefined;
 }
 
+const DEFAULT_CONNECTION_TIMEOUT = 60_000;
+
 const timeoutOption: INodeProperties = {
 	displayName: 'Timeout',
 	name: 'timeout',
@@ -118,22 +120,21 @@ const timeoutOption: INodeProperties = {
 	typeOptions: {
 		minValue: 1,
 	},
-	default: 10000,
+	default: DEFAULT_CONNECTION_TIMEOUT,
 };
 
 export class Ftp implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'FTP',
 		name: 'ftp',
-		icon: 'fa:server',
+		icon: 'node:ftp',
 		iconColor: 'dark-blue',
 		group: ['input'],
-		version: 1,
+		version: [1, 1.1],
 		subtitle: '={{$parameter["protocol"] + ": " + $parameter["operation"]}}',
 		description: 'Transfer files via FTP or SFTP',
 		defaults: {
 			name: 'FTP',
-			color: '#303050',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
@@ -559,8 +560,9 @@ export class Ftp implements INodeType {
 							port: credentials.port as number,
 							username: credentials.username as string,
 							password: (credentials.password as string) || undefined,
-							privateKey: formatPrivateKey(credentials.privateKey as string),
+							privateKey: formatPemBlock(credentials.privateKey as string),
 							passphrase: credentials.passphrase as string | undefined,
+							readyTimeout: DEFAULT_CONNECTION_TIMEOUT,
 						});
 					} else {
 						await sftp.connect({
@@ -568,6 +570,7 @@ export class Ftp implements INodeType {
 							port: credentials.port as number,
 							username: credentials.username as string,
 							password: credentials.password as string,
+							readyTimeout: DEFAULT_CONNECTION_TIMEOUT,
 						});
 					}
 				} catch (error) {
@@ -590,11 +593,16 @@ export class Ftp implements INodeType {
 		const items = this.getInputData();
 		let returnItems: INodeExecutionData[] = [];
 		const operation = this.getNodeParameter('operation', 0);
+		const serializeDates = this.getNode().typeVersion >= 1.1;
 
 		let credentials: ICredentialDataDecryptedObject | undefined = undefined;
 		const protocol = this.getNodeParameter('protocol', 0) as string;
 
-		const connectionTimeout = this.getNodeParameter('options.timeout', 0, 10000) as number;
+		const connectionTimeout = this.getNodeParameter(
+			'options.timeout',
+			0,
+			DEFAULT_CONNECTION_TIMEOUT,
+		) as number;
 
 		if (protocol === 'sftp') {
 			credentials = await this.getCredentials<ICredentialDataDecryptedObject>('sftp');
@@ -614,7 +622,7 @@ export class Ftp implements INodeType {
 							port: credentials.port as number,
 							username: credentials.username as string,
 							password: (credentials.password as string) || undefined,
-							privateKey: formatPrivateKey(credentials.privateKey as string),
+							privateKey: formatPemBlock(credentials.privateKey as string),
 							passphrase: credentials.passphrase as string | undefined,
 							readyTimeout: connectionTimeout,
 							algorithms: {
@@ -683,8 +691,11 @@ export class Ftp implements INodeType {
 								responseData.forEach((item) => normalizeSFtpItem(item, path));
 							}
 
+							const json = responseData as unknown as IDataObject[];
 							const executionData = this.helpers.constructExecutionMetaData(
-								this.helpers.returnJsonArray(responseData as unknown as IDataObject[]),
+								this.helpers.returnJsonArray(
+									serializeDates ? json.map((item) => deepCopy(item)) : json,
+								),
 								{ itemData: { item: i } },
 							);
 							returnItems = returnItems.concat(executionData);
@@ -809,8 +820,11 @@ export class Ftp implements INodeType {
 								);
 							}
 
+							const json = responseData as unknown as IDataObject[];
 							const executionData = this.helpers.constructExecutionMetaData(
-								this.helpers.returnJsonArray(responseData as unknown as IDataObject[]),
+								this.helpers.returnJsonArray(
+									serializeDates ? json.map((item) => deepCopy(item)) : json,
+								),
 								{ itemData: { item: i } },
 							);
 							returnItems = returnItems.concat(executionData);

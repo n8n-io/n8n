@@ -1,12 +1,15 @@
+import '../../openapi-extend';
+
 import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
-import { Z } from 'zod-class';
 
+import { listDataTableRowsQueryDocs } from './data-table-public.openapi';
 import { dataTableFilterSchema } from '../../schemas/data-table-filter.schema';
 import { dataTableColumnNameSchema } from '../../schemas/data-table.schema';
-import { paginationSchema } from '../pagination/pagination.dto';
+import { Z } from '../../zod-class';
+import { paginationSchema, publicApiPaginationSchema } from '../pagination/pagination.dto';
 
-const filterValidator = z
+export const filterValidator = z
 	.string()
 	.optional()
 	.transform((val, ctx) => {
@@ -33,7 +36,7 @@ const filterValidator = z
 		}
 	});
 
-const sortByValidator = z
+export const sortByValidator = z
 	.string()
 	.optional()
 	.transform((val, ctx) => {
@@ -43,7 +46,6 @@ const sortByValidator = z
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				message: 'Invalid sort format, expected <columnName>:<asc/desc>',
-				path: ['sort'],
 			});
 			return z.NEVER;
 		}
@@ -52,11 +54,12 @@ const sortByValidator = z
 
 		try {
 			column = dataTableColumnNameSchema.parse(column);
-		} catch {
+		} catch (e) {
+			const errorMessage =
+				e instanceof z.ZodError ? e.errors[0]?.message : 'Invalid sort columnName';
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
-				message: 'Invalid sort columnName',
-				path: ['sort'],
+				message: errorMessage,
 			});
 			return z.NEVER;
 		}
@@ -66,7 +69,6 @@ const sortByValidator = z
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				message: 'Invalid sort direction',
-				path: ['sort'],
 			});
 
 			return z.NEVER;
@@ -80,4 +82,12 @@ export class ListDataTableContentQueryDto extends Z.class({
 	filter: filterValidator.optional(),
 	sortBy: sortByValidator.optional(),
 	search: z.string().optional(),
+}) {}
+
+export class PublicApiListDataTableRowsQueryDto extends Z.class({
+	limit: publicApiPaginationSchema.limit,
+	cursor: z.string().optional(),
+	filter: filterValidator.openapi(listDataTableRowsQueryDocs.filter),
+	sortBy: sortByValidator.openapi(listDataTableRowsQueryDocs.sortBy),
+	search: z.string().optional().openapi(listDataTableRowsQueryDocs.search),
 }) {}

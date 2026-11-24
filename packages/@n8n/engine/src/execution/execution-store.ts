@@ -1,0 +1,196 @@
+import type { StoredWorkflowGraph } from '../graph';
+import type { LifecycleEventSubscription } from '../lifecycle-events';
+import type { ResponseExpectation } from '../response-channel';
+import type {
+	CallerContext,
+	ExecutionMode,
+	ExecutionStatus,
+	ParentLink,
+	SeededSteps,
+	StepKey,
+	StepKeyId,
+	StepSlots,
+	TriggerOutputs,
+	WorkflowDocument,
+} from './execution.types';
+
+/** The fields the write side supplies and the execution path reads back. */
+interface BaseExecutionRecord {
+	/** Caller-minted id. The store never mints one. */
+	id: string;
+	workflowId: string;
+	status: ExecutionStatus;
+	mode: ExecutionMode;
+	/** As stored: the engine's own marks on top of what the caller sent. */
+	graph: StoredWorkflowGraph;
+	/** Stored for the read path only. Nothing on the execution path reads it. */
+	workflow: WorkflowDocument;
+	triggerOutputs: TriggerOutputs | null;
+	callerContext: CallerContext;
+	/** What kind of a response the caller expects. */
+	responseExpectation: ResponseExpectation;
+	/** The parent link, or `null` for a top-level execution. */
+	parent: ParentLink | null;
+	/** Which lifecycle events the caller subscribes to. Missing or `null` means none. */
+	lifecycleEventSubscription?: LifecycleEventSubscription | null;
+}
+
+/**
+ * A new execution to persist. Timestamps are assigned by the store. The seeded
+ * outputs are stored beside the row, in their own table, and read back by key.
+ */
+export type NewExecutionRecord = BaseExecutionRecord & { seededSteps?: SeededSteps };
+
+/**
+ * What running an execution needs of its row. The execution path decides on
+ * `status`, never on when anything happened, so the only time it carries is
+ * `finishedAt`, which it reports but never decides on. The read path has its
+ * own view (`ExecutionView`).
+ */
+export type ExecutionRecord = BaseExecutionRecord & {
+	/** When the execution ended, or `null` while it has not. */
+	finishedAt: Date | null;
+};
+
+/** An execution that is still `queued` after its `stale_after` time. */
+export interface StaleQueuedExecution {
+	id: string;
+	staleAfter: Date;
+}
+
+/** An ended execution that the retention sweep can delete. */
+export interface PrunableExecution {
+	id: string;
+	workflowId: string;
+	finishedAt: Date;
+}
+
+export interface PrunableExecutionQuery {
+	/** Select only executions that ended more than this long ago. */
+	maxAgeMs: number;
+	limit: number;
+	/** The last row of the previous batch. The result starts after it. */
+	after?: Pick<PrunableExecution, 'id' | 'finishedAt'>;
+}
+
+/** Thrown by `loadExecution` when no execution exists for the given id. */
+export class ExecutionNotFoundError extends Error {
+	constructor(readonly executionId: string) {
+		super(`Execution not found: ${executionId}`);
+		this.name = 'ExecutionNotFoundError';
+	}
+}
+
+/** Thrown by `createExecution` when the parent of a sub-execution has ended. */
+export class ParentExecutionEndedError extends Error {
+	constructor(
+		readonly parentExecutionId: string,
+		readonly status: ExecutionStatus,
+	) {
+		super(`Parent execution ${parentExecutionId} is ${status}`);
+		this.name = 'ParentExecutionEndedError';
+	}
+}
+
+/**
+ * Persistence interface for executions.
+ *
+ * A write that makes an execution `queued` also records when the engine treats
+ * it as stuck in that status (see `StalenessThresholds`). A transition out of
+ * `queued` clears that time.
+ */
+export interface ExecutionStore {
+	/**
+	 * Persist a new execution record under the caller-minted `record.id`.
+	 *
+	 * A record with a parent link is written only while the parent has not
+	 * ended, and the check holds the parent row until the write commits. So an
+	 * end of the parent either waits and then finds this sub-execution, or
+	 * commits first and this write refuses.
+	 *
+	 * @throws {ExecutionNotFoundError} when the parent row is missing.
+	 * @throws {ParentExecutionEndedError} when the parent has ended.
+	 */
+	createExecution(record: NewExecutionRecord): Promise<void>;
+
+	/** Load a full execution by id. Throws `ExecutionNotFoundError` if absent. */
+	loadExecution(id: string): Promise<ExecutionRecord>;
+
+	/** Load only an execution's status. Throws `ExecutionNotFoundError` if absent. */
+	loadExecutionStatus(id: string): Promise<ExecutionStatus>;
+
+	/**
+	 * The outputs the caller seeded for the given steps, by step key id. A key
+	 * with no seeded outputs is absent from the result.
+	 */
+	loadSeededOutputs(executionId: string, keys: StepKey[]): Promise<Map<StepKeyId, StepSlots>>;
+
+	/**
+	 * Compare-and-set status transition. Returns `true` iff this call performed
+	 * the transition, so duplicate/redelivered events are handled idempotently.
+	 */
+	transitionStatus(id: string, from: ExecutionStatus, to: ExecutionStatus): Promise<boolean>;
+
+	/**
+	 * Record an execution's outcome: writes the final status and the finish time
+	 * together, as a compare-and-set on the live statuses, so they can't be
+	 * observed apart. Returns the finish time it wrote, so the caller reports the
+	 * time the row records, or `null` when the compare-and-set lost.
+	 */
+	finishExecution(id: string, status: 'completed' | 'failed'): Promise<{ finishedAt: Date } | null>;
+
+	/**
+	 * End an execution on request, from any status that has not ended. Returns
+	 * the finish time it wrote, so the caller reports the time the row records,
+	 * or `null` when the execution had already ended.
+	 */
+	cancelExecution(id: string): Promise<{ finishedAt: Date } | null>;
+
+	/**
+	 * The executions that are `queued` and whose `stale_after` time is `at` or
+	 * earlier, oldest first, at most `limit`. A plain read: it locks no row.
+	 */
+	findStaleQueuedExecutions(at: Date, limit: number): Promise<StaleQueuedExecution[]>;
+
+	/**
+	 * Gives a `queued` execution a new `stale_after` time. A compare-and-set on
+	 * the status and on the `staleAfter` value that the caller read, so only one
+	 * of several concurrent callers gets `true`.
+	 */
+	renewQueuedExecution(id: string, staleAfter: Date): Promise<boolean>;
+
+	/**
+	 * Sets a live execution's status from the state of its steps: `waiting` when
+	 * every step it still owes is suspended, `running` when one step can run.
+	 *
+	 * Call this when a step suspends and when a step settles. A resume does not
+	 * call it, so the status can lag until the resumed step settles.
+	 *
+	 * The refresh takes no lock, so it can lose a race and confuse `running`
+	 * with `waiting`. Callers may test whether the execution ended, as both step
+	 * handlers do. Read the step rows to tell `running` from `waiting`.
+	 */
+	refreshLiveStatus(id: string): Promise<void>;
+
+	/**
+	 * The ids of the sub-executions of an execution that have not ended: `queued`,
+	 * `running` or `waiting`. A cancel cascades through them.
+	 */
+	loadLiveSubExecutionIds(parentExecutionId: string): Promise<string[]>;
+
+	/**
+	 * The ended executions that finished more than `maxAgeMs` ago, oldest first
+	 * by finish time and id, at most `limit`. The database clock sets the
+	 * cut-off. It skips an execution that still has a step that has not
+	 * settled, and an awaited sub-execution whose parent step still waits. A
+	 * plain read: it locks no row.
+	 */
+	findPrunableExecutions(query: PrunableExecutionQuery): Promise<PrunableExecution[]>;
+
+	/**
+	 * Deletes the given executions that have ended, with their step rows and
+	 * seeded rows. It skips an execution that has not ended. Returns the number
+	 * of executions it deleted.
+	 */
+	deleteEndedExecutions(ids: string[]): Promise<number>;
+}

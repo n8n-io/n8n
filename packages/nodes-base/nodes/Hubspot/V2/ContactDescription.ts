@@ -242,7 +242,7 @@ export const contactFields: INodeProperties[] = [
 								name: 'property',
 								type: 'options',
 								typeOptions: {
-									loadOptionsMethod: 'getContactCustomProperties',
+									loadOptionsMethod: 'getContactProperties',
 								},
 								default: '',
 								description:

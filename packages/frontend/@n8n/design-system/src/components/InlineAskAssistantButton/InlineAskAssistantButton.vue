@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
-import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
+import N8nIcon from '../N8nIcon';
 import AssistantText from '../AskAssistantText/AssistantText.vue';
 
 const { t } = useI18n();
@@ -11,6 +11,8 @@ interface Props {
 	size?: 'small' | 'medium';
 	static?: boolean;
 	asked?: boolean;
+	/** Overrides the default "n8n AI" label (e.g. "Ask AI Assistant"). */
+	label?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -54,9 +56,14 @@ const onClick = () => {
 		@click="onClick"
 	>
 		<div :style="{ padding: sizes[size].padding }">
-			<AssistantIcon :size="size" :class="$style.icon" :theme="asked ? 'disabled' : 'default'" />
+			<N8nIcon
+				icon="n8n-assistant"
+				:size="size === 'small' ? 10 : 12"
+				:class="$style.icon"
+				:color="asked ? '--color--text--tint-1' : undefined"
+			/>
 			<span v-if="asked">{{ t('inlineAskAssistantButton.asked') }}</span>
-			<AssistantText v-else :size="size" :text="t('askAssistantButton.askAssistant')" />
+			<AssistantText v-else :size="size" :text="label ?? t('askAssistantButton.askAssistant')" />
 		</div>
 	</button>
 </template>

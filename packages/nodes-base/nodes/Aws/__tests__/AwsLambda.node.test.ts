@@ -1,21 +1,23 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 
 import { AwsLambda } from '../AwsLambda.node';
 import * as GenericFunctions from '../GenericFunctions';
+import type { Mock, Mocked, MockInstance } from 'vitest';
 
 describe('AwsLambda', () => {
 	let node: AwsLambda;
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
-	let mockLoadOptionsFunctions: jest.Mocked<ILoadOptionsFunctions>;
-	const awsApiRequestRESTSpy = jest.spyOn(GenericFunctions, 'awsApiRequestREST');
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+	let mockLoadOptionsFunctions: Mocked<ILoadOptionsFunctions>;
+	let awsApiRequestRESTSpy: MockInstance;
 
 	beforeEach(() => {
 		node = new AwsLambda();
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
 		mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
+		awsApiRequestRESTSpy = vi.spyOn(GenericFunctions, 'awsApiRequestREST');
 
 		mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
 		mockExecuteFunctions.getNode.mockReturnValue({
@@ -26,7 +28,7 @@ describe('AwsLambda', () => {
 			position: [0, 0],
 			parameters: {},
 		});
-		(mockExecuteFunctions.helpers.constructExecutionMetaData as jest.Mock).mockImplementation(
+		(mockExecuteFunctions.helpers.constructExecutionMetaData as Mock).mockImplementation(
 			(data: any, meta: any) => {
 				return [
 					{
@@ -36,13 +38,13 @@ describe('AwsLambda', () => {
 				];
 			},
 		);
-		(mockExecuteFunctions.helpers.returnJsonArray as jest.Mock).mockImplementation((data: any) => [
+		(mockExecuteFunctions.helpers.returnJsonArray as Mock).mockImplementation((data: any) => [
 			{ json: data },
 		]);
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('Load Options Methods', () => {
@@ -78,7 +80,7 @@ describe('AwsLambda', () => {
 				expect(awsApiRequestRESTSpy).toHaveBeenCalledWith(
 					'lambda',
 					'GET',
-					'/2015-03-31/functions/',
+					requestPath`/2015-03-31/functions/`,
 				);
 			});
 
@@ -123,7 +125,10 @@ describe('AwsLambda', () => {
 					2,
 					'lambda',
 					'GET',
-					'/2015-03-31/functions/?MaxItems=50&Marker=marker123',
+					requestPath`/2015-03-31/functions/`,
+					undefined,
+					undefined,
+					{ MaxItems: 50, Marker: 'marker123' },
 				);
 			});
 
@@ -170,7 +175,10 @@ describe('AwsLambda', () => {
 					3,
 					'lambda',
 					'GET',
-					'/2015-03-31/functions/?MaxItems=50&Marker=marker2',
+					requestPath`/2015-03-31/functions/`,
+					undefined,
+					undefined,
+					{ MaxItems: 50, Marker: 'marker2' },
 				);
 			});
 
@@ -187,7 +195,7 @@ describe('AwsLambda', () => {
 				expect(awsApiRequestRESTSpy).toHaveBeenCalledWith(
 					'lambda',
 					'GET',
-					'/2015-03-31/functions/',
+					requestPath`/2015-03-31/functions/`,
 				);
 			});
 		});
@@ -233,12 +241,13 @@ describe('AwsLambda', () => {
 				expect(awsApiRequestRESTSpy).toHaveBeenCalledWith(
 					'lambda',
 					'POST',
-					'/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:test-function/invocations?Qualifier=$LATEST',
+					requestPath`/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:test-function/invocations`,
 					JSON.stringify({ test: 'data' }),
 					{
 						'X-Amz-Invocation-Type': 'RequestResponse',
 						'Content-Type': 'application/x-amz-json-1.0',
 					},
+					{ Qualifier: '$LATEST' },
 				);
 			});
 
@@ -277,12 +286,13 @@ describe('AwsLambda', () => {
 				expect(awsApiRequestRESTSpy).toHaveBeenCalledWith(
 					'lambda',
 					'POST',
-					'/2015-03-31/functions/test-function/invocations?Qualifier=PROD',
+					requestPath`/2015-03-31/functions/test-function/invocations`,
 					JSON.stringify({ async: true }),
 					{
 						'X-Amz-Invocation-Type': 'Event',
 						'Content-Type': 'application/x-amz-json-1.0',
 					},
+					{ Qualifier: 'PROD' },
 				);
 			});
 
@@ -318,12 +328,13 @@ describe('AwsLambda', () => {
 				expect(awsApiRequestRESTSpy).toHaveBeenCalledWith(
 					'lambda',
 					'POST',
-					'/2015-03-31/functions/test-function/invocations?Qualifier=$LATEST',
+					requestPath`/2015-03-31/functions/test-function/invocations`,
 					'',
 					{
 						'X-Amz-Invocation-Type': 'RequestResponse',
 						'Content-Type': 'application/x-amz-json-1.0',
 					},
+					{ Qualifier: '$LATEST' },
 				);
 			});
 
@@ -373,12 +384,13 @@ describe('AwsLambda', () => {
 				expect(awsApiRequestRESTSpy).toHaveBeenCalledWith(
 					'lambda',
 					'POST',
-					'/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:test-function/invocations?Qualifier=$LATEST',
+					requestPath`/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:test-function/invocations`,
 					JSON.stringify({ test: 'data' }),
 					{
 						'X-Amz-Invocation-Type': 'RequestResponse',
 						'Content-Type': 'application/x-amz-json-1.0',
 					},
+					{ Qualifier: '$LATEST' },
 				);
 			});
 
@@ -446,6 +458,50 @@ describe('AwsLambda', () => {
 		});
 
 		describe('Different Qualifier Values', () => {
+			it('should encode the function name in the request path', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
+					const mockParams = {
+						operation: 'invoke',
+						function: 'team/sync?Qualifier=old',
+						qualifier: '1',
+						invocationType: 'RequestResponse',
+						payload: '{}',
+					};
+					return mockParams[paramName as keyof typeof mockParams];
+				});
+				awsApiRequestRESTSpy.mockResolvedValue({});
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(awsApiRequestRESTSpy.mock.calls[0][2].value).toBe(
+					'/2015-03-31/functions/team%2Fsync%3FQualifier=old/invocations',
+				);
+			});
+
+			it.each([
+				[1, '/2015-03-31/functions/team%2Fsync/invocations'],
+				[1.1, '/2015-03-31/functions/team%252Fsync/invocations'],
+			])('should handle a pre-encoded function name in version %s', async (typeVersion, path) => {
+				mockExecuteFunctions.getNode.mockReturnValue({
+					...mockExecuteFunctions.getNode(),
+					typeVersion,
+				});
+				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
+					const mockParams = {
+						function: 'team%2Fsync',
+						qualifier: '1',
+						invocationType: 'RequestResponse',
+						payload: '{}',
+					};
+					return mockParams[paramName as keyof typeof mockParams];
+				});
+				awsApiRequestRESTSpy.mockResolvedValue({});
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(awsApiRequestRESTSpy.mock.calls[0][2].value).toBe(path);
+			});
+
 			it('should handle custom version qualifier', async () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName) => {
 					const mockParams = {
@@ -466,12 +522,13 @@ describe('AwsLambda', () => {
 				expect(awsApiRequestRESTSpy).toHaveBeenCalledWith(
 					'lambda',
 					'POST',
-					'/2015-03-31/functions/test-function/invocations?Qualifier=1',
+					requestPath`/2015-03-31/functions/test-function/invocations`,
 					JSON.stringify({ version: 1 }),
 					{
 						'X-Amz-Invocation-Type': 'RequestResponse',
 						'Content-Type': 'application/x-amz-json-1.0',
 					},
+					{ Qualifier: '1' },
 				);
 			});
 
@@ -495,12 +552,13 @@ describe('AwsLambda', () => {
 				expect(awsApiRequestRESTSpy).toHaveBeenCalledWith(
 					'lambda',
 					'POST',
-					'/2015-03-31/functions/test-function/invocations?Qualifier=PROD',
+					requestPath`/2015-03-31/functions/test-function/invocations`,
 					JSON.stringify({ environment: 'production' }),
 					{
 						'X-Amz-Invocation-Type': 'RequestResponse',
 						'Content-Type': 'application/x-amz-json-1.0',
 					},
+					{ Qualifier: 'PROD' },
 				);
 			});
 		});
@@ -532,12 +590,13 @@ describe('AwsLambda', () => {
 				expect(awsApiRequestRESTSpy).toHaveBeenCalledWith(
 					'lambda',
 					'POST',
-					'/2015-03-31/functions/test-function/invocations?Qualifier=$LATEST',
+					requestPath`/2015-03-31/functions/test-function/invocations`,
 					JSON.stringify(complexPayload),
 					{
 						'X-Amz-Invocation-Type': 'RequestResponse',
 						'Content-Type': 'application/x-amz-json-1.0',
 					},
+					{ Qualifier: '$LATEST' },
 				);
 			});
 
@@ -561,12 +620,13 @@ describe('AwsLambda', () => {
 				expect(awsApiRequestRESTSpy).toHaveBeenCalledWith(
 					'lambda',
 					'POST',
-					'/2015-03-31/functions/test-function/invocations?Qualifier=$LATEST',
+					requestPath`/2015-03-31/functions/test-function/invocations`,
 					'plain string payload',
 					{
 						'X-Amz-Invocation-Type': 'RequestResponse',
 						'Content-Type': 'application/x-amz-json-1.0',
 					},
+					{ Qualifier: '$LATEST' },
 				);
 			});
 		});

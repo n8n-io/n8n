@@ -2,7 +2,7 @@ import { indexedDbCache } from '@/app/plugins/cache';
 import { jsonParse } from 'n8n-workflow';
 import { ref } from 'vue';
 
-const actionTypes = [
+export const actionTypes = [
 	'evaluations',
 	'errorWorkflow',
 	'timeSaved',
@@ -71,8 +71,8 @@ export function useWorkflowSettingsCache() {
 			...updates,
 		};
 
-		// Deep merge suggestedActions if provided
-		if (updates.suggestedActions) {
+		// Deep merge suggestedActions, and keep the stored ones when the update has none
+		if (existingSettings.suggestedActions || updates.suggestedActions) {
 			updatedSettings.suggestedActions = {
 				...(existingSettings.suggestedActions ?? {}),
 				...updates.suggestedActions,

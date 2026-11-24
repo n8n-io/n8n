@@ -5,6 +5,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -55,6 +56,11 @@ const properties: INodeProperties[] = [
 									{
 										name: 'HTML',
 										value: 'text/html',
+									},
+									{
+										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+										name: 'Markdown (md)',
+										value: 'text/markdown',
 									},
 									{
 										name: 'MS Word Document',
@@ -194,14 +200,14 @@ export async function execute(
 	const requestOptions = {
 		useStream: true,
 		returnFullResponse: true,
-		encoding: 'arraybuffer',
+		encoding: 'arraybuffer' as const,
 		json: false,
 	};
 
 	const file = await googleApiRequest.call(
 		this,
 		'GET',
-		`/drive/v3/files/${fileId}`,
+		requestPath`/drive/v3/files/${fileId}`,
 		{},
 		{ fields: 'mimeType,name', supportsTeamDrives: true, supportsAllDrives: true },
 	);
@@ -227,7 +233,7 @@ export async function execute(
 			mime = this.getNodeParameter(
 				`${parameterKey}.sheetsToFormat`,
 				i,
-				'application/x-vnd.oasis.opendocument.spreadsheet',
+				'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 			) as string;
 		} else {
 			mime = this.getNodeParameter(`${parameterKey}.drawingsToFormat`, i, 'image/jpeg') as string;
@@ -235,7 +241,7 @@ export async function execute(
 		response = await googleApiRequest.call(
 			this,
 			'GET',
-			`/drive/v3/files/${fileId}/export`,
+			requestPath`/drive/v3/files/${fileId}/export`,
 			{},
 			{ mimeType: mime, supportsAllDrives: true },
 			undefined,
@@ -245,7 +251,7 @@ export async function execute(
 		response = await googleApiRequest.call(
 			this,
 			'GET',
-			`/drive/v3/files/${fileId}`,
+			requestPath`/drive/v3/files/${fileId}`,
 			{},
 			{ alt: 'media', supportsAllDrives: true },
 			undefined,

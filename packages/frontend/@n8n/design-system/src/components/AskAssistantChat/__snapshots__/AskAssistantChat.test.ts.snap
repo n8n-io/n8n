@@ -17,34 +17,34 @@ exports[`AskAssistantChat > limits maximum input length when maxCharacterLength 
           <div
             class="assistantTitle"
           >
-            <assistant-icon-stub
-              size="large"
-              theme="default"
+            <n8n-icon-stub
+              icon="n8n-assistant"
+              size="18"
+              spin="false"
             />
             <assistant-text-stub
               size="large"
               text="assistantChat.aiAssistantLabel"
             />
           </div>
-          <span
-            class="betaTag"
-          >
-            assistantChat.aiAssistantBetaLabel
-          </span>
         </div>
         
         
       </div>
-      <div
-        class="back"
+      
+      
+      <n8n-icon-button-stub
+        aria-label="askAssistantChat.close"
+        class=""
         data-test-id="close-chat-button"
-      >
-        <n8n-icon-stub
-          color="text-base"
-          icon="arrow-right"
-          spin="false"
-        />
-      </div>
+        disabled="false"
+        focusablewhendisabled="false"
+        icon="x"
+        icononly="true"
+        loading="false"
+        size="large"
+        variant="ghost"
+      />
     </div>
     <div
       class="body"
@@ -80,22 +80,28 @@ exports[`AskAssistantChat > limits maximum input length when maxCharacterLength 
         </div>
         
       </div>
+      <!--v-if-->
     </div>
+    <!--v-if-->
     <div
       class="inputWrapper"
       data-test-id="chat-input-wrapper"
     >
-      <n8n-prompt-input-stub
+      <n8n-chat-input-stub
         autofocus="true"
+        autosize="true"
+        blockcanvasshortcuts="true"
         data-test-id="chat-input"
         disabled="false"
+        layout="multiline"
         maxlength="100"
         maxlinesbeforescroll="10"
-        minlines="1"
         modelvalue=""
         placeholder="assistantChat.inputPlaceholder"
         refocusaftersend="true"
+        sendbuttontestid="send-message-button"
         showaskownertooltip="false"
+        stopbuttontestid="send-message-button"
         streaming="false"
       />
     </div>
@@ -120,34 +126,34 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
           <div
             class="assistantTitle"
           >
-            <assistant-icon-stub
-              size="large"
-              theme="default"
+            <n8n-icon-stub
+              icon="n8n-assistant"
+              size="18"
+              spin="false"
             />
             <assistant-text-stub
               size="large"
               text="assistantChat.aiAssistantLabel"
             />
           </div>
-          <span
-            class="betaTag"
-          >
-            assistantChat.aiAssistantBetaLabel
-          </span>
         </div>
         
         
       </div>
-      <div
-        class="back"
+      
+      
+      <n8n-icon-button-stub
+        aria-label="askAssistantChat.close"
+        class=""
         data-test-id="close-chat-button"
-      >
-        <n8n-icon-stub
-          color="text-base"
-          icon="arrow-right"
-          spin="false"
-        />
-      </div>
+        disabled="false"
+        focusablewhendisabled="false"
+        icon="x"
+        icononly="true"
+        loading="false"
+        size="large"
+        variant="ghost"
+      />
     </div>
     <div
       class="body"
@@ -282,34 +288,26 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
                         data-test-id="quick-replies"
                       >
                         <n8n-button-stub
-                          active="false"
-                          block="false"
+                          class=""
                           disabled="false"
-                          element="button"
-                          label=""
+                          focusablewhendisabled="false"
+                          icononly="false"
                           loading="false"
-                          outline="false"
-                          size="mini"
-                          square="false"
-                          text="false"
-                          type="secondary"
+                          size="xsmall"
+                          variant="outline"
                         />
                       </div>
                       <div
                         data-test-id="quick-replies"
                       >
                         <n8n-button-stub
-                          active="false"
-                          block="false"
+                          class=""
                           disabled="false"
-                          element="button"
-                          label=""
+                          focusablewhendisabled="false"
+                          icononly="false"
                           loading="false"
-                          outline="false"
-                          size="mini"
-                          square="false"
-                          text="false"
-                          type="secondary"
+                          size="xsmall"
+                          variant="outline"
                         />
                       </div>
                       
@@ -319,6 +317,7 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
                   
                   
                 </div>
+                <!-- Placeholder thinking message when there are no tools yet called -->
                 <!--v-if-->
               </div>
               
@@ -335,22 +334,28 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
           
         </div>
       </div>
+      <!--v-if-->
     </div>
+    <!--v-if-->
     <div
       class="inputWrapper"
       data-test-id="chat-input-wrapper"
     >
-      <n8n-prompt-input-stub
+      <n8n-chat-input-stub
         autofocus="true"
+        autosize="true"
+        blockcanvasshortcuts="true"
         data-test-id="chat-input"
         disabled="false"
+        layout="multiline"
         maxlength="5000"
         maxlinesbeforescroll="10"
-        minlines="1"
         modelvalue=""
         placeholder="assistantChat.inputPlaceholder"
         refocusaftersend="true"
+        sendbuttontestid="send-message-button"
         showaskownertooltip="false"
+        stopbuttontestid="send-message-button"
         streaming="false"
       />
     </div>
@@ -375,34 +380,34 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
           <div
             class="assistantTitle"
           >
-            <assistant-icon-stub
-              size="large"
-              theme="default"
+            <n8n-icon-stub
+              icon="n8n-assistant"
+              size="18"
+              spin="false"
             />
             <assistant-text-stub
               size="large"
               text="assistantChat.aiAssistantLabel"
             />
           </div>
-          <span
-            class="betaTag"
-          >
-            assistantChat.aiAssistantBetaLabel
-          </span>
         </div>
         
         
       </div>
-      <div
-        class="back"
+      
+      
+      <n8n-icon-button-stub
+        aria-label="askAssistantChat.close"
+        class=""
         data-test-id="close-chat-button"
-      >
-        <n8n-icon-stub
-          color="text-base"
-          icon="arrow-right"
-          spin="false"
-        />
-      </div>
+        disabled="false"
+        focusablewhendisabled="false"
+        icon="x"
+        icononly="true"
+        loading="false"
+        size="large"
+        variant="ghost"
+      />
     </div>
     <div
       class="body"
@@ -438,22 +443,28 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
         </div>
         
       </div>
+      <!--v-if-->
     </div>
+    <!--v-if-->
     <div
       class="inputWrapper"
       data-test-id="chat-input-wrapper"
     >
-      <n8n-prompt-input-stub
+      <n8n-chat-input-stub
         autofocus="true"
+        autosize="true"
+        blockcanvasshortcuts="true"
         data-test-id="chat-input"
         disabled="false"
+        layout="multiline"
         maxlength="5000"
         maxlinesbeforescroll="10"
-        minlines="1"
         modelvalue=""
         placeholder="assistantChat.inputPlaceholder"
         refocusaftersend="true"
+        sendbuttontestid="send-message-button"
         showaskownertooltip="false"
+        stopbuttontestid="send-message-button"
         streaming="false"
       />
     </div>
@@ -478,34 +489,34 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
           <div
             class="assistantTitle"
           >
-            <assistant-icon-stub
-              size="large"
-              theme="default"
+            <n8n-icon-stub
+              icon="n8n-assistant"
+              size="18"
+              spin="false"
             />
             <assistant-text-stub
               size="large"
               text="assistantChat.aiAssistantLabel"
             />
           </div>
-          <span
-            class="betaTag"
-          >
-            assistantChat.aiAssistantBetaLabel
-          </span>
         </div>
         
         
       </div>
-      <div
-        class="back"
+      
+      
+      <n8n-icon-button-stub
+        aria-label="askAssistantChat.close"
+        class=""
         data-test-id="close-chat-button"
-      >
-        <n8n-icon-stub
-          color="text-base"
-          icon="arrow-right"
-          spin="false"
-        />
-      </div>
+        disabled="false"
+        focusablewhendisabled="false"
+        icon="x"
+        icononly="true"
+        loading="false"
+        size="large"
+        variant="ghost"
+      />
     </div>
     <div
       class="body"
@@ -576,6 +587,7 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
                   
                   
                 </div>
+                <!-- Placeholder thinking message when there are no tools yet called -->
                 <!--v-if-->
               </div>
               
@@ -592,22 +604,28 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
           
         </div>
       </div>
+      <!--v-if-->
     </div>
+    <!--v-if-->
     <div
       class="inputWrapper disabledInput"
       data-test-id="chat-input-wrapper"
     >
-      <n8n-prompt-input-stub
+      <n8n-chat-input-stub
         autofocus="true"
+        autosize="true"
+        blockcanvasshortcuts="true"
         data-test-id="chat-input"
         disabled="true"
+        layout="multiline"
         maxlength="5000"
         maxlinesbeforescroll="10"
-        minlines="1"
         modelvalue=""
         placeholder="assistantChat.inputPlaceholder"
         refocusaftersend="true"
+        sendbuttontestid="send-message-button"
         showaskownertooltip="false"
+        stopbuttontestid="send-message-button"
         streaming="false"
       />
     </div>
@@ -632,34 +650,34 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
           <div
             class="assistantTitle"
           >
-            <assistant-icon-stub
-              size="large"
-              theme="default"
+            <n8n-icon-stub
+              icon="n8n-assistant"
+              size="18"
+              spin="false"
             />
             <assistant-text-stub
               size="large"
               text="assistantChat.aiAssistantLabel"
             />
           </div>
-          <span
-            class="betaTag"
-          >
-            assistantChat.aiAssistantBetaLabel
-          </span>
         </div>
         
         
       </div>
-      <div
-        class="back"
+      
+      
+      <n8n-icon-button-stub
+        aria-label="askAssistantChat.close"
+        class=""
         data-test-id="close-chat-button"
-      >
-        <n8n-icon-stub
-          color="text-base"
-          icon="arrow-right"
-          spin="false"
-        />
-      </div>
+        disabled="false"
+        focusablewhendisabled="false"
+        icon="x"
+        icononly="true"
+        loading="false"
+        size="large"
+        variant="ghost"
+      />
     </div>
     <div
       class="body"
@@ -711,6 +729,7 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
                   
                   
                 </div>
+                <!-- Placeholder thinking message when there are no tools yet called -->
                 <!--v-if-->
               </div>
               
@@ -727,22 +746,28 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
           
         </div>
       </div>
+      <!--v-if-->
     </div>
+    <!--v-if-->
     <div
       class="inputWrapper"
       data-test-id="chat-input-wrapper"
     >
-      <n8n-prompt-input-stub
+      <n8n-chat-input-stub
         autofocus="true"
+        autosize="true"
+        blockcanvasshortcuts="true"
         data-test-id="chat-input"
         disabled="false"
+        layout="multiline"
         maxlength="5000"
         maxlinesbeforescroll="10"
-        minlines="1"
         modelvalue=""
         placeholder="assistantChat.inputPlaceholder"
         refocusaftersend="true"
+        sendbuttontestid="send-message-button"
         showaskownertooltip="false"
+        stopbuttontestid="send-message-button"
         streaming="false"
       />
     </div>
@@ -767,34 +792,34 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
           <div
             class="assistantTitle"
           >
-            <assistant-icon-stub
-              size="large"
-              theme="default"
+            <n8n-icon-stub
+              icon="n8n-assistant"
+              size="18"
+              spin="false"
             />
             <assistant-text-stub
               size="large"
               text="assistantChat.aiAssistantLabel"
             />
           </div>
-          <span
-            class="betaTag"
-          >
-            assistantChat.aiAssistantBetaLabel
-          </span>
         </div>
         
         
       </div>
-      <div
-        class="back"
+      
+      
+      <n8n-icon-button-stub
+        aria-label="askAssistantChat.close"
+        class=""
         data-test-id="close-chat-button"
-      >
-        <n8n-icon-stub
-          color="text-base"
-          icon="arrow-right"
-          spin="false"
-        />
-      </div>
+        disabled="false"
+        focusablewhendisabled="false"
+        icon="x"
+        icononly="true"
+        loading="false"
+        size="large"
+        variant="ghost"
+      />
     </div>
     <div
       class="body"
@@ -846,6 +871,7 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
                   
                   
                 </div>
+                <!-- Placeholder thinking message when there are no tools yet called -->
                 <!--v-if-->
               </div>
               
@@ -862,22 +888,28 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
           
         </div>
       </div>
+      <!--v-if-->
     </div>
+    <!--v-if-->
     <div
       class="inputWrapper"
       data-test-id="chat-input-wrapper"
     >
-      <n8n-prompt-input-stub
+      <n8n-chat-input-stub
         autofocus="true"
+        autosize="true"
+        blockcanvasshortcuts="true"
         data-test-id="chat-input"
         disabled="false"
+        layout="multiline"
         maxlength="5000"
         maxlinesbeforescroll="10"
-        minlines="1"
         modelvalue=""
         placeholder="assistantChat.inputPlaceholder"
         refocusaftersend="true"
+        sendbuttontestid="send-message-button"
         showaskownertooltip="false"
+        stopbuttontestid="send-message-button"
         streaming="false"
       />
     </div>
@@ -902,34 +934,34 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
           <div
             class="assistantTitle"
           >
-            <assistant-icon-stub
-              size="large"
-              theme="default"
+            <n8n-icon-stub
+              icon="n8n-assistant"
+              size="18"
+              spin="false"
             />
             <assistant-text-stub
               size="large"
               text="assistantChat.aiAssistantLabel"
             />
           </div>
-          <span
-            class="betaTag"
-          >
-            assistantChat.aiAssistantBetaLabel
-          </span>
         </div>
         
         
       </div>
-      <div
-        class="back"
+      
+      
+      <n8n-icon-button-stub
+        aria-label="askAssistantChat.close"
+        class=""
         data-test-id="close-chat-button"
-      >
-        <n8n-icon-stub
-          color="text-base"
-          icon="arrow-right"
-          spin="false"
-        />
-      </div>
+        disabled="false"
+        focusablewhendisabled="false"
+        icon="x"
+        icononly="true"
+        loading="false"
+        size="large"
+        variant="ghost"
+      />
     </div>
     <div
       class="body"
@@ -981,6 +1013,7 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
                   
                   
                 </div>
+                <!-- Placeholder thinking message when there are no tools yet called -->
                 <!--v-if-->
               </div>
               
@@ -997,22 +1030,28 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
           
         </div>
       </div>
+      <!--v-if-->
     </div>
+    <!--v-if-->
     <div
       class="inputWrapper"
       data-test-id="chat-input-wrapper"
     >
-      <n8n-prompt-input-stub
+      <n8n-chat-input-stub
         autofocus="true"
+        autosize="true"
+        blockcanvasshortcuts="true"
         data-test-id="chat-input"
         disabled="false"
+        layout="multiline"
         maxlength="5000"
         maxlinesbeforescroll="10"
-        minlines="1"
         modelvalue=""
         placeholder="assistantChat.inputPlaceholder"
         refocusaftersend="true"
+        sendbuttontestid="send-message-button"
         showaskownertooltip="false"
+        stopbuttontestid="send-message-button"
         streaming="true"
       />
     </div>

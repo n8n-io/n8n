@@ -1,12 +1,17 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
+import type { ExecutionSummary } from 'n8n-workflow';
 
 import { N8nIcon, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
+import { hasCancellableExecutions } from '../executions.utils';
+
 const props = defineProps<{
 	runningExecutionsCount: number;
 	concurrencyCap: number;
 	isCloudDeployment?: boolean;
+	executions: ExecutionSummary[];
+	isInitialLoad: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -28,6 +33,14 @@ const tooltipText = computed(() => {
 	return text;
 });
 
+const shouldShowHeader = computed(() => {
+	if (props.isInitialLoad) {
+		return false;
+	}
+
+	return props.runningExecutionsCount > 0 || !hasCancellableExecutions(props.executions);
+});
+
 const headerText = computed(() => {
 	if (props.runningExecutionsCount === 0) {
 		return i18n.baseText('executionsList.activeExecutions.none');
@@ -42,9 +55,13 @@ const headerText = computed(() => {
 </script>
 
 <template>
-	<div data-test-id="concurrent-executions-header" :class="$style.concurrentExecutionHeader">
-		<N8nText>{{ headerText }}</N8nText>
-		<N8nTooltip>
+	<div
+		v-if="shouldShowHeader"
+		data-test-id="concurrent-executions-header"
+		:class="$style.concurrentExecutionHeader"
+	>
+		<N8nText color="text-light">{{ headerText }}</N8nText>
+		<N8nTooltip as-child>
 			<template #content>
 				<div :class="$style.tooltip">
 					{{ tooltipText }}
@@ -66,7 +83,7 @@ const headerText = computed(() => {
 					>
 				</div>
 			</template>
-			<N8nIcon icon="info" class="ml-2xs" />
+			<N8nIcon icon="info" size="medium" class="ml-2xs" />
 		</N8nTooltip>
 	</div>
 </template>

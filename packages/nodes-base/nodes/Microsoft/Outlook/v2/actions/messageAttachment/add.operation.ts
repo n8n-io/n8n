@@ -5,7 +5,7 @@ import type {
 	INodeProperties,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -51,32 +51,17 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions, index: number, items: INodeExecutionData[]) {
+export async function execute(this: IExecuteFunctions, index: number, _: INodeExecutionData[]) {
 	let responseData;
 
 	const messageId = this.getNodeParameter('messageId', index, undefined, {
 		extractValue: true,
 	}) as string;
 
-	const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
+	const binaryPropertyName = this.getNodeParameter('binaryPropertyName', index);
 	const options = this.getNodeParameter('options', index);
 
-	if (items[index].binary === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
-	}
-
-	if (
-		items[index].binary &&
-		(items[index].binary as IDataObject)[binaryPropertyName] === undefined
-	) {
-		throw new NodeOperationError(
-			this.getNode(),
-			`No binary data property "${binaryPropertyName}" does not exists on item!`,
-			{ itemIndex: index },
-		);
-	}
-
-	const binaryData = items[index].binary[binaryPropertyName];
+	const binaryData = this.helpers.assertBinaryData(index, binaryPropertyName);
 	const dataBuffer = await this.helpers.getBinaryDataBuffer(index, binaryPropertyName);
 
 	const fileName = options.fileName === undefined ? binaryData.fileName : options.fileName;
@@ -105,7 +90,8 @@ export async function execute(this: IExecuteFunctions, index: number, items: INo
 		responseData = await microsoftApiRequest.call(
 			this,
 			'POST',
-			`/messages/${messageId}/attachments/createUploadSession`,
+			requestPath`/messages/${messageId}/attachments/createUploadSession`,
+			index,
 			body,
 		);
 		const uploadUrl = responseData.uploadUrl;
@@ -143,7 +129,8 @@ export async function execute(this: IExecuteFunctions, index: number, items: INo
 		responseData = await microsoftApiRequest.call(
 			this,
 			'POST',
-			`/messages/${messageId}/attachments`,
+			requestPath`/messages/${messageId}/attachments`,
+			index,
 			body,
 			{},
 		);

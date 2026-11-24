@@ -1,25 +1,34 @@
 <script setup lang="ts">
-import type { DataTable } from '@/features/core/dataTable/dataTable.types';
 import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 import DataTableActions from '@/features/core/dataTable/components/DataTableActions.vue';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import TimeAgo from '@/app/components/TimeAgo.vue';
+import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
+import DependencyPill from '@/app/components/DependencyPill.vue';
 
-import { N8nBadge, N8nCard, N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
+import { N8nCard, N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
+import type { DataTableResource } from '../types';
+import { ResourceType } from '@/features/collaboration/projects/projects.utils';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useDependencies } from '@/app/composables/useDependencies';
+
 type Props = {
-	dataTable: DataTable;
-	readOnly?: boolean;
+	dataTable: DataTableResource;
+	/** Locks rename and delete, for example on a protected instance. */
+	schemaReadOnly?: boolean;
 	showOwnershipBadge?: boolean;
 };
 
 const i18n = useI18n();
 const dataTableStore = useDataTableStore();
+const projectsStore = useProjectsStore();
+const { hasDependencies } = useDependencies();
 
 const props = withDefaults(defineProps<Props>(), {
 	actions: () => [],
-	readOnly: false,
+	schemaReadOnly: false,
 	showOwnershipBadge: false,
 });
 
@@ -37,18 +46,25 @@ const getDataTableSize = computed(() => {
 	const size = dataTableStore.dataTableSizes[props.dataTable.id] ?? 0;
 	return size;
 });
+
+const dataTableHasDependents = computed(() => hasDependencies(props.dataTable.id, 'dataTable'));
 </script>
 <template>
 	<div data-test-id="data-table-card">
-		<N8nLink :to="dataTableRoute" class="data-table-card" data-test-id="data-table-card-link">
+		<N8nLink
+			:to="dataTableRoute"
+			:underline="false"
+			class="data-table-card"
+			data-test-id="data-table-card-link"
+		>
 			<N8nCard :class="$style.card">
 				<template #prepend>
 					<N8nIcon
 						data-test-id="data-table-card-icon"
 						:class="$style['card-icon']"
-						icon="database"
+						icon="table"
 						size="xlarge"
-						:stroke-width="1"
+						:stroke-width="1.5"
 					/>
 				</template>
 				<template #header>
@@ -56,9 +72,6 @@ const getDataTableSize = computed(() => {
 						<N8nText tag="h2" bold data-test-id="data-table-card-name">
 							{{ props.dataTable.name }}
 						</N8nText>
-						<N8nBadge v-if="props.readOnly" class="ml-3xs" theme="tertiary" bold>
-							{{ i18n.baseText('workflows.item.readonly') }}
-						</N8nBadge>
 					</div>
 				</template>
 				<template #footer>
@@ -108,10 +121,26 @@ const getDataTableSize = computed(() => {
 					</div>
 				</template>
 				<template #append>
-					<div :class="$style['card-actions']" @click.prevent>
+					<div :class="$style['card-actions']" @click.stop>
+						<DependencyPill
+							v-if="dataTableHasDependents"
+							resource-type="dataTable"
+							:resource-id="props.dataTable.id"
+							source="data_table_card"
+							data-test-id="data-table-card-dependents"
+						/>
+						<ProjectCardBadge
+							v-if="props.showOwnershipBadge"
+							:class="$style['card-badge']"
+							:resource="dataTable"
+							:resource-type="ResourceType.DataTable"
+							:resource-type-label="'Data Table'"
+							:personal-project="projectsStore.personalProject"
+							:show-badge-border="false"
+						/>
 						<DataTableActions
 							:data-table="props.dataTable"
-							:is-read-only="props.readOnly"
+							:schema-read-only="props.schemaReadOnly"
 							location="card"
 						/>
 					</div>
@@ -122,12 +151,14 @@ const getDataTableSize = computed(() => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/breakpoints';
+
 .card {
 	transition: box-shadow 0.3s ease;
 	cursor: pointer;
 
 	&:hover {
-		box-shadow: 0 2px 8px rgba(#441c17, 0.1);
+		box-shadow: var(--shadow--card-hover);
 	}
 }
 
@@ -159,7 +190,22 @@ const getDataTableSize = computed(() => {
 	}
 }
 
-@include mixins.breakpoint('sm-and-down') {
+.card-actions {
+	display: flex;
+	gap: var(--spacing--2xs);
+	flex-direction: row;
+	justify-content: center;
+	align-items: center;
+	align-self: stretch;
+	padding: 0 var(--spacing--sm) 0 0;
+	cursor: default;
+}
+
+.card-badge {
+	background-color: var(--color--background--light-3);
+}
+
+@include breakpoints.breakpoint('sm-and-down') {
 	.card {
 		flex-wrap: wrap;
 	}

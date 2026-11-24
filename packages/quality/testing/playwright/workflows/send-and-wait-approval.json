@@ -1,0 +1,126 @@
+{
+	"name": "Send and Wait Approval Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "manual-trigger",
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [300, 200]
+		},
+		{
+			"parameters": {
+				"path": "send-and-wait-approval-test",
+				"options": {}
+			},
+			"id": "webhook-trigger",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [300, 400],
+			"webhookId": "send-and-wait-approval-webhook"
+		},
+		{
+			"parameters": {
+				"authentication": "accessToken",
+				"resource": "message",
+				"operation": "sendAndWait",
+				"select": "channel",
+				"channelId": {
+					"__rl": true,
+					"value": "C12345678",
+					"mode": "id"
+				},
+				"subject": "Approval Request",
+				"message": "Please approve this test request",
+				"responseType": "approval",
+				"approvalOptions": {
+					"values": {
+						"approvalType": "double",
+						"approveLabel": "Approve",
+						"buttonApprovalStyle": "primary",
+						"disapproveLabel": "Reject",
+						"buttonDisapprovalStyle": "secondary"
+					}
+				},
+				"options": {}
+			},
+			"id": "slack-send-wait",
+			"name": "Slack",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 2.2,
+			"position": [500, 300],
+			"credentials": {
+				"slackApi": {
+					"id": "PLACEHOLDER_CREDENTIAL_ID",
+					"name": "Slack Test Credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "result-field",
+							"name": "approvalResult",
+							"value": "={{ $json.data.approved }}",
+							"type": "boolean"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "capture-result",
+			"name": "Capture Result",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.3,
+			"position": [700, 300]
+		}
+	],
+	"connections": {
+		"Manual Trigger": {
+			"main": [
+				[
+					{
+						"node": "Slack",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Slack",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Slack": {
+			"main": [
+				[
+					{
+						"node": "Capture Result",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"staticData": null,
+	"meta": null,
+	"pinData": {},
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

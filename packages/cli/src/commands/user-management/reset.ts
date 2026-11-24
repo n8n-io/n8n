@@ -1,4 +1,3 @@
-import type { CredentialsEntity } from '@n8n/db';
 import {
 	User,
 	CredentialsRepository,
@@ -36,14 +35,11 @@ export class Reset extends BaseCommand {
 		await Container.get(SharedWorkflowRepository).makeOwnerOfAllWorkflows(personalProject);
 		await Container.get(SharedCredentialsRepository).makeOwnerOfAllCredentials(personalProject);
 
-		await Container.get(UserRepository).deleteAllExcept(owner);
+		await Container.get(UserRepository).deleteAllPeopleExcept(owner);
 		await Container.get(UserRepository).save(Object.assign(owner, defaultUserProps));
 
-		const danglingCredentials: CredentialsEntity[] = await Container.get(CredentialsRepository)
-			.createQueryBuilder('credentials')
-			.leftJoinAndSelect('credentials.shared', 'shared')
-			.where('shared.credentialsId is null')
-			.getMany();
+		const danglingCredentials =
+			await Container.get(CredentialsRepository).findDanglingProjectCredentials();
 		const newSharedCredentials = danglingCredentials.map((credentials) =>
 			Container.get(SharedCredentialsRepository).create({
 				credentials,

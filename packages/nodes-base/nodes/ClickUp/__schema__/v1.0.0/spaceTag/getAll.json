@@ -1,0 +1,21 @@
+{
+    "type": "object",
+    "properties": {
+        "creator": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "project_id": {
+            "type": "string"
+        },
+        "tag_bg": {
+            "type": "string"
+        },
+        "tag_fg": {
+            "type": "string"
+        }
+    },
+    "version": 2
+}

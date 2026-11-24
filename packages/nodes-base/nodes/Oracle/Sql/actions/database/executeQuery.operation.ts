@@ -6,7 +6,7 @@ import type {
 } from 'n8n-workflow';
 import type oracledb from 'oracledb';
 
-import { getResolvables, updateDisplayOptions } from '@utils/utilities';
+import { resolveExpressions, updateDisplayOptions } from '@utils/utilities';
 
 import type {
 	ExecuteOpBindParam,
@@ -66,14 +66,14 @@ export async function execute(
 	const queries: QueryWithValues[] = [];
 
 	for (let index = 0; index < items.length; index++) {
-		let query = this.getNodeParameter('query', index) as string;
-
 		// Dynamically replaces placeholders ({{...}}) in SQL queries.
 		// Ex: SELECT * FROM users WHERE name = '{{ $json["name"] }}'
 		// to SELECT * FROM users WHERE name = 'Alice'
-		for (const resolvable of getResolvables(query)) {
-			query = query.replace(resolvable, this.evaluateExpression(resolvable, index) as string);
-		}
+		let query = resolveExpressions(
+			this.getNodeParameter('query', index) as string,
+			(resolvable) => this.evaluateExpression(resolvable, index),
+			{ legacy: (nodeOptions.nodeVersion ?? 1) < 1.2 },
+		);
 
 		let values: any = [];
 
@@ -82,7 +82,11 @@ export async function execute(
 			((this.getNodeParameter('options.params', index, {}) as IDataObject)
 				.values as ExecuteOpBindParam[]) || [];
 		if (parameterIDataObjectList.length) {
-			const { updatedQuery, bindParameters } = getBindParameters(query, parameterIDataObjectList);
+			const { updatedQuery, bindParameters } = getBindParameters(
+				query,
+				parameterIDataObjectList,
+				nodeOptions,
+			);
 			query = updatedQuery;
 			values = bindParameters;
 		}

@@ -1,17 +1,18 @@
 import { LicenseState } from '@n8n/backend-common';
-import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
+import type { EventService } from '@n8n/backend-services';
+import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
+import { SecretsProviderConnectionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
-import type { IDataObject } from 'n8n-workflow';
+import { Cipher } from 'n8n-core';
+import { CREDENTIAL_BLANKING_VALUE, type IDataObject } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
-import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
-import type { EventService } from '@/events/event.service';
 import { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
 import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import { ExternalSecretsProviderConnectionManager } from '@/modules/external-secrets.ee/external-secrets-provider-connection-manager.ee';
 import { ExternalSecretsProviderLifecycle } from '@/modules/external-secrets.ee/provider-lifecycle.service';
 import { ExternalSecretsProviderRegistry } from '@/modules/external-secrets.ee/provider-registry.service';
-import { ExternalSecretsRetryManager } from '@/modules/external-secrets.ee/retry-manager.service';
 import { ExternalSecretsSecretsCache } from '@/modules/external-secrets.ee/secrets-cache.service';
 import { ExternalSecretsSettingsStore } from '@/modules/external-secrets.ee/settings-store.service';
 import type {
@@ -67,9 +68,14 @@ const resetManager = async () => {
 	const config = Container.get(ExternalSecretsConfig);
 	const settingsStore = Container.get(ExternalSecretsSettingsStore);
 	const providerRegistry = Container.get(ExternalSecretsProviderRegistry);
+	// Simulate a fresh process: without this, providers from the previous test survive in the
+	// singleton registry and act as connected predecessors during replacement.
+	providerRegistry.clear();
 	const providerLifecycle = Container.get(ExternalSecretsProviderLifecycle);
-	const retryManager = Container.get(ExternalSecretsRetryManager);
+	const providerConnectionManager = Container.get(ExternalSecretsProviderConnectionManager);
 	const secretsCache = Container.get(ExternalSecretsSecretsCache);
+	const secretsProviderConnectionRepository = Container.get(SecretsProviderConnectionRepository);
+	const cipher = Container.get(Cipher);
 
 	Container.set(
 		ExternalSecretsManager,
@@ -82,8 +88,10 @@ const resetManager = async () => {
 			settingsStore,
 			providerRegistry,
 			providerLifecycle,
-			retryManager,
+			providerConnectionManager,
 			secretsCache,
+			secretsProviderConnectionRepository,
+			cipher,
 		),
 	);
 
@@ -130,11 +138,15 @@ beforeAll(async () => {
 
 	// Get all service dependencies from Container
 	const config = Container.get(ExternalSecretsConfig);
+	config.externalSecretsForProjects = false;
+	config.externalSecretsMultipleConnections = false;
 	const settingsStore = Container.get(ExternalSecretsSettingsStore);
 	const providerRegistry = Container.get(ExternalSecretsProviderRegistry);
 	const providerLifecycle = Container.get(ExternalSecretsProviderLifecycle);
-	const retryManager = Container.get(ExternalSecretsRetryManager);
+	const providerConnectionManager = Container.get(ExternalSecretsProviderConnectionManager);
 	const secretsCache = Container.get(ExternalSecretsSecretsCache);
+	const secretsProviderConnectionRepository = Container.get(SecretsProviderConnectionRepository);
+	const cipher = Container.get(Cipher);
 
 	Container.set(
 		ExternalSecretsManager,
@@ -147,8 +159,10 @@ beforeAll(async () => {
 			settingsStore,
 			providerRegistry,
 			providerLifecycle,
-			retryManager,
+			providerConnectionManager,
 			secretsCache,
+			secretsProviderConnectionRepository,
+			cipher,
 		),
 	);
 });
@@ -349,7 +363,7 @@ describe('POST /external-secrets/providers/:provider/test', () => {
 
 describe('POST /external-secrets/providers/:provider/update', () => {
 	test('can update provider', async () => {
-		const updateSpy = jest.spyOn(
+		const updateSpy = vi.spyOn(
 			Container.get(ExternalSecretsManager).getProvider('dummy')!,
 			'update',
 		);
@@ -367,7 +381,7 @@ describe('POST /external-secrets/providers/:provider/update', () => {
 
 		await resetManager();
 
-		const updateSpy = jest.spyOn(
+		const updateSpy = vi.spyOn(
 			Container.get(ExternalSecretsManager).getProvider('dummy')!,
 			'update',
 		);

@@ -4,10 +4,12 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { microsoftApiRequest } from '../../transport';
+import { stampItemIndexOnError } from '../../../../GenericFunctions';
+import { microsoftApiRequest, toWorkbookId } from '../../transport';
 import { tableRLC, workbookRLC, worksheetRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [workbookRLC, worksheetRLC, tableRLC];
@@ -29,9 +31,12 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const workbookId = this.getNodeParameter('workbook', i, undefined, {
-				extractValue: true,
-			}) as string;
+			const workbookId = toWorkbookId.call(
+				this,
+				this.getNodeParameter('workbook', i, undefined, {
+					extractValue: true,
+				}) as string,
+			);
 
 			const worksheetId = this.getNodeParameter('worksheet', i, undefined, {
 				extractValue: true,
@@ -44,7 +49,12 @@ export async function execute(
 			const responseData = await microsoftApiRequest.call(
 				this,
 				'POST',
-				`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/convertToRange`,
+				requestPath`/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/convertToRange`,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				i,
 			);
 
 			const executionData = this.helpers.constructExecutionMetaData(
@@ -62,7 +72,8 @@ export async function execute(
 				returnData.push(...executionErrorData);
 				continue;
 			}
-			throw error;
+			// A NodeError from the transport may be missing the itemIndex, add it
+			throw stampItemIndexOnError(error, i);
 		}
 	}
 

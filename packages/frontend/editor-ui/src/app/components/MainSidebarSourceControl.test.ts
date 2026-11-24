@@ -5,10 +5,11 @@ import { createTestingPinia } from '@pinia/testing';
 import merge from 'lodash/merge';
 import { reactive } from 'vue';
 import { STORES } from '@n8n/stores';
-import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { SETTINGS_STORE_DEFAULT_STATE, mockedStore } from '@/__tests__/utils';
 import MainSidebarSourceControl from '@/app/components/MainSidebarSourceControl.vue';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useRBACStore } from '@/app/stores/rbac.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
@@ -65,6 +66,26 @@ describe('MainSidebarSourceControl', () => {
 		expect(container).toBeEmptyDOMElement();
 	});
 
+	it('renders nothing while the instance uses Environments v2', async () => {
+		const settingsStore = mockedStore(useSettingsStore);
+		settingsStore.isModuleActive.mockReturnValue(true);
+		vi.spyOn(sourceControlStore, 'preferences', 'get').mockReturnValue({
+			branchName: 'main',
+			branches: [],
+			repositoryUrl: '',
+			branchReadOnly: false,
+			branchColor: '#5296D6',
+			connected: true,
+			publicKey: '',
+			keyGeneratorType: 'ed25519',
+			environmentsVersion: 'v2',
+		});
+
+		const { container } = renderComponent({ pinia, props: { isCollapsed: false } });
+
+		expect(container).toBeEmptyDOMElement();
+	});
+
 	it('should render empty content when instance owner but not connected', async () => {
 		const { getByTestId } = renderComponent({ pinia, props: { isCollapsed: false } });
 		expect(getByTestId('main-sidebar-source-control')).toBeInTheDocument();
@@ -111,7 +132,10 @@ describe('MainSidebarSourceControl', () => {
 
 			const pullButton = queryByTestId('main-sidebar-source-control-pull');
 			expect(pullButton).toBeInTheDocument();
-			expect(pullButton).toBeDisabled();
+			expect(pullButton).toHaveAttribute('aria-disabled', 'true');
+			expect(pullButton).toHaveAccessibleDescription(
+				'Only the instance owner or instance admins can pull changes',
+			);
 		});
 
 		it('should disable push button if branch is read-only', async () => {
@@ -130,7 +154,10 @@ describe('MainSidebarSourceControl', () => {
 				props: { isCollapsed: false },
 			});
 			const pushButton = getByTestId('main-sidebar-source-control-push');
-			expect(pushButton).toBeDisabled();
+			expect(pushButton).toHaveAttribute('aria-disabled', 'true');
+			expect(pushButton).toHaveAccessibleDescription(
+				"You can't push changes from a protected instance",
+			);
 		});
 	});
 
@@ -180,7 +207,7 @@ describe('MainSidebarSourceControl', () => {
 				props: { isCollapsed: false },
 			});
 			const pushButton = getByTestId('main-sidebar-source-control-push');
-			expect(pushButton).toBeDisabled();
+			expect(pushButton).toHaveAttribute('aria-disabled', 'true');
 		});
 
 		it('should navigate to pull route when pull button is clicked', async () => {

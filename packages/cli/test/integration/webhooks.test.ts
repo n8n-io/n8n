@@ -1,9 +1,9 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import { agent as testAgent } from 'supertest';
 import type SuperAgentTest from 'supertest/lib/agent';
+import { mock } from 'vitest-mock-extended';
 
 import { ExternalHooks } from '@/external-hooks';
 import { LiveWebhooks } from '@/webhooks/live-webhooks';
@@ -19,7 +19,7 @@ describe('WebhookServer', () => {
 	const liveWebhooks = mockInstance(LiveWebhooks);
 	const testWebhooks = mockInstance(TestWebhooks);
 	const waitingWebhooks = mockInstance(WaitingWebhooks);
-	mockInstance(WaitingForms);
+	const waitingForms = mockInstance(WaitingForms);
 	mockInstance(ExternalHooks);
 	const globalConfig = Container.get(GlobalConfig);
 
@@ -44,9 +44,8 @@ describe('WebhookServer', () => {
 		const tests = [
 			['webhook', liveWebhooks],
 			['webhookTest', testWebhooks],
-			// TODO: enable webhookWaiting & waitingForms after CORS support is added
-			// ['webhookWaiting', waitingWebhooks],
-			// ['formWaiting', waitingForms],
+			['webhookWaiting', waitingWebhooks],
+			['formWaiting', waitingForms],
 		] as const;
 
 		for (const [key, manager] of tests) {
@@ -67,7 +66,6 @@ describe('WebhookServer', () => {
 				});
 
 				it('should handle regular requests', async () => {
-					manager.getWebhookMethods.mockResolvedValueOnce(['GET']);
 					manager.executeWebhook.mockResolvedValueOnce(
 						mockResponse({ test: true }, { key: 'value ' }),
 					);

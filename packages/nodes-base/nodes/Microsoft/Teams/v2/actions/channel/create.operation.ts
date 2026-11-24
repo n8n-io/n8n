@@ -3,7 +3,7 @@ import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workfl
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { teamRLC } from '../../descriptions';
-import { microsoftApiRequest } from '../../transport';
+import { buildTeamsPath, microsoftApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	teamRLC,
@@ -79,5 +79,10 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	if (options.type) {
 		body.membershipType = options.type as string;
 	}
-	return await microsoftApiRequest.call(this, 'POST', `/v1.0/teams/${teamId}/channels`, body);
+	return await microsoftApiRequest.call(
+		this,
+		'POST',
+		buildTeamsPath.call(this, ['/v1.0/teams/', { id: teamId }, '/channels']),
+		body,
+	);
 }

@@ -1,0 +1,35 @@
+type: object
+properties:
+  slug:
+    type: string
+  displayName:
+    type: string
+  description:
+    type: string
+    nullable: true
+  systemRole:
+    type: boolean
+  roleType:
+    type: string
+    enum:
+      - project
+      - global
+  scopes:
+    type: array
+    items:
+      type: string
+  createdAt:
+    type: string
+    format: date-time
+  updatedAt:
+    type: string
+    format: date-time
+required:
+  - slug
+  - displayName
+  - description
+  - systemRole
+  - roleType
+  - scopes
+  - createdAt
+  - updatedAt

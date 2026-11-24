@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type {
 	IExecuteFunctions,
 	IDataTableProjectAggregateService,
@@ -6,6 +6,7 @@ import type {
 	INode,
 } from 'n8n-workflow';
 
+import * as clearOperation from '../../actions/table/clear.operation';
 import * as createOperation from '../../actions/table/create.operation';
 import * as deleteOperation from '../../actions/table/delete.operation';
 import * as listOperation from '../../actions/table/list.operation';
@@ -41,7 +42,7 @@ describe('Table Operations', () => {
 			});
 
 			mockExecuteFunctions.helpers = {
-				getDataTableAggregateProxy: jest.fn().mockResolvedValue(mockAggregateProxy),
+				getDataTableAggregateProxy: vi.fn().mockResolvedValue(mockAggregateProxy),
 			} as any;
 
 			const mockResult = {
@@ -83,7 +84,7 @@ describe('Table Operations', () => {
 			});
 
 			mockExecuteFunctions.helpers = {
-				getDataTableAggregateProxy: jest.fn().mockResolvedValue(mockAggregateProxy),
+				getDataTableAggregateProxy: vi.fn().mockResolvedValue(mockAggregateProxy),
 			} as any;
 
 			const mockResult = {
@@ -119,7 +120,7 @@ describe('Table Operations', () => {
 			});
 
 			mockExecuteFunctions.helpers = {
-				getDataTableAggregateProxy: jest.fn().mockResolvedValue(mockAggregateProxy),
+				getDataTableAggregateProxy: vi.fn().mockResolvedValue(mockAggregateProxy),
 			} as any;
 
 			const existingTable = {
@@ -159,7 +160,7 @@ describe('Table Operations', () => {
 			});
 
 			mockExecuteFunctions.helpers = {
-				getDataTableAggregateProxy: jest.fn().mockResolvedValue(mockAggregateProxy),
+				getDataTableAggregateProxy: vi.fn().mockResolvedValue(mockAggregateProxy),
 			} as any;
 
 			mockAggregateProxy.getManyAndCount.mockResolvedValue({
@@ -210,7 +211,7 @@ describe('Table Operations', () => {
 			});
 
 			mockExecuteFunctions.helpers = {
-				getDataTableAggregateProxy: jest.fn().mockResolvedValue(mockAggregateProxy),
+				getDataTableAggregateProxy: vi.fn().mockResolvedValue(mockAggregateProxy),
 			} as any;
 
 			const mockResult = {
@@ -254,7 +255,7 @@ describe('Table Operations', () => {
 			});
 
 			mockExecuteFunctions.helpers = {
-				getDataTableProxy: jest.fn().mockResolvedValue(mockDataTableProxy),
+				getDataTableProxy: vi.fn().mockResolvedValue(mockDataTableProxy),
 			} as any;
 
 			mockDataTableProxy.deleteDataTable.mockResolvedValue(true);
@@ -276,7 +277,7 @@ describe('Table Operations', () => {
 			});
 
 			mockExecuteFunctions.helpers = {
-				getDataTableProxy: jest.fn().mockResolvedValue(mockDataTableProxy),
+				getDataTableProxy: vi.fn().mockResolvedValue(mockDataTableProxy),
 			} as any;
 
 			mockDataTableProxy.deleteDataTable.mockResolvedValue(false);
@@ -302,7 +303,7 @@ describe('Table Operations', () => {
 			});
 
 			mockExecuteFunctions.helpers = {
-				getDataTableAggregateProxy: jest.fn().mockResolvedValue(mockAggregateProxy),
+				getDataTableAggregateProxy: vi.fn().mockResolvedValue(mockAggregateProxy),
 			} as any;
 
 			const mockTables = [
@@ -338,7 +339,7 @@ describe('Table Operations', () => {
 			});
 
 			mockExecuteFunctions.helpers = {
-				getDataTableAggregateProxy: jest.fn().mockResolvedValue(mockAggregateProxy),
+				getDataTableAggregateProxy: vi.fn().mockResolvedValue(mockAggregateProxy),
 			} as any;
 
 			const mockTables = [
@@ -374,7 +375,7 @@ describe('Table Operations', () => {
 			});
 
 			mockExecuteFunctions.helpers = {
-				getDataTableAggregateProxy: jest.fn().mockResolvedValue(mockAggregateProxy),
+				getDataTableAggregateProxy: vi.fn().mockResolvedValue(mockAggregateProxy),
 			} as any;
 
 			const mockTables = [{ id: 'table-1', name: 'Test Table', columns: [] }];
@@ -408,7 +409,7 @@ describe('Table Operations', () => {
 			});
 
 			mockExecuteFunctions.helpers = {
-				getDataTableAggregateProxy: jest.fn().mockResolvedValue(mockAggregateProxy),
+				getDataTableAggregateProxy: vi.fn().mockResolvedValue(mockAggregateProxy),
 			} as any;
 
 			const mockTables = [
@@ -445,7 +446,7 @@ describe('Table Operations', () => {
 			});
 
 			mockExecuteFunctions.helpers = {
-				getDataTableAggregateProxy: jest.fn().mockResolvedValue(mockAggregateProxy),
+				getDataTableAggregateProxy: vi.fn().mockResolvedValue(mockAggregateProxy),
 			} as any;
 
 			// First page
@@ -500,7 +501,7 @@ describe('Table Operations', () => {
 			});
 
 			mockExecuteFunctions.helpers = {
-				getDataTableAggregateProxy: jest.fn().mockResolvedValue(mockAggregateProxy),
+				getDataTableAggregateProxy: vi.fn().mockResolvedValue(mockAggregateProxy),
 			} as any;
 
 			mockAggregateProxy.getManyAndCount.mockResolvedValue({
@@ -511,6 +512,52 @@ describe('Table Operations', () => {
 			const result = await listOperation.execute.call(mockExecuteFunctions, 0);
 
 			expect(result).toEqual([]);
+		});
+	});
+
+	describe('Clear Operation', () => {
+		it('should clear all rows from a data table and return deleted count', async () => {
+			const mockExecuteFunctions = mock<IExecuteFunctions>();
+			const mockDataTableProxy = mock<IDataTableProjectService>();
+
+			mockExecuteFunctions.getNode.mockReturnValue(mockNode);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'dataTableId') return 'table-123';
+				return undefined;
+			});
+
+			mockExecuteFunctions.helpers = {
+				getDataTableProxy: vi.fn().mockResolvedValue(mockDataTableProxy),
+			} as any;
+
+			mockDataTableProxy.clearRows.mockResolvedValue({ deletedCount: 42 });
+
+			const result = await clearOperation.execute.call(mockExecuteFunctions, 0);
+
+			expect(mockDataTableProxy.clearRows).toHaveBeenCalled();
+			expect(result).toEqual([{ json: { success: true, deletedCount: 42 } }]);
+		});
+
+		it('should return deletedCount of 0 when table is already empty', async () => {
+			const mockExecuteFunctions = mock<IExecuteFunctions>();
+			const mockDataTableProxy = mock<IDataTableProjectService>();
+
+			mockExecuteFunctions.getNode.mockReturnValue(mockNode);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'dataTableId') return 'table-456';
+				return undefined;
+			});
+
+			mockExecuteFunctions.helpers = {
+				getDataTableProxy: vi.fn().mockResolvedValue(mockDataTableProxy),
+			} as any;
+
+			mockDataTableProxy.clearRows.mockResolvedValue({ deletedCount: 0 });
+
+			const result = await clearOperation.execute.call(mockExecuteFunctions, 0);
+
+			expect(mockDataTableProxy.clearRows).toHaveBeenCalled();
+			expect(result).toEqual([{ json: { success: true, deletedCount: 0 } }]);
 		});
 	});
 
@@ -527,7 +574,7 @@ describe('Table Operations', () => {
 			});
 
 			mockExecuteFunctions.helpers = {
-				getDataTableProxy: jest.fn().mockResolvedValue(mockDataTableProxy),
+				getDataTableProxy: vi.fn().mockResolvedValue(mockDataTableProxy),
 			} as any;
 
 			mockDataTableProxy.updateDataTable.mockResolvedValue(true);
@@ -552,7 +599,7 @@ describe('Table Operations', () => {
 			});
 
 			mockExecuteFunctions.helpers = {
-				getDataTableProxy: jest.fn().mockResolvedValue(mockDataTableProxy),
+				getDataTableProxy: vi.fn().mockResolvedValue(mockDataTableProxy),
 			} as any;
 
 			mockDataTableProxy.updateDataTable.mockResolvedValue(false);

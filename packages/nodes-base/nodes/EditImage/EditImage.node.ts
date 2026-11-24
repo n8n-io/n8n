@@ -2,9 +2,11 @@ import { writeFile as fsWriteFile } from 'fs/promises';
 import getSystemFonts from 'get-system-fonts';
 import gm from 'gm';
 import type {
+	IBinaryData,
 	IDataObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
+	INode,
 	INodeExecutionData,
 	INodeProperties,
 	INodePropertyOptions,
@@ -14,6 +16,67 @@ import type {
 import { NodeOperationError, NodeConnectionTypes, deepCopy } from 'n8n-workflow';
 import { parse as pathParse } from 'path';
 import { file } from 'tmp-promise';
+
+import { router } from './v2/actions/router';
+
+type EditImageNodeOptions = {
+	destinationKey?: string;
+	font?: string;
+	fileName?: string;
+	format?: string;
+	quality?: number;
+};
+
+const GRAVITY_MAP: { [horizontal: string]: { [vertical: string]: string } } = {
+	west: { north: 'northwest', middle: 'west', south: 'southwest' },
+	center: { north: 'north', middle: 'center', south: 'south' },
+	east: { north: 'northeast', middle: 'east', south: 'southeast' },
+};
+
+export function resolveGravity(horizontal: string, vertical: string): string {
+	return GRAVITY_MAP[horizontal]?.[vertical] ?? 'northwest';
+}
+const numericOperationParameters: Record<string, string[]> = {
+	blur: ['blur', 'sigma'],
+	border: ['borderWidth', 'borderHeight'],
+	composite: ['positionX', 'positionY'],
+	create: ['width', 'height'],
+	crop: ['width', 'height', 'positionX', 'positionY'],
+	draw: ['startPositionX', 'startPositionY', 'endPositionX', 'endPositionY', 'cornerRadius'],
+	resize: ['width', 'height'],
+	rotate: ['rotate'],
+	shear: ['degreesX', 'degreesY'],
+	text: ['fontSize', 'positionX', 'positionY', 'lineLength'],
+};
+
+function parseNumericParameter(value: unknown, parameterName: string, node: INode): number {
+	if (
+		(typeof value !== 'number' && typeof value !== 'string') ||
+		(typeof value === 'string' && value.trim() === '')
+	) {
+		throw new NodeOperationError(node, `The value of "${parameterName}" must be a number`);
+	}
+
+	const parsedValue = Number(value);
+	if (!Number.isFinite(parsedValue)) {
+		throw new NodeOperationError(node, `The value of "${parameterName}" must be a number`);
+	}
+
+	return parsedValue;
+}
+
+const VALID_IMAGE_FORMATS = new Set(['bmp', 'gif', 'jpeg', 'png', 'tiff', 'tif', 'webp']);
+
+function validateImageFormat(format: unknown, node: INode): string {
+	if (typeof format === 'string' && VALID_IMAGE_FORMATS.has(format)) {
+		return format;
+	}
+
+	throw new NodeOperationError(
+		node,
+		`Invalid image format: ${format}. Valid formats are: ${Array.from(VALID_IMAGE_FORMATS).join(', ')}`,
+	);
+}
 
 const nodeOperations: INodePropertyOptions[] = [
 	{
@@ -312,6 +375,60 @@ const nodeOperationOptions: INodeProperties[] = [
 		description: 'Y (vertical) position of the text',
 	},
 	{
+		displayName: 'Horizontal Alignment',
+		name: 'horizontalAlignment',
+		type: 'options',
+		options: [
+			{
+				name: 'Left',
+				value: 'west',
+			},
+			{
+				name: 'Center',
+				value: 'center',
+			},
+			{
+				name: 'Right',
+				value: 'east',
+			},
+		],
+		default: 'center',
+		displayOptions: {
+			show: {
+				operation: ['text'],
+				'@version': [{ _cnd: { gte: 1.1 } }],
+			},
+		},
+		description: 'Horizontal alignment of the text',
+	},
+	{
+		displayName: 'Vertical Alignment',
+		name: 'verticalAlignment',
+		type: 'options',
+		options: [
+			{
+				name: 'Top',
+				value: 'north',
+			},
+			{
+				name: 'Middle',
+				value: 'middle',
+			},
+			{
+				name: 'Bottom',
+				value: 'south',
+			},
+		],
+		default: 'middle',
+		displayOptions: {
+			show: {
+				operation: ['text'],
+				'@version': [{ _cnd: { gte: 1.1 } }],
+			},
+		},
+		description: 'Vertical alignment of the text',
+	},
+	{
 		displayName: 'Max Line Length',
 		name: 'lineLength',
 		type: 'number',
@@ -342,6 +459,7 @@ const nodeOperationOptions: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['blur'],
+				'@version': [{ _cnd: { lt: 2 } }],
 			},
 		},
 		description: 'How strong the blur should be',
@@ -358,9 +476,27 @@ const nodeOperationOptions: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				operation: ['blur'],
+				'@version': [{ _cnd: { lt: 2 } }],
 			},
 		},
 		description: 'The sigma of the blur',
+	},
+	{
+		displayName: 'Blur Radius',
+		name: 'blurRadius',
+		type: 'number',
+		typeOptions: {
+			minValue: 0,
+			maxValue: 1000,
+		},
+		default: 5,
+		displayOptions: {
+			show: {
+				operation: ['blur'],
+				'@version': [{ _cnd: { gte: 2 } }],
+			},
+		},
+		description: 'Blur radius in pixels',
 	},
 
 	// ----------------------------------
@@ -756,18 +892,30 @@ export class EditImage implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Edit Image',
 		name: 'editImage',
-		icon: 'fa:image',
+		icon: 'node:edit-image',
 		iconColor: 'purple',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1, 2],
+		defaultVersion: 2,
 		description: 'Edits an image like blur, resize or adding border and text',
 		defaults: {
 			name: 'Edit Image',
-			color: '#553399',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
+			{
+				displayName:
+					'This node version is deprecated. Upgrade to version 2. Image output can look different because version 2 uses a different processing library.',
+				name: 'legacyVersionNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { lt: 2 } }],
+					},
+				},
+			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -872,6 +1020,14 @@ export class EditImage implements INodeType {
 				},
 				options: [
 					{
+						displayName: 'Destination Output Field',
+						name: 'destinationKey',
+						type: 'string',
+						default: 'data',
+						placeholder: 'e.g image',
+						description: 'The name of the output field that will contain the file data',
+					},
+					{
 						displayName: 'File Name',
 						name: 'fileName',
 						type: 'string',
@@ -939,9 +1095,27 @@ export class EditImage implements INodeType {
 						displayOptions: {
 							show: {
 								format: ['jpeg', 'png', 'tiff'],
+								'@version': [{ _cnd: { lt: 2 } }],
 							},
 						},
 						description: 'Sets the jpeg|png|tiff compression level from 0 to 100 (best)',
+					},
+					{
+						displayName: 'Quality',
+						name: 'quality',
+						type: 'number',
+						typeOptions: {
+							minValue: 0,
+							maxValue: 100,
+						},
+						default: 100,
+						displayOptions: {
+							show: {
+								format: ['jpeg', 'webp'],
+								'@version': [{ _cnd: { gte: 2 } }],
+							},
+						},
+						description: 'Sets the JPEG or WebP quality from 0 to 100',
 					},
 				],
 			},
@@ -982,6 +1156,10 @@ export class EditImage implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		if (this.getNode().typeVersion >= 2) {
+			return await router.call(this);
+		}
+
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
@@ -991,11 +1169,19 @@ export class EditImage implements INodeType {
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
 			try {
 				item = items[itemIndex];
+				const node = this.getNode();
 
 				const operation = this.getNodeParameter('operation', itemIndex);
-				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex);
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as
+					| string
+					| IBinaryData;
 
-				const options = this.getNodeParameter('options', itemIndex, {});
+				const options = this.getNodeParameter('options', itemIndex, {}) as EditImageNodeOptions;
+
+				let binaryPropertyName = options.destinationKey;
+				if (!binaryPropertyName) {
+					binaryPropertyName = typeof dataPropertyName === 'string' ? dataPropertyName : 'data';
+				}
 
 				const cleanupFunctions: Array<() => void> = [];
 
@@ -1022,7 +1208,17 @@ export class EditImage implements INodeType {
 					resize: ['height', 'resizeOption', 'width'],
 					rotate: ['backgroundColor', 'rotate'],
 					shear: ['degreesX', 'degreesY'],
-					text: ['font', 'fontColor', 'fontSize', 'lineLength', 'positionX', 'positionY', 'text'],
+					text: [
+						'horizontalAlignment',
+						'verticalAlignment',
+						'font',
+						'fontColor',
+						'fontSize',
+						'lineLength',
+						'positionX',
+						'positionY',
+						'text',
+					],
 					transparent: ['color'],
 				};
 
@@ -1050,6 +1246,27 @@ export class EditImage implements INodeType {
 					];
 				}
 
+				for (const operationData of operations) {
+					const operationName = operationData.operation;
+					if (typeof operationName !== 'string') continue;
+
+					for (const parameterName of numericOperationParameters[operationName] ?? []) {
+						// 'cornerRadius' is applicable only when drawing a rectangle
+						if (parameterName === 'cornerRadius' && operationData.primitive !== 'rectangle')
+							continue;
+
+						operationData[parameterName] = parseNumericParameter(
+							operationData[parameterName],
+							parameterName,
+							node,
+						);
+					}
+				}
+
+				if (options.quality !== undefined) {
+					options.quality = parseNumericParameter(options.quality, 'quality', node);
+				}
+
 				if (operations[0].operation !== 'create') {
 					// "create" generates a new image so does not require any incoming data.
 					this.helpers.assertBinaryData(itemIndex, dataPropertyName);
@@ -1059,6 +1276,8 @@ export class EditImage implements INodeType {
 					);
 					gmInstance = gm(binaryDataBuffer);
 					gmInstance = gmInstance.background('transparent');
+					gmInstance = gmInstance.autoOrient();
+					gmInstance = gmInstance.out('-orient', 'TopLeft');
 				}
 
 				const newItem: INodeExecutionData = {
@@ -1114,16 +1333,10 @@ export class EditImage implements INodeType {
 						cleanupFunctions.push(cleanup);
 						await fsWriteFile(path, binaryDataBuffer);
 
-						if (operations[0].operation === 'create') {
-							// It seems like if the image gets created newly we have to create a new gm instance
-							// else it fails for some reason
-							gmInstance = gm(gmInstance!.stream('png'))
-								.compose(operator)
-								.geometry(geometryString)
-								.composite(path);
-						} else {
-							gmInstance = gmInstance!.compose(operator).geometry(geometryString).composite(path);
-						}
+						gmInstance = gm(gmInstance!.stream('png'))
+							.compose(operator)
+							.geometry(geometryString)
+							.composite(path);
 
 						if (operations.length !== i + 1) {
 							// If there are other operations after the current one create a new gm instance
@@ -1226,12 +1439,13 @@ export class EditImage implements INodeType {
 						});
 
 						// Combine the lines to a single string
-						const renderText = lines.join('\n');
+						// gm escapes `"` internally, but doesn't do it for `\`
+						const renderText = lines.join('\n').replaceAll('\\', '\\\\');
 
+						const fonts = await getSystemFonts();
 						let font = (options.font || operationData.font) as string | undefined;
 						if (!font) {
-							const fonts = await getSystemFonts();
-							font = fonts.find((_font) => _font.includes('Arial.'));
+							font = fonts.find((systemFont) => systemFont.includes('Arial.'));
 						}
 
 						if (!font) {
@@ -1241,6 +1455,22 @@ export class EditImage implements INodeType {
 							);
 						}
 
+						if (!fonts.includes(font)) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'The selected font is not available. Select a font from the options.',
+							);
+						}
+
+						const nodeVersion = this.getNode().typeVersion;
+						const gravity =
+							nodeVersion >= 1.1
+								? resolveGravity(
+										operationData.horizontalAlignment as string,
+										operationData.verticalAlignment as string,
+									)
+								: 'northwest';
+
 						gmInstance = gmInstance!
 							.fill(operationData.fontColor as string)
 							.fontSize(operationData.fontSize as number)
@@ -1249,6 +1479,7 @@ export class EditImage implements INodeType {
 								operationData.positionX as number,
 								operationData.positionY as number,
 								renderText,
+								gravity,
 							);
 					} else if (operationData.operation === 'transparent') {
 						gmInstance = gmInstance!.transparent(operationData.color as string);
@@ -1261,13 +1492,13 @@ export class EditImage implements INodeType {
 					// but the incoming data does not get changed.
 					Object.assign(newItem.binary, item.binary);
 					// Make a deep copy of the binary data we change
-					if (newItem.binary[dataPropertyName]) {
-						newItem.binary[dataPropertyName] = deepCopy(newItem.binary[dataPropertyName]);
+					if (newItem.binary[binaryPropertyName]) {
+						newItem.binary[binaryPropertyName] = deepCopy(newItem.binary[binaryPropertyName]);
 					}
 				}
 
-				if (newItem.binary![dataPropertyName] === undefined) {
-					newItem.binary![dataPropertyName] = {
+				if (newItem.binary![binaryPropertyName] === undefined) {
+					newItem.binary![binaryPropertyName] = {
 						data: '',
 						mimeType: '',
 					};
@@ -1278,18 +1509,19 @@ export class EditImage implements INodeType {
 				}
 
 				if (options.format !== undefined) {
-					gmInstance = gmInstance!.setFormat(options.format as string);
-					newItem.binary![dataPropertyName].fileExtension = options.format as string;
-					newItem.binary![dataPropertyName].mimeType = `image/${options.format}`;
-					const fileName = newItem.binary![dataPropertyName].fileName;
+					const format = validateImageFormat(options.format, this.getNode());
+					gmInstance = gmInstance!.setFormat(format);
+					newItem.binary![binaryPropertyName].fileExtension = options.format as string;
+					newItem.binary![binaryPropertyName].mimeType = `image/${options.format}`;
+					const fileName = newItem.binary![binaryPropertyName].fileName;
 					if (fileName?.includes('.')) {
-						newItem.binary![dataPropertyName].fileName =
+						newItem.binary![binaryPropertyName].fileName =
 							fileName.split('.').slice(0, -1).join('.') + '.' + options.format;
 					}
 				}
 
 				if (options.fileName !== undefined) {
-					newItem.binary![dataPropertyName].fileName = options.fileName as string;
+					newItem.binary![binaryPropertyName].fileName = options.fileName as string;
 				}
 
 				returnData.push(
@@ -1302,8 +1534,8 @@ export class EditImage implements INodeType {
 							}
 
 							const binaryData = await this.helpers.prepareBinaryData(Buffer.from(buffer));
-							newItem.binary![dataPropertyName] = {
-								...newItem.binary![dataPropertyName],
+							newItem.binary![binaryPropertyName] = {
+								...newItem.binary![binaryPropertyName],
 								...binaryData,
 							};
 

@@ -1,0 +1,574 @@
+import type { JsonObject, StepExecutionRequest, StepSlots, WorkflowGraph } from '@n8n/engine';
+import { noopResponseEmitter } from '@n8n/engine';
+import type { ExecuteContext } from 'n8n-core';
+import { UnrecognizedNodeTypeError } from 'n8n-core';
+import { NoOp } from 'n8n-nodes-base/nodes/NoOp/NoOp.node';
+// The Wait node's source pulls in Webhook utils that fail this package's tsconfig, so it comes from dist.
+import { Wait } from 'n8n-nodes-base/dist/nodes/Wait/Wait.node';
+import type {
+	CloseFunction,
+	IConnections,
+	IDataObject,
+	INode,
+	INodeCredentials,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+	INodeTypes,
+	IVersionedNodeType,
+	IWorkflowBase,
+	IWorkflowExecuteAdditionalData,
+} from 'n8n-workflow';
+import { Node, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+
+import type { AdditionalDataContext, SubWorkflowResolver } from '../types';
+import { V1StepExecutor } from '../v1-step-executor';
+
+class EchoParam implements INodeType {
+	description = {
+		displayName: 'Echo Param',
+		name: 'echoParam',
+		group: ['transform'],
+		version: 1,
+		description: 'Echoes a parameter',
+		defaults: { name: 'Echo Param' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [{ displayName: 'Message', name: 'message', type: 'string', default: '' }],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const items = this.getInputData();
+		return await Promise.resolve([
+			items.map((_, i) => ({
+				json: { message: this.getNodeParameter('message', i) as string },
+			})),
+		]);
+	}
+}
+
+class AlwaysFails implements INodeType {
+	description = {
+		displayName: 'Always Fails',
+		name: 'alwaysFails',
+		group: ['transform'],
+		version: 1,
+		description: 'Throws',
+		defaults: { name: 'Always Fails' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		return await Promise.reject(new Error('boom from node'));
+	}
+}
+
+class FailsWithDescription implements INodeType {
+	description = {
+		displayName: 'Fails With Description',
+		name: 'failsWithDescription',
+		group: ['transform'],
+		version: 1,
+		description: 'Throws a node error with a description',
+		defaults: { name: 'Fails With Description' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		return await Promise.reject(
+			new NodeOperationError(this.getNode(), 'request to https://api.test?key=secret failed', {
+				description: 'The service rejected the request',
+			}),
+		);
+	}
+}
+
+class NoExecute implements INodeType {
+	description = {
+		displayName: 'No Execute',
+		name: 'noExecute',
+		group: ['trigger'],
+		version: 1,
+		description: 'Cannot run as a step',
+		defaults: { name: 'No Execute' },
+		inputs: [],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [],
+	} as unknown as INodeType['description'];
+}
+
+class NewStyleEcho extends Node {
+	description = {
+		displayName: 'New Style Echo',
+		name: 'newStyleEcho',
+		group: ['transform'],
+		version: 1,
+		description: 'New context API node',
+		defaults: { name: 'New Style Echo' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [],
+	} as unknown as INodeTypeDescription;
+
+	async execute(context: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		return await Promise.resolve([
+			context.getInputData().map((item) => ({ json: { ...item.json, newStyle: true } })),
+		]);
+	}
+}
+
+class TwoOutputs implements INodeType {
+	description = {
+		displayName: 'Two Outputs',
+		name: 'twoOutputs',
+		group: ['transform'],
+		version: 1,
+		description: 'Emits on two output slots',
+		defaults: { name: 'Two Outputs' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
+		properties: [],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const items = this.getInputData();
+		return await Promise.resolve([
+			items,
+			items.map((item) => ({ json: { ...item.json, second: true } })),
+		]);
+	}
+}
+
+const pushCloseFunction = (context: IExecuteFunctions, close: CloseFunction) => {
+	(context as unknown as ExecuteContext).closeFunctions.push(close);
+};
+
+class SucceedsWithFailingCleanup implements INodeType {
+	description = {
+		displayName: 'Succeeds With Failing Cleanup',
+		name: 'succeedsWithFailingCleanup',
+		group: ['transform'],
+		version: 1,
+		description: 'Registers failing cleanup',
+		defaults: { name: 'Succeeds With Failing Cleanup' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		pushCloseFunction(this, async () => {
+			return await Promise.reject(new Error('cleanup boom'));
+		});
+		return await Promise.resolve([this.getInputData()]);
+	}
+}
+
+class FailsWithFailingCleanup implements INodeType {
+	description = {
+		displayName: 'Fails With Failing Cleanup',
+		name: 'failsWithFailingCleanup',
+		group: ['transform'],
+		version: 1,
+		description: 'Fails and registers failing cleanup',
+		defaults: { name: 'Fails With Failing Cleanup' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		pushCloseFunction(this, async () => {
+			return await Promise.reject(new Error('cleanup boom'));
+		});
+		return await Promise.reject(new Error('boom from node'));
+	}
+}
+
+class ReturnsEngineRequest extends Node {
+	description = {
+		displayName: 'Returns Engine Request',
+		name: 'returnsEngineRequest',
+		group: ['transform'],
+		version: 1,
+		description: 'Returns a sub-node execution request',
+		defaults: { name: 'Returns Engine Request' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [],
+	} as unknown as INodeTypeDescription;
+
+	async execute(): Promise<INodeExecutionData[][]> {
+		return await Promise.resolve({
+			actions: [],
+			metadata: {},
+		} as unknown as INodeExecutionData[][]);
+	}
+}
+
+/**
+ * Calls `putExecutionToWait` with any date, including invalid dates and
+ * sentinels, and with or without the resume flag. The real Wait node cannot do
+ * this without a resume URL. The return value is marked, so a test can tell it
+ * from the input.
+ */
+class WaitsUntil implements INodeType {
+	description = {
+		displayName: 'Waits Until',
+		name: 'waitsUntil',
+		group: ['transform'],
+		version: 1,
+		description: 'Puts the execution to wait until a date',
+		defaults: { name: 'Waits Until' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [
+			{ displayName: 'Wait Till', name: 'waitTill', type: 'string', default: '' },
+			{
+				displayName: 'Accepts Resume Request',
+				name: 'acceptsResumeRequest',
+				type: 'options',
+				options: [
+					{ name: 'Omitted', value: 'omitted' },
+					{ name: 'True', value: 'true' },
+					{ name: 'False', value: 'false' },
+				],
+				default: 'omitted',
+			},
+		],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const waitTill = new Date(this.getNodeParameter('waitTill', 0) as string);
+		const flag = this.getNodeParameter('acceptsResumeRequest', 0) as string;
+		if (flag === 'omitted') {
+			await this.putExecutionToWait(waitTill);
+		} else {
+			await this.putExecutionToWait(waitTill, { acceptsResumeRequest: flag === 'true' });
+		}
+		return [this.getInputData().map((item) => ({ json: { ...item.json, returned: true } }))];
+	}
+}
+
+/** Runs a sub-workflow through the host, as the Execute Workflow node does. */
+class RunsSubWorkflow implements INodeType {
+	description = {
+		displayName: 'Runs Sub Workflow',
+		name: 'runsSubWorkflow',
+		group: ['transform'],
+		version: 1,
+		description: 'Executes a sub-workflow and returns its input',
+		defaults: { name: 'Runs Sub Workflow' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		await this.executeWorkflow({ id: 'sub-workflow' }, this.getInputData());
+		return [this.getInputData()];
+	}
+}
+
+/** Starts a sub-workflow without waiting for it, and reports the sub-execution id. */
+class FiresSubWorkflow implements INodeType {
+	description = {
+		displayName: 'Fires Sub Workflow',
+		name: 'firesSubWorkflow',
+		group: ['transform'],
+		version: 1,
+		description: 'Starts a sub-workflow and moves on',
+		defaults: { name: 'Fires Sub Workflow' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const { executionId, data } = await this.executeWorkflow(
+			{ id: 'sub-workflow' },
+			this.getInputData(),
+			undefined,
+			{
+				doNotWaitToFinish: true,
+			},
+		);
+		return [[{ json: { subExecutionId: executionId, data } }]];
+	}
+}
+
+/** Returns what the sub-workflow returned, as the Execute Workflow node does. */
+class EchoesSubWorkflow implements INodeType {
+	description = {
+		displayName: 'Echoes Sub Workflow',
+		name: 'echoesSubWorkflow',
+		group: ['transform'],
+		version: 1,
+		description: 'Executes a sub-workflow and returns its output',
+		defaults: { name: 'Echoes Sub Workflow' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [
+			{ displayName: 'Last run only', name: 'returnLastRunOnly', type: 'boolean', default: false },
+		],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const returnLastRunOnly = this.getNodeParameter('returnLastRunOnly', 0, false) as boolean;
+		const { data } = await this.executeWorkflow(
+			{ id: 'sub-workflow' },
+			this.getInputData(),
+			undefined,
+			{
+				returnLastRunOnly,
+			},
+		);
+		return data.map((slot) => slot ?? []);
+	}
+}
+
+/** Runs a sub-workflow given inline, which the data plane cannot resolve. */
+class RunsInlineSubWorkflow implements INodeType {
+	description = {
+		displayName: 'Runs Inline Sub Workflow',
+		name: 'runsInlineSubWorkflow',
+		group: ['transform'],
+		version: 1,
+		description: 'Executes an inline sub-workflow',
+		defaults: { name: 'Runs Inline Sub Workflow' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		await this.executeWorkflow(
+			{
+				code: {
+					id: 'inline',
+					name: 'Inline',
+					nodes: [],
+					connections: {},
+				} as unknown as IWorkflowBase,
+			},
+			this.getInputData(),
+		);
+		return [this.getInputData()];
+	}
+}
+
+/** Calls a sub-workflow and then fails on its own, before the call could matter. */
+class CallsSubWorkflowThenFails implements INodeType {
+	description = {
+		displayName: 'Calls Sub Workflow Then Fails',
+		name: 'callsSubWorkflowThenFails',
+		group: ['transform'],
+		version: 1,
+		description: 'Executes a sub-workflow and then throws',
+		defaults: { name: 'Calls Sub Workflow Then Fails' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		await this.executeWorkflow({ id: 'sub-workflow' }, this.getInputData());
+		throw new Error('boom after the call');
+	}
+}
+
+/** Runs a sub-workflow once per item, as the deprecated "each" mode does. */
+class RunsSubWorkflowPerItem implements INodeType {
+	description = {
+		displayName: 'Runs Sub Workflow Per Item',
+		name: 'runsSubWorkflowPerItem',
+		group: ['transform'],
+		version: 1,
+		description: 'Executes a sub-workflow for each item',
+		defaults: { name: 'Runs Sub Workflow Per Item' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		for (const item of this.getInputData()) {
+			await this.executeWorkflow({ id: 'sub-workflow' }, [item]);
+		}
+		return [this.getInputData()];
+	}
+}
+
+/** Builds a reply link or approval button references, as a send-and-wait node does. */
+class AsksForReply implements INodeType {
+	description = {
+		displayName: 'Asks For Reply',
+		name: 'asksForReply',
+		group: ['transform'],
+		version: 1,
+		description: 'Builds a reply link or button reference',
+		defaults: { name: 'Asks For Reply' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [
+			{
+				displayName: 'Reply',
+				name: 'reply',
+				type: 'options',
+				options: [
+					{ name: 'Link', value: 'link' },
+					{ name: 'Bare Link', value: 'bareLink' },
+					{ name: 'Encoded Link', value: 'encodedLink' },
+					{ name: 'Button', value: 'button' },
+				],
+				default: 'link',
+			},
+			{ displayName: 'Wait Till', name: 'waitTill', type: 'string', default: '' },
+		],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const replies: Record<string, () => string | string[]> = {
+			link: () => this.getSignedResumeUrl({ approved: 'true' }),
+			bareLink: () => this.getSignedResumeUrl(),
+			encodedLink: () => this.getSignedResumeUrl({ note: 'a b&c', signature: 'forged' }),
+			button: () =>
+				(['approve', 'decline'] as const).map((decision) =>
+					this.getApprovalCallbackReference(decision),
+				),
+		};
+		const reference = replies[this.getNodeParameter('reply', 0) as string]();
+		const waitTill = this.getNodeParameter('waitTill', 0) as string;
+		if (waitTill) await this.putExecutionToWait(new Date(waitTill));
+		return [[{ json: { reference } }]];
+	}
+}
+
+const registry = new Map<string, INodeType>([
+	['n8n-nodes-base.noOp', new NoOp()],
+	['test.echoParam', new EchoParam()],
+	['test.alwaysFails', new AlwaysFails()],
+	['test.failsWithDescription', new FailsWithDescription()],
+	['test.noExecute', new NoExecute()],
+	['test.newStyleEcho', new NewStyleEcho() as unknown as INodeType],
+	['test.twoOutputs', new TwoOutputs()],
+	['test.succeedsWithFailingCleanup', new SucceedsWithFailingCleanup()],
+	['test.failsWithFailingCleanup', new FailsWithFailingCleanup()],
+	['test.returnsEngineRequest', new ReturnsEngineRequest() as unknown as INodeType],
+	['test.waitsUntil', new WaitsUntil()],
+	// The shim serves `executeWorkflow` for the Execute Sub-workflow node only, so the
+	// fixtures that call it stand in for that node by its type.
+	['n8n-nodes-base.executeWorkflow', new RunsSubWorkflow()],
+	['test.firesSubWorkflow', new FiresSubWorkflow()],
+	['test.echoesSubWorkflow', new EchoesSubWorkflow()],
+	['test.runsInlineSubWorkflow', new RunsInlineSubWorkflow()],
+	['test.runsSubWorkflowPerItem', new RunsSubWorkflowPerItem()],
+	['test.callsSubWorkflowThenFails', new CallsSubWorkflowThenFails()],
+	['test.runsSubWorkflow', new RunsSubWorkflow()],
+	['test.asksForReply', new AsksForReply()],
+	['n8n-nodes-base.wait', new Wait() as unknown as INodeType],
+]);
+
+export const testNodeTypes: INodeTypes = {
+	getByName: (type: string): INodeType | IVersionedNodeType => {
+		const nodeType = registry.get(type);
+		if (!nodeType) throw new UnrecognizedNodeTypeError('test', type);
+		return nodeType;
+	},
+	getByNameAndVersion: (type: string): INodeType => {
+		const nodeType = registry.get(type);
+		if (!nodeType) throw new UnrecognizedNodeTypeError('test', type);
+		return nodeType;
+	},
+	getKnownTypes: (): IDataObject => ({}),
+};
+
+export const testAdditionalDataFactory = async ({
+	executionId,
+}: AdditionalDataContext): Promise<IWorkflowExecuteAdditionalData> =>
+	await Promise.resolve({
+		executionId,
+		restApiUrl: 'http://localhost:5678/rest',
+		instanceBaseUrl: 'http://localhost:5678',
+		webhookBaseUrl: 'http://localhost:5678/webhook',
+		webhookTestBaseUrl: 'http://localhost:5678/webhook-test',
+		webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+		formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+		variables: {},
+		hooks: undefined,
+		credentialsHelper: undefined,
+		// As the data plane answers: no run data of another execution.
+		getRunExecutionData: async () => undefined,
+	} as unknown as IWorkflowExecuteAdditionalData);
+
+export const v1Workflow = (
+	nodes: Array<{
+		id: string;
+		name: string;
+		type: string;
+		typeVersion?: number;
+		parameters?: IDataObject;
+		credentials?: INodeCredentials;
+		onError?: INode['onError'];
+		disabled?: boolean;
+		retryOnFail?: boolean;
+		alwaysOutputData?: boolean;
+		executeOnce?: boolean;
+	}>,
+	connections: IConnections = {},
+): IWorkflowBase =>
+	({
+		id: 'wf-1',
+		name: 'fixture',
+		active: false,
+		nodes: nodes.map((n) => ({ typeVersion: 1, position: [0, 0], parameters: {}, ...n })),
+		connections,
+	}) as unknown as IWorkflowBase;
+
+export const stepRequest = (
+	graph: WorkflowGraph,
+	nodeId: string,
+	inputs: StepSlots,
+): StepExecutionRequest => ({
+	node: graph.nodes.find((n) => n.id === nodeId)!,
+	inputs,
+	context: {
+		executionId: 'exec-1',
+		stepId: nodeId,
+		workflowId: 'wf-1',
+		mode: 'manual',
+		iteration: 0,
+		callerContext: { hostMode: 'manual' },
+		responseExpectation: { kind: 'none' },
+	},
+	respond: noopResponseEmitter,
+});
+
+/** For a test that calls no sub-workflow: a call is a test bug, so it fails loudly. */
+export const noSubWorkflows: SubWorkflowResolver = async () =>
+	await Promise.reject(new Error('this test resolves no sub-workflows'));
+
+export const testStepExecutor = (
+	graph: WorkflowGraph,
+	outputsByNodeId: Record<string, StepSlots> = {},
+): V1StepExecutor =>
+	new V1StepExecutor({
+		nodeTypes: testNodeTypes,
+		additionalDataFactory: testAdditionalDataFactory,
+		resolveSubWorkflow: noSubWorkflows,
+		// every fixture node runs once, so its outputs sit at iteration 0
+		loadStepData: async () =>
+			await Promise.resolve({
+				graph,
+				outputsByNode: Object.fromEntries(
+					Object.entries(outputsByNodeId).map(([nodeId, outputs]) => [nodeId, { 0: outputs }]),
+				),
+			}),
+	});
+
+export const items = (...objects: JsonObject[]): StepSlots => [objects.map((json) => ({ json }))];

@@ -1,12 +1,12 @@
-import { mock } from 'jest-mock-extended';
 import type { NpsSurveyState } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { UserSettingsController } from '@/controllers/user-settings.controller';
 import type { NpsSurveyRequest } from '@/requests';
 import type { UserService } from '@/services/user.service';
 
 const NOW = 1717607016208;
-jest.useFakeTimers({
+vi.useFakeTimers({
 	now: NOW,
 });
 

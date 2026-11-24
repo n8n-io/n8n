@@ -1,7 +1,8 @@
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
-import { jsonParse, UnexpectedError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { EXTERNAL_SECRETS_DB_KEY } from './constants';
 import type { ExternalSecretsSettings, SecretsProviderSettings } from './types';
@@ -44,7 +45,7 @@ export class ExternalSecretsSettingsStore {
 			return {};
 		}
 
-		this.cache = this.decrypt(encryptedSettings);
+		this.cache = await this.decrypt(encryptedSettings);
 		return this.cache;
 	}
 
@@ -59,7 +60,7 @@ export class ExternalSecretsSettingsStore {
 	 * Save all provider settings to database and update cache
 	 */
 	async save(settings: ExternalSecretsSettings): Promise<void> {
-		const encryptedSettings = this.encrypt(settings);
+		const encryptedSettings = await this.encrypt(settings);
 
 		await this.settingsRepo.upsert(
 			{
@@ -124,8 +125,8 @@ export class ExternalSecretsSettingsStore {
 	/**
 	 * Decrypt settings from database
 	 */
-	private decrypt(encryptedData: string): ExternalSecretsSettings {
-		const decryptedData = this.cipher.decrypt(encryptedData);
+	private async decrypt(encryptedData: string): Promise<ExternalSecretsSettings> {
+		const decryptedData = await this.cipher.decryptV2(encryptedData);
 
 		try {
 			return jsonParse<ExternalSecretsSettings>(decryptedData);
@@ -139,7 +140,7 @@ export class ExternalSecretsSettingsStore {
 	/**
 	 * Encrypt settings for database storage
 	 */
-	private encrypt(settings: ExternalSecretsSettings): string {
-		return this.cipher.encrypt(settings);
+	private async encrypt(settings: ExternalSecretsSettings): Promise<string> {
+		return await this.cipher.encryptV2(settings);
 	}
 }

@@ -5,6 +5,7 @@ import type { IconSize, CalloutTheme } from '../../types';
 import N8nIcon from '../N8nIcon';
 import { type IconName } from '../N8nIcon/icons';
 import N8nText from '../N8nText';
+import N8nTooltip from '../N8nTooltip';
 
 const CALLOUT_DEFAULT_ICONS: Record<string, IconName> = {
 	info: 'info',
@@ -16,6 +17,7 @@ const CALLOUT_DEFAULT_ICONS: Record<string, IconName> = {
 interface CalloutProps {
 	theme: CalloutTheme;
 	icon?: IconName;
+	iconTooltip?: string;
 	iconSize?: IconSize;
 	iconless?: boolean;
 	slim?: boolean;
@@ -25,6 +27,7 @@ interface CalloutProps {
 
 defineOptions({ name: 'N8nCallout' });
 const props = withDefaults(defineProps<CalloutProps>(), {
+	iconTooltip: undefined,
 	iconSize: 'medium',
 	roundCorners: true,
 });
@@ -58,9 +61,12 @@ const getIconSize = computed<IconSize>(() => {
 	<div :class="classes" role="alert">
 		<div :class="$style.messageSection">
 			<div v-if="!iconless" :class="$style.icon">
-				<N8nIcon :icon="getIcon" :size="getIconSize" />
+				<N8nTooltip v-if="iconTooltip" :content="iconTooltip">
+					<N8nIcon :icon="getIcon" :size="getIconSize" />
+				</N8nTooltip>
+				<N8nIcon v-else :icon="getIcon" :size="getIconSize" />
 			</div>
-			<N8nText size="small">
+			<N8nText size="small" :class="$style.text">
 				<slot />
 			</N8nText>
 			&nbsp;
@@ -116,6 +122,10 @@ const getIconSize = computed<IconSize>(() => {
 	align-items: center;
 }
 
+.text {
+	--n8n-markdown--font-size--base: var(--font-size--2xs);
+}
+
 .info,
 .custom {
 	border-color: var(--callout--border-color--info);
@@ -164,10 +174,14 @@ const getIconSize = computed<IconSize>(() => {
 
 .secondary {
 	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	border-color: var(--callout--border-color--secondary);
 	background-color: var(--callout--color--background--secondary);
 	color: var(--callout--color--text--secondary);
+
+	.messageSection > :global(.n8n-text) {
+		font-weight: inherit;
+	}
 
 	.icon {
 		color: var(--callout--icon-color--secondary);

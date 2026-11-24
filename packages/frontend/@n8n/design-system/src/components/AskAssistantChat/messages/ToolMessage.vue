@@ -92,7 +92,7 @@ const statusColor = computed(() => {
 </template>
 
 <style lang="scss" module>
-@use '../../../css/mixins/animations';
+@use '../../../css/mixins/motion';
 
 .toolMessage {
 	width: 100%;
@@ -134,7 +134,7 @@ const statusColor = computed(() => {
 }
 
 .sectionTitle {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--shade-1);
 	margin-bottom: var(--spacing--3xs);

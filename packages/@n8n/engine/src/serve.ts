@@ -1,0 +1,89 @@
+import { EngineConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
+
+import { AllowAllAdmittance } from './admittance';
+import { SharedSecretIdentityVerifier } from './auth';
+import { createDataSource } from './database';
+import { createConsoleLogger } from './logging';
+import { createInMemoryWorkQueues } from './queue';
+import { noopExecutionResponseSender } from './response-channel';
+import { createEngineRuntime } from './runtime';
+import { assertSecureTransport, createEngineHttpServer, openEngineTls } from './tls';
+
+const logger = createConsoleLogger();
+
+async function main(): Promise<void> {
+	const config = Container.get(EngineConfig);
+
+	// Refused rather than degraded: an engine with nowhere to record an execution
+	// would report healthy while being unable to run one.
+	if (!config.databaseUrl) {
+		throw new Error('engine: N8N_ENGINE_DATABASE_URL is not set');
+	}
+
+	if (!config.authSecret) {
+		throw new Error('engine: N8N_ENGINE_AUTH_SECRET is not set');
+	}
+
+	// Before the database, so a bad certificate fails the boot in a second.
+	const tls = openEngineTls(config, logger);
+	assertSecureTransport(config, tls !== undefined, {}, logger);
+
+	const dataSource = createDataSource(config.databaseUrl, {
+		poolSize: config.databasePoolSize,
+		connectTimeoutMS: config.databaseConnectionTimeoutMs,
+	});
+	await dataSource.initialize();
+	await dataSource.runMigrations();
+
+	const runtime = createEngineRuntime({
+		dataSource,
+		admittance: new AllowAllAdmittance(),
+		identityVerifier: new SharedSecretIdentityVerifier(config.authSecret),
+		logger,
+		// Nothing in this process waits for a response: the caller reads the run
+		// over the API instead.
+		responseSender: noopExecutionResponseSender,
+		queues: createInMemoryWorkQueues({
+			concurrency: {
+				step: config.stepConcurrency,
+				orchestration: config.orchestrationConcurrency,
+			},
+			logger,
+		}),
+	});
+	runtime.start();
+
+	const server = createEngineHttpServer(runtime.app, tls).listen(config.port, config.host, () => {
+		logger.info(`listening on ${tls ? 'https' : 'http'}://${config.host}:${config.port}`);
+	});
+
+	let shuttingDown = false;
+	const shutdown = async (signal: string): Promise<void> => {
+		if (shuttingDown) return;
+		shuttingDown = true;
+		logger.info(`received ${signal}, shutting down`);
+		tls?.close();
+		await new Promise<void>((resolve, reject) => {
+			server.close((error) => (error ? reject(error) : resolve()));
+		});
+		await runtime.stop();
+		if (dataSource.isInitialized) await dataSource.destroy();
+		process.exit(0);
+	};
+
+	const onSignal = (signal: string): void => {
+		shutdown(signal).catch((error: unknown) => {
+			logger.error('error during shutdown', { error });
+			process.exit(1);
+		});
+	};
+
+	process.on('SIGTERM', () => onSignal('SIGTERM'));
+	process.on('SIGINT', () => onSignal('SIGINT'));
+}
+
+main().catch((error: unknown) => {
+	logger.error('failed to start', { error });
+	process.exit(1);
+});

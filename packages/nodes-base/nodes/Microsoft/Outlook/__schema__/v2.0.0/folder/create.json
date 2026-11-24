@@ -1,9 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "@odata.context": {
-            "type": "string"
-        },
         "childFolderCount": {
             "type": "integer"
         },
@@ -27,7 +24,10 @@
         },
         "unreadItemCount": {
             "type": "integer"
+        },
+        "wellKnownName": {
+            "type": "null"
         }
     },
-    "version": 1
+    "version": 3
 }

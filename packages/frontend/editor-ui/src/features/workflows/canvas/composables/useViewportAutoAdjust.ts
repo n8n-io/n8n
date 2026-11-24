@@ -10,6 +10,12 @@ export function useViewportAutoAdjust(
 	setViewport: SetViewport,
 ) {
 	const canvasRect = ref<Rect>();
+	// Track whether the last recorded rect came from a hidden tab. When the
+	// browser tab is in the background, offsetWidth/offsetHeight can be 0 or a
+	// VueFlow fallback (500×500). The first resize after the tab becomes visible
+	// is not a real user-initiated resize — applying the delta would shift the
+	// viewport that fitView just positioned correctly.
+	let lastRectWasHidden = document.hidden;
 
 	watch(
 		viewportRef,
@@ -22,10 +28,14 @@ export function useViewportAutoAdjust(
 				const entry = entries[0];
 
 				if (entry) {
+					if (document.hidden) {
+						lastRectWasHidden = true;
+					}
 					canvasRect.value = entry.contentRect;
 				}
 			});
 
+			lastRectWasHidden = document.hidden;
 			canvasRect.value = {
 				x: vp.offsetLeft,
 				y: vp.offsetTop,
@@ -40,6 +50,14 @@ export function useViewportAutoAdjust(
 
 	watch(canvasRect, async (newRect, oldRect) => {
 		if (!newRect || !oldRect) {
+			return;
+		}
+
+		// Skip the adjustment when the old rect was captured while the tab was
+		// hidden — the delta would be meaningless (e.g. 500→769) and would shift
+		// the viewport away from where fitView just placed it.
+		if (lastRectWasHidden) {
+			lastRectWasHidden = false;
 			return;
 		}
 

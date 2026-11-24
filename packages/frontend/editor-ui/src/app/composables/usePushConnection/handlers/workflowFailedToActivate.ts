@@ -1,28 +1,59 @@
 import type { WorkflowFailedToActivate } from '@n8n/api-types/push/workflow';
-import { useToast } from '@/app/composables/useToast';
-import type { WorkflowState } from '@/app/composables/useWorkflowState';
+import { useToast } from '@n8n/composables/useToast';
+import { useActivationError } from '@/app/composables/useActivationError';
 import { useI18n } from '@n8n/i18n';
+import { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { clearPendingActivationModal } from '@/app/composables/workflowPublicationConfirmation';
+import type { PushHandlerOptions } from './types';
 
 export async function workflowFailedToActivate(
 	{ data }: WorkflowFailedToActivate,
-	options: { workflowState: WorkflowState },
+	{ documentId }: PushHandlerOptions,
 ) {
-	const workflowsStore = useWorkflowsStore();
+	// The publication failed: make sure the success modal deferred by the
+	// publish flow never shows, even when this tab moved to another workflow.
+	clearPendingActivationModal(data.workflowId);
 
-	if (workflowsStore.workflowId !== data.workflowId) {
+	const workflowDocumentStore = useWorkflowDocumentStore(documentId);
+
+	if (workflowDocumentStore.workflowId !== data.workflowId) {
 		return;
 	}
 
-	workflowsStore.setWorkflowInactive(data.workflowId);
-	options.workflowState.setActive(null);
+	const settingsStore = useSettingsStore();
+	if (settingsStore.isWorkflowPublicationServiceEnabled) {
+		// Failed activation is recoverable — preserve the published version and set
+		// the lifecycle to 'failed' so the UI can surface the error without clearing
+		// the active state.
+		workflowDocumentStore.setPublicationStatus({
+			status: 'failed',
+			failures: data.nodeId
+				? [
+						{
+							nodeId: data.nodeId,
+							nodeName: workflowDocumentStore.getNodeById(data.nodeId)?.name ?? data.nodeId,
+							errorMessage: data.errorMessage,
+						},
+					]
+				: [],
+		});
+	} else {
+		// Legacy path: clear active state so the UI reflects the deactivated workflow.
+		const workflowsStore = useWorkflowsStore();
+		workflowsStore.setWorkflowInactive(data.workflowId);
+		workflowDocumentStore.setActiveState({ activeVersionId: null, activeVersion: null });
+	}
 
 	const toast = useToast();
 	const i18n = useI18n();
-	toast.showError(
-		new Error(data.errorMessage),
-		i18n.baseText('workflowActivator.showError.title', {
-			interpolate: { newStateName: 'activated' },
-		}) + ':',
-	);
+	const { errorMessage } = useActivationError(() => data.nodeId);
+	const title = i18n.baseText('workflowActivator.showError.title', {
+		interpolate: { newStateName: 'published' },
+	});
+	toast.showError(new Error(data.errorMessage), title, {
+		message: errorMessage.value,
+		description: data.errorDescription,
+	});
 }

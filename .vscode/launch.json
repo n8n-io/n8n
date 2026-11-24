@@ -17,7 +17,8 @@
 		},
 		{
 			"name": "Attach to running n8n",
-			"processId": "${command:PickProcess}",
+			"preLaunchTask": "Open n8n inspector port",
+			"port": 9229,
 			"request": "attach",
 			"skipFiles": ["<node_internals>/**"],
 			"type": "node"
@@ -31,6 +32,21 @@
 			"type": "node",
 			"outputCapture": "std",
 			"killBehavior": "forceful"
+		},
+		{
+			"name": "Launch n8n CLI worker dev with debug",
+			"runtimeExecutable": "pnpm",
+			"cwd": "${workspaceFolder}/packages/cli",
+			"runtimeArgs": ["run", "dev:worker", "--", "--inspect-brk"],
+			"console": "integratedTerminal",
+			"restart": true,
+			"autoAttachChildProcesses": true,
+			"request": "launch",
+			"skipFiles": ["<node_internals>/**"],
+			"type": "node",
+			"envFile": "${workspaceFolder}/.env",
+			"outputCapture": "std",
+			"killBehavior": "polite"
 		},
 		{
 			"name": "Launch n8n CLI dev with debug",

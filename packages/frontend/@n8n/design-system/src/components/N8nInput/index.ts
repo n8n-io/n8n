@@ -1,3 +1,2 @@
-import N8nInput from './Input.vue';
-
-export default N8nInput;
+export { default as N8nInput, default } from './Input.vue';
+export type * from './Input.types';

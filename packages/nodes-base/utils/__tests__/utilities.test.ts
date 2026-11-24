@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { INode, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { MYSQL_NODE_TYPE, POSTGRES_NODE_TYPE } from 'n8n-workflow';
 
@@ -10,6 +10,7 @@ import {
 	getResolvables,
 	keysToLowercase,
 	removeTrailingSlash,
+	resolveExpressions,
 	shuffleArray,
 	sortItemKeysByPriorityList,
 	wrapData,
@@ -114,6 +115,38 @@ describe('Test keysToLowercase', () => {
 		expect(test4).toEqual(true);
 		expect(test5).toEqual(null);
 		expect(test6).toEqual(undefined);
+	});
+});
+
+describe('resolveExpressions', () => {
+	const evaluate = (values: Record<string, unknown>) => (resolvable: string) => values[resolvable];
+
+	it.each(['$&', '$$', "$'", '$`', "'^[0-9]+$'"])('should insert %s literally', (value) => {
+		expect(resolveExpressions('SELECT {{ $json.v }}', evaluate({ '{{ $json.v }}': value }))).toBe(
+			`SELECT ${value}`,
+		);
+	});
+
+	it('should not substitute an expression inside an already resolved value', () => {
+		const values = { '{{ $json.a }}': '{{ $json.b }}', '{{ $json.b }}': 'b' };
+
+		expect(resolveExpressions('{{ $json.a }} {{ $json.b }}', evaluate(values))).toBe(
+			'{{ $json.b }} b',
+		);
+	});
+
+	it('should resolve repeated expressions', () => {
+		expect(
+			resolveExpressions('{{ $json.a }}-{{ $json.a }}', evaluate({ '{{ $json.a }}': 1 })),
+		).toBe('1-1');
+	});
+
+	it('should keep String.replace semantics in legacy mode', () => {
+		const values = { '{{ $json.a }}': '{{ $json.b }}$$', '{{ $json.b }}': 'b' };
+
+		expect(
+			resolveExpressions('{{ $json.a }} {{ $json.b }}', evaluate(values), { legacy: true }),
+		).toBe('b$ {{ $json.b }}');
 	});
 });
 
@@ -337,7 +370,7 @@ describe('addExecutionHints', () => {
 				return 'INSERT INTO my_test_table VALUES (`{{ $json.name }}`)';
 			}
 		},
-		addExecutionHints: jest.fn(),
+		addExecutionHints: vi.fn(),
 	} as unknown as IExecuteFunctions;
 
 	const insertHint = {
@@ -380,7 +413,7 @@ describe('addExecutionHints', () => {
 
 	it('should add run per item hint to Postgres select operation ', () => {
 		const context = {
-			addExecutionHints: jest.fn(),
+			addExecutionHints: vi.fn(),
 		} as unknown as IExecuteFunctions;
 
 		addExecutionHints(
@@ -397,7 +430,7 @@ describe('addExecutionHints', () => {
 
 	it('should add run per item hint to MySQL select operation', () => {
 		const context = {
-			addExecutionHints: jest.fn(),
+			addExecutionHints: vi.fn(),
 		} as unknown as IExecuteFunctions;
 
 		addExecutionHints(

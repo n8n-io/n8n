@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
+import toPath from 'lodash/toPath';
 
 export interface IExternalSecretsManager {
-	updateSecrets(): Promise<void>;
 	hasSecret(provider: string, name: string): boolean;
 	getSecret(provider: string, name: string): unknown;
 	getSecretNames(provider: string): string[];
@@ -15,10 +15,6 @@ export class ExternalSecretsProxy {
 
 	setManager(manager: IExternalSecretsManager) {
 		this.manager = manager;
-	}
-
-	async update() {
-		await this.manager?.updateSecrets();
 	}
 
 	getSecret(provider: string, name: string) {
@@ -38,6 +34,8 @@ export class ExternalSecretsProxy {
 	}
 
 	listSecrets(provider: string): string[] {
-		return this.manager?.getSecretNames(provider) ?? [];
+		const paths = this.manager?.getSecretNames(provider) ?? [];
+		// Runtime enumeration needs property keys, not discovery paths.
+		return [...new Set(paths.map((path) => toPath(path)[0]))];
 	}
 }

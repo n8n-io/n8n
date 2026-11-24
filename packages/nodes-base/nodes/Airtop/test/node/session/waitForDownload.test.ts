@@ -2,22 +2,21 @@ import * as waitForDownload from '../../../actions/session/waitForDownload.opera
 import { ERROR_MESSAGES } from '../../../constants';
 import * as GenericFunctions from '../../../GenericFunctions';
 import { createMockExecuteFunction } from '../helpers';
+import type { Mock } from 'vitest';
 
-jest.mock('../../../GenericFunctions', () => {
-	const originalModule = jest.requireActual<typeof GenericFunctions>('../../../GenericFunctions');
+vi.mock('../../../GenericFunctions', async () => {
+	const originalModule = await vi.importActual<typeof GenericFunctions>(
+		'../../../GenericFunctions',
+	);
 	return {
 		...originalModule,
-		waitForSessionEvent: jest.fn(),
+		waitForSessionEvent: vi.fn(),
 	};
 });
 
 describe('Test Airtop, session waitForDownload operation', () => {
-	afterAll(() => {
-		jest.unmock('../../../GenericFunctions');
-	});
-
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should wait for download successfully', async () => {
@@ -28,7 +27,7 @@ describe('Test Airtop, session waitForDownload operation', () => {
 			downloadUrl: 'https://example.com/download/test-file-123',
 		};
 
-		(GenericFunctions.waitForSessionEvent as jest.Mock).mockResolvedValue(mockEvent);
+		(GenericFunctions.waitForSessionEvent as Mock).mockResolvedValue(mockEvent);
 
 		const nodeParameters = {
 			resource: 'session',

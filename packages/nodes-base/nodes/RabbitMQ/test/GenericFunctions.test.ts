@@ -1,12 +1,20 @@
 import type { Channel, Connection, ConsumeMessage, Message } from 'amqplib';
-import { mock, mockDeep } from 'jest-mock-extended';
-import type { INode, IRun, ITriggerFunctions, IWorkflowMetadata } from 'n8n-workflow';
+import { mock, mockDeep } from 'vitest-mock-extended';
+import type {
+	IExecuteResponsePromiseData,
+	INode,
+	IRun,
+	ITriggerFunctions,
+	IWorkflowMetadata,
+} from 'n8n-workflow';
+
+const { connect } = vi.hoisted(() => ({ connect: vi.fn() }));
+vi.mock('amqplib', () => ({ connect }));
 
 const mockChannel = mock<Channel>();
 const mockConnection = mock<Connection>({ createChannel: async () => mockChannel });
 mockChannel.connection = mockConnection;
-const connect = jest.fn().mockReturnValue(mockConnection);
-jest.mock('amqplib', () => ({ connect }));
+connect.mockReturnValue(mockConnection);
 
 import {
 	parseMessage,
@@ -29,7 +37,10 @@ describe('RabbitMQ GenericFunctions', () => {
 	};
 	const context = mockDeep<ITriggerFunctions>();
 
-	beforeEach(() => jest.clearAllMocks());
+	beforeEach(() => {
+		vi.clearAllMocks();
+		connect.mockReturnValue(mockConnection);
+	});
 
 	describe('parseMessage', () => {
 		const helpers = mock<ITriggerFunctions['helpers']>();
@@ -133,6 +144,91 @@ describe('RabbitMQ GenericFunctions', () => {
 			expect(mockChannel.checkQueue).toHaveBeenCalledWith('queue');
 			expect(mockChannel.bindQueue).not.toHaveBeenCalled();
 		});
+
+		it('should await queue bindings sequentially before returning the channel', async () => {
+			context.getCredentials.mockResolvedValue(credentials);
+
+			let resolveFirstBind: (value?: unknown) => void = () => {};
+			const firstBindPromise = new Promise((resolve) => {
+				resolveFirstBind = resolve;
+			});
+
+			let resolveSecondBind: (value?: unknown) => void = () => {};
+			const secondBindPromise = new Promise((resolve) => {
+				resolveSecondBind = resolve;
+			});
+
+			let secondBindStarted = false;
+			let connectQueueFinished = false;
+
+			mockChannel.bindQueue.mockImplementation(async (_queue, exchange) => {
+				if (exchange === 'exchange-1') {
+					await firstBindPromise;
+					return {} as never;
+				}
+				if (exchange === 'exchange-2') {
+					secondBindStarted = true;
+					await secondBindPromise;
+					return {} as never;
+				}
+				return {} as never;
+			});
+
+			const bindings = [
+				{ exchange: 'exchange-1', routingKey: 'key-1' },
+				{ exchange: 'exchange-2', routingKey: 'key-2' },
+			];
+			const options = mock<TriggerOptions>({
+				assertQueue: true,
+				binding: { bindings },
+			});
+
+			const connectPromise = rabbitmqConnectQueue.call(context, 'queue', options).then((ch) => {
+				connectQueueFinished = true;
+				return ch;
+			});
+
+			// Yield event loop
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			// First binding should have been called, but second must not start yet
+			expect(mockChannel.bindQueue).toHaveBeenCalledTimes(1);
+			expect(mockChannel.bindQueue).toHaveBeenCalledWith('queue', 'exchange-1', 'key-1');
+			expect(secondBindStarted).toBe(false);
+			expect(connectQueueFinished).toBe(false);
+
+			// Resolve first binding
+			resolveFirstBind();
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			// Second binding should now have started
+			expect(mockChannel.bindQueue).toHaveBeenCalledTimes(2);
+			expect(mockChannel.bindQueue).toHaveBeenNthCalledWith(2, 'queue', 'exchange-2', 'key-2');
+			expect(secondBindStarted).toBe(true);
+			expect(connectQueueFinished).toBe(false);
+
+			// Resolve second binding
+			resolveSecondBind();
+			const channel = await connectPromise;
+
+			// Channel should now be returned
+			expect(connectQueueFinished).toBe(true);
+			expect(channel).toBe(mockChannel);
+		});
+
+		it('should reject when a queue binding fails', async () => {
+			context.getCredentials.mockResolvedValue(credentials);
+			const bindings = [{ exchange: 'bad-exchange', routingKey: 'key-1' }];
+			const options = mock<TriggerOptions>({
+				assertQueue: true,
+				binding: { bindings },
+			});
+			mockChannel.bindQueue.mockRejectedValueOnce(new Error('Channel closed: exchange not found'));
+
+			await expect(rabbitmqConnectQueue.call(context, 'queue', options)).rejects.toThrow(
+				'Channel closed: exchange not found',
+			);
+		});
 	});
 
 	describe('rabbitmqConnectExchange', () => {
@@ -222,8 +318,8 @@ describe('RabbitMQ GenericFunctions', () => {
 				promise: new Promise<IRun>((resolve) => {
 					resolvePromise = resolve;
 				}),
-				resolve: jest.fn(),
-				reject: jest.fn(),
+				resolve: vi.fn(),
+				reject: vi.fn(),
 			};
 			context.helpers.createDeferredPromise.mockReturnValue(deferredPromise);
 
@@ -262,8 +358,8 @@ describe('RabbitMQ GenericFunctions', () => {
 				promise: new Promise<IRun>((resolve) => {
 					resolvePromise = resolve;
 				}),
-				resolve: jest.fn(),
-				reject: jest.fn(),
+				resolve: vi.fn(),
+				reject: vi.fn(),
 			};
 			context.helpers.createDeferredPromise.mockReturnValue(deferredPromise);
 
@@ -302,8 +398,8 @@ describe('RabbitMQ GenericFunctions', () => {
 				promise: new Promise<IRun>((resolve) => {
 					resolvePromise = resolve;
 				}),
-				resolve: jest.fn(),
-				reject: jest.fn(),
+				resolve: vi.fn(),
+				reject: vi.fn(),
 			};
 			context.helpers.createDeferredPromise.mockReturnValue(deferredPromise);
 
@@ -336,44 +432,168 @@ describe('RabbitMQ GenericFunctions', () => {
 			expect(messageTracker.answered).toHaveBeenCalledWith(message);
 		});
 
-		it('should ack a message with "acknowledgeMode" set to "laterMessageNode"', async () => {
-			let resolvePromise: (data: IRun) => void = () => {};
-			const deferredPromise = {
-				promise: new Promise<IRun>((resolve) => {
-					resolvePromise = resolve;
-				}),
-				resolve: jest.fn(),
-				reject: jest.fn(),
+		describe('acknowledgeMode = "laterMessageNode"', () => {
+			const buildRunDeferred = () => {
+				let resolvePromise: (data: IRun) => void = () => {};
+				const deferred = {
+					promise: new Promise<IRun>((resolve) => {
+						resolvePromise = resolve;
+					}),
+					resolve: vi.fn(),
+					reject: vi.fn(),
+				};
+				return { deferred, resolve: (data: IRun) => resolvePromise(data) };
 			};
-			context.helpers.createDeferredPromise.mockReturnValue(deferredPromise);
 
-			const handleMessagePromise = handleMessage.call(
-				context,
-				message,
-				mockChannel,
-				messageTracker,
-				'laterMessageNode',
-				options,
-			);
+			const buildHookDeferred = () => {
+				let resolvePromise: (data: IExecuteResponsePromiseData) => void = () => {};
+				const deferred = {
+					promise: new Promise<IExecuteResponsePromiseData>((resolve) => {
+						resolvePromise = resolve;
+					}),
+					resolve: vi.fn(),
+					reject: vi.fn(),
+				};
+				return {
+					deferred,
+					resolve: (data: IExecuteResponsePromiseData) => resolvePromise(data),
+				};
+			};
 
-			await Promise.resolve(); // yield control to let handleMessage run
+			it('should ack the message on a clean execution when Delete-from-Queue was not fired', async () => {
+				// Simulates the engine's teardown: resolveExecutionResponsePromise
+				// resolves the hook with an empty {}, then finalizeExecution
+				// resolves the IRun with no error.
+				const { deferred: hookDeferred, resolve: resolveHook } = buildHookDeferred();
+				const { deferred: runDeferred, resolve: resolveRun } = buildRunDeferred();
+				context.helpers.createDeferredPromise
+					.mockReturnValueOnce(hookDeferred)
+					.mockReturnValueOnce(runDeferred);
 
-			expect(messageTracker.received).toHaveBeenCalledWith(message);
-			expect(context.emit).toHaveBeenCalledWith([[item]], deferredPromise, undefined);
-			expect(mockChannel.ack).not.toHaveBeenCalled();
-			expect(messageTracker.answered).not.toHaveBeenCalled();
+				const handleMessagePromise = handleMessage.call(
+					context,
+					message,
+					mockChannel,
+					messageTracker,
+					'laterMessageNode',
+					options,
+				);
 
-			resolvePromise({
-				data: {
-					resultData: {
-						error: undefined,
-					},
-				},
-			} as IRun);
-			await handleMessagePromise;
+				await Promise.resolve();
 
-			expect(mockChannel.ack).toHaveBeenCalledWith(message);
-			expect(messageTracker.answered).toHaveBeenCalledWith(message);
+				expect(messageTracker.received).toHaveBeenCalledWith(message);
+				expect(context.emit).toHaveBeenCalledWith([[item]], hookDeferred, runDeferred);
+				expect(mockChannel.ack).not.toHaveBeenCalled();
+				expect(messageTracker.answered).not.toHaveBeenCalled();
+
+				resolveHook({} as IExecuteResponsePromiseData);
+				resolveRun({
+					data: { resultData: { error: undefined } },
+				} as IRun);
+				await handleMessagePromise;
+
+				expect(mockChannel.ack).toHaveBeenCalledWith(message);
+				expect(mockChannel.nack).not.toHaveBeenCalled();
+				expect(messageTracker.answered).toHaveBeenCalledWith(message);
+			});
+
+			it('should nack the message when the execution errors before the Delete-from-Queue node runs', async () => {
+				// Real engine behavior on crash: resolveExecutionResponsePromise
+				// resolves the hook with {} first, then finalizeExecution
+				// resolves the IRun with the error. The hook payload shape is
+				// the only reliable signal — empty {} means cleanup, so we must
+				// fall through to the IRun and nack on error.
+				const { deferred: hookDeferred, resolve: resolveHook } = buildHookDeferred();
+				const { deferred: runDeferred, resolve: resolveRun } = buildRunDeferred();
+				context.helpers.createDeferredPromise
+					.mockReturnValueOnce(hookDeferred)
+					.mockReturnValueOnce(runDeferred);
+
+				const handleMessagePromise = handleMessage.call(
+					context,
+					message,
+					mockChannel,
+					messageTracker,
+					'laterMessageNode',
+					options,
+				);
+
+				await Promise.resolve();
+
+				resolveHook({} as IExecuteResponsePromiseData);
+				resolveRun({
+					data: { resultData: { error: new Error('workflow crashed') } },
+				} as IRun);
+				await handleMessagePromise;
+
+				expect(mockChannel.ack).not.toHaveBeenCalled();
+				expect(mockChannel.nack).toHaveBeenCalledWith(message);
+				expect(messageTracker.answered).toHaveBeenCalledWith(message);
+			});
+
+			it('should ack as soon as the Delete-from-Queue hook fires, without waiting for the full execution', async () => {
+				// Happy path: sendResponse from the Delete-from-Queue node
+				// resolves the hook with the item JSON mid-execution. Ack
+				// immediately, don't wait for the IRun (downstream nodes may
+				// still be running).
+				const { deferred: hookDeferred, resolve: resolveHook } = buildHookDeferred();
+				const { deferred: runDeferred } = buildRunDeferred();
+				context.helpers.createDeferredPromise
+					.mockReturnValueOnce(hookDeferred)
+					.mockReturnValueOnce(runDeferred);
+
+				const handleMessagePromise = handleMessage.call(
+					context,
+					message,
+					mockChannel,
+					messageTracker,
+					'laterMessageNode',
+					options,
+				);
+
+				await Promise.resolve();
+				expect(mockChannel.ack).not.toHaveBeenCalled();
+
+				resolveHook({ content: 'hello' } as unknown as IExecuteResponsePromiseData);
+				await handleMessagePromise;
+
+				expect(mockChannel.ack).toHaveBeenCalledWith(message);
+				expect(mockChannel.nack).not.toHaveBeenCalled();
+				expect(messageTracker.answered).toHaveBeenCalledWith(message);
+			});
+
+			it('should ack when Delete-from-Queue fired before the workflow errored', async () => {
+				// At-least-once semantics: if the Delete-from-Queue node ran
+				// (real sendResponse with a non-empty payload), the user's
+				// intent was satisfied. A later crash in a downstream node
+				// should still ack.
+				const { deferred: hookDeferred, resolve: resolveHook } = buildHookDeferred();
+				const { deferred: runDeferred, resolve: resolveRun } = buildRunDeferred();
+				context.helpers.createDeferredPromise
+					.mockReturnValueOnce(hookDeferred)
+					.mockReturnValueOnce(runDeferred);
+
+				const handleMessagePromise = handleMessage.call(
+					context,
+					message,
+					mockChannel,
+					messageTracker,
+					'laterMessageNode',
+					options,
+				);
+
+				await Promise.resolve();
+
+				resolveHook({ content: 'hello' } as unknown as IExecuteResponsePromiseData);
+				resolveRun({
+					data: { resultData: { error: new Error('downstream crash') } },
+				} as IRun);
+				await handleMessagePromise;
+
+				expect(mockChannel.ack).toHaveBeenCalledWith(message);
+				expect(mockChannel.nack).not.toHaveBeenCalled();
+				expect(messageTracker.answered).toHaveBeenCalledWith(message);
+			});
 		});
 
 		it('should handle error when "acknowledgeMode" is set to "immediately"', async () => {

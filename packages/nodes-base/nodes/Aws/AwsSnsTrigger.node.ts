@@ -9,8 +9,9 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { jsonParse, NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
+import { type AwsSnsMessage, verifySignature } from './AwsSnsTriggerHelpers';
 import { awsApiRequestSOAP } from './GenericFunctions';
 import { awsNodeAuthOptions, awsNodeCredentials } from './utils';
 
@@ -106,13 +107,14 @@ export class AwsSnsTrigger implements INodeType {
 				paginationToken?: string,
 			): Promise<INodeListSearchResult> {
 				const returnData: INodeListSearchItems[] = [];
-				const params = paginationToken ? `NextToken=${encodeURIComponent(paginationToken)}` : '';
-
 				const data = await awsApiRequestSOAP.call(
 					this,
 					'sns',
 					'GET',
-					'/?Action=ListTopics&' + params,
+					requestPath`/`,
+					undefined,
+					undefined,
+					{ Action: 'ListTopics', ...(paginationToken && { NextToken: paginationToken }) },
 				);
 
 				let topics = data.ListTopicsResponse.ListTopicsResult.Topics.member;
@@ -160,12 +162,14 @@ export class AwsSnsTrigger implements INodeType {
 				if (webhookData.webhookId === undefined) {
 					return false;
 				}
-				const params = [`TopicArn=${topic}`, 'Version=2010-03-31'];
 				const data = await awsApiRequestSOAP.call(
 					this,
 					'sns',
 					'GET',
-					'/?Action=ListSubscriptionsByTopic&' + params.join('&'),
+					requestPath`/`,
+					undefined,
+					undefined,
+					{ Action: 'ListSubscriptionsByTopic', TopicArn: topic, Version: '2010-03-31' },
 				);
 				const subscriptions = get(
 					data,
@@ -202,19 +206,21 @@ export class AwsSnsTrigger implements INodeType {
 					);
 				}
 
-				const params = [
-					`TopicArn=${topic}`,
-					`Endpoint=${webhookUrl}`,
-					`Protocol=${webhookUrl?.split(':')[0]}`,
-					'ReturnSubscriptionArn=true',
-					'Version=2010-03-31',
-				];
-
 				const { SubscribeResponse } = await awsApiRequestSOAP.call(
 					this,
 					'sns',
 					'GET',
-					'/?Action=Subscribe&' + params.join('&'),
+					requestPath`/`,
+					undefined,
+					undefined,
+					{
+						Action: 'Subscribe',
+						TopicArn: topic,
+						Endpoint: webhookUrl,
+						Protocol: webhookUrl?.split(':')[0],
+						ReturnSubscriptionArn: 'true',
+						Version: '2010-03-31',
+					},
 				);
 				webhookData.webhookId = SubscribeResponse.SubscribeResult.SubscriptionArn;
 
@@ -222,14 +228,12 @@ export class AwsSnsTrigger implements INodeType {
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
-				const params = [`SubscriptionArn=${webhookData.webhookId}`, 'Version=2010-03-31'];
 				try {
-					await awsApiRequestSOAP.call(
-						this,
-						'sns',
-						'GET',
-						'/?Action=Unsubscribe&' + params.join('&'),
-					);
+					await awsApiRequestSOAP.call(this, 'sns', 'GET', requestPath`/`, undefined, undefined, {
+						Action: 'Unsubscribe',
+						SubscriptionArn: webhookData.webhookId,
+						Version: '2010-03-31',
+					});
 				} catch (error) {
 					return false;
 				}
@@ -245,19 +249,22 @@ export class AwsSnsTrigger implements INodeType {
 			extractValue: true,
 		}) as string;
 
-		const body = jsonParse<{ Type: string; TopicArn: string; Token: string }>(
-			req.rawBody.toString(),
-		);
+		const body = jsonParse<AwsSnsMessage>(req.rawBody.toString());
+
+		if (!(await verifySignature.call(this, body, topic))) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
+			return { noWebhookResponse: true };
+		}
 
 		if (body.Type === 'SubscriptionConfirmation' && body.TopicArn === topic) {
 			const { Token } = body;
-			const params = [`TopicArn=${topic}`, `Token=${Token}`, 'Version=2010-03-31'];
-			await awsApiRequestSOAP.call(
-				this,
-				'sns',
-				'GET',
-				'/?Action=ConfirmSubscription&' + params.join('&'),
-			);
+			await awsApiRequestSOAP.call(this, 'sns', 'GET', requestPath`/`, undefined, undefined, {
+				Action: 'ConfirmSubscription',
+				TopicArn: topic,
+				Token,
+				Version: '2010-03-31',
+			});
 
 			return {
 				noWebhookResponse: true,
@@ -268,7 +275,6 @@ export class AwsSnsTrigger implements INodeType {
 			return {};
 		}
 
-		//TODO verify message signature
 		return {
 			workflowData: [this.helpers.returnJsonArray(body)],
 		};

@@ -1,0 +1,84 @@
+import { Logger } from '@n8n/backend-common';
+import { EventService, EventRelay } from '@n8n/backend-services';
+import { PersonRepository } from '@n8n/db';
+import { Service } from '@n8n/di';
+
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
+import { UserManagementMailer } from '@/user-management/email';
+
+/**
+ * Event relay to send email notifications when the first production workflow fails
+ */
+@Service()
+export class WorkflowFailureNotificationEventRelay extends EventRelay {
+	constructor(
+		eventService: EventService,
+		private readonly mailer: UserManagementMailer,
+		private readonly personRepository: PersonRepository,
+		private readonly logger: Logger,
+	) {
+		super(eventService);
+	}
+
+	init() {
+		this.setupListeners({
+			'instance-first-production-workflow-failed': async (event) =>
+				await this.onFirstProductionWorkflowFailed(event),
+		});
+	}
+
+	/**
+	 * Handles the first production workflow failure event.
+	 * Sends an email notification to the workflow owner.
+	 */
+	private async onFirstProductionWorkflowFailed(
+		event: RelayEventMap['instance-first-production-workflow-failed'],
+	) {
+		const { workflowId, workflowName, userId } = event;
+
+		// Skip if email is not configured
+		if (!this.mailer.isEmailSetUp) {
+			this.logger.debug('Skipping first production failure email - SMTP not configured', {
+				workflowId,
+				userId,
+			});
+			return;
+		}
+
+		try {
+			// Only a person has an email, so a service account owner gets nothing
+			const person = await this.personRepository.findById(userId);
+
+			if (!person?.email) {
+				this.logger.warn(
+					'Cannot send first production failure email - user not found or no email',
+					{
+						workflowId,
+						userId,
+					},
+				);
+				return;
+			}
+
+			// Send email notification
+			await this.mailer.workflowFailure({
+				email: person.email,
+				firstName: person.firstName,
+				workflowId,
+				workflowName,
+			});
+
+			this.logger.info('Sent first production failure email', {
+				workflowId,
+				userId,
+				email: person.email,
+			});
+		} catch (error) {
+			this.logger.error('Failed to send first production failure email', {
+				workflowId,
+				userId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+}

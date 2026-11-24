@@ -1,4 +1,4 @@
-import { sublimeSearch } from '@n8n/utils';
+import { sublimeSearch } from '@n8n/utils/search/sublime-search';
 import type { INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
@@ -209,6 +209,6 @@ export class NodeSearchEngine {
 	static getAiConnectionTypes(): NodeConnectionType[] {
 		return Object.values(NodeConnectionTypes).filter((type) =>
 			NodeSearchEngine.isAiConnectionType(type),
-		) as NodeConnectionType[];
+		);
 	}
 }

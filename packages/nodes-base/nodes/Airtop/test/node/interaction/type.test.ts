@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import nock from 'nock';
 
 import * as type from '../../../actions/interaction/type.operation';
@@ -21,11 +22,11 @@ const mockResponse = {
 	message: 'Text typed successfully',
 };
 
-jest.mock('../../../transport', () => {
-	const originalModule = jest.requireActual<typeof transport>('../../../transport');
+vi.mock('../../../transport', async () => {
+	const originalModule = await vi.importActual<typeof transport>('../../../transport');
 	return {
 		...originalModule,
-		apiRequest: jest.fn(async function () {
+		apiRequest: vi.fn(async function () {
 			return {
 				status: 'success',
 				data: mockResponse,
@@ -41,11 +42,10 @@ describe('Test Airtop, type operation', () => {
 
 	afterAll(() => {
 		nock.restore();
-		jest.unmock('../../../transport');
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should execute type with minimal parameters', async () => {
@@ -54,7 +54,7 @@ describe('Test Airtop, type operation', () => {
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/type',
+			requestPath`/sessions/test-session-123/windows/win-123/type`,
 			{
 				configuration: {},
 				text: 'Hello World',
@@ -96,7 +96,7 @@ describe('Test Airtop, type operation', () => {
 
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/type',
+			requestPath`/sessions/test-session-123/windows/win-123/type`,
 			{
 				configuration: {},
 				text: 'Hello World',
@@ -116,7 +116,7 @@ describe('Test Airtop, type operation', () => {
 
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/type',
+			requestPath`/sessions/test-session-123/windows/win-123/type`,
 			{
 				configuration: {},
 				text: 'Hello World',
@@ -138,7 +138,7 @@ describe('Test Airtop, type operation', () => {
 
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/type',
+			requestPath`/sessions/test-session-123/windows/win-123/type`,
 			{
 				configuration: {
 					waitForNavigationConfig: {
@@ -165,7 +165,7 @@ describe('Test Airtop, type operation', () => {
 
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/type',
+			requestPath`/sessions/test-session-123/windows/win-123/type`,
 			{
 				configuration: {
 					visualAnalysis: {

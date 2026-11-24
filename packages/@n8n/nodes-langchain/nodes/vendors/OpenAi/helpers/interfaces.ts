@@ -7,13 +7,20 @@ import type {
 	FunctionTool,
 	ResponseInputContent,
 	ResponseInputItem,
+	ResponseOutputText,
 	Tool,
 	WebSearchTool as OpenAIChatWebSearchTool,
 } from 'openai/resources/responses/responses';
 
 export type ChatResponse = OpenAIClient.Responses.Response;
-export type ChatContent = ResponseInputContent[];
-export type ChatInputItem = OpenAIClient.Responses.ResponseInputItem.Message;
+export type ChatContent = Array<ResponseInputContent | ResponseOutputText>;
+export type ChatInputItem = Omit<
+	OpenAIClient.Responses.ResponseInputItem.Message,
+	'content' | 'role'
+> & {
+	role: OpenAIClient.Responses.ResponseInputItem.Message['role'] | 'assistant';
+	content: ChatContent;
+};
 
 // FIXME: remove these overrides, when langchain-openai is updated with the new types
 export type WebSearchTool = Omit<OpenAIChatWebSearchTool, 'type'> & {
@@ -43,7 +50,7 @@ export type ChatResponseRequest = Omit<
 		| {
 				id: string;
 		  };
-	input: ResponseInputItem[];
+	input: Array<ChatInputItem | ResponseInputItem>;
 	top_logprobs?: number;
 	tools?: ChatTool[];
 };
@@ -76,6 +83,14 @@ export type ChatCompletion = {
 	};
 	system_fingerprint: string;
 };
+
+/**
+ * Response shape of the `/images/generations` and `/images/edits` endpoints, including
+ * the `usage` block the images API returns. Note that it reports `input_tokens` /
+ * `output_tokens`, unlike the Chat Completions naming (`prompt_tokens` /
+ * `completion_tokens`) used by `ChatCompletion` above.
+ */
+export type ImageResponse = OpenAIClient.Images.ImagesResponse;
 
 export type ThreadMessage = {
 	id: string;

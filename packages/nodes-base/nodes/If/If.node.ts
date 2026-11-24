@@ -9,11 +9,11 @@ export class If extends VersionedNodeType {
 		const baseDescription: INodeTypeBaseDescription = {
 			displayName: 'If',
 			name: 'if',
-			icon: 'fa:map-signs',
+			icon: 'node:if',
 			iconColor: 'green',
 			group: ['transform'],
 			description: 'Route items to different branches (true/false)',
-			defaultVersion: 2.3,
+			defaultVersion: 2.4,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
@@ -22,6 +22,7 @@ export class If extends VersionedNodeType {
 			2.1: new IfV2(baseDescription),
 			2.2: new IfV2(baseDescription),
 			2.3: new IfV2(baseDescription),
+			2.4: new IfV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

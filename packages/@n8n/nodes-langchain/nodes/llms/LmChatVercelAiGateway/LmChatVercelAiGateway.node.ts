@@ -1,5 +1,12 @@
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import {
+	getProxyAgent,
+	aiClientFetch,
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
+import {
 	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
@@ -7,13 +14,11 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { getProxyAgent } from '@utils/httpProxyAgent';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { getRequiredApiKey } from '@utils/helpers';
+import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
 import type { OpenAICompatibleCredential } from '../../../types/types';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
-import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
-import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatVercelAiGateway implements INodeType {
 	description: INodeTypeDescription = {
@@ -114,6 +119,11 @@ export class LmChatVercelAiGateway implements INodeType {
 					},
 				},
 				default: 'openai/gpt-4o',
+				builderHint: {
+					propertyHint:
+						'Use the exact provider-prefixed ID returned by Vercel AI Gateway. Do not assume it serves every model from the underlying provider. ' +
+						MODEL_SELECTION_HINT,
+				},
 			},
 			{
 				displayName: 'Options',
@@ -224,18 +234,27 @@ export class LmChatVercelAiGateway implements INodeType {
 			responseFormat?: 'text' | 'json_object';
 		};
 
+		const timeout = options.timeout;
 		const configuration: ClientOptions = {
 			baseURL: credentials.url,
+			fetch: aiClientFetch,
 			fetchOptions: {
-				dispatcher: getProxyAgent(credentials.url),
+				dispatcher: getProxyAgent(
+					credentials.url,
+					{
+						headersTimeout: timeout,
+						bodyTimeout: timeout,
+					},
+					this.helpers.getSecureEgressFilter(),
+				),
 			},
 		};
 
 		const model = new ChatOpenAI({
-			apiKey: credentials.apiKey,
+			apiKey: getRequiredApiKey(this.getNode(), credentials.apiKey),
 			model: modelName,
 			...options,
-			timeout: options.timeout ?? 60000,
+			timeout,
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
 			callbacks: [new N8nLlmTracing(this)],

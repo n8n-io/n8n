@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import {
@@ -136,11 +137,16 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			let response: IDataObject[] = [];
 
 			if (files?.length) {
-				const multiPartBody = await prepareMultiPartForm.call(this, items, files, body, i);
+				const multiPartBody = await prepareMultiPartForm.call(this, files, body, i);
 
-				response = await discordApiMultiPartRequest.call(this, 'POST', '', multiPartBody);
+				response = await discordApiMultiPartRequest.call(
+					this,
+					'POST',
+					requestPath``,
+					multiPartBody,
+				);
 			} else {
-				response = await discordApiRequest.call(this, 'POST', '', body, qs);
+				response = await discordApiRequest.call(this, 'POST', requestPath``, body, qs);
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(

@@ -1,0 +1,346 @@
+import { UserDeactivationHooks } from '@n8n/backend-services';
+import type { LdapConfig, ConnectionSecurity } from '@n8n/constants';
+import type { AuthProviderSyncHistory } from '@n8n/db';
+import {
+	AuthIdentity,
+	Person,
+	AuthIdentityRepository,
+	isPerson,
+	AuthProviderSyncHistoryRepository,
+	PersonRepository,
+	UserRepository,
+	GLOBAL_MEMBER_ROLE,
+} from '@n8n/db';
+import { Container } from '@n8n/di';
+import { validate } from 'jsonschema';
+import type { Entry as LdapUser } from 'ldapts';
+import { randomString } from 'n8n-workflow';
+
+import { BINARY_AD_ATTRIBUTES, LDAP_CONFIG_SCHEMA } from './constants';
+
+/**
+ * Validate the structure of the LDAP configuration schema
+ */
+export const validateLdapConfigurationSchema = (
+	ldapConfig: LdapConfig,
+): { valid: boolean; message: string } => {
+	const { valid, errors } = validate(ldapConfig, LDAP_CONFIG_SCHEMA, { nestedErrors: true });
+
+	let message = '';
+	if (!valid) {
+		message = errors.map((error) => `request.body.${error.path[0]} ${error.message}`).join(',');
+	}
+	return { valid, message };
+};
+
+export const resolveEntryBinaryAttributes = (entry: LdapUser): LdapUser => {
+	Object.entries(entry)
+		.filter(([k]) => BINARY_AD_ATTRIBUTES.includes(k))
+		.forEach(([k]) => {
+			entry[k] = (entry[k] as Buffer).toString('hex');
+		});
+	return entry;
+};
+
+export const resolveBinaryAttributes = (entries: LdapUser[]): void => {
+	entries.forEach((entry) => resolveEntryBinaryAttributes(entry));
+};
+
+export const createFilter = (filter: string, userFilter: string) => {
+	let _filter = `(&(|(objectClass=person)(objectClass=user))${filter})`;
+	if (userFilter) {
+		_filter = `(&${userFilter}${filter})`;
+	}
+	return _filter;
+};
+
+export const escapeFilter = (filter: string): string => {
+	return (
+		filter
+			.replace(/\\/g, '\\5c')
+			.replace(/\*/g, '\\2a')
+			.replace(/\(/g, '\\28')
+			.replace(/\)/g, '\\29')
+			// eslint-disable-next-line no-control-regex
+			.replace(/\x00/g, '\\00')
+	);
+};
+
+/**
+ * Retrieve auth identity by LDAP ID from database
+ */
+export const getAuthIdentityByLdapId = async (
+	idAttributeValue: string,
+): Promise<AuthIdentity | null> => {
+	return await Container.get(AuthIdentityRepository).findOne({
+		relations: { user: true },
+		where: {
+			providerId: idAttributeValue,
+			providerType: 'ldap',
+		},
+	});
+};
+
+/**
+ * Retrieve user by LDAP ID from database
+ * @param idAttributeValue - LDAP ID value
+ */
+export const getUserByLdapId = async (idAttributeValue: string) => {
+	return await Container.get(PersonRepository).findByLdapId(idAttributeValue);
+};
+
+export const getUserByEmail = async (email: string): Promise<Person | null> => {
+	return await Container.get(PersonRepository).findByEmail(email);
+};
+
+/**
+ * Map attributes from the LDAP server to the proper columns in the database
+ * e.g. mail => email | uid => ldapId
+ */
+export const mapLdapAttributesToUser = (
+	ldapUser: LdapUser,
+	ldapConfig: LdapConfig,
+): [AuthIdentity['providerId'], Pick<Person, 'email' | 'firstName' | 'lastName'>] => {
+	return [
+		ldapUser[ldapConfig.ldapIdAttribute] as string,
+		{
+			email: ldapUser[ldapConfig.emailAttribute] as string,
+			firstName: ldapUser[ldapConfig.firstNameAttribute] as string,
+			lastName: ldapUser[ldapConfig.lastNameAttribute] as string,
+		},
+	];
+};
+
+/**
+ * Retrieve LDAP ID of all LDAP users in the database
+ */
+export const getLdapIds = async (): Promise<string[]> => {
+	const identities = await Container.get(AuthIdentityRepository).find({
+		select: ['providerId'],
+		where: {
+			providerType: 'ldap',
+		},
+	});
+	return identities.map((i) => i.providerId);
+};
+
+export const getLdapUsers = async (): Promise<Person[]> => {
+	const identities = await Container.get(AuthIdentityRepository).find({
+		relations: { user: true },
+		where: {
+			providerType: 'ldap',
+		},
+	});
+	// Only a person signs in through LDAP.
+	return identities.map((i) => i.user).filter(isPerson);
+};
+
+/**
+ * Map a LDAP user to database user
+ */
+export const mapLdapUserToDbUser = (
+	ldapUser: LdapUser,
+	ldapConfig: LdapConfig,
+	toCreate = false,
+): [string, Person] => {
+	const person = new Person();
+	const [ldapId, data] = mapLdapAttributesToUser(ldapUser, ldapConfig);
+	Object.assign(person, data);
+	if (toCreate) {
+		person.role = GLOBAL_MEMBER_ROLE;
+		person.password = randomString(8);
+		person.disabled = false;
+	} else {
+		person.disabled = true;
+	}
+	return [ldapId, person];
+};
+
+/**
+ * Save "toCreateUsers" in the database
+ * Update "toUpdateUsers" in the database
+ * Update "ToDisableUsers" in the database
+ */
+export const processUsers = async (
+	toCreateUsers: Array<[string, Person]>,
+	toUpdateUsers: Array<[string, Person]>,
+	toDisableUsers: string[],
+	linkExistingAccountsByEmail: boolean,
+): Promise<void> => {
+	const userRepository = Container.get(UserRepository);
+	await userRepository.runInTransaction({}, async (transactionManager, ctx) => {
+		return await Promise.all([
+			...toCreateUsers.map(async ([ldapId, user]) => {
+				// If a local user already exists with this email (e.g. an email/password
+				// invite that predates LDAP), link the existing user to the LDAP identity
+				// instead of creating a duplicate row and tripping the unique email
+				// constraint. This matches LdapService.handleLogin. Skip the entry when
+				// linking by email is disabled.
+				const existingPerson = await transactionManager.findOne(Person, {
+					where: { email: user.email },
+				});
+
+				if (existingPerson) {
+					if (!linkExistingAccountsByEmail) return;
+
+					const hasChanges =
+						existingPerson.firstName !== user.firstName ||
+						existingPerson.lastName !== user.lastName;
+
+					if (hasChanges) {
+						existingPerson.firstName = user.firstName;
+						existingPerson.lastName = user.lastName;
+						await transactionManager.save(Person, existingPerson);
+					}
+
+					const authIdentity = AuthIdentity.create(existingPerson, ldapId);
+					return await transactionManager.save(authIdentity);
+				}
+
+				const { user: savedUser } = await Container.get(PersonRepository).createPersonWithProject(
+					user,
+					transactionManager,
+				);
+				const authIdentity = AuthIdentity.create(savedUser, ldapId);
+				return await transactionManager.save(authIdentity);
+			}),
+			...toUpdateUsers.map(async ([ldapId, user]) => {
+				const authIdentity = await transactionManager.findOneBy(AuthIdentity, {
+					providerId: ldapId,
+				});
+				if (authIdentity?.userId) {
+					const existingPerson = await transactionManager.findOneBy(Person, {
+						id: authIdentity.userId,
+					});
+					if (existingPerson) {
+						// Only update if data has actually changed
+						const hasChanges =
+							existingPerson.email !== user.email ||
+							existingPerson.firstName !== user.firstName ||
+							existingPerson.lastName !== user.lastName;
+
+						if (hasChanges) {
+							existingPerson.email = user.email;
+							existingPerson.firstName = user.firstName;
+							existingPerson.lastName = user.lastName;
+							await transactionManager.save(Person, existingPerson);
+						}
+					}
+				}
+			}),
+			...toDisableUsers.map(async (ldapId) => {
+				const authIdentity = await transactionManager.findOneBy(AuthIdentity, {
+					providerId: ldapId,
+				});
+				if (authIdentity?.userId) {
+					const person = await transactionManager.findOneBy(Person, { id: authIdentity.userId });
+
+					if (person) {
+						person.disabled = true;
+						await transactionManager.save(person);
+						await Container.get(UserDeactivationHooks).run(person.id, ctx);
+					}
+
+					await transactionManager.delete(AuthIdentity, { userId: authIdentity?.userId });
+				}
+			}),
+		]);
+	});
+};
+
+/**
+ * Save a LDAP synchronization data to the database
+ */
+export const saveLdapSynchronization = async (
+	data: Omit<AuthProviderSyncHistory, 'id' | 'providerType'>,
+): Promise<AuthProviderSyncHistory> => {
+	return await Container.get(AuthProviderSyncHistoryRepository).save(
+		{
+			...data,
+			providerType: 'ldap',
+		},
+		{ transaction: false },
+	);
+};
+
+/**
+ * Retrieve all LDAP synchronizations in the database
+ */
+export const getLdapSynchronizations = async (
+	page: number,
+	perPage: number,
+): Promise<AuthProviderSyncHistory[]> => {
+	const _page = Math.abs(page);
+	return await Container.get(AuthProviderSyncHistoryRepository).find({
+		where: { providerType: 'ldap' },
+		order: { id: 'DESC' },
+		take: perPage,
+		skip: _page * perPage,
+	});
+};
+
+/**
+ * Retrieve an offset-based page of LDAP synchronizations together with the total count,
+ * for cursor pagination in the public API.
+ */
+export const getLdapSynchronizationsWithCount = async (
+	offset: number,
+	limit: number,
+): Promise<[AuthProviderSyncHistory[], number]> => {
+	return await Container.get(AuthProviderSyncHistoryRepository).findAndCount({
+		where: { providerType: 'ldap' },
+		order: { id: 'DESC' },
+		skip: offset,
+		take: limit,
+	});
+};
+
+/**
+ * Format the LDAP connection URL to conform with LDAP client library
+ */
+export const formatUrl = (url: string, port: number, security: ConnectionSecurity) => {
+	const protocol = ['tls'].includes(security) ? 'ldaps' : 'ldap';
+	return `${protocol}://${url}:${port}`;
+};
+
+export const getMappingAttributes = (ldapConfig: LdapConfig): string[] => {
+	return [
+		ldapConfig.emailAttribute,
+		ldapConfig.ldapIdAttribute,
+		ldapConfig.firstNameAttribute,
+		ldapConfig.lastNameAttribute,
+		ldapConfig.emailAttribute,
+	];
+};
+
+export const createLdapAuthIdentity = async (person: Person, ldapId: string) => {
+	return await Container.get(AuthIdentityRepository).save(AuthIdentity.create(person, ldapId), {
+		transaction: false,
+	});
+};
+
+export const createLdapUserOnLocalDb = async (data: Partial<Person>, ldapId: string) => {
+	const { user } = await Container.get(PersonRepository).createPersonWithProject({
+		password: randomString(8),
+		role: GLOBAL_MEMBER_ROLE,
+		...data,
+	});
+	await createLdapAuthIdentity(user, ldapId);
+	return user;
+};
+
+export const updateLdapUserOnLocalDb = async (identity: AuthIdentity, data: Partial<Person>) => {
+	const userId = identity?.user?.id;
+	if (userId) {
+		const personRepository = Container.get(PersonRepository);
+		const person = await personRepository.findById(userId);
+
+		if (person) {
+			await personRepository.save(Object.assign(person, data));
+		}
+	}
+};
+
+export const deleteAllLdapIdentities = async () => {
+	return await Container.get(AuthIdentityRepository).delete({ providerType: 'ldap' });
+};

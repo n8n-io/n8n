@@ -73,17 +73,38 @@ function isValidPackageJson(obj: unknown): obj is { n8n?: PackageJsonN8n } {
 	return typeof obj === 'object' && obj !== null;
 }
 
-function readPackageJsonN8n(packageJsonPath: string): PackageJsonN8n {
+function readPackageJsonRaw(packageJsonPath: string): Record<string, unknown> | null {
 	try {
 		const content = readFileSync(packageJsonPath, 'utf8');
 		const parsed: unknown = JSON.parse(content);
-		if (isValidPackageJson(parsed)) {
-			return parsed.n8n ?? {};
-		}
-		return {};
+		return isValidPackageJson(parsed) ? parsed : null;
 	} catch {
-		return {};
+		return null;
 	}
+}
+
+function readPackageJsonN8n(packageJsonPath: string): PackageJsonN8n {
+	const parsed = readPackageJsonRaw(packageJsonPath);
+	if (parsed) {
+		const n8n = parsed.n8n;
+		return typeof n8n === 'object' && n8n !== null ? (n8n as PackageJsonN8n) : {};
+	}
+	return {};
+}
+
+/**
+ * Returns the set of package names listed under `devDependencies` in the given
+ * package.json. Dev dependencies are never installed at runtime on n8n Cloud
+ * (only the built `dist/` is shipped), so importing them is not a runtime
+ * dependency concern and is permitted by `no-restricted-imports`.
+ */
+export function readPackageJsonDevDependencies(packageJsonPath: string | null): Set<string> {
+	if (!packageJsonPath) return new Set();
+	const parsed = readPackageJsonRaw(packageJsonPath);
+	if (!parsed) return new Set();
+	const devDeps = parsed.devDependencies;
+	if (typeof devDeps !== 'object' || devDeps === null) return new Set();
+	return new Set(Object.keys(devDeps));
 }
 
 function resolveN8nFilePaths(packageJsonPath: string, filePaths: string[]): string[] {
@@ -100,6 +121,39 @@ function resolveN8nFilePaths(packageJsonPath: string, filePaths: string[]): stri
 	}
 
 	return resolvedFiles;
+}
+
+export interface RegisteredFile {
+	/** The path as written in "n8n.nodes" or "n8n.credentials", e.g. `dist/nodes/Foo/Foo.node.js`. */
+	registeredPath: string;
+	/** Absolute path of the file that was found on disk for it. */
+	filePath: string;
+}
+
+/**
+ * Resolves every entry of "n8n.nodes" and "n8n.credentials" to a file on disk.
+ * A published package ships the registered (compiled) file itself, while a
+ * source checkout only has the TypeScript source, so the registered path is
+ * tried first and its source second. Entries found in neither form are skipped.
+ */
+export function readPackageJsonRegisteredFiles(packageJsonPath: string): RegisteredFile[] {
+	const n8nConfig = readPackageJsonN8n(packageJsonPath);
+	const packageDir = dirname(packageJsonPath);
+	const registeredPaths = [...(n8nConfig.nodes ?? []), ...(n8nConfig.credentials ?? [])];
+	const registeredFiles: RegisteredFile[] = [];
+
+	for (const registeredPath of registeredPaths) {
+		const sourcePath = registeredPath.replace(/^dist\//, '').replace(/\.js$/, '.ts');
+		const filePath = [registeredPath, sourcePath]
+			.map((candidate) => safeJoinPath(packageDir, candidate))
+			.find((candidate) => existsSync(candidate));
+
+		if (filePath) {
+			registeredFiles.push({ registeredPath, filePath });
+		}
+	}
+
+	return registeredFiles;
 }
 
 export function readPackageJsonCredentials(packageJsonPath: string): Set<string> {
@@ -158,20 +212,17 @@ export function validateIconPath(
 ): {
 	isValid: boolean;
 	isFile: boolean;
-	isSvg: boolean;
 	exists: boolean;
 } {
 	const isFile = iconPath.startsWith('file:');
 	const relativePath = iconPath.replace(/^file:/, '');
-	const isSvg = relativePath.endsWith('.svg');
 	// Should not use safeJoinPath here because iconPath can be outside of the node class folder
 	const fullPath = path.join(baseDir, relativePath);
 	const exists = fileExistsWithCaseSync(fullPath);
 
 	return {
-		isValid: isFile && isSvg && exists,
+		isValid: isFile && exists,
 		isFile,
-		isSvg,
 		exists,
 	};
 }
@@ -180,6 +231,67 @@ export function readPackageJsonNodes(packageJsonPath: string): string[] {
 	const n8nConfig = readPackageJsonN8n(packageJsonPath);
 	const nodePaths = n8nConfig.nodes ?? [];
 	return resolveN8nFilePaths(packageJsonPath, nodePaths);
+}
+
+function findFilesRecursively(dir: string, matches: (fileName: string) => boolean): string[] {
+	const results: string[] = [];
+
+	let entries;
+	try {
+		entries = readdirSync(dir, { withFileTypes: true });
+	} catch {
+		return results;
+	}
+
+	for (const entry of entries) {
+		const fullPath = path.join(dir, entry.name);
+		if (entry.isDirectory()) {
+			results.push(...findFilesRecursively(fullPath, matches));
+		} else if (entry.isFile() && matches(entry.name)) {
+			results.push(fullPath);
+		}
+	}
+
+	return results;
+}
+
+/**
+ * Finds all `*.node.ts` source files in the package's `nodes/` directory,
+ * returning their absolute paths. Returns an empty array if there is no
+ * `nodes/` directory.
+ */
+export function findNodeSourceFilesOnDisk(packageJsonPath: string): string[] {
+	const packageDir = dirname(packageJsonPath);
+	const nodesDir = safeJoinPath(packageDir, 'nodes');
+
+	if (!existsSync(nodesDir)) {
+		return [];
+	}
+
+	return findFilesRecursively(nodesDir, (fileName) => fileName.endsWith('.node.ts'));
+}
+
+/**
+ * Recursively finds files matching `matches` within the given subdirectories of
+ * the package (relative to its `package.json`). Missing subdirectories are
+ * skipped. Returns absolute paths.
+ */
+export function findFilesInPackageDirs(
+	packageJsonPath: string,
+	dirs: string[],
+	matches: (fileName: string) => boolean,
+): string[] {
+	const packageDir = dirname(packageJsonPath);
+	const results: string[] = [];
+
+	for (const dir of dirs) {
+		const fullPath = safeJoinPath(packageDir, dir);
+		if (existsSync(fullPath)) {
+			results.push(...findFilesRecursively(fullPath, matches));
+		}
+	}
+
+	return results;
 }
 
 export function areAllCredentialUsagesTestedByNodes(
@@ -222,10 +334,7 @@ function checkCredentialUsageInFile(
 			enter(node: TSESTree.Node) {
 				if (node.type === AST_NODE_TYPES.ClassDeclaration && isNodeTypeClass(node)) {
 					const descriptionProperty = findClassProperty(node, 'description');
-					if (
-						!descriptionProperty?.value ||
-						descriptionProperty.value.type !== AST_NODE_TYPES.ObjectExpression
-					) {
+					if (descriptionProperty?.value?.type !== AST_NODE_TYPES.ObjectExpression) {
 						return;
 					}
 
@@ -268,7 +377,9 @@ function fileExistsWithCaseSync(filePath: string): boolean {
 	}
 }
 
-export function findSimilarSvgFiles(targetPath: string, baseDir: string): string[] {
+const ICON_EXTENSIONS = ['.svg', '.png'];
+
+export function findSimilarIconFiles(targetPath: string, baseDir: string): string[] {
 	try {
 		const targetFileName = path.basename(targetPath, path.extname(targetPath));
 		const targetDir = path.dirname(targetPath);
@@ -279,15 +390,25 @@ export function findSimilarSvgFiles(targetPath: string, baseDir: string): string
 			return [];
 		}
 
-		const files = readdirSync(searchDir);
-		const svgFileNames = files
-			.filter((file) => file.endsWith('.svg'))
-			.map((file) => path.basename(file, '.svg'));
+		const files = readdirSync(searchDir).filter((file) =>
+			ICON_EXTENSIONS.includes(path.extname(file).toLowerCase()),
+		);
 
-		const candidateNames = new Set(svgFileNames);
+		// Map icon base names to their actual filenames so suggestions keep their extension.
+		const baseNameToFiles = new Map<string, string[]>();
+		for (const file of files) {
+			const baseName = path.basename(file, path.extname(file));
+			const existing = baseNameToFiles.get(baseName) ?? [];
+			existing.push(file);
+			baseNameToFiles.set(baseName, existing);
+		}
+
+		const candidateNames = new Set(baseNameToFiles.keys());
 		const similarNames = findSimilarStrings(targetFileName, candidateNames);
 
-		return similarNames.map((name) => path.join(targetDir, `${name}.svg`));
+		return similarNames.flatMap((name) =>
+			(baseNameToFiles.get(name) ?? []).map((file) => path.join(targetDir, file)),
+		);
 	} catch {
 		return [];
 	}

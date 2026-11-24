@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import nock from 'nock';
 
 import * as scrape from '../../../actions/extraction/scrape.operation';
@@ -20,12 +21,12 @@ const mockResponse = {
 	},
 };
 
-jest.mock('../../../transport', () => {
-	const originalModule = jest.requireActual<typeof transport>('../../../transport');
+vi.mock('../../../transport', async () => {
+	const originalModule = await vi.importActual<typeof transport>('../../../transport');
 	return {
 		...originalModule,
-		apiRequest: jest.fn(async function (method: string, endpoint: string) {
-			if (method === 'DELETE' && endpoint.includes('/sessions/')) {
+		apiRequest: vi.fn(async function (method: string, endpoint: string) {
+			if (method === 'DELETE' && String(endpoint).includes('/sessions/')) {
 				return { status: 'success' };
 			}
 			return mockResponse;
@@ -33,17 +34,19 @@ jest.mock('../../../transport', () => {
 	};
 });
 
-jest.mock('../../../GenericFunctions', () => {
-	const originalModule = jest.requireActual<typeof GenericFunctions>('../../../GenericFunctions');
+vi.mock('../../../GenericFunctions', async () => {
+	const originalModule = await vi.importActual<typeof GenericFunctions>(
+		'../../../GenericFunctions',
+	);
 	return {
 		...originalModule,
-		createSessionAndWindow: jest.fn().mockImplementation(async () => {
+		createSessionAndWindow: vi.fn().mockImplementation(async () => {
 			return {
 				sessionId: 'new-session-456',
 				windowId: 'new-win-456',
 			};
 		}),
-		shouldCreateNewSession: jest.fn().mockImplementation(function (this: any) {
+		shouldCreateNewSession: vi.fn().mockImplementation(function (this: any) {
 			const sessionMode = this.getNodeParameter('sessionMode', 0);
 			return sessionMode === 'new';
 		}),
@@ -57,12 +60,10 @@ describe('Test Airtop, scrape operation', () => {
 
 	afterAll(() => {
 		nock.restore();
-		jest.unmock('../../../transport');
-		jest.unmock('../../../GenericFunctions');
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should scrape content with minimal parameters using existing session', async () => {
@@ -73,7 +74,7 @@ describe('Test Airtop, scrape operation', () => {
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/scrape-content',
+			requestPath`/sessions/test-session-123/windows/win-123/scrape-content`,
 			{},
 		);
 
@@ -104,7 +105,7 @@ describe('Test Airtop, scrape operation', () => {
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/scrape-content',
+			requestPath`/sessions/test-session-123/windows/win-123/scrape-content`,
 			{},
 		);
 
@@ -135,7 +136,7 @@ describe('Test Airtop, scrape operation', () => {
 		expect(transport.apiRequest).toHaveBeenNthCalledWith(
 			1,
 			'POST',
-			'/sessions/new-session-456/windows/new-win-456/scrape-content',
+			requestPath`/sessions/new-session-456/windows/new-win-456/scrape-content`,
 			{},
 		);
 

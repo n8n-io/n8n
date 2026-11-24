@@ -1,7 +1,9 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { usePrefetchModals } from '@/app/composables/usePrefetchModals';
+import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY } from '@/app/constants';
 import { useExternalSecretsStore } from '../externalSecrets.ee.store';
 import { computed, onMounted } from 'vue';
 import ExternalSecretsProviderCard from '../components/ExternalSecretsProviderCard.ee.vue';
@@ -9,12 +11,16 @@ import type { ExternalSecretsProvider } from '../externalSecrets.types';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { I18nT } from 'vue-i18n';
 
-import { N8nActionBox, N8nCallout, N8nHeading } from '@n8n/design-system';
+import { N8nEmptyState, N8nCallout, N8nHeading } from '@n8n/design-system';
 const i18n = useI18n();
 const externalSecretsStore = useExternalSecretsStore();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
+
+usePrefetchModals([EXTERNAL_SECRETS_PROVIDER_MODAL_KEY], {
+	enabled: () => externalSecretsStore.isEnterpriseExternalSecretsEnabled,
+});
 
 const sortedProviders = computed(() => {
 	return ([...externalSecretsStore.providers] as ExternalSecretsProvider[]).sort((a, b) => {
@@ -26,7 +32,7 @@ onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.externalSecrets.title'));
 	if (!externalSecretsStore.isEnterpriseExternalSecretsEnabled) return;
 	try {
-		void externalSecretsStore.fetchAllSecrets();
+		void externalSecretsStore.fetchGlobalSecrets();
 		void externalSecretsStore.getProviders();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('error'));
@@ -47,7 +53,7 @@ function goToUpgrade() {
 		>
 			<N8nCallout theme="secondary" class="mt-2xl mb-l">
 				{{ i18n.baseText('settings.externalSecrets.info') }}
-				<a :href="i18n.baseText('settings.externalSecrets.docs')" target="_blank">
+				<a href="https://docs.n8n.io/external-secrets/" target="_blank">
 					{{ i18n.baseText('settings.externalSecrets.info.link') }}
 				</a>
 			</N8nCallout>
@@ -57,7 +63,7 @@ function goToUpgrade() {
 				:provider="provider"
 			/>
 		</div>
-		<N8nActionBox
+		<N8nEmptyState
 			v-else
 			class="mt-2xl mb-l"
 			data-test-id="external-secrets-content-unlicensed"
@@ -70,12 +76,12 @@ function goToUpgrade() {
 			<template #description>
 				<I18nT keypath="settings.externalSecrets.actionBox.description" scope="global">
 					<template #link>
-						<a :href="i18n.baseText('settings.externalSecrets.docs')" target="_blank">
+						<a href="https://docs.n8n.io/external-secrets/" target="_blank">
 							{{ i18n.baseText('settings.externalSecrets.actionBox.description.link') }}
 						</a>
 					</template>
 				</I18nT>
 			</template>
-		</N8nActionBox>
+		</N8nEmptyState>
 	</div>
 </template>

@@ -8,9 +8,10 @@ import { useI18n } from '@n8n/i18n';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 
 import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import type { ButtonProps, SelectSize } from '@n8n/design-system';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../../credentials.types';
 import { useMessage } from '@/app/composables/useMessage';
 import { MODAL_CONFIRM } from '@/app/constants';
@@ -22,6 +23,13 @@ const props = defineProps<{
 	personalOnly?: boolean;
 	showDelete?: boolean;
 	hideCreateNew?: boolean;
+	createButtonVariant?: ButtonProps['variant'];
+	projectId?: string;
+	suggestedCredentialName?: string;
+	teleported?: boolean;
+	credentialModalAppendToBody?: boolean;
+	size?: SelectSize;
+	buttonSize?: ButtonProps['size'];
 }>();
 
 const emit = defineEmits<{
@@ -107,13 +115,29 @@ const onCredentialSelected = (credentialId: string) => {
 	emit('credentialSelected', credentialId);
 };
 const createNewCredential = () => {
-	uiStore.openNewCredential(props.credentialType, true);
+	uiStore.openNewCredential(
+		props.credentialType,
+		true,
+		false,
+		props.projectId,
+		props.suggestedCredentialName,
+		undefined,
+		undefined,
+		{
+			closeOnSave: true,
+			...(props.credentialModalAppendToBody ? { appendToBody: true } : {}),
+		},
+	);
 	wasModalOpenedFromHere.value = true;
 	emit('credentialModalOpened', undefined);
 };
 const editCredential = () => {
 	assert(props.selectedCredentialId);
-	uiStore.openExistingCredential(props.selectedCredentialId);
+	if (props.credentialModalAppendToBody) {
+		uiStore.openExistingCredential(props.selectedCredentialId, { appendToBody: true });
+	} else {
+		uiStore.openExistingCredential(props.selectedCredentialId);
+	}
 	wasModalOpenedFromHere.value = true;
 	emit('credentialModalOpened', props.selectedCredentialId);
 };
@@ -186,6 +210,9 @@ listenForModalChanges({
 	onModalClosed(modalName) {
 		if (modalName === CREDENTIAL_EDIT_MODAL_KEY && wasModalOpenedFromHere.value) {
 			wasModalOpenedFromHere.value = false;
+			if (props.selectedCredentialId) {
+				emit('credentialSelected', props.selectedCredentialId);
+			}
 		}
 	},
 });
@@ -206,44 +233,60 @@ watch(
 				:credential-type="props.credentialType"
 				:credential-options="credentialOptions"
 				:selected-credential-id="props.selectedCredentialId"
+				:size="props.size"
 				data-test-id="credential-dropdown"
 				:permissions="credentialPermissions"
+				:teleported="props.teleported"
 				@credential-selected="onCredentialSelected"
 				@new-credential="createNewCredential"
 			/>
 
 			<N8nTooltip
+				v-if="props.selectedCredentialId"
 				:disabled="credentialPermissions.update"
 				:content="i18n.baseText('nodeCredentials.updateCredential.permissionDenied')"
+				as-child
 				:placement="'top'"
 			>
+				<template #content>{{
+					i18n.baseText('nodeCredentials.updateCredential.permissionDenied')
+				}}</template>
 				<N8nIconButton
+					variant="outline"
+					:size="props.buttonSize ?? undefined"
 					icon="pen"
-					type="secondary"
 					:class="{
 						[$style.edit]: true,
-						[$style.invisible]: !props.selectedCredentialId,
 					}"
 					:title="i18n.baseText('nodeCredentials.updateCredential')"
 					data-test-id="credential-edit-button"
 					:disabled="!credentialPermissions.update"
+					focusable-when-disabled
+					:aria-label="i18n.baseText('nodeCredentials.updateCredential')"
 					@click="editCredential()"
 				/>
 			</N8nTooltip>
 
 			<N8nTooltip
-				:disabled="credentialPermissions.update"
+				v-if="props.showDelete && props.selectedCredentialId"
+				:disabled="credentialPermissions.delete"
+				as-child
 				:content="i18n.baseText('nodeCredentials.deleteCredential.permissionDenied')"
 				:placement="'top'"
 			>
+				<template #content>{{
+					i18n.baseText('nodeCredentials.deleteCredential.permissionDenied')
+				}}</template>
 				<N8nIconButton
 					v-if="props.showDelete && props.selectedCredentialId"
 					native-type="button"
 					:title="i18n.baseText('nodeCredentials.deleteCredential')"
 					icon="trash-2"
 					icon-size="large"
-					type="secondary"
+					variant="outline"
 					:disabled="!credentialPermissions.delete"
+					focusable-when-disabled
+					:aria-label="i18n.baseText('nodeCredentials.deleteCredential')"
 					@click="deleteCredential()"
 				/>
 			</N8nTooltip>
@@ -252,7 +295,9 @@ watch(
 		<N8nButton
 			v-else-if="!props.hideCreateNew"
 			:label="`Create new ${props.appName} credential`"
+			:class="$style.createButton"
 			data-test-id="create-credential"
+			:variant="props.createButtonVariant || 'solid'"
 			:disabled="!credentialPermissions.create"
 			@click="createNewCredential"
 		/>
@@ -262,6 +307,7 @@ watch(
 <style lang="scss" module>
 .dropdown {
 	display: flex;
+	align-items: flex-end;
 	gap: var(--spacing--2xs);
 }
 
@@ -273,7 +319,7 @@ watch(
 	font-size: var(--font-size--sm);
 }
 
-.invisible {
-	visibility: hidden;
+.createButton {
+	width: 100%;
 }
 </style>

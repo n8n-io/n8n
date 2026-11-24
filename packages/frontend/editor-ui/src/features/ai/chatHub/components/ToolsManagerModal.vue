@@ -1,0 +1,589 @@
+<script setup lang="ts">
+import { v4 as uuidv4 } from 'uuid';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import ToolListItem from './ToolListItem.vue';
+import NodeToolSettingsContent from '@/features/shared/toolConfig/NodeToolSettingsContent.vue';
+import {
+	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogHeader,
+	N8nDialogTitle,
+	N8nHeading,
+	N8nIcon,
+	N8nIconButton,
+	N8nInlineTextEdit,
+	N8nInput,
+	N8nText,
+} from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import { useDebounceFn } from '@vueuse/core';
+import { NodeConnectionTypes, type INode, type INodeTypeDescription } from 'n8n-workflow';
+import { isChatHubToolTypeAllowed } from '@n8n/api-types';
+import type { ChatHubToolDto } from '@n8n/api-types';
+import { computed, onMounted, ref, watch } from 'vue';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { DEBOUNCE_TIME, MODAL_CONFIRM } from '@/app/constants';
+import { useChatStore } from '@/features/ai/chatHub/chat.store';
+import { useToast } from '@n8n/composables/useToast';
+import { useMessage } from '@/app/composables/useMessage';
+import { hasRole } from '@/app/utils/rbac/checks/hasRole';
+import nodePopularity from 'virtual:node-popularity-data';
+import { useInstallNode } from '@/features/settings/communityNodes/composables/useInstallNode';
+import { useUsersStore } from '@n8n/stores/users.store';
+import {
+	filterAndSearchNodes,
+	isNodeItemRestricted,
+	isNodePreviewKey,
+	removePreviewToken,
+} from '@/features/shared/nodeCreator/nodeCreator.utils';
+import { stripToolSuffix } from '@/app/stores/aiGateway.store';
+import { useRestrictedNodeWarning } from '@/features/shared/nodeCreator/composables/useRestrictedNodeWarning';
+import { RestrictedTypeCallout } from '@n8n/frontend-module-type-availability-policies';
+import { useChatToolRestriction } from '@/features/ai/chatHub/composables/useChatToolRestriction';
+import { partitionLast } from '@n8n/utils/sort/partition-last';
+
+defineOptions({ inheritAttrs: false });
+
+const props = defineProps<{
+	modalName: string;
+	data: {
+		tools: INode[];
+		onConfirm: (tools: INode[]) => void;
+		customAgentId?: string;
+		stacked?: boolean;
+	};
+}>();
+
+const agentId = computed(() => props.data.customAgentId);
+const agentToolIds = computed(() => {
+	if (!agentId.value) return null;
+	return chatStore.customAgents[agentId.value]?.toolIds ?? [];
+});
+const modalTitle = computed(() => {
+	const baseTitle = i18n.baseText('chatHub.toolsManager.title');
+	if (!agentId.value) return baseTitle;
+	const agentName = chatStore.customAgents[agentId.value]?.name;
+	return agentName ? `${baseTitle} (${agentName})` : baseTitle;
+});
+
+function hasInputs(nodeType: INodeTypeDescription): boolean {
+	const { inputs } = nodeType;
+	if (Array.isArray(inputs)) {
+		return inputs.length > 0;
+	}
+
+	// Expression-based inputs are always considered non-empty
+	return true;
+}
+
+const i18n = useI18n();
+const nodeTypesStore = useNodeTypesStore();
+const chatStore = useChatStore();
+const toast = useToast();
+const message = useMessage();
+const usersStore = useUsersStore();
+const uiStore = useUIStore();
+const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
+const { installNode: installCommunityNode } = useInstallNode();
+const { warnIfRestricted } = useRestrictedNodeWarning();
+const isAdminOrOwner = computed(() => usersStore.isAdminOrOwner);
+
+const nodePopularityMap = new Map(nodePopularity.map((node) => [node.id, node.popularity]));
+
+const searchQuery = ref('');
+const debouncedSearchQuery = ref('');
+const installingToolName = ref<string | null>(null);
+
+const setDebouncedSearchQuery = useDebounceFn((value: string) => {
+	debouncedSearchQuery.value = value;
+}, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
+
+watch(searchQuery, (newValue) => {
+	void setDebouncedSearchQuery(newValue);
+});
+
+// View switching state
+type ManagerView = 'list' | 'settings';
+const currentView = ref<ManagerView>('list');
+const settingsNode = ref<INode | null>(null);
+const settingsExistingToolNames = ref<string[]>([]);
+const settingsOnConfirm = ref<((node: INode) => void) | null>(null);
+const settingsContentRef = ref<InstanceType<typeof NodeToolSettingsContent> | null>(null);
+const settingsNodeName = ref('');
+const settingsIsValid = ref(false);
+
+const {
+	isRestricted: settingsIsRestricted,
+	restriction: settingsRestriction,
+	typeName: settingsTypeName,
+} = useChatToolRestriction(() => settingsNode.value?.type);
+
+const tools = computed<ChatHubToolDto[]>(() => chatStore.configuredTools);
+
+const isChatUser = computed(() => hasRole(['global:chatUser']));
+
+function isToolTypeExcluded(type: string): boolean {
+	return !isChatHubToolTypeAllowed(type, { isChatUser: isChatUser.value });
+}
+
+function resolveToolNodeType(name: string): INodeTypeDescription | null {
+	return (
+		nodeTypesStore.getNodeType(name) ??
+		nodeTypesStore.communityNodeType(name)?.nodeDescription ??
+		null
+	);
+}
+
+function isCommunityPreviewTool(nodeType: INodeTypeDescription): boolean {
+	if (!isNodePreviewKey(nodeType.name)) return false;
+	const baseName = stripToolSuffix(nodeType.name);
+	return !!nodeTypesStore.communityNodeType(baseName);
+}
+
+function communityPackageNameFor(nodeType: INodeTypeDescription): string {
+	const baseName = stripToolSuffix(nodeType.name);
+	return (
+		nodeTypesStore.communityNodeType(baseName)?.packageName ??
+		removePreviewToken(nodeType.name.split('.')[0] ?? nodeType.name)
+	);
+}
+
+const availableToolTypes = computed<INodeTypeDescription[]>(() => {
+	const toolTypeNames =
+		nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames[NodeConnectionTypes.AiTool] ?? [];
+
+	return toolTypeNames
+		.map((name) => resolveToolNodeType(name))
+		.filter(
+			(nodeType): nodeType is INodeTypeDescription =>
+				nodeType !== null && !isToolTypeExcluded(nodeType.name) && !hasInputs(nodeType),
+		)
+		.sort((a, b) => {
+			const popA = nodePopularityMap.get(a.name) ?? 0;
+			const popB = nodePopularityMap.get(b.name) ?? 0;
+			return popB - popA;
+		});
+});
+
+onMounted(() => {
+	void nodeTypesStore.fetchCommunityNodePreviews();
+});
+
+const filteredConfiguredTools = computed(() => {
+	if (!debouncedSearchQuery.value) {
+		return tools.value;
+	}
+	const query = debouncedSearchQuery.value.toLowerCase();
+	return tools.value.filter((tool) => {
+		const def = tool.definition;
+		const nodeType = nodeTypesStore.getNodeType(def.type, def.typeVersion);
+		const nameMatch = def.name.toLowerCase().includes(query);
+		const typeMatch = nodeType?.displayName.toLowerCase().includes(query);
+		return nameMatch || typeMatch;
+	});
+});
+
+const matchingAvailableTools = computed(() => {
+	const base = !debouncedSearchQuery.value
+		? availableToolTypes.value
+		: availableToolTypes.value.filter((nodeType) => {
+				const query = debouncedSearchQuery.value.toLowerCase();
+				const nameMatch = nodeType.displayName.toLowerCase().includes(query);
+				const descMatch = nodeType.description?.toLowerCase().includes(query);
+				return nameMatch || descMatch;
+			});
+
+	if (!debouncedSearchQuery.value) return base;
+
+	const communitySearchHits = filterAndSearchNodes(
+		nodeTypesStore.communityNodesAndActions.mergedNodes,
+		debouncedSearchQuery.value,
+		{ isAiSubcategory: true, aiConnectionType: NodeConnectionTypes.AiTool },
+	);
+	const seen = new Set(base.map((nt) => nt.name));
+	const previews: INodeTypeDescription[] = [];
+	for (const hit of communitySearchHits) {
+		if (hit.type !== 'node') continue;
+		const resolved = resolveToolNodeType(hit.key) ?? resolveToolNodeType(hit.properties.name);
+		if (
+			!resolved ||
+			seen.has(resolved.name) ||
+			isToolTypeExcluded(resolved.name) ||
+			hasInputs(resolved)
+		) {
+			continue;
+		}
+		seen.add(resolved.name);
+		previews.push(resolved);
+	}
+	return [...base, ...previews];
+});
+
+const filteredAvailableTools = computed(() =>
+	partitionLast(matchingAvailableTools.value, (nodeType) => isNodeItemRestricted(nodeType.name)),
+);
+
+function getNodeType(tool: ChatHubToolDto): INodeTypeDescription | null {
+	return nodeTypesStore.getNodeType(tool.definition.type, tool.definition.typeVersion);
+}
+
+function openSettings(
+	node: INode,
+	existingNames: string[],
+	onConfirm: (configuredNode: INode) => void,
+) {
+	settingsNode.value = node;
+	settingsExistingToolNames.value = existingNames;
+	settingsOnConfirm.value = onConfirm;
+	settingsNodeName.value = node.name;
+	settingsIsValid.value = false;
+	currentView.value = 'settings';
+}
+
+function handleConfigureTool(tool: ChatHubToolDto) {
+	const otherToolNames = tools.value
+		.filter((t) => t.definition.id !== tool.definition.id)
+		.map((t) => t.definition.name);
+
+	openSettings({ ...tool.definition }, otherToolNames, async (configuredNode: INode) => {
+		try {
+			await chatStore.updateConfiguredTool(tool.definition.id, configuredNode);
+		} catch (error) {
+			toast.showError(error, i18n.baseText('chatHub.error.updateToolsFailed'));
+		}
+	});
+}
+
+async function handleRemoveTool(toolId: string) {
+	const confirmed = await message.confirm(
+		i18n.baseText('chatHub.toolsManager.confirmRemove.message'),
+		i18n.baseText('chatHub.toolsManager.confirmRemove.title'),
+		{
+			confirmButtonText: i18n.baseText('chatHub.toolsManager.remove'),
+			cancelButtonText: i18n.baseText('generic.cancel'),
+		},
+	);
+	if (confirmed !== MODAL_CONFIRM) return;
+
+	try {
+		await chatStore.removeConfiguredTool(toolId);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('chatHub.error.updateToolsFailed'));
+	}
+}
+
+async function handleToggleTool(tool: ChatHubToolDto, enabled: boolean) {
+	try {
+		if (agentId.value) {
+			await chatStore.toggleCustomAgentTool(agentId.value, tool.definition.id);
+		} else {
+			await chatStore.toggleToolEnabled(tool.definition.id, enabled);
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('chatHub.error.updateToolsFailed'));
+	}
+}
+
+function openSettingsFor(nodeType: INodeTypeDescription) {
+	const typeVersion =
+		typeof nodeType.version === 'number'
+			? nodeType.version
+			: nodeType.version.toSorted((a, b) => b - a)?.[0];
+
+	if (!typeVersion) {
+		return;
+	}
+
+	const newToolId = uuidv4();
+	const existingNames = tools.value.map((t) => t.definition.name);
+
+	openSettings(
+		{
+			type: nodeType.name,
+			typeVersion,
+			parameters: {},
+			id: newToolId,
+			name: nodeType.displayName,
+			position: [0, 0],
+		},
+		existingNames,
+		async (configuredNode: INode) => {
+			// The policy can finish loading while the settings view is open.
+			if (warnIfRestricted(configuredNode.type)) return;
+
+			try {
+				await chatStore.addConfiguredTool(configuredNode);
+			} catch (error) {
+				toast.showError(error, i18n.baseText('chatHub.error.updateToolsFailed'));
+			}
+		},
+	);
+}
+
+async function handleAddTool(nodeType: INodeTypeDescription) {
+	if (isNodeItemRestricted(nodeType.name)) return;
+
+	if (isCommunityPreviewTool(nodeType)) {
+		const packageName = communityPackageNameFor(nodeType);
+		const baseName = stripToolSuffix(nodeType.name);
+		installingToolName.value = nodeType.name;
+		try {
+			const result = await installCommunityNode({
+				type: 'verified',
+				packageName,
+				nodeType: baseName,
+				selectedNodeType: nodeType.name,
+				telemetry: { source: 'chat hub tools manager', hasQuickConnect: false },
+			});
+			if (!result.success) return;
+
+			const installedName = removePreviewToken(nodeType.name);
+			const installed = nodeTypesStore.getNodeType(installedName) ?? nodeType;
+			if (result.restricted) return;
+			openSettingsFor(installed);
+		} finally {
+			installingToolName.value = null;
+		}
+		return;
+	}
+
+	openSettingsFor(nodeType);
+}
+
+function handleBack() {
+	currentView.value = 'list';
+	settingsNode.value = null;
+	settingsExistingToolNames.value = [];
+	settingsOnConfirm.value = null;
+	settingsNodeName.value = '';
+	settingsIsValid.value = false;
+}
+
+function handleSave() {
+	const currentNode = settingsContentRef.value?.node;
+	if (!currentNode || !settingsOnConfirm.value) return;
+
+	settingsOnConfirm.value(currentNode);
+	handleBack();
+}
+
+function handleSettingsChangeName(name: string) {
+	settingsContentRef.value?.handleChangeName(name);
+}
+
+async function closeDialog() {
+	uiStore.closeModal(props.modalName);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
+</script>
+
+<template>
+	<N8nDialog
+		:open="modalOpen"
+		size="2xlarge"
+		:stacked="data.stacked === true"
+		:show-close-button="currentView === 'list'"
+		:container-class="$style.modal"
+		@update:open="onDialogOpenUpdate"
+	>
+		<N8nDialogHeader :class="currentView === 'list' ? $style.listHeader : undefined">
+			<!-- List view header -->
+			<template v-if="currentView === 'list'">
+				<N8nDialogTitle :class="$style.listTitle">
+					{{ modalTitle }}
+				</N8nDialogTitle>
+				<N8nInput
+					v-model="searchQuery"
+					:placeholder="i18n.baseText('chatHub.toolsManager.searchPlaceholder')"
+					clearable
+				>
+					<template #prefix>
+						<N8nIcon icon="search" />
+					</template>
+				</N8nInput>
+			</template>
+
+			<!-- Settings view header -->
+			<div v-else :class="$style.settingsHeader">
+				<div :class="$style.settingsHeaderLeft">
+					<N8nIconButton
+						icon="arrow-left"
+						text
+						size="large"
+						variant="ghost"
+						data-test-id="chat-tools-manager-back"
+						@click="handleBack"
+					/>
+					<N8nDialogTitle>
+						<N8nInlineTextEdit
+							:model-value="settingsNodeName"
+							:read-only="settingsIsRestricted"
+							:max-width="350"
+							@update:model-value="handleSettingsChangeName"
+						/>
+					</N8nDialogTitle>
+				</div>
+				<N8nButton
+					variant="solid"
+					size="small"
+					:disabled="!settingsIsValid || settingsIsRestricted"
+					data-test-id="chat-tool-settings-save"
+					@click="handleSave"
+				>
+					{{ i18n.baseText('chatHub.toolSettings.confirm') }}
+				</N8nButton>
+			</div>
+		</N8nDialogHeader>
+
+		<N8nDialogBody>
+			<!-- List view: the body padding is reset so this scrollbar sits on the dialog edge. -->
+			<div v-show="currentView === 'list'" data-tools-manager-modal :class="$style.listWrapper">
+				<div v-if="filteredConfiguredTools.length > 0" :class="$style.section">
+					<N8nHeading size="small" color="text-light" tag="h3">
+						{{
+							i18n.baseText('chatHub.toolsManager.configuredTools', {
+								interpolate: { count: tools.length },
+							})
+						}}
+					</N8nHeading>
+					<div>
+						<ToolListItem
+							v-for="tool in filteredConfiguredTools"
+							:key="tool.definition.id"
+							:node-type="getNodeType(tool)!"
+							:configured-node="tool.definition"
+							:enabled="agentToolIds ? agentToolIds.includes(tool.definition.id) : tool.enabled"
+							:role-blocked="isToolTypeExcluded(tool.definition.type)"
+							mode="configured"
+							@configure="handleConfigureTool(tool)"
+							@remove="handleRemoveTool(tool.definition.id)"
+							@toggle="handleToggleTool(tool, $event)"
+						/>
+					</div>
+				</div>
+
+				<div v-if="filteredAvailableTools.length > 0" :class="$style.section">
+					<N8nHeading size="small" color="text-light" tag="h3">
+						{{
+							i18n.baseText('chatHub.toolsManager.availableTools', {
+								interpolate: { count: availableToolTypes.length },
+							})
+						}}
+					</N8nHeading>
+					<div>
+						<ToolListItem
+							v-for="nodeType in filteredAvailableTools"
+							:key="nodeType.name"
+							:node-type="nodeType"
+							:community-preview="isCommunityPreviewTool(nodeType)"
+							:installing="installingToolName === nodeType.name"
+							:install-disabled="!isAdminOrOwner"
+							mode="available"
+							@add="handleAddTool(nodeType)"
+						/>
+					</div>
+				</div>
+
+				<div
+					v-if="filteredConfiguredTools.length === 0 && filteredAvailableTools.length === 0"
+					:class="$style.emptyState"
+				>
+					<N8nText color="text-light">
+						{{ i18n.baseText('chatHub.toolsManager.noResults') }}
+					</N8nText>
+				</div>
+			</div>
+
+			<!-- Settings view: doesn't scroll, lets NodeToolSettingsContent.tabContent scroll -->
+			<div v-if="currentView === 'settings' && settingsNode" :class="$style.settingsWrapper">
+				<RestrictedTypeCallout
+					v-if="settingsIsRestricted"
+					surface="chatTool"
+					:type-name="settingsTypeName"
+					:restriction="settingsRestriction"
+					:class="$style.settingsCallout"
+				/>
+				<NodeToolSettingsContent
+					ref="settingsContentRef"
+					:initial-node="settingsNode"
+					:existing-tool-names="settingsExistingToolNames"
+					:read-only="settingsIsRestricted"
+					@update:valid="settingsIsValid = $event"
+					@update:node-name="settingsNodeName = $event"
+				/>
+			</div>
+		</N8nDialogBody>
+	</N8nDialog>
+</template>
+
+<style lang="scss" module>
+.modal {
+	:global(.ndv-connection-hint-notice) {
+		display: none;
+	}
+}
+
+.listHeader {
+	flex-direction: column;
+	align-items: stretch;
+	padding-inline-end: var(--n8n-dialog-region--padding, var(--spacing--md));
+	gap: var(--spacing--sm);
+}
+
+.listTitle {
+	padding-inline-end: calc(var(--n8n-dialog-close--size, var(--spacing--lg)) + var(--spacing--xs));
+}
+
+.settingsHeader {
+	display: flex;
+	justify-content: space-between;
+}
+
+.settingsHeaderLeft {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	min-width: 0;
+	flex: 1;
+}
+
+.listWrapper {
+	gap: var(--spacing--sm);
+	display: flex;
+	flex-direction: column;
+	max-height: 60vh;
+}
+
+.settingsWrapper {
+	display: flex;
+	flex-direction: column;
+	max-height: 60vh;
+	overflow: hidden;
+	margin-right: calc(-1 * var(--spacing--lg));
+	padding-top: var(--spacing--sm);
+}
+
+.settingsCallout {
+	flex-shrink: 0;
+	margin-right: var(--spacing--lg);
+	margin-bottom: var(--spacing--sm);
+}
+
+.section {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+
+.emptyState {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing--xl);
+}
+</style>

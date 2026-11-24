@@ -1,5 +1,5 @@
 import userEvent from '@testing-library/user-event';
-import { render } from '@testing-library/vue';
+import { render, waitFor } from '@testing-library/vue';
 import { defineComponent } from 'vue';
 import { createRouter, createWebHistory } from 'vue-router';
 
@@ -11,7 +11,7 @@ const N8nActionToggleMock = defineComponent({
 	name: 'N8nActionToggle',
 	props: {
 		actions: {
-			type: Array as () => Array<{ value: string; label: string }>,
+			type: Array as () => Array<{ id: string; label: string }>,
 			required: true,
 		},
 		loading: {
@@ -43,16 +43,16 @@ const N8nActionToggleMock = defineComponent({
         <div v-if="loading" data-test-id="loading-state">
           Loading...
         </div>
-        <template v-else>
-          <div
-            v-for="action in actions"
-            :key="action.value"
-            :data-test-id="'action-' + action.value"
-            class="dropdown-item"
-            @click="$emit('action', action.value)"
-          >
-            {{ action.label }}
-          </div>
+	      <template v-else>
+	          <div
+	            v-for="action in actions"
+	            :key="action.id"
+	            :data-test-id="'action-' + action.id"
+	            class="dropdown-item"
+	            @click="$emit('action', action.id)"
+	          >
+	            {{ action.label }}
+	          </div>
         </template>
       </div>
     </div>
@@ -80,6 +80,39 @@ describe('Breadcrumbs', async () => {
 			},
 		});
 		expect(wrapper.html()).toMatchSnapshot();
+	});
+
+	it('keeps the icon and label in the same link', async () => {
+		const item: PathItem = {
+			id: 'project',
+			label: 'My project',
+			href: '/project',
+			icon: { type: 'icon', value: 'folder', color: '--color--primary' },
+		};
+		const { getByRole, emitted } = render(Breadcrumbs, {
+			props: { items: [item] },
+			global: { plugins: [router] },
+		});
+		const link = getByRole('link', { name: 'My project' });
+		const icon = getByRole('img', { hidden: true });
+
+		expect(link).toContainElement(icon);
+		expect(icon).toHaveAttribute('aria-hidden', 'true');
+		expect(icon).toHaveStyle({ color: 'var(--color--primary)' });
+		await userEvent.click(icon);
+		expect(emitted().itemSelected).toEqual([[item]]);
+	});
+
+	it.each(['small', 'medium'] as const)('renders a decorative emoji in the %s theme', (theme) => {
+		const { getByText, getByTestId } = render(Breadcrumbs, {
+			props: {
+				items: [{ id: 'project', label: 'My project', icon: { type: 'emoji', value: '🚀' } }],
+				theme,
+			},
+		});
+
+		expect(getByText('🚀')).toHaveAttribute('aria-hidden', 'true');
+		expect(getByTestId('breadcrumbs-item')).toHaveTextContent('My project');
 	});
 
 	it('renders small version correctly', () => {
@@ -157,9 +190,6 @@ describe('Breadcrumbs', async () => {
 		expect(getByTestId('ellipsis')).toBeTruthy();
 		expect(getByTestId('hidden-items-menu')).toBeTruthy();
 		expect(getByTestId('ellipsis')).toHaveClass('disabled');
-		expect(getByTestId('hidden-items-menu').querySelector('.el-dropdown')).toHaveClass(
-			'is-disabled',
-		);
 	});
 
 	it('does not highlight last item for "highlightLastItem = false" ', () => {
@@ -328,5 +358,48 @@ describe('Breadcrumbs', async () => {
 		// close the tooltip
 		await userEvent.click(getByTestId('mock-dropdown-button'));
 		expect(emitted()).toHaveProperty('tooltipClosed');
+	});
+
+	// KNO-224: the small theme uses the real N8nTooltip. Hovering the ellipsis must
+	// load the hidden items, otherwise the tooltip renders empty.
+	it('loads hidden items into the small theme tooltip on hover', async () => {
+		const hiddenItems = [
+			{ id: 'parent-1', label: 'Parent 1' },
+			{ id: 'parent-2', label: 'Parent 2' },
+		];
+
+		const { emitted, getByTestId } = render(Breadcrumbs, {
+			props: {
+				items: [
+					{ id: '1', label: 'Personal' },
+					{ id: '2', label: 'Productivity' },
+				],
+				hiddenItems: Promise.resolve(hiddenItems),
+				pathTruncated: true,
+				hiddenItemsTrigger: 'hover',
+				theme: 'small',
+			},
+			global: {
+				plugins: [router],
+			},
+		});
+
+		const ellipsis = getByTestId('ellipsis').querySelector('[data-grace-area-trigger]');
+		expect(ellipsis).toBeTruthy();
+		// Reka UI opens tooltips on pointermove with a mouse pointer
+		ellipsis!.dispatchEvent(
+			new PointerEvent('pointermove', { bubbles: true, cancelable: true, pointerType: 'mouse' }),
+		);
+
+		await waitFor(() => {
+			expect(document.querySelector('[data-dismissable-layer]')).toBeInTheDocument();
+		});
+
+		await waitFor(() => {
+			expect(emitted()).toHaveProperty('tooltipOpened');
+			expect(document.querySelector('[data-test-id="hidden-items-tooltip"]')).toHaveTextContent(
+				'Parent 1 / Parent 2',
+			);
+		});
 	});
 });

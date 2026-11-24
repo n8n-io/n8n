@@ -1,4 +1,5 @@
 import { sign } from 'aws4';
+import { requestPath } from 'n8n-workflow';
 import { parseString } from 'xml2js';
 
 import {
@@ -7,25 +8,27 @@ import {
 	s3ApiRequestSOAP,
 	s3ApiRequestSOAPAllItems,
 } from '../GenericFunctions';
+import { objectKeyPath } from '../../Aws/S3/utils';
+import type { Mock } from 'vitest';
 
-jest.mock('aws4');
-jest.mock('xml2js');
+vi.mock('aws4', () => ({ sign: vi.fn() }));
+vi.mock('xml2js');
 
 describe('S3 Node Generic Functions', () => {
 	let mockContext: any;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockContext = {
-			getNode: jest.fn().mockReturnValue({ name: 'S3' }),
-			getCredentials: jest.fn().mockResolvedValue({
+			getNode: vi.fn().mockReturnValue({ name: 'S3' }),
+			getCredentials: vi.fn().mockResolvedValue({
 				endpoint: 'https://s3.amazonaws.com',
 				accessKeyId: 'test-key',
 				secretAccessKey: 'test-secret',
 				region: 'us-east-1',
 			}),
 			helpers: {
-				request: jest.fn(),
+				request: vi.fn(),
 			},
 		};
 	});
@@ -36,9 +39,9 @@ describe('S3 Node Generic Functions', () => {
 				endpoint: 'invalid-endpoint',
 			});
 
-			await expect(s3ApiRequest.call(mockContext, 'test-bucket', 'GET', '/')).rejects.toThrow(
-				'HTTP(S) Scheme is required',
-			);
+			await expect(
+				s3ApiRequest.call(mockContext, 'test-bucket', 'GET', requestPath`/`),
+			).rejects.toThrow('HTTP(S) Scheme is required');
 		});
 
 		it('should handle force path style', async () => {
@@ -49,7 +52,7 @@ describe('S3 Node Generic Functions', () => {
 
 			mockContext.helpers.request.mockResolvedValueOnce('success');
 
-			await s3ApiRequest.call(mockContext, 'test-bucket', 'GET', '/test.txt');
+			await s3ApiRequest.call(mockContext, 'test-bucket', 'GET', requestPath`/test.txt`);
 
 			expect(sign).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -68,7 +71,7 @@ describe('S3 Node Generic Functions', () => {
 
 			mockContext.helpers.request.mockResolvedValueOnce('success');
 
-			await s3ApiRequest.call(mockContext, 'test-bucket', 'GET', '/test.txt');
+			await s3ApiRequest.call(mockContext, 'test-bucket', 'GET', requestPath`/test.txt`);
 
 			expect(sign).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -77,6 +80,86 @@ describe('S3 Node Generic Functions', () => {
 				expect.any(Object),
 			);
 		});
+
+		it.each([
+			{
+				forcePathStyle: true,
+				signedPathPrefix: '/test-bucket',
+				uriPrefix: 'https://s3.amazonaws.com/test-bucket',
+			},
+			{
+				forcePathStyle: false,
+				signedPathPrefix: '',
+				uriPrefix: 'https://test-bucket.s3.amazonaws.com',
+			},
+		])(
+			'should encode plus signs when forcePathStyle is $forcePathStyle',
+			async ({ forcePathStyle, signedPathPrefix, uriPrefix }) => {
+				for (const fileKey of ['has+plus.txt', 'has%2Bplus.txt']) {
+					mockContext.getCredentials.mockResolvedValueOnce({
+						endpoint: 'https://s3.amazonaws.com',
+						forcePathStyle,
+					});
+					mockContext.helpers.request.mockResolvedValueOnce('success');
+
+					await s3ApiRequest.call(mockContext, 'test-bucket', 'GET', objectKeyPath(fileKey));
+
+					expect(sign).toHaveBeenLastCalledWith(
+						expect.objectContaining({
+							path: `${signedPathPrefix}/has%2Bplus.txt?`,
+						}),
+						expect.any(Object),
+					);
+					expect(mockContext.helpers.request).toHaveBeenLastCalledWith(
+						expect.objectContaining({
+							uri: `${uriPrefix}/has%2Bplus.txt`,
+						}),
+					);
+				}
+			},
+		);
+
+		it.each([
+			{
+				forcePathStyle: true,
+				signedPathPrefix: '/test-bucket',
+				uriPrefix: 'https://s3.amazonaws.com/test-bucket',
+			},
+			{
+				forcePathStyle: false,
+				signedPathPrefix: '',
+				uriPrefix: 'https://test-bucket.s3.amazonaws.com',
+			},
+		])(
+			'should preserve encoded slashes when forcePathStyle is $forcePathStyle',
+			async ({ forcePathStyle, signedPathPrefix, uriPrefix }) => {
+				for (const fileKey of ['folder%2Ffile.txt', 'folder%252Ffile.txt']) {
+					mockContext.getCredentials.mockResolvedValueOnce({
+						endpoint: 'https://s3.amazonaws.com',
+						forcePathStyle,
+					});
+					mockContext.helpers.request.mockResolvedValueOnce('success');
+
+					await s3ApiRequest.call(mockContext, 'test-bucket', 'GET', objectKeyPath(fileKey));
+
+					expect(sign).toHaveBeenLastCalledWith(
+						expect.objectContaining({
+							path: `${signedPathPrefix}/${fileKey}?`,
+						}),
+						expect.any(Object),
+					);
+					expect(mockContext.helpers.request).toHaveBeenLastCalledWith(
+						expect.objectContaining({
+							uri: `${uriPrefix}/${fileKey}`,
+						}),
+					);
+				}
+			},
+		);
+
+		it('should reject an object key with a dot segment', () => {
+			expect(() => objectKeyPath('folder%2F..%2Fsecret.txt')).toThrow('Invalid identifier');
+		});
 	});
 
 	describe('s3ApiRequestREST', () => {
@@ -84,7 +167,7 @@ describe('S3 Node Generic Functions', () => {
 			const mockResponse = JSON.stringify({ key: 'value' });
 			mockContext.helpers.request.mockResolvedValueOnce(mockResponse);
 
-			const result = await s3ApiRequestREST.call(mockContext, 'test-bucket', 'GET', '/');
+			const result = await s3ApiRequestREST.call(mockContext, 'test-bucket', 'GET', requestPath`/`);
 
 			expect(result).toEqual({ key: 'value' });
 		});
@@ -93,7 +176,7 @@ describe('S3 Node Generic Functions', () => {
 			const mockResponse = 'invalid-json';
 			mockContext.helpers.request.mockResolvedValueOnce(mockResponse);
 
-			const result = await s3ApiRequestREST.call(mockContext, 'test-bucket', 'GET', '/');
+			const result = await s3ApiRequestREST.call(mockContext, 'test-bucket', 'GET', requestPath`/`);
 
 			expect(result).toBe('invalid-json');
 		});
@@ -105,11 +188,11 @@ describe('S3 Node Generic Functions', () => {
 			const mockParsedResponse = { root: { key: 'value' } };
 
 			mockContext.helpers.request.mockResolvedValueOnce(mockXmlResponse);
-			(parseString as jest.Mock).mockImplementation((_, __, callback) =>
+			(parseString as Mock).mockImplementation((_, __, callback) =>
 				callback(null, mockParsedResponse),
 			);
 
-			const result = await s3ApiRequestSOAP.call(mockContext, 'test-bucket', 'GET', '/');
+			const result = await s3ApiRequestSOAP.call(mockContext, 'test-bucket', 'GET', requestPath`/`);
 
 			expect(result).toEqual(mockParsedResponse);
 		});
@@ -117,9 +200,9 @@ describe('S3 Node Generic Functions', () => {
 		it('should handle XML parsing errors', async () => {
 			const mockError = new Error('XML Parse Error');
 			mockContext.helpers.request.mockResolvedValueOnce('<invalid>xml');
-			(parseString as jest.Mock).mockImplementation((_, __, callback) => callback(mockError));
+			(parseString as Mock).mockImplementation((_, __, callback) => callback(mockError));
 
-			const result = await s3ApiRequestSOAP.call(mockContext, 'test-bucket', 'GET', '/');
+			const result = await s3ApiRequestSOAP.call(mockContext, 'test-bucket', 'GET', requestPath`/`);
 
 			expect(result).toEqual(mockError);
 		});
@@ -145,7 +228,7 @@ describe('S3 Node Generic Functions', () => {
 				.mockResolvedValueOnce('<xml>first</xml>')
 				.mockResolvedValueOnce('<xml>second</xml>');
 
-			(parseString as jest.Mock)
+			(parseString as Mock)
 				.mockImplementationOnce((_, __, callback) => callback(null, firstResponse))
 				.mockImplementationOnce((_, __, callback) => callback(null, secondResponse));
 
@@ -154,7 +237,7 @@ describe('S3 Node Generic Functions', () => {
 				'ListBucketResult.Contents',
 				'test-bucket',
 				'GET',
-				'/',
+				requestPath`/`,
 			);
 
 			expect(result).toHaveLength(2);

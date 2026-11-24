@@ -1,14 +1,16 @@
 import type { IHttpRequestMethods } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import * as move from '../../../../v2/actions/file/move.operation';
 import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction, driveNode } from '../helpers';
+import type * as _importType0 from '../../../../v2/transport';
 
-jest.mock('../../../../v2/transport', () => {
-	const originalModule = jest.requireActual('../../../../v2/transport');
+vi.mock('../../../../v2/transport', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../../../../v2/transport');
 	return {
 		...originalModule,
-		googleApiRequest: jest.fn(async function (method: IHttpRequestMethods) {
+		googleApiRequest: vi.fn(async function (method: IHttpRequestMethods) {
 			if (method === 'GET') {
 				return {
 					parents: ['parentFolderIDxxxxxx'],
@@ -46,7 +48,7 @@ describe('test GoogleDriveV2: file move', () => {
 		expect(transport.googleApiRequest).toBeCalledTimes(2);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/drive/v3/files/fileIDxxxxxx',
+			requestPath`/drive/v3/files/fileIDxxxxxx`,
 			undefined,
 			{
 				corpora: 'allDrives',
@@ -58,7 +60,7 @@ describe('test GoogleDriveV2: file move', () => {
 		);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'PATCH',
-			'/drive/v3/files/fileIDxxxxxx',
+			requestPath`/drive/v3/files/fileIDxxxxxx`,
 			undefined,
 			{
 				addParents: 'folderIDxxxxxx',

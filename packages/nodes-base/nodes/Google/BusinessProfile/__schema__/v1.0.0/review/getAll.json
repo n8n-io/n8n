@@ -30,10 +30,16 @@
                 "comment": {
                     "type": "string"
                 },
+                "reviewReplyState": {
+                    "type": "string"
+                },
                 "updateTime": {
                     "type": "string"
                 }
             }
+        },
+        "reviewReplyUrl": {
+            "type": "string"
         },
         "starRating": {
             "type": "string"
@@ -42,5 +48,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 5
 }

@@ -1,21 +1,28 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
-import { getUsers, getRepositories, getWorkflows, getRefs } from '../SearchFunctions';
+import {
+	getUsers,
+	getOrganizations,
+	getRepositories,
+	getWorkflows,
+	getRefs,
+} from '../SearchFunctions';
+import type { Mock } from 'vitest';
 
 const mockLoadOptionsFunctions = {
-	getNodeParameter: jest.fn(),
-	getCredentials: jest.fn().mockResolvedValue({
+	getNodeParameter: vi.fn(),
+	getCredentials: vi.fn().mockResolvedValue({
 		server: 'https://api.github.com',
 	}),
 	helpers: {
-		requestWithAuthentication: jest.fn(),
+		requestWithAuthentication: vi.fn(),
 	},
-	getCurrentNodeParameter: jest.fn(),
+	getCurrentNodeParameter: vi.fn(),
 } as unknown as ILoadOptionsFunctions;
 
 describe('Search Functions', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getUsers', () => {
@@ -29,7 +36,7 @@ describe('Search Functions', () => {
 				total_count: 2,
 			};
 
-			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 				responseData,
 			);
 
@@ -62,7 +69,7 @@ describe('Search Functions', () => {
 				total_count: 200,
 			};
 
-			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 				responseData,
 			);
 
@@ -73,7 +80,7 @@ describe('Search Functions', () => {
 					{ name: 'test-user-1', value: 'test-user-1', url: 'https://github.com/test-user-1' },
 					{ name: 'test-user-2', value: 'test-user-2', url: 'https://github.com/test-user-2' },
 				],
-				paginationToken: 2,
+				paginationToken: '2',
 			});
 		});
 
@@ -88,7 +95,7 @@ describe('Search Functions', () => {
 				total_count: 200,
 			};
 
-			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 				responseData,
 			);
 
@@ -112,6 +119,28 @@ describe('Search Functions', () => {
 		});
 	});
 
+	describe('getOrganizations', () => {
+		it('should search organizations only', async () => {
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue({
+				items: [{ login: 'n8n-io', html_url: 'https://github.com/n8n-io' }],
+				total_count: 1,
+			});
+
+			const result = await getOrganizations.call(mockLoadOptionsFunctions, 'n8n');
+
+			expect(result).toEqual({
+				results: [{ name: 'n8n-io', value: 'n8n-io', url: 'https://github.com/n8n-io' }],
+				paginationToken: undefined,
+			});
+			expect(mockLoadOptionsFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'githubOAuth2Api',
+				expect.objectContaining({
+					qs: expect.objectContaining({ q: 'n8n type:org', page: 1 }),
+				}),
+			);
+		});
+	});
+
 	describe('getRepositories', () => {
 		it('should fetch repositories', async () => {
 			const filter = 'test-repo';
@@ -124,8 +153,8 @@ describe('Search Functions', () => {
 				total_count: 2,
 			};
 
-			(mockLoadOptionsFunctions.getCurrentNodeParameter as jest.Mock).mockReturnValue(owner);
-			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			(mockLoadOptionsFunctions.getCurrentNodeParameter as Mock).mockReturnValue(owner);
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 				responseData,
 			);
 
@@ -158,8 +187,8 @@ describe('Search Functions', () => {
 				total_count: 2,
 			};
 
-			(mockLoadOptionsFunctions.getCurrentNodeParameter as jest.Mock).mockReturnValue(owner);
-			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			(mockLoadOptionsFunctions.getCurrentNodeParameter as Mock).mockReturnValue(owner);
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 				responseData,
 			);
 
@@ -194,8 +223,8 @@ describe('Search Functions', () => {
 				total_count: 200,
 			};
 
-			(mockLoadOptionsFunctions.getCurrentNodeParameter as jest.Mock).mockReturnValue(owner);
-			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			(mockLoadOptionsFunctions.getCurrentNodeParameter as Mock).mockReturnValue(owner);
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 				responseData,
 			);
 
@@ -234,8 +263,8 @@ describe('Search Functions', () => {
 				total_count: 0,
 			};
 
-			(mockLoadOptionsFunctions.getCurrentNodeParameter as jest.Mock).mockReturnValue(owner);
-			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			(mockLoadOptionsFunctions.getCurrentNodeParameter as Mock).mockReturnValue(owner);
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 				responseData,
 			);
 
@@ -260,10 +289,10 @@ describe('Search Functions', () => {
 				total_count: 2,
 			};
 
-			(mockLoadOptionsFunctions.getCurrentNodeParameter as jest.Mock)
+			(mockLoadOptionsFunctions.getCurrentNodeParameter as Mock)
 				.mockReturnValueOnce(owner)
 				.mockReturnValueOnce(repository);
-			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 				responseData,
 			);
 
@@ -289,10 +318,10 @@ describe('Search Functions', () => {
 				total_count: 200,
 			};
 
-			(mockLoadOptionsFunctions.getCurrentNodeParameter as jest.Mock)
+			(mockLoadOptionsFunctions.getCurrentNodeParameter as Mock)
 				.mockReturnValueOnce(owner)
 				.mockReturnValueOnce(repository);
-			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 				responseData,
 			);
 
@@ -303,7 +332,7 @@ describe('Search Functions', () => {
 					{ name: 'workflow-1', value: '1' },
 					{ name: 'workflow-2', value: '2' },
 				],
-				paginationToken: 2,
+				paginationToken: '2',
 			});
 		});
 
@@ -319,10 +348,10 @@ describe('Search Functions', () => {
 				total_count: 300,
 			};
 
-			(mockLoadOptionsFunctions.getCurrentNodeParameter as jest.Mock)
+			(mockLoadOptionsFunctions.getCurrentNodeParameter as Mock)
 				.mockReturnValueOnce(owner)
 				.mockReturnValueOnce(repository);
-			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 				responseData,
 			);
 
@@ -333,7 +362,7 @@ describe('Search Functions', () => {
 					{ name: 'workflow-3', value: '3' },
 					{ name: 'workflow-4', value: '4' },
 				],
-				paginationToken: 2,
+				paginationToken: '2',
 			});
 
 			expect(mockLoadOptionsFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
@@ -353,10 +382,10 @@ describe('Search Functions', () => {
 				total_count: 0,
 			};
 
-			(mockLoadOptionsFunctions.getCurrentNodeParameter as jest.Mock)
+			(mockLoadOptionsFunctions.getCurrentNodeParameter as Mock)
 				.mockReturnValueOnce(owner)
 				.mockReturnValueOnce(repository);
-			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 				responseData,
 			);
 
@@ -381,14 +410,14 @@ describe('Search Functions', () => {
 				{ ref: 'refs/Pull/123/head' },
 			];
 
-			(mockLoadOptionsFunctions.getCurrentNodeParameter as jest.Mock).mockImplementation(
+			(mockLoadOptionsFunctions.getCurrentNodeParameter as Mock).mockImplementation(
 				(param: string) => {
 					if (param === 'owner') return owner;
 					if (param === 'repository') return repository;
 				},
 			);
 
-			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 				refsResponse,
 			);
 
@@ -412,14 +441,14 @@ describe('Search Functions', () => {
 			const repository = 'test-repo';
 			const refsResponse = [{ ref: 'refs/heads/branch-5' }, { ref: 'refs/heads/branch-6' }];
 
-			(mockLoadOptionsFunctions.getCurrentNodeParameter as jest.Mock).mockImplementation(
+			(mockLoadOptionsFunctions.getCurrentNodeParameter as Mock).mockImplementation(
 				(param: string) => {
 					if (param === 'owner') return owner;
 					if (param === 'repository') return repository;
 				},
 			);
 
-			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 				refsResponse,
 			);
 
@@ -452,14 +481,14 @@ describe('Search Functions', () => {
 				{ ref: 'refs/tags/v2.0.0' },
 			];
 
-			(mockLoadOptionsFunctions.getCurrentNodeParameter as jest.Mock).mockImplementation(
+			(mockLoadOptionsFunctions.getCurrentNodeParameter as Mock).mockImplementation(
 				(param: string) => {
 					if (param === 'owner') return owner;
 					if (param === 'repository') return repository;
 				},
 			);
 
-			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 				refsResponse,
 			);
 
@@ -479,20 +508,20 @@ describe('Search Functions', () => {
 					ref: i % 2 === 0 ? `refs/heads/branch-${i}` : `refs/tags/tag-${i}`,
 				}));
 
-			(mockLoadOptionsFunctions.getCurrentNodeParameter as jest.Mock).mockImplementation(
+			(mockLoadOptionsFunctions.getCurrentNodeParameter as Mock).mockImplementation(
 				(param: string) => {
 					if (param === 'owner') return owner;
 					if (param === 'repository') return repository;
 				},
 			);
 
-			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as jest.Mock).mockResolvedValue(
+			(mockLoadOptionsFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue(
 				refsResponse,
 			);
 
 			const result = await getRefs.call(mockLoadOptionsFunctions);
 
-			expect(result.paginationToken).toBe(2);
+			expect(result.paginationToken).toBe('2');
 			expect(result.results.length).toBe(100);
 		});
 	});

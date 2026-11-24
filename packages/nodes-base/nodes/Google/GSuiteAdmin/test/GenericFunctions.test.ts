@@ -1,7 +1,8 @@
 import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 import { googleApiRequest, googleApiRequestAllItems } from '../GenericFunctions';
+import type { Mock } from 'vitest';
 
 describe('Google GSuiteAdmin Node', () => {
 	let mockContext: IExecuteFunctions | ILoadOptionsFunctions;
@@ -9,26 +10,26 @@ describe('Google GSuiteAdmin Node', () => {
 	beforeEach(() => {
 		mockContext = {
 			helpers: {
-				httpRequestWithAuthentication: jest.fn(),
+				httpRequestWithAuthentication: vi.fn(),
 			},
-			getNode: jest.fn(),
+			getNode: vi.fn(),
 		} as unknown as IExecuteFunctions | ILoadOptionsFunctions;
 
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should make a successful API request with default options', async () => {
-		(mockContext.helpers.httpRequestWithAuthentication as jest.Mock).mockResolvedValueOnce({
+		(mockContext.helpers.httpRequestWithAuthentication as Mock).mockResolvedValueOnce({
 			success: true,
 		});
 
-		const result = await googleApiRequest.call(mockContext, 'GET', '/example/resource');
+		const result = await googleApiRequest.call(mockContext, 'GET', requestPath`/example/resource`);
 
 		expect(mockContext.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 			'gSuiteAdminOAuth2Api',
 			expect.objectContaining({
 				method: 'GET',
-				url: 'https://www.googleapis.com/admin/example/resource',
+				url: requestUrl`https://www.googleapis.com/admin/example/resource`,
 				headers: { 'Content-Type': 'application/json' },
 				json: true,
 				qs: {},
@@ -38,11 +39,11 @@ describe('Google GSuiteAdmin Node', () => {
 	});
 
 	it('should omit the body if it is empty', async () => {
-		(mockContext.helpers.httpRequestWithAuthentication as jest.Mock).mockResolvedValueOnce({
+		(mockContext.helpers.httpRequestWithAuthentication as Mock).mockResolvedValueOnce({
 			success: true,
 		});
 
-		await googleApiRequest.call(mockContext, 'GET', '/example/resource', {});
+		await googleApiRequest.call(mockContext, 'GET', requestPath`/example/resource`, {});
 
 		expect(mockContext.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 			'gSuiteAdminOAuth2Api',
@@ -52,20 +53,20 @@ describe('Google GSuiteAdmin Node', () => {
 
 	it('should throw a NodeApiError if the request fails', async () => {
 		const errorResponse = { message: 'API Error' };
-		(mockContext.helpers.httpRequestWithAuthentication as jest.Mock).mockRejectedValueOnce(
+		(mockContext.helpers.httpRequestWithAuthentication as Mock).mockRejectedValueOnce(
 			errorResponse,
 		);
 
-		await expect(googleApiRequest.call(mockContext, 'GET', '/example/resource')).rejects.toThrow(
-			NodeApiError,
-		);
+		await expect(
+			googleApiRequest.call(mockContext, 'GET', requestPath`/example/resource`),
+		).rejects.toThrow(NodeApiError);
 
 		expect(mockContext.getNode).toHaveBeenCalled();
 		expect(mockContext.helpers.httpRequestWithAuthentication).toHaveBeenCalled();
 	});
 
 	it('should return all items across multiple pages', async () => {
-		(mockContext.helpers.httpRequestWithAuthentication as jest.Mock)
+		(mockContext.helpers.httpRequestWithAuthentication as Mock)
 			.mockResolvedValueOnce({
 				nextPageToken: 'pageToken1',
 				items: [{ id: '1' }, { id: '2' }],
@@ -83,7 +84,7 @@ describe('Google GSuiteAdmin Node', () => {
 			mockContext,
 			'items',
 			'GET',
-			'/example/resource',
+			requestPath`/example/resource`,
 		);
 
 		expect(result).toEqual([{ id: '1' }, { id: '2' }, { id: '3' }, { id: '4' }, { id: '5' }]);
@@ -95,7 +96,7 @@ describe('Google GSuiteAdmin Node', () => {
 				method: 'GET',
 				qs: { maxResults: 100, pageToken: '' },
 				headers: { 'Content-Type': 'application/json' },
-				url: 'https://www.googleapis.com/admin/example/resource',
+				url: requestUrl`https://www.googleapis.com/admin/example/resource`,
 				json: true,
 			}),
 		);
@@ -106,7 +107,7 @@ describe('Google GSuiteAdmin Node', () => {
 				method: 'GET',
 				qs: { maxResults: 100, pageToken: '' },
 				headers: { 'Content-Type': 'application/json' },
-				url: 'https://www.googleapis.com/admin/example/resource',
+				url: requestUrl`https://www.googleapis.com/admin/example/resource`,
 				json: true,
 			}),
 		);
@@ -117,14 +118,14 @@ describe('Google GSuiteAdmin Node', () => {
 				method: 'GET',
 				qs: { maxResults: 100, pageToken: '' },
 				headers: { 'Content-Type': 'application/json' },
-				url: 'https://www.googleapis.com/admin/example/resource',
+				url: requestUrl`https://www.googleapis.com/admin/example/resource`,
 				json: true,
 			}),
 		);
 	});
 
 	it('should handle single-page responses', async () => {
-		(mockContext.helpers.httpRequestWithAuthentication as jest.Mock).mockResolvedValueOnce({
+		(mockContext.helpers.httpRequestWithAuthentication as Mock).mockResolvedValueOnce({
 			nextPageToken: '',
 			items: [{ id: '1' }, { id: '2' }],
 		});
@@ -133,7 +134,7 @@ describe('Google GSuiteAdmin Node', () => {
 			mockContext,
 			'items',
 			'GET',
-			'/example/resource',
+			requestPath`/example/resource`,
 		);
 
 		expect(result).toEqual([{ id: '1' }, { id: '2' }]);
@@ -141,7 +142,7 @@ describe('Google GSuiteAdmin Node', () => {
 	});
 
 	it('should handle empty responses', async () => {
-		(mockContext.helpers.httpRequestWithAuthentication as jest.Mock).mockResolvedValueOnce({
+		(mockContext.helpers.httpRequestWithAuthentication as Mock).mockResolvedValueOnce({
 			nextPageToken: '',
 			items: [],
 		});
@@ -150,7 +151,7 @@ describe('Google GSuiteAdmin Node', () => {
 			mockContext,
 			'items',
 			'GET',
-			'/example/resource',
+			requestPath`/example/resource`,
 		);
 
 		expect(result).toEqual([]);
@@ -159,12 +160,12 @@ describe('Google GSuiteAdmin Node', () => {
 
 	it('should throw a NodeApiError if a request fails', async () => {
 		const errorResponse = { message: 'API Error' };
-		(mockContext.helpers.httpRequestWithAuthentication as jest.Mock).mockRejectedValueOnce(
+		(mockContext.helpers.httpRequestWithAuthentication as Mock).mockRejectedValueOnce(
 			errorResponse,
 		);
 
 		await expect(
-			googleApiRequestAllItems.call(mockContext, 'items', 'GET', '/example/resource'),
+			googleApiRequestAllItems.call(mockContext, 'items', 'GET', requestPath`/example/resource`),
 		).rejects.toThrow();
 
 		expect(mockContext.getNode).toHaveBeenCalled();

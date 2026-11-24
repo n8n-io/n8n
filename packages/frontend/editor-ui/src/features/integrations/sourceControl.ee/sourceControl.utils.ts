@@ -5,12 +5,23 @@ import { type SourceControlledFile, SOURCE_CONTROL_FILE_STATUS } from '@n8n/api-
 import type { BaseTextKey } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
 import groupBy from 'lodash/groupBy';
-import type { useToast } from '@/app/composables/useToast';
+import dateformat from 'dateformat';
+import type { useToast } from '@n8n/composables/useToast';
 import { telemetry } from '@/app/plugins/telemetry';
+import type { SourceControlTreeRow } from './sourceControl.types';
+import { PROTECTED_INSTANCE_DOCS_URL } from './sourceControl.constants';
 
 type SourceControlledFileStatus = SourceControlledFile['status'];
 
 const i18n = useI18n();
+
+/** Tooltip HTML that explains why an action is disabled on a protected instance. */
+export const getProtectedInstanceTooltip = () =>
+	i18n.baseText('readOnlyEnv.tooltip', {
+		interpolate: {
+			link: `<a href="${PROTECTED_INSTANCE_DOCS_URL}" target="_blank">${i18n.baseText('readOnlyEnv.tooltip.link')}</a>`,
+		},
+	});
 
 export const getStatusText = (status: SourceControlledFileStatus) =>
 	i18n.baseText(`settings.sourceControl.status.${status}` as BaseTextKey);
@@ -25,6 +36,14 @@ export const getStatusTheme = (status: SourceControlledFileStatus) => {
 	} as const;
 	return statusToBadgeThemeMap[status];
 };
+
+/** A content-import policy blocks this file, so the pull skips it. */
+export const isBlockedByPolicy = (file: SourceControlledFile) =>
+	(file.contentImportPolicy?.violations.length ?? 0) > 0;
+
+/** A policy check failed on this file, so the pull is likely to fail as a whole. */
+export const isPolicyCheckFailed = (file: SourceControlledFile) =>
+	!isBlockedByPolicy(file) && (file.contentImportPolicy?.checkErrors.length ?? 0) > 0;
 
 type StatusPriority = Partial<Record<SourceControlledFileStatus, number>>;
 const pullStatusPriority: StatusPriority = {
@@ -96,6 +115,7 @@ const pullMessage = ({
 	credential,
 	tags,
 	variables,
+	datatable,
 	workflow,
 	folders,
 	project,
@@ -124,6 +144,15 @@ const pullMessage = ({
 		messages.push(i18n.baseText('generic.variable_plural'));
 	}
 
+	if (datatable?.length) {
+		messages.push(
+			i18n.baseText('generic.datatable', {
+				adjustToNumber: datatable.length,
+				interpolate: { count: datatable.length },
+			}),
+		);
+	}
+
 	if (tags?.length) {
 		messages.push(i18n.baseText('generic.tag_plural'));
 	}
@@ -136,10 +165,107 @@ const pullMessage = ({
 		messages.push(i18n.baseText('generic.projects'));
 	}
 
+	const totalCount =
+		(workflow?.length ?? 0) +
+		(credential?.length ?? 0) +
+		(variables?.length ?? 0) +
+		(datatable?.length ?? 0) +
+		(tags?.length ?? 0) +
+		(folders?.length ?? 0) +
+		(project?.length ?? 0);
+
+	// Plural-only resources (variables, tags, folders, projects) always use plural labels.
+	// Force plural verb when any of these are present, even if totalCount is 1.
+	const hasPluralOnlyResources = !!(
+		variables?.length ||
+		tags?.length ||
+		folders?.length ||
+		project?.length
+	);
+	const verbCount = hasPluralOnlyResources ? Math.max(totalCount, 2) : totalCount;
+
 	return [
 		new Intl.ListFormat(i18n.locale, { style: 'long', type: 'conjunction' }).format(messages),
-		'were pulled',
+		i18n.baseText('settings.sourceControl.pull.success.description', {
+			adjustToNumber: verbCount,
+		}),
 	].join(' ');
+};
+
+export function buildWorkflowTreeRows<T extends SourceControlledFile>(
+	workflows: T[],
+): Array<SourceControlTreeRow<T>> {
+	const rows: Array<SourceControlTreeRow<T>> = [];
+	const seenFolders = new Set<string>();
+
+	for (const workflow of workflows) {
+		const path = workflow.folderPath ?? [];
+		let pathKey = '';
+
+		for (const [index, segment] of path.entries()) {
+			pathKey = pathKey ? `${pathKey}/${segment}` : segment;
+			if (seenFolders.has(pathKey)) {
+				continue;
+			}
+
+			rows.push({
+				id: `folder:${pathKey}`,
+				type: 'folder',
+				name: segment,
+				depth: index,
+			});
+			seenFolders.add(pathKey);
+		}
+
+		rows.push({
+			id: `file:${workflow.id}`,
+			type: 'file',
+			file: workflow,
+			depth: path.length,
+		});
+	}
+
+	return rows;
+}
+
+export const buildFolderFilterOptions = (workflows: SourceControlledFile[]) => {
+	const folderPathSet = new Set<string>();
+
+	for (const workflow of workflows) {
+		// Include the prior/remote path so a moved workflow's source folder stays selectable.
+		for (const pathSegments of [workflow.folderPath, workflow.remoteFolderPath]) {
+			let path = '';
+
+			for (const segment of pathSegments ?? []) {
+				path = path ? `${path}/${segment}` : segment;
+				folderPathSet.add(path);
+			}
+		}
+	}
+
+	return Array.from(folderPathSet)
+		.sort((a, b) => {
+			const depthDiff = a.split('/').length - b.split('/').length;
+			if (depthDiff !== 0) {
+				return depthDiff;
+			}
+			return a.localeCompare(b);
+		})
+		.map((path) => ({
+			label: path.replaceAll('/', ' / '),
+			value: path,
+		}));
+};
+
+export const formatSourceControlUpdatedAt = (updatedAt: string | undefined) => {
+	const currentYear = new Date().getFullYear().toString();
+
+	return i18n.baseText('settings.sourceControl.lastUpdated', {
+		interpolate: {
+			date: dateformat(updatedAt, `d mmm${updatedAt?.startsWith(currentYear) ? '' : ', yyyy'}`),
+			time: dateformat(updatedAt, 'HH:MM'),
+		},
+	});
 };
 
 export const notifyUserAboutPullWorkFolderOutcome = async (
@@ -156,16 +282,24 @@ export const notifyUserAboutPullWorkFolderOutcome = async (
 		return;
 	}
 
-	const { credential, tags, variables, workflow, folders, project } = groupBy(files, 'type');
+	// The pull dialog already showed what a policy blocks, so only what landed is reported.
+	const pulled = files.filter((file) => !isBlockedByPolicy(file));
+
+	const { credential, tags, variables, datatable, workflow, folders, project } = groupBy(
+		pulled,
+		'type',
+	);
+
+	const successToast = {
+		title: i18n.baseText('settings.sourceControl.pull.success.title'),
+		message: pullMessage({ credential, tags, variables, datatable, workflow, folders, project }),
+		type: 'success' as const,
+	};
 
 	const toastMessages = [
 		...(variables?.length ? [createVariablesToast(router)] : []),
 		...(credential?.length ? [createCredentialsToast(router)] : []),
-		{
-			title: i18n.baseText('settings.sourceControl.pull.success.title'),
-			message: pullMessage({ credential, tags, variables, workflow, folders, project }),
-			type: 'success' as const,
-		},
+		...(pulled.length ? [successToast] : []),
 	];
 
 	for (const message of toastMessages) {

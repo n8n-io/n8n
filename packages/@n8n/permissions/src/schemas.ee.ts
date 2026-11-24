@@ -1,14 +1,22 @@
 import { z } from 'zod';
 
+import { RESERVED_GLOBAL_ROLE_SLUGS } from './constants.ee';
 import { ALL_SCOPES } from './scope-information';
 
-export const roleNamespaceSchema = z.enum(['global', 'project', 'credential', 'workflow']);
+export const roleNamespaceSchema = z.enum([
+	'global',
+	'project',
+	'credential',
+	'workflow',
+	'secretsProviderConnection',
+]);
 
 export const globalRoleSchema = z.enum([
 	'global:owner',
 	'global:admin',
 	'global:member',
 	'global:chatUser',
+	'global:agent',
 ]);
 
 const customGlobalRoleSchema = z
@@ -19,9 +27,7 @@ const customGlobalRoleSchema = z
 	});
 
 export const assignableGlobalRoleSchema = z.union([
-	globalRoleSchema.exclude([
-		'global:owner', // Owner cannot be changed
-	]),
+	globalRoleSchema.exclude(RESERVED_GLOBAL_ROLE_SLUGS),
 	customGlobalRoleSchema,
 ]);
 
@@ -57,6 +63,11 @@ export const credentialSharingRoleSchema = z.enum(['credential:owner', 'credenti
 
 export const workflowSharingRoleSchema = z.enum(['workflow:owner', 'workflow:editor']);
 
+export const secretsProviderConnectionSharingRoleSchema = z.enum([
+	'secretsProviderConnection:owner',
+	'secretsProviderConnection:user',
+]);
+
 const ALL_SCOPES_LOOKUP_SET = new Set(ALL_SCOPES as string[]);
 
 export const scopeSchema = z.string().refine((val) => ALL_SCOPES_LOOKUP_SET.has(val), {
@@ -74,6 +85,10 @@ export const roleSchema = z.object({
 	createdAt: z.date().optional(),
 	updatedAt: z.date().optional(),
 	usedByUsers: z.number().optional(),
+	usedByProjects: z.number().optional(),
 });
 
 export type Role = z.infer<typeof roleSchema>;
+
+/** The kind of an account: a person, or a service account. */
+export const principalTypeSchema = z.enum(['person', 'service']);

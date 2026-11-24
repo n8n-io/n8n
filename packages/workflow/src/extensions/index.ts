@@ -2,7 +2,10 @@ export {
 	extend,
 	extendOptional,
 	hasExpressionExtension,
+	countArrayWildcards,
+	expressionUsesArrayWildcard,
 	hasArrayWildcardSyntax,
+	replaceArrayWildcards,
 	hasNativeMethod,
 	extendTransform,
 	EXTENSION_OBJECTS as ExpressionExtensions,
@@ -16,7 +19,4 @@ export type {
 	DocMetadataExample,
 } from './extensions';
 
-export type {
-	Alias,
-	AliasCompletion,
-} from './extensions';
+export type { Alias, AliasCompletion } from './extensions';

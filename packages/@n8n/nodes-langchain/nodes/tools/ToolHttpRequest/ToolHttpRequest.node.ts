@@ -10,11 +10,12 @@ import type {
 import {
 	NodeConnectionTypes,
 	NodeOperationError,
+	nodeNameToToolName,
 	tryToParseAlphanumericString,
 } from 'n8n-workflow';
 
 import { N8nTool } from '@utils/N8nTool';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 import {
 	authenticationProperties,
@@ -64,6 +65,10 @@ export class ToolHttpRequest implements INodeType {
 		},
 		// Replaced by a `usableAsTool` version of the standalone HttpRequest node
 		hidden: true,
+		builderHint: {
+			searchHint:
+				'Do not use this node. Attach the HTTP Request node as a tool (`n8n-nodes-base.httpRequestTool`) instead. It gives an agent the same request builder with the full parameter set.',
+		},
 
 		inputs: [],
 
@@ -254,7 +259,7 @@ export class ToolHttpRequest implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const name = this.getNode().name.replace(/ /g, '_');
+		const name = nodeNameToToolName(this.getNode());
 		try {
 			tryToParseAlphanumericString(name);
 		} catch (error) {

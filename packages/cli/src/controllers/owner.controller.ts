@@ -1,13 +1,13 @@
 import { DismissBannerRequestDto, OwnerSetupRequestDto } from '@n8n/api-types';
+import { PostHogClient } from '@n8n/backend-services';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, GlobalScope, Post, RestController } from '@n8n/decorators';
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
-import { PostHogClient } from '@/posthog';
 import { BannerService } from '@/services/banner.service';
-import { UserService } from '@/services/user.service';
 import { OwnershipService } from '@/services/ownership.service';
+import { UserService } from '@/services/user.service';
 
 @RestController('/owner')
 export class OwnerController {

@@ -14,13 +14,15 @@ import {
 	formTitle,
 	formTriggerPanel,
 	webhookPath,
+	ipAllowlist,
 } from '../common.descriptions';
 import { formWebhook } from '../utils/utils';
 
 const descriptionV1: INodeTypeDescription = {
 	displayName: 'n8n Form Trigger',
 	name: 'formTrigger',
-	icon: 'file:form.svg',
+	icon: 'node:form-trigger',
+	iconColor: 'teal',
 	group: ['trigger'],
 	version: 1,
 	description: 'Generate webforms in n8n and pass their responses to the workflow',
@@ -70,6 +72,7 @@ const descriptionV1: INodeTypeDescription = {
 				},
 			},
 			options: [
+				ipAllowlist,
 				{
 					displayName: 'Form Submitted Text',
 					name: 'formSubmittedText',

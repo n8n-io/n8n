@@ -8,14 +8,12 @@ import {
 	type IWebhookFunctions,
 	type IWebhookResponseData,
 	NodeConnectionTypes,
+	requestPath,
 } from 'n8n-workflow';
 
 import { getAutomaticSecret, taigaApiRequest } from './GenericFunctions';
+import { verifySignature } from './TaigaTriggerHelpers';
 import type { Operations, Resources, WebhookPayload } from './types';
-
-// import {
-// 	createHmac,
-// } from 'crypto';
 
 export class TaigaTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -128,9 +126,15 @@ export class TaigaTrigger implements INodeType {
 			async getUserProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				const { id } = await taigaApiRequest.call(this, 'GET', '/users/me');
+				const { id } = await taigaApiRequest.call(this, 'GET', requestPath`/users/me`);
 
-				const projects = await taigaApiRequest.call(this, 'GET', '/projects', {}, { member: id });
+				const projects = await taigaApiRequest.call(
+					this,
+					'GET',
+					requestPath`/projects`,
+					{},
+					{ member: id },
+				);
 				for (const project of projects) {
 					const projectName = project.name;
 					const projectId = project.id;
@@ -151,7 +155,7 @@ export class TaigaTrigger implements INodeType {
 
 				const webhookData = this.getWorkflowStaticData('node');
 
-				const endpoint = '/webhooks';
+				const endpoint = requestPath`/webhooks`;
 
 				const webhooks = await taigaApiRequest.call(this, 'GET', endpoint);
 
@@ -182,7 +186,7 @@ export class TaigaTrigger implements INodeType {
 					key,
 					project: projectId,
 				};
-				const { id } = await taigaApiRequest.call(this, 'POST', '/webhooks', body);
+				const { id } = await taigaApiRequest.call(this, 'POST', requestPath`/webhooks`, body);
 
 				webhookData.webhookId = id;
 				webhookData.key = key;
@@ -192,7 +196,11 @@ export class TaigaTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				try {
-					await taigaApiRequest.call(this, 'DELETE', `/webhooks/${webhookData.webhookId}`);
+					await taigaApiRequest.call(
+						this,
+						'DELETE',
+						requestPath`/webhooks/${webhookData.webhookId}`,
+					);
 				} catch (error) {
 					return false;
 				}
@@ -204,6 +212,12 @@ export class TaigaTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		if (!verifySignature.call(this)) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
+			return { noWebhookResponse: true };
+		}
+
 		const body = this.getRequestObject().body as WebhookPayload;
 
 		const operations = this.getNodeParameter('operations', []) as Operations[];
@@ -216,25 +230,6 @@ export class TaigaTrigger implements INodeType {
 		if (!resources.includes('all') && !resources.includes(body.type)) {
 			return {};
 		}
-
-		// TODO: Signature does not match payload hash
-		// https://github.com/taigaio/taiga-back/issues/1031
-
-		// const webhookData = this.getWorkflowStaticData('node');
-		// const headerData = this.getHeaderData();
-
-		// // @ts-ignore
-		// const requestSignature = headerData['x-taiga-webhook-signature'];
-
-		// if (requestSignature === undefined) {
-		// 	return {};
-		// }
-
-		// const computedSignature = createHmac('sha1', webhookData.key as string).update(JSON.stringify(body)).digest('hex');
-
-		// if (requestSignature !== computedSignature) {
-		// 	return {};
-		// }
 
 		return {
 			workflowData: [this.helpers.returnJsonArray(body)],

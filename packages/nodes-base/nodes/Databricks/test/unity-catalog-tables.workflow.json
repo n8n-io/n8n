@@ -1,0 +1,188 @@
+{
+	"name": "Databricks Unity Catalog - Tables Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-001",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "unityCatalog",
+				"operation": "listTables",
+				"catalogName": {
+					"mode": "string",
+					"value": "main"
+				},
+				"schemaName": {
+					"mode": "string",
+					"value": "default"
+				}
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, -300],
+			"id": "uc-list-tables-001",
+			"name": "List Tables",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "unityCatalog",
+				"operation": "getTable",
+				"catalogName": {
+					"mode": "string",
+					"value": "main"
+				},
+				"schemaName": {
+					"mode": "string",
+					"value": "default"
+				},
+				"fullName": {
+					"mode": "string",
+					"value": "main.default.my_table"
+				}
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, -100],
+			"id": "uc-get-table-001",
+			"name": "Get Table",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "unityCatalog",
+				"operation": "createTable",
+				"catalogName": {
+					"mode": "string",
+					"value": "main"
+				},
+				"schemaName": {
+					"mode": "string",
+					"value": "default"
+				},
+				"tableName": "new_table",
+				"storageLocation": "s3://my-bucket/main/default/new_table",
+				"tableAdditionalFields": {}
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 100],
+			"id": "uc-create-table-001",
+			"name": "Create Table",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "unityCatalog",
+				"operation": "deleteTable",
+				"catalogName": {
+					"mode": "string",
+					"value": "main"
+				},
+				"schemaName": {
+					"mode": "string",
+					"value": "default"
+				},
+				"fullName": {
+					"mode": "string",
+					"value": "main.default.old_table"
+				}
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 300],
+			"id": "uc-delete-table-001",
+			"name": "Delete Table",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"List Tables": [
+			{
+				"json": {
+					"tables": [
+						{
+							"name": "my_table",
+							"table_type": "EXTERNAL",
+							"catalog_name": "main",
+							"schema_name": "default",
+							"full_name": "main.default.my_table"
+						}
+					]
+				}
+			}
+		],
+		"Get Table": [
+			{
+				"json": {
+					"name": "my_table",
+					"table_type": "EXTERNAL",
+					"catalog_name": "main",
+					"schema_name": "default",
+					"full_name": "main.default.my_table",
+					"created_at": 1704067200000
+				}
+			}
+		],
+		"Create Table": [
+			{
+				"json": {
+					"name": "new_table",
+					"table_type": "EXTERNAL",
+					"data_source_format": "DELTA",
+					"catalog_name": "main",
+					"schema_name": "default",
+					"full_name": "main.default.new_table",
+					"storage_location": "s3://my-bucket/main/default/new_table",
+					"created_at": 1704067200000
+				}
+			}
+		],
+		"Delete Table": [
+			{
+				"json": {}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{ "node": "List Tables", "type": "main", "index": 0 },
+					{ "node": "Get Table", "type": "main", "index": 0 },
+					{ "node": "Create Table", "type": "main", "index": 0 },
+					{ "node": "Delete Table", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

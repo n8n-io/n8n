@@ -11,11 +11,36 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  {\n    id: 1,\n    name: 'Adam',\n    subscribed: false,\n    updatedAt: '2011-10-05T14:48:00.000Z',\n    notes: null,\n    email: 'adam@mail.com',\n  },\n  {\n    id: 2,\n    name: 'Victor',\n    subscribed: true,\n    updatedAt: '2020-10-05T14:48:00.000Z',\n    notes: 'some notes',\n    email: 'victor@mail.com',\n  },\n  {\n    id: 3,\n    name: 'Sam',\n    subscribed: true,\n    updatedAt: '2021-10-05T14:48:00.000Z',\n    notes: 'other notes',\n    email: 'sam@mail.com',\n  },  \n];"
+				"data": [
+					{
+						"id": 1,
+						"name": "Adam",
+						"subscribed": false,
+						"updatedAt": "2011-10-05T14:48:00.000Z",
+						"notes": null,
+						"email": "adam@mail.com"
+					},
+					{
+						"id": 2,
+						"name": "Victor",
+						"subscribed": true,
+						"updatedAt": "2020-10-05T14:48:00.000Z",
+						"notes": "some notes",
+						"email": "victor@mail.com"
+					},
+					{
+						"id": 3,
+						"name": "Sam",
+						"subscribed": true,
+						"updatedAt": "2021-10-05T14:48:00.000Z",
+						"notes": "other notes",
+						"email": "sam@mail.com"
+					}
+				]
 			},
 			"id": "032d6d92-27f4-4b07-b45f-5b79bdea594a",
 			"name": "Code",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [600, 1000]
 		},

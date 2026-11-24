@@ -1,0 +1,41 @@
+import type { FolderResourceType } from '@n8n/api-types';
+
+import type {
+	FolderConflict,
+	FolderConflictPolicy,
+	ImportContext,
+	LayoutConflictPolicy,
+} from '../../n8n-packages.types';
+
+export interface PreparedFolder {
+	resourceType?: FolderResourceType;
+	sourceFolderId: string;
+	name: string;
+	parentFolderId: string | null;
+}
+
+export interface FolderImportContext extends ImportContext {
+	folderConflictPolicy: FolderConflictPolicy;
+	layoutConflictPolicy?: LayoutConflictPolicy;
+}
+
+export type FolderPlannedAction = 'create' | 'skip' | 'update';
+
+export interface FolderPlanItem {
+	resourceType?: FolderResourceType;
+	action: FolderPlannedAction;
+	sourceFolderId: string;
+	name: string;
+	targetParentFolderId: string | null;
+	/** On `update`: the folder moves to `targetParentFolderId`. */
+	moved?: true;
+	/** On `update`: the folder takes `name`. */
+	renamed?: true;
+	/** For `skip`: the name of the folder on the target, which the import keeps. */
+	existingName?: string;
+}
+
+export interface FolderImportPlan {
+	items: FolderPlanItem[];
+	conflicts: FolderConflict[];
+}

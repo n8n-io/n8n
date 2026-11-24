@@ -1,10 +1,25 @@
-import type { Iso8601DateTimeString } from '@n8n/api-types';
-import type { ICredentialsDecrypted, ICredentialsEncrypted, ICredentialType } from 'n8n-workflow';
+import type {
+	CreateCredentialDto,
+	CredentialRestriction,
+	CredentialTypeAvailability,
+	Iso8601DateTimeString,
+} from '@n8n/api-types';
+import type { TypeRestriction } from '@n8n/frontend-module-type-availability-policies';
+import type { ICredentialsEncrypted, ICredentialType } from 'n8n-workflow';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import type { Scope } from '@n8n/permissions';
 import type { IUserResponse } from '@n8n/rest-api-client/api/users';
+import type { CredentialPayload } from '@n8n/frontend-module-sdk';
 
-export interface ICredentialsResponse extends ICredentialsEncrypted {
+export type { CredentialPayload };
+
+export type CredentialTypeUsability =
+	| { reason: 'typeRestricted'; restriction: CredentialTypeAvailability }
+	| { reason: 'nodesRestricted'; restriction: TypeRestriction; nodeTypeNames: string[] };
+
+export interface ICredentialsResponse
+	extends ICredentialsEncrypted,
+		Pick<CreateCredentialDto, 'description'> {
 	id: string;
 	createdAt: Iso8601DateTimeString;
 	updatedAt: Iso8601DateTimeString;
@@ -16,13 +31,33 @@ export interface ICredentialsResponse extends ICredentialsEncrypted {
 	isManaged: boolean;
 	isGlobal?: boolean;
 	isResolvable?: boolean;
+	usageScope?: 'project' | 'instance';
+	/**
+	 * How this credential reaches the workflow being edited: `project` when the
+	 * project itself carries it (shared with it, or global), `personal` when it
+	 * is the requesting user's own and travels with them. Only sent for the
+	 * scoped picker fetch, and only meaningful under granular credential sharing.
+	 */
+	sharedRoute?: 'project' | 'personal';
+	/** Whether the current user has personally connected this credential. Set on resolvable credentials only. */
+	connectedByMe?: boolean;
+	/**
+	 * The provider account the current user's own connection authenticates as
+	 * (e.g. the connected Gmail address). Set on resolvable credentials only, and
+	 * absent whenever the provider returns no identity claim.
+	 */
+	connectedAccountIdentifier?: string;
+	/** Total number of users connected to this credential. Set on resolvable credentials only. */
+	connectedUserCount?: number;
+	/** Why workflows cannot use it, in the listed project or else its home project. Set when the list asks for restrictions. */
+	restriction?: CredentialRestriction;
 }
 
 export interface IUsedCredential {
 	id: string;
 	name: string;
 	credentialType: string;
-	currentUserHasAccess: boolean;
+	currentUserCanUse: boolean;
 	homeProject?: ProjectSharingData;
 	sharedWithProjects?: ProjectSharingData[];
 }
@@ -32,9 +67,20 @@ export interface ICredentialsBase {
 	updatedAt: Iso8601DateTimeString;
 }
 
-export interface ICredentialsDecryptedResponse extends ICredentialsBase, ICredentialsDecrypted {
+export interface ICredentialsDecryptedResponse extends ICredentialsBase, CredentialPayload {
+	scopes?: Scope[];
 	id: string;
 	isResolvable?: boolean;
+	/** Whether the current user has personally connected this credential. Set on resolvable credentials only. */
+	connectedByMe?: boolean;
+	/**
+	 * The provider account the current user's own connection authenticates as
+	 * (e.g. the connected Gmail address). Set on resolvable credentials only, and
+	 * absent whenever the provider returns no identity claim.
+	 */
+	connectedAccountIdentifier?: string;
+	/** Total number of users connected to this credential. Set on resolvable credentials only. */
+	connectedUserCount?: number;
 }
 
 export interface ICredentialTypeMap {
@@ -53,3 +99,10 @@ export interface ICredentialsState {
 export interface IShareCredentialsPayload {
 	shareWithIds: string[];
 }
+
+/** What the picker's credential list is narrowed to: an open workflow, else a project. */
+export type CredentialFetchScope = ({ workflowId: string } | { projectId: string }) & {
+	forAgent?: boolean;
+	/** The n8n Assistant never offers another user's personal credential. */
+	forAssistant?: boolean;
+};

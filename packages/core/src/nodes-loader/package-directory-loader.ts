@@ -1,4 +1,5 @@
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 
@@ -87,7 +88,7 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 		try {
 			return jsonParse<T>(fileString);
 		} catch (error) {
-			throw new ApplicationError('Failed to parse JSON', { extra: { filePath } });
+			throw new UserError('Failed to parse JSON', { cause: error, extra: { filePath } });
 		}
 	}
 

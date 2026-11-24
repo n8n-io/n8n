@@ -1,0 +1,604 @@
+<script lang="ts" setup>
+import type {
+	AgentChatResumeDto,
+	AgentJsonConfig,
+	AgentThreadMemoryDto,
+	PushMessage,
+} from '@n8n/api-types';
+import { useToast } from '@n8n/composables/useToast';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
+import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
+import type {
+	AgentExecution,
+	ThreadDetail,
+} from '@/features/agents/composables/useAgentThreadsApi';
+import AgentBudgetNoticeCard from '@/features/agents/components/AgentBudgetNoticeCard.vue';
+import { isBudgetStopCode, type BudgetAmountField } from '@/features/agents/utils/budget-config';
+import { useAgentTelemetry } from '@/features/agents/composables/useAgentTelemetry';
+import SessionEventFilter from '@/features/agents/components/SessionEventFilter.vue';
+import SessionTimelineTable from '@/features/agents/components/SessionTimelineTable.vue';
+import SessionTimelineChart from '@/features/agents/components/SessionTimelineChart.vue';
+import {
+	flattenExecutionsToTimelineItems,
+	timelineItemKey,
+	sessionBounds,
+	isSubAgentTimelineItem,
+	itemStatusFilterKey,
+} from '@/features/agents/session-timeline.utils';
+import { timelineColors } from '@/features/agents/session-timeline.styles';
+import { useAgentBackgroundJobs } from '@/features/agents/composables/useAgentBackgroundJobs';
+import type { AgentChatChannel } from '@/features/agents/composables/useAgentApi';
+import {
+	backgroundTasksToTimelineItems,
+	insertBackgroundTaskTimelineItems,
+} from '@/features/agents/utils/background-task-timeline';
+import { useSubAgentNames } from '@/features/agents/composables/useSubAgentNames';
+import { resolveSubAgentName } from '@/features/agents/utils/delegate-tool';
+import { backgroundJobTimelineLabelKey } from '@/features/agents/utils/background-job-labels';
+import type {
+	EventKind,
+	FilterOption,
+	TimelineItem,
+	TimelineStatusFilterKey,
+} from '@/features/agents/session-timeline.types';
+import { parseApprovalInput } from '@/features/ai/shared/agentsChat/messageMappers';
+import type { ApprovalInput, ApprovalResume } from '@/features/ai/shared/agentsChat/types';
+import { useI18n } from '@n8n/i18n';
+import { N8nIcon, N8nInput, type BadgeVariant } from '@n8n/design-system';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { useDocumentVisibility } from '@vueuse/core';
+import { useKeybindings } from '@/app/composables/useKeybindings';
+
+const props = defineProps<{
+	projectId: string;
+	agentId: string;
+	agentName?: string;
+	threadId: string;
+	increaseBudget?: (payload: { field: BudgetAmountField; amount: number }) => Promise<boolean>;
+	personalisation?: AgentJsonConfig['personalisation'] | null;
+	/** The chat routes of the thread. System agents, such as the Assistant, use 'system'. */
+	channel?: AgentChatChannel;
+}>();
+
+// Hands the loaded thread detail up so an enclosing view (the standalone
+// session-detail route) can render its own header/metrics without a second
+// fetch. Emitted `null` at the start of every load to reset that header.
+const emit = defineEmits<{
+	loaded: [detail: ThreadDetail | null];
+}>();
+
+const i18n = useI18n();
+const toast = useToast();
+const agentTelemetry = useAgentTelemetry();
+const sessionsStore = useAgentSessionsStore();
+const pushStore = usePushConnectionStore();
+const documentVisibility = useDocumentVisibility();
+
+const projectId = computed(() => props.projectId);
+
+const executions = ref<AgentExecution[]>([]);
+const memory = ref<AgentThreadMemoryDto>();
+const loading = ref(true);
+const selectedIndex = ref<number | null>(null);
+const highlightedIndex = ref<number | null>(null);
+const timelineTableRef = useTemplateRef('timelineTable');
+const selectedFilters = ref<Set<string>>(new Set());
+const searchQuery = ref('');
+let threadDetailRequestId = 0;
+let refreshPending = false;
+let removePushListener: (() => void) | undefined;
+let activeRequest: { identity: string; promise: Promise<void> } | undefined;
+
+const pendingApprovalRunIds = ref(new Set<string>());
+let disposed = false;
+
+const { allJobs, respondToApproval } = useAgentBackgroundJobs({
+	projectId: () => props.projectId,
+	agentId: () => props.agentId,
+	threadId: () => props.threadId,
+	channel: () => props.channel ?? 'chat',
+	active: true,
+});
+
+async function respondToBackgroundApproval(payload: AgentChatResumeDto) {
+	const approval = allJobs.value.find(
+		(job) =>
+			job.status === 'suspended' &&
+			job.approval?.runId === payload.runId &&
+			job.approval.toolCallId === payload.toolCallId,
+	);
+	if (!approval || pendingApprovalRunIds.value.has(payload.runId)) return;
+
+	const identity = threadIdentity();
+	const pending = pendingApprovalRunIds.value;
+	pending.add(payload.runId);
+	try {
+		await respondToApproval(payload);
+	} catch (error) {
+		if (!disposed && identity === threadIdentity()) {
+			toast.showError(error, i18n.baseText('agents.chat.backgroundTasks.approvalError'));
+		}
+	} finally {
+		pending.delete(payload.runId);
+	}
+}
+
+const baseItems = computed<TimelineItem[]>(() =>
+	insertBackgroundTaskTimelineItems(
+		flattenExecutionsToTimelineItems(executions.value),
+		backgroundTasksToTimelineItems(allJobs.value),
+	),
+);
+
+/** Keep selection on the same item when task data arrives after execution data. */
+watch(
+	baseItems,
+	(next, previous) => {
+		if (selectedIndex.value === null) return;
+		const selected = previous[selectedIndex.value];
+		if (!selected) return;
+		const key = timelineItemKey(selected);
+		const index = next.findIndex((item) => timelineItemKey(item) === key);
+		selectTimelineItem(index >= 0 ? index : null);
+	},
+	{ flush: 'sync' },
+);
+
+// Resolve sub-agent ids to friendly names, loaded lazily and only when the
+// session actually contains delegations (mirrors how the chat resolves the
+// delegate step label).
+const { subAgentNameById } = useSubAgentNames(projectId, () =>
+	baseItems.value.some(isSubAgentTimelineItem),
+);
+
+const items = computed<TimelineItem[]>(() =>
+	baseItems.value.map((item) => {
+		if (!isSubAgentTimelineItem(item)) return item;
+		const name = resolveSubAgentName(item.toolInput, subAgentNameById.value);
+		return name ? { ...item, subAgentName: name } : item;
+	}),
+);
+const resolvedBudgetStopExecutionId = ref<string | null>(null);
+const budgetIncreasePending = ref(false);
+const budgetStop = computed<{
+	index: number;
+	executionId: string;
+	code: 'budget.monthly' | 'budget.session' | 'budget.credits';
+} | null>(() => {
+	const lastExecutionId = executions.value.at(-1)?.id;
+	if (!lastExecutionId || lastExecutionId === resolvedBudgetStopExecutionId.value) return null;
+	for (let index = items.value.length - 1; index >= 0; index--) {
+		const item = items.value[index];
+		if (item.executionId !== lastExecutionId || item.kind !== 'execution-error') continue;
+		if (item.guardrailCode && isBudgetStopCode(item.guardrailCode)) {
+			return { index, executionId: lastExecutionId, code: item.guardrailCode };
+		}
+	}
+	return null;
+});
+
+async function onIncreaseBudget(payload: { field: BudgetAmountField; amount: number }) {
+	const stopExecutionId = budgetStop.value?.executionId;
+	if (!props.increaseBudget || !stopExecutionId || budgetIncreasePending.value) return;
+	// The save outlives a thread switch: only close the notice it was raised from.
+	const identity = threadIdentity();
+	budgetIncreasePending.value = true;
+	try {
+		const saved = await props.increaseBudget(payload);
+		if (saved && identity === threadIdentity()) {
+			resolvedBudgetStopExecutionId.value = stopExecutionId;
+		}
+	} finally {
+		budgetIncreasePending.value = false;
+	}
+}
+
+const bounds = computed(() => sessionBounds(items.value));
+
+function labelForKey(key: string): string {
+	const backgroundJobKey = backgroundJobTimelineLabelKey(key);
+	if (backgroundJobKey) return i18n.baseText(backgroundJobKey);
+
+	switch (key) {
+		case 'user':
+			return i18n.baseText('agentSessions.timeline.user');
+		case 'agent':
+			return i18n.baseText('agentSessions.timeline.agent');
+		case 'skill':
+			return i18n.baseText('agentSessions.timeline.skill');
+		case 'memory':
+			return i18n.baseText('agentSessions.timeline.memory');
+		case 'tool':
+			return i18n.baseText('agentSessions.timeline.tool');
+		case 'workflow':
+			return i18n.baseText('agentSessions.timeline.workflow');
+		case 'node':
+			return i18n.baseText('agentSessions.timeline.node');
+		case 'execution-error':
+			return i18n.baseText('agentSessions.timeline.executionFailed');
+		case 'execution-interrupted':
+			return i18n.baseText('agentSessions.timeline.executionInterrupted');
+		case 'suspension':
+			return i18n.baseText('agentSessions.timeline.hitlRequest');
+		case 'hitl-response':
+			return i18n.baseText('agentSessions.timeline.hitlResponse');
+		case 'approval-requested':
+			return i18n.baseText('agentSessions.timeline.approvalRequested');
+		case 'hitl-requested':
+			return i18n.baseText('agentSessions.timeline.hitlRequested');
+		case 'wait-requested':
+			return i18n.baseText('agentSessions.timeline.waitRequested');
+		case 'approved':
+			return i18n.baseText('agentSessions.timeline.approved');
+		case 'responded':
+			return i18n.baseText('agentSessions.timeline.responseReceived');
+		case 'declined':
+			return i18n.baseText('agentSessions.timeline.declined');
+		case 'error':
+			return i18n.baseText('agentSessions.timeline.error');
+		default:
+			return key;
+	}
+}
+
+const STATUS_FILTER_OPTIONS = [
+	{ key: 'approved', badgeTheme: 'success' },
+	{ key: 'declined', badgeTheme: 'outline' },
+	{ key: 'error', badgeTheme: 'danger' },
+] satisfies Array<{
+	key: TimelineStatusFilterKey;
+	badgeTheme: Extract<BadgeVariant, 'outline' | 'success' | 'danger'>;
+}>;
+
+const filterOptions = computed<FilterOption[]>(() => {
+	const kindCounts = new Map<EventKind, number>();
+	const statusCounts = new Map<TimelineStatusFilterKey, number>();
+	for (const item of items.value) {
+		if (item.kind !== 'execution-error') {
+			kindCounts.set(item.kind, (kindCounts.get(item.kind) ?? 0) + 1);
+		}
+		const statusKey = itemStatusFilterKey(item);
+		if (statusKey) {
+			statusCounts.set(statusKey, (statusCounts.get(statusKey) ?? 0) + 1);
+		}
+	}
+	return [
+		...Array.from(kindCounts.entries()).map(
+			([key, count]): FilterOption => ({
+				key,
+				label: labelForKey(key),
+				presentation: 'swatch',
+				color: timelineColors(key).chart,
+				count,
+			}),
+		),
+		...STATUS_FILTER_OPTIONS.flatMap(({ key, badgeTheme }): FilterOption[] => {
+			const count = statusCounts.get(key);
+			if (!count) return [];
+			return [
+				{
+					key,
+					label: labelForKey(key),
+					presentation: 'badge',
+					badgeTheme,
+					count,
+				},
+			];
+		}),
+	];
+});
+
+const selectedItem = computed<TimelineItem | null>(() =>
+	selectedIndex.value !== null ? (items.value[selectedIndex.value] ?? null) : null,
+);
+
+// The resume route returns once the run is started. Keep this thread's card
+// disabled until a refresh shows the session is no longer awaiting.
+const pendingApprovalIdentity = ref<string | null>(null);
+
+const approvalDisabled = computed(() => pendingApprovalIdentity.value === threadIdentity());
+
+// The approval suspension parked on the latest execution, if that execution is
+// still awaiting a decision. Independent of the selected row: the card sits
+// inline in the timeline table. Only task runs resume from here; a chat turn,
+// such as an Assistant turn, takes its approval in the chat.
+const openApprovalItem = computed((): TimelineItem | null => {
+	const latest = executions.value.at(-1);
+	if (!latest || latest.status !== 'awaiting' || latest.source !== 'task') return null;
+	return (
+		items.value.find(
+			(item) =>
+				item.executionId === latest.id &&
+				item.kind === 'suspension' &&
+				item.hitlRequestType === 'approval',
+		) ?? null
+	);
+});
+
+const sessionApproval = computed((): ApprovalInput | undefined => {
+	const item = openApprovalItem.value;
+	if (!item) return undefined;
+	return parseApprovalInput(item.hitlRequest);
+});
+
+function releasePendingApproval(identity: string) {
+	if (pendingApprovalIdentity.value === identity) pendingApprovalIdentity.value = null;
+}
+
+async function submitSessionApproval(resumeData: ApprovalResume) {
+	const toolCallId = openApprovalItem.value?.toolCallId;
+	const identity = threadIdentity();
+	const { projectId, agentId, threadId } = props;
+	if (!toolCallId || pendingApprovalIdentity.value === identity) return;
+	pendingApprovalIdentity.value = identity;
+	try {
+		await sessionsStore.resumeTaskApproval(projectId, agentId, threadId, {
+			toolCallId,
+			resumeData,
+		});
+	} catch (error) {
+		releasePendingApproval(identity);
+		if (threadIdentity() !== identity) return;
+		toast.showError(error, i18n.baseText('agentSessions.approval.failed'));
+		return;
+	}
+	if (threadIdentity() !== identity) return;
+	refreshThreadDetail();
+}
+
+function selectTimelineItem(index: number | null) {
+	selectedIndex.value = index;
+	highlightedIndex.value = index;
+}
+
+function onTimelineItemSelect(index: number | null) {
+	selectTimelineItem(index);
+	const item = index === null ? undefined : items.value[index];
+	if (item) agentTelemetry.trackClickedTraceItem({ agentId: props.agentId, itemType: item.kind });
+}
+
+function onChartSelect(index: number): void {
+	onTimelineItemSelect(index);
+	void nextTick(() => timelineTableRef.value?.scrollSelectedIntoView());
+}
+
+function loadThreadDetail() {
+	resolvedBudgetStopExecutionId.value = null;
+	pendingApprovalRunIds.value = new Set();
+	executions.value = [];
+	memory.value = undefined;
+	selectedFilters.value = new Set();
+	searchQuery.value = '';
+	selectTimelineItem(null);
+	loading.value = true;
+	emit('loaded', null);
+	refreshPending = false;
+	startThreadDetailRequest(true);
+}
+
+function threadIdentity(): string {
+	return `${props.projectId}:${props.agentId}:${props.threadId}`;
+}
+
+async function fetchThreadDetail(initial: boolean) {
+	const currentProjectId = props.projectId;
+	const currentAgentId = props.agentId;
+	const currentThreadId = props.threadId;
+	const identity = threadIdentity();
+	const requestId = ++threadDetailRequestId;
+
+	try {
+		const result = await sessionsStore.getThreadDetail(
+			currentProjectId,
+			currentAgentId,
+			currentThreadId,
+		);
+		if (requestId !== threadDetailRequestId || identity !== threadIdentity()) {
+			return;
+		}
+		const selectedKey = !initial && selectedItem.value ? timelineItemKey(selectedItem.value) : null;
+		executions.value = result.executions;
+		memory.value = result.memory;
+		if (
+			pendingApprovalIdentity.value === identity &&
+			result.executions.at(-1)?.status !== 'awaiting'
+		) {
+			pendingApprovalIdentity.value = null;
+		}
+		if (selectedKey) {
+			const nextIndex = items.value.findIndex((item) => timelineItemKey(item) === selectedKey);
+			selectTimelineItem(nextIndex >= 0 ? nextIndex : null);
+		}
+		emit('loaded', result);
+	} catch (error) {
+		if (requestId !== threadDetailRequestId) return;
+		if (initial) toast.showError(error, i18n.baseText('agentSessions.showError.load'));
+	} finally {
+		if (initial && requestId === threadDetailRequestId) loading.value = false;
+	}
+}
+
+function startThreadDetailRequest(initial: boolean) {
+	const identity = threadIdentity();
+	const request = { identity, promise: fetchThreadDetail(initial) };
+	activeRequest = request;
+	void request.promise.finally(() => {
+		if (activeRequest !== request) return;
+		activeRequest = undefined;
+		if (refreshPending && identity === threadIdentity()) {
+			refreshPending = false;
+			refreshThreadDetail();
+		}
+	});
+}
+
+function refreshThreadDetail() {
+	if (activeRequest?.identity === threadIdentity()) {
+		refreshPending = true;
+		return;
+	}
+	startThreadDetailRequest(false);
+}
+
+function onPushMessage(event: PushMessage) {
+	if (
+		event.type === 'agentExecutionUpdated' &&
+		event.data.projectId === props.projectId &&
+		event.data.agentId === props.agentId &&
+		event.data.threadId === props.threadId
+	) {
+		refreshThreadDetail();
+	}
+}
+
+watch(documentVisibility, (visibility) => {
+	if (visibility === 'visible') refreshThreadDetail();
+});
+
+watch(
+	() => pushStore.isConnected,
+	(isConnected, wasConnected) => {
+		if (isConnected && !wasConnected) refreshThreadDetail();
+	},
+);
+
+onMounted(() => {
+	pushStore.pushConnect();
+	removePushListener = pushStore.addEventListener(onPushMessage);
+});
+
+onBeforeUnmount(() => {
+	disposed = true;
+	threadDetailRequestId++;
+	refreshPending = false;
+	removePushListener?.();
+	pushStore.pushDisconnect();
+});
+
+watch([() => props.projectId, () => props.agentId, () => props.threadId], loadThreadDetail, {
+	immediate: true,
+});
+
+const searchInput = useTemplateRef<HTMLInputElement | null>('searchInput');
+
+useKeybindings({
+	'/': {
+		disabled: () => searchInput.value?.disabled ?? false,
+		run: () => {
+			if (searchInput.value) searchInput.value.focus();
+		},
+	},
+});
+</script>
+
+<template>
+	<div :class="$style.panel">
+		<div v-if="!loading" :class="$style.subHeader">
+			<N8nInput
+				ref="searchInput"
+				v-model="searchQuery"
+				size="large"
+				:class="$style.searchInput"
+				:placeholder="i18n.baseText('agentSessions.timeline.searchPlaceholder')"
+				clearable
+			>
+				<template #prefix>
+					<N8nIcon icon="search" :size="12" />
+				</template>
+			</N8nInput>
+
+			<SessionEventFilter
+				:available="filterOptions"
+				:selected="selectedFilters"
+				@update="(next) => (selectedFilters = next)"
+			/>
+		</div>
+		<SessionTimelineChart
+			v-if="!loading"
+			:items="items"
+			:session-start="bounds.start"
+			:session-end="bounds.end"
+			:visible-kinds="selectedFilters"
+			:selected-index="highlightedIndex"
+			@select="onChartSelect"
+		/>
+		<div :class="$style.section">
+			<div v-if="loading" :class="$style.loading">
+				{{ i18n.baseText('generic.loadingEllipsis') }}
+			</div>
+			<SessionTimelineTable
+				v-if="!loading"
+				ref="timelineTable"
+				:project-id="props.projectId"
+				:agent-id="props.agentId"
+				:thread-id="props.threadId"
+				:items="items"
+				:agent-name="props.agentName"
+				:personalisation="props.personalisation"
+				:selected-index="highlightedIndex"
+				:visible-kinds="selectedFilters"
+				:search-query="searchQuery"
+				:notice-index="budgetStop?.index"
+				:respond-to-approval="respondToBackgroundApproval"
+				:pending-approval-run-ids="pendingApprovalRunIds"
+				:memory="memory"
+				:on-memory-deleted="refreshThreadDetail"
+				:approval-item="openApprovalItem"
+				:approval="sessionApproval"
+				:approval-disabled="approvalDisabled"
+				@select="onTimelineItemSelect"
+				@approve="submitSessionApproval"
+			>
+				<template v-if="budgetStop" #notice>
+					<AgentBudgetNoticeCard
+						:code="budgetStop.code"
+						:can-increase="props.increaseBudget !== undefined"
+						:pending="budgetIncreasePending"
+						@increase="onIncreaseBudget"
+					/>
+				</template>
+			</SessionTimelineTable>
+		</div>
+	</div>
+</template>
+
+<style module lang="scss">
+.panel {
+	display: flex;
+	gap: var(--spacing--2xs);
+	flex-direction: column;
+	flex: 1;
+	min-height: 0;
+	height: 100%;
+	overflow: hidden;
+	--n8n-session-panel--container-width: 75ch;
+}
+.subHeader {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding-block-start: var(--spacing--md);
+	width: 100%;
+	flex-shrink: 0;
+	max-width: var(--n8n-session-panel--container-width, none);
+	margin: 0 auto;
+}
+.search {
+	flex: 1;
+	min-width: 0;
+}
+.searchInput {
+	box-shadow: var(--shadow--xs);
+}
+
+.section {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-height: 0;
+}
+.loading {
+	padding: var(--spacing--sm);
+	color: var(--text-color--subtler);
+}
+</style>

@@ -3,8 +3,8 @@ import type { ILoadOptionsFunctions } from 'n8n-workflow';
 import { searchLocations } from '../GenericFunctions';
 
 describe('GenericFunctions - searchLocations', () => {
-	const mockGoogleApiRequest = jest.fn();
-	const mockGetNodeParameter = jest.fn();
+	const mockGoogleApiRequest = vi.fn();
+	const mockGetNodeParameter = vi.fn();
 
 	const mockContext = {
 		helpers: {
@@ -16,7 +16,9 @@ describe('GenericFunctions - searchLocations', () => {
 	beforeEach(() => {
 		mockGoogleApiRequest.mockClear();
 		mockGetNodeParameter.mockClear();
-		mockGetNodeParameter.mockReturnValue('parameterValue');
+		mockGetNodeParameter.mockImplementation((name: string) => ({
+			value: name === 'account' ? 'accounts/123' : 'locations/123',
+		}));
 	});
 
 	it('should return locations with filtering', async () => {

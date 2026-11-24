@@ -1,5 +1,7 @@
-import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
+import { mockDeep } from 'vitest-mock-extended';
 
 import * as transport from '../../../../transport';
 import * as classify from '../../../../v2/actions/text/classify.operation';
@@ -14,10 +16,11 @@ describe('OpenAI Classify Operation', () => {
 		position: [0, 0],
 		parameters: {},
 	} as INode;
-	const apiRequestSpy = jest.spyOn(transport, 'apiRequest');
+	let apiRequestSpy: MockInstance;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
+		apiRequestSpy = vi.spyOn(transport, 'apiRequest');
 	});
 
 	it('should use omni-moderation-latest model when version is 2.1', async () => {
@@ -33,7 +36,7 @@ describe('OpenAI Classify Operation', () => {
 
 		const result = await classify.execute.call(executeFunctions, 0);
 
-		expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/moderations', {
+		expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/moderations`, {
 			body: { input: 'Lorem ipsum', model: 'omni-moderation-latest' },
 		});
 		expect(result).toEqual([
@@ -61,7 +64,7 @@ describe('OpenAI Classify Operation', () => {
 
 		const result = await classify.execute.call(executeFunctions, 0);
 
-		expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/moderations', {
+		expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/moderations`, {
 			body: { input: 'Lorem ipsum', model: 'text-moderation-stable' },
 		});
 		expect(result).toEqual([
@@ -89,7 +92,7 @@ describe('OpenAI Classify Operation', () => {
 
 		const result = await classify.execute.call(executeFunctions, 0);
 
-		expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/moderations', {
+		expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/moderations`, {
 			body: { input: 'Lorem ipsum', model: 'text-moderation-latest' },
 		});
 		expect(result).toEqual([

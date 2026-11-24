@@ -32,6 +32,7 @@ const categoryName = computed(() => {
 				<N8nIcon v-if="isTrigger" icon="bolt-filled" size="xsmall" :class="$style.triggerIcon" />
 				<slot />
 			</span>
+			<slot name="trailing" />
 			<N8nIcon v-if="expanded" icon="chevron-down" color="text-light" size="large" />
 			<N8nIcon v-else icon="chevron-up" color="text-light" size="large" />
 		</div>
@@ -39,13 +40,15 @@ const categoryName = computed(() => {
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as *;
+
 .triggerIcon {
 	color: var(--color--primary);
 	margin-left: var(--spacing--3xs);
 }
 .category {
 	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	line-height: var(--line-height--sm);
 	padding: var(--spacing--2xs) var(--spacing--sm);
 	border-bottom: 1px solid $node-creator-border-color;

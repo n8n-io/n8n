@@ -1,0 +1,12 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "integer"
+        },
+        "updated": {
+            "type": "boolean"
+        }
+    },
+    "version": 2
+}

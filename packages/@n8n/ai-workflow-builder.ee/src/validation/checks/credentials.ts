@@ -1,3 +1,6 @@
+import { ALWAYS_SENSITIVE_HEADERS } from '@n8n/utils/redaction/sensitive-headers';
+import { isExpression } from 'n8n-workflow';
+
 import type { SimpleWorkflow } from '@/types';
 
 import type { ProgrammaticViolation } from '../types';
@@ -19,14 +22,7 @@ const CREDENTIAL_FIELD_PATTERNS = [
 ];
 
 // Header names that typically contain credentials (lowercase for comparison)
-const SENSITIVE_HEADERS = new Set([
-	'authorization',
-	'x-api-key',
-	'x-auth-token',
-	'x-access-token',
-	'api-key',
-	'apikey',
-]);
+const SENSITIVE_HEADERS = new Set(ALWAYS_SENSITIVE_HEADERS);
 
 /**
  * Checks if a field name looks like it's meant to store credentials
@@ -40,14 +36,6 @@ function isCredentialFieldName(name: string): boolean {
  */
 function isSensitiveHeader(headerName: string): boolean {
 	return SENSITIVE_HEADERS.has(headerName.toLowerCase());
-}
-
-/**
- * Checks if a value looks like it's an expression (not hardcoded)
- */
-function isExpression(value: unknown): boolean {
-	if (typeof value !== 'string') return false;
-	return value.startsWith('={{') || value.startsWith('=');
 }
 
 interface HeaderParameter {
@@ -144,9 +132,9 @@ function validateHttpRequestNode(
 		if (header.name && isSensitiveHeader(header.name) && hasHardcodedCredentialValue(header)) {
 			violations.push({
 				name: 'http-request-hardcoded-credentials',
-				type: 'major',
+				type: 'minor',
 				description: `HTTP Request node "${node.name}" has a hardcoded value for sensitive header "${header.name}". Use n8n credentials instead (e.g., httpHeaderAuth, httpBearerAuth).`,
-				pointsDeducted: 20,
+				pointsDeducted: 5,
 			});
 		}
 	}
@@ -156,9 +144,9 @@ function validateHttpRequestNode(
 		if (param.name && isCredentialFieldName(param.name) && hasHardcodedCredentialValue(param)) {
 			violations.push({
 				name: 'http-request-hardcoded-credentials',
-				type: 'major',
+				type: 'minor',
 				description: `HTTP Request node "${node.name}" has a hardcoded value for credential-like query parameter "${param.name}". Use n8n credentials instead (e.g., httpQueryAuth).`,
-				pointsDeducted: 20,
+				pointsDeducted: 5,
 			});
 		}
 	}
@@ -177,9 +165,9 @@ function validateSetNode(
 		if (assignment.name && isCredentialFieldName(assignment.name)) {
 			violations.push({
 				name: 'set-node-credential-field',
-				type: 'major',
+				type: 'minor',
 				description: `Set node "${node.name}" has a field named "${assignment.name}" which appears to be storing credentials. Credentials should be stored securely using n8n's credential system, not in workflow data.`,
-				pointsDeducted: 20,
+				pointsDeducted: 5,
 			});
 		}
 	}

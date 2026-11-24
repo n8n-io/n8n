@@ -7,30 +7,28 @@ import type {
 	JsonObject,
 	IRequestOptions,
 	IHttpRequestMethods,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { ApplicationError, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
+import { NodeApiError, NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 
 export async function twitterApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 	fullOutput?: boolean,
-	uri?: string,
-	option: IDataObject = {},
 ) {
-	let options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions> = {
 		method,
 		body,
 		qs,
-		url: uri || `https://api.twitter.com/2${resource}`,
+		url: requestUrl`https://api.x.com/2${resource}`,
 		json: true,
 	};
 	try {
-		if (Object.keys(option).length !== 0) {
-			options = Object.assign({}, options, option);
-		}
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
@@ -47,7 +45,8 @@ export async function twitterApiRequest(
 		if (error.error?.required_enrollment === 'Appropriate Level of API Access') {
 			throw new NodeOperationError(
 				this.getNode(),
-				'The operation requires Twitter Api to be either Basic or Pro.',
+				(error.error.detail as string) ??
+					'This operation requires a higher level of X (Twitter) API access. Please check your subscription at developer.twitter.com.',
 			);
 		} else if (error.errors && error.error?.errors[0].message.includes('must be ')) {
 			throw new NodeOperationError(this.getNode(), error.error.errors[0].message as string);
@@ -60,7 +59,7 @@ export async function twitterApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	query: IDataObject = {},
 ) {
@@ -86,18 +85,18 @@ export function returnId(tweetId: INodeParameterResourceLocator) {
 		try {
 			const url = new URL(tweetId.value as string);
 			if (!/(twitter|x).com$/.test(url.hostname)) {
-				throw new ApplicationError('Invalid domain');
+				throw new UserError('Invalid domain');
 			}
 			const parts = url.pathname.split('/');
 			if (parts.length !== 4 || parts[2] !== 'status' || !/^\d+$/.test(parts[3])) {
-				throw new ApplicationError('Invalid path');
+				throw new UserError('Invalid path');
 			}
 			return parts[3];
 		} catch (error) {
-			throw new ApplicationError('Not a valid tweet url', { level: 'warning', cause: error });
+			throw new UserError('Not a valid tweet url', { level: 'warning', cause: error });
 		}
 	} else {
-		throw new ApplicationError(`The mode ${tweetId.mode} is not valid!`, { level: 'warning' });
+		throw new UserError(`The mode ${tweetId.mode} is not valid!`, { level: 'warning' });
 	}
 }
 
@@ -115,7 +114,7 @@ export async function returnIdFromUsername(
 		const user = (await twitterApiRequest.call(
 			this,
 			'GET',
-			`/users/by/username/${usernameRlc.value}`,
+			requestPath`/users/by/username/${usernameRlc.value}`,
 			{},
 		)) as { id: string };
 		return user.id;
@@ -123,12 +122,12 @@ export async function returnIdFromUsername(
 		const list = (await twitterApiRequest.call(
 			this,
 			'GET',
-			`/list/by/name/${usernameRlc.value}`,
+			requestPath`/list/by/name/${usernameRlc.value}`,
 			{},
 		)) as { id: string };
 		return list.id;
 	} else
-		throw new ApplicationError(`The username mode ${usernameRlc.mode} is not valid!`, {
+		throw new UserError(`The username mode ${usernameRlc.mode} is not valid!`, {
 			level: 'warning',
 		});
 }

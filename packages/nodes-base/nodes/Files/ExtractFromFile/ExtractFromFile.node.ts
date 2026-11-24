@@ -15,9 +15,10 @@ export class ExtractFromFile implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Extract from File',
 		name: 'extractFromFile',
-		icon: { light: 'file:extractFromFile.svg', dark: 'file:extractFromFile.dark.svg' },
+		icon: 'node:extract-from-file',
+		iconColor: 'dark-blue',
 		group: ['input'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Convert binary data to JSON',
 		defaults: {
 			name: 'Extract from File',
@@ -122,6 +123,7 @@ export class ExtractFromFile implements INodeType {
 		if (spreadsheet.operations.includes(operation)) {
 			returnData = await spreadsheet.execute.call(this, items, 'operation', {
 				failOnCsvBufferError: version > 1,
+				formatSpreadsheetDates: version >= 1.2,
 			});
 		}
 

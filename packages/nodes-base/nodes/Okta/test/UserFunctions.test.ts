@@ -8,6 +8,7 @@ import type {
 	IN8nHttpFullResponse,
 	INodeExecutionData,
 } from 'n8n-workflow';
+import { requestPath, requestUrl } from 'n8n-workflow';
 
 import {
 	getCursorPaginator,
@@ -16,10 +17,11 @@ import {
 	simplifyGetAllResponse,
 	simplifyGetResponse,
 } from '../UserFunctions';
+import type { Mock } from 'vitest';
 
 describe('oktaApiRequest', () => {
-	const mockGetCredentials = jest.fn();
-	const mockHttpRequestWithAuthentication = jest.fn();
+	const mockGetCredentials = vi.fn();
+	const mockHttpRequestWithAuthentication = vi.fn();
 
 	const mockContext = {
 		getCredentials: mockGetCredentials,
@@ -39,7 +41,7 @@ describe('oktaApiRequest', () => {
 			{ profile: { firstName: 'John', lastName: 'Doe' }, id: '1' },
 		]);
 
-		const response = await oktaApiRequest.call(mockContext, 'GET', 'users');
+		const response = await oktaApiRequest.call(mockContext, 'GET', requestPath`users`);
 
 		expect(mockGetCredentials).toHaveBeenCalledWith('oktaApi');
 		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledWith('oktaApi', {
@@ -47,24 +49,37 @@ describe('oktaApiRequest', () => {
 			method: 'GET',
 			body: undefined,
 			qs: undefined,
-			url: 'https://okta.example.com/api/v1/users',
+			url: requestUrl`https://okta.example.com/api/v1/users`,
 			json: true,
 		});
 		expect(response).toEqual([{ profile: { firstName: 'John', lastName: 'Doe' }, id: '1' }]);
+	});
+
+	it('should encode a path value that contains a slash', async () => {
+		mockGetCredentials.mockResolvedValue({ url: 'https://okta.example.com' });
+		mockHttpRequestWithAuthentication.mockResolvedValue([]);
+
+		await oktaApiRequest.call(mockContext, 'GET', requestPath`/users/${'00u1/groups'}`);
+
+		expect(String(mockHttpRequestWithAuthentication.mock.calls[0][1].url)).toBe(
+			'https://okta.example.com/api/v1//users/00u1%2Fgroups',
+		);
 	});
 
 	// Tests for error handling
 	it('should handle errors from oktaApiRequest', async () => {
 		mockHttpRequestWithAuthentication.mockRejectedValue(new Error('Network error'));
 
-		await expect(oktaApiRequest.call(mockContext, 'GET', 'users')).rejects.toThrow('Network error');
+		await expect(oktaApiRequest.call(mockContext, 'GET', requestPath`users`)).rejects.toThrow(
+			'Network error',
+		);
 	});
 });
 
 describe('getUsers', () => {
-	const mockOktaApiRequest = jest.fn();
+	const mockOktaApiRequest = vi.fn();
 	const mockContext = {
-		getCredentials: jest.fn().mockResolvedValue({ url: 'https://okta.example.com' }),
+		getCredentials: vi.fn().mockResolvedValue({ url: 'https://okta.example.com' }),
 		helpers: {
 			httpRequestWithAuthentication: mockOktaApiRequest,
 		},
@@ -103,6 +118,17 @@ describe('getUsers', () => {
 		});
 	});
 
+	it('should request the users endpoint', async () => {
+		mockOktaApiRequest.mockResolvedValue([]);
+
+		await getUsers.call(mockContext);
+
+		expect(mockOktaApiRequest.mock.calls[0][1].method).toBe('GET');
+		expect(String(mockOktaApiRequest.mock.calls[0][1].url)).toBe(
+			'https://okta.example.com/api/v1//users/',
+		);
+	});
+
 	// Tests for empty results
 	it('should handle empty results from oktaApiRequest', async () => {
 		mockOktaApiRequest.mockResolvedValue([]);
@@ -116,11 +142,11 @@ describe('getUsers', () => {
 });
 
 describe('simplifyGetAllResponse', () => {
-	const mockGetNodeParameter = jest.fn();
+	const mockGetNodeParameter = vi.fn();
 	const mockContext = {
 		getNodeParameter: mockGetNodeParameter,
 	} as unknown as IExecuteSingleFunctions;
-	const mockResponse = jest.fn() as unknown as IN8nHttpFullResponse;
+	const mockResponse = vi.fn() as unknown as IN8nHttpFullResponse;
 
 	const items: INodeExecutionData[] = [
 		{
@@ -217,11 +243,11 @@ describe('simplifyGetAllResponse', () => {
 });
 
 describe('simplifyGetResponse', () => {
-	const mockGetNodeParameter = jest.fn();
+	const mockGetNodeParameter = vi.fn();
 	const mockContext = {
 		getNodeParameter: mockGetNodeParameter,
 	} as unknown as IExecuteSingleFunctions;
-	const mockResponse = jest.fn() as unknown as IN8nHttpFullResponse;
+	const mockResponse = vi.fn() as unknown as IN8nHttpFullResponse;
 
 	const items: INodeExecutionData[] = [
 		{
@@ -311,8 +337,8 @@ describe('getCursorPaginator', () => {
 
 	beforeEach(() => {
 		mockContext = {
-			getNodeParameter: jest.fn(),
-			makeRoutingRequest: jest.fn(),
+			getNodeParameter: vi.fn(),
+			makeRoutingRequest: vi.fn(),
 		} as unknown as IExecutePaginationFunctions;
 
 		mockRequestOptions = {
@@ -329,8 +355,8 @@ describe('getCursorPaginator', () => {
 			{ json: { id: 3 }, headers: { link: `<${baseUrl}>` } },
 		];
 
-		(mockContext.getNodeParameter as jest.Mock).mockReturnValue(true);
-		(mockContext.makeRoutingRequest as jest.Mock)
+		(mockContext.getNodeParameter as Mock).mockReturnValue(true);
+		(mockContext.makeRoutingRequest as Mock)
 			.mockResolvedValueOnce([mockResponseData[0]])
 			.mockResolvedValueOnce([mockResponseData[1]])
 			.mockResolvedValueOnce([mockResponseData[2]]);
@@ -349,8 +375,8 @@ describe('getCursorPaginator', () => {
 			{ json: { id: 2 }, headers: { link: `<${baseUrl}>` } },
 		];
 
-		(mockContext.getNodeParameter as jest.Mock).mockReturnValue(true);
-		(mockContext.makeRoutingRequest as jest.Mock)
+		(mockContext.getNodeParameter as Mock).mockReturnValue(true);
+		(mockContext.makeRoutingRequest as Mock)
 			.mockResolvedValueOnce([mockResponseData[0]])
 			.mockResolvedValueOnce([mockResponseData[1]]);
 
@@ -363,8 +389,8 @@ describe('getCursorPaginator', () => {
 	});
 
 	it('should handle empty response data', async () => {
-		(mockContext.getNodeParameter as jest.Mock).mockReturnValue(true);
-		(mockContext.makeRoutingRequest as jest.Mock).mockResolvedValue([]);
+		(mockContext.getNodeParameter as Mock).mockReturnValue(true);
+		(mockContext.makeRoutingRequest as Mock).mockResolvedValue([]);
 
 		const paginator = getCursorPaginator().bind(mockContext);
 		const result = await paginator(mockRequestOptions);

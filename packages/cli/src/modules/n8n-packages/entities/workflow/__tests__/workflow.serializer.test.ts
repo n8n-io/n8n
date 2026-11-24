@@ -1,0 +1,194 @@
+import type { SerializedWorkflow } from '@n8n/api-types';
+import { WorkflowEntity } from '@n8n/db';
+
+import { WorkflowSerializer } from '../workflow.serializer';
+import { PackageWorkflowInvalidError } from '../../package-export.errors';
+
+const wire = (overrides: Partial<SerializedWorkflow> = {}): SerializedWorkflow => ({
+	id: 'wf-source-id',
+	name: 'Workflow from package',
+	nodes: [
+		{
+			id: 'node-1',
+			name: 'Start',
+			type: 'n8n-nodes-base.start',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		},
+	],
+	connections: {},
+	parentFolderId: 'folder-from-source',
+	isArchived: false,
+	...overrides,
+});
+
+describe('WorkflowSerializer.deserialize', () => {
+	const serializer = new WorkflowSerializer();
+
+	it('returns a partial WorkflowEntity preserving content fields', () => {
+		const result = serializer.deserialize(wire());
+
+		expect(result.name).toBe('Workflow from package');
+		expect(result.nodes).toEqual([
+			{
+				id: 'node-1',
+				name: 'Start',
+				type: 'n8n-nodes-base.start',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			},
+		]);
+		expect(result.connections).toEqual({});
+	});
+
+	it('includes settings when present in the wire', () => {
+		const result = serializer.deserialize(wire({ settings: { executionOrder: 'v1' } }));
+
+		expect(result.settings).toEqual({ executionOrder: 'v1' });
+	});
+
+	it('omits settings when absent in the wire', () => {
+		const result = serializer.deserialize(wire({ settings: undefined }));
+
+		expect(result.settings).toBeUndefined();
+	});
+
+	it('restores node groups from the wire', () => {
+		const result = serializer.deserialize(
+			wire({
+				nodeGroups: [
+					{ id: 'group-1', name: 'Ingest', nodeIds: ['node-1'], description: 'Pulls data in' },
+				],
+			}),
+		);
+
+		expect(result.nodeGroups).toEqual([
+			{ id: 'group-1', name: 'Ingest', nodeIds: ['node-1'], description: 'Pulls data in' },
+		]);
+	});
+
+	it('defaults node groups to empty when the wire has none', () => {
+		expect(serializer.deserialize(wire()).nodeGroups).toEqual([]);
+	});
+
+	it('does not carry instance-owned fields from the wire', () => {
+		const partial = serializer.deserialize(wire());
+
+		expect(partial).not.toHaveProperty('id');
+		expect(partial).not.toHaveProperty('parentFolder');
+		expect(partial).not.toHaveProperty('parentFolderId');
+		expect(partial).not.toHaveProperty('activeVersionId');
+	});
+
+	it('does not carry the published version, which lives in its own file', () => {
+		expect(serializer.deserialize(wire())).not.toHaveProperty('publishedVersionId');
+	});
+
+	it('carries the archived flag', () => {
+		expect(serializer.deserialize(wire({ isArchived: true })).isArchived).toBe(true);
+		expect(serializer.deserialize(wire({ isArchived: false })).isArchived).toBe(false);
+	});
+});
+
+describe('WorkflowSerializer description', () => {
+	const serializer = new WorkflowSerializer();
+
+	const workflow = (description: string | null) =>
+		Object.assign(new WorkflowEntity(), {
+			id: 'wf-1',
+			name: 'Workflow',
+			description,
+			versionId: 'version-1',
+			activeVersionId: null,
+			nodes: [],
+			connections: {},
+			isArchived: false,
+		});
+
+	it('exports a description', () => {
+		const wire = serializer.serialize(workflow('Syncs orders'), { includeTags: false });
+
+		expect(wire.description).toBe('Syncs orders');
+	});
+
+	it('omits an empty description', () => {
+		const wire = serializer.serialize(workflow(null), { includeTags: false });
+
+		expect(wire).not.toHaveProperty('description');
+	});
+
+	it('does not put the description in the metadata file', () => {
+		expect(serializer.serializeMetadata(workflow('Syncs orders'))).not.toHaveProperty(
+			'description',
+		);
+	});
+
+	it('restores the description on import', () => {
+		const wire = serializer.serialize(workflow('Syncs orders'), { includeTags: false });
+
+		expect(serializer.deserialize(wire).description).toBe('Syncs orders');
+	});
+
+	it('clears the description when the package has none', () => {
+		const wire = serializer.serialize(workflow(null), { includeTags: false });
+
+		expect(serializer.deserialize(wire).description).toBeNull();
+	});
+});
+
+describe('WorkflowSerializer.serializeMetadata', () => {
+	const serializer = new WorkflowSerializer();
+
+	const workflow = (overrides: Partial<WorkflowEntity> = {}) =>
+		Object.assign(new WorkflowEntity(), {
+			versionId: 'version-2',
+			activeVersionId: 'version-2',
+			isArchived: false,
+			...overrides,
+		});
+
+	it('names the exported version as the live one when it is', () => {
+		expect(serializer.serializeMetadata(workflow())).toEqual({
+			versionId: 'version-2',
+			publishedVersionId: 'version-2',
+		});
+	});
+
+	it('names the live version when the export carries a later draft', () => {
+		const draft = workflow({ versionId: 'version-3', activeVersionId: 'version-2' });
+
+		expect(serializer.serializeMetadata(draft)).toEqual({
+			versionId: 'version-3',
+			publishedVersionId: 'version-2',
+		});
+	});
+
+	it('names no version when the workflow has no live one', () => {
+		const neverPublished = workflow({ activeVersionId: null });
+
+		expect(serializer.serializeMetadata(neverPublished).publishedVersionId).toBeNull();
+	});
+});
+
+describe('WorkflowSerializer.serializeForExport', () => {
+	const serializer = new WorkflowSerializer();
+
+	it('reports a null credential reference as an invalid field instead of crashing', () => {
+		const workflow = Object.assign(new WorkflowEntity(), {
+			id: 'wf-bad',
+			name: 'Bad',
+			nodes: [{ ...wire().nodes[0], credentials: { someApi: null } }],
+			connections: {},
+			isArchived: false,
+		});
+
+		expect(() => serializer.serializeForExport(workflow, { includeTags: false })).toThrow(
+			PackageWorkflowInvalidError,
+		);
+		expect(() => serializer.serializeForExport(workflow, { includeTags: false })).toThrow(
+			'nodes.0.credentials.someApi',
+		);
+	});
+});

@@ -10,6 +10,9 @@
         "delinquent": {
             "type": "boolean"
         },
+        "discount": {
+            "type": "null"
+        },
         "id": {
             "type": "string"
         },
@@ -33,6 +36,9 @@
         "livemode": {
             "type": "boolean"
         },
+        "next_invoice_sequence": {
+            "type": "integer"
+        },
         "object": {
             "type": "string"
         },
@@ -49,5 +55,5 @@
             "type": "null"
         }
     },
-    "version": 1
+    "version": 3
 }

@@ -23,28 +23,28 @@ const mockCreatedSession = {
 	data: { id: 'new-session-123', status: SESSION_STATUS.RUNNING },
 };
 
-jest.mock('../transport', () => {
-	const originalModule = jest.requireActual<typeof transport>('../transport');
+vi.mock('../transport', async () => {
+	const originalModule = await vi.importActual<typeof transport>('../transport');
 	return {
 		...originalModule,
-		apiRequest: jest.fn(async (method: string, endpoint: string, params: { fail?: boolean }) => {
+		apiRequest: vi.fn(async (method: string, endpoint: string, params: { fail?: boolean }) => {
 			// return failed request
-			if (endpoint.endsWith('/sessions') && params.fail) {
+			if (String(endpoint).endsWith('/sessions') && params.fail) {
 				return {};
 			}
 
 			// create session
-			if (method === 'POST' && endpoint.endsWith('/sessions')) {
+			if (method === 'POST' && String(endpoint).endsWith('/sessions')) {
 				return { ...mockCreatedSession };
 			}
 
 			// get session status - general case
-			if (method === 'GET' && endpoint.includes('/sessions')) {
+			if (method === 'GET' && String(endpoint).includes('/sessions')) {
 				return { ...mockCreatedSession };
 			}
 
 			// create window
-			if (method === 'POST' && endpoint.endsWith('/windows')) {
+			if (method === 'POST' && String(endpoint).endsWith('/windows')) {
 				return { data: { windowId: 'new-window-123' } };
 			}
 
@@ -441,8 +441,8 @@ describe('Test Airtop utils', () => {
 				warnings: [],
 			};
 
-			const expectedError = new NodeApiError(mockNode, { message: 'Error 1\nError 2' });
-			expect(() => validateAirtopApiResponse(mockNode, response)).toThrow(expectedError);
+			expect(() => validateAirtopApiResponse(mockNode, response)).toThrow(NodeApiError);
+			expect(() => validateAirtopApiResponse(mockNode, response)).toThrow('Error 1\nError 2');
 		});
 	});
 

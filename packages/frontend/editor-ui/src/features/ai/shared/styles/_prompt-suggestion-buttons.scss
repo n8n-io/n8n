@@ -1,0 +1,62 @@
+@mixin prompt-suggestion-button {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--3xs) var(--spacing--xs);
+	border: var(--border);
+	border-radius: var(--radius--full);
+	background: light-dark(var(--background--surface), var(--background--subtle));
+	box-shadow: var(--shadow--xs);
+	color: var(--text-color--subtle);
+	font-size: var(--font-size--2xs);
+	font-family: var(--font-family);
+	line-height: var(--line-height--sm);
+	cursor: pointer;
+	animation: suggestionSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+	transition:
+		border-color 0.15s ease,
+		background-color 0.15s ease,
+		color 0.15s ease,
+		box-shadow 0.15s ease,
+		transform 0.15s ease;
+
+	&:hover,
+	&:focus-visible {
+		color: color-mix(in srgb, var(--background--brand) 68%, var(--text-color));
+		border-color: color-mix(in srgb, var(--background--brand) 28%, var(--border-color--subtle));
+		background: color-mix(in srgb, var(--background--brand) 12%, var(--background--hover));
+		box-shadow: var(--shadow--xs);
+		transform: translateY(-1px);
+		outline-color: var(--focus--border-color);
+	}
+
+	&:active {
+		transform: translateY(0);
+		box-shadow: none;
+	}
+}
+
+@mixin prompt-suggestion-button-active {
+	color: color-mix(in srgb, var(--background--brand) 68%, var(--text-color));
+	border-color: color-mix(in srgb, var(--background--brand) 28%, var(--border-color--subtle));
+	background: color-mix(in srgb, var(--background--brand) 12%, var(--background--hover));
+	box-shadow: var(--shadow--xs);
+}
+
+@mixin prompt-suggestion-icon {
+	opacity: 0.7;
+	flex-shrink: 0;
+	transition: opacity 0.15s ease;
+}
+
+@keyframes suggestionSlideIn {
+	from {
+		opacity: 0;
+		transform: translateY(6px);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}

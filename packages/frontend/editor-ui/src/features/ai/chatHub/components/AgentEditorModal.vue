@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import Modal from '@/app/components/Modal.vue';
 import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { fetchChatModelsApi } from '@/features/ai/chatHub/chat.api';
+import { fetchChatModelsApi, fetchAgentApi } from '@/features/ai/chatHub/chat.api';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
 import {
 	emptyChatModelsResponse,
@@ -14,20 +16,45 @@ import {
 	type ChatHubConversationModel,
 	type ChatHubProvider,
 	type ChatModelDto,
+	type ChatHubAgentKnowledgeItem,
 } from '@n8n/api-types';
-import { N8nButton, N8nHeading, N8nIconPicker, N8nInput, N8nInputLabel } from '@n8n/design-system';
-import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import {
+	N8nButton,
+	N8nCallout,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+	N8nDialogHeader,
+	N8nDialogTitle,
+	N8nIconPicker,
+	N8nInput,
+	N8nInputLabel,
+	N8nSpinner,
+	N8nText,
+} from '@n8n/design-system';
+import type { IconOrEmoji } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
-import { createEventBus } from '@n8n/utils/event-bus';
-import { computed, ref, useTemplateRef, watch } from 'vue';
+import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { useDocumentVisibility, useTimeoutPoll } from '@vueuse/core';
+import type { SuggestedPrompt } from '@n8n/api-types';
 import type { CredentialsMap } from '../chat.types';
-import type { INode } from 'n8n-workflow';
+import SuggestedPromptsEditor from './SuggestedPromptsEditor.vue';
 import ToolsSelector from './ToolsSelector.vue';
 import { personalAgentDefaultIcon, isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
+import { CHAT_SETTINGS_VIEW } from '@/features/ai/chatHub/constants';
+import AgentEditorModalFileRow, {
+	type FileRow,
+} from '@/features/ai/chatHub/components/AgentEditorModalFileRow.vue';
+import { I18nT } from 'vue-i18n';
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
-import { useUIStore } from '@/app/stores/ui.store';
-import { TOOLS_SELECTOR_MODAL_KEY } from '@/features/ai/chatHub/constants';
+import { useFileDrop } from '@/features/ai/shared/composables/useFileDrop';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT } from '@/app/constants';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+
+defineOptions({ inheritAttrs: false });
 
 const props = defineProps<{
 	modalName: string;
@@ -40,12 +67,18 @@ const props = defineProps<{
 }>();
 
 const chatStore = useChatStore();
+const usersStore = useUsersStore();
+const settingsStore = useSettingsStore();
+const credentialsStore = useCredentialsStore();
 const i18n = useI18n();
+
+const canConfigureVectorStore = computed(() => usersStore.isInstanceOwner);
+const canUploadFiles = computed(() => chatStore.semanticSearchReadiness.isReadyForCurrentUser);
 const toast = useToast();
 const message = useMessage();
 const uiStore = useUIStore();
+const documentVisibility = useDocumentVisibility();
 
-const modalBus = ref(createEventBus());
 const { customAgent, isLoading: isLoadingCustomAgent } = useCustomAgent(props.data.agentId);
 
 const name = ref('');
@@ -54,12 +87,36 @@ const systemPrompt = ref('');
 const selectedModel = ref<ChatHubBaseLLMModel | null>(null);
 const isSaving = ref(false);
 const isDeleting = ref(false);
-const isOpened = ref(false);
-const tools = ref<INode[]>([]);
+const toolIds = ref<string[]>([]);
 const agents = ref<ChatModelsResponse>(emptyChatModelsResponse);
 const isLoadingAgents = ref(false);
 const nameInputRef = useTemplateRef('nameInput');
 const icon = ref<AgentIconOrEmoji>(personalAgentDefaultIcon);
+const savedFiles = ref<ChatHubAgentKnowledgeItem[]>([]);
+const newFiles = ref<File[]>([]);
+const removedFileKnowledgeIds = ref<string[]>([]);
+const fileInputRef = useTemplateRef<HTMLInputElement>('fileInput');
+
+const currentEmbeddingProvider = computed(
+	() => settingsStore.moduleSettings['chat-hub']?.semanticSearch.embeddingModel.provider ?? null,
+);
+
+const agentUploadMaxSizeMb = computed(
+	() => settingsStore.moduleSettings['chat-hub']?.agentUploadMaxSizeMb ?? 20,
+);
+
+const allFiles = computed<FileRow[]>(() => [
+	...savedFiles.value.map((file) => ({ ...file, isNew: false })),
+	...newFiles.value.map((file, index) => ({
+		id: `new-${index}`,
+		type: 'embedding' as const,
+		provider: currentEmbeddingProvider.value!,
+		fileName: file.name,
+		mimeType: file.type,
+		isNew: true,
+	})),
+]);
+const suggestedPrompts = ref<SuggestedPrompt[]>([]);
 
 const agentSelectedCredentials = ref<CredentialsMap>({});
 const credentialIdForSelectedModelProvider = computed(
@@ -84,14 +141,12 @@ const saveButtonLabel = computed(() =>
 		: i18n.baseText('chatHub.agent.editor.save'),
 );
 
-const isValid = computed(() => {
-	return (
+const isValid = computed(
+	() =>
 		name.value.trim().length > 0 &&
-		systemPrompt.value.trim().length > 0 &&
 		selectedModel.value !== null &&
-		!!credentialIdForSelectedModelProvider.value
-	);
-});
+		!!credentialIdForSelectedModelProvider.value,
+);
 
 const agentMergedCredentials = computed((): CredentialsMap => {
 	return {
@@ -104,16 +159,22 @@ const canSelectTools = computed(
 	() => selectedAgent.value?.metadata.capabilities.functionCalling ?? false,
 );
 
-modalBus.value.once('opened', () => {
-	isOpened.value = true;
-});
+const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 
-// If the agent doesn't support tools anymore, reset tools
+async function closeDialog() {
+	uiStore.closeModal(props.modalName);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
+
+// If the agent doesn't support tools anymore, reset toolIds
 watch(
 	selectedAgent,
 	(agent) => {
 		if (agent && !agent.metadata.capabilities.functionCalling) {
-			tools.value = [];
+			toolIds.value = [];
 		}
 	},
 	{ immediate: true },
@@ -129,7 +190,11 @@ watch(
 		description.value = agent.description ?? '';
 		systemPrompt.value = agent.systemPrompt;
 		selectedModel.value = { provider: agent.provider, model: agent.model };
-		tools.value = agent.tools || [];
+		savedFiles.value = agent.files;
+		newFiles.value = [];
+		removedFileKnowledgeIds.value = [];
+		suggestedPrompts.value = agent.suggestedPrompts;
+		toolIds.value = agent.toolIds ?? [];
 
 		if (agent.credentialId) {
 			agentSelectedCredentials.value[agent.provider] = agent.credentialId;
@@ -138,17 +203,18 @@ watch(
 	{ immediate: true },
 );
 
-watch(
-	[isOpened, isLoadingAgent, nameInputRef],
-	([opened, isLoading, nameInput]) => {
-		if (opened && !isLoading) {
-			// autofocus attribute doesn't work in modal
-			// https://github.com/element-plus/element-plus/issues/15250
-			nameInput?.focus();
-		}
-	},
-	{ immediate: true, flush: 'post' },
-);
+// Auto-focus name input when mounted and not loading
+onMounted(() => {
+	watch(
+		[isLoadingAgent, nameInputRef],
+		([isLoading, nameInput]) => {
+			if (!isLoading) {
+				nameInput?.focus();
+			}
+		},
+		{ immediate: true, flush: 'post' },
+	);
+});
 
 // Update agents when credentials are updated
 watch(
@@ -173,6 +239,14 @@ function onCredentialSelected(provider: ChatHubProvider, credentialId: string | 
 	};
 }
 
+function handleToggleAgentTool(toolId: string) {
+	if (toolIds.value.includes(toolId)) {
+		toolIds.value = toolIds.value.filter((id) => id !== toolId);
+	} else {
+		toolIds.value = [...toolIds.value, toolId];
+	}
+}
+
 function onModelChange(model: ChatHubConversationModel) {
 	assert(isLlmProviderModel(model));
 	selectedModel.value = model;
@@ -186,36 +260,69 @@ async function onSave() {
 		assert(selectedModel.value);
 		assert(credentialIdForSelectedModelProvider.value);
 
+		const filteredPrompts = suggestedPrompts.value.filter((p) => p.text.trim().length > 0);
+
 		const payload = {
 			name: name.value.trim(),
 			description: description.value.trim() || undefined,
 			systemPrompt: systemPrompt.value.trim(),
 			...selectedModel.value,
 			credentialId: credentialIdForSelectedModelProvider.value,
-			tools: tools.value,
+			toolIds: toolIds.value,
 			icon: icon.value,
+			suggestedPrompts: filteredPrompts.length > 0 ? filteredPrompts : undefined,
 		};
 
+		const hasNewFiles = newFiles.value.length > 0;
+		// Capture before async calls — the customAgent watcher resets newFiles mid-await
+		const addedFiles = [...newFiles.value];
+
 		if (isEditMode.value && props.data.agentId) {
-			await chatStore.updateCustomAgent(props.data.agentId, payload, props.data.credentials);
+			await chatStore.updateCustomAgent(
+				props.data.agentId,
+				payload,
+				addedFiles,
+				removedFileKnowledgeIds.value,
+				props.data.credentials,
+			);
+			if (addedFiles.length > 0) {
+				const totalSizeMb = addedFiles.reduce((sum, f) => sum + f.size, 0) / (1024 * 1024);
+				telemetry.track('User added files to personal agent', {
+					count: addedFiles.length,
+					total_size_mb: totalSizeMb,
+					agent_id: props.data.agentId,
+				});
+			}
 			toast.showMessage({
 				title: i18n.baseText('chatHub.agent.editor.success.update'),
+				message: hasNewFiles ? i18n.baseText('chatHub.agent.editor.success.withFiles') : undefined,
 				type: 'success',
 			});
 		} else {
-			const agent = await chatStore.createCustomAgent(payload, props.data.credentials);
+			const agent = await chatStore.createCustomAgent(payload, addedFiles, props.data.credentials);
+			if (addedFiles.length > 0) {
+				const totalSizeMb = addedFiles.reduce((sum, f) => sum + f.size, 0) / (1024 * 1024);
+				telemetry.track('User added files to personal agent', {
+					count: addedFiles.length,
+					total_size_mb: totalSizeMb,
+					agent_id: agent.model.provider === 'custom-agent' ? agent.model.agentId : undefined,
+				});
+			}
 			props.data.onCreateCustomAgent?.(agent);
 
 			toast.showMessage({
 				title: i18n.baseText('chatHub.agent.editor.success.create'),
+				message: hasNewFiles ? i18n.baseText('chatHub.agent.editor.success.withFiles') : undefined,
 				type: 'success',
 			});
 		}
 
-		modalBus.value.emit('close');
+		closeDialog();
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : '';
-		toast.showError(error, i18n.baseText('chatHub.agent.editor.error.save'), errorMessage);
+		toast.showError(error, i18n.baseText('chatHub.agent.editor.error.save'), {
+			message: errorMessage,
+		});
 	} finally {
 		isSaving.value = false;
 	}
@@ -244,172 +351,413 @@ async function onDelete() {
 			type: 'success',
 		});
 		props.data.onClose?.();
-		modalBus.value.emit('close');
+		closeDialog();
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : '';
-		toast.showError(error, i18n.baseText('chatHub.agent.editor.error.delete'), errorMessage);
+		toast.showError(error, i18n.baseText('chatHub.agent.editor.error.delete'), {
+			message: errorMessage,
+		});
 	} finally {
 		isDeleting.value = false;
 	}
 }
 
-function onSelectTools() {
-	uiStore.openModalWithData({
-		name: TOOLS_SELECTOR_MODAL_KEY,
-		data: {
-			selected: tools.value,
-			onConfirm: (newTools: INode[]) => {
-				tools.value = newTools;
-			},
-		},
-	});
+function isFileTypeAccepted(file: File): boolean {
+	return file.type === 'application/pdf';
 }
+
+function validateFileSizes(files: File[]): boolean {
+	const maxSizeBytes = agentUploadMaxSizeMb.value * 1024 * 1024;
+	for (const file of files) {
+		if (file.size > maxSizeBytes) {
+			toast.showMessage({
+				title: i18n.baseText('chatHub.agent.editor.files.tooLarge', {
+					interpolate: { fileName: file.name, maxSizeMb: agentUploadMaxSizeMb.value },
+				}),
+				type: 'error',
+			});
+			return false;
+		}
+	}
+	return true;
+}
+
+function onFilesDropped(droppedFiles: File[]) {
+	const acceptedFiles = droppedFiles.filter((file) => isFileTypeAccepted(file));
+
+	if (acceptedFiles.length === 0) {
+		return;
+	}
+
+	if (!validateFileSizes(acceptedFiles)) {
+		return;
+	}
+
+	newFiles.value = [...newFiles.value, ...acceptedFiles];
+}
+
+function handleFileSelect(event: Event) {
+	const target = event.target as HTMLInputElement;
+	if (!target.files) {
+		return;
+	}
+
+	const acceptedFiles = Array.from(target.files).filter((file) => isFileTypeAccepted(file));
+
+	if (acceptedFiles.length === 0) {
+		target.value = '';
+		return;
+	}
+
+	if (!validateFileSizes(acceptedFiles)) {
+		target.value = '';
+		return;
+	}
+
+	newFiles.value = [...newFiles.value, ...acceptedFiles];
+
+	// Reset input value to allow selecting the same file again
+	target.value = '';
+}
+
+function handleClickUploadArea() {
+	fileInputRef.value?.click();
+}
+
+function removeFile(row: FileRow) {
+	if (row.isNew) {
+		newFiles.value = newFiles.value.filter((_, i) => `new-${i}` !== row.id);
+	} else {
+		removedFileKnowledgeIds.value = [...removedFileKnowledgeIds.value, row.id];
+		savedFiles.value = savedFiles.value.filter((f) => f.id !== row.id);
+	}
+}
+
+const posthogStore = usePostHog();
+const telemetry = useTelemetry();
+const isSemanticSearchEnabled = computed(() =>
+	posthogStore.isVariantEnabled(
+		CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT.name,
+		CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT.variant,
+	),
+);
+
+const fileDrop = useFileDrop(true, onFilesDropped, ['application/pdf']);
+
+const hasIndexingFiles = computed(() => savedFiles.value.some((f) => f.status === 'indexing'));
+
+const { pause, resume } = useTimeoutPoll(async () => {
+	if (!props.data.agentId) return;
+	try {
+		const agent = await fetchAgentApi(useRootStore().restApiContext, props.data.agentId);
+		savedFiles.value = agent.files;
+	} catch {
+		// ignore polling errors
+	}
+}, 5000);
+
+// Poll indexing status while there's a file in indexing state
+watch(
+	hasIndexingFiles,
+	(hasIndexing) => {
+		if (hasIndexing && props.data.agentId) {
+			resume();
+		} else {
+			pause();
+		}
+	},
+	{ immediate: true },
+);
+
+// refresh semantic search readiness
+watch(documentVisibility, (visibility) => {
+	if (visibility === 'visible' && !canUploadFiles.value) {
+		void settingsStore.getModuleSettings();
+		void credentialsStore.fetchAllCredentials();
+	}
+});
 </script>
 
 <template>
-	<Modal
-		:name="modalName"
-		:event-bus="modalBus"
-		width="600px"
-		:center="true"
-		:loading="isLoadingAgent"
-		max-width="90%"
-		min-height="400px"
-	>
-		<template #header>
-			<div :class="$style.header">
-				<N8nHeading tag="h2" size="large">{{ title }}</N8nHeading>
+	<N8nDialog :open="modalOpen" size="xlarge" @update:open="onDialogOpenUpdate">
+		<template v-if="!isLoadingAgent">
+			<N8nDialogHeader :class="$style.header">
+				<N8nDialogTitle>{{ title }}</N8nDialogTitle>
 				<N8nButton
 					v-if="isEditMode"
-					type="secondary"
+					variant="outline"
 					icon="trash-2"
+					icon-only
+					data-test-id="agent-editor-delete"
+					:aria-label="i18n.baseText('chatHub.agent.editor.delete')"
 					:disabled="isDeleting"
 					:loading="isDeleting"
 					@click="onDelete"
 				/>
-			</div>
-		</template>
-		<template #content>
-			<div :class="$style.content">
-				<N8nInputLabel
-					input-name="agent-name"
-					:label="i18n.baseText('chatHub.agent.editor.name.label')"
-					:required="true"
-				>
-					<div :class="$style.agentName">
-						<N8nIconPicker
-							v-model="icon as IconOrEmoji"
-							:button-tooltip="i18n.baseText('chatHub.agent.editor.iconPicker.button.tooltip')"
-						/>
-						<N8nInput
-							id="agent-name"
-							ref="nameInput"
-							v-model="name"
-							:placeholder="i18n.baseText('chatHub.agent.editor.name.placeholder')"
-							:maxlength="128"
-							:class="$style.agentNameInput"
-						/>
+			</N8nDialogHeader>
+			<N8nDialogBody>
+				<div :class="$style.contentWrapper">
+					<div
+						v-if="isSemanticSearchEnabled && fileDrop.isDragging.value"
+						:class="$style.dropOverlay"
+					>
+						<N8nText v-if="fileDrop.isDraggingUnsupported.value" size="large" color="text-dark">{{
+							i18n.baseText('chatHub.agent.editor.dropOverlay.unsupportedFileType')
+						}}</N8nText>
+						<N8nText v-else size="large" color="text-dark">{{
+							i18n.baseText('chatHub.agent.editor.dropOverlay.addFile')
+						}}</N8nText>
 					</div>
-				</N8nInputLabel>
-
-				<N8nInputLabel
-					input-name="agent-description"
-					:label="i18n.baseText('chatHub.agent.editor.description.label')"
-				>
-					<N8nInput
-						id="agent-description"
-						v-model="description"
-						type="textarea"
-						:placeholder="i18n.baseText('chatHub.agent.editor.description.placeholder')"
-						:maxlength="512"
-						:rows="3"
-						:class="$style.input"
-					/>
-				</N8nInputLabel>
-
-				<N8nInputLabel
-					input-name="agent-system-prompt"
-					:label="i18n.baseText('chatHub.agent.editor.systemPrompt.label')"
-					:required="true"
-				>
-					<N8nInput
-						id="agent-system-prompt"
-						v-model="systemPrompt"
-						type="textarea"
-						:placeholder="i18n.baseText('chatHub.agent.editor.systemPrompt.placeholder')"
-						:rows="6"
-						:class="$style.input"
-					/>
-				</N8nInputLabel>
-
-				<div :class="$style.row">
-					<N8nInputLabel
-						input-name="agent-model"
-						:class="$style.input"
-						:label="i18n.baseText('chatHub.agent.editor.model.label')"
-						:required="true"
+					<div
+						:class="[
+							$style.content,
+							{ [$style.isDraggingFile]: isSemanticSearchEnabled && fileDrop.isDragging.value },
+						]"
+						@dragenter="
+							isSemanticSearchEnabled && canUploadFiles
+								? fileDrop.handleDragEnter($event)
+								: undefined
+						"
+						@dragleave="
+							isSemanticSearchEnabled && canUploadFiles
+								? fileDrop.handleDragLeave($event)
+								: undefined
+						"
+						@dragover="
+							isSemanticSearchEnabled && canUploadFiles
+								? fileDrop.handleDragOver($event)
+								: undefined
+						"
+						@drop="
+							isSemanticSearchEnabled && canUploadFiles ? fileDrop.handleDrop($event) : undefined
+						"
 					>
-						<ModelSelector
-							:selected-agent="selectedAgent"
-							:include-custom-agents="false"
-							:credentials="agentMergedCredentials"
-							:agents="agents"
-							:is-loading="isLoadingAgents"
-							warn-missing-credentials
-							@change="onModelChange"
-							@select-credential="onCredentialSelected"
-						/>
-					</N8nInputLabel>
+						<N8nInputLabel
+							input-name="agent-name"
+							:label="i18n.baseText('chatHub.agent.editor.name.label')"
+							:required="true"
+						>
+							<div :class="$style.agentName">
+								<N8nIconPicker
+									v-model="icon as IconOrEmoji"
+									:button-tooltip="i18n.baseText('chatHub.agent.editor.iconPicker.button.tooltip')"
+								/>
+								<N8nInput
+									id="agent-name"
+									ref="nameInput"
+									v-model="name"
+									:placeholder="i18n.baseText('chatHub.agent.editor.name.placeholder')"
+									:maxlength="128"
+									:class="$style.agentNameInput"
+								/>
+							</div>
+						</N8nInputLabel>
 
-					<N8nInputLabel
-						input-name="agent-model"
-						:class="$style.input"
-						:label="i18n.baseText('chatHub.agent.editor.tools.label')"
-						:required="false"
-					>
-						<div>
-							<ToolsSelector
-								:disabled="!canSelectTools"
-								:disabled-tooltip="
-									canSelectTools
-										? undefined
-										: i18n.baseText('chatHub.tools.selector.disabled.tooltip')
-								"
-								:selected="tools"
-								@click="onSelectTools"
+						<N8nInputLabel
+							input-name="agent-description"
+							:label="i18n.baseText('chatHub.agent.editor.description.label')"
+						>
+							<N8nInput
+								id="agent-description"
+								v-model="description"
+								type="textarea"
+								:placeholder="i18n.baseText('chatHub.agent.editor.description.placeholder')"
+								:maxlength="512"
+								:rows="3"
+								:class="$style.input"
 							/>
+						</N8nInputLabel>
+
+						<N8nInputLabel
+							input-name="agent-system-prompt"
+							:label="i18n.baseText('chatHub.agent.editor.systemPrompt.label')"
+						>
+							<N8nInput
+								id="agent-system-prompt"
+								v-model="systemPrompt"
+								type="textarea"
+								:placeholder="i18n.baseText('chatHub.agent.editor.systemPrompt.placeholder')"
+								:rows="6"
+								:class="$style.input"
+							/>
+						</N8nInputLabel>
+
+						<N8nInputLabel
+							input-name="agent-suggested-prompts"
+							:label="i18n.baseText('chatHub.agent.editor.suggestedPrompts.label')"
+							:tooltip-text="i18n.baseText('chatHub.agent.editor.suggestedPrompts.tooltip')"
+							:show-tooltip="true"
+						>
+							<SuggestedPromptsEditor v-model="suggestedPrompts" />
+						</N8nInputLabel>
+
+						<div :class="$style.row">
+							<N8nInputLabel
+								input-name="agent-model"
+								:class="$style.input"
+								:label="i18n.baseText('chatHub.agent.editor.model.label')"
+								:required="true"
+							>
+								<ModelSelector
+									:selected-agent="selectedAgent"
+									:include-custom-agents="false"
+									:credentials="agentMergedCredentials"
+									:agents="agents"
+									:is-loading="isLoadingAgents"
+									:class="$style.modelSelector"
+									warn-missing-credentials
+									stacked
+									@change="onModelChange"
+									@select-credential="onCredentialSelected"
+								/>
+							</N8nInputLabel>
+
+							<N8nInputLabel
+								input-name="agent-tool"
+								:class="$style.input"
+								:label="i18n.baseText('chatHub.agent.editor.tools.label')"
+								:required="false"
+							>
+								<div>
+									<ToolsSelector
+										:disabled="!canSelectTools"
+										:disabled-tooltip="
+											canSelectTools
+												? undefined
+												: selectedModel
+													? i18n.baseText('chatHub.tools.selector.disabled.tooltip')
+													: i18n.baseText('chatHub.tools.selector.disabled.noModel.tooltip')
+										"
+										:checked-tool-ids="toolIds"
+										stacked
+										@toggle="handleToggleAgentTool"
+									/>
+								</div>
+							</N8nInputLabel>
 						</div>
-					</N8nInputLabel>
+
+						<N8nInputLabel
+							v-if="isSemanticSearchEnabled"
+							input-name="agent-files"
+							:label="i18n.baseText('chatHub.agent.editor.files.label')"
+							:required="false"
+						>
+							<input
+								ref="fileInput"
+								type="file"
+								:class="$style.fileInput"
+								accept="application/pdf"
+								multiple
+								@change="handleFileSelect"
+							/>
+							<N8nCallout
+								v-if="!canUploadFiles"
+								theme="info"
+								icon="info"
+								:class="$style.vectorStoreCallout"
+							>
+								<I18nT
+									:keypath="
+										canConfigureVectorStore
+											? 'chatHub.agent.editor.semanticSearch.notReady.canConfigure'
+											: 'chatHub.agent.editor.semanticSearch.notReady'
+									"
+									tag="span"
+									scope="global"
+								>
+									<template #settingsLink>
+										<RouterLink
+											:to="{ name: CHAT_SETTINGS_VIEW }"
+											target="_blank"
+											:class="$style.settingsLink"
+											>{{
+												i18n.baseText('chatHub.agent.editor.semanticSearch.settingsLink')
+											}}</RouterLink
+										>
+									</template>
+								</I18nT>
+							</N8nCallout>
+							<div v-if="allFiles.length > 0" :class="$style.fileList">
+								<AgentEditorModalFileRow
+									v-for="item in allFiles"
+									:key="item.id"
+									:item="item"
+									:semantic-search-ready="canUploadFiles"
+									:current-embedding-provider="currentEmbeddingProvider"
+									@remove="removeFile(item)"
+								/>
+							</div>
+							<N8nButton
+								icon="plus"
+								variant="outline"
+								:class="$style.addFileButton"
+								:disabled="!canUploadFiles"
+								@click="handleClickUploadArea"
+							>
+								Add file
+							</N8nButton>
+						</N8nInputLabel>
+					</div>
 				</div>
-			</div>
-		</template>
-		<template #footer>
-			<div :class="$style.footer">
-				<N8nButton type="secondary" @click="modalBus.emit('close')">{{
-					i18n.baseText('chatHub.tools.editor.cancel')
-				}}</N8nButton>
-				<N8nButton type="primary" :disabled="!isValid || isSaving" @click="onSave">
+			</N8nDialogBody>
+			<N8nDialogFooter>
+				<N8nButton variant="outline" @click="closeDialog">
+					{{ i18n.baseText('chatHub.tools.editor.cancel') }}
+				</N8nButton>
+				<N8nButton variant="solid" :disabled="!isValid || isSaving" @click="onSave">
 					{{ saveButtonLabel }}
 				</N8nButton>
-			</div>
+			</N8nDialogFooter>
 		</template>
-	</Modal>
+		<N8nDialogBody v-else>
+			<div :class="$style.loader">
+				<N8nSpinner />
+			</div>
+		</N8nDialogBody>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
 .header {
-	display: flex;
-	align-items: center;
 	justify-content: space-between;
-	gap: var(--spacing--s);
-	padding-right: var(--spacing--xl);
+}
+
+.contentWrapper {
+	position: relative;
 }
 
 .content {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
-	padding: var(--spacing--sm) 0;
+	max-height: 60vh;
+}
+
+.vectorStoreCallout {
+	margin-bottom: var(--spacing--xs);
+}
+
+.settingsLink {
+	color: inherit;
+	text-decoration: underline;
+}
+
+.isDraggingFile {
+	border-color: var(--color--secondary);
+}
+
+.dropOverlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 9999;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background-color: color-mix(in srgb, var(--color--background--light-2) 95%, transparent);
+	pointer-events: none;
 }
 
 .input {
@@ -432,10 +780,40 @@ function onSelectTools() {
 	gap: var(--spacing--sm);
 }
 
-.footer {
+.modelSelector {
+	width: fit-content;
+}
+
+.fileInput {
+	display: none;
+}
+
+.addFileButton {
+	width: fit-content;
+	margin-top: var(--spacing--2xs);
+}
+
+.fileList {
+	border: var(--border);
+	border-radius: var(--radius);
+	overflow: hidden;
+}
+
+.loader {
 	display: flex;
-	justify-content: flex-end;
+	align-items: center;
+	justify-content: center;
+	min-height: var(--height--5xl);
+	padding: var(--spacing--xl);
+}
+
+.credentialPickerRow {
+	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
+
+.credentialPicker {
+	flex: 1;
 }
 </style>

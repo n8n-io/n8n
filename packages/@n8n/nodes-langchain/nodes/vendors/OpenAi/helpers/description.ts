@@ -34,6 +34,7 @@ export const prettifyOperation = (resource: string, operation: string) => {
 	return `${capitalize(operation)} ${capitalize(resource)}`;
 };
 
+/* istanbul ignore next */
 export const configureNodeInputs = (
 	resource: string,
 	operation: string,

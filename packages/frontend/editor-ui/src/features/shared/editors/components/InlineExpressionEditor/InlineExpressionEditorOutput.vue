@@ -2,14 +2,15 @@
 import type { EditorState, SelectionRange } from '@codemirror/state';
 
 import { useI18n } from '@n8n/i18n';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import type { Segment } from '@/app/types/expressions';
-import { onBeforeUnmount, useTemplateRef } from 'vue';
+import { isPairedItemNotOnBranchError } from '@/app/utils/expressions';
+import { computed, onBeforeUnmount, useTemplateRef } from 'vue';
 import ExpressionOutput from './ExpressionOutput.vue';
 import OutputItemSelect from './OutputItemSelect.vue';
 import InlineExpressionTip from './InlineExpressionTip.vue';
 import { outputTheme } from './theme';
-import { useStyles } from '@/app/composables/useStyles';
+import { useStyles } from '@n8n/composables/useStyles';
 
 import { N8nPopover, N8nText } from '@n8n/design-system';
 interface InlineExpressionEditorOutputProps {
@@ -22,7 +23,7 @@ interface InlineExpressionEditorOutputProps {
 	virtualRef?: HTMLElement;
 }
 
-withDefaults(defineProps<InlineExpressionEditorOutputProps>(), {
+const props = withDefaults(defineProps<InlineExpressionEditorOutputProps>(), {
 	editorState: undefined,
 	selection: undefined,
 	isReadOnly: false,
@@ -31,12 +32,18 @@ withDefaults(defineProps<InlineExpressionEditorOutputProps>(), {
 
 const i18n = useI18n();
 const theme = outputTheme();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const contentRef = useTemplateRef('content');
 const { APP_Z_INDEXES } = useStyles();
 
+const hasPairedItemNotOnBranchError = computed(() =>
+	props.segments.some(
+		(segment) => segment.kind === 'resolvable' && isPairedItemNotOnBranchError(segment.error),
+	),
+);
+
 onBeforeUnmount(() => {
-	ndvStore.expressionOutputItemIndex = 0;
+	ndvStore.value.expressionOutputItemIndex = 0;
 });
 
 defineExpose({
@@ -81,6 +88,7 @@ defineExpose({
 						:editor-state="editorState"
 						:selection="selection"
 						:unresolved-expression="unresolvedExpression"
+						:paired-item-not-on-branch="hasPairedItemNotOnBranchError"
 					/>
 				</div>
 			</div>
@@ -129,7 +137,7 @@ defineExpose({
 		align-items: center;
 		gap: var(--spacing--2xs);
 		color: var(--color--text--shade-1);
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 		padding: 0 var(--spacing--2xs);
 		padding-top: var(--spacing--2xs);
 	}

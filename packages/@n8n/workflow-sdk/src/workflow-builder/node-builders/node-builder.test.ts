@@ -1,0 +1,1152 @@
+import { deepCopy } from 'n8n-workflow';
+
+import {
+	node,
+	trigger,
+	sticky,
+	placeholder,
+	newCredential,
+	merge,
+	ifElse,
+	switchCase,
+} from './node-builder';
+import { languageModel, memory, tool, outputParser } from './subnode-builders';
+import { isAnchoredStickyNote, type NodeInstance } from '../../types/base';
+import { splitInBatches } from '../control-flow-builders/split-in-batches';
+
+/** The nodes a sticky was asked to wrap, by ID. */
+function anchorsOf(instance: NodeInstance<string, string, unknown>): readonly string[] {
+	return isAnchoredStickyNote(instance) ? instance.stickyAnchorIds : [];
+}
+
+describe('Node Builder', () => {
+	describe('node()', () => {
+		it('should create a node from object with type, version, and config', () => {
+			const n = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { parameters: { url: 'https://api.example.com' } },
+			});
+			expect(n.type).toBe('n8n-nodes-base.httpRequest');
+			expect(n.version).toBe('4.2');
+			expect(n.config.parameters).toEqual({ url: 'https://api.example.com' });
+		});
+
+		it('should work with agent node types', () => {
+			const agentNode = node({
+				type: '@n8n/n8n-nodes-langchain.agent',
+				version: 3.1,
+				config: {
+					parameters: {
+						promptType: 'auto',
+						text: 'Hello',
+					},
+				},
+			});
+			expect(agentNode.type).toBe('@n8n/n8n-nodes-langchain.agent');
+			expect(agentNode.version).toBe('3.1');
+		});
+
+		it('should support integer versions', () => {
+			const n = node({
+				type: 'n8n-nodes-base.code',
+				version: 2,
+				config: {},
+			});
+			expect(n.version).toBe('2');
+		});
+
+		it('should create a node with parameters', () => {
+			const n = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: {
+					parameters: { url: 'https://api.example.com', method: 'GET' },
+				},
+			});
+			expect(n.config.parameters).toEqual({
+				url: 'https://api.example.com',
+				method: 'GET',
+			});
+		});
+
+		it('should create a node with credentials', () => {
+			const n = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: {
+					credentials: { httpBasicAuth: { name: 'My Creds', id: '123' } },
+				},
+			});
+			expect(n.config.credentials).toEqual({
+				httpBasicAuth: { name: 'My Creds', id: '123' },
+			});
+		});
+
+		it('should create a node with execution options', () => {
+			const n = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: {
+					parameters: { url: 'https://api.example.com' },
+					onError: 'continueErrorOutput',
+					retryOnFail: true,
+					executeOnce: true,
+				},
+			});
+			expect(n.config.onError).toBe('continueErrorOutput');
+			expect(n.config.retryOnFail).toBe(true);
+			expect(n.config.executeOnce).toBe(true);
+		});
+
+		it('should open the error output port when a route is declared on a node without one', () => {
+			const handler = node({ type: 'n8n-nodes-base.noOp', version: 1, config: {} });
+			const n = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { onError: 'continueRegularOutput' },
+			});
+
+			n.onError(handler);
+
+			expect(n.config.onError).toBe('continueErrorOutput');
+		});
+
+		it('should auto-generate a unique ID', () => {
+			const n1 = node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: {} });
+			const n2 = node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: {} });
+			expect(n1.id).toBeDefined();
+			expect(n2.id).toBeDefined();
+			expect(n1.id).not.toBe(n2.id);
+		});
+
+		it('should auto-generate a name from type if not provided', () => {
+			const n = node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: {} });
+			expect(n.name).toBe('HTTP Request');
+		});
+
+		it('should use custom name if provided', () => {
+			const n = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Fetch API Data' },
+			});
+			expect(n.name).toBe('Fetch API Data');
+		});
+
+		it('should support position', () => {
+			const n = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { position: [100, 200] },
+			});
+			expect(n.config.position).toEqual([100, 200]);
+		});
+
+		it('should support disabled state', () => {
+			const n = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { disabled: true },
+			});
+			expect(n.config.disabled).toBe(true);
+		});
+
+		it('should support notes', () => {
+			const n = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: {
+					notes: 'This fetches user data',
+					notesInFlow: true,
+				},
+			});
+			expect(n.config.notes).toBe('This fetches user data');
+			expect(n.config.notesInFlow).toBe(true);
+		});
+
+		it('should support update() to modify configuration', () => {
+			const n = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { parameters: { url: 'https://old-url.com' } },
+			});
+			const updated = n.update({
+				parameters: { url: 'https://new-url.com' },
+			});
+			expect(updated.config.parameters).toEqual({ url: 'https://new-url.com' });
+			// Original should be unchanged (immutable)
+			expect(n.config.parameters).toEqual({ url: 'https://old-url.com' });
+		});
+	});
+
+	describe('trigger()', () => {
+		it('should create a trigger from object with type, version, and config', () => {
+			const t = trigger({
+				type: 'n8n-nodes-base.scheduleTrigger',
+				version: 1.1,
+				config: {
+					parameters: { rule: { interval: [{ field: 'hours', hour: 8 }] } },
+				},
+			});
+			expect(t.type).toBe('n8n-nodes-base.scheduleTrigger');
+			expect(t.version).toBe('1.1');
+			expect(t.isTrigger).toBe(true);
+		});
+
+		it('should support integer versions', () => {
+			const t = trigger({
+				type: 'n8n-nodes-base.webhookTrigger',
+				version: 2,
+				config: {},
+			});
+			expect(t.version).toBe('2');
+			expect(t.isTrigger).toBe(true);
+		});
+
+		it('should auto-generate name for trigger', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			expect(t.name).toBe('Webhook Trigger');
+		});
+	});
+
+	describe('sticky()', () => {
+		it('should create a sticky note with content', () => {
+			const s = sticky('## Documentation');
+			expect(s.type).toBe('n8n-nodes-base.stickyNote');
+			expect(s.config.parameters?.content).toBe('## Documentation');
+		});
+
+		it('should support color option', () => {
+			const s = sticky('## Note', { color: 4 });
+			expect(s.config.parameters?.color).toBe(4);
+		});
+
+		it('should support position option', () => {
+			const s = sticky('## Note', { position: [80, -176] });
+			expect(s.config.position).toEqual([80, -176]);
+		});
+
+		it('should support width and height', () => {
+			const s = sticky('## Note', { width: 300, height: 200 });
+			expect(s.config.parameters?.width).toBe(300);
+			expect(s.config.parameters?.height).toBe(200);
+		});
+
+		it('should record the nodes it wraps as anchors', () => {
+			const n1 = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'HTTP 1', position: [400, 300] },
+			});
+			const n2 = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'Set', position: [700, 300] },
+			});
+
+			// New signature: sticky(content, nodes?, config?)
+			const s = sticky('## API Section', [n1, n2], { color: 2 });
+
+			// The box itself is resolved during serialization, once layout has placed
+			// the anchors — see sticky-placement.test.ts
+			expect(anchorsOf(s)).toEqual([n1.id, n2.id]);
+			expect(s.config.position).toBeUndefined();
+			expect(s.config.parameters?.color).toBe(2);
+		});
+
+		it('should work with empty nodes array as second parameter', () => {
+			const s = sticky('## Note', [], { color: 4 });
+
+			expect(s.type).toBe('n8n-nodes-base.stickyNote');
+			expect(s.config.parameters?.content).toBe('## Note');
+			expect(s.config.parameters?.color).toBe(4);
+			// No nodes means no auto-positioning
+			expect(s.config.position).toBeUndefined();
+		});
+
+		it('should allow manual position to override nodes bounding box', () => {
+			const n1 = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'HTTP', position: [400, 300] },
+			});
+
+			// New signature: sticky(content, nodes?, config?)
+			const s = sticky('## Note', [n1], { position: [100, 100] });
+
+			// Manual position should override calculated position
+			expect(s.config.position).toEqual([100, 100]);
+		});
+
+		it('should work with config only (no nodes) when second param is object', () => {
+			// When second param is an object (config), not an array (nodes),
+			// it should be treated as config for backward compatibility
+			const s = sticky('## Note', { color: 4, position: [50, 50] });
+
+			expect(s.config.parameters?.content).toBe('## Note');
+			expect(s.config.parameters?.color).toBe(4);
+			expect(s.config.position).toEqual([50, 50]);
+		});
+
+		it('should generate unique default names for multiple stickies', () => {
+			const s1 = sticky('## Note 1');
+			const s2 = sticky('## Note 2');
+			const s3 = sticky('## Note 3');
+
+			// Each sticky gets a unique name (based on first 8 chars of UUID)
+			// to prevent them from overwriting each other in the workflow Map
+			expect(s1.name).toMatch(/^Sticky Note [a-f0-9]{8}$/);
+			expect(s2.name).toMatch(/^Sticky Note [a-f0-9]{8}$/);
+			expect(s3.name).toMatch(/^Sticky Note [a-f0-9]{8}$/);
+
+			// Names should be different
+			expect(s1.name).not.toBe(s2.name);
+			expect(s2.name).not.toBe(s3.name);
+			expect(s1.name).not.toBe(s3.name);
+
+			// Each sticky should have a unique ID
+			expect(s1.id).not.toBe(s2.id);
+			expect(s2.id).not.toBe(s3.id);
+			expect(s1.id).not.toBe(s3.id);
+		});
+
+		it('should use explicit name when provided', () => {
+			const s = sticky('## My Content', { name: 'Custom Sticky Name' });
+			expect(s.name).toBe('Custom Sticky Name');
+		});
+
+		it('should not crash when nodes array contains a SplitInBatchesBuilder', () => {
+			const sibNode = node({
+				type: 'n8n-nodes-base.splitInBatches',
+				version: 1,
+				config: { name: 'SIB', position: [500, 400] },
+			});
+			const sibBuilder = splitInBatches(sibNode);
+
+			const s = sticky('## Batch Processing', [sibBuilder as never], { color: 3 });
+
+			expect(s.type).toBe('n8n-nodes-base.stickyNote');
+			expect(s.config.parameters?.content).toBe('## Batch Processing');
+			// Anchors on the underlying node, not the builder wrapper
+			expect(anchorsOf(s)).toEqual([sibNode.id]);
+		});
+
+		it('should not crash when nodes array contains an IfElseBuilder', () => {
+			const ifNode = ifElse({ version: 2, config: { name: 'IF Check', position: [300, 200] } });
+			const target = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'Set', position: [600, 200] },
+			});
+
+			const builder = ifNode.onTrue!(target);
+
+			const s = sticky('## Conditional Logic', [builder as never]);
+
+			expect(s.type).toBe('n8n-nodes-base.stickyNote');
+			expect(s.config.parameters?.content).toBe('## Conditional Logic');
+			// Anchors on the IF node, not the builder wrapper
+			expect(anchorsOf(s)).toEqual([ifNode.id]);
+		});
+
+		it('should not crash when nodes array contains a SwitchCaseBuilder', () => {
+			const sw = switchCase({ version: 3.2, config: { name: 'Route', position: [400, 300] } });
+			const target = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'Set', position: [700, 300] },
+			});
+
+			const builder = sw.onCase!(0, target);
+
+			const s = sticky('## Routing', [builder as never]);
+
+			expect(s.type).toBe('n8n-nodes-base.stickyNote');
+			expect(s.config.parameters?.content).toBe('## Routing');
+			// Anchors on the Switch node, not the builder wrapper
+			expect(anchorsOf(s)).toEqual([sw.id]);
+		});
+	});
+
+	describe('placeholder()', () => {
+		it('returns the placeholder marker string', () => {
+			const p = placeholder('Enter Channel');
+			expect(typeof p).toBe('string');
+			expect(p).toBe('<__PLACEHOLDER_VALUE__Enter Channel__>');
+		});
+
+		it('JSON-serializes to the placeholder marker', () => {
+			const p = placeholder('API Key');
+			expect(JSON.stringify({ key: p })).toBe('{"key":"<__PLACEHOLDER_VALUE__API Key__>"}');
+		});
+	});
+
+	describe('newCredential()', () => {
+		it('should create a new credential marker with name', () => {
+			const c = newCredential('My Slack Bot');
+			expect(c.__newCredential).toBe(true);
+			expect(c.name).toBe('My Slack Bot');
+			expect(c.id).toBeUndefined();
+		});
+
+		it('should create a credential marker with name and id', () => {
+			const c = newCredential('My Slack Bot', 'cred-abc');
+			expect(c.__newCredential).toBe(true);
+			expect(c.name).toBe('My Slack Bot');
+			expect(c.id).toBe('cred-abc');
+		});
+
+		it('should serialize to undefined when no id (placeholder)', () => {
+			const c = newCredential('My API Auth');
+			// toJSON returns undefined, which JSON.stringify omits
+			expect(JSON.stringify({ cred: c })).toBe('{}');
+		});
+
+		it('should serialize to { id, name } when id is provided', () => {
+			const c = newCredential('Slack Bot', 'cred-123');
+			expect(JSON.stringify({ cred: c })).toBe('{"cred":{"id":"cred-123","name":"Slack Bot"}}');
+		});
+
+		it('should work in node credentials config (placeholder, no id)', () => {
+			const n = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.2,
+				config: {
+					parameters: { channel: '#general' },
+					credentials: { slackApi: newCredential('Slack Bot') },
+				},
+			});
+			expect(n.config.credentials).toBeDefined();
+			const credJson = deepCopy(n.config.credentials);
+			// newCredential without id serializes to undefined, which is omitted from JSON
+			expect(credJson).toEqual({});
+		});
+
+		it('should work in node credentials config (with id)', () => {
+			const n = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.2,
+				config: {
+					parameters: { channel: '#general' },
+					credentials: { slackApi: newCredential('Slack Bot', 'cred-456') },
+				},
+			});
+			expect(n.config.credentials).toBeDefined();
+			const credJson = deepCopy(n.config.credentials);
+			// newCredential with id serializes to { id, name }
+			expect(credJson).toEqual({
+				slackApi: { id: 'cred-456', name: 'Slack Bot' },
+			});
+		});
+
+		it('should work alongside regular credential references', () => {
+			const n = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: {
+					parameters: { url: 'https://api.example.com' },
+					credentials: {
+						httpBasicAuth: { id: 'existing-123', name: 'Existing Auth' },
+						httpHeaderAuth: newCredential('New Header Auth'),
+					},
+				},
+			});
+			const credJson = deepCopy(n.config.credentials);
+			// Regular credentials preserved, newCredential without id omitted
+			expect(credJson).toEqual({
+				httpBasicAuth: { id: 'existing-123', name: 'Existing Auth' },
+			});
+		});
+	});
+
+	describe('placeholder() inside credentials slot', () => {
+		it('normalizes placeholder() to a __newCredential marker carrying the hint as name', () => {
+			const n = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.2,
+				config: {
+					parameters: { channel: '#general' },
+					credentials: { slackApi: placeholder('Slack Bot') },
+				},
+			});
+
+			const stored = n.config.credentials?.slackApi;
+			expect(stored).toBeDefined();
+			expect((stored as { __newCredential?: boolean }).__newCredential).toBe(true);
+			expect((stored as { name?: string }).name).toBe('Slack Bot');
+			expect((stored as { id?: string }).id).toBeUndefined();
+			// The placeholder marker string is gone — credentials maps never carry it.
+			expect(typeof stored).not.toBe('string');
+		});
+
+		it('serializes a placeholder() credential to undefined (omitted from JSON)', () => {
+			const n = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.2,
+				config: {
+					credentials: { slackApi: placeholder('Slack Bot') },
+				},
+			});
+
+			// Same shape as newCredential() without id: toJSON returns undefined
+			// so JSON.stringify drops the slot entirely.
+			expect(JSON.stringify(n.config.credentials)).toBe('{}');
+		});
+
+		it('does not leak the <__PLACEHOLDER_VALUE__*> string into serialized credentials', () => {
+			const n = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.2,
+				config: {
+					credentials: { slackApi: placeholder('Slack Bot') },
+				},
+			});
+
+			expect(JSON.stringify(n.config.credentials)).not.toContain('__PLACEHOLDER_VALUE__');
+		});
+
+		it('normalizes only the placeholder slot, leaving other credentials untouched', () => {
+			const n = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: {
+					credentials: {
+						httpBasicAuth: { id: 'existing-123', name: 'Existing Auth' },
+						httpHeaderAuth: placeholder('Header Auth'),
+					},
+				},
+			});
+
+			const creds = n.config.credentials!;
+			expect(creds.httpBasicAuth).toEqual({ id: 'existing-123', name: 'Existing Auth' });
+			expect((creds.httpHeaderAuth as { __newCredential?: boolean }).__newCredential).toBe(true);
+			expect((creds.httpHeaderAuth as { name?: string }).name).toBe('Header Auth');
+		});
+
+		it('also normalizes when credentials are supplied via update()', () => {
+			const n = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.2,
+				config: { parameters: { channel: '#general' } },
+			});
+
+			const updated = n.update({ credentials: { slackApi: placeholder('Slack Bot') } });
+			const stored = updated.config.credentials?.slackApi;
+			expect((stored as { __newCredential?: boolean }).__newCredential).toBe(true);
+			expect((stored as { name?: string }).name).toBe('Slack Bot');
+		});
+
+		it('normalizes { value: placeholder() } shape to newCredential', () => {
+			const n = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.2,
+				config: { credentials: { slackApi: { value: placeholder('Slack token') } } },
+			});
+			const stored = n.config.credentials?.slackApi as { __newCredential?: boolean; name?: string };
+			expect(stored.__newCredential).toBe(true);
+			expect(stored.name).toBe('Slack token');
+		});
+
+		it('normalizes { value: literal } shape to newCredential', () => {
+			const n = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.2,
+				config: { credentials: { slackApi: { value: 'My Slack Token' } } },
+			});
+			const stored = n.config.credentials?.slackApi as { __newCredential?: boolean; name?: string };
+			expect(stored.__newCredential).toBe(true);
+			expect(stored.name).toBe('My Slack Token');
+		});
+
+		it('normalizes { id: placeholder, name: literal } to newCredential keyed by name', () => {
+			const n = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.2,
+				config: { credentials: { slackApi: { id: placeholder('id hint'), name: 'Slack Bot' } } },
+			});
+			const stored = n.config.credentials?.slackApi as { __newCredential?: boolean; name?: string };
+			expect(stored.__newCredential).toBe(true);
+			expect(stored.name).toBe('Slack Bot');
+		});
+
+		it('normalizes { id: placeholder, name: placeholder } to newCredential keyed by name hint', () => {
+			const n = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.2,
+				config: {
+					credentials: {
+						slackApi: { id: placeholder('id hint'), name: placeholder('Slack Bot') },
+					},
+				},
+			});
+			const stored = n.config.credentials?.slackApi as { __newCredential?: boolean; name?: string };
+			expect(stored.__newCredential).toBe(true);
+			expect(stored.name).toBe('Slack Bot');
+		});
+
+		it('passes a raw {id, name} CredentialReference through unchanged', () => {
+			const n = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.2,
+				config: { credentials: { slackApi: { id: 'cred-1', name: 'Slack Bot' } } },
+			});
+			expect(n.config.credentials?.slackApi).toEqual({ id: 'cred-1', name: 'Slack Bot' });
+		});
+	});
+
+	describe('then() with multiple targets (fan-out)', () => {
+		it('should connect a node to multiple targets with array syntax', () => {
+			const source = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Source' },
+			});
+			const target1 = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'Target 1' },
+			});
+			const target2 = node({
+				type: 'n8n-nodes-base.code',
+				version: 2,
+				config: { name: 'Target 2' },
+			});
+
+			// Fan-out: connect source to both targets
+			source.to([target1, target2]);
+
+			const connections = source.getConnections();
+			expect(connections).toHaveLength(2);
+			expect(connections[0].target).toBe(target1);
+			expect(connections[0].outputIndex).toBe(0);
+			expect(connections[1].target).toBe(target2);
+			expect(connections[1].outputIndex).toBe(0);
+		});
+
+		it('should connect to multiple targets with specific output index', () => {
+			const ifNode = node({
+				type: 'n8n-nodes-base.if',
+				version: 2,
+				config: { name: 'IF' },
+			});
+			const target1 = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'Target 1' },
+			});
+			const target2 = node({
+				type: 'n8n-nodes-base.code',
+				version: 2,
+				config: { name: 'Target 2' },
+			});
+
+			// Connect IF true branch (output 0) to multiple targets
+			ifNode.to([target1, target2], 0);
+
+			const connections = ifNode.getConnections();
+			expect(connections).toHaveLength(2);
+			expect(connections.every((c) => c.outputIndex === 0)).toBe(true);
+		});
+
+		it('should work with single target (backward compatible)', () => {
+			const source = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Source' },
+			});
+			const target = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'Target' },
+			});
+
+			// Single target (existing behavior)
+			source.to(target);
+
+			const connections = source.getConnections();
+			expect(connections).toHaveLength(1);
+			expect(connections[0].target).toBe(target);
+		});
+
+		it('should return a chain with all targets included', () => {
+			const source = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Source' },
+			});
+			const target1 = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'Target 1' },
+			});
+			const target2 = node({
+				type: 'n8n-nodes-base.code',
+				version: 2,
+				config: { name: 'Target 2' },
+			});
+
+			const chain = source.to([target1, target2]);
+
+			// Chain should include all nodes
+			expect(chain.allNodes).toContain(source);
+			expect(chain.allNodes).toContain(target1);
+			expect(chain.allNodes).toContain(target2);
+		});
+
+		it('should allow chaining after fan-out', () => {
+			const source = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Source' },
+			});
+			const branch1 = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'Branch 1' },
+			});
+			const branch2 = node({
+				type: 'n8n-nodes-base.code',
+				version: 2,
+				config: { name: 'Branch 2' },
+			});
+			const finalNode = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Final' },
+			});
+
+			// Fan-out then chain from last target
+			const chain = source.to([branch1, branch2]).to(finalNode);
+
+			// The chain should connect last target to finalNode
+			expect(chain.tail).toBe(finalNode);
+			expect(chain.allNodes).toContain(finalNode);
+		});
+	});
+
+	describe('NodeChain.output() with composite tail', () => {
+		it('should delegate to switchNode when tail is a SwitchCaseBuilder', () => {
+			const t = trigger({
+				type: 'n8n-nodes-base.webhook',
+				version: 2,
+				config: { name: 'Trigger' },
+			});
+			const sw = switchCase({
+				version: 3.2,
+				config: { name: 'Route' },
+			});
+			const targetA = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'Branch A' },
+			});
+			const builder = sw.onCase!(0, targetA);
+
+			// Chain whose tail is the SwitchCaseBuilder
+			const chain = t.to(builder);
+
+			// Should not throw — should delegate to the underlying switchNode
+			const outputSelector = chain.output(0);
+			expect(outputSelector._isOutputSelector).toBe(true);
+			expect(outputSelector.node).toBe(sw);
+		});
+
+		it('should delegate to ifNode when tail is an IfElseBuilder', () => {
+			const t = trigger({
+				type: 'n8n-nodes-base.webhook',
+				version: 2,
+				config: { name: 'Trigger' },
+			});
+			const ifNode = ifElse({
+				version: 2,
+				config: { name: 'IF Check' },
+			});
+			const target = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'True Branch' },
+			});
+			const builder = ifNode.onTrue!(target);
+
+			// Chain whose tail is the IfElseBuilder
+			const chain = t.to(builder);
+
+			// Should not throw — should delegate to the underlying ifNode
+			const outputSelector = chain.output(0);
+			expect(outputSelector._isOutputSelector).toBe(true);
+			expect(outputSelector.node).toBe(ifNode);
+		});
+	});
+
+	describe('AI nodes with subnodes', () => {
+		it('should create an AI node with subnodes', () => {
+			const modelNode = languageModel({
+				type: 'n8n-nodes-langchain.lmChatOpenAi',
+				version: 1,
+				config: { parameters: { model: 'gpt-4' } },
+			});
+			const memoryNode = memory({
+				type: 'n8n-nodes-langchain.memoryBufferWindow',
+				version: 1,
+				config: { parameters: { windowSize: 5 } },
+			});
+			const toolNode = tool({
+				type: 'n8n-nodes-langchain.toolCalculator',
+				version: 1,
+				config: {},
+			});
+
+			const agentNode = node({
+				type: 'n8n-nodes-langchain.agent',
+				version: 1.6,
+				config: {
+					parameters: { text: '={{ $json.prompt }}' },
+					subnodes: {
+						model: modelNode,
+						memory: memoryNode,
+						tools: [toolNode],
+					},
+				},
+			});
+
+			expect(agentNode.type).toBe('n8n-nodes-langchain.agent');
+			expect(agentNode.config.subnodes).toBeDefined();
+			expect(agentNode.config.subnodes?.model).toBe(modelNode);
+			expect(agentNode.config.subnodes?.memory).toBe(memoryNode);
+			expect(agentNode.config.subnodes?.tools).toHaveLength(1);
+			expect(agentNode.config.subnodes?.tools?.[0]).toBe(toolNode);
+		});
+
+		it('should create an AI node with output parser', () => {
+			const parserNode = outputParser({
+				type: 'n8n-nodes-langchain.outputParserStructured',
+				version: 1.3,
+				config: { parameters: { schemaType: 'manual', inputSchema: '{}' } },
+			});
+
+			const chainNode = node({
+				type: 'n8n-nodes-langchain.chainLlm',
+				version: 1,
+				config: {
+					parameters: {},
+					subnodes: {
+						outputParser: parserNode,
+					},
+				},
+			});
+
+			expect(chainNode.config.subnodes?.outputParser).toBe(parserNode);
+		});
+	});
+
+	describe('merge() factory', () => {
+		it('should create a merge node with specified version', () => {
+			const mergeNode = merge({ version: 3 });
+			expect(mergeNode.type).toBe('n8n-nodes-base.merge');
+			expect(mergeNode.version).toBe('3');
+		});
+
+		it('should create a merge node with optional name in config', () => {
+			const mergeNode = merge({
+				version: 3,
+				config: { name: 'Combine Data' },
+			});
+			expect(mergeNode.name).toBe('Combine Data');
+		});
+
+		it('should create a merge node with parameters in config', () => {
+			const mergeNode = merge({
+				version: 3,
+				config: { parameters: { mode: 'append' } },
+			});
+			expect(mergeNode.config.parameters).toEqual({ mode: 'append' });
+		});
+
+		it('should support .input(n) method for branch connections', () => {
+			const mergeNode = merge({ version: 3 });
+			expect(typeof mergeNode.input).toBe('function');
+
+			const inputTarget = mergeNode.input(0);
+			expect(inputTarget._isInputTarget).toBe(true);
+			expect(inputTarget.node).toBe(mergeNode);
+			expect(inputTarget.inputIndex).toBe(0);
+		});
+
+		it('should support .to() method for chaining', () => {
+			const mergeNode = merge({ version: 3 });
+			expect(typeof mergeNode.to).toBe('function');
+		});
+
+		it('should auto-generate name if not provided', () => {
+			const mergeNode = merge({ version: 3 });
+			expect(mergeNode.name).toBe('Merge');
+		});
+
+		it('should create a merge node with position', () => {
+			const mergeNode = merge({
+				version: 3,
+				config: { position: [100, 200] },
+			});
+			expect(mergeNode.config.position).toEqual([100, 200]);
+		});
+	});
+
+	describe('node() and trigger() invalid input handling', () => {
+		it('node() should throw a clear TypeError when called with a string instead of a config object', () => {
+			const fn = () => {
+				// @ts-expect-error intentional misuse
+				node('n8n-nodes-base.httpRequest', { url: 'https://example.com' });
+			};
+			expect(fn).toThrow(TypeError);
+			expect(fn).toThrow(/node\(\) requires a configuration object/);
+		});
+
+		it('trigger() should throw a clear TypeError when called with a string instead of a config object', () => {
+			const fn = () => {
+				// @ts-expect-error intentional misuse
+				trigger('n8n-nodes-base.webhook', { httpMethod: 'GET', path: 'test' });
+			};
+			expect(fn).toThrow(TypeError);
+			expect(fn).toThrow(/trigger\(\) requires a configuration object/);
+		});
+
+		it('node() error message should include the received type and a usage example', () => {
+			let errorMessage = '';
+			try {
+				// @ts-expect-error intentional misuse
+				node('n8n-nodes-base.httpRequest');
+			} catch (e) {
+				errorMessage = (e as Error).message;
+			}
+			expect(errorMessage).toContain('string');
+			expect(errorMessage).toContain('type');
+			expect(errorMessage).toContain('version');
+			expect(errorMessage).toContain('config');
+		});
+
+		it('trigger() error message should include the received type and a usage example', () => {
+			let errorMessage = '';
+			try {
+				// @ts-expect-error intentional misuse
+				trigger('n8n-nodes-base.webhook');
+			} catch (e) {
+				errorMessage = (e as Error).message;
+			}
+			expect(errorMessage).toContain('string');
+			expect(errorMessage).toContain('type');
+			expect(errorMessage).toContain('version');
+			expect(errorMessage).toContain('config');
+		});
+
+		it('node() should reject array input with a descriptive TypeError', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				node([{ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { parameters: {} } }]);
+			}).toThrow(/received an array/);
+		});
+
+		it('trigger() should reject array input with a descriptive TypeError', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				trigger([{ type: 'n8n-nodes-base.webhook', version: 2, config: { parameters: {} } }]);
+			}).toThrow(/received an array/);
+		});
+
+		it('node() should report null input as null in the error message', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				node(null);
+			}).toThrow(/received null/);
+		});
+
+		it('trigger() should report null input as null in the error message', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				trigger(null);
+			}).toThrow(/received null/);
+		});
+
+		it('should not crash when config is undefined', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				node({ type: 'n8n-nodes-base.set', version: 3, config: undefined });
+			}).not.toThrow();
+		});
+	});
+
+	/**
+	 * A node id is the stable identity that execution logs, poll cursors, dedupe state
+	 * and the version diff all key on, so an id declared in the source has to survive
+	 * the rebuild instead of being replaced by a fresh uuid.
+	 */
+	describe('source-declared node ids', () => {
+		it('node() should use the id declared in config', () => {
+			const n = node({ type: 'n8n-nodes-base.set', version: 3, config: { id: 'saved-set' } });
+
+			expect(n.id).toBe('saved-set');
+		});
+
+		it('trigger() should use the id declared in config', () => {
+			const t = trigger({
+				type: 'n8n-nodes-base.scheduleTrigger',
+				version: 1.2,
+				config: { id: 'saved-trigger' },
+			});
+
+			expect(t.id).toBe('saved-trigger');
+		});
+
+		it('ifElse() should use the id declared in config', () => {
+			const ifNode = ifElse({ version: 2.2, config: { id: 'saved-if' } });
+
+			expect(ifNode.id).toBe('saved-if');
+		});
+
+		it('switchCase() should use the id declared in config', () => {
+			const switchNode = switchCase({ version: 3.2, config: { id: 'saved-switch' } });
+
+			expect(switchNode.id).toBe('saved-switch');
+		});
+
+		it('merge() should use the id declared in config', () => {
+			const mergeNode = merge({ version: 3, config: { id: 'saved-merge' } });
+
+			expect(mergeNode.id).toBe('saved-merge');
+		});
+
+		it('sticky() should use the id declared in config', () => {
+			const s = sticky('## Notes', { id: 'saved-sticky' });
+
+			expect(s.id).toBe('saved-sticky');
+		});
+
+		it('splitInBatches() should use the id declared in config', () => {
+			const sib = splitInBatches({ version: 3, config: { id: 'saved-sib' } });
+
+			expect(sib.sibNode.id).toBe('saved-sib');
+		});
+
+		it('languageModel() should use the id declared in config', () => {
+			const model = languageModel({
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				version: 1.2,
+				config: { id: 'saved-model' },
+			});
+
+			expect(model.id).toBe('saved-model');
+		});
+
+		it('memory() should use the id declared in config', () => {
+			const mem = memory({
+				type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+				version: 1.2,
+				config: { id: 'saved-memory' },
+			});
+
+			expect(mem.id).toBe('saved-memory');
+		});
+
+		it('tool() should use the id declared in config', () => {
+			const t = tool({
+				type: '@n8n/n8n-nodes-langchain.toolCode',
+				version: 1.1,
+				config: { id: 'saved-tool' },
+			});
+
+			expect(t.id).toBe('saved-tool');
+		});
+
+		it('should still auto-generate distinct ids when config declares none', () => {
+			const n1 = node({ type: 'n8n-nodes-base.set', version: 3, config: {} });
+			const n2 = node({ type: 'n8n-nodes-base.set', version: 3, config: {} });
+
+			expect(n1.id).toBeDefined();
+			expect(n2.id).toBeDefined();
+			expect(n1.id).not.toBe(n2.id);
+		});
+
+		it('should keep the declared id through update()', () => {
+			const n = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { id: 'saved-set', parameters: { a: 1 } },
+			});
+
+			expect(n.update({ parameters: { a: 2 } }).id).toBe('saved-set');
+		});
+
+		it('should keep a generated sticky id through update()', () => {
+			const s = sticky('## Before');
+
+			expect(s.update({ parameters: { content: '## After' } }).id).toBe(s.id);
+		});
+
+		it('should keep a generated splitInBatches id through update()', () => {
+			const sib = splitInBatches({ version: 3 });
+
+			expect(sib.sibNode.update({ parameters: { batchSize: 5 } }).id).toBe(sib.sibNode.id);
+		});
+
+		/**
+		 * `update()` must not be a back door to changing identity. The instance id is passed
+		 * positionally so it already wins, but the patch must not leave a different value in
+		 * `config.id` either — `regenerateNodeIds()` reads that as the author's declaration and
+		 * would adopt it on the next rebuild.
+		 */
+		it('should ignore an id in an update() patch', () => {
+			const n = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { id: 'declared', parameters: { a: 1 } },
+			});
+
+			const updated = n.update({ id: 'hijacked', parameters: { a: 2 } });
+
+			expect(updated.id).toBe('declared');
+			expect(updated.config.id).toBe('declared');
+		});
+
+		it('should not let an update() patch introduce an id where none was declared', () => {
+			const n = node({ type: 'n8n-nodes-base.set', version: 3, config: {} });
+
+			const updated = n.update({ id: 'hijacked' });
+
+			expect(updated.id).toBe(n.id);
+			expect(updated.config.id).toBeUndefined();
+		});
+
+		it('should ignore an id in a subnode update() patch', () => {
+			const model = languageModel({
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				version: 1.2,
+				config: { id: 'declared-model' },
+			});
+
+			const updated = model.update({ id: 'hijacked' });
+
+			expect(updated.id).toBe('declared-model');
+			expect(updated.config.id).toBe('declared-model');
+		});
+
+		it('should ignore an id in a splitInBatches update() patch', () => {
+			const sib = splitInBatches({ version: 3, config: { id: 'declared-sib' } });
+
+			const updated = sib.sibNode.update({ id: 'hijacked' });
+
+			expect(updated.id).toBe('declared-sib');
+			expect(updated.config.id).toBe('declared-sib');
+		});
+
+		/** A blank id is not a declaration — it would hand two nodes one empty identity. */
+		it('should treat a blank declared id as absent', () => {
+			const n1 = node({ type: 'n8n-nodes-base.set', version: 3, config: { id: '' } });
+			const n2 = node({ type: 'n8n-nodes-base.set', version: 3, config: { id: '   ' } });
+
+			expect(n1.id).not.toBe('');
+			expect(n1.config.id).toBeUndefined();
+			expect(n2.config.id).toBeUndefined();
+			expect(n1.id).not.toBe(n2.id);
+		});
+	});
+});

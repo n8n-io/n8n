@@ -7,27 +7,53 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestUrl } from 'n8n-workflow';
+
+// When an expression is wrapped in surrounding text/whitespace, n8n switches to
+// string interpolation and a multiOptions array is coerced to a comma-joined
+// string. Accept both shapes so the Slack node degrades gracefully.
+export function toMultiOptionsCsv(value: unknown): string {
+	if (Array.isArray(value)) {
+		return value
+			.map((entry) => String(entry).trim())
+			.filter((entry) => entry.length > 0)
+			.join(',');
+	}
+	if (typeof value === 'string') {
+		return value
+			.split(',')
+			.map((entry) => entry.trim())
+			.filter((entry) => entry.length > 0)
+			.join(',');
+	}
+	return '';
+}
 
 export async function slackApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: object = {},
 	query: IDataObject = {},
 	headers: IDataObject | undefined = undefined,
-	option: IDataObject = {},
+	option: Pick<IRequestOptions, 'formData' | 'form'> & {
+		uri?: never;
+		url?: never;
+		baseURL?: never;
+	} = {},
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
-	let options: IRequestOptions = {
+	let options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
 		headers: headers || {
 			'Content-Type': 'application/json; charset=utf-8',
 		},
 		body,
 		qs: query,
-		uri: `https://slack.com/api${resource}`,
+		uri: requestUrl`https://slack.com/api${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);
@@ -85,7 +111,7 @@ export async function slackApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
@@ -95,7 +121,7 @@ export async function slackApiRequestAllItems(
 	query.page = 1;
 	//if the endpoint uses legacy pagination use count
 	//https://api.slack.com/docs/pagination#classic
-	if (endpoint.includes('files.list')) {
+	if (endpoint.value.includes('files.list')) {
 		query.count = 100;
 	} else {
 		query.limit = 100;

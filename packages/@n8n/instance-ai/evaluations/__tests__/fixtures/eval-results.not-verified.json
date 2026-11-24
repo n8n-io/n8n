@@ -1,0 +1,94 @@
+{
+	"timestamp": "2026-07-17T00:00:00.000Z",
+	"duration": 1234,
+	"totalRuns": 2,
+	"experimentName": "exp-not-verified-fixture",
+	"summary": {
+		"testCases": 2,
+		"built": 2,
+		"scenariosTotal": 2,
+		"passAtK": 1,
+		"passHatK": 0.25,
+		"passRatePerIter": "100% / 0%",
+		"notVerified": 1
+	},
+	"comparisonStatus": "not_attempted",
+	"testCases": [
+		{
+			"name": "build it",
+			"testCaseFile": "behavioral-not-verified",
+			"status": "notVerified",
+			"buildSuccessCount": 2,
+			"totalRuns": 2,
+			"workflowChecksPerRun": [null, null],
+			"buildExpectationResultsPerRun": [null, null],
+			"buildExpectations": [],
+			"threadIds": [null, null],
+			"scenarios": [
+				{
+					"name": "happy-path",
+					"passCount": 0,
+					"evaluatedCount": 0,
+					"totalRuns": 2,
+					"passAtK": 0,
+					"passHatK": 0,
+					"runs": [
+						{
+							"workflowId": null,
+							"passed": false,
+							"incomplete": true,
+							"score": 0,
+							"reasoning": "nope",
+							"execErrors": []
+						},
+						{
+							"workflowId": null,
+							"passed": false,
+							"incomplete": true,
+							"score": 0,
+							"reasoning": "nope",
+							"execErrors": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "build it",
+			"testCaseFile": "scenario-verified",
+			"status": "verified",
+			"buildSuccessCount": 2,
+			"totalRuns": 2,
+			"workflowChecksPerRun": [null, null],
+			"buildExpectationResultsPerRun": [null, null],
+			"buildExpectations": [],
+			"threadIds": [null, null],
+			"scenarios": [
+				{
+					"name": "happy-path",
+					"passCount": 1,
+					"evaluatedCount": 2,
+					"totalRuns": 2,
+					"passAtK": 1,
+					"passHatK": 0.25,
+					"runs": [
+						{
+							"workflowId": null,
+							"passed": true,
+							"score": 1,
+							"reasoning": "ok",
+							"execErrors": []
+						},
+						{
+							"workflowId": null,
+							"passed": false,
+							"score": 0,
+							"reasoning": "nope",
+							"execErrors": []
+						}
+					]
+				}
+			]
+		}
+	]
+}

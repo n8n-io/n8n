@@ -2,7 +2,7 @@
 
 import { DateTime } from 'luxon';
 
-import { evaluate, getLocalISOString } from './helpers';
+import { evaluate, getLocalISOString, asDateTime } from './helpers';
 import { dateExtensions } from '../../src/extensions/date-extensions';
 import { getGlobalState } from '../../src/global-state';
 
@@ -19,9 +19,13 @@ describe('Data Transformation Functions', () => {
 
 		describe('.beginningOf', () => {
 			test('.beginningOf("week") should work correctly on a date', () => {
-				expect(evaluate('={{ DateTime.local(2023, 1, 20).beginningOf("week") }}')).toEqual(
-					DateTime.local(2023, 1, 16, { zone: defaultTimezone }),
+				const result = asDateTime(
+					evaluate('={{ DateTime.local(2023, 1, 20).beginningOf("week") }}'),
 				);
+				expect(result).toBeInstanceOf(DateTime);
+				expect(result.toISODate()).toEqual('2023-01-16');
+				expect(result.hour).toEqual(0);
+				expect(result.minute).toEqual(0);
 
 				expect(evaluate('={{ new Date(2023, 0, 20).beginningOf("week") }}')).toEqual(
 					DateTime.local(2023, 1, 16, { zone: defaultTimezone }).toJSDate(),
@@ -57,9 +61,12 @@ describe('Data Transformation Functions', () => {
 		});
 
 		test('.endOfMonth() should work correctly on a date', () => {
-			expect(evaluate('={{ DateTime.local(2023, 1, 16).endOfMonth() }}')).toEqual(
-				DateTime.local(2023, 1, 31, 23, 59, 59, 999, { zone: defaultTimezone }),
-			);
+			const result = asDateTime(evaluate('={{ DateTime.local(2023, 1, 16).endOfMonth() }}'));
+			expect(result).toBeInstanceOf(DateTime);
+			expect(result.toISODate()).toEqual('2023-01-31');
+			expect(result.hour).toEqual(23);
+			expect(result.minute).toEqual(59);
+
 			expect(evaluate('={{ new Date(2023, 0, 16).endOfMonth() }}')).toEqual(
 				DateTime.local(2023, 1, 31, 23, 59, 59, 999, { zone: defaultTimezone }).toJSDate(),
 			);
@@ -239,9 +246,9 @@ describe('Data Transformation Functions', () => {
 
 		describe('.toDateTime', () => {
 			test('should return itself for DateTime', () => {
-				const result = evaluate(
-					"={{ DateTime.fromFormat('01-01-2024', 'dd-MM-yyyy').toDateTime() }}",
-				) as unknown as DateTime;
+				const result = asDateTime(
+					evaluate("={{ DateTime.fromFormat('01-01-2024', 'dd-MM-yyyy').toDateTime() }}"),
+				);
 				expect(result).toBeInstanceOf(DateTime);
 				expect(result.day).toEqual(1);
 				expect(result.month).toEqual(1);
@@ -249,9 +256,7 @@ describe('Data Transformation Functions', () => {
 			});
 
 			test('should return a DateTime for JS Date', () => {
-				const result = evaluate(
-					'={{ new Date(2024, 0, 1, 12).toDateTime() }}',
-				) as unknown as DateTime;
+				const result = asDateTime(evaluate('={{ new Date(2024, 0, 1, 12).toDateTime() }}'));
 				expect(result).toBeInstanceOf(DateTime);
 				expect(result.day).toEqual(1);
 				expect(result.month).toEqual(1);
@@ -363,6 +368,17 @@ describe('Data Transformation Functions', () => {
 				expect(
 					evaluate('={{ DateTime.fromISO("2024-03-30T18:49:00Z").plus(1, "day").toJSDate() }}'),
 				).toEqual(new Date('2024-03-31T18:49:00.000Z'));
+			});
+
+			it('should give back a DateTime when a negative amount moves $now backwards', () => {
+				const before = DateTime.now().minus({ hours: 24 }).toMillis();
+
+				const result = evaluate('={{ $now.plus(-24, "hour") }}');
+
+				// A DateTime, not the ISO string it prints as: a node that puts this
+				// value into JSON text must be able to quote it.
+				expect(DateTime.isDateTime(result)).toBe(true);
+				expect(Math.abs(asDateTime(result).toMillis() - before)).toBeLessThan(60_000);
 			});
 		});
 

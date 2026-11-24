@@ -7,7 +7,11 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
+import jwt, { type JwtPayload } from 'jsonwebtoken';
+import { isRecord } from '@n8n/utils/is-record';
+
+import { getAtlassianCloudId } from '@utils/atlassian';
 
 import {
 	allEvents,
@@ -15,13 +19,138 @@ import {
 	getWebhookId,
 	getWebhookEndpoint,
 	jiraSoftwareCloudApiRequest,
+	jiraSoftwareCloudApiRequestAllItems,
+	refreshJiraWebhook,
+	toWebhookEndpoint,
+	OAUTH2_WEBHOOK_REFRESH_INTERVAL_MS,
+	OAUTH2_WEBHOOK_EXPIRY_BUFFER_MS,
+	OAUTH2_SUPPORTED_WEBHOOK_EVENTS,
 } from './GenericFunctions';
-import type { JiraWebhook } from './types';
+import type { JiraDynamicWebhook, JiraProject, JiraWebhook } from './types';
+
+const JWT_CLOCK_TOLERANCE_SECONDS = 60;
+
+/**
+ * A site lookup failure is worth a retry only when the request to Atlassian failed without a
+ * permanent 4xx. A lookup that succeeded but did not list the configured site is permanent too.
+ */
+function isRetryableLookupError(error: unknown): boolean {
+	if (!(error instanceof NodeApiError)) return false;
+	const status = Number(error.httpCode);
+	return !(status >= 400 && status < 500) || status === 408 || status === 429;
+}
+
+/**
+ * Verifies the signed token that Atlassian sends with every Cloud (OAuth2) dynamic-webhook
+ * delivery. The token is a JWT signed with HS256 using the OAuth app client secret, with the
+ * app client id as the issuer and the delivering site's cloudId in the `context` claim.
+ * Atlassian documents only that the token is signed with the client secret. The algorithm
+ * and the claims are observed from real deliveries.
+ *
+ * Returns a response that ends the request when the token is missing or invalid, or `undefined`
+ * when the request is verified and processing should continue. Fails closed: any error rejects.
+ */
+async function verifyCloudOAuth2Request(
+	this: IWebhookFunctions,
+): Promise<IWebhookResponseData | undefined> {
+	const reject = (statusCode: number): IWebhookResponseData => {
+		this.getResponseObject().status(statusCode).json({ message: 'Authorization failed' });
+		return { noWebhookResponse: true };
+	};
+
+	const authorization = this.getHeaderData().authorization;
+	const match = typeof authorization === 'string' ? authorization.match(/^Bearer\s+(.+)$/i) : null;
+	const token = match?.[1]?.trim();
+
+	if (!token) {
+		return reject(401);
+	}
+
+	let credentials: { clientId?: string; clientSecret?: string; domain?: string } | undefined;
+	try {
+		credentials = await this.getCredentials<{
+			clientId?: string;
+			clientSecret?: string;
+			domain?: string;
+		}>('jiraSoftwareCloudOAuth2Api');
+	} catch {}
+
+	const { clientId, clientSecret, domain } = credentials ?? {};
+
+	if (!clientId || !clientSecret) {
+		return reject(403);
+	}
+
+	let payload: JwtPayload;
+	try {
+		// Pin the algorithm so only HS256 is accepted (passing a secret already rejects `none`).
+		const verified = jwt.verify(token, clientSecret, {
+			algorithms: ['HS256'],
+			issuer: clientId,
+			clockTolerance: JWT_CLOCK_TOLERANCE_SECONDS,
+		});
+		if (typeof verified === 'string') {
+			return reject(403);
+		}
+		payload = verified;
+	} catch {
+		return reject(403);
+	}
+
+	// `jwt.verify` checks `exp` only when the claim is present, so require it.
+	if (typeof payload.exp !== 'number') {
+		return reject(403);
+	}
+
+	// Reject a token issued in the future, beyond the clock-skew allowance.
+	const now = Math.floor(Date.now() / 1000);
+	if (typeof payload.iat === 'number' && payload.iat > now + JWT_CLOCK_TOLERANCE_SECONDS) {
+		return reject(403);
+	}
+
+	// Bind the delivery to the site this trigger is configured for, so a token validly
+	// signed by the same OAuth app but issued for another site is not accepted.
+	const context: unknown = payload.context;
+	const tokenCloudId = isRecord(context) ? context.cloudId : undefined;
+	if (typeof tokenCloudId !== 'string' || tokenCloudId === '') {
+		return reject(403);
+	}
+
+	if (typeof domain !== 'string' || domain === '') {
+		return reject(403);
+	}
+
+	// A failed lookup request is not an auth failure: answer 503 (which Atlassian retries) rather than 403 (which it does not), so a transient
+	// error does not drop a genuine event. A permanent failure (the credential cannot reach
+	// the site, or Atlassian refuses the lookup) gets 403 and is not retried.
+	let siteCloudId: string;
+	try {
+		siteCloudId = await getAtlassianCloudId.call(
+			this,
+			'jiraSoftwareCloudOAuth2Api',
+			domain,
+			'jira',
+		);
+	} catch (error) {
+		this.logger.warn('Jira Trigger could not resolve the configured site to verify a webhook', {
+			error: error instanceof Error ? error.message : String(error),
+		});
+		return reject(isRetryableLookupError(error) ? 503 : 403);
+	}
+
+	if (tokenCloudId !== siteCloudId) {
+		this.logger.warn('Jira Trigger rejected a webhook issued for another site');
+		return reject(403);
+	}
+
+	return undefined;
+}
 
 export class JiraTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Jira Trigger',
 		name: 'jiraTrigger',
+		schemaPath: 'Jira',
 		icon: 'file:jira.svg',
 		group: ['trigger'],
 		version: [1, 1.1],
@@ -63,6 +192,16 @@ export class JiraTrigger implements INodeType {
 				},
 			},
 			{
+				displayName: 'Credentials to Connect to Jira',
+				name: 'jiraSoftwareCloudOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						jiraVersion: ['cloudOAuth2'],
+					},
+				},
+			},
+			{
 				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
 				name: 'httpQueryAuth',
 				displayName: 'Credentials to Authenticate Webhook',
@@ -99,6 +238,10 @@ export class JiraTrigger implements INodeType {
 					{
 						name: 'Cloud',
 						value: 'cloud',
+					},
+					{
+						name: 'Cloud (OAuth2)',
+						value: 'cloudOAuth2',
 					},
 					{
 						name: 'Server (Self Hosted)',
@@ -150,6 +293,11 @@ export class JiraTrigger implements INodeType {
 				displayName: 'Events',
 				name: 'events',
 				type: 'multiOptions',
+				displayOptions: {
+					hide: {
+						jiraVersion: ['cloudOAuth2'],
+					},
+				},
 				options: [
 					{
 						name: '*',
@@ -317,6 +465,105 @@ export class JiraTrigger implements INodeType {
 				description: 'The events to listen to',
 			},
 			{
+				displayName: 'Events',
+				name: 'events',
+				type: 'multiOptions',
+				displayOptions: {
+					show: {
+						jiraVersion: ['cloudOAuth2'],
+					},
+				},
+				options: [
+					{
+						name: '*',
+						value: '*',
+					},
+					{
+						name: 'Comment Created',
+						value: 'comment_created',
+					},
+					{
+						name: 'Comment Deleted',
+						value: 'comment_deleted',
+					},
+					{
+						name: 'Comment Updated',
+						value: 'comment_updated',
+					},
+					{
+						name: 'Issue Created',
+						value: 'jira:issue_created',
+					},
+					{
+						name: 'Issue Deleted',
+						value: 'jira:issue_deleted',
+					},
+					{
+						name: 'Issue Property Deleted',
+						value: 'issue_property_deleted',
+					},
+					{
+						name: 'Issue Property Set',
+						value: 'issue_property_set',
+					},
+					{
+						name: 'Issue Updated',
+						value: 'jira:issue_updated',
+					},
+					{
+						name: 'Sprint Closed',
+						value: 'sprint_closed',
+					},
+					{
+						name: 'Sprint Created',
+						value: 'sprint_created',
+					},
+					{
+						name: 'Sprint Deleted',
+						value: 'sprint_deleted',
+					},
+					{
+						name: 'Sprint Started',
+						value: 'sprint_started',
+					},
+					{
+						name: 'Sprint Updated',
+						value: 'sprint_updated',
+					},
+					{
+						name: 'Version Created',
+						value: 'jira:version_created',
+					},
+					{
+						name: 'Version Deleted',
+						value: 'jira:version_deleted',
+					},
+					{
+						name: 'Version Merged',
+						value: 'jira:version_merged',
+					},
+					{
+						name: 'Version Moved',
+						value: 'jira:version_moved',
+					},
+					{
+						name: 'Version Released',
+						value: 'jira:version_released',
+					},
+					{
+						name: 'Version Unreleased',
+						value: 'jira:version_unreleased',
+					},
+					{
+						name: 'Version Updated',
+						value: 'jira:version_updated',
+					},
+				],
+				required: true,
+				default: [],
+				description: 'The events to listen to',
+			},
+			{
 				displayName: 'Additional Fields',
 				name: 'additionalFields',
 				type: 'collection',
@@ -330,6 +577,11 @@ export class JiraTrigger implements INodeType {
 						default: false,
 						description:
 							'Whether a request with empty body will be sent to the URL. Leave unchecked if you want to receive JSON.',
+						displayOptions: {
+							hide: {
+								'/jiraVersion': ['cloudOAuth2'],
+							},
+						},
 					},
 					{
 						displayName: 'Filter',
@@ -338,12 +590,17 @@ export class JiraTrigger implements INodeType {
 						default: '',
 						placeholder: 'Project = JRA AND resolution = Fixed',
 						description:
-							'You can specify a JQL query to send only events triggered by matching issues. The JQL filter only applies to events under the Issue and Comment columns.',
+							'A JQL query to limit which issues trigger events. For Cloud OAuth2, leave blank to automatically monitor all accessible projects.',
 					},
 					{
 						displayName: 'Include Fields',
 						name: 'includeFields',
 						type: 'multiOptions',
+						displayOptions: {
+							hide: {
+								'/jiraVersion': ['cloudOAuth2'],
+							},
+						},
 						options: [
 							{
 								name: 'Attachment ID',
@@ -417,9 +674,41 @@ export class JiraTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 
 				const events = this.getNodeParameter('events') as string[];
+				const jiraVersion = this.getNodeParameter('jiraVersion', 0) as string;
 
 				const endpoint = await getWebhookEndpoint.call(this);
-				webhookData.endpoint = endpoint;
+				webhookData.endpoint = endpoint.toString();
+
+				if (jiraVersion === 'cloudOAuth2') {
+					const response = await jiraSoftwareCloudApiRequest.call(this, endpoint, 'GET', {});
+					const webhooks = (response.values ?? []) as JiraDynamicWebhook[];
+
+					const effectiveEvents = events.includes('*')
+						? [...OAUTH2_SUPPORTED_WEBHOOK_EVENTS]
+						: events;
+
+					for (const webhook of webhooks) {
+						if (
+							webhook.url === webhookUrl &&
+							(!webhook.events || eventExists(effectiveEvents, webhook.events))
+						) {
+							webhookData.webhookId = webhook.id.toString();
+
+							// Refresh if within the expiry buffer window
+							if (webhook.expirationDate) {
+								const expiresAt = new Date(webhook.expirationDate).getTime();
+								if (expiresAt - Date.now() < OAUTH2_WEBHOOK_EXPIRY_BUFFER_MS) {
+									await refreshJiraWebhook.call(this, endpoint, webhook.id.toString());
+									webhookData.lastRefreshed = Date.now();
+								}
+							}
+
+							return true;
+						}
+					}
+
+					return false;
+				}
 
 				const webhooks: JiraWebhook[] = await jiraSoftwareCloudApiRequest.call(
 					this,
@@ -428,8 +717,9 @@ export class JiraTrigger implements INodeType {
 					{},
 				);
 
+				const effectiveEvents = events.includes('*') ? allEvents : events;
 				for (const webhook of webhooks) {
-					if (webhook.url === webhookUrl && eventExists(events, webhook.events)) {
+					if (webhook.url === webhookUrl && eventExists(effectiveEvents, webhook.events)) {
 						webhookData.webhookId = getWebhookId(webhook);
 						return true;
 					}
@@ -443,7 +733,8 @@ export class JiraTrigger implements INodeType {
 				let events = this.getNodeParameter('events', []) as string[];
 				const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
 				const webhookData = this.getWorkflowStaticData('node');
-				const endpoint = webhookData.endpoint as string;
+				const endpoint = toWebhookEndpoint(webhookData.endpoint as string);
+				const jiraVersion = this.getNodeParameter('jiraVersion', 0) as string;
 
 				let authenticateWebhook = false;
 
@@ -457,28 +748,8 @@ export class JiraTrigger implements INodeType {
 					authenticateWebhook = this.getNodeParameter('authenticateWebhook') as boolean;
 				}
 
-				if (events.includes('*')) {
-					events = allEvents;
-				}
-
-				const body = {
-					name: `n8n-webhook:${webhookUrl}`,
-					url: webhookUrl,
-					events,
-					filters: {},
-					excludeBody: false,
-				};
-
-				if (additionalFields.filter) {
-					body.filters = {
-						'issue-related-events-section': additionalFields.filter,
-					};
-				}
-
-				if (additionalFields.excludeBody) {
-					body.excludeBody = additionalFields.excludeBody as boolean;
-				}
-
+				// Build the callback URL, appending auth query params if needed
+				let webhookCallbackUrl = webhookUrl;
 				const parameters: Record<string, string> = {};
 
 				if (authenticateWebhook) {
@@ -499,7 +770,8 @@ export class JiraTrigger implements INodeType {
 					).toString('base64');
 				}
 
-				if (additionalFields.includeFields) {
+				// includeFields URL templates are only supported by the classic webhook API
+				if (jiraVersion !== 'cloudOAuth2' && additionalFields.includeFields) {
 					for (const field of additionalFields.includeFields as string[]) {
 						// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
 						parameters[field] = '${' + field + '}';
@@ -508,31 +780,119 @@ export class JiraTrigger implements INodeType {
 
 				if (Object.keys(parameters as IDataObject).length) {
 					const params = new URLSearchParams(parameters).toString();
-					body.url = `${body.url}?${decodeURIComponent(params)}`;
+					webhookCallbackUrl = `${webhookCallbackUrl}?${decodeURIComponent(params)}`;
 				}
 
-				const responseData: JiraWebhook = await jiraSoftwareCloudApiRequest.call(
-					this,
-					endpoint,
-					'POST',
-					body,
-				);
+				if (jiraVersion === 'cloudOAuth2') {
+					// The Dynamic Webhooks API only supports a subset of event types — see OAUTH2_SUPPORTED_WEBHOOK_EVENTS.
+					const filteredEvents = events.includes('*')
+						? [...OAUTH2_SUPPORTED_WEBHOOK_EVENTS]
+						: events.filter((e) => OAUTH2_SUPPORTED_WEBHOOK_EVENTS.has(e));
 
-				webhookData.webhookId = getWebhookId(responseData);
+					if (filteredEvents.length === 0) {
+						throw new NodeOperationError(
+							this.getNode(),
+							'None of the selected events are supported with Jira Cloud OAuth2. Select at least one of: issues, comments, versions, or sprints.',
+						);
+					}
+
+					let jqlFilter = additionalFields.filter as string;
+					if (!jqlFilter) {
+						const projects = (await jiraSoftwareCloudApiRequestAllItems.call(
+							this,
+							'values',
+							requestPath`/api/2/project/search`,
+							'GET',
+						)) as JiraProject[];
+
+						if (!projects.length) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'No accessible Jira projects found for this OAuth2 user. The webhook cannot be registered without at least one accessible project.',
+							);
+						}
+
+						jqlFilter = `project in (${projects.map((p) => p.key).join(', ')})`;
+					}
+
+					// Dynamic Webhooks API — jqlFilter is required and must be a valid non-empty JQL query.
+					const webhookDef: IDataObject = {
+						events: filteredEvents,
+						jqlFilter,
+					};
+
+					const responseData = await jiraSoftwareCloudApiRequest.call(this, endpoint, 'POST', {
+						url: webhookCallbackUrl,
+						webhooks: [webhookDef],
+					});
+
+					const result = responseData.webhookRegistrationResult?.[0] as
+						| { createdWebhookId?: number; errors?: string[] }
+						| undefined;
+
+					if (!result?.createdWebhookId) {
+						const errorDetail = result?.errors?.join(', ') ?? 'no webhook ID returned';
+						throw new NodeOperationError(
+							this.getNode(),
+							`Failed to register webhook: ${errorDetail}`,
+						);
+					}
+
+					webhookData.webhookId = result.createdWebhookId.toString();
+					webhookData.lastRefreshed = Date.now();
+				} else {
+					if (events.includes('*')) {
+						events = allEvents;
+					}
+
+					const body = {
+						name: `n8n-webhook:${webhookUrl}`,
+						url: webhookCallbackUrl,
+						events,
+						filters: {},
+						excludeBody: false,
+					};
+
+					if (additionalFields.filter) {
+						body.filters = {
+							'issue-related-events-section': additionalFields.filter,
+						};
+					}
+
+					if (additionalFields.excludeBody) {
+						body.excludeBody = additionalFields.excludeBody as boolean;
+					}
+
+					const responseData: JiraWebhook = await jiraSoftwareCloudApiRequest.call(
+						this,
+						endpoint,
+						'POST',
+						body,
+					);
+
+					webhookData.webhookId = getWebhookId(responseData);
+				}
 
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
+				const jiraVersion = this.getNodeParameter('jiraVersion', 0) as string;
 
 				if (webhookData.webhookId !== undefined) {
-					const baseUrl = webhookData.endpoint as string;
 					const webhookId = webhookData.webhookId as string;
-					const endpoint = `${baseUrl}/${webhookId}`;
-					const body = {};
 
 					try {
-						await jiraSoftwareCloudApiRequest.call(this, endpoint, 'DELETE', body);
+						const baseUrl = toWebhookEndpoint(webhookData.endpoint as string);
+						if (jiraVersion === 'cloudOAuth2') {
+							// Dynamic Webhooks API deletes by body, not path parameter
+							await jiraSoftwareCloudApiRequest.call(this, baseUrl, 'DELETE', {
+								webhookIds: [parseInt(webhookId, 10)],
+							});
+						} else {
+							const endpoint = requestPath`${baseUrl}/${webhookId}`;
+							await jiraSoftwareCloudApiRequest.call(this, endpoint, 'DELETE', {});
+						}
 					} catch (error) {
 						return false;
 					}
@@ -547,6 +907,34 @@ export class JiraTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		const jiraVersion = this.getNodeParameter('jiraVersion', 0) as string;
+
+		if (jiraVersion === 'cloudOAuth2') {
+			// Verify the signed token before any work, so an unverified request cannot
+			// reach the workflow or trigger the refresh below.
+			const verificationResult = await verifyCloudOAuth2Request.call(this);
+			if (verificationResult) {
+				return verificationResult;
+			}
+
+			const webhookData = this.getWorkflowStaticData('node');
+			const lastRefreshed = webhookData.lastRefreshed as number | undefined;
+
+			if (!lastRefreshed || Date.now() - lastRefreshed > OAUTH2_WEBHOOK_REFRESH_INTERVAL_MS) {
+				const webhookId = webhookData.webhookId as string | undefined;
+				const endpoint = webhookData.endpoint as string | undefined;
+
+				if (webhookId && endpoint) {
+					try {
+						await refreshJiraWebhook.call(this, toWebhookEndpoint(endpoint), webhookId);
+						webhookData.lastRefreshed = Date.now();
+					} catch {
+						// Non-fatal: the webhook keeps working until Atlassian expires it
+					}
+				}
+			}
+		}
+
 		const nodeVersion = this.getNode().typeVersion;
 		const bodyData = this.getBodyData();
 		const queryData = this.getQueryData() as IDataObject;

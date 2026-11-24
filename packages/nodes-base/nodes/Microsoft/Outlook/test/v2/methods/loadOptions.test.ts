@@ -1,23 +1,25 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { getCategoriesNames, getFolders, getCalendarGroups } from '../../../v2/methods/loadOptions';
 import * as transport from '../../../v2/transport';
+import type { Mocked } from 'vitest';
 
-jest.mock('../../../v2/transport');
+vi.mock('../../../v2/transport');
 
-const mockTransport = transport as jest.Mocked<typeof transport>;
+const mockTransport = transport as Mocked<typeof transport>;
 
 describe('MicrosoftOutlookV2 - loadOptions methods', () => {
-	let mockLoadOptionsFunctions: jest.Mocked<ILoadOptionsFunctions>;
+	let mockLoadOptionsFunctions: Mocked<ILoadOptionsFunctions>;
 
 	beforeEach(() => {
 		mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('getCategoriesNames', () => {
@@ -35,7 +37,8 @@ describe('MicrosoftOutlookV2 - loadOptions methods', () => {
 			expect(mockTransport.microsoftApiRequestAllItems).toHaveBeenCalledWith(
 				'value',
 				'GET',
-				'/outlook/masterCategories',
+				requestPath`/outlook/masterCategories`,
+				0,
 			);
 			expect(result).toEqual([
 				{ name: 'Red Category', value: 'Red Category' },
@@ -123,10 +126,11 @@ describe('MicrosoftOutlookV2 - loadOptions methods', () => {
 			expect(mockTransport.microsoftApiRequestAllItems).toHaveBeenCalledWith(
 				'value',
 				'GET',
-				'/mailFolders',
+				requestPath`/mailFolders`,
+				0,
 				{},
 			);
-			expect(mockTransport.getSubfolders).toHaveBeenCalledWith(mockResponse);
+			expect(mockTransport.getSubfolders).toHaveBeenCalledWith(mockResponse, 0, true);
 			expect(result).toEqual([
 				{ name: 'Inbox', value: 'folder1' },
 				{ name: 'Sent Items', value: 'folder2' },
@@ -220,7 +224,8 @@ describe('MicrosoftOutlookV2 - loadOptions methods', () => {
 			expect(mockTransport.microsoftApiRequestAllItems).toHaveBeenCalledWith(
 				'value',
 				'GET',
-				'/calendarGroups',
+				requestPath`/calendarGroups`,
+				0,
 				{},
 			);
 			expect(result).toEqual([

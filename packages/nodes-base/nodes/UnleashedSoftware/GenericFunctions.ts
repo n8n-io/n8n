@@ -7,22 +7,24 @@ import type {
 	JsonObject,
 	IRequestOptions,
 	IHttpRequestMethods,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 import qs from 'qs';
 
 export async function unleashedApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	path: string,
+	path: RequestPath,
 	body: IDataObject = {},
 	query: IDataObject = {},
 	pageNumber?: number,
 	headers?: object,
 ) {
-	const paginatedPath = pageNumber ? `/${path}/${pageNumber}` : `/${path}`;
+	const paginatedPath = pageNumber ? requestPath`/${path}/${pageNumber}` : requestPath`/${path}`;
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions> = {
 		headers: {
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
@@ -30,7 +32,7 @@ export async function unleashedApiRequest(
 		method,
 		qs: query,
 		body,
-		url: `https://api.unleashedsoftware.com/${paginatedPath}`,
+		url: requestUrl`https://api.unleashedsoftware.com/${paginatedPath}`,
 		json: true,
 	};
 
@@ -60,7 +62,7 @@ export async function unleashedApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	query: IDataObject = {},
 ) {
@@ -85,18 +87,20 @@ export async function unleashedApiRequestAllItems(
 //which is useless on JS side and could not treated as a date for other nodes
 //so we need to convert all of the fields that has it.
 
-export function convertNETDates(item: { [key: string]: any }) {
+export function convertNETDates(item: { [key: string]: any }, serializeDates = false) {
 	Object.keys(item).forEach((path) => {
 		const type = typeof item[path] as string;
 		if (type === 'string') {
 			const value = item[path] as string;
 			const a = /\/Date\((\d*)\)\//.exec(value);
 			if (a) {
-				item[path] = new Date(+a[1]);
+				const date = new Date(+a[1]);
+				// v1.1+ returns ISO strings so node output stays JSON-safe
+				item[path] = serializeDates ? date.toISOString() : date;
 			}
 		}
 		if (type === 'object' && item[path]) {
-			convertNETDates(item[path] as IDataObject);
+			convertNETDates(item[path] as IDataObject, serializeDates);
 		}
 	});
 }

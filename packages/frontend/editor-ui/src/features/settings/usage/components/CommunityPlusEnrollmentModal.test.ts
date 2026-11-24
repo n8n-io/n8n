@@ -3,13 +3,14 @@ import userEvent from '@testing-library/user-event';
 import { mockedStore } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import CommunityPlusEnrollmentModal from './CommunityPlusEnrollmentModal.vue';
+import { STORES } from '@n8n/stores';
 import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '../usage.constants';
 import { useUsageStore } from '../usage.store';
-import { useToast } from '@/app/composables/useToast';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useToast } from '@n8n/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useUsersStore } from '@n8n/stores/users.store';
 
-vi.mock('@/app/composables/useToast', () => {
+vi.mock('@n8n/composables/useToast', () => {
 	const showMessage = vi.fn();
 	const showError = vi.fn();
 	return {
@@ -22,7 +23,7 @@ vi.mock('@/app/composables/useToast', () => {
 	};
 });
 
-vi.mock('@/app/composables/useTelemetry', () => {
+vi.mock('@n8n/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
 		useTelemetry: () => {
@@ -33,21 +34,16 @@ vi.mock('@/app/composables/useTelemetry', () => {
 	};
 });
 
-vi.mock('@/app/composables/useWorkflowState', async () => {
-	const actual = await vi.importActual('@/app/composables/useWorkflowState');
-	return {
-		...actual,
-		injectWorkflowState: vi.fn(),
-	};
-});
-
 const renderComponent = createComponentRenderer(CommunityPlusEnrollmentModal, {
 	global: {
 		stubs: {
-			Modal: {
-				template:
-					'<div role="dialog"><slot name="header" /><slot name="content" /><slot name="footer" /></div>',
+			Dialog: {
+				template: '<div role="dialog"><slot /></div>',
 			},
+			DialogHeader: { template: '<div><slot /></div>' },
+			DialogTitle: { template: '<h2><slot /></h2>' },
+			DialogDescription: { template: '<p><slot /></p>' },
+			DialogFooter: { template: '<div><slot /></div>' },
 		},
 	},
 });
@@ -56,7 +52,15 @@ describe('CommunityPlusEnrollmentModal', () => {
 	const buttonLabel = 'Send me a free license key';
 
 	beforeEach(() => {
-		createTestingPinia();
+		createTestingPinia({
+			initialState: {
+				[STORES.UI]: {
+					modalStateById: {
+						[COMMUNITY_PLUS_ENROLLMENT_MODAL]: { open: true },
+					},
+				},
+			},
+		});
 	});
 
 	it('should not throw error opened only with the name', () => {

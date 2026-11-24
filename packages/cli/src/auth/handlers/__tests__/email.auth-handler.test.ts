@@ -1,0 +1,159 @@
+import type { EventService, PasswordUtility } from '@n8n/backend-services';
+import type { GlobalConfig } from '@n8n/config';
+import type { AuthIdentity, Person, PersonRepository } from '@n8n/db';
+import { mock } from 'vitest-mock-extended';
+
+import { AuthError } from '@n8n/errors';
+
+import { EmailAuthHandler } from '../email.auth-handler';
+
+describe('EmailAuthHandler', () => {
+	const personRepository = mock<PersonRepository>();
+	const passwordUtility = mock<PasswordUtility>();
+	const eventService = mock<EventService>();
+	const globalConfig = mock<GlobalConfig>({
+		sso: {
+			ldap: {
+				loginEnabled: false,
+			},
+		},
+	});
+
+	let handler: EmailAuthHandler;
+
+	beforeEach(() => {
+		vi.resetAllMocks();
+		handler = new EmailAuthHandler(personRepository, passwordUtility, eventService, globalConfig);
+	});
+
+	describe('metadata', () => {
+		it('should have correct metadata', () => {
+			expect(handler.metadata).toEqual({
+				name: 'email',
+				type: 'password',
+			});
+		});
+	});
+
+	describe('handleLogin', () => {
+		const email = 'test@example.com';
+		const password = 'password123';
+
+		it('should return user when credentials are valid', async () => {
+			const person = mock<Person>({
+				email,
+				password: 'hashedPassword',
+			});
+
+			personRepository.findByEmailWithAuthIdentities.mockResolvedValue(person);
+			passwordUtility.compare.mockResolvedValue(true);
+
+			const result = await handler.handleLogin(email, password);
+
+			expect(result).toBe(person);
+			expect(personRepository.findByEmailWithAuthIdentities).toHaveBeenCalledWith(email);
+			expect(passwordUtility.compare).toHaveBeenCalledWith(password, person.password);
+		});
+
+		it('should return undefined when user is not found', async () => {
+			personRepository.findByEmailWithAuthIdentities.mockResolvedValue(null);
+
+			const result = await handler.handleLogin(email, password);
+
+			expect(result).toBeUndefined();
+			expect(passwordUtility.compare).not.toHaveBeenCalled();
+		});
+
+		it('should return undefined when password is incorrect', async () => {
+			const person = mock<Person>({
+				email,
+				password: 'hashedPassword',
+				authIdentities: [],
+			});
+
+			personRepository.findByEmailWithAuthIdentities.mockResolvedValue(person);
+			passwordUtility.compare.mockResolvedValue(false);
+
+			const result = await handler.handleLogin(email, password);
+
+			expect(result).toBeUndefined();
+		});
+
+		it('should return undefined when user has no password', async () => {
+			const person = mock<Person>({
+				email,
+				password: null,
+				authIdentities: [],
+			});
+
+			personRepository.findByEmailWithAuthIdentities.mockResolvedValue(person);
+
+			const result = await handler.handleLogin(email, password);
+
+			expect(result).toBeUndefined();
+			expect(passwordUtility.compare).not.toHaveBeenCalled();
+		});
+
+		describe('LDAP user handling', () => {
+			it('should throw AuthError when user has LDAP identity and LDAP is disabled', async () => {
+				const ldapIdentity = mock<AuthIdentity>({
+					providerType: 'ldap',
+				});
+				const person = mock<Person>({
+					id: 'user-id',
+					email,
+					password: null,
+					authIdentities: [ldapIdentity],
+				});
+
+				personRepository.findByEmailWithAuthIdentities.mockResolvedValue(person);
+				globalConfig.sso.ldap.loginEnabled = false;
+
+				const promise = handler.handleLogin(email, password);
+				await expect(promise).rejects.toThrow(AuthError);
+				await expect(promise).rejects.toThrow(
+					'Reset your password to gain access to the instance.',
+				);
+
+				expect(eventService.emit).toHaveBeenCalledWith('login-failed-due-to-ldap-disabled', {
+					userId: person.id,
+				});
+			});
+
+			it('should not throw when user has LDAP identity but LDAP is enabled', async () => {
+				const ldapIdentity = mock<AuthIdentity>({
+					providerType: 'ldap',
+				});
+				const person = mock<Person>({
+					id: 'user-id',
+					email,
+					password: null,
+					authIdentities: [ldapIdentity],
+				});
+
+				personRepository.findByEmailWithAuthIdentities.mockResolvedValue(person);
+				globalConfig.sso.ldap.loginEnabled = true;
+
+				const result = await handler.handleLogin(email, password);
+
+				expect(result).toBeUndefined();
+				expect(eventService.emit).not.toHaveBeenCalled();
+			});
+
+			it('should return undefined when user has no LDAP identity', async () => {
+				const person = mock<Person>({
+					email,
+					password: null,
+					authIdentities: [],
+				});
+
+				personRepository.findByEmailWithAuthIdentities.mockResolvedValue(person);
+
+				const result = await handler.handleLogin(email, password);
+
+				expect(result).toBeUndefined();
+				expect(eventService.emit).not.toHaveBeenCalled();
+			});
+		});
+	});
+});

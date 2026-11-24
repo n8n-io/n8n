@@ -1,6 +1,6 @@
 import FormData from 'form-data';
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeOperationError, requestPath, updateDisplayOptions } from 'n8n-workflow';
 
 import { getBinaryDataFile } from '../../../helpers/binary-data';
 import type { VideoJob } from '../../../helpers/interfaces';
@@ -92,6 +92,11 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const model = this.getNodeParameter('modelId', i, '', { extractValue: true }) as string;
 	const prompt = this.getNodeParameter('prompt', i) as string;
+	if (!prompt.trim()) {
+		throw new NodeOperationError(this.getNode(), 'A non-empty prompt is required.', {
+			itemIndex: i,
+		});
+	}
 	const seconds = this.getNodeParameter('seconds', i) as number;
 	const size = this.getNodeParameter('size', i) as string;
 	const options = this.getNodeParameter('options', i, {});
@@ -117,7 +122,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		});
 	}
 
-	const response = (await apiRequest.call(this, 'POST', '/videos', {
+	const response = (await apiRequest.call(this, 'POST', requestPath`/videos`, {
 		option: { formData },
 		headers: formData.getHeaders(),
 	})) as VideoJob;
@@ -125,7 +130,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const finalResponse = await pollUntilAvailable(
 		this,
 		async () => {
-			return (await apiRequest.call(this, 'GET', `/videos/${response.id}`)) as VideoJob;
+			return (await apiRequest.call(this, 'GET', requestPath`/videos/${response.id}`)) as VideoJob;
 		},
 		(response) => {
 			if (response.error) {
@@ -143,7 +148,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const contentResponse = await apiRequest.call(
 		this,
 		'GET',
-		`/videos/${finalResponse.id}/content`,
+		requestPath`/videos/${finalResponse.id}/content`,
 		{
 			option: {
 				useStream: true,

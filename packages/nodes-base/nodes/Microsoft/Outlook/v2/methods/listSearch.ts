@@ -1,11 +1,22 @@
-import type { IDataObject, ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
+import type {
+	IDataObject,
+	ILoadOptionsFunctions,
+	INodeListSearchResult,
+	RequestPath,
+} from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
+
+import { escapeODataValue } from '@utils/query-escaping';
 
 import { encodeOutlookId } from '../helpers/utils';
 import { getSubfolders, microsoftApiRequest } from '../transport';
 
+// listSearch context throughout this file: the transport's trailing `0` is its
+// fallback read (getNodeParameter's 2nd arg here is a fallback, not an item index).
+
 async function search(
 	this: ILoadOptionsFunctions,
-	resource: string,
+	resource: RequestPath,
 	nameProperty: string,
 	filter?: string,
 	paginationToken?: string,
@@ -16,7 +27,8 @@ async function search(
 		response = await microsoftApiRequest.call(
 			this,
 			'GET',
-			'',
+			requestPath``,
+			0,
 			undefined,
 			undefined,
 			paginationToken, // paginationToken contains the full URL
@@ -28,11 +40,11 @@ async function search(
 		};
 
 		if (filter) {
-			const filterValue = encodeURI(filter);
+			const filterValue = escapeODataValue(encodeURI(filter));
 			qs.$filter = `contains(${nameProperty}, '${filterValue}')`;
 		}
 
-		response = await microsoftApiRequest.call(this, 'GET', resource, undefined, qs);
+		response = await microsoftApiRequest.call(this, 'GET', resource, 0, undefined, qs);
 	}
 
 	return {
@@ -42,7 +54,7 @@ async function search(
 				value: entry.id as string,
 			};
 		}),
-		paginationToken: response['@odata.nextLink'],
+		paginationToken: response['@odata.nextLink'] as string | undefined,
 	};
 }
 
@@ -51,7 +63,7 @@ export async function searchContacts(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	return await search.call(this, '/contacts', 'displayName', filter, paginationToken);
+	return await search.call(this, requestPath`/contacts`, 'displayName', filter, paginationToken);
 }
 
 export async function searchCalendars(
@@ -59,7 +71,7 @@ export async function searchCalendars(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	return await search.call(this, '/calendars', 'name', filter, paginationToken);
+	return await search.call(this, requestPath`/calendars`, 'name', filter, paginationToken);
 }
 
 export async function searchDrafts(
@@ -73,7 +85,8 @@ export async function searchDrafts(
 		response = await microsoftApiRequest.call(
 			this,
 			'GET',
-			'',
+			requestPath``,
+			0,
 			undefined,
 			undefined,
 			paginationToken, // paginationToken contains the full URL
@@ -86,11 +99,18 @@ export async function searchDrafts(
 		};
 
 		if (filter) {
-			const filterValue = encodeURI(filter);
+			const filterValue = escapeODataValue(encodeURI(filter));
 			qs.$filter += ` AND contains(${'subject'}, '${filterValue}')`;
 		}
 
-		response = await microsoftApiRequest.call(this, 'GET', '/messages', undefined, qs);
+		response = await microsoftApiRequest.call(
+			this,
+			'GET',
+			requestPath`/messages`,
+			0,
+			undefined,
+			qs,
+		);
 	}
 
 	return {
@@ -101,7 +121,7 @@ export async function searchDrafts(
 				url: entry.webLink as string,
 			};
 		}),
-		paginationToken: response['@odata.nextLink'],
+		paginationToken: response['@odata.nextLink'] as string | undefined,
 	};
 }
 
@@ -116,7 +136,8 @@ export async function searchMessages(
 		response = await microsoftApiRequest.call(
 			this,
 			'GET',
-			'',
+			requestPath``,
+			0,
 			undefined,
 			undefined,
 			paginationToken, // paginationToken contains the full URL
@@ -128,11 +149,18 @@ export async function searchMessages(
 		};
 
 		if (filter) {
-			const filterValue = encodeURI(filter);
+			const filterValue = escapeODataValue(encodeURI(filter));
 			qs.$filter = `contains(${'subject'}, '${filterValue}')`;
 		}
 
-		response = await microsoftApiRequest.call(this, 'GET', '/messages', undefined, qs);
+		response = await microsoftApiRequest.call(
+			this,
+			'GET',
+			requestPath`/messages`,
+			0,
+			undefined,
+			qs,
+		);
 	}
 
 	return {
@@ -143,7 +171,7 @@ export async function searchMessages(
 				url: entry.webLink as string,
 			};
 		}),
-		paginationToken: response['@odata.nextLink'],
+		paginationToken: response['@odata.nextLink'] as string | undefined,
 	};
 }
 
@@ -162,7 +190,8 @@ export async function searchEvents(
 		response = await microsoftApiRequest.call(
 			this,
 			'GET',
-			'',
+			requestPath``,
+			0,
 			undefined,
 			undefined,
 			paginationToken, // paginationToken contains the full URL
@@ -174,14 +203,15 @@ export async function searchEvents(
 		};
 
 		if (filter) {
-			const filterValue = encodeURI(filter);
+			const filterValue = escapeODataValue(encodeURI(filter));
 			qs.$filter = `contains(${'subject'}, '${filterValue}')`;
 		}
 
 		response = await microsoftApiRequest.call(
 			this,
 			'GET',
-			`/calendars/${calendarId}/events`,
+			requestPath`/calendars/${calendarId}/events`,
+			0,
 			undefined,
 			qs,
 		);
@@ -195,7 +225,7 @@ export async function searchEvents(
 				url: `https://outlook.office365.com/calendar/item/${encodeOutlookId(entry.id as string)}`,
 			};
 		}),
-		paginationToken: response['@odata.nextLink'],
+		paginationToken: response['@odata.nextLink'] as string | undefined,
 	};
 }
 
@@ -210,7 +240,8 @@ export async function searchFolders(
 		response = await microsoftApiRequest.call(
 			this,
 			'GET',
-			'',
+			requestPath``,
+			0,
 			undefined,
 			undefined,
 			paginationToken, // paginationToken contains the full URL
@@ -220,10 +251,17 @@ export async function searchFolders(
 			$top: 100,
 		};
 
-		response = await microsoftApiRequest.call(this, 'GET', '/mailFolders', undefined, qs);
+		response = await microsoftApiRequest.call(
+			this,
+			'GET',
+			requestPath`/mailFolders`,
+			0,
+			undefined,
+			qs,
+		);
 	}
 
-	let folders = await getSubfolders.call(this, response.value as IDataObject[]);
+	let folders = await getSubfolders.call(this, response.value as IDataObject[], 0, true);
 
 	if (filter) {
 		filter = filter.toLowerCase();
@@ -240,7 +278,7 @@ export async function searchFolders(
 				url: `https://outlook.office365.com/mail/${encodeOutlookId(entry.id as string)}`,
 			};
 		}),
-		paginationToken: response['@odata.nextLink'],
+		paginationToken: response['@odata.nextLink'] as string | undefined,
 	};
 }
 
@@ -258,7 +296,8 @@ export async function searchAttachments(
 		response = await microsoftApiRequest.call(
 			this,
 			'GET',
-			'',
+			requestPath``,
+			0,
 			undefined,
 			undefined,
 			paginationToken, // paginationToken contains the full URL
@@ -272,7 +311,8 @@ export async function searchAttachments(
 		response = await microsoftApiRequest.call(
 			this,
 			'GET',
-			`/messages/${messageId}/attachments`,
+			requestPath`/messages/${messageId}/attachments`,
+			0,
 			undefined,
 			qs,
 		);
@@ -285,6 +325,6 @@ export async function searchAttachments(
 				value: entry.id as string,
 			};
 		}),
-		paginationToken: response['@odata.nextLink'],
+		paginationToken: response['@odata.nextLink'] as string | undefined,
 	};
 }

@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import nock from 'nock';
 
 import * as create from '../../../actions/window/create.operation';
@@ -15,11 +16,11 @@ const baseNodeParameters = {
 	additionalFields: {},
 };
 
-jest.mock('../../../transport', () => {
-	const originalModule = jest.requireActual<typeof transport>('../../../transport');
+vi.mock('../../../transport', async () => {
+	const originalModule = await vi.importActual<typeof transport>('../../../transport');
 	return {
 		...originalModule,
-		apiRequest: jest.fn(async function (method: string) {
+		apiRequest: vi.fn(async function (method: string) {
 			if (method === 'GET') {
 				return {
 					status: 'success',
@@ -45,11 +46,10 @@ describe('Test Airtop, window create operation', () => {
 
 	afterAll(() => {
 		nock.restore();
-		jest.unmock('../../../transport');
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should create a window with minimal parameters', async () => {
@@ -58,7 +58,7 @@ describe('Test Airtop, window create operation', () => {
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows',
+			requestPath`/sessions/test-session-123/windows`,
 			{
 				url: 'https://example.com',
 			},
@@ -90,7 +90,7 @@ describe('Test Airtop, window create operation', () => {
 		expect(transport.apiRequest).toHaveBeenNthCalledWith(
 			1,
 			'POST',
-			'/sessions/test-session-123/windows',
+			requestPath`/sessions/test-session-123/windows`,
 			{
 				url: 'https://example.com',
 			},
@@ -98,7 +98,7 @@ describe('Test Airtop, window create operation', () => {
 		expect(transport.apiRequest).toHaveBeenNthCalledWith(
 			2,
 			'GET',
-			'/sessions/test-session-123/windows/win-123',
+			requestPath`/sessions/test-session-123/windows/win-123`,
 			undefined,
 			{},
 		);
@@ -130,7 +130,7 @@ describe('Test Airtop, window create operation', () => {
 		expect(transport.apiRequest).toHaveBeenNthCalledWith(
 			1,
 			'POST',
-			'/sessions/test-session-123/windows',
+			requestPath`/sessions/test-session-123/windows`,
 			{
 				url: 'https://example.com',
 			},
@@ -138,7 +138,7 @@ describe('Test Airtop, window create operation', () => {
 		expect(transport.apiRequest).toHaveBeenNthCalledWith(
 			2,
 			'GET',
-			'/sessions/test-session-123/windows/win-123',
+			requestPath`/sessions/test-session-123/windows/win-123`,
 			undefined,
 			{ disableResize: true },
 		);
@@ -170,7 +170,7 @@ describe('Test Airtop, window create operation', () => {
 		expect(transport.apiRequest).toHaveBeenNthCalledWith(
 			1,
 			'POST',
-			'/sessions/test-session-123/windows',
+			requestPath`/sessions/test-session-123/windows`,
 			{
 				url: 'https://example.com',
 			},
@@ -178,7 +178,7 @@ describe('Test Airtop, window create operation', () => {
 		expect(transport.apiRequest).toHaveBeenNthCalledWith(
 			2,
 			'GET',
-			'/sessions/test-session-123/windows/win-123',
+			requestPath`/sessions/test-session-123/windows/win-123`,
 			undefined,
 			{ includeNavigationBar: true },
 		);
@@ -210,7 +210,7 @@ describe('Test Airtop, window create operation', () => {
 		expect(transport.apiRequest).toHaveBeenNthCalledWith(
 			1,
 			'POST',
-			'/sessions/test-session-123/windows',
+			requestPath`/sessions/test-session-123/windows`,
 			{
 				url: 'https://example.com',
 			},
@@ -218,7 +218,7 @@ describe('Test Airtop, window create operation', () => {
 		expect(transport.apiRequest).toHaveBeenNthCalledWith(
 			2,
 			'GET',
-			'/sessions/test-session-123/windows/win-123',
+			requestPath`/sessions/test-session-123/windows/win-123`,
 			undefined,
 			{ screenResolution: '1280x720' },
 		);
@@ -252,7 +252,7 @@ describe('Test Airtop, window create operation', () => {
 		expect(transport.apiRequest).toHaveBeenNthCalledWith(
 			1,
 			'POST',
-			'/sessions/test-session-123/windows',
+			requestPath`/sessions/test-session-123/windows`,
 			{
 				url: 'https://example.com',
 			},
@@ -260,7 +260,7 @@ describe('Test Airtop, window create operation', () => {
 		expect(transport.apiRequest).toHaveBeenNthCalledWith(
 			2,
 			'GET',
-			'/sessions/test-session-123/windows/win-123',
+			requestPath`/sessions/test-session-123/windows/win-123`,
 			undefined,
 			{
 				includeNavigationBar: true,

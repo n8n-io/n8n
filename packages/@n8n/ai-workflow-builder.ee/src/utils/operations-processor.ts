@@ -1,6 +1,25 @@
-import type { INode, IConnections } from 'n8n-workflow';
+import type { INode, IConnections, INodeTypes } from 'n8n-workflow';
+import { isUsableObjectKey, Workflow } from 'n8n-workflow';
 
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
+
+/**
+ * Minimal INodeTypes implementation for use with Workflow.renameNode().
+ * The renameNode method doesn't use nodeTypes, but the Workflow constructor requires it.
+ * By returning undefined, we ensure the Workflow constructor skips parameter processing
+ * for nodes (see lines 97-107 in workflow.ts), which preserves original parameters.
+ *
+ * Note: We cast the functions to the expected types because the INodeTypes interface
+ * doesn't explicitly allow undefined returns, but the Workflow constructor handles
+ * undefined gracefully by skipping parameter processing for that node.
+ */
+const minimalNodeTypes: INodeTypes = {
+	getByName: (() => undefined) as unknown as INodeTypes['getByName'],
+	getByNameAndVersion: (() => undefined) as unknown as INodeTypes['getByNameAndVersion'],
+	getKnownTypes() {
+		return {};
+	},
+};
 
 /**
  * Type for operation handler functions
@@ -28,22 +47,34 @@ function applyRemoveNodeOperation(
 
 	const nodesToRemove = new Set(operation.nodeIds);
 
+	// Build a set of node names to remove (connections are keyed by node name in n8n)
+	const nodeNamesToRemove = new Set<string>();
+	for (const node of workflow.nodes) {
+		if (nodesToRemove.has(node.id)) {
+			nodeNamesToRemove.add(node.name);
+		}
+	}
+
 	// Filter out removed nodes
 	const nodes = workflow.nodes.filter((node) => !nodesToRemove.has(node.id));
 
 	// Clean up connections
 	const cleanedConnections: IConnections = {};
 
-	// Copy connections, excluding those from/to removed nodes
-	for (const [sourceId, nodeConnections] of Object.entries(workflow.connections)) {
-		if (!nodesToRemove.has(sourceId)) {
-			cleanedConnections[sourceId] = {};
+	// Copy connections, excluding those from/to removed nodes (using node names)
+	for (const [sourceName, nodeConnections] of Object.entries(workflow.connections)) {
+		if (!isUsableObjectKey(sourceName)) continue;
+
+		if (!nodeNamesToRemove.has(sourceName)) {
+			cleanedConnections[sourceName] = {};
 
 			for (const [connectionType, outputs] of Object.entries(nodeConnections)) {
+				if (!isUsableObjectKey(connectionType)) continue;
+
 				if (Array.isArray(outputs)) {
-					cleanedConnections[sourceId][connectionType] = outputs.map((outputConnections) => {
+					cleanedConnections[sourceName][connectionType] = outputs.map((outputConnections) => {
 						if (Array.isArray(outputConnections)) {
-							return outputConnections.filter((conn) => !nodesToRemove.has(conn.node));
+							return outputConnections.filter((conn) => !nodeNamesToRemove.has(conn.node));
 						}
 						return outputConnections;
 					});
@@ -106,6 +137,36 @@ function applyUpdateNodeOperation(
 }
 
 /**
+ * Keep only the connection types that can be own keys of a plain object.
+ */
+function pickSafeConnectionTypes(nodeConnections: IConnections[string]): IConnections[string] {
+	return Object.fromEntries(
+		Object.entries(nodeConnections).filter(([connectionType]) => isUsableObjectKey(connectionType)),
+	);
+}
+
+/**
+ * Keep only the connection entries whose node-name and connection-type keys can be
+ * own keys of a plain object. Used where a whole connection map arrives from outside
+ * and is stored as-is.
+ */
+function pickSafeConnections(connections: IConnections): IConnections {
+	const safe: IConnections = {};
+
+	for (const [sourceName, nodeConnections] of Object.entries(connections)) {
+		if (!isUsableObjectKey(sourceName)) continue;
+
+		const safeTypes = pickSafeConnectionTypes(nodeConnections);
+
+		if (Object.keys(safeTypes).length > 0) {
+			safe[sourceName] = safeTypes;
+		}
+	}
+
+	return safe;
+}
+
+/**
  * Handle 'setConnections' operation - replace all connections
  */
 function applySetConnectionsOperation(
@@ -116,7 +177,7 @@ function applySetConnectionsOperation(
 
 	return {
 		...workflow,
-		connections: operation.connections,
+		connections: pickSafeConnections(operation.connections),
 	};
 }
 
@@ -133,11 +194,17 @@ function applyMergeConnectionsOperation(
 
 	// Merge connections additively
 	for (const [sourceId, nodeConnections] of Object.entries(operation.connections)) {
+		// A node name that is not usable as an own key of the map cannot take part in a
+		// connection, so drop the entry rather than resolve it against the prototype chain.
+		if (!isUsableObjectKey(sourceId)) continue;
+
 		if (!connections[sourceId]) {
-			connections[sourceId] = nodeConnections;
+			connections[sourceId] = pickSafeConnectionTypes(nodeConnections);
 		} else {
 			// Merge connections for this source node
 			for (const [connectionType, newOutputs] of Object.entries(nodeConnections)) {
+				if (!isUsableObjectKey(connectionType)) continue;
+
 				if (!connections[sourceId][connectionType]) {
 					connections[sourceId][connectionType] = newOutputs;
 				} else {
@@ -193,6 +260,10 @@ function applyRemoveConnectionOperation(
 	if (operation.type !== 'removeConnection') return workflow;
 
 	const { sourceNode, targetNode, connectionType, sourceOutputIndex, targetInputIndex } = operation;
+
+	if (!isUsableObjectKey(sourceNode) || !isUsableObjectKey(connectionType)) {
+		return workflow;
+	}
 
 	const connections = { ...workflow.connections };
 
@@ -272,6 +343,38 @@ function applySetNameOperation(
 }
 
 /**
+ * Handle 'renameNode' operation - rename a node and update all connection references and expressions.
+ * Uses the Workflow.renameNode() method to handle all the complexity of updating expressions,
+ * connections, and special node types.
+ */
+function applyRenameNodeOperation(
+	workflow: SimpleWorkflow,
+	operation: WorkflowOperation,
+): SimpleWorkflow {
+	if (operation.type !== 'renameNode') return workflow;
+
+	const { oldName, newName } = operation;
+
+	// Create a Workflow instance to leverage its renameNode method
+	// We use a minimal nodeTypes mock since renameNode doesn't need the full registry
+	const workflowInstance = new Workflow({
+		nodes: workflow.nodes,
+		connections: workflow.connections,
+		nodeTypes: minimalNodeTypes,
+		active: false,
+	});
+
+	workflowInstance.renameNode(oldName, newName);
+
+	// Convert back to SimpleWorkflow format
+	return {
+		...workflow,
+		nodes: Object.values(workflowInstance.nodes),
+		connections: workflowInstance.connectionsBySourceNode,
+	};
+}
+
+/**
  * Map of operation types to their handler functions
  */
 const operationHandlers: Record<WorkflowOperation['type'], OperationHandler> = {
@@ -283,6 +386,7 @@ const operationHandlers: Record<WorkflowOperation['type'], OperationHandler> = {
 	mergeConnections: applyMergeConnectionsOperation,
 	removeConnection: applyRemoveConnectionOperation,
 	setName: applySetNameOperation,
+	renameNode: applyRenameNodeOperation,
 };
 
 /**

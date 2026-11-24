@@ -42,9 +42,6 @@ export class ListWorkflowCommand extends BaseCommand<z.infer<typeof flagsSchema>
 	}
 
 	async catch(error: Error) {
-		this.logger.error('\nGOT ERROR');
-		this.logger.error('====================================');
-		this.logger.error(error.message);
-		this.logger.error(error.stack!);
+		this.logError(error);
 	}
 }

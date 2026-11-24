@@ -1,0 +1,409 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { defineComponent, h, ref, computed } from 'vue';
+import { createTestingPinia } from '@pinia/testing';
+import { fireEvent, render, waitFor } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
+import { NodeDiffStatus } from 'n8n-workflow';
+import type { INodeUi } from '@/Interface';
+import { createComponentRenderer } from '@/__tests__/render';
+
+// Capture applyLayout prop from SyncedWorkflowCanvas
+let capturedApplyLayoutProps: { top: boolean | undefined; bottom: boolean | undefined } = {
+	top: undefined,
+	bottom: undefined,
+};
+
+// Mock SyncedWorkflowCanvas to capture applyLayout prop
+vi.mock('@/features/workflows/workflowDiff/SyncedWorkflowCanvas.vue', () => ({
+	default: defineComponent({
+		name: 'SyncedWorkflowCanvas',
+		props: ['id', 'nodes', 'connections', 'applyLayout'],
+		setup(props) {
+			if (props.id === 'top') {
+				capturedApplyLayoutProps.top = props.applyLayout;
+			} else if (props.id === 'bottom') {
+				capturedApplyLayoutProps.bottom = props.applyLayout;
+			}
+			return () => h('div', { 'data-test-id': `synced-canvas-${props.id}` });
+		},
+	}),
+}));
+
+// Mock useProvideViewportSync
+vi.mock('@/features/workflows/workflowDiff/useViewportSync', () => ({
+	useProvideViewportSync: () => ({
+		selectedDetailId: ref(undefined),
+		onNodeClick: vi.fn(),
+		syncIsEnabled: ref(true),
+	}),
+}));
+
+// Mock useWorkflowDiff
+vi.mock('@/features/workflows/workflowDiff/useWorkflowDiff', () => ({
+	useWorkflowDiff: vi.fn(),
+}));
+
+vi.mock('@/app/plugins/telemetry', () => ({
+	telemetry: { track: vi.fn() },
+}));
+
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ instanceId: 'test-instance' }),
+}));
+
+// Mock stores
+vi.mock('@/app/stores/nodeTypes.store', () => ({
+	useNodeTypesStore: () => ({
+		loadNodeTypesIfNotLoaded: vi.fn().mockResolvedValue(undefined),
+		getNodeType: vi.fn().mockReturnValue({ name: 'Test', version: 1 }),
+		getAllNodeTypes: vi.fn().mockReturnValue({
+			nodeTypes: {},
+			init: async () => {},
+			getByNameAndVersion: () => undefined,
+		}),
+	}),
+}));
+
+vi.mock('@n8n/i18n', async (importOriginal) => {
+	const actual = (await importOriginal()) as object;
+	return {
+		...actual,
+		useI18n: () => ({
+			baseText: (key: string) => key,
+		}),
+	};
+});
+
+// Mock child components
+vi.mock('./HighlightedEdge.vue', () => ({
+	default: defineComponent({
+		name: 'HighlightedEdge',
+		setup() {
+			return () => h('div');
+		},
+	}),
+}));
+
+vi.mock('./WorkflowDiffAside.vue', () => ({
+	default: defineComponent({
+		name: 'WorkflowDiffAside',
+		setup() {
+			return () => h('div');
+		},
+	}),
+}));
+
+vi.mock('@/features/workflows/canvas/composables/useCanvasMapping', () => ({
+	useCanvasMapping: vi.fn().mockReturnValue({
+		additionalNodePropertiesById: computed(() => ({})),
+		nodeExecutionRunDataOutputMapById: computed(() => ({})),
+		nodeExecutionWaitingForNextById: computed(() => ({})),
+		nodeHasIssuesById: computed(() => ({})),
+		nodeDisplaySizeById: computed(() => ({})),
+		nodes: computed(() => []),
+		connections: computed(() => []),
+	}),
+}));
+
+// Import after mocks
+import WorkflowDiffView from './WorkflowDiffView.vue';
+import { useWorkflowDiff } from '@/features/workflows/workflowDiff/useWorkflowDiff';
+import { telemetry } from '@/app/plugins/telemetry';
+
+const defaultWorkflowDiffMock = () =>
+	({
+		source: { nodes: [], connections: [] },
+		target: { nodes: [], connections: [] },
+		nodesDiff: ref(new Map()),
+		connectionsDiff: ref(new Map()),
+	}) as unknown as ReturnType<typeof useWorkflowDiff>;
+
+describe('WorkflowDiffView', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		capturedApplyLayoutProps = { top: undefined, bottom: undefined };
+		createTestingPinia();
+		vi.mocked(useWorkflowDiff).mockReturnValue(defaultWorkflowDiffMock());
+	});
+
+	it('names the navigation actions for assistive technology', () => {
+		const { getByRole } = render(WorkflowDiffView, { props: { showBackButton: true } });
+
+		expect(getByRole('button', { name: 'generic.back' })).toBeInTheDocument();
+		expect(getByRole('button', { name: 'workflowDiff.previousChange' })).toBeInTheDocument();
+		expect(getByRole('button', { name: 'workflowDiff.nextChange' })).toBeInTheDocument();
+	});
+
+	describe('tidyUp prop', () => {
+		const createMockWorkflow = (id: string, name: string) => ({
+			id,
+			name,
+			nodes: [],
+			connections: {},
+			active: false,
+			isArchived: false,
+			createdAt: '2024-01-01T00:00:00.000Z',
+			updatedAt: '2024-01-01T00:00:00.000Z',
+			versionId: '1',
+			activeVersionId: null,
+			homeProject: {
+				id: 'project-1',
+				name: 'Project',
+				type: 'personal' as const,
+				icon: null,
+				createdAt: '2024-01-01T00:00:00.000Z',
+				updatedAt: '2024-01-01T00:00:00.000Z',
+			},
+		});
+
+		const sourceWorkflow = createMockWorkflow('source-workflow', 'Source Workflow');
+		const targetWorkflow = createMockWorkflow('target-workflow', 'Target Workflow');
+
+		it('should pass applyLayout=true to both SyncedWorkflowCanvas when tidyUp is true', () => {
+			render(WorkflowDiffView, {
+				props: {
+					sourceWorkflow,
+					targetWorkflow,
+					tidyUp: true,
+				},
+			});
+
+			expect(capturedApplyLayoutProps.top).toBe(true);
+			expect(capturedApplyLayoutProps.bottom).toBe(true);
+		});
+
+		it('should pass applyLayout=false to both SyncedWorkflowCanvas when tidyUp is false', () => {
+			render(WorkflowDiffView, {
+				props: {
+					sourceWorkflow,
+					targetWorkflow,
+					tidyUp: false,
+				},
+			});
+
+			expect(capturedApplyLayoutProps.top).toBe(false);
+			expect(capturedApplyLayoutProps.bottom).toBe(false);
+		});
+
+		it('should pass applyLayout as falsy when tidyUp is undefined', () => {
+			render(WorkflowDiffView, {
+				props: {
+					sourceWorkflow,
+					targetWorkflow,
+				},
+			});
+
+			// When tidyUp is undefined, applyLayout will be falsy (false)
+			expect(capturedApplyLayoutProps.top).toBeFalsy();
+			expect(capturedApplyLayoutProps.bottom).toBeFalsy();
+		});
+	});
+
+	describe('changes dropdown', () => {
+		const createMockWorkflow = (id: string, name: string) => ({
+			id,
+			name,
+			nodes: [],
+			connections: {},
+			active: false,
+			isArchived: false,
+			createdAt: '2024-01-01T00:00:00.000Z',
+			updatedAt: '2024-01-01T00:00:00.000Z',
+			versionId: '1',
+			activeVersionId: null,
+			homeProject: {
+				id: 'project-1',
+				name: 'Project',
+				type: 'personal' as const,
+				icon: null,
+				createdAt: '2024-01-01T00:00:00.000Z',
+				updatedAt: '2024-01-01T00:00:00.000Z',
+			},
+		});
+
+		const sourceWorkflow = createMockWorkflow('source-workflow-id', 'Source Workflow');
+		const targetWorkflow = createMockWorkflow('target-workflow-id', 'Target Workflow');
+
+		const renderView = createComponentRenderer(WorkflowDiffView, {
+			global: {
+				stubs: {
+					SyncedWorkflowCanvas: { template: '<div />' },
+					WorkflowDiffAside: { template: '<div />' },
+					HighlightedEdge: { template: '<div />' },
+				},
+			},
+		});
+
+		it('should open the changes dropdown and track the event', async () => {
+			const { getByTestId } = renderView({
+				props: {
+					sourceWorkflow,
+					targetWorkflow,
+					source: 'version_history',
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-diff-changes-menu'));
+
+			await waitFor(() => {
+				expect(telemetry.track).toHaveBeenCalledWith('user_opens_diff_changes_list', {
+					instance_id: 'test-instance',
+					workflow_id: sourceWorkflow.id,
+					source: 'version_history',
+				});
+			});
+		});
+
+		it('should select a node from the changes list and track the event', async () => {
+			const mockNode: INodeUi = {
+				id: 'node-1',
+				name: 'Test Node',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				parameters: {},
+			};
+
+			vi.mocked(useWorkflowDiff).mockReturnValue({
+				...defaultWorkflowDiffMock(),
+				nodesDiff: ref(new Map([['node-1', { status: NodeDiffStatus.Added, node: mockNode }]])),
+			} as unknown as ReturnType<typeof useWorkflowDiff>);
+
+			const { getByTestId, getByText } = renderView({
+				props: {
+					sourceWorkflow,
+					targetWorkflow,
+					source: 'push_pull_modal',
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-diff-changes-menu'));
+
+			await waitFor(() => expect(getByText('Test Node')).toBeInTheDocument());
+			await userEvent.click(getByText('Test Node'));
+
+			await waitFor(() => {
+				expect(telemetry.track).toHaveBeenCalledWith('user_clicks_node_in_diff_changes_list', {
+					instance_id: 'test-instance',
+					workflow_id: sourceWorkflow.id,
+					node_id: 'node-1',
+					node_name: 'Test Node',
+					node_status: NodeDiffStatus.Added,
+					source: 'push_pull_modal',
+				});
+			});
+		});
+
+		describe('canvas focus', () => {
+			it('releases wheel events until activated and after clicking outside or pressing Escape', async () => {
+				const { getByTestId, getByText, queryByText } = renderView({
+					props: { sourceWorkflow, targetWorkflow, requireCanvasFocus: true },
+				});
+				const viewer = getByTestId('workflow-diff-view');
+
+				expect(viewer).toHaveClass('nowheel');
+				expect(getByText('promotions.preview.workflow.activateCanvas')).toBeVisible();
+
+				await userEvent.click(viewer);
+				expect(viewer).not.toHaveClass('nowheel');
+				expect(queryByText('promotions.preview.workflow.activateCanvas')).not.toBeInTheDocument();
+
+				await userEvent.click(document.body);
+				expect(viewer).toHaveClass('nowheel');
+
+				await userEvent.click(viewer);
+				await userEvent.keyboard('{Escape}');
+				expect(viewer).toHaveClass('nowheel');
+			});
+
+			it('supports keyboard focus and releases wheel events when focus leaves', async () => {
+				const { getByTestId } = renderView({
+					props: { sourceWorkflow, targetWorkflow, requireCanvasFocus: true },
+				});
+				const viewer = getByTestId('workflow-diff-view');
+
+				expect(viewer).toHaveAttribute('tabindex', '0');
+				await fireEvent.focusIn(viewer);
+				expect(viewer).not.toHaveClass('nowheel');
+				await fireEvent.focusOut(viewer, { relatedTarget: document.body });
+				expect(viewer).toHaveClass('nowheel');
+			});
+
+			it('enables wheel navigation in fullscreen and resets it on return', async () => {
+				const { getByTestId } = renderView({
+					props: {
+						sourceWorkflow,
+						targetWorkflow,
+						requireCanvasFocus: true,
+						showFullscreenButton: true,
+					},
+				});
+
+				await userEvent.click(getByTestId('workflow-diff-fullscreen-toggle'));
+				expect(getByTestId('workflow-diff-view')).not.toHaveClass('nowheel');
+				await userEvent.keyboard('{Escape}');
+				expect(getByTestId('workflow-diff-view')).toHaveClass('nowheel');
+			});
+
+			it('keeps wheel navigation enabled by default', () => {
+				const { getByTestId, queryByText } = renderView({
+					props: { sourceWorkflow, targetWorkflow },
+				});
+
+				expect(getByTestId('workflow-diff-view')).not.toHaveClass('nowheel');
+				expect(getByTestId('workflow-diff-view')).not.toHaveAttribute('tabindex');
+				expect(queryByText('promotions.preview.workflow.activateCanvas')).not.toBeInTheDocument();
+			});
+		});
+
+		describe('fullscreen toggle', () => {
+			it('is hidden by default, so the modal and full-page usages are unaffected', () => {
+				const { queryByTestId } = renderView({
+					props: { sourceWorkflow, targetWorkflow },
+				});
+
+				expect(queryByTestId('workflow-diff-fullscreen-toggle')).not.toBeInTheDocument();
+			});
+
+			it('teleports the diff to the body and back as the viewer toggles it', async () => {
+				const { getByTestId, baseElement } = renderView({
+					props: { sourceWorkflow, targetWorkflow, showFullscreenButton: true },
+				});
+
+				const diff = getByTestId('workflow-diff-view');
+				expect(diff.parentElement).not.toBe(baseElement);
+
+				await userEvent.click(getByTestId('workflow-diff-fullscreen-toggle'));
+				// Teleported, so a `container-type` ancestor cannot trap it.
+				expect(getByTestId('workflow-diff-view').parentElement).toBe(baseElement);
+
+				await userEvent.click(getByTestId('workflow-diff-fullscreen-toggle'));
+				expect(getByTestId('workflow-diff-view').parentElement).not.toBe(baseElement);
+			});
+
+			it('hides the workflow name when hideTitle is set, but shows it in fullscreen', async () => {
+				const { getByTestId, queryByText } = renderView({
+					props: { sourceWorkflow, targetWorkflow, showFullscreenButton: true, hideTitle: true },
+				});
+
+				expect(queryByText('Source Workflow')).not.toBeInTheDocument();
+
+				await userEvent.click(getByTestId('workflow-diff-fullscreen-toggle'));
+
+				expect(queryByText('Source Workflow')).toBeInTheDocument();
+			});
+
+			it('leaves fullscreen on Escape', async () => {
+				const { getByTestId, baseElement } = renderView({
+					props: { sourceWorkflow, targetWorkflow, showFullscreenButton: true },
+				});
+
+				await userEvent.click(getByTestId('workflow-diff-fullscreen-toggle'));
+				expect(getByTestId('workflow-diff-view').parentElement).toBe(baseElement);
+
+				await userEvent.keyboard('{Escape}');
+				expect(getByTestId('workflow-diff-view').parentElement).not.toBe(baseElement);
+			});
+		});
+	});
+});

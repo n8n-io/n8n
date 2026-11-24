@@ -34,9 +34,10 @@ export function setupServer() {
 	// Handle undefined endpoints
 	server.post('/rest/:any', async () => ({}));
 
-	// Reset for everything else
 	server.namespace = '';
-	server.passthrough();
+	// Intentionally no `server.passthrough()` here: in tests we never want
+	// mirage to fall through to the real network. Unmatched requests return
+	// mirage's default 404 in-memory.
 
 	if (server.logging) {
 		console.log('Mirage database');

@@ -166,3 +166,26 @@ export const TEST_NODE_URL_REDIRECT: INode = {
 		options: {},
 	},
 };
+
+// A mode whose `url` is an expression template with a `{{$value}}` placeholder,
+// mirroring nodes like Airtable Trigger (`=https://airtable.com/{{$value}}`).
+export const TEST_PARAMETER_URL_TEMPLATE: INodeProperties = {
+	...TEST_PARAMETER_MULTI_MODE,
+	name: 'testParameterUrlTemplate',
+	modes: [
+		{
+			displayName: 'ID',
+			name: 'id',
+			type: 'string',
+			url: '=https://test.com/{{$value}}',
+		},
+	],
+};
+
+export const TEST_NODE_URL_TEMPLATE: INode = {
+	...TEST_NODE_MULTI_MODE,
+	name: 'Test Node - URL Template',
+	parameters: {
+		testParameterUrlTemplate: { __rl: true, mode: 'id', value: '' },
+	},
+};

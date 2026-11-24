@@ -1,10 +1,10 @@
 import { UpdateVariableRequestDto } from '../update-variable-request.dto';
 
 describe('UpdateVariableRequestDto', () => {
-	describe('Valid requests', () => {
+	describe('Valid requests - Permissive key validation', () => {
 		test.each([
 			{
-				name: 'valid request with all fields',
+				name: 'valid request with all fields (underscores)',
 				request: {
 					key: 'MY_VARIABLE',
 					type: 'string',
@@ -13,6 +13,21 @@ describe('UpdateVariableRequestDto', () => {
 				},
 				parsedResult: {
 					key: 'MY_VARIABLE',
+					type: 'string',
+					value: 'test value',
+					projectId: '2gQLpmP5V4wOY627',
+				},
+			},
+			{
+				name: 'valid request with uppercase and underscores',
+				request: {
+					key: 'MY_OLD_VARIABLE',
+					type: 'string',
+					value: 'test value',
+					projectId: '2gQLpmP5V4wOY627',
+				},
+				parsedResult: {
+					key: 'MY_OLD_VARIABLE',
 					type: 'string',
 					value: 'test value',
 					projectId: '2gQLpmP5V4wOY627',
@@ -28,12 +43,21 @@ describe('UpdateVariableRequestDto', () => {
 				},
 			},
 			{
-				name: 'valid request with only value',
+				name: 'valid request with only value (no key change)',
 				request: {
 					value: 'new value',
 				},
 				parsedResult: {
 					value: 'new value',
+				},
+			},
+			{
+				name: 'valid request with only type',
+				request: {
+					type: 'string',
+				},
+				parsedResult: {
+					type: 'string',
 				},
 			},
 			{
@@ -72,7 +96,7 @@ describe('UpdateVariableRequestDto', () => {
 				},
 			},
 			{
-				name: 'valid request with all base validations',
+				name: 'valid request with max length key',
 				request: {
 					key: 'A'.repeat(50),
 					type: 'string',
@@ -103,6 +127,33 @@ describe('UpdateVariableRequestDto', () => {
 	describe('Invalid requests', () => {
 		test.each([
 			{
+				name: 'key with hyphens (not valid JavaScript identifier)',
+				request: {
+					key: 'my-variable',
+					type: 'string',
+					value: 'value',
+				},
+				expectedErrorPaths: ['key'],
+			},
+			{
+				name: 'key with spaces',
+				request: {
+					key: 'my variable',
+					type: 'string',
+					value: 'value',
+				},
+				expectedErrorPaths: ['key'],
+			},
+			{
+				name: 'key with dots',
+				request: {
+					key: 'my.variable',
+					type: 'string',
+					value: 'value',
+				},
+				expectedErrorPaths: ['key'],
+			},
+			{
 				name: 'projectId too long (37 characters)',
 				request: {
 					key: 'MY_VAR',
@@ -113,7 +164,7 @@ describe('UpdateVariableRequestDto', () => {
 				expectedErrorPaths: ['projectId'],
 			},
 			{
-				name: 'projectId is not a string',
+				name: 'projectId is not a string or null',
 				request: {
 					key: 'MY_VAR',
 					type: 'string',
@@ -121,16 +172,6 @@ describe('UpdateVariableRequestDto', () => {
 					projectId: 123,
 				},
 				expectedErrorPaths: ['projectId'],
-			},
-			{
-				name: 'invalid key',
-				request: {
-					key: 'INVALID-KEY',
-					type: 'string',
-					value: 'value',
-					projectId: 'project123',
-				},
-				expectedErrorPaths: ['key'],
 			},
 			{
 				name: 'invalid value length',
@@ -159,6 +200,15 @@ describe('UpdateVariableRequestDto', () => {
 					type: 'string',
 					value: 'value',
 					projectId: 'project123',
+				},
+				expectedErrorPaths: ['key'],
+			},
+			{
+				name: 'key too long (51 characters)',
+				request: {
+					key: 'a'.repeat(51),
+					type: 'string',
+					value: 'value',
 				},
 				expectedErrorPaths: ['key'],
 			},

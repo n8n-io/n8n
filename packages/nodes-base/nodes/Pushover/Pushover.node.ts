@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { pushoverApiRequest } from './GenericFunctions';
 
@@ -252,12 +252,12 @@ export class Pushover implements INodeType {
 						description: "Your message's title, otherwise your app's name is used",
 					},
 					{
-						displayName: 'Timestamp',
-						name: 'timestamp',
-						type: 'dateTime',
+						displayName: 'TTL (Seconds)',
+						name: 'ttl',
+						type: 'number',
 						default: '',
 						description:
-							"A Unix timestamp of your message's date and time to display to the user, rather than the time your message is received by our API",
+							'Time to Live in seconds, after which the message will be automatically deleted from the devices it was delivered to',
 					},
 					{
 						displayName: 'URL',
@@ -281,7 +281,12 @@ export class Pushover implements INodeType {
 	methods = {
 		loadOptions: {
 			async getSounds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const { sounds } = await pushoverApiRequest.call(this, 'GET', '/sounds.json', {});
+				const { sounds } = await pushoverApiRequest.call(
+					this,
+					'GET',
+					requestPath`/sounds.json`,
+					{},
+				);
 				const returnData: INodePropertyOptions[] = [];
 				for (const key of Object.keys(sounds as IDataObject)) {
 					returnData.push({
@@ -351,7 +356,12 @@ export class Pushover implements INodeType {
 							}
 						}
 
-						responseData = await pushoverApiRequest.call(this, 'POST', '/messages.json', body);
+						responseData = await pushoverApiRequest.call(
+							this,
+							'POST',
+							requestPath`/messages.json`,
+							body,
+						);
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(responseData as IDataObject),
 							{ itemData: { item: i } },

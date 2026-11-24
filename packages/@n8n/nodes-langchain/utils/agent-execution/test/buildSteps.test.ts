@@ -1,4 +1,5 @@
-import type { EngineResponse } from 'n8n-workflow';
+import fc from 'fast-check';
+import type { EngineResponse, IDataObject } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { buildSteps } from '../buildSteps';
@@ -23,7 +24,7 @@ describe('buildSteps', () => {
 							nodeName: 'Calculator',
 							input: {
 								id: 'call_123',
-								input: { expression: '2+2' },
+								input: '2+2',
 							},
 							type: NodeConnectionTypes.AiTool,
 							id: 'call_123',
@@ -51,7 +52,7 @@ describe('buildSteps', () => {
 			expect(result[0]).toMatchObject({
 				action: {
 					tool: 'Calculator',
-					toolInput: { expression: '2+2' },
+					toolInput: { input: '2+2' },
 					toolCallId: 'call_123',
 					type: 'tool_call',
 				},
@@ -68,7 +69,7 @@ describe('buildSteps', () => {
 							nodeName: 'Calculator',
 							input: {
 								id: 'call_123',
-								input: { expression: '2+2' },
+								input: '2+2',
 							},
 							type: NodeConnectionTypes.AiTool,
 							id: 'call_123',
@@ -92,7 +93,7 @@ describe('buildSteps', () => {
 							nodeName: 'Search',
 							input: {
 								id: 'call_124',
-								input: { query: 'TypeScript' },
+								input: 'TypeScript',
 							},
 							type: NodeConnectionTypes.AiTool,
 							id: 'call_124',
@@ -121,6 +122,50 @@ describe('buildSteps', () => {
 			expect(result[1].action.tool).toBe('Search');
 		});
 
+		it('should use input.tool as the tool name for toolkit tools (e.g., MCP Client)', () => {
+			// When an MCP Client node (a toolkit) exposes sub-tools, createEngineRequests stores
+			// the actual MCP tool name (e.g., "list_tickets") in input.tool.
+			// buildSteps must use this name — not nodeNameToToolName("MCP Client") = "MCP_Client" —
+			// so the LLM sees the correct tool name in the scratchpad and does not loop.
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'MCP Client',
+							input: {
+								id: 'call_123',
+								tool: 'list_tickets', // actual MCP tool name set by createEngineRequests
+								query: 'open tickets',
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { tickets: [] } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].action.tool).toBe('list_tickets');
+			// The messageLog AIMessage must also carry the correct name so the LLM history is accurate
+			expect(result[0].action.messageLog?.[0]?.tool_calls?.[0]?.name).toBe('list_tickets');
+		});
+
 		it('should filter out responses for different item indexes', () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
@@ -130,7 +175,7 @@ describe('buildSteps', () => {
 							nodeName: 'Calculator',
 							input: {
 								id: 'call_123',
-								input: { expression: '2+2' },
+								input: '2+2',
 							},
 							type: NodeConnectionTypes.AiTool,
 							id: 'call_123',
@@ -154,7 +199,7 @@ describe('buildSteps', () => {
 							nodeName: 'Search',
 							input: {
 								id: 'call_124',
-								input: { query: 'TypeScript' },
+								input: 'TypeScript',
 							},
 							type: NodeConnectionTypes.AiTool,
 							id: 'call_124',
@@ -325,6 +370,66 @@ describe('buildSteps', () => {
 				expect(result).toHaveLength(1);
 				expect(result[0]).toEqual(previousRequests[0]);
 			});
+
+			it("should not leak another item's previous requests into this item's steps", () => {
+				const otherItemStep = {
+					action: {
+						tool: 'other_item_tool',
+						toolInput: { input: 'belongs to item 0' },
+						log: 'Other item log',
+						toolCallId: 'call_other_item',
+						type: 'tool_call',
+					},
+					observation: 'other item result',
+					itemIndex: 0,
+				};
+				const thisItemStep = {
+					action: {
+						tool: 'this_item_tool',
+						toolInput: { input: 'belongs to item 1' },
+						log: 'This item log',
+						toolCallId: 'call_this_item',
+						type: 'tool_call',
+					},
+					observation: 'this item result',
+					itemIndex: 1,
+				};
+
+				const response: EngineResponse<RequestResponseMetadata> = {
+					actionResponses: [],
+					metadata: {
+						previousRequests: [otherItemStep, thisItemStep],
+					},
+				};
+
+				const result = buildSteps(response, 1);
+
+				expect(result).toEqual([thisItemStep]);
+			});
+
+			it('should preserve untagged previous requests persisted before upgrade (itemIndex === undefined)', () => {
+				const untaggedStep = {
+					action: {
+						tool: 'pre_upgrade_tool',
+						toolInput: { input: 'persisted prior to upgrade' },
+						log: 'Pre-upgrade log',
+						toolCallId: 'call_pre_upgrade',
+						type: 'tool_call',
+					},
+					observation: 'pre-upgrade result',
+				};
+
+				const response: EngineResponse<RequestResponseMetadata> = {
+					actionResponses: [],
+					metadata: {
+						previousRequests: [untaggedStep],
+					},
+				};
+
+				const result = buildSteps(response, 0);
+
+				expect(result).toEqual([untaggedStep]);
+			});
 		});
 
 		describe('Synthetic AI message creation', () => {
@@ -366,6 +471,8 @@ describe('buildSteps', () => {
 				expect(result[0].action.messageLog).toHaveLength(1);
 
 				const message = result[0].action.messageLog![0];
+				expect(message.content).toEqual([]);
+				expect(result[0].action.log).toBe('Calling Calculator Node');
 				expect(message).toHaveProperty('tool_calls');
 				expect(message.tool_calls).toHaveLength(1);
 				expect(message.tool_calls?.[0]).toMatchObject({
@@ -373,6 +480,96 @@ describe('buildSteps', () => {
 					name: 'Calculator_Node',
 					type: 'tool_call',
 				});
+			});
+
+			it('should preserve a tool argument named id in reconstructed history', () => {
+				// AI-2805: The resource ID and the tool-call ID are separate values.
+				const response: EngineResponse<RequestResponseMetadata> = {
+					actionResponses: [
+						{
+							action: {
+								actionType: 'ExecutionNodeAction',
+								nodeName: 'Linear MCP Client',
+								input: { id: 'DEVP-1168' },
+								type: NodeConnectionTypes.AiTool,
+								id: 'call_TQdiKfJlpe8peHxrG1ilND2N',
+								metadata: {
+									itemIndex: 0,
+								},
+							},
+							data: {
+								data: {
+									ai_tool: [[{ json: { identifier: 'DEVP-1168' } }]],
+								},
+								executionTime: 0,
+								startTime: 0,
+								executionIndex: 0,
+								source: [],
+							},
+						},
+					],
+					metadata: {},
+				};
+
+				const result = buildSteps(response, itemIndex);
+
+				expect(result[0].action.messageLog?.[0]?.tool_calls?.[0]).toMatchObject({
+					id: 'call_TQdiKfJlpe8peHxrG1ilND2N',
+					args: { id: 'DEVP-1168' },
+				});
+			});
+
+			it('should keep user ID arguments separate from engine action IDs', () => {
+				const reservedFields = new Set(['id', 'log', 'type', 'tool', 'toolCallId']);
+				const toolArgumentsArbitrary = fc.dictionary(
+					fc.string({ minLength: 1, maxLength: 20 }).filter((key) => !reservedFields.has(key)),
+					fc.jsonValue(),
+					{ maxKeys: 8 },
+				);
+
+				fc.assert(
+					fc.property(
+						toolArgumentsArbitrary,
+						fc.uniqueArray(fc.string({ minLength: 1 }), { minLength: 3, maxLength: 3 }),
+						(toolArguments, [userId, actionId, changedActionId]) => {
+							const input = { ...toolArguments, id: userId };
+							const createResponse = (id: string): EngineResponse<RequestResponseMetadata> => ({
+								actionResponses: [
+									{
+										action: {
+											actionType: 'ExecutionNodeAction',
+											nodeName: 'Tool',
+											input,
+											type: NodeConnectionTypes.AiTool,
+											id,
+											metadata: { itemIndex },
+										},
+										data: {
+											data: { ai_tool: [[{ json: {} }]] },
+											executionTime: 0,
+											startTime: 0,
+											executionIndex: 0,
+											source: [],
+										},
+									},
+								],
+								metadata: {},
+							});
+
+							const [step] = buildSteps(createResponse(actionId), itemIndex);
+							const [changedIdStep] = buildSteps(createResponse(changedActionId), itemIndex);
+							const toolCall = step.action.messageLog?.[0]?.tool_calls?.[0];
+							const changedIdToolCall = changedIdStep.action.messageLog?.[0]?.tool_calls?.[0];
+
+							expect(toolCall?.args).toEqual(input);
+							expect(toolCall?.id).toBe(actionId);
+							expect(step.action.toolCallId).toBe(actionId);
+							expect(changedIdToolCall?.id).toBe(changedActionId);
+							expect(changedIdStep.action.toolCallId).toBe(changedActionId);
+							expect(changedIdToolCall?.args).toEqual(toolCall?.args);
+						},
+					),
+				);
 			});
 
 			it('should use custom log if provided', () => {
@@ -776,6 +973,56 @@ describe('buildSteps', () => {
 			});
 		});
 
+		it('should reconstruct thinking blocks with empty thinking text', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: { expression: '2+2' },
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_omitted_1',
+							metadata: {
+								itemIndex: 0,
+								anthropic: {
+									thinkingContent: '',
+									thinkingType: 'thinking',
+									thinkingSignature: 'encrypted_signature_abc',
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result[0].action.messageLog?.[0].content).toEqual([
+				{
+					type: 'thinking',
+					thinking: '',
+					signature: 'encrypted_signature_abc',
+				},
+				{
+					type: 'tool_use',
+					id: 'call_omitted_1',
+					name: 'Calculator',
+					input: { expression: '2+2' },
+				},
+			]);
+		});
+
 		it('should reconstruct AIMessage with redacted_thinking content blocks', () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
@@ -834,7 +1081,7 @@ describe('buildSteps', () => {
 			});
 		});
 
-		it('should use string content when no thinking blocks present', () => {
+		it('should use empty content and tool_calls when no thinking blocks are present', () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [
 					{
@@ -873,9 +1120,9 @@ describe('buildSteps', () => {
 			expect(result[0].action.messageLog).toHaveLength(1);
 
 			const message = result[0].action.messageLog![0];
-			expect(typeof message.content).toBe('string');
-			expect(message.content).toContain('Calling Calculator');
+			expect(message.content).toEqual([]);
 			expect(message).toHaveProperty('tool_calls');
+			expect(message.tool_calls?.[0].name).toBe('Calculator');
 		});
 
 		it('should handle thinking content without thinkingType', () => {
@@ -917,8 +1164,9 @@ describe('buildSteps', () => {
 
 			expect(result).toHaveLength(1);
 			const message = result[0].action.messageLog![0];
-			// Should fall back to string content when thinkingType is missing
-			expect(typeof message.content).toBe('string');
+			// Should fall back to default tool_calls format when thinkingType is missing
+			expect(message.content).toEqual([]);
+			expect(message.tool_calls?.[0].name).toBe('Calculator');
 		});
 
 		it('should work alongside Gemini thought_signature', () => {
@@ -982,6 +1230,1088 @@ describe('buildSteps', () => {
 			});
 			// When thinking blocks are present, tool_calls is not used (everything is in content array)
 			// Note: Anthropic thinking and Gemini thought_signature are mutually exclusive
+		});
+	});
+
+	describe('DeepSeek reasoning_content reconstruction', () => {
+		it('should reconstruct AIMessage with reasoning_content in additional_kwargs', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_123',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+								deepseek: {
+									reasoningContent: 'The user wants me to add 2+2, I should call the calculator.',
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			const message = result[0].action.messageLog![0];
+			expect(message.additional_kwargs?.reasoning_content).toBe(
+				'The user wants me to add 2+2, I should call the calculator.',
+			);
+			// Unlike Anthropic thinking, DeepSeek keeps tool_calls (content stays a plain array)
+			expect(message.tool_calls).toHaveLength(1);
+			expect(message.tool_calls?.[0]).toMatchObject({
+				id: 'call_123',
+				name: 'Calculator',
+				type: 'tool_call',
+			});
+		});
+
+		it('should not set additional_kwargs when reasoning_content is absent', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_123',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			const message = result[0].action.messageLog![0];
+			expect(message.additional_kwargs?.reasoning_content).toBeUndefined();
+		});
+	});
+
+	describe('Tool name resolution', () => {
+		it('should preserve the canonical tool name from action metadata', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Ingredient Glossary Lookup1',
+							input: {
+								id: 'call_123',
+								query: 'tomato',
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+								toolName: 'Ingredient_Glossary_Lookup',
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: 'tomato' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result[0].action.tool).toBe('Ingredient_Glossary_Lookup');
+			expect(result[0].action.messageLog?.[0]?.tool_calls?.[0]?.name).toBe(
+				'Ingredient_Glossary_Lookup',
+			);
+		});
+
+		it('should use HITL toolName when HITL metadata is present', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'HITL Node',
+							input: {
+								id: 'call_123',
+								input: { query: 'test' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+								hitl: {
+									toolName: 'custom_search_tool',
+									gatedToolNodeName: 'Search API',
+									originalInput: { query: 'test' },
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { results: ['result1'] } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			// Should use the toolName from HITL metadata
+			expect(result[0].action.tool).toBe('custom_search_tool');
+		});
+
+		it('should convert nodeName to toolName when HITL metadata is not present', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator Node',
+							input: {
+								id: 'call_123',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			// Should convert node name using nodeNameToToolName
+			expect(result[0].action.tool).toBe('Calculator_Node');
+		});
+
+		it('should use converted nodeName in message content when HITL metadata is absent', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'My Custom Node',
+							input: {
+								id: 'call_123',
+								input: { data: 'test' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: 'success' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			const message = result[0].action.messageLog![0];
+			expect(message.content).toEqual([]);
+			expect(message.tool_calls?.[0].name).toBe('My_Custom_Node');
+		});
+
+		it('should handle HITL toolName in Anthropic thinking blocks', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'HITL Node',
+							input: {
+								id: 'call_123',
+								input: { query: 'test' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+								hitl: {
+									toolName: 'hitl_tool',
+									gatedToolNodeName: 'Gated Tool',
+									originalInput: { query: 'test' },
+								},
+								anthropic: {
+									thinkingContent: 'I will use the HITL tool',
+									thinkingType: 'thinking',
+									thinkingSignature: 'sig_123',
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: 'approved' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			const message = result[0].action.messageLog![0];
+			const content = message.content;
+			// Content should be an array with thinking and tool_use blocks
+			expect(Array.isArray(content)).toBe(true);
+			expect(content).toHaveLength(2);
+			// Tool use block should use the HITL toolName
+			expect(content[1]).toMatchObject({
+				type: 'tool_use',
+				id: 'call_123',
+				name: 'hitl_tool',
+			});
+		});
+
+		it('should mark a step that still carries HITL metadata as denied', () => {
+			const hitlAction = {
+				actionType: 'ExecutionNodeAction' as const,
+				nodeName: 'HITL Node',
+				input: { id: 'call_123', input: { query: 'test' } },
+				type: NodeConnectionTypes.AiTool,
+				id: 'call_123',
+				metadata: {
+					itemIndex: 0,
+					hitl: {
+						toolName: 'hitl_tool',
+						gatedToolNodeName: 'Gated Tool',
+						originalInput: { query: 'test' },
+					},
+				},
+			};
+			const plainAction = {
+				actionType: 'ExecutionNodeAction' as const,
+				nodeName: 'Calculator',
+				input: { id: 'call_456', input: '1+1' },
+				type: NodeConnectionTypes.AiTool,
+				id: 'call_456',
+				metadata: { itemIndex: 0 },
+			};
+			const data = {
+				data: { ai_tool: [[{ json: { output: 'done' } }]] },
+				executionTime: 0,
+				startTime: 0,
+				executionIndex: 0,
+				source: [],
+			};
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{ action: hitlAction, data },
+					{ action: plainAction, data },
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].action.hitlDenied).toBe(true);
+			expect(result[1].action).not.toHaveProperty('hitlDenied');
+		});
+
+		it('should mark a step whose tool run failed as errored', () => {
+			const action = (id: string, nodeName: string) => ({
+				actionType: 'ExecutionNodeAction' as const,
+				nodeName,
+				input: { id, input: { query: 'test' } },
+				type: NodeConnectionTypes.AiTool,
+				id,
+				metadata: { itemIndex: 0 },
+			});
+			const base = { executionTime: 0, startTime: 0, executionIndex: 0, source: [] };
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: action('call_123', 'Genie'),
+						data: {
+							...base,
+							data: {},
+							error: { message: 'Space not found', name: 'NodeOperationError' } as any,
+						},
+					},
+					{
+						action: action('call_456', 'Calculator'),
+						data: { ...base, data: { ai_tool: [[{ json: { output: '2' } }]] } },
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].action.errored).toBe(true);
+			expect(result[0].observation).toContain('Space not found');
+			expect(result[1].action).not.toHaveProperty('errored');
+		});
+	});
+
+	describe('Tool input extraction', () => {
+		it('should extract toolInput as object with string input property', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_123',
+								input: '5*343',
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { response: '1715' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			// toolInput is always an object for type consistency with LangChain ToolCall
+			expect(result[0].action.toolInput).toEqual({ input: '5*343' });
+		});
+
+		it('should extract toolInput with multiple arguments (new format)', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'save_result',
+							input: {
+								id: 'call_456',
+								result: 1715,
+								equation: '5*343',
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_456',
+							metadata: {
+								itemIndex: 0,
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { equation: '5*343', result: 1715 } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].action.toolInput).toEqual({
+				result: 1715,
+				equation: '5*343',
+			});
+			// Should not include id, which is metadata
+			expect(result[0].action.toolInput).not.toHaveProperty('id');
+		});
+
+		it('should exclude metadata fields (id, log, type) from toolInput', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'custom_tool',
+							input: {
+								id: 'call_789',
+								log: 'Custom log message',
+								type: 'tool_call',
+								arg1: 'value1',
+								arg2: 'value2',
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_789',
+							metadata: {
+								itemIndex: 0,
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { success: true } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].action.toolInput).toEqual({
+				arg1: 'value1',
+				arg2: 'value2',
+			});
+			// Metadata fields should be excluded from toolInput
+			expect(result[0].action.toolInput).not.toHaveProperty('id');
+			expect(result[0].action.toolInput).not.toHaveProperty('log');
+			expect(result[0].action.toolInput).not.toHaveProperty('type');
+		});
+
+		it('should handle tools with non-string input property as full object', () => {
+			// When input property exists but is not a string (e.g., object), extract all properties
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'hybrid_tool',
+							input: {
+								id: 'call_mixed',
+								input: { expression: '2+2' },
+								extra: 'should be included',
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_mixed',
+							metadata: {
+								itemIndex: 0,
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: 4 } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			// Should extract all properties except metadata (id, log, type)
+			expect(result[0].action.toolInput).toEqual({
+				input: { expression: '2+2' },
+				extra: 'should be included',
+			});
+			expect(result[0].action.toolInput).not.toHaveProperty('id');
+		});
+	});
+
+	describe('Gemini thought_signature in additional_kwargs', () => {
+		it('should include thought_signature in AIMessage additional_kwargs', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_123',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+								google: {
+									thoughtSignature: 'gemini_thought_sig_abc123',
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			const message = result[0].action.messageLog![0];
+			// Verify additional_kwargs contains the thought signature
+			expect(message.additional_kwargs).toBeDefined();
+			expect(message.additional_kwargs.__gemini_function_call_thought_signatures__).toEqual({
+				call_123: 'gemini_thought_sig_abc123',
+			});
+			// Content is empty, so the function call is the only Gemini request part; the
+			// signatures array must align with the parts or google-common drops it entirely
+			expect(message.content).toEqual([]);
+			expect(message.additional_kwargs.signatures).toEqual(['gemini_thought_sig_abc123']);
+		});
+
+		it('should group parallel tool calls into shared AIMessage with Gemini signature', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_1',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_1',
+							metadata: {
+								itemIndex: 0,
+								google: {
+									thoughtSignature: 'shared_gemini_sig',
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Weather',
+							input: {
+								id: 'call_2',
+								input: { location: 'NYC' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_2',
+							metadata: {
+								itemIndex: 0,
+								google: {
+									thoughtSignature: 'shared_gemini_sig',
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { temp: '72F' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(2);
+
+			// First step should have the shared AIMessage with ALL tool calls
+			const firstMessage = result[0].action.messageLog![0];
+			expect(firstMessage).toBeDefined();
+			expect(firstMessage.tool_calls).toHaveLength(2);
+			expect(firstMessage.tool_calls![0].name).toBe('Calculator');
+			expect(firstMessage.tool_calls![1].name).toBe('Weather');
+
+			// Signature should only be on the first tool call in the map
+			const sigMap = firstMessage.additional_kwargs
+				.__gemini_function_call_thought_signatures__ as Record<string, string>;
+			expect(sigMap).toEqual({ call_1: 'shared_gemini_sig' });
+
+			// The model wrote no text, so no text part precedes the function calls
+			expect(firstMessage.content).toEqual([]);
+			const sigArray = firstMessage.additional_kwargs.signatures as string[];
+			expect(sigArray).toEqual(['shared_gemini_sig', '']);
+
+			// Second step should have EMPTY messageLog (no duplicate AIMessage)
+			expect(result[1].action.messageLog).toEqual([]);
+
+			// Both steps should have correct observations
+			expect(result[0].observation).toBe(JSON.stringify([{ result: '4' }]));
+			expect(result[1].observation).toBe(JSON.stringify([{ temp: '72F' }]));
+		});
+
+		it('should NOT group parallel tool calls without Gemini signature', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_1',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_1',
+							metadata: { itemIndex: 0 },
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Weather',
+							input: {
+								id: 'call_2',
+								input: { location: 'NYC' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_2',
+							metadata: { itemIndex: 0 },
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { temp: '72F' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(2);
+
+			// Without Gemini signature, each step should have its own AIMessage
+			expect(result[0].action.messageLog).toHaveLength(1);
+			expect(result[0].action.messageLog![0].tool_calls).toHaveLength(1);
+			expect(result[1].action.messageLog).toHaveLength(1);
+			expect(result[1].action.messageLog![0].tool_calls).toHaveLength(1);
+		});
+
+		it('should not include additional_kwargs when no thought_signature present', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_123',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			const message = result[0].action.messageLog![0];
+			// Should not have __gemini_function_call_thought_signatures__ when no signature
+			expect(
+				message.additional_kwargs?.__gemini_function_call_thought_signatures__,
+			).toBeUndefined();
+		});
+	});
+
+	describe('Anthropic parallel tool calls with a shared thinking block', () => {
+		const buildToolResponse = (
+			nodeName: string,
+			id: string,
+			input: IDataObject,
+			anthropic: RequestResponseMetadata['anthropic'] | undefined,
+			result: IDataObject,
+		): NonNullable<EngineResponse<RequestResponseMetadata>['actionResponses']>[number] => ({
+			action: {
+				actionType: 'ExecutionNodeAction',
+				nodeName,
+				input,
+				type: NodeConnectionTypes.AiTool,
+				id,
+				metadata: {
+					itemIndex: 0,
+					...(anthropic && { anthropic }),
+				},
+			},
+			data: {
+				data: {
+					ai_tool: [[{ json: result }]],
+				},
+				executionTime: 0,
+				startTime: 0,
+				executionIndex: 0,
+				source: [],
+			},
+		});
+
+		it('should group parallel tool calls that share one thinking block', () => {
+			// createEngineRequests copies one thinking block onto every tool call of the turn.
+			const sharedThinking = {
+				thinkingContent: '',
+				thinkingType: 'thinking' as const,
+				thinkingSignature: 'turn_signature_abc',
+			};
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					buildToolResponse('Calculator', 'call_1', { expression: '2+2' }, sharedThinking, {
+						result: '4',
+					}),
+					buildToolResponse('Weather', 'call_2', { location: 'NYC' }, sharedThinking, {
+						temp: '72F',
+					}),
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(2);
+
+			expect(result[0].action.messageLog).toHaveLength(1);
+			const sharedMessage = result[0].action.messageLog![0];
+			expect(sharedMessage.content).toEqual([
+				{ type: 'thinking', thinking: '', signature: 'turn_signature_abc' },
+				{ type: 'tool_use', id: 'call_1', name: 'Calculator', input: { expression: '2+2' } },
+				{ type: 'tool_use', id: 'call_2', name: 'Weather', input: { location: 'NYC' } },
+			]);
+			// Array content is the Anthropic payload. tool_calls stays empty.
+			expect(sharedMessage.tool_calls).toEqual([]);
+
+			expect(result[1].action.messageLog).toEqual([]);
+
+			expect(result[0].action.toolCallId).toBe('call_1');
+			expect(result[1].action.toolCallId).toBe('call_2');
+			expect(result[0].observation).toBe(JSON.stringify([{ result: '4' }]));
+			expect(result[1].observation).toBe(JSON.stringify([{ temp: '72F' }]));
+		});
+
+		it('should group parallel tool calls that share one redacted_thinking block', () => {
+			const sharedThinking = {
+				thinkingContent: 'redacted_payload',
+				thinkingType: 'redacted_thinking' as const,
+			};
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					buildToolResponse('Calculator', 'call_1', { expression: '2+2' }, sharedThinking, {
+						result: '4',
+					}),
+					buildToolResponse('Weather', 'call_2', { location: 'NYC' }, sharedThinking, {
+						temp: '72F',
+					}),
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].action.messageLog![0].content).toEqual([
+				{ type: 'redacted_thinking', data: 'redacted_payload' },
+				{ type: 'tool_use', id: 'call_1', name: 'Calculator', input: { expression: '2+2' } },
+				{ type: 'tool_use', id: 'call_2', name: 'Weather', input: { location: 'NYC' } },
+			]);
+			expect(result[1].action.messageLog).toEqual([]);
+		});
+
+		it('should not group parallel tool calls whose thinking signatures differ', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					buildToolResponse(
+						'Calculator',
+						'call_1',
+						{ expression: '2+2' },
+						{ thinkingContent: '', thinkingType: 'thinking', thinkingSignature: 'sig_1' },
+						{ result: '4' },
+					),
+					buildToolResponse(
+						'Weather',
+						'call_2',
+						{ location: 'NYC' },
+						{ thinkingContent: '', thinkingType: 'thinking', thinkingSignature: 'sig_2' },
+						{ temp: '72F' },
+					),
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].action.messageLog).toHaveLength(1);
+			expect(result[0].action.messageLog![0].content).toEqual([
+				{ type: 'thinking', thinking: '', signature: 'sig_1' },
+				{ type: 'tool_use', id: 'call_1', name: 'Calculator', input: { expression: '2+2' } },
+			]);
+			expect(result[1].action.messageLog).toHaveLength(1);
+			expect(result[1].action.messageLog![0].content).toEqual([
+				{ type: 'thinking', thinking: '', signature: 'sig_2' },
+				{ type: 'tool_use', id: 'call_2', name: 'Weather', input: { location: 'NYC' } },
+			]);
+		});
+
+		it('should not group when only some parallel tool calls carry a thinking block', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					buildToolResponse(
+						'Calculator',
+						'call_1',
+						{ expression: '2+2' },
+						{ thinkingContent: '', thinkingType: 'thinking', thinkingSignature: 'sig_1' },
+						{ result: '4' },
+					),
+					buildToolResponse('Weather', 'call_2', { location: 'NYC' }, undefined, { temp: '72F' }),
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].action.messageLog![0].content).toHaveLength(2);
+			expect(result[1].action.messageLog).toHaveLength(1);
+			expect(result[1].action.messageLog![0].content).toEqual([]);
+			expect(result[1].action.messageLog![0].tool_calls).toHaveLength(1);
+		});
+
+		it('should keep a single tool call with a thinking block as an individual AIMessage', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					buildToolResponse(
+						'Calculator',
+						'call_1',
+						{ expression: '2+2' },
+						{ thinkingContent: '', thinkingType: 'thinking', thinkingSignature: 'sig_1' },
+						{ result: '4' },
+					),
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].action.messageLog![0].content).toEqual([
+				{ type: 'thinking', thinking: '', signature: 'sig_1' },
+				{ type: 'tool_use', id: 'call_1', name: 'Calculator', input: { expression: '2+2' } },
+			]);
+		});
+	});
+
+	describe('Anthropic thinking block tool arguments', () => {
+		it('should replay the tool call arguments in the tool_use block', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Research Agent',
+							input: { topic: 'solar panels', depth: 2 },
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_args_1',
+							metadata: {
+								itemIndex: 0,
+								anthropic: {
+									thinkingContent: 'I should research the topic.',
+									thinkingType: 'thinking',
+									thinkingSignature: 'sig_args',
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: 'done' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			const message = result[0].action.messageLog![0];
+			expect(message.content[1]).toEqual({
+				type: 'tool_use',
+				id: 'call_args_1',
+				name: 'Research_Agent',
+				input: { topic: 'solar panels', depth: 2 },
+			});
+		});
+
+		it('should omit the toolkit routing field from the replayed tool arguments', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'MCP Client',
+							input: { query: 'open tickets', tool: 'list_tickets' },
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_mcp_1',
+							metadata: {
+								itemIndex: 0,
+								anthropic: {
+									thinkingContent: '',
+									thinkingType: 'thinking',
+									thinkingSignature: 'sig_mcp',
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { tickets: [] } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result[0].action.tool).toBe('list_tickets');
+			expect(result[0].action.messageLog![0].content[1]).toEqual({
+				type: 'tool_use',
+				id: 'call_mcp_1',
+				name: 'list_tickets',
+				input: { query: 'open tickets' },
+			});
 		});
 	});
 });

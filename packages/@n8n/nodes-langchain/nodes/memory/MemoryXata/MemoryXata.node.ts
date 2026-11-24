@@ -9,15 +9,15 @@ import type {
 	SupplyData,
 } from 'n8n-workflow';
 
-import { getSessionId } from '@utils/helpers';
-import { logWrapper } from '@utils/logWrapper';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { coerceSessionIdToString, getSessionId, getRequiredApiKey } from '@utils/helpers';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 import {
 	sessionIdOption,
 	sessionKeyProperty,
 	contextWindowLengthProperty,
 	expressionSessionKeyProperty,
+	scopedSessionHint,
 } from '../descriptions';
 
 export class MemoryXata implements INodeType {
@@ -26,7 +26,7 @@ export class MemoryXata implements INodeType {
 		name: 'memoryXata',
 		icon: 'file:xata.svg',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3, 1.4],
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
 		description: 'Use Xata Memory',
 		defaults: {
 			name: 'Xata',
@@ -94,6 +94,7 @@ export class MemoryXata implements INodeType {
 			},
 			sessionKeyProperty,
 			expressionSessionKeyProperty(1.4),
+			scopedSessionHint(1.5),
 			{
 				...contextWindowLengthProperty,
 				displayOptions: { hide: { '@version': [{ _cnd: { lt: 1.3 } }] } },
@@ -110,11 +111,15 @@ export class MemoryXata implements INodeType {
 		if (nodeVersion >= 1.2) {
 			sessionId = getSessionId(this, itemIndex);
 		} else {
-			sessionId = this.getNodeParameter('sessionId', itemIndex) as string;
+			sessionId = coerceSessionIdToString(
+				this,
+				this.getNodeParameter('sessionId', itemIndex),
+				itemIndex,
+			);
 		}
 
 		const xataClient = new BaseClient({
-			apiKey: credentials.apiKey as string,
+			apiKey: getRequiredApiKey(this.getNode(), credentials.apiKey),
 			branch: (credentials.branch as string) || 'main',
 			databaseURL: credentials.databaseEndpoint as string,
 		});
@@ -134,7 +139,7 @@ export class MemoryXata implements INodeType {
 			table: table[1],
 			sessionId,
 			client: xataClient,
-			apiKey: credentials.apiKey as string,
+			apiKey: getRequiredApiKey(this.getNode(), credentials.apiKey),
 		});
 
 		const memClass = this.getNode().typeVersion < 1.3 ? BufferMemory : BufferWindowMemory;

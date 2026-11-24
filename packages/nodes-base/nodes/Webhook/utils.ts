@@ -1,19 +1,22 @@
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import basicAuth from 'basic-auth';
 import { rm } from 'fs/promises';
 import jwt from 'jsonwebtoken';
-import { WorkflowConfigurationError } from 'n8n-workflow';
+import { recordConsumedAuth, WorkflowConfigurationError } from 'n8n-workflow';
 import type {
 	IWebhookFunctions,
 	INodeExecutionData,
 	IDataObject,
 	ICredentialDataDecryptedObject,
 	MultiPartFormData,
+	INode,
+	NodeTypeAndVersion,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
-import { BlockList } from 'node:net';
+import { createHmac, timingSafeEqual } from 'node:crypto';
+import { BlockList, isIPv6 } from 'node:net';
 
 import { WebhookAuthorizationError } from './error';
-import { formatPrivateKey } from '../../utils/utilities';
 
 export type WebhookParameters = {
 	httpMethod: string | string[];
@@ -125,38 +128,72 @@ export const setupOutputConnection = (
 	};
 };
 
-export const isIpWhitelisted = (
-	whitelist: string | string[] | undefined,
+export const isIpAllowed = (
+	allowlist: string | string[] | undefined,
 	ips: string[],
 	ip?: string,
 ) => {
-	if (whitelist === undefined || whitelist === '') {
+	if (allowlist === undefined || allowlist === '') {
 		return true;
 	}
 
-	if (!Array.isArray(whitelist)) {
-		whitelist = whitelist.split(',').map((entry) => entry.trim());
+	if (!Array.isArray(allowlist)) {
+		allowlist = allowlist.split(',').map((entry) => entry.trim());
 	}
 
-	const allowList = getAllowList(whitelist);
+	const allowList = getAllowList(allowlist);
 
-	if (allowList.check(ip ?? '')) {
-		return true;
+	// Check the primary IP address with proper family detection
+	if (ip) {
+		const ipFamily = isIPv6(ip) ? 'ipv6' : 'ipv4';
+		if (allowList.check(ip, ipFamily)) {
+			return true;
+		}
 	}
 
-	if (ips.some((ipEntry) => allowList.check(ipEntry))) {
+	// Check proxy IPs with proper family detection
+	if (
+		ips.some((ipEntry) => {
+			const ipFamily = isIPv6(ipEntry) ? 'ipv6' : 'ipv4';
+			return allowList.check(ipEntry, ipFamily);
+		})
+	) {
 		return true;
 	}
 
 	return false;
 };
 
-const getAllowList = (whitelist: string[]) => {
+const getAllowList = (allowlist: string[]) => {
 	const allowList = new BlockList();
 
-	for (const entry of whitelist) {
+	for (const entry of allowlist) {
 		try {
-			allowList.addAddress(entry);
+			// Check if entry is in CIDR notation (contains /)
+			if (entry.includes('/')) {
+				const [network, prefixStr] = entry.split('/');
+				const prefix = parseInt(prefixStr, 10);
+
+				// Validate prefix is a number
+				if (isNaN(prefix)) {
+					continue;
+				}
+
+				// Detect IP type (IPv4 vs IPv6)
+				const type = network.includes(':') ? 'ipv6' : 'ipv4';
+
+				// Validate prefix range
+				const maxPrefix = type === 'ipv4' ? 32 : 128;
+				if (prefix < 0 || prefix > maxPrefix) {
+					continue;
+				}
+
+				allowList.addSubnet(network, prefix, type);
+			} else {
+				// Single IP address
+				const type = entry.includes(':') ? 'ipv6' : 'ipv4';
+				allowList.addAddress(entry, type);
+			}
 		} catch {
 			// Ignore invalid entries
 		}
@@ -169,11 +206,11 @@ export const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
 	const responseMode = context.getNodeParameter('responseMode', 'onReceived') as string;
 	const connectedNodes = context.getChildNodes(context.getNode().name);
 
-	const isRespondToWebhookConnected = connectedNodes.some(
+	const respondToWebhookNodes = connectedNodes.filter(
 		(node) => node.type === 'n8n-nodes-base.respondToWebhook',
 	);
 
-	if (!isRespondToWebhookConnected && responseMode === 'responseNode') {
+	if (respondToWebhookNodes.length === 0 && responseMode === 'responseNode') {
 		throw new WorkflowConfigurationError(
 			context.getNode(),
 			new Error('No Respond to Webhook node found in the workflow'),
@@ -184,30 +221,52 @@ export const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
 		);
 	}
 
-	if (isRespondToWebhookConnected && !['responseNode', 'streaming'].includes(responseMode)) {
-		throw new WorkflowConfigurationError(
-			context.getNode(),
-			new Error('Unused Respond to Webhook node found in the workflow'),
-			{
-				description:
-					'Set the “Respond” parameter to “Using Respond to Webhook Node” or remove the Respond to Webhook node',
-			},
+	if (respondToWebhookNodes.length > 0 && !['responseNode', 'streaming'].includes(responseMode)) {
+		// A Respond to Webhook node downstream of a Wait node resuming on
+		// webhook/form and responding via Respond to Webhook node belongs to
+		// that Wait node, not to this webhook.
+		const descendantNames = new Set(connectedNodes.map((node) => node.name));
+		const isOwnedByDownstreamWait = (respondNode: NodeTypeAndVersion) =>
+			context
+				.getParentNodes(respondNode.name, { includeNodeParameters: true })
+				.some(
+					(node) =>
+						descendantNames.has(node.name) &&
+						node.type === 'n8n-nodes-base.wait' &&
+						!node.disabled &&
+						['webhook', 'form'].includes((node.parameters?.resume as string) ?? '') &&
+						node.parameters?.responseMode === 'responseNode',
+				);
+
+		const hasUnusedRespondNode = respondToWebhookNodes.some(
+			(node) => !isOwnedByDownstreamWait(node),
 		);
+
+		if (hasUnusedRespondNode) {
+			throw new WorkflowConfigurationError(
+				context.getNode(),
+				new Error('Unused Respond to Webhook node found in the workflow'),
+				{
+					description:
+						'Set the “Respond” parameter to “Using Respond to Webhook Node” or remove the Respond to Webhook node',
+				},
+			);
+		}
 	}
 };
 
 export async function validateWebhookAuthentication(
 	ctx: IWebhookFunctions,
 	authPropertyName: string,
-) {
-	const authentication = ctx.getNodeParameter(authPropertyName) as string;
+): Promise<IDataObject | undefined> {
+	const authentication = ctx.getNodeParameter(authPropertyName, 'none') as string;
 	if (authentication === 'none') return;
 
 	const req = ctx.getRequestObject();
 	const headers = ctx.getHeaderData();
 
 	if (authentication === 'basicAuth') {
-		// Basic authorization is needed to call webhook
+		// Basic authentication is needed to call webhook
 		let expectedAuth: ICredentialDataDecryptedObject | undefined;
 		try {
 			expectedAuth = await ctx.getCredentials<ICredentialDataDecryptedObject>('httpBasicAuth');
@@ -220,11 +279,31 @@ export async function validateWebhookAuthentication(
 
 		const providedAuth = basicAuth(req);
 		// Authorization data is missing
-		if (!providedAuth) throw new WebhookAuthorizationError(401);
+		if (!providedAuth) {
+			const authToken = headers['x-auth-token'];
+			if (!authToken) {
+				throw new WebhookAuthorizationError(401);
+			}
 
-		if (providedAuth.name !== expectedAuth.user || providedAuth.pass !== expectedAuth.password) {
+			const expectedAuthToken = generateBasicAuthToken(ctx.getNode(), expectedAuth);
+			if (
+				!expectedAuthToken ||
+				typeof authToken !== 'string' ||
+				expectedAuthToken.length !== authToken.length ||
+				!timingSafeEqual(Buffer.from(expectedAuthToken), Buffer.from(authToken))
+			) {
+				throw new WebhookAuthorizationError(403);
+			}
+
+			recordConsumedAuth(req, ['x-auth-token']);
+		} else if (
+			providedAuth.name !== expectedAuth.user ||
+			providedAuth.pass !== expectedAuth.password
+		) {
 			// Provided authentication data is wrong
-			throw new WebhookAuthorizationError(403);
+			throw new WebhookAuthorizationError(401, 'Authentication data is wrong!');
+		} else {
+			recordConsumedAuth(req, ['authorization']);
 		}
 	} else if (authentication === 'bearerAuth') {
 		let expectedAuth: ICredentialDataDecryptedObject | undefined;
@@ -240,6 +319,8 @@ export async function validateWebhookAuthentication(
 		if (headers.authorization !== `Bearer ${expectedToken}`) {
 			throw new WebhookAuthorizationError(403);
 		}
+
+		recordConsumedAuth(req, ['authorization']);
 	} else if (authentication === 'headerAuth') {
 		// Special header with value is needed to call webhook
 		let expectedAuth: ICredentialDataDecryptedObject | undefined;
@@ -261,6 +342,8 @@ export async function validateWebhookAuthentication(
 			// Provided authentication data is wrong
 			throw new WebhookAuthorizationError(403);
 		}
+
+		recordConsumedAuth(req, [headerName]);
 	} else if (authentication === 'jwtAuth') {
 		let expectedAuth;
 
@@ -290,13 +373,17 @@ export async function validateWebhookAuthentication(
 		if (expectedAuth.keyType === 'passphrase') {
 			secretOrPublicKey = expectedAuth.secret;
 		} else {
-			secretOrPublicKey = formatPrivateKey(expectedAuth.publicKey, true);
+			secretOrPublicKey = formatPemBlock(expectedAuth.publicKey, true);
 		}
 
 		try {
-			return jwt.verify(token, secretOrPublicKey, {
+			const payload = jwt.verify(token, secretOrPublicKey, {
 				algorithms: [expectedAuth.algorithm],
 			}) as IDataObject;
+
+			recordConsumedAuth(req, ['authorization']);
+
+			return payload;
 		} catch (error) {
 			throw new WebhookAuthorizationError(403, error.message);
 		}
@@ -366,4 +453,37 @@ export async function handleFormData(
 	}
 
 	return { workflowData: prepareOutput(returnItem) };
+}
+
+export async function generateFormPostBasicAuthToken(
+	context: IWebhookFunctions,
+	authPropertyName: string,
+) {
+	const node = context.getNode();
+
+	const authentication = context.getNodeParameter(authPropertyName, 'none');
+	if (authentication === 'none') return;
+
+	let credentials: ICredentialDataDecryptedObject | undefined;
+
+	try {
+		credentials = await context.getCredentials<ICredentialDataDecryptedObject>('httpBasicAuth');
+	} catch {}
+
+	return generateBasicAuthToken(node, credentials);
+}
+
+export function generateBasicAuthToken(
+	node: INode,
+	credentials: ICredentialDataDecryptedObject | undefined,
+) {
+	if (!credentials || !credentials.user || !credentials.password) {
+		return;
+	}
+
+	const token = createHmac('sha256', `${credentials.user}:${credentials.password}`)
+		.update(`${node.id}-${node.webhookId}`)
+		.digest('hex');
+
+	return token;
 }

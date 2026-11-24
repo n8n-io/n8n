@@ -4,7 +4,7 @@ describe('CreateVariableRequestDto', () => {
 	describe('Valid requests', () => {
 		test.each([
 			{
-				name: 'valid request with all fields',
+				name: 'valid request with uppercase and underscores',
 				request: {
 					key: 'MY_VARIABLE',
 					type: 'string',
@@ -16,6 +16,19 @@ describe('CreateVariableRequestDto', () => {
 					type: 'string',
 					value: 'test value',
 					projectId: '2gQLpmP5V4wOY627',
+				},
+			},
+			{
+				name: 'valid request with alphanumeric key (no separators)',
+				request: {
+					key: 'myVariable123',
+					type: 'string',
+					value: 'test value',
+				},
+				parsedResult: {
+					key: 'myVariable123',
+					type: 'string',
+					value: 'test value',
 				},
 			},
 			{
@@ -75,6 +88,19 @@ describe('CreateVariableRequestDto', () => {
 					projectId: 'proj',
 				},
 			},
+			{
+				name: 'valid request with numbers in key',
+				request: {
+					key: 'api_key_123',
+					type: 'string',
+					value: 'value',
+				},
+				parsedResult: {
+					key: 'api_key_123',
+					type: 'string',
+					value: 'value',
+				},
+			},
 		])('should validate $name', ({ request, parsedResult }) => {
 			const result = CreateVariableRequestDto.safeParse(request);
 			expect(result.success).toBe(true);
@@ -86,6 +112,51 @@ describe('CreateVariableRequestDto', () => {
 
 	describe('Invalid requests', () => {
 		test.each([
+			{
+				name: 'key with hyphens (not valid JavaScript identifier)',
+				request: {
+					key: 'my-MY_VAR',
+					type: 'string',
+					value: 'test',
+				},
+				expectedErrorPaths: ['key'],
+			},
+			{
+				name: 'key with special characters',
+				request: {
+					key: 'my@variable',
+					type: 'string',
+					value: 'test',
+				},
+				expectedErrorPaths: ['key'],
+			},
+			{
+				name: 'key with spaces',
+				request: {
+					key: 'my variable',
+					type: 'string',
+					value: 'test',
+				},
+				expectedErrorPaths: ['key'],
+			},
+			{
+				name: 'key with dots',
+				request: {
+					key: 'my.variable',
+					type: 'string',
+					value: 'test',
+				},
+				expectedErrorPaths: ['key'],
+			},
+			{
+				name: 'key starting with number',
+				request: {
+					key: '1myvariable',
+					type: 'string',
+					value: 'test',
+				},
+				expectedErrorPaths: ['key'],
+			},
 			{
 				name: 'projectId too long (37 characters)',
 				request: {
@@ -105,16 +176,6 @@ describe('CreateVariableRequestDto', () => {
 					projectId: 123,
 				},
 				expectedErrorPaths: ['projectId'],
-			},
-			{
-				name: 'invalid key',
-				request: {
-					key: 'INVALID-KEY',
-					type: 'string',
-					value: 'value',
-					projectId: 'project123',
-				},
-				expectedErrorPaths: ['key'],
 			},
 			{
 				name: 'invalid value length',
@@ -143,6 +204,15 @@ describe('CreateVariableRequestDto', () => {
 					type: 'string',
 					value: 'value',
 					projectId: 'project123',
+				},
+				expectedErrorPaths: ['key'],
+			},
+			{
+				name: 'key too long (51 characters)',
+				request: {
+					key: 'a'.repeat(51),
+					type: 'string',
+					value: 'value',
 				},
 				expectedErrorPaths: ['key'],
 			},

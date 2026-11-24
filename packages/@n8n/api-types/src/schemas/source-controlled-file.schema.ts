@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+import { contentImportPolicyResultSchema } from './content-import-policy-result.schema';
+import { workflowPublishBlockedDetailsSchema } from '../workflow-publish-blocked-details';
+
 const FileTypeSchema = z.enum([
 	'credential',
 	'workflow',
@@ -8,6 +11,7 @@ const FileTypeSchema = z.enum([
 	'file',
 	'folders',
 	'project',
+	'datatable',
 ]);
 export const SOURCE_CONTROL_FILE_TYPE = FileTypeSchema.Values;
 
@@ -23,6 +27,11 @@ const FileStatusSchema = z.enum([
 	'unknown',
 ]);
 export const SOURCE_CONTROL_FILE_STATUS = FileStatusSchema.Values;
+
+/** The Environments version an instance shows: `v1` is source control, `v2` is promotions. */
+const EnvironmentsVersionSchema = z.enum(['v1', 'v2']);
+export const ENVIRONMENTS_VERSIONS = EnvironmentsVersionSchema.options;
+export type EnvironmentsVersion = z.infer<typeof EnvironmentsVersionSchema>;
 
 export type SourceControlledFileStatus = z.infer<typeof FileStatusSchema>;
 
@@ -49,7 +58,16 @@ export const SourceControlledFileSchema = z.object({
 	conflict: z.boolean(),
 	updatedAt: z.string(),
 	pushed: z.boolean().optional(),
+	isLocalPublished: z.boolean().optional(),
+	isRemoteArchived: z.boolean().optional(),
+	parentFolderId: z.string().nullable().optional(),
+	folderPath: z.array(z.string()).optional(),
+	remoteFolderPath: z.array(z.string()).optional(),
 	owner: ResourceOwnerSchema.optional(), // Resource owner can be a personal email or team information
+	publishingError: z.string().optional(),
+	publishingErrorDetails: workflowPublishBlockedDetailsSchema.optional(),
+	/** Pull status: what the policy preview found. Pull result: why the pull skipped the file. */
+	contentImportPolicy: contentImportPolicyResultSchema.optional(),
 });
 
 export type SourceControlledFile = z.infer<typeof SourceControlledFileSchema>;

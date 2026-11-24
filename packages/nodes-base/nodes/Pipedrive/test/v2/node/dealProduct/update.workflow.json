@@ -1,0 +1,81 @@
+{
+	"name": "Pipedrive v2 dealProduct update test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "a9a9a9a9-1111-2222-3333-444444444444",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"authentication": "apiToken",
+				"resource": "dealProduct",
+				"operation": "update",
+				"dealId": 8,
+				"productAttachmentId": 2,
+				"updateFields": {
+					"quantity": 5
+				}
+			},
+			"id": "b0b0b0b0-1111-2222-3333-444444444444",
+			"name": "Pipedrive",
+			"type": "n8n-nodes-base.pipedrive",
+			"typeVersion": 2,
+			"position": [200, 0],
+			"credentials": {
+				"pipedriveApi": {
+					"id": "cred-1",
+					"name": "Pipedrive API"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "c1c1c1c1-1111-2222-3333-444444444444",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, 0]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"id": 2,
+					"sum": 499.95,
+					"tax": 0,
+					"deal_id": 8,
+					"name": "Updated Widget",
+					"product_id": 3,
+					"product_variation_id": null,
+					"order_nr": 0,
+					"add_time": "2026-04-01T22:03:27Z",
+					"update_time": "2026-04-01T22:03:32Z",
+					"comments": "",
+					"currency": "USD",
+					"discount": 0,
+					"quantity": 5,
+					"item_price": 99.99,
+					"tax_method": "inclusive",
+					"discount_type": "percentage",
+					"is_enabled": true,
+					"billing_frequency": "one-time",
+					"billing_frequency_cycles": null,
+					"billing_start_date": null
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [[{ "node": "Pipedrive", "type": "main", "index": 0 }]]
+		},
+		"Pipedrive": {
+			"main": [[{ "node": "No Operation, do nothing", "type": "main", "index": 0 }]]
+		}
+	}
+}

@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import nock from 'nock';
 
 import * as load from '../../../actions/window/load.operation';
@@ -19,11 +20,11 @@ const mockResponse = {
 	message: 'Page loaded successfully',
 };
 
-jest.mock('../../../transport', () => {
-	const originalModule = jest.requireActual<typeof transport>('../../../transport');
+vi.mock('../../../transport', async () => {
+	const originalModule = await vi.importActual<typeof transport>('../../../transport');
 	return {
 		...originalModule,
-		apiRequest: jest.fn(async function () {
+		apiRequest: vi.fn(async function () {
 			return {
 				status: 'success',
 				data: mockResponse,
@@ -39,11 +40,10 @@ describe('Test Airtop, window load operation', () => {
 
 	afterAll(() => {
 		nock.restore();
-		jest.unmock('../../../transport');
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should load URL with minimal parameters', async () => {
@@ -52,7 +52,7 @@ describe('Test Airtop, window load operation', () => {
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123',
+			requestPath`/sessions/test-session-123/windows/win-123`,
 			{
 				url: 'https://example.com',
 			},
@@ -105,7 +105,7 @@ describe('Test Airtop, window load operation', () => {
 
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123',
+			requestPath`/sessions/test-session-123/windows/win-123`,
 			{
 				url: 'https://example.com',
 				waitUntil: 'domContentLoaded',

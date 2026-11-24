@@ -1,24 +1,29 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import type { StoryFn } from '@storybook/vue3-vite';
 
-import UserStack from './UserStack.vue';
+import N8nUserStack from './UserStack.vue';
 
 export default {
-	title: 'Modules/UserStack',
-	component: UserStack,
+	title: 'Core/UserStack',
+	component: N8nUserStack,
+
+	parameters: {
+		docs: {
+			description: { component: 'An overlapping avatar stack for displaying multiple users.' },
+		},
+	},
 };
 
 const Template: StoryFn = (args) => ({
 	setup: () => ({ args }),
-	props: args,
 	components: {
-		UserStack,
+		N8nUserStack,
 	},
-	template: '<n8n-user-stack v-bind="args" />',
+	template: '<N8nUserStack v-bind="args" />',
 });
 
-export const WithGroups = Template.bind({});
-WithGroups.args = {
+export const Default = Template.bind({});
+Default.args = {
 	currentUserEmail: 'sunny@n8n.io',
 	users: {
 		Owners: [
@@ -190,3 +195,18 @@ NoCutoff.args = {
 		],
 	},
 };
+
+export const Sizes: StoryFn = () => ({
+	components: { N8nUserStack },
+	setup() {
+		return {
+			sizes: ['xxsmall', 'xsmall', 'small', 'medium', 'large'],
+			args: Default.args,
+		};
+	},
+	template: `
+		<div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+			<N8nUserStack v-for="size in sizes" :key="size" v-bind="args" :size="size" />
+		</div>
+	`,
+});

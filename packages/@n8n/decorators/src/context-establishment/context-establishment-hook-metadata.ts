@@ -2,6 +2,26 @@ import { Container, Service } from '@n8n/di';
 
 import { ContextEstablishmentHookClass } from './context-establishment-hook';
 
+type ContextEstablishmentHookOptions = {
+	/**
+	 * If true, the hook executes on every workflow execution regardless of the
+	 * trigger node type (i.e. `isApplicableToTriggerNode` is not consulted).
+	 */
+	alwaysExecute: boolean;
+
+	/**
+	 * If true, the hook is also re-run for sub-workflow executions, which otherwise
+	 * inherit their parent's context verbatim. Opt in only when the hook must
+	 * re-derive context from the child workflow itself (e.g. its redaction policy).
+	 *
+	 * Sub-executions pass no trigger items and ignore any the hook returns — the
+	 * child keeps the input it inherited from its parent — so such a hook must
+	 * derive its result from the workflow/inherited context, not from trigger data,
+	 * and must not overwrite context the child legitimately inherited.
+	 */
+	runForSubExecution?: boolean;
+};
+
 /**
  * Registry entry for a context establishment hook.
  *
@@ -14,6 +34,7 @@ import { ContextEstablishmentHookClass } from './context-establishment-hook';
 type ContextEstablishmentHookEntry = {
 	/** The hook class constructor for DI container instantiation */
 	class: ContextEstablishmentHookClass;
+	options?: ContextEstablishmentHookOptions;
 };
 
 /**
@@ -60,28 +81,6 @@ export class ContextEstablishmentHookMetadata {
 	}
 
 	/**
-	 * Retrieves all registered hook entries.
-	 *
-	 * Returns an array of [index, entry] tuples compatible with Set.entries().
-	 * Primarily used for debugging or low-level iteration.
-	 *
-	 * **Prefer getClasses()** for most use cases as it returns just the classes.
-	 *
-	 * @returns Array of [index, entry] tuples from the internal Set
-	 *
-	 * @example
-	 * ```typescript
-	 * const entries = metadata.getEntries();
-	 * for (const [index, entry] of entries) {
-	 *   console.log(`Hook ${index}:`, entry.class.name);
-	 * }
-	 * ```
-	 */
-	getEntries() {
-		return [...this.contextEstablishmentHooks.entries()];
-	}
-
-	/**
 	 * Retrieves all registered hook classes.
 	 *
 	 * This is the primary method used by the Hook Registry to obtain hook classes
@@ -113,6 +112,18 @@ export class ContextEstablishmentHookMetadata {
 	 */
 	getClasses() {
 		return [...this.contextEstablishmentHooks.values()].map((entry) => entry.class);
+	}
+
+	getGlobalClasses() {
+		return [...this.contextEstablishmentHooks.values()]
+			.filter((entry) => entry.options?.alwaysExecute ?? false)
+			.map((entry) => entry.class);
+	}
+
+	getSubExecutionClasses() {
+		return [...this.contextEstablishmentHooks.values()]
+			.filter((entry) => entry.options?.runForSubExecution ?? false)
+			.map((entry) => entry.class);
 	}
 }
 
@@ -187,11 +198,12 @@ export class ContextEstablishmentHookMetadata {
  * @returns A class decorator function that registers and enables DI for the hook
  */
 export const ContextEstablishmentHook =
-	<T extends ContextEstablishmentHookClass>() =>
+	<T extends ContextEstablishmentHookClass>(options?: ContextEstablishmentHookOptions) =>
 	(target: T) => {
 		// Register hook class in metadata for discovery by Hook Registry
 		Container.get(ContextEstablishmentHookMetadata).register({
 			class: target,
+			options,
 		});
 
 		// Enable dependency injection for the hook class

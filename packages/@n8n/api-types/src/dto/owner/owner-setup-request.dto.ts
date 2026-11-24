@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { Z } from 'zod-class';
 
 import { passwordSchema } from '../../schemas/password.schema';
+import { Z } from '../../zod-class';
 
 export class OwnerSetupRequestDto extends Z.class({
 	email: z.string().email(),

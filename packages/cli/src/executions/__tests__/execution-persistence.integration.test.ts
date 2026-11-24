@@ -1,0 +1,696 @@
+import { createWorkflow, testDb } from '@n8n/backend-test-utils';
+import { ExecutionsConfig } from '@n8n/config';
+import { ExecutionData, ExecutionRepository } from '@n8n/db';
+import type { IExecutionResponse } from '@n8n/db';
+import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
+import { createEmptyRunExecutionData } from 'n8n-workflow';
+
+import { DbStore } from '@/executions/execution-data/db-store';
+import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
+
+describe('ExecutionPersistence', () => {
+	beforeAll(async () => {
+		await testDb.init();
+	});
+
+	beforeEach(async () => {
+		await testDb.truncate(['WorkflowEntity', 'ExecutionEntity']);
+	});
+
+	afterAll(async () => {
+		await testDb.terminate();
+	});
+
+	describe('create', () => {
+		it('should save execution and execution data to database', async () => {
+			const executionRepo = Container.get(ExecutionRepository);
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+
+			const executionId = await executionPersistence.create({
+				workflowId: workflow.id,
+				data: {
+					// @ts-expect-error Partial data for test
+					resultData: {},
+				},
+				workflowData: workflow,
+				mode: 'manual',
+				startedAt: new Date(),
+				status: 'new',
+				finished: false,
+			});
+
+			expect(executionId).toBeDefined();
+
+			const executionEntity = await executionRepo.findOneBy({ id: executionId });
+			expect(executionEntity?.id).toEqual(executionId);
+			expect(executionEntity?.workflowId).toEqual(workflow.id);
+			expect(executionEntity?.status).toEqual('new');
+			expect(executionEntity?.storedAt).toEqual('db');
+
+			const executionDataRepository = Container.get(DataSource).getRepository(ExecutionData);
+			const executionData = await executionDataRepository.findOneBy({ executionId });
+			expect(executionData?.workflowData).toEqual({
+				id: workflow.id,
+				connections: workflow.connections,
+				nodes: workflow.nodes,
+				name: workflow.name,
+				settings: workflow.settings,
+				nodeGroups: workflow.nodeGroups,
+			});
+			expect(executionData?.data).toEqual('[{"resultData":"1"},{}]');
+		});
+	});
+
+	describe('storedAt CHECK constraint (AllowAzureStoredAt migration)', () => {
+		it("allows persisting an execution with storedAt 'az' (legacy 3-value check was widened, not AND-ed)", async () => {
+			const executionRepo = Container.get(ExecutionRepository);
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+
+			// Inserting 'az' would throw a CHECK violation if the original
+			// `IN ('db','fs','s3')` constraint were still present.
+			const result = await executionRepo.insert({
+				workflowId: workflow.id,
+				status: 'new',
+				finished: false,
+				mode: 'manual',
+				createdAt: new Date(),
+				storedAt: 'az',
+			});
+
+			const id = String(result.identifiers[0].id);
+			const found = await executionRepo.findOneBy({ id });
+			expect(found?.storedAt).toEqual('az');
+		});
+	});
+
+	describe('updateExistingExecution (db overwrite path)', () => {
+		it('should preserve the original workflowVersionId when overwriting data and workflowData', async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const executionDataRepository = Container.get(DataSource).getRepository(ExecutionData);
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+
+			const executionId = await executionPersistence.create({
+				workflowId: workflow.id,
+				data: createEmptyRunExecutionData(),
+				workflowData: { ...workflow, versionId: 'v-original' },
+				mode: 'manual',
+				status: 'new',
+				finished: false,
+			});
+
+			const updatedData = createEmptyRunExecutionData();
+			updatedData.resultData.lastNodeExecuted = 'NodeX';
+
+			await executionPersistence.updateExistingExecution(executionId, {
+				data: updatedData,
+				workflowData: { ...workflow, versionId: 'v-different' },
+				status: 'success',
+			});
+
+			const executionData = await executionDataRepository.findOneBy({ executionId });
+			expect(executionData?.workflowVersionId).toEqual('v-original');
+			expect(executionData?.data).toContain('NodeX');
+		});
+
+		it('should roll back the status change when the data row is missing during an overwrite', async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const executionRepo = Container.get(ExecutionRepository);
+			const executionDataRepository = Container.get(DataSource).getRepository(ExecutionData);
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+
+			const executionId = await executionPersistence.create({
+				workflowId: workflow.id,
+				data: createEmptyRunExecutionData(),
+				workflowData: workflow,
+				mode: 'manual',
+				status: 'new',
+				finished: false,
+			});
+
+			await executionDataRepository.delete({ executionId });
+
+			await expect(
+				executionPersistence.updateExistingExecution(executionId, {
+					data: createEmptyRunExecutionData(),
+					workflowData: workflow,
+					status: 'success',
+				}),
+			).rejects.toThrow(MissingExecutionDataError);
+
+			const executionEntity = await executionRepo.findOneBy({ id: executionId });
+			expect(executionEntity?.status).toEqual('new');
+		});
+
+		// CAT-3862: `ActiveExecutions.add` claims an existing execution through this
+		// path. It used to require `waiting` unconditionally, so an execution enqueued
+		// before a restart (status `new`) could never be claimed and stayed `new` forever.
+		describe.each([
+			{ requireStatus: 'new' as const, expected: true },
+			{ requireStatus: 'waiting' as const, expected: false },
+		])(
+			'claiming a `new` execution with requireStatus: $requireStatus',
+			({ requireStatus, expected }) => {
+				it(`returns ${expected}`, async () => {
+					const executionPersistence = Container.get(ExecutionPersistence);
+					const executionRepo = Container.get(ExecutionRepository);
+					const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+
+					const executionId = await executionPersistence.create({
+						workflowId: workflow.id,
+						data: createEmptyRunExecutionData(),
+						workflowData: workflow,
+						mode: 'webhook',
+						status: 'new',
+						finished: false,
+					});
+
+					const claimed = await executionPersistence.updateExistingExecution(
+						executionId,
+						{ data: createEmptyRunExecutionData(), waitTill: null, status: 'running' },
+						{ requireStatus },
+					);
+
+					expect(claimed).toBe(expected);
+					const row = await executionRepo.findOneBy({ id: executionId });
+					expect(row?.status).toEqual(expected ? 'running' : 'new');
+				});
+			},
+		);
+	});
+
+	describe('deleteInFlightExecution', () => {
+		const executionsConfig = Container.get(ExecutionsConfig);
+		const originalPruneData = executionsConfig.pruneData;
+		const stoppedAt = new Date('2026-01-01T00:00:00.000Z');
+
+		afterEach(() => {
+			executionsConfig.pruneData = originalPruneData;
+		});
+
+		const createRunningExecution = async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+			const executionId = await executionPersistence.create({
+				workflowId: workflow.id,
+				data: createEmptyRunExecutionData(),
+				workflowData: workflow,
+				mode: 'trigger',
+				status: 'running',
+				finished: false,
+			});
+			return { workflowId: workflow.id, executionId, storedAt: 'db' as const };
+		};
+
+		it.each([
+			{ status: 'success' as const, finished: true },
+			{ status: 'error' as const, finished: false },
+		])(
+			'should write the final $status state and soft-delete when pruning is enabled',
+			async ({ status, finished }) => {
+				executionsConfig.pruneData = true;
+				const target = await createRunningExecution();
+
+				const result = await Container.get(ExecutionPersistence).deleteInFlightExecution(target, {
+					status,
+					finished,
+					stoppedAt,
+				});
+
+				expect(result).toEqual({ ended: true });
+				const row = await Container.get(ExecutionRepository).findOne({
+					where: { id: target.executionId },
+					withDeleted: true,
+				});
+				expect(row).toMatchObject({ status, finished, stoppedAt });
+				expect(row?.deletedAt).toBeInstanceOf(Date);
+			},
+		);
+
+		it('should keep a canceled status and still soft-delete when pruning is enabled', async () => {
+			executionsConfig.pruneData = true;
+			const target = await createRunningExecution();
+			const executionRepo = Container.get(ExecutionRepository);
+			await executionRepo.update(target.executionId, { status: 'canceled' });
+
+			const result = await Container.get(ExecutionPersistence).deleteInFlightExecution(target, {
+				status: 'success',
+				finished: true,
+				stoppedAt,
+			});
+
+			expect(result).toEqual({ ended: false });
+			const row = await executionRepo.findOne({
+				where: { id: target.executionId },
+				withDeleted: true,
+			});
+			expect(row?.status).toEqual('canceled');
+			expect(row?.deletedAt).toBeInstanceOf(Date);
+		});
+
+		it('should not report ended for a run that a crash sweep already finished', async () => {
+			executionsConfig.pruneData = false;
+			const target = await createRunningExecution();
+			await Container.get(ExecutionRepository).markAsCrashed(target.executionId);
+
+			const result = await Container.get(ExecutionPersistence).deleteInFlightExecution(target, {
+				status: 'success',
+				finished: true,
+				stoppedAt,
+			});
+
+			expect(result).toEqual({ ended: false });
+		});
+
+		it('should hard-delete the execution when pruning is disabled', async () => {
+			executionsConfig.pruneData = false;
+			const target = await createRunningExecution();
+
+			const result = await Container.get(ExecutionPersistence).deleteInFlightExecution(target, {
+				status: 'success',
+				finished: true,
+				stoppedAt,
+			});
+
+			expect(result).toEqual({ ended: true });
+
+			const row = await Container.get(ExecutionRepository).findOne({
+				where: { id: target.executionId },
+				withDeleted: true,
+			});
+			expect(row).toBeNull();
+		});
+	});
+
+	describe('saveExecutionOutcome', () => {
+		const stoppedAt = new Date('2026-01-01T00:00:00.000Z');
+
+		const createRunningExecution = async () => {
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+			const executionId = await Container.get(ExecutionPersistence).create({
+				workflowId: workflow.id,
+				data: createEmptyRunExecutionData(),
+				workflowData: workflow,
+				mode: 'trigger',
+				status: 'running',
+				finished: false,
+			});
+			return { executionId, workflow };
+		};
+
+		const successOutcome = (workflow: IExecutionResponse['workflowData']) => ({
+			status: 'success' as const,
+			finished: true,
+			stoppedAt,
+			data: createEmptyRunExecutionData(),
+			workflowData: workflow,
+		});
+
+		it('should report ended only for the first save of a final status', async () => {
+			const { executionId, workflow } = await createRunningExecution();
+			const executionPersistence = Container.get(ExecutionPersistence);
+
+			const first = await executionPersistence.saveExecutionOutcome(
+				executionId,
+				successOutcome(workflow),
+				{ requireNotCanceled: true },
+			);
+			const second = await executionPersistence.saveExecutionOutcome(
+				executionId,
+				successOutcome(workflow),
+				{ requireNotCanceled: true },
+			);
+
+			expect(first).toEqual({ updated: true, ended: true });
+			expect(second).toEqual({ updated: true, ended: false });
+		});
+
+		it('should still write a late save after a crash sweep, without reporting ended', async () => {
+			const { executionId, workflow } = await createRunningExecution();
+			await Container.get(ExecutionRepository).markAsCrashed(executionId);
+
+			const result = await Container.get(ExecutionPersistence).saveExecutionOutcome(
+				executionId,
+				successOutcome(workflow),
+				{ requireNotCanceled: true },
+			);
+
+			expect(result).toEqual({ updated: true, ended: false });
+			const row = await Container.get(ExecutionRepository).findOneBy({ id: executionId });
+			expect(row?.status).toEqual('success');
+		});
+
+		it('should not report ended for a waiting status', async () => {
+			const { executionId } = await createRunningExecution();
+
+			const result = await Container.get(ExecutionPersistence).saveExecutionOutcome(
+				executionId,
+				{ status: 'waiting' },
+				{ requireNotCanceled: true },
+			);
+
+			expect(result).toEqual({ updated: true, ended: false });
+		});
+
+		it('should give ended to exactly one of a crash sweep and a final save that race', async () => {
+			const executionRepository = Container.get(ExecutionRepository);
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const runs = await Promise.all(Array.from({ length: 20 }, createRunningExecution));
+
+			const results = await Promise.all(
+				runs.map(async ({ executionId, workflow }) => {
+					const [crashed, saved] = await Promise.all([
+						executionRepository.markAsCrashed(executionId),
+						executionPersistence.saveExecutionOutcome(executionId, successOutcome(workflow), {
+							requireNotCanceled: true,
+						}),
+					]);
+					return { crashedHere: crashed.some(({ id }) => id === executionId), saved };
+				}),
+			);
+
+			for (const { crashedHere, saved } of results) {
+				expect(saved.updated).toBe(true);
+				expect(crashedHere).toBe(!saved.ended);
+			}
+		});
+	});
+
+	describe('softDeleteWithOutcome', () => {
+		it('should finish the run in the soft-delete, so a crash sweep cannot finish it again', async () => {
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+			const executionRepository = Container.get(ExecutionRepository);
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const executionId = await executionPersistence.create({
+				workflowId: workflow.id,
+				data: createEmptyRunExecutionData(),
+				workflowData: workflow,
+				mode: 'manual',
+				status: 'running',
+				finished: false,
+			});
+			const stoppedAt = new Date('2026-01-01T00:00:00.000Z');
+
+			const result = await executionPersistence.softDeleteWithOutcome(executionId, {
+				status: 'error',
+				finished: false,
+				stoppedAt,
+			});
+			const crashed = await executionRepository.markAsCrashed(executionId);
+
+			expect(result).toEqual({ ended: true });
+			expect(crashed).toEqual([]);
+			const row = await executionRepository.findOne({
+				where: { id: executionId },
+				withDeleted: true,
+			});
+			expect(row).toMatchObject({ status: 'error', stoppedAt });
+			expect(row?.deletedAt).toBeInstanceOf(Date);
+		});
+
+		it('should only soft-delete a canceled run', async () => {
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+			const executionRepository = Container.get(ExecutionRepository);
+			const executionId = await Container.get(ExecutionPersistence).create({
+				workflowId: workflow.id,
+				data: createEmptyRunExecutionData(),
+				workflowData: workflow,
+				mode: 'manual',
+				status: 'canceled',
+				finished: false,
+			});
+
+			const result = await Container.get(ExecutionPersistence).softDeleteWithOutcome(executionId, {
+				status: 'success',
+				finished: true,
+				stoppedAt: new Date(),
+			});
+
+			expect(result).toEqual({ ended: false });
+			const row = await executionRepository.findOne({
+				where: { id: executionId },
+				withDeleted: true,
+			});
+			expect(row?.status).toEqual('canceled');
+			expect(row?.deletedAt).toBeInstanceOf(Date);
+		});
+	});
+
+	describe('findSingleExecution', () => {
+		it('returns the persisted bundle byte size and the workflow version id', async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+
+			const executionId = await executionPersistence.create({
+				workflowId: workflow.id,
+				data: createEmptyRunExecutionData(),
+				workflowData: {
+					...workflow,
+					id: 'wf-1',
+					name: 'wf',
+					nodes: [],
+					connections: {},
+					settings: {},
+					versionId: 'v-roundtrip-456',
+				},
+				mode: 'manual',
+				status: 'new',
+				finished: false,
+			});
+
+			const execution = await executionPersistence.findSingleExecution(executionId, {
+				includeData: true,
+			});
+
+			// 51 (run data) + 83 (workflow snapshot incl. empty nodeGroups) + 15 ("v-roundtrip-456") = 149 bytes
+			expect(execution?.jsonSizeBytes).toBe(149);
+			expect(execution?.workflowVersionId).toBe('v-roundtrip-456');
+		});
+
+		it('persists and reads back binaryDataSizeBytes from offloaded binary in the run data', async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+
+			const data = createEmptyRunExecutionData();
+			data.resultData.runData = {
+				Node: [
+					{
+						data: {
+							main: [
+								[
+									{
+										json: {},
+										binary: {
+											file: {
+												data: '',
+												mimeType: 'application/octet-stream',
+												id: 'filesystem-v2:abc',
+												bytes: 100,
+											},
+										},
+									},
+								],
+							],
+						},
+					},
+				],
+			} as unknown as typeof data.resultData.runData;
+
+			const executionId = await executionPersistence.create({
+				workflowId: workflow.id,
+				data,
+				workflowData: workflow,
+				mode: 'manual',
+				status: 'new',
+				finished: false,
+			});
+
+			const execution = await executionPersistence.findSingleExecution(executionId, {
+				includeData: true,
+			});
+
+			expect(execution?.binaryDataSizeBytes).toBe(100);
+		});
+	});
+
+	describe('display size guard (maxDataSizeBytes)', () => {
+		const ONE_MB = 1024 * 1024;
+
+		/** Create a successful execution whose run data embeds a string of roughly `sizeBytes`. */
+		const createSizedExecution = async (sizeBytes: number) => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+			const data = createEmptyRunExecutionData();
+			data.resultData.runData = {
+				bigNode: [
+					{
+						startTime: 0,
+						executionTime: 1,
+						executionIndex: 0,
+						source: [],
+						data: { main: [[{ json: { big: 'x'.repeat(sizeBytes) } }]] },
+					},
+				],
+			};
+			const executionId = await executionPersistence.create({
+				workflowId: workflow.id,
+				data,
+				workflowData: workflow,
+				mode: 'manual',
+				status: 'success',
+				finished: true,
+			});
+			return { workflow, executionId };
+		};
+
+		it('findSingleExecution omits oversized data and flags it (without parsing)', async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const { workflow, executionId } = await createSizedExecution(2 * ONE_MB);
+
+			const execution = await executionPersistence.findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
+				maxDataSizeBytes: ONE_MB,
+			});
+
+			expect(execution?.dataTooLargeToDisplay).toBe(true);
+			expect(execution?.jsonSizeBytes).toBeGreaterThan(ONE_MB);
+			expect(execution?.data?.resultData?.runData).toEqual({});
+			// workflow snapshot still loaded (DB store), not the empty stub
+			expect(execution?.workflowData?.id).toBe(workflow.id);
+			expect(execution?.workflowData?.name).toBe(workflow.name);
+		});
+
+		it('findSingleExecution returns data when under the threshold', async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const { executionId } = await createSizedExecution(1024); // ~1 KB
+
+			const execution = await executionPersistence.findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
+				maxDataSizeBytes: ONE_MB,
+			});
+
+			expect(execution?.dataTooLargeToDisplay).toBeFalsy();
+			expect(execution?.data?.resultData?.runData).toHaveProperty('bigNode');
+		});
+
+		it('findSingleExecution loads unconditionally when no threshold is given', async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const { executionId } = await createSizedExecution(2 * ONE_MB);
+
+			const execution = await executionPersistence.findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
+			});
+
+			expect(execution?.dataTooLargeToDisplay).toBeFalsy();
+			expect(execution?.data?.resultData?.runData).toHaveProperty('bigNode');
+		});
+
+		it('findMultipleExecutions omits oversized data and flags it', async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const { workflow } = await createSizedExecution(2 * ONE_MB);
+
+			const executions = await executionPersistence.findMultipleExecutions(
+				{ where: { workflowId: workflow.id, status: 'success' }, order: { id: 'DESC' }, take: 1 },
+				{ includeData: true, unflattenData: true, maxDataSizeBytes: ONE_MB },
+			);
+
+			expect(executions[0]?.dataTooLargeToDisplay).toBe(true);
+			expect(executions[0]?.data?.resultData?.runData).toEqual({});
+		});
+
+		it('findMultipleExecutions flags legacy oversized rows after reading (jsonSizeBytes unknown)', async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const executionRepository = Container.get(ExecutionRepository);
+			const { workflow, executionId } = await createSizedExecution(2 * ONE_MB);
+
+			// Legacy row: size unknown, so it's read and decided by raw byte length.
+			await executionRepository.update({ id: executionId }, { jsonSizeBytes: 0 });
+
+			const executions = await executionPersistence.findMultipleExecutions(
+				{ where: { workflowId: workflow.id, status: 'success' }, order: { id: 'DESC' }, take: 1 },
+				{ includeData: true, unflattenData: true, maxDataSizeBytes: ONE_MB },
+			);
+
+			expect(executions[0]?.dataTooLargeToDisplay).toBe(true);
+			expect(executions[0]?.data?.resultData?.runData).toEqual({});
+		});
+
+		it('checks the DB size and skips the read for legacy rows (jsonSizeBytes unknown)', async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const executionRepository = Container.get(ExecutionRepository);
+			const dbStore = Container.get(DbStore);
+			const { executionId } = await createSizedExecution(2 * ONE_MB);
+
+			// Simulate a row written before jsonSizeBytes existed: 0 means unknown.
+			await executionRepository.update({ id: executionId }, { jsonSizeBytes: 0 });
+
+			const readSpy = vi.spyOn(dbStore, 'read');
+
+			const execution = await executionPersistence.findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
+				maxDataSizeBytes: ONE_MB,
+			});
+
+			expect(execution?.dataTooLargeToDisplay).toBe(true);
+			expect(execution?.data?.resultData?.runData).toEqual({});
+			// the DB size check rejects it without loading the run data
+			expect(readSpy).not.toHaveBeenCalled();
+
+			readSpy.mockRestore();
+		});
+
+		it('skips reading the run data and loads only the workflow snapshot when oversized', async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const dbStore = Container.get(DbStore);
+			const { executionId } = await createSizedExecution(2 * ONE_MB);
+
+			const readSpy = vi.spyOn(dbStore, 'read');
+			const readWorkflowDataSpy = vi.spyOn(dbStore, 'readWorkflowData');
+
+			await executionPersistence.findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
+				maxDataSizeBytes: ONE_MB,
+			});
+
+			// the run data is never read; only the (small) snapshot is
+			expect(readSpy).not.toHaveBeenCalled();
+			expect(readWorkflowDataSpy).toHaveBeenCalledTimes(1);
+
+			readSpy.mockRestore();
+			readWorkflowDataSpy.mockRestore();
+		});
+
+		it('does not guard operational reads (findWithUnflattenedData loads full data)', async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const { workflow, executionId } = await createSizedExecution(2 * ONE_MB);
+
+			const execution = await executionPersistence.findWithUnflattenedData(executionId, [
+				workflow.id,
+			]);
+
+			expect(execution?.dataTooLargeToDisplay).toBeFalsy();
+			expect(execution?.data?.resultData?.runData).toHaveProperty('bigNode');
+		});
+
+		it('findManyInWorkflows omits oversized data and flags it', async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const { workflow } = await createSizedExecution(2 * ONE_MB);
+
+			const executions = (await executionPersistence.findManyInWorkflows(
+				[workflow.id],
+				{ limit: 10, includeData: true },
+				ONE_MB,
+			)) as IExecutionResponse[];
+
+			expect(executions[0]?.dataTooLargeToDisplay).toBe(true);
+			expect(executions[0]?.data?.resultData?.runData).toEqual({});
+		});
+	});
+});

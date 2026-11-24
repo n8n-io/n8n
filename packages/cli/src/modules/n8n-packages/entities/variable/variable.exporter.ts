@@ -1,0 +1,212 @@
+import type { SerializedVariable } from '@n8n/api-types';
+import type { Variables } from '@n8n/db';
+import { SharedWorkflowRepository } from '@n8n/db';
+import { Service } from '@n8n/di';
+import { pickVariableForProject } from 'n8n-workflow';
+import { ZodError } from 'zod';
+
+import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
+
+import { VariableSerializer } from './variable.serializer';
+import type {
+	VariableExportRequest,
+	VariableExportResult,
+	VariableRequirement,
+} from './variable.types';
+import { projectScopedDirectory, writeManifestEntry } from '../../io/manifest-entry';
+import type { ManifestEntry } from '../../spec/manifest.schema';
+import type { PackageVariableRequirement } from '../../spec/requirements.schema';
+import { PackageExportBlockedError } from '../package-export.errors';
+import { addRequirementUsage, type RequirementUsage } from '../requirement-source';
+
+interface ResolvedName extends RequirementUsage {
+	name: string;
+	variables: Array<Variables | undefined>;
+}
+
+/**
+ * A variable is bundled (and so counts towards a name collision) only when the
+ * caller could resolve it; an unresolved name still travels as a name-only
+ * requirement.
+ */
+function isBundleableVariable(variable: Variables | undefined): variable is Variables {
+	return variable !== undefined;
+}
+
+@Service()
+export class VariableExporter {
+	constructor(
+		private readonly variablesService: VariablesService,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly variableSerializer: VariableSerializer,
+	) {}
+
+	async export(request: VariableExportRequest): Promise<VariableExportResult> {
+		if (request.requirements.length === 0) {
+			return { entries: [], requirements: [] };
+		}
+
+		const workflowIds = [
+			...new Set(request.requirements.flatMap((r) => ('workflowId' in r ? [r.workflowId] : []))),
+		];
+		// The unfiltered list is what runtime resolves against; the user-filtered
+		// list defines what the caller may bundle. Resolving on the unfiltered list
+		// and then gating on accessibility keeps export in lockstep with runtime
+		// while never bundling a row the caller cannot see.
+		const [allVariables, accessibleVariables, projectIdByWorkflowId] = await Promise.all([
+			this.variablesService.getAllCached(),
+			this.variablesService.getAllForUser(request.user),
+			this.resolveWorkflowProjects(workflowIds),
+		]);
+		const accessibleIds = new Set(accessibleVariables.map((variable) => variable.id));
+
+		const resolvedNames = this.resolveRequirements(
+			request.requirements,
+			projectIdByWorkflowId,
+			allVariables,
+			accessibleIds,
+		);
+
+		this.assertNoBundledVariableCollision(resolvedNames, request.projectTargetsById);
+
+		const entries: ManifestEntry[] = [];
+		const bundledVariableIds = new Set<string>();
+		const requirements: PackageVariableRequirement[] = [];
+
+		for (const { name, usedBy, variables } of resolvedNames) {
+			for (const variable of variables) {
+				if (!isBundleableVariable(variable)) continue;
+
+				if (bundledVariableIds.has(variable.id)) continue;
+				bundledVariableIds.add(variable.id);
+
+				entries.push(
+					await writeManifestEntry(
+						request.writer,
+						'variables',
+						projectScopedDirectory('variables', variable.project?.id, request.projectTargetsById),
+						{ id: variable.id, name: variable.key },
+						this.serializeOrBlock(variable, request.includeVariableValues),
+					),
+				);
+			}
+
+			requirements.push({ name, usedBy });
+		}
+
+		return { entries, requirements };
+	}
+
+	/**
+	 * Import parses the same schema, so a contract-breaking row cannot be bundled. Name the row and the
+	 * broken rule instead of letting a raw parse failure surface as an unexplained 500.
+	 */
+	private serializeOrBlock(variable: Variables, includeValue: boolean): SerializedVariable {
+		try {
+			return this.variableSerializer.serialize(variable, { includeValue });
+		} catch (error) {
+			if (!(error instanceof ZodError)) throw error;
+
+			throw new PackageExportBlockedError(
+				`Variable "${variable.key}" does not match the expected format. Export aborted.`,
+				{
+					description: `${error.issues
+						.map((issue) => issue.message)
+						.join('; ')}. Fix the variable and retry the export.`,
+				},
+			);
+		}
+	}
+
+	/**
+	 * Turns the flat requirement list into one entry per variable name.
+	 * Resolve each consumer's variable with the same project precedence as runtime.
+	 * A hidden project variable must not fall back to the global it shadows.
+	 */
+	private resolveRequirements(
+		requirements: VariableRequirement[],
+		projectIdByWorkflowId: Map<string, string>,
+		allVariables: Variables[],
+		accessibleIds: Set<string>,
+	): ResolvedName[] {
+		const variablesByKey = new Map<string, Variables[]>();
+		for (const variable of allVariables) {
+			const bucket = variablesByKey.get(variable.key);
+			if (bucket) bucket.push(variable);
+			else variablesByKey.set(variable.key, [variable]);
+		}
+
+		const resolved = new Map<string, ResolvedName>();
+		for (const requirement of requirements) {
+			const projectId =
+				'workflowId' in requirement
+					? projectIdByWorkflowId.get(requirement.workflowId)
+					: requirement.projectId;
+			const name = requirement.variableName;
+			const picked = pickVariableForProject(variablesByKey.get(name) ?? [], name, projectId);
+			const entry: ResolvedName = resolved.get(name) ?? {
+				name,
+				usedBy: [],
+				variables: [],
+			};
+			addRequirementUsage(entry, requirement);
+			entry.variables.push(picked && accessibleIds.has(picked.id) ? picked : undefined);
+			resolved.set(name, entry);
+		}
+		return [...resolved.values()];
+	}
+
+	private async resolveWorkflowProjects(workflowIds: string[]): Promise<Map<string, string>> {
+		if (workflowIds.length === 0) return new Map();
+		const owners = await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(workflowIds);
+		return new Map([...owners].map(([workflowId, project]) => [workflowId, project.id]));
+	}
+
+	/**
+	 * A name that resolves to two different variables in the same package
+	 * directory cannot be bundled: only one of them could ever land in the
+	 * single target project at import, so the package cannot be satisfied no
+	 * matter which copy is picked. This holds even for value-less stubs, so the
+	 * check does not depend on `includeVariableValues`. Collisions are checked
+	 * per directory, so project exports — where each project's variables live
+	 * in their own namespace — stay unaffected.
+	 */
+	private assertNoBundledVariableCollision(
+		resolvedNames: ResolvedName[],
+		projectTargetsById: Map<string, string> | undefined,
+	): void {
+		const conflictingNames = resolvedNames
+			.filter(({ variables }) => this.hasDirectoryCollision(variables, projectTargetsById))
+			.map(({ name }) => name);
+
+		if (conflictingNames.length === 0) return;
+
+		const displayedNames = conflictingNames.slice(0, 20);
+		const omittedCount = conflictingNames.length - displayedNames.length;
+
+		throw new PackageExportBlockedError(
+			`${conflictingNames.length} variable name(s) resolve to different variables that would collide in the package. Export aborted.`,
+			{
+				description: `Conflicting variable name(s): ${displayedNames.join(', ')}${
+					omittedCount > 0 ? `, and ${omittedCount} more` : ''
+				}. Export the projects as a project package instead.`,
+			},
+		);
+	}
+
+	/** True when two distinct variables would be written into the same directory. */
+	private hasDirectoryCollision(
+		variables: Array<Variables | undefined>,
+		projectTargetsById: Map<string, string> | undefined,
+	): boolean {
+		const idByDir = new Map<string, string>();
+		for (const variable of variables) {
+			if (!isBundleableVariable(variable)) continue;
+			const dir = projectScopedDirectory('variables', variable.project?.id, projectTargetsById);
+			const previousId = idByDir.get(dir);
+			if (previousId !== undefined && previousId !== variable.id) return true;
+			idByDir.set(dir, variable.id);
+		}
+		return false;
+	}
+}

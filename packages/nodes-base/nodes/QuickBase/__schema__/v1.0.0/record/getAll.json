@@ -3,7 +3,10 @@
     "properties": {
         "NSN": {
             "type": "string"
+        },
+        "Status": {
+            "type": "string"
         }
     },
-    "version": 1
+    "version": 5
 }

@@ -1,6 +1,13 @@
+// NOTE: This file is intentionally mirrored in @n8n/expression-runtime/src/extensions/
+// for use inside the isolated VM. Changes here must be reflected there and vice versa.
+// TODO: Eliminate the duplication. The blocker is that @n8n/expression-runtime is
+// Vite-stubbed for browser builds (to exclude isolated-vm), which prevents n8n-workflow
+// from importing these extension utilities directly from the runtime package.
 import { average as aAverage } from './array-extensions';
+import { defineField } from './utils';
 import { ExpressionExtensionError } from '../errors/expression-extension.error';
 import { ExpressionError } from '../errors/expression.error';
+import { toPathSegment as toPathSegmentValue } from '../url';
 
 const min = Math.min;
 const max = Math.max;
@@ -22,14 +29,18 @@ const numberList = (start: number, end: number): number[] => {
 };
 
 const zip = (keys: unknown[], values: unknown[]): unknown => {
+	if (!Array.isArray(keys) || !Array.isArray(values)) {
+		throw new ExpressionExtensionError('keys and values must be arrays');
+	}
 	if (keys.length !== values.length) {
 		throw new ExpressionExtensionError('keys and values not of equal length');
 	}
-	return keys.reduce((p, c, i) => {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-		(p as any)[c as any] = values[i];
-		return p;
-	}, {});
+
+	const result: Record<string, unknown> = {};
+	for (let i = 0; i < keys.length; i++) {
+		defineField(result, keys[i] as PropertyKey, values[i]);
+	}
+	return result;
 };
 
 const average = (...args: number[]) => {
@@ -58,6 +69,17 @@ function ifEmpty<T, V>(value: V, defaultValue: T) {
 	return value;
 }
 
+function toPathSegment(value: unknown): string {
+	try {
+		return toPathSegmentValue(value);
+	} catch (error) {
+		if (error instanceof Error) {
+			throw new ExpressionError(error.message);
+		}
+		throw error;
+	}
+}
+
 ifEmpty.doc = {
 	name: 'ifEmpty',
 	description:
@@ -67,7 +89,8 @@ ifEmpty.doc = {
 		{ name: 'value', type: 'any' },
 		{ name: 'defaultValue', type: 'any' },
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/convenience',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/root#dollarifempty',
 };
 
 export const extendedFunctions = {
@@ -77,6 +100,7 @@ export const extendedFunctions = {
 	average,
 	numberList,
 	zip,
+	toPathSegment,
 	$min: min,
 	$max: max,
 	$average: average,

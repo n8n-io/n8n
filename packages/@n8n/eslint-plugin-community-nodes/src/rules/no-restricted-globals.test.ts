@@ -70,6 +70,17 @@ var __dirname = '/path';
 const __filename = 'file.js';
 			`,
 		},
+		{
+			name: 'sleep and sleepWithAbort from n8n-workflow should be allowed',
+			code: `
+import { sleep, sleepWithAbort } from 'n8n-workflow';
+
+async function wait(signal) {
+	await sleep(1000);
+	await sleepWithAbort(1000, signal);
+}
+			`,
+		},
 	],
 	invalid: [
 		{
@@ -82,7 +93,12 @@ const __filename = 'file.js';
 		},
 		{
 			code: 'setTimeout(() => {}, 1000);',
-			errors: [{ messageId: 'restrictedGlobal', data: { name: 'setTimeout' } }],
+			errors: [
+				{
+					messageId: 'restrictedGlobalWithHint',
+					data: { name: 'setTimeout', hint: "Use the 'sleep' helper from 'n8n-workflow' instead." },
+				},
+			],
 		},
 		{
 			code: 'clearInterval(timer);',
@@ -90,7 +106,15 @@ const __filename = 'file.js';
 		},
 		{
 			code: 'clearTimeout(timer);',
-			errors: [{ messageId: 'restrictedGlobal', data: { name: 'clearTimeout' } }],
+			errors: [
+				{
+					messageId: 'restrictedGlobalWithHint',
+					data: {
+						name: 'clearTimeout',
+						hint: "Use 'sleepWithAbort' from 'n8n-workflow' with an AbortSignal instead.",
+					},
+				},
+			],
 		},
 		{
 			code: 'setInterval(() => {}, 1000);',

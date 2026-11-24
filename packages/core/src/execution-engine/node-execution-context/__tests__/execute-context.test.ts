@@ -1,4 +1,3 @@
-import { mock } from 'jest-mock-extended';
 import type {
 	INode,
 	IWorkflowExecuteAdditionalData,
@@ -9,18 +8,40 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 	ICredentialsHelper,
-	Expression,
 	INodeType,
 	INodeTypes,
 	ICredentialDataDecryptedObject,
+	ExecuteAgentInvocationContext,
+	WorkflowExpression,
+	IWorkflowBase,
 } from 'n8n-workflow';
-import { ApplicationError, ExpressionError, NodeConnectionTypes } from 'n8n-workflow';
+import {
+	ExpressionError,
+	NodeConnectionTypes,
+	CONSOLE_OUTPUT_REDACTED_MESSAGE,
+	AI_EVENT_REDACTED_MESSAGE,
+	WAIT_INDEFINITELY,
+	WAIT_FOR_SUB_EXECUTION,
+	MAX_IN_PROCESS_WAIT_MS,
+	createRunExecutionData,
+	NodeApiError,
+} from 'n8n-workflow';
+import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
+import { Container } from '@n8n/di';
+import { mock } from 'vitest-mock-extended';
 
-import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
+import { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
+import { InstanceSettings } from '@/instance-settings';
+import {
+	parseHitlCallbackReference,
+	verifyHitlCallbackReference,
+} from '@/utils/hitl-callback-reference';
 
 import { describeCommonTests } from './shared-tests';
 import { ExecuteContext } from '../execute-context';
 import * as validateUtil from '../utils/validate-value-against-schema';
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 describe('ExecuteContext', () => {
 	const testCredentialType = 'testCredential';
@@ -41,7 +62,7 @@ describe('ExecuteContext', () => {
 		},
 	});
 	const nodeTypes = mock<INodeTypes>();
-	const expression = mock<Expression>();
+	const expression = mock<WorkflowExpression>();
 	const workflow = mock<Workflow>({ expression, nodeTypes });
 	const node: INode = {
 		id: 'test-node-id',
@@ -62,14 +83,18 @@ describe('ExecuteContext', () => {
 		nullParameter: null,
 	};
 	const credentialsHelper = mock<ICredentialsHelper>();
-	const additionalData = mock<IWorkflowExecuteAdditionalData>({ credentialsHelper });
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({
+		credentialsHelper,
+		webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+		formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+	});
 	const mode: WorkflowExecuteMode = 'manual';
 	const runExecutionData = mock<IRunExecutionData>();
 	const connectionInputData: INodeExecutionData[] = [];
 	const inputData: ITaskDataConnections = { main: [[{ json: { test: 'data' } }]] };
 	const executeData = mock<IExecuteData>();
 	const runIndex = 0;
-	const closeFn = jest.fn();
+	const closeFn = vi.fn();
 	const abortSignal = mock<AbortSignal>();
 
 	const executeContext = new ExecuteContext(
@@ -113,6 +138,26 @@ describe('ExecuteContext', () => {
 			expect(executeContext.getInputData(inputIndex, connectionType)).toEqual(expectedData);
 		});
 
+		it('should read input data from a map without a prototype', () => {
+			const inputDataWithoutPrototype = { ...inputData };
+			Object.setPrototypeOf(inputDataWithoutPrototype, null);
+			const context = new ExecuteContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputDataWithoutPrototype,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			expect(context.getInputData(inputIndex, connectionType)).toEqual(inputData.main[inputIndex]);
+		});
+
 		it('should return an empty array if the input name does not exist', () => {
 			const connectionType = 'nonExistent' as typeof NodeConnectionTypes.Main;
 			expect(executeContext.getInputData(inputIndex, connectionType)).toEqual([]);
@@ -122,7 +167,7 @@ describe('ExecuteContext', () => {
 			const inputIndex = 2;
 
 			expect(() => executeContext.getInputData(inputIndex, connectionType)).toThrow(
-				ApplicationError,
+				UnexpectedError,
 			);
 		});
 
@@ -130,7 +175,7 @@ describe('ExecuteContext', () => {
 			inputData.main[inputIndex] = null;
 
 			expect(() => executeContext.getInputData(inputIndex, connectionType)).toThrow(
-				ApplicationError,
+				UnexpectedError,
 			);
 		});
 	});
@@ -173,6 +218,7 @@ describe('ExecuteContext', () => {
 
 			expect(() => executeContext.getNodeParameter('testParameter', 0)).toThrow(error);
 			expect(error.context.parameter).toEqual('testParameter');
+			expect({ ...error }).toEqual(expect.objectContaining({ cause: 'testValue' }));
 		});
 
 		it('should handle expression errors on Set nodes (Ticket #PAY-684)', () => {
@@ -188,7 +234,7 @@ describe('ExecuteContext', () => {
 		});
 
 		it('should not validate parameter if skipValidation in options', () => {
-			const validateSpy = jest.spyOn(validateUtil, 'validateValueAgainstSchema');
+			const validateSpy = vi.spyOn(validateUtil, 'validateValueAgainstSchema');
 
 			executeContext.getNodeParameter('testParameter', 0, '', {
 				skipValidation: true,
@@ -204,6 +250,7 @@ describe('ExecuteContext', () => {
 		it('should get decrypted credentials', async () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 			credentialsHelper.getDecrypted.mockResolvedValue({ secret: 'token' });
+			credentialsHelper.isCredentialUsableByNode.mockReturnValue(true);
 
 			const credentials = await executeContext.getCredentials<ICredentialDataDecryptedObject>(
 				testCredentialType,
@@ -236,6 +283,46 @@ describe('ExecuteContext', () => {
 	});
 
 	describe('logNodeOutput', () => {
+		// NODE-5746: Forward valid Code node logs to the editor without server warnings.
+		it.each([
+			{ logCall: 'console.log("x", 42)', args: ['x', 42], messages: ['x', 42] },
+			{ logCall: 'console.log(null)', args: [null], messages: ['null'] },
+			{ logCall: 'console.log(undefined)', args: [undefined], messages: ['undefined'] },
+			{ logCall: 'console.log("x", null)', args: ['x', null], messages: ['x', 'null'] },
+		])(
+			'should forward $logCall to the editor in manual mode without warnings',
+			({ args, messages }) => {
+				const sendDataToUI = vi.fn();
+				const codeNode = mock<INode>({
+					name: 'Code',
+					type: 'n8n-nodes-base.code',
+					typeVersion: 2,
+				});
+				const context = new ExecuteContext(
+					mock<Workflow>({ settings: { redactionPolicy: 'none' } }),
+					codeNode,
+					mock<IWorkflowExecuteAdditionalData>({ sendDataToUI }),
+					'manual',
+					mock<IRunExecutionData>(),
+					runIndex,
+					connectionInputData,
+					inputData,
+					executeData,
+					[],
+				);
+				const warnSpy = vi.spyOn(context.logger, 'warn').mockImplementation(() => {});
+
+				context.logNodeOutput(...args);
+
+				expect.soft(warnSpy).not.toHaveBeenCalled();
+				expect(sendDataToUI).toHaveBeenCalledTimes(1);
+				expect(sendDataToUI).toHaveBeenCalledWith('sendConsoleMessage', {
+					source: '[Node: "Code"]',
+					messages,
+				});
+			},
+		);
+
 		it('when in manual mode, should parse JSON', () => {
 			const json = '{"key": "value", "nested": {"foo": "bar"}}';
 			const expectedParsedObject = { key: 'value', nested: { foo: 'bar' } };
@@ -256,7 +343,7 @@ describe('ExecuteContext', () => {
 				abortSignal,
 			);
 
-			const sendMessageSpy = jest.spyOn(manualModeContext, 'sendMessageToUI');
+			const sendMessageSpy = vi.spyOn(manualModeContext, 'sendMessageToUI');
 
 			manualModeContext.logNodeOutput(json, numberArg, stringArg);
 
@@ -271,7 +358,7 @@ describe('ExecuteContext', () => {
 	describe('sendChunk', () => {
 		test('should send call hook with structured chunk', async () => {
 			const hooksMock: ExecutionLifecycleHooks = mock<ExecutionLifecycleHooks>({
-				runHook: jest.fn(),
+				runHook: vi.fn(),
 			});
 			const additionalDataWithHooks: IWorkflowExecuteAdditionalData = {
 				...additionalData,
@@ -311,7 +398,7 @@ describe('ExecuteContext', () => {
 
 		test('should send chunk without content when content is undefined', async () => {
 			const hooksMock: ExecutionLifecycleHooks = mock<ExecutionLifecycleHooks>({
-				runHook: jest.fn(),
+				runHook: vi.fn(),
 			});
 			const additionalDataWithHooks: IWorkflowExecuteAdditionalData = {
 				...additionalData,
@@ -377,6 +464,843 @@ describe('ExecuteContext', () => {
 	describe('isToolExecution', () => {
 		it('should return false for regular workflow execution', () => {
 			expect(executeContext.isToolExecution()).toBe(false);
+		});
+	});
+
+	describe('executeAgent', () => {
+		it('retains completed items and resumes the pending item after serialization', async () => {
+			const agentNode: INode = { ...node, type: 'n8n-nodes-base.messageAnAgent', typeVersion: 4 };
+			const invocationData: IExecuteData = {
+				node: agentNode,
+				metadata: {},
+				data: inputData,
+				source: null,
+			};
+			const state = createRunExecutionData();
+			const complete = {
+				response: 'done',
+				structuredOutput: { ok: true },
+				usage: null,
+				toolCalls: [],
+				finishReason: 'stop',
+				session: null,
+			};
+			const waiting = {
+				...complete,
+				waiting: { runId: 'run-2', executionIds: ['decision-2'] },
+			};
+			const runAgent = vi
+				.fn()
+				.mockResolvedValueOnce(complete)
+				.mockResolvedValueOnce(waiting)
+				.mockResolvedValue(complete);
+			const extra = mock<IWorkflowExecuteAdditionalData>({ executeAgent: runAgent });
+			const createContext = (
+				data: IExecuteData,
+				executionState = state,
+				contextRunIndex = runIndex,
+			) =>
+				new ExecuteContext(
+					workflow,
+					agentNode,
+					extra,
+					mode,
+					executionState,
+					contextRunIndex,
+					connectionInputData,
+					inputData,
+					data,
+					[closeFn],
+				);
+			const first = createContext(invocationData);
+			await first.executeAgent({ agentId: 'agent' }, 'first', 'parent', 0);
+			await first.executeAgent({ agentId: 'agent' }, 'second', 'parent', 1);
+			expect(state.waitTill).toEqual(WAIT_FOR_SUB_EXECUTION);
+			expect(invocationData.metadata?.waitingChildExecutionIds).toEqual(['decision-2']);
+			expect(invocationData.metadata).toEqual({
+				resumeMode: 'reexecute',
+				waitingChildExecutionIds: ['decision-2'],
+			});
+			const restoredState = structuredClone(state);
+			const resumed = createContext(structuredClone(invocationData), restoredState);
+			expect(await resumed.executeAgent({ agentId: 'agent' }, 'first', 'parent', 0)).toEqual(
+				complete,
+			);
+			await resumed.executeAgent({ agentId: 'agent' }, 'second', 'parent', 1);
+			await resumed.executeAgent({ agentId: 'agent' }, 'third', 'parent', 2);
+			expect(runAgent).toHaveBeenCalledTimes(4);
+			expect(runAgent.mock.calls[2][7]).toMatchObject({ continuation: waiting.waiting });
+			expect(runAgent.mock.calls[2][3]).toBe(runAgent.mock.calls[1][3]);
+			// A later run of the same node must not return the earlier run's cached result.
+			const nextRun = createContext(
+				{ ...invocationData, metadata: {} },
+				restoredState,
+				runIndex + 1,
+			);
+			await nextRun.executeAgent({ agentId: 'agent' }, 'new input', 'parent', 0);
+			expect(runAgent).toHaveBeenCalledTimes(5);
+			expect(runAgent.mock.calls[4][3]).not.toBe(runAgent.mock.calls[0][3]);
+		});
+
+		it.each([
+			{
+				label: 'user error',
+				error: new UserError('Bad input', { description: 'Check the prompt' }),
+				type: UserError,
+				httpCode: undefined,
+			},
+			{
+				label: 'operational error',
+				error: new OperationalError('Model failed', { description: 'Try again later' }),
+				type: OperationalError,
+				httpCode: undefined,
+			},
+			{
+				label: 'API error',
+				error: new NodeApiError(
+					node,
+					{ message: 'Rate limited', httpCode: '429' },
+					{ message: 'Rate limited', description: 'Wait before you retry', httpCode: '429' },
+				),
+				type: NodeApiError,
+				httpCode: '429',
+			},
+		])('replays a failed invocation with its details after a resume ($label)', async (scenario) => {
+			const agentNode: INode = { ...node, type: 'n8n-nodes-base.messageAnAgent', typeVersion: 4 };
+			const invocationData: IExecuteData = {
+				node: agentNode,
+				metadata: {},
+				data: inputData,
+				source: null,
+			};
+			const state = createRunExecutionData();
+			const runAgent = vi.fn().mockRejectedValue(scenario.error);
+			const extra = mock<IWorkflowExecuteAdditionalData>({ executeAgent: runAgent });
+			const createContext = (data: IExecuteData, executionState: IRunExecutionData) =>
+				new ExecuteContext(
+					workflow,
+					agentNode,
+					extra,
+					mode,
+					executionState,
+					runIndex,
+					connectionInputData,
+					inputData,
+					data,
+					[closeFn],
+				);
+
+			await expect(
+				createContext(invocationData, state).executeAgent({ agentId: 'agent' }, 'hi', 'parent', 0),
+			).rejects.toBe(scenario.error);
+
+			const resumed = createContext(structuredClone(invocationData), structuredClone(state));
+			const replayed = await resumed
+				.executeAgent({ agentId: 'agent' }, 'hi', 'parent', 0)
+				.catch((error: unknown) => error);
+			expect(runAgent).toHaveBeenCalledOnce();
+			expect(replayed).toBeInstanceOf(scenario.type);
+			expect(replayed).toMatchObject({
+				message: scenario.error.message,
+				description: scenario.error.description,
+				...(scenario.httpCode ? { httpCode: scenario.httpCode } : {}),
+			});
+		});
+
+		const webhookNode: INode = {
+			id: 'webhook-node-id',
+			name: 'Webhook',
+			type: 'n8n-nodes-base.webhook',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		};
+		const agentWorkflow = mock<Workflow>({
+			id: 'wf-id',
+			name: 'My workflow',
+			expression,
+			nodeTypes,
+		});
+		agentWorkflow.nodes = { [node.name]: node, [webhookNode.name]: webhookNode } as never;
+		const agentAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+			rootExecutionMode: undefined,
+		});
+
+		const agentExecuteContext = new ExecuteContext(
+			agentWorkflow,
+			node,
+			agentAdditionalData,
+			mode,
+			runExecutionData,
+			runIndex,
+			connectionInputData,
+			inputData,
+			executeData,
+			[closeFn],
+			abortSignal,
+		);
+		const createStreamingAgentContext = (
+			contextRunIndex = runIndex,
+			contextInputData = inputData,
+		) => {
+			const hooks = new ExecutionLifecycleHooks('manual', 'exec-1', mock<IWorkflowBase>());
+			const sendChunkHandler = vi.fn();
+			hooks.addHandler('sendChunk', sendChunkHandler);
+			const executeAgentMock = vi.fn().mockResolvedValue({ response: 'ok' });
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				hooks,
+				rootExecutionMode: undefined,
+				streamingEnabled: true,
+			});
+			additionalData.executeAgent =
+				executeAgentMock as IWorkflowExecuteAdditionalData['executeAgent'];
+
+			return {
+				context: new ExecuteContext(
+					agentWorkflow,
+					node,
+					additionalData,
+					'manual',
+					runExecutionData,
+					contextRunIndex,
+					connectionInputData,
+					contextInputData,
+					executeData,
+					[closeFn],
+					abortSignal,
+				),
+				executeAgentMock,
+				sendChunkHandler,
+			};
+		};
+
+		it('passes the workflow context to additionalData.executeAgent', async () => {
+			agentAdditionalData.executeAgent = vi
+				.fn()
+				.mockResolvedValue({ response: 'ok' }) as IWorkflowExecuteAdditionalData['executeAgent'];
+
+			await agentExecuteContext.executeAgent(
+				{ agentId: 'agent-1', inputDataScope: 'item', exposeWorkflowData: false },
+				'hello',
+				'exec-1',
+				0,
+			);
+
+			expect(agentAdditionalData.executeAgent).toHaveBeenCalledWith(
+				{ agentId: 'agent-1' },
+				'hello',
+				'exec-1',
+				expect.stringMatching(UUID_PATTERN),
+				agentAdditionalData,
+				'manual',
+				undefined,
+				{
+					workflowId: 'wf-id',
+					workflowName: 'My workflow',
+					callingNodeName: node.name,
+					callingNodeId: node.id,
+					inputData: [{ json: { test: 'data' } }],
+					inputDataScope: 'item',
+					exposeWorkflowData: false,
+					hasCallerSessionId: false,
+					nodes: [
+						{ name: node.name, type: node.type },
+						{ name: 'Webhook', type: 'n8n-nodes-base.webhook' },
+					],
+					runExecutionData,
+				},
+				{
+					nodeId: node.id,
+					nodeName: node.name,
+					runIndex,
+					itemIndex: 0,
+				},
+			);
+		});
+
+		it('passes a response chunk callback when workflow streaming is available', async () => {
+			const { context, executeAgentMock, sendChunkHandler } = createStreamingAgentContext(2, {
+				main: [[{ json: { idx: 0 } }, { json: { idx: 1 } }]],
+			});
+
+			await context.executeAgent({ agentId: 'agent-1' }, 'hello', 'exec-1', 1);
+			const invocationContext = executeAgentMock.mock
+				.calls[0]?.[8] as ExecuteAgentInvocationContext;
+
+			expect(invocationContext).toMatchObject({
+				nodeId: node.id,
+				nodeName: node.name,
+				runIndex: 2,
+				itemIndex: 1,
+				sendResponseChunk: expect.any(Function),
+			});
+
+			await invocationContext.sendResponseChunk?.('item', 'partial');
+
+			expect(sendChunkHandler).toHaveBeenCalledWith({
+				type: 'item',
+				content: 'partial',
+				metadata: {
+					nodeId: node.id,
+					nodeName: node.name,
+					runIndex: 2,
+					itemIndex: 1,
+					timestamp: expect.any(Number),
+				},
+			});
+		});
+
+		it('omits the response chunk callback when structured output is configured', async () => {
+			const { context, executeAgentMock } = createStreamingAgentContext();
+
+			await context.executeAgent(
+				{ agentId: 'agent-1', outputSchema: { type: 'object' } },
+				'hello',
+				'exec-1',
+				0,
+			);
+
+			const invocationContext = executeAgentMock.mock
+				.calls[0]?.[8] as ExecuteAgentInvocationContext;
+			expect(invocationContext).not.toHaveProperty('sendResponseChunk');
+		});
+
+		it('omits the response chunk callback when agent streaming is disabled', async () => {
+			const { context, executeAgentMock } = createStreamingAgentContext();
+
+			await context.executeAgent(
+				{ agentId: 'agent-1', enableStreaming: false },
+				'hello',
+				'exec-1',
+				0,
+			);
+
+			const invocationContext = executeAgentMock.mock
+				.calls[0]?.[8] as ExecuteAgentInvocationContext;
+			expect(invocationContext).not.toHaveProperty('sendResponseChunk');
+		});
+
+		it('passes all input items when inputDataScope is all', async () => {
+			agentAdditionalData.executeAgent = vi
+				.fn()
+				.mockResolvedValue({ response: 'ok' }) as IWorkflowExecuteAdditionalData['executeAgent'];
+
+			await agentExecuteContext.executeAgent(
+				{ agentId: 'agent-1', inputDataScope: 'all', exposeWorkflowData: true },
+				'hello',
+				'exec-1',
+				0,
+			);
+
+			expect(agentAdditionalData.executeAgent).toHaveBeenCalledWith(
+				{ agentId: 'agent-1' },
+				'hello',
+				'exec-1',
+				expect.stringMatching(UUID_PATTERN),
+				agentAdditionalData,
+				'manual',
+				undefined,
+				expect.objectContaining({
+					inputData: [{ json: { test: 'data' } }],
+					inputDataScope: 'all',
+					exposeWorkflowData: true,
+				}),
+				expect.objectContaining({ itemIndex: 0, nodeId: node.id, runIndex }),
+			);
+		});
+
+		it('scopes to only the indexed item when scope is item, with multiple inputs', async () => {
+			const twoItemInput: ITaskDataConnections = {
+				main: [[{ json: { idx: 0 } }, { json: { idx: 1 } }]],
+			};
+			const twoItemAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				rootExecutionMode: undefined,
+			});
+			twoItemAdditionalData.executeAgent = vi
+				.fn()
+				.mockResolvedValue({ response: 'ok' }) as IWorkflowExecuteAdditionalData['executeAgent'];
+
+			const twoItemContext = new ExecuteContext(
+				agentWorkflow,
+				node,
+				twoItemAdditionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				twoItemInput,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			await twoItemContext.executeAgent(
+				{ agentId: 'agent-1', inputDataScope: 'item', exposeWorkflowData: false },
+				'hello',
+				'exec-1',
+				1,
+			);
+
+			expect(twoItemAdditionalData.executeAgent).toHaveBeenCalledWith(
+				{ agentId: 'agent-1' },
+				'hello',
+				'exec-1',
+				expect.stringMatching(UUID_PATTERN),
+				twoItemAdditionalData,
+				'manual',
+				undefined,
+				expect.objectContaining({ inputData: [{ json: { idx: 1 } }], inputDataScope: 'item' }),
+				expect.objectContaining({ itemIndex: 1, nodeId: node.id, runIndex }),
+			);
+		});
+
+		it('includes every input item when scope is all, with multiple inputs', async () => {
+			const twoItemInput: ITaskDataConnections = {
+				main: [[{ json: { idx: 0 } }, { json: { idx: 1 } }]],
+			};
+			const twoItemAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				rootExecutionMode: undefined,
+			});
+			twoItemAdditionalData.executeAgent = vi
+				.fn()
+				.mockResolvedValue({ response: 'ok' }) as IWorkflowExecuteAdditionalData['executeAgent'];
+
+			const twoItemContext = new ExecuteContext(
+				agentWorkflow,
+				node,
+				twoItemAdditionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				twoItemInput,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			await twoItemContext.executeAgent(
+				{ agentId: 'agent-1', inputDataScope: 'all', exposeWorkflowData: false },
+				'hello',
+				'exec-1',
+				0,
+			);
+
+			expect(twoItemAdditionalData.executeAgent).toHaveBeenCalledWith(
+				{ agentId: 'agent-1' },
+				'hello',
+				'exec-1',
+				expect.stringMatching(UUID_PATTERN),
+				twoItemAdditionalData,
+				'manual',
+				undefined,
+				expect.objectContaining({
+					inputData: [{ json: { idx: 0 } }, { json: { idx: 1 } }],
+					inputDataScope: 'all',
+				}),
+				expect.objectContaining({ itemIndex: 0, nodeId: node.id, runIndex }),
+			);
+		});
+
+		it('flattens every main branch when scope is all', async () => {
+			const multiBranchInput: ITaskDataConnections = {
+				main: [[{ json: { branch: 0 } }], null, [{ json: { branch: 2 } }]],
+			};
+			const multiBranchAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				rootExecutionMode: undefined,
+			});
+			multiBranchAdditionalData.executeAgent = vi
+				.fn()
+				.mockResolvedValue({ response: 'ok' }) as IWorkflowExecuteAdditionalData['executeAgent'];
+
+			const multiBranchContext = new ExecuteContext(
+				agentWorkflow,
+				node,
+				multiBranchAdditionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				multiBranchInput,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			await multiBranchContext.executeAgent(
+				{ agentId: 'agent-1', inputDataScope: 'all', exposeWorkflowData: false },
+				'hello',
+				'exec-1',
+				0,
+			);
+
+			expect(multiBranchAdditionalData.executeAgent).toHaveBeenCalledWith(
+				{ agentId: 'agent-1' },
+				'hello',
+				'exec-1',
+				expect.stringMatching(UUID_PATTERN),
+				multiBranchAdditionalData,
+				'manual',
+				undefined,
+				expect.objectContaining({
+					inputData: [{ json: { branch: 0 } }, { json: { branch: 2 } }],
+					inputDataScope: 'all',
+				}),
+				expect.objectContaining({ itemIndex: 0, nodeId: node.id, runIndex }),
+			);
+		});
+
+		it('scopes to an empty array when itemIndex is out of range', async () => {
+			const twoItemInput: ITaskDataConnections = {
+				main: [[{ json: { idx: 0 } }, { json: { idx: 1 } }]],
+			};
+			const outOfRangeAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				rootExecutionMode: undefined,
+			});
+			outOfRangeAdditionalData.executeAgent = vi
+				.fn()
+				.mockResolvedValue({ response: 'ok' }) as IWorkflowExecuteAdditionalData['executeAgent'];
+
+			const outOfRangeContext = new ExecuteContext(
+				agentWorkflow,
+				node,
+				outOfRangeAdditionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				twoItemInput,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			await outOfRangeContext.executeAgent(
+				{ agentId: 'agent-1', inputDataScope: 'item', exposeWorkflowData: false },
+				'hello',
+				'exec-1',
+				5,
+			);
+
+			expect(outOfRangeAdditionalData.executeAgent).toHaveBeenCalledWith(
+				{ agentId: 'agent-1' },
+				'hello',
+				'exec-1',
+				expect.stringMatching(UUID_PATTERN),
+				outOfRangeAdditionalData,
+				'manual',
+				undefined,
+				expect.objectContaining({ inputData: [], inputDataScope: 'item' }),
+				expect.objectContaining({ itemIndex: 5, nodeId: node.id, runIndex }),
+			);
+		});
+	});
+
+	describe('console output redaction', () => {
+		const makeContext = (mode: WorkflowExecuteMode, runData: IRunExecutionData) =>
+			new ExecuteContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				runData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+		const runDataWith = (production: boolean, manual: boolean) =>
+			({
+				executionData: {
+					runtimeData: { redaction: { version: 2, production, manual } },
+				},
+			}) as unknown as IRunExecutionData;
+
+		beforeEach(() => {
+			additionalData.sendDataToUI = vi.fn();
+		});
+
+		it('replaces manual console messages with the redaction marker when the manual channel redacts', () => {
+			const context = makeContext('manual', runDataWith(true, true));
+			context.sendMessageToUI('secret-payload', { secret: true });
+
+			expect(additionalData.sendDataToUI).toHaveBeenCalledWith('sendConsoleMessage', {
+				source: `[Node: "${node.name}"]`,
+				messages: [CONSOLE_OUTPUT_REDACTED_MESSAGE],
+			});
+		});
+
+		it('passes manual console messages through unchanged when no channel redacts', () => {
+			const context = makeContext('manual', runDataWith(false, false));
+			context.sendMessageToUI('hello', 42);
+
+			expect(additionalData.sendDataToUI).toHaveBeenCalledWith('sendConsoleMessage', {
+				source: `[Node: "${node.name}"]`,
+				messages: ['hello', 42],
+			});
+		});
+
+		it('redacts console messages when a sub-workflow reported the channel', () => {
+			const context = makeContext('manual', {
+				executionData: {
+					runtimeData: {
+						redaction: { version: 2, production: false, manual: false },
+						subWorkflowRedaction: { production: true, manual: true },
+					},
+				},
+			} as unknown as IRunExecutionData);
+
+			expect(context.isConsoleOutputRedacted()).toBe(true);
+		});
+
+		it('fails closed when resolving the policy throws', () => {
+			const throwingRunData = {
+				get executionData(): never {
+					throw new Error('boom');
+				},
+			} as unknown as IRunExecutionData;
+			const context = makeContext('manual', throwingRunData);
+
+			expect(context.isConsoleOutputRedacted()).toBe(true);
+		});
+
+		describe('AI event payloads', () => {
+			it('replaces the payload with the marker when the channel redacts', () => {
+				const context = makeContext('trigger', runDataWith(true, false));
+				context.logAiEvent('ai-llm-generated-output', '{"messages":["secret prompt"]}');
+
+				expect(additionalData.logAiEvent).toHaveBeenCalledWith(
+					'ai-llm-generated-output',
+					expect.objectContaining({ nodeName: node.name, msg: AI_EVENT_REDACTED_MESSAGE }),
+				);
+				expect(JSON.stringify(vi.mocked(additionalData.logAiEvent).mock.calls)).not.toContain(
+					'secret prompt',
+				);
+			});
+
+			it('passes the payload through unchanged when no channel redacts', () => {
+				const context = makeContext('trigger', runDataWith(false, false));
+				context.logAiEvent('ai-llm-generated-output', '{"messages":["hello"]}');
+
+				expect(additionalData.logAiEvent).toHaveBeenCalledWith(
+					'ai-llm-generated-output',
+					expect.objectContaining({ msg: '{"messages":["hello"]}' }),
+				);
+			});
+		});
+
+		describe('production stdout gating', () => {
+			let logSpy: ReturnType<typeof vi.spyOn>;
+
+			beforeEach(() => {
+				process.env.CODE_ENABLE_STDOUT = 'true';
+				logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+			});
+
+			afterEach(() => {
+				delete process.env.CODE_ENABLE_STDOUT;
+				logSpy.mockRestore();
+			});
+
+			it('replaces production console output with the marker when the production channel redacts', () => {
+				const context = makeContext('trigger', runDataWith(true, false));
+				context.logNodeOutput('secret-payload');
+
+				expect(logSpy).toHaveBeenCalledWith(
+					expect.stringContaining('[Workflow'),
+					CONSOLE_OUTPUT_REDACTED_MESSAGE,
+				);
+				expect(logSpy).not.toHaveBeenCalledWith(expect.anything(), 'secret-payload');
+			});
+
+			it('passes production console output through unchanged when no channel redacts', () => {
+				const context = makeContext('trigger', runDataWith(false, false));
+				context.logNodeOutput('hello');
+
+				expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('[Workflow'), 'hello');
+			});
+		});
+	});
+
+	describe('putExecutionToWait', () => {
+		const SHORT_MS = MAX_IN_PROCESS_WAIT_MS / 2;
+		const LONG_MS = MAX_IN_PROCESS_WAIT_MS * 10;
+
+		const makeWaitContext = (abortSignal?: AbortSignal) => {
+			const waitRunExecutionData = {
+				resultData: { runData: {} },
+			} as unknown as IRunExecutionData;
+			const waitAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+			const context = new ExecuteContext(
+				workflow,
+				node,
+				waitAdditionalData,
+				mode,
+				waitRunExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				executeData,
+				[],
+				abortSignal,
+			);
+			return { context, waitRunExecutionData, waitAdditionalData };
+		};
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('keeps the threshold at the value the tracker poll interval sets', () => {
+			expect(MAX_IN_PROCESS_WAIT_MS).toBe(65_000);
+		});
+
+		it('sleeps in the process when only a deadline can end a short wait', async () => {
+			const { context, waitRunExecutionData, waitAdditionalData } = makeWaitContext();
+
+			const pending = context.putExecutionToWait(new Date(Date.now() + SHORT_MS), {
+				acceptsResumeRequest: false,
+			});
+			let settled = false;
+			void pending.then(() => {
+				settled = true;
+			});
+
+			await vi.advanceTimersByTimeAsync(SHORT_MS - 1_000);
+			expect(settled).toBe(false);
+
+			await vi.advanceTimersByTimeAsync(1_000);
+			await pending;
+
+			expect(waitRunExecutionData.waitTill).toBeUndefined();
+			expect(waitAdditionalData.setExecutionStatus).not.toHaveBeenCalled();
+		});
+
+		it('suspends a short wait that a resume request can end', async () => {
+			const { context, waitRunExecutionData, waitAdditionalData } = makeWaitContext();
+			const waitTill = new Date(Date.now() + SHORT_MS);
+
+			await context.putExecutionToWait(waitTill, { acceptsResumeRequest: true });
+
+			expect(waitRunExecutionData.waitTill).toEqual(waitTill);
+			expect(waitAdditionalData.setExecutionStatus).toHaveBeenCalledWith('waiting');
+		});
+
+		it('suspends a wait that lands exactly on the threshold', async () => {
+			const { context, waitRunExecutionData, waitAdditionalData } = makeWaitContext();
+			const waitTill = new Date(Date.now() + MAX_IN_PROCESS_WAIT_MS);
+
+			await context.putExecutionToWait(waitTill, { acceptsResumeRequest: false });
+
+			expect(waitRunExecutionData.waitTill).toEqual(waitTill);
+			expect(waitAdditionalData.setExecutionStatus).toHaveBeenCalledWith('waiting');
+		});
+
+		it('suspends a long wait that only a deadline can end', async () => {
+			const { context, waitRunExecutionData, waitAdditionalData } = makeWaitContext();
+			const waitTill = new Date(Date.now() + LONG_MS);
+
+			await context.putExecutionToWait(waitTill, { acceptsResumeRequest: false });
+
+			expect(waitRunExecutionData.waitTill).toEqual(waitTill);
+			expect(waitAdditionalData.setExecutionStatus).toHaveBeenCalledWith('waiting');
+		});
+
+		it.each([
+			['WAIT_INDEFINITELY', WAIT_INDEFINITELY],
+			['WAIT_FOR_SUB_EXECUTION', WAIT_FOR_SUB_EXECUTION],
+		])('suspends on the %s sentinel and does not sleep', async (_name, sentinel) => {
+			const { context, waitRunExecutionData, waitAdditionalData } = makeWaitContext();
+
+			await context.putExecutionToWait(sentinel, { acceptsResumeRequest: false });
+
+			expect(waitRunExecutionData.waitTill).toEqual(sentinel);
+			expect(waitAdditionalData.setExecutionStatus).toHaveBeenCalledWith('waiting');
+		});
+
+		it('leaves no cancellation listener behind when a sleep ends normally', async () => {
+			const abortController = new AbortController();
+			const added = vi.spyOn(abortController.signal, 'addEventListener');
+			const removed = vi.spyOn(abortController.signal, 'removeEventListener');
+			const { context } = makeWaitContext(abortController.signal);
+
+			const pending = context.putExecutionToWait(new Date(Date.now() + SHORT_MS), {
+				acceptsResumeRequest: false,
+			});
+			await vi.advanceTimersByTimeAsync(SHORT_MS);
+			await pending;
+
+			// A workflow can reach many short waits. Each one must release its listener.
+			expect(removed.mock.calls.length).toBe(added.mock.calls.length);
+		});
+
+		it('ends a sleep early when the execution is cancelled', async () => {
+			const abortController = new AbortController();
+			const { context, waitRunExecutionData } = makeWaitContext(abortController.signal);
+
+			const pending = context.putExecutionToWait(new Date(Date.now() + SHORT_MS), {
+				acceptsResumeRequest: false,
+			});
+
+			abortController.abort();
+			await pending;
+
+			expect(vi.getTimerCount()).toBe(0);
+			expect(waitRunExecutionData.waitTill).toBeUndefined();
+		});
+	});
+
+	describe('getApprovalCallbackReference', () => {
+		const instanceSettings = Container.get(InstanceSettings);
+
+		const approvalContext = () =>
+			new ExecuteContext(
+				workflow,
+				node,
+				mock<IWorkflowExecuteAdditionalData>({ executionId: '123' }),
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				executeData,
+				[],
+			);
+
+		it.each([
+			['approve', 'a'],
+			['decline', 'd'],
+		] as const)(
+			'names the execution and the decision to %s, signed with the instance secret',
+			(decision, encoded) => {
+				const parsed = parseHitlCallbackReference(
+					approvalContext().getApprovalCallbackReference(decision),
+				);
+
+				expect(parsed).toMatchObject({ executionId: '123', decision: encoded });
+				expect(verifyHitlCallbackReference(parsed!, instanceSettings.hmacSignatureSecret)).toBe(
+					true,
+				);
+			},
+		);
+
+		it('rejects approval callbacks in the engine process', () => {
+			const previousInstanceType = instanceSettings.instanceType;
+			Object.assign(instanceSettings, { instanceType: 'engine' });
+			try {
+				expect(() => approvalContext().getApprovalCallbackReference('approve')).toThrow(
+					'Engine v2 does not support approval callbacks yet',
+				);
+			} finally {
+				Object.assign(instanceSettings, { instanceType: previousInstanceType });
+			}
 		});
 	});
 });

@@ -4,9 +4,10 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { ApplicationError, NodeOperationError, sleep } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
-import { getResolvables, updateDisplayOptions } from '@utils/utilities';
+import { sleep } from '@n8n/utils/sleep';
+import { resolveExpressions, updateDisplayOptions } from '@utils/utilities';
 
 import type { ResponseWithJobReference } from '../../helpers/interfaces';
 import { prepareOutput } from '../../helpers/utils';
@@ -231,7 +232,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 	for (let i = 0; i < length; i++) {
 		try {
-			let sqlQuery = this.getNodeParameter('sqlQuery', i) as string;
+			const rawSqlQuery = this.getNodeParameter('sqlQuery', i) as string;
 
 			const options = this.getNodeParameter('options', i) as {
 				defaultDataset?: string;
@@ -251,9 +252,11 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				extractValue: true,
 			});
 
-			for (const resolvable of getResolvables(sqlQuery)) {
-				sqlQuery = sqlQuery.replace(resolvable, this.evaluateExpression(resolvable, i) as string);
-			}
+			const sqlQuery = resolveExpressions(
+				rawSqlQuery,
+				(resolvable) => this.evaluateExpression(resolvable, i),
+				{ legacy: this.getNode().typeVersion < 2.2 },
+			);
 
 			let rawOutput = false;
 			let includeSchema = false;
@@ -316,7 +319,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const response: ResponseWithJobReference = await googleBigQueryApiRequest.call(
 				this,
 				'POST',
-				`/v2/projects/${projectId}/jobs`,
+				requestPath`/v2/projects/${projectId}/jobs`,
 				{
 					configuration: {
 						query: body,
@@ -342,7 +345,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				const queryResponse: IDataObject = await googleBigQueryApiRequestAllItems.call(
 					this,
 					'GET',
-					`/v2/projects/${projectId}/queries/${jobId}`,
+					requestPath`/v2/projects/${projectId}/queries/${jobId}`,
 					undefined,
 					qs,
 				);
@@ -418,7 +421,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				const response: IDataObject = await googleBigQueryApiRequestAllItems.call(
 					this,
 					'GET',
-					`/v2/projects/${job.projectId}/queries/${job.jobId}`,
+					requestPath`/v2/projects/${job.projectId}/queries/${job.jobId}`,
 					undefined,
 					qs,
 				);
@@ -430,7 +433,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				}
 				if ((response?.errors as IDataObject[])?.length) {
 					const errorMessages = (response.errors as IDataObject[]).map((error) => error.message);
-					throw new ApplicationError(
+					throw new NodeOperationError(
+						this.getNode(),
 						`Error(s) ocurring while executing query from item ${job.i.toString()}: ${errorMessages.join(
 							', ',
 						)}`,

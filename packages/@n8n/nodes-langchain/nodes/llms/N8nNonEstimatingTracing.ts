@@ -7,11 +7,14 @@ import type {
 } from '@langchain/core/load/serializable';
 import type { BaseMessage } from '@langchain/core/messages';
 import type { LLMResult } from '@langchain/core/outputs';
-import pick from 'lodash/pick';
+import {
+	logAiEvent,
+	redactHeaderValues,
+	stripNonXHeaders,
+	toRunDataGeneration,
+} from '@n8n/ai-utilities';
 import type { IDataObject, ISupplyDataFunctions, JsonObject } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow';
-
-import { logAiEvent } from '@utils/helpers';
 
 type RunDetail = {
 	index: number;
@@ -38,7 +41,10 @@ export class N8nNonEstimatingTracing extends BaseCallbackHandler {
 	 */
 	runsMap: Record<string, RunDetail> = {};
 
-	options = {
+	options: {
+		errorDescriptionMapper: (error: NodeError) => string | null | undefined;
+		redactedHeaders?: string[];
+	} = {
 		// Default(OpenAI format) parser
 		errorDescriptionMapper: (error: NodeError) => error.description,
 	};
@@ -47,6 +53,7 @@ export class N8nNonEstimatingTracing extends BaseCallbackHandler {
 		private executionFunctions: ISupplyDataFunctions,
 		options?: {
 			errorDescriptionMapper?: (error: NodeError) => string;
+			redactedHeaders?: string[];
 		},
 	) {
 		super();
@@ -58,9 +65,7 @@ export class N8nNonEstimatingTracing extends BaseCallbackHandler {
 		// but just in case, we set the index to the length of the runsMap
 		const runDetails = this.runsMap[runId] ?? { index: Object.keys(this.runsMap).length };
 
-		output.generations = output.generations.map((gen) =>
-			gen.map((g) => pick(g, ['text', 'generationInfo'])),
-		);
+		output.generations = output.generations.map((gen) => gen.map(toRunDataGeneration));
 
 		const tokenUsageEstimate = {
 			completionTokens: 0,
@@ -111,7 +116,10 @@ export class N8nNonEstimatingTracing extends BaseCallbackHandler {
 				? this.#parentRunIndex + this.executionFunctions.getNextRunIndex()
 				: undefined;
 
-		const options = llm.type === 'constructor' ? llm.kwargs : llm;
+		const options = redactHeaderValues(
+			llm.type === 'constructor' ? llm.kwargs : llm,
+			this.options.redactedHeaders ?? [],
+		);
 		const { index } = this.executionFunctions.addInputData(
 			this.connectionType,
 			[
@@ -139,16 +147,7 @@ export class N8nNonEstimatingTracing extends BaseCallbackHandler {
 	async handleLLMError(error: IDataObject | Error, runId: string, parentRunId?: string) {
 		const runDetails = this.runsMap[runId] ?? { index: Object.keys(this.runsMap).length };
 
-		// Filter out non-x- headers to avoid leaking sensitive information in logs
-		if (typeof error === 'object' && error?.hasOwnProperty('headers')) {
-			const errorWithHeaders = error as { headers: Record<string, unknown> };
-
-			Object.keys(errorWithHeaders.headers).forEach((key) => {
-				if (!key.startsWith('x-')) {
-					delete errorWithHeaders.headers[key];
-				}
-			});
-		}
+		stripNonXHeaders(error);
 
 		if (error instanceof NodeError) {
 			if (this.options.errorDescriptionMapper) {

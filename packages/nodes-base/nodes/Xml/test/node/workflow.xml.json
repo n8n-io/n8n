@@ -22,11 +22,18 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return {\n  data: {\n    id: 1,\n    firstName: 'Adam',\n    secondName: 'Smith',\n    fullName: 'Adam Smith',\n  }\n}"
+				"data": {
+					"data": {
+						"id": 1,
+						"firstName": "Adam",
+						"secondName": "Smith",
+						"fullName": "Adam Smith"
+					}
+				}
 			},
 			"id": "6a04ca32-c9cc-4cb1-a6b9-3a505b1c2dd5",
 			"name": "Code",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [700, 400]
 		},
@@ -45,11 +52,13 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return {\n\"data\":\n'<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?> <data> <id>1</id> <firstName>Adam</firstName> <secondName>Smith</secondName> <fullName>Adam Smith</fullName> </data>'\n}"
+				"data": {
+					"data": "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?> <data> <id>1</id> <firstName>Adam</firstName> <secondName>Smith</secondName> <fullName>Adam Smith</fullName> </data>"
+				}
 			},
 			"id": "817afbf7-9342-403f-8dc0-c4a3905fde4d",
 			"name": "Code1",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [680, 640]
 		},

@@ -1,0 +1,222 @@
+import { TelemetryProxy } from '@n8n/backend-services';
+import { mockInstance } from '@n8n/backend-test-utils';
+import { type OperationContext, User, WorkflowEntity } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+
+import { CollaborationService } from '@/collaboration/collaboration.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowService } from '@/workflows/workflow.service';
+
+import { createArchiveWorkflowTool } from '../tools/workflow-builder/delete-workflow.tool';
+
+vi.mock('@n8n/ai-workflow-builder', () => ({
+	MCP_ARCHIVE_WORKFLOW_TOOL: { toolName: 'archive_workflow', displayTitle: 'Archive Workflow' },
+	CODE_BUILDER_VALIDATE_TOOL: { toolName: 'validate_workflow_code', displayTitle: 'Validate' },
+	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL: {
+		toolName: 'create_workflow_from_code',
+		displayTitle: 'Create',
+	},
+	CODE_BUILDER_SEARCH_NODES_TOOL: { toolName: 'search', displayTitle: 'Search' },
+	CODE_BUILDER_GET_NODE_TYPES_TOOL: { toolName: 'get', displayTitle: 'Get' },
+	CODE_BUILDER_GET_SUGGESTED_NODES_TOOL: { toolName: 'suggest', displayTitle: 'Suggest' },
+	MCP_GET_SDK_REFERENCE_TOOL: { toolName: 'sdk_ref', displayTitle: 'SDK Ref' },
+}));
+
+/** Parse the first text content item from a tool result */
+const parseResult = (result: { content: Array<{ type: string; text?: string }> }) =>
+	JSON.parse((result.content[0] as { type: 'text'; text: string }).text) as Record<string, unknown>;
+
+describe('archive-workflow MCP tool', () => {
+	const user = Object.assign(new User(), { id: 'user-1' });
+	let workflowFinderService: WorkflowFinderService;
+	let workflowService: WorkflowService;
+	let telemetry: TelemetryProxy;
+	let collaborationService: CollaborationService;
+
+	const mockExistingWorkflow = Object.assign(new WorkflowEntity(), {
+		id: 'wf-1',
+		name: 'My Workflow',
+		nodes: [],
+		connections: {},
+		isArchived: false,
+		settings: { availableInMCP: true },
+	});
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+
+		workflowFinderService = mockInstance(WorkflowFinderService, {
+			findWorkflowForUser: vi.fn().mockResolvedValue(mockExistingWorkflow),
+		});
+		workflowService = mockInstance(WorkflowService);
+		telemetry = mockInstance(TelemetryProxy, {
+			track: vi.fn(),
+		});
+		collaborationService = mockInstance(CollaborationService, {
+			ensureWorkflowEditable: vi.fn().mockResolvedValue(undefined),
+			broadcastWorkflowUpdate: vi.fn().mockResolvedValue(undefined),
+		});
+	});
+
+	const createTool = (ctx?: OperationContext) =>
+		createArchiveWorkflowTool(
+			user,
+			workflowFinderService,
+			workflowService,
+			telemetry,
+			collaborationService,
+			ctx,
+		);
+
+	describe('smoke tests', () => {
+		test('creates tool with correct name and destructiveHint=true', () => {
+			const tool = createTool();
+
+			expect(tool.name).toBe('archive_workflow');
+			expect(tool.config).toBeDefined();
+			expect(tool.config.annotations).toEqual(
+				expect.objectContaining({
+					destructiveHint: true,
+					readOnlyHint: false,
+					idempotentHint: true,
+					openWorldHint: false,
+				}),
+			);
+			expect(typeof tool.handler).toBe('function');
+		});
+	});
+
+	describe('handler tests', () => {
+		test('successfully archives workflow and returns expected response', async () => {
+			(workflowService.archive as Mock).mockResolvedValue({
+				id: 'wf-1',
+				name: 'My Workflow',
+			});
+
+			const tool = createTool();
+			const result = await tool.handler({ workflowId: 'wf-1' }, {} as never);
+
+			const response = parseResult(result);
+			expect(response.archived).toBe(true);
+			expect(response.workflowId).toBe('wf-1');
+			expect(response.name).toBe('My Workflow');
+			expect(result.isError).toBeUndefined();
+
+			expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith('wf-1', user.id);
+		});
+
+		test('passes the operation context to the workflow service', async () => {
+			(workflowService.archive as Mock).mockResolvedValue({ id: 'wf-1', name: 'My Workflow' });
+			const ctx: OperationContext = {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			};
+
+			await createTool(ctx).handler({ workflowId: 'wf-1' }, {} as never);
+
+			expect(workflowService.archive).toHaveBeenCalledWith(
+				user,
+				'wf-1',
+				{ skipArchived: true },
+				ctx,
+			);
+			expect((workflowService.archive as Mock).mock.calls[0][3]).toBe(ctx);
+		});
+
+		test('returns error when workflow has active write lock', async () => {
+			(collaborationService.ensureWorkflowEditable as Mock).mockRejectedValue(
+				new Error('Cannot modify workflow while it is being edited by a user in the editor.'),
+			);
+
+			const tool = createTool();
+			const result = await tool.handler({ workflowId: 'wf-1' }, {} as never);
+
+			const response = parseResult(result);
+			expect(result.isError).toBe(true);
+			expect(response.error).toContain('being edited by a user');
+			expect(workflowService.archive).not.toHaveBeenCalled();
+		});
+
+		test('succeeds even when broadcastWorkflowUpdate rejects', async () => {
+			(workflowService.archive as Mock).mockResolvedValue({
+				id: 'wf-1',
+				name: 'My Workflow',
+			});
+			(collaborationService.broadcastWorkflowUpdate as Mock).mockRejectedValue(
+				new Error('Cache unavailable'),
+			);
+
+			const tool = createTool();
+			const result = await tool.handler({ workflowId: 'wf-1' }, {} as never);
+
+			const response = parseResult(result);
+			expect(response.archived).toBe(true);
+			expect(result.isError).toBeUndefined();
+		});
+
+		test('returns error when workflow not found or no permission to archive', async () => {
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(null);
+
+			const tool = createTool();
+			const result = await tool.handler({ workflowId: 'wf-missing' }, {} as never);
+
+			const response = parseResult(result);
+			expect(result.isError).toBe(true);
+			expect(response.error).toContain('not found or');
+			expect(response.error).toContain('permission to access');
+		});
+
+		test('returns error when service throws', async () => {
+			(workflowService.archive as Mock).mockRejectedValue(new Error('Database connection lost'));
+
+			const tool = createTool();
+			const result = await tool.handler({ workflowId: 'wf-1' }, {} as never);
+
+			const response = parseResult(result);
+			expect(result.isError).toBe(true);
+			expect(response.error).toBe('Database connection lost');
+		});
+
+		test('tracks telemetry on success', async () => {
+			(workflowService.archive as Mock).mockResolvedValue({
+				id: 'wf-1',
+				name: 'My Workflow',
+			});
+
+			const tool = createTool();
+			await tool.handler({ workflowId: 'wf-1' }, {} as never);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'User called mcp tool',
+				expect.objectContaining({
+					user_id: 'user-1',
+					tool_name: 'archive_workflow',
+					results: expect.objectContaining({
+						success: true,
+						data: expect.objectContaining({ workflowId: 'wf-1' }),
+					}),
+				}),
+			);
+		});
+
+		test('tracks telemetry on failure', async () => {
+			(workflowService.archive as Mock).mockRejectedValue(new Error('Unexpected error'));
+
+			const tool = createTool();
+			await tool.handler({ workflowId: 'wf-1' }, {} as never);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'User called mcp tool',
+				expect.objectContaining({
+					user_id: 'user-1',
+					tool_name: 'archive_workflow',
+					results: expect.objectContaining({
+						success: false,
+						error: 'Unexpected error',
+					}),
+				}),
+			);
+		});
+	});
+});

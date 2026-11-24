@@ -1,3 +1,4 @@
+import { utils as xlsxUtils } from '@e965/xlsx';
 import get from 'lodash/get';
 import type {
 	IDataObject,
@@ -6,8 +7,7 @@ import type {
 	INode,
 	IPollFunctions,
 } from 'n8n-workflow';
-import { ApplicationError, NodeOperationError } from 'n8n-workflow';
-import { utils as xlsxUtils } from 'xlsx';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import type {
 	ILookupValues,
@@ -28,12 +28,24 @@ export class GoogleSheet {
 
 	executeFunctions: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions;
 
+	/**
+	 * Single-use cache set by callers (e.g. append.operation) that have already
+	 * fetched the header row. Consumed and cleared by convertObjectArrayToSheetDataArray
+	 * to avoid a duplicate API call. Scoped to one node execution — a fresh GoogleSheet
+	 * instance is created per execute() call in router.ts.
+	 */
+	private columnNamesHint: string[] | undefined;
+
 	constructor(
 		spreadsheetId: string,
 		executeFunctions: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	) {
 		this.executeFunctions = executeFunctions;
 		this.id = spreadsheetId;
+	}
+
+	setColumnNamesHint(names: string[]): void {
+		this.columnNamesHint = names;
 	}
 
 	/**
@@ -46,10 +58,10 @@ export class GoogleSheet {
 	private encodeRange(range: string): string {
 		if (range.includes('!')) {
 			const [sheet, ranges] = range.split('!');
-			return `${encodeURIComponent(sheet)}!${ranges}`;
+			return `${sheet}!${ranges}`;
 		}
 		// Use '' so that sheet is not interpreted as range
-		return encodeURIComponent(`'${range}'`);
+		return `'${range}'`;
 	}
 
 	/**
@@ -68,7 +80,7 @@ export class GoogleSheet {
 		const response = await apiRequest.call(
 			this.executeFunctions,
 			'POST',
-			`/v4/spreadsheets/${this.id}/values/${this.encodeRange(range)}:clear`,
+			requestPath`/v4/spreadsheets/${this.id}/values/${this.encodeRange(range)}:clear`,
 			body,
 		);
 
@@ -91,7 +103,7 @@ export class GoogleSheet {
 		const response = await apiRequest.call(
 			this.executeFunctions,
 			'GET',
-			`/v4/spreadsheets/${this.id}/values/${this.encodeRange(range)}`,
+			requestPath`/v4/spreadsheets/${this.id}/values/${this.encodeRange(range)}`,
 			{},
 			query,
 		);
@@ -110,7 +122,7 @@ export class GoogleSheet {
 		const response = await apiRequest.call(
 			this.executeFunctions,
 			'GET',
-			`/v4/spreadsheets/${this.id}`,
+			requestPath`/v4/spreadsheets/${this.id}`,
 			{},
 			query,
 		);
@@ -129,7 +141,7 @@ export class GoogleSheet {
 		const response = (await apiRequest.call(
 			this.executeFunctions,
 			'GET',
-			`/v4/spreadsheets/${this.id}`,
+			requestPath`/v4/spreadsheets/${this.id}`,
 			{},
 			query,
 		)) as SpreadSheetResponse;
@@ -158,7 +170,7 @@ export class GoogleSheet {
 		const response = await apiRequest.call(
 			this.executeFunctions,
 			'GET',
-			`/v4/spreadsheets/${this.id}`,
+			requestPath`/v4/spreadsheets/${this.id}`,
 			{},
 			query,
 		);
@@ -179,7 +191,7 @@ export class GoogleSheet {
 		const response = await apiRequest.call(
 			this.executeFunctions,
 			'POST',
-			`/v4/spreadsheets/${this.id}:batchUpdate`,
+			requestPath`/v4/spreadsheets/${this.id}:batchUpdate`,
 			body,
 		);
 
@@ -198,7 +210,7 @@ export class GoogleSheet {
 		const response = await apiRequest.call(
 			this.executeFunctions,
 			'POST',
-			`/v4/spreadsheets/${this.id}/values:batchUpdate`,
+			requestPath`/v4/spreadsheets/${this.id}/values:batchUpdate`,
 			body,
 		);
 
@@ -229,15 +241,17 @@ export class GoogleSheet {
 		}
 
 		if (requests.length === 0) {
-			throw new ApplicationError('Must specify at least one column or row to add', {
-				level: 'warning',
-			});
+			throw new NodeOperationError(
+				this.executeFunctions.getNode(),
+				'Must specify at least one column or row to add',
+				{ level: 'warning' },
+			);
 		}
 
 		const response = await apiRequest.call(
 			this.executeFunctions,
 			'POST',
-			`/v4/spreadsheets/${this.id}:batchUpdate`,
+			requestPath`/v4/spreadsheets/${this.id}:batchUpdate`,
 			{ requests },
 		);
 
@@ -296,7 +310,7 @@ export class GoogleSheet {
 			response = await apiRequest.call(
 				this.executeFunctions,
 				'POST',
-				`/v4/spreadsheets/${this.id}/values/${this.encodeRange(range)}:append`,
+				requestPath`/v4/spreadsheets/${this.id}/values/${this.encodeRange(range)}:append`,
 				body,
 				query,
 			);
@@ -304,7 +318,7 @@ export class GoogleSheet {
 			response = await apiRequest.call(
 				this.executeFunctions,
 				'PUT',
-				`/v4/spreadsheets/${this.id}/values/${this.encodeRange(range)}`,
+				requestPath`/v4/spreadsheets/${this.id}/values/${this.encodeRange(range)}`,
 				body,
 				query,
 			);
@@ -725,7 +739,7 @@ export class GoogleSheet {
 				for (rowIndex = dataStartRowIndex; rowIndex < inputData.length; rowIndex++) {
 					if (
 						inputData[rowIndex][returnColumnIndex]?.toString() ===
-						lookupValue.lookupValue.toString()
+						lookupValue.lookupValue?.toString()
 					) {
 						if (addedRows.indexOf(rowIndex) === -1) {
 							returnData.push(inputData[rowIndex]);
@@ -757,7 +771,7 @@ export class GoogleSheet {
 
 					if (
 						inputData[rowIndex][returnColumnIndex]?.toString() !==
-						lookupValue.lookupValue.toString()
+						lookupValue.lookupValue?.toString()
 					) {
 						allMatch = false;
 						break;
@@ -798,10 +812,13 @@ export class GoogleSheet {
 
 		const columnNamesRow =
 			columnNamesList ||
+			(this.columnNamesHint !== undefined ? [this.columnNamesHint] : undefined) ||
 			(await this.getData(
 				`${decodedRange.name}!${keyRowIndex}:${keyRowIndex}`,
 				'UNFORMATTED_VALUE',
 			));
+
+		this.columnNamesHint = undefined;
 
 		if (columnNamesRow === undefined) {
 			throw new NodeOperationError(

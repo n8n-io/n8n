@@ -1,20 +1,22 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { ILoadOptionsFunctions, INode } from 'n8n-workflow';
 
 import { getMappingColumns } from '../../../v2/methods/resourceMapping';
 
-jest.mock('../../../v2/helpers/GoogleSheets.utils');
+vi.mock('../../../v2/helpers/GoogleSheets.utils');
 
 const mockGoogleSheetInstance = {
-	spreadsheetGetSheets: jest.fn(),
-	spreadsheetGetSheet: jest.fn(),
-	getData: jest.fn(),
-	testFilter: jest.fn(),
+	spreadsheetGetSheets: vi.fn(),
+	spreadsheetGetSheet: vi.fn(),
+	getData: vi.fn(),
+	testFilter: vi.fn(),
 };
 
-jest.mock('../../../v2/helpers/GoogleSheet', () => ({
-	GoogleSheet: jest.fn().mockImplementation(() => mockGoogleSheetInstance),
+vi.mock('../../../v2/helpers/GoogleSheet', () => ({
+	GoogleSheet: vi.fn(function () {
+		return mockGoogleSheetInstance;
+	}),
 }));
 
 describe('Google Sheets, getMappingColumns', () => {
@@ -25,7 +27,7 @@ describe('Google Sheets, getMappingColumns', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should map columns and add row number for update operation', async () => {
@@ -109,5 +111,17 @@ describe('Google Sheets, getMappingColumns', () => {
 
 		expect(result.fields).toHaveLength(3);
 		expect(mockGoogleSheetInstance.getData).toHaveBeenCalledWith('Sheet1!10:10', 'FORMATTED_VALUE');
+	});
+
+	it('should return no fields when sheetName is null', async () => {
+		loadOptionsFunctions.getNodeParameter
+			.mockReturnValueOnce({ mode: 'id', value: 'spreadsheetId' }) // documentId
+			.mockReturnValueOnce('Sheet1') // sheetName extracted value
+			.mockReturnValueOnce(undefined); // sheetName resource locator
+
+		const result = await getMappingColumns.call(loadOptionsFunctions);
+
+		expect(result).toEqual({ fields: [] });
+		expect(mockGoogleSheetInstance.spreadsheetGetSheet).not.toHaveBeenCalled();
 	});
 });

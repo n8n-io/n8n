@@ -1,33 +1,29 @@
+import type { DynamicTabOptions } from '@n8n/frontend-module-sdk';
 import type { RouteLocationRaw } from 'vue-router';
 import type { TabOptions } from '@n8n/design-system';
 
-export type DynamicTabOptions = TabOptions<string> & {
-	dynamicRoute?: {
-		name: string;
-		includeProjectId?: boolean;
-	};
-};
+export type ProcessedDynamicTab = TabOptions<string> & { insertAfter?: string };
 
 /**
  * Process dynamic route configuration for tabs
  * Resolves dynamic routes with project IDs and other parameters
  */
-export function processDynamicTab(tab: DynamicTabOptions, projectId?: string): TabOptions<string> {
-	if (!tab.dynamicRoute) {
-		return tab;
+export function processDynamicTab(tab: DynamicTabOptions, projectId?: string): ProcessedDynamicTab {
+	const { available: _available, dynamicRoute, ...staticTab } = tab;
+	if (!dynamicRoute) {
+		return staticTab;
 	}
 
 	const tabRoute: RouteLocationRaw = {
-		name: tab.dynamicRoute.name,
+		name: dynamicRoute.name,
 	};
 
-	if (tab.dynamicRoute.includeProjectId && projectId) {
+	if (dynamicRoute.includeProjectId && projectId) {
 		tabRoute.params = { projectId };
 	}
 
-	const { dynamicRoute, ...tabWithoutDynamic } = tab;
 	return {
-		...tabWithoutDynamic,
+		...staticTab,
 		to: tabRoute,
 	};
 }
@@ -38,6 +34,8 @@ export function processDynamicTab(tab: DynamicTabOptions, projectId?: string): T
 export function processDynamicTabs(
 	tabs: DynamicTabOptions[],
 	projectId?: string,
-): Array<TabOptions<string>> {
-	return tabs.map((tab) => processDynamicTab(tab, projectId));
+): ProcessedDynamicTab[] {
+	return tabs
+		.filter((tab) => tab.available?.(projectId) ?? true)
+		.map((tab) => processDynamicTab(tab, projectId));
 }

@@ -1,0 +1,328 @@
+import { CODE_LANGCHAIN_NODE_TYPE, FUNCTION_ITEM_NODE_TYPE, FUNCTION_NODE_TYPE } from './constants';
+import { Expression } from './expression';
+import { expandArraysToObjects } from './expression-array-expander';
+import { isExpression } from './expressions/expression-helpers';
+import { expressionUsesArrayWildcard } from './extensions';
+import type {
+	IExecuteData,
+	INode,
+	INodeExecutionData,
+	INodeParameterResourceLocator,
+	INodeParameters,
+	IWorkflowDataProxyAdditionalKeys,
+	NodeParameterValue,
+	NodeParameterValueType,
+	WorkflowExecuteMode,
+} from './interfaces';
+import type { IRunExecutionData } from './run-execution-data/run-execution-data';
+import { createEmptyRunExecutionData } from './run-execution-data-factory';
+import type { Workflow } from './workflow';
+import { WorkflowDataProxy } from './workflow-data-proxy';
+
+const usesArrayWildcard = (value: unknown): boolean =>
+	typeof value === 'string' && isExpression(value) && expressionUsesArrayWildcard(value.slice(1));
+
+const containsWildcardSyntax = (obj: object): boolean =>
+	Object.values(obj).some(
+		(value) =>
+			usesArrayWildcard(value) ||
+			(typeof value === 'object' && value !== null && containsWildcardSyntax(value)),
+	);
+
+// These nodes return vm2 proxies that the vm engine reads differently from native evaluation.
+const DEPRECATED_VM2_SANDBOX_NODE_TYPES = new Set([
+	FUNCTION_NODE_TYPE,
+	FUNCTION_ITEM_NODE_TYPE,
+	CODE_LANGCHAIN_NODE_TYPE,
+]);
+
+export class WorkflowExpression {
+	private readonly expression: Expression;
+
+	constructor(private readonly workflow: Workflow) {
+		const hasVm2SandboxNode = Object.values(workflow.nodes).some((node) =>
+			DEPRECATED_VM2_SANDBOX_NODE_TYPES.has(node.type),
+		);
+		this.expression = new Expression(workflow.timezone, !hasVm2SandboxNode);
+	}
+
+	/**
+	 * Resolves the parameter value.  If it is an expression it will execute it and
+	 * return the result. For everything simply the supplied value will be returned.
+	 */
+	resolveSimpleParameterValue(
+		parameterValue: NodeParameterValue,
+		siblingParameters: INodeParameters,
+		runExecutionData: IRunExecutionData | null,
+		runIndex: number,
+		itemIndex: number,
+		activeNodeName: string,
+		connectionInputData: INodeExecutionData[],
+		mode: WorkflowExecuteMode,
+		additionalKeys: IWorkflowDataProxyAdditionalKeys,
+		executeData?: IExecuteData,
+		returnObjectAsString = false,
+		selfData = {},
+		contextNodeName?: string,
+	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
+		if (!isExpression(parameterValue)) {
+			return parameterValue;
+		}
+
+		const dataProxy = new WorkflowDataProxy(
+			this.workflow,
+			runExecutionData,
+			runIndex,
+			itemIndex,
+			activeNodeName,
+			connectionInputData,
+			siblingParameters,
+			mode,
+			additionalKeys,
+			executeData,
+			-1,
+			selfData,
+			contextNodeName,
+		);
+		const data = dataProxy.getDataProxy();
+
+		return this.expression.resolveSimpleParameterValue(parameterValue, data, returnObjectAsString);
+	}
+
+	/**
+	 * Returns the resolved node parameter value. If it is an expression it will execute it and
+	 * return the result. If the value to resolve is an array or object it will do the same
+	 * for all of the items and values.
+	 */
+	getParameterValue(
+		parameterValue: NodeParameterValueType | INodeParameterResourceLocator,
+		runExecutionData: IRunExecutionData | null,
+		runIndex: number,
+		itemIndex: number,
+		activeNodeName: string,
+		connectionInputData: INodeExecutionData[],
+		mode: WorkflowExecuteMode,
+		additionalKeys: IWorkflowDataProxyAdditionalKeys,
+		executeData?: IExecuteData,
+		returnObjectAsString = false,
+		selfData = {},
+		contextNodeName?: string,
+	): NodeParameterValueType {
+		// Helper function which returns true when the parameter is a complex one or array
+		const isComplexParameter = (value: NodeParameterValueType) => {
+			return typeof value === 'object';
+		};
+
+		// Helper function which resolves a parameter value depending on if it is simply or not
+		const resolveParameterValue = (
+			value: NodeParameterValueType,
+			siblingParameters: INodeParameters,
+		) => {
+			if (isComplexParameter(value)) {
+				return this.getParameterValue(
+					value,
+					runExecutionData,
+					runIndex,
+					itemIndex,
+					activeNodeName,
+					connectionInputData,
+					mode,
+					additionalKeys,
+					executeData,
+					returnObjectAsString,
+					selfData,
+					contextNodeName,
+				);
+			}
+
+			return this.resolveSimpleParameterValue(
+				value,
+				siblingParameters,
+				runExecutionData,
+				runIndex,
+				itemIndex,
+				activeNodeName,
+				connectionInputData,
+				mode,
+				additionalKeys,
+				executeData,
+				returnObjectAsString,
+				selfData,
+				contextNodeName,
+			);
+		};
+
+		// Early return for simple non-expression values (performance optimization + timezone correctness)
+		if (!isComplexParameter(parameterValue)) {
+			return this.resolveSimpleParameterValue(
+				parameterValue,
+				{},
+				runExecutionData,
+				runIndex,
+				itemIndex,
+				activeNodeName,
+				connectionInputData,
+				mode,
+				additionalKeys,
+				executeData,
+				returnObjectAsString,
+				selfData,
+				contextNodeName,
+			);
+		}
+
+		// Handle arrays - recursively resolve each element
+		if (Array.isArray(parameterValue)) {
+			// Data is an array; items using [*] that resolve to an array are flattened into it
+			const returnData: NodeParameterValueType[] = [];
+			for (const item of parameterValue) {
+				const resolved = resolveParameterValue(item, {});
+				const itemUsesWildcard =
+					usesArrayWildcard(item) ||
+					(typeof item === 'object' && item !== null && containsWildcardSyntax(item));
+				if (itemUsesWildcard && Array.isArray(resolved)) {
+					for (const element of resolved) returnData.push(element);
+				} else {
+					returnData.push(resolved);
+				}
+			}
+			return returnData as NodeParameterValue[] | INodeParameters[];
+		}
+
+		// Handle null/undefined
+		if (parameterValue === null || parameterValue === undefined) {
+			return parameterValue;
+		}
+
+		if (typeof parameterValue !== 'object') {
+			return {};
+		}
+
+		// Data is an object
+		const returnData: INodeParameters = {};
+		const wildcardKeys: string[] = [];
+
+		for (const [key, value] of Object.entries(parameterValue)) {
+			const resolved = resolveParameterValue(
+				value as NodeParameterValueType,
+				parameterValue as INodeParameters,
+			);
+			returnData[key] = resolved;
+
+			// Only values written with [*] expand the object into one object per element
+			if (usesArrayWildcard(value) && Array.isArray(resolved)) {
+				wildcardKeys.push(key);
+			}
+		}
+
+		if (wildcardKeys.length > 0) {
+			return expandArraysToObjects(returnData, wildcardKeys);
+		}
+
+		if (returnObjectAsString && typeof returnData === 'object') {
+			return this.convertObjectValueToString(returnData);
+		}
+
+		return returnData;
+	}
+
+	/**
+	 * Resolves value of parameter. But does not work for workflow-data.
+	 */
+	getSimpleParameterValue(
+		node: INode,
+		parameterValue: string | boolean | undefined,
+		mode: WorkflowExecuteMode,
+		additionalKeys: IWorkflowDataProxyAdditionalKeys,
+		executeData?: IExecuteData,
+		defaultValue?: boolean | number | string | unknown[],
+	): boolean | number | string | undefined | unknown[] {
+		if (parameterValue === undefined) {
+			return defaultValue;
+		}
+
+		const runIndex = 0;
+		const itemIndex = 0;
+		const connectionInputData: INodeExecutionData[] = [];
+		const runData = createEmptyRunExecutionData();
+
+		return this.getParameterValue(
+			parameterValue,
+			runData,
+			runIndex,
+			itemIndex,
+			node.name,
+			connectionInputData,
+			mode,
+			additionalKeys,
+			executeData,
+		) as boolean | number | string | undefined;
+	}
+
+	/**
+	 * Resolves value of complex parameter. But does not work for workflow-data.
+	 */
+	getComplexParameterValue(
+		node: INode,
+		parameterValue: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
+		mode: WorkflowExecuteMode,
+		additionalKeys: IWorkflowDataProxyAdditionalKeys,
+		executeData?: IExecuteData,
+		defaultValue: NodeParameterValueType | undefined = undefined,
+		selfData = {},
+	): NodeParameterValueType | undefined {
+		if (parameterValue === undefined) {
+			return defaultValue;
+		}
+
+		const runIndex = 0;
+		const itemIndex = 0;
+		const connectionInputData: INodeExecutionData[] = [];
+		const runData = createEmptyRunExecutionData();
+
+		const returnData = this.getParameterValue(
+			parameterValue,
+			runData,
+			runIndex,
+			itemIndex,
+			node.name,
+			connectionInputData,
+			mode,
+			additionalKeys,
+			executeData,
+			false,
+			selfData,
+		);
+
+		return this.getParameterValue(
+			returnData,
+			runData,
+			runIndex,
+			itemIndex,
+			node.name,
+			connectionInputData,
+			mode,
+			additionalKeys,
+			executeData,
+			false,
+			selfData,
+		);
+	}
+
+	convertObjectValueToString(value: object): string {
+		return this.expression.convertObjectValueToString(value);
+	}
+
+	/** Returns whether an isolate was newly acquired; `false` means this caller already held one and must not release it. */
+	async acquireIsolate(): Promise<boolean> {
+		return await this.expression.acquireIsolate();
+	}
+
+	async releaseIsolate(): Promise<void> {
+		await this.expression.releaseIsolate();
+	}
+
+	async withIsolate<T>(fn: () => Promise<T>): Promise<T> {
+		return await this.expression.withIsolate(fn);
+	}
+}

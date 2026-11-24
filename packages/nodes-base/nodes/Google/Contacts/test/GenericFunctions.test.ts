@@ -1,12 +1,13 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, ILoadOptionsFunctions, INode } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 import * as GenericFunctions from '../GenericFunctions';
+import type { Mock, Mocked } from 'vitest';
 
 describe('Google Contacts GenericFunctions', () => {
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
-	let mockLoadOptionsFunctions: jest.Mocked<ILoadOptionsFunctions>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+	let mockLoadOptionsFunctions: Mocked<ILoadOptionsFunctions>;
 	let mockNode: INode;
 
 	beforeEach(() => {
@@ -21,28 +22,28 @@ describe('Google Contacts GenericFunctions', () => {
 			parameters: {},
 		};
 
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
 		mockLoadOptionsFunctions.getNode.mockReturnValue(mockNode);
 
 		// Properly mock the requestOAuth2 helper
-		(mockExecuteFunctions.helpers.requestOAuth2 as jest.Mock) = jest.fn();
-		(mockLoadOptionsFunctions.helpers.requestOAuth2 as jest.Mock) = jest.fn();
+		(mockExecuteFunctions.helpers.requestOAuth2 as Mock) = vi.fn();
+		(mockLoadOptionsFunctions.helpers.requestOAuth2 as Mock) = vi.fn();
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('googleApiRequest', () => {
 		it('should make successful API request with default parameters', async () => {
 			const mockResponse = { id: 'person123', names: [{ displayName: 'John Doe' }] };
-			(mockExecuteFunctions.helpers.requestOAuth2 as jest.Mock).mockResolvedValue(mockResponse);
+			(mockExecuteFunctions.helpers.requestOAuth2 as Mock).mockResolvedValue(mockResponse);
 
 			const result = await GenericFunctions.googleApiRequest.call(
 				mockExecuteFunctions,
 				'GET',
-				'/people/me',
+				requestPath`/people/me`,
 			);
 
 			expect(mockExecuteFunctions.helpers.requestOAuth2).toHaveBeenCalledWith(
@@ -53,7 +54,7 @@ describe('Google Contacts GenericFunctions', () => {
 					},
 					method: 'GET',
 					qs: {},
-					uri: 'https://people.googleapis.com/v1/people/me',
+					uri: requestUrl`https://people.googleapis.com/v1/people/me`,
 					json: true,
 				},
 			);
@@ -61,14 +62,14 @@ describe('Google Contacts GenericFunctions', () => {
 		});
 
 		it('should make API request with custom URI', async () => {
-			const customUri = 'https://custom.api.com/endpoint';
+			const customUri = requestUrl`https://custom.api.com/endpoint`;
 			const mockResponse = { data: 'custom response' };
-			(mockExecuteFunctions.helpers.requestOAuth2 as jest.Mock).mockResolvedValue(mockResponse);
+			(mockExecuteFunctions.helpers.requestOAuth2 as Mock).mockResolvedValue(mockResponse);
 
 			const result = await GenericFunctions.googleApiRequest.call(
 				mockExecuteFunctions,
 				'POST',
-				'/custom',
+				requestPath`/custom`,
 				{ data: 'test' },
 				{ param: 'value' },
 				customUri,
@@ -93,12 +94,12 @@ describe('Google Contacts GenericFunctions', () => {
 		it('should include custom headers when provided', async () => {
 			const customHeaders = { 'X-Custom-Header': 'custom-value' };
 			const mockResponse = { success: true };
-			(mockExecuteFunctions.helpers.requestOAuth2 as jest.Mock).mockResolvedValue(mockResponse);
+			(mockExecuteFunctions.helpers.requestOAuth2 as Mock).mockResolvedValue(mockResponse);
 
 			await GenericFunctions.googleApiRequest.call(
 				mockExecuteFunctions,
 				'PUT',
-				'/people/123',
+				requestPath`/people/123`,
 				{ name: 'Updated Name' },
 				{},
 				undefined,
@@ -115,7 +116,7 @@ describe('Google Contacts GenericFunctions', () => {
 					method: 'PUT',
 					body: { name: 'Updated Name' },
 					qs: {},
-					uri: 'https://people.googleapis.com/v1/people/123',
+					uri: requestUrl`https://people.googleapis.com/v1/people/123`,
 					json: true,
 				},
 			);
@@ -123,16 +124,21 @@ describe('Google Contacts GenericFunctions', () => {
 
 		it('should remove empty body from request options', async () => {
 			const mockResponse = { data: 'response' };
-			(mockExecuteFunctions.helpers.requestOAuth2 as jest.Mock).mockResolvedValue(mockResponse);
+			(mockExecuteFunctions.helpers.requestOAuth2 as Mock).mockResolvedValue(mockResponse);
 
-			await GenericFunctions.googleApiRequest.call(mockExecuteFunctions, 'GET', '/people', {});
+			await GenericFunctions.googleApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				requestPath`/people`,
+				{},
+			);
 
 			expect(mockExecuteFunctions.helpers.requestOAuth2).toHaveBeenCalledWith(
 				'googleContactsOAuth2Api',
 				expect.objectContaining({
 					method: 'GET',
 					qs: {},
-					uri: 'https://people.googleapis.com/v1/people',
+					uri: requestUrl`https://people.googleapis.com/v1/people`,
 					json: true,
 					headers: {
 						'Content-Type': 'application/json',
@@ -140,25 +146,25 @@ describe('Google Contacts GenericFunctions', () => {
 				}),
 			);
 
-			const callArgs = (mockExecuteFunctions.helpers.requestOAuth2 as jest.Mock).mock.calls[0][1];
+			const callArgs = (mockExecuteFunctions.helpers.requestOAuth2 as Mock).mock.calls[0][1];
 			expect(callArgs).not.toHaveProperty('body');
 		});
 
 		it('should work with ILoadOptionsFunctions context', async () => {
 			const mockResponse = { connections: [] };
-			(mockLoadOptionsFunctions.helpers.requestOAuth2 as jest.Mock).mockResolvedValue(mockResponse);
+			(mockLoadOptionsFunctions.helpers.requestOAuth2 as Mock).mockResolvedValue(mockResponse);
 
 			const result = await GenericFunctions.googleApiRequest.call(
 				mockLoadOptionsFunctions,
 				'GET',
-				'/people/connections',
+				requestPath`/people/connections`,
 			);
 
 			expect(mockLoadOptionsFunctions.helpers.requestOAuth2).toHaveBeenCalledWith(
 				'googleContactsOAuth2Api',
 				expect.objectContaining({
 					method: 'GET',
-					uri: 'https://people.googleapis.com/v1/people/connections',
+					uri: requestUrl`https://people.googleapis.com/v1/people/connections`,
 				}),
 			);
 			expect(result).toEqual(mockResponse);
@@ -166,10 +172,14 @@ describe('Google Contacts GenericFunctions', () => {
 
 		it('should throw NodeApiError on request failure', async () => {
 			const apiError = new Error('API Error');
-			(mockExecuteFunctions.helpers.requestOAuth2 as jest.Mock).mockRejectedValue(apiError);
+			(mockExecuteFunctions.helpers.requestOAuth2 as Mock).mockRejectedValue(apiError);
 
 			await expect(
-				GenericFunctions.googleApiRequest.call(mockExecuteFunctions, 'GET', '/people/invalid'),
+				GenericFunctions.googleApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					requestPath`/people/invalid`,
+				),
 			).rejects.toThrow(NodeApiError);
 
 			expect(mockExecuteFunctions.getNode).toHaveBeenCalled();
@@ -177,31 +187,31 @@ describe('Google Contacts GenericFunctions', () => {
 
 		it('should handle authentication errors', async () => {
 			const authError = { code: 401, message: 'Unauthorized' };
-			(mockExecuteFunctions.helpers.requestOAuth2 as jest.Mock).mockRejectedValue(authError);
+			(mockExecuteFunctions.helpers.requestOAuth2 as Mock).mockRejectedValue(authError);
 
 			await expect(
-				GenericFunctions.googleApiRequest.call(mockExecuteFunctions, 'POST', '/people'),
+				GenericFunctions.googleApiRequest.call(mockExecuteFunctions, 'POST', requestPath`/people`),
 			).rejects.toThrow(NodeApiError);
 		});
 
 		it('should handle network errors', async () => {
 			const networkError = { code: 'ECONNREFUSED', message: 'Connection refused' };
-			(mockExecuteFunctions.helpers.requestOAuth2 as jest.Mock).mockRejectedValue(networkError);
+			(mockExecuteFunctions.helpers.requestOAuth2 as Mock).mockRejectedValue(networkError);
 
 			await expect(
-				GenericFunctions.googleApiRequest.call(mockExecuteFunctions, 'GET', '/people'),
+				GenericFunctions.googleApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/people`),
 			).rejects.toThrow(NodeApiError);
 		});
 
 		it('should preserve query string parameters', async () => {
 			const mockResponse = { data: 'filtered results' };
 			const queryParams = { personFields: 'names,emailAddresses', pageSize: '50' };
-			(mockExecuteFunctions.helpers.requestOAuth2 as jest.Mock).mockResolvedValue(mockResponse);
+			(mockExecuteFunctions.helpers.requestOAuth2 as Mock).mockResolvedValue(mockResponse);
 
 			await GenericFunctions.googleApiRequest.call(
 				mockExecuteFunctions,
 				'GET',
-				'/people/connections',
+				requestPath`/people/connections`,
 				{},
 				queryParams,
 			);
@@ -219,7 +229,7 @@ describe('Google Contacts GenericFunctions', () => {
 		it('should fetch all items with pagination', async () => {
 			// Mock the requestOAuth2 helper to simulate pagination responses
 			let callCount = 0;
-			(mockExecuteFunctions.helpers.requestOAuth2 as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.helpers.requestOAuth2 as Mock).mockImplementation(
 				async (_, options) => {
 					callCount++;
 					if (callCount === 1) {
@@ -247,7 +257,7 @@ describe('Google Contacts GenericFunctions', () => {
 				mockExecuteFunctions,
 				'connections',
 				'GET',
-				'/people/connections',
+				requestPath`/people/connections`,
 				{},
 				{ personFields: 'names' },
 			);
@@ -265,15 +275,13 @@ describe('Google Contacts GenericFunctions', () => {
 				connections: [{ resourceName: 'people/1', names: [{ displayName: 'Only Contact' }] }],
 			};
 
-			(mockExecuteFunctions.helpers.requestOAuth2 as jest.Mock).mockResolvedValue(
-				singlePageResponse,
-			);
+			(mockExecuteFunctions.helpers.requestOAuth2 as Mock).mockResolvedValue(singlePageResponse);
 
 			const result = await GenericFunctions.googleApiRequestAllItems.call(
 				mockExecuteFunctions,
 				'connections',
 				'GET',
-				'/people/connections',
+				requestPath`/people/connections`,
 			);
 
 			expect(result).toHaveLength(1);
@@ -286,13 +294,13 @@ describe('Google Contacts GenericFunctions', () => {
 				connections: [],
 			};
 
-			(mockExecuteFunctions.helpers.requestOAuth2 as jest.Mock).mockResolvedValue(emptyResponse);
+			(mockExecuteFunctions.helpers.requestOAuth2 as Mock).mockResolvedValue(emptyResponse);
 
 			const result = await GenericFunctions.googleApiRequestAllItems.call(
 				mockExecuteFunctions,
 				'connections',
 				'GET',
-				'/people/connections',
+				requestPath`/people/connections`,
 			);
 
 			expect(result).toEqual([]);
@@ -307,13 +315,13 @@ describe('Google Contacts GenericFunctions', () => {
 				],
 			};
 
-			(mockLoadOptionsFunctions.helpers.requestOAuth2 as jest.Mock).mockResolvedValue(mockResponse);
+			(mockLoadOptionsFunctions.helpers.requestOAuth2 as Mock).mockResolvedValue(mockResponse);
 
 			const result = await GenericFunctions.googleApiRequestAllItems.call(
 				mockLoadOptionsFunctions,
 				'items',
 				'GET',
-				'/custom/endpoint',
+				requestPath`/custom/endpoint`,
 				{ filter: 'active' },
 				{ sortBy: 'name' },
 			);
@@ -337,7 +345,7 @@ describe('Google Contacts GenericFunctions', () => {
 				nextPageToken: undefined,
 			};
 
-			(mockExecuteFunctions.helpers.requestOAuth2 as jest.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.requestOAuth2 as Mock).mockResolvedValue(
 				responseWithUndefinedToken,
 			);
 
@@ -345,7 +353,7 @@ describe('Google Contacts GenericFunctions', () => {
 				mockExecuteFunctions,
 				'connections',
 				'GET',
-				'/people/connections',
+				requestPath`/people/connections`,
 			);
 
 			expect(result).toHaveLength(1);
@@ -361,7 +369,7 @@ describe('Google Contacts GenericFunctions', () => {
 				nextPageToken: hasNext ? `token${pageNum + 1}` : '',
 			});
 
-			(mockExecuteFunctions.helpers.requestOAuth2 as jest.Mock)
+			(mockExecuteFunctions.helpers.requestOAuth2 as Mock)
 				.mockResolvedValueOnce(createResponse(0, true))
 				.mockResolvedValueOnce(createResponse(1, true))
 				.mockResolvedValueOnce(createResponse(2, false));
@@ -370,7 +378,7 @@ describe('Google Contacts GenericFunctions', () => {
 				mockExecuteFunctions,
 				'connections',
 				'GET',
-				'/people/connections',
+				requestPath`/people/connections`,
 			);
 
 			expect(result).toHaveLength(30);
@@ -379,14 +387,14 @@ describe('Google Contacts GenericFunctions', () => {
 
 		it('should propagate errors from underlying API requests', async () => {
 			const apiError = new Error('Rate limit exceeded');
-			(mockExecuteFunctions.helpers.requestOAuth2 as jest.Mock).mockRejectedValue(apiError);
+			(mockExecuteFunctions.helpers.requestOAuth2 as Mock).mockRejectedValue(apiError);
 
 			await expect(
 				GenericFunctions.googleApiRequestAllItems.call(
 					mockExecuteFunctions,
 					'connections',
 					'GET',
-					'/people/connections',
+					requestPath`/people/connections`,
 				),
 			).rejects.toThrow('Rate limit exceeded');
 		});

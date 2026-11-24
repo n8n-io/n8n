@@ -1,0 +1,122 @@
+import type { AgentBackgroundJobDto, AgentBackgroundJobSignal } from '@n8n/api-types';
+import type { BadgeVariant } from '@n8n/design-system';
+import type { ThinkingSegment } from '@/features/ai/shared/agentsChat/types';
+
+export type EventKind =
+	| 'user'
+	| 'agent'
+	| 'skill'
+	| 'memory'
+	| 'tool'
+	| 'node'
+	| 'workflow'
+	| 'execution-error'
+	| 'suspension'
+	| 'hitl-response'
+	| 'background-task-signal'
+	| 'background-task';
+
+export type ToolCallOutcome = 'success' | 'error';
+/** A memory row shows a recall_memory or a flag_memory call. */
+export type MemoryAction = 'recall' | 'flag';
+export type TimelineActivityStatus = 'running' | 'waiting' | 'completed' | 'failed' | 'interrupted';
+/**
+ * What a suspension is waiting for. `wait` is a workflow tool parked on a Wait
+ * node: nobody is being asked anything, the resume arrives from the workflow.
+ */
+export type HitlRequestType = 'approval' | 'interaction' | 'wait';
+export type HitlResponseStatus = 'approved' | 'declined' | 'responded';
+export type TimelineStatusFilterKey = 'approved' | 'declined' | 'error';
+
+/** Where the tokens of a turn or a thread went. */
+export interface TimelineTokenBreakdown {
+	/** Input tokens, cached input included. */
+	inputTokens: number;
+	/** Input tokens read from the prompt cache. A subset of `inputTokens`. */
+	cacheReadTokens: number | null;
+	/** Input tokens written to the prompt cache. A subset of `inputTokens`. */
+	cacheWriteTokens: number | null;
+	outputTokens: number;
+	totalTokens: number;
+}
+
+/** The model usage of one turn. The turn is one agent execution. */
+export interface TimelineTurnUsage extends TimelineTokenBreakdown {
+	cost: number | null;
+	startedAt: number | null;
+	stoppedAt: number | null;
+}
+
+export interface TimelineItem {
+	id?: string;
+	kind: EventKind;
+	executionId: string;
+	timestamp: number;
+	endTimestamp?: number;
+	activityStatus?: TimelineActivityStatus;
+	content?: string;
+	thinkingSegments?: ThinkingSegment[];
+	backgroundJobSignal?: AgentBackgroundJobSignal;
+	/** Current task state. The task ID stays stable across updates. */
+	backgroundTask?: AgentBackgroundJobDto;
+	/** Display name of the chat platform user who wrote the turn (only set for `kind: 'user'`). */
+	authorName?: string;
+	/** Files attached to the user turn (only set for `kind: 'user'`). */
+	attachments?: Array<{ id: string; fileName: string; mimeType: string; sizeBytes: number }>;
+	toolName?: string;
+	/** Only set for `kind: 'memory'`. */
+	memoryAction?: MemoryAction;
+	/** Display name of the skill loaded by a `load_skill` call. */
+	skillName?: string;
+	toolCallId?: string;
+	toolInput?: unknown;
+	toolOutput?: unknown;
+	executionStatus?: 'error' | 'interrupted';
+	/** Terminal outcome of a tool execution. Human decisions are represented on HITL response items. */
+	toolOutcome?: ToolCallOutcome;
+	/** @deprecated Use `toolOutcome`. Kept for compatibility with existing timeline consumers. */
+	toolSuccess?: boolean;
+	workflowId?: string;
+	workflowName?: string;
+	workflowExecutionId?: string;
+	workflowTriggerType?: string;
+	nodeType?: string;
+	nodeTypeVersion?: number;
+	nodeDisplayName?: string;
+	/** Request and response data correlated across a suspended tool call. */
+	hitlRequestType?: HitlRequestType;
+	hitlRequest?: unknown;
+	hitlResponse?: unknown;
+	hitlResponseStatus?: HitlResponseStatus;
+	hitlToolDisplayName?: string;
+	/**
+	 * Configured node parameters from the agent's JSON config (only set for
+	 * `kind: 'node'`). Surfaced in the IO viewer so the user can see the node's
+	 * actual config — channel, operation, `$fromAI(...)` templates — alongside
+	 * the LLM's runtime input items.
+	 */
+	nodeParameters?: Record<string, unknown>;
+	/**
+	 * Resolved display name for a `delegate_subagent` tool call — the configured
+	 * sub-agent's name, falling back to the humanized task name. Set by the view
+	 * so the row/chart/detail can render "Sub-agent · <name>".
+	 */
+	subAgentName?: string;
+	resumed?: boolean;
+	guardrailCode?: string;
+	/** The usage of the turn. Only set on the last agent message of the turn. */
+	turnUsage?: TimelineTurnUsage;
+}
+
+interface BaseFilterOption {
+	key: string;
+	label: string;
+	count: number;
+}
+
+export type FilterOption =
+	| (BaseFilterOption & { presentation: 'swatch'; color: string })
+	| (BaseFilterOption & {
+			presentation: 'badge';
+			badgeTheme: Extract<BadgeVariant, 'outline' | 'success' | 'danger'>;
+	  });

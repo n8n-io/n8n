@@ -1,4 +1,3 @@
-import { ApplicationError } from '@n8n/errors';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -7,22 +6,24 @@ import type {
 	ILoadOptionsFunctions,
 	IRequestOptions,
 	IWebhookFunctions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
+import { requestUrl } from 'n8n-workflow';
 
 export async function mailCheckApiRequest(
 	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string,
 	headers: IDataObject = {},
-	option: IDataObject = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('mailcheckApi');
 
-	let options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Content-Type': 'application/json',
 			Authorization: `Bearer ${credentials.apiKey}`,
@@ -30,11 +31,10 @@ export async function mailCheckApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `https://api.mailcheck.co/v1${resource}`,
+		uri: requestUrl`https://api.mailcheck.co/v1${resource}`,
 		json: true,
 	};
 	try {
-		options = Object.assign({}, options, option);
 		if (Object.keys(headers).length !== 0) {
 			options.headers = Object.assign({}, options.headers, headers);
 		}
@@ -45,7 +45,7 @@ export async function mailCheckApiRequest(
 	} catch (error) {
 		if (error.response?.body?.message) {
 			// Try to return the error prettier
-			throw new ApplicationError(
+			throw new OperationalError(
 				`Mailcheck error response [${error.statusCode}]: ${error.response.body.message}`,
 				{ level: 'warning' },
 			);

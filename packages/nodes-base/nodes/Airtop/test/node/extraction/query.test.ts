@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import nock from 'nock';
 
 import * as query from '../../../actions/extraction/query.operation';
@@ -25,12 +26,12 @@ const mockResponse = {
 const mockJsonSchema =
 	'{"type":"object","properties":{"productCount":{"type":"number"},"priceRange":{"type":"object"}}}';
 
-jest.mock('../../../transport', () => {
-	const originalModule = jest.requireActual<typeof transport>('../../../transport');
+vi.mock('../../../transport', async () => {
+	const originalModule = await vi.importActual<typeof transport>('../../../transport');
 	return {
 		...originalModule,
-		apiRequest: jest.fn(async function (method: string, endpoint: string) {
-			if (method === 'DELETE' && endpoint.includes('/sessions/')) {
+		apiRequest: vi.fn(async function (method: string, endpoint: string) {
+			if (method === 'DELETE' && String(endpoint).includes('/sessions/')) {
 				return { status: 'success' };
 			}
 			return mockResponse;
@@ -38,17 +39,19 @@ jest.mock('../../../transport', () => {
 	};
 });
 
-jest.mock('../../../GenericFunctions', () => {
-	const originalModule = jest.requireActual<typeof GenericFunctions>('../../../GenericFunctions');
+vi.mock('../../../GenericFunctions', async () => {
+	const originalModule = await vi.importActual<typeof GenericFunctions>(
+		'../../../GenericFunctions',
+	);
 	return {
 		...originalModule,
-		createSessionAndWindow: jest.fn().mockImplementation(async () => {
+		createSessionAndWindow: vi.fn().mockImplementation(async () => {
 			return {
 				sessionId: 'new-session-456',
 				windowId: 'new-win-456',
 			};
 		}),
-		shouldCreateNewSession: jest.fn().mockImplementation(function (this: any) {
+		shouldCreateNewSession: vi.fn().mockImplementation(function (this: any) {
 			const sessionMode = this.getNodeParameter('sessionMode', 0);
 			return sessionMode === 'new';
 		}),
@@ -62,12 +65,10 @@ describe('Test Airtop, query page operation', () => {
 
 	afterAll(() => {
 		nock.restore();
-		jest.unmock('../../../transport');
-		jest.unmock('../../../GenericFunctions');
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should query the page with minimal parameters using existing session', async () => {
@@ -83,7 +84,7 @@ describe('Test Airtop, query page operation', () => {
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/page-query',
+			requestPath`/sessions/test-session-123/windows/win-123/page-query`,
 			{
 				prompt: 'How many products are on the page and what is their price range?',
 				configuration: {
@@ -121,7 +122,7 @@ describe('Test Airtop, query page operation', () => {
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/page-query',
+			requestPath`/sessions/test-session-123/windows/win-123/page-query`,
 			{
 				prompt: 'How many products are on the page and what is their price range?',
 				configuration: {
@@ -161,7 +162,7 @@ describe('Test Airtop, query page operation', () => {
 		expect(transport.apiRequest).toHaveBeenNthCalledWith(
 			1,
 			'POST',
-			'/sessions/new-session-456/windows/new-win-456/page-query',
+			requestPath`/sessions/new-session-456/windows/new-win-456/page-query`,
 			{
 				prompt: 'How many products are on the page and what is their price range?',
 				configuration: {
@@ -221,7 +222,7 @@ describe('Test Airtop, query page operation', () => {
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/page-query',
+			requestPath`/sessions/test-session-123/windows/win-123/page-query`,
 			{
 				prompt: 'List the colors of the products on the page',
 				configuration: {
@@ -259,7 +260,7 @@ describe('Test Airtop, query page operation', () => {
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/page-query',
+			requestPath`/sessions/test-session-123/windows/win-123/page-query`,
 			{
 				prompt: 'How many products are on the page and what is their price range?',
 				configuration: {

@@ -4,7 +4,14 @@
  * If a field is marked as dynamic in the schema it is considered dynamic.
  */
 import { Container } from '@n8n/di';
-import { NodeHelpers, type ICredentialType, type INodeProperties } from 'n8n-workflow';
+import isEqual from 'lodash/isEqual';
+import {
+	CREDENTIAL_BLANKING_VALUE,
+	NodeHelpers,
+	type ICredentialDataDecryptedObject,
+	type ICredentialType,
+	type INodeProperties,
+} from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
 
@@ -43,4 +50,23 @@ export function extractSharedFields(credentialType: ICredentialType): string[] {
 	}
 
 	return sharedFields;
+}
+
+/**
+ * Shared (static, non-resolvable) fields whose value differs between stored and
+ * incoming data. Only fields present in `newData` are considered; the redaction
+ * placeholder never counts as a change (defensive — caller should un-redact first).
+ */
+export function getChangedSharedFields(
+	credentialType: ICredentialType,
+	oldData: ICredentialDataDecryptedObject,
+	newData: ICredentialDataDecryptedObject,
+): string[] {
+	const sharedFields = extractSharedFields(credentialType);
+
+	return sharedFields.filter((field) => {
+		if (!(field in newData)) return false;
+		if (newData[field] === CREDENTIAL_BLANKING_VALUE) return false;
+		return !isEqual(oldData[field], newData[field]);
+	});
 }

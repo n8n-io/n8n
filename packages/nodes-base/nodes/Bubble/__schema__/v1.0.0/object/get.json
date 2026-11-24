@@ -4,15 +4,9 @@
         "_id": {
             "type": "string"
         },
-        "Created By": {
-            "type": "string"
-        },
-        "Created Date": {
-            "type": "string"
-        },
-        "Modified Date": {
+        "agencia": {
             "type": "string"
         }
     },
-    "version": 1
+    "version": 3
 }

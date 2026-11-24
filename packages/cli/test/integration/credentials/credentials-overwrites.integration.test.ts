@@ -1,12 +1,13 @@
-import { testDb } from '@n8n/backend-test-utils';
+import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 
-import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialTypes } from '@/credential-types';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
 import type { ICredentialsOverwrite } from '@/interfaces';
+import { FrontendService } from '@/services/frontend.service';
 
 describe('CredentialsOverwrites - Integration Tests', () => {
 	let credentialsOverwrites: CredentialsOverwrites;
@@ -16,6 +17,9 @@ describe('CredentialsOverwrites - Integration Tests', () => {
 	let credentialTypes: CredentialTypes;
 
 	beforeAll(async () => {
+		// Mock FrontendService to prevent initialization issues during tests
+		mockInstance(FrontendService);
+
 		// Initialize real database
 		await testDb.init();
 
@@ -32,6 +36,7 @@ describe('CredentialsOverwrites - Integration Tests', () => {
 				persistence: true, // Enable persistence for integration tests
 				endpointAuthToken: 'integration-test-token',
 				endpoint: 'integration-credentials-overwrite',
+				skipTypes: [],
 			},
 		};
 
@@ -65,7 +70,7 @@ describe('CredentialsOverwrites - Integration Tests', () => {
 				expect(savedSetting?.value).toBeTruthy();
 
 				// Step 3: Decrypt and verify the saved data
-				const decryptedData = cipher.decrypt(savedSetting!.value);
+				const decryptedData = cipher.decryptWithInstanceKey(savedSetting!.value);
 				const parsedData = JSON.parse(decryptedData);
 				expect(parsedData).toEqual(testOverwriteData);
 
@@ -84,7 +89,7 @@ describe('CredentialsOverwrites - Integration Tests', () => {
 				// Verify first operation
 				let savedSetting = await settingsRepository.findByKey('credentialsOverwrite');
 				expect(savedSetting).toBeTruthy();
-				let decryptedData = cipher.decrypt(savedSetting!.value);
+				let decryptedData = cipher.decryptWithInstanceKey(savedSetting!.value);
 				expect(JSON.parse(decryptedData)).toEqual(data1);
 
 				await credentialsOverwrites.setData(data2, true, false);
@@ -92,7 +97,7 @@ describe('CredentialsOverwrites - Integration Tests', () => {
 				// Verify second operation overwrote the first
 				savedSetting = await settingsRepository.findByKey('credentialsOverwrite');
 				expect(savedSetting).toBeTruthy();
-				decryptedData = cipher.decrypt(savedSetting!.value);
+				decryptedData = cipher.decryptWithInstanceKey(savedSetting!.value);
 				expect(JSON.parse(decryptedData)).toEqual(data2);
 
 				// The final state should be the last write
@@ -108,7 +113,7 @@ describe('CredentialsOverwrites - Integration Tests', () => {
 				};
 
 				// Step 1: Save data to database first
-				const encryptedData = cipher.encrypt(JSON.stringify(testData));
+				const encryptedData = cipher.encryptWithInstanceKey(JSON.stringify(testData));
 				const setting = settingsRepository.create({
 					key: 'credentialsOverwrite',
 					value: encryptedData,
@@ -126,7 +131,7 @@ describe('CredentialsOverwrites - Integration Tests', () => {
 
 			it('should prevent race conditions between PubSub reload calls', async () => {
 				const testData: ICredentialsOverwrite = { race: { condition: 'test' } };
-				const encryptedData = cipher.encrypt(JSON.stringify(testData));
+				const encryptedData = cipher.encryptWithInstanceKey(JSON.stringify(testData));
 
 				// Save test data to database
 				const setting = settingsRepository.create({
@@ -158,7 +163,7 @@ describe('CredentialsOverwrites - Integration Tests', () => {
 				(globalConfig as any).credentials.overwrite.data = JSON.stringify(staticData);
 
 				// Save database data
-				const encryptedDbData = cipher.encrypt(JSON.stringify(dbData));
+				const encryptedDbData = cipher.encryptWithInstanceKey(JSON.stringify(dbData));
 				const dbSetting = settingsRepository.create({
 					key: 'credentialsOverwrite',
 					value: encryptedDbData,
@@ -170,7 +175,7 @@ describe('CredentialsOverwrites - Integration Tests', () => {
 				const mixedConfig = new CredentialsOverwrites(
 					globalConfig,
 					credentialTypes,
-					{ debug: jest.fn(), warn: jest.fn(), error: jest.fn() } as any,
+					{ debug: vi.fn(), warn: vi.fn(), error: vi.fn() } as any,
 					settingsRepository,
 					cipher,
 				);
@@ -200,7 +205,7 @@ describe('CredentialsOverwrites - Integration Tests', () => {
 				// Verify updated data was saved to database
 				const savedSetting = await settingsRepository.findByKey('credentialsOverwrite');
 				expect(savedSetting).toBeTruthy();
-				const decryptedData = cipher.decrypt(savedSetting!.value);
+				const decryptedData = cipher.decryptWithInstanceKey(savedSetting!.value);
 				expect(JSON.parse(decryptedData)).toEqual(updatedData);
 			});
 		});
@@ -223,7 +228,7 @@ describe('CredentialsOverwrites - Integration Tests', () => {
 
 			it('should coordinate multiple instances receiving same PubSub event', async () => {
 				const testData: ICredentialsOverwrite = { coordination: { test: 'value' } };
-				const encryptedData = cipher.encrypt(JSON.stringify(testData));
+				const encryptedData = cipher.encryptWithInstanceKey(JSON.stringify(testData));
 
 				// Save data to database
 				const setting = settingsRepository.create({
@@ -253,7 +258,7 @@ describe('CredentialsOverwrites - Integration Tests', () => {
 				// First attempt with failing repository
 				const failingRepo = {
 					...settingsRepository,
-					create: jest.fn(() => {
+					create: vi.fn(() => {
 						throw new Error('Temporary failure');
 					}),
 				};
@@ -261,7 +266,7 @@ describe('CredentialsOverwrites - Integration Tests', () => {
 				const failingInstance = new CredentialsOverwrites(
 					globalConfig,
 					credentialTypes,
-					{ debug: jest.fn(), warn: jest.fn(), error: jest.fn() } as any,
+					{ debug: vi.fn(), warn: vi.fn(), error: vi.fn() } as any,
 					failingRepo as any,
 					cipher,
 				);
@@ -340,14 +345,14 @@ describe('CredentialsOverwrites - Integration Tests', () => {
 				// Step 2: Verify database persistence
 				const savedSetting = await settingsRepository.findByKey('credentialsOverwrite');
 				expect(savedSetting).toBeTruthy();
-				const decryptedData = cipher.decrypt(savedSetting!.value);
+				const decryptedData = cipher.decryptWithInstanceKey(savedSetting!.value);
 				expect(JSON.parse(decryptedData)).toEqual(e2eData);
 
 				// Step 3: Test PubSub reload
 				const freshInstance = new CredentialsOverwrites(
 					globalConfig,
 					credentialTypes,
-					{ debug: jest.fn(), warn: jest.fn(), error: jest.fn() } as any,
+					{ debug: vi.fn(), warn: vi.fn(), error: vi.fn() } as any,
 					settingsRepository,
 					cipher,
 				);
@@ -388,7 +393,7 @@ describe('CredentialsOverwrites - Integration Tests', () => {
 				const newInstance = new CredentialsOverwrites(
 					globalConfig,
 					credentialTypes,
-					{ debug: jest.fn(), warn: jest.fn(), error: jest.fn() } as any,
+					{ debug: vi.fn(), warn: vi.fn(), error: vi.fn() } as any,
 					settingsRepository,
 					cipher,
 				);

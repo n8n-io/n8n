@@ -46,4 +46,17 @@ describe('copyInputItems', () => {
 		expect(output[0].a).toEqual(input.a);
 		expect(output[0].a === input.a).toEqual(false);
 	});
+
+	it.each(['__proto__', 'constructor', 'prototype'])(
+		'should isolate items from inherited properties when given "%s"',
+		(propertyName) => {
+			const output = copyInputItems(
+				[{ json: { [propertyName]: 'test_value', safe: 1 } }],
+				[propertyName, 'safe'],
+			);
+
+			expect(output[0]).toHaveProperty('safe', 1);
+			expect(Object.getOwnPropertyNames(output[0])).toContain(propertyName);
+		},
+	);
 });

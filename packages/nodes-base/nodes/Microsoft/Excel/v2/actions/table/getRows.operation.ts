@@ -4,10 +4,16 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { microsoftApiRequest, microsoftApiRequestAllItemsSkip } from '../../transport';
+import { stampItemIndexOnError } from '../../../../GenericFunctions';
+import {
+	microsoftApiRequest,
+	microsoftApiRequestAllItemsSkip,
+	toWorkbookId,
+} from '../../transport';
 import { tableRLC, workbookRLC, worksheetRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
@@ -116,9 +122,12 @@ export async function execute(
 	for (let i = 0; i < items.length; i++) {
 		const qs: IDataObject = {};
 		try {
-			const workbookId = this.getNodeParameter('workbook', i, undefined, {
-				extractValue: true,
-			}) as string;
+			const workbookId = toWorkbookId.call(
+				this,
+				this.getNodeParameter('workbook', i, undefined, {
+					extractValue: true,
+				}) as string,
+			);
 
 			const worksheetId = this.getNodeParameter('worksheet', i, undefined, {
 				extractValue: true,
@@ -144,9 +153,10 @@ export async function execute(
 					this,
 					'value',
 					'GET',
-					`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/rows`,
+					requestPath`/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/rows`,
 					{},
 					qs,
+					i,
 				);
 			} else {
 				const rowsQs = { ...qs };
@@ -154,9 +164,12 @@ export async function execute(
 				responseData = await microsoftApiRequest.call(
 					this,
 					'GET',
-					`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/rows`,
+					requestPath`/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/rows`,
 					{},
 					rowsQs,
+					undefined,
+					undefined,
+					i,
 				);
 				responseData = responseData.value;
 			}
@@ -168,9 +181,10 @@ export async function execute(
 					this,
 					'value',
 					'GET',
-					`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/columns`,
+					requestPath`/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/columns`,
 					{},
 					columnsQs,
+					i,
 				);
 
 				columns = (columns as IDataObject[]).map((column) => column.name);
@@ -220,7 +234,8 @@ export async function execute(
 				returnData.push(...executionErrorData);
 				continue;
 			}
-			throw error;
+			// A NodeError from the transport may be missing the itemIndex, add it
+			throw stampItemIndexOnError(error, i);
 		}
 	}
 

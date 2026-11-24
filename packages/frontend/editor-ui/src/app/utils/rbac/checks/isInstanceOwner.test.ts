@@ -1,7 +1,7 @@
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { isInstanceOwner } from '@/app/utils/rbac/checks/isInstanceOwner';
 
-vi.mock('@/features/settings/users/users.store', () => ({
+vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: vi.fn(),
 }));
 

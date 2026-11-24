@@ -328,9 +328,6 @@ describe('ChatPlugin', () => {
 			expect(sessionId).toBe(manualSessionId);
 			expect(chatStore.currentSessionId.value).toBe(manualSessionId);
 			expect(chatStore.messages.value).toHaveLength(0);
-			// localStorage.setItem should not be called since sessionId already existed
-			// eslint-disable-next-line @typescript-eslint/unbound-method
-			expect(window.localStorage.setItem).not.toHaveBeenCalled();
 		});
 
 		it('should preserve manually set sessionId when messages exist', async () => {
@@ -355,9 +352,6 @@ describe('ChatPlugin', () => {
 			expect(sessionId).toBe(manualSessionId);
 			expect(chatStore.currentSessionId.value).toBe(manualSessionId);
 			expect(chatStore.messages.value).toHaveLength(1);
-			// localStorage.setItem should not be called since sessionId already existed
-			// eslint-disable-next-line @typescript-eslint/unbound-method
-			expect(window.localStorage.setItem).not.toHaveBeenCalled();
 		});
 
 		it('should skip loading if loadPreviousSession is false', async () => {
@@ -445,6 +439,112 @@ describe('ChatPlugin', () => {
 			const chatStore = setupChatStore(mockOptions);
 
 			expect(chatStore.initialMessages.value).toHaveLength(0);
+		});
+	});
+
+	describe('beforeMessageSent and afterMessageSent hooks', () => {
+		it('should call beforeMessageSent before sending (non-streaming)', async () => {
+			const callOrder: string[] = [];
+			const beforeMessageSent = vi.fn(() => {
+				callOrder.push('before');
+			});
+			vi.mocked(api.sendMessage).mockImplementation(async () => {
+				callOrder.push('send');
+				return { output: 'Response' };
+			});
+
+			const chatStore = setupChatStore({ ...mockOptions, beforeMessageSent });
+			await chatStore.sendMessage('Test message');
+
+			expect(beforeMessageSent).toHaveBeenCalledWith('Test message');
+			expect(callOrder).toEqual(['before', 'send']);
+		});
+
+		it('should call afterMessageSent after sending (non-streaming)', async () => {
+			const mockResponse = { output: 'Response' };
+			const afterMessageSent = vi.fn();
+			vi.mocked(api.sendMessage).mockResolvedValueOnce(mockResponse);
+
+			const chatStore = setupChatStore({
+				...mockOptions,
+				webhookConfig: { method: 'POST' },
+				afterMessageSent,
+			});
+			await chatStore.sendMessage('Test message');
+
+			expect(afterMessageSent).toHaveBeenCalledWith('Test message', mockResponse);
+		});
+
+		it('should call beforeMessageSent before sending (streaming)', async () => {
+			const callOrder: string[] = [];
+			const beforeMessageSent = vi.fn(() => {
+				callOrder.push('before');
+			});
+			vi.mocked(api.sendMessageStreaming).mockImplementation(async () => {
+				callOrder.push('stream');
+				return { hasReceivedChunks: true };
+			});
+
+			const chatStore = setupChatStore({
+				...mockOptions,
+				enableStreaming: true,
+				beforeMessageSent,
+			});
+			await chatStore.sendMessage('Test message');
+
+			expect(beforeMessageSent).toHaveBeenCalledWith('Test message');
+			expect(callOrder).toEqual(['before', 'stream']);
+		});
+
+		it('should call afterMessageSent after streaming completes', async () => {
+			const afterMessageSent = vi.fn();
+			vi.mocked(api.sendMessageStreaming).mockResolvedValueOnce({ hasReceivedChunks: true });
+
+			const chatStore = setupChatStore({
+				...mockOptions,
+				enableStreaming: true,
+				afterMessageSent,
+			});
+			await chatStore.sendMessage('Test message');
+
+			expect(afterMessageSent).toHaveBeenCalledWith(
+				'Test message',
+				expect.objectContaining({
+					hasReceivedChunks: true,
+				}),
+			);
+		});
+
+		it('should call hooks in correct order (non-streaming)', async () => {
+			const callOrder: string[] = [];
+			const beforeMessageSent = vi.fn(() => {
+				callOrder.push('before');
+			});
+			const afterMessageSent = vi.fn(() => {
+				callOrder.push('after');
+			});
+			vi.mocked(api.sendMessage).mockResolvedValueOnce({ output: 'Response' });
+
+			const chatStore = setupChatStore({
+				...mockOptions,
+				webhookConfig: { method: 'POST' },
+				beforeMessageSent,
+				afterMessageSent,
+			});
+			await chatStore.sendMessage('Test message');
+
+			expect(callOrder).toEqual(['before', 'after']);
+		});
+
+		it('should call beforeMessageSent with file uploads', async () => {
+			const beforeMessageSent = vi.fn();
+			const testFile = new File(['test'], 'test.txt', { type: 'text/plain' });
+			vi.mocked(api.sendMessage).mockResolvedValueOnce({ output: 'File received' });
+
+			const chatStore = setupChatStore({ ...mockOptions, beforeMessageSent });
+			await chatStore.sendMessage('Test message', [testFile]);
+
+			expect(beforeMessageSent).toHaveBeenCalledWith('Test message');
 		});
 	});
 

@@ -5,8 +5,11 @@
  *
  */
 
+import type { IRunData } from '../interfaces';
 import type { IRunExecutionDataV0 } from './run-execution-data.v0';
 import { runExecutionDataV0ToV1, type IRunExecutionDataV1 } from './run-execution-data.v1';
+
+export type { RedactionInfo } from './run-execution-data.v1';
 
 /**
  * All the versions of the interface.
@@ -39,4 +42,9 @@ export function migrateRunExecutionData(data: IRunExecutionDataAll): IRunExecuti
 	}
 
 	return data as IRunExecutionData;
+}
+
+/** A retry carries the original's run data, so only a resume holds nodes this execution ran. */
+export function hasExecutionRunNodes(runData: IRunData | undefined, isResume: boolean): boolean {
+	return isResume && Object.keys(runData ?? {}).length > 0;
 }

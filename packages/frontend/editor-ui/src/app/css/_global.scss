@@ -5,6 +5,14 @@
 	--banner--height: 48px;
 }
 
+::selection {
+	color: light-dark(currentColor, var(--color--neutral-950));
+	background-color: light-dark(
+		color-mix(in oklch, var(--background--brand) 30%, transparent),
+		var(--background--brand)
+	);
+}
+
 .clickable {
 	cursor: pointer !important;
 }
@@ -19,6 +27,7 @@
 // Dialog
 .el-overlay {
 	background-color: var(--dialog--overlay--color--background--dark);
+	pointer-events: auto;
 }
 
 #app-modals .el-overlay {
@@ -85,6 +94,18 @@
 			color: var(--color--warning);
 		}
 	}
+
+	&.matching-pinned-nodes-confirmation {
+		display: flex;
+		flex-direction: column;
+		max-height: 80vh;
+
+		.el-message-box__content {
+			flex: 1 1 auto;
+			min-height: 0;
+			overflow-y: auto;
+		}
+	}
 }
 
 // Notification Message
@@ -119,7 +140,7 @@
 	outline: none;
 }
 .el-tabs__item.is-active {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .el-tabs__content {
@@ -152,31 +173,17 @@
 	opacity: 0.8;
 }
 
-// Pagination
-.el-pager li,
-.el-pagination .btn-prev,
-.el-pagination .btn-next {
-	background: none;
-	color: var(--color--text--shade-1);
-}
-.el-pagination button:disabled {
-	background: none;
-	color: var(--color--text--tint-2);
-}
-.el-pager li.btn-quicknext,
-.el-pager li.btn-quickprev {
-	color: var(--color--text--shade-1);
-}
-
 // Notification
 .el-notification {
 	border-radius: 4px;
 	border: none;
 	margin-bottom: var(--toast--offset, 0);
+	margin-right: var(--toast--right, 0);
 
 	&.whats-new-notification {
 		bottom: var(--spacing--xs) !important;
 		left: var(--spacing--sm) !important;
+		margin-bottom: 0;
 		width: 300px;
 		padding: var(--spacing--xs);
 		border: var(--border);
@@ -191,7 +198,7 @@
 			font-family: var(--font-family);
 			font-size: var(--font-size--sm);
 			font-style: normal;
-			font-weight: var(--font-weight--bold);
+			font-weight: var(--font-weight--medium);
 			line-height: 1.4;
 		}
 
@@ -209,6 +216,34 @@
 			height: 100%;
 			top: 0;
 			right: var(--spacing--xs);
+		}
+	}
+
+	&.restricted-import-toast {
+		margin-top: var(--toast--top, 0);
+		padding: var(--spacing--sm) var(--spacing--sm) var(--spacing--sm) var(--spacing--xs);
+		border: 1px solid var(--color--foreground);
+		border-radius: var(--radius--lg);
+		background: var(--color--background--light-3);
+		box-shadow: var(--shadow--dark);
+
+		.el-notification__group {
+			flex: auto;
+			min-width: 0;
+			margin: 0;
+		}
+
+		.el-notification__content {
+			margin: 0;
+
+			p {
+				line-height: var(--line-height--lg);
+			}
+		}
+
+		.el-notification__closeBtn {
+			top: var(--spacing--2xs);
+			right: var(--spacing--2xs);
 		}
 	}
 }
@@ -243,44 +278,13 @@
 	}
 }
 
-.add-option {
-	> * {
-		border: none;
+// Drag and drop: disable hover effects on all elements except valid drop targets
+body.dragging-resource {
+	* {
+		pointer-events: none;
 	}
 
-	.el-select .el-input.is-disabled {
-		.el-input__icon {
-			opacity: 1 !important;
-			cursor: not-allowed;
-			color: var(--color--foreground--shade-1);
-		}
-		.el-input__inner,
-		.el-input__inner::placeholder {
-			opacity: 1;
-			color: var(--color--foreground--shade-1);
-		}
-	}
-	.el-select .el-input:not(.is-disabled) .el-input__icon {
-		color: var(--color--text--shade-1);
-	}
-	.el-input .el-input__inner {
-		text-align: center;
-	}
-	.el-input:not(.is-disabled) .el-input__inner {
-		&,
-		&:hover,
-		&:focus {
-			padding-left: 35px;
-			border-radius: var(--radius);
-			color: var(--color--text--shade-1);
-			background-color: var(--color--background);
-			border-color: var(--color--foreground);
-			text-align: center;
-		}
-
-		&::placeholder {
-			color: var(--color--text--shade-1);
-			opacity: 1; /** Firefox */
-		}
+	[data-droppable] {
+		pointer-events: auto;
 	}
 }

@@ -8,31 +8,58 @@ import type {
 	INodePropertyOptions,
 	IWebhookFunctions,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 
 export async function calApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
-
+	resource: RequestPath,
 	body: any = {},
 	query: IDataObject = {},
-	option: IDataObject = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('calApi');
+	const options: WithRequestTarget<IHttpRequestOptions> = {
+		baseURL: credentials.host as string,
+		method,
+		body,
+		qs: {
+			...query,
+			apiKey: credentials.apiKey,
+		},
+		url: resource,
+	};
 
-	let options: IHttpRequestOptions = {
+	try {
+		return await this.helpers.httpRequest(options);
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error as JsonObject);
+	}
+}
+
+export async function calApiRequestV2<T>(
+	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	resource: RequestPath,
+	body: IDataObject = {},
+	query: IDataObject = {},
+	option: Pick<IHttpRequestOptions, 'headers'> = {},
+): Promise<T> {
+	const credentials = await this.getCredentials('calApi');
+	let options: WithRequestTarget<IHttpRequestOptions> = {
 		baseURL: credentials.host as string,
 		method,
 		body,
 		qs: query,
-		url: resource,
+		url: requestPath`/v2${resource}`,
 	};
 
 	if (!Object.keys(query).length) {
 		delete options.qs;
 	}
+
 	options = Object.assign({}, options, option);
 	try {
 		return await this.helpers.httpRequestWithAuthentication.call(this, 'calApi', options);

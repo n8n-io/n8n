@@ -1,0 +1,445 @@
+import { Logger } from '@n8n/backend-common';
+import { PushProxy, TelemetryProxy } from '@n8n/backend-services';
+import type { User } from '@n8n/db';
+import { Service } from '@n8n/di';
+import {
+	isSelfHealingResourceId,
+	tokenUsageToBuilderUsageItems,
+	type BuilderUsageItem,
+	type HelperModelUsageReport,
+	type HelperUsageHook,
+	type TraceStatus,
+} from '@n8n/instance-ai';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
+import { sleep } from '@n8n/utils/sleep';
+import { InstanceSettings } from 'n8n-core';
+import { UnexpectedError } from '@n8n/errors';
+import { nanoid } from 'nanoid';
+
+import { AiService } from '@/services/ai.service';
+
+import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
+
+/**
+ * The user ID that self-healing usage carries in the AI service. It is not the
+ * ID of a person, so billing can show this usage on its own line.
+ */
+export const SELF_HEALING_BILLING_USER_ID = 'self_healing';
+
+/**
+ * Keeps the display total of threads that are not on the current Assistant
+ * runtime, such as Assistant agent threads. Registered only when the Assistant
+ * agent loads, so this service does not depend on the agents module.
+ */
+export interface AgentThreadCreditTotals {
+	/** Returns the new total, or `undefined` when no thread takes the total. */
+	addCredits(user: User, threadId: string, delta: number): Promise<number | undefined>;
+}
+
+/**
+ * Owns Instance AI credit accounting: claims decimal, token-based credits per
+ * finished run segment, dedupes replays, retries the authoritative proxy call,
+ * accumulates the best-effort per-thread display total, and emits the credit
+ * push update plus billing/quota telemetry.
+ *
+ * The ai-assistant-service is the billing authority and dedupes replays
+ * atomically; the in-memory guard here only suppresses duplicate near-in-time
+ * claims within this process. `thread.metadata.creditsUsed` is a best-effort
+ * *display* total only — the authoritative ledger is the service-side count.
+ * Assistant agent threads keep their total through {@link AgentThreadCreditTotals}.
+ */
+@Service()
+export class InstanceAiCreditService {
+	private readonly logger: Logger;
+
+	/**
+	 * In-memory guard to prevent double-claiming the same run segment within this
+	 * process. Capped FIFO (see {@link CLAIM_DEDUPE_CACHE_SIZE}) so it can't grow
+	 * unbounded — billing correctness is owned by the service, which dedupes
+	 * replays authoritatively; this only suppresses duplicate near-in-time claims.
+	 */
+	private readonly claimedRunIds = new Set<string>();
+
+	/** Called once when a claim moves a user from under quota to exhausted. */
+	private readonly quotaExhaustedHandlers = new Set<(user: User) => void>();
+
+	private agentThreadCredits: AgentThreadCreditTotals | undefined;
+
+	/** Max retained run-segment ids in {@link claimedRunIds}; oldest evicted first. */
+	static readonly CLAIM_DEDUPE_CACHE_SIZE = 1000;
+
+	/** Max attempts for the idempotent token-usage claim before giving up. */
+	private static readonly CLAIM_MAX_ATTEMPTS = 3;
+
+	/**
+	 * Register a handler for the moment a claim crosses quota. A handler failure
+	 * must not fail the claim: the usage is already recorded.
+	 */
+	onQuotaExhausted(handler: (user: User) => void): void {
+		this.quotaExhaustedHandlers.add(handler);
+	}
+
+	/** Keep the display total of threads that have no current Assistant thread row. */
+	useAgentThreadCredits(totals: AgentThreadCreditTotals): void {
+		this.agentThreadCredits = totals;
+	}
+
+	constructor(
+		logger: Logger,
+		private readonly aiService: AiService,
+		private readonly telemetry: TelemetryProxy,
+		private readonly instanceSettings: InstanceSettings,
+		private readonly push: PushProxy,
+		private readonly threadRepo: InstanceAiThreadRepository,
+	) {
+		this.logger = logger.scoped('instance-ai');
+	}
+
+	/**
+	 * Claims one LLM call that runs beside the main turn, such as a memory task,
+	 * a title, or a verification helper. Returns the claimed credits. Best effort:
+	 * a billing failure is logged and never fails the call.
+	 */
+	async claimSideCallUsage(
+		user: User,
+		threadId: string,
+		dedupeId: string,
+		call: { model: string; usage: HelperModelUsageReport['usage'] },
+		source: 'chat' | 'self_healing' = 'chat',
+	): Promise<number | undefined> {
+		try {
+			return await this.claimRunUsage(
+				user,
+				threadId,
+				dedupeId,
+				tokenUsageToBuilderUsageItems(call.model, call.usage),
+				'completed',
+				source,
+			);
+		} catch (error) {
+			this.logger.warn('Failed to claim Assistant side-call usage', {
+				threadId,
+				dedupeId,
+				error: getErrorMessage(error),
+			});
+			return undefined;
+		}
+	}
+
+	/** Claims one verification helper call, such as the classifier or the simulation fixtures. */
+	async claimHelperUsage(
+		user: User,
+		threadId: string,
+		runId: string,
+		report: HelperModelUsageReport,
+		source: 'chat' | 'self_healing' = 'chat',
+	): Promise<number | undefined> {
+		return await this.claimSideCallUsage(
+			user,
+			threadId,
+			`${runId}:helper:${report.helper}:${report.reportId}`,
+			report,
+			source,
+		);
+	}
+
+	/** `claimHelperUsage` bound to one run, for the context's `onHelperUsage` hook. */
+	helperUsageClaimer(user: User, threadId: string, runId: string): HelperUsageHook {
+		// Awaiting here does not block the helper: `generateValidatedJson` fires the
+		// hook without awaiting it. Self-healing awaits its own claims to total them.
+		return async (report) => {
+			await this.claimHelperUsage(user, threadId, runId, report);
+		};
+	}
+
+	/**
+	 * Claim decimal, token-based credits for one finished run segment.
+	 *
+	 * Billed for every terminal outcome (completed / cancelled / errored) so stopped
+	 * and errored runs still count, deduped per `dedupeId` (the run segment's
+	 * `agentRunId`, or the run id when none is available). The service is the billing
+	 * authority and dedupes replays atomically; the in-memory set is a fast intra-process
+	 * guard, claimed before the async call and released on failure so a retry can re-claim.
+	 *
+	 * `thread.metadata.creditsUsed` is a best-effort *display* total only — the
+	 * authoritative ledger is the service-side claimedCount.
+	 */
+	async claimRunUsage(
+		user: User,
+		threadId: string,
+		dedupeId: string,
+		usage: BuilderUsageItem[],
+		status: TraceStatus,
+		source: 'chat' | 'self_healing' = 'chat',
+	): Promise<number | undefined> {
+		if (!this.aiService.isProxyEnabled()) {
+			this.logger.debug('Skipping Instance AI credit claim: proxy disabled', {
+				threadId,
+				dedupeId,
+			});
+			return;
+		}
+		if (usage.length === 0) {
+			this.logger.debug('Skipping Instance AI credit claim: no usage', { threadId, dedupeId });
+			return;
+		}
+		if (this.claimedRunIds.has(dedupeId)) {
+			this.logger.debug('Skipping Instance AI credit claim: already claimed', {
+				threadId,
+				dedupeId,
+			});
+			return;
+		}
+
+		this.rememberClaimedRunId(dedupeId); // claim before async work
+		this.logger.debug('Claiming Instance AI credits', { threadId, dedupeId, status, usage });
+
+		// The authoritative billing call: retried because it is idempotent (the
+		// service dedupes by `dedupeId`). A genuine failure releases the lock so a
+		// later run can re-attempt, and reports the failure.
+		let result: Awaited<ReturnType<typeof this.claimTokens>>;
+		try {
+			// The billing page shows self-healing usage apart from the usage of a person.
+			const billingUser = {
+				id: source === 'self_healing' ? SELF_HEALING_BILLING_USER_ID : user.id,
+			};
+			result = await this.claimTokensWithRetry(billingUser, threadId, dedupeId, usage);
+		} catch (error) {
+			this.claimedRunIds.delete(dedupeId); // allow retry on failure
+			this.telemetry.track('Builder credits claimed', {
+				instance_id: this.instanceSettings.instanceId,
+				user_id: user.id,
+				thread_id: threadId,
+				agent_run_id: dedupeId,
+				status,
+				source,
+				success: false,
+				error_message: getErrorMessage(error),
+				attempted_usage: usage,
+			});
+			this.logger.warn('Failed to claim Instance AI credits', {
+				error: getErrorMessage(error),
+				threadId,
+				dedupeId,
+			});
+			return;
+		}
+
+		if (typeof result?.delta !== 'number') {
+			this.logger.debug('Instance AI credit claim returned no numeric delta', {
+				threadId,
+				dedupeId,
+				result,
+			});
+			return;
+		}
+		const { delta, creditsClaimed, creditsQuota } = result;
+
+		// The proxy is enabled on this path, so a real, non-negative quota is always
+		// expected. A negative quota (e.g. an unlimited sentinel) is a contract
+		// violation from the billing service — surface it rather than tolerate it.
+		if (creditsQuota < 0) {
+			throw new UnexpectedError('Instance AI credit claim returned a negative quota', {
+				extra: { threadId, dedupeId, creditsQuota },
+			});
+		}
+
+		// From here on the claim has already succeeded. The remaining work is
+		// best-effort display/telemetry: it must never release the lock or report
+		// a billing failure. `push`/`telemetry` are fire-and-forget; the thread
+		// total write is the only awaited risk, so it is isolated in its helper.
+		const totalCreditsUsed = await this.accumulateThreadCredits(user, threadId, delta);
+
+		this.logger.debug('Claimed Instance AI credits', {
+			threadId,
+			dedupeId,
+			status,
+			delta,
+			creditsClaimed,
+			creditsQuota,
+			totalCreditsUsed,
+		});
+
+		this.push.sendToUsers(
+			{
+				type: 'updateInstanceAiCredits',
+				data: {
+					creditsQuota,
+					creditsClaimed,
+					// Only attach the per-thread total when we actually computed one.
+					...(totalCreditsUsed !== undefined
+						? { creditsPerThread: { threadId, totalCreditsUsed } }
+						: {}),
+				},
+			},
+			[user.id],
+		);
+
+		this.telemetry.track('Builder credits claimed', {
+			instance_id: this.instanceSettings.instanceId,
+			user_id: user.id,
+			thread_id: threadId,
+			agent_run_id: dedupeId,
+			status,
+			source,
+			success: true,
+			credits_used: delta,
+			credits_claimed_total: creditsClaimed,
+			credits_quota: creditsQuota,
+		});
+
+		// Fire once, at the crossing. Live runs are stopped so they cannot take
+		// another model step on a cached proxy token. The claim itself still
+		// records this segment's usage.
+		if (delta > 0) {
+			const wasUnder = creditsClaimed - delta < creditsQuota;
+			const nowExhausted = creditsClaimed >= creditsQuota;
+			if (wasUnder && nowExhausted) {
+				this.telemetry.track('User exhausted assistant quota', {
+					instance_id: this.instanceSettings.instanceId,
+					user_id: user.id,
+				});
+				this.notifyQuotaExhausted(user);
+			}
+		}
+
+		return delta;
+	}
+
+	/**
+	 * Tell listeners the user just crossed quota. A listener must not fail the
+	 * claim: the usage is already recorded.
+	 */
+	private notifyQuotaExhausted(user: User): void {
+		for (const handler of this.quotaExhaustedHandlers) {
+			try {
+				handler(user);
+			} catch (error) {
+				this.logger.warn('Assistant quota exhaustion handler failed', {
+					userId: user.id,
+					error: getErrorMessage(error),
+				});
+			}
+		}
+	}
+
+	/**
+	 * Fetch a fresh Instance AI proxy auth token and return the client +
+	 * Authorization headers. Each caller gets a unique token (separate nanoid)
+	 * for audit tracking.
+	 */
+	private async getProxyAuth(user: Pick<User, 'id'>) {
+		const client = await this.aiService.getClient();
+		const token = await client.getInstanceAiApiProxyToken(
+			{ id: user.id },
+			{ userMessageId: nanoid() },
+		);
+		return {
+			client,
+			headers: { Authorization: `${token.tokenType} ${token.accessToken}` },
+		};
+	}
+
+	/**
+	 * Single authoritative claim call against the Instance AI pool. Forwards
+	 * `threadId` so the service can attach it to the claim telemetry.
+	 */
+	private async claimTokens(
+		user: Pick<User, 'id'>,
+		threadId: string,
+		dedupeId: string,
+		usage: BuilderUsageItem[],
+	) {
+		const { client, headers } = await this.getProxyAuth(user);
+		return await client.markInstanceAiTokenUsage({ id: user.id }, headers, {
+			dedupeId,
+			usage,
+			threadId,
+		});
+	}
+
+	/**
+	 * Claim with bounded retry and exponential backoff. Safe to retry because the
+	 * service dedupes replays by `dedupeId`. Rethrows the last error if every
+	 * attempt fails.
+	 */
+	private async claimTokensWithRetry(
+		user: Pick<User, 'id'>,
+		threadId: string,
+		dedupeId: string,
+		usage: BuilderUsageItem[],
+	) {
+		let lastError: unknown;
+		for (let attempt = 1; attempt <= InstanceAiCreditService.CLAIM_MAX_ATTEMPTS; attempt++) {
+			try {
+				return await this.claimTokens(user, threadId, dedupeId, usage);
+			} catch (error) {
+				lastError = error;
+				this.logger.debug('Instance AI credit claim attempt failed', {
+					dedupeId,
+					attempt,
+					maxAttempts: InstanceAiCreditService.CLAIM_MAX_ATTEMPTS,
+					error: getErrorMessage(error),
+				});
+				if (attempt < InstanceAiCreditService.CLAIM_MAX_ATTEMPTS) {
+					await sleep(2 ** (attempt - 1) * 200); // 200ms, then 400ms
+				}
+			}
+		}
+		throw lastError;
+	}
+
+	/**
+	 * Update the display total without failing a successful credit claim. A
+	 * thread without a current Assistant thread row is an Assistant agent thread.
+	 * Internal threads and failed updates return no display total.
+	 */
+	private async accumulateThreadCredits(
+		user: User,
+		threadId: string,
+		delta: number,
+	): Promise<number | undefined> {
+		try {
+			const thread = await this.threadRepo.updateThread({
+				threadId,
+				update: ({ metadata }) => ({
+					metadata: {
+						...metadata,
+						creditsUsed:
+							(typeof metadata?.creditsUsed === 'number' ? metadata.creditsUsed : 0) + delta,
+					},
+				}),
+			});
+			if (thread) {
+				if (isSelfHealingResourceId(thread.resourceId)) return undefined;
+				return typeof thread.metadata?.creditsUsed === 'number'
+					? thread.metadata.creditsUsed
+					: undefined;
+			}
+
+			const total = await this.agentThreadCredits?.addCredits(user, threadId, delta);
+			if (total === undefined) {
+				this.logger.warn('No thread took the Instance AI credit total', { threadId });
+			}
+			return total;
+		} catch (error) {
+			this.logger.warn('Failed to persist Instance AI thread credit total', {
+				error: getErrorMessage(error),
+				threadId,
+			});
+			return undefined;
+		}
+	}
+
+	/**
+	 * Record a claimed run id, evicting the oldest once the cap is reached. A Set
+	 * keeps insertion order, so the first value is the oldest entry.
+	 */
+	private rememberClaimedRunId(dedupeId: string): void {
+		this.claimedRunIds.add(dedupeId);
+		if (this.claimedRunIds.size > InstanceAiCreditService.CLAIM_DEDUPE_CACHE_SIZE) {
+			const oldest = this.claimedRunIds.values().next().value;
+			if (oldest !== undefined) this.claimedRunIds.delete(oldest);
+		}
+	}
+}

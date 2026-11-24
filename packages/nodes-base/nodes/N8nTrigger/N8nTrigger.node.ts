@@ -12,7 +12,7 @@ export class N8nTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'n8n Trigger',
 		name: 'n8nTrigger',
-		icon: 'file:n8nTrigger.svg',
+		icon: 'node:n8n-trigger',
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle events and perform actions on your n8n instance',

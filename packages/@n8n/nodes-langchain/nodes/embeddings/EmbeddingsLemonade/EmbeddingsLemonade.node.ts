@@ -9,8 +9,12 @@ import {
 
 import type { LemonadeApiCredentialsType } from '../../../credentials/LemonadeApi.credentials';
 
-import { logWrapper } from '@utils/logWrapper';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import {
+	aiClientFetch,
+	getProxyAgent,
+	logWrapper,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
 
 import { lemonadeDescription, lemonadeModel } from '../../llms/LMLemonade/description';
 
@@ -56,7 +60,11 @@ export class EmbeddingsLemonade implements INodeType {
 
 		// Build configuration object separately like official OpenAI nodes
 		const configuration: any = {
+			fetch: aiClientFetch,
 			baseURL: credentials.baseUrl,
+			fetchOptions: {
+				dispatcher: getProxyAgent(credentials.baseUrl, {}, this.helpers.getSecureEgressFilter()),
+			},
 		};
 
 		// Add custom headers if API key is provided

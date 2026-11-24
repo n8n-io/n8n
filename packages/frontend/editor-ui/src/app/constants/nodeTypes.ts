@@ -1,4 +1,4 @@
-import { DATA_TABLE_MODULE_NAME } from '@/features/core/dataTable/constants';
+import { MICROSOFT_AGENT365_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
 export const CALENDLY_TRIGGER_NODE_TYPE = 'n8n-nodes-base.calendlyTrigger';
@@ -35,12 +35,16 @@ export const MANUAL_CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.manualCha
 export const MCP_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpTrigger';
 export const CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTrigger';
 export const CHAT_NODE_TYPE = '@n8n/n8n-nodes-langchain.chat';
+export const CHAT_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTool';
+export const CHAT_HITL_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatHitlTool';
 export const AGENT_NODE_TYPE = '@n8n/n8n-nodes-langchain.agent';
+export const AGENT_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.agentTool';
 export const OPEN_AI_CHAT_MODEL_NODE_TYPE = '@n8n/n8n-nodes-langchain.lmChatOpenAi';
 export const OPEN_AI_NODE_TYPE = '@n8n/n8n-nodes-langchain.openAi';
 export const OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE =
 	'@n8n/n8n-nodes-langchain.openAi.assistant.message';
 export const OPEN_AI_ASSISTANT_NODE_TYPE = '@n8n/n8n-nodes-langchain.openAiAssistant';
+export const SIMPLE_MEMORY_NODE_TYPE = '@n8n/n8n-nodes-langchain.memoryBufferWindow';
 export const BASIC_CHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.chainLlm';
 export const QA_CHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.chainRetrievalQa';
 export const MICROSOFT_TEAMS_NODE_TYPE = 'n8n-nodes-base.microsoftTeams';
@@ -85,6 +89,15 @@ export const MARKDOWN_NODE_TYPE = 'n8n-nodes-base.markdown';
 export const XML_NODE_TYPE = 'n8n-nodes-base.xml';
 export const CRYPTO_NODE_TYPE = 'n8n-nodes-base.crypto';
 export const RSS_READ_NODE_TYPE = 'n8n-nodes-base.rssFeedRead';
+
+// These nodes can use arbitrary providers. Gateway credentials require a known provider.
+export const AI_GATEWAY_UNSUPPORTED_NODE_TYPES: readonly string[] = [
+	'n8n-nodes-base.httpRequest',
+	'n8n-nodes-base.httpRequestTool',
+	'@n8n/n8n-nodes-langchain.toolHttpRequest',
+	'n8n-nodes-base.graphql',
+	'n8n-nodes-base.graphqlTool',
+];
 export const COMPRESSION_NODE_TYPE = 'n8n-nodes-base.compression';
 export const EDIT_IMAGE_NODE_TYPE = 'n8n-nodes-base.editImage';
 export const CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE =
@@ -100,9 +113,10 @@ export const FACEBOOK_LEAD_ADS_TRIGGER_NODE_TYPE = 'n8n-nodes-base.facebookLeadA
 export const RESPOND_TO_WEBHOOK_NODE_TYPE = 'n8n-nodes-base.respondToWebhook';
 export const DATA_TABLE_NODE_TYPE = 'n8n-nodes-base.dataTable';
 export const DATA_TABLE_TOOL_NODE_TYPE = 'n8n-nodes-base.dataTableTool';
+export const MESSAGE_AN_AGENT_NODE_TYPE = 'n8n-nodes-base.messageAnAgent';
 export const TIME_SAVED_NODE_TYPE = 'n8n-nodes-base.timeSaved';
 
-export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
+export { CREDENTIAL_ONLY_NODE_PREFIX } from 'n8n-workflow';
 
 export const CREDENTIAL_ONLY_HTTP_NODE_VERSION = 4.1;
 
@@ -125,10 +139,6 @@ export const NODES_USING_CODE_NODE_EDITOR = [
 	AI_CODE_NODE_TYPE,
 	AI_TRANSFORM_NODE_TYPE,
 ];
-export const MODULE_ENABLED_NODES = [
-	...DATA_TABLE_NODES.map((nodeType) => ({ nodeType, module: DATA_TABLE_MODULE_NAME })),
-];
-
 export const NODE_POSITION_CONFLICT_ALLOWLIST = [STICKY_NODE_TYPE];
 
 export const PIN_DATA_NODE_TYPES_DENYLIST = [SPLIT_IN_BATCHES_NODE_TYPE, STICKY_NODE_TYPE];
@@ -138,11 +148,15 @@ export const OPEN_URL_PANEL_TRIGGER_NODE_TYPES = [
 	FORM_TRIGGER_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 	MCP_TRIGGER_NODE_TYPE,
+	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
 ];
 
 export const LIST_LIKE_NODE_OPERATIONS = ['getAll', 'getMany', 'read', 'search'];
 
-export const PRODUCTION_ONLY_TRIGGER_NODE_TYPES = [CHAT_TRIGGER_NODE_TYPE];
+export const PRODUCTION_ONLY_TRIGGER_NODE_TYPES = [
+	CHAT_TRIGGER_NODE_TYPE,
+	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
+];
 
 export const KEEP_AUTH_IN_NDV_FOR_NODES = [
 	HTTP_REQUEST_NODE_TYPE,

@@ -1,6 +1,6 @@
 import { SerpAPI } from '@langchain/community/tools/serpapi';
-import { logWrapper } from '@utils/logWrapper';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
+
 import {
 	type IExecuteFunctions,
 	NodeConnectionTypes,
@@ -12,12 +12,14 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
+import { getRequiredApiKey } from '@utils/helpers';
+
 async function getTool(ctx: ISupplyDataFunctions | IExecuteFunctions, itemIndex: number) {
 	const credentials = await ctx.getCredentials('serpApi');
 
 	const options = ctx.getNodeParameter('options', itemIndex) as object;
 
-	return new SerpAPI(credentials.apiKey as string, options);
+	return new SerpAPI(getRequiredApiKey(ctx.getNode(), credentials.apiKey), options);
 }
 
 export class ToolSerpApi implements INodeType {
@@ -27,6 +29,7 @@ export class ToolSerpApi implements INodeType {
 		icon: 'file:serpApi.svg',
 		group: ['transform'],
 		version: 1,
+		hidden: true,
 		description: 'Search in Google using SerpAPI',
 		defaults: {
 			name: 'SerpAPI',
@@ -58,6 +61,13 @@ export class ToolSerpApi implements INodeType {
 		],
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
+			{
+				displayName:
+					'This node is deprecated and will not be updated in the future. Please use the official verified community node instead.',
+				name: 'oldVersionNotice',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Options',
 				name: 'options',

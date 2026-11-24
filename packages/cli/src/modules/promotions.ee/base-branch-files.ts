@@ -1,0 +1,103 @@
+import {
+	PACKAGE_ENTITY_LAYOUT,
+	entityIdOfSegment,
+	type ManifestEntityCollection,
+} from '../n8n-packages/io/manifest-entry';
+
+const BASE_BRANCH_ENTITIES = {
+	projects: { ...PACKAGE_ENTITY_LAYOUT.projects, type: 'project', includeRoot: true },
+	folders: { ...PACKAGE_ENTITY_LAYOUT.folders, type: 'folder', includeRoot: false },
+	workflows: { ...PACKAGE_ENTITY_LAYOUT.workflows, type: 'workflow', includeRoot: false },
+	credentials: { ...PACKAGE_ENTITY_LAYOUT.credentials, type: 'credential', includeRoot: true },
+	dataTables: { ...PACKAGE_ENTITY_LAYOUT.dataTables, type: 'dataTable', includeRoot: true },
+	variables: { ...PACKAGE_ENTITY_LAYOUT.variables, type: 'variable', includeRoot: true },
+	tags: { ...PACKAGE_ENTITY_LAYOUT.tags, type: 'tag', includeRoot: true },
+} as const satisfies Record<
+	Exclude<ManifestEntityCollection, 'agents' | 'skills'>,
+	{ type: string; includeRoot: boolean }
+>;
+
+type BaseBranchEntity = (typeof BASE_BRANCH_ENTITIES)[keyof typeof BASE_BRANCH_ENTITIES];
+
+export type PackageFile = Readonly<{
+	entityId: string;
+	slug: string;
+	projectId: string | null;
+	fileName: BaseBranchEntity['fileName'];
+	path: string;
+	blobSha: string;
+	type: BaseBranchEntity['type'];
+}>;
+
+export const BASE_BRANCH_DIRECTORIES: string[] = Object.values(BASE_BRANCH_ENTITIES)
+	.filter(({ includeRoot }) => includeRoot)
+	.map(({ directory }) => directory);
+
+const ENTITIES_BY_DIRECTORY = new Map<string, BaseBranchEntity>(
+	Object.values(BASE_BRANCH_ENTITIES).map((entity) => [entity.directory, entity]),
+);
+
+export function parseBaseBranchFiles(
+	lsTreeOutput: string,
+	options: { exportRoot: string; projectId: string },
+): PackageFile[] {
+	const files = lsTreeOutput.split('\0').flatMap((record) => {
+		const tabIndex = record.indexOf('\t');
+		if (tabIndex === -1) return [];
+		const [, objectType, blobSha] = record.slice(0, tabIndex).split(' ');
+		return objectType === 'blob' ? [{ path: record.slice(tabIndex + 1), blobSha }] : [];
+	});
+	return parsePackageFiles(files, {
+		exportRoot: options.exportRoot,
+		projectIds: [options.projectId],
+	});
+}
+
+export function parsePackageFiles(
+	packageFiles: Array<{ path: string; blobSha: string }>,
+	{ exportRoot, projectIds }: { exportRoot: string; projectIds: readonly string[] },
+): PackageFile[] {
+	const { projects, folders } = BASE_BRANCH_ENTITIES;
+	const wanted = new Set(projectIds);
+	const files: PackageFile[] = [];
+	const rootPrefix = `${exportRoot}/`;
+
+	for (const { path, blobSha } of packageFiles) {
+		if (!path.startsWith(rootPrefix)) continue;
+
+		const segments = path.slice(rootPrefix.length).split('/');
+		if (segments.length < 3) continue;
+
+		const projectId = segments[0] === projects.directory ? entityIdOfSegment(segments[1]) : null;
+		if (projectId !== null) {
+			if (!wanted.has(projectId)) continue;
+		} else if (!BASE_BRANCH_DIRECTORIES.includes(segments[0])) {
+			continue;
+		}
+
+		const fileName = segments[segments.length - 1];
+		const entity =
+			segments[0] === projects.directory &&
+			segments[2] === folders.directory &&
+			fileName === folders.fileName
+				? folders
+				: ENTITIES_BY_DIRECTORY.get(segments[segments.length - 3]);
+		if (!entity) continue;
+		// Only entity files count. `workflow-metadata.json` holds state, not content.
+		if (fileName !== entity.fileName) continue;
+		const { type } = entity;
+
+		const entitySegment = segments[segments.length - 2];
+		files.push({
+			entityId: entityIdOfSegment(entitySegment),
+			slug: entitySegment.slice(0, entitySegment.lastIndexOf('-')),
+			projectId,
+			fileName: entity.fileName,
+			path,
+			blobSha,
+			type,
+		});
+	}
+
+	return files;
+}

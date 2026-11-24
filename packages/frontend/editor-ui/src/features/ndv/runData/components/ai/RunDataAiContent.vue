@@ -10,8 +10,11 @@ import { getConsumedTokens } from '@/features/execution/logs/logs.utils';
 import ConsumedTokensDetails from '@/app/components/ConsumedTokensDetails.vue';
 import ViewSubExecution from '@/features/execution/executions/components/ViewSubExecution.vue';
 import { formatTokenUsageCount } from '@/app/utils/aiUtils';
-import { getReferencedData } from '@/features/ndv/runData/components/ai/utils';
-import { type LogEntry } from '@/features/execution/logs/logs.types';
+import {
+	getReferencedData,
+	getRespondingModelName,
+} from '@/features/ndv/runData/components/ai/utils';
+import { type NodeLogEntry } from '@/features/execution/logs/logs.types';
 
 import { N8nInfoTip, N8nTooltip } from '@n8n/design-system';
 interface RunMeta {
@@ -26,7 +29,7 @@ interface RunMeta {
 	};
 }
 const props = defineProps<{
-	inputData: LogEntry;
+	inputData: NodeLogEntry;
 }>();
 
 const data = computed(() =>
@@ -38,6 +41,8 @@ const nodeTypesStore = useNodeTypesStore();
 const i18n = useI18n();
 
 const consumedTokensSum = computed(() => getConsumedTokens(outputRun.value?.data ?? []));
+
+const respondingModelName = computed(() => getRespondingModelName(outputRun.value?.data ?? []));
 
 function extractRunMeta(run: IAiDataContent) {
 	const uiNode = props.inputData.node;
@@ -112,6 +117,18 @@ const outputError = computed(() => props.inputData.runData?.error as NodeError |
 						<N8nInfoTip type="tooltip" theme="info-light" tooltip-placement="right">
 							<ConsumedTokensDetails :consumed-tokens="consumedTokensSum" />
 						</N8nInfoTip>
+					</li>
+					<li v-if="respondingModelName" data-test-id="ai-responding-model">
+						<N8nTooltip>
+							<template #content>
+								{{ i18n.baseText('runData.aiContentBlock.model.tooltip') }}
+							</template>
+							{{
+								i18n.baseText('runData.aiContentBlock.model', {
+									interpolate: { model: respondingModelName },
+								})
+							}}
+						</N8nTooltip>
 					</li>
 				</ul>
 			</div>

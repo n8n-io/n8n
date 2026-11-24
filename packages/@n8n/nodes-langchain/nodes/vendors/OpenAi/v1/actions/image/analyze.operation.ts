@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	IDataObject,
 } from 'n8n-workflow';
-import { updateDisplayOptions, NodeOperationError } from 'n8n-workflow';
+import { updateDisplayOptions, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 import { modelRLC } from '../descriptions';
@@ -135,6 +135,11 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	}
 
 	const text = this.getNodeParameter('text', i, '') as string;
+	if (!text.trim()) {
+		throw new NodeOperationError(this.getNode(), 'A non-empty prompt is required.', {
+			itemIndex: i,
+		});
+	}
 	const inputType = this.getNodeParameter('inputType', i) as string;
 	const options = this.getNodeParameter('options', i, {});
 
@@ -201,10 +206,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				content,
 			},
 		],
-		max_tokens: (options.maxTokens as number) || 300,
+		max_completion_tokens: (options.maxTokens as number) || 300,
 	};
 
-	let response = await apiRequest.call(this, 'POST', '/chat/completions', { body });
+	let response = await apiRequest.call(this, 'POST', requestPath`/chat/completions`, { body });
 
 	const simplify = this.getNodeParameter('simplify', i) as boolean;
 

@@ -1,24 +1,25 @@
 import type { IExecutePaginationFunctions } from 'n8n-workflow';
 
 import { highLevelApiPagination } from '../GenericFunctions';
+import type { Mock } from 'vitest';
 
 describe('highLevelApiPagination', () => {
 	let mockContext: Partial<IExecutePaginationFunctions>;
 
 	beforeEach(() => {
 		mockContext = {
-			getNodeParameter: jest.fn(),
-			makeRoutingRequest: jest.fn(),
+			getNodeParameter: vi.fn(),
+			makeRoutingRequest: vi.fn(),
 		};
 	});
 
 	it('should paginate and return all items when returnAll is true', async () => {
-		(mockContext.getNodeParameter as jest.Mock).mockImplementation((parameter) => {
+		(mockContext.getNodeParameter as Mock).mockImplementation((parameter) => {
 			if (parameter === 'resource') return 'contact';
 			if (parameter === 'returnAll') return true;
 		});
 
-		(mockContext.makeRoutingRequest as jest.Mock)
+		(mockContext.makeRoutingRequest as Mock)
 			.mockResolvedValueOnce([
 				{
 					json: {
@@ -52,12 +53,12 @@ describe('highLevelApiPagination', () => {
 	});
 
 	it('should return only the first page of items when returnAll is false', async () => {
-		(mockContext.getNodeParameter as jest.Mock).mockImplementation((parameter) => {
+		(mockContext.getNodeParameter as Mock).mockImplementation((parameter) => {
 			if (parameter === 'resource') return 'contact';
 			if (parameter === 'returnAll') return false;
 		});
 
-		(mockContext.makeRoutingRequest as jest.Mock).mockResolvedValueOnce([
+		(mockContext.makeRoutingRequest as Mock).mockResolvedValueOnce([
 			{
 				json: {
 					contacts: [{ id: '1' }, { id: '2' }],
@@ -77,12 +78,12 @@ describe('highLevelApiPagination', () => {
 	});
 
 	it('should handle cases with no items', async () => {
-		(mockContext.getNodeParameter as jest.Mock).mockImplementation((parameter) => {
+		(mockContext.getNodeParameter as Mock).mockImplementation((parameter) => {
 			if (parameter === 'resource') return 'contact';
 			if (parameter === 'returnAll') return true;
 		});
 
-		(mockContext.makeRoutingRequest as jest.Mock).mockResolvedValueOnce([
+		(mockContext.makeRoutingRequest as Mock).mockResolvedValueOnce([
 			{
 				json: {
 					contacts: [],

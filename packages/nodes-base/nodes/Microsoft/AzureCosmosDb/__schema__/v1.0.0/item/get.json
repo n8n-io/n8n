@@ -1,0 +1,18 @@
+{
+    "type": "object",
+    "properties": {
+        "createdAt": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "threadId": {
+            "type": "string"
+        },
+        "updatedAt": {
+            "type": "string"
+        }
+    },
+    "version": 3
+}

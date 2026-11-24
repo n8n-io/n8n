@@ -1,26 +1,16 @@
 <script lang="ts" setup generic="Item extends DatatableRow">
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 
-import { useI18n } from '../../composables/useI18n';
+import type { DatatableProps } from './Datatable.types';
 import type { DatatableColumn, DatatableRow, DatatableRowDataType } from '../../types';
 import { getValueByPath } from '../../utils';
-import N8nOption from '../N8nOption';
-import N8nPagination from '../N8nPagination';
-import N8nSelect from '../N8nSelect';
+import { N8nPagination, PAGINATION_ALL_ITEMS_PER_PAGE } from '../N8nPagination';
 import N8nTableBase from '../TableBase';
 
-const ALL_ROWS = -1;
-
-interface DatatableProps {
-	columns: DatatableColumn[];
-	rows: Item[];
-	currentPage?: number;
-	pagination?: boolean;
-	rowsPerPage?: number;
-}
+const rowsPerPageOptions = [1, 10, 25, 50, 100];
 
 defineOptions({ name: 'N8nDatatable' });
-const props = withDefaults(defineProps<DatatableProps>(), {
+const props = withDefaults(defineProps<DatatableProps<Item>>(), {
 	currentPage: 1,
 	pagination: true,
 	rowsPerPage: 10,
@@ -31,19 +21,12 @@ const emit = defineEmits<{
 	'update:rowsPerPage': [value: number];
 }>();
 
-const { t } = useI18n();
-const rowsPerPageOptions = ref([1, 10, 25, 50, 100]);
-
-const totalPages = computed(() => {
-	return Math.ceil(props.rows.length / props.rowsPerPage);
-});
-
 const totalRows = computed(() => {
 	return props.rows.length;
 });
 
 const visibleRows = computed(() => {
-	if (props.rowsPerPage === ALL_ROWS) return props.rows;
+	if (!props.pagination || props.rowsPerPage === PAGINATION_ALL_ITEMS_PER_PAGE) return props.rows;
 
 	const start = (props.currentPage - 1) * props.rowsPerPage;
 	const end = start + props.rowsPerPage;
@@ -57,16 +40,6 @@ function onUpdateCurrentPage(value: number) {
 
 function onRowsPerPageChange(value: number) {
 	emit('update:rowsPerPage', value);
-
-	if (value === ALL_ROWS) {
-		onUpdateCurrentPage(1);
-		return;
-	}
-
-	const maxPage = Math.ceil(totalRows.value / value);
-	if (maxPage < props.currentPage) {
-		onUpdateCurrentPage(maxPage);
-	}
 }
 
 function getTdValue(row: Item, column: DatatableColumn) {
@@ -111,36 +84,17 @@ function getThStyle(column: DatatableColumn) {
 
 		<slot name="postdata" />
 
-		<div class="pagination">
-			<N8nPagination
-				v-if="totalPages > 1"
-				background
-				:pager-count="5"
-				:page-size="rowsPerPage"
-				layout="prev, pager, next"
-				:total="totalRows"
-				:current-page="currentPage"
-				@update:current-page="onUpdateCurrentPage"
-			/>
-
-			<div class="pageSizeSelector">
-				<N8nSelect
-					size="mini"
-					:model-value="rowsPerPage"
-					teleported
-					@update:model-value="onRowsPerPageChange"
-				>
-					<template #prepend>{{ t('datatable.pageSize') }}</template>
-					<N8nOption
-						v-for="size in rowsPerPageOptions"
-						:key="size"
-						:label="`${size}`"
-						:value="size"
-					/>
-					<N8nOption :label="`All`" :value="ALL_ROWS"> </N8nOption>
-				</N8nSelect>
-			</div>
-		</div>
+		<N8nPagination
+			v-if="pagination"
+			class="pagination"
+			:page="currentPage"
+			:items-per-page="rowsPerPage"
+			:total="totalRows"
+			:page-sizes="rowsPerPageOptions"
+			show-all
+			@update:page="onUpdateCurrentPage"
+			@update:items-per-page="onRowsPerPageChange"
+		/>
 	</div>
 </template>
 
@@ -151,18 +105,8 @@ function getThStyle(column: DatatableColumn) {
 }
 
 .pagination {
-	width: 100%;
 	display: flex;
 	justify-content: flex-end;
-	align-items: center;
-	bottom: 0;
-	overflow: visible;
 	margin-top: var(--spacing--sm);
-}
-
-.pageSizeSelector {
-	text-transform: capitalize;
-	max-width: 150px;
-	flex: 0 1 auto;
 }
 </style>

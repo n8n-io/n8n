@@ -1,7 +1,9 @@
+import { requestPath } from 'n8n-workflow';
 import * as scroll from '../../../actions/interaction/scroll.operation';
 import { ERROR_MESSAGES } from '../../../constants';
 import * as transport from '../../../transport';
 import { createMockExecuteFunction } from '../helpers';
+import type { Mock } from 'vitest';
 
 const baseNodeParameters = {
 	resource: 'interaction',
@@ -40,25 +42,21 @@ const mockResponse = {
 	message: 'Scrolled successfully',
 };
 
-jest.mock('../../../transport', () => {
-	const originalModule = jest.requireActual<typeof transport>('../../../transport');
+vi.mock('../../../transport', async () => {
+	const originalModule = await vi.importActual<typeof transport>('../../../transport');
 	return {
 		...originalModule,
-		apiRequest: jest.fn(),
+		apiRequest: vi.fn(),
 	};
 });
 
 describe('Test Airtop, scroll operation', () => {
-	afterAll(() => {
-		jest.unmock('../../../transport');
-	});
-
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should execute automatic scroll operation successfully', async () => {
-		const apiRequestMock = transport.apiRequest as jest.Mock;
+		const apiRequestMock = transport.apiRequest as Mock;
 		apiRequestMock.mockResolvedValueOnce(mockResponse);
 
 		const result = await scroll.execute.call(
@@ -68,7 +66,7 @@ describe('Test Airtop, scroll operation', () => {
 
 		expect(apiRequestMock).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/scroll',
+			requestPath`/sessions/test-session-123/windows/win-123/scroll`,
 			{
 				scrollToElement: 'the bottom of the page',
 				configuration: {},
@@ -88,7 +86,7 @@ describe('Test Airtop, scroll operation', () => {
 	});
 
 	it('should execute manual scroll operation successfully', async () => {
-		const apiRequestMock = transport.apiRequest as jest.Mock;
+		const apiRequestMock = transport.apiRequest as Mock;
 		apiRequestMock.mockResolvedValueOnce(mockResponse);
 
 		const result = await scroll.execute.call(
@@ -98,7 +96,7 @@ describe('Test Airtop, scroll operation', () => {
 
 		expect(apiRequestMock).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/scroll',
+			requestPath`/sessions/test-session-123/windows/win-123/scroll`,
 			{
 				configuration: {},
 				scrollToEdge: {
@@ -152,7 +150,7 @@ describe('Test Airtop, scroll operation', () => {
 	});
 
 	it('should throw an error when the API returns an error response', async () => {
-		const apiRequestMock = transport.apiRequest as jest.Mock;
+		const apiRequestMock = transport.apiRequest as Mock;
 		const errorResponse = {
 			errors: [
 				{

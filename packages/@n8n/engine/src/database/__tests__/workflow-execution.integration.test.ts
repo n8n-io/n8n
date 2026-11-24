@@ -1,0 +1,740 @@
+import type { DataSource, Repository } from '@n8n/typeorm';
+import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
+import postgresVersions from 'n8n-containers/postgres-versions.json';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import { ExecutionNotFoundError, ParentExecutionEndedError } from '../../execution/execution-store';
+import type { NewExecutionRecord } from '../../execution/execution-store';
+import type { ExecutionStatus, StepStatus } from '../../execution/execution.types';
+import { createDataSource } from '../data-source';
+import { WorkflowExecution } from '../entities/workflow-execution.entity';
+import { WorkflowSeededStep } from '../entities/workflow-seeded-step.entity';
+import { WorkflowStepExecution } from '../entities/workflow-step-execution.entity';
+import { generateId } from '../generate-id';
+import { TypeOrmExecutionStore } from '../typeorm-execution-store';
+import { TypeOrmExecutionViewStore } from '../typeorm-execution-view-store';
+
+/** Opaque to the engine: stored and reported, never read into. */
+const sampleWorkflow = { id: 'wf-3', name: 'Sample', nodes: [{ name: 'A' }], connections: {} };
+
+describe('workflow_execution table (integration)', () => {
+	let container: StartedPostgreSqlContainer;
+	let dataSource: DataSource;
+
+	beforeAll(async () => {
+		container = await new PostgreSqlContainer(postgresVersions.primary).start();
+		dataSource = createDataSource(container.getConnectionUri());
+		await dataSource.initialize();
+		await dataSource.runMigrations();
+	}, 120_000);
+
+	afterAll(async () => {
+		if (dataSource?.isInitialized) await dataSource.destroy();
+		if (container) await container.stop();
+	});
+
+	async function waitUntilQueryBlocksOnLock(queryFragment: string): Promise<void> {
+		for (let attempt = 0; attempt < 500; attempt++) {
+			const [{ blocked }] = await dataSource.query<Array<{ blocked: number }>>(
+				`SELECT count(*)::int AS blocked FROM pg_stat_activity
+				 WHERE wait_event_type = 'Lock' AND pid <> pg_backend_pid() AND query LIKE $1`,
+				[`%${queryFragment}%`],
+			);
+			if (blocked > 0) return;
+			await new Promise((resolve) => setTimeout(resolve, 10));
+		}
+		throw new Error(`No query containing "${queryFragment}" blocked on a lock`);
+	}
+
+	it('persists and retrieves a workflow_execution row', async () => {
+		const repo = dataSource.getRepository(WorkflowExecution);
+
+		const created = repo.create({
+			id: generateId(),
+			workflowId: 'wf-1',
+			status: 'running',
+			mode: 'production',
+			graph: { nodes: [], edges: [] },
+			workflow: {},
+			triggerOutputs: [{ foo: 'bar' }],
+			callerContext: { hostMode: 'trigger' },
+			responseExpectation: { kind: 'stepResponse' },
+			finishedAt: null,
+		});
+		await repo.save(created);
+
+		// NOTE: `findOne({ where })`, not `findOneByOrFail`: the latter's overload
+		// exceeds TypeScript's instantiation depth on the recursive `triggerOutputs`
+		// column type.
+		const found = await repo.findOneOrFail({ where: { id: created.id } });
+
+		expect(found.id).toBeTruthy();
+		expect(found.workflowId).toBe('wf-1');
+		expect(found.status).toBe('running');
+		expect(found.mode).toBe('production');
+		expect(found.triggerOutputs).toEqual([{ foo: 'bar' }]);
+		expect(found.callerContext).toEqual({ hostMode: 'trigger' });
+		expect(found.responseExpectation).toEqual({ kind: 'stepResponse' });
+		expect(found.finishedAt).toBeNull();
+		expect(found.createdAt).toBeInstanceOf(Date);
+		expect(found.updatedAt).toBeInstanceOf(Date);
+	});
+
+	it('TypeOrmExecutionViewStore.loadExecutionView reports the timing and leaves the trigger payload behind', async () => {
+		const repo = dataSource.getRepository(WorkflowExecution);
+		const finishedAt = new Date();
+		const created = repo.create({
+			id: generateId(),
+			workflowId: 'wf-3',
+			status: 'completed',
+			mode: 'manual',
+			graph: { nodes: [], edges: [] },
+			workflow: sampleWorkflow,
+			triggerOutputs: [{ foo: 'bar' }],
+			callerContext: { hostMode: 'manual' },
+			responseExpectation: { kind: 'none' },
+			finishedAt,
+		});
+		await repo.save(created);
+		const viewStore = new TypeOrmExecutionViewStore(
+			repo,
+			dataSource.getRepository(WorkflowStepExecution),
+		);
+
+		const view = await viewStore.loadExecutionView(created.id);
+
+		expect(view).toEqual({
+			id: created.id,
+			workflowId: 'wf-3',
+			status: 'completed',
+			mode: 'manual',
+			hostMode: 'manual',
+			graph: { nodes: [], edges: [] },
+			workflow: sampleWorkflow,
+			parent: null,
+			createdAt: expect.any(Date) as Date,
+			updatedAt: expect.any(Date) as Date,
+			finishedAt,
+		});
+	});
+
+	it('TypeOrmExecutionStore.loadExecution leaves the workflow document behind', async () => {
+		const repo = dataSource.getRepository(WorkflowExecution);
+		const created = repo.create({
+			id: generateId(),
+			workflowId: 'wf-4',
+			status: 'running',
+			mode: 'production',
+			graph: { nodes: [], edges: [] },
+			workflow: sampleWorkflow,
+			triggerOutputs: [{ foo: 'bar' }],
+			callerContext: { hostMode: 'trigger' },
+			responseExpectation: { kind: 'runEnd' },
+			lifecycleEventSubscription: { kind: 'all' },
+			finishedAt: null,
+		});
+		await repo.save(created);
+
+		const record = await new TypeOrmExecutionStore(repo).loadExecution(created.id);
+
+		// The execution path never reads the document, so the query never ships it.
+		expect(record).toEqual({
+			id: created.id,
+			workflowId: 'wf-4',
+			status: 'running',
+			mode: 'production',
+			graph: { nodes: [], edges: [] },
+			triggerOutputs: [{ foo: 'bar' }],
+			callerContext: { hostMode: 'trigger' },
+			responseExpectation: { kind: 'runEnd' },
+			parent: null,
+			lifecycleEventSubscription: { kind: 'all' },
+			finishedAt: null,
+		});
+	});
+
+	it.each([
+		['the subscription it was given', { kind: 'all' as const }, { kind: 'all' }],
+		['null when it was given none', undefined, null],
+	])(
+		'TypeOrmExecutionStore round-trips the lifecycle event subscription: %s',
+		async (_name, lifecycleEventSubscription, expected) => {
+			const store = new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution));
+			const id = generateId();
+			await store.createExecution({
+				id,
+				workflowId: 'wf-6',
+				status: 'queued',
+				mode: 'manual',
+				graph: { nodes: [], edges: [], seeded: [] },
+				workflow: sampleWorkflow,
+				triggerOutputs: null,
+				callerContext: { hostMode: 'manual' },
+				responseExpectation: { kind: 'none' },
+				parent: null,
+				lifecycleEventSubscription,
+			});
+
+			const record = await store.loadExecution(id);
+
+			expect(record.lifecycleEventSubscription).toEqual(expected);
+		},
+	);
+
+	it.each(['loadExecutionView', 'loadExecutionWithStepsView'] as const)(
+		'TypeOrmExecutionViewStore.%s throws for an unknown id',
+		async (method) => {
+			const viewStore = new TypeOrmExecutionViewStore(
+				dataSource.getRepository(WorkflowExecution),
+				dataSource.getRepository(WorkflowStepExecution),
+			);
+
+			await expect(
+				viewStore[method]('00000000-0000-0000-0000-000000000000'),
+			).rejects.toBeInstanceOf(ExecutionNotFoundError);
+		},
+	);
+
+	it('TypeOrmExecutionViewStore.loadExecutionWithStepsView reports the parent workflow and the sub-executions', async () => {
+		const store = new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution));
+		const viewStore = new TypeOrmExecutionViewStore(
+			dataSource.getRepository(WorkflowExecution),
+			dataSource.getRepository(WorkflowStepExecution),
+		);
+		const parentId = generateId();
+		await store.createExecution({
+			...newRecord(parentId),
+			workflowId: 'wf-parent',
+			status: 'running',
+		});
+		const [first, second] = [generateId(), generateId()];
+		const [firstStepId, secondStepId] = [generateId(), generateId()];
+		await store.createExecution({
+			...newRecord(first),
+			workflowId: 'wf-sub-1',
+			parent: { executionId: parentId, stepId: firstStepId, awaited: true },
+		});
+		await store.createExecution({
+			...newRecord(second),
+			workflowId: 'wf-sub-2',
+			parent: { executionId: parentId, stepId: secondStepId, awaited: false },
+		});
+
+		const parent = await viewStore.loadExecutionWithStepsView(parentId);
+		const child = await viewStore.loadExecutionWithStepsView(first);
+
+		expect(parent.parentWorkflowId).toBeNull();
+		expect(parent.subExecutions).toEqual([
+			{ executionId: first, workflowId: 'wf-sub-1', stepId: firstStepId },
+			{ executionId: second, workflowId: 'wf-sub-2', stepId: secondStepId },
+		]);
+		expect(child.parentWorkflowId).toBe('wf-parent');
+		expect(child.subExecutions).toEqual([]);
+	});
+
+	it('counts rows by workflowId and status (admittance support)', async () => {
+		const repo = dataSource.getRepository(WorkflowExecution);
+
+		await repo.save(
+			repo.create({
+				id: generateId(),
+				workflowId: 'wf-2',
+				status: 'running',
+				mode: 'production',
+				graph: { nodes: [], edges: [] },
+				workflow: {},
+				triggerOutputs: null,
+				callerContext: { hostMode: 'trigger' },
+				responseExpectation: { kind: 'none' },
+				finishedAt: null,
+			}),
+		);
+		await repo.save(
+			repo.create({
+				id: generateId(),
+				workflowId: 'wf-2',
+				status: 'completed',
+				mode: 'production',
+				graph: { nodes: [], edges: [] },
+				workflow: {},
+				triggerOutputs: null,
+				callerContext: { hostMode: 'trigger' },
+				responseExpectation: { kind: 'none' },
+				finishedAt: new Date(),
+			}),
+		);
+
+		const runningForWf2 = await repo.count({
+			where: { workflowId: 'wf-2', status: 'running' },
+		});
+
+		expect(runningForWf2).toBe(1);
+	});
+
+	it('TypeOrmExecutionStore.loadExecutionStatus reads the status, and throws for an unknown id', async () => {
+		const store = new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution));
+		const id = generateId();
+		await store.createExecution(newRecord(id));
+
+		expect(await store.loadExecutionStatus(id)).toBe('queued');
+		await expect(store.loadExecutionStatus(generateId())).rejects.toBeInstanceOf(
+			ExecutionNotFoundError,
+		);
+	});
+
+	it('TypeOrmExecutionStore.finishExecution ends a waiting execution', async () => {
+		const repo = dataSource.getRepository(WorkflowExecution);
+		const created = await repo.save(
+			repo.create({
+				id: generateId(),
+				workflowId: 'wf-5',
+				status: 'waiting',
+				mode: 'production',
+				callerContext: { hostMode: 'trigger' },
+				graph: { nodes: [], edges: [] },
+				workflow: {},
+				triggerOutputs: null,
+				responseExpectation: { kind: 'none' },
+				finishedAt: null,
+			}),
+		);
+
+		const finished = await new TypeOrmExecutionStore(repo).finishExecution(created.id, 'failed');
+
+		const row = await repo.findOneOrFail({ where: { id: created.id } });
+		expect(row.status).toBe('failed');
+		expect(row.finishedAt).toBeInstanceOf(Date);
+		expect(finished).toEqual({ finishedAt: row.finishedAt });
+	});
+
+	it.each<ExecutionStatus>(['completed', 'queued'])(
+		'TypeOrmExecutionStore.finishExecution leaves a %j execution alone',
+		async (status) => {
+			const repo = dataSource.getRepository(WorkflowExecution);
+			const finishedAt = status === 'completed' ? new Date('2099-01-01T00:00:00.000Z') : null;
+			const created = await repo.save(
+				repo.create({
+					id: generateId(),
+					workflowId: 'wf-6',
+					status,
+					mode: 'production',
+					callerContext: { hostMode: 'trigger' },
+					graph: { nodes: [], edges: [] },
+					workflow: {},
+					triggerOutputs: null,
+					responseExpectation: { kind: 'none' },
+					finishedAt,
+				}),
+			);
+
+			const finished = await new TypeOrmExecutionStore(repo).finishExecution(created.id, 'failed');
+
+			expect(finished).toBeNull();
+			const row = await repo.findOneOrFail({ where: { id: created.id } });
+			expect(row.status).toBe(status);
+			expect(row.finishedAt).toEqual(finishedAt);
+		},
+	);
+
+	it.each<ExecutionStatus>(['queued', 'running', 'waiting'])(
+		'TypeOrmExecutionStore.cancelExecution ends a %j execution',
+		async (status) => {
+			const repo = dataSource.getRepository(WorkflowExecution);
+			const { id } = await saveExecution(repo, { status, finishedAt: null });
+
+			const cancelled = await new TypeOrmExecutionStore(repo).cancelExecution(id);
+
+			const row = await repo.findOneOrFail({ where: { id } });
+			expect(row.status).toBe('cancelled');
+			expect(row.finishedAt).toBeInstanceOf(Date);
+			// the caller reports the time the row records, not a second reading of the clock
+			expect(cancelled).toEqual({ finishedAt: row.finishedAt });
+		},
+	);
+
+	it.each<ExecutionStatus>(['completed', 'failed', 'cancelled'])(
+		'TypeOrmExecutionStore.cancelExecution leaves a %j execution alone',
+		async (status) => {
+			const repo = dataSource.getRepository(WorkflowExecution);
+			const finishedAt = new Date('2099-01-01T00:00:00.000Z');
+			const { id } = await saveExecution(repo, { status, finishedAt });
+
+			const cancelled = await new TypeOrmExecutionStore(repo).cancelExecution(id);
+
+			expect(cancelled).toBeNull();
+			const row = await repo.findOneOrFail({ where: { id } });
+			expect(row.status).toBe(status);
+			expect(row.finishedAt).toEqual(finishedAt);
+		},
+	);
+
+	describe('TypeOrmExecutionStore.refreshLiveStatus', () => {
+		/** One execution with one step for each status given. */
+		async function seed(status: ExecutionStatus, stepStatuses: StepStatus[]): Promise<string> {
+			const repo = dataSource.getRepository(WorkflowExecution);
+			const execution = await repo.save(
+				repo.create({
+					id: generateId(),
+					workflowId: 'wf-live',
+					status,
+					mode: 'production',
+					callerContext: { hostMode: 'trigger' },
+					graph: { nodes: [], edges: [] },
+					workflow: {},
+					triggerOutputs: null,
+					responseExpectation: { kind: 'none' },
+					finishedAt: null,
+				}),
+			);
+			const stepRepo = dataSource.getRepository(WorkflowStepExecution);
+			await stepRepo.save(
+				// one iteration for each, so they are distinct rows of the same node
+				stepStatuses.map((stepStatus, iteration) =>
+					stepRepo.create({
+						id: generateId(),
+						executionId: execution.id,
+						nodeId: 'a',
+						iteration,
+						status: stepStatus,
+						outputs: null,
+						error: null,
+						waitDeclaration: null,
+						waitTill: null,
+						resumeCause: null,
+					}),
+				),
+			);
+			return execution.id;
+		}
+
+		it.each<[string, ExecutionStatus, StepStatus[], ExecutionStatus]>([
+			[
+				'reports waiting when every step it still owes is suspended',
+				'running',
+				['completed', 'waiting'],
+				'waiting',
+			],
+			['reports running again once a step can run', 'waiting', ['waiting', 'queued'], 'running'],
+			['reports running while a step runs', 'waiting', ['waiting', 'running'], 'running'],
+			[
+				'leaves an execution whose steps have all settled to finishExecution',
+				'running',
+				['completed'],
+				'running',
+			],
+			['leaves an execution with no steps alone', 'running', [], 'running'],
+			['leaves an execution that already ended alone', 'completed', ['waiting'], 'completed'],
+		])('%s', async (_case, from, stepStatuses, expected) => {
+			const repo = dataSource.getRepository(WorkflowExecution);
+			const id = await seed(from, stepStatuses);
+
+			await new TypeOrmExecutionStore(repo).refreshLiveStatus(id);
+
+			const row = await repo.findOneOrFail({ where: { id } });
+			expect(row.status).toBe(expected);
+		});
+
+		it('does not write when the status already holds', async () => {
+			const repo = dataSource.getRepository(WorkflowExecution);
+			const id = await seed('running', ['running']);
+			const before = await repo.findOneOrFail({ where: { id } });
+
+			await new TypeOrmExecutionStore(repo).refreshLiveStatus(id);
+
+			// The timestamp is the only trace of the write: the status is the same.
+			const after = await repo.findOneOrFail({ where: { id } });
+			expect(after.updatedAt).toEqual(before.updatedAt);
+		});
+	});
+
+	it('TypeOrmExecutionStore.createExecution stores seeded outputs by node and pass, read back by key', async () => {
+		const store = new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution));
+		const id = generateId();
+		await store.createExecution({
+			id,
+			workflowId: 'wf-5',
+			status: 'queued',
+			mode: 'manual',
+			graph: { nodes: [], edges: [], seeded: [] },
+			workflow: sampleWorkflow,
+			triggerOutputs: null,
+			seededSteps: {
+				a: [[[{ json: { pass: 0 } }]], [[{ json: { pass: 1 } }]]],
+				b: [[[{ json: { b: true } }]]],
+			},
+			callerContext: { hostMode: 'manual' },
+			responseExpectation: { kind: 'none' },
+			parent: null,
+		});
+
+		// Only the keys asked for, and nothing for a key that was never seeded.
+		const outputs = await store.loadSeededOutputs(id, [
+			{ nodeId: 'a', iteration: 1 },
+			{ nodeId: 'b', iteration: 0 },
+			{ nodeId: 'c', iteration: 0 },
+		]);
+		expect(Object.fromEntries(outputs)).toEqual({
+			'a@1': [[{ json: { pass: 1 } }]],
+			'b@0': [[{ json: { b: true } }]],
+		});
+		expect(await store.loadSeededOutputs(id, [])).toEqual(new Map());
+
+		// The outputs go with the execution.
+		await dataSource.getRepository(WorkflowExecution).delete({ id });
+		const remaining = await dataSource
+			.getRepository(WorkflowSeededStep)
+			.createQueryBuilder('seeded')
+			.where('seeded.execution_id = :id', { id })
+			.getCount();
+		expect(remaining).toBe(0);
+	});
+
+	it('TypeOrmExecutionStore.createExecution stores the parent link, and loadExecution reads it back', async () => {
+		const store = new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution));
+		const parent = { executionId: generateId(), stepId: generateId(), awaited: true };
+		await store.createExecution({ ...newRecord(parent.executionId), status: 'running' });
+		const id = generateId();
+
+		await store.createExecution({ ...newRecord(id), parent });
+
+		expect((await store.loadExecution(id)).parent).toEqual(parent);
+	});
+
+	it.each(['completed', 'failed', 'cancelled'] satisfies ExecutionStatus[])(
+		'TypeOrmExecutionStore.createExecution refuses a parent that is %s',
+		async (status) => {
+			const store = new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution));
+			const parent = { executionId: generateId(), stepId: generateId(), awaited: true };
+			await store.createExecution({ ...newRecord(parent.executionId), status });
+			const id = generateId();
+
+			await expect(store.createExecution({ ...newRecord(id), parent })).rejects.toThrow(
+				ParentExecutionEndedError,
+			);
+			await expect(store.loadExecution(id)).rejects.toThrow(ExecutionNotFoundError);
+		},
+	);
+
+	it('TypeOrmExecutionStore.createExecution refuses a parent that does not exist', async () => {
+		const store = new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution));
+		const parent = { executionId: generateId(), stepId: generateId(), awaited: true };
+
+		await expect(store.createExecution({ ...newRecord(generateId()), parent })).rejects.toThrow(
+			ExecutionNotFoundError,
+		);
+	});
+
+	it('TypeOrmExecutionStore.createExecution waits for an end of the parent that is in flight, then refuses', async () => {
+		const store = new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution));
+		const parent = { executionId: generateId(), stepId: generateId(), awaited: true };
+		await store.createExecution({ ...newRecord(parent.executionId), status: 'running' });
+		// A cancel that has written the end but not committed holds the parent row.
+		const ending = dataSource.createQueryRunner();
+		await ending.connect();
+		await ending.startTransaction();
+		try {
+			await ending.manager.update(
+				WorkflowExecution,
+				{ id: parent.executionId, status: 'running' },
+				{ status: 'cancelled', finishedAt: new Date() },
+			);
+			const insert = store.createExecution({ ...newRecord(generateId()), parent });
+			insert.catch(() => {});
+			await waitUntilQueryBlocksOnLock('FOR SHARE');
+
+			await ending.commitTransaction();
+			await expect(insert).rejects.toThrow(ParentExecutionEndedError);
+		} finally {
+			await ending.release();
+		}
+	});
+
+	describe('stale_after', () => {
+		const staleness = { queuedMs: 10_000, runningStepMs: 50_000 };
+
+		function stalenessStore(): TypeOrmExecutionStore {
+			return new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution), staleness);
+		}
+
+		async function loadStaleAfter(id: string): Promise<Date | null> {
+			const row = await dataSource.getRepository(WorkflowExecution).findOneOrFail({
+				where: { id },
+			});
+			return row.staleAfter;
+		}
+
+		it('createExecution writes the queue threshold on a queued execution', async () => {
+			const id = generateId();
+
+			const before = Date.now();
+			await stalenessStore().createExecution(newRecord(id));
+			const after = Date.now();
+
+			const staleAfter = await loadStaleAfter(id);
+			expect(staleAfter?.getTime()).toBeGreaterThanOrEqual(before + staleness.queuedMs);
+			expect(staleAfter?.getTime()).toBeLessThanOrEqual(after + staleness.queuedMs);
+		});
+
+		it('transitionStatus clears the value when the execution leaves queued', async () => {
+			const store = stalenessStore();
+			const id = generateId();
+			await store.createExecution(newRecord(id));
+
+			expect(await store.transitionStatus(id, 'queued', 'running')).toBe(true);
+
+			expect(await loadStaleAfter(id)).toBeNull();
+		});
+
+		it('cancelExecution clears the value of a queued execution', async () => {
+			const store = stalenessStore();
+			const id = generateId();
+			await store.createExecution(newRecord(id));
+
+			expect(await store.cancelExecution(id)).not.toBeNull();
+
+			expect(await loadStaleAfter(id)).toBeNull();
+		});
+
+		it('findStaleQueuedExecutions returns the queued executions whose time has passed, oldest first', async () => {
+			const repo = dataSource.getRepository(WorkflowExecution);
+			// The rows of the earlier tests share this table, so remove them from the search.
+			await repo.update({ status: 'queued' }, { staleAfter: null });
+			const store = stalenessStore();
+			const seed = async (status: ExecutionStatus, staleAfter: Date | null) => {
+				const row = await saveExecution(repo, { status, finishedAt: null });
+				await repo.update({ id: row.id }, { staleAfter });
+				return row.id;
+			};
+			const newer = await seed('queued', new Date('2020-01-01T00:02:00.000Z'));
+			const older = await seed('queued', new Date('2020-01-01T00:01:00.000Z'));
+			// not returned: the time has not passed, the status is not `queued`, or no time exists
+			await seed('queued', new Date('2020-01-01T00:04:00.000Z'));
+			await seed('running', new Date('2020-01-01T00:01:00.000Z'));
+			await seed('queued', null);
+			const at = new Date('2020-01-01T00:03:00.000Z');
+
+			expect(await store.findStaleQueuedExecutions(at, 10)).toEqual([
+				{ id: older, staleAfter: new Date('2020-01-01T00:01:00.000Z') },
+				{ id: newer, staleAfter: new Date('2020-01-01T00:02:00.000Z') },
+			]);
+			expect(await store.findStaleQueuedExecutions(at, 1)).toEqual([
+				{ id: older, staleAfter: new Date('2020-01-01T00:01:00.000Z') },
+			]);
+		});
+
+		it('renewQueuedExecution moves the time forward once for one observed value', async () => {
+			const store = stalenessStore();
+			const id = generateId();
+			await store.createExecution(newRecord(id));
+			const observed = await loadStaleAfter(id);
+			if (!observed) throw new Error('expected a stale_after value');
+
+			const before = Date.now();
+			expect(await store.renewQueuedExecution(id, observed)).toBe(true);
+			const after = Date.now();
+
+			const renewed = await loadStaleAfter(id);
+			expect(renewed?.getTime()).toBeGreaterThanOrEqual(before + staleness.queuedMs);
+			expect(renewed?.getTime()).toBeLessThanOrEqual(after + staleness.queuedMs);
+			// a second caller that read the same value changes nothing
+			expect(await store.renewQueuedExecution(id, observed)).toBe(false);
+			expect(await loadStaleAfter(id)).toEqual(renewed);
+		});
+
+		it('renewQueuedExecution changes nothing once the execution left queued', async () => {
+			const store = stalenessStore();
+			const id = generateId();
+			await store.createExecution(newRecord(id));
+			const observed = await loadStaleAfter(id);
+			if (!observed) throw new Error('expected a stale_after value');
+			await store.transitionStatus(id, 'queued', 'running');
+
+			expect(await store.renewQueuedExecution(id, observed)).toBe(false);
+			expect(await loadStaleAfter(id)).toBeNull();
+		});
+
+		it('has a partial index on the value for queued executions', async () => {
+			const [index]: Array<{ indexdef: string }> = await dataSource.query(
+				`SELECT indexdef FROM pg_indexes
+				 WHERE tablename = 'workflow_execution' AND indexname = 'idx_workflow_execution_stale_after'`,
+			);
+
+			expect(index.indexdef).toContain('(stale_after)');
+			expect(index.indexdef).toContain("WHERE ((status)::text = 'queued'");
+		});
+	});
+
+	it('carries the parent CHECK and the partial parent index in the schema', async () => {
+		const indexes: Array<{ indexname: string; indexdef: string }> = await dataSource.query(
+			"SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'workflow_execution'",
+		);
+		const byName = Object.fromEntries(indexes.map((row) => [row.indexname, row.indexdef]));
+		expect(byName.idx_workflow_execution_parent_execution_id).toContain('(parent_execution_id)');
+		expect(byName.idx_workflow_execution_parent_execution_id).toContain(
+			'WHERE (parent_execution_id IS NOT NULL)',
+		);
+
+		const [check]: Array<{ definition: string }> = await dataSource.query(
+			`SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint
+				 WHERE conname = 'chk_workflow_execution_parent'`,
+		);
+		expect(check.definition).toBe(
+			'CHECK ((((parent_execution_id IS NULL) AND (parent_step_id IS NULL) AND (parent_awaited IS NULL)) OR ((parent_execution_id IS NOT NULL) AND (parent_step_id IS NOT NULL) AND (parent_awaited IS NOT NULL))))',
+		);
+	});
+
+	it('TypeOrmExecutionStore.loadLiveSubExecutionIds lists the sub-executions that have not ended', async () => {
+		const store = new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution));
+		const parentId = generateId();
+		await store.createExecution({ ...newRecord(parentId), status: 'running' });
+		const link = (awaited: boolean) => ({ executionId: parentId, stepId: generateId(), awaited });
+		const [queued, running, waiting, completed, other] = Array.from({ length: 5 }, generateId);
+		await store.createExecution({ ...newRecord(queued), status: 'queued', parent: link(true) });
+		await store.createExecution({ ...newRecord(running), status: 'running', parent: link(false) });
+		await store.createExecution({ ...newRecord(waiting), status: 'waiting', parent: link(true) });
+		await store.createExecution({
+			...newRecord(completed),
+			status: 'completed',
+			parent: link(true),
+		});
+		await store.createExecution({ ...newRecord(other), status: 'running' });
+
+		expect((await store.loadLiveSubExecutionIds(parentId)).sort()).toEqual(
+			[queued, running, waiting].sort(),
+		);
+	});
+});
+
+function newRecord(id: string): NewExecutionRecord {
+	return {
+		id,
+		workflowId: 'wf-8',
+		status: 'queued',
+		mode: 'production',
+		graph: { nodes: [], edges: [], seeded: [] },
+		workflow: sampleWorkflow,
+		triggerOutputs: null,
+		callerContext: { hostMode: 'integrated' },
+		responseExpectation: { kind: 'none' },
+		parent: null,
+	};
+}
+
+async function saveExecution(
+	repo: Repository<WorkflowExecution>,
+	fields: { status: ExecutionStatus; finishedAt: Date | null },
+): Promise<WorkflowExecution> {
+	return await repo.save(
+		repo.create({
+			id: generateId(),
+			workflowId: 'wf-7',
+			mode: 'production',
+			callerContext: { hostMode: 'trigger' },
+			responseExpectation: { kind: 'none' },
+			graph: { nodes: [], edges: [] },
+			workflow: {},
+			triggerOutputs: null,
+			...fields,
+		}),
+	);
+}

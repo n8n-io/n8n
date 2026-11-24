@@ -4,11 +4,14 @@ import {
 	type INodeProperties,
 	type IExecuteFunctions,
 	updateDisplayOptions,
+	requestPath,
 } from 'n8n-workflow';
 
 import {
 	seaTableApiRequest,
 	enrichColumns,
+	escapeSqlIdentifier,
+	escapeSqlString,
 	simplify_new,
 	getBaseCollaborators,
 } from '../../GenericFunctions';
@@ -67,9 +70,9 @@ export async function execute(
 		this,
 		{},
 		'POST',
-		'/api-gateway/api/v2/dtables/{{dtable_uuid}}/sql/',
+		(dtableUuid) => requestPath`/api-gateway/api/v2/dtables/${dtableUuid}/sql/`,
 		{
-			sql: `SELECT * FROM \`${tableName}\` WHERE _id = '${rowId}'`,
+			sql: `SELECT * FROM \`${escapeSqlIdentifier(tableName)}\` WHERE _id = '${escapeSqlString(rowId)}'`,
 			convert_keys: options.convert ?? true,
 		},
 	)) as IRowResponse;

@@ -15,8 +15,9 @@ import {
 	OPEN_AI_NODE_TYPE,
 } from '@/app/constants';
 
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 import { useActions } from '../../composables/useActions';
 import { useKeyboardNavigation } from '../../composables/useKeyboardNavigation';
@@ -25,15 +26,19 @@ import { useViewStacks } from '../../composables/useViewStacks';
 import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
 import type { IDataObject } from 'n8n-workflow';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import OrderSwitcher from './../OrderSwitcher.vue';
-import { getActiveViewCallouts, isNodePreviewKey } from '../../nodeCreator.utils';
+import { isNodePreviewKey } from '../../nodeCreator.utils';
 
 import CommunityNodeInfo from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeInfo.vue';
 import CommunityNodeFooter from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeFooter.vue';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
+import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
+import QuickConnectBanner from '@/features/credentials/quickConnect/components/QuickConnectBanner.vue';
+import { useGatewayCreditsPromotion } from '@/features/credentials/gatewayCreditsPromotion/useGatewayCreditsPromotion';
+import GatewayCreditsPromotion from '@/features/credentials/gatewayCreditsPromotion/GatewayCreditsPromotion.vue';
 
 import { N8nCallout, N8nInfoTip } from '@n8n/design-system';
 const emit = defineEmits<{
@@ -42,7 +47,7 @@ const emit = defineEmits<{
 const telemetry = useTelemetry();
 const i18n = useI18n();
 
-const { userActivated, isInstanceOwner } = useUsersStore();
+const usersStore = useUsersStore();
 const { popViewStack, updateCurrentViewStack } = useViewStacks();
 const { registerKeyHook } = useKeyboardNavigation();
 const {
@@ -55,7 +60,8 @@ const {
 } = useActions();
 
 const nodeCreatorStore = useNodeCreatorStore();
-const calloutHelpers = useCalloutHelpers();
+const nodeTypesStore = useNodeTypesStore();
+const { openSampleWorkflowTemplate } = useCalloutHelpers();
 
 // We only inject labels if search is empty
 const parsedTriggerActions = computed(() =>
@@ -103,6 +109,24 @@ const communityNodeDetails = computed(() => useViewStacks().activeViewStack?.com
 
 const placeholderTriggerActions = getPlaceholderTriggerActions(subcategory.value || '');
 
+const { getQuickConnectOptionByPackageName } = useQuickConnect();
+const quickConnect = computed(() => {
+	const items = useViewStacks().activeViewStack.items;
+	if (!communityNodeDetails.value && items?.length) {
+		return getQuickConnectOptionByPackageName(items[0].key);
+	}
+
+	return null;
+});
+
+// CommunityNodeInfo shows the promotion when community node details are open.
+const { promotionText } = useGatewayCreditsPromotion({
+	nodeType: () => {
+		const items = useViewStacks().activeViewStack.items;
+		return !communityNodeDetails.value && items?.length ? items[0].key : undefined;
+	},
+});
+
 const hasNoTriggerActions = computed(
 	() =>
 		parseCategoryActions(
@@ -119,7 +143,7 @@ const containsAPIAction = computed(() => {
 		return ((p as ActionCreateElement).properties.actionKey ?? '') === CUSTOM_API_CALL_KEY;
 	});
 
-	return result;
+	return result && !nodeTypesStore.isNodeTypeUnavailable(HTTP_REQUEST_NODE_TYPE);
 });
 
 const isTriggerRootView = computed(() => rootView.value === TRIGGER_NODE_CREATOR_VIEW);
@@ -163,10 +187,9 @@ function onKeySelect(activeItemId: string) {
 
 function onSelected(actionCreateElement: INodeCreateElement) {
 	if (actionCreateElement.type === 'openTemplate') {
-		calloutHelpers.openSampleWorkflowTemplate(actionCreateElement.properties.templateId, {
+		openSampleWorkflowTemplate(actionCreateElement.properties.templateId, {
 			telemetry: {
 				source: 'nodeCreator',
-				section: useViewStacks().activeViewStack.title,
 			},
 		});
 	}
@@ -247,13 +270,7 @@ onMounted(() => {
 	trackActionsView();
 });
 
-const callouts = computed<INodeCreateElement[]>(() =>
-	getActiveViewCallouts(
-		useViewStacks().activeViewStack.title,
-		calloutHelpers.isPreBuiltAgentsCalloutVisible.value,
-		calloutHelpers.getPreBuiltAgentNodeCreatorItems(),
-	),
-);
+const callouts = computed<INodeCreateElement[]>(() => []);
 </script>
 
 <template>
@@ -266,6 +283,14 @@ const callouts = computed<INodeCreateElement[]>(() =>
 		<ItemsRenderer :elements="callouts" :class="$style.items" @selected="onSelected" />
 
 		<CommunityNodeInfo v-if="communityNodeDetails" />
+		<div v-if="quickConnect || promotionText" :class="$style.banner">
+			<QuickConnectBanner
+				v-if="quickConnect"
+				:text="quickConnect.text"
+				:disclaimer="quickConnect.disclaimer"
+			/>
+			<GatewayCreditsPromotion v-if="promotionText" :text="promotionText" />
+		</div>
 		<OrderSwitcher v-if="rootView" :root-view="rootView">
 			<template v-if="shouldShowTriggers" #triggers>
 				<!-- Triggers Category -->
@@ -318,7 +343,7 @@ const callouts = computed<INodeCreateElement[]>(() =>
 					@selected="onSelected"
 				>
 					<N8nCallout
-						v-if="!userActivated && isTriggerRootView"
+						v-if="!usersStore.userActivated && isTriggerRootView"
 						theme="info"
 						iconless
 						slim
@@ -362,7 +387,8 @@ const callouts = computed<INodeCreateElement[]>(() =>
 			v-if="communityNodeDetails"
 			:class="$style.communityNodeFooter"
 			:package-name="communityNodeDetails.packageName"
-			:show-manage="communityNodeDetails.installed && isInstanceOwner"
+			:node-type-name="communityNodeDetails.key"
+			:show-manage="communityNodeDetails.installed && usersStore.isAdminOrOwner"
 		/>
 	</div>
 </template>
@@ -391,7 +417,7 @@ const callouts = computed<INodeCreateElement[]>(() =>
 	color: var(--color--text);
 
 	i {
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 		font-style: normal;
 		text-decoration: underline;
 	}
@@ -401,7 +427,7 @@ const callouts = computed<INodeCreateElement[]>(() =>
 	font-weight: var(--font-weight--regular);
 
 	strong {
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 	}
 }
 .apiHint {
@@ -410,5 +436,12 @@ const callouts = computed<INodeCreateElement[]>(() =>
 	color: var(--color--text);
 	line-height: var(--line-height--md);
 	z-index: 1;
+}
+.banner {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	margin: var(--spacing--sm);
+	margin-top: 0;
 }
 </style>

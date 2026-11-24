@@ -1,0 +1,41 @@
+import { NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+
+import { databricksApiRequest, getActiveCredentialType, getHost, toRequestPath } from '../helpers';
+
+export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
+	const credentialType = getActiveCredentialType(this, i);
+	const host = await getHost(this, credentialType);
+	const volumePath = this.getNodeParameter('volumePath', i) as string;
+	const directoryPath = this.getNodeParameter('directoryPath', i) as string;
+	const additionalFields = this.getNodeParameter('additionalFields', i, {}) as {
+		pageSize?: number;
+		pageToken?: string;
+	};
+
+	const parts = volumePath.split('.');
+	if (parts.length !== 3) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Volume path must be in format: catalog.schema.volume (e.g., main.default.my_volume)',
+		);
+	}
+	const [catalog, schema, volume] = parts;
+
+	const queryParams: Record<string, number | string> = {};
+	if (additionalFields.pageSize !== undefined) queryParams.page_size = additionalFields.pageSize;
+	if (additionalFields.pageToken) queryParams.page_token = additionalFields.pageToken;
+
+	const response = await databricksApiRequest(
+		this,
+		credentialType,
+		requestUrl`${host}/api/2.0/fs/directories/Volumes/${catalog}/${schema}/${volume}${directoryPath ? toRequestPath(directoryPath, this.getNode().typeVersion) : requestPath``}`,
+		{
+			method: 'GET',
+			qs: queryParams,
+			json: true,
+		},
+	);
+
+	return [{ json: response, pairedItem: { item: i } }];
+}

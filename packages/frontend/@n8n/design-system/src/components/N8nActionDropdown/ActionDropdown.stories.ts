@@ -1,135 +1,137 @@
-import type { StoryFn } from '@storybook/vue3-vite';
+import type { Meta, StoryObj } from '@storybook/vue3-vite';
+import { action } from 'storybook/actions';
 
 import N8nActionDropdown from './ActionDropdown.vue';
+import type { ActionDropdownItem } from '../../types';
 
-export default {
-	title: 'Atoms/ActionDropdown',
+type GenericMeta<C> = Omit<Meta<C>, 'component'> & {
+	component: Record<keyof C, unknown>;
+};
+
+const meta = {
+	title: 'Core/ActionDropdown',
 	component: N8nActionDropdown,
 	argTypes: {
 		placement: {
-			control: {
-				type: 'select',
-			},
-			options: ['top', 'top-end', 'top-start', 'bottom', 'bottom-end', 'bottom-start'],
+			control: 'select',
+			options: ['top', 'top-start', 'top-end', 'bottom', 'bottom-start', 'bottom-end'],
 		},
 		activatorIcon: {
-			control: {
-				type: 'text',
-			},
+			control: 'text',
+		},
+		activatorSize: {
+			control: 'select',
+			options: ['xsmall', 'small', 'medium', 'large', 'xlarge'],
 		},
 		trigger: {
-			control: {
-				type: 'select',
-			},
+			control: 'select',
 			options: ['click', 'hover'],
 		},
+		disabled: {
+			control: 'boolean',
+		},
+	},
+	parameters: {
+		docs: {
+			description: {
+				component:
+					'A compact action menu triggered by an icon button. Use for overflow / kebab menus on list rows and cards.',
+			},
+			source: { type: 'dynamic' },
+		},
+	},
+} satisfies GenericMeta<typeof N8nActionDropdown<string>>;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+const basicItems: Array<ActionDropdownItem<string>> = [
+	{ id: 'duplicate', label: 'Duplicate', icon: 'copy' },
+	{ id: 'rename', label: 'Rename', icon: 'pencil' },
+	{ id: 'delete', label: 'Delete', icon: 'trash-2', divided: true, variant: 'destructive' },
+];
+
+export const Default: Story = {
+	render: (args) => ({
+		components: { N8nActionDropdown },
+		setup() {
+			return { args, onSelect: action('select') };
+		},
+		template: `
+			<N8nActionDropdown v-bind="args" @select="onSelect" />
+		`,
+	}),
+	args: {
+		items: basicItems,
+		placement: 'bottom-end',
 	},
 };
 
-const template: StoryFn = (args, { argTypes }) => ({
-	setup: () => ({ args }),
-	props: Object.keys(argTypes),
-	components: {
-		// "as unknown ..." is a workaround for generic components.
-		// See https://github.com/storybookjs/storybook/issues/24238
-		N8nActionDropdown: N8nActionDropdown as unknown as Record<string, unknown>,
+export const WithIconsAndStates: Story = {
+	render: (args) => ({
+		components: { N8nActionDropdown },
+		setup() {
+			return { args, onSelect: action('select') };
+		},
+		template: `
+			<N8nActionDropdown v-bind="args" @select="onSelect" />
+		`,
+	}),
+	args: {
+		items: [
+			{ id: 'open', label: 'Open', icon: 'folder-open' },
+			{ id: 'share', label: 'Share', icon: 'share', badge: 'Pro' },
+			{
+				id: 'archive',
+				label: 'Archive',
+				icon: 'archive',
+				disabled: true,
+			},
+			{ id: 'delete', label: 'Delete', icon: 'trash-2', divided: true, variant: 'destructive' },
+		] as Array<ActionDropdownItem<string>>,
+		placement: 'bottom-end',
 	},
-	template: '<n8n-action-dropdown v-bind="args" />',
-});
-
-export const defaultActionDropdown = template.bind({});
-defaultActionDropdown.args = {
-	items: [
-		{
-			id: 'item1',
-			label: 'Action 1',
-		},
-		{
-			id: 'item2',
-			label: 'Action 2',
-		},
-	],
 };
 
-export const customStyling = template.bind({});
-customStyling.args = {
-	activatorIcon: 'menu',
-	items: [
-		{
-			id: 'item1',
-			label: 'Action 1',
-			icon: 'thumbs-up',
+export const WithShortcuts: Story = {
+	render: (args) => ({
+		components: { N8nActionDropdown },
+		setup() {
+			return { args, onSelect: action('select') };
 		},
-		{
-			id: 'item2',
-			label: 'Action 2',
-			icon: 'thumbs-down',
-			disabled: true,
-		},
-		{
-			id: 'item3',
-			label: 'Action 3',
-			icon: 'home',
-			divided: true,
-		},
-	],
+		template: `
+			<N8nActionDropdown v-bind="args" @select="onSelect" />
+		`,
+	}),
+	args: {
+		items: [
+			{ id: 'copy', label: 'Copy', icon: 'copy', shortcut: { keys: ['C'], metaKey: true } },
+			{ id: 'paste', label: 'Paste', icon: 'clipboard', shortcut: { keys: ['V'], metaKey: true } },
+			{
+				id: 'delete',
+				label: 'Delete',
+				icon: 'trash-2',
+				divided: true,
+				variant: 'destructive',
+				shortcut: { keys: ['Backspace'] },
+			},
+		] as Array<ActionDropdownItem<string>>,
+		placement: 'bottom-end',
+	},
 };
 
-export const keyboardShortcuts = template.bind({});
-keyboardShortcuts.args = {
-	items: [
-		{
-			id: 'open',
-			label: 'Open node...',
-			shortcut: { keys: ['↵'] },
+export const Disabled: Story = {
+	render: (args) => ({
+		components: { N8nActionDropdown },
+		setup() {
+			return { args };
 		},
-		{
-			id: 'execute',
-			label: 'Execute node',
-		},
-		{
-			id: 'rename',
-			label: 'Rename node',
-			shortcut: { keys: ['F2'] },
-		},
-		{
-			id: 'toggle_activation',
-			label: 'Deactivate node',
-			shortcut: { keys: ['D'] },
-		},
-		{
-			id: 'toggle_pin',
-			label: 'Pin node',
-			shortcut: { keys: ['p'] },
-			disabled: true,
-		},
-		{
-			id: 'copy',
-			label: 'Copy node',
-			shortcut: { metaKey: true, keys: ['C'] },
-		},
-		{
-			id: 'duplicate',
-			label: 'Duplicate node',
-			shortcut: { metaKey: true, keys: ['D'] },
-		},
-		{
-			id: 'select_all',
-			divided: true,
-			// always plural
-			label: 'Select all nodes',
-			shortcut: { metaKey: true, keys: ['A'] },
-		},
-		{
-			id: 'deselect_all',
-			label: 'Clear selection',
-			disabled: true,
-		},
-		{
-			id: 'delete',
-			divided: true,
-			label: 'Delete node',
-			shortcut: { keys: ['Del'] },
-		},
-	],
+		template: `
+			<N8nActionDropdown v-bind="args" />
+		`,
+	}),
+	args: {
+		items: basicItems,
+		disabled: true,
+	},
 };

@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import * as create from '../../../actions/session/create.operation';
 import { ERROR_MESSAGES, SESSION_STATUS } from '../../../constants';
 import * as transport from '../../../transport';
@@ -16,11 +17,11 @@ const baseNodeParameters = {
 	saveProfileOnTermination: false,
 };
 
-jest.mock('../../../transport', () => {
-	const originalModule = jest.requireActual<typeof transport>('../../../transport');
+vi.mock('../../../transport', async () => {
+	const originalModule = await vi.importActual<typeof transport>('../../../transport');
 	return {
 		...originalModule,
-		apiRequest: jest.fn(async function () {
+		apiRequest: vi.fn(async function () {
 			return {
 				...mockCreatedSession,
 			};
@@ -29,12 +30,8 @@ jest.mock('../../../transport', () => {
 });
 
 describe('Test Airtop, session create operation', () => {
-	afterAll(() => {
-		jest.unmock('../../../transport');
-	});
-
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 	/**
 	 * Minimal parameters
@@ -48,7 +45,7 @@ describe('Test Airtop, session create operation', () => {
 		const result = await create.execute.call(createMockExecuteFunction(nodeParameters), 0);
 
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
-		expect(transport.apiRequest).toHaveBeenCalledWith('POST', '/sessions', {
+		expect(transport.apiRequest).toHaveBeenCalledWith('POST', requestPath`/sessions`, {
 			configuration: {
 				profileName: 'test-profile',
 				solveCaptcha: false,
@@ -80,7 +77,7 @@ describe('Test Airtop, session create operation', () => {
 		const result = await create.execute.call(createMockExecuteFunction(nodeParameters), 0);
 
 		expect(transport.apiRequest).toHaveBeenCalledTimes(2);
-		expect(transport.apiRequest).toHaveBeenNthCalledWith(1, 'POST', '/sessions', {
+		expect(transport.apiRequest).toHaveBeenNthCalledWith(1, 'POST', requestPath`/sessions`, {
 			configuration: {
 				profileName: 'test-profile',
 				solveCaptcha: false,
@@ -92,7 +89,7 @@ describe('Test Airtop, session create operation', () => {
 		expect(transport.apiRequest).toHaveBeenNthCalledWith(
 			2,
 			'PUT',
-			'/sessions/test-session-123/save-profile-on-termination/test-profile',
+			requestPath`/sessions/test-session-123/save-profile-on-termination/test-profile`,
 		);
 
 		expect(result).toEqual([
@@ -117,7 +114,7 @@ describe('Test Airtop, session create operation', () => {
 		const result = await create.execute.call(createMockExecuteFunction(nodeParameters), 0);
 
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
-		expect(transport.apiRequest).toHaveBeenCalledWith('POST', '/sessions', {
+		expect(transport.apiRequest).toHaveBeenCalledWith('POST', requestPath`/sessions`, {
 			configuration: {
 				profileName: 'test-profile',
 				solveCaptcha: false,
@@ -147,7 +144,7 @@ describe('Test Airtop, session create operation', () => {
 		const result = await create.execute.call(createMockExecuteFunction(nodeParameters), 0);
 
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
-		expect(transport.apiRequest).toHaveBeenCalledWith('POST', '/sessions', {
+		expect(transport.apiRequest).toHaveBeenCalledWith('POST', requestPath`/sessions`, {
 			configuration: {
 				profileName: 'test-profile',
 				solveCaptcha: false,
@@ -177,7 +174,7 @@ describe('Test Airtop, session create operation', () => {
 		const result = await create.execute.call(createMockExecuteFunction(nodeParameters), 0);
 
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
-		expect(transport.apiRequest).toHaveBeenCalledWith('POST', '/sessions', {
+		expect(transport.apiRequest).toHaveBeenCalledWith('POST', requestPath`/sessions`, {
 			configuration: {
 				profileName: 'test-profile',
 				solveCaptcha: false,
@@ -222,7 +219,7 @@ describe('Test Airtop, session create operation', () => {
 		const result = await create.execute.call(createMockExecuteFunction(nodeParameters), 0);
 
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
-		expect(transport.apiRequest).toHaveBeenCalledWith('POST', '/sessions', {
+		expect(transport.apiRequest).toHaveBeenCalledWith('POST', requestPath`/sessions`, {
 			configuration: {
 				profileName: 'test-profile',
 				solveCaptcha: true,
@@ -255,7 +252,7 @@ describe('Test Airtop, session create operation', () => {
 		const result = await create.execute.call(createMockExecuteFunction(nodeParameters), 0);
 
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
-		expect(transport.apiRequest).toHaveBeenCalledWith('POST', '/sessions', {
+		expect(transport.apiRequest).toHaveBeenCalledWith('POST', requestPath`/sessions`, {
 			configuration: {
 				profileName: 'test-profile',
 				solveCaptcha: false,
@@ -288,7 +285,7 @@ describe('Test Airtop, session create operation', () => {
 		const result = await create.execute.call(createMockExecuteFunction(nodeParameters), 0);
 
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
-		expect(transport.apiRequest).toHaveBeenCalledWith('POST', '/sessions', {
+		expect(transport.apiRequest).toHaveBeenCalledWith('POST', requestPath`/sessions`, {
 			configuration: {
 				profileName: 'test-profile',
 				solveCaptcha: false,

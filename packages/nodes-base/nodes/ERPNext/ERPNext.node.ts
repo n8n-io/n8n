@@ -8,12 +8,53 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { documentFields, documentOperations } from './DocumentDescription';
-import { erpNextApiRequest, erpNextApiRequestAllItems } from './GenericFunctions';
+import { erpNextApiRequest, erpNextApiRequestAllItems, toPathValue } from './GenericFunctions';
 import type { DocumentProperties } from './utils';
 import { processNames, toSQL } from './utils';
+
+const loadDocFields = async (
+	context: ILoadOptionsFunctions,
+	docType: string,
+): Promise<Array<{ name: string; value: string }>> => {
+	// https://github.com/frappe/frappe/blob/develop/frappe/desk/form/load.py
+	const response = await erpNextApiRequest.call(
+		context,
+		'GET',
+		requestPath`/api/method/frappe.desk.form.load.getdoctype`,
+		{},
+		{ doctype: docType },
+	);
+
+	if (!response || typeof response !== 'object' || !Array.isArray(response.docs)) {
+		return [];
+	}
+
+	const docFields = response.docs.flatMap((doc: unknown) => {
+		if (!doc || typeof doc !== 'object' || !('fields' in doc) || !Array.isArray(doc.fields)) {
+			return [];
+		}
+
+		return doc.fields.flatMap((field: unknown) => {
+			if (
+				!field ||
+				typeof field !== 'object' ||
+				!('label' in field) ||
+				typeof field.label !== 'string' ||
+				!('fieldname' in field) ||
+				typeof field.fieldname !== 'string'
+			) {
+				return [];
+			}
+
+			return [{ name: field.label, value: field.fieldname }];
+		});
+	});
+
+	return docFields;
+};
 
 export class ERPNext implements INodeType {
 	description: INodeTypeDescription = {
@@ -21,7 +62,8 @@ export class ERPNext implements INodeType {
 		name: 'erpNext',
 		icon: 'file:erpnext.svg',
 		group: ['output'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
 		description: 'Consume ERPNext API',
 		defaults: {
@@ -62,50 +104,32 @@ export class ERPNext implements INodeType {
 					this,
 					'data',
 					'GET',
-					'/api/resource/DocType',
+					requestPath`/api/resource/DocType`,
 					{},
 				);
 				const docTypes = data.map(({ name }: { name: string }) => {
-					return { name, value: encodeURI(name) };
+					return { name, value: this.getNode().typeVersion < 1.1 ? encodeURI(name) : name };
 				});
 
 				return processNames(docTypes);
 			},
 			async getDocFilters(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const docType = this.getCurrentNodeParameter('docType') as string;
-				const { data } = await erpNextApiRequest.call(
-					this,
-					'GET',
-					`/api/resource/DocType/${docType}`,
-					{},
+				const docType = toPathValue(
+					this.getNode().typeVersion,
+					this.getCurrentNodeParameter('docType') as string,
 				);
-
-				const docFields = data.fields.map(
-					({ label, fieldname }: { label: string; fieldname: string }) => {
-						return { name: label, value: fieldname };
-					},
-				);
+				const docFields = await loadDocFields(this, docType);
 
 				docFields.unshift({ name: '*', value: '*' });
 
 				return processNames(docFields);
 			},
 			async getDocFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const docType = this.getCurrentNodeParameter('docType') as string;
-				const { data } = await erpNextApiRequest.call(
-					this,
-					'GET',
-					`/api/resource/DocType/${docType}`,
-					{},
+				const docType = toPathValue(
+					this.getNode().typeVersion,
+					this.getCurrentNodeParameter('docType') as string,
 				);
-
-				const docFields = data.fields.map(
-					({ label, fieldname }: { label: string; fieldname: string }) => {
-						return { name: label, value: fieldname };
-					},
-				);
-
-				return processNames(docFields);
+				return processNames(await loadDocFields(this, docType));
 			},
 		},
 	};
@@ -117,13 +141,13 @@ export class ERPNext implements INodeType {
 		let responseData;
 
 		const body: IDataObject = {};
-		const qs: IDataObject = {};
 
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
+		const version = this.getNode().typeVersion;
 
 		for (let i = 0; i < items.length; i++) {
-			// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/Resources/post_api_resource_Webhook
+			// https://docs.frappe.io/framework/user/en/api/rest
 			// https://frappeframework.com/docs/user/en/guides/integration/rest_api/manipulating_documents
 
 			if (resource === 'document') {
@@ -136,15 +160,18 @@ export class ERPNext implements INodeType {
 					//          document: get
 					// ----------------------------------
 
-					// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/General/get_api_resource__DocType___DocumentName_
+					// https://docs.frappe.io/framework/user/en/api/rest#read
 
-					const docType = this.getNodeParameter('docType', i) as string;
-					const documentName = this.getNodeParameter('documentName', i) as string;
+					const docType = toPathValue(version, this.getNodeParameter('docType', i) as string);
+					const documentName = toPathValue(
+						version,
+						this.getNodeParameter('documentName', i) as string,
+					);
 
 					responseData = await erpNextApiRequest.call(
 						this,
 						'GET',
-						`/api/resource/${docType}/${documentName}`,
+						requestPath`/api/resource/${docType}/${documentName}`,
 					);
 					responseData = responseData.data;
 				}
@@ -154,20 +181,21 @@ export class ERPNext implements INodeType {
 					//         document: getAll
 					// ----------------------------------
 
-					// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/General/get_api_resource__DocType_
+					// https://docs.frappe.io/framework/user/en/api/rest#listing-documents
 
 					const docType = this.getNodeParameter('docType', i) as string;
-					const endpoint = `/api/resource/${docType}`;
+					const endpoint = requestPath`/api/resource/${toPathValue(version, docType)}`;
+					const qs: IDataObject = {};
 
 					const { fields, filters } = this.getNodeParameter('options', i) as {
-						fields: string[];
-						filters: {
-							customProperty: Array<{ field: string; operator: string; value: string }>;
+						fields?: string[];
+						filters?: {
+							customProperty?: Array<{ field: string; operator: string; value: string }>;
 						};
 					};
 
 					// fields=["test", "example", "hi"]
-					if (fields) {
+					if (fields?.length) {
 						if (fields.includes('*')) {
 							qs.fields = JSON.stringify(['*']);
 						} else {
@@ -175,8 +203,7 @@ export class ERPNext implements INodeType {
 						}
 					}
 					// filters=[["Person","first_name","=","Jane"]]
-					// TODO: filters not working
-					if (filters) {
+					if (filters?.customProperty?.length) {
 						qs.filters = JSON.stringify(
 							filters.customProperty.map((filter) => {
 								return [docType, filter.field, toSQL(filter.operator), filter.value];
@@ -207,7 +234,7 @@ export class ERPNext implements INodeType {
 					//         document: create
 					// ----------------------------------
 
-					// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/General/post_api_resource__DocType_
+					// https://docs.frappe.io/framework/user/en/api/rest#create
 
 					const properties = this.getNodeParameter('properties', i) as DocumentProperties;
 
@@ -223,12 +250,12 @@ export class ERPNext implements INodeType {
 						body[property.field] = property.value;
 					});
 
-					const docType = this.getNodeParameter('docType', i) as string;
+					const docType = toPathValue(version, this.getNodeParameter('docType', i) as string);
 
 					responseData = await erpNextApiRequest.call(
 						this,
 						'POST',
-						`/api/resource/${docType}`,
+						requestPath`/api/resource/${docType}`,
 						body,
 					);
 					responseData = responseData.data;
@@ -237,22 +264,25 @@ export class ERPNext implements INodeType {
 					//         document: delete
 					// ----------------------------------
 
-					// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/General/delete_api_resource__DocType___DocumentName_
+					// https://docs.frappe.io/framework/user/en/api/rest#delete
 
-					const docType = this.getNodeParameter('docType', i) as string;
-					const documentName = this.getNodeParameter('documentName', i) as string;
+					const docType = toPathValue(version, this.getNodeParameter('docType', i) as string);
+					const documentName = toPathValue(
+						version,
+						this.getNodeParameter('documentName', i) as string,
+					);
 
 					responseData = await erpNextApiRequest.call(
 						this,
 						'DELETE',
-						`/api/resource/${docType}/${documentName}`,
+						requestPath`/api/resource/${docType}/${documentName}`,
 					);
 				} else if (operation === 'update') {
 					// ----------------------------------
 					//         document: update
 					// ----------------------------------
 
-					// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/General/put_api_resource__DocType___DocumentName_
+					// https://docs.frappe.io/framework/user/en/api/rest#update
 
 					const properties = this.getNodeParameter('properties', i) as DocumentProperties;
 
@@ -268,13 +298,16 @@ export class ERPNext implements INodeType {
 						body[property.field] = property.value;
 					});
 
-					const docType = this.getNodeParameter('docType', i) as string;
-					const documentName = this.getNodeParameter('documentName', i) as string;
+					const docType = toPathValue(version, this.getNodeParameter('docType', i) as string);
+					const documentName = toPathValue(
+						version,
+						this.getNodeParameter('documentName', i) as string,
+					);
 
 					responseData = await erpNextApiRequest.call(
 						this,
 						'PUT',
-						`/api/resource/${docType}/${documentName}`,
+						requestPath`/api/resource/${docType}/${documentName}`,
 						body,
 					);
 					responseData = responseData.data;

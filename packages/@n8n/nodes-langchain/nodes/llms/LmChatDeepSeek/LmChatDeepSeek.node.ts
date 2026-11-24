@@ -1,19 +1,73 @@
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import {
+	getProxyAgent,
+	aiClientFetch,
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
+import {
 	NodeConnectionTypes,
+	type INodeProperties,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { getProxyAgent } from '@utils/httpProxyAgent';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { getRequiredApiKey } from '@utils/helpers';
+import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
 import type { OpenAICompatibleCredential } from '../../../types/types';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
-import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
-import { N8nLlmTracing } from '../N8nLlmTracing';
+
+const modelProperty: INodeProperties = {
+	displayName: 'Model',
+	name: 'model',
+	type: 'options',
+	description:
+		'The model which will generate the completion. <a href="https://api-docs.deepseek.com/quick_start/pricing">Learn more</a>.',
+	typeOptions: {
+		loadOptions: {
+			routing: {
+				request: {
+					method: 'GET',
+					url: '/models',
+				},
+				output: {
+					postReceive: [
+						{
+							type: 'rootProperty',
+							properties: {
+								property: 'data',
+							},
+						},
+						{
+							type: 'setKeyValue',
+							properties: {
+								name: '={{$responseItem.id}}',
+								value: '={{$responseItem.id}}',
+							},
+						},
+						{
+							type: 'sort',
+							properties: {
+								key: 'name',
+							},
+						},
+					],
+				},
+			},
+		},
+	},
+	routing: {
+		send: {
+			type: 'body',
+			property: 'model',
+		},
+	},
+	default: '',
+};
 
 export class LmChatDeepSeek implements INodeType {
 	description: INodeTypeDescription = {
@@ -22,7 +76,7 @@ export class LmChatDeepSeek implements INodeType {
 		name: 'lmChatDeepSeek',
 		icon: 'file:deepseek.svg',
 		group: ['transform'],
-		version: [1],
+		version: [1, 1.1],
 		description: 'For advanced usage with an AI chain',
 		defaults: {
 			name: 'DeepSeek Chat Model',
@@ -71,51 +125,24 @@ export class LmChatDeepSeek implements INodeType {
 				},
 			},
 			{
-				displayName: 'Model',
-				name: 'model',
-				type: 'options',
-				description:
-					'The model which will generate the completion. <a href="https://api-docs.deepseek.com/quick_start/pricing">Learn more</a>.',
-				typeOptions: {
-					loadOptions: {
-						routing: {
-							request: {
-								method: 'GET',
-								url: '/models',
-							},
-							output: {
-								postReceive: [
-									{
-										type: 'rootProperty',
-										properties: {
-											property: 'data',
-										},
-									},
-									{
-										type: 'setKeyValue',
-										properties: {
-											name: '={{$responseItem.id}}',
-											value: '={{$responseItem.id}}',
-										},
-									},
-									{
-										type: 'sort',
-										properties: {
-											key: 'name',
-										},
-									},
-								],
-							},
-						},
-					},
-				},
-				routing: {
-					send: {
-						type: 'body',
-						property: 'model',
-					},
-				},
+				...modelProperty,
 				default: 'deepseek-chat',
+				builderHint: {
+					propertyHint:
+						'Choose deepseek-chat or deepseek-reasoner according to the task. Confirm their current capabilities in the provider documentation instead of assuming a fixed underlying version. ' +
+						MODEL_SELECTION_HINT,
+				},
+				displayOptions: { show: { '@version': [1] } },
+			},
+			{
+				...modelProperty,
+				default: 'deepseek-flash',
+				builderHint: {
+					propertyHint:
+						'Choose deepseek-flash for most tasks, or deepseek-v4-pro for harder reasoning. ' +
+						MODEL_SELECTION_HINT,
+				},
+				displayOptions: { show: { '@version': [{ _cnd: { gte: 1.1 } }] } },
 			},
 			{
 				displayName: 'Options',
@@ -226,18 +253,27 @@ export class LmChatDeepSeek implements INodeType {
 			responseFormat?: 'text' | 'json_object';
 		};
 
+		const timeout = options.timeout;
 		const configuration: ClientOptions = {
 			baseURL: credentials.url,
+			fetch: aiClientFetch,
 			fetchOptions: {
-				dispatcher: getProxyAgent(credentials.url),
+				dispatcher: getProxyAgent(
+					credentials.url,
+					{
+						headersTimeout: timeout,
+						bodyTimeout: timeout,
+					},
+					this.helpers.getSecureEgressFilter(),
+				),
 			},
 		};
 
 		const model = new ChatOpenAI({
-			apiKey: credentials.apiKey,
+			apiKey: getRequiredApiKey(this.getNode(), credentials.apiKey),
 			model: modelName,
 			...options,
-			timeout: options.timeout ?? 60000,
+			timeout,
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
 			callbacks: [new N8nLlmTracing(this)],

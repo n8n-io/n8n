@@ -1,4 +1,7 @@
 import logging
+import threading
+from http.client import HTTPConnection
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from unittest.mock import Mock, patch
 
 import pytest
@@ -24,6 +27,8 @@ def sentry_config():
         n8n_version="1.0.0",
         environment="test",
         deployment_name="test-deployment",
+        profiles_sample_rate=0,
+        traces_sample_rate=0,
     )
 
 
@@ -34,6 +39,8 @@ def disabled_sentry_config():
         n8n_version="1.0.0",
         environment="test",
         deployment_name="test-deployment",
+        profiles_sample_rate=0,
+        traces_sample_rate=0,
     )
 
 
@@ -61,6 +68,7 @@ class TestTaskRunnerSentry:
                 auto_enabling_integrations=False,
                 default_integrations=True,
                 integrations=[mock_logging_instance],
+                trace_propagation_targets=[],
             )
             mock_set_tag.assert_called_once_with(
                 SENTRY_TAG_SERVER_TYPE_KEY, SENTRY_TAG_SERVER_TYPE_VALUE
@@ -236,6 +244,8 @@ class TestSentryConfig:
             "N8N_VERSION": "2.0.0",
             "ENVIRONMENT": "production",
             "DEPLOYMENT_NAME": "prod-deployment",
+            "N8N_SENTRY_PROFILES_SAMPLE_RATE": "0.5",
+            "N8N_SENTRY_TRACES_SAMPLE_RATE": "0.1",
         },
     )
     def test_from_env_creates_config_from_environment(self):
@@ -245,6 +255,8 @@ class TestSentryConfig:
         assert config.n8n_version == "2.0.0"
         assert config.environment == "production"
         assert config.deployment_name == "prod-deployment"
+        assert config.profiles_sample_rate == 0.5
+        assert config.traces_sample_rate == 0.1
 
     @patch.dict("os.environ", {}, clear=True)
     def test_from_env_uses_defaults_when_missing(self):
@@ -254,3 +266,62 @@ class TestSentryConfig:
         assert config.n8n_version == ""
         assert config.environment == ""
         assert config.deployment_name == ""
+        assert config.profiles_sample_rate == 0
+        assert config.traces_sample_rate == 0
+
+
+def send_request() -> dict[str, str]:
+    received_headers: dict[str, str] = {}
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            received_headers.update({k.lower(): v for k, v in self.headers.items()})
+            self.send_response(200)
+            self.end_headers()
+
+        def log_message(self, *args):
+            pass
+
+    server = HTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.handle_request)
+    thread.start()
+    try:
+        connection = HTTPConnection("127.0.0.1", server.server_port, timeout=5)
+        connection.request("GET", "/")
+        connection.getresponse().read()
+        connection.close()
+    finally:
+        thread.join(timeout=5)
+        server.server_close()
+    return received_headers
+
+
+class TestTraceHeaderPropagation:
+    @pytest.mark.parametrize("traces_sample_rate", [0, 1])
+    def test_adds_no_sentry_trace_headers_to_outgoing_requests(
+        self, traces_sample_rate
+    ):
+        import sentry_sdk
+
+        config = SentryConfig(
+            dsn="http://public@localhost:9/1",
+            n8n_version="1.0.0",
+            environment="test",
+            deployment_name="test-deployment",
+            profiles_sample_rate=0,
+            traces_sample_rate=traces_sample_rate,
+        )
+        try:
+            TaskRunnerSentry(config).init()
+
+            with sentry_sdk.start_transaction(name="run code"):
+                headers = send_request()
+                sentry_sdk.get_client().options["trace_propagation_targets"] = [".*"]
+                control_headers = send_request()
+        finally:
+            sentry_sdk.get_client().close(timeout=0)
+            sentry_sdk.get_global_scope().set_client(None)
+
+        assert "sentry-trace" in control_headers
+        assert "sentry-trace" not in headers
+        assert "baggage" not in headers

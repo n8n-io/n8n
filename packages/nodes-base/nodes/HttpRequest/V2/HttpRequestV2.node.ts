@@ -13,16 +13,21 @@ import type {
 import {
 	NodeApiError,
 	NodeOperationError,
-	sleep,
 	removeCircularRefs,
 	NodeConnectionTypes,
-	isDomainAllowed,
+	getMcpAuthHeaders,
+	sleepUnlessExecutionCancelled,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
+import { applyTemplatedAuth } from '@utils/templated-auth';
+
 import type { IAuthDataSanitizeKeys } from '../GenericFunctions';
 import {
+	getAllowedDomains,
 	getOAuth2AdditionalParameters,
+	getSecrets,
+	removeRequestOptions,
 	replaceNullValues,
 	sanitizeUiMessage,
 } from '../GenericFunctions';
@@ -645,7 +650,9 @@ export class HttpRequestV2 implements INodeType {
 		let httpBearerAuth;
 		let httpDigestAuth;
 		let httpHeaderAuth;
+		let httpMultipleHeadersAuth;
 		let httpQueryAuth;
+		let httpTemplatedCustomAuth;
 		let oAuth1Api;
 		let oAuth2Api;
 		let nodeCredentialType;
@@ -669,9 +676,15 @@ export class HttpRequestV2 implements INodeType {
 				try {
 					httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
 				} catch {}
+			} else if (genericAuthType === 'httpMultipleHeadersAuth') {
+				httpMultipleHeadersAuth = await this.getCredentials('httpMultipleHeadersAuth');
 			} else if (genericAuthType === 'httpQueryAuth') {
 				try {
 					httpQueryAuth = await this.getCredentials('httpQueryAuth');
+				} catch {}
+			} else if (genericAuthType === 'httpTemplatedCustomAuth') {
+				try {
+					httpTemplatedCustomAuth = await this.getCredentials('httpTemplatedCustomAuth');
 				} catch {}
 			} else if (genericAuthType === 'oAuth1Api') {
 				try {
@@ -686,6 +699,26 @@ export class HttpRequestV2 implements INodeType {
 			try {
 				nodeCredentialType = this.getNodeParameter('nodeCredentialType', 0) as string;
 			} catch {}
+		}
+
+		let allowedDomains: string | undefined;
+		let secrets: string[] = [];
+		for (const credential of [
+			httpBasicAuth,
+			httpBearerAuth,
+			httpDigestAuth,
+			httpHeaderAuth,
+			httpMultipleHeadersAuth,
+			httpQueryAuth,
+			httpTemplatedCustomAuth,
+			oAuth1Api,
+			oAuth2Api,
+		]) {
+			if (credential) {
+				allowedDomains = getAllowedDomains(this.getNode(), credential);
+				secrets.push(...getSecrets(credential));
+				break;
+			}
 		}
 
 		let requestOptions: IRequestOptions & { useStream?: boolean };
@@ -721,7 +754,21 @@ export class HttpRequestV2 implements INodeType {
 			const parametersAreJson = this.getNodeParameter('jsonParameters', itemIndex);
 
 			const options = this.getNodeParameter('options', itemIndex, {});
-			const url = this.getNodeParameter('url', itemIndex) as string;
+			let url = this.getNodeParameter('url', itemIndex);
+
+			if (typeof url !== 'string') {
+				const actualType = url === null ? 'null' : typeof url;
+				throw new NodeOperationError(
+					this.getNode(),
+					`URL parameter must be a string, got ${actualType}`,
+				);
+			}
+
+			url = url.trim();
+
+			if (!url) {
+				throw new NodeOperationError(this.getNode(), 'URL parameter cannot be empty');
+			}
 
 			if (!url.startsWith('http://') && !url.startsWith('https://')) {
 				throw new NodeOperationError(
@@ -730,57 +777,17 @@ export class HttpRequestV2 implements INodeType {
 				);
 			}
 
-			const checkDomainRestrictions = async (
-				credentialData: ICredentialDataDecryptedObject,
-				url: string,
-				credentialType?: string,
-			) => {
-				if (credentialData.allowedHttpRequestDomains === 'domains') {
-					const allowedDomains = credentialData.allowedDomains as string;
-
-					if (!allowedDomains || allowedDomains.trim() === '') {
-						throw new NodeOperationError(
-							this.getNode(),
-							'No allowed domains specified. Configure allowed domains or change restriction setting.',
-						);
-					}
-
-					if (!isDomainAllowed(url, { allowedDomains })) {
-						const credentialInfo = credentialType ? ` (${credentialType})` : '';
-						throw new NodeOperationError(
-							this.getNode(),
-							`Domain not allowed: This credential${credentialInfo} is restricted from accessing ${url}. ` +
-								`Only the following domains are allowed: ${allowedDomains}`,
-						);
-					}
-				} else if (credentialData.allowedHttpRequestDomains === 'none') {
-					throw new NodeOperationError(
-						this.getNode(),
-						'This credential is configured to prevent use within an HTTP Request node',
-					);
-				}
-			};
-
-			if (httpBasicAuth) await checkDomainRestrictions(httpBasicAuth, url);
-			if (httpBearerAuth) await checkDomainRestrictions(httpBearerAuth, url);
-			if (httpDigestAuth) await checkDomainRestrictions(httpDigestAuth, url);
-			if (httpHeaderAuth) await checkDomainRestrictions(httpHeaderAuth, url);
-			if (httpQueryAuth) await checkDomainRestrictions(httpQueryAuth, url);
-			if (oAuth1Api) await checkDomainRestrictions(oAuth1Api, url);
-			if (oAuth2Api) await checkDomainRestrictions(oAuth2Api, url);
-
 			if (nodeCredentialType) {
+				let credentialData: ICredentialDataDecryptedObject | undefined;
 				try {
-					const credentialData = await this.getCredentials(nodeCredentialType, itemIndex);
-					await checkDomainRestrictions(credentialData, url, nodeCredentialType);
-				} catch (error) {
-					if (
-						error.message?.includes('Domain not allowed') ||
-						error.message?.includes('configured to prevent') ||
-						error.message?.includes('No allowed domains specified')
-					) {
-						throw error;
-					}
+					credentialData = await this.getCredentials<ICredentialDataDecryptedObject>(
+						nodeCredentialType,
+						itemIndex,
+					);
+				} catch {}
+				if (credentialData) {
+					allowedDomains = getAllowedDomains(this.getNode(), credentialData);
+					secrets = getSecrets(credentialData);
 				}
 			}
 
@@ -793,7 +800,7 @@ export class HttpRequestV2 implements INodeType {
 				const batchSize: number =
 					(options.batchSize as number) > 0 ? (options.batchSize as number) : 1;
 				if (itemIndex % batchSize === 0) {
-					await sleep(options.batchInterval as number);
+					await sleepUnlessExecutionCancelled(this, options.batchInterval as number);
 				}
 			}
 
@@ -805,6 +812,8 @@ export class HttpRequestV2 implements INodeType {
 				uri: url,
 				gzip: true,
 				rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false),
+				sendCredentialsOnCrossOriginRedirect: true,
+				allowedDomains,
 			};
 
 			if (fullResponse) {
@@ -1003,8 +1012,8 @@ export class HttpRequestV2 implements INodeType {
 					}
 				}
 			} else if (options.bodyContentType === 'raw') {
+				// Read the body as text. It is parsed below, and nothing here consumes a stream.
 				requestOptions.json = false;
-				requestOptions.useStream = true;
 			} else {
 				requestOptions.json = true;
 			}
@@ -1036,6 +1045,11 @@ export class HttpRequestV2 implements INodeType {
 				requestOptions.headers![httpHeaderAuth.name as string] = httpHeaderAuth.value;
 				authDataKeys.headers = [httpHeaderAuth.name as string];
 			}
+			if (httpMultipleHeadersAuth !== undefined) {
+				const headers = getMcpAuthHeaders('multipleHeadersAuth', httpMultipleHeadersAuth);
+				requestOptions.headers = { ...requestOptions.headers, ...headers };
+				authDataKeys.headers = Object.keys(headers);
+			}
 			if (httpQueryAuth !== undefined) {
 				if (!requestOptions.qs) {
 					requestOptions.qs = {};
@@ -1051,6 +1065,12 @@ export class HttpRequestV2 implements INodeType {
 				};
 				authDataKeys.auth = ['pass'];
 			}
+			if (httpTemplatedCustomAuth !== undefined) {
+				const templatedAuth = applyTemplatedAuth(httpTemplatedCustomAuth, requestOptions);
+				if (templatedAuth.headers) authDataKeys.headers = Object.keys(templatedAuth.headers);
+				if (templatedAuth.body) authDataKeys.body = Object.keys(templatedAuth.body);
+				if (templatedAuth.qs) authDataKeys.qs = Object.keys(templatedAuth.qs);
+			}
 
 			if (requestOptions.headers!.accept === undefined) {
 				if (responseFormat === 'json') {
@@ -1065,7 +1085,7 @@ export class HttpRequestV2 implements INodeType {
 			}
 
 			try {
-				this.sendMessageToUI(sanitizeUiMessage(requestOptions, authDataKeys));
+				this.sendMessageToUI(sanitizeUiMessage(requestOptions, authDataKeys, secrets));
 			} catch (e) {}
 
 			if (authentication === 'genericCredentialType' || authentication === 'none') {
@@ -1110,6 +1130,7 @@ export class HttpRequestV2 implements INodeType {
 					// throw error;
 					throw new NodeApiError(this.getNode(), response as JsonObject, { itemIndex });
 				} else {
+					removeRequestOptions(response.reason);
 					removeCircularRefs(response.reason as JsonObject);
 					// Return the actual reason as error
 					returnItems.push({

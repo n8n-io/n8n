@@ -1,0 +1,67 @@
+import { type AgentSkill, type StoredAgentConfig } from '@n8n/api-types';
+import { JsonColumn, WithTimestamps } from '@n8n/db';
+import {
+	Column,
+	Entity,
+	Index,
+	JoinColumn,
+	ManyToOne,
+	PrimaryColumn,
+	type Relation,
+} from '@n8n/typeorm';
+
+import type { Agent } from './agent.entity';
+
+/**
+ * Immutable definition content with editable version metadata. The currently-active row for an agent is the one pointed to
+ * by `Agent.activeVersionId`.
+ */
+@Entity({ name: 'agent_history' })
+export class AgentHistory extends WithTimestamps {
+	@PrimaryColumn({ type: 'varchar', length: 36 })
+	versionId: string;
+
+	@Index()
+	@Column({ type: 'varchar', length: 36 })
+	agentId: string;
+
+	@ManyToOne('Agent', { onDelete: 'CASCADE' })
+	@JoinColumn({ name: 'agentId' })
+	agent: Relation<Agent>;
+
+	@JsonColumn({ nullable: true, default: null })
+	schema: StoredAgentConfig | null;
+
+	@JsonColumn({ nullable: true, default: null })
+	tools: Agent['tools'] | null;
+
+	/**
+	 * @deprecated A published version keeps its skills as pins in
+	 * `agent_version_skill_dependency`. Read them through `AgentSkillRefsService`. Only
+	 * the data migration reads this column, and a later release drops it.
+	 */
+	@JsonColumn({ nullable: true, default: null })
+	skills: Record<string, AgentSkill> | null;
+
+	@Column({ type: 'text', nullable: true })
+	name: string | null;
+
+	@Column({ type: 'text', nullable: true })
+	description: string | null;
+
+	/**
+	 * Runtime pointer to the publishing user. Auto-nulls when the user is
+	 * deleted (DB FK with ON DELETE SET NULL). Read by the schedule trigger
+	 * and the published-runtime loader to resolve an execution identity.
+	 */
+	@Column({ type: 'uuid', nullable: true })
+	publishedById: string | null;
+
+	/**
+	 * Denormalized save attribution. Legacy rows retain their original publisher.
+	 * Survives user deletion and rename — the version timeline shows the
+	 * name the saver had at the time of save.
+	 */
+	@Column()
+	author: string;
+}

@@ -30,7 +30,7 @@ describe('Salesforce Node', () => {
 			salesforceNock
 				.get('/query')
 				.query({
-					q: 'SELECT id,name,email FROM User ',
+					q: 'SELECT id,name,email,LastModifiedDate FROM User ',
 				})
 				.reply(200, { records: users })
 				.get('/sobjects/user/id1')
@@ -56,7 +56,7 @@ describe('Salesforce Node', () => {
 				.reply(200, { id: 'id1', success: true, errors: [] })
 				.get('/query')
 				.query({
-					q: 'SELECT id,subject,status,priority FROM Task ',
+					q: 'SELECT id,subject,status,priority,LastModifiedDate FROM Task ',
 				})
 				.reply(200, { records: tasks })
 				.get('/sobjects/task/id1')
@@ -84,7 +84,7 @@ describe('Salesforce Node', () => {
 				.reply(200, { id: 'id1', success: true, errors: [] })
 				.get('/query')
 				.query({
-					q: 'SELECT id,name,type FROM Account ',
+					q: 'SELECT id,name,type,LastModifiedDate FROM Account ',
 				})
 				.reply(200, { records: accounts })
 				.post('/sobjects/note', { Title: 'New note', ParentId: 'id1' })
@@ -141,7 +141,7 @@ describe('Salesforce Node', () => {
 				.reply(200, { id: 'id1', success: true, errors: [] })
 				.get('/query')
 				.query({
-					q: 'SELECT id,accountId,amount,probability,type FROM Opportunity ',
+					q: 'SELECT id,accountId,amount,probability,type,LastModifiedDate FROM Opportunity ',
 				})
 				.reply(200, { records: opportunities })
 				.post('/sobjects/note', { Title: 'New Note', ParentId: 'id1' })
@@ -170,6 +170,130 @@ describe('Salesforce Node', () => {
 		new NodeTestHarness().setupTests({
 			credentials,
 			workflowFiles: ['opportunities.workflow.json'],
+		});
+	});
+
+	describe('request URLs', () => {
+		const leadId = '00Q5g00000A1b2CEAR';
+		const contactId = '0035g00000B2c3DAAR';
+		const caseId = '5005g00000C3d4EAAR';
+		const attachmentId = '00P5g00000D4e5FAAR';
+		const recordId = 'a005g00000F6g7HAAR';
+		const created = { id: 'id1', success: true, errors: [] };
+
+		beforeAll(() => {
+			salesforceNock
+				.post('/sobjects/lead')
+				.reply(200, created)
+				.patch('/sobjects/lead/Email/ada@example.com')
+				.reply(200, created)
+				.patch(`/sobjects/lead/${leadId}`)
+				.reply(200, { success: true })
+				.get(`/sobjects/lead/${leadId}`)
+				.reply(200, { Id: leadId })
+				.get('/query')
+				.query(true)
+				.reply(200, {
+					records: [{ Id: leadId }],
+					nextRecordsUrl: '/services/data/v59.0/query/01gD0000002HU6KIAW-2000',
+				})
+				.get('/query/01gD0000002HU6KIAW-2000')
+				.query(true)
+				.reply(200, { records: [{ Id: '00Q5g00000A1b2DEAR' }] })
+				.delete(`/sobjects/lead/${leadId}`)
+				.reply(204)
+				.get('/sobjects/lead')
+				.reply(200, { objectDescribe: { name: 'Lead' } })
+				.post('/sobjects/CampaignMember')
+				.times(2)
+				.reply(200, created)
+				.post('/sobjects/note')
+				.times(2)
+				.reply(200, created)
+				.post('/sobjects/contact')
+				.reply(200, created)
+				.patch('/sobjects/contact/Email/grace@example.com')
+				.reply(200, created)
+				.patch(`/sobjects/contact/${contactId}`)
+				.reply(200, { success: true })
+				.get(`/sobjects/contact/${contactId}`)
+				.reply(200, { Id: contactId })
+				.delete(`/sobjects/contact/${contactId}`)
+				.reply(204)
+				.get('/sobjects/contact')
+				.reply(200, { objectDescribe: { name: 'Contact' } })
+				.post('/sobjects/Invoice__c')
+				.reply(200, created)
+				.patch('/sobjects/Invoice__c/External_Id__c/INV-1001')
+				.reply(200, created)
+				.patch(`/sobjects/Invoice__c/${recordId}`)
+				.reply(200, { success: true })
+				.get(`/sobjects/Invoice__c/${recordId}`)
+				.reply(200, { Id: recordId })
+				.delete(`/sobjects/Invoice__c/${recordId}`)
+				.reply(204)
+				.post('/sobjects/case')
+				.reply(200, created)
+				.patch(`/sobjects/case/${caseId}`)
+				.reply(200, { success: true })
+				.get(`/sobjects/case/${caseId}`)
+				.reply(200, { Id: caseId })
+				.delete(`/sobjects/case/${caseId}`)
+				.reply(204)
+				.get('/sobjects/case')
+				.reply(200, { objectDescribe: { name: 'Case' } })
+				.post('/sobjects/casecomment')
+				.reply(200, created)
+				.patch(`/sobjects/attachment/${attachmentId}`)
+				.reply(200, { success: true })
+				.get(`/sobjects/attachment/${attachmentId}`)
+				.reply(200, { Id: attachmentId })
+				.delete(`/sobjects/attachment/${attachmentId}`)
+				.reply(204)
+				.get('/sobjects/attachment')
+				.reply(200, { objectDescribe: { name: 'Attachment' } })
+				.post('/actions/custom/flow/Order_Sync_Flow')
+				.reply(200, [{ isSuccess: true }])
+				.get('/actions/custom/flow')
+				.reply(200, { actions: [{ name: 'Order_Sync_Flow' }] });
+		});
+
+		afterAll(() => salesforceNock.done());
+
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['requests.workflow.json'],
+		});
+	});
+
+	describe('jwt authentication', () => {
+		// The cached access token and instance URL are stored on the credential; the node
+		// sends a relative URL and the credential resolves it against the instance URL and
+		// attaches the cached Bearer token instead of logging in per request.
+		const jwtCredentials = {
+			salesforceJwtApi: {
+				accessToken: 'CACHEDTOKEN',
+				instanceUrl: 'https://salesforce.instance',
+				clientId: 'connected-app-client-id',
+				username: 'user@example.com',
+				privateKey: '-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----',
+				environment: 'production',
+			},
+		};
+
+		beforeAll(() => {
+			nock('https://salesforce.instance/services/data/v59.0')
+				.matchHeader('authorization', 'Bearer CACHEDTOKEN')
+				.get('/query')
+				.query({
+					q: 'SELECT id, name, type FROM Account',
+				})
+				.reply(200, { records: accounts });
+		});
+
+		new NodeTestHarness().setupTests({
+			credentials: jwtCredentials,
+			workflowFiles: ['search-jwt.workflow.json'],
 		});
 	});
 });

@@ -3,7 +3,10 @@ import { ElTag } from 'element-plus';
 
 import { useI18n } from '../../composables/useI18n';
 import type { NodeCreatorTag } from '../../types/node-creator-node';
+import N8nBadge from '../N8nBadge';
 import N8nIcon from '../N8nIcon';
+import PreviewBadge from '../PreviewBadge/PreviewBadge.vue';
+import N8nNewBadge from '../NewBadge/NewBadge.vue';
 
 export interface Props {
 	active?: boolean;
@@ -15,6 +18,8 @@ export interface Props {
 	showActionArrow?: boolean;
 	isOfficial?: boolean;
 	hideNodeIcon?: boolean;
+	isNew?: boolean;
+	disabled?: boolean;
 }
 
 defineProps<Props>();
@@ -23,7 +28,7 @@ defineEmits<{
 	tooltipClick: [e: MouseEvent];
 }>();
 
-defineSlots<{ icon: {}; extraDetails: {}; dragContent: {} }>();
+defineSlots<{ icon: {}; extraDetails: {}; dragContent: {}; trailing: {} }>();
 
 const { t } = useI18n();
 </script>
@@ -33,17 +38,31 @@ const { t } = useI18n();
 		:class="{
 			[$style.creatorNode]: true,
 			[$style.hasAction]: !showActionArrow,
+			[$style.disabled]: disabled,
 		}"
 		v-bind="$attrs"
 	>
 		<div v-if="!hideNodeIcon" :class="$style.nodeIcon">
 			<slot name="icon" />
 		</div>
-		<div>
+		<div :class="$style.body">
 			<div :class="$style.details">
 				<span :class="$style.name" data-test-id="node-creator-item-name" v-text="title" />
+				<PreviewBadge
+					v-if="tag?.preview"
+					size="xxsmall"
+					:class="$style.previewBadge"
+					:text="tag.text"
+				/>
+				<N8nBadge
+					v-else-if="tag?.pill"
+					size="xxsmall"
+					:variant="tag.type === 'info' || tag.type === 'danger' ? tag.type : 'success'"
+				>
+					{{ tag.text }}
+				</N8nBadge>
 				<ElTag
-					v-if="tag"
+					v-else-if="tag"
 					:class="$style.tag"
 					disable-transitions
 					size="small"
@@ -52,6 +71,7 @@ const { t } = useI18n();
 				>
 					{{ tag.text }}
 				</ElTag>
+				<N8nNewBadge v-if="isNew" :text="t('nodeCreatorNode.new')" />
 				<N8nIcon
 					v-if="isTrigger"
 					icon="bolt-filled"
@@ -73,6 +93,9 @@ const { t } = useI18n();
 		<button v-if="showActionArrow" :class="$style.panelIcon">
 			<N8nIcon icon="arrow-right" size="large" />
 		</button>
+		<div v-else-if="$slots.trailing" :class="$style.trailing">
+			<slot name="trailing" />
+		</div>
 	</div>
 </template>
 
@@ -90,6 +113,27 @@ const { t } = useI18n();
 }
 .creatorNode:hover .panelIcon {
 	color: var(--action--arrow--color--hover, var(--color--text--tint-1));
+}
+.disabled {
+	cursor: not-allowed;
+
+	// Fade the node, not the trailing slot, so a status icon there keeps full strength.
+	.nodeIcon,
+	.body {
+		opacity: 0.45;
+	}
+}
+.trailing {
+	flex-grow: 1;
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	margin-left: var(--spacing--2xs);
+	padding-right: var(--spacing--2xs);
+	color: var(--color--text--tint-1);
+}
+.previewBadge {
+	margin-left: var(--spacing--2xs);
 }
 :root .tag {
 	margin-left: var(--spacing--2xs);

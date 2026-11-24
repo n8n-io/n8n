@@ -2,9 +2,10 @@
 import { useI18n } from '@n8n/i18n';
 import type { ChangeLocationSearchResult } from '../folders.types';
 import { useFoldersStore } from '../folders.store';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
+import type { FolderResourceType } from '@n8n/api-types';
 
-import { N8nIcon, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nLoading, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 /**
  * This component is used to select a folder within a project.
  * If parentFolderId is provided it will filter out the parent folder from the results.
@@ -18,6 +19,10 @@ type Props = {
 	currentProjectId?: string; // The project where the resource is currently located
 	currentFolderId?: string;
 	parentFolderId?: string;
+	resourceType?: FolderResourceType;
+	teleported?: boolean;
+	inputId?: string;
+	autofocus?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -25,18 +30,31 @@ const props = withDefaults(defineProps<Props>(), {
 	currentProjectId: undefined,
 	currentFolderId: undefined,
 	parentFolderId: undefined,
+	resourceType: 'workflow',
+	teleported: true,
+	inputId: undefined,
+	autofocus: false,
 });
 
 const emit = defineEmits<{
 	'location:selected': [value: ChangeLocationSearchResult];
+	'load:error': [cause: unknown];
 }>();
 
 const i18n = useI18n();
 
 const foldersStore = useFoldersStore();
+const moveFolderDropdown = useTemplateRef<InstanceType<typeof N8nSelect>>('moveFolderDropdown');
+
+watch(
+	moveFolderDropdown,
+	(select) => {
+		if (props.autofocus) select?.focus();
+	},
+	{ flush: 'post' },
+);
 
 const availableLocations = ref<ChangeLocationSearchResult[]>([]);
-const moveFolderDropdown = ref<InstanceType<typeof N8nSelect>>();
 const selectedLocationId = computed<string | null>({
 	get: () => props.selectedLocation?.id ?? null,
 	set: (id) => {
@@ -50,27 +68,36 @@ const selectedLocationId = computed<string | null>({
 });
 
 const loading = ref(false);
+const initialLoading = ref(true);
+const inPlacePopperOptions: { strategy: 'fixed' } = { strategy: 'fixed' };
+let generation = 0;
 
 const fetchAvailableLocations = async (query?: string) => {
+	const requestGeneration = ++generation;
 	loading.value = true;
-	const folders = await foldersStore.fetchFoldersAvailableForMove(
-		props.selectedProjectId,
-		props.currentFolderId,
-		{ name: query ?? undefined },
-	);
-	if (!props.parentFolderId) {
-		availableLocations.value = folders;
-	} else {
-		availableLocations.value = folders.filter((folder) => folder.id !== props.parentFolderId);
-	}
 
-	const rootFolderName = i18n.baseText('folders.move.project.root.name');
-	const isQueryMatchesRoot = !query || rootFolderName.toLowerCase().includes(query?.toLowerCase());
-	const isTransfer = props.selectedProjectId !== props.currentProjectId;
+	try {
+		const folders = await foldersStore.fetchFoldersAvailableForMove(
+			props.selectedProjectId,
+			props.currentFolderId,
+			{ name: query ?? undefined },
+			props.resourceType,
+		);
 
-	// Finally always add project root to the results (if folder is not already in root)
-	if (isQueryMatchesRoot && (!!props.parentFolderId || isTransfer)) {
-		availableLocations.value.unshift({
+		if (requestGeneration !== generation) return;
+
+		if (!props.parentFolderId) {
+			availableLocations.value = folders;
+		} else {
+			availableLocations.value = folders.filter((folder) => folder.id !== props.parentFolderId);
+		}
+
+		const rootFolderName = i18n.baseText('folders.move.project.root.name');
+		const isQueryMatchesRoot =
+			!query || rootFolderName.toLowerCase().includes(query?.toLowerCase());
+
+		// Finally always add project root to the results
+		const projectRoot: ChangeLocationSearchResult = {
 			id: props.selectedProjectId,
 			name: rootFolderName,
 			resource: 'project',
@@ -79,30 +106,34 @@ const fetchAvailableLocations = async (query?: string) => {
 			workflowCount: 0,
 			subFolderCount: 0,
 			path: [],
-		});
+		};
+		if (isQueryMatchesRoot) {
+			availableLocations.value.unshift(projectRoot);
+		}
+
+		// Auto-select project root if no location is selected (initial load, not search)
+		if (!query && !props.selectedLocation) {
+			emit('location:selected', projectRoot);
+		}
+	} catch (cause) {
+		if (requestGeneration === generation) emit('load:error', cause);
+	} finally {
+		if (requestGeneration === generation) {
+			loading.value = false;
+			initialLoading.value = false;
+		}
 	}
-	loading.value = false;
 };
 
 watch(
-	() => [props.selectedProjectId, props.currentFolderId, props.parentFolderId],
+	() => [props.selectedProjectId, props.currentFolderId, props.parentFolderId, props.resourceType],
 	() => {
 		availableLocations.value = [];
+		initialLoading.value = true;
 		void fetchAvailableLocations();
 	},
 	{ immediate: true },
 );
-
-function focusOnInput() {
-	// To make the dropdown automatically open focused and positioned correctly
-	// we must wait till the modal opening animation is done. ElModal triggers an 'opened' event
-	// when the animation is done, and once that happens, we can focus on the input.
-	moveFolderDropdown.value?.focusOnInput();
-}
-
-defineExpose({
-	focusOnInput,
-});
 
 const maxPathLength = 4;
 const separator = '/';
@@ -114,13 +145,18 @@ const isTopLevelFolder = (location: ChangeLocationSearchResult, index: number) =
 
 <template>
 	<div :class="$style['move-folder-dropdown']" data-test-id="move-to-folder-dropdown">
+		<N8nLoading v-if="initialLoading" :rows="1" :class="$style['loading-skeleton']" />
 		<N8nSelect
+			v-else
 			ref="moveFolderDropdown"
+			:id="inputId"
 			v-model="selectedLocationId"
 			:filterable="true"
 			:remote="true"
 			:remote-method="fetchAvailableLocations"
 			:loading="loading"
+			:teleported="teleported"
+			:popper-options="teleported ? undefined : inPlacePopperOptions"
 			:placeholder="i18n.baseText('folders.move.modal.folder.placeholder')"
 			:no-data-text="i18n.baseText('folders.move.modal.folder.noData.label')"
 			option-label="name"
@@ -182,6 +218,16 @@ const isTopLevelFolder = (location: ChangeLocationSearchResult, index: number) =
 .move-folder-dropdown {
 	display: flex;
 	padding-top: var(--spacing--2xs);
+}
+
+.loading-skeleton {
+	width: 100%;
+	margin: 0;
+
+	:global(.el-skeleton__item) {
+		height: 40px;
+		margin: 0;
+	}
 }
 
 .folder-select-item {

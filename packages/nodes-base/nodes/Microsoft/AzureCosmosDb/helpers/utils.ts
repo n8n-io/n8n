@@ -6,7 +6,8 @@ import type {
 	INodeExecutionData,
 	NodeApiError,
 } from 'n8n-workflow';
-import { jsonParse, NodeOperationError, OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
+import { jsonParse, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { HeaderConstants } from './constants';
 import { ErrorMap } from './errorHandler';
@@ -23,7 +24,7 @@ export async function getPartitionKey(this: IExecuteSingleFunctions): Promise<st
 		const responseData = (await azureCosmosDbApiRequest.call(
 			this,
 			'GET',
-			`/colls/${container}`,
+			requestPath`/colls/${container}`,
 		)) as IContainer;
 		partitionKeyField = responseData.partitionKey?.paths[0]?.replace('/', '');
 	} catch (error) {
@@ -81,10 +82,26 @@ export async function validateQueryParameters(
 
 	const parameterNames = query.replace(/\$(\d+)/g, '@Param$1').match(/@\w+/g) ?? [];
 
+	const queryParamsJson = queryOptions?.queryParametersJson as string;
 	const queryParamsString = queryOptions?.queryParameters as string;
-	const parameterValues = queryParamsString
-		? queryParamsString.split(',').map((param) => param.trim())
-		: [];
+
+	let parameterValues: unknown[];
+
+	if (queryParamsJson) {
+		const parsed = jsonParse<unknown>(queryParamsJson, {
+			errorMessage: 'Query Parameters (JSON) must be a valid JSON array',
+		});
+		if (!Array.isArray(parsed)) {
+			throw new NodeOperationError(this.getNode(), 'Query Parameters (JSON) must be a JSON array', {
+				description: 'Provide values as a JSON array, e.g. [1737062400000, "01234", true, null]',
+			});
+		}
+		parameterValues = parsed;
+	} else {
+		parameterValues = queryParamsString
+			? queryParamsString.split(',').map((param) => param.trim())
+			: [];
+	}
 
 	if (parameterNames.length !== parameterValues.length) {
 		throw new NodeOperationError(this.getNode(), 'Empty parameter value provided', {

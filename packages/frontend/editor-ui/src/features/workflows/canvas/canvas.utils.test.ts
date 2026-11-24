@@ -1,22 +1,34 @@
 import {
 	checkOverlap,
+	computeNodeDisplaySize,
 	createCanvasConnectionHandleString,
 	createCanvasConnectionId,
+	createEmptyCanvasRenderData,
+	getMainHandleOffset,
 	insertSpacersBetweenEndpoints,
 	mapCanvasConnectionToLegacyConnection,
 	mapLegacyConnectionsToCanvasConnections,
 	mapLegacyEndpointsToCanvasConnectionPort,
+	nodeNeedsCredentialSetup,
 	parseCanvasConnectionHandleString,
+	resolveCanonicalConnection,
 	shouldIgnoreCanvasShortcut,
 } from './canvas.utils';
-import type { IConnection, IConnections, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IConnection,
+	IConnections,
+	INodeTypeDescription,
+	NodeConnectionType,
+} from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { CanvasConnection } from './canvas.types';
-import { CanvasConnectionMode } from './canvas.types';
+import { CANVAS_NODE_GROUP_OUTPUT_HANDLE, CanvasConnectionMode } from './canvas.types';
 import type { INodeUi } from '@/Interface';
 import type { Connection } from '@vue-flow/core';
 import { createTestNode } from '@/__tests__/mocks';
 import { NODE_MIN_INPUT_ITEMS_COUNT } from '@/app/constants';
+import { getNodeSizeFromPorts } from '@/app/utils/nodeViewUtils';
+import { computed } from 'vue';
 
 vi.mock('uuid', () => ({
 	v4: vi.fn(() => 'mock-uuid'),
@@ -804,6 +816,56 @@ describe('mapCanvasConnectionToLegacyConnection', () => {
 	});
 });
 
+describe('resolveCanonicalConnection', () => {
+	it('should prefer canonical endpoints when present', () => {
+		const result = resolveCanonicalConnection({
+			source: 'group:g1',
+			target: 'node-b',
+			sourceHandle: CANVAS_NODE_GROUP_OUTPUT_HANDLE,
+			targetHandle: 'inputs/main/0',
+			data: {
+				source: { node: 'A', type: NodeConnectionTypes.Main, index: 0 },
+				target: { node: 'B', type: NodeConnectionTypes.Main, index: 0 },
+				canonicals: [
+					{
+						source: 'node-a',
+						target: 'node-b',
+						sourceHandle: 'outputs/main/0',
+						targetHandle: 'inputs/main/0',
+					},
+				],
+			},
+		});
+
+		expect(result).toEqual({
+			source: 'node-a',
+			target: 'node-b',
+			sourceHandle: 'outputs/main/0',
+			targetHandle: 'inputs/main/0',
+		});
+	});
+
+	it('should fall back to rendered endpoints when canonicals are absent', () => {
+		const result = resolveCanonicalConnection({
+			source: 'node-a',
+			target: 'node-b',
+			sourceHandle: 'outputs/main/0',
+			targetHandle: 'inputs/main/0',
+			data: {
+				source: { node: 'A', type: NodeConnectionTypes.Main, index: 0 },
+				target: { node: 'B', type: NodeConnectionTypes.Main, index: 0 },
+			},
+		});
+
+		expect(result).toEqual({
+			source: 'node-a',
+			target: 'node-b',
+			sourceHandle: 'outputs/main/0',
+			targetHandle: 'inputs/main/0',
+		});
+	});
+});
+
 describe('mapLegacyEndpointsToCanvasConnectionPort', () => {
 	it('should return an empty array and log a warning when inputs is a string', () => {
 		const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -942,6 +1004,27 @@ describe('mapLegacyEndpointsToCanvasConnectionPort', () => {
 			{ type: NodeConnectionTypes.AiMemory, maxConnections: 1, index: 0, label: 'Optional Tool' },
 		]);
 	});
+});
+
+describe('getMainHandleOffset', () => {
+	it.each([
+		[96, 48],
+		[160, 80],
+		[80, 40],
+	])('should put the handles of a %s px high node at half its height', (height, expected) => {
+		expect(getMainHandleOffset(height, false)).toBe(expected);
+	});
+
+	it.each([
+		[128, 64],
+		[206, 96],
+		[356, 176],
+	])(
+		'should put the handle of a %s px high agent card on the grid line nearest its center',
+		(height, expected) => {
+			expect(getMainHandleOffset(height, true)).toBe(expected);
+		},
+	);
 });
 
 describe('checkOverlap', () => {
@@ -1091,5 +1174,141 @@ describe(shouldIgnoreCanvasShortcut, () => {
 		div.classList.add('ignore-key-press-canvas');
 
 		expect(shouldIgnoreCanvasShortcut(div)).toEqual(true);
+	});
+});
+
+describe('computeNodeDisplaySize', () => {
+	const { Main, AiLanguageModel, AiMemory, AiTool, AiOutputParser, AiRetriever } =
+		NodeConnectionTypes;
+
+	type NodeKind = { configuration: boolean; configurable: boolean };
+	const plain: NodeKind = { configuration: false, configurable: false };
+	const configurable: NodeKind = { configuration: false, configurable: true };
+	const configurableConfiguration: NodeKind = { configuration: true, configurable: true };
+
+	function displaySize(
+		inputTypes: NodeConnectionType[],
+		outputTypes: NodeConnectionType[],
+		kind: NodeKind,
+	) {
+		const toPorts = (types: NodeConnectionType[]) => types.map((type, index) => ({ type, index }));
+		const renderData = createEmptyCanvasRenderData();
+		renderData.nodeInputsByNodeId.set(
+			'node',
+			computed(() => toPorts(inputTypes)),
+		);
+		renderData.nodeOutputsByNodeId.set(
+			'node',
+			computed(() => toPorts(outputTypes)),
+		);
+
+		return computeNodeDisplaySize('node', { ...kind, trigger: false }, renderData, false);
+	}
+
+	it.each<
+		[
+			string,
+			NodeConnectionType[],
+			NodeConnectionType[],
+			NodeKind,
+			{ width: number; height: number },
+		]
+	>([
+		['a default node', [Main], [Main], plain, { width: 96, height: 96 }],
+		[
+			'an AI Agent',
+			[Main, AiLanguageModel, AiMemory, AiTool],
+			[Main],
+			configurable,
+			{ width: 224, height: 96 },
+		],
+		[
+			'a node with five ports',
+			[Main, AiLanguageModel, AiMemory, AiTool, AiOutputParser, AiRetriever],
+			[Main],
+			configurable,
+			{ width: 272, height: 96 },
+		],
+		[
+			'a node with four main inputs',
+			[Main, Main, Main, Main],
+			[Main],
+			plain,
+			{ width: 96, height: 160 },
+		],
+		['a HITL tool', [AiTool], [AiTool], configurableConfiguration, { width: 240, height: 80 }],
+		[
+			'an AI Agent Tool with an output parser',
+			[AiLanguageModel, AiMemory, AiTool, AiOutputParser],
+			[AiTool],
+			configurableConfiguration,
+			{ width: 240, height: 80 },
+		],
+		[
+			'a LangChain Code node with six AI outputs',
+			[Main, AiLanguageModel],
+			[AiLanguageModel, AiMemory, AiTool, AiRetriever, AiOutputParser, AiTool],
+			configurableConfiguration,
+			{ width: 336, height: 80 },
+		],
+	])(
+		'should give %s the same size as getNodeSizeFromPorts',
+		(_, inputTypes, outputTypes, kind, expectedSize) => {
+			expect(displaySize(inputTypes, outputTypes, kind)).toEqual(expectedSize);
+			expect(getNodeSizeFromPorts(inputTypes, outputTypes)).toEqual(expectedSize);
+		},
+	);
+
+	it('should read the node kind from the render options, not from the ports', () => {
+		expect(displaySize([Main, AiLanguageModel], [Main], plain)).toEqual({ width: 96, height: 96 });
+		expect(displaySize([Main], [Main], configurable)).toEqual({ width: 224, height: 96 });
+		// The non-main output is not a port, also when the options mark the node as configurable only
+		expect(
+			displaySize([AiLanguageModel, AiMemory, AiTool, AiOutputParser], [AiTool], configurable),
+		).toEqual({ width: 224, height: 96 });
+	});
+});
+
+describe('nodeNeedsCredentialSetup', () => {
+	const credentialIssue = { notionApi: ['Credentials for Notion are not set.'] };
+
+	function nodeWith(overrides: Partial<INodeUi>): INodeUi {
+		return { ...createTestNode({ id: 'a', name: 'Alpha' }), ...overrides } as INodeUi;
+	}
+
+	it('is true when the only issue is a credential without an id', () => {
+		expect(nodeNeedsCredentialSetup(nodeWith({ issues: { credentials: credentialIssue } }))).toBe(
+			true,
+		);
+	});
+
+	it.each([
+		['the node is missing', undefined],
+		['the node has no credential issues', nodeWith({ issues: {} })],
+		[
+			'the node also has parameter issues',
+			nodeWith({
+				issues: {
+					credentials: credentialIssue,
+					parameters: { pageId: ['Parameter "Page" is required.'] },
+				},
+			}),
+		],
+		[
+			'the credential is already selected',
+			nodeWith({
+				issues: { credentials: credentialIssue },
+				credentials: { notionApi: { id: '1', name: 'Notion account' } },
+			}),
+		],
+		[
+			'the credential is managed by Gateway credits',
+			nodeWith({
+				issues: { credentials: credentialIssue },
+				credentials: { notionApi: { id: null, name: '', __aiGatewayManaged: true } },
+			}),
+		],
+	])('is false when %s', (_, node) => {
+		expect(nodeNeedsCredentialSetup(node)).toBe(false);
 	});
 });

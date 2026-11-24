@@ -3,7 +3,7 @@ import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n
 export class DynatraceApi implements ICredentialType {
 	name = 'dynatraceApi';
 
-	displayName = 'DynatraceAPI';
+	displayName = 'Dynatrace API';
 
 	documentationUrl = 'dynatrace';
 

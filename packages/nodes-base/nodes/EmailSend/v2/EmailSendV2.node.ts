@@ -19,13 +19,14 @@ import {
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Send Email',
 	name: 'emailSend',
-	icon: 'fa:envelope',
+	icon: 'node:send-mail',
+	iconColor: 'black',
 	group: ['output'],
 	version: [2, 2.1],
 	description: 'Sends an email using SMTP protocol',
+	annotations: { effect: 'write', destructive: false, idempotent: false },
 	defaults: {
 		name: 'Send Email',
-		color: '#00bb88',
 	},
 	inputs: [NodeConnectionTypes.Main],
 	outputs: [NodeConnectionTypes.Main],
@@ -71,6 +72,11 @@ export const versionDescription: INodeTypeDescription = {
 					action: 'Send message and wait for response',
 				},
 			],
+			displayOptions: {
+				show: {
+					resource: ['email'],
+				},
+			},
 		},
 		...send.description,
 		...sendAndWait.description,

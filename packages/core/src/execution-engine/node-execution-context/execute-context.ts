@@ -1,9 +1,8 @@
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
 	AINodeConnectionType,
 	CallbackManager,
-	ChunkType,
 	CloseFunction,
-	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
 	IExecuteResponsePromiseData,
@@ -14,28 +13,27 @@ import type {
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 	NodeExecutionHint,
-	StructuredChunk,
 	Workflow,
 	WorkflowExecuteMode,
 	EngineResponse,
 } from 'n8n-workflow';
-import {
-	ApplicationError,
-	createDeferredPromise,
-	jsonParse,
-	NodeConnectionTypes,
-} from 'n8n-workflow';
+import { jsonParse, NodeConnectionTypes } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
+
+import { buildHitlCallbackReference } from '@/utils/hitl-callback-reference';
 
 import { BaseExecuteContext } from './base-execute-context';
+import { SupplyDataContext } from './supply-data-context';
 import {
 	assertBinaryData,
 	getBinaryDataBuffer,
-	copyBinaryFile,
+	getNodeBinaryHelperFunctions,
 	getBinaryHelperFunctions,
 	detectBinaryEncoding,
 } from './utils/binary-helper-functions';
 import { constructExecutionMetaData } from './utils/construct-execution-metadata';
 import { copyInputItems } from './utils/copy-input-items';
+import { getCredentialCheckHelperFunctions } from './utils/credential-check-helper-functions';
 import { getDataTableHelperFunctions } from './utils/data-table-helper-functions';
 import { getDeduplicationHelperFunctions } from './utils/deduplication-helper-functions';
 import { getFileSystemHelperFunctions } from './utils/file-system-helper-functions';
@@ -64,7 +62,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 		connectionInputData: INodeExecutionData[],
 		inputData: ITaskDataConnections,
 		executeData: IExecuteData,
-		private readonly closeFunctions: CloseFunction[],
+		readonly closeFunctions: CloseFunction[],
 		abortSignal?: AbortSignal,
 		public subNodeExecutionResults?: EngineResponse,
 	) {
@@ -96,27 +94,25 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 			),
 			...getBinaryHelperFunctions(additionalData, workflow.id),
 			...getDataTableHelperFunctions(additionalData, workflow, node),
+			...getCredentialCheckHelperFunctions(additionalData),
 			...getSSHTunnelFunctions(),
 			...getFileSystemHelperFunctions(node),
 			...getDeduplicationHelperFunctions(workflow, node),
 
 			assertBinaryData: (itemIndex, propertyName) =>
-				assertBinaryData(inputData, node, itemIndex, propertyName, 0),
+				assertBinaryData(inputData, node, itemIndex, propertyName, 0, workflow.settings.binaryMode),
 			getBinaryDataBuffer: async (itemIndex, propertyName) =>
-				await getBinaryDataBuffer(inputData, itemIndex, propertyName, 0),
+				await getBinaryDataBuffer(
+					inputData,
+					itemIndex,
+					propertyName,
+					0,
+					workflow.settings.binaryMode,
+				),
 			detectBinaryEncoding: (buffer: Buffer) => detectBinaryEncoding(buffer),
 		};
 
-		this.nodeHelpers = {
-			copyBinaryFile: async (filePath, fileName, mimeType) =>
-				await copyBinaryFile(
-					this.workflow.id,
-					this.additionalData.executionId!,
-					filePath,
-					fileName,
-					mimeType,
-				),
-		};
+		this.nodeHelpers = getNodeBinaryHelperFunctions(this.workflow, this.additionalData);
 
 		this.getNodeParameter = ((
 			parameterName: string,
@@ -133,52 +129,13 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 			)) as IExecuteFunctions['getNodeParameter'];
 	}
 
-	isStreaming(): boolean {
-		// Check if we have sendChunk handlers
-		const handlers = this.additionalData.hooks?.handlers?.sendChunk?.length;
-		const hasHandlers = handlers !== undefined && handlers > 0;
-
-		// Check if streaming was enabled for this execution
-		const streamingEnabled = this.additionalData.streamingEnabled === true;
-
-		// Check current execution mode supports streaming
-		const executionModeSupportsStreaming = ['manual', 'webhook', 'integrated', 'chat'];
-		const isStreamingMode = executionModeSupportsStreaming.includes(this.mode);
-
-		return hasHandlers && isStreamingMode && streamingEnabled;
-	}
-
-	async sendChunk(
-		type: ChunkType,
-		itemIndex: number,
-		content?: IDataObject | string,
-	): Promise<void> {
-		const node = this.getNode();
-		const metadata = {
-			nodeId: node.id,
-			nodeName: node.name,
-			itemIndex,
-			runIndex: this.runIndex,
-			timestamp: Date.now(),
-		};
-
-		const parsedContent = typeof content === 'string' ? content : JSON.stringify(content);
-
-		const message: StructuredChunk = {
-			type,
-			content: parsedContent,
-			metadata,
-		};
-
-		await this.additionalData.hooks?.runHook('sendChunk', [message]);
-	}
-
 	async getInputConnectionData(
 		connectionType: AINodeConnectionType,
 		itemIndex: number,
 	): Promise<unknown> {
 		return await getInputConnectionData.call(
 			this,
+			SupplyDataContext,
 			this.workflow,
 			this.runExecutionData,
 			this.runIndex,
@@ -195,7 +152,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 	}
 
 	getInputData(inputIndex = 0, connectionType = NodeConnectionTypes.Main) {
-		if (!this.inputData.hasOwnProperty(connectionType)) {
+		if (!Object.hasOwn(this.inputData, connectionType)) {
 			// Return empty array because else it would throw error when nothing is connected to input
 			return [];
 		}
@@ -212,7 +169,10 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 		}
 
 		if (process.env.CODE_ENABLE_STDOUT === 'true') {
-			console.log(`[Workflow "${this.getWorkflow().id}"][Node "${this.node.name}"]`, ...args);
+			console.log(
+				`[Workflow "${this.getWorkflow().id}"][Node "${this.node.name}"]`,
+				...this.redactedConsoleArgs(args),
+			);
 		}
 	}
 
@@ -222,12 +182,12 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 
 	/** @deprecated use ISupplyDataFunctions.addInputData */
 	addInputData(): { index: number } {
-		throw new ApplicationError('addInputData should not be called on IExecuteFunctions');
+		throw new UnexpectedError('addInputData should not be called on IExecuteFunctions');
 	}
 
 	/** @deprecated use ISupplyDataFunctions.addOutputData */
 	addOutputData(): void {
-		throw new ApplicationError('addOutputData should not be called on IExecuteFunctions');
+		throw new UnexpectedError('addOutputData should not be called on IExecuteFunctions');
 	}
 
 	getParentCallbackManager(): CallbackManager | undefined {
@@ -236,6 +196,24 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 
 	addExecutionHints(...hints: NodeExecutionHint[]) {
 		this.hints.push(...hints);
+	}
+
+	getApprovalCallbackReference(decision: 'approve' | 'decline') {
+		if (this.instanceSettings.instanceType === 'engine') {
+			throw new UserError('Engine v2 does not support approval callbacks yet');
+		}
+
+		const { executionId } = this.additionalData;
+
+		if (typeof executionId !== 'string') {
+			throw new UnexpectedError('Execution id is missing');
+		}
+
+		return buildHitlCallbackReference(
+			executionId,
+			decision === 'approve' ? 'a' : 'd',
+			this.instanceSettings.hmacSignatureSecret,
+		);
 	}
 
 	/** Returns true if the node is being executed as an AI Agent tool */

@@ -8,26 +8,26 @@ describe('addCustomFieldsPreSendAction', () => {
 	beforeEach(() => {
 		mockThis = {
 			helpers: {
-				httpRequest: jest.fn(),
-				httpRequestWithAuthentication: jest.fn(),
-				requestWithAuthenticationPaginated: jest.fn(),
-				request: jest.fn(),
-				requestWithAuthentication: jest.fn(),
-				requestOAuth1: jest.fn(),
-				requestOAuth2: jest.fn(),
-				assertBinaryData: jest.fn(),
-				getBinaryDataBuffer: jest.fn(),
-				prepareBinaryData: jest.fn(),
-				setBinaryDataBuffer: jest.fn(),
-				copyBinaryFile: jest.fn(),
-				binaryToBuffer: jest.fn(),
-				binaryToString: jest.fn(),
-				getBinaryPath: jest.fn(),
-				getBinaryStream: jest.fn(),
-				getBinaryMetadata: jest.fn(),
-				createDeferredPromise: jest
+				httpRequest: vi.fn(),
+				httpRequestWithAuthentication: vi.fn(),
+				requestWithAuthenticationPaginated: vi.fn(),
+				request: vi.fn(),
+				requestWithAuthentication: vi.fn(),
+				requestOAuth1: vi.fn(),
+				requestOAuth2: vi.fn(),
+				assertBinaryData: vi.fn(),
+				getBinaryDataBuffer: vi.fn(),
+				prepareBinaryData: vi.fn(),
+				setBinaryDataBuffer: vi.fn(),
+				copyBinaryFile: vi.fn(),
+				binaryToBuffer: vi.fn(),
+				binaryToString: vi.fn(),
+				getBinaryPath: vi.fn(),
+				getBinaryStream: vi.fn(),
+				getBinaryMetadata: vi.fn(),
+				createDeferredPromise: vi
 					.fn()
-					.mockReturnValue({ promise: Promise.resolve(), resolve: jest.fn(), reject: jest.fn() }),
+					.mockReturnValue({ promise: Promise.resolve(), resolve: vi.fn(), reject: vi.fn() }),
 			},
 		};
 	});
@@ -57,8 +57,8 @@ describe('addCustomFieldsPreSendAction', () => {
 		);
 
 		expect((result.body as IDataObject).customFields).toEqual([
-			{ id: '123', key: 'FieldName', field_value: 'TestValue' },
-			{ id: '456', key: 'default_key', field_value: 'AnotherValue' },
+			{ id: '123', fieldValue: 'TestValue' },
+			{ id: '456', fieldValue: 'AnotherValue' },
 		]);
 	});
 

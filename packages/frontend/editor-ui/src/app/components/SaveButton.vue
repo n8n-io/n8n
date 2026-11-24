@@ -2,22 +2,30 @@
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
-import type { ButtonType } from '@n8n/design-system';
+import type { ButtonVariant } from '@n8n/design-system';
 
 import { N8nButton } from '@n8n/design-system';
+
+// Explicit click emit is required for Playwright tests - N8nTooltip wraps
+// content in a span (via TooltipTrigger), which can interfere with click
+// event detection in automated tests
+const emit = defineEmits<{
+	click: [];
+}>();
+
 const props = withDefaults(
 	defineProps<{
 		saved: boolean;
 		isSaving?: boolean;
 		disabled?: boolean;
-		type?: ButtonType;
+		variant?: ButtonVariant;
 		withShortcut?: boolean;
 		shortcutTooltip?: string;
 		savingLabel?: string;
 	}>(),
 	{
 		isSaving: false,
-		type: 'primary',
+		variant: 'solid',
 		withShortcut: false,
 		disabled: false,
 	},
@@ -52,8 +60,8 @@ const shortcutTooltipLabel = computed(() => {
 					:label="saveButtonLabel"
 					:loading="isSaving"
 					:disabled="disabled"
-					:class="$style.button"
-					:type="type"
+					:variant="variant"
+					@click="emit('click')"
 				/>
 			</KeyboardShortcutTooltip>
 			<N8nButton
@@ -61,29 +69,26 @@ const shortcutTooltipLabel = computed(() => {
 				:label="saveButtonLabel"
 				:loading="isSaving"
 				:disabled="disabled"
-				:class="$style.button"
-				:type="type"
+				:variant="variant"
+				@click="emit('click')"
 			/>
 		</template>
 	</span>
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as *;
+
 .container {
 	display: inline-flex;
 	justify-content: center;
 	align-items: center;
-	height: 30px;
-}
-
-.button {
-	height: 30px;
 }
 
 .saved {
 	color: $custom-font-very-light;
 	font-size: 12px;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	line-height: 12px;
 	text-align: center;
 	padding: var(--spacing--2xs) var(--spacing--2xs);

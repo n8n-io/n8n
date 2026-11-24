@@ -1,4 +1,4 @@
-import jp from 'jsonpath';
+import { JSONPath } from 'jsonpath-plus';
 import { useDataSchema, useFlattenSchema, type SchemaNode } from './useDataSchema';
 import type { INodeUi, Schema } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
@@ -7,14 +7,45 @@ import { createTestingPinia } from '@pinia/testing';
 import {
 	createRunExecutionData,
 	NodeConnectionTypes,
+	type IDataObject,
 	type INodeExecutionData,
 	type ITaskDataConnections,
 } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { JSONSchema7 } from 'json-schema';
 import { mock } from 'vitest-mock-extended';
+import merge from 'lodash/merge';
+import { computed, reactive } from 'vue';
 
 vi.mock('@/app/stores/workflows.store');
+vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => {
+	const actual = await importOriginal<Record<string, unknown>>();
+	return {
+		...actual,
+		injectWorkflowDocumentStore: vi.fn(() =>
+			computed(() => ({
+				getSettingsSnapshot: () => ({ binaryMode: undefined }),
+				getNodePinData: () => undefined,
+			})),
+		),
+	};
+});
+
+let mockExecution: IExecutionResponse | null = null;
+
+vi.mock('@/app/stores/workflowExecutionState.store', async (importOriginal) => {
+	const actual = await importOriginal<Record<string, unknown>>();
+	return {
+		...actual,
+		injectWorkflowExecutionStateStore: vi.fn(() => ({
+			// Plain accessor (not `computed`) so per-test reassignment of the
+			// non-reactive `mockExecution` is always picked up.
+			get value() {
+				return { activeExecution: mockExecution };
+			},
+		})),
+	};
+});
 
 describe('useDataSchema', () => {
 	const getSchema = useDataSchema().getSchema;
@@ -300,10 +331,10 @@ describe('useDataSchema', () => {
 		it('should return the correct data when using the generated json path on an object', () => {
 			const input = { people: ['Joe', 'John'] };
 			const schema = getSchema(input);
-			const pathData = jp.query(
-				input,
-				`$${((schema.value as Schema[])[0].value as Schema[])[0].path}`,
-			);
+			const pathData = JSONPath({
+				path: `$${((schema.value as Schema[])[0].value as Schema[])[0].path}`,
+				json: input,
+			});
 			expect(pathData).toEqual(['Joe']);
 		});
 
@@ -313,20 +344,20 @@ describe('useDataSchema', () => {
 				{ name: 'Joe', age: 33, hobbies: ['skateboarding', 'gaming'] },
 			];
 			const schema = getSchema(input);
-			const pathData = jp.query(
-				input,
-				`$${(((schema.value as Schema[])[0].value as Schema[])[2].value as Schema[])[1].path}`,
-			);
+			const pathData = JSONPath({
+				path: `$${(((schema.value as Schema[])[0].value as Schema[])[2].value as Schema[])[1].path}`,
+				json: input,
+			});
 			expect(pathData).toEqual(['traveling']);
 		});
 
 		it('should return the correct data when using the generated json path on a list of list', () => {
 			const input = [[1, 2]];
 			const schema = getSchema(input);
-			const pathData = jp.query(
-				input,
-				`$${((schema.value as Schema[])[0].value as Schema[])[1].path}`,
-			);
+			const pathData = JSONPath({
+				path: `$${((schema.value as Schema[])[0].value as Schema[])[1].path}`,
+				json: input,
+			});
 			expect(pathData).toEqual([2]);
 		});
 
@@ -338,10 +369,10 @@ describe('useDataSchema', () => {
 				],
 			];
 			const schema = getSchema(input);
-			const pathData = jp.query(
-				input,
-				`$${(((schema.value as Schema[])[0].value as Schema[])[1].value as Schema[])[1].path}`,
-			);
+			const pathData = JSONPath({
+				path: `$${(((schema.value as Schema[])[0].value as Schema[])[1].value as Schema[])[1].path}`,
+				json: input,
+			});
 			expect(pathData).toEqual([33]);
 		});
 
@@ -355,15 +386,15 @@ describe('useDataSchema', () => {
 				},
 			];
 			const schema = getSchema(input);
-			const pathData = jp.query(
-				input,
-				`$${
+			const pathData = JSONPath({
+				path: `$${
 					(
 						(((schema.value as Schema[])[0].value as Schema[])[0].value as Schema[])[0]
 							.value as Schema[]
 					)[0].path
 				}`,
-			);
+				json: input,
+			});
 			expect(pathData).toEqual([new Date('2022-11-22T00:00:00.000Z')]);
 		});
 
@@ -837,11 +868,8 @@ describe('useDataSchema', () => {
 			],
 		])(
 			'should return correct output %s',
-			([node, runIndex, outputIndex, getWorkflowExecution], output) => {
-				vi.mocked(useWorkflowsStore).mockReturnValue({
-					...useWorkflowsStore(),
-					getWorkflowExecution: getWorkflowExecution as IExecutionResponse,
-				});
+			([node, runIndex, outputIndex, workflowExecution], output) => {
+				mockExecution = (workflowExecution ?? null) as IExecutionResponse | null;
 				expect(getNodeInputData(node as INodeUi, runIndex, outputIndex)).toEqual(output);
 			},
 		);
@@ -970,6 +998,119 @@ describe('useDataSchema', () => {
 					},
 				],
 			});
+		});
+	});
+
+	describe('getSchemaForExecutionData', () => {
+		const { getSchemaForExecutionData } = useDataSchema();
+
+		const findByPath = (schema: Schema, path: string): Schema | undefined => {
+			if (schema.path === path) return schema;
+			if (!Array.isArray(schema.value)) return undefined;
+			for (const child of schema.value) {
+				const found = findByPath(child, path);
+				if (found) return found;
+			}
+			return undefined;
+		};
+
+		// The previous implementation: a deep merge of all items through the reactive proxies
+		const getSchemaWithMergeOfAllItems = (
+			data: IDataObject[],
+			excludeValues: boolean,
+			collapseArrays: boolean,
+		) => {
+			const [head, ...tail] = data;
+			return getSchema(merge({}, head, ...tail, head), undefined, excludeValues, collapseArrays);
+		};
+
+		it('should include a field that only a later item has', () => {
+			const items: IDataObject[] = Array.from({ length: 1000 }, (_, index) => ({ id: index }));
+			items[999] = { id: 999, late: 'value' };
+			items[1] = { id: 1, address: { city: 'Berlin', zip: '10115' } };
+			items[0] = { id: 0, address: { city: 'Berlin' } };
+
+			const schema = getSchemaForExecutionData(reactive(items));
+
+			expect(findByPath(schema, '.late')).toEqual({
+				key: 'late',
+				type: 'string',
+				value: 'value',
+				path: '.late',
+			});
+			expect(findByPath(schema, '.address.zip')).toEqual({
+				key: 'zip',
+				type: 'string',
+				value: '10115',
+				path: '.address.zip',
+			});
+		});
+
+		it('should return the same schema for a reactive list and a plain list, and not change the input', () => {
+			const plainItems: IDataObject[] = [
+				{ id: 1, tags: ['a'], address: { city: 'Berlin' } },
+				{ id: 2, tags: ['b', 'c'], address: { zip: '10115' }, extra: null },
+			];
+			const reactiveList = reactive(structuredClone(plainItems));
+			const plainListOfReactiveItems = structuredClone(plainItems).map((item) => reactive(item));
+			const before = JSON.stringify(reactiveList);
+
+			const expected = getSchemaForExecutionData(plainItems);
+
+			expect(getSchemaForExecutionData(reactiveList)).toEqual(expected);
+			expect(getSchemaForExecutionData(plainListOfReactiveItems)).toEqual(expected);
+			expect(JSON.stringify(reactiveList)).toBe(before);
+			expect(JSON.stringify(plainListOfReactiveItems)).toBe(before);
+		});
+
+		const fixtures: Array<[string, () => unknown[]]> = [
+			[
+				'flat',
+				() => [
+					{ a: 1, b: 'x' },
+					{ a: 2, b: 'y' },
+				],
+			],
+			['nested', () => [{ a: { b: { c: 1 } } }, { a: { b: { d: true } } }]],
+			['optional keys', () => [{ a: 1 }, { b: 2 }, { a: 3, c: 4 }]],
+			['arrays of different lengths', () => [{ a: [1, 2, 3] }, { a: [4] }, { a: [5, 6, 7, 8] }]],
+			[
+				'arrays of objects',
+				() => [{ a: [{ b: 1 }, { c: 2 }] }, { a: [{ d: 3 }] }, { a: [{ b: 4, e: 5 }] }],
+			],
+			['null then values', () => [{}, { email: null }, { email: 'a@b' }]],
+			['empty head', () => [{}, { name: 'alice' }, { name: 'bob' }]],
+			['null then object', () => [{ a: null }, { a: { b: 1 } }]],
+			['object, array, null', () => [{ a: { b: 1 } }, { a: [1] }, { a: null }]],
+			['index-keyed object then array', () => [{ a: { '0': { c: 2 } } }, { a: [{ b: 1 }] }]],
+			['late index-keyed object', () => [{}, { a: { '3': 1 } }, { a: [1] }]],
+			['length key then array', () => [{ a: { length: 3 } }, { a: [1] }]],
+			[
+				'prototype keys',
+				() => JSON.parse('[{"__proto__":{"q":1}},{"constructor":1,"prototype":{"x":1}}]'),
+			],
+			['array item', () => [[1, 2]]],
+			['string item', () => ['ab']],
+		];
+
+		describe.each([
+			[false, false],
+			[true, false],
+			[false, true],
+			[true, true],
+		])('with excludeValues %s and collapseArrays %s', (excludeValues, collapseArrays) => {
+			test.each(fixtures)(
+				'should return the same schema as a merge of all items: %s',
+				(_, createItems) => {
+					const items = reactive(createItems()) as IDataObject[];
+
+					const actual = getSchemaForExecutionData(items, excludeValues, collapseArrays);
+					const expected = getSchemaWithMergeOfAllItems(items, excludeValues, collapseArrays);
+
+					expect(JSON.stringify(actual)).toBe(JSON.stringify(expected));
+					expect(actual).toEqual(expected);
+				},
+			);
 		});
 	});
 });
@@ -1165,6 +1306,11 @@ describe('useFlattenSchema', () => {
 		});
 
 		it('should flatten node schemas', () => {
+			vi.mocked(useWorkflowsStore).mockReturnValue({
+				...useWorkflowsStore(),
+				workflowId: '1',
+			});
+
 			const { flattenMultipleSchemas } = useFlattenSchema();
 			const schema: Schema = {
 				path: '',

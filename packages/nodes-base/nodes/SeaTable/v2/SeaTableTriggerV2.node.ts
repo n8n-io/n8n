@@ -7,6 +7,7 @@ import {
 	NodeConnectionTypes,
 	type INodeTypeBaseDescription,
 	type IDataObject,
+	requestPath,
 } from 'n8n-workflow';
 
 import type {
@@ -20,7 +21,13 @@ import type {
 	ICollaboratorsResult,
 	IColumnDigitalSignature,
 } from './actions/Interfaces';
-import { seaTableApiRequest, simplify_new, enrichColumns } from './GenericFunctions';
+import {
+	seaTableApiRequest,
+	simplify_new,
+	enrichColumns,
+	escapeSqlIdentifier,
+	type SeaTableEndpoint,
+} from './GenericFunctions';
 import { loadOptions } from './methods';
 
 export class SeaTableTriggerV2 implements INodeType {
@@ -191,9 +198,10 @@ export class SeaTableTriggerV2 implements INodeType {
 
 		// New Signature
 		if (event === 'newAsset') {
-			const endpoint = '/api-gateway/api/v2/dtables/{{dtable_uuid}}/sql';
+			const endpoint: SeaTableEndpoint = (dtableUuid) =>
+				requestPath`/api-gateway/api/v2/dtables/${dtableUuid}/sql`;
 			sqlResult = await seaTableApiRequest.call(this, ctx, 'POST', endpoint, {
-				sql: `SELECT _id, _ctime, _mtime, \`${assetColumn}\` FROM ${tableName} WHERE \`${assetColumn}\` IS NOT NULL ORDER BY _mtime DESC LIMIT ${limit}`,
+				sql: `SELECT _id, _ctime, _mtime, \`${escapeSqlIdentifier(assetColumn)}\` FROM \`${escapeSqlIdentifier(tableName)}\` WHERE \`${escapeSqlIdentifier(assetColumn)}\` IS NOT NULL ORDER BY _mtime DESC LIMIT ${limit}`,
 				convert_keys: options.convert ?? true,
 			});
 
@@ -227,13 +235,13 @@ export class SeaTableTriggerV2 implements INodeType {
 				this,
 				ctx,
 				'GET',
-				'/api-gateway/api/v2/dtables/{{dtable_uuid}}/metadata/',
+				(dtableUuid) => requestPath`/api-gateway/api/v2/dtables/${dtableUuid}/metadata/`,
 			);
 			requestRows = await seaTableApiRequest.call(
 				this,
 				ctx,
 				'GET',
-				'/api-gateway/api/v2/dtables/{{dtable_uuid}}/rows/',
+				(dtableUuid) => requestPath`/api-gateway/api/v2/dtables/${dtableUuid}/rows/`,
 				{},
 				{
 					table_name: tableName,
@@ -253,8 +261,9 @@ export class SeaTableTriggerV2 implements INodeType {
 				rows = requestRows.rows.filter((obj) => new Date(obj[filterField]) > new Date(startDate));
 			}
 		} else {
-			const endpoint = '/api-gateway/api/v2/dtables/{{dtable_uuid}}/sql';
-			const sqlQuery = `SELECT * FROM \`${tableName}\` WHERE ${filterField} BETWEEN "${moment(
+			const endpoint: SeaTableEndpoint = (dtableUuid) =>
+				requestPath`/api-gateway/api/v2/dtables/${dtableUuid}/sql`;
+			const sqlQuery = `SELECT * FROM \`${escapeSqlIdentifier(tableName)}\` WHERE ${filterField} BETWEEN "${moment(
 				startDate,
 			).format('YYYY-MM-D HH:mm:ss')}" AND "${moment(endDate).format(
 				'YYYY-MM-D HH:mm:ss',
@@ -271,7 +280,7 @@ export class SeaTableTriggerV2 implements INodeType {
 			this,
 			ctx,
 			'GET',
-			'/api-gateway/api/v2/dtables/{{dtable_uuid}}/related-users/',
+			(dtableUuid) => requestPath`/api-gateway/api/v2/dtables/${dtableUuid}/related-users/`,
 		);
 		const collaborators: ICollaborator[] = collaboratorsResult.user_list || [];
 

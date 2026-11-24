@@ -1,0 +1,1208 @@
+import { createTestingPinia } from '@pinia/testing';
+import { waitFor, within } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
+import { createComponentRenderer } from '@/__tests__/render';
+import { mockedStore } from '@/__tests__/utils';
+import SecuritySettings from './SecuritySettings.vue';
+import { EnterpriseEditionFeature } from '@/app/constants';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { ref } from 'vue';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG } from './rateLimits/rateLimits';
+
+const getSecuritySettings = vi.fn();
+const updateSecuritySettings = vi.fn();
+
+vi.mock('@n8n/rest-api-client/api/security-settings', () => ({
+	getSecuritySettings: (...args: unknown[]) => getSecuritySettings(...args),
+	updateSecuritySettings: (...args: unknown[]) => updateSecuritySettings(...args),
+}));
+
+vi.mock('@n8n/rest-api-client/api/public-api-rate-limit-settings', () => {
+	const limits = {
+		globalReadLimit: 1200,
+		globalReadWindowSeconds: 60,
+		globalWriteLimit: 600,
+		globalWriteWindowSeconds: 60,
+		endpointReadLimit: 1000,
+		endpointReadWindowSeconds: 60,
+		endpointWriteLimit: 500,
+		endpointWriteWindowSeconds: 60,
+	};
+	return {
+		getPublicApiRateLimitSettings: vi
+			.fn()
+			.mockResolvedValue({ enabled: false, ...limits, defaults: limits, envManagedFields: [] }),
+		updatePublicApiRateLimitSettings: vi.fn(),
+	};
+});
+
+const policyAccess = vi.hoisted(() => ({ canManage: false }));
+vi.mock('@n8n/frontend-module-type-availability-policies', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/frontend-module-type-availability-policies')>()),
+	// The access rules have their own tests in the module, so the row only reads the result.
+	usePolicyAdminAccess: () => ({
+		canManagePolicies: ref(policyAccess.canManage),
+		entryRouteName: ref('PolicyEntryView'),
+	}),
+}));
+
+const routerPush = vi.fn();
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal<typeof import('vue-router')>()),
+	useRouter: () => ({ push: routerPush }),
+}));
+
+const showToast = vi.fn();
+const showError = vi.fn();
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showToast, showError }),
+}));
+
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ restApiContext: {} }),
+}));
+
+vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
+	usePageRedirectionHelper: () => ({ goToUpgrade: vi.fn() }),
+}));
+
+const checkEnvFeatureFlag = vi.fn().mockReturnValue(false);
+vi.mock('@/features/shared/envFeatureFlag/useEnvFeatureFlag', () => ({
+	useEnvFeatureFlag: () => ({ check: { value: checkEnvFeatureFlag } }),
+}));
+
+const pinia = createTestingPinia({ stubActions: false });
+
+const renderView = createComponentRenderer(SecuritySettings, {
+	pinia,
+});
+
+describe('SecuritySettings', () => {
+	const defaultSettings = {
+		personalSpacePublishing: false,
+		personalSpaceSharing: false,
+		publishedPersonalWorkflowsCount: 14,
+		sharedPersonalWorkflowsCount: 12,
+		sharedPersonalCredentialsCount: 5,
+		managedByEnv: false,
+	};
+
+	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
+	let usersStore: ReturnType<typeof mockedStore<typeof useUsersStore>>;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		getSecuritySettings.mockResolvedValue(defaultSettings);
+
+		settingsStore = mockedStore(useSettingsStore);
+		usersStore = mockedStore(useUsersStore);
+
+		settingsStore.isMFAEnforced = false;
+		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.EnforceMFA] = true;
+		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.PersonalSpacePolicy] = true;
+		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = true;
+		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowReviews] = false;
+		checkEnvFeatureFlag.mockReturnValue(false);
+		usersStore.updateEnforceMfa = vi.fn().mockResolvedValue(undefined);
+		policyAccess.canManage = false;
+	});
+
+	describe('node and credential policies', () => {
+		beforeEach(() => {
+			checkEnvFeatureFlag.mockImplementation(
+				(flag: string) => flag === 'NODE_AND_CREDENTIAL_POLICIES_SETTINGS',
+			);
+		});
+
+		it('shows the row with a Preview badge to a user who can manage the policies', async () => {
+			policyAccess.canManage = true;
+			const { findByTestId, getByTestId } = renderView();
+
+			const row = await findByTestId('security-type-policies-row');
+
+			expect(row).toHaveTextContent('Node and credential policies');
+			expect(row).toHaveTextContent('Configure');
+			expect(within(row).getByTestId('security-type-policies-preview-badge')).toBeInTheDocument();
+			expect(getByTestId('security-type-policies-section')).toHaveTextContent('Access control');
+		});
+
+		it('opens the entry page of the policies from the row', async () => {
+			policyAccess.canManage = true;
+			const { findByTestId } = renderView();
+
+			await userEvent.click(await findByTestId('security-type-policies-row'));
+
+			expect(routerPush).toHaveBeenCalledWith({ name: 'PolicyEntryView' });
+		});
+
+		it('hides the row from a user who cannot manage the policies', async () => {
+			const { queryByTestId } = renderView();
+
+			await waitFor(() => expect(getSecuritySettings).toHaveBeenCalled());
+
+			expect(queryByTestId('security-type-policies-section')).not.toBeInTheDocument();
+		});
+
+		it('hides the row while the settings flag is off', async () => {
+			policyAccess.canManage = true;
+			checkEnvFeatureFlag.mockReturnValue(false);
+			const { queryByTestId } = renderView();
+
+			await waitFor(() => expect(getSecuritySettings).toHaveBeenCalled());
+
+			expect(queryByTestId('security-type-policies-section')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('API key rate limits', () => {
+		it('does not show the section while its feature flag is off', async () => {
+			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(false);
+			const { queryByTestId } = renderView();
+
+			await waitFor(() => expect(getSecuritySettings).toHaveBeenCalled());
+
+			expect(queryByTestId('rate-limits-section')).not.toBeInTheDocument();
+		});
+
+		it('shows the section while its feature flag is on', async () => {
+			const posthogStore = mockedStore(usePostHog);
+			posthogStore.isFeatureEnabled.mockImplementation(
+				(flag) => flag === PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG,
+			);
+			const { findByTestId } = renderView();
+
+			expect(await findByTestId('rate-limits-section')).toBeInTheDocument();
+		});
+	});
+
+	it('should render security heading and personal space section', async () => {
+		const { getByText } = renderView();
+
+		await waitFor(() => {
+			expect(getSecuritySettings).toHaveBeenCalled();
+		});
+
+		expect(getByText('Policies')).toBeInTheDocument();
+		expect(getByText('Personal space')).toBeInTheDocument();
+	});
+
+	it('should use the shared settings page composition', async () => {
+		const { getByTestId } = renderView();
+
+		await waitFor(() => {
+			expect(getByTestId('security-settings-header')).toBeInTheDocument();
+			expect(getByTestId('security-data-redaction-section')).toBeInTheDocument();
+		});
+
+		expect(
+			within(getByTestId('security-mfa-section')).getByTestId('settings-row-group'),
+		).toBeInTheDocument();
+		expect(
+			within(getByTestId('security-data-redaction-section')).getByTestId('settings-row-group'),
+		).toBeInTheDocument();
+		expect(
+			within(getByTestId('security-personal-space-section')).getAllByTestId('settings-row-group'),
+		).toHaveLength(2);
+	});
+
+	it('should render concise section copy and the security documentation link', async () => {
+		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowReviews] = true;
+		getSecuritySettings.mockResolvedValue({
+			...defaultSettings,
+			workflowReviews: { enabled: false },
+		});
+		const { getByTestId, getByText, queryByText } = renderView();
+
+		await waitFor(() => {
+			expect(getByTestId('security-data-redaction-section')).toBeInTheDocument();
+		});
+
+		expect(getByTestId('settings-page-header-docs')).toHaveAttribute(
+			'href',
+			'https://docs.n8n.io/deploy/host-n8n/configure-n8n/security/manage-security-policies',
+		);
+		expect(getByText('Manage security policies for this instance.')).toBeInTheDocument();
+		expect(getByText('Two-factor authentication')).toBeInTheDocument();
+		expect(
+			getByText('Require two-factor authentication for users who sign in with email and password.'),
+		).toBeInTheDocument();
+		expect(getByText('Manage reviews before publishing workflows.')).toBeInTheDocument();
+		expect(
+			getByText(
+				'Allow users to request approval before publishing. An open review blocks publishing.',
+			),
+		).toBeInTheDocument();
+		expect(
+			queryByText(
+				'Select whether to redact production executions, or manual and production executions.',
+			),
+		).not.toBeInTheDocument();
+	});
+
+	it('should render both publishing and sharing toggles with correct test ids', async () => {
+		const { getByTestId } = renderView();
+
+		await waitFor(() => {
+			expect(getByTestId('security-personal-space-publishing-toggle')).toBeInTheDocument();
+		});
+
+		expect(getByTestId('security-personal-space-publishing-toggle')).toBeInTheDocument();
+		expect(getByTestId('security-personal-space-sharing-toggle')).toBeInTheDocument();
+	});
+
+	it('should call updateSecuritySettings and show toast when enabling personal space publishing', async () => {
+		updateSecuritySettings.mockResolvedValue({
+			...defaultSettings,
+			personalSpacePublishing: true,
+		});
+
+		const { getByTestId } = renderView();
+
+		await waitFor(() => {
+			expect(getByTestId('security-personal-space-publishing-toggle')).toBeInTheDocument();
+		});
+
+		const publishingToggle = getByTestId('security-personal-space-publishing-toggle');
+		await userEvent.click(publishingToggle);
+
+		await waitFor(() => {
+			expect(updateSecuritySettings).toHaveBeenCalledWith(expect.anything(), {
+				personalSpacePublishing: true,
+			});
+		});
+		expect(showToast).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'success',
+			}),
+		);
+	});
+
+	it('should call updateSecuritySettings and show toast when enabling personal space sharing', async () => {
+		updateSecuritySettings.mockResolvedValue({
+			...defaultSettings,
+			personalSpaceSharing: true,
+		});
+
+		const { getByTestId } = renderView();
+
+		await waitFor(() => {
+			expect(getByTestId('security-personal-space-sharing-toggle')).toBeInTheDocument();
+		});
+
+		const sharingToggle = getByTestId('security-personal-space-sharing-toggle');
+		await userEvent.click(sharingToggle);
+
+		await waitFor(() => {
+			expect(updateSecuritySettings).toHaveBeenCalledWith(expect.anything(), {
+				personalSpaceSharing: true,
+			});
+		});
+		expect(showToast).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'success',
+			}),
+		);
+	});
+
+	it('should show alert dialog and proceed when confirming disable publishing', async () => {
+		getSecuritySettings.mockResolvedValue({
+			...defaultSettings,
+			personalSpacePublishing: true,
+		});
+		updateSecuritySettings.mockResolvedValue({
+			...defaultSettings,
+			personalSpacePublishing: false,
+		});
+
+		const { getByTestId, getByRole } = renderView();
+
+		await waitFor(() => {
+			expect(getByTestId('security-personal-space-publishing-toggle')).toBeInTheDocument();
+		});
+
+		const publishingToggle = getByTestId('security-personal-space-publishing-toggle');
+		await userEvent.click(publishingToggle);
+
+		// N8nAlertDialog should appear (uses role="dialog" via reka-ui DialogContent)
+		await waitFor(() => {
+			expect(getByRole('dialog')).toBeInTheDocument();
+		});
+
+		// Click Confirm button in the dialog
+		await userEvent.click(getByRole('button', { name: 'Confirm' }));
+
+		await waitFor(() => {
+			expect(updateSecuritySettings).toHaveBeenCalledWith(expect.anything(), {
+				personalSpacePublishing: false,
+			});
+		});
+	});
+
+	it('should show alert dialog and proceed when confirming disable sharing', async () => {
+		getSecuritySettings.mockResolvedValue({
+			...defaultSettings,
+			personalSpaceSharing: true,
+		});
+		updateSecuritySettings.mockResolvedValue({
+			...defaultSettings,
+			personalSpaceSharing: false,
+		});
+
+		const { getByTestId, getByRole } = renderView();
+
+		await waitFor(() => {
+			expect(getByTestId('security-personal-space-sharing-toggle')).toBeInTheDocument();
+		});
+
+		const sharingToggle = getByTestId('security-personal-space-sharing-toggle');
+		await userEvent.click(sharingToggle);
+
+		// N8nAlertDialog should appear (uses role="dialog" via reka-ui DialogContent)
+		await waitFor(() => {
+			expect(getByRole('dialog')).toBeInTheDocument();
+		});
+
+		// Click Confirm button in the dialog
+		await userEvent.click(getByRole('button', { name: 'Confirm' }));
+
+		await waitFor(() => {
+			expect(updateSecuritySettings).toHaveBeenCalledWith(expect.anything(), {
+				personalSpaceSharing: false,
+			});
+		});
+	});
+
+	it('should not call updateSecuritySettings when user cancels disable publishing confirmation', async () => {
+		getSecuritySettings.mockResolvedValue({
+			...defaultSettings,
+			personalSpacePublishing: true,
+		});
+
+		const { getByTestId, getByRole } = renderView();
+
+		await waitFor(() => {
+			expect(getByTestId('security-personal-space-publishing-toggle')).toBeInTheDocument();
+		});
+
+		const publishingToggle = getByTestId('security-personal-space-publishing-toggle');
+		await userEvent.click(publishingToggle);
+
+		// N8nAlertDialog should appear (uses role="dialog" via reka-ui DialogContent)
+		await waitFor(() => {
+			expect(getByRole('dialog')).toBeInTheDocument();
+		});
+
+		// Click Cancel button in the dialog
+		await userEvent.click(getByRole('button', { name: 'Cancel' }));
+
+		expect(updateSecuritySettings).not.toHaveBeenCalled();
+	});
+
+	it('should not call updateSecuritySettings when user cancels disable sharing confirmation', async () => {
+		getSecuritySettings.mockResolvedValue({
+			...defaultSettings,
+			personalSpaceSharing: true,
+		});
+
+		const { getByTestId, getByRole } = renderView();
+
+		await waitFor(() => {
+			expect(getByTestId('security-personal-space-sharing-toggle')).toBeInTheDocument();
+		});
+
+		const sharingToggle = getByTestId('security-personal-space-sharing-toggle');
+		await userEvent.click(sharingToggle);
+
+		// N8nAlertDialog should appear (uses role="dialog" via reka-ui DialogContent)
+		await waitFor(() => {
+			expect(getByRole('dialog')).toBeInTheDocument();
+		});
+
+		// Click Cancel button in the dialog
+		await userEvent.click(getByRole('button', { name: 'Cancel' }));
+
+		expect(updateSecuritySettings).not.toHaveBeenCalled();
+	});
+
+	it('should display published workflows count', async () => {
+		const { getByTestId } = renderView();
+
+		await waitFor(() => {
+			expect(getByTestId('security-publishing-count')).toHaveTextContent('14 workflows');
+		});
+
+		expect(getByTestId('security-publishing-count')).toHaveTextContent(
+			'Existing published workflows',
+		);
+	});
+
+	it('should display shared workflows and credentials counts', async () => {
+		const { getByTestId } = renderView();
+
+		await waitFor(() => {
+			expect(getByTestId('security-sharing-count')).toHaveTextContent(
+				'12 workflows, 5 credentials',
+			);
+		});
+
+		expect(getByTestId('security-sharing-count')).toHaveTextContent('Existing shares');
+	});
+
+	it('should render the enforce MFA toggle', async () => {
+		const { getByTestId } = renderView();
+
+		await waitFor(() => {
+			expect(getByTestId('enable-force-mfa')).toBeInTheDocument();
+		});
+	});
+
+	it('should turn enforcing MFA on', async () => {
+		const { getByTestId } = renderView();
+
+		await waitFor(() => {
+			expect(getByTestId('enable-force-mfa')).toBeInTheDocument();
+		});
+
+		const actionSwitch = getByTestId('enable-force-mfa');
+		await userEvent.click(actionSwitch);
+
+		expect(usersStore.updateEnforceMfa).toHaveBeenCalledWith(true);
+	});
+
+	it('should turn enforcing MFA off', async () => {
+		settingsStore.isMFAEnforced = true;
+		const { getByTestId } = renderView();
+
+		await waitFor(() => {
+			expect(getByTestId('enable-force-mfa')).toBeInTheDocument();
+		});
+
+		const actionSwitch = getByTestId('enable-force-mfa');
+		await userEvent.click(actionSwitch);
+
+		expect(usersStore.updateEnforceMfa).toHaveBeenCalledWith(false);
+	});
+
+	it('should show success toast when enabling MFA enforcement', async () => {
+		const { getByTestId } = renderView();
+
+		await waitFor(() => {
+			expect(getByTestId('enable-force-mfa')).toBeInTheDocument();
+		});
+
+		const actionSwitch = getByTestId('enable-force-mfa');
+		await userEvent.click(actionSwitch);
+
+		await waitFor(() => {
+			expect(showToast).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'success',
+				}),
+			);
+		});
+	});
+
+	it('should show error toast when MFA enforcement update fails', async () => {
+		usersStore.updateEnforceMfa = vi.fn().mockRejectedValue(new Error('MFA update failed'));
+
+		const { getByTestId } = renderView();
+
+		await waitFor(() => {
+			expect(getByTestId('enable-force-mfa')).toBeInTheDocument();
+		});
+
+		const actionSwitch = getByTestId('enable-force-mfa');
+		await userEvent.click(actionSwitch);
+
+		await waitFor(() => {
+			expect(showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
+		});
+	});
+
+	it('should not show personal space toggles before settings are loaded', async () => {
+		let resolveSettings: (value: typeof defaultSettings) => void = () => {};
+		getSecuritySettings.mockImplementation(
+			async () => await new Promise((resolve) => (resolveSettings = resolve)),
+		);
+
+		const { queryByTestId } = renderView();
+
+		expect(queryByTestId('security-personal-space-sharing-toggle')).not.toBeInTheDocument();
+		expect(queryByTestId('security-personal-space-publishing-toggle')).not.toBeInTheDocument();
+
+		resolveSettings(defaultSettings);
+
+		await waitFor(() => {
+			expect(queryByTestId('security-personal-space-sharing-toggle')).toBeInTheDocument();
+			expect(queryByTestId('security-personal-space-publishing-toggle')).toBeInTheDocument();
+		});
+	});
+
+	describe('when managed by environment variables', () => {
+		beforeEach(() => {
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				managedByEnv: true,
+			});
+		});
+
+		it('should show env-managed notice banner', async () => {
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('security-managed-by-env-notice')).toBeInTheDocument();
+			});
+		});
+
+		it('should not show env-managed notice when managedByEnv is false', async () => {
+			getSecuritySettings.mockResolvedValue(defaultSettings);
+			const { queryByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(queryByTestId('security-personal-space-sharing-toggle')).toBeInTheDocument();
+			});
+
+			expect(queryByTestId('security-managed-by-env-notice')).not.toBeInTheDocument();
+		});
+
+		it('should disable all toggles when managed by env', async () => {
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('security-personal-space-sharing-toggle')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('enable-force-mfa')).toHaveAttribute('data-disabled');
+			expect(getByTestId('security-personal-space-sharing-toggle')).toHaveAttribute(
+				'data-disabled',
+			);
+			expect(getByTestId('security-personal-space-publishing-toggle')).toHaveAttribute(
+				'data-disabled',
+			);
+		});
+
+		it('should not call update APIs when clicking disabled toggles', async () => {
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('security-personal-space-sharing-toggle')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByTestId('security-personal-space-sharing-toggle'));
+			await userEvent.click(getByTestId('enable-force-mfa'));
+
+			expect(updateSecuritySettings).not.toHaveBeenCalled();
+			expect(usersStore.updateEnforceMfa).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('when personalSpacePolicy feature is not licensed', () => {
+		beforeEach(() => {
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.PersonalSpacePolicy] =
+				false;
+		});
+
+		it('should show upgrade badges on sharing and publishing titles', async () => {
+			const { getAllByText, getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('security-personal-space-sharing-toggle')).toBeInTheDocument();
+			});
+
+			// Two upgrade badges for sharing + publishing (plus one for MFA if unlicensed)
+			const upgradeBadges = getAllByText('Upgrade');
+			expect(upgradeBadges.length).toBeGreaterThanOrEqual(2);
+		});
+
+		it('should render disabled sharing toggle when unlicensed', async () => {
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('security-personal-space-sharing-toggle')).toBeInTheDocument();
+			});
+
+			const sharingToggle = getByTestId('security-personal-space-sharing-toggle');
+			expect(sharingToggle).toHaveAttribute('data-disabled');
+		});
+
+		it('should render disabled publishing toggle when unlicensed', async () => {
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('security-personal-space-publishing-toggle')).toBeInTheDocument();
+			});
+
+			const publishingToggle = getByTestId('security-personal-space-publishing-toggle');
+			expect(publishingToggle).toHaveAttribute('data-disabled');
+		});
+
+		it('should not call updateSecuritySettings when clicking disabled toggle', async () => {
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('security-personal-space-sharing-toggle')).toBeInTheDocument();
+			});
+
+			const sharingToggle = getByTestId('security-personal-space-sharing-toggle');
+			await userEvent.click(sharingToggle);
+
+			expect(updateSecuritySettings).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('Data redaction section', () => {
+		it('should render toggle and docs link', async () => {
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('redaction-enforcement-docs-link').closest('a')).toHaveAttribute(
+				'href',
+				'https://docs.n8n.io/workflows/executions/execution-data-redaction/#instance-level-enforcement',
+			);
+		});
+
+		it('should not render scope dropdown when enforcement is off', async () => {
+			const { queryByTestId, getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+			});
+
+			expect(queryByTestId('redaction-enforcement-scope-row')).not.toBeInTheDocument();
+		});
+
+		it('should render scope dropdown when enforcement is on', async () => {
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				redactionEnforcement: { floor: 'production' },
+			});
+
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('redaction-enforcement-scope-row')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('redaction-enforcement-scope-select')).toHaveTextContent(
+				'Production executions',
+			);
+		});
+
+		it('should show enable dialog and POST floor=production when confirming', async () => {
+			updateSecuritySettings.mockResolvedValue(undefined);
+
+			const { getByTestId, getByRole } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByTestId('enable-redaction-enforcement'));
+
+			await waitFor(() => {
+				expect(getByRole('dialog')).toBeInTheDocument();
+			});
+
+			expect(getByRole('dialog')).toHaveTextContent('manage data redaction permission');
+			expect(getByRole('dialog')).not.toHaveTextContent('Workflow editors');
+
+			await userEvent.click(getByRole('button', { name: 'Enable' }));
+
+			await waitFor(() => {
+				expect(updateSecuritySettings).toHaveBeenCalledWith(expect.anything(), {
+					redactionEnforcement: { floor: 'production' },
+				});
+			});
+			expect(showToast).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'success',
+				}),
+			);
+		});
+
+		it('should not POST when cancelling enable dialog', async () => {
+			const { getByTestId, getByRole } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByTestId('enable-redaction-enforcement'));
+
+			await waitFor(() => {
+				expect(getByRole('dialog')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByRole('button', { name: 'Cancel' }));
+
+			expect(updateSecuritySettings).not.toHaveBeenCalled();
+		});
+
+		it('should show disable dialog and POST floor=off when confirming', async () => {
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				redactionEnforcement: { floor: 'production' },
+			});
+			updateSecuritySettings.mockResolvedValue(undefined);
+
+			const { getByTestId, getByRole } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByTestId('enable-redaction-enforcement'));
+
+			await waitFor(() => {
+				expect(getByRole('dialog')).toBeInTheDocument();
+			});
+
+			expect(getByRole('dialog')).toHaveTextContent('manage data redaction permission');
+			expect(getByRole('dialog')).not.toHaveTextContent('Workflow editors');
+
+			await userEvent.click(getByRole('button', { name: 'Disable' }));
+
+			await waitFor(() => {
+				expect(updateSecuritySettings).toHaveBeenCalledWith(expect.anything(), {
+					redactionEnforcement: { floor: 'off' },
+				});
+			});
+		});
+
+		it('should show error toast when confirmed enable fails', async () => {
+			updateSecuritySettings.mockRejectedValue(new Error('boom'));
+
+			const { getByTestId, getByRole } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByTestId('enable-redaction-enforcement'));
+
+			await waitFor(() => {
+				expect(getByRole('dialog')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByRole('button', { name: 'Enable' }));
+
+			await waitFor(() => {
+				expect(showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
+			});
+		});
+
+		it('should show upgrade badge when DataRedaction feature is not licensed', async () => {
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
+
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('enable-redaction-enforcement')).toHaveAttribute('data-disabled');
+		});
+
+		it('should render disabled scope dropdown when unlicensed even if enforced=true', async () => {
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				redactionEnforcement: { floor: 'production' },
+			});
+
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('redaction-enforcement-scope-row')).toBeInTheDocument();
+			expect(getByTestId('redaction-enforcement-scope-select')).toHaveAttribute('data-disabled');
+		});
+
+		it('should render scope dropdown with Upgrade badge when unlicensed and not enforced', async () => {
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
+
+			const { getAllByText, getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('redaction-enforcement-scope-row')).toBeInTheDocument();
+			expect(getByTestId('redaction-enforcement-scope-select')).toHaveAttribute('data-disabled');
+			// One badge on the toggle row, one on the scope row.
+			expect(getAllByText('Upgrade').length).toBeGreaterThanOrEqual(2);
+		});
+
+		it('should not render a scope summary that repeats the scope dropdown', async () => {
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
+
+			const { getByTestId, queryByText } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('redaction-enforcement-scope-select')).toBeInTheDocument();
+			});
+
+			expect(queryByText('Affected scope')).not.toBeInTheDocument();
+			expect(queryByText('No executions')).not.toBeInTheDocument();
+		});
+
+		it('should not call updateSecuritySettings when clicking disabled scope dropdown', async () => {
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				redactionEnforcement: { floor: 'production' },
+			});
+
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('redaction-enforcement-scope-select')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByTestId('redaction-enforcement-scope-select'));
+
+			expect(updateSecuritySettings).not.toHaveBeenCalled();
+		});
+
+		it('should show stored scope value when unlicensed with floor=production (downgrade)', async () => {
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				redactionEnforcement: { floor: 'production' },
+			});
+
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('redaction-enforcement-scope-row')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('redaction-enforcement-scope-select')).toHaveAttribute('data-disabled');
+			expect(getByTestId('redaction-enforcement-scope-select')).toHaveTextContent(
+				'Production executions',
+			);
+		});
+
+		it('should show stored scope value when unlicensed with floor=all (downgrade)', async () => {
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				redactionEnforcement: { floor: 'all' },
+			});
+
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('redaction-enforcement-scope-row')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('redaction-enforcement-scope-select')).toHaveAttribute('data-disabled');
+			expect(getByTestId('redaction-enforcement-scope-select')).toHaveTextContent(
+				'Manual and production executions',
+			);
+		});
+
+		it('should disable toggle when managed by env', async () => {
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				managedByEnv: true,
+			});
+
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('enable-redaction-enforcement')).toHaveAttribute('data-disabled');
+		});
+
+		it('should preselect the stored floor in the scope dropdown for floor=all', async () => {
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				redactionEnforcement: { floor: 'all' },
+			});
+
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('redaction-enforcement-scope-select')).toHaveTextContent(
+					'Manual and production executions',
+				);
+			});
+		});
+
+		describe('when security settings endpoint is unlicensed (403)', () => {
+			beforeEach(() => {
+				settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
+				// Reproduce the 403: useAsyncState keeps state === undefined.
+				getSecuritySettings.mockRejectedValue(new Error('Forbidden'));
+			});
+
+			it('should still render the data redaction section when the endpoint 403s', async () => {
+				const { getByTestId } = renderView();
+
+				await waitFor(() => {
+					expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+				});
+
+				expect(getByTestId('enable-redaction-enforcement')).toHaveAttribute('data-disabled');
+			});
+
+			it('should show the Upgrade badges and disabled scope dropdown when endpoint 403s', async () => {
+				const { getByTestId, getAllByText } = renderView();
+
+				await waitFor(() => {
+					expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+				});
+
+				expect(getByTestId('redaction-enforcement-scope-row')).toBeInTheDocument();
+				expect(getByTestId('redaction-enforcement-scope-select')).toHaveAttribute('data-disabled');
+				// One badge on the toggle row, one on the scope row.
+				expect(getAllByText('Upgrade').length).toBeGreaterThanOrEqual(2);
+			});
+
+			it('should not show an error toast when the endpoint 403s', async () => {
+				const { getByTestId } = renderView();
+
+				await waitFor(() => {
+					expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+				});
+
+				expect(showError).not.toHaveBeenCalled();
+			});
+		});
+	});
+
+	describe('workflow reviews', () => {
+		beforeEach(() => {
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowReviews] = true;
+			checkEnvFeatureFlag.mockReturnValue(true);
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				workflowReviews: { enabled: false },
+			});
+		});
+
+		it('should not render workflow reviews section when dev flag is off', async () => {
+			checkEnvFeatureFlag.mockReturnValue(false);
+			const { queryByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getSecuritySettings).toHaveBeenCalled();
+			});
+
+			expect(queryByTestId('security-workflow-reviews-toggle')).not.toBeInTheDocument();
+		});
+
+		it('should not render workflow reviews section when the settings carry no workflow reviews policy', async () => {
+			getSecuritySettings.mockResolvedValue(defaultSettings);
+			const { findByTestId, queryByTestId } = renderView();
+
+			await findByTestId('security-personal-space-sharing-toggle');
+
+			expect(queryByTestId('security-workflow-reviews-toggle')).not.toBeInTheDocument();
+		});
+
+		it('should render workflow reviews toggle when licensed and dev flag are on', async () => {
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('security-workflow-reviews-toggle')).toBeInTheDocument();
+			});
+		});
+
+		it('should show a Preview tag on the workflow reviews toggle', async () => {
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('security-workflow-reviews-toggle')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('settings-enable-row-preview-badge')).toHaveTextContent('Preview');
+		});
+
+		it('should persist workflow reviews toggle changes', async () => {
+			updateSecuritySettings.mockResolvedValue({
+				workflowReviews: { enabled: true },
+			});
+
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('security-workflow-reviews-toggle')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByTestId('security-workflow-reviews-toggle'));
+
+			await waitFor(() => {
+				expect(updateSecuritySettings).toHaveBeenCalledWith(expect.anything(), {
+					workflowReviews: { enabled: true },
+				});
+				expect(settingsStore.settings.workflowReviews).toEqual({ enabled: true });
+			});
+		});
+
+		it('updates Inbox access after saving the policy without reloading settings', async () => {
+			settingsStore.settings.activeModules = ['inbox', 'workflow-reviews'];
+			settingsStore.settings.inbox = { enabled: false, availableTypes: [], failedTypes: [] };
+			updateSecuritySettings.mockResolvedValue({ workflowReviews: { enabled: true } });
+			const { findByTestId } = renderView();
+			const toggle = await findByTestId('security-workflow-reviews-toggle');
+			await userEvent.click(toggle);
+			await waitFor(() => expect(showToast).toHaveBeenCalled());
+			expect(settingsStore.settings.workflowReviews).toEqual({ enabled: true });
+			expect(settingsStore.settings.inbox).toEqual({
+				enabled: true,
+				availableTypes: ['workflow_review'],
+				failedTypes: [],
+			});
+			expect(toggle).not.toHaveAttribute('data-disabled');
+			expect(showError).not.toHaveBeenCalled();
+			expect(settingsStore.getSettings).not.toHaveBeenCalled();
+		});
+
+		it('hides Require approval while workflow reviews are off', async () => {
+			const { findByTestId, queryByTestId } = renderView();
+
+			await findByTestId('security-workflow-reviews-toggle');
+
+			expect(
+				queryByTestId('security-workflow-reviews-require-approval-select'),
+			).not.toBeInTheDocument();
+		});
+
+		it('shows Require approval and saves Always required', async () => {
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				workflowReviews: { enabled: true },
+			});
+			updateSecuritySettings.mockResolvedValue({
+				workflowReviews: { enabled: true, alwaysRequired: true },
+			});
+
+			const { findByTestId, findByRole } = renderView();
+			const select = await findByTestId('security-workflow-reviews-require-approval-select');
+			expect(select).toHaveTextContent('Set per project or workflow');
+
+			await userEvent.click(select);
+			await userEvent.click(await findByRole('option', { name: 'Always required' }));
+
+			await waitFor(() => {
+				expect(updateSecuritySettings).toHaveBeenCalledWith(expect.anything(), {
+					workflowReviews: { alwaysRequired: true },
+				});
+				expect(settingsStore.settings.workflowReviews).toEqual({
+					enabled: true,
+					alwaysRequired: true,
+				});
+			});
+		});
+
+		it('shows workflow reviews as off when the approval save returns them disabled', async () => {
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				workflowReviews: { enabled: true, alwaysRequired: false },
+			});
+			// Another admin turned reviews off after this page loaded.
+			updateSecuritySettings.mockResolvedValue({
+				workflowReviews: { enabled: false, alwaysRequired: true },
+			});
+
+			const { findByTestId, findByRole, getByTestId } = renderView();
+
+			await userEvent.click(
+				await findByTestId('security-workflow-reviews-require-approval-select'),
+			);
+			await userEvent.click(await findByRole('option', { name: 'Always required' }));
+
+			await waitFor(() =>
+				expect(settingsStore.settings.workflowReviews).toEqual({
+					enabled: false,
+					alwaysRequired: true,
+				}),
+			);
+			expect(getByTestId('security-workflow-reviews-toggle')).toHaveAttribute(
+				'aria-checked',
+				'false',
+			);
+		});
+
+		it('should disable workflow reviews toggle when managed by env', async () => {
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				managedByEnv: true,
+				workflowReviews: { enabled: true },
+			});
+
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('security-workflow-reviews-toggle')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('security-workflow-reviews-toggle')).toHaveAttribute('data-disabled');
+		});
+
+		it('should show alert dialog and proceed when confirming disable workflow reviews', async () => {
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				workflowReviews: { enabled: true },
+			});
+			updateSecuritySettings.mockResolvedValue({
+				workflowReviews: { enabled: false },
+			});
+
+			const { getByTestId, getByRole } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('security-workflow-reviews-toggle')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByTestId('security-workflow-reviews-toggle'));
+
+			await waitFor(() => {
+				expect(getByRole('dialog')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByRole('button', { name: 'Confirm' }));
+
+			await waitFor(() => {
+				expect(updateSecuritySettings).toHaveBeenCalledWith(expect.anything(), {
+					workflowReviews: { enabled: false },
+				});
+				expect(settingsStore.settings.workflowReviews).toEqual({ enabled: false });
+			});
+		});
+
+		it('should not call updateSecuritySettings when user cancels disable workflow reviews confirmation', async () => {
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				workflowReviews: { enabled: true },
+			});
+
+			const { getByTestId, getByRole } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('security-workflow-reviews-toggle')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByTestId('security-workflow-reviews-toggle'));
+
+			await waitFor(() => {
+				expect(getByRole('dialog')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByRole('button', { name: 'Cancel' }));
+
+			expect(updateSecuritySettings).not.toHaveBeenCalled();
+		});
+	});
+});

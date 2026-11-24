@@ -1,0 +1,117 @@
+# public.agent_chat_attachments
+
+## Columns
+
+| Name | Type | Default | Nullable | Children | Parents | Comment |
+| ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| agentId | varchar(36) |  | true |  | [public.agents](public.agents.md) | Agent the attachment was sent to, when persisted (null for inline agents) |
+| binaryDataId | text |  | false |  |  | Opaque BinaryDataService reference (mode-prefixed, e.g. "filesystem-v2:\<uuid\>"); not an FK to binary_data, which only has rows in DB storage mode |
+| contentHash | varchar(64) |  | true |  |  | SHA-256 of the file bytes, hex; null for older rows |
+| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| createdByThreadId | varchar(128) |  | false |  |  | Thread that made the file; threadId is the root thread that owns it |
+| fileName | varchar(255) |  | false |  |  |  |
+| fileSizeBytes | integer |  | false |  |  | Uploaded file size in bytes |
+| id | varchar(16) |  | false | [public.agent_file_grants](public.agent_file_grants.md) |  | Application-generated n8n nano ID |
+| mimeType | varchar(255) |  | false |  |  |  |
+| projectId | varchar(36) |  | false |  | [public.project](public.project.md) | Project owning the conversation; authorization scope for downloads |
+| resourceId | varchar(255) |  | true |  |  | Per-user scope within the thread (platform user), when known |
+| source | varchar(32) |  | false |  |  | Surface the file arrived from, e.g. "chat", "slack", "telegram" |
+| threadId | varchar(128) |  | false |  |  | Conversation thread the file belongs to |
+| updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+
+## Constraints
+
+| Name | Type | Definition |
+| ---- | ---- | ---------- |
+| FK_41c246c30af3d2108d93e15dd5e | FOREIGN KEY | FOREIGN KEY ("agentId") REFERENCES agents(id) ON DELETE CASCADE |
+| FK_5c048535b2132b40dfed2e640e5 | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
+| PK_9c1250f77b41d1a0e71a3f1414a | PRIMARY KEY | PRIMARY KEY (id) |
+| agent_chat_attachments_binaryDataId_not_null | n | NOT NULL "binaryDataId" |
+| agent_chat_attachments_createdAt_not_null | n | NOT NULL "createdAt" |
+| agent_chat_attachments_createdByThreadId_not_null | n | NOT NULL "createdByThreadId" |
+| agent_chat_attachments_fileName_not_null | n | NOT NULL "fileName" |
+| agent_chat_attachments_fileSizeBytes_not_null | n | NOT NULL "fileSizeBytes" |
+| agent_chat_attachments_id_not_null | n | NOT NULL id |
+| agent_chat_attachments_mimeType_not_null | n | NOT NULL "mimeType" |
+| agent_chat_attachments_projectId_not_null | n | NOT NULL "projectId" |
+| agent_chat_attachments_source_not_null | n | NOT NULL source |
+| agent_chat_attachments_threadId_not_null | n | NOT NULL "threadId" |
+| agent_chat_attachments_updatedAt_not_null | n | NOT NULL "updatedAt" |
+
+## Indexes
+
+| Name | Definition |
+| ---- | ---------- |
+| IDX_6806b43c8a0d11460f0c2552eb | CREATE INDEX "IDX_6806b43c8a0d11460f0c2552eb" ON public.agent_chat_attachments USING btree ("projectId", "threadId") |
+| IDX_7e9556f25f995653997be3322b | CREATE INDEX "IDX_7e9556f25f995653997be3322b" ON public.agent_chat_attachments USING btree ("agentId", "threadId") |
+| PK_9c1250f77b41d1a0e71a3f1414a | CREATE UNIQUE INDEX "PK_9c1250f77b41d1a0e71a3f1414a" ON public.agent_chat_attachments USING btree (id) |
+
+## Relations
+
+```mermaid
+erDiagram
+
+"public.agent_chat_attachments" }o--o| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.agent_file_grants" }o--|| "public.agent_chat_attachments" : "FOREIGN KEY (#quot;attachmentId#quot;) REFERENCES agent_chat_attachments(id) ON DELETE CASCADE"
+"public.agent_chat_attachments" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+
+"public.agent_chat_attachments" {
+  varchar_36_ agentId FK
+  text binaryDataId
+  varchar_64_ contentHash
+  timestamp_3__with_time_zone createdAt
+  varchar_128_ createdByThreadId
+  varchar_255_ fileName
+  integer fileSizeBytes
+  varchar_16_ id
+  varchar_255_ mimeType
+  varchar_36_ projectId FK
+  varchar_255_ resourceId
+  varchar_32_ source
+  varchar_128_ threadId
+  timestamp_3__with_time_zone updatedAt
+}
+"public.agents" {
+  varchar_36_ activeVersionId FK
+  varchar_36_ approvalWorkflowId FK
+  boolean availableInMCP
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ id
+  uuid identityId FK
+  json integrations
+  boolean isArchived
+  varchar_128_ name
+  varchar_36_ parentFolderId FK
+  varchar_255_ projectId FK
+  integer publicationRevision
+  integer revision
+  json schema
+  varchar_16_ scope
+  timestamp_3__with_time_zone setupCompletedAt
+  json skills
+  json tools
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ versionId
+}
+"public.agent_file_grants" {
+  varchar_16_ attachmentId FK
+  timestamp_3__with_time_zone createdAt
+  varchar_128_ threadId
+  timestamp_3__with_time_zone updatedAt
+}
+"public.project" {
+  timestamp_3__with_time_zone createdAt
+  uuid creatorId FK
+  json customTelemetryTags
+  varchar_512_ description
+  json icon
+  varchar_36_ id
+  varchar_255_ name
+  varchar_36_ type
+  timestamp_3__with_time_zone updatedAt
+}
+```
+
+---
+
+> Generated by [tbls](https://github.com/k1LoW/tbls)

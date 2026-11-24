@@ -1,11 +1,6 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import { mock } from 'jest-mock-extended';
-import type {
-	IExecuteFunctions,
-	INodeExecutionData,
-	IWorkflowDataProxyData,
-	INode,
-} from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
+import type { IExecuteFunctions, INodeExecutionData, INode } from 'n8n-workflow';
 
 import { ExecutionData } from '../ExecutionData.node';
 
@@ -31,11 +26,10 @@ describe('ExecutionData Node', () => {
 			{ json: { item: 1, foo: null } },
 			{ json: { item: 1, foo: 'bar' } },
 		];
-		const setAllMock = jest.fn();
+		const setAllMock = vi.fn();
 		const executeFns = mock<IExecuteFunctions>({
+			customData: mock({ setAll: setAllMock }),
 			getInputData: () => mockInputData,
-			getWorkflowDataProxy: () =>
-				mock<IWorkflowDataProxyData>({ $execution: { customData: { setAll: setAllMock } } }),
 			getNode: () => mock<INode>({ typeVersion: 1.1 }),
 		});
 		executeFns.getNodeParameter.mockReturnValueOnce('save');
@@ -50,6 +44,32 @@ describe('ExecutionData Node', () => {
 		expect(setAllMock).toBeCalledWith({ foo: 'bar' });
 		expect(result).toEqual([mockInputData]);
 	});
+
+	it.each([1, 1.1])(
+		'should pass boolean and numeric falsy values through (v%s)',
+		async (typeVersion) => {
+			const mockInputData: INodeExecutionData[] = [{ json: { item: 0 } }];
+			const setAllMock = vi.fn();
+			const executeFns = mock<IExecuteFunctions>({
+				customData: mock({ setAll: setAllMock }),
+				getInputData: () => mockInputData,
+				getNode: () => mock<INode>({ typeVersion }),
+			});
+			executeFns.getNodeParameter.mockReturnValueOnce('save');
+			executeFns.getNodeParameter.mockReturnValueOnce({
+				values: [
+					{ key: 'isTrue', value: true },
+					{ key: 'isFalse', value: false },
+					{ key: 'zero', value: 0 },
+					{ key: 'count', value: 3 },
+				],
+			});
+
+			await new ExecutionData().execute.call(executeFns);
+
+			expect(setAllMock).toBeCalledWith({ isTrue: true, isFalse: false, zero: 0, count: 3 });
+		},
+	);
 });
 
 describe('ExecutionData -> Should run the workflow', () => {

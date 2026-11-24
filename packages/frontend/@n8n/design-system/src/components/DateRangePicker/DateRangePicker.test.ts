@@ -27,12 +27,10 @@ describe('N8nDateRangePicker', () => {
 	});
 
 	it('should emit update:close when clicking the apply button', async () => {
-		const { container, emitted, getByText } = render(DateRangePicker);
+		const { container, emitted, getByRole } = render(DateRangePicker);
 		await openCalendarPopover(container);
 
-		getByText('Apply', { selector: 'button' }); // ensure the button is in the
-
-		const applyButton = getByText('Apply', { selector: 'button' });
+		const applyButton = getByRole('button', { name: 'Apply' });
 		expect(applyButton).toBeVisible();
 
 		await userEvent.click(applyButton);
@@ -92,6 +90,20 @@ describe('N8nDateRangePicker', () => {
 
 			const presetButton = getByText('Preset 1', { selector: 'button' });
 			expect(presetButton).toBeVisible();
+		});
+	});
+
+	describe('footer slot', () => {
+		it('replaces the default Apply button when provided', async () => {
+			const { container, getByRole, queryByRole } = render(DateRangePicker, {
+				slots: {
+					footer: '<button>Custom Footer</button>',
+				},
+			});
+			await openCalendarPopover(container);
+
+			expect(getByRole('button', { name: 'Custom Footer' })).toBeVisible();
+			expect(queryByRole('button', { name: 'Apply' })).not.toBeInTheDocument();
 		});
 	});
 });

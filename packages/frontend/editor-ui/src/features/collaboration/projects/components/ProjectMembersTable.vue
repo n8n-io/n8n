@@ -1,17 +1,12 @@
 <script lang="ts" setup>
-import {
-	N8nDataTableServer,
-	N8nText,
-	N8nUserInfo,
-	type ActionDropdownItem,
-	type UserAction,
-} from '@n8n/design-system';
-import type { TableHeader, TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
-import type { UsersInfoProps } from '@n8n/design-system/components/N8nUserInfo/UserInfo.vue';
+import { N8nDataTableServer, N8nText, N8nUserInfo, type UserAction } from '@n8n/design-system';
+import type { TableHeader, TableOptions } from '@n8n/design-system';
+import type { UsersInfoProps } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AllRolesMap, Role } from '@n8n/permissions';
 import { computed, ref } from 'vue';
 import type { ProjectMemberData } from '../projects.types';
+import ProjectMembersAccessCell from './ProjectMembersAccessCell.vue';
 import ProjectMembersActionsCell from './ProjectMembersActionsCell.vue';
 import ProjectMembersRoleCell from './ProjectMembersRoleCell.vue';
 const i18n = useI18n();
@@ -28,8 +23,8 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'update:options': [payload: TableOptions];
 	'update:role': [payload: { role: Role['slug']; userId: string }];
+	'show-role-upgrade-dialog': [];
 	action: [value: { action: string; userId: string }];
-	'show-upgrade-dialog': [];
 }>();
 
 const tableOptions = defineModel<TableOptions>('tableOptions', {
@@ -67,26 +62,23 @@ const headers = ref<Array<TableHeader<ProjectMemberData>>>([
 	},
 ]);
 
-const roleActions = computed<Array<ActionDropdownItem<string>>>(() =>
-	props.projectRoles.map((role) => ({
-		id: role.slug,
-		label: role.displayName,
-		disabled: !role.licensed,
-		description: role.description ?? undefined,
-		badge: !role.licensed ? i18n.baseText('generic.upgrade') : undefined,
-		badgeProps: !role.licensed ? { theme: 'warning', bold: true } : undefined,
-	})),
-);
-
+// Access that comes from a global role is not editable here, so the row shows
+// an access label instead of the role dropdown.
 const canUpdateRole = (member: ProjectMemberData): boolean =>
-	member.id !== props.currentUserId && props.canEditRole;
+	!member.alwaysHasAccess && member.id !== props.currentUserId && props.canEditRole;
 
 const onRoleChange = ({ role, userId }: { role: Role['slug']; userId: string }) => {
 	emit('update:role', { role, userId });
 };
 
 const filterActions = (member: ProjectMemberData) => {
-	if (member.id === props.currentUserId || member.role === 'project:personalOwner') return [];
+	if (
+		member.alwaysHasAccess ||
+		member.id === props.currentUserId ||
+		member.role === 'project:personalOwner'
+	) {
+		return [];
+	}
 	return (props.actions ?? []).filter((action) => action.guard?.(member) ?? true);
 };
 </script>
@@ -96,12 +88,12 @@ const filterActions = (member: ProjectMemberData) => {
 		<N8nDataTableServer
 			v-model:sort-by="tableOptions.sortBy"
 			v-model:page="tableOptions.page"
-			:items-per-page="data.count"
+			v-model:items-per-page="tableOptions.itemsPerPage"
 			:headers="headers"
 			:items="rows"
 			:items-length="data.count"
 			:loading="loading"
-			:page-sizes="[data.count + 1]"
+			:page-sizes="[10, 25, 50]"
 			@update:options="emit('update:options', $event)"
 		>
 			<template #[`item.name`]="{ value }">
@@ -114,9 +106,13 @@ const filterActions = (member: ProjectMemberData) => {
 					v-if="canUpdateRole(item)"
 					:data="item"
 					:roles="props.projectRoles"
-					:actions="roleActions"
 					@update:role="onRoleChange"
-					@badge-click="emit('show-upgrade-dialog')"
+					@show-role-upgrade-dialog="emit('show-role-upgrade-dialog')"
+				/>
+				<ProjectMembersAccessCell
+					v-else-if="item.alwaysHasAccess"
+					:data="item"
+					:project-roles="props.projectRoles"
 				/>
 				<N8nText v-else color="text-dark">
 					{{ props.projectRoles.find((role) => role.slug === item.role)?.displayName ?? item.role }}

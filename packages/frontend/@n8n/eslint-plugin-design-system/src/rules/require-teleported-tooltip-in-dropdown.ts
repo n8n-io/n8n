@@ -1,0 +1,148 @@
+import { readFileSync } from 'node:fs';
+import { ESLintUtils } from '@typescript-eslint/utils';
+import { NodeTypes, parse } from '@vue/compiler-dom';
+import type {
+	AttributeNode,
+	DirectiveNode,
+	ElementNode,
+	RootNode,
+	SourceLocation,
+	TemplateChildNode,
+} from '@vue/compiler-dom';
+
+const TOOLTIP_NAMES = new Set(['N8nTooltip', 'n8n-tooltip']);
+const DROPDOWN_NAMES = new Set(['N8nDropdownMenu', 'n8n-dropdown-menu']);
+
+const isElement = (node: TemplateChildNode): node is ElementNode => node.type === NodeTypes.ELEMENT;
+
+const isTeleportedAttribute = (prop: AttributeNode | DirectiveNode) => {
+	if (prop.type === NodeTypes.ATTRIBUTE) return prop.name === 'teleported';
+
+	return (
+		prop.name === 'bind' &&
+		prop.arg?.type === NodeTypes.SIMPLE_EXPRESSION &&
+		prop.arg.content === 'teleported'
+	);
+};
+
+const guaranteesTeleportation = (prop: AttributeNode | DirectiveNode) => {
+	if (prop.type === NodeTypes.ATTRIBUTE) {
+		return prop.value === undefined || prop.value.content === '' || prop.value.content === 'true';
+	}
+
+	if (prop.exp?.type !== NodeTypes.SIMPLE_EXPRESSION) return false;
+
+	// A plain literal or identifier has no parsed AST (`null`). Anything else, such as
+	// `(true)` or `true /* note */`, has its parsed expression in `ast`.
+	const { ast, content } = prop.exp;
+	if (ast === null || ast === undefined) return content.trim() === 'true';
+	return ast !== false && ast.type === 'BooleanLiteral' && ast.value;
+};
+
+// The Vue template rules report syntax errors, so this rule ignores them.
+// `prefixIdentifiers` makes the parser parse each binding expression.
+const parseSfc = (source: string) =>
+	parse(source, { parseMode: 'sfc', prefixIdentifiers: true, onError: () => {} });
+
+// Most SFCs have no dropdown menu, so a text check saves the parse.
+const mentionsDropdown = (source: string) =>
+	[...DROPDOWN_NAMES].some((name) => source.includes(name));
+
+/**
+ * Returns the location of each `teleported` attribute that lets an
+ * `N8nTooltip` inside an `N8nDropdownMenu` render inline.
+ */
+const findUnteleportedTooltips = (root: RootNode): SourceLocation[] => {
+	const found: SourceLocation[] = [];
+
+	const visit = (node: ElementNode, insideDropdown: boolean) => {
+		if (insideDropdown && TOOLTIP_NAMES.has(node.tag)) {
+			const prop = node.props.find(isTeleportedAttribute);
+			if (prop && !guaranteesTeleportation(prop)) found.push(prop.loc);
+		}
+
+		const childInsideDropdown = insideDropdown || DROPDOWN_NAMES.has(node.tag);
+		for (const child of node.children) {
+			if (isElement(child)) visit(child, childInsideDropdown);
+		}
+	};
+
+	const template = root.children.find(
+		(node): node is ElementNode => isElement(node) && node.tag === 'template',
+	);
+	for (const child of template?.children ?? []) {
+		if (isElement(child)) visit(child, false);
+	}
+
+	return found;
+};
+
+/** Exported for tests. */
+export const findUnteleportedTooltipsInSource = (source: string) =>
+	mentionsDropdown(source) ? findUnteleportedTooltips(parseSfc(source)) : [];
+
+const isFirstScriptBlock = (root: RootNode, scriptText: string) => {
+	const firstScript = root.children.find(
+		(node): node is ElementNode => isElement(node) && node.tag === 'script',
+	);
+	return firstScript?.innerLoc?.source.trim() === scriptText.trim();
+};
+
+export const RequireTeleportedTooltipInDropdownRule = ESLintUtils.RuleCreator.withoutDocs({
+	meta: {
+		type: 'problem',
+		docs: {
+			description: 'Require tooltips inside dropdown menus to be teleported to avoid clipping',
+		},
+		messages: {
+			requireTeleported:
+				'N8nTooltip inside N8nDropdownMenu must be teleported to avoid being clipped by the menu.',
+			requireTeleportedAt:
+				'N8nTooltip inside N8nDropdownMenu must be teleported to avoid being clipped by the menu. (at <template>:{{line}}:{{column}})',
+		},
+		schema: [],
+	},
+	defaultOptions: [],
+	create(context) {
+		if (!context.filename.endsWith('.vue')) return {};
+
+		return {
+			Program(program) {
+				// ESLint, through vue-eslint-parser, gives the rule the whole SFC.
+				const parserServices: Record<string, unknown> = context.sourceCode.parserServices ?? {};
+				if (typeof parserServices.defineTemplateBodyVisitor === 'function') {
+					for (const { start, end } of findUnteleportedTooltipsInSource(context.sourceCode.text)) {
+						context.report({
+							loc: {
+								start: { line: start.line, column: start.column - 1 },
+								end: { line: end.line, column: end.column - 1 },
+							},
+							messageId: 'requireTeleported',
+						});
+					}
+					return;
+				}
+
+				// Oxlint runs the rule once for each script block and gives it only the
+				// text of that block. Read the SFC, and report from the first block only,
+				// so that each problem is reported once. Oxlint rejects a location outside
+				// the block, so the message carries the template position.
+				// Oxlint gives the rule no offset of the block. So when two script blocks
+				// have the same text, for example the same comment, both read as the first
+				// block, and Oxlint reports each problem twice.
+				const sfc = readFileSync(context.physicalFilename, 'utf8');
+				if (!mentionsDropdown(sfc)) return;
+				const root = parseSfc(sfc);
+				if (!isFirstScriptBlock(root, context.sourceCode.text)) return;
+
+				for (const { start } of findUnteleportedTooltips(root)) {
+					context.report({
+						node: program,
+						messageId: 'requireTeleportedAt',
+						data: { line: start.line, column: start.column },
+					});
+				}
+			},
+		};
+	},
+});

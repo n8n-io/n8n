@@ -8,7 +8,7 @@ describe('@RestController Decorator', () => {
 	let controllerRegistryMetadata: ControllerRegistryMetadata;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		Container.reset();
 
 		controllerRegistryMetadata = new ControllerRegistryMetadata();

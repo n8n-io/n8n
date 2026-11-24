@@ -1,0 +1,693 @@
+import { computed, effectScope, shallowRef } from 'vue';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
+import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
+import type { INodeUi } from '@/Interface';
+import { mockedStore } from '@/__tests__/utils';
+import * as credentialsApi from '../credentials.api';
+import { useCredentialsStore } from '../credentials.store';
+import { useNodeCredentialOptions } from './useNodeCredentialOptions';
+
+vi.mock('@/features/resolvers/composables/usePrivateCredentials', () => ({
+	usePrivateCredentials: vi.fn(() => ({ isEnabled: computed(() => false) })),
+}));
+
+vi.mock('@/app/stores/workflowDocument.store', async () => {
+	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
+	return {
+		...actual,
+		injectWorkflowDocumentStore: () => undefined,
+	};
+});
+
+const slackApiType = {
+	name: 'slackApi',
+	displayName: 'Slack API',
+	properties: [],
+} satisfies ICredentialType;
+
+const slackOAuth2ApiType = {
+	name: 'slackOAuth2Api',
+	displayName: 'Slack OAuth2 API',
+	extends: ['oAuth2Api'],
+	properties: [],
+} satisfies ICredentialType;
+
+const slackNodeType = {
+	name: 'n8n-nodes-base.slack',
+	displayName: 'Slack',
+	description: '',
+	group: [],
+	version: 2,
+	defaults: { name: 'Slack' },
+	inputs: [NodeConnectionTypes.Main],
+	outputs: [NodeConnectionTypes.Main],
+	credentials: [
+		{
+			name: 'slackApi',
+			required: true,
+			displayOptions: {
+				show: {
+					authentication: ['accessToken'],
+				},
+			},
+		},
+		{
+			name: 'slackOAuth2Api',
+			required: true,
+			displayOptions: {
+				show: {
+					authentication: ['oAuth2'],
+				},
+			},
+		},
+	],
+	properties: [
+		{
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'options',
+			options: [
+				{ name: 'Access Token', value: 'accessToken' },
+				{ name: 'OAuth2', value: 'oAuth2' },
+			],
+			default: 'accessToken',
+		},
+	],
+} satisfies INodeTypeDescription;
+
+const slackNode: INodeUi = {
+	parameters: {
+		authentication: 'accessToken',
+	},
+	type: 'n8n-nodes-base.slack',
+	typeVersion: 2,
+	position: [0, 0],
+	id: 'slack-node-id',
+	name: 'Send Slack Message',
+	credentials: {},
+};
+
+function createCredential(overrides: {
+	id: string;
+	name: string;
+	type: string;
+	usageScope?: 'project' | 'instance';
+	isResolvable?: boolean;
+}) {
+	return {
+		...overrides,
+		isManaged: false,
+		createdAt: '',
+		updatedAt: '',
+	};
+}
+
+function setupOptions(overrideCredType = '') {
+	const node = computed(() => slackNode);
+	const nodeType = computed(() => slackNodeType);
+	return useNodeCredentialOptions(node, nodeType, overrideCredType);
+}
+
+describe('useNodeCredentialOptions', () => {
+	let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;
+
+	beforeEach(() => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
+		credentialsStore = mockedStore(useCredentialsStore);
+		credentialsStore.state.credentialTypes = {
+			slackApi: slackApiType,
+			slackOAuth2Api: slackOAuth2ApiType,
+		};
+		// The picker reads the slice the scoped fetch writes, not the flat map.
+		credentialsStore.hasFetchedUsableCredentials = true;
+		credentialsStore.usableCredentials = {
+			'token-cred': createCredential({
+				id: 'token-cred',
+				name: 'Team Slack Token',
+				type: 'slackApi',
+			}),
+			'oauth-cred': createCredential({
+				id: 'oauth-cred',
+				name: 'Slack account',
+				type: 'slackOAuth2Api',
+			}),
+		};
+	});
+
+	it.each([false, true])(
+		'filters end-user credentials when excludeResolvable is %s',
+		(excludeResolvable) => {
+			credentialsStore.usableCredentials['end-user'] = createCredential({
+				id: 'end-user',
+				name: 'End-user Slack',
+				type: 'slackApi',
+				isResolvable: true,
+			});
+			const { credentialTypesNodeDescriptionDisplayed } = useNodeCredentialOptions(
+				slackNode,
+				slackNodeType,
+				'slackApi',
+				false,
+				undefined,
+				excludeResolvable,
+			);
+			expect(credentialTypesNodeDescriptionDisplayed.value[0].options.map(({ id }) => id)).toEqual(
+				excludeResolvable ? ['token-cred'] : ['end-user', 'token-cred'],
+			);
+		},
+	);
+
+	it.each([false, true])(
+		'checks saved end-user selections with a host list: %s',
+		(withOverride) => {
+			const endUser = createCredential({
+				id: 'end-user',
+				name: 'End-user Slack',
+				type: 'slackApi',
+				isResolvable: true,
+			});
+			credentialsStore.usableCredentials['end-user'] = endUser;
+			const { isCredentialExisting } = useNodeCredentialOptions(
+				{ ...slackNode, credentials: { slackApi: { id: endUser.id, name: endUser.name } } },
+				slackNodeType,
+				'slackApi',
+				false,
+				withOverride ? [endUser] : undefined,
+				true,
+			);
+			expect(isCredentialExisting({ name: 'slackApi', required: true })).toBe(false);
+		},
+	);
+
+	it('shows only override credential type options for setup cards', () => {
+		const { credentialTypesNodeDescriptionDisplayed } = setupOptions('slackApi');
+
+		expect(credentialTypesNodeDescriptionDisplayed.value).toHaveLength(1);
+		expect(credentialTypesNodeDescriptionDisplayed.value[0].options).toEqual([
+			expect.objectContaining({ id: 'token-cred', type: 'slackApi' }),
+		]);
+	});
+
+	it('shows only OAuth credentials when override is slackOAuth2Api', () => {
+		const { credentialTypesNodeDescriptionDisplayed } = setupOptions('slackOAuth2Api');
+
+		expect(credentialTypesNodeDescriptionDisplayed.value).toHaveLength(1);
+		expect(credentialTypesNodeDescriptionDisplayed.value[0].options).toEqual([
+			expect.objectContaining({ id: 'oauth-cred', type: 'slackOAuth2Api' }),
+		]);
+	});
+
+	it('uses the override credentials list instead of the usable slice when provided', () => {
+		// Slice empty — the override must supply the options. This is the
+		// Instance AI setup card's path: it holds the backend-supplied list and
+		// must not depend on a slice that may be empty or cleared.
+		credentialsStore.usableCredentials = {};
+		const node = computed(() => slackNode);
+		const nodeType = computed(() => slackNodeType);
+		const override = [
+			createCredential({ id: 'override-1', name: 'Override Cred', type: 'slackApi' }),
+			createCredential({ id: 'override-2', name: 'Override Cred 2', type: 'slackApi' }),
+		];
+
+		const { credentialTypesNodeDescriptionDisplayed } = useNodeCredentialOptions(
+			node,
+			nodeType,
+			'slackApi',
+			false,
+			override,
+		);
+
+		expect(credentialTypesNodeDescriptionDisplayed.value).toHaveLength(1);
+		expect(credentialTypesNodeDescriptionDisplayed.value[0].options.map((o) => o.id)).toEqual([
+			'override-1',
+			'override-2',
+		]);
+	});
+
+	it('filters the override list by credential type', () => {
+		const node = computed(() => slackNode);
+		const nodeType = computed(() => slackNodeType);
+		const override = [
+			createCredential({ id: 'override-1', name: 'Override Cred', type: 'slackApi' }),
+			createCredential({ id: 'other-1', name: 'Other Type', type: 'httpBasicAuth' }),
+		];
+
+		const { credentialTypesNodeDescriptionDisplayed } = useNodeCredentialOptions(
+			node,
+			nodeType,
+			'slackApi',
+			false,
+			override,
+		);
+
+		expect(credentialTypesNodeDescriptionDisplayed.value[0].options.map((o) => o.id)).toEqual([
+			'override-1',
+		]);
+	});
+
+	it('keeps mixed credential options in the NDV when no override is set', () => {
+		const { credentialTypesNodeDescriptionDisplayed } = setupOptions('');
+
+		expect(credentialTypesNodeDescriptionDisplayed.value).toHaveLength(1);
+		expect(
+			credentialTypesNodeDescriptionDisplayed.value[0].options.map((option) => option.id),
+		).toEqual(['token-cred', 'oauth-cred']);
+	});
+
+	it('keeps independent credential types out of the main authentication dropdown', () => {
+		const httpBasicAuth = {
+			name: 'httpBasicAuth',
+			displayName: 'Basic Auth',
+			properties: [],
+		} satisfies ICredentialType;
+		const node = computed(
+			() =>
+				({
+					...slackNode,
+					type: 'n8n-nodes-base.discord',
+					parameters: {
+						...slackNode.parameters,
+						incomingAuthentication: 'basicAuth',
+					},
+				}) as INodeUi,
+		);
+		const nodeType = computed(
+			() =>
+				({
+					...slackNodeType,
+					credentials: [
+						...slackNodeType.credentials,
+						{
+							name: 'httpBasicAuth',
+							required: true,
+							displayOptions: {
+								show: {
+									incomingAuthentication: ['basicAuth'],
+								},
+							},
+						},
+					],
+				}) as INodeTypeDescription,
+		);
+		credentialsStore.state.credentialTypes.httpBasicAuth = httpBasicAuth;
+		credentialsStore.usableCredentials['basic-auth-cred'] = createCredential({
+			id: 'basic-auth-cred',
+			name: 'Webhook Basic Auth',
+			type: 'httpBasicAuth',
+		});
+
+		const { credentialTypesNodeDescriptionDisplayed } = useNodeCredentialOptions(
+			node,
+			nodeType,
+			'',
+			true,
+		);
+
+		expect(
+			credentialTypesNodeDescriptionDisplayed.value[0].options.map((option) => option.type),
+		).toEqual(['slackApi', 'slackOAuth2Api']);
+		expect(
+			credentialTypesNodeDescriptionDisplayed.value[1].options.map((option) => option.type),
+		).toEqual(['httpBasicAuth']);
+	});
+
+	it('excludes instance credentials from node options', () => {
+		credentialsStore.usableCredentials['instance-cred'] = createCredential({
+			id: 'instance-cred',
+			name: 'Instance Slack Token',
+			type: 'slackApi',
+			usageScope: 'instance',
+		});
+
+		const { credentialTypesNodeDescriptionDisplayed } = setupOptions();
+
+		expect(
+			credentialTypesNodeDescriptionDisplayed.value[0].options.map((option) => option.id),
+		).not.toContain('instance-cred');
+	});
+
+	it('ignores credentials the scoped fetch left out, even when the flat map holds them', () => {
+		credentialsStore.state.credentials = {
+			'personal-cred': createCredential({
+				id: 'personal-cred',
+				name: 'Personal Slack Token',
+				type: 'slackApi',
+			}),
+		};
+
+		const { credentialTypesNodeDescriptionDisplayed } = setupOptions('slackApi');
+
+		expect(
+			credentialTypesNodeDescriptionDisplayed.value[0].options.map((option) => option.id),
+		).toEqual(['token-cred']);
+	});
+
+	it('reports a configured out-of-scope credential as missing once the scope is fetched', () => {
+		const nodeWithForeignCredential = computed(
+			() =>
+				({
+					...slackNode,
+					credentials: { slackApi: { id: 'personal-cred', name: 'Personal Slack Token' } },
+				}) as INodeUi,
+		);
+		const { isCredentialExisting } = useNodeCredentialOptions(
+			nodeWithForeignCredential,
+			computed(() => slackNodeType),
+			'slackApi',
+		);
+
+		expect(isCredentialExisting(slackNodeType.credentials[0])).toBe(false);
+	});
+
+	it('treats a configured credential as existing until the scope has been fetched', () => {
+		// Reporting it missing before the first fetch flashes "credential unavailable"
+		// and raises an NDV credential issue that isn't one.
+		credentialsStore.hasFetchedUsableCredentials = false;
+		credentialsStore.usableCredentials = {};
+		const nodeWithCredential = computed(
+			() =>
+				({
+					...slackNode,
+					credentials: { slackApi: { id: 'token-cred', name: 'Team Slack Token' } },
+				}) as INodeUi,
+		);
+		const { isCredentialExisting } = useNodeCredentialOptions(
+			nodeWithCredential,
+			computed(() => slackNodeType),
+			'slackApi',
+		);
+
+		expect(isCredentialExisting(slackNodeType.credentials[0])).toBe(true);
+	});
+
+	it('reports an in-scope configured credential as existing via usableCredentials map lookup', () => {
+		const nodeWithCredential = computed(
+			() =>
+				({
+					...slackNode,
+					credentials: { slackApi: { id: 'token-cred', name: 'Team Slack Token' } },
+				}) as INodeUi,
+		);
+		const { isCredentialExisting } = useNodeCredentialOptions(
+			nodeWithCredential,
+			computed(() => slackNodeType),
+			'slackApi',
+		);
+
+		expect(isCredentialExisting(slackNodeType.credentials[0])).toBe(true);
+	});
+
+	it('does not treat an instance-scoped usable credential as existing for node auth', () => {
+		credentialsStore.usableCredentials['token-cred'] = createCredential({
+			id: 'token-cred',
+			name: 'Team Slack Token',
+			type: 'slackApi',
+			usageScope: 'instance',
+		});
+		const nodeWithCredential = computed(
+			() =>
+				({
+					...slackNode,
+					credentials: { slackApi: { id: 'token-cred', name: 'Team Slack Token' } },
+				}) as INodeUi,
+		);
+		const { isCredentialExisting } = useNodeCredentialOptions(
+			nodeWithCredential,
+			computed(() => slackNodeType),
+			'slackApi',
+		);
+
+		expect(isCredentialExisting(slackNodeType.credentials[0])).toBe(false);
+	});
+
+	it('treats a host-supplied override credential as existing even when the usable slice is empty', () => {
+		credentialsStore.usableCredentials = {};
+		const override = [
+			createCredential({ id: 'override-1', name: 'Override Cred', type: 'slackApi' }),
+		];
+		const nodeWithCredential = computed(
+			() =>
+				({
+					...slackNode,
+					credentials: { slackApi: { id: 'override-1', name: 'Override Cred' } },
+				}) as INodeUi,
+		);
+		const { isCredentialExisting } = useNodeCredentialOptions(
+			nodeWithCredential,
+			computed(() => slackNodeType),
+			'slackApi',
+			false,
+			override,
+		);
+
+		expect(isCredentialExisting(slackNodeType.credentials[0])).toBe(true);
+	});
+
+	it('does not treat an instance-scoped override credential as existing for node auth', () => {
+		credentialsStore.usableCredentials = {};
+		const override = [
+			createCredential({
+				id: 'override-1',
+				name: 'Override Cred',
+				type: 'slackApi',
+				usageScope: 'instance',
+			}),
+		];
+		const nodeWithCredential = computed(
+			() =>
+				({
+					...slackNode,
+					credentials: { slackApi: { id: 'override-1', name: 'Override Cred' } },
+				}) as INodeUi,
+		);
+		const { isCredentialExisting } = useNodeCredentialOptions(
+			nodeWithCredential,
+			computed(() => slackNodeType),
+			'slackApi',
+			false,
+			override,
+		);
+
+		expect(isCredentialExisting(slackNodeType.credentials[0])).toBe(false);
+	});
+
+	it('does not treat a wrong-type override credential as existing for the selected type', () => {
+		credentialsStore.usableCredentials = {};
+		const override = [
+			createCredential({ id: 'override-1', name: 'Override Cred', type: 'httpBasicAuth' }),
+		];
+		const nodeWithCredential = computed(
+			() =>
+				({
+					...slackNode,
+					credentials: { slackApi: { id: 'override-1', name: 'Override Cred' } },
+				}) as INodeUi,
+		);
+		const { isCredentialExisting } = useNodeCredentialOptions(
+			nodeWithCredential,
+			computed(() => slackNodeType),
+			'slackApi',
+			false,
+			override,
+		);
+
+		expect(isCredentialExisting(slackNodeType.credentials[0])).toBe(false);
+	});
+
+	it('reports a configured credential as missing when it is absent from the override list', () => {
+		// Override is authoritative: presence in the usable slice alone must not
+		// satisfy existence while a host-supplied list is in effect.
+		credentialsStore.usableCredentials = {
+			'token-cred': createCredential({
+				id: 'token-cred',
+				name: 'Team Slack Token',
+				type: 'slackApi',
+			}),
+		};
+		const override = [
+			createCredential({ id: 'override-1', name: 'Override Cred', type: 'slackApi' }),
+		];
+		const nodeWithCredential = computed(
+			() =>
+				({
+					...slackNode,
+					credentials: { slackApi: { id: 'token-cred', name: 'Team Slack Token' } },
+				}) as INodeUi,
+		);
+		const { isCredentialExisting } = useNodeCredentialOptions(
+			nodeWithCredential,
+			computed(() => slackNodeType),
+			'slackApi',
+			false,
+			override,
+		);
+
+		expect(isCredentialExisting(slackNodeType.credentials[0])).toBe(false);
+	});
+
+	it('drops a deleted credential from a host-supplied override list while the panel is open', async () => {
+		credentialsStore.usableCredentials = {};
+		vi.spyOn(credentialsApi, 'deleteCredential').mockResolvedValue(true);
+		const override = [
+			createCredential({ id: 'override-1', name: 'Override Cred', type: 'slackApi' }),
+			createCredential({ id: 'override-2', name: 'Override Cred 2', type: 'slackApi' }),
+		];
+		const nodeWithCredential = computed(
+			() =>
+				({
+					...slackNode,
+					credentials: { slackApi: { id: 'override-1', name: 'Override Cred' } },
+				}) as INodeUi,
+		);
+
+		const scope = effectScope();
+		const { credentialTypesNodeDescriptionDisplayed, isCredentialExisting } = scope.run(() =>
+			useNodeCredentialOptions(
+				nodeWithCredential,
+				computed(() => slackNodeType),
+				'slackApi',
+				false,
+				override,
+			),
+		)!;
+
+		expect(credentialTypesNodeDescriptionDisplayed.value[0].options.map((o) => o.id)).toEqual([
+			'override-1',
+			'override-2',
+		]);
+		expect(isCredentialExisting(slackNodeType.credentials[0])).toBe(true);
+
+		await credentialsStore.deleteCredential({ id: 'override-1' });
+
+		expect(credentialTypesNodeDescriptionDisplayed.value[0].options.map((o) => o.id)).toEqual([
+			'override-2',
+		]);
+		expect(isCredentialExisting(slackNodeType.credentials[0])).toBe(false);
+
+		scope.stop();
+	});
+
+	it('keeps override credentials when delete fails', async () => {
+		credentialsStore.usableCredentials = {};
+		vi.spyOn(credentialsApi, 'deleteCredential').mockResolvedValue(false);
+		const override = [
+			createCredential({ id: 'override-1', name: 'Override Cred', type: 'slackApi' }),
+		];
+		const nodeWithCredential = computed(
+			() =>
+				({
+					...slackNode,
+					credentials: { slackApi: { id: 'override-1', name: 'Override Cred' } },
+				}) as INodeUi,
+		);
+
+		const scope = effectScope();
+		const { credentialTypesNodeDescriptionDisplayed, isCredentialExisting } = scope.run(() =>
+			useNodeCredentialOptions(
+				nodeWithCredential,
+				computed(() => slackNodeType),
+				'slackApi',
+				false,
+				override,
+			),
+		)!;
+
+		await credentialsStore.deleteCredential({ id: 'override-1' });
+
+		expect(credentialTypesNodeDescriptionDisplayed.value[0].options.map((o) => o.id)).toEqual([
+			'override-1',
+		]);
+		expect(isCredentialExisting(slackNodeType.credentials[0])).toBe(true);
+
+		scope.stop();
+	});
+
+	it('does not subscribe to credential deletes when called outside an effect scope', () => {
+		const onActionSpy = vi.spyOn(credentialsStore, '$onAction');
+		const override = [
+			createCredential({ id: 'override-1', name: 'Override Cred', type: 'slackApi' }),
+		];
+
+		useNodeCredentialOptions(
+			computed(() => slackNode),
+			computed(() => slackNodeType),
+			'slackApi',
+			false,
+			override,
+		);
+
+		expect(onActionSpy).not.toHaveBeenCalled();
+	});
+
+	it('does not subscribe to credential deletes when no override list is provided', () => {
+		const onActionSpy = vi.spyOn(credentialsStore, '$onAction');
+		const scope = effectScope();
+
+		scope.run(() =>
+			useNodeCredentialOptions(
+				computed(() => slackNode),
+				computed(() => slackNodeType),
+				'slackApi',
+			),
+		);
+
+		expect(onActionSpy).not.toHaveBeenCalled();
+		scope.stop();
+	});
+
+	it('does not subscribe when an override getter currently yields no list', () => {
+		const onActionSpy = vi.spyOn(credentialsStore, '$onAction');
+		const scope = effectScope();
+
+		scope.run(() =>
+			useNodeCredentialOptions(
+				computed(() => slackNode),
+				computed(() => slackNodeType),
+				'slackApi',
+				false,
+				() => undefined,
+			),
+		);
+
+		expect(onActionSpy).not.toHaveBeenCalled();
+		scope.stop();
+	});
+
+	it('disables mixed credential behavior when override is set', () => {
+		const slackApiDescription = slackNodeType.credentials[0];
+		const { showMixedCredentials } = setupOptions('slackApi');
+
+		expect(showMixedCredentials(slackApiDescription)).toBe(false);
+	});
+
+	it('enables mixed credential behavior without override on auth-switchable nodes', () => {
+		const slackApiDescription = slackNodeType.credentials[0];
+		const { showMixedCredentials } = setupOptions('');
+
+		expect(showMixedCredentials(slackApiDescription)).toBe(true);
+	});
+
+	it('reacts when override changes from empty to a pinned type', () => {
+		const overrideCredType = shallowRef('');
+		const node = computed(() => slackNode);
+		const nodeType = computed(() => slackNodeType);
+		const { credentialTypesNodeDescriptionDisplayed } = useNodeCredentialOptions(
+			node,
+			nodeType,
+			overrideCredType,
+		);
+
+		expect(
+			credentialTypesNodeDescriptionDisplayed.value[0].options.map((option) => option.id),
+		).toEqual(['token-cred', 'oauth-cred']);
+
+		overrideCredType.value = 'slackApi';
+
+		expect(
+			credentialTypesNodeDescriptionDisplayed.value[0].options.map((option) => option.id),
+		).toEqual(['token-cred']);
+	});
+});

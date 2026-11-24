@@ -2,12 +2,12 @@
 import { computed, ref } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
+import N8nBadge from '../N8nBadge';
 import N8nCallout from '../N8nCallout';
 import N8nHeading from '../N8nHeading';
 import N8nIcon from '../N8nIcon';
 import N8nLink from '../N8nLink';
 import N8nPopover from '../N8nPopover';
-import N8nTag from '../N8nTag';
 import N8nText from '../N8nText';
 
 interface SuggestedAction {
@@ -24,7 +24,10 @@ export interface SuggestedActionsProps {
 	open: boolean;
 	ignoreAllLabel?: string;
 	popoverAlignment?: 'start' | 'end' | 'center';
+	popoverSideOffset?: number;
 	notice?: string;
+	/** Render an invisible popover anchor instead of the count pill; opening is then fully controlled via `open`. */
+	hideTrigger?: boolean;
 }
 
 interface SuggestedActionsEmits {
@@ -39,6 +42,7 @@ defineOptions({ name: 'N8nSuggestedActions' });
 const props = withDefaults(defineProps<SuggestedActionsProps>(), {
 	ignoreAllLabel: undefined,
 	popoverAlignment: undefined,
+	popoverSideOffset: undefined,
 	notice: undefined,
 });
 
@@ -66,24 +70,34 @@ const handleIgnoreClick = (actionId: string) => {
 
 <template>
 	<N8nPopover
-		v-if="completedCount !== actions.length"
 		:open="open"
 		width="360px"
 		max-height="500px"
 		:align="popoverAlignment"
+		:side-offset="popoverSideOffset"
 		@update:open="$emit('update:open', $event)"
 	>
 		<template #trigger>
-			<div
-				:class="[$style.triggerContainer, open ? $style.activeTrigger : '']"
-				data-test-id="suggested-action-count"
-			>
-				<N8nTag :text="`${completedCount} / ${actions.length}`" />
+			<span v-if="hideTrigger" :class="$style.hiddenTrigger" />
+			<div v-else :class="$style.triggerContainer" data-test-id="suggested-action-count">
+				<N8nBadge :class="[$style.countBadge, { [$style.activeTrigger]: open }]" size="small">
+					{{ completedCount }} / {{ actions.length }}
+				</N8nBadge>
 			</div>
 		</template>
 		<template #content>
 			<div :class="$style.popoverContent">
-				<N8nHeading tag="h4">{{ title }}</N8nHeading>
+				<div :class="$style.header">
+					<N8nHeading tag="h4">{{ title }}</N8nHeading>
+					<N8nLink
+						theme="text"
+						:title="t('generic.close')"
+						data-test-id="suggested-actions-close"
+						@click.prevent.stop="emit('update:open', false)"
+					>
+						<N8nIcon icon="x" size="large" />
+					</N8nLink>
+				</div>
 				<N8nCallout v-if="notice" theme="warning">{{ notice }}</N8nCallout>
 				<div
 					v-for="action in actions"
@@ -153,12 +167,18 @@ const handleIgnoreClick = (actionId: string) => {
 .triggerContainer {
 	display: inline-block;
 	position: relative;
-	--tag--height: 24px;
+	cursor: pointer;
 }
 
-.activeTrigger {
-	--tag--color--text: var(--color--primary);
-	--tag--border-color: var(--color--primary);
+.hiddenTrigger {
+	display: block;
+	width: 0;
+	height: 0;
+}
+
+.countBadge.activeTrigger {
+	--n8n-badge--text-color: var(--color--primary);
+	--n8n-badge--border-color: var(--color--primary);
 }
 
 .popoverContent {
@@ -168,13 +188,22 @@ const handleIgnoreClick = (actionId: string) => {
 	padding: var(--spacing--md) var(--spacing--sm);
 }
 
+.header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--spacing--2xs);
+}
+
 .actionItem {
 	display: flex;
 	flex-direction: row;
 	transition:
 		opacity 0.3s ease,
 		filter 0.3s ease;
-	border-bottom: var(--border);
+	&:not(:last-child) {
+		border-bottom: var(--border);
+	}
 
 	&.ignoring {
 		opacity: 0.5;

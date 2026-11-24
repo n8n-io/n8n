@@ -1,0 +1,66 @@
+{
+	"name": "OneDrive SP file:get smoke",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "11111111-1111-1111-1111-111111111111",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"authentication": "microsoftEntraServicePrincipalApi",
+				"resourceTarget": "user",
+				"userTarget": {
+					"__rl": true,
+					"mode": "id",
+					"value": "jane@contoso.com"
+				},
+				"resource": "file",
+				"operation": "get",
+				"fileId": "FILE123"
+			},
+			"id": "22222222-2222-2222-2222-222222222222",
+			"name": "Microsoft OneDrive",
+			"type": "n8n-nodes-base.microsoftOneDrive",
+			"typeVersion": 1.1,
+			"position": [220, 0],
+			"credentials": {
+				"microsoftEntraServicePrincipalApi": {
+					"id": "1",
+					"name": "Microsoft Entra Service Principal account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Microsoft OneDrive": [
+			{
+				"json": {
+					"id": "FILE123",
+					"name": "report.txt",
+					"file": {
+						"mimeType": "text/plain"
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Microsoft OneDrive",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {}
+}

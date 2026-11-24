@@ -1,5 +1,4 @@
 import { testDb, linkUserToProject, createTeamProject } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
 import { AuthRolesService, RoleRepository, ScopeRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
@@ -9,7 +8,7 @@ import {
 	createCustomRoleWithScopes,
 	createTestScopes,
 } from '../../shared/db/roles';
-import { createUser } from '../../shared/db/users';
+import { createServiceAccountWithProject, createUser } from '../../shared/db/users';
 
 describe('RoleRepository', () => {
 	let roleRepository: RoleRepository;
@@ -264,16 +263,10 @@ describe('RoleRepository', () => {
 
 	describe('updateRole()', () => {
 		describe('transaction handling', () => {
-			it('should use transactions for non-SQLite legacy databases', async () => {
+			it('should use transactions', async () => {
 				//
 				// ARRANGE
 				//
-				const { type: dbType, sqlite: sqliteConfig } = Container.get(GlobalConfig).database;
-				// Skip this test for legacy SQLite
-				if (dbType === 'sqlite' && sqliteConfig.poolSize === 0) {
-					return;
-				}
-
 				await createRole({
 					slug: 'role-for-transaction-test',
 					displayName: 'Original Name',
@@ -281,7 +274,7 @@ describe('RoleRepository', () => {
 				});
 
 				// Spy on transaction method to verify it's called
-				const transactionSpy = jest.spyOn(roleRepository.manager, 'transaction');
+				const transactionSpy = vi.spyOn(roleRepository.manager, 'transaction');
 
 				//
 				// ACT
@@ -295,43 +288,6 @@ describe('RoleRepository', () => {
 				// ASSERT
 				//
 				expect(transactionSpy).toHaveBeenCalled();
-				expect(updatedRole.displayName).toBe('Updated Name');
-				expect(updatedRole.description).toBe('Updated Description');
-
-				transactionSpy.mockRestore();
-			});
-
-			it('should use direct manager for SQLite legacy databases', async () => {
-				//
-				// ARRANGE
-				//
-				const { type: dbType, sqlite: sqliteConfig } = Container.get(GlobalConfig).database;
-				// Only run this test for legacy SQLite
-				if (dbType !== 'sqlite' || sqliteConfig.poolSize !== 0) {
-					return;
-				}
-
-				await createRole({
-					slug: 'role-for-legacy-test',
-					displayName: 'Original Name',
-					description: 'Original Description',
-				});
-
-				// Spy on transaction method to verify it's NOT called
-				const transactionSpy = jest.spyOn(roleRepository.manager, 'transaction');
-
-				//
-				// ACT
-				//
-				const updatedRole = await roleRepository.updateRole('role-for-legacy-test', {
-					displayName: 'Updated Name',
-					description: 'Updated Description',
-				});
-
-				//
-				// ASSERT
-				//
-				expect(transactionSpy).not.toHaveBeenCalled();
 				expect(updatedRole.displayName).toBe('Updated Name');
 				expect(updatedRole.description).toBe('Updated Description');
 
@@ -640,6 +596,104 @@ describe('RoleRepository', () => {
 				expect(foundRole!.scopes).toHaveLength(1);
 				expect(foundRole!.scopes[0].slug).toBe(readScope.slug);
 			});
+		});
+	});
+
+	describe('findUsersWithGlobalRole()', () => {
+		beforeEach(async () => {
+			// default roles are needed for user creation (personal project owner role)
+			await Container.get(AuthRolesService).init();
+		});
+
+		it('returns only the users that hold the given global role, with public fields', async () => {
+			//
+			// ARRANGE
+			//
+			const globalRole = await createRole({
+				slug: 'global-members-role',
+				displayName: 'Global Members Role',
+				roleType: 'global',
+			});
+			const otherRole = await createRole({
+				slug: 'other-members-role',
+				displayName: 'Other Global Role',
+				roleType: 'global',
+			});
+
+			const user1 = await createUser({ role: globalRole });
+			const user2 = await createUser({ role: globalRole });
+			await createUser({ role: otherRole });
+
+			//
+			// ACT
+			//
+			const members = await roleRepository.findUsersWithGlobalRole(globalRole.slug);
+
+			//
+			// ASSERT
+			//
+			expect(members).toHaveLength(2);
+			expect(members).toEqual(
+				expect.arrayContaining(
+					[user1, user2].map((u) =>
+						expect.objectContaining({
+							userId: u.id,
+							firstName: u.firstName,
+							lastName: u.lastName,
+							email: u.email,
+							role: globalRole.slug,
+							kind: 'person',
+						}),
+					),
+				),
+			);
+		});
+
+		it('returns a service account with its name and kind', async () => {
+			//
+			// ARRANGE
+			//
+			const globalRole = await createRole({
+				slug: 'global-service-members-role',
+				displayName: 'Global Service Members Role',
+				roleType: 'global',
+			});
+			const serviceAccount = await createServiceAccountWithProject(globalRole);
+
+			//
+			// ACT
+			//
+			const members = await roleRepository.findUsersWithGlobalRole(globalRole.slug);
+
+			//
+			// ASSERT
+			//
+			expect(members).toEqual([
+				{
+					userId: serviceAccount.id,
+					firstName: 'Deploy bot',
+					lastName: null,
+					email: '',
+					role: globalRole.slug,
+					kind: 'service',
+				},
+			]);
+		});
+
+		it('returns an empty array when no users hold the global role', async () => {
+			//
+			// ARRANGE
+			//
+			const globalRole = await createRole({
+				slug: 'global-empty-members-role',
+				displayName: 'Global Empty Members Role',
+				roleType: 'global',
+			});
+
+			//
+			// ACT & ASSERT
+			//
+			expect(await roleRepository.findUsersWithGlobalRole(globalRole.slug)).toEqual([]);
 		});
 	});
 

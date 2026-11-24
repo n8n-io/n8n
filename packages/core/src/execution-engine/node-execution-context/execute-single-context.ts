@@ -1,3 +1,4 @@
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
 	ICredentialDataDecryptedObject,
 	IGetNodeParameterOptions,
@@ -11,7 +12,8 @@ import type {
 	ITaskDataConnections,
 	IExecuteData,
 } from 'n8n-workflow';
-import { ApplicationError, createDeferredPromise, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { BaseExecuteContext } from './base-execute-context';
 import {
@@ -65,9 +67,22 @@ export class ExecuteSingleContext extends BaseExecuteContext implements IExecute
 			...getBinaryHelperFunctions(additionalData, workflow.id),
 
 			assertBinaryData: (propertyName, inputIndex = 0) =>
-				assertBinaryData(inputData, node, itemIndex, propertyName, inputIndex),
+				assertBinaryData(
+					inputData,
+					node,
+					itemIndex,
+					propertyName,
+					inputIndex,
+					workflow.settings.binaryMode,
+				),
 			getBinaryDataBuffer: async (propertyName, inputIndex = 0) =>
-				await getBinaryDataBuffer(inputData, itemIndex, propertyName, inputIndex),
+				await getBinaryDataBuffer(
+					inputData,
+					itemIndex,
+					propertyName,
+					inputIndex,
+					workflow.settings.binaryMode,
+				),
 			detectBinaryEncoding: (buffer) => detectBinaryEncoding(buffer),
 		};
 	}
@@ -77,7 +92,7 @@ export class ExecuteSingleContext extends BaseExecuteContext implements IExecute
 	}
 
 	getInputData(inputIndex = 0, connectionType = NodeConnectionTypes.Main) {
-		if (!this.inputData.hasOwnProperty(connectionType)) {
+		if (!Object.hasOwn(this.inputData, connectionType)) {
 			// Return empty array because else it would throw error when nothing is connected to input
 			return { json: {} };
 		}
@@ -86,7 +101,7 @@ export class ExecuteSingleContext extends BaseExecuteContext implements IExecute
 
 		const data = allItems?.[this.itemIndex];
 		if (data === undefined) {
-			throw new ApplicationError('Value of input with given index was not set', {
+			throw new UnexpectedError('Value of input with given index was not set', {
 				extra: { inputIndex, connectionType, itemIndex: this.itemIndex },
 			});
 		}

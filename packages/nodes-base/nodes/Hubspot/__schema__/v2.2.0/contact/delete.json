@@ -1,0 +1,15 @@
+{
+    "type": "object",
+    "properties": {
+        "deleted": {
+            "type": "boolean"
+        },
+        "reason": {
+            "type": "string"
+        },
+        "vid": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

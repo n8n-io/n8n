@@ -1,6 +1,7 @@
-import { reactive } from 'vue';
+import { reactive, computed } from 'vue';
 import { mock } from 'vitest-mock-extended';
 import { createPinia, setActivePinia } from 'pinia';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { waitFor, cleanup, fireEvent, within, screen } from '@testing-library/vue';
 
 import RunDataJsonActions from './RunDataJsonActions.vue';
@@ -9,12 +10,17 @@ import type { IWorkflowDb } from '@/Interface';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
 import { defaultNodeDescriptions, mockNodes } from '@/__tests__/mocks';
 import { useI18n } from '@n8n/i18n';
-import { createRunExecutionData } from 'n8n-workflow';
+import { createRunExecutionData, NodeConnectionTypes } from 'n8n-workflow';
 
 vi.mock('vue-router', () => {
 	return {
@@ -25,7 +31,7 @@ vi.mock('vue-router', () => {
 });
 
 const copy = vi.fn();
-vi.mock('@/app/composables/useClipboard', () => ({
+vi.mock('@n8n/composables/useClipboard', () => ({
 	useClipboard: () => ({
 		copy,
 	}),
@@ -51,12 +57,16 @@ async function createPiniaWithActiveNode() {
 
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
-	const ndvStore = useNDVStore();
 
 	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
-	workflowsStore.workflow = workflow;
-	workflowsStore.nodeMetadata[node.name] = { pristine: true };
-	workflowsStore.workflowExecutionData = {
+	workflowsStore.setWorkflowId(workflow.id);
+	const ndvStore = useNDVStore(createWorkflowDocumentId(workflow.id));
+	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
+	workflowDocumentStore.addNode(node);
+	workflowDocumentStore.initPristineNodeMetadata(node.name);
+	useWorkflowExecutionStateStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	).setWorkflowExecutionData({
 		id: '1',
 		finished: true,
 		mode: 'trigger',
@@ -107,6 +117,32 @@ async function createPiniaWithActiveNode() {
 										},
 									],
 								],
+								ai_tool: [
+									[
+										{
+											json: { id: 4, name: 'Tool output' },
+										},
+									],
+									[
+										{
+											json: { id: 7, name: 'Tool branch 2 output' },
+										},
+									],
+								],
+								ai_memory: [
+									[
+										{
+											json: { id: 5, name: 'Memory output' },
+										},
+									],
+								],
+								ai_languageModel: [
+									[
+										{
+											json: { id: 6, name: 'Language model output' },
+										},
+									],
+								],
 							},
 							source: [null],
 						},
@@ -114,7 +150,7 @@ async function createPiniaWithActiveNode() {
 				},
 			},
 		}),
-	};
+	});
 
 	ndvStore.setActiveNodeName(node.name, 'other');
 
@@ -161,6 +197,9 @@ describe('RunDataJsonActions', () => {
 				runIndex: 1,
 			},
 			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => '1'),
+				},
 				mocks: {
 					$route: {
 						name: VIEWS.WORKFLOW,
@@ -193,6 +232,42 @@ describe('RunDataJsonActions', () => {
 		);
 	});
 
+	it.each([
+		[NodeConnectionTypes.AiTool, 0, { id: 4, name: 'Tool output' }],
+		[NodeConnectionTypes.AiMemory, 0, { id: 5, name: 'Memory output' }],
+		[NodeConnectionTypes.AiLanguageModel, 0, { id: 6, name: 'Language model output' }],
+		[NodeConnectionTypes.AiTool, 1, { id: 7, name: 'Tool branch 2 output' }],
+	])(
+		'should copy unselected JSON output from the active %s connection branch %i',
+		async (connectionType, outputIndex, item) => {
+			const { pinia, activeNode } = await createPiniaWithActiveNode();
+			const renderComponent = createComponentRenderer(RunDataJsonActions, {
+				props: {
+					node: activeNode ?? undefined,
+					paneType: 'output',
+					pushRef: 'ref',
+					distanceFromActive: 0,
+					selectedJsonPath: nonExistingJsonPath,
+					jsonData: [item],
+					outputIndex,
+					runIndex: 1,
+					connectionType,
+				},
+				global: {
+					provide: {
+						[WorkflowIdKey as unknown as string]: computed(() => '1'),
+					},
+				},
+			});
+
+			const { getByTestId } = renderComponent({ pinia });
+
+			await fireEvent.click(within(getByTestId('ndv-json-actions')).getByRole('button'));
+
+			expect(copy).toHaveBeenCalledWith(JSON.stringify([item], null, 2));
+		},
+	);
+
 	it('should copy unselected JSON output from selected previous run on click', async () => {
 		const { pinia, activeNode } = await createPiniaWithActiveNode();
 		const renderComponent = createComponentRenderer(RunDataJsonActions, {
@@ -212,6 +287,9 @@ describe('RunDataJsonActions', () => {
 				runIndex: 0,
 			},
 			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => '1'),
+				},
 				mocks: {
 					$route: {
 						name: VIEWS.WORKFLOW,
@@ -267,6 +345,9 @@ describe('RunDataJsonActions', () => {
 				runIndex: 1,
 			},
 			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => '1'),
+				},
 				mocks: {
 					$route: {
 						name: VIEWS.WORKFLOW,
@@ -279,6 +360,7 @@ describe('RunDataJsonActions', () => {
 			pinia,
 		});
 
+		await fireEvent.click(screen.getByTestId('ndv-json-copy-menu'));
 		await waitFor(() =>
 			expect(screen.getByText(i18n.baseText('runData.copyValue'))).toBeInTheDocument(),
 		);
@@ -309,6 +391,9 @@ describe('RunDataJsonActions', () => {
 				runIndex: 1,
 			},
 			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => '1'),
+				},
 				mocks: {
 					$route: {
 						name: VIEWS.WORKFLOW,
@@ -321,6 +406,7 @@ describe('RunDataJsonActions', () => {
 			pinia,
 		});
 
+		await fireEvent.click(screen.getByTestId('ndv-json-copy-menu'));
 		await waitFor(() =>
 			expect(screen.getByText(i18n.baseText('runData.copyItemPath'))).toBeInTheDocument(),
 		);
@@ -351,6 +437,9 @@ describe('RunDataJsonActions', () => {
 				runIndex: 1,
 			},
 			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => '1'),
+				},
 				mocks: {
 					$route: {
 						name: VIEWS.WORKFLOW,
@@ -363,6 +452,7 @@ describe('RunDataJsonActions', () => {
 			pinia,
 		});
 
+		await fireEvent.click(screen.getByTestId('ndv-json-copy-menu'));
 		await waitFor(() =>
 			expect(screen.getByText(i18n.baseText('runData.copyParameterPath'))).toBeInTheDocument(),
 		);

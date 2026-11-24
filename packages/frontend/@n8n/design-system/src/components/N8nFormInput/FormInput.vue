@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { ElSwitch } from 'element-plus';
 import { computed, reactive, onMounted, ref, watch } from 'vue';
 
 import { getValidationError, VALIDATORS } from './validators';
@@ -13,15 +12,15 @@ import type {
 	InputTypePropType,
 	SwitchModelValuePropType,
 	CheckboxModelValuePropType,
-	CheckboxLabelSizePropType,
 	InputAutocompletePropType,
 } from '../../types';
-import N8nCheckbox from '../N8nCheckbox';
+import N8nCheckbox from '../../v2/components/Checkbox/Checkbox.vue';
 import N8nInput from '../N8nInput';
 import N8nInputLabel from '../N8nInputLabel';
 import N8nLink from '../N8nLink';
 import N8nOption from '../N8nOption';
 import N8nSelect from '../N8nSelect';
+import N8nSwitch from '../N8nSwitch';
 
 export interface Props {
 	modelValue: Validatable;
@@ -46,9 +45,7 @@ export interface Props {
 	labelSize?: 'small' | 'medium' | 'large';
 	disabled?: boolean;
 	activeLabel?: string;
-	activeColor?: string;
 	inactiveLabel?: string;
-	inactiveColor?: string;
 	teleported?: boolean;
 	tagSize?: 'small' | 'medium' | 'large';
 	autosize?: boolean | { minRows: number; maxRows: number };
@@ -135,7 +132,8 @@ function onFocus() {
 	emit('focus');
 }
 
-function onEnter(event: Event) {
+function onEnter(event: KeyboardEvent) {
+	if (event.isComposing || event.keyCode === 229) return;
 	event.stopPropagation();
 	event.preventDefault();
 	emit('enter');
@@ -182,7 +180,6 @@ defineExpose({ inputRef });
 		ref="inputRef"
 		:label="label"
 		:disabled="disabled"
-		:label-size="labelSize as CheckboxLabelSizePropType"
 		:model-value="modelValue as CheckboxModelValuePropType"
 		@update:model-value="onUpdateModelValue"
 		@focus="onFocus"
@@ -198,12 +195,14 @@ defineExpose({ inputRef });
 		<template #content>
 			{{ tooltipText }}
 		</template>
-		<ElSwitch
+		<N8nSwitch
+			:id="name"
+			size="large"
+			:aria-label="label"
+			:disabled="disabled"
 			:model-value="modelValue as SwitchModelValuePropType"
-			:active-color="activeColor"
-			:inactive-color="inactiveColor"
 			@update:model-value="onUpdateModelValue"
-		></ElSwitch>
+		/>
 	</N8nInputLabel>
 	<N8nInputLabel
 		v-else
@@ -217,6 +216,7 @@ defineExpose({ inputRef });
 			<slot v-if="$slots.default" />
 			<N8nSelect
 				v-else-if="type === 'select' || type === 'multi-select'"
+				:id="name"
 				ref="inputRef"
 				:class="{ [$style.multiSelectSmallTags]: tagSize === 'small' }"
 				:model-value="modelValue"
@@ -241,6 +241,7 @@ defineExpose({ inputRef });
 			</N8nSelect>
 			<N8nInput
 				v-else
+				:id="name"
 				ref="inputRef"
 				:name="name"
 				:type="type as InputTypePropType"

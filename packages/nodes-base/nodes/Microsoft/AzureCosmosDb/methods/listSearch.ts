@@ -4,6 +4,7 @@ import type {
 	INodeListSearchResult,
 	INodeListSearchItems,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { HeaderConstants } from '../helpers/constants';
 import { azureCosmosDbApiRequest } from '../transport';
@@ -27,7 +28,7 @@ export async function searchContainers(
 	const responseData = (await azureCosmosDbApiRequest.call(
 		this,
 		'GET',
-		'/colls',
+		requestPath`/colls`,
 		{},
 		{},
 		headers,
@@ -41,7 +42,7 @@ export async function searchContainers(
 
 	return {
 		results: formatResults(containers, filter),
-		paginationToken: responseData.headers[HeaderConstants.X_MS_CONTINUATION],
+		paginationToken: responseData.headers[HeaderConstants.X_MS_CONTINUATION] as string | undefined,
 	};
 }
 
@@ -57,7 +58,7 @@ export async function searchItems(
 	const responseData = (await azureCosmosDbApiRequest.call(
 		this,
 		'GET',
-		`/colls/${container}/docs`,
+		requestPath`/colls/${container}/docs`,
 		{},
 		{},
 		headers,
@@ -71,6 +72,6 @@ export async function searchItems(
 
 	return {
 		results: formatResults(items, filter),
-		paginationToken: responseData.headers[HeaderConstants.X_MS_CONTINUATION],
+		paginationToken: responseData.headers[HeaderConstants.X_MS_CONTINUATION] as string | undefined,
 	};
 }
