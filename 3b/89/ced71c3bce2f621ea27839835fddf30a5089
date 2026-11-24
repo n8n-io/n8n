@@ -1,0 +1,20 @@
+.github/WORKFLOWS.md
+  h_52a137d26d774c 546-555
+.github/scripts/set-latest-for-monorepo-packages.mjs
+  h_52a137d26d774c 7-13,68-77,84
+.github/scripts/set-latest-for-monorepo-packages.test.mjs
+  h_52a137d26d774c 10,12-14,26-46
+.github/workflows/release-set-stable-npm-packages-to-latest.yml
+  h_52a137d26d774c 18-21,25,35-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3b89ced71c3bce2f621ea27839835fddf30a5089",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,58 @@
+packages/cli/src/modules/agents/simulation/non-http-node-types.ts
+  s_4e8100d4ba14d2::t_39fd4f12d8f693 1-93
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_13d2093edecceb::t_8a3e57d7b1370e 861,883,889-891,994-996,1317-1321,1323
+  s_4e8100d4ba14d2::t_21f2487da040d2 1325-1332,1335-1342,1544-1551
+packages/cli/src/modules/agents/simulation/__tests__/node-n8n-state-helpers.test.ts
+  s_4e8100d4ba14d2::t_f32c234db3c390 1-81
+packages/cli/src/modules/agents/simulation/__tests__/node-network-imports.test.ts
+  s_4e8100d4ba14d2::t_ce3ae3a0e8e889 1-250
+packages/cli/src/modules/agents/simulation/__tests__/non-http-node-types.test.ts
+  s_4e8100d4ba14d2::t_df0f68407ee510 1-78
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_4e8100d4ba14d2::t_0fcfd0172c9558 1,468-469,471-478,508-509
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_4e8100d4ba14d2::t_4b3e142339668b 925-953
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_4e8100d4ba14d2::t_8e5698db68ece0 889-929
+packages/cli/src/modules/agents/evaluation/agent-evaluation.contracts.ts
+  s_4e8100d4ba14d2::t_1053c093f75a4f 1,45-46,53-54,63-71,81-92
+packages/cli/src/modules/agents/json-config/__tests__/mcp-client-factory.test.ts
+  s_4e8100d4ba14d2::t_09d787bfeca0c9 825-924
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_4e8100d4ba14d2::t_3c6dc300617b8f 68-72,140-145,284-286,298,378,383-389,396-400,536-537
+packages/cli/src/modules/agents/json-config/mcp-client-factory.ts
+  s_4e8100d4ba14d2::t_e6ec66efb98872 105-110,141,144-165,259-274,276
+packages/cli/src/modules/instance-ai/eval/agent-execution.service.ts
+  s_4e8100d4ba14d2::t_132278170cc064 368
+packages/cli/src/modules/instance-ai/eval/execution.service.ts
+  s_4e8100d4ba14d2::t_9c682dc6dfe969 1215-1216,1233-1248
+packages/cli/src/modules/instance-ai/eval/workflow-analysis.ts
+  s_4e8100d4ba14d2::t_74d5f01e16ad69 20-21,107
+packages/quality/policy/code-health/src/rules/agents-instance-ai-boundary.rule.ts
+  s_4e8100d4ba14d2::t_ea2eeb8c9238cd 29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "333fe09ac5b2b95157b4177d6766ca97b9afd7f2",
+  "prompts": {},
+  "sessions": {
+    "s_13d2093edecceb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ca37-ecdf-7873-bb4a-4b31a09f7aab",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_4e8100d4ba14d2": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20889-233d-7672-8300-b96f5d9f857d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

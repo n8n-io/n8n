@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/fixWithAi.ts
+  s_5d7834813eed3a::t_95716bac69cf65 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "153e6ce615bbbb062884ac66a93d57e88c90b45f",
+  "prompts": {},
+  "sessions": {
+    "s_5d7834813eed3a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f62f663e-f534-4582-8dd5-6cc581318eaf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

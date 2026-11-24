@@ -1,0 +1,54 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/__tests__/AssistantAgentPanelThread.test.ts
+  s_50172fbd2ecafb::t_9f46a24c70fac1 74
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_50172fbd2ecafb::t_4bf34b9111d084 497,508-513,517,519
+  s_50172fbd2ecafb::t_1f5fb01483e38c 504-507,520-521
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_50172fbd2ecafb::t_f0972675c3c19e 113,118-121,125-132,844-852,854-857,859
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_50172fbd2ecafb::t_12d864817fbe37 5164,5264-5265,5268-5286,5288-5289,5291-5292,5294,5296,5298-5322
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_50172fbd2ecafb::t_9d50b0efc19c30 245-246,270-272,274,485-486,781-782,799-814,1116,1751-1755,2080-2082,2084-2112,2473-2474
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageAttachments.vue
+  s_50172fbd2ecafb::t_f0972675c3c19e 18-22,95,131-135
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageAttachments.test.ts
+  s_50172fbd2ecafb::t_4bf34b9111d084 51-59
+  s_50172fbd2ecafb::t_5aedfb808c7066 49-50
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/AssistantAgentThreadView.test.ts
+  s_50172fbd2ecafb::t_cdc5192e590588 2204,2213
+  s_50172fbd2ecafb::t_109e9cfe00194b 2202-2203,2205-2212,2214-2219,2656,2668-2671,2782
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantAgentThreadView.vue
+  s_50172fbd2ecafb::t_d38d0c47b3bd0a 132-136,843-848,851-858,1039,1074-1083
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/assistantNodeAttachments.test.ts
+  s_50172fbd2ecafb::t_f081d5d165f8b7 25
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/AssistantAgentPanelThread.vue
+  s_50172fbd2ecafb::t_f2f17382fb59f9 18,339
+packages/frontend/editor-ui/src/features/agents/utils/composer-attachments.ts
+  s_c37889037f3355::t_608a4b49b7ba4a 12-13
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/assistantNodeAttachments.ts
+  s_c37889037f3355::t_bb1c50853b40ba 59-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ebcaa87233a1d15b49220f702875c477a83771ad",
+  "prompts": {},
+  "sessions": {
+    "s_50172fbd2ecafb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce4c2817-0b81-4cf3-a412-66b31cd3f0f6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_c37889037f3355": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3b14e87d-39b8-413d-bc15-a17dbea4555b",
+        "model": "unknown"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

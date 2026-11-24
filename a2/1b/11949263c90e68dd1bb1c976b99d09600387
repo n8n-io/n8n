@@ -1,0 +1,75 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatActivity.test.ts
+  s_cf08597b8e4e18::t_8abf135572afbb 1-1300
+packages/frontend/editor-ui/src/features/agents/utils/agent-eval-tool-calls.ts
+  s_cf08597b8e4e18::t_8abf135572afbb 36
+packages/frontend/editor-ui/src/features/ai/shared/components/AiActivityTrace/index.ts
+  s_cf08597b8e4e18::t_8abf135572afbb 1-5
+packages/frontend/editor-ui/src/features/ai/shared/components/AiActivityTrace/AiActivityTrace.test.ts
+  s_cf08597b8e4e18::t_8abf135572afbb 1-134
+packages/frontend/editor-ui/src/features/ai/shared/components/AiActivityTrace/AiActivityThinkingStep.test.ts
+  s_cf08597b8e4e18::t_8abf135572afbb 1-115
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConversation.vue
+  s_cf08597b8e4e18::t_8abf135572afbb 90,973
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/PreferenceCard.vue
+  s_cf08597b8e4e18::t_8abf135572afbb 219,249,260
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_cf08597b8e4e18::t_8abf135572afbb 43
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useInstanceAiActivityItems.test.ts
+  s_cf08597b8e4e18::t_8abf135572afbb 1-406
+packages/frontend/editor-ui/src/features/ai/shared/components/AiActivityTrace/groupActivityItems.test.ts
+  s_cf08597b8e4e18::t_8abf135572afbb 1-66
+packages/frontend/editor-ui/src/features/agents/__tests__/interactive-summary.test.ts
+  s_cf08597b8e4e18::t_8abf135572afbb 23,33
+packages/frontend/editor-ui/src/features/agents/composables/useAgentActivityItems.ts
+  s_cf08597b8e4e18::t_8abf135572afbb 1-335
+packages/frontend/editor-ui/src/features/ai/shared/components/AiActivityTrace/AiActivityTrace.vue
+  s_cf08597b8e4e18::t_8abf135572afbb 1-181
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_cf08597b8e4e18::t_8abf135572afbb 48,686-687,689-696,837-838,840-847
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalToolCalls.vue
+  s_cf08597b8e4e18::t_8abf135572afbb 12,22
+packages/frontend/editor-ui/src/features/ai/shared/components/AiActivityTrace/groupActivityItems.ts
+  s_cf08597b8e4e18::t_8abf135572afbb 1-51
+packages/frontend/editor-ui/src/features/agents/components/AgentChatActivity.vue
+  s_cf08597b8e4e18::t_8abf135572afbb 1-202
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AgentTimeline.vue
+  s_cf08597b8e4e18::t_8abf135572afbb 33-34,125-126,327-337
+packages/frontend/editor-ui/src/features/ai/shared/components/AiActivityTrace/types.ts
+  s_cf08597b8e4e18::t_8abf135572afbb 1-91
+packages/frontend/editor-ui/src/features/ai/shared/components/AiActivityTrace/AiActivityThinkingStep.vue
+  s_cf08597b8e4e18::t_8abf135572afbb 1-97
+packages/frontend/editor-ui/src/features/ai/shared/components/AiActivityTrace/useThinkingLabel.ts
+  s_cf08597b8e4e18::t_8abf135572afbb 1-118
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_cf08597b8e4e18::t_13d55ca9352a8b 1033,1057,1060,1066,1072,1105,1108,1135,2351,2369
+  s_cf08597b8e4e18::t_8abf135572afbb 723,1245,2056,2078,2313,2332
+  s_cf08597b8e4e18::t_0dad788580872a 93-140
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/AgentTimeline.artifacts.test.ts
+  s_cf08597b8e4e18::t_8abf135572afbb 12,126
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/SubagentStepTimeline.test.ts
+  s_cf08597b8e4e18::t_8abf135572afbb 236,240
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiActivityItems.ts
+  s_cf08597b8e4e18::t_8abf135572afbb 1-170
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/SubagentStepTimeline.vue
+  s_cf08597b8e4e18::t_8abf135572afbb 23-24,27-28,198,200-203,223,226
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/interactiveSummary.ts
+  s_cf08597b8e4e18::t_8abf135572afbb 12
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/AgentTimeline.preferences.test.ts
+  s_cf08597b8e4e18::t_8abf135572afbb 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a21b11949263c90e68dd1bb1c976b99d09600387",
+  "prompts": {},
+  "sessions": {
+    "s_cf08597b8e4e18": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20d77-45f5-7320-9e58-5a91629c58b8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
