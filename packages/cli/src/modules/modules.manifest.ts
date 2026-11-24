@@ -28,4 +28,17 @@ export const packagedModules: PackagedModules = {
 	},
 	'execution-limits': async () => await import('@n8n/backend-module-execution-limits/module'),
 	'execution-ledger': async () => await import('@n8n/backend-module-execution-ledger/module'),
+	'simulation-service': async () => {
+		const { SimulationServiceExecutionHostPort } = await import(
+			'@n8n/backend-module-simulation-service'
+		);
+		const { SimulationServiceExecutionHostAdapter } = await import(
+			'./simulation-service/simulation-service-execution-host.adapter.js'
+		);
+		Container.set(
+			SimulationServiceExecutionHostPort,
+			Container.get(SimulationServiceExecutionHostAdapter),
+		);
+		return await import('@n8n/backend-module-simulation-service/module');
+	},
 };
