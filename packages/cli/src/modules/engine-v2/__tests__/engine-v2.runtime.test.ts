@@ -287,7 +287,7 @@ describe('EngineV2Runtime', () => {
 			},
 		);
 
-		it('deletes ended executions older than EXECUTIONS_DATA_MAX_AGE hours', async () => {
+		it('maps EXECUTIONS_DATA_MAX_AGE to the retention policy', async () => {
 			await newRuntime('postgres://engine', {}, { pruneDataMaxAge: 24 }).init(initOptions());
 
 			expect(mocks.createEngineRuntime).toHaveBeenCalledWith(
@@ -295,7 +295,7 @@ describe('EngineV2Runtime', () => {
 			);
 		});
 
-		it('deletes no executions when EXECUTIONS_DATA_PRUNE is false', async () => {
+		it('maps EXECUTIONS_DATA_PRUNE=false to no retention policy', async () => {
 			await newRuntime('postgres://engine', {}, { pruneData: false }).init(initOptions());
 
 			const options = mocks.createEngineRuntime.mock.calls[0][0] as { retention?: unknown };
