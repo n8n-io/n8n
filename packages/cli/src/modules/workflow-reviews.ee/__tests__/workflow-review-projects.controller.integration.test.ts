@@ -18,7 +18,7 @@ const testServer = utils.setupTestServer({
 	modules: ['workflow-reviews'],
 });
 
-const projectsUrl = '/settings/security/workflow-reviews/projects';
+const projectsUrl = '/workflow-review-settings/projects';
 
 let owner: User;
 let ownerProject: Project;

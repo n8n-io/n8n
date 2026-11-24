@@ -387,7 +387,7 @@ describe('the level that requires a review for a workflow', () => {
 			.expect(200);
 	const setInstanceApprovalRequiredForProject = async (requiredByInstance: boolean) =>
 		await ownerAgent
-			.patch(`/settings/security/workflow-reviews/projects/${teamProject.id}`)
+			.patch(`/workflow-review-settings/projects/${teamProject.id}`)
 			.send({ requiredByInstance })
 			.expect(200);
 	const reviewRequiredBy = async (agent: SuperAgentTest, workflowId: string) =>

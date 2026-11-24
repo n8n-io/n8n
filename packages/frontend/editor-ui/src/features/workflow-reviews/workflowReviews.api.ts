@@ -95,7 +95,7 @@ export async function getWorkflowReviewProjects(
 	return await makeRestApiRequest<WorkflowReviewProjectList>(
 		context,
 		'GET',
-		'/settings/security/workflow-reviews/projects',
+		'/workflow-review-settings/projects',
 		{ ...query },
 	);
 }
@@ -108,7 +108,7 @@ export async function updateWorkflowReviewProject(
 	return await makeRestApiRequest<WorkflowReviewProjectUpdateResponse>(
 		context,
 		'PATCH',
-		`/settings/security/workflow-reviews/projects/${encodeURIComponent(projectId)}`,
+		`/workflow-review-settings/projects/${encodeURIComponent(projectId)}`,
 		{ ...payload },
 	);
 }

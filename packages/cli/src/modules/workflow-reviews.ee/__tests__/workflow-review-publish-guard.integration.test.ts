@@ -113,7 +113,7 @@ const requireProjectApproval = async () =>
 
 const setInstanceApprovalForProject = async (requiredByInstance: boolean) =>
 	await ownerAgent
-		.patch(`/settings/security/workflow-reviews/projects/${teamProject.id}`)
+		.patch(`/workflow-review-settings/projects/${teamProject.id}`)
 		.send({ requiredByInstance })
 		.expect(200);
 
