@@ -32,10 +32,10 @@ const proxyPaths = new WeakMap<object, string[]>();
 // ---------------------------------------------------------------------------
 
 /** Asks for each value that is small. */
-export const SMALL_VALUES = 0;
+export const SMALL_VALUES = 'small';
 
 /** Asks for each value whole, because the expression reads all of each value. */
-export const WHOLE_VALUES = 1;
+export const WHOLE_VALUES = 'whole';
 
 /** What a batched read asks for. A list of names asks for only these fields of each array item. */
 export type BatchRequest = typeof SMALL_VALUES | typeof WHOLE_VALUES | string[];
