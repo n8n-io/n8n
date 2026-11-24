@@ -295,6 +295,14 @@ function disabledReason(
 		: reason;
 }
 
+// The row of a dependency of another project tells which project to promote it from.
+const otherProjectDetail = ({ group, project }: PromotionMissingDependency) =>
+	group === 'other-project' && project
+		? i18n.baseText('promotions.preview.blockers.disabled.otherProject.named', {
+				interpolate: { project: project.name },
+			})
+		: undefined;
+
 // The row shows the name, the type and the workflows that use the dependency. The API sends no
 // owner. It sends the project only for a dependency of another project that the user can access.
 const dependencyRow = (
@@ -307,6 +315,7 @@ const dependencyRow = (
 	type: dependency.kind,
 	usedBy: usedBy(dependency.consumers),
 	status: status(statusKey),
+	detail: otherProjectDetail(dependency),
 	// "Include" is not available yet, so the button only says why.
 	disabledAction: {
 		label: i18n.baseText('promotions.preview.blockers.include'),

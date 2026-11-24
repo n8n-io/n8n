@@ -1293,7 +1293,7 @@ describe('PromotionPreviewView', () => {
 			);
 		});
 
-		it('should name the project of a dependency of another project in the reason of its action', async () => {
+		it('should name the project of a dependency of another project in its row, and in the reason of its action', async () => {
 			vi.mocked(api.getPromotionPreview).mockResolvedValue(
 				billingPreview({
 					missingDependencies: [
@@ -1308,6 +1308,17 @@ describe('PromotionPreviewView', () => {
 			await userEvent.click(getByRole('tab', { name: /Issues/ }));
 
 			const otherProject = section(getAllByTestId, 'In another project (2)');
+			// The text shows below the name, in the first cell of the row.
+			const named = otherProject.getByRole('row', { name: /CRM key/ });
+			expect(cells(named)[0]).toBe(
+				'CRM keyThis dependency is in the project Finance. Promote it from that project.',
+			);
+			expect(
+				within(named).getByText(
+					'This dependency is in the project Finance. Promote it from that project.',
+				),
+			).toBeVisible();
+			expect(cells(otherProject.getByRole('row', { name: /ERP key/ }))[0]).toBe('ERP key');
 			const action = (name: RegExp) =>
 				within(otherProject.getByRole('row', { name })).getByTestId(
 					'promotion-preview-blocker-disabled-action',
@@ -1381,13 +1392,10 @@ describe('PromotionPreviewView', () => {
 			);
 		});
 
-		it('should show no project and no owner in the text of a row', async () => {
+		it('should show no project and no owner in a row when the API sends no project of the dependency', async () => {
 			vi.mocked(api.getPromotionPreview).mockResolvedValue(
 				billingPreview({
-					missingDependencies: [
-						{ ...otherProjectCredential, project: { id: 'p2', name: 'Finance' } },
-						outsideAccessWorkflow,
-					],
+					missingDependencies: [otherProjectCredential, outsideAccessWorkflow],
 					warnings: [deletedWorkflowWarning],
 				}),
 			);
@@ -1395,10 +1403,9 @@ describe('PromotionPreviewView', () => {
 			const { getAllByTestId, getByRole, getByTestId } = await render();
 			await userEvent.click(getByRole('tab', { name: /Issues/ }));
 
-			// "Billing" is the project of the workflows. "Finance" is the project of "CRM key", which
-			// only the tooltip of "Include" names.
+			// "Billing" is the project of the workflows. A row names only the project of its
+			// dependency, and only when the API sends it.
 			expect(getByTestId('promotion-preview-blockers')).not.toHaveTextContent('Billing');
-			expect(getByTestId('promotion-preview-blockers')).not.toHaveTextContent('Finance');
 			for (const row of getAllByTestId('promotion-preview-blocker-row')) {
 				expect(row).not.toHaveTextContent(/project|owner/i);
 			}
