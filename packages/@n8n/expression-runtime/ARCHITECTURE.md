@@ -159,7 +159,7 @@ reads it, and the host never guesses.
 | --- | --- |
 | Reads a value after it listed the keys (`JSON.stringify`, a returned item, a spread) | Every field of the object |
 | Reads the array index after the last one (`map`, `filter`, a `for` loop) | The next small items. The first item that is not small comes alone, as before. Each such read can be four times larger than the read before it |
-| Read every field of the item before | The next items whole, including items that are not small |
+| Read every field of the item before, or read the array item before in order to its last item | The next items whole, including items that are not small |
 | Read fields by name on the item before (`row.name`) | Only these fields of the next items |
 | Reads one field, or one item out of order | That one value, as before |
 
@@ -167,8 +167,9 @@ A value crosses whole when it is plain JSON data and its size is at most
 `smallValueChars`. The size counts 8 for each value, object and array, plus the
 length of each string and key. The host counts while it copies and stops when
 the size is too large. A larger object or array stays a lazy proxy with the same
-rules. After the expression reads an array or object in bulk (the first two
-rows), each field of a value inside it can be as large as `maxBatchChars`. All
+rules. After the expression reads a value after it listed the keys of an
+object, or reads an array in order to its last item, each field of a value
+inside it can be as large as `maxBatchChars`. All
 reads of one evaluation share one character budget. When the budget is spent, a
 proxy reads one value for each host call. `BATCH_READ_LIMITS` holds the sizes.
 

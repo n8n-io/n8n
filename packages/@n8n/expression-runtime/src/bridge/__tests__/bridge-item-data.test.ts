@@ -120,6 +120,15 @@ const items: Array<{ label: string; $json: () => Json }> = [
 		}),
 	},
 	{
+		label: 'rows of long number arrays',
+		$json: () => ({
+			id: 1,
+			rows: Array.from({ length: 12 }, (_, index) =>
+				Array.from({ length: 300 }, (_item, column) => index * column),
+			),
+		}),
+	},
+	{
 		label: 'rows that read as other values through a proxy',
 		$json: () => ({
 			id: 1,

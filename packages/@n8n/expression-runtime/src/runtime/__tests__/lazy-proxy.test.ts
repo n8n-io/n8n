@@ -877,6 +877,72 @@ describe('createDeepLazyProxy batched reads', () => {
 			expect('other' in rows[1]).toBe(true);
 		});
 
+		it('asks for small rows after a read of two items of the first row', () => {
+			const callbacks = createCallbacks();
+			callbacks.getArrayElement.mockImplementation((path: string[]) =>
+				path.length === 2 ? { __isArray: true, __length: 3 } : 0,
+			);
+			callbacks.readBatch.mockReturnValue(hostData([1]));
+			const rows = arrayProxy(callbacks, 10);
+			const row = rows[0];
+			void row[0];
+			void row[1];
+			void rows[1];
+
+			expect(callbacks.readBatch.mock.calls.at(-1)).toEqual([
+				['$json', 'rows'],
+				1,
+				0,
+				SMALL_VALUES,
+			]);
+		});
+
+		it('asks for small rows after a read of the last item of the first row out of order', () => {
+			const callbacks = createCallbacks();
+			callbacks.getArrayElement.mockImplementation((path: string[]) =>
+				path.length === 2 ? { __isArray: true, __length: 5 } : 0,
+			);
+			callbacks.readBatch.mockImplementation((path: string[]) =>
+				hostData(path.length === 2 ? [[]] : [1]),
+			);
+			const rows = arrayProxy(callbacks, 10);
+			const row = rows[0];
+			void row[0];
+			void row[1];
+			void row[4];
+			void rows[1];
+
+			expect(callbacks.readBatch.mock.calls.at(-1)).toEqual([
+				['$json', 'rows'],
+				1,
+				0,
+				SMALL_VALUES,
+			]);
+		});
+
+		it.each([
+			['the cache', [1, 2]],
+			['the host', [1]],
+		])('asks for whole rows after a read of the first row to its last item from %s', (_, batch) => {
+			const callbacks = createCallbacks();
+			callbacks.getArrayElement.mockImplementation((path: string[]) =>
+				path.length === 2 ? { __isArray: true, __length: 3 } : 0,
+			);
+			callbacks.readBatch.mockImplementation((path: string[]) =>
+				hostData(path.length === 2 ? [[]] : batch),
+			);
+			const rows = arrayProxy(callbacks, 10);
+			rows[0].join();
+			void rows[1];
+
+			expect(callbacks.readBatch.mock.calls.at(-1)).toEqual([
+				['$json', 'rows'],
+				1,
+				0,
+				WHOLE_VALUES,
+			]);
+		});
+
 		it('asks for small items after a read of a named key of an array item', () => {
 			const callbacks = createCallbacks();
 			callbacks.getArrayElement.mockReturnValue({ __isArray: true, __length: 2 });

@@ -50,7 +50,7 @@ export type ReadBatch = (
 
 /** How an expression read the data of a lazy proxy so far. */
 interface ReadTrace {
-	/** The expression read every field, or read the array items in order. */
+	/** The expression read every field of an object, or read an array in order to its last item. */
 	bulk: boolean;
 	/** The first names of the fields the expression read by name. */
 	names?: string[];
@@ -106,6 +106,12 @@ interface ChildReads {
 	keysWereListed: boolean;
 	/** The request of the last read of every field. The same request gives no new field. */
 	fieldsRequest?: BatchRequest;
+	/**
+	 * The key of the last item, set when reads in order reach the end of the
+	 * array. A read of this key then shows that the expression read the array to
+	 * its end.
+	 */
+	endKey?: string;
 }
 
 function newChildReads(): ChildReads {
@@ -429,18 +435,18 @@ export function createDeepLazyProxy(
 			return cacheItemWithSomeFields(reads, prop, someFields);
 		}
 		const request = requestAfter(reads.itemTrace);
+		const inOrder = idx === reads.nextInOrder;
 		const readBatch =
-			idx === reads.nextInOrder && !(request === SMALL_VALUES && reads.smallItemsAreLazy)
-				? batchRead
-				: undefined;
+			inOrder && !(request === SMALL_VALUES && reads.smallItemsAreLazy) ? batchRead : undefined;
 		reads.nextInOrder = idx + 1;
+		if (inOrder && reads.nextInOrder >= arrayLength) reads.endKey = prop;
 		let element: unknown;
 		if (readBatch !== undefined) {
-			trace.bulk = true;
 			element = readBatch(basePath, idx, reads.readAheadStep++, request);
 			const items = batchOf(element, isArrayValue);
 			if (items !== undefined && items.length > 0) {
 				reads.nextInOrder = idx + items.length;
+				if (reads.nextInOrder >= arrayLength) reads.endKey = String(arrayLength - 1);
 				if (isArrayValue(request)) {
 					const kept = keepItemsWithSomeFields(reads, idx, items);
 					return cacheItemWithSomeFields(reads, prop, kept[prop]);
@@ -619,13 +625,16 @@ export function createDeepLazyProxy(
 				isKeyOf(targetObj, prop) ||
 				(prop in targetObj && (isArray || !isHostKey(resolveObjectKeys(), prop)))
 			) {
+				if (prop === childReads?.endKey) trace.bulk = true;
 				return targetObj[prop];
 			}
 
 			if (isArray) {
 				const idx = isInArrayBounds(prop);
 				if (idx !== undefined) {
-					return fetchAndCacheArrayElement(idx, prop);
+					const item = fetchAndCacheArrayElement(idx, prop);
+					if (prop === childReads?.endKey) trace.bulk = true;
+					return item;
 				}
 				if (isArrayIndexKey(prop)) {
 					return undefined;
