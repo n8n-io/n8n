@@ -44,7 +44,8 @@ const i18n = useI18n();
 	gap: var(--spacing--5xs);
 	flex-shrink: 0;
 	margin: 0 var(--spacing--xs);
-	padding: var(--spacing--3xs) 0 var(--spacing--2xs);
+	/* Lines up with the icon of the chat history button above. */
+	padding: var(--spacing--3xs) var(--spacing--4xs) var(--spacing--2xs);
 	border-bottom: var(--border);
 }
 
