@@ -10961,7 +10961,7 @@ NORRA.va.buildSect = function () {
     return '<li class="' + (i === 0 ? 'on' : '') + '"><span class="n">' + (i + 1) + '</span><span class="t">' + s[0] + '</span><span class="d">' + s[1] + '</span></li>';
   }).join('') + '</ol>';
   var list = '<ol class="va-steps-list">' + NORRA.va.STEPS.map(function (s) { return '<li><b>' + s[0] + '</b> · ' + s[1] + '</li>'; }).join('') + '</ol>';
-  return NORRA.va.clip({ id: 'va-start', reverse: true, src: 'media/builder.mp4', alt: 'Produktansicht: Ein Agent entsteht aus einer kurzen Beschreibung.',
+  return NORRA.va.clip({ id: 'va-start', reverse: true, src: 'media/agent-builder.mp4', alt: 'Produktansicht: Ein Agent entsteht aus einer kurzen Beschreibung.',
     card: card, eyebrow: 'Ablauf', title: 'In rund sieben Tagen live.',
     lede: 'Wir bauen und testen. Live geht er erst mit Ihrem Okay.',
     more: NORRA.fold(list, { summary: 'Die vier Schritte', cls: 'nfold-sm' }) });
