@@ -1,4 +1,4 @@
-import type { AgentJsonConfig } from '@n8n/api-types';
+import type { AgentJsonConfig, AgentIntegrationConfig } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { createHash } from 'node:crypto';
 
@@ -23,6 +23,33 @@ export function getAgentConfigHash(config: AgentJsonConfig | null): string | nul
 export function getAgentConfigHash(config: AgentJsonConfig | null): string | null {
 	if (!config) return null;
 	return getHash(config);
+}
+
+/** Keep pending approvals bound to the same authored definition and tool implementations. */
+export function getAgentRuntimeDefinitionHash(
+	config: AgentJsonConfig,
+	toolCodeByName: Record<string, string> = {},
+	integrations: AgentIntegrationConfig[] = [],
+): string {
+	const routes = [...(config.tools ?? []), ...(config.mcpServers ?? [])];
+	const usedIds = new Set(
+		routes.flatMap(({ approvalRoute }) =>
+			approvalRoute?.type === 'configuration' ? approvalRoute.configurationIds : [],
+		),
+	);
+	const connectedDestinations = (config.hitlConfigurations ?? []).flatMap((destination) =>
+		destination.method === 'channel' &&
+		usedIds.has(destination.id) &&
+		integrations.some(
+			(integration) =>
+				integration.type === destination.channel &&
+				'credentialId' in integration &&
+				integration.credentialId === destination.credentialId,
+		)
+			? [{ type: destination.channel, credentialId: destination.credentialId }]
+			: [],
+	);
+	return getHash({ config, toolCodeByName, integrations: connectedDestinations });
 }
 
 export function isSameAgentConfig(a: unknown, b: unknown): boolean {

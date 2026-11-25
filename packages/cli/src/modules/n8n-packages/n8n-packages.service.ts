@@ -354,6 +354,7 @@ export class N8nPackagesService {
 			credentialExportPolicy,
 			// Routes project-owned credentials into their project namespace; others stay top-level.
 			projectTargetsById,
+			additionalCredentialIds: request.projectCredentialIds,
 		});
 
 		const dataTableExportResult = await this.dataTableExporter.export({

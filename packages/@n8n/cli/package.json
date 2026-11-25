@@ -81,6 +81,7 @@
     }
   },
   "dependencies": {
+    "@n8n/constants": "workspace:*",
     "@oclif/core": "^4.5.2"
   },
   "devDependencies": {

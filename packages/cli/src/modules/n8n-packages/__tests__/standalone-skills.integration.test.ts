@@ -622,9 +622,9 @@ it('reads legacy Skills collections without removing unselected destination Skil
 	expect(await findSkill(id)).not.toBeNull();
 });
 
-it('rejects unsupported supporting files before creating Skills', async () => {
+it('rejects invalid supporting file paths before creating Skills', async () => {
 	const skill = packaged();
-	skill.skill.references = [{ path: 'scripts/run.sh', content: 'echo hello' }];
+	skill.skill.references = [{ path: '../outside.md', content: '# Outside' }];
 	await expect(importSkills(await archive([skill]))).rejects.toThrow();
 	expect(await findSkillIds()).toEqual([]);
 });
