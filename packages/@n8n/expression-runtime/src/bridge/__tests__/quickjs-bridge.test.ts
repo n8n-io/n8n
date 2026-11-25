@@ -7,7 +7,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { ExpressionEvaluator } from '../../evaluator/expression-evaluator';
 import { classifyExpressionError, errorOriginOf } from '../../evaluator/error-classification';
 import type { BridgeConfig, RuntimeBridge } from '../../types';
-import { HostCallError, RuntimeRestartingError } from '../../types';
+import { HostCallError, MemoryLimitError, RuntimeRestartingError } from '../../types';
 import { QuickJsBridge } from '../quickjs-bridge';
 
 // Deep enough that V8 runs out of native stack inside the QuickJS WASM code
@@ -262,11 +262,11 @@ describe('QuickJsBridge error origin', () => {
 	it('should record a failed callback cleanup and keep its error', () => {
 		const cleanupError = new RangeError('cleanup failed');
 		const internals = bridge as unknown as {
-			createCallbackHandles(resolver: unknown): Array<{ dispose(): void }>;
+			createCallbackHandles(resolver: unknown, budget: unknown): Array<{ dispose(): void }>;
 		};
 		const createCallbackHandles = internals.createCallbackHandles.bind(bridge);
-		vi.spyOn(internals, 'createCallbackHandles').mockImplementationOnce((resolver) => {
-			const handles = createCallbackHandles(resolver);
+		vi.spyOn(internals, 'createCallbackHandles').mockImplementationOnce((resolver, budget) => {
+			const handles = createCallbackHandles(resolver, budget);
 			const [first] = handles;
 			const dispose = first.dispose.bind(first);
 			first.dispose = () => {
@@ -346,17 +346,53 @@ describe('QuickJsBridge workflow data', () => {
 		).toBe('from host');
 	});
 
-	it('keeps a change to a small item inside the evaluation', async () => {
+	it.each([
+		{
+			label: 'a batched read',
+			code: 'return this.$json.rows.map(function (r) { return r; });',
+			$json: { rows: [1, 2, 'fail'] },
+		},
+		{ label: 'a single read', code: 'return typeof this.$json.box;', $json: { box: { fail: 1 } } },
+	])('stops the evaluation when the guest cannot build the value of $label', async (testCase) => {
 		const bridge = await newBridge();
-		const $json = { count: 1, rows: [{ id: 1 }] };
+		const vm = bridge['vm']!;
+		// Fails like the guest JSON parser at the memory limit, for a value that holds "fail".
+		vm.unwrapResult(
+			vm.evalCode(`
+				var unwrap = globalThis.__unwrapFromHost;
+				globalThis.__unwrapFromHost = function (json, holdsSentinel) {
+					if (json.indexOf('fail') !== -1) throw new InternalError('out of memory');
+					return unwrap(json, holdsSentinel);
+				};
+			`),
+		).dispose();
 
-		expect(
-			bridge.execute(
-				'this.$json.count = 2; this.$json.rows.push({ id: 2 }); return [this.$json.count, this.$json.rows.length];',
-				{ $json },
-			),
-		).toEqual([2, 2]);
-		expect($json).toEqual({ count: 1, rows: [{ id: 1 }] });
+		expect(() => bridge.execute(testCase.code, { $json: testCase.$json })).toThrow(
+			MemoryLimitError,
+		);
+	});
+
+	it('stops the evaluation when the guest cannot build a date', async () => {
+		const bridge = await newBridge();
+		const vm = bridge['vm']!;
+		// Fails like the guest at the memory limit, for this one date only.
+		vm.unwrapResult(
+			vm.evalCode(`
+				var HostDate = Date;
+				globalThis.Date = function (time) {
+					if (time === 1234) throw new InternalError('out of memory');
+					return arguments.length ? new HostDate(time) : new HostDate();
+				};
+				globalThis.Date.prototype = HostDate.prototype;
+				globalThis.Date.now = HostDate.now;
+				globalThis.Date.UTC = HostDate.UTC;
+				globalThis.Date.parse = HostDate.parse;
+			`),
+		).dispose();
+
+		expect(() =>
+			bridge.execute('return typeof this.$json.when;', { $json: { when: new Date(1234) } }),
+		).toThrow(MemoryLimitError);
 	});
 
 	it.each([
@@ -367,6 +403,7 @@ describe('QuickJsBridge workflow data', () => {
 		{ label: 'a Date', $json: { at: new Date(0), b: 1 } },
 		{ label: 'undefined', $json: { a: undefined, list: [undefined, 1] } },
 		{ label: 'NaN', $json: { nan: NaN, b: 1 } },
+		{ label: 'an escape key', $json: { __isEscaped: 1, b: 2 } },
 	])('returns a small item with $label as the same data', async ({ $json }) => {
 		const bridge = await newBridge();
 
