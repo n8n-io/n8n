@@ -243,6 +243,20 @@ describe('SimulationSessionService', () => {
 		expect(backend.openWorld).toHaveBeenCalledTimes(2);
 	});
 
+	it('keeps the same session while the world still fails to open', async () => {
+		const backend = llmBackend();
+		vi.mocked(backend.openWorld).mockRejectedValue(new Error('mock model not configured'));
+		const { service } = setup({ backend });
+
+		const first = await service.openForDraftRun(openInput);
+		const second = await service.openForDraftRun({ ...openInput, message: 'again' });
+
+		// The same session keeps the same runtime cache key, so no runtime is built again.
+		expect(second).toBe(first);
+		expect(second?.runtimeCacheKey).toBe(first?.runtimeCacheKey);
+		expect(backend.openWorld).toHaveBeenCalledTimes(2);
+	});
+
 	it('lists which tools can be tested, with n8n blocks before the backend sees them', async () => {
 		const backend = llmBackend();
 		const { service } = setup({ backend });

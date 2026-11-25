@@ -75,7 +75,9 @@ export class SimulationSessionService {
 		// Such a world belongs to the connections of the draft, so each turn checks them again.
 		const bound = this.registry.get()?.worldDependsOnDraftConnections === true;
 		const cached = this.sessions.get(key);
-		if (cached && !bound) {
+		// A session without a world tries to open the world again on each turn.
+		const retry = cached?.session.worldId === undefined;
+		if (cached && !bound && !retry) {
 			this.sessions.touch(key);
 			// Keep the same session, so its cached runtime stays valid, but use the current tools.
 			cached.session.updateCapabilities(
@@ -93,9 +95,9 @@ export class SimulationSessionService {
 			if (shared || !input.testRunRequested) return shared;
 			return await this.openForDraftRun(input);
 		}
-		const open = (cached ? this.reuseOrReplace(input, key, cached) : this.openNew(input)).finally(
-			() => this.opening.delete(key),
-		);
+		const open = (
+			cached && !retry ? this.reuseOrReplace(input, key, cached) : this.openNew(input, cached)
+		).finally(() => this.opening.delete(key));
 		this.opening.set(key, open);
 		return await open;
 	}
@@ -194,7 +196,11 @@ export class SimulationSessionService {
 			});
 	}
 
-	private async openNew(input: OpenSimulationInput): Promise<SimulationSession | undefined> {
+	private async openNew(
+		input: OpenSimulationInput,
+		/** A cached session without a world. It stays when the world fails to open again. */
+		worldless?: CachedSession,
+	): Promise<SimulationSession | undefined> {
 		// A test chat stays one, also with the flag off. A new chat is a test run only when asked for.
 		const thread = await this.threadRepository.findTestChatState(input.testChatId);
 		if (!thread?.testChat) {
@@ -216,6 +222,8 @@ export class SimulationSessionService {
 			input,
 			await this.describeAgent(input.agentId, input.projectId),
 			thread?.testChat === true,
+			undefined,
+			worldless,
 		);
 	}
 
@@ -225,6 +233,7 @@ export class SimulationSessionService {
 		/** True when the thread already holds the test chat marker. */
 		marked = false,
 		knownBinding?: ConnectionBinding,
+		worldless?: CachedSession,
 	): Promise<SimulationSession> {
 		const backend = this.registry.get();
 		const binding = backend?.worldDependsOnDraftConnections
@@ -257,6 +266,12 @@ export class SimulationSessionService {
 				});
 			}
 		}
+		// Keep the same session, so the chat keeps its runtime while the world is missing.
+		if (!world && worldless) {
+			worldless.session.updateCapabilities(capabilities);
+			this.sessions.touch(sessionKey(input));
+			return worldless.session;
+		}
 		const session = new SimulationSession({
 			testChatId: input.testChatId,
 			world,
@@ -276,8 +291,7 @@ export class SimulationSessionService {
 			...(binding ? { connectionBinding: binding.digest } : {}),
 			marked,
 		};
-		// A session without a world is not cached, so the next turn tries to open the world again.
-		if (world) this.sessions.set(sessionKey(input), entry);
+		this.sessions.set(sessionKey(input), entry);
 		return session;
 	}
 
