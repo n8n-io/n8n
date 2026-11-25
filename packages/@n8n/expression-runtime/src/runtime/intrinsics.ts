@@ -8,6 +8,7 @@
  */
 export const {
 	assign,
+	create: objectCreate,
 	defineProperty,
 	entries: objectEntries,
 	getOwnPropertyDescriptor,

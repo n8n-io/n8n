@@ -1,12 +1,12 @@
 import { UnexpectedError, type JsonValue } from '../common';
 import type { BatchStepConfig } from '../graph';
-import type { StepOutputSource, StepOutputSources, StepSlots } from './execution.types';
+import type { ItemSource, StepOutputSources, StepSlots } from './execution.types';
 import { DONE_SLOT, LOOP_SLOT } from './loop-ledger';
 
 /** A list another step emitted, with the slot it came from. */
 export interface SourcedList {
 	items: JsonValue;
-	from: Pick<StepOutputSource, 'nodeId' | 'outputIndex' | 'iteration'>;
+	from: Pick<ItemSource, 'nodeId' | 'outputIndex' | 'iteration'>;
 }
 
 /**
@@ -51,7 +51,7 @@ export async function runBatchStep(
 
 	const arrivals = await reader.readArrivals(iteration);
 	const accumulated: JsonValue[] = [];
-	const sources: StepOutputSource[] = [];
+	const sources: ItemSource[] = [];
 	arrivals.forEach((arrival, index) => {
 		const items = asList(arrival.items, `arrival ${index} of the batch node`);
 		if (items.length === 0) return;
@@ -64,7 +64,7 @@ export async function runBatchStep(
 	return slot(DONE_SLOT, accumulated, sources);
 }
 
-function slot(filled: number, value: JsonValue[], sources: StepOutputSource[]): BatchStepResult {
+function slot(filled: number, value: JsonValue[], sources: ItemSource[]): BatchStepResult {
 	return filled === DONE_SLOT
 		? { outputs: [value, null], outputSources: [sources, null] }
 		: { outputs: [null, value], outputSources: [null, sources] };

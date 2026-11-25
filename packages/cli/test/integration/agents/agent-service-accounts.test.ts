@@ -28,6 +28,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { ensureInstanceAgent } from '@test-integration/db/agents';
 
+import { AgentApprovalCleanupService } from '@/modules/agents/approval/agent-approval-cleanup.service';
 import { AgentServiceAccountService } from '@/modules/agents/agent-service-account.service';
 import { AgentUpdateBroadcaster } from '@/modules/agents/agent-update-broadcaster';
 import { AgentsService } from '@/modules/agents/agents.service';
@@ -500,6 +501,25 @@ describe('Agent service accounts', () => {
 
 			expect(await agentRepo.findOneBy({ id: agent.id })).not.toBeNull();
 			expect(await dataSource().existsBy(User, { id: identityId })).toBe(true);
+		});
+
+		it('keeps the agent and its account when an approval reference remains after cleanup', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject(undefined, owner);
+			const { agent, identityId, personalProject } = await createAgentWithServiceAccount(
+				project.id,
+			);
+			const workflow = await createWorkflow({}, project);
+			await agentRepo.update(agent.id, { approvalWorkflowId: workflow.id });
+			vi.spyOn(Container.get(AgentApprovalCleanupService), 'cleanupAgent').mockResolvedValueOnce();
+
+			await expect(agentsService.delete(agent.id, owner, project.id)).rejects.toThrow(
+				ConflictError,
+			);
+
+			expect(await agentRepo.existsBy({ id: agent.id })).toBe(true);
+			expect(await dataSource().existsBy(User, { id: identityId })).toBe(true);
+			expect(await dataSource().existsBy(Project, { id: personalProject.id })).toBe(true);
 		});
 
 		it('keeps the agent row when the account row cannot be deleted', async () => {

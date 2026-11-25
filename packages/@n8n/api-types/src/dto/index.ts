@@ -719,6 +719,19 @@ export {
 	type WorkflowReviewRequestList,
 } from './workflow-reviews/list-workflow-review-requests-query.dto';
 export { UpdateWorkflowReviewRequestVersionDto } from './workflow-reviews/update-workflow-review-request-version.dto';
+export {
+	UpdateProjectWorkflowReviewSettingsDto,
+	type ProjectWorkflowReviewSettingsResponse,
+} from './workflow-reviews/update-project-workflow-review-settings.dto';
+export {
+	ListWorkflowReviewInstanceSettingsQueryDto,
+	type WorkflowReviewInstanceSettingsList,
+	type WorkflowReviewInstanceSettingsProject,
+} from './workflow-reviews/list-workflow-review-instance-settings-query.dto';
+export {
+	UpdateWorkflowReviewInstanceSettingsDto,
+	type WorkflowReviewInstanceSettingsResponse,
+} from './workflow-reviews/update-workflow-review-instance-settings.dto';
 export type { WorkflowReviewInboxItem } from './workflow-reviews/list-workflow-review-inbox.dto';
 export { ListInboxQueryDto } from './inbox/list-inbox.dto';
 export type * from './workflow-reviews/get-workflow-review-request-detail.dto';
@@ -908,6 +921,11 @@ export {
 	type PromotionReviewType,
 	type PromotionReviewTab,
 } from './promotions/promotion-review.dto';
+export {
+	PromotionSettingsPublicDto,
+	UpdatePromotionSettingsDto,
+	type PromotionSettings,
+} from './promotions/promotion-settings.dto';
 
 export {
 	ScimConfigPatchDto,

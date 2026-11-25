@@ -19,6 +19,7 @@ import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.servic
 import type { Agent, ProjectAgent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { ToolRegistry } from '../tool-registry';
+import type { WorkflowToolContext } from '../tools/workflow-tool-factory';
 import { createAgentSkillRefsService, storedRunSource } from './test-utils/stored-agent-config';
 
 const agentId = 'agent-1';
@@ -145,6 +146,21 @@ describe('AgentRuntimeCacheService', () => {
 		const runtime = await service.getRuntime({ agentId, projectId });
 
 		expect(runtime.guardrailModel).toBe(guardrailModel);
+	});
+
+	it('carries the guardrail workflow context from the reconstruction onto the cached runtime', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const agent = makeAgent();
+		const guardrailWorkflowContext = { projectId: 'project-1' } as unknown as WorkflowToolContext;
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue({
+			...makeRuntime(),
+			guardrailWorkflowContext,
+		});
+
+		const runtime = await service.getRuntime({ agentId, projectId });
+
+		expect(runtime.guardrailWorkflowContext).toBe(guardrailWorkflowContext);
 	});
 
 	it('keeps task runtimes separate and disables their background tools', async () => {

@@ -1,8 +1,9 @@
 import type { Mock } from 'vitest';
 import type { StreamChunk } from '@n8n/agents';
 import { MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH } from '@n8n/api-types';
-import type { HttpRequestClient } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
+import { buildHitlCallbackReference } from 'n8n-core';
+import { AgentChannelHitlService } from '../../approval/agent-channel-hitl.service';
 import type { Author } from 'chat';
 import type { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';
 import { AgentChatAttachmentService } from '../../agent-chat-attachment.service';
@@ -43,18 +44,8 @@ const drainQueuedMessages = new WeakMap<object, () => Promise<void>>();
 
 /** Exercise capture and delivery separately. Database ownership has real-DB coverage. */
 function makeQueuedBridge(...args: ConstructorParameters<typeof AgentChatBridge>) {
-	const [
-		bot,
-		agentId,
-		executor,
-		mapper,
-		logger,
-		projectId,
-		integration,
-		contexts,
-		attachments,
-		http,
-	] = args;
+	const [bot, agentId, executor, mapper, logger, projectId, integration, contexts, attachments] =
+		args;
 	const pending: Array<{ payload: QueuedIntegrationMessage; threadId: string }> = [];
 	const queue = mock<AgentMessageQueueService>();
 	queue.enqueue.mockImplementation(async ({ payload, threadId }) => {
@@ -75,7 +66,6 @@ function makeQueuedBridge(...args: ConstructorParameters<typeof AgentChatBridge>
 		integration,
 		contexts,
 		attachments,
-		http,
 		queue,
 	);
 	drainQueuedMessages.set(bot, async () => {
@@ -1354,7 +1344,6 @@ describe('AgentChatBridge — consumeStream', () => {
 				integrationWithIdleTimeout(30),
 				undefined,
 				undefined,
-				undefined,
 				queue,
 			);
 
@@ -1862,7 +1851,6 @@ describe('AgentChatBridge — consumeStream', () => {
 			agentExecutor: ReturnType<typeof makeAgentExecutor>,
 			attachmentService: ReturnType<typeof makeAttachmentService>,
 			integration: AgentIntegrationConfig = streamingIntegration,
-			discordHttpClient?: HttpRequestClient,
 		) {
 			const { bot, handlers } = makeBot();
 			makeQueuedBridge(
@@ -1875,7 +1863,6 @@ describe('AgentChatBridge — consumeStream', () => {
 				integration,
 				undefined,
 				attachmentService as never,
-				discordHttpClient,
 			);
 			return handlers;
 		}
@@ -1898,7 +1885,6 @@ describe('AgentChatBridge — consumeStream', () => {
 				{ type: 'test-restricted', credentialId: 'cred-1' } as unknown as AgentIntegrationConfig,
 				undefined,
 				attachmentService as never,
-				undefined,
 				queue,
 			);
 			const thread = makeThread();
@@ -1970,64 +1956,6 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
 				expect.objectContaining({
 					message: 'look at this',
-					attachments: [
-						{ id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 },
-					],
-				}),
-			);
-		});
-
-		it('downloads Discord CDN attachments without fetching untrusted URLs', async () => {
-			const agentExecutor = makeAgentExecutor([finishChunk]);
-			const attachmentService = makeAttachmentService();
-			const request = vi.fn().mockResolvedValue({
-				body: pngBytes,
-				headers: {},
-				statusCode: 200,
-			});
-			const httpClient = { request } as unknown as HttpRequestClient;
-			const handlers = makeBridge(
-				agentExecutor,
-				attachmentService,
-				{
-					type: 'discord',
-					credentialId: 'cred-discord',
-				} as unknown as AgentIntegrationConfig,
-				httpClient,
-			);
-			const attachmentUrl = 'https://cdn.discordapp.com/attachments/123/456/photo.png?ex=signed';
-
-			await handlers.mention!(makeThread(), {
-				text: 'what is this?',
-				author: { userId: 'u1', userName: 'user1' },
-				attachments: [
-					{
-						type: 'image',
-						url: attachmentUrl,
-						name: 'photo.png',
-						mimeType: 'image/png',
-					},
-					{
-						type: 'image',
-						url: 'http://127.0.0.1/internal.png',
-						name: 'internal.png',
-						mimeType: 'image/png',
-					},
-				],
-			});
-
-			expect(request).toHaveBeenCalledOnce();
-			expect(request).toHaveBeenCalledWith(expect.objectContaining({ url: attachmentUrl }));
-			expect(attachmentService.storeInbound).toHaveBeenCalledWith(
-				expect.objectContaining({
-					source: 'discord',
-					fileName: 'photo.png',
-					mimeType: 'image/png',
-				}),
-			);
-			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
-				expect.objectContaining({
-					message: 'what is this?\n[Attachment "internal.png" could not be processed]',
 					attachments: [
 						{ id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 },
 					],
@@ -2962,6 +2890,103 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(setAssistantStatus).toHaveBeenLastCalledWith('D123', '1779466577.518139', '');
 		});
 
+		it.each([true, false, 'unavailable'] as const)(
+			'routes a native channel decision without resuming the approval conversation: %s',
+			async (decision) => {
+				const { bot, handlers } = makeBot();
+				const thread = makeThread();
+				const editMessage = vi.fn().mockResolvedValue(undefined);
+				const deleteMessage = vi.fn();
+				const agentExecutor = makeAgentExecutor([]);
+				const channelApprovals = mock<AgentChannelHitlService>();
+				channelApprovals.respond.mockResolvedValue(decision);
+				Container.set(AgentChannelHitlService, channelApprovals);
+				makeQueuedBridge(
+					bot as unknown as ChatBotLike,
+					'agent-1',
+					agentExecutor as never,
+					componentMapper,
+					logger,
+					'project-1',
+					slackIntegration,
+				);
+				const event = {
+					actionId: buildHitlCallbackReference('123', 'a', 'test-secret'),
+					messageId: 'card-message',
+					thread,
+					threadId: 'thread-1',
+					user: { userId: 'u2', userName: 'user2' },
+					adapter: { editMessage, deleteMessage },
+				};
+				await handlers.action!(event);
+				expect(channelApprovals.respond).toHaveBeenCalledWith(
+					'agent-1',
+					'project-1',
+					slackIntegration,
+					event,
+				);
+				expect(agentExecutor.resumeForChat).not.toHaveBeenCalled();
+				expect(deleteMessage).not.toHaveBeenCalled();
+				if (decision === 'unavailable') {
+					expect(editMessage).not.toHaveBeenCalled();
+					expect(thread.post).toHaveBeenCalledWith(
+						'This approval request is no longer available or has already been handled',
+					);
+				} else
+					expect(editMessage).toHaveBeenCalledWith(
+						'thread-1',
+						'card-message',
+						`${decision ? 'Approved' : 'Denied'} by user2`,
+					);
+			},
+		);
+
+		it('routes a review decision from a user outside the platform allowlist', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread();
+			const agentExecutor = makeAgentExecutor([]);
+			const channelApprovals = mock<AgentChannelHitlService>();
+			channelApprovals.respond.mockResolvedValue('unavailable');
+			Container.set(AgentChannelHitlService, channelApprovals);
+			const integration = {
+				type: 'test-restricted',
+				credentialId: 'cred-1',
+			} as unknown as AgentIntegrationConfig;
+			makeQueuedBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integration,
+			);
+			const user = { userId: 'reviewer', userName: 'reviewer' };
+
+			const event = {
+				actionId: buildHitlCallbackReference('123', 'a', 'test-secret'),
+				thread,
+				threadId: 'thread-1',
+				user,
+			};
+			await handlers.action!(event);
+			await handlers.action!({
+				actionId: 'resume:run-1:tool-1:0',
+				value: '{"approved":true}',
+				thread,
+				threadId: 'thread-1',
+				user,
+			});
+
+			expect(channelApprovals.respond).toHaveBeenCalledWith(
+				'agent-1',
+				'project-1',
+				integration,
+				event,
+			);
+			expect(agentExecutor.resumeForChat).not.toHaveBeenCalled();
+		});
+
 		it('sets a thinking status and streams the response when resuming a Slack action', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
@@ -3740,7 +3765,6 @@ describe('AgentChatBridge — consumeStream', () => {
 				streamingIntegration,
 				undefined,
 				undefined,
-				undefined,
 				queue,
 			);
 			const thread = makeThread('thread-1');
@@ -3798,7 +3822,6 @@ describe('AgentChatBridge — consumeStream', () => {
 					logger,
 					'project-1',
 					{ type: 'slack', credentialId: 'cred-1' } as unknown as AgentIntegrationConfig,
-					undefined,
 					undefined,
 					undefined,
 					queue,
@@ -3874,7 +3897,6 @@ describe('AgentChatBridge — consumeStream', () => {
 				logger,
 				'project-1',
 				streamingIntegration,
-				undefined,
 				undefined,
 				undefined,
 				queue,
@@ -4661,7 +4683,6 @@ describe('AgentChatBridge — un-mentioned messages', () => {
 			logger,
 			'project-1',
 			{ type, credentialId: 'cred-1' } as unknown as AgentIntegrationConfig,
-			undefined,
 			undefined,
 			undefined,
 			queue,

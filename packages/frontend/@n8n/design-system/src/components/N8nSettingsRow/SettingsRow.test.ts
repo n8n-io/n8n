@@ -134,6 +134,19 @@ describe('N8nSettingsRow', () => {
 		expect(container.querySelector('[data-test-id="settings-row-divider"]')).toBeInTheDocument();
 	});
 
+	it.each([
+		['clickable', { clickable: true }, true],
+		['hoverable', { hoverable: true }, true],
+		['plain', {}, false],
+	])(
+		'marks a %s row for the group to hide the dividers next to its hover state',
+		(_kind, props, marked) => {
+			const { container } = render(N8nSettingsRow, { props: { title: 'Title', ...props } });
+
+			expect(container.firstElementChild?.hasAttribute('data-hoverable')).toBe(marked);
+		},
+	);
+
 	it('does not render the divider when show-divider is false', () => {
 		const { container } = render(N8nSettingsRow, {
 			props: { title: 'Title', showDivider: false },

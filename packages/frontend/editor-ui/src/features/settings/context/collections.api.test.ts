@@ -3,11 +3,13 @@ import { makeRestApiRequest } from '@n8n/rest-api-client';
 
 import {
 	createCollection,
+	deleteCollection,
 	deleteCollectionFile,
 	fetchCollections,
 	getCollection,
 	listCollectionAgents,
 	listCollectionFiles,
+	updateCollection,
 	uploadCollectionFiles,
 } from './collections.api';
 
@@ -109,6 +111,34 @@ describe('collections.api', () => {
 			context,
 			'GET',
 			'/projects/proj-1/knowledge/collections/c1/agents',
+		);
+	});
+
+	it('sends only the given fields of an update to the route of the collection', async () => {
+		const updated = { id: 'c1', name: 'Support handbook' };
+		vi.mocked(makeRestApiRequest).mockResolvedValue(updated);
+
+		await expect(
+			updateCollection(context, 'proj-1', 'c1', { name: 'Support handbook' }),
+		).resolves.toBe(updated);
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			context,
+			'PATCH',
+			'/projects/proj-1/knowledge/collections/c1',
+			{ name: 'Support handbook' },
+		);
+	});
+
+	it('deletes the collection on the route of the collection, with no body', async () => {
+		vi.mocked(makeRestApiRequest).mockResolvedValue({ success: true });
+
+		await expect(deleteCollection(context, 'proj-1', 'c1')).resolves.toEqual({ success: true });
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			context,
+			'DELETE',
+			'/projects/proj-1/knowledge/collections/c1',
 		);
 	});
 });
