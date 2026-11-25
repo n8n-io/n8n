@@ -388,6 +388,16 @@ describe('dropUnprovenIds with opaque ids', () => {
 		).toEqual({ spreadsheets: [{ id: real, title: 'x' }] });
 	});
 
+	it('drops a cut or an extended copy of a real id', () => {
+		const out = dropUnprovenIds(
+			{ items: [{ id: real.slice(0, 20) }, { id: real.slice(5) }, { id: `${real}x` }] },
+			new Set(),
+			source,
+		);
+
+		expect(out).toEqual({ items: [{}, {}, {}] });
+	});
+
 	it('drops an id that the real data does not show, also in another case', () => {
 		const out = dropUnprovenIds(
 			{ items: [{ id: real.toLowerCase() }, { id: 'madeUpId12345' }, { id: 'abc' }] },

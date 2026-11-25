@@ -93,6 +93,19 @@ export function provenIds(...sources: unknown[]): Set<string> {
 	return found;
 }
 
+const TOKEN_CHAR = /[A-Za-z0-9_-]/;
+
+/** True when the text holds the value as a whole token, not as a part of a longer id. */
+function holdsWholeToken(text: string | undefined, value: string): boolean {
+	if (!text) return false;
+	for (let at = text.indexOf(value); at !== -1; at = text.indexOf(value, at + 1)) {
+		const before = text[at - 1];
+		const after = text[at + value.length];
+		if (!(before && TOKEN_CHAR.test(before)) && !(after && TOKEN_CHAR.test(after))) return true;
+	}
+	return false;
+}
+
 /**
  * Removes the id and data_source_id of a plan that are not a UUID of the real data. A model
  * invents an id when the real result has none, and the gym refuses a bad id. Without an id the
@@ -110,7 +123,7 @@ export function dropUnprovenIds(
 	for (const [k, v] of Object.entries(value)) {
 		const isId = ID_KEYS.has(k) && typeof v === 'string';
 		const realOpaque =
-			k === 'id' && typeof v === 'string' && v.length >= 5 && opaqueSource?.includes(v) === true;
+			k === 'id' && typeof v === 'string' && v.length >= 5 && holdsWholeToken(opaqueSource, v);
 		if (isId && !realOpaque && !(WHOLE_UUID.test(v) && proven.has(squash(v)))) continue;
 		out[k] = dropUnprovenIds(v, proven, opaqueSource);
 	}

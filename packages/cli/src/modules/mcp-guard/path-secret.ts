@@ -10,12 +10,19 @@ export const REDACTED_SECRET = 'guard-redacted';
  */
 export type PathSecretPattern = RegExp;
 
+/** Matches from the start, also for a pattern with the flag `g` or `y`, which keeps `lastIndex` between calls. */
+function execFresh(pattern: PathSecretPattern | undefined, path: string): RegExpExecArray | null {
+	if (!pattern) return null;
+	pattern.lastIndex = 0;
+	return pattern.exec(path);
+}
+
 /** Replaces the secret of a path with `REDACTED_SECRET`. Returns the secret, so the caller can keep it. */
 export function redactPathSecret(
 	url: URL,
 	pattern: PathSecretPattern | undefined,
 ): { url: URL; secret?: string } {
-	const match = pattern?.exec(url.pathname);
+	const match = execFresh(pattern, url.pathname);
 	if (!match || match[2] === REDACTED_SECRET) return { url };
 	const redacted = new URL(url.href);
 	redacted.pathname = `${match[1]}${REDACTED_SECRET}${url.pathname.slice(match[0].length)}`;
@@ -31,7 +38,7 @@ export function fillPathSecret(
 	pattern: PathSecretPattern | undefined,
 	secret: string | undefined,
 ): CapturedRequest {
-	const match = pattern?.exec(req.url.pathname);
+	const match = execFresh(pattern, req.url.pathname);
 	if (!match || match[2] !== REDACTED_SECRET || secret === undefined) return req;
 	const url = new URL(req.url.href);
 	url.pathname = `${match[1]}${secret}${req.url.pathname.slice(match[0].length)}`;

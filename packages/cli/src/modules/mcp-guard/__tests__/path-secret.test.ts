@@ -62,3 +62,20 @@ describe('fillPathSecret', () => {
 		expect(fillPathSecret(request('/v1/x'), undefined, TOKEN).url.pathname).toBe('/v1/x');
 	});
 });
+
+describe('a pattern with the flag g or y', () => {
+	it.each([/^(\/bot)([^/]+)/g, /^(\/bot)([^/]+)/y])(
+		'matches the same on each call: %s',
+		(pattern) => {
+			const first = redactPathSecret(url(`/bot${TOKEN}/send`), pattern);
+			const second = redactPathSecret(url(`/bot${TOKEN}/send`), pattern);
+			const filled = fillPathSecret(request(`/bot${REDACTED_SECRET}/send`), pattern, TOKEN);
+			const filledAgain = fillPathSecret(request(`/bot${REDACTED_SECRET}/send`), pattern, TOKEN);
+
+			expect(first.secret).toBe(TOKEN);
+			expect(second.secret).toBe(TOKEN);
+			expect(filled.url.pathname).toBe(`/bot${TOKEN}/send`);
+			expect(filledAgain.url.pathname).toBe(`/bot${TOKEN}/send`);
+		},
+	);
+});
