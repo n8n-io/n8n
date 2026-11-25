@@ -176,10 +176,10 @@ function trackClient(client: McpClientId | 'any' | 'other', method: ClientMethod
 							scope="global"
 						>
 							<template #project>
-								<strong>{{ share.projectName }}</strong>
+								<strong :class="$style.emphasis">{{ share.projectName }}</strong>
 							</template>
 							<template #owner>
-								<strong>{{ share.projectName }}</strong>
+								<strong :class="$style.emphasis">{{ share.projectName }}</strong>
 							</template>
 						</I18nT>
 						<template v-else>
@@ -405,6 +405,11 @@ function trackClient(client: McpClientId | 'any' | 'other', method: ClientMethod
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
+
+// The base style of `strong` is the medium weight, too close to the regular text to show.
+.emphasis {
+	font-weight: var(--font-weight--bold);
 }
 
 .brandIcon {
