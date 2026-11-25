@@ -415,7 +415,7 @@ export class AgentValidationService {
 			await this.collectChannelIssues(ctx.integrations, findCredential, issues);
 		}
 		await this.collectToolIssues(ctx, findCredential, workflowsByReference, issues, scope);
-		this.collectSkillWorkflowIssues(config, skillWorkflowTools, workflowsByReference, issues);
+		await this.collectSkillWorkflowIssues(config, skillWorkflowTools, workflowsByReference, issues);
 		await this.collectMcpServerIssues(config, findCredential, issues);
 
 		return this.dedupe(withoutIssuesOfLockedEntries(issues));
@@ -435,15 +435,20 @@ export class AgentValidationService {
 		return findSkillWorkflowTools(ctx.config, ctx.skills);
 	}
 
-	private collectSkillWorkflowIssues(
+	private async collectSkillWorkflowIssues(
 		config: AgentJsonConfig,
 		skillWorkflowTools: SkillWorkflowTool[],
 		workflowsByReference: Map<string, WorkflowEntity>,
 		issues: AgentConfigValidationIssue[],
 	) {
 		const attached = directWorkflowIds(config, workflowsByReference);
-		for (const { skillId, tool } of skillWorkflowTools) {
-			if (attached.has(tool.workflowId)) continue;
+		const unattached = skillWorkflowTools.filter(({ tool }) => !attached.has(tool.workflowId));
+		const outsideProjectIds = await this.findWorkflowsOutsideProject(
+			unattached
+				.map(({ tool }) => tool.workflowId)
+				.filter((workflowId) => !workflowsByReference.has(workflowId)),
+		);
+		for (const { skillId, tool } of unattached) {
 			const path = `skills.${skillId}.workflows.${tool.workflowId}`;
 			const capability: AgentConfigValidationIssue['capability'] = {
 				kind: 'tool',
@@ -451,12 +456,24 @@ export class AgentValidationService {
 				toolType: 'workflow',
 			};
 			const workflow = workflowsByReference.get(tool.workflowId);
-			if (!workflow) {
+			if (workflow) {
+				if (!workflow.activeVersionId) {
+					issues.push(issue('incompatible_reference', path, capability, 'not_published'));
+				}
+			} else if (outsideProjectIds.has(tool.workflowId)) {
+				issues.push(issue('incompatible_reference', path, capability, 'not_in_project'));
+			} else {
 				issues.push(issue('missing_reference', path, capability));
-			} else if (!workflow.activeVersionId) {
-				issues.push(issue('incompatible_reference', path, capability, 'not_published'));
 			}
 		}
+	}
+
+	private async findWorkflowsOutsideProject(workflowIds: string[]): Promise<Set<string>> {
+		if (workflowIds.length === 0) return new Set();
+		const workflows = await this.workflowRepository.findByIds(workflowIds, {
+			fields: ['isArchived'],
+		});
+		return new Set(workflows.filter(({ isArchived }) => !isArchived).map(({ id }) => id));
 	}
 
 	private async prefetchReferenceLookups(
