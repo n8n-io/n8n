@@ -1,0 +1,55 @@
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_d5bc51776c6f6d::t_5f21364fe15fda 1987
+  s_d5bc51776c6f6d::t_0b5548b0822eff 244,263,668,699,707-710,892,902,957,977,1139,1144,1184,1229,1255,1301
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionChangeDetails.generated.yml
+  ai_agent 8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
+  ai_agent 8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyPackage.generated.yml
+  ai_agent 8
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_d5bc51776c6f6d::t_e5f6aa5f60271d 14,4874,4905-4924
+  s_d5bc51776c6f6d::t_5f21364fe15fda 101-105,4862-4869,4872-4873,4880-4892,4898-4904,4932-4942,4947-4957,4959-4962
+  s_d5bc51776c6f6d::t_3e56b376efe75a 4750,4844-4861,4870-4871,4875-4879,4893-4897,4925-4931,4943-4946,4958,4963-4965
+packages/cli/src/modules/promotions.ee/apply-preview.service.ts
+  s_d5bc51776c6f6d::t_ea2149f4c3ee0c 98-99
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyPackage.generated.yml
+  ai_agent 8
+packages/@n8n/cli/docs/commands/promotions.md
+  s_d5bc51776c6f6d::t_6dffbdbcd11ed5 50-53,73-75
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionChanges.generated.yml
+  ai_agent 8
+packages/cli/src/modules/n8n-packages/entities/preference/preference.importer.ts
+  s_d5bc51776c6f6d::t_ea2149f4c3ee0c 168
+packages/cli/src/modules/promotions.ee/promotion-preference.service.ts
+  s_d5bc51776c6f6d::t_ea2149f4c3ee0c 4
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getInstanceApplyChanges.generated.yml
+  ai_agent 8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyProjectSelection.generated.yml
+  ai_agent 8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promotePackage.generated.yml
+  ai_agent 8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getInstanceApplyChangeDetails.generated.yml
+  ai_agent 8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
+  ai_agent 8
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_d5bc51776c6f6d::t_0b5548b0822eff 568,583,593,613,626,645,661,675,690,705,719,746,763,781,813,832,845,864
+  s_d5bc51776c6f6d::t_5f21364fe15fda 735,796-800
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "576bdc337d9cc83fdeeb6d60e54a7063ffafa8d7",
+  "prompts": {},
+  "sessions": {
+    "s_d5bc51776c6f6d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a20d41-65de-7b62-b2c0-d680d829e1e5",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

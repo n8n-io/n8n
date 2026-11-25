@@ -1,0 +1,14 @@
+packages/cli/src/modules/agents/agent-test-scenarios.service.ts
+  h_7555c3ee6524cf 39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "33b52bdc6cb4ae5a03135486f0bd9ce98d1e7622",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

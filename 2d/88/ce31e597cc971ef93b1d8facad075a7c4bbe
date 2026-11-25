@@ -1,0 +1,24 @@
+packages/frontend/@n8n/design-system/src/components/N8nChatScrollArea/component-chat-scroll-area.md
+  s_41cb48cfd9b747::t_e9aaaf43a3c3db 120
+packages/frontend/@n8n/design-system/src/components/N8nChatScrollArea/ChatScrollArea.vue
+  s_41cb48cfd9b747::t_53dd645091291a 159,200-201,225-229
+  s_41cb48cfd9b747::t_f74f27e10d3506 230,232,238
+packages/frontend/@n8n/design-system/src/components/N8nChatScrollArea/__snapshots__/ChatScrollArea.test.ts.snap
+  s_41cb48cfd9b747::t_2bc799890eda6a 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2d88ce31e597cc971ef93b1d8facad075a7c4bbe",
+  "prompts": {},
+  "sessions": {
+    "s_41cb48cfd9b747": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b618147d-658a-49d1-bd43-82aec4f2cf4c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

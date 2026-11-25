@@ -1,0 +1,31 @@
+packages/cli/src/modules/mcp-guard/__tests__/seeded-entities.test.ts
+  s_c3fb44d7ad272c::t_5ea71530f587de 1-124
+packages/cli/src/modules/mcp-guard/gym-admin.ts
+  s_c3fb44d7ad272c::t_191f02cbe4fb21 1-98
+packages/cli/src/modules/mcp-guard/mcp-upstream.ts
+  s_c3fb44d7ad272c::t_ec377c6af55baf 1-85
+packages/cli/src/modules/mcp-guard/once-by-key.ts
+  s_c3fb44d7ad272c::t_3a9c26408fde9a 1-20
+packages/cli/src/modules/mcp-guard/plan-template.ts
+  s_c3fb44d7ad272c::t_f3c5972ecafd70 1-217
+packages/cli/src/modules/mcp-guard/router.ts
+  s_c3fb44d7ad272c::t_7d39ba63427bf4 1-164
+packages/cli/src/modules/mcp-guard/seeded-entities.ts
+  s_c3fb44d7ad272c::t_83e79c3593a4ad 1-165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8ef97fb5d023239c70387f47ebb743471c41f880",
+  "prompts": {},
+  "sessions": {
+    "s_c3fb44d7ad272c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20dd5-b561-70c9-800f-e58948d8542a",
+        "model": "gemini-4-neon"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

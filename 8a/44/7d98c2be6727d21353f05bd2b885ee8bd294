@@ -1,0 +1,29 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_f4d26adb514784::t_09a8dbac8bf608 10032-10035
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_f4d26adb514784::t_ad0ea359b6dd6e 7996
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHoldReplay.test.ts
+  s_f4d26adb514784::t_a62ed8f307c831 13-14,109-122,177-182,200,215,221-262,284-287
+packages/frontend/editor-ui/src/features/agents/components/chatMode/AgentHeldActionsTray.vue
+  s_f4d26adb514784::t_e8790c502dd21c 20-21,98-99,105-116,161,213
+packages/frontend/editor-ui/src/features/agents/components/chatMode/AgentRunHeldActionsModal.vue
+  s_f4d26adb514784::t_5f430b248518b5 8,72-77
+packages/frontend/editor-ui/src/features/agents/components/chatMode/heldActions.ts
+  s_f4d26adb514784::t_2952756269a5d7 201-231
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8a447d98c2be6727d21353f05bd2b885ee8bd294",
+  "prompts": {},
+  "sessions": {
+    "s_f4d26adb514784": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20e79-477e-7622-9119-23278d51a45d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

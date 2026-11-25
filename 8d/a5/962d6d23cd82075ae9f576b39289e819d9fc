@@ -1,0 +1,249 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useCanvasPreview.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 1479,1483,1499,1508,1519
+packages/frontend/@n8n/design-system/src/components/N8nTabs/component-tabs.md
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 1-130
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/AssistantAgentPanelThread.vue
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 34,259
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettingsTabs.vue
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 14,78,93,99,115-116,130,132,157,160-186,189-198
+packages/cli/src/workflows/workflow-execution.service.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 139,151,209,215-228
+  s_dfe3f914c8bb46::t_27a1a4b66c5212 229
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.types.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 4,98-99
+packages/frontend/@n8n/design-system/src/components/N8nActionDropdown/ActionDropdown.vue
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 12,23,60,63-64,74-77,142-146,155,158-166,168
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/assistantAnsweredQuestions.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 1-73
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 1307-1308
+packages/@n8n/instance-ai/docs/tools.md
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 113,1527,1531-1548,1559-1560,1563-1564
+packages/quality/testing/playwright/janitor.config.mjs
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 101-103
+packages/workflow/src/extensions/object-extensions.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 30-33
+packages/nodes-base/test/nodes/TriggerHelpers.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 69,338,340-341,354
+packages/modules/code-sandbox/backend/src/__tests__/task-builder.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 1-152
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/agentTimeline.utils.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 494
+packages/cli/test/integration/token-exchange/jti-cleanup.task.integration.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 4-5,8,19,26,45,57-58,85,91-92
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AgentTimeline.vue
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 26,363
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenuItem.vue
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 46,289,496,536
+packages/frontend/editor-ui/src/features/setupPanel/components/FocusSidebarTabs.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 1,133,145,151
+packages/frontend/editor-ui/src/Interface.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 19,881,884-885
+packages/frontend/@n8n/design-system/src/components/N8nTabs/index.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 5,13
+packages/frontend/editor-ui/src/features/ai/instanceAi/useResourceRegistry.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 243
+packages/@n8n/expression-runtime/src/bridge/__tests__/batch-read.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 1-449
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 64-118,229-263,268-270,277-283,286,288-289,291-335
+packages/frontend/editor-ui/src/app/components/ChatEmbedModal.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 33
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/AssistantAgentThreadView.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 838,1077,1079
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/assistantAnsweredQuestions.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 1-40
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 346,357,362,365-366
+packages/nodes-base/nodes/Google/Gmail/GmailTrigger.node.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 360
+packages/quality/testing/playwright/janitor.config.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 360-362
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 9515-9523
+packages/cli/src/modules/token-exchange/database/repositories/__tests__/token-exchange-jti.repository.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 1-125
+packages/@n8n/expression-runtime/src/runtime/transfer-codec.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 9-11,31-34,38-40,43-45
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunData.vue
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 2477
+packages/@n8n/expression-runtime/src/runtime/context.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 14,117,126,133
+packages/@n8n/api-types/src/builder-tool-names.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 107-115,357-380
+  s_dfe3f914c8bb46::t_f3026350e2ad55 381
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectTabs.vue
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 169
+packages/cli/src/modules/token-exchange/services/__tests__/jti-cleanup.task.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 37
+packages/@n8n/instance-ai/src/tools/tool-ids.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 3,201,214
+packages/quality/efficiency/microbenchmarks/benchmarks/expression-engine/fixtures/data.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 138-159
+packages/@n8n/instance-ai/src/stream/__tests__/map-chunk.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 670-671,702-703
+packages/@n8n/expression-runtime/src/extensions/object-extensions.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 24-27
+packages/cli/src/workflows/__tests__/workflow-execution.service.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 437,443,447-458,462,467-501,503
+  s_dfe3f914c8bb46::t_3e848fdb57b5dd 502,504
+.github/workflows/util-refresh-starter-scaffold.yml
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 56-57,60
+packages/cli/src/modules/instance-ai/__tests__/internal-messages.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 1259,1262
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/canvasPreview.utils.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 1612-1615,1619-1623,1629,1641-1642,1652-1653
+packages/@n8n/expression-runtime/src/runtime/__tests__/context.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 27,40,57,71,124,145,159,186
+packages/cli/src/modules/apps/bindings/__tests__/app-workflow.adapter.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 418-430
+packages/cli/src/workflows/triggers/__tests__/trigger-execution-context.factory.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 1192,1225,1230-1246,1500,1733
+packages/workflow/src/interfaces.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 1630-1631
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantAgentThreadView.vue
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 120,306
+packages/frontend/@n8n/design-system/src/components/N8nIconPicker/IconPicker.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 100-108,137,161,181,295,299,324,426,437,486,598,630,673
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.stories.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 3,6-7,12-31,42-48,50-54,56-57,59-85,88-92,95-124,126-158,161-195,197,199-204,207-302,306-310,312-313,315-317,320-330,334,336-337,339-341,344-354,358,360-364,366-367,370-378,382
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.vue
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 3-12,19,22-23,29-30,33-44,47-50,54-56,58-60,63-107,109,112-113,116-170,174,185,194-201,207-220,225,229-230,251-256,258-268,270-283,285-313,315-319,323-352,355-361,365-375,377-384,388,390,392-401,407,412-413,420-422,424-429,434-439,442-451,453-456,458,461-462,465-472,475-476,479-483,485,487-501,503-504,511-514,516-517,521,523,525,531-536,539-542,544-551,553-555,557-559,562-563,565-570,573-583,586-593,595-607,610-616,618-623,627-637,642,649-651,656-662
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 227
+packages/nodes-base/nodes/Google/Gmail/test/GmailTrigger.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 146-170
+packages/quality/testing/playwright/pages/components/ProjectTabsComponent.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 13,20,27,34
+packages/frontend/@n8n/eslint-plugin-design-system/src/rules/no-direct-component-imports.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 64,323-337,380-384,421-432
+packages/cli/src/modules/instance-ai/internal-messages.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 2,190,194
+packages/@n8n/instance-ai/skills/app-builder/SKILL.md
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 4,14-16,44,50,58-59,64,67,69-70,94,98,103-104,131-132,134,143-145,156-158,202-226
+  s_dfe3f914c8bb46::t_82949c2ee51451 227
+packages/cli/test/integration/token-exchange/token-exchange-jti.repository.integration.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 4,7,15,23-25,45,57-58,66,72,74,80,82,89-90,98-99,109,116-117,119,122,128-129,131,134-135,140-142,144,147,155,179,196,213,227
+packages/quality/policy/code-health/src/index.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 77
+packages/quality/testing/playwright/pages/SidebarPage.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 56-57,61
+packages/@n8n/expression-runtime/src/bridge/host-functions.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 15-18,114
+packages/@n8n/expression-runtime/src/bridge/small-json-data.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 1-158
+packages/@n8n/expression-runtime/src/runtime/lazy-proxy.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 2-10,25-200,311-312,321,323-324,330,334-337,340,344-345,350-356,364-369,376-381,385-390,402-403,409-425,432-460,466-467,471-478,481,495-516,529-532,534,551-553,590,626,628,635-637,644-648,651-661
+packages/cli/src/modules/token-exchange/database/repositories/token-exchange-jti.repository.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 2,4,9-14,16-18,23-28,30,44-45,49,58,62,93-94,98,111,115
+packages/@n8n/expression-runtime/src/bridge/batch-read.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 1-296
+packages/frontend/@n8n/design-system/src/components/N8nTabs/Tabs.types.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 5,14-17,19-27,29-33,37,40-55
+packages/frontend/@n8n/design-system/src/types/tabs.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 3,8,10-13,15-24,27-30,33-36,39-42
+.github/WORKFLOWS.md
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 264-269
+packages/@n8n/expression-runtime/src/bridge/__tests__/quickjs-bridge.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 275,278-279,359-421
+  s_dfe3f914c8bb46::t_58b218d0a4abfd 422
+packages/core/src/execution-engine/node-execution-context/poll-context.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 53
+packages/@n8n/expression-runtime/ARCHITECTURE.md
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 151-178
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettingsHeader.vue
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 79
+packages/@n8n/instance-ai/src/tools/index.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 4-5,291-296
+packages/frontend/editor-ui/src/features/roles/RolesView.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 89-91,95-100
+packages/frontend/editor-ui/src/features/settings/apiKeys/views/SettingsApiView.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 586,603
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AnsweredQuestions.vue
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 12-14,16,28-29
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRules.vue
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 256
+packages/cli/src/workflows/triggers/trigger-execution-context.factory.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 350-351,362-367,395-396,449,497-501,516
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolsConnectionModal.vue
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 516,658-660
+packages/modules/code-sandbox/backend/package.json
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 35,39-40
+packages/@n8n/expression-runtime/src/bridge/__tests__/small-json-data.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 1-173
+packages/quality/efficiency/microbenchmarks/benchmarks/expression-engine/fixtures/pattern-benchmarks.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 12,19,94-128
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiMessage.vue
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 22,314
+packages/workflow/test/ExpressionExtensions/object-extensions.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 35-44
+packages/quality/efficiency/microbenchmarks/benchmarks/expression-engine/fixtures/expressions.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 40-51,59
+packages/cli/test/integration/executions/poll-refusal-cursor.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 1-110
+.github/workflows/util-notify-merge-queue-removal.yml
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 3,5
+packages/@n8n/instance-ai/src/tools/apps/__tests__/apps.tool.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 4-5,10,18,98,101-105,131,140,147,162,173,189,239,258,346,368,382,401,439,461,469,477,487,499,508,518,531,553,562,565,586,618,634,645,655,675,695,702,708-709,714-722
+  s_dfe3f914c8bb46::t_dd2629bcd11523 723
+packages/frontend/editor-ui/src/features/ai/instanceAi/canvasPreview.utils.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 477-481,489,491,501
+packages/cli/src/workflows/triggers/poll-cursor.service.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 182
+packages/@n8n/expression-runtime/src/runtime/__tests__/lazy-proxy.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 2-8,27-33,38,678-1209
+  s_dfe3f914c8bb46::t_16f6f2352b1bd8 1210
+packages/@n8n/expression-runtime/src/bridge/isolated-vm-bridge.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 8,10-11,347-375,406-408,450,456,475,500
+packages/@n8n/expression-runtime/src/bridge/__tests__/bridge-item-data.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 1-433
+packages/cli/src/modules/token-exchange/services/jti-store.service.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 36
+packages/modules/code-sandbox/backend/src/task-builder.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 1-127
+packages/modules/inbox/frontend/src/reviews/components/WorkflowReviewDetailTabs.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 132,136
+packages/cli/src/modules/token-exchange/services/jti-cleanup.task.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 37
+packages/@n8n/expression-runtime/src/runtime/__tests__/transfer-codec.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 279-290
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 47-48
+packages/frontend/@n8n/design-system/src/components/N8nActionDropdown/ActionDropdown.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 94-175
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useResourceRegistry.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 1050-1051,1056-1057,1085-1086
+packages/@n8n/expression-runtime/src/runtime/intrinsics.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 11
+packages/frontend/@n8n/design-system/src/components/N8nTabs/reka-ui.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 1,5
+packages/@n8n/expression-runtime/src/extensions/__tests__/object-extensions.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 12-21
+packages/@n8n/instance-ai/src/skills/__tests__/skills.test.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 164-178,182
+packages/@n8n/instance-ai/src/tools/apps/apps.tool.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 14-15,40-51,54-55,58-81,89-92,96-109,111-114,197,300-318,330-332,376-397
+packages/frontend/@n8n/eslint-plugin-design-system/src/rules/wrapped-component-bans.ts
+  s_dfe3f914c8bb46::t_1a239a9f9fe849 133,182-188
+  s_dfe3f914c8bb46::t_832fe0d6681398 189
+packages/@n8n/expression-runtime/src/bridge/quickjs-bridge.ts
+  s_dfe3f914c8bb46::t_8773fa6fe4c698 9,44-46,411-415,457-464,1223-1225,1395,1400-1403,1435-1453,1506-1507,1509,1529,1540-1545,1549,1585-1586,1599,1603
+pnpm-lock.yaml
+  s_dfe3f914c8bb46::t_7ce5c3bb6140ca 7762-7764,7777-7779
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8da5962d6d23cd82075ae9f576b39289e819d9fc",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
