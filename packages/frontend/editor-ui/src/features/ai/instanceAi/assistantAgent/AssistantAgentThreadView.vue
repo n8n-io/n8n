@@ -1446,7 +1446,8 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 </style>
 
 <style lang="scss">
-@use '@n8n/design-system/css/mixins/motion';
+// Transitions, not the keyframes of the motion mixins: the mixins file adds all its
+// keyframes to this stylesheet, and a transition reverses from where it is.
 
 // The preview opens from the right edge and pushes the chat aside.
 .assistant-agent-preview-panel-enter-active,
@@ -1457,6 +1458,8 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 		min-width var(--assistant-agent-panel-transition-duration)
 			var(--assistant-agent-panel-transition-easing),
 		opacity var(--assistant-agent-panel-transition-duration)
+			var(--assistant-agent-panel-transition-easing),
+		transform var(--assistant-agent-panel-transition-duration)
 			var(--assistant-agent-panel-transition-easing);
 	overflow: hidden;
 
@@ -1466,45 +1469,34 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 	}
 }
 
-.assistant-agent-preview-panel-enter-active {
-	--animation--fade-in-right--duration: var(--assistant-agent-panel-transition-duration);
-	--animation--fade-in-right--easing: var(--assistant-agent-panel-transition-easing);
-	--animation--fade-in-right--translate: var(--spacing--sm);
-
-	@include motion.fade-in-right;
-}
-
-.assistant-agent-preview-panel-leave-active {
-	--animation--fade-out-right--duration: var(--assistant-agent-panel-transition-duration);
-	--animation--fade-out-right--easing: var(--assistant-agent-panel-transition-easing);
-	--animation--fade-out-right--translate: var(--spacing--sm);
-
-	@include motion.fade-out-right;
-}
-
 .assistant-agent-preview-panel-enter-from,
 .assistant-agent-preview-panel-leave-to {
 	width: 0 !important;
 	min-width: 0 !important;
 	opacity: 0;
+	transform: translateX(var(--spacing--sm));
+
+	@media (prefers-reduced-motion: reduce) {
+		transform: none;
+	}
 }
 
 // The artifacts panel slides in from the right edge and leaves the same way.
-.assistant-agent-artifacts-panel-slide-enter-active {
-	--animation--fade-in-right--duration: var(--assistant-agent-panel-transition-duration);
-	--animation--fade-in-right--easing: var(--easing--ease-out);
-	--animation--fade-in-right--translate: 100%;
-
-	@include motion.fade-in-right;
+.assistant-agent-artifacts-panel-slide-enter-active,
+.assistant-agent-artifacts-panel-slide-leave-active {
+	transition:
+		opacity var(--assistant-agent-panel-transition-duration) var(--easing--ease-out),
+		transform var(--assistant-agent-panel-transition-duration) var(--easing--ease-out);
 }
 
 .assistant-agent-artifacts-panel-slide-leave-active {
-	--animation--fade-out-right--duration: var(--assistant-agent-panel-transition-duration);
-	--animation--fade-out-right--easing: var(--easing--ease-out);
-	--animation--fade-out-right--translate: 100%;
-
-	@include motion.fade-out-right;
 	pointer-events: none;
+}
+
+.assistant-agent-artifacts-panel-slide-enter-from,
+.assistant-agent-artifacts-panel-slide-leave-to {
+	opacity: 0;
+	transform: translateX(100%);
 }
 
 // Over the chat, the panel opens from the list button above its top right corner, like a
@@ -1558,7 +1550,7 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 
 	.assistant-agent-artifacts-panel-slide-enter-from,
 	.assistant-agent-artifacts-panel-slide-leave-to {
-		opacity: 0;
+		transform: none;
 	}
 }
 </style>
