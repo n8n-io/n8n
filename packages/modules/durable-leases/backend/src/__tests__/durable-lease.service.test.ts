@@ -55,9 +55,15 @@ describe('DurableLeaseService', () => {
 		expect(() => build({ renewSeconds: 6 })).toThrow(UserError);
 	});
 
-	it('states the largest allowed renewal in whole seconds', () => {
+	it('states the largest allowed renewal in whole seconds and the settings it comes from', () => {
 		expect(() => build({ leaseSeconds: 12, renewSeconds: 3, marginSeconds: 5 })).toThrow(
-			'renewal must be at most the lease minus the margin, divided by three (2 seconds), got 3',
+			'N8N_LEASES_RENEW_SECONDS must be at most 2 seconds, which is N8N_LEASES_LEASE_SECONDS (12) minus N8N_LEASES_MARGIN_SECONDS (5), divided by three, got 3',
+		);
+	});
+
+	it('names the margin when it leaves no time to renew', () => {
+		expect(() => build({ leaseSeconds: 8, renewSeconds: 1, marginSeconds: 10 })).toThrow(
+			'N8N_LEASES_MARGIN_SECONDS must be at most 5 seconds, so that N8N_LEASES_LEASE_SECONDS (8) leaves time to renew, got 10',
 		);
 	});
 });
