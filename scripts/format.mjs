@@ -10,6 +10,8 @@ const ROOT_DIRS_TO_SKIP = new Set(['packages']);
 const EXTENSIONS_TO_FORMAT_WITH_PRETTIER = ['.yml'];
 const EXTENSIONS_TO_FORMAT_WITH_BIOME = ['.js', '.json', '.ts'];
 const GIT_LS_FILES_MAX_BUFFER = 50 * 1024 * 1024;
+// Conservative cross-platform argv budget (below Windows CreateProcess's 32,767-char limit and POSIX ARG_MAX).
+const DEFAULT_MAX_ARG_CHARS = 24_000;
 
 const isPrettierTarget = (filePath) =>
 	EXTENSIONS_TO_FORMAT_WITH_PRETTIER.some((ext) => filePath.endsWith(ext));
@@ -96,53 +98,127 @@ export const collectFormatTargets = (rootDir = process.cwd()) => {
 	return { prettierTargets, biomeTargets };
 };
 
-const resolveBin = (rootDir, name) =>
-	path.resolve(
-		rootDir,
-		'node_modules',
-		'.bin',
-		process.platform === 'win32' ? `${name}.cmd` : name,
-	);
+const estimateArgLength = (arg) => Math.max(Buffer.byteLength(arg, 'utf8'), arg.length) + 3;
 
-const assertBinExists = (binPath) => {
-	if (!fs.existsSync(binPath)) {
+export const chunkTargets = (
+	targets,
+	{ baseArgs = [], maxArgChars = DEFAULT_MAX_ARG_CHARS } = {},
+) => {
+	if (targets.length === 0) return [];
+
+	const baseLength = baseArgs.reduce((sum, arg) => sum + estimateArgLength(arg), 0);
+	const chunks = [];
+	let currentChunk = [];
+	let currentLength = baseLength;
+
+	for (const target of targets) {
+		const targetLength = estimateArgLength(target);
+		if (currentChunk.length > 0 && currentLength + targetLength > maxArgChars) {
+			chunks.push(currentChunk);
+			currentChunk = [target];
+			currentLength = baseLength + targetLength;
+		} else {
+			currentChunk.push(target);
+			currentLength += targetLength;
+		}
+	}
+
+	if (currentChunk.length > 0) {
+		chunks.push(currentChunk);
+	}
+
+	return chunks;
+};
+
+const resolveFormatterEntryPoint = (rootDir, packageName, binName) => {
+	const packageDir = path.resolve(rootDir, 'node_modules', ...packageName.split('/'));
+	const packageJsonPath = path.join(packageDir, 'package.json');
+	if (!fs.existsSync(packageJsonPath)) {
 		throw new Error(
-			[`${path.basename(binPath)} not found at path: ${binPath}`, 'Please run `pnpm i` first'].join(
-				'\n',
-			),
+			[`${binName} not found at path: ${packageJsonPath}`, 'Please run `pnpm i` first'].join('\n'),
 		);
+	}
+
+	const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+	const binEntry =
+		typeof packageJson.bin === 'string' ? packageJson.bin : packageJson.bin?.[binName];
+	if (typeof binEntry !== 'string' || binEntry.length === 0) {
+		throw new Error(
+			[
+				`${binName} entry point not defined in: ${packageJsonPath}`,
+				'Please run `pnpm i` first',
+			].join('\n'),
+		);
+	}
+
+	const entryPoint = path.resolve(packageDir, binEntry);
+	if (!fs.existsSync(entryPoint)) {
+		throw new Error(
+			[`${binName} not found at path: ${entryPoint}`, 'Please run `pnpm i` first'].join('\n'),
+		);
+	}
+
+	return entryPoint;
+};
+
+const runInBatches = (run, command, baseArgs, targets, execOptions, maxArgChars) => {
+	const batches = chunkTargets(targets, {
+		baseArgs: [command, ...baseArgs],
+		maxArgChars,
+	});
+
+	for (const batch of batches) {
+		run(command, [...baseArgs, ...batch], execOptions);
 	}
 };
 
-export const formatRootFiles = ({ rootDir = process.cwd(), run = execFileSync } = {}) => {
+export const formatRootFiles = ({
+	rootDir = process.cwd(),
+	run = execFileSync,
+	maxArgChars = DEFAULT_MAX_ARG_CHARS,
+} = {}) => {
 	const resolvedRoot = path.resolve(rootDir);
 	const { prettierTargets, biomeTargets } = collectFormatTargets(resolvedRoot);
 
+	// Invoke Node CLI entry points directly without a shell so paths with spaces work on Windows too.
 	const execOptions = {
 		cwd: resolvedRoot,
 		stdio: 'inherit',
-		...(process.platform === 'win32' ? { shell: true } : {}),
 	};
 
 	if (prettierTargets.length > 0) {
-		const prettier = resolveBin(resolvedRoot, 'prettier');
-		assertBinExists(prettier);
+		const prettierEntryPoint = resolveFormatterEntryPoint(resolvedRoot, 'prettier', 'prettier');
 		const prettierConfig = path.resolve(resolvedRoot, '.prettierrc.js');
 		const ignore = path.resolve(resolvedRoot, '.prettierignore');
 
-		run(
-			prettier,
-			['--config', prettierConfig, '--ignore-path', ignore, '--write', ...prettierTargets],
+		runInBatches(
+			run,
+			process.execPath,
+			[prettierEntryPoint, '--config', prettierConfig, '--ignore-path', ignore, '--write'],
+			prettierTargets,
 			execOptions,
+			maxArgChars,
 		);
 	}
 
 	if (biomeTargets.length > 0) {
-		const biome = resolveBin(resolvedRoot, 'biome');
-		assertBinExists(biome);
+		const biomeEntryPoint = resolveFormatterEntryPoint(resolvedRoot, '@biomejs/biome', 'biome');
 		const biomeConfig = path.resolve(resolvedRoot, 'biome.jsonc');
 
-		run(biome, ['format', '--write', `--config-path=${biomeConfig}`, ...biomeTargets], execOptions);
+		runInBatches(
+			run,
+			process.execPath,
+			[
+				biomeEntryPoint,
+				'format',
+				'--write',
+				'--no-errors-on-unmatched',
+				`--config-path=${biomeConfig}`,
+			],
+			biomeTargets,
+			execOptions,
+			maxArgChars,
+		);
 	}
 
 	return { prettierTargets, biomeTargets };

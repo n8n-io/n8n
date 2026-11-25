@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 import { afterEach, describe, it } from 'node:test';
 
-import { collectFormatTargets, formatRootFiles } from './format.mjs';
+import { chunkTargets, collectFormatTargets, formatRootFiles } from './format.mjs';
 
 const temporaryDirectories = [];
 
@@ -15,8 +15,8 @@ afterEach(() => {
 	}
 });
 
-function createFixture({ git = true, files = {} } = {}) {
-	const dir = mkdtempSync(join(tmpdir(), 'format-script-test-'));
+function createFixture({ git = true, files = {}, prefix = 'format-script-test-' } = {}) {
+	const dir = mkdtempSync(join(tmpdir(), prefix));
 	temporaryDirectories.push(dir);
 
 	if (git) {
@@ -36,12 +36,26 @@ function toRelativeSorted(rootDir, paths) {
 	return paths.map((entry) => relative(rootDir, entry).replaceAll('\\', '/')).sort();
 }
 
-function createFakeBinaries(rootDir, names = ['prettier', 'biome']) {
-	const suffix = process.platform === 'win32' ? '.cmd' : '';
+function createFakeFormatters(rootDir, names = ['prettier', 'biome']) {
+	const definitions = {
+		prettier: {
+			packageName: 'prettier',
+			packageJson: { name: 'prettier', bin: './bin/prettier.cjs' },
+			entryPoint: 'bin/prettier.cjs',
+		},
+		biome: {
+			packageName: '@biomejs/biome',
+			packageJson: { name: '@biomejs/biome', bin: { biome: 'bin/biome' } },
+			entryPoint: 'bin/biome',
+		},
+	};
+
 	for (const name of names) {
-		const binPath = join(rootDir, 'node_modules', '.bin', `${name}${suffix}`);
-		mkdirSync(dirname(binPath), { recursive: true });
-		writeFileSync(binPath, '');
+		const def = definitions[name];
+		const packageDir = join(rootDir, 'node_modules', ...def.packageName.split('/'));
+		mkdirSync(dirname(join(packageDir, def.entryPoint)), { recursive: true });
+		writeFileSync(join(packageDir, 'package.json'), JSON.stringify(def.packageJson));
+		writeFileSync(join(packageDir, def.entryPoint), '');
 	}
 }
 
@@ -153,29 +167,71 @@ describe('collectFormatTargets', () => {
 	});
 });
 
+describe('chunkTargets', () => {
+	it('returns an empty list when given no targets', () => {
+		assert.deepEqual(chunkTargets([]), []);
+	});
+
+	it('keeps targets in one batch when they fit within maxArgChars', () => {
+		assert.deepEqual(chunkTargets(['a.json', 'b.json', 'c.json'], { maxArgChars: 100 }), [
+			['a.json', 'b.json', 'c.json'],
+		]);
+	});
+
+	it('splits targets into bounded batches while accounting for baseArgs', () => {
+		const targets = ['alpha.json', 'bravo.json', 'charlie.json', 'delta.json'];
+		// baseArgs overhead: ('node'.length + 3) + ('--write'.length + 3) = 7 + 10 = 17
+		// Each target is 13..15 chars including +3 overhead, so maxArgChars = 46 fits at most 2 targets.
+		const batches = chunkTargets(targets, {
+			baseArgs: ['node', '--write'],
+			maxArgChars: 46,
+		});
+
+		assert.equal(batches.length, 2);
+		assert.deepEqual(batches, [
+			['alpha.json', 'bravo.json'],
+			['charlie.json', 'delta.json'],
+		]);
+	});
+
+	it('places an oversized single target in its own batch without dropping it', () => {
+		const longTarget = `${'a'.repeat(80)}.json`;
+		const batches = chunkTargets(['short.json', longTarget, 'tail.json'], {
+			baseArgs: ['node'],
+			maxArgChars: 30,
+		});
+
+		assert.deepEqual(batches, [['short.json'], [longTarget], ['tail.json']]);
+	});
+});
+
 describe('formatRootFiles', () => {
-	it('invokes prettier and biome with argument arrays when both target lists are non-empty', () => {
+	it('invokes formatter entry points via process.execPath without a shell even when paths contain spaces', () => {
 		const dir = createFixture({
 			git: true,
+			prefix: 'format script test ',
 			files: {
 				'turbo.json': '{}\n',
 				'.github/workflows/ci.yml': 'name: CI\n',
 				'dir with spaces/config.json': '{}\n',
 			},
 		});
-		createFakeBinaries(dir);
+		createFakeFormatters(dir);
 
 		const calls = [];
 		formatRootFiles({
 			rootDir: dir,
-			run: (bin, args) => {
-				calls.push({ bin, args });
+			run: (bin, args, options) => {
+				calls.push({ bin, args, options });
 			},
 		});
 
 		assert.equal(calls.length, 2);
-		assert.match(calls[0].bin, /prettier(\.cmd)?$/);
+		assert.equal(calls[0].bin, process.execPath);
+		assert.equal(calls[0].options.shell, undefined);
+		assert.equal(calls[0].options.cwd, resolve(dir));
 		assert.deepEqual(calls[0].args, [
+			resolve(dir, 'node_modules/prettier/bin/prettier.cjs'),
 			'--config',
 			resolve(dir, '.prettierrc.js'),
 			'--ignore-path',
@@ -184,15 +240,54 @@ describe('formatRootFiles', () => {
 			resolve(dir, '.github/workflows/ci.yml'),
 		]);
 
-		assert.match(calls[1].bin, /biome(\.cmd)?$/);
-		assert.deepEqual(calls[1].args.slice(0, 3), [
+		assert.equal(calls[1].bin, process.execPath);
+		assert.equal(calls[1].options.shell, undefined);
+		assert.equal(calls[1].options.cwd, resolve(dir));
+		assert.deepEqual(calls[1].args.slice(0, 5), [
+			resolve(dir, 'node_modules/@biomejs/biome/bin/biome'),
 			'format',
 			'--write',
+			'--no-errors-on-unmatched',
 			`--config-path=${resolve(dir, 'biome.jsonc')}`,
 		]);
 		assert.deepEqual(
-			calls[1].args.slice(3).sort(),
+			calls[1].args.slice(5).sort(),
 			[resolve(dir, 'dir with spaces/config.json'), resolve(dir, 'turbo.json')].sort(),
+		);
+	});
+
+	it('invokes formatters in multiple bounded batches when targets exceed maxArgChars', () => {
+		const files = {};
+		for (let i = 0; i < 6; i += 1) {
+			files[`configs/file-${i}.yml`] = 'a: 1\n';
+			files[`scripts/file-${i}.json`] = '{}\n';
+		}
+		const dir = createFixture({ git: true, files });
+		createFakeFormatters(dir);
+
+		const calls = [];
+		const result = formatRootFiles({
+			rootDir: dir,
+			maxArgChars: 1,
+			run: (bin, args, options) => {
+				calls.push({ bin, args, options });
+			},
+		});
+
+		const prettierEntry = resolve(dir, 'node_modules/prettier/bin/prettier.cjs');
+		const biomeEntry = resolve(dir, 'node_modules/@biomejs/biome/bin/biome');
+		const prettierCalls = calls.filter((call) => call.args[0] === prettierEntry);
+		const biomeCalls = calls.filter((call) => call.args[0] === biomeEntry);
+
+		assert.equal(prettierCalls.length, 6);
+		assert.equal(biomeCalls.length, 6);
+		assert.deepEqual(
+			prettierCalls.flatMap((call) => call.args.slice(6)).sort(),
+			result.prettierTargets.slice().sort(),
+		);
+		assert.deepEqual(
+			biomeCalls.flatMap((call) => call.args.slice(5)).sort(),
+			result.biomeTargets.slice().sort(),
 		);
 	});
 
@@ -223,7 +318,7 @@ describe('formatRootFiles', () => {
 				'turbo.json': '{}\n',
 			},
 		});
-		createFakeBinaries(dir, ['biome']);
+		createFakeFormatters(dir, ['biome']);
 
 		const calls = [];
 		formatRootFiles({
@@ -234,10 +329,11 @@ describe('formatRootFiles', () => {
 		});
 
 		assert.equal(calls.length, 1);
-		assert.match(calls[0].bin, /biome(\.cmd)?$/);
+		assert.equal(calls[0].bin, process.execPath);
+		assert.equal(calls[0].args[0], resolve(dir, 'node_modules/@biomejs/biome/bin/biome'));
 	});
 
-	it('throws a clear error when a required formatter binary is missing', () => {
+	it('throws a clear error when a required formatter package is missing', () => {
 		const dir = createFixture({
 			git: true,
 			files: {
@@ -251,7 +347,29 @@ describe('formatRootFiles', () => {
 					rootDir: dir,
 					run: () => {},
 				}),
-			/biome(\.cmd)? not found at path: .*Please run `pnpm i` first/s,
+			/biome not found at path: .*Please run `pnpm i` first/s,
+		);
+	});
+
+	it('throws a clear error when a formatter entry point file is missing', () => {
+		const dir = createFixture({
+			git: true,
+			files: {
+				'turbo.json': '{}\n',
+				'node_modules/@biomejs/biome/package.json': JSON.stringify({
+					name: '@biomejs/biome',
+					bin: { biome: 'bin/biome' },
+				}),
+			},
+		});
+
+		assert.throws(
+			() =>
+				formatRootFiles({
+					rootDir: dir,
+					run: () => {},
+				}),
+			/biome not found at path: .*bin[/\\]biome.*Please run `pnpm i` first/s,
 		);
 	});
 });
