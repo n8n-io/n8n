@@ -31,6 +31,7 @@ import {
 	ASSISTANT_AGENT_THREAD_ID,
 } from '../assistantAgent/assistantAgentThreads';
 import { useAssistantAgentThreadsStore } from '../assistantAgent/assistantAgentThreads.store';
+import { assistantAnsweredQuestionsExtension } from '@/features/ai/instanceAi/assistantAgent/assistantAnsweredQuestions';
 import { assistantConfirmationExtension } from '../assistantAgent/assistantConfirmation';
 import {
 	ASSISTANT_PREFERENCE_CARDS,
@@ -38,6 +39,7 @@ import {
 	useAssistantPreferenceCards,
 } from '../assistantAgent/assistantPreferenceCards';
 import { assistantSharedFilesExtension } from '../assistantAgent/assistantSharedFiles';
+import { provideAssistantArtifactCards } from '@/features/ai/instanceAi/assistantAgent/assistantArtifactCards';
 import { useAssistantAgentFeedback } from '../assistantAgent/useAssistantAgentFeedback';
 import {
 	useAssistantAgentMessageTelemetry,
@@ -255,8 +257,10 @@ watch(
 
 const interactionExtensions = [
 	assistantConfirmationExtension,
+	assistantAnsweredQuestionsExtension,
 	assistantPreferenceCardExtension,
 	assistantSharedFilesExtension,
+	provideAssistantArtifactCards(thread),
 ];
 
 provide(
@@ -336,7 +340,7 @@ defineExpose({
 				@rate="feedback.rate(executionId, $event)"
 			/>
 		</template>
-		<template v-if="handoffChip" #composer-attachments="{ chips, removeChip }">
+		<template v-if="handoffChip" #composer-attachments>
 			<InstanceAiResourceChip
 				:label="handoffChip.label"
 				:icon="handoffChip.icon"
@@ -345,20 +349,6 @@ defineExpose({
 				remove-test-id="instance-ai-handoff-context-chip-dismiss"
 				removable
 				@remove="dismissHandoff"
-			/>
-			<!-- The slot replaces the default chips, so render them too. -->
-			<InstanceAiResourceChip
-				v-for="chip in chips"
-				:key="chip.id"
-				:label="chip.label"
-				:icon="chip.icon"
-				removable
-				:remove-label="
-					i18n.baseText('agents.chat.composer.removeChip', { interpolate: { label: chip.label } })
-				"
-				test-id="agent-chat-composer-chip"
-				remove-test-id="agent-chat-composer-chip-remove"
-				@remove="removeChip(chip.id)"
 			/>
 		</template>
 		<template v-if="slots['composer-start']" #composer-start>

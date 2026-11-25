@@ -1,6 +1,10 @@
 import { createComponentRenderer } from '@/__tests__/render';
 
 import AgentSkillFileNav from './AgentSkillFileNav.vue';
+import {
+	countsByFile,
+	diffSkills,
+} from '@/features/agents/components/skillVersions/skillVersionDiff';
 
 const renderComponent = createComponentRenderer(AgentSkillFileNav);
 
@@ -55,5 +59,28 @@ describe('AgentSkillFileNav', () => {
 		expect(
 			byTestId(container, 'agent-skill-reference-nav-item-references-same-md-added'),
 		).toBeNull();
+	});
+
+	it('marks changed binary files in the file list without a line count', () => {
+		const path = 'assets/logo.png';
+		const skill = {
+			name: 'Tone',
+			description: 'Writing style',
+			instructions: 'Be brief.',
+			references: [{ path, content: 'AP8=', isBinary: true as const }],
+		};
+		const previous = { ...skill, references: [{ ...skill.references[0], content: 'AAE=' }] };
+		const view = renderComponent({
+			props: {
+				skill,
+				selectedPath: path,
+				readOnly: true,
+				changeCounts: countsByFile(diffSkills(previous, skill)),
+			},
+		});
+
+		const item = view.getByRole('button', { name: 'assets/logo.png, Modified file' });
+		expect(byTestId(item, 'agent-skill-reference-nav-item-assets-logo-png-modified')).toBeVisible();
+		expect(byTestId(item, 'skill-diff-count')).toBeNull();
 	});
 });

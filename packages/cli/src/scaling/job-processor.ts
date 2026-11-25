@@ -544,6 +544,7 @@ export class JobProcessor {
 				mcpType: 'trigger',
 				sessionId: job.data.mcpSessionId,
 				messageId: job.data.mcpMessageId ?? '',
+				toolName,
 				response: toolResult, // Actual tool result
 				workerId: this.instanceSettings.hostId,
 			};

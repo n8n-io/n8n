@@ -4143,6 +4143,49 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
+		it.each([
+			[true, 'n8n.audit.workflow-reviews.project-approval-required.enabled'],
+			[false, 'n8n.audit.workflow-reviews.project-approval-required.disabled'],
+		])(
+			'should log the project approval requirement set to %s as `%s`',
+			(requiredByProject, eventName) => {
+				eventService.emit('project-workflow-review-settings-updated', {
+					user: reviewer,
+					projectId: 'project-1',
+					requiredByProject,
+				});
+
+				expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+					eventName,
+					payload: { ...redactedReviewer, projectId: 'project-1' },
+				});
+			},
+		);
+
+		it.each([
+			[
+				'Required',
+				true,
+				'n8n.audit.workflow-reviews.project-approval-required-by-instance.enabled',
+			],
+			[
+				'Not required',
+				false,
+				'n8n.audit.workflow-reviews.project-approval-required-by-instance.disabled',
+			],
+		])('should log %s for a project as `%s`', (_option, requiredByInstance, eventName) => {
+			eventService.emit('project-workflow-review-required-by-instance-updated', {
+				user: reviewer,
+				projectId: 'project-1',
+				requiredByInstance,
+			});
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName,
+				payload: { ...redactedReviewer, projectId: 'project-1' },
+			});
+		});
+
 		it('should log `workflow-review.closed-by-user` with the closer and the reviewed version', () => {
 			eventService.emit('workflow-review-closed-by-user', {
 				user: reviewer,
@@ -4278,6 +4321,37 @@ describe('LogStreamingEventRelay', () => {
 					globalRole: 'global:admin',
 					before: { globalReadLimit: 1200 },
 					after: { globalReadLimit: 100 },
+				},
+			});
+		});
+	});
+
+	describe('promotion settings events', () => {
+		it('should log `promotion-settings.updated` with redacted user and the changed settings', () => {
+			const event: RelayEventMap['promotion-settings-updated'] = {
+				user: {
+					id: 'user405',
+					email: 'admin8@example.com',
+					firstName: 'Eighth',
+					lastName: 'Admin',
+					role: { slug: 'global:admin' },
+				},
+				before: { whoCanApply: 'instanceAdmins' },
+				after: { whoCanApply: 'projectAdmins' },
+			};
+
+			eventService.emit('promotion-settings-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.promotion-settings.updated',
+				payload: {
+					userId: 'user405',
+					_email: 'admin8@example.com',
+					_firstName: 'Eighth',
+					_lastName: 'Admin',
+					globalRole: 'global:admin',
+					before: { whoCanApply: 'instanceAdmins' },
+					after: { whoCanApply: 'projectAdmins' },
 				},
 			});
 		});
