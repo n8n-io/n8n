@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  s_b7cbb6623b00ff::t_2a6f788816b077 256
+packages/frontend/editor-ui/src/features/agents/composables/useAgentTriggerRedesignFlag.ts
+  s_b7cbb6623b00ff::t_4e8f51b6039490 13-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6e33f9b159d3591b61d3c5cfd0bb2b251f7a3f5d",
+  "prompts": {},
+  "sessions": {
+    "s_b7cbb6623b00ff": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a2080d-0e47-722a-a742-9a5b35129c70",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

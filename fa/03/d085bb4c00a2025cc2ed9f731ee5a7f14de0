@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentAssistantTestRunCard.test.ts
+  s_f4d26adb514784::t_3a07b4e36c454d 8-9,107-121
+packages/frontend/editor-ui/src/features/agents/assistantTestRun.types.ts
+  s_f4d26adb514784::t_ed06dba5df7110 6-7,11
+packages/frontend/editor-ui/src/features/agents/components/AgentAssistantTestRunCard.vue
+  s_f4d26adb514784::t_e7c2996e74cdf2 6-8,37,40,68,78-79,89-90,92-93
+packages/frontend/editor-ui/src/features/agents/components/AgentToolCallRouteList.vue
+  s_f4d26adb514784::t_4fb222b4c17331 1,10-15,29,46-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fa03d085bb4c00a2025cc2ed9f731ee5a7f14de0",
+  "prompts": {},
+  "sessions": {
+    "s_f4d26adb514784": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20e79-477e-7622-9119-23278d51a45d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+packages/cli/src/modules/agents/evaluation/agent-evaluation.contracts.ts
+  s_4e8100d4ba14d2::t_c11393e3bc5a81 63-71
+packages/cli/src/modules/agents/json-config/__tests__/mcp-client-factory.test.ts
+  s_4e8100d4ba14d2::t_cca5b058938d18 873-874,880-899
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_4e8100d4ba14d2::t_4819c10225042d 68-72,396-400
+packages/cli/src/modules/agents/json-config/mcp-client-factory.ts
+  s_4e8100d4ba14d2::t_1c0efa4aad4143 145-153
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session.test.ts
+  s_4e8100d4ba14d2::t_f72754e80e2429 699-710
+packages/cli/src/modules/agents/simulation/simulation-session.ts
+  s_4e8100d4ba14d2::t_ebf914479f2be4 363-368
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7fa240be59967a77bfc92634a597b3d5cd9b1f91",
+  "prompts": {},
+  "sessions": {
+    "s_4e8100d4ba14d2": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20889-233d-7672-8300-b96f5d9f857d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

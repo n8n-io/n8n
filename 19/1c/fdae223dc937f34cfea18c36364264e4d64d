@@ -1,0 +1,63 @@
+packages/@n8n/api-types/src/agents/__tests__/agent-chat-message.dto.test.ts
+  s_4e8100d4ba14d2::t_7244bbf3a3f61f 2,104-130
+packages/@n8n/api-types/src/agents/dto.ts
+  s_4e8100d4ba14d2::t_82a59944684e53 809-817,842-846,891-909
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_4e8100d4ba14d2::t_a29b2150893d42 2327-2401,4556-4608
+packages/cli/src/modules/agents/__tests__/agent-message-queue.service.test.ts
+  s_4e8100d4ba14d2::t_f9ba540e8b5176 821-863
+packages/cli/src/modules/agents/__tests__/agent-sandbox-principal.test.ts
+  s_4e8100d4ba14d2::t_2090570bbd9e04 29-32
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_4e8100d4ba14d2::t_355917ab2970de 25,73-80,301-302,322-323,326-329,333-336,338
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_4e8100d4ba14d2::t_615355c5fcb1c3 6,261
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_4e8100d4ba14d2::t_2f27709968cd83 540-543,901-912,914-915,1645-1649,1732-1733,1735-1745,1759,1925,2170-2185
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_4e8100d4ba14d2::t_ba56452a3b156f 405-409
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_4e8100d4ba14d2::t_26904b24650b49 965-968
+packages/cli/src/modules/agents/agent-sandbox-principal.ts
+  s_4e8100d4ba14d2::t_94164eafaf7e4a 23-28,105-107
+packages/cli/src/modules/agents/evaluation/agent-evaluation.contracts.ts
+  s_4e8100d4ba14d2::t_09c520d29a5f12 63-71
+packages/cli/src/modules/agents/json-config/__tests__/mcp-client-factory.test.ts
+  s_4e8100d4ba14d2::t_fb5056ea996160 825-924
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_4e8100d4ba14d2::t_70dcb83278abb9 68-72,396-400
+packages/cli/src/modules/agents/json-config/mcp-client-factory.ts
+  s_4e8100d4ba14d2::t_48828e96215f91 105-110,141,144-165,259-274,276
+packages/cli/src/modules/agents/simulation/__tests__/node-n8n-state-helpers.test.ts
+  s_4e8100d4ba14d2::t_9c4d5318da87da 1-81
+packages/cli/src/modules/agents/simulation/__tests__/non-http-node-types.test.ts
+  s_4e8100d4ba14d2::t_ccf635706a77a0 28-30,56-72
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session-binding.test.ts
+  s_4e8100d4ba14d2::t_a7554956ee8c9c 90,167,449-450,474-488
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session.test.ts
+  s_4e8100d4ba14d2::t_d5a608004f646b 597-710
+packages/cli/src/modules/agents/simulation/non-http-node-types.ts
+  s_4e8100d4ba14d2::t_2179aa839b937e 27-35,53-56,82-87
+packages/cli/src/modules/agents/simulation/simulation-session.service.ts
+  s_4e8100d4ba14d2::t_5f56f0686a051c 149-150,157-159,185-193
+packages/cli/src/modules/agents/simulation/simulation-session.ts
+  s_4e8100d4ba14d2::t_c30486ea879d2e 12,74-89,106-107,180-188,201,220,224,229,233,275-276,281,288-295,306-308,333-334,358,361-362,366,373-378,403-406,422-439
+packages/cli/src/modules/agents/simulation/tool-simulation.contracts.ts
+  s_4e8100d4ba14d2::t_4bdbf52af701e7 26-29,83-84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "191cfdae223dc937f34cfea18c36364264e4d64d",
+  "prompts": {},
+  "sessions": {
+    "s_4e8100d4ba14d2": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20889-233d-7672-8300-b96f5d9f857d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

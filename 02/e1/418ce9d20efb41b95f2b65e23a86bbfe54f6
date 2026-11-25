@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/components/chatMode/AgentTestChatSubHeader.vue
+  s_f4d26adb514784::t_11a6b4f9419c64 47-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "02e1418ce9d20efb41b95f2b65e23a86bbfe54f6",
+  "prompts": {},
+  "sessions": {
+    "s_f4d26adb514784": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20e79-477e-7622-9119-23278d51a45d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

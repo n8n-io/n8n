@@ -1,0 +1,275 @@
+packages/@n8n/api-types/src/dto/promotions/promotion-preview.dto.ts
+  s_4a494bfdece475::t_ca35fcd20f16dd 193
+  s_4a494bfdece475::t_74331cc981f7d3 9,11,148-160,175-189
+  s_4a494bfdece475::t_1e9f98aee1d4a8 190
+packages/@n8n/api-types/src/dto/promotions/promotion-apply-check.dto.ts
+  s_4a494bfdece475::t_74331cc981f7d3 268-272,275-284,290-304,306-319,321-327,332-333,335,340-350,351-354,418-424
+  s_8b160aa65d2edc::t_991b7f80de95b0 261-267,386-391
+  s_4a494bfdece475::t_6348db6491b2df 273-274,285-289,320,336-339
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-apply-check.dto.test.ts
+  s_4a494bfdece475::t_0e948bb98b47ef 1,4-67,90-94,139-146,147-168
+  s_4a494bfdece475::t_4f2964db88cae5 2-3,169-247
+  s_4a494bfdece475::t_48d0a027d8e8b3 95-138
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-preview.dto.test.ts
+  s_4a494bfdece475::t_0e948bb98b47ef 1-18,19-85
+packages/cli/src/modules/promotions.ee/promote-dependency-check.service.ts
+  s_4a494bfdece475::t_9580a88273f633 1-39,40-46,47-76,77-121,123,130
+  s_4a494bfdece475::t_8d8b52bc3887aa 124,129
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_4a494bfdece475::t_e55aa5339f1a51 341-343
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_4a494bfdece475::t_720cf0603bb8af 420-423,420-428,425-427
+  s_4a494bfdece475::t_cb995697613a3c 21
+  s_4a494bfdece475::t_078c44f422c43a 429-430
+  s_4a494bfdece475::t_7fd217d9eb13ad 1511
+packages/cli/src/modules/promotions.ee/promote-preview.service.ts
+  s_4a494bfdece475::t_720cf0603bb8af 1,14,23,40,112-117,118,129-130,141-142,141-146,144,162,162
+  s_4a494bfdece475::t_8ccc8ccc9d9394 163-164
+packages/cli/src/modules/promotions.ee/__tests__/promote-dependency-check.test.ts
+  s_4a494bfdece475::t_98e2e534c23980 3-8,11-16,18-50,52-59,60-76,77-87,89-165,167-180,200,209-222,223-235,237-305,310-335,336-372,374-387,397-398,410-424,426-477
+  s_4a494bfdece475::t_abb07aba322405 51,373,425
+packages/cli/src/modules/promotions.ee/__tests__/promotion-change-gate.test.ts
+  s_4a494bfdece475::t_a51b333503ea06 10,57
+packages/cli/src/modules/promotions.ee/package-references.ts
+  s_4a494bfdece475::t_8929e9e0e30206 43-45,134,137,148
+  s_4a494bfdece475::t_9ff24f70886612 158
+  s_4a494bfdece475::t_0905bd9df06748 34-36,39-40,116-119,123,124-125,129-131
+  s_4a494bfdece475::t_71e8d6153edda3 132
+  s_3327c391716409::t_72dc542516d439 37-38,120-122
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_4a494bfdece475::t_cb995697613a3c 27,626-632,634-645,634-646
+  s_4a494bfdece475::t_65b79a8d710da1 647-648
+  s_4a494bfdece475::t_ca16ee1d54788c 723
+packages/cli/src/modules/promotions.ee/promote-dependency-check.ts
+  s_4a494bfdece475::t_9eabcb144480aa 1-9,14-15,17,25-28,30-43,44-50,52,58-59,64-65,82,85-87,89-90,92,94-98,101-103,105-108,110-111,113,123,125-126,128-129,131-132,135-136,140,142,153-154,156,158-159,161,163,234-236,238-243,245-253,254-259
+  s_4a494bfdece475::t_8d8b52bc3887aa 149-151,228,233
+  s_4a494bfdece475::t_abb07aba322405 29,53-57,66-81,83-84,88,93,99-100,104,112,114-122,124,130,133-134,141,143-148,152,155,157,162,213-224,230,237,244
+  s_4a494bfdece475::t_241fcede082686 16
+packages/cli/src/modules/promotions.ee/promotion-preview.ts
+  s_4a494bfdece475::t_720cf0603bb8af 3,5,8,570-571,573-583
+packages/cli/src/modules/promotions.ee/__tests__/promote-dependency-check.integration.test.ts
+  s_4a494bfdece475::t_498aec99e34c37 2-15,17-56,57-124,138,140,146-148,161-212,224-226,230-240,245-262,264-273,275-278,283-284,289,291-294,296-300,356,411-412,414-415,429,441-442,455,459-461,478-481,483,485,487-489,501-515,517-546,548-581,583-588,590,596,621-622,624-641,643-652,653-658,659-665,666-669,686-691,694,696-709,711,713,747,748,749,790-792,794-805,815,815,817-824,817-824,825-828,825-828,846-847,846-849,848-849,851-870
+packages/cli/src/modules/promotions.ee/__tests__/promotion-preview.revision.test.ts
+  s_4a494bfdece475::t_2bbdcd471980d9 6-27,28-47,52-57,95-110
+  s_4a494bfdece475::t_b0cd2eb238e83a 1-5,58-92
+  s_4a494bfdece475::t_e49f2365752db2 93-94
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromoteCheck.generated.yml
+  s_4a494bfdece475::t_4c4a90803d926a 1-7,9-54
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getPromotionChanges.generated.yml
+  s_4a494bfdece475::t_b58146b6cf8cb8 184-193
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_4a494bfdece475::t_22d43a5a9e0836 343-345
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionDependencyWarning.generated.yml
+  s_4a494bfdece475::t_e77dc963a5f66d 1-17,18-55,56
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionMissingDependency.generated.yml
+  s_4a494bfdece475::t_3952c3934f3a72 1-25,27-41,54-55,63-104
+  s_4a494bfdece475::t_6de353224f99c3 26,57-62
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_4a494bfdece475::t_51df4f60661685 11533-11534,11690-11691,11703-11704,11709,11714-11716,11718,11720-11722,11725-11727,11729-11732,11746-11747,11749,11762-11763,11766,11768,11789-11792,11799-11800,11810
+  s_4a494bfdece475::t_5b1d875892b024 5073,11733,11769
+  s_4a494bfdece475::t_72f269ca206c5c 11708,11723-11724,11728,11761,11765,11770,11773,11776
+  s_4a494bfdece475::t_b6cdb4858cd86a 11710,11748,11772,11775,11777
+  s_4a494bfdece475::t_d778c97362311e 11767,11771,11774
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.test.ts
+  s_4a494bfdece475::t_fa7ac0735d994e 31,34-35,38-39,46,1086,1123,1209,1218-1219,1225,1231-1236,1238-1247,1249-1316,1323-1324,1367-1369,1371-1391,1422-1423,1422-1431,1425-1431,1434,1434-1474,1435-1474,1476,1478-1479,1484-1496,1498-1518,1520-1525,1527,1667-1668,1670,1673-1680,1778-1780,3072
+  s_4a494bfdece475::t_79c40c870f0549 1226-1230
+  s_4a494bfdece475::t_0e948bb98b47ef 1248,1317-1322
+  s_4a494bfdece475::t_add0473e2150b4 29
+  s_4a494bfdece475::t_c7fe231307c8b0 1237,1392-1394,1396-1420,1475,1477,1480,1497
+  s_4a494bfdece475::t_ad0c05d17b2403 159
+  s_4a494bfdece475::t_84584c5b1b840d 22-23,30,40,43-44,195-207,1781-1801,1803-1852,1854-1858,1859-1860,1862-1877,1880-1895,1911,1929-1931,1932,1934-1936,1937,1939-1941,1942,1944,1946-1948,2321-2322,2324-2325,2328,2335-2358,2571,2578,2580,2601,2918,2924-2925,2927,2934,2936-2939,2941-2942,2944-2946,2947,2949-2952,2954-2956,2959-2964,2966,2967-2968,2971-2972,2974,2976-2977,2979-2984,2986-2988,2996-2998,3077-3078,3080-3082,3084,3087,3089,3129,3237,3239,3241-3242,3244-3246,3249,3255
+  s_4a494bfdece475::t_69c7ccb95cedb1 3088,3130,3231-3236,3238,3243,3250,3256
+  s_4a494bfdece475::t_3f56fc1e0ff808 32-33,36-37,41-42,1949,1954-1984,1986-1992,1994-2000,2009-2045,2048-2051,2053-2054,2056-2063,2065-2074,2076-2103,2106-2107,2111,2115-2117,2118-2124,2126-2130,2132-2133,2135-2136,2141-2145,2147,2159-2160,2175-2177,2178,2204,2212-2215,2216,2245-2246,2277-2289,2291-2295,2297-2302,2303-2308,2310-2315,2316-2320
+  s_4a494bfdece475::t_514669ac9731a2 1985,1993,2247-2249,2250-2254,2255-2259,2261-2270,2273-2276
+packages/modules/promotions/frontend/src/__tests__/missingDependencies.fixtures.ts
+  s_4a494bfdece475::t_cc5dd0fbc1a4a1 1-6,8-59,61-67,69-77,78-79
+  s_4a494bfdece475::t_ad0c05d17b2403 7,80-82,84-92,94-96,107-130,204-217
+  s_4a494bfdece475::t_2c19ece18fa07e 131-132,134-142,144-203
+packages/modules/promotions/frontend/src/promotionOperation.ts
+  s_4a494bfdece475::t_d893641205448d 85-124,189-190
+  s_4a494bfdece475::t_599a68e44a6316 4,49,54-61,125,136,146,203
+  s_4a494bfdece475::t_6b91bdfcb8ca0c 128-132,137-145
+packages/modules/promotions/frontend/src/components/PromoteInstanceDialog.test.ts
+  s_4a494bfdece475::t_964779ff5f340c 4,8-11,13-15,21,38-40,42-44,60,148-149,153,165-166,168-173,176-177,179-195,197-198,207,209,215-216,219-224,226-227,244,251,270-271,318-319,325-326,328-329,331-333,335-336,531-542
+  s_4a494bfdece475::t_4947aa1bd5c578 543
+  s_4a494bfdece475::t_dad6a0ad4b3012 437,444-446,453-478,504-530
+packages/modules/promotions/frontend/src/promotionsSettings.api.ts
+  s_4a494bfdece475::t_78765d2aeeac9f 16,175-183
+  s_4a494bfdece475::t_c1b40a936093d1 184-185
+packages/modules/promotions/frontend/src/composables/usePromotionBindings.ts
+  s_4a494bfdece475::t_e8345581e46964 51
+packages/modules/promotions/frontend/src/promotionOperation.test.ts
+  s_4a494bfdece475::t_2284eebbc8de1a 4,6-8,15,19,27,366-393
+  s_4a494bfdece475::t_ad0c05d17b2403 50
+  s_4a494bfdece475::t_d149fc71c49b20 5,9,12-13,23,218-221,228-232,239-240,261,265,278,320-329,331-337,338-339
+  s_4a494bfdece475::t_859df4728a7155 10-11,40-41,330,351-365
+packages/modules/promotions/frontend/src/components/preview/PromotionResourceTree.test.ts
+  s_4a494bfdece475::t_2284eebbc8de1a 6,9-11,14,244,253-264,266,268-276,281-292,294-296,418-421,423,425
+  s_4a494bfdece475::t_3ee4f19b11bb33 426-427
+  s_4a494bfdece475::t_3bd1f187148ca8 245-250,252,267,277,293,297-298,299,305-306,313,318,382-383,422,424
+  s_4a494bfdece475::t_c4a2db0ce1cc86 7-8,12,251,265,384-391,392-395,397-401,402-406,407,409-414,416-417
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.vue
+  s_4a494bfdece475::t_0fa05784e87e0c 40,50,162-165,394-395,399,401-407,428,466,579,599-600,640,642,645-646,697-698,703,705-706,711
+  s_4a494bfdece475::t_529d4dd3ffe559 45,396
+  s_4a494bfdece475::t_750848a0f0a7fd 23,58,91,94,110,116,136-143,146-152
+packages/modules/promotions/frontend/src/promotionsSettings.api.test.ts
+  s_4a494bfdece475::t_2284eebbc8de1a 5,61-70
+  s_4a494bfdece475::t_6fbd78527552f4 71-73
+packages/modules/promotions/frontend/src/components/preview/PromotionResourceTree.vue
+  s_4a494bfdece475::t_dd0bbf6ed8e345 2-6,44,72-74,76,251,253-256,259-261,263-264
+  s_4a494bfdece475::t_e8345581e46964 221-222
+  s_4a494bfdece475::t_d8f011ee44ff29 265
+  s_4a494bfdece475::t_4c4ae21e340698 62,258
+  s_4a494bfdece475::t_3a5a2a071df325 39-40,43
+  s_4a494bfdece475::t_8e145322226b49 75
+packages/modules/promotions/frontend/src/components/PromotionMissingDependencyList.vue
+  s_4a494bfdece475::t_78765d2aeeac9f 1-4,6,8-12,16,18-20,46-50,54-64,67-74,84-120,139
+  s_4a494bfdece475::t_91e95bdf1c247c 51-53
+packages/modules/promotions/frontend/src/components/PromoteInstanceDialog.vue
+  s_4a494bfdece475::t_78765d2aeeac9f 6,19,22,25,53,78-81,84-86,101,264-265,353,360-363
+  s_4a494bfdece475::t_6965aedc8cf6e3 364
+  s_4a494bfdece475::t_4133955e03e53b 12,55-56,231,236-242,243,245,248,250,263,354-359
+packages/modules/promotions/frontend/src/composables/usePromotionPreviewLabels.ts
+  s_4a494bfdece475::t_dd0bbf6ed8e345 1-5,138-141,156-157
+  s_4a494bfdece475::t_828d4c677e4bdc 180
+  s_4a494bfdece475::t_728b4e1abccc92 130,132-133,144
+  s_4a494bfdece475::t_aea74a6e0bf4f5 134-136,147,149
+packages/modules/promotions/frontend/src/components/preview/PromotionBlockers.vue
+  s_4a494bfdece475::t_f9d1b935e91d70 838,841-853,856-859,862,871-875,877,879-884,886-891,995-999,1011-1015,1017,1046-1053,1065-1073
+  s_4a494bfdece475::t_546d2a796246a3 280-283,626
+  s_4a494bfdece475::t_fb82d9c3ad7fd4 5-6,16,35-41,47,52-53,60-62,84-88,93,113,118-119,127-132,133-134,136,137-138,140-141,144,148,226,256-260,262-266,268-272,274-279,284-287,299-306,338,361-362,450-454,456,462-463,467-472,485-489,555,557-558,563-569,572,586,588-591,610-615,619-620,622-623,625,627-628,654,691,700,707-722
+  s_4a494bfdece475::t_1cfe2ca17029d9 296-299,329
+  s_4a494bfdece475::t_3a5a2a071df325 7,19,42-44,46,290,294,307,312-313,329,340,341,350-353,355-357,366-367,431-432,474-476,483-484,490-495
+  s_4a494bfdece475::t_72f269ca206c5c 139
+  s_4a494bfdece475::t_05ec0e03900784 374-376,378
+  s_4a494bfdece475::t_6e24f545e0a1ca 430
+  s_4a494bfdece475::t_741c35b9d61bb7 45,135,143,342-349,358-364,383-396,398-401,409-429,457,459-460,473,477-482
+  s_4a494bfdece475::t_76db3437ff2a53 314-322,325-326,328
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-operations.dto.test.ts
+  s_4a494bfdece475::t_4f2964db88cae5 188,207
+packages/cli/src/modules/promotions.ee/apply-preview.ts
+  s_4a494bfdece475::t_7c9814122d3e13 6-7,27,29-31,33-34,43,171,173,182-184,281,466,518-523,525-529,531-532,534-536,562,569,576,624,628-630,637-639,659,715-720
+  s_4a494bfdece475::t_ea0eaf73cd6d8a 721
+packages/cli/BREAKING-CHANGES.md
+  s_4a494bfdece475::t_b0cd2eb238e83a 97-103,118
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_4a494bfdece475::t_46a3c08f2e62a9 3298,3303-3309,3311-3312,3314-3321,3439-3453,3455-3459,3469,3588,4006-4020,4024,4034
+  s_4a494bfdece475::t_44db3ed24a8e28 268,3061,3068,3296,3348,3355,3371,3374,3392,3398,3404,3411,3423,3430,3974,3977,4037,4044
+  s_4a494bfdece475::t_ec6c92a54eee7d 3589,4035
+packages/cli/src/modules/promotions.ee/apply-dependency-check.ts
+  s_4a494bfdece475::t_b514447f9b0be0 7-13,15-35,41-42,55-71,74-93,109-112,116-136,138,141,175-177,240-241,244,251-257,279-290,292-295
+  s_3327c391716409::t_147f4d49896574 72-73,137,243,249
+  s_4a494bfdece475::t_7d6aff65e8263e 43-54,94-108,113-115,139-140,142-174,178-239,242,245-248,250,291
+packages/cli/src/modules/promotions.ee/apply-preview.service.ts
+  s_4a494bfdece475::t_7fd217d9eb13ad 46,56,150,227,342-344,349,355,364,370,372-377,379,513
+  s_4a494bfdece475::t_81300e8b9c01e8 188,190,345-347,354,378
+packages/cli/src/modules/promotions.ee/apply-dependency-check.service.ts
+  s_4a494bfdece475::t_7fd217d9eb13ad 1-5,7-23,25-33,35-44,47-50,54-60,63,67-70,72,77-83,86,88-90,98-101,103-105,106-109,112,114-142
+  s_4a494bfdece475::t_72ce81654902cf 143,168-170
+  s_4a494bfdece475::t_3f037a3afe4a7f 34,45-46,51-53,62,73-76,84-85,87,91-97,102,110-111,113,144-156
+packages/cli/src/modules/promotions.ee/__tests__/apply-dependency-check.test.ts
+  s_4a494bfdece475::t_cbffd1aafc8124 1-11,13-14,16-93,95,98-200,203-204,216-248,250-255,258-360,362,366-367,393-406,682-697,699-704,713-716,727-729
+  s_3327c391716409::t_d796175b63632c 201-202,361,363-365,368-392
+  s_4a494bfdece475::t_410de012dbd952 96-97,249,256-257,407-645,698,705-712,717-726
+packages/cli/src/modules/promotions.ee/__tests__/apply-preview.test.ts
+  s_4a494bfdece475::t_43bec5bc639050 63-85,91-93,95,98-102,108-119,126,131,137,145,147,163,185,187,267-329,331-333,336-344,346-375,377-402,405-407,416-475,628-676,678-695,697-739,741-745
+  s_4a494bfdece475::t_0f51094c8f5cc5 12,18,20,22-26,62,782
+  s_4a494bfdece475::t_54403030a287d3 96-97,403,677,696,740,746-781
+packages/cli/src/modules/promotions.ee/__tests__/apply-dependency-check.service.test.ts
+  s_4a494bfdece475::t_03c5baefc4b8e1 1-11,13-17,19-31,33-37,39-42,44-46,51-54,56,59-62,64,67-71,77-78,80-83,89-92,94-101,103-110,113-115,140-169,193-214,216,220-222,224-225,235-236,238-245,247-258,262,264-266,320-351
+  s_3327c391716409::t_2c8afda79462a4 32
+  s_4a494bfdece475::t_17592b84fb7ace 47-50,55,57,63,65,72-74,76,79,84-88,93,111-112,116-139,215,217-219,223,226-234,237,246,259-261,263,267-319
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_4a494bfdece475::t_a67dea93c74611 22,86-89,105,528-529,2600-2613,2642,2644,2648,2650-2674,2716,2774-2775,2778-2811,2849,2855-2865,2870-2871,2879-2880,2882-2926,2938-2954,2955-2959,2961,2963-2971,2974,2976,2978-2980,2982-3005,3007,3009-3013,3097-3135,3137-3159,3161-3168,3170-3172,3174-3184,3186,3198,3210,3213,3222-3223,3281-3316,3319-3328,3330-3335,3337-3346,3348-3362,3364-3373,3375-3389,3417-3424,3425,3427-3445,3448-3519,3521-3536,3727,3733-3734,4113-4115
+  s_3327c391716409::t_e6cecfbce6490b 3391-3400,3402-3416,3426
+  s_4a494bfdece475::t_f0e565ed567989 6,41,2614-2641,2643,2645-2647,2649,2675-2715,2717-2752,2760-2773,2972-2973,2981,3006,3014-3029,3030-3036,3038-3049,3051,3053-3086,3088-3096,3169,3185,3225-3242,3245-3280,3317-3318
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionApplyCheck.generated.yml
+  s_4a494bfdece475::t_234e3c26ad6440 1271-1275,1282
+packages/cli/test/integration/public-api/promotions.test.ts
+  s_4b48ca0c4561f7::t_2887e4d192d063 2882-2891,2893,3144-3153,3155
+packages/modules/promotions/frontend/src/__tests__/bindings.fixtures.ts
+  s_4a494bfdece475::t_ad0c05d17b2403 70
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/getInstanceApplyChanges.generated.yml
+  s_4a494bfdece475::t_c10ba7a24e5e6f 8
+packages/@n8n/cli/src/client.ts
+  s_4a494bfdece475::t_b0620ce5598eae 10-13,17,203,205-210,523-524
+  s_4a494bfdece475::t_a81f8f3f89d598 8,525-526
+packages/@n8n/cli/src/__tests__/promotion-missing-dependencies.test.ts
+  s_4a494bfdece475::t_6bb6e806c8bf44 1-5,8-35,36-96,108-115,118-119,122-123,137,163-191,193-196,198-202,204-218,372-390,433-442,461-471,490-492,494-495
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_4a494bfdece475::t_e7117b9a9e689a 94,98,101
+packages/@n8n/cli/skills/n8n-cli/SKILL.md
+  s_4a494bfdece475::t_4fb947a90bfcdb 211,213,374-379,384
+  s_4a494bfdece475::t_ced678633a5b8f 212
+packages/@n8n/cli/src/__tests__/promotion-environment-operations.test.ts
+  s_4a494bfdece475::t_6bb6e806c8bf44 584
+  s_4a494bfdece475::t_4d2a4e109d6e7e 62-85,87,89-100,367-386,388-389,391-395,398-399,402,405-408,410-438,440-441,443-446,449-451,453-458,517-583,585-628,630-631,634-640
+packages/@n8n/cli/src/commands/promotion-environment/promote-check.ts
+  s_4a494bfdece475::t_7d6498dd24750e 1-2,4,6-9,11-32,42-43,45-49
+packages/@n8n/cli/src/__tests__/promotion-environment-promote-check.test.ts
+  s_4a494bfdece475::t_e7117b9a9e689a 1-46,48-50,52-54,61-82,87-88,90-98,100,104,107-109,111-113,123-136,158,163-175
+  s_4a494bfdece475::t_6bb6e806c8bf44 154-157,159-162
+  s_4a494bfdece475::t_e6ebccb5a0ef94 83-86
+packages/@n8n/cli/src/commands/promotion-environment/list-changes.ts
+  s_4a494bfdece475::t_7d6c6994ed691f 4,32,35,50-51
+  s_4a494bfdece475::t_7d6498dd24750e 49,52-56
+packages/@n8n/cli/src/commands/promotion-environment/missing-dependencies.ts
+  s_4a494bfdece475::t_ab815c1a890a90 8-10,28-29,31-36,43,48,50-58,80-87,90-93,95,97-98,104,106-108,113-114,116,118-119,123,129-131,148,161-162,184-187,189-193,197-203,211,218,223,228-234
+  s_4a494bfdece475::t_7d6c6994ed691f 94,122,143-147,149-151,156-157,159-160,208-210,216
+packages/@n8n/cli/src/__tests__/promotion-command-wiring.test.ts
+  s_4a494bfdece475::t_e7117b9a9e689a 13,154-159
+  s_4a494bfdece475::t_88026be1469b44 160
+packages/@n8n/cli/src/index.ts
+  s_4a494bfdece475::t_7d6498dd24750e 55,136
+packages/@n8n/cli/docs/commands/promotions.md
+  s_4a494bfdece475::t_4fb947a90bfcdb 427,430-431
+  s_4a494bfdece475::t_20b6ecee308a69 334,337-351,353-356,360-366,373-375,380-387,425-426,432-440,442-455,465-468,496-501,511,514-519,523-531,538,548-554,561-568,571-572,576-577,580-582,584-589,592-593,708,826-828,846-853,855-856,858-861,864-866,910,914-915,1043,1047
+packages/@n8n/cli/src/commands/promotion-environment/apply-command.ts
+  s_4a494bfdece475::t_7d6c6994ed691f 109,139
+packages/@n8n/cli/src/commands/promotion-environment/list-apply-changes.ts
+  s_4a494bfdece475::t_7d6498dd24750e 4,9,34-38
+packages/@n8n/cli/src/__tests__/promotion-environment-list-changes.test.ts
+  s_4a494bfdece475::t_8bc73defaa3179 4-9,17-18,29,102-149,151-156,158-183,197-198,256-270,272-277,279-287,301,303-309,343-359,360,363-385,467,472-473,475-476,478-479,481-486,493-502,509-514,521,523-529,531-535
+packages/@n8n/cli/README.md
+  s_4a494bfdece475::t_6ec2bc7a87b50d 64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "23e400719df9f7deff516152f4dbdad702120e6a",
+  "prompts": {},
+  "sessions": {
+    "s_3327c391716409": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a174dd5fb72a34706",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_4a494bfdece475": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64240406-7a90-4cf7-9a1d-31fa1cac357e",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_4b48ca0c4561f7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a38a2c5b125073c09",
+        "model": "unknown"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_8b160aa65d2edc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "36aebd0c-75da-480a-98d5-8e43d32d4797",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

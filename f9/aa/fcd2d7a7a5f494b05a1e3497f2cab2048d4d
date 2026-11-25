@@ -1,0 +1,64 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/AgentTimeline.vue
+  s_e6d1666a157806::t_ba631892847a84 21,23-26,43-45,305-322,400-407
+  s_d7ab831e88c758::t_cf18b9186637a2 408-409
+packages/@n8n/instance-ai/skills/agent-builder/SKILL.md
+  s_e6d1666a157806::t_5b0e29901e4c7e 174-178
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_e6d1666a157806::t_a9e11cf1e148a3 83-86,927-928,930-939,978,1021,1044,1984-1996,2001,2026,2030-2033,2042-2060
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_e6d1666a157806::t_c147e7b2bb519b 413-416,423-426
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/AgentTimeline.assistantTestRun.test.ts
+  s_e6d1666a157806::t_a8bc79e4a8e93d 1-112,116-120,124-133,137-178
+  s_e6d1666a157806::t_4ebcee2539f660 113-115,121-123,134-136
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantTestRunCard.utils.ts
+  s_e6d1666a157806::t_e62bdd89548ad0 1-133
+packages/cli/src/modules/agents/__tests__/agent-test-run.service.test.ts
+  s_e6d1666a157806::t_43ac17a4123642 742-838
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantAgentThreadView.vue
+  s_e6d1666a157806::t_bb74c3f6ea4cff 658-661,689,693-697
+packages/cli/src/modules/agents/builder/__tests__/assistant-test-run-result.test.ts
+  s_e6d1666a157806::t_e3d314dfc3eea1 1-181
+packages/cli/src/modules/agents/builder/assistant-test-run-result.ts
+  s_e6d1666a157806::t_4ebcee2539f660 4-8
+  s_e6d1666a157806::t_b60c90d89de565 1-3,9-330
+packages/cli/src/modules/agents/agent-test-run.service.ts
+  s_e6d1666a157806::t_48bb1c254e1338 52,54,70-75,83,101-102,106-107,123-124,287,292,361,378,449,451,481,523-530,535,564-566
+packages/frontend/editor-ui/src/features/ai/instanceAi/agentTimeline.utils.ts
+  s_e6d1666a157806::t_92237d197a407d 14,71,83,110,271-276
+  s_353d81d28a8909::t_87552b6dcfcf14 277
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_e6d1666a157806::t_4ebcee2539f660 3394
+  s_e6d1666a157806::t_a6d101fb7e60da 3112,3249,3251,3253-3255,3259-3393,3395-3402
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f9aafcd2d7a7a5f494b05a1e3497f2cab2048d4d",
+  "prompts": {},
+  "sessions": {
+    "s_353d81d28a8909": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a2061f-4f31-74c3-bad0-1c9246b4c8d2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    },
+    "s_d7ab831e88c758": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20dd9-5b7a-777b-ab39-735799c75615",
+        "model": "gemini-4-neon"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    },
+    "s_e6d1666a157806": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20dd9-5b5b-7345-8bf2-414deeb1bc60",
+        "model": "gemini-4-neon"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

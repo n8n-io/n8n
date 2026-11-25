@@ -1,0 +1,29 @@
+packages/@n8n/expression-runtime/src/bridge/quickjs-bridge.ts
+  ai_agent 1155,1177,1204
+packages/workflow/test/expression-boxed-primitive-engine-parity.test.ts
+  s_2e3388aec0aa1e::t_448d14a01e814f 42-43
+  s_2e3388aec0aa1e::t_6cacfa18166187 219-220,228-230
+  s_2e3388aec0aa1e::t_eea52664e58da3 221-227
+  s_2e3388aec0aa1e::t_670d99db4b7019 218
+packages/@n8n/expression-runtime/src/bridge/host-functions.ts
+  s_2e3388aec0aa1e::t_eea52664e58da3 121-122,124,152
+  s_2e3388aec0aa1e::t_7942ebc25b27ca 7,114-120,123,125-128
+packages/@n8n/expression-runtime/src/__tests__/replaced-builtins.test.ts
+  s_2e3388aec0aa1e::t_448d14a01e814f 190-224
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6b5e5db19657501573f640ed75ea710c531ca410",
+  "prompts": {},
+  "sessions": {
+    "s_2e3388aec0aa1e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "91674cc7-efff-474b-b06e-c1fcb20d8ee9",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
