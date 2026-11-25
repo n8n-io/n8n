@@ -14,13 +14,21 @@ import type {
 	RelatedAgentRun,
 	RelatedExecution,
 	StartNodeData,
+	WorkflowExecuteMode,
 } from '..';
+import type { FailedBeforeStartMarker } from '../execution-blocked-reason';
 import type { IRunExecutionDataV0 } from './run-execution-data.v0';
+import type { SubWorkflowOutputPolicy } from '../sub-workflow-output';
 
 export interface RedactionInfo {
 	isRedacted: boolean;
 	reason: string;
 	canReveal: boolean;
+	/**
+	 * With the `credential_inaccessible` reason: the credentials the viewer cannot
+	 * use, so the editor can point to where access is granted.
+	 */
+	credentialIds?: string[];
 	/**
 	 * True when the info is synthesized from live push markers before the
 	 * authoritative executionFinished metadata arrives. `canReveal` is a
@@ -49,6 +57,8 @@ export interface IRunExecutionDataV1 {
 		pinData?: IPinData;
 		lastNodeExecuted?: string;
 		metadata?: Record<string, string>;
+		/** Set when the run stopped before its first node. Holds the reason. */
+		failedBeforeStart?: FailedBeforeStartMarker;
 	};
 	executionData?: {
 		contextData: IExecuteContextData;
@@ -62,6 +72,10 @@ export interface IRunExecutionDataV1 {
 		waitingExecutionSource: IWaitingForExecutionSource | null;
 	};
 	parentExecution?: RelatedExecution;
+	/** Keep the caller's output policy when a child execution resumes. */
+	subWorkflowOutput?: SubWorkflowOutputPolicy;
+	/** Keep the mode of the top-level execution when a child execution resumes. */
+	rootExecutionMode?: WorkflowExecuteMode;
 	/** Suspended agent tool call to resume once this execution finishes. */
 	parentAgentRun?: RelatedAgentRun;
 	/**
@@ -70,7 +84,19 @@ export interface IRunExecutionDataV1 {
 	 */
 	resumeToken?: string;
 	waitTill?: Date;
+	/**
+	 * Why the execution is waiting, when the last node did not pause it itself.
+	 * Absent: the head of `nodeExecutionStack` already executed and was pushed
+	 * back (Wait node, Form, send-and-wait), so resume disables it to pass its
+	 * input through and pops its duplicate runData entry. 'suspended': the
+	 * engine parked the run at a node boundary, so the head has not executed yet
+	 * and must run normally. The WaitTracker ignores this field and resumes
+	 * every due waiting execution; the resume endpoints refuse a suspended one.
+	 */
+	waitReason?: 'suspended';
 	pushRef?: string;
+	/** The user who owns `pushRef`, used only to route push messages on resume. */
+	pushRefUserId?: string;
 
 	/** Data needed for a worker to run a manual execution. */
 	manualData?: Pick<
@@ -81,6 +107,9 @@ export interface IRunExecutionDataV1 {
 		| 'evaluationRunId'
 		| 'source'
 		| 'suppressErrorWorkflow'
+		// A run of a single tool node carries the agent request that supplies the
+		// tool's arguments. Without it a worker runs the tool on empty arguments.
+		| 'agentRequest'
 	>;
 
 	/** Metadata about whether and how this execution's data was redacted. */

@@ -10,6 +10,7 @@ import {
 	type ScopedMemoryTaskEvent,
 	type ToolContext,
 } from '@n8n/agents';
+import type { InstanceAiApprovalMode } from '@n8n/api-types';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { isRecord } from '@n8n/utils/is-record';
 import {
@@ -51,6 +52,7 @@ import {
 	rawTracePayload,
 	redactLangSmithTelemetrySpan,
 	sanitizeTracePayload,
+	type SanitizeTracePayloadOptions,
 	sanitizeTraceValue,
 	serializeModelIdForTrace,
 	toTelemetryAttributeValue,
@@ -185,9 +187,15 @@ interface ProductOtelTraceRuntime {
 	spans: Map<string, OtelApiSpan>;
 	contexts: Map<string, OtelContext>;
 	pendingOperations: Map<string, InstanceAiTraceRun>;
+	/** Work started in the trace that can outlive the root run. The release waits for it. */
+	backgroundOperations: Set<Promise<unknown>>;
+	releaseDeferred: boolean;
 	shutdown: boolean;
 	lifetime: ProductTelemetryLifetime;
 }
+
+/** Upper limit for how long a background operation can keep a closed trace open. */
+const BACKGROUND_OPERATION_RELEASE_TIMEOUT_MS = 2 * 60 * 1000;
 
 interface OTelTracer {
 	startSpan(
@@ -293,6 +301,7 @@ function buildProductSpanAttributes(options: {
 	tags?: string[];
 	metadata?: Record<string, unknown>;
 	inputs?: unknown;
+	root?: boolean;
 }): Record<string, AttributeValue> {
 	const attributes: Record<string, AttributeValue> = {
 		[LANGSMITH_TRACEABLE]: 'true',
@@ -303,7 +312,8 @@ function buildProductSpanAttributes(options: {
 
 	const tags = normalizeTags(DEFAULT_TAGS, options.tags);
 	if (tags?.length) {
-		attributes[LANGSMITH_SPAN_TAGS] = tags;
+		// LangSmith reads tags only from a comma-separated string, not from an array.
+		attributes[LANGSMITH_SPAN_TAGS] = tags.join(', ');
 	}
 
 	const metadata = buildProductSpanMetadata(options);
@@ -316,7 +326,10 @@ function buildProductSpanAttributes(options: {
 		}
 	}
 
-	const inputs = options.inputs === undefined ? undefined : stringifyTracePayload(options.inputs);
+	const inputs =
+		options.inputs === undefined
+			? undefined
+			: stringifyTracePayload(options.inputs, { conversationText: options.root === true });
 	if (inputs !== undefined) {
 		attributes[GEN_AI_PROMPT] = inputs;
 	}
@@ -324,12 +337,20 @@ function buildProductSpanAttributes(options: {
 	return attributes;
 }
 
-function stringifyTracePayload(value: unknown): string | undefined {
+function stringifyTracePayload(
+	value: unknown,
+	options?: SanitizeTracePayloadOptions,
+): string | undefined {
 	try {
-		return JSON.stringify(sanitizeTracePayload(value));
+		return JSON.stringify(sanitizeTracePayload(value, options));
 	} catch {
 		return undefined;
 	}
+}
+
+/** Only a root run carries the user message and the assistant reply of a turn. */
+function conversationTextFor(run: InstanceAiTraceRun): SanitizeTracePayloadOptions {
+	return { conversationText: run.parentRunId === undefined };
 }
 
 function startProductSpan(
@@ -385,7 +406,11 @@ function startProductSpan(
 		...(parentRun ? { parentRunId: parentRun.id } : {}),
 		...(options.tags ? { tags: normalizeTags(DEFAULT_TAGS, parentRun?.tags, options.tags) } : {}),
 		...(runMetadata ? { metadata: runMetadata } : {}),
-		...(options.inputs !== undefined ? { inputs: sanitizeTracePayload(options.inputs) } : {}),
+		...(options.inputs !== undefined
+			? {
+					inputs: sanitizeTracePayload(options.inputs, { conversationText: options.root === true }),
+				}
+			: {}),
 	};
 
 	if (parentRun) {
@@ -427,8 +452,8 @@ async function finishProductSpan(
 				// Unserializable (cycles) — fall through to the sanitized path.
 			}
 		}
-		completion ??= stringifyTracePayload(options.outputs);
-		runOutputs ??= sanitizeTracePayload(options.outputs);
+		completion ??= stringifyTracePayload(options.outputs, conversationTextFor(run));
+		runOutputs ??= sanitizeTracePayload(options.outputs, conversationTextFor(run));
 		if (completion !== undefined) {
 			attributes[GEN_AI_COMPLETION] = completion;
 		}
@@ -488,7 +513,19 @@ async function releaseProductOtelRuntime(
 	runtime: ProductOtelTraceRuntime,
 	traceId: string,
 ): Promise<void> {
-	if (runtime.shutdown) return;
+	if (runtime.shutdown || runtime.releaseDeferred) return;
+
+	if (runtime.backgroundOperations.size > 0) {
+		// Do not block the caller. Release after the background work settles, so its
+		// spans finish normally instead of being cancelled.
+		runtime.releaseDeferred = true;
+		void settleBackgroundOperations(runtime).then(async () => {
+			runtime.releaseDeferred = false;
+			runtime.backgroundOperations.clear();
+			await releaseProductOtelRuntime(runtime, traceId);
+		});
+		return;
+	}
 
 	runtime.shutdown = true;
 	for (const run of runtime.pendingOperations.values()) {
@@ -503,6 +540,27 @@ async function releaseProductOtelRuntime(
 	otelTraceRuntimes.delete(traceId);
 
 	await runtime.lifetime.release();
+}
+
+async function settleBackgroundOperations(runtime: ProductOtelTraceRuntime): Promise<void> {
+	let timer: NodeJS.Timeout | undefined;
+	const timeout = new Promise<void>((resolve) => {
+		timer = setTimeout(resolve, BACKGROUND_OPERATION_RELEASE_TIMEOUT_MS);
+		timer.unref?.();
+	});
+	const allSettled = (async () => {
+		// Operations can register while earlier ones are in flight.
+		while (runtime.backgroundOperations.size > 0) {
+			const operations = [...runtime.backgroundOperations];
+			await Promise.allSettled(operations);
+			for (const operation of operations) runtime.backgroundOperations.delete(operation);
+		}
+	})();
+	try {
+		await Promise.race([allSettled, timeout]);
+	} finally {
+		clearTimeout(timer);
+	}
 }
 
 async function withProxyHeaders<T>(
@@ -599,6 +657,25 @@ function getCurrentProductTrace():
 	return productTraceStorage.getStore();
 }
 
+/** Reuse the active product provider and parent for synchronous verification helpers. */
+export function getCurrentHelperTelemetry(name: string): BuiltTelemetry | undefined {
+	const current = getCurrentProductTrace();
+	if (!current || current.runtime.shutdown || !current.runtime.telemetry.enabled) return undefined;
+	return {
+		...current.runtime.telemetry,
+		functionId: name,
+		metadata: toTelemetryMetadata(current.currentRun.metadata, {
+			evalRole: 'helper',
+			agent_role: name,
+		}),
+		recordInputs: false,
+		recordOutputs: false,
+		runtimeRootSpanEnabled: true,
+		rootAnchored: false,
+		traceModelRequests: true,
+	};
+}
+
 function getActiveOtelContextWithSpan(expectedTraceId?: string): OtelContext | undefined {
 	const activeContext = otelContext.active();
 	const activeSpanContext = otelTrace.getSpan(activeContext)?.spanContext();
@@ -650,10 +727,13 @@ function updateProductRunInputs(
 	run: InstanceAiTraceRun,
 	inputs: Record<string, unknown>,
 ): void {
-	const mergedInputs = sanitizeTracePayload(mergeTraceInputs(run.inputs, inputs));
+	const mergedInputs = sanitizeTracePayload(
+		mergeTraceInputs(run.inputs, inputs),
+		conversationTextFor(run),
+	);
 	run.inputs = mergedInputs;
 
-	const prompt = stringifyTracePayload(mergedInputs);
+	const prompt = stringifyTracePayload(mergedInputs, conversationTextFor(run));
 	if (prompt !== undefined) {
 		try {
 			runtime.spans.get(run.id)?.setAttributes({ [GEN_AI_PROMPT]: prompt });
@@ -755,7 +835,11 @@ function resolveDefaultProjectName(): string {
 	return process.env.LANGSMITH_PROJECT ?? process.env.LANGCHAIN_PROJECT ?? DEFAULT_PROJECT_NAME;
 }
 
-function isLangSmithTracingEnabled(proxyAvailable = false): boolean {
+/**
+ * Whether a trace context is created. Pass `true` when the caller has a
+ * tracing proxy config. Callers use it to skip work that only a trace needs.
+ */
+export function isLangSmithTracingEnabled(proxyAvailable = false): boolean {
 	if (readBooleanEnvFlag(process.env.N8N_DIAGNOSTICS_ENABLED) === false) {
 		return false;
 	}
@@ -790,6 +874,15 @@ function normalizeTags(...tagGroups: Array<string[] | undefined>): string[] | un
 	const merged = tagGroups.flatMap((group) => group ?? []).filter(Boolean);
 	if (merged.length === 0) return undefined;
 	return [...new Set(merged)];
+}
+
+/** Merges tags into a span's comma-separated `langsmith.span.tags` attribute. */
+function addLangSmithSpanTags(span: unknown, tags: string[]): unknown {
+	if (!isRecord(span) || !isRecord(span.attributes)) return span;
+	const current = span.attributes[LANGSMITH_SPAN_TAGS];
+	const existing = typeof current === 'string' ? current.split(',').map((tag) => tag.trim()) : [];
+	span.attributes[LANGSMITH_SPAN_TAGS] = normalizeTags(existing, tags)?.join(', ');
+	return span;
 }
 
 function mergeMetadata(
@@ -918,6 +1011,19 @@ export function setTraceModelId(
 	}
 }
 
+/** Without a mode, the approval modes are not available for the run, and the trace says so. */
+export function setTraceApprovalMode(
+	tracing: InstanceAiTraceContext | undefined,
+	approvalMode: InstanceAiApprovalMode | undefined,
+): void {
+	if (!tracing) return;
+	const metadata = { approval_mode: approvalMode ?? 'unavailable' };
+	appendRootRunMetadata(tracing.rootRun, metadata);
+	if (tracing.actorRun.id !== tracing.rootRun.id) {
+		appendRootRunMetadata(tracing.actorRun, metadata);
+	}
+}
+
 export function appendGeneratedWorkflowIdToRootMetadata(
 	root: InstanceAiTraceRun,
 	workflowId: string,
@@ -946,7 +1052,7 @@ export function mergeTraceRunInputs(
 		return;
 	}
 
-	run.inputs = sanitizeTracePayload(mergeTraceInputs(run.inputs, inputs));
+	run.inputs = sanitizeTracePayload(mergeTraceInputs(run.inputs, inputs), conversationTextFor(run));
 }
 
 export async function withCurrentTraceSpan<T>(
@@ -1080,6 +1186,69 @@ async function startAndFinishProductChildSpan(
 	});
 }
 
+function isLiveTraceHandle(
+	tracing: InstanceAiTraceContext | undefined,
+): tracing is InstanceAiTraceContext {
+	return tracing !== undefined && (tracing.isLive?.() ?? true);
+}
+
+/** Whether {@link emitTraceOnlyChildRun} would export a run, so callers can skip costly payloads. */
+function trackBackgroundOperation(
+	runtime: ProductOtelTraceRuntime,
+	operation: Promise<unknown>,
+): void {
+	if (runtime.shutdown) return;
+	runtime.backgroundOperations.add(operation);
+	void operation
+		.catch(() => undefined)
+		.finally(() => runtime.backgroundOperations.delete(operation));
+}
+
+/**
+ * Run `work` detached from the caller, in the trace that `emitTraceOnlyChildRun`
+ * would export to, and keep that trace open until `work` settles. Prefers the
+ * ambient trace for the same reason `emitTraceOnlyChildRun` does. Without one,
+ * `work` is bound to the handle's actor run now: finishing a run drops its span
+ * context, so a child run started after that would land in a trace of its own.
+ */
+export function runDetachedInTrace(
+	fallbackTracing: InstanceAiTraceContext | undefined,
+	work: () => Promise<void>,
+): void {
+	const currentTrace = getCurrentProductTrace();
+	if (currentTrace) {
+		trackBackgroundOperation(
+			currentTrace.runtime,
+			work().catch(() => undefined),
+		);
+		return;
+	}
+	if (!isLiveTraceHandle(fallbackTracing)) {
+		void work().catch(() => undefined);
+		return;
+	}
+	const run = fallbackTracing.actorRun;
+	const runtime = otelTraceRuntimes.get(run.traceId);
+	const spanContext = runtime?.contexts.get(run.id);
+	const operation = (
+		runtime && spanContext
+			? productTraceStorage.run(
+					{ runtime, currentRun: run },
+					async () => await otelContext.with(spanContext, work),
+				)
+			: work()
+	).catch(() => undefined);
+	fallbackTracing.keepOpenUntilSettled?.(operation);
+}
+
+export function canEmitTraceOnlyChildRun(fallbackTracing: InstanceAiTraceContext | undefined) {
+	const currentTrace = getCurrentProductTrace();
+	return (
+		(currentTrace !== undefined && !currentTrace.runtime.shutdown) ||
+		isLiveTraceHandle(fallbackTracing)
+	);
+}
+
 /**
  * Emit a trace-only child run, preferring the current turn's ambient trace: a
  * tool suspended in one turn and resumed in a later one holds a stale handle
@@ -1111,7 +1280,7 @@ export async function emitTraceOnlyChildRun(
 		return 'ambient';
 	}
 	// A dead handle's runs are spanless and export nothing — don't claim 'handle'.
-	if (fallbackTracing && (fallbackTracing.isLive?.() ?? true)) {
+	if (isLiveTraceHandle(fallbackTracing)) {
 		try {
 			const run = await fallbackTracing.startChildRun(fallbackTracing.actorRun, {
 				...init,
@@ -1318,6 +1487,7 @@ function createTraceContext(
 		finishRun,
 		failRun,
 		onMemoryTaskEvent,
+		keepOpenUntilSettled: (operation) => trackBackgroundOperation(otelRuntime, operation),
 		...(telemetryFactory ? { getTelemetry: telemetryFactory } : {}),
 		wrapTools: (tools, traceOptions) => {
 			if (ctx.replayMode === 'replay' && ctx.traceIndex && ctx.idRemapper) {
@@ -1717,6 +1887,7 @@ function createTelemetryFactory(options: {
 		if (options.baseTelemetry) {
 			return {
 				...options.baseTelemetry,
+				traceModelRequests: true,
 				functionId,
 				metadata,
 				recordInputs: true,
@@ -1738,9 +1909,12 @@ function createLangSmithTelemetryBuilder(
 	projectName: string,
 	proxyConfig?: ServiceProxyConfig,
 ): LangSmithTelemetry {
+	const traceTags = proxyConfig?.traceTags;
 	return new LangSmithTelemetry({
 		project: projectName,
-		transformExportedSpan: redactLangSmithTelemetrySpan,
+		transformExportedSpan: traceTags?.length
+			? (span) => addLangSmithSpanTags(redactLangSmithTelemetrySpan(span), traceTags)
+			: redactLangSmithTelemetrySpan,
 		...(proxyConfig
 			? {
 					apiKey: '-',
@@ -1767,6 +1941,8 @@ async function createProductOtelRuntime(
 		spans: new Map(),
 		contexts: new Map(),
 		pendingOperations: new Map(),
+		backgroundOperations: new Set(),
+		releaseDeferred: false,
 		shutdown: false,
 		lifetime: new ProductTelemetryLifetime(telemetry),
 	};

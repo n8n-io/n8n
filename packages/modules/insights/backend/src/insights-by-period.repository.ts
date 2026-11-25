@@ -1,0 +1,655 @@
+import { isValidTimeZone } from '@n8n/api-types';
+import { GlobalConfig } from '@n8n/config';
+import type { User } from '@n8n/db';
+import {
+	DbLock,
+	DbLockService,
+	parseListQuerySortBy,
+	sql,
+	SharedWorkflowRepository,
+} from '@n8n/db';
+import { Container, Service } from '@n8n/di';
+import type { SelectQueryBuilder } from '@n8n/typeorm';
+import { DataSource, LessThanOrEqual, Repository } from '@n8n/typeorm';
+import { DateTime } from 'luxon';
+import { UnexpectedError } from '@n8n/errors';
+import { z } from 'zod';
+
+import {
+	getDateRangesCommonTableExpressionQuery,
+	getDateRangesSelectQuery,
+	getUtcOffsetSegments,
+	type UtcOffsetSegment,
+} from './insights-by-period-query.helper';
+import { InsightsByPeriod } from './insights-by-period.entity';
+import type { PeriodUnit, TypeUnitNumber, ByTimeInsightType } from './insights-shared';
+import { PeriodUnitToNumber, TypeToNumber } from './insights-shared';
+
+const dbType = Container.get(GlobalConfig).database.type;
+const displayTypeName = {
+	[TypeToNumber.success]: 'succeeded',
+	[TypeToNumber.failure]: 'failed',
+	[TypeToNumber.runtime_ms]: 'runTime',
+	[TypeToNumber.time_saved_min]: 'timeSaved',
+};
+
+const summaryParser = z
+	.object({
+		period: z.enum(['previous', 'current']),
+		type: z.union([
+			z.literal(TypeToNumber.time_saved_min),
+			z.literal(TypeToNumber.runtime_ms),
+			z.literal(TypeToNumber.success),
+			z.literal(TypeToNumber.failure),
+			z.literal(TypeToNumber.billable),
+		]),
+
+		// depending on db engine, sum(value) can be a number or a string - because of big numbers
+		total_value: z.union([z.number(), z.string()]),
+	})
+	.array();
+
+const aggregatedInsightsByWorkflowParser = z
+	.object({
+		workflowId: z.string().nullable(),
+		workflowName: z.string(),
+		projectId: z.string().nullable(),
+		projectName: z.string(),
+		total: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+		succeeded: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+		failed: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+		failureRate: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+		runTime: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+		averageRunTime: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+		timeSaved: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+	})
+	.array();
+
+const optionalNumberLike = z
+	.union([z.number(), z.string()])
+	.optional()
+	.transform((value) => (value !== undefined ? Number(value) : undefined));
+
+/**
+ * Parses a raw `periodStart` (a `Date` on Postgres, a SQL datetime string on SQLite) into a UTC ISO
+ * string. `zone` is the zone of the SQLite wall-clock value: UTC for stored rows, the caller's
+ * zone for buckets that `getPeriodStartExpr` truncates in local time. Postgres returns instants,
+ * so `zone` does not apply to them.
+ */
+const makePeriodStartParser = (zone = 'utc') =>
+	z.union([z.date(), z.string()]).transform((value): string => {
+		if (value instanceof Date) {
+			return value.toISOString();
+		}
+
+		const parsedDatetime = DateTime.fromSQL(value.toString(), { zone });
+		if (parsedDatetime.isValid) {
+			return parsedDatetime.toUTC().toISO() ?? new Date(value).toISOString();
+		}
+
+		return new Date(value).toISOString();
+	});
+
+const periodStartParser = makePeriodStartParser();
+
+const makeAggregatedInsightsByTimeParser = (zone?: string) =>
+	z
+		.object({
+			periodStart: makePeriodStartParser(zone),
+			runTime: optionalNumberLike,
+			succeeded: optionalNumberLike,
+			failed: optionalNumberLike,
+			timeSaved: optionalNumberLike,
+		})
+		.array();
+
+const dailyBillableExecutionsParser = z
+	.object({
+		periodStart: periodStartParser,
+		billable: z.union([z.number(), z.string()]).transform((value) => Number(value)),
+	})
+	.transform(({ periodStart, billable }) => ({ day: periodStart.slice(0, 10), billable }))
+	.array();
+
+type CallerTimeZone = { name: string; offsetSegments: UtcOffsetSegment[] };
+
+/**
+ * Identifies a caller whose insights must be limited to the workflows they can
+ * read.
+ */
+export type InsightsAccessFilter = {
+	user: User;
+	projectRoles: string[];
+	workflowRoles: string[];
+};
+
+@Service()
+export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
+	private isRunningCompaction = false;
+
+	constructor(
+		dataSource: DataSource,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly dbLockService: DbLockService,
+	) {
+		super(InsightsByPeriod, dataSource.manager);
+	}
+
+	private escapeField(fieldName: string) {
+		return this.manager.connection.driver.escape(fieldName);
+	}
+
+	/**
+	 * Limits a query to insights for workflows the caller can read, by
+	 * correlating against their workflow shares.
+	 */
+	private applyAccessFilter(
+		qb: SelectQueryBuilder<InsightsByPeriod>,
+		accessFilter: InsightsAccessFilter,
+	) {
+		// Ensure the metadata relation is joined, so we can correlate against workflowId
+		if (!qb.expressionMap.joinAttributes.some((join) => join.alias.name === 'metadata')) {
+			throw new UnexpectedError('The metadata relation must be joined before the access filter');
+		}
+
+		const subquery = this.sharedWorkflowRepository.buildSharedWorkflowIdsSubquery(
+			accessFilter.user,
+			{
+				projectRoles: accessFilter.projectRoles,
+				workflowRoles: accessFilter.workflowRoles,
+			},
+		);
+		subquery.andWhere('"sw"."workflowId" = metadata."workflowId"');
+		qb.andWhere(`EXISTS (${subquery.getQuery()})`).setParameters(subquery.getParameters());
+	}
+
+	private getPeriodFilterExpr(maxAgeInDays = 0) {
+		// Database-specific period start expression to filter out data to compact by days matching the periodUnit
+		let periodStartExpr = `date('now', '-${maxAgeInDays} days')`;
+		if (dbType === 'postgresdb') {
+			// Subtract days before converting back, so DST in the session zone cannot shift the cutoff
+			periodStartExpr = `(DATE_TRUNC('day', NOW() AT TIME ZONE 'UTC') - INTERVAL '${maxAgeInDays} day') AT TIME ZONE 'UTC'`;
+		}
+
+		return periodStartExpr;
+	}
+
+	/**
+	 * Builds the SQL expression that truncates `periodStart` to the start of its period bucket.
+	 *
+	 * @param callerTimeZone Caller timezone to bucket in. Omit to bucket in UTC, as compaction (whose
+	 * boundaries define the stored period keys) and billable-execution counts do.
+	 * When set, day/week boundaries follow the caller's local wall-clock (LIGO-808), so a
+	 * positive-offset caller no longer gets an extra prior-day chart bar. `name` is the IANA zone;
+	 * `offsetSegments` are that zone's UTC offsets over the queried range, used only for SQLite.
+	 *
+	 * On SQLite with a caller timezone, the expression yields the bucket start as a local wall-clock
+	 * datetime. Parse it with `makePeriodStartParser(callerTimeZone.name)`.
+	 */
+	private getPeriodStartExpr(periodUnitToCompactInto: PeriodUnit, callerTimeZone?: CallerTimeZone) {
+		// A bare DATE_TRUNC on timestamptz truncates in the session time zone, so always name one.
+		// Postgres resolves the offset per row, so buckets stay exact across DST transitions.
+		if (dbType === 'postgresdb') {
+			// Re-check the zone so it cannot break out of the string literal
+			const zone =
+				callerTimeZone && isValidTimeZone(callerTimeZone.name) ? callerTimeZone.name : 'UTC';
+			const periodField = this.escapeField('periodStart');
+			return `DATE_TRUNC('${periodUnitToCompactInto}', ${periodField} AT TIME ZONE '${zone}') AT TIME ZONE '${zone}'`;
+		}
+
+		if (!callerTimeZone) {
+			return periodUnitToCompactInto === 'week'
+				? "strftime('%Y-%m-%d 00:00:00.000', date(periodStart, '-6 days', 'weekday 1'))"
+				: `strftime('%Y-%m-%d ${periodUnitToCompactInto === 'hour' ? '%H' : '00'}:00:00.000', periodStart)`;
+		}
+
+		// Truncating in UTC splits a caller-local day/week across two UTC buckets for non-UTC
+		// callers (e.g. an extra prior-day chart bar for positive offsets, LIGO-808).
+		// SQLite has no IANA timezone database. Shift each row into local wall-clock time with the
+		// offset of its own DST segment, then truncate. The bucket start stays in local time: one
+		// fixed offset cannot convert it back, because the offset at the bucket start can differ
+		// from the offset of the rows in it.
+		const offsetModifierExpr = this.getOffsetModifierExpr(callerTimeZone.offsetSegments);
+		const localTruncatedExpr =
+			periodUnitToCompactInto === 'week'
+				? `date(periodStart, ${offsetModifierExpr}, '-6 days', 'weekday 1')`
+				: `strftime('%Y-%m-%d ${periodUnitToCompactInto === 'hour' ? '%H' : '00'}:00:00', periodStart, ${offsetModifierExpr})`;
+
+		return `strftime('%Y-%m-%d %H:%M:%f', ${localTruncatedExpr})`;
+	}
+
+	/** Builds a SQLite date modifier that shifts `periodStart` by the UTC offset of its segment. */
+	private getOffsetModifierExpr(offsetSegments: UtcOffsetSegment[]) {
+		const [firstSegment, ...laterSegments] = offsetSegments;
+		const firstModifier = `'${firstSegment.offsetMinutes} minutes'`;
+		if (laterSegments.length === 0) return firstModifier;
+
+		const whenClauses = laterSegments
+			.reverse()
+			.map(
+				({ fromUtc, offsetMinutes }) =>
+					`WHEN periodStart >= '${fromUtc}' THEN '${offsetMinutes} minutes'`,
+			);
+		return `CASE ${whenClauses.join(' ')} ELSE ${firstModifier} END`;
+	}
+
+	getPeriodInsightsBatchQuery({
+		periodUnitToCompactFrom,
+		compactionBatchSize,
+		maxAgeInDays,
+	}: { periodUnitToCompactFrom: PeriodUnit; compactionBatchSize: number; maxAgeInDays: number }) {
+		// Build the query to gather period insights data for the batch
+		const batchQuery = this.createQueryBuilder()
+			.select(
+				['id', 'metaId', 'type', 'periodStart', 'value'].map((fieldName) =>
+					this.escapeField(fieldName),
+				),
+			)
+			.where(`${this.escapeField('periodUnit')} = ${PeriodUnitToNumber[periodUnitToCompactFrom]}`)
+			.andWhere(`${this.escapeField('periodStart')} < ${this.getPeriodFilterExpr(maxAgeInDays)}`)
+			.orderBy(this.escapeField('periodStart'), 'ASC')
+			.limit(compactionBatchSize);
+
+		return batchQuery as SelectQueryBuilder<{
+			id: number;
+			metaId: number;
+			type: string;
+			value: number;
+			periodStart: Date;
+		}>;
+	}
+
+	private getAggregationQuery(periodUnit: PeriodUnit) {
+		// Get the start period expression depending on the period unit and database type
+		const periodStartExpr = this.getPeriodStartExpr(periodUnit);
+
+		// Function to get the aggregation query
+		const aggregationQuery = this.manager
+			.createQueryBuilder()
+			.select(this.escapeField('metaId'))
+			.addSelect(this.escapeField('type'))
+			.addSelect(PeriodUnitToNumber[periodUnit].toString(), 'periodUnit')
+			.addSelect(periodStartExpr, 'periodStart')
+			.addSelect(`SUM(${this.escapeField('value')})`, 'value')
+			.from('rows_to_compact', 'rtc')
+			.groupBy(this.escapeField('metaId'))
+			.addGroupBy(this.escapeField('type'))
+			.addGroupBy(periodStartExpr);
+
+		return aggregationQuery;
+	}
+
+	/**
+	 * Compacts source data into the target period unit
+	 */
+	async compactSourceDataIntoInsightPeriod({
+		sourceBatchQuery,
+		sourceTableName = this.metadata.tableName,
+		periodUnitToCompactInto,
+	}: {
+		/**
+		 * Query builder to get batch source data. Must return these fields: 'id', 'metaId', 'type', 'periodStart', 'value'.
+		 */
+		sourceBatchQuery: SelectQueryBuilder<{
+			id: number;
+			metaId: number;
+			type: string;
+			value: number;
+			periodStart: Date;
+		}>;
+
+		/**
+		 * The source table name to get source data from.
+		 */
+		sourceTableName?: string;
+
+		/**
+		 * The new period unit to compact the data into.
+		 */
+		periodUnitToCompactInto: PeriodUnit;
+	}): Promise<number> {
+		// Skip compaction if the process is already running
+		if (this.isRunningCompaction) {
+			return 0;
+		}
+		this.isRunningCompaction = true;
+
+		try {
+			// Create temp table that only exists in this transaction for rows to compact
+			const getBatchAndStoreInTemporaryTable = sql`
+				CREATE TEMPORARY TABLE rows_to_compact AS
+				${sourceBatchQuery.getSql()};
+			`;
+
+			const countBatch = sql`
+				SELECT COUNT(*) ${this.escapeField('rowsInBatch')} FROM rows_to_compact;
+			`;
+
+			const targetColumnNamesStr = ['metaId', 'type', 'periodUnit', 'periodStart']
+				.map((param) => this.escapeField(param))
+				.join(', ');
+			const targetColumnNamesWithValue = `${targetColumnNamesStr}, value`;
+
+			// Function to get the aggregation query
+			const aggregationQuery = this.getAggregationQuery(periodUnitToCompactInto);
+
+			// Insert or update aggregated data
+			const insertQueryBase = sql`
+				INSERT INTO ${this.metadata.tableName}
+					(${targetColumnNamesWithValue})
+				${aggregationQuery.getSql()}
+			`;
+
+			// Database-specific duplicate key logic
+			const deduplicateQuery = sql`
+				ON CONFLICT(${targetColumnNamesStr})
+				DO UPDATE SET value = ${this.metadata.tableName}.value + excluded.value
+				RETURNING *`;
+
+			const upsertEvents = sql`
+				${insertQueryBase}
+				${deduplicateQuery}
+			`;
+
+			// Delete the processed rows
+			const deleteBatch = sql`
+				DELETE FROM ${sourceTableName}
+				WHERE id IN (SELECT id FROM rows_to_compact);
+			`;
+
+			// Clean up
+			const dropTemporaryTable = sql`
+				DROP TABLE rows_to_compact;
+			`;
+
+			// One batch transaction at a time across all instances.
+			const result = await this.dbLockService.withLock(DbLock.INSIGHTS_COMPACTION, async (trx) => {
+				await trx.query(getBatchAndStoreInTemporaryTable);
+
+				await trx.query<Array<{ type: unknown; value: number }>>(upsertEvents);
+
+				const rowsInBatch = await trx.query<[{ rowsInBatch: number | string }]>(countBatch);
+
+				await trx.query(deleteBatch);
+				await trx.query(dropTemporaryTable);
+
+				return Number(rowsInBatch[0].rowsInBatch);
+			});
+
+			return result;
+		} finally {
+			this.isRunningCompaction = false;
+		}
+	}
+
+	async getPreviousAndCurrentPeriodTypeAggregates({
+		startDate,
+		endDate,
+		projectId,
+		timeZone,
+		accessFilter,
+	}: {
+		projectId?: string;
+		startDate: Date;
+		endDate: Date;
+		accessFilter?: InsightsAccessFilter;
+		timeZone?: string;
+	}): Promise<
+		Array<{
+			period: 'previous' | 'current';
+			type: TypeUnitNumber;
+			total_value: string | number;
+		}>
+	> {
+		const cte = getDateRangesCommonTableExpressionQuery({ dbType, startDate, endDate, timeZone });
+
+		const rawRowsQuery = this.createQueryBuilder('insights')
+			.addCommonTableExpression(cte, 'date_ranges')
+			.select(
+				sql`
+						CASE
+							WHEN insights.periodStart >= date_ranges.start_date AND insights.periodStart < date_ranges.end_date
+							THEN 'current'
+							ELSE 'previous'
+						END
+					`,
+				'period',
+			)
+			.addSelect('insights.type', 'type')
+			.addSelect('SUM(value)', 'total_value')
+			// Use a cross join with the CTE
+			.innerJoin('date_ranges', 'date_ranges', '1=1')
+			.where('insights.periodStart >= date_ranges.prev_start_date')
+			.andWhere('insights.periodStart < date_ranges.end_date')
+			// Group by both period and type
+			.groupBy('period')
+			.addGroupBy('insights.type');
+
+		// If we're filtering by projectId or accessFilter, we need a metadata join to access projectId and workflowId.
+		if (projectId || accessFilter) {
+			rawRowsQuery.innerJoin('insights.metadata', 'metadata');
+		}
+
+		if (projectId) {
+			rawRowsQuery.andWhere('metadata.projectId = :projectId', { projectId });
+		}
+
+		if (accessFilter) {
+			this.applyAccessFilter(rawRowsQuery, accessFilter);
+		}
+
+		const rawRows = await rawRowsQuery.getRawMany();
+
+		return summaryParser.parse(rawRows);
+	}
+
+	private async countInsightsByWorkflowGroups(
+		rawRowsQuery: SelectQueryBuilder<InsightsByPeriod>,
+	): Promise<number> {
+		const resultRow = await this.manager
+			.createQueryBuilder()
+			.select('COUNT(*)', 'count')
+			.from(`(${rawRowsQuery.getQuery()})`, 'workflow_groups')
+			.setParameters(rawRowsQuery.getParameters())
+			.getRawOne<{ count: string | number }>();
+
+		return Number(resultRow?.count ?? 0);
+	}
+
+	async getInsightsByWorkflow({
+		startDate,
+		endDate,
+		skip = 0,
+		take = 20,
+		sortBy = 'total:desc',
+		projectId,
+		timeZone,
+		accessFilter,
+	}: {
+		skip?: number;
+		take?: number;
+		sortBy?: string;
+		projectId?: string;
+		startDate: Date;
+		endDate: Date;
+		timeZone?: string;
+		accessFilter?: InsightsAccessFilter;
+	}) {
+		const { column: sortField, direction: sortOrder } = parseListQuerySortBy(sortBy);
+		const sumOfExecutions = sql`SUM(CASE WHEN insights.type IN (${TypeToNumber.success.toString()}, ${TypeToNumber.failure.toString()}) THEN value ELSE 0 END)`;
+
+		const cte = getDateRangesCommonTableExpressionQuery({ dbType, startDate, endDate, timeZone });
+
+		const rawRowsQuery = this.createQueryBuilder('insights')
+			.addCommonTableExpression(cte, 'date_ranges')
+			.select([
+				'metadata.workflowId AS "workflowId"',
+				'metadata.workflowName AS "workflowName"',
+				'metadata.projectId AS "projectId"',
+				'metadata.projectName AS "projectName"',
+				`SUM(CASE WHEN insights.type = ${TypeToNumber.success} THEN value ELSE 0 END) AS "${displayTypeName[TypeToNumber.success]}"`,
+				`SUM(CASE WHEN insights.type = ${TypeToNumber.failure} THEN value ELSE 0 END) AS "${displayTypeName[TypeToNumber.failure]}"`,
+				`SUM(CASE WHEN insights.type IN (${TypeToNumber.success}, ${TypeToNumber.failure}) THEN value ELSE 0 END) AS "total"`,
+				sql`CASE
+								WHEN ${sumOfExecutions} = 0 THEN 0
+								ELSE 1.0 * SUM(CASE WHEN insights.type = ${TypeToNumber.failure.toString()} THEN value ELSE 0 END) / ${sumOfExecutions}
+							END AS "failureRate"`,
+				`SUM(CASE WHEN insights.type = ${TypeToNumber.runtime_ms} THEN value ELSE 0 END) AS "${displayTypeName[TypeToNumber.runtime_ms]}"`,
+				`SUM(CASE WHEN insights.type = ${TypeToNumber.time_saved_min} THEN value ELSE 0 END) AS "${displayTypeName[TypeToNumber.time_saved_min]}"`,
+				sql`CASE
+								WHEN ${sumOfExecutions} = 0	THEN 0
+								ELSE 1.0 * SUM(CASE WHEN insights.type = ${TypeToNumber.runtime_ms.toString()} THEN value ELSE 0 END) / ${sumOfExecutions}
+							END AS "averageRunTime"`,
+			])
+			.innerJoin('insights.metadata', 'metadata')
+			// Use a cross join with the CTE
+			.innerJoin('date_ranges', 'date_ranges', '1=1')
+			.where('insights.periodStart >= date_ranges.start_date')
+			.andWhere('insights.periodStart < date_ranges.end_date')
+			.groupBy('metadata.workflowId')
+			.addGroupBy('metadata.workflowName')
+			.addGroupBy('metadata.projectId')
+			.addGroupBy('metadata.projectName');
+
+		if (projectId) {
+			rawRowsQuery.andWhere('metadata.projectId = :projectId', { projectId });
+		}
+
+		if (accessFilter) {
+			this.applyAccessFilter(rawRowsQuery, accessFilter);
+		}
+
+		const paginatedQuery = rawRowsQuery
+			.clone()
+			.orderBy(this.escapeField(sortField), sortOrder)
+			.offset(skip)
+			.limit(take);
+
+		const [count, rawRows] = await Promise.all([
+			this.countInsightsByWorkflowGroups(rawRowsQuery),
+			paginatedQuery.getRawMany(),
+		]);
+
+		return { count, rows: aggregatedInsightsByWorkflowParser.parse(rawRows) };
+	}
+
+	async getInsightsByTime({
+		periodUnit,
+		insightTypes,
+		projectId,
+		startDate,
+		endDate,
+		timeZone,
+		accessFilter,
+	}: {
+		periodUnit: PeriodUnit;
+		insightTypes: ByTimeInsightType[];
+		projectId?: string;
+		startDate: Date;
+		endDate: Date;
+		timeZone?: string;
+		accessFilter?: InsightsAccessFilter;
+	}) {
+		const cte = getDateRangesCommonTableExpressionQuery({ dbType, startDate, endDate, timeZone });
+
+		const typesAggregation = insightTypes.map((type) => {
+			return `SUM(CASE WHEN insights.type = ${TypeToNumber[type]} THEN value ELSE 0 END) AS "${displayTypeName[TypeToNumber[type]]}"`;
+		});
+
+		// offsetSegments only feed SQLite. Postgres resolves the offset per row from the zone name.
+		const callerTimeZone =
+			timeZone && isValidTimeZone(timeZone)
+				? {
+						name: timeZone,
+						offsetSegments: getUtcOffsetSegments({ startDate, endDate, timeZone }),
+					}
+				: undefined;
+		const periodStartExpr = this.getPeriodStartExpr(periodUnit, callerTimeZone);
+
+		const rawRowsQuery = this.createQueryBuilder('insights')
+			.addCommonTableExpression(cte, 'date_ranges')
+			.select([`${periodStartExpr} as "periodStart"`, ...typesAggregation])
+			.innerJoin('date_ranges', 'date_ranges', '1=1')
+			.where(`${this.escapeField('periodStart')} >= date_ranges.start_date`)
+			.andWhere(`${this.escapeField('periodStart')} < date_ranges.end_date`)
+			.groupBy(periodStartExpr)
+			.orderBy(periodStartExpr, 'ASC');
+
+		// If we're filtering by projectId or accessFilter, we need a metadata join to access projectId and workflowId.
+		if (projectId || accessFilter) {
+			rawRowsQuery.innerJoin('insights.metadata', 'metadata');
+		}
+
+		if (projectId) {
+			rawRowsQuery.andWhere('metadata.projectId = :projectId', { projectId });
+		}
+
+		if (accessFilter) {
+			this.applyAccessFilter(rawRowsQuery, accessFilter);
+		}
+
+		const rawRows = await rawRowsQuery.getRawMany();
+		return makeAggregatedInsightsByTimeParser(callerTimeZone?.name).parse(rawRows);
+	}
+
+	async getDailyBillableExecutions({
+		startDate,
+		endDate,
+	}: {
+		startDate: Date;
+		endDate: Date;
+	}): Promise<Array<{ day: string; billable: number }>> {
+		const firstDay = DateTime.fromJSDate(startDate, { zone: 'utc' }).startOf('day');
+		const cte = getDateRangesSelectQuery({
+			dbType,
+			prevStartDateTime: firstDay,
+			startDateTime: firstDay,
+			endDateTime: DateTime.fromJSDate(endDate, { zone: 'utc' }).plus({ days: 1 }).startOf('day'),
+		});
+		const periodStartExpr = this.getPeriodStartExpr('day');
+
+		const rawRows = await this.createQueryBuilder('insights')
+			.addCommonTableExpression(cte, 'date_ranges')
+			.select([`${periodStartExpr} as "periodStart"`, 'SUM(value) AS "billable"'])
+			.innerJoin('date_ranges', 'date_ranges', '1=1')
+			.where(`${this.escapeField('periodStart')} >= date_ranges.start_date`)
+			.andWhere(`${this.escapeField('periodStart')} < date_ranges.end_date`)
+			.andWhere(`insights.type = ${TypeToNumber.billable}`)
+			.groupBy(periodStartExpr)
+			.orderBy(periodStartExpr, 'ASC')
+			.getRawMany();
+
+		return dailyBillableExecutionsParser.parse(rawRows);
+	}
+
+	async getFirstBillableDay(): Promise<string | null> {
+		const result = await this.createQueryBuilder('insights')
+			.select(`MIN(${this.escapeField('periodStart')})`, 'first')
+			.where(`insights.type = ${TypeToNumber.billable}`)
+			.getRawOne<{ first: Date | string | null }>();
+
+		if (!result?.first) {
+			return null;
+		}
+
+		return periodStartParser.parse(result.first).slice(0, 10);
+	}
+
+	async pruneOldData(maxAgeInDays: number): Promise<{ affected: number | null | undefined }> {
+		const thresholdDate = DateTime.now().minus({ days: maxAgeInDays }).startOf('day').toJSDate();
+		const result = await this.delete({
+			periodStart: LessThanOrEqual(thresholdDate),
+		});
+
+		return { affected: result.affected };
+	}
+
+	async getEarliestDataDate(): Promise<Date | null> {
+		const result = await this.createQueryBuilder('ibp')
+			.select('MIN(ibp.periodStart)', 'minDate')
+			.getRawOne<{ minDate: Date | string | null }>();
+		// SQLite returns a UTC datetime string without a zone, which `new Date()`
+		// would read as local time.
+		return result?.minDate ? new Date(periodStartParser.parse(result.minDate)) : null;
+	}
+}

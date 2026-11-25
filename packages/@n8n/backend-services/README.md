@@ -27,9 +27,51 @@ and infrastructure services that need the persistence layer or that only
 
 ## What lives here
 
-Nothing yet. The next PRs move the response errors, `UrlService`, `CacheService`,
-`RedisClientService`, `ProtectedResourceRegistry`, `EventService`, `RoleService`,
-the finder services and the scope checks here, one area at a time.
+- `EventService`: the shared, typed event bus.
+- `EventRelay`: the base class for a service that listens to `EventService`
+  events. Its listener map uses the open `EventMap`.
+- `loginIdOf`: the login of a service account in an `OperationContext`, for
+  audit events.
+- `UserDeactivationHooks`: modules register cleanup steps that run in the
+  transaction that deactivates a user.
+- `PasswordUtility`: password hashes and checks with bcrypt.
+- `ExecutionDataJsonStore`: execution data bundles in blob storage, with the
+  bundle types and the read and write errors. `DbStore` stays in `cli`.
+- `UrlService`: instance and webhook URLs.
+- `CacheService`: application cache access.
+- `RedisClientService`: shared Redis connections and support code.
+- `PostHogClient`: product analytics events and feature flags from PostHog.
+- `Publisher` and `Subscriber`: the scaling-mode pubsub channels. The command
+  payload types (`PubSubCommandMap`) live in `@n8n/decorators`, next to
+  `@OnPubSubEvent`.
+- `ProjectScopeService`: project-level scope checks. A module calls
+  `hasScopes(user, projectId, scopes)`, not `userHasScopes` from `cli`.
+  `userHasScopes` stays in `cli` for the route decorators and for checks on
+  shared credentials and workflows.
+
+The next PRs move `ProtectedResourceRegistry`, `RoleService` and the finder
+services here, one area at a time.
+
+### Register event payloads
+
+`EventMap` is an open interface. Each event owner augments it with its payload
+types. This keeps domain dependencies out of the shared event bus.
+
+```typescript
+import type {} from '@n8n/backend-services';
+
+declare module '@n8n/backend-services' {
+	interface EventMap {
+		'example-completed': { id: string };
+	}
+}
+```
+
+Include the augmentation file in the owner's TypeScript project. If another
+package uses these events, include the augmentation in the owner's exported
+types. The CLI registers its existing maps in `src/events/event-map.ts`.
+Augmentation needs no runtime registration. All consumers import `EventService`
+from `@n8n/backend-services` and use the same DI token.
 
 ## Compatibility with cli
 
@@ -39,7 +81,7 @@ lints and tests here without edits:
 | Concern | Setup | Mirrors |
 | --- | --- | --- |
 | TypeScript | `common.go` + `backend.go`, `lib` es2023, `strictFunctionTypes`, `strictPropertyInitialization` and `useUnknownInCatchVariables` off | `packages/cli/tsconfig.json` |
-| Lint | `oxlint --type-aware`, then the ESLint guardrails pass. `eslint.config.mjs` is the policy twin that code-health and the guardrails read | `packages/cli/oxlint.config.mts`, `eslint.guardrails.config.mjs` |
+| Lint | `oxlint --type-aware`. `eslint.config.mjs` is the policy twin that code-health reads | `packages/cli/oxlint.config.mts`, `eslint.config.mjs` |
 | Tests | Vitest with the decorators config, one fork per file, the same `N8N_USER_FOLDER` and `N8N_ENCRYPTION_KEY` setup | `packages/cli/vitest.config.base.ts`, `test/setup-test-folder.ts` |
 
 Two things do not carry over on purpose:
@@ -59,7 +101,8 @@ Two things do not carry over on purpose:
   uses belongs to that module.
 - Keep the file layout of `cli` (`errors/`, `services/`). A move with `git mv`
   keeps the history readable.
-- Add each new export to `src/index.ts`. Consumers import from the package
-  root only.
+- Add shared exports to `src/index.ts`. Use `@n8n/backend-services/auth` for
+  auth registries and provider proxies. This entry point does not load the
+  cache, Redis, or database-backed services. Keep internal file paths private.
 - Keep `oxlint.config.mts` and `eslint.config.mjs` in step. A ratchet
   allowlist for a moved TypeORM leak goes into both.

@@ -10,6 +10,28 @@ import { createComponentRenderer } from '../../__tests__/render';
 const renderComponent = createComponentRenderer(N8nChatInput);
 
 describe('N8nChatInput', () => {
+	describe('canvas shortcut protection', function () {
+		it('blocks canvas shortcuts by default', function () {
+			const { getByRole } = renderComponent({});
+
+			expect(getByRole('textbox')).toHaveClass('ignore-key-press-canvas');
+		});
+
+		it('can disable canvas protection without changing node creator protection', async function () {
+			const { getByRole, rerender } = renderComponent({
+				props: { blockCanvasShortcuts: false },
+			});
+			const textarea = getByRole('textbox');
+
+			expect(textarea).not.toHaveClass('ignore-key-press-canvas');
+			expect(textarea).toHaveClass('ignore-key-press-node-creator');
+
+			await rerender({ blockCanvasShortcuts: true });
+
+			expect(textarea).toHaveClass('ignore-key-press-canvas');
+		});
+	});
+
 	describe('rendering', () => {
 		it('should render correctly with default props', () => {
 			const { container } = renderComponent({
@@ -827,6 +849,27 @@ describe('N8nChatInput', () => {
 
 			// Verify focus was called
 			expect(focusSpy).toHaveBeenCalled();
+
+			wrapper.unmount();
+		});
+
+		it('should expose the same element around the send and stop button while it switches', async () => {
+			const wrapper = mount(N8nChatInput, {
+				props: { modelValue: 'test', streaming: true },
+				global: {
+					stubs: {
+						N8nCallout: true,
+						N8nScrollArea: { template: '<div><slot /></div>' },
+					},
+				},
+			});
+
+			const element = wrapper.vm.getSendStopButtonElement();
+			expect(element?.querySelector('[data-test-id="send-message-button"]')).toBeTruthy();
+
+			await wrapper.setProps({ streaming: false });
+
+			expect(wrapper.vm.getSendStopButtonElement()).toBe(element);
 
 			wrapper.unmount();
 		});

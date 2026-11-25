@@ -75,7 +75,6 @@ const nodeInputIssues = computed(() => {
 				'typeUnknown',
 				'parameters',
 				'credentials',
-				'execution',
 			])
 		: undefined;
 	return issues?.input ?? {};
@@ -336,7 +335,7 @@ defineExpose({
 										</template>
 									</template>
 									<N8nIconButton
-										variant="subtle"
+										variant="outline"
 										size="medium"
 										icon="plus"
 										:data-test-id="`add-subnode-${getConnectionKey(connection, index)}`"

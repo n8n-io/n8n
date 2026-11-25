@@ -24,7 +24,8 @@ export class GetPairedItemRule implements IBreakingChangeWorkflowRule {
 			description:
 				'The $getPairedItem expression helper is removed. Expressions using it will fail to evaluate.',
 			category: BreakingChangeCategory.workflow,
-			severity: 'medium',
+			impact: 'executionsFail',
+			assistant: 'fix',
 		};
 	}
 
@@ -36,7 +37,7 @@ export class GetPairedItemRule implements IBreakingChangeWorkflowRule {
 			{
 				action: 'Replace $getPairedItem usages',
 				description:
-					'Rewrite the affected expressions using $input.all() or $("Node").all(), $("Node").item, or $("Node").itemMatching() instead of $getPairedItem.',
+					"Use $('Node').item for the item paired with the current item. Use $('Node').pairedItem(n) or $('Node').itemMatching(n) for the item paired with input item n of this node. Node is the name of the node that produced the item.",
 			},
 		];
 	}

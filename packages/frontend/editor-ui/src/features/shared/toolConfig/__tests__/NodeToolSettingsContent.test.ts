@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
@@ -14,6 +14,7 @@ import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import NodeToolSettingsContent from '../NodeToolSettingsContent.vue';
 import { NodeHelpers, type INode, type INodeTypeDescription } from 'n8n-workflow';
 import { waitFor } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import userEvent from '@testing-library/user-event';
 import { defineComponent, inject, type PropType } from 'vue';
 
@@ -131,11 +132,11 @@ const renderComponent = createComponentRenderer(NodeToolSettingsContent, {
 		stubs: {
 			ParameterInputList: {
 				template:
-					'<div data-test-id="parameter-input-list">{{ JSON.stringify(parameters) }}<slot /></div>',
+					'<div data-test-id="parameter-input-list" :data-read-only="isReadOnly">{{ JSON.stringify(parameters) }}<slot /></div>',
 				props: ['parameters', 'nodeValues', 'isReadOnly', 'hideDelete', 'node', 'path'],
 			},
 			NodeCredentials: {
-				template: '<div data-test-id="node-credentials" />',
+				template: '<div data-test-id="node-credentials" :data-read-only="readonly" />',
 				props: ['node', 'readonly', 'showAll', 'hideIssues'],
 			},
 		},
@@ -161,6 +162,9 @@ describe('NodeToolSettingsContent', () => {
 		settingsStore = mockedStore(useSettingsStore);
 
 		nodeTypesStore.getNodeType = vi.fn().mockReturnValue(MOCK_NODE_TYPE);
+		// The node types are in the store by default. The node types tests below empty it.
+		nodeTypesStore.hasNodeTypes = true;
+		nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockResolvedValue(undefined);
 		environmentsStore.variablesAsObject = {};
 		credentialsStore.allCredentials = [];
 		credentialsStore.setCredentials = vi.fn();
@@ -217,6 +221,22 @@ describe('NodeToolSettingsContent', () => {
 		expect(renderedParameters).not.toContain('__CUSTOM_API_CALL__');
 	});
 
+	it('hides host-owned parameters and keeps unrelated parameters visible', () => {
+		const { getAllByTestId } = renderComponent({
+			props: {
+				initialNode: createMockNode(),
+				hiddenParameters: ['resource'],
+			},
+		});
+
+		const renderedParameters = getAllByTestId('parameter-input-list')
+			.map((element) => element.textContent ?? '')
+			.join('');
+		expect(renderedParameters).not.toContain('"name":"resource"');
+		expect(renderedParameters).toContain('"name":"operation"');
+		expect(renderedParameters).toContain('"name":"nameField"');
+	});
+
 	it('should hide settings tab when there are no settings', () => {
 		const { queryByText } = renderComponent({
 			props: { initialNode: createMockNode() },
@@ -263,7 +283,7 @@ describe('NodeToolSettingsContent', () => {
 		const { rerender } = renderComponent({
 			props: { initialNode, syncNodeToNdv: true },
 		});
-		const toolNdvStore = useNDVStore(createWorkflowDocumentId('node-tool-workflow'));
+		const toolNdvStore = useNDVStore(createWorkflowDocumentId('', 'node-tool-workflow'));
 
 		expect(toolNdvStore.activeNode?.parameters).toEqual(initialNode.parameters);
 
@@ -283,6 +303,28 @@ describe('NodeToolSettingsContent', () => {
 		});
 
 		expect(getByTestId('node-credentials')).toBeTruthy();
+	});
+
+	it('locks parameters and credentials when read-only', () => {
+		const { getAllByTestId, getByTestId } = renderComponent({
+			props: { initialNode: createMockNode(), readOnly: true },
+		});
+
+		for (const list of getAllByTestId('parameter-input-list')) {
+			expect(list).toHaveAttribute('data-read-only', 'true');
+		}
+		expect(getByTestId('node-credentials')).toHaveAttribute('data-read-only', 'true');
+	});
+
+	it('leaves parameters and credentials editable by default', () => {
+		const { getAllByTestId, getByTestId } = renderComponent({
+			props: { initialNode: createMockNode() },
+		});
+
+		for (const list of getAllByTestId('parameter-input-list')) {
+			expect(list).toHaveAttribute('data-read-only', 'false');
+		}
+		expect(getByTestId('node-credentials')).toHaveAttribute('data-read-only', 'false');
 	});
 
 	it('should show no-parameters notice when all params are notice type', () => {
@@ -513,6 +555,31 @@ describe('NodeToolSettingsContent', () => {
 			});
 		});
 
+		it('emits valid=false when an agent tool keeps a credential the agent scope excludes', async () => {
+			const simpleNodeType: INodeTypeDescription = {
+				...MOCK_NODE_TYPE,
+				properties: [],
+				credentials: undefined,
+			};
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(simpleNodeType);
+			credentialsStore.getUsableCredentialById = vi.fn().mockReturnValue(undefined);
+
+			const { emitted } = renderComponent({
+				props: {
+					forAgent: true,
+					initialNode: createMockNode({
+						parameters: {},
+						credentials: { testApi: { id: 'personal-cred', name: 'Personal' } },
+					}),
+				},
+			});
+
+			await waitFor(() => {
+				const validEmissions = emitted('update:valid') as boolean[][];
+				expect(validEmissions[validEmissions.length - 1][0]).toBe(false);
+			});
+		});
+
 		it('should emit valid=false when node has parameter issues', async () => {
 			vi.spyOn(NodeHelpers, 'getNodeParametersIssues').mockReturnValue({
 				parameters: { nameField: ['Parameter "nameField" is required'] },
@@ -705,6 +772,81 @@ describe('NodeToolSettingsContent', () => {
 		});
 	});
 
+	describe('node types that load after the component mounts', () => {
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		const lastNode = (emitted: () => Record<string, unknown[]>) =>
+			(emitted()['update:node'] as INode[][]).at(-1)?.[0];
+
+		it('shows a loading state, then fills the default parameters once the node types load', async () => {
+			nodeTypesStore.hasNodeTypes = false;
+			const { promise, resolve } = Promise.withResolvers<void>();
+			nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockReturnValue(promise);
+			const getNodeParametersSpy = vi.spyOn(NodeHelpers, 'getNodeParameters');
+
+			const { emitted, getByTestId, queryByTestId } = renderComponent({
+				props: { initialNode: createMockNode({ parameters: {} }) },
+			});
+			await flushPromises();
+
+			expect(getByTestId('tool-settings-loading')).toBeInTheDocument();
+			expect(queryByTestId('parameter-input-list')).not.toBeInTheDocument();
+			expect(getNodeParametersSpy).not.toHaveBeenCalled();
+
+			resolve();
+			await flushPromises();
+
+			expect(queryByTestId('tool-settings-loading')).not.toBeInTheDocument();
+			expect(lastNode(emitted)?.parameters).toEqual({
+				resource: 'contact',
+				operation: 'create',
+				nameField: '',
+			});
+			expect(getNodeParametersSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('reports the form as invalid until the node types load', async () => {
+			nodeTypesStore.hasNodeTypes = false;
+			const { promise, resolve } = Promise.withResolvers<void>();
+			nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockReturnValue(promise);
+			// A node type with no required parameters or credentials, so only the load decides.
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(MOCK_NODE_TYPE_NO_PARAMS);
+
+			const { emitted } = renderComponent({
+				props: {
+					initialNode: createMockNode({
+						name: 'No Params Tool',
+						type: MOCK_NODE_TYPE_NO_PARAMS.name,
+						parameters: {},
+					}),
+				},
+			});
+			await flushPromises();
+
+			expect((emitted()['update:valid'] as boolean[][]).at(-1)?.[0]).toBe(false);
+
+			resolve();
+			await flushPromises();
+
+			expect((emitted()['update:valid'] as boolean[][]).at(-1)?.[0]).toBe(true);
+		});
+
+		it('shows the form when the node types fail to load', async () => {
+			nodeTypesStore.hasNodeTypes = false;
+			nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockRejectedValue(new Error('node types'));
+
+			const { queryByTestId, queryAllByTestId } = renderComponent({
+				props: { initialNode: createMockNode() },
+			});
+			await flushPromises();
+
+			expect(queryByTestId('tool-settings-loading')).not.toBeInTheDocument();
+			expect(queryAllByTestId('parameter-input-list').length).toBeGreaterThan(0);
+		});
+	});
+
 	describe('dependent parameter reset', () => {
 		// Node type whose operation options depend on the selected resource.
 		const RESOURCE_DEPENDENT_NODE_TYPE: INodeTypeDescription = {
@@ -792,6 +934,81 @@ describe('NodeToolSettingsContent', () => {
 				// `get` is not valid for the `deal` resource, so it resets to `close`.
 				expect(latest?.parameters.operation).toBe('close');
 			});
+		});
+	});
+
+	describe('same-named parameters of different value shapes', () => {
+		const show = (operation: string) => ({ show: { operation: [operation] } });
+		const SAME_NAME_NODE_TYPE: INodeTypeDescription = {
+			...MOCK_NODE_TYPE,
+			properties: [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					options: [
+						{ name: 'Create', value: 'create' },
+						{ name: 'Get', value: 'get' },
+					],
+					default: 'get',
+					noDataExpression: true,
+				},
+				{
+					displayName: 'Channel',
+					name: 'channelId',
+					type: 'resourceLocator',
+					default: { mode: 'id', value: '' },
+					modes: [{ displayName: 'ID', name: 'id', type: 'string' }],
+					displayOptions: show('get'),
+				},
+				{
+					displayName: 'Channel',
+					name: 'channelId',
+					type: 'string',
+					default: '',
+					displayOptions: show('create'),
+				},
+			],
+		};
+
+		const renderWithOperationSwitch = createComponentRenderer(NodeToolSettingsContent, {
+			global: {
+				stubs: {
+					ParameterInputList: defineComponent({
+						emits: ['value-changed'],
+						template: `
+							<div data-test-id="parameter-input-list">
+								<button
+									data-test-id="to-create"
+									@click="$emit('value-changed', { name: 'operation', value: 'create' })"
+								/>
+							</div>
+						`,
+					}),
+					NodeCredentials: {
+						template: '<div data-test-id="node-credentials" />',
+						props: ['node', 'readonly', 'showAll', 'hideIssues'],
+					},
+				},
+			},
+		});
+
+		it('does not carry a resource locator into a same-named string parameter', async () => {
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(SAME_NAME_NODE_TYPE);
+			const picked = { __rl: true, mode: 'id', value: 'C0123' };
+
+			const { emitted, getAllByTestId } = renderWithOperationSwitch({
+				props: {
+					initialNode: createMockNode({
+						name: 'My Tool',
+						parameters: { operation: 'get', channelId: picked },
+					}),
+				},
+			});
+			const latestParameters = () => (emitted('update:node') as INode[][]).at(-1)?.[0].parameters;
+
+			getAllByTestId('to-create')[0].click();
+			await waitFor(() => expect(latestParameters()?.channelId).toBe(''));
 		});
 	});
 

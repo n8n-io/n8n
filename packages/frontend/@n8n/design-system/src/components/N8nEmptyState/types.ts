@@ -13,6 +13,10 @@ export type EmptyStateCardIcon = IconName | (string & {}) | Component;
  * The icon-cards variant of the `N8nEmptyState` icon area: a fanned trio of small cards
  * where the two side cards cycle through `sides` (static when fewer than three icons are
  * provided, or when the user prefers reduced motion).
+ *
+ * The tiles follow the theme by default. When `sides` are fixed-colour brand marks, set
+ * `--empty-state-icon-cards--tile-background` / `--empty-state-icon-cards--tile-color` on an
+ * ancestor to pin them to a light surface so the marks stay legible on the dark theme.
  */
 export interface EmptyStateIconCards {
 	type: 'cards';
@@ -21,3 +25,9 @@ export interface EmptyStateIconCards {
 	/** Defaults to `true`; set to `false` for a static trio showing the first two side icons. */
 	animated?: boolean;
 }
+
+/**
+ * The size of `N8nEmptyState`. `default` fills a page section. `small` fits inside a table or a
+ * list, for example a "no rows match" message with a button that clears the search and filters.
+ */
+export type EmptyStateSize = 'default' | 'small';

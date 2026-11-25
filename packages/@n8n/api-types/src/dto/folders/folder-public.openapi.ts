@@ -77,3 +77,10 @@ export const deleteFolderQueryFieldDocs = {
 			'Optional target folder ID to move workflows and sub-folders into before deleting.',
 	},
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const folderProjectIdParamDocs = {
+	param: {
+		description:
+			"The ID of the project, or `personal` for the calling user's own personal project.",
+	},
+} as const satisfies ZodOpenAPIMetadata;

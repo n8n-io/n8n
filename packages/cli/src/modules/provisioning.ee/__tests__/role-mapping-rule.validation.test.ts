@@ -1,6 +1,6 @@
 import type { Role } from '@n8n/db';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 
 import {
 	assertAndNormalizeProjectIdsForRuleType,
@@ -21,6 +21,17 @@ describe('role-mapping-rule.validation', () => {
 				BadRequestError,
 			);
 		});
+
+		it.each(['global:owner', 'global:agent'])(
+			'should reject the reserved role %s for instance mapping',
+			(slug) => {
+				const reservedRole = { roleType: 'global', slug } as Role;
+				const act = () => assertRoleCompatibleWithMappingType(reservedRole, 'instance');
+
+				expect(act).toThrow(BadRequestError);
+				expect(act).toThrow('Instance mapping rules cannot use a reserved role');
+			},
+		);
 
 		it('should accept project role for project mapping', () => {
 			expect(() => assertRoleCompatibleWithMappingType(projectRole, 'project')).not.toThrow();

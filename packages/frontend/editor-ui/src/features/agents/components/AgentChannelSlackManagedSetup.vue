@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { SlackManagedSetupState } from '@n8n/api-types';
+import { isSlackManagerCredentialReady, type SlackManagedSetupState } from '@n8n/api-types';
 import {
 	N8nButton,
 	N8nIconButton,
@@ -66,7 +66,7 @@ const credentialOptions = computed<CredentialOption[]>(() =>
 	})),
 );
 const managerConnected = computed(
-	() => selectedCredential.value?.connected === true && !selectedCredential.value.reconnectRequired,
+	() => !!selectedCredential.value && isSlackManagerCredentialReady(selectedCredential.value),
 );
 const workspaces = computed(() => selectedCredential.value?.workspaces ?? []);
 const hasManagerCredentials = computed(() => props.setup.managerCredentials.length > 0);
@@ -160,13 +160,14 @@ async function install() {
 									@credential-selected="selectedCredentialId = $event"
 									@new-credential="createCredential"
 								/>
-								<N8nTooltip :content="i18n.baseText('generic.edit')" placement="top">
+								<N8nTooltip as-child :content="i18n.baseText('generic.edit')" placement="top">
 									<N8nIconButton
 										variant="ghost"
 										size="large"
 										icon-size="medium"
 										icon="pen"
 										:disabled="loading || connecting || !selectedCredentialId"
+										focusable-when-disabled
 										:aria-label="i18n.baseText('generic.edit')"
 										data-testid="slack-manager-edit"
 										@click="editManager(selectedCredentialId)"
@@ -195,7 +196,7 @@ async function install() {
 								/>
 							</N8nSelect>
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								:loading="installing"
 								:disabled="!selectedWorkspaceId"
 								data-testid="slack-managed-install"

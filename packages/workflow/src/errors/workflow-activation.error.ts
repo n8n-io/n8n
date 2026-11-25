@@ -1,6 +1,35 @@
 import { ExecutionBaseError } from './abstract/execution-base.error';
 import type { ErrorLevel } from '@n8n/errors';
+import { errorChain, isObjectLike } from '@n8n/utils/errors/error-chain';
+import type { ActionableCause } from './failure';
 import type { INode } from '../interfaces';
+
+/** Declared failure causes that make an activation error a warning. */
+const WARNING_FAILURE_CAUSES: readonly ActionableCause[] = [
+	'credential-invalid',
+	'configuration-invalid',
+];
+
+function hasWarningFailure(cause: Error | undefined): boolean {
+	return errorChain(cause).some(
+		({ failure }) =>
+			isObjectLike(failure) && WARNING_FAILURE_CAUSES.some((warning) => warning === failure.cause),
+	);
+}
+
+/** Connection error codes that make an activation error a warning. */
+const WARNING_ERROR_CODES: readonly string[] = [
+	'CONNECT_TIMEOUT', // imapflow
+	'ENOTFOUND',
+	'ECONNRESET',
+	'EAI_AGAIN',
+];
+
+function hasWarningErrorCode(cause: Error | undefined): boolean {
+	return errorChain(cause).some(
+		({ code }) => typeof code === 'string' && WARNING_ERROR_CODES.includes(code),
+	);
+}
 
 interface WorkflowActivationErrorOptions {
 	cause?: Error;
@@ -47,12 +76,17 @@ export class WorkflowActivationError extends ExecutionBaseError {
 					? cause.description
 					: cause.message;
 		}
-		this.setLevel(level);
+		this.setLevel(level, cause);
 	}
 
-	private setLevel(level?: ErrorLevel) {
+	private setLevel(level?: ErrorLevel, cause?: Error) {
 		if (level) {
 			this.level = level;
+			return;
+		}
+
+		if (hasWarningFailure(cause) || hasWarningErrorCode(cause)) {
+			this.level = 'warning';
 			return;
 		}
 

@@ -67,7 +67,7 @@ function onUpdate(value: boolean | 'indeterminate') {
 	flex-direction: row;
 	gap: var(--spacing--2xs);
 	cursor: pointer;
-	color: white;
+	color: var(--text-color--inverse);
 	&[data-disabled] {
 		cursor: not-allowed;
 	}
@@ -78,29 +78,37 @@ function onUpdate(value: boolean | 'indeterminate') {
 	background: transparent;
 	width: 16px;
 	height: 16px;
-	border-radius: var(--radius);
+	border-radius: var(--radius--3xs);
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	border: var(--border);
-	color: white;
+	border: none;
+	color: var(--text-color--inverse);
 	cursor: inherit;
 	flex-shrink: 0;
+
+	&[data-state='unchecked'] {
+		border: var(--border);
+		border-color: var(--border-color--strong);
+
+		&[data-disabled] {
+			border: var(--border);
+		}
+	}
 
 	&[data-state='checked'],
 	&[data-state='indeterminate'] {
 		background-color: var(--color--primary);
-		border-color: var(--color--primary--shade-1);
 
 		&[data-disabled] {
 			background: var(--color--foreground);
-			border-color: var(--color--foreground);
+			color: var(--color--text--tint-1);
 		}
 	}
 
 	&:focus-visible {
-		box-shadow: 0 0 0 2px var(--color--secondary);
-		outline: none;
+		outline: var(--focus--border-width) solid var(--focus--outline-color);
+		border-color: var(--focus--border-color);
 		z-index: 1;
 	}
 }
@@ -121,7 +129,7 @@ function onUpdate(value: boolean | 'indeterminate') {
 	cursor: inherit;
 
 	&[data-disabled] {
-		color: var(--color--text--tint-1);
+		color: var(--checkbox--label--color--disabled);
 	}
 }
 </style>

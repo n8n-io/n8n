@@ -1,6 +1,20 @@
 import { getMcpInstructions } from '../tools/workflow-builder/mcp-instructions';
 
 describe('getMcpInstructions', () => {
+	test.each([true, false, undefined])(
+		'gates credential description guidance when the flag is %s',
+		(credentialDescriptionsEnabled) => {
+			const instructions = getMcpInstructions({
+				isBuilderEnabled: true,
+				credentialDescriptionsEnabled,
+			});
+			expect(instructions).toContain('list_credentials');
+			expect(instructions.includes('read their descriptions')).toBe(
+				credentialDescriptionsEnabled === true,
+			);
+		},
+	);
+
 	test('returns intro-only string when builder is disabled', () => {
 		const instructions = getMcpInstructions({ isBuilderEnabled: false });
 		expect(instructions).toContain('official MCP server for n8n');
@@ -156,6 +170,41 @@ describe('instance context', () => {
 
 		const end = instructions.indexOf('\n\n', start);
 		expect(instructions.length).toBeGreaterThan(2048);
+		expect(end).toBeLessThan(2048);
+	});
+});
+
+describe('migration report', () => {
+	it('points at the report tool and names the version when the tools are registered', () => {
+		const instructions = getMcpInstructions({
+			isBuilderEnabled: false,
+			migrationReportTargetVersion: 'v3',
+		});
+
+		expect(instructions).toContain('upgrading to n8n v3');
+		expect(instructions).toContain('get_migration_report');
+	});
+
+	it('says nothing about it when the tools are not registered', () => {
+		const instructions = getMcpInstructions({ isBuilderEnabled: true });
+
+		expect(instructions).not.toContain('get_migration_report');
+	});
+
+	/** Same budget as the instance-context pointer, with every earlier hint switched on. */
+	it('keeps the pointer inside the 2048 characters a client may truncate to', () => {
+		const instructions = getMcpInstructions({
+			isBuilderEnabled: true,
+			isAgentsEnabled: true,
+			isInstanceContextEnabled: true,
+			isUserPreferencesEnabled: true,
+			migrationReportTargetVersion: 'v3',
+		});
+
+		const start = instructions.indexOf('When the user asks about upgrading');
+		expect(start).toBeGreaterThan(-1);
+
+		const end = instructions.indexOf('\n\n', start);
 		expect(end).toBeLessThan(2048);
 	});
 });

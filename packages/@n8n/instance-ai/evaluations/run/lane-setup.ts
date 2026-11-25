@@ -5,7 +5,7 @@
 // ---------------------------------------------------------------------------
 
 import type { Lane } from './build-orchestrator';
-import { cleanupLaneUsers, LaneUserPool } from './lane-users';
+import { cleanupLaneUsers, deleteTeamBuildProjects, LaneUserPool } from './lane-users';
 import type { CliArgs } from '../cli/args';
 import { N8nClient } from '../clients/n8n-client';
 import { cleanupCredentials } from '../credentials/seeder';
@@ -28,10 +28,15 @@ export async function setupLanes(args: CliArgs, logger: EvalLogger): Promise<Lan
 				args.baseUrls.length > 1
 					? ` [lane ${String(idx + 1)}/${String(args.baseUrls.length)}]`
 					: '';
-			const client = new N8nClient(baseUrl);
+			const client = new N8nClient(baseUrl, { assistantRuntime: args.assistantRuntime });
 			logger.info(`Authenticating with ${baseUrl}...${tag}`);
 			await client.login(args.email, args.password);
 			logger.success(`Authenticated${tag}`);
+			const agents = client.assistantAgents();
+			if (agents) {
+				await agents.assertEnabled();
+				logger.info(`Driving the Assistant agent on the Agents runtime${tag}`);
+			}
 
 			logger.info(`Seeding MCP registry...${tag}`);
 			const mcpSeedResult = await seedMcpRegistry(client, logger);
@@ -41,13 +46,21 @@ export async function setupLanes(args: CliArgs, logger: EvalLogger): Promise<Lan
 				logger.info(`Skipped MCP registry seed (test endpoint unavailable)${tag}`);
 			}
 
-			// --build-via-mcp: enable MCP and set up the lane's build-user pool.
 			// Each lane is a self-contained build+verify target — a workflow built
 			// here is verified here, so N lanes parallelize the whole pipeline.
-			let mcpUserPool: LaneUserPool | undefined;
 			if (args.buildViaMcp) {
 				await client.enableMcpAccess();
-				mcpUserPool = new LaneUserPool(client);
+			}
+			const buildUserPool = new LaneUserPool(client);
+			const teamBuildProjects = await client.canCreateTeamProjects();
+			if (teamBuildProjects) {
+				// The dispatcher runs one CLI per instance at a time, so any marked
+				// project here is a crashed run's leftover.
+				await deleteTeamBuildProjects(client, logger);
+			} else {
+				logger.warn(
+					`No team projects on this instance: builds run in a member's personal project, so n8n hides execution output from the agent${tag}`,
+				);
 			}
 
 			// Independent reads of one instance, so they run together.
@@ -68,7 +81,8 @@ export async function setupLanes(args: CliArgs, logger: EvalLogger): Promise<Lan
 				claimedWorkflowIds,
 				createdCredentialIds,
 				workflowIdsToDelete,
-				mcpUserPool,
+				buildUserPool,
+				teamBuildProjects,
 			};
 		}),
 	);
@@ -81,19 +95,22 @@ export async function setupLanes(args: CliArgs, logger: EvalLogger): Promise<Lan
  *  workflows across lanes; a single-lane cleanup would 404 on the rest). */
 export async function cleanupLanes(
 	lanes: Lane[],
-	cleanupBuiltWorkflows: boolean,
+	cleanup: { workflows: boolean; buildUsers: boolean },
 	logger: EvalLogger,
 ): Promise<void> {
 	await Promise.all(
 		lanes.map(async (lane) => {
-			if (cleanupBuiltWorkflows && lane.workflowIdsToDelete.size > 0) {
+			if (cleanup.workflows && lane.workflowIdsToDelete.size > 0) {
 				await cleanupPrebuiltWorkflows(lane.client, lane.workflowIdsToDelete, logger);
 			}
 			await cleanupCredentials(lane.client, [...lane.createdCredentialIds]).catch(() => {});
 			// Deleting a user deletes their remaining data, so keep the build
 			// users when workflows are kept.
-			if (cleanupBuiltWorkflows && lane.mcpUserPool) {
-				await cleanupLaneUsers(lane.client, lane.mcpUserPool, logger);
+			if (cleanup.buildUsers && lane.buildUserPool) {
+				await cleanupLaneUsers(lane.client, lane.buildUserPool, logger);
+			}
+			if (cleanup.buildUsers && lane.teamBuildProjects) {
+				await deleteTeamBuildProjects(lane.client, logger);
 			}
 		}),
 	);

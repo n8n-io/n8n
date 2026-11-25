@@ -16,13 +16,13 @@ import type {
 	WorkflowExpression,
 } from 'n8n-workflow';
 import {
-	UnexpectedError,
 	createRunExecutionData,
 	ManualExecutionCancelledError,
 	NodeConnectionTypes,
 	NodeOperationError,
 	CONSOLE_OUTPUT_REDACTED_MESSAGE,
 } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { describeCommonTests } from './shared-tests';
@@ -117,6 +117,27 @@ describe('SupplyDataContext', () => {
 			const expectedData = [{ json: { test: 'data' } }];
 
 			expect(supplyDataContext.getInputData(inputIndex, connectionType)).toEqual(expectedData);
+		});
+
+		it('should read input data from a map without a prototype', () => {
+			const inputDataWithoutPrototype = { ...inputData };
+			Object.setPrototypeOf(inputDataWithoutPrototype, null);
+			const context = new SupplyDataContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputDataWithoutPrototype,
+				connectionType,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+			expect(context.getInputData(inputIndex, connectionType)).toEqual(inputData.main[inputIndex]);
 		});
 
 		it('should return an empty array if the input name does not exist', () => {
@@ -334,6 +355,33 @@ describe('SupplyDataContext', () => {
 	});
 
 	describe('addExecutionDataFunctions', () => {
+		it('should record input in a run-data map without a prototype', async () => {
+			const runData: IRunData = {};
+			Object.setPrototypeOf(runData, null);
+			const testRunExecutionData = createRunExecutionData({ resultData: { runData } });
+			const testAdditionalData = { ...additionalData, hooks: undefined };
+			const context = new SupplyDataContext(
+				workflow,
+				node,
+				testAdditionalData,
+				mode,
+				testRunExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				connectionType,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+			const data = [[{ json: { test: 'data' } }]];
+			const inputType = NodeConnectionTypes.AiTool;
+
+			await context.addExecutionDataFunctions('input', data, inputType, node.name, 0);
+
+			expect(runData[node.name][0].data).toEqual({ [inputType]: data });
+		});
+
 		it('should preserve canceled status when execution is aborted and output has error', async () => {
 			const errorData = new ManualExecutionCancelledError('Execution was aborted');
 			const abortedSignal = mock<AbortSignal>({ aborted: true });
@@ -710,6 +758,7 @@ describe('SupplyDataContext', () => {
 			testAdditionalData.currentNodeUsedDynamicCredentials = false;
 			testAdditionalData.currentNodeAttemptedDynamicCredentials = false;
 			testAdditionalData.dynamicCredentialsResolvedUserId = undefined;
+			testAdditionalData.currentNodeUsedCredentialIds = undefined;
 
 			const testRunExecutionData = createRunExecutionData({
 				resultData: {
@@ -834,6 +883,45 @@ describe('SupplyDataContext', () => {
 			expect(taskData.usedDynamicCredentials).toBeUndefined();
 			expect(taskData.attemptedDynamicCredentials).toBeUndefined();
 			expect(testRunExecutionData.executionData?.runtimeData?.executedByUserId).toBeUndefined();
+		});
+
+		it('stamps the credential ids a sub-workflow reported during this run', async () => {
+			const { testAdditionalData, testRunExecutionData, testContext } = buildStampingContext();
+			testAdditionalData.currentNodeUsedCredentialIds = ['sibling-cred'];
+
+			const { index } = testContext.addInputData(NodeConnectionTypes.AiTool, [
+				[{ json: { query: 'test' } }],
+			]);
+			testAdditionalData.currentNodeUsedCredentialIds = ['sibling-cred', 'child-cred'];
+			await testContext.addExecutionDataFunctions(
+				'output',
+				[[{ json: { result: 'success' } }]],
+				NodeConnectionTypes.AiTool,
+				node.name,
+				index,
+			);
+
+			const taskData = testRunExecutionData.resultData.runData[node.name][index];
+			expect(taskData.usedCredentialIds).toEqual(['child-cred']);
+		});
+
+		it('does not stamp credential ids that were already reported before this run started', async () => {
+			const { testAdditionalData, testRunExecutionData, testContext } = buildStampingContext();
+			testAdditionalData.currentNodeUsedCredentialIds = ['sibling-cred'];
+
+			const { index } = testContext.addInputData(NodeConnectionTypes.AiTool, [
+				[{ json: { query: 'test' } }],
+			]);
+			await testContext.addExecutionDataFunctions(
+				'output',
+				[[{ json: { result: 'success' } }]],
+				NodeConnectionTypes.AiTool,
+				node.name,
+				index,
+			);
+
+			const taskData = testRunExecutionData.resultData.runData[node.name][index];
+			expect(taskData.usedCredentialIds).toBeUndefined();
 		});
 	});
 

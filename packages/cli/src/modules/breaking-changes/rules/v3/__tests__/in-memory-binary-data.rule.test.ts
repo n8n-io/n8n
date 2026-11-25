@@ -32,7 +32,13 @@ describe('InMemoryBinaryDataRule', () => {
 			expect(result.isAffected).toBe(true);
 			expect(result.instanceIssues).toHaveLength(1);
 			expect(result.instanceIssues[0].level).toBe('warning');
-			expect(result.recommendations).toHaveLength(1);
+			expect(result.recommendations).toHaveLength(3);
+		});
+	});
+
+	describe('getMetadata()', () => {
+		it('should report a behaviorChanges impact because the storage mode is migrated automatically', () => {
+			expect(rule.getMetadata().impact).toBe('behaviorChanges');
 		});
 	});
 });

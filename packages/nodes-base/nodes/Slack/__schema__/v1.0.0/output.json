@@ -1,0 +1,73 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"blocks": {
+			"items": {
+				"properties": {
+					"block_id": {
+						"type": "string"
+					},
+					"elements": {
+						"items": {
+							"properties": {
+								"elements": {
+									"items": {
+										"additionalProperties": true,
+										"properties": {
+											"text": {
+												"type": "string"
+											},
+											"type": {
+												"type": "string"
+											}
+										},
+										"type": "object"
+									},
+									"type": "array"
+								},
+								"type": {
+									"type": "string"
+								}
+							},
+							"type": "object"
+						},
+						"type": "array"
+					},
+					"type": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"channel": {
+			"type": "string"
+		},
+		"channel_type": {
+			"type": "string"
+		},
+		"client_msg_id": {
+			"type": "string"
+		},
+		"event_ts": {
+			"type": "string"
+		},
+		"team": {
+			"type": "string"
+		},
+		"text": {
+			"type": "string"
+		},
+		"ts": {
+			"type": "string"
+		},
+		"type": {
+			"type": "string"
+		},
+		"user": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

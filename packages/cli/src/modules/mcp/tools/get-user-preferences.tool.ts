@@ -1,15 +1,20 @@
 import type { User } from '@n8n/db';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import z from 'zod';
 
-import type { AiPreferenceService } from '@/services/ai-preference.service';
-import { flattenAiPreferences, renderAiPreferences } from '@/services/ai-preference.service';
-import type { Telemetry } from '@/telemetry';
+import {
+	type AiPreferenceService,
+	flattenAiPreferences,
+	renderAiPreferences,
+	type TelemetryProxy,
+} from '@n8n/backend-services';
 
 import {
 	MCP_GET_USER_PREFERENCES_TOOL_NAME,
 	MCP_USER_PREFERENCES_TRIGGER_CLAUSE,
 	USER_CALLED_MCP_TOOL_EVENT,
 } from '../mcp.constants';
+import type { McpPreferencesNoteService } from '../mcp-preferences-note.service';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 
 /**
@@ -73,6 +78,10 @@ const outputSchema = {
 		.describe(
 			'Set when the read failed. The preferences are unknown, not absent: do not build as if none were saved.',
 		),
+	note: z
+		.string()
+		.optional()
+		.describe('An instruction for the assistant. Follow it after you finish the current task.'),
 } satisfies z.ZodRawShape;
 
 /**
@@ -88,7 +97,9 @@ const outputSchema = {
 export const createGetUserPreferencesTool = (
 	user: User,
 	aiPreferenceService: AiPreferenceService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
+	preferencesNoteService: McpPreferencesNoteService,
+	preferencesNoteVariant: string | undefined,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_GET_USER_PREFERENCES_TOOL_NAME,
 	config: {
@@ -124,25 +135,43 @@ export const createGetUserPreferencesTool = (
 				: projectId
 					? NOTHING_SAVED_FOR_PROJECT
 					: NOTHING_SAVED;
+			const note = hasPreferences
+				? undefined
+				: await preferencesNoteService.takeNote(user, preferencesNoteVariant);
 
 			// Count, scopes and the size of the rendered text, never the text itself, which is
-			// the person's own writing. The length is what reviews the caps: CONTEXT-137 wants a
-			// new number once the 95th percentile of a rendered block passes 8,000 characters,
-			// and this read is one of the two paths that render one today (CONTEXT-137).
+			// the person's own writing. The length is what reviews the caps: the caps need a new
+			// number once the 95th percentile of a rendered block passes 8,000 characters, and
+			// this read is one of the two paths that render one today.
+			const scopes = [...new Set(items.map((item) => item.scope))];
+			const renderedLength = hasPreferences ? text.length : 0;
 			telemetryPayload.results = {
 				success: true,
 				data: {
 					hasPreferences,
 					count: items.length,
-					scopes: [...new Set(items.map((item) => item.scope))],
-					rendered_length: hasPreferences ? text.length : 0,
+					scopes,
+					rendered_length: renderedLength,
+					...(!hasPreferences && {
+						preferences_note_variant: preferencesNoteVariant,
+						preferences_note_shown: note !== undefined,
+					}),
 				},
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+			// The registered twin of the tool-call event: an MCP read is the one place a rendered
+			// block leaves n8n without a turn to attach it to.
+			telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCES_READ_OVER_MCP, {
+				user_id: user.id,
+				count: items.length,
+				scope_types: scopes,
+				rendered_length: renderedLength,
+				project_scoped: projectId !== undefined,
+			});
 
 			return {
-				content: [{ type: 'text', text }],
-				structuredContent: { hasPreferences, preferences: items },
+				content: [{ type: 'text', text: note ? `${text}\n\n${note}` : text }],
+				structuredContent: { hasPreferences, preferences: items, ...(note && { note }) },
 			};
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);

@@ -4,9 +4,11 @@ import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { DataTableRows } from 'n8n-workflow';
 
-import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
-import { DataTableRowsRepository } from '@/modules/data-table/data-table-rows.repository';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import {
+	DataTableColumnRepository,
+	DataTableRowsRepository,
+	DataTableRepository,
+} from '@n8n/backend-module-data-table';
 
 export const createDataTable = async (
 	project: Project,

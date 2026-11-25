@@ -4,6 +4,8 @@ import {
 	LOCAL_STORAGE_ACTIVATION_FLAG,
 	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
+	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
+	WORKFLOW_PUBLISH_MODAL_KEY,
 } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -17,6 +19,7 @@ import { useI18n } from '@n8n/i18n';
 import { getCurrentScope, onScopeDispose, ref } from 'vue';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useActivationError } from '@/app/composables/useActivationError';
+import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
 import type { INode } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
 import type { ResponseError } from '@n8n/rest-api-client/utils';
@@ -29,6 +32,8 @@ import {
 	registerPendingActivationModal,
 	clearPendingActivationModal,
 } from '@/app/composables/workflowPublicationConfirmation';
+import { usePolicyViolationToast } from '@/app/composables/usePolicyViolationToast';
+import { getPolicyViolations } from '@n8n/frontend-module-type-availability-policies';
 
 export function useWorkflowActivate() {
 	const updatingWorkflowActivation = ref(false);
@@ -50,6 +55,7 @@ export function useWorkflowActivate() {
 	const i18n = useI18n();
 	const collaborationStore = useCollaborationStore();
 	const { errorMessage: activationErrorMessage } = useActivationError(activationErrorNodeId);
+	const { showPolicyViolationToast, closePolicyViolationToast } = usePolicyViolationToast();
 
 	const parseWebhookConflictError = (error: ResponseError) => {
 		try {
@@ -264,6 +270,7 @@ export function useWorkflowActivate() {
 			if (shouldShowActivationModal && !activationIsConfirmedByPush) {
 				uiStore.openModal(WORKFLOW_ACTIVE_MODAL_KEY);
 			}
+			closePolicyViolationToast('publish');
 			return { success: true };
 		} catch (error) {
 			clearPendingActivationModal(workflowId);
@@ -272,17 +279,41 @@ export function useWorkflowActivate() {
 				await handleWebhookConflictError(error);
 				return { success: false, errorHandled: true };
 			} else {
-				activationErrorNodeId.value = error.meta?.nodeId as string | undefined;
 				const title = i18n.baseText('workflowActivator.showError.title', {
 					interpolate: { newStateName: 'published' },
 				});
-				toast.showError(error, title, {
-					message: activationErrorMessage.value,
-					description: error.meta?.description as string | undefined,
-				});
+				const policyTitle = i18n.baseText('typeAvailabilityPolicies.violations.publishTitle');
+				const violations = getPolicyViolations(error);
 
-				// Only update workflow state to inactive if this is not a validation error
-				if (!error.meta?.validationError) {
+				// An admin may have turned on reviews or required approval after this page loaded.
+				if (error.meta?.reason === 'review_required') {
+					const settingsStore = useSettingsStore();
+					settingsStore.setWorkflowReviewsPolicy({
+						...(settingsStore.settings.workflowReviews ?? {}),
+						enabled: true,
+					});
+					void useWorkflowReviewStatusStore().fetchStatus(workflowId);
+					// Retrying this version cannot succeed, so close whichever publish modal sent it.
+					uiStore.closeModal(WORKFLOW_PUBLISH_MODAL_KEY);
+					uiStore.closeModal(WORKFLOW_HISTORY_PUBLISH_MODAL_KEY);
+				}
+
+				if (violations) {
+					showPolicyViolationToast(
+						violations,
+						policyTitle,
+						'publish',
+						createWorkflowDocumentId(workflowId),
+					);
+				} else {
+					activationErrorNodeId.value = error.meta?.nodeId as string | undefined;
+					toast.showError(error, title, {
+						message: activationErrorMessage.value,
+						description: error.meta?.description as string | undefined,
+					});
+				}
+
+				if (!error.meta?.validationError && !violations) {
 					workflowsStore.setWorkflowInactive(workflowId);
 					workflowDocumentStore.setActiveState({
 						activeVersionId: null,

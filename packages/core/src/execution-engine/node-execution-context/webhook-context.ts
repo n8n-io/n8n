@@ -21,10 +21,15 @@ import type {
 	N8nOAuth2FlowResult,
 	N8nOAuth2RefreshResult,
 } from 'n8n-workflow';
-import { UnexpectedError, createEmptyRunExecutionData } from 'n8n-workflow';
+import { createEmptyRunExecutionData } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { NodeExecutionContext } from './node-execution-context';
-import { copyBinaryFile, getBinaryHelperFunctions } from './utils/binary-helper-functions';
+import { SupplyDataContext } from './supply-data-context';
+import {
+	getBinaryHelperFunctions,
+	getNodeBinaryHelperFunctions,
+} from './utils/binary-helper-functions';
 import { getInputConnectionData } from './utils/get-input-connection-data';
 import { getRequestHelperFunctions } from './utils/request-helper-functions';
 import { returnJsonArray } from './utils/return-json-array';
@@ -86,16 +91,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			...getBinaryHelperFunctions(additionalData, workflow.id),
 		};
 
-		this.nodeHelpers = {
-			copyBinaryFile: async (filePath, fileName, mimeType) =>
-				await copyBinaryFile(
-					this.workflow.id,
-					this.additionalData.executionId!,
-					filePath,
-					fileName,
-					mimeType,
-				),
-		};
+		this.nodeHelpers = getNodeBinaryHelperFunctions(this.workflow, this.additionalData);
 	}
 
 	async getCredentials<T extends object = ICredentialDataDecryptedObject>(type: string) {
@@ -270,6 +266,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 
 		return await getInputConnectionData.call(
 			this,
+			SupplyDataContext,
 			this.workflow,
 			runExecutionData,
 			this.runIndex,

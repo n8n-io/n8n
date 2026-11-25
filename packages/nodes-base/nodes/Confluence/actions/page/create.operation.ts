@@ -4,7 +4,7 @@ import type {
 	INodeParameterResourceLocator,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { bodyProperties, readBodyEnvelope } from './bodyEnvelope';
 import { pageRLC, spaceRLC } from '../common';
@@ -131,7 +131,7 @@ export async function execute(
 	if (options.rootLevel) qs['root-level'] = true;
 
 	try {
-		return await confluenceApiRequest.call(this, 'POST', '/wiki/api/v2/pages', body, qs);
+		return await confluenceApiRequest.call(this, 'POST', requestPath`/wiki/api/v2/pages`, body, qs);
 	} catch (error) {
 		// Private creation applies a content restriction under the hood, and Atlassian
 		// masks the failing permission/scope check as 404 on this endpoint

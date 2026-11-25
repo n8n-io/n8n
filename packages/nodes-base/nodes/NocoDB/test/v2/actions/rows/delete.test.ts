@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { execute } from '../../../../v2/actions/rows/delete.operation';
@@ -77,7 +78,7 @@ describe('NocoDB Rows Delete Action', () => {
 		expect(apiRequest.call).toHaveBeenCalledWith(
 			expect.anything(),
 			'DELETE',
-			`/api/v3/data/${mockBase}/${mockTable}/records`,
+			requestPath`/api/v3/data/${mockBase}/${mockTable}/records`,
 			[
 				{
 					id: '1',

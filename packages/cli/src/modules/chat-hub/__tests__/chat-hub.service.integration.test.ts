@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import type { ChatHubExecutionEnd, ChatHubStreamError } from '@n8n/api-types';
 import { mockInstance, testDb, testModules, createActiveWorkflow } from '@n8n/backend-test-utils';
+import { PushProxy } from '@n8n/backend-services';
 import type { User, CredentialsEntity } from '@n8n/db';
 import { ExecutionRepository, SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -25,7 +26,6 @@ import { retryUntil } from '@test-integration/retry-until';
 import { ActiveExecutions } from '../../../active-executions';
 import { ChatExecutionManager } from '../../../chat/chat-execution-manager';
 import { ExecutionPersistence } from '../../../executions/execution-persistence';
-import { Push } from '../../../push';
 import { WorkflowExecutionService } from '../../../workflows/workflow-execution.service';
 import { ChatHubAgentRepository } from '../chat-hub-agent.repository';
 import { ChatHubExecutionWatcherService } from '../chat-hub-execution-watcher.service';
@@ -35,7 +35,7 @@ import { ChatHubSessionRepository } from '../chat-session.repository';
 
 mockInstance(BinaryDataService);
 mockInstance(WorkflowExecutionService);
-const mockPush = mockInstance(Push);
+const mockPush = mockInstance(PushProxy);
 mockPush.sendToUsers.mockReturnValue(undefined);
 const mockCipher = mockInstance(Cipher);
 mockCipher.encryptV2.mockResolvedValue('encrypted-metadata');
@@ -1483,6 +1483,8 @@ describe('chatHub', () => {
 								runData,
 								newStaticData: {},
 								executionId,
+								executedInThisProcess: true,
+								endedByThisSave: true,
 							});
 						});
 
@@ -1601,6 +1603,8 @@ describe('chatHub', () => {
 								runData,
 								newStaticData: {},
 								executionId,
+								executedInThisProcess: true,
+								endedByThisSave: true,
 							});
 						});
 
@@ -1733,6 +1737,8 @@ describe('chatHub', () => {
 								runData,
 								newStaticData: {},
 								executionId,
+								executedInThisProcess: true,
+								endedByThisSave: true,
 							});
 						});
 
@@ -1874,6 +1880,8 @@ describe('chatHub', () => {
 								runData,
 								newStaticData: {},
 								executionId,
+								executedInThisProcess: true,
+								endedByThisSave: false,
 							});
 						});
 
@@ -1930,6 +1938,8 @@ describe('chatHub', () => {
 								runData,
 								newStaticData: {},
 								executionId: capturedExecutionId,
+								executedInThisProcess: true,
+								endedByThisSave: true,
 							});
 						});
 					});
@@ -2064,6 +2074,8 @@ describe('chatHub', () => {
 								runData,
 								newStaticData: {},
 								executionId,
+								executedInThisProcess: true,
+								endedByThisSave: false,
 							});
 						});
 
@@ -2205,6 +2217,8 @@ describe('chatHub', () => {
 								runData,
 								newStaticData: {},
 								executionId,
+								executedInThisProcess: true,
+								endedByThisSave: false,
 							});
 						});
 
@@ -2298,6 +2312,8 @@ describe('chatHub', () => {
 									runData,
 									newStaticData: {},
 									executionId: capturedExecutionId,
+									executedInThisProcess: true,
+									endedByThisSave: true,
 								});
 							});
 						});
@@ -2449,6 +2465,8 @@ describe('chatHub', () => {
 								runData,
 								newStaticData: {},
 								executionId,
+								executedInThisProcess: true,
+								endedByThisSave: false,
 							});
 						});
 
@@ -2658,6 +2676,8 @@ describe('chatHub', () => {
 								runData,
 								newStaticData: {},
 								executionId,
+								executedInThisProcess: true,
+								endedByThisSave: false,
 							});
 						});
 
@@ -2793,6 +2813,8 @@ describe('chatHub', () => {
 								runData,
 								newStaticData: {},
 								executionId,
+								executedInThisProcess: true,
+								endedByThisSave: true,
 							});
 						});
 
@@ -2909,6 +2931,8 @@ describe('chatHub', () => {
 								runData,
 								newStaticData: {},
 								executionId,
+								executedInThisProcess: true,
+								endedByThisSave: true,
 							});
 						});
 
@@ -3025,6 +3049,8 @@ describe('chatHub', () => {
 								runData,
 								newStaticData: {},
 								executionId,
+								executedInThisProcess: true,
+								endedByThisSave: true,
 							});
 						});
 

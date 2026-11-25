@@ -1,0 +1,163 @@
+import { Container } from '@n8n/di';
+import type { MockInstance } from 'vitest';
+
+import { EngineConfig } from '../engine.config';
+
+describe('EngineConfig', () => {
+	const originalEnv = process.env;
+	let consoleWarnMock: MockInstance;
+
+	beforeEach(() => {
+		Container.reset();
+		process.env = {};
+		consoleWarnMock = vi.spyOn(console, 'warn').mockImplementation(() => {});
+	});
+
+	afterEach(() => {
+		process.env = originalEnv;
+		consoleWarnMock.mockRestore();
+	});
+
+	it('should accept an auth secret of at least 32 characters', () => {
+		const secret = 'a'.repeat(32);
+		process.env.N8N_ENGINE_AUTH_SECRET = secret;
+
+		expect(Container.get(EngineConfig).authSecret).toBe(secret);
+	});
+
+	it('should reject a shorter auth secret and fall back to the default', () => {
+		process.env.N8N_ENGINE_AUTH_SECRET = 'a'.repeat(31);
+
+		expect(Container.get(EngineConfig).authSecret).toBe('');
+		expect(consoleWarnMock).toHaveBeenCalledWith(expect.stringContaining('N8N_ENGINE_AUTH_SECRET'));
+	});
+
+	it('should accept a resume secret of at least 32 characters', () => {
+		const secret = 'r'.repeat(32);
+		process.env.N8N_ENGINE_RESUME_SECRET = secret;
+
+		expect(Container.get(EngineConfig).resumeSecret).toBe(secret);
+	});
+
+	it('should reject a shorter resume secret and fall back to the default', () => {
+		process.env.N8N_ENGINE_RESUME_SECRET = 'r'.repeat(31);
+
+		expect(Container.get(EngineConfig).resumeSecret).toBe('');
+		expect(consoleWarnMock).toHaveBeenCalledWith(
+			expect.stringContaining('N8N_ENGINE_RESUME_SECRET'),
+		);
+	});
+
+	it('should leave the control plane base URL empty so the host picks the default', () => {
+		expect(Container.get(EngineConfig).controlPlaneBaseUrl).toBe('');
+	});
+
+	it('should bind the control plane server to loopback by default', () => {
+		const config = Container.get(EngineConfig);
+
+		expect(config.controlPlaneHost).toBe('127.0.0.1');
+		expect(config.controlPlanePort).toBe(3001);
+	});
+
+	it('should read the control plane server bind address', () => {
+		process.env.N8N_ENGINE_CONTROL_PLANE_HOST = '0.0.0.0';
+		process.env.N8N_ENGINE_CONTROL_PLANE_PORT = '4001';
+
+		const config = Container.get(EngineConfig);
+
+		expect(config.controlPlaneHost).toBe('0.0.0.0');
+		expect(config.controlPlanePort).toBe(4001);
+	});
+
+	it('should read the control plane base URL', () => {
+		process.env.N8N_ENGINE_CONTROL_PLANE_BASE_URL = 'http://cp.internal:5678';
+
+		expect(Container.get(EngineConfig).controlPlaneBaseUrl).toBe('http://cp.internal:5678');
+	});
+
+	it('should leave the engine roles empty by default and read them as given', () => {
+		expect(Container.get(EngineConfig).roles).toBe('');
+
+		Container.reset();
+		process.env.N8N_ENGINE_ROLES = 'api,orchestrator';
+
+		expect(Container.get(EngineConfig).roles).toBe('api,orchestrator');
+	});
+
+	it('should host the data plane in-process by default', () => {
+		expect(Container.get(EngineConfig).mode).toBe('in-process');
+	});
+
+	it('should read the remote mode', () => {
+		process.env.N8N_ENGINE_MODE = 'remote';
+
+		expect(Container.get(EngineConfig).mode).toBe('remote');
+	});
+
+	it('should reject an unknown mode and fall back to in-process', () => {
+		process.env.N8N_ENGINE_MODE = 'sidecar';
+
+		expect(Container.get(EngineConfig).mode).toBe('in-process');
+		expect(consoleWarnMock).toHaveBeenCalledWith(expect.stringContaining('N8N_ENGINE_MODE'));
+	});
+
+	it('should default new workflows to engine v1', () => {
+		expect(Container.get(EngineConfig).defaultType).toBe('v1');
+	});
+
+	it('should read the default engine type', () => {
+		process.env.N8N_ENGINE_DEFAULT_TYPE = 'v2';
+
+		expect(Container.get(EngineConfig).defaultType).toBe('v2');
+	});
+
+	describe.each([
+		{ key: 'stepConcurrency', envVar: 'N8N_ENGINE_STEP_CONCURRENCY', defaultValue: 1 },
+		{
+			key: 'orchestrationConcurrency',
+			envVar: 'N8N_ENGINE_ORCHESTRATION_CONCURRENCY',
+			defaultValue: 1,
+		},
+		{ key: 'databasePoolSize', envVar: 'N8N_ENGINE_DATABASE_POOL_SIZE', defaultValue: 10 },
+		{
+			key: 'databaseConnectionTimeoutMs',
+			envVar: 'N8N_ENGINE_DATABASE_CONNECTION_TIMEOUT',
+			defaultValue: 20_000,
+		},
+	] as const)('$envVar', ({ key, envVar, defaultValue }) => {
+		it(`should default to ${defaultValue}`, () => {
+			expect(Container.get(EngineConfig)[key]).toBe(defaultValue);
+		});
+
+		it('should read a positive integer', () => {
+			process.env[envVar] = '25';
+
+			expect(Container.get(EngineConfig)[key]).toBe(25);
+		});
+
+		it('should reject 0 and fall back to the default', () => {
+			process.env[envVar] = '0';
+
+			expect(Container.get(EngineConfig)[key]).toBe(defaultValue);
+			expect(consoleWarnMock).toHaveBeenCalledWith(expect.stringContaining(envVar));
+		});
+	});
+
+	it('should reject a connection timeout above the largest timer delay and fall back to the default', () => {
+		process.env.N8N_ENGINE_DATABASE_CONNECTION_TIMEOUT = '2147483648';
+
+		expect(Container.get(EngineConfig).databaseConnectionTimeoutMs).toBe(20_000);
+		expect(consoleWarnMock).toHaveBeenCalledWith(
+			expect.stringContaining('N8N_ENGINE_DATABASE_CONNECTION_TIMEOUT'),
+		);
+	});
+
+	it('should reject an unknown default engine type and fall back to v1', () => {
+		process.env.N8N_ENGINE_DEFAULT_TYPE = 'v3';
+
+		expect(Container.get(EngineConfig).defaultType).toBe('v1');
+		expect(consoleWarnMock).toHaveBeenCalledWith(
+			expect.stringContaining('N8N_ENGINE_DEFAULT_TYPE'),
+		);
+	});
+});

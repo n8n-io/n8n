@@ -5,11 +5,14 @@ import { SPLUNK } from '../../v1/types';
 import {
 	formatEntry,
 	extractErrorDescription,
+	toListValue,
+	toPathValue,
 	getId,
 	populate,
 	formatFeed,
 	setReturnAllOrLimit,
 	parseXml,
+	toUnixEpoch,
 } from '../../v2/helpers/utils';
 
 describe('Splunk, formatEntry', () => {
@@ -139,6 +142,26 @@ describe('Splunk, getId', () => {
 	});
 });
 
+describe('Splunk, toPathValue', () => {
+	test('should decode the value in version 2', () => {
+		expect(toPathValue(2, 'Errors%20%2F%20hour')).toBe('Errors / hour');
+	});
+
+	test('should keep the value unchanged from version 2.1', () => {
+		expect(toPathValue(2.1, 'Errors%20%2F%20hour')).toBe('Errors%20%2F%20hour');
+	});
+});
+
+describe('Splunk, toListValue', () => {
+	test('should keep the encoded id in version 2', () => {
+		expect(toListValue(2, 'Errors%20in%20hour')).toBe('Errors%20in%20hour');
+	});
+
+	test('should decode the id from version 2.1', () => {
+		expect(toListValue(2.1, 'Errors%20in%20hour')).toBe('Errors in hour');
+	});
+});
+
 describe('Splunk, populate', () => {
 	test('should populate destination object with source object properties', () => {
 		const source = {
@@ -234,7 +257,7 @@ describe('Splunk, setCount', () => {
 		const qs: IDataObject = {};
 		executeFunctionsMock.getNodeParameter.calledWith('returnAll', 0).mockReturnValue(true);
 
-		setReturnAllOrLimit.call(executeFunctionsMock, qs);
+		setReturnAllOrLimit.call(executeFunctionsMock, qs, 0);
 
 		expect(qs.count).toBe(0);
 	});
@@ -245,7 +268,7 @@ describe('Splunk, setCount', () => {
 		executeFunctionsMock.getNodeParameter.calledWith('returnAll', 0).mockReturnValue(false);
 		executeFunctionsMock.getNodeParameter.calledWith('limit', 0).mockReturnValue(10);
 
-		setReturnAllOrLimit.call(executeFunctionsMock, qs);
+		setReturnAllOrLimit.call(executeFunctionsMock, qs, 0);
 
 		expect(qs.count).toBe(10);
 	});
@@ -264,5 +287,38 @@ describe('Splunk, parseXml', () => {
 		const xmlString = '<invalid-xml>';
 
 		await expect(parseXml(xmlString)).rejects.toThrow();
+	});
+});
+
+describe('Splunk, toUnixEpoch', () => {
+	test.each([
+		['2020-01-01T00:00:00.000Z', 1577836800],
+		['2020-01-01T00:05:00.000Z', 1577837100],
+	])('converts the absolute timestamp %s', (timestamp, expected) => {
+		expect(toUnixEpoch(timestamp)).toBe(expected);
+	});
+
+	test.each(['-15m', '-24h', '-1d@d', '@d', 'now', '-5m@m', '+1h'])(
+		'passes the relative specifier %s through for Splunk to read',
+		(specifier) => {
+			expect(toUnixEpoch(specifier)).toBe(specifier);
+		},
+	);
+
+	test.each(['0', '1', '-1', '1577836800', '1577836800.5'])(
+		'passes the epoch time %s through unchanged',
+		(epoch) => {
+			expect(toUnixEpoch(epoch)).toBe(epoch);
+		},
+	);
+
+	test('still reads a four-digit number as a year', () => {
+		expect(toUnixEpoch('2024')).toBe(1704067200);
+	});
+
+	test('never produces NaN', () => {
+		for (const input of ['-15m', 'now', 'not a time at all', '']) {
+			expect(String(toUnixEpoch(input))).not.toBe('NaN');
+		}
 	});
 });

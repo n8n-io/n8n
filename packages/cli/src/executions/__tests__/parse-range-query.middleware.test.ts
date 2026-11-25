@@ -8,6 +8,7 @@ import { parseRangeQuery } from '@/executions/parse-range-query.middleware';
 
 describe('`parseRangeQuery` middleware', () => {
 	const res = mock<express.Response>({
+		headersSent: false,
 		status: vi.fn(() => mock<express.Response>({ json: vi.fn() })),
 	});
 
@@ -95,6 +96,24 @@ describe('`parseRangeQuery` middleware', () => {
 
 			expect(req.rangeQuery.projectId).toBe('123');
 			expect(nextFn).toBeCalledTimes(1);
+		});
+
+		test('should parse `engine` field', () => {
+			const req = request({ filter: '{ "engine": "v2" }' });
+
+			parseRangeQuery(req, res, nextFn);
+
+			expect(req.rangeQuery.engine).toBe('v2');
+			expect(nextFn).toBeCalledTimes(1);
+		});
+
+		test('should fail on an unknown `engine` value', () => {
+			const req = request({ filter: '{ "engine": "v3" }' });
+
+			parseRangeQuery(req, res, nextFn);
+
+			expect(nextFn).toBeCalledTimes(0);
+			expect(res.status).toBeCalledWith(400);
 		});
 
 		test('should delete invalid fields', () => {

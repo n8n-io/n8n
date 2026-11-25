@@ -9,12 +9,12 @@ import type {
 } from '../types';
 import { DEFAULT_BRIDGE_CONFIG } from '../types/bridge';
 import { IsolateError } from '@n8n/errors';
+import { LruCache } from '@n8n/utils/lru-cache';
 import { IdleScalingPool } from '../pool/idle-scaling-pool';
 import type { IPool } from '../pool/isolate-pool';
 import { IsolatePool, PoolDisposedError, PoolExhaustedError } from '../pool/isolate-pool';
 import { EXPRESSION_METRICS } from '../observability/metrics';
 import { classifyExpressionError } from './error-classification';
-import { LruCache } from './lru-cache';
 
 function recordOutcome(
 	observability: ObservabilityProvider | undefined,

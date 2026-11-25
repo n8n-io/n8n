@@ -33,19 +33,15 @@
                                                     },
                                                     "style": {
                                                         "type": "object",
-                                                        "properties": {
-                                                            "bold": {
-                                                                "type": "boolean"
-                                                            },
-                                                            "italic": {
-                                                                "type": "boolean"
-                                                            }
-                                                        }
+                                                        "properties": {}
                                                     },
                                                     "text": {
                                                         "type": "string"
                                                     },
                                                     "type": {
+                                                        "type": "string"
+                                                    },
+                                                    "unicode": {
                                                         "type": "string"
                                                     },
                                                     "url": {
@@ -130,5 +126,5 @@
             "type": "boolean"
         }
     },
-    "version": 2
+    "version": 4
 }

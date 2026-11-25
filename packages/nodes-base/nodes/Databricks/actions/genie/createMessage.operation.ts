@@ -1,6 +1,13 @@
+import { requestUrl } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import { databricksApiRequest, getActiveCredentialType, getHost } from '../helpers';
+import type { GenieApiResponse } from '../helpers';
+import {
+	databricksApiRequest,
+	getActiveCredentialType,
+	getHost,
+	withGenieDeepLink,
+} from '../helpers';
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const credentialType = getActiveCredentialType(this, i);
@@ -8,13 +15,20 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const spaceId = this.getNodeParameter('spaceId', i) as string;
 	const conversationId = this.getNodeParameter('conversationId', i) as string;
 
-	const response = await databricksApiRequest(this, credentialType, {
-		method: 'POST',
-		url: `${host}/api/2.0/genie/spaces/${spaceId}/conversations/${conversationId}/messages`,
-		body: { content: this.getNodeParameter('message', i) as string },
-		headers: { 'Content-Type': 'application/json' },
-		json: true,
-	});
+	const response: GenieApiResponse = await databricksApiRequest(
+		this,
+		credentialType,
+		requestUrl`${host}/api/2.0/genie/spaces/${spaceId}/conversations/${conversationId}/messages`,
+		{
+			method: 'POST',
+			body: { content: this.getNodeParameter('message', i) as string },
+			headers: { 'Content-Type': 'application/json' },
+			json: true,
+			returnFullResponse: true,
+		},
+	);
 
-	return [{ json: response, pairedItem: { item: i } }];
+	return [
+		{ json: withGenieDeepLink(response, host, spaceId, conversationId), pairedItem: { item: i } },
+	];
 }

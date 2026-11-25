@@ -1,22 +1,20 @@
 import type { BuiltTool } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
+import { type EventService, type CredentialsFinderService } from '@n8n/backend-services';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { CredentialTypes } from '@/credential-types';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { EventService } from '@/events/event.service';
+import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import type { OauthService } from '@/oauth/oauth.service';
 
 import type { InstanceAiMcpRegistryConnection } from '../../entities/instance-ai-mcp-registry-connection.entity';
+import type { InstanceAiSettingsService } from '../../instance-ai-settings.service';
 import type { InstanceAiMcpRegistryConnectionRepository } from '../../repositories/instance-ai-mcp-registry-connection.repository';
 import { InstanceAiMcpRegistryService } from '../instance-ai-mcp-registry.service';
 
@@ -73,7 +71,7 @@ function makeRegistryServer(
 }
 
 describe('InstanceAiMcpRegistryService', () => {
-	const user = { id: 'user-1' } as User;
+	const user = { id: 'user-1', role: { slug: 'global:member', scopes: [] } } as unknown as User;
 	const credential = {
 		id: 'cred-1',
 		name: 'MCP OAuth2',
@@ -111,6 +109,10 @@ describe('InstanceAiMcpRegistryService', () => {
 		transport.asCustomFetch.mockReturnValue(proxyFetch);
 		const outboundHttp = mock<OutboundHttp>();
 		outboundHttp.transport.mockReturnValue(transport);
+		const instanceAiSettingsService = mock<InstanceAiSettingsService>();
+		instanceAiSettingsService.getMcpToolPermissions.mockReturnValue({
+			categories: { read: 'always_allow', write: 'require_approval' },
+		});
 
 		const service = new InstanceAiMcpRegistryService(
 			logger,
@@ -122,6 +124,7 @@ describe('InstanceAiMcpRegistryService', () => {
 			oauthService,
 			eventService,
 			outboundHttp,
+			instanceAiSettingsService,
 		);
 
 		return {
@@ -132,6 +135,7 @@ describe('InstanceAiMcpRegistryService', () => {
 			credentialsFinderService,
 			credentialsService,
 			credentialTypes,
+			instanceAiSettingsService,
 			oauthService,
 			eventService,
 			outboundHttp,
@@ -152,7 +156,7 @@ describe('InstanceAiMcpRegistryService', () => {
 
 	it('returns empty list when the user has no registry connections', async () => {
 		const { service, connectionRepository, mcpRegistryService } = createService();
-		connectionRepository.findBy.mockResolvedValue([]);
+		connectionRepository.findByUserId.mockResolvedValue([]);
 
 		const result = await service.getRegistryMcpServers(user);
 
@@ -173,16 +177,35 @@ describe('InstanceAiMcpRegistryService', () => {
 			'cred-2': { id: 'cred-2', name: 'MCP OAuth2 #2', type: 'mcpOAuth2Api' } as CredentialsEntity,
 			'cred-3': { id: 'cred-3', name: 'MCP OAuth2 #3', type: 'mcpOAuth2Api' } as CredentialsEntity,
 		};
-		connectionRepository.findBy.mockResolvedValue([
-			{ id: '2', userId: user.id, serverSlug: 'linear', credentialId: 'cred-2' },
+		connectionRepository.findByUserId.mockResolvedValue([
+			{
+				id: '2',
+				userId: user.id,
+				serverSlug: 'linear',
+				credentialId: 'cred-2',
+				toolPermissions: {
+					categories: { read: 'always_allow', write: 'require_approval' },
+				},
+			},
 			{
 				id: '1',
 				userId: user.id,
 				serverSlug: 'linear',
 				credentialId: 'cred-1',
-				toolFilter: { mode: 'allow', tools: ['issues'] },
+				toolPermissions: {
+					categories: { read: 'blocked', write: 'blocked' },
+					tools: { issues: 'always_allow' },
+				},
 			},
-			{ id: '3', userId: user.id, serverSlug: 'notion', credentialId: 'cred-3' },
+			{
+				id: '3',
+				userId: user.id,
+				serverSlug: 'notion',
+				credentialId: 'cred-3',
+				toolPermissions: {
+					categories: { read: 'always_allow', write: 'require_approval' },
+				},
+			},
 		] as InstanceAiMcpRegistryConnection[]);
 		mcpRegistryService.getBySlugs.mockResolvedValue([
 			makeRegistryServer('linear', {
@@ -208,8 +231,11 @@ describe('InstanceAiMcpRegistryService', () => {
 				name: 'mcp_linear',
 				url: 'https://linear.example.com/mcp',
 				transport: 'streamableHttp',
-				cacheKey: 'registry-connection:1',
-				toolFilter: { mode: 'allow', tools: ['issues'] },
+				cacheKey: 'registry-connection:1:cred-1',
+				toolPermissions: {
+					categories: { read: 'blocked', write: 'blocked' },
+					tools: { issues: 'always_allow' },
+				},
 				fetch: expect.any(Function),
 				metadata: { connectionId: '1', serverSlug: 'linear', userId: user.id },
 			}),
@@ -219,8 +245,10 @@ describe('InstanceAiMcpRegistryService', () => {
 				name: 'mcp_linear_2',
 				url: 'https://linear.example.com/mcp',
 				transport: 'streamableHttp',
-				cacheKey: 'registry-connection:2',
-				toolFilter: undefined,
+				cacheKey: 'registry-connection:2:cred-2',
+				toolPermissions: {
+					categories: { read: 'always_allow', write: 'require_approval' },
+				},
 				fetch: expect.any(Function),
 				metadata: { connectionId: '2', serverSlug: 'linear', userId: user.id },
 			}),
@@ -230,20 +258,22 @@ describe('InstanceAiMcpRegistryService', () => {
 				name: 'mcp_notion',
 				url: 'https://notion.example.com/sse',
 				transport: 'sse',
-				cacheKey: 'registry-connection:3',
-				toolFilter: undefined,
+				cacheKey: 'registry-connection:3:cred-3',
+				toolPermissions: {
+					categories: { read: 'always_allow', write: 'require_approval' },
+				},
 				fetch: expect.any(Function),
 				metadata: { connectionId: '3', serverSlug: 'notion', userId: user.id },
 			}),
 		);
 		expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith('cred-1', user, [
-			'credential:read',
+			'credential:connect',
 		]);
 		expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith('cred-2', user, [
-			'credential:read',
+			'credential:connect',
 		]);
 		expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith('cred-3', user, [
-			'credential:read',
+			'credential:connect',
 		]);
 	});
 
@@ -256,7 +286,7 @@ describe('InstanceAiMcpRegistryService', () => {
 			credentialsService,
 			outboundHttp,
 		} = createService();
-		connectionRepository.findBy.mockResolvedValue([
+		connectionRepository.findByUserId.mockResolvedValue([
 			{ id: '1', userId: user.id, serverSlug: 'linear', credentialId: credential.id },
 		] as InstanceAiMcpRegistryConnection[]);
 		mcpRegistryService.getBySlugs.mockResolvedValue([makeRegistryServer('linear')]);
@@ -272,7 +302,7 @@ describe('InstanceAiMcpRegistryService', () => {
 
 	it('skips connections with missing server slugs or unsupported remotes', async () => {
 		const { service, connectionRepository, mcpRegistryService, logger } = createService();
-		connectionRepository.findBy.mockResolvedValue([
+		connectionRepository.findByUserId.mockResolvedValue([
 			{ id: '1', userId: user.id, serverSlug: 'missing', credentialId: credential.id },
 			{ id: '2', userId: user.id, serverSlug: 'bad-remote', credentialId: credential.id },
 		] as InstanceAiMcpRegistryConnection[]);
@@ -296,7 +326,7 @@ describe('InstanceAiMcpRegistryService', () => {
 	it('skips servers whose authentication type is not supported', async () => {
 		const { service, connectionRepository, mcpRegistryService, credentialsFinderService } =
 			createService();
-		connectionRepository.findBy.mockResolvedValue([
+		connectionRepository.findByUserId.mockResolvedValue([
 			{ id: '1', userId: user.id, serverSlug: 'public-server', credentialId: credential.id },
 		] as InstanceAiMcpRegistryConnection[]);
 		mcpRegistryService.getBySlugs.mockResolvedValue([
@@ -317,7 +347,7 @@ describe('InstanceAiMcpRegistryService', () => {
 		// This path decrypts the credential without resolving expressions, so the
 		// template would stay unresolved. The row is dropped instead of offered.
 		const { service, connectionRepository, mcpRegistryService, logger } = createService();
-		connectionRepository.findBy.mockResolvedValue([
+		connectionRepository.findByUserId.mockResolvedValue([
 			{ id: '3', userId: user.id, serverSlug: 'genie', credentialId: credential.id },
 		] as InstanceAiMcpRegistryConnection[]);
 		mcpRegistryService.getBySlugs.mockResolvedValue([
@@ -346,7 +376,7 @@ describe('InstanceAiMcpRegistryService', () => {
 			credentialsService,
 			oauthService,
 		} = createService();
-		connectionRepository.findBy.mockResolvedValue([
+		connectionRepository.findByUserId.mockResolvedValue([
 			{ id: '1', userId: user.id, serverSlug: 'linear', credentialId: credential.id },
 		] as InstanceAiMcpRegistryConnection[]);
 		mcpRegistryService.getBySlugs.mockResolvedValue([makeRegistryServer('linear')]);
@@ -384,7 +414,7 @@ describe('InstanceAiMcpRegistryService', () => {
 			credentialsService,
 			oauthService,
 		} = createService();
-		connectionRepository.findBy.mockResolvedValue([
+		connectionRepository.findByUserId.mockResolvedValue([
 			{ id: '1', userId: user.id, serverSlug: 'linear', credentialId: credential.id },
 		] as InstanceAiMcpRegistryConnection[]);
 		mcpRegistryService.getBySlugs.mockResolvedValue([makeRegistryServer('linear')]);
@@ -421,7 +451,7 @@ describe('InstanceAiMcpRegistryService', () => {
 			type: 'githubApi',
 			name: 'GitHub access token',
 		} as CredentialsEntity;
-		connectionRepository.findBy.mockResolvedValue([
+		connectionRepository.findByUserId.mockResolvedValue([
 			{ id: '1', userId: user.id, serverSlug: 'github', credentialId: apiCredential.id },
 		] as InstanceAiMcpRegistryConnection[]);
 		mcpRegistryService.getBySlugs.mockResolvedValue([
@@ -462,7 +492,7 @@ describe('InstanceAiMcpRegistryService', () => {
 				credentialsService,
 				credentialTypes,
 			} = createService();
-			connectionRepository.findBy.mockResolvedValue([
+			connectionRepository.findByUserId.mockResolvedValue([
 				{ id: '1', userId: user.id, serverSlug: 'linear', credentialId: credential.id },
 			] as InstanceAiMcpRegistryConnection[]);
 			mcpRegistryService.getBySlugs.mockResolvedValue([makeRegistryServer('linear')]);
@@ -510,7 +540,7 @@ describe('InstanceAiMcpRegistryService', () => {
 					credentialsFinderService,
 					credentialsService,
 				} = createService();
-				connectionRepository.findBy.mockResolvedValue([
+				connectionRepository.findByUserId.mockResolvedValue([
 					{ id: '1', userId: user.id, serverSlug: 'linear', credentialId: credential.id },
 				] as InstanceAiMcpRegistryConnection[]);
 				mcpRegistryService.getBySlugs.mockResolvedValue([server]);
@@ -558,7 +588,7 @@ describe('InstanceAiMcpRegistryService', () => {
 			| 'credentialsService'
 		>) {
 			const connection = makeConnection();
-			connectionRepository.findOneBy.mockResolvedValue(connection);
+			connectionRepository.findByIdAndUserId.mockResolvedValue(connection);
 			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
 			credentialsService.decrypt.mockResolvedValue(oauthCredentialData);
@@ -583,15 +613,12 @@ describe('InstanceAiMcpRegistryService', () => {
 
 			const result = await service.listConnectionTools(user, 'conn-1');
 
-			expect(connectionRepository.findOneBy).toHaveBeenCalledWith({
-				id: 'conn-1',
-				userId: user.id,
-			});
+			expect(connectionRepository.findByIdAndUserId).toHaveBeenCalledWith('conn-1', user.id, {});
 			expect(mcpRegistryService.get).toHaveBeenCalledWith('linear');
 			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
 				credential.id,
 				user,
-				['credential:read'],
+				['credential:connect'],
 			);
 			expect(mcpClientConstructorMock).toHaveBeenCalledWith([
 				expect.objectContaining({
@@ -606,9 +633,13 @@ describe('InstanceAiMcpRegistryService', () => {
 				id: 'conn-1',
 				status: 'connected',
 				tools: [
-					{ name: 'search', description: 'Search Linear issues' },
-					{ name: 'create_issue', description: 'Create a Linear issue' },
-					{ name: 'no_description' },
+					{ name: 'search', description: 'Search Linear issues', category: 'read' },
+					{
+						name: 'create_issue',
+						description: 'Create a Linear issue',
+						category: 'write',
+					},
+					{ name: 'no_description', category: 'write' },
 				],
 			});
 			expect(mcpClientCloseMock).toHaveBeenCalledTimes(1);
@@ -633,7 +664,7 @@ describe('InstanceAiMcpRegistryService', () => {
 			expect(result).toEqual({
 				id: 'conn-1',
 				status: 'connected',
-				tools: [{ name: 'read file', description: 'Read a file' }],
+				tools: [{ name: 'read file', description: 'Read a file', category: 'read' }],
 			});
 		});
 
@@ -648,23 +679,20 @@ describe('InstanceAiMcpRegistryService', () => {
 
 		it('throws NotFoundError when the connection does not belong to the user', async () => {
 			const { service, connectionRepository, mcpRegistryService } = createService();
-			connectionRepository.findOneBy.mockResolvedValue(null);
+			connectionRepository.findByIdAndUserId.mockResolvedValue(null);
 
 			await expect(service.listConnectionTools(user, 'missing')).rejects.toBeInstanceOf(
 				NotFoundError,
 			);
 
-			expect(connectionRepository.findOneBy).toHaveBeenCalledWith({
-				id: 'missing',
-				userId: user.id,
-			});
+			expect(connectionRepository.findByIdAndUserId).toHaveBeenCalledWith('missing', user.id, {});
 			expect(mcpRegistryService.get).not.toHaveBeenCalled();
 			expect(mcpClientConstructorMock).not.toHaveBeenCalled();
 		});
 
 		it('throws NotFoundError when the registry server is missing', async () => {
 			const { service, connectionRepository, mcpRegistryService } = createService();
-			connectionRepository.findOneBy.mockResolvedValue(makeConnection());
+			connectionRepository.findByIdAndUserId.mockResolvedValue(makeConnection());
 			mcpRegistryService.get.mockResolvedValue(undefined);
 
 			await expect(service.listConnectionTools(user, 'conn-1')).rejects.toBeInstanceOf(
@@ -683,7 +711,7 @@ describe('InstanceAiMcpRegistryService', () => {
 				credentialsFinderService,
 				logger,
 			} = createService();
-			connectionRepository.findOneBy.mockResolvedValue(makeConnection());
+			connectionRepository.findByIdAndUserId.mockResolvedValue(makeConnection());
 			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear', { remotes: [] }));
 
 			const result = await service.listConnectionTools(user, 'conn-1');
@@ -710,7 +738,7 @@ describe('InstanceAiMcpRegistryService', () => {
 				credentialsFinderService,
 				logger,
 			} = createService();
-			connectionRepository.findOneBy.mockResolvedValue(makeConnection());
+			connectionRepository.findByIdAndUserId.mockResolvedValue(makeConnection());
 			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
 
@@ -802,7 +830,7 @@ describe('InstanceAiMcpRegistryService', () => {
 		it('returns statuses for all connections when one check throws', async () => {
 			const deps = createService();
 			const { connectionRepository, credentialsFinderService, credentialsService, logger } = deps;
-			connectionRepository.findBy.mockResolvedValue([
+			connectionRepository.findByUserId.mockResolvedValue([
 				makeConnection(),
 				makeConnection({ id: 'conn-2', serverSlug: 'notion' }),
 			]);
@@ -849,16 +877,77 @@ describe('InstanceAiMcpRegistryService', () => {
 			const rows = [
 				{ id: '1', userId: user.id, serverSlug: 'linear', credentialId: 'cred-1' },
 			] as InstanceAiMcpRegistryConnection[];
-			connectionRepository.findBy.mockResolvedValue(rows);
+			connectionRepository.findByUserId.mockResolvedValue(rows);
 
 			const result = await service.listConnectionsForUser(user);
 
-			expect(connectionRepository.findBy).toHaveBeenCalledWith({ userId: user.id });
+			expect(connectionRepository.findByUserId).toHaveBeenCalledWith(user.id, {});
 			expect(result).toBe(rows);
 		});
 	});
 
 	describe('createConnection', () => {
+		it('copies the current instance defaults into a new connection', async () => {
+			const {
+				service,
+				connectionRepository,
+				mcpRegistryService,
+				credentialsFinderService,
+				instanceAiSettingsService,
+			} = createService();
+			const defaults = {
+				categories: { read: 'blocked' as const, write: 'always_allow' as const },
+				tools: { search: 'require_approval' as const },
+			};
+			instanceAiSettingsService.getMcpToolPermissions.mockReturnValue(defaults);
+			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+			connectionRepository.createConnection.mockImplementation(async (values) =>
+				mock<InstanceAiMcpRegistryConnection>(values),
+			);
+
+			await service.createConnection(user, {
+				serverSlug: 'linear',
+				credentialId: 'cred-1',
+			});
+
+			expect(connectionRepository.createConnection).toHaveBeenCalledWith(
+				expect.objectContaining({ toolPermissions: defaults }),
+				{},
+			);
+		});
+
+		it('uses submitted tool permissions for a new connection', async () => {
+			const {
+				service,
+				connectionRepository,
+				mcpRegistryService,
+				credentialsFinderService,
+				instanceAiSettingsService,
+			} = createService();
+			const toolPermissions = {
+				categories: { read: 'always_allow' as const, write: 'blocked' as const },
+				tools: { delete: 'require_approval' as const },
+			};
+			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+			connectionRepository.createConnection.mockImplementation(async (values) =>
+				mock<InstanceAiMcpRegistryConnection>(values),
+			);
+
+			await service.createConnection(user, {
+				serverSlug: 'linear',
+				credentialId: 'cred-1',
+				toolPermissions,
+			});
+
+			expect(connectionRepository.createConnection).toHaveBeenCalledWith(
+				expect.objectContaining({ toolPermissions }),
+				{},
+			);
+			expect(instanceAiSettingsService.getMcpToolPermissions).not.toHaveBeenCalled();
+		});
+
 		it('creates a connection and returns it with the resolved credential and server', async () => {
 			const {
 				service,
@@ -870,8 +959,9 @@ describe('InstanceAiMcpRegistryService', () => {
 			const linearServer = makeRegistryServer('linear');
 			mcpRegistryService.get.mockResolvedValue(linearServer);
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
-			connectionRepository.create.mockImplementation((entity) => entity as never);
-			connectionRepository.save.mockImplementation(async (entity) => entity as never);
+			connectionRepository.createConnection.mockImplementation(async (values) =>
+				mock<InstanceAiMcpRegistryConnection>(values),
+			);
 
 			const result = await service.createConnection(user, {
 				serverSlug: 'linear',
@@ -909,7 +999,7 @@ describe('InstanceAiMcpRegistryService', () => {
 			await expect(
 				service.createConnection(user, { serverSlug: 'genie', credentialId: 'cred-1' }),
 			).rejects.toBeInstanceOf(BadRequestError);
-			expect(connectionRepository.save).not.toHaveBeenCalled();
+			expect(connectionRepository.createConnection).not.toHaveBeenCalled();
 		});
 
 		it('throws NotFoundError when the server slug is unknown', async () => {
@@ -943,7 +1033,7 @@ describe('InstanceAiMcpRegistryService', () => {
 				eventService,
 			} = createService();
 			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
-			connectionRepository.findOneBy.mockResolvedValue({
+			connectionRepository.findByUserIdAndServerSlug.mockResolvedValue({
 				id: 'existing',
 				userId: user.id,
 				serverSlug: 'linear',
@@ -954,7 +1044,12 @@ describe('InstanceAiMcpRegistryService', () => {
 				service.createConnection(user, { serverSlug: 'linear', credentialId: 'cred-1' }),
 			).rejects.toBeInstanceOf(ConflictError);
 			expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
-			expect(connectionRepository.save).not.toHaveBeenCalled();
+			expect(connectionRepository.createConnection).not.toHaveBeenCalled();
+			expect(connectionRepository.findByUserIdAndServerSlug).toHaveBeenCalledWith(
+				user.id,
+				'linear',
+				{},
+			);
 			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
@@ -963,12 +1058,11 @@ describe('InstanceAiMcpRegistryService', () => {
 				createService();
 			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
-			connectionRepository.create.mockImplementation((entity) => entity as never);
 			const uniqueErr = new QueryFailedError('insert', [], new Error('uniq'));
 			(uniqueErr as unknown as { driverError: { code: string } }).driverError = {
 				code: 'SQLITE_CONSTRAINT_UNIQUE',
 			};
-			connectionRepository.save.mockRejectedValue(uniqueErr);
+			connectionRepository.createConnection.mockRejectedValue(uniqueErr);
 
 			await expect(
 				service.createConnection(user, { serverSlug: 'linear', credentialId: 'cred-1' }),
@@ -980,7 +1074,6 @@ describe('InstanceAiMcpRegistryService', () => {
 				createService();
 			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
-			connectionRepository.create.mockImplementation((entity) => entity as never);
 			const uniqueErr = new QueryFailedError(
 				'insert',
 				[],
@@ -989,7 +1082,7 @@ describe('InstanceAiMcpRegistryService', () => {
 			(uniqueErr as unknown as { driverError: { code: string } }).driverError = {
 				code: 'SQLITE_CONSTRAINT',
 			};
-			connectionRepository.save.mockRejectedValue(uniqueErr);
+			connectionRepository.createConnection.mockRejectedValue(uniqueErr);
 
 			await expect(
 				service.createConnection(user, { serverSlug: 'linear', credentialId: 'cred-1' }),
@@ -998,98 +1091,74 @@ describe('InstanceAiMcpRegistryService', () => {
 	});
 
 	describe('updateConnection', () => {
-		it('updates toolFilter to null when inclusionMode is all', async () => {
+		it('updates tool permissions when provided', async () => {
 			const { service, connectionRepository } = createService();
-			const row = {
+			const row = mock<InstanceAiMcpRegistryConnection>({
 				id: 'conn-1',
 				userId: user.id,
 				serverSlug: 'linear',
 				credentialId: 'cred-1',
-				toolFilter: { mode: 'allow', tools: ['search'] },
-			} as InstanceAiMcpRegistryConnection;
-			connectionRepository.findOneBy.mockResolvedValue(row);
-			connectionRepository.save.mockImplementation(async (entity) => entity as never);
+				toolPermissions: {
+					categories: { read: 'always_allow', write: 'require_approval' },
+				},
+			});
+			connectionRepository.findByIdAndUserId.mockResolvedValue(row);
+			connectionRepository.saveConnectionChanges.mockImplementation(async (entity) => entity);
 
-			const result = await service.updateConnection(user, 'conn-1', { inclusionMode: 'all' });
+			const toolPermissions = {
+				categories: { read: 'blocked' as const, write: 'always_allow' as const },
+				tools: { search: 'require_approval' as const },
+			};
+			const result = await service.updateConnection(user, 'conn-1', {
+				toolPermissions,
+			});
 
-			expect(result.toolFilter).toBeNull();
-			expect(connectionRepository.save).toHaveBeenCalledWith(
-				expect.objectContaining({ toolFilter: null }),
+			expect(result.toolPermissions).toEqual(toolPermissions);
+			expect(connectionRepository.saveConnectionChanges).toHaveBeenCalledWith(
+				expect.objectContaining({ toolPermissions }),
+				{},
 			);
 		});
 
-		it('maps selected mode to allow filter and normalizes tools', async () => {
+		it('keeps the existing permissions when an update omits them', async () => {
 			const { service, connectionRepository } = createService();
-			const row = {
+			const toolPermissions = {
+				categories: {
+					read: 'always_allow' as const,
+					write: 'require_approval' as const,
+				},
+				tools: { delete: 'blocked' as const },
+			};
+			const row = mock<InstanceAiMcpRegistryConnection>({
 				id: 'conn-1',
 				userId: user.id,
 				serverSlug: 'linear',
 				credentialId: 'cred-1',
-				toolFilter: null,
-			} as InstanceAiMcpRegistryConnection;
-			connectionRepository.findOneBy.mockResolvedValue(row);
-			connectionRepository.save.mockImplementation(async (entity) => entity as never);
-
-			const result = await service.updateConnection(user, 'conn-1', {
-				inclusionMode: 'selected',
-				selectedTools: ['search', '', 'search', 'create'],
+				toolPermissions,
 			});
-
-			expect(result.toolFilter).toEqual({ mode: 'allow', tools: ['search', 'create'] });
-		});
-
-		it('maps except mode to exclude filter', async () => {
-			const { service, connectionRepository } = createService();
-			const row = {
-				id: 'conn-1',
-				userId: user.id,
-				serverSlug: 'linear',
-				credentialId: 'cred-1',
-				toolFilter: null,
-			} as InstanceAiMcpRegistryConnection;
-			connectionRepository.findOneBy.mockResolvedValue(row);
-			connectionRepository.save.mockImplementation(async (entity) => entity as never);
-
-			const result = await service.updateConnection(user, 'conn-1', {
-				inclusionMode: 'except',
-				excludedTools: ['delete', 'update'],
-			});
-
-			expect(result.toolFilter).toEqual({ mode: 'exclude', tools: ['delete', 'update'] });
-		});
-
-		it('keeps the existing filter when inclusionMode is omitted', async () => {
-			const { service, connectionRepository } = createService();
-			const row = {
-				id: 'conn-1',
-				userId: user.id,
-				serverSlug: 'linear',
-				credentialId: 'cred-1',
-				toolFilter: { mode: 'exclude', tools: ['delete'] },
-			} as InstanceAiMcpRegistryConnection;
-			connectionRepository.findOneBy.mockResolvedValue(row);
-			connectionRepository.save.mockImplementation(async (entity) => entity as never);
+			connectionRepository.findByIdAndUserId.mockResolvedValue(row);
+			connectionRepository.saveConnectionChanges.mockImplementation(async (entity) => entity);
 
 			const result = await service.updateConnection(user, 'conn-1', {});
 
-			expect(result.toolFilter).toEqual({ mode: 'exclude', tools: ['delete'] });
+			expect(result.toolPermissions).toEqual(toolPermissions);
 		});
 
 		it('throws NotFoundError when the connection does not belong to the user', async () => {
 			const { service, connectionRepository } = createService();
-			connectionRepository.findOneBy.mockResolvedValue(null);
+			connectionRepository.findByIdAndUserId.mockResolvedValue(null);
 
 			await expect(service.updateConnection(user, 'missing', {})).rejects.toBeInstanceOf(
 				NotFoundError,
 			);
-			expect(connectionRepository.save).not.toHaveBeenCalled();
+			expect(connectionRepository.saveConnectionChanges).not.toHaveBeenCalled();
 		});
 
 		it('swaps credential when credentialId is provided', async () => {
 			const { service, connectionRepository, credentialsFinderService, mcpRegistryService } =
 				createService();
 			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
-			connectionRepository.findOneBy.mockResolvedValue({
+			connectionRepository.findByIdAndUserId.mockResolvedValue({
 				id: 'conn-1',
 				userId: user.id,
 				serverSlug: 'linear',
@@ -1103,13 +1172,14 @@ describe('InstanceAiMcpRegistryService', () => {
 					type: 'mcpOAuth2Api',
 				} as CredentialsEntity;
 			});
-			connectionRepository.save.mockImplementation(async (entity) => entity as never);
+			connectionRepository.saveConnectionChanges.mockImplementation(async (entity) => entity);
 
 			const result = await service.updateConnection(user, 'conn-1', { credentialId: 'cred-2' });
 
 			expect(result.credentialId).toBe('cred-2');
-			expect(connectionRepository.save).toHaveBeenCalledWith(
+			expect(connectionRepository.saveConnectionChanges).toHaveBeenCalledWith(
 				expect.objectContaining({ credentialId: 'cred-2' }),
+				{},
 			);
 		});
 
@@ -1117,7 +1187,7 @@ describe('InstanceAiMcpRegistryService', () => {
 			const { service, connectionRepository, credentialsFinderService, mcpRegistryService } =
 				createService();
 			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
-			connectionRepository.findOneBy.mockResolvedValue({
+			connectionRepository.findByIdAndUserId.mockResolvedValue({
 				id: 'conn-1',
 				userId: user.id,
 				serverSlug: 'linear',
@@ -1127,19 +1197,19 @@ describe('InstanceAiMcpRegistryService', () => {
 				if (id === 'cred-1') return credential;
 				return null;
 			});
-			connectionRepository.save.mockImplementation(async (entity) => entity as never);
+			connectionRepository.saveConnectionChanges.mockImplementation(async (entity) => entity);
 
 			await expect(
 				service.updateConnection(user, 'conn-1', { credentialId: 'cred-2' }),
 			).rejects.toBeInstanceOf(NotFoundError);
-			expect(connectionRepository.save).not.toHaveBeenCalled();
+			expect(connectionRepository.saveConnectionChanges).not.toHaveBeenCalled();
 		});
 
 		it('throws BadRequestError when the new credential type is not allowed', async () => {
 			const { service, connectionRepository, credentialsFinderService, mcpRegistryService } =
 				createService();
 			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
-			connectionRepository.findOneBy.mockResolvedValue({
+			connectionRepository.findByIdAndUserId.mockResolvedValue({
 				id: 'conn-1',
 				userId: user.id,
 				serverSlug: 'linear',
@@ -1153,12 +1223,124 @@ describe('InstanceAiMcpRegistryService', () => {
 					type: 'notMcpOAuth2Api',
 				} as CredentialsEntity;
 			});
-			connectionRepository.save.mockImplementation(async (entity) => entity as never);
+			connectionRepository.saveConnectionChanges.mockImplementation(async (entity) => entity);
 
 			await expect(
 				service.updateConnection(user, 'conn-1', { credentialId: 'cred-2' }),
 			).rejects.toBeInstanceOf(BadRequestError);
-			expect(connectionRepository.save).not.toHaveBeenCalled();
+			expect(connectionRepository.saveConnectionChanges).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('credential use access', () => {
+		const readOnlyCredential = { ...credential, isGlobal: false, isResolvable: false };
+
+		/** Simulates a user who can read the credential but does not hold `credential:connect`. */
+		function grantReadOnly(
+			credentialsFinderService: ReturnType<typeof createService>['credentialsFinderService'],
+			readable: CredentialsEntity,
+		) {
+			credentialsFinderService.findCredentialForUser.mockImplementation(
+				async (_id, _user, scopes) => (scopes.includes('credential:connect') ? null : readable),
+			);
+		}
+
+		function makeConnection(): InstanceAiMcpRegistryConnection {
+			return {
+				id: 'conn-1',
+				userId: user.id,
+				serverSlug: 'linear',
+				credentialId: credential.id,
+				toolPermissions: {
+					categories: { read: 'always_allow', write: 'require_approval' },
+				},
+			} as InstanceAiMcpRegistryConnection;
+		}
+
+		it('refuses to create a connection with a credential the user can only read', async () => {
+			const { service, mcpRegistryService, credentialsFinderService, connectionRepository } =
+				createService();
+			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
+			grantReadOnly(credentialsFinderService, readOnlyCredential as CredentialsEntity);
+
+			await expect(
+				service.createConnection(user, { serverSlug: 'linear', credentialId: credential.id }),
+			).rejects.toBeInstanceOf(NotFoundError);
+			expect(connectionRepository.createConnection).not.toHaveBeenCalled();
+		});
+
+		it('refuses to swap to a credential the user can only read', async () => {
+			const { service, mcpRegistryService, credentialsFinderService, connectionRepository } =
+				createService();
+			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
+			connectionRepository.findByIdAndUserId.mockResolvedValue(makeConnection());
+			grantReadOnly(credentialsFinderService, readOnlyCredential as CredentialsEntity);
+
+			await expect(
+				service.updateConnection(user, 'conn-1', { credentialId: credential.id }),
+			).rejects.toBeInstanceOf(NotFoundError);
+			expect(connectionRepository.saveConnectionChanges).not.toHaveBeenCalled();
+		});
+
+		it('does not decrypt the credential of an existing connection the user can only read', async () => {
+			const {
+				service,
+				mcpRegistryService,
+				credentialsFinderService,
+				credentialsService,
+				connectionRepository,
+			} = createService();
+			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
+			mcpRegistryService.getBySlugs.mockResolvedValue([makeRegistryServer('linear')]);
+			connectionRepository.findByIdAndUserId.mockResolvedValue(makeConnection());
+			connectionRepository.findByUserId.mockResolvedValue([makeConnection()]);
+			grantReadOnly(credentialsFinderService, readOnlyCredential as CredentialsEntity);
+
+			await expect(service.listConnectionTools(user, 'conn-1')).resolves.toEqual({
+				id: 'conn-1',
+				status: 'disconnected',
+				tools: [],
+				failureReason: 'authentication',
+			});
+			await expect(service.getRegistryMcpServers(user)).resolves.toEqual([]);
+			expect(credentialsService.decrypt).not.toHaveBeenCalled();
+			expect(mcpClientConstructorMock).not.toHaveBeenCalled();
+		});
+
+		it('allows a static global credential with read access', async () => {
+			const { service, mcpRegistryService, credentialsFinderService, connectionRepository } =
+				createService();
+			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
+			grantReadOnly(credentialsFinderService, {
+				...readOnlyCredential,
+				isGlobal: true,
+			} as CredentialsEntity);
+			connectionRepository.createConnection.mockImplementation(async (values) =>
+				mock<InstanceAiMcpRegistryConnection>(values),
+			);
+
+			const result = await service.createConnection(user, {
+				serverSlug: 'linear',
+				credentialId: credential.id,
+			});
+
+			expect(result.connection.credentialId).toBe(credential.id);
+		});
+
+		it('refuses a global end-user credential with read access only', async () => {
+			const { service, mcpRegistryService, credentialsFinderService, connectionRepository } =
+				createService();
+			mcpRegistryService.get.mockResolvedValue(makeRegistryServer('linear'));
+			grantReadOnly(credentialsFinderService, {
+				...readOnlyCredential,
+				isGlobal: true,
+				isResolvable: true,
+			} as CredentialsEntity);
+
+			await expect(
+				service.createConnection(user, { serverSlug: 'linear', credentialId: credential.id }),
+			).rejects.toBeInstanceOf(NotFoundError);
+			expect(connectionRepository.createConnection).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1171,15 +1353,12 @@ describe('InstanceAiMcpRegistryService', () => {
 				serverSlug: 'linear',
 				credentialId: 'cred-1',
 			} as InstanceAiMcpRegistryConnection;
-			connectionRepository.findOneBy.mockResolvedValue(row);
+			connectionRepository.findByIdAndUserId.mockResolvedValue(row);
 
 			await service.deleteConnection(user, 'conn-1');
 
-			expect(connectionRepository.findOneBy).toHaveBeenCalledWith({
-				id: 'conn-1',
-				userId: user.id,
-			});
-			expect(connectionRepository.delete).toHaveBeenCalledWith({ id: 'conn-1' });
+			expect(connectionRepository.findByIdAndUserId).toHaveBeenCalledWith('conn-1', user.id, {});
+			expect(connectionRepository.deleteById).toHaveBeenCalledWith('conn-1', {});
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'instance-ai-mcp-registry-connection-deleted',
 				{ userId: user.id, serverSlug: 'linear' },
@@ -1188,10 +1367,10 @@ describe('InstanceAiMcpRegistryService', () => {
 
 		it('throws NotFoundError when the row does not belong to the user', async () => {
 			const { service, connectionRepository, eventService } = createService();
-			connectionRepository.findOneBy.mockResolvedValue(null);
+			connectionRepository.findByIdAndUserId.mockResolvedValue(null);
 
 			await expect(service.deleteConnection(user, 'conn-1')).rejects.toBeInstanceOf(NotFoundError);
-			expect(connectionRepository.delete).not.toHaveBeenCalled();
+			expect(connectionRepository.deleteById).not.toHaveBeenCalled();
 			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 	});

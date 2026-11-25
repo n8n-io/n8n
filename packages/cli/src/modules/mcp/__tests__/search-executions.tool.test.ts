@@ -1,3 +1,4 @@
+import { TelemetryProxy } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import type { ExecutionSummary } from 'n8n-workflow';
@@ -5,7 +6,6 @@ import type { Mock } from 'vitest';
 
 import { encodeExecutionCursor } from '@/executions/execution-cursor';
 import { ExecutionListService } from '@/executions/execution-list.service';
-import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { createSearchExecutionsTool } from '../tools/search-executions.tool';
@@ -30,12 +30,12 @@ describe('search-executions MCP tool', () => {
 	const time = '2026-09-07T12:00:00.000Z';
 	let executionListService: ExecutionListService;
 	let workflowFinderService: WorkflowFinderService;
-	let telemetry: Telemetry;
+	let telemetry: TelemetryProxy;
 
 	beforeEach(() => {
 		executionListService = mockInstance(ExecutionListService, {
 			buildSharingOptions: vi.fn().mockResolvedValue({
-				scopes: ['workflow:read'],
+				scopes: ['execution:read'],
 				projectRoles: ['project:editor'],
 				workflowRoles: ['workflow:editor'],
 			}),
@@ -53,7 +53,7 @@ describe('search-executions MCP tool', () => {
 				settings: { availableInMCP: true },
 			}),
 		});
-		telemetry = mockInstance(Telemetry, {
+		telemetry = mockInstance(TelemetryProxy, {
 			track: vi.fn(),
 		});
 	});
@@ -123,7 +123,7 @@ describe('search-executions MCP tool', () => {
 		expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
 			'wf-1',
 			user,
-			['workflow:read'],
+			['workflow:read', 'execution:read'],
 			{ includeActiveVersion: undefined },
 		);
 
@@ -203,10 +203,32 @@ describe('search-executions MCP tool', () => {
 		});
 	});
 
+	test('returns an access error and runs no query when the workflow lookup fails', async () => {
+		(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(null);
+
+		const result = await createTool().handler({ workflowId: 'wf-1' } as never, {} as never);
+
+		expect(result.isError).toBe(true);
+		expect(result.structuredContent).toEqual({
+			data: [],
+			count: 0,
+			estimated: false,
+			nextCursor: null,
+			error: "Workflow not found or you don't have permission to access it.",
+		});
+		expect(executionListService.findPageWithCount).not.toHaveBeenCalled();
+	});
+
 	test('delegates sharing options to the list service', async () => {
 		await createTool().handler({} as never, {} as never);
 
-		expect(executionListService.buildSharingOptions).toHaveBeenCalledWith('workflow:read');
+		expect(executionListService.buildSharingOptions).toHaveBeenCalledWith('execution:read');
+		const query = (executionListService.findPageWithCount as Mock).mock.calls[0][0];
+		expect(query.sharingOptions).toEqual({
+			scopes: ['execution:read'],
+			projectRoles: ['project:editor'],
+			workflowRoles: ['workflow:editor'],
+		});
 	});
 
 	test('tracks telemetry on success', async () => {

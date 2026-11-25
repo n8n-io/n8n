@@ -1,0 +1,63 @@
+operationId: updatePromotionSettings
+tags:
+  - Promotions
+summary: 'Beta: Update the promotion settings'
+description: |-
+  **Beta** — breaking changes may still occur without major version bump.
+
+  Replaces who can promote, approve, and apply in their own projects. Send every setting. A `GET` response can be sent back as the body. Each setting gives its scopes to the project admin and project editor roles. Custom project roles keep their own scopes.
+
+  Requires the `securitySettings:manage` API key scope.
+x-required-scope: securitySettings:manage
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          whoCanPromote:
+            type: string
+            enum:
+              - instanceAdmins
+              - projectAdmins
+              - projectAdminsAndEditors
+            description: 'Who can promote a project and see its promotion reviews. `instanceAdmins`: only instance owners and admins. `projectAdmins`: also project admins, in their projects. `projectAdminsAndEditors`: also project admins and editors, in their projects.'
+          whoCanApprove:
+            type: string
+            enum:
+              - instanceAdmins
+              - projectAdmins
+              - projectAdminsAndEditors
+            description: 'Who can see and approve the promotion reviews of a project. `instanceAdmins`: only instance owners and admins. `projectAdmins`: also project admins, in their projects. `projectAdminsAndEditors`: also project admins and editors, in their projects.'
+          whoCanApply:
+            type: string
+            enum:
+              - instanceAdmins
+              - projectAdmins
+              - projectAdminsAndEditors
+            description: 'Who can apply changes into a project. `instanceAdmins`: only instance owners and admins. `projectAdmins`: also project admins, in their projects. `projectAdminsAndEditors`: also project admins and editors, in their projects.'
+        required:
+          - whoCanPromote
+          - whoCanApprove
+          - whoCanApply
+        additionalProperties: false
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/promotionSettingsPublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

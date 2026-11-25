@@ -2,12 +2,12 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { In, IsNull, Not } from '@n8n/typeorm';
 import EventEmitter from 'events';
 import uniqby from 'lodash/uniqBy';
 import { InstanceSettings } from 'n8n-core';
 import { existsSync } from 'node:fs';
 
+import { WorkflowCrashJournal } from '../../crash-loop/workflow-crash-journal';
 import { ExecutionCrashService } from '../../executions/execution-crash.service';
 import { ExecutionRecoveryService } from '../../executions/execution-recovery.service';
 import type { EventMessageTypes } from '../event-message-classes/';
@@ -56,8 +56,6 @@ export class MessageEventBus extends EventEmitter {
 
 	logWriter: MessageEventBusLogWriter;
 
-	private pushIntervalTimer: NodeJS.Timeout;
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
@@ -66,6 +64,7 @@ export class MessageEventBus extends EventEmitter {
 		private readonly executionCrashService: ExecutionCrashService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly workflowCrashJournal: WorkflowCrashJournal,
 	) {
 		super();
 	}
@@ -113,16 +112,6 @@ export class MessageEventBus extends EventEmitter {
 
 		await this.performStartupRecovery();
 
-		// if configured, run this test every n ms
-		if (this.globalConfig.eventBus.checkUnsentInterval > 0) {
-			if (this.pushIntervalTimer) {
-				clearInterval(this.pushIntervalTimer);
-			}
-			this.pushIntervalTimer = setInterval(async () => {
-				await this.trySendingUnsent();
-			}, this.globalConfig.eventBus.checkUnsentInterval);
-		}
-
 		this.logger.debug('MessageEventBus initialized');
 		this.isInitialized = true;
 	}
@@ -151,7 +140,8 @@ export class MessageEventBus extends EventEmitter {
 		}
 	}
 
-	private async trySendingUnsent(msgs?: EventMessageTypes[]) {
+	/** Emits again the given messages, or else every message the log still holds as unsent. */
+	async trySendingUnsent(msgs?: EventMessageTypes[]) {
 		const unsentMessages = msgs ?? (await this.getEventsUnsent());
 		if (unsentMessages.length > 0) {
 			this.logger.debug(`Found unsent event messages: ${unsentMessages.length}`);
@@ -305,11 +295,12 @@ export class MessageEventBus extends EventEmitter {
 			return;
 		}
 
+		await this.noteRunningExecutions(unsentAndUnfinished.unfinishedExecutions);
 		await this.logActiveWorkflows();
 
 		const recoveryAlreadyAttempted = this.logWriter?.isRecoveryProcessRunning();
 		if (recoveryAlreadyAttempted || this.globalConfig.eventBus.crashRecoveryMode === 'simple') {
-			await this.executionCrashService.markAsCrashed(unfinishedExecutionIds);
+			await this.executionCrashService.markAsCrashed(unfinishedExecutionIds, 'startup-recovery');
 			// if we end up here, it means that the previous recovery process did not finish
 			// a possible reason would be that recreating the workflow data itself caused e.g an OOM error
 			// in that case, we do not want to retry the recovery process, but rather mark the executions as crashed
@@ -353,13 +344,33 @@ export class MessageEventBus extends EventEmitter {
 	}
 
 	/**
+	 * Feeds the workflow crash journal the workflows of the logged executions that are still
+	 * `running` in this process. A logged execution that is waiting, or that an earlier recovery
+	 * already closed, was not in flight at the crash. In queue mode the executions run on workers,
+	 * except manual ones while they are not offloaded.
+	 */
+	private async noteRunningExecutions(
+		unfinishedExecutions: Record<string, EventMessageTypes[] | undefined>,
+	) {
+		const runsHere = (messages: EventMessageTypes[] | undefined) =>
+			this.globalConfig.executions.mode !== 'queue' ||
+			(process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS !== 'true' &&
+				(messages ?? []).some(({ payload }) => payload?.isManual === true));
+		const inProcessIds = Object.keys(unfinishedExecutions).filter((id) =>
+			runsHere(unfinishedExecutions[id]),
+		);
+		if (inProcessIds.length === 0) return;
+
+		const runningIds = await this.executionRepository.findRunningIds(inProcessIds);
+		const running = runningIds.map((id) => unfinishedExecutions[id]);
+		this.workflowCrashJournal.noteUnfinishedExecutions(collectWorkflowIds(running));
+	}
+
+	/**
 	 * Logs the currently active workflows
 	 */
 	private async logActiveWorkflows() {
-		const activeWorkflows = await this.workflowRepository.find({
-			where: { activeVersionId: Not(IsNull()) },
-			select: ['id', 'name'],
-		});
+		const activeWorkflows = await this.workflowRepository.getWorkflowInfo({ activeOnly: true });
 
 		if (activeWorkflows.length > 0) {
 			this.logger.info('Currently active workflows:');
@@ -385,15 +396,17 @@ export class MessageEventBus extends EventEmitter {
 			return unfinishedExecutionIds;
 		}
 
-		const dbUnfinishedExecutions = await this.executionRepository.find({
-			where: {
-				status: In(['running', 'unknown']),
-			},
-			select: ['id'],
-		});
+		const dbUnfinishedExecutionIds = await this.executionRepository.findUnfinishedIds();
 
-		return Array.from(
-			new Set([...unfinishedExecutionIds, ...dbUnfinishedExecutions.map((e) => e.id)]),
-		);
+		return Array.from(new Set([...unfinishedExecutionIds, ...dbUnfinishedExecutionIds]));
 	}
+}
+
+/** The workflows that the log messages name. */
+function collectWorkflowIds(logMessages: Array<EventMessageTypes[] | undefined>) {
+	const workflowIds = new Set<string>();
+	for (const { payload } of logMessages.flatMap((messages) => messages ?? [])) {
+		if (typeof payload?.workflowId === 'string') workflowIds.add(payload.workflowId);
+	}
+	return workflowIds;
 }

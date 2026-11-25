@@ -1,14 +1,18 @@
 import { watch, type ComputedRef, type Ref } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type { ThreadRuntime } from '../../instanceAi.store';
+import { TELEMETRY_EVENT, type AssistantRuntime } from '@n8n/telemetry';
+import { useInstanceAiSetupPanelExperiment } from '@/experiments/instanceAiSetupPanel/useInstanceAiSetupPanelExperiment';
+import { useAssistantRuntime } from '../../assistantRuntime';
 import type { WorkflowSetupSection } from '../workflowSetup.types';
+import { buildSetupSavedOutcome } from '../workflowSetupSavedTelemetry';
 
 type ProvidedSetupInput = { label: string; options: string[]; option_chosen: string };
 type SkippedSetupInput = { label: string; options: string[] };
 type SetupStepOutcome = 'completed' | 'skipped';
 
 type WorkflowSetupStepTelemetryInput = {
+	node_ids: string[];
 	input_type: 'credential' | 'parameter';
 	node_type: string;
 	credential_type?: string;
@@ -16,10 +20,13 @@ type WorkflowSetupStepTelemetryInput = {
 };
 
 type WorkflowSetupStepTelemetryPayload = {
+	session_id: string;
+	workflow_id?: string;
 	thread_id: string;
 	input_thread_id: string;
 	instance_id: string;
 	type: 'setup';
+	runtime: AssistantRuntime;
 	request_id: string;
 	step_index: number;
 	step_count: number;
@@ -29,7 +36,13 @@ type WorkflowSetupStepTelemetryPayload = {
 
 type SetupTelemetryContext = Pick<
 	WorkflowSetupStepTelemetryPayload,
-	'thread_id' | 'input_thread_id' | 'instance_id' | 'type'
+	| 'session_id'
+	| 'workflow_id'
+	| 'thread_id'
+	| 'input_thread_id'
+	| 'instance_id'
+	| 'type'
+	| 'runtime'
 >;
 
 interface WorkflowSetupTelemetryInputAccessors {
@@ -39,25 +52,34 @@ interface WorkflowSetupTelemetryInputAccessors {
 
 export function useWorkflowSetupTelemetry(deps: {
 	requestId: Ref<string>;
+	workflowId?: Ref<string | undefined>;
 	sections: ComputedRef<WorkflowSetupSection[]>;
 	activeSection: ComputedRef<WorkflowSetupSection | undefined>;
 	isReady: Ref<boolean>;
 	inputs: WorkflowSetupTelemetryInputAccessors;
-	thread: ThreadRuntime;
+	/** The thread that the telemetry reports. */
+	threadId: Ref<string>;
+	/** Joins the telemetry with the "Builder asked for input" event of this card. */
+	inputThreadId: Ref<string | undefined>;
 }) {
 	const telemetry = useTelemetry();
 	const rootStore = useRootStore();
+	const { getTelemetryPayload } = useInstanceAiSetupPanelExperiment();
+	const runtime = useAssistantRuntime();
 
 	const shownStepKeys = new Set<string>();
 	const handledStepKeys = new Set<string>();
 
 	function getSetupTelemetryContext(): SetupTelemetryContext {
-		const tc = deps.thread.findToolCallByRequestId(deps.requestId.value);
 		return {
-			thread_id: deps.thread.id,
-			input_thread_id: tc?.confirmation?.inputThreadId ?? '',
+			...getTelemetryPayload(),
+			session_id: rootStore.pushRef,
+			workflow_id: deps.workflowId?.value,
+			thread_id: deps.threadId.value,
+			input_thread_id: deps.inputThreadId.value ?? '',
 			instance_id: rootStore.instanceId,
 			type: 'setup',
+			runtime,
 		};
 	}
 
@@ -77,6 +99,7 @@ export function useWorkflowSetupTelemetry(deps: {
 		const inputs: WorkflowSetupStepTelemetryInput[] = [];
 		if (section.credentialType) {
 			inputs.push({
+				node_ids: section.credentialTargetNodes.map((node) => node.id),
 				input_type: 'credential',
 				node_type: section.node.type,
 				credential_type: section.credentialType,
@@ -85,12 +108,31 @@ export function useWorkflowSetupTelemetry(deps: {
 
 		for (const parameterName of section.parameterNames) {
 			inputs.push({
+				node_ids: [section.node.id],
 				input_type: 'parameter',
 				node_type: section.node.type,
 				parameter_name: parameterName,
 			});
 		}
 		return inputs;
+	}
+
+	function trackSetupSaved(result: Record<string, unknown>): void {
+		const workflowId = deps.workflowId?.value;
+		if (!workflowId) return;
+		const outcome = buildSetupSavedOutcome(deps.sections.value, result);
+		if (!outcome) return;
+		telemetry.track(TELEMETRY_EVENT.WORKFLOW.SETUP_SAVED, {
+			...getTelemetryPayload(),
+			instance_id: rootStore.instanceId,
+			workflow_id: workflowId,
+			thread_id: deps.threadId.value,
+			session_id: rootStore.pushRef,
+			source: 'instance_ai_setup_wizard',
+			request_id: deps.requestId.value,
+			...outcome,
+			runtime,
+		});
 	}
 
 	function getStepTelemetryPayload(
@@ -202,5 +244,6 @@ export function useWorkflowSetupTelemetry(deps: {
 	return {
 		trackSetupInput,
 		trackStepHandled,
+		trackSetupSaved,
 	};
 }

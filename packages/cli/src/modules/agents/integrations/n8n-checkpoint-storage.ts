@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import {
 	stripHydratedFileData,
 	type CheckpointStore,
@@ -6,14 +7,21 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { Service } from '@n8n/di';
-import { jsonParse, UnexpectedError, UserError } from 'n8n-workflow';
+import { TransactionRunner, type OperationContext } from '@n8n/db';
+import { Container, Service } from '@n8n/di';
+import { jsonParse } from 'n8n-workflow';
+import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 
 import {
 	decodeAgentSandboxHostMetadata,
 	type AgentSandboxPrincipalHash,
 } from '../agent-sandbox-principal';
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
+import { AgentExecutionRepository } from '../repositories/agent-execution.repository';
+import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
+import { AgentMessageQueueRepository } from '../repositories/agent-message-queue.repository';
+import { checkpointExecutionId } from '../types/agent-queued-message';
+import { getDelegatedChildCheckpoints } from '../utils/delegated-child-checkpoints';
 
 /** File parts are checkpointed reference-only (a `Uint8Array` would not survive JSON round-tripping). */
 function stripStateFileData(state: SerializableAgentState): SerializableAgentState {
@@ -47,18 +55,70 @@ export class N8NCheckpointStorage {
 		private readonly agentCheckpointRepository: AgentCheckpointRepository,
 		private readonly logger: Logger,
 		private readonly agentsConfig: AgentsConfig,
+		private readonly txRunner: TransactionRunner,
+		private readonly executionRepository: AgentExecutionRepository,
+		private readonly threadRepository: AgentExecutionThreadRepository,
+		private readonly queueRepository: AgentMessageQueueRepository,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
 
-	getStorage(agentId: string): CheckpointStore {
+	getStorage(agentId: string, expectedApprovalDefinition?: string): CheckpointStore {
 		return {
 			save: async (key, state) => await this.save(key, state, agentId),
-			load: async (key) => await this.load(key, agentId),
+			load: async (key) => {
+				const state = await this.load(key, agentId);
+				if (!state || !expectedApprovalDefinition) return state;
+				const staleExecutionIds: string[] = [];
+				let stale = false;
+				for (const call of Object.values(state.pendingToolCalls)) {
+					if (
+						call.suspended &&
+						isRecord(call.continuation) &&
+						call.continuation.__agentDecisionWorkflow === true &&
+						call.continuation.definitionHash !== expectedApprovalDefinition
+					) {
+						stale = true;
+						const { executionId } = call.continuation;
+						if (typeof executionId === 'string') staleExecutionIds.push(executionId);
+					}
+				}
+				if (!stale) return state;
+				await this.cancelApprovals(staleExecutionIds, agentId, key);
+				await this.delete(key, agentId);
+				throw new UserError(
+					'The Agent configuration changed while approval was pending. Start a new request.',
+				);
+			},
 			claimForResume: async (key: string, state: SerializableAgentState) =>
 				await this.claimForResume(key, state, agentId),
-			delete: async (key) => await this.delete(key, agentId),
+			delete: async (key, state) => {
+				if (!state) return await this.delete(key, agentId);
+				await this.withExecutionOwnership(state, async (ctx) => {
+					await this.agentCheckpointRepository.expireByRunIdAndAgentId(key, agentId, ctx);
+				});
+			},
 		};
+	}
+
+	/** Stop the reviews of a discarded checkpoint. A failure must not keep the checkpoint. */
+	private async cancelApprovals(executionIds: string[], agentId: string, runId: string) {
+		if (executionIds.length === 0) return;
+		// Lazy: the job service depends on this storage.
+		const { AgentBackgroundJobService } = await import(
+			'../background/agent-background-job.service.js'
+		);
+		const jobs = Container.get(AgentBackgroundJobService);
+		for (const executionId of executionIds) {
+			try {
+				await jobs.cancelApprovalByExecutionId(executionId, agentId, runId);
+			} catch (error) {
+				this.logger.warn('Failed to stop the approval of a discarded checkpoint', {
+					executionId,
+					error,
+				});
+			}
+		}
 	}
 
 	async getActiveRunIdsForSandbox(
@@ -90,26 +150,58 @@ export class N8NCheckpointStorage {
 
 	async save(key: string, checkpointState: SerializableAgentState, agentId: string): Promise<void> {
 		const state = stripStateFileData(checkpointState);
-		const existing = await this.agentCheckpointRepository.findByRunId(key);
-
-		if (existing) {
-			if (existing.agentId !== agentId) {
+		await this.withExecutionOwnership(state, async (ctx) => {
+			const existing = await this.agentCheckpointRepository.findByRunId(key, ctx);
+			if (existing && existing.agentId !== agentId) {
 				throw new UnexpectedError('Agent checkpoint is owned by a different agent');
 			}
-			existing.state = JSON.stringify(state);
-			existing.threadId = state.persistence?.threadId ?? null;
-			existing.expired = false;
-			await this.agentCheckpointRepository.save(existing);
-		} else {
 			const checkpoint = this.agentCheckpointRepository.create({
+				...existing,
 				runId: key,
 				agentId,
 				threadId: state.persistence?.threadId ?? null,
 				state: JSON.stringify(state),
 				expired: false,
 			});
-			await this.agentCheckpointRepository.save(checkpoint);
-		}
+			await this.agentCheckpointRepository.saveCheckpoint(checkpoint, ctx);
+			const executionId = checkpointExecutionId(state);
+			const threadId = state.persistence?.threadId;
+			if (state.status === 'suspended' && executionId && threadId) {
+				// A continuation can start before the suspended predecessor finishes recording.
+				await this.executionRepository.closeSteering(threadId, executionId, ctx);
+				await this.queueRepository.releaseSteering(threadId, executionId, ctx);
+			}
+		});
+	}
+
+	private async withExecutionOwnership(
+		state: SerializableAgentState,
+		write: (ctx: OperationContext) => Promise<void>,
+	): Promise<void> {
+		const executionId = checkpointExecutionId(state);
+		if (!executionId) return await write({});
+		await this.txRunner.run({}, async (ctx) => {
+			const threadId = state.persistence?.threadId;
+			if (!threadId || !(await this.threadRepository.lockById(threadId, ctx))) {
+				throw new OperationalError('Agent execution no longer owns this session');
+			}
+			const execution = await this.executionRepository.findExecution(executionId, ctx);
+			const active = await this.queueRepository.findActive(threadId, ctx);
+			if (
+				execution?.status !== 'running' ||
+				execution.threadId !== threadId ||
+				(active && active.executionId !== executionId)
+			) {
+				throw new OperationalError('Agent execution no longer owns this session');
+			}
+			await write(ctx);
+		});
+	}
+
+	private expiryCutoff(): Date {
+		return new Date(
+			Date.now() - this.agentsConfig.checkpointTtlSeconds * Time.seconds.toMilliseconds,
+		);
 	}
 
 	async load(key: string, agentId: string): Promise<SerializableAgentState | undefined> {
@@ -117,7 +209,12 @@ export class N8NCheckpointStorage {
 
 		if (!checkpoint) return undefined;
 
-		if (checkpoint.expired || checkpoint.state === null) {
+		if (
+			checkpoint.expired ||
+			checkpoint.state === null ||
+			(checkpoint.updatedAt < this.expiryCutoff() &&
+				!(await this.agentCheckpointRepository.isRetainedForApproval(key)))
+		) {
 			throw new UserError('This action has expired and cannot be resumed');
 		}
 
@@ -140,6 +237,9 @@ export class N8NCheckpointStorage {
 			agentId,
 			JSON.stringify(state),
 			JSON.stringify({ ...state, status: 'running' }),
+			(await this.agentCheckpointRepository.isRetainedForApproval(key))
+				? undefined
+				: this.expiryCutoff(),
 		);
 	}
 
@@ -149,11 +249,47 @@ export class N8NCheckpointStorage {
 		agentId: string,
 	): Promise<boolean> {
 		if (state.status !== 'suspended') return false;
-		return await this.agentCheckpointRepository.cancelSuspended(
-			key,
+		const executionId = checkpointExecutionId(state);
+		if (!executionId)
+			return await this.agentCheckpointRepository.cancelSuspended(
+				key,
+				agentId,
+				JSON.stringify(state),
+			);
+		return await this.txRunner.run({}, async (ctx) => {
+			const threadId = state.persistence?.threadId;
+			if (!threadId || !(await this.threadRepository.lockById(threadId, ctx))) return false;
+			const running = await this.executionRepository.findRunningByThread(threadId, ctx);
+			if (running.some(({ id }) => id !== executionId)) return false;
+			return await this.agentCheckpointRepository.cancelSuspended(
+				key,
+				agentId,
+				JSON.stringify(state),
+				ctx,
+			);
+		});
+	}
+
+	/**
+	 * Run id of the live checkpoint on this thread whose pending tool call
+	 * matches. Null when the approval is gone or the checkpoint has expired.
+	 */
+	async findApprovalRunId(
+		agentId: string,
+		threadId: string,
+		toolCallId: string,
+	): Promise<string | null> {
+		const rows = await this.agentCheckpointRepository.findActiveForThread(
 			agentId,
-			JSON.stringify(state),
+			threadId,
+			this.expiryCutoff(),
 		);
+		for (const row of rows) {
+			const checkpoint = this.parseSuspendedState(row.state, threadId);
+			const pending = checkpoint?.pendingToolCalls[toolCallId];
+			if (pending?.suspended) return row.runId;
+		}
+		return null;
 	}
 
 	/**
@@ -165,8 +301,14 @@ export class N8NCheckpointStorage {
 	async findSuspendedForThread(
 		agentId: string,
 		threadId: string,
+		ctx: OperationContext = {},
 	): Promise<SerializableAgentState | null> {
-		const rows = await this.agentCheckpointRepository.findActiveForThread(agentId, threadId);
+		const rows = await this.agentCheckpointRepository.findActiveForThread(
+			agentId,
+			threadId,
+			this.expiryCutoff(),
+			ctx,
+		);
 		for (const row of rows) {
 			const checkpoint = this.parseSuspendedState(row.state, threadId);
 			if (checkpoint) return checkpoint;
@@ -193,6 +335,78 @@ export class N8NCheckpointStorage {
 		return true;
 	}
 
+	async findDelegatedSuspensionForThread(agentId: string, threadId: string) {
+		const rows = await this.agentCheckpointRepository.findActiveForThread(
+			agentId,
+			threadId,
+			this.expiryCutoff(),
+		);
+		for (const row of rows) {
+			if (!row.state) continue;
+			const checkpoint = jsonParse<SerializableAgentState>(row.state);
+			if (
+				checkpoint.status !== 'suspended' ||
+				!checkpoint.persistence?.delegated ||
+				checkpoint.persistence.threadId !== threadId
+			)
+				continue;
+			return {
+				runId: row.runId,
+				checkpoint,
+				serializedState: row.state,
+				updatedAt: row.updatedAt,
+				expiresAt: new Date(
+					row.updatedAt.getTime() +
+						this.agentsConfig.checkpointTtlSeconds * Time.seconds.toMilliseconds,
+				),
+			};
+		}
+		return undefined;
+	}
+
+	async deleteDelegatedForThread(agentId: string, threadId: string): Promise<void> {
+		const rows = await this.agentCheckpointRepository.findRetainedByThreadId(threadId);
+		const visited = new Set<string>();
+		for (const row of rows) {
+			if (row.agentId === agentId) await this.deleteDelegation(row.runId, agentId, visited);
+		}
+	}
+
+	async markUserPaused(
+		agentId: string,
+		suspension: {
+			runId: string;
+			checkpoint: SerializableAgentState;
+			serializedState: string;
+			updatedAt: Date;
+		},
+	): Promise<boolean> {
+		// Preserve the approval and its expiry. A concurrent resume must win or lose atomically.
+		return await this.agentCheckpointRepository.markUserPaused(
+			suspension.runId,
+			agentId,
+			suspension.serializedState,
+			JSON.stringify({ ...suspension.checkpoint, finishReason: 'paused' }),
+			suspension.updatedAt,
+		);
+	}
+
+	private async deleteDelegation(
+		runId: string,
+		agentId: string,
+		visited: Set<string>,
+	): Promise<void> {
+		const identity = `${agentId}\0${runId}`;
+		if (visited.has(identity)) return;
+		visited.add(identity);
+		const status = await this.getStatus(runId, agentId);
+		const checkpoint = status.status === 'not-found' ? undefined : status.checkpoint;
+		const children = checkpoint ? getDelegatedChildCheckpoints(checkpoint, agentId) : [];
+		// Keep the parent until all children are cleared so reconciliation can retry.
+		for (const child of children) await this.deleteDelegation(child.runId, child.agentId, visited);
+		await this.delete(runId, agentId);
+	}
+
 	private parseSuspendedState(
 		state: string | null,
 		threadId: string,
@@ -209,12 +423,25 @@ export class N8NCheckpointStorage {
 		return parsed;
 	}
 
-	async getStatus(key: string, agentId: string): Promise<CheckpointStatus> {
-		const checkpoint = await this.agentCheckpointRepository.findByRunIdAndAgentId(key, agentId);
+	async getStatus(
+		key: string,
+		agentId: string,
+		ctx: OperationContext = {},
+	): Promise<CheckpointStatus> {
+		const checkpoint = await this.agentCheckpointRepository.findByRunIdAndAgentId(
+			key,
+			agentId,
+			ctx,
+		);
 		if (!checkpoint) return { status: 'not-found' };
 		if (checkpoint.state === null) return { status: 'expired' };
 		const state = jsonParse<SerializableAgentState>(checkpoint.state);
-		if (checkpoint.expired) return { status: 'expired', checkpoint: state };
+		if (
+			checkpoint.expired ||
+			(checkpoint.updatedAt < this.expiryCutoff() &&
+				!(await this.agentCheckpointRepository.isRetainedForApproval(key, ctx)))
+		)
+			return { status: 'expired', checkpoint: state };
 		return { status: 'active', checkpoint: state };
 	}
 
@@ -222,16 +449,22 @@ export class N8NCheckpointStorage {
 		await this.agentCheckpointRepository.expireByRunIdAndAgentId(key, agentId);
 	}
 
-	/** Marks checkpoints past their TTL as expired. A failure propagates to the caller. */
-	async pruneStaleSuspensions() {
+	/**
+	 * Marks checkpoints past their TTL as expired. Returns the thread ids of the
+	 * checkpoints this pass expired. A failure propagates to the caller.
+	 */
+	async pruneStaleSuspensions(ctx: OperationContext = {}): Promise<string[]> {
 		const ttlMs = this.agentsConfig.checkpointTtlSeconds * Time.seconds.toMilliseconds;
 		const cutoffDate = new Date(Date.now() - ttlMs);
-
-		const count = await this.agentCheckpointRepository.markExpired(cutoffDate);
-		if (count > 0) {
-			this.logger.info('Marked stale agent checkpoints as expired', { count });
+		const { affected, threadIds } = await this.agentCheckpointRepository.expireStale(
+			cutoffDate,
+			ctx,
+		);
+		if (affected > 0) {
+			this.logger.info('Marked stale agent checkpoints as expired', { count: affected });
 		} else {
 			this.logger.debug('No stale agent checkpoints to expire');
 		}
+		return threadIds;
 	}
 }

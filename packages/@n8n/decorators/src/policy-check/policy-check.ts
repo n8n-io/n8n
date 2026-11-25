@@ -1,6 +1,11 @@
 import type { PolicyCheckFailure, PolicyViolation } from '@n8n/api-types';
 import type { Constructable } from '@n8n/di';
-import type { INode } from 'n8n-workflow';
+import type {
+	INode,
+	WorkflowEngineType,
+	WorkflowExecuteMode,
+	WorkflowExecutionSource,
+} from 'n8n-workflow';
 
 export type { PolicyViolation, PolicyCheckFailure };
 
@@ -14,9 +19,11 @@ export type { PolicyViolation, PolicyCheckFailure };
 export const ENFORCEMENT_POINTS = [
 	'workflowSave',
 	'workflowPublish',
+	'executionAdmission',
 	'workflowStart',
 	'workflowTransfer',
 	'credentialSave',
+	'credentialTransfer',
 	'credentialDecrypt',
 	'contentImport',
 ] as const;
@@ -37,7 +44,15 @@ export type PolicedWorkflow = {
 	readonly id: string | null;
 	readonly name: string;
 	readonly nodes: readonly INode[];
+	/**
+	 * What holds the nodes. Absent means a workflow. An agent is policed through the same
+	 * points, with one node for each node tool, so every check covers agents unchanged.
+	 */
+	readonly artifactKind?: PolicedArtifactKind;
 };
+
+/** Something made of nodes that the workflow points police. */
+export type PolicedArtifactKind = 'workflow' | 'agent';
 
 /**
  * The node asking to decrypt a credential.
@@ -68,6 +83,27 @@ export type WorkflowPublishContext = {
 	readonly projectId: string | null;
 };
 
+/** A workflow or an agent named by reference, without its nodes. */
+export type PolicedArtifactRef = {
+	readonly kind: PolicedArtifactKind;
+	readonly id: string;
+	readonly name: string;
+};
+
+/**
+ * A run that asks for its execution row. The fields match a ledger row, so a check can apply
+ * the shared counting rules. There are no nodes: a check here must read memory only.
+ */
+export type ExecutionAdmissionContext = {
+	readonly artifact: PolicedArtifactRef;
+	/** `null` when the artifact has no owner project. */
+	readonly projectId: string | null;
+	readonly mode: WorkflowExecuteMode;
+	/** `null` for a regular run. */
+	readonly source: WorkflowExecutionSource | null;
+	readonly engine: WorkflowEngineType;
+};
+
 export type WorkflowStartContext = {
 	readonly workflow: PolicedWorkflow;
 	readonly projectId: string | null;
@@ -76,7 +112,7 @@ export type WorkflowStartContext = {
 export type WorkflowTransferContext = {
 	readonly workflow: PolicedWorkflow;
 	/** The project the workflow is moving *into* — that's whose policy applies. */
-	readonly targetProjectId: string | null;
+	readonly targetProjectId: string;
 };
 
 /**
@@ -105,6 +141,11 @@ export type CredentialSaveContext = {
 	readonly projectId: string | null;
 };
 
+export type CredentialTransferContext = {
+	readonly credential: PolicedCredential & { readonly id: string };
+	readonly targetProjectId: string;
+};
+
 export type CredentialDecryptContext = {
 	readonly credentialType: string;
 	readonly credentialId: string;
@@ -122,11 +163,16 @@ export type CredentialDecryptContext = {
  */
 export type ContentImportTransport = 'cli' | 'source-control' | 'package' | 'git-connection';
 
+/**
+ * What's being imported, plus where it's landing and how it arrived.
+ *
+ * Exactly one of `workflow` / `credential` is set; narrow with `'workflow' in context`. No
+ * `?: never` on the other arm, because that breaks the `in` narrowing.
+ */
 export type ContentImportContext = {
-	readonly workflow: PolicedWorkflow;
 	readonly projectId: string | null;
 	readonly transport: ContentImportTransport;
-};
+} & ({ readonly workflow: PolicedWorkflow } | { readonly credential: PolicedCredential });
 
 /** A policy version a check read, recorded on the audit log. */
 export type PolicyVersionRef = {
@@ -206,12 +252,20 @@ export interface RegisteredPolicyCheck {
 
 	onWorkflowSave?(ctx: WorkflowSaveContext, signal: AbortSignal): Promise<PolicyCheckResult>;
 	onWorkflowPublish?(ctx: WorkflowPublishContext, signal: AbortSignal): Promise<PolicyCheckResult>;
+	onExecutionAdmission?(
+		ctx: ExecutionAdmissionContext,
+		signal: AbortSignal,
+	): Promise<PolicyCheckResult>;
 	onWorkflowStart?(ctx: WorkflowStartContext, signal: AbortSignal): Promise<PolicyCheckResult>;
 	onWorkflowTransfer?(
 		ctx: WorkflowTransferContext,
 		signal: AbortSignal,
 	): Promise<PolicyCheckResult>;
 	onCredentialSave?(ctx: CredentialSaveContext, signal: AbortSignal): Promise<PolicyCheckResult>;
+	onCredentialTransfer?(
+		ctx: CredentialTransferContext,
+		signal: AbortSignal,
+	): Promise<PolicyCheckResult>;
 	onCredentialDecrypt?(
 		ctx: CredentialDecryptContext,
 		signal: AbortSignal,
@@ -234,9 +288,11 @@ export const ENFORCEMENT_POINT_METHODS: {
 } = {
 	workflowSave: 'onWorkflowSave',
 	workflowPublish: 'onWorkflowPublish',
+	executionAdmission: 'onExecutionAdmission',
 	workflowStart: 'onWorkflowStart',
 	workflowTransfer: 'onWorkflowTransfer',
 	credentialSave: 'onCredentialSave',
+	credentialTransfer: 'onCredentialTransfer',
 	credentialDecrypt: 'onCredentialDecrypt',
 	contentImport: 'onContentImport',
 };

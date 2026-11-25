@@ -1,34 +1,75 @@
 import { UnexpectedError, UnimplementedError, type JsonValue } from '../common';
-import type { ExternalDependencies, IStepExecutor } from '../dependencies';
+import type {
+	ExternalDependencies,
+	IStepExecutor,
+	SubExecutionDeclaration,
+	StepExecutionResult,
+	StepInputSources,
+} from '../dependencies';
 import {
+	compareByConcatenationOrder,
 	deriveLoops,
 	isBatchStepConfig,
 	type GraphEdge,
 	type GraphNode,
 	type WorkflowLoop,
 } from '../graph';
-import type { LifecycleEventPublisher } from '../lifecycle-events';
-import { runBatchStep } from './batch-step';
+import type { LifecycleEventPublisherFactory } from '../lifecycle-events';
+import { createResponseEmitter, type ExecutionResponseSender } from '../response-channel';
+import { runBatchStep, type BatchStepResult } from './batch-step';
 import type { OrchestrationMessage, StepReadyEvent, WorkQueue } from '../queue';
-import type { ExecutionRecord, ExecutionStore } from './execution-store';
+import { isMissingExecution, type ExecutionRecord, type ExecutionStore } from './execution-store';
 import {
 	stepKeyId,
+	isLiveExecutionStatus,
 	isSettledStatus,
+	hasResumeCondition,
+	type ResumeCause,
+	type SubExecutionResumeCause,
 	type StepError,
 	type StepKey,
 	type StepKeyId,
 	type StepSlots,
+	type ExecutorWaitDeclaration,
+	type StepOutputSources,
 } from './execution.types';
 import { classifyEdge, sourceRow } from './iteration-mapping';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
+import { InvalidParentLinkError, type StartExecutionService } from './start-execution.service';
+import { stepErrorDetails } from './step-error-details';
+import { announceStepFailed, stepEventFields } from './step-events';
 import type { StepRecord, StepStore } from './step-store';
 import { createStoreLoopReader } from './store-loop-reader';
 import { validateStepContext } from './validate-step-context';
 
+/** A resume that emits outputs the engine already holds, so no node code runs. */
+type ReplayCause = Exclude<ResumeCause, SubExecutionResumeCause>;
+
+/**
+ * How a step produces its result. A replay emits recorded outputs. A batch pass
+ * the engine runs itself. A run goes through an executor: a first run, or a
+ * sub-execution resume, which runs the node again with the outcome.
+ */
+type Dispatch =
+	| { kind: 'replay'; cause: ReplayCause }
+	| { kind: 'batch' }
+	| {
+			kind: 'run';
+			executor: IStepExecutor;
+			inputs: StepSlots;
+			inputSources: StepInputSources;
+			subExecutionResult?: SubExecutionResumeCause;
+	  };
+
 /**
  * Handles the `step:ready` step event: claims the step (`queued -> running`),
- * runs it through the executor for its step type, records the outcome, and
+ * runs it through the executor for its step type, records what came back, and
  * reports back to the orchestration worker with `step:settled`.
+ *
+ * What comes back is an outcome or a wait. An outcome — outputs or an error —
+ * settles the step, and is announced. A wait suspends it instead
+ * (`running -> waiting`): the step still owes the execution a settlement, so
+ * nothing is announced and no successor is planned until it resumes.
  *
  * A step that cannot run — no executor, an input shape we don't support yet —
  * makes the handler throw, leaving the step `running` for reconciliation
@@ -40,7 +81,11 @@ export class StepReadyHandler {
 		private readonly stepStore: StepStore,
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
 		private readonly dependencies: ExternalDependencies,
-		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
+		private readonly lifecycleEventPublisherFactory: LifecycleEventPublisherFactory,
+		private readonly responseSender: ExecutionResponseSender,
+		private readonly startExecution: StartExecutionService,
+		/** Called once a wait is on the row, so the sweeper can re-arm on its deadline. */
+		private readonly onStepSuspended: () => void = () => {},
 	) {}
 
 	async handle(event: StepReadyEvent): Promise<void> {
@@ -48,63 +93,116 @@ export class StepReadyHandler {
 		const step = await this.stepStore.claimStep(event.stepId);
 		if (!step) return;
 
-		// NOTE: we would prefer to do this validation before the claim,
-		// but we need to check the execution status AFTER the claim to
-		// avoid executing a step for a failed or cancelled execution.
-		// Reconciliation or a more robust consistency story will improve
-		// this in the future (CAT-2938, CAT-3930).
-		const execution = await this.executionStore.loadExecution(event.executionId);
+		// Read after the claim, so an execution that ended in between is seen
+		// here and the step is not run.
+		let execution: ExecutionRecord;
+		try {
+			execution = await this.executionStore.loadExecution(event.executionId);
+		} catch (error) {
+			// A deletion after the claim removed the execution and its step row.
+			// A step of another execution means a wrong message, which must still fail.
+			if (isMissingExecution(error, event.executionId) && step.executionId === event.executionId) {
+				return;
+			}
+			throw error;
+		}
 		const node = validateStepContext(step, execution);
 
-		// The engine runs a batch step itself, so it has no executor to look up.
-		const executor = node.type === 'batch' ? undefined : this.executorFor(step, node);
-
-		if (execution.status !== 'running') {
-			// The execution is no longer running, so we don't run the step.
-			// The step is left `running` for reconciliation (CAT-2938) or
-			// internal consistency checks (CAT-3930) to resolve.
+		if (!isLiveExecutionStatus(execution.status)) {
+			// The execution ended after this step was announced, or after it was
+			// claimed. Settle the row here, where both facts are known, so no
+			// cancelled execution keeps a `running` step. Nothing is announced: the
+			// step never ran, like the ones the cancellation sweep settles.
+			await this.stepStore.cancelStep(step.id);
 			return;
 		}
 
 		// This worker won the claim, so it is the one that announces the start.
-		this.lifecycleEventPublisher.publish({ type: 'step:started', ...stepEventFields(step, node) });
+		const lifecycleEventPublisher = this.lifecycleEventPublisherFactory.create(execution);
+		lifecycleEventPublisher.publish({ type: 'step:started', ...stepEventFields(step, node) });
 
-		// NOTE: an unexpected error in gathering inputs will leave the step
-		// running. In the future, this will be handled by either:
+		// Decided outside the `try` below on purpose. Its errors are the engine's
+		// own bookkeeping, not the node's, so they leave the step `running`
+		// instead of recording it failed. In the future one of these resolves that:
 		// - Reconciliation (CAT-2938) taking over the step and retrying it for transient errors
 		// - Internal consistency checks (CAT-3930) detecting a misconfigured graph and failing the execution
-		const inputs = await this.gatherInputs(execution, step);
+		const dispatch = await this.dispatchFor(step, node, execution);
 
 		// Only a failure to run the step fails it. A store error propagates instead —
 		// recording `failed` on a step whose side effects happened would be a lie.
-		let run: { ok: true; outputs: StepSlots } | { ok: false; error: unknown };
+		let run:
+			| { kind: 'outputs'; outputs: StepSlots; outputSources: StepOutputSources | null }
+			| { kind: 'wait'; wait: ExecutorWaitDeclaration }
+			| { kind: 'subExecution'; subExecution: SubExecutionDeclaration }
+			| { kind: 'error'; error: StepError };
 		try {
-			run = {
-				ok: true,
-				outputs: executor
-					? await this.runStep(step, execution, node, inputs, executor)
-					: await this.runBatchNode(step, execution, node),
-			};
+			if (dispatch.kind === 'batch') {
+				run = { kind: 'outputs', ...(await this.runBatchNode(step, execution, node)) };
+			} else {
+				const result: StepExecutionResult =
+					dispatch.kind === 'replay'
+						? { outputs: recordedOutputs(step, dispatch.cause) }
+						: await this.runStep(step, execution, node, dispatch);
+				if (result.wait) {
+					run = { kind: 'wait', wait: result.wait };
+				} else if (result.subExecution) {
+					run = { kind: 'subExecution', subExecution: result.subExecution };
+				} else {
+					run = { kind: 'outputs', outputs: result.outputs, outputSources: null };
+				}
+			}
 		} catch (error) {
-			run = { ok: false, error };
+			run = { kind: 'error', error: toStepError(error) };
 		}
 
-		const recorded = run.ok
-			? await this.stepStore.completeStep(event.stepId, run.outputs)
-			: await this.stepStore.failStep(event.stepId, toStepError(run.error));
+		if (run.kind === 'subExecution') {
+			const { subExecution } = run;
+			if (subExecution.awaited) {
+				await this.handleAwaitedSubExecution(event, step, execution, node, subExecution);
+				return;
+			}
+			const started = await this.handleDetachedSubExecution(step, execution, subExecution);
+			run =
+				started.kind === 'error'
+					? { kind: 'error', error: toStepError(started.error) }
+					: { kind: 'outputs', outputs: subExecution.outputs, outputSources: null };
+		}
+
+		let recorded: boolean;
+		if (run.kind === 'outputs') {
+			recorded = await this.stepStore.completeStep(event.stepId, run.outputs, run.outputSources);
+		} else if (run.kind === 'wait') {
+			recorded = await this.stepStore.suspendStep(event.stepId, run.wait);
+		} else {
+			recorded = await this.stepStore.failStep(event.stepId, run.error);
+		}
 
 		// Recording is a CAS on `running`, so losing it means something else took the
 		// step over while we ran — announce only outcomes we actually wrote, and let
-		// whoever holds it now announce theirs. TODO(CAT-2938): reconciliation is the
-		// only thing that can take a step over, and it doesn't exist yet.
+		// whoever holds it now announce theirs. The reconciliation sweeper does this
+		// when it fails a step that is `running` past its `stale_after` time.
+		//
+		// A wait in an ended execution is not recorded either: `suspendStep` cancels
+		// the step.
 		if (!recorded) return;
 
-		// Before the settled event, or the execution could announce its end first.
+		// A wait is no outcome: nothing settled, so no planning follows.
+		if (run.kind === 'wait') {
+			lifecycleEventPublisher.publish({ type: 'step:waiting', ...stepEventFields(step, node) });
+			// Nudge first, so the sweeper's re-arm read runs beside the status
+			// write rather than after it. Either order is correct.
+			this.onStepSuspended();
+			await this.executionStore.refreshLiveStatus(execution.id);
+			return;
+		}
+
+		// Before the settled event, so an orchestrator in this process cannot
+		// announce the execution's end first.
 		// Outputs ride along so a consumer needs no read to render them.
-		this.lifecycleEventPublisher.publish(
-			run.ok
+		lifecycleEventPublisher.publish(
+			run.kind === 'outputs'
 				? { type: 'step:completed', ...stepEventFields(step, node), outputs: run.outputs }
-				: { type: 'step:failed', ...stepEventFields(step, node) },
+				: { type: 'step:failed', ...stepEventFields(step, node), error: run.error },
 		);
 
 		await this.orchestrationQueue.publish({
@@ -114,18 +212,124 @@ export class StepReadyHandler {
 		});
 	}
 
+	/**
+	 * Suspend the step on an awaited sub-execution, then start the sub-execution.
+	 *
+	 * We suspend first so the sub-execution never finishes before we suspend.
+	 */
+	private async handleAwaitedSubExecution(
+		event: StepReadyEvent,
+		step: StepRecord,
+		execution: ExecutionRecord,
+		node: GraphNode,
+		subExecution: SubExecutionDeclaration,
+	): Promise<void> {
+		// A CAS on `running`: losing it means something else took the step over, or
+		// the execution has ended.
+		const recorded = await this.stepStore.suspendStep(event.stepId, {
+			subExecutionId: subExecution.executionId,
+		});
+		if (!recorded) return;
+		// If the suspension results in no running steps, mark the execution as waiting.
+		await this.executionStore.refreshLiveStatus(execution.id);
+
+		const started = await this.startSubExecution(step, execution, subExecution);
+		if (started.kind === 'started') return;
+
+		const error = toStepError(started.error);
+		const failed = await this.stepStore.failWaitingStep(step.id, error);
+		if (!failed) return;
+		await announceStepFailed(
+			this.lifecycleEventPublisherFactory,
+			this.orchestrationQueue,
+			execution,
+			step,
+			node,
+			error,
+		);
+	}
+
+	/** Starts a detached sub-execution. */
+	private async handleDetachedSubExecution(
+		step: StepRecord,
+		execution: ExecutionRecord,
+		subExecution: SubExecutionDeclaration,
+	): Promise<{ kind: 'started' } | { kind: 'parent-ended' } | { kind: 'error'; error: unknown }> {
+		const started = await this.startSubExecution(step, execution, subExecution);
+		if (
+			started.kind === 'error' &&
+			started.error instanceof InvalidParentLinkError &&
+			started.error.reason === 'execution-not-live'
+		) {
+			return { kind: 'parent-ended' };
+		}
+		return started;
+	}
+
+	/**
+	 * Starts the sub-execution a step asked for, linked to the step that asked. The
+	 * sub-execution inherits the mode and the caller context, and never the response
+	 * expectation: a sub-execution does not answer the parent's caller.
+	 */
+	private async startSubExecution(
+		step: StepRecord,
+		execution: ExecutionRecord,
+		subExecution: SubExecutionDeclaration,
+	): Promise<{ kind: 'started' } | { kind: 'error'; error: unknown }> {
+		try {
+			await this.startExecution.start({
+				executionId: subExecution.executionId,
+				workflowId: subExecution.workflowId,
+				graph: subExecution.graph,
+				workflow: subExecution.workflow,
+				triggerOutputs: subExecution.triggerOutputs,
+				mode: execution.mode,
+				callerContext: execution.callerContext,
+				parent: { executionId: execution.id, stepId: step.id, awaited: subExecution.awaited },
+			});
+			return { kind: 'started' };
+		} catch (error) {
+			return { kind: 'error', error };
+		}
+	}
+
+	/** How the step produces its result. */
+	private async dispatchFor(
+		step: StepRecord,
+		node: GraphNode,
+		execution: ExecutionRecord,
+	): Promise<Dispatch> {
+		const { resumeCause } = step;
+		if (resumeCause !== null && resumeCause.kind !== 'subExecution') {
+			return { kind: 'replay', cause: resumeCause };
+		}
+		if (node.type === 'batch') return { kind: 'batch' };
+		return {
+			kind: 'run',
+			executor: this.executorFor(step, node),
+			...(await this.gatherInputs(execution, step)),
+			...(resumeCause ? { subExecutionResult: resumeCause } : {}),
+		};
+	}
+
 	private async runStep(
 		step: StepRecord,
 		execution: ExecutionRecord,
 		node: GraphNode,
-		inputs: StepSlots,
-		executor: IStepExecutor,
-	): Promise<StepSlots> {
-		// Outputs are stored without inspection. Which slots fired (including
-		// none) is the settlement handler's concern when it plans successors.
-		const { outputs } = await executor.execute({
+		{ executor, inputs, inputSources, subExecutionResult }: Extract<Dispatch, { kind: 'run' }>,
+	): Promise<StepExecutionResult> {
+		// The slots are stored without inspection: which ones fired is the
+		// settlement handler's concern. A declaration is not opaque in the same
+		// way. The engine reads three of its fields to suspend and resume the
+		// step, so it checks them here, where the step can still record as
+		// failed. What the wait is for stays the node's.
+		const result = await executor.execute({
 			node,
 			inputs,
+			inputSources,
+			// If we're resuming from a sub-execution, we pass in the result so the
+			// executor can use it to answer the sub-workflow call.
+			...(subExecutionResult ? { resume: subExecutionResult } : {}),
 			context: {
 				executionId: execution.id,
 				stepId: step.id,
@@ -133,9 +337,14 @@ export class StepReadyHandler {
 				mode: execution.mode,
 				iteration: step.iteration,
 				callerContext: execution.callerContext,
+				responseExpectation: execution.responseExpectation,
 			},
+			respond: createResponseEmitter(this.responseSender, execution),
 		});
-		return outputs;
+
+		if (result.wait) validateWaitDeclaration(step.id, result.wait);
+
+		return result;
 	}
 
 	/** Runs one pass of a batch node, in place of an executor. */
@@ -143,7 +352,7 @@ export class StepReadyHandler {
 		step: StepRecord,
 		execution: ExecutionRecord,
 		node: GraphNode,
-	): Promise<StepSlots> {
+	): Promise<BatchStepResult> {
 		if (!isBatchStepConfig(node.config)) {
 			throw new UnexpectedError(
 				`step ${step.id} runs batch node ${step.nodeId}, whose config has no whole batch size of at least 1`,
@@ -174,8 +383,16 @@ export class StepReadyHandler {
 		return await runBatchStep(node.config, step.iteration, reader);
 	}
 
-	/** Inputs for `node`, each slot taken from the row its edge reads. */
-	private async gatherInputs(execution: ExecutionRecord, step: StepRecord): Promise<StepSlots> {
+	/**
+	 * The step's inputs, and where the items of each slot came from. Several
+	 * live edges into one slot concatenate in `compareByConcatenationOrder`.
+	 * Dead edges add nothing. A slot with one live edge passes its value through
+	 * as is.
+	 */
+	private async gatherInputs(
+		execution: ExecutionRecord,
+		step: StepRecord,
+	): Promise<{ inputs: StepSlots; inputSources: StepInputSources }> {
 		// These are all the edges that feed into the node this step runs.
 		const incomingEdges = execution.graph.edges.filter((edge) => edge.to === step.nodeId);
 		if (incomingEdges.length === 0) {
@@ -202,18 +419,29 @@ export class StepReadyHandler {
 			...new Map(reads.map(({ key }) => [stepKeyId(key), key])).values(),
 		]);
 
-		// Array of length equal to the highest input slot plus one.
-		// The entries are `null` placeholders filled by the loop immediately below.
-		const inputs: StepSlots = Array.from(
-			{ length: Math.max(...reads.map(({ edge }) => edge.inputIndex)) + 1 },
-			() => null,
-		);
+		const slotCount = Math.max(...reads.map(({ edge }) => edge.inputIndex)) + 1;
+		const inputs: StepSlots = Array.from({ length: slotCount }, () => null);
+		const inputSources: StepInputSources = Array.from({ length: slotCount }, () => []);
 
-		for (const { edge, key } of reads) {
-			inputs[edge.inputIndex] = readEdgeValue(edge, key, step, rows);
+		const byConcatenationOrder = compareByConcatenationOrder(execution.graph);
+		const inConcatenationOrder = [...reads].sort((x, y) => byConcatenationOrder(x.edge, y.edge));
+
+		for (const { edge, key } of inConcatenationOrder) {
+			const value = readEdgeValue(edge, key, step, rows);
+			if (value === null) continue;
+
+			const slot = edge.inputIndex;
+			inputs[slot] = concatenateSlotValue(inputs[slot], value, step, slot);
+			inputSources[slot].push({
+				nodeId: key.nodeId,
+				outputIndex: edge.outputIndex,
+				iteration: key.iteration,
+				offset: 0,
+				itemCount: Array.isArray(value) ? value.length : 1,
+			});
 		}
 
-		return inputs;
+		return { inputs, inputSources };
 	}
 
 	/**
@@ -237,12 +465,8 @@ export class StepReadyHandler {
 }
 
 /**
- * Which row each incoming edge reads for this step, one per input slot.
- *
- * An edge that connects nothing at this iteration is dropped, which is what lets
- * a batch node carry both an entry edge and a return edge on slot 0: they never
- * apply at the same iteration, so per iteration the slot still has one source.
- * Two edges that do both apply are the unsupported convergence case.
+ * Which row each incoming edge reads for this step. An edge that connects
+ * nothing at this iteration is dropped.
  */
 export function resolveInputReads(
 	incomingEdges: GraphEdge[],
@@ -272,19 +496,20 @@ export function resolveInputReads(
 		);
 	}
 
-	const filledSlots: Set<number> = new Set();
-	for (const { edge } of reads) {
-		if (filledSlots.has(edge.inputIndex)) {
-			// TODO(CAT-3982): same-slot convergence gets a defined meaning. We
-			// should have rejected this graph at validation time.
-			throw new UnexpectedError(
-				`step ${step.id} runs node ${step.nodeId}, which has more than one edge into input slot ${edge.inputIndex}; validated graphs have at most one edge per input slot`,
-			);
-		}
-		filledSlots.add(edge.inputIndex);
-	}
-
 	return reads;
+}
+
+function concatenateSlotValue(
+	current: JsonValue,
+	value: JsonValue,
+	step: StepRecord,
+	slot: number,
+): JsonValue {
+	if (current === null) return value;
+	if (Array.isArray(current) && Array.isArray(value)) return [...current, ...value];
+	throw new UnexpectedError(
+		`step ${step.id} runs node ${step.nodeId}, which has several live edges into input slot ${slot} whose values are not all lists; only lists concatenate`,
+	);
 }
 
 /**
@@ -310,21 +535,64 @@ function readEdgeValue(
 	return row.outputs?.[edge.outputIndex] ?? null;
 }
 
-/** The identifiers every step event carries. */
-function stepEventFields(step: StepRecord, node: GraphNode) {
-	return {
-		executionId: step.executionId,
-		stepId: step.id,
-		nodeId: step.nodeId,
-		nodeName: node.name,
-		iteration: step.iteration,
-		at: new Date().toISOString(),
-	};
-}
-
 function toStepError(error: unknown): StepError {
 	if (error instanceof Error) {
-		return { name: error.name, message: error.message, stack: error.stack };
+		const details = stepErrorDetails(error);
+		return {
+			name: error.name,
+			message: error.message,
+			stack: error.stack,
+			...(details === undefined ? {} : { details }),
+		};
 	}
 	return { name: 'Error', message: String(error) };
+}
+
+/**
+ * The outputs a replay emits. A request's were produced where the request
+ * arrived, and a deadline's were captured when the step suspended.
+ *
+ * `WaitDeclaration` pairs a deadline with its outputs, so an absent one means
+ * the row disagrees with the contract — and a row is a write from outside the
+ * type system.
+ */
+function recordedOutputs(step: StepRecord, cause: ReplayCause): StepSlots {
+	if (cause.kind === 'request') return cause.outputs;
+
+	const outputs = step.waitDeclaration?.outputsAtDeadline;
+	if (!outputs) {
+		throw new UnexpectedError(
+			`step ${step.id} resumes at its deadline but its declaration captured no outputs`,
+		);
+	}
+	return outputs;
+}
+
+/**
+ * Rejects a declaration that would strand the execution. Throwing records the
+ * step as failed, which a wait nothing can end would never do on its own.
+ */
+function validateWaitDeclaration(stepId: string, wait: ExecutorWaitDeclaration): void {
+	if (!hasResumeCondition(wait)) {
+		throw new UnexpectedError(
+			`step ${stepId} declares a wait that can never resume: it names neither a deadline nor a resume binding`,
+		);
+	}
+
+	// `suspendStep` derives `wait_till` from this value, so one no date can be
+	// made from fails that write and leaves the claimed step running.
+	if (wait.resumeAt !== undefined && Number.isNaN(Date.parse(wait.resumeAt))) {
+		throw new UnexpectedError(
+			`step ${stepId} declares a wait with a deadline that is not a date: ${wait.resumeAt}`,
+		);
+	}
+
+	// The engine emits these when the deadline fires, and it never runs the step
+	// again to produce them. Without this check the wait suspends, and the sweep
+	// finds the gap at the deadline instead, with the step already `queued`.
+	if (wait.resumeAt !== undefined && wait.outputsAtDeadline === undefined) {
+		throw new UnexpectedError(
+			`step ${stepId} declares a wait with a deadline but no outputs to emit at it`,
+		);
+	}
 }

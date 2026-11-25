@@ -1,8 +1,8 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { InstanceContextService } from '@/modules/instance-ai/instance-context.service';
-import type { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import {
@@ -15,9 +15,9 @@ const user = mock<User>({ id: 'user-1' });
 
 function harness() {
 	const instanceContext = mock<InstanceContextService>();
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 
-	instanceContext.buildBlock.mockResolvedValue(null);
+	instanceContext.buildBlock.mockResolvedValue({ state: 'absent', reason: 'empty' });
 	instanceContext.hasWithheldWorkflows.mockResolvedValue(false);
 
 	return {
@@ -71,6 +71,9 @@ describe('get_instance_context', () => {
 	it('returns the block as prose', async () => {
 		const { tool, instanceContext } = harness();
 		instanceContext.buildBlock.mockResolvedValue({
+			state: 'injected',
+			isUpdate: false,
+			legs: { inventory: 3, events: 0, runs: 0 },
 			block: 'Workflows that already exist here: 3',
 			cursor: {
 				activityMark: 9,
@@ -89,7 +92,7 @@ describe('get_instance_context', () => {
 
 	it('reports a genuinely empty instance as empty', async () => {
 		const { tool, instanceContext } = harness();
-		instanceContext.buildBlock.mockResolvedValue(null);
+		instanceContext.buildBlock.mockResolvedValue({ state: 'absent', reason: 'empty' });
 		instanceContext.hasWithheldWorkflows.mockResolvedValue(false);
 
 		const result = await tool.handler({}, mock());
@@ -105,7 +108,7 @@ describe('get_instance_context', () => {
 	 */
 	it('says nothing is exposed, not that the instance is empty, when the estate is withheld', async () => {
 		const { tool, instanceContext } = harness();
-		instanceContext.buildBlock.mockResolvedValue(null);
+		instanceContext.buildBlock.mockResolvedValue({ state: 'absent', reason: 'empty' });
 		instanceContext.hasWithheldWorkflows.mockResolvedValue(true);
 
 		const result = await tool.handler({}, mock());
@@ -136,6 +139,9 @@ describe('get_instance_context', () => {
 	it('tracks a successful call', async () => {
 		const { tool, telemetry, instanceContext } = harness();
 		instanceContext.buildBlock.mockResolvedValue({
+			state: 'injected',
+			isUpdate: false,
+			legs: { inventory: 3, events: 0, runs: 0 },
 			block: 'Workflows that already exist here: 3',
 			cursor: {
 				activityMark: 9,

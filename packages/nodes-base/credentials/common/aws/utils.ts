@@ -13,8 +13,8 @@ import {
 	type IDataObject,
 	type IHttpRequestOptions,
 	type IRequestOptions,
-	UserError,
 } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { getAwsDomain, regions, type AWSRegion } from './regions';
 import { getSystemCredentials } from './system-credentials-utils';
@@ -230,8 +230,7 @@ export function assertSupportedAwsRegion(region: unknown): asserts region is AWS
 /**
  * Validates a user-supplied Bedrock endpoint override and returns the resolved URL.
  * Substitutes the `{region}` placeholder after the region itself is validated, and
- * requires an `http:`/`https:` scheme. The value is credential-holder-configured and
- * treated as trusted; no host allow-listing / SSRF check is applied on this path.
+ * requires an `http:`/`https:` scheme.
  *
  * @throws {UserError} When the region is unsupported, the URL is malformed, or the scheme is not http/https.
  */
@@ -448,6 +447,21 @@ export function uriEncodeS3Pathname(
 		.join('/');
 
 	return options.preserveEncodedSlashes ? encodedPathname : encodedPathname.replace(/%2F/g, '/');
+}
+
+const COPY_SOURCE_VERSION_SELECTOR = '?versionId=';
+
+/**
+ * Encodes the value of the S3 `x-amz-copy-source` header. CopyObject reads an
+ * optional `?versionId=<id>` selector after the key, so the key is encoded as a
+ * pathname and the selector is kept as written. Encoding the selector too would
+ * make S3 read it as the last characters of the key.
+ */
+export function uriEncodeS3CopySource(copySource: string): string {
+	const selectorIndex = copySource.lastIndexOf(COPY_SOURCE_VERSION_SELECTOR);
+	if (selectorIndex === -1) return uriEncodeS3Pathname(copySource);
+
+	return uriEncodeS3Pathname(copySource.slice(0, selectorIndex)) + copySource.slice(selectorIndex);
 }
 
 /**

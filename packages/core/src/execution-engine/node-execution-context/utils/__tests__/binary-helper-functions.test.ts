@@ -1,7 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { mkdtempSync, readFileSync } from 'fs';
-import { IncomingMessage } from 'http';
+import { type ClientRequest, IncomingMessage } from 'http';
 import type {
 	IBinaryData,
 	INode,
@@ -24,6 +24,7 @@ import {
 	detectBinaryEncoding,
 	getBinaryDataBuffer,
 	getBinaryHelperFunctions,
+	getNodeBinaryHelperFunctions,
 	prepareBinaryData,
 	setBinaryDataBuffer,
 } from '../binary-helper-functions';
@@ -1160,6 +1161,27 @@ describe('copyBinaryFile', () => {
 		binaryDataService.copyBinaryFile.mockResolvedValueOnce(binaryData);
 	});
 
+	it('should read the workflow and execution IDs when the node helper runs', async () => {
+		const additionalData = mock<IWorkflowExecuteAdditionalData>();
+		const { copyBinaryFile: copy } = getNodeBinaryHelperFunctions(
+			{ id: workflowId },
+			additionalData,
+		);
+		additionalData.executionId = executionId;
+
+		await expect(copy(filePath, fileName, 'application/octet-stream')).resolves.toBe(binaryData);
+		expect(binaryDataService.copyBinaryFile).toHaveBeenCalledWith(
+			{ type: 'execution', workflowId, executionId },
+			{
+				...binaryData,
+				fileExtension: 'bin',
+				fileType: undefined,
+				mimeType: 'application/octet-stream',
+			},
+			filePath,
+		);
+	});
+
 	it('should handle files without explicit mime type', async () => {
 		const result = await copyBinaryFile(workflowId, executionId, filePath, fileName);
 
@@ -1262,7 +1284,8 @@ describe('prepareBinaryData', () => {
 
 	it('sanitizes responseUrl before storing in directory metadata', async () => {
 		const incomingMessage = bufferToIncomingMessage(buffer);
-		incomingMessage.responseUrl = 'http://user:pass@example.com/path/file.txt';
+		incomingMessage.responseUrl =
+			'http://user:pass@example.com/path/file.txt?download=true#preview';
 
 		const result = await prepareBinaryData(incomingMessage, executionId, workflowId);
 
@@ -1270,6 +1293,20 @@ describe('prepareBinaryData', () => {
 		expect(result.fileName).toBe('file.txt');
 		expect(result.directory).not.toContain('user');
 		expect(result.directory).not.toContain('pass');
+		expect(result.directory).not.toContain('download');
+	});
+
+	it('derives the file name from the request pathname', async () => {
+		const incomingMessage = bufferToIncomingMessage(buffer);
+		incomingMessage.req = mock<ClientRequest>({
+			path: '/path/file.txt?download=true',
+		});
+
+		const result = await prepareBinaryData(incomingMessage, executionId, workflowId);
+
+		expect(result.fileName).toBe('file.txt');
+		expect(result.fileExtension).toBe('txt');
+		expect(result.fileName).not.toContain('download');
 	});
 
 	it('handles buffer with no detectable mime type', async () => {

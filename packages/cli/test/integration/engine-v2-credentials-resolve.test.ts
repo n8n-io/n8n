@@ -3,10 +3,10 @@ import { createWorkflow, testDb } from '@n8n/backend-test-utils';
 import { EngineConfig } from '@n8n/config';
 import type { CredentialsEntity, IWorkflowDb, User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mintActionToken } from '@n8n/engine';
+import { mintIdentityToken } from '@n8n/engine';
 import type { AdditionalDataContext } from '@n8n/node-engine-compatibility';
 import type { IExecuteData, INode } from 'n8n-workflow';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { CredentialTypes } from '@/credential-types';
@@ -25,7 +25,7 @@ import { initCredentialsTypes } from './shared/utils';
  * The data plane side (`RemoteCredentialsHelper` and `EngineCredentialsClient`)
  * against the real control plane server, `CredentialsHelper` and test database.
  */
-describe('Engine 2.0 credential resolve (integration)', () => {
+describe('Engine v2 credential resolve (integration)', () => {
 	const authSecret = 'a'.repeat(64);
 	const decrypted = { name: 'X-Api-Key', value: 'secret' };
 
@@ -122,7 +122,7 @@ describe('Engine 2.0 credential resolve (integration)', () => {
 		await expect(request).rejects.toThrow('403');
 	});
 
-	it('refuses a lifecycle token', async () => {
+	it('refuses an identity token minted for the other direction', async () => {
 		const body: ResolveCredentialRequest = {
 			credential: { id: memberCredential.id, name: memberCredential.name, type: 'httpHeaderAuth' },
 			execution: { executionId: 'exec-1', workflowId: workflow.id, mode: 'manual' },
@@ -132,7 +132,10 @@ describe('Engine 2.0 credential resolve (integration)', () => {
 
 		const headers = new Headers();
 		headers.set('content-type', 'application/json');
-		headers.set('authorization', `Bearer ${mintActionToken(authSecret, 'lifecycle-events:write')}`);
+		headers.set(
+			'authorization',
+			`Bearer ${mintIdentityToken(authSecret, { cpId: 'cp-1', tenantId: 'tenant-1' })}`,
+		);
 		const response = await fetch(`${baseUrl}${CREDENTIALS_RESOLVE_PATH}`, {
 			method: 'POST',
 			headers,

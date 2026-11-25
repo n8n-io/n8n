@@ -1,6 +1,9 @@
 import {
 	CreatedTestRunPublicDto,
+	ListTestCasesQueryPublicDto,
 	ListTestRunsQueryPublicDto,
+	TestCaseExecutionListPublicDto,
+	TestCaseExecutionPublicDto,
 	TestRunListPublicDto,
 	TestRunSummaryPublicDto,
 } from '../test-run-public.dto';
@@ -125,5 +128,93 @@ describe('CreatedTestRunPublicDto', () => {
 
 		expect(result.success).toBe(true);
 		expect(result.data).not.toHaveProperty('workflowId');
+	});
+});
+
+const testCase = {
+	id: '1a2b3c4d5e6f7080',
+	status: 'success',
+	runAt: '2026-01-01T00:00:00.000Z',
+	completedAt: '2026-01-01T00:01:00.000Z',
+	metrics: { accuracy: 1 },
+	errorCode: null,
+	errorDetails: null,
+	inputs: { question: 'What is n8n?' },
+	outputs: { answer: 'A workflow automation platform.' },
+	executionId: 12345,
+};
+
+describe('TestCaseExecutionPublicDto', () => {
+	test('accepts all the expected fields', () => {
+		expect(TestCaseExecutionPublicDto.safeParse(testCase).success).toBe(true);
+	});
+
+	test('accepts a case that has not started', () => {
+		const result = TestCaseExecutionPublicDto.safeParse({
+			...testCase,
+			status: 'new',
+			runAt: null,
+			completedAt: null,
+			metrics: null,
+			inputs: null,
+			outputs: null,
+			executionId: null,
+		});
+
+		expect(result.success).toBe(true);
+	});
+
+	test('accepts a failed case with an error code and details', () => {
+		const result = TestCaseExecutionPublicDto.safeParse({
+			...testCase,
+			status: 'error',
+			errorCode: 'FAILED_TO_EXECUTE_WORKFLOW',
+			errorDetails: { node: 'Evaluation', nested: { deep: ['shape'] } },
+		});
+
+		expect(result.success).toBe(true);
+	});
+
+	test.each([
+		['a status outside the set', { status: 'paused' }],
+		['inputs that are not an object', { inputs: ['a', 'b'] }],
+		['outputs that are not an object', { outputs: 'text' }],
+		['a Date for runAt', { runAt: new Date() }],
+		['an executionId that is not a number', { executionId: '12345' }],
+	])('rejects %s', (_label, override) => {
+		expect(TestCaseExecutionPublicDto.safeParse({ ...testCase, ...override }).success).toBe(false);
+	});
+});
+
+describe('TestCaseExecutionListPublicDto', () => {
+	test('accepts a page with a next cursor', () => {
+		const result = TestCaseExecutionListPublicDto.safeParse({
+			data: [testCase],
+			nextCursor: 'abc',
+		});
+
+		expect(result.success).toBe(true);
+	});
+
+	test('accepts the last page', () => {
+		expect(TestCaseExecutionListPublicDto.safeParse({ data: [], nextCursor: null }).success).toBe(
+			true,
+		);
+	});
+});
+
+describe('ListTestCasesQueryPublicDto', () => {
+	test('accepts a cursor next to the default limit', () => {
+		const result = ListTestCasesQueryPublicDto.safeParse({ cursor: 'abc' });
+
+		expect(result.success).toBe(true);
+		expect(result.data).toEqual({ limit: 100, cursor: 'abc' });
+	});
+
+	test('strips a raw offset, which only a cursor may carry', () => {
+		const result = ListTestCasesQueryPublicDto.safeParse({ offset: '5' });
+
+		expect(result.success).toBe(true);
+		expect(result.data).toEqual({ limit: 100 });
 	});
 });

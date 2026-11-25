@@ -52,6 +52,24 @@ describe('setupApiKeyAuthentication', () => {
 		expect(ctx.getCredentials).toHaveBeenCalledWith('testCredential');
 	});
 
+	it('should remove a trailing slash from the classic endpoint', async () => {
+		ctx.getCredentials = vi.fn().mockResolvedValue({
+			apiKey: 'test-api-key',
+			resourceName: 'test-resource',
+			apiVersion: '2023-05-15',
+			endpoint: 'https://test.openai.azure.com/',
+		});
+
+		const result = await setupApiKeyAuthentication.call(ctx, 'testCredential');
+
+		expect(result).toEqual({
+			azureOpenAIApiKey: 'test-api-key',
+			azureOpenAIApiInstanceName: 'test-resource',
+			azureOpenAIApiVersion: '2023-05-15',
+			azureOpenAIEndpoint: 'https://test.openai.azure.com',
+		});
+	});
+
 	it('should return a Foundry base URL when endpointType is foundry', async () => {
 		const mockCredentials = {
 			apiKey: 'test-api-key',

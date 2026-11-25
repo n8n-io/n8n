@@ -1,4 +1,6 @@
+import { packagedModules } from '@/modules/modules.manifest';
 import type { SourceControlledFile } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
 import {
 	CredentialsEntity,
@@ -7,9 +9,9 @@ import {
 	GLOBAL_CHAT_USER_ROLE,
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
+	type Person,
 	Project,
 	type TagEntity,
-	type User,
 	WorkflowEntity,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -20,10 +22,8 @@ import { basename, isAbsolute } from 'node:path';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
-import { DataTable } from '@/modules/data-table/data-table.entity';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { DataTable } from '@n8n/backend-module-data-table';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 	SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER,
@@ -84,7 +84,7 @@ function toExportableFolder(folder: Folder): ExportableFolder {
 
 function toExportableCredential(
 	cred: CredentialsEntity,
-	owner: Project | User,
+	owner: Project | Person,
 ): ExportableCredential {
 	let resourceOwner: RemoteResourceOwner;
 
@@ -113,7 +113,7 @@ function toExportableCredential(
 
 function toExportableWorkflow(
 	wf: WorkflowEntity,
-	owner: Project | User,
+	owner: Project | Person,
 	versionId?: string,
 ): ExportableWorkflow {
 	let resourceOwner: RemoteResourceOwner;
@@ -146,7 +146,7 @@ function toExportableWorkflow(
 	};
 }
 
-function toExportableDataTable(table: DataTable, owner: Project | User): ExportableDataTable {
+function toExportableDataTable(table: DataTable, owner: Project | Person): ExportableDataTable {
 	let resourceOwner: NonNullable<ExportableDataTable['ownedBy']>;
 
 	if (owner instanceof Project) {
@@ -199,11 +199,11 @@ describe('SourceControlService', () => {
 				TBD!
 		*/
 
-	let globalAdmin: User;
-	let globalOwner: User;
-	let globalMember: User;
-	let globalChatUser: User;
-	let projectAdmin: User;
+	let globalAdmin: Person;
+	let globalOwner: Person;
+	let globalMember: Person;
+	let globalChatPerson: Person;
+	let projectAdmin: Person;
 
 	let projectA: Project;
 	let projectB: Project;
@@ -247,7 +247,7 @@ describe('SourceControlService', () => {
 	const fsWriteFile = vi.mocked(writeFile);
 
 	beforeAll(async () => {
-		await testModules.loadModules(['data-table']);
+		await testModules.loadModules(['data-table'], packagedModules);
 		await testDb.init();
 
 		cipher = Container.get(Cipher);
@@ -280,7 +280,7 @@ describe('SourceControlService', () => {
 				1. Workflow moved in git to other project
 			*/
 
-		[globalAdmin, globalOwner, globalMember, projectAdmin, globalChatUser] = await Promise.all([
+		[globalAdmin, globalOwner, globalMember, projectAdmin, globalChatPerson] = await Promise.all([
 			createUser({ role: GLOBAL_ADMIN_ROLE }),
 			createUser({ role: GLOBAL_OWNER_ROLE }),
 			createUser({ role: GLOBAL_MEMBER_ROLE }),
@@ -820,7 +820,7 @@ describe('SourceControlService', () => {
 			describe('global:chatUser user', () => {
 				it('should not be allowed to get push status', async () => {
 					await expect(
-						service.getStatus(globalChatUser, {
+						service.getStatus(globalChatPerson, {
 							direction: 'push',
 							preferLocalVersion: true,
 							verbose: false,
@@ -1414,7 +1414,7 @@ describe('SourceControlService', () => {
 	});
 
 	describe('isGlobal flag modification detection', () => {
-		let testGlobalOwner: User;
+		let testGlobalOwner: Person;
 		let testProject: Project;
 
 		beforeAll(async () => {

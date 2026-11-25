@@ -38,7 +38,7 @@ export function protectUntrustedToolResult(output: unknown, tool: ToolAttributio
 
 	let hasText = false;
 	const value = output.value.map((part): ContentToolResultOutput['value'][number] => {
-		if (part.type !== 'text') return part;
+		if (!('text' in part)) return part;
 		hasText = true;
 		return { ...part, text: wrapToolText(part.text, tool) };
 	});

@@ -1,40 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { stringExtensions } from '../string-extensions';
 
-const extractUrlPath = stringExtensions.functions.extractUrlPath as (
-	value: string,
-) => string | undefined;
-
 const toSentenceCase = stringExtensions.functions.toSentenceCase as (value: string) => string;
 
-describe('extractUrlPath (imperative parser, no URL constructor)', () => {
-	it.each([
-		['https://example.com/path', '/path'],
-		['https://example.com', '/'],
-		['https://example.com/', '/'],
-		['https://example.com/path?query=1#hash', '/path'],
-		['https://example.com:8080/path', '/path'],
-		['ftp://files.example.com/doc.pdf', '/doc.pdf'],
-		['https://example.com/valid/deep/path', '/valid/deep/path'],
-		['http://user:pass@example.com/path', '/path'],
-		['https://example.com:443/path', '/path'],
-		['https://sub.domain.example.com/path', '/path'],
-	])('should extract pathname from %s', (input, expected) => {
-		expect(extractUrlPath(input)).toBe(expected);
-	});
-
-	it.each([
-		['not-a-url'],
-		['https://'],
-		[''],
-		[':://no-scheme'],
-		['http:/malformed'],
-		['h$tp://example.com/path'],
-		['ht tp://example.com/path'],
-	])('should return undefined for malformed input: %s', (input) => {
-		expect(extractUrlPath(input)).toBeUndefined();
-	});
-});
+const toFloat = stringExtensions.functions.toFloat as (value: string) => number;
 
 describe('toSentenceCase', () => {
 	it.each([
@@ -62,5 +31,19 @@ describe('toSentenceCase', () => {
 		['', ''],
 	])('should return letter-free input %p unchanged', (input, expected) => {
 		expect(toSentenceCase(input)).toBe(expected);
+	});
+});
+
+describe('toFloat', () => {
+	it.each([
+		['R$5.50', 5.5],
+		['$5.50', 5.5],
+		['5.50 €', 5.5],
+	])('should strip the currency symbol from %s', (input, expected) => {
+		expect(toFloat(input)).toBe(expected);
+	});
+
+	it('should not accept a symbol that is not in the list', () => {
+		expect(() => toFloat('Rb5')).toThrow();
 	});
 });

@@ -8,17 +8,27 @@ import type * as AsyncHooks from 'node:async_hooks';
 import type { Mock } from 'vitest';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
+import { AGENT_BUILDER_TEST_TOOL_NAME } from '@n8n/api-types';
+import {
+	recordAgentBuilderToolResult,
+	recordAgentSelected,
+} from '../../tools/orchestration/agent-build-metrics';
+import type { AgentValidationSummary, OrchestrationContext } from '../../types';
 import { createToolRegistry } from '../../tool-registry';
 import { createAskUserTool } from '../../tools/shared/ask-user.tool';
 import {
+	getCurrentHelperTelemetry,
 	buildAgentTraceInputs,
+	canEmitTraceOnlyChildRun,
 	createInstanceAiTraceContext,
 	createInternalOperationTraceContext,
 	createTraceReplayOnlyContext,
 	continueInstanceAiTraceContext,
+	mergeTraceRunInputs,
 	redactLangSmithTelemetrySpan,
 	releaseTraceClient,
 	shutdownProductTelemetryProviders,
+	setTraceApprovalMode,
 	setTraceModelId,
 	setTracePromptVersion,
 	submitLangsmithUserFeedback,
@@ -53,6 +63,7 @@ vi.mock('@n8n/agents', async () => {
 
 	let spanCounter = 0;
 	let buildError: Error | undefined;
+	let lastTransformExportedSpan: ((span: unknown) => unknown) | undefined;
 	let startSpanError: Error | undefined;
 	const contextStorage = new AsyncLocalStorage<Context>();
 	const contextManager: ContextManager = {
@@ -146,6 +157,10 @@ vi.mock('@n8n/agents', async () => {
 	};
 
 	class MockLangSmithTelemetry {
+		constructor(config?: { transformExportedSpan?: (span: unknown) => unknown }) {
+			lastTransformExportedSpan = config?.transformExportedSpan;
+		}
+
 		private functionIdValue?: string;
 		private metadataValue?: Record<string, unknown>;
 		private recordInputsValue = true;
@@ -217,6 +232,7 @@ vi.mock('@n8n/agents', async () => {
 			},
 			getSpans: () => spans,
 			getProvider: () => provider,
+			getLastTransformExportedSpan: () => lastTransformExportedSpan,
 		},
 	};
 });
@@ -310,6 +326,7 @@ type AgentsMockModule = {
 			forceFlush: Mock<(...args: []) => Promise<void>>;
 			shutdown: Mock<(...args: []) => Promise<void>>;
 		};
+		getLastTransformExportedSpan: () => ((span: unknown) => unknown) | undefined;
 	};
 };
 
@@ -434,6 +451,165 @@ describe('createInstanceAiTraceContext', () => {
 		expect(tracing?.orchestratorRun.parentRunId).toBe(tracing?.messageRun.id);
 	});
 
+	it('keeps a long user message whole in the turn inputs', async () => {
+		const message = 'Plan the pilot budget. '.repeat(400);
+
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message },
+		});
+
+		expect(tracing?.rootRun.inputs?.message).toBe(message);
+	});
+
+	it('caps a very large user message in the turn inputs and marks the cut', async () => {
+		const message = 'word '.repeat(30_000);
+
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message },
+		});
+
+		const traced = tracing?.rootRun.inputs?.message;
+		expect(typeof traced).toBe('string');
+		expect(traced).toMatch(/^(word ){20000}\[truncated 50000 chars\]$/);
+	});
+
+	it('scrubs a secret that crosses the user message cap', async () => {
+		const secret = 'sk-proj-1234567890abcdefghijklmnopqrst';
+		const message = `${'word '.repeat(19_998)}${secret} ${'word '.repeat(200)}`;
+
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message },
+		});
+
+		expect(tracing?.rootRun.inputs?.message).not.toContain('sk-proj');
+	});
+
+	it('cuts a long unbroken run inside the user message and keeps the words around it', async () => {
+		const message = `Here is my data: ${'x'.repeat(50_000)} thanks`;
+
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message },
+		});
+
+		expect(tracing?.rootRun.inputs?.message).toBe(
+			`Here is my data: ${'x'.repeat(2_000)} [truncated 48000 chars] thanks`,
+		);
+	});
+
+	it('counts every dropped character when a long unbroken run fills the scan window', async () => {
+		const tail = ' word'.repeat(10_000);
+		const message = `${'x'.repeat(150_000)}${tail}.`;
+
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message },
+		});
+
+		expect(tracing?.rootRun.inputs?.message).toBe(
+			`${'x'.repeat(2_000)} [truncated 148000 chars]${tail}.`,
+		);
+	});
+
+	it('marks the unscanned tail of a message that stays long after the runs are cut', async () => {
+		const keptRun = `${'x'.repeat(2_000)} [truncated 148000 chars]`;
+		const words = ` ${'word '.repeat(30_000)}`;
+
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message: `${'x'.repeat(150_000)}${words}` },
+		});
+
+		const afterCut = `${keptRun}${words}`;
+		expect(tracing?.rootRun.inputs?.message).toBe(
+			`${afterCut.slice(0, 100_000)}[truncated ${afterCut.length - 100_000} chars]`,
+		);
+	});
+
+	it('keeps the 2,000-character cap on a message in a child run', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message: 'hi' },
+		});
+
+		const child = await tracing!.startChildRun(tracing!.rootRun, {
+			name: 'agent: orchestrator',
+			inputs: { message: 'd'.repeat(5_000) },
+		});
+
+		expect(child.inputs?.message).toBe(`${'d'.repeat(2_000)}...`);
+	});
+
+	it('keeps a long assistant response whole in the turn outputs', async () => {
+		const response = 'Here are the revised settings. '.repeat(300);
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message: 'hi' },
+		});
+
+		await tracing!.finishRun(tracing!.rootRun, {
+			outputs: { status: 'completed', response, note: 'c'.repeat(5_000) },
+		});
+
+		expect(tracing?.rootRun.outputs?.response).toBe(response);
+		expect(tracing?.rootRun.outputs?.note).toBe(`${'c'.repeat(2_000)}...`);
+	});
+
+	it('keeps the capped user message stable when more inputs merge into the turn', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message: 'word '.repeat(30_000) },
+		});
+		const capped = tracing?.rootRun.inputs?.message;
+
+		mergeTraceRunInputs(tracing?.rootRun, { attachmentCount: 1 });
+
+		expect(tracing?.rootRun.inputs?.message).toBe(capped);
+		expect(tracing?.rootRun.inputs?.attachmentCount).toBe(1);
+	});
+
+	it('still caps long values other than the user message in the turn inputs', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message: 'hi', note: 'b'.repeat(5_000) },
+		});
+
+		expect(tracing?.rootRun.inputs?.note).toBe(`${'b'.repeat(2_000)}...`);
+	});
+
 	it('creates native telemetry with thread and run metadata', async () => {
 		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-1',
@@ -443,7 +619,13 @@ describe('createInstanceAiTraceContext', () => {
 			runId: 'run-1',
 			userId: 'user-1',
 			input: { message: 'What workflows do I have?' },
-			metadata: { n8n_version: '2.19.0' },
+			metadata: {
+				n8n_version: '2.19.0',
+				self_healing: true,
+				self_healing_workflow_id: 'workflow-1',
+				self_healing_execution_id: 'execution-1',
+				self_healing_project_id: 'project-1',
+			},
 			browserExtension: { connectionState: 'connected', version: '0.0.7' },
 		});
 
@@ -487,6 +669,13 @@ describe('createInstanceAiTraceContext', () => {
 		);
 		expect(typeof telemetry.metadata?.agents_version).toBe('string');
 		expect(typeof telemetry.metadata?.workflow_sdk_version).toBe('string');
+		const rootSpan = agentsMock.getSpans().find((span) => span.id === tracing?.rootRun.otelSpanId);
+		expect(rootSpan?.attributes).toMatchObject({
+			'langsmith.metadata.self_healing': true,
+			'langsmith.metadata.self_healing_workflow_id': 'workflow-1',
+			'langsmith.metadata.self_healing_execution_id': 'execution-1',
+			'langsmith.metadata.self_healing_project_id': 'project-1',
+		});
 
 		await telemetry.provider?.shutdown();
 	});
@@ -600,6 +789,21 @@ describe('createInstanceAiTraceContext', () => {
 		await telemetry.provider?.shutdown();
 	});
 
+	it('writes span tags as one comma-separated string', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			conversationId: 'conversation-1',
+			messageId: 'message-1',
+			messageGroupId: 'group-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message: 'Hello' },
+		});
+
+		const span = agentsMock.getSpans().find((entry) => entry.id === tracing!.rootRun.otelSpanId);
+		expect(span?.attributes['langsmith.span.tags']).toBe('instance-ai, message-turn');
+	});
+
 	it('stamps model_id on root and actor runs and native telemetry metadata', async () => {
 		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-1',
@@ -637,6 +841,32 @@ describe('createInstanceAiTraceContext', () => {
 
 		await telemetry.provider?.shutdown();
 	});
+
+	it.each([
+		{ approvalMode: 'auto', recorded: 'auto' },
+		// The run has no mode when the approval modes are not available.
+		{ approvalMode: undefined, recorded: 'unavailable' },
+	] as const)(
+		'stamps approval_mode "$recorded" on root and actor runs',
+		async ({ approvalMode, recorded }) => {
+			const tracing = await createInstanceAiTraceContext({
+				threadId: 'thread-1',
+				messageId: 'message-1',
+				runId: 'run-1',
+				userId: 'user-1',
+				input: { message: 'Publish my workflow' },
+			});
+			const actorRun = await startForegroundActor(tracing!);
+
+			setTraceApprovalMode(tracing, approvalMode);
+
+			for (const run of [tracing!.rootRun, actorRun]) {
+				expect(run.metadata).toHaveProperty('approval_mode', recorded);
+				const span = agentsMock.getSpans().find((entry) => entry.id === run.otelSpanId);
+				expect(span?.attributes).toHaveProperty('langsmith.metadata.approval_mode', recorded);
+			}
+		},
+	);
 
 	it('redacts secret-bearing native telemetry span attributes', () => {
 		const span = {
@@ -1164,6 +1394,23 @@ describe('createInstanceAiTraceContext', () => {
 		expect(provider.shutdown).toHaveBeenCalledTimes(1);
 	});
 
+	it('reports whether a trace-only child run can still export', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-can-emit',
+			messageId: 'message-can-emit',
+			runId: 'run-can-emit',
+			userId: 'user-can-emit',
+			input: { message: 'hello' },
+		});
+
+		expect(canEmitTraceOnlyChildRun(undefined)).toBe(false);
+		expect(canEmitTraceOnlyChildRun(tracing)).toBe(true);
+
+		await tracing!.finishRun(tracing!.rootRun, { outputs: { status: 'done' } });
+
+		expect(canEmitTraceOnlyChildRun(tracing)).toBe(false);
+	});
+
 	it('shuts down product telemetry once when releasing a trace client, with no outstanding memory-task leases', async () => {
 		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-release',
@@ -1183,6 +1430,66 @@ describe('createInstanceAiTraceContext', () => {
 		// spans to flush — only the provider shuts down.
 		expect(provider.forceFlush).not.toHaveBeenCalled();
 		expect(provider.shutdown).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps the trace open for a background operation that outlives the root run', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-background-op',
+			messageId: 'message-background-op',
+			runId: 'run-background-op',
+			userId: 'user-background-op',
+			input: { message: 'hi' },
+		});
+		expect(tracing).toBeDefined();
+		await startForegroundActor(tracing!);
+		const provider = agentsMock.getProvider();
+
+		const started = createDeferredPromise<undefined>();
+		const operation = tracing!.withActiveSpan(tracing!.actorRun, async () => {
+			await withCurrentTraceSpan({ name: 'background: start' }, async () => await started.promise);
+			await withCurrentTraceSpan({ name: 'background: finish' }, async () => {});
+		});
+		tracing!.keepOpenUntilSettled?.(operation);
+
+		await tracing!.finishRun(tracing!.rootRun, { outputs: { status: 'done' } });
+		expect(provider.shutdown).not.toHaveBeenCalled();
+		expect(tracing?.isLive?.()).toBe(true);
+
+		started.resolve(undefined);
+		await operation;
+		await vi.waitFor(() => expect(provider.shutdown).toHaveBeenCalledTimes(1));
+
+		const spans = agentsMock.getSpans();
+		const startSpan = spans.find((span) => span.name === 'background: start');
+		expect(startSpan?.ended).toBe(true);
+		expect(startSpan?.status?.message).toBeUndefined();
+		expect(spans.find((span) => span.name === 'background: finish')?.ended).toBe(true);
+		expect(tracing?.isLive?.()).toBe(false);
+	});
+
+	it('releases the trace after a time limit when a background operation does not settle', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-stuck-op',
+			messageId: 'message-stuck-op',
+			runId: 'run-stuck-op',
+			userId: 'user-stuck-op',
+			input: { message: 'hi' },
+		});
+		expect(tracing).toBeDefined();
+		const provider = agentsMock.getProvider();
+
+		vi.useFakeTimers();
+		try {
+			tracing!.keepOpenUntilSettled?.(new Promise<void>(() => {}));
+			await tracing!.finishRun(tracing!.rootRun, { outputs: { status: 'done' } });
+			expect(provider.shutdown).not.toHaveBeenCalled();
+
+			await vi.advanceTimersByTimeAsync(2 * 60 * 1000);
+			expect(provider.shutdown).toHaveBeenCalledTimes(1);
+			expect(tracing?.isLive?.()).toBe(false);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('keeps the provider alive for a queued memory task until it releases, then exports its span and shuts down', async () => {
@@ -1392,7 +1699,7 @@ describe('createInstanceAiTraceContext', () => {
 		});
 
 		expect(tracing).toBeDefined();
-		setTracePromptVersion(tracing, 'progressive@1');
+		setTracePromptVersion(tracing, 'concise@1');
 
 		const continuedTracing = await continueInstanceAiTraceContext(tracing!, {
 			threadId: 'thread-1',
@@ -1415,7 +1722,7 @@ describe('createInstanceAiTraceContext', () => {
 		expect(continuedTracing.rootRun.metadata).toEqual(
 			expect.objectContaining({
 				'instance_ai.canonical_name': 'instance-ai.orchestrator_resume',
-				prompt_version: 'progressive@1',
+				prompt_version: 'concise@1',
 			}),
 		);
 		expect(continuedTracing.rootRun.metadata).toEqual(
@@ -1435,7 +1742,7 @@ describe('createInstanceAiTraceContext', () => {
 		expect(continuedTracing.orchestratorRun.metadata).toEqual(
 			expect.objectContaining({
 				'instance_ai.canonical_name': 'instance-ai.agent.orchestrator',
-				prompt_version: 'progressive@1',
+				prompt_version: 'concise@1',
 			}),
 		);
 	});
@@ -1537,16 +1844,16 @@ describe('createInstanceAiTraceContext', () => {
 		expect(JSON.stringify(inputs)).not.toContain('custom.endpoint');
 	});
 
-	it('attaches runtime skill metadata to trace inputs without skill bodies', () => {
+	it('attaches skill metadata to trace inputs without skill bodies', () => {
 		const inputs = buildAgentTraceInputs({
 			tools: createToolRegistry(),
-			runtimeSkills: createRuntimeSkillRegistry([
+			skills: createRuntimeSkillRegistry([
 				{
 					id: 'data-table-manager',
 					name: 'data-table-manager',
 					description: 'Manage n8n Data Tables directly.',
 					category: 'data',
-					recommendedTools: ['data-tables'],
+					recommendedToolGroups: ['data_tables'],
 					instructions: 'Full skill instructions must stay out of trace inputs.',
 				},
 			]),
@@ -1681,13 +1988,13 @@ describe('createInstanceAiTraceContext', () => {
 		await startForegroundActor(tracing!);
 
 		const wrappedTools = tracing!.wrapTools(
-			createToolRegistry([['ask-user', createAskUserTool()]]),
+			createToolRegistry([['ask_user', createAskUserTool()]]),
 			{ agentRole: 'orchestrator', tags: ['orchestrator'] },
 		);
-		const wrappedAskUser = wrappedTools.get('ask-user');
+		const wrappedAskUser = wrappedTools.get('ask_user');
 		expect(wrappedAskUser).toBeDefined();
 		if (!isExecutableTool(wrappedAskUser)) {
-			throw new Error('Wrapped ask-user tool is not executable');
+			throw new Error('Wrapped ask_user tool is not executable');
 		}
 
 		await tracing!.withActiveSpan(tracing!.orchestratorRun, async () => {
@@ -1786,8 +2093,8 @@ describe('createInstanceAiTraceContext', () => {
 
 		const suspendPayload = {
 			requestId: 'request-1',
-			inputType: 'plan-review',
-			message: 'Review the plan',
+			inputType: 'questions',
+			message: 'Answer the questions',
 		};
 		const interruptibleTool: BuiltTool = {
 			name: 'plan-tool',
@@ -1966,13 +2273,13 @@ describe('createInstanceAiTraceContext', () => {
 		await startForegroundActor(tracing!);
 
 		const wrappedTools = tracing!.wrapTools(
-			createToolRegistry([['ask-user', createAskUserTool()]]),
+			createToolRegistry([['ask_user', createAskUserTool()]]),
 			{ agentRole: 'orchestrator', tags: ['orchestrator'] },
 		);
-		const wrappedAskUser = wrappedTools.get('ask-user');
+		const wrappedAskUser = wrappedTools.get('ask_user');
 		expect(wrappedAskUser).toBeDefined();
 		if (!isExecutableTool(wrappedAskUser)) {
-			throw new Error('Wrapped ask-user tool is not executable');
+			throw new Error('Wrapped ask_user tool is not executable');
 		}
 
 		const result = await tracing!.withActiveSpan(tracing!.orchestratorRun, async () => {
@@ -2098,6 +2405,35 @@ describe('createInstanceAiTraceContext', () => {
 		).resolves.toBeUndefined();
 	});
 
+	it('shares product telemetry with helpers only inside an active trace', async () => {
+		expect(getCurrentHelperTelemetry('verification-helper')).toBeUndefined();
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'helper-thread',
+			messageId: 'message',
+			runId: 'run',
+			userId: 'user',
+			input: {},
+		});
+		expect(tracing).toBeDefined();
+		await startForegroundActor(tracing!);
+		await tracing!.withActiveSpan(tracing!.orchestratorRun, async () => {
+			const helper = getCurrentHelperTelemetry('verification-helper');
+			expect(helper).toMatchObject({
+				enabled: true,
+				rootAnchored: false,
+				recordInputs: false,
+				recordOutputs: false,
+				metadata: {
+					thread_id: 'helper-thread',
+					evalRole: 'helper',
+					agent_role: 'verification-helper',
+				},
+			});
+			expect(helper?.provider).toBe(agentsMock.getProvider());
+		});
+		expect(getCurrentHelperTelemetry('verification-helper')).toBeUndefined();
+	});
+
 	it('runs ad-hoc span callbacks when product span creation fails', async () => {
 		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-span-start-failure',
@@ -2189,6 +2525,38 @@ describe('createInstanceAiTraceContext', () => {
 		expect(tracing).toBeDefined();
 		expect(tracing?.messageRun).toBeDefined();
 		expect(tracing?.orchestratorRun).toBeDefined();
+	});
+
+	it.each([
+		[undefined, 'instance-ai'],
+		[['model-training-opt-out'], 'instance-ai, model-training-opt-out'],
+	])('adds proxy trace tags %j to every exported span', async (traceTags, expectedTags) => {
+		await createInstanceAiTraceContext({
+			threadId: 'thread-tags',
+			messageId: 'message-tags',
+			runId: 'run-tags',
+			userId: 'user-tags',
+			input: { message: 'tag test' },
+			proxyConfig: {
+				apiUrl: 'https://proxy.example.com/langsmith',
+				getAuthHeaders: async () => ({ Authorization: 'Bearer proxy-token' }),
+				traceTags,
+			},
+		});
+		const transform = agentsMock.getLastTransformExportedSpan();
+
+		const productSpan = transform?.({
+			name: 'turn',
+			attributes: { 'langsmith.span.tags': 'instance-ai' },
+		}) as { attributes: Record<string, unknown> };
+		expect(productSpan.attributes['langsmith.span.tags']).toBe(expectedTags);
+
+		const llmSpan = transform?.({ name: 'llm', attributes: {} }) as {
+			attributes: Record<string, unknown>;
+		};
+		expect(llmSpan.attributes['langsmith.span.tags']).toBe(
+			traceTags ? 'model-training-opt-out' : undefined,
+		);
 	});
 
 	it('respects diagnostics opt-out before proxy auto-enable', async () => {
@@ -2703,6 +3071,99 @@ describe('createInstanceAiTraceContext', () => {
 			expect(operation).toHaveBeenCalledTimes(2);
 			expect(agentsMock.getSpans()).toEqual([]);
 		});
+	});
+
+	describe('agent build metrics', () => {
+		const METRICS = ['agent_shown', 'agent_test', 'agent_build', 'agent_verification'];
+
+		async function runAgentBuild(options: { withProxy?: boolean } = {}) {
+			const tracing = await createInstanceAiTraceContext({
+				threadId: 'thread-agent-build',
+				messageId: 'message-agent-build',
+				runId: 'run-agent-build',
+				userId: 'user-agent-build',
+				input: { message: 'Build a support agent' },
+				...(options.withProxy
+					? {
+							proxyConfig: {
+								apiUrl: 'https://proxy.example.com/langsmith',
+								getAuthHeaders: async () =>
+									await Promise.resolve({ Authorization: 'Bearer proxy-token' }),
+							},
+						}
+					: {}),
+			});
+			expect(tracing).toBeDefined();
+			const actorRun = await startForegroundActor(tracing!);
+			const validation = createDeferredPromise<AgentValidationSummary>();
+			const context = {
+				tracing,
+				logger: { debug: vi.fn() },
+				domainContext: {
+					builderDelegate: { validateAgent: vi.fn(async () => await validation.promise) },
+				},
+			} as unknown as OrchestrationContext;
+			const provider = agentsMock.getProvider();
+			let endedAtShutdown: string[] = [];
+			provider.shutdown.mockImplementation(async () => {
+				endedAtShutdown = agentsMock
+					.getSpans()
+					.filter((span) => span.ended)
+					.map((span) => span.name);
+				await Promise.resolve();
+			});
+
+			// Tool calls run inside the orchestrator span.
+			await tracing!.withActiveSpan(actorRun, async () => {
+				recordAgentSelected(context, 'agent-1', { created: true });
+				recordAgentBuilderToolResult(context, 'agent-1', {
+					toolName: 'agent_builder_patch_config',
+					isError: false,
+					configMutated: true,
+				});
+				recordAgentBuilderToolResult(context, 'agent-1', {
+					toolName: AGENT_BUILDER_TEST_TOOL_NAME,
+					isError: false,
+					output: { status: 'completed' },
+					configMutated: false,
+				});
+				await Promise.resolve();
+			});
+
+			// The service order at the end of a run: finalize the orchestrator span,
+			// then finish the message trace.
+			await tracing!.finishRun(tracing!.actorRun, { outputs: { status: 'completed' } });
+			await tracing!.finishRun(tracing!.rootRun, { outputs: { status: 'completed' } });
+			// The Publish validation settles after both spans finished.
+			validation.resolve({ valid: true, issueCodes: [], issueCount: 0, capabilityCount: 1 });
+			await vi.waitFor(() => expect(provider.shutdown).toHaveBeenCalledTimes(1));
+
+			return { actorRun, endedAtShutdown: () => endedAtShutdown };
+		}
+
+		it.each([{ withProxy: false }, { withProxy: true }])(
+			'exports every metric under the orchestrator run before the trace shuts down (proxy: $withProxy)',
+			async ({ withProxy }) => {
+				const { actorRun, endedAtShutdown } = await runAgentBuild({ withProxy });
+
+				const spans = agentsMock.getSpans();
+				for (const name of METRICS) {
+					const span = spans.find((candidate) => candidate.name === name);
+					expect(span, name).toBeDefined();
+					expect({ name, traceId: span?.traceId, parent: span?.parentSpanId }).toEqual({
+						name,
+						traceId: actorRun.otelTraceId,
+						parent: actorRun.otelSpanId,
+					});
+					expect(span?.attributes).toHaveProperty('langsmith.metadata.success', true);
+					expect(span?.attributes).toHaveProperty(
+						'langsmith.metadata.thread_id',
+						'thread-agent-build',
+					);
+				}
+				expect(endedAtShutdown()).toEqual(expect.arrayContaining(METRICS));
+			},
+		);
 	});
 });
 

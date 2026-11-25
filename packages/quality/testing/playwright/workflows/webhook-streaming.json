@@ -1,0 +1,56 @@
+{
+	"name": "Streaming Webhook Test",
+	"active": true,
+	"nodes": [
+		{
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "streaming-webhook",
+				"responseMode": "streaming",
+				"options": {}
+			},
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2.1,
+			"position": [0, 0],
+			"webhookId": "streaming-webhook"
+		},
+		{
+			"parameters": {
+				"respondWith": "text",
+				"responseBody": "={{ $json.body.message }}",
+				"options": {}
+			},
+			"id": "respond-text",
+			"name": "Respond with Text",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.5,
+			"position": [220, 0]
+		},
+		{
+			"parameters": {
+				"respondWith": "json",
+				"responseBody": "={{ $json.body }}",
+				"options": {}
+			},
+			"id": "respond-json",
+			"name": "Respond with JSON",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.5,
+			"position": [440, 0]
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [[{ "node": "Respond with Text", "type": "main", "index": 0 }]]
+		},
+		"Respond with Text": {
+			"main": [[{ "node": "Respond with JSON", "type": "main", "index": 0 }]]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1",
+		"saveDataSuccessExecution": "all"
+	}
+}

@@ -17,13 +17,14 @@ export type {
 	RuntimeSkillLinkedFileGroup,
 	RuntimeSkillLinkedFiles,
 	RuntimeSkillLoader,
+	RuntimeSkillLoadError,
 	RuntimeSkillMcpServerDependency,
 	RuntimeSkillPolicyContract,
+	RuntimeSkillReferenceContract,
+	RuntimeSkillReferenceLocation,
 	RuntimeSkillRegistry,
 	RuntimeSkillRegistryEntry,
 	RuntimeSkillSource,
-	RuntimeSkillStateScope,
-	RuntimeSkillStateStore,
 	RuntimeSkillValidationError,
 	RuntimeSkillValidationResult,
 } from './types';
@@ -35,7 +36,9 @@ export {
 export {
 	createRuntimeSkillRegistry,
 	createRuntimeSkillSource,
+	extendRuntimeSkillSource,
 	filterRuntimeSkillSource,
+	hashRuntimeSkillRegistry,
 	formatSkillValidationErrors,
 	InvalidRuntimeSkillError,
 	loadRuntimeSkillsFromDirectory,
@@ -49,6 +52,8 @@ export {
 } from './prompt';
 export {
 	createSkillLoadTool,
+	findRuntimeSkillEntry,
+	isMainSkillFilePath,
 	createRuntimeSkillTools,
 	RUNTIME_SKILL_TOOL_NAMES,
 } from './tools';

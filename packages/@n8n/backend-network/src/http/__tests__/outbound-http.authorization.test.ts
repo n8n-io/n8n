@@ -62,6 +62,35 @@ describe('createAuthorizationInterceptor', () => {
 		expect(handler.onResponseError).not.toHaveBeenCalled();
 	});
 
+	it('keeps the origin authority when the request target starts with a double slash', async () => {
+		const authorize = vi.fn<RequestAuthorizer>().mockResolvedValue(undefined);
+		const { innerDispatch, dispatch } = makeInterceptedDispatch(authorize);
+		const handler = makeHandler();
+
+		dispatch(
+			makeOpts('//openai/deployments/gpt-4o/chat/completions', 'https://res.openai.azure.com'),
+			handler,
+		);
+		await flush();
+
+		expect(authorize).toHaveBeenCalledWith(
+			authorizedUrl('https://res.openai.azure.com//openai/deployments/gpt-4o/chat/completions'),
+		);
+		expect(innerDispatch).toHaveBeenCalledTimes(1);
+	});
+
+	it('uses an absolute-URI request target as-is', async () => {
+		const authorize = vi.fn<RequestAuthorizer>().mockResolvedValue(undefined);
+		const { innerDispatch, dispatch } = makeInterceptedDispatch(authorize);
+		const handler = makeHandler();
+
+		dispatch(makeOpts('https://api.example.com/data', 'http://proxy.example.com'), handler);
+		await flush();
+
+		expect(authorize).toHaveBeenCalledWith(authorizedUrl('https://api.example.com/data'));
+		expect(innerDispatch).toHaveBeenCalledTimes(1);
+	});
+
 	it('fails the dispatch and does not dispatch when the authorizer throws', async () => {
 		const error = new Error('domain not approved');
 		const authorize = vi.fn<RequestAuthorizer>().mockRejectedValue(error);

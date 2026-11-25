@@ -16,11 +16,15 @@ export const RUNTIME_SKILL_NAME_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 const RUNTIME_SKILL_FRONTMATTER_FIELDS = [
 	'name',
 	'description',
+	'recommended_tool_groups',
+	// Deprecated: replaced by recommended_tool_groups. Still accepted, but ignored, so that
+	// skills written before the rename continue to load.
 	'recommended_tools',
 	'allowed_tools',
 	'interface',
 	'policy',
 	'dependencies',
+	'shared_references',
 	'platforms',
 	'version',
 	'license',
@@ -77,11 +81,16 @@ export function parseRuntimeSkillMarkdown(
 	}
 
 	const description = requiredFrontmatterString(frontmatter.data, 'description', errors);
-	const recommendedTools = optionalStringArray(frontmatter.data, 'recommended_tools', errors);
+	const recommendedToolGroups = optionalStringArray(
+		frontmatter.data,
+		'recommended_tool_groups',
+		errors,
+	);
 	const allowedTools = optionalStringArray(frontmatter.data, 'allowed_tools', errors);
 	const skillInterface = optionalSkillInterface(frontmatter.data, errors);
 	const policy = optionalSkillPolicy(frontmatter.data, errors);
 	const dependencies = optionalSkillDependencies(frontmatter.data, errors);
+	const sharedReferences = optionalStringArray(frontmatter.data, 'shared_references', errors);
 	const platforms = optionalStringArray(frontmatter.data, 'platforms', errors)?.map((platform) =>
 		platform.toLowerCase(),
 	);
@@ -103,11 +112,12 @@ export function parseRuntimeSkillMarkdown(
 		...(options.directory ? { directory: options.directory } : {}),
 		...(options.sourceDirectory ? { sourceDirectory: options.sourceDirectory } : {}),
 		...(options.category ? { category: options.category } : {}),
-		...(recommendedTools ? { recommendedTools } : {}),
+		...(recommendedToolGroups ? { recommendedToolGroups } : {}),
 		...(allowedTools ? { allowedTools } : {}),
 		...(skillInterface ? { interface: skillInterface } : {}),
 		...(policy ? { policy } : {}),
 		...(dependencies ? { dependencies } : {}),
+		...(sharedReferences?.length ? { sharedReferences } : {}),
 		...(version ? { version } : {}),
 		...(license ? { license } : {}),
 		...(compatibility ? { compatibility } : {}),
@@ -363,7 +373,13 @@ function optionalSkillPolicy(
 	const value = optionalFrontmatterRecord(frontmatter, 'policy', errors);
 	if (!value) return undefined;
 
-	rejectUnknownFields(value, ['allow_implicit_invocation', 'product'], 'policy', errors);
+	// `lifetime` is a removed field. Older skills can still declare it, so it is ignored.
+	rejectUnknownFields(
+		value,
+		['allow_implicit_invocation', 'product', 'lifetime'],
+		'policy',
+		errors,
+	);
 
 	const allowImplicitInvocation = optionalBoolean(
 		value,

@@ -17,6 +17,7 @@ import {
 	DropdownMenuPortalTargetKey,
 	DropdownMenuSubMaxHeightKey,
 	DropdownMenuWidthKey,
+	DropdownMenuExtraPopperClassKey,
 	DropdownMenuExternalNavigationKey,
 	type DropdownMenuItemProps,
 	type DropdownMenuItemSlots,
@@ -42,9 +43,10 @@ const props = withDefaults(
 		checkbox: false,
 		closeOnSelect: true,
 		searchMode: 'internal',
+		iconSize: 'large',
 	},
 );
-defineSlots<DropdownMenuItemSlots<T, D>>();
+const slots = defineSlots<DropdownMenuItemSlots<T, D>>();
 
 const emit = defineEmits<{
 	select: [value: T];
@@ -57,9 +59,14 @@ const $style = useCssModule();
 const portalTarget = inject(DropdownMenuPortalTargetKey, ref(undefined));
 const subMenuMaxHeight = inject(DropdownMenuSubMaxHeightKey, ref(undefined));
 const menuWidth = inject(DropdownMenuWidthKey, ref('24rem'));
+const extraPopperClass = inject(DropdownMenuExtraPopperClassKey, ref(undefined));
 const externalNavigation = inject(DropdownMenuExternalNavigationKey, null);
 
 const internalSubMenuOpen = ref(false);
+// True when the parent menu opened this sub-menu (keyboard: ArrowRight or Enter).
+// Pointer and chevron opens start inside this item and set internalSubMenuOpen first,
+// so the parent's prop never finds it closed.
+const subMenuOpenedByParent = ref(false);
 const childrenContainerRef = ref<HTMLElement | null>(null);
 const subContentMaxHeight = ref<string>();
 
@@ -79,13 +86,13 @@ const hasChildren = computed(() => props.children && props.children.length > 0);
 const hasSubMenu = computed(() => hasChildren.value || props.loading || props.searchable);
 
 const handleSubMenuOpenChange = (open: boolean) => {
+	if (internalSubMenuOpen.value === open) return;
 	internalSubMenuOpen.value = open;
 	emit('update:subMenuOpen', open);
 };
 
 const closeSubMenu = () => {
-	internalSubMenuOpen.value = false;
-	emit('update:subMenuOpen', false);
+	handleSubMenuOpenChange(false);
 };
 
 const leadingProps = computed(() => ({
@@ -223,9 +230,9 @@ const handleResize = () => {
 watch(
 	() => props.subMenuOpen,
 	(newValue) => {
-		if (newValue !== undefined) {
-			internalSubMenuOpen.value = newValue;
-		}
+		if (newValue === undefined) return;
+		subMenuOpenedByParent.value = newValue && !internalSubMenuOpen.value;
+		internalSubMenuOpen.value = newValue;
 	},
 	{ immediate: true },
 );
@@ -260,7 +267,7 @@ onBeforeUnmount(() => {
 		>
 			<DropdownMenuSubTrigger
 				:id="htmlId"
-				:aria-selected="highlighted || undefined"
+				:data-virtual-highlighted="highlighted ? '' : undefined"
 				:disabled="disabled"
 				:data-test-id="testId"
 				:class="[
@@ -279,7 +286,7 @@ onBeforeUnmount(() => {
 						:icon="icon.value"
 						:class="[$style['item-leading'], $style.icon]"
 						:color="disabled ? 'text-xlight' : 'text-light'"
-						size="large"
+						:size="iconSize"
 					/>
 					<span v-else-if="icon?.type === 'emoji'" :class="[$style['item-leading'], $style.emoji]">
 						{{ icon.value }}
@@ -318,25 +325,40 @@ onBeforeUnmount(() => {
 					data-sub-menu-action="open"
 					@click.stop="handleSubMenuIndicatorClick"
 				>
+					<slot
+						v-if="slots['item-trailing']"
+						name="item-trailing"
+						:item="props"
+						:ui="trailingProps"
+					/>
 					<Icon
-						icon="chevron-right"
+						icon="chevron-right-12"
 						:class="$style['sub-indicator']"
 						:color="disabled ? 'text-xlight' : 'text-light'"
-						size="large"
+						:size="12"
+					/>
+				</span>
+				<span v-else-if="slots['item-trailing']" :class="$style['sub-indicator-action']">
+					<slot name="item-trailing" :item="props" :ui="trailingProps" />
+					<Icon
+						icon="chevron-right-12"
+						:class="$style['sub-indicator']"
+						:color="disabled ? 'text-xlight' : 'text-light'"
+						:size="12"
 					/>
 				</span>
 				<Icon
 					v-else
-					icon="chevron-right"
+					icon="chevron-right-12"
 					:class="$style['sub-indicator']"
 					:color="disabled ? 'text-xlight' : 'text-light'"
-					size="large"
+					:size="12"
 				/>
 			</DropdownMenuSubTrigger>
 
 			<DropdownMenuPortal v-bind="portalTarget ? { to: portalTarget } : {}">
 				<DropdownMenuSubContent
-					:class="$style['sub-content']"
+					:class="[$style['sub-content'], extraPopperClass]"
 					:style="[
 						subContentMaxHeight ? { maxHeight: subContentMaxHeight } : {},
 						subMenuMaxHeight ? { '--n8n-dropdown-sub-max-height': subMenuMaxHeight } : {},
@@ -356,6 +378,7 @@ onBeforeUnmount(() => {
 						:search-placeholder="searchPlaceholder"
 						:search-mode="searchMode"
 						:is-sub-menu="true"
+						:highlight-first-item-on-open="searchMode === 'external' && subMenuOpenedByParent"
 						@select="handleSelect"
 						@search="(term: string, itemId?: T) => emit('search', term, itemId ?? props.id)"
 						@close="closeSubMenu"
@@ -453,7 +476,7 @@ onBeforeUnmount(() => {
 			v-else-if="checkbox"
 			:id="htmlId"
 			:model-value="checked"
-			:aria-selected="highlighted || undefined"
+			:data-virtual-highlighted="highlighted ? '' : undefined"
 			:disabled="disabled"
 			:data-test-id="testId"
 			:class="[
@@ -470,7 +493,7 @@ onBeforeUnmount(() => {
 					:icon="icon.value"
 					:class="[$style['item-leading'], $style.icon]"
 					:color="disabled ? 'text-xlight' : 'text-light'"
-					size="large"
+					:size="iconSize"
 				/>
 				<span v-else-if="icon?.type === 'emoji'" :class="[$style['item-leading'], $style.emoji]">
 					{{ icon.value }}
@@ -493,7 +516,7 @@ onBeforeUnmount(() => {
 		<DropdownMenuItem
 			v-else
 			:id="htmlId"
-			:aria-selected="highlighted || undefined"
+			:data-virtual-highlighted="highlighted ? '' : undefined"
 			:disabled="disabled"
 			:data-test-id="testId"
 			:class="[
@@ -510,7 +533,7 @@ onBeforeUnmount(() => {
 					:icon="icon.value"
 					:class="[$style['item-leading'], $style.icon]"
 					:color="disabled ? 'text-xlight' : 'text-light'"
-					size="large"
+					:size="iconSize"
 				/>
 				<span v-else-if="icon?.type === 'emoji'" :class="[$style['item-leading'], $style.emoji]">
 					{{ icon.value }}
@@ -573,11 +596,11 @@ onBeforeUnmount(() => {
 	color: var(--text-color);
 
 	&:not([data-disabled]) {
-		&:hover,
+		cursor: pointer;
+
 		&[data-highlighted],
-		&[aria-selected='true'] {
+		&[data-virtual-highlighted] {
 			background-color: var(--background--hover);
-			cursor: pointer;
 		}
 	}
 
@@ -587,9 +610,8 @@ onBeforeUnmount(() => {
 	}
 
 	&.destructive.destructive:not([data-disabled]) {
-		&:hover,
 		&[data-highlighted],
-		&[aria-selected='true'] {
+		&[data-virtual-highlighted] {
 			.item-label.item-label {
 				color: var(--text-color--danger);
 			}
@@ -602,17 +624,30 @@ onBeforeUnmount(() => {
 		}
 	}
 
-	:global([data-menu-items]:has([aria-selected='true'])) &:not([aria-selected='true']) {
-		&:hover,
+	// Searchable menus keep Reka focus on the row under the pointer.
+	// Hide that highlight when keyboard focus is on a different row.
+	:global([data-menu-items]:has([data-virtual-highlighted])) &:not([data-virtual-highlighted]) {
 		&[data-highlighted] {
 			background-color: transparent;
+
+			&.destructive.destructive {
+				.item-label.item-label {
+					color: var(--text-color);
+				}
+
+				.icon.icon,
+				.item-check.item-check,
+				.sub-indicator.sub-indicator {
+					color: var(--color--text--tint-1) !important;
+				}
+			}
 		}
 	}
 }
 
 .sub-trigger {
 	&:not([data-disabled]) {
-		&[aria-selected='true'],
+		&[data-virtual-highlighted],
 		&[data-state='open'] {
 			background-color: var(--background--hover);
 			cursor: pointer;
@@ -634,10 +669,13 @@ onBeforeUnmount(() => {
 
 .sub-indicator-action {
 	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 	flex-shrink: 0;
 	margin-left: auto;
 }
 
+.sub-indicator-action .item-trailing,
 .sub-indicator-action .sub-indicator {
 	margin-left: 0;
 }

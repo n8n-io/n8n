@@ -1,11 +1,10 @@
 import type { SourceControlledFile } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
 import { Telemetry } from '@/telemetry';
@@ -117,11 +116,41 @@ describe('Source Control (Public API)', () => {
 
 			expect(response.status).toBe(200);
 			expect(response.body).toEqual(statusResult);
-			expect(pullSpy).toHaveBeenCalled();
+			expect(pullSpy).toHaveBeenCalledWith(
+				expect.objectContaining({ id: owner.id }),
+				expect.anything(),
+				'other',
+			);
 			expect(emitSpy).toHaveBeenCalledWith(
 				'source-control-user-pulled-api',
 				expect.objectContaining({ forced: false }),
 			);
+		});
+
+		it('replays a successful pull and does not pull again', async () => {
+			testServer.license.enable('feat:sourceControl');
+			mockConnected();
+
+			const statusResult: SourceControlledFile[] = [sourceControlledFileFixture('wf-1')];
+			const pullSpy = vi
+				.spyOn(Container.get(SourceControlService), 'pullWorkfolder')
+				.mockResolvedValue({ statusCode: 200, statusResult });
+
+			const first = await testServer
+				.publicApiAgentFor(owner)
+				.post(pullUrl)
+				.set('Idempotency-Key', 'pull-once')
+				.send(validBody);
+			const second = await testServer
+				.publicApiAgentFor(owner)
+				.post(pullUrl)
+				.set('Idempotency-Key', 'pull-once')
+				.send(validBody);
+
+			expect(first.status).toBe(200);
+			expect(second.status).toBe(200);
+			expect(second.body).toEqual(first.body);
+			expect(pullSpy).toHaveBeenCalledTimes(1);
 		});
 
 		it('should return 409 when pull reports conflicts', async () => {
@@ -315,7 +344,7 @@ describe('Source Control (Public API)', () => {
 					direction: 'push',
 					preferLocalVersion: true,
 					verbose: false,
-					origin: 'publicApi',
+					publicApi: 'other',
 				}),
 			);
 		});
@@ -347,7 +376,7 @@ describe('Source Control (Public API)', () => {
 					// Pull previews the incoming side, matching what `pullWorkfolder` applies.
 					preferLocalVersion: false,
 					verbose: false,
-					origin: 'publicApi',
+					publicApi: 'other',
 				}),
 			);
 		});
@@ -504,7 +533,7 @@ describe('Source Control (Public API)', () => {
 					fileNames: [{ id: 'wf-1', type: 'workflow' }],
 					force: undefined,
 				},
-				'publicApi',
+				'other',
 			);
 		});
 
@@ -568,7 +597,7 @@ describe('Source Control (Public API)', () => {
 			expect(pushSpy).toHaveBeenCalledWith(
 				expect.objectContaining({ id: owner.id }),
 				expect.objectContaining({ force: true }),
-				'publicApi',
+				'other',
 			);
 		});
 

@@ -72,6 +72,10 @@ const MISSING_ROUTE_STATUSES = new Set([404, 405]);
  */
 const ROUTE_BODY_STATUSES = new Set([400, 501]);
 
+const MISSING_FIELD_STATUS = 500;
+
+const MISSING_REQUEST_FIELD_MESSAGE = /^'[A-Za-z_]\w*'$/;
+
 /** Content type of the response the SDK turned into `error`, or `''` when absent. */
 function contentTypeOf(error: Record<string, unknown>): string {
 	const contentType = isRecord(error.responseHeaders)
@@ -150,6 +154,12 @@ function reportsWorkingRoute(data: unknown): boolean {
 	return typeof message === 'string' && /\b(model|deployment)\b/i.test(message);
 }
 
+function reportsMissingRequestField(data: unknown): boolean {
+	if (!isRecord(data) || !isRecord(data.error)) return false;
+	const { message } = data.error;
+	return typeof message === 'string' && MISSING_REQUEST_FIELD_MESSAGE.test(message);
+}
+
 /**
  * The marker {@link guardOpenAiRoutes} puts on the error it raises for a
  * reverse-proxy catch-all page. Only that guard sets it, and only after it has
@@ -181,6 +191,7 @@ function servesNoResponsesApi(error: unknown): boolean {
 	if (servedHtmlCatchAll(error)) return true;
 	if (isSynthesizedFromStream(error)) return false;
 	if (MISSING_ROUTE_STATUSES.has(error.statusCode)) return !reportsWorkingRoute(error.data);
+	if (error.statusCode === MISSING_FIELD_STATUS) return reportsMissingRequestField(error.data);
 	// `data` is set only when the SDK read the body through its error handler. A
 	// gateway that reports the unknown route inside an HTTP 200 body never gets
 	// there: the SDK parses that body as an answer, finds `error` in it and

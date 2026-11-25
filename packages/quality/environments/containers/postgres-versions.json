@@ -1,0 +1,8 @@
+{
+	"primary": "postgres:18.4-alpine",
+	"matrix": [
+		{ "major": 16, "support": "compatibility", "image": "postgres:16.14-alpine" },
+		{ "major": 17, "support": "supported", "image": "postgres:17.10-alpine" },
+		{ "major": 18, "support": "supported", "image": "postgres:18.4-alpine" }
+	]
+}

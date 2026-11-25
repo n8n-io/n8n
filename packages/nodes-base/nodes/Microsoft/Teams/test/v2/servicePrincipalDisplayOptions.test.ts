@@ -147,6 +147,24 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 			}
 		});
 
+		// The loop above walks top-level fields only, so the two nested copies need their own pin.
+		it.each<[string, string | undefined]>([
+			['create', undefined],
+			['createOrGet', 'options'],
+			['update', 'updateFields'],
+		])('%s has an attendees field that is not hidden under SP', (operation, container) => {
+			const operationFields = fields.filter((p) =>
+				p.displayOptions?.show?.operation?.includes(operation),
+			);
+			const pool = container
+				? ((operationFields.find((p) => p.name === container)?.options ?? []) as INodeProperties[])
+				: operationFields;
+			const found = pool.find((p) => p.name === 'attendees');
+
+			expect(found).toBeDefined();
+			expect(isSpHidden(found)).toBe(false);
+		});
+
 		it('an SP-shown required organizer picker exists with list and By-ID modes', () => {
 			const organizer = fields.find((p) => p.name === 'organizerId');
 			expect(organizer).toBeDefined();

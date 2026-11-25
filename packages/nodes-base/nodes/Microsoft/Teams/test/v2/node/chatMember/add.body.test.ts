@@ -1,5 +1,6 @@
 import { DateTime } from 'luxon';
 import type { IExecuteFunctions, INode, NodeParameterValueType } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
@@ -65,12 +66,16 @@ describe('Microsoft Teams V2 - chatMember:add request body', () => {
 
 		await node.execute.call(ctx);
 
-		expect(apiRequest).toHaveBeenCalledWith('POST', '/v1.0/chats/19:abc@thread.v2/members', {
-			'@odata.type': '#microsoft.graph.aadUserConversationMember',
-			'user@odata.bind': `https://graph.microsoft.com/v1.0/users/${userId}`,
-			roles: ['owner'],
-			visibleHistoryStartDateTime: '0001-01-01T00:00:00Z',
-		});
+		expect(apiRequest).toHaveBeenCalledWith(
+			'POST',
+			requestPath`/v1.0/chats/19:abc@thread.v2/members`,
+			{
+				'@odata.type': '#microsoft.graph.aadUserConversationMember',
+				'user@odata.bind': `https://graph.microsoft.com/v1.0/users/${userId}`,
+				roles: ['owner'],
+				visibleHistoryStartDateTime: '0001-01-01T00:00:00Z',
+			},
+		);
 	});
 
 	it('sends the selected date for From Date', async () => {
@@ -82,12 +87,16 @@ describe('Microsoft Teams V2 - chatMember:add request body', () => {
 
 		await node.execute.call(ctx);
 
-		expect(apiRequest).toHaveBeenCalledWith('POST', '/v1.0/chats/19:abc@thread.v2/members', {
-			'@odata.type': '#microsoft.graph.aadUserConversationMember',
-			'user@odata.bind': `https://graph.microsoft.com/v1.0/users/${userId}`,
-			roles: ['owner'],
-			visibleHistoryStartDateTime: '2026-08-01T00:00:00Z',
-		});
+		expect(apiRequest).toHaveBeenCalledWith(
+			'POST',
+			requestPath`/v1.0/chats/19:abc@thread.v2/members`,
+			{
+				'@odata.type': '#microsoft.graph.aadUserConversationMember',
+				'user@odata.bind': `https://graph.microsoft.com/v1.0/users/${userId}`,
+				roles: ['owner'],
+				visibleHistoryStartDateTime: '2026-08-01T00:00:00Z',
+			},
+		);
 	});
 
 	it('serializes the DateTime that validateType hands back as an ISO string', async () => {
@@ -104,7 +113,7 @@ describe('Microsoft Teams V2 - chatMember:add request body', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/v1.0/chats/19:abc@thread.v2/members',
+			requestPath`/v1.0/chats/19:abc@thread.v2/members`,
 			expect.objectContaining({ visibleHistoryStartDateTime: '2026-08-01T00:00:00.000Z' }),
 		);
 	});
@@ -114,11 +123,15 @@ describe('Microsoft Teams V2 - chatMember:add request body', () => {
 
 		await node.execute.call(ctx);
 
-		expect(apiRequest).toHaveBeenCalledWith('POST', '/v1.0/chats/19:abc@thread.v2/members', {
-			'@odata.type': '#microsoft.graph.aadUserConversationMember',
-			'user@odata.bind': `https://graph.microsoft.com/v1.0/users/${userId}`,
-			roles: ['owner'],
-		});
+		expect(apiRequest).toHaveBeenCalledWith(
+			'POST',
+			requestPath`/v1.0/chats/19:abc@thread.v2/members`,
+			{
+				'@odata.type': '#microsoft.graph.aadUserConversationMember',
+				'user@odata.bind': `https://graph.microsoft.com/v1.0/users/${userId}`,
+				roles: ['owner'],
+			},
+		);
 	});
 
 	it('throws when From Date is selected without a date, and issues no request', async () => {
@@ -133,11 +146,15 @@ describe('Microsoft Teams V2 - chatMember:add request body', () => {
 
 		await node.execute.call(ctx);
 
-		expect(apiRequest).toHaveBeenCalledWith('POST', '/v1.0/chats/19:abc@thread.v2/members', {
-			'@odata.type': '#microsoft.graph.aadUserConversationMember',
-			'user@odata.bind': `https://graph.microsoft.com/v1.0/users/${userId}`,
-			roles: ['guest'],
-		});
+		expect(apiRequest).toHaveBeenCalledWith(
+			'POST',
+			requestPath`/v1.0/chats/19:abc@thread.v2/members`,
+			{
+				'@odata.type': '#microsoft.graph.aadUserConversationMember',
+				'user@odata.bind': `https://graph.microsoft.com/v1.0/users/${userId}`,
+				roles: ['guest'],
+			},
+		);
 	});
 
 	// Every Entra B2B guest principal name carries `#EXT#`, which the Graph id
@@ -149,16 +166,47 @@ describe('Microsoft Teams V2 - chatMember:add request body', () => {
 		expect(apiRequest).not.toHaveBeenCalled();
 	});
 
+	// Teams deep links carry the UPN percent-encoded. The validator decodes it, so the bind
+	// carries the plain UPN in the slash form the add-member docs show.
+	it('decodes a URL-copied UPN, so the bind carries the plain UPN', async () => {
+		setParams(addParams({ userId: 'jacob%40contoso.com', options: {} }));
+
+		await node.execute.call(ctx);
+
+		expect(apiRequest).toHaveBeenCalledWith(
+			'POST',
+			requestPath`/v1.0/chats/19:abc@thread.v2/members`,
+			{
+				'@odata.type': '#microsoft.graph.aadUserConversationMember',
+				'user@odata.bind': 'https://graph.microsoft.com/v1.0/users/jacob@contoso.com',
+				roles: ['owner'],
+			},
+		);
+	});
+
+	// A lone surrogate is never a valid Graph id; the validator rejects it with the node's own
+	// error instead of letting it reach the request.
+	it('rejects a lone surrogate in the user id before any request', async () => {
+		setParams(addParams({ userId: `${userId}\uD800`, options: {} }));
+
+		await expect(node.execute.call(ctx)).rejects.toThrow('The ID is not valid');
+		expect(apiRequest).not.toHaveBeenCalled();
+	});
+
 	it('uses the credential graphApiBaseUrl in user@odata.bind (sovereign cloud)', async () => {
 		ctx.getCredentials.mockResolvedValue({ graphApiBaseUrl: 'https://graph.microsoft.us' });
 		setParams(addParams({ options: {} }));
 
 		await node.execute.call(ctx);
 
-		expect(apiRequest).toHaveBeenCalledWith('POST', '/v1.0/chats/19:abc@thread.v2/members', {
-			'@odata.type': '#microsoft.graph.aadUserConversationMember',
-			'user@odata.bind': `https://graph.microsoft.us/v1.0/users/${userId}`,
-			roles: ['owner'],
-		});
+		expect(apiRequest).toHaveBeenCalledWith(
+			'POST',
+			requestPath`/v1.0/chats/19:abc@thread.v2/members`,
+			{
+				'@odata.type': '#microsoft.graph.aadUserConversationMember',
+				'user@odata.bind': `https://graph.microsoft.us/v1.0/users/${userId}`,
+				roles: ['owner'],
+			},
+		);
 	});
 });

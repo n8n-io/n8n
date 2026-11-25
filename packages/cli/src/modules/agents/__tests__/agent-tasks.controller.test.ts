@@ -1,11 +1,12 @@
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 
 import type { AgentTaskService } from '../agent-task.service';
 import { AgentTasksController } from '../agent-tasks.controller';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type { AgentWriteLockService } from '../agent-write-lock.service';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
@@ -14,12 +15,14 @@ import {
 function makeController({
 	agentTaskService = mock<AgentTaskService>(),
 	agentRepository = mock<AgentRepository>(),
+	agentWriteLockService = mock<AgentWriteLockService>(),
 }: {
 	agentTaskService?: Mocked<AgentTaskService>;
 	agentRepository?: Mocked<AgentRepository>;
+	agentWriteLockService?: Mocked<AgentWriteLockService>;
 } = {}) {
 	return {
-		controller: new AgentTasksController(agentTaskService, agentRepository),
+		controller: new AgentTasksController(agentTaskService, agentRepository, agentWriteLockService),
 		agentTaskService,
 		agentRepository,
 	};

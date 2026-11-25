@@ -8,6 +8,8 @@ import AgentVectorStoresModal from '../components/AgentVectorStoresModal.vue';
 const closeModalMock = vi.fn();
 const openNewCredentialMock = vi.fn();
 const fetchUsableCredentialsMock = vi.fn();
+const fetchCredentialTypesMock = vi.fn();
+const credentialTypes = new Map<string, { displayName: string }>();
 const testAgentVectorStoreMock = vi.fn();
 const showMessageMock = vi.fn();
 const showErrorMock = vi.fn();
@@ -15,7 +17,11 @@ const showErrorMock = vi.fn();
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string, options?: { interpolate?: Record<string, string> }) =>
-			options?.interpolate ? `${key}:${Object.values(options.interpolate).join(',')}` : key,
+			key === 'agents.builder.vectorStores.modal.defaultName'
+				? 'new_vector_store'
+				: options?.interpolate
+					? `${key}:${Object.values(options.interpolate).join(',')}`
+					: key,
 	}),
 }));
 
@@ -23,7 +29,8 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: {} }),
 }));
 
-vi.mock('@n8n/permissions', () => ({
+vi.mock('@n8n/permissions', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/permissions')>()),
 	getResourcePermissions: () => ({ credential: { create: true } }),
 }));
 
@@ -36,6 +43,7 @@ vi.mock('@/app/stores/ui.store', () => ({
 		closeModal: closeModalMock,
 		openNewCredential: openNewCredentialMock,
 		isModalActiveById: {},
+		modalsById: { agentVectorStoresModal: { open: true } },
 	}),
 }));
 
@@ -46,7 +54,8 @@ vi.mock('@/features/credentials/credentials.constants', () => ({
 vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
 		fetchUsableCredentials: fetchUsableCredentialsMock,
-		getCredentialTypeByName: () => undefined,
+		fetchCredentialTypes: fetchCredentialTypesMock,
+		getCredentialTypeByName: (name: string) => credentialTypes.get(name),
 	}),
 }));
 
@@ -58,14 +67,20 @@ vi.mock('../composables/useAgentApi', () => ({
 	testAgentVectorStore: (...args: unknown[]) => testAgentVectorStoreMock(...args),
 }));
 
-vi.mock('@/app/components/Modal.vue', () => ({
-	default: {
-		name: 'Modal',
-		props: ['name', 'width', 'customClass'],
-		template:
-			'<section><header><slot name="header" /></header><main><slot name="content" /></main><footer><slot name="footer" /></footer></section>',
-	},
+vi.mock('../components/modals/AgentModalMultiStep.vue', async () => ({
+	default: (await import('./utils/AgentModalTestStub')).AgentModalMultiStepTestStub,
 }));
+
+vi.mock('@n8n/design-system', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@n8n/design-system')>();
+	return {
+		...actual,
+		N8nDialogDescription: defineComponent({
+			name: 'N8nDialogDescription',
+			template: '<p data-slot="dialog-description"><slot /></p>',
+		}),
+	};
+});
 
 vi.mock('@/features/credentials/components/CredentialIcon.vue', () => ({
 	default: {
@@ -131,9 +146,7 @@ async function selectQdrantProvider(wrapper: ReturnType<typeof mount>) {
 }
 
 async function fillQdrantConnection(wrapper: ReturnType<typeof mount>) {
-	await wrapper
-		.find('[data-testid="agent-vector-stores-modal-name"] input')
-		.setValue('product_docs');
+	await wrapper.find('[data-testid="agent-modal-title-input"]').setValue('product_docs');
 	await wrapper
 		.find('[data-testid="agent-vector-stores-modal-collection-name"] input')
 		.setValue('docs');
@@ -164,6 +177,30 @@ describe('AgentVectorStoresModal', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		fetchUsableCredentialsMock.mockResolvedValue([qdrantCredential, openAiCredential]);
+		credentialTypes.clear();
+		fetchCredentialTypesMock.mockResolvedValue(undefined);
+	});
+
+	it('sets the type label when the credential types arrive after the credentials', async () => {
+		const { promise, resolve } = Promise.withResolvers<void>();
+		fetchCredentialTypesMock.mockReturnValueOnce(promise);
+		const wrapper = mount(AgentVectorStoresModal, {
+			props: {
+				modalName: 'agentVectorStoresModal',
+				data: { projectId: 'p1', agentId: 'a1', existingNames: [], onConfirm: vi.fn() },
+			},
+		});
+		await flushPromises();
+		await selectQdrantProvider(wrapper);
+		credentialTypes.set('openAiApi', { displayName: 'OpenAI' });
+		resolve();
+		await flushPromises();
+
+		expect(fetchCredentialTypesMock).toHaveBeenCalledWith(false);
+		const selector = wrapper.findComponent({ name: 'EmbeddingModelSelector' });
+		expect(selector.props('credentialsByType').openAiApi).toEqual([
+			expect.objectContaining({ id: 'openai-cred-1', typeDisplayName: 'OpenAI' }),
+		]);
 	});
 
 	it('lists all four vector store providers with a Connect button each', async () => {
@@ -205,7 +242,7 @@ describe('AgentVectorStoresModal', () => {
 		expect(useWhenBlock.text()).toMatch(/required/i);
 	});
 
-	it('disables Connect until required fields are filled, then tests and confirms', async () => {
+	it('reveals validation until required fields are filled, then tests and confirms', async () => {
 		testAgentVectorStoreMock.mockResolvedValue({ success: true });
 		const onConfirm = vi.fn();
 
@@ -219,7 +256,12 @@ describe('AgentVectorStoresModal', () => {
 
 		await selectQdrantProvider(wrapper);
 		const confirmButton = wrapper.find('[data-testid="agent-vector-stores-modal-confirm"]');
-		expect(confirmButton.attributes('disabled')).toBeDefined();
+		expect(confirmButton.attributes('disabled')).toBeUndefined();
+		await confirmButton.trigger('click');
+		expect(onConfirm).not.toHaveBeenCalled();
+		expect(
+			wrapper.get('[data-testid="agent-vector-stores-modal-credential-required"]').text(),
+		).toBe('agents.builder.vectorStores.modal.credential.required');
 
 		await fillQdrantConnection(wrapper);
 		expect(confirmButton.attributes('disabled')).toBeUndefined();
@@ -230,9 +272,7 @@ describe('AgentVectorStoresModal', () => {
 		expect(testAgentVectorStoreMock).toHaveBeenCalledWith({}, 'p1', expectedVectorStore);
 		expect(onConfirm).toHaveBeenCalledWith(expectedVectorStore);
 		expect(closeModalMock).toHaveBeenCalledWith('agentVectorStoresModal');
-		expect(showMessageMock).toHaveBeenCalledWith(
-			expect.objectContaining({ type: 'success', title: expect.stringContaining('product_docs') }),
-		);
+		expect(showMessageMock).not.toHaveBeenCalled();
 		expect(showErrorMock).not.toHaveBeenCalled();
 	});
 
@@ -348,7 +388,10 @@ describe('AgentVectorStoresModal', () => {
 		});
 		await flushPromises();
 
-		expect(wrapper.find('[data-testid="agent-vector-stores-modal-name"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-modal-title-input"]').element).toHaveProperty(
+			'value',
+			'product_docs',
+		);
 	});
 
 	it('clears provider-specific fields when going back to the provider picker', async () => {
@@ -377,21 +420,19 @@ describe('AgentVectorStoresModal', () => {
 			.setValue('pinecone-cred-1');
 
 		// Back to the picker, then pick Qdrant instead.
-		await wrapper.find('[data-testid="agent-vector-stores-modal-back"]').trigger('click');
+		await wrapper.find('[data-testid="agent-modal-back"]').trigger('click');
 		await wrapper.findAll('[data-testid="agent-vector-stores-modal-connect"]')[2].trigger('click');
 
 		// Pinecone leftovers must be gone.
-		const nameInput = wrapper.find<HTMLInputElement>(
-			'[data-testid="agent-vector-stores-modal-name"] input',
-		);
-		expect(nameInput.element.value).toBe('');
+		const nameInput = wrapper.find<HTMLInputElement>('[data-testid="agent-modal-title-input"]');
+		expect(nameInput.element.value).toBe('new_vector_store');
 		const credentialSelect = wrapper.find<HTMLSelectElement>(
 			'[data-test-id="agent-vector-stores-modal-credential"]',
 		);
 		expect(credentialSelect.element.value).toBe('');
 
 		// Returning to Pinecone must not resurrect the old index name.
-		await wrapper.find('[data-testid="agent-vector-stores-modal-back"]').trigger('click');
+		await wrapper.find('[data-testid="agent-modal-back"]').trigger('click');
 		await wrapper.findAll('[data-testid="agent-vector-stores-modal-connect"]')[0].trigger('click');
 		const indexInput = wrapper.find<HTMLInputElement>(
 			'[data-testid="agent-vector-stores-modal-index-name"] input',

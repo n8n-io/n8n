@@ -247,10 +247,12 @@ export class EmailReadImapV2 implements INodeType {
 		if (node.typeVersion <= 2) {
 			// before v 2.1 staticData.lastMessageUid was never set, preserve that behavior
 			staticData.lastMessageUid = undefined;
+			staticData.pendingMessageUids = undefined;
 		}
 
 		if (options.trackLastMessageId === false) {
 			staticData.lastMessageUid = undefined;
+			staticData.pendingMessageUids = undefined;
 		}
 
 		this.logger.debug('Loaded static data for node "EmailReadImap"', { staticData });
@@ -278,8 +280,7 @@ export class EmailReadImapV2 implements INodeType {
 				numEmails,
 			});
 
-			// Create a fresh copy to avoid accumulating filters across calls
-			const currentSearchCriteria = [...searchCriteria];
+			let newMailWindow: SearchCriteria | undefined;
 
 			/**
 			 * Only process new emails:
@@ -302,26 +303,32 @@ export class EmailReadImapV2 implements INodeType {
 				 * - You can check if UIDs changed in the above example
 				 * by checking UIDValidity.
 				 */
-				currentSearchCriteria.push(['UID', `${staticData.lastMessageUid as number}:*`]);
+				newMailWindow = ['UID', `${staticData.lastMessageUid as number}:*`];
 			} else if (node.typeVersion > 2 && options.trackLastMessageId !== false) {
-				currentSearchCriteria.push(['SINCE', activatedAt.toFormat('dd-LLL-yyyy')]);
+				newMailWindow = ['SINCE', activatedAt.toFormat('dd-LLL-yyyy')];
 			}
 
 			this.logger.debug('Querying for new messages on node "EmailReadImap"', {
-				searchCriteria: currentSearchCriteria,
+				searchCriteria,
+				newMailWindow,
 			});
 
 			try {
-				await getNewEmails.call(this, {
-					imapConnection: conn,
-					searchCriteria: currentSearchCriteria,
-					postProcessAction,
-					onEmailBatch: async (returnData: INodeExecutionData[]) => {
-						if (returnData.length) {
-							this.emit([returnData]);
-						}
-					},
-				});
+				// Arrivals come after activation released its isolate, and the fetch resolves parameters.
+				await this.helpers.withExpressionIsolate(
+					async () =>
+						await getNewEmails.call(this, {
+							imapConnection: conn,
+							searchCriteria,
+							newMailWindow,
+							postProcessAction,
+							onEmailBatch: async (returnData: INodeExecutionData[]) => {
+								if (returnData.length) {
+									this.emit([returnData]);
+								}
+							},
+						}),
+				);
 			} catch (error) {
 				this.logger.error('Email Read Imap node encountered an error fetching new emails', {
 					error: error as Error,
@@ -342,7 +349,8 @@ export class EmailReadImapV2 implements INodeType {
 
 		connection.onArrival(async ({ count }) => await fetchNewEmails(connection, count));
 
-		if (staticData.lastMessageUid !== undefined) connection.catchUp();
+		// Mail that landed while the trigger was inactive sends no arrival event.
+		connection.catchUp();
 
 		connection.onFlags((info) => {
 			this.logger.debug(`Email Read Imap:update ${info.seq}`, { uid: info.uid });

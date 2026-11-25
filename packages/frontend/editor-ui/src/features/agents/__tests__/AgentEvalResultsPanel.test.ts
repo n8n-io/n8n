@@ -32,6 +32,7 @@ const result = (id: string): AgentEvalResultRecord => ({
 	output: { finalText: `answer ${id}` },
 	toolCalls: null,
 	metrics: null,
+	verdict: null,
 	runAt: '2026-01-01T00:00:00.000Z',
 	completedAt: '2026-01-01T00:00:30.000Z',
 	errorCode: null,
@@ -209,7 +210,7 @@ describe('AgentEvalResultsPanel', () => {
 	it('renders the assistant handoff disabled', () => {
 		const { getByTestId } = render({ results: [result('c1')], resultsCount: 1 });
 
-		expect(getByTestId('agent-eval-send-feedback')).toBeDisabled();
+		expect(getByTestId('agent-eval-send-feedback')).toHaveAttribute('aria-disabled', 'true');
 	});
 
 	// Agreement has nothing further to ask, so it must not park the row behind a

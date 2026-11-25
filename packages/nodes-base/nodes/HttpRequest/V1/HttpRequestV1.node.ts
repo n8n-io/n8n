@@ -12,20 +12,22 @@ import type {
 import {
 	NodeApiError,
 	NodeOperationError,
+	READ_ONLY_ANNOTATIONS,
 	removeCircularRefs,
 	NodeConnectionTypes,
+	sleepUnlessExecutionCancelled,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
-
-import { sleep } from '@n8n/utils/sleep';
 
 import type { IAuthDataSanitizeKeys } from '../GenericFunctions';
 import {
 	getAllowedDomains,
 	getSecrets,
+	removeRequestOptions,
 	replaceNullValues,
 	sanitizeUiMessage,
 } from '../GenericFunctions';
+
 interface OptionData {
 	name: string;
 	displayName: string;
@@ -162,30 +164,37 @@ export class HttpRequestV1 implements INodeType {
 						{
 							name: 'DELETE',
 							value: 'DELETE',
+							annotations: { effect: 'write', destructive: true, idempotent: false },
 						},
 						{
 							name: 'GET',
 							value: 'GET',
+							annotations: READ_ONLY_ANNOTATIONS,
 						},
 						{
 							name: 'HEAD',
 							value: 'HEAD',
+							annotations: READ_ONLY_ANNOTATIONS,
 						},
 						{
 							name: 'OPTIONS',
 							value: 'OPTIONS',
+							annotations: READ_ONLY_ANNOTATIONS,
 						},
 						{
 							name: 'PATCH',
 							value: 'PATCH',
+							annotations: { effect: 'write', destructive: true, idempotent: false },
 						},
 						{
 							name: 'POST',
 							value: 'POST',
+							// POST can run arbitrary actions, so it keeps the restrictive default.
 						},
 						{
 							name: 'PUT',
 							value: 'PUT',
+							annotations: { effect: 'write', destructive: true, idempotent: true },
 						},
 					],
 					default: 'GET',
@@ -724,7 +733,7 @@ export class HttpRequestV1 implements INodeType {
 				const batchSize: number =
 					(options.batchSize as number) > 0 ? (options.batchSize as number) : 1;
 				if (itemIndex % batchSize === 0) {
-					await sleep(options.batchInterval as number);
+					await sleepUnlessExecutionCancelled(this, options.batchInterval as number);
 				}
 			}
 
@@ -736,6 +745,7 @@ export class HttpRequestV1 implements INodeType {
 				uri: url,
 				gzip: true,
 				rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false),
+				sendCredentialsOnCrossOriginRedirect: true,
 			} satisfies IRequestOptions;
 
 			if (fullResponse) {
@@ -934,8 +944,8 @@ export class HttpRequestV1 implements INodeType {
 					}
 				}
 			} else if (options.bodyContentType === 'raw') {
+				// Read the body as text. It is parsed below, and nothing here consumes a stream.
 				requestOptions.json = false;
-				requestOptions.useStream = true;
 			} else {
 				requestOptions.json = true;
 			}
@@ -1027,6 +1037,7 @@ export class HttpRequestV1 implements INodeType {
 					// throw error;
 					throw new NodeApiError(this.getNode(), response as JsonObject, { itemIndex });
 				} else {
+					removeRequestOptions(response.reason);
 					removeCircularRefs(response.reason as JsonObject);
 					// Return the actual reason as error
 					returnItems.push({

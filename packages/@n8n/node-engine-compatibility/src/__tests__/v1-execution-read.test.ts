@@ -23,6 +23,7 @@ const step = (overrides: Partial<StepDetail> = {}): StepDetail => ({
 	iteration: 0,
 	status: 'completed',
 	outputs: [[{ json: { hello: 'world' } }]],
+	outputSources: null,
 	error: null,
 	createdAt: '2026-08-25T10:00:00.000Z',
 	updatedAt: '2026-08-25T10:00:00.250Z',
@@ -45,6 +46,16 @@ describe('toV1RunExecutionData', () => {
 		});
 	});
 
+	it('reads a step that a data plane older than `outputSources` sent without it', () => {
+		const { outputSources: _, ...older } = step();
+
+		const data = toV1RunExecutionData(graph, [older as StepDetail]);
+
+		expect(data.resultData.runData.Trigger[0].data).toEqual({
+			main: [[{ json: { hello: 'world' } }]],
+		});
+	});
+
 	it('reports no run data for an execution with no steps', () => {
 		const data = toV1RunExecutionData(graph, []);
 
@@ -57,14 +68,13 @@ describe('toV1RunExecutionData', () => {
 		['completed', 'success'],
 		['failed', 'error'],
 		['running', 'running'],
+		['waiting', 'waiting'],
 	])('maps step status %j to %j', (status, expected) => {
 		const data = toV1RunExecutionData(graph, [step({ status })]);
 
 		expect(data.resultData.runData.Trigger[0].executionStatus).toBe(expected);
 	});
 
-	// `cancelQueuedSteps` is the only writer of `cancelled`, and it updates queued
-	// rows only, so a cancelled step never ran.
 	it.each<StepStatus>(['queued', 'skipped', 'cancelled'])(
 		'reports no run for a %j step, the way v1 reports a node that did not run',
 		(status) => {
@@ -73,6 +83,25 @@ describe('toV1RunExecutionData', () => {
 			expect(data.resultData.runData).toEqual({});
 		},
 	);
+
+	it('reports a suspended step, and names it as the last node executed', async () => {
+		const data = toV1RunExecutionData(graph, [
+			step(),
+			step({
+				id: 'step-2',
+				nodeId: 's',
+				status: 'waiting',
+				outputs: null,
+				updatedAt: '2026-08-25T10:00:01.000Z',
+			}),
+		]);
+
+		expect(data.resultData.runData.Set[0].executionStatus).toBe('waiting');
+		// v1 carries the node's pass-through data here. The step has none until it
+		// resumes, and the read path is not given the declaration that holds it.
+		expect(data.resultData.runData.Set[0].data).toBeUndefined();
+		expect(data.resultData.lastNodeExecuted).toBe('Set');
+	});
 
 	it('takes timing from the row timestamps', () => {
 		const data = toV1RunExecutionData(graph, [step()]);
@@ -155,6 +184,33 @@ describe('toV1RunExecutionData', () => {
 		expect(data.resultData.lastNodeExecuted).toBe('Set');
 	});
 
+	it('rebuilds the structured error the editor renders from the step details', () => {
+		const data = toV1RunExecutionData(graph, [
+			step({
+				id: 'step-2',
+				nodeId: 's',
+				status: 'failed',
+				outputs: null,
+				error: {
+					name: 'NodeApiError',
+					message: 'Too many requests',
+					details: {
+						description: 'Wait and try again',
+						httpCode: '429',
+						context: { itemIndex: 3 },
+					},
+				},
+			}),
+		]);
+
+		expect(data.resultData.runData.Set[0].error).toMatchObject({
+			name: 'NodeApiError',
+			message: 'Too many requests',
+			description: 'Wait and try again',
+			context: { itemIndex: 3 },
+		});
+	});
+
 	it('reports the last step as the last node executed when nothing failed', () => {
 		const data = toV1RunExecutionData(graph, [step(), step({ id: 'step-2', nodeId: 's' })]);
 
@@ -186,6 +242,53 @@ describe('toV1RunExecutionData', () => {
 
 	it('carries no execution data, since a read reports no runtime state', () => {
 		expect(toV1RunExecutionData(graph, [step()]).executionData).toBeUndefined();
+	});
+
+	it('carries the pin data the run used, so the canvas marks those nodes as pinned', () => {
+		const pinData = { Set: [{ json: { pinned: true } }] };
+
+		const data = toV1RunExecutionData(graph, [step()], pinData);
+
+		expect(data.resultData.pinData).toEqual(pinData);
+	});
+
+	it('carries no pin data when the run used none', () => {
+		expect(toV1RunExecutionData(graph, [step()]).resultData.pinData).toBeUndefined();
+	});
+
+	describe('execution links', () => {
+		it('notes the parent execution on the trigger task, as v1 does for a sub-workflow', () => {
+			const data = toV1RunExecutionData(graph, [step()], undefined, {
+				parent: { executionId: 'exec-parent', workflowId: 'wf-parent' },
+			});
+
+			expect(data.resultData.runData.Trigger[0].metadata).toEqual({
+				parentExecution: { executionId: 'exec-parent', workflowId: 'wf-parent' },
+			});
+		});
+
+		it('notes the sub-execution on the step that started it', () => {
+			const data = toV1RunExecutionData(
+				graph,
+				[step(), step({ id: 'step-2', nodeId: 's' })],
+				undefined,
+				{ subExecutions: [{ stepId: 'step-2', executionId: 'exec-sub', workflowId: 'wf-sub' }] },
+			);
+
+			expect(data.resultData.runData.Trigger[0].metadata).toBeUndefined();
+			expect(data.resultData.runData.Set[0].metadata).toEqual({
+				subExecution: { executionId: 'exec-sub', workflowId: 'wf-sub' },
+				subExecutionsCount: 1,
+			});
+		});
+
+		it('ignores a sub-execution whose step is not reported', () => {
+			const data = toV1RunExecutionData(graph, [step()], undefined, {
+				subExecutions: [{ stepId: 'step-9', executionId: 'exec-sub', workflowId: 'wf-sub' }],
+			});
+
+			expect(data.resultData.runData.Trigger[0].metadata).toBeUndefined();
+		});
 	});
 
 	describe('parallel branches', () => {
@@ -244,7 +347,7 @@ describe('toV1RunExecutionData', () => {
 		const looped: WorkflowGraph = {
 			nodes: [
 				{ id: 't', name: 'Trigger', type: 'trigger' },
-				{ id: 'loop', name: 'Loop', type: 'batch' },
+				{ id: 'loop', name: 'Loop', type: 'batch', config: { batchSize: 1 } },
 				{ id: 'body', name: 'Body', type: 'v1-node' },
 				{ id: 'done', name: 'Done', type: 'v1-node' },
 			],
@@ -257,9 +360,14 @@ describe('toV1RunExecutionData', () => {
 		};
 
 		const twoPasses = [
-			step({ nodeId: 'loop', iteration: 0 }),
+			step({ nodeId: 'loop', iteration: 0, outputs: [null, [{ json: { hello: 'world' } }]] }),
 			step({ id: 's2', nodeId: 'body', iteration: 0 }),
-			step({ id: 's3', nodeId: 'loop', iteration: 1 }),
+			step({
+				id: 's3',
+				nodeId: 'loop',
+				iteration: 1,
+				outputs: [null, [{ json: { hello: 'world' } }]],
+			}),
 			step({ id: 's4', nodeId: 'body', iteration: 1 }),
 			step({ id: 's5', nodeId: 'done', iteration: 0 }),
 		];
@@ -303,11 +411,22 @@ describe('toV1RunExecutionData', () => {
 
 		it('points a node after a loop at the last pass that was reported', () => {
 			const data = toV1RunExecutionData(skippedLastPass, [
-				step({ nodeId: 'loop', iteration: 0 }),
+				step({ nodeId: 'loop', iteration: 0, outputs: [null, [{ json: { hello: 'world' } }]] }),
 				step({ id: 's2', nodeId: 'body', iteration: 0 }),
-				step({ id: 's3', nodeId: 'loop', iteration: 1 }),
+				step({
+					id: 's3',
+					nodeId: 'loop',
+					iteration: 1,
+					outputs: [null, [{ json: { hello: 'world' } }]],
+				}),
 				step({ id: 's4', nodeId: 'body', iteration: 1 }),
-				step({ id: 's5', nodeId: 'loop', iteration: 2 }),
+				// The last pass of the loop sends what the body returned out of done.
+				step({
+					id: 's5',
+					nodeId: 'loop',
+					iteration: 2,
+					outputs: [[{ json: { hello: 'world' } }, { json: { hello: 'world' } }], null],
+				}),
 				// The last pass of the body ran nothing, so it gets no run data.
 				step({ id: 's6', nodeId: 'body', iteration: 2, status: 'skipped', outputs: null }),
 				step({ id: 's7', nodeId: 'aside', iteration: 0 }),

@@ -15,6 +15,12 @@ import {
 	StoppedExecutionsPublicDto,
 	TagIdsPublicDto,
 } from '@n8n/api-types';
+import {
+	EventService,
+	WorkflowSharingService,
+	isRedactableExecution,
+	ExecutionRedactionServiceProxy,
+} from '@n8n/backend-services';
 import { ExecutionsConfig } from '@n8n/config';
 import type { AuthenticatedRequest, IExecutionBase, IExecutionResponse } from '@n8n/db';
 import {
@@ -33,22 +39,19 @@ import {
 	Put,
 	Query,
 } from '@n8n/decorators';
+import { isRecord } from '@n8n/utils/is-record';
 import type { Response } from 'express';
 import { replaceCircularReferences, WorkflowOperationError } from 'n8n-workflow';
 
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
-import { isRedactableExecution } from '@/executions/execution-redaction';
-import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
+import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
+
 import { ExecutionService } from '@/executions/execution.service';
-import type { StopResult } from '@/executions/execution.types';
+import type { RetriedExecution, StopResult } from '@/executions/execution.types';
 import { decodeCursor, encodeNextCursor } from '@/public-api/v1/shared/services/pagination.service';
-import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+import type { PublicApiRequest } from '@/public-api/public-api-client';
 
 type PublicExecution = IExecutionBase & Partial<IExecutionResponse>;
 
@@ -105,7 +108,7 @@ export class ExecutionsPublicController {
 	@ApiResponse(200, ExecutionListPublicDto)
 	@ApiErrorResponse(404)
 	async getExecutions(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Query query: ListExecutionsQueryDto,
 	): Promise<ExecutionListPublicDto> {
@@ -149,12 +152,13 @@ export class ExecutionsPublicController {
 				redactExecutionData: query.redactExecutionData,
 				ipAddress: req.ip ?? '',
 				userAgent: req.headers['user-agent'] ?? '',
+				ctx: req.ctx,
 			});
 		}
 
 		this.eventService.emit('user-retrieved-all-executions', {
 			userId: req.user.id,
-			publicApi: true,
+			publicApi: req.publicApiClient,
 		});
 
 		return toExecutionListPublicDto(
@@ -171,7 +175,7 @@ export class ExecutionsPublicController {
 	@ApiResponse(200, ExecutionPublicDto)
 	@ApiErrorResponse(404)
 	async getExecution(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Param('executionId', executionIdParamSchema) executionId: string,
 		@Query query: GetExecutionQueryDto,
@@ -207,12 +211,13 @@ export class ExecutionsPublicController {
 				redactExecutionData: query.redactExecutionData,
 				ipAddress: req.ip ?? '',
 				userAgent: req.headers['user-agent'] ?? '',
+				ctx: req.ctx,
 			});
 		}
 
 		this.eventService.emit('user-retrieved-execution', {
 			userId: req.user.id,
-			publicApi: true,
+			publicApi: req.publicApiClient,
 		});
 
 		return toExecutionPublicDto(execution);
@@ -393,7 +398,7 @@ export class ExecutionsPublicController {
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
 	async retryExecution(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Param('executionId', executionIdParamSchema) executionId: string,
 		@Body body: RetryExecutionPublicDto,
@@ -408,16 +413,19 @@ export class ExecutionsPublicController {
 		}
 
 		try {
-			const retriedExecution = await this.executionService.retry({
-				executionId,
-				options: { loadWorkflow: body.loadWorkflow },
-				sharedWorkflowIds: sharedWorkflowsIds,
-				user: req.user,
-			});
+			const retriedExecution = await this.executionService.retry(
+				{
+					executionId,
+					options: { loadWorkflow: body.loadWorkflow },
+					sharedWorkflowIds: sharedWorkflowsIds,
+					user: req.user,
+				},
+				req.ctx,
+			);
 
 			this.eventService.emit('user-retried-execution', {
 				userId: req.user.id,
-				publicApi: true,
+				publicApi: req.publicApiClient,
 			});
 
 			return toRetriedExecutionPublicDto(retriedExecution);
@@ -434,8 +442,20 @@ export class ExecutionsPublicController {
 	}
 }
 
+type PublicTracingContext = { traceparent: string; tracestate?: string };
+
+function toPublicTracingContext(tracingContext: unknown): PublicTracingContext | null {
+	if (!isRecord(tracingContext)) return null;
+
+	const { traceparent, tracestate } = tracingContext;
+	if (typeof traceparent !== 'string' || traceparent.length === 0) return null;
+
+	return typeof tracestate === 'string' ? { traceparent, tracestate } : { traceparent };
+}
+
 function toBaseFields(execution: PublicExecution) {
 	return {
+		// oxlint-disable-next-line typescript/no-deprecated
 		finished: execution.finished,
 		mode: execution.mode,
 		retryOf: execution.retryOf ?? null,
@@ -448,7 +468,7 @@ function toBaseFields(execution: PublicExecution) {
 		workflowId: execution.workflowId,
 		waitTill: execution.waitTill ? execution.waitTill.toISOString() : null,
 		storedAt: execution.storedAt,
-		tracingContext: execution.tracingContext ?? null,
+		tracingContext: toPublicTracingContext(execution.tracingContext),
 		deduplicationKey: execution.deduplicationKey ?? null,
 		jsonSizeBytes: execution.jsonSizeBytes ?? 0,
 		binaryDataSizeBytes: execution.binaryDataSizeBytes ?? 0,
@@ -460,6 +480,7 @@ function toBaseFields(execution: PublicExecution) {
 function toExecutionListItem(execution: PublicExecution) {
 	return {
 		id: execution.id,
+		// oxlint-disable-next-line typescript/no-deprecated
 		finished: execution.finished,
 		mode: execution.mode,
 		retryOf: execution.retryOf ?? null,
@@ -537,14 +558,13 @@ function toStoppedExecutionPublicDto(stopResult: StopResult): StoppedExecutionPu
 	};
 }
 
-function toRetriedExecutionPublicDto(
-	retried: Omit<IExecutionResponse, 'createdAt'>,
-): RetriedExecutionPublicDto {
+function toRetriedExecutionPublicDto(retried: RetriedExecution): RetriedExecutionPublicDto {
 	return replaceCircularReferences({
 		id: retried.id,
 		mode: retried.mode,
 		startedAt: retried.startedAt.toISOString(),
 		workflowId: retried.workflowId,
+		// oxlint-disable-next-line typescript/no-deprecated
 		finished: retried.finished,
 		retryOf: retried.retryOf ?? null,
 		status: retried.status,

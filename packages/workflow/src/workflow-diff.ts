@@ -10,6 +10,7 @@ import type {
 	NodeParameterValueType,
 } from '.';
 import { compareConnections, type ConnectionsDiff } from './connections-diff';
+import { versionedSettingsEqual } from './workflow-settings-scope';
 
 export type WorkflowDiffBase = Omit<
 	IWorkflowBase,
@@ -286,7 +287,9 @@ function makeMergeDependingOnSizeRule<W extends DiffableWorkflow>(mapping: Map<n
 		for (const [count, time] of pairs) {
 			if (metaData.workflowSizeScore > count) return time(prev, next);
 		}
-		return false;
+		// The smallest threshold is inclusive, so a version with no nodes scores zero and still merges.
+		const smallest = pairs.at(-1);
+		return smallest?.[0] === metaData.workflowSizeScore ? smallest[1](prev, next) : false;
 	};
 }
 
@@ -297,6 +300,13 @@ function skipDifferentUsers<N extends DiffableNode = DiffableNode>(
 	return next.authors !== prev.authors;
 }
 
+function skipDifferentVersionedSettings(
+	prev: Pick<WorkflowDiffBase, 'settings'>,
+	next: Pick<WorkflowDiffBase, 'settings'>,
+) {
+	return !versionedSettingsEqual(prev.settings, next.settings);
+}
+
 export const RULES = {
 	mergeAdditiveChanges,
 	makeMergeDependingOnSizeRule,
@@ -305,6 +315,7 @@ export const RULES = {
 export const SKIP_RULES = {
 	makeSkipTimeDifference,
 	skipDifferentUsers,
+	skipDifferentVersionedSettings,
 };
 
 // MetaData fields are only included if requested
@@ -361,13 +372,10 @@ export function groupWorkflows<W extends WorkflowDiffBase = WorkflowDiffBase>(
 	const n = remaining.length;
 
 	const metaData = {
-		// check latest and an "average" workflow to get a somewhat accurate representation
-		// without counting through the entire history
+		// The newest version is never removed, so a pass over the survivors of a
+		// pass scores the same and removes nothing more.
 		workflowSizeScore: metaDataFields?.workflowSizeScore
-			? Math.max(
-					determineNodeParametersSize(workflows[Math.floor(workflows.length / 2)]),
-					determineNodeParametersSize(workflows[workflows.length - 1]),
-				)
+			? determineNodeParametersSize(workflows[workflows.length - 1])
 			: undefined,
 	} satisfies DiffMetaData;
 

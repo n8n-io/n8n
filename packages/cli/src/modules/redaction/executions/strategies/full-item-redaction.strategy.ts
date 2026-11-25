@@ -1,12 +1,8 @@
 import { Service } from '@n8n/di';
-import type {
-	ExecutionError,
-	INodeExecutionData,
-	IRedactedErrorInfo,
-	ITaskDataConnections,
-} from 'n8n-workflow';
+import type { INodeExecutionData, ITaskDataConnections } from 'n8n-workflow';
+import { redactExecutionError } from 'n8n-workflow';
 
-import type { RedactableExecution } from '@/executions/execution-redaction';
+import type { RedactableExecution } from '@n8n/backend-services';
 
 import type {
 	IExecutionRedactionStrategy,
@@ -28,9 +24,13 @@ export class FullItemRedactionStrategy implements IExecutionRedactionStrategy {
 
 		const reason = context.enforceDynCredRedaction
 			? 'dynamic_credentials'
-			: context.redactExecutionData === true
-				? 'user_requested'
-				: 'workflow_redaction_policy';
+			: context.enforceCredentialUsabilityRedaction
+				? 'credential_inaccessible'
+				: context.redactExecutionData === true
+					? 'user_requested'
+					: context.redactedBySubWorkflow
+						? 'sub_workflow_redaction_policy'
+						: 'workflow_redaction_policy';
 
 		for (const nodeName of Object.keys(runData)) {
 			for (const taskData of runData[nodeName]) {
@@ -41,7 +41,7 @@ export class FullItemRedactionStrategy implements IExecutionRedactionStrategy {
 					this.redactConnections(taskData.inputOverride, reason);
 				}
 				if (taskData.error) {
-					taskData.redactedError = this.redactError(taskData.error);
+					taskData.redactedError = redactExecutionError(taskData.error);
 					delete taskData.error;
 				}
 			}
@@ -49,13 +49,16 @@ export class FullItemRedactionStrategy implements IExecutionRedactionStrategy {
 
 		const resultData = execution.data.resultData;
 		if (resultData.error) {
-			resultData.redactedError = this.redactError(resultData.error);
+			resultData.redactedError = redactExecutionError(resultData.error);
 			delete resultData.error;
 		}
 
 		const executionData = execution.data.executionData;
 
 		if (executionData) {
+			for (const context of Object.values(executionData.contextData ?? {})) {
+				delete context.agentInvocations;
+			}
 			for (const executeData of executionData.nodeExecutionStack ?? []) {
 				if (executeData.data) {
 					this.redactConnections(executeData.data, reason);
@@ -74,6 +77,9 @@ export class FullItemRedactionStrategy implements IExecutionRedactionStrategy {
 			isRedacted: true,
 			reason,
 			canReveal: context.userCanReveal,
+			...(reason === 'credential_inaccessible' && {
+				credentialIds: [...context.inaccessibleCredentialIds],
+			}),
 		};
 	}
 
@@ -91,7 +97,7 @@ export class FullItemRedactionStrategy implements IExecutionRedactionStrategy {
 	}
 
 	private redactItem(item: INodeExecutionData, reason: string): void {
-		const redactedError = item.error ? this.redactError(item.error) : undefined;
+		const redactedError = item.error ? redactExecutionError(item.error) : undefined;
 		delete item.error;
 		item.json = {};
 		delete item.binary;
@@ -101,19 +107,5 @@ export class FullItemRedactionStrategy implements IExecutionRedactionStrategy {
 			reason,
 			...(redactedError !== undefined && { error: redactedError }),
 		};
-	}
-
-	/**
-	 * Extracts safe, non-PII technical metadata from any execution error.
-	 * Preserves: error name (type classification), HTTP status code from NodeApiError.
-	 * Omits: message, description, cause, context — may contain PII or credential data.
-	 */
-	private redactError(error: ExecutionError): IRedactedErrorInfo {
-		const result: IRedactedErrorInfo = { type: error.name };
-		if (error.name === 'NodeApiError') {
-			result.httpCode =
-				('httpCode' in error ? (error as { httpCode: string | null }).httpCode : null) ?? null;
-		}
-		return result;
 	}
 }

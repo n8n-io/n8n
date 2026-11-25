@@ -5,7 +5,10 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 const createMockHookFunctions = (
 	webhookData: Record<string, any>,
-	{ insecureSSL = false }: { insecureSSL?: boolean } = {},
+	{
+		insecureSSL = false,
+		resource = 'repository',
+	}: { insecureSSL?: boolean; resource?: 'repository' | 'organization' } = {},
 ) => ({
 	getNodeWebhookUrl: () => 'https://example.com/webhook',
 	getWorkflowStaticData: () => webhookData,
@@ -14,6 +17,7 @@ const createMockHookFunctions = (
 	getWorkflow: () => ({ id: 'wf-1', name: 'wf', active: true }),
 	logger: { warn: vi.fn(), info: vi.fn(), debug: vi.fn(), error: vi.fn() },
 	getNodeParameter: vi.fn().mockImplementation((name: string) => {
+		if (name === 'resource') return resource;
 		if (name === 'owner') return 'some-owner';
 		if (name === 'repository') return 'some-repo';
 		if (name === 'events') return ['push'];
@@ -87,6 +91,23 @@ describe('GithubTrigger Node', () => {
 			expect(result).toBe(true);
 		});
 
+		it('should look up an organization webhook on the organization', async () => {
+			mockThis = createMockHookFunctions(webhookData, { resource: 'organization' });
+			const apiRequestSpy = vi
+				.spyOn(GenericFunctions, 'githubApiRequest')
+				.mockResolvedValueOnce({ id: '123456' });
+
+			const trigger = new GithubTrigger();
+			const result = await trigger.webhookMethods.default.checkExists.call(mockThis);
+
+			expect(result).toBe(true);
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'GET',
+				expect.objectContaining({ value: '/orgs/some-owner/hooks/123456' }),
+				{},
+			);
+		});
+
 		it('should delete webhook data and return false when webhook is not found (404)', async () => {
 			vi.spyOn(GenericFunctions, 'githubApiRequest').mockRejectedValue({ httpCode: '404' });
 
@@ -147,12 +168,35 @@ describe('GithubTrigger Node', () => {
 
 			expect(apiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/repos/some-owner/some-repo/hooks',
+				expect.objectContaining({ value: '/repos/some-owner/some-repo/hooks' }),
 				expect.objectContaining({
 					config: expect.objectContaining({
 						secret: expect.any(String),
 					}),
 				}),
+			);
+		});
+
+		it('should create an organization webhook without a repository', async () => {
+			mockThis = createMockHookFunctions(webhookData, { resource: 'organization' });
+			const apiRequestSpy = vi
+				.spyOn(GenericFunctions, 'githubApiRequest')
+				.mockResolvedValueOnce({ id: '789', active: true });
+
+			const trigger = new GithubTrigger();
+			await trigger.webhookMethods.default.create.call(mockThis);
+
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				expect.objectContaining({ value: '/orgs/some-owner/hooks' }),
+				expect.objectContaining({
+					config: expect.objectContaining({ secret: expect.any(String) }),
+				}),
+			);
+			expect(mockThis.getNodeParameter).not.toHaveBeenCalledWith(
+				'repository',
+				expect.anything(),
+				expect.anything(),
 			);
 		});
 
@@ -173,12 +217,12 @@ describe('GithubTrigger Node', () => {
 			// Fetched by id, and without the create body, which holds the new secret.
 			expect(apiRequestSpy).toHaveBeenCalledWith(
 				'GET',
-				'/repos/some-owner/some-repo/hooks/123',
+				expect.objectContaining({ value: '/repos/some-owner/some-repo/hooks/123' }),
 				{},
 			);
 			expect(apiRequestSpy).toHaveBeenLastCalledWith(
 				'PATCH',
-				'/repos/some-owner/some-repo/hooks/123',
+				expect.objectContaining({ value: '/repos/some-owner/some-repo/hooks/123' }),
 				expect.objectContaining({
 					config: expect.objectContaining({ secret: expect.stringMatching(/^[0-9a-f]{64}$/) }),
 				}),
@@ -200,7 +244,7 @@ describe('GithubTrigger Node', () => {
 
 			expect(apiRequestSpy).toHaveBeenLastCalledWith(
 				'PATCH',
-				'/repos/some-owner/some-repo/hooks/123',
+				expect.objectContaining({ value: '/repos/some-owner/some-repo/hooks/123' }),
 				{
 					config: {
 						url: 'https://example.com/webhook',
@@ -228,7 +272,7 @@ describe('GithubTrigger Node', () => {
 
 			expect(apiRequestSpy).toHaveBeenLastCalledWith(
 				'PATCH',
-				'/repos/some-owner/some-repo/hooks/123',
+				expect.objectContaining({ value: '/repos/some-owner/some-repo/hooks/123' }),
 				expect.objectContaining({
 					config: expect.objectContaining({ insecure_ssl: '1' }),
 				}),
@@ -268,7 +312,7 @@ describe('GithubTrigger Node', () => {
 			expect(webhookData.webhookId).toBe('123');
 			expect(apiRequestSpy).toHaveBeenLastCalledWith(
 				'PATCH',
-				'/repos/some-owner/some-repo/hooks/123',
+				expect.objectContaining({ value: '/repos/some-owner/some-repo/hooks/123' }),
 				expect.objectContaining({ events: ['push'] }),
 			);
 		});
@@ -448,7 +492,7 @@ describe('GithubTrigger Node', () => {
 			);
 
 			await expect(trigger.webhookMethods.default.create.call(mockThis)).rejects.toThrow(
-				/Check that the repository exists/,
+				/Check that the repository or organization exists/,
 			);
 		});
 	});
@@ -483,7 +527,7 @@ describe('GithubTrigger Node', () => {
 			expect(webhookData.webhookSecret).toHaveLength(64);
 			expect(apiRequestSpy).toHaveBeenLastCalledWith(
 				'PATCH',
-				'/repos/some-owner/some-repo/hooks/424242',
+				expect.objectContaining({ value: '/repos/some-owner/some-repo/hooks/424242' }),
 				expect.objectContaining({
 					config: expect.objectContaining({ secret: webhookData.webhookSecret }),
 				}),

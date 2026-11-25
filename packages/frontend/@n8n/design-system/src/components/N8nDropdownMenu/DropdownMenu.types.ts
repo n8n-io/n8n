@@ -1,6 +1,7 @@
 import type { DropdownMenuContentProps } from 'reka-ui';
 import type { InjectionKey, Ref } from 'vue';
 
+import type { IconSize } from '../../types';
 import type { IconOrEmoji } from '../N8nIconPicker/types';
 
 /** Injection key for passing portalTarget to nested DropdownMenuItem sub-menus */
@@ -17,6 +18,11 @@ export const DropdownMenuSubMaxHeightKey: InjectionKey<Ref<string | undefined>> 
 
 /** Injection key for preserving the root menu width across portaled sub-menus. */
 export const DropdownMenuWidthKey: InjectionKey<Ref<string>> = Symbol('DropdownMenuWidth');
+
+/** Keeps content classes on nested submenus that render in separate portals. */
+export const DropdownMenuExtraPopperClassKey: InjectionKey<Ref<string | undefined>> = Symbol(
+	'DropdownMenuExtraPopperClass',
+);
 
 export interface DropdownMenuExternalNavigationController {
 	/** Handles a key for one visible menu level. */
@@ -76,6 +82,8 @@ export interface DropdownMenuExposed {
 	highlightFirstItem: () => void;
 	/** Handles menu navigation from an external text control. */
 	handleExternalKeydown: (event: KeyboardEvent) => boolean;
+	/** Moves focus to the rendered trigger element. */
+	focusTrigger: () => void;
 }
 
 export type DropdownMenuItemProps<T = string, D = never> = {
@@ -87,6 +95,8 @@ export type DropdownMenuItemProps<T = string, D = never> = {
 	label: string;
 	/** Icon or emoji displayed before the label */
 	icon?: IconOrEmoji;
+	/** Size of the leading icon. */
+	iconSize?: IconSize;
 	/** Whether the item is disabled */
 	disabled?: boolean;
 	/** Whether to show a separator above the item */
@@ -95,6 +105,8 @@ export type DropdownMenuItemProps<T = string, D = never> = {
 	checked?: boolean;
 	/** Keep the menu open after this item is selected (e.g. toggle rows). */
 	keepOpen?: boolean;
+	/** Prevent the menu from returning focus to its trigger after this item closes it. */
+	suppressCloseAutoFocus?: boolean;
 	/** Render as a non-interactive section header label instead of a selectable item. */
 	header?: boolean;
 	/** Whether to expose the item as a menu item checkbox */
@@ -134,6 +146,8 @@ export interface DropdownMenuProps<T = string, D = never> {
 	reference?: DropdownMenuContentProps['reference'];
 	/** When true (default), blocks interaction with the rest of the page while open (reka-ui sets pointer-events:none on body and locks scroll). */
 	modal?: boolean;
+	/** Prevents the menu from returning focus to its trigger when it closes. */
+	suppressCloseAutoFocus?: boolean;
 	/** Array of menu items to display */
 	items: Array<DropdownMenuItemProps<T, D>>;
 	/** The controlled open state of the dropdown. Can be bind as `v-model` */
@@ -160,7 +174,7 @@ export interface DropdownMenuProps<T = string, D = never> {
 	loading?: boolean;
 	/** Number of skeleton items to show when loading */
 	loadingItemCount?: number;
-	/** Additional CSS class for the dropdown popper */
+	/** Additional CSS class for the dropdown popper and its submenu poppers. */
 	extraPopperClass?: string;
 	/** Test id rendered on the dropdown trigger element */
 	dataTestId?: string;
@@ -194,7 +208,7 @@ export interface DropdownMenuEmits<T = string, D = never> {
 type SlotUiProps = { class: string };
 
 export interface DropdownMenuSlots<T = string, D = never> {
-	/** Custom trigger element (replaces default button) */
+	/** Replaces the default button with one focusable root that forwards attributes and listeners. */
 	trigger?: () => void;
 	/** Complete custom dropdown content (replaces item list) */
 	content?: () => void;

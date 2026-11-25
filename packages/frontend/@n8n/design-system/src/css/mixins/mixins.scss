@@ -57,21 +57,23 @@ $E: null;
 	@include scroll-bar;
 	scrollbar-color: transparent transparent;
 
-	&::-webkit-scrollbar-thumb {
-		background-color: transparent;
-	}
-
 	&:hover {
 		scrollbar-color: var.$scrollbar-background-color transparent;
-
-		&::-webkit-scrollbar-thumb {
-			background-color: var.$scrollbar-background-color;
-
-			&:hover {
-				background-color: var.$scrollbar-hover-background-color;
-			}
-		}
 	}
+}
+
+/** Set the grid size and dot colour. Set the dot diameter separately if needed. */
+@mixin dotted-background(
+	$size: var(--spacing--2xs),
+	$dot-color: var(--border-color),
+	$dot-size: var(--spacing--5xs)
+) {
+	background-image: radial-gradient(
+		circle,
+		$dot-color calc($dot-size / 2),
+		transparent calc($dot-size / 2)
+	);
+	background-size: $size $size;
 }
 
 @mixin scroll-mask($edge, $size: var(--spacing--sm)) {

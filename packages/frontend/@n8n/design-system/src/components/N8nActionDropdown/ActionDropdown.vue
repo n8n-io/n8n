@@ -9,6 +9,7 @@ import N8nDropdownMenu from '../N8nDropdownMenu/DropdownMenu.vue';
 import N8nIcon from '../N8nIcon';
 import N8nIconButton from '../N8nIconButton';
 import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
+import N8nText from '../N8nText';
 import type { ActionDropdownProps } from './ActionDropdown.types';
 
 const { t } = useI18n();
@@ -19,12 +20,13 @@ const props = withDefaults(defineProps<ActionDropdownProps<T>>(), {
 	placement: 'bottom',
 	activatorIcon: 'ellipsis',
 	activatorSize: 'medium',
-	iconSize: 'medium',
+	iconSize: 'large',
 	trigger: 'click',
 	teleported: true,
 	disabled: false,
 	maxHeight: '',
 	modal: true,
+	suppressCloseAutoFocus: false,
 });
 
 const $style = useCssModule();
@@ -55,8 +57,11 @@ const toMenuItem = (
 	testId: item.testId ?? getItemTestId(item.id),
 	label: item.label,
 	icon: item.icon ? { type: 'icon' as const, value: item.icon } : undefined,
+	iconSize: props.iconSize,
 	disabled: item.disabled,
 	divided: item.divided,
+	checked: item.checked,
+	destructive: item.variant === 'destructive',
 	class: getItemClasses(item),
 	data: item,
 	children: item.children?.map(toMenuItem),
@@ -65,6 +70,10 @@ const toMenuItem = (
 const items = computed((): Array<DropdownMenuItemProps<T, ActionDropdownItem<T>>> => {
 	return props.items.map(toMenuItem);
 });
+
+const hasDescription = (item: ActionDropdownItem<T>): boolean =>
+	!!item.description || !!item.children?.some(hasDescription);
+const hasDescriptions = computed(() => props.items.some(hasDescription));
 
 const emit = defineEmits<{
 	select: [action: T];
@@ -87,7 +96,6 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 	return {
 		[$style.itemContainer]: true,
 		[$style.disabled]: !!item.disabled,
-		[$style.destructive]: item.variant === 'destructive',
 		[$style.hasCustomStyling]: item.customClass !== undefined,
 		...(item.customClass !== undefined ? { [item.customClass]: true } : {}),
 	};
@@ -110,6 +118,7 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 			:disabled="disabled"
 			:teleported="teleported"
 			:modal="modal"
+			:suppress-close-auto-focus="suppressCloseAutoFocus"
 			:extra-popper-class="`${extraPopperClass ?? ''}`"
 			:max-height="maxHeight"
 			:width="width"
@@ -130,26 +139,33 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 					:aria-controls="dropdownId"
 				/>
 			</template>
-			<template #item-leading="slotProps">
-				<span
-					v-if="slotProps.item.icon?.type === 'icon'"
-					:class="[slotProps.ui.class, $style.icon]"
+			<template v-if="$slots.menuItem || hasDescriptions" #item-label="slotProps">
+				<N8nText
+					:class="slotProps.ui.class"
+					size="medium"
+					:color="slotProps.item.disabled ? 'text-xlight' : 'text-dark'"
 				>
-					<N8nIcon :icon="slotProps.item.icon.value" :size="iconSize" />
-				</span>
-			</template>
-			<template #item-label="slotProps">
-				<span :class="[slotProps.ui.class, $style.label]">
 					<slot name="menuItem" v-bind="slotProps.item.data as ActionDropdownItem<T>">
-						{{ slotProps.item.data?.label ?? slotProps.item.label }}
+						<span v-if="slotProps.item.data?.description" :class="$style.withDescription">
+							{{ slotProps.item.data.label }}
+							<span :class="$style.description">{{ slotProps.item.data.description }}</span>
+						</span>
+						<template v-else>{{ slotProps.item.data?.label ?? slotProps.item.label }}</template>
 					</slot>
-				</span>
+				</N8nText>
 			</template>
 			<template #item-trailing="slotProps">
-				<span :class="slotProps.ui.class">
+				<span
+					v-if="
+						slotProps.item.data?.badge ||
+						slotProps.item.data?.shortcut ||
+						(slotProps.item.checked && slotProps.item.children?.length)
+					"
+					:class="slotProps.ui.class"
+				>
+					<!-- DropdownMenu renders checkmarks only for leaf items. -->
 					<N8nIcon
-						v-if="slotProps.item.data?.checked"
-						:class="$style.checkIcon"
+						v-if="slotProps.item.checked && slotProps.item.children?.length"
 						icon="check"
 						:size="iconSize"
 					/>
@@ -158,7 +174,7 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 						:class="{ [$style.clickableBadge]: !!slotProps.item.data?.disabled }"
 						@click.stop="slotProps.item.data?.disabled && onBadgeClick(slotProps.item.id)"
 					>
-						<N8nBadge theme="primary" size="xsmall" v-bind="slotProps.item.data.badgeProps">
+						<N8nBadge variant="primary" size="xsmall" v-bind="slotProps.item.data.badgeProps">
 							{{ slotProps.item.data.badge }}
 						</N8nBadge>
 					</span>
@@ -188,16 +204,6 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 }
 
 .itemContainer {
-	display: flex;
-	align-items: center;
-	/* Matches the base N8nDropdownMenu item gap so icon-to-label spacing is
-	 * consistent across every menu in the app. */
-	gap: var(--spacing--2xs);
-	justify-content: space-between;
-	font-size: var(--font-size--2xs);
-	line-height: 18px;
-	padding: var(--spacing--3xs) var(--spacing--2xs);
-	min-width: fit-content;
 	&.disabled {
 		.shortcut {
 			opacity: 0.3;
@@ -209,38 +215,16 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 	}
 }
 
-/* Destructive items (delete, revoke, ...) turn danger-red on hover or keyboard
- * highlight: the icon and label both inherit the item color, so one rule
- * covers them, and the token adapts to light/dark themes on its own. */
-.destructive {
-	&:not([data-disabled]) {
-		&:hover,
-		&[data-highlighted],
-		&[aria-selected='true'] {
-			color: var(--color--danger);
-		}
-	}
-}
-
-.icon {
+.withDescription {
 	display: flex;
-	text-align: center;
-	flex-grow: 0;
-	flex-shrink: 0;
-
-	svg {
-		width: 1.2em !important;
-	}
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	white-space: normal;
 }
 
-.label {
-	flex-grow: 1;
-	flex-shrink: 1;
-}
-
-.checkIcon {
-	flex-grow: 0;
-	flex-shrink: 0;
+.description {
+	color: var(--text-color--subtler);
+	font-size: var(--font-size--3xs);
 }
 
 .shortcut {

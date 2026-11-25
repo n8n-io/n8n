@@ -1,9 +1,9 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import z from 'zod';
 
 import type { NodeCatalogService, SearchNodesOptions } from '@/node-catalog';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
-import type { Telemetry } from '@/telemetry';
 
 import { CODE_BUILDER_SEARCH_NODES_TOOL } from './constants';
 import { toN8nConnectCoverage } from '../../mcp-ai-gateway.helper';
@@ -16,6 +16,7 @@ import type {
 	ToolDefinition,
 	UserCalledMCPToolEventPayload,
 } from '../../mcp.types';
+import { trackAndRethrowToolError } from '../tool-error.utils';
 
 const inputSchema = {
 	queries: z
@@ -75,7 +76,7 @@ type SearchNodesToolDefinition = Omit<ToolDefinition<typeof inputSchema>, 'handl
 export const createSearchWorkflowNodesTool = (
 	user: User,
 	nodeCatalogService: NodeCatalogService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 	aiGatewayService: AiGatewayService,
 	/**
 	 * Offer verified community nodes that are not installed here, in a labelled
@@ -153,12 +154,7 @@ export const createSearchWorkflowNodesTool = (
 				structuredContent: structured,
 			};
 		} catch (error) {
-			telemetryPayload.results = {
-				success: false,
-				error: error instanceof Error ? error.message : String(error),
-			};
-			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-			throw error;
+			trackAndRethrowToolError(telemetry, telemetryPayload, error);
 		}
 	},
 });

@@ -9,7 +9,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeApiError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeApiError, requestPath } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { oldVersionNotice } from '@utils/descriptions';
@@ -103,7 +103,7 @@ export class GoogleBigQueryV1 implements INodeType {
 		loadOptions: {
 			async getProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { projects } = await googleApiRequest.call(this, 'GET', '/v2/projects');
+				const { projects } = await googleApiRequest.call(this, 'GET', requestPath`/v2/projects`);
 				for (const project of projects) {
 					returnData.push({
 						name: project.friendlyName as string,
@@ -118,7 +118,7 @@ export class GoogleBigQueryV1 implements INodeType {
 				const { datasets } = await googleApiRequest.call(
 					this,
 					'GET',
-					`/v2/projects/${projectId}/datasets`,
+					requestPath`/v2/projects/${projectId}/datasets`,
 				);
 				for (const dataset of datasets) {
 					returnData.push({
@@ -135,7 +135,7 @@ export class GoogleBigQueryV1 implements INodeType {
 				const { tables } = await googleApiRequest.call(
 					this,
 					'GET',
-					`/v2/projects/${projectId}/datasets/${datasetId}/tables`,
+					requestPath`/v2/projects/${projectId}/datasets/${datasetId}/tables`,
 				);
 				for (const table of tables) {
 					returnData.push({
@@ -201,7 +201,7 @@ export class GoogleBigQueryV1 implements INodeType {
 					responseData = await googleApiRequest.call(
 						this,
 						'POST',
-						`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}/insertAll`,
+						requestPath`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}/insertAll`,
 						body,
 					);
 
@@ -238,7 +238,7 @@ export class GoogleBigQueryV1 implements INodeType {
 					const { schema } = await googleApiRequest.call(
 						this,
 						'GET',
-						`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}`,
+						requestPath`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}`,
 						{},
 					);
 					fields = (schema.fields || []).map((field: IDataObject) => field.name);
@@ -258,7 +258,7 @@ export class GoogleBigQueryV1 implements INodeType {
 								this,
 								'rows',
 								'GET',
-								`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}/data`,
+								requestPath`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}/data`,
 								{},
 								qs,
 							);
@@ -267,7 +267,7 @@ export class GoogleBigQueryV1 implements INodeType {
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
-								`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}/data`,
+								requestPath`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}/data`,
 								{},
 								qs,
 							);

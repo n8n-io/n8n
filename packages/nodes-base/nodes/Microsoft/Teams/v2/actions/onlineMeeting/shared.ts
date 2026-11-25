@@ -1,5 +1,10 @@
 import { DateTime } from 'luxon';
-import type { IDataObject, IExecuteFunctions, IHttpRequestMethods } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IHttpRequestMethods,
+	RequestPath,
+} from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import {
@@ -20,6 +25,8 @@ const ACCESS_POLICY_DETAIL =
 const ORGANIZER_HINT = "Check that the 'Organizer' parameter is a user in the tenant";
 
 const GUID = /^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$/;
+
+export const isSet = (value: unknown) => value !== undefined && value !== null && value !== '';
 
 function isServicePrincipal(this: IExecuteFunctions): boolean {
 	return getTeamsCredentialType.call(this) === SERVICE_PRINCIPAL_AUTH;
@@ -85,7 +92,7 @@ export async function meetingsPath(
 	this: IExecuteFunctions,
 	i: number,
 	segments: MicrosoftGraphPathSegment[] = [],
-): Promise<string> {
+): Promise<RequestPath> {
 	const root: MicrosoftGraphPathSegment[] = isServicePrincipal.call(this)
 		? ['/v1.0/users/', { id: await resolveOrganizer.call(this, i) }, '/onlineMeetings']
 		: ['/v1.0/me/onlineMeetings'];
@@ -112,10 +119,13 @@ function rewriteAppOnlyError(
 	this: IExecuteFunctions,
 	error: unknown,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 ): unknown {
 	if (!isServicePrincipal.call(this) || !(error instanceof NodeApiError)) return error;
-	if (error.httpCode === '404' && (method === 'POST' || endpoint.endsWith('/onlineMeetings'))) {
+	if (
+		error.httpCode === '404' &&
+		(method === 'POST' || endpoint.value.endsWith('/onlineMeetings'))
+	) {
 		return new NodeOperationError(this.getNode(), 'Organizer not found', {
 			description: ORGANIZER_HINT,
 		});
@@ -126,7 +136,7 @@ function rewriteAppOnlyError(
 export async function meetingRequest(
 	this: IExecuteFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {

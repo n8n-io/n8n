@@ -1,9 +1,11 @@
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import { createPrivateKey } from 'crypto';
 import pick from 'lodash/pick';
 import type { INode, IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import type snowflake from 'snowflake-sdk';
+import snowflake from 'snowflake-sdk';
 
 import { routeBinaryProperties } from '@utils/binary';
 
@@ -108,16 +110,23 @@ export const getConnectionOptions = (credential: SnowflakeCredential, nodeVersio
 	return connectionOptions;
 };
 
-export async function connect(conn: snowflake.Connection) {
-	return await new Promise<void>((resolve, reject) => {
-		conn.connect((error) => (error ? reject(error) : resolve()));
-	});
+const rethrowAsNodeError =
+	(node: INode, itemIndex?: number) =>
+	(error: unknown): never => {
+		throw new NodeOperationError(node, ensureError(error), { itemIndex });
+	};
+
+export async function connect(credential: SnowflakeCredential, node: INode) {
+	return await new Promise<snowflake.Connection>((resolve, reject) => {
+		const conn = snowflake.createConnection(getConnectionOptions(credential, node.typeVersion));
+		conn.connect((error) => (error ? reject(error) : resolve(conn)));
+	}).catch(rethrowAsNodeError(node));
 }
 
-export async function destroy(conn: snowflake.Connection) {
+export async function destroy(conn: snowflake.Connection, node: INode) {
 	return await new Promise<void>((resolve, reject) => {
 		conn.destroy((error) => (error ? reject(error) : resolve()));
-	});
+	}).catch(rethrowAsNodeError(node));
 }
 
 export function escapeSnowflakeIdentifier(identifier: string): string {
@@ -179,7 +188,7 @@ export async function execute(
 			binds,
 			complete: (error, _, rows) => (error ? reject(error) : resolve(rows)),
 		});
-	});
+	}).catch(rethrowAsNodeError(node, itemIndex));
 }
 
 export async function prepareQueryResults(
@@ -211,4 +220,9 @@ export async function prepareQueryResults(
 		}
 	}
 	return returnData;
+}
+
+/** Build an error item that links to its input item. */
+export function toErrorItem(error: unknown, itemIndex: number): INodeExecutionData {
+	return { json: { error: getErrorMessage(error) }, pairedItem: { item: itemIndex } };
 }

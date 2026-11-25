@@ -1,10 +1,11 @@
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
-	ComputerUseChannel,
+	AiPreferenceScope,
 	InstanceAiAttachment,
 	InstanceAiBrowserCreateLinkResponse,
 	InstanceAiBrowserStatusResponse,
+	InstanceAiCloudBrowserLiveViewResponse,
 	InstanceAiEnsureThreadResponse,
 	InstanceAiSendMessageResponse,
 	InstanceAiConfirmRequest,
@@ -14,6 +15,8 @@ import type {
 	InstanceAiThreadOrigin,
 	InstanceAiThreadSource,
 	InstanceAiThreadArtifactsContext,
+	InstanceAiPreferenceCardEditResponse,
+	InstanceAiPreferenceCardUndoResponse,
 } from '@n8n/api-types';
 
 export interface InstanceAiThreadLaunchInput {
@@ -34,7 +37,7 @@ export async function postMessage(
 	handoffContext?: InstanceAiHandoffContext,
 	timeZone?: string,
 	pushRef?: string,
-	computerUseChannels?: ComputerUseChannel[],
+	browserUseAvailable?: boolean,
 	threadArtifacts?: InstanceAiThreadArtifactsContext,
 ): Promise<InstanceAiSendMessageResponse> {
 	return await makeRestApiRequest<InstanceAiSendMessageResponse>(
@@ -47,7 +50,7 @@ export async function postMessage(
 			...(handoffContext ? { context: handoffContext } : {}),
 			...(timeZone ? { timeZone } : {}),
 			...(pushRef ? { pushRef } : {}),
-			...(computerUseChannels ? { computerUseChannels } : {}),
+			...(browserUseAvailable !== undefined ? { browserUseAvailable } : {}),
 			...(threadArtifacts ? { threadArtifacts } : {}),
 		},
 	);
@@ -107,6 +110,57 @@ export async function postCancelTask(
 }
 
 /**
+ * GET /instance-ai/chat/:threadId/tasks/:taskId/cloud-browser-live-view
+ * The live view of a cloud browser task. The link lets anyone who has it control the browser,
+ * so keep it in memory only.
+ */
+export async function fetchCloudBrowserLiveView(
+	context: IRestApiContext,
+	threadId: string,
+	taskId: string,
+): Promise<InstanceAiCloudBrowserLiveViewResponse> {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/instance-ai/chat/${threadId}/tasks/${taskId}/cloud-browser-live-view`,
+	);
+}
+
+/**
+ * POST /instance-ai/chat/:threadId/tasks/:taskId/cloud-browser-take-over
+ * The user takes control of a cloud browser task's browser. The agent's calls wait for them.
+ */
+export async function postCloudBrowserTakeOver(
+	context: IRestApiContext,
+	threadId: string,
+	taskId: string,
+): Promise<void> {
+	await makeRestApiRequest(
+		context,
+		'POST',
+		`/instance-ai/chat/${threadId}/tasks/${taskId}/cloud-browser-take-over`,
+	);
+}
+
+/**
+ * POST /instance-ai/chat/:threadId/tasks/:taskId/cloud-browser-return-control
+ * The user gives the browser back to the agent, with what they changed.
+ */
+export async function postCloudBrowserReturnControl(
+	context: IRestApiContext,
+	threadId: string,
+	taskId: string,
+	note?: string,
+): Promise<void> {
+	await makeRestApiRequest(
+		context,
+		'POST',
+		`/instance-ai/chat/${threadId}/tasks/${taskId}/cloud-browser-return-control`,
+		note ? { note } : {},
+	);
+}
+
+/**
  * POST /instance-ai/confirm/:requestId -> 200 OK
  * Resolve a confirmation request (HITL). The request body is a discriminated
  * union on `kind`.
@@ -125,40 +179,11 @@ export async function postConfirmation(
 }
 
 /**
- * GET /instance-ai/credits -> { creditsQuota, creditsClaimed, quotaLocked }
- * Returns -1 quota when the proxy is disabled, and also for the activation-capped trial cohort,
- * whose balance is never shown — for them `quotaLocked` is the only usage signal.
+ * GET /assistant/credits -> { creditsQuota, creditsClaimed }
+ * Returns -1 quota when proxy is disabled.
  */
 export async function getInstanceAiCredits(context: IRestApiContext): Promise<InstanceAiCredits> {
-	return await makeRestApiRequest<InstanceAiCredits>(context, 'GET', '/instance-ai/credits');
-}
-
-/**
- * POST /instance-ai/gateway/create-link -> { token, command, expiresAt, ttlSeconds }
- * Generate a dynamic gateway token and pre-built CLI command.
- */
-export async function createGatewayLink(context: IRestApiContext): Promise<{
-	token: string;
-	command: string;
-	expiresAt: string | null;
-	ttlSeconds: number | null;
-}> {
-	return await makeRestApiRequest<{
-		token: string;
-		command: string;
-		expiresAt: string | null;
-		ttlSeconds: number | null;
-	}>(context, 'POST', '/instance-ai/gateway/create-link');
-}
-
-/**
- * POST /instance-ai/gateway/disconnect-session -> { ok }
- * Tear down the current user's gateway session so its tools are no longer
- * exposed to the agent. Does not change the user's localGatewayDisabled
- * preference.
- */
-export async function disconnectGatewaySession(context: IRestApiContext): Promise<void> {
-	await makeRestApiRequest(context, 'POST', '/instance-ai/gateway/disconnect-session');
+	return await makeRestApiRequest<InstanceAiCredits>(context, 'GET', '/assistant/credits');
 }
 
 /**
@@ -199,21 +224,49 @@ export async function disconnectBrowserSession(context: IRestApiContext): Promis
 }
 
 /**
- * GET /instance-ai/gateway/status -> { connected, connectedAt, directory, hostIdentifier, toolCategories }
- * Check whether the gateway daemon is currently connected.
+ * POST /instance-ai/threads/:threadId/preferences/:preferenceId/undo -> { ok, event }
+ * Deletes a preference the assistant saved in this run. The server appends a
+ * `preference-card` fact to the run and returns it, so the card renders the
+ * undone state without waiting for the stream to deliver the same fact.
  */
-export async function getGatewayStatus(context: IRestApiContext): Promise<{
-	connected: boolean;
-	connectedAt: string | null;
-	directory: string | null;
-	hostIdentifier: string | null;
-	toolCategories: Array<{ name: string; enabled: boolean; writeAccess?: boolean }>;
-}> {
-	return await makeRestApiRequest<{
-		connected: boolean;
-		connectedAt: string | null;
-		directory: string | null;
-		hostIdentifier: string | null;
-		toolCategories: Array<{ name: string; enabled: boolean; writeAccess?: boolean }>;
-	}>(context, 'GET', '/instance-ai/gateway/status');
+export async function undoPreferenceCard(
+	context: IRestApiContext,
+	threadId: string,
+	preferenceId: string,
+	body: { runId: string; toolCallId: string },
+): Promise<InstanceAiPreferenceCardUndoResponse> {
+	return await makeRestApiRequest<InstanceAiPreferenceCardUndoResponse>(
+		context,
+		'POST',
+		`/instance-ai/threads/${threadId}/preferences/${preferenceId}/undo`,
+		body,
+	);
+}
+
+/**
+ * POST /instance-ai/threads/:threadId/preferences/:preferenceId/edit -> { preference, event }
+ * Rewrites a preference the assistant saved in this run. The server appends a
+ * `preference-card` fact to the run and returns it, so the card renders the
+ * edited state without waiting for the stream to deliver the same fact.
+ */
+export async function editPreferenceCard(
+	context: IRestApiContext,
+	threadId: string,
+	preferenceId: string,
+	body: {
+		runId: string;
+		toolCallId: string;
+		content: string;
+		/** Absent on a text-only edit, which leaves the row in the scope it holds now. */
+		scope?: AiPreferenceScope;
+		projectId?: string | null;
+		userId?: string | null;
+	},
+): Promise<InstanceAiPreferenceCardEditResponse> {
+	return await makeRestApiRequest<InstanceAiPreferenceCardEditResponse>(
+		context,
+		'POST',
+		`/instance-ai/threads/${threadId}/preferences/${preferenceId}/edit`,
+		body,
+	);
 }

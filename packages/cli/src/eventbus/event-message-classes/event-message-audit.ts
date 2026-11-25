@@ -11,14 +11,18 @@ import type { AbstractEventPayload } from './abstract-event-payload';
 // --------------------------------------
 export interface EventPayloadAudit extends AbstractEventPayload {
 	msg?: JsonValue;
-	userId?: string;
+	/** `null` when the event names no user. */
+	userId?: string | null;
 	userEmail?: string;
 	firstName?: string;
 	lastName?: string;
+	/** Login of the service account that acted. Absent for people. */
+	loginId?: string;
 	credentialName?: string;
 	credentialType?: string;
-	credentialId?: string;
-	workflowId?: string;
+	credentialId?: string | null;
+	/** `null` when the event has no workflow row, such as a create that was blocked. */
+	workflowId?: string | null;
 	workflowName?: string;
 	projectId?: string | null;
 	projectName?: string;
@@ -35,7 +39,7 @@ export interface EventPayloadAudit extends AbstractEventPayload {
 	userAgent?: string;
 	redactionPolicy?: WorkflowSettings.RedactionPolicy;
 	rejectionReason?: string;
-	updatedBy?: string;
+	updatedBy?: string | null;
 	kind?: string;
 	scopeId?: string;
 	policyId?: string;

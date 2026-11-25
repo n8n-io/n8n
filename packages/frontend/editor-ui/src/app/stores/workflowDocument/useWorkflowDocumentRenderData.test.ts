@@ -8,7 +8,7 @@ import {
 	createTestWorkflow,
 	createTestWorkflowExecutionResponse,
 } from '@/__tests__/mocks';
-import { STICKY_NODE_TYPE } from '@/app/constants';
+import { NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/app/constants';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -210,6 +210,35 @@ describe('useWorkflowDocumentRenderData — fusion projections', () => {
 		expect(render?.type).toBe('default');
 	});
 
+	it('renders empty-group anchors as placeholders', () => {
+		const { docId } = setupWorkflow('wf-empty-group-anchor-placeholder', [
+			{
+				id: 'anchor',
+				name: 'No Operation, do nothing',
+				type: NO_OP_NODE_TYPE,
+				parameters: { emptyGroupAnchor: true },
+			},
+		]);
+		const { renderData } = createRenderData(docId);
+
+		const render = renderData.renderTypeByNodeId.get('anchor')?.value;
+		expect((render as CanvasNodeDefaultRender).options.placeholder).toBe(true);
+	});
+
+	it('does not render a regular No-Op as a placeholder', () => {
+		const { docId } = setupWorkflow('wf-regular-no-op-placeholder', [
+			{
+				id: 'regular-no-op',
+				name: 'No Operation, do nothing',
+				type: NO_OP_NODE_TYPE,
+			},
+		]);
+		const { renderData } = createRenderData(docId);
+
+		const render = renderData.renderTypeByNodeId.get('regular-no-op')?.value;
+		expect((render as CanvasNodeDefaultRender).options.placeholder).toBe(false);
+	});
+
 	it('returns a sticky-note render type for sticky nodes', () => {
 		const { docId } = setupWorkflow('wf-fusion-sticky', [
 			{ id: 's', name: 'Sticky', type: 'n8n-nodes-base.stickyNote' },
@@ -373,6 +402,86 @@ describe('useWorkflowDocumentRenderData — hasIssuesByNodeId precedence', () =>
 			],
 		});
 		const { renderData } = createRenderData(docId);
+
+		expect(renderData.hasIssuesByNodeId.get('a')?.value).toBe(false);
+	});
+});
+
+describe('useWorkflowDocumentRenderData — displayed execution pin data', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+	});
+
+	const alpha = () => createTestNode({ id: 'a', name: 'Alpha' });
+
+	// Mirrors what the editor keeps after a finished run: the execution stays
+	// displayed after the active id is cleared.
+	function displayFinishedExecution(
+		docId: WorkflowDocumentId,
+		pinData: Record<string, Array<{ json: Record<string, unknown> }>>,
+		startedAt: Date,
+	) {
+		const executionId = `exec-${docId}`;
+		useExecutionDataStore(createExecutionDataId(executionId)).setExecution(
+			createTestWorkflowExecutionResponse({
+				id: executionId,
+				finished: true,
+				status: 'success',
+				startedAt,
+				workflowData: createTestWorkflow({ nodes: [alpha()] }),
+				data: {
+					resultData: { runData: { Alpha: [{ executionStatus: 'success' }] }, pinData },
+				} as never,
+			}),
+		);
+		const executionStateStore = useWorkflowExecutionStateStore(docId);
+		executionStateStore.setActiveExecutionId(executionId);
+		executionStateStore.setActiveExecutionId(undefined);
+		expect(executionStateStore.isExecutionDataDisplayed).toBe(true);
+	}
+
+	it('returns the pin data that the displayed execution used', () => {
+		const { docId } = setupWorkflow('wf-exec-pin', [{ id: 'a', name: 'Alpha' }]);
+		displayFinishedExecution(docId, { Alpha: [{ json: { ok: true } }] }, new Date());
+		const { renderData } = createRenderData(docId);
+
+		expect(renderData.getDisplayedExecutionPinData('a')).toEqual([{ json: { ok: true } }]);
+	});
+
+	it('returns no execution pin data when no execution is displayed', () => {
+		const { docId } = setupWorkflow('wf-exec-pin-none', [{ id: 'a', name: 'Alpha' }]);
+		const { renderData } = createRenderData(docId);
+
+		expect(renderData.getDisplayedExecutionPinData('a')).toBeUndefined();
+	});
+
+	it('returns no execution pin data for a node that the user unpinned after the run', () => {
+		const { docId, doc } = setupWorkflow('wf-exec-pin-unpinned', [{ id: 'a', name: 'Alpha' }]);
+		doc.pinNodeData('Alpha', [{ json: { ok: true } }]);
+		displayFinishedExecution(
+			docId,
+			{ Alpha: [{ json: { ok: true } }] },
+			new Date(Date.now() - 60_000),
+		);
+		const { renderData } = createRenderData(docId);
+		const hasPinData = computed(() => !!renderData.getDisplayedExecutionPinData('a'));
+		expect(hasPinData.value).toBe(true);
+
+		doc.unpinNodeData('Alpha');
+		doc.touchPinnedDataLastRemovedAt('Alpha');
+
+		expect(hasPinData.value).toBe(false);
+	});
+
+	it('treats a node that the user pinned after the run as pinned', () => {
+		const { docId, doc } = setupWorkflow('wf-exec-pin-pinned', [
+			{ id: 'a', name: 'Alpha', issues: { typeUnknown: true } },
+		]);
+		displayFinishedExecution(docId, {}, new Date());
+		const { renderData } = createRenderData(docId);
+		expect(renderData.hasIssuesByNodeId.get('a')?.value).toBe(true);
+
+		doc.pinNodeData('Alpha', [{ json: { ok: true } }]);
 
 		expect(renderData.hasIssuesByNodeId.get('a')?.value).toBe(false);
 	});

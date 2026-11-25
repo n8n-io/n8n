@@ -1,6 +1,7 @@
 import type { RunningJobSummary } from '@n8n/api-types';
 import type Bull from 'bull';
 import type {
+	FailedBeforeStartMarker,
 	ExecutionError,
 	ExecutionStatus,
 	IDataObject,
@@ -21,7 +22,11 @@ export type JobData = {
 	executionId: string;
 	loadStaticData: boolean;
 	pushRef?: string;
+	/** The user who owns `pushRef`, so the worker can route push messages to that user. */
+	pushRefUserId?: string;
 	streamingEnabled?: boolean;
+	/** What on main awaits this run's outcome, see IWorkflowExecutionDataProcess. */
+	callerAwaitsOutcome?: 'none' | 'response' | 'completion';
 	restartExecutionId?: string;
 	projectId?: string;
 	projectName?: string;
@@ -90,9 +95,12 @@ export type JobFinishedProps = {
 	waitTill?: Date | null;
 	startedAt: Date;
 	stoppedAt: Date;
+	failedBeforeStart?: FailedBeforeStartMarker;
+	nodeTimeSavedMinutes?: number;
 };
 
 /** Message sent by worker to main to report a job has finished. */
+// oxlint-disable-next-line typescript/no-deprecated
 export type JobFinishedMessage = JobFinishedMessageV1 | JobFinishedMessageV2;
 
 /** @deprecated Old format without execution result details. */
@@ -126,6 +134,8 @@ export type McpResponseMessage = {
 	mcpType: 'service' | 'trigger';
 	sessionId: string;
 	messageId: string;
+	/** Name of the tool that produced `response`, for MCP Trigger tool calls. */
+	toolName?: string;
 	response: unknown;
 	workerId: string;
 };
@@ -146,6 +156,11 @@ export type AbortJobMessage = {
 
 export type RunningJob = RunningJobSummary & {
 	run: PCancelable<IRun>;
+	/**
+	 * Present only when the job may be suspended at worker shutdown. Returns
+	 * false while the run still owes its webhook caller a response.
+	 */
+	suspend?: () => boolean;
 };
 
 export type QueueRecoveryContext = {

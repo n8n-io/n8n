@@ -4,6 +4,7 @@ import { faker } from '@faker-js/faker';
 
 import { useFoldersStore } from './folders.store';
 import * as foldersApi from './folders.api';
+import * as workflowsEEApi from '@/app/api/workflows.ee';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import type { ChangeLocationSearchResponseItem } from './folders.types';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -70,6 +71,7 @@ describe('folders.store', () => {
 				{
 					skip: 0,
 					take: 100,
+					resourceType: 'workflow',
 					sortBy: 'updatedAt:desc',
 				},
 				{
@@ -97,6 +99,7 @@ describe('folders.store', () => {
 				{
 					skip: 0,
 					take: 100,
+					resourceType: 'workflow',
 					sortBy: 'updatedAt:desc',
 				},
 				{
@@ -134,6 +137,7 @@ describe('folders.store', () => {
 				{
 					skip: 0,
 					take: 100,
+					resourceType: 'workflow',
 					sortBy: 'updatedAt:desc',
 				},
 				{
@@ -149,6 +153,7 @@ describe('folders.store', () => {
 				{
 					skip: 100,
 					take: 100,
+					resourceType: 'workflow',
 					sortBy: 'updatedAt:desc',
 				},
 				{
@@ -176,6 +181,37 @@ describe('folders.store', () => {
 				},
 			});
 		});
+
+		it('fetches Agent destinations with the same name and subtree filters', async () => {
+			const folder = createFolder();
+			vi.spyOn(foldersApi, 'getProjectFolders').mockResolvedValue({ count: 1, data: [folder] });
+
+			const available = await foldersStore.fetchFoldersAvailableForMove(
+				projectId,
+				folderId,
+				{ name: 'Support' },
+				'agent',
+			);
+
+			expect(available).toEqual([{ ...folder, resource: 'folder' }]);
+			expect(foldersApi.getProjectFolders).toHaveBeenCalledWith(
+				rootStore.restApiContext,
+				projectId,
+				{ resourceType: 'agent', skip: 0, take: 100, sortBy: 'updatedAt:desc' },
+				{ excludeFolderIdAndDescendants: folderId, name: 'Support' },
+				selectFields,
+			);
+		});
+
+		it('stops paging if concurrent changes leave a page empty', async () => {
+			vi.spyOn(foldersApi, 'getProjectFolders').mockResolvedValue({ count: 1, data: [] });
+
+			await expect(
+				foldersStore.fetchFoldersAvailableForMove(projectId, folderId, {}, 'agent'),
+			).resolves.toEqual([]);
+
+			expect(foldersApi.getProjectFolders).toHaveBeenCalledOnce();
+		});
 	});
 
 	describe('fetchFolderUsedCredentials', () => {
@@ -187,7 +223,7 @@ describe('folders.store', () => {
 				id: faker.string.alphanumeric(10),
 				name: faker.lorem.words(2),
 				credentialType: faker.lorem.word(),
-				currentUserHasAccess: true,
+				currentUserCanUse: true,
 				sharedWithProjects: [],
 			};
 
@@ -200,6 +236,27 @@ describe('folders.store', () => {
 				rootStore.restApiContext,
 				projectId,
 				folderId,
+			);
+		});
+	});
+
+	describe('moveFolderToProject', () => {
+		it('should return the transfer result from the API', async () => {
+			const result = {
+				unpublishedWorkflows: [{ id: 'w1', name: 'Flow', unpublishReasons: [] }],
+			};
+			vi.spyOn(workflowsEEApi, 'moveFolderToProject').mockResolvedValue(result);
+
+			const returned = await foldersStore.moveFolderToProject('p1', 'f1', 'p2', 'f2', ['c1']);
+
+			expect(returned).toBe(result);
+			expect(workflowsEEApi.moveFolderToProject).toHaveBeenCalledWith(
+				rootStore.restApiContext,
+				'p1',
+				'f1',
+				'p2',
+				'f2',
+				['c1'],
 			);
 		});
 	});

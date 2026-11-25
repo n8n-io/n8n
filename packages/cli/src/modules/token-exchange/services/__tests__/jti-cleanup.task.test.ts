@@ -25,8 +25,7 @@ describe('JtiCleanupTask', () => {
 	it('should declare the configured cadence', () => {
 		expect(task.name).toBe('jti-cleanup');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 30 });
-		expect(task.effects).toBe('idempotent');
-		expect(task.durable).toBe(true);
+		expect(task.target).toEqual({ scope: 'cluster', scheduler: { retryOnFailure: true } });
 	});
 
 	describe('run', () => {
@@ -35,7 +34,7 @@ describe('JtiCleanupTask', () => {
 
 			await task.run(signal);
 
-			expect(jtiRepository.deleteExpiredBatch).toHaveBeenCalledWith(500);
+			expect(jtiRepository.deleteExpiredBatch).toHaveBeenCalledWith(500, {});
 			expect(jtiRepository.deleteExpiredBatch).toHaveBeenCalledTimes(1);
 		});
 

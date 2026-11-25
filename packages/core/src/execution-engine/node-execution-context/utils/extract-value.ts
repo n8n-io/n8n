@@ -1,7 +1,5 @@
 import get from 'lodash/get';
 import {
-	UnexpectedError,
-	UserError,
 	LoggerProxy,
 	NodeHelpers,
 	NodeOperationError,
@@ -17,6 +15,7 @@ import {
 	type INodeType,
 	type NodeParameterValueType,
 } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 
 function findPropertyFromParameterName(
 	parameterName: string,

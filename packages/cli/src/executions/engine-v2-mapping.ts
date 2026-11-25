@@ -1,27 +1,56 @@
-import type { ExecutionMode, ExecutionStatus } from '@n8n/engine';
-import type { ExecutionStatus as ExecutionStatusV1, WorkflowExecuteMode } from 'n8n-workflow';
+import type { ExecutionStatus, FindLatestExecutionRequest, ParentLink } from '@n8n/engine';
+import assert from 'node:assert';
+import {
+	WorkflowExecuteModeList,
+	type ExecutionStatus as ExecutionStatusV1,
+	type WorkflowExecuteMode,
+} from 'n8n-workflow';
 
 /** A status added later reads as `unknown` rather than being guessed at. */
 const V1_STATUS_BY_V2_STATUS = new Map<ExecutionStatus, ExecutionStatusV1>([
 	['queued', 'new'],
 	['running', 'running'],
+	['waiting', 'waiting'],
 	['completed', 'success'],
 	['failed', 'error'],
 	['cancelled', 'canceled'],
 ]);
 
-/** Anything not manual is a production run. */
-const V1_MODE_BY_V2_MODE = new Map<ExecutionMode, WorkflowExecuteMode>([
-	['manual', 'manual'],
-	['production', 'trigger'],
-]);
+const V1_MODE_BY_REPORTED_MODE = new Map<string, WorkflowExecuteMode>(
+	WorkflowExecuteModeList.map((mode) => [mode, mode]),
+);
 
 export function toV1Status(status: ExecutionStatus): ExecutionStatusV1 {
 	return V1_STATUS_BY_V2_STATUS.get(status) ?? 'unknown';
 }
 
-export function toV1Mode(mode: ExecutionMode): WorkflowExecuteMode {
-	return V1_MODE_BY_V2_MODE.get(mode) ?? 'trigger';
+/**
+ * A sub-execution inherits the host mode of its parent, because the engine
+ * copies the caller context when it starts one. v1 runs every sub-execution as
+ * `integrated`, so a parent link decides the mode before the host mode does.
+ */
+export function toV1Mode(execution: {
+	hostMode: string;
+	parent: ParentLink | null;
+}): WorkflowExecuteMode {
+	if (execution.parent) return 'integrated';
+
+	const v1Mode = V1_MODE_BY_REPORTED_MODE.get(execution.hostMode);
+	assert(v1Mode, `Unknown v1 mode ${execution.hostMode}`);
+	return v1Mode;
+}
+
+/**
+ * The data plane filter that matches the executions `toV1Mode` reports under
+ * `mode`: a parent link for `integrated`, the host mode and no parent link for
+ * every other mode, and nothing when no mode is asked for.
+ */
+export function toModeFilter(
+	mode: WorkflowExecuteMode | undefined,
+): Pick<FindLatestExecutionRequest, 'hostMode' | 'hasParent'> {
+	if (mode === undefined) return {};
+	if (mode === 'integrated') return { hasParent: true };
+	return { hostMode: mode, hasParent: false };
 }
 
 /**

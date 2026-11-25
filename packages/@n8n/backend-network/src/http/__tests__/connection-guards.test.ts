@@ -1,8 +1,8 @@
 import type { HttpsProxyAgent } from 'https-proxy-agent';
-import type http from 'node:http';
+import http from 'node:http';
 
 import { makeSsrfBridge } from '../../ssrf/__tests__/mock-ssrf-bridge';
-import { installProxyConnectionGuard } from '../connection-guards';
+import { installConnectionGuard, installProxyConnectionGuard } from '../connection-guards';
 
 type ConnectOpts = Parameters<HttpsProxyAgent<string>['connect']>[1];
 
@@ -74,5 +74,80 @@ describe('installProxyConnectionGuard', () => {
 
 		expect(connect).not.toHaveBeenCalled();
 		expect(bridge.validateConnectionHost).not.toHaveBeenCalled();
+	});
+});
+
+describe('installConnectionGuard', () => {
+	function guarded() {
+		const createConnection = vi.fn().mockReturnValue('SOCKET');
+		const target = { createConnection };
+		return { target, createConnection };
+	}
+
+	it('validates the target host and delegates when the policy allows it', () => {
+		const bridge = makeSsrfBridge();
+		const { target, createConnection } = guarded();
+		installConnectionGuard(target, bridge);
+
+		expect(target.createConnection({ host: 'target.example.com' })).toBe('SOCKET');
+
+		expect(bridge.validateConnectionHost).toHaveBeenCalledWith('target.example.com');
+		expect(createConnection).toHaveBeenCalled();
+	});
+
+	it('rejects a connection to a socket path without validating the unused host', () => {
+		const bridge = makeSsrfBridge();
+		const { target, createConnection } = guarded();
+		installConnectionGuard(target, bridge);
+
+		expect(() =>
+			target.createConnection({ host: 'target.example.com', socketPath: '/var/run/docker.sock' }),
+		).toThrow('Cannot open a connection to a socket path');
+
+		expect(createConnection).not.toHaveBeenCalled();
+		expect(bridge.validateConnectionHost).not.toHaveBeenCalled();
+	});
+
+	it('reports a socket path through the callback when the caller passes one', () => {
+		const bridge = makeSsrfBridge();
+		const { target, createConnection } = guarded();
+		installConnectionGuard(target, bridge);
+		const onConnect = vi.fn();
+
+		expect(
+			target.createConnection({ socketPath: '/var/run/docker.sock' }, onConnect),
+		).toBeUndefined();
+
+		expect(onConnect).toHaveBeenCalledWith(
+			expect.objectContaining({ message: 'Cannot open a connection to a socket path' }),
+		);
+		expect(createConnection).not.toHaveBeenCalled();
+	});
+});
+
+describe('installConnectionGuard on a real http.Agent', () => {
+	async function get(agent: http.Agent): Promise<string> {
+		return await new Promise((resolve, reject) => {
+			const req = http.get('http://target.example.com/x', { agent, timeout: 3000 }, (res) => {
+				let data = '';
+				res.on('data', (chunk) => (data += String(chunk)));
+				res.on('end', () => resolve(data));
+			});
+			req.on('error', reject);
+			req.on('timeout', () => {
+				req.destroy();
+				reject(new Error('timeout'));
+			});
+		});
+	}
+
+	it.each([
+		['ssrf active', () => makeSsrfBridge()],
+		['ssrf disabled', () => 'disabled' as const],
+	])('refuses a socket path Node puts in the connect options (%s)', async (_label, ssrf) => {
+		const agent = new http.Agent({ socketPath: '/tmp/backend-network.sock' } as http.AgentOptions);
+		installConnectionGuard(agent as unknown as { createConnection: never }, ssrf());
+
+		await expect(get(agent)).rejects.toThrow('Cannot open a connection to a socket path');
 	});
 });

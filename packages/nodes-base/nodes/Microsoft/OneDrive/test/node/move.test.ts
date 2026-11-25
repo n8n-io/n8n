@@ -76,7 +76,7 @@ describe('Test MicrosoftOneDrive, file/folder > move (destination resolution)', 
 		expect(mockApiRequest).toHaveBeenCalledTimes(1);
 		const [method, resource, body, , , , , scopeRoot] = mockApiRequest.mock.calls[0];
 		expect(method).toBe('PATCH');
-		expect(resource).toBe('/drive/items/item-1');
+		expect(String(resource)).toBe('/items/item-1');
 		expect((body as IDataObject).parentReference).toEqual({ id: 'dest-folder' });
 		// OAuth2 → no scope root threaded (transport will use /me)
 		expect(scopeRoot).toBeUndefined();
@@ -97,12 +97,12 @@ describe('Test MicrosoftOneDrive, file/folder > move (destination resolution)', 
 		expect(mockApiRequest).toHaveBeenCalledTimes(1);
 		const [method, resource, body, , , , , scopeRoot] = mockApiRequest.mock.calls[0];
 		expect(method).toBe('PATCH');
-		expect(resource).toBe('/drive/items/item-1');
+		expect(String(resource)).toBe('/items/item-1');
 		expect((body as IDataObject).parentReference).toEqual({
 			id: 'dest-folder',
 			driveId: 'b!targetdrive',
 		});
-		expect(scopeRoot).toBe('/drives/b!targetdrive');
+		expect(String(scopeRoot)).toBe('/drives/b!targetdrive');
 	});
 
 	it('SP with Access As: User: resolves the scope drive once via GET then PATCH, cached across items', async () => {
@@ -116,7 +116,7 @@ describe('Test MicrosoftOneDrive, file/folder > move (destination resolution)', 
 		);
 		// first call resolves the default drive id; subsequent are PATCHes
 		mockApiRequest.mockImplementation(async (_method, resource) => {
-			if (resource === '/drive') return { id: 'b!resolved' };
+			if (String(resource) === '') return { id: 'b!resolved' };
 			return { id: 'moved-item' };
 		});
 
@@ -124,13 +124,13 @@ describe('Test MicrosoftOneDrive, file/folder > move (destination resolution)', 
 
 		// 2 items → ONE resolution GET (cached) + 2 PATCHes = 3 calls
 		expect(mockApiRequest).toHaveBeenCalledTimes(3);
-		const getCalls = mockApiRequest.mock.calls.filter((c) => c[1] === '/drive');
+		const getCalls = mockApiRequest.mock.calls.filter((c) => String(c[1]) === '');
 		expect(getCalls).toHaveLength(1);
 		// the GET is scoped under the chosen user and selects only id.
 		// positional args: [method, resource, body, qs, uri, headers, option, driveScopeRoot]
 		expect(getCalls[0][0]).toBe('GET');
 		expect(getCalls[0][3]).toEqual({ $select: 'id' });
-		expect(getCalls[0][7]).toBe('/users/jane%40contoso.com');
+		expect(String(getCalls[0][7])).toBe('/users/jane@contoso.com');
 		// both PATCHes carry the resolved scope drive id
 		const patchCalls = mockApiRequest.mock.calls.filter((c) => c[0] === 'PATCH');
 		expect(patchCalls).toHaveLength(2);
@@ -152,7 +152,7 @@ describe('Test MicrosoftOneDrive, file/folder > move (destination resolution)', 
 		);
 		// resolution GET returns no id
 		mockApiRequest.mockImplementation(async (_method, resource) => {
-			if (resource === '/drive') return {};
+			if (String(resource) === '') return {};
 			return { id: 'moved-item' };
 		});
 
@@ -164,11 +164,11 @@ describe('Test MicrosoftOneDrive, file/folder > move (destination resolution)', 
 		expect(patchCalls).toHaveLength(0);
 	});
 
-	it('encodes a traversal-style item id in the URL path (.. is escaped)', async () => {
+	it('encodes an item id containing a slash in the URL path', async () => {
 		mockExecuteFunctions.getNodeParameter.mockImplementation(
 			buildParams({
 				authentication: 'microsoftOneDriveOAuth2Api',
-				fileId: '../secret',
+				fileId: 'a/secret',
 				destinationFolderId: 'dest-folder',
 			}),
 		);
@@ -176,7 +176,7 @@ describe('Test MicrosoftOneDrive, file/folder > move (destination resolution)', 
 		await microsoftOneDrive.execute.call(mockExecuteFunctions);
 
 		const [, resource] = mockApiRequest.mock.calls[0];
-		expect(resource).toBe('/drive/items/..%2Fsecret');
+		expect(String(resource)).toBe('/items/a%2Fsecret');
 	});
 
 	it('applies an optional rename-on-move via additionalFields.name', async () => {
@@ -208,7 +208,7 @@ describe('Test MicrosoftOneDrive, file/folder > move (destination resolution)', 
 
 		const [method, resource] = mockApiRequest.mock.calls[0];
 		expect(method).toBe('PATCH');
-		expect(resource).toBe('/drive/items/folder-9');
+		expect(String(resource)).toBe('/items/folder-9');
 	});
 
 	it('routes a failing move item to output and still moves a valid one under Continue On Fail', async () => {
@@ -228,14 +228,14 @@ describe('Test MicrosoftOneDrive, file/folder > move (destination resolution)', 
 			},
 		);
 		mockApiRequest.mockImplementation(async (_method, resource) => {
-			if (resource === '/drive/items/bad-item') throw new Error('Graph 404');
+			if (String(resource) === '/items/bad-item') throw new Error('Graph 404');
 			return { id: 'moved-item' };
 		});
 
 		const result = await microsoftOneDrive.execute.call(mockExecuteFunctions);
 
 		// the valid item PATCHed; the failing one surfaced as an error row
-		const patchCalls = mockApiRequest.mock.calls.filter((c) => c[1] === '/drive/items/good-item');
+		const patchCalls = mockApiRequest.mock.calls.filter((c) => String(c[1]) === '/items/good-item');
 		expect(patchCalls).toHaveLength(1);
 		expect(result[0][1]).toEqual({ error: 'Graph 404' });
 	});
@@ -279,7 +279,7 @@ describe('Test MicrosoftOneDrive, file/folder > move (destination resolution)', 
 		expect(mockApiRequest).toHaveBeenCalledTimes(1);
 		const [method, resource, body] = mockApiRequest.mock.calls[0];
 		expect(method).toBe('PATCH');
-		expect(resource).toBe('/drive/items/item-1');
+		expect(String(resource)).toBe('/items/item-1');
 		// rename-only: a name, no parentReference
 		expect((body as IDataObject).name).toBe('renamed.txt');
 		expect((body as IDataObject).parentReference).toBeUndefined();

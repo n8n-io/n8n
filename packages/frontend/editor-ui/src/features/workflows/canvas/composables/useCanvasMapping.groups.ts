@@ -1,4 +1,4 @@
-import type { ExecutionStatus, IWorkflowGroup } from 'n8n-workflow';
+import { getEmptyGroupAnchor, type ExecutionStatus, type IWorkflowGroup } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type {
 	BoundingBox,
@@ -9,15 +9,17 @@ import type {
 	NodeExecutionSnapshot,
 } from '../canvas.types';
 import {
-	CANVAS_NODE_GROUP_HANDLE_LEFT,
-	CANVAS_NODE_GROUP_HANDLE_RIGHT,
+	CANVAS_NODE_GROUP_INPUT_HANDLE,
+	CANVAS_NODE_GROUP_OUTPUT_HANDLE,
 	CANVAS_NODE_GROUP_TYPE,
 	createCanvasGroupNodeId,
 } from '../canvas.types';
 import {
+	FREE_STICKY_Z_INDEX_OFFSET,
 	GROUP_HEADER_HEIGHT,
 	GROUP_HEADER_WIDTH_COLLAPSED,
 	GROUP_NODE_Z_INDEX_COLLAPSED,
+	GROUP_NODE_Z_INDEX_EMPTY_COLLAPSED,
 	GROUP_NODE_Z_INDEX_EXPANDED,
 	GROUP_PADDING_X,
 	GROUP_PADDING_Y_BOTTOM,
@@ -156,6 +158,7 @@ const GROUP_STATUS_PRIORITY: readonly GroupExecutionStatus[] = [
 	'running',
 	'error',
 	'issues',
+	'setup',
 	'warning',
 ];
 
@@ -163,8 +166,9 @@ const IDLE_STATUSES: readonly ExecutionStatus[] = ['new', 'unknown', 'canceled']
 
 /**
  * Classify a single member for the group rollup by this priority:
- * waiting > running > error > issues > warning > success > idle.
- * Validation issues are kept distinct from execution errors.
+ * waiting > running > error > issues > setup > warning > success > idle.
+ * Validation issues are kept distinct from execution errors. Missing
+ * credentials are "setup", which matches the key icon on the member node.
  * Other is an active-but-unhandled status that must block a misleading success.
  * Idle statuses return undefined (they neither paint nor veto).
  */
@@ -175,7 +179,7 @@ function classifyNodeForGroup(
 	if (snapshot.waiting || status === 'waiting') return 'waiting';
 	if (snapshot.running || snapshot.waitingForNext) return 'running';
 	if (snapshot.hasExecutionError) return 'error';
-	if (snapshot.hasValidationError) return 'issues';
+	if (snapshot.hasValidationError) return snapshot.needsCredentialSetup ? 'setup' : 'issues';
 	if (snapshot.dirty) return 'warning';
 	if (status === 'success') return 'success';
 	if (status === undefined || IDLE_STATUSES.includes(status)) return undefined;
@@ -234,6 +238,7 @@ export function mapGroupsToVueFlowNodes({
 		const memberNodes = group.nodeIds
 			.map(getNodeById)
 			.filter((node): node is INodeUi => node !== undefined);
+		const isEmptyGroup = getEmptyGroupAnchor(group, memberNodes) !== undefined;
 		// Stickies can't be disabled, so the deactivated state is driven by
 		// connectable members only — the length guard keeps a sticky-only group
 		// (possible after its last connectable node is deleted) from reading as
@@ -243,6 +248,7 @@ export function mapGroupsToVueFlowNodes({
 			group,
 			nodesRect,
 			isCollapsed: collapsed,
+			isEmptyGroup,
 			executionStatus: aggregateGroupExecution(group.nodeIds, getNodeExecutionSnapshot),
 			allNodesDisabled:
 				connectableMembers.length > 0 && connectableMembers.every((node) => node.disabled === true),
@@ -261,14 +267,27 @@ export function mapGroupsToVueFlowNodes({
 			// The title bar stands in for the whole group: selecting it selects
 			// every member node (see useCanvasNodeGroupSelection).
 			selectable: true,
-			connectable: false,
+			connectable: isEmptyGroup && collapsed && !readOnly,
 			// Below member nodes and (when expanded) below stickies — see the
 			// stacking contract in canvasNodeGroups.constants.ts.
-			zIndex: collapsed ? GROUP_NODE_Z_INDEX_COLLAPSED : GROUP_NODE_Z_INDEX_EXPANDED,
+			zIndex: collapsed
+				? isEmptyGroup
+					? GROUP_NODE_Z_INDEX_EMPTY_COLLAPSED
+					: GROUP_NODE_Z_INDEX_COLLAPSED
+				: GROUP_NODE_Z_INDEX_EXPANDED,
 			data,
 		});
 	}
 	return out;
+}
+
+/**
+ * Free stickies drop below expanded groups; group members keep their overlap
+ * z-index from `useWorkflowDocumentRenderData`. See the stacking contract in
+ * canvasNodeGroups.constants.ts.
+ */
+export function getStickyZIndex(overlapZIndex: number, isGroupMember: boolean): number {
+	return isGroupMember ? overlapZIndex : overlapZIndex + FREE_STICKY_Z_INDEX_OFFSET;
 }
 
 /**
@@ -289,8 +308,8 @@ export function buildCollapsedGroupByNodeId(
 }
 
 /**
- * Visually remap collapsed-group connections to the group header handles
- * (left / right) so VueFlow can draw them while the member nodes are hidden.
+ * Visually remap collapsed-group connections to the group header input/output
+ * handles so VueFlow can draw them while the member nodes are hidden.
  * Connections fully inside a collapsed group are dropped.
  * External-only connections pass through unchanged.
  *
@@ -326,9 +345,9 @@ export function remapCollapsedGroupConnections(
 
 		const remapped = {
 			source: sourceGroup ? createCanvasGroupNodeId(sourceGroup.id) : conn.source,
-			sourceHandle: sourceGroup ? CANVAS_NODE_GROUP_HANDLE_RIGHT : conn.sourceHandle,
+			sourceHandle: sourceGroup ? CANVAS_NODE_GROUP_OUTPUT_HANDLE : conn.sourceHandle,
 			target: targetGroup ? createCanvasGroupNodeId(targetGroup.id) : conn.target,
-			targetHandle: targetGroup ? CANVAS_NODE_GROUP_HANDLE_LEFT : conn.targetHandle,
+			targetHandle: targetGroup ? CANVAS_NODE_GROUP_INPUT_HANDLE : conn.targetHandle,
 		};
 
 		const id = createCanvasConnectionId(remapped);

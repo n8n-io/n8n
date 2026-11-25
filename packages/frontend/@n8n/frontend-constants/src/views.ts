@@ -11,7 +11,7 @@
  *
  * The repo's default lint bans raw enums in favor of `const enum` for runtime
  * overhead; that guidance is inverted here because `const enum` is precisely what
- * breaks dist consumption. The `no-restricted-syntax` rule (and the camelCase
+ * breaks dist consumption. The `no-raw-enum` rule (and the camelCase
  * naming-convention rule, since view identifiers are UPPER_CASE by convention)
  * are relaxed for this file in `eslint.config.mjs`.
  *
@@ -46,6 +46,7 @@ export enum VIEWS {
 	LDAP_SETTINGS = 'LdapSettings',
 	PERSONAL_SETTINGS = 'PersonalSettings',
 	SECURITY_SETTINGS = 'SecuritySettings',
+	SECURITY_WORKFLOW_REVIEW_INSTANCE_SETTINGS = 'SecurityWorkflowReviewInstanceSettings',
 	API_SETTINGS = 'APISettings',
 	NOT_FOUND = 'NotFoundView',
 	COMMUNITY_NODES = 'CommunityNodes',
@@ -58,6 +59,7 @@ export enum VIEWS {
 	USAGE = 'Usage',
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	SSO_SETTINGS = 'SSoSettings',
+	AUTHENTICATION_SETTINGS = 'AuthenticationSettings',
 	ENCRYPTION_KEYS_SETTINGS = 'EncryptionKeysSettings',
 	EXTERNAL_SECRETS_SETTINGS = 'ExternalSecretsSettings',
 	SAML_ONBOARDING = 'SamlOnboarding',
@@ -98,5 +100,8 @@ export enum VIEWS {
 	RESOLVERS = 'Resolvers',
 	SETTINGS_CONTEXT = 'SettingsContext',
 	SETTINGS_CONTEXT_PREFERENCES = 'SettingsContextPreferences',
+	SETTINGS_CONTEXT_SKILLS = 'SettingsContextSkills',
+	SETTINGS_CONTEXT_COLLECTIONS = 'SettingsContextCollections',
+	KNOWLEDGE_COLLECTION = 'KnowledgeCollection',
 	RESOURCE_CENTER = 'ResourceCenter',
 }
