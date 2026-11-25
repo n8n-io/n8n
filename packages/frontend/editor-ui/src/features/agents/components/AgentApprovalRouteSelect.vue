@@ -2,15 +2,17 @@
 import { computed, ref, watch } from 'vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { HUMAN_REVIEW_MODULE } from '@n8n/constants';
-import { N8nIcon, N8nTooltip, type DropdownMenuItemProps } from '@n8n/design-system';
+import { N8nIcon, N8nSettingsRowGroup } from '@n8n/design-system';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { useI18n } from '@n8n/i18n';
 import type { AgentApprovalRoute, AgentHitlConfiguration } from '@n8n/api-types';
 import type { AgentHitlContext } from './agent-hitl.types';
+import { approvalName, type ApprovalDestination } from '../utils/approvalDestination';
+import { hitlToolKeys } from '../utils/hitlConfiguration';
+import AgentApprovalDestinationMenu from './AgentApprovalDestinationMenu.vue';
 import AgentPillField from './AgentPillField.vue';
-import AgentChipButton from './AgentChipButton.vue';
 import AgentToolConfigApprovalSetting from './AgentToolConfigApprovalSetting.vue';
 import AgentHitlConfigurationModal from './AgentHitlConfigurationModal.vue';
-import { hitlToolKeys } from '../utils/hitlConfiguration';
 
 const props = withDefaults(
 	defineProps<{
@@ -21,7 +23,6 @@ const props = withDefaults(
 		embedded?: boolean;
 		label?: string;
 		approvalRequired?: boolean;
-		/** Key of the tool or MCP server that this route belongs to. */
 		toolKey?: string;
 	}>(),
 	{ approvalRequired: undefined },
@@ -31,11 +32,17 @@ const emit = defineEmits<{
 	'update:approvalRequired': [value: boolean];
 }>();
 const i18n = useI18n();
-const label = computed(() => props.label ?? i18n.baseText('agents.hitl.route'));
+const label = computed(
+	() =>
+		props.label ??
+		i18n.baseText(
+			props.approvalRequired === undefined ? 'agents.hitl.mcpRoute' : 'agents.hitl.route',
+		),
+);
 const enabled = computed(() => useSettingsStore().isAgentModuleActive(HUMAN_REVIEW_MODULE));
-const modalOpen = ref(false);
+const group = computed(() => (props.embedded ? 'div' : N8nSettingsRowGroup));
 const editing = ref<AgentHitlConfiguration>();
-const open = ref(false);
+const expanded = ref(false);
 const configurations = computed(() => props.context.getConfig()?.hitlConfigurations ?? []);
 const selectedIds = computed(() =>
 	props.modelValue?.type === 'configuration' ? props.modelValue.configurationIds : [],
@@ -45,172 +52,168 @@ const selected = computed(() =>
 		const configuration = configurations.value.find((entry) => entry.id === id);
 		return {
 			value: id,
-			label: configuration?.name ?? id,
+			label: configuration ? approvalName(configuration) : id,
 			icon: configuration?.method === 'workflow' ? ('workflow' as const) : configuration?.channel,
-			invalid: !configuration,
 			editable: !!configuration,
+			invalid: !configuration,
 		};
 	}),
 );
-const items = computed<Array<DropdownMenuItemProps<string>>>(() => [
-	{
-		id: '__create_review__',
-		label: i18n.baseText('agents.hitl.create'),
-		icon: { type: 'icon', value: 'plus' },
-		suppressCloseAutoFocus: true,
-	},
-	...configurations.value
-		.filter((configuration) => !selectedIds.value.includes(configuration.id))
-		.map((configuration, index) => ({
-			id: configuration.id,
-			label: configuration.name,
-			icon: {
-				type: 'icon' as const,
-				value: configuration.method === 'workflow' ? ('workflow' as const) : configuration.channel,
-			},
-			divided: index === 0,
-		})),
-]);
-function updateApprovalRequired(value: boolean) {
-	if (!props.disabled) emit('update:approvalRequired', value);
-}
 
 function update(ids: string[]) {
-	if (props.disabled) return;
-	emit(
-		'update:modelValue',
-		ids.length ? { type: 'configuration', configurationIds: ids } : undefined,
-	);
+	if (!props.disabled)
+		emit(
+			'update:modelValue',
+			ids.length ? { type: 'configuration', configurationIds: ids } : undefined,
+		);
 }
-function select(value: unknown) {
-	if (props.disabled) return;
-	if (value === '__create_review__') {
-		open.value = false;
-		editing.value = undefined;
-		modalOpen.value = true;
-		return;
-	}
-	if (typeof value !== 'string' || !configurations.value.some((entry) => entry.id === value))
-		return;
-	if (!selectedIds.value.includes(value)) update([...selectedIds.value, value]);
-	open.value = false;
+function attach(id: string) {
+	if (!selectedIds.value.includes(id)) update([...selectedIds.value, id]);
 }
 function remove(id: string) {
 	update(selectedIds.value.filter((value) => value !== id));
 }
-function edit(id: string) {
-	const configuration = configurations.value.find((entry) => entry.id === id);
-	if (!configuration || props.disabled) return;
-	editing.value = configuration;
-	modalOpen.value = true;
+function add(destination: ApprovalDestination) {
+	if (props.disabled) return;
+	const configuration = { ...destination, id: generateNanoId() };
+	props.context.saveConfiguration(configuration);
+	attach(configuration.id);
 }
 function save(configuration: AgentHitlConfiguration, toolKeys?: string[]) {
 	if (props.disabled) return;
 	props.context.saveConfiguration(configuration, toolKeys);
-	// The modal's Tools selection decides membership when it lists this tool.
-	const toolKey = props.toolKey;
-	const listed = !!toolKey && hitlToolKeys(props.context.getConfig()).includes(toolKey);
-	const attached = !toolKeys || !toolKey || !listed || toolKeys.includes(toolKey);
-	const isSelected = selectedIds.value.includes(configuration.id);
-	if (attached && !isSelected) update([...selectedIds.value, configuration.id]);
-	else if (!attached && isSelected) remove(configuration.id);
-	modalOpen.value = false;
+	const key = props.toolKey;
+	if (
+		toolKeys &&
+		key &&
+		hitlToolKeys(props.context.getConfig()).includes(key) &&
+		!toolKeys.includes(key)
+	)
+		remove(configuration.id);
+	editing.value = undefined;
 }
 watch(
+	() => props.approvalRequired,
+	(value) => {
+		if (!value) expanded.value = false;
+	},
+);
+watch(
 	() => props.disabled,
-	(disabled) => {
-		if (disabled) {
-			open.value = false;
-			modalOpen.value = false;
-		}
+	(value) => {
+		if (value) editing.value = undefined;
 	},
 );
 </script>
 
 <template>
-	<div v-if="enabled" data-testid="agent-approval-route">
-		<AgentPillField
-			v-model:open="open"
-			:label="label"
-			:embedded="embedded"
-			:add-label="i18n.baseText('agents.hitl.addReview')"
-			:show-items="approvalRequired !== false"
-			:pills="selected"
-			:items="items"
-			:disabled="disabled"
-			test-id="agent-review"
-			@select="select"
-			@remove="remove"
-			@edit="edit"
-		>
-			<template #leading-pill>
-				<AgentChipButton
-					:clickable="false"
-					:deactivated="disabled"
-					data-testid="agent-review-requester"
+	<div>
+		<component :is="group" v-if="enabled" :class="$style.group" data-testid="agent-approval-route">
+			<AgentToolConfigApprovalSetting
+				v-if="approvalRequired !== undefined"
+				:model-value="approvalRequired"
+				:disabled="disabled"
+				:class="$style.toggle"
+				@update:model-value="emit('update:approvalRequired', $event)"
+			/>
+			<div v-if="approvalRequired !== false" :class="{ [$style.divider]: approvalRequired }">
+				<button
+					type="button"
+					:class="$style.trigger"
+					:aria-expanded="expanded"
+					data-testid="agent-approval-expand"
+					@click="expanded = !expanded"
 				>
-					<span :class="$style.requester">
-						{{ i18n.baseText('agents.hitl.useDefault') }}
-						<N8nTooltip
-							as-child
-							:content="i18n.baseText('agents.hitl.askUserHelp')"
-							:teleported="false"
-						>
-							<button
-								type="button"
-								:class="$style.info"
-								:aria-label="i18n.baseText('agents.hitl.askUserHelp')"
-							>
-								<N8nIcon icon="info" size="small" />
-							</button>
-						</N8nTooltip>
+					<span>
+						<span :class="$style.label">{{ label }}</span>
+						<span :class="$style.subtitle">{{ i18n.baseText('agents.hitl.destinationHint') }}</span>
 					</span>
-				</AgentChipButton>
-			</template>
-			<template v-if="approvalRequired !== undefined" #header>
-				<AgentToolConfigApprovalSetting
-					:model-value="approvalRequired"
+					<N8nIcon :icon="expanded ? 'chevron-up' : 'chevron-down'" />
+				</button>
+				<AgentPillField
+					v-if="expanded"
+					embedded
+					hide-label
+					:label="label"
+					:add-label="i18n.baseText('agents.hitl.addReview')"
+					:pills="selected"
+					:items="[]"
 					:disabled="disabled"
-					@update:model-value="updateApprovalRequired"
-				/>
-			</template>
-		</AgentPillField>
+					test-id="agent-review"
+					@edit="editing = configurations.find((entry) => entry.id === $event)"
+					@remove="remove"
+				>
+					<template #add>
+						<AgentApprovalDestinationMenu
+							:context="context"
+							:project-id="projectId"
+							:disabled="disabled"
+							:exclude-ids="selectedIds"
+							existing
+							:label="i18n.baseText('agents.hitl.addReview')"
+							test-id="agent-review-add"
+							@select="add"
+							@attach="attach"
+						/>
+					</template>
+				</AgentPillField>
+			</div>
+		</component>
+		<AgentToolConfigApprovalSetting
+			v-else-if="approvalRequired !== undefined"
+			:model-value="approvalRequired"
+			:disabled="disabled"
+			@update:model-value="emit('update:approvalRequired', $event)"
+		/>
 		<AgentHitlConfigurationModal
-			v-if="modalOpen"
+			v-if="editing"
 			:configuration="editing"
 			hide-remove
 			:context="context"
 			:project-id="projectId"
-			:next-number="configurations.length + 1"
-			:include-tool-key="toolKey"
 			@save="save"
-			@close="modalOpen = false"
+			@close="editing = undefined"
 		/>
 	</div>
-	<AgentToolConfigApprovalSetting
-		v-else-if="approvalRequired !== undefined"
-		:model-value="approvalRequired"
-		:disabled="disabled"
-		@update:model-value="updateApprovalRequired"
-	/>
 </template>
 
 <style module lang="scss">
-@use '@n8n/design-system/css/mixins/focus';
-
-.requester {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
+.group {
+	overflow: visible;
+	background: transparent;
 }
-.info {
-	@include focus.focus-visible-ring;
-	display: inline-flex;
-	padding: 0;
+.toggle {
+	padding: var(--spacing--sm) var(--spacing--md);
+}
+.divider {
+	border-top: var(--border);
+}
+.trigger {
 	border: 0;
 	background: transparent;
+	color: var(--text-color);
+	display: flex;
+	width: 100%;
+	justify-content: space-between;
+	align-items: center;
+	text-align: left;
+	padding: var(--spacing--sm) var(--spacing--md);
+	cursor: pointer;
+
+	&:hover {
+		background: var(--background--hover);
+	}
+}
+.label,
+.subtitle {
+	display: block;
+}
+.label {
+	font-size: var(--font-size--sm);
+}
+.subtitle {
+	margin-top: var(--spacing--4xs);
+	font-size: var(--font-size--2xs);
 	color: var(--text-color--subtler);
-	cursor: help;
-	pointer-events: auto;
 }
 </style>

@@ -147,7 +147,7 @@ describe('AgentToolConfigForm MCP configuration', () => {
 		);
 	});
 
-	it('saves the selected review route and clears it when no permission requires approval', async () => {
+	it('keeps the selected approval route available when no permission requires approval', async () => {
 		const onConfirm = vi.fn();
 		const route = { type: 'configuration' as const, configurationIds: ['review'] };
 		const wrapper = renderForm(
@@ -182,9 +182,9 @@ describe('AgentToolConfigForm MCP configuration', () => {
 				categories: { read: 'always_allow', write: 'always_allow' },
 			});
 		await flushPromises();
-		expect(wrapper.findComponent(ApprovalRouteStub).exists()).toBe(false);
+		expect(wrapper.getComponent(ApprovalRouteStub).props('modelValue')).toEqual(route);
 		expect(confirm(wrapper)).toBe(true);
-		expect(onConfirm.mock.calls.at(-1)?.[0].approvalRoute).toBeUndefined();
+		expect(onConfirm).toHaveBeenLastCalledWith(expect.objectContaining({ approvalRoute: route }));
 	});
 
 	it('removes the MCP server when its credential is deleted', async () => {

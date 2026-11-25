@@ -164,7 +164,7 @@ vi.mock('../components/AgentBudgetPanel.vue', () => ({
 vi.mock('../components/AgentGuardrailsSection.vue', () => ({
 	default: {
 		name: 'AgentGuardrailsSection',
-		template: '<div data-testid="agent-guardrails-section-stub" />',
+		template: '<div data-testid="agent-guardrails-section-stub"><slot name="approval" /></div>',
 		props: ['config', 'tools', 'projectId', 'agentId', 'disabled', 'validationIssues'],
 		emits: ['update:config', 'update:budget-config'],
 	},
@@ -599,13 +599,14 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(wrapper.find('[data-testid="agent-observational-memory-toggle"]').exists()).toBe(false);
 	});
 
-	it('passes the save state to Human review on a new Agent', async () => {
+	it('passes the save state to the Approval panel on a new Agent', async () => {
 		const wrapper = await mountColumn({
-			activeMainTab: 'settings',
 			agentUnsaved: true,
 			humanReviewEnabled: true,
 		});
-		const panel = wrapper.getComponent({ name: 'AgentHitlPanel' });
+		const panel = wrapper
+			.getComponent({ name: 'AgentGuardrailsSection' })
+			.getComponent({ name: 'AgentHitlPanel' });
 		expect(panel.props('agentId')).toBe('agent-1');
 		expect(panel.props('agentUnsaved')).toBe(true);
 		expect(panel.props('disabled')).toBe(false);
@@ -616,16 +617,16 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(wrapper.emitted('update:config')?.[0]).toEqual([changes]);
 		await wrapper.setProps({ agentUnsaved: false });
 		expect(panel.props('agentUnsaved')).toBe(false);
+		expect(panel.props('agentId')).toBe('agent-1');
 	});
 
-	it('keeps Human review hidden for new Agents when the module is disabled', async () => {
-		const wrapper = await mountColumn({ activeMainTab: 'settings', agentUnsaved: true });
+	it('keeps Approval hidden for new Agents when the module is disabled', async () => {
+		const wrapper = await mountColumn({ agentUnsaved: true });
 		expect(wrapper.findComponent({ name: 'AgentHitlPanel' }).exists()).toBe(false);
 	});
 
-	it('keeps Human review read-only on a new Agent without edit permission', async () => {
+	it('keeps Approval read-only on a new Agent without edit permission', async () => {
 		const wrapper = await mountColumn({
-			activeMainTab: 'settings',
 			agentUnsaved: true,
 			humanReviewEnabled: true,
 			canEditAgent: false,
@@ -654,11 +655,12 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(advancedPanel.props('projectId')).toBe('project-1');
 	});
 
-	it('does not render the guardrails section on the Settings tab', async () => {
-		const wrapper = await mountColumn({ activeMainTab: 'settings' });
+	it('does not render Guardrails or Approval on the Settings tab', async () => {
+		const wrapper = await mountColumn({ activeMainTab: 'settings', humanReviewEnabled: true });
 		await flushPromises();
 
 		expect(wrapper.findComponent({ name: 'AgentGuardrailsSection' }).exists()).toBe(false);
+		expect(wrapper.findComponent({ name: 'AgentHitlPanel' }).exists()).toBe(false);
 	});
 
 	it('forwards a budget panel config update to the host as a budget save', async () => {
@@ -746,7 +748,7 @@ describe('AgentBuilderEditorColumn', () => {
 		const guardrailsPanel = wrapper
 			.findAllComponents({ name: 'AgentPanel' })
 			.find((panel) => panel.props('header') === 'agents.builder.guardrails.title');
-		expect(guardrailsPanel?.props('description')).toBe('agents.builder.guardrails.description');
+		expect(guardrailsPanel?.props('headerVisibility')).toBe('visually-hidden');
 		expect(
 			guardrailsPanel?.element.compareDocumentPosition(guardrails.element) &
 				Node.DOCUMENT_POSITION_CONTAINED_BY,

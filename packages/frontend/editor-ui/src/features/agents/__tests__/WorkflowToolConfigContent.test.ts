@@ -94,7 +94,11 @@ function workflow(
 
 const renderComponent = createComponentRenderer(WorkflowToolConfigContent);
 
-function renderForm(initialRef: WorkflowToolRef, approvalContext?: AgentHitlContext) {
+function renderForm(
+	initialRef: WorkflowToolRef,
+	approvalContext?: AgentHitlContext,
+	withGuardrails = false,
+) {
 	const form = ref<InstanceType<typeof AgentToolConfigForm>>();
 	const onConfirm = vi.fn();
 	const render = createComponentRenderer(
@@ -107,6 +111,14 @@ function renderForm(initialRef: WorkflowToolRef, approvalContext?: AgentHitlCont
 							toolRef: initialRef,
 							onConfirm,
 							...(approvalContext ? { projectId: 'project-1', approvalContext } : {}),
+							...(withGuardrails && {
+								onRemove: vi.fn(),
+								guardrails: {
+									getGuardrails: () => [],
+									getTools: () => [],
+									onUpdateGuardrails: vi.fn(),
+								},
+							}),
 						},
 					}),
 					h('button', { onClick: () => form.value?.confirm() }, 'Save'),
@@ -147,25 +159,27 @@ describe('WorkflowToolConfigContent', () => {
 		setProjectWorkflows([workflow('Notify Sales'), workflow('Invoice Sender')]);
 	});
 
-	it('connects approval and Advanced as separate sections in one group', async () => {
+	it('keeps workflow approval in its own group and Advanced last', async () => {
 		mockedStore(useSettingsStore).isAgentModuleActive = vi.fn().mockReturnValue(true);
-		const { getByTestId, container } = renderForm(createRef({ requireApproval: true }), {
-			getConfig: () => null,
-			saveConfiguration: vi.fn(),
-		});
+		const { getByTestId, container } = renderForm(
+			createRef({ requireApproval: true }),
+			{ getConfig: () => null, saveConfiguration: vi.fn() },
+			true,
+		);
 		const toggle = getByTestId('agent-tool-approval-toggle');
-		const destination = container.querySelector('[data-testid="agent-review"]')!;
-		const group = getByTestId('agent-workflow-tool-settings');
+		const destination = container.querySelector('[data-testid="agent-approval-route"]')!;
 		const approval = getByTestId('agent-workflow-tool-approval');
 		const advanced = getByTestId('agent-workflow-tool-advanced');
+		const guardrails = container.querySelector('[data-testid="agent-tool-guardrails-section"]');
 
 		expect(destination).toContainElement(toggle);
 		expect(
 			destination.compareDocumentPosition(advanced) & Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
-		expect(approval.parentElement).toBe(group);
-		expect(advanced.parentElement?.parentElement).toBe(group);
+		expect(approval).toContainElement(destination);
+		expect(destination).toHaveAttribute('data-test-id', 'settings-row-group');
 		expect(approval).not.toContainElement(advanced);
+		expect(advanced.parentElement?.previousElementSibling).toBe(guardrails);
 		expect(toggle).toBeVisible();
 		expect(advanced).toHaveAttribute('aria-expanded', 'false');
 		await fireEvent.click(advanced);

@@ -438,75 +438,69 @@ defineExpose({
 			</N8nText>
 		</div>
 
-		<div :class="$style.settingsGroup" data-test-id="agent-workflow-tool-settings">
-			<div
-				v-if="$slots.commonSettings"
-				:class="$style.commonSettings"
-				data-test-id="agent-workflow-tool-approval"
-			>
-				<slot name="commonSettings" />
-			</div>
-			<div :class="$style.advanced">
-				<button
-					type="button"
-					:class="$style.advancedTrigger"
-					:aria-expanded="advancedExpanded"
-					aria-controls="workflow-tool-advanced"
-					data-test-id="agent-workflow-tool-advanced"
-					@click="advancedExpanded = !advancedExpanded"
-				>
-					<N8nText size="medium" bold>{{
-						i18n.baseText('agents.toolConfig.workflow.advanced')
-					}}</N8nText>
-					<N8nIcon :icon="advancedExpanded ? 'chevron-up' : 'chevron-down'" size="medium" />
-				</button>
-				<div id="workflow-tool-advanced" v-show="advancedExpanded" :class="$style.advancedContent">
-					<AgentFormSettingRow
-						control-id="agent-workflow-tool-all-outputs"
-						:title="i18n.baseText('agents.toolConfig.workflow.allOutputs')"
-						:description="i18n.baseText('agents.toolConfig.workflow.allOutputs.hint')"
-					>
-						<N8nSwitch2
-							id="agent-workflow-tool-all-outputs"
-							:model-value="allOutputs"
-							:aria-label="i18n.baseText('agents.toolConfig.workflow.allOutputs')"
-							data-test-id="agent-workflow-tool-all-outputs"
-							@update:model-value="allOutputs = $event"
-						/>
-					</AgentFormSettingRow>
+		<slot name="commonSettings" />
+		<slot name="beforeAdvanced" />
 
-					<N8nText size="medium" bold>{{
-						i18n.baseText('agents.toolConfig.workflow.inputs')
-					}}</N8nText>
-					<N8nText v-if="isLoadingWorkflows" size="small" color="text-light" role="status">
-						{{ i18n.baseText('agents.toolConfig.workflow.inputs.loading') }}
+		<div :class="$style.advanced">
+			<button
+				type="button"
+				:class="$style.advancedTrigger"
+				:aria-expanded="advancedExpanded"
+				aria-controls="workflow-tool-advanced"
+				data-test-id="agent-workflow-tool-advanced"
+				@click="advancedExpanded = !advancedExpanded"
+			>
+				<N8nText size="medium" bold>{{
+					i18n.baseText('agents.toolConfig.workflow.advanced')
+				}}</N8nText>
+				<N8nIcon :icon="advancedExpanded ? 'chevron-up' : 'chevron-down'" size="medium" />
+			</button>
+			<div id="workflow-tool-advanced" v-show="advancedExpanded" :class="$style.advancedContent">
+				<AgentFormSettingRow
+					control-id="agent-workflow-tool-all-outputs"
+					:title="i18n.baseText('agents.toolConfig.workflow.allOutputs')"
+					:description="i18n.baseText('agents.toolConfig.workflow.allOutputs.hint')"
+				>
+					<N8nSwitch2
+						id="agent-workflow-tool-all-outputs"
+						:model-value="allOutputs"
+						:aria-label="i18n.baseText('agents.toolConfig.workflow.allOutputs')"
+						data-test-id="agent-workflow-tool-all-outputs"
+						@update:model-value="allOutputs = $event"
+					/>
+				</AgentFormSettingRow>
+
+				<N8nText size="medium" bold>{{
+					i18n.baseText('agents.toolConfig.workflow.inputs')
+				}}</N8nText>
+				<N8nText v-if="isLoadingWorkflows" size="small" color="text-light" role="status">
+					{{ i18n.baseText('agents.toolConfig.workflow.inputs.loading') }}
+				</N8nText>
+				<template v-else-if="!workflowsLoaded">
+					<N8nText size="small" color="danger" role="alert">
+						{{ i18n.baseText('agents.toolConfig.workflow.inputs.loadError') }}
 					</N8nText>
-					<template v-else-if="!workflowsLoaded">
-						<N8nText size="small" color="danger" role="alert">
-							{{ i18n.baseText('agents.toolConfig.workflow.inputs.loadError') }}
-						</N8nText>
-						<N8nButton
-							variant="ghost"
-							size="small"
-							:label="i18n.baseText('generic.retry')"
-							@click="reloadWorkflows"
-						/>
-					</template>
-					<template v-else-if="inputSchemaLoaded">
-						<N8nText v-if="!declaredInputFields.length" size="xsmall" color="text-light">
-							{{ i18n.baseText('agents.toolConfig.workflow.inputs.empty') }}
-						</N8nText>
-						<WorkflowToolInputs
-							v-else
-							:key="targetWorkflowId"
-							v-model="inputs"
-							:fields="declaredInputFields"
-							:tool-name="name"
-							:submitted="(submitCount ?? 0) > 0"
-							@update:valid="inputsValid = $event"
-						/>
-					</template>
-				</div>
+					<N8nButton
+						variant="ghost"
+						size="small"
+						:label="i18n.baseText('generic.retry')"
+						@click="reloadWorkflows"
+					/>
+				</template>
+				<template v-else-if="inputSchemaLoaded">
+					<N8nText v-if="!declaredInputFields.length" size="xsmall" color="text-light">
+						{{ i18n.baseText('agents.toolConfig.workflow.inputs.empty') }}
+					</N8nText>
+					<WorkflowToolInputs
+						v-else
+						:key="targetWorkflowId"
+						v-model="inputs"
+						:fields="declaredInputFields"
+						:tool-name="name"
+						:submitted="(submitCount ?? 0) > 0"
+						@update:valid="inputsValid = $event"
+					/>
+				</template>
 			</div>
 		</div>
 	</div>
@@ -581,25 +575,11 @@ defineExpose({
 	text-overflow: ellipsis;
 }
 
-.settingsGroup {
-	border: var(--border);
-	border-radius: var(--radius--lg);
-}
-
-.commonSettings {
-	padding: var(--spacing--sm) var(--spacing--md);
-	border-bottom: var(--border);
-}
-
 .advanced {
 	display: flex;
 	flex-direction: column;
-	border-radius: inherit;
-}
-
-.commonSettings + .advanced {
-	border-start-start-radius: 0;
-	border-start-end-radius: 0;
+	border: var(--border);
+	border-radius: var(--radius--lg);
 }
 
 .advancedTrigger {

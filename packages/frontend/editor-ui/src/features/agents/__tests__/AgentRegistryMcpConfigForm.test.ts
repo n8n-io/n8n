@@ -15,6 +15,10 @@ import AgentApprovalRouteSelect from '../components/AgentApprovalRouteSelect.vue
 import McpToolPermissionsEditor from '@/features/shared/toolsConnection/McpToolPermissionsEditor.vue';
 import type { AgentRegistryMcpModalData } from '../composables/useAgentRegistryMcpConfig';
 
+vi.mock('@n8n/stores/settings.store', () => ({
+	useSettingsStore: () => ({ isAgentModuleActive: () => true }),
+}));
+
 const saveMock = vi.hoisted(() => vi.fn());
 const useAgentRegistryMcpConfigMock = vi.hoisted(() => vi.fn());
 const confirmRemove = vi.hoisted(() => vi.fn());
@@ -139,14 +143,15 @@ function mountForm({
 		global: {
 			stubs: {
 				AgentApprovalRouteSelect: {
-					props: ['label', 'modelValue'],
-					template: '<div data-testid="approval-setting">{{ label }}</div>',
+					props: { embedded: Boolean, modelValue: Object },
+					template: '<div data-testid="approval-setting"></div>',
 				},
 				McpConnectionStatusCallout: true,
 				McpDetailBody: true,
 				McpToolPermissionsEditor: {
 					props: ['modelValue', 'status'],
-					template: '<div data-testid="permissions-editor" :data-status="status" />',
+					template:
+						'<div data-testid="permissions-editor" :data-status="status"><slot name="after-permissions" /></div>',
 				},
 			},
 		},
@@ -198,7 +203,7 @@ describe('AgentRegistryMcpConfigForm', () => {
 		});
 	});
 
-	it('puts approval settings after permissions and hides them when no tools ask first', async () => {
+	it('keeps approval destinations grouped with MCP permissions even when no tools ask first', async () => {
 		const wrapper = mountForm({ withApprovalContext: true });
 		const fields = wrapper.findAll('[data-testid]').map((field) => field.attributes('data-testid'));
 		expect(fields.indexOf('approval-setting')).toBeGreaterThan(
@@ -208,13 +213,13 @@ describe('AgentRegistryMcpConfigForm', () => {
 			fields.indexOf('agent-mcp-connection-timeout'),
 		);
 		const route = wrapper.getComponent(AgentApprovalRouteSelect);
-		expect(route.props('label')).toBe('agents.hitl.mcpRoute');
+		expect(route.props('embedded')).toBe(true);
 		expect(route.props('modelValue')).toBeUndefined();
 		wrapper.getComponent(McpToolPermissionsEditor).vm.$emit('update:modelValue', {
 			categories: { read: 'always_allow', write: 'always_allow' },
 		});
 		await wrapper.vm.$nextTick();
-		expect(wrapper.findComponent(AgentApprovalRouteSelect).exists()).toBe(false);
+		expect(wrapper.findComponent(AgentApprovalRouteSelect).exists()).toBe(true);
 	});
 
 	it('converts an existing millisecond timeout to seconds', () => {

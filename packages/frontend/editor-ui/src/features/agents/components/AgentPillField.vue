@@ -20,6 +20,8 @@ const props = withDefaults(
 		addLabel: string;
 		items: Array<DropdownMenuItemProps<string>>;
 		showItems?: boolean;
+		hideLabel?: boolean;
+		showAddLabel?: boolean;
 		pills: Array<{
 			value: string;
 			label: string;
@@ -55,14 +57,14 @@ watch(
 
 <template>
 	<div
-		:class="[$style.field, { [$style.embedded]: embedded }]"
+		:class="[$style.field, { [$style.embedded]: embedded, [$style.withoutLabel]: hideLabel }]"
 		role="group"
 		:aria-label="label"
 		:data-testid="testId"
 	>
 		<div v-if="$slots.header" :class="$style.fullRow"><slot name="header" /></div>
 		<template v-if="showItems">
-			<div :class="$style.labelInfo">
+			<div v-if="!hideLabel" :class="$style.labelInfo">
 				<N8nText bold size="medium" :class="$style.label">{{ label }}</N8nText>
 				<N8nText v-if="description" size="small" :class="$style.description">{{
 					description
@@ -109,7 +111,9 @@ watch(
 					</span>
 				</AgentChipButton>
 			</div>
+			<slot v-if="$slots.add" name="add" />
 			<N8nDropdownMenu
+				v-else
 				v-model="open"
 				:items="items"
 				:disabled="disabled || !items.length"
@@ -131,12 +135,13 @@ watch(
 						<N8nButton
 							variant="ghost"
 							size="small"
-							icon-only
+							:icon-only="!showAddLabel"
 							:disabled="disabled || !items.length"
 							:aria-label="addLabel"
 							:data-testid="`${testId}-add`"
 						>
 							<template #icon><N8nIcon icon="plus" :size="16" /></template>
+							<template v-if="showAddLabel">{{ addLabel }}</template>
 						</N8nButton>
 					</N8nTooltip>
 				</template>
@@ -159,6 +164,18 @@ watch(
 	padding: var(--spacing--sm) var(--spacing--md);
 	border: var(--border);
 	border-radius: var(--radius--lg);
+}
+.field.withoutLabel {
+	display: flex;
+	flex-wrap: wrap;
+	padding: 0 var(--spacing--md) var(--spacing--sm);
+
+	.pills {
+		justify-content: flex-start;
+	}
+	.pills:empty {
+		display: none;
+	}
 }
 .embedded {
 	border: 0;

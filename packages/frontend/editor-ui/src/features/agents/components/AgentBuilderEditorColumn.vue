@@ -326,7 +326,7 @@ defineExpose({ onSetupTaskAction });
 
 					<AgentPanel
 						:header="i18n.baseText('agents.builder.guardrails.title')"
-						:description="i18n.baseText('agents.builder.guardrails.description')"
+						header-visibility="visually-hidden"
 						data-testid="agent-guardrails-panel"
 					>
 						<AgentGuardrailsSection
@@ -338,7 +338,22 @@ defineExpose({ onSetupTaskAction });
 							:validation-issues="configValidationIssues ?? []"
 							@update:config="emit('update:config', $event)"
 							@update:budget-config="emit('update:budget-config', $event)"
-						/>
+						>
+							<template v-if="settingsStore.isAgentModuleActive(HUMAN_REVIEW_MODULE)" #approval>
+								<AgentHitlPanel
+									:agent-id="agentId"
+									:agent-unsaved="agentUnsaved"
+									:is-published="Boolean(agent?.activeVersionId)"
+									:ensure-agent-persisted="ensureAgentPersisted"
+									:config="localConfig"
+									:custom-tools="agent?.tools"
+									:project-id="projectId"
+									:disabled="childrenDisabled"
+									@agent-changed="emit('agent-changed')"
+									@update:config="emit('update:config', $event)"
+								/>
+							</template>
+						</AgentGuardrailsSection>
 					</AgentPanel>
 
 					<AgentMemoryPanel
@@ -438,19 +453,6 @@ defineExpose({ onSetupTaskAction });
 					data-testid="agent-settings-tab-content"
 				>
 					<div :class="$style.settingsCards">
-						<AgentHitlPanel
-							v-if="settingsStore.isAgentModuleActive(HUMAN_REVIEW_MODULE)"
-							:agent-id="agentId"
-							:agent-unsaved="agentUnsaved"
-							:is-published="isPublished"
-							:ensure-agent-persisted="ensureAgentPersisted"
-							:config="localConfig"
-							:custom-tools="agent?.tools"
-							:project-id="projectId"
-							:disabled="childrenDisabled"
-							@agent-changed="emit('agent-changed')"
-							@update:config="emit('update:config', $event)"
-						/>
 						<AgentSubAgentsPanel
 							:config="localConfig"
 							:disabled="childrenDisabled"

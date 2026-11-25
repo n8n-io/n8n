@@ -171,6 +171,7 @@ function isCategoryDisabled(tools: McpServerTool[]): boolean {
 		<div
 			:class="[
 				$style.permissionGroups,
+				{ [$style.joined]: !!$slots['after-permissions'] },
 				{ [$style.permissionGroupsDisabled]: arePermissionsDisabled },
 			]"
 			:data-disabled="arePermissionsDisabled || undefined"
@@ -257,6 +258,7 @@ function isCategoryDisabled(tools: McpServerTool[]): boolean {
 					</div>
 				</div>
 			</div>
+			<slot name="after-permissions" />
 		</div>
 	</div>
 </template>
@@ -286,6 +288,23 @@ function isCategoryDisabled(tools: McpServerTool[]): boolean {
 
 .permissionGroups {
 	gap: var(--spacing--2xs);
+}
+
+.joined {
+	gap: 0;
+	border: var(--border);
+	border-radius: var(--radius--xs);
+
+	> * + * {
+		border-top: var(--border);
+	}
+	.permissionGroup {
+		border: 0;
+		border-radius: 0;
+	}
+	.permissionGroup + .permissionGroup {
+		border-top: var(--border);
+	}
 }
 
 .permissionGroupsDisabled {

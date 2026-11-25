@@ -85,6 +85,7 @@ function remove(value: string) {
 	<AgentPillField
 		:label="i18n.baseText('agents.hitl.tools')"
 		:add-label="i18n.baseText('agents.hitl.addTool')"
+		show-add-label
 		:pills="selected"
 		:items="available"
 		:disabled="disabled"

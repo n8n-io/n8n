@@ -1,5 +1,6 @@
 import { mount } from '@vue/test-utils';
 import type { AgentJsonConfig } from '@n8n/api-types';
+import AgentApprovalDestinationMenu from '../components/AgentApprovalDestinationMenu.vue';
 import AgentHitlPanel from '../components/AgentHitlPanel.vue';
 import AgentHitlConfigurationModal from '../components/AgentHitlConfigurationModal.vue';
 import AgentItemContextMenu from '../components/AgentItemContextMenu.vue';
@@ -23,6 +24,7 @@ function render(disabled = false) {
 			stubs: {
 				AgentPanel: { template: '<section><slot /></section>' },
 				AgentHitlConfigurationModal: true,
+				AgentApprovalDestinationMenu: true,
 				AgentItemContextMenu: { template: '<div><slot /></div>', emits: ['remove'] },
 			},
 		},
@@ -37,8 +39,19 @@ it('edits configurations from pills and creates one with the plus action', async
 	);
 	wrapper.getComponent(AgentHitlConfigurationModal).vm.$emit('close');
 	await wrapper.vm.$nextTick();
-	await wrapper.get('[data-testid="agent-hitl-add"]').trigger('click');
-	expect(wrapper.getComponent(AgentHitlConfigurationModal).props('configuration')).toBeUndefined();
+	wrapper.getComponent(AgentApprovalDestinationMenu).vm.$emit('select', {
+		method: 'workflow',
+		workflowId: 'another',
+		name: 'Another approval',
+	});
+	await wrapper.vm.$nextTick();
+	expect(wrapper.findComponent(AgentHitlConfigurationModal).exists()).toBe(false);
+	expect(wrapper.emitted('update:config')?.[0]?.[0]).toMatchObject({
+		hitlConfigurations: [
+			configuration,
+			{ method: 'workflow', workflowId: 'another', name: 'Another approval' },
+		],
+	});
 });
 it('removes a configuration and clears its tool and MCP references', async () => {
 	const wrapper = render();
@@ -76,10 +89,7 @@ it('removes a configuration and clears its tool and MCP references', async () =>
 });
 it('keeps configuration actions disabled under the edit lock', async () => {
 	const wrapper = render(true);
-	const add = wrapper.get('[data-testid="agent-hitl-add"]');
-	expect(add.attributes('aria-disabled')).toBe('true');
-	await add.trigger('click');
-	expect(wrapper.findComponent(AgentHitlConfigurationModal).exists()).toBe(false);
+	expect(wrapper.getComponent(AgentApprovalDestinationMenu).props('disabled')).toBe(true);
 	expect(
 		wrapper.get('[data-testid="agent-hitl-configuration"]').attributes('disabled'),
 	).toBeDefined();
@@ -115,20 +125,4 @@ it('closes the configuration modal when the edit lock turns on', async () => {
 	expect(wrapper.findComponent(AgentHitlConfigurationModal).exists()).toBe(true);
 	await wrapper.setProps({ disabled: true });
 	expect(wrapper.findComponent(AgentHitlConfigurationModal).exists()).toBe(false);
-});
-
-it('keeps a new review draft open when its Agent is saved for channel setup', async () => {
-	const wrapper = render();
-	const persist = vi.fn(async () => {
-		await wrapper.setProps({ agentUnsaved: false });
-	});
-	await wrapper.setProps({ agentUnsaved: true, ensureAgentPersisted: persist });
-	await wrapper.get('[data-testid="agent-hitl-add"]').trigger('click');
-	const context = wrapper.getComponent(AgentHitlConfigurationModal).props('context');
-	expect(context.agentId).toBeUndefined();
-	await context.ensureAgentPersisted?.();
-	expect(context.agentId).toBe('agent');
-	expect(wrapper.findComponent(AgentHitlConfigurationModal).exists()).toBe(true);
-	context.onChannelsChanged?.();
-	expect(wrapper.emitted('agent-changed')).toHaveLength(1);
 });

@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
+import { approvalName, type ApprovalDestination } from '../utils/approvalDestination';
+import AgentApprovalDestinationMenu from './AgentApprovalDestinationMenu.vue';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { AgentHitlConfiguration, AgentJsonConfig } from '@n8n/api-types';
 import type { CustomToolEntry } from '../types';
 import { hitlConfigurationUpdates, updateReviewRoute } from '../utils/hitlConfiguration';
-import AgentPanel from './AgentPanel.vue';
 import AgentChipRow from './AgentChipRow.vue';
 import AgentChipButton from './AgentChipButton.vue';
 import AgentItemContextMenu from './AgentItemContextMenu.vue';
@@ -32,6 +34,9 @@ function save(configuration: AgentHitlConfiguration, toolKeys?: string[]) {
 	if (props.disabled) return;
 	emit('update:config', hitlConfigurationUpdates(props.config, configuration, toolKeys));
 	modalOpen.value = false;
+}
+function add(destination: ApprovalDestination) {
+	save({ ...destination, id: generateNanoId() });
 }
 const context = {
 	get agentId() {
@@ -81,52 +86,51 @@ function remove(id = editing.value?.id) {
 </script>
 
 <template>
-	<div>
-		<AgentPanel
-			:header="i18n.baseText('agents.hitl.title')"
-			:description="i18n.baseText('agents.hitl.description')"
-			data-testid="agent-hitl-panel"
+	<div data-testid="agent-hitl-panel">
+		<AgentChipRow
+			:label="i18n.baseText('agents.hitl.title')"
+			:item-count="configurations.length"
+			:add-label="i18n.baseText('agents.hitl.addReview')"
+			:show-label="false"
+			:disabled="disabled"
 		>
-			<AgentChipRow
-				:label="i18n.baseText('agents.hitl.title')"
-				:item-count="configurations.length"
-				:add-label="i18n.baseText('agents.hitl.create')"
-				:show-label="false"
-				:disabled="disabled"
-				add-button-test-id="agent-hitl-add"
-				@add="
-					editing = undefined;
-					modalOpen = true;
-				"
-			>
-				<AgentItemContextMenu
-					v-for="configuration in configurations"
-					:key="configuration.id"
+			<template #add>
+				<AgentApprovalDestinationMenu
+					:context="context"
+					:project-id="projectId"
 					:disabled="disabled"
-					@remove="remove(configuration.id)"
+					:icon-only="configurations.length > 0"
+					:label="i18n.baseText('agents.hitl.addReview')"
+					test-id="agent-hitl-add"
+					@select="add"
+				/>
+			</template>
+			<AgentItemContextMenu
+				v-for="configuration in configurations"
+				:key="configuration.id"
+				:disabled="disabled"
+				@remove="remove(configuration.id)"
+			>
+				<AgentChipButton
+					:disabled="disabled"
+					:class="$style.configuration"
+					:title="approvalName(configuration)"
+					:icon="configuration.method === 'workflow' ? 'workflow' : configuration.channel"
+					data-testid="agent-hitl-configuration"
+					@click="
+						editing = configuration;
+						modalOpen = true;
+					"
 				>
-					<AgentChipButton
-						:disabled="disabled"
-						:class="$style.configuration"
-						:title="configuration.name"
-						:icon="configuration.method === 'workflow' ? 'workflow' : configuration.channel"
-						data-testid="agent-hitl-configuration"
-						@click="
-							editing = configuration;
-							modalOpen = true;
-						"
-					>
-						{{ configuration.name }}
-					</AgentChipButton>
-				</AgentItemContextMenu>
-			</AgentChipRow>
-		</AgentPanel>
+					{{ approvalName(configuration) }}
+				</AgentChipButton>
+			</AgentItemContextMenu>
+		</AgentChipRow>
 		<AgentHitlConfigurationModal
-			v-if="modalOpen"
+			v-if="modalOpen && editing"
 			:configuration="editing"
 			:context="context"
 			:project-id="projectId"
-			:next-number="configurations.length + 1"
 			@save="save"
 			@remove="remove()"
 			@close="modalOpen = false"
