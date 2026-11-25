@@ -71,16 +71,24 @@ describe('Agent attention flags', () => {
 
 	it('reverts and reapplies the attention flag schema', async () => {
 		const dataSource = Container.get(DataSource);
-		const migration = [...sqliteMigrations, ...postgresMigrations].find(
+		const allMigrations = [...sqliteMigrations, ...postgresMigrations];
+		const migration = allMigrations.find(
 			(candidate) => candidate.name === 'CreateAgentAttentionFlags1795546358454',
 		);
 		if (!migration) throw new Error('Attention flag migration not found');
+		const executed = dataSource.migrations.map((instance) => instance.constructor.name);
+		const position = executed.indexOf(migration.name);
+		expect(position).toBeGreaterThanOrEqual(0);
+		// Migrations that run after this one are undone first, and `runMigrations` applies them again.
+		const toUndo = executed.slice(position);
 		// Template databases skip startup migration wrapping in this worker.
-		wrapMigration(migration);
-		expect(dataSource.migrations.at(-1)?.constructor.name).toBe(migration.name);
+		for (const name of toUndo) {
+			const candidate = allMigrations.find((entry) => entry.name === name);
+			if (candidate) wrapMigration(candidate);
+		}
 		const runner = dataSource.createQueryRunner();
 		try {
-			await dataSource.undoLastMigration();
+			for (let i = 0; i < toUndo.length; i++) await dataSource.undoLastMigration();
 			expect(
 				await runner.hasTable(dataSource.getMetadata(AgentAttentionFlagEntity).tablePath),
 			).toBe(false);
