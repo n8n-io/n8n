@@ -52,7 +52,7 @@ const RemoveConfirmationHarness = defineComponent({
 		},
 	},
 	setup(props) {
-		const formRef = ref<InstanceType<typeof AgentRegistryMcpConfigForm> | null>(null);
+		const formRef = ref<{ remove(): Promise<boolean> } | null>(null);
 
 		async function triggerRemove() {
 			const removed = (await formRef.value?.remove()) ?? false;
@@ -176,8 +176,7 @@ describe('AgentRegistryMcpConfigForm remove confirmation', () => {
 		});
 	});
 
-	// Regression test for AGENT-1667: removing a registry MCP tool opens
-	// AgentConfirmationModal with a translated description containing <strong> tags.
+	// AGENT-1667: The confirmation must render the notice with emphasis, not literal tags.
 	it('renders the credential notice in bold without raw HTML tags', async () => {
 		const { getByTestId, findByRole } = setupHarness();
 
@@ -189,12 +188,11 @@ describe('AgentRegistryMcpConfigForm remove confirmation', () => {
 
 		const bodyText = body?.textContent ?? '';
 		expect(bodyText).not.toMatch(/<\/?strong>/i);
-		expect(bodyText).toContain("This removes the tool and the permissions you've set.");
-		expect(bodyText).toContain('Your Notion credential stays saved for reuse.');
-
-		const boldElement = Array.from(body?.querySelectorAll('strong, b, [class*="bold"]') ?? []).find(
-			(element) => element.textContent?.trim() === 'Your Notion credential stays saved for reuse.',
+		expect(bodyText.replace(/\s+/g, ' ')).toContain(
+			"This removes the tool and the permissions you've set. Your Notion credential stays saved for reuse.",
 		);
-		expect(boldElement).toBeTruthy();
+		expect(body?.querySelector('strong')).toHaveTextContent(
+			'Your Notion credential stays saved for reuse.',
+		);
 	});
 });

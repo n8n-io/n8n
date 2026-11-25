@@ -10316,6 +10316,8 @@
 	"agents.toolConfig.mcpApproval.refresh.hint": "Refresh the list of tools from this MCP server.",
 	"agents.toolConfig.mcpApproval.tools.placeholder": "Select tools",
 	"agents.toolConfig.mcpApproval.loadError": "Could not load MCP tools. Check the server settings and try again.",
+	"agents.toolConfig.mcp.removeConfirm.description": "This removes the tool and the permissions you've set.",
+	"agents.toolConfig.mcp.removeConfirm.credentialNotice": "Your {service} credential stays saved for reuse.",
 	"agents.toolConfig.mcp.timeout.label": "Timeout",
 	"agents.toolConfig.mcp.timeout.unit": "seconds",
 	"agents.toolConfig.mcp.timeout.help": "How long a tool call may run before it fails",

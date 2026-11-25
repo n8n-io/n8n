@@ -7,6 +7,7 @@ import AgentModal from './modals/AgentModal.vue';
 export type AgentConfirmationModalData = {
 	title: string;
 	description: string;
+	descriptionEmphasis?: string;
 	confirmButtonText: string;
 	cancelButtonText: string;
 	isDestructive?: boolean;
@@ -66,6 +67,7 @@ async function onOpenChange(open: boolean) {
 			<N8nIcon :class="$style.icon" icon="triangle-alert" color="warning" size="xlarge" />
 			<N8nText size="medium">
 				{{ props.data.description }}
+				<strong v-if="props.data.descriptionEmphasis">{{ props.data.descriptionEmphasis }}</strong>
 			</N8nText>
 		</div>
 		<template #footerActions>
