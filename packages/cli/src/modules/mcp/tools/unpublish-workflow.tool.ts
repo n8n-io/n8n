@@ -1,10 +1,10 @@
-import type { User } from '@n8n/db';
+import type { TelemetryProxy } from '@n8n/backend-services';
+import type { OperationContext, User } from '@n8n/db';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { jsonStringify } from 'n8n-workflow';
 import z from 'zod';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
-import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
@@ -33,8 +33,9 @@ export const createUnpublishWorkflowTool = (
 	user: User,
 	workflowFinderService: WorkflowFinderService,
 	workflowService: WorkflowService,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 	collaborationService: CollaborationService,
+	ctx: OperationContext = {},
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'unpublish_workflow',
 	config: {
@@ -62,9 +63,7 @@ export const createUnpublishWorkflowTool = (
 
 			await collaborationService.ensureWorkflowEditable(workflowId);
 
-			await workflowService.deactivateWorkflow(user, workflowId, {
-				source: 'n8n-mcp',
-			});
+			await workflowService.deactivateWorkflow(user, workflowId, { source: 'n8n-mcp' }, ctx);
 
 			void collaborationService.broadcastWorkflowUpdate(workflowId, user.id).catch(() => {});
 

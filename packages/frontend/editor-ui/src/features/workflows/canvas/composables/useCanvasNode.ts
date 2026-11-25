@@ -45,6 +45,7 @@ export function useCanvasNode() {
 	const validationErrors = computed(() => data.value.issues.validation ?? []);
 	const hasIssues = computed(() => data.value.issues.visible);
 	const hasValidationErrors = computed(() => data.value.issues.validation.length > 0);
+	const isSetupRequired = computed(() => data.value.issues.setupRequired === true);
 
 	const executionStatus = computed(() => data.value.execution.status);
 	const executionWaiting = computed(() => data.value.execution.waiting);
@@ -56,6 +57,18 @@ export function useCanvasNode() {
 	const hasRunData = computed(() => data.value.runData.visible);
 
 	const render = computed(() => data.value.render);
+
+	const isDeprecated = computed(() =>
+		data.value.render.type === CanvasNodeRenderType.Default
+			? Boolean(data.value.render.options.deprecated)
+			: false,
+	);
+
+	const deprecatedReplacementName = computed(() =>
+		data.value.render.type === CanvasNodeRenderType.Default
+			? data.value.render.options.deprecatedReplacementName
+			: undefined,
+	);
 
 	const eventBus = computed(() => node?.eventBus.value);
 
@@ -85,11 +98,14 @@ export function useCanvasNode() {
 		validationErrors,
 		hasIssues,
 		hasValidationErrors,
+		isSetupRequired,
 		executionStatus,
 		executionWaiting,
 		executionWaitingForNext,
 		executionRunning,
 		render,
+		isDeprecated,
+		deprecatedReplacementName,
 		eventBus,
 		isNotInstalledCommunityNode,
 		isRestricted,

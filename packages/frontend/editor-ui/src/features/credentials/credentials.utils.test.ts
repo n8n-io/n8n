@@ -3,12 +3,17 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import { mockRestrictedCredentialTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 
 import type { INodeUi } from '@/Interface';
 import { mockedStore } from '@/__tests__/utils';
 import { useCredentialsStore } from './credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { getAutoSelectedCredential, hasManagedOAuthApp } from './credentials.utils';
+import {
+	getAutoSelectedCredential,
+	hasAutomaticOAuthApp,
+	hasManagedOAuthApp,
+} from './credentials.utils';
 
 const openAiApiCredentialType = {
 	name: 'openAiApi',
@@ -144,6 +149,37 @@ describe('getAutoSelectedCredential', () => {
 		expect(getAutoSelectedCredential(node)).toBeUndefined();
 	});
 
+	it('skips a credential whose type a policy blocks', () => {
+		nodeTypesStore.setNodeTypes([
+			{
+				...openAiNodeType,
+				credentials: [
+					{ name: 'openAiApi', required: true },
+					{ name: 'slackApi', required: true },
+				],
+			},
+		]);
+		credentialsStore.state.credentialTypes = {
+			openAiApi: openAiApiCredentialType,
+			slackApi: { ...openAiApiCredentialType, name: 'slackApi', displayName: 'Slack' },
+		};
+		credentialsStore.usableCredentials = {
+			openai: createCredential({ id: 'openai', name: 'OpenAI' }),
+			slack: createCredential({
+				id: 'slack',
+				name: 'Slack',
+				type: 'slackApi',
+				updatedAt: '2024-06-01T00:00:00.000Z',
+			}),
+		};
+		mockRestrictedCredentialTypes({ slackApi: 'instance' });
+
+		expect(getAutoSelectedCredential(createNode())).toEqual({
+			credentialType: 'openAiApi',
+			credential: { id: 'openai', name: 'OpenAI' },
+		});
+	});
+
 	it('only considers the override credential type when one is given', () => {
 		credentialsStore.state.credentialTypes = {
 			openAiApi: openAiApiCredentialType,
@@ -197,5 +233,26 @@ describe('hasManagedOAuthApp', () => {
 
 	it('returns false for a credential type the store does not know', () => {
 		expect(hasManagedOAuthApp(undefined)).toBe(false);
+	});
+});
+
+describe('hasAutomaticOAuthApp', () => {
+	const todoistOAuth2Api: ICredentialType = {
+		name: 'todoistOAuth2Api',
+		extends: ['oAuth2Api'],
+		displayName: 'Todoist OAuth2 API',
+		properties: [],
+	};
+
+	it.each<[boolean, string, Partial<ICredentialType>]>([
+		[false, 'the type does not support registration', {}],
+		[true, 'the type supports registration', { dynamicClientRegistration: true }],
+		[
+			false,
+			'the instance also has a managed app',
+			{ dynamicClientRegistration: true, __overwrittenProperties: ['clientId', 'clientSecret'] },
+		],
+	])('is %s when %s', (expected, _case, overrides) => {
+		expect(hasAutomaticOAuthApp({ ...todoistOAuth2Api, ...overrides })).toBe(expected);
 	});
 });

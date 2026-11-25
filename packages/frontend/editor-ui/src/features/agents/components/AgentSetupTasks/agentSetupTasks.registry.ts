@@ -6,9 +6,11 @@ export type SetupTaskState = 'unknown' | 'todo' | 'complete';
 export interface SetupContext {
 	config: {
 		loaded: boolean;
+		isRunnable: boolean;
 		model: string;
 		instructions: string;
 		toolCount: number;
+		scheduleCount: number;
 	};
 	channels: {
 		loaded: boolean;
@@ -23,6 +25,7 @@ export interface SetupContext {
 		loaded: boolean;
 		count: number;
 	};
+	showTriggerStep: boolean;
 }
 
 export interface SetupTask<TId extends string = string> {
@@ -58,24 +61,24 @@ function getConfigState(context: SetupContext, complete: boolean): SetupTaskStat
 	return complete ? 'complete' : 'todo';
 }
 
-function getAddChannelState(context: SetupContext): SetupTaskState {
-	if (!context.channels.loaded) return 'unknown';
+function hasTrigger(context: SetupContext): boolean {
+	return context.channels.ids.length > 0 || context.config.scheduleCount > 0;
+}
 
-	return context.channels.ids.length > 0 ? 'complete' : 'todo';
+function isAddTriggerComplete(context: SetupContext): boolean {
+	return context.channels.loaded && context.config.loaded && hasTrigger(context);
+}
+
+function getAddTriggerState(context: SetupContext): SetupTaskState {
+	if (!context.channels.loaded || !context.config.loaded) return 'unknown';
+
+	return hasTrigger(context) ? 'complete' : 'todo';
 }
 
 function getPublishAgentState(context: SetupContext): SetupTaskState {
 	if (!context.publication.loaded) return 'unknown';
 
 	return context.publication.activeVersionId ? 'complete' : 'todo';
-}
-
-function canTestAgent(context: SetupContext): boolean {
-	return (
-		context.config.model.trim().length > 0 &&
-		context.config.instructions.trim().length > 0 &&
-		context.config.toolCount > 0
-	);
 }
 
 function isTestAgentComplete(context: SetupContext): boolean {
@@ -126,24 +129,26 @@ export const setupTaskDefinitions = {
 			target: { kind: 'agent' },
 			path: 'preview',
 		},
-		getVisible: canTestAgent,
+		getVisible: (context) => context.config.isRunnable,
 		getState: getTestAgentState,
 	},
-	'add-channel': {
-		titleKey: 'agents.builder.setupTasks.addChannel',
+	'add-trigger': {
+		titleKey: 'agents.builder.setupTasks.addTrigger',
 		descriptionKey: 'agents.builder.setupTasks.addChannel.description',
 		required: false,
-		/** TODO: Decide if we want to conditionally render this */
-		getVisible: () => false,
+		getVisible: (context) => context.showTriggerStep,
 		action: {
-			labelKey: 'agents.builder.setupTasks.addChannel',
+			labelKey: 'agents.builder.setupTasks.addTrigger',
 			target: { kind: 'channel' },
 		},
-		getState: getAddChannelState,
+		getState: getAddTriggerState,
 	},
 	'publish-agent': {
 		titleKey: 'agents.builder.setupTasks.publishAgent',
-		getVisible: (context) => context.publication.canPublish && isTestAgentComplete(context),
+		getVisible: (context) =>
+			context.publication.canPublish &&
+			isTestAgentComplete(context) &&
+			(!context.showTriggerStep || isAddTriggerComplete(context)),
 		required: false,
 		action: {
 			labelKey: 'agents.builder.setupTasks.publishAgent',
@@ -160,6 +165,6 @@ export const setupTaskOrder = [
 	'add-tool',
 	'add-instructions',
 	'test-agent',
-	'add-channel',
+	'add-trigger',
 	'publish-agent',
 ] as const satisfies readonly SetupTaskId[];

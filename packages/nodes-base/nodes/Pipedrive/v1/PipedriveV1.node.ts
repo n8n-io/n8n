@@ -8,8 +8,14 @@ import type {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError, setSafeObjectProperty } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	NodeOperationError,
+	requestPath,
+	setSafeObjectProperty,
+} from 'n8n-workflow';
 
 import type { ICustomProperties } from './GenericFunctions';
 import {
@@ -3893,7 +3899,12 @@ export class PipedriveV1 implements INodeType {
 			// select them easily
 			async getActivityTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { data } = await pipedriveApiRequest.call(this, 'GET', '/activityTypes', {});
+				const { data } = await pipedriveApiRequest.call(
+					this,
+					'GET',
+					requestPath`/activityTypes`,
+					{},
+				);
 				for (const activity of data) {
 					returnData.push({
 						name: activity.name,
@@ -3918,7 +3929,7 @@ export class PipedriveV1 implements INodeType {
 				const { data } = await pipedriveApiRequest.call(
 					this,
 					'GET',
-					'/filters',
+					requestPath`/filters`,
 					{},
 					{ type: type[resource] },
 				);
@@ -3935,7 +3946,12 @@ export class PipedriveV1 implements INodeType {
 			// select them easily
 			async getOrganizationIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { data } = await pipedriveApiRequest.call(this, 'GET', '/organizations', {});
+				const { data } = await pipedriveApiRequest.call(
+					this,
+					'GET',
+					requestPath`/organizations`,
+					{},
+				);
 				for (const org of data) {
 					returnData.push({
 						name: org.name,
@@ -3950,7 +3966,7 @@ export class PipedriveV1 implements INodeType {
 			async getUserIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const resource = this.getCurrentNodeParameter('resource');
-				const { data } = await pipedriveApiRequest.call(this, 'GET', '/users', {});
+				const { data } = await pipedriveApiRequest.call(this, 'GET', requestPath`/users`, {});
 				for (const user of data) {
 					if (user.active_flag === true) {
 						returnData.push({
@@ -3972,7 +3988,7 @@ export class PipedriveV1 implements INodeType {
 			// Get all Deals to display them to user so that they can
 			// select them easily
 			async getDeals(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const { data } = (await pipedriveApiRequest.call(this, 'GET', '/deals', {})) as {
+				const { data } = (await pipedriveApiRequest.call(this, 'GET', requestPath`/deals`, {})) as {
 					data: Array<{ id: string; title: string }>;
 				};
 				return sortOptionParameters(data.map(({ id, title }) => ({ value: id, name: title })));
@@ -3980,7 +3996,12 @@ export class PipedriveV1 implements INodeType {
 			// Get all Products to display them to user so that they can
 			// select them easily
 			async getProducts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const { data } = (await pipedriveApiRequest.call(this, 'GET', '/products', {})) as {
+				const { data } = (await pipedriveApiRequest.call(
+					this,
+					'GET',
+					requestPath`/products`,
+					{},
+				)) as {
 					data: Array<{ id: string; name: string }>;
 				};
 				return sortOptionParameters(data.map(({ id, name }) => ({ value: id, name })));
@@ -3992,7 +4013,7 @@ export class PipedriveV1 implements INodeType {
 				const { data } = (await pipedriveApiRequest.call(
 					this,
 					'GET',
-					`/deals/${dealId}/products`,
+					requestPath`/deals/${dealId}/products`,
 					{},
 				)) as {
 					data: Array<{ id: string; name: string }>;
@@ -4003,7 +4024,7 @@ export class PipedriveV1 implements INodeType {
 			// select them easily
 			async getStageIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { data } = await pipedriveApiRequest.call(this, 'GET', '/stages', {});
+				const { data } = await pipedriveApiRequest.call(this, 'GET', requestPath`/stages`, {});
 				for (const stage of data) {
 					returnData.push({
 						name: `${stage.pipeline_name} > ${stage.name}`,
@@ -4019,7 +4040,12 @@ export class PipedriveV1 implements INodeType {
 				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { data } = await pipedriveApiRequest.call(this, 'GET', '/organizationFields', {});
+				const { data } = await pipedriveApiRequest.call(
+					this,
+					'GET',
+					requestPath`/organizationFields`,
+					{},
+				);
 				for (const field of data) {
 					if (field.key.length === 40) {
 						returnData.push({
@@ -4035,7 +4061,7 @@ export class PipedriveV1 implements INodeType {
 			// select them easily
 			async getDealCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { data } = await pipedriveApiRequest.call(this, 'GET', '/dealFields', {});
+				const { data } = await pipedriveApiRequest.call(this, 'GET', requestPath`/dealFields`, {});
 				for (const field of data) {
 					if (field.key.length === 40) {
 						returnData.push({
@@ -4051,7 +4077,7 @@ export class PipedriveV1 implements INodeType {
 			// select them easily
 			async getLeadCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { data } = await pipedriveApiRequest.call(this, 'GET', '/leadFields', {});
+				const { data } = await pipedriveApiRequest.call(this, 'GET', requestPath`/leadFields`, {});
 				for (const field of data) {
 					if (field.key.length === 40) {
 						returnData.push({
@@ -4067,7 +4093,12 @@ export class PipedriveV1 implements INodeType {
 			// select them easily
 			async getPersonCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { data } = await pipedriveApiRequest.call(this, 'GET', '/personFields', {});
+				const { data } = await pipedriveApiRequest.call(
+					this,
+					'GET',
+					requestPath`/personFields`,
+					{},
+				);
 				for (const field of data) {
 					if (field.key.length === 40) {
 						returnData.push({
@@ -4084,7 +4115,12 @@ export class PipedriveV1 implements INodeType {
 			async getPersonLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const operation = this.getCurrentNodeParameter('operation') as string;
-				const { data } = await pipedriveApiRequest.call(this, 'GET', '/personFields', {});
+				const { data } = await pipedriveApiRequest.call(
+					this,
+					'GET',
+					requestPath`/personFields`,
+					{},
+				);
 				for (const field of data) {
 					if (field.key === 'label') {
 						if (field.options) {
@@ -4113,7 +4149,12 @@ export class PipedriveV1 implements INodeType {
 			async getOrganizationLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const operation = this.getCurrentNodeParameter('operation') as string;
-				const { data } = await pipedriveApiRequest.call(this, 'GET', '/organizationFields', {});
+				const { data } = await pipedriveApiRequest.call(
+					this,
+					'GET',
+					requestPath`/organizationFields`,
+					{},
+				);
 				for (const field of data) {
 					if (field.key === 'label') {
 						if (field.options) {
@@ -4141,7 +4182,12 @@ export class PipedriveV1 implements INodeType {
 			// Get all the persons to display them to user so that they can
 			// select them easily
 			async getPersons(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const { data } = (await pipedriveApiRequest.call(this, 'GET', '/persons', {})) as {
+				const { data } = (await pipedriveApiRequest.call(
+					this,
+					'GET',
+					requestPath`/persons`,
+					{},
+				)) as {
 					data: Array<{ id: string; name: string }>;
 				};
 
@@ -4151,7 +4197,12 @@ export class PipedriveV1 implements INodeType {
 			// Get all the lead labels to display them to user so that they can
 			// select them easily
 			async getLeadLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const { data } = (await pipedriveApiRequest.call(this, 'GET', '/leadLabels', {})) as {
+				const { data } = (await pipedriveApiRequest.call(
+					this,
+					'GET',
+					requestPath`/leadLabels`,
+					{},
+				)) as {
 					data: Array<{ id: string; name: string }>;
 				};
 
@@ -4163,7 +4214,7 @@ export class PipedriveV1 implements INodeType {
 			async getDealLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const operation = this.getCurrentNodeParameter('operation') as string;
-				const { data } = await pipedriveApiRequest.call(this, 'GET', '/dealFields', {});
+				const { data } = await pipedriveApiRequest.call(this, 'GET', requestPath`/dealFields`, {});
 				for (const field of data) {
 					if (field.key === 'label') {
 						if (field.options) {
@@ -4204,7 +4255,7 @@ export class PipedriveV1 implements INodeType {
 		let downloadFile: boolean;
 
 		let requestMethod: IHttpRequestMethods;
-		let endpoint: string;
+		let endpoint: RequestPath;
 		let returnAll = false;
 
 		const resource = this.getNodeParameter('resource', 0);
@@ -4232,7 +4283,7 @@ export class PipedriveV1 implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 			requestMethod = 'GET';
-			endpoint = '';
+			endpoint = requestPath``;
 			downloadFile = false;
 			body = {};
 			formData = {};
@@ -4245,7 +4296,7 @@ export class PipedriveV1 implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'POST';
-						endpoint = '/activities';
+						endpoint = requestPath`/activities`;
 
 						body.subject = this.getNodeParameter('subject', i) as string;
 						body.done = this.getNodeParameter('done', i) as string;
@@ -4260,7 +4311,7 @@ export class PipedriveV1 implements INodeType {
 						requestMethod = 'DELETE';
 
 						const activityId = this.getNodeParameter('activityId', i) as number;
-						endpoint = `/activities/${activityId}`;
+						endpoint = requestPath`/activities/${activityId}`;
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         activity:get
@@ -4270,7 +4321,7 @@ export class PipedriveV1 implements INodeType {
 
 						const activityId = this.getNodeParameter('activityId', i) as number;
 
-						endpoint = `/activities/${activityId}`;
+						endpoint = requestPath`/activities/${activityId}`;
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         activity:getAll
@@ -4295,7 +4346,7 @@ export class PipedriveV1 implements INodeType {
 							qs.type = (qs.type as string[]).join(',');
 						}
 
-						endpoint = '/activities';
+						endpoint = requestPath`/activities`;
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         activity:update
@@ -4304,7 +4355,7 @@ export class PipedriveV1 implements INodeType {
 						requestMethod = 'PUT';
 
 						const activityId = this.getNodeParameter('activityId', i) as number;
-						endpoint = `/activities/${activityId}`;
+						endpoint = requestPath`/activities/${activityId}`;
 
 						const updateFields = this.getNodeParameter('updateFields', i);
 						addAdditionalFields(body, updateFields);
@@ -4316,7 +4367,7 @@ export class PipedriveV1 implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'POST';
-						endpoint = '/deals';
+						endpoint = requestPath`/deals`;
 
 						body.title = this.getNodeParameter('title', i) as string;
 
@@ -4340,7 +4391,7 @@ export class PipedriveV1 implements INodeType {
 						requestMethod = 'DELETE';
 
 						const dealId = this.getNodeParameter('dealId', i) as number;
-						endpoint = `/deals/${dealId}`;
+						endpoint = requestPath`/deals/${dealId}`;
 					} else if (operation === 'duplicate') {
 						// ----------------------------------
 						//         deal:duplicate
@@ -4349,7 +4400,7 @@ export class PipedriveV1 implements INodeType {
 						requestMethod = 'POST';
 
 						const dealId = this.getNodeParameter('dealId', i) as number;
-						endpoint = `/deals/${dealId}/duplicate`;
+						endpoint = requestPath`/deals/${dealId}/duplicate`;
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         deal:get
@@ -4358,7 +4409,7 @@ export class PipedriveV1 implements INodeType {
 						requestMethod = 'GET';
 
 						const dealId = this.getNodeParameter('dealId', i) as number;
-						endpoint = `/deals/${dealId}`;
+						endpoint = requestPath`/deals/${dealId}`;
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         deal:getAll
@@ -4373,7 +4424,7 @@ export class PipedriveV1 implements INodeType {
 						const filters = this.getNodeParameter('filters', i);
 						addAdditionalFields(qs, filters);
 
-						endpoint = '/deals';
+						endpoint = requestPath`/deals`;
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         deal:update
@@ -4382,7 +4433,7 @@ export class PipedriveV1 implements INodeType {
 						requestMethod = 'PUT';
 
 						const dealId = this.getNodeParameter('dealId', i) as number;
-						endpoint = `/deals/${dealId}`;
+						endpoint = requestPath`/deals/${dealId}`;
 
 						const updateFields = this.getNodeParameter('updateFields', i);
 						addAdditionalFields(body, updateFields);
@@ -4425,7 +4476,7 @@ export class PipedriveV1 implements INodeType {
 							qs.status = additionalFields.status as string;
 						}
 
-						endpoint = '/deals/search';
+						endpoint = requestPath`/deals/search`;
 					}
 				} else if (resource === 'dealActivity') {
 					if (operation === 'getAll') {
@@ -4452,7 +4503,7 @@ export class PipedriveV1 implements INodeType {
 							qs.done = additionalFields.done === true ? 1 : 0;
 						}
 
-						endpoint = `/deals/${dealId}/activities`;
+						endpoint = requestPath`/deals/${dealId}/activities`;
 					}
 				} else if (resource === 'dealProduct') {
 					if (operation === 'add') {
@@ -4463,7 +4514,7 @@ export class PipedriveV1 implements INodeType {
 						requestMethod = 'POST';
 						const dealId = this.getNodeParameter('dealId', i) as string;
 
-						endpoint = `/deals/${dealId}/products`;
+						endpoint = requestPath`/deals/${dealId}/products`;
 
 						body.product_id = this.getNodeParameter('productId', i) as string;
 						body.item_price = this.getNodeParameter('item_price', i) as string;
@@ -4479,7 +4530,7 @@ export class PipedriveV1 implements INodeType {
 						requestMethod = 'GET';
 						const dealId = this.getNodeParameter('dealId', i) as string;
 
-						endpoint = `/deals/${dealId}/products`;
+						endpoint = requestPath`/deals/${dealId}/products`;
 					} else if (operation === 'remove') {
 						// ----------------------------------
 						//       dealProduct: remove
@@ -4489,7 +4540,7 @@ export class PipedriveV1 implements INodeType {
 						const dealId = this.getNodeParameter('dealId', i) as string;
 						const productAttachmentId = this.getNodeParameter('productAttachmentId', i) as string;
 
-						endpoint = `/deals/${dealId}/products/${productAttachmentId}`;
+						endpoint = requestPath`/deals/${dealId}/products/${productAttachmentId}`;
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         dealProduct: update
@@ -4499,7 +4550,7 @@ export class PipedriveV1 implements INodeType {
 						const dealId = this.getNodeParameter('dealId', i) as string;
 						const productAttachmentId = this.getNodeParameter('productAttachmentId', i) as string;
 
-						endpoint = `/deals/${dealId}/products/${productAttachmentId}`;
+						endpoint = requestPath`/deals/${dealId}/products/${productAttachmentId}`;
 
 						const updateFields = this.getNodeParameter('updateFields', i);
 						addAdditionalFields(body, updateFields);
@@ -4510,7 +4561,7 @@ export class PipedriveV1 implements INodeType {
 						//         file:create
 						// ----------------------------------
 						requestMethod = 'POST';
-						endpoint = '/files';
+						endpoint = requestPath`/files`;
 
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 						const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
@@ -4534,7 +4585,7 @@ export class PipedriveV1 implements INodeType {
 						requestMethod = 'DELETE';
 
 						const fileId = this.getNodeParameter('fileId', i) as number;
-						endpoint = `/files/${fileId}`;
+						endpoint = requestPath`/files/${fileId}`;
 					} else if (operation === 'download') {
 						// ----------------------------------
 						//         file:download
@@ -4544,7 +4595,7 @@ export class PipedriveV1 implements INodeType {
 						downloadFile = true;
 
 						const fileId = this.getNodeParameter('fileId', i) as number;
-						endpoint = `/files/${fileId}/download`;
+						endpoint = requestPath`/files/${fileId}/download`;
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         file:get
@@ -4553,7 +4604,7 @@ export class PipedriveV1 implements INodeType {
 						requestMethod = 'GET';
 
 						const fileId = this.getNodeParameter('fileId', i) as number;
-						endpoint = `/files/${fileId}`;
+						endpoint = requestPath`/files/${fileId}`;
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         file:update
@@ -4562,7 +4613,7 @@ export class PipedriveV1 implements INodeType {
 
 						const fileId = this.getNodeParameter('fileId', i) as number;
 						const updateFields = this.getNodeParameter('updateFields', i);
-						endpoint = `/files/${fileId}`;
+						endpoint = requestPath`/files/${fileId}`;
 						addAdditionalFields(body, updateFields);
 					}
 				} else if (resource === 'note') {
@@ -4572,7 +4623,7 @@ export class PipedriveV1 implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'POST';
-						endpoint = '/notes';
+						endpoint = requestPath`/notes`;
 
 						body.content = this.getNodeParameter('content', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
@@ -4585,7 +4636,7 @@ export class PipedriveV1 implements INodeType {
 						requestMethod = 'DELETE';
 
 						const noteId = this.getNodeParameter('noteId', i) as number;
-						endpoint = `/notes/${noteId}`;
+						endpoint = requestPath`/notes/${noteId}`;
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         note:get
@@ -4594,14 +4645,14 @@ export class PipedriveV1 implements INodeType {
 						requestMethod = 'GET';
 
 						const noteId = this.getNodeParameter('noteId', i) as number;
-						endpoint = `/notes/${noteId}`;
+						endpoint = requestPath`/notes/${noteId}`;
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         note:getAll
 						// ----------------------------------
 
 						requestMethod = 'GET';
-						endpoint = '/notes';
+						endpoint = requestPath`/notes`;
 
 						returnAll = this.getNodeParameter('returnAll', i);
 						if (!returnAll) {
@@ -4617,7 +4668,7 @@ export class PipedriveV1 implements INodeType {
 						requestMethod = 'PUT';
 
 						const noteId = this.getNodeParameter('noteId', i) as number;
-						endpoint = `/notes/${noteId}`;
+						endpoint = requestPath`/notes/${noteId}`;
 
 						const updateFields = this.getNodeParameter('updateFields', i);
 						addAdditionalFields(body, updateFields);
@@ -4672,7 +4723,7 @@ export class PipedriveV1 implements INodeType {
 						}
 
 						requestMethod = 'POST';
-						endpoint = '/leads';
+						endpoint = requestPath`/leads`;
 					} else if (operation === 'delete') {
 						// ----------------------------------------
 						//               lead: delete
@@ -4683,7 +4734,7 @@ export class PipedriveV1 implements INodeType {
 						const leadId = this.getNodeParameter('leadId', i);
 
 						requestMethod = 'DELETE';
-						endpoint = `/leads/${leadId}`;
+						endpoint = requestPath`/leads/${leadId}`;
 					} else if (operation === 'get') {
 						// ----------------------------------------
 						//                lead: get
@@ -4694,7 +4745,7 @@ export class PipedriveV1 implements INodeType {
 						const leadId = this.getNodeParameter('leadId', i);
 
 						requestMethod = 'GET';
-						endpoint = `/leads/${leadId}`;
+						endpoint = requestPath`/leads/${leadId}`;
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
 						//               lead: getAll
@@ -4714,7 +4765,7 @@ export class PipedriveV1 implements INodeType {
 						}
 
 						requestMethod = 'GET';
-						endpoint = '/leads';
+						endpoint = requestPath`/leads`;
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//               lead: update
@@ -4750,7 +4801,7 @@ export class PipedriveV1 implements INodeType {
 						const leadId = this.getNodeParameter('leadId', i);
 
 						requestMethod = 'PATCH';
-						endpoint = `/leads/${leadId}`;
+						endpoint = requestPath`/leads/${leadId}`;
 					}
 				} else if (resource === 'organization') {
 					if (operation === 'create') {
@@ -4759,7 +4810,7 @@ export class PipedriveV1 implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'POST';
-						endpoint = '/organizations';
+						endpoint = requestPath`/organizations`;
 
 						body.name = this.getNodeParameter('name', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
@@ -4772,7 +4823,7 @@ export class PipedriveV1 implements INodeType {
 						requestMethod = 'DELETE';
 
 						const organizationId = this.getNodeParameter('organizationId', i) as number;
-						endpoint = `/organizations/${organizationId}`;
+						endpoint = requestPath`/organizations/${organizationId}`;
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         organization:get
@@ -4781,7 +4832,7 @@ export class PipedriveV1 implements INodeType {
 						requestMethod = 'GET';
 
 						const organizationId = this.getNodeParameter('organizationId', i) as number;
-						endpoint = `/organizations/${organizationId}`;
+						endpoint = requestPath`/organizations/${organizationId}`;
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         organization:getAll
@@ -4805,7 +4856,7 @@ export class PipedriveV1 implements INodeType {
 							qs.first_char = qs.first_char.substring(0, 1);
 						}
 
-						endpoint = '/organizations';
+						endpoint = requestPath`/organizations`;
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         organization:update
@@ -4814,7 +4865,7 @@ export class PipedriveV1 implements INodeType {
 						const id = this.getNodeParameter('organizationId', i) as string;
 
 						requestMethod = 'PUT';
-						endpoint = `/organizations/${id}`;
+						endpoint = requestPath`/organizations/${id}`;
 
 						const updateFields = this.getNodeParameter('updateFields', i);
 						addAdditionalFields(body, updateFields);
@@ -4847,7 +4898,7 @@ export class PipedriveV1 implements INodeType {
 							qs.exact_match = additionalFields.exactMatch as boolean;
 						}
 
-						endpoint = '/organizations/search';
+						endpoint = requestPath`/organizations/search`;
 					}
 				} else if (resource === 'person') {
 					if (operation === 'create') {
@@ -4856,7 +4907,7 @@ export class PipedriveV1 implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'POST';
-						endpoint = '/persons';
+						endpoint = requestPath`/persons`;
 
 						body.name = this.getNodeParameter('name', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
@@ -4869,7 +4920,7 @@ export class PipedriveV1 implements INodeType {
 						requestMethod = 'DELETE';
 
 						const personId = this.getNodeParameter('personId', i) as number;
-						endpoint = `/persons/${personId}`;
+						endpoint = requestPath`/persons/${personId}`;
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         person:get
@@ -4878,7 +4929,7 @@ export class PipedriveV1 implements INodeType {
 						requestMethod = 'GET';
 
 						const personId = this.getNodeParameter('personId', i) as number;
-						endpoint = `/persons/${personId}`;
+						endpoint = requestPath`/persons/${personId}`;
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         person:getAll
@@ -4905,7 +4956,7 @@ export class PipedriveV1 implements INodeType {
 							qs.sort = additionalFields.sort as string;
 						}
 
-						endpoint = '/persons';
+						endpoint = requestPath`/persons`;
 					} else if (operation === 'search') {
 						// ----------------------------------
 						//         persons:search
@@ -4937,7 +4988,7 @@ export class PipedriveV1 implements INodeType {
 							qs.include_fields = additionalFields.includeFields as string;
 						}
 
-						endpoint = '/persons/search';
+						endpoint = requestPath`/persons/search`;
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         person:update
@@ -4946,7 +4997,7 @@ export class PipedriveV1 implements INodeType {
 						requestMethod = 'PUT';
 
 						const personId = this.getNodeParameter('personId', i) as number;
-						endpoint = `/persons/${personId}`;
+						endpoint = requestPath`/persons/${personId}`;
 
 						const updateFields = this.getNodeParameter('updateFields', i);
 						addAdditionalFields(body, updateFields);
@@ -4968,7 +5019,7 @@ export class PipedriveV1 implements INodeType {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 
-						endpoint = '/products';
+						endpoint = requestPath`/products`;
 					}
 				} else {
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, {

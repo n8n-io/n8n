@@ -14,6 +14,7 @@ import {
 	loadRuntimeSkillSourceFromDirectory,
 	parseRuntimeSkillMarkdown,
 	renderSkillCatalogPrompt,
+	RUNTIME_SKILL_MAX_OUTPUT_BYTES,
 } from '..';
 import type { AgentRuntimeConfig } from '../../runtime/loop/agent-runtime';
 import { Agent } from '../../sdk/agent';
@@ -30,12 +31,28 @@ function skillLoadText(output: unknown): string {
 }
 
 describe('runtime skills', () => {
+	it('loads a SKILL.md that still uses the deprecated recommended_tools key', () => {
+		const result = parseRuntimeSkillMarkdown(`---
+name: legacy-skill
+description: Written before the tool group rename.
+recommended_tools:
+  - list_workflows
+---
+
+Do the thing.`);
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(result.skill).not.toHaveProperty('recommendedToolGroups');
+		expect(result.skill).not.toHaveProperty('recommendedTools');
+	});
+
 	it('parses SKILL.md frontmatter into a runtime skill', () => {
 		const result = parseRuntimeSkillMarkdown(`---
 name: workflow-builder
 description: Build workflows.
-recommended_tools:
-  - bash
+recommended_tool_groups:
+  - workflows
 allowed_tools: workflow
 interface:
   display_name: Workflow Builder
@@ -74,7 +91,7 @@ Follow the workflow-building process.`);
 				name: 'workflow-builder',
 				description: 'Build workflows.',
 				instructions: 'Follow the workflow-building process.',
-				recommendedTools: ['bash'],
+				recommendedToolGroups: ['workflows'],
 				allowedTools: ['workflow'],
 				interface: {
 					displayName: 'Workflow Builder',
@@ -106,6 +123,21 @@ Follow the workflow-building process.`);
 				metadata: { owner: 'agents' },
 			},
 		});
+	});
+
+	it('ignores the removed policy.lifetime field', () => {
+		const result = parseRuntimeSkillMarkdown(`---
+name: router
+description: Route requests.
+policy:
+  lifetime: turn
+---
+
+Route it.`);
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(result.skill).not.toHaveProperty('policy');
 	});
 
 	it('rejects invalid SKILL.md frontmatter contract fields', () => {
@@ -520,7 +552,7 @@ Use the workflow SDK.`,
 				name: 'Summarize notes',
 				description: 'Use for meeting notes.',
 				category: 'productivity',
-				recommendedTools: ['data-tables'],
+				recommendedToolGroups: ['data_tables'],
 				instructions: 'Extract private decisions.',
 			},
 		]);
@@ -531,7 +563,7 @@ Use the workflow SDK.`,
 		expect(prompt).toContain('name: "Summarize notes"');
 		expect(prompt).toContain('id: "summarize_notes"');
 		expect(prompt).toContain('category: "productivity"');
-		expect(prompt).toContain('recommendedTools: ["data-tables"]');
+		expect(prompt).toContain('recommendedToolGroups: ["data_tables"]');
 		expect(prompt).toContain('load_skill once with `{ "skillId": "<id>" }`');
 		expect(prompt).not.toContain('list_skills');
 		expect(prompt).not.toContain('Extract private decisions.');
@@ -583,6 +615,41 @@ Use the workflow SDK.`,
 			ok: false,
 			success: false,
 		});
+	});
+
+	it('accepts path-only reference metadata until the file is requested', async () => {
+		const source = createRuntimeSkillSource([
+			{
+				id: 'deferred',
+				name: 'Deferred',
+				description: 'Load later.',
+				instructions: 'See the guide.',
+				linkedFiles: {
+					references: [{ path: 'references/guide.md' }],
+					templates: [],
+					scripts: [],
+					assets: [],
+					examples: [],
+					other: [],
+				},
+			},
+		]);
+		source.loadFile = vi.fn(async (skillId, filePath) => ({
+			skillId,
+			filePath,
+			content: 'Guide.',
+			bytes: 6,
+			sha256: 'guide-hash',
+		}));
+		const tool = createSkillLoadTool(source);
+		const activation = await tool.handler?.({ skillId: 'deferred' }, {});
+		if (!isZodSchema(tool.outputSchema)) throw new Error('Expected Zod output schema');
+		expect(tool.outputSchema.safeParse(activation).success).toBe(true);
+		expect(skillLoadText(activation)).toContain('references/guide.md');
+		expect(source.loadFile).not.toHaveBeenCalled();
+		const file = await tool.handler?.({ skillId: 'deferred', filePath: 'references/guide.md' }, {});
+		expect(tool.outputSchema.safeParse(file).success).toBe(true);
+		expect(file).toMatchObject({ content: 'Guide.', bytes: 6, sha256: 'guide-hash' });
 	});
 
 	it('prepares the runtime skill source before load_skill reads the registry', async () => {
@@ -644,6 +711,82 @@ Use the workflow SDK.`,
 		expect(JSON.stringify([skill, file])).not.toContain('/usr/local/lib');
 	});
 
+	it('names the first 50 linked files in the header and counts the rest', async () => {
+		const references = Array.from({ length: 52 }, (_, index) => ({
+			path: `references/${String(index).padStart(2, '0')}.md`,
+		}));
+		const source = createRuntimeSkillSource([
+			{
+				id: 'notes',
+				name: 'Notes',
+				description: 'Use for notes.',
+				instructions: 'Body.',
+				linkedFiles: {
+					references,
+					templates: [],
+					scripts: [],
+					assets: [],
+					examples: [],
+					other: [],
+				},
+			},
+		]);
+		source.loadFile = async (skillId, filePath) =>
+			await Promise.resolve({ skillId, filePath, content: 'Guide' });
+		const loadTool = createSkillLoadTool(source);
+
+		const skill = skillLoadText(await loadTool.handler?.({ skillId: 'notes' }, {}));
+
+		expect(skill).toContain('"references/49.md", and 2 more files.');
+		expect(skill).not.toContain('references/50.md');
+		// A file that the header does not name still loads by its path.
+		expect(
+			await loadTool.handler?.({ skillId: 'notes', filePath: 'references/51.md' }, {}),
+		).toMatchObject({ success: true, content: 'Guide' });
+	});
+
+	it('returns a long linked file in parts that end on a character boundary', async () => {
+		const linkedFiles = {
+			references: [{ path: 'references/guide.md' }],
+			templates: [],
+			scripts: [],
+			assets: [],
+			examples: [],
+			other: [],
+		};
+		const source = createRuntimeSkillSource([
+			{
+				id: 'notes',
+				name: 'Notes',
+				description: 'Use for notes.',
+				instructions: 'Body.',
+				linkedFiles,
+			},
+		]);
+		// One byte, then characters of two bytes, so the byte limit falls inside a character.
+		const content = `a${'é'.repeat(RUNTIME_SKILL_MAX_OUTPUT_BYTES)}`;
+		source.loadFile = async (skillId, filePath) =>
+			await Promise.resolve({ skillId, filePath, content });
+		const loadTool = createSkillLoadTool(source);
+
+		let read = '';
+		let offset: number | undefined = 0;
+		let parts = 0;
+		while (offset !== undefined) {
+			const result = (await loadTool.handler?.(
+				{ skillId: 'notes', filePath: 'references/guide.md', offset },
+				{},
+			)) as { content: string };
+			const note = /\n\n\[\.\.\. output truncated .* offset (\d+) \.\.\.\]$/.exec(result.content);
+			read += note ? result.content.slice(0, note.index) : result.content;
+			offset = note ? Number(note[1]) : undefined;
+			parts += 1;
+		}
+
+		expect(parts).toBe(3);
+		expect(read).toBe(content);
+	});
+
 	it('injects the agent skill catalog without preparing the runtime skill source', async () => {
 		const source = createRuntimeSkillSource([
 			{
@@ -657,7 +800,7 @@ Use the workflow SDK.`,
 		source.prepare = prepare;
 
 		const agent = new Agent('assistant')
-			.model('anthropic/claude-sonnet-4-5')
+			.model('anthropic/claude-sonnet-5-5')
 			.instructions('Base instructions.')
 			.skills(source);
 		const runtimeConfig = await (
@@ -805,12 +948,16 @@ Use the workflow SDK.`,
 			bytes: 15,
 			sha256: 'abc123',
 		});
-		expect(loadFile).toHaveBeenCalledWith('summarize_notes', 'references/guide.md');
+		expect(loadFile).toHaveBeenCalledWith(
+			'summarize_notes',
+			'references/guide.md',
+			expect.any(Function),
+		);
 	});
 
 	it('adds runtime skills to agents through one shared load path', () => {
 		const agent = new Agent('assistant')
-			.model('anthropic/claude-sonnet-4-5')
+			.model('anthropic/claude-sonnet-5-5')
 			.instructions('Base instructions.')
 			.skills([
 				{
@@ -845,7 +992,7 @@ Use the workflow SDK.`,
 		]);
 
 		const agent = new Agent('assistant')
-			.model('anthropic/claude-sonnet-4-5')
+			.model('anthropic/claude-sonnet-5-5')
 			.instructions('Base instructions.')
 			.skills(initialSource)
 			.skills(materializedSource);
@@ -878,7 +1025,7 @@ Use the workflow SDK.`,
 			.build();
 
 		const agent = new Agent('assistant')
-			.model('anthropic/claude-sonnet-4-5')
+			.model('anthropic/claude-sonnet-5-5')
 			.instructions('Base instructions.')
 			.skills(source);
 
@@ -968,24 +1115,6 @@ describe('reference skills', () => {
 
 		const agents = skillLoadText(await loadTool.handler?.({ skillId: 'agents' }, {}));
 		expect(agents).toContain('- "models": "Load before choosing a model."');
-	});
-
-	it('records references with descriptions in the activation result', async () => {
-		writeBuilderWithReferences();
-		const source = loadRuntimeSkillSourceFromDirectory(root);
-		const loadTool = createSkillLoadTool(source);
-
-		const result = await loadTool.handler?.(
-			{ skillId: 'builder' },
-			{ loadSkill: async (skillId: string) => await source.loadSkill(skillId) },
-		);
-
-		expect(result).toMatchObject({
-			success: true,
-			skillId: 'builder',
-			references: [{ skillId: 'models', description: 'Load before choosing a model.' }],
-			linkedFiles: { references: [expect.objectContaining({ path: 'references/notes.md' })] },
-		});
 	});
 
 	it('loads a reference by id or by its owner file path', async () => {

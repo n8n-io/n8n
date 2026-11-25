@@ -6,9 +6,11 @@ import {
 	type ActivityResourceType,
 } from './activity-event';
 import { AgentEvalDataset, type AgentEvalColumnMapping } from './agent-eval-dataset.ee';
+import { AgentExecutionStatistics } from './agent-execution-statistics';
 import { AgentEvalRating, type AgentEvalVote } from './agent-eval-rating.ee';
 import { AgentEvalResult, type AgentEvalResultStatus } from './agent-eval-result.ee';
 import { AgentEvalRun, type AgentEvalRunStatus } from './agent-eval-run.ee';
+import { AgentTagMapping } from './agent-tag-mapping';
 import { AiBuilderTemporaryWorkflow } from './ai-builder-temporary-workflow';
 import { AiPreference } from './ai-preference';
 import { AnnotationTagEntity } from './annotation-tag-entity.ee';
@@ -45,10 +47,14 @@ import {
 } from './idempotency-key';
 import { InstanceCredentialAssignment } from './instance-credential-assignment';
 import { InvalidAuthToken } from './invalid-auth-token';
+import { Lease } from './lease';
+import { LeaseKind } from './lease-kind';
+import { LeaseSession } from './lease-session';
 import { PollerState } from './poller-state';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
 import { ProjectPoolSettings } from './project-pool-settings.ee';
+import { ProjectWorkflowReviewSettings } from './project-workflow-review-settings.ee';
 import { ProjectRelation } from './project-relation';
 import { ProjectSecretsProviderAccess } from './project-secrets-provider-access';
 import type { SecretsProviderAccessRole } from './project-secrets-provider-access';
@@ -78,7 +84,10 @@ import { SharedWorkflow } from './shared-workflow';
 import { TagEntity } from './tag-entity';
 import { TestCaseExecution } from './test-case-execution.ee';
 import { TestRun } from './test-run.ee';
-import { User } from './user';
+import { Person } from './person';
+import { ServiceAccount } from './service-account';
+import { ServiceAccountDetails } from './service-account-details';
+import { User, type UserKind } from './user';
 import { Variables } from './variables';
 import { WebhookEntity } from './webhook-entity';
 import {
@@ -117,6 +126,11 @@ import { WorkflowStatistics } from './workflow-statistics';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
 
 export {
+	AgentExecutionStatistics,
+	Person,
+	ServiceAccount,
+	ServiceAccountDetails,
+	type UserKind,
 	ActivityEvent,
 	activityEventCategories,
 	activityResourceTypes,
@@ -130,12 +144,16 @@ export {
 	type AgentEvalResultStatus,
 	AgentEvalRating,
 	type AgentEvalVote,
+	AgentTagMapping,
 	IdempotencyKey,
 	idempotencyKeyStatuses,
 	IDEMPOTENCY_KEY_TTL_MS,
 	type IdempotencyKeyStatus,
 	InvalidAuthToken,
 	InstanceCredentialAssignment,
+	Lease,
+	LeaseKind,
+	LeaseSession,
 	AiBuilderTemporaryWorkflow,
 	PollerState,
 	ProcessedData,
@@ -218,20 +236,26 @@ export {
 	TestCaseExecution,
 	ExecutionEntity,
 	ProjectPoolSettings,
+	ProjectWorkflowReviewSettings,
 	ProjectSecretsProviderAccess,
 	type SecretsProviderAccessRole,
 	SecretsProviderConnection,
 };
 
 export const entities = {
+	AgentExecutionStatistics,
 	ActivityEvent,
 	AgentEvalDataset,
 	AgentEvalRun,
 	AgentEvalResult,
 	AgentEvalRating,
+	AgentTagMapping,
 	IdempotencyKey,
 	InvalidAuthToken,
 	InstanceCredentialAssignment,
+	Lease,
+	LeaseKind,
+	LeaseSession,
 	AiBuilderTemporaryWorkflow,
 	PollerState,
 	ProcessedData,
@@ -256,6 +280,9 @@ export const entities = {
 	SharedWorkflow,
 	TagEntity,
 	User,
+	Person,
+	ServiceAccount,
+	ServiceAccountDetails,
 	WorkflowDependency,
 	WorkflowEntity,
 	WorkflowStatistics,
@@ -286,6 +313,7 @@ export const entities = {
 	ScheduledJob,
 	ScheduledTask,
 	ProjectPoolSettings,
+	ProjectWorkflowReviewSettings,
 	ProjectSecretsProviderAccess,
 	SecretsProviderConnection,
 };

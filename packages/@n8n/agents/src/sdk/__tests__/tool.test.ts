@@ -198,6 +198,38 @@ describe('wrapToolForApproval — requireApproval: true', () => {
 		);
 	});
 
+	it('requires a fresh decision when session approvals are disabled', async () => {
+		const handler = vi.fn();
+		const wrapped = wrapToolForApproval(makeBuiltTool({ handler }), {
+			requireApproval: true,
+			allowSessionApproval: false,
+			approvalNotice: 'Another reviewer must approve after you.',
+		});
+		const { ctx, suspendMock } = makeCtx();
+		ctx.approvalDescription = 'Update the record.';
+		ctx.approvalContext = { approvedKeys: new Set(['["tool","testTool"]']), onDecision: vi.fn() };
+		await wrapped.handler!({ id: '1' }, ctx);
+		expect(suspendMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				description: 'Update the record.\n\nAnother reviewer must approve after you.',
+			}),
+			expect.anything(),
+		);
+		expect(suspendMock.mock.calls[0][0].supportsSessionApproval).not.toBe(true);
+		expect(handler).not.toHaveBeenCalled();
+		ctx.resumeData = { approved: true, scope: 'session' };
+		await expect(wrapped.handler!({ id: '1' }, ctx)).rejects.toThrow(
+			'Session approvals are not available',
+		);
+		expect(ctx.approvalContext.onDecision).not.toHaveBeenCalled();
+		ctx.resumeData = { approved: true, scope: 'once' };
+		await wrapped.handler!({ id: '1' }, ctx);
+		expect(handler).toHaveBeenCalledWith(
+			{ id: '1' },
+			expect.objectContaining({ approvalDescription: 'Update the record.' }),
+		);
+	});
+
 	it.each(['save fails', 'run is canceled'])(
 		'does not execute the tool when the %s',
 		async (reason) => {
@@ -288,6 +320,19 @@ describe('wrapToolForApproval — requireApproval: true', () => {
 		const result = await wrapped.handler!({ id: 'abc' }, ctx);
 
 		expect(result).toEqual({ declined: true, message: 'Tool "testTool" was not approved' });
+	});
+
+	it('adds the reason of a decline to the message', async () => {
+		const baseTool = makeBuiltTool();
+		const wrapped = wrapToolForApproval(baseTool, { requireApproval: true });
+		const { ctx } = makeCtx({ approved: false, reason: 'nobody can approve it here' });
+
+		const result = await wrapped.handler!({ id: 'abc' }, ctx);
+
+		expect(result).toEqual({
+			declined: true,
+			message: 'Tool "testTool" was not approved: nobody can approve it here',
+		});
 	});
 
 	it("resumes an inner suspension when its approval payload matches the wrapper's payload", async () => {

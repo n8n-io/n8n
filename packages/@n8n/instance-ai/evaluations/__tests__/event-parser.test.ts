@@ -269,6 +269,70 @@ describe('extractOutcomeFromEvents', () => {
 		expect(result.dataTableIds).toEqual([]);
 	});
 
+	const changeDataTablesEvents = (result: unknown): CapturedEvent[] => [
+		{
+			timestamp: 1000,
+			type: 'tool-call',
+			data: {
+				type: 'tool-call',
+				payload: { toolCallId: 'tc-1', toolName: 'change_data_tables', args: { changes: [] } },
+			},
+		},
+		{
+			timestamp: 1100,
+			type: 'tool-result',
+			data: {
+				type: 'tool-result',
+				payload: { toolCallId: 'tc-1', toolName: 'change_data_tables', result },
+			},
+		},
+	];
+
+	it('tracks only the tables that a change_data_tables batch created', () => {
+		const events = changeDataTablesEvents({
+			success: true,
+			applied: [
+				{ index: 0, action: 'create', table: { id: 'dt-new', name: 'leads' }, result: {} },
+				{ index: 1, action: 'insert-rows', table: { id: 'dt-new', name: 'leads' }, result: {} },
+				{
+					index: 2,
+					action: 'delete-column',
+					table: { id: 'dt-existing', name: 'orders' },
+					result: {},
+				},
+			],
+			skipped: [],
+		});
+
+		expect(extractOutcomeFromEvents(events).dataTableIds).toEqual(['dt-new']);
+	});
+
+	it('tracks a table that a change_data_tables batch created before a later change failed', () => {
+		const events = changeDataTablesEvents(
+			JSON.stringify({
+				success: false,
+				applied: [
+					{ index: 0, action: 'create', table: { id: 'dt-new', name: 'leads' }, result: {} },
+				],
+				failed: { index: 1, action: 'insert-rows', error: 'Column not found' },
+				skipped: [2],
+			}),
+		);
+
+		expect(extractOutcomeFromEvents(events).dataTableIds).toEqual(['dt-new']);
+	});
+
+	it('tracks no table when a change_data_tables batch applied nothing', () => {
+		const events = changeDataTablesEvents({
+			success: false,
+			applied: [],
+			failed: { index: 0, action: 'create', error: 'Table already exists' },
+			skipped: [],
+		});
+
+		expect(extractOutcomeFromEvents(events).dataTableIds).toEqual([]);
+	});
+
 	it('extracts execution IDs from consolidated executions run results', () => {
 		const events: CapturedEvent[] = [
 			{
@@ -724,7 +788,7 @@ describe('buildConversationMetrics', () => {
 				type: 'confirmation-request',
 				data: {
 					type: 'confirmation-request',
-					payload: { requestId: 'r2', inputType: 'plan-review' },
+					payload: { requestId: 'r2', inputType: 'text' },
 				},
 			},
 			{
@@ -744,11 +808,11 @@ describe('buildConversationMetrics', () => {
 
 		const result = buildConversationMetrics(events);
 		expect(result.confirmationAskedTotal).toBe(3);
-		expect(result.confirmationAskedByKind).toEqual({ questions: 2, 'plan-review': 1 });
+		expect(result.confirmationAskedByKind).toEqual({ questions: 2, text: 1 });
 		expect(result.perTurn[0].confirmationAskedTotal).toBe(3);
 		expect(result.perTurn[0].confirmationAskedByKind).toEqual({
 			questions: 2,
-			'plan-review': 1,
+			text: 1,
 		});
 	});
 
@@ -801,22 +865,6 @@ describe('buildConversationMetrics', () => {
 			{ timestamp: 1, type: 'run-start', data: { type: 'run-start' } },
 			{ timestamp: 2, type: 'tool-error', data: { type: 'tool-error' } },
 			{ timestamp: 3, type: 'tasks-update', data: { type: 'tasks-update' } },
-			{ timestamp: 4, type: 'run-finish', data: { type: 'run-finish' } },
-		];
-
-		const result = buildConversationMetrics(events);
-		expect(result.perTurn[0].replanAfterErrorCount).toBe(1);
-	});
-
-	it('counts replan_after_error when a tool-error is followed by workflow_builder_create_tasks', () => {
-		const events: CapturedEvent[] = [
-			{ timestamp: 1, type: 'run-start', data: { type: 'run-start' } },
-			{ timestamp: 2, type: 'tool-error', data: { type: 'tool-error' } },
-			{
-				timestamp: 3,
-				type: 'tool-call',
-				data: { type: 'tool-call', payload: { toolName: 'workflow_builder_create_tasks' } },
-			},
 			{ timestamp: 4, type: 'run-finish', data: { type: 'run-finish' } },
 		];
 
@@ -877,12 +925,7 @@ describe('seededTurnCounters', () => {
 		expect(counter).toMatchObject({ toolCallCount: 2, toolErrorCount: 1 });
 	});
 
-	it('counts a plan step as a tool call', () => {
-		const [counter] = seededTurnCounters([seededTurn([{ kind: 'plan', tasks: [] }])]);
-		expect(counter.toolCallCount).toBe(1);
-	});
-
-	it('dual-counts workflow_builder_ask_user as a tool call and a questions confirmation (mirrors live)', () => {
+	it('dual-counts ask_user as a tool call and a questions confirmation (mirrors live)', () => {
 		const [counter] = seededTurnCounters([seededTurn([{ kind: 'ask-user', questions: [] }])]);
 		expect(counter.toolCallCount).toBe(1);
 		expect(counter.confirmationAskedTotal).toBe(1);
@@ -903,13 +946,13 @@ describe('seededTurnCounters', () => {
 				{
 					kind: 'confirmation',
 					toolName: 'workflow_builder_workflows',
-					resumeReason: 'plan-review',
+					resumeReason: 'text',
 				},
 			]),
 		]);
 		expect(counter.toolCallCount).toBe(1);
 		expect(counter.confirmationAskedTotal).toBe(1);
-		expect(counter.confirmationAskedByKind).toEqual({ 'plan-review': 1 });
+		expect(counter.confirmationAskedByKind).toEqual({ text: 1 });
 	});
 
 	it('counts setup-wizard as a tool call, ignores agent-text, leaves non-derivable counters at default', () => {

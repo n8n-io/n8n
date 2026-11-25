@@ -13,6 +13,14 @@ import { tagVersionInfoToReleaseCandidateBranchName } from './github-helpers.mjs
 mock.module('./github-helpers.mjs', {
 	namedExports: {
 		RELEASE_TRACKS: ['stable', 'beta', 'v1'],
+		RELEASE_PREFIX: 'n8n@',
+		listRemoteTagsWithCommits: () =>
+			new Map([
+				['n8n@1.123.33', 'v1'],
+				['n8n@2.9.2', 'stable'],
+				['n8n@2.10.1', 'beta'],
+				['n8n@3.0.0', 'prerelease'],
+			]),
 		resolveReleaseTagForTrack: (track) => {
 			// Always return deterministic data
 			if (track === 'stable') return { version: '2.9.2', tag: 'n8n@2.9.2' };
@@ -76,6 +84,52 @@ describe('determine-tracks', () => {
 	});
 	it('Disallow changing major version', () => {
 		assert.throws(() => determineTrack('3.0.0'));
+	});
+	it('Allow a standalone prerelease with a bare major version', () => {
+		const output = determineTrack('3.0.0', { prerelease: true });
+
+		assert.equal(output.track, 'rc');
+		assert.equal(output.version, '3.0.0');
+		assert.equal(output.previous_version, '2.10.1');
+		assert.equal(output.bump, 'minor');
+		assert.equal(output.new_stable_version, null);
+		assert.equal(output.release_type, 'rc');
+		assert.equal(output.rc_branch, 'release-candidate/3.0.x');
+		assert.equal(output.prerelease, true);
+	});
+	it('Use the previous standalone prerelease for the next weekly minor', () => {
+		const output = determineTrack('3.1.0', { prerelease: true });
+
+		assert.equal(output.track, 'rc');
+		assert.equal(output.version, '3.1.0');
+		assert.equal(output.previous_version, '3.0.0');
+		assert.equal(output.bump, 'minor');
+		assert.equal(output.release_type, 'rc');
+		assert.equal(output.rc_branch, 'release-candidate/3.1.x');
+		assert.equal(output.prerelease, true);
+	});
+	it('Allow a standalone prerelease patch', () => {
+		const output = determineTrack('3.0.1', { prerelease: true });
+
+		assert.equal(output.track, 'rc');
+		assert.equal(output.version, '3.0.1');
+		assert.equal(output.previous_version, '3.0.0');
+		assert.equal(output.bump, 'patch');
+		assert.equal(output.release_type, 'rc');
+		assert.equal(output.rc_branch, 'release-candidate/3.0.x');
+		assert.equal(output.prerelease, true);
+	});
+	it('Reject a standalone prerelease outside v3', () => {
+		assert.throws(
+			() => determineTrack('2.11.0', { prerelease: true }),
+			/require a bare v3 version/,
+		);
+	});
+	it('Reject a standalone prerelease with a SemVer prerelease suffix', () => {
+		assert.throws(
+			() => determineTrack('3.1.0-rc.0', { prerelease: true }),
+			/require a bare v3 version/,
+		);
 	});
 	it('Throw when track is not determinable', () => {
 		assert.throws(() => determineTrack(''));

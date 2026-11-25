@@ -80,6 +80,7 @@ function makeDetail(
 		viewerCanDecide: true,
 		viewerDecisionIneligibilityReason: null,
 		viewerCanComment: true,
+		viewerCanClose: true,
 		...overrides,
 	};
 }

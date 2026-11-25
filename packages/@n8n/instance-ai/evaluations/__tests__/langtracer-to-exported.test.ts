@@ -161,16 +161,10 @@ describe('unsupportedPushReason', () => {
 	});
 
 	it('refuses a case whose prompt version would be lost', () => {
-		expect(unsupportedPushReason(diskCase({ promptVersion: 'progressive@1' }))).toContain(
+		expect(unsupportedPushReason(diskCase({ promptVersion: 'concise@1' }))).toContain(
 			'promptVersion',
 		);
 	});
-	it.each(['default', 'progressive'] as const)(
-		'refuses a case whose %s mode would be lost',
-		(buildMode) => {
-			expect(unsupportedPushReason(diskCase({ buildMode }))).toContain('buildMode');
-		},
-	);
 
 	it('returns null for a plain conversation-driven case', () => {
 		expect(unsupportedPushReason(diskCase())).toBeNull();
@@ -401,7 +395,7 @@ describe('attach round-trip: write → export → reparse', () => {
 						id: agentId,
 						config: {
 							name: 'Notion research',
-							model: 'anthropic/claude-sonnet-4-5',
+							model: 'anthropic/claude-sonnet-5-5',
 							instructions: 'Research company notes.',
 						},
 					},

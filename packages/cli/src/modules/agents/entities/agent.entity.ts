@@ -1,7 +1,24 @@
 import type { ToolDescriptor } from '@n8n/agents';
 import type { AgentIntegrationConfig, AgentSkill, StoredAgentConfig } from '@n8n/api-types';
-import { DateTimeColumn, JsonColumn, Project, WithTimestampsAndStringId } from '@n8n/db';
-import { Column, Entity, ManyToOne, JoinColumn, type Relation } from '@n8n/typeorm';
+import {
+	DateTimeColumn,
+	JsonColumn,
+	Project,
+	TagEntity,
+	WorkflowEntity,
+	User,
+	WithTimestampsAndStringId,
+} from '@n8n/db';
+import {
+	Column,
+	Entity,
+	Index,
+	JoinTable,
+	ManyToMany,
+	ManyToOne,
+	JoinColumn,
+	type Relation,
+} from '@n8n/typeorm';
 
 import type { AgentHistory } from './agent-history.entity';
 
@@ -27,7 +44,12 @@ export function isProjectAgent<T extends Pick<Agent, 'projectId'>>(
 }
 
 @Entity({ name: 'agents' })
+@Index('IDX_agents_project_folder', ['projectId', 'parentFolderId'])
+@Index(['approvalWorkflowId'])
 export class Agent extends WithTimestampsAndStringId {
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	parentFolderId: string | null;
+
 	@Column({ type: 'varchar', length: 128 })
 	name: string;
 
@@ -47,6 +69,17 @@ export class Agent extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 16, default: 'project' })
 	scope: AgentScope;
 
+	/** Private backing workflow for channel approval executions. It has no user shares. */
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	approvalWorkflowId: string | null;
+
+	@ManyToOne(() => WorkflowEntity, { onDelete: 'RESTRICT', nullable: true })
+	@JoinColumn({
+		name: 'approvalWorkflowId',
+		foreignKeyConstraintName: 'FK_agent_approval_execution_owner',
+	})
+	approvalWorkflow?: Relation<WorkflowEntity> | null;
+
 	@JsonColumn({ nullable: true, default: null })
 	schema: StoredAgentConfig | null;
 
@@ -62,12 +95,21 @@ export class Agent extends WithTimestampsAndStringId {
 		}
 	>;
 
+	/**
+	 * @deprecated Agents keep their skills in the skills module. Read and write them through
+	 * `AgentSkillRefsService`. Only the data migration reads this column, and a later
+	 * release drops it.
+	 */
 	@JsonColumn({ default: '{}' })
 	skills: Record<string, AgentSkill>;
 
 	/** Whether MCP clients granted agent scopes may operate on this agent. */
 	@Column({ default: false })
 	availableInMCP: boolean;
+
+	/** An archived agent is unpublished, hidden from lists and read-only until a user restores it. */
+	@Column({ default: false })
+	isArchived: boolean;
 
 	/**
 	 * When this agent first reached a complete, publishable setup. Set once and
@@ -76,7 +118,7 @@ export class Agent extends WithTimestampsAndStringId {
 	@DateTimeColumn({ nullable: true })
 	setupCompletedAt: Date | null;
 
-	/** UUID identifying the current draft; bumped on the first config save after each publish. */
+	/** ID of the current saved definition. Each changed draft receives a new ID. */
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	versionId: string | null;
 
@@ -89,13 +131,35 @@ export class Agent extends WithTimestampsAndStringId {
 	activeVersion?: Relation<AgentHistory> | null;
 
 	/**
-	 * Optimistic-lock token. Every write that can conflict — draft edits via
-	 * `AgentRepository.saveDraftFenced`, publish/unpublish via
-	 * `setActiveVersionFenced` — bumps it in SQL behind `WHERE revision =
-	 * :expected`, so a concurrent writer that bumped `revision` in between
-	 * loses the fence (user-retryable `ConflictError`) instead of silently
-	 * overwriting newer state. Never bump or write this column any other way.
+	 * The identity this agent acts as. Today it is always a service account.
+	 * Every agent has one. The identity cannot be deleted while the agent exists.
 	 */
+	@Index({ unique: true, where: '"identityId" IS NOT NULL' })
+	@Column({ type: 'uuid' })
+	identityId: string;
+
+	@ManyToOne(() => User, { nullable: false, onDelete: 'RESTRICT' })
+	@JoinColumn({ name: 'identityId', foreignKeyConstraintName: 'FK_agents_identity' })
+	identity?: Relation<User>;
+
+	/** Draft revision. Fenced saves advance it to reject stale draft writes. */
 	@Column({ type: 'int', default: 0 })
 	revision: number;
+
+	/** Changes on publication and live connection edits, independently of draft saves. */
+	@Column({ type: 'int', default: 0 })
+	publicationRevision: number;
+
+	/**
+	 * Agent tags, read through the `agents_tags` join table. Unidirectional:
+	 * `TagEntity` keeps no inverse relation to `Agent` (it lives in this
+	 * package), and tag writes go through the `AgentTagMapping` rows instead.
+	 */
+	@ManyToMany(() => TagEntity)
+	@JoinTable({
+		name: 'agents_tags',
+		joinColumn: { name: 'agentId', referencedColumnName: 'id' },
+		inverseJoinColumn: { name: 'tagId', referencedColumnName: 'id' },
+	})
+	tags?: TagEntity[];
 }

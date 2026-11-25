@@ -29,10 +29,10 @@ function prepare(config: AgentJsonConfig | null): PreparedAgentExport {
 	return {
 		projectId: 'source-project',
 		content: new AgentSerializer().serialize(
-			source,
+			{ ...source, isArchived: false },
 			{
 				schema: config,
-				skills: source.skills,
+				skills: {},
 				tools: source.tools,
 				tasks: new Map(Object.entries(source.tasks)),
 			},
@@ -208,6 +208,40 @@ describe('AgentRequirementsExtractor', () => {
 		},
 	);
 
+	it('requires no credential that only a channel uses', () => {
+		const snapshot = prepare({
+			name: 'Channels',
+			model: 'openai/gpt-4o',
+			credential: 'model-credential',
+			instructions: '',
+			integrations: [
+				{ type: 'slack', credentialId: 'slack-only' },
+				{ type: 'telegram', credentialId: 'model-credential' },
+			],
+		});
+		expect(extractor.extract(snapshot).credentials).toEqual([
+			{ ...source, credentialId: 'model-credential' },
+		]);
+	});
+
+	it('includes a workflow guardrail check workflow', () => {
+		const snapshot = prepare({
+			name: 'Support',
+			model: 'openai/gpt-4o',
+			credential: 'model-credential',
+			instructions: '',
+			config: {
+				guardrails: {
+					tools: [{ kind: 'workflow', id: 'check_1', workflowId: 'check-workflow' }],
+				},
+			},
+		});
+
+		expect(extractor.extract(snapshot).workflows).toEqual([
+			{ ...source, referencedWorkflowId: 'check-workflow', origin: 'top-level' },
+		]);
+	});
+
 	it('rejects a workflow tool without an ID', () => {
 		const snapshot = prepare({
 			name: 'Draft',
@@ -232,4 +266,30 @@ describe('AgentRequirementsExtractor', () => {
 			agentIds: [],
 		});
 	});
+});
+
+it('exports decision workflow references and clears channel approval credentials', () => {
+	const snapshot = prepare({
+		name: 'Reviewer',
+		model: 'openai/test',
+		instructions: 'Review tools',
+		hitlConfigurations: [
+			{ id: 'interaction_workflow', name: 'Review', method: 'workflow', workflowId: 'decision-id' },
+			{
+				id: 'interaction_channel',
+				name: 'Review channel',
+				method: 'channel',
+				channel: 'slack',
+				credentialId: 'source-credential',
+				recipient: { kind: 'channel', id: 'C_REVIEW' },
+			},
+		],
+	});
+	expect(snapshot.content.config?.hitlConfigurations?.[1]).toMatchObject({ credentialId: '' });
+	expect(extractor.extract(snapshot).workflows).toContainEqual({
+		...source,
+		referencedWorkflowId: 'decision-id',
+		origin: 'top-level',
+	});
+	expect(extractor.extract(snapshot).credentials).toEqual([]);
 });

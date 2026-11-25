@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useZIndex } from 'element-plus';
 import {
 	TooltipContent,
 	TooltipPortal,
@@ -32,6 +33,13 @@ const props = withDefaults(defineProps<N8nTooltipProps>(), {
 	avoidCollisions: true,
 });
 
+const emit = defineEmits<{
+	/** Emitted when the tooltip starts to open */
+	'before-show': [];
+	/** Emitted when the tooltip closes */
+	hide: [];
+}>();
+
 // Get append-to target from composable, defaulting to body for proper z-index stacking
 const injectedAppendTo = useInjectTooltipAppendTo();
 const appendTo = computed(() => injectedAppendTo.value ?? 'body');
@@ -58,6 +66,20 @@ const disableHoverableContent = computed(() => !props.enterable);
 
 // Handle controlled visibility
 const isOpen = ref(false);
+const { nextZIndex } = useZIndex();
+const zIndex = ref<number>();
+
+// Emit on every open state change, from user interaction or from the `visible` prop.
+// Consumers use these events to lazy-load the tooltip content.
+// Register before the `visible` watcher so that a tooltip mounted open also emits.
+watch(isOpen, (open, wasOpen) => {
+	if (open === wasOpen) return;
+	if (open) {
+		emit('before-show');
+	} else {
+		emit('hide');
+	}
+});
 
 watch(
 	() => props.visible,
@@ -65,6 +87,15 @@ watch(
 		if (newVisible !== undefined) {
 			isOpen.value = newVisible;
 		}
+	},
+	{ immediate: true },
+);
+
+watch(
+	isOpen,
+	(open) => {
+		// Allocate on each open so tooltips stay above Element Plus menus.
+		if (open) zIndex.value = nextZIndex();
 	},
 	{ immediate: true },
 );
@@ -101,6 +132,7 @@ const handleOpenChange = (open: boolean) => {
 				<TooltipContent
 					data-test-id="tooltip-content"
 					:class="['n8n-tooltip', contentClass]"
+					:style="{ '--tooltip--z': zIndex }"
 					:side="placementParts.side"
 					:align="placementParts.align"
 					:side-offset="offset"
@@ -128,8 +160,6 @@ const handleOpenChange = (open: boolean) => {
 </template>
 
 <style lang="scss" module>
-@use '../../css/common/var';
-
 .buttons {
 	display: flex;
 	align-items: center;
@@ -147,7 +177,7 @@ const handleOpenChange = (open: boolean) => {
 
 // Global styles for teleported tooltip content
 :global(.n8n-tooltip) {
-	z-index: var.$index-tooltip;
+	z-index: var(--tooltip--z);
 	max-width: 180px;
 	padding: var(--spacing--4xs) var(--spacing--3xs);
 	min-height: var(--height--sm);

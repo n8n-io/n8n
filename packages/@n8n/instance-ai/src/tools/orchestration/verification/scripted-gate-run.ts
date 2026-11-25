@@ -8,7 +8,9 @@
 import {
 	analyzeVerificationResult,
 	buildSimulationNote,
+	buildSkippedWaitNote,
 	injectedTriggerSimulations,
+	joinNotes,
 	WORKFLOW_PIN_SIMULATION_REASON,
 	type ChatModelRecoveryOptions,
 	type VerificationAnalysis,
@@ -16,21 +18,17 @@ import {
 import type { PreparedVerificationRun } from './prepare-run';
 import type { ParameterCheckRun } from './resolved-parameter-warnings';
 import type { ExecutionRunResult } from './types';
-import type { OrchestrationContext } from '../../../types';
+import type { InstanceAiExecutionService } from '../../../types';
 import type {
 	WaitGateScript,
 	WorkflowBuildOutcome,
 	WorkflowLoopState,
 } from '../../../workflow-loop/workflow-loop-state';
 
-type VerificationExecutionService = NonNullable<
-	OrchestrationContext['domainContext']
->['executionService'];
-
 export interface ScriptedGateRunArgs {
 	script: WaitGateScript;
 	prepared: PreparedVerificationRun;
-	executionService: VerificationExecutionService;
+	executionService: Pick<InstanceAiExecutionService, 'run'>;
 	workflowId: string;
 	inputData?: Record<string, unknown>;
 	triggerNodeName?: string;
@@ -70,6 +68,8 @@ export async function runScriptedGateVerification(args: ScriptedGateRunArgs): Pr
 
 	const passes: DecisionPass[] = [];
 	for (const decision of script.decisions) {
+		args.abortSignal?.throwIfAborted();
+
 		const result = await executionService.run(workflowId, args.inputData, {
 			timeout: args.timeout,
 			triggerNodeName: args.triggerNodeName,
@@ -201,8 +201,16 @@ function mergeAnalyses(
 		nodesNotReached,
 		remediation: failing?.analysis.remediation,
 		nodesExecuted: [...reachedNames],
-		simulationNote: buildSimulationNote(reachedSimulatedNodes, false),
+		simulationNote: joinNotes(
+			buildSimulationNote(reachedSimulatedNodes, false),
+			buildSkippedWaitNote(
+				passes.flatMap((pass) => pass.result.skippedWaitNodeNames ?? []),
+				reachedNames,
+			),
+		),
 		coverageNote,
+		// Every pass runs the same workflow for the same user, so one note covers them.
+		redactionNote: passes.find((pass) => pass.analysis.redactionNote)?.analysis.redactionNote,
 		errorMessage: failing?.analysis.errorMessage,
 		nodeErrors,
 	};

@@ -3,16 +3,21 @@ import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import { getRequiredNodeCredentialSlots } from '@n8n/ai-utilities/node-catalog';
 import {
 	AgentModelSchema,
+	AGENT_DECISION_TRIGGER_NODE_TYPE,
 	AI_GATEWAY_MANAGED_TAG,
 	agentTaskSchema,
+	findToolGuardrailRefIssues,
 	findVectorStoreToolNameCollisions,
 	getAgentModelProviderCredentialTypes,
 	getWorkflowToolIncompatibilityReason,
 	isDraftAgentConfig,
+	integrationNeedsCredential,
 	isDraftIntegration,
+	nodeTypeAvailabilityScopeSchema,
 	type AgentConfigValidationIssue,
 	type AgentConfigValidationIssueCode,
 	type AgentConfigValidationResponse,
+	type AgentConfigValidationRestriction,
 	type AgentConfigValidationWarning,
 	type AgentIntegrationConfig,
 	type AgentTaskConfig,
@@ -22,6 +27,7 @@ import {
 	type AgentSkill,
 } from '@n8n/api-types';
 import { WorkflowRepository, type WorkflowEntity } from '@n8n/db';
+import type { PolicyViolation } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import {
 	isMcpOAuth2Authentication,
@@ -31,11 +37,18 @@ import {
 } from 'n8n-workflow';
 
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
-import { NodeTypes } from '@/node-types';
+import { deniedNodeTypes } from '@/modules/type-availability-policies/type-violation';
+import { NodeTypesProxy } from '@n8n/backend-services';
+import {
+	toPolicedMcpNodes,
+	toPolicedNodes,
+	withInlineAgentToolNodes,
+} from '@/policy/policed-agent-nodes';
 import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { AgentDefinitionService } from './agent-definition.service';
+import { AgentPolicyService } from './agent-policy.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
 import {
 	getAgentDefinitionContent,
@@ -49,9 +62,12 @@ import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { isValidCronExpression } from './integrations/cron-validation';
 import { AgentRepository } from './repositories/agent.repository';
 import { findWorkflowToolWorkflows } from './tools/workflow-tool-workflow-resolver';
-import { extractAgentWorkflowRefs } from './utils/extract-agent-workflow-refs';
+import {
+	extractAgentWorkflowRefs,
+	extractGuardrailCheckWorkflowIds,
+} from './utils/extract-agent-workflow-refs';
 import { findHttpRequestToolUrlFromAiViolations } from './utils/node-tool-validation';
-import { findNameClashGroups } from '@/modules/skills/skill-names';
+import { findNameClashGroups } from '@/modules/skills';
 
 type AgentValidationScope = 'runtime' | 'publish';
 
@@ -78,8 +94,46 @@ function issue(
 	path: string,
 	capability: AgentConfigValidationIssue['capability'],
 	reason?: string,
+	restriction?: AgentConfigValidationRestriction,
 ): AgentConfigValidationIssue {
-	return reason === undefined ? { code, path, capability } : { code, path, capability, reason };
+	return {
+		code,
+		path,
+		capability,
+		...(reason === undefined ? {} : { reason }),
+		...(restriction === undefined ? {} : { restriction }),
+	};
+}
+
+const RESTRICTED_BY_INLINE_TOOL = 'restricted_by_inline_tool';
+
+/**
+ * A locked entry shows one reason, not a lock plus the credential issues of a tool the agent
+ * cannot use at all. A tool locked only by its inline agent keeps them: it stays usable once
+ * the embedded tool is removed.
+ */
+function withoutIssuesOfLockedEntries(
+	issues: AgentConfigValidationIssue[],
+): AgentConfigValidationIssue[] {
+	const entryKey = ({ capability }: AgentConfigValidationIssue) =>
+		`${capability.kind}:${capability.index}`;
+	const locked = new Set(
+		issues
+			.filter((i) => i.code === 'restricted_node_type' && i.reason !== RESTRICTED_BY_INLINE_TOOL)
+			.map(entryKey),
+	);
+	if (locked.size === 0) return issues;
+
+	return issues.filter((i) => i.code === 'restricted_node_type' || !locked.has(entryKey(i)));
+}
+
+/** A scope the API does not know is dropped rather than passed on as an open string. */
+function toRestriction(
+	nodeType: string,
+	violation: PolicyViolation,
+): AgentConfigValidationRestriction {
+	const scope = nodeTypeAvailabilityScopeSchema.safeParse(violation.scope);
+	return scope.success ? { nodeType, scope: scope.data } : { nodeType };
 }
 
 function agentIssue(
@@ -94,11 +148,12 @@ export class AgentValidationService {
 	constructor(
 		private readonly agentRepository: AgentRepository,
 		private readonly definitionService: AgentDefinitionService,
-		private readonly nodeTypes: NodeTypes,
+		private readonly nodeTypes: NodeTypesProxy,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 		private readonly aiGatewayService: AiGatewayService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly agentPolicyService: AgentPolicyService,
 	) {}
 
 	/**
@@ -208,7 +263,7 @@ export class AgentValidationService {
 		credentialProvider: CredentialProvider,
 		scope: AgentValidationScope = 'publish',
 	): Promise<AgentConfigValidationResponse> {
-		const skills = await this.agentSkillRefs.skillsForRefs(agent, skillRefs, {});
+		const skills = await this.agentSkillRefs.skillsForRefs(skillRefs, {});
 		return await this.validateDefinition(
 			agent.id,
 			projectId,
@@ -319,14 +374,26 @@ export class AgentValidationService {
 			return credentialList.find((credential) => credential.id === credentialId);
 		};
 
-		const { agentsById, workflowsByReference } = await this.prefetchReferenceLookups(ctx);
+		const { agentsById, workflowsByReference, guardrailWorkflowsById } =
+			await this.prefetchReferenceLookups(ctx);
 
 		this.collectCoreIssues(config, issues);
 		this.collectVectorStoreIssues(config, issues);
-		await this.collectMainCredentialIssues(config, findCredential, ctx.credentialProvider, issues);
+		// Runs in both scopes: a dangling guardrail ref blocks publish and run,
+		// but never the draft save (which does not reach this service).
+		this.collectToolGuardrailRefIssues(config, issues);
+		await this.collectMainCredentialIssues(
+			config,
+			findCredential,
+			ctx.credentialProvider,
+			scope,
+			issues,
+		);
 		await this.collectVertexModelIssues(config, findCredential, issues);
 		this.collectSubAgentRefIssues(ctx, agentsById, issues);
 		this.collectSkillIssues(config, ctx.skills, issues);
+		// Runs in both scopes: the runtime scope is what blocks the draft preview.
+		await this.collectRestrictedTypeIssues(ctx, issues);
 		if (scope === 'publish') {
 			for (const violation of findHttpRequestToolUrlFromAiViolations(config.tools)) {
 				if (config.tools?.[violation.toolIndex].enabled === false) continue;
@@ -343,19 +410,24 @@ export class AgentValidationService {
 			await this.collectChannelIssues(ctx.integrations, findCredential, issues);
 		}
 		await this.collectToolIssues(ctx, findCredential, workflowsByReference, issues, scope);
+		this.collectGuardrailWorkflowIssues(config, guardrailWorkflowsById, issues, scope);
 		await this.collectMcpServerIssues(config, findCredential, issues);
+		await this.collectHumanReviewIssues(ctx, findCredential, issues, scope);
 
-		return this.dedupe(issues);
+		return this.dedupe(withoutIssuesOfLockedEntries(issues));
 	}
 
 	private async prefetchReferenceLookups(ctx: ConfigurationValidationContext): Promise<{
 		agentsById: Map<string, Pick<Agent, 'id' | 'activeVersionId'>>;
 		workflowsByReference: Map<string, WorkflowEntity>;
+		/** Check workflows keyed by id. Separate from tool names, which share that map. */
+		guardrailWorkflowsById: Map<string, WorkflowEntity>;
 	}> {
 		const subAgentIds = new Set<string>();
 		const workflowRefs = extractAgentWorkflowRefs(ctx.config).filter(
 			(ref) => ref.enabled !== false && ref.workflow,
 		);
+		const guardrailCheckWorkflowIds = extractGuardrailCheckWorkflowIds(ctx.config);
 
 		for (const ref of ctx.config.subAgents?.agents ?? []) {
 			if (ref.enabled === false) continue;
@@ -364,14 +436,23 @@ export class AgentValidationService {
 			}
 		}
 
-		const [agents, workflowsByReference] = await Promise.all([
+		const [agents, workflowsByReference, guardrailCheckWorkflows] = await Promise.all([
 			this.agentRepository.findByIdsAndProjectId([...subAgentIds], ctx.projectId),
 			findWorkflowToolWorkflows(this.workflowRepository, workflowRefs, ctx.projectId),
+			guardrailCheckWorkflowIds.length > 0
+				? this.workflowRepository.findManyByAgentToolReferences(
+						ctx.projectId,
+						guardrailCheckWorkflowIds,
+						[],
+					)
+				: [],
 		]);
-
 		return {
 			agentsById: new Map(agents.map((agent) => [agent.id, agent])),
 			workflowsByReference,
+			guardrailWorkflowsById: new Map(
+				guardrailCheckWorkflows.map((workflow) => [workflow.id, workflow]),
+			),
 		};
 	}
 
@@ -403,6 +484,7 @@ export class AgentValidationService {
 		config: AgentJsonConfig,
 		findCredential: FindCredential,
 		credentialProvider: CredentialProvider,
+		scope: AgentValidationScope,
 		issues: AgentConfigValidationIssue[],
 	) {
 		if (!config.credential?.trim()) {
@@ -443,7 +525,9 @@ export class AgentValidationService {
 			issues.push(agentIssue('incompatible_credential', 'credential'));
 		}
 
-		await this.collectAzureDeploymentIssues(config, credentialId, credentialProvider, issues);
+		if (scope === 'publish') {
+			await this.collectAzureEndpointIssues(config, credentialId, credentialProvider, issues);
+		}
 	}
 
 	private async collectVertexModelIssues(
@@ -571,6 +655,65 @@ export class AgentValidationService {
 		}
 	}
 
+	/** A dangling guardrail tool ref blocks publish and run, never the draft save. */
+	private collectToolGuardrailRefIssues(
+		config: AgentJsonConfig,
+		issues: AgentConfigValidationIssue[],
+	) {
+		const guardrails = config.config?.guardrails?.tools ?? [];
+		for (const { guardrailIndex, toolIndex } of findToolGuardrailRefIssues(config)) {
+			issues.push(
+				issue('invalid_value', `config.guardrails.tools.${guardrailIndex}.tools.${toolIndex}`, {
+					kind: 'guardrail',
+					id: guardrails[guardrailIndex].id,
+				}),
+			);
+		}
+	}
+
+	/**
+	 * A `workflow`-kind guardrail must point at a usable check workflow: the
+	 * reference is unusable at every scope (a missing or incompatible check
+	 * fails closed at run time), and unpublished additionally blocks publishing
+	 * the agent, mirroring the workflow-tool rules.
+	 */
+	private collectGuardrailWorkflowIssues(
+		config: AgentJsonConfig,
+		guardrailWorkflowsById: Map<string, WorkflowEntity>,
+		issues: AgentConfigValidationIssue[],
+		scope: AgentValidationScope,
+	) {
+		const guardrails = config.config?.guardrails?.tools ?? [];
+		for (let index = 0; index < guardrails.length; index++) {
+			const guardrail = guardrails[index];
+			if (guardrail.kind !== 'workflow') continue;
+
+			const path = `config.guardrails.tools.${index}.workflowId`;
+			const capability: AgentConfigValidationIssue['capability'] = {
+				kind: 'guardrail',
+				id: guardrail.id,
+			};
+
+			const workflow = guardrailWorkflowsById.get(guardrail.workflowId);
+			if (!workflow) {
+				issues.push(issue('missing_reference', path, capability));
+				continue;
+			}
+
+			const incompatibility = getWorkflowToolIncompatibilityReason(workflow);
+			if (incompatibility) {
+				issues.push(issue('incompatible_reference', path, capability, incompatibility.reason));
+				continue;
+			}
+
+			// Production runs load the published check workflow version, like
+			// workflow tools, so an unpublished check blocks publishing the agent.
+			if (scope === 'publish' && !workflow.activeVersionId) {
+				issues.push(issue('incompatible_reference', path, capability, 'not_published'));
+			}
+		}
+	}
+
 	private async collectChannelIssues(
 		integrations: AgentIntegrationConfig[],
 		findCredential: FindCredential,
@@ -578,7 +721,7 @@ export class AgentValidationService {
 	) {
 		for (let index = 0; index < integrations.length; index++) {
 			const integration = integrations[index];
-			if (integration.type === 'n8n_chat') continue;
+			if (!integrationNeedsCredential(integration)) continue;
 			const path = `integrations.${index}.credentialId`;
 			const capability: AgentConfigValidationIssue['capability'] = {
 				kind: 'channel',
@@ -598,9 +741,167 @@ export class AgentValidationService {
 			}
 
 			const integrationImpl = this.chatIntegrationRegistry.get(integration.type);
-			if (integrationImpl && !integrationImpl.credentialTypes.includes(credential.type)) {
+			if (
+				integrationImpl &&
+				!integrationImpl.acceptedCredentialTypes(integration).includes(credential.type)
+			) {
 				issues.push(issue('incompatible_credential', path, capability));
 			}
+		}
+	}
+
+	/**
+	 * Reports every tool and MCP server whose node type a policy denies.
+	 *
+	 * Reads the types through the same mapping the publish gate polices, so the reported set
+	 * and the refused publish never disagree, inline agents and MCP servers included. Disabled
+	 * tools are reported too, because the gate does not read `enabled`.
+	 */
+	private async collectRestrictedTypeIssues(
+		ctx: ConfigurationValidationContext,
+		issues: AgentConfigValidationIssue[],
+	): Promise<void> {
+		const { config } = ctx;
+
+		const decision = await this.agentPolicyService.evaluatePublish(ctx.projectId, ctx.agentId, {
+			name: config.name,
+			tools: config.tools,
+			mcpServers: config.mcpServers,
+		});
+		const denied = deniedNodeTypes(decision);
+		if (denied.size === 0) return;
+
+		const firstDenied = (nodes: readonly { type: string }[]) => {
+			for (const node of nodes) {
+				const violation = denied.get(node.type);
+				if (violation) return toRestriction(node.type, violation);
+			}
+			return undefined;
+		};
+
+		const tools = config.tools ?? [];
+		for (let index = 0; index < tools.length; index++) {
+			const tool = tools[index];
+			// Only a node tool names a node type, and only a node tool can embed an inline agent.
+			if (tool.type !== 'node') continue;
+
+			const own = toPolicedNodes([tool]);
+			const ownRestriction = firstDenied(own);
+			// An inline agent's own tools run under the tool that embeds them, so the parent carries
+			// the issue: a violation names a type, never the entry that holds it. It reads as its own
+			// reason, because the tool itself stays usable and editable — the fix is to open it and
+			// drop the embedded tool.
+			const restriction = ownRestriction ?? firstDenied(withInlineAgentToolNodes(own));
+			if (!restriction) continue;
+
+			issues.push(
+				issue(
+					'restricted_node_type',
+					`tools.${index}.node.nodeType`,
+					{ kind: 'tool', id: tool.name, index, toolType: 'node' },
+					ownRestriction ? undefined : RESTRICTED_BY_INLINE_TOOL,
+					restriction,
+				),
+			);
+		}
+
+		const servers = config.mcpServers ?? [];
+		for (let index = 0; index < servers.length; index++) {
+			const restriction = firstDenied(toPolicedMcpNodes([servers[index]]));
+			if (!restriction) continue;
+
+			issues.push(
+				issue(
+					'restricted_node_type',
+					`mcpServers.${index}`,
+					{ kind: 'mcpServer', id: servers[index].name, index },
+					undefined,
+					restriction,
+				),
+			);
+		}
+	}
+
+	private async collectHumanReviewIssues(
+		ctx: ConfigurationValidationContext,
+		findCredential: FindCredential,
+		issues: AgentConfigValidationIssue[],
+		scope: AgentValidationScope,
+	): Promise<void> {
+		const configurations = ctx.config.hitlConfigurations ?? [];
+		const ids = new Set(configurations.map(({ id }) => id));
+		for (const [entries, kind] of [
+			[ctx.config.tools ?? [], 'tool'],
+			[ctx.config.mcpServers ?? [], 'mcpServer'],
+		] as const) {
+			for (const [index, entry] of entries.entries()) {
+				if (
+					('enabled' in entry && entry.enabled === false) ||
+					entry.approvalRoute?.type !== 'configuration' ||
+					(Array.isArray(entry.approvalRoute.configurationIds) &&
+						entry.approvalRoute.configurationIds.length > 0 &&
+						entry.approvalRoute.configurationIds.every((id) => ids.has(id)))
+				)
+					continue;
+				issues.push(
+					issue(
+						'missing_reference',
+						`${kind === 'tool' ? 'tools' : 'mcpServers'}.${index}.approvalRoute`,
+						{ kind, index },
+					),
+				);
+			}
+		}
+		for (const [index, configuration] of configurations.entries()) {
+			const path = `hitlConfigurations.${index}`;
+			const capability = { kind: 'humanReview' as const, id: configuration.id, index };
+			if (configuration.method === 'workflow') {
+				const workflow = await this.workflowRepository.findOneByAgentToolReference(
+					ctx.projectId,
+					{ workflowId: configuration.workflowId, workflowName: configuration.name },
+					{ withActiveVersion: scope === 'publish' },
+				);
+				if (!workflow || workflow.isArchived) {
+					issues.push(issue('missing_reference', `${path}.workflowId`, capability));
+					continue;
+				}
+				if (scope === 'publish' && !workflow.activeVersionId) {
+					issues.push(
+						issue('incompatible_reference', `${path}.workflowId`, capability, 'not_published'),
+					);
+					continue;
+				}
+				const nodes = scope === 'publish' ? workflow.activeVersion?.nodes : workflow.nodes;
+				if (
+					!nodes?.some((node) => node.type === AGENT_DECISION_TRIGGER_NODE_TYPE && !node.disabled)
+				)
+					issues.push(
+						issue(
+							'incompatible_reference',
+							`${path}.workflowId`,
+							capability,
+							'no_decision_trigger',
+						),
+					);
+				continue;
+			}
+			const platform = this.chatIntegrationRegistry.get(configuration.channel);
+			if (
+				!platform?.hitl.supported ||
+				!ctx.integrations.some(
+					(integration) =>
+						integration.type === configuration.channel &&
+						'credentialId' in integration &&
+						integration.credentialId === configuration.credentialId,
+				)
+			) {
+				issues.push(issue('missing_reference', `${path}.credentialId`, capability));
+				continue;
+			}
+			const credential = await this.findCredentialSafe(findCredential, configuration.credentialId);
+			if (!credential) issues.push(issue('invalid_credential', `${path}.credentialId`, capability));
+			else if (credential.type !== platform.hitl.credentialType)
+				issues.push(issue('incompatible_credential', `${path}.credentialId`, capability));
 		}
 	}
 
@@ -818,27 +1119,32 @@ export class AgentValidationService {
 		}
 	}
 
-	private async collectAzureDeploymentIssues(
+	/**
+	 * Agents accept only Microsoft Foundry credentials for Azure OpenAI. This
+	 * runs on publish only, so agents that already run on a Classic credential
+	 * keep running.
+	 */
+	private async collectAzureEndpointIssues(
 		config: AgentJsonConfig,
 		credentialId: string,
 		credentialProvider: CredentialProvider,
 		issues: AgentConfigValidationIssue[],
 	): Promise<void> {
 		const model = config.model?.trim();
-		const provider = model ? getProviderPrefix(model) : undefined;
-		if (provider !== 'azure-openai' || config.modelDeploymentName?.trim()) return;
+		if (!model || getProviderPrefix(model) !== 'azure-openai') return;
 		let endpointType: unknown;
 		try {
 			const data = await credentialProvider.resolve(credentialId);
 			endpointType = data?.endpointType;
 		} catch {
 			// A credential that can't be resolved here will already be reported
-			// elsewhere; don't let a transient resolve failure block publish
-			// by assuming Classic and requiring a deployment name.
+			// elsewhere; don't let a transient resolve failure block publish.
 			return;
 		}
 		if (endpointType !== 'foundry') {
-			issues.push(agentIssue('missing_required', 'modelDeploymentName'));
+			issues.push(
+				issue('incompatible_credential', 'credential', { kind: 'agent' }, 'azure_classic_endpoint'),
+			);
 		}
 	}
 

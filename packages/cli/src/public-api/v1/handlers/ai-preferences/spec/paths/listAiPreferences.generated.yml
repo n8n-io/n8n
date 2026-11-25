@@ -1,0 +1,94 @@
+operationId: listAiPreferences
+tags:
+  - AiPreference
+summary: List AI preferences
+description: |-
+  List the AI preferences you can read: the instance preferences, your own preferences, and the preferences of the projects where you hold the projectAiPreference:list permission. With the aiPreference:list permission, the list also has the preferences of other users. Filter with scope and projectId. The response is one cursor page: read the next page with the cursor query parameter.
+
+  Requires the `aiPreference:list` API key scope.
+x-required-scope: aiPreference:list
+parameters:
+  - $ref: ../../../../shared/spec/parameters/cursor.yml
+  - $ref: ../../../../shared/spec/parameters/limit.yml
+  - schema:
+      type: string
+      enum:
+        - user
+        - project
+        - instance
+    required: false
+    name: scope
+    in: query
+  - schema:
+      type: string
+      minLength: 1
+      maxLength: 36
+    required: false
+    name: projectId
+    in: query
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  content:
+                    type: string
+                  scope:
+                    type: string
+                    enum:
+                      - user
+                      - project
+                      - instance
+                  userId:
+                    type: string
+                    nullable: true
+                  projectId:
+                    type: string
+                    nullable: true
+                  source:
+                    type: string
+                    enum:
+                      - ui
+                      - aia
+                      - mcp
+                      - api
+                      - import
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                required:
+                  - id
+                  - content
+                  - scope
+                  - userId
+                  - projectId
+                  - source
+                  - createdAt
+                  - updatedAt
+            nextCursor:
+              type: string
+              nullable: true
+          required:
+            - data
+            - nextCursor
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

@@ -280,6 +280,29 @@ describe('formatRemediation', () => {
 		);
 	});
 
+	it('can point at a command-specific allowlist', () => {
+		const output = formatRemediation(explainAll(), {
+			exemptPackages: NO_EXEMPTIONS,
+			allowlistFile: 'custom-allowlist.ts',
+			allowlistName: 'EXPECTED_CUSTOM_DUPLICATES',
+		}).join('\n');
+
+		expect(output).toContain('EXPECTED_CUSTOM_DUPLICATES');
+		expect(output).toContain('custom-allowlist.ts');
+		expect(output).not.toContain('EXPECTED_DUPLICATES');
+	});
+
+	it('passes a command-specific allowlist through the step summary', () => {
+		expect(
+			formatStepSummary(explainAll(), {
+				reportOnly: false,
+				exemptPackages: NO_EXEMPTIONS,
+				allowlistFile: 'custom-allowlist.ts',
+				allowlistName: 'EXPECTED_CUSTOM_DUPLICATES',
+			}),
+		).toContain('EXPECTED_CUSTOM_DUPLICATES entry in\n     custom-allowlist.ts');
+	});
+
 	it('mentions the kept install tree only when one is kept', () => {
 		const options = { exemptPackages: NO_EXEMPTIONS };
 		expect(

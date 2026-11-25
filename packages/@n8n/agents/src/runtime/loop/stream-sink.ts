@@ -12,10 +12,12 @@ import type {
 	SuspendEmission,
 } from '../../types/runtime/agent-loop';
 import { withPromptSizeBreakdown } from './prompt-size-usage';
-import { classifyModelTurnError, mergeUsage } from './runtime-helpers';
+import { classifyModelTurnError, mergeUsage, resolveAiFinishReason } from './runtime-helpers';
 import type { ExecutionOptions, TokenUsage } from '../../types/sdk/agent';
 import type { AgentDbMessage, AgentMessage } from '../../types/sdk/message';
 import { isAttachmentValidationError } from '../model/attachment-validation-error';
+import { isEncryptedReasoningRejected } from '../model/encrypted-reasoning';
+import { toPromptCacheParamsError } from '../model/prompt-cache-params-error';
 import { loadAi } from '../model/lazy-ai';
 import { fromAiFinishReason, fromAiMessages } from '../model/messages';
 import { createRawErrorReader, type RawErrorReader } from '../model/raw-error';
@@ -75,6 +77,10 @@ export class StreamSink implements RunOutputSink<void> {
 		await this.guard.write({ type: 'input', message });
 	}
 
+	async emitMessage(message: AgentMessage): Promise<void> {
+		await this.guard.write({ type: 'message', message });
+	}
+
 	private lastUsage: TokenUsage | undefined;
 	// Reads the in-flight turn's usage from the provider's raw stream events so an
 	// aborted run can still be billed (the SDK reports no usage on abort). The
@@ -95,11 +101,15 @@ export class StreamSink implements RunOutputSink<void> {
 		private readonly options: ExecutionOptions | undefined,
 	) {}
 
-	reportUsage(usage: TokenUsage | undefined): void {
+	async reportUsage(usage: TokenUsage | undefined): Promise<void> {
 		this.lastUsage = usage;
 		// The just-completed turn is now folded into `usage`; its raw capture is
 		// stale and must not be re-added to a later between-turns abort total.
 		this.rawUsageReader = undefined;
+		const pricedUsage = this.services.applyCost(usage);
+		if (pricedUsage) {
+			await this.guard.write({ type: 'usage', usage: pricedUsage, model: this.services.modelId });
+		}
 	}
 
 	/**
@@ -219,7 +229,9 @@ export class StreamSink implements RunOutputSink<void> {
 					if (!attemptState.streamedContent) await ctx.onInputRejected?.(error);
 					throw error;
 				}
-				if (!this.canRetryStream(error, attempt, attemptState, ctx.abortSignal)) throw error;
+				if (!this.canRetryStream(error, attempt, attemptState, ctx.abortSignal)) {
+					throw toPromptCacheParamsError(error);
+				}
 			}
 		}
 	}
@@ -270,11 +282,25 @@ export class StreamSink implements RunOutputSink<void> {
 					)
 				: result.stream;
 
-		for await (const chunk of chunkStream) {
+		for await (const rawChunk of chunkStream) {
+			const chunk =
+				rawChunk.type === 'error'
+					? { ...rawChunk, error: toPromptCacheParamsError(rawChunk.error) }
+					: rawChunk;
 			if (chunk.type === 'error' && isAttachmentValidationError(chunk.error)) throw chunk.error;
+			// The runtime retries this without the rejected reasoning. Do not forward it.
+			if (
+				chunk.type === 'error' &&
+				!attemptState.streamedContent &&
+				isEncryptedReasoningRejected(chunk.error)
+			) {
+				throw chunk.error;
+			}
 			// Result promises report this error. Do not forward it or count it as content before a retry.
 			if (chunk.type === 'error' && NoOutputGeneratedError.isInstance(chunk.error)) continue;
 			if (!this.captureStreamChunk(chunk, attemptState)) continue;
+			// Before the write, so preparation is not held up by a slow consumer.
+			if (chunk.type === 'tool-input-start') ctx.onToolInputStart?.(chunk.toolName);
 			await this.writeStreamChunk(chunk);
 		}
 
@@ -384,7 +410,8 @@ export class StreamSink implements RunOutputSink<void> {
 				? await raceWithStallDeadline(promise, idleMs, () => turnAbort.abort())
 				: await promise;
 
-		const aiFinishReason = await settle(result.finishReason);
+		const toolCalls = await settle(result.toolCalls);
+		const aiFinishReason = resolveAiFinishReason(await settle(result.finishReason), toolCalls);
 		const usage = await settle(result.usage);
 		const finalStep = await settle(result.finalStep);
 		const newMessages = fromAiMessages(await settle(result.responseMessages));
@@ -399,7 +426,7 @@ export class StreamSink implements RunOutputSink<void> {
 			finishReason: fromAiFinishReason(aiFinishReason),
 			usage: toTokenUsage(usage, finalStep.providerMetadata),
 			newMessages,
-			toolCalls: await settle(result.toolCalls),
+			toolCalls,
 			structuredOutput:
 				ctx.outputSpec && aiFinishReason !== 'tool-calls' ? await settle(result.output) : undefined,
 			...(errorReason && { errorReason }),
@@ -415,6 +442,7 @@ export class StreamSink implements RunOutputSink<void> {
 				output: r.modelOutput,
 				...(r.toolEntry.canceled ? { canceled: true } : {}),
 				...(r.mcpServerName !== undefined ? { mcpServerName: r.mcpServerName } : {}),
+				...(r.traceOutput !== undefined ? { traceOutput: r.traceOutput } : {}),
 			});
 			if (r.customMessage) {
 				await this.guard.write({ type: 'message', message: r.customMessage });

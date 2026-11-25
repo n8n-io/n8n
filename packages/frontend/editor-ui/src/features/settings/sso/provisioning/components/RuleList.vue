@@ -49,7 +49,9 @@ function onDragEnd(event: { oldIndex?: number; newIndex?: number }) {
 <template>
 	<div :class="$style.table" data-test-id="rule-list">
 		<div :class="$style.headerRow">
-			<div :class="$style.headerCellFull">Condition & Assignment</div>
+			<div :class="$style.headerCellFull">
+				{{ i18n.baseText('settings.sso.settings.roleMappingRules.conditionAndAssignment') }}
+			</div>
 		</div>
 		<Draggable
 			:model-value="props.rules"

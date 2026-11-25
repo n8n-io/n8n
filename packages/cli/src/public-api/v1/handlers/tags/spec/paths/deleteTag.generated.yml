@@ -2,7 +2,10 @@ operationId: deleteTag
 tags:
   - Tags
 summary: Delete a tag
-description: Deletes a tag.
+description: |-
+  Deletes a tag.
+
+  Requires the `tag:delete` API key scope.
 x-required-scope: tag:delete
 parameters:
   - schema:
@@ -24,3 +27,5 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

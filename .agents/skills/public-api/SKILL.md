@@ -171,15 +171,23 @@ defect to remove, not a contract to preserve. Detail:
 4. Don't hand-write the OpenAPI path or `x-required-scope` for a controller
    route — the generator (`v1/openapi-gen/generate.ts`) builds it from your
    decorators (`@ApiSummary`/`@ApiDescription`/`@ApiTags`/`@ApiKeyScope`/
-   `@ApiResponse`/`@ApiErrorResponse`). Run the full `pnpm build` and commit
-   the regenerated `handlers/<feature>/spec/paths/*.generated.yml` fragment(s)
+   `@ApiResponse`/`@ApiErrorResponse`). The generator automatically suffixes
+   the description with a sentence indicating which API Key scopes are required
+   for the operation, do not repeat these in the `@ApiDescription`. Run the full
+   `pnpm build` and commit the regenerated `handlers/<feature>/spec/paths/*.generated.yml` fragment(s)
    and `openapi.decorator-routes.generated.yml` —
    `generated-spec-drift.test.ts` fails CI if they're stale. `pnpm run
    build:data` alone is **not** enough after touching a controller: it runs
    the generator against the already-compiled `dist/`, so a new/changed
    controller silently doesn't show up unless `tsc` ran first.
-5. Add the route to `packages/nodes-base/nodes/N8n/n8n-api-coverage.json`.
-6. Tests.
+5. If the route uses a new tag in `@ApiTags`, declare that tag in the `tags:`
+   array of `v1/openapi.yml`. Give it an `x-displayName` and an `x-parent` that
+   names one of the parent tags. Keep the child tags in alphabetical order.
+   GitBook builds the page URL from the display name, so do not change an
+   existing `x-displayName` without checking the docs URLs.
+   `openapi-tags.test.ts` fails if the tag is not declared or is out of order.
+6. Add the route to `packages/nodes-base/nodes/N8n/n8n-api-coverage.json`.
+7. Tests.
 
 ## Testing
 

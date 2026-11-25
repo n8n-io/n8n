@@ -1,3 +1,4 @@
+import { fireEvent } from '@testing-library/vue';
 import { ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createPinia, setActivePinia } from 'pinia';
@@ -129,7 +130,7 @@ describe('FocusSidebarTabs', () => {
 			},
 		});
 
-		getByText('Focus').click();
+		await fireEvent.mouseDown(getByText('Focus'));
 
 		expect(emitted('update:modelValue')).toEqual([['focus']]);
 	});
@@ -141,13 +142,13 @@ describe('FocusSidebarTabs', () => {
 			},
 		});
 
-		getByText('Focus').click();
+		await fireEvent.mouseDown(getByText('Focus'));
 		expect(emitted('update:modelValue')).toEqual([['focus']]);
 
 		// Simulate parent updating the modelValue
 		await rerender({ modelValue: 'focus' });
 
-		getByText('Setup').click();
+		await fireEvent.mouseDown(getByText('Setup'));
 		expect(emitted('update:modelValue')).toEqual([['focus'], ['setup']]);
 	});
 });

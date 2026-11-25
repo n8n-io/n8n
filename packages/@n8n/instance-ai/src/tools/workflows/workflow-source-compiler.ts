@@ -9,7 +9,7 @@ import {
 	workflow as workflowBuilder,
 	type WorkflowJSON,
 } from '@n8n/workflow-sdk';
-import { normalizeNodeShape, type INodeTypes } from 'n8n-workflow';
+import { normalizeNodeShape, type INodeTypes, type WorkflowEngineType } from 'n8n-workflow';
 
 import { buildCredentialHostIndex, resolveCredentialByUrl } from './credential-url-resolver';
 import { detectArrayInputCollapse } from './detect-array-input-collapse';
@@ -17,6 +17,7 @@ import { detectPythonCodeConstraints } from './detect-python-code-constraints';
 import { detectSlackBlocksShape } from './detect-slack-blocks-shape';
 import { detectUnparseableOpenAiSchema } from './detect-unparseable-openai-schema';
 import { detectWrongKindLocatorValues } from './detect-wrong-kind-locator';
+import { collectHostSdkValidatorWarnings } from './host-sdk-validation';
 import { findStickyNoteWraps, rewrapStickyNotes } from './sticky-note-wrapping';
 import { collectValidationIssues, type ValidationWarning } from './workflow-validation-warnings';
 import { traceSandboxOperation, sandboxFileBytes } from '../../tracing/sandbox-tracing';
@@ -25,6 +26,14 @@ import { escapeSingleQuotes, runInSandbox } from '../../workspace/sandbox-fs';
 import { joinWorkspacePath } from '../../workspace/workspace-paths';
 
 export type WorkflowSourceCompiler = 'workflow-json' | 'sandbox-tsx';
+
+export interface CompileWorkflowSourceOptions {
+	/**
+	 * The engine that runs the workflow when the code does not set `settings.engineType`.
+	 * The validation checks engine v2 support when the result is v2. Default: `v1`.
+	 */
+	engine?: WorkflowEngineType;
+}
 
 export type WorkflowSourceCompileFailureReason =
 	| 'workflow_json_parse_failed'
@@ -89,12 +98,14 @@ function validateCompiledWorkflow(
 	json: WorkflowJSON,
 	context: InstanceAiContext,
 	compilerWarnings: ValidationWarning[] = [],
+	engine?: WorkflowEngineType,
 ): ValidationWarning[] {
 	normalizeWorkflowNodes(json);
 
 	const schemaValidation = validateWorkflow(json, {
 		nodeTypesProvider: context.nodeTypesProvider,
 		strictMode: true,
+		engine,
 	});
 
 	const warnings = [...compilerWarnings];
@@ -400,11 +411,19 @@ async function compileTypeScriptWorkflowSource(
 
 	await layOutWithNodeTypes(buildOutput.workflow, context.nodeTypesProvider);
 
+	const sandboxWarnings = buildOutput.warnings ?? [];
 	return {
 		success: true,
 		workflow: buildOutput.workflow,
 		declaredOutputFixtures: buildOutput.declaredOutputFixtures,
-		warnings: buildOutput.warnings ?? [],
+		warnings: [
+			...sandboxWarnings,
+			...collectHostSdkValidatorWarnings(
+				buildOutput.workflow,
+				buildOutput.declaredOutputFixtures,
+				sandboxWarnings,
+			),
+		],
 		compiler: 'sandbox-tsx',
 	};
 }
@@ -458,6 +477,7 @@ export async function compileWorkflowSource(
 	filePath: string,
 	source: string,
 	abortSignal?: AbortSignal,
+	options: CompileWorkflowSourceOptions = {},
 ): Promise<WorkflowSourceCompileResult> {
 	return await traceSandboxOperation(
 		'compile-workflow',
@@ -497,7 +517,12 @@ export async function compileWorkflowSource(
 
 			if (!result.success) return result;
 
-			const warnings = validateCompiledWorkflow(result.workflow, context, result.warnings);
+			const warnings = validateCompiledWorkflow(
+				result.workflow,
+				context,
+				result.warnings,
+				options.engine,
+			);
 			const credentialWarnings = await collectCredentialResolutionWarnings(
 				result.workflow,
 				context,

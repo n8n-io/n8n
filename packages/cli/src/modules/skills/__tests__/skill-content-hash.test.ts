@@ -1,4 +1,4 @@
-import { skillContentHash, type SkillContent } from '../skill-content-hash';
+import { skillContentHash, type SkillContent } from '../utils/skill-content-hash';
 
 const content: SkillContent = {
 	name: 'Brand voice',
@@ -12,8 +12,8 @@ const content: SkillContent = {
 };
 
 describe('skillContentHash', () => {
-	// The data migration (MigrateAgentSkillsToHub.contentHash, CONTEXT-225) must produce the
-	// same value for the same skill. Its test must pin this input to this literal too.
+	// The data migration `MigrateAgentSkillsToHub` must produce the same value for the same
+	// skill. Its test checks the hashes it writes against `skillContentHash`.
 	it('pins the hash that the data migration must also write', () => {
 		expect(skillContentHash(content)).toBe(
 			'fb5a3e8555463ac71ac16733c2b9fdf41d0e15977ac1583646823b0d6d855ab2',
@@ -68,5 +68,13 @@ describe('skillContentHash', () => {
 		const files = [{ path: 'references/a.md', content: 'changed' }, content.files[0]];
 
 		expect(skillContentHash({ ...content, files })).not.toBe(skillContentHash(content));
+	});
+
+	it('distinguishes text from binary data with the same stored content', () => {
+		const file = { path: 'assets/logo.png', content: 'AP8=' };
+		const text = skillContentHash({ ...content, files: [file] });
+		const binary = skillContentHash({ ...content, files: [{ ...file, isBinary: true }] });
+
+		expect(binary).not.toBe(text);
 	});
 });

@@ -2,6 +2,7 @@ import { INSTANCE_AI_TELEMETRY } from '../events/instance-ai';
 
 const segment = {
 	surface: 'aia',
+	runtime: 'instance-ai',
 	user_id: 'user-1',
 	run_id: 'run-1',
 	segment: 'whole',
@@ -54,6 +55,18 @@ describe('instance context turn properties', () => {
 				surface,
 			}).success,
 		).toBe(false);
+	});
+
+	it.each(['instance-ai', 'agents'])('accepts the assistant runtime %s', (runtime) => {
+		expect(
+			INSTANCE_AI_TELEMETRY.INSTANCE_CONTEXT_TURN.getValidationError({ ...absentSegment, runtime }),
+		).toBeNull();
+	});
+
+	it.each([undefined, 'v2'])('rejects an invalid assistant runtime: %s', (runtime) => {
+		expect(
+			INSTANCE_AI_TELEMETRY.INSTANCE_CONTEXT_TURN.getValidationError({ ...absentSegment, runtime }),
+		).not.toBeNull();
 	});
 
 	it('accepts a complete injected block', () => {
@@ -139,5 +152,30 @@ describe('instance context turn properties', () => {
 				absence_reason: 'new-absence-reason',
 			}),
 		).toBeNull();
+	});
+});
+
+describe('Hub skill context metrics', () => {
+	it('accepts cumulative failure metrics on a suspended turn without an instance block', () => {
+		expect(
+			INSTANCE_AI_TELEMETRY.INSTANCE_CONTEXT_TURN.getValidationError({
+				...absentSegment,
+				segment: 'suspended',
+				status: 'suspended',
+				hub_skill_snapshot_sequence: 1,
+				hub_skill_attempt_count: 1,
+				hub_skill_attempted_ids: ['skill-1'],
+				hub_skill_load_count: 0,
+				hub_skill_failures: [{ operation: 'main', reason: 'temporarily_unavailable', count: 1 }],
+			}),
+		).toBeNull();
+	});
+	it('rejects unbounded failure reasons', () => {
+		expect(
+			INSTANCE_AI_TELEMETRY.INSTANCE_CONTEXT_TURN.getValidationError({
+				...absentSegment,
+				hub_skill_failures: [{ operation: 'main', reason: 'raw server error', count: 1 }],
+			}),
+		).not.toBeNull();
 	});
 });

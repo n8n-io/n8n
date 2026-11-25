@@ -15,7 +15,8 @@ import type {
 	IGetExecutePollFunctions,
 	StorageConfig,
 } from 'n8n-core';
-import { UnexpectedError, UserError, Workflow } from 'n8n-workflow';
+import { Workflow } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import type {
 	Cron,
 	CronExpression,
@@ -1188,6 +1189,7 @@ describe('TriggerExecutionContextFactory', () => {
 				responsePromise,
 				undefined,
 				'response',
+				false,
 			);
 			expect(workflowExecutionService.runWorkflow).not.toHaveBeenCalled();
 		});
@@ -1220,7 +1222,25 @@ describe('TriggerExecutionContextFactory', () => {
 					responsePromise,
 					undefined,
 					callerAwaitsOutcome,
+					false,
 				);
+			},
+		);
+
+		test.each([
+			{ declares: true, pollIsBounded: true },
+			{ declares: false, pollIsBounded: false },
+		])(
+			"passes the poll's bounded declaration to the polled run (declares=$declares)",
+			async ({ declares, pollIsBounded }) => {
+				await context.__runPoll(async () => {
+					if (declares) context.declareBoundedPoll?.();
+					context.getWorkflowStaticData('node').lastItemId = 'a';
+					context.__emit(pollData);
+				});
+				await sleep(0);
+
+				expect(workflowExecutionService.runPolledWorkflow.mock.calls[0]?.[9]).toBe(pollIsBounded);
 			},
 		);
 
@@ -1477,6 +1497,7 @@ describe('TriggerExecutionContextFactory', () => {
 				undefined,
 				undefined,
 				'none',
+				false,
 			);
 		});
 
@@ -1709,6 +1730,7 @@ describe('TriggerExecutionContextFactory', () => {
 				undefined,
 				fence,
 				'none',
+				false,
 			);
 
 			await fencedContext.__runPoll(async () => {

@@ -13,6 +13,66 @@ union when the host has not wired them. Some tools instead keep an unavailable
 action or fallback tool surface and return an error or empty result. Tool ids
 live in `src/tools/tool-ids.ts`.
 
+### Approval modes
+
+Each user picks an approval mode in the chat. Auto needs the PostHog flag
+`144_instance_ai_approval_modes`. Without it, every run is Manual and the chat
+shows no selector. With it, a user without a saved choice gets Auto. The judge
+uses `N8N_INSTANCE_AI_APPROVAL_JUDGE_MODEL`, or the utility model when that is
+empty or can't be resolved. The mode is stored in `user.settings.instanceAi.approvalMode` through
+`PUT /assistant/preferences`. Auto mode is not part of the Agent Builder: a
+thread that builds or edits an agent, or a message that attaches an agent,
+runs in Manual mode.
+
+Every action passes two checks in order:
+
+1. **Rules.** The admin value in Settings applies first. Block stops the
+   action, Allow runs it, and a thread grant from "Always allow" counts as
+   Allow. Tools behind the SDK approval gate (MCP tools) save their "Always
+   allow" grants as thread grants too (`createThreadApprovalContext`). In Auto, a user's MCP tool permissions can only make the admin's MCP
+   permissions stricter. Manual keeps a user's MCP permissions as they are.
+2. **Mode.** An action set to Ask first suspends for approval. Manual shows the
+   card. Auto reviews the suspension first, in `src/approval-review/`:
+   - fixed rules in `pending-approval.ts` decide first: actions that remove,
+     stop or replace something always show the card, small additions run, and
+     an MCP call too long for the judge to read in full shows the card;
+   - every other plain approval, including web fetches, web searches and MCP
+     tool calls, goes to the judge model, which approves or asks. An error or
+     a timeout shows the card.
+
+Tools need no code for Auto mode. The wrapper in `approval-review.ts` calls a
+tool with a probe `suspend()` and, when the review approves, again with
+`{ approved: true }`. Cards that need input (setup, credentials, questions,
+resource decisions) always show. An approved call emits `auto-approval`, its
+judge tokens are claimed from the user's credits, and a tool keeps the grant
+that its approval gives, as "Allow once" does in Manual mode. A call that the
+review sends to the user suspends with the tool's payload and `askReason`, and
+the card shows the reason below the description. `askReason.kind` is `judge`
+with the judge's sentence in `text`, or a fixed cause that the frontend
+translates (`instanceAi.approvalAskReason.*`): `always-ask`, `too-long` or
+`judge-failed`. The wrapper adds `askReason` to the tool's suspend schema, so
+the stored suspension keeps it. Telemetry that
+the probe tracks is sent only when the card shows. `approval-judge.ts`
+describes what the judge reads and how it cuts long input.
+
+The judge sees the user's messages, the user's answers in question cards, and
+the Assistant's text. In a long thread it sees the newest messages. From the
+part before them it sees only what the user wrote, up to a budget of messages
+and characters. A limit that the user set there stays in view while it fits
+the budget. A note tells the judge when older messages are left out. Of a long
+message it sees only the end. `pnpm eval:approval-judge` measures the judge on
+a directory of cases (see the evaluations README).
+
+The trace of a run shows the mode as `approval_mode` in the metadata of its
+root run and its `agent: orchestrator` run: `manual`, `auto`, or `unavailable`
+when the flag is off. In Auto, each reviewed approval adds an `approval: review`
+run to the trace, with the tag `approval-review`. Its metadata has `tool_name`,
+`approval_route` (`always-ask`, `low-risk` or `judge`), `approval_decision`
+(`approve` or `ask`), `approval_decided_by` (`rule` or `judge`),
+`approval_judge_failed`, and `tool_call_id` when the call has one. Its output
+adds `approval_reason`. A decision that the judge model made also has its
+`llm: approval-judge` run. A review that failed before the model call has none.
+
 ### Approval copy
 
 An approval card has a title and a description. The title names the asset without
@@ -28,7 +88,7 @@ unchanged. Add locale translations for these keys; missing translations fall bac
 to English. The backend retains `message` for older clients and saved approvals
 that have no structured details.
 
-`workflow_builder_build_workflow`, `workflow_builder_workflows(action="publish")`,
+`workflow_builder_build_workflow`, `publish_workflow`,
 and `workflow_builder_executions(action="run")` accept `approvalSummary`. The agent supplies one
 line in the user’s language that describes the concrete change or effect of the
 call, for example `Add a Slack notification after the payment check`. Live execution summaries
@@ -39,21 +99,20 @@ show a generic description such as `Save the changes to this workflow`.
 Data-table approvals build the description from the tool input: columns, row
 counts, and filter conditions. Insert previews show up to three rows, five columns
 per row, and 100 characters per JSON-formatted value, including quotes. The card states how many rows or columns
-the preview omits. Pass `dataTableName` and `currentColumnName` when known
-so the card shows names instead of IDs. No tool looks up names only for the
-card. These messages do not change approval permissions or group separate tool
-calls. Bare `like` and `ilike` values use contains matching: the data-table
+the preview omits. One `change_data_tables` call shows one card that lists
+every change of the batch. These messages do not change approval permissions. Bare `like` and `ilike` values use contains matching: the data-table
 service adds `%` before and after a value when it has no `%`. Values with `%`
 keep their explicit pattern. `like` matches case; `ilike` ignores case.
 
 | Tool | Actions |
 |------|---------|
-| `workflow_builder_workflows` | 12 |
-| `data_tables` | 11 |
-| `workspace` | 8 |
+| `list_workflows`, `get_workflow_node_usage`, `get_workflow`, `get_workflow_as_code`, `archive_workflow`, `unarchive_workflow`, `setup_workflow`, `validate_workflow`, `publish_workflow`, `unpublish_workflow`, `list_workflow_versions`, `restore_workflow_version`, `update_workflow_version` | single-purpose |
+| `list_data_tables`, `get_data_table_schema`, `query_data_table` | single-purpose |
+| `change_data_tables` | 8 change actions in one batch |
+| `list_projects`, `list_tags`, `tag_workflow`, `cleanup_test_executions`, `list_folders`, `create_folder`, `delete_folder`, `move_workflow_to_folder` | single-purpose |
+| `create_app`, `list_apps`, `get_app`, `open_app`, `list_app_bindings`, `bind_app_resource`, `unbind_app_resource`, `commit_app`, `discard_app_changes` | single-purpose |
 | `workflow_builder_executions` | 8 |
-| `workflow_builder_credentials` | 6 |
-| `workflow_builder_nodes` | 7 |
+| `list_credentials`, `search_credential_types`, `setup_credentials`, `test_credential`, `delete_credential`, `update_credential_description` | single-purpose |
 | `mcp-servers` | 4 |
 | `conversation-history` | 2 |
 | `workflow_builder_task_control` | 3 |
@@ -61,64 +120,13 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `eval-config` | 6 |
 | `n8n-docs` | 3 |
 | `agent-context` | 13 lookup types |
-| `skills` | 5 |
-| `workflow_builder_build_workflow`, `workflow_builder_ask_user`, `parse-file`, `workflow_builder_search_models` | single-purpose |
+| `skills` | 5 (8 when Skill Sync is on) |
+| `workflow_builder_build_workflow`, `ask_user`, `parse-file`, `import-files`, `search_models`, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node` | single-purpose |
 
 ## Orchestration Tools
 
 These tools are exclusive to the orchestrator agent. Sub-agents do not receive
 them. Some are conditional on context availability.
-
-### `workflow_builder_create_tasks`
-
-Persist a dependency-aware task plan for detached multi-step execution. For
-initial plan-worthy work, the orchestrator loads the `planning` skill, performs
-discovery with normal domain tools, loads `workflow_builder_create_tasks` via `load_tool`, then
-calls `workflow_builder_create_tasks` with
-`planningContext.source: "planning-skill"`. For
-`<planned-task-follow-up type="replan">` turns, use
-`planningContext.source: "replan"` when multiple dependent tasks still need
-scheduling. Clear single-workflow builds, including new and one-off workflows,
-use `workflow-builder`, workspace file tools, and `workflow_builder_build_workflow` directly.
-The plan is shown to the user for approval before execution starts.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `tasks` | array | yes | Dependency-aware execution plan (see schema below) |
-| `planningContext` | object | yes | `{ source: "planning-skill" \| "replan", summary: string, assumptions?: string[] }` |
-
-**Task schema**:
-
-```typescript
-{
-  id: string;          // Stable identifier used by dependency edges
-  title: string;       // Short user-facing task title
-  kind: 'build-workflow' | 'checkpoint';
-  spec: string;        // Detailed executor briefing for this task
-  deps: string[];      // Task IDs that must succeed before this task can start
-  workflowId?: string; // Existing workflow ID for the builder to hydrate before saving
-  isSupportingWorkflow?: boolean; // Build task completes after saving a supporting sub-workflow
-}
-```
-
-**Returns**: `{ result: string, taskCount: number }`
-
-**Behavior**:
-- First call persists the plan, publishes `tasks-update` event, and **suspends**
-  for user approval
-- On approval: calls `schedulePlannedTasks()` to start detached execution
-- On rejection: returns feedback for the LLM to revise the plan
-- On denial: cancels the graph and blocks same-turn resubmission
-
-**Task kinds** map to executors:
-- `workflow_builder_build_workflow` → orchestrator follow-up run using the workflow-builder skill
-- `checkpoint` → exceptional orchestrator-executed semantic or cross-workflow check
-
-Standalone data-table work is handled directly by the orchestrator with the
-`data-table-manager` skill and the `data_tables` / `parse-file` tools. Single
-workflow-local table requirements belong in the builder task spec; plan only
-when the table schema is shared, independently durable, or creates real
-dependency coordination.
 
 ### `workflow_builder_task_control`
 
@@ -168,22 +176,6 @@ Send a course correction to a running background task.
 **Returns**: `{ result: string }`. The string says whether the correction was
 sent, the task already completed, the task was not found, or delivery is not
 available.
-
-### `workflow_builder_complete_checkpoint`
-
-Close out a `checkpoint` planned task with its verdict. The tool is registered
-for the orchestrator and is intended only for checkpoint follow-up turns. The
-task must exist, have kind `checkpoint`, and be in the `running` state.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `taskId` | string | yes | Checkpoint task ID from the planned-task follow-up |
-| `status` | `"succeeded" \| "failed"` | yes | Checkpoint verdict |
-| `result` | string | no | Short user-visible outcome note |
-| `error` | string | no | Failure message when `status` is `failed` |
-| `outcome` | object | no | Structured evidence such as an execution ID, failed node, or data excerpt |
-
-**Returns**: `{ result: string, ok: boolean }`
 
 ### `get-session` *(conditional)*
 
@@ -242,8 +234,7 @@ retry requires explicit acknowledgement through `acknowledgeUnverified: true`.
 
 **Writes on success/failure**: the tool persists a structured `verification`
 record (`{ attempted, success, executionId, status, claim, evidence, verifiedAt }`) onto
-the build outcome so workflow-verification follow-ups and exceptional checkpoint
-turns can reuse it without re-running verify.
+the build outcome so workflow-verification follow-ups can reuse it without re-running verify.
 
 **Returns**: `{ executionId?, success, status?, data?, error?, simulationNote?, resolvedParameterWarnings?, skippedParameterChecks?, skippedParameterCheckCount? }`
 
@@ -305,16 +296,19 @@ Atomically apply real credentials to previously-mocked workflow nodes.
 
 **Returns**: `{ updatedNodes: string[] }`
 
-## `workflow_builder_workflows` (12 actions)
+## Workflow tools
 
-The domain surface has up to twelve actions. Version actions are registered only
-when their backend methods are available. Use `get` to inspect a workflow. Use
-`get-as-code`, workspace edits, and `workflow_builder_build_workflow` to change a workflow.
+Each supported action of the former `workflow_builder_workflows` tool is now its own tool.
+A suspended call of the former tool resumes in the tool that owns its action.
+Removed actions, such as `update`, have no replacement tool.
+`get_workflow_node_usage` and the version tools are registered only when their
+backend methods are available. Use `get_workflow` to inspect a workflow. Use
+`get_workflow_as_code`, workspace edits, and `workflow_builder_build_workflow` to change a workflow.
 The internal `getAsWorkflowJSON` and `updateFromWorkflowJSON` service methods
 remain available to compiler, setup, validation, credential, and verification
 flows. They are not model-facing actions.
 
-### `workflow_builder_workflows(action="list")`
+### `list_workflows`
 
 List workflows accessible to the current user.
 
@@ -364,7 +358,7 @@ so it cannot reach a project the user can't read (`scope: "instance"` already
 returns that whole readable set). Writes ignore it and stay locked to the thread's
 bound project.
 
-### `workflow_builder_workflows(action="get")`
+### `get_workflow`
 
 Inspect workflow metadata and structure. Small workflows return their full node
 data. Large workflows return a structural summary unless `full` is true.
@@ -380,7 +374,7 @@ or a structured not-found response.
 
 `activeVersionId` is `null` when the workflow is unpublished.
 
-### `workflow_builder_workflows(action="get-as-code")`
+### `get_workflow_as_code`
 
 Get a workflow as TypeScript SDK code. Used by the builder agent to inspect an
 existing workflow when no workspace source file is already available. Existing
@@ -408,7 +402,7 @@ this tool with `filePath`.
 | `name` | string | no | Workflow name override for new workflows |
 | `workItemId` | string | no | Work item hint for workflow-loop reporting |
 | `isSupportingWorkflow` | boolean | no | Marks a saved sub-workflow as supporting |
-| `folderPath` | string | no | Folder to create the new workflow in, named as the user named it (`Clients/Acme`, `Acme`). Same strict resolution as `list`; an unresolved folder fails the build before anything is saved, with the real folders listed. New workflows only: to move an existing one use `workspace(action="move-workflow-to-folder")`. Advertised only while folder exploration is on |
+| `folderPath` | string | no | Folder to create the new workflow in, named as the user named it (`Clients/Acme`, `Acme`). Same strict resolution as `list`; an unresolved folder fails the build before anything is saved, with the real folders listed. New workflows only: to move an existing one use `move_workflow_to_folder`. Advertised only while folder exploration is on |
 
 There is deliberately **no `projectId`**: a build writes to the project the
 conversation is bound to, and nothing can redirect it. The field used to exist and
@@ -447,18 +441,21 @@ do not prove runtime correctness. The sandbox CLI has no saved-workflow baseline
 so `workflow_builder_build_workflow` makes the final decision. Preserve unrelated nodes and report
 any remaining blocker instead of expanding the edit.
 
-### `workflow_builder_workflows(action="delete")`
+### `archive_workflow`
 
 Archive a workflow (soft delete, deactivates if needed). Reverse it with
-`workflow_builder_workflows(action="unarchive")`.
+`unarchive_workflow`.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `workflowId` | string | yes | Workflow to archive |
 
+"Always allow" on the approval card saves one thread grant for the action. The
+Assistant then archives other workflows in the thread without a card.
+
 **Returns**: `{ success: boolean }`
 
-### `workflow_builder_workflows(action="unarchive")`
+### `unarchive_workflow`
 
 Restore an archived workflow without publishing it.
 
@@ -468,7 +465,7 @@ Restore an archived workflow without publishing it.
 
 **Returns**: `{ success: boolean }`
 
-### `workflow_builder_workflows(action="setup")`
+### `setup_workflow`
 
 Open the inline UI for per-node credential and parameter setup. The tool uses a
 suspend/resume state machine and can present several node setup requests in one
@@ -521,7 +518,7 @@ without a run. Otherwise, it runs the saved workflow through `workflow_builder_e
 the output, and reports the test result in chat. Execution approval policy still
 applies. The new panel does not use the wizard's trigger-test resume loop.
 
-### `workflow_builder_workflows(action="publish")`
+### `publish_workflow`
 
 Publish a workflow version to production. Makes it active — it will run on triggers.
 
@@ -532,7 +529,7 @@ Publish a workflow version to production. Makes it active — it will run on tri
 
 **Returns**: `{ success: boolean, activeVersionId?: string }`
 
-### `workflow_builder_workflows(action="unpublish")`
+### `unpublish_workflow`
 
 Stop a workflow from running in production. The draft is preserved.
 
@@ -540,9 +537,12 @@ Stop a workflow from running in production. The draft is preserved.
 |-------|------|----------|-------------|
 | `workflowId` | string | yes | Workflow ID |
 
+"Always allow" on the approval card saves one thread grant for the action, as
+it does for `archive_workflow`.
+
 **Returns**: `{ success: boolean }`
 
-### `workflow_builder_workflows(action="list-versions")` *(conditional — requires license)*
+### `list_workflow_versions` *(conditional — requires license)*
 
 List version history for a workflow (metadata only).
 
@@ -554,7 +554,7 @@ List version history for a workflow (metadata only).
 
 **Returns**: `{ versions: [{ versionId, name, description, authors, createdAt, autosaved, isActive, isCurrentDraft }] }`
 
-### `workflow_builder_workflows(action="validate")`
+### `validate_workflow`
 
 Return the per-node configuration issues a human would see as red warning
 indicators on the canvas — missing credentials, parameter validation errors and
@@ -566,7 +566,7 @@ workflow is configured correctly before suggesting the user run or publish it.
 | `workflowId` | string | yes | Workflow ID |
 | `ignoreIssues` | array | no | Issue categories to skip: `parameters`, `credentials`, `input`, `execution`, `typeUnknown`, `aiGateway`, `chatModel` |
 
-### `workflow_builder_workflows(action="restore-version")` *(conditional — requires license)*
+### `restore_workflow_version` *(conditional — requires license)*
 
 Restore a workflow to a previous version (overwrites current draft). HITL
 approval required. This does not publish the restored draft. A production rollback
@@ -582,7 +582,7 @@ must also use the publish action and its normal approval flow.
 (`unpublished`, `current`, or `stale`). The note states whether publication is still
 required. Denied and failed restores retain their existing error responses.
 
-### `workflow_builder_workflows(action="update-version")` *(conditional — requires `feat:namedVersions` license)*
+### `update_workflow_version` *(conditional — requires `feat:namedVersions` license)*
 
 Update a version's name or description.
 
@@ -872,22 +872,24 @@ Cancel a running execution.
 
 ---
 
-## `workflow_builder_credentials` (6 actions)
+## Credential tools
 
-The instance PostHog flag `120_credential_descriptions` controls description
-fields and selection guidance. Only boolean `true` enables them. When the flag
-is false or missing, `list` and `get` omit `description`, including managed entries.
+Both builders use these five tools. The instance PostHog flag
+`120_credential_descriptions` controls description fields and selection
+guidance. Only boolean `true` enables them. When the flag is false or missing,
+`list_credentials` omits `description`, including managed entries.
 
 > **Security note**: The agent never handles raw credential secrets. Credential
 > creation and secret configuration is done through the n8n frontend UI (via
-> `workflow_builder_credentials(action="setup")`) or Computer Use browser credential capture.
+> `setup_credentials`) or Browser Use credential capture.
 
-### `workflow_builder_credentials(action="list")`
+### `list_credentials`
 
 List credentials accessible to the current user. Never exposes secrets.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
+| `ids` | string[] | no | Read these credentials in full. The other fields do not apply |
 | `type` | string | no | Filter by credential type (e.g., `notionApi`) |
 | `name` | string | no | Case-insensitive substring filter on the credential name |
 | `limit` | number | no | Page size. Default 50 and maximum 200 |
@@ -896,23 +898,29 @@ List credentials accessible to the current user. Never exposes secrets.
 **Returns**: `{ credentials: [{ id, name, type, description }], total, hasMore, hint? }`.
 Descriptions have a 256-character preview limit, including the truncation marker.
 An unset description returns `null`. Read the descriptions when several credentials
-share one type. Use `get` to read the full text if the preview does not resolve the choice.
+share one type. Pass `ids` to read the full text if the preview does not resolve the choice.
 A Gateway credits managed entry has `id: "__AI_GATEWAY_MANAGED__"`,
 `__aiGatewayManaged: true`, and `description: null`.
 
-### `workflow_builder_credentials(action="get")`
+With `ids`, the tool **returns** `{ credentials: [{ id, name, type, description,
+nodesWithAccess? }], notFound? }`. The description contains the full stored
+text, or `null` when unset. `notFound` lists the ids that did not resolve. The
+response never contains credential secret data.
 
-Get credential metadata. Never returns decrypted secrets.
+### `update_credential_description`
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `credentialId` | string | yes | Credential ID |
+Set or replace an existing credential description only when the user explicitly requests it.
+Describe its purpose and intended use from known context. Keep it concise and exclude secrets.
+Pass `credentialId` and `description`.
+The description is a required string. It is trimmed and limited to 512 characters. Pass a blank string to clear it.
+Returns `{ success: true }`.
 
-**Returns**: `{ id, name, type, description, nodesWithAccess? }`.
-The description contains the full stored text, or `null` when unset.
-The response never contains credential secret data.
+The tool is available when credential descriptions are enabled. The user must have
+`credential:update` permission, and the credential must belong to the conversation's project.
+Managed credentials allow description updates. Description updates remain available on protected instances.
+The operation keeps credential secrets, names, and types unchanged.
 
-### `workflow_builder_credentials(action="delete")`
+### `delete_credential`
 
 Permanently delete a credential. **Irreversible** — HITL confirmation required.
 
@@ -923,7 +931,7 @@ Permanently delete a credential. **Irreversible** — HITL confirmation required
 
 **Returns**: `{ success: boolean }`
 
-### `workflow_builder_credentials(action="search-types")`
+### `search_credential_types`
 
 Search available credential types by name or description.
 
@@ -935,14 +943,15 @@ Search available credential types by name or description.
 **Returns**: `{ results: [...] }`. Gateway-credits-only results have
 `{ type, gatewayCredits: true }`.
 
-### `workflow_builder_credentials(action="setup")`
+### `setup_credentials`
 
 Open the credential picker UI for the user to configure credentials securely.
 The LLM never sees secrets — the user interacts with the n8n frontend directly.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `credentials` | array | yes | Requests with `{ credentialType, reason?, suggestedName?, preferNew?, setupHint? }` |
+| `credentials` | array | yes | Requests with `{ credentialType, reason?, suggestedName?, preferNew?, setupHint?, allowManaged? }` |
+| `target` | `"workflow"` \| `"agent"` | no | `agent` sets up credentials for the selected Agent and returns `{ type: { id, name } }` |
 | `workflowId` | string | no | The workflow the credentials are for, when one exists |
 | `requireUserSelection` | boolean | no | Keep the card open for an explicit choice |
 | `credentialFlow` | object | no | `{ stage: "generic" | "finalize" }` |
@@ -959,8 +968,8 @@ means setup is already complete, and the card is never open once a result is
 returned. Generic auth types (bearer/header/query/basic/etc.) stay preselected
 but always require an explicit Continue, since the type alone does not identify
 a service. When `needsBrowserSetup=true`, the orchestrator should load the
-`credential-setup-with-computer-use` skill, use Computer Use `browser_*` tools
-directly, then call `workflow_builder_credentials(action="setup")` again to select the created
+`credential-setup-with-browser-use` skill, use Browser Use `browser_*` tools
+directly, then call `setup_credentials` again to select the created
 credential.
 
 **Setup panel** (`118_instance_ai_setup_overhaul: variant`): when the call belongs
@@ -976,9 +985,11 @@ build snapshot). Standalone setup, `requireUserSelection`, and an entry with
 `preferNew` keep the card: the panel cannot express "replace the bound
 credential".
 
-### `workflow_builder_credentials(action="test")`
+### `test_credential`
 
-Test whether a credential is valid and can connect to its service.
+Test whether a credential is valid and can connect to its service. The
+description tells the agent to test a listed credential only after a node call
+fails with an authentication or permission error.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -988,89 +999,74 @@ Test whether a credential is valid and can connect to its service.
 
 ---
 
-## `workflow_builder_nodes` (7 actions)
+## Node tools
 
-The full domain surface has seven actions. The orchestrator receives all seven
-actions in the current registry. The tool also defines a restricted
-`type-definition` and `explore-resources` surface, but the orchestrator registry
-does not currently select it. Specialized agents that resolve the full domain
-tool can also receive all seven actions.
+Four tools give access to the node catalog. The orchestrator always loads them.
+The workflow builder and the Agent Builder use the same tools. They replace
+the seven-action `workflow_builder_nodes` tool and the
+`agent_builder_search_nodes`, `agent_builder_get_node_types`, and
+`agent_builder_get_resource_locator_options` tools. The former names stay
+mapped in `@n8n/api-types`, so stored threads still resolve.
 
-### `workflow_builder_nodes(action="list")`
+### `search_nodes`
 
-List available node types in the n8n instance.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `query` | string | no | Filter by name or description |
-| `gatewayCreditsOnly` | boolean | no | Return only nodes supported by Gateway credits |
-
-**Returns**: `{ nodes: [{ name, displayName, description, group, version }] }`
-
-### `workflow_builder_nodes(action="describe")`
-
-Get detailed node description including properties, credentials, inputs, and outputs.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `nodeType` | string | yes | Node type (e.g., `n8n-nodes-base.httpRequest`) |
-
-**Returns**: `{ name, displayName, description, properties, credentials, inputs, outputs }`
-
-### `workflow_builder_nodes(action="type-definition")`
-
-Get TypeScript definitions for one to five node types, including exact
-parameters, credentials, display conditions, and builder annotations.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `nodeTypes` | array | yes | One to five node requests. Each entry is a node type string or `{ nodeType, version?, resource?, operation?, mode? }` |
-
-**Returns**: `{ definitions, error? }`.
-
-### `workflow_builder_nodes(action="search")`
-
-Search nodes ranked by relevance with `@builderHint` annotations. Includes
-subnode requirements and discriminator values.
+Search node types by name, curated category, AI connection type, or Gateway
+credits coverage. Name results are ranked by relevance and include
+`@builderHint` annotations, subnode requirements, and discriminator values.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `query` | string | no | Short search query |
+| `queries` | string[] | no | One to ten search queries for one batched lookup |
+| `categories` | string[] | no | One to three curated workflow technique categories |
+| `scope` | `"all" \| "agent_tool"` | no | `agent_tool` returns only executable `*Tool` nodes that an n8n Agent can use. Default `all` |
 | `connectionType` | string | no | AI sub-node connection type |
-| `limit` | number | no | Maximum results. Default 10 |
+| `gatewayCreditsOnly` | boolean | no | Return only nodes supported by Gateway credits |
+| `limit` | number | no | Maximum results for each query. Default 10 |
 
-**Returns**: `{ results, totalResults }`
+**Returns**: `{ results, totalResults }`. A category-only lookup returns
+`{ results, unknownCategories }`. A mixed lookup adds `categoryResults` and
+`unknownCategories`. A Gateway credits lookup without `connectionType` also
+returns `nodes`.
 
-### `workflow_builder_nodes(action="suggested")`
+### `get_node_types`
 
-Get curated node suggestions for common use cases.
+Get TypeScript definitions for one or more node types, including exact
+parameters, credentials, display conditions, builder annotations, Gateway
+credits metadata, and webhook or trigger details.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `categories` | string[] | yes | One to three supported technique categories |
+| `nodeTypes` | array | yes | One or more node requests. Each entry is a node type string or `{ nodeType, version?, resource?, operation?, mode? }` |
 
-**Returns**: `{ results, unknownCategories }`.
+**Returns**: `{ definitions }`. A definition that cannot load carries an
+`error` field.
 
-### `workflow_builder_nodes(action="explore-resources")`
+### `get_node_parameter_options`
 
-Explore a node's dynamic resources (listSearch / loadOptions). Used to discover
-discriminator values like spreadsheet IDs, calendar names, etc.
+Fetch live, credential-backed options for a dynamic node parameter
+(resource locator, `loadOptionsMethod`, or `loadOptions` routing). Examples are
+spreadsheet IDs, Slack channels, and provider models.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `nodeType` | string | yes | Node type |
-| `version` | number | yes | Node version |
-| `methodName` | string | yes | Exact annotated list-search or load-options method |
-| `methodType` | `"listSearch" | "loadOptions"` | yes | Dynamic method type |
-| `credentialType` | string | yes | Credential type key |
-| `credentialId` | string | yes | Credential to use |
+| `version` | number | yes | Node version. `nodeTypeVersion` is an alias |
+| `parameterPath` | string | no | Preferred. Parameter path to resolve, e.g. `channelId` |
+| `methodName` | string | no | Exact annotated list-search or load-options method. Use when `parameterPath` is not set |
+| `methodType` | `"listSearch" \| "loadOptions"` | no | Required with `methodName` |
+| `credentialType` | string | no | Credential type key |
+| `credentialId` | string | no | Credential to use |
+| `credentials` | object | no | Node credentials map, as an alternative to `credentialType` and `credentialId` |
+| `currentNodeParameters` | object | no | Parameters needed by dependent lookups. `nodeParameters` is an alias |
 | `filter` | string | no | Search text |
 | `paginationToken` | string | no | Token from a previous result |
-| `currentNodeParameters` | object | no | Parameters needed by dependent lookups |
 
-**Returns**: `{ results, paginationToken?, builderHint?, error? }`.
+**Returns**: for `parameterPath`, `{ ok, results, ... }` with ready-to-write
+`parameterValue` entries. For `methodName`,
+`{ results, paginationToken?, builderHint?, error? }`.
 
-### `workflow_builder_nodes(action="execute")`
+### `execute_node`
 
 Execute a single node standalone — real credentials, caller-supplied parameters
 and input items — and return its real output items. The node runs through the
@@ -1085,13 +1081,10 @@ field-level errors immediately. One exception: a missing discriminator (e.g.
 `resource`/`operation`) does not block — n8n falls back to the node's defaults
 at runtime, so the node can still run and cause side effects.
 
-**Approval mirrors `workflow_builder_executions(action="run")`** — executing one node is
-equivalent to running a one-node workflow, so the same `runWorkflow` admin
-policy applies (`blocked` denies; `always_allow` skips the prompt — a
+**Approval uses the `executeNode` admin policy**, not the `runWorkflow`
+policy (`blocked` denies; `always_allow` skips the prompt — a
 standalone node request is always agent-authored, the analog of an AI-created
-workflow). A *scoped* `always_allow` — the checkpoint follow-up override, which
-names the workflow IDs it covers — does not skip the prompt: a standalone node
-run has no workflow ID to match. Under the default `require_approval`, the tool suspends with
+workflow). Under the default `require_approval`, the tool suspends with
 severity `warning`; "Always allow" persists a session grant scoped by node
 type + resource + operation (`nodes:execute:<type>:<resource>:<operation>`) —
 the same split the generated node TS types use, so a future per-operation
@@ -1114,7 +1107,7 @@ so the agent can pass a node it is building verbatim:
 | `config.parameters` | object | yes | Same shape as workflow-sdk `NodeConfig.parameters` |
 | `config.credentials` | object | no | Resolved credential references `{ id, name }` by credential type; n8n Connect managed credentials use `{ id: null, name, __aiGatewayManaged: true }` |
 | `input` | array | no | Input items `{ json }` (defaults to one empty item) |
-| `timeoutMs` | number | no | Max execution time, capped at 60s |
+| `timeoutMs` | number | no | Max execution time (default 30s, max 10 min). `EXECUTIONS_TIMEOUT_MAX` can lower the max |
 
 **Returns**: `{ status: 'success', output }` or
 `{ status: 'error', error: { message, description?, nodeErrorType? } }`. The
@@ -1136,12 +1129,12 @@ placeholder/new-credential forms have no stored row and cannot execute.
 
 ---
 
-## `workflow_builder_search_models`
+## `search_models`
 
 Preliminary models.dev catalog search when choosing a model without a relevant
 credential or a suitable named builder-hint recommendation. The orchestrator always loads this tool.
 The `model-selection` skill tells the model when to call it. If a provider credential or Gateway credits is
-available, use `workflow_builder_nodes(action="explore-resources")` with that credential instead.
+available, use `get_node_parameter_options` with that credential instead.
 Do not use catalog search to validate an unfamiliar model or to recover from a
 failed credential lookup.
 
@@ -1174,55 +1167,70 @@ one caller stops its wait without cancelling a refresh shared with other callers
 
 ---
 
-## `data_tables` (11 actions)
+## Data table tools (4 tools)
 
-Full CRUD suite for n8n data tables. System columns (`id`, `createdAt`,
-`updatedAt`) are reserved and auto-managed.
+Three read tools and one write tool. System columns (`id`, `createdAt`,
+`updatedAt`) are reserved and auto-managed. The read tools never suspend.
 
-### Table operations
+### Read tools
+
+| Tool | Description |
+|------|-------------|
+| `list_data_tables` | List data tables |
+| `get_data_table_schema` | Get the table columns |
+| `query_data_table` | Query rows with optional filters |
+
+### `change_data_tables`
+
+Input: `{ projectId?, changes: [{ action, ... }] }`, with 1 to 50 changes.
 
 | Action | Description |
 |--------|-------------|
-| `list` | List data tables |
-| `create` | Create a data table with columns |
-| `delete` | Delete a data table after confirmation |
-| `schema` | Get the table columns |
-
-### Column operations
-
-| Action | Description |
-|--------|-------------|
-| `add-column` | Add a column to a table |
-| `delete-column` | Remove a column from a table |
+| `create` | Create a table with typed columns |
+| `delete` | Delete a table and all its rows |
+| `add-column` | Add a column |
+| `delete-column` | Remove a column |
 | `rename-column` | Rename a column |
+| `insert-rows` | Insert 1 to 100 rows |
+| `update-rows` | Update rows that match a filter |
+| `delete-rows` | Delete rows that match a non-empty filter |
 
-### Row operations
-
-| Action | Description |
-|--------|-------------|
-| `query` | Query rows with optional filters |
-| `insert-rows` | Insert one or more rows |
-| `update-rows` | Update rows matching a filter |
-| `delete-rows` | Delete rows matching a non-empty filter after confirmation |
+- `table` accepts a table ID or name. A later change can name a table that an
+  earlier change in the batch creates. `column` accepts a column name, or an ID
+  for `delete-column` and `rename-column`.
+- The tool checks the whole batch before it runs a change. Then it runs the
+  changes in order and stops at the first failure. Earlier changes stay
+  applied. The result lists `applied`, `failed`, and `skipped` changes.
+- The user approves the whole batch on one card. A change needs no approval
+  when the permission is `always_allow`, when a session approval covers its
+  action, or when it changes columns or rows of a table that the thread
+  created. Session approvals never cover destructive actions. An approval
+  applies only to the tables that the card showed. If one of them changed, the
+  tool shows a new card.
+- The former write tools (`create_data_table`, `insert_data_table_rows`, and
+  the others) and the former `data_tables` tool are legacy names. A suspended
+  call under such a name still resumes through `change_data_tables`. A new call
+  under such a name fails as an unknown tool.
 
 ---
 
-## `workspace` (4 or 8 actions)
+## Workspace tools (4 or 8 tools)
 
-The registry always contains this tool. Without `workspaceService`, every call
-returns an unavailable error. Folder actions are present only when
+Each action of the former `workspace` tool is its own tool. The registry always
+contains the first four tools. Without `workspaceService`, every call returns an
+unavailable error. The folder tools are present only when
 `workspaceService.listFolders` is available.
 
 | Tool | Description |
 |------|-------------|
-| `list-projects` | List projects accessible to the user; on a project-scoped thread the conversation's own project carries `isCurrentProject: true` |
-| `tag-workflow` | Apply tags to a workflow |
-| `list-tags` | List available tags |
-| `cleanup-test-executions` | Remove test execution data |
-| `list-folders` | List folders (conditional) |
-| `create-folder` | Create a new folder (conditional) |
-| `delete-folder` | Delete a folder (conditional) |
-| `move-workflow-to-folder` | Move a workflow to a folder (conditional) |
+| `list_projects` | List projects accessible to the user; on a project-scoped thread the conversation's own project carries `isCurrentProject: true` |
+| `tag_workflow` | Apply tags to a workflow |
+| `list_tags` | List available tags |
+| `cleanup_test_executions` | Remove test execution data |
+| `list_folders` | List folders (conditional) |
+| `create_folder` | Create a new folder (conditional) |
+| `delete_folder` | Delete a folder (conditional) |
+| `move_workflow_to_folder` | Move a workflow to a folder (conditional) |
 
 ---
 
@@ -1305,14 +1313,23 @@ when the supplied credential or node context is enough. `intent` is one of
 Results include registry metadata and can include a hint or error. Answers based
 on returned documents must cite the returned page titles and public URLs.
 
-## `parse-file` *(conditional)*
+## `parse-file`
 
-Parse an attachment from the current user message. The registry adds this tool
-only when the current turn contains a parseable attachment.
+Parse a user file. The registry adds the tool on every turn, with or without
+files, so the tool list stays the same and the prompt cache stays valid. It
+adds one of two versions:
+
+- When the host sets `storedFiles` on the context, the tool reads a stored file
+  of the thread by `fileId`. The Assistant on the Agents runtime uses this
+  version. The model gets each `fileId` from the file attachment label in the
+  conversation.
+- Otherwise, the tool reads an attachment of the current user message by
+  `attachmentIndex`. On a turn without files, it returns an error.
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `attachmentIndex` | number | no | 0 | Zero-based attachment index |
+| `fileId` | string | yes (stored-file version) | — | Id of a stored file of the thread |
+| `attachmentIndex` | number | no (current-message version) | 0 | Zero-based attachment index |
 | `format` | enum | no | detected | `csv`, `tsv`, `json`, `xlsx`, `text`, `markdown`, `html`, `pdf`, or `docx` |
 | `hasHeader` | boolean | no | true | Treat the first CSV or TSV row as headers |
 | `delimiter` | string | no | — | One-character CSV delimiter override |
@@ -1324,19 +1341,121 @@ pagination, truncation state, and warnings. Text-like results contain extracted
 content and can include a title or page count. All results identify the source
 attachment and can contain an error.
 
-## `workflow_builder_ask_user`
+## `import-files`
+
+Copy stored files of the thread into `inputs/` of the sandbox workspace, so the
+agent can work on them with the workspace tools. The registry adds the tool only
+when the host sets `storedFiles` and `sandboxFiles` on the context and the
+turn has a workspace. Only the Assistant on the Agents runtime sets them. It
+sets `sandboxFiles` only when the instance flag `137_agent_sandbox_files`
+is on, and takes its byte cap from `N8N_AGENTS_FILES_MAX_IMPORT_MB`, like the
+`import_files` tool of project agents. When the tool is present, the
+`## Sandbox workspace` prompt section tells the model when to use it.
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `files` | array | yes | — | 1 to 20 items with `fileId` and an optional `path` |
+| `files[].fileId` | string | yes | — | Id of a stored file of the thread |
+| `files[].path` | string | no | file name | Path relative to `inputs/`. A leading `inputs/` is dropped. A folder path (`inputs`, or a path that ends with `/`) gets the file name |
+
+The tool reads the name of each file and picks its path in `inputs/`. Then
+`sandboxFiles.importFiles` of the host copies the files. On the Agents runtime,
+this is the same code as `import_files` of project agents
+(`AgentSandboxFilesService.importFilesFrom`), but the files come from the system
+chat of the user. The host checks every file, path and the total size before
+the first write, so a failed check copies nothing. The host then writes one
+file at a time. A cancelled turn stops the copy.
+
+The result lists each copied file under `imported`, with its absolute
+workspace path. When a check or the copy fails, the result has no files and an
+`error` for the model. A write can fail after other files were copied. These
+files stay in `inputs/`, and the `error` names them. The list is not named
+`files`, because the chat shows the `files` of a tool result as new files.
+
+The sandbox of a thread can be reset between turns. The prompt section tells the
+model to check that a file in `inputs/` from an earlier turn is there, and to
+import it again when it is missing.
+
+## `list-files`
+
+List the stored files of the thread, newest first: the uploads of every turn
+and the files from `outputs/` of the sandbox. The model learns a `fileId` from
+the label of the message that carried the file, and memory drops these labels
+when it compacts older messages. With this tool, the model can still find the
+files of earlier turns. The registry adds the tool only when the host sets
+`list` on `storedFiles`. The Assistant on the Agents runtime sets it only when
+the instance flag `137_agent_sandbox_files` is on. The host lists the files in
+the same scope as `read`, so `parse-file` and `import-files` can read each
+listed file. The chat files list of the Assistant uses the same query. When the
+tool is present, the `## Sandbox workspace` prompt section names it.
+
+The tool takes no input. The result lists up to 50 files under
+`conversationFiles`, with `fileId`, `fileName`, `mimeType`, `sizeBytes`,
+`origin` (`upload` or `sandbox`) and `createdAt`. `omitted` counts the older
+files that the list leaves out. The list is not named `files`, because the chat
+shows the `files` of a tool result as new files.
+
+## `share-files`
+
+Store files of `outputs/` in the sandbox workspace as conversation files, so
+the chat shows them in the reply and the user can download them. The registry
+adds the tool when the host sets `sandboxFiles` on the context and the turn has
+a workspace. The host stores each file with `storeOutput`. A file whose name and
+bytes did not change keeps its `fileId`. When the tool is present, the
+`## Sandbox workspace` prompt section tells the model to put the files for the
+user in `outputs/` and to share them.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `paths` | string[] | yes | 1 to 10 paths relative to `outputs/`. A leading `outputs/` is dropped |
+
+The result lists the stored files under `files`, with `fileId`, `fileName`,
+`mimeType` and `sizeBytes`, and lists each path that failed under `errors`.
+
+When a turn that used a workspace tool ends, the Agents runtime also stores
+the new files of `outputs/`. For the Assistant, these files belong to the
+system chat of the user, so `parse-file`, `import-files` and the chat download
+route can read them.
+
+## `view-file`
+
+Attach an image or a PDF of the thread for the model to see. The model cannot
+see a file that it makes in the sandbox. With this tool, it can share an image
+with `share-files` and then look at it, or look again at an upload of an
+earlier turn that is no longer attached. The registry adds the tool only when
+the host sets `list` and `canView` on `storedFiles`. When the tool
+is present, the `## Sandbox workspace` prompt section tells the model to check
+the images that it makes.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `fileId` | string | yes | A file of this conversation |
+
+The tool reads the metadata through `storedFiles.read`, so it finds the same
+files as `parse-file`. It accepts only the file types for which `canView` is
+true. The runtime attaches only the images and PDFs that the provider of the
+model supports, so the host decides from that provider. The file must also be
+smaller than the chat attachment cap (`MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES`),
+and storage must still have its bytes (`hasContent`). For any other file, the
+tool returns an `error`. The result has the file under `viewedFile`, not
+`files`, so the chat does not show the file again. The model output adds a file
+reference, and the runtime loads the bytes before each model call, the same as
+for an attached file.
+
+## `ask_user`
 
 Suspend the run for one or more human decisions.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `questions` | array | yes | Items with `id`, `question`, `type`, and optional `options` |
+| `questions` | array | yes | Items with `question`, `type`, and optional `id`, `options`, `required`, and `freeTextLabel` |
 | `introMessage` | string | no | Text shown above the first question |
 
-Question type is `single`, `multi`, or `text`. The UI adds its own free-text
-choice to select questions. The result is `{ answered: false }` when the user
-dismisses the request. Otherwise it is `{ answered: true, answers }`, with the
-question text added to every answer.
+Question type is `single`, `multi`, or `text`. A question without an `id` gets
+the first free `q1`, `q2`, ... id. Duplicate ids are rejected. The UI adds its
+own free-text choice to select questions. The result is `{ answered: false }`
+when the user dismisses the request or skips every question. Otherwise it is
+`{ answered: true, answers }`, with the question text added to every answer.
 
 A skipped question grants no additional permission. Defaults apply only to
 unspecified details within the requested task. A skipped request to expand scope
@@ -1371,37 +1490,110 @@ carries *what* it does.
 
 ---
 
-## Filesystem Tools (dynamic, conditional)
+## `send_feedback` *(conditional)*
 
-Only registered when a `localMcpServer` (computer-use gateway) is connected.
+Send a short report to the n8n team when the agent is not sure how to do
+something, a tool or n8n behaves wrong, or n8n cannot do what the user needs.
+Present when the adapter wires `agentFeedbackService` and the instance shares
+data (`allowSendingParameterValues` is not `false`). The CLI adapter wires the
+service only when telemetry is on (`N8N_DIAGNOSTICS_ENABLED`), because the report
+goes out only as a telemetry event. The report is agent-written text, so the
+tool is not registered when data sharing is off. When the tool is absent, the
+system prompt omits the feedback section too.
+Always loaded, because the agent needs it at the moment it is stuck.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `category` | `'unsure' \| 'bug' \| 'missing_capability' \| 'confusing_tool' \| 'other'` | yes | What kind of problem it is |
+| `severity` | `'blocked' \| 'workaround' \| 'minor'` | yes | How much the problem affected the task |
+| `summary` | string | yes | The goal, what the agent tried, and where it got stuck. The CLI adapter redacts it, then cuts it to 1,000 characters |
+| `toolName` | string | no | The tool that the report is about |
+
+The tool does not suspend and nothing replies. It always returns
+`{ ok: true, message }`, and the message tells the agent to continue. A run
+sends at most 3 reports. Later calls return the same result and send nothing.
+A resume rebuilds the agent and starts a new count.
+
+The CLI adapter tracks the `AI Assistant sent feedback` telemetry event. It
+removes secrets and personal data from the summary and the tool name before it
+cuts them, so a secret that crosses the cut is still found. LangSmith records the
+call as a normal tool span, so traces show the reports too.
+
+The system prompt carries the judgment of *when* to call it (see
+`getFeedbackSection` in `agent/system-prompt.ts`).
+
+---
+
+## App tools *(conditional)*
+
+Build n8n Apps. Present only when the apps module is active, the run has a
+bound project and the sandbox is available. The adapter wires `appService`, and
+the turn setup removes it without a sandbox, so the tools, the `app-builder`
+skill and the `<app-targets>` block share one gate. Deferred: the tools are in
+the `apps` tool group, which the skill lists in `recommended_tool_groups`.
+
+| Tool | Scope | Description |
+|------|-------|-------------|
+| `create_app` | `app:create` | Suspend with an editable blueprint. After approval, create the app in the bound project. Does not open it. The first app of a thread uses the pending app id from thread metadata |
+| `list_apps` | `app:list` | Apps of the bound project (at most 50), optionally filtered by name |
+| `get_app` | `app:read` | App state |
+| `open_app` | `app:read` | Put the draft source into `apps/<appId>` in the sandbox workspace. Keeps a folder that is already open |
+| `list_app_bindings` | `app:read` | The bindings of the draft, with resource names and generated `types` |
+| `bind_app_resource` | `app:update` | Add a binding, or replace the binding with the same key. Saves a new version |
+| `unbind_app_resource` | `app:update` | Remove a binding by its key. Saves a new version |
+| `commit_app` | `app:update` | Save the folder as one version and wait for its build |
+| `discard_app_changes` | `app:read` | Replace the folder with the current draft. Keeps `node_modules` |
+
+Only `create_app` suspends. A namespace that is taken shows the blueprint again
+with a field error, instead of an error result.
+
+The model edits the folder with the workspace tools and runs `npm ci` and
+`npm run build` there before it commits. The source moves in and out of the
+sandbox as one archive (`AppSourceArchiveService` in the apps module). The
+commit archive is read back as a file, not through command output.
+`apps/<appId>.base-version` holds the draft version the folder started from. A
+commit is based on that version, so a draft that changed since then fails the
+commit with a conflict and the folder stays. A commit leaves out
+`node_modules` and `dist`, and n8n builds the version again.
+
+`create_app`, `open_app`, `commit_app` and every binding change add the app to
+the thread metadata key `instanceAiAppTargets`. Reads and `discard_app_changes` do not. A thread can build several
+apps. On each user turn the `<app-targets>` block names these apps. They also
+report the app as an `app` artifact through `onArtifactChanged`, so the thread
+shows the app's tab. The `create_app` and `commit_app` results include `app`
+(`id`, `name`, `projectId`) for the frontend.
+
+Errors return `{ error }`.
+
+---
+
+## Browser Use Tools (dynamic, conditional)
+
+Only registered when a `localMcpServer` (the Browser Use session) is connected.
 Tools are dynamically created from the MCP server's advertised capabilities.
-See `docs/filesystem-access.md`.
 
 ---
 
 ## Knowledge Base (sandbox workspace)
 
-Best-practices guides and curated workflow templates are materialized under
+Best-practices guides and SDK reference material are materialized under
 `<workspace_root>/knowledge-base/` when a builder sandbox is available. Agents
-read them with workspace tools — there is no dedicated `get-best-practices` or
-template-search tool.
+read them with workspace tools — there is no dedicated `get-best-practices`
+tool.
 
 | Path | Description |
 |------|-------------|
-| `knowledge-base/index.json` | Root catalog advertising all three sections |
+| `knowledge-base/index.json` | Root catalog advertising both sections |
 | `knowledge-base/best-practices/index.json` | Catalog of workflow technique guides |
 | `knowledge-base/best-practices/*.md` | Best-practices documentation per technique |
-| `knowledge-base/templates/index.json` | Catalog of curated SDK workflow examples |
-| `knowledge-base/templates/*.ts` | Template workflow source files |
 | `knowledge-base/reference/index.json` | Catalog of SDK reference material |
 | `knowledge-base/reference/*.md` | SDK language and output-shape reference |
 
 The tree is written by `src/knowledge-base/materialize-knowledge-base.ts`, which
 sources best practices and some reference material from
-`@n8n/workflow-sdk/prompts/*`, additional reference documents from the local
-`knowledge-base/reference/` directory, and templates from the host's
-`BuilderTemplatesService`. It also writes a workspace manifest alongside the
-root index.
+`@n8n/workflow-sdk/prompts/*` and additional reference documents from the local
+`knowledge-base/reference/` directory. It also writes a workspace manifest
+alongside the root index.
 
 Use `workspace_read_file` and `workspace_grep` (or shell equivalents in the
 sandbox) to consult these before planning or building non-trivial workflows.
@@ -1417,7 +1609,7 @@ Delegates agent building to the agents-module builder chat
 turn per call. Registered in `createOrchestrationTools` only when the host
 provides `builderDelegate` (agents module active). The builder's own prompt
 and tools drive the build, including its interactive tools (`ask_questions`,
-`ask_credential`, `ask_embedding_credential`, `configure_channel`, and
+`ask_credential`, `configure_channel`, and
 `call_agent` target-tool approvals) and
 lifecycle tools (`publish_agent`, `unpublish_agent`) on the bound target agent —
 the sub-agent session no longer excludes them. Forward publish/unpublish/
@@ -1493,15 +1685,26 @@ The `type` field selects one lookup. Supported values are `agents`, `config-sche
 return one body at a time. Session lookup supports status, origin, date, and
 cursor filters.
 
+For a `skill` lookup, use `referencePaths` to read text files. If a file has
+`nextOffset`, pass it as `referenceOffset` with only that path in `referencePaths`.
+
+By default, a `session` lookup returns a compact transcript. Long values are
+cut and the oldest turns of a long session are left out. Set
+`maxToolValueLength` to get every turn with complete text, in pages. Each tool
+input and output is cut at that length, and `0` leaves them out. While
+`nextCursor` is not `null`, pass it back as `cursor` with the same `threadId`,
+`executionId`, and `maxToolValueLength`. A cursor that does not match the
+transcript returns an error.
+
 The Agent id is optional when the conversation has a bound Agent target. Use
 `type: "agents"` to resolve the id in other conversations. The tool labels the
 returned config as the current draft. It wraps all returned context as untrusted
 data before it returns it to the model.
 
-### `skills` *(domain tool — requires the `agents` backend module and the skills hub)*
+### `skills` *(domain tool — requires the `agents` backend module and the skills module)*
 
-Manages skills in the skills hub without an Agent. The host wires the tool only
-when the `agents` module is active and `N8N_AGENTS_SKILLS_HUB_ENABLED` is on.
+Manages skills in the skills module without an Agent. The host wires the tool only
+when the `agents` and `skills` modules are active.
 The tool calls the same service as the Skills settings page, so the same
 permission checks and name rules apply. It reports telemetry with the
 `assistant` source.
@@ -1517,6 +1720,19 @@ a `delete` that the user has no permission for, before it asks for approval.
 For `update`, pass the `skillHash` that `get` returns as `baseSkillHash`. The
 tool marks its output as untrusted data, because other users can write skill
 content. The tool does not attach a skill to an Agent.
+
+The `get` action limits how much reference text it returns. Use `referencePath`
+to read an omitted file. If a file has `nextOffset`, pass it as `referenceOffset`
+with the same `referencePath`.
+
+When Skill Sync is on, `list-sources` lists visible sources and their update
+counts. `discover-source` previews a public GitHub link and reports the check
+verdict for each skill. `import-from-source` connects the source and imports the
+selected skills that pass. The result lists the other selected skills in
+`failed`. The backend checks the selection first, so the approval card names the
+skills that come in. A selection with no skill that can come in is refused
+before the card. The import checks the source revision again before writing. Use **Settings > Context > Skills** for
+private repositories, warning review, and update acceptance.
 
 ## MCP Registry Tool
 
@@ -1567,7 +1783,7 @@ tool's relevance self-evident.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `action` | `'search' \| 'get-messages'` | yes | Discriminator |
-| `query` | string | no | Case-insensitive text matched against titles, user messages, and workflow_builder_ask_user answers (2–200 chars) as one exact phrase — the description steers the model toward fewer, short, distinctive terms. Omitted → `search` lists the most recent conversations instead |
+| `query` | string | no | Case-insensitive text matched against titles, user messages, and ask_user answers (2–200 chars) as one exact phrase — the description steers the model toward fewer, short, distinctive terms. Omitted → `search` lists the most recent conversations instead |
 | `limit` | number | no | Max conversations to return (default 10 when searching, 5 when listing recent; max 10) |
 | `threadId` | string | `get-messages` | Conversation id from a search result |
 | `aroundMessageId` | string | no | Center the read on this message id (from a search excerpt) |
@@ -1589,14 +1805,14 @@ tail read to continue recent work.
 **`get-messages`** → `{ threadId, title, messages: [{ messageId, role, createdAt, text, userAnswers?: [{ question, answer }] }], hasMoreBefore, hasMoreAfter, error? }`,
 oldest-first. Defaults for the read window (tail/head/around sizing) are
 applied by the service, not the tool. The read is the conversation as the
-user experienced it: their messages, workflow_builder_ask_user Q&A, and each turn's final
+user experienced it: their messages, ask_user Q&A, and each turn's final
 text-only reply. Mid-turn assistant rows — the agent loop only continues on
 tool calls, so a row carrying them is working narration rather than the reply
 that ended the turn — are filtered out in SQL via structural markers
 (unescaped `"type":"tool-call"` can only be block structure — quotes inside
-text are escaped); workflow_builder_ask_user rows stay visible for their Q&A. Rows only
+text are escaped); ask_user rows stay visible for their Q&A. Rows only
 recognizable after parsing — internal auto-follow-up user rows, rows with no
-visible text, workflow_builder_ask_user rows still awaiting an answer, unreadable content — are
+visible text, ask_user rows still awaiting an answer, unreadable content — are
 dropped by the same visibility predicate the window fetch uses, so
 `before`/`after` count returned messages. The fetch over-reads to fill its
 slots; `hasMoreBefore`/`hasMoreAfter` may over-report after a long run of
@@ -1609,9 +1825,11 @@ thrown tool error — when the service is unavailable or a lookup fails.
 
 The orchestrator receives the safe native domain tools and orchestration tools
 from `src/tools/index.ts`. Its workflow tool omits raw workflow JSON reads and
-full-definition replacements. It receives the full seven-action `workflow_builder_nodes` tool.
+full-definition replacements. It receives the four node tools: `search_nodes`, `get_node_types`, `get_node_parameter_options`, and `execute_node`.
 External and local MCP tools are added after their names are checked against the
-native tools active for the current request.
+native tools active for the current request. "Always allow" on their approval cards
+saves a thread grant, the same grant that built-in tools use
+(`createThreadApprovalContext`).
 
 The embedded Agent Builder uses the agents-module builder's own tool surface
 through `agent_builder_build_agent`. It does not receive the Instance AI domain registry. It
@@ -1645,9 +1863,7 @@ existing domain.
 4. Register it in `src/tools/index.ts` with `createOrchestratorDomainTools` or
    `createOrchestrationTools`
 5. Decide whether it belongs in `ALWAYS_LOADED_TOOL_NAMES`. Everything not in
-   that set is normally reached through `search_tools` + `load_tool`. Tools in
-   `CHECKPOINT_FOLLOW_UP_TOOL_NAMES` are also loaded directly during checkpoint
-   follow-ups. Deferral is the right default, but a tool whose job is to reveal
+   that set is listed by name in the tool catalog and run through `call_tool`. Deferral is the right default, but a tool whose job is to reveal
    an absence, or to redirect the model's attention, cannot be found by
    searching for it
 6. For HITL tools, define `suspendSchema` and `resumeSchema` — `@n8n/agents` handles

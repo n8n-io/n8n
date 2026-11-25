@@ -41,9 +41,11 @@ describe('WorkflowHistoryPruningTask', () => {
 		},
 	);
 
-	it('should prune on run', async () => {
-		await task.run();
+	it('should pass its abort signal to the prune', async () => {
+		const { signal } = new AbortController();
 
-		expect(workflowHistoryManager.prune).toHaveBeenCalledOnce();
+		await task.run(signal);
+
+		expect(workflowHistoryManager.prune).toHaveBeenCalledExactlyOnceWith(signal);
 	});
 });

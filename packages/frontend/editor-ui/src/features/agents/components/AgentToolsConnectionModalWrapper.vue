@@ -36,6 +36,7 @@ import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants/workflows';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useToast } from '@n8n/composables/useToast';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useNodeTypesLoad } from '@/app/composables/useNodeTypesLoad';
 import { useUIStore } from '@/app/stores/ui.store';
 import { stripToolSuffix, useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -57,7 +58,10 @@ import {
 	removePreviewToken,
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { useRestrictedNodeWarning } from '@/features/shared/nodeCreator/composables/useRestrictedNodeWarning';
-import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import {
+	useTypeAvailability,
+	useTypeAvailabilityPoliciesStore,
+} from '@n8n/frontend-module-type-availability-policies';
 import type { IWorkflowDb } from '@/Interface';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
 import McpRegistrySuggestionFooter from '@/app/components/McpRegistrySuggestionFooter.vue';
@@ -95,6 +99,11 @@ import {
 	nodeTypeToNewMcpServer,
 } from '../composables/useMcpServerAdapter';
 import type { AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
+import {
+	isAiGatewayMcpEntry,
+	toMcpEntryAuth,
+	toMcpRegistryCredentialRefs,
+} from '../utils/mcpRegistryCredentialRefs';
 import { useAgentMcpDiscovery } from '../composables/useAgentMcpDiscovery';
 import {
 	DEFAULT_AGENT_MCP_CONNECTION_TIMEOUT_MS,
@@ -155,6 +164,7 @@ const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
+useTypeAvailability(() => props.data.projectId);
 const toolTelemetry = useAgentToolTelemetry(props.data.agentId);
 const { createCredentialAdapter, fetchCatalog, preloadCredentials } = useAgentMcpDiscovery(
 	() => props.data.projectId,
@@ -317,12 +327,37 @@ function handleInteractOutside(event: Event) {
 	if (isCredentialModalOpen.value) event.preventDefault();
 }
 
+const isLoadingCredentials = ref(false);
+// The tool list shows the built-in tools from the node types.
+const { isLoading: nodeTypesLoading } = useNodeTypesLoad();
+
+/**
+ * Block until the project's credentials are in the store, so rows do not show as
+ * unconnected. A slice already fetched for this project refreshes in the background.
+ */
+async function loadCredentials() {
+	isLoadingCredentials.value = !credentialsStore.hasUsableCredentialsForScope({
+		projectId: props.data.projectId,
+	});
+	try {
+		await preloadCredentials();
+	} catch (error) {
+		console.error('Failed to fetch credentials', error);
+	} finally {
+		isLoadingCredentials.value = false;
+	}
+}
+
 onMounted(() => {
 	if (isWorkflow.value) void loadWorkflows(props.data.projectId);
 	if (!isWorkflow.value) {
 		void loadRegistryCatalog();
-		void preloadCredentials();
+		void loadCredentials();
 	}
+	// The builder loads the policy once and keeps it, so a policy that changed since then would
+	// still offer a blocked type here and the save would be refused. Refetch on open: this is the
+	// one place where the verdicts decide what the user may pick.
+	void typeAvailabilityPoliciesStore.reload();
 	// Same catalog load the canvas uses for verified community previews.
 	void nodeTypesStore.fetchCommunityNodePreviews();
 	// Config gates which tools are eligible for the n8n Connect section; the
@@ -343,14 +378,6 @@ credentialListeners.run(() => {
 	});
 });
 onBeforeUnmount(() => credentialListeners.stop());
-
-watch(
-	() => props.data.projectId,
-	(projectId) => {
-		if (projectId) void typeAvailabilityPoliciesStore.fetchForProject(projectId);
-	},
-	{ immediate: true },
-);
 
 function makeUniqueName(
 	baseName: string,
@@ -474,6 +501,7 @@ async function installAndAddCommunityPreview(nodeType: INodeTypeDescription) {
 			type: 'verified',
 			packageName: communityPackageNameFor(nodeType),
 			nodeType: stripToolSuffix(nodeType.name),
+			selectedNodeType: nodeType.name,
 			telemetry: { source: 'agent builder tools', hasQuickConnect: false },
 		});
 		if (!result.success) return;
@@ -487,7 +515,7 @@ async function installAndAddCommunityPreview(nodeType: INodeTypeDescription) {
 			);
 			return;
 		}
-		if (warnIfRestricted(installed.name)) return;
+		if (result.restricted) return;
 		addNodeTool(installed);
 	} finally {
 		installingToolName.value = null;
@@ -772,13 +800,7 @@ function connectedMcpItem(entry: WorkingMcpServerEntry): ToolConnectionItem | nu
 				? iconForMcpRegistryServer(registryServer.icons, uiStore.appliedTheme)
 				: { type: 'icon', name: 'mcp' },
 			credentials: registryServer
-				? registryServer.credentials.map(({ credentialType, name }) => ({
-						authType: credentialType,
-						displayName: name,
-						credentialId:
-							entry.server.authentication === credentialType ? entry.server.credential : undefined,
-						required: true,
-					}))
+				? toMcpRegistryCredentialRefs(registryServer, entry.server)
 				: [
 						{
 							authType: entry.server.authentication,
@@ -788,6 +810,7 @@ function connectedMcpItem(entry: WorkingMcpServerEntry): ToolConnectionItem | nu
 					],
 			availableTools: registryServer?.tools.map(toMcpServerTool) ?? [],
 			isOfficial: registryServer?.isOfficial,
+			freeCredits: isAiGatewayMcpEntry(entry.server),
 			settings: entry.server.toolPermissions,
 			publisher:
 				registryServer && (registryServer.isOfficial || registryServer.websiteUrl)
@@ -831,6 +854,7 @@ function toMcpServerTool(tool: {
 }
 
 function availableRegistryItem(server: McpRegistryServerResponse): McpServerConnectionItem {
+	const credentials = toMcpRegistryCredentialRefs(server);
 	return {
 		id: `registry:${server.slug}`,
 		kind: 'mcp-server',
@@ -840,13 +864,10 @@ function availableRegistryItem(server: McpRegistryServerResponse): McpServerConn
 		longDescription: server.description,
 		status: 'none',
 		iconSource: iconForMcpRegistryServer(server.icons, uiStore.appliedTheme),
-		credentials: server.credentials.map(({ credentialType, name }) => ({
-			authType: credentialType,
-			displayName: name,
-			required: true,
-		})),
+		credentials,
 		availableTools: server.tools.map(toMcpServerTool),
 		isOfficial: server.isOfficial,
+		freeCredits: credentials.some(({ aiGateway }) => aiGateway),
 		publisher:
 			server.isOfficial || server.websiteUrl
 				? { name: server.title, url: server.websiteUrl }
@@ -885,16 +906,13 @@ function connectRegistryItem(
 ) {
 	const registryServer = registryServerForItem(item);
 	if (!registryServer) return;
+	const auth = toMcpEntryAuth(authType, credentialId);
 
 	const existingEntry = mcpEntryForItem(item);
 	if (existingEntry) {
 		openConfigForRegistryEntry({
 			...existingEntry,
-			server: {
-				...existingEntry.server,
-				authentication: authType,
-				credential: credentialId,
-			},
+			server: { ...existingEntry.server, ...auth },
 		});
 		return;
 	}
@@ -906,8 +924,7 @@ function connectRegistryItem(
 			(name, counter) => `${name}-${counter}`,
 		),
 		description: registryServer.description,
-		authentication: authType,
-		credential: credentialId,
+		...auth,
 		metadata: { nodeTypeName: registryServer.nodeTypeName },
 		toolPermissions: defaultAgentMcpToolPermissions(props.data.supportsToolApproval !== false),
 		connectionTimeoutMs: DEFAULT_AGENT_MCP_CONNECTION_TIMEOUT_MS,
@@ -1248,6 +1265,7 @@ function handleRowActivate(item: ToolConnectionItem) {
 					: undefined
 			"
 			:create-action-loading="isCreatingWorkflow"
+			:loading="isLoadingCredentials || (!isWorkflow && nodeTypesLoading)"
 			:empty-message="isWorkflow ? i18n.baseText('agents.tools.workflow.empty.title') : undefined"
 			:no-results-message="
 				isWorkflow ? i18n.baseText('agents.tools.workflow.empty.noResults') : undefined

@@ -1,17 +1,21 @@
 <script lang="ts" setup>
+import { ProjectSelfHealingSection } from '@n8n/frontend-module-self-healing';
 import type { Role } from '@n8n/permissions';
 import { computed, ref, watch, onBeforeMount, onMounted, nextTick } from 'vue';
-import { useRouter } from 'vue-router';
+import { onBeforeRouteLeave, useRouter } from 'vue-router';
 import { deepCopy } from 'n8n-workflow';
-import { useDebounceFn } from '@vueuse/core';
+import { useDebounceFn, useEventListener } from '@vueuse/core';
+import { matchesAllTerms } from '@n8n/utils/search/matches-all-terms';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useI18n } from '@n8n/i18n';
 import { type ResourceCounts, useProjectsStore } from '../projects.store';
 import { DEFAULT_PROJECT_ICON } from '../projects.constants';
 import type { Project, ProjectRelation, ProjectMemberData } from '../projects.types';
+import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { useToast } from '@n8n/composables/useToast';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
-import { DEBOUNCE_TIME, VIEWS } from '@/app/constants';
+import { DEBOUNCE_TIME, MODAL_CANCEL, MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { useMessage } from '@/app/composables/useMessage';
 import ProjectDeleteDialog from '../components/ProjectDeleteDialog.vue';
 import ProjectRoleUpgradeDialog from '../components/ProjectRoleUpgradeDialog.vue';
 import ProjectMembersTable from '../components/ProjectMembersTable.vue';
@@ -23,13 +27,15 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import ProjectHeader from '../components/ProjectHeader.vue';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system';
 import type { TableOptions } from '@n8n/design-system';
-import type { UserAction } from '@n8n/design-system';
+import type { SelectOptionBase, SelectValue, UserAction } from '@n8n/design-system';
 import { isProjectRole } from '@/app/utils/typeGuards';
 import ProjectExternalSecrets from '../components/ProjectExternalSecrets.vue';
 import ProjectSettingsCustomTelemetryTags from '../components/ProjectSettingsCustomTelemetryTags.vue';
 import ProjectWorkerPoolsSection from '../components/ProjectWorkerPoolsSection.vue';
 import { getResourcePermissions } from '@n8n/permissions';
+import { isSelfHealingEnabled } from '@/features/collaboration/projects/projects.utils';
 import { hasPermission } from '@/app/utils/rbac/permissions';
+import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
 
 import {
 	N8nAlert,
@@ -38,7 +44,12 @@ import {
 	N8nIcon,
 	N8nIconPicker,
 	N8nInput,
+	N8nPreviewBadge,
+	N8nSelect2,
+	N8nSettingsRow,
+	N8nSettingsRowGroup,
 	N8nText,
+	N8nTooltip,
 	N8nUserSelect,
 } from '@n8n/design-system';
 type FormDataDiff = {
@@ -56,9 +67,11 @@ const rolesStore = useRolesStore();
 const cloudPlanStore = useCloudPlanStore();
 const settingsStore = useSettingsStore();
 const toast = useToast();
+const message = useMessage();
 const router = useRouter();
 const telemetry = useTelemetry();
 const documentTitle = useDocumentTitle();
+const { isWorkflowReviewsEnabled, isInstanceApprovalRequired } = useWorkflowReviewsFeature();
 
 const canUpdateProject = computed(
 	() => !!getResourcePermissions(projectsStore.currentProject?.scopes).project.update,
@@ -92,6 +105,7 @@ const formData = ref<
 	Pick<Project, 'name' | 'description' | 'relations'> & {
 		customTelemetryTags: NonNullable<Project['customTelemetryTags']>;
 		defaultPool: string | null;
+		requiredByProject: boolean;
 	}
 >({
 	name: '',
@@ -99,6 +113,7 @@ const formData = ref<
 	relations: [],
 	customTelemetryTags: [],
 	defaultPool: null,
+	requiredByProject: false,
 });
 // Used to skip one watcher sync after targeted server updates (e.g., immediate removal)
 const suppressNextSync = ref(false);
@@ -114,7 +129,7 @@ const membersTableState = ref<TableOptions>({
 	sortBy: [],
 });
 
-const userSearchQuery = ref('');
+let latestUserSearchId = 0;
 const userSearchResults = ref<typeof usersStore.allUsers>([]);
 const isLoadingUsers = ref(false);
 
@@ -289,6 +304,7 @@ const resetFormData = () => {
 		: [];
 	telemetryTagsRef.value?.resetTouched();
 	formData.value.defaultPool = projectsStore.currentProjectPoolSettings?.defaultPool ?? null;
+	resetWorkflowReviewFormData();
 };
 
 const hasWorkerPoolsChanges = (): boolean => {
@@ -383,6 +399,14 @@ const updateProject = async () => {
 			}),
 		);
 
+		if (hasWorkflowReviewChanges()) {
+			tasks.push(
+				projectsStore.updateCurrentProjectWorkflowReviewSettings(projectId, {
+					requiredByProject: formData.value.requiredByProject,
+				}),
+			);
+		}
+
 		if (isWorkerPoolsEnabled.value && hasWorkerPoolsChanges()) {
 			tasks.push(
 				projectsStore.updateCurrentProjectPoolSettings(projectId, {
@@ -432,6 +456,8 @@ const onConfirmDelete = async (transferId?: string) => {
 		if (projectsStore.currentProject) {
 			const projectName = projectsStore.currentProject?.name ?? '';
 			await projectsStore.deleteProject(projectsStore.currentProject.id, transferId);
+			// The project no longer exists, so its pending edits cannot be saved
+			isDirty.value = false;
 			await router.push({ name: VIEWS.HOMEPAGE });
 			toast.showMessage({
 				title: i18n.baseText('projects.settings.delete.successful.title', {
@@ -474,6 +500,62 @@ const resetPoolSettingsFormData = () => {
 	formData.value.defaultPool = projectsStore.currentProjectPoolSettings?.defaultPool ?? null;
 };
 
+const canConfigureWorkflowReviews = computed(
+	() =>
+		canUpdateProject.value &&
+		isWorkflowReviewsEnabled.value &&
+		projectsStore.currentProject?.type === ProjectTypes.Team,
+);
+
+// Hidden until the stored value loads, so a failed load never shows or saves "off".
+const showWorkflowReviewSettings = computed(
+	() =>
+		canConfigureWorkflowReviews.value &&
+		projectsStore.currentProjectWorkflowReviewSettings !== null,
+);
+
+const isLockedByInstance = computed(
+	() =>
+		isInstanceApprovalRequired.value ||
+		projectsStore.currentProjectWorkflowReviewSettings?.requiredByInstance === true,
+);
+
+function resetWorkflowReviewFormData() {
+	formData.value.requiredByProject =
+		projectsStore.currentProjectWorkflowReviewSettings?.requiredByProject ?? false;
+}
+
+function hasWorkflowReviewChanges(): boolean {
+	return (
+		showWorkflowReviewSettings.value &&
+		!isLockedByInstance.value &&
+		formData.value.requiredByProject !==
+			projectsStore.currentProjectWorkflowReviewSettings?.requiredByProject
+	);
+}
+
+type RequireApprovalOption = 'perWorkflow' | 'always';
+
+const requireApprovalOptions = computed<Array<SelectOptionBase<RequireApprovalOption>>>(() => [
+	{
+		value: 'perWorkflow',
+		label: i18n.baseText('projects.settings.workflowReviews.requireApproval.option.perWorkflow'),
+	},
+	{
+		value: 'always',
+		label: i18n.baseText('projects.settings.workflowReviews.requireApproval.option.always'),
+	},
+]);
+
+const requireApproval = computed<RequireApprovalOption>(() =>
+	isLockedByInstance.value || formData.value.requiredByProject ? 'always' : 'perWorkflow',
+);
+
+const onRequireApprovalUpdate = (value: SelectValue | undefined) => {
+	formData.value.requiredByProject = value === 'always';
+	onTextInput();
+};
+
 // Skip one sync after targeted updates (e.g. removal) to preserve unsaved edits.
 // Also the single hook reacting to the project becoming available (it loads asynchronously on a
 // direct page load), so project-scoped data like the pool settings is fetched here too.
@@ -492,6 +574,17 @@ watch(
 		}
 
 		const projectId = projectsStore.currentProjectId;
+		if (projectId && canConfigureWorkflowReviews.value) {
+			void projectsStore
+				.fetchProjectWorkflowReviewSettings(projectId)
+				.catch(() => {
+					// Non-fatal; the store stays cleared, so the setting stays hidden.
+				})
+				.finally(() => {
+					// A late response for the previous project must not reset the current form.
+					if (projectsStore.currentProjectId === projectId) resetWorkflowReviewFormData();
+				});
+		}
 		if (canUpdateProject.value && projectId && isWorkerPoolsEnabled.value) {
 			await projectsStore
 				.fetchProjectPoolSettings(projectId)
@@ -552,16 +645,14 @@ const relationUsers = computed<ProjectMemberData[]>(() => {
 	return rows;
 });
 
-const filteredMembers = computed(() => {
-	if (!search.value.trim()) return relationUsers.value;
+const matchesUser = (
+	query: string,
+	user: { firstName?: string | null; lastName?: string | null; email?: string | null },
+) => matchesAllTerms(query, [user.firstName, user.lastName, user.email]);
 
-	const searchTerm = search.value.toLowerCase();
-	return relationUsers.value.filter((member) => {
-		const fullName = `${member.firstName ?? ''} ${member.lastName ?? ''}`.toLowerCase();
-		const email = (member.email ?? '').toLowerCase();
-		return fullName.includes(searchTerm) || email.includes(searchTerm);
-	});
-});
+const filteredMembers = computed(() =>
+	relationUsers.value.filter((member) => matchesUser(search.value, member)),
+);
 
 const memberSortName = (member: ProjectMemberData) =>
 	`${member.firstName ?? ''} ${member.lastName ?? ''}`.trim() || (member.email ?? '');
@@ -614,13 +705,10 @@ watch(shouldShowSearch, (show) => {
 	}
 });
 
-const debouncedSearch = useDebounceFn(() => {
-	membersTableState.value.page = 0; // Reset to first page on search
-}, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
-
+// The filter applies on each keystroke, so the page must reset at the same time.
 const onSearch = (value: string) => {
 	search.value = value;
-	void debouncedSearch();
+	membersTableState.value.page = 0;
 };
 
 const onUpdateMembersTableOptions = (options: TableOptions) => {
@@ -628,7 +716,7 @@ const onUpdateMembersTableOptions = (options: TableOptions) => {
 };
 
 const searchUsers = async (query: string) => {
-	userSearchQuery.value = query;
+	const searchId = ++latestUserSearchId;
 
 	isLoadingUsers.value = true;
 	try {
@@ -647,21 +735,15 @@ const searchUsers = async (query: string) => {
 		}
 
 		await usersStore.fetchUsers({ take: 50, filter });
+		// Only the latest request may set the results and the loading state.
+		if (searchId !== latestUserSearchId) return;
 
-		if (query.trim()) {
-			userSearchResults.value = usersStore.allUsers.filter((user) => {
-				const searchLower = query.toLowerCase();
-				const fullName = `${user.firstName ?? ''} ${user.lastName ?? ''}`.toLowerCase();
-				const email = (user.email ?? '').toLowerCase();
-				return fullName.includes(searchLower) || email.includes(searchLower);
-			});
-		} else {
-			userSearchResults.value = usersStore.allUsers;
-		}
+		userSearchResults.value = usersStore.allUsers.filter((user) => matchesUser(query, user));
 	} catch (error) {
+		if (searchId !== latestUserSearchId) return;
 		toast.showError(error, i18n.baseText('projects.settings.users.search.error'));
 	} finally {
-		isLoadingUsers.value = false;
+		if (searchId === latestUserSearchId) isLoadingUsers.value = false;
 	}
 };
 
@@ -673,6 +755,48 @@ onBeforeMount(async () => {
 });
 
 const rolesManaged = computed(() => projectsStore.currentProject?.rolesManaged ?? false);
+
+// The icon saves on change, but the other fields need "Save". Warn before the user loses them.
+useEventListener(window, 'beforeunload', (event) => {
+	if (isDirty.value) {
+		event.preventDefault();
+	}
+});
+
+onBeforeRouteLeave(async (_to, _from, next) => {
+	if (!isDirty.value) {
+		next();
+		return;
+	}
+
+	const response = await message.confirm(
+		i18n.baseText('generic.unsavedWork.confirmMessage.message'),
+		{
+			title: i18n.baseText('generic.unsavedWork.confirmMessage.headline'),
+			type: 'warning',
+			confirmButtonText: i18n.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
+			cancelButtonText: i18n.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
+			showClose: true,
+		},
+	);
+
+	if (response === MODAL_CONFIRM) {
+		// An invalid form or a failed save stays dirty, so the user stays on the page
+		if (isValid.value) {
+			await onSubmit();
+		}
+		next(!isDirty.value);
+		return;
+	}
+
+	if (response === MODAL_CANCEL) {
+		onCancel();
+		next();
+		return;
+	}
+
+	next(false);
+});
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('projects.settings'));
@@ -758,6 +882,10 @@ onMounted(async () => {
 						@validate="isDescriptionValid = $event"
 					/>
 				</fieldset>
+				<ProjectSelfHealingSection
+					v-if="isSelfHealingEnabled() && projectsStore.currentProject"
+					:project-id="projectsStore.currentProject.id"
+				/>
 			</template>
 
 			<ProjectExternalSecrets :class="$style.externalSecrets" />
@@ -849,6 +977,49 @@ onMounted(async () => {
 						}
 					"
 				/>
+				<div v-if="showWorkflowReviewSettings" :class="$style.workflowReviews">
+					<h3>{{ i18n.baseText('projects.settings.workflowReviews.title') }}</h3>
+					<N8nSettingsRowGroup>
+						<N8nSettingsRow>
+							<template #info>
+								<N8nText :bold="true">
+									{{ i18n.baseText('projects.settings.workflowReviews.publishReviews.title') }}
+									<N8nPreviewBadge class="ml-4xs" />
+								</N8nText>
+								<N8nText size="small" color="text-light">
+									{{
+										i18n.baseText('projects.settings.workflowReviews.publishReviews.description')
+									}}
+								</N8nText>
+							</template>
+						</N8nSettingsRow>
+						<N8nSettingsRow
+							:title="i18n.baseText('projects.settings.workflowReviews.requireApproval.title')"
+						>
+							<template #action>
+								<N8nTooltip :disabled="!isLockedByInstance" placement="top">
+									<template #content>
+										{{ i18n.baseText('workflowReviews.enforcement.lockedByInstance') }}
+									</template>
+									<!-- A disabled select gets no hover events, so the wrapper takes them. -->
+									<span :class="{ [$style.lockedControl]: isLockedByInstance }">
+										<N8nSelect2
+											:model-value="requireApproval"
+											:items="requireApprovalOptions"
+											size="medium"
+											:disabled="isLockedByInstance"
+											:aria-label="
+												i18n.baseText('projects.settings.workflowReviews.requireApproval.title')
+											"
+											data-test-id="project-settings-require-approval-select"
+											@update:model-value="onRequireApprovalUpdate"
+										/>
+									</span>
+								</N8nTooltip>
+							</template>
+						</N8nSettingsRow>
+					</N8nSettingsRowGroup>
+				</div>
 
 				<fieldset>
 					<h3 class="mb-m">{{ i18n.baseText('projects.settings.danger.title') }}</h3>
@@ -940,6 +1111,23 @@ onMounted(async () => {
 	overflow: hidden;
 }
 
+.workflowReviews {
+	padding-bottom: var(--spacing--xl);
+
+	h3 {
+		margin-bottom: var(--spacing--xs);
+		font-size: var(--font-size--lg);
+	}
+}
+
+.lockedControl {
+	display: inline-flex;
+
+	> * {
+		pointer-events: none;
+	}
+}
+
 .membersInputRow {
 	display: flex;
 	justify-content: space-between;
@@ -950,6 +1138,10 @@ onMounted(async () => {
 
 .membersTableContainer {
 	margin-top: var(--spacing--sm);
+
+	:global(.table-scroll) {
+		scrollbar-gutter: auto;
+	}
 }
 
 .search {

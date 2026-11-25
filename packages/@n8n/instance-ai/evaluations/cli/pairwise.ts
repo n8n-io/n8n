@@ -102,7 +102,7 @@ function parseArgs(argv: string[]): PairwiseArgs {
 		timeoutMs:
 			parsePositiveNumber(get('--timeout-ms'), '--timeout-ms') ?? Number(DEFAULTS.TIMEOUT_MS),
 		outputDir: get('--output-dir') ?? defaultOutputDir,
-		judgeModel: get('--judge-model') ?? 'claude-sonnet-4-5-20250929',
+		judgeModel: get('--judge-model') ?? 'claude-sonnet-4-6',
 		experimentName: get('--experiment-name') ?? 'pairwise-evals-instance-ai',
 		verbose: has('--verbose'),
 		baseUrl: get('--base-url') ?? process.env.N8N_EVAL_BASE_URL ?? 'http://localhost:5678',
@@ -251,7 +251,6 @@ interface ExampleRecord {
 
 interface BuildInteractivity {
 	askUserCount: number;
-	planToolCount: number;
 	autoApprovedSuspensions: number;
 	mockedCredentialTypes: string[];
 }
@@ -382,9 +381,6 @@ function buildInteractivity(
 	return {
 		askUserCount: toolCalls.filter((toolCall) => toolCall.toolName === DOMAIN_TOOL_IDS.ASK_USER)
 			.length,
-		planToolCount: toolCalls.filter(
-			(toolCall) => toolCall.toolName === ORCHESTRATION_TOOL_IDS.CREATE_TASKS,
-		).length,
 		autoApprovedSuspensions: events.filter((event) => event.type === 'confirmation-request').length,
 		mockedCredentialTypes: [],
 	};
@@ -428,7 +424,6 @@ interface Summary {
 	};
 	interactivity: {
 		askUserCount: number;
-		planToolCount: number;
 		autoApprovedSuspensions: number;
 		mockedCredentialTypes: string[];
 	};
@@ -474,7 +469,6 @@ async function writeOutputs(
 		'buildError',
 		'durationMs',
 		'askUserCount',
-		'planToolCount',
 		'submitCalls',
 		'toolCalls',
 		'toolCallErrors',
@@ -495,7 +489,6 @@ async function writeOutputs(
 			r.build.errorClass ?? '',
 			r.build.durationMs,
 			r.build.interactivity.askUserCount,
-			r.build.interactivity.planToolCount,
 			submits,
 			r.toolCalls.length,
 			errors,
@@ -517,7 +510,6 @@ async function writeOutputs(
 	let diagnosticCount = 0;
 	const allMockedCreds = new Set<string>();
 	let askUserCount = 0;
-	let planToolCount = 0;
 	let autoApprovedSuspensions = 0;
 	let submitCallsTotal = 0;
 	let toolCallsTotal = 0;
@@ -529,7 +521,6 @@ async function writeOutputs(
 			buildFailures[record.build.errorClass] = (buildFailures[record.build.errorClass] ?? 0) + 1;
 		}
 		askUserCount += record.build.interactivity.askUserCount;
-		planToolCount += record.build.interactivity.planToolCount;
 		autoApprovedSuspensions += record.build.interactivity.autoApprovedSuspensions;
 		for (const type of record.build.interactivity.mockedCredentialTypes) {
 			allMockedCreds.add(type);
@@ -591,7 +582,6 @@ async function writeOutputs(
 		},
 		interactivity: {
 			askUserCount,
-			planToolCount,
 			autoApprovedSuspensions,
 			mockedCredentialTypes: Array.from(allMockedCreds),
 		},

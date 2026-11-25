@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
-import { ElSwitch } from 'element-plus';
 import { I18nT } from 'vue-i18n';
 import {
 	N8nAlertDialog,
@@ -10,6 +9,7 @@ import {
 	N8nSettingsRow,
 	N8nSettingsRowGroup,
 	N8nSettingsSection,
+	N8nSwitch,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -81,15 +81,6 @@ const floorOptions = computed<Array<SelectOptionBase<EnforcedFloor>>>(() =>
 		),
 	})),
 );
-
-const affectedScopeText = computed(() => {
-	if (floor.value === 'off') {
-		return i18n.baseText('settings.security.dataRedaction.affectedScope.none');
-	}
-	return i18n.baseText(
-		`settings.security.dataRedaction.affectedScope.${FLOOR_TO_LEGACY_KEY[floor.value]}` as BaseTextKey,
-	);
-});
 
 async function persist(
 	nextFloor: RedactionFloor,
@@ -180,7 +171,7 @@ function goToUpgrade() {
 				</template>
 				<template #action>
 					<EnterpriseEdition :features="[EnterpriseEditionFeature.DataRedaction]">
-						<ElSwitch
+						<N8nSwitch
 							v-model="enforced"
 							size="large"
 							:disabled="props.managedByEnv || isSaving"
@@ -188,7 +179,7 @@ function goToUpgrade() {
 						/>
 						<template #fallback>
 							<N8nTooltip>
-								<ElSwitch
+								<N8nSwitch
 									:model-value="enforced"
 									size="large"
 									:disabled="true"
@@ -253,17 +244,6 @@ function goToUpgrade() {
 							</N8nTooltip>
 						</template>
 					</EnterpriseEdition>
-				</template>
-			</N8nSettingsRow>
-
-			<N8nSettingsRow
-				:title="i18n.baseText('settings.security.dataRedaction.affectedScope.label')"
-				data-test-id="redaction-enforcement-summary"
-			>
-				<template #action>
-					<N8nText size="small" color="text-light">
-						{{ affectedScopeText }}
-					</N8nText>
 				</template>
 			</N8nSettingsRow>
 		</N8nSettingsRowGroup>

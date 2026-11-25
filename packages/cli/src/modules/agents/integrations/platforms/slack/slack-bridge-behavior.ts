@@ -22,7 +22,6 @@ export const SLACK_STREAMING_OPTIONS = {
 	streamingUpdateIntervalMs: 1500,
 };
 
-const SLACK_HISTORY_MAX_MESSAGES = 30;
 const SLACK_HISTORY_MAX_CHARS = 8000;
 const SLACK_HISTORY_MAX_MESSAGE_CHARS = 1500;
 const SLACK_HISTORY_HEADER =
@@ -73,12 +72,16 @@ export function getSlackReplyExpectation(params: {
 	const raw = params.message.raw;
 	if (!isRecord(raw)) return 'required';
 
-	const channelType = stringValue(raw.channel_type);
-	const channelId = stringValue(raw.channel);
-	const isDm = channelType === 'im' || channelId?.startsWith('D') === true;
-	if (isDm) return 'required';
+	if (isSlackDirectMessage(raw)) return 'required';
 
 	return 'optional';
+}
+
+export function isSlackDirectMessage(raw: unknown): boolean {
+	return (
+		isRecord(raw) &&
+		(raw.channel_type === 'im' || stringValue(raw.channel)?.startsWith('D') === true)
+	);
 }
 
 export function prepareSlackInboundText(text: string, context: PlatformAgentContext): string {
@@ -96,7 +99,14 @@ export async function createSlackBridgeExecutionContext(
 		params.integration.type === 'slack' &&
 			params.integration.settings?.messagingExperience === 'agent',
 	);
-	const shouldFetchHistory = params.isNewMention && slackThreadContext?.hasRealThreadTs === true;
+	// Mention-only mode skips intervening messages. Read them when the bot is tagged again.
+	const mentionOnlyFollowUp =
+		params.integration.type === 'slack' &&
+		params.integration.settings?.onlyRespondWhenMentioned === true &&
+		params.message.isMention === true &&
+		!isSlackDirectMessage(params.message.raw);
+	const shouldFetchHistory =
+		(params.isNewMention || mentionOnlyFollowUp) && slackThreadContext?.hasRealThreadTs === true;
 
 	const [statusHandle, historyContext] = await Promise.all([
 		// When the reply is optional the agent may stay silent — showing
@@ -346,13 +356,19 @@ async function fetchSlackThreadHistory(
 		let totalChars = SLACK_HISTORY_FRAMING_CHARS;
 
 		for await (const message of thread.messages) {
-			if (collected.length >= SLACK_HISTORY_MAX_MESSAGES) break;
 			if (message.id === triggeringMessageId) continue;
+			// History is newest first. Older messages are already part of the agent's conversation.
+			if (
+				message.author.isMe ||
+				(context.agentUserId && message.author.userId === context.agentUserId)
+			) {
+				break;
+			}
 
 			const text = typeof message.text === 'string' ? message.text.trim() : '';
 			if (!text) continue;
 
-			const line = formatSlackHistoryLine(message, text, context);
+			const line = formatSlackHistoryLine(message, text);
 			const lineCost = line.length + 1; // line + its preceding `\n` in the joined block
 			if (totalChars + lineCost > SLACK_HISTORY_MAX_CHARS) break;
 
@@ -379,16 +395,9 @@ async function fetchSlackThreadHistory(
 	}
 }
 
-function formatSlackHistoryLine(
-	message: Message<unknown>,
-	text: string,
-	context: PlatformAgentContext,
-): string {
+function formatSlackHistoryLine(message: Message<unknown>, text: string): string {
 	const author = message.author;
-	const label =
-		author.userId && context.agentUserId && author.userId === context.agentUserId
-			? 'you (the agent)'
-			: (author.userName ?? author.userId ?? 'unknown');
+	const label = author.userName ?? author.userId ?? 'unknown';
 	const safeText = sanitizeSlackHistoryText(text);
 	const truncatedText =
 		safeText.length > SLACK_HISTORY_MAX_MESSAGE_CHARS

@@ -1,3 +1,19 @@
+diff --git a/lib/getters.js b/lib/getters.js
+index af381de5e2a9a86017ac3855eaec5fdbfbf36dc6..2644f69066e752b9b74b78a2ce2843685f2b27cc 100644
+--- a/lib/getters.js
++++ b/lib/getters.js
+@@ -40,6 +40,11 @@ module.exports = function(Queue) {
+         case 'active':
+         case 'wait':
+         case 'paused':
++          // n8n patch: a job in claiming has not started, so a read of waiting jobs
++          // includes it. Counts keep one result for each type, so they do not.
++          if (type === 'wait' && !count) {
++            callback(this.toKey('claiming'), 'lrange');
++          }
+           return callback(key, count ? 'llen' : 'lrange');
+       }
+     });
 diff --git a/lib/job.js b/lib/job.js
 index 1642d3fb35cbd64b553291660fc63bae2e7f2ef5..3301e3fbc7296f545b65331dad1f12c820267e0d 100644
 --- a/lib/job.js
@@ -20,10 +36,38 @@ index 1642d3fb35cbd64b553291660fc63bae2e7f2ef5..3301e3fbc7296f545b65331dad1f12c8
          }
        };
 diff --git a/lib/queue.js b/lib/queue.js
-index 19eefc35d815e324e47c4fe4c152f39c7c547470..d3124c7cac18b0ad26d1e0ddb20b3b76c1b35bc1 100755
+index 19eefc35d815e324e47c4fe4c152f39c7c547470..4f29edd8ddc8e449c7c333845a0bad7ad3452556 100755
 --- a/lib/queue.js
 +++ b/lib/queue.js
-@@ -1112,12 +1112,15 @@ Queue.prototype._processJobOnNextTick = function(
+@@ -268,6 +268,7 @@ const Queue = function Queue(name, url, opts) {
+       'id',
+       'delayed',
+       'priority',
++      'claiming',
+       'stalled-check',
+       'completed',
+       'failed',
+@@ -1049,8 +1050,17 @@ Queue.prototype.moveUnlockedJobsToWait = function() {
+     return Promise.resolve();
+   }
+ 
+-  return scripts
+-    .moveUnlockedJobsToWait(this)
++  // n8n patch: a worker that froze or stopped after it took a job leaves the job
++  // in claiming. Move such jobs to the front of wait, so another worker runs them.
++  // A worker whose claim comes later finds claiming empty and claims nothing.
++  return this.client
++    .eval(
++      "local id = redis.call('LPOP', KEYS[1]) while id do redis.call('RPUSH', KEYS[2], id) id = redis.call('LPOP', KEYS[1]) end",
++      2,
++      this.keys.claiming,
++      this.keys.wait
++    )
++    .then(() => scripts.moveUnlockedJobsToWait(this))
+     .then(([failed, stalled]) => {
+       const handleFailedJobs = failed.map(jobId => {
+         return this.getJobFromId(jobId).then(job => {
+@@ -1112,12 +1122,15 @@ Queue.prototype._processJobOnNextTick = function(
    job
  ) {
    if (!this.closing) {
@@ -40,90 +84,67 @@ index 19eefc35d815e324e47c4fe4c152f39c7c547470..d3124c7cac18b0ad26d1e0ddb20b3b76
            .then(processJobs, err => {
              if (!(this.closing && err.message === 'Connection is closed.')) {
                utils.emitSafe(this, 'error', err, 'Error processing job');
-@@ -1238,29 +1241,66 @@ Queue.prototype.getNextJob = async function() {
-   }
- 
-   if (this.drained) {
--    //
--    // Waiting for new jobs to arrive
--    //
--    try {
--      this.bclient.blocked = true;
--      const jobId = await this.bclient.brpoplpush(
--        this.keys.wait,
+@@ -1243,15 +1256,19 @@ Queue.prototype.getNextJob = async function() {
+     //
+     try {
+       this.bclient.blocked = true;
++      // n8n patch: a job moved to active waits for its lock until moveToActive
++      // runs. If the event loop blocks in between, the stall check fails a job
++      // that never ran. So the job waits in claiming, which the stall check does
++      // not fail, and moveToActive moves it to active and locks it in one script.
+       const jobId = await this.bclient.brpoplpush(
+         this.keys.wait,
 -        this.keys.active,
--        this.settings.drainDelay
--      );
--      this.bclient.blocked = false;
-+    // n8n patch: the idle slots of this queue take turns to wait for a job, so a
-+    // new job wakes one slot in each idle worker, not every idle slot.
-+    const turn = (this.n8nIdleTurn || Promise.resolve()).then(() =>
-+      this.n8nWaitForJob()
-+    );
-+    this.n8nIdleTurn = turn.catch(() => {});
-+    return turn;
-+  } else {
-+    return this.moveToActive();
-+  }
-+};
++        this.keys.claiming,
+         this.settings.drainDelay
+       );
+       this.bclient.blocked = false;
  
--      if (jobId) {
+       if (jobId) {
 -        return this.moveToActive(jobId);
--      }
--    } catch (err) {
--      // Swallow error if locally paused since we did force a disconnection
--      if (!(this.paused && err.message === 'Connection is closed.')) {
--        throw err;
-+Queue.prototype.n8nWaitForJob = async function() {
-+  // A slot whose turn comes after a pause or close must not start a new wait
-+  if (this.closing || this.paused) {
-+    return;
-+  }
-+
-+  //
-+  // Waiting for new jobs to arrive
-+  //
-+  try {
-+    this.bclient.blocked = true;
-+    // n8n patch: BRPOPLPUSH moves a job to active before its lock is set. If the
-+    // event loop blocks in between, the stall check fails a job that never ran.
-+    // BLMOVE to the same list only waits for a job, and moveToActive then claims
-+    // and locks it in one script. Redis before 6.2 has no BLMOVE.
-+    if (!this.n8nWithoutBlmove) {
-+      try {
-+        const ready = await this.bclient.blmove(
-+          this.keys.wait,
-+          this.keys.wait,
-+          'RIGHT',
-+          'RIGHT',
-+          this.settings.drainDelay
-+        );
-+        this.bclient.blocked = false;
-+        return ready ? this.moveToActive() : undefined;
-+      } catch (err) {
-+        if (!/unknown command/i.test(err.message)) {
-+          throw err;
-+        }
-+        this.n8nWithoutBlmove = true;
++        return this.moveToActive(undefined, this.keys.claiming);
        }
-     }
--  } else {
--    return this.moveToActive();
-+    const jobId = await this.bclient.brpoplpush(
-+      this.keys.wait,
-+      this.keys.active,
-+      this.settings.drainDelay
-+    );
-+    this.bclient.blocked = false;
-+
-+    if (jobId) {
-+      return this.moveToActive(jobId);
-+    }
-+  } catch (err) {
-+    // Swallow error if locally paused since we did force a disconnection
-+    if (!(this.paused && err.message === 'Connection is closed.')) {
-+      throw err;
-+    }
+     } catch (err) {
+       // Swallow error if locally paused since we did force a disconnection
+@@ -1264,11 +1281,11 @@ Queue.prototype.getNextJob = async function() {
    }
  };
  
+-Queue.prototype.moveToActive = async function(jobId) {
++Queue.prototype.moveToActive = async function(jobId, fromKey) {
+   // For manual retrieving jobs we need to wait for the queue to be ready.
+   await this.isReady();
+ 
+-  return scripts.moveToActive(this, jobId).then(([jobData, jobId]) => {
++  return scripts.moveToActive(this, jobId, fromKey).then(([jobData, jobId]) => {
+     return this.nextJobFromJobData(jobData, jobId);
+   });
+ };
+diff --git a/lib/scripts/removeJob-11.js b/lib/scripts/removeJob-11.js
+index 9d019079393dfe1e789f5f725487b5c089622b6a..ac557606e6540be1169504698b66a6c9b9a3476e 100644
+--- a/lib/scripts/removeJob-11.js
++++ b/lib/scripts/removeJob-11.js
+@@ -38,6 +38,7 @@ if not lock then             -- or (lock == ARGV[2])) then
+   local jobId = ARGV[1]
+   rcall("LREM", KEYS[1], 0, jobId)
+   rcall("LREM", KEYS[2], 0, jobId)
++  rcall("LREM", KEYS[11] .. "claiming", 0, jobId) -- n8n patch: a job a worker took but has not claimed yet
+   rcall("ZREM", KEYS[3], jobId)
+   rcall("LREM", KEYS[4], 0, jobId)
+   rcall("ZREM", KEYS[5], jobId)
+diff --git a/lib/scripts.js b/lib/scripts.js
+index 0d9a0756e10c53b14934771a4f01aaecdf083df6..23aab60b9da35fba92560f9afb5bbba071348c58 100644
+--- a/lib/scripts.js
++++ b/lib/scripts.js
+@@ -106,9 +106,9 @@ const scripts = {
+     return client.getCountsPerPriority(args);
+   },
+ 
+-  moveToActive(queue, jobId) {
++  moveToActive(queue, jobId, fromKey = queue.keys.wait) {
+     const queueKeys = queue.keys;
+-    const keys = [queueKeys.wait, queueKeys.active, queueKeys.priority];
++    const keys = [fromKey, queueKeys.active, queueKeys.priority];
+ 
+     keys[3] = keys[1] + '@' + queue.token;
+     keys[4] = queueKeys.stalled;

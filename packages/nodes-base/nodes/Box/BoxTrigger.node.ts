@@ -5,6 +5,7 @@ import {
 	type INodeTypeDescription,
 	type IWebhookResponseData,
 	NodeConnectionTypes,
+	requestPath,
 } from 'n8n-workflow';
 
 import { verifySignature } from './BoxTriggerHelpers';
@@ -14,6 +15,7 @@ export class BoxTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Box Trigger',
 		name: 'boxTrigger',
+		schemaPath: 'Box',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:box.png',
 		group: ['trigger'],
@@ -268,7 +270,7 @@ export class BoxTrigger implements INodeType {
 				const targetType = this.getNodeParameter('targetType') as string;
 				// Check all the webhooks which exist already if it is identical to the
 				// one that is supposed to get created.
-				const endpoint = '/webhooks';
+				const endpoint = requestPath`/webhooks`;
 				// Box webhook list API uses marker-based pagination (not offset)
 				const webhooks = await boxApiRequestAllItemsMarker.call(
 					this,
@@ -288,7 +290,11 @@ export class BoxTrigger implements INodeType {
 					}
 
 					// Fetch full details to access address and triggers (not in mini object)
-					const fullWebhook = await boxApiRequest.call(this, 'GET', `/webhooks/${webhook.id}`);
+					const fullWebhook = await boxApiRequest.call(
+						this,
+						'GET',
+						requestPath`/webhooks/${webhook.id}`,
+					);
 
 					if (fullWebhook.address === webhookUrl) {
 						const allEventsMatch = events.every((event) =>
@@ -310,7 +316,7 @@ export class BoxTrigger implements INodeType {
 				const targetId = this.getNodeParameter('targetId') as string;
 				const targetType = this.getNodeParameter('targetType') as string;
 
-				const endpoint = '/webhooks';
+				const endpoint = requestPath`/webhooks`;
 
 				const body = {
 					address: webhookUrl,
@@ -334,7 +340,7 @@ export class BoxTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				if (webhookData.webhookId !== undefined) {
-					const endpoint = `/webhooks/${webhookData.webhookId}`;
+					const endpoint = requestPath`/webhooks/${webhookData.webhookId}`;
 
 					try {
 						await boxApiRequest.call(this, 'DELETE', endpoint);

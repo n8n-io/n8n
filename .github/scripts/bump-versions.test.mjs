@@ -14,9 +14,24 @@ import {
 	computeChangedOverrides,
 	computeChangedCatalogEntries,
 	markDirtyByRootChanges,
+	markAllPackagesDirty,
 	propagateDirtyTransitively,
 	computeNewVersion,
 } from './bump-versions.mjs';
+
+describe('markAllPackagesDirty', () => {
+	it('marks every package dirty', () => {
+		const packageMap = {
+			foo: { isDirty: false },
+			bar: { isDirty: true },
+		};
+
+		markAllPackagesDirty(packageMap);
+
+		assert.equal(packageMap.foo.isDirty, true);
+		assert.equal(packageMap.bar.isDirty, true);
+	});
+});
 
 describe('generateExperimentalVersion', () => {
 	it('appends -exp.g<sha> to a stable version', () => {
@@ -39,7 +54,10 @@ describe('generateExperimentalVersion', () => {
 	});
 
 	it('throws on an invalid version string', () => {
-		assert.throws(() => generateExperimentalVersion('not-a-version', 'abcd1234'), /Invalid version/);
+		assert.throws(
+			() => generateExperimentalVersion('not-a-version', 'abcd1234'),
+			/Invalid version/,
+		);
 	});
 
 	it('throws when sha is missing', () => {

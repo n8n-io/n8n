@@ -164,9 +164,9 @@ export class TaskBrokerServer {
 	private async setupErrorHandlers() {
 		const { app } = this;
 
-		// Augment errors sent to Sentry
 		if (this.globalConfig.sentry.backendDsn) {
 			const { setupExpressErrorHandler } = await import('@sentry/node');
+			// oxlint-disable-next-line typescript/no-deprecated
 			setupExpressErrorHandler(app);
 		}
 	}

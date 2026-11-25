@@ -18,8 +18,8 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe('N8nClient.listDataTables', () => {
 	// Burned live: reading `data` as the array returned [] for every project, with no
-	// error path — so the seed-table eviction and computer-use's data-table cleanup
-	// both silently did nothing.
+	// error path — so the seed-table eviction
+	// silently did nothing.
 	it('unwraps the paginated `{ data: { count, data } }` envelope', async () => {
 		mockFetch({
 			data: {

@@ -2,10 +2,12 @@ import {
 	APPROVAL_TOOL_NAME,
 	N8N_CHAT_ACTION_TOOL_NAME,
 	WAIT_TOOL_NAME,
+	instanceAiApprovalAskReasonSchema,
 	type AgentBuilderOpenSuspension,
 	type AgentPersistedMessageDto,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
+import { useI18n } from '@n8n/i18n';
 import {
 	isAwaitingCard,
 	n8nChatResumeValueSchema,
@@ -23,8 +25,11 @@ import type { ToolCallState } from './constants';
 import { isDelegateSubAgentTool, isFailedDelegateOutput } from './delegateTool';
 import type { AgentsChatInteractionExtension } from './interactionRegistry';
 import { summariseToolCall } from './interactiveSummary';
+import { addReplyAttachments, newReplyAttachments } from './replyFiles';
 import { isPolicyRefusedToolOutput } from './toolPolicyRefusal';
+import { resolveToolCatalogCall } from './toolCatalogCall';
 import type {
+	AgentsChatHostEvent,
 	ApprovalInput,
 	ChatMessage,
 	ChatMessageAttachment,
@@ -140,6 +145,7 @@ export function parseApprovalInput(value: unknown): ApprovalInput | undefined {
 	if (!isRecord(value)) return undefined;
 	if (value.type !== 'approval') return undefined;
 	if (typeof value.toolName !== 'string' || value.toolName.length === 0) return undefined;
+	const askReason = instanceAiApprovalAskReasonSchema.safeParse(value.askReason);
 	return {
 		type: 'approval',
 		toolName: value.toolName,
@@ -147,6 +153,7 @@ export function parseApprovalInput(value: unknown): ApprovalInput | undefined {
 		...(typeof value.displayName === 'string' &&
 			value.displayName.length > 0 && { displayName: value.displayName }),
 		args: value.args,
+		...(askReason.success && { askReason: askReason.data }),
 	};
 }
 
@@ -239,6 +246,25 @@ export function rebuildInteractiveFromHistory(
 	return undefined;
 }
 
+function stoppedMessageId(executionId: string): string {
+	return `${executionId}:stopped`;
+}
+
+export function createStoppedMessage(executionId: string): ChatMessage {
+	return {
+		id: stoppedMessageId(executionId),
+		role: CHAT_MESSAGE_ROLE.ASSISTANT,
+		content: useI18n().baseText('agentSessions.stopped'),
+		status: CHAT_MESSAGE_STATUS.SUCCESS,
+		executionId,
+	};
+}
+
+/** Whether the message is the notice that `createStoppedMessage` adds after a stopped turn. */
+export function isStoppedMessage(message: Pick<ChatMessage, 'id' | 'executionId'>): boolean {
+	return message.executionId !== undefined && message.id === stoppedMessageId(message.executionId);
+}
+
 /**
  * Convert persisted agent messages into the frontend ChatMessage format.
  *
@@ -252,6 +278,16 @@ export function convertDbMessages(
 	extensions: readonly AgentsChatInteractionExtension[] = [],
 ): ChatMessage[] {
 	const result: ChatMessage[] = [];
+	const lastMessageByExecution = new Map(
+		dbMessages
+			.filter(
+				(message) =>
+					message.executionId &&
+					Array.isArray(message.content) &&
+					(message.role === CHAT_MESSAGE_ROLE.USER || message.role === CHAT_MESSAGE_ROLE.ASSISTANT),
+			)
+			.map((message) => [message.executionId, message]),
+	);
 
 	for (const msg of dbMessages) {
 		if (!msg.role || !Array.isArray(msg.content)) continue;
@@ -271,21 +307,43 @@ export function convertDbMessages(
 		const renderParts: ChatMessageRenderPart[] = [];
 		const interactives: InteractivePayload[] = [];
 		const attachments: ChatMessageAttachment[] = [];
+		const hostEvents: AgentsChatHostEvent[] = [];
 		let status: ChatMessage['status'];
 		const failed = msg.executionStatus === 'error' || msg.executionStatus === 'interrupted';
 		if (failed) status = CHAT_MESSAGE_STATUS.ERROR;
 		else if (msg.executionStatus === 'running') status = CHAT_MESSAGE_STATUS.STREAMING;
 
+		// True while the parts after the last text part are only host events.
+		let continuesText = false;
 		for (const [partIndex, part] of msg.content.entries()) {
 			if (part.type === 'text' && part.text) {
 				text += part.text;
-				renderParts.push({ type: 'text', text: part.text });
-			} else if (part.type === 'file' && part.fileId) {
+				const previous = renderParts.at(-1);
+				// The live stream joins the text deltas around a host event into one
+				// text, so history keeps them as one text too, without a break.
+				if (continuesText && previous?.type === 'text') {
+					previous.text += part.text;
+				} else {
+					renderParts.push({ type: 'text', text: part.text });
+				}
+				continuesText = true;
+				continue;
+			}
+			if (part.type !== 'host-event') continuesText = false;
+
+			if (part.type === 'file' && part.fileId) {
 				attachments.push({
 					fileId: part.fileId,
 					fileName: part.fileName ?? 'attachment',
 					mimeType: part.mimeType ?? 'application/octet-stream',
 					sizeBytes: part.sizeBytes,
+				});
+			} else if (part.type === 'host-event' && typeof part.name === 'string' && part.name) {
+				hostEvents.push({
+					id: `${msg.id}:host-event:${partIndex}`,
+					name: part.name,
+					...(typeof part.key === 'string' && part.key ? { key: part.key } : {}),
+					payload: part.payload ?? null,
 				});
 			} else if (part.type === 'reasoning' && part.text) {
 				thinking += part.text;
@@ -298,7 +356,11 @@ export function convertDbMessages(
 			} else if (part.type === 'tool-call' && part.toolName) {
 				let state: ToolCallState;
 				let output: unknown;
-				const canceled = part.canceled === true;
+				const canceled =
+					part.canceled === true ||
+					(msg.executionStatus === 'cancelled' &&
+						part.state !== 'resolved' &&
+						part.state !== 'rejected');
 				if (part.state === 'resolved') {
 					output = part.output;
 					if (canceled) {
@@ -314,6 +376,9 @@ export function convertDbMessages(
 				} else if (part.state === 'rejected') {
 					state = TOOL_CALL_STATE.ERROR;
 					output = part.error;
+				} else if (canceled) {
+					state = TOOL_CALL_STATE.CANCELLED;
+					output = undefined;
 				} else if (failed) {
 					state = TOOL_CALL_STATE.ERROR;
 					output = part.error;
@@ -322,10 +387,11 @@ export function convertDbMessages(
 					output = undefined;
 				}
 
+				const call = resolveToolCatalogCall(part.toolName, part.input);
 				const toolCall: ToolCall = {
-					tool: part.toolName,
+					tool: call.tool,
 					toolCallId: part.toolCallId ?? '',
-					input: part.input,
+					input: call.input,
 					...(output !== undefined && { output }),
 					...(canceled && { canceled }),
 					state,
@@ -333,9 +399,11 @@ export function convertDbMessages(
 					...(part.endTime !== undefined && { endTime: part.endTime }),
 					...(part.suspendPayload !== undefined && { suspendPayload: part.suspendPayload }),
 					...(part.childTrace && { childProgress: part.childTrace }),
-					displaySummary: summariseToolCall(part.toolName, output, part.input),
+					displaySummary: summariseToolCall(call.tool, output, call.input),
 				};
 				toolCalls.push(toolCall);
+				attachments.push(...newReplyAttachments(attachments, toolCall));
+				if (msg.executionStatus === 'cancelled') continue;
 
 				const rebuilt = rebuildInteractiveFromHistory(toolCall, extensions);
 				if (!rebuilt) continue;
@@ -356,12 +424,17 @@ export function convertDbMessages(
 			id: msg.id ?? crypto.randomUUID(),
 			role,
 			content: text,
+			...(role === CHAT_MESSAGE_ROLE.ASSISTANT && msg.stopReport ? { stopReport: true } : {}),
 			...(msg.author && { author: msg.author }),
 			...(renderParts.length > 0 && { renderParts }),
 			thinking: thinking || undefined,
 			...(thinkingSegments.length > 0 && { thinkingSegments }),
 			toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
 			...(attachments.length > 0 && { attachments }),
+			...(role === CHAT_MESSAGE_ROLE.USER && msg.references?.length
+				? { references: msg.references }
+				: {}),
+			...(role === CHAT_MESSAGE_ROLE.ASSISTANT && hostEvents.length > 0 && { hostEvents }),
 			...(status && { status }),
 			...(msg.executionId ? { executionId: msg.executionId } : {}),
 			...(role === CHAT_MESSAGE_ROLE.ASSISTANT && msg.backgroundTaskSignal
@@ -386,7 +459,15 @@ export function convertDbMessages(
 				...(msg.executionId ? { executionId: msg.executionId } : {}),
 			});
 		}
+		if (
+			msg.executionStatus === 'cancelled' &&
+			msg.executionId &&
+			lastMessageByExecution.get(msg.executionId) === msg
+		) {
+			result.push(createStoppedMessage(msg.executionId));
+		}
 	}
+
 	return result;
 }
 
@@ -424,6 +505,7 @@ export function applyOpenSuspensions(
 				if (suspension.suspendPayload !== undefined) {
 					toolCall.suspendPayload = suspension.suspendPayload;
 				}
+				addReplyAttachments(msg, toolCall);
 				const rebuilt = rebuildInteractiveFromHistory(toolCall, extensions);
 				if (rebuilt) {
 					rebuilt.runId = suspension.runId;

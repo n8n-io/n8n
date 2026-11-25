@@ -1,5 +1,7 @@
+import type { ExecutionLedgerMetricsEventMap } from '@n8n/backend-module-execution-ledger';
 import type {} from '@n8n/backend-services';
 
+import type { AgentMetricsEventMap } from './maps/agent-metrics.event-map';
 import type { AiEventMap } from './maps/ai.event-map';
 import type { ExecutionDataEventMap } from './maps/execution-data.event-map';
 import type { InstanceAiEventMap } from './maps/instance-ai.event-map';
@@ -18,8 +20,10 @@ declare module '@n8n/backend-services' {
 			AiEventMap,
 			ExecutionDataEventMap,
 			InstanceAiEventMap,
+			AgentMetricsEventMap,
 			McpPostSaveMetricsEventMap,
 			WorkflowPublicationMetricsEventMap,
 			PollTriggerMetricsEventMap,
-			SystemTaskMetricsEventMap {}
+			SystemTaskMetricsEventMap,
+			ExecutionLedgerMetricsEventMap {}
 }

@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
-import { AgentsConfig } from '@n8n/config';
-import type { ModuleInterface } from '@n8n/decorators';
+import { AgentsConfig, GlobalConfig } from '@n8n/config';
+import type { ModuleInterface, SystemTaskClass } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
@@ -8,16 +8,28 @@ import { InstanceSettings } from 'n8n-core';
 @BackendModule({ name: 'agents' })
 export class AgentsModule implements ModuleInterface {
 	async init() {
+		const { registerApprovalRuntime } = await import('./approval/register-approval-runtime.js');
+		registerApprovalRuntime();
+		const { FolderContentService } = await import('@/services/folder-content.service.js');
+		const { AgentFolderService } = await import('./agent-folder.service.js');
+		Container.get(FolderContentService).register('agent', Container.get(AgentFolderService));
+
 		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
 		Container.get(SandboxSettingsService).registerCredentialUses();
 
-		// The skills module reads the skills hub setting before this module starts. Tell it
-		// which agents use skills, then, with the hub on, copy inline agent skills into the
-		// hub on each main before agents run.
-		const { registerSkillAgentsProvider } = await import('./register-skill-agents-provider.js');
-		registerSkillAgentsProvider();
-		const { SkillsHubStartupCopy } = await import('./skills/skills-hub-startup-copy.js');
-		await Container.get(SkillsHubStartupCopy).runOnStartup();
+		// The skills module starts before this module. Tell it which agents use skills.
+		const { registerSkillUsage } = await import('./register-skill-usage.js');
+		registerSkillUsage();
+
+		// Tell core which agent acts as a service account, so a user deletion keeps it.
+		const { registerServiceAccountUsage } = await import('./register-service-account-usage.js');
+		registerServiceAccountUsage();
+
+		// The knowledge module starts before this module. Hand it the sandbox its file mirror runs in.
+		const { registerKnowledgeSandboxProvider } = await import(
+			'./register-knowledge-sandbox-provider.js'
+		);
+		registerKnowledgeSandboxProvider();
 
 		// Imported for its `@OnLifecycleEvent` registration, which happens at
 		// class-decoration time — nothing else references this service.
@@ -30,10 +42,14 @@ export class AgentsModule implements ModuleInterface {
 		await import('./agents-config.controller.js');
 		await import('./agents-skills.controller.js');
 		await import('./agent-knowledge.controller.js');
+		await import('./knowledge-collection-agents.controller.js');
+		await import('./agent-memory.controller.js');
 		await import('./agent-publish.controller.js');
 		await import('./agent-chat.controller.js');
 		await import('./system-agents/system-agent-chat.controller.js');
 		await import('./agent-integrations.controller.js');
+		await import('./approval/agent-hitl-channels.controller.js');
+		await import('./integrations/platforms/webhook/webhook-channel.controller.js');
 		await import('./agent-slack-integrations.controller.js');
 		await import('./agent-teams-integrations.controller.js');
 		await import('./agent-whatsapp-integrations.controller.js');
@@ -51,26 +67,35 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentExecutionService } = await import('./agent-execution.service.js');
 		Container.get(AgentExecutionService);
 
-		// Register blob backends for agent execution logs and knowledge files.
+		const { registerUserDeletionHandler } = await import('./register-user-deletion-handler.js');
+		registerUserDeletionHandler();
+
+		// Share pickers show the project of each agent's service account.
+		const { ServiceAccountProjects } = await import('@/services/service-account-projects.js');
+		const { AgentServiceAccountService } = await import('./agent-service-account.service.js');
+		Container.get(ServiceAccountProjects).register(Container.get(AgentServiceAccountService));
+
+		// Register blob backends for agent execution logs.
 		// The fs backend is always available; s3/az reuse the clients base-command
 		// already initialized (initBinaryDataService runs before module init in
 		// all commands), which exits the process when the configured execution
 		// data backend cannot be reached — so a live process in s3/az mode always
 		// has that location registered here.
 		const { AgentExecutionLogStore } = await import('./execution-log/agent-execution-log-store.js');
-		const { AgentKnowledgeFileStore } = await import('./agent-knowledge-file-store.js');
-		const { ExecutionDataJsonStore } = await import(
-			'@/executions/execution-data/execution-data-json-store.js'
-		);
+		const { ExecutionDataJsonStore } = await import('@n8n/backend-services');
 		const { registerAgentBlobByteStores } = await import('./register-blob-byte-stores.js');
 		await registerAgentBlobByteStores({
 			executionDataJsonStore: Container.get(ExecutionDataJsonStore),
 			agentExecutionLogStore: Container.get(AgentExecutionLogStore),
-			agentKnowledgeFileStore: Container.get(AgentKnowledgeFileStore),
 		});
 
 		const { registerFavoriteResolver } = await import('./register-favorite-resolver.js');
 		registerFavoriteResolver();
+
+		// Collaboration checks agent access on push messages through this lookup.
+		const { AgentProjectLookupProxy } = await import('@n8n/backend-services');
+		const { AgentRepository } = await import('./repositories/agent.repository.js');
+		Container.get(AgentProjectLookupProxy).registerProvider(Container.get(AgentRepository));
 
 		const { registerAgentUsageProvider } = await import('./register-agent-usage-provider.js');
 		registerAgentUsageProvider();
@@ -98,17 +123,26 @@ export class AgentsModule implements ModuleInterface {
 			'./integrations/platforms/slack/slack-integration.js'
 		);
 		const { TelegramIntegration } = await import(
-			'./integrations/platforms/telegram-integration.js'
+			'./integrations/platforms/telegram/telegram-integration.js'
 		);
-		const { LinearIntegration } = await import('./integrations/platforms/linear-integration.js');
-		const { DiscordIntegration } = await import('./integrations/platforms/discord-integration.js');
+		const { LinearIntegration } = await import(
+			'./integrations/platforms/linear/linear-integration.js'
+		);
+		const { DiscordIntegration } = await import(
+			'./integrations/platforms/discord/discord-integration.js'
+		);
 		const { WhatsAppIntegration } = await import(
 			'./integrations/platforms/whatsapp/whatsapp-integration.js'
 		);
 		const { TeamsIntegration } = await import(
 			'./integrations/platforms/teams/teams-integration.js'
 		);
-		const { N8nChatIntegration } = await import('./integrations/platforms/n8n-chat-integration.js');
+		const { N8nChatIntegration } = await import(
+			'./integrations/platforms/n8n-chat/n8n-chat-integration.js'
+		);
+		const { WebhookIntegration } = await import(
+			'./integrations/platforms/webhook/webhook-integration.js'
+		);
 		const registry = Container.get(ChatIntegrationRegistry);
 		registry.register(Container.get(SlackIntegration));
 		registry.register(Container.get(TelegramIntegration));
@@ -117,6 +151,7 @@ export class AgentsModule implements ModuleInterface {
 		registry.register(Container.get(WhatsAppIntegration));
 		registry.register(Container.get(TeamsIntegration));
 		registry.register(Container.get(N8nChatIntegration));
+		registry.register(Container.get(WebhookIntegration));
 
 		// Resume Chat and Task services on startup so this main runs what its
 		// current role calls for.
@@ -218,34 +253,43 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentChannelMediaRetentionTask } = await import(
 			'./agent-channel-media-retention.task.js'
 		);
-		return [
+
+		const tasks: SystemTaskClass[] = [
 			AgentCheckpointPruningTask,
 			AgentInterruptedExecutionSweepTask,
 			AgentChannelMediaRetentionTask,
 		];
+
+		// Like `telemetry-pulse`: make sure no job is scheduled when telemetry is off.
+		if (Container.get(GlobalConfig).diagnostics.enabled) {
+			const { AgentKnowledgeSnapshotTask } = await import('./agent-knowledge-snapshot.task.js');
+			tasks.push(AgentKnowledgeSnapshotTask);
+		}
+
+		return tasks;
 	}
 
 	async settings() {
 		const config = Container.get(AgentsConfig);
 		const { AgentsSettingsService } = await import('./agents-settings.service.js');
 		const { AiService } = await import('@/services/ai.service.js');
-		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
-		const { SkillsHubRollout } = await import('@/modules/skills/skills-hub-rollout.js');
+		const { KnowledgeAvailabilityService } = await import(
+			'@/modules/knowledge/knowledge-availability.service.js'
+		);
 		const aiService = Container.get(AiService);
 		const proxyEnabled = aiService.isProxyEnabled();
 		return {
 			enabled: await Container.get(AgentsSettingsService).getEnabled(),
 			modules: [...config.modules],
-			knowledgeBaseEnabled: Container.get(SandboxSettingsService).isAgentSandboxEnabled(),
+			knowledgeBaseEnabled: Container.get(KnowledgeAvailabilityService).isFileKnowledgeEnabled(),
 			proxyEnabled,
-			skillsHubEnabled: Container.get(SkillsHubRollout).isEnabled,
 		};
 	}
 
 	async entities() {
 		const { Agent } = await import('./entities/agent.entity.js');
-		const { AgentFile } = await import('./entities/agent-file.entity.js');
 		const { AgentChatAttachment } = await import('./entities/agent-chat-attachment.entity.js');
+		const { AgentFileGrant } = await import('./entities/agent-file-grant.entity.js');
 		const { AgentChatSubscription } = await import('./entities/agent-chat-subscription.entity.js');
 		const { AgentChannelStatus } = await import('./entities/agent-channel-status.entity.js');
 		const { AgentCheckpoint } = await import('./entities/agent-checkpoint.entity.js');
@@ -262,6 +306,7 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentBackgroundJob } = await import('./entities/agent-background-job.entity.js');
 		const { AgentPlan } = await import('./entities/agent-plan.entity.js');
 		const { AgentPlanHistory } = await import('./entities/agent-plan-history.entity.js');
+		const { AgentPublishHistory } = await import('./entities/agent-publish-history.entity.js');
 		const { AgentHistory } = await import('./entities/agent-history.entity.js');
 		const { AgentCredentialDependency } = await import(
 			'./entities/agent-credential-dependency.entity.js'
@@ -300,8 +345,8 @@ export class AgentsModule implements ModuleInterface {
 
 		return [
 			Agent,
-			AgentFile,
 			AgentChatAttachment,
+			AgentFileGrant,
 			AgentChatSubscription,
 			AgentChannelStatus,
 			AgentCheckpoint,
@@ -317,6 +362,7 @@ export class AgentsModule implements ModuleInterface {
 			AgentPlan,
 			AgentPlanHistory,
 			AgentHistory,
+			AgentPublishHistory,
 			AgentCredentialDependency,
 			AgentWorkflowDependency,
 			AgentTask,

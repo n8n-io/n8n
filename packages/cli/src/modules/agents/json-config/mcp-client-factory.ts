@@ -4,14 +4,20 @@ import type {
 	McpServerConfig,
 	McpConnectionFailedEvent,
 } from '@n8n/agents';
-import type { AgentJsonMcpServerConfig } from '@n8n/api-types';
+import { AI_GATEWAY_MANAGED_TAG, type AgentJsonMcpServerConfig } from '@n8n/api-types';
 import { compileMcpToolPermissions } from '@n8n/ai-utilities/agent-config';
 import type { CustomFetch } from '@n8n/backend-network';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { getMcpAuthHeaders, isMcpOAuth2Authentication, OperationalError } from 'n8n-workflow';
-import type { ICredentialDataDecryptedObject, McpRegistryConnection } from 'n8n-workflow';
+import { getMcpAuthHeaders, isMcpRegistryAuthentication } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
+import type {
+	ICredentialDataDecryptedObject,
+	McpAiGatewayCredentialType,
+	McpRegistryConnection,
+} from 'n8n-workflow';
 
 import {
+	findAiGatewayCredentialType,
 	prepareMcpRegistryConnection,
 	toAgentMcpTransport,
 } from '@/modules/mcp-registry/mcp-registry-connection';
@@ -65,8 +71,28 @@ async function deriveAuthHeaders(
 	}
 }
 
+/** Mints the Gateway credits credential of an MCP registry server. It has no stored id. */
+export interface AiGatewayMcpCredentialResolver {
+	resolveAiGatewayMcpCredential(
+		credentialType: McpAiGatewayCredentialType,
+	): Promise<ICredentialDataDecryptedObject>;
+}
+
+/** Mint the credential of the connection's Gateway credits option. */
+async function mintAiGatewayCredential(
+	connection: McpRegistryConnection,
+	credentialProvider: Partial<AiGatewayMcpCredentialResolver>,
+) {
+	const credentialType = findAiGatewayCredentialType(connection);
+	if (!credentialType || !credentialProvider.resolveAiGatewayMcpCredential) {
+		throw new OperationalError('MCP registry server does not offer Gateway credits');
+	}
+	const credentialData = await credentialProvider.resolveAiGatewayMcpCredential(credentialType);
+	return { credentialType, credentialData };
+}
+
 export interface BuildMcpClientDeps {
-	credentialProvider: CredentialProvider;
+	credentialProvider: CredentialProvider & Partial<AiGatewayMcpCredentialResolver>;
 	resolveRegistryConnection?: (nodeTypeName: string) => Promise<McpRegistryConnection | undefined>;
 	/**
 	 * Used to refresh OAuth2 tokens before expiry or after a 401 response without an
@@ -76,6 +102,12 @@ export interface BuildMcpClientDeps {
 	oauthService: OauthService;
 	projectId: string;
 	proxyFetch: CustomFetch;
+	/**
+	 * Set in a test run or an eval. This fetch answers every request of the server, so the client
+	 * resolves no credential, sends no auth header and never refreshes a token: a made-up 401
+	 * must not reach the real token endpoint or change the stored credential.
+	 */
+	simulatedFetch?: CustomFetch;
 	/**
 	 * Optional observer invoked when this server fails to connect. The
 	 * server's tools are skipped for the run; the run continues with the
@@ -89,6 +121,7 @@ export interface BuildMcpClientDeps {
 	 * storage), so tool permissions must never require approval.
 	 */
 	nonInterrupting?: boolean;
+	wrapApproval?: McpServerConfig['wrapApproval'];
 }
 
 /** Stand-in for a URL that could not be built. `.invalid` never resolves (RFC 2606), and `authFetch` rejects before any request is sent. */
@@ -106,20 +139,33 @@ export async function buildMcpClientForServer(
 	server: AgentJsonMcpServerConfig,
 	deps: BuildMcpClientDeps,
 ): Promise<McpClient> {
-	const {
-		credentialProvider,
-		oauthService,
-		projectId,
-		proxyFetch,
-		onConnectionFailed,
-		onToolCallSettled,
-		nonInterrupting,
-	} = deps;
-	const { toolPermissions } = server;
+	const { credentialProvider, oauthService, projectId, proxyFetch } = deps;
 	const { McpClient } = await import('@n8n/agents');
 
+	if (deps.simulatedFetch) {
+		// The registry lookup reads no credential. It keeps the server's attribution on replies.
+		const registryNodeName = server.metadata?.nodeTypeName;
+		if (registryNodeName) {
+			try {
+				await deps.resolveRegistryConnection?.(registryNodeName);
+			} catch {
+				// The attribution is only a label. A simulated run does not need the connection.
+			}
+		}
+		// Keep a parseable URL: a mock can tell servers apart by it, and the SDK rejects a templated
+		// registry URL before it calls fetch. `.invalid` never resolves (RFC 2606).
+		const url = URL.canParse(server.url) ? server.url : SIMULATED_UNPARSEABLE_URL;
+		return new McpClient([
+			toSdkServerConfig(server, deps, {
+				url,
+				transport: server.transport,
+				fetch: deps.simulatedFetch,
+			}),
+		]);
+	}
+
 	const derivedAuth = await deriveAuthHeaders(server, credentialProvider);
-	const { credentialData, credentialType } = derivedAuth;
+	let { credentialData, credentialType } = derivedAuth;
 	let { headers: initialHeaders, credentialError } = derivedAuth;
 	let runtimeUrl = server.url;
 	let runtimeTransport = server.transport;
@@ -127,6 +173,8 @@ export async function buildMcpClientForServer(
 	let allowedDomains = credentialData
 		? resolveMcpAuthDomainPolicy(server.authentication, credentialData, mcpHostname)
 		: undefined;
+
+	let refreshHeaders: (() => Promise<Record<string, string> | null>) | undefined;
 
 	const registryNodeName = server.metadata?.nodeTypeName;
 	if (!registryNodeName && credentialType?.endsWith('McpOAuth2Api')) {
@@ -136,11 +184,24 @@ export async function buildMcpClientForServer(
 	} else if (registryNodeName) {
 		try {
 			const connection = await deps.resolveRegistryConnection?.(registryNodeName);
+			// Gateway credits entries carry the same marker as Gateway credits models. Mint only for it:
+			// an entry whose own credential is missing must fail, not switch to Gateway credits.
+			if (connection && server.credential === AI_GATEWAY_MANAGED_TAG) {
+				const minted = await mintAiGatewayCredential(connection, credentialProvider);
+				credentialType = minted.credentialType;
+				credentialData = minted.credentialData;
+				// The token expires while a cached runtime still uses this client, so mint again on a 401.
+				refreshHeaders = async () => {
+					const fresh = await mintAiGatewayCredential(connection, credentialProvider);
+					const prepared = prepareMcpRegistryConnection({ connection, ...fresh });
+					return prepared.ok ? prepared.value.headers : null;
+				};
+			}
 			if (
 				!connection ||
 				!credentialData ||
 				!credentialType ||
-				!isMcpOAuth2Authentication(credentialType)
+				!isMcpRegistryAuthentication(credentialType)
 			) {
 				throw new OperationalError('MCP registry connection could not be resolved');
 			}
@@ -192,14 +253,32 @@ export async function buildMcpClientForServer(
 					oauthService,
 					projectId,
 					allowedDomains,
+					refreshHeaders,
 				}),
 			};
 
-	const sdkServerConfig: McpServerConfig = {
+	return new McpClient([
+		toSdkServerConfig(server, deps, { url, transport: runtimeTransport, fetch: authFetch }),
+	]);
+}
+
+/** Stand-in for a templated URL in a simulated run. Only the simulated fetch ever sees it. */
+const SIMULATED_UNPARSEABLE_URL = 'https://simulated-mcp-server.invalid/';
+
+function toSdkServerConfig(
+	server: AgentJsonMcpServerConfig,
+	deps: Pick<
+		BuildMcpClientDeps,
+		'onConnectionFailed' | 'onToolCallSettled' | 'nonInterrupting' | 'wrapApproval'
+	>,
+	connection: Pick<McpServerConfig, 'url' | 'transport' | 'fetch'>,
+): McpServerConfig {
+	const { toolPermissions } = server;
+	const { onConnectionFailed, onToolCallSettled, nonInterrupting } = deps;
+	return {
 		name: server.name,
-		url,
-		transport: runtimeTransport,
-		fetch: authFetch,
+		...connection,
+		...(deps.wrapApproval && { wrapApproval: deps.wrapApproval }),
 		...(toolPermissions !== undefined && {
 			configureTools: (tools) => compileMcpToolPermissions(toolPermissions, tools),
 		}),
@@ -214,8 +293,6 @@ export async function buildMcpClientForServer(
 				}
 			: {}),
 	};
-
-	return new McpClient([sdkServerConfig]);
 }
 
 /**
@@ -225,7 +302,7 @@ export async function buildMcpClientForServer(
 export async function listMcpServerTools(
 	server: AgentJsonMcpServerConfig,
 	deps: BuildMcpClientDeps,
-): Promise<Array<{ name: string; description: string }>> {
+): Promise<{ name: string; description: string }[]> {
 	let client: McpClient | undefined;
 	try {
 		client = await buildMcpClientForServer(server, deps);

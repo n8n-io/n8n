@@ -56,4 +56,38 @@ describe('resolveOffsetPagination', () => {
 			'An invalid cursor was provided',
 		);
 	});
+
+	it('throws BadRequestError for a cursor with a negative offset', () => {
+		const cursor = encodeCursor({ offset: -1, limit: 25 });
+
+		expect(() => resolveOffsetPagination({ limit: 50, cursor })).toThrow(BadRequestError);
+	});
+
+	it('throws BadRequestError for a cursor with a non-integer offset', () => {
+		for (const offset of [2.5, '0', null]) {
+			const cursor = encodeCursor({ offset, limit: 25 });
+
+			expect(() => resolveOffsetPagination({ limit: 50, cursor })).toThrow(BadRequestError);
+		}
+	});
+
+	it('throws BadRequestError for a cursor with a limit beyond the page cap', () => {
+		const cursor = encodeCursor({ offset: 0, limit: 1000000 });
+
+		expect(() => resolveOffsetPagination({ limit: 50, cursor })).toThrow(BadRequestError);
+	});
+
+	it('throws BadRequestError for a cursor with a non-integer or negative limit', () => {
+		for (const limit of [1.5, -5]) {
+			const cursor = encodeCursor({ offset: 0, limit });
+
+			expect(() => resolveOffsetPagination({ limit: 50, cursor })).toThrow(BadRequestError);
+		}
+	});
+
+	it('accepts a cursor carrying the maximum page limit', () => {
+		const cursor = encodeCursor({ offset: 250, limit: 250 });
+
+		expect(resolveOffsetPagination({ limit: 50, cursor })).toEqual({ offset: 250, limit: 250 });
+	});
 });

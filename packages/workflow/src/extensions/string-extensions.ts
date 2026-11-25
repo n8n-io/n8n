@@ -35,7 +35,8 @@ const CURRENCY_REGEXP =
 /*
 	Extract the domain part from various inputs, including URLs, email addresses, and plain domains.
 
-	/^(?:(?:https?|ftp):\/\/)? 								// Match optional http, https, or ftp protocols
+	/^(?:(?:https?|ftp):\/\/ 									// Match optional http, https, or ftp protocols
+    (?:[^\s/?#\\]*@)?)?     								// Match optional user information after the protocol
   (?:mailto:)?               								// Match optional mailto:
   (?:\/\/)?                  								// Match optional double slashes
   (?:www\.)?                 								// Match optional www prefix
@@ -48,12 +49,12 @@ const CURRENCY_REGEXP =
     )
   )
   (?::\d+)?                   							// Match optional port number
-  (?:\/[^\s?]*)?              							// Match optional path
+  (?:\/[^\s?#]*)?             							// Match optional path
   (?:\?[^\s#]*)?              							// Match optional query string
   (?:#[^\s]*)?$/i;            							// Match optional hash fragment
 */
 const DOMAIN_EXTRACT_REGEXP =
-	/^(?:(?:https?|ftp):\/\/)?(?:mailto:)?(?:\/\/)?((?:www\.)?(?:(?:[-\w]+\.)+(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)|localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(?::\d+)?(?:\/[^\s?]*)?(?:\?[^\s#]*)?(?:#[^\s]*)?$/i;
+	/^(?:(?:https?|ftp):\/\/(?:[^\s/?#\\]*@)?)?(?:mailto:)?(?:\/\/)?((?:www\.)?(?:(?:[-\w]+\.)+(?:[a-zA-Z]{2,}|xn--[a-zA-Z0-9]+)|localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}))(?::\d+)?(?:\/[^\s?#]*)?(?:\?[^\s#]*)?(?:#[^\s]*)?$/i;
 
 /*
 	Matches domain names without the protocol or optional subdomains
@@ -81,17 +82,20 @@ const DOMAIN_REGEXP =
     ( 																											// Capture local part of the email address
       ([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*) 	// One or more characters not in the set, followed by
 																														a	period, followed by one or more characters not in the set
-      |(".+") 																							// Or one or more characters inside quotes
+      |("(?:[^"\\\r\n]|\\.)+") 																		// Or one or more characters inside one pair of quotes
     )
   )
   @                             														// Match @ symbol
   (?<domain>(                   														// Capture the domain part of the email address
     \[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\] 			// Match IPv4 address inside brackets
-    |(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}) 											// Or match domain with at least two subdomains and TLD
+    |(([a-zA-Z\-0-9]+\.)+(?:[xX][nN]--[a-zA-Z0-9-]+|[a-zA-Z]{2,})) 	// Or match domain with at least two subdomains and TLD or Punycode TLD
   ))/;
 */
 const EMAIL_REGEXP =
-	/(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@(?<domain>(\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))/;
+	/(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|("(?:[^"\\\r\n]|\\.)+"))@(?<domain>(\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+(?:[xX][nN]--[a-zA-Z0-9-]+|[a-zA-Z]{2,})))/;
+
+// Tabs and line breaks around the address stay accepted to keep existing workflows working
+const EMAIL_REGEXP_EXACT = new RegExp(`^\\s*(?:${EMAIL_REGEXP.source})\\s*$`);
 
 /*
 	Matches URLs with strict beginning and end of the string checks
@@ -324,14 +328,8 @@ function isDomain(value: string) {
 }
 
 function isEmail(value: string) {
-	const result = EMAIL_REGEXP.test(value);
-
 	// email regex is loose so check manually for now
-	if (result && value.includes(' ')) {
-		return false;
-	}
-
-	return result;
+	return EMAIL_REGEXP_EXACT.test(value) && !value.includes(' ');
 }
 
 function toTitleCase(value: string) {
@@ -368,7 +366,8 @@ function toSentenceCase(value: string) {
 function toSnakeCase(value: string) {
 	return value
 		.toLocaleLowerCase()
-		.replace(/[ \-]/g, '_')
+		.replace(/\uFEFF/g, '')
+		.replace(/[\p{White_Space}-]/gu, '_')
 		.replace(/[\u2000-\u206F\u2E00-\u2E7F\\'!"#$%&()*+,.\/:;<=>?@\[\]^`{|}~]/g, '');
 }
 
@@ -380,22 +379,17 @@ function extractEmail(value: string) {
 	return matched[0];
 }
 
+/** Returns the domain of the first email address in a value that has no space. */
+function extractEmailDomain(value: string) {
+	return value.includes(' ') ? undefined : EMAIL_REGEXP.exec(value)?.groups?.domain;
+}
+
 function extractDomain(value: string) {
 	if (isEmail(value)) {
-		const matched = EMAIL_REGEXP.exec(value);
-		// This shouldn't happen
-		if (!matched) {
-			return undefined;
-		}
-		return matched.groups?.domain;
+		return extractEmailDomain(value);
 	}
 
-	const domainMatch = value.match(DOMAIN_EXTRACT_REGEXP);
-	if (domainMatch) {
-		return domainMatch[1];
-	}
-
-	return undefined;
+	return value.match(DOMAIN_EXTRACT_REGEXP)?.[1] ?? extractEmailDomain(value);
 }
 
 function extractUrl(value: string) {
@@ -652,7 +646,8 @@ isDomain.doc = {
 
 isEmail.doc = {
 	name: 'isEmail',
-	description: 'Returns <code>true</code> if the string is an email.',
+	description:
+		'Returns <code>true</code> if the whole string is one email address. If the string also contains other content, try using <code>extractEmail()</code> first.',
 	section: 'validation',
 	returnType: 'boolean',
 	docURL:
@@ -660,6 +655,8 @@ isEmail.doc = {
 	examples: [
 		{ example: '"me@example.com".isEmail()', evaluated: 'true' },
 		{ example: '"It\'s me@example.com".isEmail()', evaluated: 'false' },
+		{ example: '"mailto:me@example.com".isEmail()', evaluated: 'false' },
+		{ example: '"https://medium.com/@jane.doe".isEmail()', evaluated: 'false' },
 		{ example: '"hello".isEmail()', evaluated: 'false' },
 	],
 };
@@ -759,6 +756,8 @@ extractDomain.doc = {
 	examples: [
 		{ example: '"me@example.com".extractDomain()', evaluated: "'example.com'" },
 		{ example: '"http://n8n.io/workflows".extractDomain()', evaluated: "'n8n.io'" },
+		{ example: '"https://medium.com/@jane.doe".extractDomain()', evaluated: "'medium.com'" },
+		{ example: '"mailto:me@example.com".extractDomain()', evaluated: "'example.com'" },
 		{
 			example: '"It\'s me@example.com".extractEmail().extractDomain()',
 			evaluated: "'example.com'",

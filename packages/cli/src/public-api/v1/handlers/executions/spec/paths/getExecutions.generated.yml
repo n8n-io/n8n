@@ -2,7 +2,10 @@ operationId: getExecutions
 tags:
   - Executions
 summary: Retrieve all executions
-description: Retrieve all executions from your instance.
+description: |-
+  Retrieve all executions from your instance.
+
+  Requires the `execution:list` API key scope.
 x-required-scope: execution:list
 parameters:
   - $ref: ../../../../shared/spec/parameters/limit.yml
@@ -228,3 +231,5 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

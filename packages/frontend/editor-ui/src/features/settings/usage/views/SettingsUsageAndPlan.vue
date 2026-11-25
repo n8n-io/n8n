@@ -8,6 +8,7 @@ import { i18n as locale } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useToast } from '@n8n/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { usePrefetchModals } from '@/app/composables/usePrefetchModals';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '../usage.constants';
 import { useUsersStore } from '@n8n/stores/users.store';
@@ -15,7 +16,6 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { I18nT } from 'vue-i18n';
 
-import { ElDialog } from 'element-plus';
 import {
 	N8nBadge,
 	N8nButton,
@@ -51,7 +51,6 @@ const managePlanUrl = computed(() => `${usageStore.managePlanUrl}&${queryParamCa
 const activationKeyModal = ref(false);
 const activationSuccessModal = ref(false);
 const activationKey = ref('');
-const activationKeyInput = ref<HTMLInputElement | null>(null);
 const eulaModal = ref(false);
 const eulaUrl = ref('');
 // True while the EULA flow runs for a key that came from the URL, so we know we
@@ -193,6 +192,13 @@ onMounted(async () => {
 	}
 });
 
+// After `onMounted` above, which sets `isLoading` before this reads it.
+usePrefetchModals([COMMUNITY_PLUS_ENROLLMENT_MODAL], {
+	// The permission is `undefined` when the user lacks it.
+	enabled: () =>
+		!usageStore.isLoading && isCommunity.value && canUserRegisterCommunityPlus.value === true,
+});
+
 const sendUsageTelemetry = (action: UsageTelemetry['action']) => {
 	const telemetryPayload = usageStore.telemetryPayload;
 	telemetryPayload.action = action;
@@ -213,9 +219,9 @@ const onManagePlan = () => {
 	sendUsageTelemetry('manage_plan');
 };
 
-const onDialogOpened = () => {
-	activationKeyInput.value?.focus();
-};
+function onActivationDialogOpenUpdate(open: boolean) {
+	if (!open) onActivationModalClose();
+}
 
 const openCommunityRegisterModal = () => {
 	uiStore.openModalWithData({
@@ -326,33 +332,27 @@ const openCommunityRegisterModal = () => {
 				</N8nButton>
 			</div>
 
-			<ElDialog
-				v-model="activationKeyModal"
-				width="480px"
-				top="0"
-				:title="locale.baseText('settings.usageAndPlan.dialog.activation.title')"
-				:modal-class="$style.center"
-				@closed="onActivationModalClose"
-				@opened="onDialogOpened"
+			<N8nDialog
+				:open="activationKeyModal"
+				size="medium"
+				:header="locale.baseText('settings.usageAndPlan.dialog.activation.title')"
+				@update:open="onActivationDialogOpenUpdate"
 			>
-				<template #default>
+				<N8nDialogBody>
 					<N8nInput
-						ref="activationKeyInput"
 						v-model="activationKey"
 						:placeholder="locale.baseText('settings.usageAndPlan.dialog.activation.label')"
 					/>
-				</template>
-				<template #footer>
-					<div :class="$style.dialogButtonsContainer">
-						<N8nButton variant="outline" @click="onActivationCancel">
-							{{ locale.baseText('settings.usageAndPlan.dialog.activation.cancel') }}
-						</N8nButton>
-						<N8nButton :disabled="!activationKey" @click="() => onLicenseActivation()">
-							{{ locale.baseText('settings.usageAndPlan.dialog.activation.activate') }}
-						</N8nButton>
-					</div>
-				</template>
-			</ElDialog>
+				</N8nDialogBody>
+				<N8nDialogFooter>
+					<N8nButton variant="outline" @click="onActivationCancel">
+						{{ locale.baseText('settings.usageAndPlan.dialog.activation.cancel') }}
+					</N8nButton>
+					<N8nButton :disabled="!activationKey" @click="() => onLicenseActivation()">
+						{{ locale.baseText('settings.usageAndPlan.dialog.activation.activate') }}
+					</N8nButton>
+				</N8nDialogFooter>
+			</N8nDialog>
 
 			<N8nDialog
 				v-model:open="activationSuccessModal"
@@ -389,10 +389,6 @@ const openCommunityRegisterModal = () => {
 
 <style lang="scss" module>
 @use '@/app/css/variables' as *;
-
-.center > div {
-	justify-content: center;
-}
 
 .actionBox {
 	margin: var(--spacing--2xl) 0 0;
@@ -483,33 +479,8 @@ div[class*='info'] > span > span:last-child {
 	margin: 0 0 0 var(--spacing--2xs);
 }
 
-.dialogButtonsContainer {
-	display: flex;
-	justify-content: flex-end;
-}
-
 .activationSuccessDescription {
 	display: block;
 	margin-top: var(--spacing--xs);
-}
-</style>
-
-<style lang="scss" scoped>
-.settings-usage-and-plan {
-	:deep(.el-dialog__wrapper) {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-
-		.el-dialog {
-			margin: 0;
-
-			.el-dialog__footer {
-				button {
-					margin-left: var(--spacing--xs);
-				}
-			}
-		}
-	}
 }
 </style>

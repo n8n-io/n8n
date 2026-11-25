@@ -77,9 +77,9 @@ export async function rabbitmqConnectQueue(
 			}
 
 			if ('binding' in options && options.binding?.bindings.length) {
-				options.binding.bindings.forEach(async (binding) => {
+				for (const binding of options.binding.bindings) {
 					await channel.bindQueue(queue, binding.exchange, binding.routingKey);
-				});
+				}
 			}
 
 			resolve(channel);

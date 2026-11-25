@@ -2,14 +2,16 @@ import type {
 	AuthenticatedRequest,
 	Settings,
 	CredentialsEntity,
+	CloudHooksPeople,
+	Person,
 	User,
 	WorkflowEntity,
 } from '@n8n/db';
 import {
 	CredentialsRepository,
+	PersonRepository,
 	WorkflowRepository,
 	SettingsRepository,
-	UserRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { FindManyOptions, FindOneOptions, FindOptionsWhere } from '@n8n/typeorm';
@@ -27,6 +29,8 @@ import { UserService } from '@/services/user.service';
  */
 @Service()
 export class HooksService {
+	private readonly personCollection: CloudHooksPeople;
+
 	private innerAuthMiddleware: (
 		req: AuthenticatedRequest,
 		res: Response,
@@ -36,11 +40,12 @@ export class HooksService {
 	constructor(
 		private readonly userService: UserService,
 		private readonly authService: AuthService,
-		private readonly userRepository: UserRepository,
+		personRepository: PersonRepository,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly credentialsRepository: CredentialsRepository,
 	) {
+		this.personCollection = personRepository.forCloudHooks();
 		this.innerAuthMiddleware = authService.createAuthMiddleware({ allowSkipMFA: false });
 	}
 
@@ -55,11 +60,11 @@ export class HooksService {
 	 * Set the n8n-auth cookie in the response to auto-login
 	 * the user after instance is provisioned
 	 */
-	issueCookie(res: Response, user: User) {
+	issueCookie(res: Response, person: Person) {
 		// TODO: The information on user has mfa enabled here, is missing!!
 		// This could be a security problem!!
 		// This is in just for the hackmation!!
-		return this.authService.issueCookie(res, user, user.mfaEnabled);
+		return this.authService.issueCookie(res, person, person.mfaEnabled);
 	}
 
 	/**
@@ -67,15 +72,15 @@ export class HooksService {
 	 * 1. To know whether the instance owner is already setup
 	 * 2. To know when to update the user's profile also in cloud
 	 */
-	async findOneUser(filter: FindOneOptions<User>) {
-		return await this.userRepository.findOne(filter);
+	async findOneUser(filter: FindOneOptions<Person>) {
+		return await this.personCollection.findOne(filter);
 	}
 
 	/**
 	 * Save instance owner with the cloud signup data
 	 */
-	async saveUser(user: User) {
-		return await this.userRepository.save(user);
+	async saveUser(person: Person) {
+		return await this.personCollection.save(person);
 	}
 
 	/**
@@ -128,7 +133,7 @@ export class HooksService {
 	 */
 	dbCollections() {
 		return {
-			User: this.userRepository,
+			User: this.personCollection,
 			Settings: this.settingsRepository,
 			Credentials: this.credentialsRepository,
 			Workflow: this.workflowRepository,

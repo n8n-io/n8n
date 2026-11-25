@@ -9,7 +9,7 @@ import type {
 } from '@n8n/api-types';
 import { randomCredentialPayload, type CredentialPayload } from '@n8n/backend-test-utils';
 import type { WorkflowEntity } from '@n8n/db';
-import { EXECUTE_WORKFLOW_NODE_TYPE, getSubworkflowId, type INode } from 'n8n-workflow';
+import { EXECUTE_WORKFLOW_NODE_TYPE, getSubworkflowId } from 'n8n-workflow';
 
 import { DirectoryPackageWriter } from '../../io/directory/directory-package-writer';
 import { entityFilePath, workflowMetadataFilePath } from '../../io/manifest-entry';
@@ -168,7 +168,7 @@ export function workflowRequirementsFromWorkflows(
 	};
 
 	for (const workflow of workflows) {
-		for (const node of workflow.nodes) addRequirement(getSubworkflowId(node as INode), workflow.id);
+		for (const node of workflow.nodes) addRequirement(getSubworkflowId(node), workflow.id);
 		addRequirement(errorWorkflowRef(workflow), workflow.id);
 	}
 
@@ -261,13 +261,13 @@ export async function buildImportPackageBuffer(
 
 	const manifest: PackageManifest = {
 		packageFormatVersion: FORMAT_VERSION,
-		exportedAt: new Date().toISOString(),
 		sourceN8nVersion: '1.0.0',
 		sourceId,
 		workflows: workflows.map((w, idx) => ({
 			id: w.id,
 			name: w.name,
 			target: `workflows/wf-${idx}`,
+			isArchived: w.isArchived,
 		})),
 		...(options.credentials?.length
 			? {
@@ -361,7 +361,13 @@ export function dataTableRequirement(
 }
 
 export function serializedFolder(overrides: Partial<SerializedFolder> = {}): SerializedFolder {
-	return { id: 'folder-id', name: 'Folder', parentFolderId: null, ...overrides };
+	return {
+		id: 'folder-id',
+		name: 'Folder',
+		resourceType: 'workflow',
+		parentFolderId: null,
+		...overrides,
+	};
 }
 
 export function serializedProject(overrides: Partial<SerializedProject> = {}): SerializedProject {
@@ -423,7 +429,6 @@ async function writeEntityPackage(
 
 	const manifest: PackageManifest = {
 		packageFormatVersion: FORMAT_VERSION,
-		exportedAt: new Date().toISOString(),
 		sourceN8nVersion: '1.0.0',
 		sourceId: options.sourceId ?? 'integration-test-source',
 		...(workflows.length > 0
@@ -432,6 +437,7 @@ async function writeEntityPackage(
 						id: workflow.id,
 						name: workflow.name,
 						target,
+						isArchived: workflow.isArchived,
 					})),
 				}
 			: {}),

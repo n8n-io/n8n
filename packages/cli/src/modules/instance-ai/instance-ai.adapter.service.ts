@@ -1,13 +1,15 @@
+import type { FetchFn } from '@n8n/agents';
 import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
 import {
 	AI_GATEWAY_MANAGED_TAG,
+	CreateAppDto,
+	ListAppsQueryDto,
+	SetAppBindingsDto,
 	AI_ASSISTANT_AT_MENTIONS_FLAG,
 	CANVAS_NODE_CONTEXT_FLAG,
 	CREDENTIAL_DESCRIPTIONS_FLAG,
 	CONFIG_EVALUATIONS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
-	CONTEXT_PREFERENCES_FLAG,
-	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
@@ -16,12 +18,15 @@ import {
 	upsertEvaluationConfigSchema,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
-	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
+	INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_FLAG,
+	INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_ENABLED_VARIANT,
 	INSTANCE_AI_SETUP_PANEL_FLAG,
 	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
-	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
+	INSTANCE_AI_APPROVAL_MODES_FLAG,
+	INSTANCE_AI_EMPTY_PREFERENCES_NOTE_FLAG,
 	INSTANCE_AI_CONCISE_STYLE_FLAG,
 	INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
+	ASSISTANT_SKILLS_FLAG,
 } from '@n8n/api-types';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
@@ -33,15 +38,21 @@ import {
 	FolderFinderService,
 	InstanceWriteAccessService,
 	AiPreferenceService,
+	NodeTypesProxy,
+	PostHogClient,
+	TelemetryProxy,
+	WorkflowVersionedSettingsService,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Time, TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
-import type { User, ExecutionSummaries, EvaluationConfig } from '@n8n/db';
+import type { User, ExecutionSummaries, EvaluationConfig, IExecutionResponse } from '@n8n/db';
 import {
 	AiBuilderTemporaryWorkflowRepository,
+	CredentialsRepository,
 	ExecutionRepository,
 	FolderRepository,
 	ProjectRepository,
+	SharedCredentialsRepository,
 	SharedWorkflowRepository,
 	WorkflowEntity,
 	WorkflowRepository,
@@ -49,6 +60,7 @@ import {
 import { redactTelemetryText, TELEMETRY_EVENT } from '@n8n/telemetry';
 import { Container, Service } from '@n8n/di';
 import type {
+	InstanceAiAppService,
 	InstanceAiContext,
 	InstanceAiConversationHistoryReader,
 	InstanceAiWorkflowService,
@@ -84,6 +96,8 @@ import type {
 	AiGatewayNodeMeta,
 	ExploreResourcesParams,
 	ExploreResourcesResult,
+	ResolveParameterOptionsParams,
+	ResolveParameterOptionsResult,
 	UnavailableLocatorValue,
 	ProjectSummary,
 	FolderSummary,
@@ -96,6 +110,7 @@ import type {
 	UpsertEvaluationConfigInput,
 	InstanceAiActivityService,
 	InstanceAiPreferenceService,
+	InstanceAiAgentFeedbackService,
 	InstanceAiSkillService,
 	InstanceAiMcpService,
 	InstanceAiExecuteNodeService,
@@ -106,17 +121,20 @@ import type {
 	FolderResolutionFailure,
 } from '@n8n/instance-ai';
 import {
-	BuilderTemplatesService,
-	builderTemplatesOptionsFromEnv,
 	wrapUntrustedData,
 	deriveCredentialHosts,
+	AppNamespaceTakenError,
 	WorkflowSaveConflictError,
 	WorkflowNotFoundError,
 	FolderResolutionError,
 	WorkflowEditorLockedError,
+	OutsideThreadProjectError,
+	formatRedactedError,
+	RESOURCE_EXPLORATION_UNAVAILABLE,
 } from '@n8n/instance-ai';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { LessThan } from '@n8n/typeorm';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { InstanceSettings } from 'n8n-core';
 import {
@@ -145,12 +163,12 @@ import {
 	WEBHOOK_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	TimeoutExecutionCancelledError,
-	UnexpectedError,
-	UserError,
 	isTriggerNodeType,
 	jsonParse,
 	createRunExecutionData,
 	calculateWorkflowChecksum,
+	isMcpAiGatewayAuthentication,
+	type INodeTypes,
 } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { randomUUID } from 'node:crypto';
@@ -161,10 +179,33 @@ import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { ConflictError, LockedError, NotFoundError } from '@n8n/errors';
+import {
+	ConflictError,
+	LockedError,
+	NotFoundError,
+	OperationalError,
+	UnexpectedError,
+	UserError,
+} from '@n8n/errors';
+import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
 import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
+import { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
+import { type ExecutionIdV2, isExecutionIdV2 } from '@/executions/execution-id';
+import { ExecutionListService } from '@/executions/execution-list.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import {
+	loadEngineV2ExecutionMetadataForViewer,
+	findUnsavedManualExecutionForViewer,
+	getExecutionRedaction,
+	loadExecutionForViewer,
+	loadLatestEngineV2ExecutionForViewer,
+} from '@/executions/execution-viewer-reader';
+import {
+	type CredentialRefusal,
+	findCredentialRefusal,
+	findOwnAccessCredentialRefusal,
+} from '@/executions/pre-execution-checks';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { AgentsBuilderService } from '@/modules/agents/builder/agents-builder.service';
@@ -173,11 +214,12 @@ import {
 	scopeCredentialProvider,
 	type AgentCredentialProvider,
 } from './eval/scoped-credential-provider';
-import type { EvalCredentialTestTarget } from './eval/thread-credential-allowlist.service';
 import { InstanceAiBuilderDelegateAdapterService } from './instance-ai-builder-delegate.adapter';
 import { InstanceAiSkillsAdapterService } from './instance-ai-skills.adapter';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import { DataTableService } from '@/modules/data-table/data-table.service';
+import type { AssistantCredentialTestTarget } from './turn-setup/assistant-turn-overrides';
+import { DataTableRepository, DataTableService } from '@n8n/backend-module-data-table';
+
+import { SkillsGate, SkillSyncFlagGate } from '@/modules/skills';
 import {
 	MCP_REGISTRY_PACKAGE_NAME,
 	getMcpRegistryCredentialOptions,
@@ -185,6 +227,7 @@ import {
 import { resolveMcpRegistryConnection } from '@/modules/mcp-registry/mcp-registry-connection';
 import type { McpRegistrySearchResult } from '@/modules/mcp-registry/registry/mcp-registry-search';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import { isAiGatewayMcpServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
 import {
 	getModuleDisabledNodeTypes,
@@ -193,18 +236,22 @@ import {
 } from '@/node-catalog';
 import { ExecuteNodeService } from '@/node-execution';
 import type { ExecuteNodeResult } from '@/node-execution';
-import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
-import { PostHogClient } from '@/posthog';
+import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import { writeAssistantPreference } from '@/services/ai-preference-write';
+import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { FolderService } from '@/services/folder.service';
-import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
+import {
+	getParameterOptionsCredentialReferences,
+	NodeResourceExplorerService,
+} from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { TagService } from '@/services/tag.service';
-import { Telemetry } from '@/telemetry';
+import { createWebSearchFetch } from '@/utils/ai-proxy-fetch';
 import { resolveBuiltinNodeDefinitionDirs } from '@/utils/node-definition-dirs';
 import { WorkflowRunner } from '@/workflow-runner';
 import {
@@ -212,6 +259,7 @@ import {
 	exceedsMaxExecutionTimeout,
 } from '@/workflows/execution-timeout-validation';
 import { getRequiredRedactionScopes } from '@/workflows/utils';
+import { WorkflowEngineDefaults } from '@/workflows/workflow-engine-defaults';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -219,7 +267,12 @@ import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 import { isAgentsAccessEnabled } from './agents-access';
 import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
-import { waitForInstanceAiExecution } from './instance-ai-execution-wait';
+import {
+	isEngineV2ExecutionUnsettled,
+	pollEngineV2Execution,
+	waitForEngineV2Execution,
+	waitForInstanceAiExecution,
+} from './instance-ai-execution-wait';
 import {
 	FOLDER_SCAN_LIMIT,
 	FOLDER_SCAN_PROJECT_LIMIT,
@@ -234,6 +287,8 @@ import {
 	sdkPinDataToRuntime,
 } from './instance-ai-run-pin-data';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { skipTimeBasedWaits } from './skip-time-based-waits';
+import type { TemporaryWorkflowMarkers } from './temporary-workflow-markers';
 import {
 	buildToolAgentRequest,
 	declaredToolArguments,
@@ -247,10 +302,10 @@ import { InstanceContextService } from './instance-context.service';
 import type { InstanceContextScope } from './instance-context.service';
 import { InstanceAiMcpRegistryService } from './mcp';
 import { listNodeDiscriminators } from './node-definition-resolver';
-import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research';
+import { fetchAndExtract, fetchCachedPage, LRUCache } from './web-research';
+import { toWorkflowJSON } from './workflow-json';
 import { WorkflowTemplatesService } from './workflow-templates.service';
-
-type BuilderTemplatesServiceInstance = InstanceType<typeof BuilderTemplatesService>;
+import { toUserLike } from '@/utils/to-user-like';
 
 /**
  * Fill in defaults for properties whose visibility depends on sibling values
@@ -292,7 +347,7 @@ function resolveDisplayedDefaults(
  * the same way they will. A node type that does not load is not a tool here:
  * the run fails on the missing type either way.
  */
-function isToolNode(nodeTypes: NodeTypes, node: INode): boolean {
+function isToolNode(nodeTypes: INodeTypes, node: INode): boolean {
 	try {
 		const { description } = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 		return NodeHelpers.isTool(description, node.parameters);
@@ -383,8 +438,8 @@ export interface InstanceAiFeatureFlags {
 	configEvalsEnabled: boolean;
 	/** Past-conversation recall: tool, prompt section and first-turn hint. */
 	conversationHistoryEnabled: boolean;
-	/** Progressive workflow policy and planning-tool selection. */
-	progressiveBuildingEnabled: boolean;
+	/** Canvas drafts parsed from the builder's source before the save. */
+	draftWorkflowPreviewEnabled: boolean;
 	/** Concise reply style. Applies only when the default build mode is selected. */
 	conciseStyleEnabled: boolean;
 	setupPanelEnabled: boolean;
@@ -397,12 +452,18 @@ export interface InstanceAiFeatureFlags {
 	 *  closed with every other gate: `getFeatureFlags` never throws, it
 	 *  returns `{}` on a PostHog outage. */
 	folderExplorationEnabled: boolean;
-	/** Saved AI preferences on every user turn. */
-	aiPreferencesEnabled: boolean;
 	credentialDescriptionsEnabled: boolean;
+	/** Approval modes: the Manual and Auto selector, and Auto for users without a saved choice. */
+	approvalModesEnabled: boolean;
 	/** Shared activity recording and retrieval use the same instance gate. */
 	instanceContextEnabled: boolean;
+	assistantSkillsEnabled: boolean;
+	skillSourcesEnabled?: boolean;
+	preferencesNoteVariant?: string;
 }
+
+const AGENT_FEEDBACK_SUMMARY_MAX_LENGTH = 1000;
+const AGENT_FEEDBACK_TOOL_NAME_MAX_LENGTH = 100;
 
 @Service()
 export class InstanceAiAdapterService {
@@ -422,8 +483,6 @@ export class InstanceAiAdapterService {
 	} | null = null;
 
 	private readonly NODES_CACHE_TTL_MS = 5 * 60 * 1000;
-
-	private templatesService: BuilderTemplatesServiceInstance | undefined;
 
 	private async getNodesFromCache(): Promise<INodeTypeDescription[]> {
 		if (this.nodesCache && Date.now() < this.nodesCache.expiresAt) {
@@ -454,7 +513,7 @@ export class InstanceAiAdapterService {
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
-		private readonly nodeTypes: NodeTypes,
+		private readonly nodeTypes: NodeTypesProxy,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly dataTableService: DataTableService,
 		private readonly dataTableRepository: DataTableRepository,
@@ -470,7 +529,7 @@ export class InstanceAiAdapterService {
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly eventService: EventService,
 		private readonly roleService: RoleService,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
 		private readonly aiBuilderTemporaryWorkflowRepository: AiBuilderTemporaryWorkflowRepository,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly aiGatewayService: AiGatewayService,
@@ -517,12 +576,15 @@ export class InstanceAiAdapterService {
 			 *  mid-run, after this context is built. */
 			getCredentialIdAllowlist?: () => string[] | undefined;
 			/** Eval-only: resolve a credential's connection test as successful without
-			 *  contacting the provider. A predicate rather than a list because the
+			 *  contacting the provider, when its type has a connection test (a type with
+			 *  none gets production's result). A predicate rather than a list because the
 			 *  harness registers bypasses mid-run, after this context is built. */
 			shouldBypassCredentialTest?: (credentialId: string) => boolean;
 			/** Eval-only: the provider stand-in for a credential type's connection test.
 			 *  A getter for the same reason as the bypass predicate. */
-			getCredentialTestTarget?: (credentialType: string) => EvalCredentialTestTarget | undefined;
+			getCredentialTestTarget?: (
+				credentialType: string,
+			) => AssistantCredentialTestTarget | undefined;
 			/** Pre-bound agent for the build-existing-agent flow. When omitted, the
 			 *  assistant can create one via the agent_builder_build_agent tool. */
 			agentId?: string;
@@ -544,15 +606,21 @@ export class InstanceAiAdapterService {
 			 *  Falsy → `list` keeps the pre-feature shape: no folder fields, no
 			 *  folder attribution. */
 			folderExplorationEnabled?: boolean;
+			/** Keeps the temporary workflows of the thread. Absent → the temporary workflow table. */
+			temporaryWorkflowMarkers?: TemporaryWorkflowMarkers;
 			/** True while the thread runs the onboarding flow. Gates the `leave-onboarding` tool. */
 			onboardingThread?: boolean;
 			credentialDescriptionsEnabled?: boolean;
-			/** Saved AI preferences gate (via `resolveExperimentGates`). Falsy → no
-			 *  `save_user_preference` tool. */
-			aiPreferencesEnabled?: boolean;
-			/** Host-resolved model for the run — fallback for utility LLM calls
-			 *  (simulation fixtures, destructiveness classification). */
+			assistantSkillsEnabled?: boolean;
+			skillSourcesEnabled?: boolean;
+			/** Host-resolved main model for the run. */
 			modelId?: ModelConfig;
+			/** Host-resolved utility model. Absent → utility calls use `modelId`. */
+			utilityModelId?: ModelConfig;
+			/** Bills the token usage of helper LLM calls. */
+			onHelperUsage?: InstanceAiContext['onHelperUsage'];
+			/** Transport for those utility LLM calls. */
+			modelFetch?: FetchFn;
 			/** Effective data-sharing setting for this run. Absent → the env value. */
 			allowSendingParameterValues?: boolean;
 		},
@@ -575,8 +643,12 @@ export class InstanceAiAdapterService {
 			folderExplorationEnabled,
 			onboardingThread,
 			credentialDescriptionsEnabled,
-			aiPreferencesEnabled,
+			assistantSkillsEnabled,
+			skillSourcesEnabled,
 			modelId,
+			utilityModelId,
+			onHelperUsage,
+			modelFetch,
 			allowSendingParameterValues = this.allowSendingParameterValues,
 		} = options ?? {};
 
@@ -592,33 +664,54 @@ export class InstanceAiAdapterService {
 			shouldBypassCredentialTest,
 			getCredentialTestTarget,
 		);
+		const dataTableService = this.createDataTableAdapter(user, projectId);
+		const { assertInBoundProject, assertWorkflowInBoundProject, assertCredentialInBoundProject } =
+			this.createProjectScopeHelpers(user, projectId);
+		const assertInThreadProject: InstanceAiContext['assertInThreadProject'] = async (target) => {
+			if (projectId === undefined) return;
+			if (target.kind === 'workflow') return await assertWorkflowInBoundProject(target.id);
+			if (target.kind === 'credential') return await assertCredentialInBoundProject(target.id);
+			if (target.kind === 'project') return assertInBoundProject(target.id);
+			const table = await dataTableService.resolveTableReference?.(target.id, {
+				projectId: target.projectId,
+			});
+			// Without a resolver the owner is unknown, so the check rejects.
+			assertInBoundProject(table?.projectId);
+		};
 		return {
 			userId: user.id,
 			projectId,
+			assertInThreadProject,
 			...(folderExplorationEnabled ? { folderExplorationEnabled: true } : {}),
 			...(onboardingThread ? { onboardingThread: true } : {}),
 			...(credentialDescriptionsEnabled ? { credentialDescriptionsEnabled: true } : {}),
 			modelId,
+			...(utilityModelId ? { utilityModelId } : {}),
+			...(onHelperUsage ? { onHelperUsage } : {}),
+			modelFetch,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId, {
 				nodeUsageGateOpen: nodeUsageEnabled === true,
 				folderExploration: folderExplorationEnabled === true,
 				setupPanelVariant,
 				allowSendingParameterValues,
+				temporaryWorkflowMarkers: options?.temporaryWorkflowMarkers,
 			}),
 			executionService: this.createExecutionAdapter(
 				user,
 				allowSendingParameterValues,
 				pushRef,
 				threadId,
+				projectId,
 			),
 			credentialService,
-			nodeService: this.createNodeAdapter(user),
-			dataTableService: this.createDataTableAdapter(user, projectId),
+			nodeService: this.createNodeAdapter(user, projectId, shouldBypassCredentialTest),
+			dataTableService,
 			...(configEvalsEnabled && this.evaluationConfigService
 				? {
 						evaluationConfigService: this.createEvaluationConfigAdapter(
 							this.evaluationConfigService,
 							user,
+							projectId,
 						),
 					}
 				: {}),
@@ -636,13 +729,25 @@ export class InstanceAiAdapterService {
 			...(instanceContextEnabled === true && this.instanceContext
 				? { activityService: this.createActivityAdapter(user, projectId) }
 				: {}),
-			...(aiPreferencesEnabled ? { aiPreferenceService: this.createPreferenceAdapter(user) } : {}),
-			skillService: this.getSkillService(user),
+			// Absent only in test contexts constructed without DI.
+			...(this.aiPreferenceService && Container.get(AiPreferenceSettingsService).isEnabled
+				? { aiPreferenceService: this.createPreferenceAdapter(user) }
+				: {}),
+			// Reports go out only as telemetry. Without it the tool would make calls that do nothing.
+			...(this.globalConfig.diagnostics.enabled
+				? { agentFeedbackService: this.createAgentFeedbackAdapter(user) }
+				: {}),
+			skillService: this.getSkillService(
+				user,
+				assistantSkillsEnabled === true,
+				skillSourcesEnabled,
+			),
+			appService: this.createAppAdapter(user, projectId, threadId),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user, projectId),
-			templatesService: this.getTemplatesService(),
 			workflowTemplateService: this.createWorkflowTemplateAdapter(),
 			licenseHints: this.buildLicenseHints(),
+			engineSetup: Container.get(WorkflowEngineDefaults).getSetup(),
 			logger: this.logger,
 			nodeTypesProvider: this.nodeTypes,
 			// Optional call for the same reason as addPostProcessor?.() above:
@@ -694,15 +799,21 @@ export class InstanceAiAdapterService {
 			: provider;
 	}
 
-	private getSkillService(user: User): InstanceAiSkillService | undefined {
+	private getSkillService(
+		user: User,
+		assistantSkillsEnabled: boolean,
+		skillSourcesEnabled?: boolean,
+	): InstanceAiSkillService | undefined {
 		try {
-			const moduleRegistry = Container.get(ModuleRegistry);
-			if (!moduleRegistry.isActive('agents')) return undefined;
-			if (moduleRegistry.settings.get('agents')?.skillsHubEnabled !== true) return undefined;
-			return Container.get(InstanceAiSkillsAdapterService).createService(user);
+			if (!Container.get(SkillsGate).isEnabled) return undefined;
+			return Container.get(InstanceAiSkillsAdapterService).createService(
+				user,
+				assistantSkillsEnabled,
+				skillSourcesEnabled,
+			);
 		} catch (error) {
 			this.logger.warn('Failed to resolve the skills adapter; skill tools disabled', {
-				error: error instanceof Error ? error.message : String(error),
+				error: ensureError(error).message,
 			});
 			return undefined;
 		}
@@ -722,7 +833,7 @@ export class InstanceAiAdapterService {
 			return Container.get(InstanceAiBuilderDelegateAdapterService);
 		} catch (error) {
 			this.logger.warn('Failed to resolve builder delegate adapter; agent building disabled', {
-				error: error instanceof Error ? error.message : String(error),
+				error: ensureError(error).message,
 			});
 			return null;
 		}
@@ -748,27 +859,35 @@ export class InstanceAiAdapterService {
 	async resolveExperimentGates(user: User): Promise<InstanceAiFeatureFlags> {
 		let flags: Awaited<ReturnType<PostHogClient['getFeatureFlags']>> = {};
 		let instanceContextEnabled = false;
+		let assistantSkillsEnabled = false;
+		let skillSourcesEnabled = false;
 		try {
 			const postHog = Container.get(PostHogClient);
-			const [userFlags, instanceFlag] = await Promise.allSettled([
+			const [userFlags, instanceFlag, assistantSkillsFlag] = await Promise.allSettled([
 				postHog.getFeatureFlags(user),
 				postHog.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG),
+				postHog.getFeatureFlagForInstance(ASSISTANT_SKILLS_FLAG),
 			]);
 			if (userFlags.status === 'fulfilled') flags = userFlags.value;
 			instanceContextEnabled = instanceFlag.status === 'fulfilled' && instanceFlag.value === true;
+			assistantSkillsEnabled =
+				assistantSkillsFlag.status === 'fulfilled' && assistantSkillsFlag.value === true;
+			// Reuse the assignments already fetched for this turn.
+			skillSourcesEnabled = Container.get(SkillSyncFlagGate).isEnabledForFlags(flags);
 		} catch {
 			// Leave unreadable flags unassigned.
 		}
 		const setupPanelVariant = flags[INSTANCE_AI_SETUP_PANEL_FLAG];
+		const preferencesNoteVariant = flags[INSTANCE_AI_EMPTY_PREFERENCES_NOTE_FLAG];
 		return {
 			credentialDescriptionsEnabled: flags[CREDENTIAL_DESCRIPTIONS_FLAG] === true,
 			configEvalsEnabled: flags[CONFIG_EVALUATIONS_FLAG] === CONFIG_EVALUATIONS_ENABLED_VARIANT,
 			conversationHistoryEnabled:
 				flags[INSTANCE_AI_CONVERSATION_HISTORY_FLAG] ===
 				INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
-			progressiveBuildingEnabled:
-				flags[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG] ===
-				INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
+			draftWorkflowPreviewEnabled:
+				flags[INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_FLAG] ===
+				INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_ENABLED_VARIANT,
 			conciseStyleEnabled:
 				flags[INSTANCE_AI_CONCISE_STYLE_FLAG] === INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 			setupPanelEnabled: setupPanelVariant === INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
@@ -781,8 +900,11 @@ export class InstanceAiAdapterService {
 			folderExplorationEnabled:
 				flags[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] ===
 				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
-			aiPreferencesEnabled: flags[CONTEXT_PREFERENCES_FLAG] === CONTEXT_PREFERENCES_ENABLED_VARIANT,
+			approvalModesEnabled: flags[INSTANCE_AI_APPROVAL_MODES_FLAG] === true,
 			instanceContextEnabled,
+			assistantSkillsEnabled,
+			...(skillSourcesEnabled ? { skillSourcesEnabled } : {}),
+			...(typeof preferencesNoteVariant === 'string' ? { preferencesNoteVariant } : {}),
 		};
 	}
 
@@ -810,6 +932,33 @@ export class InstanceAiAdapterService {
 					...(input.beforeId !== undefined ? { beforeId: input.beforeId } : {}),
 				}),
 			expand: async (id) => await instanceContext.expand({ id, user, scope }),
+		};
+	}
+
+	/**
+	 * The summary and the tool name are agent-written text, so secrets and personal data
+	 * are removed here. Redaction runs on the full text before the cut, so a secret
+	 * that crosses the cut is still found.
+	 */
+	private createAgentFeedbackAdapter(user: User): InstanceAiAgentFeedbackService {
+		return {
+			send: ({ category, severity, summary, toolName, threadId, runId }) => {
+				this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.ASSISTANT_SENT_FEEDBACK, {
+					user_id: user.id,
+					...(threadId ? { thread_id: threadId } : {}),
+					...(runId ? { run_id: runId } : {}),
+					category,
+					severity,
+					summary: redactTelemetryText(summary, { maxLength: AGENT_FEEDBACK_SUMMARY_MAX_LENGTH }),
+					...(toolName
+						? {
+								tool_name: redactTelemetryText(toolName, {
+									maxLength: AGENT_FEEDBACK_TOOL_NAME_MAX_LENGTH,
+								}),
+							}
+						: {}),
+				});
+			},
 		};
 	}
 
@@ -853,9 +1002,13 @@ export class InstanceAiAdapterService {
 		// Templated rows are dropped rather than offered: this path reads credentials
 		// without resolving expressions, so `createConnection` refuses them. Offering
 		// one would walk the user to a credential picker and then an error.
+		// Gateway-only rows are dropped for the same reason: this path connects with a
+		// stored credential only.
+		const isAiGatewayOnly = (server: McpRegistrySearchResult) =>
+			server.authentication === 'none' && server.credential === AI_GATEWAY_MANAGED_TAG;
 		const toSummaries = (servers: McpRegistrySearchResult[]): McpRegistryServerSummary[] =>
 			servers
-				.filter((server) => !server.isTemplated)
+				.filter((server) => !server.isTemplated && !isAiGatewayOnly(server))
 				.map((server) => ({
 					slug: server.slug,
 					title: server.title,
@@ -878,7 +1031,7 @@ export class InstanceAiAdapterService {
 				const servers = await Container.get(McpRegistryService).getBySlugs(slugs);
 				return servers
 					.filter((server) => {
-						if (server.status !== 'active') return false;
+						if (server.status !== 'active' || isAiGatewayMcpServer(server)) return false;
 						const connection = resolveMcpRegistryConnection(server);
 						return connection !== null && !connection.isTemplated;
 					})
@@ -886,7 +1039,10 @@ export class InstanceAiAdapterService {
 						slug: server.slug,
 						title: server.title,
 						description: server.tagline,
-						usesCredentials: getMcpRegistryCredentialOptions(server),
+						// A paired server keeps its own options: this path never offers Gateway credits.
+						usesCredentials: getMcpRegistryCredentialOptions(server).filter(
+							({ credentialType }) => !isMcpAiGatewayAuthentication(credentialType),
+						),
 						tools: server.tools.map((tool) => tool.name),
 					}));
 			},
@@ -953,17 +1109,6 @@ export class InstanceAiAdapterService {
 		return meta;
 	}
 
-	private getTemplatesService(): BuilderTemplatesServiceInstance {
-		if (!this.templatesService) {
-			this.templatesService = new BuilderTemplatesService({
-				...builderTemplatesOptionsFromEnv({ logger: this.logger }),
-				cacheDir: path.join(this.instanceSettings.n8nFolder, 'n8n-sdk-templates'),
-				logger: this.logger,
-			});
-		}
-		return this.templatesService;
-	}
-
 	private createWorkflowTemplateAdapter(): InstanceAiWorkflowTemplateService {
 		const workflowTemplatesService = this.workflowTemplatesService;
 		return {
@@ -987,12 +1132,12 @@ export class InstanceAiAdapterService {
 		}
 		if (!this.license.isLicensed('feat:folders')) {
 			hints.push(
-				'**Folders** — organizing workflows into folders (list-folders, create-folder, delete-folder, move-workflow-to-folder) is available on registered Community Edition or paid plans.',
+				'**Folders** — organizing workflows into folders (list_folders, create_folder, delete_folder, move_workflow_to_folder) is available on registered Community Edition or paid plans.',
 			);
 		}
 		if (!this.teamProjectsLicensed()) {
 			hints.push(
-				'**Team projects** — this instance has no team-project license. `list-projects` returns only the user personal project and the project of this conversation, even when the instance holds more. Do not offer to create or move resources into another project. Team projects need a plan upgrade.',
+				'**Team projects** — this instance has no team-project license. `list_projects` returns only the user personal project and the project of this conversation, even when the instance holds more. Do not offer to create or move resources into another project. Team projects need a plan upgrade.',
 			);
 		}
 		return hints;
@@ -1050,7 +1195,50 @@ export class InstanceAiAdapterService {
 			return boundProjectId;
 		};
 
-		return { getPersonalProjectId, assertProjectScope, resolveProjectId, resolveBoundProjectId };
+		/** A bound conversation may read across projects but writes only to its own project. */
+		const assertInBoundProject = (projectId: string | undefined) => {
+			if (boundProjectId !== undefined && projectId !== boundProjectId) {
+				throw new OutsideThreadProjectError();
+			}
+		};
+
+		const assertWorkflowInBoundProject = async (workflowId: string) => {
+			if (boundProjectId === undefined) return;
+			// A workflow shared into the bound project counts as part of it, as in the project's list.
+			// A missing workflow falls through to the caller's not-found path.
+			const projectIds = await this.sharedWorkflowRepository.findProjectIds(workflowId);
+			if (projectIds.length > 0 && !projectIds.includes(boundProjectId)) {
+				throw new OutsideThreadProjectError();
+			}
+		};
+
+		const assertCredentialInBoundProject = async (
+			credentialId: string,
+			{ requireOwner = false }: { requireOwner?: boolean } = {},
+		) => {
+			if (boundProjectId === undefined) return;
+			const owner = await Container.get(SharedCredentialsRepository).findCredentialOwningProject(
+				credentialId,
+			);
+			if (!owner && requireOwner) {
+				// An absent owner can mean a missing credential or an instance-wide credential.
+				const existingIds = await Container.get(CredentialsRepository).findExistingIds([
+					credentialId,
+				]);
+				if (existingIds.length === 0) throw new CredentialNotFoundError(credentialId);
+			}
+			if (owner || requireOwner) assertInBoundProject(owner?.id);
+		};
+
+		return {
+			getPersonalProjectId,
+			assertProjectScope,
+			resolveProjectId,
+			resolveBoundProjectId,
+			assertInBoundProject,
+			assertWorkflowInBoundProject,
+			assertCredentialInBoundProject,
+		};
 	}
 
 	private createWorkflowAdapter(
@@ -1062,6 +1250,7 @@ export class InstanceAiAdapterService {
 			folderExploration?: boolean;
 			setupPanelVariant?: 'control' | 'variant';
 			allowSendingParameterValues?: boolean;
+			temporaryWorkflowMarkers?: TemporaryWorkflowMarkers;
 		} = {},
 	): InstanceAiWorkflowService {
 		const setupExperimentProperties = options.setupPanelVariant
@@ -1070,6 +1259,17 @@ export class InstanceAiAdapterService {
 					[`$feature/${INSTANCE_AI_SETUP_PANEL_FLAG}`]: options.setupPanelVariant,
 				}
 			: {};
+		// The Assistant agent keeps its markers in its own thread state. The current
+		// runtime uses the temporary workflow table, written with the workflow.
+		const markers = options.temporaryWorkflowMarkers;
+		const isTemporary = async (workflowId: string) =>
+			markers
+				? await markers.has(workflowId)
+				: await this.aiBuilderTemporaryWorkflowRepository.existsForWorkflow(workflowId);
+		const unmarkTemporary = async (workflowId: string) =>
+			markers
+				? await markers.unmark(workflowId)
+				: await this.aiBuilderTemporaryWorkflowRepository.unmark(workflowId);
 		const foldersOn = options.folderExploration === true;
 		// Attribution reveals folder ids, names and paths on every row, so it needs
 		// the licence as well as the flag. Resolution stays on the flag alone so an
@@ -1085,7 +1285,6 @@ export class InstanceAiAdapterService {
 			workflowHistoryService,
 			enterpriseWorkflowService,
 			executionRepository,
-			executionPersistence,
 			license,
 			telemetry,
 			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
@@ -1112,7 +1311,10 @@ export class InstanceAiAdapterService {
 			projectId?: string;
 			scope?: 'project' | 'instance';
 		}) => options?.projectId ?? (options?.scope !== 'instance' ? boundProjectId : undefined);
-		const { resolveBoundProjectId } = this.createProjectScopeHelpers(user, boundProjectId);
+		const { resolveBoundProjectId, assertWorkflowInBoundProject } = this.createProjectScopeHelpers(
+			user,
+			boundProjectId,
+		);
 		const redactParameters = !(
 			options.allowSendingParameterValues ?? this.allowSendingParameterValues
 		);
@@ -1144,7 +1346,7 @@ export class InstanceAiAdapterService {
 
 		/**
 		 * The folders the caller may name, per project. Access is checked with the
-		 * same scope the workspace tool's `list-folders` uses, so a folder name is
+		 * same scope the `list_folders` tool uses, so a folder name is
 		 * never revealed through a project the user cannot list folders in.
 		 * Returns undefined when folders cannot be read at all (unlicensed or
 		 * missing dependency), which the resolver reports as `unsupported`.
@@ -1184,7 +1386,11 @@ export class InstanceAiAdapterService {
 				if (requested.folderId !== undefined && requested.folderId !== '') {
 					try {
 						add(
-							await folderRepository.findOneOrFailFolderInProject(requested.folderId, projectId),
+							await folderRepository.findOneOrFailFolderInProject(
+								requested.folderId,
+								projectId,
+								'workflow',
+							),
 							projectId,
 						);
 					} catch {
@@ -1233,7 +1439,7 @@ export class InstanceAiAdapterService {
 				logger.warn('Failed to notify open editors of an AI workflow update', {
 					threadId,
 					workflowId,
-					error: error instanceof Error ? error.message : String(error),
+					error: ensureError(error).message,
 				});
 			}
 		};
@@ -1523,6 +1729,7 @@ export class InstanceAiAdapterService {
 
 			async archive(workflowId: string) {
 				assertNotReadOnly();
+				await assertWorkflowInBoundProject(workflowId);
 				await assertNotLockedByEditor(workflowId);
 				const result = await workflowService.archive(user, workflowId, { skipArchived: true });
 				if (!result) {
@@ -1533,6 +1740,7 @@ export class InstanceAiAdapterService {
 
 			async unarchive(workflowId: string) {
 				assertNotReadOnly();
+				await assertWorkflowInBoundProject(workflowId);
 				const result = await workflowService.unarchive(user, workflowId);
 				if (!result) {
 					throw new WorkflowNotFoundError(workflowId);
@@ -1545,9 +1753,9 @@ export class InstanceAiAdapterService {
 					'workflow:update',
 				]);
 				if (!workflow) return;
-				if (!(await aiBuilderTemporaryWorkflowRepository.existsForWorkflow(workflowId))) return;
+				if (!(await isTemporary(workflowId))) return;
 
-				await aiBuilderTemporaryWorkflowRepository.unmark(workflowId);
+				await unmarkTemporary(workflowId);
 			},
 
 			async archiveIfAiTemporary(workflowId: string) {
@@ -1556,16 +1764,14 @@ export class InstanceAiAdapterService {
 					'workflow:update',
 				]);
 				if (!workflow) return false;
-				if (!(await aiBuilderTemporaryWorkflowRepository.existsForWorkflow(workflowId))) {
-					return false;
-				}
+				if (!(await isTemporary(workflowId))) return false;
 				if (workflow.isArchived) {
-					await aiBuilderTemporaryWorkflowRepository.unmark(workflowId);
+					await unmarkTemporary(workflowId);
 					return false;
 				}
 
 				await workflowService.archive(user, workflowId, { skipArchived: true });
-				await aiBuilderTemporaryWorkflowRepository.unmark(workflowId);
+				await unmarkTemporary(workflowId);
 				return true;
 			},
 
@@ -1573,6 +1779,7 @@ export class InstanceAiAdapterService {
 				workflowId: string,
 				options?: { versionId?: string; name?: string; description?: string },
 			) {
+				await assertWorkflowInBoundProject(workflowId);
 				await assertNotLockedByEditor(workflowId);
 				const wf = await workflowService.activateWorkflow(user, workflowId, {
 					versionId: options?.versionId,
@@ -1600,6 +1807,7 @@ export class InstanceAiAdapterService {
 			},
 
 			async unpublish(workflowId: string) {
+				await assertWorkflowInBoundProject(workflowId);
 				await assertNotLockedByEditor(workflowId);
 				await workflowService.deactivateWorkflow(user, workflowId, {
 					source: 'n8n-ai',
@@ -1614,7 +1822,12 @@ export class InstanceAiAdapterService {
 				if (!wf) throw new WorkflowNotFoundError(workflowId);
 				if (!versionId) return toWorkflowJSON(wf, { redactParameters });
 				const version = await workflowHistoryService.getVersion(user, workflowId, versionId);
-				return toWorkflowJSON(wf, { redactParameters, graph: version });
+				// The version stores its own engine, so its source must not show the draft's engine.
+				const settings = Container.get(WorkflowVersionedSettingsService).forVersionRun(
+					wf.settings,
+					version,
+				);
+				return toWorkflowJSON({ ...wf, settings }, { redactParameters, graph: version });
 			},
 
 			async getPinnedDataSummary(workflowId: string) {
@@ -1653,27 +1866,39 @@ export class InstanceAiAdapterService {
 			},
 
 			async getLatestRunData(workflowId: string) {
-				// Caller must be able to read the workflow to see its execution history.
-				// Silent null on no-access keeps validation usable even when access was
-				// revoked between fetches — validation degrades gracefully instead of
-				// throwing in the middle of a per-node loop.
+				// Caller must be able to read the workflow's executions, the same scopes
+				// the executions API requires. Silent null on no-access keeps validation
+				// usable even when access was revoked between fetches — validation
+				// degrades gracefully instead of throwing in the middle of a per-node loop.
 				const accessible = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:read',
+					'execution:read',
 				]);
 				if (!accessible) return null;
 
-				const [latest] = await executionRepository.find({
-					select: ['id'],
-					where: { workflowId },
-					order: { startedAt: 'DESC' },
-					take: 1,
-				});
+				// A workflow can have runs on both engines, for example after a switch
+				// of its engine. The newer run wins.
+				const [latest, latestV2] = await Promise.all([
+					executionRepository.findOne({
+						select: ['id', 'startedAt'],
+						where: { workflowId },
+						order: { startedAt: 'DESC' },
+					}),
+					// A data plane failure must not hide the v1 run data from validation.
+					loadLatestEngineV2ExecutionForViewer(workflowId, user).catch((error: unknown) => {
+						logger.warn('Failed to read the latest engine v2 execution', {
+							workflowId,
+							error: ensureError(error).message,
+						});
+						return undefined;
+					}),
+				]);
+				if (latestV2 && !isOlderRun(latestV2.startedAt, latest?.startedAt)) {
+					return latestV2.data?.resultData?.runData ?? null;
+				}
 				if (!latest) return null;
 
-				const execution = await executionPersistence.findSingleExecution(latest.id, {
-					includeData: true,
-					unflattenData: true,
-				});
+				const execution = await loadExecutionForViewer(latest.id, user);
 				return execution?.data?.resultData?.runData ?? null;
 			},
 
@@ -1708,11 +1933,12 @@ export class InstanceAiAdapterService {
 				}
 
 				// Without an explicit order the engine falls back to legacy v0, which walks
-				// the graph breadth-first. Generated code still wins if it sets its own.
-				const settings = {
+				// the graph breadth-first. Generated code still wins if it sets its own order
+				// or engine.
+				const settings = Container.get(WorkflowEngineDefaults).applyTo({
 					executionOrder: 'v1',
 					...(json.settings ?? {}),
-				} as IWorkflowSettings;
+				});
 				assertExecutionTimeoutWithinMax(settings.executionTimeout, maxExecutionTimeout);
 
 				// Strip redactionPolicy if the user lacks the required scope —
@@ -1738,6 +1964,7 @@ export class InstanceAiAdapterService {
 					nodes: [] as INode[],
 					connections: {},
 					settings,
+					// oxlint-disable-next-line typescript/no-deprecated -- Initialize the legacy active column for the unpublished workflow.
 					active: false,
 					versionId: randomUUID(),
 				} as Partial<WorkflowEntity>);
@@ -1758,7 +1985,7 @@ export class InstanceAiAdapterService {
 					async (transactionManager, ctx) => {
 						const workflow = await workflowRepository.createContent(newWorkflow, ctx);
 						await sharedWorkflowRepository.makeOwner([workflow.id], projectId, transactionManager);
-						if (options?.markAsAiTemporary) {
+						if (options?.markAsAiTemporary && !markers) {
 							if (!threadId) {
 								throw new UnexpectedError(
 									'Cannot mark AI-builder temporary workflow without a thread ID',
@@ -1788,6 +2015,10 @@ export class InstanceAiAdapterService {
 
 				let updated: WorkflowEntity;
 				try {
+					// Thread state is not part of the transaction above. Marking here puts a
+					// failed write on the cleanup path, so the shell does not stay behind.
+					if (options?.markAsAiTemporary && markers) await markers.mark(saved.id);
+
 					// Enforce credential tamper protection — same guard as the
 					// REST controller (workflows.controller PATCH /:workflowId).
 					// oxlint-disable-next-line typescript/no-deprecated
@@ -1807,18 +2038,18 @@ export class InstanceAiAdapterService {
 					logger.warn('AI-builder workflow save failed', {
 						threadId,
 						workflowId: saved.id,
-						error: error instanceof Error ? error.message : String(error),
+						error: ensureError(error).message,
 					});
 					try {
 						const archived = await workflowService.archive(user, saved.id, { skipArchived: true });
 						if (archived && options?.markAsAiTemporary) {
-							await aiBuilderTemporaryWorkflowRepository.unmark(saved.id);
+							await unmarkTemporary(saved.id);
 						}
 					} catch (cleanupError) {
 						logger.warn('Failed to clean up AI-builder workflow shell after create failure', {
 							threadId,
 							workflowId: saved.id,
-							error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
+							error: ensureError(cleanupError).message,
 						});
 					}
 					throw error;
@@ -1854,6 +2085,7 @@ export class InstanceAiAdapterService {
 			) {
 				assertNotReadOnly();
 				assertParameterValuesAvailable();
+				await assertWorkflowInBoundProject(workflowId);
 				await assertNotLockedByEditor(workflowId);
 				const settings = (json.settings ?? {}) as IWorkflowSettings;
 				// Loaded on first use only. The checks below share one query.
@@ -1933,7 +2165,7 @@ export class InstanceAiAdapterService {
 					logger.warn('AI-builder workflow save failed', {
 						threadId,
 						workflowId,
-						error: error instanceof Error ? error.message : String(error),
+						error: ensureError(error).message,
 					});
 					throw error;
 				}
@@ -2021,6 +2253,7 @@ export class InstanceAiAdapterService {
 
 			async restoreVersion(workflowId, versionId) {
 				assertParameterValuesAvailable();
+				await assertWorkflowInBoundProject(workflowId);
 				await assertNotLockedByEditor(workflowId);
 				const version = await workflowHistoryService.getVersion(user, workflowId, versionId);
 
@@ -2034,6 +2267,7 @@ export class InstanceAiAdapterService {
 
 				const updated = await workflowService.update(user, updateData, workflowId, {
 					source: 'n8n-ai',
+					restoredVersionSettings: version.settings,
 				});
 
 				await notifyWorkflowUpdated(workflowId);
@@ -2047,6 +2281,7 @@ export class InstanceAiAdapterService {
 							versionId: string,
 							data: { name?: string | null; description?: string | null },
 						) {
+							await assertWorkflowInBoundProject(workflowId);
 							await workflowHistoryService.updateVersionForUser(user, workflowId, versionId, data);
 						},
 					}
@@ -2059,13 +2294,13 @@ export class InstanceAiAdapterService {
 		allowSendingParameterValues: boolean,
 		pushRef?: string,
 		threadId?: string,
+		boundProjectId?: string,
 	): InstanceAiExecutionService {
 		const {
 			workflowFinderService,
 			workflowRunner,
 			activeExecutions,
 			executionRepository,
-			executionPersistence,
 			workflowHistoryService,
 			nodeTypes,
 			roleService,
@@ -2074,21 +2309,35 @@ export class InstanceAiAdapterService {
 			globalConfig,
 		} = this;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('executions');
+		const { assertWorkflowInBoundProject } = this.createProjectScopeHelpers(user, boundProjectId);
 
 		const DEFAULT_TIMEOUT_MS = 5 * Time.minutes.toMilliseconds;
 		const MAX_TIMEOUT_MS = 10 * Time.minutes.toMilliseconds;
 
 		/**
 		 * Verify that the user has access to the workflow that owns this execution.
+		 * Reads require `execution:read`, as in the executions API, because a
+		 * custom role can grant `workflow:read` without it.
 		 * Returns the execution or throws "not found" if unauthorized/missing.
 		 */
 		const assertExecutionAccess = async (
 			executionId: string,
-			scopes: Scope[] = ['workflow:read'],
+			scopes: Scope[] = ['workflow:read', 'execution:read'],
 		) => {
-			const execution = await executionRepository.findSingleExecution(executionId, {
-				includeData: false,
-			});
+			// An engine v2 execution has a UUID id and lives only on the data plane.
+			if (isExecutionIdV2(executionId)) {
+				const execution = await loadEngineV2ExecutionMetadataForViewer(executionId, user, scopes);
+				if (!execution) {
+					throw new Error(`Execution ${executionId} not found`);
+				}
+				return execution;
+			}
+
+			// A manual execution that n8n did not save stays readable only for the user who
+			// started it, until pruning hard-deletes it.
+			const execution =
+				(await executionRepository.findSingleExecution(executionId, { includeData: false })) ??
+				(await findUnsavedManualExecutionForViewer(executionId, user));
 			if (!execution) {
 				throw new Error(`Execution ${executionId} not found`);
 			}
@@ -2103,12 +2352,105 @@ export class InstanceAiAdapterService {
 			return execution;
 		};
 
+		/**
+		 * Load an execution's data for the agent, redacted for this user. Only call
+		 * it after `assertExecutionAccess`, or for a run this adapter started.
+		 */
+		const loadExecution = async (executionId: string) => {
+			const execution = await loadExecutionForViewer(executionId, user);
+			if (!execution) {
+				throw new Error(`Execution ${executionId} not found`);
+			}
+			return execution;
+		};
+
+		/** The outcome of a run, read back for the agent. Missing data reads as `unknown`. */
+		const readOutcome = async (executionId: string, subNodeTarget?: string) => {
+			const execution = await loadExecutionForViewer(executionId, user);
+			if (!execution) {
+				return { result: { executionId, status: 'unknown' } satisfies ExecutionResult };
+			}
+			return await extractExecutionOutcome(
+				execution,
+				allowSendingParameterValues,
+				nodeTypes,
+				subNodeTarget,
+			);
+		};
+
+		/**
+		 * The v1 status of an engine v2 execution of `workflowId`. Only call it after
+		 * an access check on that workflow.
+		 */
+		const readEngineV2Status = async (executionId: ExecutionIdV2, workflowId: string) => {
+			const execution = await Container.get(EngineV2ExecutionReader).findOne(
+				executionId,
+				[workflowId],
+				{ includeData: false },
+			);
+			return execution?.status;
+		};
+
+		/**
+		 * Waits for a run this adapter started, and stops it on a timeout or an
+		 * abort. An engine v2 run never registers in `ActiveExecutions`, so the
+		 * wait polls the data plane for it.
+		 */
+		const waitForRun = async (args: {
+			executionId: string;
+			workflowId: string;
+			timeoutMs: number;
+			abortSignal?: AbortSignal;
+		}) => {
+			const { executionId, workflowId, timeoutMs, abortSignal } = args;
+			if (!isExecutionIdV2(executionId)) {
+				return await waitForInstanceAiExecution({
+					activeExecutions,
+					executionId,
+					timeoutMs,
+					abortSignal,
+				});
+			}
+
+			return await waitForEngineV2Execution({
+				readStatus: async () => await readEngineV2Status(executionId, workflowId),
+				stop: async () => {
+					await Container.get(EngineDataPlaneProxyService).cancelExecution(executionId);
+				},
+				timeoutMs,
+				abortSignal,
+			});
+		};
+
+		/**
+		 * Stops an engine v2 execution. The engine decides the race against the end
+		 * of the run, so its answer wins over `status`.
+		 */
+		const stopEngineV2Execution = async (executionId: ExecutionIdV2, status: string) => {
+			const notRunning = {
+				success: false,
+				message: `Execution ${executionId} is not currently running`,
+			};
+			if (!isEngineV2ExecutionUnsettled(status)) return notRunning;
+
+			try {
+				const outcome = await Container.get(EngineDataPlaneProxyService).cancelExecution(
+					executionId,
+				);
+				return outcome?.cancelled
+					? { success: true, message: `Execution ${executionId} cancelled` }
+					: notRunning;
+			} catch {
+				return { success: false, message: `Failed to cancel execution ${executionId}` };
+			}
+		};
+
 		return {
 			async list(options) {
-				const scope: Scope = 'workflow:read';
+				const scope: Scope = 'execution:read';
 
 				// Visibility from role scopes, not the sharing license — mirrors
-				// ExecutionService.buildSharingOptions and the REST executions list.
+				// ExecutionListService.buildSharingOptions and the REST executions list.
 				const projectRoles = await roleService.rolesWithScope('project', [scope]);
 				const workflowRoles = await roleService.rolesWithScope('workflow', [scope]);
 				const sharingOptions: ExecutionSummaries.RangeQuery['sharingOptions'] = {
@@ -2140,7 +2482,11 @@ export class InstanceAiAdapterService {
 						: {}),
 				};
 
-				const executions = await executionRepository.findManyByRangeQuery(query);
+				// With the engine-v2 module on, the executions of both engines merge into
+				// one list, as on the executions page.
+				const executions = Container.get(EngineDataPlaneProxyService).isAvailable()
+					? (await Container.get(ExecutionListService).findPageWithCount(query)).results
+					: await executionRepository.findManyByRangeQuery(query);
 
 				return executions.map(
 					(e): InstanceAiExecutionSummary => ({
@@ -2158,6 +2504,7 @@ export class InstanceAiAdapterService {
 
 			async run(workflowId: string, inputData, options) {
 				assertNotReadOnly();
+				await assertWorkflowInBoundProject(workflowId);
 				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:execute',
 				]);
@@ -2185,6 +2532,14 @@ export class InstanceAiAdapterService {
 					? omitWorkflowConnections(workflow.connections, options.omitConnections)
 					: workflow.connections;
 
+				const credentialRefusal = await findCredentialRefusal(workflowId, nodes, user.id);
+
+				// A verification run tests the workflow logic, not the passage of time.
+				// Without this, each retry or throttle wait adds its real duration.
+				const waits = options?.isVerificationRun
+					? skipTimeBasedWaits(nodes)
+					: { nodes, skippedNodeNames: [] };
+
 				// Force-save AI-initiated executions so that follow-up
 				// `executions(list/get/debug)` calls can read the result, regardless of
 				// instance-wide or per-workflow save settings. Manual mode is gated by
@@ -2194,6 +2549,7 @@ export class InstanceAiAdapterService {
 					executionMode: triggerNode ? getExecutionModeForTrigger(triggerNode) : 'manual',
 					workflowData: {
 						...workflow,
+						nodes: waits.nodes,
 						connections,
 						settings: {
 							...workflow.settings,
@@ -2215,7 +2571,11 @@ export class InstanceAiAdapterService {
 					// attempt would dispatch the user's error workflow as if production
 					// had broken — the one side effect node simulation cannot pin, since
 					// it is dispatched by the execution lifecycle, not by a node.
-					...(options?.isVerificationRun ? { suppressErrorWorkflow: true } : {}),
+					// A run the credential check refuses never starts, so it must not
+					// alert the owner as a production failure either.
+					...(options?.isVerificationRun || credentialRefusal
+						? { suppressErrorWorkflow: true }
+						: {}),
 				};
 
 				const pinDataPlan = buildInstanceAiRunPinDataPlan({
@@ -2239,6 +2599,16 @@ export class InstanceAiAdapterService {
 					// Persist pin data in executionData so queued workers can hydrate
 					// verification fixtures while starting from the trigger node.
 					runData.executionData = pinDataPlan.triggerExecutionData;
+				}
+
+				// Engine v2 drops pin data outside manual mode and cannot start a run at a
+				// pinned node. So a v2 run is always manual and names its trigger, and the
+				// engine reads the trigger output from the pin data.
+				if (workflow.settings?.engineType === 'v2') {
+					runData.executionMode = 'manual';
+					runData.startNodes = undefined;
+					runData.executionData = undefined;
+					if (triggerNode) runData.triggerToStartFrom = { name: triggerNode.name };
 				}
 
 				runData.source = 'instance_ai';
@@ -2305,6 +2675,12 @@ export class InstanceAiAdapterService {
 					});
 				};
 
+				const refused = !credentialRefusal && (await refuseWithoutOwnAccess(nodes, user.id));
+				if (refused) {
+					trackBuilderExecutedWorkflow('error', refused.telemetryError);
+					return refused.result;
+				}
+
 				try {
 					const executionId = await workflowRunner.run(runData);
 					const pruneVerificationPins = async (executedNodeNames?: string[]) => {
@@ -2318,15 +2694,15 @@ export class InstanceAiAdapterService {
 						} catch (error) {
 							logger.warn('Failed to prune verification pin data from execution', {
 								executionId,
-								error: error instanceof Error ? error.message : String(error),
+								error: ensureError(error).message,
 							});
 						}
 					};
 
 					// Wait for completion with timeout / abort protection
-					const waitOutcome = await waitForInstanceAiExecution({
-						activeExecutions,
+					const waitOutcome = await waitForRun({
 						executionId,
+						workflowId,
 						timeoutMs,
 						abortSignal: options?.abortSignal,
 					});
@@ -2342,10 +2718,9 @@ export class InstanceAiAdapterService {
 						return result;
 					}
 
-					const { result, telemetryError } = await extractExecutionOutcome(
-						executionId,
-						allowSendingParameterValues,
-						nodeTypes,
+					const { result, telemetryError } = withCredentialRefusal(
+						await readOutcome(executionId),
+						credentialRefusal,
 					);
 					await pruneVerificationPins(result.executedNodeNames);
 					trackBuilderExecutedWorkflow(result.status, telemetryError);
@@ -2359,25 +2734,29 @@ export class InstanceAiAdapterService {
 							Object.hasOwn(pinDataPlan.verificationPinData, triggerNode.name))
 							? triggerNode.name
 							: undefined;
+					// Report only the waits this run reached; the rest never executed.
+					const reachedNodeNames = new Set(result.executedNodeNames);
+					const skippedWaitNodeNames = waits.skippedNodeNames.filter((name) =>
+						reachedNodeNames.has(name),
+					);
 					return {
 						...result,
 						...(workflowPinnedNodeNames.length > 0 ? { workflowPinnedNodeNames } : {}),
 						...(injectedTriggerNodeName ? { injectedTriggerNodeName } : {}),
+						...(skippedWaitNodeNames.length > 0 ? { skippedWaitNodeNames } : {}),
 					};
 				} catch (error) {
 					// A failure to launch (or any other unsettled error) is still an
 					// errored builder run — track it before rethrowing so it isn't
 					// silently dropped from telemetry.
-					trackBuilderExecutedWorkflow(
-						'error',
-						error instanceof Error ? error.message : String(error),
-					);
+					trackBuilderExecutedWorkflow('error', ensureError(error).message);
 					throw error;
 				}
 			},
 
 			async runStep(workflowId: string, nodeName: string, options) {
 				assertNotReadOnly();
+				await assertWorkflowInBoundProject(workflowId);
 				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:execute',
 				]);
@@ -2390,17 +2769,24 @@ export class InstanceAiAdapterService {
 				// while the execution still belongs to the workflow.
 				let nodes: INode[] = workflow.nodes ?? [];
 				let connections: IConnections = workflow.connections ?? {};
+				let settings = workflow.settings;
+				let ranVersionId = workflow.versionId;
 				const versionId = options?.versionId;
 				if (versionId !== undefined && versionId !== workflow.versionId) {
 					const version = await workflowHistoryService.getVersion(user, workflowId, versionId);
 					nodes = version.nodes ?? [];
 					connections = version.connections ?? {};
+					settings = Container.get(WorkflowVersionedSettingsService).forVersionRun(
+						workflow.settings,
+						version,
+					);
+					ranVersionId = version.versionId;
 				}
 
 				const target = nodes.find((node) => node.name === nodeName);
 				if (!target) {
 					throw new UserError(
-						`The workflow has no node named "${nodeName}". Use workflow_builder_workflows(action="get-as-code") to see the node names.`,
+						`The workflow has no node named "${nodeName}". Use get_workflow_as_code to see the node names.`,
 					);
 				}
 				if (target.disabled) {
@@ -2418,10 +2804,14 @@ export class InstanceAiAdapterService {
 							`Execution ${options.reuseExecutionId} belongs to a different workflow.`,
 						);
 					}
-					const stored = await executionPersistence.findSingleExecution(options.reuseExecutionId, {
-						includeData: true,
-						unflattenData: true,
-					});
+					const stored = await loadExecutionForViewer(options.reuseExecutionId, user);
+					// Replaying the empty items of a redacted run would hand the target
+					// invented input, and the new run would carry the data on unredacted.
+					if (stored && getExecutionRedaction(stored)) {
+						throw new UserError(
+							`n8n redacted the data of execution ${options.reuseExecutionId} for this user, so it cannot be replayed. Omit reuseExecutionId to run the chain, or pass mockInput.`,
+						);
+					}
 					// An execution with no stored run data still counts as a request to
 					// replay: `planStepRun` has to see the empty set to refuse the run
 					// rather than fall back to running the chain.
@@ -2435,7 +2825,7 @@ export class InstanceAiAdapterService {
 					targetName: nodeName,
 					mockItems: options?.mockInput ? toExecutionItems(options.mockInput) : undefined,
 					priorRunData,
-					pinnedNodeNames: Object.keys(workflow.pinData ?? {}),
+					pinData: workflow.pinData,
 				});
 
 				// The caller asked to keep the nodes above the target out of the run and
@@ -2480,7 +2870,7 @@ export class InstanceAiAdapterService {
 						throw new UserError(
 							`Node "${nodeName}" holds several tools, and a step run cannot pick one of them. ` +
 								`Run ${roots} instead, then read this node with ` +
-								'workflow_builder_executions(action="get-node-output") on that execution: it holds what every ' +
+								'get_execution_node_output on that execution: it holds what every ' +
 								'tool call returned.',
 						);
 					}
@@ -2495,7 +2885,7 @@ export class InstanceAiAdapterService {
 							`Node "${nodeName}" runs through ${roots}, and ${upper} runs above another of them, ` +
 								`so a step run would run ${upper} and the nodes after it again. ` +
 								`Run ${upper} instead, then read this node with ` +
-								'workflow_builder_executions(action="get-node-output") on that execution: it holds what every ' +
+								'get_execution_node_output on that execution: it holds what every ' +
 								'tool call returned.',
 						);
 					}
@@ -2548,8 +2938,9 @@ export class InstanceAiAdapterService {
 						...workflow,
 						nodes,
 						connections,
+						versionId: ranVersionId,
 						settings: {
-							...workflow.settings,
+							...settings,
 							saveManualExecutions: true,
 							saveDataSuccessExecution: 'all',
 							saveDataErrorExecution: 'all',
@@ -2663,12 +3054,19 @@ export class InstanceAiAdapterService {
 					};
 				};
 
+				const credentialRefusal = await findCredentialRefusal(workflowId, nodes, user.id);
+				const refused = !credentialRefusal && (await refuseWithoutOwnAccess(nodes, user.id));
+				if (refused) {
+					trackStepRun('error', refused.telemetryError);
+					return describe(refused.result);
+				}
+
 				try {
 					const executionId = await workflowRunner.run(runData);
 
-					const waitOutcome = await waitForInstanceAiExecution({
-						activeExecutions,
+					const waitOutcome = await waitForRun({
 						executionId,
+						workflowId,
 						timeoutMs,
 						abortSignal: options?.abortSignal,
 					});
@@ -2682,43 +3080,59 @@ export class InstanceAiAdapterService {
 						});
 					}
 
-					const { result, telemetryError } = await extractExecutionOutcome(
-						executionId,
-						allowSendingParameterValues,
-						nodeTypes,
-						// A tool ran through the virtual Tool Executor. Report the run
-						// under the node the caller named, which is the one they can open.
-						plan.rootNodeNames ? nodeName : undefined,
+					const { result, telemetryError } = withCredentialRefusal(
+						await readOutcome(
+							executionId,
+							// A tool ran through the virtual Tool Executor. Report the run
+							// under the node the caller named, which is the one they can open.
+							plan.rootNodeNames ? nodeName : undefined,
+						),
+						credentialRefusal,
 					);
 					trackStepRun(result.status, telemetryError);
 					return describe(result);
 				} catch (error) {
-					trackStepRun('error', error instanceof Error ? error.message : String(error));
+					trackStepRun('error', ensureError(error).message);
 					throw error;
 				}
 			},
 
 			async getStatus(executionId: string) {
-				await assertExecutionAccess(executionId);
-				const isRunning = activeExecutions.has(executionId);
+				const execution = await assertExecutionAccess(executionId);
+				const isRunning = isExecutionIdV2(executionId)
+					? isEngineV2ExecutionUnsettled(execution.status)
+					: activeExecutions.has(executionId);
 				if (isRunning) {
 					return { executionId, status: 'running' } satisfies ExecutionResult;
 				}
-				return await extractExecutionResult(executionId, allowSendingParameterValues, nodeTypes);
+				return (await readOutcome(executionId)).result;
 			},
 
 			async getResult(executionId: string) {
-				await assertExecutionAccess(executionId);
+				const execution = await assertExecutionAccess(executionId);
 				// If still running, wait for it to complete
-				if (activeExecutions.has(executionId)) {
+				if (isExecutionIdV2(executionId)) {
+					// The poll has a bound, because it cannot wait on a promise as v1
+					// does. A run that is still going reads as running.
+					if (isEngineV2ExecutionUnsettled(execution.status)) {
+						await pollEngineV2Execution({
+							readStatus: async () => await readEngineV2Status(executionId, execution.workflowId),
+							timeoutMs: DEFAULT_TIMEOUT_MS,
+						});
+					}
+				} else if (activeExecutions.has(executionId)) {
 					await activeExecutions.getPostExecutePromise(executionId);
 				}
-				return await extractExecutionResult(executionId, allowSendingParameterValues, nodeTypes);
+				return (await readOutcome(executionId)).result;
 			},
 
 			async stop(executionId: string) {
 				assertNotReadOnly();
-				await assertExecutionAccess(executionId, ['workflow:execute']);
+				const execution = await assertExecutionAccess(executionId, ['workflow:execute']);
+				await assertWorkflowInBoundProject(execution.workflowId);
+				if (isExecutionIdV2(executionId)) {
+					return await stopEngineV2Execution(executionId, execution.status);
+				}
 				if (!activeExecutions.has(executionId)) {
 					return {
 						success: false,
@@ -2742,7 +3156,11 @@ export class InstanceAiAdapterService {
 
 			async getDebugInfo(executionId: string) {
 				await assertExecutionAccess(executionId);
-				return await extractExecutionDebugInfo(executionId, allowSendingParameterValues, nodeTypes);
+				const execution = await loadExecutionForViewer(executionId, user);
+				if (!execution) {
+					return { executionId, status: 'unknown', nodeTrace: [] } satisfies ExecutionDebugInfo;
+				}
+				return await extractExecutionDebugInfo(execution, allowSendingParameterValues, nodeTypes);
 			},
 
 			async getNodeOutput(executionId, nodeName, options) {
@@ -2757,7 +3175,12 @@ export class InstanceAiAdapterService {
 					} satisfies NodeOutputResult;
 				}
 
-				return await extractNodeOutput(executionId, nodeName, options, nodeTypes);
+				return await extractNodeOutput(
+					await loadExecution(executionId),
+					nodeName,
+					options,
+					nodeTypes,
+				);
 			},
 
 			getResolvedNodeParameters: async (
@@ -2780,7 +3203,12 @@ export class InstanceAiAdapterService {
 					} satisfies ResolvedNodeParametersResult;
 				}
 
-				return await extractResolvedNodeParameters(nodeTypes, executionId, nodeName, options);
+				return await extractResolvedNodeParameters(
+					nodeTypes,
+					await loadExecution(executionId),
+					nodeName,
+					options,
+				);
 			},
 		};
 	}
@@ -2790,24 +3218,26 @@ export class InstanceAiAdapterService {
 		boundProjectId?: string,
 		getCredentialIdAllowlist?: () => string[] | undefined,
 		shouldBypassCredentialTest?: (credentialId: string) => boolean,
-		getCredentialTestTarget?: (credentialType: string) => EvalCredentialTestTarget | undefined,
+		getCredentialTestTarget?: (credentialType: string) => AssistantCredentialTestTarget | undefined,
 	): InstanceAiCredentialService {
 		const {
 			credentialsService,
 			credentialsFinderService,
 			loadNodesAndCredentials,
 			aiGatewayService,
+			nodeTypes,
 		} = this;
 		const getGatewayConfig = async () => await this.getGatewayConfigOrNull();
+		const { assertCredentialInBoundProject } = this.createProjectScopeHelpers(user, boundProjectId);
 
 		const adapter: InstanceAiCredentialService = {
 			async list(options) {
 				// In a project-bound thread the credential list is always the bound
-				// project's usable set (project-shared + global) — the same intersection
-				// `preventTampering` (workflow.service.ee.ts) accepts. A caller-supplied
+				// project's usable set, narrowed to the user's own access. `preventTampering`
+				// (workflow.service.ee.ts) accepts all of it. A caller-supplied
 				// workflowId/projectId must not broaden it.
 				if (boundProjectId) {
-					const scoped = await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
+					const scoped = await credentialsService.getCredentialsAUserCanUseThemselves(user, {
 						projectId: boundProjectId,
 					});
 					const filtered = options?.type ? scoped.filter((c) => c.type === options.type) : scoped;
@@ -2826,10 +3256,10 @@ export class InstanceAiAdapterService {
 				// candidates still match what the save path will accept.
 				if (options?.workflowId || options?.projectId) {
 					const scoped = options.workflowId
-						? await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
+						? await credentialsService.getCredentialsAUserCanUseThemselves(user, {
 								workflowId: options.workflowId,
 							})
-						: await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
+						: await credentialsService.getCredentialsAUserCanUseThemselves(user, {
 								projectId: options.projectId!,
 							});
 
@@ -2872,7 +3302,13 @@ export class InstanceAiAdapterService {
 				} satisfies CredentialDetail;
 			},
 
+			async updateDescription(credentialId, description) {
+				await assertCredentialInBoundProject(credentialId, { requireOwner: true });
+				await credentialsService.updateDescription(user, credentialId, description);
+			},
+
 			async delete(credentialId: string) {
+				await assertCredentialInBoundProject(credentialId);
 				await credentialsService.delete(user, credentialId);
 			},
 
@@ -2896,7 +3332,12 @@ export class InstanceAiAdapterService {
 				// indistinguishable from a genuine pass on purpose — a hint that it was
 				// bypassed would make the agent hedge, which is the very behaviour such a
 				// case exists to rule out. The harness records the bypass on its own side.
-				if (shouldBypassCredentialTest?.(credentialId) === true) {
+				// A type n8n cannot test (Header Auth, say) is not bypassed: the real test
+				// below returns production's "No testing function found" without a request.
+				if (
+					shouldBypassCredentialTest?.(credentialId) === true &&
+					credentialsService.hasConnectionTest(credential.type)
+				) {
 					return { success: true, message: 'Connection tested successfully' };
 				}
 
@@ -3202,6 +3643,34 @@ export class InstanceAiAdapterService {
 				return config?.credentialTypes.includes(credType) ?? false;
 			},
 
+			async getAiGatewayNodeRejection(node, credType) {
+				const config = await getGatewayConfig();
+				if (!config?.credentialTypes.includes(credType)) return undefined;
+				const parameters = (node.parameters ?? {}) as INodeParameters;
+				// The engine applies node defaults before it runs this check, so a node
+				// that relies on its default action is judged by that action.
+				let resolvedParameters: INodeParameters | undefined;
+				try {
+					const { description } = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+					resolvedParameters = resolveDisplayedDefaults(
+						description.properties,
+						parameters,
+						node.type,
+						node.typeVersion,
+						description,
+					);
+				} catch {
+					// Unknown node type: the engine also keeps the raw parameters.
+				}
+				const result = checkAiGatewayEligibility(
+					{ type: node.type, typeVersion: node.typeVersion, parameters },
+					credType,
+					config,
+					resolvedParameters,
+				);
+				return result.eligible ? undefined : (result.details ?? result.reason);
+			},
+
 			async getAiGatewayWallet(): Promise<{ balance: number } | null> {
 				if (!aiGatewayService.isEnabled()) return null;
 				try {
@@ -3250,9 +3719,11 @@ export class InstanceAiAdapterService {
 	private createEvaluationConfigAdapter(
 		evaluationConfigService: EvaluationConfigService,
 		user: User,
+		boundProjectId?: string,
 	): InstanceAiEvaluationConfigService {
 		const { workflowFinderService, credentialsFinderService, llmJudgeProviderRegistry } = this;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('evaluations');
+		const { assertWorkflowInBoundProject } = this.createProjectScopeHelpers(user, boundProjectId);
 
 		const findWorkflow = async (
 			workflowId: string,
@@ -3294,6 +3765,7 @@ export class InstanceAiAdapterService {
 			},
 			async create(workflowId, input) {
 				assertNotReadOnly();
+				await assertWorkflowInBoundProject(workflowId);
 				const workflow = await findWorkflow(workflowId, 'workflow:update');
 				const resolved = await resolveProviders(input);
 				const config = await evaluationConfigService.create(
@@ -3306,6 +3778,7 @@ export class InstanceAiAdapterService {
 			},
 			async update(workflowId, configId, input) {
 				assertNotReadOnly();
+				await assertWorkflowInBoundProject(workflowId);
 				const workflow = await findWorkflow(workflowId, 'workflow:update');
 				const resolved = await resolveProviders(input);
 				const config = await evaluationConfigService.update(
@@ -3319,8 +3792,95 @@ export class InstanceAiAdapterService {
 			},
 			async delete(workflowId, configId) {
 				assertNotReadOnly();
+				await assertWorkflowInBoundProject(workflowId);
 				await findWorkflow(workflowId, 'workflow:update');
 				await evaluationConfigService.delete(workflowId, configId);
+			},
+		};
+	}
+
+	private createAppAdapter(
+		user: User,
+		projectId?: string,
+		threadId?: string,
+	): InstanceAiAppService | undefined {
+		if (!projectId || !Container.get(ModuleRegistry).isActive('apps')) return undefined;
+		const { assertProjectScope } = this.createProjectScopeHelpers(user, projectId);
+		const actor = { userId: user.id, threadId };
+		const services = async (scope: Scope) => {
+			if (scope === 'app:create' || scope === 'app:update') this.assertInstanceNotReadOnly('apps');
+			await assertProjectScope([scope], projectId);
+			const { AppsService, AppSourceArchiveService, AppBindingsService, renderBindingTypes } =
+				await import('@n8n/backend-module-apps');
+			return {
+				apps: Container.get(AppsService),
+				sources: Container.get(AppSourceArchiveService),
+				bindings: () => Container.get(AppBindingsService),
+				renderBindingTypes,
+			};
+		};
+
+		return {
+			createApp: async ({ name, namespace, visibility, id }) => {
+				const { apps } = await services('app:create');
+				try {
+					return await apps.createApp(
+						projectId,
+						CreateAppDto.parse({ name, namespace, visibility }),
+						{ id, actor },
+					);
+				} catch (error) {
+					// The namespace is the only unique field that the user picks.
+					if (error instanceof ConflictError) throw new AppNamespaceTakenError(namespace);
+					throw error;
+				}
+			},
+			listApps: async ({ name }) => {
+				const { apps } = await services('app:list');
+				return await apps.listApps(projectId, ListAppsQueryDto.parse({ name, take: '50' }));
+			},
+			getApp: async (appId) => {
+				const { apps } = await services('app:read');
+				return await apps.getApp(projectId, appId);
+			},
+			findApp: async (appId) => {
+				const { apps } = await services('app:read');
+				try {
+					return await apps.getApp(projectId, appId);
+				} catch (error) {
+					if (error instanceof NotFoundError) return undefined;
+					throw error;
+				}
+			},
+			exportDraft: async (appId) => {
+				const { sources } = await services('app:read');
+				return await sources.exportDraft(projectId, appId);
+			},
+			commit: async (appId, baseVersionId, archive, label) => {
+				const { sources } = await services('app:update');
+				return await sources.commit(projectId, appId, baseVersionId, archive, label, actor);
+			},
+			getBindings: async (appId) => {
+				const { bindings, renderBindingTypes } = await services('app:read');
+				const result = await bindings().getBindings(projectId, appId);
+				return { ...result, types: renderBindingTypes(result.bindings) };
+			},
+			setBindings: async (appId, baseVersionId, next) => {
+				const { bindings, renderBindingTypes } = await services('app:update');
+				const dto = SetAppBindingsDto.parse({ baseVersionId, bindings: next });
+				const result = await bindings().setBindings(
+					user,
+					projectId,
+					appId,
+					dto.baseVersionId,
+					dto.bindings,
+					{ threadId, source: 'assistant' },
+				);
+				return { ...result, types: renderBindingTypes(result.bindings) };
+			},
+			exportSdk: async () => {
+				const { sources } = await services('app:read');
+				return await sources.exportSdk();
 			},
 		};
 	}
@@ -3329,10 +3889,8 @@ export class InstanceAiAdapterService {
 		const { dataTableService, dataTableRepository } = this;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('data tables');
 
-		const { resolveProjectId, resolveBoundProjectId } = this.createProjectScopeHelpers(
-			user,
-			boundProjectId,
-		);
+		const { resolveProjectId, resolveBoundProjectId, assertInBoundProject } =
+			this.createProjectScopeHelpers(user, boundProjectId);
 
 		const logger = this.logger;
 
@@ -3355,11 +3913,13 @@ export class InstanceAiAdapterService {
 				accessFilter: async (id) => await userHasScopes(user, scopes, false, { dataTableId: id }),
 			});
 			if (result.kind === 'miss') {
-				throw new Error(`Data table "${dataTableId}" not found`);
+				throw new UserError(
+					`Data table "${dataTableId}" not found. Check the name or ID, or run list_data_tables to find the table.`,
+				);
 			}
 			if (result.kind === 'ambiguous') {
 				const projectIds = result.candidates.map((c) => c.projectId).join(', ');
-				throw new Error(
+				throw new UserError(
 					`Data table name "${dataTableId}" is ambiguous across accessible projects ` +
 						`(${projectIds}); pass the UUID or include a \`projectId\` to disambiguate.`,
 				);
@@ -3368,8 +3928,9 @@ export class InstanceAiAdapterService {
 			// disambiguator points at a different project. Never silently drop
 			// the projectId — return mismatch so the caller fixes the call.
 			if (projectIdFilter && result.table.projectId !== projectIdFilter) {
-				throw new Error(
-					`Data table "${dataTableId}" does not belong to project "${projectIdFilter}".`,
+				throw new UserError(
+					`Data table "${dataTableId}" does not belong to project "${projectIdFilter}". ` +
+						'Pass the table ID without a `projectId`, or pass the project that owns the table.',
 				);
 			}
 			return result.table;
@@ -3444,6 +4005,7 @@ export class InstanceAiAdapterService {
 					dataTableId,
 					options,
 				);
+				assertInBoundProject(projectId);
 				await dataTableService.deleteDataTable(resolvedId, projectId);
 			},
 
@@ -3480,6 +4042,7 @@ export class InstanceAiAdapterService {
 					dataTableId,
 					options,
 				);
+				assertInBoundProject(projectId);
 				const result = await dataTableService.addColumn(resolvedId, projectId, column);
 				return {
 					id: result.id,
@@ -3496,6 +4059,7 @@ export class InstanceAiAdapterService {
 					dataTableId,
 					options,
 				);
+				assertInBoundProject(projectId);
 				await dataTableService.deleteColumn(resolvedId, projectId, columnId);
 			},
 
@@ -3506,6 +4070,7 @@ export class InstanceAiAdapterService {
 					dataTableId,
 					options,
 				);
+				assertInBoundProject(projectId);
 				await dataTableService.renameColumn(resolvedId, projectId, columnId, {
 					name: newName,
 				});
@@ -3530,6 +4095,7 @@ export class InstanceAiAdapterService {
 					dataTableId,
 					options,
 				);
+				assertInBoundProject(projectId);
 				const result = await dataTableService.insertRows(
 					resolvedId,
 					projectId,
@@ -3550,6 +4116,7 @@ export class InstanceAiAdapterService {
 					dataTableId,
 					options,
 				);
+				assertInBoundProject(projectId);
 				const result = await dataTableService.updateRows(
 					resolvedId,
 					projectId,
@@ -3570,6 +4137,7 @@ export class InstanceAiAdapterService {
 					dataTableId,
 					options,
 				);
+				assertInBoundProject(projectId);
 				const result = await dataTableService.deleteRows(resolvedId, projectId, { filter }, true);
 				return {
 					deletedCount: Array.isArray(result) ? result.length : 0,
@@ -3631,55 +4199,28 @@ export class InstanceAiAdapterService {
 			async fetchUrl(
 				url: string,
 				options?: {
-					maxContentLength?: number;
 					maxResponseBytes?: number;
 					timeoutMs?: number;
 					abortSignal?: AbortSignal;
-					authorizeUrl?: (targetUrl: string) => Promise<void>;
+					authorizeUrl?: (url: string) => Promise<void>;
 				},
 			) {
-				const cacheKey = `${userId}:${url}`;
-
-				// Check cache first
-				const cached = fetchCache.get(cacheKey);
-				if (cached) {
-					// If cached result redirected to a different host, authorize it
-					if (options?.authorizeUrl && cached.finalUrl) {
-						const origHost = new URL(url).hostname;
-						const finalHost = new URL(cached.finalUrl).hostname;
-						if (origHost !== finalHost) {
-							// Throws when the caller's domain tracker hasn't approved the
-							// redirect target — let it propagate so the tool suspends for
-							// HITL approval instead of leaking cached cross-host content.
-							await options.authorizeUrl(cached.finalUrl);
-						}
-					}
-					return cached;
-				}
-
 				const authorizeUrl = options?.authorizeUrl;
-				const transport = authorizeUrl
-					? outboundHttp.transport({
-							useDefaultSsrfPolicy: 'enforced',
-							authorize: async (target: URL) => await authorizeUrl(target.href),
-						})
-					: sharedTransport;
-
-				const page = await fetchAndExtract(url, {
-					maxContentLength: options?.maxContentLength,
-					maxResponseBytes: options?.maxResponseBytes,
-					timeoutMs: options?.timeoutMs,
-					abortSignal: options?.abortSignal,
-					transport,
-				});
-
-				// Attempt summarization (truncation fallback — no model injection yet)
-				const result = await maybeSummarize(page);
-
-				// Cache the result
-				fetchCache.set(cacheKey, result);
-
-				return result;
+				const load = async () => {
+					const transport = authorizeUrl
+						? outboundHttp.transport({
+								useDefaultSsrfPolicy: 'enforced',
+								authorize: async (target: URL) => await authorizeUrl(target.href),
+							})
+						: sharedTransport;
+					return await fetchAndExtract(url, {
+						maxResponseBytes: options?.maxResponseBytes,
+						timeoutMs: options?.timeoutMs,
+						abortSignal: options?.abortSignal,
+						transport,
+					});
+				};
+				return await fetchCachedPage({ cache: fetchCache, userId, url, load, authorizeUrl });
 			},
 		};
 	}
@@ -3709,6 +4250,7 @@ export class InstanceAiAdapterService {
 			const { abortSignal: _abortSignal, ...cacheable } = options ?? {};
 			return `${keyPrefix}${JSON.stringify([query, cacheable])}`;
 		};
+		const searchFetch = createWebSearchFetch(this.outboundHttp);
 
 		// When the AI service proxy is enabled (licensed instance), search always goes
 		// through the proxy which provides managed Brave Search with credit tracking.
@@ -3734,7 +4276,7 @@ export class InstanceAiAdapterService {
 				const cached = cache.get(cacheKey);
 				if (cached) return cached;
 
-				const result = await braveSearch(apiKey, query, options ?? {});
+				const result = await braveSearch(apiKey, query, options ?? {}, searchFetch);
 				cache.set(cacheKey, result);
 				return result;
 			};
@@ -3746,7 +4288,7 @@ export class InstanceAiAdapterService {
 				const cached = cache.get(cacheKey);
 				if (cached) return cached;
 
-				const result = await searxngSearch(searxngUrl, query, options ?? {});
+				const result = await searxngSearch(searxngUrl, query, options ?? {}, searchFetch);
 				cache.set(cacheKey, result);
 				return result;
 			};
@@ -3772,7 +4314,13 @@ export class InstanceAiAdapterService {
 		return this.nodeCatalogService ?? Container.get(NodeCatalogService);
 	}
 
-	private createNodeAdapter(user: User): InstanceAiNodeService {
+	/** `shouldBypassCredentialTest` (eval-only) marks a credential the harness treats as
+	 *  connected; its live resource lookups are answered as unavailable. */
+	private createNodeAdapter(
+		user: User,
+		boundProjectId?: string,
+		shouldBypassCredentialTest?: (credentialId: string) => boolean,
+	): InstanceAiNodeService {
 		// Use the service-level cache instead of a per-adapter closure.
 		// This avoids each run retaining its own ~31 MB copy of node descriptions.
 		const getAllNodes = async () => await this.getNodesFromCache();
@@ -3987,12 +4535,37 @@ export class InstanceAiAdapterService {
 						...(mode ? { mode } : {}),
 					});
 
-				const result = await getDefinition(nodeType);
-				const unavailable = getUnavailableNotice(nodeType);
-				if (unavailable && !result.error) return { ...result, unavailable };
-				if (!result.error || nodeType.includes('.')) return result;
+				const enrichDefinition = async (
+					nodeId: string,
+					defResult: Awaited<ReturnType<typeof getDefinition>>,
+				) => {
+					if (defResult.error) return defResult;
+					const [nodes, gatewayConfig] = await Promise.all([getAllNodes(), getGatewayConfig()]);
+					const parsedVersion = version ? Number.parseFloat(version.replace(/^v/i, '')) : undefined;
+					const desc = findNodeByVersion(
+						nodes,
+						nodeId,
+						Number.isFinite(parsedVersion) ? parsedVersion : undefined,
+					);
+					const meta = buildMeta(gatewayConfig, desc?.name ?? nodeId);
+					const unavailable = getUnavailableNotice(nodeId);
+					return {
+						...defResult,
+						...(unavailable ? { unavailable } : {}),
+						...(meta ? { aiGateway: meta } : {}),
+						...(desc?.webhooks ? { webhooks: desc.webhooks } : {}),
+						...(desc?.polling ? { polling: desc.polling } : {}),
+						...(desc?.triggerPanel !== undefined ? { triggerPanel: desc.triggerPanel } : {}),
+					};
+				};
 
-				return await getDefinition(`${MCP_REGISTRY_PACKAGE_NAME}.${nodeType}`);
+				const result = await getDefinition(nodeType);
+				if (!result.error || nodeType.includes('.')) {
+					return await enrichDefinition(nodeType, result);
+				}
+
+				const registryId = `${MCP_REGISTRY_PACKAGE_NAME}.${nodeType}`;
+				return await enrichDefinition(registryId, await getDefinition(registryId));
 			},
 
 			listDiscriminators: async (nodeType) => {
@@ -4152,8 +4725,45 @@ export class InstanceAiAdapterService {
 				}
 			},
 
-			exploreResources: async (params: ExploreResourcesParams): Promise<ExploreResourcesResult> =>
-				await this.nodeResourceExplorerService.exploreResources(user, params),
+			exploreResources: async (params: ExploreResourcesParams): Promise<ExploreResourcesResult> => {
+				// Eval-only: a seeded credential stands for one the user already connected, but
+				// it carries a placeholder token, so a live lookup fails with a real provider auth
+				// error and the agent tells the user the credential is broken. Answer as production
+				// does when exploration is unavailable, which gives no hint that this is an eval.
+				// Read per call: the harness registers bypasses mid-run. A seed marked broken is
+				// not on the list, so its lookup still fails for real. The access and type check
+				// still runs first, so a credential the user cannot use is rejected as usual.
+				if (shouldBypassCredentialTest?.(params.credentialId) === true) {
+					await this.nodeResourceExplorerService.assertExploreCredentialAccess(user, params);
+					throw new OperationalError(RESOURCE_EXPLORATION_UNAVAILABLE);
+				}
+				return await this.nodeResourceExplorerService.exploreResources(user, params);
+			},
+
+			resolveParameterOptions: async (
+				params: ResolveParameterOptionsParams,
+			): Promise<ResolveParameterOptionsResult> => {
+				// Eval-only: the same seeded-credential bypass as `exploreResources` above.
+				const references = getParameterOptionsCredentialReferences(params);
+				if (references.some(({ credentialId }) => shouldBypassCredentialTest?.(credentialId))) {
+					try {
+						for (const reference of references) {
+							await this.nodeResourceExplorerService.assertExploreCredentialAccess(user, reference);
+						}
+					} catch (error) {
+						return {
+							ok: false,
+							code: 'lookup_failed',
+							message: ensureError(error).message,
+						};
+					}
+					return { ok: false, code: 'lookup_failed', message: RESOURCE_EXPLORATION_UNAVAILABLE };
+				}
+				return await this.nodeResourceExplorerService.resolveParameterOptions(user, {
+					...params,
+					...(boundProjectId ? { projectId: boundProjectId } : {}),
+				});
+			},
 
 			findUnavailableLocatorValues: async (params): Promise<UnavailableLocatorValue[]> =>
 				await this.nodeResourceExplorerService.findUnavailableResourceLocatorValues(user, params),
@@ -4172,7 +4782,8 @@ export class InstanceAiAdapterService {
 			eventService,
 		} = this;
 		const assertNotReadOnly = (resource: string) => this.assertInstanceNotReadOnly(resource);
-		const { assertProjectScope } = this.createProjectScopeHelpers(user);
+		const { assertProjectScope, assertInBoundProject, assertWorkflowInBoundProject } =
+			this.createProjectScopeHelpers(user, boundProjectId);
 		const teamProjectsLicensed = this.teamProjectsLicensed();
 
 		const adapter: InstanceAiWorkspaceService = {
@@ -4218,6 +4829,7 @@ export class InstanceAiAdapterService {
 							parentFolderId?: string,
 						): Promise<FolderSummary> {
 							assertNotReadOnly('folders');
+							assertInBoundProject(projectId);
 							await assertProjectScope(['folder:create'], projectId);
 							const folder = await folderService.createFolder(
 								{ name, parentFolderId: parentFolderId ?? undefined },
@@ -4236,6 +4848,7 @@ export class InstanceAiAdapterService {
 							transferToFolderId?: string,
 						): Promise<void> {
 							assertNotReadOnly('folders');
+							assertInBoundProject(projectId);
 							await assertProjectScope(['folder:delete'], projectId);
 							await folderService.deleteFolder(user, folderId, projectId, {
 								transferToFolderId: transferToFolderId ?? undefined,
@@ -4244,6 +4857,7 @@ export class InstanceAiAdapterService {
 
 						async moveWorkflowToFolder(workflowId: string, folderId: string): Promise<void> {
 							assertNotReadOnly('workflows');
+							await assertWorkflowInBoundProject(workflowId);
 							const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 								'workflow:update',
 							]);
@@ -4260,6 +4874,7 @@ export class InstanceAiAdapterService {
 
 			async tagWorkflow(workflowId: string, tagNames: string[]): Promise<string[]> {
 				assertNotReadOnly('workflows');
+				await assertWorkflowInBoundProject(workflowId);
 				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:update',
 				]);
@@ -4315,6 +4930,7 @@ export class InstanceAiAdapterService {
 				options?: { olderThanHours?: number },
 			): Promise<{ deletedCount: number }> {
 				assertNotReadOnly('executions');
+				await assertWorkflowInBoundProject(workflowId);
 				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'execution:delete',
 				]);
@@ -4353,13 +4969,7 @@ export class InstanceAiAdapterService {
 
 				// Emit audit event (matches controller behavior)
 				eventService.emit('execution-deleted', {
-					user: {
-						id: user.id,
-						email: user.email,
-						firstName: user.firstName,
-						lastName: user.lastName,
-						role: user.role,
-					},
+					user: toUserLike(user),
 					executionIds: ids,
 					deleteBefore: cutoff,
 				});
@@ -4694,9 +5304,7 @@ function extractNodeErrors(
 		const message = failedRun.error
 			? formatExecutionError(failedRun.error, includeUpstreamDetails)
 			: failedRun.redactedError
-				? `${failedRun.redactedError.type} error${
-						failedRun.redactedError.httpCode ? ` (${failedRun.redactedError.httpCode})` : ''
-					}`
+				? formatRedactedError(failedRun.redactedError)
 				: undefined;
 		nodeErrors.push({
 			nodeName,
@@ -4708,11 +5316,60 @@ function extractNodeErrors(
 }
 
 export async function extractExecutionResult(
-	executionId: string,
+	execution: IExecutionResponse,
 	includeOutputData = true,
-	nodeTypes?: NodeTypes,
+	nodeTypes?: INodeTypes,
 ): Promise<ExecutionResult> {
-	return (await extractExecutionOutcome(executionId, includeOutputData, nodeTypes)).result;
+	return (await extractExecutionOutcome(execution, includeOutputData, nodeTypes)).result;
+}
+
+/**
+ * Put the refusal reason on a refused run's result, since redaction can reduce
+ * the saved error to its type. Telemetry gets the message without the
+ * description, as for other errors. A run that failed for another reason keeps
+ * its own error.
+ */
+function withCredentialRefusal<T extends ExecutionResult>(
+	outcome: { result: T; telemetryError?: string },
+	refusal: CredentialRefusal | undefined,
+): { result: T; telemetryError?: string } {
+	const { result } = outcome;
+	if (!refusal || result.status !== 'error') return outcome;
+	const message = refusalMessage(refusal);
+	return {
+		result: {
+			...result,
+			error: message,
+			nodeErrors: result.nodeErrors?.map((nodeError) =>
+				nodeError.nodeName === refusal.nodeName ? { ...nodeError, message } : nodeError,
+			),
+		},
+		telemetryError: refusal.message,
+	};
+}
+
+function refusalMessage(refusal: CredentialRefusal) {
+	return [refusal.message, refusal.description].filter(Boolean).join('. ');
+}
+
+/**
+ * The project check lets an Owner or Admin use any personal credential in their
+ * personal project, but redaction would hide the result of such a run. So a run
+ * that needs a credential the user cannot use through their own access never
+ * starts, and has no execution. Telemetry gets the message only, because the
+ * description can name a project.
+ */
+async function refuseWithoutOwnAccess(
+	nodes: INode[],
+	userId: string,
+): Promise<{ result: ExecutionResult; telemetryError: string } | undefined> {
+	const refusal = await findOwnAccessCredentialRefusal(nodes, userId);
+	return (
+		refusal && {
+			result: { executionId: '', status: 'error', error: refusalMessage(refusal) },
+			telemetryError: refusal.message,
+		}
+	);
 }
 
 /** Output branches of a run that a non-main connection carried. */
@@ -4765,26 +5422,22 @@ function foldToolExecutorRun(
  * / `.messages`, which routinely echo API keys and record-level PII) *to the
  * model*, not into n8n's product analytics. So the telemetry copy is always
  * formatted with upstream details suppressed.
+ *
+ * Takes an execution that `loadExecutionForViewer` loaded, so the data is
+ * already redacted for the user.
  */
 export async function extractExecutionOutcome(
-	executionId: string,
+	execution: IExecutionResponse,
 	includeOutputData = true,
-	nodeTypes?: NodeTypes,
+	nodeTypes?: INodeTypes,
 	/**
 	 * Sub-node a step run targeted. The engine ran it through a virtual node, so
 	 * the result has to be told which node the caller actually asked for.
 	 */
 	subNodeTarget?: string,
 ): Promise<{ result: ExecutionResult; telemetryError?: string }> {
-	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
-		includeData: true,
-		unflattenData: true,
-	});
-
-	if (!execution) {
-		return { result: { executionId, status: 'unknown' } };
-	}
-
+	const executionId = execution.id;
+	const redaction = getExecutionRedaction(execution);
 	const status =
 		execution.status === 'error' || execution.status === 'crashed'
 			? 'error'
@@ -4805,7 +5458,9 @@ export async function extractExecutionOutcome(
 	const executedNodeNames = Object.keys(runData ?? {});
 	// `resultData` keeps only item JSON, so a node that outputs a file looks empty.
 	const binaryOutputNodeNames: string[] = [];
-	if (includeOutputData && runData) {
+	// Redacted items are empty objects. Reported as output, they would read as
+	// nodes that returned nothing.
+	if (includeOutputData && runData && !redaction) {
 		const workflow = buildExecutionWorkflow(execution.workflowData, nodeTypes);
 		await workflow?.expression.acquireIsolate();
 		try {
@@ -4848,7 +5503,12 @@ export async function extractExecutionOutcome(
 
 	// Extract error if present
 	const error = execution.data?.resultData?.error;
-	const errorMessage = error ? formatExecutionError(error, includeOutputData) : undefined;
+	const redactedError = execution.data?.resultData?.redactedError;
+	const errorMessage = error
+		? formatExecutionError(error, includeOutputData)
+		: redactedError
+			? formatRedactedError(redactedError)
+			: undefined;
 	const nodeErrors = extractNodeErrors(runData, includeOutputData, execution.workflowData?.nodes);
 
 	return {
@@ -4867,11 +5527,16 @@ export async function extractExecutionOutcome(
 				subNodeTarget,
 			),
 			workflowVersionId: execution.workflowVersionId,
+			...(redaction ? { redaction } : {}),
 			error: errorMessage,
 			startedAt: execution.startedAt?.toISOString(),
 			finishedAt: execution.stoppedAt?.toISOString(),
 		},
-		telemetryError: error ? formatExecutionError(error, false) : undefined,
+		telemetryError: error
+			? formatExecutionError(error, false)
+			: redactedError
+				? formatRedactedError(redactedError)
+				: undefined,
 	};
 }
 
@@ -4958,6 +5623,17 @@ function capItemsBySerializedSize<T>(items: T[], maxBytes: number): T[] {
 const EXECUTE_NODE_DETAILS_SUPPRESSED =
 	'(upstream error details suppressed by the instance AI privacy setting; ask the user to share the node error from the UI)';
 
+/** What the model can do next about a redacted one-off node run. */
+function describeExecuteNodeRedaction(reason: string): string {
+	if (reason === 'credential_inaccessible') {
+		return (
+			'The node used a credential that is not owned by or shared with the user, so n8n hides the data. ' +
+			'Do not run the node again with this credential. Use a credential that the user owns or that is shared with them.'
+		);
+	}
+	return 'n8n hides the data of every run like this one, so do not run the node again to see it. Tell the user that n8n redacted the data.';
+}
+
 /**
  * The standalone execution row is deleted after the result is read, so unlike
  * workflow runs there is no get-node-output fallback for truncated or
@@ -4967,8 +5643,31 @@ export function redactExecuteNodeResult(
 	result: ExecuteNodeResult,
 	allowSendingParameterValues: boolean,
 ): InstanceAiExecuteNodeResult {
+	if (result.status === 'redacted') {
+		// The execution row is deleted after the read, so nothing is left to reveal.
+		const redaction = { reason: result.reason, canReveal: false };
+		const guidance = describeExecuteNodeRedaction(result.reason);
+		if (result.failed) {
+			return {
+				status: 'error',
+				error: {
+					message: formatRedactedError(result.error ?? { type: '' }),
+					description: guidance,
+					...(result.error?.type ? { nodeErrorType: result.error.type } : {}),
+				},
+				redaction,
+			};
+		}
+		return {
+			status: 'success',
+			output: '',
+			outputSuppressed: `The node executed successfully, but n8n redacted its output for this user (${result.reason}). ${guidance}`,
+			redaction,
+		};
+	}
+
 	if (result.status === 'error') {
-		const { message, description, nodeErrorType } = result.error;
+		const { message, description, nodeErrorType, refused } = result.error;
 		const cappedDescription =
 			description && description.length > MAX_ERROR_CHARS
 				? `${description.slice(0, MAX_ERROR_CHARS)}…`
@@ -4977,11 +5676,13 @@ export function redactExecuteNodeResult(
 			status: 'error',
 			error: {
 				message,
-				description: allowSendingParameterValues
-					? cappedDescription
-					: description
-						? EXECUTE_NODE_DETAILS_SUPPRESSED
-						: undefined,
+				// A refusal is n8n's own text, so the privacy setting does not apply to it.
+				description:
+					allowSendingParameterValues || refused
+						? cappedDescription
+						: description
+							? EXECUTE_NODE_DETAILS_SUPPRESSED
+							: undefined,
 				nodeErrorType,
 			},
 		};
@@ -5039,7 +5740,7 @@ function capItem(item: unknown): unknown {
  */
 function buildExecutionWorkflow(
 	workflowData: IWorkflowBase | undefined,
-	nodeTypes?: NodeTypes,
+	nodeTypes?: INodeTypes,
 ): Workflow | undefined {
 	if (!workflowData || !nodeTypes) return undefined;
 	try {
@@ -5084,23 +5785,27 @@ function resolveOutputNames(workflow: Workflow | undefined, nodeName: string): s
  * Each item is capped at MAX_ITEM_CHARS to prevent a single giant JSON blob from flooding context.
  */
 export async function extractNodeOutput(
-	executionId: string,
+	execution: IExecutionResponse,
 	nodeName: string,
 	options?: { startIndex?: number; maxItems?: number },
-	nodeTypes?: NodeTypes,
+	nodeTypes?: INodeTypes,
 ): Promise<NodeOutputResult> {
-	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
-		includeData: true,
-		unflattenData: true,
-	});
-
-	if (!execution) {
-		throw new Error(`Execution ${executionId} not found`);
-	}
-
+	const executionId = execution.id;
 	const runData = execution.data?.resultData?.runData;
 	if (!runData?.[nodeName]) {
 		throw new Error(`Node "${nodeName}" not found in execution ${executionId}`);
+	}
+
+	// Redacted items are empty objects, so there is nothing to page through.
+	const redaction = getExecutionRedaction(execution);
+	if (redaction) {
+		return {
+			nodeName,
+			outputs: [],
+			totalItems: 0,
+			returned: { from: 0, to: 0 },
+			redaction,
+		};
 	}
 
 	const nodeRuns = runData[nodeName];
@@ -5285,24 +5990,11 @@ function getExecutionModeForTrigger(node: INode): WorkflowExecuteMode {
 
 /** Extract structured debug info from a completed execution. */
 export async function extractExecutionDebugInfo(
-	executionId: string,
+	execution: IExecutionResponse,
 	includeOutputData = true,
-	nodeTypes?: NodeTypes,
+	nodeTypes?: INodeTypes,
 ): Promise<ExecutionDebugInfo> {
-	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
-		includeData: true,
-		unflattenData: true,
-	});
-
-	if (!execution) {
-		return {
-			executionId,
-			status: 'unknown',
-			nodeTrace: [],
-		};
-	}
-
-	const baseResult = await extractExecutionResult(executionId, includeOutputData, nodeTypes);
+	const baseResult = await extractExecutionResult(execution, includeOutputData, nodeTypes);
 
 	const runData = execution.data?.resultData?.runData;
 	const nodeTrace: ExecutionDebugInfo['nodeTrace'] = [];
@@ -5331,6 +6023,15 @@ export async function extractExecutionDebugInfo(
 						? new Date(lastRun.startTime + lastRun.executionTime).toISOString()
 						: undefined,
 			});
+
+			// Redaction keeps only the error type, and the input items are cleared.
+			if (lastRun.redactedError !== undefined && !failedNode) {
+				failedNode = {
+					name: nodeName,
+					type: nodeType,
+					error: formatRedactedError(lastRun.redactedError),
+				};
+			}
 
 			// Capture the first failed node with its error and input data
 			if (lastRun.error !== undefined && !failedNode) {
@@ -5370,13 +6071,13 @@ export async function extractExecutionDebugInfo(
 
 	// Attach resolved-parameter view for the failed node so the agent sees both the
 	// raw expression and what it resolved to (or which expression threw).
-	if (failedNode && includeOutputData && nodeTypes) {
+	if (failedNode && includeOutputData && nodeTypes && !baseResult.redaction) {
 		try {
 			const {
 				nodeName: _omitName,
 				suppressed: _omitSuppressed,
 				...bundle
-			} = await extractResolvedNodeParameters(nodeTypes, executionId, failedNode.name, {
+			} = await extractResolvedNodeParameters(nodeTypes, execution, failedNode.name, {
 				itemIndex: failedItemIndex,
 				runIndex: failedRunIndex,
 			});
@@ -5512,49 +6213,6 @@ function sanitizeCredentialReferencesForSave(nodes: WorkflowJSON['nodes']): Work
 	});
 }
 
-function toWorkflowJSON(
-	workflow: WorkflowEntity,
-	options?: {
-		redactParameters?: boolean;
-		/** Substitute a history version's graph; id/name/settings stay from the live entity, as history rows only carry a version label. */
-		graph?: Pick<WorkflowEntity, 'nodes' | 'connections' | 'nodeGroups'>;
-	},
-): WorkflowJSON {
-	const redact = options?.redactParameters ?? false;
-	const source = options?.graph ?? workflow;
-	return {
-		id: workflow.id,
-		name: workflow.name,
-		nodes: (source.nodes ?? []).map((n) => ({
-			id: n.id ?? '',
-			name: n.name,
-			type: n.type,
-			typeVersion: n.typeVersion,
-			position: n.position,
-			parameters: redact ? {} : n.parameters,
-			credentials: n.credentials,
-			webhookId: n.webhookId,
-			disabled: n.disabled,
-			notes: n.notes,
-			notesInFlow: n.notesInFlow,
-			executeOnce: n.executeOnce,
-			retryOnFail: n.retryOnFail,
-			maxTries: n.maxTries,
-			waitBetweenTries: n.waitBetweenTries,
-			alwaysOutputData: n.alwaysOutputData,
-			// `continueOnFail` is the pre-`onError` spelling and has no SDK config field, so
-			// read it the way the editor does. An agent save writes these nodes over the saved
-			// ones, and dropping the flag would silently reset the node to `stopWorkflow`.
-			onError: n.onError ?? (n.continueOnFail ? 'continueRegularOutput' : undefined),
-			extendsCredential: n.extendsCredential,
-			customTelemetryTags: n.customTelemetryTags,
-		})),
-		connections: source.connections,
-		settings: workflow.settings as WorkflowJSON['settings'],
-		...(source.nodeGroups ? { nodeGroups: source.nodeGroups } : {}),
-	};
-}
-
 function toWorkflowDetail(
 	workflow: WorkflowEntity,
 	options?: { redactParameters?: boolean },
@@ -5581,6 +6239,11 @@ function toWorkflowDetail(
 		connections: workflow.connections,
 		settings: workflow.settings as Record<string, unknown> | undefined,
 	};
+}
+
+/** Whether a run that started at `startedAt` started before `otherStartedAt`. */
+function isOlderRun(startedAt: Date, otherStartedAt: Date | null | undefined): boolean {
+	return otherStartedAt ? startedAt.getTime() < otherStartedAt.getTime() : false;
 }
 
 async function toWorkflowDetailWithChecksum(

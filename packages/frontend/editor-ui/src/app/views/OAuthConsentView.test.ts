@@ -255,9 +255,11 @@ describe('OAuthConsentView', () => {
 		await waitAllPromises();
 
 		const allowButton = getByTestId('consent-allow-button');
-		expect(allowButton).toBeDisabled();
+		expect(allowButton).toHaveAttribute('aria-disabled', 'true');
+		expect(allowButton).not.toBeDisabled();
 
 		await userEvent.click(getByLabelText('I recognize and trust this URL'));
+		expect(allowButton).not.toHaveAttribute('aria-disabled');
 
 		expect(allowButton).not.toBeDisabled();
 	});
@@ -380,6 +382,30 @@ describe('OAuthConsentView', () => {
 					'Running this form executes its workflow using your account and any connected credentials. Only continue if you trust the creator of this form.',
 				),
 			).toBeVisible();
+		});
+
+		it('should show app sign-in copy and an app icon without workflow permissions', async () => {
+			consentStore.consentDetails = {
+				clientName: 'Sales dashboard',
+				clientId: 'app-client',
+				redirectUri: 'https://sales.apps.example.com/_n8n/auth/app-id/callback',
+				resourceName: 'Sales dashboard',
+				scopes: [],
+				isFirstParty: true,
+				uiHints: { icon: 'grid-2x2', consentType: 'app' },
+			};
+			consentStore.fetchConsentDetails.mockResolvedValue(consentStore.consentDetails);
+
+			const { getByRole, getByText, getByTestId, queryByText, queryByTestId } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByRole('heading', { name: 'Sign in to "Sales dashboard"' })).toBeVisible();
+			expect(getByText('Use your n8n account to access this app')).toBeVisible();
+			expect(getByRole('button', { name: 'Continue to app' })).toBeEnabled();
+			expect(getByTestId('consent-client-icon')).toHaveAttribute('data-icon', 'grid-2x2');
+			expect(queryByText(/executes its workflow/)).toBeNull();
+			expect(queryByText('Get a list of your workflows')).toBeNull();
+			expect(queryByTestId('consent-redirect-confirm')).toBeNull();
 		});
 	});
 
@@ -591,7 +617,7 @@ describe('OAuthConsentView', () => {
 			// Custom mode starts with an empty selection
 			await userEvent.click(getByTestId('scopes-mode-custom'));
 
-			expect(getByTestId('consent-allow-button')).toBeDisabled();
+			expect(getByTestId('consent-allow-button')).toHaveAttribute('aria-disabled', 'true');
 		});
 	});
 });

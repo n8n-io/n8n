@@ -1,11 +1,12 @@
-import type { AgentJsonTaskConfig, AgentTaskDto } from '@n8n/api-types';
+import type { AgentConfigValidationIssue, AgentJsonTaskConfig, AgentTaskDto } from '@n8n/api-types';
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
-import { screen } from '@testing-library/vue';
+import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AGENT_TASK_MODAL_KEY } from '../constants';
 import AgentSchedulesRow from '../components/AgentSchedulesRow.vue';
+import AgentChipButton from '../components/AgentChipButton.vue';
 
 enableAutoUnmount(afterEach);
 
@@ -62,14 +63,8 @@ function mountRow(taskRefs: AgentJsonTaskConfig[] = [], extraProps: Record<strin
 		},
 		global: {
 			stubs: {
-				N8nButton: {
-					props: ['disabled'],
-					template:
-						'<button v-bind="$attrs" :disabled="disabled" @click="$emit(\'click\')"><slot name="icon" /><slot /></button>',
-				},
 				N8nIcon: { template: '<span />' },
 				N8nText: { template: '<span><slot /></span>' },
-				N8nTooltip: { template: '<span><slot /></span>' },
 			},
 		},
 	});
@@ -80,6 +75,59 @@ describe('AgentSchedulesRow', () => {
 		vi.clearAllMocks();
 		getAgentTasksSpy.mockResolvedValue([]);
 	});
+
+	it('keeps the disabled add action reachable and blocks task changes', async () => {
+		getAgentTasksSpy.mockResolvedValue([makeTask()]);
+		const wrapper = mountRow([taskRef()], { disabled: true });
+		await flushPromises();
+		const user = userEvent.setup();
+		const add = screen.getByRole('button', { name: 'agents.builder.tasks.add' });
+		expect(add.closest('[inert]')).toBeNull();
+		expect(add).not.toBeDisabled();
+		expect(add).toHaveAttribute('aria-disabled', 'true');
+		await user.tab();
+		expect(add).toHaveFocus();
+		await waitFor(() =>
+			expect(screen.getByTestId('tooltip-content')).toHaveTextContent('agents.builder.tasks.add'),
+		);
+		await user.keyboard('{Escape}');
+		expect(add).toHaveFocus();
+		await user.click(add);
+		await user.keyboard('{Enter} ');
+		await wrapper.get('[data-testid="agent-capabilities-task-row"]').trigger('contextmenu');
+		expect(screen.queryByRole('menuitem')).not.toBeInTheDocument();
+		expect(openModalWithDataSpy).not.toHaveBeenCalled();
+		expect(deleteAgentTaskSpy).not.toHaveBeenCalled();
+		expect(wrapper.emitted('toggle-task')).toBeUndefined();
+
+		await wrapper.setProps({ disabled: false });
+		expect(add).not.toHaveAttribute('aria-disabled');
+		await user.click(add);
+		expect(openModalWithDataSpy).toHaveBeenCalledOnce();
+	});
+
+	it.each([
+		['missing_required', 'missingRequired'],
+		['invalid_value', 'task.invalidValue'],
+		['missing_credential', 'missingCredential'],
+		['invalid_credential', 'invalidCredential'],
+		['incompatible_credential', 'incompatibleCredential'],
+		['missing_reference', 'missingReference'],
+		['incompatible_reference', 'incompatibleReference'],
+	] satisfies Array<[AgentConfigValidationIssue['code'], string]>)(
+		'keeps the schedule message for %s',
+		async (code, key) => {
+			getAgentTasksSpy.mockResolvedValue([makeTask()]);
+			const wrapper = mountRow([taskRef()], {
+				validationIssues: [{ code, path: 'tasks.0', capability: { kind: 'task', id: 'task-1' } }],
+			});
+			await flushPromises();
+
+			expect(wrapper.getComponent(AgentChipButton).props('invalidReasons')).toEqual([
+				`agents.builder.validation.issue.${key}`,
+			]);
+		},
+	);
 
 	it('renders fetched task bodies with their config state', async () => {
 		getAgentTasksSpy.mockResolvedValue([makeTask()]);
@@ -285,6 +333,10 @@ describe('AgentSchedulesRow', () => {
 		);
 
 		const modalData = openModalWithDataSpy.mock.calls[0][0].data;
+		await wrapper.setProps({ previewDisabledReason: 'Assistant is working' });
+		expect(modalData.getPreviewDisabledReason()).toBe('Assistant is working');
+		await wrapper.setProps({ previewDisabledReason: undefined });
+		expect(modalData.getPreviewDisabledReason()).toBeUndefined();
 		modalData.onPreview('Test these instructions');
 		expect(wrapper.emitted('preview-task')).toEqual([['Test these instructions']]);
 	});

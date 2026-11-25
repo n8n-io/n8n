@@ -57,7 +57,7 @@ describe('MicrosoftOneDriveOAuth2Api Credential', () => {
 		it('should have correct name and parent credential', () => {
 			expect(credential.name).toBe('microsoftOneDriveOAuth2Api');
 			expect(credential.extends).toEqual(['microsoftOAuth2Api']);
-			expect(credential.displayName).toBe('Microsoft Drive OAuth2 API');
+			expect(credential.displayName).toBe('Microsoft OneDrive OAuth2 API');
 		});
 
 		it('should expose a customScopes toggle that defaults to off', () => {

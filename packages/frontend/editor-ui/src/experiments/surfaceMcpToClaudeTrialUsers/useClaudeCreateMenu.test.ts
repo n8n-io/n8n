@@ -4,7 +4,7 @@ import { useClaudeCreateMenu } from './useClaudeCreateMenu';
 
 const mocks = vi.hoisted(() => ({ openEntry: vi.fn(), trackEntry: vi.fn() }));
 const showMcpDiscovery = ref(false);
-const entryLabel = ref('Build with Claude');
+const entryLabel = ref('Build in Claude');
 
 vi.mock('./useMcpDiscovery', () => ({
 	useMcpDiscovery: () => ({
@@ -27,7 +27,7 @@ describe('useClaudeCreateMenu', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		showMcpDiscovery.value = false;
-		entryLabel.value = 'Build with Claude';
+		entryLabel.value = 'Build in Claude';
 	});
 
 	it('adds and removes the Claude entry as eligibility changes', () => {
@@ -37,7 +37,7 @@ describe('useClaudeCreateMenu', () => {
 		expect(claudeMenu.value).toEqual([
 			...items,
 			{ id: 'claude-divider', isDivider: true },
-			{ id: 'claude-mcp', title: 'Build with Claude' },
+			{ id: 'claude-mcp', title: 'Build in Claude' },
 		]);
 		entryLabel.value = 'Connect Claude';
 		expect(claudeMenu.value.at(-1)).toEqual({ id: 'claude-mcp', title: 'Connect Claude' });

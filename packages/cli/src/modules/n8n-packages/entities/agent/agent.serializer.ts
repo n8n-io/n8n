@@ -1,3 +1,4 @@
+import { isCredentialAgentIntegration } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import type { z } from 'zod';
 
@@ -19,10 +20,17 @@ type AgentPackageKeyHandling = {
 	schema: 'transform';
 	integrations: 'transform';
 	tools: 'transform';
-	skills: 'transform';
+	skills: 'exclude';
+	// Agent tags are not part of packages yet; they travel with the internal
+	// REST API only for now.
+	tags: 'exclude';
 	availableInMCP: 'copy';
+	isArchived: 'copy';
 	project: 'exclude';
 	projectId: 'exclude';
+	parentFolderId: 'exclude';
+	approvalWorkflowId: 'exclude';
+	approvalWorkflow: 'exclude';
 	scope: 'exclude';
 	createdAt: 'exclude';
 	updatedAt: 'exclude';
@@ -30,7 +38,10 @@ type AgentPackageKeyHandling = {
 	activeVersionId: 'exclude';
 	activeVersion: 'exclude';
 	revision: 'exclude';
+	publicationRevision: 'exclude';
 	setupCompletedAt: 'exclude';
+	identityId: 'exclude';
+	identity: 'exclude';
 };
 
 const serializePayload = definePackageSerializationPayload<
@@ -53,22 +64,43 @@ const serializeMetadataPayload = definePackageSerializationPayload<
 	AgentMetadataKeyHandling
 >();
 
+/**
+ * Imported channels never use package credentials. Clearing the ID keeps channel credentials
+ * out of the package requirements. The key stays because the integration schema requires it.
+ */
+function withoutChannelCredentials(integrations: Agent['integrations']): Agent['integrations'] {
+	return integrations.map((integration) =>
+		isCredentialAgentIntegration(integration) ? { ...integration, credentialId: '' } : integration,
+	);
+}
+
 @Service()
 export class AgentSerializer {
 	serialize(
-		agent: Pick<Agent, 'id' | 'name' | 'availableInMCP'>,
+		agent: Pick<Agent, 'id' | 'name' | 'availableInMCP' | 'isArchived'>,
 		definition: AgentDefinition,
 		integrations: Agent['integrations'],
 	): SerializedAgent {
-		// The definition schema is already the document, with the skill refs.
-		const config = definition.schema ? { ...definition.schema, integrations } : null;
+		// Skills travel as their own package entries. An imported Agent follows the latest version.
+		const config = definition.schema
+			? {
+					...definition.schema,
+					integrations: withoutChannelCredentials(integrations),
+					hitlConfigurations: definition.schema.hitlConfigurations?.map((interaction) =>
+						interaction.method === 'channel' ? { ...interaction, credentialId: '' } : interaction,
+					),
+					...(definition.schema.skills
+						? { skills: definition.schema.skills.map(({ type, id }) => ({ type, id })) }
+						: {}),
+				}
+			: null;
 		const content = serializedAgentSchema.parse(
 			serializePayload({
 				id: agent.id,
 				name: agent.name,
 				config,
 				availableInMCP: agent.availableInMCP,
-				skills: this.referencedBodies(agent.id, 'skill', config?.skills ?? [], definition.skills),
+				...(agent.isArchived ? { isArchived: true } : {}),
 				tools: this.referencedBodies(
 					agent.id,
 					'custom tool',

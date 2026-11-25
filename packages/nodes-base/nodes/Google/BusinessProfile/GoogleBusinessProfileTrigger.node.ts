@@ -6,14 +6,21 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
+	requestPath,
 } from 'n8n-workflow';
 
-import { googleApiRequest, searchAccounts, searchLocations } from './GenericFunctions';
+import {
+	googleApiRequest,
+	locationPath,
+	searchAccounts,
+	searchLocations,
+} from './GenericFunctions';
 
 export class GoogleBusinessProfileTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Business Profile Trigger',
 		name: 'googleBusinessProfileTrigger',
+		schemaPath: 'Google/BusinessProfile',
 		icon: 'file:googleBusinessProfile.svg',
 		group: ['trigger'],
 		version: 1,
@@ -136,6 +143,7 @@ export class GoogleBusinessProfileTrigger implements INodeType {
 
 		const account = (this.getNodeParameter('account') as { value: string; mode: string }).value;
 		const location = (this.getNodeParameter('location') as { value: string; mode: string }).value;
+		const reviewsPath = requestPath`${locationPath.call(this, account, location)}/reviews`;
 
 		const manualMode = this.getMode() === 'manual';
 		if (manualMode) {
@@ -145,13 +153,11 @@ export class GoogleBusinessProfileTrigger implements INodeType {
 		}
 
 		try {
-			responseData = (await googleApiRequest.call(
-				this,
-				'GET',
-				`/${account}/${location}/reviews`,
-				{},
-				qs,
-			)) as { reviews: IDataObject[]; totalReviewCount: number; nextPageToken?: string };
+			responseData = (await googleApiRequest.call(this, 'GET', reviewsPath, {}, qs)) as {
+				reviews: IDataObject[];
+				totalReviewCount: number;
+				nextPageToken?: string;
+			};
 
 			if (manualMode) {
 				responseData = responseData.reviews;

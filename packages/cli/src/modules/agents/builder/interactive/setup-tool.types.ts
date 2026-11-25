@@ -18,5 +18,5 @@ export interface CredentialSetupDeps extends SetupToolDeps {
 export interface ChannelSetupDeps extends SetupToolDeps {
 	agentId: string;
 	/** Lists the channel types that setup can offer. */
-	listChatIntegrationTypes: () => string[];
+	listChatIntegrationTypes: () => Promise<string[]>;
 }

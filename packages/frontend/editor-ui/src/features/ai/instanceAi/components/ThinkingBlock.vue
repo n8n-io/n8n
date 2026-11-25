@@ -5,10 +5,19 @@ import type {
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
 import { N8nAiActivityStep } from '@n8n/design-system';
-import { computed } from 'vue';
+import { useI18n } from '@n8n/i18n';
+import { useNow } from '@vueuse/core';
+import { computed, inject } from 'vue';
 import AiThinkingBlock from '../../shared/components/AiThinkingBlock.vue';
 
+import { currentSentence, firstSentence } from '../../shared/thinking.utils';
+import { useActiveToolLabel } from '../composables/useRunActivity';
+import { ThinkingWordKey } from '../composables/useThinkingWords';
+import { useSteadyValue } from '../composables/useSteadyValue';
+import { useDraftWorkflowPreviewEnabled } from '@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewEnabled';
+
 import { isStreamingTimelineEntry } from '../agentTimeline.utils';
+import { autoApprovalLabel, autoApprovalReason, type AutoApproval } from '../autoApproval';
 import { useInstanceContextLabel } from '../instanceContextLabels';
 import { useToolLabel } from '../toolLabels';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
@@ -26,8 +35,37 @@ const props = withDefaults(
 	{ awaitingInput: false },
 );
 
+const i18n = useI18n();
+
+function skillUpdateLabel(entry: Extract<InstanceAiTimelineEntry, { type: 'skill-update' }>) {
+	return entry.name
+		? i18n.baseText(`instanceAi.skillUpdate.${entry.change}`, { interpolate: { name: entry.name } })
+		: i18n.baseText(`instanceAi.skillUpdate.${entry.change}.unnamed`);
+}
+
 const { getToolLabel } = useToolLabel();
+const activeToolLabel = useActiveToolLabel();
+// A running source write rotates its label, so the label reads the clock.
+const now = useNow({ interval: 1000 });
 const { getInstanceContextLabel } = useInstanceContextLabel();
+// The control group of the experiment keeps the subline as it was.
+const specificProgress = useDraftWorkflowPreviewEnabled();
+// The thread view provides a word only for the variant of the experiment.
+const thinkingWord = inject(ThinkingWordKey, undefined);
+const idleLabel = computed(() => thinkingWord?.value);
+
+/** The reasoning sentence being written, unless the title already shows it. */
+function reasoningLabel(content: string): string | undefined {
+	const sentence = currentSentence(content);
+	return sentence && sentence !== firstSentence(content) ? sentence : undefined;
+}
+
+/** A running call gets the same label as the status bar; a finished one its own. */
+function toolCallLabel(toolCall: InstanceAiToolCallState): string {
+	return toolCall.isLoading && props.agentNode.status === 'active'
+		? activeToolLabel(toolCall, props.agentNode, now.value.getTime())
+		: getToolLabel(toolCall.toolName, toolCall.args);
+}
 
 const toolCallsById = computed(() => {
 	const map: Record<string, InstanceAiToolCallState> = {};
@@ -41,6 +79,10 @@ function toolCallFor(entry: InstanceAiTimelineEntry): InstanceAiToolCallState | 
 	return entry.type === 'tool-call' ? toolCallsById.value[entry.toolCallId] : undefined;
 }
 
+function autoApprovalFor(entry: InstanceAiTimelineEntry): AutoApproval | undefined {
+	return toolCallFor(entry)?.autoApproval;
+}
+
 const tailToolCall = computed<InstanceAiToolCallState | undefined>(() => {
 	if (!props.active || props.awaitingInput) return undefined;
 	const last = props.entries[props.entries.length - 1];
@@ -48,15 +90,34 @@ const tailToolCall = computed<InstanceAiToolCallState | undefined>(() => {
 	return toolCallsById.value[last.toolCallId];
 });
 
+function asActivity(text: string | undefined) {
+	return text === undefined ? undefined : { key: text, text };
+}
+
 /** Reuse the context row label while it is the latest active entry. */
-const activityLabel = computed<string | undefined>(() => {
+const activity = computed<{ key: string; text: string; truncate?: 'start' } | undefined>(() => {
 	const toolCall = tailToolCall.value;
-	if (toolCall) return getToolLabel(toolCall.toolName, toolCall.args);
+	if (toolCall) return asActivity(toolCallLabel(toolCall));
 
 	if (!props.active || props.awaitingInput) return undefined;
-	const last = props.entries[props.entries.length - 1];
-	return last?.type === 'instance-context' ? getInstanceContextLabel(last) : undefined;
+	const index = props.entries.length - 1;
+	const last = props.entries[index];
+	if (last?.type === 'reasoning' && specificProgress.value) {
+		// One key for the whole segment, so the subline follows the stream at once.
+		const text = reasoningLabel(last.content);
+		return text === undefined
+			? undefined
+			: { key: `reasoning-${index}`, text, truncate: 'start' as const };
+	}
+	if (last?.type === 'skill-update') return asActivity(skillUpdateLabel(last));
+	return last?.type === 'instance-context' ? asActivity(getInstanceContextLabel(last)) : undefined;
 });
+
+// Held steady like the status bar, so short steps do not flash.
+const heldActivity = useSteadyValue(() => activity.value, { key: (value) => value.key });
+const steadyActivity = computed(() =>
+	specificProgress.value ? heldActivity.value : activity.value,
+);
 
 const segments = computed(() => {
 	return props.entries.filter(
@@ -91,7 +152,9 @@ const durationSec = computed<number | undefined>(() => {
 		:segments="segments"
 		:active="props.active"
 		:awaiting-input="props.awaitingInput"
-		:activity-label="activityLabel"
+		:activity-label="steadyActivity?.text"
+		:activity-label-truncate="steadyActivity?.truncate"
+		:idle-label="idleLabel"
 		:duration-sec="durationSec"
 		test-id="instance-ai-thinking-block"
 	>
@@ -107,25 +170,46 @@ const durationSec = computed<number | undefined>(() => {
 			<InstanceContextStep v-else-if="entry.type === 'instance-context'" :entry="entry" />
 
 			<N8nAiActivityStep
-				v-else-if="entry.type === 'tool-call' && toolCallFor(entry)"
-				:label="getToolLabel(toolCallFor(entry)!.toolName, toolCallFor(entry)!.args)"
-				:loading="props.agentNode.status === 'active' && toolCallFor(entry)!.isLoading"
-				:error="toolCallFor(entry)!.error"
+				v-else-if="entry.type === 'skill-update'"
+				:label="skillUpdateLabel(entry)"
+				data-test-id="instance-ai-skill-update"
 			>
-				<ToolResultJson v-if="toolCallFor(entry)!.args" :value="toolCallFor(entry)!.args" />
-				<ToolResultRenderer
-					v-if="toolCallFor(entry)!.result !== undefined"
-					:result="toolCallFor(entry)!.result"
-					:tool-name="toolCallFor(entry)!.toolName"
-					:tool-args="toolCallFor(entry)!.args"
-				/>
+				<p :class="$style.thought">
+					{{ i18n.baseText(`instanceAi.skillUpdate.${entry.change}.description`) }}
+				</p>
 			</N8nAiActivityStep>
+
+			<template v-else-if="entry.type === 'tool-call' && toolCallFor(entry)">
+				<!-- Auto mode ran this call without its approval card: say so, and why. -->
+				<N8nAiActivityStep
+					v-if="autoApprovalFor(entry)"
+					:label="autoApprovalLabel(i18n, autoApprovalFor(entry)!)"
+					data-test-id="instance-ai-auto-approval"
+				>
+					<p :class="$style.thought">{{ autoApprovalReason(i18n, autoApprovalFor(entry)!) }}</p>
+				</N8nAiActivityStep>
+				<N8nAiActivityStep
+					:label="toolCallLabel(toolCallFor(entry)!)"
+					:loading="props.agentNode.status === 'active' && toolCallFor(entry)!.isLoading"
+					:error="toolCallFor(entry)!.error"
+				>
+					<ToolResultJson v-if="toolCallFor(entry)!.args" :value="toolCallFor(entry)!.args" />
+					<ToolResultRenderer
+						v-if="toolCallFor(entry)!.result !== undefined"
+						:result="toolCallFor(entry)!.result"
+						:tool-name="toolCallFor(entry)!.toolName"
+						:tool-args="toolCallFor(entry)!.args"
+					/>
+				</N8nAiActivityStep>
+			</template>
 		</template>
 	</AiThinkingBlock>
 </template>
 
 <style lang="scss" module>
 .thought {
+	--n8n-markdown--font-size--base: var(--font-size--sm);
+
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
 	color: var(--color--text--tint-1);

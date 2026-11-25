@@ -485,6 +485,9 @@ const iNodeSchemaObject = z.object({
 	executeOnce: z.boolean().optional(),
 	onError: OnErrorSchema.optional(),
 	continueOnFail: z.boolean().optional(),
+	customTelemetryTags: z
+		.object({ tag: z.array(z.object({ key: z.string(), value: z.string() })).optional() })
+		.optional(),
 	webhookId: z.string().optional(),
 	extendsCredential: z.string().optional(),
 	rewireOutputLogTo: NodeConnectionTypeSchema.optional(),

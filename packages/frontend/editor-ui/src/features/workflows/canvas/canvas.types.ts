@@ -86,6 +86,8 @@ export type CanvasNodeDefaultRender = {
 		dirtiness?: CanvasNodeDirtinessType;
 		icon?: NodeIconSource;
 		placeholder?: boolean;
+		deprecated?: boolean;
+		deprecatedReplacementName?: string;
 	}>;
 };
 
@@ -141,6 +143,8 @@ export interface CanvasNodeData {
 	issues: {
 		validation: string[];
 		visible: boolean;
+		/** The only issues are missing credentials, shown as "setup required". */
+		setupRequired?: boolean;
 	};
 	execution: {
 		status?: ExecutionStatus;
@@ -190,6 +194,7 @@ export type GroupExecutionStatus =
 	| 'running'
 	| 'error'
 	| 'issues'
+	| 'setup'
 	| 'warning'
 	| 'success';
 
@@ -200,6 +205,8 @@ export interface NodeExecutionSnapshot {
 	waiting: string | undefined;
 	hasExecutionError: boolean;
 	hasValidationError: boolean;
+	/** The only validation issues are credentials that are not set yet. */
+	needsCredentialSetup: boolean;
 	status: ExecutionStatus | undefined;
 	/** Parameters changed since the last run — the single-node "dirty" warning. */
 	dirty: boolean;

@@ -1,5 +1,16 @@
-import type { StepExecutionContext, StepSlots, WorkflowGraph } from '@n8n/engine';
-import type { ExecuteContext } from 'n8n-core';
+import type {
+	StepExecutionContext,
+	StepSlots,
+	StepOutputSources,
+	SubExecutionResumeCause,
+	TriggerOutputs,
+	WorkflowDocument,
+	WorkflowGraph,
+} from '@n8n/engine';
+
+import type { ItemLinks } from './item-links';
+import type { SubWorkflowCalls } from './sub-workflow-calls';
+import type { DurableWaitExecuteContext } from './v1-adapters';
 import type {
 	INode,
 	INodeCredentials,
@@ -39,6 +50,8 @@ export interface StepData {
 	graph: WorkflowGraph;
 	/** Completed step outputs, by node id then by iteration. */
 	outputsByNode: Record<string, Record<number, StepSlots>>;
+	/** Where a loop node's outputs came from, by node id then by iteration; absent for every other step. */
+	outputSourcesByNode?: Record<string, Record<number, StepOutputSources>>;
 }
 
 export type StepDataLoader = (context: StepExecutionContext) => Promise<StepData>;
@@ -55,13 +68,74 @@ export interface AdditionalDataContext {
 	projectId?: string;
 }
 
+/**
+ * What the host needs to resolve a sub-workflow a node calls: which workflow,
+ * who calls it, and the items the sub-workflow's trigger receives.
+ */
+export interface SubWorkflowResolveRequest {
+	workflowId: string;
+	/** The sub-execution's id, minted by the caller, so the trigger runs under it. */
+	executionId: string;
+	parent: {
+		executionId: string;
+		workflowId: string;
+		mode: WorkflowExecuteMode;
+		/** The calling node, named in a policy denial. */
+		node: { id: string; name: string; type: string; typeVersion: number };
+	};
+	context: { userId?: string; projectId?: string };
+	items: INodeExecutionData[];
+}
+
+/** The sub-execution as the engine starts it. */
+export interface SubWorkflowResolveResult {
+	workflowId: string;
+	graph: WorkflowGraph;
+	workflow: WorkflowDocument;
+	triggerOutputs: TriggerOutputs | null;
+}
+
+/** The options of `executeWorkflow` that the shim reads. */
+export interface CallOptions {
+	doNotWaitToFinish?: boolean;
+	returnLastRunOnly?: boolean;
+}
+
+export type SubWorkflowResolver = (
+	request: SubWorkflowResolveRequest,
+) => Promise<SubWorkflowResolveResult>;
+
 export interface V1StepExecutorDeps {
 	nodeTypes: INodeTypes;
 	additionalDataFactory: (
 		context: AdditionalDataContext,
 	) => Promise<IWorkflowExecuteAdditionalData>;
 	loadStepData: StepDataLoader;
+	/**
+	 * Mints the token that `$execution.resumeUrl` and `$execution.resumeFormUrl`
+	 * carry. The host supplies it because the host holds the resume secret.
+	 * Without it, the URLs carry a random token that the engine cannot verify.
+	 */
+	resumeToken?: (context: { executionId: string }) => string;
+	/** Resolves the sub-workflow a node calls. */
+	resolveSubWorkflow: SubWorkflowResolver;
+	/**
+	 * Mints the token of a resume URL that a node builds with
+	 * `getSignedResumeUrl`. `binding` is the path and query of the URL without
+	 * the token. Without it, `getSignedResumeUrl` throws.
+	 */
+	stepBoundResumeToken?: (context: { stepId: string; binding: string }) => string;
+	/**
+	 * Mints the reference that `getApprovalCallbackReference` returns for an
+	 * approval button. Without it, `getApprovalCallbackReference` throws.
+	 */
+	approvalCallback?: (context: { stepId: string; decision: 'a' | 'd' }) => string;
 }
+
+export type StepResumeMinters = Pick<
+	V1StepExecutorDeps,
+	'stepBoundResumeToken' | 'approvalCallback'
+>;
 
 export type ExecutableNodeType = INodeType & { execute: NonNullable<INodeType['execute']> };
 
@@ -74,10 +148,16 @@ export interface CreateExecuteContextParams {
 	source: Array<ISourceData | null>;
 	additionalData: IWorkflowExecuteAdditionalData;
 	itemsByConnection: INodeExecutionData[][];
+	/** The links `itemLinks` made for `itemsByConnection`. */
+	itemLinks: ItemLinks;
 	stepContext: StepExecutionContext;
+	resumeToken?: string;
+	subWorkflowCalls: SubWorkflowCalls;
+	subExecutionResume?: SubExecutionResumeCause;
+	resumeMinters?: StepResumeMinters;
 }
 
 export interface RunNodeParams {
 	nodeType: ExecutableNodeType;
-	context: ExecuteContext;
+	context: DurableWaitExecuteContext;
 }

@@ -14,7 +14,13 @@ export type AgentContextLookup =
 	| { type: 'integrations'; queries?: string[] }
 	| { type: 'attachable-workflows'; searchTerm?: string }
 	| { type: 'config' | 'skills' | 'tasks' | 'custom-tools'; agentId: string }
-	| { type: 'skill'; agentId: string; skillId: string; referencePaths?: string[] }
+	| {
+			type: 'skill';
+			agentId: string;
+			skillId: string;
+			referencePaths?: string[];
+			referenceOffset?: number;
+	  }
 	| { type: 'custom-tool'; agentId: string; toolId: string }
 	| {
 			type: 'sessions';
@@ -27,6 +33,11 @@ export type AgentContextLookup =
 			updatedBefore?: string;
 	  }
 	| { type: 'session'; agentId: string; threadId: string; executionId?: string };
+
+export type AgentSessionListOptions = Omit<
+	Extract<AgentContextLookup, { type: 'sessions' }>,
+	'type' | 'agentId'
+>;
 
 export interface AgentContextReader {
 	lookup(input: AgentContextLookup): Promise<AgentContextResult>;
@@ -51,6 +62,11 @@ export interface AgentSessionSummary {
 	totalCompletionTokens: number;
 	totalDuration: number;
 }
+
+export type AgentSessionList = {
+	sessions: AgentSessionSummary[];
+	nextCursor: string | null;
+};
 
 export interface AgentSessionThread {
 	id: string;

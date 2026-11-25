@@ -1,7 +1,24 @@
+import { createTestingPinia } from '@pinia/testing';
 import { mount } from '@vue/test-utils';
-import { describe, expect, it, vi } from 'vitest';
+import { setActivePinia } from 'pinia';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { computed } from 'vue';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import type { PolicyViolation } from '@n8n/api-types';
+import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 import AgentChatToolSteps from '../components/AgentChatToolSteps.vue';
+import { AGENT_TOOL_STEP_LABEL_KEY } from '../components/agentChatInjectionKeys';
+import {
+	AGENTS_CHAT_INTERACTION_EXTENSIONS,
+	type AgentsChatHostEventItem,
+} from '@/features/ai/shared/agentsChat/interactionRegistry';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
+import {
+	TEST_HOST_EVENT,
+	TEST_OUTPUT_TOOL_NAME,
+	TestHostEvent,
+	testToolOutputExtension,
+} from '@/features/ai/shared/agentsChat/__tests__/fixtures/testInteractionExtension';
 import { TOOL_CALL_STATE } from '../constants';
 import { DELEGATE_SUB_AGENT_TOOL_NAME } from '../utils/delegate-tool';
 import { WRITE_TODOS_TOOL_NAME } from '../utils/write-todos-tool';
@@ -49,6 +66,10 @@ vi.mock('@n8n/design-system', () => ({
 		template:
 			'<button type="button" @click.stop="$emit(\'click\')"><slot name="icon" /><slot /></button>',
 	},
+	N8nCodeBlock: {
+		props: ['code', 'language'],
+		template: '<pre :data-language="language">{{ code }}</pre>',
+	},
 	N8nCallout: {
 		props: ['theme'],
 		template: '<div><slot /><slot name="trailingContent" /></div>',
@@ -69,16 +90,12 @@ vi.mock('@n8n/design-system', () => ({
 	N8nTooltip: { template: '<div><slot /></div>', props: ['content', 'placement'] },
 }));
 
-vi.mock('@n8n/frontend-module-type-availability-policies', async () => ({
-	getPolicyViolations: (
-		await vi.importActual<typeof import('@n8n/frontend-module-type-availability-policies')>(
-			'@n8n/frontend-module-type-availability-policies',
-		)
-	).getPolicyViolations,
-	ContactInstanceAdminModal: {
-		props: ['open', 'nodeTypeName', 'kind'],
+vi.mock('@n8n/frontend-module-type-availability-policies', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	ContactAdminModal: {
+		props: ['open', 'typeName', 'kind', 'audience'],
 		template:
-			'<div v-if="open" data-test-id="contact-instance-admin-modal">{{ nodeTypeName }}</div>',
+			'<div v-if="open" data-test-id="contact-admin-modal" :data-audience="audience">{{ typeName }}</div>',
 	},
 }));
 
@@ -99,6 +116,7 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 vi.mock('@n8n/i18n', () => {
 	const i18n = {
 		translations: {
+			'agentSessions.status.cancelled': 'Canceled',
 			'agents.chat.plan.error.rejected':
 				'The plan change was rejected. Expand this step for details.',
 			'agents.chat.toolNames.webSearch': 'Web search',
@@ -116,8 +134,11 @@ vi.mock('@n8n/i18n', () => {
 			'agents.chat.writeTodos.hint.subAgent': 'Sub-agent',
 			'agents.chat.writeTodos.hint.expectedOutput': 'Expected output',
 			'agents.chat.toolPolicyRefusal.reason': '{name} is restricted on this instance.',
+			'agents.chat.toolPolicyRefusal.reason.project': '{name} is restricted in this project.',
 			'typeAvailabilityPolicies.restrictedNode.scope.instance': 'Restricted on this instance',
+			'typeAvailabilityPolicies.restrictedNode.scope.project': 'Restricted in this project',
 			'typeAvailabilityPolicies.restrictedNode.contactAdmin': 'Contact instance admin',
+			'typeAvailabilityPolicies.restrictedNode.contactProjectAdmin': 'Contact project admin',
 		} as Record<string, string>,
 		baseText(key: string, opts?: { interpolate?: { name?: string; count?: string } }) {
 			if (key === 'agents.chat.delegate.label' && opts?.interpolate?.name) {
@@ -161,6 +182,41 @@ function mountSteps(
 }
 
 describe('AgentChatToolSteps', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
+	});
+
+	it.each([
+		{ state: TOOL_CALL_STATE.CANCELLED, output: 'Tool call canceled' },
+		{
+			state: TOOL_CALL_STATE.ERROR,
+			output: 'Error: Tool call stopped by guardrail: tasks-cancelled',
+		},
+	])('shows canceled work without an error or repair action: $state', (cancellation) => {
+		const wrapper = mountSteps(
+			[{ tool: 'update_plan', toolCallId: 'tc-canceled', ...cancellation }],
+			{ canFixWithAssistant: true, executionId: 'execution-1' },
+		);
+
+		expect(wrapper.get('[data-testid="tool-step-summary"]').text()).toBe('Canceled');
+		expect(wrapper.find('[data-testid="tool-step-warning"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="tool-step-error"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').exists()).toBe(
+			false,
+		);
+	});
+
+	it('keeps other guardrail refusals visible as tool errors', () => {
+		const error = 'Error: Tool call stopped by guardrail: tool.blocked';
+		const wrapper = mountSteps(
+			[{ tool: 'lookup', toolCallId: 'tc-error', state: TOOL_CALL_STATE.ERROR, output: error }],
+			{ canFixWithAssistant: true, executionId: 'execution-1' },
+		);
+
+		expect(wrapper.get('[data-testid="tool-step-warning"]').attributes('title')).toBe(error);
+		expect(wrapper.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').exists()).toBe(true);
+	});
+
 	it.each([
 		{
 			tool: 'update_plan',
@@ -339,6 +395,84 @@ describe('AgentChatToolSteps', () => {
 
 		await wrapper.find('button').trigger('click');
 		expect(wrapper.text()).toContain('Slack');
+	});
+
+	it('shows JSON tool data as JSON and other text as plain text', async () => {
+		const wrapper = mountSteps([
+			{
+				tool: 'workspace_execute_command',
+				toolCallId: 'tc-shell',
+				state: TOOL_CALL_STATE.DONE,
+				input: { command: 'ls' },
+				output: 'README.md\npackage.json',
+			},
+		]);
+
+		await wrapper.get('button').trigger('click');
+		const [input, output] = wrapper.findAll('pre');
+		expect(input.attributes('data-language')).toBe('json');
+		expect(output.attributes('data-language')).toBe('plaintext');
+		expect(output.text()).toBe('README.md\npackage.json');
+	});
+
+	it('shows the host output of a finished call inside its step, below the default input', async () => {
+		const wrapper = mount(AgentChatToolSteps, {
+			props: {
+				toolCalls: [
+					{
+						tool: TEST_OUTPUT_TOOL_NAME,
+						toolCallId: 'tc-rows',
+						state: TOOL_CALL_STATE.DONE,
+						input: { limit: 2 },
+						output: { rows: [{ id: 1 }] },
+					},
+				],
+				projectId: 'project-1',
+			},
+			global: {
+				provide: {
+					[AGENTS_CHAT_INTERACTION_EXTENSIONS]: computed(() => [testToolOutputExtension]),
+				},
+			},
+		});
+
+		expect(wrapper.find('[data-testid="test-tool-output"]').exists()).toBe(false);
+		await wrapper.get('button').trigger('click');
+
+		const output = wrapper.get('[data-testid="test-tool-output"]');
+		expect(output.text()).toContain('{"rows":[{"id":1}]}');
+		// The host renders the output label, so the chat does not add a second one.
+		const label = wrapper.get('[data-testid="test-tool-output-label"]').text();
+		expect(label).not.toBe('');
+		expect(wrapper.text().split(label)).toHaveLength(2);
+		const blocks = wrapper.findAll('pre');
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0].text()).toContain('"limit": 2');
+	});
+
+	it('keeps the default output of a call that failed, even when a host renders its output', async () => {
+		const wrapper = mount(AgentChatToolSteps, {
+			props: {
+				toolCalls: [
+					{
+						tool: TEST_OUTPUT_TOOL_NAME,
+						toolCallId: 'tc-rows',
+						state: TOOL_CALL_STATE.ERROR,
+						input: { limit: 2 },
+						output: { error: 'No access' },
+					},
+				],
+				projectId: 'project-1',
+			},
+			global: {
+				provide: {
+					[AGENTS_CHAT_INTERACTION_EXTENSIONS]: computed(() => [testToolOutputExtension]),
+				},
+			},
+		});
+
+		await wrapper.get('button').trigger('click');
+		expect(wrapper.find('[data-testid="test-tool-output"]').exists()).toBe(false);
 	});
 
 	it('does not make generic tool steps without data expandable', () => {
@@ -825,7 +959,7 @@ describe('AgentChatToolSteps', () => {
 	});
 
 	describe('policy-refused tool calls', () => {
-		function refusedCall(overrides: Partial<ToolCall> = {}): ToolCall {
+		function refusedCall(violation: Partial<PolicyViolation> = {}): ToolCall {
 			return {
 				tool: 'search_nodes',
 				toolCallId: 'tc-refused',
@@ -840,13 +974,30 @@ describe('AgentChatToolSteps', () => {
 							message: 'Not allowed',
 							subject: 'slack',
 							scope: 'instance',
+							...violation,
 						},
 					],
 					instruction: 'Ask the user to pick another tool.',
 				},
-				...overrides,
 			};
 		}
+
+		it('names the project scope and sends the user to the project admins', async () => {
+			useTypeAvailabilityPoliciesStore().policyProject = createTestProject({ id: 'project-1' });
+			const wrapper = mountSteps([refusedCall({ scope: 'project', projectId: 'project-1' })]);
+			const callout = wrapper.get('[data-test-id="tool-step-error"]');
+
+			expect(wrapper.get('[data-testid="tool-step-warning"]').attributes('title')).toBe(
+				'Restricted in this project',
+			);
+			expect(callout.text()).toContain('Search nodes is restricted in this project.');
+			const link = callout.get('[data-test-id="agent-chat-tool-policy-refusal-contact-admin"]');
+			expect(link.text()).toBe('Contact project admin');
+			await link.trigger('click');
+			expect(callout.get('[data-test-id="contact-admin-modal"]').attributes('data-audience')).toBe(
+				'project',
+			);
+		});
 
 		it('shows a lock with the scope line as tooltip', () => {
 			const icon = mountSteps([refusedCall()]).get('[data-testid="tool-step-warning"]');
@@ -917,5 +1068,219 @@ describe('AgentChatToolSteps', () => {
 				[[expect.objectContaining({ toolCallId: 'tc-normal' })]],
 			]);
 		});
+	});
+});
+
+describe('AgentChatToolSteps — output files', () => {
+	it('renders the files of a tool output as attachments below the step', () => {
+		const toolCall: ToolCall = {
+			tool: 'generate_image',
+			toolCallId: 'tc-image',
+			state: TOOL_CALL_STATE.DONE,
+			output: {
+				status: 'success',
+				data: [{ binary: { data: 'aid-1' } }],
+				files: [{ fileId: 'aid-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 }],
+			},
+		};
+		const wrapper = mount(AgentChatToolSteps, {
+			props: { toolCalls: [toolCall], projectId: 'p1', agentId: 'a1' },
+			global: {
+				stubs: {
+					AgentChatMessageAttachments: {
+						props: ['attachments'],
+						template:
+							'<div data-test-id="tool-output-files">{{ JSON.stringify(attachments) }}</div>',
+					},
+				},
+			},
+		});
+
+		expect(JSON.parse(wrapper.get('[data-test-id="tool-output-files"]').text())).toEqual([
+			{ fileId: 'aid-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 },
+		]);
+	});
+
+	it('does not render the reply files of n8n Chat below the step', () => {
+		const toolCall: ToolCall = {
+			tool: 'chat_action',
+			toolCallId: 'tc-respond',
+			state: TOOL_CALL_STATE.DONE,
+			output: {
+				ok: true,
+				files: [{ fileId: 'aid-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 }],
+			},
+		};
+		const wrapper = mount(AgentChatToolSteps, {
+			props: { toolCalls: [toolCall], projectId: 'p1', agentId: 'a1' },
+			global: {
+				stubs: {
+					AgentChatMessageAttachments: {
+						props: ['attachments'],
+						template:
+							'<div data-test-id="tool-output-files">{{ JSON.stringify(attachments) }}</div>',
+					},
+				},
+			},
+		});
+
+		expect(wrapper.find('[data-test-id="tool-output-files"]').exists()).toBe(false);
+	});
+
+	it('renders the files of a tool output in a group of tool steps', () => {
+		const toolCalls: ToolCall[] = [
+			{
+				tool: 'search',
+				toolCallId: 'tc-search',
+				state: TOOL_CALL_STATE.DONE,
+				output: { status: 'success' },
+			},
+			{
+				tool: 'generate_image',
+				toolCallId: 'tc-image',
+				state: TOOL_CALL_STATE.DONE,
+				output: {
+					status: 'success',
+					data: [{ binary: { data: 'aid-1' } }],
+					files: [{ fileId: 'aid-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 }],
+				},
+			},
+		];
+		const wrapper = mount(AgentChatToolSteps, {
+			props: { toolCalls, projectId: 'p1', agentId: 'a1' },
+			global: {
+				stubs: {
+					AgentChatMessageAttachments: {
+						props: ['attachments'],
+						template:
+							'<div data-test-id="tool-output-files">{{ JSON.stringify(attachments) }}</div>',
+					},
+				},
+			},
+		});
+
+		const lists = wrapper.findAll('[data-test-id="tool-output-files"]');
+		expect(lists).toHaveLength(1);
+		expect(JSON.parse(lists[0].text())).toEqual([
+			{ fileId: 'aid-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 },
+		]);
+	});
+
+	it('renders the files that a delegated sub-agent returned below the delegate step', () => {
+		const file = { fileId: 'f-1', fileName: 'chart.png', mimeType: 'image/png', sizeBytes: 9 };
+		const wrapper = mount(AgentChatToolSteps, {
+			props: {
+				toolCalls: [
+					{
+						tool: DELEGATE_SUB_AGENT_TOOL_NAME,
+						toolCallId: 'tc-delegate',
+						state: TOOL_CALL_STATE.DONE,
+						input: { subAgentId: 'inline', taskName: 'draw_chart' },
+						output: { status: 'completed', answer: 'Done', files: [file] },
+					},
+				],
+				projectId: 'p1',
+				agentId: 'a1',
+			},
+			global: {
+				stubs: {
+					AgentChatMessageAttachments: {
+						props: ['attachments'],
+						template:
+							'<div data-test-id="tool-output-files">{{ JSON.stringify(attachments) }}</div>',
+					},
+				},
+			},
+		});
+
+		expect(JSON.parse(wrapper.get('[data-test-id="tool-output-files"]').text())).toEqual([file]);
+	});
+});
+
+describe('AgentChatToolSteps — host events', () => {
+	const item: AgentsChatHostEventItem = {
+		event: { id: 'approval-1', name: TEST_HOST_EVENT.TOOL_CALL, payload: { toolCallId: 'tc-2' } },
+		message: { id: 'assistant-1', role: 'assistant', content: '' },
+		component: TestHostEvent,
+		placement: 'tool-call',
+	};
+
+	/** The children of `element` in order: a host event as its placement, a step as its text. */
+	function order(element: Element): string[] {
+		return [...element.children]
+			.map(
+				(child) =>
+					child
+						.querySelector('[data-testid="agent-chat-host-event"]')
+						?.getAttribute('data-placement') ??
+					child.textContent?.trim() ??
+					'',
+			)
+			.filter(Boolean);
+	}
+
+	it.each([
+		{
+			name: 'in a group of steps',
+			toolCalls: [
+				{ tool: 'search_nodes', toolCallId: 'tc-1', state: TOOL_CALL_STATE.DONE },
+				{ tool: 'web_search', toolCallId: 'tc-2', state: TOOL_CALL_STATE.DONE },
+			],
+			container: '[data-test-id="n8n-ai-activity-step-group"]',
+			expected: ['Search nodes', 'tool-call', 'Web search'],
+		},
+		{
+			name: 'for a single step',
+			toolCalls: [{ tool: 'web_search', toolCallId: 'tc-2', state: TOOL_CALL_STATE.DONE }],
+			container: 'div',
+			expected: ['tool-call', 'Web search'],
+		},
+	])(
+		'renders the host events of a call right before its step, $name',
+		({ toolCalls, container, expected }) => {
+			const wrapper = mount(AgentChatToolSteps, {
+				props: { toolCalls, hostEvents: new Map([['tc-2', [item]]]) },
+			});
+
+			expect(order(wrapper.get(container).element)).toEqual(expected);
+			expect(wrapper.get('[data-testid="test-host-event"]').find('em').text()).toBe('assistant-1');
+		},
+	);
+});
+
+describe('AgentChatToolSteps, host tool labels', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
+	});
+
+	const searchCall: ToolCall = {
+		tool: 'search_nodes',
+		toolCallId: 'tc-search',
+		input: { queries: ['gmail'] },
+		state: TOOL_CALL_STATE.RUNNING,
+	};
+
+	it('names a step with the label of the host', () => {
+		const wrapper = mount(AgentChatToolSteps, {
+			props: { toolCalls: [searchCall], projectId: 'project-1' },
+			global: {
+				provide: {
+					[AGENT_TOOL_STEP_LABEL_KEY as symbol]: (tool: string) =>
+						tool === 'search_nodes' ? 'Searching for gmail' : undefined,
+				},
+			},
+		});
+
+		expect(wrapper.text()).toContain('Searching for gmail');
+	});
+
+	it('keeps its own label when the host gives none', () => {
+		const wrapper = mount(AgentChatToolSteps, {
+			props: { toolCalls: [searchCall], projectId: 'project-1' },
+			global: { provide: { [AGENT_TOOL_STEP_LABEL_KEY as symbol]: () => undefined } },
+		});
+
+		expect(wrapper.text()).toContain('Search nodes');
+		expect(wrapper.text()).not.toContain('Searching for gmail');
 	});
 });

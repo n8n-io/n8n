@@ -107,6 +107,11 @@ describe('Lakebase -> column mapping', () => {
 			'sku (text)',
 		],
 		['a column with no type in the document', { type: undefined }, 'sku'],
+		[
+			'a serial primary key',
+			{ name: 'id', type: 'integer', format: 'integer', isRequired: true, isPrimaryKey: true },
+			'id (integer)',
+		],
 	])('labels %s with its Postgres type and a required marker', async (_name, overrides, label) => {
 		vi.mocked(fetchLakebaseColumns).mockResolvedValue([column(overrides)]);
 
@@ -137,6 +142,31 @@ describe('Lakebase -> column mapping', () => {
 		['a NOT NULL column the database defaults', { isRequired: true, hasDefault: true }, false],
 		['a read-only NOT NULL column', { isRequired: true, isReadOnly: true }, false],
 		['a nullable column', {}, false],
+		[
+			'an integer primary key with no reported default',
+			{ type: 'integer', format: 'integer', isRequired: true, isPrimaryKey: true },
+			false,
+		],
+		[
+			'a bigint primary key with no reported default',
+			{ type: 'integer', format: 'bigint', isRequired: true, isPrimaryKey: true },
+			false,
+		],
+		[
+			'a non-integer primary key with no default',
+			{ type: 'string', format: 'uuid', isRequired: true, isPrimaryKey: true },
+			true,
+		],
+		[
+			'a numeric primary key with no default',
+			{ type: 'number', format: 'numeric', isRequired: true, isPrimaryKey: true },
+			true,
+		],
+		[
+			'an integer NOT NULL column that is not the primary key',
+			{ type: 'integer', isRequired: true },
+			true,
+		],
 	])('marks %s required=%s', async (_name, overrides, expected) => {
 		vi.mocked(fetchLakebaseColumns).mockResolvedValue([column(overrides)]);
 

@@ -82,6 +82,8 @@ if (BACKEND_URL && !SKIP_WEB_SERVER) {
 		env: {
 			DB_SQLITE_POOL_SIZE: '40',
 			E2E_TESTS: 'true',
+			// E2E mode reports the Enterprise plan, where the n8n Assistant is off by default.
+			N8N_INSTANCE_AI_ENABLED: 'true',
 			N8N_PORT: getPortFromUrl(BACKEND_URL),
 			N8N_USER_FOLDER: USER_FOLDER,
 			N8N_LOG_LEVEL: 'debug',

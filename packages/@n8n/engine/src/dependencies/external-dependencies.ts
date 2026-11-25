@@ -1,5 +1,14 @@
-import type { CallerContext, ExecutionMode, StepSlots, WaitDeclaration } from '../execution';
-import type { GraphNode } from '../graph';
+import type {
+	CallerContext,
+	ItemSource,
+	SubExecutionResumeCause,
+	ExecutionMode,
+	StepSlots,
+	TriggerOutputs,
+	ExecutorWaitDeclaration,
+	WorkflowDocument,
+} from '../execution';
+import type { GraphNode, WorkflowGraph } from '../graph';
 import type { LifecycleEventCallback } from '../lifecycle-events';
 import type { ResponseEmitter, ResponseExpectation } from '../response-channel';
 
@@ -13,9 +22,8 @@ import type { ResponseEmitter, ResponseExpectation } from '../response-channel';
  * the interfaces below.
  *
  * `inputs` and `outputs` are `StepSlots` (`JsonValue[]`), not `unknown`: the
- * engine routes data slot to slot and persists it to a `jsonb` column, so it
- * owns exactly one level of structure — the slot list — and anything crossing
- * this seam must survive a JSON round-trip. A slot's contents are
+ * engine routes data slot to slot and persists it to a `jsonb` column, so
+ * anything crossing this seam must survive a JSON round-trip. A slot's contents are
  * step-type-specific (for `v1-node`, the items of one v1 connection, i.e. one
  * element of `INodeExecutionData[][]`); keeping them opaque is what keeps this
  * package free of `n8n-workflow` / `n8n-core`.
@@ -41,38 +49,86 @@ export interface StepExecutionContext {
 	responseExpectation: ResponseExpectation;
 }
 
+/**
+ * Per input slot, in item order, the sources of the live edges that fed it.
+ * Empty for a slot no live edge fed. Several edges into one slot concatenate,
+ * so an executor that links items to their origin reads this.
+ */
+export type StepInputSources = ItemSource[][];
+
 /** A single step handed to an executor. */
 export interface StepExecutionRequest {
 	/** The graph node to run; `node.config` is the step-type-specific payload. */
 	node: GraphNode;
 	/** Input slots gathered from predecessor steps; slot contents are opaque. */
 	inputs: StepSlots;
+	/** Where the items of each slot in `inputs` came from. */
+	inputSources: StepInputSources;
 	context: StepExecutionContext;
 	/**
 	 * Response emitter allows the step executor to send messages to the control
 	 * plane side via the execution response channel.
 	 */
 	respond: ResponseEmitter;
+	/**
+	 * Set when a sub-execution the step waited for has ended. The executor
+	 * answers the node's sub-execution call from it instead of asking for a sub-execution again.
+	 */
+	resume?: SubExecutionResumeCause;
 }
 
 /**
- * What running a step produced: its output slots, or a declaration that it is
- * not done. Exclusive — a step that waits has no outputs yet, and the outputs
- * a deadline would emit ride inside the declaration.
+ * A sub-execution the step asks for. The executor minted the id and had the
+ * workflow resolved; the engine starts it. One run of a step asks for at most
+ * one.
+ */
+export type SubExecutionDeclaration = {
+	executionId: string;
+	workflowId: string;
+	graph: WorkflowGraph;
+	workflow: WorkflowDocument;
+	triggerOutputs?: TriggerOutputs | null;
+} & SubExecutionMode;
+
+/** Whether the step waits for the sub-execution, and what it completes with if not. */
+export type SubExecutionMode =
+	| {
+			/** The step suspends until the sub-execution ends, and has no outputs yet. */
+			awaited: true;
+			outputs?: never;
+	  }
+	| {
+			/** Nothing waits for the sub-execution. It ends with the parent. */
+			awaited: false;
+			/** The step completes with these once the sub-execution has started. */
+			outputs: StepSlots;
+	  };
+
+/**
+ * What running a step produced: its output slots, a wait, or a sub-execution.
+ * Exclusive — a step that waits has no outputs yet, and the outputs a deadline
+ * or a detached sub-execution would emit ride inside the declaration.
  *
- * The `?: never` members give both branches the same keys, so `result.wait`
+ * The `?: never` members give every branch the same keys, so `result.wait`
  * reads on the union and narrows it — without them a caller could only test
- * `'wait' in result`, and a value carrying both fields would type-check.
+ * `'wait' in result`, and a value carrying two fields would type-check.
  */
 export type StepExecutionResult =
 	| {
 			/** Output slots; persisted by the engine without inspecting slot contents. */
 			outputs: StepSlots;
 			wait?: never;
+			subExecution?: never;
 	  }
 	| {
-			wait: WaitDeclaration;
+			wait: ExecutorWaitDeclaration;
 			outputs?: never;
+			subExecution?: never;
+	  }
+	| {
+			subExecution: SubExecutionDeclaration;
+			outputs?: never;
+			wait?: never;
 	  };
 
 /**
@@ -110,6 +166,9 @@ export interface ExecutionLocation {
  */
 export type ExecutionFilesDeleter = (execution: ExecutionLocation) => Promise<void>;
 
+/** File deleter for a host that writes no binary files. */
+export const noopExecutionFilesDeleter: ExecutionFilesDeleter = async () => {};
+
 export interface ExternalDependencies {
 	/** Executes `v1-node` steps — supplied by the host in integrated mode. */
 	v1StepExecutor?: IStepExecutor;
@@ -117,8 +176,8 @@ export interface ExternalDependencies {
 	lifecycleEventCallback?: LifecycleEventCallback;
 	/**
 	 * Deletes the binary files of a pruned execution. The engine has no store of
-	 * its own, so the host that owns the store deletes them. A host that runs no
-	 * `v1-node` steps writes no files and can omit it.
+	 * its own, so the host that owns the store deletes them. Required when
+	 * retention is on. A host that writes no files passes `noopExecutionFilesDeleter`.
 	 */
 	deleteExecutionFiles?: ExecutionFilesDeleter;
 }

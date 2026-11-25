@@ -1,8 +1,7 @@
 import type { CredentialProvider } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import type { User } from '@n8n/db';
-import { ForbiddenError } from '@n8n/errors';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { ForbiddenError, UnexpectedError, UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -83,6 +82,25 @@ describe('AgentsBuilderService', () => {
 			await expect(resolve(pinned)).rejects.toThrow(ForbiddenError);
 		},
 	);
+
+	it('reads credential defaults only with agent:read', async () => {
+		const { service, tools } = setup();
+		const defaults = { channelCredentialIds: ['cred-1'], managedCredentialAvailable: true };
+		tools.getCredentialDefaults.mockResolvedValue(defaults);
+
+		await expect(service.getCredentialDefaults(user, 'project-1', 'agent-1')).resolves.toBe(
+			defaults,
+		);
+		expect(userHasScopes).toHaveBeenCalledWith(user, ['agent:read'], false, {
+			projectId: 'project-1',
+		});
+		expect(tools.getCredentialDefaults).toHaveBeenCalledWith('agent-1', 'project-1');
+
+		vi.mocked(userHasScopes).mockResolvedValue(false);
+		await expect(service.getCredentialDefaults(user, 'project-1', 'agent-1')).rejects.toThrow(
+			ForbiddenError,
+		);
+	});
 
 	it('rejects the next tool call when Agents are disabled', async () => {
 		const { service, tools, settings, providerFor, credentials } = setup();

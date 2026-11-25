@@ -48,7 +48,7 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 function makeConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
 	return {
 		name: 'Support Agent',
-		model: 'anthropic/claude-sonnet-4-5',
+		model: 'anthropic/claude-sonnet-5-5',
 		instructions: 'Help the user.',
 		tools: [],
 		...overrides,
@@ -65,7 +65,6 @@ function makeAgent(overrides: Partial<AgentResource> = {}): AgentResource {
 		name: 'Support Agent',
 		projectId: PROJECT_ID,
 		resourceType: 'agent',
-		isCompiled: true,
 		createdAt: '2026-01-01T00:00:00.000Z',
 		updatedAt: '2026-01-01T00:00:00.000Z',
 		versionId: 'v1',
@@ -392,7 +391,7 @@ describe('useNdvAgentConfig', () => {
 			// keys (options block, provider tools) — persisting them would fail
 			// strict validation at execution time.
 			api.inline.scheduleConfigUpdate({
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				config: { webSearch: { enabled: true } },
 				providerTools: { anthropic: {} },
 			} as Partial<AgentJsonConfig>);
@@ -401,7 +400,7 @@ describe('useNdvAgentConfig', () => {
 				string,
 				{ value: { config: Record<string, unknown> } },
 			];
-			expect(payload.value.config.model).toBe('anthropic/claude-sonnet-4-5');
+			expect(payload.value.config.model).toBe('anthropic/claude-sonnet-5-5');
 			expect(payload.value.config).not.toHaveProperty('config');
 			expect(payload.value.config).not.toHaveProperty('providerTools');
 			emitSpy.mockRestore();

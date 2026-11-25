@@ -15,8 +15,13 @@ export interface SharedSecretTokenSpec {
 	readonly clockToleranceSeconds: number;
 }
 
+/** `null` rather than an omitted field, so a spec cannot lose its expiry by accident. */
+export type UnexpiringTokenSpec = Omit<SharedSecretTokenSpec, 'ttlSeconds'> & {
+	readonly ttlSeconds: null;
+};
+
 export function signSharedSecretToken(
-	spec: SharedSecretTokenSpec,
+	spec: SharedSecretTokenSpec | UnexpiringTokenSpec,
 	secret: string,
 	claims: object,
 ): string {
@@ -24,7 +29,7 @@ export function signSharedSecretToken(
 		algorithm: 'HS256',
 		issuer: spec.issuer,
 		audience: spec.audience,
-		expiresIn: spec.ttlSeconds,
+		...(spec.ttlSeconds === null ? {} : { expiresIn: spec.ttlSeconds }),
 	});
 }
 
@@ -37,7 +42,7 @@ export function signSharedSecretToken(
  * "token is bad" must look the same to a caller.
  */
 export function verifySharedSecretToken<T extends { iat: number }>(
-	spec: SharedSecretTokenSpec,
+	spec: SharedSecretTokenSpec | UnexpiringTokenSpec,
 	secret: string,
 	token: string,
 	schema: z.ZodType<T>,
@@ -54,7 +59,7 @@ export function verifySharedSecretToken<T extends { iat: number }>(
 			algorithms: ['HS256'],
 			issuer: spec.issuer,
 			audience: spec.audience,
-			maxAge: spec.ttlSeconds,
+			...(spec.ttlSeconds === null ? {} : { maxAge: spec.ttlSeconds }),
 			clockTolerance: spec.clockToleranceSeconds,
 			clockTimestamp: now,
 		});

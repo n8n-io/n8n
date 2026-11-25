@@ -1,4 +1,6 @@
+import { createTestingPinia } from '@pinia/testing';
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
+import { setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
@@ -112,27 +114,24 @@ vi.mock('@n8n/composables/useToast', () => ({
 
 vi.mock('@n8n/frontend-module-type-availability-policies', async (importOriginal) => ({
 	...(await importOriginal<typeof typeAvailabilityPolicies>()),
-	useTypeAvailabilityPoliciesStore: () => ({
-		getCredentialTypeAvailability: (name: string) => {
+	useTypeAvailability: () => ({
+		nodeTypeRestriction: () => null,
+		credentialTypeRestriction: (name: string) => {
 			const scope = restrictedCredentialTypes.value[name];
-			return scope ? { name, available: false, scope } : { name, available: true };
+			return scope ? { name, available: false, scope } : null;
 		},
 	}),
-	ContactInstanceAdminModal: {
-		name: 'ContactInstanceAdminModal',
-		props: ['open', 'nodeTypeName', 'kind'],
-		template:
-			'<div v-if="open" data-testid="contact-instance-admin-modal">{{ nodeTypeName }}</div>',
+	ContactAdminModal: {
+		name: 'ContactAdminModal',
+		props: ['open', 'typeName', 'kind', 'audience'],
+		template: '<div v-if="open" data-testid="contact-admin-modal">{{ typeName }}</div>',
 	},
-}));
-
-vi.mock('../components/model-selector/ModelSelectorRestrictedMarker.vue', () => ({
-	default: {
-		name: 'ModelSelectorRestrictedMarker',
-		props: ['name', 'scope'],
+	RestrictedMenuItemMarker: {
+		name: 'RestrictedMenuItemMarker',
+		props: ['kind', 'nodeTypeName', 'restriction'],
 		emits: ['contactAdmin'],
 		template:
-			'<button data-testid="restricted-marker" @click="$emit(\'contactAdmin\')">{{ name }}</button>',
+			'<button data-testid="restricted-marker" @click="$emit(\'contactAdmin\', \'project\')">{{ nodeTypeName }}</button>',
 	},
 }));
 
@@ -258,8 +257,8 @@ const modelsByProvider: AgentModelsByProvider = {
 		models: [
 			{
 				provider: 'anthropic',
-				model: 'claude-sonnet-4-5',
-				name: 'Claude Sonnet 4.5',
+				model: 'claude-sonnet-5-5',
+				name: 'Claude Sonnet 5.5',
 				description: null,
 				createdAt: null,
 				metadata: { functionCalling: true, available: true },
@@ -274,6 +273,7 @@ async function mountSelector(
 		credentialModalAppendToBody?: boolean;
 		boundCredentialId?: string | null;
 		selectedModel?: AgentModelOption | null;
+		modelsByProvider?: AgentModelsByProvider;
 	} = {},
 ) {
 	const { default: AgentModelSelector } = await import('../components/AgentModelSelector.vue');
@@ -319,6 +319,7 @@ function getFreeOpenAiCreditsItem(wrapper: VueWrapper) {
 
 describe('AgentModelSelector', () => {
 	beforeEach(() => {
+		setActivePinia(createTestingPinia());
 		vi.clearAllMocks();
 		credentialsByType.value = {
 			anthropicApi: [{ id: 'anthropic-cred', name: 'Anthropic credential', type: 'anthropicApi' }],
@@ -428,18 +429,23 @@ describe('AgentModelSelector', () => {
 		restrictedCredentialTypes.value = { openAiApi: 'project' };
 
 		const wrapper = await mountSelector({ anthropic: null });
-		const marker = wrapper.findComponent({ name: 'ModelSelectorRestrictedMarker' });
+		const marker = wrapper.findComponent({ name: 'RestrictedMenuItemMarker' });
 
-		expect(marker.props()).toEqual({ name: 'OpenAI credentials', scope: 'project' });
-		expect(wrapper.findComponent({ name: 'ContactInstanceAdminModal' }).props('open')).toBe(false);
+		expect(marker.props()).toEqual({
+			kind: 'credential',
+			nodeTypeName: 'OpenAI credentials',
+			restriction: { name: 'openAiApi', available: false, scope: 'project' },
+		});
+		expect(wrapper.findComponent({ name: 'ContactAdminModal' }).props('open')).toBe(false);
 
 		await marker.find('button').trigger('click');
 
 		expect(closeMenu).toHaveBeenCalledOnce();
-		expect(wrapper.findComponent({ name: 'ContactInstanceAdminModal' }).props()).toEqual({
+		expect(wrapper.findComponent({ name: 'ContactAdminModal' }).props()).toEqual({
 			open: true,
 			kind: 'credential',
-			nodeTypeName: 'OpenAI credentials',
+			typeName: 'OpenAI credentials',
+			audience: 'project',
 		});
 	});
 
@@ -632,6 +638,30 @@ describe('AgentModelSelector', () => {
 		expect(wrapper.emitted('selectCredential')).toEqual([['anthropic', AI_GATEWAY_MANAGED_TAG]]);
 	});
 
+	it('says how to fix an Azure credential that lists no deployments', async () => {
+		credentialsByType.value = {
+			azureOpenAiApi: [{ id: 'azure-cred', name: 'Azure credential', type: 'azureOpenAiApi' }],
+		};
+
+		const wrapper = await mountSelector(
+			{ 'azure-openai': 'azure-cred' },
+			{
+				selectedModel: null,
+				modelsByProvider: {
+					'azure-openai': { models: [], unavailable: true, unavailableReason: 'project_missing' },
+				},
+			},
+		);
+		const azureItem = getProviderItem(wrapper, 'azure-openai');
+
+		expect(
+			getMenuItemByLabel(
+				azureItem?.children ?? [],
+				'agents.modelSelector.unavailable.projectMissing',
+			)?.data?.description,
+		).toBe('agents.modelSelector.unavailable.projectMissingHint');
+	});
+
 	it('lists models when the managed tag is the selected credential', async () => {
 		aiGatewayState.isEnabled.value = true;
 		aiGatewayState.supportedTypes = new Set(['anthropicApi']);
@@ -639,7 +669,7 @@ describe('AgentModelSelector', () => {
 		const wrapper = await mountSelector({ anthropic: AI_GATEWAY_MANAGED_TAG });
 		const anthropicItem = getProviderItem(wrapper, 'anthropic');
 
-		expect(JSON.stringify(anthropicItem?.children ?? [])).toContain('Claude Sonnet 4.5');
+		expect(JSON.stringify(anthropicItem?.children ?? [])).toContain('Claude Sonnet 5.5');
 	});
 
 	it('shows the remaining balance on the n8n credits option', async () => {
@@ -746,7 +776,7 @@ describe('AgentModelSelector', () => {
 
 		expect(dropdown.props('credentialsMissing')).toBe(true);
 		expect(dropdown.props('selectedCredentialName')).toBeUndefined();
-		expect(JSON.stringify(anthropicItem?.children ?? [])).not.toContain('Claude Sonnet 4.5');
+		expect(JSON.stringify(anthropicItem?.children ?? [])).not.toContain('Claude Sonnet 5.5');
 	});
 
 	it('reports missing credentials when the picker resolves one the config has not bound', async () => {
@@ -768,8 +798,8 @@ describe('AgentModelSelector', () => {
 
 		expect(dropdown.props('credentialsMissing')).toBe(false);
 		expect(dropdown.props('selectedCredentialName')).toBe('Anthropic credential');
-		expect(JSON.stringify(anthropicItem?.children ?? [])).toContain('Claude Sonnet 4.5');
-		expect(getMenuItemByLabel(anthropicItem?.children ?? [], 'Claude Sonnet 4.5')?.checked).toBe(
+		expect(JSON.stringify(anthropicItem?.children ?? [])).toContain('Claude Sonnet 5.5');
+		expect(getMenuItemByLabel(anthropicItem?.children ?? [], 'Claude Sonnet 5.5')?.checked).toBe(
 			true,
 		);
 	});
@@ -792,10 +822,10 @@ describe('AgentModelSelector', () => {
 	it('emits change with no auto source for a direct model pick', async () => {
 		const wrapper = await mountSelector({ anthropic: 'anthropic-cred' });
 
-		getDropdown(wrapper).vm.$emit('select', 'anthropic::model::claude-sonnet-4-5');
+		getDropdown(wrapper).vm.$emit('select', 'anthropic::model::claude-sonnet-5-5');
 
 		expect(wrapper.emitted('change')).toEqual([
-			[{ provider: 'anthropic', model: 'claude-sonnet-4-5' }],
+			[{ provider: 'anthropic', model: 'claude-sonnet-5-5' }],
 		]);
 	});
 

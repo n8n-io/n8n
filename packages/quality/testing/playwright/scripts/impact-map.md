@@ -34,6 +34,10 @@ each spec we record which functions actually ran:
 - **Frontend**: the browser's own coverage (`page.coverage`), per spec.
 - **Backend**: the n8n server's coverage, captured per spec via a test-only hook
   (`/rest/e2e/coverage/*`). See `backend-v8-coverage.ts` / `emit-spec-backend-lcovs.ts`.
+  Each spec gets the call counts of its own window, so code that every spec
+  runs maps to every spec. Code that ran while the server started maps to the
+  pseudo-spec `<boot>`. Selection reads `<boot>` as every spec when a changed
+  function ran at boot. A file-level fallback leaves `<boot>` out (see §8).
 
 We only record a function if it **actually executed** (`hits > 0`) — code that was
 merely loaded but never run is not mapped.
@@ -112,13 +116,54 @@ run." (The sibling fallback is a deliberate, sound trade: a new file is assumed
 exercised by the specs that exercise its directory — a superset in practice, far
 cheaper than the whole suite.)
 
-## 8. Where things live
+## 8. Line-level selection (backend `.ts` files)
+
+For a changed backend `.ts` file, `select` uses the changed lines, not the whole
+file. A change selects the specs that ran the innermost function that contains
+it, plus the specs that ran functions nested in that function. A change inside a
+function that no spec ran selects nothing and is reported as uncovered.
+
+The map records the commit that the coverage ran on (`sha`). Line numbers in the
+map refer to that commit, and a PR's changed lines refer to its merge base. So
+`select` translates the lines with `git diff <map sha> <merge base>`. It then
+parses the file at the map commit to find the function ranges.
+
+The file falls back to file-level when:
+
+- `select` gets no base ref (`--base`), for example a local run without
+  `BASE_REF`;
+- the map has no `sha`, or CI cannot fetch that commit;
+- a changed line also changed between the map commit and the merge base;
+- a change is outside every function, for example a class field, a decorator,
+  or other module-level code;
+- the map has no entry at the start line of the function that contains the
+  change.
+
+A module-level change that only touches imports, comments, or blank lines has
+no runtime effect of its own. It resolves to the lines that use the changed
+imports' value bindings, and each of those lines resolves as above. Type-only
+uses do not count, except in the signatures of a decorated class: with
+`emitDecoratorMetadata`, TypeScript emits those types when the module loads, so
+the file falls back to file-level. An import that still loads the module
+without a value binding also falls back: a side-effect import
+(`import './x'`), `import { type A } from './x'` (compiled to `import {}` with
+`verbatimModuleSyntax`), and `import x = require('./x')`.
+
+A file-level fallback selects the specs that ran one of the file's functions
+in their own tests. It leaves out `<boot>`, so that each file that loads at
+boot does not select every spec. If only `<boot>` ran the file, the fallback
+selects every spec.
+
+Frontend and `.vue` files always use file-level selection.
+
+## 9. Where things live
 
 | Thing | File |
 |---|---|
 | Committed map | `.github/test-metrics/e2e-impact-map.json` |
 | Build + encode the map | `scripts/aggregate-coverage.mjs`, janitor `coverage-map.ts` (`mergeCoverage`, `encodeImpactMap`) |
 | Pick specs for a change | `scripts/select-affected-e2e.mjs` → janitor `select-e2e` |
+| Line-level scopes | janitor `core/read-line-scopes.ts` and `core/import-scopes.ts`, test-impact `line-scope.ts` |
 | Backend per-spec capture | `fixtures/backend-v8-coverage.ts`, `scripts/emit-spec-backend-lcovs.ts` |
 | Full pipeline notes | `scripts/coverage-workflow.md` |
 

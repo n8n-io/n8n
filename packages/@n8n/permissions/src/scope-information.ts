@@ -63,6 +63,10 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Export Agent',
 		description: 'Allows including agents in a portable package export.',
 	},
+	'agent:import': {
+		displayName: 'Import Agent',
+		description: 'Allows importing agents from a portable package.',
+	},
 	'agent:update': {
 		displayName: 'Update Agent',
 		description: 'Allows updating, building, publishing, and managing integrations of agents.',
@@ -102,6 +106,24 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 	'execution:delete': {
 		displayName: 'Delete Execution',
 		description: 'Allows deleting executions of workflows in the project.',
+	},
+	'executionLimit:read': {
+		displayName: 'View Execution Limits',
+		description:
+			'Allows viewing the instance execution limit, the default for new projects, and the limit of every project.',
+	},
+	'executionLimit:update': {
+		displayName: 'Change Execution Limits',
+		description:
+			'Allows setting and removing the instance execution limit, the default for new projects, and the limit of every project.',
+	},
+	'projectExecutionLimit:read': {
+		displayName: 'View Project Execution Limit',
+		description: 'Allows viewing the execution limit of the project.',
+	},
+	'projectExecutionLimit:update': {
+		displayName: 'Change Project Execution Limit',
+		description: 'Allows setting and removing the execution limit of the project.',
 	},
 	'nodeTypePolicy:manage': {
 		displayName: 'Manage Node Type Policies',
@@ -192,45 +214,42 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Manage project roles',
 		description: 'Allows creating, editing, and deleting project role definitions.',
 	},
-	'gitConnection:create': {
-		displayName: 'Create Git Connection',
-		description: 'Allows creating Git connections and their authentication material.',
-	},
-	'gitConnection:read': {
-		displayName: 'Read Git Connection',
-		description: 'Allows reading Git connection configuration. Secrets are never returned.',
-	},
-	'gitConnection:update': {
-		displayName: 'Update Git Connection',
-		description: 'Allows updating Git connections, including their authentication material.',
-	},
-	'gitConnection:delete': {
-		displayName: 'Delete Git Connection',
-		description: 'Allows deleting Git connections and their local files.',
-	},
-	'gitConnection:list': {
-		displayName: 'List Git Connections',
-		description: 'Allows listing Git connections.',
-	},
-	'gitConnection:discover': {
-		displayName: 'Discover Git repositories',
-		description: 'Allows listing remote repositories and branches with saved provider credentials.',
-	},
-	'gitConnection:clone': {
-		displayName: 'Clone Git Connection',
-		description: 'Allows cloning and removing the local working copy of a Git connection.',
-	},
-	'gitConnection:push': {
-		displayName: 'Push Git Connection',
-		description: 'Allows pushing all projects linked to a Git connection to its remote repository.',
-	},
-	'gitConnection:manageProjects': {
-		displayName: 'Manage Git Connection Projects',
-		description: 'Allows adding projects to and removing projects from a Git connection.',
-	},
-	'gitConnection:pull': {
-		displayName: 'Pull Git Connection',
+	'promotions:manageProviders': {
+		displayName: 'Manage promotion providers',
 		description:
-			'Allows importing all projects from a Git connection working copy into the instance.',
+			'Allows creating, updating and deleting promotion providers, and listing the repositories and branches that a provider can reach.',
+	},
+	'promotions:readProviders': {
+		displayName: 'Read promotion providers',
+		description: 'Allows listing and reading promotion providers.',
+	},
+	'promotions:manageEnvironments': {
+		displayName: 'Manage promotion environments',
+		description:
+			'Allows creating, updating and deleting promotion environments, connecting this instance to them, and adding and removing their projects.',
+	},
+	'promotions:readEnvironments': {
+		displayName: 'Read promotion environments',
+		description:
+			'Allows listing and reading promotion environments, the projects linked to each environment, and the Apply package projects that are missing on this instance.',
+	},
+	'promotions:promote': {
+		displayName: 'Promote',
+		description:
+			'Allows previewing and promoting changes from team projects to a promotion environment.',
+	},
+	'promotions:apply': {
+		displayName: 'Apply',
+		description:
+			'Allows previewing and applying changes from a promotion environment to this instance.',
+	},
+	'promotions:readReviews': {
+		displayName: 'Read promotion reviews',
+		description: 'Allows listing promotion reviews and viewing their status and changes.',
+	},
+	'promotions:approveReviews': {
+		displayName: 'Approve promotion reviews',
+		description:
+			'Allows approving promotion reviews, which adds their changes to the promotion environment.',
 	},
 };
