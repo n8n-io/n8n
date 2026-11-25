@@ -1,7 +1,17 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import {
+	existsSync,
+	mkdirSync,
+	readFileSync,
+	rmSync,
+	statSync,
+	utimesSync,
+	writeFileSync,
+} from 'node:fs';
 import { dirname, join } from 'node:path';
+import { runCommand } from 'citty';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { secretsCommand } from '../src/commands/secrets';
 import { loadGlobalConfig } from '../src/config/global-config';
 import { configDir, envsDir, globalSecretsFile, secretsKeyFile } from '../src/config/paths';
 import {
@@ -9,10 +19,12 @@ import {
 	decryptValue,
 	detectBackend,
 	editSecrets,
+	encryptSecretsFile,
 	encryptValue,
 	inspectSecrets,
 	isEncrypted,
 	readSecrets,
+	saveSecretsBackend,
 	SECRETS_BACKEND_ENV_VAR,
 	setSecret,
 } from '../src/env/secret-store';
@@ -114,6 +126,26 @@ describe('secrets files', () => {
 		expect(() => readSecrets(file)).toThrow(/Cannot decrypt API_KEY in .*secrets\.env:1/);
 	});
 
+	it('should not change a file when the key cannot decrypt its values', () => {
+		setSecret(globalSecretsFile(), 'OTHER', 'x');
+		const file = envSecrets('a');
+		const text = `API_KEY=${encryptValue(Buffer.alloc(32, 9), 'API_KEY', 'x')}\nNEW=plain\n`;
+		write(file, text);
+		expect(() => readSecrets(file)).toThrow('Cannot decrypt API_KEY');
+		expect(() => encryptSecretsFile(file)).toThrow('Cannot decrypt API_KEY');
+		expect(readFileSync(file, 'utf8')).toBe(text);
+	});
+
+	it('should make a key when a crashed process left the lock', () => {
+		const lock = join(configDir(), '.secrets-key.lock');
+		mkdirSync(lock, { recursive: true });
+		const old = new Date(Date.now() - 60_000);
+		utimesSync(lock, old, old);
+		setSecret(envSecrets('a'), 'API_KEY', 'v');
+		expect(existsSync(secretsKeyFile())).toBe(true);
+		expect(existsSync(lock)).toBe(false);
+	});
+
 	it('should keep plaintext when encryption is off, and refuse encrypted values', () => {
 		process.env[SECRETS_BACKEND_ENV_VAR] = 'off';
 		const file = envSecrets('a');
@@ -159,6 +191,25 @@ describe('editSecrets', () => {
 			}),
 		).rejects.toThrow('editor crashed');
 		expect(existsSync(copy)).toBe(false);
+	});
+});
+
+describe('secrets use', () => {
+	it('should change nothing when the key cannot decrypt a value', async () => {
+		delete process.env[SECRETS_BACKEND_ENV_VAR];
+		saveSecretsBackend('file');
+		setSecret(globalSecretsFile(), 'OTHER', 'x');
+		const file = envSecrets('a');
+		const text = `API_KEY=${encryptValue(Buffer.alloc(32, 9), 'API_KEY', 'x')}\n`;
+		write(file, text);
+		const global = readFileSync(globalSecretsFile(), 'utf8');
+
+		await expect(runCommand(secretsCommand, { rawArgs: ['use', 'off'] })).rejects.toThrow(
+			'cannot decrypt the values',
+		);
+		expect(readFileSync(file, 'utf8')).toBe(text);
+		expect(readFileSync(globalSecretsFile(), 'utf8')).toBe(global);
+		expect(loadGlobalConfig().secrets.backend).toBe('file');
 	});
 });
 

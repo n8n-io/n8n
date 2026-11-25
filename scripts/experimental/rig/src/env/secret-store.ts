@@ -20,6 +20,7 @@ import {
 import { RigError } from '../errors';
 import { RIG } from '../meta';
 import { type DotenvEntry, mapDotenvValues, parseDotenv, setInDotenv } from './dotenv';
+import { withKeyLock } from './key-lock';
 import { type KeyStore, writePrivate } from './key-stores/common';
 import { keyFile } from './key-stores/key-file';
 import { keychain } from './key-stores/keychain';
@@ -130,7 +131,7 @@ function parseKey(hex: string, backend: KeyBackend): Buffer {
 	if (!KEY_PATTERN.test(hex)) {
 		throw new RigError(
 			`The secrets key in the ${STORES[backend].location()} is not valid.`,
-			`Import the right key with \`${RIG} secrets import-key\`.`,
+			`Import the right key with \`${RIG} secrets import-key --force\`.`,
 		);
 	}
 	return Buffer.from(hex, 'hex');
@@ -183,18 +184,24 @@ function activeKey(create: boolean): Buffer {
 	if (!create) {
 		throw new RigError(`The secrets key is missing from the ${STORES[backend].location()}.`, hint);
 	}
-	const orphaned = secretsFiles().filter((file) =>
-		parseDotenv(readFileSync(file, 'utf8')).some((entry) => isEncrypted(entry.value)),
-	);
-	if (orphaned.length > 0) {
-		throw new RigError(
-			`The secrets key is missing from the ${STORES[backend].location()}, but ${orphaned.map(displayPath).join(', ')} has encrypted values.`,
-			hint,
+	return withKeyLock(() => {
+		// Another rig process can have made the key while this one waited.
+		keyCache.delete(cacheKey(backend));
+		const created = readKey(backend);
+		if (created) return created;
+		const orphaned = secretsFiles().filter((file) =>
+			parseDotenv(readFileSync(file, 'utf8')).some((entry) => isEncrypted(entry.value)),
 		);
-	}
-	const fresh = randomBytes(32);
-	storeKey(backend, fresh);
-	return fresh;
+		if (orphaned.length > 0) {
+			throw new RigError(
+				`The secrets key is missing from the ${STORES[backend].location()}, but ${orphaned.map(displayPath).join(', ')} has encrypted values.`,
+				hint,
+			);
+		}
+		const fresh = randomBytes(32);
+		storeKey(backend, fresh);
+		return fresh;
+	});
 }
 
 export function isEncrypted(value: string): boolean {
@@ -285,14 +292,16 @@ export function readSecrets(file: string): DotenvEntry[] {
 	}
 	const hasPlaintext = entries.some((entry) => !isEncrypted(entry.value));
 	const key = activeKey(hasPlaintext);
+	// Decrypt first: with a wrong key, the file must not get values of a second key.
+	const decrypted = entries.map((entry) =>
+		isEncrypted(entry.value) ? { ...entry, value: decryptOrThrow(key, entry, file) } : entry,
+	);
 	if (hasPlaintext) {
 		const encrypted = encryptText(text, key);
 		writePrivate(file, encrypted.text);
 		notice(`Encrypted ${encrypted.count} secret value(s) in ${displayPath(file)}.`);
 	}
-	return entries.map((entry) =>
-		isEncrypted(entry.value) ? { ...entry, value: decryptOrThrow(key, entry, file) } : entry,
-	);
+	return decrypted;
 }
 
 /** Sets one secret. Encrypts the value unless encryption is off. */
@@ -307,8 +316,13 @@ export function setSecret(file: string, name: string, value: string): void {
 export function encryptSecretsFile(file: string): number {
 	if (!existsSync(file)) return 0;
 	const text = readFileSync(file, 'utf8');
-	if (parseDotenv(text).every((entry) => isEncrypted(entry.value))) return 0;
-	const result = encryptText(text, activeKey(true));
+	const entries = parseDotenv(text);
+	if (entries.every((entry) => isEncrypted(entry.value))) return 0;
+	const key = activeKey(true);
+	for (const entry of entries) {
+		if (isEncrypted(entry.value)) decryptOrThrow(key, entry, file);
+	}
+	const result = encryptText(text, key);
 	writePrivate(file, result.text);
 	return result.count;
 }
@@ -386,6 +400,8 @@ export function inspectSecrets(): SecretsReport {
 	return { choice, available, key, problem, files };
 }
 
+const CLEANUP_SIGNALS: NodeJS.Signals[] = ['SIGINT', 'SIGTERM', 'SIGHUP'];
+
 /** A private directory for plaintext copies. On Linux, $XDG_RUNTIME_DIR is in memory. */
 function privateTempDir(): string {
 	const runtime = process.env.XDG_RUNTIME_DIR;
@@ -413,6 +429,13 @@ export async function editSecrets(
 
 	const dir = privateTempDir();
 	const plainFile = join(dir, basename(file));
+	// A signal ends Node without `finally`, so delete the plaintext copy first.
+	const onSignal = (signal: NodeJS.Signals) => {
+		rmSync(dir, { recursive: true, force: true });
+		for (const name of CLEANUP_SIGNALS) process.removeListener(name, onSignal);
+		process.kill(process.pid, signal);
+	};
+	for (const name of CLEANUP_SIGNALS) process.once(name, onSignal);
 	try {
 		writeFileSync(plainFile, plain, { mode: 0o600 });
 		await edit(plainFile);
@@ -424,6 +447,7 @@ export async function editSecrets(
 		writePrivate(file, stored);
 		return true;
 	} finally {
+		for (const name of CLEANUP_SIGNALS) process.removeListener(name, onSignal);
 		rmSync(dir, { recursive: true, force: true });
 	}
 }

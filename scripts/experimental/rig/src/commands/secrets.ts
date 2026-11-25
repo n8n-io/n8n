@@ -129,13 +129,19 @@ const useCommand = defineCommand({
 			return;
 		}
 		const files = secretsFiles();
-		const encrypted = files.filter((file) => secretsFileStatus(file, undefined).encrypted > 0);
 		const currentKey =
 			current !== 'off' && keyStoreAvailable(current) ? readKey(current) : undefined;
-		if (encrypted.length > 0 && !currentKey && target === 'off') {
+		if (target !== 'off' && !keyStoreAvailable(target)) {
+			throw new RigError(`The ${keyStoreLabel(target)} is not available on this machine.`);
+		}
+		const targetKey = target === 'off' ? undefined : readKey(target);
+		// Check all values before rig changes a file, so a failure leaves everything as it was.
+		const keyAfter = currentKey ?? targetKey;
+		const unreadable = files.filter((file) => secretsFileStatus(file, keyAfter).unreadable > 0);
+		if (unreadable.length > 0) {
 			throw new RigError(
-				`rig cannot read the key of ${current}, so it cannot decrypt ${encrypted.map(displayPath).join(', ')}.`,
-				`Import the key with \`${RIG} secrets import-key\` first.`,
+				`The secrets key cannot decrypt the values in ${unreadable.map(displayPath).join(', ')}.`,
+				`Import the key that encrypted them with \`${RIG} secrets import-key\` first. Run \`${RIG} secrets status\` to see the files.`,
 			);
 		}
 
@@ -152,10 +158,6 @@ const useCommand = defineCommand({
 			return;
 		}
 
-		if (!keyStoreAvailable(target)) {
-			throw new RigError(`The ${keyStoreLabel(target)} is not available on this machine.`);
-		}
-		const targetKey = readKey(target);
 		if (currentKey && targetKey && !currentKey.equals(targetKey) && !args.force) {
 			throw new RigError(
 				`The ${keyStoreLocation(target)} already has a different key.`,
@@ -221,7 +223,16 @@ const importKeyCommand = defineCommand({
 		if (!KEY_PATTERN.test(hex)) throw new RigError('The key must have 64 hex characters.');
 		const key = Buffer.from(hex, 'hex');
 
-		const existing = readKey(backend);
+		let existing: Buffer | undefined;
+		try {
+			existing = readKey(backend);
+		} catch (error) {
+			// With --force, a damaged key in the store must not block the restore.
+			if (!args.force || !keyStoreAvailable(backend)) throw error;
+			ui.warn(
+				`Replacing a key that rig cannot read: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
 		if (existing?.equals(key)) {
 			ui.success(`The ${keyStoreLocation(backend)} already has this key.`);
 			return;

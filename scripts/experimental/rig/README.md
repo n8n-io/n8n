@@ -358,6 +358,8 @@ saves it in `secrets.backend` in the global config:
 - The encryption protects the files, for example in backups, dotfile syncs,
   or screen shares. It does not protect against programs that run as your
   user.
+- With the `file` backend, the key is in the same directory as the global
+  `secrets.env`. A backup or sync of that directory has the key too.
 
 | Task | Command |
 |---|---|
