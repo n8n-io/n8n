@@ -438,6 +438,9 @@ describe('InvitationController', () => {
 			expect(externalHookArg?.[0]).toStrictEqual([newUserEmail]);
 
 			for (const [eventName, payload] of eventService.emit.mock.calls) {
+				// Route telemetry shares this emitter. This test checks only invitation events.
+				if (eventName === 'internal-api-invoked') continue;
+
 				if (eventName === 'user-invited') {
 					expect(payload).toEqual({
 						user: expect.objectContaining({ id: expect.any(String) }),
