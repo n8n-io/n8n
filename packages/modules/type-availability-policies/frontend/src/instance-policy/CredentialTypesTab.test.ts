@@ -15,8 +15,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import CredentialTypesTab from './CredentialTypesTab.vue';
 import { useInstancePolicyStore } from './instance-policy.store';
 import type { InstancePolicy } from '../type-availability-policies.api';
-import { findPopupItem, MENU_ITEM } from '../__tests__/popups';
-import { policyTableCells } from '../__tests__/table';
+import { findPopupItem, MENU_ITEM, OPTION } from '../__tests__/popups';
+import { accessFilter, policyTableCells } from '../__tests__/table';
 import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.store';
 
 const mocks = vi.hoisted(() => ({
@@ -191,6 +191,31 @@ describe('CredentialTypesTab', () => {
 		// After the save, the store reads the access list again.
 		await waitFor(() => expect(mocks.fetchInstanceAccess).toHaveBeenCalledTimes(2));
 		expect(accessCell(getByTestId)).toHaveTextContent('Restricted');
+	});
+
+	it('moves the focus to the access filter when a changed row leaves the filter', async () => {
+		mocks.saveInstancePolicy.mockResolvedValue({ ...policy(2), warnings: [] });
+		const { findByText, getByTestId, queryByTestId, getByRole } = await setup();
+		await findByText('Bitly API');
+		const filter = accessFilter(getByRole);
+		await userEvent.click(filter);
+		await userEvent.click(await findPopupItem(OPTION, 'Allowed (1)'));
+
+		await restrictBitly(getByTestId);
+
+		await waitFor(() => expect(filter).toHaveFocus());
+		expect(queryByTestId('instance-policy-open-bitlyApi')).not.toBeInTheDocument();
+	});
+
+	it('keeps the focus in the row when a changed row stays in the table', async () => {
+		mocks.saveInstancePolicy.mockResolvedValue({ ...policy(2), warnings: [] });
+		const { findByText, getByTestId } = await setup();
+		await findByText('Bitly API');
+
+		await restrictBitly(getByTestId);
+
+		await waitFor(() => expect(accessCell(getByTestId)).toHaveTextContent('Restricted'));
+		await waitFor(() => expect(accessCell(getByTestId)).toHaveFocus());
 	});
 
 	it('shows the saved value again when the save fails', async () => {

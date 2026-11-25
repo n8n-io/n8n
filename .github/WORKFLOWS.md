@@ -188,6 +188,38 @@ These only run if specific files changed:
 | `packages/@n8n/instance-ai/src/**`, `packages/@n8n/instance-ai/skills/**`, `packages/@n8n/instance-ai/knowledge-base/**`, `packages/@n8n/instance-ai/evaluations/**`, `packages/cli/src/modules/instance-ai/**`, `packages/core/src/execution-engine/eval-mock-helpers.ts`, `packages/@n8n/agents/src/**` | `ci-instance-ai-evals.yml` | on PR `opened` / `reopened` / `ready_for_review` |
 | `docker/get-n8n.sh`, `docker/get-n8n-compose.yml`, `docker/test-get-n8n.sh` | `test-get-n8n.yml`          | any        |
 
+### Pushes to an open PR
+
+A push to an open PR tests only the commits after the newest PR commit that
+passed `ci-pull-requests.yml`. `find-last-green-commit.mjs` finds that commit.
+`ci-filter` then uses the diff from that commit, not the whole PR, for the path
+filters, the test scoping and the E2E selection. On an incremental run, lint
+and typecheck compare the same commit with the PR head (`TURBO_SCM_BASE` and
+`TURBO_SCM_HEAD`), not with the merge commit, which also holds the base-branch
+changes since that commit. In all other runs, they compare the whole PR with
+the base branch, as before.
+
+`ci-filter` tests the whole PR when one of these is true:
+
+- The event is not a push to an open PR (`opened`, `reopened`, merge queue).
+- No earlier PR commit passed CI.
+- The earlier commit is not an ancestor of the head (force push or rebase).
+- The new commits include a merge, for example from master.
+- The merge base changed, for example because the PR now targets another branch.
+- The PR has the `force-full-ci` label. The script reads the label from the
+  API, so a "Re-run all jobs" after you add the label tests the whole PR.
+
+**Why:** a small fix, such as one line in a test, ran all E2E shards and DB
+legs again because an earlier commit had changed runtime code. The earlier
+commits passed CI against an older base branch. The merge queue runs the unit,
+integration and DB tests, lint and typecheck for the whole PR on the latest
+base branch, so that gap closes before the merge. The queue does not run E2E, so an
+E2E spec runs again only when the new commits select it.
+
+**Coverage:** an incremental run collects coverage only for the files that the
+new commits change. Codecov still calculates patch coverage over the whole PR,
+but for that push only the lines in those files have coverage data.
+
 ### On PR Review
 
 | Event                      | Workflow                    | Condition                                            |
@@ -261,9 +293,12 @@ survive. The run is skipped when `latest` already matches the lockfile; a
 |------------------------------------|----------------------------------------|--------|
 | PR dequeued (not merged or manual) | `util-notify-merge-queue-removal.yml`  | Writes one PR comment with the reason. Later removals update the same comment. |
 
-This workflow uses `pull_request_target`. Thus, it runs without approval on
-fork and bot PRs, and it has a write token on them. No step checks out or runs
-PR code. An edit to the comment does not send a new notification.
+This workflow uses `pull_request`, because GitHub does not start a
+`pull_request_target` run for the `dequeued` type. On PRs from external
+contributors and bots, a run waits for approval. On fork PRs, the token is
+read-only, so the comment step fails. The `concurrency` group keeps at most one
+pending run for each PR, so many approved runs update one comment. An edit to
+the comment does not send a new notification.
 
 ### Label Triggers
 
@@ -664,7 +699,7 @@ Push to master
 ├─ unit-test (matrix: Node 24.22.2, 26.13.0)
 │   └─ Coverage only on 24.22.2
 ├─ lint
-├─ (performance: CodSpeed benchmarks, paused until the plugin supports Vitest 5)
+├─ performance (CodSpeed benchmarks)
 ├─ verify-single-instance-npm (advisory; packages changed by this push)
 └─ notify-on-failure (Slack #alerts-build)
 ```
@@ -693,7 +728,7 @@ Push to master
 | Monday 00:00              | `util-update-node-popularity.yml` | Node usage stats         |
 | Monday 02:00              | `test-e2e-coverage-weekly.yml`    | Weekly E2E coverage      |
 | Monday 06:00              | `test-link-check-weekly.yml`      | Broken links in `packages/` |
-| Mon–Tue every 2 hours at :15 | `ci-detect-new-packages.yml`   | Report unpublished npm packages in `#alerts-developer-platforms` and link the package setup workflow |
+| Monday every 2 hours at :15 | `ci-detect-new-packages.yml`   | Report unpublished npm packages in `#alerts-developer-platforms` and link the package setup workflow |
 | Wednesday 04:00           | `util-update-get-n8n-versions.yml` | get-n8n stable versions |
 | Saturday 22:00            | `test-evals-ai.yml`               | AI workflow evals        |
 | 1st of month 04:00        | `util-refresh-cubic-schema.yml`   | Refresh vendored cubic schema |
@@ -782,6 +817,8 @@ once new-disk retention works.
 inputs:
   script:        # path of the module, relative to the repository root
   github-token:  # token for the Octokit client, also exported as GITHUB_TOKEN
+outputs:
+  result:        # the string that main() returns, empty when it returns nothing
 ```
 
 Runs one `.github/scripts` module through `actions/github-script`. That action
@@ -891,6 +928,7 @@ Scripts in `.github/scripts/`:
 | `resolve-pnpm-version.mjs` | Publish the pinned pnpm version and its executable cache key | `setup-nodejs` action |
 | `nightly-sbom-context.mjs` | Resolve the source SHA and image tag for nightly SBOM validation | `test-sbom-nightly.yml` |
 | `db-test-matrix.mjs`    | DB test matrix from `postgres-versions.json` | `ci-pull-requests.yml` |
+| `find-last-green-commit.mjs` | Newest PR commit that passed the current workflow, for incremental PR runs | `ci-pull-requests.yml` |
 | `quality/check-cubic-config.mjs` | Validate `cubic.yaml` against the vendored cubic schema; enforce its silent agent/character limits. `--refresh` re-pulls the schema | `test-workflow-scripts-reusable.yml`, `util-refresh-cubic-schema.yml` |
 | `glob.mjs`              | Builtin-only glob matcher for changed-file paths (`**`, `*`, dot segments) | `quality/check-pr-size.mjs` |
 | `probe-registry.mjs`    | Registry path throughput probe (temporary) | `util-probe-registry.yml` |

@@ -1,6 +1,6 @@
 import { BaseRepository, Project, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, In, type EntityManager } from '@n8n/typeorm';
+import { DataSource, In, Not, type EntityManager } from '@n8n/typeorm';
 
 import {
 	AgentKnowledgeDependency,
@@ -104,7 +104,7 @@ export class KnowledgeCollectionRepository {
 	}
 
 	/**
-	 * Returns the shared collections that the projects can use, newest first.
+	 * Returns the kind=shared collections that the projects can use, newest first.
 	 * It reads through the share rows, so a collection shared with a project
 	 * shows up for it too, once.
 	 */
@@ -130,6 +130,37 @@ export class KnowledgeCollectionRepository {
 
 		const collections = await query.getMany();
 		return await this.summarize(collections, manager);
+	}
+
+	/** Whether another collection of the project, not `exceptCollectionId`, uses the name. */
+	async isNameTakenInProject(
+		projectId: string,
+		name: string,
+		exceptCollectionId: string,
+		ctx: OperationContext,
+	): Promise<boolean> {
+		return await this.table
+			.managerFor(ctx)
+			.existsBy(KnowledgeCollection, { projectId, name, id: Not(exceptCollectionId) });
+	}
+
+	async updateNameAndDescription(
+		id: string,
+		changes: Partial<Pick<KnowledgeCollection, 'name' | 'description'>>,
+		ctx: OperationContext,
+	): Promise<void> {
+		// `update` skips the entity hooks, so the update time is set here.
+		await this.table
+			.managerFor(ctx)
+			.update(KnowledgeCollection, { id, kind: 'shared' }, { ...changes, updatedAt: new Date() });
+	}
+
+	/**
+	 * Deletes nothing when the project has no shared collection with this id.
+	 * The database cascade deletes the file, vector store, share and agent link rows too.
+	 */
+	async deleteSharedInProject(id: string, projectId: string, ctx: OperationContext): Promise<void> {
+		await this.table.managerFor(ctx).delete(KnowledgeCollection, { id, projectId, kind: 'shared' });
 	}
 
 	/**

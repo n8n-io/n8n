@@ -9,7 +9,7 @@ import {
 import { VIEWS } from '@n8n/frontend-constants/views';
 import { useI18n } from '@n8n/i18n';
 import { createReusableTemplate } from '@vueuse/core';
-import { computed, onMounted, watch } from 'vue';
+import { computed, onMounted, useTemplateRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import CredentialTypesTab from './CredentialTypesTab.vue';
@@ -63,6 +63,9 @@ const details = computed(() => {
 		: undefined;
 });
 
+// Only one tab renders at a time, so both share this ref.
+const tab = useTemplateRef<InstanceType<typeof NodeTypesTab | typeof CredentialTypesTab>>('tab');
+
 function openDetails(name: string) {
 	void router.replace({ query: { ...route.query, tab: activeTab.value, details: name } });
 }
@@ -72,8 +75,19 @@ function queryWithoutDetails() {
 	return query;
 }
 
+// The dialog's close focus runs after `details` no longer names it, so the close keeps the name.
+let closedType: string | undefined;
+
 function closeDetails() {
+	closedType = details.value?.name;
 	void router.replace({ query: queryWithoutDetails() });
+}
+
+// The dialog would return the focus later, to the element that had it when the dialog opened. A
+// change of access can take that row out of the filtered table by then, and a link has no such element.
+function onDialogCloseAutoFocus(event: Event) {
+	event.preventDefault();
+	tab.value?.returnFocus(closedType);
 }
 
 // The server lists every type of a kind, so the dialog of a name that it does not list closes. The
@@ -145,12 +159,12 @@ onMounted(() => {
 				data-test-id="instance-policy-tabs"
 			/>
 		</DefineTabs>
-		<CredentialTypesTab v-if="activeTab === 'credential'" @open="openDetails">
+		<CredentialTypesTab v-if="activeTab === 'credential'" ref="tab" @open="openDetails">
 			<template #toolbar-start>
 				<ReuseTabs />
 			</template>
 		</CredentialTypesTab>
-		<NodeTypesTab v-else-if="activeTab === 'node'" @open="openDetails">
+		<NodeTypesTab v-else-if="activeTab === 'node'" ref="tab" @open="openDetails">
 			<template #toolbar-start>
 				<ReuseTabs />
 			</template>
@@ -160,12 +174,14 @@ onMounted(() => {
 			open
 			:node-type="details.name"
 			@update:open="closeDetails"
+			@close-auto-focus="onDialogCloseAutoFocus"
 		/>
 		<CredentialTypeAccessDialog
 			v-else-if="details?.kind === 'credential'"
 			open
 			:credential-type="details.name"
 			@update:open="closeDetails"
+			@close-auto-focus="onDialogCloseAutoFocus"
 		/>
 	</N8nSettingsLayout>
 </template>

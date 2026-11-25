@@ -135,6 +135,28 @@ export function makeLargeData(): INodeExecutionData[] {
 	];
 }
 
+/** 200 rows of 2,000 numbers each. */
+export function makeNumberRowsData(): INodeExecutionData[] {
+	return [
+		{
+			json: {
+				rows: Array.from({ length: 200 }, () => Array.from({ length: 2000 }, (_, i) => i)),
+			},
+		},
+	];
+}
+
+/** 200 items, each with a text of 10,000 characters. */
+export function makeLongTextItemsData(): INodeExecutionData[] {
+	return [
+		{
+			json: {
+				items: Array.from({ length: 200 }, (_, i) => ({ id: i, blob: 'x'.repeat(10_000) })),
+			},
+		},
+	];
+}
+
 // ── Engine switching helpers ──
 
 export async function useLegacyEngine(): Promise<void> {
