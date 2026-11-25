@@ -14,7 +14,6 @@ import {
 	instanceAiConfirmationSeveritySchema,
 } from '@n8n/api-types';
 import type { ExecutionToolAction, InstanceAiApprovalDetails } from '@n8n/api-types';
-import type { IBinaryKeyData } from 'n8n-workflow';
 import { Tool } from '@n8n/agents';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -30,7 +29,9 @@ import { recordLiveRunVerification } from './orchestration/verification/record-l
 import {
 	approvalFilesOf,
 	describeInputFiles,
+	inputItemFilesSchema,
 	readInputFiles,
+	readItemFiles,
 	workflowFilesOf,
 } from './shared/workflow-files';
 
@@ -115,15 +116,7 @@ const MOCK_INPUT_DESCRIPTION =
 const mockInputItem = z.object({ json: z.record(z.unknown()) });
 
 // Only when the host can pass files to runs. See `actionSchemaFor`.
-const mockInputItemWithFiles = mockInputItem.extend({
-	files: z
-		.record(z.string(), z.string())
-		.optional()
-		.describe(
-			'Files of this conversation to give this item as binary data. ' +
-				'Key = binary property name (usually "data"), value = fileId.',
-		),
-});
+const mockInputItemWithFiles = mockInputItem.extend({ files: inputItemFilesSchema });
 
 const runStepAction = z.object({
 	action: z
@@ -467,17 +460,23 @@ async function handleRunStep(
 
 	const needsApproval = !allowedByScope && !allowedBySessionGrant;
 
-	// Read the files before the approval, so a missing file fails early and the prompt can name them.
-	const workflowFiles = workflowFilesOf(context);
-	let mockInput: Array<{ json: Record<string, unknown>; binary?: IBinaryKeyData }> | undefined;
-	if (input.mockInput) {
-		mockInput = [];
-		for (const { json, files } of input.mockInput) {
-			const { binary, error } = workflowFiles ? await readInputFiles(workflowFiles, files) : {};
-			if (error) return { executionId: '', status: 'error' as const, error };
-			mockInput.push(binary ? { json, binary } : { json });
-		}
+	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
+		return {
+			executionId: '',
+			status: 'error' as const,
+			denied: true,
+			reason: 'User denied the action',
+		};
 	}
+
+	// Read the files before the approval, so a missing file fails early and the prompt can name them.
+	const read = input.mockInput
+		? await readItemFiles(workflowFilesOf(context), input.mockInput)
+		: undefined;
+	if (read?.error !== undefined) {
+		return { executionId: '', status: 'error' as const, error: read.error };
+	}
+	const mockInput = read?.items;
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
@@ -491,15 +490,6 @@ async function handleRunStep(
 			message: `Run the node "${input.nodeName}" in ${workflowName}${describeInputFiles((mockInput ?? []).map((item) => item.binary))}`,
 			severity: 'warning' as const,
 		});
-	}
-
-	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
-		return {
-			executionId: '',
-			status: 'error' as const,
-			denied: true,
-			reason: 'User denied the action',
-		};
 	}
 
 	if (resumeData?.approved && resumeData.scope === 'session') {

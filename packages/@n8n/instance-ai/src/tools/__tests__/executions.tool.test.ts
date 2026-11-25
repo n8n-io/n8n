@@ -1389,6 +1389,47 @@ describe('execution tools', () => {
 				);
 			});
 
+			it('reads a file that several mock items get one time, and names it one time', async () => {
+				const { context, storedFiles } = contextWithFiles();
+				const suspend = vi.fn();
+
+				await executeTool(
+					createExecutionToolRouter(context),
+					{
+						action: 'run-step' as const,
+						workflowId: 'wf-1',
+						nodeName: 'Edit Image',
+						mockInput: [
+							{ json: {}, files: { data: 'file-1' } },
+							{ json: {}, files: { data: 'file-1' } },
+						],
+					},
+					createAgentCtx({ suspend }) as never,
+				);
+
+				expect(storedFiles.readBinary).toHaveBeenCalledTimes(1);
+				expect(suspend.mock.calls[0][0].message).toMatch(/ with the file a\.png$/);
+			});
+
+			it('does not read the files when the user denied the step run', async () => {
+				const { context, storedFiles } = contextWithFiles();
+
+				const result = await executeTool(
+					createExecutionToolRouter(context),
+					{
+						action: 'run-step' as const,
+						workflowId: 'wf-1',
+						nodeName: 'Edit Image',
+						mockInput: [{ json: {}, files: { data: 'other' } }],
+					},
+					createAgentCtx({ resumeData: { approved: false } }) as never,
+				);
+
+				expect(result).toMatchObject({ status: 'error', denied: true });
+				expect(storedFiles.readBinary).not.toHaveBeenCalled();
+				expect(context.executionService.runStep).not.toHaveBeenCalled();
+			});
+
 			it('names the mock input files in the approval prompt', async () => {
 				const { context } = contextWithFiles();
 				const suspend = vi.fn();
