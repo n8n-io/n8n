@@ -222,6 +222,48 @@ describe('N8nScrollArea', () => {
 			expectOnly(viewport, undefined);
 		});
 
+		it('masks the top edge only after the user scrolls down', async () => {
+			const wrapper = render(N8nScrollArea, {
+				props: { edgeFade: 'top' },
+				slots: { default: '<div>Test content</div>' },
+			});
+			const viewport = getViewport(wrapper.container);
+
+			await scrollVertically(viewport, 0);
+			expectOnly(viewport, undefined);
+
+			await scrollVertically(viewport, 100);
+			expectOnly(viewport, 'fadeTop');
+		});
+
+		it('masks the left edge only after the user scrolls right', async () => {
+			const wrapper = render(N8nScrollArea, {
+				props: { edgeFade: 'left' },
+				slots: { default: '<div>Test content</div>' },
+			});
+			const viewport = getViewport(wrapper.container);
+
+			await scrollHorizontally(viewport, 0);
+			expectOnly(viewport, undefined);
+
+			await scrollHorizontally(viewport, 100);
+			expectOnly(viewport, 'fadeLeft');
+		});
+
+		it('masks the right edge only while content stays past it', async () => {
+			const wrapper = render(N8nScrollArea, {
+				props: { edgeFade: 'right' },
+				slots: { default: '<div>Test content</div>' },
+			});
+			const viewport = getViewport(wrapper.container);
+
+			await scrollHorizontally(viewport, 40);
+			expectOnly(viewport, 'fadeRight');
+
+			await scrollHorizontally(viewport, 100);
+			expectOnly(viewport, undefined);
+		});
+
 		it('masks only the hidden end of a vertical axis', async () => {
 			const wrapper = render(N8nScrollArea, {
 				props: { edgeFade: 'y' },
