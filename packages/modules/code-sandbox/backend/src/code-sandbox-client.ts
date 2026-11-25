@@ -2,11 +2,13 @@ import { CodeSandboxConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import {
 	SandboxClient,
+	SandboxServiceError,
 	type CodeSandbox,
+	type CodeTaskEvent,
 	type CreateCodeSandboxOptions,
 } from '@n8n/sandbox-client';
 
-import { readTaskOutcome, type CodeTaskOutcome } from './task-outcome';
+import { CodeTaskOutcomeUnknownError, readTaskOutcome, type CodeTaskOutcome } from './task-outcome';
 
 @Service()
 export class CodeSandboxClient {
@@ -26,11 +28,16 @@ export class CodeSandboxClient {
 		taskInput: Buffer,
 		signal?: AbortSignal,
 	): Promise<CodeTaskOutcome> {
-		const events = await this.client.runCodeTask(sandboxId, {
-			spec: { taskId },
-			taskInput,
-			signal,
-		});
+		let events: AsyncIterable<CodeTaskEvent>;
+		try {
+			events = await this.client.runCodeTask(sandboxId, { spec: { taskId }, taskInput, signal });
+		} catch (error) {
+			// With no response, the sandbox may have received and run the task
+			if (error instanceof SandboxServiceError && error.status === 0 && !signal?.aborted) {
+				throw new CodeTaskOutcomeUnknownError(error);
+			}
+			throw error;
+		}
 
 		return await readTaskOutcome(events, signal);
 	}
