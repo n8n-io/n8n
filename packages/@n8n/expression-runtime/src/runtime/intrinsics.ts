@@ -42,4 +42,4 @@ export const { isView: isArrayBufferView } = ArrayBuffer;
 
 export const { isInteger } = Number;
 
-export const { get: reflectGet } = Reflect;
+export const { apply: reflectApply, get: reflectGet } = Reflect;

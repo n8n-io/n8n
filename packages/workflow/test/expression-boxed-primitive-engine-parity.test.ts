@@ -39,7 +39,7 @@ describe('Expression - boxed primitives (engine parity)', () => {
 			bf: Object(false) as object,
 			bi: Object(1n) as object,
 			arr: [Object('ab') as object, Object(5) as object, Object(true) as object],
-			tagged: Object.assign(Object('ab') as object, { meta: 1 }),
+			tagged: Object.assign(Object('ab') as object, { meta: 1, info: { deep: 'x' } }),
 			taggedNumber: Object.assign(Object(5) as object, { unit: 'kg' }),
 			err: Object.assign(new Error('boom'), {
 				s: Object('ab') as object,
@@ -216,16 +216,22 @@ describe('Expression - boxed primitives (engine parity)', () => {
 			});
 
 			it.each(['$json', '$input.item.json'])(
-				'reads the own fields of a wrapper through %s',
+				'keeps the value, the type and the own fields of a wrapper through %s',
 				(root) => {
 					expect(evaluate(`={{ ${root}.tagged.meta }}`, native)).toBe(1);
-					expect(evaluate(`={{ ${root}.taggedNumber.unit }}`, native)).toBe('kg');
+					expect(evaluate(`={{ ${root}.tagged.info.deep }}`, native)).toBe('x');
 					expect(evaluate(`={{ Object.keys(${root}.tagged) }}`, native)).toEqual([
 						'0',
 						'1',
 						'meta',
+						'info',
 					]);
+					expect(evaluate(`={{ ${root}.tagged + "!" }}`, native)).toBe('ab!');
+					expect(evaluate(`={{ ${root}.tagged instanceof String }}`, native)).toBe(true);
+					expect(evaluate(`={{ ${root}.taggedNumber.unit }}`, native)).toBe('kg');
 					expect(evaluate(`={{ Object.keys(${root}.taggedNumber) }}`, native)).toEqual(['unit']);
+					expect(evaluate(`={{ ${root}.taggedNumber + 1 }}`, native)).toBe(6);
+					expect(evaluate(`={{ ${root}.taggedNumber instanceof Number }}`, native)).toBe(true);
 				},
 			);
 

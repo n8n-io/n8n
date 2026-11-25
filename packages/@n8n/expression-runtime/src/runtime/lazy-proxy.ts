@@ -7,6 +7,7 @@ import {
 	isArray as isArrayValue,
 	isInteger,
 	objectCreate,
+	objectKeys,
 } from './intrinsics';
 import { isArrayIndexKey, isKeyOf } from './utils';
 
@@ -224,6 +225,19 @@ interface ArrayMetadata {
 	__length: number;
 }
 
+/** A boxed primitive with the metadata of each own field it holds on the host. */
+interface BoxedMetadata {
+	__isBoxed: true;
+	__value: object;
+	__fields: Record<string, unknown>;
+}
+
+function isBoxedMetadata(value: unknown): value is BoxedMetadata {
+	return (
+		typeof value === 'object' && value !== null && '__isBoxed' in value && value.__isBoxed === true
+	);
+}
+
 export function isObjectMetadata(value: unknown): value is ObjectMetadata {
 	return (
 		typeof value === 'object' &&
@@ -389,8 +403,24 @@ export function createDeepLazyProxy(
 				childTrace,
 			);
 		}
+		if (isBoxedMetadata(value)) {
+			return boxedWithFields([...basePath, propOrIdx], value);
+		}
 		// Decoded data can hold the same keys as metadata or callback errors.
 		return decodeHostValue(value);
+	}
+
+	/** Give the boxed primitive that the host sent, with its own fields defined on it. */
+	function boxedWithFields(path: string[], boxed: BoxedMetadata): object {
+		for (const key of objectKeys(boxed.__fields)) {
+			defineProperty(boxed.__value, key, {
+				value: materializeChild(path, key, boxed.__fields[key]),
+				writable: true,
+				enumerable: true,
+				configurable: true,
+			});
+		}
+		return boxed.__value;
 	}
 
 	const target: object = isArray ? [] : {};

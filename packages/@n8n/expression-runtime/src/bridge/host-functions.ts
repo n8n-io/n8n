@@ -111,19 +111,32 @@ export function getArrayElement(
 	return toHostMetadata(arr[index]);
 }
 
-/** Say whether a boxed primitive holds own enumerable keys other than the indices of a String. */
-function holdsOwnFields(value: object, primitive: string | number | boolean | bigint): boolean {
+/** The own enumerable keys of a boxed primitive other than the indices of a String. */
+function ownFieldKeysOf(value: object, primitive: string | number | boolean | bigint): string[] {
 	const indexCount = typeof primitive === 'string' ? primitive.length : 0;
-	return Object.keys(value).length > indexCount;
+	const keys = Object.keys(value);
+	return keys.length > indexCount ? keys.slice(indexCount) : [];
 }
 
 /**
- * Say whether `value` is a boxed primitive that a direct transfer keeps whole.
- * A direct transfer copies only the primitive, so own fields rule it out.
+ * Describe a boxed primitive. Without own fields it goes across as it is. With
+ * own fields it goes across with the metadata of each field, because a direct
+ * transfer copies only the primitive.
  */
-function isWholeBoxedPrimitive(value: object): boolean {
-	const primitive = unboxPrimitive(value);
-	return primitive !== undefined && !holdsOwnFields(value, primitive);
+function boxedPrimitiveToHostMetadata(
+	value: object,
+	primitive: string | number | boolean | bigint,
+): unknown {
+	const keys = ownFieldKeysOf(value, primitive);
+	return keys.length === 0
+		? value
+		: {
+				__isBoxed: true,
+				__value: value,
+				__fields: Object.fromEntries(
+					keys.map((key) => [key, toHostMetadata(Reflect.get(value, key))]),
+				),
+			};
 }
 
 /** Describe objects and arrays without reading their contents. */
@@ -145,20 +158,19 @@ export function toHostMetadata(value: unknown): unknown {
 		};
 	}
 
-	// Dates and boxed primitives store their value in internal slots, not
-	// enumerable own keys. Transfer them directly.
-	if (
-		value instanceof Date ||
-		(value !== null && typeof value === 'object' && isWholeBoxedPrimitive(value))
-	) {
+	// Dates have no enumerable own keys. Transfer the value directly.
+	if (value instanceof Date) {
 		return value;
 	}
 
 	if (value !== null && typeof value === 'object') {
-		return {
-			__isObject: true,
-			__keys: Object.keys(value),
-		};
+		const primitive = unboxPrimitive(value);
+		return primitive === undefined
+			? {
+					__isObject: true,
+					__keys: Object.keys(value),
+				}
+			: boxedPrimitiveToHostMetadata(value, primitive);
 	}
 
 	return value;

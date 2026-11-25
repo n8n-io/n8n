@@ -1181,7 +1181,7 @@ export class QuickJsBridge implements RuntimeBridge {
 	}
 	function hasPrototype(proto, target) {
 		try {
-			return isPrototypeOf.call(proto, target);
+			return reflectApply(isPrototypeOf, proto, [target]);
 		} catch (_e) {
 			return false;
 		}
@@ -1221,7 +1221,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		}
 		var tag = '';
 		try {
-			tag = objectToString.call(v);
+			tag = reflectApply(objectToString, v, []);
 		} catch (_e) {
 			tag = '';
 		}

@@ -28,6 +28,7 @@ import {
 	objectKeys,
 	objectPrototype,
 	objectToString,
+	reflectApply,
 	reflectGet,
 	stringPrototype,
 	stringValueOf,
@@ -165,7 +166,8 @@ export function isPlainObject(value: object): value is Record<string, unknown> {
 
 function tryUnbox<T>(value: object, fn: (this: unknown) => T): T | undefined {
 	try {
-		return fn.call(value);
+		const unboxed: T = reflectApply(fn, value, []);
+		return unboxed;
 	} catch {
 		return undefined;
 	}
@@ -173,7 +175,8 @@ function tryUnbox<T>(value: object, fn: (this: unknown) => T): T | undefined {
 
 function hasPrototype(proto: object, value: object): boolean {
 	try {
-		return isPrototypeOf.call(proto, value);
+		const found: boolean = reflectApply(isPrototypeOf, proto, [value]);
+		return found;
 	} catch {
 		return false;
 	}
@@ -215,7 +218,7 @@ export function unboxPrimitive(value: object): string | number | boolean | bigin
 
 	let tag = '';
 	try {
-		tag = objectToString.call(value);
+		tag = reflectApply(objectToString, value, []);
 	} catch {
 		tag = '';
 	}
