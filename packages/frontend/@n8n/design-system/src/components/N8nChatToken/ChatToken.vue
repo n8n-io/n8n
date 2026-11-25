@@ -43,7 +43,8 @@ withDefaults(defineProps<N8nChatTokenProps>(), {
 	border: var(--border);
 	border-color: var(--tag--border-color);
 	border-radius: var(--tag--radius);
-	font-size: var(--font-size--sm);
+	/* The token reads as part of the sentence, so it takes the size of the text around it. */
+	font-size: inherit;
 	line-height: var(--line-height--sm);
 	white-space: nowrap;
 	user-select: all;
