@@ -1876,7 +1876,8 @@ export interface InstanceAiStoredFileReader {
 	readBinary?(fileId: string): Promise<IBinaryData | undefined>;
 	/**
 	 * Store a binary of a workflow execution as a conversation file. Gives
-	 * a skipped file for a file over a cap, and `undefined` when storage fails.
+	 * a skipped file with the reason for a file over a cap or a file that storage
+	 * could not take.
 	 * The host sets it together with `readBinary`.
 	 */
 	storeWorkflowFile?: InstanceAiStoreWorkflowFile;
