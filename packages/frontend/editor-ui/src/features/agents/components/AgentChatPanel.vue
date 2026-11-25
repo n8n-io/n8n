@@ -2421,7 +2421,8 @@ onBeforeUnmount(() => {
 .testRunEmpty {
 	display: flex;
 	flex-direction: column;
-	min-height: calc(100cqb - var(--chat--input--height, 0px));
+	/* The scroll area adds two 1px sentinels around the content; without them the viewport overflows. */
+	min-height: calc(100cqb - var(--chat--input--height, 0px) - 2px);
 
 	.testRunNotices {
 		margin-bottom: var(--spacing--xs);

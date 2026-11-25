@@ -3725,6 +3725,7 @@ useKeybindings({
 					:connected-triggers="connectedTriggers"
 					:effective-session-id="effectiveSessionId"
 					:new-session="currentSessionIsEphemeral"
+					:initial-prompt="taskPreviewPrompt"
 					:can-send-to-assistant="isArtifactMode ? instanceAiAvailable : instanceAiReady"
 					:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 					:before-send="beforePreviewSend"
@@ -3735,6 +3736,7 @@ useKeybindings({
 					@session-created="markSessionCreated"
 					@open-build="returnToBuilderFromPreview"
 					@send-to-assistant="onSendPreviewToAssistant"
+					@initial-consumed="taskPreviewPrompt = undefined"
 				>
 					<template v-if="isSafeTestingEnabled" #empty-state>
 						<AgentTestRunEmptyState

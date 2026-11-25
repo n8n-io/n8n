@@ -6560,6 +6560,40 @@ describe('useAgentChatStream — first message of a new session', () => {
 		});
 	});
 
+	it('drops simulation metadata that fails validation on a live tool-result SSE event', async () => {
+		const events = [
+			{ type: 'execution-started', executionId: 'exec-sim-2', sessionId: 'thread-sim' },
+			{ type: 'start-step' },
+			{
+				type: 'tool-call',
+				toolCallId: 'call-email',
+				toolName: 'gmail_send',
+				input: { to: 'ana@example.com' },
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'call-email',
+				toolName: 'gmail_send',
+				output: { sent: true },
+				simulation: { route: 'not-a-route', reason: 'served_from_world' },
+			},
+			{ type: 'finish-step' },
+		] as unknown as AgentSseEvent[];
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => makeSseResponse(events)),
+		);
+		const hook = buildHook('thread-sim');
+
+		await hook.sendMessage('Send the refund email');
+		await flushPromises();
+
+		const assistant = hook.messages.value.find((m) => m.role === 'assistant');
+		expect(assistant?.toolCalls).toHaveLength(1);
+		expect(assistant?.toolCalls?.[0].output).toEqual({ sent: true });
+		expect(assistant?.toolCalls?.[0].simulation).toBeUndefined();
+	});
+
 	it('sends mode in the preview chat body when chatMode is set and omits it when undefined', async () => {
 		const fetchMock = vi.fn<typeof fetch>(async () => makeSseResponse([{ type: 'done' }]));
 		vi.stubGlobal('fetch', fetchMock);
