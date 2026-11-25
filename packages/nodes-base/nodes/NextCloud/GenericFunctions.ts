@@ -97,14 +97,6 @@ export function nextCloudCredentialType(this: NextCloudContext) {
 		: 'nextCloudOAuth2Api';
 }
 
-function endpointUrl(webDavUrl: string, mode: NextCloudEndpointMode, endpoint: RequestPath) {
-	if (mode === 'webdav') return requestUrl`${webDavUrl}${endpoint}`;
-	const root = nextCloudRootUrl(webDavUrl);
-	return mode === 'dav'
-		? requestUrl`${root}/remote.php/dav/${endpoint}`
-		: requestUrl`${root}/${endpoint}`;
-}
-
 /**
  * Make an API request to NextCloud
  *
@@ -143,9 +135,15 @@ export async function nextCloudApiRequest(
 		options.encoding = null;
 	}
 
+	const root = nextCloudRootUrl(webDavUrl);
 	const requestOptions = {
 		...options,
-		uri: endpointUrl(webDavUrl, endpointMode, endpoint),
+		uri:
+			endpointMode === 'webdav'
+				? requestUrl`${webDavUrl}${endpoint}`
+				: endpointMode === 'dav'
+					? requestUrl`${root}/remote.php/dav/${endpoint}`
+					: requestUrl`${root}/${endpoint}`,
 	};
 
 	const response = await this.helpers.requestWithAuthentication.call(
