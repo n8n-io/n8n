@@ -2,12 +2,14 @@ import type { IRestApiContext } from '@n8n/rest-api-client';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import {
+	createProjectPolicy,
 	fetchCredentialTypeSummaries,
 	fetchCredentialTypeUsage,
 	fetchInstanceAccess,
 	fetchInstancePolicy,
 	fetchNodeTypeSummaries,
 	fetchNodeTypeUsage,
+	fetchProjectPolicies,
 	saveInstancePolicy,
 } from './type-availability-policies.api';
 
@@ -52,6 +54,26 @@ describe('instance policy requests', () => {
 			rules: [],
 			defaultAction: 'deny',
 			version: 3,
+		});
+	});
+});
+
+describe('project policy requests', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('reads the team projects with their policy state', async () => {
+		await fetchProjectPolicies(context);
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(context, 'GET', '/project-policies');
+	});
+
+	it('adds a policy to one project', async () => {
+		await createProjectPolicy(context, 'project-1');
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(context, 'POST', '/project-policies', {
+			projectId: 'project-1',
 		});
 	});
 });

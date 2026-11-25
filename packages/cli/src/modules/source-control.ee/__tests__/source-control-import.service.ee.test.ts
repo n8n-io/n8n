@@ -1949,6 +1949,24 @@ describe('SourceControlImportService', () => {
 			);
 		});
 
+		it('should skip credential files with invalid JSON', async () => {
+			// ARRANGE
+			globMock.mockResolvedValue(['/mock/credential_good.json', '/mock/credential_bad.json']);
+			fsReadFile.mockImplementation(async (file: string) =>
+				file.includes('bad')
+					? 'not json'
+					: JSON.stringify({ id: 'cred1', name: 'Good', type: 'oauth2' }),
+			);
+
+			// ACT
+			const result = await service.getRemoteCredentialsFromFiles(globalAdminContext);
+
+			// ASSERT
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual(expect.objectContaining({ id: 'cred1' }));
+			expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('credential_bad.json'));
+		});
+
 		it('should skip credentials that are instance credentials locally, for any caller', async () => {
 			globMock.mockResolvedValue(['/mock/credential1.json']);
 			fsReadFile.mockResolvedValue(
@@ -4120,6 +4138,22 @@ describe('SourceControlImportService', () => {
 				},
 				variableStubs: [{ id: 'var1', key: 'VAR1', value: 'value1', type: 'string' }],
 			};
+
+			it('should skip project files with invalid JSON', async () => {
+				// ARRANGE
+				globMock.mockResolvedValue(['project_good.json', 'project_bad.json']);
+				fsReadFile
+					.mockResolvedValueOnce(JSON.stringify(mockProjectData1))
+					.mockResolvedValueOnce('not json');
+
+				// ACT
+				const result = await service.getRemoteProjectsFromFiles(globalAdminContext);
+
+				// ASSERT
+				expect(result).toHaveLength(1);
+				expect(result[0].id).toBe(mockProjectData1.id);
+				expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('project_bad.json'));
+			});
 
 			it('should return all projects if the user has access to all projects', async () => {
 				// ARRANGE

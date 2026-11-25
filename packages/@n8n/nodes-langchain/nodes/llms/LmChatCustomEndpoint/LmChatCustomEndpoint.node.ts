@@ -194,22 +194,20 @@ export class LmChatCustomEndpoint implements INodeType {
 		const headerRows = this.getNodeParameter('headers.header', itemIndex, []) as IDataObject[];
 		const extraBody: unknown = this.getNodeParameter('extraBody', itemIndex, '');
 
-		const requestHeaders = {
-			...(sendContextHeaders ? n8nContextHeaders(this) : {}),
-			...toHeaderRecord(
-				Object.fromEntries(
-					headerRows.flatMap(({ name, value }) => {
-						const headerName = String(name ?? '').trim();
-						return headerName ? [[headerName, value]] : [];
-					}),
-				),
+		const userHeaders = toHeaderRecord(
+			Object.fromEntries(
+				headerRows.flatMap(({ name, value }) => {
+					const headerName = String(name ?? '').trim();
+					return headerName ? [[headerName, value]] : [];
+				}),
 			),
-		};
+		);
 
 		const { configuration } = createCustomModelEndpointConfig(this, credential, {
 			credentialType,
 			timeout: options.timeout,
-			requestHeaders,
+			contextHeaders: sendContextHeaders ? n8nContextHeaders(this) : {},
+			userHeaders,
 		});
 
 		const fields: ChatOpenAIFields = {

@@ -4,6 +4,7 @@ import type {
 	CredentialSaveContext,
 	CredentialTransferContext,
 	EnforcementPoint,
+	ExecutionAdmissionContext,
 	PolicedWorkflow,
 	PolicyDecision,
 	WorkflowPublishContext,
@@ -122,6 +123,20 @@ export class PolicyEnforcementService {
 
 	async evaluateWorkflowPublish(context: WorkflowPublishContext): Promise<PolicyDecision> {
 		return await this.evaluate('workflowPublish', expandedWorkflow(context));
+	}
+
+	async enforceExecutionAdmission(
+		context: ExecutionAdmissionContext,
+		actor: PolicyActor,
+	): Promise<PolicyCleared<'executionAdmission'>> {
+		return await this.enforce('executionAdmission', context, actor, {
+			type: context.artifact.kind,
+			id: context.artifact.id,
+		});
+	}
+
+	async evaluateExecutionAdmission(context: ExecutionAdmissionContext): Promise<PolicyDecision> {
+		return await this.evaluate('executionAdmission', context);
 	}
 
 	async enforceWorkflowStart(
