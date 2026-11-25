@@ -35,7 +35,10 @@ const request = (method: string, path: string, body?: unknown, host = GRAPH): Ca
 	body: body === undefined ? undefined : Buffer.from(JSON.stringify(body)),
 });
 
-function setup(profile: HttpVendorProfile, withFacts = false) {
+function setup(
+	profile: HttpVendorProfile,
+	withFacts: boolean | (() => Promise<Record<string, string>>) = false,
+) {
 	const upstream = {
 		listTools: vi.fn(async () => []),
 		callTool: vi.fn(async (..._a: unknown[]) => result({ id: PAGE, name: 'Acme' })),
@@ -58,7 +61,8 @@ function setup(profile: HttpVendorProfile, withFacts = false) {
 		gym: gym as unknown as McpCaller,
 		hydrator,
 		profile,
-		gymFacts: withFacts ? async () => facts : undefined,
+		gymFacts:
+			typeof withFacts === 'function' ? withFacts : withFacts ? async () => facts : undefined,
 	});
 	return { router, upstream, gym, hydrator, context };
 }
@@ -313,5 +317,32 @@ describe('WhatsApp ids of the gym', () => {
 		expect(out).toEqual({ wabaId: GYM_WABA, phoneId: GYM_PHONE });
 		expect(ask).toHaveBeenCalledWith(`/v19.0/${GYM_WABA}/phone_numbers`);
 		expect(await whatsappGymFacts({ accessToken: 't' }, ask)).toEqual({});
+	});
+});
+
+describe('gym facts of a WhatsApp call', () => {
+	const failing = async (): Promise<Record<string, string>> => {
+		throw new Error('phone_numbers failed');
+	};
+
+	it('answers 502 with its own text, and does not call the gym, when the facts cannot be read', async () => {
+		const { router, gym } = setup(WHATSAPP_PROFILE, failing);
+
+		const res = await router.handle(
+			request('POST', `/v13.0/${REAL_PHONE}/messages`, { messaging_product: 'whatsapp' }),
+		);
+
+		expect(res.status).toBe(502);
+		expect(await res.text()).toContain('ids of the gym');
+		expect(gym.callTool).not.toHaveBeenCalled();
+	});
+
+	it('does not ask for the facts for a path that keeps its ids, so a failed ask cannot block it', async () => {
+		const { router, gym } = setup(WHATSAPP_PROFILE, failing);
+
+		const res = await router.handle(request('DELETE', '/whatsapp_business/attachments/1234'));
+
+		expect(res.status).toBe(200);
+		expect(gym.callTool).toHaveBeenCalledTimes(1);
 	});
 });

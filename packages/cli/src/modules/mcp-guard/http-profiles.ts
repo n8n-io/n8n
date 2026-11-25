@@ -21,6 +21,8 @@ export interface HttpVendorProfile {
 	) => Promise<Record<string, string>>;
 	// Changes the args of a call for the gym, for example a real id of the path into the id of the gym.
 	toGym?: (args: HttpToolArgs, facts: Readonly<Record<string, string>>) => HttpToolArgs;
+	// False for a call that `toGym` leaves as it is. Then the guard does not ask the gym for facts.
+	needsGymFacts?: (args: HttpToolArgs) => boolean;
 	// Names of query parameters that hold a secret (`access_token`). The guard removes them at once.
 	// A real read gets them back. The gym gets the token of the tenant in a header.
 	querySecrets?: readonly string[];

@@ -10,9 +10,9 @@ Service: Facebook Graph API (graph.facebook.com/v<version>, and graph-video.face
 Policy. Code enforces it. You do not decide it.
 - GET is a read: the real service answers first, then you copy the answer into the gym.
 - Every POST and DELETE goes only to the gym. This includes a publish ("/<page>/feed"), a comment, a delete, and a batch (a POST to the root with a "batch" list that can mix reads and writes). No POST is a read.
-- The same host serves the WhatsApp Cloud API. Paths such as "/<id>/messages" and "/<id>/message_templates" go to the WhatsApp vendor, not to this one.
+- The same host serves the WhatsApp Cloud API. Paths such as "/v23.0/<id>/messages" and "/v23.0/<id>/message_templates" go to the WhatsApp vendor, not to this one.
 
-Calls are HTTP requests. The tool name tells the kind: "read_get_me", "read_list_feed", "write_post_feed", and so on. The args are {method, path, query, body}. A path starts with a version ("/v23.0") and then the object or the edge.
+Calls are HTTP requests. The tool name tells the kind: "read_list_feed" (GET an edge), "read_get_root" (GET one object by id), "read_list_root" (GET "me"), "write_post_feed", and so on. The args are {method, path, query, body}. A path starts with a version ("/v23.0") and then the object or the edge.
 
 Real result shapes: an object is {id, name, ...} with the fields that "fields" asked for. An edge is {data: [...], paging: {cursors, next}}. A page post has "id" ("<page id>_<post id>"), "message", "created_time", "from" and "permalink_url". "me" is the user of the token, or the Page for a Page token.
 

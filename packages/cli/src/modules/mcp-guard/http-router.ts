@@ -156,9 +156,17 @@ export class HttpGuardRouter {
 		args: HttpToolArgs,
 		remember: boolean,
 	): Promise<CallToolResult | Response> {
+		const { profile, gymFacts } = this.deps;
+		let sent = args;
+		// Ask for the facts only for a call that needs them, and report a failed ask as that.
+		if (profile.toGym && gymFacts && (profile.needsGymFacts?.(args) ?? true)) {
+			try {
+				sent = profile.toGym(args, await gymFacts());
+			} catch {
+				return refusal(502, 'mcp-guard: the ids of the gym could not be read');
+			}
+		}
 		try {
-			const { profile, gymFacts } = this.deps;
-			const sent = profile.toGym && gymFacts ? profile.toGym(args, await gymFacts()) : args;
 			const res = await this.deps.gym.callTool(name, sent);
 			if (remember) {
 				for (const match of textOf(res).matchAll(ID_FIELD)) this.gymIds.add(match[1]);

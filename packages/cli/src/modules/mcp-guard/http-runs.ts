@@ -173,6 +173,8 @@ export class HttpRunRegistry {
 							// The gym ids do not change in a tenant, so ask once. A failed ask is asked again.
 							facts ??= profile.gymFacts!(credentialData, async (path) => {
 								const res = await gym.callTool('read_get_object', { method: 'GET', path });
+								// An error body is JSON too. Throw, so the failed ask is not kept and asked again.
+								if (res.isError) throw new UnexpectedError(`gym could not answer ${path}`);
 								return JSON.parse(
 									res.content.flatMap((c) => (c.type === 'text' ? [c.text] : [])).join(''),
 								);

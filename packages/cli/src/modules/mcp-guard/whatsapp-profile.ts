@@ -55,6 +55,7 @@ export const WHATSAPP_PROFILE: HttpVendorProfile = {
 	},
 	gymFacts: whatsappGymFacts,
 	toGym: whatsappToGym,
+	needsGymFacts: (args) => PHONE_PATH.test(args.path) || BUSINESS_PATH.test(args.path),
 	// The bytes of a real media are not copied. The gym has its own.
 	hydrateRead: (args) => !args.path.startsWith('/whatsapp_business'),
 };
