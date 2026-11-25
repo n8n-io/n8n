@@ -1,4 +1,3 @@
-import { UnimplementedError } from '../common';
 import { GraphValidationError } from './graph-validation.error';
 import { validateLoops } from './loops';
 import type { WorkflowGraph } from './workflow-graph';
@@ -23,9 +22,21 @@ export function validateExecutableGraph(graph: WorkflowGraph): void {
 		throw new GraphValidationError('Graph must have exactly one trigger node');
 	}
 
-	validateLoops(graph);
-
 	const name = createNodeLabeler(graph);
+
+	// A duplicate edge would deliver the same items twice. The v1 converter drops duplicates.
+	const seenEdges = new Set<string>();
+	for (const edge of graph.edges) {
+		const key = JSON.stringify([edge.from, edge.outputIndex, edge.to, edge.inputIndex]);
+		if (seenEdges.has(key)) {
+			throw new GraphValidationError(
+				`Edge ${name(edge.from)} -> ${name(edge.to)} from output slot ${edge.outputIndex} into input slot ${edge.inputIndex} appears more than once`,
+			);
+		}
+		seenEdges.add(key);
+	}
+
+	validateLoops(graph);
 
 	const [trigger] = triggers;
 	const reachable = new Set([trigger.id, ...getDescendantNodeIds(graph, trigger.id)]);
@@ -52,19 +63,5 @@ export function validateExecutableGraph(graph: WorkflowGraph): void {
 				);
 			}
 		}
-	}
-
-	// TODO(CAT-3982): same-slot convergence gets a defined meaning (concatenation);
-	// until then it is rejected rather than given accidental semantics.
-	const seenInputSlots = new Set<string>();
-	for (const edge of graph.edges) {
-		if (edge.isBackEdge) continue;
-		const slot = `${edge.to}#${edge.inputIndex}`;
-		if (seenInputSlots.has(slot)) {
-			throw new UnimplementedError(
-				`Node ${name(edge.to)} has more than one edge into input slot ${edge.inputIndex}; converging branches on one slot is not supported yet`,
-			);
-		}
-		seenInputSlots.add(slot);
 	}
 }

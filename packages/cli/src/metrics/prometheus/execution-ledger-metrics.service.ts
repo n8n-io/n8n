@@ -73,7 +73,7 @@ export class PrometheusExecutionLedgerMetricsService implements PrometheusMetric
 
 		const foldedRows = new promClient.Counter({
 			name: `${prefix}execution_ledger_fold_rows_total`,
-			help: 'Total number of execution ledger rows folded.',
+			help: 'Total number of execution ledger rows claimed by the fold.',
 		});
 
 		const stepFailures = new promClient.Counter({

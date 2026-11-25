@@ -196,6 +196,9 @@ describe('ToolsManagerModal', () => {
 		nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
 			[NodeConnectionTypes.AiTool]: ['n8n-nodes-base.toolA', 'n8n-nodes-base.toolB'],
 		};
+		// The node types are in the store by default. The node types tests below empty it.
+		nodeTypesStore.hasNodeTypes = true;
+		nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockResolvedValue(undefined);
 
 		chatStore.configuredTools = [];
 		chatStore.customAgents = {};
@@ -279,6 +282,53 @@ describe('ToolsManagerModal', () => {
 		expect(availableItems).toHaveLength(1);
 		expect(getByText('Tool A')).toBeTruthy();
 		expect(queryByText('Tool With Inputs')).toBeNull();
+	});
+
+	describe('node types that load after the modal opens', () => {
+		it('shows the loading state until the node types are loaded, then the configured tools', async () => {
+			nodeTypesStore.hasNodeTypes = false;
+			const { promise, resolve } = Promise.withResolvers<void>();
+			nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockReturnValue(promise);
+			chatStore.configuredTools = [createMockToolDto()];
+
+			const { getByTestId, queryByTestId, getByText } = renderComponent({
+				props: defaultProps(),
+			});
+			await flushPromises();
+
+			expect(nodeTypesStore.loadNodeTypesIfNotLoaded).toHaveBeenCalled();
+			expect(getByTestId('chat-tools-manager-loading')).toBeTruthy();
+			expect(getConfiguredItems()).toHaveLength(0);
+
+			resolve();
+			await flushPromises();
+
+			expect(queryByTestId('chat-tools-manager-loading')).toBeNull();
+			expect(getByText('Configured Tool A')).toBeTruthy();
+		});
+
+		it('stops loading when the node types fail to load', async () => {
+			vi.spyOn(console, 'error').mockImplementation(() => {});
+			nodeTypesStore.hasNodeTypes = false;
+			nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockRejectedValue(new Error('node types'));
+
+			const { queryByTestId } = renderComponent({ props: defaultProps() });
+			await flushPromises();
+
+			expect(queryByTestId('chat-tools-manager-loading')).toBeNull();
+		});
+
+		it('leaves out a configured tool whose node type is not in the store', async () => {
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(null);
+			nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {};
+			chatStore.configuredTools = [createMockToolDto()];
+
+			const { getByText } = renderComponent({ props: defaultProps() });
+			await flushPromises();
+
+			expect(getConfiguredItems()).toHaveLength(0);
+			expect(getByText('chatHub.toolsManager.noResults')).toBeTruthy();
+		});
 	});
 
 	describe('role restrictions', () => {
