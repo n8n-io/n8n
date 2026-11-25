@@ -1962,8 +1962,13 @@ describe('SourceControlImportService', () => {
 			const result = await service.getRemoteCredentialsFromFiles(globalAdminContext);
 
 			// ASSERT
-			expect(result).toHaveLength(1);
+			// The bad file stays in the result, marked unreadable, so a pull does not
+			// treat credential_bad as deleted.
+			expect(result).toHaveLength(2);
 			expect(result[0]).toEqual(expect.objectContaining({ id: 'cred1' }));
+			expect(result[1]).toEqual(
+				expect.objectContaining({ id: 'credential_bad', unreadable: true }),
+			);
 			expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('credential_bad.json'));
 		});
 
@@ -4150,8 +4155,11 @@ describe('SourceControlImportService', () => {
 				const result = await service.getRemoteProjectsFromFiles(globalAdminContext);
 
 				// ASSERT
-				expect(result).toHaveLength(1);
+				// The bad file stays in the result, marked unreadable, so a pull does not
+				// treat project_bad as deleted.
+				expect(result).toHaveLength(2);
 				expect(result[0].id).toBe(mockProjectData1.id);
+				expect(result[1]).toEqual(expect.objectContaining({ id: 'project_bad', unreadable: true }));
 				expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('project_bad.json'));
 			});
 

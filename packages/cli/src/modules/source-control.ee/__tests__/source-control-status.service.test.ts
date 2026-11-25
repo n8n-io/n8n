@@ -452,6 +452,54 @@ describe('getStatus', () => {
 			});
 		};
 
+		it('does not delete a project whose file cannot be parsed, and deletes one that is really gone', async () => {
+			const user = mockUsers.globalAdmin;
+			const unreadable = {
+				...mockProjects.basic,
+				id: 'project-unreadable',
+				filename: '/mock/projects/project-unreadable.json',
+				unreadable: true,
+			};
+			const gone = { ...mockProjects.withoutIcon, id: 'project-gone' };
+			setupProjectMocks({
+				remote: [mockProjects.basic, unreadable],
+				local: [mockProjects.basic, unreadable, gone],
+			});
+
+			const result = await sourceControlStatusService.getStatus(user, {
+				direction: 'pull',
+				verbose: false,
+				preferLocalVersion: false,
+			});
+
+			if (!Array.isArray(result)) expect.fail('Expected result to be an array.');
+			const projects = result.filter((file) => file.type === 'project');
+			expect(projects).toEqual([
+				expect.objectContaining({ id: 'project-gone', status: 'deleted' }),
+			]);
+		});
+
+		it('does not delete every project when every project file fails to parse', async () => {
+			const user = mockUsers.globalAdmin;
+			const unreadable = {
+				...mockProjects.basic,
+				unreadable: true,
+			};
+			setupProjectMocks({
+				remote: [unreadable],
+				local: [mockProjects.basic, mockProjects.withoutIcon],
+			});
+
+			const result = await sourceControlStatusService.getStatus(user, {
+				direction: 'pull',
+				verbose: false,
+				preferLocalVersion: false,
+			});
+
+			if (!Array.isArray(result)) expect.fail('Expected result to be an array.');
+			expect(result.filter((file) => file.type === 'project')).toEqual([]);
+		});
+
 		it('should return empty arrays when no projects exist locally or remotely', async () => {
 			// ARRANGE
 			const user = mockUsers.globalAdmin;
@@ -1270,6 +1318,53 @@ describe('getStatus', () => {
 	});
 
 	describe('credentials', () => {
+		describe('unreadable files', () => {
+			const user = globalAdminUser;
+
+			it('does not offer a credential for deletion when its file cannot be parsed', async () => {
+				const kept = {
+					id: 'cred-kept',
+					name: 'Kept',
+					type: 'oauth2',
+					data: {},
+					filename: '/mock/credentials/cred-kept.json',
+					unreadable: true,
+				} as StatusExportableCredential & { unreadable: true };
+				const removed = {
+					id: 'cred-removed',
+					name: 'Removed',
+					type: 'oauth2',
+					data: {},
+					filename: '/mock/credentials/cred-removed.json',
+				} as StatusExportableCredential;
+
+				sourceControlImportService.getRemoteCredentialsFromFiles.mockResolvedValue([
+					kept,
+					{
+						id: 'cred-new',
+						name: 'New',
+						type: 'oauth2',
+						data: {},
+						filename: '/mock/credentials/cred-new.json',
+					} as StatusExportableCredential,
+				]);
+				sourceControlImportService.getLocalCredentialsFromDb.mockResolvedValue([kept, removed]);
+
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'pull',
+					verbose: false,
+					preferLocalVersion: false,
+				});
+
+				if (!Array.isArray(result)) expect.fail('Expected result to be an array.');
+				const credentials = result.filter((file) => file.type === 'credential');
+				expect(credentials).toEqual([
+					expect.objectContaining({ id: 'cred-new', status: 'created' }),
+					expect.objectContaining({ id: 'cred-removed', status: 'deleted' }),
+				]);
+			});
+		});
+
 		describe('owner changes', () => {
 			const user = globalAdminUser;
 

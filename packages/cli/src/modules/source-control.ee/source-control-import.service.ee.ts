@@ -154,6 +154,39 @@ const credentialImportPolicyContext = (
 });
 
 /**
+ * A file that is in git but is not valid JSON. Status keeps its id so a pull
+ * does not treat the file as missing and delete the local resource.
+ */
+export type WithUnreadable<T> = T & { unreadable?: boolean };
+
+function unreadableCredential(file: string): WithUnreadable<StatusExportableCredential> {
+	const id = path.basename(file, '.json');
+	return {
+		id,
+		name: id,
+		type: '',
+		data: {},
+		ownedBy: null,
+		filename: file,
+		unreadable: true,
+	};
+}
+
+function unreadableProject(file: string): WithUnreadable<ExportableProjectWithFileName> {
+	const id = path.basename(file, '.json');
+	return {
+		id,
+		name: id,
+		icon: null,
+		description: null,
+		type: 'team',
+		owner: { type: 'team', teamId: id, teamName: id },
+		filename: file,
+		unreadable: true,
+	};
+}
+
+/**
  * How long a pull waits for one workflow's unpublish to settle before it gives
  * up on deleting it. The outbox consumer normally drains within a second.
  */
@@ -375,7 +408,7 @@ export class SourceControlImportService {
 
 	async getRemoteCredentialsFromFiles(
 		context: SourceControlContext,
-	): Promise<StatusExportableCredential[]> {
+	): Promise<Array<WithUnreadable<StatusExportableCredential>>> {
 		const remoteCredentialFiles = await glob('*.json', {
 			cwd: this.credentialExportFolder,
 			absolute: true,
@@ -385,22 +418,31 @@ export class SourceControlImportService {
 		const remoteCredentialFilesRead = await mapInBatches(
 			remoteCredentialFiles,
 			SOURCE_CONTROL_READ_FILE_BATCH_SIZE,
-			async (file): Promise<ExportableCredential | undefined> => {
+			async (
+				file,
+			): Promise<
+				{ kind: 'parsed'; credential: ExportableCredential } | { kind: 'unreadable'; file: string }
+			> => {
 				this.logger.debug(`Parsing credential file ${file}`);
 				const fileContent = await fsReadFile(file, { encoding: 'utf8' });
 				try {
-					return jsonParse<ExportableCredential>(fileContent);
+					return { kind: 'parsed', credential: jsonParse<ExportableCredential>(fileContent) };
 				} catch (error) {
 					const reason = error instanceof Error ? error.message : String(error);
 					this.logger.warn(`Failed to parse credential from file ${file}: ${reason}`);
-					return undefined;
+					return { kind: 'unreadable', file };
 				}
 			},
 		);
 
-		const remoteIds = remoteCredentialFilesRead.flatMap((remote) =>
-			remote?.id ? [remote.id] : [],
+		const unreadableCredentials = remoteCredentialFilesRead.flatMap((remote) =>
+			remote.kind === 'unreadable' ? [unreadableCredential(remote.file)] : [],
 		);
+		const parsedCredentials = remoteCredentialFilesRead.flatMap((remote) =>
+			remote.kind === 'parsed' ? [remote.credential] : [],
+		);
+
+		const remoteIds = parsedCredentials.flatMap((remote) => (remote?.id ? [remote.id] : []));
 		const localUsageScope = new Map(
 			remoteIds.length === 0
 				? []
@@ -412,7 +454,7 @@ export class SourceControlImportService {
 					).map((local) => [local.id, local.usageScope]),
 		);
 
-		const remoteCredentialFilesParsed = remoteCredentialFilesRead
+		const remoteCredentialFilesParsed = parsedCredentials
 			.filter((remote): remote is NonNullable<typeof remote> => {
 				if (!remote?.id) {
 					return false;
@@ -445,9 +487,12 @@ export class SourceControlImportService {
 				};
 			});
 
-		return remoteCredentialFilesParsed.filter(
-			(e) => e !== undefined,
-		) as StatusExportableCredential[];
+		return [
+			...(remoteCredentialFilesParsed.filter(
+				(e) => e !== undefined,
+			) as StatusExportableCredential[]),
+			...unreadableCredentials,
+		];
 	}
 
 	async getLocalCredentialsFromDb(
@@ -739,7 +784,7 @@ export class SourceControlImportService {
 	 */
 	async getRemoteProjectsFromFiles(
 		context: SourceControlContext,
-	): Promise<ExportableProjectWithFileName[]> {
+	): Promise<Array<WithUnreadable<ExportableProjectWithFileName>>> {
 		const remoteProjectFiles = await glob('*.json', {
 			cwd: this.projectExportFolder,
 			absolute: true,
@@ -749,34 +794,46 @@ export class SourceControlImportService {
 		const remoteProjects = await mapInBatches(
 			remoteProjectFiles,
 			SOURCE_CONTROL_READ_FILE_BATCH_SIZE,
-			async (file): Promise<ExportableProjectWithFileName | undefined> => {
+			async (
+				file,
+			): Promise<
+				| { kind: 'parsed'; project: ExportableProjectWithFileName }
+				| { kind: 'unreadable'; file: string }
+			> => {
 				this.logger.debug(`Parsing project file ${file}`);
 				const fileContent = await fsReadFile(file, { encoding: 'utf8' });
 				try {
 					const parsedProject = jsonParse<ExportableProject>(fileContent);
 					return {
-						...parsedProject,
-						filename: getProjectExportPath(parsedProject.id, this.projectExportFolder),
+						kind: 'parsed',
+						project: {
+							...parsedProject,
+							filename: getProjectExportPath(parsedProject.id, this.projectExportFolder),
+						},
 					};
 				} catch (error) {
 					const reason = error instanceof Error ? error.message : String(error);
 					this.logger.warn(`Failed to parse project from file ${file}: ${reason}`);
-					return undefined;
+					return { kind: 'unreadable', file };
 				}
 			},
 		);
 
-		const remoteProjectsParsed = remoteProjects.filter(
-			(remoteProject): remoteProject is ExportableProjectWithFileName =>
-				remoteProject !== undefined,
+		// Kept even when the caller cannot see the project: a pull must not delete
+		// a project whose file could not be read.
+		const unreadableProjects = remoteProjects.flatMap((remote) =>
+			remote.kind === 'unreadable' ? [unreadableProject(remote.file)] : [],
 		);
-		if (context.hasAccessToAllProjects()) {
-			return remoteProjectsParsed;
-		}
+		const remoteProjectsParsed = remoteProjects.flatMap((remote) =>
+			remote.kind === 'parsed' ? [remote.project] : [],
+		);
+		const visibleProjects = context.hasAccessToAllProjects()
+			? remoteProjectsParsed
+			: remoteProjectsParsed.filter((remoteProject) => {
+					return context.findAuthorizedProjectByOwner(remoteProject.owner);
+				});
 
-		return remoteProjectsParsed.filter((remoteProject) => {
-			return context.findAuthorizedProjectByOwner(remoteProject.owner);
-		});
+		return [...visibleProjects, ...unreadableProjects];
 	}
 
 	/**

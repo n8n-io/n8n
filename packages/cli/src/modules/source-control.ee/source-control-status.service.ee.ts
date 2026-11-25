@@ -512,6 +512,9 @@ export class SourceControlStatusService {
 		const credModifiedInEither: StatusExportableCredential[] = [];
 
 		for (const remoteCredential of credRemoteIds) {
+			// An unreadable file is still present. Offering it as created or deleted
+			// would import nothing or remove the file.
+			if (remoteCredential.unreadable === true) continue;
 			if (!credLocalIdsSet.has(remoteCredential.id)) {
 				if (collectVerbose) {
 					credMissingInLocal.push(remoteCredential);
@@ -532,6 +535,9 @@ export class SourceControlStatusService {
 
 		for (const localCredential of credLocalIds) {
 			const credRemote = credRemoteById.get(localCredential.id);
+			// The file is in git but could not be parsed. Leave the local credential
+			// in place; a pull deletes every credential this comparison calls missing.
+			if (credRemote?.unreadable === true) continue;
 			if (credRemote) {
 				// Compare name, type, owner and isGlobal since those are the synced properties for credentials
 				if (areSameCredentials(localCredential, credRemote)) {
@@ -1140,7 +1146,9 @@ export class SourceControlStatusService {
 		// BACKWARD COMPATIBILITY: When there are no remote projects we can't safely delete local projects
 		// because we don't know if it's the first pull or if all team projects have been removed
 		// As a downside this means that it's not possible to delete all team projects via source control sync
-		const areRemoteProjectsEmpty = projectsRemote.length === 0;
+		// Files that failed to parse do not count. Zero readable projects still means
+		// "do not delete local projects": the folder may be unreadable, not empty.
+		const areRemoteProjectsEmpty = projectsRemote.every((project) => project.unreadable === true);
 		const projectsMissingInRemote: ExportableProjectWithFileName[] = [];
 
 		const projectsModifiedInEither: ExportableProjectWithFileName[] = [];
@@ -1177,6 +1185,7 @@ export class SourceControlStatusService {
 		};
 
 		for (const remoteProject of projectsRemote) {
+			if (remoteProject.unreadable === true) continue;
 			if (!projectLocalIds.has(remoteProject.id) && !outOfScopeProjectIds.has(remoteProject.id)) {
 				if (collectVerbose) {
 					projectsMissingInLocal.push(remoteProject);
@@ -1211,7 +1220,7 @@ export class SourceControlStatusService {
 		projectsLocal.forEach((localProject) => {
 			const remoteProjectWithSameId = projectRemoteById.get(localProject.id);
 
-			if (!remoteProjectWithSameId) {
+			if (!remoteProjectWithSameId || remoteProjectWithSameId.unreadable === true) {
 				return;
 			}
 
