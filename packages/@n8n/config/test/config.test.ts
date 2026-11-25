@@ -211,6 +211,7 @@ describe('GlobalConfig', () => {
 			override: {},
 		},
 		activityLog: {
+			enabled: true,
 			retentionDays: 0,
 			maxEntries: 1_000,
 		},

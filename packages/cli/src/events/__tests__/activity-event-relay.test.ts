@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
+import type { ActivityLogConfig } from '@n8n/config';
 import type {
 	ActivityEventRepository,
 	WorkflowHistory,
@@ -39,12 +40,13 @@ describe('ActivityEventRelay', () => {
 
 	let eventService: EventService;
 
-	const relayWith = () => {
+	const relayWith = ({ enabled = true } = {}) => {
 		const relay = new ActivityEventRelay(
 			eventService,
 			activityEventRepository,
 			sharedWorkflowRepository,
 			sharedCredentialsRepository,
+			mock<ActivityLogConfig>({ enabled }),
 			logger,
 		);
 		relay.init();
@@ -74,6 +76,14 @@ describe('ActivityEventRelay', () => {
 			});
 			await flushPromises();
 		};
+
+		it('records nothing while the activity log is off', async () => {
+			relayWith({ enabled: false });
+
+			await emitDeletion();
+
+			expect(activityEventRepository.record).not.toHaveBeenCalled();
+		});
 
 		it('records every event of a burst', async () => {
 			relayWith();

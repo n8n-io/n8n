@@ -35,8 +35,10 @@ const makeGlobalConfig = ({
 	builderEnabled = true,
 	tagsDisabled = false,
 	managedByEnv = false,
+	activityLogEnabled = true,
 } = {}) =>
 	({
+		activityLog: { enabled: activityLogEnabled },
 		endpoints: { mcpBuilderEnabled: builderEnabled },
 		tags: { disabled: tagsDisabled },
 		instanceSettingsLoader: { communityPackagesManagedByEnv: managedByEnv },
@@ -205,6 +207,24 @@ describe('McpProtectedResource', () => {
 			expect(scopeTools['workflow:read']).toContain('get_dependencies');
 			// Unrelated entries under the same scope are untouched.
 			expect(scopeTools['workflow:read']).toContain('search_workflows');
+		});
+
+		it('keeps only the index tools in consent when the activity log is off', async () => {
+			const scopeTools = await new McpProtectedResource(
+				urlService,
+				mcpSettingsService,
+				mcpConfig,
+				makeGlobalConfig({ activityLogEnabled: false }),
+				moduleRegistry,
+				licenseState,
+				postHogClient,
+			).getScopeTools();
+
+			for (const tool of ACTIVITY_LOG_TOOLS) {
+				expect(scopeTools['workflow:read']).not.toContain(tool);
+			}
+			expect(scopeTools['workflow:read']).toContain('get_node_usage');
+			expect(scopeTools['workflow:read']).toContain('get_dependencies');
 		});
 
 		it('checks the credential descriptions flag once without a user argument', async () => {

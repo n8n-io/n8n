@@ -450,7 +450,7 @@ export interface InstanceAiFeatureFlags {
 	credentialDescriptionsEnabled: boolean;
 	/** Approval modes: the Manual and Auto selector, and Auto for users without a saved choice. */
 	approvalModesEnabled: boolean;
-	/** Shared activity recording and retrieval use the same instance gate. */
+	/** The activity reader: its tool, the context block, and the skill about both. Off with the activity log. */
 	instanceContextEnabled: boolean;
 	assistantSkillsEnabled: boolean;
 	skillSourcesEnabled?: boolean;
@@ -886,7 +886,7 @@ export class InstanceAiAdapterService {
 			nodeContextEnabled: true,
 			folderExplorationEnabled: true,
 			approvalModesEnabled: flags[INSTANCE_AI_APPROVAL_MODES_FLAG] === true,
-			instanceContextEnabled: true,
+			instanceContextEnabled: this.globalConfig.activityLog.enabled,
 			assistantSkillsEnabled: true,
 			...(skillSourcesEnabled ? { skillSourcesEnabled } : {}),
 			...(typeof preferencesNoteVariant === 'string' ? { preferencesNoteVariant } : {}),

@@ -559,6 +559,7 @@ export class McpService {
 					isInstanceContextEnabled:
 						featureFlags.instanceContextEnabled &&
 						this.moduleRegistry.isActive('instance-ai') &&
+						this.globalConfig.activityLog.enabled &&
 						contextToolsAllowed,
 					isBuilderEnabled: builderInstructionsEnabled,
 					isN8nConnectAvailable: n8nConnectAvailable,
@@ -750,7 +751,8 @@ export class McpService {
 
 			// The activity reader belongs to the `instance-ai` module, so it is resolved lazily and
 			// only when that module is active — an instance with the surface off never builds it.
-			if (this.moduleRegistry.isActive('instance-ai')) {
+			// With the activity log off there is nothing to read.
+			if (this.moduleRegistry.isActive('instance-ai') && this.globalConfig.activityLog.enabled) {
 				const { InstanceContextService } = await import(
 					'@/modules/instance-ai/instance-context.service.js'
 				);

@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { EventService, EventRelay } from '@n8n/backend-services';
+import { ActivityLogConfig } from '@n8n/config';
 import {
 	activityDataMaxLength,
 	ActivityEventRepository,
@@ -36,7 +37,7 @@ type ActivityHandlers<EventNames extends keyof RelayEventMap> = {
  * Registered from `BaseCommand` as a core relay. Every event it listens for is emitted from a
  * request path, so today only a main writes rows — but the record itself is not specific to one
  * consumer, and keeping the writer beside the core table it fills means a later consumer does not
- * have to reach across a module boundary.
+ * have to reach across a module boundary. `N8N_ACTIVITY_LOG_ENABLED=false` skips the listeners.
  *
  * Not recorded, because the events carry too little to render a useful entry: data tables and
  * folders (no name, no acting user), agents (only an id), projects and source control. Executions
@@ -49,6 +50,7 @@ export class ActivityEventRelay extends EventRelay {
 		private readonly activityEventRepository: ActivityEventRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
+		private readonly activityLogConfig: ActivityLogConfig,
 		private readonly logger: Logger,
 	) {
 		super(eventService);
@@ -56,6 +58,8 @@ export class ActivityEventRelay extends EventRelay {
 	}
 
 	init() {
+		if (!this.activityLogConfig.enabled) return;
+
 		this.setupListeners(
 			this.guarded({
 				'workflow-created': async (e) => await this.onWorkflowCreated(e),

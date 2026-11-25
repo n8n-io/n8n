@@ -105,7 +105,8 @@ export class McpProtectedResource implements ProtectedResource {
 		const tagsDisabled = this.globalConfig.tags.disabled;
 		const foldersLicensed = this.licenseState.isFoldersLicensed();
 		const supportedScopes = new Set(this.scopes);
-		const instanceContextAvailable = this.moduleRegistry.isActive('instance-ai');
+		const instanceContextAvailable =
+			this.moduleRegistry.isActive('instance-ai') && this.globalConfig.activityLog.enabled;
 
 		const credentialDescriptionsEnabled =
 			(await this.postHogClient
