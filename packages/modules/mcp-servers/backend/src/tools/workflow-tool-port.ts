@@ -1,3 +1,4 @@
+import type { RefreshTokenPort } from '../access/refresh-token-port';
 import type { OAuthClientNamePort } from './oauth-client-name-port';
 import type { TextDraftPort } from './text-draft-port';
 
@@ -117,5 +118,6 @@ export abstract class McpServerToolAdapters {
 		workflows: WorkflowToolPort;
 		textDrafts: TextDraftPort;
 		clients: OAuthClientNamePort;
+		refreshTokens: RefreshTokenPort;
 	};
 }

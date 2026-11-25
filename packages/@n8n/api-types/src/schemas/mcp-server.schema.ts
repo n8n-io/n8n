@@ -205,12 +205,14 @@ export const mcpServerToolCandidateSchema = z.object({
 });
 export type McpServerToolCandidate = z.infer<typeof mcpServerToolCandidateSchema>;
 
-const mcpServerPersonSchema = z.object({
+/** A person in the Connections tab. A service account never connects, so every row is a person. */
+export const mcpServerPersonSchema = z.object({
 	userId: z.string().uuid(),
 	firstName: z.string().nullable(),
 	lastName: z.string().nullable(),
 	email: z.string().nullable(),
 });
+export type McpServerPerson = z.infer<typeof mcpServerPersonSchema>;
 
 export const mcpServerConnectionSchema = mcpServerPersonSchema.extend({
 	oauthClientId: z.string(),

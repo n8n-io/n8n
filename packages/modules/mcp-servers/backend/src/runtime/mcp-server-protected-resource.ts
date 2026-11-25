@@ -15,6 +15,7 @@ import {
 } from '@n8n/inbound-auth';
 import type { Scope } from '@n8n/permissions';
 
+import { McpServerBlockRepository } from '../access/mcp-server-block.repository';
 import { CustomMcpServersFlagGate } from '../custom-mcp-servers-flag-gate';
 import type { McpServer } from '../mcp-server.entity';
 import { McpServerRepository } from '../mcp-server.repository';
@@ -41,6 +42,7 @@ export class McpServerProtectedResource implements ProtectedResourceResolver {
 		private readonly projectRelations: ProjectRelationRepository,
 		private readonly urls: UrlService,
 		private readonly flag: CustomMcpServersFlagGate,
+		private readonly blocks: McpServerBlockRepository,
 	) {}
 
 	serverUrl(server: Pick<McpServer, 'slug'>): string {
@@ -72,7 +74,12 @@ export class McpServerProtectedResource implements ProtectedResourceResolver {
 		};
 	}
 
+	/**
+	 * The admission calls this on every request, and the consent service before consent. So a
+	 * block takes effect at once, also for an access token that is still valid.
+	 */
 	async canConnect(server: McpServer, user: ResourcePrincipal): Promise<boolean> {
+		if (await this.blocks.isBlocked(server.id, user.id)) return false;
 		return await this.projectScope.hasScopes(user, server.projectId, [CONNECT_SCOPE]);
 	}
 
@@ -102,18 +109,20 @@ export class McpServerProtectedResource implements ProtectedResourceResolver {
 		return server ? this.forServer(server) : undefined;
 	}
 
-	/** Servers have no block check yet, so a refusal is about the role of the person in the project. */
+	/** A block comes first: a blocked person can also have a role that cannot connect. */
 	private async describeRefusal(
 		server: McpServer,
 		user: ResourcePrincipal,
 	): Promise<ConsentRefusal | undefined> {
 		const [withProject] = await this.servers.withProjects([server]);
 		if (!withProject) return undefined;
+		const projectName = withProject.project.name;
+		if (await this.blocks.isBlocked(server.id, user.id)) return { reason: 'blocked', projectName };
 		const role = await this.projectRelations.findProjectRole({
 			userId: user.id,
 			projectId: server.projectId,
 		});
 		const reason: McpServerConnectRefusal = role ? 'no_connect_scope' : 'not_member';
-		return { reason, projectName: withProject.project.name };
+		return { reason, projectName };
 	}
 }

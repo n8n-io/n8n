@@ -13,6 +13,8 @@ import { BadRequestError, NotFoundError, UnexpectedError } from '@n8n/errors';
 import type { McpServer } from './mcp-server.entity';
 import type { McpServerActor } from './mcp-server-events';
 import { McpServerRepository, type McpServerProject } from './mcp-server.repository';
+import { RefreshTokenPort } from './access/refresh-token-port';
+import { McpServerProtectedResource } from './runtime/mcp-server-protected-resource';
 
 function toResponse(server: McpServer, project: McpServerProject): McpServerResponse {
 	return {
@@ -37,6 +39,8 @@ export class McpServersService {
 		private readonly servers: McpServerRepository,
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly events: EventService,
+		private readonly resources: McpServerProtectedResource,
+		private readonly refreshTokens: RefreshTokenPort,
 	) {}
 
 	async create(
@@ -87,11 +91,13 @@ export class McpServersService {
 		return await this.withProject(server);
 	}
 
+	/** Also deletes the refresh tokens of the server at once, so no client keeps a way back in. */
 	async delete(projectId: string, serverId: string, actor: McpServerActor): Promise<void> {
-		const deleted = this.isServerId(serverId)
-			? await this.servers.softDelete(projectId, serverId)
-			: false;
-		if (!deleted) throw new NotFoundError('MCP server not found');
+		const server = await this.find(projectId, serverId);
+		if (!(await this.servers.softDelete(projectId, server.id))) {
+			throw new NotFoundError('MCP server not found');
+		}
+		await this.refreshTokens.deleteForResource(this.resources.serverUrl(server));
 		this.events.emit('mcp-server-deleted', { ...actor, serverId, projectId });
 	}
 

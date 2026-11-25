@@ -1,5 +1,7 @@
 import type {
 	CreateMcpServerDto,
+	McpServerBlock,
+	McpServerConnectionsResponse,
 	McpServerDetailResponse,
 	McpServerResponse,
 	McpServerShare,
@@ -154,4 +156,52 @@ export async function getMcpServerPublicShare(
 	slug: string,
 ): Promise<McpServerSharePublic> {
 	return await makeRestApiRequest(context, 'GET', `/mcp-servers/share/${slug}/public`);
+}
+
+/** Each person and client that connected, and the blocked people. */
+export async function listMcpServerConnections(
+	context: IRestApiContext,
+	projectId: string,
+	serverId: string,
+): Promise<McpServerConnectionsResponse> {
+	return await makeRestApiRequest(context, 'GET', `${serverPath(projectId, serverId)}/connections`);
+}
+
+/** All clients of the person lose access at once. */
+export async function blockMcpServerUser(
+	context: IRestApiContext,
+	projectId: string,
+	serverId: string,
+	userId: string,
+): Promise<McpServerBlock> {
+	return await makeRestApiRequest(context, 'POST', `${serverPath(projectId, serverId)}/blocks`, {
+		userId,
+	});
+}
+
+export async function restoreMcpServerUser(
+	context: IRestApiContext,
+	projectId: string,
+	serverId: string,
+	userId: string,
+): Promise<void> {
+	await makeRestApiRequest(
+		context,
+		'DELETE',
+		`${serverPath(projectId, serverId)}/blocks/${userId}`,
+	);
+}
+
+/** Only for a blocked person: deletes their connections and ends the block. */
+export async function removeMcpServerUser(
+	context: IRestApiContext,
+	projectId: string,
+	serverId: string,
+	userId: string,
+): Promise<void> {
+	await makeRestApiRequest(
+		context,
+		'DELETE',
+		`${serverPath(projectId, serverId)}/connections/${userId}`,
+	);
 }

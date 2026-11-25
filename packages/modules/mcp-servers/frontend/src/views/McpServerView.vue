@@ -30,7 +30,9 @@ import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import McpServerAssistantPanel from '../components/McpServerAssistantPanel.vue';
+import McpServerConnectionsTab from '../components/McpServerConnectionsTab.vue';
 import McpServerContentsTab from '../components/McpServerContentsTab.vue';
+import { useMcpServerConnections } from '../composables/useMcpServerConnections';
 import RenameMcpServerDialog from '../components/RenameMcpServerDialog.vue';
 import { useMcpServerUrl } from '../composables/useMcpServerUrl';
 import { deleteMcpServer, getMcpServer, updateMcpServer } from '../mcp-servers.api';
@@ -53,6 +55,7 @@ const assistant = capabilityRegistry.use(capabilities.createMcpServerAssistantHa
 const projectId = computed(() => String(route.params.projectId));
 const serverId = computed(() => String(route.params.serverId));
 const permissions = computed(() => getMcpServerPermissions(projectId.value));
+const connections = useMcpServerConnections(projectId, serverId);
 
 const server = ref<McpServerResponse | null>(null);
 const loading = ref(true);
@@ -73,7 +76,12 @@ const tabs = computed(() => [
 	{ value: MCP_SERVER_VIEW, label: i18n.baseText('mcpServers.server.tabs.contents') },
 	{
 		value: MCP_SERVER_CONNECTIONS_VIEW,
-		label: i18n.baseText('mcpServers.server.tabs.connections'),
+		label:
+			connections.rowCount.value === null
+				? i18n.baseText('mcpServers.server.tabs.connections')
+				: i18n.baseText('mcpServers.server.tabs.connectionsWithCount', {
+						interpolate: { count: String(connections.rowCount.value) },
+					}),
 	},
 ]);
 
@@ -148,7 +156,14 @@ async function load({ silent = false } = {}) {
 	loading.value = false;
 }
 
-watch([projectId, serverId], async () => await load(), { immediate: true });
+watch(
+	[projectId, serverId],
+	async () => {
+		connections.data.value = null;
+		await Promise.all([load(), connections.load()]);
+	},
+	{ immediate: true },
+);
 
 // A panel binds one server, so a route to another server closes it.
 watch(serverId, () => {
@@ -187,10 +202,12 @@ function closeAssistant() {
 
 async function onAssistantChanged() {
 	contentsRefreshKey.value++;
-	await load({ silent: true });
+	await Promise.all([load({ silent: true }), connections.load()]);
 }
 
 async function onSelectTab(tab: string) {
+	// People connect at any time, so the tab shows the list as it is now.
+	if (tab === MCP_SERVER_CONNECTIONS_VIEW) void connections.load();
 	await router.push({ name: tab, params: route.params });
 }
 
@@ -384,7 +401,14 @@ async function onBreadcrumbSelected(item: PathItem) {
 					:refresh-key="contentsRefreshKey"
 					@build-with-assistant="onBuildWithAssistant"
 				/>
-				<div v-else :class="$style.panel" data-test-id="mcp-server-connections" />
+				<McpServerConnectionsTab
+					v-else
+					:class="$style.panel"
+					:server="server"
+					:connections="connections.data.value"
+					:loading="connections.loading.value"
+					@changed="connections.load"
+				/>
 
 				<RenameMcpServerDialog
 					v-model:open="renameOpen"

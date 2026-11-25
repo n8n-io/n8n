@@ -15,14 +15,17 @@ export class McpServersModule implements ModuleInterface {
 		);
 		const { TextDraftPort } = await import('./tools/text-draft-port.js');
 		const { OAuthClientNamePort } = await import('./tools/oauth-client-name-port.js');
+		const { RefreshTokenPort } = await import('./access/refresh-token-port.js');
 		const adapters = Container.get(McpServerToolAdapters).resolve();
 		Container.set(WorkflowToolPort, adapters.workflows);
 		Container.set(TextDraftPort, adapters.textDrafts);
 		Container.set(OAuthClientNamePort, adapters.clients);
+		Container.set(RefreshTokenPort, adapters.refreshTokens);
 		await import('./mcp-servers.controller.js');
 		await import('./mcp-servers-list.controller.js');
 		await import('./mcp-server-tools.controller.js');
 		await import('./mcp-server-share.controller.js');
+		await import('./access/mcp-server-access.controller.js');
 		await import('./runtime/mcp-server-runtime.controller.js');
 		const { ProtectedResourceRegistry } = await import('@n8n/backend-services/auth');
 		const { McpServerProtectedResource } = await import(
