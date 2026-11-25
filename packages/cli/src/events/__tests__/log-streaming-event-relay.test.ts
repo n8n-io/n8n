@@ -4302,6 +4302,37 @@ describe('LogStreamingEventRelay', () => {
 		});
 	});
 
+	describe('promotion settings events', () => {
+		it('should log `promotion-settings.updated` with redacted user and the changed settings', () => {
+			const event: RelayEventMap['promotion-settings-updated'] = {
+				user: {
+					id: 'user405',
+					email: 'admin8@example.com',
+					firstName: 'Eighth',
+					lastName: 'Admin',
+					role: { slug: 'global:admin' },
+				},
+				before: { whoCanApply: 'instanceAdmins' },
+				after: { whoCanApply: 'projectAdmins' },
+			};
+
+			eventService.emit('promotion-settings-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.promotion-settings.updated',
+				payload: {
+					userId: 'user405',
+					_email: 'admin8@example.com',
+					_firstName: 'Eighth',
+					_lastName: 'Admin',
+					globalRole: 'global:admin',
+					before: { whoCanApply: 'instanceAdmins' },
+					after: { whoCanApply: 'projectAdmins' },
+				},
+			});
+		});
+	});
+
 	describe('MCP server events', () => {
 		it('should log on `mcp-oauth-completed` event', () => {
 			const event: RelayEventMap['mcp-oauth-completed'] = {
