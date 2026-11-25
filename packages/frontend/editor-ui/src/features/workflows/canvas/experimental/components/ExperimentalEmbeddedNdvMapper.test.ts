@@ -6,12 +6,18 @@ import { render, waitFor } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { computed, nextTick, shallowRef } from 'vue';
 import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { VIEWS } from '@/app/constants';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import ExperimentalEmbeddedNdvMapper from './ExperimentalEmbeddedNdvMapper.vue';
 import { useExperimentalNdvStore } from '../experimentalNdv.store';
+
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal<typeof import('vue-router')>()),
+	useRoute: () => ({ name: VIEWS.WORKFLOW, meta: {}, params: {} }),
+}));
 
 // Instantiates a store that derives the workflow id from the route. These tests run
 // without a router, so resolve the id directly.

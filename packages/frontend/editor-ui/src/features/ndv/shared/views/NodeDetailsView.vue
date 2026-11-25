@@ -335,6 +335,9 @@ const foreignCredentials = computed(() =>
 );
 
 const hasForeignCredential = computed(() => foreignCredentials.value.length > 0);
+const isOutputReadOnly = computed(
+	() => props.readOnly || hasForeignCredential.value || isRestricted.value,
+);
 
 const inputPanelDisplayMode = computed(() => ndvStore.value.inputPanelDisplayMode);
 
@@ -511,7 +514,7 @@ const close = async () => {
 		return;
 	}
 
-	if (outputPanelEditMode.value.enabled && activeNode.value) {
+	if (outputPanelEditMode.value.enabled && activeNode.value && !isOutputReadOnly.value) {
 		// Saving edits made on AI-simulated output adopts fabricated sample data
 		// as pins — say so in the dialog instead of stacking a second confirm.
 		const editsSimulatedOutput = aiSimulatedDataGuard.isSimulatedNodeOutput(
@@ -528,7 +531,7 @@ const close = async () => {
 			},
 		);
 
-		if (shouldPinDataBeforeClosing === MODAL_CONFIRM) {
+		if (shouldPinDataBeforeClosing === MODAL_CONFIRM && !isOutputReadOnly.value) {
 			const { value } = outputPanelEditMode.value;
 			try {
 				pinnedData.setData(jsonParse(value), 'on-ndv-close-modal');
@@ -536,9 +539,8 @@ const close = async () => {
 				console.error(error);
 			}
 		}
-
-		ndvStore.value.setOutputPanelEditModeEnabled(false);
 	}
+	ndvStore.value.setOutputPanelEditModeEnabled(false);
 
 	await externalHooks.run('dataDisplay.nodeEditingFinished');
 	telemetry.track('User closed node modal', {
@@ -883,7 +885,7 @@ onBeforeUnmount(() => {
 							:run-index="outputRun"
 							:linked-runs="linked"
 							:push-ref="pushRef"
-							:is-read-only="readOnly || hasForeignCredential || isRestricted"
+							:is-read-only="isOutputReadOnly"
 							:block-u-i="blockUi && isTriggerNode && !isExecutableTriggerNode"
 							:is-production-execution-preview="isProductionExecutionPreview"
 							:is-pane-active="isOutputPaneActive"

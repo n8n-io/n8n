@@ -402,6 +402,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	<RunData
 		:class="$style.runData"
 		:node="currentNode"
+		:read-only="readOnly"
 		:nodes="isMappingMode ? rootNodesParents : parentNodes"
 		:workflow-object="workflowObject"
 		:run-index="isMappingMode ? 0 : runIndex"

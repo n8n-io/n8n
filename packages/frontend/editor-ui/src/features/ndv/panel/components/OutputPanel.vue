@@ -291,6 +291,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		ref="runDataRef"
 		:class="$style.runData"
 		:node="node"
+		:read-only="isReadOnly"
 		:workflow-object="workflowObject"
 		:run-index="runIndex"
 		:linked-runs="linkedRuns"

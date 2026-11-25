@@ -433,6 +433,38 @@ describe('RunData', () => {
 				expect(workflowDocumentStore.pinnedDataByNodeName['Test Node']).toEqual(simulatedItems),
 			);
 		});
+
+		it.each(['pin', 'save'])(
+			'does not %s when the workflow becomes read-only during confirmation',
+			async (action) => {
+				const { getByTestId, getByRole, rerender } = render({
+					defaultRunItems: simulatedItems,
+					displayMode: 'json',
+				});
+				useAiSimulatedExecutionsStore().markSimulatedNodes('test-exec-id', ['Test Node']);
+				confirmMock.mockImplementationOnce(async () => {
+					await rerender({ readOnly: true });
+					return MODAL_CONFIRM;
+				});
+
+				if (action === 'save') {
+					ndvStore.outputPanelEditMode.enabled = true;
+					ndvStore.outputPanelEditMode.value = JSON.stringify([{ message: 'Edited output' }]);
+					await flushPromises();
+					await userEvent.click(getByRole('button', { name: 'Save' }));
+				} else {
+					await userEvent.click(getByTestId('ndv-pin-data'));
+				}
+
+				expect(confirmMock).toHaveBeenCalledOnce();
+				await flushPromises();
+				expect(workflowDocumentStore.pinnedDataByNodeName['Test Node']).toBeUndefined();
+				if (action === 'save') {
+					expect(getByRole('button', { name: 'Save' })).toBeDisabled();
+					expect(getByRole('button', { name: 'Cancel' })).toBeEnabled();
+				}
+			},
+		);
 	});
 
 	it('should render only download buttons for PDFs', async () => {
@@ -1774,6 +1806,19 @@ describe('RunData', () => {
 			});
 
 			expect(queryByTestId('ndv-trimmed-loading')).not.toBeInTheDocument();
+			expect(getByTestId('ndv-trimmed-corrupted')).toBeInTheDocument();
+			expect(queryByTestId('ndv-trimmed-corrupted-unpin')).not.toBeInTheDocument();
+		});
+
+		it('hides the recovery unpin action when the workflow is read-only', async () => {
+			const { getByTestId, queryByTestId, rerender } = render({
+				displayMode: 'json',
+				runs: [trimmedRun],
+				pinnedData: [{ json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true } }],
+				executionStatus: 'success',
+			});
+			await rerender({ readOnly: true });
+
 			expect(getByTestId('ndv-trimmed-corrupted')).toBeInTheDocument();
 			expect(queryByTestId('ndv-trimmed-corrupted-unpin')).not.toBeInTheDocument();
 		});
