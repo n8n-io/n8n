@@ -144,6 +144,18 @@ jobs:
           GH_TOKEN: ${{ steps.cloud-token.outputs.token }}
         run: pnpm build:docker:smoke
 
+      # Also verify the pointer-compressed n8n image on the same compiled
+      # artifact and base image, so PC_BUILDER_IMAGE and RUNTIME_IMAGE changes
+      # are smoke-tested on amd64 and arm64 before merge.
+      - name: Build and verify the pointer-compressed n8n image
+        env:
+          GH_TOKEN: ${{ steps.cloud-token.outputs.token }}
+          SMOKE_IMAGE: n8nio/n8n:local-pc
+          SMOKE_RUNNERS_IMAGES: ''
+        run: |
+          docker buildx bake -f docker/docker-bake.hcl n8n-pc --no-cache --provenance=false --load
+          pnpm build:docker:smoke
+
       # n8n-cloud does not deploy the Debian images, so skip the chart patterns.
       - name: Verify the Debian n8n and runners images
         env:

@@ -1,6 +1,8 @@
 import { executionLimitDelta, isLedgerFact } from '@n8n/backend-services';
 import type { ExecutionLedgerEntityType, ExecutionLedgerRow } from '@n8n/db';
 
+import { toUtcDay } from './execution-usage-period';
+
 /** Counts to add to the instance row of one UTC day and entity type. */
 export type InstanceUsageDelta = {
 	/** UTC day as `YYYY-MM-DD`. */
@@ -34,7 +36,7 @@ export function toUsageDeltas(rows: readonly ExecutionLedgerRow[]): UsageDeltas 
 
 		const column = delta === 1 ? 'startedCount' : 'blockedCount';
 		const { projectId, entityType } = row;
-		const day = row.occurredAt.toISOString().slice(0, 10);
+		const day = toUtcDay(row.occurredAt);
 		const zero = () => ({ day, entityType, startedCount: 0, blockedCount: 0 });
 
 		// A run of a workflow with no owner project counts for the instance only.
