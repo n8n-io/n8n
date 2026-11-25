@@ -1983,6 +1983,25 @@ describe('AgentCapabilitiesSection workflows from skills', () => {
 		);
 	});
 
+	it('tells the user how to share a workflow that the agent project cannot use', () => {
+		const wrapper = mountWithSkills([], {
+			validationIssues: [
+				{
+					code: 'incompatible_reference',
+					path: 'skills.skill-1.workflows.wf-2',
+					capability: { kind: 'tool', id: 'Notify', toolType: 'workflow' },
+					reason: 'not_in_project',
+				},
+			],
+		});
+
+		const [, notify] = wrapper.findAll('[data-testid="agent-capabilities-skill-workflow-row"]');
+		expect(notify.find('[data-testid="agent-chip-invalid-icon"]').exists()).toBe(true);
+		expect(notify.find('[data-testid="stub-tooltip-content"]').text()).toBe(
+			'agents.builder.validation.issue.tool.workflow.notInProject',
+		);
+	});
+
 	it('shows no workflows from skills when the feature flag is off', () => {
 		workflowsInSkillsEnabled.value = false;
 
