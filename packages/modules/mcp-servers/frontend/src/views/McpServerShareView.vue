@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { McpServerShare } from '@n8n/api-types';
+import { mcpServerSlugSchema, type McpServerShare } from '@n8n/api-types';
 import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
@@ -69,6 +69,12 @@ const signedIn = computed(() => !!usersStore.currentUser);
  * would send a signed-in person to "Session expired".
  */
 async function load() {
+	// vue-router decodes the param, so a crafted link could point the request at another route.
+	if (!mcpServerSlugSchema.safeParse(slug.value).success) {
+		state.value = 'notFound';
+		documentTitle.set(i18n.baseText('mcpServers.share.title'));
+		return;
+	}
 	try {
 		share.value = signedIn.value
 			? await getMcpServerShare(rootStore.restApiContext, slug.value)

@@ -13,6 +13,11 @@ const api = vi.hoisted(() => ({
 }));
 vi.mock('../mcp-servers.api', () => api);
 
+const route = vi.hoisted(() => ({
+	params: { slug: 'sales-tools' },
+	fullPath: '/mcp-share/sales-tools',
+}));
+
 const usersStore = vi.hoisted(() => ({ currentUser: null as { id: string } | null }));
 vi.mock('@n8n/stores/users.store', () => ({ useUsersStore: () => usersStore }));
 
@@ -21,7 +26,7 @@ vi.mock('@n8n/composables/useTelemetry', () => ({ useTelemetry: () => ({ track }
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
-	useRoute: () => ({ params: { slug: 'sales-tools' }, fullPath: '/mcp-share/sales-tools' }),
+	useRoute: () => route,
 	useRouter: () => ({
 		resolve: (to: { query?: { redirect?: string } }) => ({
 			href: `/signin?redirect=${to.query?.redirect ?? ''}`,
@@ -56,6 +61,7 @@ async function renderPage() {
 }
 
 beforeEach(() => {
+	route.params.slug = 'sales-tools';
 	usersStore.currentUser = null;
 	api.getMcpServerShare.mockReset();
 	api.getMcpServerPublicShare.mockReset();
@@ -170,6 +176,16 @@ describe('McpServerShareView', () => {
 		renderComponent();
 
 		expect(await screen.findByTestId('mcp-share-not-found')).toBeInTheDocument();
+	});
+
+	it('shows "not found" and sends no request for a slug that is not a server slug', async () => {
+		route.params.slug = '../../some-route';
+
+		renderComponent();
+
+		expect(await screen.findByTestId('mcp-share-not-found')).toBeInTheDocument();
+		expect(api.getMcpServerPublicShare).not.toHaveBeenCalled();
+		expect(api.getMcpServerShare).not.toHaveBeenCalled();
 	});
 
 	describe('client buttons', () => {
