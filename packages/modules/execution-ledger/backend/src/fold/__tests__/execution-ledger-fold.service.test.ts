@@ -11,6 +11,7 @@ import {
 	type OperationContext,
 	withSavepoint,
 } from '@n8n/db';
+import { OperationalError } from '@n8n/errors';
 import type { ErrorReporter } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -448,7 +449,7 @@ describe('ExecutionLedgerFoldService', () => {
 				expect(scopedLogger.error).toHaveBeenCalledTimes(1);
 				expect(scopedLogger.error).toHaveBeenCalledWith(
 					'Execution ledger fold parked a batch for a failing step',
-					{ step: 'bad', firstLedgerId: '5', rows: 3 },
+					{ step: 'bad', firstLedgerId: '5', error: 'upsert failed', rows: 3 },
 				);
 			});
 
@@ -461,11 +462,12 @@ describe('ExecutionLedgerFoldService', () => {
 				expect(scopedLogger.error).toHaveBeenCalledWith(expect.any(String), {
 					step: 'bad',
 					firstLedgerId: '1',
+					error: 'bad broke',
 					rows: 3,
 				});
 			});
 
-			it('reports one FoldStepFailedError, with the second failure as cause, without logging it again', async () => {
+			it('reports one FoldStepFailedError, with the second failure in extra, without logging it again', async () => {
 				claims(rowsOf(3, '5'));
 				failingStep('bad', 'upsert failed');
 
@@ -481,8 +483,43 @@ describe('ExecutionLedgerFoldService', () => {
 					firstLedgerId: '5',
 					message: 'Fold step "bad" failed twice, the batch was parked',
 				});
-				expect(reported.cause).toMatchObject({ message: 'upsert failed' });
+				expect(reported.cause).toBeUndefined();
+				expect(reported.extra).toMatchObject({
+					step: 'bad',
+					firstLedgerId: '5',
+					stepErrorName: 'Error',
+					stepErrorMessage: 'upsert failed',
+				});
 				expect(reported.tags).toMatchObject({ foldStep: 'bad' });
+			});
+
+			it('reports a park caused by a warning-level step error without a cause', async () => {
+				addStep('bad', async () => {
+					throw new OperationalError('transient');
+				});
+
+				await service.foldBatch();
+
+				const reported = errorReporter.error.mock.calls[0][0] as FoldStepFailedError;
+				expect(reported.cause).toBeUndefined();
+				expect(reported.level).toBe('error');
+				expect(reported.extra).toMatchObject({
+					stepErrorName: 'OperationalError',
+					stepErrorMessage: 'transient',
+				});
+			});
+
+			it('reports the type of a step failure that is not an Error', async () => {
+				registry.register({ name: 'bad', fold: vi.fn().mockRejectedValue('plain text') });
+
+				await service.foldBatch();
+
+				const reported = errorReporter.error.mock.calls[0][0] as FoldStepFailedError;
+				expect(reported.cause).toBeUndefined();
+				expect(reported.extra).toMatchObject({
+					stepErrorName: 'string',
+					stepErrorMessage: 'plain text',
+				});
 			});
 
 			it('logs and reports each of two parked steps once', async () => {

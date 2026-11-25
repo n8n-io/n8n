@@ -81,7 +81,7 @@ instances report these metrics, and only when the module is on. The default pref
 | `execution_ledger_backlog_rows` | gauge | Upper-bound estimate of the rows that no fold has claimed yet, at the last refresh. |
 | `execution_ledger_backlog_oldest_row_age_seconds` | gauge | Age of the oldest unclaimed row. 0 when the ledger is empty. |
 | `execution_ledger_fold_last_success_timestamp_seconds` | gauge | Last fold that held the lock and committed. |
-| `execution_ledger_fold_rows_total` | counter | Rows folded. Its rate is the fold throughput. When `backlog_rows` grows while the rate stays flat, the fold does not keep up. |
+| `execution_ledger_fold_rows_total` | counter | Rows claimed, parked rows included. Its rate is the fold throughput. A step that parks every batch shows in `fold_step_failures_total`, not here. When `backlog_rows` grows while the rate stays flat, the fold does not keep up. |
 | `execution_ledger_fold_step_failures_total{step}` | counter | Failed fold attempts for each step. |
 
 The backlog gauges read only the primary key, so the query stays cheap at any backlog size.
@@ -92,9 +92,12 @@ is cached for 60 seconds and shared by all mains, so it can lag behind new rows.
 Any main can run the fold, so a main that stopped folding keeps its old fold metrics. Aggregate across mains: `max()` for the timestamp, `sum()` for counters.
 
 When the fold parks a batch for a failing step, it logs one error in the `execution-ledger`
-scope with `step`, `firstLedgerId` and `rows`, and reports the step error to Sentry.
-Errors that go to Sentry have a `foldStep` tag. When the fold parks rows that it cannot read,
-it logs one error with `rows` only.
+scope with `step`, `firstLedgerId`, `rows` and `error`. It also reports a
+`FoldStepFailedError` to Sentry, with the name and message of the step error in `extra` and a
+`foldStep` tag. Sentry drops a repeat of the same error in the same process, so do not count
+parks in Sentry: use the logs or `fold_step_failures_total`.
+
+When the fold parks rows that it cannot read, it logs one error with `rows` only.
 
 Suggested alert rules:
 

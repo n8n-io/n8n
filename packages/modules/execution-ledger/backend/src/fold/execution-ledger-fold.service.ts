@@ -188,10 +188,11 @@ export class ExecutionLedgerFoldService {
 			});
 		}
 		for (const failure of parked) {
-			const { step, firstLedgerId } = failure;
+			const { step, firstLedgerId, stepErrorMessage } = failure;
 			this.logger.error('Execution ledger fold parked a batch for a failing step', {
 				step,
 				firstLedgerId,
+				error: stepErrorMessage,
 				rows: readable,
 			});
 			this.errorReporter.error(failure, { shouldBeLogged: false });
