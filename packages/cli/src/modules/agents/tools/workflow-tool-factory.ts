@@ -337,6 +337,8 @@ export async function executeWorkflow(
 		| 'agentRun'
 		| 'abortSignal'
 		| 'instrumentToolAdditionalData'
+		| 'executionMetadata'
+		| 'timeoutMs'
 	> & { executionProjectId?: string },
 	allOutputs = false,
 	/** Sanitized tool name for eval instrumentation; set only on instrumented runs. */
