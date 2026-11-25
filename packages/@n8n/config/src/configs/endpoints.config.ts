@@ -227,6 +227,14 @@ export class EndpointsConfig {
 	@Env('N8N_MCP_BUILDER_ENABLED')
 	mcpBuilderEnabled: boolean = true;
 
+	/**
+	 * Whether MCP clients can show an interactive workflow preview when they
+	 * build a workflow through the MCP server. Set to false to return the
+	 * workflow without the preview.
+	 */
+	@Env('N8N_MCP_APPS_ENABLED')
+	mcpAppsEnabled: boolean = true;
+
 	/** Maximum number of OAuth clients that can be registered for MCP. */
 	@Env('N8N_MCP_MAX_REGISTERED_CLIENTS')
 	mcpMaxRegisteredClients: number = 5000;
