@@ -238,6 +238,23 @@ describe('createSendAndWaitMessageBody - parse mode', () => {
 		expect(body.text).toBe('Approve My_Workflow');
 	});
 
+	it.each(['HTML', 'MarkdownV2'])('should send the %s parse mode as selected', (parseMode) => {
+		const body = genericFunctions.createSendAndWaitMessageBody(
+			createContext({ appendAttribution: false, parse_mode: parseMode }),
+		);
+
+		expect(body.parse_mode).toBe(parseMode);
+		expect(body.text).toBe('Approve My_Workflow');
+	});
+
+	it('should append HTML attribution to HTML messages', () => {
+		const body = genericFunctions.createSendAndWaitMessageBody(
+			createContext({ parse_mode: 'HTML' }),
+		);
+
+		expect(body.text).toContain('<em>This message was sent automatically with </em><a href=');
+	});
+
 	it('should append plain text attribution to plain text messages', () => {
 		const body = genericFunctions.createSendAndWaitMessageBody(
 			createContext({ parse_mode: 'plainText' }),

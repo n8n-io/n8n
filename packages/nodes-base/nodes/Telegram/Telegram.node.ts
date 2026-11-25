@@ -3,6 +3,7 @@ import type {
 	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	IHttpRequestMethods,
@@ -36,6 +37,25 @@ import {
 	getSendAndWaitProperties,
 	SEND_AND_WAIT_WAITING_TOOLTIP,
 } from '../../utils/sendAndWait/utils';
+
+const parseModeOptions: INodePropertyOptions[] = [
+	{
+		name: 'Markdown (Legacy)',
+		value: 'Markdown',
+	},
+	{
+		name: 'MarkdownV2',
+		value: 'MarkdownV2',
+	},
+	{
+		name: 'HTML',
+		value: 'HTML',
+	},
+	{
+		name: 'Plain Text',
+		value: PLAIN_TEXT_PARSE_MODE,
+	},
+];
 
 export class Telegram implements INodeType {
 	description: INodeTypeDescription = {
@@ -1743,24 +1763,7 @@ export class Telegram implements INodeType {
 						displayName: 'Parse Mode',
 						name: 'parse_mode',
 						type: 'options',
-						options: [
-							{
-								name: 'Markdown (Legacy)',
-								value: 'Markdown',
-							},
-							{
-								name: 'MarkdownV2',
-								value: 'MarkdownV2',
-							},
-							{
-								name: 'HTML',
-								value: 'HTML',
-							},
-							{
-								name: 'Plain Text',
-								value: PLAIN_TEXT_PARSE_MODE,
-							},
-						],
+						options: parseModeOptions,
 						displayOptions: {
 							show: {
 								'/operation': [
@@ -2072,16 +2075,7 @@ export class Telegram implements INodeType {
 							displayName: 'Parse Mode',
 							name: 'parse_mode',
 							type: 'options',
-							options: [
-								{
-									name: 'Markdown (Legacy)',
-									value: 'Markdown',
-								},
-								{
-									name: 'Plain Text',
-									value: PLAIN_TEXT_PARSE_MODE,
-								},
-							],
+							options: parseModeOptions,
 							default: 'Markdown',
 							description: 'How to parse the text',
 						},

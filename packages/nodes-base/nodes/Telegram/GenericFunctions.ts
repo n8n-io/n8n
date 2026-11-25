@@ -505,10 +505,7 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions, chatApp
 	const chat_id = context.getNodeParameter('chatId', 0) as string;
 
 	const config = getSendAndWaitConfig(context);
-	const parseMode =
-		context.getNodeParameter('options.parse_mode', 0, 'Markdown') === PLAIN_TEXT_PARSE_MODE
-			? PLAIN_TEXT_PARSE_MODE
-			: 'Markdown';
+	const parseMode = context.getNodeParameter('options.parse_mode', 0, 'Markdown') as string;
 	let text = config.message;
 
 	if (config.appendAttribution !== false) {
@@ -520,7 +517,7 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions, chatApp
 		text,
 
 		disable_web_page_preview: true,
-		...(parseMode === 'Markdown' && { parse_mode: parseMode }),
+		...(parseMode !== PLAIN_TEXT_PARSE_MODE && { parse_mode: parseMode }),
 		reply_markup: {
 			inline_keyboard: [
 				config.options.map((option) => {
