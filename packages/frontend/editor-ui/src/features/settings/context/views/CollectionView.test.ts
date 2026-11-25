@@ -6,11 +6,13 @@ import type {
 	KnowledgeCollectionDto,
 	KnowledgeCollectionFileDto,
 } from '@n8n/api-types';
+import { ResponseError } from '@n8n/rest-api-client';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { fireEvent, screen, waitFor } from '@testing-library/vue';
+import { fireEvent, screen, waitFor, within } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 
+import { VIEWS } from '@/app/constants';
 import { createProjectListItem } from '@/features/collaboration/projects/__tests__/utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useCollectionsStore } from '@/features/settings/context/collections.store';
@@ -19,13 +21,20 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import CollectionView from './CollectionView.vue';
 
 const showErrorMock = vi.fn();
+const showMessageMock = vi.fn();
+const pushMock = vi.fn();
+const replaceMock = vi.fn();
 
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showError: showErrorMock }),
+	useToast: () => ({ showError: showErrorMock, showMessage: showMessageMock }),
 }));
 
 vi.mock('vue-router', () => ({
-	useRouter: () => ({ push: vi.fn(), resolve: () => ({ href: '/somewhere' }) }),
+	useRouter: () => ({
+		push: pushMock,
+		replace: replaceMock,
+		resolve: () => ({ href: '/somewhere' }),
+	}),
 	useRoute: () => ({ params: {}, query: {} }),
 	RouterLink: vi.fn(),
 }));
@@ -67,10 +76,13 @@ const setup = async ({
 	files = [],
 	agents = [],
 	description = 'Customer support: refunds and pricing',
+	canEdit = true,
 }: {
 	files?: KnowledgeCollectionFileDto[];
 	agents?: KnowledgeCollectionAgentDto[];
 	description?: string;
+	/** Whether the user holds `agent:update` in the project of the collection. */
+	canEdit?: boolean;
 } = {}) => {
 	const pinia = createTestingPinia();
 	collectionsStore = mockedStore(useCollectionsStore);
@@ -82,7 +94,12 @@ const setup = async ({
 	});
 	collectionsStore.listCollectionAgents.mockResolvedValue(agents);
 	mockedStore(useProjectsStore).myProjects = [
-		{ ...createProjectListItem(), id: 'p1', name: 'Darwin' },
+		{
+			...createProjectListItem(),
+			id: 'p1',
+			name: 'Darwin',
+			scopes: canEdit ? ['agent:read', 'agent:update'] : ['agent:read'],
+		},
 	];
 
 	const rendered = renderComponent({ pinia });
@@ -99,6 +116,50 @@ const selectFiles = async (files: File[]) => {
 		target: { files },
 	});
 };
+
+const titleEdit = () => screen.getByTestId('collection-name-inline-edit');
+const titleInput = () => within(titleEdit()).getByTestId('inline-edit-input');
+const titlePreview = () => within(titleEdit()).getByTestId('inline-edit-preview');
+const currentCrumb = () => screen.getAllByTestId('breadcrumbs-item').at(-1);
+
+/** Clicks the title, replaces its text and presses the given key. */
+async function typeTitle(name: string, key = '{Enter}') {
+	await userEvent.click(titlePreview());
+	await userEvent.clear(titleInput());
+	await userEvent.type(titleInput(), `${name}${key}`);
+}
+
+function menuLabels() {
+	return screen.getAllByRole('menuitem').map((item) => item.textContent?.trim());
+}
+
+const moreActionsButton = () =>
+	within(screen.getByTestId('collection-actions')).getByRole('button', { name: 'More actions' });
+
+async function openMenu() {
+	await userEvent.click(moreActionsButton());
+}
+
+async function pickAction(name: 'Edit description' | 'Delete') {
+	await openMenu();
+	await userEvent.click(await screen.findByRole('menuitem', { name }));
+}
+
+/** Tabs through the page and tells whether the focus lands in the title. */
+async function tabsIntoTitle(maxSteps = 10) {
+	const heading = screen.getByRole('heading', { level: 1 });
+	for (let step = 0; step < maxSteps; step++) {
+		await userEvent.tab();
+		if (heading.contains(document.activeElement)) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+const descriptionField = () =>
+	screen.getByTestId('collection-description-input').querySelector('textarea')!;
 
 describe('CollectionView', () => {
 	beforeEach(() => {
@@ -124,11 +185,14 @@ describe('CollectionView', () => {
 		await setup();
 
 		expect(collectionsStore.getCollection).toHaveBeenCalledWith('p1', 'c1');
-		expect(screen.getByRole('heading', { level: 1, name: 'Customer support' })).toBeInTheDocument();
+		const heading = screen.getByRole('heading', { level: 1 });
+		expect(within(heading).getByTestId('inline-edit-preview')).toHaveTextContent(
+			'Customer support',
+		);
 		expect(screen.getByTestId('collection-description')).toHaveTextContent(
 			'Customer support: refunds and pricing',
 		);
-		expect(screen.getByTitle('Customer support')).toBeInTheDocument();
+		expect(currentCrumb()).toHaveAttribute('title', 'Customer support');
 		expect(document.title).toContain('Customer support');
 	});
 
@@ -282,5 +346,321 @@ describe('CollectionView', () => {
 		renderComponent({ pinia });
 
 		await waitFor(() => expect(showErrorMock).toHaveBeenCalledWith(error, expect.any(String)));
+	});
+
+	describe('actions menu', () => {
+		it('offers Edit description and Delete to a user who can change the collection', async () => {
+			await setup();
+
+			await openMenu();
+
+			await screen.findByRole('menuitem', { name: 'Edit description' });
+			expect(menuLabels()).toEqual(['Edit description', 'Delete']);
+		});
+
+		it('shows no menu and a plain title to a user without the scope', async () => {
+			await setup({ canEdit: false });
+			const heading = screen.getByRole('heading', { level: 1 });
+
+			expect(screen.queryByTestId('collection-actions')).toBeNull();
+			expect(heading).toHaveTextContent('Customer support');
+			expect(within(heading).queryByTestId('inline-edit-input')).toBeNull();
+			expect(await tabsIntoTitle()).toBe(false);
+			expect(collectionsStore.updateCollection).not.toHaveBeenCalled();
+		});
+
+		it('lets a user who can change the collection start the rename with the keyboard', async () => {
+			await setup();
+
+			expect(await tabsIntoTitle()).toBe(true);
+
+			await waitFor(() => expect(titleInput()).toHaveFocus());
+		});
+	});
+
+	describe('rename', () => {
+		it('saves the new name and shows it in the title, the breadcrumb and the document title', async () => {
+			await setup();
+			collectionsStore.updateCollection.mockResolvedValue(
+				collectionDto({ name: 'Support handbook' }),
+			);
+
+			await typeTitle('Support handbook');
+
+			expect(collectionsStore.updateCollection).toHaveBeenCalledWith('p1', 'c1', {
+				name: 'Support handbook',
+			});
+			await waitFor(() => expect(currentCrumb()).toHaveAttribute('title', 'Support handbook'));
+			expect(titlePreview()).toHaveTextContent('Support handbook');
+			expect(document.title).toContain('Support handbook');
+			expect(showMessageMock).not.toHaveBeenCalled();
+		});
+
+		it('keeps the saved name and sends nothing when the user empties the title', async () => {
+			await setup();
+
+			await typeTitle('');
+
+			expect(collectionsStore.updateCollection).not.toHaveBeenCalled();
+			expect(titlePreview()).toHaveTextContent('Customer support');
+		});
+
+		it('keeps the saved name and sends nothing when the user cancels with Esc', async () => {
+			await setup();
+
+			await typeTitle('Support handbook', '{Escape}');
+
+			expect(collectionsStore.updateCollection).not.toHaveBeenCalled();
+			expect(titlePreview()).toHaveTextContent('Customer support');
+		});
+
+		it('shows a taken name under the title and keeps the typed name in the title only', async () => {
+			await setup();
+			collectionsStore.updateCollection.mockRejectedValue(
+				new ResponseError('A collection with this name already exists in this project.', {
+					httpStatusCode: 409,
+				}),
+			);
+
+			await typeTitle('Product docs');
+
+			await waitFor(() =>
+				expect(screen.getByRole('alert')).toHaveTextContent(
+					'A collection with this name already exists. The name is not saved.',
+				),
+			);
+			expect(titlePreview()).toHaveTextContent('Product docs');
+			expect(currentCrumb()).toHaveAttribute('title', 'Customer support');
+			expect(showErrorMock).not.toHaveBeenCalled();
+
+			// The saved name typed back needs no request and clears the error.
+			await typeTitle('Customer support');
+
+			expect(collectionsStore.updateCollection).toHaveBeenCalledTimes(1);
+			expect(screen.queryByRole('alert')).toBeNull();
+			expect(titlePreview()).toHaveTextContent('Customer support');
+		});
+
+		it('shows any other failure in a toast and puts the saved name back in the title', async () => {
+			await setup();
+			const failure = new Error('offline');
+			collectionsStore.updateCollection.mockRejectedValue(failure);
+
+			await typeTitle('Support handbook');
+
+			await waitFor(() =>
+				expect(showErrorMock).toHaveBeenCalledWith(failure, 'Could not save collection'),
+			);
+			expect(titlePreview()).toHaveTextContent('Customer support');
+			expect(screen.queryByRole('alert')).toBeNull();
+		});
+
+		it('disables the title and the menu until the rename request ends', async () => {
+			await setup();
+			const rename = Promise.withResolvers<KnowledgeCollectionDto>();
+			collectionsStore.updateCollection.mockReturnValue(rename.promise);
+
+			await typeTitle('Support handbook');
+
+			expect(titleInput()).toBeDisabled();
+			expect(moreActionsButton()).toBeDisabled();
+
+			rename.resolve(collectionDto({ name: 'Support handbook' }));
+			await flushPromises();
+
+			expect(titleInput()).toBeEnabled();
+			expect(moreActionsButton()).toBeEnabled();
+		});
+
+		it('does not change the document title when a rename ends after the page closes', async () => {
+			const { unmount } = await setup();
+			const rename = Promise.withResolvers<KnowledgeCollectionDto>();
+			collectionsStore.updateCollection.mockReturnValue(rename.promise);
+			await typeTitle('Support handbook');
+
+			unmount();
+			const titleAfterClose = document.title;
+			rename.resolve(collectionDto({ name: 'Support handbook' }));
+			await flushPromises();
+
+			expect(document.title).toBe(titleAfterClose);
+			expect(document.title).not.toContain('Support handbook');
+		});
+
+		it('reports a taken name in a toast when the rename ends after the page closes', async () => {
+			const { unmount } = await setup();
+			const rename = Promise.withResolvers<KnowledgeCollectionDto>();
+			collectionsStore.updateCollection.mockReturnValue(rename.promise);
+			await typeTitle('Product docs');
+
+			unmount();
+			const failure = new ResponseError(
+				'A collection with this name already exists in this project.',
+				{ httpStatusCode: 409 },
+			);
+			rename.reject(failure);
+			await flushPromises();
+
+			expect(showErrorMock).toHaveBeenCalledWith(
+				failure,
+				'A collection with this name already exists. The name is not saved.',
+			);
+		});
+	});
+
+	describe('edit description', () => {
+		it('opens the dialog with the current description and shows the saved description on the page', async () => {
+			await setup();
+			collectionsStore.updateCollection.mockResolvedValue(
+				collectionDto({ description: 'Refunds, pricing and shipping' }),
+			);
+
+			await pickAction('Edit description');
+
+			await screen.findByTestId('collection-modal');
+			expect(descriptionField()).toHaveValue('Customer support: refunds and pricing');
+
+			await userEvent.clear(descriptionField());
+			await userEvent.type(descriptionField(), 'Refunds, pricing and shipping');
+			await userEvent.click(screen.getByTestId('collection-modal-submit'));
+
+			expect(collectionsStore.updateCollection).toHaveBeenCalledWith('p1', 'c1', {
+				description: 'Refunds, pricing and shipping',
+			});
+			await waitFor(() =>
+				expect(screen.getByTestId('collection-description')).toHaveTextContent(
+					'Refunds, pricing and shipping',
+				),
+			);
+			await waitFor(() => expect(screen.queryByTestId('collection-modal')).toBeNull());
+		});
+	});
+
+	describe('delete', () => {
+		it('opens the dialog and goes to the Collections list after the delete', async () => {
+			await setup();
+			collectionsStore.deleteCollection.mockResolvedValue();
+
+			await pickAction('Delete');
+
+			const dialog = await screen.findByTestId('collection-delete-dialog');
+			expect(dialog).toHaveTextContent('Delete Customer support?');
+
+			await userEvent.click(screen.getByTestId('collection-delete-confirm'));
+
+			expect(collectionsStore.deleteCollection).toHaveBeenCalledWith('p1', 'c1');
+			await waitFor(() =>
+				expect(replaceMock).toHaveBeenCalledWith({ name: VIEWS.SETTINGS_CONTEXT_COLLECTIONS }),
+			);
+			expect(pushMock).not.toHaveBeenCalled();
+		});
+	});
+
+	it('does not load the page data again after a rename or a description save', async () => {
+		await setup();
+		collectionsStore.updateCollection.mockResolvedValueOnce(
+			collectionDto({ name: 'Support handbook' }),
+		);
+		await typeTitle('Support handbook');
+		await waitFor(() => expect(currentCrumb()).toHaveAttribute('title', 'Support handbook'));
+
+		collectionsStore.updateCollection.mockResolvedValueOnce(
+			collectionDto({ name: 'Support handbook', description: 'Refunds only' }),
+		);
+		await pickAction('Edit description');
+		await screen.findByTestId('collection-modal');
+		await userEvent.clear(descriptionField());
+		await userEvent.type(descriptionField(), 'Refunds only');
+		await userEvent.click(screen.getByTestId('collection-modal-submit'));
+		await waitFor(() =>
+			expect(screen.getByTestId('collection-description')).toHaveTextContent('Refunds only'),
+		);
+
+		expect(collectionsStore.getCollection).toHaveBeenCalledTimes(1);
+		expect(collectionsStore.listCollectionFiles).toHaveBeenCalledTimes(1);
+		expect(collectionsStore.listCollectionAgents).toHaveBeenCalledTimes(1);
+	});
+
+	describe('when the page opens a different collection', () => {
+		const openLegal = async (rendered: Awaited<ReturnType<typeof setup>>) => {
+			collectionsStore.getCollection.mockResolvedValue(
+				collectionDto({ id: 'c2', name: 'Legal', description: 'Contracts' }),
+			);
+			await rendered.rerender({ collectionId: 'c2' });
+			await waitFor(() => expect(currentCrumb()).toHaveAttribute('title', 'Legal'));
+		};
+
+		it('closes the description dialog and ignores a late save of the old collection', async () => {
+			const rendered = await setup();
+			const save = Promise.withResolvers<KnowledgeCollectionDto>();
+			collectionsStore.updateCollection.mockReturnValue(save.promise);
+			await pickAction('Edit description');
+			await screen.findByTestId('collection-modal');
+			await userEvent.type(descriptionField(), ' and shipping');
+			await userEvent.click(screen.getByTestId('collection-modal-submit'));
+
+			await openLegal(rendered);
+			await waitFor(() => expect(screen.queryByTestId('collection-modal')).toBeNull());
+			save.resolve(collectionDto({ description: 'Late description' }));
+			await flushPromises();
+
+			expect(titlePreview()).toHaveTextContent('Legal');
+			expect(screen.getByTestId('collection-description')).toHaveTextContent('Contracts');
+		});
+
+		it('removes the delete dialog and does not navigate', async () => {
+			const rendered = await setup();
+			await pickAction('Delete');
+			await screen.findByTestId('collection-delete-dialog');
+
+			await openLegal(rendered);
+
+			await waitFor(() => expect(screen.queryByTestId('collection-delete-dialog')).toBeNull());
+			expect(replaceMock).not.toHaveBeenCalled();
+			expect(pushMock).not.toHaveBeenCalled();
+		});
+
+		it('does not change the new collection when a rename of the old one ends', async () => {
+			const rendered = await setup();
+			const rename = Promise.withResolvers<KnowledgeCollectionDto>();
+			collectionsStore.updateCollection.mockReturnValue(rename.promise);
+			await typeTitle('Support handbook');
+
+			await openLegal(rendered);
+			rename.resolve(collectionDto({ name: 'Support handbook' }));
+			await flushPromises();
+
+			expect(titlePreview()).toHaveTextContent('Legal');
+			expect(currentCrumb()).toHaveAttribute('title', 'Legal');
+			expect(document.title).toContain('Legal');
+			expect(document.title).not.toContain('Support handbook');
+		});
+
+		it.each([
+			[
+				'a taken name',
+				new ResponseError('A collection with this name already exists in this project.', {
+					httpStatusCode: 409,
+				}),
+				'A collection with this name already exists. The name is not saved.',
+			],
+			['any other failure', new Error('offline'), 'Could not save collection'],
+		])(
+			'reports %s of a rename of the old collection in a toast and leaves the new page as it is',
+			async (_case, failure, toastTitle) => {
+				const rendered = await setup();
+				const rename = Promise.withResolvers<KnowledgeCollectionDto>();
+				collectionsStore.updateCollection.mockReturnValue(rename.promise);
+				await typeTitle('Support handbook');
+
+				await openLegal(rendered);
+				rename.reject(failure);
+				await flushPromises();
+
+				expect(showErrorMock).toHaveBeenCalledWith(failure, toastTitle);
+				expect(titlePreview()).toHaveTextContent('Legal');
+				expect(screen.queryByRole('alert')).toBeNull();
+			},
+		);
 	});
 });

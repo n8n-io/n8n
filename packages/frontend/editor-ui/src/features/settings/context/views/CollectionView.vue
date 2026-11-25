@@ -1,16 +1,28 @@
 <script setup lang="ts">
-import { ALLOWED_AGENT_FILE_EXTENSIONS } from '@n8n/api-types';
+import {
+	ALLOWED_AGENT_FILE_EXTENSIONS,
+	KNOWLEDGE_COLLECTION_NAME_MAX_LENGTH,
+} from '@n8n/api-types';
 import type {
 	KnowledgeCollectionAgentDto,
 	KnowledgeCollectionDto,
 	KnowledgeCollectionFileDto,
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
-import { N8nBreadcrumbs, N8nContextMenu, N8nHeading, N8nText } from '@n8n/design-system';
+import {
+	N8nActionToggle,
+	N8nBreadcrumbs,
+	N8nContextMenu,
+	N8nHeading,
+	N8nInlineTextEdit,
+	N8nText,
+} from '@n8n/design-system';
 import type { ContextMenuNode, PathItem } from '@n8n/design-system';
+import type { ActionToggleItem } from '@n8n/design-system/components/N8nActionToggle/ActionToggle.types';
 import { useI18n } from '@n8n/i18n';
+import { ResponseError } from '@n8n/rest-api-client';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { computed, ref, useTemplateRef, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -22,8 +34,13 @@ import { useAgentProjectBreadcrumb } from '@/features/agents/composables/useAgen
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useCollectionsStore } from '@/features/settings/context/collections.store';
+import CollectionModal from '@/features/settings/context/components/CollectionModal.vue';
+import DeleteCollectionDialog from '@/features/settings/context/components/DeleteCollectionDialog.vue';
+import { useCollectionPermissions } from '@/features/settings/context/composables/useCollectionPermissions';
 
 const COLLECTIONS_CRUMB = 'collections';
+
+type CollectionAction = 'edit-description' | 'delete';
 
 const props = defineProps<{
 	projectId: string;
@@ -37,12 +54,39 @@ const collectionsStore = useCollectionsStore();
 const projectsStore = useProjectsStore();
 const settingsStore = useSettingsStore();
 const documentTitle = useDocumentTitle();
+const { canChange } = useCollectionPermissions();
 
 const files = ref<KnowledgeCollectionFileDto[]>([]);
 const agents = ref<KnowledgeCollectionAgentDto[]>([]);
 const collection = ref<KnowledgeCollectionDto | null>(null);
 const uploading = ref(false);
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput');
+
+/** The text of the title. After a refused rename, it keeps the name that the user typed. */
+const editableName = ref('');
+const renaming = ref(false);
+const renameError = ref('');
+const modalOpen = ref(false);
+/** The collection that the description dialog edits. It stays set while the dialog closes. */
+const editingCollection = ref<KnowledgeCollectionDto | null>(null);
+const deletingCollection = ref<KnowledgeCollectionDto | null>(null);
+
+const canEdit = computed(() => collection.value !== null && canChange(collection.value));
+
+const collectionActions = computed<Array<ActionToggleItem<CollectionAction>>>(() => [
+	{
+		value: 'edit-description',
+		label: i18n.baseText('settings.context.collections.actions.editDescription'),
+		icon: 'square-pen',
+	},
+	{
+		value: 'delete',
+		label: i18n.baseText('settings.context.collections.actions.delete'),
+		icon: 'trash-2',
+		destructive: true,
+		divided: true,
+	},
+]);
 
 const { projectName, projectIcon } = useAgentProjectBreadcrumb(computed(() => props.projectId));
 
@@ -90,14 +134,22 @@ function projectNameOf(projectId: string) {
 	return projectsStore.myProjects.find((project) => project.id === projectId)?.name;
 }
 
-// The route can change to a different collection while a request is in flight.
+let disposed = false;
+onBeforeUnmount(() => {
+	disposed = true;
+});
+
+// The route can change to a different collection, or the page can close, while a request runs.
 const isCurrent = (projectId: string, collectionId: string) =>
-	projectId === props.projectId && collectionId === props.collectionId;
+	!disposed && projectId === props.projectId && collectionId === props.collectionId;
 
 watch(
 	() => [props.projectId, props.collectionId],
 	async ([projectId, collectionId]) => {
 		collection.value = null;
+		modalOpen.value = false;
+		editingCollection.value = null;
+		deletingCollection.value = null;
 		try {
 			const [loadedCollection, fileList, agentList] = await Promise.all([
 				collectionsStore.getCollection(projectId, collectionId),
@@ -110,13 +162,102 @@ watch(
 			files.value = fileList.data;
 			agents.value = agentList;
 			collection.value = loadedCollection;
-			documentTitle.set(loadedCollection.name);
 		} catch (error) {
 			toast.showError(error, i18n.baseText('settings.context.collections.error.loadOne'));
 		}
 	},
 	{ immediate: true },
 );
+
+// Make sure the title, the tab and the rename state follow each new copy of the collection.
+watch(collection, (current) => {
+	editableName.value = current?.name ?? '';
+	renameError.value = '';
+	if (current) {
+		documentTitle.set(current.name);
+	}
+});
+
+async function onRename(name: string) {
+	const current = collection.value;
+	if (!current) {
+		return;
+	}
+
+	// The saved name needs no request. Typing it back after a refused name also clears the error.
+	if (name === current.name) {
+		renameError.value = '';
+		return;
+	}
+
+	const { projectId, collectionId } = props;
+	renaming.value = true;
+
+	try {
+		const updated = await collectionsStore.updateCollection(projectId, collectionId, { name });
+		if (!isCurrent(projectId, collectionId)) {
+			return;
+		}
+
+		collection.value = updated;
+	} catch (error) {
+		const isNameTaken = error instanceof ResponseError && error.httpStatusCode === 409;
+		// A page that changed or closed has no title to show the failure under, so it gets a toast.
+		if (!isCurrent(projectId, collectionId)) {
+			const errorKey = isNameTaken
+				? 'settings.context.collections.rename.taken'
+				: 'settings.context.collections.error.update';
+
+			toast.showError(error, i18n.baseText(errorKey));
+			return;
+		}
+
+		// The title keeps the typed name, so the user can fix it.
+		if (isNameTaken) {
+			renameError.value = i18n.baseText('settings.context.collections.rename.taken');
+			return;
+		}
+
+		toast.showError(error, i18n.baseText('settings.context.collections.error.update'));
+		editableName.value = current.name;
+		renameError.value = '';
+	} finally {
+		renaming.value = false;
+	}
+}
+
+function onAction(action: CollectionAction) {
+	const current = collection.value;
+	if (!current) {
+		return;
+	}
+
+	if (action === 'edit-description') {
+		editingCollection.value = current;
+		modalOpen.value = true;
+	} else {
+		deletingCollection.value = current;
+	}
+}
+
+// The dialog stays mounted, so make sure a late save of another collection does not land here.
+function onDescriptionSaved(saved: KnowledgeCollectionDto) {
+	if (saved.id !== props.collectionId) {
+		return;
+	}
+
+	collection.value = saved;
+}
+
+function closeDeleteDialog() {
+	deletingCollection.value = null;
+}
+
+// Replace, so Back does not open the deleted collection.
+async function onDeleted() {
+	closeDeleteDialog();
+	await router.replace(collectionsRoute);
+}
 
 async function onFilesSelected(event: Event) {
 	const input = event.target;
@@ -187,12 +328,44 @@ async function removeFile(fileId: string) {
 					<ProjectIcon :icon="projectIcon" size="mini" />
 				</template>
 			</N8nBreadcrumbs>
+			<!-- A user who cannot change the collection has no menu. -->
+			<N8nActionToggle
+				v-if="canEdit"
+				:actions="collectionActions"
+				:aria-label="i18n.baseText('node.moreActions')"
+				:disabled="renaming"
+				data-test-id="collection-actions"
+				@action="onAction"
+			/>
 		</div>
 
 		<div :class="$style.body">
 			<div v-if="collection" :class="$style.column">
 				<div :class="$style.heading">
-					<N8nHeading tag="h1" size="xlarge">{{ collection.name }}</N8nHeading>
+					<!-- A user who cannot change the collection sees the name as plain text. -->
+					<N8nHeading tag="h1" size="xlarge">
+						<N8nInlineTextEdit
+							v-if="canEdit"
+							v-model="editableName"
+							:disabled="renaming"
+							:max-length="KNOWLEDGE_COLLECTION_NAME_MAX_LENGTH"
+							max-width="100%"
+							:placeholder="i18n.baseText('settings.context.collections.modal.name.label')"
+							data-test-id="collection-name-inline-edit"
+							@update:model-value="onRename"
+						/>
+						<template v-else>{{ collection.name }}</template>
+					</N8nHeading>
+					<N8nText
+						v-if="renameError"
+						role="alert"
+						tag="p"
+						size="small"
+						color="danger"
+						data-test-id="collection-rename-error"
+					>
+						{{ renameError }}
+					</N8nText>
 					<N8nText
 						v-if="collection.description"
 						color="text-light"
@@ -265,6 +438,19 @@ async function removeFile(fileId: string) {
 				</AgentPanel>
 			</div>
 		</div>
+
+		<CollectionModal
+			v-model:open="modalOpen"
+			:collection="editingCollection"
+			description-only
+			@saved="onDescriptionSaved"
+		/>
+		<DeleteCollectionDialog
+			v-if="deletingCollection"
+			:collection="deletingCollection"
+			@close="closeDeleteDialog"
+			@deleted="onDeleted"
+		/>
 	</div>
 </template>
 
@@ -280,6 +466,7 @@ async function removeFile(fileId: string) {
 .topBar {
 	display: flex;
 	align-items: center;
+	gap: var(--spacing--3xs);
 	padding: var(--spacing--xs) var(--spacing--md);
 	background-color: var(--background--surface);
 	border-bottom: var(--border);
