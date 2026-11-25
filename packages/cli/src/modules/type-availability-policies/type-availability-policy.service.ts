@@ -1,12 +1,16 @@
+import { isDeepStrictEqual } from 'node:util';
+
 import type {
 	InstanceTypeAccessResponse,
 	NodeTypeAvailabilityScope,
 	ProjectPolicyEffectiveCounts,
 	ProjectPolicyKindSummary,
 	ProjectTypeAccessResponse,
+	TypeAccessChange,
 } from '@n8n/api-types';
 import { EventService, loginIdOf } from '@n8n/backend-services';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { Service } from '@n8n/di';
 import {
 	CREDENTIAL_ONLY_NODE_PREFIX,
@@ -33,11 +37,13 @@ import {
 } from './effective-policy';
 import type { ListTypes } from './listed-node-types';
 import { loadedCheckFor, packageResolverFor, policedTypeFor } from './package-resolver';
+import { applyAccessChanges } from './policy-access-changes';
 import {
 	evaluateComposedType,
 	evaluateRules,
 	orderedAttachments,
 	type ComposedVerdict,
+	type PolicedType,
 } from './policy-evaluator';
 import type { PolicyAction, PolicyAttachment, PolicyRule } from './policy-rule.types';
 import { lintPolicyRules, type PolicyRuleWarning } from './policy-rule-lint';
@@ -119,6 +125,12 @@ function assertNoDelegateAtProjectScope(
 	}
 }
 
+function scopeVersionConflict(expectedVersion: number, foundVersion: number): ConflictError {
+	return new ConflictError(
+		`Policy scope has changed since it was last read (expected version ${expectedVersion}, found ${foundVersion})`,
+	);
+}
+
 /**
  * A credential-only node (`n8n-creds-base.<type>`) exists only in the editor. It is stored and
  * executed as `n8n-nodes-base.httpRequest`, so a node type rule on the generated name would
@@ -158,6 +170,24 @@ function assertExtendsSelectorsValid(kind: string, rules: readonly PolicyRule[])
 
 	if (rules.some((rule) => rule.selector.kind === 'extends')) {
 		throw new UserError('An "extends" rule is only valid in a credential type policy');
+	}
+}
+
+/**
+ * A name strips only one tool suffix, so a rule for `xToolTool` does not follow the rules of
+ * `x`. The placement of an access write needs that, and no registry generates such a type.
+ */
+function assertNoNestedToolVariants(
+	changes: readonly TypeAccessChange[],
+	policedType: (name: string) => PolicedType,
+): void {
+	for (const { type } of changes) {
+		const { baseName } = policedType(type);
+		if (baseName !== type && policedType(baseName).baseName !== baseName) {
+			throw new UserError(
+				`Node type "${type}" is a tool variant of "${baseName}", which is itself a tool variant`,
+			);
+		}
 	}
 }
 
@@ -249,9 +279,7 @@ export class TypeAvailabilityPolicyService {
 			const currentVersion = scope?.version ?? UNCONFIGURED_VERSION;
 
 			if (currentVersion !== expectedVersion) {
-				throw new ConflictError(
-					`Policy scope has changed since it was last read (expected version ${expectedVersion}, found ${currentVersion})`,
-				);
+				throw scopeVersionConflict(expectedVersion, currentVersion);
 			}
 
 			if (!scope) {
@@ -558,9 +586,7 @@ export class TypeAvailabilityPolicyService {
 			}
 
 			if (scope.version !== expectedVersion) {
-				throw new ConflictError(
-					`Policy scope has changed since it was last read (expected version ${expectedVersion}, found ${scope.version})`,
-				);
+				throw scopeVersionConflict(expectedVersion, scope.version);
 			}
 
 			// Attaching a document to a project scope makes its rules that project's policy, so
@@ -657,9 +683,7 @@ export class TypeAvailabilityPolicyService {
 			const currentVersion = scope?.version ?? UNCONFIGURED_VERSION;
 
 			if (currentVersion !== expectedVersion) {
-				throw new ConflictError(
-					`Policy scope has changed since it was last read (expected version ${expectedVersion}, found ${currentVersion})`,
-				);
+				throw scopeVersionConflict(expectedVersion, currentVersion);
 			}
 
 			const scopeBefore = scope
@@ -848,6 +872,51 @@ export class TypeAvailabilityPolicyService {
 			rules: [...result.documentAfter.rules],
 			warnings,
 		};
+	}
+
+	/**
+	 * The read takes no lock: `setEffectivePolicy` checks `expectedVersion` again under the scope
+	 * lock, so a write that lands in between fails with a conflict instead of being overwritten.
+	 */
+	async setTypeAccess(
+		kind: string,
+		projectId: string | null,
+		changes: readonly TypeAccessChange[],
+		expectedVersion: number,
+		updatedBy: string,
+	) {
+		const effective = await this.getEffectivePolicy(kind, projectId);
+		if (effective.version !== expectedVersion) {
+			throw scopeVersionConflict(expectedVersion, effective.version);
+		}
+
+		const policedType = policedTypeFor(kind, this.nodeTypes, this.loadNodesAndCredentials);
+		assertNoNestedToolVariants(changes, policedType);
+
+		const rules = applyAccessChanges(effective.rules, changes, {
+			resolvePackage: packageResolverFor(kind, this.loadNodesAndCredentials),
+			policedType,
+			newRuleId: generateNanoId,
+		});
+
+		// A write moves the version, which fails the next write of every admin who read the old one.
+		if (isDeepStrictEqual(rules, effective.rules)) {
+			return {
+				scopeId: effective.scopeId,
+				defaultAction: effective.defaultAction,
+				version: effective.version,
+				rules,
+				warnings: this.validateAndLintRules(kind, rules),
+			};
+		}
+
+		return await this.setEffectivePolicy(
+			kind,
+			projectId,
+			{ rules, defaultAction: effective.defaultAction },
+			expectedVersion,
+			updatedBy,
+		);
 	}
 
 	/**

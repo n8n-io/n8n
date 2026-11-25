@@ -966,17 +966,28 @@ export class AgentExecutionOrchestratorService {
 				}
 				const selectedContext = messageContext;
 				const conversation = config.contextConversation;
+				const episodicScope = config.episodicScope;
 				return this.streamChatResponse({
 					admittedExecution: config.admittedExecution,
 					abortSignal: config.abortSignal,
 					onAdmitted:
-						selectedContext && conversation
-							? async () =>
-									await this.integrationMessageContextService.installIncoming(
-										selectedContext,
-										memory,
-										conversation,
-									)
+						(selectedContext && conversation) || episodicScope
+							? async () => {
+									if (selectedContext && conversation) {
+										await this.integrationMessageContextService.installIncoming(
+											selectedContext,
+											memory,
+											conversation,
+										);
+									}
+									if (episodicScope) {
+										await this.persistIntegrationEpisodicScope(
+											memory.threadId,
+											memory.resourceId,
+											episodicScope,
+										);
+									}
+								}
 							: undefined,
 					messageContext,
 					episodicScope: config.episodicScope,
@@ -1267,6 +1278,10 @@ export class AgentExecutionOrchestratorService {
 		const access: AgentThreadAccess = setup?.access ?? { accessScope: 'project', ownerId: null };
 		const integrationType = isDraft ? N8N_CHAT_INTEGRATION_TYPE : identity.integrationType;
 		const messageContext = await this.integrationMessageContextService.getLatest(memory.threadId);
+		const episodicScope =
+			!isDraft && !productionUserId
+				? await this.loadIntegrationEpisodicScope(memory.threadId, memory.resourceId)
+				: undefined;
 		const delivery = setup
 			? undefined
 			: await this.getWakeDelivery(agentId, integrationType, messageContext);
@@ -1282,7 +1297,15 @@ export class AgentExecutionOrchestratorService {
 			async () => await this.getWakeRuntime(config, setup, access, integrationType),
 			(runtime) =>
 				this.streamWakeResponse(
-					this.streamWakeTurn(wakeConfig, runtime, setup, access, integrationType, messageContext),
+					this.streamWakeTurn(
+						wakeConfig,
+						runtime,
+						setup,
+						access,
+						integrationType,
+						messageContext,
+						episodicScope,
+					),
 					abortSignal,
 					delivery,
 					messageContext?.interactingUserId,
@@ -2171,6 +2194,40 @@ export class AgentExecutionOrchestratorService {
 		);
 	}
 
+	private async persistIntegrationEpisodicScope(
+		threadId: string,
+		resourceId: string,
+		episodicScope: EpisodicScopeDecision,
+	): Promise<void> {
+		try {
+			await this.integrationMessageContextService.setEpisodicScope(
+				threadId,
+				resourceId,
+				episodicScope,
+			);
+		} catch (error) {
+			this.logger.warn('Failed to store episodic scope for integration thread', {
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	private async loadIntegrationEpisodicScope(
+		threadId: string,
+		resourceId: string,
+	): Promise<EpisodicScopeDecision | undefined> {
+		try {
+			return await this.integrationMessageContextService.getEpisodicScope(threadId, resourceId);
+		} catch (error) {
+			this.logger.warn('Failed to read episodic scope for integration wake', {
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return undefined;
+		}
+	}
+
 	private streamWakeTurn(
 		config: ExecuteForWakeConfig,
 		runtime: AgentRuntime,
@@ -2178,14 +2235,14 @@ export class AgentExecutionOrchestratorService {
 		access: AgentThreadAccess,
 		integrationType: string,
 		messageContext: IntegrationMessageContext | null,
+		episodicScope: EpisodicScopeDecision | undefined,
 	) {
 		const { agentId, message, memory, identity, abortSignal } = config;
 
-		// A wake carries no `episodicScope`: the background job record does not store the
-		// originating turn's decision, so a wake on an integration thread runs without episodic memory.
 		return this.streamChatResponse({
 			access,
 			messageContext,
+			...(episodicScope ? { episodicScope } : {}),
 			agentInstance: runtime.agent,
 			toolRegistry: runtime.toolRegistry,
 			mcpServerAttributions: runtime.mcpServerAttributions,

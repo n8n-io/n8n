@@ -261,6 +261,8 @@ function makeService(sandboxEnabled = false) {
 	const integrationMessageContextService = Object.assign(contextService, {
 		getLatest: vi.spyOn(contextService, 'getLatest'),
 		setLatest: vi.spyOn(contextService, 'setLatest').mockResolvedValue(undefined),
+		getEpisodicScope: vi.spyOn(contextService, 'getEpisodicScope').mockResolvedValue(undefined),
+		setEpisodicScope: vi.spyOn(contextService, 'setEpisodicScope').mockResolvedValue(undefined),
 	});
 	const agentRunTracingService = mock<AgentRunTracingService>();
 	const externalHooks = mock<ExternalHooks>();
@@ -3034,6 +3036,59 @@ describe('AgentExecutionOrchestratorService', () => {
 			const hostMetadata = await runPublishedTurn('task:task-1');
 
 			expect(hostMetadata).not.toHaveProperty(EPISODIC_SCOPE_METADATA_KEY);
+		});
+
+		it('persists the channel episodic scope on admitted turns and reuses it on integration wakes', async () => {
+			const { service, runtimeCacheService, integrationMessageContextService } = makeService();
+			const scope = { writeScopeId: 'slack:T1:C1', readScopeIds: ['slack:T1:C1'] };
+			const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+			runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+			integrationMessageContextService.getLatest.mockResolvedValue({
+				...selectedContext,
+				replyTarget: { type: 'thread' as const, threadId: 'slack:channel-1:1' },
+			});
+			integrationMessageContextService.getEpisodicScope.mockResolvedValue(scope);
+
+			await collect(
+				service.executeForChatPublished({
+					agentId,
+					projectId,
+					message: 'hello',
+					memory: { threadId: 'thread-1', resourceId: 'integration:slack:U1' },
+					messageContext: selectedContext,
+					integrationType: 'slack',
+					sandboxPrincipalHash: integrationPrincipalHash,
+					episodicScope: scope,
+				}),
+			);
+
+			expect(integrationMessageContextService.setEpisodicScope).toHaveBeenCalledWith(
+				'thread-1',
+				'integration:slack:U1',
+				scope,
+			);
+
+			await service.executeForWake({
+				backgroundJobSignal,
+				agentId,
+				projectId,
+				message: '<background-jobs-settled>[]</background-jobs-settled>',
+				memory: { threadId: 'thread-1', resourceId: 'integration:slack:U1' },
+				identity: {
+					type: 'published',
+					integrationType: 'slack',
+					principalHash: integrationPrincipalHash,
+				},
+				abortSignal: new AbortController().signal,
+			});
+
+			expect(integrationMessageContextService.getEpisodicScope).toHaveBeenCalledWith(
+				'thread-1',
+				'integration:slack:U1',
+			);
+			expect(runtime.agent.stream.mock.calls[1][1]?.persistence?.hostMetadata).toMatchObject(
+				encodeEpisodicScopeMetadata(scope),
+			);
 		});
 	});
 

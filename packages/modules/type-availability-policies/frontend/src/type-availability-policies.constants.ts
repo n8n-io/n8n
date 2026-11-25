@@ -49,6 +49,7 @@ export const POLICY_MANAGE_SCOPE = {
 /** Owned by this module, so the shell links to the pages without holding one of their identifiers. */
 export const POLICIES_LANDING_VIEW = 'TypeAvailabilityPoliciesView';
 export const INSTANCE_POLICY_VIEW = 'TypeAvailabilityInstancePolicyView';
+export const PROJECT_POLICY_VIEW = 'TypeAvailabilityProjectPolicyView';
 
 export const INSTANCE_POLICY_DOCS_URL =
 	'https://docs.n8n.io/administer/manage-users-and-access/control-node-availability';
