@@ -53,6 +53,7 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
+	ManualExecutionCancelledError,
 	Workflow,
 	createRunExecutionData,
 	mergeRunsPerBranch,
@@ -524,6 +525,24 @@ export async function executeAgent(
 					}),
 				};
 
+	// A guardrail check execution must not re-enter the agent it guards: the
+	// nested turn would run the same check workflow again before its tool
+	// calls, without bound. Best-effort — an unreadable execution record
+	// allows the call.
+	if (additionalData.getRunExecutionData) {
+		const { GUARDRAIL_CHECK_FOR_KEY } = await import(
+			'@/modules/agents/tools/workflow-guardrail-check.js'
+		);
+		const runData = await Promise.resolve(additionalData.getRunExecutionData(executionId)).catch(
+			() => undefined,
+		);
+		if (runData?.resultData?.metadata?.[GUARDRAIL_CHECK_FOR_KEY] === source.agentId) {
+			throw new UserError(
+				'This agent is already running this workflow as a guardrail check. Remove the "Message an Agent" call to this agent from the guardrail check workflow.',
+			);
+		}
+	}
+
 	const result = await agentWorkflowExecutionService.executeForWorkflow(
 		source.agentId,
 		message,
@@ -605,6 +624,29 @@ export function buildSubWorkflowOutput(
 		return mergeRunsPerBranch(runs);
 	}
 	return WorkflowHelpers.getLastExecutedNodeData(data)?.data?.main ?? [null];
+}
+
+/**
+ * Stop an awaited sub-workflow when its parent is cancelled.
+ *
+ * Returns a function that removes the listener.
+ */
+function cancelWithParent(parentSignal: AbortSignal | undefined, executionId: string) {
+	if (!parentSignal) return () => {};
+
+	const stop = () =>
+		Container.get(ActiveExecutions).stopExecution(
+			executionId,
+			new ManualExecutionCancelledError(executionId),
+		);
+
+	if (parentSignal.aborted) {
+		stop();
+		return () => {};
+	}
+
+	parentSignal.addEventListener('abort', stop, { once: true });
+	return () => parentSignal.removeEventListener('abort', stop);
 }
 
 async function startExecution(
@@ -790,7 +832,14 @@ async function startExecution(
 		// The engine marks its own early failures once it has started.
 		blockedReason = undefined;
 		activeExecutions.attachWorkflowExecution(executionId, execution);
-		data = await execution;
+		const stopWithParent = options.doNotWaitToFinish
+			? () => {}
+			: cancelWithParent(options.abortSignal, executionId);
+		try {
+			data = await execution;
+		} finally {
+			stopWithParent();
+		}
 	} catch (error) {
 		const executionError = error as ExecutionError;
 		const fullRunData = Container.get(FailedRunFactory).generateFailedExecutionFromError(

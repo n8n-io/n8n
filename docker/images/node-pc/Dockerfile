@@ -16,18 +16,15 @@
 # -n8n.N suffix of the V8 version, and check-v8-patches.js proves that the
 # compiled Node carries the patches and the expected configure flags.
 #
-# Two published targets per image:
-#   runtime (default) - RUNTIME_IMAGE (an n8nio/base) with our compiled Node
-#                       swapped in
-#   dev               - plain Alpine with apk usable, for the n8n builder
-#                       stage, which must compile native addons against this
-#                       Node's headers
+# Publishes the `dev` target per image: plain Alpine with our compiled Node,
+# npm, and headers under /usr/local. The n8n image builds native addons in this
+# image and copies /usr/local/bin and /usr/local/lib onto n8nio/base, so OS base
+# refreshes do not recompile Node.
 #
 # The node-pc and node-patched-* targets in docker/docker-bake.hcl set these.
 # Do not use plain `docker build`.
 ARG NODE_VERSION
 ARG ALPINE_IMAGE
-ARG RUNTIME_IMAGE
 ARG ENABLE_POINTER_COMPRESSION=true
 # Compiling V8 needs 1.5-2 GB of memory per parallel job. Lower this on
 # builders whose memory-to-core ratio cannot cover all cores.
@@ -80,7 +77,8 @@ RUN case "$ENABLE_POINTER_COMPRESSION" in true|false) ;; *) echo "ENABLE_POINTER
     && curl -fsSLO --compressed "https://nodejs.org/dist/v$NODE_VERSION/SHASUMS256.txt.asc" \
     && gpg --batch --decrypt --output SHASUMS256.txt SHASUMS256.txt.asc \
     && gpgconf --kill all \
-    && rm -rf "$GNUPGHOME" \
+    # dirmngr exits asynchronously and can unlink S.dirmngr mid-rm on BusyBox.
+    && { rm -rf "$GNUPGHOME" || { sleep 1 && rm -rf "$GNUPGHOME"; }; } \
     && grep " node-v$NODE_VERSION.tar.xz\$" SHASUMS256.txt | sha256sum -c - \
     && tar -xf "node-v$NODE_VERSION.tar.xz" \
     && cd "node-v$NODE_VERSION" \
@@ -95,6 +93,21 @@ RUN case "$ENABLE_POINTER_COMPRESSION" in true|false) ;; *) echo "ENABLE_POINTER
     && make install DESTDIR=/node-install \
     # Remove unused OpenSSL headers to save ~34MB. See https://github.com/nodejs/node/issues/46451
     && find /node-install/usr/local/include/node/openssl/archs -mindepth 1 -maxdepth 1 ! -name "$OPENSSL_ARCH" -exec rm -rf {} \;
+
+# Remove this override when Node 26 bundles brace-expansion 5.0.12 or later.
+RUN set -eu; \
+    if [ "${NODE_VERSION%%.*}" != 26 ]; then exit 0; fi; \
+    cd /node-install/usr/local/lib/node_modules/npm/node_modules; \
+    needs_update=$(/node-install/usr/local/bin/node -p \
+        "require('./semver').lt(require('./brace-expansion/package.json').version, '5.0.12')"); \
+    if [ "$needs_update" = false ]; then exit 0; fi; \
+    archive=/tmp/brace-expansion.tgz; \
+    curl -fsSL https://registry.npmjs.org/brace-expansion/-/brace-expansion-5.0.12.tgz -o "$archive"; \
+    echo "ef8448ec78f20b692f04fa6d01f39b5ab34c66404bea3429f5a39c6c9e0be8b4  $archive" | sha256sum -c -; \
+    rm -rf brace-expansion; \
+    mkdir brace-expansion; \
+    tar -xzf "$archive" --strip-components=1 -C brace-expansion; \
+    rm "$archive"
 
 FROM ${ALPINE_IMAGE} AS base
 ARG ENABLE_POINTER_COMPRESSION
@@ -112,21 +125,3 @@ FROM base AS dev
 # up this build's defines (e.g. pointer compression), never against downloaded
 # stock headers.
 ENV npm_config_nodedir=/usr/local
-
-# ---------------------------------------------------------------------------
-
-# RUNTIME_IMAGE (an `n8nio/base`), with our compiled Node in place of the
-# stock node, npm and npx.
-FROM ${RUNTIME_IMAGE} AS runtime
-ARG ENABLE_POINTER_COMPRESSION
-
-RUN rm -f /usr/bin/node /usr/bin/nodejs /usr/bin/npm /usr/bin/npx /usr/local/bin/node
-COPY --from=builder /node-install/usr/local /usr/local
-COPY docker/images/node-pc/check-v8-patches.js /tmp/check-v8-patches.js
-RUN node --version \
-    && node /tmp/check-v8-patches.js && rm /tmp/check-v8-patches.js
-
-# The compiled build lives at /usr/local/bin, which is what the cloud launch
-# and AppArmor profile expect. Keep the stock /usr/bin path working for
-# anything that references it.
-RUN ln -sf /usr/local/bin/node /usr/bin/node

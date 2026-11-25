@@ -13,6 +13,7 @@ import { ConflictError, UnexpectedError, UserError } from '@n8n/errors';
 import {
 	findIntroducedNameClashes,
 	SkillAccessService,
+	type SkillFileReadOptions,
 	type SkillMoveOptions,
 	type SkillRef,
 	SkillRuntimeService,
@@ -77,20 +78,26 @@ export class AgentSkillRefsService {
 	}
 
 	/** The refs of the agent draft and the skill bodies the draft runs. */
-	async readDraft(agent: Pick<Agent, 'id'>, ctx: OperationContext): Promise<AgentSkillsSnapshot> {
+	async readDraft(
+		agent: Pick<Agent, 'id'>,
+		ctx: OperationContext,
+		options?: SkillFileReadOptions,
+	): Promise<AgentSkillsSnapshot> {
 		const skillRefs = await this.refsForDraft(agent, ctx);
-		return { skillRefs, skills: await this.skillsForRefs(skillRefs, ctx) };
+		return { skillRefs, skills: await this.skillsForRefs(skillRefs, ctx, options) };
 	}
 
 	/** The refs of one published agent version and the pinned skill bodies. */
 	async readVersion(
 		version: Pick<AgentHistory, 'versionId'>,
 		ctx: OperationContext,
+		options?: SkillFileReadOptions,
 	): Promise<AgentSkillsSnapshot> {
 		const pins = await this.agentSkillRepository.findPins(version.versionId, ctx);
 		const versions = await this.skillRuntime.resolveVersions(
 			pins.map((pin) => pin.skillVersionId),
 			ctx,
+			...(options ? [options] : []),
 		);
 		// Keep pin order. Object key order would move numeric ids to the front.
 		const resolved = pins.flatMap((pin): Array<[string, AgentSkill]> => {
@@ -110,9 +117,14 @@ export class AgentSkillRefsService {
 	async skillsForRefs(
 		skillRefs: AgentSkillRefs,
 		ctx: OperationContext,
+		options?: SkillFileReadOptions,
 	): Promise<Record<string, AgentSkill>> {
 		if (!skillRefs?.length) return {};
-		return await this.skillRuntime.resolveForAgentDraft(toServiceRefs(skillRefs), ctx);
+		return await this.skillRuntime.resolveForAgentDraft(
+			toServiceRefs(skillRefs),
+			ctx,
+			...(options ? [options] : []),
+		);
 	}
 
 	async findOutdatedSkillIds(

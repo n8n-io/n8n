@@ -241,9 +241,7 @@ export function formatApprovalDetails(details: InstanceAiApprovalDetails): strin
 type PublishAgentDetails = Extract<InstanceAiApprovalDetails, { action: 'publish-agent' }>;
 
 /**
- * The go live confirmation: what goes live, then what might get sent for real, as the panel lists it.
- * The list copy (`agents.testRun.mode.confirm.*`) is shared with the panel's go live confirmation on
- * purpose, so both say the same thing. Change it in one place for both.
+ * The go live confirmation: what goes live, then what might get sent for real.
  */
 function formatPublishAgent(details: PublishAgentDetails, t: Translate): string {
 	const lines = [

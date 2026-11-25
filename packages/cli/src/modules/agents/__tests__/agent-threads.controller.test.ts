@@ -176,6 +176,35 @@ describe('AgentThreadsController session details', () => {
 			expect(result.thread).not.toHaveProperty('accessScope');
 		},
 	);
+
+	it('refuses a system agent thread', async () => {
+		const service = mock<AgentExecutionService>();
+		const registry = new SystemAgentRegistry();
+		registry.register({
+			agentId: 'system-agent',
+			name: 'System Agent',
+			authorize: async () => true,
+			prepareTurn: vi.fn(),
+		});
+		const controller = new AgentThreadsController(
+			service,
+			mock<AgentMemoryTraceService>(),
+			mock<AgentSessionLangSmithExportService>(),
+			mock<AgentExecutionOrchestratorService>(),
+			registry,
+			mock<AgentSessionStopService>(),
+		);
+
+		await expect(
+			controller.getThread(
+				mock<AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>>({
+					params: { projectId: 'project-1', agentId: 'system-agent', threadId: 'thread-1' },
+					user: mock<User>({ id: 'user-1' }),
+				}),
+			),
+		).rejects.toThrow(NotFoundError);
+		expect(service.getThreadDetail).not.toHaveBeenCalled();
+	});
 });
 
 describe('AgentThreadsController deleteThread', () => {

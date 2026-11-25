@@ -2,6 +2,7 @@ import {
 	CreateCredentialTypePolicyDocumentDto,
 	PutCredentialTypeInstancePolicyDto,
 	ReplaceAttachmentsDto,
+	SetInstanceTypeAccessDto,
 	UpdateCredentialTypePolicyDocumentDto,
 	type CredentialTypeUsageResponse,
 	type InstanceTypeAccessResponse,
@@ -73,6 +74,31 @@ export class CredentialTypePolicyInstanceController {
 	@GlobalScope('credentialTypePolicy:manage')
 	async getUsage(): Promise<CredentialTypeUsageResponse> {
 		return await this.typeUsageRepository.countCredentialTypeUsage(null, {});
+	}
+
+	@Patch('/instance/access')
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
+	@GlobalScope('credentialTypePolicy:manage')
+	async setInstanceAccess(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body dto: SetInstanceTypeAccessDto,
+	) {
+		const result = await this.service.setTypeAccess(
+			CREDENTIAL_TYPES_KIND,
+			null,
+			dto.changes,
+			dto.version,
+			req.user.id,
+		);
+
+		return {
+			scopeId: result.scopeId,
+			rules: result.rules,
+			defaultAction: result.defaultAction,
+			version: result.version,
+			warnings: result.warnings,
+		};
 	}
 
 	@Put('/instance')

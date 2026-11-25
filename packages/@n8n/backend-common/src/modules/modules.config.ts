@@ -52,6 +52,7 @@ export const MODULE_NAMES = [
 	'execution-limits',
 	'execution-ledger',
 	'mcp-servers',
+	'durable-leases',
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];

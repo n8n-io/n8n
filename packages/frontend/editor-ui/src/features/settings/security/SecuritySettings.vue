@@ -91,6 +91,8 @@ function goToUpgrade() {
 
 const { state, isReady, error } = useAsyncState(async () => {
 	const settings = await securitySettingsApi.getSecuritySettings(rootStore.restApiContext);
+	// The route guard of the projects page reads the policy from the settings store.
+	if (settings.workflowReviews) settingsStore.setWorkflowReviewsPolicy(settings.workflowReviews);
 	return {
 		personalSpacePublishing: settings.personalSpacePublishing,
 		personalSpaceSharing: settings.personalSpaceSharing,
@@ -432,7 +434,6 @@ const sharingCountText = computed(() => {
 		<N8nSettingsSection
 			v-if="state?.workflowReviews"
 			:title="i18n.baseText('settings.security.workflowReviews.title')"
-			:description="i18n.baseText('settings.security.workflowReviews.description')"
 			data-test-id="security-workflow-reviews-section"
 		>
 			<WorkflowReviewsSection
