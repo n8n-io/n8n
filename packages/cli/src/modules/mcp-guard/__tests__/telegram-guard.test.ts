@@ -306,6 +306,8 @@ describe('a bot token never leaves the guard', () => {
 			createTenant: vi.fn(async () => {}),
 			seed: vi.fn(async () => ({})),
 			issueMcpCredential: vi.fn(async () => TENANT_TOKEN),
+			tenantEpoch: vi.fn(() => 0),
+			forgetTenant: vi.fn(),
 			tenantExists: vi.fn(async () => true),
 			deleteTenant: vi.fn(async () => {}),
 			refs: vi.fn(async () => ({})),
