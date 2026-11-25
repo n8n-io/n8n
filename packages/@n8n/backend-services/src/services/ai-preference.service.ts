@@ -113,6 +113,7 @@ export type AiPreferenceUpdateRequest = {
 	scope?: AiPreferenceScope;
 	projectId?: string | null;
 	userId?: string | null;
+	expectedUpdatedAt?: string;
 };
 
 @Service()
@@ -232,10 +233,10 @@ export class AiPreferenceService {
 	): Promise<AiPreferenceDto> {
 		const access = this.projectAccess(user);
 		const target = await this.resolveTarget(user, request, 'create', access);
+
 		await this.assertScopeHasRoom(target);
 		await this.assertNotDuplicate(target, request.content);
-
-		const row = await this.aiPreferenceRepository.save(
+		const row = await this.aiPreferenceRepository.createPreference(
 			this.aiPreferenceRepository.create({
 				id: randomUUID(),
 				content: request.content,
@@ -281,21 +282,27 @@ export class AiPreferenceService {
 		}
 		await this.assertCanWrite(user, row, moved ? 'delete' : 'update', access);
 		const target = await this.resolveTarget(user, resolved, moved ? 'create' : 'update', access);
-		// A move adds a row to the scope it lands in. An edit in place adds nothing.
+
+		if (
+			request.expectedUpdatedAt !== undefined &&
+			new Date(request.expectedUpdatedAt).getTime() !== row.updatedAt.getTime()
+		) {
+			throw new ConflictError('The Preference changed. Reload it and try again.', undefined, {
+				reason: 'stale',
+			});
+		}
+		// An edit in place adds no row to the scope.
 		if (moved) await this.assertScopeHasRoom(target);
 		if (moved || row.content !== resolved.content) {
 			await this.assertNotDuplicate(target, resolved.content, row.id);
 		}
-
-		// `source` is not touched: it records the surface that created the row. An assistant
-		// edit of a row a person wrote does not make that row the assistant's.
-		row.content = resolved.content;
-		row.userId = target.userId;
-		row.user = target.user;
-		row.projectId = target.projectId;
-		row.project = target.project;
-
-		const saved = await this.aiPreferenceRepository.save(row);
+		const saved = await this.aiPreferenceRepository.updateIfUnchanged(row, {
+			content: resolved.content,
+			userId: target.userId,
+			projectId: target.projectId,
+		});
+		saved.user = target.user;
+		saved.project = target.project;
 		return this.toDto(saved, await this.scopesFor(user, saved, access));
 	}
 
@@ -315,10 +322,13 @@ export class AiPreferenceService {
 			throw new NotFoundError(`Preference with id ${id} is not one of your personal preferences`);
 		}
 		await this.assertCanWrite(user, row, 'update', access);
-		if (row.content !== content) await this.assertNotDuplicate(row, content, row.id);
 
-		row.content = content;
-		const saved = await this.aiPreferenceRepository.save(row);
+		if (row.content !== content) await this.assertNotDuplicate(row, content, row.id);
+		const saved = await this.aiPreferenceRepository.updateIfUnchanged(row, {
+			content,
+			userId: row.userId,
+			projectId: row.projectId,
+		});
 		return this.toDto(saved, await this.scopesFor(user, saved, access));
 	}
 
@@ -327,7 +337,7 @@ export class AiPreferenceService {
 		const row = await this.requireVisible(user, id, access);
 		await this.assertCanWrite(user, row, 'delete', access);
 
-		await this.aiPreferenceRepository.delete({ id: row.id });
+		await this.aiPreferenceRepository.deleteIfUnchanged(row);
 	}
 
 	/**
@@ -346,7 +356,7 @@ export class AiPreferenceService {
 		}
 		await this.assertCanWrite(user, row, 'delete', access);
 
-		await this.aiPreferenceRepository.delete({ id: row.id });
+		await this.aiPreferenceRepository.deleteIfUnchanged(row);
 		return this.toDto(row, await this.scopesFor(user, row, access));
 	}
 

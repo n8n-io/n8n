@@ -24,6 +24,7 @@ export class InstanceAiPreferenceCardUndoRequestDto extends Z.class(cardTarget) 
 export class InstanceAiPreferenceCardEditRequestDto extends Z.class({
 	...cardTarget,
 	content: aiPreferenceContentSchema,
+	expectedUpdatedAt: z.string().datetime().optional(),
 	scope: aiPreferenceScopeSchema.optional(),
 	projectId: z.string().max(36).nullish(),
 	userId: z.string().uuid().nullish(),

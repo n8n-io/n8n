@@ -493,7 +493,7 @@ describe('PreferenceModal', () => {
 			expect(emitted('saved')).toHaveLength(1);
 		});
 
-		it('keeps the project scope when editing a project preference', async () => {
+		it('keeps the draft version when the row refreshes while editing', async () => {
 			const preference: Preference = {
 				id: 'p1',
 				content: 'Use sub-workflows.',
@@ -508,14 +508,18 @@ describe('PreferenceModal', () => {
 				updatedAt: '2026-09-08T00:00:00.000Z',
 			};
 
-			const { getByTestId } = renderModal({
+			const { getByTestId, rerender } = renderModal({
 				props: { open: true, preference },
 				pinia,
 			});
 
+			await rerender({
+				preference: { ...preference, content: 'Newer edit', updatedAt: '2026-09-09T00:00:00.000Z' },
+			});
 			await userEvent.click(getByTestId('preference-modal-save-button'));
 
 			expect(contextStore.updatePreference).toHaveBeenCalledWith('p1', {
+				expectedUpdatedAt: preference.updatedAt,
 				content: 'Use sub-workflows.',
 				scope: 'project',
 				projectId: 'p-write',
@@ -543,6 +547,7 @@ describe('PreferenceModal', () => {
 			await userEvent.click(getByTestId('preference-modal-save-button'));
 
 			expect(contextStore.updatePreference).toHaveBeenCalledWith('p1', {
+				expectedUpdatedAt: preference.updatedAt,
 				content: 'Mine.',
 				scope: 'user',
 				projectId: null,
@@ -571,6 +576,7 @@ describe('PreferenceModal', () => {
 			await userEvent.click(getByTestId('preference-modal-save-button'));
 
 			expect(contextStore.updatePreference).toHaveBeenCalledWith('p1', {
+				expectedUpdatedAt: preference.updatedAt,
 				content: 'Use sub-workflows.',
 				scope: 'user',
 				projectId: null,
@@ -603,6 +609,7 @@ describe('PreferenceModal', () => {
 
 			// Without the owner the server would hand the row to the admin.
 			expect(contextStore.updatePreference).toHaveBeenCalledWith('p1', {
+				expectedUpdatedAt: preference.updatedAt,
 				content: 'Theirs.',
 				scope: 'user',
 				projectId: null,

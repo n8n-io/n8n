@@ -125,9 +125,13 @@ describe('InstanceAiPreferenceCardService', () => {
 		aiPreferenceService.getById.mockResolvedValue(userDto({ content: 'Keep replies short.' }));
 		aiPreferenceService.update.mockResolvedValue(userDto());
 
-		const { preference, event } = await service.edit(user, 'thread-1', 'pref-1', editBody);
+		const { preference, event } = await service.edit(user, 'thread-1', 'pref-1', {
+			...editBody,
+			expectedUpdatedAt: '2026-09-24T00:00:00.000Z',
+		});
 
 		expect(aiPreferenceService.update).toHaveBeenCalledWith(user, 'pref-1', {
+			expectedUpdatedAt: '2026-09-24T00:00:00.000Z',
 			content: 'Keep replies brief.',
 			scope: 'user',
 			userId: 'user-1',

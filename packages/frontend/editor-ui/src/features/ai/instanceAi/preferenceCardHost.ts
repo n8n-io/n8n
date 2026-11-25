@@ -20,6 +20,7 @@ export interface PreferenceCardEdit {
 	scope?: AiPreferenceScope;
 	projectId?: string | null;
 	userId?: string | null;
+	expectedUpdatedAt?: string;
 }
 
 /**

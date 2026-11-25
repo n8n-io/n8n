@@ -120,18 +120,23 @@ so one value serves every reader:
 - `AI_PREFERENCE_CONTENT_MAX_LENGTH` is 2,000 characters for one preference. The request
   DTO validates it through `aiPreferenceContentSchema`, and the settings modal reads the
   same constant.
-- `AI_PREFERENCE_MAX_PER_SCOPE` is 50 preferences for one scope. The service is its only
-  reader: `create()` counts the target scope, and `update()` counts it again when the write
-  moves a row to another scope. A full scope refuses with `AiPreferenceScopeFullError`,
-  whose `meta` carries the limit and the count, so the `save_user_preference` tool can
-  return both numbers to the model instead of the message alone.
+- `AI_PREFERENCE_MAX_PER_SCOPE` is 50 preferences for one scope. Creation and moves count
+  the destination rows before the write. These checks do not serialize concurrent writes.
+  A full scope refuses with `AiPreferenceScopeFullError`. Its `meta` carries the limit
+  and the count.
+  The `save_user_preference` tool returns both numbers to the model.
 
 The `describe()` text on `aiPreferenceContentSchema` states both limits for a model, and
 the `save_user_preference` tool reuses that schema for its content field.
 
-The caps apply on the write, never on the read. A read that dropped a row would hide a
-colleague's preference with no way to tell. A write can refuse the text while the person
-who wrote it is still looking at it.
+The caps apply on the write, never on the read. Reads return every saved Preference.
+
+Updates and deletes compare the saved timestamp, content, and scope in the write query.
+This rejects a row that changed after the service checked its permissions.
+If it changed, the edit returns HTTP 409 with `meta.reason: 'stale'`.
+MCP and Settings classify this refusal as `failed`, not `duplicate`.
+The MCP save review returns `saved: null` without a preference snapshot and asks the
+client to read the current preferences again.
 
 Nothing bounds the rendered block itself, and that is the number to watch. One scope at the
 cap renders about 100,000 characters, and the block adds a group for every project the
@@ -225,3 +230,7 @@ The feature shipped behind the PostHog flag `111_context_preferences`. The flag 
 100% and the code no longer reads it. Every surface that reads preferences is on for every
 user, and `McpProtectedResource.getGrantableScopes` offers `aiPreference:read` and
 `aiPreference:write` to every user.
+
+The settings and Assistant editors send `expectedUpdatedAt` from the row they loaded.
+The service rejects a stale version with HTTP 409. The conditional write also rejects
+changes that occur after this check. The draft stays open on failure.

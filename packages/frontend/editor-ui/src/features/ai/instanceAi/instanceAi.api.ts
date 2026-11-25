@@ -261,6 +261,7 @@ export async function editPreferenceCard(
 		scope?: AiPreferenceScope;
 		projectId?: string | null;
 		userId?: string | null;
+		expectedUpdatedAt?: string;
 	},
 ): Promise<InstanceAiPreferenceCardEditResponse> {
 	return await makeRestApiRequest<InstanceAiPreferenceCardEditResponse>(

@@ -84,7 +84,14 @@ export class AssistantPreferenceCardsService {
 		user: User,
 		threadId: string,
 		preferenceId: string,
-		{ toolCallId, content, scope, projectId, userId }: AssistantPreferenceCardEditRequestDto,
+		{
+			toolCallId,
+			content,
+			scope,
+			projectId,
+			userId,
+			expectedUpdatedAt,
+		}: AssistantPreferenceCardEditRequestDto,
 	): Promise<AssistantPreferenceCardEditResponse> {
 		await this.readCards(user, threadId);
 		const preference = await this.preferenceCards.editRow(user, preferenceId, {
@@ -92,6 +99,7 @@ export class AssistantPreferenceCardsService {
 			scope,
 			projectId,
 			userId,
+			expectedUpdatedAt,
 		});
 		const card = await this.store(user, threadId, {
 			toolCallId,

@@ -46,6 +46,7 @@ export async function editAssistantPreferenceCard(
 		scope?: AiPreferenceScope;
 		projectId?: string | null;
 		userId?: string | null;
+		expectedUpdatedAt?: string;
 	},
 ): Promise<AssistantPreferenceCardEditResponse> {
 	return await makeRestApiRequest(

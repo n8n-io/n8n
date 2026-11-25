@@ -171,6 +171,14 @@ describe('writeAssistantPreference', () => {
 });
 
 describe('toAiPreferenceWriteRejection', () => {
+	it('keeps a stale write separate from a duplicate', () => {
+		const message = 'The Preference changed. Reload it and try again.';
+
+		expect(
+			toAiPreferenceWriteRejection(new ConflictError(message, undefined, { reason: 'stale' })),
+		).toEqual({ reason: 'failed', message });
+	});
+
 	it('passes a not-found message through as a failure: a 4xx is written for a person', () => {
 		expect(toAiPreferenceWriteRejection(new NotFoundError('gone'))).toEqual({
 			reason: 'failed',

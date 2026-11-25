@@ -1,5 +1,6 @@
 import type { AiPreferenceScope, AiPreferenceSortOption, AiPreferenceTarget } from '@n8n/api-types';
 import { Service } from '@n8n/di';
+import { ConflictError } from '@n8n/errors';
 import { DataSource, In, IsNull, Not, Raw } from '@n8n/typeorm';
 import type { FindOptionsOrder, FindOptionsWhere } from '@n8n/typeorm';
 
@@ -8,6 +9,7 @@ import { BaseRepository } from './base-repository';
 import type { OperationContext } from '../services/transaction';
 import { TransactionRunner } from '../services/transaction';
 import { escapeLike, LIKE_ESCAPE_CLAUSE } from '../utils/escape-like';
+import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 
 /** `'all'` skips the filter. A full id list could exceed SQLite's bound-parameter limit. */
 export type ReadableProjects = string[] | 'all';
@@ -42,6 +44,40 @@ export class AiPreferenceRepository extends BaseRepository<AiPreference> {
 	/** Oldest first, so the prompt text is stable across reads. */
 	async findApplicable(query: ApplicableAiPreferencesQuery): Promise<AiPreference[]> {
 		return await this.find({ where: visibleTo(query, false), order: ORDER });
+	}
+
+	/** The condition is checked by the write, so a changed row cannot be overwritten. */
+	async updateIfUnchanged(
+		previous: AiPreference,
+		changes: Pick<AiPreference, 'content' | 'userId' | 'projectId'>,
+		ctx: OperationContext = {},
+	): Promise<AiPreference> {
+		// Advance the timestamp even when two saves occur in the same millisecond.
+		const updatedAt = new Date(Math.max(Date.now(), previous.updatedAt.getTime() + 1));
+		const result = await this.managerFor(ctx).update(AiPreference, unchangedRow(previous), {
+			...changes,
+			updatedAt,
+		});
+		if (result.affected !== 1) throw preferenceChanged();
+		return Object.assign(new AiPreference(), previous, changes, { updatedAt });
+	}
+
+	async deleteIfUnchanged(previous: AiPreference, ctx: OperationContext = {}): Promise<void> {
+		const result = await this.managerFor(ctx).delete(AiPreference, unchangedRow(previous));
+		if (result.affected !== 1) throw preferenceChanged();
+	}
+
+	async createPreference(row: AiPreference, ctx: OperationContext = {}): Promise<AiPreference> {
+		const now = new Date();
+		const created = this.create({ ...row, createdAt: now, updatedAt: now });
+		try {
+			// A create must never replace an existing row.
+			await this.managerFor(ctx).insert(AiPreference, created);
+		} catch (error) {
+			if (isUniqueConstraintError(error)) throw preferenceChanged();
+			throw error;
+		}
+		return created;
 	}
 
 	/** Wider than `findApplicable`: an admin sees rows that never reach their own prompts. */
@@ -159,4 +195,20 @@ function visibleTo(
 	}
 
 	return where;
+}
+
+function unchangedRow(previous: AiPreference): FindOptionsWhere<AiPreference> {
+	return {
+		id: previous.id,
+		content: previous.content,
+		userId: previous.userId ?? IsNull(),
+		projectId: previous.projectId ?? IsNull(),
+		updatedAt: previous.updatedAt,
+	};
+}
+
+function preferenceChanged(): ConflictError {
+	return new ConflictError('The Preference changed. Reload it and try again.', undefined, {
+		reason: 'stale',
+	});
 }

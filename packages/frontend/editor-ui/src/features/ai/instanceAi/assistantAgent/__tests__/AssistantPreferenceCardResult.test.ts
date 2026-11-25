@@ -140,6 +140,18 @@ describe('AssistantPreferenceCardResult', () => {
 	});
 
 	it('saves an edit through the Assistant agent endpoint and shows the new text', async () => {
+		mockedStore(useContextStore).rowById = new Map([
+			[
+				'pref-1',
+				{
+					id: 'pref-1',
+					content: STORED_TEXT,
+					userId: 'user-1',
+					projectId: null,
+					updatedAt: '2026-09-24T00:00:00.000Z',
+				},
+			],
+		]) as never;
 		const edited = 'Keep replies brief.';
 		api.editAssistantPreferenceCard.mockResolvedValue({
 			preference: { id: 'pref-1', content: edited, userId: 'user-1', projectId: null },
@@ -161,7 +173,7 @@ describe('AssistantPreferenceCardResult', () => {
 				expect.anything(),
 				'thread-1',
 				'pref-1',
-				{ toolCallId: 'tc-1', content: edited },
+				{ toolCallId: 'tc-1', content: edited, expectedUpdatedAt: '2026-09-24T00:00:00.000Z' },
 			),
 		);
 		await waitFor(() =>

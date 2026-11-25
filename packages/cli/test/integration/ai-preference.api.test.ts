@@ -708,6 +708,44 @@ describe('GET /ai-preferences/count', () => {
 });
 
 describe('PATCH /ai-preferences/:id', () => {
+	test.each(['content', 'scope'] as const)(
+		'refuses an old tab after another tab changes the %s',
+		async (change) => {
+			const created = await memberAgent
+				.post('/ai-preferences')
+				.send({ content: 'Original', scope: 'user' });
+			const row = created.body.data;
+			const first = await memberAgent.patch(`/ai-preferences/${row.id}`).send({
+				content: change === 'content' ? 'Newer edit' : row.content,
+				scope: change === 'scope' ? 'project' : 'user',
+				...(change === 'scope' ? { projectId: project.id } : { userId: member.id }),
+				expectedUpdatedAt: row.updatedAt,
+			});
+			expect(first.statusCode).toBe(200);
+			expect(first.body.data.updatedAt).not.toBe(row.updatedAt);
+
+			const stale = await memberAgent.patch(`/ai-preferences/${row.id}`).send({
+				content: 'Old tab edit',
+				scope: 'user',
+				userId: member.id,
+				expectedUpdatedAt: row.updatedAt,
+			});
+			expect(stale.statusCode).toBe(409);
+			expect(stale.body.meta).toMatchObject({ reason: 'stale' });
+			expect(await repository().findOneByOrFail({ id: row.id })).toMatchObject({
+				content: first.body.data.content,
+				projectId: first.body.data.projectId,
+			});
+			const refreshed = await memberAgent.patch(`/ai-preferences/${row.id}`).send({
+				content: 'Edit after reload',
+				scope: 'user',
+				userId: member.id,
+				expectedUpdatedAt: first.body.data.updatedAt,
+			});
+			expect(refreshed.statusCode).toBe(200);
+		},
+	);
+
 	test('replaces the content of a personal preference', async () => {
 		const row = await seed({ content: 'Old', userId: member.id });
 

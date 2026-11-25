@@ -2,6 +2,7 @@ import type { AiPreferenceDto } from '@n8n/api-types';
 import { AI_PREFERENCE_CONTENT_MAX_LENGTH, aiPreferenceContentSchema } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
+import { ConflictError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { isRecord } from '@n8n/utils/is-record';
@@ -54,10 +55,13 @@ const inputSchema = {
 const outputSchema = {
 	saved: z
 		.boolean()
-		.describe('True when a preference is saved when this call returns. False when nothing is.'),
+		.nullable()
+		.describe(
+			'True when a preference is saved when this call returns. False when nothing is. Null when a concurrent change makes the current state unknown; read the preferences again.',
+		),
 	preference: savedPreferenceSchema
 		.optional()
-		.describe('The preference as saved. Absent when `saved` is false.'),
+		.describe('The preference as saved. Absent when `saved` is false or null.'),
 	removed: z
 		.boolean()
 		.optional()
@@ -306,6 +310,13 @@ export const createSaveUserPreferenceTool = (
 					);
 				} catch (error) {
 					const { reason, message } = classifyPreferenceWriteError(error);
+					if (error instanceof ConflictError && error.meta?.reason === 'stale') {
+						return done(
+							{ saved: null, error: message, reason },
+							`The change was refused: ${message} Read ${MCP_GET_USER_PREFERENCES_TOOL_NAME} before reporting the preference's current text or scope.`,
+							true,
+						);
+					}
 					return done(
 						{
 							saved: true,

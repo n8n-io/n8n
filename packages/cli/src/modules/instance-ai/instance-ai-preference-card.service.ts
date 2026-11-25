@@ -103,6 +103,7 @@ export class InstanceAiPreferenceCardService {
 			scope,
 			projectId,
 			userId,
+			expectedUpdatedAt,
 		}: InstanceAiPreferenceCardEditRequestDto,
 	): Promise<InstanceAiPreferenceCardEditResponse> {
 		const preference = await this.editRow(user, preferenceId, {
@@ -110,6 +111,7 @@ export class InstanceAiPreferenceCardService {
 			scope,
 			projectId,
 			userId,
+			expectedUpdatedAt,
 		});
 		const event = this.publish(threadId, {
 			type: 'preference-card',
@@ -136,11 +138,13 @@ export class InstanceAiPreferenceCardService {
 			scope,
 			projectId,
 			userId,
+			expectedUpdatedAt,
 		}: {
 			content: string;
 			scope?: AiPreferenceScope;
 			projectId?: string | null;
 			userId?: string | null;
+			expectedUpdatedAt?: string;
 		},
 	): Promise<AiPreferenceDto> {
 		this.requirePreferencesEnabled();
@@ -158,6 +162,7 @@ export class InstanceAiPreferenceCardService {
 			scope,
 			projectId,
 			userId,
+			expectedUpdatedAt,
 		});
 		const after = aiPreferenceTargetOf(preference);
 		// The tool offered `user`; a later edit may have moved the row already, so the

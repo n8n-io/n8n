@@ -93,12 +93,15 @@ function initialScopeValue() {
 
 const initialScope = ref(initialScopeValue());
 
+const expectedUpdatedAt = ref(preference.value?.updatedAt);
+
 const form = reactive({
 	content: preference.value?.content ?? '',
 	scope: initialScope.value,
 });
 
 function resetForm() {
+	expectedUpdatedAt.value = preference.value?.updatedAt;
 	initialScope.value = initialScopeValue();
 	form.content = preference.value?.content ?? props.example?.content ?? '';
 	form.scope = initialScope.value;
@@ -263,7 +266,10 @@ async function handleSubmit() {
 				...(props.example ? { example_id: props.example.id } : {}),
 			});
 		} else if (preference.value) {
-			await contextStore.updatePreference(preference.value.id, payload);
+			await contextStore.updatePreference(preference.value.id, {
+				...payload,
+				expectedUpdatedAt: expectedUpdatedAt.value,
+			});
 			telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_UPDATED_PREFERENCE, {
 				scope_type: scope,
 				text_length: content.length,

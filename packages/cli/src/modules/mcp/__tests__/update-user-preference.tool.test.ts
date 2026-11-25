@@ -4,7 +4,7 @@ import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
-import { ConflictError, NotFoundError } from '@n8n/errors';
+import { ConflictError, NotFoundError, ResponseError } from '@n8n/errors';
 import { AiPreferenceService, UrlService, TelemetryProxy } from '@n8n/backend-services';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
@@ -282,6 +282,14 @@ describe('update_user_preference MCP tool', () => {
 	test.each([
 		[new NotFoundError('gone'), 'not_found', 'not_permitted', 'gone'],
 		[new ConflictError('dup'), 'duplicate', 'duplicate', 'dup'],
+		[
+			new ConflictError('The Preference changed. Reload it and try again.', undefined, {
+				reason: 'stale',
+			}),
+			'failed',
+			'failed',
+			'The Preference changed. Reload it and try again.',
+		],
 		[new Error('boom'), 'failed', 'failed', 'The preference could not be saved.'],
 	])('relays the refusal %s with reason %s', async (error, reason, rejectedReason, message) => {
 		const { aiPreferenceService, telemetry, tool, logger } = createMocks();
@@ -292,7 +300,7 @@ describe('update_user_preference MCP tool', () => {
 		expect(result.isError).toBe(true);
 		expect(result.structuredContent).toEqual({ saved: false, error: message, reason });
 		// Only a fault is logged: the mapped refusals are expected answers with their own text.
-		expect(logger.error).toHaveBeenCalledTimes(reason === 'failed' ? 1 : 0);
+		expect(logger.error).toHaveBeenCalledTimes(error instanceof ResponseError ? 0 : 1);
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED,
 			{
