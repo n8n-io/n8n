@@ -156,20 +156,21 @@ async function readItem(this: IExecuteFunctions, path: string) {
 }
 
 async function findFile(this: IExecuteFunctions, file: INodeParameterResourceLocator, i: number) {
-	const value = String(file.value ?? '').trim();
+	const value = String(file.value ?? '');
 	let item: IDataObject | undefined;
 
 	if (file.mode === 'id') {
+		const id = value.trim();
 		// The resource locator does not check a value that comes from an expression
-		if (!/^\d+$/.test(value)) {
-			throw new NodeOperationError(this.getNode(), `"${value}" is not a valid file ID`, {
+		if (!/^\d+$/.test(id)) {
+			throw new NodeOperationError(this.getNode(), `"${id}" is not a valid file ID`, {
 				itemIndex: i,
 				description: 'A file ID is a number, like the fileId field that Search returns.',
 			});
 		}
-		[item] = await searchFiles.call(this, [], searchCondition('eq', 'oc:fileid', value));
+		[item] = await searchFiles.call(this, [], searchCondition('eq', 'oc:fileid', id));
 		if (!item) {
-			throw new NodeOperationError(this.getNode(), `No file has the ID ${value}`, {
+			throw new NodeOperationError(this.getNode(), `No file has the ID ${id}`, {
 				itemIndex: i,
 				description: 'The file may be deleted, or the credential cannot see it.',
 			});
@@ -246,7 +247,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<IData
 	let path = currentPath;
 
 	if (newFileName && newFileName !== posix.basename(currentPath)) {
-		path = posix.join(posix.dirname(currentPath), newFileName);
+		// Not posix.join, which turns "." and ".." into the parent path before webDavPath can reject them
+		path = outputPath(`${posix.dirname(currentPath)}/${newFileName}`);
 		const { webDavUrl } = await this.getCredentials<{ webDavUrl: string }>(
 			nextCloudCredentialType.call(this),
 		);
