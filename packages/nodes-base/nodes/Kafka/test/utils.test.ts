@@ -13,7 +13,7 @@ import type {
 } from 'n8n-workflow';
 import { sleep } from '@n8n/utils/sleep';
 import { NodeOperationError } from 'n8n-workflow';
-import { OperationalError } from '@n8n/errors';
+import { OperationalError, UserError } from '@n8n/errors';
 import { getEventListeners } from 'node:events';
 import http from 'node:http';
 import https from 'node:https';
@@ -1064,7 +1064,7 @@ describe('Kafka Utils', () => {
 
 				const result = await getSchemaRegistryOptions(ctx, 'https://fallback-registry.local');
 
-				expect(result).toEqual({ host: 'https://fallback-registry.local' });
+				expect(result).toEqual({ client: { host: 'https://fallback-registry.local' } });
 				expect(ctx.getCredentials).not.toHaveBeenCalled();
 			});
 
@@ -1073,7 +1073,7 @@ describe('Kafka Utils', () => {
 
 				const result = await getSchemaRegistryOptions(ctx, '  https://fallback-registry.local  ');
 
-				expect(result).toEqual({ host: 'https://fallback-registry.local' });
+				expect(result).toEqual({ client: { host: 'https://fallback-registry.local' } });
 			});
 
 			it('should trim the credential URL', async () => {
@@ -1087,7 +1087,7 @@ describe('Kafka Utils', () => {
 
 				const result = await getSchemaRegistryOptions(ctx, '');
 
-				expect(result).toEqual({ host: 'https://schema-registry.local:8081' });
+				expect(result).toEqual({ client: { host: 'https://schema-registry.local:8081' } });
 			});
 
 			it('should return host and auth for a basicAuth credential', async () => {
@@ -1105,8 +1105,10 @@ describe('Kafka Utils', () => {
 
 				expect(ctx.getCredentials).toHaveBeenCalledWith('schemaRegistryApi');
 				expect(result).toEqual({
-					host: 'https://schema-registry.local:8081',
-					auth: { username: 'registry-user', password: 'registry-password' },
+					client: {
+						host: 'https://schema-registry.local:8081',
+						auth: { username: 'registry-user', password: 'registry-password' },
+					},
 				});
 			});
 
@@ -1121,8 +1123,8 @@ describe('Kafka Utils', () => {
 
 				const result = await getSchemaRegistryOptions(ctx, '');
 
-				expect(result).toEqual({ host: 'https://schema-registry.local:8081' });
-				expect(result).not.toHaveProperty('auth');
+				expect(result).toEqual({ client: { host: 'https://schema-registry.local:8081' } });
+				expect(result.client).not.toHaveProperty('auth');
 			});
 
 			it('should throw when basicAuth credential is missing the password', async () => {
@@ -1165,6 +1167,81 @@ describe('Kafka Utils', () => {
 				await expect(getSchemaRegistryOptions(ctx, '')).rejects.toThrow(
 					'Select a Schema Registry credential or enter a Schema Registry URL',
 				);
+			});
+		});
+
+		describe('TLS material', () => {
+			const CA = '-----BEGIN CERTIFICATE-----\nQ0E=\n-----END CERTIFICATE-----';
+			const CERT = '-----BEGIN CERTIFICATE-----\nQ0VSVA==\n-----END CERTIFICATE-----';
+			const KEY = '-----BEGIN PRIVATE KEY-----\nS0VZ\n-----END PRIVATE KEY-----';
+
+			const contextFor = (credentialData: ICredentialDataDecryptedObject, protocol = 'https') =>
+				createRegistryContext({
+					nodeCredentials: schemaRegistryNodeCredentials,
+					credentialData: {
+						url: `${protocol}://schema-registry.local:8081`,
+						authentication: 'none',
+						...credentialData,
+					},
+				});
+
+			const optionsFor = async (credentialData: ICredentialDataDecryptedObject) =>
+				await getSchemaRegistryOptions(contextFor(credentialData), '');
+
+			// `options` is set on the agent at runtime but not part of the public type.
+			const agentOptions = (agent?: http.Agent) =>
+				(agent as unknown as { options: Record<string, string> }).options;
+
+			const lastRegistryArg = () => {
+				const calls = (SchemaRegistry as Mock).mock.calls;
+				return calls[calls.length - 1][0] as { agent?: http.Agent; tls?: unknown };
+			};
+
+			it('carries no TLS material when no PEM field is set', async () => {
+				await expect(optionsFor({})).resolves.not.toHaveProperty('tls');
+			});
+
+			it.each<[string, ICredentialDataDecryptedObject, Record<string, string>]>([
+				['a CA on its own', { ca: CA }, { ca: CA }],
+				['a client certificate and its key', { cert: CERT, key: KEY }, { cert: CERT, key: KEY }],
+				['all three together', { ca: CA, cert: CERT, key: KEY }, { ca: CA, cert: CERT, key: KEY }],
+			])('reads %s', async (_name, credentialData, expected) => {
+				await expect(optionsFor(credentialData)).resolves.toMatchObject({ tls: expected });
+			});
+
+			it.each<[string, ICredentialDataDecryptedObject]>([
+				['a client certificate with no key', { cert: CERT }],
+				['a key with no client certificate', { key: KEY }],
+				['a blank key beside a certificate', { cert: CERT, key: '   ' }],
+			])('rejects %s', async (_name, credentialData) => {
+				await expect(optionsFor(credentialData)).rejects.toThrow(
+					'Schema Registry mTLS needs both a client certificate and a client private key',
+				);
+			});
+
+			it('rejects a PEM field that is not a PEM block', async () => {
+				await expect(optionsFor({ ca: 'not-a-pem' })).rejects.toThrow(
+					'The Kafka Schema Registry CA certificate is not a valid PEM block',
+				);
+			});
+
+			it('puts the material on the agent and keeps it off the client options', async () => {
+				await createSchemaRegistry(contextFor({ ca: CA, cert: CERT, key: KEY }), '');
+
+				const arg = lastRegistryArg();
+
+				expect(arg).not.toHaveProperty('tls');
+				expect(agentOptions(arg.agent)).toMatchObject({ ca: CA, cert: CERT, key: KEY });
+			});
+
+			it.each<[string, Record<string, string>]>([
+				['a CA', { ca: CA }],
+				['a client pair', { cert: CERT, key: KEY }],
+			])('refuses TLS material on an http registry, given %s', async (_case, tls) => {
+				await expect(createSchemaRegistry(contextFor(tls, 'http'), '')).rejects.toThrow(
+					NodeOperationError,
+				);
+				expect(SchemaRegistry).not.toHaveBeenCalled();
 			});
 		});
 
@@ -1233,6 +1310,28 @@ describe('Kafka Utils', () => {
 				);
 				expect(validateUrl).toHaveBeenCalled();
 				expect(SchemaRegistry).not.toHaveBeenCalled();
+			});
+
+			// A plain configuration mistake, so it is named before the network is consulted
+			it('names the http URL ahead of the egress check when TLS material is set', async () => {
+				const { filter, validateUrl } = blockedFilter();
+				const ctx = createRegistryContext({
+					secureEgressFilter: filter,
+					nodeCredentials: schemaRegistryNodeCredentials,
+					credentialData: {
+						url: 'http://schema-registry.local:8081',
+						authentication: 'none',
+						ca: '-----BEGIN CERTIFICATE-----\nQ0VSVA==\n-----END CERTIFICATE-----',
+					},
+				});
+
+				const failure = await createSchemaRegistry(ctx, '').catch(
+					(error: NodeOperationError) => error,
+				);
+
+				expect(failure).toBeInstanceOf(NodeOperationError);
+				expect((failure as NodeOperationError).description).toContain('must use https');
+				expect(validateUrl).not.toHaveBeenCalled();
 			});
 
 			it('passes an http agent carrying the secure lookup for an http host', async () => {
@@ -1397,6 +1496,35 @@ describe('Kafka Utils', () => {
 				});
 			});
 
+			it.each([
+				[
+					'a half-configured mTLS pair',
+					{ cert: '-----BEGIN CERTIFICATE-----\nQ0VSVA==\n-----END CERTIFICATE-----' },
+					'Set both the "Client Certificate" and "Client Private Key"',
+				],
+				['a malformed CA', { ca: 'not-a-pem' }, 'Paste the full PEM'],
+			])(
+				'fails activation on %s rather than running without a registry',
+				async (_case, tls, hint) => {
+					const ctx = createRegistryContext({
+						params: { useSchemaRegistry: true, schemaRegistryUrl: '' },
+						nodeCredentials: schemaRegistryNodeCredentials,
+						credentialData: {
+							url: 'https://schema-registry.local:8081',
+							authentication: 'none',
+							...tls,
+						},
+					});
+
+					const failure = await setSchemaRegistry(ctx).catch((error: NodeOperationError) => error);
+
+					expect(failure).toBeInstanceOf(NodeOperationError);
+					// Carried over from the helper's own error, so the user still reads what to do
+					expect((failure as NodeOperationError).description).toContain(hint);
+					expect(ctx.logger.warn).not.toHaveBeenCalled();
+				},
+			);
+
 			it('should redact URL userinfo and omit status in the warn payload when absent', async () => {
 				const ctx = createRegistryContext({
 					params: {
@@ -1460,6 +1588,24 @@ describe('Kafka Utils', () => {
 				const { message } = logPayload as { message: string };
 				expect(message).toHaveLength(503);
 				expect(message.endsWith('...')).toBe(true);
+			});
+
+			// A deleted credential raises `CredentialNotFoundError`, which is a `UserError`
+			// like the TLS checks. Catching that class would stop the trigger activating.
+			it('warns and keeps running when the credential has gone', async () => {
+				const ctx = createRegistryContext({
+					params: { useSchemaRegistry: true, schemaRegistryUrl: '' },
+					nodeCredentials: schemaRegistryNodeCredentials,
+				});
+				ctx.getCredentials.mockRejectedValue(new UserError('Credentials with ID "1" do not exist'));
+
+				const result = await setSchemaRegistry(ctx);
+
+				expect(result).toBeUndefined();
+				expect(ctx.logger.warn).toHaveBeenCalledWith(
+					'Could not connect to Schema Registry',
+					expect.anything(),
+				);
 			});
 
 			it('should rethrow misconfiguration errors instead of warning', async () => {
