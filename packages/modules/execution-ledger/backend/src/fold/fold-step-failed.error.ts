@@ -1,5 +1,6 @@
 import { OperationalError } from '@n8n/errors';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
+import { isRecord } from '@n8n/utils/is-record';
 
 /**
  * A fold step threw on both of its runs, so the fold parked the batch for it. The step error
@@ -20,10 +21,15 @@ export class FoldStepFailedError extends OperationalError {
 			extra: {
 				step,
 				firstLedgerId,
-				stepErrorName: stepError instanceof Error ? stepError.name : typeof stepError,
+				stepErrorName: errorNameOf(stepError),
 				stepErrorMessage,
 			},
 		});
 		this.stepErrorMessage = stepErrorMessage;
 	}
+}
+
+function errorNameOf(error: unknown): string {
+	if (isRecord(error) && typeof error.name === 'string') return error.name;
+	return typeof error;
 }

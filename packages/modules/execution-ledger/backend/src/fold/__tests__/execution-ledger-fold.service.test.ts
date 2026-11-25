@@ -522,6 +522,20 @@ describe('ExecutionLedgerFoldService', () => {
 				});
 			});
 
+			it('reports the name of a step failure that is a plain object with a name', async () => {
+				const failure = { name: 'QueryTimeout', message: 'statement timeout' };
+				registry.register({ name: 'bad', fold: vi.fn().mockRejectedValue(failure) });
+
+				await service.foldBatch();
+
+				const reported = errorReporter.error.mock.calls[0][0] as FoldStepFailedError;
+				expect(reported.cause).toBeUndefined();
+				expect(reported.extra).toMatchObject({
+					stepErrorName: 'QueryTimeout',
+					stepErrorMessage: 'statement timeout',
+				});
+			});
+
 			it('logs and reports each of two parked steps once', async () => {
 				failingStep('first');
 				failingStep('second');
