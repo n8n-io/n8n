@@ -359,9 +359,7 @@ export function createAgentPlanTools(service: AgentPlanService): BuiltTool[] {
 	return [
 		scopedTool(
 			AGENT_PLAN_TOOL_NAMES.create,
-			'Create the active plan for this conversation. Use unique new: names for new tasks and groups. ' +
-				'Use these names in dependency references. Set every task status to "pending"; omit group statuses. This includes work you will start immediately. ' +
-				'After creation succeeds, use update_plan to start parent-run work, or pass the task reference when you delegate ready work.',
+			'Create the active plan for this conversation. Use unique new: IDs for new tasks, groups, and dependencies. Set every task status to "pending" and omit group statuses. After creation, use update_plan for parent-run work or pass planTask when delegating ready work.',
 			z.object({ document: documentInput }).strict(),
 			async ({ document }, threadId, ctx) =>
 				await service.createActivePlan(
@@ -375,54 +373,23 @@ export function createAgentPlanTools(service: AgentPlanService): BuiltTool[] {
 				),
 		)
 			.systemInstruction(
-				'Use planning for potentially long-running work, work with multiple steps, or work with complex dependencies. ' +
-					'For this work, create or update the plan before research, other task tool calls, or sub-agent delegation. ' +
-					'Discovery followed by a shortlist and parallel research requires a plan. A chat message describing the steps is not a plan. ' +
-					'If the user asks for quick work, keep the plan compact rather than skipping it. ' +
-					'Always save new tasks with status "pending" and omit group statuses, in both create_plan and update_plan. ' +
-					'Do not create an item as "in_progress" or "done", even when work starts immediately or already finished. ' +
-					'After the write succeeds, use the returned permanent IDs and revision to update parent-run tasks. Delegation binds a job and advances the revision. Read the plan after delegation before the next edit. ' +
-					'Only start or complete work after its prerequisites are Done. ' +
-					'If later tasks depend on research results, start with the known tasks and extend the plan after research. ' +
-					'Do not invent placeholder tasks for work whose scope or targets are not yet known. ' +
-					'Represent that stage as a Pending group with an empty tasks list and dependencies on the prerequisite work. ' +
-					'For example, add "Research finalists" without tasks named "Finalist 1", "Finalist 2", or "Finalist 3". ' +
-					'When the shortlist results are available, add concrete tasks to that group before starting the research. ' +
-					'Do not add final communication-only tasks, such as "Presented findings to user", to the plan. ' +
-					'Include such a task only when it requires a sub-agent or a tool call beyond plan maintenance. ' +
-					'If the current plan content and revision are not in context, call read_plan before updating the plan. ' +
-					'For update_plan, send only fields that must change. Do not resend the full plan, unchanged items, or unchanged descriptions and dependencies. ' +
-					'For a task status change, send document.items with only the task id, status, and any changed title or resultSummary. ' +
-					'For a child task, include its group id and put the child update in tasks. Omitted fields and items stay unchanged. ' +
-					'If an update is rejected, correct it and retry before reporting progress. Read the plan again if the revision changed. ' +
-					'Do not set a task to Paused. Only Stop pauses tasks. ' +
-					'A paused task stays paused until the user asks to continue it. A new message does not resume tasks. ' +
-					'For an explicit request to continue tasks of a plan, call background_jobs with action "resume", planId, and only the requested planTaskId values in planTaskIds. Omit planTaskIds only when the user requests the whole plan. ' +
-					'For a stopped group outside a plan, omit planId and planTaskIds. ' +
-					'When you delegate background plan work, pass planTask: { planId, planTaskId }, where planTaskId is the id of a leaf task in the plan. ' +
-					'For sub-agent work on a plan task, always use delegate_subagent with mode: "background", even for short or sequential tasks. ' +
-					'Do not use foreground delegation for plan work. ' +
-					'This rule overrides the default foreground-delegation guidance for plan work. ' +
-					'If background mode is unavailable, explain the limitation instead of delegating plan work in the foreground. ' +
-					'Update statuses only for tasks you perform yourself. A delegated task takes its status from its background job. A task with jobId is delegated. Group statuses come from their children. Do not set group or delegated task statuses. ' +
-					'This includes work you complete in your own reply, such as a comparison or recommendation. Mark that task Done before giving the final answer. ' +
-					'Save plan edits and parent-run task progress before announcing them to the user. ' +
-					'Wait for the plan update to succeed before announcing the change. ' +
-					'Use presentation.label for a short, factual activity label in the plan card. ' +
-					'Name the current activity in a few words, such as "Checking vendor pricing", not a list of completed tasks. ' +
-					'Use presentation.detail for one brief progress note, limitation, or change of approach, not a results report. ' +
-					'Keep task and group titles short. Each title must explain the work without its description. ' +
-					'Avoid repeated words or phrases across task and group titles at the same nesting level when clarity permits. ' +
-					'Put shared context in the parent title instead of repeating it in every child title. ' +
-					'Keep each title distinct and clear. Do not replace repeated words with synonyms just for variety. ' +
-					'Update titles of pending or in-progress tasks to reflect the current activity. The card shows titles, not task descriptions. ' +
-					'For an in-progress task, use a simple action verb with a short note in parentheses, such as "Research pricing (3 vendors)". ' +
-					'When marking a task Done, use a past-tense title, such as "Researched pricing". ' +
-					'You can update task titles and result summaries after completion. Create a new task if a background result needs more work. ' +
-					'Put constraints in descriptions and findings in resultSummary. ' +
-					'Keep this text current through update_plan. Presentation text does not set task or group statuses. ' +
-					'Before closing a plan, save a final presentation.detail summary of completed and unfinished work. ' +
-					'Use one background job per task. Parallel jobs need separate tasks. A completed job means Done, a failed job means Failed, and a paused job means Paused. Do not wait to approve results before showing these states.',
+				'Use planning for multi-step, long-running, or dependency-heavy work (such as discovery, shortlisting, and parallel research). ' +
+					'Create or update the plan before research, task tool calls, or sub-agent delegation; a chat message is not a plan. ' +
+					'For quick work, keep the plan compact rather than skipping it. ' +
+					'Always save new tasks with status "pending" and omit group statuses in create_plan and update_plan; never create items as "in_progress" or "done". ' +
+					'Start or complete work only after prerequisites are "done". ' +
+					'Never set a task to "paused"; paused tasks resume only via background_jobs(action: "resume") on an explicit user request. ' +
+					'Update statuses only for tasks you perform yourself, including synthesis or comparison before your final reply. ' +
+					'Delegated tasks (with jobId) take their status from their background job, and groups derive status from children; never set group or delegated task statuses. ' +
+					'Wait for plan writes to succeed before announcing progress; on rejection, fix and retry. Call read_plan if the current plan or revision is not in context, after delegation (which advances the revision), or after a revision conflict. ' +
+					'For update_plan, send only changed fields (id, status, changed title or resultSummary); nest child updates under their group id. ' +
+					'Do not invent placeholder tasks for unknown scope (such as "Finalist 1/2/3"); use an empty pending group with dependencies and add concrete tasks once scope is known. ' +
+					'Omit communication-only final tasks (such as "Present findings") unless they require a sub-agent or non-plan tool call. ' +
+					'For plan sub-agent work, always call delegate_subagent with mode: "background" and planTask: { planId, planTaskId } (leaf task id), one job per task; never use foreground delegation for plan work (overrides default foreground guidance; if background mode is unavailable, explain the limitation). ' +
+					'Card display: set presentation.label to a short factual current-activity label (not a completed-task list) and presentation.detail to one brief note, limitation, or approach change; save a final presentation.detail summary before close_plan. ' +
+					'Keep titles short, clear, and non-repetitive (put shared context in parent titles; cards show titles, not descriptions—put constraints in description and findings in resultSummary). ' +
+					'Use action verbs for active titles (e.g. "Research pricing (3 vendors)") and past tense when done (e.g. "Researched pricing"). ' +
+					'Titles and resultSummary remain editable after completion; create a new task if a background result needs more work.',
 			)
 			.build(),
 		scopedTool(
@@ -433,16 +400,10 @@ export function createAgentPlanTools(service: AgentPlanService): BuiltTool[] {
 		).build(),
 		scopedTool(
 			AGENT_PLAN_TOOL_NAMES.update,
-			'Update only the supplied fields at the expected revision. Omitted fields and items stay unchanged. ' +
-				'Send only changed fields. Merge document.items and group tasks by id. Existing items keep their order; new items append. ' +
-				'Use removeItemIds to remove items explicitly; an empty items or tasks list removes nothing. ' +
-				'For new items, supply all required fields and use new: names for their IDs and references. Omit timestamps. ' +
-				'Set presentation, presentation.detail, resultSummary, or fallbackFor to null to clear it. ' +
-				'A supplied dependsOn list replaces the saved list. Use [] to clear it. ' +
-				'Dependencies connect siblings only. Prerequisites must be done before work starts or completes. ' +
-				'New tasks must have status "pending". Omit group statuses. Change parent-run task statuses in a separate update after this write succeeds. ' +
-				'Titles and result summaries can change after completion. Delegated task statuses and group statuses are read-only. In-progress task definitions cannot change. Only pending items can be removed. ' +
-				'fallbackFor references a failed or cancelled sibling task. Read the saved result for redirected dependencies.',
+			'Apply a partial update at expectedRevision. Send only changed fields; omitted fields and items stay unchanged. ' +
+				'Merge items and group tasks by id; append new items with full fields and new: IDs (status "pending", omit group statuses and timestamps). ' +
+				'Use removeItemIds to remove pending items. Set presentation, presentation.detail, resultSummary, or fallbackFor to null to clear; dependsOn replaces the saved list ([] clears). ' +
+				'Dependencies connect siblings only; fallbackFor references a failed or cancelled sibling.',
 			writeInput.extend({
 				document: documentUpdate,
 				removeItemIds: z.array(z.string().uuid().toLowerCase()).optional(),
