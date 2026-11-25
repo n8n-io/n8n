@@ -206,6 +206,33 @@ describe('McpServerView', () => {
 			expect(screen.getByTestId('mcp-server-contents').dataset.refreshKey).not.toBe(refreshKey);
 			expect(screen.getByTestId('mcp-assistant-panel')).toBeInTheDocument();
 		});
+
+		it('keeps the page and the panel when the reload after a change fails', async () => {
+			provideAssistant();
+			await renderPage();
+			await userEvent.click(screen.getByTestId('mcp-server-assistant-button'));
+			api.getMcpServer.mockRejectedValue(
+				new ResponseError('Server error', { httpStatusCode: 500 }),
+			);
+
+			await userEvent.click(screen.getByTestId('stub-changed'));
+
+			await waitFor(() => expect(api.getMcpServer).toHaveBeenCalledTimes(2));
+			expect(screen.getByTestId('mcp-server-name')).toHaveTextContent('Sales tools');
+			expect(screen.getByTestId('mcp-assistant-panel')).toBeInTheDocument();
+		});
+
+		it('goes back to the list when the Assistant deletes the server', async () => {
+			provideAssistant();
+			await renderPage();
+			await userEvent.click(screen.getByTestId('mcp-server-assistant-button'));
+			api.getMcpServer.mockRejectedValue(new ResponseError('Not found', { httpStatusCode: 404 }));
+
+			await userEvent.click(screen.getByTestId('stub-changed'));
+
+			await waitFor(() => expect(push).toHaveBeenCalledWith({ name: MCP_SERVERS_LIST_VIEW }));
+			expect(screen.queryByTestId('mcp-server-contents')).not.toBeInTheDocument();
+		});
 	});
 
 	describe('tabs', () => {

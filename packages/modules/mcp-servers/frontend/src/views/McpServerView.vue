@@ -135,8 +135,10 @@ async function load({ silent = false } = {}) {
 		server.value = response;
 	} catch (error) {
 		if (!isLatest()) return;
-		server.value = null;
-		if (error instanceof ResponseError && error.httpStatusCode === 404) {
+		const missing = error instanceof ResponseError && error.httpStatusCode === 404;
+		// A failed reload after an Assistant change keeps the page, and the panel, in place.
+		if (!silent || missing) server.value = null;
+		if (missing) {
 			notFound.value = true;
 		} else {
 			toast.showError(error, i18n.baseText('mcpServers.server.load.error'));
@@ -183,8 +185,18 @@ function closeAssistant() {
 }
 
 async function onAssistantChanged() {
-	contentsRefreshKey.value++;
+	const name = server.value?.name ?? '';
 	await load({ silent: true });
+	if (notFound.value) {
+		// The Assistant deleted the server: the page ends as after a delete from the menu.
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText('mcpServers.delete.success', { interpolate: { name } }),
+		});
+		await router.push({ name: MCP_SERVERS_LIST_VIEW });
+		return;
+	}
+	contentsRefreshKey.value++;
 }
 
 async function onSelectTab(tab: string) {
