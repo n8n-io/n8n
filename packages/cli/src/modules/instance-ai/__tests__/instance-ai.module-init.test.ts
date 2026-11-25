@@ -462,6 +462,27 @@ describe('InstanceAiModule.init', () => {
 		expect(investigations.reconcile).not.toHaveBeenCalled();
 	});
 
+	it('registers the LLM mock simulation backend only when the agents module starts', async () => {
+		setup();
+		const { SimulationBackendRegistry } = await import(
+			'@/modules/agents/simulation/simulation-backend-registry'
+		);
+		const { LlmMockSimulationBackend } = await import('../eval/llm-mock-simulation-backend');
+		const registry = mockInstance(SimulationBackendRegistry);
+		const backend = mockInstance(LlmMockSimulationBackend);
+		const modules = mockInstance(ModuleRegistry);
+		let eligibleModules = ['instance-ai', 'agents'];
+		Object.defineProperty(modules, 'eligibleModules', { get: () => eligibleModules });
+
+		await new InstanceAiModule().init();
+		expect(registry.register).toHaveBeenCalledWith(backend);
+
+		eligibleModules = ['instance-ai'];
+		registry.register.mockClear();
+		await new InstanceAiModule().init();
+		expect(registry.register).not.toHaveBeenCalled();
+	});
+
 	afterEach(() => {
 		vi.unstubAllEnvs();
 	});
