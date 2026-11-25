@@ -303,7 +303,7 @@ defineSlots<{
 	 */
 	'message-actions'?: (props: { message: ChatMessage; executionId?: string }) => unknown;
 	/** Content rendered directly below an assistant reply that executed tool calls. */
-	'after-reply'?: (props: { groupId: string; toolCalls: ToolCall[] }) => unknown;
+	'after-reply'?: (props: { groupId: string; toolCalls: ToolCall[]; complete: boolean }) => unknown;
 	/** Content below the composer. */
 	'input-footer'?: () => unknown;
 	/** The `references` of a user message, for example mentioned workflows. */

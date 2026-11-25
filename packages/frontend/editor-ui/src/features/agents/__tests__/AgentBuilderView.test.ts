@@ -7956,7 +7956,7 @@ describe('AgentBuilderView — safe testing Hold & Replay (V1)', () => {
 					...commonStubs.AgentTestDock,
 					data: () => ({ heldToolCalls }),
 					template:
-						'<aside data-testid="stub-agent-preview-dock"><slot name="after-reply" group-id="reply-1" :tool-calls="heldToolCalls" /></aside>',
+						'<aside data-testid="stub-agent-preview-dock"><slot name="after-reply" group-id="reply-1" :tool-calls="heldToolCalls" :complete="true" /></aside>',
 				},
 			},
 		});
@@ -7998,6 +7998,56 @@ describe('AgentBuilderView — safe testing Hold & Replay (V1)', () => {
 		expect(wrapper.get('[data-testid="agent-held-actions-done-summary"]').text()).toBe(
 			'agents.testRun.holdReplay.doneSummary',
 		);
+		wrapper.unmount();
+	});
+
+	it('does not open the confirm modal while the test reply is not complete', async () => {
+		const heldToolCalls = [
+			{
+				tool: 'slack__post_message',
+				toolCallId: 'call-1',
+				input: { channel: '#ops', text: 'Shipped' },
+				state: 'done',
+				simulation: {
+					route: 'simulated',
+					reason: 'served_from_world',
+					evidence: ['world_write'],
+				},
+			},
+		];
+
+		const wrapper = await renderView({
+			seedStores: () => {
+				usePostHog().overrides = { [AGENT_SAFE_TESTING_FLAG]: { value: true } };
+			},
+			stubs: {
+				AgentTestDock: {
+					...commonStubs.AgentTestDock,
+					data: () => ({ heldToolCalls, complete: false }),
+					template:
+						'<aside data-testid="stub-agent-preview-dock"><button data-testid="finish-reply" @click="complete = true" /><slot name="after-reply" group-id="reply-1" :tool-calls="heldToolCalls" :complete="complete" /></aside>',
+				},
+			},
+		});
+
+		await wrapper.getComponent({ name: 'AgentTestDock' }).vm.$emit('new-session');
+		await nextTick();
+		await wrapper.get('[data-testid="agent-held-actions-toggle"]').trigger('click');
+		await nextTick();
+
+		const runButton = () => wrapper.get('[data-testid="agent-held-actions-run-btn"]');
+		const modal = wrapper.getComponent({ name: 'AgentRunHeldActionsModal' });
+		expect(runButton().attributes('disabled')).toBeDefined();
+		await runButton().trigger('click');
+		await nextTick();
+		expect(modal.props('open')).toBe(false);
+
+		await wrapper.get('[data-testid="finish-reply"]').trigger('click');
+		await nextTick();
+		expect(runButton().attributes('disabled')).toBeUndefined();
+		await runButton().trigger('click');
+		await nextTick();
+		expect(modal.props('open')).toBe(true);
 		wrapper.unmount();
 	});
 });

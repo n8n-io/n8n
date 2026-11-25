@@ -115,8 +115,11 @@ defineSlots<{
 	status?: () => unknown;
 	/** Host actions for a finished agent reply, next to the default copy action. */
 	'message-actions'?: (props: { message: ChatMessage; executionId?: string }) => unknown;
-	/** Content rendered directly below an assistant reply that executed tool calls (for example held actions). */
-	'after-reply'?: (props: { groupId: string; toolCalls: ToolCall[] }) => unknown;
+	/**
+	 * Content rendered directly below an assistant reply that executed tool calls (for example held actions).
+	 * `complete` is false while the reply can still get more tool calls.
+	 */
+	'after-reply'?: (props: { groupId: string; toolCalls: ToolCall[]; complete: boolean }) => unknown;
 	/** The `references` of a user message, for example mentioned workflows. */
 	'user-message-references'?: (props: { message: ChatMessage }) => unknown;
 }>();
@@ -405,6 +408,27 @@ const streamingGroupId = computed(() =>
 		? displayGroups.value.at(-1)?.id
 		: undefined,
 );
+
+/** The last reply while its run is active. More tool calls can still arrive in it. */
+const activeReplyGroupId = computed(() =>
+	props.messagingState !== 'idle' || props.messages.at(-1)?.status === CHAT_MESSAGE_STATUS.STREAMING
+		? displayGroups.value.at(-1)?.id
+		: undefined,
+);
+
+const UNSETTLED_TOOL_CALL_STATES: ReadonlySet<string> = new Set([
+	TOOL_CALL_STATE.PENDING,
+	TOOL_CALL_STATE.RUNNING,
+	TOOL_CALL_STATE.SUSPENDED,
+]);
+
+/** A reply is complete when its run has ended and each of its tool calls has settled. */
+function isReplyComplete(groupId: string, toolCalls: readonly ToolCall[]): boolean {
+	return (
+		groupId !== activeReplyGroupId.value &&
+		!toolCalls.some((toolCall) => UNSETTLED_TOOL_CALL_STATES.has(toolCall.state))
+	);
+}
 
 const formatChatDividerTimestamp = useChatDividerTimestamp();
 
@@ -828,6 +852,7 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 						name="after-reply"
 						:group-id="group.id"
 						:tool-calls="group.toolCalls"
+						:complete="isReplyComplete(group.id, group.toolCalls)"
 					/>
 				</N8nChatMessage>
 			</div>
@@ -1092,6 +1117,10 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 						name="after-reply"
 						:group-id="group.id"
 						:tool-calls="group.message.toolCalls"
+						:complete="
+							group.message.status !== CHAT_MESSAGE_STATUS.STREAMING &&
+							isReplyComplete(group.id, group.message.toolCalls)
+						"
 					/>
 				</N8nChatMessage>
 			</div>

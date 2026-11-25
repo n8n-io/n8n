@@ -3752,11 +3752,12 @@ useKeybindings({
 							@select-prompt="sendStarterPrompt"
 						/>
 					</template>
-					<template v-if="isSafeTestingEnabled" #after-reply="{ groupId, toolCalls }">
+					<template v-if="isSafeTestingEnabled" #after-reply="{ groupId, toolCalls, complete }">
 						<AgentHeldActionsTray
 							:actions="extractHeldActions(toolCalls)"
 							:committed="heldActionsState.committedByReply.value[groupId]"
 							:busy="heldActionsState.committingReplyId.value === groupId"
+							:run-disabled="!complete"
 							@run-actions="heldActionsState.openConfirmModal(groupId, $event)"
 						/>
 					</template>
@@ -3922,11 +3923,12 @@ useKeybindings({
 									@select-prompt="sendStarterPrompt"
 								/>
 							</template>
-							<template v-if="isSafeTestingEnabled" #after-reply="{ groupId, toolCalls }">
+							<template v-if="isSafeTestingEnabled" #after-reply="{ groupId, toolCalls, complete }">
 								<AgentHeldActionsTray
 									:actions="extractHeldActions(toolCalls)"
 									:committed="heldActionsState.committedByReply.value[groupId]"
 									:busy="heldActionsState.committingReplyId.value === groupId"
+									:run-disabled="!complete"
 									@run-actions="heldActionsState.openConfirmModal(groupId, $event)"
 								/>
 							</template>

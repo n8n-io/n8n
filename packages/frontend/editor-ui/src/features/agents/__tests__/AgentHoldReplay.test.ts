@@ -1,7 +1,7 @@
 import { createTestingPinia } from '@pinia/testing';
 import { configure, fireEvent, screen, waitFor } from '@testing-library/vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ref } from 'vue';
+import { nextTick, ref } from 'vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
@@ -197,6 +197,22 @@ describe('AgentHeldActionsTray', () => {
 		expect(emitted('run-actions')).toEqual([[sampleActions]]);
 	});
 
+	it('does not emit run-actions while the run is disabled', async () => {
+		const { getByTestId, emitted, rerender } = renderTray({
+			props: { actions: sampleActions, runDisabled: true },
+		});
+
+		await fireEvent.click(getByTestId('agent-held-actions-toggle'));
+		await waitFor(() => expect(getByTestId('agent-held-actions-run-btn')).toBeDisabled());
+		await fireEvent.click(getByTestId('agent-held-actions-run-btn'));
+		expect(emitted('run-actions')).toBeUndefined();
+
+		await rerender({ runDisabled: false });
+		expect(getByTestId('agent-held-actions-run-btn')).toBeEnabled();
+		await fireEvent.click(getByTestId('agent-held-actions-run-btn'));
+		expect(emitted('run-actions')).toEqual([[sampleActions]]);
+	});
+
 	it('updates in place to the done count and done summary after commit', () => {
 		const committedAt = new Date(2026, 10, 20, 14, 7, 0).toISOString();
 		const { getByTestId, queryByTestId } = renderTray({
@@ -328,5 +344,47 @@ describe('useAgentHeldActions', () => {
 		);
 		expect(state.confirmModalOpen.value).toBe(false);
 		expect(state.committedByReply.value['reply-1']).toEqual(response);
+	});
+
+	it('keeps the busy state of a new commit when a commit for an earlier chat settles', async () => {
+		const settle: Array<{ resolve: (value: unknown) => void; reject: (error: Error) => void }> = [];
+		commitAgentTestRunActionsMock.mockImplementation(
+			async () =>
+				await new Promise((resolve, reject) => {
+					settle.push({ resolve, reject });
+				}),
+		);
+
+		const sessionId = ref('chat-1');
+		const state = useAgentHeldActions({
+			projectId: ref('p1'),
+			agentId: ref('a1'),
+			sessionId,
+		});
+
+		state.openConfirmModal('reply-1', sampleActions);
+		const firstCommit = state.confirmCommit();
+		expect(state.committingReplyId.value).toBe('reply-1');
+
+		sessionId.value = 'chat-2';
+		await nextTick();
+		expect(state.committingReplyId.value).toBeNull();
+
+		state.openConfirmModal('reply-2', sampleActions);
+		const secondCommit = state.confirmCommit();
+		expect(state.committingReplyId.value).toBe('reply-2');
+
+		// The commit for the earlier chat fails after the new commit starts.
+		settle[0].reject(new Error('Old chat failed'));
+		expect(await firstCommit).toBe(false);
+		expect(state.committingReplyId.value).toBe('reply-2');
+		expect(state.commitError.value).toBeNull();
+		expect(state.confirmModalOpen.value).toBe(true);
+
+		const response = { committedAt: new Date().toISOString(), results: [] };
+		settle[1].resolve(response);
+		expect(await secondCommit).toBe(true);
+		expect(state.committingReplyId.value).toBeNull();
+		expect(state.committedByReply.value).toEqual({ 'reply-2': response });
 	});
 });
