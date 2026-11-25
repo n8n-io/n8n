@@ -1,4 +1,9 @@
-import { getNodeVersionChoices } from './nodeVersionPicker.utils';
+import type { INodeProperties } from 'n8n-workflow';
+import {
+	collectPasswordNames,
+	formatVersionChangeValue,
+	getNodeVersionChoices,
+} from './nodeVersionPicker.utils';
 
 const hides =
 	(...hidden: number[]) =>
@@ -41,5 +46,131 @@ describe('getNodeVersionChoices', () => {
 
 	it('returns no choices for no versions', () => {
 		expect(getNodeVersionChoices([], hides(), 1, 1)).toEqual({ latest: undefined, listed: [] });
+	});
+});
+
+describe('collectPasswordNames', () => {
+	it('finds password parameters at the top level, in a collection and in a fixed collection', () => {
+		const properties: INodeProperties[] = [
+			{
+				displayName: 'API Key',
+				name: 'apiKey',
+				type: 'string',
+				typeOptions: { password: true },
+				default: '',
+			},
+			{ displayName: 'URL', name: 'url', type: 'string', default: '' },
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				default: {},
+				options: [
+					{
+						displayName: 'Proxy Password',
+						name: 'proxyPassword',
+						type: 'string',
+						typeOptions: { password: true },
+						default: '',
+					},
+				],
+			},
+			{
+				displayName: 'Headers',
+				name: 'headers',
+				type: 'fixedCollection',
+				default: {},
+				options: [
+					{
+						displayName: 'Header',
+						name: 'header',
+						values: [
+							{ displayName: 'Name', name: 'name', type: 'string', default: '' },
+							{
+								displayName: 'Secret',
+								name: 'secret',
+								type: 'string',
+								typeOptions: { password: true },
+								default: '',
+							},
+						],
+					},
+				],
+			},
+		];
+
+		expect(collectPasswordNames(properties)).toEqual(
+			new Set(['apiKey', 'proxyPassword', 'secret']),
+		);
+	});
+});
+
+describe('formatVersionChangeValue', () => {
+	const methodOptions = (options: Array<{ name: string; value: string }>): INodeProperties => ({
+		displayName: 'Method',
+		name: 'method',
+		type: 'options',
+		default: '',
+		options,
+	});
+	const properties = [
+		methodOptions([{ name: 'Get It', value: 'get' }]),
+		methodOptions([{ name: 'Post It', value: 'post' }]),
+	];
+	const noPasswords = new Set<string>();
+
+	it.each([
+		[0, '0'],
+		['', ''],
+		[null, 'null'],
+		[true, 'true'],
+	])('formats %j as %j', (value, expected) => {
+		expect(formatVersionChangeValue(value, ['other'], properties, noPasswords)).toBe(expected);
+	});
+
+	it('shows the display name of a top-level option', () => {
+		expect(formatVersionChangeValue('get', ['method'], properties, noPasswords)).toBe('Get It');
+	});
+
+	it('finds the option in a later parameter with the same name', () => {
+		expect(formatVersionChangeValue('post', ['method'], properties, noPasswords)).toBe('Post It');
+	});
+
+	it('shows the raw value of an unknown option', () => {
+		expect(formatVersionChangeValue('patch', ['method'], properties, noPasswords)).toBe('patch');
+	});
+
+	it('shows the raw value of a nested option', () => {
+		expect(formatVersionChangeValue('get', ['options', 'method'], properties, noPasswords)).toBe(
+			'get',
+		);
+	});
+
+	it('formats an object as JSON', () => {
+		expect(
+			formatVersionChangeValue({ retries: 3, tags: ['a'] }, ['options'], properties, noPasswords),
+		).toBe('{"retries":3,"tags":["a"]}');
+	});
+
+	it('masks a nested value whose name is a password parameter', () => {
+		expect(
+			formatVersionChangeValue(
+				'hunter2',
+				['headers', 'header', 0, 'secret'],
+				properties,
+				new Set(['secret']),
+			),
+		).toBe('••••••');
+	});
+
+	it('masks a password key inside an object value', () => {
+		expect(
+			formatVersionChangeValue(
+				{ header: [{ name: 'X-Key', secret: 'hunter2' }] },
+				['headers'],
+				properties,
+				new Set(['secret']),
+			),
+		).toBe('{"header":[{"name":"X-Key","secret":"••••••"}]}');
 	});
 });
