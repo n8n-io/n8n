@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+	MCP_SERVER_TOOL_DESCRIPTION_MAX_LENGTH,
 	MCP_SERVER_TOOL_NAME_MAX_LENGTH,
 	mcpServerToolNameSchema,
 	type McpServerToolResponse,
@@ -185,6 +186,7 @@ function saveDescription() {
 							v-model="description"
 							type="textarea"
 							:rows="2"
+							:maxlength="MCP_SERVER_TOOL_DESCRIPTION_MAX_LENGTH"
 							:class="$style.resizable"
 							data-test-id="mcp-tool-row-description-input"
 							@blur="saveDescription"
