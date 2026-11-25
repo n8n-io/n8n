@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { parseAgentSkillWorkflowMentions, type SkillWorkflowMention } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
+import { VIEWS } from '@/app/constants';
 import { WORKFLOWS_IN_SKILLS_EXPERIMENT } from '@/app/constants/experiments';
 import { usePostHog } from '@/app/stores/posthog.store';
 import type { AgentSkill } from '../types';
@@ -52,6 +54,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const router = useRouter();
 const posthog = usePostHog();
 const references = computed(() => props.skill.references ?? []);
 const workflowMentionsEnabled = computed(() =>
@@ -85,6 +88,10 @@ const workflowRows = computed(() =>
 		return { ...workflow, notes };
 	}),
 );
+
+function workflowUrl(workflowId: string) {
+	return router.resolve({ name: VIEWS.WORKFLOW, params: { workflowId } }).href;
+}
 
 function isInvalid(path: string) {
 	return props.invalidPaths.includes(path);
@@ -244,10 +251,17 @@ function testIdForPath(path: string) {
 				:class="[$style.item, $style.workflow]"
 				data-testid="agent-skill-workflow-item"
 			>
-				<N8nIcon icon="workflow" :size="16" :class="$style.icon" />
-				<N8nText size="medium" :class="[$style.path, $style.workflowName]">{{
-					workflow.name
-				}}</N8nText>
+				<a
+					:href="workflowUrl(workflow.workflowId)"
+					target="_blank"
+					rel="noopener"
+					:class="$style.workflowLink"
+					data-testid="agent-skill-workflow-link"
+					data-attr="agent-skill-workflow-link"
+				>
+					<N8nIcon icon="workflow" :size="16" :class="$style.icon" />
+					<N8nText size="medium" :class="$style.path">{{ workflow.name }}</N8nText>
+				</a>
 				<N8nTooltip v-if="workflow.notes.length > 0" as-child placement="right">
 					<template #content>
 						<p v-for="note in workflow.notes" :key="note" :class="$style.note">
@@ -375,8 +389,18 @@ function testIdForPath(path: string) {
 	}
 }
 
-.workflowName {
+.workflowLink {
+	display: flex;
 	flex: 1;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+	color: inherit;
+	text-decoration: none;
+
+	&:hover .path {
+		text-decoration: underline;
+	}
 }
 
 .noteIcon {

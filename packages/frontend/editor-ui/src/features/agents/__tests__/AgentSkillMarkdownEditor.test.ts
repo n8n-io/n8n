@@ -16,6 +16,14 @@ vi.mock('@/app/stores/posthog.store', () => ({
 	}),
 }));
 
+vi.mock('vue-router', () => ({
+	useRouter: () => ({
+		resolve: ({ params }: { params: { workflowId: string } }) => ({
+			href: `/base/workflow/${params.workflowId}`,
+		}),
+	}),
+}));
+
 const handleExternalKeydown = vi.fn((event: KeyboardEvent) => {
 	if (event.key !== 'Tab') event.preventDefault();
 	return true;
@@ -233,6 +241,31 @@ describe('AgentSkillMarkdownEditor', () => {
 
 		expect(pressKey(editor, 'Backspace')).toBeFalsy();
 		expect(editor.getMarkdown()).toBe(MENTION_BODY);
+	});
+
+	it('opens the workflow of a clicked mention in a new tab', async () => {
+		const open = vi.spyOn(window, 'open').mockReturnValue(null);
+		const { wrapper } = await mountEditor({ modelValue: MENTION_BODY });
+		const click = new MouseEvent('click', { bubbles: true, cancelable: true });
+
+		wrapper.find('a[href^="n8n://workflow/"]').element.dispatchEvent(click);
+
+		expect(open).toHaveBeenCalledWith('/base/workflow/wf1', '_blank');
+		expect(click.defaultPrevented).toBe(true);
+		open.mockRestore();
+	});
+
+	it('does not open a workflow for a clicked mention when the flag is off', async () => {
+		flag.enabled = false;
+		const open = vi.spyOn(window, 'open').mockReturnValue(null);
+		const { wrapper } = await mountEditor({ modelValue: MENTION_BODY });
+
+		wrapper
+			.find('a[href^="n8n://workflow/"]')
+			.element.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+		expect(open).not.toHaveBeenCalled();
+		open.mockRestore();
 	});
 
 	it('leaves the editor unchanged when the flag is off', async () => {
