@@ -1873,6 +1873,27 @@ VALUES (
 				]);
 			});
 
+			it.each([
+				['1e-7', '.0000001', 'D9999999'],
+				['-1.5e-7', '-.00000015', 'D99999999'],
+			])(
+				'should bind the small NUMBER value %s without the exponent',
+				async (value, val, format) => {
+					const mockThis = createMockExecuteFunction({
+						...baseParameters,
+						startAfter: { values: { column: 'ID', value } },
+					});
+					const runQueries = getRunQueriesFn(mockThis, pool);
+
+					await select.execute.call(mockThis, runQueries, items, nodeOptions, pool);
+
+					expect(runQueries.mock.calls[0][0][0].values).toEqual([
+						{ type: oracleDBTypes.STRING, val },
+						{ type: oracleDBTypes.STRING, val: format },
+					]);
+				},
+			);
+
 			it.each(['+9007199254740993', '1e21', 'abc'])(
 				'should throw for the NUMBER value %s, which is not a plain number',
 				async (value) => {

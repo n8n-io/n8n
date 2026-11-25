@@ -496,6 +496,15 @@ export function checkStartAfterColumn(
 	}
 }
 
+// JavaScript writes a number below 0.000001 with an exponent, for example 1e-7.
+// The digits move as text, so the value is not rounded.
+function expandSmallNumber(text: string): string {
+	const match = /^(-?)(\d)(?:\.(\d+))?e-(\d{1,3})$/i.exec(text);
+	if (!match) return text;
+	const [, sign, digit, fraction = '', exponent] = match;
+	return `${sign}.${'0'.repeat(Number(exponent) - 1)}${digit}${fraction}`;
+}
+
 /**
  * Adds the binds of the Start After value and returns the SQL that reads it.
  * A NUMBER value stays text, so Oracle reads all its digits. The format made from
@@ -516,7 +525,7 @@ export function addStartAfterBind(
 		return `:${index}`;
 	}
 
-	const text = value.trim();
+	const text = expandSmallNumber(value.trim());
 	// Other number text would need a number bind, which rounds
 	if (!/^-?(\d+(\.\d+)?|\.\d+)$/.test(text)) {
 		throw new NodeOperationError(node, 'The Start After value must be a plain number', {
