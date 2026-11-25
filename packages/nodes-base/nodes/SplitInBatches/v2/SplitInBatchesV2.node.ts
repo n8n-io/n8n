@@ -5,7 +5,7 @@ import type {
 	INodeTypeDescription,
 	IPairedItemData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, deepCopy } from 'n8n-workflow';
+import { NodeConnectionTypes, READ_ONLY_ANNOTATIONS, deepCopy } from 'n8n-workflow';
 
 export class SplitInBatchesV2 implements INodeType {
 	description: INodeTypeDescription = {
@@ -14,6 +14,7 @@ export class SplitInBatchesV2 implements INodeType {
 		icon: 'fa:th-large',
 		group: ['organization'],
 		version: 2,
+		annotations: READ_ONLY_ANNOTATIONS,
 		description: 'Split data into batches and iterate over each batch',
 		defaults: {
 			name: 'Split In Batches',
