@@ -88,7 +88,12 @@ export type {
 export { jsonObjectSchema, UnimplementedError } from './common';
 export type { JsonObject, JsonValue } from './common';
 
-export { deriveLoops, isBatchStepConfig, validateExecutableGraph } from './graph';
+export {
+	compareByConcatenationOrder,
+	deriveLoops,
+	isBatchStepConfig,
+	validateExecutableGraph,
+} from './graph';
 export type {
 	BatchStepConfig,
 	GraphEdge,
@@ -107,6 +112,7 @@ export type {
 	IStepExecutor,
 	StepExecutionContext,
 	StepExecutionRequest,
+	StepInputSources,
 	StepExecutionResult,
 	SubExecutionDeclaration,
 	SubExecutionMode,
@@ -163,7 +169,7 @@ export type {
 	StepRecord,
 	ResumeCause,
 	StepSlots,
-	StepOutputSource,
+	ItemSource,
 	StepOutputSources,
 	StepStatus,
 	StepStore,

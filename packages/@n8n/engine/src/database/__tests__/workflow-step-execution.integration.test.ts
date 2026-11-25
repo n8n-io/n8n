@@ -1,7 +1,7 @@
 import type { DataSource } from '@n8n/typeorm';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import postgresVersions from 'n8n-containers/postgres-versions.json';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, onTestFinished, vi } from 'vitest';
 
 import type {
 	ExecutionStatus,
@@ -1438,28 +1438,34 @@ describe('workflow_step_execution table (integration)', () => {
 			]);
 		});
 
-		it('renewQueuedStep moves the time forward once for one observed value', async () => {
-			const executionId = await createExecution();
-			const store = stalenessStore();
-			const { id } = await createStep(store, executionId, {
-				nodeId: 'a',
-				iteration: 0,
-				status: 'queued',
-			});
-			const observed = await loadStaleAfter(id);
-			if (!observed) throw new Error('expected a stale_after value');
+		it.each([
+			{ elapsedMs: 0, expectedAdvanceMs: 1 },
+			{ elapsedMs: 20_000, expectedAdvanceMs: 20_000 },
+		])(
+			'renewQueuedStep moves the deadline forward once for one observed value after $elapsedMs ms',
+			async ({ elapsedMs, expectedAdvanceMs }) => {
+				const executionId = await createExecution();
+				const store = stalenessStore();
+				const now = Date.now();
+				const clock = vi.spyOn(Date, 'now').mockReturnValue(now);
+				onTestFinished(() => {
+					clock.mockRestore();
+				});
 
-			const before = Date.now();
-			expect(await store.renewQueuedStep(id, observed)).toBe(true);
-			const after = Date.now();
+				const { id } = await createStep(store, executionId, {
+					nodeId: 'a',
+					iteration: 0,
+					status: 'queued',
+				});
+				const observed = await loadStaleAfter(id);
+				if (!observed) throw new Error('expected a stale_after value');
+				clock.mockReturnValue(now + elapsedMs);
 
-			const renewed = await loadStaleAfter(id);
-			expect(renewed?.getTime()).toBeGreaterThanOrEqual(before + staleness.queuedMs);
-			expect(renewed?.getTime()).toBeLessThanOrEqual(after + staleness.queuedMs);
-			// a second caller that read the same value changes nothing
-			expect(await store.renewQueuedStep(id, observed)).toBe(false);
-			expect(await loadStaleAfter(id)).toEqual(renewed);
-		});
+				expect(await store.renewQueuedStep(id, observed)).toBe(true);
+				expect(await store.renewQueuedStep(id, observed)).toBe(false);
+				expect(await loadStaleAfter(id)).toEqual(new Date(observed.getTime() + expectedAdvanceMs));
+			},
+		);
 
 		it('findStaleRunningSteps returns the running steps whose time has passed, oldest first', async () => {
 			const repo = dataSource.getRepository(WorkflowStepExecution);
