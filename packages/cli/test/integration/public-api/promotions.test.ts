@@ -393,12 +393,13 @@ describe('Promotions in Public API', () => {
 			});
 		});
 
-		it('reads the value from the database on each request', async () => {
+		it('returns a value that another instance saved', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			expect((await agent.get(path)).body).toEqual({ enabled: false });
+
 			await Container.get(SettingsRepository).upsertByKey(key, 'true', false, {});
 
-			expect((await testServer.publicApiAgentFor(owner).get(path)).body).toEqual({
-				enabled: true,
-			});
+			expect((await agent.get(path)).body).toEqual({ enabled: true });
 		});
 
 		it('rejects a read or change without promotions:manageEnvironments on the role or the key, or with an invalid body', async () => {

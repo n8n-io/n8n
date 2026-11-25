@@ -143,7 +143,8 @@ export class PromotionsPublicController {
 	@ApiResponse(200, PromotionProjectEnvironmentsSettingsPublicDto)
 	@ApiErrorResponse(503)
 	async getPromotionProjectEnvironmentsSettings(): Promise<PromotionProjectEnvironmentsSettingsPublicDto> {
-		return { enabled: await (await this.settingsService()).isProjectEnvironmentsEnabled() };
+		const service = await this.settingsService();
+		return { enabled: await service.isProjectEnvironmentsEnabled() };
 	}
 
 	@Put('/settings/project-environments')

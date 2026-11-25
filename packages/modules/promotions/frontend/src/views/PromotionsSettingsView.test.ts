@@ -439,18 +439,20 @@ describe('PromotionsSettingsView', () => {
 			await waitFor(() => expect(toggle).toBeChecked());
 		});
 
-		it('shows the stored value and an error when saving fails', async () => {
+		it('shows what the server stored and an error when saving fails', async () => {
 			useRBACStore().setGlobalScopes([
 				...PROMOTIONS_SETTINGS_SCOPES,
 				'promotions:manageEnvironments',
 			]);
-			api.getPromotionProjectEnvironmentsSettings.mockResolvedValue({ enabled: true });
+			api.getPromotionProjectEnvironmentsSettings
+				.mockResolvedValueOnce({ enabled: false })
+				.mockResolvedValueOnce({ enabled: true });
 			api.updatePromotionProjectEnvironmentsSettings.mockRejectedValue(new Error('Request failed'));
 			renderView();
 
 			const toggle = await screen.findByRole('switch', { name: 'Project environments' });
-			await waitFor(() => expect(toggle).toBeChecked());
 			await waitFor(() => expect(toggle).toBeEnabled());
+			expect(toggle).not.toBeChecked();
 			await userEvent.click(toggle);
 
 			await waitFor(() =>
@@ -460,11 +462,26 @@ describe('PromotionsSettingsView', () => {
 					expect.anything(),
 				),
 			);
-			expect(api.updatePromotionProjectEnvironmentsSettings).toHaveBeenCalledWith(
-				expect.anything(),
-				{ enabled: false },
-			);
 			expect(toggle).toBeChecked();
+		});
+
+		it('keeps the switch disabled and shows an error when loading fails', async () => {
+			useRBACStore().setGlobalScopes([
+				...PROMOTIONS_SETTINGS_SCOPES,
+				'promotions:manageEnvironments',
+			]);
+			api.getPromotionProjectEnvironmentsSettings.mockRejectedValue(new Error('Request failed'));
+			renderView();
+
+			const toggle = await screen.findByRole('switch', { name: 'Project environments' });
+			await waitFor(() =>
+				expect(showError).toHaveBeenCalledWith(
+					expect.anything(),
+					"Couldn't load the project environments setting",
+					expect.anything(),
+				),
+			);
+			expect(toggle).toBeDisabled();
 		});
 
 		it('hides the setting from a user who cannot manage environments', async () => {

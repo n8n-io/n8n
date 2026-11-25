@@ -42,7 +42,7 @@ async function save(value: boolean) {
 			})
 		).enabled;
 		toast.showMessage({
-			title: i18n.baseText('settings.sourceControl.saved.title'),
+			title: i18n.baseText('settings.promotions.projectAccess.toast.saved'),
 			type: 'success',
 		});
 	} catch (error) {

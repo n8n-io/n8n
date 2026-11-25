@@ -31,22 +31,6 @@ export type { PromotionEnvironmentSummary };
 
 const promotionsApiRoot = '/promotions';
 
-export const getPromotionProjectEnvironmentsSettings = async (
-	context: PublicApiContext,
-): Promise<PromotionProjectEnvironmentsSettingsPublicDto> =>
-	await makePublicApiRequest(context, 'GET', `${promotionsApiRoot}/settings/project-environments`);
-
-export const updatePromotionProjectEnvironmentsSettings = async (
-	context: PublicApiContext,
-	payload: UpdatePromotionProjectEnvironmentsSettingsDto,
-): Promise<PromotionProjectEnvironmentsSettingsPublicDto> =>
-	await makePublicApiRequest(
-		context,
-		'PUT',
-		`${promotionsApiRoot}/settings/project-environments`,
-		payload,
-	);
-
 export const fetchPromotionRepositories = async (
 	context: PublicApiContext,
 	providerId: string,
@@ -224,5 +208,21 @@ export const continueApplyPromotion = async (
 		context,
 		'POST',
 		`${promotionsApiRoot}/environments/${environmentId}/apply/continue`,
+		payload,
+	);
+
+export const getPromotionProjectEnvironmentsSettings = async (
+	context: PublicApiContext,
+): Promise<PromotionProjectEnvironmentsSettingsPublicDto> =>
+	await makePublicApiRequest(context, 'GET', `${promotionsApiRoot}/settings/project-environments`);
+
+export const updatePromotionProjectEnvironmentsSettings = async (
+	context: PublicApiContext,
+	payload: UpdatePromotionProjectEnvironmentsSettingsDto,
+): Promise<PromotionProjectEnvironmentsSettingsPublicDto> =>
+	await makePublicApiRequest(
+		context,
+		'PUT',
+		`${promotionsApiRoot}/settings/project-environments`,
 		payload,
 	);
