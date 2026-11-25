@@ -10,7 +10,7 @@ import { removeTestUserFolder } from './runners/test-user-folder';
 
 import { resolve } from 'node:path';
 
-import { ruleSets } from './grammar/rules';
+import { selectRuleSets } from './grammar/rules';
 import { checkCase } from './parity';
 import { readRepro, reproCase } from './report/repro';
 import { diffSignature, findingSignature } from './report/signature';
@@ -25,7 +25,8 @@ async function main(file: string | undefined): Promise<number> {
 	}
 	const repro = readRepro(resolve(process.env.INIT_CWD ?? process.cwd(), file));
 	const parityCase = reproCase(repro);
-	const rules = ruleSets[repro.rules] ?? ruleSets.smoke;
+	// Fails on an unknown rule set: other rules can change the verdict.
+	const [rules] = selectRuleSets(repro.rules);
 	const runners = { v1: new V1Runner(), v2: new V2Runner() };
 
 	await startExpressionEngine();

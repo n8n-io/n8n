@@ -29,7 +29,7 @@ function nodeTag(parityCase: ParityCase, nodeName: string | undefined): string {
 
 /**
  * Level, node type, combinator and diff kind, for example
- * `L2.merge.merge.items`. Failures with one signature are most likely one bug.
+ * `L2.merge-merge.items`. Failures with one signature are most likely one bug.
  */
 export function diffSignature(diff: Diff, parityCase: ParityCase): string {
 	return [diff.level, nodeTag(parityCase, diff.node), diff.kind].map(slug).join('.');

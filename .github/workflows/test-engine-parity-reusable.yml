@@ -57,7 +57,8 @@ jobs:
   parity:
     name: Engine parity
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
-    timeout-minutes: 45
+    # Longer than the vitest test timeout, so a slow run still uploads its repro files.
+    timeout-minutes: 75
     env:
       NODE_OPTIONS: '--max-old-space-size=6144'
     steps:
