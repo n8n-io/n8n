@@ -1191,8 +1191,6 @@ describe('execution tools', () => {
 				expect.objectContaining({
 					binary: { image: pngBinary },
 					storeOutputFile: expect.any(Function),
-					// An input file that the run passes on is not a new file of the run.
-					inputFileIds: ['file-1'],
 				}),
 			);
 

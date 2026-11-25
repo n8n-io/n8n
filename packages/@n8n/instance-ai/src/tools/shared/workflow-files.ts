@@ -64,12 +64,12 @@ export interface InputItem {
 
 /**
  * Resolve the `files` of each input item to binary data. Reads each fileId one
- * time, however many items use it. `fileIds` lists the files that the items got.
+ * time, however many items use it.
  */
 export async function readItemFiles(
 	workflowFiles: WorkflowFiles | undefined,
 	items: Array<{ json: Record<string, unknown>; files?: Record<string, string> }>,
-): Promise<{ items: InputItem[]; fileIds: string[]; error?: undefined } | { error: string }> {
+): Promise<{ items: InputItem[]; error?: undefined } | { error: string }> {
 	const readFiles: ReadFiles = new Map();
 	const result: InputItem[] = [];
 	for (const { json, files } of items) {
@@ -79,7 +79,7 @@ export async function readItemFiles(
 		if (error) return { error };
 		result.push(binary ? { json, binary } : { json });
 	}
-	return { items: result, fileIds: [...readFiles.keys()] };
+	return { items: result };
 }
 
 /**

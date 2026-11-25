@@ -553,7 +553,7 @@ async function handleExecute(
 		config: input.config,
 		input: read?.items,
 		...(workflowFiles && input.storeFiles
-			? { storeOutputFile: workflowFiles.storeWorkflowFile, inputFileIds: read?.fileIds ?? [] }
+			? { storeOutputFile: workflowFiles.storeWorkflowFile }
 			: {}),
 		timeoutMs: input.timeoutMs,
 	});

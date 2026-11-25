@@ -2226,7 +2226,7 @@ describe('executeNodeService adapter', () => {
 		const png = { id: 'filesystem-v2:a', data: 'filesystem-v2', mimeType: 'image/png' };
 		const stored = { fileId: 'f-1', fileName: 'a.png', mimeType: 'image/png', sizeBytes: 3 };
 
-		async function runWithFiles(allowSendingParameterValues: boolean, inputFileIds?: string[]) {
+		async function runWithFiles(allowSendingParameterValues: boolean, passedOn = false) {
 			mockedUserHasScopes.mockResolvedValue(true);
 			const executeNodeService = {
 				run: vi.fn().mockResolvedValue({ status: 'success', output: [] }),
@@ -2236,12 +2236,14 @@ describe('executeNodeService adapter', () => {
 				projectId: 'team-project-1',
 				allowSendingParameterValues,
 			});
-			const storeOutputFile = vi.fn().mockResolvedValue(stored);
+			// The host marks the conversation file of the input as passed on.
+			const storeOutputFile = vi
+				.fn()
+				.mockResolvedValue(passedOn ? { ...stored, passedOn: true } : stored);
 			await context.executeNodeService?.execute({
 				...executeRequest,
 				input: [{ json: {}, binary: { data: png } }],
 				storeOutputFile,
-				inputFileIds,
 			});
 			return { request: executeNodeService.run.mock.calls[0][1], storeOutputFile };
 		}
@@ -2261,7 +2263,7 @@ describe('executeNodeService adapter', () => {
 		});
 
 		it('does not list an input file that the node passes on, but names it on its item', async () => {
-			const { request } = await runWithFiles(true, ['f-1']);
+			const { request } = await runWithFiles(true, true);
 
 			const result = await request.storeOutputFiles([{ json: {}, binary: { data: png } }]);
 			expect(result).not.toHaveProperty('files');
@@ -2269,9 +2271,11 @@ describe('executeNodeService adapter', () => {
 		});
 
 		it('names an input file that the node passes on after the file cap is full', async () => {
-			const { request, storeOutputFile } = await runWithFiles(true, ['f-1']);
+			const { request, storeOutputFile } = await runWithFiles(true);
 			storeOutputFile.mockImplementation(async (binary: { id: string }) =>
-				binary.id === png.id ? stored : { ...stored, fileId: `new-${binary.id}` },
+				binary.id === png.id
+					? { ...stored, passedOn: true }
+					: { ...stored, fileId: `new-${binary.id}` },
 			);
 			const outputs = Array.from({ length: 10 }, (_, i) => ({
 				json: {},

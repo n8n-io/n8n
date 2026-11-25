@@ -41,6 +41,10 @@ const storedFile = (b: IBinaryData) => ({
 	sizeBytes: 3,
 });
 
+/** Storage as the host does it: the binary of the conversation file "upload" is that file, passed on. */
+const storePassingOnUpload = async (b: IBinaryData) =>
+	b.id === 'filesystem-v2:upload' ? { ...storedFile(b), passedOn: true as const } : storedFile(b);
+
 describe('storeRunOutputFiles', () => {
 	it('stores the files of the last node one time each, and not the files of earlier nodes', async () => {
 		const storeOutputFile = vi.fn(async (b: IBinaryData) => storedFile(b));
@@ -64,8 +68,8 @@ describe('storeRunOutputFiles', () => {
 		expect(result).toEqual({ files: [storedFile(binary('a')), storedFile(binary('b'))] });
 	});
 
-	it('does not list an input file that the run passes on, and does not count it against the cap', async () => {
-		const storeOutputFile = vi.fn(async (b: IBinaryData) => storedFile(b));
+	it('does not list a conversation file that the run passes on, and does not count it against the cap', async () => {
+		const storeOutputFile = vi.fn(storePassingOnUpload);
 		const outputs = Array.from({ length: MAX_RUN_OUTPUT_FILES }, (_, i) => ({
 			json: {},
 			binary: { data: binary(`out-${i}`) },
@@ -74,17 +78,33 @@ describe('storeRunOutputFiles', () => {
 			runOf({ Edit: [{ json: {}, binary: { data: binary('upload') } }, ...outputs] }),
 		);
 
-		const result = await storeRunOutputFiles(execution, storeOutputFile, {
-			inputFileIds: ['file-upload.png'],
-		});
+		const result = await storeRunOutputFiles(execution, storeOutputFile);
 
 		expect(result.files).toHaveLength(MAX_RUN_OUTPUT_FILES);
 		expect(result.files?.map((f) => f.fileId)).not.toContain('file-upload.png');
 		expect(result).not.toHaveProperty('skippedFiles');
 	});
 
+	it('lists a conversation file that the run passes on when asked, without counting it against the cap', async () => {
+		const outputs = Array.from({ length: MAX_RUN_OUTPUT_FILES }, (_, i) => ({
+			json: {},
+			binary: { data: binary(`out-${i}`) },
+		}));
+
+		const result = await storeItemFiles(
+			[{ json: {}, binary: { data: binary('upload') } }, ...outputs],
+			storePassingOnUpload,
+			'cap',
+			{ listPassedOn: true },
+		);
+
+		expect(result.files).toHaveLength(MAX_RUN_OUTPUT_FILES + 1);
+		expect(result.files?.[0]).toEqual({ ...storedFile(binary('upload')), passedOn: true });
+		expect(result).not.toHaveProperty('skippedFiles');
+	});
+
 	it('gives an input file that the run passes on after the cap is full its file, and does not skip it', async () => {
-		const storeOutputFile = vi.fn(async (b: IBinaryData) => storedFile(b));
+		const storeOutputFile = vi.fn(storePassingOnUpload);
 		const onStored = vi.fn();
 		const outputs = Array.from({ length: MAX_RUN_OUTPUT_FILES + 1 }, (_, i) => ({
 			json: {},
@@ -96,7 +116,7 @@ describe('storeRunOutputFiles', () => {
 			[...outputs, { json: {}, binary: { data: upload } }],
 			storeOutputFile,
 			'cap',
-			{ inputFileIds: ['file-upload.png'], inputBinaryIds: [upload.id ?? ''], onStored },
+			{ inputBinaryIds: [upload.id ?? ''], onStored },
 		);
 
 		expect(result.files).toHaveLength(MAX_RUN_OUTPUT_FILES);
@@ -109,7 +129,7 @@ describe('storeRunOutputFiles', () => {
 	});
 
 	it('skips a binary with an input id after the cap is full when storage gives a new file', async () => {
-		const storeOutputFile = vi.fn(async (b: IBinaryData) => storedFile(b));
+		const storeOutputFile = vi.fn(storePassingOnUpload);
 		const outputs = Array.from({ length: MAX_RUN_OUTPUT_FILES }, (_, i) => ({
 			json: {},
 			binary: { data: binary(`out-${i}`) },
@@ -120,7 +140,7 @@ describe('storeRunOutputFiles', () => {
 			[...outputs, { json: {}, binary: { data: changed } }],
 			storeOutputFile,
 			'cap',
-			{ inputFileIds: ['file-upload.png'], inputBinaryIds: [changed.id ?? ''] },
+			{ inputBinaryIds: [changed.id ?? ''] },
 		);
 
 		expect(result.files).toHaveLength(MAX_RUN_OUTPUT_FILES);
@@ -243,6 +263,25 @@ describe('extractNodeOutput with files', () => {
 		expect(result.binaryFileCount).toBe(2);
 	});
 
+	it('lists a conversation file that the node passed on, marked passedOn, outside the cap', async () => {
+		const items = [
+			{ json: {}, binary: { data: binary('upload') } },
+			...Array.from({ length: MAX_RUN_OUTPUT_FILES }, (_, i) => ({
+				json: {},
+				binary: { data: binary(`out-${i}`) },
+			})),
+		];
+
+		const result = await extractNodeOutput(executionOf(runOf({ Edit: items })), 'Edit', {
+			maxItems: 50,
+			storeFile: storePassingOnUpload,
+		});
+
+		expect(result.files).toHaveLength(MAX_RUN_OUTPUT_FILES + 1);
+		expect(result.files?.[0]).toMatchObject({ fileId: 'file-upload.png', passedOn: true });
+		expect(result).not.toHaveProperty('skippedFiles');
+	});
+
 	it('stores nothing from a redacted execution', async () => {
 		const storeFile = vi.fn();
 		const redacted = executionOf(
@@ -265,9 +304,9 @@ describe('storeItemFiles', () => {
 
 		const result = await storeItemFiles(
 			[{ binary: { data: upload } }, { binary: { data: rotated } }, { binary: { data: upload } }],
-			async (b) => storedFile(b),
+			storePassingOnUpload,
 			'cap',
-			{ inputFileIds: ['file-upload.png'], onStored },
+			{ onStored },
 		);
 
 		expect(onStored.mock.calls).toEqual([

@@ -63,7 +63,7 @@ import type {
 	SystemAgentProvider,
 	SystemAgentSkippedFile,
 	SystemAgentStartTurn,
-	SystemAgentStoredFile,
+	SystemAgentStoredWorkflowFile,
 	SystemAgentTurnHandle,
 	SystemAgentTurnOptions,
 	SystemAgentTurnOutcome,
@@ -1126,7 +1126,7 @@ export class SystemAgentExecutionService {
 		resourceId: string,
 		user: User,
 		binary: IBinaryData,
-	): Promise<SystemAgentStoredFile | SystemAgentSkippedFile | undefined> {
+	): Promise<SystemAgentStoredWorkflowFile | SystemAgentSkippedFile | undefined> {
 		try {
 			return await this.storeWorkflowFileOrThrow(thread, resourceId, user, binary);
 		} catch (error) {
@@ -1143,7 +1143,7 @@ export class SystemAgentExecutionService {
 		resourceId: string,
 		user: User,
 		binary: IBinaryData,
-	): Promise<SystemAgentStoredFile | SystemAgentSkippedFile | undefined> {
+	): Promise<SystemAgentStoredWorkflowFile | SystemAgentSkippedFile | undefined> {
 		// A file of this thread proves access to its bytes.
 		const threadFile = binary.id
 			? await this.attachmentService.findSystemAgentThreadFileByBinary(
@@ -1167,6 +1167,7 @@ export class SystemAgentExecutionService {
 					fileName: threadFile.fileName,
 					mimeType: threadFile.mimeType,
 					sizeBytes: threadFile.fileSizeBytes,
+					passedOn: true,
 				};
 			}
 		} else if (binary.id) {

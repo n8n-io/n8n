@@ -637,8 +637,9 @@ files with the `tool` source, one time for each binary and at most 10 for each
 run. A file of the conversation that the run passes on unchanged keeps its
 fileId and is not copied. A renamed or retyped file becomes a new file. The
 result lists the files in `files`, so the chat shows them. `files` does not
-list an input file that the run passes on unchanged, and such a file does not
-count against the cap, as with project Agents. The approval prompt names the
+list a conversation file that the run passes on unchanged, and such a file does
+not count against the cap, as with project Agents. The host marks such a file
+`passedOn` when it finds the file by its binary id. The approval prompt names the
 input files, because the run can send them to an outside service. A fileId that
 the conversation does not have fails the call before the prompt. `skippedFiles.files` lists at most 10 files that were not stored, and
 `skippedFiles.total` counts all of them. A redacted execution stores no
@@ -879,7 +880,9 @@ than its first 10. The host matches a file by the hash of its bytes, not by
 its binary id. A file of the conversation with the same bytes, name and type
 is given again, not stored again, so a second call on the same output gives
 the same fileIds. A file without a usable name matches on its bytes and type
-only. A redacted execution stores no files. The host offers
+only. A conversation file that the run passed on unchanged, such as a file of
+a mock input, is listed with `passedOn: true` and does not count against the
+cap. The host recognizes it by its binary id. A redacted execution stores no files. The host offers
 `storeFiles` only when it sets `readBinary` and `storeWorkflowFile` on
 `storedFiles`.
 

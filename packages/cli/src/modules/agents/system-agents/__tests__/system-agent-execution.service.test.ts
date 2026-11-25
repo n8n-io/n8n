@@ -1142,7 +1142,7 @@ describe('SystemAgentExecutionService', () => {
 				} as AgentChatAttachment;
 				const passedOn = { ...binary, fileName: 'a.png' };
 
-				it('gives the file of the thread that a run passed on, without a copy', async () => {
+				it('gives the file of the thread that a run passed on, marked passedOn, without a copy', async () => {
 					const { turn, fileBridge, attachmentService, binaryDataAccess } =
 						await startTurnWithAttachment();
 					attachmentService.findSystemAgentThreadFileByBinary.mockResolvedValue(threadFile);
@@ -1153,6 +1153,7 @@ describe('SystemAgentExecutionService', () => {
 						fileName: 'a.png',
 						mimeType: 'image/png',
 						sizeBytes: 3,
+						passedOn: true,
 					});
 					expect(fileBridge.adoptBinary).not.toHaveBeenCalled();
 					expect(attachmentService.findSystemAgentThreadFileByBinary).toHaveBeenCalledWith(

@@ -1079,7 +1079,7 @@ export class InstanceAiAdapterService {
 				// authors a workflow. See ADR-20261012-require-create-and-execute-scopes-for-standalone-node-runs.
 				const projectId = await resolveProjectId(['workflow:create', 'workflow:execute']);
 				// The privacy setting hides the output items, so it keeps their files out of the chat too.
-				const { storeOutputFile, inputFileIds } = request;
+				const { storeOutputFile } = request;
 				const storeOutputFiles =
 					storeOutputFile && allowSendingParameterValues
 						? async (items: Array<{ binary?: IBinaryKeyData }>) => {
@@ -1090,7 +1090,6 @@ export class InstanceAiAdapterService {
 									storeOutputFile,
 									`one node run returns at most ${MAX_RUN_OUTPUT_FILES} files`,
 									{
-										inputFileIds,
 										inputBinaryIds: binaryIdsOf(request.input ?? []),
 										onStored: (binary, fileId) => fileIds.set(binary.id ?? binary, fileId),
 									},
@@ -2795,7 +2794,6 @@ export class InstanceAiAdapterService {
 						Object.assign(
 							result,
 							await storeRunOutputFiles(outcome.execution, storeOutputFile, {
-								inputFileIds: options?.inputFileIds,
 								inputBinaryIds: binaryIdsOf([{ binary: options?.binary }]),
 							}),
 						);
@@ -5974,6 +5972,8 @@ export async function extractNodeOutput(
 					returnedItemsWithFiles,
 					options.storeFile,
 					`one call stores at most ${MAX_RUN_OUTPUT_FILES} files; ask for fewer items with startIndex and maxItems to store the files of later items`,
+					// The model sees only the JSON of an item, so a file that the run passed on is listed too.
+					{ listPassedOn: true },
 				)
 			: {};
 

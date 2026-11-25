@@ -1154,8 +1154,6 @@ describe('nodes tools', () => {
 				]);
 				await request.storeOutputFile(pngBinary);
 				expect(storedFiles.storeWorkflowFile).toHaveBeenCalledWith(pngBinary);
-				// An input file that the node passes on is not a new file of the run.
-				expect(request.inputFileIds).toEqual(['file-1']);
 			});
 
 			it('names the input files in the approval prompt', async () => {

@@ -320,9 +320,10 @@ export interface NodeOutputResult {
 	binaryFileCount?: number;
 	/**
 	 * Files of the returned items, stored as conversation files. Set only when
-	 * the caller passed `storeFile`.
+	 * the caller passed `storeFile`. `passedOn` marks a conversation file that
+	 * the run passed on unchanged.
 	 */
-	files?: InstanceAiConversationFile[];
+	files?: InstanceAiStoredWorkflowFile[];
 	/** Files of the returned items that were not stored, for example because they are too large. The list has a cap. */
 	skippedFiles?: InstanceAiSkippedFiles;
 	/**
@@ -734,11 +735,6 @@ export interface InstanceAiExecutionService {
 			 * conversation file. The result lists them in `files`.
 			 */
 			storeOutputFile?: InstanceAiStoreWorkflowFile;
-			/**
-			 * The fileIds of the conversation files in `binary`. `files` does not
-			 * list a file of them that the run passes on unchanged.
-			 */
-			inputFileIds?: readonly string[];
 		},
 	): Promise<ExecutionResult>;
 	/**
@@ -864,11 +860,6 @@ export interface InstanceAiExecuteNodeService {
 		 * lists them in `files`.
 		 */
 		storeOutputFile?: InstanceAiStoreWorkflowFile;
-		/**
-		 * The fileIds of the conversation files in the `binary` of the input items.
-		 * `files` does not list a file of them that the node passes on unchanged.
-		 */
-		inputFileIds?: readonly string[];
 		timeoutMs?: number;
 	}): Promise<ExecuteNodeResult>;
 }
@@ -1893,12 +1884,20 @@ export interface InstanceAiSkippedFiles {
 }
 
 /**
+ * A conversation file for a binary that a workflow run returned. `passedOn`
+ * marks a conversation file that the run passed on unchanged: the binary
+ * points to the stored bytes of that file, so it is not a new file.
+ */
+export type InstanceAiStoredWorkflowFile = InstanceAiConversationFile & { passedOn?: true };
+
+/**
  * Stores a binary that a workflow run returned as a conversation file. Gives a
- * skipped file for a file over a cap, and `undefined` when storage fails.
+ * skipped file with the reason for a file over a cap or a file that storage
+ * could not take.
  */
 export type InstanceAiStoreWorkflowFile = (
 	binary: IBinaryData,
-) => Promise<InstanceAiConversationFile | InstanceAiSkippedFile | undefined>;
+) => Promise<InstanceAiStoredWorkflowFile | InstanceAiSkippedFile | undefined>;
 
 // ── Context bundle ───────────────────────────────────────────────────────────
 

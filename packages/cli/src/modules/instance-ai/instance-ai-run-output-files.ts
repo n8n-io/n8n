@@ -1,10 +1,10 @@
 import type { IExecutionResponse } from '@n8n/db';
 import type {
 	ExecutionResult,
-	InstanceAiConversationFile,
 	InstanceAiSkippedFile,
 	InstanceAiSkippedFiles,
 	InstanceAiStoreWorkflowFile,
+	InstanceAiStoredWorkflowFile,
 } from '@n8n/instance-ai';
 import type { IBinaryData, IBinaryKeyData } from 'n8n-workflow';
 
@@ -44,34 +44,35 @@ export function countItemFiles(items: Iterable<{ binary?: IBinaryKeyData }>): nu
 
 export interface StoreItemFilesOptions {
 	/**
-	 * The fileIds of the conversation files that the run got as input. A file of
-	 * them that the run passes on unchanged is not a new file, so `files` does not
-	 * list it and it does not count against the cap, as with project agents.
-	 */
-	inputFileIds?: readonly string[];
-	/**
 	 * The binary ids of the inputs of the run. A binary with one of them is looked
-	 * up even when the cap is full, because it gives its input file, not a new file.
+	 * up even when the cap is full, because it can give its conversation file
+	 * instead of a new file.
 	 */
 	inputBinaryIds?: readonly string[];
+	/**
+	 * List a conversation file that the run passed on unchanged, marked
+	 * `passedOn`. By default `files` lists only new files, as with project agents.
+	 */
+	listPassedOn?: boolean;
 	/** Called with each binary that has a conversation file, including a file passed on. */
 	onStored?: (binary: IBinaryData, fileId: string) => void;
 }
 
 /**
  * Store the files of some execution items as conversation files, one time for
- * each binary and at most `MAX_RUN_OUTPUT_FILES` of them. `limitReason` is the
- * reason of a file over that cap.
+ * each binary and at most `MAX_RUN_OUTPUT_FILES` new files. A conversation file
+ * that the run passed on is not a new file, so it does not count against the
+ * cap. `limitReason` is the reason of a file over that cap.
  */
 export async function storeItemFiles(
 	items: Iterable<{ binary?: IBinaryKeyData }>,
 	storeFile: InstanceAiStoreWorkflowFile,
 	limitReason: string,
 	options: StoreItemFilesOptions = {},
-): Promise<{ files?: InstanceAiConversationFile[]; skippedFiles?: InstanceAiSkippedFiles }> {
-	const inputFileIds = new Set(options.inputFileIds);
+): Promise<{ files?: InstanceAiStoredWorkflowFile[]; skippedFiles?: InstanceAiSkippedFiles }> {
 	const inputBinaryIds = new Set(options.inputBinaryIds);
-	const files: InstanceAiConversationFile[] = [];
+	const files: InstanceAiStoredWorkflowFile[] = [];
+	let newFiles = 0;
 	const skippedFiles: InstanceAiSkippedFile[] = [];
 	let skippedTotal = 0;
 	const skip = (file: InstanceAiSkippedFile) => {
@@ -79,7 +80,7 @@ export async function storeItemFiles(
 		if (skippedFiles.length < MAX_RUN_SKIPPED_FILES) skippedFiles.push(file);
 	};
 	for (const [key, binary] of uniqueBinaries(items)) {
-		const atCap = files.length >= MAX_RUN_OUTPUT_FILES;
+		const atCap = newFiles >= MAX_RUN_OUTPUT_FILES;
 		if (atCap && !(binary.id && inputBinaryIds.has(binary.id))) {
 			skip({ fileName: binary.fileName ?? key, reason: limitReason });
 			continue;
@@ -90,13 +91,17 @@ export async function storeItemFiles(
 			skip(stored);
 			continue;
 		}
-		const passedOn = inputFileIds.has(stored.fileId);
-		if (atCap && !passedOn) {
+		if (atCap && !stored.passedOn) {
 			skip({ fileName: binary.fileName ?? key, reason: limitReason });
 			continue;
 		}
 		options.onStored?.(binary, stored.fileId);
-		if (!passedOn) files.push(stored);
+		if (!stored.passedOn) {
+			newFiles++;
+			files.push(stored);
+		} else if (options.listPassedOn) {
+			files.push(stored);
+		}
 	}
 	return {
 		...(files.length > 0 ? { files } : {}),
@@ -112,7 +117,7 @@ export async function storeItemFiles(
 export async function storeRunOutputFiles(
 	execution: IExecutionResponse,
 	storeOutputFile: InstanceAiStoreWorkflowFile,
-	inputs: Pick<StoreItemFilesOptions, 'inputFileIds' | 'inputBinaryIds'> = {},
+	inputs: Pick<StoreItemFilesOptions, 'inputBinaryIds'> = {},
 ): Promise<Pick<ExecutionResult, 'files' | 'skippedFiles'>> {
 	const runData = execution.data?.resultData?.runData;
 	if (!runData || getExecutionRedaction(execution)) return {};
