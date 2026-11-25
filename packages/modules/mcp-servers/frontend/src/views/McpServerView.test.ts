@@ -20,6 +20,12 @@ const api = vi.hoisted(() => ({
 }));
 vi.mock('../mcp-servers.api', () => api);
 
+const toast = vi.hoisted(() => ({ showMessage: vi.fn(), showError: vi.fn() }));
+vi.mock('@n8n/composables/useToast', () => ({ useToast: () => toast }));
+
+const copy = vi.hoisted(() => vi.fn());
+vi.mock('@n8n/composables/useClipboard', () => ({ useClipboard: () => ({ copy }) }));
+
 const route = vi.hoisted(() => ({
 	name: 'McpServerView',
 	params: { projectId: 'project-1', serverId: '0190a8d6-4a2e-7000-8000-000000000001' },
@@ -178,6 +184,33 @@ describe('McpServerView', () => {
 
 			expect(api.deleteMcpServer).toHaveBeenCalledWith(expect.anything(), 'project-1', server.id);
 			await waitFor(() => expect(push).toHaveBeenCalledWith({ name: MCP_SERVERS_LIST_VIEW }));
+			// The toast title starts with a capital letter, so it must not start with the name.
+			expect(toast.showMessage).toHaveBeenCalledWith({
+				type: 'success',
+				title: 'MCP server "Sales tools" deleted',
+			});
+		});
+
+		it.each([
+			[{ name: 'Marketing', type: 'team' }, 'Only members of the Marketing project can connect.'],
+			[
+				{ name: 'Nathan Doe <nathan@example.com>', type: 'personal' },
+				'Only the owner of this personal project can connect.',
+			],
+		] as const)('copies the URL and says who can connect, for %o', async (project, message) => {
+			api.getMcpServer.mockResolvedValue({ ...server, project });
+			await renderPage();
+
+			await openMenuItem('Copy URL');
+
+			await waitFor(() =>
+				expect(copy).toHaveBeenCalledWith(expect.stringMatching(/\/mcp-servers\/sales-tools$/)),
+			);
+			expect(toast.showMessage).toHaveBeenCalledWith({
+				type: 'success',
+				title: 'URL copied',
+				message,
+			});
 		});
 
 		it('gives a project viewer no rename, no delete, and no description edit', async () => {

@@ -2564,7 +2564,7 @@
 	"mcpServers.delete.title": "Delete \"{name}\"?",
 	"mcpServers.delete.description": "AI clients lose access to its tools now. The URL {url} stays reserved, so no other server can take it. You cannot undo this.",
 	"mcpServers.delete.confirm": "Delete",
-	"mcpServers.delete.success": "\"{name}\" deleted",
+	"mcpServers.delete.success": "MCP server \"{name}\" deleted",
 	"mcpServers.delete.error": "Could not delete the MCP server",
 	"mcpServers.server.description.placeholder": "Add a description",
 	"mcpServers.server.description.error": "Could not save the description",
