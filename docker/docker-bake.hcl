@@ -5,7 +5,7 @@
 # each pin a plain string: the podman path of scripts/dockerize-n8n.mjs reads
 # them as text. To change n8nio/base or n8nio/node-pc, read docker/AGENTS.md.
 
-variable "NODE_VERSION" { default = "26.13.1" }
+variable "NODE_VERSION" { default = "26.13.0" }
 
 # n8nio/base builds on these. The tag of each base is the Node version of its
 # DHI ref. The Node 24 base supplies the 1.x runtime image.
