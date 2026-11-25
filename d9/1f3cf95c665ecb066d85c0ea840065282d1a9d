@@ -7,8 +7,11 @@ packages/frontend/editor-ui/src/features/agents/components/AgentTriggersSection.
   s_6ac6b284e64de3::t_978d9b3224c2cb 527
 packages/frontend/editor-ui/src/features/agents/components/AgentChipRow.vue
   s_6ac6b284e64de3::t_f9fa0b7f11ee44 12-13,19,45
+  s_329dff755c3fc0::t_a88f86709cebe2 46-51
 packages/frontend/editor-ui/src/features/agents/components/AgentSchedulesRow.vue
   s_6ac6b284e64de3::t_1400890eb86b1f 30-31,34,189-195,210-214,244,267
+packages/frontend/@n8n/design-system/src/components/N8nToggle/Toggle.vue
+  s_329dff755c3fc0::t_b337d2da85cd02 156
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -16,6 +19,14 @@ packages/frontend/editor-ui/src/features/agents/components/AgentSchedulesRow.vue
   "base_commit_sha": "d91f3cf95c665ecb066d85c0ea840065282d1a9d",
   "prompts": {},
   "sessions": {
+    "s_329dff755c3fc0": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a211e4-03bd-741b-864f-97444719010f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
     "s_36456758792231": {
       "agent_id": {
         "tool": "pi",
