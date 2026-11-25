@@ -90,6 +90,10 @@ const credentialSchema = z.object({
 });
 
 export const promotionMissingCredentialBindingSchema = credentialSchema.extend({
+	consumers: z.array(promotionBindingConsumerSchema).openapi({
+		description:
+			'Workflows that use the credential. Empty for a selected credential that no workflow uses.',
+	}),
 	ownerProject: promotionBindingProjectSchema,
 	expressionData: promotionCredentialExpressionDataSchema.optional(),
 });

@@ -92,7 +92,7 @@ properties:
                 required:
                   - project
                   - workflows
-              minItems: 1
+              description: Workflows that use the credential. Empty for a selected credential that no workflow uses.
             ownerProject:
               type: object
               properties:

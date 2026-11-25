@@ -89,7 +89,14 @@ export function scopeCheck(check: ApplyCheckResult, graph: SelectionGraph): Appl
 		});
 	return {
 		...check,
-		missingBindings: scope(check.missingBindings),
+		// A selected credential that no workflow uses blocks its own row.
+		missingBindings: check.missingBindings.flatMap((binding) =>
+			binding.kind === 'credential' && binding.consumers.length === 0
+				? graph.resources.has(`credential:${binding.sourceId}`)
+					? [binding]
+					: []
+				: scope([binding]),
+		),
 		accessRequirements: scope(check.accessRequirements),
 		conflicts: check.conflicts.flatMap((conflict): PromotionBindingConflict[] => {
 			if ('consumers' in conflict) return scope([conflict]);
@@ -119,13 +126,15 @@ export function listBlockers(
 ): Blocker[] {
 	const blockers: Blocker[] = [];
 	for (const binding of missingBindings) {
+		const resourceKey =
+			binding.kind === 'credential'
+				? `credential:${binding.sourceId}`
+				: variableKey(binding.name, binding.scope);
 		blockers.push({
 			kind: 'missing',
-			resourceKey:
-				binding.kind === 'credential'
-					? `credential:${binding.sourceId}`
-					: variableKey(binding.name, binding.scope),
-			workflowKeys: consumerKeys(binding.consumers),
+			resourceKey,
+			// Without a consumer, the binding stops its own row from being applied.
+			workflowKeys: binding.consumers.length > 0 ? consumerKeys(binding.consumers) : [resourceKey],
 		});
 	}
 	for (const access of accessRequirements) {

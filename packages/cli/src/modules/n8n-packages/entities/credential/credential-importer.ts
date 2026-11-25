@@ -1,4 +1,4 @@
-import type { SerializedCredential, SerializedCredentialData } from '@n8n/api-types';
+import type { SerializedCredential } from '@n8n/api-types';
 import { CredentialsFinderService, EventService, loginIdOf } from '@n8n/backend-services';
 import type { CredentialsEntity, OperationContext, User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -99,19 +99,19 @@ export class CredentialImporter {
 	}
 
 	/**
-	 * Plans the credentials that a selection names and no workflow requires. A missing credential is
-	 * created in the project, and one that the project owns is updated, with the package payload:
-	 * name, description, expression values and the plain values that decide which fields show. A
-	 * package carries no secret and a merge keeps the stored ones. A credential of another project
-	 * is left as it is. A type that differs from the package is not applied: the stored values
-	 * belong to the stored type.
+	 * Plans the credentials that a selection names and no workflow requires. One that the project
+	 * owns is updated with the package payload: name, description, expression values and the plain
+	 * values that decide which fields show. A package carries no secret and a merge keeps the stored
+	 * ones. A missing credential is not created: the user creates it from the bindings screen. A
+	 * credential of another project is left as it is. A type that differs from the package is not
+	 * applied: the stored values belong to the stored type.
 	 */
 	private async planSelected(
 		context: ImportContext,
 		request: CredentialBindingRequest,
 	): Promise<{ selected: SelectedCredentialPlan; forbidden: CredentialMatch[] }> {
 		const selected: SelectedCredentialPlan = {
-			creations: [],
+			missing: [],
 			updates: [],
 			ownedElsewhere: [],
 			unchanged: [],
@@ -142,24 +142,13 @@ export class CredentialImporter {
 		);
 
 		for (const requestedCredential of requested) {
-			const { id, name, type } = requestedCredential;
+			const { id, name } = requestedCredential;
 			const packageCredential = descriptionsEnabled
 				? requestedCredential
 				: { ...requestedCredential, description: undefined };
 			const destination = destinations.get(id);
 			if (!destination) {
-				selected.creations.push({
-					sourceId: id,
-					name,
-					type,
-					...(hasValues(packageCredential.data) ? { data: packageCredential.data } : {}),
-					...(packageCredential.dataIsComplete !== undefined
-						? { dataIsComplete: packageCredential.dataIsComplete }
-						: {}),
-					...(packageCredential.description !== undefined
-						? { description: packageCredential.description }
-						: {}),
-				});
+				selected.missing.push(id);
 				continue;
 			}
 			if (
@@ -326,23 +315,11 @@ export class CredentialImporter {
 		projectPendingCreation: boolean,
 	): Promise<void> {
 		const toCreate = credentialsToStub(request.missingMode, resolution);
-		const { creations } = resolution.selected;
-		if (toCreate.length === 0 && creations.length === 0) return;
+		if (toCreate.length === 0) return;
 
 		// The import creates this project and makes the user its admin, so it has no scopes to look up yet.
 		if (!projectPendingCreation) {
 			await this.credentialsService.assertCanCreateInProject(context.user, context.projectId);
-		}
-
-		// Seeded values of a selected credential go through the same check as other new credentials.
-		for (const { data } of creations) {
-			if (data !== undefined) {
-				await this.credentialsService.validateStubCredentialData(
-					data as ICredentialDataDecryptedObject,
-					context.user,
-					context.projectId,
-				);
-			}
 		}
 
 		if (!credentialMissingModeUsesPackageData(request.missingMode)) return;
@@ -491,34 +468,16 @@ export class CredentialImporter {
 	}
 
 	/**
-	 * Writes the selected credentials that no workflow requires. A missing one is created with the
-	 * package payload. An update merges the package payload into the stored values, so a secret
-	 * stays. Run after {@link planSelected} found no issue. Returns the source ids that it wrote:
-	 * `stubbed` has no values, `seeded` holds all of its values, and `incomplete` holds some.
+	 * Writes the selected credentials that no workflow requires. An update merges the package
+	 * payload into the stored values, so a secret stays. Run after {@link planSelected} found no
+	 * issue. Returns the source ids that it wrote.
 	 */
-	async applySelected(context: ImportContext, plan: CredentialImportPlan): Promise<SelectedResult> {
-		const result: SelectedResult = { stubbed: [], seeded: [], incomplete: [], updated: [] };
-		for (const { sourceId, name, type, data, dataIsComplete, description } of plan.selected
-			.creations) {
-			await this.credentialsService.createStubCredential(
-				{
-					id: sourceId,
-					name,
-					type,
-					projectId: context.projectId,
-					// The package holds plain JSON of the shape that the credential stores.
-					...(data !== undefined ? { data: data as ICredentialDataDecryptedObject } : {}),
-					...(description !== undefined ? { description } : {}),
-				},
-				context.user,
-			);
-			if (data === undefined) result.stubbed.push(sourceId);
-			else (dataIsComplete ? result.seeded : result.incomplete).push(sourceId);
-		}
+	async applySelected(context: ImportContext, plan: CredentialImportPlan): Promise<string[]> {
+		const updated: string[] = [];
 		for (const update of plan.selected.updates) {
-			if (await this.writeUpdate(context, update)) result.updated.push(update.sourceId);
+			if (await this.writeUpdate(context, update)) updated.push(update.sourceId);
 		}
-		return result;
+		return updated;
 	}
 
 	/**
@@ -625,18 +584,6 @@ export class CredentialImporter {
 			);
 		}
 	}
-}
-
-/** The source ids that {@link CredentialImporter.applySelected} wrote, by what the write did. */
-export interface SelectedResult {
-	stubbed: string[];
-	seeded: string[];
-	incomplete: string[];
-	updated: string[];
-}
-
-function hasValues(data: SerializedCredentialData | undefined): data is SerializedCredentialData {
-	return data !== undefined && Object.keys(data).length > 0;
 }
 
 function credentialNotFound(update: CredentialUpdateCandidate): NotFoundError {

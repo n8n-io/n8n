@@ -11,7 +11,6 @@ import {
 	CredentialsRepository,
 	FolderRepository,
 	ProjectRepository,
-	SharedCredentialsRepository,
 	WorkflowHistoryRepository,
 	WorkflowRepository,
 } from '@n8n/db';
@@ -855,29 +854,17 @@ describe('importPackageSelectionFromDirectory with selected credentials', () => 
 		);
 	}
 
-	it('creates a missing credential without values in the project', async () => {
+	it('blocks a missing credential and creates nothing', async () => {
 		const project = await createTeamProject('Alpha', owner);
 
-		const result = await importCredentials(
-			project.id,
-			[{ id: 'CRED1', name: 'GitHub' }],
-			['CRED1'],
-		);
-
-		expect(result.credentials.stubbed).toEqual(['CRED1']);
-		const stored = await Container.get(CredentialsRepository).findOneByOrFail({ id: 'CRED1' });
-		expect(stored.name).toBe('GitHub');
-		const sharing = await Container.get(SharedCredentialsRepository).findOneByOrFail({
-			credentialsId: 'CRED1',
-		});
-		expect(sharing).toMatchObject({ projectId: project.id, role: 'credential:owner' });
-		// An empty stub: nothing from the package reaches the stored data.
-		const data = await new Credentials(
-			{ id: stored.id, name: stored.name },
-			stored.type,
-			stored.data,
-		).getData();
-		expect(data).toEqual({});
+		await expect(
+			importCredentials(
+				project.id,
+				[{ id: 'CRED1', name: 'GitHub', data: { server: '={{ $vars.GITHUB_URL }}' } }],
+				['CRED1'],
+			),
+		).rejects.toThrow('Import blocked');
+		expect(await Container.get(CredentialsRepository).findOneBy({ id: 'CRED1' })).toBeNull();
 	});
 
 	it('renames a credential of the project and keeps its stored values', async () => {
@@ -905,32 +892,6 @@ describe('importPackageSelectionFromDirectory with selected credentials', () => 
 		const after = await read();
 		expect(after.row.name).toBe('New name');
 		expect(after.data).toEqual(before);
-	});
-
-	it('creates a credential with the expressions and visibility fields of the package', async () => {
-		const project = await createTeamProject('Alpha', owner);
-
-		const result = await importCredentials(
-			project.id,
-			[
-				{
-					id: 'CRED2',
-					name: 'GitHub',
-					data: { server: '={{ $vars.GITHUB_URL }}' },
-					dataIsComplete: false,
-				},
-			],
-			['CRED2'],
-		);
-
-		expect(result.credentials.incomplete).toEqual(['CRED2']);
-		const stored = await Container.get(CredentialsRepository).findOneByOrFail({ id: 'CRED2' });
-		const data = await new Credentials(
-			{ id: stored.id, name: stored.name },
-			stored.type,
-			stored.data,
-		).getData();
-		expect(data).toEqual({ server: '={{ $vars.GITHUB_URL }}' });
 	});
 
 	it('updates the name and the expressions of a credential and keeps its secrets', async () => {

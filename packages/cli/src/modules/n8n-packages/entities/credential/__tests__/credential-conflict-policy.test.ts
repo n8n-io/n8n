@@ -376,7 +376,7 @@ describe('forbiddenCredentialUpdates', () => {
 });
 
 describe('plannedCredentialSaves', () => {
-	const none = { creations: [], updates: [], ownedElsewhere: [], unchanged: [] };
+	const none = { missing: [], updates: [], ownedElsewhere: [], unchanged: [] };
 	const selected = candidate({ sourceId: 'selected-1', usedBy: [] });
 
 	it('keeps an overwrite update and a selected update of one destination in one group', () => {

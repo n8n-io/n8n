@@ -98,27 +98,18 @@ export interface CredentialUpdateCandidate extends CredentialMatch {
 	description?: string | null;
 }
 
-/** A credential that a selection creates, with the package payload that it seeds. */
-export interface SelectedCredentialCreation {
-	sourceId: string;
-	name: string;
-	type: string;
-	/** Expression values and the plain values that decide which fields show. Never a secret. */
-	data?: SerializedCredentialData;
-	/** Whether `data` is everything that the credential holds. */
-	dataIsComplete?: boolean;
-	description?: string | null;
-}
-
 /**
- * What a selection does with a credential that no workflow requires. A selected credential gets
- * the name, the description, the expression values and the plain values that decide which fields
- * show. A package never carries a secret, and a merge keeps the stored ones. A write stays inside
- * the owner project of the credential.
+ * What a selection does with a credential that no workflow requires. A selected credential of the
+ * project gets the name, the description, the expression values and the plain values that decide
+ * which fields show. A package never carries a secret, and a merge keeps the stored ones. The
+ * import never creates a selected credential.
  */
 export interface SelectedCredentialPlan {
-	/** Credentials the destination lacks. Each is created in the project with the package payload. */
-	creations: SelectedCredentialCreation[];
+	/**
+	 * Source ids of credentials that the destination lacks. Each one blocks the import as a missing
+	 * credential, which the user creates from the bindings screen.
+	 */
+	missing: string[];
 	/**
 	 * Credentials of the project that the package changes. The stored type stays, and the package
 	 * payload merges into the stored values.

@@ -71,7 +71,8 @@ export function plannedChanges(plan: PackageImportPlan): Map<string, PlannedChan
 			});
 		}
 		const { selected } = scope.credentialPlan;
-		for (const { sourceId } of selected.creations) {
+		// The user creates it from the bindings screen, and the next Apply sees it as unchanged.
+		for (const sourceId of selected.missing) {
 			changes.set(resourceKey('credential', sourceId), { change: 'added' });
 		}
 		for (const { sourceId, name, targetName } of selected.updates) {
@@ -523,6 +524,28 @@ function addCredentialRules(
 			credentialType: expectedTypes[0],
 			consumers,
 			ownerProject: projectOf(projectId),
+			...(file.credential.data !== undefined ? { expressionData: file.credential.data } : {}),
+		});
+	}
+
+	// A selected credential that no workflow uses has no consumer. The user creates it from the
+	// bindings screen in the project that owns its file, which the selection bounds to this project.
+	const selectedMissing = new Set(
+		plan.scopes.flatMap(({ plan: scope }) => scope.credentialPlan.selected.missing),
+	);
+	for (const [sourceId, issues] of issuesById) {
+		const file = files.get(sourceId);
+		if (!selectedMissing.has(sourceId) || missing.has(sourceId) || !file?.projectId) continue;
+		const own = issues.filter(({ usedBy }) => usedBy.length === 0);
+		if (own.length === 0) continue;
+		for (const issue of own) handled.add(issue);
+		result.missingBindings.push({
+			kind: 'credential',
+			sourceId,
+			name: file.credential.name,
+			credentialType: file.credential.type,
+			consumers: [],
+			ownerProject: projectOf(file.projectId),
 			...(file.credential.data !== undefined ? { expressionData: file.credential.data } : {}),
 		});
 	}

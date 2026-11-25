@@ -93,7 +93,7 @@ describe('CredentialImporter', () => {
 		candidates: [],
 		updates: [],
 		forbidden: [],
-		selected: { creations: [], updates: [], ownedElsewhere: [], unchanged: [] },
+		selected: { missing: [], updates: [], ownedElsewhere: [], unchanged: [] },
 	});
 
 	const packageCredential = (
@@ -755,7 +755,7 @@ describe('CredentialImporter', () => {
 			candidates: updates,
 			updates,
 			forbidden: [],
-			selected: { creations: [], updates: [], ownedElsewhere: [], unchanged: [] },
+			selected: { missing: [], updates: [], ownedElsewhere: [], unchanged: [] },
 		});
 
 		const stored = (overrides: Partial<CredentialsEntity> = {}) =>
@@ -1170,81 +1170,32 @@ describe('CredentialImporter', () => {
 			credentialsService.decryptOrFail.mockResolvedValue({ apiKey: 'stored-secret' });
 		});
 
-		it('plans a missing credential as a creation that carries the package payload', async () => {
+		it('plans a missing credential as missing, for the bindings screen', async () => {
 			credentialsFinder.findById.mockResolvedValue(null);
 
 			const { selected } = await importer.plan(
 				context,
-				selectedRequest({
-					data: { apiKey: EXPRESSION },
-					dataIsComplete: true,
-					description: 'Payments',
-				}),
+				selectedRequest({ data: { apiKey: EXPRESSION }, description: 'Payments' }),
 			);
 
 			expect(selected).toEqual({
-				creations: [
-					{
-						sourceId: 'cred-sel',
-						name: 'Stripe',
-						type: 'stripeApi',
-						data: { apiKey: EXPRESSION },
-						dataIsComplete: true,
-						description: 'Payments',
-					},
-				],
+				missing: ['cred-sel'],
 				updates: [],
 				ownedElsewhere: [],
 				unchanged: [],
 			});
 		});
 
-		it('creates a credential without package values as a stub', async () => {
-			credentialsFinder.findById.mockResolvedValue(null);
-			credentialsService.createStubCredential.mockResolvedValue(mock<CredentialsEntity>());
-			const plan = await importer.plan(context, selectedRequest());
-
-			const written = await importer.applySelected(context, plan);
-
-			expect(written).toEqual({ stubbed: ['cred-sel'], seeded: [], incomplete: [], updated: [] });
-			expect(credentialsService.createStubCredential).toHaveBeenCalledWith(
-				{ id: 'cred-sel', name: 'Stripe', type: 'stripeApi', projectId: targetProject.id },
-				user,
-			);
-		});
-
-		it.each([
-			[true, 'seeded'],
-			[false, 'incomplete'],
-		] as const)(
-			'seeds a created credential from the package, complete: %s',
-			async (complete, list) => {
-				credentialsFinder.findById.mockResolvedValue(null);
-				credentialsService.createStubCredential.mockResolvedValue(mock<CredentialsEntity>());
-				const plan = await importer.plan(
-					context,
-					selectedRequest({ data: { apiKey: EXPRESSION }, dataIsComplete: complete }),
-				);
-
-				const written = await importer.applySelected(context, plan);
-
-				expect(written[list]).toEqual(['cred-sel']);
-				expect(credentialsService.createStubCredential).toHaveBeenCalledWith(
-					expect.objectContaining({ data: { apiKey: EXPRESSION } }),
-					user,
-				);
-			},
-		);
-
-		it('checks the seeded values of a creation before any write', async () => {
+		it('never creates a missing credential', async () => {
 			credentialsFinder.findById.mockResolvedValue(null);
 			const request = selectedRequest({ data: { apiKey: EXPRESSION } });
 			const plan = await importer.plan(context, request);
-			credentialsService.validateStubCredentialData.mockRejectedValue(new ForbiddenError('No'));
 
-			await expect(importer.assertCanCreate(context, request, plan, false)).rejects.toThrow(
-				ForbiddenError,
-			);
+			await importer.assertCanCreate(context, request, plan, false);
+			const written = await importer.applySelected(context, plan);
+
+			expect(written).toEqual([]);
+			expect(credentialsService.assertCanCreateInProject).not.toHaveBeenCalled();
 			expect(credentialsService.createStubCredential).not.toHaveBeenCalled();
 		});
 
@@ -1254,7 +1205,7 @@ describe('CredentialImporter', () => {
 			const { selected } = await importer.plan(context, selectedRequest());
 
 			expect(selected.unchanged).toEqual([{ id: 'cred-sel', name: 'Stripe' }]);
-			expect(selected.creations).toEqual([]);
+			expect(selected.missing).toEqual([]);
 			expect(selected.updates).toEqual([]);
 		});
 
@@ -1290,7 +1241,7 @@ describe('CredentialImporter', () => {
 
 			const { selected } = await importer.plan(context, selectedRequest());
 
-			expect(selected).toMatchObject({ updates: [], creations: [] });
+			expect(selected).toMatchObject({ updates: [], missing: [] });
 			expect(selected.unchanged).toEqual([{ id: 'cred-sel', name: 'Stripe' }]);
 		});
 
@@ -1323,7 +1274,7 @@ describe('CredentialImporter', () => {
 			const { selected } = await importer.plan(context, selectedRequest());
 
 			expect(selected).toEqual({
-				creations: [],
+				missing: [],
 				updates: [],
 				ownedElsewhere: [{ id: 'cred-sel', name: 'Old name' }],
 				unchanged: [],

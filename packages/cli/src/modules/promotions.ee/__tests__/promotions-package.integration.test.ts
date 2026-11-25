@@ -2467,6 +2467,41 @@ describe('Check of the Apply preview', () => {
 		});
 	});
 
+	it('blocks a selected credential that this instance lacks, as a binding without consumers', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.promote.id, owner);
+		const { project } = await setupProjectWithWorkflows('Platform', []);
+		const credential = await saveCredential(
+			{ name: 'CRM key', type: 'httpHeaderAuth', data: { name: '={{ $vars.HEADER }}' } },
+			{ project, role: 'credential:owner' },
+		);
+		await service.promoteProjectSelection(project.id, owner, {
+			credentialIds: [credential.id],
+			commitMessage: 'Promote credential',
+		});
+		await service.clone(environments.apply.id, owner);
+		await Container.get(CredentialsRepository).delete(credential.id);
+
+		const result = await service.applyProjectSelection(project.id, owner, {
+			credentialIds: [credential.id],
+		});
+
+		assert(result.status === 'blocked');
+		expect(result.check.missingBindings).toEqual([
+			expect.objectContaining({
+				kind: 'credential',
+				sourceId: credential.id,
+				name: 'CRM key',
+				credentialType: 'httpHeaderAuth',
+				consumers: [],
+				ownerProject: { id: project.id, name: 'Platform' },
+			}),
+		]);
+		expect(result.check.conflicts).toEqual([]);
+		expect(await Container.get(CredentialsRepository).findOneBy({ id: credential.id })).toBeNull();
+	});
+
 	it('reports a workflow that moved to another project, next to the blockers of other workflows', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);

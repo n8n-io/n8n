@@ -245,12 +245,7 @@ export class ImportOrchestrator {
 			options.apiKeyScopes,
 			plans.map((plan) => plan.removalPlan),
 		);
-		if (
-			plans.some(
-				({ credentialPlan }) =>
-					credentialPlan.stubIds.size > 0 || credentialPlan.selected.creations.length > 0,
-			)
-		) {
+		if (plans.some(({ credentialPlan }) => credentialPlan.stubIds.size > 0)) {
 			assertPackageImportApiKeyScopes(options.apiKeyScopes, ['credential:create']);
 		}
 		if (plans.length > 0) {
@@ -609,7 +604,7 @@ export class ImportOrchestrator {
 			credentialPlan,
 		);
 
-		const selected = await this.credentialImporter.applySelected(context, credentialPlan);
+		const selectedUpdated = await this.credentialImporter.applySelected(context, credentialPlan);
 
 		// After the workflow writes: a failed write then leaves the existing folders as they were.
 		// Before the removals, which plan with the folders in their new places.
@@ -634,22 +629,14 @@ export class ImportOrchestrator {
 			folderSummaries: toFolderSummaries(folderPlan),
 			bindings,
 			// A selected credential keeps its id, so it binds to itself. The counts and the telemetry
-			// read a created one as stubbed, seeded or incomplete, and a changed one as updated.
+			// read it as updated.
 			credentialResult: {
 				...credentialBindResult,
 				bindings: new Map([
 					...credentialBindResult.bindings,
-					...[
-						...selected.stubbed,
-						...selected.seeded,
-						...selected.incomplete,
-						...selected.updated,
-					].map((id): [string, string] => [id, id]),
+					...selectedUpdated.map((id): [string, string] => [id, id]),
 				]),
-				stubbed: [...credentialBindResult.stubbed, ...selected.stubbed],
-				seeded: [...credentialBindResult.seeded, ...selected.seeded],
-				incomplete: [...credentialBindResult.incomplete, ...selected.incomplete],
-				updated: [...credentialsUpdated, ...selected.updated],
+				updated: [...credentialsUpdated, ...selectedUpdated],
 			},
 			dataTablePlan,
 			variablePlan,
@@ -735,6 +722,19 @@ export class ImportOrchestrator {
 			...this.credentialImporter
 				.blockingFailures(credentialRequest, credentialPlan)
 				.map((failure) => toCredentialBlockingIssue(failure, credentialRequest)),
+			// The user creates a missing selected credential from the bindings screen, never the import.
+			// A credential that a workflow requires already blocks as that requirement.
+			...credentialPlan.selected.missing
+				.filter((sourceId) => !credentialRequest.requirements?.some(({ id }) => id === sourceId))
+				.map(
+					(sourceId): BlockingIssue => ({
+						type: 'credential-unresolved',
+						kind: 'not_found',
+						reason: 'not-on-instance',
+						sourceId,
+						usedBy: [],
+					}),
+				),
 			...this.variableImporter.blockingFailures(variableRequest, variablePlan).map(
 				(failure): BlockingIssue => ({
 					type: 'variable-unresolved',

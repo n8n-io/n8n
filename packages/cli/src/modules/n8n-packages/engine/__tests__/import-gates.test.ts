@@ -107,7 +107,7 @@ describe('workflow publication scopes', () => {
 	});
 });
 
-const noSelected = { creations: [], updates: [], ownedElsewhere: [], unchanged: [] };
+const noSelected = { missing: [], updates: [], ownedElsewhere: [], unchanged: [] };
 
 describe('assertCredentialUpdatesAllowed', () => {
 	const update: CredentialUpdateCandidate = {
