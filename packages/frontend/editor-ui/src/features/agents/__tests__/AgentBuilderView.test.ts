@@ -6200,10 +6200,10 @@ describe('AgentBuilderView — three-column shell', () => {
 		await flushPromises();
 
 		const confirmCall = openModalWithDataMock.mock.calls.find(
-			([payload]: [{ name: string }]) => payload.name === AGENT_CONFIRMATION_MODAL_KEY,
+			(call) => (call[0] as { name?: string } | undefined)?.name === AGENT_CONFIRMATION_MODAL_KEY,
 		);
 		expect(confirmCall).toBeDefined();
-		(confirmCall?.[0].data as { onConfirm: () => void }).onConfirm();
+		(confirmCall?.[0] as { data: { onConfirm: () => void } }).data.onConfirm();
 		await flushPromises();
 
 		expect(deleteAgentMock).toHaveBeenCalledWith(rootStoreMock.restApiContext, 'p1', 'a1');
@@ -6229,20 +6229,23 @@ describe('AgentBuilderView — three-column shell', () => {
 		await flushPromises();
 
 		const confirmCall = openModalWithDataMock.mock.calls.find(
-			([payload]: [{ name: string }]) => payload.name === AGENT_CONFIRMATION_MODAL_KEY,
+			(call) => (call[0] as { name?: string } | undefined)?.name === AGENT_CONFIRMATION_MODAL_KEY,
 		);
 		expect(confirmCall).toBeDefined();
-		(confirmCall?.[0].data as { onConfirm: () => void }).onConfirm();
+		(confirmCall?.[0] as { data: { onConfirm: () => void } }).data.onConfirm();
 		await flushPromises();
 
 		expect(deleteAgentMock).toHaveBeenCalledWith(rootStoreMock.restApiContext, 'p1', 'a1');
 		expect(showErrorMock).toHaveBeenCalledTimes(1);
 		const [actualError, actualTitle] = showErrorMock.mock.calls[0];
 		expect(actualError).toBe(deleteError);
-		expect(actualTitle).toMatch(/^localized:.+/);
+		expect(actualTitle).toBe('localized:agents.builder.deleteError');
 		const i18nKey = String(actualTitle).slice('localized:'.length);
 		const actualI18nModule = await vi.importActual<typeof import('@n8n/i18n')>('@n8n/i18n');
 		expect(actualI18nModule.i18n.exists(i18nKey)).toBe(true);
+		expect(actualI18nModule.i18n.baseText('agents.builder.deleteError')).toBe(
+			'Could not delete agent',
+		);
 		expect(routerReplace).not.toHaveBeenCalled();
 		expect(favoritesStoreMock.removeFavoriteLocally).not.toHaveBeenCalled();
 	});
