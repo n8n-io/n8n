@@ -21,6 +21,9 @@ const api = vi.hoisted(() => ({
 }));
 vi.mock('../mcp-servers.api', () => api);
 
+const copy = vi.hoisted(() => vi.fn());
+vi.mock('@n8n/composables/useClipboard', () => ({ useClipboard: () => ({ copy }) }));
+
 const route = vi.hoisted(() => ({
 	name: 'McpServerView',
 	params: { projectId: 'project-1', serverId: '0190a8d6-4a2e-7000-8000-000000000001' },
@@ -306,13 +309,30 @@ describe('McpServerView', () => {
 			await waitFor(() => expect(push).toHaveBeenCalledWith({ name: MCP_SERVERS_LIST_VIEW }));
 		});
 
+		it('copies the link of the share page from the menu', async () => {
+			await renderPage(VIEWER);
+
+			await openMenuItem('Copy share link');
+
+			expect(copy).toHaveBeenCalledWith('http://localhost:5678/mcp-share/sales-tools');
+		});
+
+		it('copies the server URL from the menu', async () => {
+			await renderPage(VIEWER);
+
+			await openMenuItem('Copy server URL');
+
+			expect(copy).toHaveBeenCalledWith('http://localhost:5678/mcp-servers/sales-tools');
+		});
+
 		it('gives a project viewer no rename, no delete, and no description edit', async () => {
 			await renderPage(VIEWER);
 
 			await fireEvent.dblClick(screen.getByTestId('mcp-server-name'));
 			await userEvent.click(screen.getByTestId('mcp-server-menu').querySelector('button')!);
 
-			expect(await screen.findByText('Copy URL')).toBeInTheDocument();
+			expect(await screen.findByText('Copy share link')).toBeInTheDocument();
+			expect(screen.getByText('Copy server URL')).toBeInTheDocument();
 			expect(screen.queryByText('Rename')).not.toBeInTheDocument();
 			expect(screen.queryByText('Delete')).not.toBeInTheDocument();
 			expect(screen.queryByTestId('rename-mcp-server-dialog')).not.toBeInTheDocument();

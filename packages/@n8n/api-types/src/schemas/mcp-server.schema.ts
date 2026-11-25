@@ -125,6 +125,35 @@ export const mcpServerSchema = z.object({
 });
 export type McpServerResponse = z.infer<typeof mcpServerSchema>;
 
+/**
+ * The share page of a server, for anyone with the link. `projectName` names who can connect: the
+ * team project, or the owner of a personal project. It is `null` for an owner with no name.
+ */
+export const mcpServerSharePublicSchema = z.object({
+	id: z.string().uuid(),
+	slug: mcpServerSlugSchema,
+	name: z.string(),
+	serverUrl: z.string(),
+	projectName: z.string().nullable(),
+	projectType: projectTypeSchema,
+	canConnect: z.literal(false),
+});
+export type McpServerSharePublic = z.infer<typeof mcpServerSharePublicSchema>;
+
+/** The share page for a signed-in person who can connect. Broken tools are not in the list. */
+export const mcpServerShareDetailSchema = mcpServerSharePublicSchema.extend({
+	canConnect: z.literal(true),
+	description: z.string(),
+	tools: z.array(z.object({ toolName: z.string(), description: z.string() })),
+});
+export type McpServerShareDetail = z.infer<typeof mcpServerShareDetailSchema>;
+
+export const mcpServerShareSchema = z.discriminatedUnion('canConnect', [
+	mcpServerSharePublicSchema,
+	mcpServerShareDetailSchema,
+]);
+export type McpServerShare = z.infer<typeof mcpServerShareSchema>;
+
 /** `reserved`: a deleted server used the slug. Its URL never points to another server. */
 export const mcpServerSlugAvailabilitySchema = z.object({
 	available: z.boolean(),

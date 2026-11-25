@@ -2,6 +2,8 @@ import type {
 	CreateMcpServerDto,
 	McpServerDetailResponse,
 	McpServerResponse,
+	McpServerShare,
+	McpServerSharePublic,
 	McpServerSlugAvailability,
 	McpServerToolCandidate,
 	McpServerToolDraftField,
@@ -136,4 +138,20 @@ export async function draftTool(
 		`${serverPath(projectId, serverId)}/tools/${toolId}/draft`,
 		field ? { field } : {},
 	);
+}
+
+/** The share page for a signed-in person. The tools come only when the person can connect. */
+export async function getMcpServerShare(
+	context: IRestApiContext,
+	slug: string,
+): Promise<McpServerShare> {
+	return await makeRestApiRequest(context, 'GET', `/mcp-servers/share/${slug}`);
+}
+
+/** The share page with no sign-in. It never has the description or the tools. */
+export async function getMcpServerPublicShare(
+	context: IRestApiContext,
+	slug: string,
+): Promise<McpServerSharePublic> {
+	return await makeRestApiRequest(context, 'GET', `/mcp-servers/share/${slug}/public`);
 }

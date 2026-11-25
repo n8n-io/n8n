@@ -6,6 +6,7 @@ import { createMemoryHistory, createRouter, type RouteRecordRaw } from 'vue-rout
 
 import {
 	MCP_SERVER_CONNECTIONS_VIEW,
+	MCP_SERVER_SHARE_VIEW,
 	MCP_SERVER_VIEW,
 	MCP_SERVERS_LIST_VIEW,
 	PROJECT_MCP_SERVERS,
@@ -98,6 +99,14 @@ describe('McpServersModule', () => {
 	});
 
 	describe('routes', () => {
+		it('opens the share page with no sign-in, in the layout without the sidebar', () => {
+			const share = route(MCP_SERVER_SHARE_VIEW);
+
+			expect(share.path).toBe('/mcp-share/:slug');
+			expect(share.meta?.middleware).toBeUndefined();
+			expect(share.meta?.layout).toBe('auth');
+		});
+
 		it('opens the overview list for the variant test of the flag', async () => {
 			setUp();
 			const router = createTestRouter();

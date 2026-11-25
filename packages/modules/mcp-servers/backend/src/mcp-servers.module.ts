@@ -22,6 +22,7 @@ export class McpServersModule implements ModuleInterface {
 		await import('./mcp-servers.controller.js');
 		await import('./mcp-servers-list.controller.js');
 		await import('./mcp-server-tools.controller.js');
+		await import('./mcp-server-share.controller.js');
 		await import('./runtime/mcp-server-runtime.controller.js');
 		const { ProtectedResourceRegistry } = await import('@n8n/backend-services/auth');
 		const { McpServerProtectedResource } = await import(

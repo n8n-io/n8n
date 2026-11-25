@@ -6,6 +6,8 @@ import type { NavigationGuard } from 'vue-router';
 
 import {
 	MCP_SERVER_CONNECTIONS_VIEW,
+	MCP_SERVER_SHARE_PATH,
+	MCP_SERVER_SHARE_VIEW,
 	MCP_SERVER_VIEW,
 	MCP_SERVERS_LIST_VIEW,
 	PROJECT_MCP_SERVERS,
@@ -14,6 +16,7 @@ import { getMcpServerPermissions, isCustomMcpServersEnabled } from './mcp-server
 
 const McpServersListView = async () => await import('./views/McpServersListView.vue');
 const McpServerView = async () => await import('./views/McpServerView.vue');
+const McpServerShareView = async () => await import('./views/McpServerShareView.vue');
 
 const guardOverviewRoute: NavigationGuard = () =>
 	isCustomMcpServersEnabled() || { name: VIEWS.WORKFLOWS };
@@ -62,6 +65,14 @@ export const McpServersModule = defineFrontendModule({
 			component: McpServerView,
 			meta: { projectRoute: true, middleware: ['authenticated', 'custom'] },
 			beforeEnter: guardProjectRoute('canRead'),
+		},
+		{
+			// No middleware: anyone with the link opens the page. The backend answers 404 when the
+			// flag is off, so the page shows "not found" without a flag check here.
+			name: MCP_SERVER_SHARE_VIEW,
+			path: `${MCP_SERVER_SHARE_PATH}/:slug`,
+			component: McpServerShareView,
+			meta: { layout: 'auth' },
 		},
 	],
 	projectTabs: {

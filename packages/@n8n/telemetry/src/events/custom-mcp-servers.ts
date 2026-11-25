@@ -93,6 +93,30 @@ export const CUSTOM_MCP_SERVERS_TELEMETRY = defineTelemetryEvents({
 			...builderSource,
 		}),
 	},
+	USER_VIEWED_MCP_SERVER_SHARE_PAGE: {
+		name: 'User viewed MCP server share page',
+		description:
+			'A person opened the share page of a custom MCP server. Fires once per page load, also without a sign-in.',
+		properties: z.object({
+			server_id: serverId,
+			signed_in: z.boolean(),
+			can_connect: z
+				.boolean()
+				.describe('True when the person can connect, so the page shows the tools'),
+		}),
+	},
+	USER_CLICKED_CLIENT_ON_MCP_SERVER_SHARE_PAGE: {
+		name: 'User clicked client on MCP server share page',
+		description:
+			'A person used a client button on the share page of a custom MCP server. With "Custom MCP server tool called", it shows the path from the click to the first call.',
+		properties: z.object({
+			server_id: serverId,
+			client: z.string().describe('Client id from the share page, e.g. "claude-ai" or "cursor"'),
+			method: z
+				.enum(['deep_link', 'copy_command', 'copy_url', 'copy_config'])
+				.describe('What the person did: open a link, or copy a command, the URL, or a config'),
+		}),
+	},
 	USER_DELETED_CUSTOM_MCP_SERVER: {
 		name: 'User deleted custom MCP server',
 		description: 'A builder deleted a custom MCP server.',

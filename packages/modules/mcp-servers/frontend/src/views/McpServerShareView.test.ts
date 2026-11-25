@@ -1,0 +1,226 @@
+import type { McpServerShareDetail, McpServerSharePublic } from '@n8n/api-types';
+import { createComponentRenderer } from '@n8n/frontend-test-utils';
+import { ResponseError } from '@n8n/rest-api-client';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import userEvent from '@testing-library/user-event';
+import { screen, waitFor } from '@testing-library/vue';
+
+import McpServerShareView from './McpServerShareView.vue';
+
+const api = vi.hoisted(() => ({
+	getMcpServerShare: vi.fn(),
+	getMcpServerPublicShare: vi.fn(),
+}));
+vi.mock('../mcp-servers.api', () => api);
+
+const usersStore = vi.hoisted(() => ({ currentUser: null as { id: string } | null }));
+vi.mock('@n8n/stores/users.store', () => ({ useUsersStore: () => usersStore }));
+
+const track = vi.hoisted(() => vi.fn());
+vi.mock('@n8n/composables/useTelemetry', () => ({ useTelemetry: () => ({ track }) }));
+
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal()),
+	useRoute: () => ({ params: { slug: 'sales-tools' }, fullPath: '/mcp-share/sales-tools' }),
+	useRouter: () => ({
+		resolve: (to: { query?: { redirect?: string } }) => ({
+			href: `/signin?redirect=${to.query?.redirect ?? ''}`,
+		}),
+	}),
+}));
+
+const SERVER_URL = 'https://acme.n8n.cloud/mcp-servers/sales-tools';
+
+const publicShare: McpServerSharePublic = {
+	id: '0190a8d6-4a2e-7000-8000-000000000001',
+	slug: 'sales-tools',
+	name: 'Sales tools',
+	serverUrl: SERVER_URL,
+	projectName: 'Marketing',
+	projectType: 'team',
+	canConnect: false,
+};
+
+const detailShare: McpServerShareDetail = {
+	...publicShare,
+	canConnect: true,
+	description: 'Pipeline numbers for the sales team.',
+	tools: [{ toolName: 'get_pipeline_summary', description: 'Sums up the pipeline.' }],
+};
+
+const renderComponent = createComponentRenderer(McpServerShareView);
+
+async function renderPage() {
+	renderComponent();
+	await screen.findByTestId('mcp-share-name');
+}
+
+beforeEach(() => {
+	usersStore.currentUser = null;
+	api.getMcpServerShare.mockReset();
+	api.getMcpServerPublicShare.mockReset();
+	track.mockReset();
+});
+
+describe('McpServerShareView', () => {
+	describe('for a person who is not signed in', () => {
+		beforeEach(() => {
+			api.getMcpServerPublicShare.mockResolvedValue(publicShare);
+		});
+
+		it('shows the name, the URL, who can connect, and the client buttons, but no tools', async () => {
+			await renderPage();
+
+			expect(api.getMcpServerPublicShare).toHaveBeenCalledWith(expect.anything(), 'sales-tools');
+			expect(api.getMcpServerShare).not.toHaveBeenCalled();
+			expect(screen.getByTestId('mcp-share-name')).toHaveTextContent('Sales tools');
+			expect(screen.getByDisplayValue(SERVER_URL)).toBeInTheDocument();
+			expect(screen.getByTestId('mcp-share-who')).toHaveTextContent(
+				'Only members of the Marketing project can connect.',
+			);
+			expect(screen.getByTestId('mcp-share-who').querySelector('strong')).toHaveTextContent(
+				'Marketing',
+			);
+			expect(screen.getByTestId('mcp-share-add-claude-ai')).toBeInTheDocument();
+			expect(screen.queryByTestId('mcp-share-tools')).not.toBeInTheDocument();
+			expect(screen.queryByText('Pipeline numbers for the sales team.')).not.toBeInTheDocument();
+		});
+
+		it('offers a sign-in that comes back to the share page', async () => {
+			await renderPage();
+
+			expect(screen.getByTestId('mcp-share-sign-in')).toHaveAttribute(
+				'href',
+				`/signin?redirect=${encodeURIComponent('/mcp-share/sales-tools')}`,
+			);
+		});
+
+		it('records the page view', async () => {
+			await renderPage();
+
+			expect(track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_VIEWED_MCP_SERVER_SHARE_PAGE,
+				{
+					server_id: publicShare.id,
+					signed_in: false,
+					can_connect: false,
+				},
+			);
+		});
+	});
+
+	describe('for a signed-in person', () => {
+		beforeEach(() => {
+			usersStore.currentUser = { id: 'user-1' };
+		});
+
+		it('shows the description and the tools when the person can connect', async () => {
+			api.getMcpServerShare.mockResolvedValue(detailShare);
+
+			await renderPage();
+
+			expect(api.getMcpServerPublicShare).not.toHaveBeenCalled();
+			expect(screen.getByText('Pipeline numbers for the sales team.')).toBeInTheDocument();
+			expect(screen.getByTestId('mcp-share-tools')).toHaveTextContent('get_pipeline_summary');
+			expect(screen.queryByTestId('mcp-share-sign-in')).not.toBeInTheDocument();
+		});
+
+		it('shows the public page with no sign-in when the person cannot connect', async () => {
+			api.getMcpServerShare.mockResolvedValue(publicShare);
+
+			await renderPage();
+
+			expect(screen.getByTestId('mcp-share-who')).toBeInTheDocument();
+			expect(screen.queryByTestId('mcp-share-tools')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('mcp-share-sign-in')).not.toBeInTheDocument();
+		});
+	});
+
+	it('names the owner of a personal project', async () => {
+		api.getMcpServerPublicShare.mockResolvedValue({
+			...publicShare,
+			projectType: 'personal',
+			projectName: 'Maya Lind',
+		});
+
+		await renderPage();
+
+		expect(screen.getByTestId('mcp-share-who')).toHaveTextContent('Only Maya Lind can connect.');
+	});
+
+	it('shows "not found" for an unknown server', async () => {
+		api.getMcpServerPublicShare.mockRejectedValue(
+			new ResponseError('Not found', { httpStatusCode: 404 }),
+		);
+
+		renderComponent();
+
+		expect(await screen.findByTestId('mcp-share-not-found')).toBeInTheDocument();
+	});
+
+	describe('client buttons', () => {
+		beforeEach(() => {
+			api.getMcpServerPublicShare.mockResolvedValue(publicShare);
+		});
+
+		it('opens the Claude dialog with the name and the URL filled in, in a new tab', async () => {
+			await renderPage();
+
+			const link = screen.getByTestId('mcp-share-add-claude-ai');
+			const url = new URL(link.getAttribute('href')!);
+			expect(url.searchParams.get('modal')).toBe('add-custom-connector');
+			expect(url.searchParams.get('connectorName')).toBe('Sales tools');
+			expect(url.searchParams.get('connectorUrl')).toBe(SERVER_URL);
+			expect(link).toHaveAttribute('target', '_blank');
+		});
+
+		it('gives Cursor and VS Code their install links with the slug as the name', async () => {
+			await renderPage();
+
+			expect(screen.getByTestId('mcp-share-add-cursor').getAttribute('href')).toMatch(
+				/^cursor:\/\/anysphere\.cursor-deeplink\/mcp\/install\?name=sales-tools&/,
+			);
+			expect(screen.getByTestId('mcp-share-add-vscode').getAttribute('href')).toMatch(
+				/^vscode:mcp\/install\?/,
+			);
+		});
+
+		it('records a click on a one-click button', async () => {
+			await renderPage();
+			const link = screen.getByTestId('mcp-share-add-cursor');
+			// jsdom cannot open a `cursor://` link.
+			link.addEventListener('click', (event) => event.preventDefault());
+
+			await userEvent.click(link);
+
+			expect(track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_CLICKED_CLIENT_ON_MCP_SERVER_SHARE_PAGE,
+				{ server_id: publicShare.id, client: 'cursor', method: 'deep_link' },
+			);
+		});
+
+		it('shows a command to copy for Claude Code, Codex, and Gemini CLI', async () => {
+			await renderPage();
+
+			expect(
+				screen.getByDisplayValue(`claude mcp add --transport http sales-tools ${SERVER_URL}`),
+			).toBeInTheDocument();
+			expect(
+				screen.getByDisplayValue(`codex mcp add sales-tools --url "${SERVER_URL}"`),
+			).toBeInTheDocument();
+			expect(
+				screen.getByDisplayValue(`gemini mcp add --transport http sales-tools ${SERVER_URL}`),
+			).toBeInTheDocument();
+		});
+
+		it('gives the steps for ChatGPT', async () => {
+			await renderPage();
+
+			await waitFor(() =>
+				expect(screen.getByTestId('mcp-share-steps-chatgpt')).toHaveTextContent(
+					'Add custom MCP server',
+				),
+			);
+		});
+	});
+});

@@ -11,20 +11,23 @@ defineProps<{
 
 const emit = defineEmits<{
 	open: [];
+	copyShareLink: [];
 	copyUrl: [];
 }>();
 
 const i18n = useI18n();
 
-type CardAction = 'open' | 'copy-url';
+type CardAction = 'open' | 'copy-share-link' | 'copy-url';
 
 const actions = computed<Array<{ value: CardAction; label: string }>>(() => [
 	{ value: 'open', label: i18n.baseText('mcpServers.actions.open') },
+	{ value: 'copy-share-link', label: i18n.baseText('mcpServers.actions.copyShareLink') },
 	{ value: 'copy-url', label: i18n.baseText('mcpServers.actions.copyUrl') },
 ]);
 
 function onAction(action: CardAction) {
 	if (action === 'open') emit('open');
+	if (action === 'copy-share-link') emit('copyShareLink');
 	if (action === 'copy-url') emit('copyUrl');
 }
 </script>
