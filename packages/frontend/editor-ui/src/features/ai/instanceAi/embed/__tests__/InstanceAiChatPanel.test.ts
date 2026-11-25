@@ -1577,6 +1577,7 @@ describe('InstanceAiChatPanel', () => {
 			const prefill = {
 				text: 'Build out the server.',
 				prefillType: 'mcp_server_build_prompt' as const,
+				prefillId: 'build-prompt-1',
 			};
 
 			wrapper.vm.setPrefill(prefill);

@@ -364,7 +364,11 @@ function setPrefill(prefill: InstanceAiPrefillPayload) {
 		conversation.setPrefill(prefill);
 		return;
 	}
-	queuedPrefill.value = { text: prefill.text, prefillType: prefill.prefillType };
+	queuedPrefill.value = {
+		text: prefill.text,
+		prefillType: prefill.prefillType,
+		...(prefill.prefillId ? { prefillId: prefill.prefillId } : {}),
+	};
 	if (activeThreadId.value) flushQueuedPrefill(activeThreadId.value);
 }
 

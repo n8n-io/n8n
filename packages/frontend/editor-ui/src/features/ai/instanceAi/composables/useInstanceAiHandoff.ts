@@ -230,6 +230,8 @@ export function clearPendingHandoffContext(threadId: string): void {
 export interface PendingComposerDraft {
 	text: string;
 	prefillType: InstanceAiPrefillTypeReported;
+	/** The host's id for the pre-fill, which the message telemetry reports. */
+	prefillId?: string;
 }
 
 export function stashPendingComposerDraft(threadId: string, draft: PendingComposerDraft): void {
@@ -262,6 +264,7 @@ export function getPendingComposerDraft(threadId: string): PendingComposerDraft 
 			prefillType: isInstanceAiPrefillTypeReported(parsed.prefillType)
 				? parsed.prefillType
 				: INSTANCE_AI_PREFILL_TYPE_FALLBACK,
+			...(typeof parsed.prefillId === 'string' ? { prefillId: parsed.prefillId } : {}),
 		};
 	} catch {
 		return legacy;
