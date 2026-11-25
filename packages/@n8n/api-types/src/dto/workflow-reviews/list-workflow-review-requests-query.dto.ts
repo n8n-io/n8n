@@ -1,5 +1,6 @@
 import { n8nIdSchema } from '../../schemas/id.schema';
 import type { WorkflowReviewEligibleReviewer } from '../../workflow-review-eligible-reviewer';
+import type { WorkflowReviewRequirementLevel } from '../../workflow-reviews-policy';
 import {
 	type WorkflowReviewRequestSummary,
 	workflowReviewRequestStateSchema,
@@ -35,4 +36,9 @@ export interface WorkflowReviewRequestForWorkflow extends WorkflowReviewRequestS
 export interface WorkflowReviewRequestList {
 	count: number;
 	data: WorkflowReviewRequestForWorkflow[];
+	/**
+	 * The level that requires an approved review to publish a new version of the workflow in
+	 * the `workflowId` filter. Revisit when the list covers more than one workflow (LIGO-597).
+	 */
+	reviewRequiredBy: WorkflowReviewRequirementLevel | null;
 }

@@ -67,6 +67,7 @@ export { InstanceCredentialAssignmentRepository } from './instance-credential-as
 export { AgentExecutionStatisticsRepository } from './agent-execution-statistics.repository';
 export { LicenseMetricsRepository } from './license-metrics.repository';
 export { ProjectPoolSettingsRepository } from './project-pool-settings.repository.ee';
+export { ProjectWorkflowReviewSettingsRepository } from './project-workflow-review-settings.repository.ee';
 export { ProjectRelationRepository } from './project-relation.repository';
 export {
 	ProjectRepository,

@@ -11,6 +11,7 @@ import { projectHolding } from './branch-placement';
 import { PACKAGE_SUBFOLDER } from './constants';
 import { toInstanceProject, type InstanceProject } from './cross-project-moves';
 import { exportInstancePackage } from './instance-package';
+import { PromotionCredentialSelectionService } from './promotion-credential-selection.service';
 import {
 	blobsByPath,
 	buildPreview,
@@ -33,6 +34,7 @@ export class PromotePreviewService {
 		private readonly packagesService: N8nPackagesService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly reviewGate: PromotionReviewGateService,
+		private readonly credentialSelection: PromotionCredentialSelectionService,
 	) {}
 
 	/** `readBranch` is a callback, so a project with an open review skips the git and export work. */
@@ -67,8 +69,16 @@ export class PromotePreviewService {
 				revision: previewRevision({ source, createBranchOnPromotion, resources: [], blocker }),
 			};
 		}
-		const branch = await readBranch();
-		const instance = await exportInstancePackage(this.packagesService, user, [projectId]);
+		const [branch, selectableCredentialIds] = await Promise.all([
+			readBranch(),
+			this.credentialSelection.findSelectableIds(user, projectId),
+		]);
+		// The project's own credentials are listed even when no workflow uses them, so the user can
+		// select them.
+		const visibleCredentialIds = new Set(selectableCredentialIds);
+		const instance = await exportInstancePackage(this.packagesService, user, [projectId], {
+			credentialIds: selectableCredentialIds,
+		});
 		// Promote compares with the branch manifest to see renames and moves. The manifest can list
 		// other projects while this project has no files on the branch yet, and the move markers
 		// still need it.
@@ -83,8 +93,15 @@ export class PromotePreviewService {
 						? scopeManifestToProject(promoteBase, projectId)
 						: null,
 				blobByPath: blobsByPath(branch.files),
+				ownedCredentials: true,
+				visibleCredentialIds,
 			},
-			desired: { manifest: instance.manifest, blobByPath: blobsByPath(instance.files) },
+			desired: {
+				manifest: instance.manifest,
+				blobByPath: blobsByPath(instance.files),
+				ownedCredentials: true,
+				visibleCredentialIds,
+			},
 		});
 		const resources = promoteBase
 			? await this.markCrossProjectMoves(projectId, compared, promoteBase)

@@ -212,7 +212,7 @@ describe('SecuritySettings', () => {
 		expect(
 			getByText('Require two-factor authentication for users who sign in with email and password.'),
 		).toBeInTheDocument();
-		expect(getByText('Manage reviews before publishing workflows.')).toBeInTheDocument();
+		expect(queryByText('Manage reviews before publishing workflows.')).not.toBeInTheDocument();
 		expect(
 			getByText(
 				'Allow users to request approval before publishing. An open review blocks publishing.',
@@ -1010,7 +1010,7 @@ describe('SecuritySettings', () => {
 				expect(getByTestId('security-workflow-reviews-toggle')).toBeInTheDocument();
 			});
 
-			expect(getByTestId('settings-enable-row-preview-badge')).toHaveTextContent('Preview');
+			expect(getByTestId('security-workflow-reviews-preview-badge')).toHaveTextContent('Preview');
 		});
 
 		it('should persist workflow reviews toggle changes', async () => {
@@ -1087,6 +1087,9 @@ describe('SecuritySettings', () => {
 					enabled: true,
 					alwaysRequired: true,
 				});
+				expect(showToast).toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'success', title: 'Approval setting updated' }),
+				);
 			});
 		});
 
@@ -1119,11 +1122,11 @@ describe('SecuritySettings', () => {
 			);
 		});
 
-		it('should disable workflow reviews toggle when managed by env', async () => {
+		it('should disable workflow reviews controls when managed by env', async () => {
 			getSecuritySettings.mockResolvedValue({
 				...defaultSettings,
 				managedByEnv: true,
-				workflowReviews: { enabled: true },
+				workflowReviews: { enabled: true, alwaysRequired: true },
 			});
 
 			const { getByTestId } = renderView();
@@ -1133,6 +1136,9 @@ describe('SecuritySettings', () => {
 			});
 
 			expect(getByTestId('security-workflow-reviews-toggle')).toHaveAttribute('data-disabled');
+			expect(getByTestId('security-workflow-reviews-require-approval-select')).toHaveAttribute(
+				'data-disabled',
+			);
 		});
 
 		it('should show alert dialog and proceed when confirming disable workflow reviews', async () => {
@@ -1155,6 +1161,11 @@ describe('SecuritySettings', () => {
 			await waitFor(() => {
 				expect(getByRole('dialog')).toBeInTheDocument();
 			});
+
+			expect(getByRole('dialog')).toHaveTextContent('Disable publish reviews');
+			expect(getByRole('dialog')).toHaveTextContent(
+				'Publish reviews will no longer be available on this instance. Existing project-level review settings will no longer apply.',
+			);
 
 			await userEvent.click(getByRole('button', { name: 'Confirm' }));
 
