@@ -73,7 +73,11 @@ export const POLICIES_TELEMETRY = defineTelemetryEvents({
 			violation_kind: z
 				.string()
 				.describe("The kind of the clicked violation, e.g. 'node-type-unavailable'"),
-			violation_count: z.number().describe('How many violations the toast listed'),
+			violation_count: z
+				.number()
+				.describe(
+					'How many violations the refused response carried, before the toast removed duplicates',
+				),
 		}),
 	},
 });
