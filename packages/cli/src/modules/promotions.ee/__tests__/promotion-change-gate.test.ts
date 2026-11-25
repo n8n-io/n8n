@@ -1,3 +1,4 @@
+import type { PromotionPreferenceService } from '../promotion-preference.service';
 import type { Role, Scope as DbScope, SharedWorkflowRepository, User } from '@n8n/db';
 import { ForbiddenError } from '@n8n/errors';
 import type { Scope } from '@n8n/permissions';
@@ -53,11 +54,13 @@ describe('PromotionChangeService.getPreview review gate', () => {
 			mock<SharedWorkflowRepository>(),
 			reviewGate,
 			mock<PromotionCredentialSelectionService>(),
+			mock<PromotionPreferenceService>({ exportOptions: vi.fn().mockResolvedValue({}) }),
 		),
 		mock<LocalPackageEntities>(),
 		environmentResolver,
 		mock(),
 		mock<PromotionCredentialSelectionService>(),
+		mock<PromotionPreferenceService>({ exportOptions: vi.fn().mockResolvedValue({}) }),
 	);
 
 	beforeEach(() => {

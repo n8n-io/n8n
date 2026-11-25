@@ -951,4 +951,74 @@ oneOf:
       - before
       - after
       - revision
+  - type: object
+    properties:
+      key:
+        type: string
+      type:
+        type: string
+        enum:
+          - preference
+      before:
+        type: object
+        nullable: true
+        properties:
+          id:
+            type: string
+            format: uuid
+          scope:
+            type: string
+            enum:
+              - project
+              - instance
+          content:
+            type: string
+            minLength: 1
+            maxLength: 2000
+            description: One instruction, written as the user would say it. At most 2000 characters. A scope that already holds 50 preferences refuses a new one, so edit or delete one first.
+        required:
+          - id
+          - scope
+          - content
+        additionalProperties: false
+      after:
+        type: object
+        nullable: true
+        properties:
+          id:
+            type: string
+            format: uuid
+          scope:
+            type: string
+            enum:
+              - project
+              - instance
+          content:
+            type: string
+            minLength: 1
+            maxLength: 2000
+            description: One instruction, written as the user would say it. At most 2000 characters. A scope that already holds 50 preferences refuses a new one, so edit or delete one first.
+        required:
+          - id
+          - scope
+          - content
+        additionalProperties: false
+      revision:
+        type: object
+        properties:
+          before:
+            type: string
+            nullable: true
+          after:
+            type: string
+            nullable: true
+        required:
+          - before
+          - after
+    required:
+      - key
+      - type
+      - before
+      - after
+      - revision
 type: object

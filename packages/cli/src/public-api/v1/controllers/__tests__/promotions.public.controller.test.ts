@@ -19,10 +19,13 @@ import { mock } from 'vitest-mock-extended';
 import { BadRequestError } from '@n8n/errors';
 import { PromotionEnvironmentsService } from '@/modules/promotions.ee/promotion-environments.service';
 import { PromotionProvidersService } from '@/modules/promotions.ee/promotion-providers.service';
+import { PromotionChangeService } from '@/modules/promotions.ee/promotion-change.service';
 import { PromotionsService } from '@/modules/promotions.ee/promotions.service';
 import type { PublicApiRequest } from '@/public-api/public-api-client';
 
 import { PromotionsPublicController } from '../promotions.public.controller';
+
+const promotionsService = mockInstance(PromotionsService);
 
 describe('Promotion discovery cursor validation', () => {
 	const moduleRegistry = mock<ModuleRegistry>();
@@ -66,7 +69,6 @@ describe('Promotion operation context', () => {
 	const moduleRegistry = mock<ModuleRegistry>();
 	const providersService = mockInstance(PromotionProvidersService);
 	const environmentsService = mockInstance(PromotionEnvironmentsService);
-	const promotionsService = mockInstance(PromotionsService);
 	const controller = new PromotionsPublicController(moduleRegistry);
 	const response = mock<Response>();
 	const ctx: OperationContext = { security: mock<SecurityContext>({ subIdentityId: 'login-1' }) };
@@ -186,5 +188,65 @@ describe('Promotion operation context', () => {
 		await callRoute(route, undefined);
 
 		expect(route.ctxPassed()).toBeUndefined();
+	});
+});
+
+describe('Preference API-key grants', () => {
+	const moduleRegistry = mock<ModuleRegistry>();
+	const changes = mockInstance(PromotionChangeService);
+	const promotions = promotionsService;
+	const controller = new PromotionsPublicController(moduleRegistry);
+	const response = mock<Response>();
+	beforeEach(() => {
+		moduleRegistry.isActive.mockReturnValue(true);
+	});
+	it('passes the authenticated grants separately from the request body', async () => {
+		const request = mock<PublicApiRequest>({
+			tokenGrant: {
+				apiKeyScopes: [
+					'promotions:apply',
+					'aiPreference:read',
+					'aiPreference:list',
+					'aiPreference:update',
+				],
+			},
+		});
+		const input = { preferenceIds: ['542ad76e-a25c-4f18-8d62-805f6348b428'] };
+		await controller.applyProjectSelection(request, response, 'project-1', input);
+		expect(promotions.applyProjectSelection).toHaveBeenLastCalledWith(
+			'project-1',
+			request.user,
+			{ ...input, preferenceApiKeyScopes: request.tokenGrant?.apiKeyScopes },
+			request.publicApiClient,
+			request.ctx,
+		);
+	});
+	it.each([{ scopes: [] }, { scopes: ['aiPreference:read'] }, { scopes: ['aiPreference:list'] }])(
+		'refuses Preference details with incomplete read grants %j',
+		async ({ scopes }) => {
+			changes.getInstanceApplyDetails.mockResolvedValue({
+				details: [{ type: 'preference' }],
+			} as never);
+			const request = mock<AuthenticatedRequest>({ tokenGrant: { apiKeyScopes: scopes } });
+			await expect(
+				controller.getInstanceApplyChangeDetails(request, response, 'env-1', {
+					commitSha: 'a'.repeat(40),
+					keys: ['preference:p1'],
+				}),
+			).rejects.toThrow('aiPreference:read and aiPreference:list');
+		},
+	);
+	it('returns Preference details with both read grants', async () => {
+		const result = { details: [{ type: 'preference' }], missingKeys: [] } as never;
+		changes.getInstanceApplyDetails.mockResolvedValue(result);
+		const request = mock<AuthenticatedRequest>({
+			tokenGrant: { apiKeyScopes: ['aiPreference:read', 'aiPreference:list'] },
+		});
+		await expect(
+			controller.getInstanceApplyChangeDetails(request, response, 'env-1', {
+				commitSha: 'a'.repeat(40),
+				keys: ['preference:p1'],
+			}),
+		).resolves.toBe(result);
 	});
 });

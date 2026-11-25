@@ -1,6 +1,7 @@
+import type { PromotionPreferenceService } from '../promotion-preference.service';
 import type { PromotionApplyCheck } from '@n8n/api-types';
 import { LockService, type Logger } from '@n8n/backend-common';
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, Publisher } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import { Person } from '@n8n/db';
 import type {
@@ -41,7 +42,6 @@ import {
 	ExportVersionPolicy,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
-import type { Publisher } from '@n8n/backend-services';
 import type { FolderService } from '@/services/folder.service';
 import type { ProjectService } from '@/services/project.service.ee';
 
@@ -215,6 +215,7 @@ describe('PromotionsService', () => {
 			folderService,
 			mock(),
 			globalConfig,
+			mock<PromotionPreferenceService>({ exportOptions: vi.fn().mockResolvedValue({}) }),
 		);
 		service = new PromotionsService(
 			resolver,
@@ -248,6 +249,7 @@ describe('PromotionsService', () => {
 			reviewsService,
 			eventService,
 			logger,
+			mock<PromotionPreferenceService>({ exportOptions: vi.fn().mockResolvedValue({}) }),
 		);
 		runRepository.insertRun.mockResolvedValue(mock<PromotionRun>({ id: 'run-1' }));
 		reviewsService.openMergeRequest.mockResolvedValue({ warnings: [] });
@@ -1893,7 +1895,7 @@ describe('PromotionsService', () => {
 			});
 
 			const snapshot = JSON.parse(await readExported('manifest.json')) as {
-				workflows: Array<{ id: string }>;
+				workflows: { id: string }[];
 			};
 			expect(snapshot.workflows.map((w) => w.id).sort()).toEqual(['w1', 'w2']);
 		});
@@ -2212,6 +2214,8 @@ describe('PromotionsService', () => {
 				projectId: 'p1',
 				selectedWorkflowCount: 1,
 				selectedFolderCount: 0,
+				selectedPreferenceCount: 0,
+				requestedResourceTypes: ['workflow'],
 				outcome: 'preview_changed',
 				durationMs: expect.any(Number),
 			});
@@ -2383,6 +2387,7 @@ describe('PromotionsService', () => {
 						'n8n/data-tables/',
 						'n8n/variables/',
 						'n8n/tags/',
+						'n8n/preferences/',
 						'n8n/manifest.json',
 					],
 				}),
@@ -2716,7 +2721,7 @@ describe('PromotionsService', () => {
 				mock<InventoryWorkflow>({ id: 'wa1', name: 'Invoices', projectId });
 			const inventoryWith = (
 				workflows: InventoryWorkflow[],
-				folders: Array<{ projectId: string; folder: { id: string; name: string } }> = [],
+				folders: { projectId: string; folder: { id: string; name: string } }[] = [],
 				projects = [alpha, beta],
 			) => ({
 				projects,
@@ -2817,6 +2822,8 @@ describe('PromotionsService', () => {
 					tagMissingMode: 'create',
 					tagConflictPolicy: 'rename',
 					layoutConflictPolicy: 'follow-package',
+					preferenceConflictPolicy: 'replace',
+					preferencesFromPromotion: true,
 					credentialPersonalRoute: 'exclude',
 					ctx: {},
 				},
@@ -3197,6 +3204,8 @@ describe('PromotionsService', () => {
 						credentialConflictPolicy: 'overwrite',
 						publishingPolicy: 'preserve-target-state',
 						layoutConflictPolicy: 'follow-package',
+						preferenceConflictPolicy: 'replace',
+						preferencesFromPromotion: true,
 						credentialPersonalRoute: 'exclude',
 						ctx: {},
 					},
@@ -3241,6 +3250,8 @@ describe('PromotionsService', () => {
 						environmentId: ENVIRONMENT_ID,
 						scope: 'project',
 						projectId: 'p1',
+						selectedPreferenceCount: 0,
+						requestedResourceTypes: ['workflow'],
 						outcome: 'preview_changed',
 						durationMs: expect.any(Number),
 					});

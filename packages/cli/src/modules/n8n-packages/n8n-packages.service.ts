@@ -403,7 +403,7 @@ export class N8nPackagesService {
 			nodeTypes: collectNodeTypeUsage(requirements.nodeTypes),
 		});
 
-		const preferencesIncluded = request.includePreferences || !!request.preferenceIds?.length;
+		const preferencesIncluded = request.includePreferences || request.preferenceIds !== undefined;
 		const preferenceEntries = await this.preferenceExporter.export(
 			request,
 			writer,
@@ -753,6 +753,8 @@ export class N8nPackagesService {
 			...(request.bindings !== undefined ? { bindings: request.bindings } : {}),
 			...CHERRY_PICK_IMPORT_POLICY,
 			preferenceConflictPolicy: request.preferenceConflictPolicy,
+			preferencesFromPromotion: request.preferencesFromPromotion,
+			preferenceApiKeyScopes: request.preferenceApiKeyScopes,
 			projectConflictPolicy: request.projectConflictPolicy ?? ProjectConflictPolicy.Merge,
 			overwriteDeletionPolicy: request.overwriteDeletionPolicy ?? OverwriteDeletionPolicy.Archive,
 			conflictPolicy: request.conflictPolicy ?? ImportConflictPolicy.NewVersion,

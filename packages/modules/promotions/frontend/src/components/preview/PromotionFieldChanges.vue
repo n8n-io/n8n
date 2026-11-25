@@ -31,9 +31,13 @@ const absentText = (side: DetailSide) =>
 			: 'promotions.preview.side.notOnInstance',
 	);
 
-// Exported expressions are JSON, so they show as a line diff.
-const columnChanges = computed(() => props.changes.filter((change) => change.field !== 'data'));
-const dataChange = computed(() => props.changes.find((change) => change.field === 'data'));
+// Expressions and instruction text show as line diffs.
+const columnChanges = computed(() =>
+	props.changes.filter((change) => change.field !== 'data' && change.field !== 'content'),
+);
+const dataChange = computed(() =>
+	props.changes.find((change) => change.field === 'data' || change.field === 'content'),
+);
 
 // A single name change needs no field label.
 const showFieldLabels = computed(
@@ -79,7 +83,7 @@ const sides = computed(() =>
 		</div>
 		<div v-if="dataChange" :class="$style.data" data-test-id="promotion-preview-data-diff">
 			<N8nText step="2xs" bold color="text-base">
-				{{ i18n.baseText('promotions.preview.field.data') }}
+				{{ i18n.baseText(`promotions.preview.field.${dataChange.field}`) }}
 			</N8nText>
 			<component
 				:is="CodeDiff"

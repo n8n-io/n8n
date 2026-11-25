@@ -710,3 +710,35 @@ describe('promotion-environment apply-selection-continue command', () => {
 		);
 	});
 });
+
+describe('Preference CLI selection', () => {
+	afterEach(() => vi.restoreAllMocks());
+	it('parses repeated Preference flags with the reviewed revision', async () => {
+		const command = new PromotionEnvironmentApplySelection(
+			[
+				'proj-1',
+				'--format=table',
+				'--preference=p1',
+				'--preference=p2',
+				'--expected-environment-id=env-1',
+				'--expected-branch=release',
+				`--expected-commit-sha=${SHA}`,
+				`--expected-preview-revision=${PREVIEW_REVISION}`,
+			],
+			await Config.load(process.cwd()),
+		);
+		const internals = command as unknown as ApplyInternals;
+		const applyProjectSelection = vi.fn().mockResolvedValue(APPLY_RESULT);
+		vi.spyOn(internals, 'getClient').mockReturnValue({
+			applyProjectSelection,
+		} as unknown as N8nClient);
+		vi.spyOn(internals, 'succeed').mockImplementation(() => {});
+		await command.run();
+		expect(applyProjectSelection).toHaveBeenCalledWith(
+			'proj-1',
+			expect.objectContaining({ preferenceIds: ['p1', 'p2'] }),
+			EXPECTED_SOURCE,
+			PREVIEW_REVISION,
+		);
+	});
+});

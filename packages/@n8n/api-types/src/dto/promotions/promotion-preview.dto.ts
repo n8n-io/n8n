@@ -20,6 +20,7 @@ import { serializedDataTableSchema } from '../packages/data-table.schema';
 import { serializedFolderSchema } from '../packages/folder.schema';
 import { serializedProjectSchema } from '../packages/project.schema';
 import { serializedTagSchema } from '../packages/tag.schema';
+import { serializedPreferenceSchema } from '../packages/preference.schema';
 import { serializedVariableSchema } from '../packages/variable.schema';
 import { serializedWorkflowSchema } from '../packages/workflow.schema';
 
@@ -31,6 +32,7 @@ export const promotionResourceTypeSchema = z.enum([
 	'dataTable',
 	'variable',
 	'tag',
+	'preference',
 ]);
 
 export type PromotionResourceType = z.infer<typeof promotionResourceTypeSchema>;
@@ -234,6 +236,7 @@ export const promotionResourceDetailSchema = z
 			valueHidden: z.boolean().optional(),
 		}),
 		resourceDetailSchema('tag', serializedTagSchema),
+		resourceDetailSchema('preference', serializedPreferenceSchema),
 	])
 	.openapi('PromotionResourceDetail');
 

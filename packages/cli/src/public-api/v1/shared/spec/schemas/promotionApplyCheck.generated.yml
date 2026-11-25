@@ -1199,6 +1199,24 @@ properties:
             kind:
               type: string
               enum:
+                - preference
+            code:
+              type: string
+              enum:
+                - preference-conflict
+            id:
+              type: string
+            message:
+              type: string
+          required:
+            - kind
+            - code
+            - message
+        - type: object
+          properties:
+            kind:
+              type: string
+              enum:
                 - project
             code:
               type: string

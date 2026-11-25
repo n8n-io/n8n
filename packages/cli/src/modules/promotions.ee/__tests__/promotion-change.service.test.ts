@@ -1,3 +1,4 @@
+import type { PromotionPreferenceService } from '../promotion-preference.service';
 import type { User } from '@n8n/db';
 import { ForbiddenError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
@@ -18,7 +19,7 @@ vi.mock('@/modules/n8n-packages/n8n-packages.service', () => ({
 }));
 vi.mock('@/services/folder.service', () => ({ FolderService: class {} }));
 
-const ids = (entries: Array<{ id: string }> | undefined) => entries?.map(({ id }) => id).sort();
+const ids = (entries: { id: string }[] | undefined) => entries?.map(({ id }) => id).sort();
 
 // The global entry comes last on purpose: a name-keyed map would keep it for every project.
 const manifest: PackageManifest = {
@@ -155,6 +156,7 @@ describe('PromotionChangeService preview permission', () => {
 		mock(),
 		mock(),
 		mock(),
+		mock<PromotionPreferenceService>({ exportOptions: vi.fn().mockResolvedValue({}) }),
 	);
 	// A setup scope does not grant the preview.
 	const reader = {

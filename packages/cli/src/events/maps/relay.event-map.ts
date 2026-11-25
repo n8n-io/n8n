@@ -820,7 +820,7 @@ export type RelayEventMap = ModuleEventMap & {
 		workflowVersionId?: string;
 		retryOf?: string;
 		workflowCustomTelemetryTags?: IWorkflowSettings['customTelemetryTags'];
-		project?: { id: string; customTelemetryTags: Array<{ key: string; value: string }> };
+		project?: { id: string; customTelemetryTags: { key: string; value: string }[] };
 	};
 
 	'execution-deleted': {
@@ -1186,14 +1186,14 @@ export type RelayEventMap = ModuleEventMap & {
 			expression: string | null;
 			isFallback: boolean;
 		};
-		projectRoles: Array<{
+		projectRoles: {
 			projectId: string;
 			role: string;
 			previousRole: string | null;
 			changed: boolean;
 			matchedRuleId: string;
 			expression: string;
-		}>;
+		}[];
 		removedProjectIds: string[];
 	};
 
@@ -1697,7 +1697,7 @@ export type RelayEventMap = ModuleEventMap & {
 		/** Git host providers only. The URL after the update. Set when the outcome is 'success'. */
 		hostBaseUrl?: string;
 		/** The fields the request sent, never their values. */
-		changedFields: Array<'name' | 'auth' | 'config'>;
+		changedFields: ('name' | 'auth' | 'config')[];
 		outcome: 'success' | 'failed';
 		failureKind?: PromotionFailureKind;
 		durationMs: number;
@@ -1729,7 +1729,7 @@ export type RelayEventMap = ModuleEventMap & {
 		direction: PromotionDirection;
 		environmentScope: PromotionEnvironmentScope;
 		/** The fields the request sent, never their values. */
-		changedFields: Array<'name' | 'remote' | 'provider' | 'settings'>;
+		changedFields: ('name' | 'remote' | 'provider' | 'settings')[];
 		/** Login of the service account that acted. Absent for people and outside a request. */
 		loginId?: string;
 	};
@@ -1762,11 +1762,14 @@ export type RelayEventMap = ModuleEventMap & {
 		environmentId: string;
 		scope: 'instance' | 'project';
 		projectId?: string;
+		selectedPreferenceCount?: number;
+		requestedResourceTypes?: ('workflow' | 'folder' | 'credential' | 'preference')[];
 		outcome: 'success' | 'success_with_warnings' | 'failed' | 'preview_changed';
 		failureKind?: PromotionFailureKind;
 		durationMs: number;
 		/** Set when the outcome is 'success' or 'success_with_warnings'. */
 		counts?: {
+			preferences?: number;
 			workflows: number;
 			folders: number;
 			credentials: number;
@@ -1787,11 +1790,14 @@ export type RelayEventMap = ModuleEventMap & {
 		environmentId: string;
 		scope: 'instance' | 'project';
 		projectId?: string;
+		selectedPreferenceCount?: number;
+		requestedResourceTypes?: ('workflow' | 'folder' | 'credential' | 'preference')[];
 		outcome: 'applied' | 'blocked' | 'source_changed' | 'preview_changed' | 'failed';
 		failureKind?: PromotionFailureKind;
 		durationMs: number;
 		/** Set when the outcome is 'applied'. */
 		workflowsChanged?: number;
+		preferencesChanged?: number;
 		/** Set when the outcome is 'applied'. */
 		workflowsFailedToPublish?: number;
 		/** Set when the outcome is 'applied'. */

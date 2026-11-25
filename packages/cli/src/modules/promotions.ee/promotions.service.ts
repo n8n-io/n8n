@@ -1,3 +1,17 @@
+import type {
+	PromotionPreferenceAccess,
+	BranchPackage,
+	PackageCommit,
+	PromotionCacheDescriptor,
+	PromotionGitCredentials,
+	PromotionOperationInput,
+} from './promotions.types';
+import {
+	PromotionPreferenceService,
+	selectPromotionPreferences,
+	assertPreferenceReadAccess,
+} from './promotion-preference.service';
+import { readLeftoverManifest } from './import-manifest-bridge';
 import {
 	parsePromotionRunDetails,
 	promotionRunTypeSchema,
@@ -95,13 +109,6 @@ import {
 	checkoutBranchName,
 	repositoryUrl,
 } from './promotions-git.utils';
-import type {
-	BranchPackage,
-	PackageCommit,
-	PromotionCacheDescriptor,
-	PromotionGitCredentials,
-	PromotionOperationInput,
-} from './promotions.types';
 import {
 	WorkingCopyUpdater,
 	type ScannedBranch,
@@ -167,6 +174,7 @@ export class PromotionsService {
 		private readonly reviewsService: PromotionReviewsService,
 		private readonly eventService: EventService,
 		private readonly logger: Logger,
+		private readonly preferenceSelection: PromotionPreferenceService,
 	) {
 		this.logger = this.logger.scoped('promotions');
 	}
@@ -235,7 +243,7 @@ export class PromotionsService {
 	async promote(
 		environmentId: string,
 		actor: User,
-		request: PromotePackageDto,
+		request: PromotePackageDto & PromotionPreferenceAccess,
 	): Promise<PromotePackageResultDto> {
 		const input = await this.resolver.resolveForEnvironment(environmentId, 'promote');
 		return await this.trackPromote(
@@ -254,7 +262,7 @@ export class PromotionsService {
 	private async promoteResolved(
 		input: PromotionOperationInput,
 		actor: User,
-		request: PromotePackageDto,
+		request: PromotePackageDto & PromotionPreferenceAccess,
 		signal: AbortSignal,
 	): Promise<PromotePackageResultDto> {
 		this.assertInstanceScope(input, 'Promote');
@@ -287,8 +295,23 @@ export class PromotionsService {
 
 		let pushed: PushedPromotion;
 		try {
+			const preferenceOptions = await this.preferenceSelection.exportOptions(
+				actor,
+				projectIds,
+				true,
+				request.preferenceApiKeyScopes,
+			);
+			const previousManifest = await readLeftoverManifest(packageFolder);
+			if (
+				!preferenceOptions.includePreferences &&
+				preferenceOptions.preferenceIds === undefined &&
+				previousManifest?.preferences?.length
+			)
+				throw new BadRequestError(
+					'Preferences are unavailable. Enable them before replacing this package.',
+				);
 			const exportResult = await this.n8nPackagesService.exportPackageToDirectory(
-				instancePromotionExportRequest({ user: actor, projectIds }),
+				{ ...instancePromotionExportRequest({ user: actor, projectIds }), ...preferenceOptions },
 				{ targetDir: stagingFolder },
 			);
 
@@ -517,6 +540,7 @@ export class PromotionsService {
 					projectWorkflowIds: selection.workflowIds,
 					projectFolderIds: selection.folderIds,
 					projectCredentialIds: selection.credentialIds,
+					preferenceIds: selection.preferenceIds,
 					includeAgents: false,
 					includeVariableValues: true,
 					includeTags: true,
@@ -644,11 +668,12 @@ export class PromotionsService {
 	async promoteProjectSelection(
 		projectId: string,
 		actor: User,
-		request: PromoteRequest,
+		request: PromoteRequest & PromotionPreferenceAccess,
 	): Promise<PromoteSelectionResultDto> {
 		const workflowIds = request.workflowIds ?? [];
 		const folderIds = request.folderIds ?? [];
 		const credentialIds = request.credentialIds ?? [];
+		const preferenceIds = request.preferenceIds ?? [];
 
 		// Resolve like the change preview does, so the promote pushes to the environment
 		// the user previewed. resolveForProject validates the project and environment too.
@@ -661,12 +686,19 @@ export class PromotionsService {
 				projectId,
 				selectedWorkflowCount: workflowIds.length,
 				selectedFolderCount: folderIds.length,
+				selectedPreferenceCount: preferenceIds.length,
+				requestedResourceTypes: requestedResourceTypes(request),
 			},
 			async () =>
 				await this.withEnvironmentLock(
 					input,
 					async () => await this.resolver.resolveForProject(projectId, 'promote'),
 					async (current, signal): Promise<PromoteSelectionResultDto> => {
+						let preferences: Pick<SelectivePushOptions, 'preferenceIds' | 'deletedPreferenceIds'> =
+							{};
+						if (preferenceIds.length) assertPreferenceReadAccess(request.preferenceApiKeyScopes);
+						if (preferenceIds.length && !request.expectedPreviewRevision)
+							throw new BadRequestError('Review the Preference changes before promoting them.');
 						// Promote what the page shows. When the project or its branch changed after the
 						// preview, stop and write nothing. This is a check, not a lock. It runs before the
 						// selection is read, so a selected folder that moved away gives this result too.
@@ -685,6 +717,23 @@ export class PromotionsService {
 								});
 								return { status: 'preview-changed', environmentId: current.environmentId };
 							}
+							if (preferenceIds.length) {
+								const rows = preview.resources.filter(
+									({ type, selectable }) => type === 'preference' && selectable,
+								);
+								if (preferenceIds.some((id) => !rows.some((row) => row.id === id)))
+									throw new BadRequestError(
+										'A selected Preference is outside the reviewed changes.',
+									);
+								preferences = {
+									preferenceIds: preferenceIds.filter((id) =>
+										rows.some((row) => row.id === id && row.change !== 'deleted'),
+									),
+									deletedPreferenceIds: preferenceIds.filter((id) =>
+										rows.some((row) => row.id === id && row.change === 'deleted'),
+									),
+								};
+							}
 						}
 						const { selection, movedTo } = await this.classifySelection(
 							projectId,
@@ -696,7 +745,7 @@ export class PromotionsService {
 							current,
 							actor,
 							{ commitMessage: request.commitMessage },
-							{ ...selection, credentialIds },
+							{ ...selection, credentialIds, ...preferences },
 							movedTo,
 							signal,
 						);
@@ -733,7 +782,15 @@ export class PromotionsService {
 			projectId,
 			selectedWorkflowCount,
 			selectedFolderCount,
-		}: { projectId?: string; selectedWorkflowCount?: number; selectedFolderCount?: number },
+			selectedPreferenceCount,
+			requestedResourceTypes,
+		}: {
+			projectId?: string;
+			selectedWorkflowCount?: number;
+			selectedFolderCount?: number;
+			selectedPreferenceCount?: number;
+			requestedResourceTypes?: RelayEventMap['promotion-promoted']['requestedResourceTypes'];
+		},
 		run: () => Promise<T>,
 	): Promise<T> {
 		return await observePromotion(run, (observed) =>
@@ -744,6 +801,8 @@ export class PromotionsService {
 				projectId,
 				selectedWorkflowCount,
 				selectedFolderCount,
+				selectedPreferenceCount,
+				requestedResourceTypes,
 				durationMs: observed.durationMs,
 				...promotedOutcome(observed),
 			}),
@@ -753,7 +812,15 @@ export class PromotionsService {
 	private async trackApply(
 		input: PromotionOperationInput,
 		actor: User,
-		{ projectId }: { projectId?: string },
+		{
+			projectId,
+			selectedPreferenceCount,
+			requestedResourceTypes,
+		}: {
+			projectId?: string;
+			selectedPreferenceCount?: number;
+			requestedResourceTypes?: RelayEventMap['promotion-applied']['requestedResourceTypes'];
+		},
 		run: () => Promise<ApplyPackageResultDto>,
 	): Promise<ApplyPackageResultDto> {
 		return await observePromotion(run, (observed) =>
@@ -762,6 +829,8 @@ export class PromotionsService {
 				environmentId: input.environmentId,
 				scope: projectId ? 'project' : 'instance',
 				projectId,
+				selectedPreferenceCount,
+				requestedResourceTypes,
 				durationMs: observed.durationMs,
 				...appliedOutcome(observed),
 			}),
@@ -823,7 +892,7 @@ export class PromotionsService {
 	async apply(
 		environmentId: string,
 		actor: User,
-		request: ApplyPackageDto = {},
+		request: ApplyPackageDto & PromotionPreferenceAccess = {},
 		publicApi: PublicApiCaller = false,
 		ctx: OperationContext = {},
 	): Promise<ApplyPackageResultDto> {
@@ -833,7 +902,7 @@ export class PromotionsService {
 	async continueApply(
 		environmentId: string,
 		actor: User,
-		request: ContinueApplyPackageDto,
+		request: ContinueApplyPackageDto & PromotionPreferenceAccess,
 		publicApi: PublicApiCaller = false,
 		ctx: OperationContext = {},
 	): Promise<ApplyPackageResultDto> {
@@ -888,7 +957,7 @@ export class PromotionsService {
 	async applyProjectSelection(
 		projectId: string,
 		actor: User,
-		request: ApplySelectionDto,
+		request: ApplySelectionDto & PromotionPreferenceAccess,
 		publicApi: PublicApiCaller = false,
 		ctx: OperationContext = {},
 	): Promise<ApplyPackageResultDto> {
@@ -898,6 +967,7 @@ export class PromotionsService {
 			toApplySelection(request),
 			{
 				publicApi,
+				preferenceApiKeyScopes: request.preferenceApiKeyScopes,
 				expectedSource: request.expectedSource,
 				expectedPreviewRevision: request.expectedPreviewRevision,
 			},
@@ -908,7 +978,7 @@ export class PromotionsService {
 	async continueApplyProjectSelection(
 		projectId: string,
 		actor: User,
-		request: ContinueApplySelectionDto,
+		request: ContinueApplySelectionDto & PromotionPreferenceAccess,
 		publicApi: PublicApiCaller = false,
 		ctx: OperationContext = {},
 	): Promise<ApplyPackageResultDto> {
@@ -918,6 +988,7 @@ export class PromotionsService {
 			toApplySelection(request),
 			{
 				publicApi,
+				preferenceApiKeyScopes: request.preferenceApiKeyScopes,
 				expectedSource: request.expectedSource,
 				expectedPreviewRevision: request.expectedPreviewRevision,
 				confirmDestructiveChanges: request.confirmDestructiveChanges === true,
@@ -1010,11 +1081,13 @@ export class PromotionsService {
 		selection: ApplySelection,
 		{
 			publicApi,
+			preferenceApiKeyScopes,
 			expectedSource,
 			expectedPreviewRevision,
 			confirmDestructiveChanges = false,
 		}: {
 			publicApi: PublicApiCaller;
+			preferenceApiKeyScopes?: string[];
 			expectedSource?: ApplySelectionDto['expectedSource'];
 			expectedPreviewRevision?: string;
 			confirmDestructiveChanges?: boolean;
@@ -1025,7 +1098,11 @@ export class PromotionsService {
 		return await this.trackApply(
 			input,
 			actor,
-			{ projectId },
+			{
+				projectId,
+				selectedPreferenceCount: selection.preferenceIds.length,
+				requestedResourceTypes: requestedResourceTypes(selection),
+			},
 			async () =>
 				await this.withEnvironmentLock(
 					input,
@@ -1042,6 +1119,7 @@ export class PromotionsService {
 							signal,
 							expectedPreviewRevision,
 							ctx,
+							preferenceApiKeyScopes,
 						),
 				),
 		);
@@ -1058,7 +1136,11 @@ export class PromotionsService {
 		signal: AbortSignal,
 		expectedPreviewRevision?: string,
 		ctx: OperationContext = {},
+		preferenceApiKeyScopes?: string[],
 	): Promise<ApplyPackageResultDto> {
+		if (requested.preferenceIds.length) assertPreferenceReadAccess(preferenceApiKeyScopes);
+		if (requested.preferenceIds.length && (!expectedSource || !expectedPreviewRevision))
+			throw new BadRequestError('Review the Preference changes before applying them.');
 		await this.ensureCheckout(input, signal);
 
 		const tip = await this.readApplyTip(input, expectedSource);
@@ -1073,7 +1155,9 @@ export class PromotionsService {
 					user: actor,
 					projectId,
 					files,
-					instance: await exportInstancePackage(this.n8nPackagesService, actor, [projectId]),
+					instance: await exportInstancePackage(this.n8nPackagesService, actor, [projectId], {
+						preferenceOptions: await this.preferenceSelection.exportOptions(actor, [projectId]),
+					}),
 				}),
 		);
 		if (previewChanged) return previewChanged;
@@ -1087,8 +1171,26 @@ export class PromotionsService {
 			requested,
 			new Set(moves.workflows.map(({ id }) => id)),
 		);
+		if (requested.preferenceIds.length) {
+			const instance = await exportInstancePackage(this.n8nPackagesService, actor, [projectId], {
+				preferenceOptions: await this.preferenceSelection.exportOptions(actor, [projectId]),
+			});
+			Object.assign(
+				selection,
+				selectPromotionPreferences(
+					await reader.readManifest(),
+					instance.manifest,
+					projectId,
+					requested.preferenceIds,
+				),
+			);
+		}
 		const plan = await this.n8nPackagesService.planPackageSelection(
-			{ ...applySelectionRequest(actor, publicApi, confirmDestructiveChanges), ctx },
+			{
+				...applySelectionRequest(actor, publicApi, confirmDestructiveChanges),
+				ctx,
+				preferenceApiKeyScopes,
+			},
 			reader,
 			selection,
 			'enforce',
@@ -1131,7 +1233,7 @@ export class PromotionsService {
 		environmentId: string,
 		actor: User,
 		publicApi: PublicApiCaller,
-		request: ApplyPackageDto & { confirmDestructiveChanges?: boolean },
+		request: ApplyPackageDto & PromotionPreferenceAccess & { confirmDestructiveChanges?: boolean },
 		ctx: OperationContext = {},
 	): Promise<ApplyPackageResultDto> {
 		const input = await this.resolver.resolveForEnvironment(environmentId, 'apply');
@@ -1155,9 +1257,10 @@ export class PromotionsService {
 		publicApi: PublicApiCaller,
 		{
 			expectedSource,
+			preferenceApiKeyScopes,
 			expectedPreviewRevision,
 			confirmDestructiveChanges = false,
-		}: ApplyPackageDto & { confirmDestructiveChanges?: boolean },
+		}: ApplyPackageDto & PromotionPreferenceAccess & { confirmDestructiveChanges?: boolean },
 		signal: AbortSignal,
 		ctx: OperationContext = {},
 	): Promise<ApplyPackageResultDto> {
@@ -1179,8 +1282,32 @@ export class PromotionsService {
 		const reader = new GitCommitPackageReader(files);
 		const inventory = await this.inventoryReader.read(reader);
 		const moves = await this.applyPreviewService.findCrossProjectMoves(inventory);
+		const manifest = await reader.readManifest();
+		let deletedPreferenceIds: string[] | undefined;
+		if (manifest.preferences !== undefined) {
+			const projectIds = await this.projectRepository.findTeamProjectIds();
+			const instance = await exportInstancePackage(this.n8nPackagesService, actor, projectIds, {
+				preferenceOptions: await this.preferenceSelection.exportOptions(actor, projectIds, true),
+			});
+			deletedPreferenceIds = selectPromotionPreferences(
+				manifest,
+				instance.manifest,
+			).deletedPreferenceIds;
+			if (manifest.preferences.length || deletedPreferenceIds.length)
+				assertPreferenceReadAccess(preferenceApiKeyScopes);
+			if (
+				(manifest.preferences.length || deletedPreferenceIds.length) &&
+				(!expectedSource || !expectedPreviewRevision)
+			)
+				throw new BadRequestError('Review the Preference changes before applying them.');
+		}
 		const plan = await this.n8nPackagesService.planPackage(
-			{ ...instanceApplyRequest(actor, publicApi, confirmDestructiveChanges), ctx },
+			{
+				...instanceApplyRequest(actor, publicApi, confirmDestructiveChanges),
+				ctx,
+				deletedPreferenceIds,
+				preferenceApiKeyScopes,
+			},
 			reader,
 			'enforce',
 		);
@@ -1797,7 +1924,7 @@ export class PromotionsService {
 		importResult: ImportResult;
 		projectReconciliation: ProjectReconciliationResult;
 	}): Extract<ApplyPackageResultDto, { status: 'applied' }>['counts'] {
-		const tally = <S extends string>(rows: Array<{ status: S }>, statuses: readonly S[]) => {
+		const tally = <S extends string>(rows: { status: S }[], statuses: readonly S[]) => {
 			const counts = Object.fromEntries(statuses.map((status) => [status, 0])) as Record<S, number>;
 			for (const { status } of rows) counts[status] += 1;
 			return counts;
@@ -1837,6 +1964,7 @@ export class PromotionsService {
 				created: importResult.dataTables.created,
 				updated: importResult.dataTables.updated,
 			},
+			...(importResult.counts?.preferences ? { preferences: importResult.counts.preferences } : {}),
 			variables: {
 				matched: importResult.variables.matched.length,
 				created: importResult.variables.created.length,
@@ -1867,10 +1995,16 @@ async function pathExists(target: string): Promise<boolean> {
 }
 
 /** What a project Apply selects. The project details always come along. */
-type ApplySelection = { workflowIds: string[]; folderIds: string[] };
+type ApplySelection = { workflowIds: string[]; folderIds: string[]; preferenceIds: string[] };
 
-function toApplySelection(request: ApplySelectionDto | ContinueApplySelectionDto): ApplySelection {
-	return { workflowIds: request.workflowIds ?? [], folderIds: request.folderIds ?? [] };
+function toApplySelection(
+	request: (ApplySelectionDto & PromotionPreferenceAccess) | ContinueApplySelectionDto,
+): ApplySelection {
+	return {
+		workflowIds: request.workflowIds ?? [],
+		folderIds: request.folderIds ?? [],
+		preferenceIds: request.preferenceIds ?? [],
+	};
 }
 
 function promotedOutcome(
@@ -1901,15 +2035,19 @@ function appliedOutcome(
 	| 'workflowsFailedToPublish'
 	| 'foldersChanged'
 	| 'projectsChanged'
+	| 'preferencesChanged'
 > {
 	if (!observed.ok) return { outcome: 'failed', failureKind: observed.failureKind };
 	const { result } = observed;
 	if (result.status === 'blocked') return { outcome: 'blocked' };
 	if (result.status === 'source-changed') return { outcome: 'source_changed' };
 	if (result.status === 'preview-changed') return { outcome: 'preview_changed' };
-	const { workflows, folders, projects } = result.counts;
+	const { workflows, folders, projects, preferences } = result.counts;
 	return {
 		outcome: 'applied',
+		...(preferences
+			? { preferencesChanged: preferences.created + preferences.updated + preferences.removed }
+			: {}),
 		workflowsChanged:
 			workflows.created + workflows.updated + workflows.archived + workflows.deleted,
 		workflowsFailedToPublish: workflows.publishing.failed,
@@ -1937,9 +2075,9 @@ const branchPlacementsSchema = z.object({
 });
 
 type BranchPlacements = {
-	projects: Array<{ id: string; name: string }>;
-	workflows: Array<{ id: string; name: string; projectId: string; projectName: string }>;
-	folders: Array<{ projectId: string; folder: { id: string; name: string } }>;
+	projects: { id: string; name: string }[];
+	workflows: { id: string; name: string; projectId: string; projectName: string }[];
+	folders: { projectId: string; folder: { id: string; name: string } }[];
 };
 
 /**
@@ -2005,4 +2143,18 @@ function blockingCheck(
 			...otherConflicts,
 		],
 	};
+}
+
+function requestedResourceTypes(request: {
+	workflowIds?: string[];
+	folderIds?: string[];
+	credentialIds?: string[];
+	preferenceIds?: string[];
+}): NonNullable<RelayEventMap['promotion-promoted']['requestedResourceTypes']> {
+	const types: NonNullable<RelayEventMap['promotion-promoted']['requestedResourceTypes']> = [];
+	if (request.workflowIds?.length) types.push('workflow');
+	if (request.folderIds?.length) types.push('folder');
+	if (request.credentialIds?.length) types.push('credential');
+	if (request.preferenceIds?.length) types.push('preference');
+	return types;
 }

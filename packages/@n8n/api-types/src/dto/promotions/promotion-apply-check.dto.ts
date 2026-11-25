@@ -244,6 +244,12 @@ export const promotionBindingConflictSchema = z.discriminatedUnion('code', [
 		reason: tagUnresolvedKindSchema,
 		consumers: consumersSchema,
 	}),
+	z.object({
+		kind: z.literal('preference'),
+		code: z.literal('preference-conflict'),
+		id: z.string().optional(),
+		message: z.string(),
+	}),
 	/** Stops every workflow of the project. */
 	z.object({
 		kind: z.literal('project'),

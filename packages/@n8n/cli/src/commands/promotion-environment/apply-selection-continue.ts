@@ -14,7 +14,7 @@ import { BaseCommand } from '../../base-command';
 
 export default class PromotionEnvironmentApplySelectionContinue extends PromotionApplyCommand {
 	static override description =
-		'Continue a selection Apply that was blocked on bindings, after they are set up. Resend the same --workflow and --folder flags, and pass the environment ID, branch, and commit SHA that the blocked Apply reported. Exits 3 when the reviewed source or preview no longer matches and 4 when bindings are still missing or a destructive data table change is not confirmed with --confirm-destructive-changes; nothing is imported in either case.';
+		'Continue a selection Apply that was blocked on bindings, after they are set up. Resend the same --workflow, --folder, and --preference flags, and pass the environment ID, branch, and commit SHA that the blocked Apply reported. For Preferences, review the current preview and pass --expected-preview-revision. Exits 3 when the reviewed source or preview no longer matches and 4 when bindings are still missing or a destructive data table change is not confirmed with --confirm-destructive-changes; nothing is imported in either case.';
 
 	static override examples = [
 		'<%= config.bin %> promotion-environment apply-selection-continue proj-abc -w wf-1 --expected-environment-id=env-1 --expected-branch=main --expected-commit-sha=<full sha>',
@@ -27,6 +27,10 @@ export default class PromotionEnvironmentApplySelectionContinue extends Promotio
 		workflow: Flags.string({
 			char: 'w',
 			description: 'Workflow ID to apply (repeat for more than one)',
+			multiple: true,
+		}),
+		preference: Flags.string({
+			description: 'Shared Preference ID from the reviewed preview (repeat for more than one)',
 			multiple: true,
 		}),
 		folder: Flags.string({
@@ -47,7 +51,11 @@ export default class PromotionEnvironmentApplySelectionContinue extends Promotio
 		const expectedSource = toExpectedSource(flags);
 		// oclif enforces the required flags, so this only narrows the type.
 		if (!expectedSource) this.error('Pass all three --expected-* flags');
-		const selection = { workflowIds: flags.workflow, folderIds: flags.folder };
+		const selection = {
+			workflowIds: flags.workflow,
+			folderIds: flags.folder,
+			...(flags.preference ? { preferenceIds: flags.preference } : {}),
+		};
 		await this.execute(async () => {
 			const result = await this.getClient(flags).continueApplyProjectSelection(
 				args.projectId,

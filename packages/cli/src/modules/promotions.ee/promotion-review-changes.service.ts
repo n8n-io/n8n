@@ -134,11 +134,21 @@ export class PromotionReviewChangesService {
 		const headManifest = await readManifest(commits.head);
 		const projectIds = projectIdsOf(baseManifest, headManifest);
 		const baseIndex = indexProjects(
-			{ manifest: baseManifest, blobByPath: new Map(), ownedCredentials: true },
+			{
+				manifest: baseManifest,
+				blobByPath: new Map(),
+				ownedCredentials: true,
+				includeInstancePreferences: true,
+			},
 			projectIds,
 		);
 		const headIndex = indexProjects(
-			{ manifest: headManifest, blobByPath: new Map(), ownedCredentials: true },
+			{
+				manifest: headManifest,
+				blobByPath: new Map(),
+				ownedCredentials: true,
+				includeInstancePreferences: true,
+			},
 			projectIds,
 		);
 		const baseContents = await commits.baseline.readFiles(
@@ -285,13 +295,13 @@ async function readSide(commit: PackageCommit): Promise<ReviewSide> {
 	const manifest = await readManifest(commit);
 	// A commit before the first promotion has no package, so it has no manifest either.
 	return {
-		side: { manifest, blobByPath, ownedCredentials: true },
+		side: { manifest, blobByPath, ownedCredentials: true, includeInstancePreferences: true },
 		manifestUnreadable: !manifest && blobByPath.size > 0,
 	};
 }
 
 /** A full promotion writes every team project, so the review can span several of them. */
-function projectIdsOf(...manifests: Array<PackageManifest | null>): string[] {
+function projectIdsOf(...manifests: (PackageManifest | null)[]): string[] {
 	return [
 		...new Set(manifests.flatMap((manifest) => manifest?.projects?.map(({ id }) => id) ?? [])),
 	];

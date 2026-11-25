@@ -57,7 +57,8 @@ function stopMessage(
 	continueCommand: ContinueCommand,
 	previewCommand: string,
 ): string {
-	if (result.status === 'blocked') return blockedMessage(result, result.check, continueCommand);
+	if (result.status === 'blocked')
+		return blockedMessage(result, result.check, continueCommand, previewCommand);
 	if (result.status === 'preview-changed') {
 		return [
 			'The Apply preview changed since you reviewed it. Nothing was imported.',
@@ -79,6 +80,7 @@ function blockedMessage(
 	result: BlockedResult,
 	check: PromotionApplyCheck,
 	continueCommand: ContinueCommand,
+	previewCommand: string,
 ): string {
 	const bindings = (kind: 'credential' | 'variable') =>
 		check.missingBindings.filter((binding) => binding.kind === kind).length;
@@ -109,6 +111,7 @@ function blockedMessage(
 					"To also delete the projects listed above, add --confirm-destructive-changes. You can't undo this.",
 				]
 			: []),
+		`If Apply includes Preferences, first run ${previewCommand}. Review it and add --expected-preview-revision=<revision> to Continue.`,
 	].join('\n');
 }
 
@@ -143,12 +146,13 @@ export function environmentContinueCommand(environmentId: string): ContinueComma
  */
 export function selectionContinueCommand(
 	projectId: string,
-	{ workflowIds = [], folderIds = [] }: PromotionSelection,
+	{ workflowIds = [], folderIds = [], preferenceIds = [] }: PromotionSelection,
 ): ContinueCommand {
 	return (result) =>
 		`n8n-cli promotion-environment apply-selection-continue ${shellQuote(projectId)}` +
 		workflowIds.map((id) => ` -w ${shellQuote(id)}`).join('') +
 		folderIds.map((id) => ` --folder ${shellQuote(id)}`).join('') +
+		preferenceIds.map((id) => ` --preference ${shellQuote(id)}`).join('') +
 		expectedSourceArgs(result);
 }
 

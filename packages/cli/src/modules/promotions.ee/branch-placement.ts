@@ -7,7 +7,7 @@ import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schem
  */
 export type BranchLayout = Pick<
 	PackageManifest,
-	'projects' | 'folders' | 'workflows' | 'agents' | 'skills'
+	'projects' | 'folders' | 'workflows' | 'agents' | 'skills' | 'preferences'
 >;
 
 /** Entry kinds whose target is a directory that holds other entries. */

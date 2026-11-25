@@ -228,3 +228,29 @@ describe('PromoteSelectionRequestDto', () => {
 		expect(PromoteSelectionRequestDto.safeParse({ credentialId: 'c1' }).success).toBe(false);
 	});
 });
+
+describe('Preference selection contracts', () => {
+	const id = '542ad76e-a25c-4f18-8d62-805f6348b428';
+	const expectedSource = { environmentId: 'env1', branchName: 'main', commitSha: 'a'.repeat(40) };
+	it.each([PromoteSelectionRequestDto, ApplySelectionDto, ContinueApplySelectionDto])(
+		'accepts explicit Preference identities and rejects duplicates',
+		(dto) => {
+			const source = dto === PromoteSelectionRequestDto ? {} : { expectedSource };
+			expect(dto.safeParse({ ...source, preferenceIds: [id] }).success).toBe(true);
+			expect(dto.safeParse({ ...source, preferenceIds: [id, id] }).success).toBe(false);
+		},
+	);
+	it.each(['preferencesFromPromotion', 'preferenceApiKeyScopes'])(
+		'rejects the internal %s field',
+		(key) => {
+			for (const dto of [
+				PromotePackageDto,
+				ApplyPackageDto,
+				ApplySelectionDto,
+				PromoteSelectionRequestDto,
+			]) {
+				expect(dto.safeParse({ [key]: true }).success).toBe(false);
+			}
+		},
+	);
+});

@@ -2904,7 +2904,7 @@ export class TelemetryEventRelay extends EventRelay {
 	 */
 	private extractIdentityExtractorHooks(
 		node: INode,
-	): Array<{ hookName: string; isAllowedToFail?: boolean; [key: string]: unknown }> {
+	): { hookName: string; isAllowedToFail?: boolean; [key: string]: unknown }[] {
 		const hookParamsResult = toExecutionContextEstablishmentHookParameter(node.parameters);
 		if (!hookParamsResult || hookParamsResult.error || !hookParamsResult.data) {
 			return [];
@@ -3239,6 +3239,8 @@ export class TelemetryEventRelay extends EventRelay {
 		environmentId,
 		scope,
 		projectId,
+		selectedPreferenceCount,
+		requestedResourceTypes,
 		outcome,
 		failureKind,
 		durationMs,
@@ -3252,6 +3254,8 @@ export class TelemetryEventRelay extends EventRelay {
 			environment_id: environmentId,
 			scope,
 			project_id: projectId,
+			selected_preference_count: selectedPreferenceCount,
+			requested_resource_types: requestedResourceTypes,
 			outcome,
 			failure_kind: failureKind,
 			duration_ms: durationMs,
@@ -3261,6 +3265,7 @@ export class TelemetryEventRelay extends EventRelay {
 			data_table_count: counts?.dataTables,
 			variable_count: counts?.variables,
 			tag_count: counts?.tags,
+			preference_count: counts?.preferences,
 			selected_workflow_count: selectedWorkflowCount,
 			selected_folder_count: selectedFolderCount,
 			opened_review: openedReview,
@@ -3272,10 +3277,13 @@ export class TelemetryEventRelay extends EventRelay {
 		environmentId,
 		scope,
 		projectId,
+		selectedPreferenceCount,
+		requestedResourceTypes,
 		outcome,
 		failureKind,
 		durationMs,
 		workflowsChanged,
+		preferencesChanged,
 		workflowsFailedToPublish,
 		foldersChanged,
 		projectsChanged,
@@ -3285,10 +3293,13 @@ export class TelemetryEventRelay extends EventRelay {
 			environment_id: environmentId,
 			scope,
 			project_id: projectId,
+			selected_preference_count: selectedPreferenceCount,
+			requested_resource_types: requestedResourceTypes,
 			outcome,
 			failure_kind: failureKind,
 			duration_ms: durationMs,
 			workflows_changed: workflowsChanged,
+			preferences_changed: preferencesChanged,
 			workflows_failed_to_publish: workflowsFailedToPublish,
 			folders_changed: foldersChanged,
 			projects_changed: projectsChanged,
