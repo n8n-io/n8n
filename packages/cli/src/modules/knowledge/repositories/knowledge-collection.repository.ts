@@ -1,5 +1,12 @@
-import { BaseRepository, Project, TransactionRunner, type OperationContext } from '@n8n/db';
+import {
+	BaseRepository,
+	isForeignKeyConstraintError,
+	Project,
+	TransactionRunner,
+	type OperationContext,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
+import { NotFoundError } from '@n8n/errors';
 import { DataSource, In, Not, type EntityManager } from '@n8n/typeorm';
 
 import {
@@ -55,7 +62,56 @@ export class KnowledgeCollectionRepository {
 			where: { knowledgeCollectionId: collectionId },
 		});
 
-		return dependencies.map((dependency) => dependency.agentId);
+		return dependencies.map(({ agentId }) => agentId);
+	}
+
+	/** The ids of the collections that the agent uses. */
+	async findCollectionIds(agentId: string, ctx: OperationContext): Promise<string[]> {
+		const dependencies = await this.table.managerFor(ctx).find(AgentKnowledgeDependency, {
+			select: ['knowledgeCollectionId'],
+			where: { agentId },
+		});
+
+		return dependencies.map(({ knowledgeCollectionId }) => knowledgeCollectionId);
+	}
+
+	/** The shared collections that the project owns. */
+	async findSharedByProjectId(
+		projectId: string,
+		ctx: OperationContext,
+	): Promise<KnowledgeCollection[]> {
+		return await this.table.managerFor(ctx).findBy(KnowledgeCollection, {
+			projectId,
+			kind: 'shared',
+		});
+	}
+
+	/**
+	 * Adds the agent to the collection. A repeat add changes nothing. The foreign
+	 * keys catch an agent or a collection deleted after the caller's checks.
+	 */
+	async addAgent(collectionId: string, agentId: string, ctx: OperationContext): Promise<void> {
+		try {
+			await this.table
+				.managerFor(ctx)
+				.createQueryBuilder()
+				.insert()
+				.into(AgentKnowledgeDependency)
+				.values({ agentId, knowledgeCollectionId: collectionId })
+				.orIgnore()
+				.execute();
+		} catch (error) {
+			if (isForeignKeyConstraintError(error)) {
+				throw new NotFoundError('Agent or knowledge collection not found');
+			}
+			throw error;
+		}
+	}
+
+	async removeAgent(collectionId: string, agentId: string, ctx: OperationContext): Promise<void> {
+		await this.table
+			.managerFor(ctx)
+			.delete(AgentKnowledgeDependency, { agentId, knowledgeCollectionId: collectionId });
 	}
 
 	async existsBySlug(slug: string, ctx: OperationContext): Promise<boolean> {
@@ -99,7 +155,7 @@ export class KnowledgeCollectionRepository {
 			return null;
 		}
 
-		const [summary] = await this.summarize([collection], manager);
+		const [summary] = await this.summarize([collection], ctx);
 		return summary ?? null;
 	}
 
@@ -129,7 +185,7 @@ export class KnowledgeCollectionRepository {
 		}
 
 		const collections = await query.getMany();
-		return await this.summarize(collections, manager);
+		return await this.summarize(collections, ctx);
 	}
 
 	/** Whether another collection of the project, not `exceptCollectionId`, uses the name. */
@@ -169,8 +225,9 @@ export class KnowledgeCollectionRepository {
 	 */
 	private async summarize(
 		collections: KnowledgeCollection[],
-		manager: EntityManager,
+		ctx: OperationContext,
 	): Promise<KnowledgeCollectionSummary[]> {
+		const manager = this.table.managerFor(ctx);
 		const collectionIds = collections.map((collection) => collection.id);
 		const projectIds = [
 			...new Set(collections.flatMap((collection) => collection.projectId ?? [])),
@@ -183,7 +240,7 @@ export class KnowledgeCollectionRepository {
 		// The three reads do not depend on each other.
 		const [homeProjects, fileTotals, agentCounts] = await Promise.all([
 			this.findHomeProjects(projectIds, manager),
-			this.findFileTotals(collectionIds, manager),
+			this.findFileTotals(collectionIds, ctx),
 			this.findAgentCounts(collectionIds, manager),
 		]);
 
@@ -220,12 +277,21 @@ export class KnowledgeCollectionRepository {
 		return new Map(projects.map(({ id, name, type }) => [id, { id, name, type }]));
 	}
 
-	/** PostgreSQL returns COUNT and SUM as strings, so both go through `Number`. */
-	private async findFileTotals(
+	/**
+	 * The file count and total size of each collection, in one query. A collection
+	 * without files is not in the map. PostgreSQL returns COUNT and SUM as
+	 * strings, so both go through `Number`.
+	 */
+	async findFileTotals(
 		collectionIds: string[],
-		manager: EntityManager,
+		ctx: OperationContext,
 	): Promise<Map<string, { fileCount: number; totalFileSizeBytes: number }>> {
-		const rows = await manager
+		if (collectionIds.length === 0) {
+			return new Map();
+		}
+
+		const rows = await this.table
+			.managerFor(ctx)
 			.createQueryBuilder(KnowledgeFile, 'file')
 			.select('file.knowledgeCollectionId', 'collectionId')
 			.addSelect('COUNT(*)', 'fileCount')
