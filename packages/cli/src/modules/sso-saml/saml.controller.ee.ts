@@ -35,10 +35,13 @@ import {
 import type { SamlLoginBinding } from './types';
 import { getInitSSOFormView } from './views/init-sso-post';
 
-/** The bounded reason telemetry reports for a SAML sign-in the service refused. */
+/**
+ * The bounded reason telemetry reports for a SAML sign-in the service refused. A `ForbiddenError`
+ * covers the role mapping that grants no access and an account that may not sign in through SAML.
+ */
 function samlLoginFailureReason(error: unknown): LoginFailureReason {
 	if (error instanceof SamlEmailNotVerifiedError) return 'email_not_verified';
-	if (error instanceof SsoAccessDeniedError) return 'access_denied';
+	if (error instanceof ForbiddenError) return 'access_denied';
 	return 'other';
 }
 
@@ -181,14 +184,14 @@ export class SamlController {
 				}
 			}
 			if (loginResult.authenticatedUser) {
-				this.eventService.emit('user-logged-in', {
-					user: loginResult.authenticatedUser,
-					authenticationMethod: 'saml',
-				});
-
 				// Only sign in user if SAML is enabled, otherwise treat as test connection
 				if (isSamlLicensedAndEnabled()) {
 					this.authService.issueCookie(res, loginResult.authenticatedUser, true, req.browserId);
+					// Reported after the cookie: a response that only tests the connection is no sign-in.
+					this.eventService.emit('user-logged-in', {
+						user: loginResult.authenticatedUser,
+						authenticationMethod: 'saml',
+					});
 
 					if (loginResult.onboardingRequired) {
 						return res.redirect(this.urlService.getInstanceBaseUrl() + '/saml/onboarding');

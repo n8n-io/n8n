@@ -16,6 +16,9 @@ import { Container, Service } from '@n8n/di';
 import type { Request, RequestHandler, Response, Router } from 'express';
 import { Router as createRouter } from 'express';
 
+import { isRecord } from '@n8n/utils/is-record';
+
+import { AUTH_COOKIE_NAME } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import type { AuthRequestRejectionReason } from '@/events/maps/relay.event-map';
 import {
@@ -60,11 +63,14 @@ const API_KEY_HEADER = 'x-n8n-api-key';
 
 /**
  * The reason to record for a request the strategies did not authenticate, by the credential it
- * presented. A request without any credential is anonymous and is not recorded.
+ * presented: an API key, a bearer token, or the session cookie of the editor. A request without
+ * any credential is anonymous and is not recorded.
  */
 function presentedCredentialRejection(req: Request): AuthRequestRejectionReason | undefined {
 	if (req.headers[API_KEY_HEADER] !== undefined) return 'api_key_invalid';
 	if (req.headers.authorization !== undefined) return 'session_invalid';
+	const cookies: unknown = req.cookies;
+	if (isRecord(cookies) && cookies[AUTH_COOKIE_NAME] !== undefined) return 'session_invalid';
 	return undefined;
 }
 
@@ -409,7 +415,7 @@ export class PublicApiControllerRegistry {
 	private createUserQuotaMiddleware(gate: GateTarget): RequestHandler {
 		return (req, res, next) => {
 			if (Container.get(LicenseState).getMaxUsers() !== UNLIMITED_LICENSE_QUOTA) {
-				this.reportRejectedRequest(req, gate, 'licence', 403);
+				this.reportRejectedRequest(req, gate, 'quota', 403);
 				res.status(403).json({ message: USER_QUOTA_FORBIDDEN_MESSAGE });
 				return;
 			}

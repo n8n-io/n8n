@@ -3,9 +3,9 @@ import { z } from 'zod/v4';
 import { defineTelemetryEvents } from '../define';
 
 const authenticationMethod = z
-	.enum(['email', 'ldap', 'saml', 'oidc', 'token-exchange'])
+	.enum(['email', 'ldap', 'saml', 'oidc'])
 	.describe(
-		'How the user proved their identity. `token-exchange` is the session type of the embedded editor, which reports its own events',
+		'How the user proved their identity. A sign-in to the embedded editor through token exchange reports its own events and never appears here',
 	);
 
 export const AUTH_TELEMETRY = defineTelemetryEvents({
@@ -65,7 +65,7 @@ export const AUTH_TELEMETRY = defineTelemetryEvents({
 					'other',
 				])
 				.describe(
-					'`access_denied`: the SSO role mapping grants no access. `authentication_failed`: the SAML response named no user. `provider_error`: the OIDC provider answered the callback with an error. `other`: any other SSO failure',
+					'`access_denied`: the SSO role mapping grants no access, or the account may not sign in through SSO. `authentication_failed`: the SAML response named no user. `provider_error`: the OIDC provider answered the callback with an error. `other`: any other SSO failure',
 				),
 		}),
 	},

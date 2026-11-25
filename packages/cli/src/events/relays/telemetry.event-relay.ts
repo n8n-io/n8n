@@ -1,4 +1,4 @@
-import { EMPTY_CANVAS_GROUPS_FLAG } from '@n8n/api-types';
+import { EMPTY_CANVAS_GROUPS_FLAG, type AuthenticationMethod } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import { EventService, PostHogClient, EventRelay } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
@@ -222,6 +222,15 @@ function toPublicApiProperties(publicApi: PublicApiCaller) {
 	return publicApi === false
 		? { public_api: false }
 		: { public_api: true, public_api_client: publicApi };
+}
+
+type SignInMethod = 'email' | 'ldap' | 'saml' | 'oidc';
+
+const SIGN_IN_METHODS = new Set<AuthenticationMethod>(['email', 'ldap', 'saml', 'oidc']);
+
+/** The embedded editor signs in through token exchange and reports its own events. */
+function isSignInMethod(method: AuthenticationMethod): method is SignInMethod {
+	return SIGN_IN_METHODS.has(method);
 }
 
 @Service()
@@ -2794,6 +2803,7 @@ export class TelemetryEventRelay extends EventRelay {
 	}
 
 	private userLoggedIn({ user, authenticationMethod, usedMfa }: RelayEventMap['user-logged-in']) {
+		if (!isSignInMethod(authenticationMethod)) return;
 		this.telemetry.track(TELEMETRY_EVENT.AUTH.USER_LOGGED_IN, {
 			user_id: user.id,
 			authentication_method: authenticationMethod,
@@ -2806,6 +2816,7 @@ export class TelemetryEventRelay extends EventRelay {
 		authenticationMethod,
 		reasonCode,
 	}: RelayEventMap['user-login-failed']) {
+		if (!isSignInMethod(authenticationMethod)) return;
 		this.telemetry.track(TELEMETRY_EVENT.AUTH.USER_LOGIN_FAILED, {
 			authentication_method: authenticationMethod,
 			reason: reasonCode,

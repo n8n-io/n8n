@@ -92,10 +92,14 @@ export type LoginFailureReason =
 	| 'provider_error'
 	| 'other';
 
-/** Why a gate refused a request that carried a session cookie or an API key. */
+/**
+ * Why a gate refused a request that carried a session cookie or an API key. `licence` is a
+ * feature the plan lacks; `quota` is a limit of the plan, such as the number of users.
+ */
 export type AuthRequestRejectionReason =
 	| 'scope'
 	| 'licence'
+	| 'quota'
 	| 'session_expired'
 	| 'session_invalid'
 	| 'api_key_invalid'

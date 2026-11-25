@@ -393,8 +393,13 @@ describe('ControllerRegistry', () => {
 			}
 		}
 
+		const member = { id: 'user-1', email: 'member@example.com', role: { slug: 'global:member' } };
+
 		beforeEach(() => {
-			authMiddleware.mockImplementation(async (_req, _res, next) => next());
+			authMiddleware.mockImplementation(async (req, _res, next) => {
+				req.user = member;
+				next();
+			});
 			lastActiveAtService.middleware.mockImplementation(async (_req, _res, next) => next());
 		});
 
@@ -403,11 +408,21 @@ describe('ControllerRegistry', () => {
 			await request(app).get('/rest/test/with-sharing').expect(403);
 			expect(license.isLicensed).toHaveBeenCalled();
 			expect(eventService.emit).toHaveBeenCalledWith('auth-request-rejected', {
+				user: member,
 				method: 'GET',
 				endpoint: '/rest/test/with-sharing',
 				reason: 'licence',
 				statusCode: 403,
 			});
+		});
+
+		it('should not report an anonymous request that the licence gate refuses', async () => {
+			authMiddleware.mockImplementation(async (_req, _res, next) => next());
+			license.isLicensed.calledWith('feat:sharing').mockReturnValue(false);
+
+			await request(app).get('/rest/test/with-sharing').expect(403);
+
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
 		it('should allow when feature is available', async () => {

@@ -4438,6 +4438,20 @@ describe('TelemetryEventRelay', () => {
 			});
 		});
 
+		it('should not report a token exchange session as a sign-in', () => {
+			eventService.emit('user-logged-in', {
+				user: { id: 'user123' },
+				authenticationMethod: 'token-exchange',
+			});
+			eventService.emit('user-login-failed', {
+				userEmail: 'nobody@example.com',
+				authenticationMethod: 'token-exchange',
+				reasonCode: 'other',
+			});
+
+			expect(telemetry.track).not.toHaveBeenCalled();
+		});
+
 		it('should track on `user-login-failed` event without the email that was tried', () => {
 			eventService.emit('user-login-failed', {
 				userEmail: 'nobody@example.com',

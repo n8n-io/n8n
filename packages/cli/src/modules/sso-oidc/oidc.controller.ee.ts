@@ -214,7 +214,9 @@ export class OidcController {
 			// The raw provider `error_description` is untrusted, so it is never
 			// reflected; only the short `error` code is kept, for the audit reason.
 			this.logger.error('OIDC callback failed', { error });
-			const providerError = callbackUrl.searchParams.get('error')?.slice(0, 100);
+			const errorParam = callbackUrl.searchParams.get('error');
+			// An empty `error` value is a malformed response, not a provider error.
+			const providerError = errorParam ? errorParam.slice(0, 100) : undefined;
 			this.eventService.emit('user-login-failed', {
 				userEmail: 'unknown',
 				authenticationMethod: 'oidc',

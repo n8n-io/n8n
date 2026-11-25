@@ -20,6 +20,7 @@ import {
 } from '@n8n/decorators';
 import type { Controller, MultipartUploadLimits } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import cookieParser from 'cookie-parser';
 import express from 'express';
 import { Readable } from 'node:stream';
 import request from 'supertest';
@@ -51,6 +52,8 @@ describe('PublicApiControllerRegistry', () => {
 	function activate(): express.Express {
 		const app = express();
 		app.use(express.json());
+		// mirrors the app-wide cookie parser, which the session cookie strategy reads
+		app.use(cookieParser());
 		// mirrors the app-wide bodyParser, which defaults an absent body to `{}`
 		app.use((req, _res, next) => {
 			req.body ??= {};
@@ -304,6 +307,31 @@ describe('PublicApiControllerRegistry', () => {
 		await request(activate())
 			.get('/api/v1/widgets')
 			.set('Authorization', 'Bearer not-a-token')
+			.expect(401, { message: 'Unauthorized' });
+
+		expect(eventService.emit).toHaveBeenCalledWith('auth-request-rejected', {
+			method: 'GET',
+			endpoint: '/v1/widgets',
+			reason: 'session_invalid',
+			statusCode: 401,
+		});
+	});
+
+	it('reports a 401 for a session cookie the strategies refused as an invalid session', async () => {
+		@Service()
+		class WidgetsPublicController {
+			@Get('/')
+			@ApiResponse(200)
+			method() {
+				return { ok: true };
+			}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+		authStrategyRegistry.authenticate.mockResolvedValue({ authenticated: false, challenges: [] });
+
+		await request(activate())
+			.get('/api/v1/widgets')
+			.set('Cookie', 'n8n-auth=not-a-jwt')
 			.expect(401, { message: 'Unauthorized' });
 
 		expect(eventService.emit).toHaveBeenCalledWith('auth-request-rejected', {
@@ -956,7 +984,7 @@ describe('PublicApiControllerRegistry', () => {
 				user: authenticatedUser,
 				method: 'GET',
 				endpoint: '/v1/widgets',
-				reason: 'licence',
+				reason: 'quota',
 				statusCode: 403,
 			});
 		});

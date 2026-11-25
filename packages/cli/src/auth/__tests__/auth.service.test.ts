@@ -145,6 +145,7 @@ describe('AuthService', () => {
 				method: 'GET',
 				baseUrl: '/rest/workflows',
 				route: { path: '/:workflowId' },
+				params: {},
 			});
 		const res = mock<Response>();
 		const next = vi.fn() as NextFunction;

@@ -300,11 +300,15 @@ export class ControllerRegistry {
 		};
 	}
 
-	/** Records a request that a gate refused with 403, with the user the session resolved to. */
+	/**
+	 * Records a request that a gate refused with 403, with the user the session resolved to. A
+	 * request without a session is anonymous: it carried nothing to reject, and a refused cookie
+	 * was already recorded by the session middleware.
+	 */
 	private reportRejectedRequest(req: Request, reason: AuthRequestRejectionReason) {
-		const user = isAuthenticatedRequest(req) ? req.user : undefined;
+		if (!isAuthenticatedRequest(req)) return;
 		this.eventService.emit('auth-request-rejected', {
-			...(user && { user }),
+			user: req.user,
 			method: req.method,
 			endpoint: getRoutePattern(req),
 			reason,

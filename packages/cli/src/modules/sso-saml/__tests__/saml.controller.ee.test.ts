@@ -271,6 +271,51 @@ describe('SAML Login Flow', () => {
 		expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/');
 	});
 
+	test('Should not report a sign-in when SAML login is disabled', async () => {
+		(isSamlLicensedAndEnabled as Mock).mockReturnValue(false);
+		const req = mock<AuthlessRequest>({ browserId: 'test-browser-id' });
+		const res = mock<Response>({
+			status: vi.fn().mockReturnThis(),
+			send: vi.fn().mockReturnThis(),
+		});
+
+		samlService.handleSamlLogin.mockResolvedValueOnce({
+			authenticatedUser: person,
+			attributes,
+			rawAttributes,
+			onboardingRequired: false,
+		});
+
+		await controller.acsPost(req, res, { RelayState: '/' });
+
+		expect(res.status).toHaveBeenCalledWith(202);
+		expect(authService.issueCookie).not.toHaveBeenCalled();
+		expect(eventService.emit).not.toHaveBeenCalledWith('user-logged-in', expect.anything());
+	});
+
+	test('Should classify an account that may not sign in through SAML as access denied', async () => {
+		const req = mock<AuthlessRequest>({ browserId: 'test-browser-id' });
+		const res = mock<Response>({
+			headersSent: false,
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn().mockReturnThis(),
+		});
+
+		samlService.handleSamlLogin.mockRejectedValueOnce(
+			new ForbiddenError('A service account cannot log in with SAML'),
+		);
+
+		await controller.acsPost(req, res, { RelayState: '/' });
+
+		expect(authService.issueCookie).not.toHaveBeenCalled();
+		expect(eventService.emit).toHaveBeenCalledWith('user-login-failed', {
+			userEmail: 'unknown',
+			authenticationMethod: 'saml',
+			reason: 'A service account cannot log in with SAML',
+			reasonCode: 'access_denied',
+		});
+	});
+
 	test('Should issue cookie with MFA flag set to true when onboarding is required', async () => {
 		const req = mock<AuthlessRequest>({ browserId: 'test-browser-id' });
 		const res = mock<Response>();
