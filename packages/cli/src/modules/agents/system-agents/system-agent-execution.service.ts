@@ -1163,13 +1163,19 @@ export class SystemAgentExecutionService {
 				};
 			}
 		}
-		return await this.fileBridge.adoptBinary(binary, {
-			agentId: thread.agentId,
-			projectId: thread.projectId,
-			threadId: thread.id,
-			// The reads and the downloads of the system chat find its files by resource.
-			resourceId,
-		});
+		return await this.fileBridge.adoptBinary(
+			binary,
+			{
+				agentId: thread.agentId,
+				projectId: thread.projectId,
+				threadId: thread.id,
+				// The reads and the downloads of the system chat find its files by resource.
+				resourceId,
+			},
+			undefined,
+			// The Assistant can read the same node output many times, so store its files one time.
+			{ reuseSameFile: true },
+		);
 	}
 
 	private async readThreadFile(

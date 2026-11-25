@@ -161,6 +161,21 @@ describe('extractNodeOutput with files', () => {
 		expect(result.binaryFileCount).toBe(1);
 	});
 
+	it('counts a binary that several items carry one time', async () => {
+		const passedOn = executionOf(
+			runOf({
+				Resize: [
+					{ json: {}, binary: { data: binary('a') } },
+					{ json: {}, binary: { data: binary('a'), thumb: binary('b') } },
+				],
+			}),
+		);
+
+		const result = await extractNodeOutput(passedOn, 'Resize');
+
+		expect(result.binaryFileCount).toBe(2);
+	});
+
 	it('stores nothing from a redacted execution', async () => {
 		const storeFile = vi.fn();
 		const redacted = executionOf(

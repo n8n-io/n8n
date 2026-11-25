@@ -193,7 +193,8 @@ const getNodeOutputAction = z.object({
 		.optional()
 		.describe(
 			'Store the files (binary data) of the returned items as conversation files, at most 10 for each call. ' +
-				'The result lists them in `files` with a fileId. Use it when `binaryFileCount` shows files that you or the user need.',
+				'The result lists them in `files` with a fileId. Use it when `binaryFileCount` shows files that you or the user need. ' +
+				'A file stored before keeps its fileId. To store the files of later items, page with startIndex and maxItems.',
 		),
 });
 

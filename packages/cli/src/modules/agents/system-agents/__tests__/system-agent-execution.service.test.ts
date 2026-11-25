@@ -1121,12 +1121,17 @@ describe('SystemAgentExecutionService', () => {
 
 					await expect(turn.storeWorkflowFile(binary)).resolves.toBe(stored);
 					expect(binaryDataAccess.hasReadAccess).toHaveBeenCalledWith(user, binary.id);
-					expect(fileBridge.adoptBinary).toHaveBeenCalledWith(binary, {
-						agentId: thread.agentId,
-						projectId: thread.projectId,
-						threadId: 'thread-1',
-						resourceId: 'system-chat:user-1',
-					});
+					expect(fileBridge.adoptBinary).toHaveBeenCalledWith(
+						binary,
+						{
+							agentId: thread.agentId,
+							projectId: thread.projectId,
+							threadId: 'thread-1',
+							resourceId: 'system-chat:user-1',
+						},
+						undefined,
+						{ reuseSameFile: true },
+					);
 				});
 
 				const threadFile = {
@@ -1174,7 +1179,12 @@ describe('SystemAgentExecutionService', () => {
 						{ ...passedOn, mimeType: 'image/jpeg' },
 					]) {
 						await expect(turn.storeWorkflowFile(changed)).resolves.toBe(stored);
-						expect(fileBridge.adoptBinary).toHaveBeenLastCalledWith(changed, expect.anything());
+						expect(fileBridge.adoptBinary).toHaveBeenLastCalledWith(
+							changed,
+							expect.anything(),
+							undefined,
+							{ reuseSameFile: true },
+						);
 					}
 					// The file of the thread proves access to the bytes.
 					expect(binaryDataAccess.hasReadAccess).not.toHaveBeenCalled();

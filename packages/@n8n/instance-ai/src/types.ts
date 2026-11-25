@@ -313,7 +313,10 @@ export interface NodeOutputResult {
 	totalItems: number;
 	/** Page position over the items of all outputs, first output first. */
 	returned: { from: number; to: number };
-	/** Files (binary data) on the returned items. Absent when they have none. */
+	/**
+	 * Files (binary data) on the returned items, each binary one time. Absent
+	 * when they have none.
+	 */
 	binaryFileCount?: number;
 	/**
 	 * Files of the returned items, stored as conversation files. Set only when

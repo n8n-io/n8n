@@ -6,6 +6,7 @@ import type { BinaryDataAccessService } from '@/binary-data/binary-data-access.s
 
 import {
 	AgentFileLimitError,
+	hashFileContent,
 	type AgentChatAttachmentService,
 } from '../agent-chat-attachment.service';
 import { AgentFileBridge } from '../agent-file-bridge.service';
@@ -73,6 +74,7 @@ describe('AgentFileBridge', () => {
 			fileName: 'cat.png',
 			mimeType: 'image/png',
 			data: PNG,
+			contentHash: hashFileContent(PNG),
 		});
 		expect(result.items).toEqual([
 			{ json: { a: 1 } },
@@ -310,6 +312,83 @@ describe('AgentFileBridge', () => {
 				bridge.adoptBinary({ ...pngBinary, bytes: MAX_GENERATED_FILE_BYTES + 1 }, scope),
 			).resolves.toEqual({ fileName: 'cat.png', reason: 'larger than 50 MB' });
 			expect(attachmentService.storeInbound).not.toHaveBeenCalled();
+		});
+
+		describe('with reuseSameFile', () => {
+			const hash = hashFileContent(PNG);
+			const sameFile = (overrides: Partial<AgentChatAttachment> = {}) =>
+				({
+					id: 'earlier',
+					agentId: scope.agentId,
+					resourceId: scope.resourceId,
+					fileName: 'cat.png',
+					mimeType: 'image/png',
+					fileSizeBytes: PNG.byteLength,
+					contentHash: hash,
+					...overrides,
+				}) as AgentChatAttachment;
+			const reuse = { reuseSameFile: true };
+
+			beforeEach(() => {
+				attachmentService.hasStoredData.mockResolvedValue(true);
+			});
+
+			it('gives a file of the thread with the same bytes, name and type, without a copy', async () => {
+				attachmentService.findReadableByHashes.mockResolvedValue(new Map([[hash, [sameFile()]]]));
+
+				await expect(bridge.adoptBinary(pngBinary, scope, 'data', reuse)).resolves.toEqual({
+					fileId: 'earlier',
+					fileName: 'cat.png',
+					mimeType: 'image/png',
+					sizeBytes: PNG.byteLength,
+				});
+				expect(attachmentService.findReadableByHashes).toHaveBeenCalledWith([hash], scope);
+				expect(attachmentService.storeInbound).not.toHaveBeenCalled();
+			});
+
+			it('matches any name when the binary has no usable name', async () => {
+				attachmentService.findReadableByHashes.mockResolvedValue(
+					new Map([[hash, [sameFile({ fileName: 'abc.png' })]]]),
+				);
+
+				await expect(
+					bridge.adoptBinary({ ...pngBinary, fileName: 'data' }, scope, 'data', reuse),
+				).resolves.toMatchObject({ fileId: 'earlier' });
+				expect(attachmentService.storeInbound).not.toHaveBeenCalled();
+			});
+
+			it.each([
+				['another name', { fileName: 'dog.png' }],
+				['another type', { mimeType: 'image/jpeg' }],
+				['another memory resource', { resourceId: 'draft-chat:user-2' }],
+				['another agent', { agentId: 'agent-2' }],
+			])('stores a new file when the earlier file has %s', async (_, overrides) => {
+				attachmentService.findReadableByHashes.mockResolvedValue(
+					new Map([[hash, [sameFile(overrides)]]]),
+				);
+
+				await expect(bridge.adoptBinary(pngBinary, scope, 'data', reuse)).resolves.toMatchObject({
+					fileId: 'aid-1',
+				});
+				expect(attachmentService.storeInbound).toHaveBeenCalledWith(
+					expect.objectContaining({ contentHash: hash }),
+				);
+			});
+
+			it('stores a new file when the bytes of the earlier file are gone', async () => {
+				attachmentService.findReadableByHashes.mockResolvedValue(new Map([[hash, [sameFile()]]]));
+				attachmentService.hasStoredData.mockResolvedValue(false);
+
+				await expect(bridge.adoptBinary(pngBinary, scope, 'data', reuse)).resolves.toMatchObject({
+					fileId: 'aid-1',
+				});
+			});
+
+			it('does not look for an earlier file without the option', async () => {
+				await bridge.adoptBinary(pngBinary, scope);
+
+				expect(attachmentService.findReadableByHashes).not.toHaveBeenCalled();
+			});
 		});
 	});
 

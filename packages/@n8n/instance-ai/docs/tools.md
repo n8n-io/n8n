@@ -862,14 +862,19 @@ items account for. Read the error of that run from `action="get"`, which
 reports it under `nodeErrors`.
 
 The items show only their JSON. `binaryFileCount` counts the files (binary
-data) of the returned items. With `storeFiles`, the action stores those files
-as conversation files, at most 10 for each call, one time for each binary. It
-lists them in `files` with their fileId. `skippedFiles.files` lists at most 10
-files that were not stored, and `skippedFiles.total` counts all of them. The model can then view them with `view-file`, copy them to
-the sandbox with `import-files`, or pass them to a run. To store more files,
-page with `startIndex` and `maxItems`. A redacted execution stores no files.
-The host offers `storeFiles` only when it sets `readBinary` and
-`storeWorkflowFile` on `storedFiles`.
+data) of the returned items, one time for each binary. With `storeFiles`, the
+action stores those files as conversation files, at most 10 for each call, one
+time for each binary. It lists them in `files` with their fileId.
+`skippedFiles.files` lists at most 10 files that were not stored, and
+`skippedFiles.total` counts all of them. The model can then view them with
+`view-file`, copy them to the sandbox with `import-files`, or pass them to a
+run. To store the files of later items, page with `startIndex` and `maxItems`.
+An item with more than 10 files keeps only its first 10, because the cap
+applies to each call. A file of the conversation with the same bytes, name
+and type is given again, not stored again, so a second call on the same output
+gives the same fileIds. A redacted execution stores no files. The host offers
+`storeFiles` only when it sets `readBinary` and `storeWorkflowFile` on
+`storedFiles`.
 
 ### `workflow_builder_executions(action="get-resolved-node-parameters")`
 

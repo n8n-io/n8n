@@ -18,6 +18,31 @@ export const MAX_RUN_OUTPUT_FILES = 10;
 export const MAX_RUN_SKIPPED_FILES = 10;
 
 /**
+ * Each binary of the items one time, with its key. Nodes pass the same stored
+ * binary on, so several items can carry one binary.
+ */
+function* uniqueBinaries(
+	items: Iterable<{ binary?: IBinaryKeyData }>,
+): Generator<[key: string, binary: IBinaryData]> {
+	const seen = new Set<IBinaryData | string>();
+	for (const item of items) {
+		for (const [key, binary] of Object.entries(item.binary ?? {})) {
+			const identity = binary.id ?? binary;
+			if (seen.has(identity)) continue;
+			seen.add(identity);
+			yield [key, binary];
+		}
+	}
+}
+
+/** The number of files of the items, each binary one time, as `storeItemFiles` stores them. */
+export function countItemFiles(items: Iterable<{ binary?: IBinaryKeyData }>): number {
+	let count = 0;
+	for (const _ of uniqueBinaries(items)) count++;
+	return count;
+}
+
+/**
  * Store the files of some execution items as conversation files, one time for
  * each binary and at most `MAX_RUN_OUTPUT_FILES` of them. `limitReason` is the
  * reason of a file over that cap.
@@ -34,22 +59,15 @@ export async function storeItemFiles(
 		skippedTotal++;
 		if (skippedFiles.length < MAX_RUN_SKIPPED_FILES) skippedFiles.push(file);
 	};
-	const seen = new Set<IBinaryData | string>();
-	for (const item of items) {
-		for (const [key, binary] of Object.entries(item.binary ?? {})) {
-			// Nodes pass the same stored binary on, so store it one time.
-			const identity = binary.id ?? binary;
-			if (seen.has(identity)) continue;
-			seen.add(identity);
-			if (files.length >= MAX_RUN_OUTPUT_FILES) {
-				skip({ fileName: binary.fileName ?? key, reason: limitReason });
-				continue;
-			}
-			const stored = await storeFile(binary);
-			if (!stored) continue;
-			if ('reason' in stored) skip(stored);
-			else files.push(stored);
+	for (const [key, binary] of uniqueBinaries(items)) {
+		if (files.length >= MAX_RUN_OUTPUT_FILES) {
+			skip({ fileName: binary.fileName ?? key, reason: limitReason });
+			continue;
 		}
+		const stored = await storeFile(binary);
+		if (!stored) continue;
+		if ('reason' in stored) skip(stored);
+		else files.push(stored);
 	}
 	return {
 		...(files.length > 0 ? { files } : {}),
