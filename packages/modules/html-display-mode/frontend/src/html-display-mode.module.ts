@@ -5,14 +5,12 @@ import { HTML_NODE_TYPE } from 'n8n-workflow';
 const HtmlDisplayModeView = async () => await import('./HtmlDisplayModeView.vue');
 
 export const HtmlDisplayModeModule = defineFrontendModule({
-	// No backend twin, so `isModuleActive` is always false. Display modes register regardless.
 	id: 'html-display-mode',
 	name: 'HTML display mode',
 	description: 'Show the HTML that the HTML node generates',
 	icon: 'file-code',
 	runDataDisplayModes: [
 		{
-			// Stored choices, telemetry and end-to-end tests use this id
 			id: 'html',
 			label: () => useI18n().baseText('runData.html'),
 			icon: 'file-code',

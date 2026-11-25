@@ -344,7 +344,6 @@ describe('RunData', () => {
 
 			const { emitted, findByTestId, container, queryByTestId, rerender } = render({
 				defaultRunItems: htmlItems,
-				// The test workflow drops parameters that the mock node type does not define
 				workflowNodes: [{ ...htmlNode }],
 				node: htmlNode,
 				displayMode: 'table',
@@ -2168,7 +2167,6 @@ describe('RunData', () => {
 		fetchedRunData?: IRunData;
 		/** The parent nodes that the input panel's schema view shows. */
 		inputNodes?: IConnectedNode[];
-		/** The node under test. Defaults to a Set node named `Test Node`. */
 		node?: INodeUi;
 		lastSuccessfulExecution?: {
 			id: string;
