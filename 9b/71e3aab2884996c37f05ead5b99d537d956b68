@@ -1,0 +1,21 @@
+packages/modules/promotions/frontend/src/components/preview/PromotionBlockers.vue
+  s_4a494bfdece475::t_48e2fdc47de474 298-305,318
+packages/modules/promotions/frontend/src/views/PromotionPreviewView.test.ts
+  s_4a494bfdece475::t_1ae35ee9dd4cca 1296,1311-1321,1395,1398,1406-1407
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9b71e3aab2884996c37f05ead5b99d537d956b68",
+  "prompts": {},
+  "sessions": {
+    "s_4a494bfdece475": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64240406-7a90-4cf7-9a1d-31fa1cac357e",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
