@@ -7,24 +7,24 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { reactive } from 'vue';
+import { nextTick, reactive } from 'vue';
 
 import InstancePolicyView from './InstancePolicyView.vue';
 import { useInstancePolicyStore } from './instance-policy.store';
 import { accessFilter } from '../__tests__/table';
+import { useRestrictReviewStore } from './restrict-review/restrict-review.store';
 import { POLICIES_LANDING_VIEW } from '../type-availability-policies.constants';
 
-const { route, routeOverride, push, replace, track, fetchInstancePolicy, fetchInstanceAccess } =
-	vi.hoisted(() => ({
+const { route, push, replace, track, fetchInstancePolicy, fetchInstanceAccess } = vi.hoisted(
+	() => ({
 		route: { query: {} as Record<string, string> },
-		/** A reactive route, for a test that needs the view to follow its own query writes. */
-		routeOverride: { current: undefined as { query: Record<string, unknown> } | undefined },
 		track: vi.fn(),
 		push: vi.fn(),
 		replace: vi.fn(),
 		fetchInstancePolicy: vi.fn(),
 		fetchInstanceAccess: vi.fn(),
-	}));
+	}),
+);
 
 vi.mock('../type-availability-policies.api', () => ({
 	fetchInstancePolicy,
@@ -44,8 +44,11 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track }),
 }));
 
+// Reactive, so that a test can change the query of a mounted page.
+const reactiveRoute = reactive(route);
+
 vi.mock('vue-router', () => ({
-	useRoute: () => routeOverride.current ?? route,
+	useRoute: () => reactiveRoute,
 	useRouter: () => ({ push, replace }),
 }));
 
@@ -113,7 +116,6 @@ const setupAfterEarlierVisit = async (query: Record<string, string>) => {
 describe('InstancePolicyView', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		routeOverride.current = undefined;
 		fetchInstancePolicy.mockResolvedValue({
 			scopeId: null,
 			rules: [],
@@ -464,6 +466,35 @@ describe('InstancePolicyView', () => {
 		});
 	});
 
+	it('cancels the reviews of the access dialog when the dialog closes', async () => {
+		setup(BOTH_SCOPES, { tab: 'node', details: 'n8n-nodes-base.notion' });
+		const cancelAll = vi.spyOn(useRestrictReviewStore(), 'cancelAll');
+
+		reactiveRoute.query = { tab: 'node' };
+		await nextTick();
+
+		expect(cancelAll).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps the reviews of the table when an access dialog opens', async () => {
+		setup(BOTH_SCOPES, { tab: 'node' });
+		const cancelAll = vi.spyOn(useRestrictReviewStore(), 'cancelAll');
+
+		reactiveRoute.query = { tab: 'node', details: 'n8n-nodes-base.notion' };
+		await nextTick();
+
+		expect(cancelAll).not.toHaveBeenCalled();
+	});
+
+	it('cancels the open review and each review that still loads when the admin leaves', () => {
+		const { unmount } = setup();
+		const cancelAll = vi.spyOn(useRestrictReviewStore(), 'cancelAll');
+
+		unmount();
+
+		expect(cancelAll).toHaveBeenCalledTimes(1);
+	});
+
 	describe('telemetry', () => {
 		const openedEvent = TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_OPENED_TYPE_ACCESS_DIALOG;
 
@@ -489,9 +520,7 @@ describe('InstancePolicyView', () => {
 		});
 
 		it('reports a dialog that a click in the table opens', async () => {
-			const reactiveRoute = reactive({ query: { tab: 'node' } as Record<string, unknown> });
-			routeOverride.current = reactiveRoute;
-			replace.mockImplementation(({ query }: { query: Record<string, unknown> }) => {
+			replace.mockImplementationOnce(({ query }: { query: Record<string, string> }) => {
 				reactiveRoute.query = query;
 			});
 			fetchInstanceAccess.mockResolvedValue({

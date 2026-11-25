@@ -38,7 +38,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	change: [name: string, access: PolicyAction];
+	change: [name: string, access: PolicyAction, label: string];
 	open: [name: string];
 }>();
 
@@ -219,12 +219,16 @@ function focusFilter() {
 }
 
 // A change of access can take the focused row out of the table, or move it when the table is sorted
-// by access. Both lose the focus to the body.
+// by access. Both lose the focus to the body. A restriction applies after its usage check, so the
+// focus can be on the Access button of the row by then.
 watch(
 	pageRows,
 	async () => {
 		const focused = document.activeElement;
-		const focusedRow = focused instanceof HTMLElement ? focused.dataset.typeName : undefined;
+		const focusedRow =
+			focused instanceof HTMLElement
+				? (focused.dataset.typeName ?? focused.dataset.accessOf)
+				: undefined;
 		if (focusedRow === undefined) return;
 		await nextTick();
 		if (document.activeElement === document.body) returnFocus(focusedRow);
@@ -254,7 +258,7 @@ function onRowClick(_event: MouseEvent, { item }: { item: InstancePolicyTableRow
 
 async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction) {
 	if (access === row.access) return;
-	emit('change', row.name, access);
+	emit('change', row.name, access, row.displayName);
 	await nextTick();
 	// The menu returns the focus to its trigger, which a row that left the filter took with it.
 	if (!pageRows.value.some(({ name }) => name === row.name)) focusFilter();
@@ -329,14 +333,23 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 						<N8nButton
 							variant="ghost"
 							size="small"
-							@click.stop
+							:data-access-of="item.name"
 							:aria-label="
 								i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.access.ariaLabel', {
 									interpolate: { name: item.displayName },
 								})
 							"
+							@click.stop
 						>
-							<N8nIcon v-bind="ACCESS_ICON[item.access]" size="small" />
+							<!-- A spinner and not a disabled button: a disabled button loses the focus. -->
+							<N8nIcon
+								v-if="item.checking"
+								icon="loader-circle"
+								size="small"
+								spin
+								:data-test-id="`instance-policy-access-checking-${item.name}`"
+							/>
+							<N8nIcon v-else v-bind="ACCESS_ICON[item.access]" size="small" />
 							{{ i18n.baseText(ACCESS_LABEL_KEY[item.access]) }}
 							<N8nIcon icon="chevron-down" size="small" />
 						</N8nButton>
