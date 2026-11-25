@@ -168,6 +168,20 @@ describe('credential type availability policy project controller: team projects 
 		expect(unchanged.body.data.version).toBe(0);
 	});
 
+	test('PATCH access for a personal project is rejected with 400 and writes nothing', async () => {
+		const personalProject = await getPersonalProject(owner);
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.patch(`${projectRoute(personalProject.id)}/access`)
+			.send({ changes: [{ type: 'slackApi', access: 'deny' }], version: 0 });
+
+		expect(response.statusCode).toBe(400);
+
+		const unchanged = await testServer.authAgentFor(owner).get(projectRoute(personalProject.id));
+		expect(unchanged.body.data.version).toBe(0);
+	});
+
 	test('PUT for an unknown project is rejected with 404', async () => {
 		const response = await testServer
 			.authAgentFor(owner)
@@ -184,5 +198,36 @@ describe('credential type availability policy project controller: team projects 
 			.send({ rules: [], defaultAction: 'deny', version: 0 });
 
 		expect(response.statusCode).toBe(200);
+	});
+});
+
+describe('PATCH /projects/:projectId/credential-type-policies/project/access', () => {
+	const accessRoute = (projectId: string) => `${projectRoute(projectId)}/access`;
+
+	test('rejects a project editor with 403', async () => {
+		const response = await testServer
+			.authAgentFor(projectEditor)
+			.patch(accessRoute(project.id))
+			.send({ changes: [{ type: 'slackApi', access: 'deny' }], version: 0 });
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('lets the project admin set the access of a credential type', async () => {
+		const response = await testServer
+			.authAgentFor(projectAdmin)
+			.patch(accessRoute(project.id))
+			.send({ changes: [{ type: 'slackApi', access: 'deny' }], version: 0 });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toMatchObject({
+			version: 1,
+			rules: [{ action: 'deny', selector: { kind: 'name', value: 'slackApi' } }],
+		});
+
+		const nodePolicy = await testServer
+			.authAgentFor(projectAdmin)
+			.get(`/projects/${project.id}/node-type-policies/project`);
+		expect(nodePolicy.body.data.version).toBe(0);
 	});
 });
