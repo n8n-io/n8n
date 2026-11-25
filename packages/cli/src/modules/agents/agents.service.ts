@@ -1209,13 +1209,20 @@ export class AgentsService {
 		const registry = Container.get(ChatIntegrationRegistry);
 		for (const integration of agent.integrations ?? []) {
 			try {
-				await registry.get(integration.type)?.onRemove?.({
+				const warning = await registry.get(integration.type)?.onRemove?.({
 					agentId: agent.id,
 					projectId: agent.projectId,
 					credentialId: integration.credentialId,
 					user: actor,
 					deleteExternalResource: true,
 				});
+				if (warning) {
+					this.logger.warn('Integration cleanup left resources behind on agent delete', {
+						agentId: agent.id,
+						type: integration.type,
+						warning,
+					});
+				}
 			} catch (error) {
 				this.logger.warn('Failed to remove integration on agent delete', {
 					agentId: agent.id,

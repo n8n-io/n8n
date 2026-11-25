@@ -193,8 +193,9 @@ function makeService() {
 			}
 		},
 	);
+	const logger = mockLogger();
 	const service = new AgentsService(
-		mockLogger(),
+		logger,
 		agentRepository,
 		projectRelationRepository,
 		projectRepository,
@@ -227,6 +228,7 @@ function makeService() {
 
 	return {
 		service,
+		logger,
 		folderService,
 		licenseState,
 		n8nChatFlag,
@@ -1299,7 +1301,30 @@ describe('AgentsService', () => {
 			deleteExternalResource: true,
 		});
 		expect(onRemove.mock.invocationCallOrder[0]).toBeGreaterThan(
-			agentRepository.deleteById.mock.invocationCallOrder[0],
+			agentRepository.removeAfterApprovalCleanup.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('logs the warning when an integration cannot remove its external resources', async () => {
+		const { service, logger, agentRepository, chatIntegrationRegistry } = makeService();
+		const warning = {
+			integrationType: 'slack',
+			code: 'app_not_deleted',
+			action: { type: 'open_url', url: 'https://api.slack.com/apps/A1' },
+			details: { appId: 'A1' },
+		};
+		chatIntegrationRegistry.get.mockReturnValue(
+			mock<AgentChatIntegration>({ onRemove: vi.fn().mockResolvedValue(warning) }),
+		);
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({ integrations: [{ type: 'slack', credentialId: 'slack-1' }] }),
+		);
+
+		await service.delete(agentId, user, projectId);
+
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Integration cleanup left resources behind on agent delete',
+			{ agentId, type: 'slack', warning },
 		);
 	});
 
@@ -1323,7 +1348,7 @@ describe('AgentsService', () => {
 			id: agentId,
 		});
 		expect(onRemove).toHaveBeenCalledTimes(2);
-		expect(agentRepository.deleteById).toHaveBeenCalledWith(agentId, {});
+		expect(agentRepository.removeAfterApprovalCleanup).toHaveBeenCalledWith(agentId, projectId, {});
 		expect(eventService.emit).toHaveBeenCalledWith('agent-deleted', { agentId, projectId });
 	});
 
