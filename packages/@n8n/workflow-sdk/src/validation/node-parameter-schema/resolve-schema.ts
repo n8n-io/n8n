@@ -114,7 +114,7 @@ function formatConditionEntries(conditions: Record<string, unknown[]>): string[]
 	const entries: string[] = [];
 
 	for (const [key, values] of Object.entries(conditions)) {
-		if (!Array.isArray(values) || values.length === 0) continue;
+		if (!Array.isArray(values)) continue;
 
 		const valStr =
 			values.length === 1 ? formatValue(values[0]) : values.map(formatValue).join(' or ');
@@ -122,8 +122,14 @@ function formatConditionEntries(conditions: Record<string, unknown[]>): string[]
 		if (isRegexPath(key)) {
 			const formattedPath = formatRegexPath(key);
 			entries.push(`one of ${formattedPath} ${valStr}`);
-		} else if (values.length === 1 && isDisplayCondition(values[0])) {
-			entries.push(`${key} ${valStr}`);
+		} else if (values.some(isDisplayCondition)) {
+			entries.push(
+				values
+					.map((v) =>
+						isDisplayCondition(v) ? `${key} ${formatValue(v)}` : `${key}=${formatValue(v)}`,
+					)
+					.join(' or '),
+			);
 		} else {
 			entries.push(`${key}=${valStr}`);
 		}

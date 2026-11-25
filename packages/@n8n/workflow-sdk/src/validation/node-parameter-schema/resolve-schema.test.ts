@@ -363,6 +363,55 @@ describe('resolveSchema error messages for hidden fields', () => {
 		}
 	});
 
+	it('formats multi-entry _cnd arrays without assignment prefix', () => {
+		const schema = resolveSchema({
+			parameters: { count: 1 },
+			schema: stringSchema,
+			required: false,
+			displayOptions: { hide: { count: [{ _cnd: { lte: 1.3 } }, { _cnd: { gte: 1.8 } }] } },
+		});
+
+		const result = schema.safeParse('some-value');
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error.issues[0].message).toBe(
+				'This field is hidden when: count <= 1.3 or count >= 1.8',
+			);
+		}
+	});
+
+	it('formats mixed plain values and _cnd conditions', () => {
+		const schema = resolveSchema({
+			parameters: { count: 10 },
+			schema: stringSchema,
+			required: false,
+			displayOptions: { hide: { count: [0, { _cnd: { gte: 5 } }] } },
+		});
+
+		const result = schema.safeParse('some-value');
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error.issues[0].message).toBe(
+				'This field is hidden when: count=0 or count >= 5',
+			);
+		}
+	});
+
+	it('preserves empty condition arrays in show error messages', () => {
+		const schema = resolveSchema({
+			parameters: { mode: 'a' },
+			schema: stringSchema,
+			required: false,
+			displayOptions: { show: { mode: [] } },
+		});
+
+		const result = schema.safeParse('some-value');
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error.issues[0].message).toBe('This field is only allowed when: mode=');
+		}
+	});
+
 	it('formats regex paths in show and hide conditions', () => {
 		const schema = resolveSchema({
 			parameters: {},
