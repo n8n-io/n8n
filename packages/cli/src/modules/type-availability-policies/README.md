@@ -216,7 +216,8 @@ A policy lives in three tables:
 
 `projectId: null` is the instance scope. An unwritten scope has no row: it allows everything and
 reports version `0`, so a first write sends `expectedVersion: 0`. One accepted write moves the
-version by exactly one, whatever it changed.
+version by exactly one, whatever it changed. An access write that changes no rule writes nothing
+(see [Setting the access of a type](#setting-the-access-of-a-type)).
 
 Evaluation is `instance ∩ project`, and a project can only restrict further. `delegate` is the
 one exception: an instance `delegate` is satisfied only by an explicit project `allow` rule,
@@ -360,8 +361,9 @@ The write goes through the same path as `PUT`, so the same version check, warnin
 for several attachments or a shared document apply. One call changes either all types or none.
 
 Unlike `PUT`, a call that leaves the rules as they are writes nothing and keeps the version, so
-it does not fail the next write of another admin. That call also skips the `409` checks above,
-because it changes no document.
+it does not fail the next write of another admin. A stale `version` still fails with `409`, but
+the `409` for several attachments or a shared document does not apply, because the call changes
+no document.
 
 ### Usage counts of each credential type
 
