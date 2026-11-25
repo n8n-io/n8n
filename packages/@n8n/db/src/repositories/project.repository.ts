@@ -75,6 +75,10 @@ export class ProjectRepository extends BaseRepository<Project> {
 		);
 	}
 
+	async findForPreferenceTarget(projectId: string, ctx: OperationContext): Promise<Project | null> {
+		return await this.managerFor(ctx).findOneBy(Project, { id: projectId });
+	}
+
 	async getPersonalProjectForUser(userId: string, entityManager?: EntityManager) {
 		const em = entityManager ?? this.manager;
 

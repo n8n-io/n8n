@@ -3,6 +3,7 @@ import type {
 	AiPreferenceRepository,
 	Project,
 	ProjectRelationRepository,
+	RoleRepository,
 	ProjectRepository,
 	User,
 	UserRepository,
@@ -60,7 +61,7 @@ describe('AiPreferenceService', () => {
 	const service = new AiPreferenceService(
 		aiPreferenceRepository,
 		projectRepository,
-		new ProjectScopeService(roleService, projectRelationRepository),
+		new ProjectScopeService(roleService, projectRelationRepository, mock<RoleRepository>()),
 		userRepository,
 	);
 
@@ -380,7 +381,7 @@ describe('AiPreferenceService', () => {
 		/** Gives the member one role in the project that grants the named scopes only. */
 		function allowProjectOperations(...allowed: string[]) {
 			grantMemberships([{ projectId: 'p-1', scopes: allowed }]);
-			projectRepository.findOneBy.mockResolvedValue(teamProject);
+			projectRepository.findForPreferenceTarget.mockResolvedValue(teamProject);
 		}
 
 		it('reports only what a create-only project role holds, not the whole set', async () => {
@@ -603,7 +604,9 @@ describe('AiPreferenceService', () => {
 			aiPreferenceRepository.findByIdWithRelations.mockResolvedValue(
 				row({ id: 'pref-1', content: 'Rule.', userId: null, projectId: 'project-1' }),
 			);
-			projectRepository.findOneBy.mockResolvedValue(mock<Project>({ id: 'project-1' }));
+			projectRepository.findForPreferenceTarget.mockResolvedValue(
+				mock<Project>({ id: 'project-1' }),
+			);
 
 			await service.update(owner, 'pref-1', { content: 'A better rule.' });
 

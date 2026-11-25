@@ -10,7 +10,7 @@ import type {
 	AiPreferencesAppliedPayload,
 } from '@n8n/api-types';
 import { AI_PREFERENCE_MAX_PER_SCOPE, aiPreferenceTargetOf } from '@n8n/api-types';
-import type { AiPreference, Project, User } from '@n8n/db';
+import type { AiPreference, OperationContext, Project, User } from '@n8n/db';
 import { AiPreferenceRepository, ProjectRepository, UserRepository, accountSummary } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
@@ -38,6 +38,7 @@ class ProjectAccess {
 	constructor(
 		private readonly user: User,
 		private readonly projectScopeService: ProjectScopeService,
+		private readonly ctx: OperationContext,
 	) {}
 
 	async allowed(operation: ProjectOperation): Promise<AllowedProjects> {
@@ -55,9 +56,11 @@ class ProjectAccess {
 	}
 
 	private async resolve(operation: ProjectOperation): Promise<AllowedProjects> {
-		const projectIds = await this.projectScopeService.getProjectIds(this.user, [
-			`projectAiPreference:${operation}`,
-		]);
+		const projectIds = await this.projectScopeService.getProjectIds(
+			this.user,
+			[`projectAiPreference:${operation}`],
+			this.ctx,
+		);
 		return projectIds === null ? 'all' : new Set(projectIds);
 	}
 }
@@ -354,8 +357,8 @@ export class AiPreferenceService {
 		return this.toDto(row, await this.scopesFor(user, row, access));
 	}
 
-	private projectAccess(user: User): ProjectAccess {
-		return new ProjectAccess(user, this.projectScopeService);
+	private projectAccess(user: User, ctx: OperationContext = {}): ProjectAccess {
+		return new ProjectAccess(user, this.projectScopeService, ctx);
 	}
 
 	private async visibleTo(user: User, access: ProjectAccess) {
@@ -384,8 +387,9 @@ export class AiPreferenceService {
 		user: User,
 		id: string,
 		access: ProjectAccess,
+		ctx: OperationContext = {},
 	): Promise<AiPreference> {
-		const row = await this.aiPreferenceRepository.findByIdWithRelations(id);
+		const row = await this.aiPreferenceRepository.findByIdWithRelations(id, ctx);
 		if (!row || !(await this.canSee(user, row, access))) {
 			throw new NotFoundError(`Preference with id ${id} not found`);
 		}
@@ -456,6 +460,7 @@ export class AiPreferenceService {
 		request: AiPreferenceRequestDto,
 		operation: WriteOperation,
 		access: ProjectAccess,
+		ctx: OperationContext = {},
 	): Promise<PreferenceTarget> {
 		switch (request.scope) {
 			case 'user': {
@@ -486,7 +491,7 @@ export class AiPreferenceService {
 				}
 				// Personal projects pass too: the owner holds every scope on them.
 				const project = (await access.has(request.projectId, operation))
-					? await this.projectRepository.findOneBy({ id: request.projectId })
+					? await this.projectRepository.findForPreferenceTarget(request.projectId, ctx)
 					: null;
 				if (!project) {
 					throw new ForbiddenError('You are not allowed to set preferences for this project');
