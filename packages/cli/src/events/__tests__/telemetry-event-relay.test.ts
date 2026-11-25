@@ -7031,6 +7031,38 @@ describe('TelemetryEventRelay', () => {
 			);
 		});
 
+		it.each([
+			[
+				'a signed-in person',
+				{ serverId: 'server-1', userId: 'user-1', canConnect: true, result: 'found' },
+				{
+					server_id: 'server-1',
+					user_id: 'user-1',
+					signed_in: true,
+					can_connect: true,
+					result: 'found',
+				},
+			],
+			[
+				'a person who is not signed in, on a link that finds no server',
+				{ canConnect: false, result: 'not_found' },
+				{
+					server_id: undefined,
+					user_id: undefined,
+					signed_in: false,
+					can_connect: false,
+					result: 'not_found',
+				},
+			],
+		] as const)('tracks a share page view of %s', (_case, payload, properties) => {
+			mcpEventService.emit('mcp-server-share-viewed', payload);
+
+			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_VIEWED_MCP_SERVER_SHARE_PAGE,
+				properties,
+			);
+		});
+
 		it('tracks a tool call with the client, the status, and the duration', () => {
 			mcpEventService.emit('mcp-server-tool-called', {
 				serverId: 'server-1',

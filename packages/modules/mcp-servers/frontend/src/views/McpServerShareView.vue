@@ -80,12 +80,8 @@ async function load() {
 			? await getMcpServerShare(rootStore.restApiContext, slug.value)
 			: await getMcpServerPublicShare(rootStore.restApiContext, slug.value);
 		state.value = 'ready';
+		// The backend sends the page view, also for a person who is not signed in.
 		documentTitle.set(share.value.name);
-		telemetry.track(TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_VIEWED_MCP_SERVER_SHARE_PAGE, {
-			server_id: share.value.id,
-			signed_in: signedIn.value,
-			can_connect: share.value.canConnect,
-		});
 	} catch (error) {
 		state.value =
 			error instanceof ResponseError && error.httpStatusCode === 404 ? 'notFound' : 'error';

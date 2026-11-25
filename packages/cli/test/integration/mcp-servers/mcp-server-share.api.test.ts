@@ -1,4 +1,4 @@
-import { PostHogClient } from '@n8n/backend-services';
+import { EventService, PostHogClient } from '@n8n/backend-services';
 import {
 	createActiveWorkflow,
 	createTeamProject,
@@ -12,6 +12,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import type { INode } from 'n8n-workflow';
 import { v7 as uuidv7 } from 'uuid';
+import type { MockInstance } from 'vitest';
 
 import { createAdmin, createMember, createUser } from '../shared/db/users';
 import * as utils from '../shared/utils/';
@@ -185,6 +186,47 @@ describe('GET /mcp-servers/share/:slug', () => {
 			expect(JSON.stringify(response.body)).not.toContain(owner.email);
 		},
 	);
+});
+
+describe('page view telemetry', () => {
+	let emit: MockInstance<EventService['emit']>;
+
+	beforeEach(() => {
+		emit = vi.spyOn(Container.get(EventService), 'emit');
+	});
+
+	afterEach(() => {
+		emit.mockRestore();
+	});
+
+	const views = () => emit.mock.calls.filter(([name]) => name === 'mcp-server-share-viewed');
+
+	it('sends one view with the user for a signed-in person who can connect', async () => {
+		const response = await testServer.authAgentFor(viewer).get(sharePath(serverSlug)).expect(200);
+
+		expect(views()).toEqual([
+			[
+				'mcp-server-share-viewed',
+				{
+					serverId: response.body.data.id,
+					userId: viewer.id,
+					canConnect: true,
+					result: 'found',
+				},
+			],
+		]);
+	});
+
+	it('sends one view with no user and no server for a public link that finds no server', async () => {
+		await testServer.authlessAgent.get(publicPath('no-such-server')).expect(404);
+
+		expect(views()).toEqual([
+			[
+				'mcp-server-share-viewed',
+				{ serverId: undefined, userId: undefined, canConnect: false, result: 'not_found' },
+			],
+		]);
+	});
 });
 
 describe('GET /mcp-servers/share/:slug/public', () => {

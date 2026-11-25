@@ -14,8 +14,7 @@ const clientEvents = [
 	events.CUSTOM_MCP_SERVER_TOOL_CALLED,
 ];
 const backendEvents = [...builderEvents, ...clientEvents];
-// The editor sends these. It identifies the person itself, and the share page also works without
-// a sign-in, so they have no `user_id`.
+// The share page also works without a sign-in, so these events can have no `user_id`.
 const sharePageEvents = [
 	events.USER_VIEWED_MCP_SERVER_SHARE_PAGE,
 	events.USER_CLICKED_CLIENT_ON_MCP_SERVER_SHARE_PAGE,
@@ -66,6 +65,18 @@ describe('custom MCP server events', () => {
 				server_id: 'server-1',
 				signed_in: false,
 				can_connect: false,
+				result: 'found',
+			}),
+		).toBeNull();
+	});
+
+	it('accepts a share page view that finds no server, without a server id', () => {
+		expect(
+			getEventValidationError(events.USER_VIEWED_MCP_SERVER_SHARE_PAGE, {
+				user_id: 'user-1',
+				signed_in: true,
+				can_connect: false,
+				result: 'not_found',
 			}),
 		).toBeNull();
 	});

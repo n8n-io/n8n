@@ -1,4 +1,5 @@
 import type { McpServerShare, McpServerSharePublic } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import { isPerson, UserRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
@@ -18,15 +19,24 @@ export class McpServerShareService {
 		private readonly servers: McpServerRepository,
 		private readonly tools: McpServerToolsService,
 		private readonly users: UserRepository,
+		private readonly events: EventService,
 	) {}
 
 	/** `null` for an unknown server, and for every server when the flag is off. */
 	async publicShare(slug: string): Promise<McpServerSharePublic | null> {
 		const server = await this.resources.findServer(slug);
-		return server ? await this.toPublic(server) : null;
+		const share = server ? await this.toPublic(server) : null;
+		this.trackView(share);
+		return share;
 	}
 
 	async shareFor(slug: string, user: User): Promise<McpServerShare | null> {
+		const share = await this.findShareFor(slug, user);
+		this.trackView(share, user.id);
+		return share;
+	}
+
+	private async findShareFor(slug: string, user: User): Promise<McpServerShare | null> {
 		const server = await this.resources.findServer(slug);
 		if (!server) return null;
 		const share = await this.toPublic(server);
@@ -42,6 +52,19 @@ export class McpServerShareService {
 				.filter((tool) => tool.brokenReason === null)
 				.map(({ toolName, description }) => ({ toolName, description })),
 		};
+	}
+
+	/**
+	 * The backend sends the page view, because the editor starts telemetry only after a sign-in.
+	 * Each page load reads exactly one of the two routes.
+	 */
+	private trackView(share: McpServerShare | null, userId?: string) {
+		this.events.emit('mcp-server-share-viewed', {
+			serverId: share?.id,
+			userId,
+			canConnect: share?.canConnect ?? false,
+			result: share ? 'found' : 'not_found',
+		});
 	}
 
 	private async toPublic(server: McpServer): Promise<McpServerSharePublic | null> {

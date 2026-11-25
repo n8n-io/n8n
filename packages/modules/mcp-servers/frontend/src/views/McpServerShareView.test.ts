@@ -100,19 +100,6 @@ describe('McpServerShareView', () => {
 				`/signin?redirect=${encodeURIComponent('/mcp-share/sales-tools')}`,
 			);
 		});
-
-		it('records the page view', async () => {
-			await renderPage();
-
-			expect(track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.CUSTOM_MCP_SERVERS.USER_VIEWED_MCP_SERVER_SHARE_PAGE,
-				{
-					server_id: publicShare.id,
-					signed_in: false,
-					can_connect: false,
-				},
-			);
-		});
 	});
 
 	describe('for a signed-in person', () => {
