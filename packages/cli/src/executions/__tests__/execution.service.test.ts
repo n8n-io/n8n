@@ -1469,6 +1469,123 @@ describe('ExecutionService', () => {
 				});
 			});
 		});
+
+		describe.each(['regular', 'queue'] as const)(
+			'sub-executions of a waiting parent in %s mode',
+			(mode) => {
+				const execution = (
+					id: string,
+					status: IExecutionResponse['status'],
+					waitingChildExecutionIds?: string[],
+				) =>
+					({
+						id,
+						workflowId: `workflow-of-${id}`,
+						mode: 'webhook',
+						status,
+						startedAt: new Date(),
+						data: {
+							resultData: {},
+							executionData: {
+								nodeExecutionStack: [{ metadata: { waitingChildExecutionIds } }],
+							},
+						},
+					}) as unknown as IExecutionResponse;
+
+				// Only the parent goes through the access-checked read.
+				const arrange = (parent: IExecutionResponse, executions: IExecutionResponse[]) => {
+					executionPersistence.findWithUnflattenedData.mockResolvedValue(parent);
+					executionPersistence.findSingleExecution.mockImplementation(
+						async (id: string) => executions.find((e) => e.id === id) as never,
+					);
+				};
+
+				const stoppedIds = () =>
+					executionPersistence.saveExecutionOutcome.mock.calls.map(([id]) => id);
+
+				beforeEach(() => {
+					globalConfig.executions.mode = mode;
+					concurrencyControl.has.mockReturnValue(false);
+					activeExecutions.has.mockReturnValue(false);
+					waitTracker.has.mockReturnValue(false);
+					executionPersistence.saveExecutionOutcome.mockResolvedValue({
+						updated: true,
+						ended: true,
+					});
+				});
+
+				it('stops each child after the parent, also in a workflow the caller cannot access', async () => {
+					arrange(execution('parent', 'waiting', ['child-1', 'child-2']), [
+						execution('child-1', 'waiting'),
+						execution('child-2', 'running'),
+					]);
+
+					const result = await executionService.stop('parent', ['workflow-of-parent']);
+
+					expect(result.status).toBe('canceled');
+					expect(stoppedIds()).toEqual(['parent', 'child-1', 'child-2']);
+				});
+
+				it('stops the children of a waiting child', async () => {
+					arrange(execution('parent', 'waiting', ['child']), [
+						execution('child', 'waiting', ['grandchild']),
+						execution('grandchild', 'waiting'),
+					]);
+
+					await executionService.stop('parent', ['workflow-of-parent']);
+
+					expect(stoppedIds()).toEqual(['parent', 'child', 'grandchild']);
+				});
+
+				it('skips a child that has already ended', async () => {
+					arrange(execution('parent', 'waiting', ['child']), [execution('child', 'success')]);
+
+					await executionService.stop('parent', ['workflow-of-parent']);
+
+					expect(stoppedIds()).toEqual(['parent']);
+				});
+
+				it('stops the other children when one child fails to stop', async () => {
+					arrange(execution('parent', 'waiting', ['child-1', 'child-2']), [
+						execution('child-2', 'waiting'),
+					]);
+					executionPersistence.findSingleExecution.mockRejectedValueOnce(
+						new Error('database unavailable'),
+					);
+
+					const result = await executionService.stop('parent', ['workflow-of-parent']);
+
+					expect(result.status).toBe('canceled');
+					expect(stoppedIds()).toEqual(['parent', 'child-2']);
+				});
+
+				it('does not stop the children when the parent ended before the stop', async () => {
+					const parent = execution('parent', 'waiting', ['child']);
+					arrange(parent, [execution('child', 'waiting')]);
+					executionPersistence.saveExecutionOutcome.mockResolvedValueOnce({
+						updated: false,
+						ended: false,
+					});
+					executionPersistence.findWithUnflattenedData
+						.mockResolvedValueOnce(parent)
+						.mockResolvedValue({ ...parent, status: 'success' });
+
+					await expect(executionService.stop('parent', ['workflow-of-parent'])).rejects.toThrow(
+						'currently success',
+					);
+
+					expect(executionPersistence.findSingleExecution).not.toHaveBeenCalled();
+				});
+
+				it('does not look for children when the parent is running', async () => {
+					arrange(execution('parent', 'running', ['child']), [execution('child', 'waiting')]);
+
+					await executionService.stop('parent', ['workflow-of-parent']);
+
+					expect(stoppedIds()).toEqual(['parent']);
+				});
+			},
+		);
 	});
 	describe('stopMany', () => {
 		it('should call stop function for the given filters', async () => {

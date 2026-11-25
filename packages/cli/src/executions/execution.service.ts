@@ -43,6 +43,7 @@ import {
 	WorkflowOperationError,
 	createEmptyRunExecutionData,
 	createErrorExecutionData,
+	isTerminalExecutionStatus,
 	runDataUsedDynamicCredentials,
 	WORKFLOW_ENGINE_TYPES,
 } from 'n8n-workflow';
@@ -625,13 +626,23 @@ export class ExecutionService {
 			throw new MissingExecutionStopError(executionId);
 		}
 
+		return await this.stopV1Execution(execution);
+	}
+
+	private async stopV1Execution(execution: IExecutionResponse): Promise<StopResult> {
 		this.assertStoppable(execution);
+
+		// The stop overwrites the status, so read the parked children first.
+		const waitingChildIds = execution.status === 'waiting' ? getWaitingChildIds(execution) : [];
 
 		// oxlint-disable-next-line typescript/no-deprecated
 		const { mode, startedAt, stoppedAt, finished, status } =
 			this.globalConfig.executions.mode === 'regular'
 				? await this.stopInRegularMode(execution)
 				: await this.stopInScalingMode(execution);
+
+		// The parent is canceled first, so a child that ends below cannot resume it.
+		if (status === 'canceled') await this.stopWaitingChildren(execution.id, waitingChildIds);
 
 		return {
 			mode,
@@ -661,6 +672,30 @@ export class ExecutionService {
 		}
 
 		return stopped;
+	}
+
+	/**
+	 * Stop the sub-executions that a waiting parent waits for. The caller may not have access to
+	 * a child's workflow. The child is stopped anyway, because it only runs for the parent.
+	 */
+	private async stopWaitingChildren(parentId: string, childIds: string[]) {
+		for (const childId of childIds) {
+			try {
+				const child = await this.executionPersistence.findSingleExecution(childId, {
+					includeData: true,
+					unflattenData: true,
+				});
+				if (!child || isTerminalExecutionStatus(child.status)) continue;
+
+				await this.stopV1Execution(child);
+			} catch (error) {
+				this.logger.warn('Failed to stop a sub-execution of a stopped parent', {
+					parentExecutionId: parentId,
+					executionId: childId,
+					error: ensureError(error).message,
+				});
+			}
+		}
 	}
 
 	private assertStoppable(execution: IExecutionResponse) {
@@ -1055,4 +1090,10 @@ export class ExecutionService {
 			createdAt: v.createdAt,
 		}));
 	}
+}
+
+function getWaitingChildIds(execution: IExecutionResponse): string[] {
+	return (
+		execution.data?.executionData?.nodeExecutionStack?.[0]?.metadata?.waitingChildExecutionIds ?? []
+	);
 }
