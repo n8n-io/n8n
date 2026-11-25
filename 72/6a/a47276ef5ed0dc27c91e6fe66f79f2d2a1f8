@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/settings/security/WorkflowReviewInstanceSettingsView.test.ts
+  s_19070995b483fa::t_09e33eacda7813 171-186
+packages/frontend/editor-ui/src/features/settings/security/WorkflowReviewInstanceSettingsView.vue
+  s_19070995b483fa::t_635b696662da04 114-125
+  s_19070995b483fa::t_872cebadc4394f 50
+packages/frontend/editor-ui/src/app/router.test.ts
+  s_19070995b483fa::t_d50a69dd31dff3 173-196
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "726aa47276ef5ed0dc27c91e6fe66f79f2d2a1f8",
+  "prompts": {},
+  "sessions": {
+    "s_19070995b483fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e69b9d5e-e265-4fc8-a560-29a9eeb806c6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}
