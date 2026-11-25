@@ -56,6 +56,7 @@ import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
 
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@n8n/backend-module-data-table';
 import { NodeCatalogService } from '@/node-catalog';
@@ -91,6 +92,7 @@ import type {
 	ToolHandlerResult,
 } from '../mcp.types';
 import { McpPreferencesNoteService } from '../mcp-preferences-note.service';
+import { createWorkflow } from './mock.utils';
 
 // Keep the real mcpAppToolMeta and constants; only the preview-app
 // registration is spied on so its wiring options can be asserted.
@@ -1493,6 +1495,48 @@ describe('McpService', () => {
 					.mock.calls.find(([name]) => name === 'mcp-tool-called')!;
 				expect(payload).toMatchObject({ toolName: 'my_tool' });
 				expect((payload as { loginId?: string }).loginId).toBeUndefined();
+			});
+		});
+
+		describe('get_workflow_execution data size limit', () => {
+			const captureTools = () => {
+				const tools = new Map<string, ToolDefinition<z.ZodRawShape, ToolHandlerResult>>();
+				const createRegistrar = mcpService.createToolRegistrar.bind(mcpService);
+				vi.spyOn(mcpService, 'createToolRegistrar').mockImplementation((...args) => {
+					const register = createRegistrar(...args);
+					return (tool) => {
+						tools.set(tool.name, tool);
+						return register(tool);
+					};
+				});
+				return tools;
+			};
+
+			it('should pass EXECUTIONS_DATA_MAX_DISPLAY_SIZE as the data size limit when includeData is true', async () => {
+				const maxDisplaySize = 1024;
+				Object.assign(executionsConfig, { maxDisplaySize });
+				const executionPersistence = mockInstance(ExecutionPersistence);
+				const workflowFinderService = Container.get(WorkflowFinderService);
+				vi.mocked(workflowFinderService.findWorkflowForUser).mockResolvedValue(
+					createWorkflow({ id: 'workflow-1', settings: { availableInMCP: true } }),
+				);
+				vi.mocked(executionPersistence.findOneInWorkflows).mockResolvedValue(undefined);
+				const tools = captureTools();
+
+				await mcpService.getServer(mcpUser(), mcpFeatureFlags());
+				const getExecutionTool = tools.get('get_workflow_execution');
+				expect(getExecutionTool).toBeDefined();
+
+				await getExecutionTool!.handler(
+					{ workflowId: 'workflow-1', executionId: 'execution-1', includeData: true },
+					{} as never,
+				);
+
+				expect(executionPersistence.findOneInWorkflows).toHaveBeenCalledWith(
+					'execution-1',
+					['workflow-1'],
+					expect.objectContaining({ maxDataSizeBytes: maxDisplaySize }),
+				);
 			});
 		});
 
