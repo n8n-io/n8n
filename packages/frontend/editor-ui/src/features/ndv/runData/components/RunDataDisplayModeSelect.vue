@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 import type { IRunDataDisplayMode } from '@/Interface';
-import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
 import { computed, watch } from 'vue';
 import type { IconName } from '@n8n/design-system';
 import type { RunDataDisplayModeContribution } from '@n8n/frontend-module-sdk';
@@ -13,16 +12,12 @@ const {
 	compact,
 	value,
 	hasBinaryData,
-	paneType,
-	nodeGeneratesHtml,
 	hasRenderableData,
 	registeredDisplayModes = [],
 } = defineProps<{
 	compact: boolean;
 	value: IRunDataDisplayMode;
 	hasBinaryData: boolean;
-	paneType: NodePanelType;
-	nodeGeneratesHtml: boolean;
 	hasRenderableData: boolean;
 	registeredDisplayModes?: RunDataDisplayModeContribution[];
 }>();
@@ -49,10 +44,6 @@ const options = computed(() => {
 	defaults.unshift(
 		...registeredDisplayModes.map((mode) => ({ label: mode.label(), value: mode.id })),
 	);
-
-	if (paneType === 'output' && nodeGeneratesHtml) {
-		defaults.unshift({ label: i18n.baseText('runData.html'), value: 'html' });
-	}
 
 	if (hasRenderableData) {
 		defaults.unshift({ label: i18n.baseText('runData.rendered'), value: 'ai' });
