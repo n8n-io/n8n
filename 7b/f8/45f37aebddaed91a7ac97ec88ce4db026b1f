@@ -1,0 +1,70 @@
+packages/frontend/editor-ui/src/features/settings/orchestration.ee/components/WorkerChartsAccordion.vue
+  s_1b279b1934f6ba::t_003604fb1a3bb4 12
+  s_1b279b1934f6ba::t_443113e43060d0 8,13
+packages/frontend/@n8n/composables/src/registerCharts.test.ts
+  s_1b279b1934f6ba::t_ecb974073c0246 27
+  s_1b279b1934f6ba::t_5c5aa6feade991 1-26,28-35
+packages/modules/insights/frontend/src/components/charts/InsightsChartTimeSaved.vue
+  s_1b279b1934f6ba::t_003604fb1a3bb4 13
+  s_1b279b1934f6ba::t_8659bb41278f06 2,14
+packages/modules/insights/frontend/src/components/charts/InsightsChartAverageRuntime.vue
+  s_1b279b1934f6ba::t_003604fb1a3bb4 14
+  s_1b279b1934f6ba::t_5aa884584620ce 2,15
+packages/frontend/@n8n/composables/src/registerCharts.ts
+  s_1b279b1934f6ba::t_fbe3196623884b 1-41
+packages/modules/insights/frontend/src/components/charts/InsightsChartTotal.vue
+  s_1b279b1934f6ba::t_003604fb1a3bb4 13
+  s_1b279b1934f6ba::t_0e528448eb52b9 2,14
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/ListRuns/MetricsChart.vue
+  s_1b279b1934f6ba::t_003604fb1a3bb4 11-12
+  s_1b279b1934f6ba::t_7378cfad1793aa 10
+  s_1b279b1934f6ba::t_e0b57ea7bf0c9e 5
+packages/frontend/editor-ui/src/app/chartRegistrations.test.ts
+  s_1b279b1934f6ba::t_d86ea182ed5832 45
+  s_1b279b1934f6ba::t_04164ff598e705 1-44,46-48
+packages/frontend/editor-ui/src/app/bootstrapRegistrations.test.ts
+  s_1b279b1934f6ba::t_04164ff598e705 31-43
+packages/modules/insights/frontend/src/chartRegistrations.test.ts
+  s_1b279b1934f6ba::t_d86ea182ed5832 48
+  s_1b279b1934f6ba::t_04164ff598e705 1-47,49-51
+packages/modules/insights/frontend/src/components/charts/InsightsChartFailureRate.vue
+  s_1b279b1934f6ba::t_003604fb1a3bb4 15
+  s_1b279b1934f6ba::t_4ced00e177a772 2,16
+packages/modules/insights/frontend/src/components/charts/InsightsChartFailed.vue
+  s_1b279b1934f6ba::t_003604fb1a3bb4 14
+  s_1b279b1934f6ba::t_09af0e5819d521 2,15
+packages/frontend/@n8n/composables/package.json
+  s_5e5f3ce1c6da16::t_02940ef586f544 36
+packages/frontend/editor-ui/package.json
+  s_5e5f3ce1c6da16::t_d6724459828058 124,178
+packages/modules/insights/frontend/package.json
+  s_5e5f3ce1c6da16::t_5201ad8839bd84 36,42
+pnpm-lock.yaml
+  s_5e5f3ce1c6da16::t_86181480ffa922 904-906,925-927,6084-6086,7290,7452,8294,8312
+pnpm-workspace.yaml
+  s_5e5f3ce1c6da16::t_a32d5482d88b8b 342,349
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7bf845f37aebddaed91a7ac97ec88ce4db026b1f",
+  "prompts": {},
+  "sessions": {
+    "s_1b279b1934f6ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d587a90-f43c-4aaf-90cd-8f1f40ac1be8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_5e5f3ce1c6da16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "512d7f4b-1d3a-4776-9de2-8862e7f307bc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

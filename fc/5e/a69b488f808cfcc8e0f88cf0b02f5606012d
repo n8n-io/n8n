@@ -1,0 +1,19 @@
+packages/@n8n/db/src/migrations/common/1795566054225-AddTestChatToAgentExecutionThreads.ts
+  s_f4d26adb514784::t_5a22d9e51d708a 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fc5ea69b488f808cfcc8e0f88cf0b02f5606012d",
+  "prompts": {},
+  "sessions": {
+    "s_f4d26adb514784": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20e79-477e-7622-9119-23278d51a45d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+packages/@n8n/mcp-browser/src/tools/wait.ts
+  s_304ca6f24f40a7::t_aa583d02e4f7a1 6
+packages/@n8n/mcp-browser/spec/browser-mcp.md
+  s_304ca6f24f40a7::t_f70bc9a1194495 117
+packages/@n8n/mcp-browser/src/tools/wait.test.ts
+  s_304ca6f24f40a7::t_aa583d02e4f7a1 2
+  s_304ca6f24f40a7::t_a14bfb99cbf655 121-122,124,126-128
+packages/@n8n/mcp-browser/src/tools/inspection.ts
+  s_304ca6f24f40a7::t_aa583d02e4f7a1 4-5,7-8,266-294
+  s_304ca6f24f40a7::t_4d7ee4336b790b 295-296
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e265ae9939d153a9bf77ce5f6e74e1ebffa21fde",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_304ca6f24f40a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7135f581-ca47-42d3-a2d8-06fd3e4ffbce",
+        "model": "unknown"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

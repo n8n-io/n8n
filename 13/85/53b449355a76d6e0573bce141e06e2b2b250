@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_0d56e38b9f6678::t_2dc2260276137e 236,305
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilder.readonly.test.ts
+  s_0d56e38b9f6678::t_518a51a545dcfd 186-242
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "138553b449355a76d6e0573bce141e06e2b2b250",
+  "prompts": {},
+  "sessions": {
+    "s_0d56e38b9f6678": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1e4b2-a9f6-75f5-9e85-dc5848c04a85",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

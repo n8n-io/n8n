@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/settings/security/SecuritySettings.test.ts
+  s_19070995b483fa::t_c99862807ffee8 1093-1105
+packages/frontend/editor-ui/src/features/settings/security/WorkflowReviewProjectsView.test.ts
+  s_19070995b483fa::t_c99862807ffee8 2
+  s_19070995b483fa::t_47c17c92de37a4 7-8,58-60,65
+  s_19070995b483fa::t_54eef8b3d33c9e 44-46,166-169
+  s_19070995b483fa::t_e34d0178ffc8df 164-165,170-195
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-publish-guard.integration.test.ts
+  s_19070995b483fa::t_0d4148b12c9f97 420-452
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_19070995b483fa::t_54eef8b3d33c9e 4176-4181,4183-4187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dc39375e56c2c75fa3adfe7a708cfb5837879846",
+  "prompts": {},
+  "sessions": {
+    "s_19070995b483fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e69b9d5e-e265-4fc8-a560-29a9eeb806c6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

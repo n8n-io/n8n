@@ -1,0 +1,16 @@
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/__tests__/authentication.test.ts
+  h_52a137d26d774c 15,555-627
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/authentication.ts
+  h_52a137d26d774c 23,249
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bf51a74cdbe96921a074065cf1626247fecd2729",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

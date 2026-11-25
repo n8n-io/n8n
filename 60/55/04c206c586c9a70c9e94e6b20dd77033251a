@@ -1,0 +1,21 @@
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_4a494bfdece475::t_ec8fb04ece1777 435-437
+packages/cli/src/modules/n8n-packages/entities/credential/credential-importer.ts
+  s_4a494bfdece475::t_084f95575464b9 97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "605504c206c586c9a70c9e94e6b20dd77033251a",
+  "prompts": {},
+  "sessions": {
+    "s_4a494bfdece475": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64240406-7a90-4cf7-9a1d-31fa1cac357e",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

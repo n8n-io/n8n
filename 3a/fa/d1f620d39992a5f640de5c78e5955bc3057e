@@ -1,0 +1,40 @@
+packages/frontend/editor-ui/src/features/agents/components/testRun/WouldHaveHappenedHeldList.vue
+  s_9bfb59a67dd544::t_bef53f52882018 1-36,38-164
+  s_9bfb59a67dd544::t_0ddd276244bf3b 37
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatSafeTesting.test.ts
+  s_9bfb59a67dd544::t_c42f9abba26662 52,102,107-110,118-120,124-185
+packages/frontend/editor-ui/src/features/agents/components/testRun/wouldHaveHappenedBuilder.ts
+  s_9bfb59a67dd544::t_d8a21bd2dece8e 1,376-461,463
+  s_353d81d28a8909::t_bcc03bedcc3c12 462
+packages/frontend/editor-ui/src/features/agents/components/AgentChatToolSteps.vue
+  s_9bfb59a67dd544::t_11cab201804080 50-51,150,152-153,157-161,334,510-511,513-514
+packages/frontend/editor-ui/src/features/agents/__tests__/wouldHaveHappenedBuilder.test.ts
+  s_9bfb59a67dd544::t_53ffb1d46936e6 4,199-255
+  s_353d81d28a8909::t_2880f4a52f5bc8 256
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_9bfb59a67dd544::t_cd5dbcf44077b0 9806
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3afad1f620d39992a5f640de5c78e5955bc3057e",
+  "prompts": {},
+  "sessions": {
+    "s_353d81d28a8909": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a2061f-4f31-74c3-bad0-1c9246b4c8d2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    },
+    "s_9bfb59a67dd544": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20dd9-5b4e-774e-8ba5-335d42ebd6ea",
+        "model": "gemini-4-neon"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

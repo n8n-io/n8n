@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_f4d26adb514784::t_c54ab97975cd69 7996
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHoldReplay.test.ts
+  s_f4d26adb514784::t_70e7ef236a5a17 284-287
+packages/frontend/editor-ui/src/features/agents/components/chatMode/AgentRunHeldActionsModal.vue
+  s_f4d26adb514784::t_0f249f5931a490 8,72-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8c36cf6415b20a314897d849c7dfb6ad6e849339",
+  "prompts": {},
+  "sessions": {
+    "s_f4d26adb514784": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a20e79-477e-7622-9119-23278d51a45d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
