@@ -1,14 +1,16 @@
-import type { AgentHitlOptionsPage } from '@n8n/api-types';
+import type { AgentHitlOption, AgentHitlOptionsPage } from '@n8n/api-types';
 import type { ChannelHitlDefinition, ChannelHitlOptionsContext } from '../../channel-hitl';
 import {
 	approvalNode,
 	matchesApprovalUser,
 	matchesApprovalChannel,
 	listReviewRecipients,
+	APPROVAL_DESTINATION_PAGE_SIZE,
 } from '../../channel-hitl';
 import { requireCredentialField } from '../../credential-fields';
 import { OperationalError, UserError } from '@n8n/errors';
 import { z } from 'zod';
+import { jsonParse } from 'n8n-workflow';
 
 const resultSchema = z.object({
 	ok: z.boolean(),
@@ -45,10 +47,27 @@ export const slackHitl = {
 	fields: [{ name: 'recipient', type: 'search' }],
 	async listOptions(context) {
 		if (context.query.field === 'guild') throw new UserError('Slack does not use servers');
-		return await listReviewRecipients(
-			context.query.cursor,
-			async (kind, cursor) => await listSlackPage(context, kind, cursor),
+		const providerPages = new Map<string, Promise<AgentHitlOptionsPage>>();
+		const load = async (kind: 'channel' | 'user', cursor: string | undefined, limit: number) =>
+			await listSlackOptions(cursor, limit, async (providerCursor) => {
+				const key = JSON.stringify([kind, providerCursor]);
+				let page = providerPages.get(key);
+				if (!page) {
+					page = listSlackPage(context, kind, providerCursor);
+					providerPages.set(key, page);
+				}
+				return await page;
+			});
+		const page = await listReviewRecipients(context.query.cursor, load);
+		if (page.options.length === APPROVAL_DESTINATION_PAGE_SIZE || !page.nextCursor) return page;
+
+		// Reuse slots left empty by the other recipient list.
+		const remaining = await listReviewRecipients(
+			page.nextCursor,
+			load,
+			APPROVAL_DESTINATION_PAGE_SIZE - page.options.length,
 		);
+		return { options: [...page.options, ...remaining.options], nextCursor: remaining.nextCursor };
 	},
 	createNode(configuration) {
 		return approvalNode('n8n-nodes-base.slack', 2.2, 'slackApi', configuration, {
@@ -63,13 +82,57 @@ export const slackHitl = {
 	},
 } satisfies ChannelHitlDefinition;
 
+const SLACK_PAGE_SIZE = 200;
+const MAX_SLACK_PAGES_PER_LOOKUP = 3;
+const slackCursor = z.object({
+	cursor: z.string(),
+	offset: z.number().int().min(1).lt(SLACK_PAGE_SIZE),
+});
+
+async function listSlackOptions(
+	continuation: string | undefined,
+	limit: number,
+	load: (cursor: string | undefined) => Promise<AgentHitlOptionsPage>,
+): Promise<AgentHitlOptionsPage> {
+	let cursor = continuation;
+	let offset = 0;
+	if (continuation?.startsWith('{')) {
+		try {
+			const position = slackCursor.parse(jsonParse<unknown>(continuation));
+			cursor = position.cursor || undefined;
+			offset = position.offset;
+		} catch {
+			throw new UserError('Invalid Slack destination page');
+		}
+	}
+
+	const options: AgentHitlOption[] = [];
+	for (let index = 0; index < MAX_SLACK_PAGES_PER_LOOKUP; index++) {
+		const page = await load(cursor);
+		const count = limit - options.length;
+		options.push(...page.options.slice(offset, offset + count));
+		if (offset + count < page.options.length) {
+			// Continue within this Slack page before advancing its cursor.
+			return {
+				options,
+				nextCursor: JSON.stringify({ cursor: cursor ?? '', offset: offset + count }),
+			};
+		}
+		if (!page.nextCursor || page.nextCursor === cursor) return { options };
+		cursor = page.nextCursor;
+		offset = 0;
+		if (options.length === limit) break;
+	}
+	return { options, nextCursor: cursor };
+}
+
 async function listSlackPage(
 	{ credential, httpClient, query }: ChannelHitlOptionsContext,
 	kind: 'channel' | 'user',
-	cursor?: string,
+	cursor: string | undefined,
 ): Promise<AgentHitlOptionsPage> {
 	const params = new URLSearchParams({
-		limit: '200',
+		limit: String(SLACK_PAGE_SIZE),
 		...(cursor ? { cursor } : {}),
 	});
 	const users = kind === 'user';

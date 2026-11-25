@@ -113,6 +113,8 @@ export interface ChannelHitlOptionsContext {
 	query: AgentHitlOptionsQuery;
 }
 
+export const APPROVAL_DESTINATION_PAGE_SIZE = 20;
+
 const recipientCursor = z
 	.object({ channel: z.string().optional(), user: z.string().optional() })
 	.strict();
@@ -120,7 +122,12 @@ const recipientCursor = z
 /** Page each recipient list independently so both destination types remain searchable. */
 export async function listReviewRecipients(
 	cursor: string | undefined,
-	load: (kind: 'channel' | 'user', cursor?: string) => Promise<AgentHitlOptionsPage>,
+	load: (
+		kind: 'channel' | 'user',
+		cursor: string | undefined,
+		limit: number,
+	) => Promise<AgentHitlOptionsPage>,
+	pageSize = APPROVAL_DESTINATION_PAGE_SIZE,
 ): Promise<AgentHitlOptionsPage> {
 	let state: z.infer<typeof recipientCursor> = {};
 	if (cursor) {
@@ -130,11 +137,20 @@ export async function listReviewRecipients(
 			throw new UserError('Invalid destination page');
 		}
 	}
-	const kinds = ['channel', 'user'] as const;
+	const kinds = (['channel', 'user'] as const).filter(
+		(kind) => cursor === undefined || state[kind] !== undefined,
+	);
+	if (!kinds.length) return { options: [] };
 	const pages = await Promise.all(
-		kinds
-			.filter((kind) => cursor === undefined || state[kind] !== undefined)
-			.map(async (kind) => ({ kind, page: await load(kind, state[kind]) })),
+		kinds.map(async (kind, index) => {
+			const limit = Math.floor(pageSize / kinds.length) + Number(index < pageSize % kinds.length);
+			return {
+				kind,
+				page: limit
+					? await load(kind, state[kind], limit)
+					: { options: [], nextCursor: state[kind] },
+			};
+		}),
 	);
 	const next: z.infer<typeof recipientCursor> = {};
 	const options: AgentHitlOption[] = [];
