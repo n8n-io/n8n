@@ -723,6 +723,177 @@ describe('runObservationLogObserver', () => {
 		});
 	});
 
+	it('counts observations in the output tokens the provider reports', async () => {
+		const store = new InMemoryMemory();
+		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
+		await store.saveMessages({
+			threadId: 'thread-1',
+			resourceId: 'user-1',
+			messages: [message('m1', 'user', 'Remember this.', new Date(1))],
+		});
+		const first = 'The user deploys on Fridays.';
+		const second = 'Staging uses Postgres.';
+		const text = [`* IMPORTANT (14:31) ${first}`, `* INFO (14:31) ${second}`].join('\n');
+		// Two tokens for each output character; reasoning tokens are not part of the text.
+		const usage = {
+			promptTokens: 100,
+			completionTokens: text.length * 2 + 40,
+			totalTokens: 100 + text.length * 2 + 40,
+			outputTokenDetails: { reasoning: 40 },
+		};
+
+		await runObservationLogObserver({
+			memory: store,
+			observationScopeId: 'thread-1',
+			observationLogTailLimit: 0,
+			tokenCounter: () => 1,
+			observe: async () => ({ text, model: 'test/model', usage }),
+		});
+
+		expect(await store.getActiveObservationLog({ observationScopeId: 'thread-1' })).toMatchObject([
+			{ text: first, tokenCount: first.length * 2 },
+			{ text: second, tokenCount: second.length * 2 },
+		]);
+	});
+
+	it('estimates observation tokens when the provider reports no output tokens', async () => {
+		const store = new InMemoryMemory();
+		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
+		await store.saveMessages({
+			threadId: 'thread-1',
+			resourceId: 'user-1',
+			messages: [message('m1', 'user', 'Remember this.', new Date(1))],
+		});
+
+		await runObservationLogObserver({
+			memory: store,
+			observationScopeId: 'thread-1',
+			observationLogTailLimit: 0,
+			tokenCounter: () => 3,
+			observe: async () => ({
+				text: '* IMPORTANT (14:31) A fact.',
+				model: 'test/model',
+				usage: { promptTokens: 10, completionTokens: 0, totalTokens: 10 },
+			}),
+		});
+
+		expect(await store.getActiveObservationLog({ observationScopeId: 'thread-1' })).toMatchObject([
+			{ text: 'A fact.', tokenCount: 3 },
+		]);
+	});
+
+	describe('working set', () => {
+		async function storeWithMessage(id: string, at: number) {
+			const store = new InMemoryMemory();
+			await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
+			await store.saveMessages({
+				threadId: 'thread-1',
+				resourceId: 'user-1',
+				messages: [message(id, 'user', 'Work on the plan.', new Date(at))],
+			});
+			return store;
+		}
+
+		async function observe(store: InMemoryMemory, text: string, maxWorkingSetTokens?: number) {
+			const inputs: ObservationLogObserverInput[] = [];
+			await runObservationLogObserver({
+				memory: store,
+				observationScopeId: 'thread-1',
+				observationLogTailLimit: 0,
+				tokenCounter: (value) => value.length,
+				maxWorkingSetTokens,
+				observe: async (input) => {
+					inputs.push(input);
+					return text;
+				},
+			});
+			return inputs[0];
+		}
+
+		it('stores the working set apart from the observations', async () => {
+			const store = await storeWithMessage('m1', 1);
+
+			await observe(
+				store,
+				'* IMPORTANT (14:31) A fact.\n<working-set>\nPlan\n- [ ] Ship it\n</working-set>',
+			);
+
+			expect(await store.getActiveObservationLog({ observationScopeId: 'thread-1' })).toMatchObject(
+				[{ text: 'A fact.' }],
+			);
+			expect((await store.getCursor('thread-1'))?.workingSet).toBe('Plan\n- [ ] Ship it');
+		});
+
+		it('keeps an observation that mentions the tag inside a line', async () => {
+			const store = await storeWithMessage('m1', 1);
+
+			await observe(
+				store,
+				'* INFO (14:31) The Observer writes a <working-set> block.\n* INFO (14:32) A later fact.\n<working-set>\nPlan A\n</working-set>',
+			);
+
+			expect(await store.getActiveObservationLog({ observationScopeId: 'thread-1' })).toMatchObject(
+				[{ text: 'The Observer writes a <working-set> block.' }, { text: 'A later fact.' }],
+			);
+			expect((await store.getCursor('thread-1'))?.workingSet).toBe('Plan A');
+		});
+
+		it('stores no working set when the tag is only inside a line', async () => {
+			const store = await storeWithMessage('m1', 1);
+
+			await observe(
+				store,
+				'* INFO (14:31) Run `echo "<working-set>"` to print the tag.\n* INFO (14:32) A later fact.',
+			);
+
+			expect(await store.getActiveObservationLog({ observationScopeId: 'thread-1' })).toHaveLength(
+				2,
+			);
+			expect((await store.getCursor('thread-1'))?.workingSet).toBeNull();
+		});
+
+		it('reads an unclosed block to the end of the output', async () => {
+			const store = await storeWithMessage('m1', 1);
+
+			await observe(store, '* INFO (14:31) A fact.\n<working-set>\nPlan A\n- [ ] Ship it');
+
+			expect((await store.getCursor('thread-1'))?.workingSet).toBe('Plan A\n- [ ] Ship it');
+		});
+
+		it('keeps the previous working set when the Observer writes none', async () => {
+			const store = await storeWithMessage('m1', 1);
+			await observe(store, '* INFO (14:31) First.\n<working-set>\nPlan A\n</working-set>');
+			await store.saveMessages({
+				threadId: 'thread-1',
+				resourceId: 'user-1',
+				messages: [message('m2', 'user', 'Next.', new Date(2))],
+			});
+
+			const input = await observe(store, '* INFO (14:32) Second.');
+
+			expect(input.workingSet).toBe('Plan A');
+			expect((await store.getCursor('thread-1'))?.workingSet).toBe('Plan A');
+		});
+
+		it('keeps the previous working set when the new one is over the limit', async () => {
+			const store = await storeWithMessage('m1', 1);
+			await observe(store, '* INFO (14:31) First.\n<working-set>\nPlan A\n</working-set>', 100);
+			await store.saveMessages({
+				threadId: 'thread-1',
+				resourceId: 'user-1',
+				messages: [message('m2', 'user', 'Next.', new Date(2))],
+			});
+
+			await observe(
+				store,
+				`* INFO (14:32) Second.\n<working-set>\n${'x'.repeat(500)}\n</working-set>`,
+				100,
+			);
+
+			expect((await store.getCursor('thread-1'))?.workingSet).toBe('Plan A');
+		});
+	});
+
 	it('reports usage even when the atomic commit fails', async () => {
 		const store = new InMemoryMemory();
 		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
@@ -750,7 +921,7 @@ describe('runObservationLogObserver', () => {
 		expect(await store.getObservationLog({ observationScopeId: 'thread-1' })).toEqual([]);
 	});
 
-	it('rebuilds missing observations once at an unchanged boundary under a fixed clock', async () => {
+	it('commits one of two concurrent runs at the same boundary under a fixed clock', async () => {
 		const store = new InMemoryMemory();
 		const now = new Date('2026-05-12T10:00:00Z');
 		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
@@ -758,12 +929,6 @@ describe('runObservationLogObserver', () => {
 			threadId: 'thread-1',
 			resourceId: 'user-1',
 			messages: [message('m1', 'user', 'Keep this history.', new Date(1))],
-		});
-		await store.setCursor({
-			observationScopeId: 'thread-1',
-			lastObservedMessageId: 'm1',
-			lastObservedAt: new Date(1),
-			updatedAt: now,
 		});
 		let release!: () => void;
 		const ready = new Promise<void>((resolve) => {
@@ -795,11 +960,10 @@ describe('runObservationLogObserver', () => {
 				expect.objectContaining({ observationsWritten: 0, cursorAdvanced: false, usage }),
 			]),
 		);
-		expect(await store.getCursor('thread-1')).toEqual({
+		expect(await store.getCursor('thread-1')).toMatchObject({
 			observationScopeId: 'thread-1',
 			lastObservedMessageId: 'm1',
 			lastObservedAt: new Date(1),
-			updatedAt: new Date(now.getTime() + 1),
 		});
 		const before = await store.getObservationLog({ observationScopeId: 'thread-1' });
 		expect(before).toMatchObject([{ text: 'Rebuilt fact.' }]);
@@ -824,7 +988,6 @@ describe('runObservationLogObserver', () => {
 			lastObservedAt: new Date(1),
 			updatedAt: now,
 		};
-		await store.setCursor(cursor);
 		const readCursor = store.getCursor.bind(store);
 		vi.spyOn(store, 'getCursor').mockImplementationOnce(async (scope) => {
 			await new Promise<void>((resolve) => {
@@ -837,7 +1000,7 @@ describe('runObservationLogObserver', () => {
 			const rows = await readActive(scope);
 			await store.commitObservationLogBatch({
 				observationScopeId: 'thread-1',
-				expectedCursor: cursor,
+				expectedCursor: null,
 				nextCursor: cursor,
 				entries: [
 					{
@@ -863,10 +1026,7 @@ describe('runObservationLogObserver', () => {
 		expect(await store.getObservationLog({ observationScopeId: 'thread-1' })).toMatchObject([
 			{ text: 'Concurrent fact.' },
 		]);
-		expect(await store.getCursor('thread-1')).toEqual({
-			...cursor,
-			updatedAt: new Date(now.getTime() + 1),
-		});
+		expect(await store.getCursor('thread-1')).toMatchObject({ lastObservedMessageId: 'm1' });
 	});
 
 	it('never fails observation when onUsage throws synchronously or rejects', async () => {
@@ -1000,7 +1160,7 @@ describe('runObservationLogObserver', () => {
 		);
 	});
 
-	it('keeps an empty prefix until observations allow the cursor to advance', async () => {
+	it('advances the cursor past empty batches on a thread without observations', async () => {
 		const store = new InMemoryMemory();
 		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
 		for (const [index, output] of [
@@ -1028,22 +1188,17 @@ describe('runObservationLogObserver', () => {
 			).toMatchObject({
 				status: 'ran',
 				observationsWritten: index === 2 ? 1 : 0,
-				cursorAdvanced: index >= 2,
+				cursorAdvanced: true,
 				skippedLines: [],
 			});
-			if (index < 2) {
-				expect(await store.getCursor('thread-1')).toBeNull();
-				expect(await store.getActiveObservationLog({ observationScopeId: 'thread-1' })).toEqual([]);
-			} else {
-				expect(await store.getCursor('thread-1')).toMatchObject({ lastObservedMessageId: id });
-			}
+			expect(await store.getCursor('thread-1')).toMatchObject({ lastObservedMessageId: id });
 		}
 		expect(await store.getActiveObservationLog({ observationScopeId: 'thread-1' })).toMatchObject([
 			{ text: 'Deployment requires approval.' },
 		]);
 	});
 
-	it('keeps history and the stored cursor after an empty result with missing observations', async () => {
+	it('resumes from the stored cursor when the thread has no observations', async () => {
 		const store = new InMemoryMemory();
 		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
 		await store.saveMessages({
@@ -1060,7 +1215,6 @@ describe('runObservationLogObserver', () => {
 			lastObservedAt: new Date(1),
 			updatedAt: new Date(1),
 		});
-		const beforeCursor = await store.getCursor('thread-1');
 		const beforeMessages = await store.getMessagesForObservationScope('thread-1');
 		const observe = vi.fn(async () => await Promise.resolve('NO_OBSERVATIONS'));
 		expect(
@@ -1074,18 +1228,15 @@ describe('runObservationLogObserver', () => {
 		).toMatchObject({
 			status: 'ran',
 			observationsWritten: 0,
-			cursorAdvanced: false,
+			cursorAdvanced: true,
 			skippedLines: [],
 		});
 		expect(observe).toHaveBeenCalledWith(
 			expect.objectContaining({
-				deltaMessages: expect.arrayContaining([
-					expect.objectContaining({ id: 'm1' }),
-					expect.objectContaining({ id: 'm2' }),
-				]),
+				deltaMessages: [expect.objectContaining({ id: 'm2' })],
 			}),
 		);
-		expect(await store.getCursor('thread-1')).toEqual(beforeCursor);
+		expect(await store.getCursor('thread-1')).toMatchObject({ lastObservedMessageId: 'm2' });
 		expect(await store.getMessagesForObservationScope('thread-1')).toEqual(beforeMessages);
 		expect(await store.getActiveObservationLog({ observationScopeId: 'thread-1' })).toEqual([]);
 	});
@@ -1252,5 +1403,23 @@ describe('runObservationLogObserver', () => {
 		expect(observations).toHaveLength(1);
 		expect(observations[0].text).toContain('[REDACTED]');
 		expect(observations[0].text).not.toContain('xoxb-1234567890-abcdefghij');
+	});
+});
+
+describe('InMemoryMemory.deleteThread', () => {
+	it('clears the resume state with the thread', async () => {
+		const store = new InMemoryMemory();
+		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
+		await store.saveResumeState({
+			observationScopeId: 'thread-1',
+			resumeFrom: { lastObservedMessageId: 'm1', lastObservedAt: new Date(1) },
+			resumeNotes: 'Old notes.',
+			lastRequestTokens: 1_000,
+			lastModelId: 'openai/gpt-4o-mini',
+		});
+
+		await store.deleteThread('thread-1');
+
+		expect(await store.getResumeState('thread-1')).toBeNull();
 	});
 });

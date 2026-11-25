@@ -189,6 +189,8 @@ describe('buildFromJson()', () => {
 		getMessagesForObservationScope: vi.fn(),
 		getCursor: vi.fn(),
 		setCursor: vi.fn(),
+		getResumeState: vi.fn(),
+		saveResumeState: vi.fn(),
 		acquireObservationLogTaskLock: vi.fn(),
 		releaseObservationLogTaskLock: vi.fn(),
 		episodic: {

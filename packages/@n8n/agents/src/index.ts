@@ -104,7 +104,13 @@ export type {
 	BuiltTelemetry,
 	AttributeValue,
 	ObservationCursor,
+	ObservationResumeState,
+	BuiltObservationResumeStore,
 	ObservationalMemoryConfig,
+	ObservationWindowShares,
+	ObservationLogPlacement,
+	ObservationFailurePolicy,
+	ObservationReflectionMode,
 	BuiltObservationLogStore,
 	BuiltObservationLogTaskLockStore,
 	MemoryTaskUsageReport,
@@ -441,7 +447,15 @@ export type {
 } from './runtime/memory/memory-lifecycle';
 export { loadReplayedMessages } from './runtime/memory/memory-orchestrator';
 export { settleAbandonedToolCallsInMemory } from './runtime/memory/strip-orphaned-tool-messages';
-export { prepareObservationLogBatchCursor } from './runtime/memory/observation-log-batch';
+export {
+	observationCursorPosition,
+	prepareObservationLogBatchCursor,
+} from './runtime/memory/observation-log-batch';
+export {
+	fromObservationResumeColumns,
+	toObservationResumeColumns,
+	type ObservationResumeColumns,
+} from './runtime/memory/observation-resume-columns';
 export {
 	parseObservationLogMarkdown,
 	renderObserverTranscript,
