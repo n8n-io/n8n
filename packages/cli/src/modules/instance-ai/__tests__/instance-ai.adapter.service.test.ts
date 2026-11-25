@@ -10134,6 +10134,7 @@ describe('createContext — skill service wiring', () => {
 describe('createContext: customMcpServerService', () => {
 	function mockMcpServersModule(active: boolean) {
 		const servers = mock<McpServersService>();
+		const tools = mock<McpServerToolsService>();
 		const registry = { isActive: (name: string) => active && name === 'mcp-servers' };
 		const get = Container.get.bind(Container);
 		vi.spyOn(Container, 'get').mockImplementation(((token: Parameters<typeof get>[0]) => {
@@ -10141,11 +10142,11 @@ describe('createContext: customMcpServerService', () => {
 				return new InstanceAiCustomMcpServersAdapterService(registry as unknown as ModuleRegistry);
 			}
 			if (token === McpServersService) return servers;
-			if (token === McpServerToolsService) return mock<McpServerToolsService>();
+			if (token === McpServerToolsService) return tools;
 			if (token === CustomMcpServersFlagGate) return { assertEnabled: async () => {} };
 			return get(token);
 		}) as typeof get);
-		return { servers };
+		return { servers, tools };
 	}
 
 	beforeEach(() => {
@@ -10202,6 +10203,66 @@ describe('createContext: customMcpServerService', () => {
 			context.customMcpServerService?.create({ projectId: 'project-2', name: 'Marketing Tools' }),
 		).rejects.toThrow();
 		expect(servers.create).not.toHaveBeenCalled();
+	});
+
+	describe('without a bound project', () => {
+		const SERVER_ID = '7b0c2a52-3c1f-4f53-9a51-0c0d8c3a0a01';
+		const PERMISSION_ERROR = 'User does not have the required permissions in this project';
+
+		function createService() {
+			const { context, mockUser } = createDataTableAdapterForTests({
+				customMcpServersEnabled: true,
+			});
+			const service = context.customMcpServerService;
+			if (!service) throw new Error('The service must be wired while the flag is on.');
+			return { service, mockUser };
+		}
+
+		it('refuses each action in a project where the user has no mcpServer scope', async () => {
+			const { servers, tools } = mockMcpServersModule(true);
+			mockedUserHasScopes.mockResolvedValue(false);
+			const { service } = createService();
+			const ref = { serverId: SERVER_ID, projectId: 'project-2' };
+
+			await expect(service.get(ref)).rejects.toThrow(PERMISSION_ERROR);
+			await expect(service.delete(ref)).rejects.toThrow(PERMISSION_ERROR);
+			await expect(service.addTools(ref, ['workflow-1'])).rejects.toThrow(PERMISSION_ERROR);
+			await expect(service.assertCanWrite('project-2', 'update')).rejects.toThrow(PERMISSION_ERROR);
+
+			expect(servers.get).not.toHaveBeenCalled();
+			expect(servers.delete).not.toHaveBeenCalled();
+			expect(tools.addWorkflowTools).not.toHaveBeenCalled();
+		});
+
+		it('checks the scope in each project on its own', async () => {
+			const { servers } = mockMcpServersModule(true);
+			servers.list.mockResolvedValue([]);
+			mockedUserHasScopes.mockImplementation(
+				async (_user, _scopes, _global, options) => options?.projectId === 'project-1',
+			);
+			const { service } = createService();
+
+			await expect(service.list('project-2')).rejects.toThrow(PERMISSION_ERROR);
+			await expect(service.list('project-1')).resolves.toEqual([]);
+			expect(servers.list).toHaveBeenCalledTimes(1);
+			expect(servers.list).toHaveBeenCalledWith('project-1');
+		});
+
+		it('creates a server in the personal project when no project is given', async () => {
+			const { servers } = mockMcpServersModule(true);
+			const { service, mockUser } = createService();
+
+			await service.create({ name: 'Marketing Tools' });
+
+			expect(mockedUserHasScopes).toHaveBeenCalledWith(mockUser, ['mcpServer:create'], false, {
+				projectId: 'personal-project-id',
+			});
+			expect(servers.create).toHaveBeenCalledWith(
+				'personal-project-id',
+				expect.anything(),
+				expect.anything(),
+			);
+		});
 	});
 });
 
