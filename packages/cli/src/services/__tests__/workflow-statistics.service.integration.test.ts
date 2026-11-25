@@ -268,7 +268,7 @@ describe('WorkflowStatisticsService', () => {
 			);
 		});
 
-		test('should count a run that failed before start as a production error, but not in `rootCount`', async () => {
+		test('should not count a run that failed before start', async () => {
 			// ARRANGE
 			const data = createEmptyRunExecutionData();
 			data.resultData.failedBeforeStart = 'startFailed';
@@ -285,14 +285,7 @@ describe('WorkflowStatisticsService', () => {
 			await completeAndFlush(workflowStatisticsService, workflow, runData);
 
 			// ASSERT
-			const statistics = await workflowStatisticsRepository.find();
-			expect(statistics).toHaveLength(1);
-			expect(statistics[0]).toMatchObject({
-				count: 1,
-				rootCount: 0,
-				name: 'production_error',
-				workflowId: workflow.id,
-			});
+			expect(await workflowStatisticsRepository.find()).toEqual([]);
 		});
 
 		test('should count user-sourced executions as production', async () => {

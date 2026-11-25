@@ -48,10 +48,14 @@ describe('toStatisticsIncrements', () => {
 		expect(toStatisticsIncrements([row({ mode: 'futureMode' })])).toEqual([]);
 	});
 
+	test('ignores a blocked row', () => {
+		expect(toStatisticsIncrements([row({ outcome: 'blocked', blockedBy: 'policy' })])).toEqual([]);
+	});
+
 	test('takes the counter and the root count from the counting rules', () => {
 		const increments = toStatisticsIncrements([
 			row(),
-			row({ entityId: 'wf-2', outcome: 'blocked', blockedBy: 'policy' }),
+			row({ entityId: 'wf-2', outcome: 'error', mode: 'integrated' }),
 		]);
 
 		expect(increments).toEqual([

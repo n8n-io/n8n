@@ -2,7 +2,12 @@ import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/bac
 import { EventService, ExecutionLedger } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { ExecutionLedgerFoldStep, Project, WorkflowEntity } from '@n8n/db';
-import { FoldStepRegistry, StatisticsNames, WorkflowStatisticsRepository } from '@n8n/db';
+import {
+	FoldStepRegistry,
+	FoldTransactionLostError,
+	StatisticsNames,
+	WorkflowStatisticsRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { sleep } from '@n8n/utils/sleep';
@@ -47,11 +52,11 @@ describe('workflow statistics fold step', () => {
 	let workflow: WorkflowEntity;
 	let failNextFold = false;
 
-	/** Runs after the statistics step, so its failure rolls the counters back. */
+	/** Loses the fold transaction, so the fold rolls the counters back. */
 	const failingStep: ExecutionLedgerFoldStep = {
 		name: 'test_failing_step',
 		fold: async () => {
-			if (failNextFold) throw new Error('step failed');
+			if (failNextFold) throw new FoldTransactionLostError('test', undefined, undefined);
 			return undefined;
 		},
 	};
@@ -265,7 +270,7 @@ describe('workflow statistics fold step', () => {
 			expect(fired()).toHaveLength(1);
 		});
 
-		it('does not fire when a later step fails, then fires once on the retry', async () => {
+		it('does not fire when the fold rolls back, then fires once on the retry', async () => {
 			const fired = milestoneEvents();
 			await finish('trigger', 'success');
 			// Both rows of the run must be in the table before the failing fold claims them.
@@ -275,7 +280,7 @@ describe('workflow statistics fold step', () => {
 			});
 
 			failNextFold = true;
-			await expect(foldAllLedgerRows()).rejects.toThrow();
+			await expect(foldAllLedgerRows()).rejects.toThrow(FoldTransactionLostError);
 
 			expect(await storedCounters()).toEqual({});
 			expect(fired()).toHaveLength(0);
