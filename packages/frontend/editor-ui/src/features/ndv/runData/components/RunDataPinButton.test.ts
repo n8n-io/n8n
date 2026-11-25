@@ -34,6 +34,7 @@ const renderComponent = createComponentRenderer(RunDataPinButton, {
 			hasData: { value: false },
 		} as ReturnType<typeof usePinnedData>,
 		disabled: false,
+		disabledTooltip: "This execution is read-only. You can't pin or unpin data here.",
 	},
 });
 
@@ -84,14 +85,52 @@ describe('RunDataPinButton.vue', () => {
 		expect(emitted().togglePinData).not.toBeDefined();
 	});
 
-	it('keeps the tooltip trigger around a natively disabled pin button', async () => {
-		const { getByRole, emitted } = renderComponent({ props: { disabled: true } });
+	it.each([false, true])('explains disabled pinning on hover when pinned=%s', async (pinned) => {
+		const { getByRole, emitted } = renderComponent({
+			props: {
+				disabled: true,
+				pinnedData: { hasData: { value: pinned } } as ReturnType<typeof usePinnedData>,
+			},
+		});
 		const button = getByRole('button');
-		expect(button).toBeDisabled();
-		await userEvent.hover(button.parentElement!);
-		await waitFor(() => expect(getTooltip()).toHaveTextContent('Pin data'));
+		expect(button).toHaveAttribute('aria-disabled', 'true');
+		expect(button).toHaveAccessibleName(pinned ? 'Unpin data' : 'Pin data');
+		await userEvent.hover(button);
+		await waitFor(() =>
+			expect(getTooltip()).toHaveTextContent(
+				"This execution is read-only. You can't pin or unpin data here.",
+			),
+		);
 		await userEvent.click(button);
 		expect(emitted('togglePinData')).toBeUndefined();
+	});
+
+	it('explains disabled pinning on keyboard focus without allowing activation', async () => {
+		const { getByRole, emitted } = renderComponent({ props: { disabled: true } });
+		await userEvent.tab();
+		expect(getByRole('button')).toHaveFocus();
+		await waitFor(() => expect(getTooltip()).toHaveTextContent('This execution is read-only.'));
+
+		await userEvent.keyboard('{Enter} ');
+		expect(emitted('togglePinData')).toBeUndefined();
+		await userEvent.keyboard('{Escape}');
+		await waitFor(() => expect(queryTooltip()).not.toBeInTheDocument());
+	});
+
+	it('suppresses discovery when pinning is disabled', async () => {
+		const { getByRole } = renderComponent({
+			props: {
+				disabled: true,
+				tooltipContentsVisibility: {
+					binaryDataTooltipContent: false,
+					pinDataDiscoveryTooltipContent: true,
+				},
+			},
+		});
+		expect(queryTooltip()).not.toBeInTheDocument();
+		await userEvent.hover(getByRole('button'));
+		await waitFor(() => expect(getTooltip()).toHaveTextContent('This execution is read-only.'));
+		expect(getTooltip()).not.toHaveTextContent('instead of waiting');
 	});
 
 	it('shows pin data discoverability tooltip immediately (not on hover)', async () => {
@@ -127,16 +166,13 @@ describe('RunDataPinButton.vue', () => {
 			},
 		});
 
-		await waitFor(() => {
-			const tooltip = getTooltip();
-			expect(tooltip).toHaveTextContent(/disabled/);
-		});
+		expect(queryTooltip()).not.toBeInTheDocument();
 		expect(getByRole('button')).toHaveAttribute('aria-disabled', 'true');
 
 		await userEvent.hover(getByRole('button'));
 
-		const tooltip = getTooltip();
-		expect(tooltip).toHaveTextContent(/disabled/);
+		await waitFor(() => expect(getTooltip()).toHaveTextContent(/binary data/));
+		expect(getTooltip()).not.toHaveTextContent('This execution is read-only.');
 	});
 
 	it('pins data on button click', async () => {

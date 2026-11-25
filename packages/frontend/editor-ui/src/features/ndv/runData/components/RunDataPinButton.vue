@@ -13,6 +13,7 @@ type Props = {
 	dataPinningDocsUrl: string;
 	pinnedData: ReturnType<typeof usePinnedData>;
 	disabled: boolean;
+	disabledTooltip: string;
 };
 
 const props = defineProps<Props>();
@@ -22,19 +23,20 @@ const emit = defineEmits<{
 }>();
 
 const visible = computed(() =>
-	props.tooltipContentsVisibility.pinDataDiscoveryTooltipContent ? true : undefined,
+	!props.disabled && props.tooltipContentsVisibility.pinDataDiscoveryTooltipContent
+		? true
+		: undefined,
 );
 </script>
 
 <template>
-	<N8nTooltip
-		:as-child="!props.disabled || props.tooltipContentsVisibility.binaryDataTooltipContent"
-		placement="bottom-end"
-		:visible="visible"
-	>
+	<N8nTooltip as-child placement="bottom-end" :visible="visible">
 		<template #content>
 			<div v-if="props.tooltipContentsVisibility.binaryDataTooltipContent">
 				{{ locale.baseText('ndv.pinData.pin.binary') }}
+			</div>
+			<div v-else-if="props.disabled">
+				{{ props.disabledTooltip }}
 			</div>
 			<div v-else-if="props.tooltipContentsVisibility.pinDataDiscoveryTooltipContent">
 				{{ locale.baseText('node.discovery.pinData.ndv') }}
@@ -67,7 +69,7 @@ const visible = computed(() =>
 				)
 			"
 			:disabled="props.disabled"
-			:focusable-when-disabled="props.tooltipContentsVisibility.binaryDataTooltipContent"
+			focusable-when-disabled
 			data-test-id="ndv-pin-data"
 			@click="emit('togglePinData')"
 		/>
