@@ -10,7 +10,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { computed, ref, watch } from 'vue';
 
-import { getApp } from '../apps.api';
+import { getApp, getAppBindings } from '../apps.api';
 import type { AppViewTab } from '../apps.constants';
 import { useAppVersions } from '../composables/useAppVersions';
 import AppHeader from './AppHeader.vue';
@@ -34,6 +34,7 @@ const i18n = useI18n();
 const toast = useToast();
 const rootStore = useRootStore();
 const latestFetch = useLatestFetch();
+const latestAttentionFetch = useLatestFetch();
 const telemetry = useTelemetry();
 
 const app = ref<AppResponse | null>(null);
@@ -50,6 +51,31 @@ const activeTab = computed<AppViewTab>({
 		section.value = tab;
 	},
 });
+
+const attentionCount = ref(0);
+
+// Counts the connections with a warning, for the dot on the Configure tab.
+async function loadAttention() {
+	const isLatest = latestAttentionFetch.next();
+	if (!app.value) {
+		attentionCount.value = 0;
+		return;
+	}
+	try {
+		const { warnings } = await getAppBindings(
+			rootStore.restApiContext,
+			app.value.projectId,
+			app.value.id,
+		);
+		if (isLatest()) attentionCount.value = new Set(warnings.map(({ key }) => key)).size;
+	} catch {
+		// The dot is a hint only. Configure shows the load error when the user opens it.
+		if (isLatest()) attentionCount.value = 0;
+	}
+}
+
+// A connection change makes a new draft. Switching tabs also picks up resources published elsewhere.
+watch(() => [app.value?.id, app.value?.draftVersionId, activeTab.value], loadAttention);
 
 async function loadApp(keepView = false) {
 	const isLatest = latestFetch.next();
@@ -111,13 +137,22 @@ defineExpose({ refresh });
 			:project-id="projectId"
 			:app="app"
 			:publishable-version="versions.latestBuilt.value"
+			:attention-count="attentionCount"
 			@updated="onAppUpdated"
 			@deleted="emit('deleted', $event)"
 			@show-versions="versionsOpen = true"
 		/>
 
 		<div :class="$style.workspace">
-			<main :class="[$style.content, { [$style.flush]: app && activeTab === 'preview' }]">
+			<main
+				:class="[
+					$style.content,
+					{
+						[$style.flush]: app && activeTab === 'preview',
+						[$style.unpadded]: app && activeTab === 'configure',
+					},
+				]"
+			>
 				<N8nLoading v-if="loading" :loading="true" :rows="3" data-test-id="app-view-loading" />
 
 				<N8nEmptyState
@@ -181,5 +216,10 @@ defineExpose({ refresh });
 .flush {
 	padding: 0;
 	overflow: hidden;
+}
+
+/* Configure sets its own padding, which depends on its width. */
+.unpadded {
+	padding: 0;
 }
 </style>

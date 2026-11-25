@@ -376,6 +376,7 @@
 	"apps.detail.switcher.empty": "No other apps",
 	"apps.detail.tabs.preview": "Preview",
 	"apps.detail.tabs.configure": "Configure",
+	"apps.detail.tabs.configureAttention": "{count} connection needs your attention | {count} connections need your attention",
 	"apps.detail.notFound.heading": "App not found",
 	"apps.detail.notFound.description": "The app does not exist or you do not have access to it",
 	"apps.detail.loadError": "Could not load the app",

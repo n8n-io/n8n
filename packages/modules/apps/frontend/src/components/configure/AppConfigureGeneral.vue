@@ -241,8 +241,9 @@ watch(
 	--input--radius--top-right: 0;
 	--input--radius--bottom-right: 0;
 
+	/* The namespace keeps at least 40% of the field. A long host shortens with an ellipsis instead. */
 	.input {
-		flex: 1;
+		flex: 1 0 40%;
 		min-width: 0;
 	}
 }
