@@ -31,10 +31,6 @@ export class AiSdkLanguageModelAdapter implements LanguageModelV4 {
 	/** The contract has no URL inputs, so the AI SDK downloads every file URL. */
 	readonly supportedUrls: Record<string, RegExp[]> = {};
 
-	/**
-	 * Takes a chat model without bound tools. Binding adds to the bound tools, so
-	 * a tool bound before reaches every call, also with tool choice `none`.
-	 */
 	constructor(private readonly chatModel: ChatModel) {}
 
 	get provider(): string {

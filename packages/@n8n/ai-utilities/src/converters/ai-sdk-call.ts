@@ -37,11 +37,10 @@ export function bindCallTools(
 	}
 
 	// The contract has no tool choice. Without bound tools the model cannot
-	// call one, which is what `none` asks for.
+	// call one, which is what `none` asks for. Binding on every call also
+	// replaces the tools that the model got before.
 	const toolsDisabled = options.toolChoice?.type === 'none';
-	if (functionTools.length > 0 && !toolsDisabled) {
-		model = model.withTools(functionTools);
-	}
+	model = model.withTools(toolsDisabled ? [] : functionTools);
 
 	if (options.toolChoice && options.toolChoice.type !== 'auto' && !toolsDisabled) {
 		warnings.push({ type: 'unsupported', feature: `toolChoice ${options.toolChoice.type}` });

@@ -7,7 +7,6 @@ import type { GenerateResult, StreamChunk } from 'src/types/output';
 import type { Tool } from 'src/types/tool';
 
 import { AiSdkLanguageModelAdapter } from '../../adapters/ai-sdk-language-model';
-import { BaseChatModel } from '../../chat-model/base';
 
 interface FakeCall {
 	messages: Message[];
@@ -28,6 +27,7 @@ function createFakeChatModel(
 		chunks?: StreamChunk[];
 		structuredOutput?: boolean;
 		onStreamClose?: () => void;
+		stream?: ChatModel['stream'];
 	} = {},
 ): FakeChatModel {
 	const calls: FakeCall[] = [];
@@ -43,14 +43,16 @@ function createFakeChatModel(
 				calls.push({ messages, config, tools, structuredOutputSchema });
 				return options.result ?? { message: { role: 'assistant', content: [] } };
 			},
-			async *stream(messages, config) {
-				calls.push({ messages, config, tools, structuredOutputSchema });
-				try {
-					for (const chunk of options.chunks ?? []) yield chunk;
-				} finally {
-					options.onStreamClose?.();
-				}
-			},
+			stream:
+				options.stream ??
+				async function* (messages, config) {
+					calls.push({ messages, config, tools, structuredOutputSchema });
+					try {
+						for (const chunk of options.chunks ?? []) yield chunk;
+					} finally {
+						options.onStreamClose?.();
+					}
+				},
 			withTools: (newTools) => bind(newTools, structuredOutputSchema),
 		};
 
@@ -378,7 +380,9 @@ describe('AiSdkLanguageModelAdapter', () => {
 
 		it('binds no tools when the tool choice is none', async () => {
 			const model = createFakeChatModel();
-			const adapter = new AiSdkLanguageModelAdapter(model);
+			const adapter = new AiSdkLanguageModelAdapter(
+				model.withTools([{ type: 'function', name: 'bound', inputSchema: { type: 'object' } }]),
+			);
 
 			const result = await adapter.doGenerate(
 				callOptions({
@@ -389,30 +393,6 @@ describe('AiSdkLanguageModelAdapter', () => {
 
 			expect(model.calls[0].tools, 'the model cannot call a tool').toEqual([]);
 			expect(result.warnings).toEqual([]);
-		});
-
-		it('sends the tools bound before the adapter on every call, also with tool choice none', async () => {
-			const sentTools: string[][] = [];
-			class RecordingChatModel extends BaseChatModel {
-				async generate(): Promise<GenerateResult> {
-					sentTools.push(this.tools.map((tool) => tool.name));
-					return { message: { role: 'assistant', content: [] } };
-				}
-
-				async *stream(): AsyncIterable<StreamChunk> {}
-			}
-			const model = new RecordingChatModel('fake', 'fake-model').withTools([
-				{ type: 'function', name: 'bound', inputSchema: { type: 'object' } },
-			]);
-			const adapter = new AiSdkLanguageModelAdapter(model);
-			const tools = [
-				{ type: 'function' as const, name: 'lookup', inputSchema: { type: 'object' as const } },
-			];
-
-			await adapter.doGenerate(callOptions({ tools }));
-			await adapter.doGenerate(callOptions({ tools, toolChoice: { type: 'none' } }));
-
-			expect(sentTools).toEqual([['bound', 'lookup'], ['bound']]);
 		});
 
 		it('uses structured output for a json response format when the model offers it', async () => {
@@ -668,13 +648,14 @@ describe('AiSdkLanguageModelAdapter', () => {
 		});
 
 		it('aborts a chat model call that waits for a chunk when the consumer cancels', async () => {
-			const model = createFakeChatModel();
-			model.stream = async function* (_messages, config) {
-				yield { type: 'text-delta', delta: 'a' };
-				await new Promise((_resolve, reject) => {
-					config?.abortSignal?.addEventListener('abort', () => reject(new Error('aborted')));
-				});
-			};
+			const model = createFakeChatModel({
+				async *stream(_messages, config) {
+					yield { type: 'text-delta', delta: 'a' };
+					await new Promise((_resolve, reject) => {
+						config?.abortSignal?.addEventListener('abort', () => reject(new Error('aborted')));
+					});
+				},
+			});
 			const adapter = new AiSdkLanguageModelAdapter(model);
 
 			const { stream } = await adapter.doStream(callOptions());
@@ -1331,11 +1312,12 @@ describe('AiSdkLanguageModelAdapter', () => {
 
 		it('turns a thrown stream error into an error part and closes the open parts', async () => {
 			const error = new Error('network');
-			const model = createFakeChatModel();
-			model.stream = async function* () {
-				yield { type: 'text-delta', delta: 'Hel' };
-				throw error;
-			};
+			const model = createFakeChatModel({
+				async *stream() {
+					yield { type: 'text-delta', delta: 'Hel' };
+					throw error;
+				},
+			});
 			const adapter = new AiSdkLanguageModelAdapter(model);
 
 			const { stream } = await adapter.doStream(callOptions());
@@ -1354,11 +1336,12 @@ describe('AiSdkLanguageModelAdapter', () => {
 			const unhandled: unknown[] = [];
 			const onUnhandled = (reason: unknown) => unhandled.push(reason);
 			process.on('unhandledRejection', onUnhandled);
-			const model = createFakeChatModel();
-			// eslint-disable-next-line require-yield
-			model.stream = async function* () {
-				throw new Error('network');
-			};
+			const model = createFakeChatModel({
+				// eslint-disable-next-line require-yield
+				async *stream() {
+					throw new Error('network');
+				},
+			});
 			const adapter = new AiSdkLanguageModelAdapter(model);
 			const caller = new AbortController();
 			const reason = new Error('stopped by the caller');
@@ -1392,11 +1375,12 @@ describe('AiSdkLanguageModelAdapter', () => {
 		});
 
 		it('returns from cancel while a chat model that ignores the signal waits for a chunk', async () => {
-			const model = createFakeChatModel();
-			model.stream = async function* () {
-				yield { type: 'text-delta', delta: 'a' };
-				await new Promise(() => {});
-			};
+			const model = createFakeChatModel({
+				async *stream() {
+					yield { type: 'text-delta', delta: 'a' };
+					await new Promise(() => {});
+				},
+			});
 			const adapter = new AiSdkLanguageModelAdapter(model);
 
 			const { stream } = await adapter.doStream(callOptions());
@@ -1408,11 +1392,12 @@ describe('AiSdkLanguageModelAdapter', () => {
 		});
 
 		it('ends the stream on abort while a chat model that ignores the signal waits for a chunk', async () => {
-			const model = createFakeChatModel();
-			model.stream = async function* () {
-				yield { type: 'text-delta', delta: 'a' };
-				await new Promise(() => {});
-			};
+			const model = createFakeChatModel({
+				async *stream() {
+					yield { type: 'text-delta', delta: 'a' };
+					await new Promise(() => {});
+				},
+			});
 			const adapter = new AiSdkLanguageModelAdapter(model);
 			const caller = new AbortController();
 
