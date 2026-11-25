@@ -21,6 +21,8 @@ const RENEW_MARGIN_MS = 30_000;
 const asFilledString = (value: unknown) =>
 	typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined;
 
+const REFUSAL_LENGTH = 300;
+
 /** An endpoint can echo what it was sent, so never hand its words back with the secret still in them. */
 function refusalFrom(error: unknown, clientSecret: string) {
 	if (!isHttpRequestError(error)) return undefined;
@@ -28,14 +30,17 @@ function refusalFrom(error: unknown, clientSecret: string) {
 	const data = error.response?.data;
 	const said =
 		typeof data === 'string'
-			? asFilledString(data)?.slice(0, 300)
+			? asFilledString(data)
 			: isRecord(data)
 				? [data.error_description, data.error, data.message, data.detail]
 						.map(asFilledString)
 						.find((value) => value !== undefined)
 				: undefined;
+	if (said === undefined) return undefined;
 
-	return said === undefined ? undefined : scrubSecretsInText(said.split(clientSecret).join('***'));
+	// Cut after the secret is out, not before: a cut that lands inside one would leave
+	// the head of it behind, which the replacement no longer matches.
+	return scrubSecretsInText(said.split(clientSecret).join('***')).slice(0, REFUSAL_LENGTH);
 }
 
 /**

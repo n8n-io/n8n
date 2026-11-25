@@ -163,6 +163,45 @@ describe('client credentials grant', () => {
 			expect(failure.message).toContain('***');
 		});
 
+		// All three of the refused-grant branch, not just the one the helper defaults to
+		it.each([400, 401, 403])('calls a %i a refusal of the grant', async (status) => {
+			requestMock.mockRejectedValue(httpError({ error: 'invalid_client' }, status));
+
+			const failure = await requestClientCredentialsToken(config).then(
+				() => new Error('the grant was accepted'),
+				(error: Error) => error,
+			);
+
+			expect(failure).toBeInstanceOf(UserError);
+			expect(failure.message).toBe('The token endpoint refused the grant: invalid_client');
+		});
+
+		it('caps what it repeats of an oversized answer', async () => {
+			requestMock.mockRejectedValue(httpError({ detail: 'z'.repeat(5_000) }, 404));
+
+			const failure = await requestClientCredentialsToken(config).then(
+				() => new Error('the grant was accepted'),
+				(error: Error) => error,
+			);
+
+			expect(failure.message.length).toBeLessThan(400);
+		});
+
+		// Cutting before the secret is replaced would leave the head of it in the message
+		it('loses a secret that lies across the cap', async () => {
+			const secret = 'Qz7Lm2Rt9Bv4Xy8K';
+			requestMock.mockRejectedValue(
+				httpError({ error_description: `${'z'.repeat(294)}${secret} and more` }, 401),
+			);
+
+			const failure = await requestClientCredentialsToken({ ...config, clientSecret: secret }).then(
+				() => new Error('the grant was accepted'),
+				(error: Error) => error,
+			);
+
+			expect(failure.message).not.toContain(secret.slice(0, 6));
+		});
+
 		// The user types the Token URL, so a wrong one is theirs to fix and is not transient
 		it.each([404, 405, 415])('calls a %i a problem the user can fix', async (status) => {
 			requestMock.mockRejectedValue(httpError({ error: 'not_found' }, status));
