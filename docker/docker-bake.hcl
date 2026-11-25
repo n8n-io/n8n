@@ -5,15 +5,15 @@
 # each pin a plain string: the podman path of scripts/dockerize-n8n.mjs reads
 # them as text. To change n8nio/base or n8nio/node-pc, read docker/AGENTS.md.
 
-variable "NODE_VERSION" { default = "26.13.0" }
+variable "NODE_VERSION" { default = "26.13.1" }
 
 # n8nio/base builds on these. The tag of each base is the Node version of its
 # DHI ref. The Node 24 base supplies the 1.x runtime image.
 variable "DHI_REF" {
-  default = "dhi.io/node:26.13.0-alpine3.24-dev@sha256:3e61a81f5d83780aff01cb2d8f2251698bf3fe7d522bef71a9656fa93333b504"
+  default = "dhi.io/node:26.13.1-alpine3.24-dev@sha256:b4de66c0e4ee106d6cfa1d7dc3fd92d5a2cd0c6dba855fe02b247fd5190a9066"
 }
 variable "DEBIAN_DHI_REF" {
-  default = "dhi.io/node:26.13.0-debian13-dev@sha256:6c7e2d41ac2cad140e61f765740708f5ab19ac3e734b3d56e029923cb11be4fd"
+  default = "dhi.io/node:26.13.1-debian13-dev@sha256:bb2dac138a83abecec5ba2bf092a733fbc2598742395410734ed60e5a6966cfb"
 }
 variable "NODE_22_DHI_REF" {
   default = "dhi.io/node:22.23.4-alpine3.24-dev@sha256:6074fc885bbf6a1c707d16189076cd2b9d989095abfc4f3f973dac93455bdae5"
@@ -23,10 +23,10 @@ variable "NODE_24_DHI_REF" {
 }
 
 variable "BUILDER_IMAGE" {
-  default = "node:26.13.0-alpine3.24@sha256:8996bb5821d62a8fd9bb27c1cb07462f3fdce6e47d640c6a881ead0b064ce216"
+  default = "node:26.13.1-alpine3.24@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5"
 }
 variable "DEBIAN_BUILDER_IMAGE" {
-  default = "node:26.13.0-trixie-slim@sha256:5adad64f9a1fca2d51972caa65983634c8a774eb300d72b20f7f2a0f60368072"
+  default = "node:26.13.1-trixie-slim@sha256:abe7e5a82b61a8ef67b315b85497c9e65173387ccf2f4a029248184b8e020be5"
 }
 
 # Published by build-base-image.yml on master.
@@ -89,7 +89,7 @@ function "tags" {
   result = override != "" ? split(",", override) : [fallback]
 }
 
-# dhi.io/node:26.13.0-alpine3.24-dev@sha256:... -> 26.13.0
+# dhi.io/node:26.13.1-alpine3.24-dev@sha256:... -> 26.13.1
 function "dhi_node_version" {
   params = [ref]
   result = regex("^dhi\\.io/node:([0-9.]+)-", ref)[0]

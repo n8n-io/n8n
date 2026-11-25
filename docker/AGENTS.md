@@ -24,7 +24,7 @@ and release branches. On a branch without a bake file, the pin PR edits the
    PR, but does not publish it. On merge, master publishes it with a tag that
    ends in the full merge commit SHA.
 2. **Pin PR.** Pin that tag with its digest in the bake file, for example
-   `n8nio/base:26.13.0-<commit>@sha256:<digest>`. Read the digest with
+   `n8nio/base:26.13.1-<commit>@sha256:<digest>`. Read the digest with
    `docker buildx imagetools inspect <image>:<tag>`. This tag never moves, so
    the pin shows which master commit built the image.
 
