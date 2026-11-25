@@ -413,7 +413,7 @@ export class SourceControlImportService {
 		);
 
 		const remoteCredentialFilesParsed = remoteCredentialFilesRead
-			.filter((remote) => {
+			.filter((remote): remote is ExportableCredential => {
 				if (!remote?.id) {
 					return false;
 				}
