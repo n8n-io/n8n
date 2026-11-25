@@ -372,7 +372,7 @@ export class KnowledgeMirrorService {
 	 * a per-sync staging path; `buildMirrorFinalizeCommand`
 	 * moves it into place so a concurrent search never sees a partially-written
 	 * file. Files are loaded and written one at a time so the whole knowledge
-	 * base (up to 1.5 GB) is never held in memory at once.
+	 * base, which can be gigabytes, is never held in memory at once.
 	 * Returns the names of files that were fetched and uploaded successfully.
 	 */
 	private async uploadMirrorFiles(
