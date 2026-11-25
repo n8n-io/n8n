@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import type { InstanceAiEvalAgentScenarioSeed, ToolTestCapability } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { OperationalError } from '@n8n/errors';
 import { Service } from '@n8n/di';
 import type { EvalLlmMockHandler } from 'n8n-core';
 import type { FetchFn } from '@n8n/agents';
@@ -17,7 +18,7 @@ import type {
 
 import { resolveCanonicalMcpCatalogs } from './agent-execution.service';
 import { generateAgentScenarioSeed, type AgentSeedToolSummary } from './agent-scenario-seed';
-import { createMcpMockFetch } from './mcp-mock-fetch';
+import { createMcpMockFetch, MCP_MOCK_GENERATION_FAILURE_PREFIX } from './mcp-mock-fetch';
 import { createLlmMockHandler } from './mock-handler';
 import { redactSecretValuePatterns, truncateForLlm } from './request-sanitizer';
 import { createWebSearchMock, WEB_SEARCH_MOCK_FAILURE_NOTE } from './web-search-mock';
@@ -124,8 +125,11 @@ export class LlmMockSimulationBackend implements SimulationBackend {
 			worldId,
 			backend: this.id,
 			handleRequest: async (request, call): Promise<SimulatedReply> => {
+				// A stopped run neither starts nor waits for a generation.
+				const { signal } = call;
+				if (signal?.aborted) throw stoppedError();
 				if (request.protocol === 'web_search') {
-					const body = await webSearch(request.args);
+					const body = await untilStopped(webSearch(request.args), signal);
 					if (body.note === WEB_SEARCH_MOCK_FAILURE_NOTE) {
 						return { outcome: 'unavailable', detail: 'The LLM mock failed to answer this search.' };
 					}
@@ -139,19 +143,26 @@ export class LlmMockSimulationBackend implements SimulationBackend {
 							detail: 'The LLM mock does not know this MCP server.',
 						};
 					}
-					const response = await mcpFetch(server.url, {
-						method: request.method,
-						headers: { 'content-type': 'application/json', ...(request.headers ?? {}) },
-						...(request.body === undefined
-							? {}
-							: {
-									body:
-										typeof request.body === 'string' ? request.body : JSON.stringify(request.body),
-								}),
-					});
+					const response = await untilStopped(
+						mcpFetch(server.url, {
+							method: request.method,
+							headers: { 'content-type': 'application/json', ...(request.headers ?? {}) },
+							...(request.body === undefined
+								? {}
+								: {
+										body:
+											typeof request.body === 'string'
+												? request.body
+												: JSON.stringify(request.body),
+									}),
+							...(signal ? { signal } : {}),
+						}),
+						signal,
+					);
 					const text = await response.text();
-					// The MCP mock reports a failed generation as a JSON-RPC internal error.
-					if (isMcpInternalError(text)) {
+					// The MCP mock reports a failure as a JSON-RPC internal error, or a failed tool
+					// generation as an error result with a fixed text.
+					if (isMcpInternalError(text) || isMcpGenerationFailure(text)) {
 						return {
 							outcome: 'unavailable',
 							detail: 'The LLM mock failed to answer this MCP call.',
@@ -173,14 +184,18 @@ export class LlmMockSimulationBackend implements SimulationBackend {
 					position: [0, 0],
 					parameters: {},
 				};
-				const response = await httpMock(
-					{
-						url: request.url,
-						method: request.method as IHttpRequestMethods,
-						headers: request.headers,
-						body: request.body as never,
-					},
-					node,
+				const response = await untilStopped(
+					httpMock(
+						{
+							url: request.url,
+							method: request.method as IHttpRequestMethods,
+							headers: request.headers,
+							body: request.body as never,
+							...(signal ? { abortSignal: signal } : {}),
+						},
+						node,
+					),
+					signal,
 				);
 				if (!response) {
 					return { outcome: 'unsupported', detail: 'The LLM mock could not answer this request.' };
@@ -218,6 +233,43 @@ function seedTools(agent: SimulatedAgent): AgentSeedToolSummary[] {
 
 function isMockGenerationError(body: unknown): boolean {
 	return typeof body === 'object' && body !== null && '_evalMockError' in body;
+}
+
+function stoppedError() {
+	return new OperationalError('The test run was stopped.');
+}
+
+/** Stops waiting for a generation when the run stops. The session then blocks the call. */
+async function untilStopped<T>(work: Promise<T>, signal: AbortSignal | undefined): Promise<T> {
+	if (!signal) return await work;
+	return await new Promise<T>((resolve, reject) => {
+		const onAbort = () => reject(stoppedError());
+		signal.addEventListener('abort', onAbort, { once: true });
+		work.then(resolve, reject).finally(() => signal.removeEventListener('abort', onAbort));
+	});
+}
+
+/** A `tools/call` result that the MCP mock made because it failed to generate one. */
+function isMcpGenerationFailure(text: string): boolean {
+	try {
+		const parsed: unknown = JSON.parse(text);
+		if (typeof parsed !== 'object' || parsed === null || !('result' in parsed)) return false;
+		const result = parsed.result;
+		if (typeof result !== 'object' || result === null || !('isError' in result)) return false;
+		if (result.isError !== true || !('content' in result) || !Array.isArray(result.content)) {
+			return false;
+		}
+		const first: unknown = result.content[0];
+		return (
+			typeof first === 'object' &&
+			first !== null &&
+			'text' in first &&
+			typeof first.text === 'string' &&
+			first.text.startsWith(MCP_MOCK_GENERATION_FAILURE_PREFIX)
+		);
+	} catch {
+		return false;
+	}
 }
 
 const JSON_RPC_INTERNAL_ERROR = -32603;
