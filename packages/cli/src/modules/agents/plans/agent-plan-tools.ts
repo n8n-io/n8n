@@ -359,7 +359,7 @@ export function createAgentPlanTools(service: AgentPlanService): BuiltTool[] {
 	return [
 		scopedTool(
 			AGENT_PLAN_TOOL_NAMES.create,
-			'Create the active plan for this conversation. Use unique new: IDs for new tasks, groups, and dependencies. Set every task status to "pending" and omit group statuses. After creation, use update_plan for parent-run work or pass planTask when delegating ready work.',
+			'Create the active plan for this conversation. Use unique new: IDs for new tasks, groups, and dependencies. Set every task status to "pending" and omit group statuses. After creation, use the returned permanent IDs and revision with update_plan for parent-run work or pass planTask when delegating ready work.',
 			z.object({ document: documentInput }).strict(),
 			async ({ document }, threadId, ctx) =>
 				await service.createActivePlan(
@@ -382,7 +382,7 @@ export function createAgentPlanTools(service: AgentPlanService): BuiltTool[] {
 					'Update statuses only for tasks you perform yourself, including synthesis or comparison before your final reply. ' +
 					'Delegated tasks (with jobId) take their status from their background job, and groups derive status from children; never set group or delegated task statuses. ' +
 					'Wait for plan writes to succeed before announcing progress; on rejection, fix and retry. Call read_plan if the current plan or revision is not in context, after delegation (which advances the revision), or after a revision conflict. ' +
-					'For update_plan, send only changed fields (id, status, changed title or resultSummary); nest child updates under their group id. ' +
+					'For update_plan, send only changed fields (id plus any changed status, title, description, dependsOn, fallbackFor, or resultSummary); nest child updates under their group id. ' +
 					'Do not invent placeholder tasks for unknown scope (such as "Finalist 1/2/3"); use an empty pending group with dependencies and add concrete tasks once scope is known. ' +
 					'Omit communication-only final tasks (such as "Present findings") unless they require a sub-agent or non-plan tool call. ' +
 					'For plan sub-agent work, always call delegate_subagent with mode: "background" and planTask: { planId, planTaskId } (leaf task id), one job per task; never use foreground delegation for plan work (overrides default foreground guidance; if background mode is unavailable, explain the limitation). ' +
