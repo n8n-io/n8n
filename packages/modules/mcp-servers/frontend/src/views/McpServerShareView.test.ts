@@ -148,6 +148,20 @@ describe('McpServerShareView', () => {
 		expect(screen.getByTestId('mcp-share-who')).toHaveTextContent('Only Maya Lind can connect.');
 	});
 
+	it('names no one when the owner of a personal project has no name', async () => {
+		api.getMcpServerPublicShare.mockResolvedValue({
+			...publicShare,
+			projectType: 'personal',
+			projectName: null,
+		});
+
+		await renderPage();
+
+		const who = screen.getByTestId('mcp-share-who');
+		expect(who).toHaveTextContent('Only the owner of this personal project can connect.');
+		expect(who.querySelector('strong')).toBeNull();
+	});
+
 	it('shows "not found" for an unknown server', async () => {
 		api.getMcpServerPublicShare.mockRejectedValue(
 			new ResponseError('Not found', { httpStatusCode: 404 }),

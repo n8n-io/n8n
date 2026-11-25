@@ -168,15 +168,23 @@ describe('GET /mcp-servers/share/:slug', () => {
 		expect(response.body.data).toMatchObject({ canConnect: false, projectName: 'Marketing' });
 	});
 
-	it('names the owner of a personal project, without the email', async () => {
-		const personal = await getPersonalProject(member);
-		const slug = `maya-tools-${uuidv7().slice(-8)}`;
-		await createServer(slug, personal.id);
+	it.each([
+		{ firstName: 'Maya', lastName: 'Lind', projectName: 'Maya Lind' },
+		{ firstName: 'Maya', lastName: '', projectName: 'Maya' },
+		{ firstName: '', lastName: '', projectName: null },
+	])(
+		'names the owner "$firstName $lastName" of a personal project as $projectName, without the email',
+		async ({ firstName, lastName, projectName }) => {
+			const owner = await createUser({ role: GLOBAL_MEMBER_ROLE, firstName, lastName });
+			const slug = `owner-tools-${uuidv7().slice(-8)}`;
+			await createServer(slug, (await getPersonalProject(owner)).id);
 
-		const response = await testServer.authAgentFor(outsider).get(sharePath(slug)).expect(200);
+			const response = await testServer.authAgentFor(outsider).get(sharePath(slug)).expect(200);
 
-		expect(response.body.data).toMatchObject({ projectName: 'Maya Lind', projectType: 'personal' });
-	});
+			expect(response.body.data).toMatchObject({ projectName, projectType: 'personal' });
+			expect(JSON.stringify(response.body)).not.toContain(owner.email);
+		},
+	);
 });
 
 describe('GET /mcp-servers/share/:slug/public', () => {
