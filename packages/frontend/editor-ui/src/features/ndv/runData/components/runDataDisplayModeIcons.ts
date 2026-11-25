@@ -5,7 +5,6 @@ import type { BuiltInDisplayMode } from '@n8n/frontend-module-sdk';
 const DISPLAY_MODE_ICONS = new Map<string, IconName>(
 	Object.entries({
 		ai: 'text',
-		html: 'file-code',
 		schema: 'schema',
 		table: 'table',
 		json: 'json',
