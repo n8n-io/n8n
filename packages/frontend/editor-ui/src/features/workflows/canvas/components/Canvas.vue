@@ -1880,6 +1880,15 @@ const minimapVisibilityDelay = 1000;
 const minimapHideTimeout = ref<NodeJS.Timeout | null>(null);
 const isMinimapVisible = ref(false);
 
+/**
+ * Vue Flow's own defaults are a fixed light grey mask with no outline, so the
+ * viewport is hard to find and the mask stays light grey in dark mode.
+ * Theme tokens keep it readable in both.
+ */
+const minimapMaskColor = 'color-mix(in srgb, var(--color--background--light-2) 60%, transparent)';
+const minimapMaskStrokeColor = 'var(--text-color--subtler)';
+const minimapMaskStrokeWidth = 1.5;
+
 function minimapNodeClassnameFn(node: CanvasNodeOrGroup) {
 	if (isCanvasGroupNode(node)) return 'minimap-node-group';
 	return `minimap-node-${node.data?.render.type.replace(/\./g, '-') ?? 'default'}`;
@@ -2208,6 +2217,9 @@ defineExpose({
 				zoomable
 				:node-class-name="minimapNodeClassnameFn"
 				:node-border-radius="16"
+				:mask-color="minimapMaskColor"
+				:mask-stroke-color="minimapMaskStrokeColor"
+				:mask-stroke-width="minimapMaskStrokeWidth"
 				@mouseenter="onMinimapMouseEnter"
 				@mouseleave="onMinimapMouseLeave"
 			/>

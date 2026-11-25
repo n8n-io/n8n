@@ -1653,6 +1653,25 @@ describe('Canvas', () => {
 			vi.advanceTimersByTime(minimapVisibilityDelay + minimapTransitionDuration);
 			await waitFor(() => expect(getByTestId('canvas-minimap')).not.toBeVisible());
 		});
+
+		it('should outline the viewport and color the mask from theme tokens', async () => {
+			const nodes = [createCanvasNodeElement()];
+			const { getByTestId, container } = renderComponent({
+				props: {
+					nodes,
+				},
+			});
+
+			await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(1));
+
+			const mask = getByTestId('canvas-minimap').querySelector('.vue-flow__minimap-mask');
+			if (!mask) throw new Error('Minimap mask not found');
+
+			// Vue Flow defaults to no outline and a fixed light grey mask.
+			expect(mask).not.toHaveAttribute('stroke', 'none');
+			expect(mask.getAttribute('stroke')).toMatch(/^var\(--/);
+			expect(mask.getAttribute('fill')).toContain('var(--');
+		});
 	});
 
 	describe('background', () => {
