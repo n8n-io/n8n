@@ -8,6 +8,7 @@ import {
 import { EventService, PostHogClient } from '@n8n/backend-services';
 import { McpServer } from '@n8n/backend-module-mcp-servers';
 import type { Project, User } from '@n8n/db';
+import { WorkflowPublishedVersionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import type { INode } from 'n8n-workflow';
@@ -89,7 +90,12 @@ async function setup() {
 		.send({ workflowIds: [workflow.id] })
 		.expect(200);
 	const tool: McpServerToolResponse = added.body.data[0];
-	return { serverId, tool, draftUrl: `${base(serverId)}/tools/${tool.id}/draft` };
+	return {
+		serverId,
+		tool,
+		workflowId: workflow.id,
+		draftUrl: `${base(serverId)}/tools/${tool.id}/draft`,
+	};
 }
 
 beforeAll(async () => {
@@ -280,6 +286,26 @@ describe('POST /projects/:projectId/mcp-servers/:serverId/tools/:toolId/draft', 
 			source: 'ui',
 			field: eventField,
 			status,
+		});
+	});
+
+	it('refuses a broken tool, makes no model call, and keeps the text', async () => {
+		const { serverId, tool, workflowId, draftUrl } = await setup();
+		await Container.get(WorkflowRepository).update(workflowId, {
+			activeVersionId: null,
+			active: false,
+		});
+		await Container.get(WorkflowPublishedVersionRepository).removePublishedVersion(workflowId);
+
+		await testServer.authAgentFor(editor).post(draftUrl).send({}).expect(400);
+
+		expect(draft).not.toHaveBeenCalled();
+		const server = await testServer.authAgentFor(editor).get(base(serverId)).expect(200);
+		expect(server.body.data.tools[0]).toMatchObject({
+			toolName: tool.toolName,
+			description: tool.description,
+			draftSource: 'defaults',
+			brokenReason: 'not_published',
 		});
 	});
 

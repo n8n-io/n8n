@@ -59,6 +59,8 @@ watch(
 	},
 );
 
+// A broken tool has no published workflow to read, so the server refuses its draft.
+const showGenerate = computed(() => !!props.canGenerate && !props.tool.brokenReason);
 const nameInvalid = computed(() => !mcpServerToolNameSchema.safeParse(toolName.value).success);
 const missingDescription = computed(() => !props.drafting && props.tool.description.trim() === '');
 
@@ -207,7 +209,7 @@ function saveDescription() {
 							{{ i18n.baseText('mcpServers.tools.row.toolNameHint') }}
 						</N8nText>
 						<N8nButton
-							v-if="canGenerate"
+							v-if="showGenerate"
 							variant="ghost"
 							size="xsmall"
 							:label="i18n.baseText('mcpServers.tools.row.generate')"
@@ -253,7 +255,7 @@ function saveDescription() {
 							{{ i18n.baseText('mcpServers.tools.row.descriptionHint') }}
 						</N8nText>
 						<N8nButton
-							v-if="canGenerate"
+							v-if="showGenerate"
 							variant="ghost"
 							size="xsmall"
 							:label="i18n.baseText('mcpServers.tools.row.generate')"

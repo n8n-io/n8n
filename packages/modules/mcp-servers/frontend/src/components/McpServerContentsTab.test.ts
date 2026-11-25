@@ -405,6 +405,17 @@ describe('McpServerContentsTab', () => {
 			expect(queryByTestId('mcp-tool-row-generate-name')).not.toBeInTheDocument();
 			expect(queryByTestId('mcp-tool-row-generate-description')).not.toBeInTheDocument();
 		});
+
+		it('hides the "Generate" buttons on a broken tool', async () => {
+			api.getMcpServer.mockResolvedValue(server([tool({ brokenReason: 'not_published' })]));
+			const { findByTestId, getByTestId, queryByTestId } = render();
+
+			await userEvent.click(await findByTestId('mcp-tool-row-toggle'));
+
+			expect(getByTestId('mcp-tool-row-name-input')).toBeInTheDocument();
+			expect(queryByTestId('mcp-tool-row-generate-name')).not.toBeInTheDocument();
+			expect(queryByTestId('mcp-tool-row-generate-description')).not.toBeInTheDocument();
+		});
 	});
 
 	describe('a project viewer', () => {
