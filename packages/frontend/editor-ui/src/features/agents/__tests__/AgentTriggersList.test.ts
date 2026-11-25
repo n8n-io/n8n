@@ -117,6 +117,17 @@ describe('AgentTriggersList', () => {
 			expect(text).toContain('agents.builder.triggers.channel.source:{"channel":"n8n Chat"}');
 		});
 
+		it('names the agent in the n8n Chat title when the agent has a name', () => {
+			const wrapper = mountList({
+				agentName: 'Support bot',
+				channels: [makeChannel({ type: 'n8n_chat', label: 'n8n Chat' })],
+			});
+
+			const text = wrapper.get('[data-testid="agent-triggers-channel"]').text();
+			expect(text).toContain('agents.builder.triggers.channel.newChatWith:{"agent":"Support bot"}');
+			expect(text).toContain('agents.builder.triggers.channel.source:{"channel":"n8n Chat"}');
+		});
+
 		it('shows a switch only for n8n Chat', () => {
 			const wrapper = mountList({
 				channels: [

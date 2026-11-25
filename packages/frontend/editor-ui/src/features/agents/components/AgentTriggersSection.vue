@@ -52,6 +52,7 @@ const props = withDefaults(
 		disabled?: boolean;
 		projectId: string;
 		agentId: string;
+		agentName?: string;
 		isPublished?: boolean;
 		isRunnable?: boolean;
 		validationIssues?: AgentConfigValidationIssue[];
@@ -466,6 +467,7 @@ function handleChannelDisconnected(channelType: string) {
 			:channels="channelRows"
 			:project-id="props.projectId"
 			:agent-id="props.agentId"
+			:agent-name="props.agentName"
 			:disabled="props.disabled"
 			:removing-channel="removingChannel || togglingChannel"
 			:task-refs="props.taskRefs"

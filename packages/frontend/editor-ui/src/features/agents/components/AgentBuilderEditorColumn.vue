@@ -293,6 +293,7 @@ defineExpose({ onSetupTaskAction });
 							:connected-triggers="connectedTriggers"
 							:disabled="childrenDisabled"
 							:agent-id="agentId"
+							:agent-name="localConfig?.name"
 							:project-id="projectId"
 							:is-published="Boolean(agent?.activeVersionId)"
 							:is-runnable="props.agent?.isRunnable === true"

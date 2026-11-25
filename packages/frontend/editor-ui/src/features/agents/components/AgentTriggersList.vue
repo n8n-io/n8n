@@ -16,6 +16,7 @@ const props = withDefaults(
 		channels: AgentTriggerChannelItem[];
 		projectId: string;
 		agentId: string;
+		agentName?: string;
 		disabled?: boolean;
 		removingChannel?: boolean;
 		taskRefs?: AgentJsonTaskConfig[];
@@ -74,7 +75,12 @@ const { taskRows, taskErrorMessage, removingTaskId, toggleTask, reloadTasks } = 
  */
 function channelTitle(channel: AgentTriggerChannelItem) {
 	if (isN8nChat(channel)) {
-		return i18n.baseText('agents.builder.triggers.channel.newChatThread');
+		const agentName = props.agentName?.trim();
+		return agentName
+			? i18n.baseText('agents.builder.triggers.channel.newChatWith', {
+					interpolate: { agent: agentName },
+				})
+			: i18n.baseText('agents.builder.triggers.channel.newChatThread');
 	}
 	return (
 		channel.mentionLabel ??
@@ -123,18 +129,6 @@ defineExpose({ reloadTasks });
 <template>
 	<div :class="$style.container">
 		<ul :class="$style.list" data-testid="agent-triggers-list">
-			<li :class="$style.item" data-testid="agent-triggers-preview">
-				<N8nIcon icon="flask-conical" :size="16" :class="$style.icon" />
-				<span :class="$style.text">
-					<N8nText :class="$style.title" size="medium" bold color="text-dark">
-						{{ i18n.baseText('agents.builder.triggers.preview.label') }}
-					</N8nText>
-					<N8nText :class="$style.source" size="medium" bold color="text-light">
-						{{ i18n.baseText('agents.builder.triggers.preview.source') }}
-					</N8nText>
-				</span>
-			</li>
-
 			<li v-for="channel in props.channels" :key="channel.type" :class="$style.row">
 				<button
 					type="button"
