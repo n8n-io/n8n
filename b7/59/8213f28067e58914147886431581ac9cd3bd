@@ -1,0 +1,24 @@
+packages/@n8n/api-types/src/agents/__tests__/list-n8n-chat-threads-query.dto.test.ts
+  h_23d60aac2fe72e 4-11,13-18
+packages/@n8n/api-types/src/agents/dto.ts
+  h_23d60aac2fe72e 207-209,211-222
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  h_23d60aac2fe72e 276-277,295,419-425,427-429,431-433,445,448
+packages/cli/test/integration/agents/agent-attention-flags.test.ts
+  h_23d60aac2fe72e 297-316
+packages/cli/test/integration/agents/n8n-chat-page.api.test.ts
+  h_23d60aac2fe72e 243-274
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  h_23d60aac2fe72e 203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b7598213f28067e58914147886431581ac9cd3bd",
+  "prompts": {},
+  "humans": {
+    "h_23d60aac2fe72e": {
+      "author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
