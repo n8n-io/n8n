@@ -505,4 +505,53 @@ describe('AssistantAtMentionPicker', () => {
 			expect(emitted()['empty-search']).toEqual([['zzz']]);
 		});
 	});
+
+	describe('menu placement', () => {
+		// Keeps the anchor that the picker gives the menu, and renders the @ button.
+		let menuReference: { getBoundingClientRect: () => DOMRect } | undefined;
+		const DropdownMenuStub = defineComponent({
+			name: 'N8nDropdownMenu',
+			props: { reference: { type: Object, default: undefined } },
+			setup(props, { slots }) {
+				return () => {
+					menuReference = props.reference as typeof menuReference;
+					return h('div', slots.trigger?.());
+				};
+			},
+		});
+		const renderPlaced = createComponentRenderer(AssistantAtMentionPicker, {
+			// The design-system component has no explicit name, so Vue knows it by its file name.
+			global: { stubs: { DropdownMenu: DropdownMenuStub } },
+		});
+
+		beforeEach(() => {
+			menuReference = undefined;
+		});
+
+		it('opens at the @ button without a reference', () => {
+			const { getByTestId } = renderPlaced({
+				props: { modelValue: false, query: '', projectId: undefined, artifacts: [] },
+			});
+			const buttonRect = new DOMRect(700, 600, 32, 32);
+			vi.spyOn(getByTestId('instance-ai-mention-button'), 'getBoundingClientRect').mockReturnValue(
+				buttonRect,
+			);
+
+			expect(menuReference?.getBoundingClientRect()).toBe(buttonRect);
+		});
+
+		it('follows a reference that arrives after the first render', async () => {
+			const { rerender } = renderPlaced({
+				props: { modelValue: false, query: '', projectId: undefined, artifacts: [] },
+			});
+			const firstAnchor = menuReference;
+			const typedAt = new DOMRect(220, 680, 0, 20);
+
+			await rerender({ modelValue: true, reference: { getBoundingClientRect: () => typedAt } });
+
+			// The menu keeps one anchor object, which reka-ui forwards from the first render.
+			expect(menuReference).toBe(firstAnchor);
+			expect(menuReference?.getBoundingClientRect()).toBe(typedAt);
+		});
+	});
 });

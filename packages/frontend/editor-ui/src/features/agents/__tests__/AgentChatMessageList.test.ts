@@ -557,8 +557,8 @@ describe('AgentChatMessageList', () => {
 		const tokens = wrapper.findAll('[data-testid="agent-chat-message-token"]');
 		expect(tokens.map((token) => token.text())).toEqual(['Foo', 'Bar']);
 		const bubble = wrapper.get('[data-testid="chat-message-shell"]');
-		expect(bubble.text()).toContain('Do x with');
-		expect(bubble.text()).toContain('and y with');
+		// The whole text in order, so a token drawn away from its place fails.
+		expect(bubble.text().replace(/\s+/g, ' ')).toContain('Do x with Foo and y with Bar');
 		expect(bubble.text()).not.toContain('n8n-resource://');
 
 		wrapper.unmount();

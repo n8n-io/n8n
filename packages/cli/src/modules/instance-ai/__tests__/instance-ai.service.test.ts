@@ -5815,7 +5815,10 @@ describe('InstanceAiService — editor handoff context resources', () => {
 		expect(source).toMatch(
 			/resolveThreadArtifactsTurn\(\s*threadId\s*,\s*threadArtifacts\s*,\s*contextAttachments\s*,/,
 		);
-		expect(source).toMatch(/buildThreadArtifactsBlock\)?\s*\(\s*context\s*,\s*attachments\s*\)/);
+		// The message goes too, so the block can list the resources that it mentions inline.
+		expect(source).toMatch(
+			/buildThreadArtifactsBlock\)?\s*\(\s*context\s*,\s*attachments\s*,\s*message\s*\)/,
+		);
 		expect(source).toMatch(/buildThreadContextBlock\)?/);
 		expect(source).not.toContain('buildContextResourcesBlock');
 		expect(source).not.toContain('EDITOR_CONTEXT_OPEN_TAG');

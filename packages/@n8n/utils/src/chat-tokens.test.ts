@@ -56,4 +56,11 @@ describe('chat tokens', () => {
 		expect(parseChatResourceHref('https://example.com')).toBeUndefined();
 		expect(parseChatResourceHref('n8n-resource://workflow')).toBeUndefined();
 	});
+
+	it('keeps a target with parentheses the same in a token', () => {
+		const href = formatChatResourceHref('agent', 'a(1)');
+		expect(href).toBe('n8n-resource://agent/a%281%29');
+		expect(listChatTokens(formatChatToken({ label: 'A', href }))).toEqual([{ label: 'A', href }]);
+		expect(parseChatResourceHref(href)).toEqual({ kind: 'agent', ids: ['a(1)'] });
+	});
 });

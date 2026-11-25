@@ -1,17 +1,24 @@
+import { generateJSON } from '@tiptap/core';
+import StarterKit from '@tiptap/starter-kit';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
 
 import N8nChatInput from './ChatInput.vue';
-import { textToDoc } from './chatInputTokens';
+import { ChatTokenNode, textToDoc } from './chatInputTokens';
 
 const WORKFLOW = '[@Orders](n8n-resource://workflow/1)';
 
-async function mountTokenInput(modelValue = '', trigger = true) {
+async function mountTokenInput(
+	modelValue = '',
+	trigger = true,
+	extraProps: Record<string, unknown> = {},
+) {
 	const wrapper = mount(N8nChatInput, {
 		props: {
 			modelValue,
 			tokens: { trigger, icon: () => 'workflow' },
+			...extraProps,
 			'onUpdate:modelValue': async (value: string) => await wrapper.setProps({ modelValue: value }),
 		},
 		global: { stubs: { N8nTooltip: { template: '<div><slot /></div>' } } },
@@ -52,6 +59,8 @@ describe('N8nChatInput with tokens', () => {
 		wrapper.vm.getTokenEditor()?.insertText('!');
 		await nextTick();
 		expect(lastModelValue(wrapper)).toBe(`${text}!`);
+		// Literal link text serializes the same, so check that the chip is still a chip.
+		await waitFor(() => expect(wrapper.find('[data-test-id="chat-token"]').exists()).toBe(true));
 		wrapper.unmount();
 	});
 
@@ -122,6 +131,52 @@ describe('N8nChatInput with tokens', () => {
 		await fireEvent.keyDown(element, { key: 'Enter' });
 		expect(wrapper.emitted('submit')).toHaveLength(1);
 		wrapper.unmount();
+	});
+
+	it('submits on Shift+Enter in the single-line layout', async () => {
+		const wrapper = await mountTokenInput('Fix', true, { layout: 'single-line' });
+		const element = wrapper.vm.getEditorElement();
+		if (!element) throw new Error('No editor');
+		await fireEvent.keyDown(element, { key: 'Enter', shiftKey: true });
+		expect(wrapper.emitted('submit')).toHaveLength(1);
+		expect(lastModelValue(wrapper)).toBeUndefined();
+		wrapper.unmount();
+	});
+
+	it('keeps the text within maxLength, counting a token by its text form', async () => {
+		const wrapper = await mountTokenInput('Fix ', true, { maxLength: 10 });
+		const tokenEditor = wrapper.vm.getTokenEditor();
+		tokenEditor?.insertToken({ label: 'Orders', href: 'n8n-resource://workflow/1' });
+		tokenEditor?.insertText('a long text');
+		await nextTick();
+		expect(lastModelValue(wrapper)).toBeUndefined();
+		tokenEditor?.insertText('up');
+		await nextTick();
+		expect(lastModelValue(wrapper)).toBe('Fix up');
+		wrapper.unmount();
+	});
+
+	it('keeps the part of a paste that fits within maxLength', async () => {
+		const wrapper = await mountTokenInput('Fix ', true, { maxLength: 8 });
+		const element = wrapper.vm.getEditorElement();
+		if (!element) throw new Error('No editor');
+		await fireEvent.paste(element, {
+			clipboardData: { files: [], getData: () => 'this now' },
+		});
+		await nextTick();
+		expect(lastModelValue(wrapper)).toBe('Fix this');
+		wrapper.unmount();
+	});
+
+	it('reads a token back from the HTML that it renders', () => {
+		const json = generateJSON(
+			'<p>Fix <span data-chat-token="" data-href="n8n-resource://workflow/1">@Orders</span></p>',
+			[StarterKit, ChatTokenNode],
+		);
+		expect(json.content?.[0].content?.[1]).toEqual({
+			type: 'chatToken',
+			attrs: { label: 'Orders', href: 'n8n-resource://workflow/1' },
+		});
 	});
 
 	it('replaces the content when the value changes from outside', async () => {

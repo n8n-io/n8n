@@ -836,4 +836,44 @@ describe('InstanceAiInput — inline mentions', () => {
 		expect(await findByTestId('chat-token')).toHaveTextContent('Orders');
 		expect(queryByTestId('attachment-preview-resource')).not.toBeInTheDocument();
 	});
+
+	it('puts a typed mention where the @ was, between the text around it', async () => {
+		const { container, emitted, findByTestId, getByTestId } = renderMentionsInput({
+			props: { inlineMentions: true },
+		});
+		await waitFor(() => expect(container.querySelector('[contenteditable]')).not.toBeNull());
+		const editor = container.querySelector<HTMLElement>('[contenteditable]');
+		if (!editor) throw new Error('No editor');
+
+		await userEvent.type(editor, 'Fix @Ord');
+		await waitFor(() =>
+			expect(getByTestId('mention-picker-stub')).toHaveAttribute('data-query', 'Ord'),
+		);
+		await userEvent.click(getByTestId('mention-picker-select'));
+		expect(await findByTestId('chat-token')).toHaveTextContent('Orders');
+		await userEvent.type(editor, 'today');
+
+		await userEvent.click(await findByTestId('instance-ai-send-button'));
+
+		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
+		const [message] = emitted().submit[0] as [string];
+		expect(message).toBe('Fix [@Orders](n8n-resource://workflow/w1) today');
+	});
+
+	it('turns the mentions into plain text when the project changes', async () => {
+		const { container, emitted, findByTestId, getByTestId, queryByTestId, rerender } =
+			renderMentionsInput({ props: { inlineMentions: true } });
+		await waitFor(() => expect(container.querySelector('[contenteditable]')).not.toBeNull());
+		await userEvent.click(getByTestId('mention-picker-select'));
+		expect(await findByTestId('chat-token')).toBeInTheDocument();
+
+		await rerender({ mentionProjectId: 'project-2' });
+
+		await waitFor(() => expect(queryByTestId('chat-token')).not.toBeInTheDocument());
+		await userEvent.click(await findByTestId('instance-ai-send-button'));
+		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
+		const [message, attachments] = emitted().submit[0] as [string, unknown[] | undefined];
+		expect(message).toBe('@Orders');
+		expect(attachments).toBeUndefined();
+	});
 });

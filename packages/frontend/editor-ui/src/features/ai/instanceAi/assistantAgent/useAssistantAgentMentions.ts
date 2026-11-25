@@ -1,11 +1,12 @@
 import {
 	MAX_INSTANCE_AI_ATTACHMENTS_PER_MESSAGE,
+	type InstanceAiAttachment,
 	type InstanceAiResourceAttachment,
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import type { ChatInputTokenQueryEnd } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { ChatToken } from '@n8n/utils/chat-tokens';
+import { chatTokensToPlainText, type ChatToken } from '@n8n/utils/chat-tokens';
 import { computed, ref, watch, type MaybeRefOrGetter, type Ref } from 'vue';
 
 import { useAssistantAtMentionsTelemetry } from '@/features/ai/assistant-at-mentions/assistantAtMentions.telemetry';
@@ -24,12 +25,14 @@ import { chatResourceTokenIcon } from '@/features/ai/shared/utils/chatResourceTo
 import {
 	countMentions,
 	countStagedAttachments,
+	readChipAttachments,
 	type StagedChip,
 } from './assistantMentionAttachments';
 import {
 	mentionAttachmentsOf,
 	mentionHrefsOf,
 	mentionToken,
+	withoutAttachedResources,
 	type PickedMention,
 } from './assistantMentionTokens';
 
@@ -86,6 +89,8 @@ export function useAssistantAgentMentions(options: {
 	artifacts: () => readonly WorkflowArtifactReference[];
 	/** Attachments that the next message sends besides the mentions. */
 	reservedAttachmentCount: () => number;
+	/** The resources among those attachments. A mention of one of them adds nothing. */
+	reservedResources?: () => readonly InstanceAiAttachment[];
 	/** The composer does not take a pick, for example while a message is sent. */
 	isBlocked: () => boolean;
 }) {
@@ -213,10 +218,14 @@ export function useAssistantAgentMentions(options: {
 		const token = mentionToken(item);
 
 		// A repeated mention adds no attachment, and node mentions join their workflow's.
+		// A mention of a staged or reserved resource is sent once, with that resource.
 		const withPick = new Map(picked).set(token.href, { item, attachment });
-		const sentCount = mentionAttachmentsOf(
-			`${draft.value} [@${token.label}](${token.href})`,
-			withPick,
+		const sentCount = withoutAttachedResources(
+			mentionAttachmentsOf(`${draft.value} [@${token.label}](${token.href})`, withPick),
+			[
+				...panel.composerAttachments.flatMap(readChipAttachments),
+				...(options.reservedResources?.() ?? []),
+			],
 		).length;
 		if (
 			sentCount +
@@ -311,6 +320,15 @@ export function useAssistantAgentMentions(options: {
 
 	watch(canUseMentions, (enabled) => {
 		if (!enabled && menuOpen.value) close('unavailable');
+	});
+
+	// The picks belong to the project that they were picked in. A new project keeps
+	// the words of the draft, but its mentions become plain `@label` text.
+	watch(options.projectId, (projectId, previousProjectId) => {
+		if (previousProjectId === undefined || projectId === previousProjectId) return;
+		if (menuOpen.value) close('unavailable');
+		draft.value = chatTokensToPlainText(draft.value);
+		picked.clear();
 	});
 
 	return {

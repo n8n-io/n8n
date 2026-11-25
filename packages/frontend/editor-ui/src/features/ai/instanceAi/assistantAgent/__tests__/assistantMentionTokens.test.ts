@@ -99,9 +99,42 @@ describe('assistantMentionTokens', () => {
 		const text = 'Fix [@a](n8n-resource://node/wf-1/a) in [@Orders](n8n-resource://workflow/wf-1)';
 		expect(isMentionedInline({ type: 'workflow', id: 'wf-1' }, text)).toBe(true);
 		expect(isMentionedInline({ type: 'workflow', id: 'wf-2' }, text)).toBe(false);
-		expect(isMentionedInline({ type: 'nodes', workflowId: 'wf-1', sets: [] }, text)).toBe(true);
+		expect(
+			isMentionedInline(
+				{ type: 'nodes', workflowId: 'wf-1', sets: [{ nodes: [{ id: 'a' }] }] },
+				text,
+			),
+		).toBe(true);
 		expect(
 			isMentionedInline({ type: 'agent', id: 'wf-1', projectId: 'project-1' }, 'Plain text'),
+		).toBe(false);
+	});
+
+	it('shows a nodes attachment when a chip added nodes that the text does not mention', () => {
+		const text = 'Fix [@b](n8n-resource://node/wf-1/b) and [@G](n8n-resource://group/wf-1/g-1)';
+		const grouped = { nodes: [{ id: 'x' }], canvasGroupId: 'g-1' };
+		expect(
+			isMentionedInline(
+				{ type: 'nodes', workflowId: 'wf-1', sets: [{ nodes: [{ id: 'b' }] }, grouped] },
+				text,
+			),
+		).toBe(true);
+		// Node a came from a composer chip, so the card still shows.
+		expect(
+			isMentionedInline(
+				{
+					type: 'nodes',
+					workflowId: 'wf-1',
+					sets: [{ nodes: [{ id: 'a' }] }, { nodes: [{ id: 'b' }] }],
+				},
+				text,
+			),
+		).toBe(false);
+		expect(
+			isMentionedInline(
+				{ type: 'nodes', workflowId: 'wf-1', sets: [{ nodes: [{ id: 'a' }, { id: 'b' }] }] },
+				text,
+			),
 		).toBe(false);
 	});
 });

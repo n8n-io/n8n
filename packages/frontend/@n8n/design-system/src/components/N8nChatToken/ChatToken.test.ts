@@ -17,6 +17,6 @@ describe('N8nChatToken', () => {
 			props: { label: 'Order sync', icon: 'workflow' },
 		});
 
-		expect(getByTestId('chat-token').querySelector('.n8n-icon, svg')).not.toBeNull();
+		expect(getByTestId('chat-token').querySelector('[data-icon="workflow"]')).not.toBeNull();
 	});
 });

@@ -1101,7 +1101,12 @@ const InlineTokensTemplate: StoryFn = (args) => ({
 				@submit="onSubmit"
 			/>
 			<div v-if="query !== undefined" style="display: flex; gap: 4px;">
-				<button v-for="option in matches" :key="option.href" @mousedown.prevent="pick(option)">
+				<button
+					v-for="option in matches"
+					:key="option.href"
+					@mousedown.prevent
+					@click="pick(option)"
+				>
 					{{ option.label }}
 				</button>
 			</div>

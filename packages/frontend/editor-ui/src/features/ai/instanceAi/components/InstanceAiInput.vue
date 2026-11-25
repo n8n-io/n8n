@@ -42,6 +42,7 @@ import {
 	type InstanceAiPrefillPayload,
 } from '../prefills';
 import { mergeNodeSets } from '../utils/buildNodesAttachment';
+import { withoutAttachedResources } from '../assistantAgent/assistantMentionTokens';
 import { useAssistantAgentMentions } from '../assistantAgent/useAssistantAgentMentions';
 import InstanceAiResourceChip from './InstanceAiResourceChip.vue';
 
@@ -420,6 +421,7 @@ const inlineMentions = useAssistantAgentMentions({
 	artifacts: () => props.mentionArtifacts,
 	reservedAttachmentCount: () =>
 		attachedFiles.value.length + attachedResources.value.length + props.reservedAttachmentCount,
+	reservedResources: () => attachedResources.value,
 	isBlocked: () => isSubmissionInFlight.value || isGatedBySetup.value,
 });
 
@@ -737,13 +739,15 @@ async function handleSubmit() {
 	const submittedFiles = [...attachedFiles.value];
 	const submittedResources = [...attachedResources.value];
 	// Inline mentions stay in the text, so a restored draft brings them back with it.
-	const inlineAttachments = props.inlineMentions ? inlineMentions.attachmentsFor(text) : [];
+	const inlineAttachments = props.inlineMentions
+		? withoutAttachedResources(inlineMentions.attachmentsFor(text), submittedResources)
+		: [];
 	const mentionRecordIds = mentionAttachments.snapshotSubmission();
 	const mentionCounts = props.inlineMentions
 		? inlineMentions.sentMentionCounts(text)
 		: mentionAttachments.snapshotCounts();
 	const mentionedWorkflowIds = props.inlineMentions
-		? workflowIdsOf(inlineAttachments)
+		? workflowIdsOf(inlineMentions.attachmentsFor(text))
 		: mentionAttachments.snapshotMentionedWorkflowIds();
 	isPreparingSubmission.value = true;
 	let fileAttachments: InstanceAiAttachment[];

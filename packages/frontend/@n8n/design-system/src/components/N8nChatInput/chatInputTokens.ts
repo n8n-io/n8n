@@ -1,7 +1,7 @@
 import { formatChatToken, splitChatTokens, type ChatToken } from '@n8n/utils/chat-tokens';
 import { Extension, Node, type JSONContent } from '@tiptap/core';
 import { Fragment, Slice, type Node as ProseMirrorNode, type Schema } from '@tiptap/pm/model';
-import type { EditorState } from '@tiptap/pm/state';
+import { Plugin, type EditorState } from '@tiptap/pm/state';
 import { VueNodeViewRenderer } from '@tiptap/vue-3';
 
 import ChatTokenNodeView from './ChatTokenNodeView.vue';
@@ -54,7 +54,16 @@ export const ChatTokenNode = Node.create<ChatTokenNodeOptions>({
 	},
 
 	parseHTML() {
-		return [{ tag: 'span[data-chat-token]' }];
+		return [
+			{
+				tag: 'span[data-chat-token]',
+				// The form that `renderHTML` writes: the target in `data-href`, the label after `@`.
+				getAttrs: (element) => ({
+					href: element.getAttribute('data-href') ?? '',
+					label: (element.textContent ?? '').replace(/^@/, ''),
+				}),
+			},
+		];
 	},
 
 	renderHTML({ node }) {
@@ -164,8 +173,36 @@ export function isTriggerAt(state: EditorState, position: number): boolean {
 	return TRIGGER_CHARACTERS.has(state.doc.textBetween(position, position + 1, undefined, ' '));
 }
 
-/** Enter submits, Shift+Enter starts a new line. */
-export function createSubmitKeymap(onSubmit: () => void) {
+/**
+ * Rejects a change that makes the message text longer than the limit, from any
+ * source: typing, paste, drop or a token. The limit counts a token by its text
+ * form, as the message sends it. A change that makes the text shorter, and
+ * content that the host sets, always apply.
+ */
+export function createMaxLengthLimit(getMaxLength: () => number | undefined) {
+	return Extension.create({
+		name: 'chatInputMaxLength',
+		addProseMirrorPlugins() {
+			return [
+				new Plugin({
+					filterTransaction: (transaction, state) => {
+						const maxLength = getMaxLength();
+						if (maxLength === undefined || !transaction.docChanged) return true;
+						if (transaction.getMeta('preventUpdate') === true) return true;
+						const length = docToText(transaction.doc).length;
+						return length <= maxLength || length <= docToText(state.doc).length;
+					},
+				}),
+			];
+		},
+	});
+}
+
+/** Enter submits. Shift+Enter starts a new line, or submits in a single-line composer. */
+export function createSubmitKeymap(
+	onSubmit: () => void,
+	isSingleLine: () => boolean = () => false,
+) {
 	return Extension.create({
 		name: 'chatInputSubmit',
 		priority: 1000,
@@ -176,7 +213,12 @@ export function createSubmitKeymap(onSubmit: () => void) {
 					onSubmit();
 					return true;
 				},
-				'Shift-Enter': ({ editor }) => editor.commands.splitBlock(),
+				'Shift-Enter': ({ editor }) => {
+					if (!isSingleLine()) return editor.commands.splitBlock();
+					if (editor.view.composing) return false;
+					onSubmit();
+					return true;
+				},
 				'Mod-Enter': ({ editor }) => {
 					if (editor.view.composing) return false;
 					onSubmit();

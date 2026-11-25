@@ -9,6 +9,7 @@ import { onBeforeUnmount, useCssModule, watch } from 'vue';
 import {
 	CHAT_TOKEN_NODE,
 	ChatTokenNode,
+	createMaxLengthLimit,
 	createSubmitKeymap,
 	docToText,
 	findTokenTrigger,
@@ -34,6 +35,8 @@ export interface ChatInputTokenEditorProps {
 	minRows?: number;
 	/** Scrolls past this many rows. Without it, the editor fills its container. */
 	maxRows?: number;
+	/** Shift+Enter submits too, as Enter does, instead of starting a new line. */
+	singleLine?: boolean;
 }
 
 const props = withDefaults(defineProps<ChatInputTokenEditorProps>(), {
@@ -46,6 +49,7 @@ const props = withDefaults(defineProps<ChatInputTokenEditorProps>(), {
 	inputTestId: undefined,
 	minRows: 1,
 	maxRows: undefined,
+	singleLine: false,
 });
 
 const emit = defineEmits<{
@@ -117,7 +121,11 @@ const editor = useEditor({
 		}),
 		Placeholder.configure({ placeholder: () => props.placeholder }),
 		ChatTokenNode.configure({ icon: (href: string) => props.icon?.(href) }),
-		createSubmitKeymap(() => emit('submit')),
+		createSubmitKeymap(
+			() => emit('submit'),
+			() => props.singleLine,
+		),
+		createMaxLengthLimit(() => props.maxLength),
 	],
 	coreExtensionOptions: {
 		clipboardTextSerializer: { blockSeparator: '\n' },
@@ -143,15 +151,22 @@ const editor = useEditor({
 			const data = event.clipboardData;
 			if (!data) return false;
 			if (data.files.length > 0) return true;
-			const text = data.getData('text/plain');
+			let text = data.getData('text/plain');
 			if (!text) return true;
+			// Like a textarea, a paste over the limit keeps the part that fits.
+			if (props.maxLength !== undefined) {
+				const kept = docToText(view.state.tr.deleteSelection().doc).length;
+				text = text.slice(0, Math.max(0, props.maxLength - kept));
+				if (!text) return true;
+			}
 			view.dispatch(view.state.tr.replaceSelection(textToSlice(view.state.schema, text)));
 			return true;
 		},
+		// Stops typed text before the browser changes the page. The limit plugin checks every other change.
 		handleTextInput: (view, from, to, text) => {
 			if (props.maxLength === undefined) return false;
-			const length = docToText(view.state.doc).length - (to - from) + text.length;
-			return length > props.maxLength;
+			const next = view.state.tr.insertText(text, from, to).doc;
+			return docToText(next).length > props.maxLength;
 		},
 	},
 	// A restored draft puts the caret after its text, as a textarea does.

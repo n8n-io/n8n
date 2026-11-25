@@ -134,6 +134,7 @@ import { useAssistantAgentThreadsStore } from './assistantAgentThreads.store';
 import { stagedElementAppId, toElementComposerAttachment } from './assistantElementAttachments';
 import {
 	mentionChipId,
+	readChipAttachments,
 	readMessageReferences,
 	toMentionComposerAttachment,
 } from './assistantMentionAttachments';
@@ -255,10 +256,15 @@ const agentConfig = computed<AgentJsonConfig>(() => ({
  * resources that the text mentions inline go with the references of a hand-off.
  */
 function clientContext(message?: { text: string }): Record<string, unknown> {
+	// The panel adds the attachments of its staged chips, so a mention of one is not sent again.
+	const alreadySent = [
+		...pendingReferences,
+		...(panel.value?.composerAttachments ?? []).flatMap(readChipAttachments),
+	];
 	const attachments = [
 		...pendingReferences,
 		...(message
-			? withoutAttachedResources(mentions.attachmentsFor(message.text), pendingReferences)
+			? withoutAttachedResources(mentions.attachmentsFor(message.text), alreadySent)
 			: []),
 	];
 	return {
@@ -627,7 +633,10 @@ const mentions = useAssistantAgentMentions({
 	picker: () => mentionPicker.value,
 	artifacts: () => mentionArtifacts.value,
 	reservedAttachmentCount: () => pendingReferences.length,
-	isBlocked: () => panel.value?.isSubmitting ?? true,
+	reservedResources: () => pendingReferences,
+	// An answer to an open card is sent without the client context, so it cannot carry a mention.
+	isBlocked: () =>
+		(panel.value?.isSubmitting ?? true) || (panel.value?.isAnsweringQuestion ?? false),
 });
 const mentionInput = computed(() =>
 	mentions.menuOpen.value ? panel.value?.getInputElement() : null,

@@ -76,9 +76,13 @@ export function chatTokensToPlainText(text: string): string {
 	return text.replace(tokenPattern(), (_match, label: string) => `@${label}`);
 }
 
-/** A resource target, for example `n8n-resource://node/<workflowId>/<nodeId>`. */
+/**
+ * A resource target, for example `n8n-resource://node/<workflowId>/<nodeId>`.
+ * `encodeURIComponent` keeps parentheses, and `formatChatToken` encodes them,
+ * so they are encoded here too: a target must stay the same in a token.
+ */
 export function formatChatResourceHref(kind: string, ...ids: string[]): string {
-	return `${CHAT_TOKEN_SCHEME}${kind}/${ids.map((id) => encodeURIComponent(id)).join('/')}`;
+	return `${CHAT_TOKEN_SCHEME}${kind}/${ids.map((id) => cleanHref(encodeURIComponent(id))).join('/')}`;
 }
 
 /** The kind and the decoded ids of a resource target, or `undefined` for another target. */

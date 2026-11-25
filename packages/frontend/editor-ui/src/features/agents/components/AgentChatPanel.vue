@@ -1898,6 +1898,8 @@ defineExpose({
 	isSubmitting: computed(() => isSubmitting.value),
 	/** The chat waits for the user to answer a card, such as an approval or a question. A waiting card does not count, because the workflow resumes the run. */
 	isAwaitingUserAnswer: computed(() => hasOpenInteraction.value && !hasOpenWaitCard.value),
+	/** The composer text answers an open question card. That answer goes without the client context. */
+	isAnsweringQuestion: computed(() => hasOpenInteractiveQuestion.value),
 	/** The card that the chat waits on is an approval. */
 	isAwaitingUserApproval: computed(() => hasOpenApproval.value),
 	focusOpenInteraction,

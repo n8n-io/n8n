@@ -403,7 +403,11 @@ defineExpose({
 					v-if="tokens"
 					ref="tokenEditorRef"
 					v-model="textValue"
-					:class="$style.tokenEditor"
+					:class="[
+						$style.tokenEditor,
+						{ [$style.adaptiveTokenEditor]: effectiveLayout() === 'adaptive' },
+					]"
+					:single-line="effectiveLayout() === 'single-line'"
 					:placeholder="hasNoCredits ? '' : placeholder"
 					:disabled="disabled || hasNoCredits"
 					:max-length="maxLength"
@@ -634,6 +638,12 @@ defineExpose({
 	/* A 24px text line plus 4px above and below matches the 32px send button,
 		leaving the same 8px inset on every side in the compact state. */
 	padding-block: var(--spacing--4xs);
+}
+
+/* The token editor reserves the pinned button's column too, as `.adaptiveTextarea` does.
+	Its content already has the `--spacing--3xs` inset. */
+.adaptiveTokenEditor {
+	padding-right: var(--height--md);
 }
 
 .adaptiveActions {

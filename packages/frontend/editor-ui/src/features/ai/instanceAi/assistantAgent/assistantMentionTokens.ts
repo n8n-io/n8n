@@ -90,7 +90,13 @@ function resourceKey(attachment: InstanceAiAttachment): string | undefined {
 	if (attachment.type === 'workflow' || attachment.type === 'agent') {
 		return `${attachment.type}:${attachment.id}`;
 	}
-	if (attachment.type === 'nodes') return `nodes:${attachment.workflowId}`;
+	// Only the same nodes are the same resource: other nodes of the workflow still go.
+	if (attachment.type === 'nodes') {
+		const sets = attachment.sets.map(
+			(set) => set.canvasGroupId ?? set.nodes.map((node) => node.id).join(','),
+		);
+		return `nodes:${attachment.workflowId}:${sets.sort().join('|')}`;
+	}
 	return undefined;
 }
 
@@ -106,18 +112,25 @@ export function withoutAttachedResources(
 	return attachments.filter((attachment) => !keys.has(resourceKey(attachment)));
 }
 
-/** True when a token in the text points to the resource of the attachment. */
+/**
+ * True when the tokens in the text show all of the attachment. A nodes
+ * attachment can also hold nodes that a composer chip added, so each of its
+ * sets must have a token: its group, or each of its nodes.
+ */
 export function isMentionedInline(attachment: InstanceAiResourceAttachment, text: string): boolean {
-	return listChatTokens(text).some(({ href }) => {
+	const targets = new Set<string>();
+	for (const { href } of listChatTokens(text)) {
 		const target = parseChatResourceHref(href);
-		if (!target) return false;
-		const [id] = target.ids;
-		if (attachment.type === 'workflow' || attachment.type === 'agent') {
-			return target.kind === attachment.type && id === attachment.id;
-		}
-		if (attachment.type === 'nodes') {
-			return (target.kind === 'node' || target.kind === 'group') && id === attachment.workflowId;
-		}
-		return false;
-	});
+		if (target) targets.add(`${target.kind}:${target.ids.join('/')}`);
+	}
+	if (attachment.type === 'workflow' || attachment.type === 'agent') {
+		return targets.has(`${attachment.type}:${attachment.id}`);
+	}
+	if (attachment.type !== 'nodes') return false;
+	const { workflowId } = attachment;
+	return attachment.sets.every((set) =>
+		set.canvasGroupId
+			? targets.has(`group:${workflowId}/${set.canvasGroupId}`)
+			: set.nodes.every((node) => targets.has(`node:${workflowId}/${node.id}`)),
+	);
 }
