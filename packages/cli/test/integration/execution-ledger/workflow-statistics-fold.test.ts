@@ -328,15 +328,17 @@ describe('workflow statistics fold step', () => {
 		};
 
 		it('writes the same counters from the fold as the previous writer did', async () => {
-			vi.spyOn(Container.get(ExecutionLedger), 'isEnabled', 'get').mockReturnValue(false);
+			// With the module off, no ledger row exists, so the ended hook writes none either.
+			const ledger = Container.get(ExecutionLedger);
+			vi.spyOn(ledger, 'isEnabled', 'get').mockReturnValue(false);
+			vi.spyOn(ledger, 'recordEnded').mockResolvedValue();
 			await runScenarios();
 			await vi.waitFor(
 				async () => expect(toCounters(await findWorkflowStatistics(workflow.id))).toEqual(expected),
 				{ timeout: 10_000, interval: 50 },
 			);
 			vi.restoreAllMocks();
-			await sleep(300);
-			await claimAllLedgerRows();
+			expect(await claimAllLedgerRows()).toEqual([]);
 			await testDb.truncate(['WorkflowStatistics', 'ExecutionEntity']);
 
 			await runScenarios();

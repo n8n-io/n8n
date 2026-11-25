@@ -169,7 +169,7 @@ const executionLimit = {
 	},
 } satisfies CountingRule;
 
-// Every run that did work, except chat. `isBillableExecution` decides the root count.
+// Every finished run that did work, except chat and cancels. `isBillableExecution` decides the root count.
 const workflowStatistics = {
 	entityType: { workflow: true, agent: false },
 	event: { started: false, ended: true },
