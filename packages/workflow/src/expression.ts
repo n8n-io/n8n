@@ -13,6 +13,7 @@ import {
 	EXPRESSION_METRICS,
 	ExpressionExtensionError as RuntimeExpressionExtensionError,
 	HostCallError,
+	isNativelyEvaluable,
 	MemoryLimitError,
 	NativeVerifier,
 	SecurityViolationError,
@@ -51,6 +52,10 @@ function mapNativeError(error: unknown): unknown {
 	return error;
 }
 
+// Re-export here rather than in index.ts: index.ts is in package.json sideEffects,
+// so a direct @n8n/expression-runtime import there pulls the runtime into browser
+// worker bundles that only import unrelated n8n-workflow helpers.
+export { isNativelyEvaluable };
 export type { ExpressionEvaluationOutcome, NativeVerifyMismatch } from '@n8n/expression-runtime';
 
 const JSON_STRING_OR_SEPARATOR = /"(?:[^"\\]|\\.)*"|:|,(?=")/g;
@@ -649,10 +654,17 @@ export class Expression {
 		);
 	}
 
-	private static evaluateNative(expression: string, data: IWorkflowDataProxyData) {
+	private static evaluateNative(
+		expression: string,
+		data: IWorkflowDataProxyData,
+		timezone: string,
+	) {
 		let native: ReturnType<typeof evaluateNatively>;
 		try {
-			native = evaluateNatively(expression, data, { shouldRethrowError: isExpressionError });
+			native = evaluateNatively(expression, data, {
+				shouldRethrowError: isExpressionError,
+				timezone,
+			});
 		} catch (error) {
 			// The error is the expression's result: the engine does not run.
 			this.countNativeResult('handled');
@@ -910,6 +922,7 @@ export class Expression {
 				try {
 					const native = evaluateNatively(parameterValue, data, {
 						shouldRethrowError: isExpressionError,
+						timezone: this.timezone,
 					});
 					if (native.handled) nativeResult = { ok: true, value: native.value };
 				} catch (error) {
@@ -921,7 +934,7 @@ export class Expression {
 					};
 				}
 			} else if (Expression.nativeEvaluation) {
-				const native = Expression.evaluateNative(parameterValue, data);
+				const native = Expression.evaluateNative(parameterValue, data, this.timezone);
 				if (native.handled) return this.finalizeResolvedValue(native.value, returnObjectAsString);
 			}
 		}

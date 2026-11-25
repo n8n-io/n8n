@@ -1,3 +1,4 @@
+import { Settings } from 'luxon';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ExpressionExtensionError } from '../../extensions/expression-extension-error';
@@ -109,6 +110,52 @@ describe('native-evaluation', () => {
 					shouldRethrowError: (error) => error instanceof MinifiedHostError,
 				}),
 			).toThrow(hostError);
+		});
+
+		it('formats Date receivers in the provided timezone and restores defaultZone', () => {
+			const previousZone = Settings.defaultZone;
+			const currentZoneName = () => {
+				const { defaultZone } = Settings;
+				return typeof defaultZone === 'string' ? defaultZone : defaultZone.name;
+			};
+			Settings.defaultZone = 'UTC';
+
+			try {
+				const data = {
+					$parameter: {
+						stamp: new Date('2024-01-02T03:04:05.000Z'),
+					},
+				};
+
+				expect(
+					evaluateNatively("{{ $parameter.stamp.format('yyyy-MM-dd HH') }}", data, {
+						timezone: 'America/New_York',
+					}),
+				).toEqual({
+					handled: true,
+					value: '2024-01-01 22',
+				});
+				expect(currentZoneName()).toBe('UTC');
+
+				expect(
+					evaluateNatively("{{ $parameter.stamp.format('yyyy-MM-dd HH') }}", data, {
+						timezone: 'Asia/Tokyo',
+					}),
+				).toEqual({
+					handled: true,
+					value: '2024-01-02 12',
+				});
+				expect(currentZoneName()).toBe('UTC');
+
+				expect(() =>
+					evaluateNatively('{{ $parameter.stamp.first() }}', data, {
+						timezone: 'America/New_York',
+					}),
+				).toThrow(ExpressionExtensionError);
+				expect(currentZoneName()).toBe('UTC');
+			} finally {
+				Settings.defaultZone = previousZone;
+			}
 		});
 	});
 

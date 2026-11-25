@@ -28,7 +28,6 @@ export {
 	type NativeResolution,
 	type WebhookDescriptionField,
 } from './webhook-description-fields';
-export { isNativelyEvaluable } from '@n8n/expression-runtime';
 export * from './sub-workflow-output';
 export * from './run-execution-data-factory';
 export * from './message-event-bus';

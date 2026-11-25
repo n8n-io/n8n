@@ -1,4 +1,4 @@
-import { DateTime } from 'luxon';
+import { DateTime, Settings } from 'luxon';
 
 import { ExpressionExtensionError } from '../extensions/expression-extension-error';
 import { extend } from '../extensions/extend';
@@ -60,6 +60,7 @@ export class Env {
 	constructor(
 		readonly data: WorkflowData,
 		readonly shouldRethrowError: (error: unknown) => boolean = defaultShouldRethrowError,
+		readonly timezone?: string,
 	) {}
 
 	charge(units: number): void {
@@ -470,6 +471,31 @@ function evalArgs(node: Extract<SimpleNode, { kind: 'call' }>, env: Env): unknow
 }
 
 /**
+ * Applies the workflow timezone to the runtime's Luxon instance while a Date
+ * extension runs. Caller and runtime can load different Luxon module instances
+ * across ESM/CJS boundaries, so host `Settings.defaultZone` does not always
+ * reach `extend()`.
+ */
+function callExtend(
+	receiver: unknown,
+	method: string,
+	args: unknown[],
+	timezone: string | undefined,
+): unknown {
+	if (!timezone || !Settings || !(receiver instanceof Date)) {
+		return extend(receiver, method, args);
+	}
+
+	const previousZone = Settings.defaultZone;
+	Settings.defaultZone = timezone;
+	try {
+		return extend(receiver, method, args);
+	} finally {
+		Settings.defaultZone = previousZone;
+	}
+}
+
+/**
  * An allowlisted extension runs through extend(), the same dispatch the
  * engines call. extendSyntax rewrites the call into that dispatch whatever
  * the receiver holds: an own property does not shadow it, and a missing
@@ -490,7 +516,7 @@ function evalExtension(node: Extract<SimpleNode, { kind: 'call' }>, env: Env): u
 	if (weight > MAX_RESULT_LENGTH) throw new EngineFallbackError('too_large');
 	env.charge(weight);
 
-	const result: unknown = extend(receiver, node.method, args);
+	const result: unknown = callExtend(receiver, node.method, args, env.timezone);
 	if (isObj(result) && !isArray(result) && Object.getPrototypeOf(result) !== Object.prototype) {
 		throw new EngineFallbackError('unsupported_type');
 	}

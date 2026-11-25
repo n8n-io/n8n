@@ -77,6 +77,12 @@ export interface NativeEvaluationOptions {
 	 * so minified builds still propagate those errors.
 	 */
 	shouldRethrowError?: (error: unknown) => boolean;
+	/**
+	 * IANA timezone for date extension formatting (for example, `'America/New_York'`).
+	 * Keeps native extension calls aligned with the workflow timezone even when
+	 * the caller and runtime load separate Luxon instances.
+	 */
+	timezone?: string;
 }
 
 export type NativeEvaluationResult =
@@ -174,7 +180,7 @@ function evalCompiled(
 	data: WorkflowData,
 	options?: NativeEvaluationOptions,
 ): unknown {
-	const env = new Env(data, options?.shouldRethrowError);
+	const env = new Env(data, options?.shouldRethrowError, options?.timezone);
 
 	if (compiled.isWholeValue) {
 		const code = compiled.chunks[1];
