@@ -5,7 +5,9 @@ import {
 	PERSONAL_SELF_HEALING_CONFIGURATION_VIEW,
 	PERSONAL_SELF_HEALING_VIEW,
 } from '@n8n/frontend-constants/self-healing';
+import { INSTANCE_AI_SETTINGS_VIEW } from '@n8n/frontend-constants/instance-ai';
 import { VIEWS } from '@n8n/frontend-constants/views';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createMemoryHistory, createRouter, RouterView, type Router } from 'vue-router';
 
@@ -79,6 +81,11 @@ beforeEach(() => {
 				component: SelfHealingConfigView,
 				props: true,
 			},
+			{
+				path: '/settings/assistant',
+				name: INSTANCE_AI_SETTINGS_VIEW,
+				component: { render: () => null },
+			},
 		],
 	});
 	const store = useSelfHealingStore();
@@ -112,17 +119,66 @@ it.each([
 	},
 );
 
-// ProjectSelfHealingSection.test.ts covers each notice state.
-it('shows the Assistant notice above the configuration form', async () => {
+const DISABLED = "The n8n Assistant is disabled, so self-healing can't run.";
+const SETUP_INCOMPLETE = "The n8n Assistant isn't set up, so self-healing can't run.";
+
+it('shows no Assistant notice when the Assistant is ready', async () => {
 	const settingsStore = useSettingsStore();
 	settingsStore.moduleSettings = {
-		'instance-ai': { enabled: false, setupCompleted: true },
+		'instance-ai': { enabled: true, setupCompleted: true },
 	} as typeof settingsStore.moduleSettings;
 
 	const view = await renderView('new');
 	await view.findByRole('button', { name: 'Create configuration' });
-	expect(view.getByTestId('self-healing-assistant-notice')).toBeInTheDocument();
+	expect(view.queryByTestId('self-healing-assistant-notice')).not.toBeInTheDocument();
 });
+
+it.each([
+	{
+		assistant: { enabled: false, setupCompleted: true },
+		expected: `${DISABLED} Ask an instance owner or admin to turn it on.`,
+	},
+	{
+		assistant: { enabled: true, setupCompleted: false },
+		expected: `${SETUP_INCOMPLETE} Ask an instance owner or admin to finish the setup.`,
+	},
+])('tells a member to ask an admin for $assistant', async ({ assistant, expected }) => {
+	const settingsStore = useSettingsStore();
+	settingsStore.moduleSettings = {
+		'instance-ai': assistant,
+	} as typeof settingsStore.moduleSettings;
+
+	const view = await renderView('new');
+	expect(await view.findByTestId('self-healing-assistant-notice')).toHaveTextContent(expected);
+	expect(view.queryByTestId('self-healing-assistant-notice-link')).not.toBeInTheDocument();
+});
+
+it.each([
+	{ assistant: { enabled: false, setupCompleted: true }, reason: DISABLED, link: 'Turn it on' },
+	{
+		assistant: { enabled: true, setupCompleted: false },
+		reason: SETUP_INCOMPLETE,
+		link: 'Finish the setup',
+	},
+])(
+	'links an Assistant manager to the Assistant settings for $assistant',
+	async ({ assistant, reason, link }) => {
+		const settingsStore = useSettingsStore();
+		settingsStore.moduleSettings = {
+			'instance-ai': assistant,
+		} as typeof settingsStore.moduleSettings;
+		useRBACStore().setGlobalScopes(['instanceAi:manage']);
+
+		const view = await renderView('new');
+		const notice = await view.findByTestId('self-healing-assistant-notice');
+		expect(notice).toHaveTextContent(reason);
+		expect(notice).not.toHaveTextContent('Ask an instance owner or admin');
+		expect(within(notice).getByRole('link', { name: link })).toHaveAttribute(
+			'href',
+			'/settings/assistant',
+		);
+	},
+);
 
 it('creates an enabled configuration with the creator as reviewer', async () => {
 	const store = useSelfHealingStore();

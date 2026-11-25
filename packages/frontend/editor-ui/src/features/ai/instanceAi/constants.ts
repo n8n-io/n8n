@@ -5,7 +5,7 @@ export const INSTANCE_AI_THREAD_VIEW = 'InstanceAiThread';
 /** The session timeline of an Assistant agent thread. */
 export const INSTANCE_AI_THREAD_SESSION_VIEW = 'InstanceAiThreadSession';
 export const INSTANCE_AI_THREADS_VIEW = 'InstanceAiThreads';
-export const INSTANCE_AI_SETTINGS_VIEW = 'InstanceAiSettings';
+export { INSTANCE_AI_SETTINGS_VIEW } from '@n8n/frontend-constants/instance-ai';
 export const INSTANCE_AI_PROJECT_ID_QUERY = 'projectId';
 export const INSTANCE_AI_APP_ID_QUERY = 'appId';
 export const INSTANCE_AI_PENDING_APP_ID_QUERY = 'pendingAppId';

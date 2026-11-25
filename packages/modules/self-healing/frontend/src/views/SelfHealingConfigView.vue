@@ -402,7 +402,7 @@ onBeforeRouteUpdate(async (to, from) => {
 					>
 				</template>
 			</N8nSettingsPageHeader>
-			<SelfHealingAssistantNotice />
+			<SelfHealingAssistantNotice :class="$style.notice" />
 			<div v-if="loading" data-test-id="self-healing-config-loading">
 				<N8nSettingsSection :title="i18n.baseText('selfHealing.config.scope')">
 					<N8nSettingsRowGroup>
@@ -668,6 +668,16 @@ onBeforeRouteUpdate(async (to, from) => {
 
 .layout {
 	padding-top: var(--spacing--2xs);
+}
+
+/* N8nSettingsLayout puts 48px after the page header. The notice belongs to the header
+ * text, so it sits closer, and the form keeps the 48px gap below it. */
+.layout .notice {
+	margin-block-start: var(--spacing--sm);
+
+	+ * {
+		margin-block-start: var(--spacing--2xl);
+	}
 }
 
 .actions {

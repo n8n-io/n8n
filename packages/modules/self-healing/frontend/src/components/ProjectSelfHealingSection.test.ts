@@ -68,33 +68,15 @@ it('shows the Preview and enterprise readiness badges next to the heading', asyn
 	expect(view.getByTestId('self-healing-enterprise-readiness-badge')).toBeInTheDocument();
 });
 
-it.each([
-	{
-		assistant: { enabled: true, setupCompleted: true },
-		expected: null,
-	},
-	{
-		assistant: { enabled: false, setupCompleted: true },
-		expected:
-			"The n8n Assistant is disabled, so self-healing can't run. Ask an instance owner or admin to turn it on.",
-	},
-	{
-		assistant: { enabled: true, setupCompleted: false },
-		expected:
-			"The n8n Assistant isn't set up, so self-healing can't run. Ask an instance owner or admin to finish the setup.",
-	},
-])('shows the Assistant notice for $assistant', async ({ assistant, expected }) => {
+// Only the configuration page shows the Assistant notice.
+it('does not show the Assistant notice in the configuration list', async () => {
 	const settingsStore = useSettingsStore();
 	settingsStore.moduleSettings = {
-		'instance-ai': assistant,
+		'instance-ai': { enabled: false, setupCompleted: false },
 	} as typeof settingsStore.moduleSettings;
 
 	const { view } = await renderSection();
-	if (expected === null) {
-		expect(view.queryByTestId('self-healing-assistant-notice')).not.toBeInTheDocument();
-	} else {
-		expect(view.getByTestId('self-healing-assistant-notice')).toHaveTextContent(expected);
-	}
+	expect(view.queryByTestId('self-healing-assistant-notice')).not.toBeInTheDocument();
 });
 
 it('keeps the active switch unchanged when saving fails and allows another attempt', async () => {
