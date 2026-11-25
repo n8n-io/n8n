@@ -3,6 +3,7 @@
  * Ref: SEC-1688
  */
 import { isRecord } from '@n8n/utils/is-record';
+import { ipKeyGenerator } from 'express-rate-limit';
 import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -95,6 +96,12 @@ describe('ip-address dependency resolution', () => {
 			gte(ipAddressPkg.version, MIN_IP_ADDRESS_VERSION),
 			`Expected express-rate-limit to resolve ip-address >= ${MIN_IP_ADDRESS_VERSION}, found ${ipAddressPkg.version}`,
 		).toBe(true);
+	});
+
+	it('normalizes IPv4 and IPv6 addresses through express-rate-limit', () => {
+		expect(ipKeyGenerator('192.0.2.1')).toBe('192.0.2.1');
+		expect(ipKeyGenerator('2001:db8:85a3::8a2e:370:7334')).toBe('2001:db8:85a3::/56');
+		expect(ipKeyGenerator('::ffff:192.0.2.1')).toBe('192.0.2.1');
 	});
 
 	it('resolves every ip-address entry in pnpm-lock.yaml to 10.7.4 or newer', () => {
