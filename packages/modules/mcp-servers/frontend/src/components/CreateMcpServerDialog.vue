@@ -66,6 +66,10 @@ const canCreateInProject = computed(
 );
 const finalSlug = computed(() => mcpServerSlugFromName(slug.value));
 const slugError = computed(() => {
+	// A name with no Latin letter or digit, such as "日本語", makes no slug.
+	if (name.value.trim() !== '' && finalSlug.value === '') {
+		return i18n.baseText('mcpServers.create.url.empty');
+	}
 	if (availability.value?.reason === 'taken') return i18n.baseText('mcpServers.create.url.taken');
 	if (availability.value?.reason === 'reserved') {
 		return i18n.baseText('mcpServers.create.url.reserved');
