@@ -121,6 +121,7 @@ export interface BuildMcpClientDeps {
 	 * storage), so tool permissions must never require approval.
 	 */
 	nonInterrupting?: boolean;
+	wrapApproval?: McpServerConfig['wrapApproval'];
 }
 
 /** Stand-in for a URL that could not be built. `.invalid` never resolves (RFC 2606), and `authFetch` rejects before any request is sent. */
@@ -266,7 +267,10 @@ const SIMULATED_UNPARSEABLE_URL = 'https://simulated-mcp-server.invalid/';
 
 function toSdkServerConfig(
 	server: AgentJsonMcpServerConfig,
-	deps: Pick<BuildMcpClientDeps, 'onConnectionFailed' | 'onToolCallSettled' | 'nonInterrupting'>,
+	deps: Pick<
+		BuildMcpClientDeps,
+		'onConnectionFailed' | 'onToolCallSettled' | 'nonInterrupting' | 'wrapApproval'
+	>,
 	connection: Pick<McpServerConfig, 'url' | 'transport' | 'fetch'>,
 ): McpServerConfig {
 	const { toolPermissions } = server;
@@ -274,6 +278,7 @@ function toSdkServerConfig(
 	return {
 		name: server.name,
 		...connection,
+		...(deps.wrapApproval && { wrapApproval: deps.wrapApproval }),
 		...(toolPermissions !== undefined && {
 			configureTools: (tools) => compileMcpToolPermissions(toolPermissions, tools),
 		}),
@@ -297,7 +302,7 @@ function toSdkServerConfig(
 export async function listMcpServerTools(
 	server: AgentJsonMcpServerConfig,
 	deps: BuildMcpClientDeps,
-): Promise<Array<{ name: string; description: string }>> {
+): Promise<{ name: string; description: string }[]> {
 	let client: McpClient | undefined;
 	try {
 		client = await buildMcpClientForServer(server, deps);

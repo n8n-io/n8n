@@ -1,8 +1,4 @@
-import {
-	AgentTaskApprovalDto,
-	ListAgentSessionsQueryDto,
-	type AgentSessionPreviewAccess,
-} from '@n8n/api-types';
+import { AgentTaskApprovalDto, ListAgentSessionsQueryDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Post, ProjectScope, Query, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
@@ -15,8 +11,8 @@ import { AgentMemoryTraceService } from './agent-memory-trace.service';
 import { AgentSessionLangSmithExportService } from './agent-session-langsmith-export.service';
 import { AgentSessionStopService } from './agent-session-stop.service';
 import { SystemAgentRegistry } from './system-agents/system-agent-registry';
-import { canContinueThreadInPreview } from './utils/agent-thread-access';
 import { parseThreadListLimit } from './utils/parse-thread-list-limit';
+import { toThreadDetailResponse } from './utils/thread-detail-response';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentThreadsController {
@@ -55,6 +51,10 @@ export class AgentThreadsController {
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
 	) {
 		const { projectId, agentId, threadId } = req.params;
+		// A system-agent thread loads through its own route, which runs the checks of the provider.
+		if (this.systemAgents.has(agentId)) {
+			throw new NotFoundError(`Thread "${threadId}" not found`);
+		}
 		const result = await this.agentExecutionService.getThreadDetail(
 			threadId,
 			projectId,
@@ -64,21 +64,6 @@ export class AgentThreadsController {
 		if (!result) {
 			throw new NotFoundError(`Thread "${threadId}" not found`);
 		}
-		const {
-			ownerId: _ownerId,
-			accessScope: _accessScope,
-			owner: _owner,
-			...thread
-		} = result.thread;
-		const source = result.executions.find((execution) => execution.source !== null)?.source;
-		const access: AgentSessionPreviewAccess = {
-			canContinueInPreview: canContinueThreadInPreview(
-				result.thread,
-				req.user.id,
-				source,
-				this.systemAgents.has(result.thread.agentId),
-			),
-		};
 		const memory = await this.memoryTraceService.getThreadMemory({
 			agentId,
 			projectId,
@@ -86,7 +71,7 @@ export class AgentThreadsController {
 			threadId,
 			executions: result.executions,
 		});
-		return { ...result, thread: { ...thread, ...access, source: source ?? null }, memory };
+		return toThreadDetailResponse(result, { userId: req.user.id, isSystemAgent: false, memory });
 	}
 
 	@Post('/:agentId/threads/:threadId/approval')

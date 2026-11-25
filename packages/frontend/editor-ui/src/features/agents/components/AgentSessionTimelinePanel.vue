@@ -27,7 +27,11 @@ import {
 } from '@/features/agents/session-timeline.utils';
 import { timelineColors } from '@/features/agents/session-timeline.styles';
 import { useAgentBackgroundJobs } from '@/features/agents/composables/useAgentBackgroundJobs';
-import type { AgentChatChannel } from '@/features/agents/composables/useAgentApi';
+import {
+	getChatAttachmentUrl,
+	type AgentChatChannel,
+} from '@/features/agents/composables/useAgentApi';
+import { AGENT_ATTACHMENT_URL_KEY } from '@/features/agents/components/agentChatInjectionKeys';
 import {
 	backgroundTasksToTimelineItems,
 	insertBackgroundTaskTimelineItems,
@@ -45,7 +49,17 @@ import { parseApprovalInput } from '@/features/ai/shared/agentsChat/messageMappe
 import type { ApprovalInput, ApprovalResume } from '@/features/ai/shared/agentsChat/types';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nInput, type BadgeVariant } from '@n8n/design-system';
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import {
+	computed,
+	nextTick,
+	onBeforeUnmount,
+	onMounted,
+	provide,
+	ref,
+	useTemplateRef,
+	watch,
+} from 'vue';
 import { useDocumentVisibility } from '@vueuse/core';
 import { useKeybindings } from '@/app/composables/useKeybindings';
 
@@ -72,7 +86,21 @@ const toast = useToast();
 const agentTelemetry = useAgentTelemetry();
 const sessionsStore = useAgentSessionsStore();
 const pushStore = usePushConnectionStore();
+const rootStore = useRootStore();
 const documentVisibility = useDocumentVisibility();
+
+// Attachments and output files download through the chat routes of the thread.
+// The fallback of the attachment list uses the project routes, which load project agents only.
+provide(AGENT_ATTACHMENT_URL_KEY, (attachmentId) =>
+	getChatAttachmentUrl(
+		rootStore.restApiContext,
+		props.projectId,
+		props.agentId,
+		attachmentId,
+		props.channel ?? 'chat',
+		props.threadId,
+	),
+);
 
 const projectId = computed(() => props.projectId);
 
@@ -392,6 +420,7 @@ async function fetchThreadDetail(initial: boolean) {
 			currentProjectId,
 			currentAgentId,
 			currentThreadId,
+			props.channel,
 		);
 		if (requestId !== threadDetailRequestId || identity !== threadIdentity()) {
 			return;
