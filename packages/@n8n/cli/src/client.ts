@@ -11,6 +11,7 @@ import type {
 	PromotionPreview,
 } from '@n8n/api-types/dist/dto/promotions/promotion-preview.dto';
 import type { CreateProjectPublicDto } from '@n8n/api-types/dist/dto/project/project-public.dto';
+import { N8N_CLIENT_HEADER, N8N_CLIENT_N8N_CLI } from '@n8n/constants';
 
 export interface PaginatedResponse<T> {
 	data: T[];
@@ -237,6 +238,7 @@ export class N8nClient {
 			'Content-Type': 'application/json',
 			Accept: 'application/json',
 			'User-Agent': 'n8n-cli',
+			[N8N_CLIENT_HEADER]: N8N_CLIENT_N8N_CLI,
 		});
 		this.debug = options.debug;
 	}

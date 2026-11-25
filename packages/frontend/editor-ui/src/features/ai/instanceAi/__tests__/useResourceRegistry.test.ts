@@ -1047,14 +1047,14 @@ describe('useResourceRegistry', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-get',
-								toolName: 'apps',
-								args: { action: 'get', appId: 'app-2' },
+								toolName: 'get_app',
+								args: { appId: 'app-2' },
 								result: { app: { ...app, id: 'app-2' } },
 							}),
 							makeToolCall({
 								toolCallId: 'tc-commit',
-								toolName: 'apps',
-								args: { action: 'commit', appId: 'app-1', label: 'Add list' },
+								toolName: 'commit_app',
+								args: { appId: 'app-1', label: 'Add list' },
 								result: { app, versionId: 'v1', buildStatus: 'succeeded' },
 							}),
 						],
@@ -1082,8 +1082,8 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'apps',
-								args: { action: 'commit', appId: 'app-1' },
+								toolName: 'commit_app',
+								args: { appId: 'app-1' },
 								result: {
 									app: { id: 'app-1', name: 'New name', projectId: 'project-1' },
 									versionId: 'v1',

@@ -3106,6 +3106,7 @@ describe('AgentChatPanel', () => {
 			backgroundJobsMock.value = [
 				job,
 				{ ...job, id: 'job-2', kind: 'workflow', title: 'Forecast refresh' },
+				{ ...job, id: 'job-3', kind: 'approval', title: 'Publish forecast' },
 			];
 			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
 			expect(wrapper.find('[data-testid="agent-background-jobs-trace"]').exists()).toBe(false);
@@ -3113,6 +3114,7 @@ describe('AgentChatPanel', () => {
 			await trigger.trigger('click');
 			const workflow = wrapper.findAll('li')[1];
 			expect(workflow.text()).toBe('Workflow — Forecast refresh');
+			expect(wrapper.findAll('li')[2].text()).toBe('Approval for Publish forecast');
 			expect(workflow.get('[role="img"]').attributes('aria-label')).toBe('Waiting');
 			expect(workflow.findComponent({ name: 'N8nIcon' }).props()).toMatchObject({
 				icon: 'circle',

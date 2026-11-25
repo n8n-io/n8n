@@ -117,6 +117,7 @@ import {
 	getAssistantAgentLaunch,
 	type PendingAssistantAgentMessage,
 } from './assistantAgentThreads';
+import { assistantAnsweredQuestionsExtension } from './assistantAnsweredQuestions';
 import { assistantAutoApprovalExtension } from './assistantAutoApproval';
 import { assistantConfirmationExtension } from './assistantConfirmation';
 import { assistantHostEventExtensions } from './assistantHostEvents';
@@ -487,6 +488,7 @@ provideArtifactThread(thread);
 
 const interactionExtensions = [
 	assistantConfirmationExtension,
+	assistantAnsweredQuestionsExtension,
 	assistantAutoApprovalExtension,
 	assistantPreferenceCardExtension,
 	...assistantHostEventExtensions,

@@ -403,7 +403,13 @@ export class CredentialsPermissionChecker {
 			// team credential.
 			return { homeProject, inaccessibleIds: [], unusableForActingUser: [], personalRouteIds: [] };
 		}
-		const projectIds = await this.projectService.findProjectsWorkflowIsIn(workflowId);
+		// Private execution owners resolve their project without a workflow share.
+		const projectIds = [
+			...new Set([
+				homeProject.id,
+				...(await this.projectService.findProjectsWorkflowIsIn(workflowId)),
+			]),
+		];
 
 		const accessible = await this.sharedCredentialsRepository.getFilteredAccessibleCredentials(
 			projectIds,
