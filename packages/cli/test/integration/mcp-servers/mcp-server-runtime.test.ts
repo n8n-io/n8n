@@ -521,6 +521,8 @@ describe('Custom MCP server block', () => {
 		).toEqual([]);
 
 		await testServer.authAgentFor(member).delete(`${blockPath()}/${viewer.id}`).expect(200);
+		// An access token from before the block works again until it ends, at most one hour later.
+		expect((await post(serverSlug, token)).statusCode).toBe(200);
 		const again = await connect(await tokenFor(viewer, resourceUrl(serverSlug)));
 		await expect(again.listTools()).resolves.toBeDefined();
 		await again.close();

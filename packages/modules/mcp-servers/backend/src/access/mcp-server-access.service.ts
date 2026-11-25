@@ -109,7 +109,8 @@ export class McpServerAccessService {
 
 	/**
 	 * Deletes the block and, one more time, the refresh tokens of the person for this server. The
-	 * connection rows stay, and the person signs in again to connect.
+	 * connection rows stay. An access token from before the block works again until it ends, at
+	 * most one hour later, and then the client signs in again.
 	 */
 	async restore(
 		projectId: string,
