@@ -696,7 +696,7 @@ Push to master
 ├─ unit-test (matrix: Node 24.22.2, 26.13.0)
 │   └─ Coverage only on 24.22.2
 ├─ lint
-├─ (performance: CodSpeed benchmarks, paused until the plugin supports Vitest 5)
+├─ performance (CodSpeed benchmarks)
 ├─ verify-single-instance-npm (advisory; packages changed by this push)
 └─ notify-on-failure (Slack #alerts-build)
 ```
