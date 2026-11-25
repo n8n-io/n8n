@@ -1,27 +1,12 @@
-import { createHash } from 'node:crypto';
-import { afterEach, describe, expect, test, vi } from 'vitest';
+import { describe, expect, test } from 'vitest';
 
 import {
-	decodeXmlEntities,
-	encodeS3Key,
-	escapeXml,
+	buildN8nS3Env,
 	formatBucketName,
 	isLocalStackHealthy,
 	LocalStackHelper,
-	S3Client,
-	S3Error,
 	validateBucketName,
 } from '../services/localstack';
-
-const ENDPOINT = 'http://127.0.0.1:4566';
-
-function xmlResponse(xml: string, status = 200): Response {
-	return new Response(xml, { status, headers: { 'content-type': 'application/xml' } });
-}
-
-afterEach(() => {
-	vi.unstubAllGlobals();
-});
 
 describe('isLocalStackHealthy', () => {
 	test.each([
@@ -103,332 +88,30 @@ describe('bucket name validation and generation', () => {
 	});
 });
 
-describe('S3 key encoding and XML helpers', () => {
-	test('encodes path segments with RFC 3986 while keeping slashes', () => {
-		expect(encodeS3Key("workflows/a b+c/file!(1)'*.bin")).toBe(
-			'workflows/a%20b%2Bc/file%21%281%29%27%2A.bin',
-		);
-	});
+describe('buildN8nS3Env', () => {
+	const config = {
+		host: 'localstack:4566',
+		protocol: 'http' as const,
+		region: 'us-east-1',
+		credentials: { accessKeyId: 'test', secretAccessKey: 'test' },
+	};
 
-	test('rejects an empty object key', () => {
-		expect(() => encodeS3Key('')).toThrow(/must not be empty/);
-	});
-
-	test.each([
-		'.',
-		'..',
-		'./file.bin',
-		'../file.bin',
-		'dir/./file.bin',
-		'dir/../file.bin',
-		'dir/.',
-		'dir/..',
-	])('rejects object keys with dot-only path segments: %s', (key) => {
-		expect(() => encodeS3Key(key)).toThrow(/must not contain '\.' or '\.\.' path segments/);
-	});
-
-	test('allows dots inside object key segment names', () => {
-		expect(encodeS3Key('.hidden/a..b/.../file.bin')).toBe('.hidden/a..b/.../file.bin');
-		expect(encodeS3Key('dir/%2e/file.bin')).toBe('dir/%252e/file.bin');
-	});
-
-	test('decodes XML entities in one pass without double-decoding', () => {
-		expect(decodeXmlEntities('a &amp; b &lt;c&gt; &quot;d&quot; &apos;e&apos; &#x2F; &#38;')).toBe(
-			'a & b <c> "d" \'e\' / &',
-		);
-		expect(decodeXmlEntities('&amp;lt;')).toBe('&lt;');
-	});
-
-	test('escapes XML special characters', () => {
-		expect(escapeXml('a & b <c> "d" \'e\'')).toBe(
-			'a &amp; b &lt;c&gt; &quot;d&quot; &apos;e&apos;',
-		);
-	});
-});
-
-describe('S3Client', () => {
-	test('follows ListObjectsV2 pagination and decodes XML-escaped keys', async () => {
-		const fetchMock = vi
-			.fn<typeof fetch>()
-			.mockResolvedValueOnce(
-				xmlResponse(`
-					<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
-						<IsTruncated>true</IsTruncated>
-						<NextContinuationToken>token+1/2=</NextContinuationToken>
-						<Contents>
-							<Key>dir/a &amp; b.bin</Key>
-							<Size>12</Size>
-							<ETag>&quot;etag-1&quot;</ETag>
-							<LastModified>2026-11-25T10:00:00.000Z</LastModified>
-						</Contents>
-					</ListBucketResult>
-				`),
-			)
-			.mockResolvedValueOnce(
-				xmlResponse(`
-					<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
-						<IsTruncated>false</IsTruncated>
-						<Contents>
-							<Key>dir/second.bin</Key>
-							<Size>34</Size>
-						</Contents>
-					</ListBucketResult>
-				`),
-			);
-		vi.stubGlobal('fetch', fetchMock);
-
-		const objects = await new S3Client(ENDPOINT).listObjects('test-bucket', 'dir/');
-
-		expect(objects).toEqual([
-			{
-				key: 'dir/a & b.bin',
-				size: 12,
-				eTag: '"etag-1"',
-				lastModified: '2026-11-25T10:00:00.000Z',
-			},
-			{
-				key: 'dir/second.bin',
-				size: 34,
-				eTag: undefined,
-				lastModified: undefined,
-			},
-		]);
-		expect(fetchMock).toHaveBeenCalledTimes(2);
-		expect(fetchMock.mock.calls[0][0]).toBe(`${ENDPOINT}/test-bucket?list-type=2&prefix=dir%2F`);
-		expect(fetchMock.mock.calls[1][0]).toBe(
-			`${ENDPOINT}/test-bucket?continuation-token=token%2B1%2F2%3D&list-type=2&prefix=dir%2F`,
-		);
-	});
-
-	test('chunks deleteObjects into 1000-key batches with matching Content-MD5 headers', async () => {
-		const fetchMock = vi
-			.fn<typeof fetch>()
-			.mockImplementation(async () => xmlResponse('<DeleteResult/>'));
-		vi.stubGlobal('fetch', fetchMock);
-
-		const keys = Array.from({ length: 1002 }, (_, index) => `item-${index}&x`);
-		await new S3Client(ENDPOINT).deleteObjects('test-bucket', keys);
-
-		expect(fetchMock).toHaveBeenCalledTimes(2);
-		const firstCall = fetchMock.mock.calls[0];
-		const secondCall = fetchMock.mock.calls[1];
-		expect(firstCall[0]).toBe(`${ENDPOINT}/test-bucket?delete=`);
-
-		const firstBody = firstCall[1]?.body as Uint8Array;
-		const secondBody = secondCall[1]?.body as Uint8Array;
-		const firstHeaders = firstCall[1]?.headers as Record<string, string>;
-
-		expect(firstHeaders['content-md5']).toBe(createHash('md5').update(firstBody).digest('base64'));
-		expect(firstHeaders.authorization).toMatch(/^AWS4-HMAC-SHA256 Credential=test\//);
-		expect(new TextDecoder().decode(firstBody)).toContain('<Key>item-0&amp;x</Key>');
-		expect(new TextDecoder().decode(firstBody).match(/<Object>/g)).toHaveLength(1000);
-		expect(new TextDecoder().decode(secondBody).match(/<Object>/g)).toHaveLength(2);
-	});
-
-	test('throws when DeleteObjects reports per-key errors in a 200 response', async () => {
-		vi.stubGlobal(
-			'fetch',
-			vi.fn<typeof fetch>().mockResolvedValue(
-				xmlResponse(`
-					<DeleteResult>
-						<Error>
-							<Key>locked/file.bin</Key>
-							<Code>AccessDenied</Code>
-							<Message>Denied</Message>
-						</Error>
-					</DeleteResult>
-				`),
-			),
-		);
-
-		await expect(
-			new S3Client(ENDPOINT).deleteObjects('test-bucket', ['locked/file.bin']),
-		).rejects.toThrow(/Failed to delete 1 of 1 objects from 'test-bucket': locked\/file\.bin/);
-	});
-
-	test('force-deletes a bucket by emptying objects first and ignores NoSuchBucket', async () => {
-		const fetchMock = vi
-			.fn<typeof fetch>()
-			.mockResolvedValueOnce(
-				xmlResponse(`
-					<ListBucketResult>
-						<IsTruncated>false</IsTruncated>
-						<Contents><Key>a.bin</Key><Size>1</Size></Contents>
-					</ListBucketResult>
-				`),
-			)
-			.mockResolvedValueOnce(xmlResponse('<DeleteResult/>'))
-			.mockResolvedValueOnce(new Response(null, { status: 204 }));
-		vi.stubGlobal('fetch', fetchMock);
-
-		const client = new S3Client(ENDPOINT);
-		await client.deleteBucket('test-bucket');
-
-		expect(fetchMock.mock.calls.map(([, init]) => init?.method)).toEqual(['GET', 'POST', 'DELETE']);
-
-		fetchMock.mockReset();
-		fetchMock
-			.mockResolvedValueOnce(
-				xmlResponse('<Error><Code>NoSuchBucket</Code><Message>Missing</Message></Error>', 404),
-			)
-			.mockResolvedValueOnce(
-				xmlResponse('<Error><Code>NoSuchBucket</Code><Message>Missing</Message></Error>', 404),
-			);
-
-		await expect(client.deleteBucket('missing-bucket')).resolves.toBeUndefined();
-	});
-
-	test('skips emptying when deleteBucket is called with force: false', async () => {
-		const fetchMock = vi
-			.fn<typeof fetch>()
-			.mockResolvedValueOnce(
-				xmlResponse(
-					'<Error><Code>BucketNotEmpty</Code><Message>The bucket is not empty</Message></Error>',
-					409,
-				),
-			);
-		vi.stubGlobal('fetch', fetchMock);
-
-		await expect(
-			new S3Client(ENDPOINT).deleteBucket('test-bucket', { force: false }),
-		).rejects.toMatchObject({
-			name: 'S3Error',
-			status: 409,
-			code: 'BucketNotEmpty',
+	test('omits bucket name when not provided', () => {
+		expect(buildN8nS3Env(config)).toEqual({
+			N8N_EXTERNAL_STORAGE_S3_HOST: 'localstack:4566',
+			N8N_EXTERNAL_STORAGE_S3_PROTOCOL: 'http',
+			N8N_EXTERNAL_STORAGE_S3_BUCKET_REGION: 'us-east-1',
+			N8N_EXTERNAL_STORAGE_S3_ACCESS_KEY: 'test',
+			N8N_EXTERNAL_STORAGE_S3_ACCESS_SECRET: 'test',
+			N8N_EXTERNAL_STORAGE_S3_FORCE_PATH_STYLE: 'true',
 		});
-		expect(fetchMock).toHaveBeenCalledTimes(1);
-		expect(fetchMock.mock.calls[0][1]?.method).toBe('DELETE');
 	});
 
-	test('clear empties non-empty buckets before deleting them', async () => {
-		const bucketObjects = new Map<string, string[]>([
-			['bucket-one', ['dir/a.bin']],
-			['bucket-two', ['dir/b.bin', 'dir/c.bin']],
-		]);
-		const methodsByBucket: Record<string, string[]> = {
-			'bucket-one': [],
-			'bucket-two': [],
-		};
-
-		const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input, init) => {
-			const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-			const parsed = new URL(url);
-			const method = init?.method ?? 'GET';
-
-			if (method === 'GET' && parsed.pathname === '/') {
-				return xmlResponse(`
-					<ListAllMyBucketsResult>
-						<Buckets>
-							<Bucket><Name>bucket-one</Name></Bucket>
-							<Bucket><Name>bucket-two</Name></Bucket>
-						</Buckets>
-					</ListAllMyBucketsResult>
-				`);
-			}
-
-			const bucket = parsed.pathname.slice(1);
-			methodsByBucket[bucket]?.push(method);
-
-			if (method === 'GET' && parsed.searchParams.get('list-type') === '2') {
-				const contents = (bucketObjects.get(bucket) ?? [])
-					.map((key) => `<Contents><Key>${escapeXml(key)}</Key><Size>1</Size></Contents>`)
-					.join('');
-				return xmlResponse(
-					`<ListBucketResult><IsTruncated>false</IsTruncated>${contents}</ListBucketResult>`,
-				);
-			}
-
-			if (method === 'POST' && parsed.searchParams.has('delete')) {
-				const body = new TextDecoder().decode(init?.body as Uint8Array);
-				const deletedKeys = new Set(
-					Array.from(body.matchAll(/<Key>([\s\S]*?)<\/Key>/g), (match) =>
-						decodeXmlEntities(match[1]),
-					),
-				);
-				bucketObjects.set(
-					bucket,
-					(bucketObjects.get(bucket) ?? []).filter((key) => !deletedKeys.has(key)),
-				);
-				return xmlResponse('<DeleteResult/>');
-			}
-
-			if (method === 'DELETE') {
-				if ((bucketObjects.get(bucket)?.length ?? 0) > 0) {
-					return xmlResponse(
-						'<Error><Code>BucketNotEmpty</Code><Message>The bucket is not empty</Message></Error>',
-						409,
-					);
-				}
-				return new Response(null, { status: 204 });
-			}
-
-			throw new Error(`Unexpected S3 request: ${method} ${url}`);
+	test('includes bucket name when provided and rejects invalid bucket names', () => {
+		expect(buildN8nS3Env(config, 'n8n-binary-test')).toMatchObject({
+			N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME: 'n8n-binary-test',
 		});
-		vi.stubGlobal('fetch', fetchMock);
-
-		await new S3Client(ENDPOINT).clear();
-
-		expect(methodsByBucket).toEqual({
-			'bucket-one': ['GET', 'POST', 'DELETE'],
-			'bucket-two': ['GET', 'POST', 'DELETE'],
-		});
-		expect(bucketObjects.get('bucket-one')).toEqual([]);
-		expect(bucketObjects.get('bucket-two')).toEqual([]);
-	});
-
-	test('rejects object operations with dot-only path segments before calling fetch', async () => {
-		const fetchMock = vi.fn<typeof fetch>();
-		vi.stubGlobal('fetch', fetchMock);
-
-		const client = new S3Client(ENDPOINT);
-		await expect(client.putObject('test-bucket', 'dir/../escape.bin', 'data')).rejects.toThrow(
-			/must not contain '\.' or '\.\.' path segments/,
-		);
-		await expect(client.getObject('test-bucket', './file.bin')).rejects.toThrow(
-			/must not contain '\.' or '\.\.' path segments/,
-		);
-		await expect(client.objectExists('test-bucket', 'dir/.')).rejects.toThrow(
-			/must not contain '\.' or '\.\.' path segments/,
-		);
-		await expect(client.deleteObject('test-bucket', '..')).rejects.toThrow(
-			/must not contain '\.' or '\.\.' path segments/,
-		);
-		expect(fetchMock).not.toHaveBeenCalled();
-	});
-
-	test('bucketExists and objectExists return false on 404 and rethrow server errors', async () => {
-		const fetchMock = vi
-			.fn<typeof fetch>()
-			.mockResolvedValueOnce(new Response(null, { status: 200 }))
-			.mockResolvedValueOnce(new Response(null, { status: 404 }))
-			.mockResolvedValueOnce(new Response(null, { status: 404 }))
-			.mockResolvedValueOnce(new Response(null, { status: 500 }));
-		vi.stubGlobal('fetch', fetchMock);
-
-		const client = new S3Client(ENDPOINT);
-		await expect(client.bucketExists('test-bucket')).resolves.toBe(true);
-		await expect(client.bucketExists('test-bucket')).resolves.toBe(false);
-		await expect(client.objectExists('test-bucket', 'missing.bin')).resolves.toBe(false);
-		await expect(client.objectExists('test-bucket', 'broken.bin')).rejects.toBeInstanceOf(S3Error);
-	});
-
-	test('createBucket treats BucketAlreadyOwnedByYou as idempotent and sends LocationConstraint outside us-east-1', async () => {
-		const fetchMock = vi
-			.fn<typeof fetch>()
-			.mockResolvedValueOnce(
-				xmlResponse(
-					'<Error><Code>BucketAlreadyOwnedByYou</Code><Message>Already owned</Message></Error>',
-					409,
-				),
-			);
-		vi.stubGlobal('fetch', fetchMock);
-
-		await expect(
-			new S3Client(ENDPOINT, { region: 'eu-west-1' }).createBucket('test-bucket'),
-		).resolves.toBeUndefined();
-
-		const body = new TextDecoder().decode(fetchMock.mock.calls[0][1]?.body as Uint8Array);
-		expect(body).toContain('<LocationConstraint>eu-west-1</LocationConstraint>');
+		expect(() => buildN8nS3Env(config, 'Invalid_Bucket')).toThrow(/Invalid S3 bucket name/);
 	});
 });
 
@@ -462,9 +145,13 @@ describe('LocalStackHelper', () => {
 		expect(helper.internalS3Config.endpoint).toBe('http://localstack:4566');
 	});
 
-	test('rejects invalid bucket names in getN8nS3Env', () => {
-		const helper = new LocalStackHelper('http://127.0.0.1:4566');
+	test('resolves string endpoints and rejects invalid bucket names in getN8nS3Env', () => {
+		const helper = new LocalStackHelper('https://127.0.0.1:4566/');
 
+		expect(helper.endpoint).toBe('https://127.0.0.1:4566');
+		expect(helper.protocol).toBe('https');
+		expect(helper.s3Config.host).toBe('127.0.0.1:4566');
+		expect(helper.internalS3Config.protocol).toBe('http');
 		expect(() => helper.getN8nS3Env('Invalid_Bucket')).toThrow(/Invalid S3 bucket name/);
 	});
 });

@@ -10019,6 +10019,9 @@ importers:
 
   packages/quality/environments/containers:
     dependencies:
+      '@aws-sdk/client-s3':
+        specifier: 3.808.0
+        version: 3.808.0
       '@aws-sdk/client-secrets-manager':
         specifier: 3.808.0
         version: 3.808.0
