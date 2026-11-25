@@ -185,39 +185,53 @@ const DESCRIPTION =
 	'To build a server: create it, read tool-candidates, add the workflows that fit with add-tools, then improve the tool text with generate. ' +
 	'A workflow that is not published, or has no "When Executed by Another Workflow" trigger, cannot be a tool. Fix it with the workflow tools first.';
 
-/** One grant covers every write that is not a delete, as one "Allow for this chat" answer. */
-const WRITE_GRANT_KEY = `${DOMAIN_TOOL_IDS.CUSTOM_MCP_SERVERS}:write`;
+type WriteAction = Exclude<Input['action'], 'list' | 'get' | 'tool-candidates'>;
+
+/**
+ * "Allow for this chat" covers one action, as in the skills tool. The key matches the
+ * fallback key of the UI, `<tool>:<action>`. A removal and a delete always ask.
+ */
+const SESSION_GRANT_ACTIONS: ReadonlySet<WriteAction> = new Set([
+	'create',
+	'update',
+	'add-tools',
+	'update-tool',
+	'generate',
+]);
+
+function sessionGrantKey(action: WriteAction): string {
+	return `${DOMAIN_TOOL_IDS.CUSTOM_MCP_SERVERS}:${action}`;
+}
 
 const BLOCKED_RESULT = { success: false, denied: true, reason: 'Action blocked by admin' };
 
 /**
- * `write`: every change that is not a delete. It asks first, unless the user allowed writes
- * for this conversation. `delete` has its own admin permission and never takes that grant.
+ * Every write asks first, unless the user allowed this action for the conversation. `delete`
+ * has its own admin permission, and neither it nor `remove-tool` takes a session grant.
  */
-type ApprovalKind = 'write' | 'delete';
-
 async function withApproval<T extends object>(
 	context: InstanceAiContext,
 	ctx: ConfirmationToolContext,
-	kind: ApprovalKind,
+	action: WriteAction,
 	request: () => Promise<Omit<ConfirmationSuspendPayload, 'requestId'>>,
 	run: () => Promise<T>,
 ) {
-	const permission = kind === 'delete' ? context.permissions?.deleteMcpServer : undefined;
+	const permission = action === 'delete' ? context.permissions?.deleteMcpServer : undefined;
 	if (permission === 'blocked') return BLOCKED_RESULT;
 
 	const { resumeData } = ctx;
+	const grantable = SESSION_GRANT_ACTIONS.has(action);
 	const granted =
 		permission === 'always_allow' ||
-		(kind === 'write' && context.sessionApprovedToolKeys?.has(WRITE_GRANT_KEY) === true);
+		(grantable && context.sessionApprovedToolKeys?.has(sessionGrantKey(action)) === true);
 	if (!granted && !resumeData) {
 		return await ctx.suspend({ requestId: nanoid(), ...(await request()) });
 	}
 	if (resumeData && !resumeData.approved) {
 		return { success: false, denied: true, reason: 'User denied the action' };
 	}
-	if (kind === 'write' && resumeData?.approved && resumeData.scope === 'session') {
-		await context.grantSessionToolApproval?.(WRITE_GRANT_KEY);
+	if (grantable && resumeData?.approved && resumeData.scope === 'session') {
+		await context.grantSessionToolApproval?.(sessionGrantKey(action));
 	}
 	return { success: true, ...(await run()) };
 }
@@ -289,7 +303,7 @@ async function handleUpdate(
 	return await withApproval(
 		context,
 		ctx,
-		'write',
+		'update',
 		async () => ({
 			message: changesMessage(
 				changes,
@@ -338,7 +352,7 @@ async function handleAddTools(
 	return await withApproval(
 		context,
 		ctx,
-		'write',
+		'add-tools',
 		async () => {
 			const [server, candidates] = await Promise.all([
 				service.get(toRef(input)),
@@ -381,7 +395,7 @@ async function handleUpdateTool(
 	return await withApproval(
 		context,
 		ctx,
-		'write',
+		'update-tool',
 		async () => ({
 			message: `${changesMessage(
 				{ name: changes.toolName, description: changes.description },
@@ -419,7 +433,7 @@ async function handleGenerate(
 	return await withApproval(
 		context,
 		ctx,
-		'write',
+		'generate',
 		async () => ({
 			message: `Write ${target} again with AI, from the workflow.`,
 			resourceName: tool.toolName,
@@ -445,7 +459,7 @@ async function handleRemoveTool(
 	return await withApproval(
 		context,
 		ctx,
-		'write',
+		'remove-tool',
 		async () => ({
 			message: `Remove the tool from ${server.name}. AI clients cannot call it after this.`,
 			resourceName: tool.toolName,
@@ -507,7 +521,7 @@ export function createCustomMcpServersTool(context: InstanceAiContext) {
 					return await withApproval(
 						context,
 						ctx,
-						'write',
+						'create',
 						async () => ({
 							message:
 								'Create a custom MCP server. AI clients can connect to it after you add tools.',

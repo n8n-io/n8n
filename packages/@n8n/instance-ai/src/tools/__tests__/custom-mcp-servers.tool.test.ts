@@ -198,13 +198,13 @@ describe('custom-mcp-servers tool', () => {
 				input,
 				resumeCtx(true, 'session'),
 			);
-			expect(grantSessionToolApproval).toHaveBeenCalledWith('custom-mcp-servers:write');
+			expect(grantSessionToolApproval).toHaveBeenCalledWith('custom-mcp-servers:create');
 
 			const suspend = vi.fn();
 			await executeTool(
 				createCustomMcpServersTool(
 					createContext(service, {
-						sessionApprovedToolKeys: new Set(['custom-mcp-servers:write']),
+						sessionApprovedToolKeys: new Set(['custom-mcp-servers:create']),
 					}),
 				),
 				input,
@@ -213,6 +213,22 @@ describe('custom-mcp-servers tool', () => {
 
 			expect(suspend).not.toHaveBeenCalled();
 			expect(service.create).toHaveBeenCalledTimes(2);
+		});
+
+		it('keeps the grant to this action, so other writes still ask', async () => {
+			const context = createContext(service, {
+				sessionApprovedToolKeys: new Set(['custom-mcp-servers:create']),
+			});
+			const suspend = vi.fn();
+
+			await executeTool(
+				createCustomMcpServersTool(context),
+				{ action: 'add-tools', serverId: SERVER_ID, workflowIds: ['workflow-2'] },
+				suspendCtx(suspend),
+			);
+
+			expect(suspend).toHaveBeenCalled();
+			expect(service.addTools).not.toHaveBeenCalled();
 		});
 	});
 
@@ -242,7 +258,10 @@ describe('custom-mcp-servers tool', () => {
 		it('asks again even when the user allowed other writes for this conversation', async () => {
 			const suspend = vi.fn();
 			const context = createContext(service, {
-				sessionApprovedToolKeys: new Set(['custom-mcp-servers:write']),
+				sessionApprovedToolKeys: new Set([
+					'custom-mcp-servers:delete',
+					'custom-mcp-servers:create',
+				]),
 			});
 
 			await executeTool(createCustomMcpServersTool(context), input, suspendCtx(suspend));
@@ -460,6 +479,29 @@ describe('custom-mcp-servers tool', () => {
 			TOOL_ID,
 		);
 		expect(result).toEqual({ success: true, toolId: TOOL_ID });
+	});
+
+	it('asks before each removal, even after "Allow for this chat"', async () => {
+		const grantSessionToolApproval = vi.fn();
+		const input = { action: 'remove-tool', serverId: SERVER_ID, toolId: TOOL_ID };
+		await executeTool(
+			createCustomMcpServersTool(createContext(service, { grantSessionToolApproval })),
+			input,
+			resumeCtx(true, 'session'),
+		);
+		expect(grantSessionToolApproval).not.toHaveBeenCalled();
+
+		const suspend = vi.fn();
+		await executeTool(
+			createCustomMcpServersTool(
+				createContext(service, {
+					sessionApprovedToolKeys: new Set(['custom-mcp-servers:remove-tool']),
+				}),
+			),
+			input,
+			suspendCtx(suspend),
+		);
+		expect(suspend).toHaveBeenCalled();
 	});
 
 	it('tells the model when the tool is not on the server', async () => {
