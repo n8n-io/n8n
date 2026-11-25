@@ -904,9 +904,6 @@ export {
 } from './schemas/evaluations.schema';
 
 export {
-	MCP_APPS_FLAG,
-	MCP_APPS_VARIANT_CONTROL,
-	MCP_APPS_VARIANT_ENABLED,
 	MCP_AGENT_SCOPES,
 	MCP_SKILL_SCOPES,
 	MCP_PREFERENCE_SCOPES,

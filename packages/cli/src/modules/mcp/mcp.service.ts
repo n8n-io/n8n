@@ -1,10 +1,5 @@
 import type { InputRequiredResult, McpServer } from '@modelcontextprotocol/server';
-import {
-	MCP_APPS_FLAG,
-	MCP_APPS_VARIANT_CONTROL,
-	MCP_APPS_VARIANT_ENABLED,
-	MIGRATION_REPORT_TARGET_VERSION,
-} from '@n8n/api-types';
+import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 import { getN8nVersion, LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import {
 	EventService,
@@ -82,7 +77,6 @@ import {
 	isCommunityNodeInstallAvailable,
 } from './mcp-tool-availability';
 import type {
-	McpAppsTelemetryVariant,
 	McpAuthContext,
 	McpClientInfo,
 	RegisterResourceFn,
@@ -166,15 +160,9 @@ interface PendingMcpResponse {
 	createdAt: Date;
 }
 
-export type McpAppsResolution = {
-	enabled: boolean;
-	variant: McpAppsTelemetryVariant;
-};
-
 /** User experience gates and the instance context gate. */
 export type McpFeatureFlags = {
 	credentialDescriptionsEnabled?: boolean;
-	mcpApps: McpAppsResolution;
 	/** Enables context tools, the context resource, and the context instructions. */
 	instanceContextEnabled: boolean;
 	skillsExtensionEnabled?: boolean;
@@ -308,28 +296,16 @@ export class McpService {
 
 	/** Resolves user experience flags. */
 	async resolveFeatureFlags(user: User): Promise<McpFeatureFlags> {
-		const { mcpAppsEnabled } = this.globalConfig.endpoints;
-
 		const flags = await this.postHogClient.getFeatureFlags(user).catch((): FeatureFlags => ({}));
 		const preferencesNoteFlag = flags[MCP_EMPTY_PREFERENCES_NOTE_FLAG];
 
 		return {
 			credentialDescriptionsEnabled: true,
-			mcpApps: this.resolveMcpApps(mcpAppsEnabled, flags),
 			instanceContextEnabled: true,
 			skillsExtensionEnabled: flags[MCP_SKILLS_EXTENSION_FLAG] === true,
 			preferencesNoteVariant:
 				typeof preferencesNoteFlag === 'string' ? preferencesNoteFlag : 'unassigned',
 		};
-	}
-
-	private resolveMcpApps(envOverride: boolean, flags: FeatureFlags): McpAppsResolution {
-		if (envOverride) return { enabled: true, variant: 'env_override' };
-
-		const raw = flags[MCP_APPS_FLAG];
-		if (raw === MCP_APPS_VARIANT_ENABLED) return { enabled: true, variant: 'variant' };
-		if (raw === MCP_APPS_VARIANT_CONTROL) return { enabled: false, variant: 'control' };
-		return { enabled: false, variant: 'unassigned' };
 	}
 
 	/**
@@ -941,7 +917,6 @@ export class McpService {
 				server,
 				user,
 				dataTableOps,
-				featureFlags,
 				registerIfAllowed,
 				registerResource,
 				allowedToolNames,
@@ -1048,7 +1023,6 @@ export class McpService {
 		server: McpServer,
 		user: User,
 		dataTableOps: ReturnType<DataTableProxyService['makeDataTableOperationsForUser']>,
-		featureFlags: McpFeatureFlags,
 		registerIfAllowed: RegisterToolFn,
 		registerResource: RegisterResourceFn,
 		allowedToolNames: Set<string> | undefined,
@@ -1126,7 +1100,7 @@ export class McpService {
 		// registrar as every other tool (schema bridging + instrumentation);
 		// only its _meta marks it as backed by the preview app resource.
 		const createToolAllowed = !allowedToolNames || allowedToolNames.has(createTool.name);
-		if (featureFlags.mcpApps.enabled && createToolAllowed) {
+		if (createToolAllowed) {
 			const appTelemetry = this.buildMcpAppTelemetryConfig();
 			registerWorkflowPreviewApp(server, {
 				instanceOrigin: appTelemetry.instanceOrigin,
@@ -1146,8 +1120,6 @@ export class McpService {
 					_meta: mcpAppToolMeta(WORKFLOW_PREVIEW_APP_URI),
 				},
 			});
-		} else {
-			registerIfAllowed(createTool);
 		}
 
 		const searchProjectsTool = createSearchProjectsTool(
