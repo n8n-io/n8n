@@ -24,10 +24,9 @@ import type { TriggerStepConfig, V1NodeStepConfig } from './types';
 
 /** Node settings the step executor ignores, with the label the editor shows for each. */
 const UNSUPPORTED_EXECUTION_SETTINGS: Array<
-	[keyof Pick<INode, 'retryOnFail' | 'alwaysOutputData' | 'executeOnce'>, string]
+	[keyof Pick<INode, 'retryOnFail' | 'executeOnce'>, string]
 > = [
 	['retryOnFail', 'Retry On Fail'],
-	['alwaysOutputData', 'Always Output Data'],
 	['executeOnce', 'Execute Once'],
 ];
 
@@ -155,6 +154,12 @@ export class V1WorkflowConverter {
 		if (node.type === MERGE_TYPE) this.assertSupportedMergeMode(node);
 
 		if (node.type === SPLIT_IN_BATCHES_TYPE) {
+			// The engine runs a batch node itself, and does not apply this setting.
+			if (node.alwaysOutputData === true) {
+				throw new UnsupportedWorkflowError(
+					`Node "${node.name}" is a Split In Batches node with Always Output Data, which is not supported yet.`,
+				);
+			}
 			return { id: node.id, name: node.name, type: 'batch', config: toBatchConfig(node) };
 		}
 
@@ -164,7 +169,8 @@ export class V1WorkflowConverter {
 			parameters: node.parameters,
 			continueOnFail: node.continueOnFail === true || node.onError === 'continueRegularOutput',
 		};
-		// Set only when present, so a node without credentials serializes without the key.
+		// Set only when present, so a node without them serializes without the keys.
+		if (node.alwaysOutputData === true) config.alwaysOutputData = true;
 		if (node.credentials !== undefined) config.credentials = node.credentials;
 
 		return { id: node.id, name: node.name, type: 'v1-node', config };
