@@ -91,8 +91,9 @@ export type PolicedArtifactRef = {
 };
 
 /**
- * A run that asks for its execution row. The fields match a ledger row, so a check can apply
- * the shared counting rules. There are no nodes: a check here must read memory only.
+ * A run that asks for its execution row. A check builds a `LedgerFact` from these fields
+ * (`source ?? 'none'`, `event: 'started'`, `outcome: 'none'`). There are no nodes: a check
+ * here must read memory only.
  */
 export type ExecutionAdmissionContext = {
 	readonly artifact: PolicedArtifactRef;
