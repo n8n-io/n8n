@@ -361,6 +361,7 @@ describe('RunData', () => {
 				),
 			);
 			expect(queryByTestId('ndv-data-pagination')).not.toBeInTheDocument();
+			expect(queryByTestId('ndv-search')).toBeInTheDocument();
 		});
 	});
 

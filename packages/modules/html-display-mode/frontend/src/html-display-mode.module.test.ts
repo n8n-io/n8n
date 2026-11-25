@@ -21,10 +21,6 @@ const canRender = (pane: RunDataDisplayModePane, node: Partial<INode>) =>
 	});
 
 describe('HtmlDisplayModeModule', () => {
-	it('keeps the html id and auto-selects with search', () => {
-		expect(htmlMode).toMatchObject({ id: 'html', autoSelect: true, supports: { search: true } });
-	});
-
 	it('renders the output of an HTML node that generates a template', () => {
 		expect(canRender('output', {})).toBe(true);
 	});
