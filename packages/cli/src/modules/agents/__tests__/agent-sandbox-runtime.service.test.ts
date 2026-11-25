@@ -97,7 +97,7 @@ function makeService({
 			sandboxSnapshot: '',
 			sandboxTimeout: 300_000,
 			sandboxEphemeral: false,
-			sandboxEgressPolicy: 'disabled',
+			sandboxEgressPolicy: 'opt-in',
 			...configOverrides,
 		} as AgentsConfig,
 		logger,
@@ -133,9 +133,12 @@ describe('AgentSandboxRuntimeService', () => {
 	});
 
 	it.each(['daytona', 'n8n-sandbox'] as const)(
-		'disables %s egress for workspace and knowledge sandboxes by default even if an agent requests it',
+		'under disabled policy, blocks %s egress for workspace and knowledge sandboxes even if an agent requests it',
 		async (provider) => {
-			const service = makeService({ sandboxSettingsService: makeSandboxSettingsService(provider) });
+			const service = makeService({
+				configOverrides: { sandboxEgressPolicy: 'disabled' },
+				sandboxSettingsService: makeSandboxSettingsService(provider),
+			});
 
 			const workspace = await service.acquireWorkspaceSandbox(projectId, agentId, principalHash, {
 				sandboxEgress: true,

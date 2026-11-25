@@ -112,7 +112,7 @@ export class AgentsConfig {
 	 * Use `disabled` to block outbound internet access for all Agent sandboxes, `opt-in` to require enabling it per Agent in Advanced settings, or `opt-out` to allow it by default. Doesn't affect n8n Assistant.
 	 */
 	@Env('N8N_AGENTS_AI_SANDBOX_EGRESS_POLICY', agentSandboxEgressPolicySchema)
-	sandboxEgressPolicy: AgentSandboxEgressPolicy = 'disabled';
+	sandboxEgressPolicy: AgentSandboxEgressPolicy = 'opt-in';
 
 	/** Docker image for the Daytona sandbox (default: daytonaio/sandbox:0.5.0). */
 	@Env('N8N_AGENTS_AI_SANDBOX_IMAGE')

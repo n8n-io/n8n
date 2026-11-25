@@ -26,7 +26,7 @@ describe('AgentsConfig sandbox egress policy', () => {
 	});
 
 	it.each([
-		[undefined, 'disabled'],
+		[undefined, 'opt-in'],
 		['disabled', 'disabled'],
 		['opt-in', 'opt-in'],
 		['opt-out', 'opt-out'],
@@ -37,12 +37,12 @@ describe('AgentsConfig sandbox egress policy', () => {
 		expect(Container.get(AgentsConfig).sandboxEgressPolicy).toBe(expected);
 	});
 
-	it('falls back to disabled on invalid policy values', () => {
+	it('falls back to opt-in on invalid policy values', () => {
 		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 		vi.stubEnv('N8N_AGENTS_AI_SANDBOX_EGRESS_POLICY', 'public');
 		Container.reset();
 
-		expect(Container.get(AgentsConfig).sandboxEgressPolicy).toBe('disabled');
+		expect(Container.get(AgentsConfig).sandboxEgressPolicy).toBe('opt-in');
 		expect(warnSpy).toHaveBeenCalled();
 	});
 });

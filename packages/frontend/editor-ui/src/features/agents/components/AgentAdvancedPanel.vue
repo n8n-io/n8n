@@ -249,7 +249,7 @@ const isSandboxEnabled = computed(
 	() => settingsStore.moduleSettings.agents?.sandboxEnabled === true,
 );
 const sandboxEgressPolicy = computed(
-	() => settingsStore.moduleSettings.agents?.sandboxEgressPolicy ?? 'disabled',
+	() => settingsStore.moduleSettings.agents?.sandboxEgressPolicy ?? 'opt-in',
 );
 const isSandboxEgressLockedByInstance = computed(() => sandboxEgressPolicy.value === 'disabled');
 const sandboxEgressEnabled = computed(() =>
