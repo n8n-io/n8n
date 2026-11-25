@@ -573,6 +573,26 @@ describe('domain tool construction', () => {
 		expect(getActiveOrchestratorDomainToolNames(enabled)).toContain('agent-context');
 	});
 
+	it('exposes archive_agent only to the orchestrator on writable turns with an archive service', () => {
+		const agentContextService = { lookup: vi.fn() };
+		const agentArchiveService = { preview: vi.fn(), archive: vi.fn() };
+		const readerOnly = makeContext({ agentContextService });
+		const writable = makeContext({ agentContextService, agentArchiveService });
+		const readOnly = makeContext({
+			agentContextService,
+			agentArchiveService,
+			branchReadOnly: true,
+		});
+
+		expect(createOrchestratorDomainTools(readerOnly).has('archive_agent')).toBe(false);
+		expect(createOrchestratorDomainTools(writable).has('archive_agent')).toBe(true);
+		expect(getActiveOrchestratorDomainToolNames(writable)).toContain('archive_agent');
+		expect(getActiveOrchestratorDomainToolNames(readOnly)).not.toContain('archive_agent');
+		expect(getActiveOrchestratorDomainToolNames(readOnly)).toContain('agent-context');
+		expect(ALWAYS_LOADED_TOOL_NAMES.has('archive_agent')).toBe(false);
+		expect(getToolGroup('archive_agent')).toBe('agents');
+	});
+
 	it('never defers Agent context lookup behind search_tools', () => {
 		expect(ALWAYS_LOADED_TOOL_NAMES.has('agent-context')).toBe(true);
 	});

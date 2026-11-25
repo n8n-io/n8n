@@ -128,6 +128,7 @@ export const instanceAiApprovalDetailsSchema = z.discriminatedUnion('action', [
 			.min(1),
 	}),
 	z.object({ action: z.literal('archive-workflow'), name: z.string(), id: z.string() }),
+	z.object({ action: z.literal('archive-agent'), name: z.string(), id: z.string() }),
 	z.object({ action: z.literal('restore-workflow'), name: z.string(), id: z.string() }),
 	z.object({ action: z.literal('unpublish-workflow'), name: z.string(), id: z.string() }),
 	z.object({
