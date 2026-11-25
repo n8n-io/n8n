@@ -1314,7 +1314,9 @@ describe('execution tools', () => {
 				createAgentCtx({ suspend }) as never,
 			);
 
-			expect(suspend.mock.calls[0][0].message).toContain('Run this workflow live with the file a.png');
+			expect(suspend.mock.calls[0][0].message).toContain(
+				'Run this workflow live with the file a.png',
+			);
 		});
 
 		it('does not ask for approval or run the workflow with a file that the conversation does not have', async () => {
