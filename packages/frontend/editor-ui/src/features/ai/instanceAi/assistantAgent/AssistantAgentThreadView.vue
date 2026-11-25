@@ -777,6 +777,10 @@ function togglePreviewExpanded(): void {
 const isArtifactsPanelInLayout = computed(
 	() => threadAreaWidth.value >= MIN_WIDTH_FOR_PINNED_ARTIFACTS_PANEL,
 );
+// With the preview open, the chat is too narrow to keep the panel beside it.
+const isArtifactsPanelPinned = computed(
+	() => isArtifactsPanelInLayout.value && !preview.isPreviewVisible.value,
+);
 // A loading thread shows the panel too, so its loading state shows in place.
 const canShowArtifactsPanel = computed(
 	() =>
@@ -784,14 +788,21 @@ const canShowArtifactsPanel = computed(
 		preview.openTabs.value.length > 0 ||
 		thread.isHydratingThread,
 );
-const { showArtifactsPanel, artifactsPanelToggleLabel, toggleArtifactsPanel } =
-	useArtifactsPanelToggle({
-		isInLayout: () => isArtifactsPanelInLayout.value,
-		canShow: () => canShowArtifactsPanel.value,
-		isPreviewVisible: () => preview.isPreviewVisible.value,
-		panelSlot: useTemplateRef<HTMLElement>('artifactsPanelSlot'),
-		toggleSelector: '[data-test-id="assistant-agent-artifacts-panel-toggle"]',
-	});
+const {
+	showArtifactsPanel,
+	artifactsPanelToggleLabel,
+	toggleArtifactsPanel,
+	closeArtifactsPanelOverChat,
+} = useArtifactsPanelToggle({
+	isInLayout: () => isArtifactsPanelInLayout.value,
+	canShow: () => canShowArtifactsPanel.value,
+	isPreviewVisible: () => preview.isPreviewVisible.value,
+	canRevealOverPreview: true,
+	panelSlot: useTemplateRef<HTMLElement>('artifactsPanelSlot'),
+	toggleSelector: '[data-test-id="assistant-agent-artifacts-panel-toggle"]',
+});
+// A pick from the panel over the chat opens a tab, so the panel has done its job.
+watch(() => preview.activeTabId.value, closeArtifactsPanelOverChat);
 
 const {
 	previewMinWidth,
@@ -929,7 +940,7 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 						</template>
 					</N8nActionDropdown>
 					<N8nTooltip
-						v-if="canShowArtifactsPanel && !preview.isPreviewVisible.value"
+						v-if="canShowArtifactsPanel"
 						:content="artifactsPanelToggleLabel"
 						placement="bottom"
 						:show-after="TOOLTIP_DELAY_MS"
@@ -1002,7 +1013,7 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 				:class="[
 					$style.contentArea,
 					{
-						[$style.contentAreaWithPinnedArtifacts]: showArtifactsPanel && isArtifactsPanelInLayout,
+						[$style.contentAreaWithPinnedArtifacts]: showArtifactsPanel && isArtifactsPanelPinned,
 					},
 				]"
 				:inert="isAgentTestDockOpen || undefined"
@@ -1138,7 +1149,7 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 					ref="artifactsPanelSlot"
 					:class="[
 						$style.artifactsPanelSlot,
-						{ [$style.artifactsPanelSlotOverlay]: !isArtifactsPanelInLayout },
+						{ [$style.artifactsPanelSlotOverlay]: !isArtifactsPanelPinned },
 					]"
 					data-test-id="assistant-agent-artifacts-panel"
 				>
