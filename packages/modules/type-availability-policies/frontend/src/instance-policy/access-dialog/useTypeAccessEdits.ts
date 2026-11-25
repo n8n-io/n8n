@@ -4,12 +4,14 @@ import { shallowReactive } from 'vue';
 import { usePolicyAdminAccess } from '../../composables/usePolicyAdminAccess';
 import type { RestrictedTypeKind } from '../../type-availability-policies.constants';
 import { isTypeAccessEditable } from '../typeAccessRule';
+import { useRestrictReviewStore } from '../restrict-review/restrict-review.store';
 import { useInstancePolicy } from '../useInstancePolicy';
 
 /** Reads and changes the access of single types for the access dialogs. */
 export function useTypeAccessEdits() {
 	const { manageableKinds } = usePolicyAdminAccess();
 	const instancePolicy = useInstancePolicy();
+	const restrictReview = useRestrictReviewStore();
 
 	// Shows the chosen access while its save runs. The store holds the access that the server read.
 	// Each change owns its entry, so an earlier save that ends does not clear a later choice.
@@ -35,7 +37,19 @@ export function useTypeAccessEdits() {
 
 	const canManage = (kind: RestrictedTypeKind) => manageableKinds.value.includes(kind);
 
-	async function setAccess(kind: RestrictedTypeKind, name: string, action: PolicyAction) {
+	/** See `usageOf` in the instance policy store: `null` while the counts are not loaded. */
+	const usageOf = (kind: RestrictedTypeKind, name: string) => instancePolicy.usageOf(kind, name);
+
+	/** `label` names the type in the review that asks before a type in use is restricted. */
+	async function setAccess(
+		kind: RestrictedTypeKind,
+		name: string,
+		action: PolicyAction,
+		label: string,
+	) {
+		const approved = restrictReview.reviewChange(kind, name, action, label);
+		if (approved !== true && !(await approved)) return;
+
 		const key = keyOf(kind, name);
 		const change = { action };
 		pending.set(key, change);
@@ -46,5 +60,12 @@ export function useTypeAccessEdits() {
 		}
 	}
 
-	return { accessOf, isLocked, canManage, setAccess };
+	return {
+		accessOf,
+		isLocked,
+		isChecking: restrictReview.isChecking,
+		canManage,
+		usageOf,
+		setAccess,
+	};
 }

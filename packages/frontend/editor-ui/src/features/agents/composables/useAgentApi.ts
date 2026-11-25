@@ -200,7 +200,7 @@ export const listN8nChatAgents = async (
 	});
 };
 
-/** Options for {@link listN8nChatThreads}. `cursor` is a thread's `updatedAt` ISO string. */
+/** Options for {@link listN8nChatThreads}. Pass the previous page's `nextCursor` unchanged. */
 export type ListN8nChatThreadsOptions = {
 	limit: number;
 	cursor?: string;
