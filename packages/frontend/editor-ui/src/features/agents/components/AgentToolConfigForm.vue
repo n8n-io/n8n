@@ -19,6 +19,7 @@ import {
 } from 'vue';
 
 import { HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
+import type { ToolSettingsTab } from '@/features/shared/toolConfig/NodeToolSettingsContent.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import {
 	listenForCredentialChanges,
@@ -88,7 +89,7 @@ interface McpServerModalData {
 }
 
 export type AgentToolConfigModalData = ToolModalData | McpServerModalData;
-export type ToolConfigTab = 'parameters' | 'guardrails';
+export type ToolConfigTab = ToolSettingsTab | 'guardrails';
 
 const props = defineProps<{
 	data: AgentToolConfigModalData;
@@ -222,13 +223,18 @@ const hasReviewContext = computed(
 	() => supportsApproval.value && !!props.data.approvalContext && !!props.data.projectId,
 );
 const [DefineParameters, ReuseParameters] = createReusableTemplate();
-const activeTab = ref<ToolConfigTab>(toolModalData.value?.initialTab ?? 'parameters');
+const activeTab = ref<ToolConfigTab>(toolModalData.value?.initialTab ?? 'params');
 const tabs = computed(() => [
-	{ value: 'parameters' as const, label: i18n.baseText('nodeSettings.parameters') },
+	...(nodeContentRef.value?.tabOptions ?? [
+		{ value: 'params' as const, label: i18n.baseText('nodeSettings.parameters') },
+	]),
 	{ value: 'guardrails' as const, label: i18n.baseText('agents.builder.guardrails.title') },
 ]);
 const showTabs = computed(
 	() => !isMcpTool.value && (supportsApproval.value || guardrailsSection.value),
+);
+const nodeActiveTab = computed(() =>
+	showTabs.value ? (activeTab.value === 'guardrails' ? 'params' : activeTab.value) : undefined,
 );
 
 watch(
@@ -327,7 +333,7 @@ function withApprovalRequirement(ref: AgentJsonToolRef): AgentJsonToolRef {
 function confirm(): boolean {
 	submitCount.value += 1;
 	if (!canSave.value) {
-		activeTab.value = 'parameters';
+		activeTab.value = 'params';
 		return false;
 	}
 
@@ -463,6 +469,7 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 				:parameter-issues="nodeParameterIssues"
 				:read-only="isRestricted"
 				content-test-id="node-tool-settings-content"
+				:active-tab="nodeActiveTab"
 				@update:valid="isValid = $event"
 				@update:node-name="handleNodeNameUpdate"
 				@update:node="draftNode = $event"
@@ -505,7 +512,7 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 		</template>
 		<N8nTabs v-else-if="showTabs" v-model="activeTab" :options="tabs">
 			<template #content>
-				<div v-show="activeTab === 'parameters'" :class="$style.tabContent">
+				<div v-show="activeTab !== 'guardrails'" :class="$style.tabContent">
 					<ReuseParameters />
 				</div>
 				<div

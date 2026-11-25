@@ -71,6 +71,7 @@ function createToolSettingsStub(emitValid: boolean) {
 			'parameterIssues',
 			'fromAiDisabledParameters',
 			'readOnly',
+			'activeTab',
 		],
 		emits: ['update:valid', 'update:node-name', 'update:node'],
 		setup(props, { emit, expose }) {
@@ -89,6 +90,13 @@ function createToolSettingsStub(emitValid: boolean) {
 				getNode: () => node,
 				handleChangeName: vi.fn(),
 				getNodeTypeDescription: () => ({ name: 'n8n-nodes-base.slack', displayName: 'Slack' }),
+				tabOptions:
+					node.type === 'n8n-nodes-base.httpRequestTool'
+						? [
+								{ value: 'params', label: 'nodeSettings.parameters' },
+								{ value: 'settings', label: 'nodeSettings.settings' },
+							]
+						: undefined,
 			});
 			onMounted(() => {
 				emit('update:valid', emitValid);
@@ -102,6 +110,7 @@ function createToolSettingsStub(emitValid: boolean) {
 				data-test-id="node-tool-settings-content"
 				:data-project-id="projectId"
 				:data-read-only="readOnly"
+				:data-active-tab="activeTab"
 			>
 				<button
 					v-if="!fromAiDisabledParameters?.includes('url')"
@@ -505,6 +514,33 @@ describe('AgentToolConfigModal', () => {
 		expect(getNativeTestId(container, 'agent-tool-config-save')).not.toBeDisabled();
 		await fireEvent.click(getNativeTestId(container, 'agent-tool-config-save'));
 		expect(getNativeTestId(container, 'agent-tool-config-validation-error')).toBeInTheDocument();
+	});
+
+	it('places HTTP Request Settings in the main tab bar before Guardrails', async () => {
+		const { getAllByRole, getByRole, getByTestId } = renderModal({
+			ref: toolRef({ nodeType: 'n8n-nodes-base.httpRequestTool' }),
+		});
+		await nextTick();
+
+		expect(getAllByRole('tablist')).toHaveLength(1);
+		expect(getAllByRole('tab').map((tab) => tab.textContent?.trim())).toEqual([
+			'nodeSettings.parameters',
+			'nodeSettings.settings',
+			'agents.builder.guardrails.title',
+		]);
+
+		const content = getByTestId('node-tool-settings-content');
+		const settings = getByRole('tab', { name: 'nodeSettings.settings' });
+		const guardrails = getByRole('tab', { name: 'agents.builder.guardrails.title' });
+		expect(content).toHaveAttribute('data-active-tab', 'params');
+		await fireEvent.keyDown(settings, { key: 'Enter' });
+		expect(content).toBeVisible();
+		expect(content).toHaveAttribute('data-active-tab', 'settings');
+		await fireEvent.keyDown(guardrails, { key: 'Enter' });
+		expect(content).not.toBeVisible();
+		await fireEvent.keyDown(settings, { key: 'Enter' });
+		expect(getByTestId('node-tool-settings-content')).toBe(content);
+		expect(content).toHaveAttribute('data-active-tab', 'settings');
 	});
 
 	it('saves the approval requirement on node tool refs', async () => {
