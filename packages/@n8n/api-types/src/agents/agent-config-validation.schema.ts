@@ -17,6 +17,8 @@ export const agentCapabilityKindSchema = z.enum([
 	'task',
 	'subAgent',
 	'vectorStore',
+	'humanReview',
+	'guardrail',
 ]);
 export type AgentCapabilityKind = z.infer<typeof agentCapabilityKindSchema>;
 

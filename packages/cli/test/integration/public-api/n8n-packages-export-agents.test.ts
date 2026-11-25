@@ -10,12 +10,14 @@ import {
 import type { Project, User, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope } from '@n8n/permissions';
+import { DataSource } from '@n8n/typeorm';
 import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import type { Readable } from 'node:stream';
 
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
+import { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { looseAgentsFixture } from '@/modules/n8n-packages/__tests__/fixtures/agent-package-fixtures';
@@ -31,6 +33,7 @@ import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config'
 import type { ExportPackageEventCounts } from '@/modules/n8n-packages/n8n-packages.types';
 import { serializedAgentSchema } from '@/modules/n8n-packages/spec/serialized/agent.schema';
 import { serializedSkillSchema } from '@/modules/n8n-packages/spec/serialized/skill.schema';
+import { createAgent } from '@test-integration/db/agents';
 import { createFolder } from '@test-integration/db/folders';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
@@ -59,7 +62,7 @@ beforeEach(async () => {
 	owner = await createOwnerWithApiKey();
 	project = await createTeamProject('Selected project', owner);
 	otherProject = await createTeamProject('Dependency project', owner);
-	agent = await repository.save({
+	agent = await createAgent({
 		id: 'support_source',
 		name: 'Support',
 		projectId: project.id,
@@ -68,7 +71,7 @@ beforeEach(async () => {
 		),
 		versionId: 'draft-version',
 	});
-	dependency = await repository.save({
+	dependency = await createAgent({
 		id: 'dependency',
 		name: 'Dependency',
 		projectId: otherProject.id,
@@ -80,7 +83,7 @@ beforeEach(async () => {
 afterEach(async () => {
 	vi.restoreAllMocks();
 	await repository.delete({});
-	await Container.get(AgentHistoryRepository).delete({});
+	await Container.get(DataSource).getRepository(AgentHistory).delete({});
 	await Container.get(AgentTaskRepository).delete({});
 	await deleteAllSkills();
 	await testDb.truncate([
@@ -253,13 +256,16 @@ it.each(['published-strict', 'ignore-unpublished'] as const)(
 			instructions: '',
 			tools: [{ type: 'workflow', workflowId: versionedWorkflow.id, workflow: 'Published tool' }],
 		});
-		await Container.get(AgentHistoryRepository).saveVersion({
-			agentId: agent.id,
-			versionId: 'published-version',
-			publishedBy: 'Package test',
-			schema: storedAgentConfig(schema),
-			tools: {},
-		});
+		await Container.get(AgentHistoryRepository).saveVersion(
+			{
+				agentId: agent.id,
+				versionId: 'published-version',
+				publishedBy: 'Package test',
+				schema: storedAgentConfig(schema),
+				tools: {},
+			},
+			{},
+		);
 		await repository.update(agent.id, { activeVersionId: 'published-version' });
 		const selection =
 			versionPolicy === 'ignore-unpublished'

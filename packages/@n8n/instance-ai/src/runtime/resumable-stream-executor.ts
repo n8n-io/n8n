@@ -400,6 +400,11 @@ async function consumeStreamPass(args: {
 
 		options.context.onActivity?.();
 		usageAccumulator.observe(chunk);
+		// The agent waits at each input boundary until the reader acknowledges it.
+		if (isInputBoundaryChunk(chunk)) {
+			chunk.acknowledge();
+			continue;
+		}
 		if (isRecord(chunk) && chunk.type === 'finish') {
 			finishReason = isFinishReason(chunk.finishReason) ? chunk.finishReason : undefined;
 			structuredOutput = chunk.structuredOutput;
@@ -658,6 +663,14 @@ function buildCorrectionResumeData(corrections: string[]): Record<string, unknow
 			'The confirmation has been skipped. Apply the correction and continue.',
 		corrections,
 	};
+}
+
+function isInputBoundaryChunk(
+	chunk: unknown,
+): chunk is { type: 'input-boundary'; acknowledge: () => void } {
+	return (
+		isRecord(chunk) && chunk.type === 'input-boundary' && typeof chunk.acknowledge === 'function'
+	);
 }
 
 function isErrorChunk(chunk: unknown): chunk is { type: 'error'; error?: unknown } {

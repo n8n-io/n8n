@@ -10,9 +10,12 @@ import type { InstanceWriteAccessService } from '@n8n/backend-services';
 
 import type { AgentConfigService } from '../../agents/agent-config.service';
 import type { EvalAgentExecutionService } from '../../instance-ai/eval/agent-execution.service';
-import type { DataTable } from '../../data-table/data-table.entity';
-import type { DataTableService } from '../../data-table/data-table.service';
-import { DataTableNameConflictError } from '../../data-table/errors/data-table-name-conflict.error';
+import {
+	type DataTable,
+	type DataTableService,
+	DataTableNameConflictError,
+} from '@n8n/backend-module-data-table';
+
 import { AgentEvalCaseGenerationService } from '../agent-eval-case-generation.service';
 import type { AgentEvalsFlagGate } from '../agent-evals-flag-gate';
 
@@ -63,7 +66,7 @@ const user = mock<User>({ id: 'user-1' });
 function makeConfig(over: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
 	return {
 		name: 'Support Bot',
-		model: 'anthropic/claude-sonnet-4-5',
+		model: 'anthropic/claude-sonnet-5-5',
 		credential: 'cred-1',
 		instructions: 'Help customers with billing questions.',
 		tools: [{ type: 'node', name: 'lookupOrder', node: {} }],
@@ -104,7 +107,7 @@ describe('AgentEvalCaseGenerationService', () => {
 
 		generateMock.mockReset();
 		resolveModelMock.mockReset();
-		resolveModelMock.mockResolvedValue({ id: 'anthropic/claude-sonnet-4-5' });
+		resolveModelMock.mockResolvedValue({ id: 'anthropic/claude-sonnet-5-5' });
 		criteriaRunMock.mockReset();
 		criteriaRunMock.mockResolvedValue({ pass: true, reasoning: 'Satisfies the rule.' });
 

@@ -6,6 +6,8 @@ description: |-
   **Preview** — breaking changes may still occur without major version bump.
 
   Returns a cursor-paginated list of reusable policy documents.
+
+  Requires the `nodeTypePolicy:manage` API key scope.
 x-required-scope: nodeTypePolicy:manage
 parameters:
   - $ref: ../../../../shared/spec/parameters/limit.yml
@@ -104,5 +106,7 @@ responses:
     $ref: ../../../../shared/spec/responses/unauthorized.yml
   '403':
     $ref: ../../../../shared/spec/responses/forbidden.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml
   '503':
     $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

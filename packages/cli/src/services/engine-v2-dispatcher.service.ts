@@ -1,22 +1,25 @@
-import { Service } from '@n8n/di';
-import type { SeededSteps, StartExecutionRequest, StepSlots, TriggerOutputs } from '@n8n/engine';
-import { ConflictError, NotFoundError, NotImplementedError } from '@n8n/errors';
+import { Container, Service } from '@n8n/di';
+import type { SeededSteps, StartExecutionRequest } from '@n8n/engine';
+import {
+	ConflictError,
+	NotFoundError,
+	NotImplementedError,
+	UnexpectedError,
+	UserError,
+} from '@n8n/errors';
+import { stringify } from 'flatted';
 import type {
 	INode,
 	INodeExecutionData,
+	IPinData,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import {
-	classifyTriggerIdentity,
-	isTriggerNodeType,
-	UnexpectedError,
-	UserError,
-} from 'n8n-workflow';
+import { classifyTriggerIdentity, isTriggerNodeType } from 'n8n-workflow';
 import assert from 'node:assert';
 
-import { toWorkflowDocument } from '@/executions/execution-data/types';
+import { getPushRefUserId } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import {
 	createExecutionIdV2,
 	type ExecutionIdV2,
@@ -34,9 +37,8 @@ import {
 } from '@/services/engine-v2-manual-run-planner';
 import { EngineV2PayloadFiles } from '@/services/engine-v2-payload-files.service';
 import { EngineV2PushRegistry } from '@/services/engine-v2-push-registry.service';
+import { toEngineWorkflowPayload } from '@/services/engine-v2-workflow-payload';
 import { toResponseExpectation } from '@/webhooks/engine-v2-response-expectation';
-
-type ToStepOutputs = (outputs: INodeExecutionData[][]) => StepSlots;
 
 /** The trigger that fired and the payload it produced. */
 type FiredTrigger = {
@@ -62,7 +64,7 @@ const withoutNullSlots = (main: Array<INodeExecutionData[] | null>): INodeExecut
 	main.map((slot) => slot ?? []);
 
 function toResumeRefusal(executionId: string, status: number, reason: string): Error {
-	// `locateResumeTarget` already verified this token, so a 401 means the step is gone.
+	// `locateResume` already verified this token, so a 401 means the step is gone.
 	if (status === 401) return new NotFoundError(`The execution "${executionId}" does not exist.`);
 	if (status === 409) return new ConflictError(`The execution "${executionId}" is not waiting.`);
 	return new UserError(`Engine v2 refused to resume the execution "${executionId}": ${reason}`);
@@ -186,6 +188,11 @@ export class EngineV2Dispatcher {
 		let prepared: PreparedStart;
 		try {
 			this.assertAvailable();
+			// Before the plan: the planner cannot plan a tool run, and its error
+			// would hide the real cause.
+			if (data.agentRequest !== undefined) {
+				throw new NotImplementedError('Engine v2 cannot run a workflow as an AI tool yet.');
+			}
 
 			// A partial run, or one with pinned data, is planned here: the data plane
 			// gets a graph trimmed to what runs, plus the steps it records as done.
@@ -202,6 +209,15 @@ export class EngineV2Dispatcher {
 		}
 
 		const { executionId, request } = prepared;
+		try {
+			await this.subscribeToLifecycleEvents(executionId, data);
+		} catch (error) {
+			// No run exists yet, so the trigger's files belong to no one.
+			this.pushRegistry.release(executionId);
+			await this.payloadFiles.discard(fired.outputs);
+			throw error;
+		}
+
 		try {
 			await this.proxy.startExecution(request);
 		} catch (error) {
@@ -226,21 +242,17 @@ export class EngineV2Dispatcher {
 
 		await this.credentialsPermissionChecker.check(workflowData.id, workflowData.nodes, data.userId);
 
-		// Lazily imported: a top-level import would pull the v1 step executor and
-		// its dependencies into every n8n process, including ones with the module off.
-		const { V1WorkflowConverter, toStepOutputs } = await import('@n8n/node-engine-compatibility');
-
 		// A planned run may root at a non-trigger: v1 starts from the nearest node
 		// with run data when no trigger has any, and the plan supplies its outputs.
-		const graph = new V1WorkflowConverter().convert(plan?.workflow ?? workflowData, trigger.name, {
+		const payload = await toEngineWorkflowPayload({
+			workflowData,
+			graphSource: plan?.workflow,
+			triggerName: trigger.name,
+			triggerOutputs: trigger.outputs,
 			allowNonTriggerRoot: plan !== undefined,
+			pinData: this.resolvePinData(data),
 		});
-		// One pass per node: a planned run seeds nothing inside a loop yet.
-		const seededSteps: SeededSteps | undefined = plan
-			? Object.fromEntries(
-					plan.seeded.map(({ nodeId, outputs }) => [nodeId, [toStepOutputs(outputs)]]),
-				)
-			: undefined;
+		const seededSteps = await this.toSeededSteps(plan);
 
 		const executionId = data.engineV2ExecutionId ?? createExecutionIdV2();
 		// A caller that minted the id is waiting on that exact run.
@@ -249,18 +261,14 @@ export class EngineV2Dispatcher {
 		// run here, so the data plane reads them where every other file of the run is.
 		await this.payloadFiles.claimForExecution(trigger.outputs, executionId);
 		// At the session cap this can evict another run's session, uncaught below. Rare; not worth fixing.
-		this.registerPushSession(executionId, data, trigger);
+		this.registerPushSession(executionId, data, trigger, plan);
 
 		return {
 			executionId,
 			request: {
 				executionId,
 				workflowId: workflowData.id,
-				graph,
-				// Sent alongside the graph, so the execution read can report the
-				// workflow that ran even after the live one is edited.
-				workflow: toWorkflowDocument(workflowData),
-				triggerOutputs: this.toTriggerOutputs(trigger.outputs, toStepOutputs),
+				...payload,
 				seededSteps,
 				// The engine keeps only a coarse manual/production distinction. The exact
 				// host mode is carried in callerContext for reads and lifecycle events.
@@ -272,32 +280,76 @@ export class EngineV2Dispatcher {
 					projectId: data.projectId,
 				},
 				responseExpectation: toResponseExpectation(data.engineV2Response?.responseMode),
+				// Only a run with a push ref has an editor session to relay events to.
+				lifecycleEventSubscription: data.pushRef ? { kind: 'all' } : undefined,
 			},
 		};
 	}
 
 	/**
 	 * Lifecycle events carry no session id, so the push ref is recorded here,
-	 * keyed by execution id.
+	 * keyed by execution id. The `executionStarted` message is prepared here
+	 * too: the run data is gone by the time the relay needs it.
 	 */
 	private registerPushSession(
 		executionId: string,
 		data: IWorkflowExecutionDataProcess,
 		trigger: FiredTrigger,
+		plan?: ManualRunPlan,
 	): void {
 		const { pushRef, workflowData } = data;
 		// No push ref means nothing is watching this run.
 		if (!pushRef) return;
 
+		const runData = plan?.runData ?? {};
+		// A trigger taken from the run data does not run again, and the editor
+		// shows its run from `flattedRunData`. v1 reports no run of it either.
+		const reusedTrigger =
+			trigger.name !== undefined &&
+			Object.hasOwn(runData, trigger.name) &&
+			data.triggerToStartFrom?.data === undefined;
+
 		this.pushRegistry.register(executionId, {
 			pushRef,
+			userId: getPushRefUserId(data),
 			workflowId: workflowData.id,
 			// The engine never announces the trigger, so save its outputs for the relay.
 			trigger:
-				trigger.name === undefined
+				trigger.name === undefined || reusedTrigger
 					? undefined
 					: { nodeName: trigger.name, outputs: trigger.outputs },
+			start: {
+				mode: data.executionMode,
+				// Not redacted: the run data came from the editor's own request.
+				flattedRunData: stringify(runData),
+				source: data.source,
+				workflowName: workflowData.name,
+			},
 		});
+	}
+
+	/** v1's `resolvePinData`: a production run ignores pinned data. */
+	private resolvePinData(data: IWorkflowExecutionDataProcess): IPinData | undefined {
+		if (!['manual', 'evaluation'].includes(data.executionMode)) return undefined;
+		return data.pinData ?? data.workflowData.pinData;
+	}
+
+	/**
+	 * An editor that watches the run shows its progress from lifecycle events.
+	 * The events are not replayed, so the subscription must be active before the
+	 * run starts. The subscription ends with the push session.
+	 */
+	private async subscribeToLifecycleEvents(
+		executionId: string,
+		data: IWorkflowExecutionDataProcess,
+	): Promise<void> {
+		if (!data.pushRef) return;
+
+		// Lazily imported: the subscriptions belong to the engine-v2 module.
+		const { EngineV2LifecycleSubscriptions } = await import(
+			'@/modules/engine-v2/engine-lifecycle-event-subscriptions.js'
+		);
+		await Container.get(EngineV2LifecycleSubscriptions).subscribe(executionId);
 	}
 
 	/** v1's `getExecutionStartNode`: the one case where it honours the editor's start nodes. */
@@ -331,10 +383,6 @@ export class EngineV2Dispatcher {
 			throw new NotImplementedError(
 				'Engine v2 cannot start a run at a pinned node yet. Run the workflow from the trigger instead.',
 			);
-		}
-
-		if (data.agentRequest !== undefined) {
-			throw new NotImplementedError('Engine v2 cannot run a workflow as an AI tool yet.');
 		}
 
 		// `WorkflowRunner.run` returns through the v2 branch before it establishes the
@@ -399,13 +447,17 @@ export class EngineV2Dispatcher {
 		return withoutNullSlots(main);
 	}
 
-	private toTriggerOutputs(
-		main: INodeExecutionData[][],
-		toStepOutputs: ToStepOutputs,
-	): TriggerOutputs | null {
-		const slots = toStepOutputs(main);
-
-		// The wire schema rejects an empty array; `null` is how "no slots" is sent.
-		return slots.length === 0 ? null : slots;
+	private async toSeededSteps(plan: ManualRunPlan | undefined): Promise<SeededSteps | undefined> {
+		if (!plan) return undefined;
+		// Lazily imported, as in `toEngineWorkflowPayload`.
+		const { toStepOutputs } = await import('@n8n/node-engine-compatibility');
+		// One entry per node, its passes in iteration order; the planner numbers
+		// them from 0 without gaps. A null prototype: a node id such as
+		// `constructor` must land on its own key.
+		const byNode: SeededSteps = Object.create(null);
+		for (const { nodeId, iteration, outputs } of plan.seeded) {
+			(byNode[nodeId] ??= [])[iteration] = toStepOutputs(outputs);
+		}
+		return byNode;
 	}
 }

@@ -4,7 +4,8 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { v4 as uuid } from 'uuid';
 
-import type { Agent } from '@/modules/agents/entities/agent.entity';
+import { createAgent } from '@test-integration/db/agents';
+
 import { AgentMemoryEntryCandidateEntity } from '@/modules/agents/entities/agent-memory-entry-candidate.entity';
 import { AgentMemoryEntrySourceEntity } from '@/modules/agents/entities/agent-memory-entry-source.entity';
 import { AgentMessageEntity } from '@/modules/agents/entities/agent-message.entity';
@@ -31,15 +32,14 @@ describe('AgentMemoryEntryRepository list and delete', () => {
 
 	beforeEach(async () => {
 		const project = await createTeamProject();
-		const agent = agentRepository.create({
+		const agent = await createAgent({
 			id: uuid(),
 			name: 'Test Agent',
 			projectId: project.id,
 			integrations: [],
 			tools: {},
 			skills: {},
-		} as Partial<Agent>);
-		await agentRepository.save(agent);
+		});
 		agentId = agent.id;
 		resourceId = uuid();
 		await resourceRepository.insert({ id: resourceId, metadata: null });

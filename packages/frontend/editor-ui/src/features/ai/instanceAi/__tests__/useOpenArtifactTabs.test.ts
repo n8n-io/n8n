@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { effectScope, ref, type EffectScope } from 'vue';
 import { flushPromises } from '@vue/test-utils';
-import type { InstanceAiThreadTabsState } from '@n8n/api-types';
+import type { AssistantThreadTabsState } from '@n8n/api-types';
 import { DEBOUNCE_TIME } from '@/app/constants';
 import { useOpenArtifactTabs, type ThreadTabsStorage } from '../composables/useOpenArtifactTabs';
 import type { ArtifactTab } from '../useCanvasPreview';
@@ -16,21 +16,21 @@ function dataTableTab(id: string): ArtifactTab {
 	return { id, type: 'data-table', name: `Table ${id}`, icon: 'table', projectId: 'project-1' };
 }
 
-function createStorage(state: InstanceAiThreadTabsState | null = null) {
-	let resolveLoad: (value: InstanceAiThreadTabsState | null) => void = () => {};
+function createStorage(state: AssistantThreadTabsState | null = null) {
+	let resolveLoad: (value: AssistantThreadTabsState | null) => void = () => {};
 	const load = vi.fn(
 		async () =>
-			await new Promise<InstanceAiThreadTabsState | null>((resolve) => {
+			await new Promise<AssistantThreadTabsState | null>((resolve) => {
 				resolveLoad = resolve;
 			}),
 	);
-	const save = vi.fn(async (_state: InstanceAiThreadTabsState) => {});
+	const save = vi.fn(async (_state: AssistantThreadTabsState) => {});
 	const storage: ThreadTabsStorage = { load, save };
 	return {
 		storage,
 		load,
 		save,
-		finishLoad: async (value: InstanceAiThreadTabsState | null = state) => {
+		finishLoad: async (value: AssistantThreadTabsState | null = state) => {
 			resolveLoad(value);
 			await flushPromises();
 		},
@@ -145,6 +145,23 @@ describe('useOpenArtifactTabs', () => {
 		expect(tabs.closeTab('wf-3')).toBe('wf-1');
 		expect(tabs.closeTab('wf-1')).toBeUndefined();
 		expect(tabs.openTabs.value).toEqual([]);
+	});
+
+	it('keeps the place of an open artifact that joined after the stored tabs when it is shown again', async () => {
+		const { storage, finishLoad } = createStorage({
+			tabs: [{ type: 'workflow', id: 'wf-1', name: 'Workflow wf-1' }],
+			closedTabs: [],
+			activeTab: null,
+		});
+		const { tabs } = setup(
+			[workflowTab('wf-1'), workflowTab('wf-2'), workflowTab('wf-3')],
+			storage,
+		);
+		await finishLoad();
+
+		tabs.reopenTab('wf-3');
+
+		expect(ids(tabs.openTabs.value)).toEqual(['wf-1', 'wf-2', 'wf-3']);
 	});
 
 	it('opens a closed artifact again', () => {
@@ -353,6 +370,50 @@ describe('useOpenArtifactTabs', () => {
 
 		expect(tabs.isLoaded.value).toBe(true);
 		expect(tabs.storedActiveTab.value).toEqual({ type: 'workflow', id: 'wf-2' });
+	});
+
+	describe('draft tabs', () => {
+		function draftTab(id: string): ArtifactTab {
+			return { ...workflowTab(id), draft: true };
+		}
+
+		it('never saves a draft tab, also when it is the active tab', async () => {
+			const loaded = createStorage();
+			const { tabs } = setup([workflowTab('wf-1'), draftTab('draft:a.ts')], loaded.storage);
+			await loaded.finishLoad(null);
+
+			tabs.moveTab('wf-1', 1);
+			tabs.saveTabs('draft:a.ts');
+			await vi.advanceTimersByTimeAsync(SAVE_DELAY);
+
+			expect(loaded.save).toHaveBeenCalledWith(
+				expect.objectContaining({
+					tabs: [{ type: 'workflow', id: 'wf-1', name: 'Workflow wf-1' }],
+					activeTab: null,
+				}),
+			);
+		});
+
+		it('never saves a closed draft tab as closed', async () => {
+			const loaded = createStorage();
+			const { tabs } = setup([workflowTab('wf-1'), draftTab('draft:a.ts')], loaded.storage);
+			await loaded.finishLoad(null);
+
+			expect(tabs.closeTab('draft:a.ts')).toBe('wf-1');
+			tabs.saveTabs('wf-1');
+			await vi.advanceTimersByTimeAsync(SAVE_DELAY);
+
+			expect(ids(tabs.openTabs.value)).toEqual(['wf-1']);
+			expect(loaded.save).toHaveBeenCalledWith(expect.objectContaining({ closedTabs: [] }));
+		});
+
+		it('opens a closed draft tab again without a change to the saved tabs', () => {
+			const { tabs } = setup([workflowTab('wf-1'), draftTab('draft:a.ts')]);
+			tabs.closeTab('draft:a.ts');
+
+			expect(tabs.reopenTab('draft:a.ts')).toBe(false);
+			expect(ids(tabs.openTabs.value)).toEqual(['wf-1', 'draft:a.ts']);
+		});
 	});
 
 	describe('storeDefaultTabs', () => {

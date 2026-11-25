@@ -4,6 +4,7 @@ import type {
 	CredentialSaveContext,
 	CredentialTransferContext,
 	EnforcementPoint,
+	ExecutionAdmissionContext,
 	PolicedWorkflow,
 	PolicyDecision,
 	WorkflowPublishContext,
@@ -21,7 +22,7 @@ import {
 } from '@n8n/decorators';
 import { mintPolicyCleared } from '@n8n/decorators/policy-internal';
 import { Service } from '@n8n/di';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { withInlineAgentToolNodes } from './policed-agent-nodes';
 import type {
@@ -122,6 +123,20 @@ export class PolicyEnforcementService {
 
 	async evaluateWorkflowPublish(context: WorkflowPublishContext): Promise<PolicyDecision> {
 		return await this.evaluate('workflowPublish', expandedWorkflow(context));
+	}
+
+	async enforceExecutionAdmission(
+		context: ExecutionAdmissionContext,
+		actor: PolicyActor,
+	): Promise<PolicyCleared<'executionAdmission'>> {
+		return await this.enforce('executionAdmission', context, actor, {
+			type: context.artifact.kind,
+			id: context.artifact.id,
+		});
+	}
+
+	async evaluateExecutionAdmission(context: ExecutionAdmissionContext): Promise<PolicyDecision> {
+		return await this.evaluate('executionAdmission', context);
 	}
 
 	async enforceWorkflowStart(

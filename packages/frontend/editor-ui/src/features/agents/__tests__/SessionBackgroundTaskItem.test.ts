@@ -15,7 +15,39 @@ const task: AgentBackgroundJobDto = {
 	startedAt: '2026-09-09T10:00:00.000Z',
 };
 
+// Reads useRootStore for download URLs; shows the file ids and thread instead.
+vi.mock('../components/AgentChatMessageAttachments.vue', () => ({
+	default: {
+		props: ['attachments', 'threadId'],
+		template: '<div :data-thread-id="threadId">{{ attachments.map((a) => a.fileId).join() }}</div>',
+	},
+}));
+
 enableAutoUnmount(afterEach);
+
+describe('SessionBackgroundTaskItem files', () => {
+	it('shows the files of a job with the session thread for the download URL', () => {
+		const wrapper = mount(SessionBackgroundTaskItem, {
+			global: { plugins: [i18nInstance] },
+			props: {
+				item: backgroundTasksToTimelineItems([
+					{
+						...task,
+						status: 'completed',
+						files: [{ fileId: 'f-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 }],
+					},
+				])[0],
+				selected: false,
+				projectId: 'p1',
+				agentId: 'a1',
+				threadId: 'thread-1',
+			},
+		});
+		const files = wrapper.get('[data-test-id="session-background-task-files"]');
+		expect(files.text()).toBe('f-1');
+		expect(files.attributes('data-thread-id')).toBe('thread-1');
+	});
+});
 
 describe('SessionBackgroundTaskItem', () => {
 	const suspendedTask: AgentBackgroundJobDto = {

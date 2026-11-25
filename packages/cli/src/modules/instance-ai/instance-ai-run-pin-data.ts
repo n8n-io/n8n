@@ -1,4 +1,5 @@
 import { Container } from '@n8n/di';
+import { resolveSampleFileMarkers } from '@n8n/instance-ai';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
@@ -11,6 +12,7 @@ import {
 	type WorkflowExecutionMockDataSource,
 } from 'n8n-workflow';
 
+import { isExecutionIdV2 } from '@/executions/execution-id';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 
 import { createTriggerExecutionData } from './trigger-run-data';
@@ -85,7 +87,8 @@ export function buildInstanceAiRunPinDataPlan(args: {
 
 /**
  * Convert SDK pinData (Record<string, IDataObject[]>) to runtime format (IPinData).
- * SDK stores plain objects; runtime wraps each item in { json: item }.
+ * SDK stores plain objects; runtime wraps each item in { json: item }. Sample-file
+ * markers become real file data, so a fixture never carries hand-written bytes.
  *
  * Built with `Object.fromEntries` so every node name keeps its own entry:
  * node names are free-form, and a few of them do not survive being assigned
@@ -96,7 +99,7 @@ export function sdkPinDataToRuntime(pinData: Record<string, unknown[]> | undefin
 	return Object.fromEntries(
 		Object.entries(pinData).map(([nodeName, items]) => [
 			nodeName,
-			items.map((item) => ({ json: (item ?? {}) as IDataObject })),
+			items.map((item) => resolveSampleFileMarkers(item)),
 		]),
 	);
 }
@@ -110,6 +113,10 @@ export async function pruneUnreachedVerificationPinData(args: {
 	const { executionId, verificationPinData, nonVerificationPinData, executedNodeNames } = args;
 	const verificationNodeNames = Object.keys(verificationPinData);
 	if (verificationNodeNames.length === 0) return;
+	// An engine v2 run is stored only on the data plane, and the data plane has
+	// no API to update a stored run. So a v2 run keeps the verification pin data
+	// of the nodes it did not reach.
+	if (isExecutionIdV2(executionId)) return;
 
 	const executionPersistence = Container.get(ExecutionPersistence);
 	const execution = await executionPersistence.findSingleExecution(executionId, {

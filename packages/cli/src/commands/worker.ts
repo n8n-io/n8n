@@ -14,14 +14,12 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { ExecutionStopService } from '@/scaling/execution-stop.service';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
-import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { resolveQueueName, resolveWorkerPoolName } from '@/scaling/queue-name';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { WorkerServer, WorkerServerEndpointsConfig } from '@/scaling/worker-server';
 import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
-import { JwtService } from '@n8n/backend-services';
+import { JwtService, Publisher, Subscriber } from '@n8n/backend-services';
 
 import { BaseCommand } from './base-command';
 
@@ -50,7 +48,7 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	override needsExpressionEngine = true;
 
-	override needsTaskRunner = true;
+	override needsCodeExecution = true;
 
 	override seedsInstanceIdentity = true;
 
@@ -169,10 +167,11 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 	}
 
 	async initEventBus() {
+		// Before initialize(), which runs crash recovery.
+		Container.get(LogStreamingEventRelay).init();
 		await Container.get(MessageEventBus).initialize({
 			workerId: this.instanceSettings.hostId,
 		});
-		Container.get(LogStreamingEventRelay).init();
 	}
 
 	/**
@@ -225,6 +224,13 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 			const { WorkerServer } = await import('@/scaling/worker-server.js');
 			workerServer = Container.get(WorkerServer);
 			await workerServer.init(endpointsConfig);
+		}
+
+		// `WorkerServer.init()` does not run when every endpoint is off. Register
+		// here so workflow hooks still install before the worker takes jobs.
+		if ((this.externalHooks?.registerFunctions.length ?? 0) > 0) {
+			const { HooksApiService } = await import('@/hooks-api/hooks-api.service.js');
+			await Container.get(HooksApiService).register();
 		}
 
 		// After the server started, so the metrics collector is subscribed before the tasks are routed.

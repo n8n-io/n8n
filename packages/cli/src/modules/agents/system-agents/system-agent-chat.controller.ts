@@ -1,15 +1,18 @@
 import {
 	type AgentBackgroundJobsResponse,
 	AgentChatCancelDto,
-	AgentChatMessageDto,
+	SystemAgentChatMessageDto,
 	type AgentChatMessagesResponse,
 	AgentChatQueueReorderDto,
 	type AgentChatQueueResponse,
+	type AgentSessionFilesResponse,
 	AgentChatQueueSteerDto,
-	AgentChatQueueUpdateDto,
+	SystemAgentChatQueueUpdateDto,
 	AgentChatResumeDto,
 	type AgentThreadUsageResponse,
 	ListSystemAgentThreadsQueryDto,
+	AgentChatMessagesQueryDto,
+	RenameSystemAgentThreadDto,
 	SystemAgentChatQueryDto,
 	type SystemAgentThreadSummary,
 	type SystemAgentThreadsResponse,
@@ -24,14 +27,19 @@ import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentChatExecutionService } from '../agent-chat-execution.service';
 import { AgentChatRelayService } from '../agent-chat-relay.service';
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
+import { AgentExecutionService } from '../agent-execution.service';
+import { AgentMemoryTraceService } from '../agent-memory-trace.service';
 import { AgentMessageQueueService } from '../agent-message-queue.service';
 import type { FlushableResponse } from '../agent-sse-stream';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { AgentExecutionThreadKeyset } from '../repositories/agent-execution-thread.repository';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
-import { SYSTEM_CHAT_SOURCE } from '../utils/agent-thread-access';
+import { N8nMemory } from '../integrations/n8n-memory';
+import { SYSTEM_CHAT_SOURCE, systemChatFileScope } from '../utils/agent-thread-access';
+import { isOlderChatHistoryPage, parseChatHistoryPage } from '../utils/chat-history-page';
 import { ownCheckpoint, threadMessagesResponse } from '../utils/messages-envelope';
 import { parseThreadListLimit } from '../utils/parse-thread-list-limit';
+import { toThreadDetailResponse } from '../utils/thread-detail-response';
 import { SystemAgentExecutionService } from './system-agent-execution.service';
 
 /**
@@ -56,6 +64,9 @@ export class SystemAgentChatController {
 		private readonly orchestrator: AgentExecutionOrchestratorService,
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly attachments: AgentChatAttachmentService,
+		private readonly memory: N8nMemory,
+		private readonly executionService: AgentExecutionService,
+		private readonly memoryTrace: AgentMemoryTraceService,
 	) {}
 
 	/**
@@ -67,7 +78,7 @@ export class SystemAgentChatController {
 		req: AuthenticatedRequest,
 		res: FlushableResponse,
 		@Param('agentId') agentId: string,
-		@Body payload: AgentChatMessageDto,
+		@Body payload: SystemAgentChatMessageDto,
 		@Query { projectId }: SystemAgentChatQueryDto,
 	) {
 		const { message, sessionId, messageId, attachments, clientContext } = payload;
@@ -115,8 +126,9 @@ export class SystemAgentChatController {
 			...(cursor ? { before: decodeThreadCursor(cursor) } : {}),
 		});
 		const last = page.threads.at(-1);
+		const metadata = await this.memory.getThreadsMetadata(page.threads.map(({ id }) => id));
 		return {
-			data: page.threads.map(toThreadSummary),
+			data: page.threads.map((thread) => toThreadSummary(thread, metadata.get(thread.id))),
 			nextCursor: page.hasMore && last ? encodeThreadCursor(last) : null,
 		};
 	}
@@ -127,7 +139,48 @@ export class SystemAgentChatController {
 		req: AuthenticatedRequest<{ agentId: string; threadId: string }>,
 	): Promise<SystemAgentThreadSummary> {
 		const { agentId, threadId } = req.params;
-		return toThreadSummary(await this.systemAgents.getUsableThread(agentId, req.user, threadId));
+		const thread = await this.systemAgents.getUsableThread(agentId, req.user, threadId);
+		const metadata = await this.memory.getThreadsMetadata([thread.id]);
+		return toThreadSummary(thread, metadata.get(thread.id));
+	}
+
+	/**
+	 * The session timeline of one of the user's own threads with the agent:
+	 * the thread, its executions and its memory trace. Opening it runs the
+	 * access floor. The project route of the timeline loads project agents only.
+	 */
+	@Get('/:agentId/threads/:threadId/detail')
+	async getThreadDetail(req: AuthenticatedRequest<{ agentId: string; threadId: string }>) {
+		const { agentId, threadId } = req.params;
+		const { projectId } = await this.systemAgents.getUsableThread(agentId, req.user, threadId);
+		const detail = await this.executionService.getThreadDetail(
+			threadId,
+			projectId,
+			agentId,
+			req.user.id,
+		);
+		if (!detail) throw new NotFoundError('Session not found');
+		const memory = await this.memoryTrace.getThreadMemory({
+			agentId,
+			projectId,
+			userId: req.user.id,
+			threadId,
+			executions: detail.executions,
+		});
+		return toThreadDetailResponse(detail, { userId: req.user.id, isSystemAgent: true, memory });
+	}
+
+	/** Rename one of the user's own threads with the agent. Renaming runs the access floor. */
+	@Patch('/:agentId/threads/:threadId')
+	async renameThread(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Param('threadId') threadId: string,
+		@Body payload: RenameSystemAgentThreadDto,
+	) {
+		await this.systemAgents.updateThread(agentId, req.user, threadId, { title: payload.title });
+		return { success: true };
 	}
 
 	@Post('/:agentId/chat/resume', { usesTemplates: true })
@@ -172,6 +225,13 @@ export class SystemAgentChatController {
 			surface: 'system',
 			...(payload.scope ? { scope: payload.scope } : {}),
 		});
+		if (cancelRequested) {
+			await this.systemAgents.reportUserStoppedTurn({
+				agentId,
+				threadId: thread.id,
+				userId: req.user.id,
+			});
+		}
 		return { cancelRequested };
 	}
 
@@ -185,12 +245,16 @@ export class SystemAgentChatController {
 		@Query payload: AgentChatCancelDto = {},
 	) {
 		this.systemAgents.assertRegistered(agentId);
+		const threadId = await this.systemAgents.findThreadIdOfRun(agentId, req.user, runId);
 		const cancelled = await this.orchestrator.cancelChatRun({
 			agentId,
 			runId,
 			resourceId: this.systemAgents.resourceIdFor(req.user),
 			...(payload.scope === 'foreground' ? { cancelBackgroundJobs: false } : {}),
 		});
+		if (cancelled && threadId) {
+			await this.systemAgents.reportUserStoppedTurn({ agentId, threadId, userId: req.user.id });
+		}
 		return { cancelled };
 	}
 
@@ -213,15 +277,20 @@ export class SystemAgentChatController {
 	@Get('/:agentId/chat/:threadId/messages')
 	async getChatMessages(
 		req: AuthenticatedRequest<{ agentId: string; threadId: string }>,
+		_res: Response,
+		@Query query: AgentChatMessagesQueryDto = {},
 	): Promise<AgentChatMessagesResponse> {
 		const { agentId, threadId } = req.params;
+		const page = parseChatHistoryPage(query);
 		const thread = await this.systemAgents.getUsableThread(agentId, req.user, threadId);
 		const history = await this.orchestrator.getConversationHistory({
 			threadId: thread.id,
 			projectId: thread.projectId,
 			agentId,
 			userId: req.user.id,
+			page,
 		});
+		if (isOlderChatHistoryPage(page)) return threadMessagesResponse(history, null);
 		const checkpoint = await this.checkpointStorage.findSuspendedForThread(agentId, thread.id);
 		return threadMessagesResponse(
 			history,
@@ -236,16 +305,35 @@ export class SystemAgentChatController {
 	) {
 		const { agentId, attachmentId } = req.params;
 		this.systemAgents.assertRegistered(agentId);
-		const attachment = await this.attachments.getForSystemAgent(attachmentId, {
-			agentId,
-			resourceId: this.systemAgents.resourceIdFor(req.user),
-			source: SYSTEM_CHAT_SOURCE,
-		});
+		const attachment = await this.attachments.getForSystemAgent(
+			attachmentId,
+			systemChatFileScope(agentId, this.systemAgents.resourceIdFor(req.user)),
+		);
 		if (!attachment) {
 			throw new NotFoundError(`Attachment "${attachmentId}" not found`);
 		}
 		await this.systemAgents.getUsableThread(agentId, req.user, attachment.threadId);
 		await this.chatRelay.streamAttachment(attachment, res);
+	}
+
+	/**
+	 * The files of one of the user's own threads, for the session files list:
+	 * uploads and files from the sandbox. A new session has no thread before its
+	 * first message, so it has no files. The list uses the scope of the download
+	 * route, so each listed file can be downloaded.
+	 */
+	@Get('/:agentId/chat/:threadId/files')
+	async getSessionFiles(
+		req: AuthenticatedRequest<{ agentId: string; threadId: string }>,
+	): Promise<AgentSessionFilesResponse> {
+		const { agentId, threadId } = req.params;
+		const thread = await this.systemAgents.findUsableThread(agentId, req.user, threadId);
+		if (!thread) return { files: [] };
+		const files = await this.attachments.listForSystemAgentThread(
+			thread.id,
+			systemChatFileScope(agentId, this.systemAgents.resourceIdFor(req.user)),
+		);
+		return { files };
 	}
 
 	/** System agents do not run Agents background jobs. */
@@ -292,7 +380,7 @@ export class SystemAgentChatController {
 	async updateQueuedMessage(
 		req: AuthenticatedRequest<{ agentId: string; threadId: string; queueId: string }>,
 		_res: Response,
-		@Body payload: AgentChatQueueUpdateDto,
+		@Body payload: SystemAgentChatQueueUpdateDto,
 	): Promise<void> {
 		const thread = await this.usableQueueThread(req);
 		await this.messageQueue.updatePending({
@@ -371,12 +459,16 @@ export class SystemAgentChatController {
 	}
 }
 
-function toThreadSummary(thread: AgentExecutionThread): SystemAgentThreadSummary {
+function toThreadSummary(
+	thread: AgentExecutionThread,
+	metadata: Record<string, unknown> | undefined,
+): SystemAgentThreadSummary {
 	return {
 		id: thread.id,
 		title: thread.title,
 		updatedAt: thread.updatedAt.toISOString(),
 		projectId: thread.projectId,
+		...(metadata ? { metadata } : {}),
 	};
 }
 

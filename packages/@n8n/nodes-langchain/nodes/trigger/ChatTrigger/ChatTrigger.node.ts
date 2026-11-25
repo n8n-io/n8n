@@ -305,6 +305,7 @@ export class ChatTrigger extends Node {
 	description: INodeTypeDescription = {
 		displayName: 'Chat Trigger',
 		name: 'chatTrigger',
+		schemaPath: 'trigger/ChatTrigger/ChatTrigger',
 		icon: 'node:chat-trigger',
 		iconColor: 'black',
 		group: ['trigger'],
@@ -995,13 +996,14 @@ export class ChatTrigger extends Node {
 		const loadPreviousSession = options.loadPreviousSession;
 		assertValidLoadPreviousSessionOption(loadPreviousSession, ctx.getNode());
 
-		const enableStreaming = availableInChat
-			? !options.responseMode || options.responseMode === 'streaming'
-			: options.responseMode === 'streaming';
-
 		const req = ctx.getRequestObject();
 		const webhookName = ctx.getWebhookName();
 		const bodyData = ctx.getBodyData() ?? {};
+		const enableStreaming =
+			bodyData.action !== 'loadPreviousSession' &&
+			(availableInChat
+				? !options.responseMode || options.responseMode === 'streaming'
+				: options.responseMode === 'streaming');
 
 		const authentication = ctx.getNodeParameter('authentication', 'none');
 		let authedUser: IUser | undefined;

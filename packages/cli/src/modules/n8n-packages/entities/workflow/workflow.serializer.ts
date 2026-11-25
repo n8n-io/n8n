@@ -7,8 +7,10 @@ import {
 import type { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { IConnections, INode } from 'n8n-workflow';
+import { ZodError } from 'zod';
 
 import { visitWorkflowCredentials } from '../credential/workflow-credential-references';
+import { PackageWorkflowInvalidError } from '../package-export.errors';
 import { definePackageSerializationPayload } from '../package-serialization.types';
 import { compareTagsByName } from '../tag/tag.types';
 
@@ -17,7 +19,7 @@ type WorkflowPackageKeyHandling = {
 	createdAt: 'exclude';
 	updatedAt: 'exclude';
 	name: 'copy';
-	description: 'exclude';
+	description: 'copy';
 	active: 'exclude';
 	isArchived: 'copy';
 	nodes: 'copy';
@@ -42,7 +44,7 @@ type WorkflowPackageKeyHandling = {
 
 export type WorkflowPackageContent = Pick<
 	WorkflowEntity,
-	'name' | 'nodes' | 'connections' | 'nodeGroups' | 'isArchived' | 'settings'
+	'name' | 'description' | 'nodes' | 'connections' | 'nodeGroups' | 'isArchived' | 'settings'
 >;
 
 const serializePayload = definePackageSerializationPayload<
@@ -79,6 +81,8 @@ export class WorkflowSerializer {
 			serializePayload({
 				id: workflow.id,
 				name: workflow.name,
+				// Omit an empty description, so an old export keeps its blob hash.
+				...(workflow.description ? { description: workflow.description } : {}),
 				nodes: this.stripCredentialNames(workflow.nodes),
 				connections: workflow.connections,
 				settings: workflow.settings ? { ...workflow.settings } : undefined,
@@ -107,6 +111,23 @@ export class WorkflowSerializer {
 		return copy;
 	}
 
+	serializeForExport(workflow: WorkflowEntity, options: { includeTags: boolean }) {
+		try {
+			return [this.serialize(workflow, options), this.serializeMetadata(workflow)] as const;
+		} catch (error) {
+			if (!(error instanceof ZodError)) throw error;
+
+			const fields = error.issues
+				.slice(0, 10)
+				.map((issue) => `${issue.path.join('.') || '(root)'}: ${issue.message}`)
+				.join('; ');
+			throw new PackageWorkflowInvalidError(
+				`Workflow ${workflow.id} cannot be exported because its stored data is invalid (${fields}). Export aborted.`,
+				error,
+			);
+		}
+	}
+
 	serializeMetadata(workflow: WorkflowEntity): SerializedWorkflowMetadata {
 		return serializedWorkflowMetadataSchema.parse(
 			serializeMetadataPayload({
@@ -126,6 +147,8 @@ export class WorkflowSerializer {
 
 		return {
 			name: parsed.name,
+			// An absent key means the source has no description, so the import clears it.
+			description: parsed.description ?? null,
 			nodes: parsed.nodes as INode[],
 			connections: parsed.connections as IConnections,
 			nodeGroups: parsed.nodeGroups ?? [],

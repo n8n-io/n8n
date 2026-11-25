@@ -1,4 +1,4 @@
-import type { DataTable } from '@/modules/data-table/data-table.entity';
+import type { DataTable } from '@n8n/backend-module-data-table';
 
 import { DataTableSerializer } from '../data-table.serializer';
 

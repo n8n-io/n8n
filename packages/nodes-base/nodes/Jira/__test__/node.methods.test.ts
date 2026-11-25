@@ -1,6 +1,12 @@
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
-import type { IHttpRequestMethods, ILoadOptionsFunctions, INode } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IHttpRequestMethods,
+	ILoadOptionsFunctions,
+	INode,
+	RequestPath,
+} from 'n8n-workflow';
 
 import { Jira } from '../Jira.node';
 import type * as _importType0 from '../GenericFunctions';
@@ -12,10 +18,13 @@ vi.mock('../GenericFunctions', async () => {
 	return {
 		...originalModule,
 		jiraSoftwareCloudApiRequest: vi.fn(async function (
-			endpoint: string,
+			endpoint: RequestPath,
 			method: IHttpRequestMethods,
+			_body?: IDataObject,
+			query?: IDataObject,
 		) {
-			if (method === 'GET' && endpoint === `/api/2/issue/${ISSUE_KEY}`) {
+			const path = endpoint.toString();
+			if (method === 'GET' && path === `/api/2/issue/${ISSUE_KEY}`) {
 				return {
 					id: 10000,
 					fields: {
@@ -27,7 +36,7 @@ vi.mock('../GenericFunctions', async () => {
 						},
 					},
 				};
-			} else if (method === 'GET' && endpoint === '/api/2/issue/10000/editmeta') {
+			} else if (method === 'GET' && path === '/api/2/issue/10000/editmeta') {
 				return {
 					fields: {
 						customfield_123: {
@@ -40,8 +49,10 @@ vi.mock('../GenericFunctions', async () => {
 				};
 			} else if (
 				method === 'GET' &&
-				endpoint ===
-					'/api/2/issue/createmeta?projectIds=10001&issueTypeIds=10002&expand=projects.issuetypes.fields'
+				path === '/api/2/issue/createmeta' &&
+				query?.projectIds === 10001 &&
+				query?.issueTypeIds === 10002 &&
+				query?.expand === 'projects.issuetypes.fields'
 			) {
 				return {
 					projects: [

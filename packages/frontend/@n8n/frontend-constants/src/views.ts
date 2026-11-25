@@ -46,6 +46,7 @@ export enum VIEWS {
 	LDAP_SETTINGS = 'LdapSettings',
 	PERSONAL_SETTINGS = 'PersonalSettings',
 	SECURITY_SETTINGS = 'SecuritySettings',
+	SECURITY_WORKFLOW_REVIEW_INSTANCE_SETTINGS = 'SecurityWorkflowReviewInstanceSettings',
 	API_SETTINGS = 'APISettings',
 	NOT_FOUND = 'NotFoundView',
 	COMMUNITY_NODES = 'CommunityNodes',
@@ -100,5 +101,7 @@ export enum VIEWS {
 	SETTINGS_CONTEXT = 'SettingsContext',
 	SETTINGS_CONTEXT_PREFERENCES = 'SettingsContextPreferences',
 	SETTINGS_CONTEXT_SKILLS = 'SettingsContextSkills',
+	SETTINGS_CONTEXT_COLLECTIONS = 'SettingsContextCollections',
+	KNOWLEDGE_COLLECTION = 'KnowledgeCollection',
 	RESOURCE_CENTER = 'ResourceCenter',
 }

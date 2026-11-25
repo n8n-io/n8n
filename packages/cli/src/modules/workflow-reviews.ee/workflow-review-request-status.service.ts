@@ -17,6 +17,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { WorkflowReviewAuthorizationService } from './workflow-review-authorization.service';
 import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';
+import { WorkflowReviewRequirementService } from './workflow-review-requirement.service';
 import { toEligibleReviewer } from './workflow-review.mapper';
 
 @Service()
@@ -27,6 +28,7 @@ export class WorkflowReviewRequestStatusService {
 		private readonly workflowReviewRequestRepository: WorkflowReviewRequestRepository,
 		private readonly userRepository: UserRepository,
 		private readonly authorizationService: WorkflowReviewAuthorizationService,
+		private readonly requirementService: WorkflowReviewRequirementService,
 	) {}
 
 	async list(
@@ -42,7 +44,7 @@ export class WorkflowReviewRequestStatusService {
 			throw new NotFoundError('Could not find workflow');
 		}
 
-		const [[requests, count], canPublish] = await Promise.all([
+		const [[requests, count], canPublish, reviewRequiredBy] = await Promise.all([
 			this.workflowReviewRequestRepository.findRequestsForWorkflow(query.workflowId, {
 				state: query.state,
 				skip: query.skip,
@@ -51,11 +53,13 @@ export class WorkflowReviewRequestStatusService {
 			this.workflowFinderService
 				.findWorkflowForUser(query.workflowId, user, ['workflow:publish'])
 				.then((found) => found !== null),
+			this.requirementService.getReviewRequirement(query.workflowId),
 		]);
 
 		return {
 			count,
 			data: await this.toWorkflowScopedItems(requests, canPublish, user),
+			reviewRequiredBy,
 		};
 	}
 

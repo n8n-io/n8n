@@ -29,7 +29,8 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { Workflow, UnexpectedError, createRunExecutionData } from 'n8n-workflow';
+import { Workflow, createRunExecutionData } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { AsyncLocalStorage } from 'node:async_hooks';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -346,7 +347,8 @@ export class TriggerExecutionContextFactory {
 			// node gets no snapshot: it reads and writes the real static-data bucket
 			// directly.
 			const stagedCursorStore = new AsyncLocalStorage<
-				{ migrated: true; snapshot: PollCursor; seed: PollCursor } | { migrated: false }
+				| { migrated: true; snapshot: PollCursor; seed: PollCursor; bounded: boolean }
+				| { migrated: false }
 			>();
 
 			const __runPoll = async <T>(poll: () => Promise<T>): Promise<T> => {
@@ -357,7 +359,12 @@ export class TriggerExecutionContextFactory {
 					prefetchedCursor,
 				);
 				const store = resolved.migrated
-					? { migrated: true as const, snapshot: cloneDeep(resolved.cursor), seed: resolved.cursor }
+					? {
+							migrated: true as const,
+							snapshot: cloneDeep(resolved.cursor),
+							seed: resolved.cursor,
+							bounded: false,
+						}
 					: { migrated: false as const };
 				return await stagedCursorStore.run(store, poll);
 			};
@@ -385,6 +392,8 @@ export class TriggerExecutionContextFactory {
 				this.logger.debug(`Received event to trigger execution for workflow "${workflow.name}"`);
 
 				const cursor = takeStagedCursor();
+				const staged = stagedCursorStore.getStore();
+				const pollIsBounded = staged?.migrated === true && staged.bounded;
 
 				// A migrated node's cursor lives in `poller_state`, not static data, so
 				// saving here can't race the cursor commit; this persists global static
@@ -437,6 +446,7 @@ export class TriggerExecutionContextFactory {
 								responsePromise,
 								fence,
 								awaitedByTrigger(responsePromise, donePromise),
+								pollIsBounded,
 							);
 				});
 
@@ -484,6 +494,11 @@ export class TriggerExecutionContextFactory {
 				return staged.migrated ? staged.snapshot : workflow.getStaticData('node', node);
 			};
 
+			const declareBoundedPoll = () => {
+				const staged = stagedCursorStore.getStore();
+				if (staged?.migrated) staged.bounded = true;
+			};
+
 			return new PollContext(
 				workflow,
 				node,
@@ -498,6 +513,7 @@ export class TriggerExecutionContextFactory {
 				// Only a leased (durable) poll is bounded by the timeout; a
 				// legacy in-memory poll keeps PollContext's generous default.
 				fence ? pollBudgetMs : undefined,
+				declareBoundedPoll,
 			);
 		};
 	}
@@ -589,6 +605,7 @@ export class TriggerExecutionContextFactory {
 					runData: {},
 				},
 			}),
+			// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 			finished: false,
 			mode,
 			startedAt: new Date(),

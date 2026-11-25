@@ -1,3 +1,4 @@
+import { discordHitl } from './discord-hitl';
 import type { AgentMessageIntegrationOrigin, RichCardComponentType } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
@@ -75,6 +76,7 @@ const DISCORD_API_URL = 'https://discord.com/api/v10';
  */
 @Service()
 export class DiscordIntegration extends AgentChatIntegration {
+	readonly hitl = discordHitl;
 	readonly type = 'discord';
 
 	readonly credentialTypes = ['discordBotApi'];
@@ -136,6 +138,9 @@ export class DiscordIntegration extends AgentChatIntegration {
 		'For send_channel_message, channelId must be shaped "discord:<guildId>:<channelId>" — pass the value returned by search_channels or get_current_message_context. A bare Discord channel ID copied from the Discord app is rejected.',
 		'A Discord mention is answered inside a thread created off that message. Use send_channel_message when the reply belongs in the channel itself rather than that thread.',
 	];
+
+	// A bot can attach up to 10 files of 10 MiB each in a server without boosts.
+	readonly fileUploadLimits = { maxFiles: 10, maxFileBytes: 10 * 1024 * 1024 };
 
 	readonly needsShortCallbackData = true;
 

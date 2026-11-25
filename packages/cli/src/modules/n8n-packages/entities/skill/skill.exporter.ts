@@ -29,7 +29,6 @@ export class SkillExporter {
 	async export(request: SkillExportRequest): Promise<ManifestEntry[]> {
 		const skillIds = [...new Set(request.agents.flatMap(({ skillIds: ids }) => ids))];
 		if (skillIds.length === 0) return [];
-		const projectOfAgent = new Map(request.agents.map((agent) => [agent.agentId, agent.projectId]));
 		const rows = await this.skillService.findLatest(skillIds);
 		const canRead = await this.skillAccess.accessCheck(request.user, 'read');
 		const entries: ManifestEntry[] = [];
@@ -40,9 +39,8 @@ export class SkillExporter {
 					`Skill "${id}" does not exist. Export aborted. Remove the skill from the Agent, then export again.`,
 				);
 			}
-			const ownerProjectId =
-				row.target.projectId ?? projectOfAgent.get(row.target.agentId ?? '') ?? undefined;
-			if (!canRead(row.target, ownerProjectId ?? null)) {
+			const ownerProjectId = row.target.projectId ?? undefined;
+			if (!canRead(row.target)) {
 				throw new PackageExportBlockedError(
 					`You cannot read skill "${row.skill.name}" (${id}). Export aborted. Ask for access to the skill, or export without this Agent.`,
 				);
@@ -67,11 +65,9 @@ export class SkillExporter {
 }
 
 function serializeSkill(row: LatestSkill): SerializedSkill {
-	const { agentId } = row.target;
 	return serializedSkillSchema.parse({
 		id: row.id,
 		scope: skillScopeOf(row.target),
-		...(agentId ? { agentId } : {}),
 		skill: row.skill,
 		frontmatter: row.frontmatter,
 	});

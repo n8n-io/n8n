@@ -1,10 +1,9 @@
-import { ModuleRegistry } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { getN8nVersion, ModuleRegistry } from '@n8n/backend-common';
+import { EventService, loginIdOf } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
-import { N8N_VERSION } from '@/constants';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 
 import { buildImportResult, toPackageSummary } from './engine/import-result';
@@ -53,6 +52,7 @@ import {
 	ExportDependencyPolicy,
 	ExportVersionPolicy,
 	OverwriteDeletionPolicy,
+	ProjectConflictPolicy,
 	LayoutConflictPolicy,
 	TagConflictPolicy,
 	ImportConflictPolicy,
@@ -92,7 +92,7 @@ interface WrittenExport {
 	folderIds: string[];
 	projectIds: string[];
 	credentialExportPolicy: CredentialExportPolicy;
-	includeArchivedWorkflows: boolean;
+	includeArchived: boolean;
 }
 
 type DirectoryProjectPackage =
@@ -124,6 +124,7 @@ const CHERRY_PICK_IMPORT_POLICY = {
 	| 'projectId'
 	| 'folderId'
 	| 'apiKeyScopes'
+	| 'publicApi'
 	| 'bindings'
 	| 'selection'
 	| 'overwriteDeletionPolicy'
@@ -175,7 +176,8 @@ export class N8nPackagesService {
 			...(result.projectIds.length ? { projectIds: result.projectIds } : {}),
 			counts: result.counts,
 			credentialExportPolicy: result.credentialExportPolicy,
-			includeArchivedWorkflows: result.includeArchivedWorkflows,
+			includeArchived: result.includeArchived,
+			loginId: loginIdOf(request.ctx),
 		});
 
 		return { stream, counts: result.counts };
@@ -215,19 +217,20 @@ export class N8nPackagesService {
 		const versionPolicy = request.versionPolicy ?? ExportVersionPolicy.Latest;
 		const credentialExportPolicy =
 			request.credentialExportPolicy ?? CredentialExportPolicy.ExpressionValuesOnly;
-		const includeArchivedWorkflows = request.includeArchivedWorkflows ?? false;
+		const includeArchived = request.includeArchived ?? false;
 
 		const { folderExportResult, workflowExportResult, projectExportResult, agentExportResult } =
 			await this.exportSelectedEntities(writer, request, {
 				includeTags,
 				versionPolicy,
 				dependencyPolicy,
-				includeArchivedWorkflows,
+				includeArchived,
 			});
 
 		const allFoldersBeforeAutoInclude = [
 			...(folderExportResult?.entries ?? []),
 			...(projectExportResult?.folderEntries ?? []),
+			...(agentExportResult?.folderEntries ?? []),
 		];
 		const allProjectsBeforeAutoInclude = [
 			...(projectExportResult?.entries ?? []),
@@ -351,6 +354,7 @@ export class N8nPackagesService {
 			credentialExportPolicy,
 			// Routes project-owned credentials into their project namespace; others stay top-level.
 			projectTargetsById,
+			additionalCredentialIds: request.projectCredentialIds,
 		});
 
 		const dataTableExportResult = await this.dataTableExporter.export({
@@ -393,7 +397,7 @@ export class N8nPackagesService {
 		const agentEntries = agentExportResult?.agentEntries ?? [];
 		const written = {
 			packageFormatVersion: FORMAT_VERSION,
-			sourceN8nVersion: N8N_VERSION,
+			sourceN8nVersion: getN8nVersion(),
 			sourceId: this.instanceSettings.instanceId,
 			...(agentEntries.length > 0 ? { agents: agentEntries } : {}),
 			...(agentExportResult?.skillEntries.length ? { skills: agentExportResult.skillEntries } : {}),
@@ -434,7 +438,7 @@ export class N8nPackagesService {
 			folderIds: allFolders.map(({ id }) => id),
 			projectIds: allProjects.map(({ id }) => id),
 			credentialExportPolicy,
-			includeArchivedWorkflows,
+			includeArchived,
 		};
 	}
 
@@ -445,13 +449,13 @@ export class N8nPackagesService {
 			includeTags: boolean;
 			versionPolicy: ExportVersionPolicy;
 			dependencyPolicy: ExportDependencyPolicy;
-			includeArchivedWorkflows: boolean;
+			includeArchived: boolean;
 		},
 	) {
 		const workflowIds = request.workflowIds ?? [];
 		const folderIds = request.folderIds ?? [];
 		const projectIds = request.projectIds ?? [];
-		const { includeTags, versionPolicy, dependencyPolicy, includeArchivedWorkflows } = options;
+		const { includeTags, versionPolicy, dependencyPolicy, includeArchived } = options;
 
 		const folderExportResult =
 			folderIds.length > 0
@@ -461,7 +465,8 @@ export class N8nPackagesService {
 						writer,
 						includeTags,
 						versionPolicy,
-						includeArchivedWorkflows,
+						includeArchived,
+						includeAgentFolders: request.includeAgents !== false,
 					})
 				: undefined;
 
@@ -487,10 +492,12 @@ export class N8nPackagesService {
 						user: request.user,
 						projectIds,
 						workflowIds: request.projectWorkflowIds,
+						folderIds: request.projectFolderIds,
 						writer,
 						includeTags,
 						versionPolicy,
-						includeArchivedWorkflows,
+						includeArchived,
+						includeAgentFolders: request.includeAgents !== false,
 					})
 				: undefined;
 
@@ -501,11 +508,17 @@ export class N8nPackagesService {
 						user: request.user,
 						writer,
 						agentIds: request.agentIds,
+						folderIds: folderExportResult?.entries.map(({ id }) => id),
 						projectIds,
 						projectWorkflowIds: request.projectWorkflowIds,
 						versionPolicy,
 						dependencyPolicy,
+						includeArchived,
 						projectTargetsById: projectExportResult?.projectTargetsById,
+						existingFolderEntries: [
+							...(projectExportResult?.folderEntries ?? []),
+							...(folderExportResult?.entries ?? []),
+						],
 					});
 
 		return { folderExportResult, workflowExportResult, projectExportResult, agentExportResult };
@@ -602,10 +615,24 @@ export class N8nPackagesService {
 			if (!allowAgents) {
 				throw new BadRequestError('Agent packages require the ordinary archive import endpoint.');
 			}
+
 			if (!this.moduleRegistry.isActive('agents')) {
 				throw new BadRequestError('The Agents module is not enabled.');
 			}
 		}
+
+		if (!allowAgents && manifest.folders?.length) {
+			const prefixes = ['', ...(manifest.projects ?? []).map(({ target }) => `${target}/`)];
+
+			for (const prefix of prefixes) {
+				const folders = await this.packageParser.getFolders(reader, prefix);
+
+				if (folders.some((folder) => folder.resourceType === 'agent')) {
+					throw new BadRequestError('Agent folders require the ordinary archive import endpoint.');
+				}
+			}
+		}
+
 		return manifest;
 	}
 
@@ -703,9 +730,12 @@ export class N8nPackagesService {
 
 		return {
 			user: request.user,
+			publicApi: request.publicApi,
+			...(request.ctx !== undefined ? { ctx: request.ctx } : {}),
 			...(request.apiKeyScopes !== undefined ? { apiKeyScopes: request.apiKeyScopes } : {}),
 			...(request.bindings !== undefined ? { bindings: request.bindings } : {}),
 			...CHERRY_PICK_IMPORT_POLICY,
+			projectConflictPolicy: request.projectConflictPolicy ?? ProjectConflictPolicy.Merge,
 			overwriteDeletionPolicy: request.overwriteDeletionPolicy ?? OverwriteDeletionPolicy.Archive,
 			conflictPolicy: request.conflictPolicy ?? ImportConflictPolicy.NewVersion,
 			idPolicy: request.idPolicy ?? WorkflowIdPolicy.Source,

@@ -1,0 +1,54 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"created_at": {
+			"type": "string"
+		},
+		"id": {
+			"type": "number"
+		},
+		"referrer": {},
+		"source": {
+			"type": "string"
+		},
+		"state": {
+			"type": "string"
+		},
+		"subscribable_id": {
+			"type": "number"
+		},
+		"subscribable_type": {
+			"type": "string"
+		},
+		"subscriber": {
+			"properties": {
+				"created_at": {
+					"type": "string"
+				},
+				"email_address": {
+					"type": "string"
+				},
+				"fields": {
+					"additionalProperties": true,
+					"properties": {
+						"last_name": {
+							"type": ["null", "string"]
+						}
+					},
+					"type": "object"
+				},
+				"first_name": {
+					"type": ["null", "string"]
+				},
+				"id": {
+					"type": "number"
+				},
+				"state": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

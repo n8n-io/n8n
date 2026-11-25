@@ -2,6 +2,7 @@ import type { Mocked } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import type { ProjectRepository, User } from '@n8n/db';
+import { UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
@@ -90,9 +91,13 @@ describe('NodeResourceExplorerService', () => {
 	test('rejects when the credential type does not match the requested type', async () => {
 		mockCredentialOwned({ type: 'someOtherApi' });
 
-		await expect(service.exploreResources(user, baseParams)).rejects.toThrow(
-			'Credential cred-1 not found or not accessible',
+		const lookup = service.exploreResources(user, baseParams);
+		await expect(lookup).rejects.toThrow(
+			'Credential cred-1 has type "someOtherApi", not "slackApi"',
 		);
+		await expect(lookup).rejects.toBeInstanceOf(UserError);
+		expect(dynamicNodeParametersService.getResourceLocatorResults).not.toHaveBeenCalled();
+		expect(dynamicNodeParametersService.getOptionsViaMethodName).not.toHaveBeenCalled();
 	});
 
 	test("does not mutate the caller's currentNodeParameters when auto-filling authentication", async () => {
@@ -158,6 +163,25 @@ describe('NodeResourceExplorerService', () => {
 			results: [{ name: 'general', value: 'C1', url: 'https://x' }],
 			paginationToken: 'next',
 		});
+	});
+
+	test('resolves the credential for use rather than for viewing', async () => {
+		mockCredentialOwned();
+		nodeTypes.getByNameAndVersion.mockImplementation(() => {
+			throw new Error('not loaded');
+		});
+		dynamicNodeParametersService.getResourceLocatorResults.mockResolvedValue({
+			results: [],
+		} as never);
+
+		await service.exploreResources(user, baseParams);
+
+		expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+			'cred-1',
+			user,
+			['credential:read'],
+			{ excludeSeeOnlyRoles: true },
+		);
 	});
 
 	test('accepts the n8n Connect managed tag and passes a gateway-managed credential', async () => {
@@ -897,9 +921,12 @@ describe('NodeResourceExplorerService', () => {
 
 			await service.resolveParameterOptions(user, resolveParams);
 
-			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith('cred-1', user, [
-				'credential:read',
-			]);
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+				'cred-1',
+				user,
+				['credential:read'],
+				{ excludeSeeOnlyRoles: true },
+			);
 			expect(dynamicNodeParametersService.getResourceLocatorResults.mock.calls[0]?.[5]).toEqual({
 				slackApi: { id: 'cred-1', name: 'Stored Slack' },
 			});

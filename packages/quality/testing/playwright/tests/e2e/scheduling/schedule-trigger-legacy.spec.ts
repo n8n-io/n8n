@@ -8,7 +8,7 @@ import { test } from '../../../fixtures/base';
 test.describe(
 	'Schedule Trigger (legacy in-memory scheduler)',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Application' }],
 	},
 	() => {
 		test('should fire an activated Schedule Trigger through the legacy in-memory path', async ({

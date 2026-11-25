@@ -19,4 +19,12 @@ export const AUTH_TELEMETRY = defineTelemetryEvents({
 			user_id: z.string(),
 		}),
 	},
+	USER_LOGGED_OUT: {
+		name: 'User logged out',
+		description:
+			'A user signed out of n8n through the sign-out endpoint or the OIDC sign-out endpoint. This includes sign-outs that the editor starts itself, for example after a user sets up MFA that the instance enforces. A session that expires, or that the instance stops accepting after a password, email or MFA change, does not report this event.',
+		properties: z.object({
+			user_id: z.string(),
+		}),
+	},
 });

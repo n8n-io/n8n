@@ -1,3 +1,4 @@
+import { slackHitl } from './slack-hitl';
 import type { ResolvedEpisodicScope } from '@n8n/agents';
 import type {
 	AgentIntegrationConfig,
@@ -54,6 +55,7 @@ import type { DecodedThread, OriginInput } from '../../integration-origin-suppor
  */
 @Service()
 export class SlackIntegration extends AgentChatIntegration {
+	readonly hitl = slackHitl;
 	constructor(private readonly agentRepository: AgentRepository) {
 		super();
 	}
@@ -122,6 +124,9 @@ export class SlackIntegration extends AgentChatIntegration {
 		'add_reaction',
 		'do_not_respond',
 	]);
+
+	// Slack accepts files up to 1 GB. The Slack UI shows up to 10 files on one message.
+	readonly fileUploadLimits = { maxFiles: 10, maxFileBytes: 1024 * 1024 * 1024 };
 
 	async assertStartupPreconditions(ctx: AgentChannelPreconditionContext): Promise<void> {
 		await assertCredentialNotClaimed(this.agentRepository, this.displayLabel, this.type, ctx);

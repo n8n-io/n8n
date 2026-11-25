@@ -1,4 +1,4 @@
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import type { KafkaCredentials } from '../../../utils';
 import { toKafkaJSConfig } from '../../../v2/transport/config';

@@ -1,6 +1,5 @@
 import {
 	MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH,
-	MAX_AGENT_TOOL_OUTPUT_FILE_BYTES,
 	type AgentToolOutputFile,
 	type AgentToolSkippedFile,
 } from '@n8n/api-types';
@@ -10,11 +9,14 @@ import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { isRecord } from '@n8n/utils/is-record';
 import { extension } from 'mime-types';
 import { BinaryDataService } from 'n8n-core';
-import { deepCopy, UserError } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type { IBinaryData, IBinaryKeyData, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { posix } from 'node:path';
 import { z } from 'zod';
 
-import { AgentChatAttachmentService } from './agent-chat-attachment.service';
+import { AgentChatAttachmentService, AgentFileLimitError } from './agent-chat-attachment.service';
+import { AgentSandboxFilesService } from './agent-sandbox-files.service';
 import { resolveInboundMimeType } from './utils/inbound-attachments';
 
 /** Optional tool input. The model passes file IDs from the chat or from other tool results. */
@@ -26,6 +28,8 @@ export const FILES_INPUT_SCHEMA = z
 	);
 
 export interface AgentFileScope {
+	/** Keep the memory scope when the session is removed during a tool call. */
+	resourceId: string;
 	/** Null for inline agents, which have no `agents` row. */
 	agentId: string | null;
 	projectId: string;
@@ -50,6 +54,7 @@ export class AgentFileBridge {
 		private readonly logger: Logger,
 		private readonly binaryDataService: BinaryDataService,
 		private readonly attachmentService: AgentChatAttachmentService,
+		private readonly sandboxFiles: AgentSandboxFilesService,
 	) {}
 
 	/**
@@ -69,13 +74,20 @@ export class AgentFileBridge {
 
 		const binary: IBinaryKeyData = {};
 		const stored = new Map<string, AgentToolOutputFile>();
-		for (const [key, fileId] of Object.entries(files)) {
+		const keys = Object.keys(files);
+		const fileIds = await this.sandboxFiles.resolveFileRefs(Object.values(files), {
+			projectId: scope.projectId,
+			threadId,
+		});
+		for (const [index, key] of keys.entries()) {
+			const fileId = fileIds[index];
 			const attachment = await this.attachmentService.getReadable(fileId, {
 				projectId: scope.projectId,
 				threadId,
 			});
 			if (!attachment) throw new UserError(`File "${fileId}" not found in this conversation`);
-			const { fileName } = attachment;
+			// A sandbox file name is a path in outputs/. A node that writes the file must not create directories.
+			const fileName = posix.basename(attachment.fileName);
 			const fileExtension = hasExtension(fileName)
 				? fileName.slice(fileName.lastIndexOf('.') + 1)
 				: undefined;
@@ -84,7 +96,7 @@ export class AgentFileBridge {
 				// A stored binary keeps its storage mode in `data`, as BinaryDataService.store does.
 				data: attachment.binaryDataId.split(':')[0],
 				mimeType: attachment.mimeType,
-				fileName: attachment.fileName,
+				fileName,
 				...(fileExtension && { fileExtension }),
 				bytes: attachment.fileSizeBytes,
 			};
@@ -135,12 +147,18 @@ export class AgentFileBridge {
 						if (binary.id) skipped.add(binary.id);
 						skippedFiles.push({
 							fileName: binary.fileName ?? key,
-							reason: `larger than ${MAX_AGENT_TOOL_OUTPUT_FILE_BYTES / 1024 / 1024} MB`,
+							reason: `larger than ${this.attachmentService.maxGeneratedFileBytes / 1024 / 1024} MB`,
 						});
 						continue;
 					}
-					file = await this.store(binary, scope);
-					if (!file) continue;
+					const result = await this.store(binary, scope);
+					if (!result) continue;
+					if ('reason' in result) {
+						if (binary.id) skipped.add(binary.id);
+						skippedFiles.push(result);
+						continue;
+					}
+					file = result;
 					if (binary.id) stored.set(binary.id, file);
 					files.push(file);
 				}
@@ -156,6 +174,11 @@ export class AgentFileBridge {
 		return { items: adopted, files, skippedFiles };
 	}
 
+	/** Delete stored files that nothing refers to. */
+	async deleteFiles(fileIds: string[]): Promise<void> {
+		await this.attachmentService.deleteByIds(fileIds);
+	}
+
 	/** Read the size from the metadata, so the bytes are not loaded. An unknown size is not too large. */
 	private async isTooLarge(binary: IBinaryData): Promise<boolean> {
 		let size = binary.bytes;
@@ -168,7 +191,7 @@ export class AgentFileBridge {
 		}
 		// Without an ID the bytes are already in memory as base64.
 		if (size === undefined && !binary.id) size = Buffer.byteLength(binary.data, 'base64');
-		const tooLarge = size !== undefined && size > MAX_AGENT_TOOL_OUTPUT_FILE_BYTES;
+		const tooLarge = size !== undefined && size > this.attachmentService.maxGeneratedFileBytes;
 		if (tooLarge) {
 			this.logger.warn('Skipped an agent tool output file that is too large', {
 				fileName: binary.fileName,
@@ -181,16 +204,16 @@ export class AgentFileBridge {
 	/**
 	 * The tool already ran when this is called. A storage error must not fail
 	 * the tool call, because the model can then run the tool again. Log the
-	 * error and leave out the file.
+	 * error and leave out the file. A file over a cap is a skipped file.
 	 */
 	private async store(
 		binary: IBinaryData,
 		scope: AgentFileScope,
-	): Promise<AgentToolOutputFile | undefined> {
+	): Promise<AgentToolOutputFile | AgentToolSkippedFile | undefined> {
 		const id = generateNanoId();
 		let fileName = binary.fileName ?? id;
 		try {
-			// ponytail: loads the whole file (up to MAX_AGENT_TOOL_OUTPUT_FILE_BYTES) into memory, the same as storeInbound. Copy by ID if that is too much.
+			// ponytail: loads the whole file (up to the generated file size cap) into memory, the same as storeInbound. Copy by ID if that is too much.
 			const data = await this.binaryDataService.getAsBuffer(binary);
 			const mimeType = await resolveInboundMimeType(binary.mimeType, data);
 			if (!hasExtension(fileName) || fileName.length > MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH) {
@@ -208,6 +231,10 @@ export class AgentFileBridge {
 			});
 			return { fileId: attachment.id, fileName, mimeType, sizeBytes: attachment.fileSizeBytes };
 		} catch (error) {
+			if (error instanceof AgentFileLimitError) {
+				this.logger.warn('Skipped an agent tool output file over a storage cap', { fileName });
+				return { fileName, reason: error.message };
+			}
 			this.logger.warn('Failed to store agent tool output file', { fileName, error });
 			return undefined;
 		}

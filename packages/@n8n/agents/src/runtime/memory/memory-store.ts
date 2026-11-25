@@ -9,7 +9,6 @@ import {
 } from './memory-lifecycle';
 import { normalizeObservationLogReflection } from './observation-log-reflector';
 import { observationCursorsMatch, prepareObservationLogBatchCursor } from './observation-log-batch';
-import type { RuntimeSkillState, RuntimeSkillStateStore } from '../../skills/types';
 import type {
 	BuiltEpisodicMemoryCaptureStore,
 	BuiltEpisodicMemoryStore,
@@ -32,7 +31,7 @@ import type {
 	Thread,
 } from '../../types';
 import type { AgentDbMessage } from '../../types/sdk/message';
-import type { ObservationCursor } from '../../types/sdk/observation';
+import type { ObservationCursor, ObservationResumeState } from '../../types/sdk/observation';
 import type {
 	BuiltObservationLogStore,
 	BuiltObservationLogTaskLockStore,
@@ -94,23 +93,12 @@ export class InMemoryMemory
 	private threads = new Map<string, Thread>();
 
 	private messagesByThread = new Map<string, StoredMessage[]>();
-	private skillsByThread = new Map<string, Map<string, RuntimeSkillState>>();
-
-	readonly skillState: RuntimeSkillStateStore = {
-		load: async ({ threadId, resourceId, agentName }) =>
-			structuredClone(
-				this.skillsByThread.get(threadId)?.get(JSON.stringify([resourceId, agentName])),
-			),
-		save: async ({ threadId, resourceId, agentName }, state) => {
-			const states = this.skillsByThread.get(threadId) ?? new Map<string, RuntimeSkillState>();
-			states.set(JSON.stringify([resourceId, agentName]), structuredClone(state));
-			this.skillsByThread.set(threadId, states);
-		},
-	};
 
 	private observationLogByScope = new Map<string, ObservationLogEntry[]>();
 
 	private cursorsByScope = new Map<string, ObservationCursor>();
+
+	private resumeStateByScope = new Map<string, ObservationResumeState>();
 
 	private locksByScope = new Map<string, ObservationLogTaskLockHandle>();
 
@@ -184,10 +172,10 @@ export class InMemoryMemory
 	// eslint-disable-next-line @typescript-eslint/require-await
 	async deleteThread(threadId: string): Promise<void> {
 		this.threads.delete(threadId);
-		this.skillsByThread.delete(threadId);
 		this.messagesByThread.delete(threadId);
 		this.observationLogByScope.delete(threadId);
 		this.cursorsByScope.delete(threadId);
+		this.resumeStateByScope.delete(threadId);
 		this.locksByScope.delete(threadId);
 		const affectedEntryIds = uniqueStrings(
 			this.episodicMemorySources
@@ -482,6 +470,18 @@ export class InMemoryMemory
 	// eslint-disable-next-line @typescript-eslint/require-await
 	async setCursor(cursor: ObservationCursor): Promise<void> {
 		this.cursorsByScope.set(cursor.observationScopeId, cloneCursor(cursor));
+	}
+
+	// eslint-disable-next-line @typescript-eslint/require-await
+	async getResumeState(observationScopeId: string): Promise<ObservationResumeState | null> {
+		const state = this.resumeStateByScope.get(observationScopeId);
+		return state ? structuredClone(state) : null;
+	}
+
+	// eslint-disable-next-line @typescript-eslint/require-await
+	async saveResumeState(state: ObservationResumeState): Promise<void> {
+		if (!this.cursorsByScope.has(state.observationScopeId)) return;
+		this.resumeStateByScope.set(state.observationScopeId, structuredClone(state));
 	}
 
 	async acquireObservationLogTaskLock(

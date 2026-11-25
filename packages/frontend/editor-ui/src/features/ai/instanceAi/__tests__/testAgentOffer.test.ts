@@ -7,7 +7,7 @@ function summary(overrides: Partial<AgentCapabilitySummary> = {}): AgentCapabili
 	return {
 		id: 'agent-1',
 		name: 'Trip Planner',
-		model: { provider: 'anthropic', model: 'claude-sonnet-4-5' },
+		model: { provider: 'anthropic', model: 'claude-sonnet-5-5' },
 		channels: [],
 		tools: [],
 		mcpServers: [],

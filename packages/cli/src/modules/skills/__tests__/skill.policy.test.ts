@@ -58,9 +58,8 @@ describe('findLosingAgents', () => {
 		['agent-p', { name: 'In P', projectId: 'P' }],
 		['agent-q', { name: 'In Q', projectId: 'Q' }],
 	]);
-	const instance = { projectId: null, agentId: null };
-	const projectP = { projectId: 'P', agentId: null };
-	const agentP = { projectId: null, agentId: 'agent-p' };
+	const instance = { projectId: null };
+	const projectP = { projectId: 'P' };
 
 	it.each([
 		{
@@ -81,13 +80,6 @@ describe('findLosingAgents', () => {
 			using: ['agent-gone'],
 			losing: ['agent-gone'],
 			why: 'an agent without a project loses a scoped skill',
-		},
-		{ target: agentP, using: ['agent-p'], losing: [], why: 'the skill moves to the agent itself' },
-		{
-			target: agentP,
-			using: ['agent-q'],
-			losing: ['agent-q'],
-			why: 'another agent cannot add an agent skill',
 		},
 		{ target: projectP, using: [], losing: [], why: 'no agent uses the skill' },
 	])('$why', ({ target, using, losing }) => {

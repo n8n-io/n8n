@@ -7,8 +7,7 @@ import { SkillUsage, type SkillAgent } from './skill-usage.contracts';
 /**
  * Holds the `SkillUsage` of the agents module, which registers it on init. Services that
  * the container creates before then still get a working instance. Until the registration
- * (the agents module is off), no agent uses a skill and an agent skill has no project, so
- * only the global scope can reach it.
+ * (the agents module is off), no agent uses a skill.
  */
 @Service()
 export class SkillUsageProxy extends SkillUsage {
@@ -28,11 +27,6 @@ export class SkillUsageProxy extends SkillUsage {
 		return await this.impl.findAgents(agentIds, ctx);
 	}
 
-	async findAgentIdsInProjects(projectIds: string[], ctx: OperationContext = {}) {
-		if (!this.impl || projectIds.length === 0) return [];
-		return await this.impl.findAgentIdsInProjects(projectIds, ctx);
-	}
-
 	async findUsage(
 		skillId: string,
 		projectIds: string[] | 'all' = 'all',
@@ -50,6 +44,11 @@ export class SkillUsageProxy extends SkillUsage {
 	async findUsingAgentIds(skillId: string, ctx: OperationContext = {}) {
 		if (!this.impl) return [];
 		return await this.impl.findUsingAgentIds(skillId, ctx);
+	}
+
+	async findUsingAgentIdsBySkill(skillIds: string[], ctx: OperationContext = {}) {
+		if (!this.impl || skillIds.length === 0) return new Map<string, string[]>();
+		return await this.impl.findUsingAgentIdsBySkill(skillIds, ctx);
 	}
 
 	async findSkillIdsUsedByAgent(agentId: string, ctx: OperationContext = {}) {
@@ -74,9 +73,9 @@ export class SkillUsageProxy extends SkillUsage {
 		await this.impl?.assertRenameKeepsNamesApart(skillId, oldName, newName, ctx);
 	}
 
-	async markFollowersChanged(skillId: string, ctx: OperationContext = {}, userId?: string | null) {
+	async findFollowingAgentIds(skillId: string, ctx: OperationContext = {}) {
 		if (!this.impl) return [];
-		return await this.impl.markFollowersChanged(skillId, ctx, userId);
+		return await this.impl.findFollowingAgentIds(skillId, ctx);
 	}
 
 	async refreshAgents(agentIds: string[], excludePushRef?: string) {

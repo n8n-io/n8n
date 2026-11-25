@@ -7,10 +7,12 @@ import {
 	getThreadDetail as getThreadDetailApi,
 	deleteThread as deleteThreadApi,
 	exportThreadToLangSmith as exportThreadToLangSmithApi,
+	resumeTaskApproval as resumeTaskApprovalApi,
 	type AgentExecutionThread,
 	type AgentSessionFilters,
 	type ThreadDetail,
 } from './composables/useAgentThreadsApi';
+import type { AgentChatChannel } from './composables/useAgentApi';
 
 const ITEMS_PER_PAGE = 20;
 const AUTO_REFRESH_INTERVAL_MS = 5_000;
@@ -179,13 +181,30 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		}
 	}
 
+	async function resumeTaskApproval(
+		projectId: string,
+		agentId: string,
+		threadId: string,
+		body: { toolCallId: string; resumeData: unknown },
+	): Promise<void> {
+		const rootStore = useRootStore();
+		await resumeTaskApprovalApi(rootStore.restApiContext, projectId, agentId, threadId, body);
+	}
+
 	async function getThreadDetail(
 		projectId: string,
 		agentId: string,
 		threadId: string,
+		channel?: AgentChatChannel,
 	): Promise<ThreadDetail> {
 		const rootStore = useRootStore();
-		return await getThreadDetailApi(rootStore.restApiContext, projectId, agentId, threadId);
+		return await getThreadDetailApi(
+			rootStore.restApiContext,
+			projectId,
+			agentId,
+			threadId,
+			channel,
+		);
 	}
 
 	function upsertThread(thread: AgentExecutionThread) {
@@ -276,6 +295,7 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		refreshThreads,
 		loadMore,
 		getThreadDetail,
+		resumeTaskApproval,
 		upsertThread,
 		deleteThread,
 		exportThreadToLangSmith,

@@ -62,28 +62,33 @@ erDiagram
   datetime_3_ updatedAt
 }
 "agent_background_job" {
+  INTEGER callerExecutionId FK
   varchar_36_ childExecutionId
   varchar_128_ childThreadId
   datetime_3_ createdAt
   TEXT error
+  TEXT files
   varchar_36_ id PK
   varchar_16_ kind
   datetime_3_ notifiedAt
   varchar_36_ parentAgentId FK
   varchar_64_ parentPrincipalHash
   varchar_255_ parentResourceId
+  varchar_128_ parentRunId
   varchar_128_ parentThreadId
   varchar pauseRequestId
   varchar planId FK
   varchar planTaskId
   TEXT result
   datetime_3_ settledAt
+  TEXT skippedFiles
   varchar_36_ sourceExecutionId FK
   varchar_16_ status
   varchar_36_ subAgentId
   datetime_3_ timeoutAt
   varchar_255_ title
   datetime_3_ updatedAt
+  varchar wakeAttemptId
   varchar_36_ workflowId
 }
 "agent_plan_history" {

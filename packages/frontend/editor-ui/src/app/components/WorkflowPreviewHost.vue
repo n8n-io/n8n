@@ -24,18 +24,25 @@ import {
 } from '@/app/stores/workflowExecutionState.store';
 import { disposeNDVStore, useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
+import { useNodeTypesLoad } from '@/app/composables/useNodeTypesLoad';
 
-const props = defineProps<{
-	/**
-	 * Synthetic document id this preview is keyed by — never `{id}@latest`,
-	 * so the preview can never collide with the editor's document store.
-	 * Construct via `createWorkflowDocumentId(workflowId, <version token>)`.
-	 */
-	documentId: WorkflowDocumentId;
-	workflow: IWorkflowDb | IWorkflowTemplate['workflow'];
-}>();
+const props = withDefaults(
+	defineProps<{
+		/**
+		 * Synthetic document id this preview is keyed by — never `{id}@latest`,
+		 * so the preview can never collide with the editor's document store.
+		 * Construct via `createWorkflowDocumentId(workflowId, <version token>)`.
+		 */
+		documentId: WorkflowDocumentId;
+		workflow: IWorkflowDb | IWorkflowTemplate['workflow'];
+		showNodeIssues?: boolean;
+	}>(),
+	{ showNodeIssues: true },
+);
 
 const { normalizeWorkflowData } = useWorkflowNormalization();
+// Normalization fills the node default parameters only for node types in the store.
+const nodeTypes = useNodeTypesLoad();
 
 const documentStore = shallowRef<WorkflowDocumentStore | null>(null);
 
@@ -55,6 +62,7 @@ provide(
 		askAi: false,
 		executionSuccessToasts: false,
 		executionErrorToasts: false,
+		showNodeIssues: props.showNodeIssues,
 	})),
 );
 
@@ -119,7 +127,14 @@ async function hydratePreview() {
 	canvasEventBus.emit('fitView');
 }
 
-watch(() => [props.documentId, props.workflow] as const, hydratePreview, { immediate: true });
+watch(
+	() => [props.documentId, props.workflow, nodeTypes.isLoading.value] as const,
+	([, , nodeTypesLoading]) => {
+		if (nodeTypesLoading) return;
+		void hydratePreview();
+	},
+	{ immediate: true },
+);
 
 onBeforeUnmount(() => {
 	disposePreviewStores();

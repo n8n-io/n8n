@@ -55,11 +55,15 @@ erDiagram
 }
 "agents" {
   varchar_36_ activeVersionId FK
+  varchar_36_ approvalWorkflowId FK
   boolean availableInMCP
   datetime_3_ createdAt
   varchar_36_ id PK
+  varchar identityId FK
   TEXT integrations
+  boolean isArchived
   varchar_128_ name
+  varchar_36_ parentFolderId FK
   varchar_255_ projectId FK
   INTEGER publicationRevision
   INTEGER revision
@@ -72,7 +76,6 @@ erDiagram
   varchar_36_ versionId
 }
 "skill" {
-  varchar_36_ agentId FK
   boolean availableToAssistant
   boolean availableToMCP
   datetime_3_ createdAt

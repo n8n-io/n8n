@@ -15,8 +15,8 @@ export function createSearchModelsTool(fetch: typeof globalThis.fetch, service =
 				'This includes selecting a model for a workflow node or for an Agent main model. ' +
 				'Use query to filter model IDs and names before the limit, for example provider="openrouter", query="claude" or query="openai". ' +
 				'For an unspecified model, omit query unless the user requested a maker or family. Do not narrow discovery to a remembered model ID. ' +
-				'If a provider credential or Gateway credits is available, list its models instead: get_node_parameter_options for a workflow node, agent_builder_resolve_llm for an Agent. ' +
-				'For an Agent, prefer a model with toolCalling true, then pass its provider and id to agent_builder_resolve_llm, which checks credential access. ' +
+				'If a provider credential or Gateway credits is available, list its models instead: run get_node_parameter_options (for a workflow node) or agent_builder_resolve_llm (for an Agent) through call_tool. ' +
+				'For an Agent, prefer a model with toolCalling true, then pass its provider and id to agent_builder_resolve_llm through call_tool, which checks credential access. ' +
 				'Do not use this tool to check an unfamiliar or existing model, or as a fallback when credential lookup fails. ' +
 				'Results include preview models and catalog metadata; they do not establish credential access or model validity.',
 		)

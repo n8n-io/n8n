@@ -30,10 +30,14 @@ const prContext = (action = 'synchronize', label = '') => ({
 	},
 });
 
-// The fixtures use exact-case strings. Expand the label projection for JavaScript.
+// The fixtures use exact-case strings. Expand label projections and hyphenated needs keys for JavaScript.
 const evaluate = (expression, github, needs = {}) =>
 	runInNewContext(
-		expression.trim().replaceAll('.labels.*.name', '.labels.map(label => label.name)'),
+		expression
+			.trim()
+			.replaceAll('.labels.*.name', '.labels.map(label => label.name)')
+			.replace(/\bneeds\.([a-zA-Z0-9_-]+)/g, "needs['$1']")
+			.replace(/\.outputs\.([a-zA-Z0-9_-]+)/g, ".outputs['$1']"),
 		{
 			github,
 			needs,
@@ -51,9 +55,11 @@ const concurrencyGroup = (workflow, github) =>
 		evaluate(expression, github),
 	);
 
-const jobRuns = (job, github, results = {}) => {
+const jobRuns = (job, github, results = {}, outputs = {}) => {
 	const needs = Object.fromEntries(
-		[job.needs ?? []].flat().map((name) => [name, { result: results[name] ?? 'success' }]),
+		[job.needs ?? []]
+			.flat()
+			.map((name) => [name, { result: results[name] ?? 'success', outputs: outputs[name] ?? {} }]),
 	);
 	const condition = job.if ?? 'true';
 	// GitHub adds success() when the condition has no status function.
@@ -110,6 +116,7 @@ describe('PR quality event routing', () => {
 			assert.ok([workflow.jobs[check].needs].flat().includes('changes'), check);
 			assert.ok(summary.needs.includes(check), check);
 		}
+		assert.ok(summary.needs.includes('pr-policy'));
 		assert.ok(summary.needs.includes('changes'));
 		assert.ok(summary.needs.includes('check-do-not-merge'));
 	});
@@ -118,7 +125,7 @@ describe('PR quality event routing', () => {
 		it(`runs the full quality gate on ${action}${action.endsWith('labeled') ? ' Do Not Merge' : ''}`, () => {
 			const github = prContext(action, 'Do Not Merge');
 			assert.ok(workflow.on.pull_request.types.includes(action));
-			assert.equal(evaluate(workflow.jobs.changes.if, github), true);
+			assert.equal(jobRuns(workflow.jobs.changes, github), true);
 			for (const check of checks) {
 				assert.equal(jobRuns(workflow.jobs[check], github), true, check);
 			}
@@ -133,8 +140,8 @@ describe('PR quality event routing', () => {
 				const github = prContext(action, label);
 				github.event.pull_request.labels = [{ name: 'Do Not Merge' }];
 				const results = Object.fromEntries(['changes', ...checks].map((name) => [name, 'skipped']));
-				assert.equal(evaluate(workflow.jobs.changes.if, github), false);
-				assert.equal(evaluate(workflow.jobs['handle-size-override'].if, github), false);
+				assert.equal(jobRuns(workflow.jobs.changes, github), false);
+				assert.equal(jobRuns(workflow.jobs['handle-size-override'], github), false);
 				for (const check of checks) {
 					assert.equal(jobRuns(workflow.jobs[check], github, results), false, check);
 				}
@@ -150,11 +157,18 @@ describe('PR quality event routing', () => {
 	it('validates the guard result when the expensive checks are skipped', () => {
 		const validation = summary.steps.find((step) => step.name === 'Validate required checks');
 		assert.equal(validation.uses, './.github/actions/ci-filter');
-		assert.equal(validation.if, undefined);
+		assert.equal(validation.if, "needs.pr-policy.outputs.skip-ci != 'true'");
+		assert.equal(
+			evaluate(validation.if, prContext('labeled', 'cla-signed'), {
+				'pr-policy': { outputs: { 'skip-ci': 'false' } },
+			}),
+			true,
+		);
 		assert.equal(validation.with.mode, 'validate');
 		assert.equal(validation.with['job-results'], '${{ toJSON(needs) }}');
 		for (const result of ['failure', 'cancelled', 'success']) {
 			const results = Object.fromEntries(['changes', ...checks].map((name) => [name, 'skipped']));
+			results['pr-policy'] = 'success';
 			results['check-do-not-merge'] = result;
 			assert.equal(jobRuns(summary, prContext('labeled', 'cla-signed'), results), true);
 			const needs = Object.fromEntries(
@@ -177,6 +191,25 @@ describe('PR quality event routing', () => {
 		}
 	});
 
+	it('skips checks and passes the summary for automated release PRs', () => {
+		const github = prContext('synchronize');
+		const outputs = { 'pr-policy': { outputs: { 'skip-ci': 'true' } } };
+		const jobOutputs = { 'pr-policy': { 'skip-ci': 'true' } };
+		const results = Object.fromEntries(
+			['changes', ...checks, 'check-do-not-merge'].map((name) => [name, 'skipped']),
+		);
+		assert.equal(jobRuns(workflow.jobs.changes, github, {}, jobOutputs), false);
+		for (const check of checks) {
+			assert.equal(jobRuns(workflow.jobs[check], github, results, jobOutputs), false, check);
+		}
+		assert.equal(jobRuns(guard, github, results, jobOutputs), false);
+		assert.equal(jobRuns(summary, github, results, jobOutputs), true);
+		const validation = summary.steps.find((step) => step.name === 'Validate required checks');
+		const bypass = summary.steps.find((step) => step.name === 'Pass automated release PR');
+		assert.equal(evaluate(validation.if, github, outputs), false);
+		assert.equal(evaluate(bypass.if, github, outputs), true);
+	});
+
 	it('runs the summary when change detection fails or is cancelled', () => {
 		for (const result of ['failure', 'cancelled']) {
 			assert.equal(jobRuns(summary, prContext(), { changes: result }), true);
@@ -190,7 +223,7 @@ describe('PR quality event routing', () => {
 		github.event.pull_request = {};
 		github.event.merge_group = { head_sha: 'queue-1' };
 		assert.ok('merge_group' in workflow.on);
-		assert.equal(evaluate(workflow.jobs.changes.if, github), true);
+		assert.equal(jobRuns(workflow.jobs.changes, github), true);
 		assert.equal(jobRuns(guard, github), false);
 		assert.equal(jobRuns(summary, github, { 'check-do-not-merge': 'skipped' }), true);
 	});
@@ -200,9 +233,9 @@ describe('PR quality event routing', () => {
 		github.event_name = 'issue_comment';
 		github.event.issue = { number: 42, pull_request: {} };
 		github.event.comment.body = '/size-limit-override';
-		assert.equal(evaluate(workflow.jobs.changes.if, github), false);
-		assert.equal(evaluate(workflow.jobs['handle-size-override'].if, github), true);
-		assert.equal(evaluate(summary.if, github, { changes: { result: 'skipped' } }), false);
+		assert.equal(jobRuns(workflow.jobs.changes, github), false);
+		assert.equal(jobRuns(workflow.jobs['handle-size-override'], github), true);
+		assert.equal(jobRuns(summary, github, { changes: 'skipped' }), false);
 	});
 });
 
@@ -251,17 +284,30 @@ describe('PR quality concurrency', () => {
 describe('reviewer assignment label routing', () => {
 	const workflow = workflowFile('ci-owners-assign-reviewers.yml');
 	const job = workflow.jobs['assign-reviewers'];
+	const triggerLabels = ['Auto-assign reviewers', 'Auto-assign required reviewers'];
 
 	it('skips unrelated labels before starting a runner', () => {
 		for (const label of ['cla-signed', 'Reviewers auto-assigned', 'Do Not Merge']) {
 			assert.equal(evaluate(job.if, prContext('labeled', label)), false, label);
+			for (const existing of triggerLabels) {
+				const github = prContext('labeled', label);
+				github.event.pull_request.labels = [{ name: existing }];
+				assert.equal(evaluate(job.if, github), false, `${label} with ${existing}`);
+			}
 		}
 	});
 
 	it('keeps assignment on opt-in labels, pushes, and reopened PRs', () => {
-		for (const action of ['labeled', 'synchronize', 'reopened']) {
-			assert.ok(workflow.on.pull_request.types.includes(action));
-			assert.equal(evaluate(job.if, prContext(action, 'Auto-assign reviewers')), true, action);
+		for (const triggerLabel of triggerLabels) {
+			for (const action of ['labeled', 'synchronize', 'reopened']) {
+				assert.ok(workflow.on.pull_request.types.includes(action));
+				const github = prContext(action, triggerLabel);
+				github.event.pull_request.labels = [{ name: triggerLabel }];
+				assert.equal(evaluate(job.if, github), true, `${action} ${triggerLabel}`);
+			}
+		}
+		for (const action of ['synchronize', 'reopened']) {
+			assert.equal(evaluate(job.if, prContext(action)), false, `${action} without trigger label`);
 		}
 	});
 });

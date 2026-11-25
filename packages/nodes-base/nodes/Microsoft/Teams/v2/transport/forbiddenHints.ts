@@ -28,9 +28,10 @@ export const ACTIVITY_PERMISSION_FORBIDDEN = {
 
 // Teams Trigger subscriptions (POST /v1.0/subscriptions). Graph names the refused
 // resource in the 403 text, for example `'/teams('<id>')/members' resource`. Each
-// `match` is a fragment of that path, never a permission name: the same 403 also
-// lists the roles the caller already has (PR #38954). The fragments do not overlap
-// for the paths getResourcePath posts, so the array order does not matter.
+// permission `match` is a fragment of that path, never a permission name: the same 403
+// also lists the roles the caller already has (PR #38954). The fragments do not overlap
+// for the paths getResourcePath posts, so their order does not matter. The subscription
+// limit hint below matches a phrase instead.
 // `/channels('` is the channel-message path: a channel key follows `/channels` only there.
 export const TEAM_MEMBER_SUBSCRIPTION_FORBIDDEN = {
 	endpoint: SUBSCRIPTIONS_ENDPOINT,
@@ -95,7 +96,29 @@ export const CHAT_ALL_MESSAGES_SUBSCRIPTION_FORBIDDEN = {
 	match: 'user-scoped chat message subscription',
 } satisfies MicrosoftGraphForbiddenHint;
 
+// Graph answers 403 `ExtensionError` with this text when a subscription would go over a
+// quota of one. Seen live for a second `/teams/{id}/channels` subscription: "User '<id>' has
+// reached its limit of '1' 'TEAMS/<ID>/CHANNELS' subscription". The Graph docs list a quota of
+// one for each app and team (channels, members) and for each app and channel or chat
+// (messages), and ten for the chats of one user (change-notifications-overview). The match
+// names no subject, so the app-subject variant under the Service Principal credential matches
+// too. It keeps the `'1'`, because the quota of ten is not this case. The main copy is for the
+// Service Principal credential, the `delegated` copy for a signed-in account.
+export const SUBSCRIPTION_LIMIT_FORBIDDEN = {
+	endpoint: SUBSCRIPTIONS_ENDPOINT,
+	match: "has reached its limit of '1'",
+	message: 'Microsoft Graph allows only one subscription of this kind per app registration',
+	description:
+		'Another workflow or n8n instance that uses the same app registration already watches this team or channel, or an earlier subscription was left behind. When you listen for a test event, the published version of this workflow also counts. Unpublish the other workflow, wait up to three days for the old subscription to expire, or use a different app registration. Then try again.',
+	delegated: {
+		message: 'Microsoft Graph allows only one subscription of this kind per Microsoft account',
+		description:
+			'Another workflow with the same Microsoft account already watches this team, channel or chat, or an earlier subscription was left behind, for example by a deleted workflow or by another n8n instance. When you listen for a test event, the published version of this workflow also counts. Unpublish the other workflow, wait up to three days for the old subscription to expire, or connect this credential with a different Microsoft account. Then try again.',
+	},
+} satisfies MicrosoftGraphForbiddenHint;
+
 export const TEAMS_FORBIDDEN_HINTS: readonly MicrosoftGraphForbiddenHint[] = Object.freeze([
+	SUBSCRIPTION_LIMIT_FORBIDDEN,
 	COMPANION_APP_FORBIDDEN,
 	ACTIVITY_PERMISSION_FORBIDDEN,
 	TEAM_MEMBER_SUBSCRIPTION_FORBIDDEN,

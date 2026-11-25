@@ -1,14 +1,15 @@
-import { Time } from '@n8n/constants';
+import { Time, HUMAN_REVIEW_MODULE } from '@n8n/constants';
 
 import { CommaSeparatedStringArray } from '../custom-types';
 import { Config, Env } from '../decorators';
+import { nonnegativeIntSchema } from '../schemas';
 
 /**
  * Known agent sub-feature modules. Add a token here to make it valid in
  * `N8N_AGENTS_MODULES`. The backend fails fast on unknown tokens so typos
  * surface at startup instead of silently disabling a feature.
  */
-export const AGENTS_MODULE_NAMES = [] as const;
+export const AGENTS_MODULE_NAMES = [HUMAN_REVIEW_MODULE] as const;
 
 export type AgentsModuleName = (typeof AGENTS_MODULE_NAMES)[number];
 
@@ -37,7 +38,10 @@ export class AgentsConfig {
 	@Env('N8N_AGENTS_PLAN_TOOLS_ENABLED')
 	planToolsEnabled: boolean = false;
 
-	/** TTL in seconds for agent checkpoint records. Stale checkpoints older than this are pruned. */
+	/**
+	 * Time in seconds to retain Agent checkpoints. Pending human review requests
+	 * keep their checkpoints until the Agent consumes the result or the request is cancelled.
+	 */
 	@Env('N8N_AGENTS_CHECKPOINT_TTL')
 	checkpointTtlSeconds: number = 96 * Time.hours.toSeconds;
 
@@ -67,12 +71,16 @@ export class AgentsConfig {
 	tracingRecordOutputs: boolean = true;
 
 	/**
-	 * Comma-separated list of agent sub-feature modules to enable. Each entry
-	 * gates a specific frontend/runtime capability inside the agents module.
-	 * Add supported module tokens to `AGENTS_MODULE_NAMES`.
+	 * Comma-separated list of optional Agent features to enable. Set `human-review`
+	 * to route tool approvals through workflows or connected channels. An empty list
+	 * keeps these features off, and n8n rejects unknown feature names at startup.
 	 */
 	@Env('N8N_AGENTS_MODULES')
 	modules: AgentsModuleArray = [];
+
+	get humanReviewEnabled(): boolean {
+		return this.modules.includes(HUMAN_REVIEW_MODULE);
+	}
 
 	/**
 	 * Enable durable background jobs for agents: spawning sub-agents that outlive
@@ -81,6 +89,14 @@ export class AgentsConfig {
 	 */
 	@Env('N8N_AGENTS_BACKGROUND_TASKS_ENABLED')
 	backgroundTasksEnabled: boolean = false;
+
+	/**
+	 * Whether users can share credentials and other resources with agents, and
+	 * see agent projects in project lists. Each agent has its own service account
+	 * either way. Set the same value on every main instance.
+	 */
+	@Env('N8N_AGENTS_SERVICE_ACCOUNTS_ENABLED')
+	serviceAccountsEnabled: boolean = false;
 
 	/** Enable sandbox-backed agent knowledge base operations. */
 	@Env('N8N_AGENTS_AI_SANDBOX_ENABLED')
@@ -106,6 +122,42 @@ export class AgentsConfig {
 	sandboxEphemeral: boolean = false;
 
 	/**
+	 * Largest file, in megabytes, that an agent can store from a tool result or from its
+	 * sandbox. n8n skips a larger file and tells the agent.
+	 */
+	@Env('N8N_AGENTS_FILES_MAX_GENERATED_FILE_SIZE_MB', nonnegativeIntSchema)
+	maxGeneratedFileSizeMb: number = 50;
+
+	/**
+	 * Most files that tools and the sandbox can store in one agent conversation, sub-agents
+	 * included. Files that users upload don't count.
+	 */
+	@Env('N8N_AGENTS_FILES_MAX_GENERATED_COUNT', nonnegativeIntSchema)
+	maxGeneratedFileCount: number = 100;
+
+	/**
+	 * Most data, in megabytes, that tools and the sandbox can store in one agent
+	 * conversation, sub-agents included.
+	 */
+	@Env('N8N_AGENTS_FILES_MAX_GENERATED_TOTAL_MB', nonnegativeIntSchema)
+	maxGeneratedTotalMb: number = 500;
+
+	/**
+	 * Most data, in megabytes, that one agent conversation can store, sub-agents included.
+	 * This counts user uploads and files from tools and the sandbox. When a conversation is
+	 * full, n8n rejects new uploads.
+	 */
+	@Env('N8N_AGENTS_FILES_MAX_TOTAL_MB', nonnegativeIntSchema)
+	maxTotalMb: number = 1536;
+
+	/**
+	 * Most data, in megabytes, that an agent can copy from its conversation files into its
+	 * sandbox in one step.
+	 */
+	@Env('N8N_AGENTS_FILES_MAX_IMPORT_MB', nonnegativeIntSchema)
+	maxImportMb: number = 200;
+
+	/**
 	 * How often (seconds) each main checks that the channels of its published
 	 * agents are actually running, and retries the ones that are not. Set to 0 to
 	 * stop checking, which leaves a channel that failed to start down until the
@@ -113,6 +165,14 @@ export class AgentsConfig {
 	 */
 	@Env('N8N_AGENTS_CHANNEL_RECONCILE_INTERVAL')
 	channelReconcileIntervalSeconds: number = 60;
+
+	/**
+	 * Most requests that one IP address can send to the agent webhook channel in 5 minutes.
+	 * Each main instance counts its requests separately. Set to 0 to turn off the limit, for
+	 * example when one backend sends the requests of all your users.
+	 */
+	@Env('N8N_AGENTS_WEBHOOK_CHANNEL_RATE_LIMIT', nonnegativeIntSchema)
+	webhookChannelRateLimit: number = 300;
 
 	/**
 	 * For testing only. Lets the WhatsApp setup accept a short-lived access token,

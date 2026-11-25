@@ -11,6 +11,7 @@ import type { SkillContent } from '../utils/skill-content-hash';
 export { skillContentHash, type SkillContent } from '../utils/skill-content-hash';
 export { toSkillContent } from '../utils/skill-content';
 export { FakeSkillUsage } from './skill-usage.fake';
+export { SkillSourceRequestError } from '../errors/skill-source-request.error';
 export { SkillSyncedError } from '../errors/skill-synced.error';
 export {
 	describeSkillUsageContract,
@@ -22,7 +23,6 @@ export {
 export type SkillFixture = {
 	id?: string;
 	projectId?: string | null;
-	agentId?: string | null;
 	source?: SkillSource;
 	createdById?: string | null;
 	content?: Partial<SkillContent>;
@@ -45,7 +45,7 @@ export async function createSkill(
 	const versionId = await Container.get(SkillRepository).createSkill(
 		{
 			id,
-			target: { projectId: fixture.projectId ?? null, agentId: fixture.agentId ?? null },
+			target: { projectId: fixture.projectId ?? null },
 			source: fixture.source ?? 'ui',
 			createdById: fixture.createdById ?? null,
 		},
@@ -74,8 +74,8 @@ export async function createSkillVersion(
 export async function findSkill(id: string) {
 	const [skill] = await Container.get(SkillRepository).findByIds([id]);
 	if (!skill) return null;
-	const { projectId, agentId, source, availableToAssistant, createdById } = skill;
-	return { id, projectId, agentId, source, availableToAssistant, createdById };
+	const { projectId, source, availableToAssistant, createdById } = skill;
+	return { id, projectId, source, availableToAssistant, createdById };
 }
 
 export async function findSkillIds(filter: { source?: SkillSource } = {}): Promise<string[]> {

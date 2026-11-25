@@ -1,8 +1,12 @@
 // @vitest-environment jsdom
 
+import { createPairedItemPagination } from './fixtures/paired-item-pagination';
+import * as Helpers from './helpers';
 import type * as NativeEvaluation from '../src/expressions/native-evaluation';
 import { canVerifyNatively, nativeSkeleton } from '../src/expressions/native-evaluation/verify';
 import type { IDataObject } from '../src/interfaces';
+import { createRunExecutionData } from '../src/run-execution-data-factory';
+import type { Workflow } from '../src/workflow';
 
 const engine = process.env.N8N_EXPRESSION_ENGINE;
 
@@ -104,6 +108,42 @@ describe('Expression - native evaluation verify mode', () => {
 	});
 
 	if (engine === 'vm' || engine === 'quickjs') {
+		test.each([1, 2])(
+			'verifies item ancestry across 5000 pages with %i rows per page',
+			async (rows) => {
+				const { Workflow } = await import('../src/workflow');
+				const fixture = createPairedItemPagination(5000, rows);
+				const workflow = new Workflow({ ...fixture.workflow, nodeTypes: Helpers.NodeTypes() });
+				const task = fixture.run.data.resultData.runData.Process[0];
+				const input = task.data!.main[0]!;
+				await workflow.expression.acquireIsolate();
+				try {
+					expect(modules.Expression.getActiveImplementation()).toBe(engine);
+					const value = workflow.expression.getParameterValue(
+						"={{ $('Trigger').item.json.timestamp }}",
+						fixture.run.data,
+						0,
+						0,
+						'Process',
+						input,
+						'manual',
+						{},
+						{
+							node: workflow.getNode('Process')!,
+							data: { main: [input] },
+							source: { main: task.source },
+						},
+					);
+
+					expect(value).toBe('2024-01-01T08:00:00.000Z');
+					expect(evaluateNatively).toHaveReturnedWith({ handled: true, value });
+					expect(report).not.toHaveBeenCalled();
+				} finally {
+					await workflow.expression.releaseIsolate();
+				}
+			},
+		);
+
 		test('returns the engine result and reports the mismatch without workflow data', () => {
 			evaluateNatively.mockReturnValueOnce({ handled: true, value: 'native' });
 
@@ -220,6 +260,18 @@ describe('Expression - native evaluation verify mode', () => {
 			}
 		});
 
+		test('does not report an evaluation after the workflow released its isolate', async () => {
+			const { workflow } = modules;
+			await workflow.expression.releaseIsolate();
+			try {
+				expect(() => evaluate('={{ $json.user.name }}', { user: { name: 'Ada' } })).toThrow();
+				expect(evaluateNatively).toHaveReturnedWith({ handled: true, value: 'Ada' });
+				expect(report).not.toHaveBeenCalled();
+			} finally {
+				await workflow.expression.acquireIsolate();
+			}
+		});
+
 		test('does not compare values too large to compare', () => {
 			const list = Array.from({ length: 20_000 }, () => 0);
 			evaluateNatively.mockReturnValueOnce({ handled: true, value: [...list.slice(1), 1] });
@@ -284,6 +336,78 @@ describe('Expression - native evaluation verify mode', () => {
 			expect(report).not.toHaveBeenCalled();
 		});
 
+		describe.each([
+			'n8n-nodes-base.function',
+			'n8n-nodes-base.functionItem',
+			'@n8n/n8n-nodes-langchain.code',
+		])('in a workflow with a %s node', (sandboxNodeType) => {
+			let sandboxWorkflow: Workflow;
+
+			beforeAll(async () => {
+				const { Workflow } = await import('../src/workflow');
+				sandboxWorkflow = new Workflow({
+					nodes: [
+						{
+							name: 'Sandbox',
+							typeVersion: 1,
+							type: sandboxNodeType,
+							id: 'uuid-sandbox',
+							position: [0, 0],
+							parameters: {},
+						},
+						{
+							name: 'node',
+							typeVersion: 1,
+							type: 'test.set',
+							id: 'uuid-node',
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+					active: false,
+					nodeTypes: Helpers.NodeTypes(),
+				});
+				await sandboxWorkflow.expression.acquireIsolate();
+			});
+
+			afterAll(async () => {
+				await sandboxWorkflow.expression.releaseIsolate();
+			});
+
+			const evaluateInSandboxWorkflow = (value: string) =>
+				sandboxWorkflow.expression.getParameterValue(
+					value,
+					null,
+					0,
+					0,
+					'node',
+					[{ json: { name: 'secret-name' } }],
+					'manual',
+					{},
+				);
+
+			test('gives the expression of a later node to the engine in verify mode', () => {
+				expect(evaluateInSandboxWorkflow('={{ $json.name.toUpperCase() }}')).toBe('SECRET-NAME');
+				expect(evaluateNatively).not.toHaveBeenCalled();
+				expect(report).not.toHaveBeenCalled();
+			});
+
+			test('gives the expression of a later node to the engine while native evaluation is on', () => {
+				modules.Expression.setNativeEvaluation(true);
+
+				expect(evaluateInSandboxWorkflow('={{ $json.name.toUpperCase() }}')).toBe('SECRET-NAME');
+				expect(evaluateNatively).not.toHaveBeenCalled();
+			});
+		});
+
+		test('uses native evaluation in a workflow without a vm2 sandbox node', () => {
+			modules.Expression.setNativeEvaluation(true);
+			evaluateNatively.mockReturnValueOnce({ handled: true, value: 'native' });
+
+			expect(evaluate('={{ $json.name.toUpperCase() }}')).toBe('native');
+		});
+
 		test.each(['={{ $now.toMillis() }}', '={{ $parameter.a }}'])(
 			'does not evaluate %s twice',
 			(expression) => {
@@ -292,6 +416,94 @@ describe('Expression - native evaluation verify mode', () => {
 				expect(report).not.toHaveBeenCalled();
 			},
 		);
+
+		// The vm engine loses its isolate at the memory limit. Each later error
+		// comes from the engine, so it says nothing about the native result.
+		describe.runIf(engine === 'vm')('after the isolate reached its memory limit', () => {
+			const engineConfig = {
+				engine: 'vm',
+				poolSize: 1,
+				maxCodeCacheSize: 1024,
+				bridgeTimeout: 5000,
+			} as const;
+			// `.item` copies the full item into the isolate.
+			const largeItem = {
+				json: {
+					id: 7,
+					rows: Array.from({ length: 400_000 }, (_, i) => ({ i, text: `${'x'.repeat(20)}${i}` })),
+				},
+				pairedItem: { item: 0 },
+			};
+			let itemWorkflow: Workflow;
+
+			beforeAll(async () => {
+				const { Workflow } = await import('../src/workflow');
+				await modules.Expression.disposeExpressionEngine();
+				await modules.Expression.initExpressionEngine({ ...engineConfig, bridgeMemoryLimit: 8 });
+				itemWorkflow = new Workflow({
+					id: '1',
+					nodes: ['Source', 'HTTP Request'].map((name) => ({
+						name,
+						typeVersion: 1,
+						type: 'test.set',
+						id: name,
+						position: [0, 0],
+						parameters: {},
+					})),
+					connections: {
+						Source: { main: [[{ node: 'HTTP Request', type: 'main', index: 0 }]] },
+					},
+					active: false,
+					nodeTypes: Helpers.NodeTypes(),
+				});
+				await itemWorkflow.expression.acquireIsolate();
+			});
+
+			afterAll(async () => {
+				await itemWorkflow.expression.releaseIsolate();
+				await modules.Expression.disposeExpressionEngine();
+				await modules.Expression.initExpressionEngine({ ...engineConfig, bridgeMemoryLimit: 128 });
+				await modules.workflow.expression.acquireIsolate();
+			});
+
+			const evaluateItemId = () =>
+				itemWorkflow.expression.getParameterValue(
+					"={{ 'https://example.com/' + $('Source').item.json.id + '/orders' }}",
+					createRunExecutionData({
+						resultData: {
+							runData: {
+								Source: [
+									{
+										startTime: 0,
+										executionTime: 0,
+										executionIndex: 0,
+										source: [],
+										data: { main: [[largeItem]] },
+									},
+								],
+							},
+						},
+					}),
+					0,
+					0,
+					'HTTP Request',
+					[largeItem],
+					'manual',
+					{},
+					{
+						node: itemWorkflow.getNode('HTTP Request')!,
+						data: { main: [[largeItem]] },
+						source: { main: [{ previousNode: 'Source' }] },
+					},
+				);
+
+			test('does not report the evaluations that follow', () => {
+				expect(() => evaluateItemId()).toThrow('Expression exceeded memory limit');
+				expect(() => evaluateItemId()).toThrow('Isolate for this caller is no longer available');
+				expect(evaluateNatively).toHaveBeenCalledTimes(2);
+				expect(report).not.toHaveBeenCalled();
+			});
+		});
 	} else {
 		test('does nothing under the legacy engine', async () => {
 			await modules.Expression.initExpressionEngine({

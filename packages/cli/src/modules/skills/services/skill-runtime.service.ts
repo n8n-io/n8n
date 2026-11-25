@@ -14,6 +14,7 @@ import {
 	type AssistantSkillFileContent,
 	type AssistantSkillSummary,
 	type ResolvedSkillRow,
+	type SkillFileReadOptions,
 	type RuntimeVersion,
 	type SkillRef,
 	type SkillTarget,
@@ -87,16 +88,15 @@ export class SkillRuntimeService {
 	async resolveForAgentDraft(
 		refs: SkillRef[],
 		ctx: OperationContext = {},
+		options: SkillFileReadOptions = {},
 	): Promise<Record<string, AgentSkill>> {
-		const rows = await this.resolveRows(refs, ctx);
+		const rows = await this.resolveRows(refs, ctx, options);
 		return Object.fromEntries([...rows].map(([refId, row]) => [refId, toAgentSkill(row)]));
 	}
 
 	async findTargets(skillIds: string[], ctx: OperationContext = {}) {
 		const skills = await this.skillRepository.findByIds(skillIds, ctx);
-		return new Map<string, SkillTarget>(
-			skills.map(({ id, projectId, agentId }) => [id, { projectId, agentId }]),
-		);
+		return new Map<string, SkillTarget>(skills.map(({ id, projectId }) => [id, { projectId }]));
 	}
 
 	async lockForEdit(skillIds: string[], ctx: OperationContext): Promise<void> {
@@ -111,8 +111,12 @@ export class SkillRuntimeService {
 		await this.skillRepository.lockForPublish(skillIds, ctx);
 	}
 
-	async resolveVersions(versionIds: string[], ctx: OperationContext = {}) {
-		const rows = await this.skillRepository.findVersionsByIds(versionIds, ctx);
+	async resolveVersions(
+		versionIds: string[],
+		ctx: OperationContext = {},
+		options: SkillFileReadOptions = {},
+	) {
+		const rows = await this.skillRepository.findVersionsByIds(versionIds, ctx, options);
 		return new Map(
 			[...rows].map(([versionId, row]) => [
 				versionId,
@@ -205,13 +209,15 @@ export class SkillRuntimeService {
 	private async resolveRows(
 		refs: SkillRef[],
 		ctx: OperationContext,
+		options: SkillFileReadOptions,
 	): Promise<Map<string, ResolvedSkillRow>> {
 		const latest = await this.skillRepository.findLatestSaved(
 			refs.map((ref) => ref.id),
 			ctx,
+			options,
 		);
 		const pinnedIds = refs.flatMap((ref) => (ref.versionId ? [ref.versionId] : []));
-		const pinned = await this.skillRepository.findVersionsByIds(pinnedIds, ctx);
+		const pinned = await this.skillRepository.findVersionsByIds(pinnedIds, ctx, options);
 		const rows = new Map<string, ResolvedSkillRow>();
 		for (const ref of refs) {
 			const pin = ref.versionId ? pinned.get(ref.versionId) : undefined;
@@ -227,7 +233,6 @@ export class SkillRuntimeService {
 		projectId: string | null,
 	): Promise<boolean> {
 		return (
-			skill.agentId === null &&
 			skill.availableToAssistant &&
 			(skill.projectId === null || skill.projectId === projectId) &&
 			(await this.skillAccess.canAccess(context.user, skill, 'read'))

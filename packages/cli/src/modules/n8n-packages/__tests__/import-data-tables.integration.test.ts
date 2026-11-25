@@ -1,3 +1,4 @@
+import { packagedModules } from '@/modules/modules.manifest';
 import type { SerializedDataTable } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
@@ -11,12 +12,15 @@ import { mock } from 'vitest-mock-extended';
 
 import { ForbiddenError } from '@n8n/errors';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
-import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
-import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
-import { DataTableDDLService } from '@/modules/data-table/persistence/data-table-ddl';
-import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import { DataTableService } from '@/modules/data-table/data-table.service';
+import { mockDataTableSizeValidator } from '@n8n/backend-module-data-table/testing';
+import {
+	DataTableColumnRepository,
+	DataTableDDLService,
+	DataTableProxyService,
+	DataTableRepository,
+	DataTableService,
+} from '@n8n/backend-module-data-table';
+
 import { createFolder } from '@test-integration/db/folders';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMember, createOwner } from '@test-integration/db/users';
@@ -46,7 +50,7 @@ let workflowRepository: WorkflowRepository;
 const licenseMocker = new LicenseMocker();
 
 beforeAll(async () => {
-	await testModules.loadModules(['n8n-packages', 'data-table']);
+	await testModules.loadModules(['n8n-packages', 'data-table'], packagedModules);
 	await testDb.init();
 	// Register node types so the plan-phase missing-node-type check can resolve
 	// the node types used by the package fixtures.
@@ -1198,17 +1202,19 @@ describe('workflow package import — with data tables', () => {
 		it.each([
 			{
 				caller: 'a user without the project scope',
+				scopes: 'dataTable:update',
 				importer: async () => ({ user: await memberWithoutDataTableUpdate() }),
 			},
 			{
-				caller: 'an API key without the scope',
+				caller: 'an API key with only workflow:import',
+				scopes: 'dataTable:create or dataTable:update',
 				importer: async () => ({
 					user: owner,
-					apiKeyScopes: ['workflow:import', 'dataTable:create'],
+					apiKeyScopes: ['workflow:import'],
 				}),
 			},
 		])(
-			'does not require dataTable:update from $caller when the table already matches the package',
+			'does not require $scopes from $caller when the table already matches the package',
 			async ({ importer }) => {
 				const table = await dataTableService.createDataTable(project.id, {
 					name: 'Customers',
@@ -1633,7 +1639,7 @@ describe('workflow package import — with data tables', () => {
 				dataTableSchemaConflictPolicy?: 'overwrite-non-destructive',
 			) =>
 				await service.importPackageSelection(
-					{ user: owner, packageBuffer, dataTableSchemaConflictPolicy },
+					{ user: owner, publicApi: false, packageBuffer, dataTableSchemaConflictPolicy },
 					{ selectedProjectId: 'P1', selectedWorkflowIds: ['wf-0'] },
 				);
 			const email = { name: 'email', type: 'string', index: 0 } as const;

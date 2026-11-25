@@ -1,6 +1,6 @@
 import type { Folder } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import type { NodeTypeSource } from './node-type-usage';
 import type { AutoIncludedWorkflow } from './auto-included-workflow-resolver';
@@ -103,8 +103,9 @@ export class AutoIncludedWorkflowExporter {
 				request.writer,
 				await this.resolveWorkflowBaseDir(included, shells),
 				included.workflow,
-				this.workflowSerializer.serialize(included.workflow, { includeTags: request.includeTags }),
-				this.workflowSerializer.serializeMetadata(included.workflow),
+				...this.workflowSerializer.serializeForExport(included.workflow, {
+					includeTags: request.includeTags,
+				}),
 			);
 			workflowEntries.push(entry);
 			workflowEntriesById.set(entry.id, entry);

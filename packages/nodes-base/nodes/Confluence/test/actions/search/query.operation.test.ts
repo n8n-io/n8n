@@ -1,4 +1,4 @@
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
 import { execute } from '../../../actions/search/query.operation';
@@ -19,7 +19,7 @@ const baseParams: Record<string, unknown> = {
 	options: {},
 };
 
-const SEARCH_ENDPOINT = '/wiki/rest/api/search';
+const SEARCH_ENDPOINT = requestPath`/wiki/rest/api/search`;
 
 const runSearch = async (overrides: Record<string, unknown> = {}) =>
 	await execute.call(mockExecuteCtx({ ...baseParams, ...overrides }), 0);

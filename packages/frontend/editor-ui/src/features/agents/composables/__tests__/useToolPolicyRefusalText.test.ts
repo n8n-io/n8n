@@ -62,6 +62,15 @@ describe('useToolPolicyRefusalText', () => {
 			expect(subjectName(violation({ subject: 'n8n-nodes-base.gmailTool' }))).toBe('Gmail');
 		});
 
+		it('names a generated `*HitlTool` variant by its base type', () => {
+			getNodeTypeMock.mockImplementation((type: string) =>
+				type === 'n8n-nodes-base.slack' ? { displayName: 'Slack' } : undefined,
+			);
+			const { subjectName } = useToolPolicyRefusalText();
+
+			expect(subjectName(violation({ subject: 'n8n-nodes-base.slackHitlTool' }))).toBe('Slack');
+		});
+
 		it('keeps the own name of a real node whose type ends in `Tool`', () => {
 			const nodeTypes: Record<string, object> = {
 				'@n8n/n8n-nodes-langchain.agent': { displayName: 'AI Agent' },

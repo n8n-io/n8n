@@ -1,7 +1,7 @@
 import { MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import type { Attachment } from 'chat';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { InboundAttachmentAccessError } from '../../agent-chat-integration';
 import { stringProperty } from '../../integration-helpers';

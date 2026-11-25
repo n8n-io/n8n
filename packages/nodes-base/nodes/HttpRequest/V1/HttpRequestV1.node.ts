@@ -12,6 +12,7 @@ import type {
 import {
 	NodeApiError,
 	NodeOperationError,
+	READ_ONLY_ANNOTATIONS,
 	removeCircularRefs,
 	NodeConnectionTypes,
 	sleepUnlessExecutionCancelled,
@@ -22,6 +23,7 @@ import type { IAuthDataSanitizeKeys } from '../GenericFunctions';
 import {
 	getAllowedDomains,
 	getSecrets,
+	removeRequestOptions,
 	replaceNullValues,
 	sanitizeUiMessage,
 } from '../GenericFunctions';
@@ -162,30 +164,37 @@ export class HttpRequestV1 implements INodeType {
 						{
 							name: 'DELETE',
 							value: 'DELETE',
+							annotations: { effect: 'write', destructive: true, idempotent: false },
 						},
 						{
 							name: 'GET',
 							value: 'GET',
+							annotations: READ_ONLY_ANNOTATIONS,
 						},
 						{
 							name: 'HEAD',
 							value: 'HEAD',
+							annotations: READ_ONLY_ANNOTATIONS,
 						},
 						{
 							name: 'OPTIONS',
 							value: 'OPTIONS',
+							annotations: READ_ONLY_ANNOTATIONS,
 						},
 						{
 							name: 'PATCH',
 							value: 'PATCH',
+							annotations: { effect: 'write', destructive: true, idempotent: false },
 						},
 						{
 							name: 'POST',
 							value: 'POST',
+							// POST can run arbitrary actions, so it keeps the restrictive default.
 						},
 						{
 							name: 'PUT',
 							value: 'PUT',
+							annotations: { effect: 'write', destructive: true, idempotent: true },
 						},
 					],
 					default: 'GET',
@@ -1028,6 +1037,7 @@ export class HttpRequestV1 implements INodeType {
 					// throw error;
 					throw new NodeApiError(this.getNode(), response as JsonObject, { itemIndex });
 				} else {
+					removeRequestOptions(response.reason);
 					removeCircularRefs(response.reason as JsonObject);
 					// Return the actual reason as error
 					returnItems.push({

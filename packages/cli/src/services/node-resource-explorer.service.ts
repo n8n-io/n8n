@@ -14,6 +14,7 @@ import {
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { ProjectRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { UserError } from '@n8n/errors';
 import type {
 	ExploreResourcesParams,
 	ExploreResourcesResult,
@@ -404,9 +405,17 @@ export class NodeResourceExplorerService {
 			params.credentialId,
 			user,
 			['credential:read'],
+			{ excludeSeeOnlyRoles: true },
 		);
-		if (!credential || credential.type !== params.credentialType) {
-			throw new Error(`Credential ${params.credentialId} not found or not accessible`);
+		if (!credential) {
+			throw new UserError(`Credential ${params.credentialId} not found or not accessible`);
+		}
+		// The user can read this credential, so naming its type reveals nothing new.
+		if (credential.type !== params.credentialType) {
+			throw new UserError(
+				`Credential ${params.credentialId} has type "${credential.type}", not "${params.credentialType}". ` +
+					'Pass the type of the credential, or use a credential of the type the node needs.',
+			);
 		}
 
 		return {

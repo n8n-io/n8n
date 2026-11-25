@@ -3,6 +3,7 @@ import type { EntityManager } from '@n8n/typeorm';
 import { In, IsNull, Not, QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
+import { GLOBAL_OWNER_ROLE } from '../../constants';
 import { Person } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { PersonRepository } from '../person.repository';
@@ -82,11 +83,37 @@ describe('PersonRepository', () => {
 			});
 		});
 
+		it('finds people by ids in id order', async () => {
+			await repository.findManyByIds(['id-2', 'id-1']);
+
+			expect(entityManager.find).toHaveBeenCalledWith(Person, {
+				where: { id: In(['id-2', 'id-1']) },
+				order: { id: 'ASC' },
+			});
+		});
+
 		it('counts people with MFA enabled', async () => {
 			entityManager.count.mockResolvedValueOnce(3);
 
 			expect(await repository.countWithMfaEnabled()).toBe(3);
 			expect(entityManager.count).toHaveBeenCalledWith(Person, { where: { mfaEnabled: true } });
+		});
+	});
+
+	describe('hasClaimedInstanceOwner', () => {
+		it('checks for an owner with either a login or a password, excluding the shell user', async () => {
+			entityManager.exists.mockResolvedValueOnce(true);
+
+			const result = await repository.hasClaimedInstanceOwner();
+
+			expect(entityManager.exists).toHaveBeenCalledWith(Person, {
+				where: [
+					{ role: { slug: GLOBAL_OWNER_ROLE.slug }, lastActiveAt: Not(IsNull()) },
+					{ role: { slug: GLOBAL_OWNER_ROLE.slug }, password: Not(IsNull()) },
+				],
+				relations: ['role'],
+			});
+			expect(result).toBe(true);
 		});
 	});
 

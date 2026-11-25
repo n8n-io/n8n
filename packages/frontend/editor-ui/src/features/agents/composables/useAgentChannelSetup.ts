@@ -5,6 +5,7 @@ import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useCredentialTypesLoad } from '@/features/credentials/composables/useCredentialTypesLoad';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
 
@@ -98,10 +99,15 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 		credentialsLoading.value = true;
 		try {
 			credentialsStore.setCredentials([]);
-			const allCredentials = await credentialsStore.fetchUsableCredentials({
-				projectId: projectId.value,
-				forAgent: true,
-			});
+			const [allCredentials] = await Promise.all([
+				credentialsStore.fetchUsableCredentials({
+					projectId: projectId.value,
+					forAgent: true,
+				}),
+				// The type labels below need the credential types. A failure only removes the labels.
+				// A new instance on each fetch retries a load that failed.
+				useCredentialTypesLoad().whenSettled(),
+			]);
 
 			for (const integration of integrations) {
 				credentialsByType.value[integration.type] = allCredentials
@@ -109,6 +115,7 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 					.map((credential) => ({
 						id: credential.id,
 						name: credential.name,
+						type: credential.type,
 						typeDisplayName: credentialsStore.getCredentialTypeByName(credential.type)?.displayName,
 						homeProject: credential.homeProject,
 					}));
@@ -131,9 +138,12 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 		syncSelectedConnectedCredentials();
 	}
 
-	function createCredential() {
+	function createCredential(credentialType?: string) {
 		const integration = currentIntegration.value;
-		const [primaryCredentialType] = integration?.credentialTypes ?? [];
+		// A channel with several credential types names the one to create.
+		const primaryCredentialType =
+			integration?.credentialTypes.find((type) => type === credentialType) ??
+			integration?.credentialTypes[0];
 		if (!integration || !primaryCredentialType) return;
 
 		const existing = credentialsByType.value[integration.type] ?? [];

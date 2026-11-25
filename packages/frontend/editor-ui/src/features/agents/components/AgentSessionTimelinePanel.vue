@@ -28,6 +28,11 @@ import {
 import { timelineColors } from '@/features/agents/session-timeline.styles';
 import { useAgentBackgroundJobs } from '@/features/agents/composables/useAgentBackgroundJobs';
 import {
+	getChatAttachmentUrl,
+	type AgentChatChannel,
+} from '@/features/agents/composables/useAgentApi';
+import { AGENT_ATTACHMENT_URL_KEY } from '@/features/agents/components/agentChatInjectionKeys';
+import {
 	backgroundTasksToTimelineItems,
 	insertBackgroundTaskTimelineItems,
 } from '@/features/agents/utils/background-task-timeline';
@@ -40,9 +45,21 @@ import type {
 	TimelineItem,
 	TimelineStatusFilterKey,
 } from '@/features/agents/session-timeline.types';
+import { parseApprovalInput } from '@/features/ai/shared/agentsChat/messageMappers';
+import type { ApprovalInput, ApprovalResume } from '@/features/ai/shared/agentsChat/types';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nInput, type BadgeVariant } from '@n8n/design-system';
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import {
+	computed,
+	nextTick,
+	onBeforeUnmount,
+	onMounted,
+	provide,
+	ref,
+	useTemplateRef,
+	watch,
+} from 'vue';
 import { useDocumentVisibility } from '@vueuse/core';
 import { useKeybindings } from '@/app/composables/useKeybindings';
 
@@ -53,6 +70,8 @@ const props = defineProps<{
 	threadId: string;
 	increaseBudget?: (payload: { field: BudgetAmountField; amount: number }) => Promise<boolean>;
 	personalisation?: AgentJsonConfig['personalisation'] | null;
+	/** The chat routes of the thread. System agents, such as the Assistant, use 'system'. */
+	channel?: AgentChatChannel;
 }>();
 
 // Hands the loaded thread detail up so an enclosing view (the standalone
@@ -67,7 +86,21 @@ const toast = useToast();
 const agentTelemetry = useAgentTelemetry();
 const sessionsStore = useAgentSessionsStore();
 const pushStore = usePushConnectionStore();
+const rootStore = useRootStore();
 const documentVisibility = useDocumentVisibility();
+
+// Attachments and output files download through the chat routes of the thread.
+// The fallback of the attachment list uses the project routes, which load project agents only.
+provide(AGENT_ATTACHMENT_URL_KEY, (attachmentId) =>
+	getChatAttachmentUrl(
+		rootStore.restApiContext,
+		props.projectId,
+		props.agentId,
+		attachmentId,
+		props.channel ?? 'chat',
+		props.threadId,
+	),
+);
 
 const projectId = computed(() => props.projectId);
 
@@ -91,6 +124,7 @@ const { allJobs, respondToApproval } = useAgentBackgroundJobs({
 	projectId: () => props.projectId,
 	agentId: () => props.agentId,
 	threadId: () => props.threadId,
+	channel: () => props.channel ?? 'chat',
 	active: true,
 });
 
@@ -157,7 +191,7 @@ const budgetIncreasePending = ref(false);
 const budgetStop = computed<{
 	index: number;
 	executionId: string;
-	code: 'budget.monthly' | 'budget.session';
+	code: 'budget.monthly' | 'budget.session' | 'budget.credits';
 } | null>(() => {
 	const lastExecutionId = executions.value.at(-1)?.id;
 	if (!lastExecutionId || lastExecutionId === resolvedBudgetStopExecutionId.value) return null;
@@ -286,6 +320,60 @@ const selectedItem = computed<TimelineItem | null>(() =>
 	selectedIndex.value !== null ? (items.value[selectedIndex.value] ?? null) : null,
 );
 
+// The resume route returns once the run is started. Keep this thread's card
+// disabled until a refresh shows the session is no longer awaiting.
+const pendingApprovalIdentity = ref<string | null>(null);
+
+const approvalDisabled = computed(() => pendingApprovalIdentity.value === threadIdentity());
+
+// The approval suspension parked on the latest execution, if that execution is
+// still awaiting a decision. Independent of the selected row: the card sits
+// inline in the timeline table. Only task runs resume from here; a chat turn,
+// such as an Assistant turn, takes its approval in the chat.
+const openApprovalItem = computed((): TimelineItem | null => {
+	const latest = executions.value.at(-1);
+	if (!latest || latest.status !== 'awaiting' || latest.source !== 'task') return null;
+	return (
+		items.value.find(
+			(item) =>
+				item.executionId === latest.id &&
+				item.kind === 'suspension' &&
+				item.hitlRequestType === 'approval',
+		) ?? null
+	);
+});
+
+const sessionApproval = computed((): ApprovalInput | undefined => {
+	const item = openApprovalItem.value;
+	if (!item) return undefined;
+	return parseApprovalInput(item.hitlRequest);
+});
+
+function releasePendingApproval(identity: string) {
+	if (pendingApprovalIdentity.value === identity) pendingApprovalIdentity.value = null;
+}
+
+async function submitSessionApproval(resumeData: ApprovalResume) {
+	const toolCallId = openApprovalItem.value?.toolCallId;
+	const identity = threadIdentity();
+	const { projectId, agentId, threadId } = props;
+	if (!toolCallId || pendingApprovalIdentity.value === identity) return;
+	pendingApprovalIdentity.value = identity;
+	try {
+		await sessionsStore.resumeTaskApproval(projectId, agentId, threadId, {
+			toolCallId,
+			resumeData,
+		});
+	} catch (error) {
+		releasePendingApproval(identity);
+		if (threadIdentity() !== identity) return;
+		toast.showError(error, i18n.baseText('agentSessions.approval.failed'));
+		return;
+	}
+	if (threadIdentity() !== identity) return;
+	refreshThreadDetail();
+}
+
 function selectTimelineItem(index: number | null) {
 	selectedIndex.value = index;
 	highlightedIndex.value = index;
@@ -332,6 +420,7 @@ async function fetchThreadDetail(initial: boolean) {
 			currentProjectId,
 			currentAgentId,
 			currentThreadId,
+			props.channel,
 		);
 		if (requestId !== threadDetailRequestId || identity !== threadIdentity()) {
 			return;
@@ -339,6 +428,12 @@ async function fetchThreadDetail(initial: boolean) {
 		const selectedKey = !initial && selectedItem.value ? timelineItemKey(selectedItem.value) : null;
 		executions.value = result.executions;
 		memory.value = result.memory;
+		if (
+			pendingApprovalIdentity.value === identity &&
+			result.executions.at(-1)?.status !== 'awaiting'
+		) {
+			pendingApprovalIdentity.value = null;
+		}
 		if (selectedKey) {
 			const nextIndex = items.value.findIndex((item) => timelineItemKey(item) === selectedKey);
 			selectTimelineItem(nextIndex >= 0 ? nextIndex : null);
@@ -477,7 +572,11 @@ useKeybindings({
 				:pending-approval-run-ids="pendingApprovalRunIds"
 				:memory="memory"
 				:on-memory-deleted="refreshThreadDetail"
+				:approval-item="openApprovalItem"
+				:approval="sessionApproval"
+				:approval-disabled="approvalDisabled"
 				@select="onTimelineItemSelect"
+				@approve="submitSessionApproval"
 			>
 				<template v-if="budgetStop" #notice>
 					<AgentBudgetNoticeCard

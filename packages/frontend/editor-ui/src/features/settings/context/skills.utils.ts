@@ -2,7 +2,9 @@ import {
 	SKILL_SOURCE_MAX_SKILLS,
 	type SkillListItem,
 	type SkillScanFinding,
+	type SkillLinkReviewReason,
 	type SkillScanRule,
+	type SkillScope,
 	type SkillSourceReason,
 } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
@@ -13,8 +15,8 @@ import { splitName } from '@/features/collaboration/projects/projects.utils';
 
 export const PROJECT_SCOPE_PREFIX = 'project:';
 
-/** Settings creates and moves skills only to a project or the instance, never to one agent. */
-export function parseScope(value: string): { scope: 'project' | 'instance'; projectId?: string } {
+/** The scope and project of a scope picker value. */
+export function parseScope(value: string): { scope: SkillScope; projectId?: string } {
 	if (value.startsWith(PROJECT_SCOPE_PREFIX)) {
 		return { scope: 'project', projectId: value.slice(PROJECT_SCOPE_PREFIX.length) };
 	}
@@ -46,20 +48,11 @@ export function useSkillScopeDisplay() {
 	}
 
 	function scopeDisplay(
-		skill: Pick<SkillListItem, 'scope' | 'projectId' | 'projectName' | 'projectType' | 'agentName'>,
+		skill: Pick<SkillListItem, 'scope' | 'projectId' | 'projectName' | 'projectType'>,
 	): SkillScopeDisplay {
 		switch (skill.scope) {
 			case 'instance':
 				return { icon: 'globe', label: i18n.baseText('settings.context.skills.scope.instance') };
-			case 'agent':
-				return {
-					icon: 'bot',
-					label: skill.agentName
-						? i18n.baseText('settings.context.skills.scope.agent', {
-								interpolate: { name: skill.agentName },
-							})
-						: i18n.baseText('settings.context.skills.scope.agentFallback'),
-				};
 			case 'project':
 				if (!skill.projectId) {
 					return { icon: 'layers', label: i18n.baseText('settings.context.skills.scope.project') };
@@ -110,6 +103,8 @@ const SKILL_SOURCE_REASON_KEYS = {
 	blocked_by_check: 'settings.context.skills.connect.error.blockedByCheck',
 	review_required: 'settings.context.skills.connect.error.reviewRequired',
 	name_taken: 'settings.context.skills.connect.error.nameTaken',
+	stale: 'settings.context.skills.updates.stale',
+	name_clash: 'settings.context.skills.updates.nameClash',
 	duplicate_source: 'settings.context.skills.connect.error.duplicateSource',
 	credential_invalid: 'settings.context.skills.connect.error.credentialInvalid',
 	credential_missing: 'settings.context.skills.connect.error.credentialMissing',
@@ -128,17 +123,40 @@ const FAILED_SKILL_REASON_KEYS: Partial<Record<SkillSourceReason, BaseTextKey>> 
 	unreachable: 'settings.context.skills.connect.failed.reason.unreachable',
 };
 
+/** The rules that say why the import leaves a file out. */
+export const SKIPPED_FILE_RULES: ReadonlySet<SkillScanRule> = new Set([
+	'file_skipped',
+	'file_unstorable',
+	'file_too_large',
+	'file_over_skill_limit',
+]);
+
 /** The text for each rule of the security check. The server text is English only. */
 const SKILL_SCAN_RULE_KEYS = {
 	invalid_skill: 'settings.context.skills.connect.check.rule.invalidSkill',
 	over_limit: 'settings.context.skills.connect.check.rule.overLimit',
 	file_skipped: 'settings.context.skills.connect.check.rule.fileSkipped',
+	file_unstorable: 'settings.context.skills.connect.check.rule.fileUnstorable',
+	file_too_large: 'settings.context.skills.connect.check.rule.fileTooLarge',
+	file_over_skill_limit: 'settings.context.skills.connect.check.rule.fileOverSkillLimit',
+	script_file: 'settings.context.skills.connect.check.rule.scriptFile',
+	binary_file: 'settings.context.skills.connect.check.rule.binaryFile',
 	hidden_unicode: 'settings.context.skills.connect.check.rule.hiddenUnicode',
 	new_url: 'settings.context.skills.connect.check.rule.newUrl',
+	risky_url: 'settings.context.skills.connect.check.rule.riskyUrl',
 	permission_change: 'settings.context.skills.connect.check.rule.permissionChange',
-	suspicious_phrase: 'settings.context.skills.connect.check.rule.suspiciousPhrase',
 	lossy_conversion: 'settings.context.skills.connect.check.rule.lossyConversion',
 } satisfies Record<SkillScanRule, BaseTextKey>;
+
+/** The text for each reason that a link needs review. Each takes `{domain}`, except `unreadable`. */
+const SKILL_LINK_REASON_KEYS = {
+	ip_address: 'settings.context.skills.connect.check.linkReason.ipAddress',
+	not_https: 'settings.context.skills.connect.check.linkReason.notHttps',
+	paste_site: 'settings.context.skills.connect.check.linkReason.pasteSite',
+	webhook_catcher: 'settings.context.skills.connect.check.linkReason.webhookCatcher',
+	url_shortener: 'settings.context.skills.connect.check.linkReason.urlShortener',
+	unreadable: 'settings.context.skills.connect.check.linkReason.unreadable',
+} satisfies Record<SkillLinkReviewReason, BaseTextKey>;
 
 /** A link to a branch, a folder on a branch, or a file on a branch. */
 const GITHUB_BRANCH_LINK =
@@ -188,14 +206,17 @@ export function useSkillSourceReasons() {
 	}
 
 	/**
-	 * The findings that need review or block the skill, each rule and file one time. `info`
-	 * findings change nothing, and the picker lists skipped files on their own line.
+	 * The findings that need review or block the skill. The picker lists skipped files separately.
 	 */
 	function findingsText(findings: SkillScanFinding[]): string {
 		const texts = findings
 			.filter((finding) => finding.severity !== 'info')
-			.map(({ rule, file }) => {
-				const finding = i18n.baseText(SKILL_SCAN_RULE_KEYS[rule]);
+			.map(({ rule, file, domain, linkReason }) => {
+				const finding = linkReason
+					? i18n.baseText(SKILL_LINK_REASON_KEYS[linkReason], {
+							interpolate: { domain: domain ?? '' },
+						})
+					: ruleText(rule);
 				return file
 					? i18n.baseText('settings.context.skills.connect.check.findingInFile', {
 							interpolate: { finding, file },
@@ -205,14 +226,13 @@ export function useSkillSourceReasons() {
 		return [...new Set(texts)].join('. ');
 	}
 
-	/**
-	 * The domains that a skill links to. At import a link needs no review, but the user still
-	 * sees where the skill can send an agent.
-	 */
+	/** The domains that a skill links to, including links that need review. */
 	function linkedDomainsText(findings: SkillScanFinding[]): string {
 		const domains = new Set(
 			findings.flatMap((finding) =>
-				finding.rule === 'new_url' && finding.domain ? [finding.domain] : [],
+				(finding.rule === 'new_url' || finding.rule === 'risky_url') && finding.domain
+					? [finding.domain]
+					: [],
 			),
 		);
 		if (domains.size === 0) return '';
@@ -221,5 +241,10 @@ export function useSkillSourceReasons() {
 		});
 	}
 
-	return { reasonText, failedSkillReason, findingsText, linkedDomainsText };
+	/** The translated name of one rule of the security check. */
+	function ruleText(rule: SkillScanRule): string {
+		return i18n.baseText(SKILL_SCAN_RULE_KEYS[rule]);
+	}
+
+	return { reasonText, failedSkillReason, findingsText, linkedDomainsText, ruleText };
 }

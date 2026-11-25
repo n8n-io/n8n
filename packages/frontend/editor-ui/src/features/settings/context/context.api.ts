@@ -2,6 +2,7 @@ import type {
 	AiPreferenceCountDto,
 	AiPreferenceListDto,
 	AiPreferenceRequestDto,
+	AiPreferenceSettingsRequestDto,
 } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
@@ -46,4 +47,16 @@ export async function updatePreference(
 
 export async function deletePreference(context: IRestApiContext, id: string): Promise<void> {
 	await makeRestApiRequest(context, 'DELETE', `${ENDPOINT}/${id}`);
+}
+
+export async function updatePreferenceSettings(
+	context: IRestApiContext,
+	payload: AiPreferenceSettingsRequestDto,
+): Promise<AiPreferenceSettingsRequestDto> {
+	return await makeRestApiRequest<AiPreferenceSettingsRequestDto>(
+		context,
+		'PATCH',
+		'/ai-preference-settings',
+		payload,
+	);
 }

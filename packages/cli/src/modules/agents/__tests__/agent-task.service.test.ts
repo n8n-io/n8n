@@ -3,12 +3,11 @@ import type { Mock } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { User, TransactionRunner, OperationContext, Transaction } from '@n8n/db';
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, Publisher } from '@n8n/backend-services';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings, ScheduledTaskManager } from 'n8n-core';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentChangePublisher } from '../agent-change-publisher.service';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
@@ -247,7 +246,9 @@ describe('AgentTaskService', () => {
 				{ type: 'task', id: expect.stringMatching(/^task_/), enabled: true },
 			]);
 			expect(taskRepository.saveDefinitions).toHaveBeenCalledTimes(1);
-			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, ctx, undefined);
+			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, ctx, undefined, {
+				allowArchivedUpdate: false,
+			});
 		});
 
 		it('rejects an invalid cron without creating', async () => {
@@ -380,7 +381,9 @@ describe('AgentTaskService', () => {
 				],
 				ctx,
 			);
-			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, ctx, undefined);
+			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, ctx, undefined, {
+				allowArchivedUpdate: false,
+			});
 			expect(configHash).toBe(getAgentConfigHash(composeStoredJsonConfig(agent)));
 		});
 
@@ -504,6 +507,24 @@ describe('AgentTaskService', () => {
 
 			expect(first).toMatchObject({ task: { name: 'Renamed task' }, changed: true });
 			expect(second).toMatchObject({ task: { name: 'Renamed task' }, changed: false });
+		});
+
+		it('gives the draft a new version when a task changes', async () => {
+			// The go live card shows task names and is re-asked when the draft version changes.
+			const task = makeTask();
+			const agent = makeAgent();
+			(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(task);
+			(agentRepository.findByIdAndProjectId as Mock).mockResolvedValue(agent);
+
+			await service.updateWithChange(
+				AGENT_ID,
+				PROJECT_ID,
+				'task-1',
+				{ name: 'Renamed task' },
+				telemetryContext,
+			);
+
+			expect(agent.versionId).not.toBe('ver-1');
 		});
 
 		it('moves the schedule to another timezone', async () => {
@@ -1182,6 +1203,16 @@ describe('AgentTaskService', () => {
 					memory: expect.objectContaining({ resourceId: 'task:task-1' }),
 				}),
 			);
+		});
+
+		it('rejects an archived agent before the run starts', async () => {
+			(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(makeTask());
+			(agentRepository.findOne as Mock).mockResolvedValue(makeAgent({ isArchived: true }));
+
+			await expect(service.runNow(AGENT_ID, 'task-1', requestingUser)).rejects.toThrow(
+				'Agent is archived. Restore the agent before running it.',
+			);
+			expect(agentExecutionOrchestratorService.executeForTaskNow).not.toHaveBeenCalled();
 		});
 
 		it('throws NotFoundError when the task does not exist', async () => {

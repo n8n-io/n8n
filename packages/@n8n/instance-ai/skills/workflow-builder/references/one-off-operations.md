@@ -9,14 +9,10 @@ description: >-
   contains postBuildFlow.reason "direct-one-off-build-succeeded". Do not load
   for automations the user will run again — that is the normal build +
   post-build-flow path.
-recommended_tools:
-  - execute_node
-  - get_node_types
-  - workflow_builder_build_workflow
-  - setup_workflow
-  - workflow_builder_executions
-  - ask_user
-  - workflow_builder_verify_built_workflow
+recommended_tool_groups:
+  - nodes
+  - workflows
+  - executions
 ---
 
 # One-Off Operations
@@ -62,7 +58,7 @@ output items — no workflow to build, set up, verify, or clean up afterwards.
 Direct execution is sufficient when ALL of these hold:
 
 - The effect is one node call (one write, one API operation). A read-back of
-  the destination may be a second `execute` call of a read operation.
+  the destination may be a second `execute_node` run (through `call_tool`) of a read operation.
 - The input items are already at hand — pasted into the chat or read earlier
   in the conversation — so you can pass them literally as `input` items.
   Parameters must not use expressions referencing other nodes; they cannot
@@ -73,7 +69,9 @@ Direct execution is sufficient when ALL of these hold:
 - A usable credential already exists (`list_credentials`); the
   action takes resolved `{ id, name }` references. If credentials must be
   created first, route that through the credentials setup as usual.
-- The run fits the 60s cap and the input volume is modest.
+- The run fits in 10 minutes and the input volume is modest. The default
+  timeout is 30s. For a slow operation, such as a large upload, set
+  `timeoutMs` up to 600000.
 
 The run executes in the current conversation's project, so credentials shared
 with that project are usable. If it fails because a credential is not
@@ -82,7 +80,7 @@ accessible there, fall back to the one-off workflow flow below.
 Call it with the same shape as a workflow-sdk node — `{ type, version,
 config: { parameters, credentials } }` plus `input` items. Read
 `get_node_types` first, as you would before configuring any
-node. Approval works exactly like `workflow_builder_executions(action="run")` — the same
+node. Approval works exactly like `run_workflow` — the same
 run-approval card, admin policy, and session grants — and for a one-off that
 prompt is the consent gate. The returned output items are
 real, so the read-back rule below is satisfied by reading what came back —
@@ -109,12 +107,12 @@ cannot write to external services directly) — the intent changes the
 2. **Setup** is unchanged: if the build outcome requires credential or value
    setup, route it through `setup_workflow` as usual. A one-off
    still needs real credentials before it can run live.
-3. **Run live** with `workflow_builder_executions(action="run")`. The run-approval card is the
+3. **Run live** by running `run_workflow` through `call_tool`. The run-approval card is the
    user's consent gate — for a one-off, the live run IS what the user asked
    for, so the usual "reserve live runs for explicit user requests" rule is
    satisfied by the request itself. Do not run before setup is complete.
 4. **Read back before reporting.** After the run, inspect the actual output of
-   the effect nodes with `workflow_builder_executions(action="get-node-output")` — the run
+   the effect nodes by running `get_execution_node_output` through `call_tool` — the run
    result data is truncated and not enough for quantitative claims. Check that
    each write/effect node's input was the intended data (the rows you meant to
    write), not an upstream node's API response. Report only numbers, columns,

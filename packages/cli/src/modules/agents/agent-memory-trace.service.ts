@@ -167,6 +167,7 @@ export class AgentMemoryTraceService {
 			request.agentId,
 			request.threadId,
 			toolCallIds,
+			{},
 		);
 		const sources = await this.sourceRepository.findByCandidateIds(
 			request.agentId,

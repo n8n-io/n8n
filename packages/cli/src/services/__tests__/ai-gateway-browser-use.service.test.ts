@@ -1,0 +1,265 @@
+import type { LicenseState } from '@n8n/backend-common';
+import { OperationalError, UserError } from '@n8n/errors';
+import { mock } from 'vitest-mock-extended';
+
+import {
+	AiGatewayBrowserUseService,
+	toGatewayError,
+} from '@/services/ai-gateway-browser-use.service';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
+
+const attribution = { instanceAiThreadId: 'thread-1', instanceAiTaskId: 'task-1' };
+
+describe('AiGatewayBrowserUseService', () => {
+	let aiGatewayService: ReturnType<typeof mock<AiGatewayService>>;
+	let licenseState: ReturnType<typeof mock<LicenseState>>;
+	let service: AiGatewayBrowserUseService;
+
+	beforeEach(() => {
+		aiGatewayService = mock<AiGatewayService>();
+		licenseState = mock<LicenseState>();
+		service = new AiGatewayBrowserUseService(aiGatewayService, licenseState);
+	});
+
+	it.each([
+		[true, true, true],
+		[false, true, false],
+		[true, false, false],
+	])(
+		'is enabled only with Gateway credits enabled (%s) and Cloud usage-based billing (%s)',
+		(gatewayEnabled, cloudUbbLicensed, expected) => {
+			aiGatewayService.isEnabled.mockReturnValue(gatewayEnabled);
+			licenseState.isAiGatewayCloudUbbLicensed.mockReturnValue(cloudUbbLicensed);
+
+			expect(service.isGatewayBrowserUseEnabled()).toBe(expected);
+		},
+	);
+
+	const sessionRequest = {
+		provider: 'browserbaseBrowserUse',
+		authHeaderKey: 'X-BB-API-Key',
+		method: 'POST',
+		userId: 'user-1',
+		attribution,
+		mapErrorResponse: toGatewayError,
+		timeoutMs: 30_000,
+	};
+
+	describe('createSession()', () => {
+		it('creates a session without keepAlive, at the live view size, through the gateway', async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({
+				id: 'sess-1',
+				connectUrl: 'wss://connect.example.com',
+				status: 'RUNNING',
+			});
+
+			const session = await service.createSession({ userId: 'user-1', attribution });
+
+			expect(session).toEqual({ id: 'sess-1', connectUrl: 'wss://connect.example.com' });
+			expect(aiGatewayService.sendProviderRequest).toHaveBeenCalledWith({
+				...sessionRequest,
+				path: '/v1/sessions',
+				body: { keepAlive: false, browserSettings: { viewport: { width: 1280, height: 800 } } },
+			});
+		});
+
+		it('asks for a residential proxy in the given country', async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({
+				id: 'sess-1',
+				connectUrl: 'wss://connect.example.com',
+			});
+
+			await service.createSession({ userId: 'user-1', attribution, proxyCountry: 'DE' });
+
+			expect(aiGatewayService.sendProviderRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					body: expect.objectContaining({
+						proxies: [{ type: 'browserbase', geolocation: { country: 'DE' } }],
+					}),
+				}),
+			);
+		});
+
+		it('sends no proxies without a country', async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({
+				id: 'sess-1',
+				connectUrl: 'wss://connect.example.com',
+			});
+
+			await service.createSession({ userId: 'user-1', attribution, proxyCountry: undefined });
+
+			const [{ body }] = aiGatewayService.sendProviderRequest.mock.calls[0];
+			expect(body).not.toHaveProperty('proxies');
+		});
+
+		it("returns the session's region when the gateway sends it", async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({
+				id: 'sess-1',
+				connectUrl: 'wss://connect.example.com',
+				region: 'eu-central-1',
+			});
+
+			const session = await service.createSession({ userId: 'user-1', attribution });
+
+			expect(session).toEqual({
+				id: 'sess-1',
+				connectUrl: 'wss://connect.example.com',
+				region: 'eu-central-1',
+			});
+		});
+
+		it('throws when the response has no connect URL', async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({ id: 'sess-1' });
+
+			await expect(service.createSession({ userId: 'user-1', attribution })).rejects.toThrow(
+				'invalid browser session',
+			);
+		});
+	});
+
+	describe('getLiveView()', () => {
+		it("reads the session's live view link", async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({
+				debuggerFullscreenUrl: 'https://live.example.com/1',
+				pages: [],
+			});
+
+			const view = await service.getLiveView({
+				userId: 'user-1',
+				attribution,
+				sessionId: 'sess/1',
+			});
+
+			expect(view).toEqual({ debuggerFullscreenUrl: 'https://live.example.com/1', pages: [] });
+			expect(aiGatewayService.sendProviderRequest).toHaveBeenCalledWith({
+				...sessionRequest,
+				method: 'GET',
+				path: '/v1/sessions/sess%2F1/debug',
+			});
+		});
+
+		it('reads the live view link of each tab', async () => {
+			const pages = [
+				{ id: 'TARGET-1', debuggerFullscreenUrl: 'https://live.example.com/1' },
+				{ id: 'TARGET-2', debuggerFullscreenUrl: 'https://live.example.com/2' },
+			];
+			aiGatewayService.sendProviderRequest.mockResolvedValue({
+				debuggerFullscreenUrl: 'https://live.example.com/1',
+				pages,
+			});
+
+			const view = await service.getLiveView({
+				userId: 'user-1',
+				attribution,
+				sessionId: 'sess-1',
+			});
+
+			expect(view).toEqual({ debuggerFullscreenUrl: 'https://live.example.com/1', pages });
+		});
+
+		it('reads a response with no tab list as no tabs', async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({
+				debuggerFullscreenUrl: 'https://live.example.com/1',
+			});
+
+			const view = await service.getLiveView({
+				userId: 'user-1',
+				attribution,
+				sessionId: 'sess-1',
+			});
+
+			expect(view).toEqual({ debuggerFullscreenUrl: 'https://live.example.com/1', pages: [] });
+		});
+
+		it('reads a tab list it cannot read as no tabs, and keeps the first tab link', async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({
+				debuggerFullscreenUrl: 'https://live.example.com/1',
+				pages: [{ id: 'target-1' }],
+			});
+
+			const view = await service.getLiveView({
+				userId: 'user-1',
+				attribution,
+				sessionId: 'sess-1',
+			});
+
+			expect(view).toEqual({ debuggerFullscreenUrl: 'https://live.example.com/1', pages: [] });
+		});
+
+		it('throws when the response has no live view link', async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({ pages: [] });
+
+			await expect(
+				service.getLiveView({ userId: 'user-1', attribution, sessionId: 'sess-1' }),
+			).rejects.toThrow('invalid browser live view');
+		});
+	});
+
+	describe('releaseSession()', () => {
+		it('posts a release to the session route', async () => {
+			aiGatewayService.sendProviderRequest.mockResolvedValue({});
+
+			await service.releaseSession({ userId: 'user-1', attribution, sessionId: 'sess/1' });
+
+			expect(aiGatewayService.sendProviderRequest).toHaveBeenCalledWith({
+				...sessionRequest,
+				path: '/v1/sessions/sess%2F1',
+				body: { status: 'REQUEST_RELEASE' },
+			});
+		});
+	});
+});
+
+describe('toGatewayError()', () => {
+	it('gives a UserError when the gateway refuses the request', () => {
+		const error = toGatewayError({ statusCode: 402, body: {} });
+
+		expect(error).toBeInstanceOf(UserError);
+		expect(error.message).toContain('HTTP 402');
+	});
+
+	it("passes on the gateway's own error message", () => {
+		const error = toGatewayError({
+			statusCode: 402,
+			body: {
+				error: {
+					message: 'Your Gateway credits have been depleted. Please top up to continue.',
+					type: 'ai_gateway_request_error',
+				},
+			},
+		});
+
+		expect(error).toBeInstanceOf(UserError);
+		expect(error.message).toBe(
+			'Your Gateway credits have been depleted. Please top up to continue.',
+		);
+	});
+
+	it('does not pass on an error message that is not from the gateway', () => {
+		const error = toGatewayError({
+			statusCode: 400,
+			body: { error: { message: 'Invalid project id proj_123', type: 'upstream_error' } },
+		});
+
+		expect(error.message).toBe('Failed to complete the browser session request (HTTP 400).');
+	});
+
+	it('does not pass on a message outside the gateway error envelope', () => {
+		const error = toGatewayError({
+			statusCode: 402,
+			body: {
+				message: 'Your Gateway credits have been depleted. Please top up to continue.',
+				type: 'ai_gateway_request_error',
+			},
+		});
+
+		expect(error.message).toBe('Failed to complete the browser session request (HTTP 402).');
+	});
+
+	it('gives an OperationalError when the gateway fails', () => {
+		const error = toGatewayError({ statusCode: 502, body: {} });
+
+		expect(error).toBeInstanceOf(OperationalError);
+		expect(error.message).toContain('HTTP 502');
+	});
+});

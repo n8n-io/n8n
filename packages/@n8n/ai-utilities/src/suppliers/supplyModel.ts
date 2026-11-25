@@ -87,15 +87,39 @@ function getOpenAiModel(ctx: ISupplyDataFunctions, model: OpenAiModel) {
 	return openAiModel;
 }
 
-export function supplyModel(ctx: ISupplyDataFunctions, model: SupplyModelOptions): SupplyData {
-	if (isOpenAiModel(model)) {
-		const openAiModel = getOpenAiModel(ctx, model);
-		return {
-			response: openAiModel,
-		};
-	}
-	const adapter = new LangchainChatModelAdapter(model, ctx);
-	return {
-		response: adapter,
-	};
+// `Symbol.for` so the ESM and CJS copies of this package share the key.
+const SUPPLIED_MODEL_OPTIONS: unique symbol = Symbol.for('@n8n/ai-utilities.suppliedModelOptions');
+
+export interface SuppliedModel {
+	[SUPPLIED_MODEL_OPTIONS]: SupplyModelOptions;
+}
+
+function hasOptions(value: unknown): value is SuppliedModel {
+	return (
+		typeof value === 'object' && value !== null && Object.hasOwn(value, SUPPLIED_MODEL_OPTIONS)
+	);
+}
+
+/** Returns the options that `supplyModel` attached to this model, or `undefined`. */
+export function getSuppliedModelOptions(response: unknown): SupplyModelOptions | undefined {
+	return hasOptions(response) ? response[SUPPLIED_MODEL_OPTIONS] : undefined;
+}
+
+function attachOptions(
+	response: object,
+	options: SupplyModelOptions,
+): asserts response is SuppliedModel {
+	// Non-enumerable so the options, which can hold an API key, are not copied or printed.
+	Object.defineProperty(response, SUPPLIED_MODEL_OPTIONS, { value: options });
+}
+
+export function supplyModel(
+	ctx: ISupplyDataFunctions,
+	model: SupplyModelOptions,
+): SupplyData & { response: SuppliedModel } {
+	const response = isOpenAiModel(model)
+		? getOpenAiModel(ctx, model)
+		: new LangchainChatModelAdapter(model, ctx);
+	attachOptions(response, model);
+	return { response };
 }

@@ -1,0 +1,626 @@
+{
+	"name": "Bitwarden Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "collection",
+				"operation": "get",
+				"collectionId": "3f9a1c2e-8b7d-4e6f-9a01-2b3c4d5e6f70"
+			},
+			"id": "node-0",
+			"name": "Collection Get",
+			"type": "n8n-nodes-base.bitwarden",
+			"typeVersion": 1,
+			"position": [400, 0],
+			"credentials": {
+				"bitwardenApi": {
+					"id": "1",
+					"name": "Bitwarden account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "collection",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"id": "node-1",
+			"name": "Collection Get Many",
+			"type": "n8n-nodes-base.bitwarden",
+			"typeVersion": 1,
+			"position": [400, 150],
+			"credentials": {
+				"bitwardenApi": {
+					"id": "1",
+					"name": "Bitwarden account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "collection",
+				"operation": "update",
+				"collectionId": "3f9a1c2e-8b7d-4e6f-9a01-2b3c4d5e6f70",
+				"updateFields": {
+					"externalId": "ext-7"
+				}
+			},
+			"id": "node-2",
+			"name": "Collection Update",
+			"type": "n8n-nodes-base.bitwarden",
+			"typeVersion": 1,
+			"position": [400, 300],
+			"credentials": {
+				"bitwardenApi": {
+					"id": "1",
+					"name": "Bitwarden account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "collection",
+				"operation": "delete",
+				"collectionId": "3f9a1c2e-8b7d-4e6f-9a01-2b3c4d5e6f70"
+			},
+			"id": "node-3",
+			"name": "Collection Delete",
+			"type": "n8n-nodes-base.bitwarden",
+			"typeVersion": 1,
+			"position": [400, 450],
+			"credentials": {
+				"bitwardenApi": {
+					"id": "1",
+					"name": "Bitwarden account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "event",
+				"operation": "getAll",
+				"returnAll": true,
+				"filters": {}
+			},
+			"id": "node-4",
+			"name": "Event Get Many",
+			"type": "n8n-nodes-base.bitwarden",
+			"typeVersion": 1,
+			"position": [400, 600],
+			"credentials": {
+				"bitwardenApi": {
+					"id": "1",
+					"name": "Bitwarden account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "group",
+				"operation": "create",
+				"name": "Support",
+				"accessAll": false,
+				"additionalFields": {}
+			},
+			"id": "node-5",
+			"name": "Group Create",
+			"type": "n8n-nodes-base.bitwarden",
+			"typeVersion": 1,
+			"position": [400, 750],
+			"credentials": {
+				"bitwardenApi": {
+					"id": "1",
+					"name": "Bitwarden account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "group",
+				"operation": "get",
+				"groupId": "7c2d4e6f-1a3b-4c5d-8e9f-0a1b2c3d4e5f"
+			},
+			"id": "node-6",
+			"name": "Group Get",
+			"type": "n8n-nodes-base.bitwarden",
+			"typeVersion": 1,
+			"position": [400, 900],
+			"credentials": {
+				"bitwardenApi": {
+					"id": "1",
+					"name": "Bitwarden account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "group",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"id": "node-7",
+			"name": "Group Get Many",
+			"type": "n8n-nodes-base.bitwarden",
+			"typeVersion": 1,
+			"position": [400, 1050],
+			"credentials": {
+				"bitwardenApi": {
+					"id": "1",
+					"name": "Bitwarden account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "group",
+				"operation": "getMembers",
+				"groupId": "7c2d4e6f-1a3b-4c5d-8e9f-0a1b2c3d4e5f"
+			},
+			"id": "node-8",
+			"name": "Group Get Members",
+			"type": "n8n-nodes-base.bitwarden",
+			"typeVersion": 1,
+			"position": [400, 1200],
+			"credentials": {
+				"bitwardenApi": {
+					"id": "1",
+					"name": "Bitwarden account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "group",
+				"operation": "update",
+				"groupId": "7c2d4e6f-1a3b-4c5d-8e9f-0a1b2c3d4e5f",
+				"updateFields": {
+					"name": "Support EU"
+				}
+			},
+			"id": "node-9",
+			"name": "Group Update",
+			"type": "n8n-nodes-base.bitwarden",
+			"typeVersion": 1,
+			"position": [400, 1350],
+			"credentials": {
+				"bitwardenApi": {
+					"id": "1",
+					"name": "Bitwarden account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "group",
+				"operation": "updateMembers",
+				"groupId": "7c2d4e6f-1a3b-4c5d-8e9f-0a1b2c3d4e5f",
+				"memberIds": "5e6f7a8b-9c0d-4e1f-a2b3-c4d5e6f7a8b9"
+			},
+			"id": "node-10",
+			"name": "Group Update Members",
+			"type": "n8n-nodes-base.bitwarden",
+			"typeVersion": 1,
+			"position": [400, 1500],
+			"credentials": {
+				"bitwardenApi": {
+					"id": "1",
+					"name": "Bitwarden account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "group",
+				"operation": "delete",
+				"groupId": "7c2d4e6f-1a3b-4c5d-8e9f-0a1b2c3d4e5f"
+			},
+			"id": "node-11",
+			"name": "Group Delete",
+			"type": "n8n-nodes-base.bitwarden",
+			"typeVersion": 1,
+			"position": [400, 1650],
+			"credentials": {
+				"bitwardenApi": {
+					"id": "1",
+					"name": "Bitwarden account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "member",
+				"operation": "create",
+				"email": "nathan@example.com",
+				"type": 2,
+				"accessAll": false,
+				"additionalFields": {}
+			},
+			"id": "node-12",
+			"name": "Member Create",
+			"type": "n8n-nodes-base.bitwarden",
+			"typeVersion": 1,
+			"position": [400, 1800],
+			"credentials": {
+				"bitwardenApi": {
+					"id": "1",
+					"name": "Bitwarden account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "member",
+				"operation": "get",
+				"memberId": "5e6f7a8b-9c0d-4e1f-a2b3-c4d5e6f7a8b9"
+			},
+			"id": "node-13",
+			"name": "Member Get",
+			"type": "n8n-nodes-base.bitwarden",
+			"typeVersion": 1,
+			"position": [400, 1950],
+			"credentials": {
+				"bitwardenApi": {
+					"id": "1",
+					"name": "Bitwarden account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "member",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"id": "node-14",
+			"name": "Member Get Many",
+			"type": "n8n-nodes-base.bitwarden",
+			"typeVersion": 1,
+			"position": [400, 2100],
+			"credentials": {
+				"bitwardenApi": {
+					"id": "1",
+					"name": "Bitwarden account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "member",
+				"operation": "getGroups",
+				"memberId": "5e6f7a8b-9c0d-4e1f-a2b3-c4d5e6f7a8b9"
+			},
+			"id": "node-15",
+			"name": "Member Get Groups",
+			"type": "n8n-nodes-base.bitwarden",
+			"typeVersion": 1,
+			"position": [400, 2250],
+			"credentials": {
+				"bitwardenApi": {
+					"id": "1",
+					"name": "Bitwarden account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "member",
+				"operation": "update",
+				"memberId": "5e6f7a8b-9c0d-4e1f-a2b3-c4d5e6f7a8b9",
+				"updateFields": {
+					"externalId": "ext-9"
+				}
+			},
+			"id": "node-16",
+			"name": "Member Update",
+			"type": "n8n-nodes-base.bitwarden",
+			"typeVersion": 1,
+			"position": [400, 2400],
+			"credentials": {
+				"bitwardenApi": {
+					"id": "1",
+					"name": "Bitwarden account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "member",
+				"operation": "updateGroups",
+				"memberId": "5e6f7a8b-9c0d-4e1f-a2b3-c4d5e6f7a8b9",
+				"groupIds": "7c2d4e6f-1a3b-4c5d-8e9f-0a1b2c3d4e5f"
+			},
+			"id": "node-17",
+			"name": "Member Update Groups",
+			"type": "n8n-nodes-base.bitwarden",
+			"typeVersion": 1,
+			"position": [400, 2550],
+			"credentials": {
+				"bitwardenApi": {
+					"id": "1",
+					"name": "Bitwarden account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "member",
+				"operation": "delete",
+				"memberId": "5e6f7a8b-9c0d-4e1f-a2b3-c4d5e6f7a8b9"
+			},
+			"id": "node-18",
+			"name": "Member Delete",
+			"type": "n8n-nodes-base.bitwarden",
+			"typeVersion": 1,
+			"position": [400, 2700],
+			"credentials": {
+				"bitwardenApi": {
+					"id": "1",
+					"name": "Bitwarden account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Collection Get": [
+			{
+				"json": {
+					"id": "3f9a1c2e-8b7d-4e6f-9a01-2b3c4d5e6f70",
+					"object": "collection"
+				}
+			}
+		],
+		"Collection Get Many": [
+			{
+				"json": {
+					"id": "3f9a1c2e-8b7d-4e6f-9a01-2b3c4d5e6f70",
+					"object": "collection"
+				}
+			}
+		],
+		"Collection Update": [
+			{
+				"json": {
+					"id": "3f9a1c2e-8b7d-4e6f-9a01-2b3c4d5e6f70",
+					"object": "collection"
+				}
+			}
+		],
+		"Collection Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Event Get Many": [
+			{
+				"json": {
+					"object": "event",
+					"type": 1000
+				}
+			}
+		],
+		"Group Create": [
+			{
+				"json": {
+					"id": "7c2d4e6f-1a3b-4c5d-8e9f-0a1b2c3d4e5f",
+					"name": "Support"
+				}
+			}
+		],
+		"Group Get": [
+			{
+				"json": {
+					"id": "7c2d4e6f-1a3b-4c5d-8e9f-0a1b2c3d4e5f",
+					"name": "Support"
+				}
+			}
+		],
+		"Group Get Many": [
+			{
+				"json": {
+					"id": "7c2d4e6f-1a3b-4c5d-8e9f-0a1b2c3d4e5f",
+					"name": "Support"
+				}
+			}
+		],
+		"Group Get Members": [
+			{
+				"json": {
+					"memberId": "5e6f7a8b-9c0d-4e1f-a2b3-c4d5e6f7a8b9"
+				}
+			}
+		],
+		"Group Update": [
+			{
+				"json": {
+					"id": "7c2d4e6f-1a3b-4c5d-8e9f-0a1b2c3d4e5f",
+					"name": "Support EU"
+				}
+			}
+		],
+		"Group Update Members": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Group Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Member Create": [
+			{
+				"json": {
+					"id": "5e6f7a8b-9c0d-4e1f-a2b3-c4d5e6f7a8b9",
+					"email": "nathan@example.com"
+				}
+			}
+		],
+		"Member Get": [
+			{
+				"json": {
+					"id": "5e6f7a8b-9c0d-4e1f-a2b3-c4d5e6f7a8b9",
+					"email": "nathan@example.com"
+				}
+			}
+		],
+		"Member Get Many": [
+			{
+				"json": {
+					"id": "5e6f7a8b-9c0d-4e1f-a2b3-c4d5e6f7a8b9",
+					"email": "nathan@example.com"
+				}
+			}
+		],
+		"Member Get Groups": [
+			{
+				"json": {
+					"groupId": "7c2d4e6f-1a3b-4c5d-8e9f-0a1b2c3d4e5f"
+				}
+			}
+		],
+		"Member Update": [
+			{
+				"json": {
+					"id": "5e6f7a8b-9c0d-4e1f-a2b3-c4d5e6f7a8b9",
+					"email": "nathan@example.com"
+				}
+			}
+		],
+		"Member Update Groups": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Member Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Collection Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Collection Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Collection Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Collection Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Event Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Group Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Group Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Group Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Group Get Members",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Group Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Group Update Members",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Group Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Member Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Member Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Member Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Member Get Groups",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Member Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Member Update Groups",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Member Delete",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

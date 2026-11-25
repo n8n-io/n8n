@@ -14,6 +14,7 @@ import {
 	N8nDialogOverlay,
 	N8nDialogTitle,
 } from './index';
+import { OVERLAY_LAYER_SELECTOR } from '../../constants';
 
 // Helper to render the simplified N8nDialog component
 const renderDialog = (
@@ -398,6 +399,18 @@ describe('N8nDialog', () => {
 			});
 		});
 
+		it('should mark the content and the backdrop as overlay layers', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, getByRole } = renderDialog();
+
+			await user.click(getByTestId('dialog-trigger'));
+
+			expect(getByRole('dialog')).toBeInTheDocument();
+			const layers = [...document.querySelectorAll(OVERLAY_LAYER_SELECTOR)];
+			expect(layers).toContain(getByRole('dialog'));
+			expect(layers).toContain(document.querySelector('[data-dialog-overlay]'));
+		});
+
 		it('should close dialog when Escape key is pressed', async () => {
 			const user = userEvent.setup();
 			const { getByTestId, queryByRole, getByRole } = renderDialog();
@@ -574,6 +587,33 @@ describe('N8nDialog', () => {
 				await clickOverlay();
 
 				expect(getByRole('dialog')).toBeInTheDocument();
+			});
+
+			it('applies a code editor suggestion without closing the dialog', async () => {
+				const user = userEvent.setup();
+				const onPick = vi.fn();
+				const { getByTestId, getByRole } = renderDialog();
+
+				await user.click(getByTestId('dialog-trigger'));
+
+				const tooltip = document.createElement('div');
+				tooltip.className = 'cm-tooltip cm-tooltip-autocomplete';
+				tooltip.style.pointerEvents = 'auto';
+				const option = document.createElement('button');
+				option.type = 'button';
+				option.textContent = 'foo';
+				option.addEventListener('click', onPick);
+				tooltip.append(option);
+				document.body.append(tooltip);
+
+				try {
+					await user.click(option);
+
+					expect(onPick).toHaveBeenCalledOnce();
+					expect(getByRole('dialog')).toBeInTheDocument();
+				} finally {
+					tooltip.remove();
+				}
 			});
 		});
 

@@ -1,0 +1,152 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"date": {
+			"type": "string"
+		},
+		"from": {
+			"properties": {
+				"html": {
+					"type": "string"
+				},
+				"text": {
+					"type": "string"
+				},
+				"value": {
+					"items": {
+						"properties": {
+							"address": {
+								"type": "string"
+							},
+							"name": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				}
+			},
+			"type": ["object", "string"]
+		},
+		"headers": {
+			"additionalProperties": true,
+			"properties": {
+				"arc-authentication-results": {
+					"type": "string"
+				},
+				"arc-message-signature": {
+					"type": "string"
+				},
+				"arc-seal": {
+					"type": "string"
+				},
+				"authentication-results": {
+					"type": "string"
+				},
+				"content-type": {
+					"type": "string"
+				},
+				"date": {
+					"type": "string"
+				},
+				"delivered-to": {
+					"type": "string"
+				},
+				"dkim-signature": {
+					"type": "string"
+				},
+				"from": {
+					"type": "string"
+				},
+				"message-id": {
+					"type": "string"
+				},
+				"mime-version": {
+					"type": "string"
+				},
+				"received": {
+					"type": "string"
+				},
+				"received-spf": {
+					"type": "string"
+				},
+				"return-path": {
+					"type": "string"
+				},
+				"subject": {
+					"type": "string"
+				},
+				"to": {
+					"type": "string"
+				},
+				"x-gm-message-state": {
+					"type": "string"
+				},
+				"x-google-dkim-signature": {
+					"type": "string"
+				},
+				"x-received": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"html": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"labelIds": {
+			"items": {
+				"type": "string"
+			},
+			"type": "array"
+		},
+		"messageId": {
+			"type": "string"
+		},
+		"sizeEstimate": {
+			"type": "number"
+		},
+		"subject": {
+			"type": "string"
+		},
+		"text": {
+			"type": "string"
+		},
+		"textAsHtml": {
+			"type": "string"
+		},
+		"threadId": {
+			"type": "string"
+		},
+		"to": {
+			"properties": {
+				"html": {
+					"type": "string"
+				},
+				"text": {
+					"type": "string"
+				},
+				"value": {
+					"items": {
+						"properties": {
+							"address": {
+								"type": "string"
+							},
+							"name": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

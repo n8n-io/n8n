@@ -1,0 +1,59 @@
+{
+	"properties": {
+		"children_count": {
+			"type": "number"
+		},
+		"created_at": {
+			"type": "string"
+		},
+		"details": {
+			"type": ["null", "string"]
+		},
+		"domain_names": {
+			"items": {
+				"type": "string"
+			},
+			"type": "array"
+		},
+		"external_id": {
+			"type": ["null", "string"]
+		},
+		"group_id": {
+			"type": ["null", "number"]
+		},
+		"id": {
+			"type": "number"
+		},
+		"name": {
+			"type": "string"
+		},
+		"notes": {
+			"type": ["null", "string"]
+		},
+		"organization_fields": {
+			"type": "object"
+		},
+		"shared_comments": {
+			"type": "boolean"
+		},
+		"shared_tickets": {
+			"type": "boolean"
+		},
+		"tags": {
+			"items": {
+				"type": "string"
+			},
+			"type": "array"
+		},
+		"ticket_restriction": {
+			"type": "string"
+		},
+		"updated_at": {
+			"type": "string"
+		},
+		"url": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

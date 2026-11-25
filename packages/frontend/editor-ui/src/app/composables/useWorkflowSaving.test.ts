@@ -1,5 +1,5 @@
 import { computed, defineComponent, h, nextTick, provide } from 'vue';
-import { mount } from '@vue/test-utils';
+import { enableAutoUnmount, mount } from '@vue/test-utils';
 import { useUIStore } from '@/app/stores/ui.store';
 import { AutoSaveState, DEBOUNCE_TIME, MODAL_CANCEL, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import {
@@ -143,11 +143,16 @@ describe('useWorkflowSaving', () => {
 	let backendConnectionStore: ReturnType<typeof useBackendConnectionStore>;
 
 	afterEach(() => {
+		vi.useRealTimers();
 		vi.clearAllMocks();
 		mockRoute.params = {};
 	});
 
+	enableAutoUnmount(afterEach);
+
 	beforeEach(() => {
+		// A real autosave timer can restore an earlier test's active Pinia when it fires.
+		vi.useFakeTimers();
 		setActivePinia(createTestingPinia({ stubActions: false }));
 
 		workflowsStore = mockedStore(useWorkflowsStore);
@@ -898,6 +903,32 @@ describe('useWorkflowSaving', () => {
 					false,
 				);
 			}
+		});
+
+		it('should leave the version-scoped settings out of the save with the engine-v2 module', async () => {
+			mockedStore(useSettingsStore).isModuleActive.mockImplementation(
+				(name: string) => name === 'engine-v2',
+			);
+			const workflow = createTestWorkflow({
+				id: 'w-engine',
+				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+				settings: { executionOrder: 'v1', engineType: 'v2' },
+			});
+
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
+
+			workflowsStore.setWorkflowId(workflow.id);
+			workflowsListStore.workflowsById = { [workflow.id]: workflow };
+			const documentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
+			documentStore.hydrate(workflow);
+
+			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+			await saveCurrentWorkflow({ id: workflow.id }, true, false, false);
+
+			// Only the settings modal saves the engine, so a stale editor can't overwrite it.
+			const payload = vi.mocked(workflowsStore.updateWorkflow).mock.lastCall?.[1];
+			expect(payload?.settings).not.toHaveProperty('engineType');
+			expect(payload?.settings).toEqual(expect.objectContaining({ executionOrder: 'v1' }));
 		});
 
 		it('should remove invalid node groups before saving and warn the user', async () => {

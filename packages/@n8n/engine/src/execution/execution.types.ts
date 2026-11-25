@@ -23,6 +23,13 @@ export function isLiveExecutionStatus(status: ExecutionStatus): boolean {
 	return (LIVE_EXECUTION_STATUSES as readonly ExecutionStatus[]).includes(status);
 }
 
+/** Ended for good. Every other status is `queued` or live. */
+export const ENDED_EXECUTION_STATUSES = ['completed', 'failed', 'cancelled'] as const;
+
+export function isEndedExecutionStatus(status: ExecutionStatus): boolean {
+	return (ENDED_EXECUTION_STATUSES as readonly ExecutionStatus[]).includes(status);
+}
+
 /** How an execution was initiated. */
 export type ExecutionMode = 'production' | 'manual';
 
@@ -49,8 +56,8 @@ export interface CallerContext {
 }
 
 /**
- * The execution that started this one, and the step that asked for it. Only
- * the engine's own start path sets it: a caller over HTTP cannot claim a
+ * The parent execution and the parent step that asked for this execution.
+ * Only the engine's own start path sets it: a caller over HTTP cannot claim a
  * parent.
  */
 export interface ParentLink {
@@ -94,14 +101,38 @@ export function isSettledStatus(status: StepStatus): status is SettledStepStatus
 /**
  * A step's data on one side of a connection, indexed by slot: outputs by
  * output slot, inputs by input slot. An edge copies one output slot into one
- * input slot; the engine understands the slot structure and nothing below it —
- * a slot's contents are opaque and step-type-specific.
+ * input slot. A slot's contents are step-type-specific. Several live edges
+ * into one input slot must each deliver a list: the engine concatenates them.
  *
  * `null` marks a slot without data: on outputs, the step didn't fire the slot
  * (a branch not taken); on inputs, nothing arrived (a dead edge). `[]` is not
  * the same thing — a step that ran and produced zero items is still live.
  */
 export type StepSlots = JsonValue[];
+
+/**
+ * Where `itemCount` consecutive items came from: another step's output slot,
+ * read from `offset`. The v1 shim translates this into paired items.
+ */
+export interface ItemSource {
+	/** The node of the source step. */
+	nodeId: string;
+	/** The output slot of the source step. */
+	outputIndex: number;
+	/** The iteration of the source step. */
+	iteration: number;
+	/** The index of the first item in the source slot. */
+	offset: number;
+	/** How many consecutive items come from this source; 1 for a value that is not a list. */
+	itemCount: number;
+}
+
+/**
+ * Per output slot, in item order, the sources that fill it; `null` for a slot
+ * the step did not fill. A loop node emits items it did not make, so it states
+ * their origin in engine terms. Every other step type states nothing.
+ */
+export type StepOutputSources = Array<ItemSource[] | null>;
 
 /**
  * The trigger step's outputs, supplied by whoever starts the execution: one
@@ -128,8 +159,8 @@ export const DEFAULT_TRIGGER_OUTPUTS: TriggerOutputs = [];
  * completed with these outputs instead, so everything before it has settled
  * first, as it would have had the node run. Same opacity as `TriggerOutputs`.
  *
- * Each node maps to its outputs per pass, iteration 0 first. A node outside a
- * loop has one entry. TODO(CAT-4875): accept a loop's passes.
+ * Each node maps to the outputs of each of its passes, iteration 0 first. A
+ * node outside a loop has one pass. A node inside a loop has one per pass.
  */
 export type SeededSteps = Record<string, StepSlots[]>;
 
@@ -181,12 +212,41 @@ export type ExecutorWaitDeclaration = Exclude<WaitDeclaration, { subExecutionId:
 export type ResumeBinding = 'execution' | 'step';
 
 /**
- * What ended a step's wait, recorded on the row when it resumed. No node code
- * runs on a resume. A deadline carries nothing: the declaration already holds
- * the outputs to emit. A request carries the outputs the node's resume path
- * produced where the request arrived, and the engine emits them unread.
+ * What a sub-execution hands back to the step that waited for it: the
+ * outputs of every terminal step that completed, in graph order and then by
+ * pass. Kept apart per step, so the consumer decides how to combine them, and
+ * the engine never reads into a slot.
  */
-export type ResumeCause = { kind: 'deadline' } | { kind: 'request'; outputs: StepSlots };
+export type SubExecutionResult = Array<{ nodeId: string; iteration: number; outputs: StepSlots }>;
+
+/**
+ * A sub-execution ended, so its awaiting parent step resumes. Unlike the
+ * other causes, this one re-runs the node: the shim answers the node's
+ * `executeWorkflow` call from `result`, or throws `error`, instead of starting
+ * a sub-execution again. A sub-execution that failed carries the error of the step that
+ * failed it; a cancelled one carries an error that says so.
+ */
+export type SubExecutionResumeCause = {
+	kind: 'subExecution';
+	executionId: string;
+} & SubExecutionOutcome;
+
+/** How a sub-execution ended, and what it hands back. */
+export type SubExecutionOutcome =
+	| { status: 'completed'; result: SubExecutionResult }
+	| { status: 'failed' | 'cancelled'; error: StepError };
+
+/**
+ * What ended a step's wait, recorded on the row when it resumed. A deadline
+ * carries nothing: the declaration already holds the outputs to emit. A request
+ * carries the outputs the node's resume path produced where the request
+ * arrived, and the engine emits them unread. Neither runs node code; a sub-execution
+ * resume does, see `SubExecutionResumeCause`.
+ */
+export type ResumeCause =
+	| { kind: 'deadline' }
+	| { kind: 'request'; outputs: StepSlots }
+	| SubExecutionResumeCause;
 
 /**
  * An executor's wait with no deadline and no resume request would never end,
@@ -212,8 +272,8 @@ export interface StepError {
 	stack?: string;
 	/**
 	 * Step-type-specific error detail, persisted without inspection — the engine
-	 * owns only `name`/`message`/`stack`. Unpopulated until executors have a way
-	 * to hand structured detail across the seam; they only throw today.
+	 * owns only `name`/`message`/`stack`. An executor supplies it with
+	 * `attachStepErrorDetails`.
 	 */
 	details?: JsonValue;
 }

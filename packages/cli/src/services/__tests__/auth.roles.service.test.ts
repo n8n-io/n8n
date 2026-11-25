@@ -13,6 +13,7 @@ import {
 	PERSONAL_SPACE_PUBLISHING_SETTING,
 	PERSONAL_SPACE_SHARING_SETTING,
 	EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING,
+	PROMOTION_PROJECT_ACCESS_SETTING_KEYS,
 } from '@n8n/permissions';
 import type { EntityManager, FindManyOptions, Repository } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
@@ -962,6 +963,45 @@ describe('AuthRolesService', () => {
 					];
 					for (const scope of externalSecretsScopes) {
 						expect(scopeSlugs).not.toContain(scope);
+					}
+				});
+			});
+
+			describe('promotion project access', () => {
+				test('should give admin and editor roles exactly the promotion scopes of the stored settings', async () => {
+					const allScopes = createAllScopes();
+					setupDefaultMocks(allScopes);
+					mockEntityManager.findBy.mockResolvedValue([
+						{
+							key: PROMOTION_PROJECT_ACCESS_SETTING_KEYS.whoCanPromote,
+							value: 'projectAdmins',
+							loadOnStartup: true,
+						},
+						{
+							key: PROMOTION_PROJECT_ACCESS_SETTING_KEYS.whoCanApprove,
+							value: 'projectAdminsAndEditors',
+							loadOnStartup: true,
+						},
+					]);
+
+					await authRolesService.init();
+
+					// No apply row is stored, so nobody below instance admin gets `promotions:apply`.
+					const expected = {
+						[PROJECT_ADMIN_ROLE_SLUG]: [
+							'promotions:approveReviews',
+							'promotions:promote',
+							'promotions:readReviews',
+						],
+						[PROJECT_EDITOR_ROLE_SLUG]: ['promotions:approveReviews', 'promotions:readReviews'],
+					};
+					for (const slug of [PROJECT_ADMIN_ROLE_SLUG, PROJECT_EDITOR_ROLE_SLUG] as const) {
+						const call = roleRepository.create.mock.calls.find((c) => (c[0] as Role).slug === slug);
+						const promotionScopes = (call?.[0] as Role).scopes
+							.map((s: Scope) => s.slug)
+							.filter((scope) => scope.startsWith('promotions:'))
+							.sort();
+						expect(promotionScopes).toEqual(expected[slug]);
 					}
 				});
 			});

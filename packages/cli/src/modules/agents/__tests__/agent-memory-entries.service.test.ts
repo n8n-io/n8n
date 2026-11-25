@@ -1,4 +1,4 @@
-import type { User, UserRepository } from '@n8n/db';
+import type { Person, PersonRepository } from '@n8n/db';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
@@ -19,14 +19,14 @@ function makeService() {
 	const memory = mock<N8nMemoryImpl>();
 	const n8nMemory = mock<N8nMemory>();
 	n8nMemory.getImplementation.mockReturnValue(memory);
-	const userRepository = mock<UserRepository>();
+	const personRepository = mock<PersonRepository>();
 	const service = new AgentMemoryEntriesService(
 		agentRepository,
 		memoryEntryRepository,
 		n8nMemory,
-		userRepository,
+		personRepository,
 	);
-	return { service, agentRepository, memoryEntryRepository, memory, userRepository };
+	return { service, agentRepository, memoryEntryRepository, memory, personRepository };
 }
 
 describe('AgentMemoryEntriesService', () => {
@@ -79,14 +79,14 @@ describe('AgentMemoryEntriesService', () => {
 		});
 
 		it('marks the viewer on their own n8n chat memories', async () => {
-			const { service, memoryEntryRepository, memory, userRepository } = makeService();
+			const { service, memoryEntryRepository, memory, personRepository } = makeService();
 			memoryEntryRepository.listActiveByAgent.mockResolvedValue([
 				makeEntry('e1', 'system-chat:viewer-1', '2026-10-01T10:00:00.000Z'),
 			]);
 			memoryEntryRepository.countActiveByAgent.mockResolvedValue(1);
 			memory.getEntrySourcesWithMessageContext.mockResolvedValue([]);
-			userRepository.findManyByIds.mockResolvedValue([
-				{ id: 'viewer-1', firstName: 'Robin', lastName: 'B', email: 'r@example.com' } as User,
+			personRepository.findManyByIds.mockResolvedValue([
+				{ id: 'viewer-1', firstName: 'Robin', lastName: 'B', email: 'r@example.com' } as Person,
 			]);
 
 			const page = await service.list('agent-1', 'project-1', 'viewer-1', {});
@@ -96,15 +96,30 @@ describe('AgentMemoryEntriesService', () => {
 		});
 
 		it('shows no name for a chat owner without a first or last name', async () => {
-			const { service, memoryEntryRepository, memory, userRepository } = makeService();
+			const { service, memoryEntryRepository, memory, personRepository } = makeService();
 			memoryEntryRepository.listActiveByAgent.mockResolvedValue([
 				makeEntry('e1', 'n8n-chat-production:other', '2026-10-01T10:00:00.000Z'),
 			]);
 			memoryEntryRepository.countActiveByAgent.mockResolvedValue(1);
 			memory.getEntrySourcesWithMessageContext.mockResolvedValue([]);
-			userRepository.findManyByIds.mockResolvedValue([
-				{ id: 'other', email: 'private@example.com' } as User,
+			personRepository.findManyByIds.mockResolvedValue([
+				{ id: 'other', email: 'private@example.com' } as Person,
 			]);
+
+			const page = await service.list('agent-1', 'project-1', 'viewer-1', {});
+
+			expect(page.items[0].source).toEqual({ kind: 'n8n-chat' });
+		});
+
+		it('shows no name for a chat owner who is a service account', async () => {
+			const { service, memoryEntryRepository, memory, personRepository } = makeService();
+			memoryEntryRepository.listActiveByAgent.mockResolvedValue([
+				makeEntry('e1', 'n8n-chat-production:service-1', '2026-10-01T10:00:00.000Z'),
+			]);
+			memoryEntryRepository.countActiveByAgent.mockResolvedValue(1);
+			memory.getEntrySourcesWithMessageContext.mockResolvedValue([]);
+			// The person lookup skips service accounts.
+			personRepository.findManyByIds.mockResolvedValue([]);
 
 			const page = await service.list('agent-1', 'project-1', 'viewer-1', {});
 

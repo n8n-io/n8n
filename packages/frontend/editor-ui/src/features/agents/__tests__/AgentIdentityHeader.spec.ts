@@ -59,7 +59,7 @@ type TestAgentConfig = {
 async function mountHeader(
 	config: TestAgentConfig = {
 		name: 'Support agent',
-		model: 'anthropic/claude-sonnet-4-5',
+		model: 'anthropic/claude-sonnet-5-5',
 		instructions: 'Help the user.',
 	},
 ) {
@@ -96,7 +96,7 @@ describe('AgentIdentityHeader', () => {
 	it('renders the saved personalisation icon and gradient as a 64px superellipse squircle', async () => {
 		const wrapper = await mountHeader({
 			name: 'Support agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Help the user.',
 			personalisation: {
 				icon: 'search',
@@ -119,7 +119,7 @@ describe('AgentIdentityHeader', () => {
 	it('passes the default agent icon as the fallback for an icon name no icon set has', async () => {
 		const wrapper = await mountHeader({
 			name: 'Support agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Help the user.',
 			personalisation: { icon: 'not-an-icon', gradient: { from: '#111111', to: '#222222' } },
 		});
@@ -132,7 +132,7 @@ describe('AgentIdentityHeader', () => {
 	it('renders the default agent icon for an empty icon name', async () => {
 		const wrapper = await mountHeader({
 			name: 'Support agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Help the user.',
 			personalisation: { icon: '', gradient: { from: '#111111', to: '#222222' } },
 		});
@@ -145,7 +145,7 @@ describe('AgentIdentityHeader', () => {
 	it('renders the default gradient for a stored gradient the schema would reject', async () => {
 		const wrapper = await mountHeader({
 			name: 'Support agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Help the user.',
 			personalisation: { icon: 'search', gradient: { from: '#X000FF', to: '#222222' } },
 		});
@@ -158,7 +158,7 @@ describe('AgentIdentityHeader', () => {
 	it('emits the picked icon while preserving the saved gradient', async () => {
 		const wrapper = await mountHeader({
 			name: 'Support agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Help the user.',
 			personalisation: {
 				icon: 'search',

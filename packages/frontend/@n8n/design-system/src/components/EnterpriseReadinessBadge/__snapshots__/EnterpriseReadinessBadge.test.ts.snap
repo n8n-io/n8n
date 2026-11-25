@@ -19,7 +19,7 @@ exports[`EnterpriseReadinessBadge > renders xsmall badge correctly 1`] = `
     >
       
       
-      Limited enterprise support
+      Limited enterprise readiness
       
       
     </span>
@@ -53,7 +53,7 @@ exports[`EnterpriseReadinessBadge > renders xxsmall badge correctly 1`] = `
     >
       
       
-      Limited enterprise support
+      Limited enterprise readiness
       
       
     </span>

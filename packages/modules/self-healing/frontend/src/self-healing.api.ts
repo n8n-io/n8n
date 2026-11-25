@@ -1,4 +1,5 @@
 import type {
+	DependenciesBatchResponse,
 	SaveSelfHealingConfigurationDto,
 	SelfHealingConfigurationDto,
 	SelfHealingConfigurationOptions,
@@ -46,3 +47,12 @@ export const removeConfiguration = async (
 	projectId: string,
 	id: number,
 ): Promise<void> => await makeRestApiRequest(context, 'DELETE', `${path(projectId)}/${id}`);
+
+export const fetchWorkflowDependencies = async (
+	context: IRestApiContext,
+	workflowIds: string[],
+): Promise<DependenciesBatchResponse> =>
+	await makeRestApiRequest(context, 'POST', '/workflow-dependencies/details', {
+		resourceIds: workflowIds,
+		resourceType: 'workflow',
+	});

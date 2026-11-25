@@ -1,30 +1,51 @@
 import type {
+	PromotionBlocker,
 	PromotionDirection,
+	PromotionPreview,
+	PromotionPreviewCheck,
 	PromotionResource,
 	PromotionResourceDependency,
 	PromotionResourceType,
 } from '@n8n/api-types';
+import { jsonParse } from 'n8n-workflow';
+import { createHash } from 'node:crypto';
 
 import {
 	PACKAGE_ENTITY_LAYOUT,
 	entityFilePath,
 	type ManifestEntityCollection,
 } from '@/modules/n8n-packages/io/manifest-entry';
-import type {
-	ManifestEntry,
-	PackageManifest,
-	WorkflowManifestEntry,
+import {
+	packageManifestSchema,
+	type ManifestEntry,
+	type PackageManifest,
+	type WorkflowManifestEntry,
 } from '@/modules/n8n-packages/spec/manifest.schema';
 import { getWorkflowConsumerIds } from '@/modules/n8n-packages/spec/requirement-consumers';
 import type { PackageRequirementConsumer } from '@/modules/n8n-packages/spec/requirements.schema';
 
 import type { PlannedChange } from './apply-preview';
+import type { PackageFile } from './base-branch-files';
 import { PACKAGE_SUBFOLDER } from './constants';
+import { compare } from './package-references';
+import { checkoutBranchName } from './promotions-git.utils';
+import type { PromotionOperationInput } from './promotions.types';
 
 /** One side of the comparison: its manifest, and the Git blob SHA of each file path. */
 export type PreviewSide = {
 	manifest: PackageManifest | null;
 	blobByPath: ReadonlyMap<string, string>;
+	/**
+	 * Lists the credentials that the project holds in its own folder, even when no workflow uses
+	 * them. The file decides a change, like any other resource. A package file holds no secret
+	 * value, so a secret that changes is not a change. An expression, the name and the type are.
+	 */
+	ownedCredentials?: boolean;
+	/**
+	 * The owned credentials that the user can see. A credential outside it is left out of the owned
+	 * list, so the user cannot see its name or type. Without it, every owned credential is listed.
+	 */
+	visibleCredentialIds?: ReadonlySet<string>;
 };
 
 /** A resource as one side of the comparison holds it. */
@@ -135,6 +156,14 @@ export function indexSide(side: PreviewSide, projectId: string): Map<string, Sid
 		add('workflows', workflow, resourceKey('workflow', workflow.id));
 	}
 
+	// A credential in the project's folder belongs to the project, whether or not a workflow uses it.
+	if (side.ownedCredentials) {
+		for (const credential of (manifest.credentials ?? []).filter(inProject)) {
+			if (side.visibleCredentialIds && !side.visibleCredentialIds.has(credential.id)) continue;
+			add('credentials', credential, resourceKey('credential', credential.id));
+		}
+	}
+
 	const requirements = manifest.requirements;
 	for (const collection of ['credentials', 'dataTables', 'tags'] as const) {
 		const entries = new Map(manifest[collection]?.map((entry) => [entry.id, entry]));
@@ -232,15 +261,13 @@ function applyOperationRules(
 	{
 		direction,
 		before,
-		after,
-		desired,
 		planned,
+		removals,
 	}: {
 		direction: PromotionDirection;
 		before: SideResource | undefined;
-		after: SideResource | undefined;
-		desired: SideIndex;
 		planned: ReadonlyMap<string, PlannedChange> | null;
+		removals?: ReadonlySet<string>;
 	},
 ): PromotionResource | null {
 	const { type, change } = resource;
@@ -252,25 +279,16 @@ function applyOperationRules(
 		change: 'unchanged',
 	});
 
+	if (removals?.has(resource.key)) return { ...withoutChanges, change: 'deleted' };
 	if (change === 'deleted') {
 		// Neither direction deletes dependencies. Their files and rows stay.
 		if (type !== 'workflow' && type !== 'project' && type !== 'folder') return null;
 		// Projects and folders stay too. They remain as context for the deleted workflows inside them.
-		if (type !== 'workflow') return unchanged();
+		// When the plan lists the removals, a workflow that it keeps stays too.
+		if (type !== 'workflow' || removals) return unchanged();
 	}
 
-	if (direction === 'promote') {
-		// Promote writes a folder only together with a workflow inside it.
-		if (
-			type === 'folder' &&
-			change !== 'unchanged' &&
-			after &&
-			workflowsInside(desired, after.target).length === 0
-		) {
-			return null;
-		}
-		return resource;
-	}
+	if (direction === 'promote') return resource;
 
 	// The import plan decides for projects, folders, tags, data tables and bound credentials. A tag
 	// can exist here under another name or id, so the files of the two sides do not tell. A folder
@@ -295,6 +313,22 @@ function applyOperationRules(
 		...(previousName !== undefined ? { previousName } : {}),
 		...(plannedChange.previousId !== undefined ? { previousId: plannedChange.previousId } : {}),
 	};
+}
+
+/**
+ * A workflow, or a project or folder that the operation adds or changes. On Promote also a
+ * credential that the project owns and that the operation adds or changes. A credential outside the
+ * folder of its owner project has no parent here, and only its owner project can select it.
+ */
+function isSelectable(
+	{ type, change, parentKey }: PromotionResource,
+	direction: PromotionDirection,
+): boolean {
+	if (type === 'workflow') return true;
+	const changed = change === 'added' || change === 'modified';
+	// `parentKey` is set only when the credential sits in the folder of a project or a folder in it.
+	if (type === 'credential') return direction === 'promote' && changed && parentKey !== null;
+	return (type === 'project' || type === 'folder') && changed;
 }
 
 function compareResource(
@@ -413,6 +447,11 @@ export function buildPreview({
 		direction: PromotionDirection;
 		/** Apply only: what the import plan does, by resource key. */
 		planned: ReadonlyMap<string, PlannedChange> | null;
+		/**
+		 * Whole-instance Apply only: the keys of everything that Apply deletes. Any other resource
+		 * that the branch lacks stays, such as a sub-workflow that the branch calls.
+		 */
+		removals?: ReadonlySet<string>;
 	} | null;
 	/** Both sides are indexed across all of them, so a workflow that moves between them stays one row. */
 	projectIds: readonly string[];
@@ -429,10 +468,14 @@ export function buildPreview({
 		const current = after ?? before;
 		if (!current) continue;
 		const compared = compareResource(current, before, after);
-		const resource = operation
-			? applyOperationRules(compared, { ...operation, before, after, desired: desiredIndex })
-			: compared;
-		if (resource) all.set(key, resource);
+		const resource = operation ? applyOperationRules(compared, { ...operation, before }) : compared;
+		if (resource)
+			all.set(
+				key,
+				operation
+					? { ...resource, selectable: isSelectable(resource, operation.direction) }
+					: resource,
+			);
 	}
 
 	const { links, missingWorkflows } = dependencyLinks(desired, desiredIndex, projectIds);
@@ -494,4 +537,76 @@ export function buildPreview({
 		resources,
 		dependencies: dependencies.filter((link) => listed.has(link.workflowKey)),
 	};
+}
+
+/** Raise when the preview changes shape, so that a revision from an older version never matches. */
+const PREVIEW_SCHEMA_VERSION = 1;
+
+/** JSON with object keys in a fixed order, so equal values give equal text. */
+export function canonicalJson(value: unknown): string {
+	return JSON.stringify(value, (_key, nested: unknown) =>
+		nested !== null && typeof nested === 'object' && !Array.isArray(nested)
+			? Object.fromEntries(Object.entries(nested).sort(([a], [b]) => compare(a, b)))
+			: nested,
+	);
+}
+
+/**
+ * A hash of what a preview shows, so an operation can stop when it changed. It leaves out
+ * `changes` and `dependencies`: they come from the same data, and `changes` holds a save time.
+ * It also leaves out the commit, because a commit for another project changes nothing here.
+ * A Promote hashes its branch setting, because its confirmation says where the push goes.
+ * The environment name and provider type only label the preview, so they stay out.
+ */
+export function previewRevision(shown: {
+	resources: PromotionResource[];
+	check?: PromotionPreviewCheck;
+	source?: PromotionPreview['source'];
+	createBranchOnPromotion?: boolean;
+	blocker?: PromotionBlocker;
+}): string {
+	return createHash('sha256')
+		.update(canonicalJson({ schemaVersion: PREVIEW_SCHEMA_VERSION, ...shown }))
+		.digest('hex');
+}
+
+/** The environment and branch that a preview reads. Apply sends it back as its expected source. */
+export function previewSource(input: PromotionOperationInput): PromotionPreview['source'] {
+	return { environmentId: input.environmentId, branchName: checkoutBranchName(input.config) };
+}
+
+/**
+ * How the environment of a preview presents itself. The UI shows it, so a user who can only
+ * preview does not need to read the environment settings. It stays out of the revision.
+ */
+export function previewEnvironment(
+	input: PromotionOperationInput,
+): PromotionPreview['environment'] {
+	const { environmentName, providerType, config } = input;
+	return {
+		name: environmentName,
+		providerType,
+		...(config.direction === 'promote'
+			? { createBranchOnPromotion: config.settings.createBranchOnPromotion }
+			: {}),
+	};
+}
+
+/** Parses JSON read from Git. `undefined` when it is not valid JSON. */
+export function parseBranchJson<T = unknown>(raw: string): T | undefined {
+	try {
+		return jsonParse<T>(raw);
+	} catch {
+		return undefined;
+	}
+}
+
+/** Parses a package manifest read from Git. `null` when the file is missing or invalid. */
+export function parsePackageManifest(raw: string | undefined): PackageManifest | null {
+	const manifest = packageManifestSchema.safeParse(parseBranchJson(raw ?? ''));
+	return manifest.success ? manifest.data : null;
+}
+
+export function blobsByPath(files: readonly PackageFile[]): Map<string, string> {
+	return new Map(files.map(({ path, blobSha }) => [path, blobSha]));
 }
