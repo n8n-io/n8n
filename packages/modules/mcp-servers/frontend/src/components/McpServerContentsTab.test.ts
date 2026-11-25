@@ -340,13 +340,54 @@ describe('McpServerContentsTab', () => {
 			expect(await findByText('escalate_to_on_call')).toBeInTheDocument();
 		});
 
-		it('keeps the text and reports the error of a failed draft', async () => {
+		it('keeps the text and reports the failed drafts of one add in one toast', async () => {
 			api.draftTool.mockRejectedValue(new Error('The draft breaks the rules.'));
 			const { queryAllByTestId, findByText } = await addTwoTools();
 
-			await waitFor(() => expect(toast.showError).toHaveBeenCalledTimes(2));
-			expect(queryAllByTestId('mcp-tool-row-drafting')).toHaveLength(0);
+			await waitFor(() => expect(queryAllByTestId('mcp-tool-row-drafting')).toHaveLength(0));
+			expect(toast.showError).toHaveBeenCalledExactlyOnceWith(
+				expect.any(Error),
+				'Could not write 2 drafts',
+			);
 			expect(await findByText('escalate_to_on_call')).toBeInTheDocument();
+		});
+
+		it('runs at most four drafts at a time, and shows the loading line on every new row', async () => {
+			const added = Array.from({ length: 6 }, (_, index) =>
+				tool({
+					id: `0190a8d6-4a2e-7000-8000-0000000000b${index}`,
+					targetId: `wf-${index + 1}`,
+					toolName: `tool_${index}`,
+					position: index,
+				}),
+			);
+			api.getMcpServer.mockResolvedValue(server([]));
+			api.addWorkflowTools.mockResolvedValue(added);
+			const calls = added.map(() => deferred<unknown>());
+			let started = 0;
+			api.draftTool.mockImplementation(async () => await calls[started++].promise);
+			const result = render();
+			await userEvent.click(await result.findByTestId('mcp-server-add-workflow'));
+			const rows = await result.findAllByTestId('mcp-workflow-picker-row');
+			await userEvent.click(rows.find((row) => row.textContent?.includes('Get campaign'))!);
+			await userEvent.click(result.getByTestId('mcp-workflow-picker-confirm'));
+
+			expect(await result.findAllByTestId('mcp-tool-row-drafting')).toHaveLength(6);
+			expect(api.draftTool).toHaveBeenCalledTimes(4);
+
+			calls[0].resolve({ status: 'drafted', tool: added[0] });
+			await waitFor(() => expect(api.draftTool).toHaveBeenCalledTimes(5));
+			calls[1].reject(new Error('Invalid key'));
+			await waitFor(() => expect(api.draftTool).toHaveBeenCalledTimes(6));
+			for (const [index, call] of calls.slice(2).entries()) {
+				call.resolve({ status: 'drafted', tool: added[index + 2] });
+			}
+
+			await waitFor(() => expect(result.queryAllByTestId('mcp-tool-row-drafting')).toHaveLength(0));
+			expect(toast.showError).toHaveBeenCalledExactlyOnceWith(
+				expect.any(Error),
+				'Could not write the draft',
+			);
 		});
 
 		it('asks for no draft without the Assistant', async () => {
