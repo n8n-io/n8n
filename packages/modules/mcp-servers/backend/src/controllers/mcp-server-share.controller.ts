@@ -3,7 +3,7 @@ import { Get, RestController } from '@n8n/decorators';
 import { NotFoundError } from '@n8n/errors';
 import type { Request } from 'express';
 
-import { McpServerShareService } from './mcp-server-share.service';
+import { McpServerShareService } from '../services/mcp-server-share.service';
 
 /**
  * The share page of a server. The page reads the signed-in route when the person is signed in,

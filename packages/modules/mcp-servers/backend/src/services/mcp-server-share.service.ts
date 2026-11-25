@@ -3,10 +3,10 @@ import { EventService } from '@n8n/backend-services';
 import { isPerson, UserRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import type { McpServer } from './database/entities/mcp-server.entity';
-import { McpServerRepository } from './database/repositories/mcp-server.repository';
-import { McpServerToolsService } from './services/mcp-server-tools.service';
-import { McpServerProtectedResource } from './runtime/mcp-server-protected-resource';
+import type { McpServer } from '../database/entities/mcp-server.entity';
+import { McpServerRepository } from '../database/repositories/mcp-server.repository';
+import { McpServerToolsService } from './mcp-server-tools.service';
+import { McpServerProtectedResource } from '../runtime/mcp-server-protected-resource';
 
 /**
  * The share page of a server. Anyone with the link sees how to connect. Only a person who can
