@@ -868,11 +868,14 @@ time for each binary. It lists them in `files` with their fileId.
 `skippedFiles.files` lists at most 10 files that were not stored, and
 `skippedFiles.total` counts all of them. The model can then view them with
 `view-file`, copy them to the sandbox with `import-files`, or pass them to a
-run. To store the files of later items, page with `startIndex` and `maxItems`.
-An item with more than 10 files keeps only its first 10, because the cap
-applies to each call. A file of the conversation with the same bytes, name
-and type is given again, not stored again, so a second call on the same output
-gives the same fileIds. A redacted execution stores no files. The host offers
+run. The cap counts the unique files of the whole page, so the later items of
+a page can store fewer files or none. To store their files, page with
+`startIndex` and `maxItems`. An item with more than 10 files never stores more
+than its first 10. The host matches a file by the hash of its bytes, not by
+its binary id. A file of the conversation with the same bytes, name and type
+is given again, not stored again, so a second call on the same output gives
+the same fileIds. A file without a usable name matches on its bytes and type
+only. A redacted execution stores no files. The host offers
 `storeFiles` only when it sets `readBinary` and `storeWorkflowFile` on
 `storedFiles`.
 
