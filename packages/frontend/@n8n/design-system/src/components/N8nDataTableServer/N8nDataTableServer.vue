@@ -366,6 +366,22 @@ const scrollContainer = useTemplateRef<HTMLElement>('scrollContainer');
 const tableElement = useTemplateRef<HTMLTableElement>('tableElement');
 const { canScrollLeft, canScrollRight } = useHorizontalScrollEdges(scrollContainer, tableElement);
 
+// Focus scrolls only a fully hidden element into view, so a cell partly under a pinned column
+// stays covered. 'nearest' scrolls until it is fully clear of the scroll padding.
+// A pointer focus does not scroll: the table would move under the pointer before the click ends.
+let isPointerFocus = false;
+
+// The browser moves the focus in the same task as pointerdown, so the flag covers only that focus.
+function markPointerFocus() {
+	isPointerFocus = true;
+	setTimeout(() => (isPointerFocus = false));
+}
+
+function revealKeyboardFocus(event: FocusEvent) {
+	if (isPointerFocus || !(event.target instanceof Element)) return;
+	event.target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+}
+
 const page = defineModel<number>('page', { default: 0 });
 watch(page, () => table.setPageIndex(page.value));
 
@@ -563,7 +579,16 @@ const table = useVueTable({
 				'has-pinned-end': pinEndColumns > 0,
 			}"
 		>
-			<div ref="scrollContainer" class="table-scroll">
+			<!-- The padding keeps the area under the pinned columns out of the visible area when a focused cell scrolls into view. -->
+			<div
+				ref="scrollContainer"
+				class="table-scroll"
+				:style="{
+					scrollPaddingInline: `${table.getLeftTotalSize()}px ${table.getRightTotalSize()}px`,
+				}"
+				@focusin="revealKeyboardFocus"
+				@pointerdown.capture="markPointerFocus"
+			>
 				<table
 					ref="tableElement"
 					class="n8n-data-table-server"
@@ -766,6 +791,8 @@ const table = useVueTable({
 		font: inherit;
 		text-align: inherit;
 		cursor: pointer;
+		/* The browser scrolls the button into view. The margin matches the cell padding, so the ring on the cell shows too. */
+		scroll-margin-inline: var(--spacing--2xs);
 
 		/* Clicks anywhere in the header cell sort, as before the button. The resizer stays on top. */
 		&::after {

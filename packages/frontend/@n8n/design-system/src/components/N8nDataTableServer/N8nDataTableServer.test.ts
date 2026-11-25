@@ -589,6 +589,33 @@ describe('N8nDataTableServer', () => {
 		expect(bodyCells[2]).not.toHaveClass('is-pinned');
 	});
 
+	it('should keep the pinned columns out of the area that a focused cell scrolls into', () => {
+		const { container } = render(N8nDataTableServer<Item>, {
+			props: { items: items.slice(0, 1), headers, itemsLength: 1, pinColumns: 1, pinEndColumns: 2 },
+		});
+
+		expect(container.querySelector('.table-scroll')?.getAttribute('style')).toContain(
+			'scroll-padding-inline: 150px 300px',
+		);
+	});
+
+	it('should scroll a cell into view when it gets focus from the keyboard only', async () => {
+		const scrollIntoView = vi.mocked(Element.prototype.scrollIntoView);
+		scrollIntoView.mockClear();
+		const { getByRole } = render(N8nDataTableServer<Item>, {
+			props: { items: items.slice(0, 1), headers, itemsLength: 1, pinColumns: 1 },
+		});
+
+		await userEvent.click(getByRole('button', { name: 'First name' }));
+		expect(scrollIntoView).not.toHaveBeenCalled();
+
+		await userEvent.tab();
+		expect(getByRole('button', { name: 'Last name' })).toHaveFocus();
+		expect(scrollIntoView).toHaveBeenCalledOnce();
+		expect(scrollIntoView.mock.contexts[0]).toBe(getByRole('button', { name: 'Last name' }));
+		expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest', inline: 'nearest' });
+	});
+
 	it('should not pin any column by default', () => {
 		const { container } = render(N8nDataTableServer<Item>, {
 			props: { items: items.slice(0, 2), headers, itemsLength: 2 },
