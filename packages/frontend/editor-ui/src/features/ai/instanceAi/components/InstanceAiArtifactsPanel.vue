@@ -254,7 +254,7 @@ async function dismissContext(key: string) {
 					</div>
 					<div
 						v-else
-						:class="$style.artifactRow"
+						:class="[$style.artifactRow, $style.artifactRowSkeleton]"
 						data-test-id="instance-ai-artifacts-project-loading"
 					>
 						<span :class="[$style.artifactIconWrap, $style.iconSkeleton]">
@@ -559,10 +559,10 @@ async function dismissContext(key: string) {
 	min-width: 0;
 }
 
-/* Same footprint as the resolved project row (small ProjectIcon + one text line) */
+/* Same footprint as the resolved project row: the 16px icon slot and one text line */
 .iconSkeleton {
-	width: var(--spacing--lg);
-	height: var(--spacing--lg);
+	width: var(--spacing--sm);
+	height: var(--spacing--sm);
 }
 
 .nameSkeleton {
@@ -571,7 +571,7 @@ async function dismissContext(key: string) {
 	height: var(--font-size--sm);
 }
 
-/* Artifact rows are shorter: one text line at its line height, plus the row padding (border-box) */
+/* A loading row is as tall as a loaded one: one text line at its line height, plus the row padding (border-box) */
 .artifactRowSkeleton {
 	min-height: calc(var(--font-size--sm) * var(--line-height--lg) + 2 * var(--spacing--2xs));
 }

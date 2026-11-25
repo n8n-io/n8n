@@ -110,6 +110,27 @@ describe('ChatResourceLink', () => {
 		expect(openAppPreview).toHaveBeenCalledWith('app1');
 	});
 
+	it.each([
+		{ href: '/workflow/abc/debug/exec-1', type: 'workflow', id: 'abc' },
+		{ href: '/workflow/abc/executions', type: 'workflow', id: 'abc' },
+		{ href: '/projects/p1/agents/a1/sessions/s1', type: 'agent', id: 'a1' },
+	])('keeps the sub-page link $href of a known resource', ({ href, type, id }) => {
+		const openWorkflowPreview = vi.fn(() => true);
+		const openAgentPreview = vi.fn(() => true);
+		const wrapper = mount(ChatResourceLink, {
+			props: {
+				href,
+				label: 'Sub-page',
+				resources: [{ type, id, name: 'Resource' }],
+				openWorkflowPreview,
+				openAgentPreview,
+			},
+		});
+		expect(click(wrapper.element).defaultPrevented).toBe(false);
+		expect(openWorkflowPreview).not.toHaveBeenCalled();
+		expect(openAgentPreview).not.toHaveBeenCalled();
+	});
+
 	it('keeps the new tab for an app link to a resource that the thread does not know', () => {
 		const openWorkflowPreview = vi.fn(() => true);
 		const wrapper = mount(ChatResourceLink, {
