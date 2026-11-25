@@ -1,6 +1,11 @@
 import { z } from 'zod';
 
-import { matchesDisplayOptions, resolveOneOfSchemas, resolveSchema } from './resolve-schema';
+import {
+	matchesDisplayOptions,
+	resolveOneOfSchemas,
+	resolveSchema,
+	type ResolveOneOfSchemasVariant,
+} from './resolve-schema';
 
 describe('matchesDisplayOptions', () => {
 	describe('show conditions', () => {
@@ -273,6 +278,139 @@ describe('resolveSchema error messages for hidden fields', () => {
 			expect(errorMessage).not.toMatch(/hasOutputParser="true"/);
 		}
 	});
+
+	it('provides descriptive error message when field is hidden by hide condition', () => {
+		const schema = resolveSchema({
+			parameters: { simple: true },
+			schema: z.object({ downloadAttachments: z.boolean().optional() }),
+			required: false,
+			displayOptions: { hide: { simple: [true] } },
+		});
+
+		const result = schema.safeParse({ downloadAttachments: true });
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error.issues[0].message).toBe('This field is hidden when: simple=true');
+		}
+	});
+
+	it('formats hide condition with multiple values', () => {
+		const schema = resolveSchema({
+			parameters: { operation: 'delete' },
+			schema: stringSchema,
+			required: false,
+			displayOptions: { hide: { operation: ['delete', 'get'] } },
+		});
+
+		const result = schema.safeParse('some-value');
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error.issues[0].message).toBe(
+				'This field is hidden when: operation="delete" or "get"',
+			);
+		}
+	});
+
+	it('formats multiple hide conditions with "or"', () => {
+		const schema = resolveSchema({
+			parameters: { simple: true, mode: 'standard' },
+			schema: stringSchema,
+			required: false,
+			displayOptions: { hide: { simple: [true], mode: ['legacy'] } },
+		});
+
+		const result = schema.safeParse('some-value');
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error.issues[0].message).toBe(
+				'This field is hidden when: simple=true or mode="legacy"',
+			);
+		}
+	});
+
+	it('formats combined show and hide conditions', () => {
+		const schema = resolveSchema({
+			parameters: { resource: 'message', simple: true },
+			schema: stringSchema,
+			required: false,
+			displayOptions: {
+				show: { resource: ['message'] },
+				hide: { simple: [true] },
+			},
+		});
+
+		const result = schema.safeParse('some-value');
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error.issues[0].message).toBe(
+				'This field is only allowed when: resource="message" (hidden when: simple=true)',
+			);
+		}
+	});
+
+	it('formats _cnd operator conditions in hide', () => {
+		const schema = resolveSchema({
+			parameters: { count: 10 },
+			schema: stringSchema,
+			required: false,
+			displayOptions: { hide: { count: [{ _cnd: { gte: 5 } }] } },
+		});
+
+		const result = schema.safeParse('some-value');
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error.issues[0].message).toBe('This field is hidden when: count >= 5');
+		}
+	});
+
+	it('formats regex paths in show and hide conditions', () => {
+		const schema = resolveSchema({
+			parameters: {},
+			schema: stringSchema,
+			required: false,
+			displayOptions: {
+				show: { '/guardrails.(jailbreak|nsfw|custom)': [{ _cnd: { exists: true } }] },
+			},
+		});
+
+		const result = schema.safeParse('some-value');
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error.issues[0].message).toBe(
+				'This field is only allowed when: one of guardrails.jailbreak, guardrails.nsfw, or guardrails.custom exists',
+			);
+		}
+	});
+
+	it('names hiding parameter when hidden via default value (Gmail Trigger options scenario)', () => {
+		// Gmail Trigger has simple defaulting to true and options with displayOptions: { hide: { simple: [true] } }
+		const optionsSchema = z.object({ downloadAttachments: z.boolean().optional() });
+
+		const hiddenSchema = resolveSchema({
+			parameters: {}, // simple omitted, defaults to true
+			schema: optionsSchema,
+			required: false,
+			displayOptions: { hide: { simple: [true] } },
+			defaults: { simple: true },
+		});
+
+		const hiddenResult = hiddenSchema.safeParse({ downloadAttachments: true });
+		expect(hiddenResult.success).toBe(false);
+		if (!hiddenResult.success) {
+			expect(hiddenResult.error.issues[0].message).toBe('This field is hidden when: simple=true');
+		}
+
+		const visibleSchema = resolveSchema({
+			parameters: { simple: false },
+			schema: optionsSchema,
+			required: false,
+			displayOptions: { hide: { simple: [true] } },
+			defaults: { simple: true },
+		});
+
+		const visibleResult = visibleSchema.safeParse({ downloadAttachments: true });
+		expect(visibleResult.success).toBe(true);
+	});
 });
 
 describe('resolveSchema with defaults', () => {
@@ -515,5 +653,31 @@ describe('resolveOneOfSchemas', () => {
 			variants,
 		});
 		expect(schema.safeParse('hello').success).toBe(true);
+	});
+
+	it('includes hide conditions in error message when no variant matches', () => {
+		const variants: ResolveOneOfSchemasVariant[] = [
+			{
+				schema: z.string(),
+				required: false,
+				displayOptions: { show: { resource: ['message'] }, hide: { simple: [true] } },
+			},
+			{
+				schema: z.string(),
+				required: false,
+				displayOptions: { hide: { mode: ['disabled'], simple: [true] } },
+			},
+		];
+		const schema = resolveOneOfSchemas({
+			parameters: { resource: 'message', simple: true },
+			variants,
+		});
+		const result = schema.safeParse('hello');
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error.issues[0].message).toBe(
+				'This field is only allowed when one of: (resource="message", not (simple=true)) or (not (mode="disabled" or simple=true))',
+			);
+		}
 	});
 });
