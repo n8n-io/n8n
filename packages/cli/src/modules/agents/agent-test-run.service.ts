@@ -206,7 +206,7 @@ export class AgentTestRunService {
 	 * the `agent:execute` the routes check. A chat-only member reaches published
 	 * agents through n8n Chat instead.
 	 */
-	private async assertCanRunDraft(user: User, projectId: string): Promise<void> {
+	async assertCanRunDraft(user: User, projectId: string): Promise<void> {
 		if (!(await userHasScopes(user, ['agent:read'], false, { projectId }))) {
 			throw new ForbiddenError('You do not have permission to run the draft of this agent.');
 		}
