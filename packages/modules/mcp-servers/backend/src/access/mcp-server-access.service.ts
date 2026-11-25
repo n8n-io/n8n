@@ -91,7 +91,7 @@ export class McpServerAccessService {
 			userId,
 			blockedById: actor.userId,
 		});
-		await this.refreshTokens.deleteForPerson(this.resources.serverUrl(server), userId);
+		// The row is committed. Send the event first, because a retry finds the row and sends none.
 		if (isNew) {
 			this.events.emit('mcp-server-person-blocked', {
 				...actor,
@@ -99,6 +99,7 @@ export class McpServerAccessService {
 				blockedUserId: userId,
 			});
 		}
+		await this.refreshTokens.deleteForPerson(this.resources.serverUrl(server), userId);
 
 		const block = await this.blocks.findForPerson(server.id, userId);
 		// The insert above wrote the row, or found the row of an earlier block.
@@ -120,14 +121,15 @@ export class McpServerAccessService {
 		if (!isUserId(userId) || !(await this.blocks.deleteForPerson(server.id, userId))) {
 			throw new NotFoundError('User is not blocked');
 		}
-		// A refresh that ran during the block can have written a new token. Delete it, so the
-		// person must sign in again, as after any block.
-		await this.refreshTokens.deleteForPerson(this.resources.serverUrl(server), userId);
+		// The row is gone, so a retry answers 404. Send the event before the token delete can fail.
 		this.events.emit('mcp-server-access-restored', {
 			...actor,
 			serverId: server.id,
 			restoredUserId: userId,
 		});
+		// A refresh that ran during the block can have written a new token. Delete it, so the
+		// client signs in again when its access token ends.
+		await this.refreshTokens.deleteForPerson(this.resources.serverUrl(server), userId);
 	}
 
 	/**

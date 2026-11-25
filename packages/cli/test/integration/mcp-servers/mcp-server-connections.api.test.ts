@@ -1,7 +1,11 @@
 import { CUSTOM_MCP_SERVERS_FLAG, CUSTOM_MCP_SERVERS_FLAG_VARIANT } from '@n8n/api-types';
 import { EventService, PostHogClient, UrlService } from '@n8n/backend-services';
 import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-utils';
-import { McpServerBlock, McpServerConnection } from '@n8n/backend-module-mcp-servers';
+import {
+	McpServerBlock,
+	McpServerConnection,
+	RefreshTokenPort,
+} from '@n8n/backend-module-mcp-servers';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { AssignableProjectRole } from '@n8n/permissions';
@@ -388,5 +392,39 @@ describe('DELETE /projects/:projectId/mcp-servers/:serverId', () => {
 		await ownerAgent.delete(serverPath()).expect(200);
 
 		expect(await refreshTokens()).toEqual(['maya-other-server']);
+	});
+});
+
+describe('a failed refresh token delete', () => {
+	const eventsNamed = (name: string) => emit.mock.calls.filter(([event]) => event === name);
+	const failTokenDelete = (method: 'deleteForPerson' | 'deleteForResource') =>
+		vi.spyOn(Container.get(RefreshTokenPort), method).mockRejectedValueOnce(new Error('db down'));
+
+	it('still sends the block event once, and a retry sends no second one', async () => {
+		failTokenDelete('deleteForPerson');
+
+		await ownerAgent.post(`${serverPath()}/blocks`).send({ userId: tom.id }).expect(500);
+		await ownerAgent.post(`${serverPath()}/blocks`).send({ userId: tom.id }).expect(200);
+
+		expect(eventsNamed('mcp-server-person-blocked')).toHaveLength(1);
+	});
+
+	it('still sends the restore event once', async () => {
+		await ownerAgent.post(`${serverPath()}/blocks`).send({ userId: tom.id }).expect(200);
+		failTokenDelete('deleteForPerson');
+
+		await ownerAgent.delete(`${serverPath()}/blocks/${tom.id}`).expect(500);
+		await ownerAgent.delete(`${serverPath()}/blocks/${tom.id}`).expect(404);
+
+		expect(eventsNamed('mcp-server-access-restored')).toHaveLength(1);
+	});
+
+	it('still sends the server delete event once', async () => {
+		failTokenDelete('deleteForResource');
+
+		await ownerAgent.delete(serverPath()).expect(500);
+		await ownerAgent.delete(serverPath()).expect(404);
+
+		expect(eventsNamed('mcp-server-deleted')).toHaveLength(1);
 	});
 });

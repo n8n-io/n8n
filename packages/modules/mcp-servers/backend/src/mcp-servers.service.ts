@@ -97,8 +97,9 @@ export class McpServersService {
 		if (!(await this.servers.softDelete(projectId, server.id))) {
 			throw new NotFoundError('MCP server not found');
 		}
-		await this.refreshTokens.deleteForResource(this.resources.serverUrl(server));
+		// The soft delete is committed, so a retry answers 404. Send the event first.
 		this.events.emit('mcp-server-deleted', { ...actor, serverId, projectId });
+		await this.refreshTokens.deleteForResource(this.resources.serverUrl(server));
 	}
 
 	/** Slugs are unique on the instance, so the check looks at the servers of all projects. */
