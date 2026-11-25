@@ -306,6 +306,7 @@ defineExpose({
 		agent-status="production"
 		:connected-triggers="[]"
 		channel="system"
+		thinking-at-top
 		:client-context="clientContext"
 		:interaction-extensions="interactionExtensions"
 		:before-send="props.beforeSend"

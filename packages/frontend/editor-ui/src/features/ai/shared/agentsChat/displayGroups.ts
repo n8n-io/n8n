@@ -102,8 +102,11 @@ function executionIdForGroup(group: TurnDisplayGroup): string | undefined {
 	return group.kind === DISPLAY_GROUP_KIND.TOOL_RUN ? group.executionId : group.message.executionId;
 }
 
-/** Keep one reasoning block at the tail of each assistant run, below its final output. */
-function moveThinkingToRunTail(groups: DisplayGroup[]): void {
+/**
+ * Keep one reasoning block for each assistant run: on the last group, below the
+ * final output, or on the first group when `atTop` is set.
+ */
+function collectRunThinking(groups: DisplayGroup[], atTop: boolean): void {
 	let run: TurnDisplayGroup[] = [];
 	let executionId: string | undefined;
 
@@ -111,7 +114,7 @@ function moveThinkingToRunTail(groups: DisplayGroup[]): void {
 		if (run.length === 0) return;
 		const segments = run.flatMap((group) => group.thinkingSegments);
 		for (const group of run) group.thinkingSegments = [];
-		run[run.length - 1].thinkingSegments = segments;
+		(atTop ? run[0] : run[run.length - 1]).thinkingSegments = segments;
 		run = [];
 		executionId = undefined;
 	};
@@ -234,7 +237,10 @@ function appendInteractivePayloads(
 	return merged;
 }
 
-export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[] {
+export function buildDisplayGroups(
+	messages: AgentsChatMessage[],
+	{ thinkingAtTop = false }: { thinkingAtTop?: boolean } = {},
+): DisplayGroup[] {
 	const groups: DisplayGroup[] = [];
 
 	for (const message of messages) {
@@ -321,6 +327,6 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 		});
 	}
 
-	moveThinkingToRunTail(groups);
+	collectRunThinking(groups, thinkingAtTop);
 	return groups;
 }

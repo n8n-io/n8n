@@ -1006,6 +1006,7 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 						:connected-triggers="[]"
 						channel="system"
 						:thinking-label="draftPreview.thinkingWord.value"
+						thinking-at-top
 						:client-context="clientContext"
 						:message-references="messageReferences"
 						:input-draft="mentions.draft.value"

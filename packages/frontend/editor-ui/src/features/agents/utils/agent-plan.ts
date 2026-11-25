@@ -268,7 +268,10 @@ function isProgressUpdate(
 	);
 }
 
-export function buildAgentPlanDisplayGroups(messages: ChatMessage[]): DisplayGroup[] {
+export function buildAgentPlanDisplayGroups(
+	messages: ChatMessage[],
+	options: { thinkingAtTop?: boolean } = {},
+): DisplayGroup[] {
 	const plans = new Map<string, Map<number, z.infer<typeof comparisonPlanSchema>>>();
 	const hiddenCalls = new Set<string>();
 	for (const message of messages) {
@@ -327,6 +330,7 @@ export function buildAgentPlanDisplayGroups(messages: ChatMessage[]): DisplayGro
 				? { ...message, backgroundJobSignal: undefined }
 				: message,
 		),
+		options,
 	);
 	const summaryGroupIds = lastSummaryGroupIds(groups, turnIds, summaryTurns);
 

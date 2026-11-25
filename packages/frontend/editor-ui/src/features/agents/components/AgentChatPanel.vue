@@ -190,6 +190,8 @@ const props = withDefaults(
 		disabled?: boolean;
 		/** Replaces the generic "Thinking" of the thinking blocks. The Assistant sets it. */
 		thinkingLabel?: string;
+		/** Shows the thinking block at the top of each reply, not below it. The Assistant sets it. */
+		thinkingAtTop?: boolean;
 	}>(),
 	{
 		visible: true,
@@ -2272,6 +2274,7 @@ onBeforeUnmount(() => {
 				:loading-older-messages="isLoadingOlderMessages"
 				:load-older-messages-failed="loadOlderMessagesFailed"
 				:thinking-label="props.thinkingLabel"
+				:thinking-at-top="props.thinkingAtTop"
 				:task-trace-route="
 					continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
 				"

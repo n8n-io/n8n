@@ -13,13 +13,14 @@ import {
 import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import { isAwaitingCard } from '@/features/ai/shared/agentsChat/n8nChatInteraction';
 import { useI18n } from '@n8n/i18n';
-import { useSessionStorage } from '@vueuse/core';
+import { createReusableTemplate, useSessionStorage } from '@vueuse/core';
 import { TIME } from '@/app/constants/durations';
 import type { RouteLocationRaw } from 'vue-router';
 import {
 	DISPLAY_GROUP_KIND,
 	isAssistantGroup,
 	type DisplayGroup,
+	type TurnDisplayGroup,
 } from '@/features/ai/shared/agentsChat/displayGroups';
 import { getMessageInteractives, isRecord } from '@/features/ai/shared/agentsChat/messageMappers';
 import {
@@ -94,6 +95,8 @@ const props = defineProps<{
 	loadOlderMessagesFailed?: boolean;
 	/** Replaces the generic "Thinking" of the thinking blocks. The Assistant sets it. */
 	thinkingLabel?: string;
+	/** Shows the thinking block at the top of each reply, not below it. The Assistant sets it. */
+	thinkingAtTop?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -277,7 +280,9 @@ const visibleMessages = computed(() => {
 	});
 });
 
-const displayGroups = computed(() => buildAgentPlanDisplayGroups(visibleMessages.value));
+const displayGroups = computed(() =>
+	buildAgentPlanDisplayGroups(visibleMessages.value, { thinkingAtTop: props.thinkingAtTop }),
+);
 const taskSummaryGroupIds = computed(() =>
 	getTaskSummaryGroupIds(visibleMessages.value, displayGroups.value),
 );
@@ -489,6 +494,26 @@ function isThinkingActive(message: ChatMessage): boolean {
 	);
 }
 
+function getThinkingState(group: TurnDisplayGroup) {
+	if (group.kind === DISPLAY_GROUP_KIND.TOOL_RUN) {
+		return {
+			active: group.active || group.awaitingInput,
+			awaitingInput: group.awaitingInput,
+			streaming: group.active,
+		};
+	}
+	return {
+		active: isThinkingActive(group.message),
+		awaitingInput: group.message.status === CHAT_MESSAGE_STATUS.AWAITING_USER,
+		streaming: group.message.status === CHAT_MESSAGE_STATUS.STREAMING,
+	};
+}
+
+/** The thinking block renders at the top of the reply or below its actions. */
+const [DefineThinkingBlock, ReuseThinkingBlock] = createReusableTemplate<{
+	group: TurnDisplayGroup;
+}>();
+
 function getAssistantGroupContent(group: DisplayGroup): string {
 	if (group.kind === DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL) return '';
 	if (group.kind === DISPLAY_GROUP_KIND.TOOL_RUN) {
@@ -636,6 +661,25 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 
 <template>
 	<div :class="$style.messages">
+		<DefineThinkingBlock v-slot="{ group }">
+			<AiThinkingBlock
+				v-if="group.thinkingSegments.length"
+				:idle-label="props.thinkingLabel"
+				:segments="group.thinkingSegments"
+				:active="getThinkingState(group).active"
+				:awaiting-input="getThinkingState(group).awaitingInput"
+				:duration-sec="getThinkingDurationSec(group.thinkingSegments)"
+				test-id="agent-chat-thinking-block"
+			>
+				<AgentChatHostEvents :items="getGroupHostEventItems(group.id).thinking" />
+				<AiReasoningBlock
+					v-for="segment in group.thinkingSegments"
+					:key="segment.id"
+					:entry="segment"
+					:streaming="getThinkingState(group).streaming && segment.endTime === undefined"
+				/>
+			</AiThinkingBlock>
+		</DefineThinkingBlock>
 		<!-- Takes no space, so the messages do not move when it shows or hides. -->
 		<div
 			v-if="loadingOlderMessages || loadOlderMessagesFailed"
@@ -685,6 +729,7 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 			>
 				<N8nChatMessage role="assistant">
 					<AgentChatHostEvents :items="getGroupHostEventItems(group.id).start" />
+					<ReuseThinkingBlock v-if="props.thinkingAtTop" :group="group" />
 					<AgentChatToolSteps
 						v-if="getGroupToolCalls(group.id).steps.length"
 						:tool-calls="getGroupToolCalls(group.id).steps"
@@ -771,23 +816,7 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 					/>
 					<AgentChatHostEvents :items="getGroupHostEventItems(group.id).end" />
 					<template #after-actions>
-						<AiThinkingBlock
-							:idle-label="props.thinkingLabel"
-							v-if="group.thinkingSegments.length"
-							:segments="group.thinkingSegments"
-							:active="group.active || group.awaitingInput"
-							:awaiting-input="group.awaitingInput"
-							:duration-sec="getThinkingDurationSec(group.thinkingSegments)"
-							test-id="agent-chat-thinking-block"
-						>
-							<AgentChatHostEvents :items="getGroupHostEventItems(group.id).thinking" />
-							<AiReasoningBlock
-								v-for="segment in group.thinkingSegments"
-								:key="segment.id"
-								:entry="segment"
-								:streaming="group.active && segment.endTime === undefined"
-							/>
-						</AiThinkingBlock>
+						<ReuseThinkingBlock v-if="!props.thinkingAtTop" :group="group" />
 					</template>
 					<template #actions v-if="shouldShowAssistantFooter(group.id)">
 						<div :class="$style.messageFooter" :data-open="openMemoryFooterGroupId === group.id">
@@ -847,6 +876,7 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 				</N8nText>
 				<N8nChatMessage :role="group.message.role">
 					<AgentChatHostEvents :items="getGroupHostEventItems(group.id).start" />
+					<ReuseThinkingBlock v-if="props.thinkingAtTop" :group="group" />
 					<AgentChatToolSteps
 						v-if="getGroupToolCalls(group.id).steps.length"
 						:tool-calls="getGroupToolCalls(group.id).steps"
@@ -1021,26 +1051,7 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 							</template>
 						</N8nCallout>
 
-						<AiThinkingBlock
-							:idle-label="props.thinkingLabel"
-							v-if="group.thinkingSegments.length"
-							:segments="group.thinkingSegments"
-							:active="isThinkingActive(group.message)"
-							:awaiting-input="group.message.status === CHAT_MESSAGE_STATUS.AWAITING_USER"
-							:duration-sec="getThinkingDurationSec(group.thinkingSegments)"
-							test-id="agent-chat-thinking-block"
-						>
-							<AgentChatHostEvents :items="getGroupHostEventItems(group.id).thinking" />
-							<AiReasoningBlock
-								v-for="segment in group.thinkingSegments"
-								:key="segment.id"
-								:entry="segment"
-								:streaming="
-									group.message.status === CHAT_MESSAGE_STATUS.STREAMING &&
-									segment.endTime === undefined
-								"
-							/>
-						</AiThinkingBlock>
+						<ReuseThinkingBlock v-if="!props.thinkingAtTop" :group="group" />
 					</template>
 					<template #actions v-if="shouldShowAssistantFooter(group.id)">
 						<div :class="$style.messageFooter" :data-open="openMemoryFooterGroupId === group.id">

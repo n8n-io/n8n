@@ -1125,6 +1125,89 @@ describe('AgentChatMessageList', () => {
 		).toEqual(['Choose a query.', 'Compose the answer.']);
 	});
 
+	describe('when the host shows thinking at the top', () => {
+		const final: ChatMessage = {
+			id: 'assistant-final',
+			role: 'assistant',
+			content: 'Final answer',
+			thinkingSegments: [{ id: 'reasoning-2', content: 'Compose the answer.' }],
+			status: 'success',
+		};
+
+		it.each<[string, ChatMessage[], string[]]>([
+			['a standalone reply', [final], ['shared-thinking-block', 'markdown-chunk']],
+			[
+				'a tool run',
+				[
+					{
+						id: 'assistant-tool',
+						role: 'assistant',
+						content: '',
+						thinkingSegments: [{ id: 'reasoning-1', content: 'Choose a query.' }],
+						toolCalls: [{ tool: 'lookup', toolCallId: 'tool-1', state: 'done' }],
+						status: 'success',
+					},
+					final,
+				],
+				['shared-thinking-block', 'markdown-chunk'],
+			],
+			[
+				'narrated tool steps',
+				[
+					{
+						id: 'assistant-narration',
+						role: 'assistant',
+						content: 'I will search first.',
+						thinkingSegments: [{ id: 'reasoning-1', content: 'Choose a query.' }],
+						toolCalls: [{ tool: 'search', toolCallId: 'tool-1', state: 'done' }],
+						status: 'success',
+					},
+					final,
+				],
+				['shared-thinking-block', 'markdown-chunk', 'markdown-chunk'],
+			],
+		])('renders one thinking block above the output of %s', (_name, messages, expected) => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: { messages, messagingState: 'idle', thinkingAtTop: true },
+			});
+
+			const renderOrder = wrapper
+				.findAll('[data-testid="markdown-chunk"], [data-test-id="shared-thinking-block"]')
+				.map((element) => element.attributes('data-testid') ?? element.attributes('data-test-id'));
+			expect(renderOrder).toEqual(expected);
+			expect(
+				wrapper
+					.find('[data-testid="shell-after-actions"] [data-test-id="shared-thinking-block"]')
+					.exists(),
+			).toBe(false);
+		});
+
+		it('keeps the top thinking block active while a later message streams', () => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: {
+					messages: [
+						{
+							id: 'assistant-narration',
+							role: 'assistant',
+							content: 'I will search first.',
+							thinkingSegments: [{ id: 'reasoning-1', content: 'Choose a query.' }],
+							toolCalls: [{ tool: 'search', toolCallId: 'tool-1', state: 'done' }],
+							status: 'streaming',
+						},
+						{ ...final, status: 'streaming' },
+					],
+					messagingState: 'receiving',
+					thinkingAtTop: true,
+				},
+			});
+
+			expect(wrapper.findAll('[data-test-id="shared-thinking-block"]')).toHaveLength(1);
+			expect(wrapper.get('[data-test-id="shared-thinking-block"]').attributes('data-active')).toBe(
+				'true',
+			);
+		});
+	});
+
 	it('passes persisted reasoning duration to the shared thinking block', () => {
 		const wrapper = mount(AgentChatMessageList, {
 			props: {
