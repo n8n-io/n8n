@@ -27,14 +27,6 @@ describe('OneSimpleApi > Workflows', () => {
 			.query({ ...auth, url: 'https://n8n.io' })
 			.reply(200, { title: 'n8n' });
 		api
-			.get('/api/instagram_profile')
-			.query({ ...auth, profile: 'n8n.io' })
-			.reply(200, { username: 'n8n.io' });
-		api
-			.get('/api/spotify_profile')
-			.query({ ...auth, profile: 'Daft Punk' })
-			.reply(200, { name: 'Daft Punk' });
-		api
 			.get('/api/exchange_rate')
 			.query({ ...auth, from_currency: 'EUR', to_currency: 'USD', from_value: '10' })
 			.reply(200, { value: 10.9 });

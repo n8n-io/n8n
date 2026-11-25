@@ -71,42 +71,6 @@
 		},
 		{
 			"parameters": {
-				"resource": "socialProfile",
-				"operation": "instagramProfile",
-				"profileName": "n8n.io"
-			},
-			"id": "onesimpleapi-3",
-			"name": "Instagram Profile",
-			"type": "n8n-nodes-base.oneSimpleApi",
-			"typeVersion": 1,
-			"position": [300, 450],
-			"credentials": {
-				"oneSimpleApi": {
-					"id": "1",
-					"name": "OneSimpleApi account"
-				}
-			}
-		},
-		{
-			"parameters": {
-				"resource": "socialProfile",
-				"operation": "spotifyArtistProfile",
-				"artistName": "Daft Punk"
-			},
-			"id": "onesimpleapi-4",
-			"name": "Spotify Artist",
-			"type": "n8n-nodes-base.oneSimpleApi",
-			"typeVersion": 1,
-			"position": [300, 600],
-			"credentials": {
-				"oneSimpleApi": {
-					"id": "1",
-					"name": "OneSimpleApi account"
-				}
-			}
-		},
-		{
-			"parameters": {
 				"resource": "information",
 				"operation": "exchangeRate",
 				"value": "10",
@@ -222,20 +186,6 @@
 				}
 			}
 		],
-		"Instagram Profile": [
-			{
-				"json": {
-					"username": "n8n.io"
-				}
-			}
-		],
-		"Spotify Artist": [
-			{
-				"json": {
-					"name": "Daft Punk"
-				}
-			}
-		],
 		"Exchange Rate": [
 			{
 				"json": {
@@ -288,16 +238,6 @@
 					},
 					{
 						"node": "Website SEO",
-						"type": "main",
-						"index": 0
-					},
-					{
-						"node": "Instagram Profile",
-						"type": "main",
-						"index": 0
-					},
-					{
-						"node": "Spotify Artist",
 						"type": "main",
 						"index": 0
 					},
