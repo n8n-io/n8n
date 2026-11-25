@@ -348,6 +348,14 @@ function isEnabledFormPageNode(node: INode): boolean {
 	return node.type === WAIT_NODE_TYPE && node.parameters.resume === 'form';
 }
 
+/** Whether submitting this Form Trigger opens another form page or a Form Ending. */
+function formTriggerHasMorePages(workflowStartNode: INode, workflow: Workflow): boolean {
+	return (
+		workflowStartNode.type === FORM_TRIGGER_NODE_TYPE &&
+		autoDetectResponseMode(workflowStartNode, workflow, 'POST') === 'formPage'
+	);
+}
+
 export function autoDetectResponseMode(
 	workflowStartNode: INode,
 	workflow: Workflow,
@@ -1113,7 +1121,12 @@ export async function executeWebhook(
 		// run that will not start.
 		routesToEngineV2 = engineV2Webhooks.handles(workflowData, executionMode);
 		if (routesToEngineV2) {
-			engineV2Webhooks.assertSupported({ workflowStartNode, responseMode, executionId });
+			engineV2Webhooks.assertSupported({
+				workflowStartNode,
+				responseMode,
+				executionId,
+				formHasMorePages: formTriggerHasMorePages(workflowStartNode, workflow),
+			});
 			// A workflow that runs on engine v2 in this mode never starts on v1, so a
 			// resume here names a v2 execution. Anything else is a bug.
 			if (executionId !== undefined && !isExecutionIdV2(executionId)) {

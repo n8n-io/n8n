@@ -228,7 +228,7 @@ describe('Assistant Hub runtime skills', () => {
 	it.each([
 		['empty instructions', { instructions: ' ' }],
 		['oversized instructions', { instructions: 'é'.repeat(RUNTIME_SKILL_MAX_OUTPUT_BYTES / 2) }],
-		['unsupported file', { files: [{ path: 'scripts/run.py', content: 'print(1)' }] }],
+		['invalid file path', { files: [{ path: '../run.py', content: 'print(1)' }] }],
 		['invalid path', { files: [{ path: 'references/a\0.md', content: 'Guide.' }] }],
 	] satisfies Array<[string, Partial<SavedSkill>]>)(
 		'rejects %s on activation',
@@ -353,14 +353,27 @@ describe('Assistant Hub runtime skills', () => {
 		expect(source.getLoadError?.(entry.id)).toBeUndefined();
 	});
 
-	it.each([0, 1])('enforces the reference UTF-8 limit with %i extra bytes', async (extra) => {
-		const body = 'é'.repeat(RUNTIME_SKILL_MAX_OUTPUT_BYTES / 2) + 'a'.repeat(extra);
-		const { source } = await load(
-			providerFor([content({ files: [{ path: 'references/guide.md', content: body }] })]),
-		);
-		const file = await source.loadFile?.(hubEntries(source)[0].id, 'references/guide.md');
-		if (extra) expect(file).toBeNull();
-		else expect(file?.bytes).toBe(RUNTIME_SKILL_MAX_OUTPUT_BYTES);
+	it('loads a large reference from its original path and caps the tool response by bytes', async () => {
+		const body = 'é'.repeat(RUNTIME_SKILL_MAX_OUTPUT_BYTES / 2) + 'a';
+		const path = 'reference/degraded/guide.md';
+		const { source } = await load(providerFor([content({ files: [{ path, content: body }] })]));
+		const skillId = hubEntries(source)[0].id;
+		expect(await source.loadFile?.(skillId, path)).toMatchObject({
+			filePath: path,
+			content: body,
+			bytes: RUNTIME_SKILL_MAX_OUTPUT_BYTES + 1,
+		});
+		const tool = createSkillLoadTool(source);
+		expect(await tool.handler?.({ skillId, filePath: path }, {})).toMatchObject({
+			success: true,
+			filePath: path,
+			bytes: RUNTIME_SKILL_MAX_OUTPUT_BYTES + 1,
+			content: `${body.slice(0, -1)}\n\n[... output truncated to ${RUNTIME_SKILL_MAX_OUTPUT_BYTES / 1024} KB. To read the next part, call load_skill with the same filePath and offset ${RUNTIME_SKILL_MAX_OUTPUT_BYTES} ...]`,
+		});
+		// The offset from the note returns the rest of the file.
+		expect(
+			await tool.handler?.({ skillId, filePath: path, offset: RUNTIME_SKILL_MAX_OUTPUT_BYTES }, {}),
+		).toMatchObject({ success: true, content: 'a' });
 	});
 
 	it('reads only registered Hub paths and delegates built-in references', async () => {

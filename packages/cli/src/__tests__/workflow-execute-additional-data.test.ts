@@ -37,7 +37,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 	Workflow,
 } from 'n8n-workflow';
-import { createRunExecutionData } from 'n8n-workflow';
+import { ManualExecutionCancelledError, createRunExecutionData } from 'n8n-workflow';
 import { OperationalError } from '@n8n/errors';
 import type PCancelable from 'p-cancelable';
 import type { MockInstance } from 'vitest';
@@ -136,6 +136,10 @@ vi.mock('n8n-core', async () => ({
 		return { processRunExecutionData };
 	}),
 }));
+
+// A deep mock would invent an abort signal without listeners.
+const mockExecuteOptions = (options: Partial<ExecuteWorkflowOptions> = {}) =>
+	mock<ExecuteWorkflowOptions>({ abortSignal: undefined, ...options });
 
 describe('WorkflowExecuteAdditionalData', () => {
 	const variablesService = mockInstance(VariablesService);
@@ -246,7 +250,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				executeWorkflow(
 					mock<IExecuteWorkflowInfo>(),
 					mock<IWorkflowExecuteAdditionalData>(),
-					mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
+					mockExecuteOptions({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
 				),
 			).rejects.toThrow('blocked');
 
@@ -277,7 +281,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				});
 				await expect(
 					executeWorkflow(mock<IExecuteWorkflowInfo>(), mock<IWorkflowExecuteAdditionalData>(), {
-						...mock<ExecuteWorkflowOptions>(),
+						...mockExecuteOptions(),
 						loadedWorkflowData: workflowData,
 						loadedRunData: undefined,
 						returnLastRunOnly,
@@ -324,7 +328,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			});
 			await expect(
 				executeWorkflow(mock<IExecuteWorkflowInfo>(), mock<IWorkflowExecuteAdditionalData>(), {
-					...mock<ExecuteWorkflowOptions>(),
+					...mockExecuteOptions(),
 					loadedWorkflowData: undefined,
 					loadedRunData: { ...mock<IWorkflowExecutionDataProcess>(), executionData },
 					returnLastRunOnly: false,
@@ -336,7 +340,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			await executeWorkflow(
 				mock<IExecuteWorkflowInfo>(),
 				mock<IWorkflowExecuteAdditionalData>({ evalEgressProxy: 'http://127.0.0.1:4567' }),
-				mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
+				mockExecuteOptions({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
 			);
 
 			const subExecutionData = vi.mocked(WorkflowExecute).mock.calls.at(-1)?.[0];
@@ -371,7 +375,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 						mock<IExecuteWorkflowInfo>(),
 						mock<IWorkflowExecuteAdditionalData>({ rootExecutionMode: parentRootMode }),
 						{
-							...mock<ExecuteWorkflowOptions>(),
+							...mockExecuteOptions(),
 							loadedWorkflowData: workflowData,
 							loadedRunData: undefined,
 							executionMode: parentMode,
@@ -385,7 +389,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			const response = await executeWorkflow(
 				mock<IExecuteWorkflowInfo>(),
 				mock<IWorkflowExecuteAdditionalData>(),
-				mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
+				mockExecuteOptions({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
 			);
 
 			expect(response).toEqual({
@@ -398,7 +402,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			const response = await executeWorkflow(
 				mock<IExecuteWorkflowInfo>(),
 				mock<IWorkflowExecuteAdditionalData>(),
-				mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: true }),
+				mockExecuteOptions({ loadedWorkflowData: undefined, doNotWaitToFinish: true }),
 			);
 
 			expect(response).toEqual({
@@ -411,7 +415,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			await executeWorkflow(
 				mock<IExecuteWorkflowInfo>(),
 				mock<IWorkflowExecuteAdditionalData>(),
-				mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined }),
+				mockExecuteOptions({ loadedWorkflowData: undefined }),
 			);
 
 			expect(executionRepository.setRunning).toHaveBeenCalledWith(EXECUTION_ID);
@@ -424,7 +428,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			const response = await executeWorkflow(
 				mock<IExecuteWorkflowInfo>(),
 				mock<IWorkflowExecuteAdditionalData>(),
-				mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
+				mockExecuteOptions({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
 			);
 
 			expect(response).toEqual({
@@ -457,7 +461,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			await executeWorkflow(
 				mock<IExecuteWorkflowInfo>({ id: workflowId }),
 				mock<IWorkflowExecuteAdditionalData>(),
-				mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
+				mockExecuteOptions({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
 			);
 
 			// getBase backfills projectId from the workflow owner (mocked to
@@ -538,7 +542,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 						userId: 'user-1',
 						rootExecutionMode: 'manual',
 					}),
-					mock<ExecuteWorkflowOptions>({
+					mockExecuteOptions({
 						loadedWorkflowData: subWorkflowData(),
 						doNotWaitToFinish: false,
 						parentWorkflowId: 'parent-1',
@@ -561,7 +565,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 						userId: 'publisher-1',
 						rootExecutionMode: undefined,
 					}),
-					mock<ExecuteWorkflowOptions>({
+					mockExecuteOptions({
 						loadedWorkflowData: subWorkflowData(),
 						doNotWaitToFinish: false,
 						parentWorkflowId: 'parent-1',
@@ -586,7 +590,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 							userId: 'user-1',
 							rootExecutionMode: undefined,
 						}),
-						mock<ExecuteWorkflowOptions>({
+						mockExecuteOptions({
 							loadedWorkflowData: subWorkflowData(),
 							doNotWaitToFinish: false,
 							parentWorkflowId: 'parent-1',
@@ -603,7 +607,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				await executeWorkflow(
 					mock<IExecuteWorkflowInfo>({ id: 'db-id', code: undefined }),
 					mock<IWorkflowExecuteAdditionalData>({ userId: 'user-1' }),
-					mock<ExecuteWorkflowOptions>({
+					mockExecuteOptions({
 						loadedWorkflowData: subWorkflowData(),
 						doNotWaitToFinish: false,
 					}),
@@ -619,7 +623,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				await executeWorkflow(
 					mock<IExecuteWorkflowInfo>({ id: 'db-id', code: undefined }),
 					mock<IWorkflowExecuteAdditionalData>({ userId: 'user-1' }),
-					mock<ExecuteWorkflowOptions>({
+					mockExecuteOptions({
 						loadedWorkflowData: subWorkflowData(),
 						doNotWaitToFinish: false,
 					}),
@@ -717,7 +721,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				await executeWorkflow(
 					{ code: subWorkflowData() },
 					mock<IWorkflowExecuteAdditionalData>({ userId: 'user-1' }),
-					mock<ExecuteWorkflowOptions>({
+					mockExecuteOptions({
 						loadedWorkflowData: subWorkflowData(),
 						doNotWaitToFinish: false,
 						parentWorkflowId: 'parent-1',
@@ -737,7 +741,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				await executeWorkflow(
 					mock<IExecuteWorkflowInfo>({ id: 'db-id', code: undefined }),
 					mock<IWorkflowExecuteAdditionalData>({ userId: 'user-1' }),
-					mock<ExecuteWorkflowOptions>({
+					mockExecuteOptions({
 						loadedWorkflowData: subWorkflowData(),
 						doNotWaitToFinish: false,
 					}),
@@ -779,7 +783,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				await executeWorkflow(
 					mock<IExecuteWorkflowInfo>({ id: 'sub-id', code: undefined }),
 					mock<IWorkflowExecuteAdditionalData>({ userId: undefined, rootExecutionMode: undefined }),
-					mock<ExecuteWorkflowOptions>({
+					mockExecuteOptions({
 						loadedWorkflowData: subWorkflowData(),
 						loadedRunData: undefined,
 						doNotWaitToFinish,
@@ -1075,7 +1079,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				const response = await executeWorkflow(
 					mock<IExecuteWorkflowInfo>(),
 					mock<IWorkflowExecuteAdditionalData>(),
-					mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
+					mockExecuteOptions({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
 				);
 
 				expect(response.usedDynamicCredentials).toBe(true);
@@ -1092,7 +1096,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				const response = await executeWorkflow(
 					mock<IExecuteWorkflowInfo>(),
 					mock<IWorkflowExecuteAdditionalData>(),
-					mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
+					mockExecuteOptions({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
 				);
 
 				expect(response.attemptedDynamicCredentials).toBe(true);
@@ -1106,7 +1110,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				const response = await executeWorkflow(
 					mock<IExecuteWorkflowInfo>(),
 					mock<IWorkflowExecuteAdditionalData>(),
-					mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
+					mockExecuteOptions({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
 				);
 
 				expect(response.usedDynamicCredentials).toBeUndefined();
@@ -1122,7 +1126,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				const response = await executeWorkflow(
 					mock<IExecuteWorkflowInfo>(),
 					mock<IWorkflowExecuteAdditionalData>(),
-					mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
+					mockExecuteOptions({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
 				);
 
 				expect(response.usedDynamicCredentials).toBe(true);
@@ -1139,7 +1143,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				const response = await executeWorkflow(
 					mock<IExecuteWorkflowInfo>(),
 					mock<IWorkflowExecuteAdditionalData>(),
-					mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: true }),
+					mockExecuteOptions({ loadedWorkflowData: undefined, doNotWaitToFinish: true }),
 				);
 
 				expect(response.data).toEqual([null]);
@@ -1156,7 +1160,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 					await executeWorkflow(
 						mock<IExecuteWorkflowInfo>(),
 						mock<IWorkflowExecuteAdditionalData>(),
-						mock<ExecuteWorkflowOptions>({
+						mockExecuteOptions({
 							loadedWorkflowData: undefined,
 							doNotWaitToFinish: false,
 						}),
@@ -1235,7 +1239,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 						executeWorkflow(
 							mock<IExecuteWorkflowInfo>(),
 							mock<IWorkflowExecuteAdditionalData>(),
-							mock<ExecuteWorkflowOptions>({
+							mockExecuteOptions({
 								loadedWorkflowData: undefined,
 								doNotWaitToFinish: false,
 							}),
@@ -1260,7 +1264,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 						executeWorkflow(
 							mock<IExecuteWorkflowInfo>(),
 							mock<IWorkflowExecuteAdditionalData>(),
-							mock<ExecuteWorkflowOptions>({
+							mockExecuteOptions({
 								loadedWorkflowData: undefined,
 								doNotWaitToFinish: false,
 							}),
@@ -1284,7 +1288,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 					const promise = executeWorkflow(
 						mock<IExecuteWorkflowInfo>(),
 						mock<IWorkflowExecuteAdditionalData>(),
-						mock<ExecuteWorkflowOptions>({
+						mockExecuteOptions({
 							loadedWorkflowData: undefined,
 							doNotWaitToFinish: false,
 						}),
@@ -1330,7 +1334,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				await executeWorkflow(
 					mock<IExecuteWorkflowInfo>(),
 					mock<IWorkflowExecuteAdditionalData>(),
-					mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish }),
+					mockExecuteOptions({ loadedWorkflowData: undefined, doNotWaitToFinish }),
 				);
 
 			it('reports the channels the sub-workflow redacts', async () => {
@@ -1421,7 +1425,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 				await expect(
 					executeWorkflow(mock<IExecuteWorkflowInfo>(), mock<IWorkflowExecuteAdditionalData>(), {
-						...mock<ExecuteWorkflowOptions>(),
+						...mockExecuteOptions(),
 						loadedWorkflowData: undefined,
 						loadedRunData: { ...mock<IWorkflowExecutionDataProcess>(), executionData },
 						doNotWaitToFinish: false,
@@ -1434,7 +1438,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 			describe('when the sub-workflow opts out of redacting its callers', () => {
 				const runLibrary = async () => {
-					const options = mock<ExecuteWorkflowOptions>({ doNotWaitToFinish: false });
+					const options = mockExecuteOptions({ doNotWaitToFinish: false });
 					// Assigned after `mock()`, which does not keep `false` values in nested objects.
 					options.loadedWorkflowData = {
 						id: 'library',
@@ -1523,7 +1527,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				const result = await executeWorkflow(
 					mock<IExecuteWorkflowInfo>({ id: 'workflow-123' }),
 					mock<IWorkflowExecuteAdditionalData>(),
-					mock<ExecuteWorkflowOptions>({
+					mockExecuteOptions({
 						loadedWorkflowData: mockWorkflowData,
 						executionMode: 'manual',
 						parentWorkflowId: 'parent-123',
@@ -1538,7 +1542,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				const result = await executeWorkflow(
 					mock<IExecuteWorkflowInfo>({ id: 'workflow-123' }),
 					mock<IWorkflowExecuteAdditionalData>(),
-					mock<ExecuteWorkflowOptions>({
+					mockExecuteOptions({
 						loadedWorkflowData: mockWorkflowData,
 						executionMode: 'chat',
 						parentWorkflowId: 'parent-123',
@@ -1553,7 +1557,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				const result = await executeWorkflow(
 					mock<IExecuteWorkflowInfo>({ id: 'workflow-123' }),
 					mock<IWorkflowExecuteAdditionalData>(),
-					mock<ExecuteWorkflowOptions>({
+					mockExecuteOptions({
 						loadedWorkflowData: mockWorkflowData,
 						executionMode: 'trigger',
 						parentWorkflowId: 'parent-123',
@@ -1568,7 +1572,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				const result = await executeWorkflow(
 					mock<IExecuteWorkflowInfo>({ id: 'workflow-123' }),
 					mock<IWorkflowExecuteAdditionalData>(),
-					mock<ExecuteWorkflowOptions>({
+					mockExecuteOptions({
 						loadedWorkflowData: mockWorkflowData,
 						executionMode: 'webhook',
 						parentWorkflowId: 'parent-123',
@@ -1583,7 +1587,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				const result = await executeWorkflow(
 					mock<IExecuteWorkflowInfo>({ id: 'workflow-123' }),
 					mock<IWorkflowExecuteAdditionalData>(),
-					mock<ExecuteWorkflowOptions>({
+					mockExecuteOptions({
 						loadedWorkflowData: mockWorkflowData,
 						executionMode: 'integrated',
 						parentWorkflowId: 'parent-123',
@@ -1641,7 +1645,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 					await executeWorkflow(
 						{ id: 'workflow-123' },
 						mock<IWorkflowExecuteAdditionalData>({ rootExecutionMode }),
-						mock<ExecuteWorkflowOptions>({
+						mockExecuteOptions({
 							loadedWorkflowData: undefined,
 							loadedRunData: undefined,
 							executionMode: 'integrated',
@@ -1657,7 +1661,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				await executeWorkflow(
 					{ id: 'workflow-123' },
 					mock<IWorkflowExecuteAdditionalData>({ rootExecutionMode: undefined }),
-					mock<ExecuteWorkflowOptions>({
+					mockExecuteOptions({
 						loadedWorkflowData: undefined,
 						loadedRunData: undefined,
 						executionMode: 'manual',
@@ -1666,6 +1670,78 @@ describe('WorkflowExecuteAdditionalData', () => {
 				);
 
 				expect(loadedVersionId()).toBe(DRAFT_VERSION);
+			});
+		});
+
+		describe('cancellation from the parent', () => {
+			// A child run that stays in flight until the test finishes it.
+			const startPendingChild = () => {
+				let finish!: (run: IRun) => void;
+				const pending = new Promise<IRun>((resolve) => {
+					finish = resolve;
+				});
+				processRunExecutionData.mockReturnValue(pending as unknown as PCancelable<IRun>);
+				return () => finish(runWithData);
+			};
+
+			const runChild = async (abortSignal: AbortSignal, doNotWaitToFinish = false) =>
+				await executeWorkflow(
+					mock<IExecuteWorkflowInfo>(),
+					mock<IWorkflowExecuteAdditionalData>(),
+					mockExecuteOptions({ loadedWorkflowData: undefined, doNotWaitToFinish, abortSignal }),
+				);
+
+			beforeEach(() => {
+				activeExecutions.stopExecution.mockClear();
+				activeExecutions.attachWorkflowExecution.mockClear();
+			});
+
+			it('stops an awaited sub-workflow when the parent aborts', async () => {
+				const finish = startPendingChild();
+				const parent = new AbortController();
+
+				const running = runChild(parent.signal);
+				await vi.waitFor(() => expect(activeExecutions.attachWorkflowExecution).toHaveBeenCalled());
+				parent.abort();
+
+				expect(activeExecutions.stopExecution).toHaveBeenCalledWith(
+					EXECUTION_ID,
+					expect.any(ManualExecutionCancelledError),
+				);
+				finish();
+				await running;
+			});
+
+			it('stops the sub-workflow at once when the parent has already aborted', async () => {
+				const finish = startPendingChild();
+				const parent = new AbortController();
+				parent.abort();
+
+				const running = runChild(parent.signal);
+				await vi.waitFor(() => expect(activeExecutions.stopExecution).toHaveBeenCalled());
+				finish();
+				await running;
+			});
+
+			it('does not stop a sub-workflow that has already finished', async () => {
+				const parent = new AbortController();
+
+				await runChild(parent.signal);
+				parent.abort();
+
+				expect(activeExecutions.stopExecution).not.toHaveBeenCalled();
+			});
+
+			it('does not stop a sub-workflow the parent does not wait for', async () => {
+				const finish = startPendingChild();
+				const parent = new AbortController();
+
+				await runChild(parent.signal, true);
+				await vi.waitFor(() => expect(activeExecutions.attachWorkflowExecution).toHaveBeenCalled());
+				parent.abort();
+
+				expect(activeExecutions.stopExecution).not.toHaveBeenCalled();
+				finish();
 			});
 		});
 
@@ -1701,7 +1777,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				await executeWorkflow(
 					mock<IExecuteWorkflowInfo>(),
 					mock<IWorkflowExecuteAdditionalData>({ executionTimeoutTimestamp: opts.parentDeadline }),
-					mock<ExecuteWorkflowOptions>({
+					mockExecuteOptions({
 						loadedWorkflowData: mock<IWorkflowBase>({
 							id: 'sub-id',
 							name: 'Sub Workflow',
