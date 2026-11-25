@@ -24,7 +24,7 @@ export function webDavPath(path: string): RequestPath {
 		);
 }
 
-/** Every operation returns paths in this shape: a leading slash and no trailing slash. */
+/** A path with a leading slash and no trailing or repeated slashes, like `/docs/notes.txt`. */
 export function outputPath(path: string): string {
 	return `/${path.split('/').filter(Boolean).join('/')}`;
 }

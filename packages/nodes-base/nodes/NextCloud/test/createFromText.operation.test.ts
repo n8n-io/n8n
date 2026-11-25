@@ -322,6 +322,7 @@ describe('NextCloud Node: file createFromText', () => {
 			),
 		).rejects.toMatchObject({
 			message: 'The folder "/missing" does not exist',
+			description: expect.stringContaining('or is a file, or when a folder already has the name'),
 			context: expect.objectContaining({ itemIndex: 0 }),
 		});
 	});
@@ -390,7 +391,7 @@ describe('NextCloud Node: file createFromText', () => {
 		},
 	);
 
-	it('asks for File Content as text, so core writes an object as JSON and stops on null', async () => {
+	it('asks for File Content and Parent Folder as text, so core stops on null', async () => {
 		const { request } = fakeNextcloud();
 		const executeFunctions = buildExecuteFunctions(
 			[{ content: 'hello', fileName: 'notes.txt', parentFolder: '/docs', ifFileExists: 'fail' }],
@@ -401,6 +402,7 @@ describe('NextCloud Node: file createFromText', () => {
 		await run(executeFunctions);
 
 		expect(getNodeParameter).toHaveBeenCalledWith('content', 0, '', { ensureType: 'string' });
+		expect(getNodeParameter).toHaveBeenCalledWith('parentFolder', 0, '/', { ensureType: 'string' });
 	});
 
 	it('returns the path with a leading slash when Parent Folder has none', async () => {

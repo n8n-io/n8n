@@ -112,7 +112,9 @@ const OUTPUT_PROPS = {
 export async function execute(this: IExecuteFunctions, i: number): Promise<IDataObject> {
 	const content = this.getNodeParameter('content', i, '', { ensureType: 'string' }) as string;
 	const fileName = String(this.getNodeParameter('fileName', i) ?? '');
-	const parentFolder = String(this.getNodeParameter('parentFolder', i, '/')).replace(/\/+$/, '');
+	const parentFolder = (
+		this.getNodeParameter('parentFolder', i, '/', { ensureType: 'string' }) as string
+	).replace(/\/+$/, '');
 	const ifFileExists = this.getNodeParameter('ifFileExists', i) as
 		| 'addSuffix'
 		| 'fail'
@@ -170,7 +172,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<IData
 				{
 					itemIndex: i,
 					description:
-						'Check that "Parent Folder" exists and that "File Name" is not the name of a folder.',
+						'Nextcloud gives this error when "Parent Folder" does not exist or is a file, or when a folder already has the name in "File Name".',
 				},
 			);
 		}
