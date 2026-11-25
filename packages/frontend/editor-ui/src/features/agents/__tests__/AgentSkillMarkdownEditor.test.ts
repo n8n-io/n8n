@@ -78,6 +78,16 @@ function pressKey(editor: Editor, key: string) {
 	return editor.view.someProp('handleKeyDown', (handler) => handler(editor.view, event));
 }
 
+function clickMention(editor: Editor) {
+	const { view } = editor;
+	const target = view.dom.querySelector('a[href^="n8n://workflow/"]');
+	if (!target) throw new Error('The mention link is missing');
+	const event = new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 });
+	Object.defineProperty(event, 'target', { value: target });
+	view.someProp('handleClick', (handler) => handler(view, MENTION_START + 1, event));
+	return event;
+}
+
 const MENTION_BODY = 'Run [Weekly report](n8n://workflow/wf1) now';
 const MENTION_START = 5;
 const MENTION_END = MENTION_START + 'Weekly report'.length;
@@ -245,11 +255,11 @@ describe('AgentSkillMarkdownEditor', () => {
 
 	it('opens the workflow of a clicked mention in a new tab', async () => {
 		const open = vi.spyOn(window, 'open').mockReturnValue(null);
-		const { wrapper } = await mountEditor({ modelValue: MENTION_BODY });
-		const click = new MouseEvent('click', { bubbles: true, cancelable: true });
+		const { editor } = await mountEditor({ modelValue: MENTION_BODY });
 
-		wrapper.find('a[href^="n8n://workflow/"]').element.dispatchEvent(click);
+		const click = clickMention(editor);
 
+		expect(open).toHaveBeenCalledOnce();
 		expect(open).toHaveBeenCalledWith('/base/workflow/wf1', '_blank');
 		expect(click.defaultPrevented).toBe(true);
 		open.mockRestore();
@@ -258,13 +268,11 @@ describe('AgentSkillMarkdownEditor', () => {
 	it('does not open a workflow for a clicked mention when the flag is off', async () => {
 		flag.enabled = false;
 		const open = vi.spyOn(window, 'open').mockReturnValue(null);
-		const { wrapper } = await mountEditor({ modelValue: MENTION_BODY });
+		const { editor } = await mountEditor({ modelValue: MENTION_BODY });
 
-		wrapper
-			.find('a[href^="n8n://workflow/"]')
-			.element.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		clickMention(editor);
 
-		expect(open).not.toHaveBeenCalled();
+		expect(open).not.toHaveBeenCalledWith('/base/workflow/wf1', '_blank');
 		open.mockRestore();
 	});
 
