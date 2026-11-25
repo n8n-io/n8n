@@ -843,12 +843,25 @@ function openExistingSubAgentModal(subAgent: {
 							<span :class="$style.skillWorkflowLabel">
 								<span :class="$style.skillWorkflowName">{{ workflow.label }}</span>
 								{{ ' ' }}
-								<span :class="$style.skillNote">
-									{{
+								<span
+									:class="$style.skillNote"
+									:title="
 										i18n.baseText('agents.builder.tools.workflow.fromSkill', {
 											interpolate: { skill: workflow.skillName },
 										})
-									}}
+									"
+									data-testid="agent-capabilities-skill-workflow-source"
+								>
+									<N8nIcon icon="book-open" :size="12" :class="$style.skillNoteIcon" />
+									<span :class="$style.skillNoteName" aria-hidden="true">{{
+										workflow.skillName
+									}}</span>
+									{{ ' ' }}
+									<span :class="$style.srOnly">{{
+										i18n.baseText('agents.builder.tools.workflow.fromSkill', {
+											interpolate: { skill: workflow.skillName },
+										})
+									}}</span>
 								</span>
 							</span>
 						</AgentChipButton>
@@ -918,6 +931,8 @@ function openExistingSubAgentModal(subAgent: {
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/utils';
+
 .deactivatedTool {
 	color: var(--text-color--subtle);
 }
@@ -954,13 +969,33 @@ function openExistingSubAgentModal(subAgent: {
 }
 
 .skillWorkflowName,
-.skillNote {
+.skillNoteName {
 	overflow: hidden;
 	text-overflow: ellipsis;
 }
 
 .skillNote {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
+	min-width: 0;
+	padding: 0 var(--spacing--4xs);
+	border-radius: var(--radius--sm);
+	background: var(--background--subtle);
 	color: var(--text-color--subtle);
+	font-size: var(--font-size--2xs);
+}
+
+.skillNoteIcon {
+	flex-shrink: 0;
+}
+
+.skillNoteName {
+	white-space: nowrap;
+}
+
+.srOnly {
+	@include utils.utils-sr-only;
 }
 
 .groupChipLabel {
