@@ -45,6 +45,9 @@ export function whatsappToGym(
 	return args;
 }
 
+// Known limit: a media id path (`/v<version>/<media-id>`) has the shape of any Graph object, and the
+// router picks the vendor from the host and the path. So a media info read or delete goes to the
+// Facebook Graph vendor. Nothing reaches the real service for a write, but the wrong gym service answers.
 export const WHATSAPP_PROFILE: HttpVendorProfile = {
 	name: 'whatsapp',
 	credentialKind: 'system_user_token',
