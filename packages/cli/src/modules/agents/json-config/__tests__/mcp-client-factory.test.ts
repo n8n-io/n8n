@@ -823,6 +823,106 @@ describe('buildMcpClientForServer — unresolvable credential', () => {
 });
 
 // ---------------------------------------------------------------------------
+// buildMcpClientForServer — simulated runs (test runs and evals)
+// ---------------------------------------------------------------------------
+
+describe('buildMcpClientForServer — simulated fetch', () => {
+	const simulatedFetchMock = vi.fn();
+	const simulatedFetch = ((...args: unknown[]) =>
+		simulatedFetchMock(...args)) as unknown as CustomFetch;
+
+	beforeEach(() => {
+		mcpClientCtor.mockReset();
+		proxyFetchMock.mockReset();
+		simulatedFetchMock.mockReset();
+	});
+
+	async function buildSimulated(server: AgentJsonMcpServerConfig) {
+		const credentialProvider = mock<CredentialProvider & AiGatewayMcpCredentialResolver>();
+		const oauthService = mock<OauthService>();
+		const resolveRegistryConnection = vi.fn();
+		await buildMcpClientForServer(server, {
+			credentialProvider,
+			oauthService,
+			projectId: 'proj-1',
+			proxyFetch,
+			simulatedFetch,
+			resolveRegistryConnection,
+		});
+		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ url: string; fetch: typeof fetch }>];
+		return { config: configs[0], credentialProvider, oauthService, resolveRegistryConnection };
+	}
+
+	it('reads no stored credential and refreshes no token, even after a made-up 401', async () => {
+		simulatedFetchMock.mockResolvedValue(make401());
+		const { config, credentialProvider, oauthService, resolveRegistryConnection } =
+			await buildSimulated(
+				makeServer({
+					authentication: 'mcpOAuth2Api',
+					credential: 'cred-1',
+					metadata: { nodeTypeName: '@n8n/mcp-registry.linear' },
+				}),
+			);
+
+		const response = await config.fetch(config.url, { method: 'POST', body: '{}' });
+
+		expect(response.status).toBe(401);
+		expect(credentialProvider.resolve).not.toHaveBeenCalled();
+		expect(credentialProvider.list).not.toHaveBeenCalled();
+		expect(credentialProvider.resolveAiGatewayMcpCredential).not.toHaveBeenCalled();
+		// Looked up only for the attribution label; nothing is minted from it.
+		expect(resolveRegistryConnection).toHaveBeenCalledWith('@n8n/mcp-registry.linear');
+		expect(oauthService.refreshOAuth2CredentialById).not.toHaveBeenCalled();
+		expect(simulatedFetchMock).toHaveBeenCalledTimes(1);
+		expect(proxyFetchMock).not.toHaveBeenCalled();
+	});
+
+	it('still connects when the registry lookup for the attribution fails', async () => {
+		simulatedFetchMock.mockResolvedValue(makeOk());
+		const credentialProvider = mock<CredentialProvider & AiGatewayMcpCredentialResolver>();
+		await buildMcpClientForServer(
+			makeServer({ metadata: { nodeTypeName: '@n8n/mcp-registry.linear' } }),
+			{
+				credentialProvider,
+				oauthService: mock<OauthService>(),
+				projectId: 'proj-1',
+				proxyFetch,
+				simulatedFetch,
+				resolveRegistryConnection: vi.fn().mockRejectedValue(new Error('registry down')),
+			},
+		);
+		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ url: string; fetch: typeof fetch }>];
+
+		await expect(configs[0].fetch(configs[0].url)).resolves.toHaveProperty('status', 200);
+		expect(credentialProvider.resolve).not.toHaveBeenCalled();
+	});
+
+	it('sends no auth header to the simulated fetch', async () => {
+		simulatedFetchMock.mockResolvedValue(makeOk());
+		const { config } = await buildSimulated(
+			makeServer({ authentication: 'bearerAuth', credential: 'cred-1' }),
+		);
+
+		await config.fetch(config.url, { method: 'POST', body: '{}' });
+
+		const [, init] = simulatedFetchMock.mock.calls[0] as [unknown, RequestInit | undefined];
+		expect(new Headers(init?.headers).get('authorization')).toBeNull();
+	});
+
+	it('keeps the configured URL, so a mock can tell servers apart', async () => {
+		const { config } = await buildSimulated(makeServer({ url: 'https://mcp.linear.app/mcp' }));
+		expect(config.url).toBe('https://mcp.linear.app/mcp');
+	});
+
+	it('replaces a templated registry URL with one that never resolves', async () => {
+		const { config } = await buildSimulated(
+			makeServer({ url: '={{$self["host"]}}/api/2.0/mcp/genie' }),
+		);
+		expect(new URL(config.url).hostname.endsWith('.invalid')).toBe(true);
+	});
+});
+
+// ---------------------------------------------------------------------------
 // buildMcpClientForServer — Gateway credits
 // ---------------------------------------------------------------------------
 

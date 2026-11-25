@@ -557,10 +557,10 @@ describe('AiPreferenceService', () => {
 			expect(aiPreferenceRepository.save).not.toHaveBeenCalled();
 		});
 
-		it('keeps the source the create wrote when an edit saves the row again', async () => {
+		it.each(['ui', 'import'] as const)('keeps the %s creation source on edit', async (source) => {
 			// An assistant edit of a row a person wrote must not relabel it as assistant-written.
 			aiPreferenceRepository.findByIdWithRelations.mockResolvedValue(
-				row({ id: 'pref-1', content: 'Rule.', userId: 'owner-1', source: 'ui' }),
+				row({ id: 'pref-1', content: 'Rule.', userId: 'owner-1', source }),
 			);
 
 			const updated = await service.update(owner, 'pref-1', {
@@ -569,9 +569,9 @@ describe('AiPreferenceService', () => {
 				userId: 'owner-1',
 			});
 
-			expect(updated.source).toBe('ui');
+			expect(updated.source).toBe(source);
 			expect(aiPreferenceRepository.save).toHaveBeenCalledWith(
-				expect.objectContaining({ content: 'A better rule.', source: 'ui' }),
+				expect.objectContaining({ content: 'A better rule.', source }),
 			);
 		});
 
@@ -844,6 +844,7 @@ describe('AiPreferenceService', () => {
 
 		it.each([
 			['a row the person wrote in settings', { source: 'ui' as const, createdById: 'user-1' }],
+			['an imported row', { source: 'import' as const, createdById: 'user-1' }],
 			['a row another surface wrote', { source: 'aia' as const, createdById: 'user-1' }],
 			[
 				'a row the same surface wrote for somebody else',

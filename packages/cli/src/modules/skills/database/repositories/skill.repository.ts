@@ -22,6 +22,7 @@ import {
 import type {
 	AssistantSkillSummary,
 	ResolvedSkillRow,
+	SkillFileReadOptions,
 	SkillTarget,
 } from '../../utils/skill-content';
 import { SkillFile } from '../entities/skill-file.entity';
@@ -343,7 +344,7 @@ export class SkillRepository {
 			availableToAssistant: Boolean(scope.assistantAvailableToAssistant),
 		};
 		const files = await this.table.manager.find(SkillFile, {
-			where: { skillVersionId: version.id },
+			where: { skillVersionId: version.id, isBinary: false },
 			select: { path: true },
 		});
 		files.sort((left, right) => compareSkillFilePaths(left.path, right.path));
@@ -365,6 +366,7 @@ export class SkillRepository {
 			.innerJoin(Skill, 'skill', 'skill.id = version.skillId')
 			.where('version.id = :versionId AND skill.id = :skillId', { versionId, skillId })
 			.andWhere('file.path = :path', { path })
+			.andWhere('file.isBinary = :isBinary', { isBinary: false })
 			.andWhere('skill.availableToAssistant = :enabled', { enabled: true })
 			.andWhere('(skill.projectId IS NULL OR skill.projectId = :projectId)', { projectId })
 			.addSelect('skill.projectId', 'assistantProjectId')
@@ -401,13 +403,14 @@ export class SkillRepository {
 	async findLatestSaved(
 		skillIds: string[],
 		ctx: OperationContext = {},
+		options: SkillFileReadOptions = {},
 	): Promise<Map<string, ResolvedSkillRow>> {
 		const manager = this.table.managerFor(ctx);
 		const versions = await inChunks(
 			skillIds,
 			async (chunk) => await latestVersionsQuery(manager, chunk).getMany(),
 		);
-		return await this.resolveBySkill(versions, ctx);
+		return await this.resolveBySkill(versions, ctx, options);
 	}
 
 	/** Name, description and number of the latest version, without its content. */
@@ -447,6 +450,22 @@ export class SkillRepository {
 		return new Map(versions.map((version) => [version.skillId, version.id]));
 	}
 
+	/** One file of the latest version of a skill, with the name of that version. */
+	async findLatestFile(
+		skillId: string,
+		path: string,
+	): Promise<{ name: string; file: SkillFile } | null> {
+		const { manager } = this.table;
+		const [version] = await latestVersionsQuery(manager, [skillId])
+			.select(['version.id', 'version.skillId', 'version.name'])
+			.getMany();
+		if (!version) return null;
+		const file = await manager.findOne(SkillFile, {
+			where: { skillVersionId: version.id, path },
+		});
+		return file ? { name: version.name, file } : null;
+	}
+
 	/**
 	 * The name of the latest version of every skill in one target: the same project or the
 	 * instance. For the name check.
@@ -471,12 +490,13 @@ export class SkillRepository {
 	async findVersionsByIds(
 		versionIds: string[],
 		ctx: OperationContext = {},
+		options: SkillFileReadOptions = {},
 	): Promise<Map<string, ResolvedSkillRow>> {
 		if (versionIds.length === 0) return new Map();
 		const versions = await this.table.managerFor(ctx).find(SkillVersion, {
 			where: { id: In(unique(versionIds)) },
 		});
-		const rows = await this.resolve(versions, ctx);
+		const rows = await this.resolve(versions, ctx, options);
 		return new Map(rows.map((row) => [row.version.id, row]));
 	}
 
@@ -695,8 +715,9 @@ export class SkillRepository {
 	private async resolveBySkill(
 		versions: SkillVersion[],
 		ctx: OperationContext,
+		options: SkillFileReadOptions,
 	): Promise<Map<string, ResolvedSkillRow>> {
-		const rows = await this.resolve(versions, ctx);
+		const rows = await this.resolve(versions, ctx, options);
 		return new Map(rows.map((row) => [row.skill.id, row]));
 	}
 
@@ -704,6 +725,7 @@ export class SkillRepository {
 	private async resolve(
 		versions: SkillVersion[],
 		ctx: OperationContext,
+		{ textOnly = false }: SkillFileReadOptions = {},
 	): Promise<ResolvedSkillRow[]> {
 		if (versions.length === 0) return [];
 		const manager = this.table.managerFor(ctx);
@@ -713,7 +735,10 @@ export class SkillRepository {
 		);
 		const files = await inChunks(
 			versions.map((version) => version.id),
-			async (chunk) => await manager.find(SkillFile, { where: { skillVersionId: In(chunk) } }),
+			async (chunk) =>
+				await manager.find(SkillFile, {
+					where: { skillVersionId: In(chunk), ...(textOnly ? { isBinary: false } : {}) },
+				}),
 		);
 		const skillById = new Map(skills.map((skill) => [skill.id, skill]));
 		const filesByVersion = new Map<string, SkillFile[]>();
@@ -818,6 +843,7 @@ async function insertFiles(
 			skillVersionId,
 			path: file.path,
 			content: file.content,
+			isBinary: file.isBinary ?? false,
 		})),
 	);
 }

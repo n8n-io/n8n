@@ -92,8 +92,13 @@ export class AgentServiceAccountService implements ServiceAccountProjectSource {
 			ctx,
 			{
 				cleanUp,
-				deleteInTransaction: async (txCtx) =>
-					await this.agentRepository.deleteById(agent.id, txCtx),
+				deleteInTransaction: async (txCtx) => {
+					if (agent.projectId) {
+						await this.agentRepository.removeAfterApprovalCleanup(agent.id, agent.projectId, txCtx);
+					} else {
+						await this.agentRepository.deleteById(agent.id, txCtx);
+					}
+				},
 			},
 		);
 		if (!deleted) return;

@@ -528,6 +528,7 @@ onBeforeRouteLeave(() => {
 			:open="dialogOpen"
 			:type="pickedType"
 			:provider-id="loaded ? providerId : undefined"
+			:environment-id="loaded?.id"
 			@update:open="onDialogOpenChange"
 			@saved="onProviderSaved"
 		/>

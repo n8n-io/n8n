@@ -19,7 +19,14 @@ export class ResponseWaitTracker {
 		private readonly logger: Logger,
 	) {}
 
-	async respond(executionId: string, response: { nodeId: string; data: INodeExecutionData[] }) {
+	/**
+	 * Resolves `false` when the resume-attempt limit refuses the resume. The
+	 * execution then stops and does not use the response.
+	 */
+	async respond(
+		executionId: string,
+		response: { nodeId: string; data: INodeExecutionData[] },
+	): Promise<boolean> {
 		const execution = await this.executions.findSingleExecution(executionId, {
 			includeData: true,
 			unflattenData: true,
@@ -53,13 +60,14 @@ export class ResponseWaitTracker {
 		if (!saved) throw new ExecutionAlreadyResumingError(executionId);
 
 		try {
-			await this.waitTracker.startExecution(executionId);
+			return await this.waitTracker.startExecution(executionId);
 		} catch (error) {
-			if (error instanceof ExecutionAlreadyResumingError) return;
+			if (error instanceof ExecutionAlreadyResumingError) return true;
 			this.logger.warn('Response saved; the waiting execution will resume on its next poll', {
 				executionId,
 				error: ensureError(error).message,
 			});
+			return true;
 		}
 	}
 }

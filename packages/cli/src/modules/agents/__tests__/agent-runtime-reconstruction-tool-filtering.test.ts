@@ -40,6 +40,7 @@ import { AgentsCredentialProvider } from '../adapters/agents-credential-provider
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { KnowledgeRetrievalService } from '@/modules/knowledge/retrieval/knowledge-retrieval.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
+import { AgentDecisionWorkflowService } from '../approval/agent-decision-workflow.service';
 import type { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import type { AgentWorkspaceService } from '../agent-workspace.service';
@@ -919,6 +920,73 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — pe
 		expect(toolNamesPassedToBuildFromJson()).toEqual(
 			expect.arrayContaining(['Send Slack message', 'Lookup customer', 'custom_tool']),
 		);
+	});
+
+	describe('configured review routes', () => {
+		const route = { type: 'configuration' as const, configurationIds: ['review-1'] };
+		const ref: AgentJsonToolConfig = { ...customTool, approvalRoute: route };
+
+		async function wrapWith(params: {
+			runtimeProfile: 'top-level' | 'sub-agent';
+			supportsHitl?: boolean;
+		}) {
+			const decisionWorkflows = mock<AgentDecisionWorkflowService>();
+			const reviewed = { name: 'reviewed', description: 'Reviewed' } as agents.BuiltTool;
+			decisionWorkflows.wrap.mockReturnValue(reviewed);
+			Container.set(AgentDecisionWorkflowService, decisionWorkflows);
+			const { service } = makeService({});
+			await service.reconstructFromResolvedSource({
+				config: makeResolvedSourceConfig([ref]),
+				memoryOwnerAgentId: 'agent-1',
+				projectId,
+				credentialProvider: mock<CredentialProvider>(),
+				toolDescriptors: {},
+				toolCodeByName: {},
+				skills: {},
+				runType: 'production',
+				...params,
+			});
+			const [, , options] = buildFromJsonMock.mock.calls.at(-1) as [
+				AgentJsonConfig,
+				unknown,
+				BuildFromJsonOptions,
+			];
+			const handler = vi.fn().mockResolvedValue('done');
+			const tool = { name: 'write', description: 'Write data', handler } as agents.BuiltTool;
+			return { wrapped: options.wrapApproval?.(tool, ref), decisionWorkflows, handler };
+		}
+
+		it.each([
+			{ runtimeProfile: 'top-level' as const, supportsHitl: false },
+			{ runtimeProfile: 'sub-agent' as const, supportsHitl: undefined },
+		])(
+			'returns a tool that fails with a user error for $runtimeProfile runs with supportsHitl $supportsHitl',
+			async (params) => {
+				const { wrapped, decisionWorkflows, handler } = await wrapWith(params);
+
+				expect(decisionWorkflows.wrap).not.toHaveBeenCalled();
+				const call = wrapped?.handler?.({}, mock());
+				await expect(call).rejects.toThrow(UserError);
+				await expect(call).rejects.toThrow('Human review needs a run that can pause');
+				expect(handler).not.toHaveBeenCalled();
+			},
+		);
+
+		it('installs the review wrapper for runs that can resume', async () => {
+			const { wrapped, decisionWorkflows } = await wrapWith({
+				runtimeProfile: 'top-level',
+				supportsHitl: true,
+			});
+
+			expect(decisionWorkflows.wrap).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'write' }),
+				route,
+				expect.anything(),
+				expect.objectContaining({ agentId: 'agent-1', projectId }),
+				{},
+			);
+			expect(wrapped?.name).toBe('reviewed');
+		});
 	});
 });
 

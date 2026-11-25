@@ -4,11 +4,11 @@ import { z } from 'zod';
 
 import {
 	archiveTooLarge,
-	keepsText,
+	fileSelectionLimits,
 	type ArchiveLimits,
 	type RepositoryArchive,
 } from './github-archive';
-import { SKILL_FILE } from './skill-discovery';
+import { findSkillFolders, selectSkillFiles, SKILL_FILE } from './skill-discovery';
 import { SkillSourceReadError } from '../../errors/skill-source-read.error';
 
 // GitHub limits recursive trees to 7 MB. Leave room for the response envelope.
@@ -41,7 +41,7 @@ export async function readRepositoryFolder(
 	getFile: (path: string, sha: string) => Promise<Buffer>,
 	streamFile: (path: string, sha: string) => Promise<Readable>,
 ): Promise<RepositoryArchive> {
-	const result: RepositoryArchive = { paths: [], text: new Map(), oversized: new Map() };
+	const result: RepositoryArchive = { paths: [], files: new Map(), oversized: new Map() };
 	if (!objectId.safeParse(revision).success) throw unreadable();
 
 	const tree = async (sha: string, recursive = false) => {
@@ -64,8 +64,9 @@ export async function readRepositoryFolder(
 	if (entries.length > limits.maxEntries) throw archiveTooLarge(root);
 
 	let bytes = 0;
-	let textBytes = 0;
+	let retainedBytes = 0;
 	const reads: Array<{ path: string; sha: string; size: number; oversized: boolean }> = [];
+	const blobs = new Map<string, { sha: string; size: number }>();
 	for (const entry of entries) {
 		// Git stores symlinks as blobs too. Read only regular files.
 		if (entry.type !== 'blob' || (entry.mode !== '100644' && entry.mode !== '100755')) continue;
@@ -76,15 +77,29 @@ export async function readRepositoryFolder(
 
 		const path = `${root}/${entry.path}`;
 		result.paths.push(path);
-		if (!keepsText(path)) continue;
-		const oversized = size > limits.maxTextFileBytes;
+		blobs.set(path, { sha: entry.sha, size });
+	}
+	const skillFolders = new Set(findSkillFolders(result.paths, root).folders);
+	// Each file is one request. Fetch only the files that a skill in the picker can keep. The
+	// other files keep their path, so the review lists them.
+	const starvedFolders = new Set<string>();
+	const keep = selectSkillFiles(
+		new Map([...blobs].map(([path, { size }]) => [path, size])),
+		skillFolders,
+		fileSelectionLimits(limits),
+		starvedFolders,
+	);
+	if (starvedFolders.size > 0) result.starvedFolders = starvedFolders;
+	for (const [path, { sha, size }] of blobs) {
+		if (!keep.has(path)) continue;
+		const oversized = size > limits.maxFileBytes;
 		if (oversized && !path.endsWith(`/${SKILL_FILE}`)) {
 			result.oversized.set(path, null);
 			continue;
 		}
-		if (!oversized) textBytes += size;
-		if (textBytes > limits.maxTextBytes) throw archiveTooLarge(root);
-		reads.push({ path, sha: entry.sha, size, oversized });
+		if (!oversized) retainedBytes += size;
+		if (retainedBytes > limits.maxRetainedBytes) throw archiveTooLarge(root);
+		reads.push({ path, sha, size, oversized });
 	}
 
 	for (let i = 0; i < reads.length; i += FILE_BATCH_SIZE) {
@@ -97,7 +112,7 @@ export async function readRepositoryFolder(
 				}
 				const content = await getFile(path, sha);
 				if (content.length !== size) throw unreadable();
-				result.text.set(path, content.toString('utf8'));
+				result.files.set(path, content);
 			}),
 		);
 	}

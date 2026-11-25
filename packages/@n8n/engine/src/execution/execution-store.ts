@@ -92,6 +92,11 @@ export class ParentExecutionEndedError extends Error {
 	}
 }
 
+/** Whether `error` says that execution `executionId` has no row. */
+export function isMissingExecution(error: unknown, executionId: string): boolean {
+	return error instanceof ExecutionNotFoundError && error.executionId === executionId;
+}
+
 /**
  * Persistence interface for executions.
  *

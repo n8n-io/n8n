@@ -794,8 +794,10 @@ const table = useVueTable({
 	tbody tr {
 		background-color: var(--color--background--light-3);
 		border-bottom: 1px solid var(--color--foreground);
+		// No border at all: a transparent one still takes 1px and shows the darker
+		// background behind the table in dark mode.
 		&:last-child {
-			border-color: transparent;
+			border-bottom: none;
 		}
 	}
 
