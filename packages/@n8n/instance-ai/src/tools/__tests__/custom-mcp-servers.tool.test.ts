@@ -368,6 +368,10 @@ describe('custom-mcp-servers tool', () => {
 		);
 	});
 
+	it('marks its output as untrusted data', () => {
+		expect(createCustomMcpServersTool(createContext(service)).outputTrust).toBe('untrusted');
+	});
+
 	describe('tool-candidates', () => {
 		const candidates = [
 			{ workflowId: 'workflow-2', name: 'Lead score', description: null, reason: null },

@@ -505,55 +505,59 @@ async function handleDelete(
 }
 
 export function createCustomMcpServersTool(context: InstanceAiContext) {
-	return new Tool(DOMAIN_TOOL_IDS.CUSTOM_MCP_SERVERS)
-		.description(DESCRIPTION)
-		.input(sanitizeInputSchema(inputSchema))
-		.suspend(confirmationSuspendSchema)
-		.resume(confirmationResumeSchema)
-		.handler(async (input: Input, ctx: ConfirmationToolContext) => {
-			const service = requireService(context);
-			switch (input.action) {
-				case 'list':
-					return { servers: (await service.list(input.projectId)).map(summary) };
-				case 'get': {
-					const { tools, toolDraftsAvailable, ...server } = await service.get(toRef(input));
-					return {
-						server: summary(server),
-						tools: tools.map(toolSummary),
-						generateAvailable: toolDraftsAvailable,
-					};
+	return (
+		new Tool(DOMAIN_TOOL_IDS.CUSTOM_MCP_SERVERS)
+			.description(DESCRIPTION)
+			.input(sanitizeInputSchema(inputSchema))
+			// Project members write the server, tool, and workflow text that this tool returns.
+			.untrustedOutput()
+			.suspend(confirmationSuspendSchema)
+			.resume(confirmationResumeSchema)
+			.handler(async (input: Input, ctx: ConfirmationToolContext) => {
+				const service = requireService(context);
+				switch (input.action) {
+					case 'list':
+						return { servers: (await service.list(input.projectId)).map(summary) };
+					case 'get': {
+						const { tools, toolDraftsAvailable, ...server } = await service.get(toRef(input));
+						return {
+							server: summary(server),
+							tools: tools.map(toolSummary),
+							generateAvailable: toolDraftsAvailable,
+						};
+					}
+					case 'create': {
+						const { action: _action, ...create } = input;
+						return await withApproval(
+							context,
+							ctx,
+							'create',
+							input.projectId,
+							async () => ({
+								message:
+									'Create a custom MCP server. AI clients can connect to it after you add tools.',
+								resourceName: input.name,
+								severity: 'info',
+							}),
+							async () => ({ server: summary(await service.create(create)) }),
+						);
+					}
+					case 'update':
+						return await handleUpdate(context, service, input, ctx);
+					case 'delete':
+						return await handleDelete(context, service, input, ctx);
+					case 'tool-candidates':
+						return await handleToolCandidates(service, input);
+					case 'add-tools':
+						return await handleAddTools(context, service, input, ctx);
+					case 'update-tool':
+						return await handleUpdateTool(context, service, input, ctx);
+					case 'generate':
+						return await handleGenerate(context, service, input, ctx);
+					case 'remove-tool':
+						return await handleRemoveTool(context, service, input, ctx);
 				}
-				case 'create': {
-					const { action: _action, ...create } = input;
-					return await withApproval(
-						context,
-						ctx,
-						'create',
-						input.projectId,
-						async () => ({
-							message:
-								'Create a custom MCP server. AI clients can connect to it after you add tools.',
-							resourceName: input.name,
-							severity: 'info',
-						}),
-						async () => ({ server: summary(await service.create(create)) }),
-					);
-				}
-				case 'update':
-					return await handleUpdate(context, service, input, ctx);
-				case 'delete':
-					return await handleDelete(context, service, input, ctx);
-				case 'tool-candidates':
-					return await handleToolCandidates(service, input);
-				case 'add-tools':
-					return await handleAddTools(context, service, input, ctx);
-				case 'update-tool':
-					return await handleUpdateTool(context, service, input, ctx);
-				case 'generate':
-					return await handleGenerate(context, service, input, ctx);
-				case 'remove-tool':
-					return await handleRemoveTool(context, service, input, ctx);
-			}
-		})
-		.build();
+			})
+			.build()
+	);
 }
