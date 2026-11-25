@@ -73,6 +73,7 @@ import { buildAgentConfigurationTelemetry } from './agent-telemetry';
 import { AgentTurnExecutionService, type AgentTurnRequest } from './agent-turn-execution.service';
 import { withBudgetGuardrail } from './budget-guardrail';
 import { withToolGuardrails } from './tool-guardrails';
+import type { WorkflowToolContext } from './tools/workflow-tool-factory';
 import { AgentExecutionRecordingError } from './agent-execution-recording.error';
 import type { AgentChatBridge } from './integrations/agent-chat-bridge';
 import {
@@ -293,6 +294,8 @@ export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecut
 	toolGuardrails?: AgentToolGuardrailConfig[];
 	/** Model instance for the model-based guardrail kinds. Absent when none is configured. */
 	guardrailModel?: LanguageModel;
+	/** Callable-workflow machinery for `workflow`-kind guardrail checks. Absent when none is configured. */
+	guardrailWorkflowContext?: WorkflowToolContext;
 	/** See `AgentRuntime.mcpServerAttributions`. */
 	mcpServerAttributions: Map<string, string>;
 	userId?: string;
@@ -985,6 +988,7 @@ export class AgentExecutionOrchestratorService {
 					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 					toolGuardrails: runtime.toolGuardrails,
 					guardrailModel: runtime.guardrailModel,
+					guardrailWorkflowContext: runtime.guardrailWorkflowContext,
 					agentId,
 					message,
 					modelMessage,
@@ -1072,6 +1076,7 @@ export class AgentExecutionOrchestratorService {
 					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 					toolGuardrails: runtime.toolGuardrails,
 					guardrailModel: runtime.guardrailModel,
+					guardrailWorkflowContext: runtime.guardrailWorkflowContext,
 					agentId,
 					projectId,
 					message,
@@ -1136,6 +1141,7 @@ export class AgentExecutionOrchestratorService {
 					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 					toolGuardrails: runtime.toolGuardrails,
 					guardrailModel: runtime.guardrailModel,
+					guardrailWorkflowContext: runtime.guardrailWorkflowContext,
 					agentId,
 					message,
 					memory,
@@ -1198,6 +1204,7 @@ export class AgentExecutionOrchestratorService {
 					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 					toolGuardrails: runtime.toolGuardrails,
 					guardrailModel: runtime.guardrailModel,
+					guardrailWorkflowContext: runtime.guardrailWorkflowContext,
 					agentId,
 					userId: user.id,
 					message,
@@ -1600,6 +1607,7 @@ export class AgentExecutionOrchestratorService {
 					toolGuardrails: runtime.toolGuardrails,
 					toolRegistry: runtime.toolRegistry,
 					guardrailModel: runtime.guardrailModel,
+					guardrailWorkflowContext: runtime.guardrailWorkflowContext,
 				},
 			),
 			recording: {
@@ -1899,6 +1907,7 @@ export class AgentExecutionOrchestratorService {
 			modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 			toolGuardrails: runtime.toolGuardrails,
 			guardrailModel: runtime.guardrailModel,
+			guardrailWorkflowContext: runtime.guardrailWorkflowContext,
 			agentId,
 			userId: user.id,
 			requester: reviewRequesterForUser(
@@ -2031,6 +2040,7 @@ export class AgentExecutionOrchestratorService {
 					toolGuardrails: config.toolGuardrails,
 					toolRegistry: config.toolRegistry,
 					guardrailModel: config.guardrailModel,
+					guardrailWorkflowContext: config.guardrailWorkflowContext,
 				},
 			),
 			recording: this.createChatRecording(config),
@@ -2135,6 +2145,7 @@ export class AgentExecutionOrchestratorService {
 			modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 			toolGuardrails: runtime.toolGuardrails,
 			guardrailModel: runtime.guardrailModel,
+			guardrailWorkflowContext: runtime.guardrailWorkflowContext,
 			agentId,
 			...(access.ownerId ? { userId: access.ownerId } : {}),
 			message,
