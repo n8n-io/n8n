@@ -157,21 +157,24 @@ reads it, and the host never guesses.
 
 | What the expression does | What the proxy asks the host for |
 | --- | --- |
-| Reads a value after it listed the keys (`JSON.stringify`, a returned item, a spread) | Every field of the object |
-| Reads the array index after the last one (`map`, `filter`, a `for` loop) | The next items. Each such read can take four times more characters |
-| Read every field of the item before | The next items whole |
+| Reads a value after it listed the keys (`JSON.stringify`, a returned item, a spread) | Every small field of the object. Every field whole after the expression read an earlier item of the same array in full |
+| Reads the array index after the last one (`map`, `filter`, a `for` loop) | The next small items. The first item that is not small comes alone, as before. Each such read can be four times larger than the read before it |
+| Read an earlier item in full: every field of an object after a key list, or an array in order to its last item | The next items whole, including items that are not small |
 | Read fields by name on the item before (`row.name`) | Only these fields of the next items |
 | Reads one field, or one item out of order | That one value, as before |
 
-A value that is plain JSON data and small goes across whole. A larger value
-stays a lazy proxy, and the same rules apply to it. A value of a parent that
-the expression read whole can be as large as one read. `BATCH_READ_LIMITS`
-holds the sizes.
+A value crosses whole when it is plain JSON data and its size is at most
+`smallValueChars`. The size counts 8 for each value, object and array, plus the
+length of each string and object key. The host counts while it copies and stops when
+the size is too large. A larger object or array stays a lazy proxy with the same
+rules. A whole value can be as large as `maxBatchChars`. All reads of one
+evaluation share one character budget: half of the memory limit of the bridge,
+in bytes, as characters. When the budget is spent, a proxy reads one value for
+each host call. `BATCH_READ_LIMITS` holds the sizes.
 
-`readBatchAtPath` in `src/bridge/batch-read.ts` is the host side. It never
-calls an accessor and it only reads `$json`. All other roots stay lazy. A
-bridge passes it to the runtime as the `readBatch` callback. Without this
-callback, a proxy reads one value for each host call.
+`readBatchAtPath` in `src/bridge/batch-read.ts` is the host side. It copies
+only data properties of `$json`. All other roots stay lazy. Both bridges pass it
+to the runtime as the `readBatch` callback.
 
 ## Environment-Specific Implementations
 

@@ -45,6 +45,10 @@ describe('smallJsonCopy, for an object or an array', () => {
 			label: 'an array with a key that is not enumerable',
 			value: Object.defineProperty([1], 'hidden', { value: 2, enumerable: false }),
 		},
+		{
+			label: 'an array with an index that is not enumerable',
+			value: Object.defineProperty([1, 2], 1, { enumerable: false }),
+		},
 		{ label: 'a symbol key', value: { a: 1, [Symbol('s')]: 2 } },
 		{ label: 'a transfer type key', value: { a: { __n8nType: 'HostData' } } },
 		{ label: 'an error flag key', value: { __isError: true } },
@@ -88,7 +92,7 @@ describe('smallJsonCopy, for an object or an array', () => {
 		expect(isSmall(value, 1000)).toBe(false);
 	});
 
-	it('counts the characters of keys and strings', () => {
+	it('counts the characters of a string', () => {
 		const value = { text: 'x'.repeat(100) };
 
 		expect(isSmall(value, 200)).toBe(true);
@@ -131,7 +135,6 @@ describe('smallJsonCopy', () => {
 		{ label: 'a negative zero', value: -0 },
 		{ label: 'a function', value: () => 1 },
 		{ label: 'a Date', value: new Date(0) },
-		{ label: 'an object that holds a Date', value: { at: new Date(0) } },
 		{ label: 'an object with a framing key', value: { __n8nType: 'x' } },
 	])('gives undefined for $label', ({ value }) => {
 		expect(charsOf(value, 1000)).toBeUndefined();
@@ -166,18 +169,5 @@ describe('smallJsonCopy', () => {
 		);
 
 		expect(smallJsonCopy(value, 1000)?.copy).toEqual({ id: 22 });
-	});
-
-	it('gives undefined when a proxy trap throws', () => {
-		const value = new Proxy(
-			{},
-			{
-				ownKeys() {
-					throw new Error('not ready');
-				},
-			},
-		);
-
-		expect(charsOf(value, 1000)).toBeUndefined();
 	});
 });

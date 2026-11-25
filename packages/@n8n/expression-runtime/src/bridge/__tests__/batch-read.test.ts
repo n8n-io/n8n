@@ -2,14 +2,26 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { SMALL_VALUES, WHOLE_VALUES } from '../../runtime/lazy-proxy';
 import type { BatchRequest } from '../../runtime/lazy-proxy';
-import { readBatchAtPath } from '../batch-read';
+import { BATCH_READ_LIMITS, batchReadBudget, readBatchAtPath } from '../batch-read';
+import type { BatchReadBudget } from '../batch-read';
 import { HostDataResolver } from '../host-data-resolver';
 
-const limits = { smallValueChars: 100, firstBatchChars: 60, maxBatchChars: 1000 };
+const limits = {
+	smallValueChars: 100,
+	firstBatchChars: 60,
+	maxBatchChars: 1000,
+	memoryBytesPerChar: 2,
+};
 
 const whole = (value: unknown) => ({ __n8nType: 'HostData', __value: value });
 
-function readItems(rows: unknown, start: number, step: number, request: BatchRequest) {
+function readItems(
+	rows: unknown,
+	start: number,
+	step: number,
+	request: BatchRequest,
+	budget: BatchReadBudget = { remaining: 100_000 },
+) {
 	return readBatchAtPath(
 		new HostDataResolver({ $json: { rows } }),
 		['$json', 'rows'],
@@ -17,11 +29,16 @@ function readItems(rows: unknown, start: number, step: number, request: BatchReq
 		step,
 		request,
 		limits,
+		budget,
 	);
 }
 
-function readFields($json: unknown, request: BatchRequest = SMALL_VALUES) {
-	return readBatchAtPath(new HostDataResolver({ $json }), ['$json'], 0, 0, request, limits);
+function readFields(
+	$json: unknown,
+	request: BatchRequest = SMALL_VALUES,
+	budget: BatchReadBudget = { remaining: 100_000 },
+) {
+	return readBatchAtPath(new HostDataResolver({ $json }), ['$json'], 0, 0, request, limits, budget);
 }
 
 describe('readBatchAtPath on an array', () => {
@@ -32,7 +49,7 @@ describe('readBatchAtPath on an array', () => {
 		expect(readItems(numbers, 5, 0, SMALL_VALUES)).toEqual(whole(numbers.slice(5, 12)));
 	});
 
-	it('takes four times more items at each step', () => {
+	it('grows the read four times at each step', () => {
 		expect(readItems(numbers, 0, 1, SMALL_VALUES)).toEqual(whole(numbers.slice(0, 30)));
 	});
 
@@ -77,6 +94,20 @@ describe('readBatchAtPath on an array', () => {
 		expect(readItems(rows, 0, 0, SMALL_VALUES)).toEqual({ __isObject: true, __keys: ['text'] });
 	});
 
+	it('describes the item at the start index when it is over the small size of the bridges', () => {
+		expect(
+			readBatchAtPath(
+				new HostDataResolver({ $json: { rows: [{ text: 'x'.repeat(2000) }] } }),
+				['$json', 'rows'],
+				0,
+				0,
+				SMALL_VALUES,
+				BATCH_READ_LIMITS,
+				batchReadBudget(128, BATCH_READ_LIMITS),
+			),
+		).toEqual({ __isObject: true, __keys: ['text'] });
+	});
+
 	it('returns a long string at the start index as it is', () => {
 		const text = 'x'.repeat(200);
 
@@ -116,7 +147,7 @@ describe('readBatchAtPath on an array', () => {
 		expect(readItems(rows, 1, 0, SMALL_VALUES)).toBeUndefined();
 	});
 
-	it('never calls an accessor', () => {
+	it('stops at an accessor', () => {
 		const read = vi.fn(() => 1);
 		const rows = [1];
 		Object.defineProperty(rows, 1, { get: read, enumerable: true });
@@ -147,7 +178,9 @@ describe('readBatchAtPath on an array', () => {
 	it('gives one lazy item for a path outside $json', () => {
 		const resolver = new HostDataResolver({ $json: {}, $other: { rows: [1, 2] } });
 
-		expect(readBatchAtPath(resolver, ['$other', 'rows'], 0, 0, SMALL_VALUES, limits)).toBe(1);
+		expect(
+			readBatchAtPath(resolver, ['$other', 'rows'], 0, 0, SMALL_VALUES, limits, { remaining: 1 }),
+		).toBe(1);
 	});
 });
 
@@ -160,14 +193,13 @@ describe('readBatchAtPath on an array, for a request of named fields', () => {
 	}));
 
 	it('returns only the named fields of each item', () => {
-		// An item counts for 8 characters, and a number for 8 more. The first read takes 60.
+		// An item counts for 8 characters, the name for 2 and a number for 8. The first read takes 60.
 		expect(readItems(rows, 2, 0, ['id'])).toEqual(whole([{ id: 2 }, { id: 3 }, { id: 4 }]));
 	});
 
 	it('returns a small object field whole', () => {
-		expect(readItems(rows, 0, 0, ['nested'])).toEqual(
-			whole([{ nested: { a: 0 } }, { nested: { a: 1 } }]),
-		);
+		// Each item takes 31 characters, so the first read of 60 has room for one.
+		expect(readItems(rows, 0, 0, ['nested'])).toEqual(whole([{ nested: { a: 0 } }]));
 	});
 
 	it('leaves out a field that is missing or over the small size', () => {
@@ -198,6 +230,9 @@ describe('readBatchAtPath on an array, for a request of named fields', () => {
 		const item = Object.defineProperty({ id: 1 }, 'computed', { get: read, enumerable: true });
 
 		expect(readItems([item], 0, 0, ['id', 'computed'])).toEqual(whole([{ id: 1 }]));
+		const rows = [{ id: 1 }];
+		Object.defineProperty(rows, 1, { get: read, enumerable: true });
+		expect(readItems(rows, 0, 0, ['id'])).toEqual(whole([{ id: 1 }]));
 		expect(read).not.toHaveBeenCalled();
 	});
 
@@ -211,6 +246,23 @@ describe('readBatchAtPath on an array, for a request of named fields', () => {
 
 	it('stops the run before an item that is not a plain object', () => {
 		expect(readItems([{ id: 1 }, [2], { id: 3 }], 0, 0, ['id'])).toEqual(whole([{ id: 1 }]));
+	});
+
+	it('counts the name of each field in the read limit', () => {
+		const name = 'n'.repeat(300);
+		const items = Array.from({ length: 10 }, () => ({ [name]: 1 }));
+
+		// Each item takes 316 characters of the read limit of 1000.
+		expect(readItems(items, 0, 9, [name])).toEqual(whole(items.slice(0, 3)));
+	});
+
+	it('counts a field over the small size as the small size, and a missing field as nothing', () => {
+		const items = Array.from({ length: 200 }, () => ({ meta: { text: 'x'.repeat(200) } }));
+
+		// Each item takes 108 characters of the read limit of 1000.
+		expect(readItems(items, 0, 9, ['meta', 'nope'])).toEqual(
+			whole(Array.from({ length: 9 }, () => ({}))),
+		);
 	});
 
 	it.each([
@@ -264,6 +316,9 @@ describe('readBatchAtPath on an object', () => {
 		const $json = { a: 'x'.repeat(600), b: 'y'.repeat(600), c: 1 };
 
 		expect(readFields($json, WHOLE_VALUES)).toEqual(whole({ a: $json.a, c: 1 }));
+		expect(readFields({ ['a'.repeat(600)]: 1, ['b'.repeat(600)]: 2 }, WHOLE_VALUES)).toEqual(
+			whole({ ['a'.repeat(600)]: 1 }),
+		);
 	});
 
 	it('leaves out a framing key and keeps an own __proto__ key as data', () => {
@@ -283,7 +338,7 @@ describe('readBatchAtPath on an object', () => {
 	});
 
 	it.each([
-		{ label: 'a class instance', $json: new (class Item {})() },
+		{ label: 'a class instance', $json: Object.assign(new (class Item {})(), { id: 1 }) },
 		{ label: 'a Date', $json: new Date(0) },
 		{ label: 'a primitive', $json: 5 },
 		{ label: 'null', $json: null },
@@ -307,7 +362,53 @@ describe('readBatchAtPath on an object', () => {
 	it('returns no field for a path outside $json', () => {
 		const resolver = new HostDataResolver({ $json: {}, $other: { id: 1 } });
 
-		expect(readBatchAtPath(resolver, ['$other'], 0, 0, SMALL_VALUES, limits)).toEqual(whole({}));
+		expect(
+			readBatchAtPath(resolver, ['$other'], 0, 0, SMALL_VALUES, limits, { remaining: 1 }),
+		).toEqual(whole({}));
+	});
+});
+
+describe('readBatchAtPath with the character budget of an evaluation', () => {
+	it('gives an evaluation half of the memory limit of the bridge in characters', () => {
+		expect(batchReadBudget(128, BATCH_READ_LIMITS)).toEqual({ remaining: 67_108_864 });
+		expect(batchReadBudget(32, BATCH_READ_LIMITS)).toEqual({ remaining: 16_777_216 });
+	});
+
+	it('gives one item, as a read of one item does, when the budget is spent', () => {
+		expect(readItems([1, { id: 2 }], 0, 0, SMALL_VALUES, { remaining: 0 })).toBe(1);
+		expect(readItems([1, { id: 2 }], 1, 0, ['id'], { remaining: 0 })).toEqual({
+			__isObject: true,
+			__keys: ['id'],
+		});
+	});
+
+	it('gives no field when the budget is spent', () => {
+		expect(readFields({ id: 1 }, SMALL_VALUES, { remaining: 0 })).toEqual(whole({}));
+	});
+
+	it.each([
+		{
+			label: 'array items',
+			read: (budget: BatchReadBudget) => readItems([1, 2, 3], 0, 0, SMALL_VALUES, budget),
+			chars: 24,
+		},
+		{
+			label: 'every field',
+			read: (budget: BatchReadBudget) => readFields({ id: 1, name: 'ab' }, SMALL_VALUES, budget),
+			chars: 24,
+		},
+		{
+			label: 'named fields, with a field over the small size',
+			read: (budget: BatchReadBudget) =>
+				readItems([{ id: 1, big: 'x'.repeat(200) }], 0, 0, ['id', 'big'], budget),
+			chars: 118,
+		},
+	])('takes the characters of a read of $label from the budget', ({ read, chars }) => {
+		const budget = { remaining: 1000 };
+
+		read(budget);
+
+		expect(budget.remaining).toBe(1000 - chars);
 	});
 });
 
