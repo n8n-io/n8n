@@ -1216,7 +1216,7 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 
 		it('should keep shared references inside a Map or an Error', () => {
 			const sharedInMap = evaluator.evaluate(
-				'{{ (() => { const o = { a: 1 }; const d = new Date(0); return new Map([["o1", o], ["o2", o], ["d1", d], ["d2", d]]); })() }}',
+				'{{ (() => { const o = { a: 1 }; const d = new Date(0); const s = new String("ab"); return new Map([["o1", o], ["o2", o], ["d1", d], ["d2", d], ["s1", s], ["s2", s]]); })() }}',
 				data,
 				caller,
 			) as Map<string, unknown>;
@@ -1229,6 +1229,9 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 			expect(sharedInMap.get('o1')).toBe(sharedInMap.get('o2'));
 			expect(sharedInMap.get('d1')).toBeInstanceOf(Date);
 			expect(sharedInMap.get('d1')).toBe(sharedInMap.get('d2'));
+			expect(sharedInMap.get('s1')).toBeInstanceOf(String);
+			expect(sharedInMap.get('s1')).toBe(sharedInMap.get('s2'));
+			expect((sharedInMap.get('s1') as { valueOf(): string }).valueOf()).toBe('ab');
 			expect(sharedInError.a).toBe(sharedInError.b);
 			expect(sharedInError.cause).toBe(sharedInError.a);
 			expect(sharedInError.toJSON()).toBe(sharedInError.a);
@@ -1247,6 +1250,25 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 			expect(entry.__isRefDef).toBe(true);
 			expect(entry.__value).toBe('user');
 			expect(entry.self).toBe(entry);
+
+			const boxedMarkerCycle = evaluator.evaluate(
+				'{{ (() => { const o = { __isBoxedPrimitive: "string", __value: new String("real") }; o.self = o; return new Map([["k", o]]); })() }}',
+				data,
+				caller,
+			) as Map<string, Record<string, unknown>>;
+			const boxedEntry = boxedMarkerCycle.get('k')!;
+			expect(boxedEntry.__isBoxedPrimitive).toBe('string');
+			expect(boxedEntry.__value).toBeInstanceOf(String);
+			expect((boxedEntry.__value as { valueOf(): string }).valueOf()).toBe('real');
+			expect(boxedEntry.self).toBe(boxedEntry);
+
+			const escapedFlagOnBoxed = evaluator.evaluate(
+				'{{ Object.assign(new String("ab"), { __n8nEscaped: true, __value: { fake: 1 } }) }}',
+				data,
+				caller,
+			);
+			expect(escapedFlagOnBoxed).toBeInstanceOf(String);
+			expect((escapedFlagOnBoxed as { valueOf(): string }).valueOf()).toBe('ab');
 		});
 
 		it('should round-trip cyclic Map, Set and Error values from host-call data', () => {

@@ -821,6 +821,7 @@ describe('QuickJsBridge cycle guard', () => {
 				s.add(s);
 				globalThis.__cyclicMap = m;
 				globalThis.__cyclicSet = s;
+				Map.prototype.get.call = function () { throw new Error("replaced"); };
 				Map.prototype.get = function () { throw new Error("replaced"); };
 				Map.prototype.set = function () { throw new Error("replaced"); };
 				Map.prototype.forEach = function () { throw new Error("replaced"); };
@@ -867,6 +868,11 @@ describe('QuickJsBridge cycle guard', () => {
 			keyedByProp.self = keyedByProp;
 			const escapedCyc: Record<string, unknown> = { __isMap: true, __entries: [] };
 			escapedCyc.self = escapedCyc;
+			const escapedBoxedCyc: Record<string, unknown> = {
+				__isBoxedPrimitive: 'string',
+				__value: 'fake',
+			};
+			escapedBoxedCyc.self = escapedBoxedCyc;
 			const mapWithCyc = new Map<string, unknown>([['k', cyc]]);
 
 			const plainObjData = { $input: { first: () => ({ json: { cyc, n: 5 } }) } };
@@ -874,6 +880,7 @@ describe('QuickJsBridge cycle guard', () => {
 			const keyedItemData = { $input: { first: () => ({ json: { keyedByItem } }) } };
 			const keyedPropData = { $input: { first: () => ({ json: { keyedByProp } }) } };
 			const escapedData = { $input: { first: () => ({ json: { escapedCyc } }) } };
+			const escapedBoxedData = { $input: { first: () => ({ json: { escapedBoxedCyc } }) } };
 			const mixedData = { $input: { first: () => ({ json: { mapWithCyc, cyc } }) } };
 
 			expect(evaluator.evaluate('{{ $input.first().json.cyc }}', plainObjData, execution)).toBe(
@@ -893,6 +900,13 @@ describe('QuickJsBridge cycle guard', () => {
 			).toBe(undefined);
 			expect(
 				evaluator.evaluate('{{ $input.first().json.escapedCyc }}', escapedData, execution),
+			).toBe(undefined);
+			expect(
+				evaluator.evaluate(
+					'{{ $input.first().json.escapedBoxedCyc }}',
+					escapedBoxedData,
+					execution,
+				),
 			).toBe(undefined);
 			expect(evaluator.evaluate('{{ $input.first().json.cyc }}', mixedData, execution)).toBe(
 				undefined,
@@ -914,6 +928,10 @@ describe('QuickJsBridge cycle guard', () => {
 			const sharedArr = [1, 2];
 			const sharedKeyed = Object.assign([1], { tag: 'x' });
 			const sharedDate = new Date('2025-01-01T00:00:00.000Z');
+			const sharedBoxedStr = Object('ab') as object;
+			const sharedBoxedNum = Object(-0) as object;
+			const sharedBoxedBool = Object(false) as object;
+			const sharedBoxedBigInt = Object(1n) as object;
 			const sharedEscaped = { __isMap: true, keep: 3 };
 			const objWithMapCycle: Record<string, unknown> = { a: 1 };
 			objWithMapCycle.m = new Map([['o', objWithMapCycle]]);
@@ -927,6 +945,14 @@ describe('QuickJsBridge cycle guard', () => {
 				k2: sharedKeyed,
 				d1: sharedDate,
 				d2: sharedDate,
+				bs1: sharedBoxedStr,
+				bs2: sharedBoxedStr,
+				bn1: sharedBoxedNum,
+				bn2: sharedBoxedNum,
+				bb1: sharedBoxedBool,
+				bb2: sharedBoxedBool,
+				bi1: sharedBoxedBigInt,
+				bi2: sharedBoxedBigInt,
 				e1: sharedEscaped,
 				e2: sharedEscaped,
 				objWithMapCycle,
@@ -941,6 +967,10 @@ describe('QuickJsBridge cycle guard', () => {
 					sameArr: j.a1 === j.a2,
 					sameKeyed: j.k1 === j.k2 && j.k1.tag === 'x',
 					sameDate: j.d1 === j.d2 && j.d1 instanceof Date,
+					sameBoxedStr: j.bs1 === j.bs2 && j.bs1 instanceof String && j.bs1.valueOf() === 'ab',
+					sameBoxedNum: j.bn1 === j.bn2 && j.bn1 instanceof Number && Object.is(j.bn1.valueOf(), -0),
+					sameBoxedBool: j.bb1 === j.bb2 && j.bb1 instanceof Boolean && j.bb1.valueOf() === false,
+					sameBoxedBigInt: j.bi1 === j.bi2 && j.bi1 instanceof BigInt && j.bi1.valueOf() === 1n,
 					sameEscaped: j.e1 === j.e2 && j.e1.__isMap === true && j.e1.keep === 3,
 				};
 				`,
@@ -951,6 +981,10 @@ describe('QuickJsBridge cycle guard', () => {
 				sameArr: true,
 				sameKeyed: true,
 				sameDate: true,
+				sameBoxedStr: true,
+				sameBoxedNum: true,
+				sameBoxedBool: true,
+				sameBoxedBigInt: true,
 				sameEscaped: true,
 			});
 
