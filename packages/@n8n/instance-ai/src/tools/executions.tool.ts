@@ -467,6 +467,18 @@ async function handleRunStep(
 
 	const needsApproval = !allowedByScope && !allowedBySessionGrant;
 
+	// Read the files before the approval, so a missing file fails early and the prompt can name them.
+	const workflowFiles = workflowFilesOf(context);
+	let mockInput: Array<{ json: Record<string, unknown>; binary?: IBinaryKeyData }> | undefined;
+	if (input.mockInput) {
+		mockInput = [];
+		for (const { json, files } of input.mockInput) {
+			const { binary, error } = workflowFiles ? await readInputFiles(workflowFiles, files) : {};
+			if (error) return { executionId: '', status: 'error' as const, error };
+			mockInput.push(binary ? { json, binary } : { json });
+		}
+	}
+
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
 		const workflowName =
@@ -476,7 +488,7 @@ async function handleRunStep(
 				.catch(() => undefined)) ?? input.workflowId;
 		return await suspend({
 			requestId: nanoid(),
-			message: `Run the node "${input.nodeName}" in ${workflowName}`,
+			message: `Run the node "${input.nodeName}" in ${workflowName}${describeInputFiles((mockInput ?? []).map((item) => item.binary))}`,
 			severity: 'warning' as const,
 		});
 	}
@@ -492,17 +504,6 @@ async function handleRunStep(
 
 	if (resumeData?.approved && resumeData.scope === 'session') {
 		await context.grantSessionToolApproval?.(stepGrantKey);
-	}
-
-	const workflowFiles = workflowFilesOf(context);
-	let mockInput: Array<{ json: Record<string, unknown>; binary?: IBinaryKeyData }> | undefined;
-	if (input.mockInput) {
-		mockInput = [];
-		for (const { json, files } of input.mockInput) {
-			const { binary, error } = workflowFiles ? await readInputFiles(workflowFiles, files) : {};
-			if (error) return { executionId: '', status: 'error' as const, error };
-			mockInput.push(binary ? { json, binary } : { json });
-		}
 	}
 
 	return await context.executionService.runStep(input.workflowId, input.nodeName, {

@@ -1389,8 +1389,27 @@ describe('execution tools', () => {
 				);
 			});
 
-			it('does not run the step with a file that the conversation does not have', async () => {
+			it('names the mock input files in the approval prompt', async () => {
 				const { context } = contextWithFiles();
+				const suspend = vi.fn();
+
+				await executeTool(
+					createExecutionToolRouter(context),
+					{
+						action: 'run-step' as const,
+						workflowId: 'wf-1',
+						nodeName: 'Edit Image',
+						mockInput: [{ json: {}, files: { data: 'file-1' } }],
+					},
+					createAgentCtx({ suspend }) as never,
+				);
+
+				expect(suspend.mock.calls[0][0].message).toContain('with the file a.png');
+			});
+
+			it('does not ask for approval or run the step with a file that the conversation does not have', async () => {
+				const { context } = contextWithFiles();
+				const suspend = vi.fn();
 
 				const result = await executeTool(
 					createExecutionToolRouter(context),
@@ -1400,9 +1419,10 @@ describe('execution tools', () => {
 						nodeName: 'Edit Image',
 						mockInput: [{ json: {}, files: { data: 'other' } }],
 					},
-					createAgentCtx({ resumeData: { approved: true } }) as never,
+					createAgentCtx({ suspend }) as never,
 				);
 
+				expect(suspend).not.toHaveBeenCalled();
 				expect(result).toEqual({
 					executionId: '',
 					status: 'error',
