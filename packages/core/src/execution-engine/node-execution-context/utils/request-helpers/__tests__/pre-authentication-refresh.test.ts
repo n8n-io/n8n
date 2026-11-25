@@ -65,7 +65,8 @@ describe('preAuthentication refresh with resolved HTTP errors', () => {
 			simple: false,
 			resolveWithFullResponse: true,
 		};
-		const request = async () => await ctx.helpers.requestWithAuthentication('testPreAuth', options);
+		const request = async () =>
+			await ctx.helpers.requestWithAuthentication.call(ctx, 'testPreAuth', options);
 		const refreshCalls = () => helper.preAuthentication.mock.calls.map((call) => call[4]);
 		const stale = (status = 401) =>
 			nock(baseUrl, { reqheaders: { authorization: 'Bearer expired-token' } })
@@ -83,7 +84,7 @@ describe('preAuthentication refresh with resolved HTTP errors', () => {
 		delete options.simple;
 		const first = stale();
 		const retry = fresh();
-		const pagination: PaginationOptions = { request: {}, continue: false };
+		const pagination: PaginationOptions = { request: {}, continue: false, requestInterval: 0 };
 
 		await expect(
 			requestWithAuthenticationPaginated.call(
@@ -124,7 +125,12 @@ describe('preAuthentication refresh with resolved HTTP errors', () => {
 			.get(path)
 			.query({ page: 1 })
 			.reply(200, [{ id: 2 }]);
-		const pagination: PaginationOptions = { request: {}, continue: true, maxRequests: 2 };
+		const pagination: PaginationOptions = {
+			request: {},
+			continue: true,
+			maxRequests: 2,
+			requestInterval: 0,
+		};
 
 		await expect(
 			requestWithAuthenticationPaginated.call(
@@ -247,12 +253,12 @@ describe('preAuthentication refresh with resolved HTTP errors', () => {
 		{ status: 403, expiry: Date.UTC(2000, 0, 1), retry: true },
 	])('honors custom refresh settings: $status, $expiry', async ({ status, expiry, retry }) => {
 		const { ctx, options, credentials, refreshCalls, stale, fresh } = setup();
-		credentials.n8n_expires_at = expiry;
+		if (expiry !== undefined) credentials.n8n_expires_at = expiry;
 		const first = stale(status);
 		const second = retry ? fresh() : undefined;
 
 		await expect(
-			ctx.helpers.requestWithAuthentication('testPreAuth', options, {
+			ctx.helpers.requestWithAuthentication.call(ctx, 'testPreAuth', options, {
 				preAuthenticationRetryStatusCode: [403],
 				skipPreAuthenticationRetryWhileTokenIsFresh: true,
 			}),
