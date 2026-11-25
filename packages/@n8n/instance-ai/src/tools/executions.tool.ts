@@ -396,8 +396,8 @@ async function handleRun(
 		timeout: input.timeout,
 		triggerNodeName: input.triggerNodeName,
 		abortSignal,
-		...(binary ? { binary } : {}),
-		...(workflowFiles ? { storeOutputFile: workflowFiles.storeWorkflowFile } : {}),
+		binary,
+		storeOutputFile: workflowFiles?.storeWorkflowFile,
 	});
 	// A live test is the evidence verification cannot produce itself. Record it
 	// so the publish gate stops disclosing simulations that this run replaced.

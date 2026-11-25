@@ -6042,7 +6042,7 @@ describe('createExecutionAdapter run()', () => {
 		const runFileOutput = async (allowSendingParameterValues: boolean) => {
 			const fileTask = makeTaskData([{}]);
 			fileTask.data!.main[0]![0].binary = { data: { data: 'aGk=', mimeType: 'text/plain' } };
-			const { adapter } = createRunAdapterForTests(
+			const { adapter, mockExecutionPersistence } = createRunAdapterForTests(
 				{ id: 'wf-1', nodes: [] },
 				{
 					execution: makeExecution({
@@ -6059,14 +6059,16 @@ describe('createExecutionAdapter run()', () => {
 				sizeBytes: 2,
 			}));
 			const result = await adapter.run('wf-1', undefined, { storeOutputFile });
-			return { result, storeOutputFile };
+			return { result, storeOutputFile, mockExecutionPersistence };
 		};
 
 		it('stores the files of the last node', async () => {
-			const { result, storeOutputFile } = await runFileOutput(true);
+			const { result, storeOutputFile, mockExecutionPersistence } = await runFileOutput(true);
 
 			expect(storeOutputFile).toHaveBeenCalledTimes(1);
 			expect(result.files).toEqual([expect.objectContaining({ fileId: 'file-1' })]);
+			// The files come from the execution that the result read, without a second load.
+			expect(mockExecutionPersistence.findSingleExecution).toHaveBeenCalledTimes(1);
 		});
 
 		it('stores no files when parameter values must not reach the model', async () => {

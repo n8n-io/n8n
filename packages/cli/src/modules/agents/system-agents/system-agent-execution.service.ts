@@ -11,6 +11,7 @@ import { Service } from '@n8n/di';
 import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
 import { retry } from '@n8n/utils/retry';
 import { FileNotFoundError } from 'n8n-core';
+import type { IBinaryData } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 import { buffer as streamToBuffer } from 'node:stream/consumers';
 
@@ -60,7 +61,9 @@ import type {
 	SystemAgentFile,
 	SystemAgentListedFile,
 	SystemAgentProvider,
+	SystemAgentSkippedFile,
 	SystemAgentStartTurn,
+	SystemAgentStoredFile,
 	SystemAgentTurnHandle,
 	SystemAgentTurnOptions,
 	SystemAgentTurnOutcome,
@@ -1093,63 +1096,80 @@ export class SystemAgentExecutionService {
 	): Pick<SystemAgentStartTurn, 'readFile' | 'readFileBinary' | 'storeWorkflowFile'> {
 		return {
 			readFile: async (fileId) => await this.readThreadFile(thread, resourceId, fileId),
-			readFileBinary: async (fileId) => {
-				const attachment = await this.findThreadAttachment(thread, resourceId, fileId);
-				// Storage can prune the bytes while the attachment row stays.
-				if (!attachment || !(await this.attachmentService.hasStoredData(attachment))) {
-					return undefined;
-				}
-				return attachmentToBinaryData(attachment);
-			},
-			storeWorkflowFile: async (binary) => {
-				// A file of this thread proves access to its bytes.
-				const threadFile = binary.id
-					? await this.attachmentService.findSystemAgentThreadFileByBinary(
-							thread.id,
-							binary.id,
-							systemChatFileScope(thread.agentId, resourceId),
-						)
-					: null;
-				if (threadFile) {
-					// Retention can remove the bytes while the attachment row stays.
-					if (!(await this.attachmentService.hasStoredData(threadFile))) {
-						return {
-							fileName: binary.fileName ?? threadFile.fileName,
-							reason: 'the file is no longer stored',
-						};
-					}
-					// A run that passes the file on unchanged gives that file, without a copy. A run
-					// that renames or retypes it gets a new file with the new name and type.
-					if (binary.fileName === threadFile.fileName && binary.mimeType === threadFile.mimeType) {
-						return {
-							fileId: threadFile.id,
-							fileName: threadFile.fileName,
-							mimeType: threadFile.mimeType,
-							sizeBytes: threadFile.fileSizeBytes,
-						};
-					}
-				} else if (binary.id) {
-					// Execution data can name any stored binary, for example in pinned data, so the
-					// id alone does not prove access. Check it as the binary data download route does.
-					if (!(await this.binaryDataAccess.hasReadAccess(user, binary.id))) {
-						this.logger.warn('Refused to store a workflow file that the user cannot read', {
-							threadId: thread.id,
-						});
-						return {
-							fileName: binary.fileName ?? 'file',
-							reason: 'you do not have access to this file',
-						};
-					}
-				}
-				return await this.fileBridge.adoptBinary(binary, {
-					agentId: thread.agentId,
-					projectId: thread.projectId,
-					threadId: thread.id,
-					// The reads and the downloads of the system chat find its files by resource.
-					resourceId,
-				});
-			},
+			readFileBinary: async (fileId) => await this.readThreadFileBinary(thread, resourceId, fileId),
+			storeWorkflowFile: async (binary) =>
+				await this.storeWorkflowFile(thread, resourceId, user, binary),
 		};
+	}
+
+	private async readThreadFileBinary(
+		thread: AgentExecutionThread,
+		resourceId: string,
+		fileId: string,
+	): Promise<IBinaryData | undefined> {
+		const attachment = await this.findThreadAttachment(thread, resourceId, fileId);
+		// Storage can prune the bytes while the attachment row stays.
+		if (!attachment || !(await this.attachmentService.hasStoredData(attachment))) {
+			return undefined;
+		}
+		return attachmentToBinaryData(attachment);
+	}
+
+	/**
+	 * Store a binary that a workflow run returned as a file of the thread. A file
+	 * of the thread that the run passed on unchanged gives that file, without a copy.
+	 */
+	private async storeWorkflowFile(
+		thread: AgentExecutionThread,
+		resourceId: string,
+		user: User,
+		binary: IBinaryData,
+	): Promise<SystemAgentStoredFile | SystemAgentSkippedFile | undefined> {
+		// A file of this thread proves access to its bytes.
+		const threadFile = binary.id
+			? await this.attachmentService.findSystemAgentThreadFileByBinary(
+					thread.id,
+					binary.id,
+					systemChatFileScope(thread.agentId, resourceId),
+				)
+			: null;
+		if (threadFile) {
+			// Retention can remove the bytes while the attachment row stays.
+			if (!(await this.attachmentService.hasStoredData(threadFile))) {
+				return {
+					fileName: binary.fileName ?? threadFile.fileName,
+					reason: 'the file is no longer stored',
+				};
+			}
+			// A run that renames or retypes the file gets a new file with the new name and type.
+			if (binary.fileName === threadFile.fileName && binary.mimeType === threadFile.mimeType) {
+				return {
+					fileId: threadFile.id,
+					fileName: threadFile.fileName,
+					mimeType: threadFile.mimeType,
+					sizeBytes: threadFile.fileSizeBytes,
+				};
+			}
+		} else if (binary.id) {
+			// Execution data can name any stored binary, for example in pinned data, so the
+			// id alone does not prove access. Check it as the binary data download route does.
+			if (!(await this.binaryDataAccess.hasReadAccess(user, binary.id))) {
+				this.logger.warn('Refused to store a workflow file that the user cannot read', {
+					threadId: thread.id,
+				});
+				return {
+					fileName: binary.fileName ?? 'file',
+					reason: 'you do not have access to this file',
+				};
+			}
+		}
+		return await this.fileBridge.adoptBinary(binary, {
+			agentId: thread.agentId,
+			projectId: thread.projectId,
+			threadId: thread.id,
+			// The reads and the downloads of the system chat find its files by resource.
+			resourceId,
+		});
 	}
 
 	private async readThreadFile(

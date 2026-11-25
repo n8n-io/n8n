@@ -153,15 +153,7 @@ export class AgentFileBridge {
 							continue;
 						}
 					}
-					if (await this.isTooLarge(binary)) {
-						if (binary.id) skipped.add(binary.id);
-						skippedFiles.push({
-							fileName: binary.fileName ?? key,
-							reason: `larger than ${this.attachmentService.maxGeneratedFileBytes / 1024 / 1024} MB`,
-						});
-						continue;
-					}
-					const result = await this.store(binary, scope);
+					const result = await this.adoptBinary(binary, scope, key);
 					if (!result) continue;
 					if ('reason' in result) {
 						if (binary.id) skipped.add(binary.id);
@@ -185,17 +177,18 @@ export class AgentFileBridge {
 	}
 
 	/**
-	 * Store one workflow binary as an agent file, with the same caps and file
-	 * names as {@link adoptFromItems}. Gives a skipped file for a file over a cap,
-	 * and `undefined` when storage fails.
+	 * Store one workflow binary as an agent file. Gives a skipped file for a file
+	 * over a cap, and `undefined` when storage fails. A skipped file without a
+	 * name gets `fallbackName`.
 	 */
 	async adoptBinary(
 		binary: IBinaryData,
 		scope: AgentFileScope,
+		fallbackName = 'file',
 	): Promise<AgentToolOutputFile | AgentToolSkippedFile | undefined> {
 		if (await this.isTooLarge(binary)) {
 			return {
-				fileName: binary.fileName ?? 'file',
+				fileName: binary.fileName ?? fallbackName,
 				reason: `larger than ${this.attachmentService.maxGeneratedFileBytes / 1024 / 1024} MB`,
 			};
 		}

@@ -2370,17 +2370,26 @@ export class InstanceAiAdapterService {
 		};
 
 		/** The outcome of a run, read back for the agent. Missing data reads as `unknown`. */
-		const readOutcome = async (executionId: string, subNodeTarget?: string) => {
+		const readOutcome = async (
+			executionId: string,
+			subNodeTarget?: string,
+		): Promise<{
+			result: ExecutionResult;
+			telemetryError?: string;
+			execution?: IExecutionResponse;
+		}> => {
 			const execution = await loadExecutionForViewer(executionId, user);
 			if (!execution) {
 				return { result: { executionId, status: 'unknown' } satisfies ExecutionResult };
 			}
-			return await extractExecutionOutcome(
+			const outcome = await extractExecutionOutcome(
 				execution,
 				allowSendingParameterValues,
 				nodeTypes,
 				subNodeTarget,
 			);
+			// A caller can read more from the execution without a second load.
+			return { ...outcome, execution };
 		};
 
 		/**
@@ -2730,20 +2739,15 @@ export class InstanceAiAdapterService {
 						return result;
 					}
 
-					const { result, telemetryError } = withCredentialRefusal(
-						await readOutcome(executionId),
-						credentialRefusal,
-					);
+					const outcome = await readOutcome(executionId);
+					const { result, telemetryError } = withCredentialRefusal(outcome, credentialRefusal);
 					await pruneVerificationPins(result.executedNodeNames);
 					// The privacy setting hides the output items, so it keeps their files out of the chat too.
 					const storeOutputFile = allowSendingParameterValues
 						? options?.storeOutputFile
 						: undefined;
-					if (storeOutputFile && result.status !== 'running') {
-						const execution = await loadExecutionForViewer(executionId, user);
-						if (execution) {
-							Object.assign(result, await storeRunOutputFiles(execution, storeOutputFile));
-						}
+					if (storeOutputFile && outcome.execution && result.status !== 'running') {
+						Object.assign(result, await storeRunOutputFiles(outcome.execution, storeOutputFile));
 					}
 					trackBuilderExecutedWorkflow(result.status, telemetryError);
 					// Saved workflow pins fed this run (they ride every instance-ai run) —
