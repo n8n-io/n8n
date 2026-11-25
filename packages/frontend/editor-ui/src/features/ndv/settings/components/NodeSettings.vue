@@ -19,6 +19,7 @@ import { BASE_NODE_SURVEY_URL, VIEWS } from '@/app/constants';
 import NDVSubConnections from '@/features/ndv/panel/components/NDVSubConnections.vue';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import NodeSettingsHeader from './NodeSettingsHeader.vue';
+import NodeVersionChangeBanner from './NodeVersionChangeBanner.vue';
 import NodeVersionPicker from './NodeVersionPicker.vue';
 import NodeWebhooks from './NodeWebhooks.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
@@ -258,6 +259,10 @@ const showVersionPicker = computed(
 );
 
 const isVersionPickerDisabled = computed(() => isReadOnly.value || isRestricted.value);
+
+const versionChange = computed(() =>
+	node.value ? ndvStore.value.nodeVersionChanges[node.value.id] : undefined,
+);
 
 const hasNewerVersion = computed(() => {
 	const { latest } = versionChoices.value;
@@ -685,7 +690,11 @@ const applyNodeVersion = (targetVersion: number) => {
 		currentNode,
 		currentType,
 	);
-	const { parameters: carriedParameters } = NodeHelpers.carryOverNodeParameters(
+	const {
+		parameters: carriedParameters,
+		setAside,
+		changedDefaults,
+	} = NodeHelpers.carryOverNodeParameters(
 		{ ...currentNode, parameters: savedParameters ?? {} },
 		currentType,
 		targetType,
@@ -701,6 +710,13 @@ const applyNodeVersion = (targetVersion: number) => {
 		targetType,
 	);
 
+	if (ndvStore.value.activeNodeName === currentNode.name) {
+		ndvStore.value.setNodeVersionChange(currentNode.id, {
+			setAside,
+			changedDefaults,
+			fromVersion: currentNode.typeVersion,
+		});
+	}
 	workflowDocumentStore.value.setNodeTypeVersion(
 		currentNode.name,
 		targetVersion,
@@ -909,6 +925,13 @@ function handleSelectAction(params: INodeParameters) {
 				@blur="onParameterBlur"
 			/>
 			<div v-show="openPanel === 'params'">
+				<NodeVersionChangeBanner
+					v-if="isVersionPickerEnabled && node && nodeType && versionChange"
+					:node="node"
+					:node-type="nodeType"
+					:change="versionChange"
+					:class="$style.versionChangeBanner"
+				/>
 				<NodeWebhooks :node="node" :node-type-description="nodeType" />
 
 				<ParameterInputList
@@ -1076,6 +1099,10 @@ function handleSelectAction(params: INodeParameters) {
 
 .gatewayCreditsPromotion {
 	margin-top: var(--spacing--sm);
+}
+
+.versionChangeBanner {
+	margin-bottom: var(--spacing--sm);
 }
 
 .uiBlocker {
