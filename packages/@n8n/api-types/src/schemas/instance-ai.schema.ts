@@ -3348,9 +3348,6 @@ export class InstanceAiAssistantEvalCreateThreadRequest extends Z.class({
  */
 export class InstanceAiAssistantEvalThreadOverridesRequest extends Z.class({
 	promptVersion: instanceAiPromptVersionSchema.optional(),
-	/** Eval override: observer threshold for THIS thread, so driving compaction
-	 *  for one case does not lower it for every conversation on the instance. */
-	observerThresholdTokens: z.number().int().min(1000).max(1_000_000).optional(),
 }) {}
 
 /** The id an authored seed gives a data table, agent or folder. ≥8 chars: the

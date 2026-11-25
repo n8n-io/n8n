@@ -695,7 +695,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		};
 	}
 
-	/** The turn overrides supply the prompt version and observer threshold. The client request supplies only the Browser Use report. */
+	/** The turn overrides supply the prompt version. The client request supplies only the Browser Use report. */
 	private createTurnState(threadId: string, options: AssistantTurnOptions): AssistantTurnState {
 		const overrides = this.turnOverrides;
 		return {
@@ -703,7 +703,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			setPromptConfiguration: () => {},
 			setSetupPanelEnabled: () => {},
 			getBrowserUseAvailable: () => options.request.browserUseAvailable,
-			getObserverThresholdTokens: () => overrides.getObserverThresholdTokens(threadId),
+			getObserverThresholdTokens: () => undefined,
 		};
 	}
 

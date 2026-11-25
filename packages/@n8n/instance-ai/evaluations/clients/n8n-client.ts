@@ -389,14 +389,11 @@ export class N8nClient {
 	): Promise<{ runId: string }> {
 		if (this.agents) {
 			// The Agents runtime sets the overrides once per thread, so a repeat here is ignored.
-			const overrides = {
-				...(promptVersion ? { promptVersion } : {}),
-				...(observerThresholdTokens ? { observerThresholdTokens } : {}),
-			};
 			await this.agents.sendMessage(threadId, message, {
 				attachments,
 				context: handoffContext,
-				overrides,
+				// The Assistant agent has no observer threshold override.
+				overrides: promptVersion ? { promptVersion } : {},
 			});
 			// The Agents runtime has no run id before the turn starts. The events carry the execution id.
 			return { runId: '' };

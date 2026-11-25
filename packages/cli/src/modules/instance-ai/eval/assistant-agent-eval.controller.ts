@@ -7,7 +7,6 @@ import {
 	InstanceAiEvalRestoreExecutionRequest,
 	InstanceAiEvalRestoreThreadRequest,
 	InstanceAiEvalSeedDataTableRowsRequest,
-	type InstanceAiEvalThreadMemoryResponse,
 } from '@n8n/api-types';
 import { AuthenticatedRequest, type User } from '@n8n/db';
 import { Body, Delete, Get, GlobalScope, Param, Post, Put, RestController } from '@n8n/decorators';
@@ -18,6 +17,7 @@ import type { Response } from 'express';
 import { SystemAgentEvalService } from '@/modules/agents/system-agents/system-agent-eval.service';
 import { SystemAgentThreadMetadataService } from '@/modules/agents/system-agents/system-agent-thread-metadata.service';
 
+import { AssistantRunDebugService } from '../assistant-agent/assistant-run-debug.service';
 import { ASSISTANT_AGENT_ID } from '../assistant-agent/assistant-turn-options';
 import { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { toRestorableMessages } from '../restorable-messages';
@@ -44,6 +44,7 @@ export class AssistantAgentEvalController {
 		private readonly evalThreadRestore: EvalThreadRestoreService,
 		private readonly failedExecutionPortability: FailedExecutionPortabilityService,
 		private readonly threadMetadata: SystemAgentThreadMetadataService,
+		private readonly runDebug: AssistantRunDebugService,
 	) {}
 
 	/**
@@ -107,17 +108,27 @@ export class AssistantAgentEvalController {
 		return { ok: true };
 	}
 
-	/** Observational memory for a thread, for a context eval to assert on. */
-	@Get('/eval/threads/:threadId/memory')
+	/** Fetch captured step prompts, tool calls, and workflow code for one run. */
+	@Get('/eval/debug/runs/:runId')
 	@GlobalScope('instanceAi:manage')
-	async getEvalThreadMemory(
+	async getRunDebug(req: AuthenticatedRequest, _res: Response, @Param('runId') runId: string) {
+		this.requireInstanceAiEnabled();
+		return await this.runDebug.getRunDebug(req.user, runId);
+	}
+
+	/** List captured debug runs for one thread. */
+	@Get('/eval/debug/threads/:threadId/runs')
+	@GlobalScope('instanceAi:manage')
+	async listThreadDebugRuns(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('threadId') threadId: string,
-	): Promise<InstanceAiEvalThreadMemoryResponse> {
+	) {
 		this.requireInstanceAiEnabled();
-		await this.getThread(req.user, threadId);
-		return await this.systemAgentEval.getThreadMemory(ASSISTANT_AGENT_ID, threadId);
+		return {
+			threadId,
+			runs: await this.runDebug.listThreadDebugRuns(req.user, threadId),
+		};
 	}
 
 	/**

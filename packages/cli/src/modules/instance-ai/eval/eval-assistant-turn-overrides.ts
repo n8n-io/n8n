@@ -8,7 +8,6 @@ import { EvalThreadCredentialAllowlistService } from './thread-credential-allowl
 
 export interface EvalAssistantThreadOverrides {
 	promptVersion?: string;
-	observerThresholdTokens?: number;
 }
 
 /**
@@ -28,8 +27,8 @@ export class EvalAssistantTurnOverrides extends AssistantTurnOverrides {
 
 	/** Replace all overrides of the thread. An omitted field has no override. */
 	setThreadOverrides(threadId: string, overrides: EvalAssistantThreadOverrides): void {
-		const { promptVersion, observerThresholdTokens } = overrides;
-		this.byThread.set(threadId, { promptVersion, observerThresholdTokens });
+		const { promptVersion } = overrides;
+		this.byThread.set(threadId, { promptVersion });
 	}
 
 	/** Remove the overrides and the credential settings of the thread. */
@@ -55,9 +54,5 @@ export class EvalAssistantTurnOverrides extends AssistantTurnOverrides {
 
 	override getPromptVersion(threadId: string): string | undefined {
 		return this.byThread.get(threadId)?.promptVersion;
-	}
-
-	override getObserverThresholdTokens(threadId: string): number | undefined {
-		return this.byThread.get(threadId)?.observerThresholdTokens;
 	}
 }

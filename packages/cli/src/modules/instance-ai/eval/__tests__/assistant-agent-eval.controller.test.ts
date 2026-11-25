@@ -22,6 +22,7 @@ import type { SystemAgentThreadMetadataService } from '@/modules/agents/system-a
 import type { FailedExecutionPortabilityService } from '../failed-execution-portability.service';
 import { EvalThreadCredentialAllowlistService } from '../thread-credential-allowlist.service';
 import type { EvalThreadRestoreService, RestoredSeedArtifacts } from '../thread-restore.service';
+import type { AssistantRunDebugService } from '../../assistant-agent/assistant-run-debug.service';
 import type { InstanceAiSettingsService } from '../../instance-ai-settings.service';
 import { AssistantAgentEvalController } from '../assistant-agent-eval.controller';
 import { EvalAssistantTurnOverrides } from '../eval-assistant-turn-overrides';
@@ -52,6 +53,7 @@ describe('AssistantAgentEvalController', () => {
 			if (next) stored.metadata = next;
 			return stored.metadata;
 		});
+		const runDebug = mock<AssistantRunDebugService>();
 		const controller = new AssistantAgentEvalController(
 			settings,
 			systemAgents,
@@ -60,6 +62,7 @@ describe('AssistantAgentEvalController', () => {
 			restore,
 			portability,
 			threadMetadata,
+			runDebug,
 		);
 		return {
 			user,
@@ -72,6 +75,7 @@ describe('AssistantAgentEvalController', () => {
 			restore,
 			portability,
 			threadMetadata,
+			runDebug,
 			stored,
 			controller,
 		};
@@ -87,9 +91,9 @@ describe('AssistantAgentEvalController', () => {
 			setThreadOverrides: async () =>
 				await controller.setThreadOverrides(req, res, THREAD_ID, {
 					promptVersion: 'v2',
-					observerThresholdTokens: 12000,
 				}),
-			getEvalThreadMemory: async () => await controller.getEvalThreadMemory(req, res, THREAD_ID),
+			getRunDebug: async () => await controller.getRunDebug(req, res, 'run-1'),
+			listThreadDebugRuns: async () => await controller.listThreadDebugRuns(req, res, THREAD_ID),
 			setThreadCredentialAllowlist: async () =>
 				await controller.setThreadCredentialAllowlist(req, res, {
 					threadId: THREAD_ID,
@@ -135,7 +139,8 @@ describe('AssistantAgentEvalController', () => {
 			['createThread', 'post', '/eval/threads'],
 			['deleteThread', 'delete', '/eval/threads/:threadId'],
 			['setThreadOverrides', 'put', '/eval/threads/:threadId/overrides'],
-			['getEvalThreadMemory', 'get', '/eval/threads/:threadId/memory'],
+			['getRunDebug', 'get', '/eval/debug/runs/:runId'],
+			['listThreadDebugRuns', 'get', '/eval/debug/threads/:threadId/runs'],
 			['setThreadCredentialAllowlist', 'post', '/eval/thread-credential-allowlist'],
 			['setThreadCredentialTestTarget', 'post', '/eval/thread-credential-test-target'],
 			['exportExecution', 'post', '/eval/export-execution'],
@@ -167,7 +172,13 @@ describe('AssistantAgentEvalController', () => {
 		it('rejects a thread that the caller cannot use, before it changes state', async () => {
 			const ctx = setup();
 			ctx.systemAgents.getUsableThread.mockRejectedValue(new NotFoundError('Session not found'));
-			const { createThread: _create, deleteThread: _delete, ...threadRoutes } = routes(ctx);
+			const {
+				createThread: _create,
+				deleteThread: _delete,
+				getRunDebug: _getRunDebug,
+				listThreadDebugRuns: _listThreadDebugRuns,
+				...threadRoutes
+			} = routes(ctx);
 
 			for (const call of Object.values(threadRoutes)) {
 				await expect(call()).rejects.toThrow(NotFoundError);
@@ -287,39 +298,47 @@ describe('AssistantAgentEvalController', () => {
 
 		await ctx.controller.setThreadOverrides(ctx.req, ctx.res, THREAD_ID, {
 			promptVersion: 'v2',
-			observerThresholdTokens: 12000,
 		});
 		expect(ctx.overrides.getPromptVersion(THREAD_ID)).toBe('v2');
-		expect(ctx.overrides.getObserverThresholdTokens(THREAD_ID)).toBe(12000);
 
 		const result = await ctx.controller.setThreadOverrides(ctx.req, ctx.res, THREAD_ID, {});
 
 		expect(result).toEqual({ ok: true });
 		expect(ctx.overrides.getPromptVersion(THREAD_ID)).toBeUndefined();
-		expect(ctx.overrides.getObserverThresholdTokens(THREAD_ID)).toBeUndefined();
 	});
 
-	it('returns the active observational memory entries and cursor for a thread', async () => {
+	it('delegates run debug lookups to AssistantRunDebugService', async () => {
 		const ctx = setup();
-		ctx.systemAgents.getThreadMemory.mockResolvedValue({
-			observations: [{ marker: 'info', text: 'Note', tokenCount: 10 }],
-			cursor: {
-				lastObservedMessageId: 'msg-1',
-				lastObservedAt: '2026-01-01T00:00:00.000Z',
+		const record = { runId: 'run-1', threadId: THREAD_ID, steps: [], workflowCode: [] } as never;
+		ctx.runDebug.getRunDebug.mockResolvedValue(record);
+		ctx.runDebug.listThreadDebugRuns.mockResolvedValue([
+			{
+				runId: 'run-1',
+				threadId: THREAD_ID,
+				startedAt: 1_700_000_000_000,
+				stepCount: 1,
+				workflowCodeCount: 0,
+				label: 'hi',
 			},
-		});
+		]);
 
-		const result = await routes(ctx).getEvalThreadMemory();
+		await expect(routes(ctx).getRunDebug()).resolves.toBe(record);
+		expect(ctx.runDebug.getRunDebug).toHaveBeenCalledWith(ctx.user, 'run-1');
 
-		expect(ctx.systemAgents.getUsableThread).toHaveBeenCalledWith('assistant', ctx.user, THREAD_ID);
-		expect(ctx.systemAgents.getThreadMemory).toHaveBeenCalledWith('assistant', THREAD_ID);
-		expect(result).toEqual({
-			observations: [{ marker: 'info', text: 'Note', tokenCount: 10 }],
-			cursor: {
-				lastObservedMessageId: 'msg-1',
-				lastObservedAt: '2026-01-01T00:00:00.000Z',
-			},
+		await expect(routes(ctx).listThreadDebugRuns()).resolves.toEqual({
+			threadId: THREAD_ID,
+			runs: [
+				{
+					runId: 'run-1',
+					threadId: THREAD_ID,
+					startedAt: 1_700_000_000_000,
+					stepCount: 1,
+					workflowCodeCount: 0,
+					label: 'hi',
+				},
+			],
 		});
+		expect(ctx.runDebug.listThreadDebugRuns).toHaveBeenCalledWith(ctx.user, THREAD_ID);
 	});
 
 	it('pins the credential view of the thread', async () => {
