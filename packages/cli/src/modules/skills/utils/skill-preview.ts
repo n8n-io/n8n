@@ -25,13 +25,13 @@ export function skillPreview(content: SkillContent): {
 	let length = skillMd.length;
 	let truncated = length > SKILL_PREVIEW_MAX_LENGTH;
 	for (const file of content.files) {
-		const text = showHidden(file.content);
+		const text = file.isBinary ? '' : showHidden(file.content);
 		if (length + text.length > SKILL_PREVIEW_MAX_LENGTH) {
 			truncated = true;
 			break;
 		}
 		length += text.length;
-		files.push({ path: file.path, text });
+		files.push({ path: file.path, text, ...(file.isBinary ? { isBinary: true } : {}) });
 	}
 	return { files, truncated };
 }

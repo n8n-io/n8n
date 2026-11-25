@@ -40,6 +40,7 @@ import { SkillService } from '../../services/skill.service';
 import { SkillsTelemetry } from '../../services/skills-telemetry.service';
 import { SkillSourceNotFoundError } from '../../errors/skill-source-not-found.error';
 import { SkillSourceRepository } from '../../database/repositories/skill-source.repository';
+import { SkillRepository } from '../../database/repositories/skill.repository';
 import { GitHubSkillSourceClient } from '../../sources/github/github-skill-source-client';
 import { FakeGitHub } from '../test-utils/fake-github';
 import { SKILL_PREVIEW_MAX_LENGTH } from '../../utils/skill-preview';
@@ -469,6 +470,26 @@ describe('Skill source checks', () => {
 				.send({ updates: [], newSkills: [skill], reviewedWarnings: true })
 				.expect(200);
 			expect((await sourceOf(sourceId)).unlinkedSkills).toEqual([]);
+		});
+
+		it('preserves binary files when accepting a synced update', async () => {
+			const { sourceId, docx } = await importAll();
+			const path = 'assets/logo.png';
+			const bytes = 'PNG\0data';
+			pushChange({ [`skills/docx/${path}`]: bytes });
+			await sync().checkAll();
+			const { skillId, contentHash, baseVersionId } = (await review(sourceId)).updates[0];
+			await editor
+				.post(`/skill-sources/${sourceId}/updates/accept`)
+				.send({ updates: [{ skillId, contentHash, baseVersionId }] })
+				.expect(200);
+
+			const detail = await Container.get(SkillService).get(memberUser, docx);
+			expect(detail.skill.references).toContainEqual({
+				path,
+				content: Buffer.from(bytes).toString('base64'),
+				isBinary: true,
+			});
 		});
 
 		describe.each(['success', 'failure'] as const)('review telemetry on %s', (status) => {
@@ -1234,6 +1255,28 @@ describe('Skill source checks', () => {
 
 			await sync().checkAll();
 
+			expect(await linkOf(docx)).toMatchObject({ state: 'up_to_date', pendingContentHash: null });
+			expect(updateFound).not.toHaveBeenCalled();
+		});
+
+		// Before n8n kept every file, it stored `references/*.md` without a byte order mark and
+		// with LF line endings. The check must hash such a file the same way, or each synced
+		// skill with CRLF files gets one update that changes line endings only.
+		it('shows no update for a skill whose Markdown reference has a BOM and CRLF', async () => {
+			github.push('acme/skills', {
+				...FILES,
+				'skills/docx/references/guide.md': '\uFEFFLine 1\r\nLine 2\r\n',
+			});
+			const updateFound = vi.spyOn(Container.get(SkillsTelemetry), 'updateFound');
+			const { docx } = await importAll();
+			const stored = (await Container.get(SkillRepository).findLatestSaved([docx])).get(docx);
+			pushChange({ 'README.md': '# Changed\n' });
+
+			await sync().checkAll();
+
+			expect(stored?.files).toEqual([
+				expect.objectContaining({ path: 'references/guide.md', content: 'Line 1\nLine 2\n' }),
+			]);
 			expect(await linkOf(docx)).toMatchObject({ state: 'up_to_date', pendingContentHash: null });
 			expect(updateFound).not.toHaveBeenCalled();
 		});

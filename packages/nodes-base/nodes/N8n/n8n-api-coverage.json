@@ -269,6 +269,12 @@
 		"POST /source-control/push": {
 			"status": "gap"
 		},
+		"GET /promotions/settings": {
+			"status": "gap"
+		},
+		"PUT /promotions/settings": {
+			"status": "gap"
+		},
 		"GET /promotions/providers": {
 			"status": "gap"
 		},

@@ -133,8 +133,14 @@ export class PromotionReviewChangesService {
 		const baseManifest = await readManifest(commits.baseline);
 		const headManifest = await readManifest(commits.head);
 		const projectIds = projectIdsOf(baseManifest, headManifest);
-		const baseIndex = indexProjects({ manifest: baseManifest, blobByPath: new Map() }, projectIds);
-		const headIndex = indexProjects({ manifest: headManifest, blobByPath: new Map() }, projectIds);
+		const baseIndex = indexProjects(
+			{ manifest: baseManifest, blobByPath: new Map(), ownedCredentials: true },
+			projectIds,
+		);
+		const headIndex = indexProjects(
+			{ manifest: headManifest, blobByPath: new Map(), ownedCredentials: true },
+			projectIds,
+		);
 		const baseContents = await commits.baseline.readFiles(
 			keys.flatMap((key) => baseIndex.get(key)?.path ?? []),
 		);
@@ -278,7 +284,10 @@ async function readSide(commit: PackageCommit): Promise<ReviewSide> {
 	const blobByPath = await commit.listFiles();
 	const manifest = await readManifest(commit);
 	// A commit before the first promotion has no package, so it has no manifest either.
-	return { side: { manifest, blobByPath }, manifestUnreadable: !manifest && blobByPath.size > 0 };
+	return {
+		side: { manifest, blobByPath, ownedCredentials: true },
+		manifestUnreadable: !manifest && blobByPath.size > 0,
+	};
 }
 
 /** A full promotion writes every team project, so the review can span several of them. */

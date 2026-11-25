@@ -231,8 +231,14 @@ function mapResult(result?: NodeOutput) {
 	return { response, nodeHasMixedJsonAndBinaryData, sendMessage };
 }
 
+/** The signal that aborts when one of `signals` aborts. Undefined when there is none. */
+function anySignal(...signals: Array<AbortSignal | undefined>): AbortSignal | undefined {
+	const defined = signals.filter((signal) => signal !== undefined);
+	return defined.length > 1 ? AbortSignal.any(defined) : defined[0];
+}
+
 export function makeHandleToolInvocation(
-	contextFactory: (runIndex: number) => ISupplyDataFunctions,
+	contextFactory: (runIndex: number, invocationSignal?: AbortSignal) => ISupplyDataFunctions,
 	node: INode,
 	nodeType: INodeType,
 	runExecutionData: IRunExecutionData,
@@ -245,7 +251,7 @@ export function makeHandleToolInvocation(
 	// of the same tool when the tool is used in a loop or in a parallel execution.
 	let runIndex = getNextRunIndex(runExecutionData, node.name);
 
-	return async (toolArgs: IDataObject) => {
+	return async (toolArgs: IDataObject, invocationSignal?: AbortSignal) => {
 		let maxTries = 1;
 		if (node.retryOnFail === true) {
 			maxTries = Math.min(5, Math.max(2, node.maxTries ?? 3));
@@ -261,7 +267,7 @@ export function makeHandleToolInvocation(
 		for (let tryIndex = 0; tryIndex < maxTries; tryIndex++) {
 			// Increment the runIndex for the next invocation
 			const localRunIndex = runIndex++;
-			const context = contextFactory(localRunIndex);
+			const context = contextFactory(localRunIndex, invocationSignal);
 
 			// Get abort signal from context for cancellation support
 			const abortSignal = context.getExecutionCancelSignal?.();
@@ -308,7 +314,9 @@ export function makeHandleToolInvocation(
 			} catch (error) {
 				// Check if error is due to cancellation
 				if (abortSignal?.aborted) {
-					throw new NodeOperationError(node, 'Execution was cancelled');
+					const cancelError = new NodeOperationError(node, 'Execution was cancelled');
+					context.addOutputData(NodeConnectionTypes.AiTool, localRunIndex, cancelError);
+					throw cancelError;
 				}
 
 				const nodeError = new NodeOperationError(node, error as Error);
@@ -471,7 +479,11 @@ export async function getInputConnectionData(
 			connectedNode.type,
 			connectedNode.typeVersion,
 		);
-		const contextFactory = (runIndex: number, inputData: ITaskDataConnections) =>
+		const contextFactory = (
+			runIndex: number,
+			inputData: ITaskDataConnections,
+			invocationSignal?: AbortSignal,
+		) =>
 			new supplyDataContextClass(
 				workflow,
 				connectedNode,
@@ -484,7 +496,7 @@ export async function getInputConnectionData(
 				connectionType,
 				executeData,
 				closeFunctions,
-				abortSignal,
+				anySignal(abortSignal, invocationSignal),
 				parentNode,
 			);
 
@@ -494,7 +506,7 @@ export async function getInputConnectionData(
 					node: connectedNode,
 					nodeType: connectedNodeType,
 					handleToolInvocation: makeHandleToolInvocation(
-						(i) => contextFactory(i, {}),
+						(i, invocationSignal) => contextFactory(i, {}, invocationSignal),
 						connectedNode,
 						connectedNodeType,
 						runExecutionData,
@@ -513,6 +525,7 @@ export async function getInputConnectionData(
 				});
 			}
 		} else {
+			// This context has the execution signal only. A failed agent run does not cancel the calls of this tool.
 			const context = contextFactory(parentRunIndex, parentInputData);
 			try {
 				const supplyData = await connectedNodeType.supplyData.call(context, itemIndex);

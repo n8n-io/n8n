@@ -1,3 +1,4 @@
+import { telegramHitl } from './telegram-hitl';
 import { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -62,6 +63,7 @@ const ALLOWED_UPDATES = [
  */
 @Service()
 export class TelegramIntegration extends AgentChatIntegration {
+	readonly hitl = telegramHitl;
 	readonly type = 'telegram';
 
 	readonly credentialTypes = ['telegramApi'];
