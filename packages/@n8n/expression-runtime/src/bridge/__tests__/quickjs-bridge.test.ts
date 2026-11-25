@@ -841,4 +841,124 @@ describe('QuickJsBridge cycle guard', () => {
 			await expect(bridge.dispose()).resolves.toBeUndefined();
 		}
 	});
+
+	it('should return undefined for host-call plain object and array cycles without breaking the runtime', async () => {
+		const evaluator = new ExpressionEvaluator({
+			createBridge: () => new QuickJsBridge({ timeout: 5000 }),
+			maxCodeCacheSize: 16,
+			poolSize: 1,
+		});
+		await evaluator.initialize();
+		const execution = {};
+		await evaluator.acquire(execution);
+
+		try {
+			const cyc: Record<string, unknown> = { a: 1 };
+			cyc.self = cyc;
+			const arr: unknown[] = [1];
+			arr.push(arr);
+			const keyedByItem = Object.assign([1] as unknown[], { tag: 'x' });
+			keyedByItem.push(keyedByItem);
+			const keyedByProp = Object.assign([1] as unknown[], { self: null as unknown });
+			keyedByProp.self = keyedByProp;
+			const escapedCyc: Record<string, unknown> = { __isMap: true, __entries: [] };
+			escapedCyc.self = escapedCyc;
+			const mapWithCyc = new Map<string, unknown>([['k', cyc]]);
+
+			const plainObjData = { $input: { first: () => ({ json: { cyc, n: 5 } }) } };
+			const plainArrData = { $input: { first: () => ({ json: { arr, n: 5 } }) } };
+			const keyedItemData = { $input: { first: () => ({ json: { keyedByItem } }) } };
+			const keyedPropData = { $input: { first: () => ({ json: { keyedByProp } }) } };
+			const escapedData = { $input: { first: () => ({ json: { escapedCyc } }) } };
+			const mixedData = { $input: { first: () => ({ json: { mapWithCyc, cyc } }) } };
+
+			expect(evaluator.evaluate('{{ $input.first().json.cyc }}', plainObjData, execution)).toBe(
+				undefined,
+			);
+			expect(evaluator.evaluate('{{ $input.first().json }}', plainObjData, execution)).toBe(
+				undefined,
+			);
+			expect(evaluator.evaluate('{{ $input.first().json.arr }}', plainArrData, execution)).toBe(
+				undefined,
+			);
+			expect(
+				evaluator.evaluate('{{ $input.first().json.keyedByItem }}', keyedItemData, execution),
+			).toBe(undefined);
+			expect(
+				evaluator.evaluate('{{ $input.first().json.keyedByProp }}', keyedPropData, execution),
+			).toBe(undefined);
+			expect(
+				evaluator.evaluate('{{ $input.first().json.escapedCyc }}', escapedData, execution),
+			).toBe(undefined);
+			expect(evaluator.evaluate('{{ $input.first().json.cyc }}', mixedData, execution)).toBe(
+				undefined,
+			);
+
+			// The runtime did not break or restart, so the next expression runs immediately.
+			expect(evaluator.evaluate('{{ 1 + 1 }}', {}, execution)).toBe(2);
+		} finally {
+			await evaluator.release(execution);
+			await expect(evaluator.dispose()).resolves.toBeUndefined();
+		}
+	});
+
+	it('should still transfer host-call shared acyclic values and Map-mediated cycles', async () => {
+		const bridge = new QuickJsBridge({ timeout: 5000 });
+		await bridge.initialize();
+		try {
+			const sharedObj = { a: 1, bad: NaN };
+			const sharedArr = [1, 2];
+			const sharedKeyed = Object.assign([1], { tag: 'x' });
+			const sharedDate = new Date('2025-01-01T00:00:00.000Z');
+			const sharedEscaped = { __isMap: true, keep: 3 };
+			const objWithMapCycle: Record<string, unknown> = { a: 1 };
+			objWithMapCycle.m = new Map([['o', objWithMapCycle]]);
+
+			const json = {
+				o1: sharedObj,
+				o2: sharedObj,
+				a1: sharedArr,
+				a2: sharedArr,
+				k1: sharedKeyed,
+				k2: sharedKeyed,
+				d1: sharedDate,
+				d2: sharedDate,
+				e1: sharedEscaped,
+				e2: sharedEscaped,
+				objWithMapCycle,
+			};
+			const data = { $input: { first: () => ({ json }) } };
+
+			const shared = bridge.execute(
+				`
+				const j = this.$input.first().json;
+				return {
+					sameObj: j.o1 === j.o2 && Number.isNaN(j.o1.bad),
+					sameArr: j.a1 === j.a2,
+					sameKeyed: j.k1 === j.k2 && j.k1.tag === 'x',
+					sameDate: j.d1 === j.d2 && j.d1 instanceof Date,
+					sameEscaped: j.e1 === j.e2 && j.e1.__isMap === true && j.e1.keep === 3,
+				};
+				`,
+				data,
+			);
+			expect(shared).toStrictEqual({
+				sameObj: true,
+				sameArr: true,
+				sameKeyed: true,
+				sameDate: true,
+				sameEscaped: true,
+			});
+
+			const cyclicThroughMap = bridge.execute(
+				'return this.$input.first().json.objWithMapCycle;',
+				data,
+			) as { a: number; m: Map<string, unknown> };
+			expect(cyclicThroughMap.a).toBe(1);
+			expect(cyclicThroughMap.m).toBeInstanceOf(Map);
+			expect(cyclicThroughMap.m.get('o')).toBeDefined();
+		} finally {
+			await expect(bridge.dispose()).resolves.toBeUndefined();
+		}
+	});
 });

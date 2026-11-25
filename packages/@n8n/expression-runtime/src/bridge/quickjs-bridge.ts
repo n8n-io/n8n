@@ -269,6 +269,16 @@ function isSetSentinel(value: unknown): value is { __isSet: true; __values: unkn
 	);
 }
 
+function isKeyedArraySentinel(
+	value: unknown,
+): value is { __isKeyedArray: true; __items: unknown[]; __props: Record<string, unknown> } {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		(value as Record<string, unknown>).__isKeyedArray === true
+	);
+}
+
 function isEscapedObject(
 	value: unknown,
 ): value is { __isEscaped: true; __value: Record<string, unknown> } {
@@ -471,12 +481,69 @@ function attachDefsForGuest(node: unknown, defIds: Map<object, number>): unknown
 }
 
 /**
+ * True when the wrapped host graph contains a cycle outside a Map or Set.
+ * Plain objects, arrays, and class instances arrive in the guest as plain
+ * objects or arrays, and `__prepareForTransfer` walks those without a cycle
+ * guard outside an Error. Keep returning undefined for those host values so
+ * returning them does not overflow the QuickJS native stack and break the
+ * bridge.
+ */
+function hasPlainGuestCycle(
+	node: unknown,
+	byId: Map<number, unknown>,
+	open: Set<object> = new Set(),
+	done: Set<object> = new Set(),
+): boolean {
+	if (node === null || typeof node !== 'object') return false;
+	if (isRefSentinel(node)) {
+		return hasPlainGuestCycle(byId.get(node.__id), byId, open, done);
+	}
+	if (open.has(node)) return true;
+	if (done.has(node)) return false;
+
+	if (
+		!isEscapedObject(node) &&
+		(isDateSentinel(node) || isNaNSentinel(node) || isMapSentinel(node) || isSetSentinel(node))
+	) {
+		return false;
+	}
+
+	open.add(node);
+	if (isEscapedObject(node)) {
+		for (const key of Object.keys(node.__value)) {
+			if (hasPlainGuestCycle(node.__value[key], byId, open, done)) return true;
+		}
+	} else if (isKeyedArraySentinel(node)) {
+		for (let i = 0; i < node.__items.length; i++) {
+			if (i in node.__items && hasPlainGuestCycle(node.__items[i], byId, open, done)) return true;
+		}
+		for (const key of Object.keys(node.__props)) {
+			if (hasPlainGuestCycle(node.__props[key], byId, open, done)) return true;
+		}
+	} else if (Array.isArray(node)) {
+		for (let i = 0; i < node.length; i++) {
+			if (i in node && hasPlainGuestCycle(node[i], byId, open, done)) return true;
+		}
+	} else {
+		const record = node as Record<string, unknown>;
+		for (const key of Object.keys(record)) {
+			if (hasPlainGuestCycle(record[key], byId, open, done)) return true;
+		}
+	}
+	open.delete(node);
+	done.add(node);
+	return false;
+}
+
+/**
  * Recursively wrap host values that JSON.stringify would flatten (Date, NaN,
- * Map, Set) or reject (self-referencing graphs) into the same sentinel format
- * the guest transfer wrapper uses, escaping user objects whose keys collide
- * with the markers. The guest rebuilds real instances via __unwrapFromHost
- * (see injectTransferWrapper), so host-callback results match what
- * isolated-vm's structured clone delivers.
+ * Map, Set) or reject (self-referencing Map or Set graphs) into the same
+ * sentinel format the guest transfer wrapper uses, escaping user objects whose
+ * keys collide with the markers. Returns undefined when the graph has a plain
+ * object or array cycle outside a Map or Set, because the guest transfer walk
+ * has no cycle guard for those values outside an Error. The guest rebuilds real
+ * instances via __unwrapFromHost (see injectTransferWrapper), so host-callback
+ * results match what isolated-vm's structured clone delivers.
  */
 function wrapSpecialValuesForGuest(value: unknown): unknown {
 	if (value === null || value === undefined) return value;
@@ -485,12 +552,15 @@ function wrapSpecialValuesForGuest(value: unknown): unknown {
 	const state: GuestWrapState = { seen: new Map(), repeated: [], nextId: 0 };
 	const root = wrapValueForGuest(value, state);
 	if (state.repeated.length === 0) return root;
+	const byId = new Map<number, unknown>();
 	const defIds = new Map<object, number>();
 	for (const entry of state.repeated) {
+		byId.set(entry.id, entry.out);
 		if (entry.out !== null && typeof entry.out === 'object') {
 			defIds.set(entry.out, entry.id);
 		}
 	}
+	if (hasPlainGuestCycle(root, byId)) return undefined;
 	return attachDefsForGuest(root, defIds);
 }
 
