@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
 import type { KnowledgeCollection, KnowledgeFile } from '../entities';
-import { assertKnowledgePathSegment, toKnowledgeContentFileName } from '../files/storage-naming';
+import { assertKnowledgePathSegment, tryKnowledgeContentFileName } from '../files/storage-naming';
 import { KnowledgeAvailabilityService } from '../knowledge-availability.service';
 import type { KnowledgeConsumerScope } from '../knowledge-consumer-scope';
 import { KnowledgeCollectionFileRepository } from '../repositories/knowledge-collection-file.repository';
@@ -83,11 +83,21 @@ export class KnowledgeCollectionSourceService {
 		const references = files.flatMap((file) => {
 			const dir = dirByCollectionId.get(file.knowledgeCollectionId);
 			if (dir === undefined) return [];
+			const reference = toFileReference(file, dir);
+			if (reference === undefined) {
+				this.logger.warn('Skipped a knowledge collection file whose name cannot be a file name', {
+					collectionId: file.knowledgeCollectionId,
+					fileId: file.id,
+					projectId: scope.projectId,
+					agentId: scope.agentId,
+				});
+				return [];
+			}
 			fileCounts.set(
 				file.knowledgeCollectionId,
 				(fileCounts.get(file.knowledgeCollectionId) ?? 0) + 1,
 			);
-			return [toFileReference(file, dir)];
+			return [reference];
 		});
 
 		return {
@@ -121,9 +131,13 @@ export class KnowledgeCollectionSourceService {
 	}
 }
 
-function toFileReference(file: KnowledgeFile, dir: string): KnowledgeFileReference {
+/** Undefined for a row whose stored name cannot be a file name (see `tryKnowledgeContentFileName`). */
+function toFileReference(file: KnowledgeFile, dir: string): KnowledgeFileReference | undefined {
+	const name = tryKnowledgeContentFileName(file.name);
+	if (name === undefined) return undefined;
+
 	return {
-		file: `${dir}/${toKnowledgeContentFileName(file.name)}`,
+		file: `${dir}/${name}`,
 		fileId: file.id,
 		storedAt: file.storedAt,
 		storageKey: file.storageKey,

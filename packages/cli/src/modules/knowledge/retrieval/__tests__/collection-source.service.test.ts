@@ -228,5 +228,28 @@ describe('KnowledgeCollectionSourceService', () => {
 				{ collectionId: 'collection-bad', projectId: 'project-1', agentId: 'agent-1' },
 			);
 		});
+
+		it('skips a file whose stored name cannot be a file name, with a warning, and keeps the others', async () => {
+			const { service, collectionRepository, fileRepository, logger } = makeService();
+			collectionRepository.findUsableByAgent.mockResolvedValue([makeCollection()]);
+			fileRepository.findByCollectionIds.mockResolvedValue([
+				makeFile({ id: 'file-bad', name: '..' }),
+				makeFile(),
+			]);
+
+			const source = await service.load(scope);
+
+			expect(source.files.map(({ fileId }) => fileId)).toEqual(['file-1']);
+			expect(source.collections[0].fileCount).toBe(1);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Skipped a knowledge collection file whose name cannot be a file name',
+				{
+					collectionId: 'collection-1',
+					fileId: 'file-bad',
+					projectId: 'project-1',
+					agentId: 'agent-1',
+				},
+			);
+		});
 	});
 });

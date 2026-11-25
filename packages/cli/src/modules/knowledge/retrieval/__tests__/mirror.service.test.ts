@@ -229,6 +229,24 @@ describe('KnowledgeMirrorService', () => {
 			expect(result.hasMore).toBe(false);
 		});
 
+		it('skips a file whose stored name cannot be a file name, with a warning, and lists the others', async () => {
+			const fileRepository = mock<KnowledgeFileRepository>();
+			fileRepository.findByAgentId.mockResolvedValue([
+				makeAgentFile({ id: 'file-bad', fileName: '..' }),
+				makeAgentFile({ id: 'file-alpha', fileName: 'alpha.pdf' }),
+			]);
+			const logger = mock<Logger>();
+			const service = makeService({ sandboxProviderProxy, fileRepository, logger });
+
+			const result = await service.findFiles(scope, { pattern: '*' });
+
+			expect(result.files.map((file) => file.fileId)).toEqual(['file-alpha']);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Skipped an agent knowledge file whose name cannot be a file name',
+				{ agentId: 'agent-1', fileId: 'file-bad' },
+			);
+		});
+
 		it('filters by extension pattern', async () => {
 			const service = makeGlobService();
 

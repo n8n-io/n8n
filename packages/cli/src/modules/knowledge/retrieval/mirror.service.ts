@@ -14,7 +14,7 @@ import {
 	assertKnowledgeMirrorPath,
 	getKnowledgeMirrorPaths,
 	type KnowledgeMirrorPaths,
-	toKnowledgeContentFileName,
+	tryKnowledgeContentFileName,
 } from '../files/storage-naming';
 import type { KnowledgeConsumerScope } from '../knowledge-consumer-scope';
 import type { KnowledgePreparationWait, KnowledgeRetrievalObserver } from '../knowledge-retriever';
@@ -449,16 +449,29 @@ export class KnowledgeMirrorService {
 
 	private async loadKnowledgeFileReferences(agentId: string): Promise<KnowledgeFileReference[]> {
 		const files = await this.fileRepository.findByAgentId(agentId, {});
-		return files.map((file) => ({
-			file: toKnowledgeContentFileName(file.fileName),
-			fileId: file.id,
-			storedAt: file.storedAt,
-			storageKey: file.storageKey,
-			displayName: file.fileName,
-			mimeType: file.mimeType,
-			fileSizeBytes: file.fileSizeBytes,
-			createdAt: file.createdAt.toISOString(),
-		}));
+		return files.flatMap((file) => {
+			const name = tryKnowledgeContentFileName(file.fileName);
+			if (name === undefined) {
+				this.logger.warn('Skipped an agent knowledge file whose name cannot be a file name', {
+					agentId,
+					fileId: file.id,
+				});
+				return [];
+			}
+
+			return [
+				{
+					file: name,
+					fileId: file.id,
+					storedAt: file.storedAt,
+					storageKey: file.storageKey,
+					displayName: file.fileName,
+					mimeType: file.mimeType,
+					fileSizeBytes: file.fileSizeBytes,
+					createdAt: file.createdAt.toISOString(),
+				},
+			];
+		});
 	}
 
 	private resolveRequiredFile(

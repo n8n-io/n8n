@@ -96,6 +96,21 @@ export function toKnowledgeContentFileName(originalFileName: string): string {
 	return sanitizedName;
 }
 
+/**
+ * The content file name of a stored name, or undefined when the stored name
+ * cannot be one. Every upload runs `toKnowledgeContentFileName` before the
+ * row is written, so only a row changed by hand gets here with such a name.
+ * The read paths skip that row, so that it cannot stop the retrieval of the
+ * other knowledge of the agent.
+ */
+export function tryKnowledgeContentFileName(storedName: string): string | undefined {
+	try {
+		return toKnowledgeContentFileName(storedName);
+	} catch {
+		return undefined;
+	}
+}
+
 export function toKnowledgeCollectionFileDto(file: KnowledgeFile): KnowledgeCollectionFileDto {
 	return {
 		id: file.id,
