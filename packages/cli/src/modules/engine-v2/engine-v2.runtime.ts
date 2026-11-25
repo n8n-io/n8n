@@ -148,8 +148,6 @@ export class EngineV2Runtime {
 			enabled: this.executionsConfig.pruneData,
 			maxAgeHours: this.executionsConfig.pruneDataMaxAge,
 		});
-		if (retention) this.logger.info('Execution retention is on', { maxAgeMs: retention.maxAgeMs });
-		else this.logger.info('Execution retention is off');
 
 		this.engine = createEngineRuntime({
 			roles,

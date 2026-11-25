@@ -305,6 +305,8 @@ export function createEngineRuntime({
 		sweepers.push(reconciliationSweeper);
 		// Only here: the role with the fewest replicas, so fewer processes race to delete the same rows.
 		if (retentionSweeper) sweepers.push(retentionSweeper);
+		if (retention) logger.info('Execution retention is on', { ...retention });
+		else logger.info('Execution retention is off');
 	}
 	if (runs.has('step-worker')) {
 		workers.push(stepWorker);
