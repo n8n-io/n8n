@@ -243,7 +243,12 @@ async function dismissContext(key: string) {
 				<div :class="$style.artifactList">
 					<div v-if="project" :class="[$style.artifactRow]">
 						<span :class="$style.artifactIconWrap">
-							<ProjectIcon :icon="project.icon" size="small" border-less />
+							<ProjectIcon
+								:icon="project.icon"
+								size="small"
+								border-less
+								:class="$style.projectIcon"
+							/>
 						</span>
 						<span :class="$style.artifactName">{{ project.name }}</span>
 					</div>
@@ -524,11 +529,19 @@ async function dismissContext(key: string) {
 	}
 }
 
+// One icon width for all rows, so the icons and the names line up. The wider project
+// icon box centers on the same axis as the other icons.
 .artifactIconWrap {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
 	flex-shrink: 0;
+	width: var(--spacing--sm);
+}
+
+// Keeps the project row as tall as the artifact rows.
+.artifactIconWrap .projectIcon {
+	height: var(--spacing--sm);
 }
 
 .artifactIcon {
