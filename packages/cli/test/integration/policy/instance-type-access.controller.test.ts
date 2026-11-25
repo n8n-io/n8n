@@ -5,6 +5,7 @@ import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { HiddenNodeTypes } from '@/modules/type-availability-policies/hidden-node-types';
 import { NodeTypes } from '@/node-types';
 import { createMember, createOwner } from '@test-integration/db/users';
 import * as utils from '@test-integration/utils';
@@ -12,6 +13,7 @@ import * as utils from '@test-integration/utils';
 import { fakeResolveBaseName } from './shared/workflow-index';
 
 const nodeTypes = mockInstance(NodeTypes);
+const hiddenNodeTypes = mockInstance(HiddenNodeTypes);
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['type-availability-policies'],
@@ -68,6 +70,7 @@ afterAll(() => {
 });
 
 beforeEach(() => {
+	hiddenNodeTypes.get.mockResolvedValue(new Set());
 	nodeTypes.getKnownTypes.mockReturnValue(knownTypes([SLACK, NOTION, GMAIL]));
 	nodeTypes.resolveBaseName.mockImplementation((name) => ({
 		baseName: name,
@@ -144,6 +147,33 @@ describe('GET /node-type-policies/instance/access', () => {
 			{ name: SLACK, access: 'allow', matchedRuleId: 'allow-slack' },
 			{ name: slackTool, access: 'deny', matchedRuleId: 'deny-slack-tool' },
 		]);
+	});
+
+	test('leaves out a hidden node type, unless an instance name rule decides it', async () => {
+		const hidden = 'n8n-nodes-base.hiddenHelper';
+		const hiddenByName = 'n8n-nodes-base.hiddenNamed';
+		nodeTypes.getKnownTypes.mockReturnValue(knownTypes([SLACK, hidden, hiddenByName]));
+		hiddenNodeTypes.get.mockResolvedValue(new Set([hidden, hiddenByName]));
+		await putInstancePolicy(NODE_ROUTE, [
+			{ id: 'deny-hidden', action: 'deny', selector: { kind: 'name', value: hiddenByName } },
+			{ id: 'deny-base', action: 'deny', selector: { kind: 'package', value: 'n8n-nodes-base' } },
+		]);
+
+		const response = await testServer.authAgentFor(owner).get(`${NODE_ROUTE}/instance/access`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.types).toEqual([
+			{ name: SLACK, access: 'deny', matchedRuleId: 'deny-base' },
+			{ name: hiddenByName, access: 'deny', matchedRuleId: 'deny-hidden' },
+		]);
+	});
+
+	test('fails when the hidden node types cannot be read', async () => {
+		hiddenNodeTypes.get.mockRejectedValue(new Error('ENOENT'));
+
+		const response = await testServer.authAgentFor(owner).get(`${NODE_ROUTE}/instance/access`);
+
+		expect(response.statusCode).toBe(500);
 	});
 
 	test('reports allow from the default action at version 0 when no policy is written', async () => {

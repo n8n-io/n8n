@@ -1,3 +1,4 @@
+export { noopExecutionFilesDeleter } from './external-dependencies';
 export type {
 	ExecutionFilesDeleter,
 	ExecutionLocation,

@@ -117,6 +117,7 @@ export type {
 	SubExecutionDeclaration,
 	SubExecutionMode,
 } from './dependencies';
+export { noopExecutionFilesDeleter } from './dependencies';
 
 export { AllowAllAdmittance, AdmittanceRejectedError } from './admittance';
 export type {
@@ -180,6 +181,8 @@ export type {
 	WaitDeclaration,
 	WorkflowDocument,
 } from './execution';
+
+export type { ExecutionRetentionPolicy } from './retention';
 
 export { createDataSource, WorkflowExecution, WorkflowStepExecution } from './database';
 export type { EngineStores } from './database';

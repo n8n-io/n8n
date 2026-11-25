@@ -73,6 +73,7 @@ import { buildAgentConfigurationTelemetry } from './agent-telemetry';
 import { AgentTurnExecutionService, type AgentTurnRequest } from './agent-turn-execution.service';
 import { withBudgetGuardrail } from './budget-guardrail';
 import { withToolGuardrails } from './tool-guardrails';
+import type { WorkflowToolContext } from './tools/workflow-tool-factory';
 import { AgentExecutionRecordingError } from './agent-execution-recording.error';
 import type { AgentChatBridge } from './integrations/agent-chat-bridge';
 import {
@@ -293,6 +294,8 @@ export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecut
 	toolGuardrails?: AgentToolGuardrailConfig[];
 	/** Model instance for the model-based guardrail kinds. Absent when none is configured. */
 	guardrailModel?: LanguageModel;
+	/** Callable-workflow machinery for `workflow`-kind guardrail checks. Absent when none is configured. */
+	guardrailWorkflowContext?: WorkflowToolContext;
 	/** See `AgentRuntime.mcpServerAttributions`. */
 	mcpServerAttributions: Map<string, string>;
 	userId?: string;
@@ -985,6 +988,7 @@ export class AgentExecutionOrchestratorService {
 					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 					toolGuardrails: runtime.toolGuardrails,
 					guardrailModel: runtime.guardrailModel,
+					guardrailWorkflowContext: runtime.guardrailWorkflowContext,
 					agentId,
 					message,
 					modelMessage,
@@ -1072,6 +1076,7 @@ export class AgentExecutionOrchestratorService {
 					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 					toolGuardrails: runtime.toolGuardrails,
 					guardrailModel: runtime.guardrailModel,
+					guardrailWorkflowContext: runtime.guardrailWorkflowContext,
 					agentId,
 					projectId,
 					message,
@@ -1136,6 +1141,7 @@ export class AgentExecutionOrchestratorService {
 					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 					toolGuardrails: runtime.toolGuardrails,
 					guardrailModel: runtime.guardrailModel,
+					guardrailWorkflowContext: runtime.guardrailWorkflowContext,
 					agentId,
 					message,
 					memory,
@@ -1198,6 +1204,7 @@ export class AgentExecutionOrchestratorService {
 					modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 					toolGuardrails: runtime.toolGuardrails,
 					guardrailModel: runtime.guardrailModel,
+					guardrailWorkflowContext: runtime.guardrailWorkflowContext,
 					agentId,
 					userId: user.id,
 					message,
@@ -1247,13 +1254,12 @@ export class AgentExecutionOrchestratorService {
 			}
 		}
 		if (isDraft) {
-			setup = await this.preparePreviewChat({
+			setup = await this.prepareDraftWake({
 				agentId,
 				projectId: config.projectId,
 				threadId: memory.threadId,
 				resourceId: memory.resourceId,
 				user: identity.user,
-				sessionMode: 'existing',
 			});
 		} else {
 			await this.externalHooks.run('agent.preExecute', [agentId]);
@@ -1600,6 +1606,7 @@ export class AgentExecutionOrchestratorService {
 					toolGuardrails: runtime.toolGuardrails,
 					toolRegistry: runtime.toolRegistry,
 					guardrailModel: runtime.guardrailModel,
+					guardrailWorkflowContext: runtime.guardrailWorkflowContext,
 				},
 			),
 			recording: {
@@ -1764,6 +1771,54 @@ export class AgentExecutionOrchestratorService {
 	}
 
 	/**
+	 * Resolve draft wake setup while keeping Preview Chat threads distinct from
+	 * non-preview draft runs (such as Instance AI or MCP), which share the draft
+	 * memory resource without the preview runtime instruction or surface.
+	 */
+	private async prepareDraftWake(params: {
+		agentId: string;
+		projectId: string;
+		threadId: string;
+		resourceId: string;
+		user: User;
+	}): Promise<ChatChannelSetup> {
+		const { agentId, projectId, threadId, resourceId, user } = params;
+		if (resourceId !== chatSurfaceMemoryResourceId('preview', user.id)) {
+			throw new UserError('Session not found');
+		}
+
+		const isPreviewThread = await this.agentExecutionService.canUseDraftThread(
+			threadId,
+			projectId,
+			agentId,
+			user.id,
+			{ previewChat: true, sessionMode: 'existing' },
+		);
+		if (
+			!isPreviewThread &&
+			!(await this.agentExecutionService.canUseDraftThread(threadId, projectId, agentId, user.id, {
+				previewChat: false,
+				sessionMode: 'existing',
+			}))
+		) {
+			throw new UserError('Session not found');
+		}
+
+		return {
+			surface: isPreviewThread ? 'preview' : undefined,
+			access: { accessScope: 'user', ownerId: user.id },
+			sandboxPrincipalHash: hashAgentSandboxPrincipal({ type: 'n8n-user', userId: user.id }),
+			alwaysSandboxed: false,
+			runtime: {
+				usePublishedVersion: false,
+				integrationType: N8N_CHAT_INTEGRATION_TYPE,
+				user,
+				...(isPreviewThread ? { previewChat: true } : {}),
+			},
+		};
+	}
+
+	/**
 	 * Validate access and build the memory, sandbox, and runtime scope for a
 	 * run in n8n Chat. `prepareN8nChat` and `preparePreviewChat` keep each
 	 * channel's setup rules in one place.
@@ -1899,6 +1954,7 @@ export class AgentExecutionOrchestratorService {
 			modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 			toolGuardrails: runtime.toolGuardrails,
 			guardrailModel: runtime.guardrailModel,
+			guardrailWorkflowContext: runtime.guardrailWorkflowContext,
 			agentId,
 			userId: user.id,
 			requester: reviewRequesterForUser(
@@ -2031,6 +2087,7 @@ export class AgentExecutionOrchestratorService {
 					toolGuardrails: config.toolGuardrails,
 					toolRegistry: config.toolRegistry,
 					guardrailModel: config.guardrailModel,
+					guardrailWorkflowContext: config.guardrailWorkflowContext,
 				},
 			),
 			recording: this.createChatRecording(config),
@@ -2093,6 +2150,7 @@ export class AgentExecutionOrchestratorService {
 				projectId,
 				integrationType,
 				usePublishedVersion: identity.type !== 'draft',
+				...(setup?.runtime.previewChat ? { previewChat: setup.runtime.previewChat } : {}),
 				...(setup?.runtime.attributionUserId
 					? { attributionUserId: setup.runtime.attributionUserId }
 					: {}),
@@ -2135,6 +2193,7 @@ export class AgentExecutionOrchestratorService {
 			modelCredentialGatewayManaged: runtime.modelCredentialGatewayManaged,
 			toolGuardrails: runtime.toolGuardrails,
 			guardrailModel: runtime.guardrailModel,
+			guardrailWorkflowContext: runtime.guardrailWorkflowContext,
 			agentId,
 			...(access.ownerId ? { userId: access.ownerId } : {}),
 			message,
