@@ -136,6 +136,40 @@ describe('Form Trigger output headers and built-in authentication', () => {
 			expect(json?.user).toMatchObject({ id: USER.id });
 		});
 
+		it('should hide the cookies when a n8n User Auth submission carries the OAuth cookie', async () => {
+			const { context } = setup({
+				authentication: 'n8nUserAuth',
+				headers: {
+					'x-auth-token': 'oauth-token',
+					cookie: 'n8n-form-oauth=oauth-token; theme=dark',
+				},
+			});
+			context.validateN8nOAuth2Token.mockResolvedValue({ valid: true, user: USER });
+
+			const headers = (await outputJson(context))?.headers;
+
+			expect(headers).toEqual({
+				'content-type': 'multipart/form-data',
+				'x-auth-token': REDACTED,
+				cookie: REDACTED,
+			});
+			expect(JSON.stringify(headers)).not.toContain('oauth-token');
+		});
+
+		it('should keep other cookies when a n8n User Auth submission has no OAuth cookie', async () => {
+			const { context } = setup({
+				authentication: 'n8nUserAuth',
+				headers: { 'x-auth-token': 'oauth-token', cookie: 'theme=dark' },
+			});
+			context.validateN8nOAuth2Token.mockResolvedValue({ valid: true, user: USER });
+
+			expect((await outputJson(context))?.headers).toEqual({
+				'content-type': 'multipart/form-data',
+				'x-auth-token': REDACTED,
+				cookie: 'theme=dark',
+			});
+		});
+
 		it('should not hide any header when authentication is none', async () => {
 			const { context } = setup({
 				authentication: 'none',

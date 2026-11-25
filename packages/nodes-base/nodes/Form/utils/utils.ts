@@ -1187,7 +1187,12 @@ async function authenticateFormUserOrRespond(
 			const token = typeof formToken === 'string' ? formToken : '';
 			const validation = await context.validateN8nOAuth2Token(token, resourceUrl);
 			if (validation.valid) {
-				recordConsumedAuth(req, ['x-auth-token']);
+				// The OAuth cookie is normally gone by now, but when a submission still carries
+				// it, it holds a token of the same kind as `x-auth-token`.
+				recordConsumedAuth(
+					req,
+					readFormOAuthToken(req) === null ? ['x-auth-token'] : ['x-auth-token', 'cookie'],
+				);
 				// Seeds the run. The subject rides in the seal, so a worker never needs the token.
 				await context.establishTriggerIdentity(token, resourceUrl, validation.user.id);
 				return {
