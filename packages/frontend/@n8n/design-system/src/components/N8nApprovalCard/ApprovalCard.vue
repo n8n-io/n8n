@@ -237,15 +237,13 @@ function onKeydown(event: KeyboardEvent) {
 				v-if="description || slots.description || formattedArgs"
 				:id="`${id}-details`"
 				:class="$style.body"
+				role="region"
+				tabindex="0"
+				:aria-label="descriptionLabel ?? title"
 			>
-				<div
-					v-if="description || slots.description"
-					role="region"
-					tabindex="0"
-					:aria-label="descriptionLabel ?? title"
-				>
+				<div v-if="description || slots.description" :class="$style.description">
 					<slot name="description"
-						><N8nText step="sm">{{ description }}</N8nText></slot
+						><N8nText step="sm" :class="$style.descriptionText">{{ description }}</N8nText></slot
 					>
 				</div>
 				<N8nCodeBlock
@@ -298,8 +296,10 @@ function onKeydown(event: KeyboardEvent) {
 				>
 					<N8nIcon :class="$style.leadingIcon" :icon="option.icon" size="large" />
 					<span :class="$style.label">
-						<N8nText step="sm" bold :class="$style.labelStrong">{{ option.label }}</N8nText>
-						<N8nText v-if="option.suffix" step="sm" color="text-light">{{ option.suffix }}</N8nText>
+						<N8nText :class="$style.labelStrong" step="sm" bold>{{ option.label }}</N8nText>
+						<N8nText v-if="option.suffix" :class="$style.suffix" step="sm" color="text-light">{{
+							' ' + option.suffix
+						}}</N8nText>
 					</span>
 					<N8nIcon
 						v-if="highlightedIndex === idx && option.withArrow !== false"
@@ -319,7 +319,9 @@ function onKeydown(event: KeyboardEvent) {
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/focus';
 @use '../../css/mixins/motion';
+@use '../../css/mixins/utils';
 
 .card {
 	width: 100%;
@@ -402,6 +404,22 @@ function onKeydown(event: KeyboardEvent) {
 	flex-direction: column;
 	gap: var(--spacing--xs);
 	padding: var(--spacing--sm);
+	/* Long details (for example a batch of data table changes) scroll, so the decision options stay in view.
+	   The body is the focusable region, so keyboard users can scroll it too. */
+	max-height: var(--approval-card--body--max-height, 40vh);
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	outline: none;
+	@include focus.focus-visible-ring;
+}
+
+.description {
+	overflow-wrap: anywhere;
+}
+
+/* Descriptions are plain text, so keep their line breaks (for example one line per change). */
+.descriptionText {
+	white-space: pre-line;
 }
 
 .list {
@@ -422,12 +440,11 @@ function onKeydown(event: KeyboardEvent) {
 }
 
 .row {
-	flex: 1;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
 	width: auto;
-	height: var(--height--lg);
+	min-height: var(--height--lg);
 	padding: var(--spacing--2xs);
 	margin-inline: calc(var(--spacing--3xs) * -1);
 	border: none;
@@ -447,6 +464,7 @@ function onKeydown(event: KeyboardEvent) {
 /** Keep the highlight on the active action. */
 
 .trailingIcon {
+	flex-shrink: 0;
 	margin-inline-start: auto;
 }
 
@@ -472,9 +490,18 @@ function onKeydown(event: KeyboardEvent) {
 .label {
 	flex: 1;
 	display: flex;
-	flex-wrap: wrap;
-	min-width: 0;
 	align-items: baseline;
 	gap: var(--spacing--3xs);
+	min-width: 0;
+}
+
+.labelStrong {
+	min-width: 0;
+	@include utils.utils-ellipsis;
+}
+
+.suffix {
+	flex-shrink: 0;
+	white-space: nowrap;
 }
 </style>

@@ -7,6 +7,7 @@ import {
 	AppSourceVersionStore,
 	AppBuildResultStore,
 	type AppFiles,
+	type CopiedDraftVersion,
 	type NewSourceVersion,
 } from './app-version-stores';
 import { AppArtifactService } from './app-artifact.service';
@@ -44,6 +45,8 @@ export class SnapshotAppSourceVersionStore extends AppSourceVersionStore {
 							appId: version.appId,
 							label: version.label,
 							sourceArtifactId: artifact.id,
+							bindings: version.bindings,
+							isScaffold: version.isScaffold,
 						},
 						ctx,
 					);
@@ -64,6 +67,34 @@ export class SnapshotAppSourceVersionStore extends AppSourceVersionStore {
 			await this.artifacts.discard(artifact);
 			throw error;
 		}
+	}
+
+	async copyDraft(version: CopiedDraftVersion): Promise<void> {
+		await this.locks.withLockContext(
+			DbLock.APPS_STORAGE,
+			async (ctx) => {
+				const source = await this.versions.findVersionById(version.expectedDraftVersionId, ctx);
+				if (!source || source.appId !== version.appId) {
+					throw new NotFoundError('App version not found.');
+				}
+				await this.versions.insertCopy(
+					source,
+					{ id: version.id, label: version.label, bindings: version.bindings },
+					ctx,
+				);
+				if (
+					!(await this.apps.advanceDraft(
+						version.appId,
+						version.expectedDraftVersionId,
+						version.id,
+						ctx,
+					))
+				) {
+					throw new ConflictError('The app draft changed. Reload the app before saving.');
+				}
+			},
+			{ subKey: appStorageLockSubKey(version.appId) },
+		);
 	}
 
 	async readSource(versionId: string): Promise<AppFiles> {

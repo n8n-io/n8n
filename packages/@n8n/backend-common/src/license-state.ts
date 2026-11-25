@@ -1,7 +1,7 @@
 import type { BooleanLicenseFeature } from '@n8n/constants';
 import { LICENSE_FEATURES, UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import { Service } from '@n8n/di';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import type { FeatureReturnType, LicenseProvider } from './types';
 
@@ -50,6 +50,12 @@ export class LicenseState {
 		return this.licenseProvider.getValue(feature);
 	}
 
+	isEnterprisePlan() {
+		this.assertProvider();
+
+		return this.licenseProvider.isEnterprisePlan();
+	}
+
 	// --------------------
 	//      booleans
 	// --------------------
@@ -68,6 +74,10 @@ export class LicenseState {
 
 	isWorkflowReviewsLicensed() {
 		return this.isLicensed(LICENSE_FEATURES.WORKFLOW_REVIEWS);
+	}
+
+	isExecutionLimitsLicensed() {
+		return this.isLicensed(LICENSE_FEATURES.EXECUTION_LIMITS);
 	}
 
 	isSharingLicensed() {

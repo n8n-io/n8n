@@ -48,6 +48,12 @@ export function useSkillVersions(
 		}
 	}
 
+	/** Loads the list again, for example after a save added a version. */
+	async function reloadVersions() {
+		versionsOf = undefined;
+		await loadVersions();
+	}
+
 	async function fetchVersion(version: number): Promise<SkillVersionDetail | undefined> {
 		const id = toValue(skillId);
 		if (!id) return undefined;
@@ -115,17 +121,11 @@ export function useSkillVersions(
 		comparison.value = { from, to, fromSkill: fromDetail.skill, toSkill: toDetail.skill };
 	}
 
-	/** Compares the latest version with the one before it, when there are two. */
-	async function compareLatestTwo() {
-		await loadVersions();
-		const [latest, previous] = versions.value ?? [];
-		if (latest && previous) await compareVersions(previous.version, latest.version);
-	}
-
 	return {
 		versions,
 		viewedVersion,
 		loadVersions,
+		reloadVersions,
 		fetchVersion,
 		openVersion,
 		comparison,
@@ -133,6 +133,5 @@ export function useSkillVersions(
 		diffCounts,
 		comparedSkill,
 		compareVersions,
-		compareLatestTwo,
 	};
 }

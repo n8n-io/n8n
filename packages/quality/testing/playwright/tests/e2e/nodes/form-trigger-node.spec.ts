@@ -1,4 +1,4 @@
-import type { IWorkflowBase } from 'n8n-workflow';
+import type { INodeParameters, IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { test, expect } from '../../../fixtures/base';
@@ -14,7 +14,7 @@ test.describe(
 			await n8n.start.fromBlankCanvas();
 		});
 
-		test("add node by clicking on 'On form submission'", async ({ n8n }) => {
+		test("add node by clicking on 'On form submission' @engine:v2", async ({ n8n }) => {
 			await n8n.canvas.clickNodeCreatorPlusButton();
 			await n8n.canvas.nodeCreatorItemByName('On form submission').click();
 
@@ -26,7 +26,7 @@ test.describe(
 			await expect(n8n.canvas.nodeIssuesBadge('On form submission')).toBeHidden();
 		});
 
-		test('should fill up form fields', async ({ n8n }) => {
+		test('should fill up form fields @engine:v2', async ({ n8n }) => {
 			await n8n.canvas.clickNodeCreatorPlusButton();
 			await n8n.canvas.nodeCreatorItemByName('On form submission').click();
 
@@ -77,7 +77,7 @@ test.describe(
 		});
 
 		// NODE-5915: Textarea placeholders and entered text must use a sans-serif font.
-		test('should use sans-serif for textarea placeholders and entered text', async ({
+		test('should use sans-serif for textarea placeholders and entered text @engine:v2', async ({
 			api,
 			n8n,
 			backendUrl,
@@ -155,7 +155,7 @@ test.describe(
 			}
 		});
 
-		test('should create and submit a multi-page form', async ({ n8n }) => {
+		test('should create and submit a multi-page form @engine:v2-pending', async ({ n8n }) => {
 			// Add Form Trigger node with first name field
 			await n8n.canvas.clickNodeCreatorPlusButton();
 			await n8n.canvas.nodeCreatorItemByName('On form submission').click();
@@ -217,7 +217,7 @@ test.describe(
 				},
 			});
 
-			test('form submission works with basic auth', async ({ api, n8n }) => {
+			test('form submission works with basic auth @engine:v2', async ({ api, n8n }) => {
 				const { id, name } = await api.credentials.createCredential({
 					name: 'Basic Auth test:test',
 					type: 'httpBasicAuth',
@@ -284,7 +284,10 @@ test.describe(
 				await formPage.expectText('This worked');
 			});
 
-			test('multi-step form submission works with basic auth', async ({ api, n8n }) => {
+			test('multi-step form submission works with basic auth @engine:v2-pending', async ({
+				api,
+				n8n,
+			}) => {
 				const { id, name } = await api.credentials.createCredential({
 					name: 'Basic Auth test:test',
 					type: 'httpBasicAuth',
@@ -399,5 +402,72 @@ test.describe(
 				await formPage.expectText('This worked');
 			});
 		});
+	},
+);
+
+test.describe(
+	'Form Trigger test popup',
+	{
+		annotation: [{ type: 'owner', description: 'NODES' }],
+	},
+	() => {
+		const formTriggerVersions = [
+			{
+				typeVersion: 1,
+				parameters: (path: string): INodeParameters => ({ path }),
+				testPath: (path: string) => `/webhook-test/${path}/n8n-form`,
+			},
+			{
+				typeVersion: 2,
+				parameters: (path: string): INodeParameters => ({ path: `={{ "${path}" }}` }),
+				testPath: (path: string) => `/form-test/${path}`,
+			},
+			{
+				typeVersion: 2.1,
+				parameters: (path: string): INodeParameters => ({ path: `={{ "${path}" }}` }),
+				testPath: (path: string) => `/form-test/${path}`,
+			},
+			{
+				typeVersion: 2.6,
+				parameters: (path: string): INodeParameters => ({ options: { path } }),
+				testPath: (path: string) => `/form-test/${path}`,
+			},
+		];
+
+		for (const { typeVersion, parameters, testPath } of formTriggerVersions) {
+			test(`should open the served test form for a v${typeVersion} Form Trigger @engine:v2`, async ({
+				n8n,
+			}) => {
+				const path = `form-${nanoid()}`;
+				const formTitle = `Form v${typeVersion}`;
+				const workflow = await n8n.api.workflows.createWorkflow({
+					name: `Form Trigger v${typeVersion} test popup`,
+					nodes: [
+						{
+							id: nanoid(),
+							name: 'Form',
+							type: 'n8n-nodes-base.formTrigger',
+							typeVersion,
+							position: [0, 0],
+							webhookId: crypto.randomUUID(),
+							parameters: {
+								...parameters(path),
+								formTitle,
+								formFields: { values: [{ fieldLabel: 'name' }] },
+							},
+						},
+					],
+					connections: {},
+				});
+				await n8n.start.fromExistingWorkflow(workflow.id);
+
+				const formPagePromise = PublicFormPage.fromPopup(n8n.page.context());
+				await n8n.canvas.clickExecuteWorkflowButton();
+				const formPage = await formPagePromise;
+
+				expect(new URL(formPage.url()).pathname).toBe(testPath(path));
+				await formPage.expectText(formTitle);
+			});
+		}
 	},
 );

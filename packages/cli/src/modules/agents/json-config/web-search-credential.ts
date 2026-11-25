@@ -1,5 +1,5 @@
 import type { CredentialProvider, ResolvedCredential } from '@n8n/agents';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 /**
  * n8n credential type the AI Gateway serves each fallback web-search provider

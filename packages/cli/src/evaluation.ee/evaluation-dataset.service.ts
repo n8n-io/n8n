@@ -26,8 +26,8 @@ import type {
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
-import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
-import { DataTableService } from '@/modules/data-table/data-table.service';
+import { type DataTableColumn, DataTableService } from '@n8n/backend-module-data-table';
+
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 /** First-item `json` of a node's last run output, keyed by field name. */

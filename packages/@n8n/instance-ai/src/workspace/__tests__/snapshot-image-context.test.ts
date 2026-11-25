@@ -19,9 +19,10 @@ describe('snapshot-image-context', () => {
 	});
 
 	it('writes nested workspace files under the staging directory', async () => {
-		const files = new Map([
+		const files = new Map<string, string | Buffer>([
 			[`${WORKSPACE_ROOT}/skills/demo/SKILL.md`, '# Demo'],
 			[`${WORKSPACE_ROOT}/knowledge-base/best-practices/scheduling.md`, '# Schedule'],
+			[`${WORKSPACE_ROOT}/.n8n-packages/sdk.tgz`, Buffer.from([0, 1, 2, 255])],
 		]);
 
 		const { stagingDir } = await stageWorkspaceFilesForImage(files, WORKSPACE_ROOT);
@@ -33,6 +34,9 @@ describe('snapshot-image-context', () => {
 		await expect(
 			readFile(join(stagingDir, 'knowledge-base/best-practices/scheduling.md'), 'utf-8'),
 		).resolves.toBe('# Schedule');
+		await expect(readFile(join(stagingDir, '.n8n-packages/sdk.tgz'))).resolves.toEqual(
+			Buffer.from([0, 1, 2, 255]),
+		);
 	});
 
 	it('stages once per cache key and reuses the directory read-only', async () => {
@@ -56,7 +60,7 @@ describe('snapshot-image-context', () => {
 		const files = new Map([
 			[`${WORKSPACE_ROOT}/package.json`, '{"name":"concurrent"}'],
 			[`${WORKSPACE_ROOT}/skills/post-build-flow/SKILL.md`, '# Post build'],
-			[`${WORKSPACE_ROOT}/knowledge-base/templates/example.ts`, 'export const x = 1;'],
+			[`${WORKSPACE_ROOT}/knowledge-base/reference/example.md`, 'export const x = 1;'],
 		]);
 
 		const results = await Promise.all(
@@ -75,7 +79,7 @@ describe('snapshot-image-context', () => {
 			readFile(join(results[0].stagingDir, 'skills/post-build-flow/SKILL.md'), 'utf-8'),
 		).resolves.toBe('# Post build');
 		await expect(
-			readFile(join(results[0].stagingDir, 'knowledge-base/templates/example.ts'), 'utf-8'),
+			readFile(join(results[0].stagingDir, 'knowledge-base/reference/example.md'), 'utf-8'),
 		).resolves.toBe('export const x = 1;');
 	});
 

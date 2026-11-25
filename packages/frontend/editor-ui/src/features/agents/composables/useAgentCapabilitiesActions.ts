@@ -18,6 +18,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { createAgentSkill, getSkillDetail, getNewSkillName } from './useAgentApi';
+import { isPersistedSave, type AutosaveResult } from './useAgentConfigAutosave';
 import { useAgentProjectBreadcrumb } from './useAgentProjectBreadcrumb';
 import { mcpServerToNode } from './useMcpServerAdapter';
 import {
@@ -102,6 +103,8 @@ export interface UseAgentCapabilitiesActionsDeps {
 	 */
 	ensureAgentPersisted?: () => Promise<void>;
 	flushConfigSave?: () => Promise<unknown>;
+	/** Saves a scheduled skill edit now. A restore waits for it so the editor can list the new version. */
+	flushSkillSave?: () => Promise<AutosaveResult>;
 	/**
 	 * Flushes pending agent edits before an API mutation that also writes the
 	 * agent config. This prevents the mutation from advancing the config hash
@@ -137,6 +140,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		supportsToolApproval,
 		ensureAgentPersisted,
 		flushConfigSave,
+		flushSkillSave,
 		beforeAgentMutation,
 		refreshAgentAfterMutation,
 		validationIssues,
@@ -375,15 +379,17 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					if (agentId.value !== targetAgentId) return;
 					onRemoveSkill(skillId);
 				},
-				onConfirm: ({
+				onConfirm: async ({
 					id: skillId,
 					skill: updatedSkill,
 					availableTo,
+					restoredFrom,
 				}: {
 					id?: string;
 					skill: AgentSkill;
 					availableTo?: AgentSkillAvailability;
-				}) => {
+					restoredFrom?: number;
+				}): Promise<AgentSkillConfirmResult> => {
 					if (!skillId) return;
 					if (agentId.value !== targetAgentId) return;
 					const sanitizedSkill = normalizeAgentSkillForSave(updatedSkill);
@@ -410,6 +416,9 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 						skill: sanitizedSkill,
 						...(availableTo ? { availableTo } : {}),
 					});
+					if (restoredFrom === undefined || !flushSkillSave) return;
+					// A restore the server did not save keeps the editor on the older version.
+					return isPersistedSave(await flushSkillSave()) ? undefined : { saved: false };
 				},
 			},
 		});
@@ -428,10 +437,8 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	function newNameTarget(
 		availableTo: string,
 		targetProjectId: string,
-		targetAgentId: string,
-	): Pick<SkillNewNameQueryDto, 'scope' | 'projectId' | 'agentId'> {
+	): Pick<SkillNewNameQueryDto, 'scope' | 'projectId'> {
 		if (availableTo === 'instance') return { scope: 'instance' };
-		if (availableTo === 'agent') return { scope: 'agent', agentId: targetAgentId };
 		return { scope: 'project', projectId: targetProjectId };
 	}
 
@@ -516,7 +523,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					? {
 							getDefaultName: async (availableTo: string) =>
 								await getNewSkillName(rootStore.restApiContext, {
-									...newNameTarget(availableTo, targetProjectId, targetAgentId),
+									...newNameTarget(availableTo, targetProjectId),
 									name: locale.baseText('agents.builder.skills.defaultName'),
 								}),
 						}

@@ -7,8 +7,8 @@ import {
 } from '@n8n/backend-services/auth';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { EngineConfig, ExecutionsConfig } from '@n8n/config';
-import type { Project, User } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import type { Project } from '@n8n/db';
+import { Person, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	ResourceAdmission,
@@ -27,7 +27,7 @@ import {
 	isWebhookHtmlSandboxingDisabled,
 } from 'n8n-core';
 
-import type { ExecutionResponseReceiver } from '@/modules/engine-v2/response-channel/execution-response-receiver';
+import type { ExecutionResponseReceiver } from '@/modules/engine-v2/execution-channel/execution-response-receiver';
 
 vi.mock('n8n-core', async () => ({
 	...(await vi.importActual<typeof import('n8n-core')>('n8n-core')),
@@ -67,9 +67,6 @@ import {
 	SEND_AND_WAIT_OPERATION,
 	createRunExecutionData,
 	ExpressionError,
-	OperationalError,
-	UnexpectedError,
-	UserError,
 } from 'n8n-workflow';
 import { Readable } from 'stream';
 import { mock, type MockProxy } from 'vitest-mock-extended';
@@ -77,7 +74,7 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 import { ActiveExecutions } from '@/active-executions';
 import { AuthService } from '@/auth/auth.service';
 import type { EngineV2ResumeRequest } from '@/interfaces';
-import { type ResponseError } from '@n8n/errors';
+import { type ResponseError, OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
@@ -108,8 +105,9 @@ import {
 	invokeWebhook,
 	handleImmediateWebhookResponse,
 	checkTriggerCredentialGate,
+	extractTracingContext,
 } from '../webhook-helpers';
-import { WebhookResponder } from '../webhook-responder';
+import { WebhookResponder, type WebhookResponseCallback } from '../webhook-responder';
 import { WebhookService } from '../webhook.service';
 import type { IWebhookResponseCallbackData, WebhookRequest } from '../webhook.types';
 
@@ -1342,6 +1340,55 @@ describe('getWebhookErrorMessage', () => {
 	});
 });
 
+describe('extractTracingContext', () => {
+	const traceparent = '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01';
+	const otel = {
+		injectTraceHeaders: vi.fn(),
+		extractInboundBaggage: vi.fn((header: string | string[] | undefined) =>
+			header === 'tenant=acme' ? 'tenant=acme' : undefined,
+		),
+	};
+
+	it('returns undefined without trace headers', () => {
+		expect(extractTracingContext({}, otel)).toBeUndefined();
+	});
+
+	it('reads traceparent and tracestate', () => {
+		expect(extractTracingContext({ traceparent, tracestate: 'vendor=1' }, otel)).toEqual({
+			traceparent,
+			tracestate: 'vendor=1',
+		});
+	});
+
+	it('ignores an invalid traceparent', () => {
+		expect(extractTracingContext({ traceparent: 'not-a-traceparent' }, otel)).toBeUndefined();
+	});
+
+	it('ignores baggage when the otel module is not loaded', () => {
+		expect(extractTracingContext({ traceparent, baggage: 'tenant=acme' }, undefined)).toEqual({
+			traceparent,
+		});
+	});
+
+	it('reads the baggage that the otel module returns', () => {
+		expect(extractTracingContext({ traceparent, baggage: 'tenant=acme' }, otel)).toEqual({
+			traceparent,
+			baggage: 'tenant=acme',
+		});
+		expect(otel.extractInboundBaggage).toHaveBeenCalledWith('tenant=acme');
+	});
+
+	it('reads baggage without a traceparent', () => {
+		expect(extractTracingContext({ baggage: 'tenant=acme' }, otel)).toEqual({
+			baggage: 'tenant=acme',
+		});
+	});
+
+	it('returns undefined when the otel module returns no baggage', () => {
+		expect(extractTracingContext({ baggage: 'n8n.workflow.id=forged' }, otel)).toBeUndefined();
+	});
+});
+
 // Shared by the two `executeWebhook` blocks below: `mockInstance` overwrites the
 // container binding, so registering these per-describe would leave the first block
 // holding a mock the code under test no longer resolves.
@@ -1624,7 +1671,7 @@ describe('executeWebhook form content type', () => {
 			mock<Project>({ id: 'project-1', name: 'Project 1' }),
 		);
 		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
-			mock<IWorkflowExecuteAdditionalData>(),
+			mock<IWorkflowExecuteAdditionalData>({ otel: undefined }),
 		);
 		webhookService.runWebhook.mockResolvedValue({});
 
@@ -2245,7 +2292,7 @@ describe('executeWebhook additional data', () => {
 
 	it('projects the looked-up user down to the four public fields', async () => {
 		userRepository.findByIdWithRole.mockResolvedValue(
-			mock<User>({
+			Object.assign(new Person(), {
 				id: 'user-1',
 				email: 'user@example.com',
 				firstName: 'Test',
@@ -2481,7 +2528,7 @@ describe('executeWebhook in responseNode mode when the Respond node never runs',
 	 */
 	const startWebhook = async () => {
 		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
-			mock<IWorkflowExecuteAdditionalData>(),
+			mock<IWorkflowExecuteAdditionalData>({ otel: undefined }),
 		);
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(
 			mock<Project>({ id: 'project-1', name: 'Project 1' }),
@@ -2677,6 +2724,7 @@ describe('executeWebhook response-mode callback contract', () => {
 			mock<IWorkflowExecuteAdditionalData>({
 				// A real string: the formPage branch builds a URL from it.
 				formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+				otel: undefined,
 			}),
 		);
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(
@@ -2789,6 +2837,8 @@ describe('executeWebhook on engine v2', () => {
 		destinationNode,
 		responseHeaders,
 		response = mock<express.Response>({ headersSent: false, writableEnded: false }),
+		method = 'POST',
+		childNodes = [],
 	}: {
 		responseMode?: string;
 		startNode?: INode;
@@ -2799,12 +2849,16 @@ describe('executeWebhook on engine v2', () => {
 		/** The response headers configured on the webhook node, as an expression. */
 		responseHeaders?: string;
 		response?: express.Response;
+		method?: 'GET' | 'POST';
+		/** The nodes after the start node. */
+		childNodes?: INode[];
 	} = {}) => {
 		webhookService.runWebhook.mockResolvedValue(webhookResult);
 
 		const workflow = mock<Workflow>({
 			id: WORKFLOW_ID,
 			name: 'Test Workflow',
+			getChildNodes: vi.fn(() => childNodes.map((node) => node.name)),
 			nodeTypes: {
 				getByNameAndVersion: vi
 					.fn()
@@ -2826,7 +2880,11 @@ describe('executeWebhook on engine v2', () => {
 			},
 		});
 
-		const responseCallback = vi.fn();
+		// Set after `mock()`, which would wrap the nodes so that every unset property is truthy.
+		workflow.nodes = Object.fromEntries(childNodes.map((node) => [node.name, node]));
+
+		const responseReceived = createDeferredPromise();
+		const responseCallback = vi.fn<WebhookResponseCallback>(() => responseReceived.resolve());
 
 		const returned = await executeWebhook(
 			workflow,
@@ -2848,14 +2906,14 @@ describe('executeWebhook on engine v2', () => {
 						},
 					}),
 			executionId,
-			mock<WebhookRequest>({ method: 'POST', contentType: undefined, headers: {} }),
+			mock<WebhookRequest>({ method, contentType: undefined, headers: {} }),
 			response,
 			responseCallback,
 			destinationNode,
 			{ engineResume },
 		);
 
-		return { response, responseCallback, returned };
+		return { response, responseCallback, responseReceived: responseReceived.promise, returned };
 	};
 
 	beforeEach(() => {
@@ -2863,7 +2921,7 @@ describe('executeWebhook on engine v2', () => {
 		vi.clearAllMocks();
 
 		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
-			mock<IWorkflowExecuteAdditionalData>(),
+			mock<IWorkflowExecuteAdditionalData>({ otel: undefined }),
 		);
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(
 			mock<Project>({ id: 'project-1', name: 'Project 1' }),
@@ -3056,7 +3114,9 @@ describe('executeWebhook on engine v2', () => {
 		});
 
 		it('answers with the data of the step the run ended on', async () => {
-			const { responseCallback } = await startWebhook({ responseMode: 'lastNode' });
+			const { responseCallback, responseReceived } = await startWebhook({
+				responseMode: 'lastNode',
+			});
 
 			answerRun('completed', {
 				nodeId: 'edit-fields',
@@ -3065,7 +3125,9 @@ describe('executeWebhook on engine v2', () => {
 				outputs: [[{ json: { ok: true } }]],
 			});
 
-			await vi.waitFor(() => expect(responseCallback).toHaveBeenCalledTimes(1));
+			// The first response with step data loads the compatibility module on demand.
+			await responseReceived;
+			expect(responseCallback).toHaveBeenCalledTimes(1);
 			expect(responseCallback).toHaveBeenCalledWith(
 				null,
 				expect.objectContaining({ body: [{ ok: true }], code: 200 }),
@@ -3441,6 +3503,27 @@ describe('executeWebhook on engine v2', () => {
 			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 
+		// The GET only renders the form, so a refusal on the submit alone would come
+		// after the person filled it in.
+		it.each(['GET', 'POST'] as const)(
+			'answers 400 for a %s to a form trigger followed by a Form Ending',
+			async (method) => {
+				const { responseCallback } = await startWebhook({
+					method,
+					startNode: webhookNode(FORM_TRIGGER_NODE_TYPE),
+					childNodes: [
+						{ ...webhookNode(FORM_NODE_TYPE, { operation: 'completion' }), name: 'Form Ending' },
+					],
+				});
+
+				expect(reasonFrom(responseCallback)).toEqual({
+					status: 400,
+					message: 'Engine v2 cannot run a form that has more pages or a Form Ending yet.',
+				});
+				expect(webhookService.runWebhook).not.toHaveBeenCalled();
+			},
+		);
+
 		it('answers 400, not 500, when the engine-v2 module is disabled', async () => {
 			engineDataPlaneProxy.isAvailable.mockReturnValue(false);
 
@@ -3533,7 +3616,7 @@ describe('executeWebhook when the node webhook throws', () => {
 			mock<Project>({ id: 'project-1', name: 'Project 1' }),
 		);
 		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
-			mock<IWorkflowExecuteAdditionalData>(),
+			mock<IWorkflowExecuteAdditionalData>({ otel: undefined }),
 		);
 		engineV2Dispatcher.handlesWorkflow.mockReturnValue(false);
 		if (webhookResult !== undefined) {

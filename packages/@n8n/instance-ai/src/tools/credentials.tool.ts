@@ -1,10 +1,12 @@
 /**
- * Shared credential tools for the workflow and Agent builders: list, search types, set up, test, and delete.
+ * Shared credential tools for the workflow and Agent builders: list, search types, set up, test, update descriptions, and delete.
  */
 import { Tool } from '@n8n/agents';
 import { getCredentialDescriptionPreview } from '@n8n/ai-utilities/credential-description';
 import {
 	getLegacyBuilderToolNames,
+	updateCredentialDescriptionSchema,
+	UPDATE_CREDENTIAL_DESCRIPTION_TOOL_DESCRIPTION,
 	AI_GATEWAY_MANAGED_TAG,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type InstanceAiCredentialSetupHint,
@@ -30,6 +32,7 @@ import {
 	type CredentialToolContext,
 } from './credential-card';
 import { setupAgentCredentials } from './agent-credential-setup';
+import { resolveAgentBuilderTarget } from './orchestration/agent-target-binding';
 import {
 	buildSetupOutcomeMessage,
 	isSelectionVerified,
@@ -394,7 +397,7 @@ const setupCredentialsSchema = z.object({
 				credentialType: z
 					.string()
 					.describe(
-						'n8n credential type name (e.g. "slackApi", "gmailOAuth2"). Must be the registered type name, which can differ from the credential class name — verify with `search_credential_types` when unsure.',
+						'n8n credential type name (e.g. "slackApi", "gmailOAuth2"). Must be the registered type name, which can differ from the credential class name — verify by running `search_credential_types` through `call_tool` when unsure.',
 					),
 				reason: z.string().optional().describe('Why this credential is needed (shown to user)'),
 				suggestedName: z
@@ -429,7 +432,7 @@ const setupCredentialsSchema = z.object({
 		.string()
 		.optional()
 		.describe(
-			'The workflow these credentials are for, when one exists (e.g. the id returned by workflow_builder_build_workflow). Lets the setup panel list them against that workflow.',
+			'Workflow target only. The workflow these credentials are for, when one exists (e.g. the id returned by workflow_builder_build_workflow). Lets the setup panel list them against that workflow. Never pass an Agent ID here.',
 		),
 	requireUserSelection: z
 		.boolean()
@@ -452,12 +455,14 @@ const earlySetupCredentialsSchema = setupCredentialsSchema.extend({
 		.string()
 		.optional()
 		.describe(
-			'Before writing workflow source, announce known service credentials with its planned workspace filePath. This creates or reuses the workflow context and returns without waiting for setup. Pass the complete current requirement list, including an empty list when a plan drops all services. Omit for standalone credential setup.',
+			'Workflow target only. Before writing workflow source, announce known service credentials with its planned workspace filePath. This creates or reuses the workflow context and returns without waiting for setup. Pass the complete current requirement list, including an empty list when a plan drops all services. Omit for standalone credential setup.',
 		),
 	workflowName: z
 		.string()
 		.optional()
-		.describe('Name of the new workflow, required on its first early setup call.'),
+		.describe(
+			'Workflow target only. Name of the new workflow, required on its first early setup call.',
+		),
 });
 
 const earlySetupCredentialsSchemaWithFolder = earlySetupCredentialsSchema.extend({
@@ -465,7 +470,7 @@ const earlySetupCredentialsSchemaWithFolder = earlySetupCredentialsSchema.extend
 		.string()
 		.optional()
 		.describe(
-			'Folder for the new workflow. Pass the intended folder here before building; omit it on the later workflow_builder_build_workflow call.',
+			'Workflow target only. Folder for the new workflow. Pass the intended folder here before building; omit it on the later workflow_builder_build_workflow call.',
 		),
 });
 
@@ -486,6 +491,13 @@ type SearchTypesInput = z.infer<typeof searchCredentialTypesSchema>;
 type SetupInput = z.infer<typeof earlySetupCredentialsSchemaWithFolder>;
 type TestInput = z.infer<typeof testCredentialSchema>;
 type DeleteInput = z.infer<typeof deleteCredentialSchema>;
+
+const WORKFLOW_ONLY_SETUP_FIELDS = [
+	'workflowId',
+	'filePath',
+	'workflowName',
+	'folderPath',
+] as const;
 
 function getSetupInputSchema(context: InstanceAiContext) {
 	if (!isSetupPanelEnabled(context)) return setupCredentialsSchema;
@@ -814,7 +826,7 @@ async function validateSetupRequests(context: InstanceAiContext, requests: Setup
 				.map((type) => `"${type}"`)
 				.join(
 					', ',
-				)} is registered on this instance. Type names can differ from credential class names. Pick the exact type from the suggestions, or find it with search_credential_types, then retry.`,
+				)} is registered on this instance. Type names can differ from credential class names. Pick the exact type from the suggestions, or find it by running search_credential_types through call_tool, then retry.`,
 			...(Object.keys(suggestions).length > 0 ? { suggestions } : {}),
 		};
 	}
@@ -838,6 +850,25 @@ async function validateSetupRequests(context: InstanceAiContext, requests: Setup
 	return undefined;
 }
 
+/**
+ * Zod cannot tell an Agent ID from a workflow ID, so compare `workflowId` with
+ * the selected Agent. A failed lookup must not block workflow setup.
+ */
+async function rejectAgentIdAsWorkflowId(context: InstanceAiContext, workflowId: string) {
+	let agentId: string | undefined;
+	try {
+		agentId = (await resolveAgentBuilderTarget(context))?.agentId;
+	} catch {
+		return undefined;
+	}
+	if (agentId !== workflowId) return undefined;
+	return {
+		error: 'agent_id_as_workflow_id',
+		message:
+			'`workflowId` is the ID of the selected Agent, not a workflow. To set up credentials for the Agent, pass target "agent" and omit `workflowId`.',
+	};
+}
+
 async function handleSetup(
 	context: InstanceAiContext,
 	input: SetupInput,
@@ -854,8 +885,21 @@ async function handleSetup(
 		};
 	}
 
+	if (!resumeData && input.target !== 'agent' && input.workflowId !== undefined) {
+		const agentIdError = await rejectAgentIdAsWorkflowId(context, input.workflowId);
+		if (agentIdError) return agentIdError;
+	}
+
 	if (input.target === 'agent') {
 		if (!resumeData) {
+			// The Agent target always uses the selected Agent, so workflow fields have no meaning.
+			const workflowFields = WORKFLOW_ONLY_SETUP_FIELDS.filter((f) => input[f] !== undefined);
+			if (workflowFields.length > 0) {
+				return {
+					error: 'workflow_fields_for_agent',
+					message: `${workflowFields.map((f) => `\`${f}\``).join(', ')}: workflow setup only. Omit for target "agent": the Agent selected with agent_builder_select_agent is used.`,
+				};
+			}
 			const invalidRequest = await validateSetupRequests(context, input.credentials);
 			if (invalidRequest) return invalidRequest;
 		}
@@ -1084,5 +1128,20 @@ export function createDeleteCredentialTool(context: InstanceAiContext) {
 		.handler(
 			async (input, ctx) => await handleDelete(context, deleteCredentialSchema.parse(input), ctx),
 		)
+		.build();
+}
+
+export function createUpdateCredentialDescriptionTool(context: InstanceAiContext) {
+	// Sanitization makes nullable fields optional, but updates require an explicit description.
+	const inputSchema = sanitizeInputSchema(updateCredentialDescriptionSchema).required();
+	return new Tool(DOMAIN_TOOL_IDS.UPDATE_CREDENTIAL_DESCRIPTION)
+		.description(UPDATE_CREDENTIAL_DESCRIPTION_TOOL_DESCRIPTION)
+		.input(inputSchema)
+		.output(z.object({ success: z.literal(true) }))
+		.handler(async (input) => {
+			const { credentialId, description } = updateCredentialDescriptionSchema.parse(input);
+			await context.credentialService.updateDescription(credentialId, description);
+			return { success: true };
+		})
 		.build();
 }

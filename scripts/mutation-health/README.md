@@ -187,9 +187,12 @@ maintain.
 
 Not scored:
 
-- `@n8n/expression-runtime` — Stryker's dry run SIGABRTs on the isolated-vm engine ([DEVP-257](https://linear.app/n8n/issue/DEVP-257)).
 - `.vue` single-file components — every SFC package crashed Stryker's mutate step in the 2026-06 sweep, and the component layer is low-value to mutate.
 - Tests, declarations, stories, configs, migrations and build output.
+
+`@n8n/expression-runtime/src/runtime/` is scored, but the isolate runs the
+prebuilt `dist/bundle/runtime.iife.js`, not the mutated source. Only host unit
+tests that import `src/runtime/` directly can kill those mutants.
 
 `packages/cli` is scored with an explicit [`--test-files`](#packagescli-test-scope)
 list for named targets, or with the changed CLI tests in diff mode.

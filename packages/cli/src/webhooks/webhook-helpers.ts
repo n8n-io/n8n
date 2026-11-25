@@ -51,15 +51,13 @@ import {
 	getExecutableNodeNames,
 	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
 	NodeOperationError,
-	OperationalError,
 	SEND_AND_WAIT_OPERATION,
 	tryToParseUrl,
-	UnexpectedError,
-	UserError,
 	WAIT_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	WorkflowConfigurationError,
 } from 'n8n-workflow';
+import type { IncomingHttpHeaders } from 'node:http';
 import { Readable } from 'node:stream';
 import { finished } from 'stream/promises';
 
@@ -72,6 +70,9 @@ import {
 	InternalServerError,
 	NotFoundError,
 	UnsupportedMediaTypeError,
+	OperationalError,
+	UnexpectedError,
+	UserError,
 } from '@n8n/errors';
 import {
 	createExecutionIdV2,
@@ -249,7 +250,7 @@ async function prepareMcpQueueExecution(
 		firstItem && 'json' in firstItem ? firstItem.json?.mcpListToolsRelay : null;
 	if (!isMcpListToolsRelay(mcpListToolsRelayValue)) return false;
 
-	const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
+	const { Publisher } = await import('@n8n/backend-services');
 	const publisher = Container.get(Publisher);
 	await publisher.publishMcpRelay({
 		sessionId: mcpListToolsRelayValue.sessionId,
@@ -345,6 +346,14 @@ function isEnabledFormPageNode(node: INode): boolean {
 	if (node.type === FORM_NODE_TYPE) return true;
 
 	return node.type === WAIT_NODE_TYPE && node.parameters.resume === 'form';
+}
+
+/** Whether submitting this Form Trigger opens another form page or a Form Ending. */
+function formTriggerHasMorePages(workflowStartNode: INode, workflow: Workflow): boolean {
+	return (
+		workflowStartNode.type === FORM_TRIGGER_NODE_TYPE &&
+		autoDetectResponseMode(workflowStartNode, workflow, 'POST') === 'formPage'
+	);
 }
 
 export function autoDetectResponseMode(
@@ -854,8 +863,7 @@ async function prepareWebhookAdditionalData({
 
 	additionalData.getUserById = async (id: string) => {
 		const user = await Container.get(UserRepository).findByIdWithRole(id);
-		if (!user) return undefined;
-		return toWebhookUser(user);
+		return user?.toIUser();
 	};
 
 	const oauth2FlowProxy = Container.get(OAuth2FlowProxy);
@@ -1045,6 +1053,7 @@ export async function executeWebhook(
 	);
 
 	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
+		// oxlint-disable-next-line typescript/no-deprecated -- Keep the alias for existing webhook expressions.
 		$executionId: executionId,
 	};
 
@@ -1112,7 +1121,12 @@ export async function executeWebhook(
 		// run that will not start.
 		routesToEngineV2 = engineV2Webhooks.handles(workflowData, executionMode);
 		if (routesToEngineV2) {
-			engineV2Webhooks.assertSupported({ workflowStartNode, responseMode, executionId });
+			engineV2Webhooks.assertSupported({
+				workflowStartNode,
+				responseMode,
+				executionId,
+				formHasMorePages: formTriggerHasMorePages(workflowStartNode, workflow),
+			});
 			// A workflow that runs on engine v2 in this mode never starts on v1, so a
 			// resume here names a v2 execution. Anything else is a bug.
 			if (executionId !== undefined && !isExecutionIdV2(executionId)) {
@@ -1338,19 +1352,8 @@ export async function executeWebhook(
 			runData.engineV2ExecutionId = engineV2ExecutionId;
 		}
 
-		// Extract W3C trace context from webhook headers for OTEL propagation.
-		const traceparent = req.headers.traceparent;
-		if (
-			typeof traceparent === 'string' &&
-			/^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$/.test(traceparent)
-		) {
-			const tracestate = req.headers.tracestate;
-			runData.tracingContext = {
-				traceparent,
-				tracestate:
-					typeof tracestate === 'string' && tracestate.length <= 512 ? tracestate : undefined,
-			};
-		}
+		const tracingContext = extractTracingContext(req.headers, additionalData.otel);
+		if (tracingContext) runData.tracingContext = tracingContext;
 
 		// From here the dispatcher owns the payload: it deletes the files when the
 		// data plane does not accept the run.
@@ -1379,8 +1382,9 @@ export async function executeWebhook(
 		 * We track the webhook response mode so that `WorkflowRunner` can decide whether it
 		 * needs to fetch full execution data from the DB when a job finishes in scaling mdoe.
 		 *
-		 * A v2 run has no control-plane execution to record it against, and the
-		 * `engine-v2` module refuses queue mode, so there is nothing to track.
+		 * A v2 run has no control-plane execution to record it against, and its
+		 * response comes back over the execution channel, not from a queue job,
+		 * so there is nothing to track.
 		 */
 		if (!routesToEngineV2) {
 			Container.get(ActiveExecutions).setResponseMode(executionId, responseMode);
@@ -1853,4 +1857,26 @@ function toUnansweredRunResponse(
 				responseCode: 504,
 			};
 	}
+}
+
+export function extractTracingContext(
+	headers: IncomingHttpHeaders,
+	otel: IWorkflowExecuteAdditionalData['otel'],
+): IWorkflowExecutionDataProcess['tracingContext'] {
+	const tracingContext: NonNullable<IWorkflowExecutionDataProcess['tracingContext']> = {};
+
+	const { traceparent, tracestate } = headers;
+	if (
+		typeof traceparent === 'string' &&
+		/^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$/.test(traceparent)
+	) {
+		tracingContext.traceparent = traceparent;
+		tracingContext.tracestate =
+			typeof tracestate === 'string' && tracestate.length <= 512 ? tracestate : undefined;
+	}
+
+	const baggage = otel?.extractInboundBaggage(headers.baggage);
+	if (baggage) tracingContext.baggage = baggage;
+
+	return tracingContext.traceparent || tracingContext.baggage ? tracingContext : undefined;
 }

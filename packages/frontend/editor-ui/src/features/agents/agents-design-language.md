@@ -17,12 +17,71 @@ Show the project icon before the project name in Agent builder and session
 timeline breadcrumbs. Use the same icon as the owning project. Show the user
 icon for a personal project.
 
+Include the selected folder path for an unsaved Agent. Keep the path through
+its first save. Use saved placement for saved Agents.
+
+## Folder subtitles
+
+Use the shared `FolderCardSubtitle` for Agent and workflow folder metadata.
+Show direct resource counts, child-folder counts, Last updated, and Created in
+that order. Hide zero counts. Keep timestamps visible for empty folders.
+Hide Created on narrow screens. Keep count labels together when the subtitle
+wraps. Show search paths on a separate line.
+
+## Folder pagination
+
+List folders before Agents, as workflow lists do. Use one total, page size, and
+pager for both resource types. Fill the remaining page slots with Agents when a
+page contains the last folders. Keep the global overview flat.
+
+## Folder action menus
+
+Use the shared `FolderCardActions` for workflow and Agent folder cards. Keep
+the same trigger, menu width, labels, and neutral Delete treatment. Order Agent
+actions as Open, Create folder inside, Create Agent inside, Favorite, Rename,
+Move, and Delete. Keep unavailable actions visible and disabled. Keep Open and
+Favorite available in read-only branches. Keep MCP access actions specific to
+workflow folders. Create the Agent in the selected folder through the existing
+Agent creation flow.
+
+## Folder moves
+
+Match the workflow move dialog. Name the Agent or folder in the title. Show the
+current project and its icon above the shared searchable folder picker. Keep the
+project fixed. Offer project root and show nested folder paths. Use `Move Agent`
+or `Move folder` after Cancel. Keep the Agent modal shell and its narrow layout.
+Disable the fixed project field. Focus the folder picker after its options load.
+
+## Folder removal
+
+Match the workflow folder confirmation. Name the folder in the title and show
+its content counts. Offer relocation and archival as radio choices. Start with
+neither choice selected. Show the destination picker after relocation is selected.
+Require the same typed folder confirmation as workflows before archival. Keep
+keyboard focus on the choices without selecting text when the dialog opens. Archival
+deletes the folder tree and moves its Agents to the project root. Keep all Agent
+data. Explain that users can unarchive the Agents later. Use `Delete folder` for
+the confirmation action. Do not offer permanent Agent deletion in this dialog.
+Keep a `Show archived agents` link in the empty state when only archived Agents remain.
+
+## Agent card subtitles
+
+Use a separate element for each separator between metadata fields, as workflow
+cards do. Use the row gap to give each separator equal space on both sides.
+
 ## History entry points
 
 Put `Version history` in the Agent actions menu. Put `View timeline` in the
 Publish dropdown. Each action opens its tab, including when the panel is already
 open. Keep history available for saved Agents during edits and with read-only access.
 Hide these entry points in embedded Agent artifacts.
+
+## Builder tabs
+
+Show Build, Knowledge, Sessions, and Settings from the first visit to a new
+Agent. Let users switch tabs before they save or configure the Agent. Keep
+persistence tied to edits and actions that need a saved Agent. Keep optional
+tabs under their existing feature flags.
 
 ## Configuration add actions
 
@@ -54,6 +113,11 @@ the Agent and Assistant setup is complete. Let users close it during the visit.
 Keep the panel state when the Agent is saved or published. For published or
 read-only Agents, use the saved panel preference. Apply these defaults in the
 control layout. Keep the experiment layouts unchanged.
+
+Keep a new Assistant chat local until the user sends a message. Opening the
+panel must not add an empty chat to history. Resume an existing chat when one
+is available. Send an opening prompt from the Agents list after the local chat
+is saved. Keep manual Agent edits independent of Assistant chat persistence.
 
 ## Builder side panel widths
 
@@ -171,6 +235,7 @@ Agent artifacts inside an Assistant chat keep the handoff in that chat.
 ## Setup checklist
 
 Show `Finish setup` after the Agent exists and the Assistant finishes building it.
+Hide it when the Agent is published, including when the draft has pending changes.
 Keep the checklist hidden while the Assistant builds or updates the Agent.
 Use this behavior in Agent artifacts and the standalone Agent Builder.
 
@@ -355,6 +420,9 @@ under category headings. Hide the category tabs until the search is cleared.
 Keep the outer modal body fixed on picker steps. Show a list scrollbar only
 when the list content overflows. Do not show a scrollbar for an empty state.
 
+In the Channels picker, show a short description under each channel name. It
+says what the channel does and what setup needs. Use small, muted text.
+
 Put an explicit action in every selectable row. The action must name the
 outcome. Use `Add node`, `Add MCP`, `Add workflow`, or the matching asset label.
 When the list has no items or no search matches, show a centered, asset-specific
@@ -371,15 +439,14 @@ a direct pill edit. Save, Cancel, and Close exit the complete flow.
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Skills                    | Use `fit` with a 52rem content width. Keep it narrower than `full`. Use the flush Agent body so the file workspace does not get double padding. Keep the file navigation and editor inside the scrolling body. |
 | Dangerous confirmation    | Keep its explicit Cancel and primary actions. Examples are Agent, file, and session deletion; unpublish; revert; eval regeneration; LangSmith export; and managed Slack app removal.                           |
-| Managed Slack app removal | Keep the stacked confirmation because it can delete an external resource.                                                                                                                                      |
+| Channel removal           | Use `AgentChannelRemoveConfirmation`. It stacks over the channel modal and matches the Agent confirmation. Slack adds its app deletion choice in the slot.                                                     |
 | Small utility dialog      | Keep an appropriate small size. Use Cancel and one bottom-right primary action. JSON import and Agent duplication use this rule.                                                                               |
 | Channel platform setup    | A platform-owned setup action can stay in the inline modal content. The Agent shell still owns navigation and dismissal.                                                                                       |
 | Memory                    | Do not migrate Memory into this pattern in this change.                                                                                                                                                        |
 
 When the skills module is on, `Add skill` starts with the `Skills` picker. The
-picker shows only skills that the Agent can use: skills of its project, skills
-of this Agent only, and global skills. Group them in the tabs All, the project
-name, This agent, and Global. Do not
+picker shows only skills that the Agent can use: skills of its project and
+global skills. Group them in the tabs All, the project name, and Global. Do not
 show a scope label or an icon in a row. Each row has a switch with the label
 `Attached` or `Detached`. The switch saves at once and keeps the picker open.
 This is an exception to the explicit row action. Disable a skill whose name is
@@ -389,10 +456,10 @@ preview of an attached skill shows `Detach` instead of `Add skill`. Both
 actions return to the picker. Do not edit a skill from the picker.
 `Create skill` shows on every tab. It opens the upload screen, and Back returns
 to the picker. The first field of the skill form is `Where can this skill be
-added?`: `This project`, `This agent only`, or `Global`. Each choice has an
-icon. The field starts from the tab: the project tab starts at `This project`,
-the Global tab at `Global`, and the other tabs at `This agent only`. Only a
-user who can create global skills sees `Global`. An existing skill that the
+added?`: `This project` or `Global`. Each choice has an icon. The field starts
+from the tab: the Global tab starts at `Global`, and the other tabs at
+`This project`. Only a user who can create global skills sees `Global`; for
+other users the Global tab also starts at `This project`. An existing skill that the
 user can edit shows the same field. Disable it, with a tooltip that gives the
 reason, when another Agent uses the skill. `Save skill` stays disabled until
 the user changes the skill or its target. Do not show the field for an inline
@@ -405,6 +472,10 @@ instructions and references as rendered markdown. Put a muted hint before Cancel
 user how to edit the skill, or whom to ask. A skill that the user can use but
 not edit opens this way. Hide Save. Keep `Detach` for an attached skill, and
 `Add skill` for a preview of a skill that is not attached.
+
+Render Mermaid code blocks as diagrams in the skill view. Keep the source in a
+collapsed section below each diagram. If a block cannot render, show its source
+as code. Keep the original Markdown in the editor.
 
 A skill that the draft pins to an older version also opens read-only, with
 the hint that the agent uses an older version. Its primary action is
@@ -419,6 +490,10 @@ until the editor opens. Show Back for manual creation. Back discards the draft
 and returns to the upload screen.
 Existing skills open in the editor. Keep the body field order: When to use this
 skill, What the skill does, and Allowed tools. Use `Save skill` to confirm.
+
+Show the selected scope in the skill header. The Change scope menu lists only
+other scopes. After a new selection, keep the previous scope available so the
+user can undo the selection before they save.
 
 ### Review checklist
 
@@ -445,6 +520,67 @@ callout or a Fix with Assistant action for these errors. Keep the full input
 and output in the collapsed details and the trace. Keep earlier failed calls
 visible after a successful retry. Unexpected failures keep the existing error
 treatment.
+
+## Plan progress
+
+Read the current plan from the server. Historical tool results do not define the card.
+Refresh on conversation load, job updates, plan-tool completion, and reconnection.
+Accept status changes with an unchanged plan revision. Discard superseded requests.
+
+Use calculated task statuses for progress, the spinner, timing, and visibility.
+Count each standalone task and empty group as one task. An empty group stays Pending.
+When a group has subtasks, count those subtasks instead of the group.
+Show `paused` as **Stopped**. A capacity reservation does not start the spinner.
+Hide the card when all leaves have final statuses or the plan is closed.
+Parent-run tasks need explicit updates. Delegated tasks follow their owning job.
+
+## Stop tasks in Agent Preview
+
+Place **Stop all tasks** beside **View trace** in the expanded plan card.
+Use the same action in the background task card when there is no plan.
+Hide the stack during the request and show the inline stop status.
+Keep the user's expansion choice. Restore focus when the action disappears.
+Keep the action available while the plan has unfinished work. This includes
+planning and result review between tasks. Hide it after the plan stops or ends.
+
+Hide the stack immediately when the user selects **Stop all tasks**. Show an
+inline **Stopping all tasks…** status and **This may take a while** at the end
+of the scrollable transcript. Keep stop, summary, and retry statuses in the
+chat flow. Do not attach them to the composer. After the captured work settles,
+show **Preparing a summary…** until the reply appears.
+Keep the stopped stack hidden. Explain the outcome in a brief chat reply.
+Keep this reply and its **View trace** link in message history. Later messages,
+continuation, and reloads must not remove it. Each Stop keeps its own reply.
+Use plain reply text, as the paused wireframe shows. Do not add a collapsed card.
+If the summary has no text, keep a factual fallback in that same history entry.
+Keep results and **View trace** available. Do not claim that external actions
+were undone or that late work cannot run.
+
+Hide the stack when work finishes. Show **Preparing the summary…** in the
+scrollable transcript while the final reply has no text. Replace that status
+with the model's reply as text arrives. Keep **View trace** below the status
+and the reply. Keep the reply and link after later messages and reloads. Use
+plain chat text with a link row below it. Do not show a second loading indicator
+or a collapsed result card for the final batch. Keep partial result cards while
+other tasks continue. Keep a factual fallback and trace access if no summary
+text arrives. Do not add artifact links until that feature is available.
+A result batch is not final while the plan has unfinished tasks. Keep the
+partial result card if the reply starts another background job or adds more
+plan work. Do not attach the final-summary trace link to that progress reply.
+Keep the stack visible after a recovered tool error if work is
+still active. A failure to stop shows an inline explanation and **Retry stopping**.
+Keep the stack hidden during that failure. A report failure shows a factual
+fallback with trace access.
+
+Stop remains resumable in the same chat. The user names tasks in a message for
+selective continuation. Show the stack again after continuation succeeds or
+new work starts. A new message alone does not resume stopped tasks. Keep the
+paused task states and completed results. Do not add row controls.
+
+The acknowledgement uses the normal message queue. Disable tools and steering
+for this reply. Composer Stop controls only the current response, including
+the acknowledgement. Discard older queued input when Stop starts. Process later
+messages after the acknowledgement. Restart completion is best effort.
 
 ## Extend this document
 
@@ -483,6 +619,12 @@ each response. Use the existing child task order for background approvals.
 Focus each approval as it appears. Return focus to the composer after the last
 decision. Keep tool steps, questions, and display cards in the conversation.
 If a surface keeps a resolved card, show the decision without active actions.
+
+Attach the plan card directly above the approval card. Keep both in one stack
+without a gap. Use the standard approval header with the Agent and tool names.
+For background tasks, show **Approval for [task title]** above these names inside
+the approval header.
+Keep the approval card in front of the plan card's overlapping lower edge.
 
 In the session timeline, show pending background tool approvals below their
 job row. Use the shared approval card and disable automatic focus so rows do
@@ -532,8 +674,14 @@ publication and unpublication event, including repeated publication of a version
 Show unknown durations for incomplete legacy records.
 
 Use the small Agent modal shell for version details and publication. Reuse the
-workflow version name and description fields. Both fields are optional. Keep
-Cancel before Save or Publish. Keep entered values when the request fails.
+workflow version name and description fields. Require a nonblank version name
+in both dialogs. Prefill an unnamed version with `Version <first 8 ID characters>`.
+Select the name text on initial focus. Keep the description optional. Keep Cancel
+before Save or Publish. Keep entered values when the request fails.
+
+Order version actions as Restore version, Publish version, and Name version.
+For the published version, replace Publish version with Unpublish agent.
+Keep automatic draft saves unnamed unless the user names them.
 
 Flush pending editor changes before opening the publish dialog. Keep the selected
 saved version fixed while the dialog is open. Later edits remain in the draft.

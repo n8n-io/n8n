@@ -60,7 +60,7 @@ describe('agent_builder_resolve_llm tool', () => {
 		expect(result).toEqual({
 			ok: true,
 			provider: 'openai',
-			model: 'gpt-5.6-terra',
+			model: 'gpt-6.1-terra',
 			credentialId: 'c1',
 			credentialName: 'My OpenAI',
 		});
@@ -84,7 +84,7 @@ describe('agent_builder_resolve_llm tool', () => {
 		expect(result).toEqual({
 			ok: true,
 			provider: 'openrouter',
-			model: 'anthropic/claude-sonnet-5',
+			model: 'anthropic/claude-sonnet-5.5',
 			credentialId: 'c2',
 			credentialName: 'My OpenRouter',
 		});
@@ -377,7 +377,7 @@ describe('agent_builder_resolve_llm tool', () => {
 			expect(result).toEqual({
 				ok: true,
 				provider: 'openrouter',
-				model: 'anthropic/claude-sonnet-5',
+				model: 'anthropic/claude-sonnet-5.5',
 				credentialId: 'c2',
 				credentialName: 'Work OpenRouter',
 			});
@@ -421,7 +421,7 @@ describe('agent_builder_resolve_llm tool', () => {
 			expect(result).toEqual({
 				ok: true,
 				provider: 'anthropic',
-				model: 'claude-sonnet-5',
+				model: 'claude-sonnet-5-5',
 				credentialId: 'c2',
 				credentialName: 'My Anthropic',
 				autoPicked: true,
@@ -565,7 +565,7 @@ describe('agent_builder_resolve_llm tool', () => {
 			expect(result).toEqual({
 				ok: true,
 				provider: 'anthropic',
-				model: 'claude-sonnet-5',
+				model: 'claude-sonnet-5-5',
 				credentialId: 'c1',
 				credentialName: 'My Anthropic',
 			});
@@ -1356,7 +1356,7 @@ describe('agent_builder_resolve_llm tool', () => {
 
 			expect(view.availableModelsTruncated).toBe(true);
 			expect(view.nextStep).toContain('sample');
-			expect(view.nextStep).toContain('agent_builder_ask_questions');
+			expect(view.nextStep).toContain('ask_user');
 		});
 
 		it('tells the model to mention claimed free OpenAI credits', async () => {

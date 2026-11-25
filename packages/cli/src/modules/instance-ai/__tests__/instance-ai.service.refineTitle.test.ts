@@ -59,7 +59,8 @@ describe('InstanceAiService — refineTitleIfNeeded input cleaning', () => {
 		tracing: { getTraceContextForContinuation: ReturnType<typeof vi.fn> };
 		eventBus: { publish: ReturnType<typeof vi.fn> };
 		logger: { warn: ReturnType<typeof vi.fn> };
-		modelService: { getModelFetch: ReturnType<typeof vi.fn> };
+		modelService: { getLabeledModelFetch: ReturnType<typeof vi.fn> };
+		instanceAiConfig: { modelRequestLabels: boolean };
 		refineTitleIfNeeded: (threadId: string, userId: string, modelId: ModelConfig) => Promise<void>;
 	};
 
@@ -74,7 +75,8 @@ describe('InstanceAiService — refineTitleIfNeeded input cleaning', () => {
 		service.tracing = { getTraceContextForContinuation: vi.fn(() => undefined) };
 		service.eventBus = { publish: vi.fn() };
 		service.logger = { warn: vi.fn() };
-		service.modelService = { getModelFetch: vi.fn(() => modelFetch) };
+		service.modelService = { getLabeledModelFetch: vi.fn(() => modelFetch) };
+		service.instanceAiConfig = { modelRequestLabels: true };
 		return service;
 	}
 
@@ -100,7 +102,10 @@ describe('InstanceAiService — refineTitleIfNeeded input cleaning', () => {
 		await service.refineTitleIfNeeded('thread-1', 'user-1', modelId);
 
 		expect(generateTitleForRun).toHaveBeenCalledTimes(1);
-		expect(generateTitleForRun).toHaveBeenCalledWith(modelId, 'hey', { modelFetch });
+		expect(generateTitleForRun).toHaveBeenCalledWith(modelId, 'hey', {
+			modelFetch,
+			requestLabels: true,
+		});
 		// Deferred title generation must not mark the thread as refined.
 		expect(patchThread).not.toHaveBeenCalled();
 	});
@@ -118,7 +123,7 @@ describe('InstanceAiService — refineTitleIfNeeded input cleaning', () => {
 		expect(generateTitleForRun).toHaveBeenCalledWith(
 			modelId,
 			'build me a slack notification workflow',
-			{ modelFetch },
+			{ modelFetch, requestLabels: true },
 		);
 		expect(patchThread).toHaveBeenCalledTimes(1);
 	});
@@ -158,7 +163,7 @@ describe('InstanceAiService — refineTitleIfNeeded input cleaning', () => {
 		expect(generateTitleForRun).toHaveBeenCalledWith(
 			modelId,
 			'hey\nlets build a workflow that greets me on telegram every morning',
-			{ modelFetch },
+			{ modelFetch, requestLabels: true },
 		);
 		expect(patchThread).toHaveBeenCalledTimes(1);
 	});

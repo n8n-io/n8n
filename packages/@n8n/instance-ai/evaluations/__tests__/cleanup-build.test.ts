@@ -59,6 +59,33 @@ describe('cleanupBuild', () => {
 		expect(mocks.deleteThread).toHaveBeenCalledWith('T1');
 	});
 
+	it('deletes the owner thread an MCP build used for seeding', async () => {
+		const { client, mocks } = makeClient();
+		await cleanupBuild(
+			client,
+			{ ...makeBuild(), threadId: undefined, seedThreadId: 'S1' },
+			silentLogger,
+		);
+		expect(mocks.deleteThread).toHaveBeenCalledWith('S1');
+	});
+
+	it('treats a thread that is already gone as cleaned, so the build user is still deleted', async () => {
+		const { client, mocks } = makeClient({
+			deleteThread: vi.fn().mockRejectedValue(new N8nApiError('HTTP 404', 404)),
+			deleteAgent: vi.fn().mockResolvedValue(undefined),
+			deleteUser: vi.fn().mockResolvedValue(undefined),
+		});
+		const build = {
+			...makeBuild(),
+			seedThreadId: 'S1',
+			buildProjectId: 'build-project',
+			buildUserId: 'build-user',
+		};
+
+		await expect(cleanupBuild(client, build, silentLogger)).resolves.toBe(true);
+		expect(mocks.deleteUser).toHaveBeenCalledWith('build-user');
+	});
+
 	it('reports not clean when a deletion fails, but still attempts the rest', async () => {
 		const { client, mocks } = makeClient({
 			deleteWorkflow: vi.fn().mockRejectedValue(new Error('HTTP 502')),

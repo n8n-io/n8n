@@ -5,12 +5,8 @@ import { Service } from '@n8n/di';
 import type { ReportingOptions } from '@n8n/errors';
 import type { DataCollection, ErrorEvent, EventHint, Integration } from '@sentry/core';
 import type Sentry from '@sentry/node';
-import {
-	ApplicationError,
-	ExecutionCancelledError,
-	BaseError,
-	UnexpectedError,
-} from 'n8n-workflow';
+import { ApplicationError, ExecutionCancelledError } from 'n8n-workflow';
+import { BaseError, UnexpectedError } from '@n8n/errors';
 import { createHash } from 'node:crypto';
 
 import {
@@ -302,10 +298,12 @@ export class ErrorReporter {
 			dataCollection: DATA_COLLECTION_WITHOUT_PII,
 			enableRuntimeChannelInjection: shouldInjectChannels,
 			enableOpenTelemetrySetup: false,
+			tracePropagationTargets: [],
 			...(isTracingEnabled
 				? {
 						traceLifecycle: 'static',
 						tracesSampler: buildTracesSampler(tracesSampleRate),
+						// oxlint-disable-next-line typescript/no-deprecated -- This hook filters transactions in the static trace lifecycle.
 						beforeSendTransaction: buildBeforeSendTransaction(
 							slowSpanThresholdMs,
 							webhookEndpoint && webhookTracesSampleRate !== undefined
@@ -340,6 +338,7 @@ export class ErrorReporter {
 					},
 				}),
 				requestDataIntegration({
+					// oxlint-disable-next-line typescript/no-deprecated -- Keep explicit request-data exclusions for this integration.
 					include: {
 						cookies: false,
 						data: false,

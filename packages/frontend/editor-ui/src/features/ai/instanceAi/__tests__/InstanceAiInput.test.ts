@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { setActivePinia, createPinia } from 'pinia';
-import { defineComponent, h, ref, type Component, type PropType } from 'vue';
+import { defineComponent, h, ref, type Component, type PropType, type Ref } from 'vue';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -32,6 +32,7 @@ type InputTestProps = {
 	suggestionTelemetryPayload?: ITelemetryTrackProperties;
 	placeholderKey?: BaseTextKey;
 	placeholder?: string;
+	placeholderPreview?: Readonly<Ref<string | undefined>>;
 	contextChip?: ContextChip | null;
 };
 
@@ -278,6 +279,37 @@ describe('InstanceAiInput', () => {
 				{ id: 'quick-examples', type: 'menu' },
 			],
 		);
+	});
+
+	it('keeps contextual and unavailable placeholders above an animated preview', async () => {
+		const placeholderPreview = ref<string | undefined>('Build me an agent');
+		const { getByRole, rerender } = renderComponent({
+			props: inputProps({ placeholderPreview }),
+		});
+		const input = getByRole('textbox');
+		expect(input).toHaveAttribute('placeholder', 'Build me an agent');
+		await rerender({ contextualSuggestion: 'Explain the result' });
+		expect(input).toHaveAttribute('placeholder', 'Explain the result');
+		placeholderPreview.value = 'Build me another agent';
+		await rerender({ isWorkflowBuilderAvailable: false });
+		expect(input).toHaveAttribute('placeholder', 'Workflow builder unavailable');
+	});
+
+	it('reports initial and edited draft content without submitting placeholder previews', async () => {
+		const { emitted, getByRole, rerender } = renderComponent({
+			props: inputProps({ placeholder: 'Build a news agent' }),
+		});
+		const textbox = getByRole('textbox');
+		expect(emitted()['content-change']).toEqual([[false]]);
+		expect(textbox).toHaveValue('');
+		await fireEvent.keyDown(textbox, { key: 'Enter' });
+		expect(emitted().submit).toBeUndefined();
+		await fireEvent.update(textbox, 'My draft');
+		await rerender({ placeholder: 'Build a different agent' });
+		expect(textbox).toHaveValue('My draft');
+		expect(emitted()['content-change']).toEqual([[false], [true]]);
+		await fireEvent.update(textbox, '');
+		expect(emitted()['content-change']).toEqual([[false], [true], [false]]);
 	});
 
 	it('renders the four empty-state suggestions when the textarea is empty', () => {
@@ -574,7 +606,6 @@ describe('InstanceAiInput', () => {
 				promptModified: false,
 			},
 			expect.any(Number),
-			expect.any(Function),
 			EMPTY_ASSISTANT_MENTION_COUNTS,
 			[],
 		]);
@@ -855,7 +886,7 @@ describe('InstanceAiInput', () => {
 	});
 
 	it('submits typed text and attachments from the send button', async () => {
-		const { container, emitted, getByRole, getByTestId, queryByTestId } = renderComponent({
+		const { container, emitted, getByRole, getByTestId } = renderComponent({
 			props: {
 				isStreaming: false,
 				suggestions,
@@ -889,13 +920,12 @@ describe('InstanceAiInput', () => {
 				expect.any(Function),
 				{ kind: 'user_typed' },
 				expect.any(Number),
-				expect.any(Function),
 				EMPTY_ASSISTANT_MENTION_COUNTS,
 				[],
 			],
 		]);
 		expect(textbox).toHaveValue('');
-		expect(queryByTestId('chat-file')).not.toBeInTheDocument();
+		expect(container.querySelector('.n8n-attachment')).not.toBeInTheDocument();
 
 		const restoreDraft = emittedArgument(emitted().submit?.[0], 2);
 		expect(restoreDraft).toBeTypeOf('function');
@@ -903,7 +933,7 @@ describe('InstanceAiInput', () => {
 		expect(restoreDraft()).toBe(true);
 		await waitFor(() => {
 			expect(textbox).toHaveValue('Please send this with context');
-			expect(getByTestId('chat-file')).toBeInTheDocument();
+			expect(container.querySelector('.n8n-attachment')).toBeInTheDocument();
 		});
 	});
 
@@ -940,7 +970,7 @@ describe('InstanceAiInput', () => {
 	});
 
 	it('does not restore a submitted draft over newer composer content', async () => {
-		const { container, emitted, getByRole, getByTestId, queryByTestId } = renderComponent({
+		const { container, emitted, getByRole, getByTestId } = renderComponent({
 			props: { isStreaming: false },
 		});
 		const textbox = getByRole('textbox');
@@ -951,7 +981,7 @@ describe('InstanceAiInput', () => {
 			configurable: true,
 		});
 		await fireEvent.change(fileInput);
-		await waitFor(() => expect(getByTestId('chat-file')).toBeInTheDocument());
+		await waitFor(() => expect(container.querySelector('.n8n-attachment')).toBeInTheDocument());
 		await userEvent.click(getByTestId('instance-ai-send-button'));
 		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
 
@@ -962,7 +992,7 @@ describe('InstanceAiInput', () => {
 
 		expect(restoreDraft()).toBe(false);
 		expect(textbox).toHaveValue('New message');
-		expect(queryByTestId('chat-file')).not.toBeInTheDocument();
+		expect(container.querySelector('.n8n-attachment')).not.toBeInTheDocument();
 	});
 
 	it('opens quick examples and inserts an example without submitting', async () => {
@@ -1033,10 +1063,10 @@ describe('InstanceAiInput', () => {
 		});
 
 		await waitFor(() => {
-			expect(getByTestId('attachment-preview-remove')).toBeInTheDocument();
+			expect(getByTestId('attachment-remove')).toBeInTheDocument();
 		});
 
-		await userEvent.click(getByTestId('attachment-preview-remove'));
+		await userEvent.click(getByTestId('attachment-remove'));
 
 		await waitFor(() => {
 			expect(getByTestId('instance-ai-suggestion-build-workflow')).toBeInTheDocument();

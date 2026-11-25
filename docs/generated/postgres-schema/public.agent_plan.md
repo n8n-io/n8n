@@ -57,28 +57,33 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
 }
 "public.agent_background_job" {
+  integer callerExecutionId FK
   varchar_36_ childExecutionId
   varchar_128_ childThreadId
   timestamp_3__with_time_zone createdAt
   text error
+  json files
   varchar_36_ id
   varchar_16_ kind
   timestamp_3__with_time_zone notifiedAt
   varchar_36_ parentAgentId FK
   varchar_64_ parentPrincipalHash
   varchar_255_ parentResourceId
+  varchar_128_ parentRunId
   varchar_128_ parentThreadId
   uuid pauseRequestId
   uuid planId FK
   uuid planTaskId
   text result
   timestamp_3__with_time_zone settledAt
+  json skippedFiles
   varchar_36_ sourceExecutionId FK
   varchar_16_ status
   varchar_36_ subAgentId
   timestamp_3__with_time_zone timeoutAt
   varchar_255_ title
   timestamp_3__with_time_zone updatedAt
+  uuid wakeAttemptId
   varchar_36_ workflowId
 }
 "public.agent_plan_history" {

@@ -85,7 +85,7 @@ class Recorder:
 ANTHROPIC_EFFORTS = ('low', 'medium', 'high', 'xhigh', 'max')
 CUSTOM_EFFORTS = ('none', 'minimal', *ANTHROPIC_EFFORTS)
 # Keep in sync with instance-ai.config.ts and CUSTOM_MODEL_DEFAULTS in utils/custom-model-defaults.ts.
-DEFAULT_INSTANCE_AI_MODEL = 'anthropic/claude-opus-4-8'
+DEFAULT_INSTANCE_AI_MODEL = 'anthropic/claude-opus-5-5'
 CUSTOM_MODEL_EFFORTS = (('kimi-k3', 'low'), ('glm-5.2', 'medium'))
 
 

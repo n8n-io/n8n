@@ -41,7 +41,7 @@ function executionId(events: AgentSseEvent[]) {
 
 async function mockModel(stack: N8NStack) {
 	const message = {
-		model: 'claude-sonnet-4-5',
+		model: 'claude-sonnet-5-5',
 		id: 'msg_fifo',
 		type: 'message',
 		role: 'assistant',
@@ -143,7 +143,7 @@ test.describe(
 			});
 			const agent = await ingress.agents.create(project.id, {
 				name: 'Queue test',
-				model: 'anthropic/claude-sonnet-4-5',
+				model: 'anthropic/claude-sonnet-5-5',
 				credential: credential.id,
 				instructions: 'Reply briefly.',
 			});

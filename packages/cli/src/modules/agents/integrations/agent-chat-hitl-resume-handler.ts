@@ -10,7 +10,7 @@ import type {
 } from './agent-chat-integration';
 import { onceStatusHandle, postToUserOrThread } from './agent-chat-integration';
 import type { AgentChatMessageContextBridge } from './agent-chat-message-context';
-import type { AgentChatStreamConsumer } from './agent-chat-stream-consumer';
+import type { AgentChatStreamConsumer, EarlierToolResult } from './agent-chat-stream-consumer';
 import type { CallbackStore } from './callback-store';
 import type { InternalThread } from './types';
 import type {
@@ -22,6 +22,11 @@ import { parseBackgroundApprovalAction } from '../background/sub-agent-backgroun
 type ResumeExecutor = Pick<AgentExecutionOrchestratorService, 'resumeForChat'> & {
 	/** Optional: a caller that cannot look checkpoints up simply skips the gate. */
 	isResumable?(config: { agentId: string; runId: string }): Promise<boolean>;
+	/** The agent thread and earlier tool results of a suspended run. */
+	getSuspendedRun?(config: {
+		agentId: string;
+		runId: string;
+	}): Promise<{ threadId: string; toolResults: EarlierToolResult[] } | null>;
 };
 
 /** Covers both an expired callback key and a checkpoint that is gone. */
@@ -123,6 +128,10 @@ export class AgentChatHitlResumeHandler {
 			await this.cleanUpBeforeResume(event, parsed.resumeData, callbackData);
 	}
 
+	async settleApprovalAction(event: ActionEvent, approved: boolean): Promise<void> {
+		await this.cleanUpBeforeResume(event, { approved }, {}, true);
+	}
+
 	/** Parsed result from an action ID. */
 	private parseActionId(
 		actionId: string,
@@ -196,8 +205,9 @@ export class AgentChatHitlResumeHandler {
 		event: ActionEvent,
 		resumeData: unknown,
 		callbackData: { label?: string },
+		preserveMessage = false,
 	): Promise<void> {
-		if (this.options.deleteActionMessageBeforeResume) {
+		if (this.options.deleteActionMessageBeforeResume && !preserveMessage) {
 			await this.deleteActionMessage(event);
 			return;
 		}
@@ -207,12 +217,16 @@ export class AgentChatHitlResumeHandler {
 			// value already carries `{ approved }` whenever the tool's resume schema
 			// declares it, so platforms without a CallbackStore get it too.
 			const approved = this.getApprovalDecision(resumeData);
-			const message = this.options.formatActionDecisionMessage?.({
-				...(approved !== undefined ? { approved } : {}),
-				...(callbackData.label !== undefined ? { selectedLabel: callbackData.label } : {}),
-				raw: event.raw,
-				user: event.user,
-			});
+			const message =
+				this.options.formatActionDecisionMessage?.({
+					...(approved !== undefined ? { approved } : {}),
+					...(callbackData.label !== undefined ? { selectedLabel: callbackData.label } : {}),
+					raw: event.raw,
+					user: event.user,
+				}) ??
+				(preserveMessage
+					? `${approved ? 'Approved' : 'Denied'} by ${event.user.fullName || event.user.userName || event.user.userId}`
+					: undefined);
 			if (!message) return;
 
 			if (this.options.settleActionMessage) {
@@ -240,6 +254,24 @@ export class AgentChatHitlResumeHandler {
 			this.options.logger.warn('[AgentChatBridge] Failed to delete card message', {
 				error: deleteError instanceof Error ? deleteError.message : String(deleteError),
 			});
+		}
+	}
+
+	private async getSuspendedRun(runId: string) {
+		try {
+			return (
+				(await this.options.agentService.getSuspendedRun?.({
+					agentId: this.options.agentId,
+					runId,
+				})) ?? null
+			);
+		} catch (error) {
+			// Without it, the resume still runs, but files queued before the suspension are not sent.
+			this.options.logger.warn('[AgentChatBridge] Could not read the suspended run', {
+				runId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return null;
 		}
 	}
 
@@ -311,6 +343,8 @@ export class AgentChatHitlResumeHandler {
 
 		this.activeResumedRuns.add(runId);
 		try {
+			// Read before the resume, which replaces the checkpoint.
+			const suspendedRun = await this.getSuspendedRun(runId);
 			const resumeExecutionContext = await this.options.createResumeExecutionContext(thread);
 			const statusHandle = onceStatusHandle(resumeExecutionContext.statusHandle);
 			try {
@@ -327,6 +361,12 @@ export class AgentChatHitlResumeHandler {
 					...resumeExecutionContext,
 					statusHandle,
 					...(cardUserId ? { actingUserId: cardUserId } : {}),
+					...(suspendedRun
+						? {
+								agentThreadId: suspendedRun.threadId,
+								earlierToolResults: suspendedRun.toolResults,
+							}
+						: {}),
 				});
 			} finally {
 				// The stream consumer clears the status right before the first response;

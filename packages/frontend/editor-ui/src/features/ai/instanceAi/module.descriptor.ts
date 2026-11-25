@@ -12,6 +12,7 @@ import { INSTANCE_AI_MODALS } from './modals';
 import {
 	INSTANCE_AI_VIEW,
 	INSTANCE_AI_THREAD_VIEW,
+	INSTANCE_AI_THREAD_SESSION_VIEW,
 	INSTANCE_AI_SETTINGS_VIEW,
 	INSTANCE_AI_NEW_VIEW,
 	INSTANCE_AI_THREADS_VIEW,
@@ -85,6 +86,8 @@ const InstanceAiView = async () => await import('./InstanceAiView.vue');
 const InstanceAiEmptyView = async () => await import('./InstanceAiEmptyView.vue');
 const InstanceAiThreadRouteView = async () => await import('./InstanceAiThreadRouteView.vue');
 const InstanceAiThreadsView = async () => await import('./InstanceAiThreadsView.vue');
+const AssistantAgentSessionView = async () =>
+	await import('./assistantAgent/AssistantAgentSessionView.vue');
 const SettingsInstanceAiView = async () => await import('./views/SettingsInstanceAiView.vue');
 
 const SelfHealingConfigView = async () =>
@@ -224,6 +227,12 @@ export const InstanceAiModule = defineFrontendModule({
 					component: InstanceAiThreadRouteView,
 					props: true,
 				},
+				{
+					name: INSTANCE_AI_THREAD_SESSION_VIEW,
+					path: ':threadId/session',
+					component: AssistantAgentSessionView,
+					props: true,
+				},
 			],
 		},
 		// Permanent redirects from the legacy `/instance-ai` path to `/assistant`.
@@ -293,8 +302,21 @@ export const InstanceAiModule = defineFrontendModule({
 		// the SDK registry instead of a view-scoped store listener. The store is
 		// imported lazily so it stays out of the startup bundle.
 		updateInstanceAiCredits: async (event) => {
-			const { useInstanceAiStore } = await import('./instanceAi.store');
-			useInstanceAiStore().handleCreditsPush(event.data);
+			const { useAssistantCreditsStore } = await import('./assistantCredits.store');
+			useAssistantCreditsStore().setCredits(event.data);
+			// A claim also carries the running total of its thread. Each runtime keeps the
+			// totals of its own threads. A tab cannot always tell the runtime of a thread
+			// (a new thread can open from a launch marker only), so both stores get the
+			// total. The current Assistant store ignores a thread that it does not hold.
+			const perThread = event.data.creditsPerThread;
+			if (!perThread) return;
+			const [{ useAssistantAgentThreadsStore }, { useInstanceAiStore }] = await Promise.all([
+				import('./assistantAgent/assistantAgentThreads.store'),
+				import('./instanceAi.store'),
+			]);
+			const { threadId, totalCreditsUsed } = perThread;
+			useAssistantAgentThreadsStore().setThreadCreditsUsed(threadId, totalCreditsUsed);
+			useInstanceAiStore().setThreadCreditsUsed(threadId, totalCreditsUsed);
 		},
 		instanceAiMcpToolCallFailed: async (event) => {
 			const { useInstanceAiMcpStore } = await import('./instanceAiMcp.store');

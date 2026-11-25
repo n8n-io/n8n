@@ -1,3 +1,4 @@
+import type { SkillScanFinding, SkillScanResult } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 
 import type { SkillParseError } from '../errors/skill-parse.error';
@@ -8,25 +9,22 @@ import {
 	findHiddenUnicode,
 	findNewUrls,
 	findPermissionChanges,
-	findSuspiciousPhrases,
+	findScriptChanges,
+	findUnscannedBinaryFiles,
 	listFidelityWarnings,
 	listSkippedFiles,
-	type SkillScanFinding,
 	type SkillScanInput,
 } from '../utils/skill-security-rules';
 import type { FetchedSkill } from '../sources/skill-source-client';
 
-export type SkillScanVerdict = 'pass' | 'needs_review' | 'blocked';
-
-export type SkillScanResult = { verdict: SkillScanVerdict; findings: SkillScanFinding[] };
-
 const RULES = [
 	checkShape,
 	listSkippedFiles,
+	findScriptChanges,
+	findUnscannedBinaryFiles,
 	findHiddenUnicode,
 	findNewUrls,
 	findPermissionChanges,
-	findSuspiciousPhrases,
 	listFidelityWarnings,
 ];
 
@@ -39,7 +37,15 @@ const RULES = [
 export class SkillSecurityScanner {
 	/** `previous` is the content of the latest version for an update, and null at import. */
 	scan(
-		fetched: Pick<FetchedSkill, 'content' | 'skippedFiles' | 'fidelity'>,
+		fetched: Pick<
+			FetchedSkill,
+			| 'content'
+			| 'skippedFiles'
+			| 'unstorableFiles'
+			| 'oversizedFiles'
+			| 'overLimitFiles'
+			| 'fidelity'
+		>,
 		previous: SkillContent | null = null,
 	): SkillScanResult {
 		const input: SkillScanInput = { ...fetched, previous };

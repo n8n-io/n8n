@@ -1,3 +1,4 @@
+import { DATA_TABLE_TOOL_ACTIONS } from '../../builder-tool-names';
 import {
 	AI_GATEWAY_MANAGED_TAG,
 	base64EncodedSize,
@@ -10,8 +11,10 @@ import {
 	instanceAiFileAttachmentSchema,
 	MAX_ATTACHMENT_BASE64_BYTES,
 	applyBranchReadOnlyOverrides,
+	appBlueprintSchema,
 	buildCredentialDestinationGrantKey,
 	buildDataTablesSessionGrantKey,
+	buildOwnedDataTableGrantKey,
 	buildExecuteNodeSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
 	buildSetupSkipGrantKey,
@@ -52,14 +55,67 @@ import {
 	type InstanceAiPermissions,
 } from '../instance-ai.schema';
 
+describe('app blueprint schema', () => {
+	const blueprint = {
+		name: 'Planner',
+		namespace: 'planner',
+		visibility: 'project',
+		description: 'Plan weekly tasks.',
+		theme: 'both',
+	} as const;
+
+	it('accepts existing and new planned bindings', () => {
+		expect(
+			appBlueprintSchema.safeParse({
+				...blueprint,
+				bindings: [
+					{
+						kind: 'dataTable',
+						name: 'Tasks',
+						description: 'Stores weekly tasks.',
+						status: 'existing',
+						resourceId: 'table-1',
+					},
+					{
+						kind: 'agent',
+						name: 'Planning agent',
+						description: 'Answers questions about tasks.',
+						status: 'new',
+					},
+				],
+			}).success,
+		).toBe(true);
+	});
+
+	it('requires a resource id only for existing bindings', () => {
+		const binding = {
+			kind: 'workflow',
+			name: 'Weekly summary',
+			description: 'Creates the weekly summary.',
+		};
+
+		expect(
+			appBlueprintSchema.safeParse({
+				...blueprint,
+				bindings: [{ ...binding, status: 'existing' }],
+			}).success,
+		).toBe(false);
+		expect(
+			appBlueprintSchema.safeParse({
+				...blueprint,
+				bindings: [{ ...binding, status: 'new', resourceId: 'workflow-1' }],
+			}).success,
+		).toBe(false);
+	});
+});
+
 describe('Instance AI prompt version requests', () => {
 	it('accepts an optional version pin and rejects empty or oversized pins', () => {
 		const base = { message: 'Build a workflow', timeZone: 'UTC' };
 		expect(InstanceAiSendMessageRequest.safeParse(base).success).toBe(true);
 		expect(
-			InstanceAiSendMessageRequest.parse({ ...base, promptVersion: ' progressive@1 ' })
-				.promptVersion,
-		).toBe('progressive@1');
+			InstanceAiSendMessageRequest.parse({ ...base, promptVersion: ' concise@1 ' }).promptVersion,
+		).toBe('concise@1');
 		for (const promptVersion of ['', '   ', 'x'.repeat(129)]) {
 			expect(InstanceAiSendMessageRequest.safeParse({ ...base, promptVersion }).success).toBe(
 				false,
@@ -172,6 +228,112 @@ describe('instanceAiEventSchema', () => {
 		expect(instanceAiEventSchema.parse(event)).toEqual(event);
 	});
 
+	describe('workflow-draft events', () => {
+		const draftEvent = {
+			type: 'workflow-draft',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: {
+				filePath: 'src/workflows/demo.workflow.ts',
+				workflowId: 'wf-1',
+				revision: 2,
+				workflow: {
+					name: 'Demo',
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'Start',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {
+						Start: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
+					},
+				},
+			},
+		};
+
+		it('parses a draft of a bound workflow', () => {
+			expect(instanceAiEventSchema.parse(draftEvent)).toEqual(draftEvent);
+		});
+
+		it('parses a draft without a workflow id', () => {
+			const { workflowId: _workflowId, ...payload } = draftEvent.payload;
+			const event = { ...draftEvent, payload };
+
+			expect(instanceAiEventSchema.parse(event)).toEqual(event);
+		});
+
+		it('keeps the node groups of a draft', () => {
+			const nodeGroups = [
+				{ id: 'g-1', name: 'Intake', nodeIds: ['node-1'], description: 'Reads leads' },
+			];
+			const event = {
+				...draftEvent,
+				payload: {
+					...draftEvent.payload,
+					workflow: { ...draftEvent.payload.workflow, nodeGroups },
+				},
+			};
+
+			const parsed = instanceAiEventSchema.parse(event);
+
+			expect(parsed.type === 'workflow-draft' && parsed.payload.workflow.nodeGroups).toEqual(
+				nodeGroups,
+			);
+		});
+
+		it('rejects a draft without a file path', () => {
+			const { filePath: _filePath, ...payload } = draftEvent.payload;
+
+			expect(instanceAiEventSchema.safeParse({ ...draftEvent, payload }).success).toBe(false);
+		});
+
+		it('is ephemeral, so drafts are never persisted or replayed', () => {
+			expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('workflow-draft')).toBe(true);
+		});
+	});
+
+	describe('workflow-draft-issues events', () => {
+		const issuesEvent = {
+			type: 'workflow-draft-issues',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: {
+				filePath: 'src/workflows/demo.workflow.ts',
+				revision: 2,
+				issues: [
+					{ code: 'SET_INVALID_ASSIGNMENT', message: 'Bad assignment', nodeName: 'Set' },
+					{ code: 'GROUP_DROPPED_OVER_CEILING', message: 'Too many groups' },
+				],
+			},
+		};
+
+		it('parses issues with and without a node name', () => {
+			expect(instanceAiEventSchema.parse(issuesEvent)).toEqual(issuesEvent);
+		});
+
+		it('rejects issues without a file path', () => {
+			const { filePath: _filePath, ...payload } = issuesEvent.payload;
+
+			expect(instanceAiEventSchema.safeParse({ ...issuesEvent, payload }).success).toBe(false);
+		});
+
+		it('rejects more than 50 issues', () => {
+			const issues = Array.from({ length: 51 }, () => issuesEvent.payload.issues[0]);
+			const event = { ...issuesEvent, payload: { ...issuesEvent.payload, issues } };
+
+			expect(instanceAiEventSchema.safeParse(event).success).toBe(false);
+		});
+
+		it('is ephemeral, so issues are never persisted or replayed', () => {
+			expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('workflow-draft-issues')).toBe(true);
+		});
+	});
+
 	it('keeps setup-items durable (not ephemeral) so snapshots survive refresh', () => {
 		expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('setup-items')).toBe(false);
 	});
@@ -238,6 +400,11 @@ describe('instanceAiEventSchema', () => {
 		// A live-only frame would leave the plus menu blank for every turn a client
 		// missed, and a week-old thread could never answer the question at all.
 		expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('preferences-applied')).toBe(false);
+	});
+
+	it('keeps cloud-browser-window-changed durable, so a reconnect still moves the live view', () => {
+		// A live-only frame missed during a reconnect would leave the live view on the old window.
+		expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('cloud-browser-window-changed')).toBe(false);
 	});
 
 	it('drops malformed or unknown-kind items individually instead of failing the event', () => {
@@ -653,6 +820,21 @@ describe('isDisplayableConfirmationRequest', () => {
 				}),
 			),
 		).toBe(true);
+		expect(
+			isDisplayableConfirmationRequest(
+				makeConfirmation({
+					message: '',
+					inputType: 'app-blueprint',
+					appBlueprint: {
+						name: 'Planner',
+						namespace: 'planner',
+						visibility: 'project',
+						description: 'Plan weekly tasks.',
+						theme: 'both',
+					},
+				}),
+			),
+		).toBe(true);
 	});
 
 	it('does not treat credential flow metadata as displayable on its own', () => {
@@ -673,9 +855,10 @@ describe('isDisplayableConfirmationRequest', () => {
 			questions: true,
 			'resource-decision': true,
 			continue: true,
+			'app-blueprint': true,
 		} satisfies Record<InstanceAiConfirmationInputType, true>;
 
-		expect(Object.keys(handled)).toHaveLength(5);
+		expect(Object.keys(handled)).toHaveLength(6);
 	});
 });
 
@@ -733,6 +916,15 @@ describe('data-tables session grant keys', () => {
 	it('builds action-scoped keys matching the frontend always-allow format', () => {
 		expect(buildDataTablesSessionGrantKey('create')).toBe('data-tables:create');
 		expect(buildDataTablesSessionGrantKey('insert-rows')).toBe('data-tables:insert-rows');
+	});
+
+	it('builds an owned-table key that differs from every action key', () => {
+		const actionKeys = DATA_TABLE_TOOL_ACTIONS.map(buildDataTablesSessionGrantKey);
+		expect(actionKeys).not.toContain(buildOwnedDataTableGrantKey('x'));
+	});
+
+	it('encodes the table id in the owned-table key', () => {
+		expect(buildOwnedDataTableGrantKey('a/b:c')).toBe('data-tables:owned:a%2Fb%3Ac');
 	});
 });
 
@@ -847,7 +1039,7 @@ describe('domain-access grant keys', () => {
 describe('instanceAiEvalSeedAgentSchema resource references', () => {
 	const config = {
 		name: 'Support Triage',
-		model: 'anthropic/claude-sonnet-4-5',
+		model: 'anthropic/claude-sonnet-5-5',
 		instructions: 'Triage inbound tickets.',
 	};
 	const agent = (over: Record<string, unknown> = {}) => ({
@@ -1340,6 +1532,8 @@ describe('InstanceAiThreadMessagesQuery', () => {
 		{ limit: 1.5 },
 		{ page: INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE + 1 },
 		{ page: -1 },
+		{ cursor: '' },
+		{ cursor: 'a'.repeat(513) },
 	])('rejects out-of-range paging (%o)', (query) => {
 		expect(InstanceAiThreadMessagesQuery.safeParse(query).success).toBe(false);
 	});

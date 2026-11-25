@@ -55,6 +55,7 @@ function setup() {
 		name: 'Current name',
 		projectId: 'source-project',
 		availableInMCP: true,
+		isArchived: false,
 		versionId: 'draft-version',
 		activeVersionId: 'published-version',
 		activeVersion: mock<AgentHistory>({ versionId: 'published-version' }),
@@ -76,6 +77,31 @@ function setup() {
 }
 
 describe('AgentExporter', () => {
+	it('exports interaction definitions without local channel credentials or execution ownership', () => {
+		const { agent, draft } = setup();
+		if (!draft.schema) throw new Error('Expected an Agent definition');
+		draft.schema.hitlConfigurations = [
+			{ id: 'interaction_workflow', name: 'Review', method: 'workflow', workflowId: 'review' },
+			{
+				id: 'interaction_channel',
+				name: 'Approvals',
+				method: 'channel',
+				channel: 'slack',
+				credentialId: 'source-credential',
+				recipient: { kind: 'channel', id: 'C_REVIEW' },
+			},
+		];
+		agent.approvalWorkflowId = 'private-owner';
+		const content = new AgentSerializer().serialize(agent, draft, agent.integrations);
+		expect(content.config?.hitlConfigurations).toEqual([
+			draft.schema.hitlConfigurations[0],
+			{ ...draft.schema.hitlConfigurations[1], credentialId: '' },
+		]);
+		expect(JSON.stringify(content)).not.toContain('private-owner');
+		expect(JSON.stringify(content)).not.toContain('source-credential');
+		expect(draft.schema.hitlConfigurations[1]).toHaveProperty('credentialId', 'source-credential');
+	});
+
 	it.each([
 		{ policy: undefined, published: true, selected: 'draft' },
 		{ policy: ExportVersionPolicy.Latest, published: false, selected: 'draft' },
@@ -91,7 +117,7 @@ describe('AgentExporter', () => {
 
 			const snapshot = await source.exporter.prepare(source.agent, testCase.policy);
 			const selected = source[testCase.selected];
-			const integrations = [{ type: 'slack', credentialId: 'current-slack' }];
+			const integrations = [{ type: 'slack', credentialId: '' }];
 			if (testCase.selected === 'published')
 				integrations.push({ type: 'n8n_chat', credentialId: '' });
 			expect(snapshot).toEqual({
@@ -111,6 +137,20 @@ describe('AgentExporter', () => {
 			});
 		},
 	);
+
+	it('keeps the webhook channel in a published export', async () => {
+		const { agent, exporter } = setup();
+		const webhook = {
+			type: 'webhook',
+			credentialId: '',
+			settings: { authentication: 'none' },
+		} as const;
+		agent.integrations = [webhook];
+
+		const snapshot = await exporter.prepare(agent, ExportVersionPolicy.PublishedStrict);
+
+		expect(snapshot?.content.config?.integrations).toContainEqual(webhook);
+	});
 
 	it('skips an unpublished Agent under ignore-unpublished', async () => {
 		const { agent, exporter } = setup();
@@ -156,9 +196,19 @@ describe('AgentExporter', () => {
 		agent.integrations.push({ type: 'n8n_chat', credentialId: '' });
 		published.schema!.integrations = [];
 		const snapshot = await exporter.prepare(agent, ExportVersionPolicy.PublishedStrict);
-		expect(snapshot?.content.config?.integrations).toEqual([
-			{ type: 'slack', credentialId: 'current-slack' },
+		expect(snapshot?.content.config?.integrations).toEqual([{ type: 'slack', credentialId: '' }]);
+	});
+
+	it('exports equal content for channels with different credentials', async () => {
+		const first = setup();
+		const second = setup();
+		second.agent.integrations = [{ type: 'slack', credentialId: 'other-slack' }];
+		const [a, b] = await Promise.all([
+			first.exporter.prepare(first.agent),
+			second.exporter.prepare(second.agent),
 		]);
+		expect(a?.content).toEqual(b?.content);
+		expect(a?.content.config?.integrations).toEqual([{ type: 'slack', credentialId: '' }]);
 	});
 
 	it.each([

@@ -3,15 +3,17 @@ import { i18nInstance } from '@n8n/i18n';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { AgentBackgroundJobDto, AgentChatResumeDto, PushMessage } from '@n8n/api-types';
 import { enableAutoUnmount, mount, flushPromises } from '@vue/test-utils';
-import { reactive, ref } from 'vue';
+import { defineComponent, inject, reactive, ref } from 'vue';
 import { createPinia } from 'pinia';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import AgentSessionTimelinePanel from '../components/AgentSessionTimelinePanel.vue';
 import AgentBudgetNoticeCard from '../components/AgentBudgetNoticeCard.vue';
+import { AGENT_ATTACHMENT_URL_KEY } from '../components/agentChatInjectionKeys';
 import type { ThreadDetail } from '../composables/useAgentThreadsApi';
 import type { FilterOption } from '../session-timeline.types';
 
 const getThreadDetail = vi.fn();
+const resumeTaskApproval = vi.fn();
 const showError = vi.fn();
 const track = vi.fn();
 const backgroundJobs = ref<AgentBackgroundJobDto[]>([]);
@@ -43,7 +45,7 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track }),
 }));
 vi.mock('@n8n/stores/useRootStore', () => ({
-	useRootStore: () => ({ pushRef: 'session-xyz' }),
+	useRootStore: () => ({ pushRef: 'session-xyz', restApiContext: { baseUrl: '/rest' } }),
 }));
 
 vi.mock('@n8n/composables/useToast', () => ({
@@ -51,7 +53,7 @@ vi.mock('@n8n/composables/useToast', () => ({
 }));
 
 vi.mock('@/features/agents/agentSessions.store', () => ({
-	useAgentSessionsStore: () => ({ getThreadDetail }),
+	useAgentSessionsStore: () => ({ getThreadDetail, resumeTaskApproval }),
 }));
 
 vi.mock('@/app/stores/pushConnection.store', () => ({
@@ -75,6 +77,11 @@ vi.mock('@/features/agents/composables/useSubAgentNames', () => ({
 	useSubAgentNames: () => ({ subAgentNameById: { value: new Map() } }),
 }));
 
+// The budget card asks Pinia-backed stores for the top-up flow; stub it out.
+vi.mock('@/app/composables/useAiGatewayTopUp', () => ({
+	useAiGatewayTopUp: () => ({ openTopUp: vi.fn() }),
+}));
+
 const stubs = {
 	SessionTimelineChart: {
 		name: 'SessionTimelineChart',
@@ -83,11 +90,11 @@ const stubs = {
 	},
 	SessionTimelineTable: {
 		name: 'SessionTimelineTable',
-		props: ['selectedIndex', 'items'],
-		emits: ['select'],
+		props: ['selectedIndex', 'items', 'approval', 'approvalItem', 'approvalDisabled'],
+		emits: ['select', 'approve'],
 		methods: { scrollSelectedIntoView: vi.fn() },
 		template:
-			'<div data-test-id="table-stub" :data-selected-index="selectedIndex ?? undefined" :data-item-count="items.length" />',
+			'<div data-test-id="table-stub" :data-selected-index="selectedIndex ?? undefined" :data-item-count="items.length" :data-approval="String(Boolean(approval))" :data-approval-disabled="String(Boolean(approvalDisabled))" />',
 	},
 	SessionEventFilter: {
 		name: 'SessionEventFilter',
@@ -155,6 +162,36 @@ const errorFilterExecution = {
 	],
 } satisfies ThreadDetail['executions'][number];
 
+const awaitingApprovalExecution = {
+	...keyboardExecution,
+	id: 'execution-awaiting',
+	status: 'awaiting',
+	userMessage: null,
+	hitlStatus: 'suspended',
+	source: 'task',
+	timeline: [
+		{
+			type: 'suspension',
+			toolName: 'Wikipedia',
+			toolCallId: 'call-1',
+			timestamp: Date.parse('2026-08-03T12:00:01.000Z'),
+			suspendPayload: {
+				type: 'approval',
+				toolName: 'Wikipedia',
+				displayName: 'Wikipedia',
+				args: {},
+			},
+		},
+	],
+} satisfies ThreadDetail['executions'][number];
+
+function awaitingDetail(status: 'awaiting' | 'success' = 'awaiting'): ThreadDetail {
+	return {
+		...detail,
+		executions: [{ ...awaitingApprovalExecution, status }],
+	};
+}
+
 function budgetStopExecution(code: string, id = 'execution-2') {
 	return {
 		...keyboardExecution,
@@ -185,7 +222,11 @@ enableAutoUnmount(afterEach);
 
 function mountPanel(
 	props: Partial<InstanceType<typeof AgentSessionTimelinePanel>['$props']> = {},
-	options: { attachTo?: HTMLElement; renderTimelineTable?: boolean } = {},
+	options: {
+		attachTo?: HTMLElement;
+		renderTimelineTable?: boolean;
+		stubs?: Record<string, unknown>;
+	} = {},
 ) {
 	return mount(AgentSessionTimelinePanel, {
 		...(options.attachTo ? { attachTo: options.attachTo } : {}),
@@ -195,6 +236,7 @@ function mountPanel(
 			stubs: {
 				...stubs,
 				...(options.renderTimelineTable ? { SessionTimelineTable: false } : {}),
+				...options.stubs,
 			},
 		},
 	});
@@ -272,8 +314,35 @@ describe('AgentSessionTimelinePanel', () => {
 		mountPanel();
 		await flushPromises();
 
-		expect(getThreadDetail).toHaveBeenCalledWith('p1', 'a1', 't1');
+		expect(getThreadDetail).toHaveBeenCalledWith('p1', 'a1', 't1', undefined);
 		expect(track).not.toHaveBeenCalled();
+	});
+
+	it('loads the thread detail of a system agent through its channel', async () => {
+		mountPanel({ agentId: 'assistant', channel: 'system' });
+		await flushPromises();
+
+		expect(getThreadDetail).toHaveBeenCalledWith('p1', 'assistant', 't1', 'system');
+	});
+
+	it.each([
+		[undefined, '/rest/projects/p1/agents/v2/a1/chat/attachments/f-1?threadId=t1'],
+		['system' as const, '/rest/agents/system/a1/chat/attachments/f-1?threadId=t1'],
+	])('builds attachment URLs for the %s channel', async (channel, url) => {
+		const wrapper = mountPanel(
+			{ channel },
+			{
+				stubs: {
+					SessionTimelineTable: defineComponent({
+						setup: () => ({ build: inject(AGENT_ATTACHMENT_URL_KEY) }),
+						template: '<a data-test-id="attachment-url" :href="build?.(\'f-1\')" />',
+					}),
+				},
+			},
+		);
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="attachment-url"]').attributes('href')).toBe(url);
 	});
 
 	it.each(['SessionTimelineChart', 'SessionTimelineTable'])(
@@ -351,7 +420,7 @@ describe('AgentSessionTimelinePanel', () => {
 		await wrapper.setProps({ threadId: 't2' });
 		await flushPromises();
 
-		expect(getThreadDetail).toHaveBeenLastCalledWith('p1', 'a1', 't2');
+		expect(getThreadDetail).toHaveBeenLastCalledWith('p1', 'a1', 't2', undefined);
 	});
 
 	it('surfaces a toast when the detail fails to load', async () => {
@@ -534,7 +603,7 @@ describe('AgentSessionTimelinePanel', () => {
 		await flushPromises();
 
 		expect(getThreadDetail).toHaveBeenCalledTimes(3);
-		expect(getThreadDetail).toHaveBeenLastCalledWith('p1', 'a1', 't2');
+		expect(getThreadDetail).toHaveBeenLastCalledWith('p1', 'a1', 't2', undefined);
 		expect(wrapper.emitted('loaded')?.at(-1)).toEqual([nextDetail]);
 	});
 
@@ -594,6 +663,114 @@ describe('AgentSessionTimelinePanel', () => {
 			item_type: 'agent',
 		});
 	});
+
+	async function openAwaitingApproval(wrapper: ReturnType<typeof mountPanel>) {
+		await flushPromises();
+		return wrapper.getComponent({ name: 'SessionTimelineTable' });
+	}
+
+	it('shows the approval card inline and keeps it disabled until a refresh leaves awaiting', async () => {
+		getThreadDetail
+			.mockResolvedValueOnce(awaitingDetail())
+			.mockResolvedValueOnce(awaitingDetail())
+			.mockResolvedValueOnce(awaitingDetail('success'));
+		resumeTaskApproval.mockResolvedValue({ success: true });
+		const wrapper = mountPanel();
+		const table = await openAwaitingApproval(wrapper);
+
+		expect(table.props('approval')).toBeDefined();
+
+		table.vm.$emit('approve', { approved: true });
+		table.vm.$emit('approve', { approved: false });
+		await flushPromises();
+
+		expect(resumeTaskApproval).toHaveBeenCalledTimes(1);
+		expect(resumeTaskApproval).toHaveBeenCalledWith('p1', 'a1', 't1', {
+			toolCallId: 'call-1',
+			resumeData: { approved: true },
+		});
+		expect(table.props('approvalDisabled')).toBe(true);
+
+		emitPush();
+		await flushPromises();
+
+		expect(table.props('approvalDisabled')).toBe(false);
+		expect(table.props('approval')).toBeUndefined();
+	});
+
+	it('shows no approval card for a chat turn, which takes its approval in the chat', async () => {
+		const detail = awaitingDetail();
+		getThreadDetail.mockResolvedValue({
+			...detail,
+			executions: detail.executions.map((execution) => ({ ...execution, source: 'chat' })),
+		});
+		const table = await openAwaitingApproval(mountPanel());
+
+		expect(table.props('approvalItem')).toBeNull();
+		expect(table.props('approval')).toBeUndefined();
+	});
+
+	it('re-enables the card when the approval request fails', async () => {
+		getThreadDetail.mockResolvedValue(awaitingDetail());
+		resumeTaskApproval.mockRejectedValue(new Error('nope'));
+		const wrapper = mountPanel();
+		const table = await openAwaitingApproval(wrapper);
+
+		table.vm.$emit('approve', { approved: true });
+		await flushPromises();
+
+		expect(showError).toHaveBeenCalled();
+		expect(table.props('approvalDisabled')).toBe(false);
+	});
+
+	it('does not apply an in-flight approval to the session opened next', async () => {
+		let rejectResume: (error: Error) => void = () => {};
+		resumeTaskApproval.mockReturnValue(
+			new Promise((_resolve, reject) => {
+				rejectResume = reject;
+			}),
+		);
+		getThreadDetail.mockResolvedValue(awaitingDetail());
+		const wrapper = mountPanel();
+		const table = await openAwaitingApproval(wrapper);
+		table.vm.$emit('approve', { approved: true });
+
+		await wrapper.setProps({ threadId: 't2' });
+		await flushPromises();
+		expect(table.props('approvalDisabled')).toBe(false);
+
+		const callsBeforeSettle = getThreadDetail.mock.calls.length;
+		rejectResume(new Error('nope'));
+		await flushPromises();
+
+		expect(showError).not.toHaveBeenCalled();
+		expect(getThreadDetail).toHaveBeenCalledTimes(callsBeforeSettle);
+		expect(table.props('approvalDisabled')).toBe(false);
+	});
+
+	it('does not refresh the next session when an earlier approval succeeds', async () => {
+		let resolveResume: (value: { success: boolean }) => void = () => {};
+		resumeTaskApproval.mockReturnValue(
+			new Promise((resolve) => {
+				resolveResume = resolve;
+			}),
+		);
+		getThreadDetail.mockResolvedValue(awaitingDetail());
+		const wrapper = mountPanel();
+		const table = await openAwaitingApproval(wrapper);
+		table.vm.$emit('approve', { approved: true });
+
+		await wrapper.setProps({ threadId: 't2' });
+		await flushPromises();
+		const callsBeforeSettle = getThreadDetail.mock.calls.length;
+
+		resolveResume({ success: true });
+		await flushPromises();
+
+		expect(getThreadDetail).toHaveBeenCalledTimes(callsBeforeSettle);
+		expect(getThreadDetail).toHaveBeenLastCalledWith('p1', 'a1', 't2', undefined);
+	});
+
 	describe('budget notice', () => {
 		const budgetCard = '[data-testid="agent-budget-notice-card"]';
 
@@ -621,7 +798,8 @@ describe('AgentSessionTimelinePanel', () => {
 		});
 
 		it('does not render the card for a stop without budget copy', async () => {
-			const wrapper = await mountWithExecutions([budgetStopExecution('budget.credits')]);
+			// budget.freeCredits stops have no timeline card copy; budget.credits does.
+			const wrapper = await mountWithExecutions([budgetStopExecution('budget.freeCredits')]);
 
 			expect(wrapper.find(budgetCard).exists()).toBe(false);
 		});

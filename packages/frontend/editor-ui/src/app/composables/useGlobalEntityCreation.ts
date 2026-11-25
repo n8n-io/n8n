@@ -1,3 +1,4 @@
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { computed, ref } from 'vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import { AGENTS_MODULE_NAME } from '@/features/agents/constants';
@@ -28,6 +29,7 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import type { Scope } from '@n8n/permissions';
 import type { RouteLocationRaw } from 'vue-router';
 import { updatedIconSet, type IconName } from '@n8n/design-system';
+import { useCreateApp } from '@n8n/frontend-module-apps';
 
 type ProjectIcon = IconName | { type: 'icon'; value: IconName } | { type: 'emoji'; value: string };
 
@@ -62,6 +64,7 @@ export const useGlobalEntityCreation = () => {
 	const VARIABLE_MENU_ID = 'variable';
 	const DATA_TABLE_MENU_ID = 'data-table';
 	const AGENTS_MENU_ID = 'agent';
+	const APPS_MENU_ID = 'app';
 	const INSTANCE_AI_THREAD_MENU_ID = 'instance-ai-thread';
 	const FOLDER_MENU_ID = 'folder';
 	const DEFAULT_ICON: IconName = 'layers';
@@ -81,6 +84,7 @@ export const useGlobalEntityCreation = () => {
 	const toast = useToast();
 	const telemetry = useTelemetry();
 	const { createAgent } = useCreateAgent();
+	const { createApp } = useCreateApp();
 
 	const isCreatingProject = ref(false);
 
@@ -107,6 +111,9 @@ export const useGlobalEntityCreation = () => {
 		sourceControlStore.preferences.branchReadOnly || !getResourcePermissions(scopes).agent?.create;
 
 	const isAgentsModuleActive = computed(() => settingsStore.isModuleActive(AGENTS_MODULE_NAME));
+	const isAppsModuleActive = computed(() => settingsStore.isAppsEnabled);
+	const disabledApp = (scopes: Scope[] = []): boolean =>
+		sourceControlStore.preferences.branchReadOnly || !getResourcePermissions(scopes).app?.create;
 
 	const isInstanceAiAvailable = useInstanceAiAvailable();
 
@@ -236,6 +243,7 @@ export const useGlobalEntityCreation = () => {
 		const workflowTitle = i18n.baseText('projects.menu.create.workflow');
 		const credentialTitle = i18n.baseText('projects.menu.create.credential');
 		const agentTitle = i18n.baseText('projects.menu.create.agent');
+		const appTitle = i18n.baseText('projects.menu.create.app');
 		const projectTitle = i18n.baseText('projects.menu.create.project');
 		const instanceAiTrailing = instanceAiThreadItem.value ? [instanceAiThreadItem.value] : [];
 		const variableTrailing = variableItem.value ? [variableItem.value] : [];
@@ -274,6 +282,15 @@ export const useGlobalEntityCreation = () => {
 							{
 								id: AGENTS_MENU_ID,
 								title: agentTitle,
+							},
+						]
+					: []),
+				...(isAppsModuleActive.value
+					? [
+							{
+								id: APPS_MENU_ID,
+								title: appTitle,
+								disabled: disabledApp(projectsStore.personalProject?.scopes),
 							},
 						]
 					: []),
@@ -320,6 +337,15 @@ export const useGlobalEntityCreation = () => {
 								id: AGENTS_MENU_ID,
 								title: agentTitle,
 								disabled: disabledAgent(projectsStore.personalProject?.scopes),
+							},
+						]
+					: []),
+				...(isAppsModuleActive.value
+					? [
+							{
+								id: APPS_MENU_ID,
+								title: appTitle,
+								disabled: disabledApp(projectsStore.personalProject?.scopes),
 							},
 						]
 					: []),
@@ -437,6 +463,36 @@ export const useGlobalEntityCreation = () => {
 						},
 					]
 				: []),
+			...(isAppsModuleActive.value
+				? [
+						{
+							id: APPS_MENU_ID,
+							title: appTitle,
+							disabled: sourceControlStore.preferences.branchReadOnly,
+							...(!sourceControlStore.preferences.branchReadOnly && {
+								submenu: [
+									{
+										id: 'app-title',
+										title: i18n.baseText('projects.menu.create.in'),
+										disabled: true,
+									},
+									{
+										id: 'app-personal',
+										title: i18n.baseText('projects.menu.personal'),
+										icon: 'user' as const,
+										disabled: disabledApp(projectsStore.personalProject?.scopes),
+									},
+									...displayProjects.value.map((project) => ({
+										id: `app-${project.id}`,
+										title: project.name as string,
+										icon: isProjectIcon(project.icon) ? project.icon : DEFAULT_ICON,
+										disabled: disabledApp(project.scopes),
+									})),
+								],
+							}),
+						},
+					]
+				: []),
 			{
 				id: CREATE_PROJECT_ID,
 				title: projectTitle,
@@ -505,7 +561,10 @@ export const useGlobalEntityCreation = () => {
 				type: 'success',
 			});
 			foldersEventBus.emit('folder-created', { projectId: project.id });
-			telemetry.track('User created folder', { folder_id: newFolder.id });
+			telemetry.track(TELEMETRY_EVENT.PLATFORM.USER_CREATED_FOLDER, {
+				resource_type: 'workflow',
+				folder_id: newFolder.id,
+			});
 		} catch (error) {
 			toast.showError(error, i18n.baseText('folders.create.error.title'));
 		}
@@ -551,6 +610,15 @@ export const useGlobalEntityCreation = () => {
 					? (projectsStore.personalProject?.id ?? '')
 					: id.slice('agent-'.length);
 			createAgent('dropdown', projectId);
+			return;
+		}
+
+		if (id === APPS_MENU_ID || (id.startsWith('app-') && id !== 'app-title')) {
+			const projectId =
+				id === APPS_MENU_ID || id === 'app-personal'
+					? (projectsStore.personalProject?.id ?? '')
+					: id.slice('app-'.length);
+			createApp(projectId);
 			return;
 		}
 

@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import type { SlotWorkflowDiffPlaceholderProps } from '@n8n/frontend-module-sdk';
+
 import WorkflowDiffIllustration from './WorkflowDiffIllustration.vue';
 import WorkflowDiffPanels from './WorkflowDiffPanels.vue';
 import WorkflowDiffToolbar from './WorkflowDiffToolbar.vue';
 
-defineProps<{ hideIllustration?: boolean }>();
+defineProps<SlotWorkflowDiffPlaceholderProps>();
 </script>
 
 <template>

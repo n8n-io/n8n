@@ -2,6 +2,7 @@ import type { SuspensionInfo } from '../../../src/utils/stream-helpers';
 import { discoveryTestCaseSchema } from '../../data/discovery';
 import {
 	buildConfirmationPolicy,
+	declaresAnswer,
 	resolveConfirmation,
 	unmatchedConfirmations,
 } from '../confirmation-policy';
@@ -147,11 +148,11 @@ describe('resolveConfirmation', () => {
 		const policy = buildConfirmationPolicy(
 			scenario({
 				confirmations: {
-					workflow_builder_ask_user: { decision: 'approve', resumeWith: { approved: false } },
+					ask_user: { decision: 'approve', resumeWith: { approved: false } },
 				},
 			}),
 		);
-		expect(resolveConfirmation(suspension('workflow_builder_ask_user'), policy)).toEqual({
+		expect(resolveConfirmation(suspension('ask_user'), policy)).toEqual({
 			approved: true,
 		});
 	});
@@ -160,14 +161,23 @@ describe('resolveConfirmation', () => {
 		const policy = buildConfirmationPolicy(
 			scenario({
 				confirmations: {
-					workflow_builder_ask_user: { decision: 'approve', resumeWith: { answer: 'yes' } },
+					ask_user: { decision: 'approve', resumeWith: { answer: 'yes' } },
 				},
 			}),
 		);
-		expect(resolveConfirmation(suspension('workflow_builder_ask_user'), policy)).toEqual({
+		expect(resolveConfirmation(suspension('ask_user'), policy)).toEqual({
 			approved: true,
 			answer: 'yes',
 		});
+	});
+});
+
+describe('declaresAnswer', () => {
+	const policy = buildConfirmationPolicy(scenario({ confirmations: { ask_user: 'approve' } }));
+
+	it('is true only for a tool that the scenario answers', () => {
+		expect(declaresAnswer(suspension('ask_user'), policy)).toBe(true);
+		expect(declaresAnswer(suspension('mcp-servers'), policy)).toBe(false);
 	});
 });
 
@@ -205,7 +215,7 @@ describe('unmatchedConfirmations', () => {
 
 	it('exempts a bare approve, which only asks for the default', () => {
 		const approveOnly = buildConfirmationPolicy(
-			scenario({ confirmations: { workflow_builder_ask_user: 'approve' } }),
+			scenario({ confirmations: { ask_user: 'approve' } }),
 		);
 		expect(unmatchedConfirmations(approveOnly, [])).toEqual([]);
 	});

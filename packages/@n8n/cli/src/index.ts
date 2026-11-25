@@ -42,11 +42,14 @@ import PromotionEnvironmentApplySelection from './commands/promotion-environment
 import PromotionEnvironmentApplySelectionContinue from './commands/promotion-environment/apply-selection-continue';
 import PromotionEnvironmentConnect from './commands/promotion-environment/connect';
 import PromotionEnvironmentCreate from './commands/promotion-environment/create';
+import PromotionEnvironmentCreateMissingProjects from './commands/promotion-environment/create-missing-projects';
 import PromotionEnvironmentDelete from './commands/promotion-environment/delete';
 import PromotionEnvironmentDisconnect from './commands/promotion-environment/disconnect';
 import PromotionEnvironmentGet from './commands/promotion-environment/get';
 import PromotionEnvironmentList from './commands/promotion-environment/list';
+import PromotionEnvironmentListApplyChanges from './commands/promotion-environment/list-apply-changes';
 import PromotionEnvironmentListChanges from './commands/promotion-environment/list-changes';
+import PromotionEnvironmentListMissingProjects from './commands/promotion-environment/list-missing-projects';
 import PromotionEnvironmentListProjects from './commands/promotion-environment/list-projects';
 import PromotionEnvironmentPromote from './commands/promotion-environment/promote';
 import PromotionEnvironmentPromoteSelection from './commands/promotion-environment/promote-selection';
@@ -121,7 +124,10 @@ export const commands = {
 	'promotion-environment:connect': PromotionEnvironmentConnect,
 	'promotion-environment:disconnect': PromotionEnvironmentDisconnect,
 	'promotion-environment:list-projects': PromotionEnvironmentListProjects,
+	'promotion-environment:list-missing-projects': PromotionEnvironmentListMissingProjects,
+	'promotion-environment:create-missing-projects': PromotionEnvironmentCreateMissingProjects,
 	'promotion-environment:list-changes': PromotionEnvironmentListChanges,
+	'promotion-environment:list-apply-changes': PromotionEnvironmentListApplyChanges,
 	'promotion-environment:add-project': PromotionEnvironmentAddProject,
 	'promotion-environment:remove-project': PromotionEnvironmentRemoveProject,
 	'promotion-environment:promote': PromotionEnvironmentPromote,

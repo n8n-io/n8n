@@ -168,7 +168,7 @@ function seedDeclaringAgent(): CaseSeed {
 				id: 'AgentMcpRepairSeed01',
 				config: {
 					name: 'Notion research',
-					model: 'anthropic/claude-sonnet-4-5',
+					model: 'anthropic/claude-sonnet-5-5',
 					instructions: 'Research company notes.',
 				},
 			},
@@ -256,7 +256,7 @@ describe('transcriptAsText', () => {
 		expect(text).toContain('user feedback: No — use a Webhook trigger, not a Schedule');
 	});
 
-	it('surfaces workflow_builder_ask_user question types for process expectations', () => {
+	it('surfaces ask_user question types for process expectations', () => {
 		const transcript: TranscriptTurn[] = [
 			{
 				steps: [

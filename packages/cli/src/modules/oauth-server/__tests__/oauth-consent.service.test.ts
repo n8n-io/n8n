@@ -97,7 +97,7 @@ describe('OAuthConsentService', () => {
 			});
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
-			oauthClientRepository.findOne.mockResolvedValue(client);
+			oauthClientRepository.findById.mockResolvedValue(client);
 
 			const result = await service.getConsentDetails(sessionToken, mock<User>({ id: 'user-1' }));
 
@@ -112,9 +112,7 @@ describe('OAuthConsentService', () => {
 				isFirstParty: false,
 			});
 			expect(oauthSessionService.verifySession).toHaveBeenCalledWith(sessionToken);
-			expect(oauthClientRepository.findOne).toHaveBeenCalledWith({
-				where: { id: 'client-123' },
-			});
+			expect(oauthClientRepository.findById).toHaveBeenCalledWith('client-123', {});
 			expect(protectedResourceRegistry.getByResourceUrl).not.toHaveBeenCalled();
 		});
 
@@ -127,7 +125,7 @@ describe('OAuthConsentService', () => {
 			};
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
-			oauthClientRepository.findOne.mockResolvedValue(mock<OAuthClient>({ id: 'client-123' }));
+			oauthClientRepository.findById.mockResolvedValue(mock<OAuthClient>({ id: 'client-123' }));
 			protectedResourceRegistry.getDefaultResource.mockReturnValue({
 				scopes: INSTANCE_SCOPES,
 				authorize: async () => false,
@@ -148,7 +146,7 @@ describe('OAuthConsentService', () => {
 			};
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
-			oauthClientRepository.findOne.mockResolvedValue(null);
+			oauthClientRepository.findById.mockResolvedValue(null);
 
 			const result = await service.getConsentDetails(sessionToken, mock<User>({ id: 'user-1' }));
 
@@ -185,7 +183,7 @@ describe('OAuthConsentService', () => {
 			});
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
-			oauthClientRepository.findOne.mockResolvedValue(client);
+			oauthClientRepository.findById.mockResolvedValue(client);
 
 			const result = await service.getConsentDetails(sessionToken, mock<User>({ id: 'user-1' }));
 
@@ -216,7 +214,7 @@ describe('OAuthConsentService', () => {
 				const scopeTools = { 'workflow:read': ['search_workflows', 'get_workflow_details'] };
 
 				oauthSessionService.verifySession.mockReturnValue(sessionPayload);
-				oauthClientRepository.findOne.mockResolvedValue(client);
+				oauthClientRepository.findById.mockResolvedValue(client);
 				const resource = mock<ProtectedResource>({
 					scopes: INSTANCE_SCOPES,
 					authorize: async () => true,
@@ -246,7 +244,7 @@ describe('OAuthConsentService', () => {
 			const client = mock<OAuthClient>({ id: 'client-123', name: 'Test Client' });
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
-			oauthClientRepository.findOne.mockResolvedValue(client);
+			oauthClientRepository.findById.mockResolvedValue(client);
 
 			const result = await service.getConsentDetails(sessionToken, mock<User>({ id: 'user-1' }));
 
@@ -267,7 +265,7 @@ describe('OAuthConsentService', () => {
 			const client = mock<OAuthClient>({ id: 'client-123', name: 'Test Client' });
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
-			oauthClientRepository.findOne.mockResolvedValue(client);
+			oauthClientRepository.findById.mockResolvedValue(client);
 			userConsentRepository.findOneBy.mockResolvedValueOnce({
 				scope: ['workflow:read', 'no-longer-supported:scope'],
 			} as unknown as UserConsent);
@@ -298,7 +296,7 @@ describe('OAuthConsentService', () => {
 			});
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
-			oauthClientRepository.findOne.mockResolvedValue(client);
+			oauthClientRepository.findById.mockResolvedValue(client);
 			protectedResourceRegistry.getByResourceUrl.mockResolvedValue({
 				displayName: 'My Workflow',
 				scopes: [],
@@ -339,7 +337,7 @@ describe('OAuthConsentService', () => {
 			});
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
-			oauthClientRepository.findOne.mockResolvedValue(client);
+			oauthClientRepository.findById.mockResolvedValue(client);
 			protectedResourceRegistry.getByResourceUrl.mockResolvedValue({
 				id: 'instance-mcp',
 				displayName: undefined,
@@ -378,7 +376,7 @@ describe('OAuthConsentService', () => {
 			});
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
-			oauthClientRepository.findOne.mockResolvedValue(client);
+			oauthClientRepository.findById.mockResolvedValue(client);
 			protectedResourceRegistry.getByResourceUrl.mockResolvedValue({
 				displayName: 'My Form',
 				scopes: [],
@@ -411,7 +409,7 @@ describe('OAuthConsentService', () => {
 			});
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
-			oauthClientRepository.findOne.mockResolvedValue(client);
+			oauthClientRepository.findById.mockResolvedValue(client);
 			protectedResourceRegistry.getByResourceUrl.mockResolvedValue({
 				displayName: 'My Workflow',
 				scopes: [],
@@ -436,7 +434,7 @@ describe('OAuthConsentService', () => {
 			const client = mock<OAuthClient>({ id: 'client-123', name: 'Test Client' });
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
-			oauthClientRepository.findOne.mockResolvedValue(client);
+			oauthClientRepository.findById.mockResolvedValue(client);
 			protectedResourceRegistry.getByResourceUrl.mockResolvedValue(undefined);
 
 			const result = await service.getConsentDetails(sessionToken, mock<User>({ id: 'user-1' }));
@@ -1014,7 +1012,7 @@ describe('OAuthConsentService', () => {
 		beforeEach(() => {
 			protectedResourceRegistry.getDefaultResource.mockReturnValue(narrowingResource);
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
-			oauthClientRepository.findOne.mockResolvedValue(
+			oauthClientRepository.findById.mockResolvedValue(
 				mock<OAuthClient>({ id: 'client-123', name: 'Test Client', isFirstParty: false }),
 			);
 		});

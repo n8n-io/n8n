@@ -13,6 +13,8 @@ import {
 	verifyModel as verifyModelRequest,
 	verifySandbox as verifySandboxRequest,
 	verifySearch as verifySearchRequest,
+	fetchUserPreferences,
+	updateUserPreferences,
 } from './instanceAi.settings.api';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { createBrowserLink, disconnectBrowserSession, getBrowserStatus } from './instanceAi.api';
@@ -20,6 +22,7 @@ import {
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	type FrontendModuleSettings,
 	type InstanceAiAdminSettingsResponse,
+	type InstanceAiApprovalMode,
 	type InstanceAiAdminSettingsUpdateRequest,
 	type InstanceAiProviderConnection,
 	type InstanceAiPermissions,
@@ -36,10 +39,16 @@ import type { ToolConnectionStatus } from '@/features/shared/toolsConnection/typ
 import { deriveInstanceAiConfiguration } from './instanceAiConfiguration';
 import { isBrowserUseSupportedOnDevice } from './utils/browserUseSupport';
 import { useInstanceAiSetupPanelExperiment } from '@/experiments/instanceAiSetupPanel/useInstanceAiSetupPanelExperiment';
+import {
+	INSTANCE_AI_ASSISTANT_AGENT_EXPERIMENT,
+	MODEL_TRAINING_OPT_OUT_EXPERIMENT,
+} from '@/app/constants/experiments';
+import { usePostHog } from '@/app/stores/posthog.store';
 
 export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
+	const posthogStore = usePostHog();
 	const toast = useToast();
 
 	const isLoading = ref(false);
@@ -83,11 +92,22 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const isSandboxEnabled = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.sandboxEnabled === true,
 	);
-	/** New threads run on the n8n Assistant agent of the agents runtime. */
+	/** The instance runs the n8n Assistant agent, so its threads show and open. */
 	const isAssistantAgentEnabled = computed(
 		() =>
 			!isInstanceAiDisabled.value &&
 			settingsStore.moduleSettings?.['instance-ai']?.assistantAgentEnabled === true,
+	);
+	/** New threads of this user run on the n8n Assistant agent of the agents runtime. */
+	const newThreadsUseAssistantAgent = computed(
+		() =>
+			isAssistantAgentEnabled.value &&
+			posthogStore.isFeatureEnabled(INSTANCE_AI_ASSISTANT_AGENT_EXPERIMENT.name),
+	);
+	/** Assistant traces reach n8n through the proxy, so the instance can opt out of model training. */
+	const isModelTrainingOptOutAvailable = computed(
+		() =>
+			isProxyEnabled.value && posthogStore.isFeatureEnabled(MODEL_TRAINING_OPT_OUT_EXPERIMENT.name),
 	);
 	const isWorkflowBuilderAvailable = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.workflowBuilderAvailable ?? true,
@@ -253,6 +273,64 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		// A key the server did not send falls back to its own default, not to
 		// `require_approval`: not every permission defaults to approval.
 		return settings.value?.permissions?.[key] ?? DEFAULT_INSTANCE_AI_PERMISSIONS[key];
+	}
+
+	// ── Per-user preferences ───────────────────────────────────────────────
+
+	/** The user's approval mode. Manual until the server says otherwise. */
+	const approvalMode = ref<InstanceAiApprovalMode>('manual');
+	/** Whether the user can pick an approval mode. */
+	const approvalModesAvailable = ref(false);
+	/** The last mode that the server confirmed. A failed save shows it again. */
+	let savedApprovalMode: InstanceAiApprovalMode = 'manual';
+	let preferencesLoadFailed = false;
+	/** Counts the saves of the mode, so that a response older than the last save changes nothing. */
+	let approvalModeSaves = 0;
+	/** The save in progress. The next save waits for it, so the server keeps the last pick. */
+	let pendingApprovalModeSave: Promise<unknown> = Promise.resolve();
+
+	async function fetchPreferences(): Promise<void> {
+		const savesAtStart = approvalModeSaves;
+		try {
+			const preferences = await fetchUserPreferences(rootStore.restApiContext);
+			preferencesLoadFailed = false;
+			if (savesAtStart !== approvalModeSaves) return;
+			savedApprovalMode = preferences.approvalMode;
+			approvalMode.value = preferences.approvalMode;
+			approvalModesAvailable.value = preferences.approvalModesAvailable;
+		} catch {
+			// Without preferences the chat shows no mode selector. Runs still use the saved mode.
+			preferencesLoadFailed = true;
+		}
+	}
+
+	/** Loads the preferences again when the last load failed, so the selector can come back. */
+	async function fetchPreferencesAfterFailure(): Promise<void> {
+		if (preferencesLoadFailed) await fetchPreferences();
+	}
+
+	/** Saves the approval mode. The next run uses it. Returns whether the save succeeded. */
+	async function setApprovalMode(mode: InstanceAiApprovalMode): Promise<boolean> {
+		if (mode === approvalMode.value) return true;
+		const save = ++approvalModeSaves;
+		approvalMode.value = mode;
+		const request = pendingApprovalModeSave.then(
+			async () => await updateUserPreferences(rootStore.restApiContext, { approvalMode: mode }),
+		);
+		pendingApprovalModeSave = request.catch(() => undefined);
+		try {
+			const preferences = await request;
+			// The saves run one at a time, so each response holds the mode on the server.
+			savedApprovalMode = preferences.approvalMode;
+			if (save !== approvalModeSaves) return true;
+			approvalMode.value = preferences.approvalMode;
+			approvalModesAvailable.value = preferences.approvalModesAvailable;
+			return true;
+		} catch (error) {
+			if (save === approvalModeSaves) approvalMode.value = savedApprovalMode;
+			toast.showError(error, i18n.baseText('instanceAi.approvalMode.saveError'));
+			return false;
+		}
 	}
 
 	// ── Browser Use ────────────────────────────────────────────────────────
@@ -437,9 +515,11 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		isBrowserUseAvailable,
 		isBrowserUseEnabledByAdmin,
 		isProxyEnabled,
+		isModelTrainingOptOutAvailable,
 		isSandboxEnabled,
 		isWorkflowBuilderAvailable,
 		isAssistantAgentEnabled,
+		newThreadsUseAssistantAgent,
 		isInstanceAiSetupPanelEnabled,
 		isCloudManaged,
 		startBrowserPushListener,
@@ -451,6 +531,12 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		verifyModel,
 		verifySandbox,
 		verifySearch,
+		// Per-user preferences
+		approvalMode,
+		approvalModesAvailable,
+		fetchPreferences,
+		fetchPreferencesAfterFailure,
+		setApprovalMode,
 		// Browser Use
 		browserConnected,
 		browserUseConnectionStatus,

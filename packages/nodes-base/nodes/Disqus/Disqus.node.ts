@@ -5,8 +5,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	IHttpRequestMethods,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { disqusApiRequest, disqusApiRequestAllItems } from './GenericFunctions';
 
@@ -576,7 +577,7 @@ export class Disqus implements INodeType {
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 
-		let endpoint = '';
+		let endpoint: RequestPath;
 		let requestMethod: IHttpRequestMethods;
 		let qs: IDataObject;
 
@@ -592,7 +593,7 @@ export class Disqus implements INodeType {
 
 						requestMethod = 'GET';
 
-						endpoint = 'forums/details.json';
+						endpoint = requestPath`forums/details.json`;
 
 						const id = this.getNodeParameter('id', i) as string;
 						qs.forum = id;
@@ -614,7 +615,7 @@ export class Disqus implements INodeType {
 
 						requestMethod = 'GET';
 
-						endpoint = 'forums/listPosts.json';
+						endpoint = requestPath`forums/listPosts.json`;
 
 						const id = this.getNodeParameter('id', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
@@ -650,7 +651,7 @@ export class Disqus implements INodeType {
 
 						requestMethod = 'GET';
 
-						endpoint = 'forums/listCategories.json';
+						endpoint = requestPath`forums/listCategories.json`;
 
 						const id = this.getNodeParameter('id', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
@@ -691,7 +692,7 @@ export class Disqus implements INodeType {
 
 						requestMethod = 'GET';
 
-						endpoint = 'forums/listThreads.json';
+						endpoint = requestPath`forums/listThreads.json`;
 
 						const id = this.getNodeParameter('id', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);

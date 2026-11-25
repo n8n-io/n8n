@@ -355,8 +355,7 @@ function renderExample(record: ResultRecord, idPrefix: string): string {
 	const exampleId = `${idPrefix}-${record.exampleId}-${record.iteration}`;
 	const interact = record.build.interactivity;
 	const interactBits: string[] = [];
-	if (interact.askUserCount > 0)
-		interactBits.push(`workflow_builder_ask_user ×${interact.askUserCount}`);
+	if (interact.askUserCount > 0) interactBits.push(`ask_user ×${interact.askUserCount}`);
 	if (interact.autoApprovedSuspensions > 0)
 		interactBits.push(`suspend ×${interact.autoApprovedSuspensions}`);
 	if (interact.mockedCredentialTypes.length > 0)
@@ -468,7 +467,7 @@ function renderRun(run: Run, index: number): string {
 			s.interactivity.mockedCredentialTypes.length > 0
 				? `<div class="run-interactivity">
           <strong>Interactivity:</strong>
-          workflow_builder_ask_user ×${s.interactivity.askUserCount} ·
+          ask_user ×${s.interactivity.askUserCount} ·
           suspend ×${s.interactivity.autoApprovedSuspensions} ·
           mocked creds: ${s.interactivity.mockedCredentialTypes.map(escapeHtml).join(', ') || 'none'}
         </div>`

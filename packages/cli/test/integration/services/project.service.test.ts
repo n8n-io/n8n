@@ -1,12 +1,13 @@
 import { LicenseState } from '@n8n/backend-common';
-import { testDb } from '@n8n/backend-test-utils';
+import { createTeamProject, getPersonalProject, testDb } from '@n8n/backend-test-utils';
+import { AgentsConfig } from '@n8n/config';
 import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG, type ProjectRole, type Scope } from '@n8n/permissions';
 import { createRole } from '@test-integration/db/roles';
 import { LicenseMocker } from '@test-integration/license';
 
-import { createMember } from '../shared/db/users';
+import { createMember, createOwner, createServiceAccountWithProject } from '../shared/db/users';
 
 import { License } from '@/license';
 import { ProjectService } from '@/services/project.service.ee';
@@ -297,11 +298,11 @@ describe('ProjectService', () => {
 			//
 			// ACT
 			//
-			await projectService.addUsersToProject(
-				members[0],
-				project.id,
-				members.map((member) => ({ userId: member.id, role: 'project:editor' })),
-			);
+			await projectService.addUsersToProject({
+				user: members[0],
+				projectId: project.id,
+				relations: members.map((member) => ({ userId: member.id, role: 'project:editor' })),
+			});
 
 			//
 			// ASSERT
@@ -329,9 +330,11 @@ describe('ProjectService', () => {
 			// ACT
 			//
 			await expect(
-				projectService.addUsersToProject(member, project.id, [
-					{ userId: member.id, role: 'custom:non-existing' },
-				]),
+				projectService.addUsersToProject({
+					user: member,
+					projectId: project.id,
+					relations: [{ userId: member.id, role: 'custom:non-existing' }],
+				}),
 			).rejects.toThrowError('Role custom:non-existing does not exist');
 		});
 	});
@@ -438,5 +441,37 @@ describe('ProjectService', () => {
 				projectService.changeUserRoleInProject(user, project.id, user.id, 'project:non-existing'),
 			).rejects.toThrowError('Role project:non-existing does not exist');
 		});
+	});
+
+	describe('getAccessibleProjects', () => {
+		const agentsConfig = Container.get(AgentsConfig);
+
+		afterEach(() => {
+			agentsConfig.serviceAccountsEnabled = false;
+		});
+
+		it.each([
+			[false, false],
+			[true, true],
+		])(
+			'with the flag set to %s, an owner gets service account projects: %s',
+			async (flag, expected) => {
+				agentsConfig.serviceAccountsEnabled = flag;
+				const [owner, serviceAccount] = await Promise.all([
+					createOwner(),
+					createServiceAccountWithProject(),
+				]);
+				const team = await createTeamProject();
+				const [ownerPersonal, serviceAccountPersonal] = await Promise.all([
+					getPersonalProject(owner),
+					getPersonalProject(serviceAccount),
+				]);
+
+				const ids = (await projectService.getAccessibleProjects(owner)).map((p) => p.id);
+
+				expect(ids.includes(serviceAccountPersonal.id)).toBe(expected);
+				expect(ids).toEqual(expect.arrayContaining([ownerPersonal.id, team.id]));
+			},
+		);
 	});
 });

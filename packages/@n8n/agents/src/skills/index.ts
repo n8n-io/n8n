@@ -1,6 +1,5 @@
 export {
 	RUNTIME_SKILL_FILE_NAME,
-	RUNTIME_SKILL_LIFETIMES,
 	RUNTIME_SKILL_MAX_OUTPUT_BYTES,
 	RUNTIME_SKILL_LINKED_FILE_GROUPS,
 	RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
@@ -20,16 +19,12 @@ export type {
 	RuntimeSkillLoader,
 	RuntimeSkillLoadError,
 	RuntimeSkillMcpServerDependency,
-	RuntimeSkillLifetime,
 	RuntimeSkillPolicyContract,
 	RuntimeSkillReferenceContract,
 	RuntimeSkillReferenceLocation,
 	RuntimeSkillRegistry,
 	RuntimeSkillRegistryEntry,
 	RuntimeSkillSource,
-	RuntimeSkillState,
-	RuntimeSkillStateScope,
-	RuntimeSkillStateStore,
 	RuntimeSkillValidationError,
 	RuntimeSkillValidationResult,
 } from './types';
@@ -57,6 +52,8 @@ export {
 } from './prompt';
 export {
 	createSkillLoadTool,
+	findRuntimeSkillEntry,
+	isMainSkillFilePath,
 	createRuntimeSkillTools,
 	RUNTIME_SKILL_TOOL_NAMES,
 } from './tools';

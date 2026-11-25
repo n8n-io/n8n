@@ -228,6 +228,9 @@ export function getProviderAttachmentCapabilities(
 	return (provider && PROVIDER_CAPABILITIES[provider]?.attachments) || NO_ATTACHMENTS;
 }
 
+// Raster types that every provider with image support accepts. Others, such as SVG, TIFF or HEIC, make the model call fail.
+const MODEL_IMAGE_MEDIA_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp']);
+
 /**
  * Whether a media type is accepted as an inline file part by the given
  * provider's models, per the static capability map. Unknown providers and
@@ -239,7 +242,8 @@ export function isAttachmentMediaTypeSupported(
 ): boolean {
 	if (!mediaType) return false;
 	const attachments = getProviderAttachmentCapabilities(provider);
-	if (mediaType.startsWith('image/')) return attachments.image;
+	if (mediaType.startsWith('image/'))
+		return attachments.image && MODEL_IMAGE_MEDIA_TYPES.has(mediaType);
 	if (mediaType === 'application/pdf') return attachments.pdf;
 	if (mediaType.startsWith('audio/')) return attachments.audio;
 	return false;
@@ -250,7 +254,7 @@ export function acceptedMimeTypesFromCapabilities(
 	capabilities: ProviderAttachmentCapabilities,
 ): string {
 	return [
-		capabilities.image ? 'image/*' : null,
+		capabilities.image ? [...MODEL_IMAGE_MEDIA_TYPES].join(',') : null,
 		capabilities.pdf ? 'application/pdf' : null,
 		capabilities.audio ? 'audio/*' : null,
 	]
@@ -275,9 +279,10 @@ export function getValidProviderToolNames(): string[] {
 export type ResolvedPromptCachingConfig = z.infer<typeof PromptCachingConfigSchema>;
 
 /**
- * Shared, mandatory decision for prompt caching. Always enables caching for
- * supporting providers (the user cannot disable it) and strips the field
- * (`undefined`) for providers that don't support it. For Anthropic
+ * Shared decision for prompt caching. Enables caching for supporting
+ * providers by default and keeps an explicit `enabled: false`, so a user can
+ * turn it off (e.g. for a proxy that rejects the cache fields). Strips the
+ * field (`undefined`) for providers that don't support it. For Anthropic
  * (`capability === 'ttl'`), preserves an explicit TTL from the current
  * config. Callers own the surrounding config plumbing — the editor model
  * picker and the backend write-path normalizer share this rule.
@@ -287,8 +292,9 @@ export function resolvePromptCaching(
 	capability: ProviderCapabilities['promptCaching'],
 ): ResolvedPromptCachingConfig | undefined {
 	if (!capability) return undefined;
+	const enabled = current?.enabled !== false;
 	if (capability === 'ttl' && current?.anthropic?.ttl) {
-		return { enabled: true, anthropic: { ttl: current.anthropic.ttl } };
+		return { enabled, anthropic: { ttl: current.anthropic.ttl } };
 	}
-	return { enabled: true };
+	return { enabled };
 }

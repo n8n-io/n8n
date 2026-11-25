@@ -19,7 +19,10 @@ export class AppVersionRepository extends BaseRepository<AppVersion> {
 	}
 
 	async insertVersion(
-		data: Pick<AppVersion, 'id' | 'appId' | 'sourceArtifactId' | 'label'>,
+		data: Pick<
+			AppVersion,
+			'id' | 'appId' | 'sourceArtifactId' | 'label' | 'bindings' | 'isScaffold'
+		>,
 		ctx: OperationContext,
 	): Promise<void> {
 		try {
@@ -34,6 +37,24 @@ export class AppVersionRepository extends BaseRepository<AppVersion> {
 			}
 			throw error;
 		}
+	}
+
+	/** Inserts a version that references the source and bundle artifacts of `source`. */
+	async insertCopy(
+		source: AppVersion,
+		data: Pick<AppVersion, 'id' | 'label' | 'bindings'>,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.managerFor(ctx).insert(AppVersion, {
+			...data,
+			appId: source.appId,
+			sourceArtifactId: source.sourceArtifactId,
+			bundleArtifactId: source.bundleArtifactId,
+			buildAttempts: source.buildAttempts,
+			buildStatus: source.buildStatus,
+			buildStatusUpdatedAt: source.buildStatusUpdatedAt,
+			isScaffold: source.isScaffold,
+		});
 	}
 
 	async findVersionById(versionId: string, ctx: OperationContext = {}): Promise<AppVersion | null> {
@@ -162,6 +183,14 @@ export class AppVersionRepository extends BaseRepository<AppVersion> {
 			if (!result.affected) return null;
 			return await manager.findOneBy(AppVersion, where);
 		});
+	}
+
+	async setDetails(
+		versionId: string,
+		details: Pick<AppVersion, 'label' | 'description'>,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.managerFor(ctx).update(AppVersion, { id: versionId }, details);
 	}
 
 	async clearBundles(versionIds: string[], ctx: OperationContext): Promise<void> {

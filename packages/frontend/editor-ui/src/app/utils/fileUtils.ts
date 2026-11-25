@@ -16,16 +16,28 @@ export function getBinaryDataFileName({
 	return `${name}.${fileExtension}`;
 }
 
+/** Generic types that some browsers report for a CSV file, for example on Windows. */
+const GENERIC_CSV_MIME_TYPES = new Set([
+	'',
+	'application/vnd.ms-excel',
+	'application/octet-stream',
+]);
+
 export function resolveFileMimeType(fileName: string, mimeType: string): string {
+	const extension = getFileExtension(fileName).toLowerCase();
+	if (extension === 'csv' && GENERIC_CSV_MIME_TYPES.has(mimeType)) return 'text/csv';
 	if (mimeType) return mimeType;
-	if (fileName.toLowerCase().endsWith('.md')) return 'text/markdown';
+	if (extension === 'md' || extension === 'markdown') return 'text/markdown';
 	return '';
+}
+
+export function base64ToBytes(data: string): Uint8Array<ArrayBuffer> {
+	return Uint8Array.from(atob(data), (char) => char.charCodeAt(0));
 }
 
 /** Inverse of `convertFileToBinaryData`: decodes base64 file data back into a `File`. */
 export function base64ToFile(data: string, fileName: string, mimeType: string): File {
-	const bytes = Uint8Array.from(atob(data), (char) => char.charCodeAt(0));
-	return new File([bytes], fileName, { type: mimeType });
+	return new File([base64ToBytes(data)], fileName, { type: mimeType });
 }
 
 export async function convertFileToBinaryData(file: File): Promise<IBinaryData> {

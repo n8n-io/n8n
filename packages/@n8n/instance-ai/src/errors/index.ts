@@ -1,5 +1,6 @@
 // A light entry point for callers that need only the error classes and helpers,
 // without the rest of the package behind the root barrel.
+export { AppNamespaceTakenError } from './app-namespace-taken.error';
 export { FolderResolutionError } from './folder-resolution.error';
 export { OutsideThreadProjectError } from './outside-thread-project.error';
 export { formatRedactedError } from './redacted-error';

@@ -1,9 +1,14 @@
+import type { Logger } from '@n8n/backend-common';
+import type { OutboundHttp } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { AzureBlobConfig, ObjectStoreConfig } from '@n8n/blob-storage';
 import { ObjectStoreService } from '@n8n/blob-storage/object-store';
 import { EngineConfig } from '@n8n/config';
 import { DbConnection } from '@n8n/db';
+import { Container } from '@n8n/di';
+import type { WorkQueuePublisherClient } from '@n8n/engine';
 import { BinaryDataConfig, BinaryDataService, ErrorReporter } from 'n8n-core';
+import { Expression } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import * as CrashJournal from '@/crash-journal';
@@ -13,19 +18,22 @@ import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { EngineMtls } from '@/modules/engine-v2/engine-mtls';
 import { EngineV2Runtime } from '@/modules/engine-v2/engine-v2.runtime';
-import { RedisExecutionResponseSender } from '@/modules/engine-v2/response-channel/redis-execution-response-sender';
-import type { RedisResponsePublisher } from '@/modules/engine-v2/response-channel/redis-execution-response-sender';
+import { ExecutionChannelSender } from '@/modules/engine-v2/execution-channel/execution-channel-sender';
+import { LifecycleEventChannelSender } from '@/modules/engine-v2/execution-channel/lifecycle-event-sender';
+import type { RedisChannelPublisher } from '@/modules/engine-v2/execution-channel/redis-execution-channel-publisher';
+import { createInstanceRedisWorkQueues } from '@/modules/engine-v2/work-queue/redis-work-queues';
 import { NodeTypes } from '@/node-types';
 import { OtelService } from '@/modules/otel/otel.service';
-import { PostHogClient } from '@/posthog';
-import { RedisClientService } from '@n8n/backend-services';
+import { RedisClientService, PostHogClient } from '@n8n/backend-services';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
 import { Engine } from '../engine';
 
 vi.mock('@/crash-journal');
+vi.mock('@/modules/engine-v2/work-queue/redis-work-queues', { spy: true });
 
 const dbConnection = mockInstance(DbConnection);
 const encryptionBootstrap = mockInstance(EncryptionBootstrapService);
@@ -40,10 +48,14 @@ const objectStoreService = mockInstance(ObjectStoreService);
 // Mocked so the tests do not depend on the storage env of the machine.
 const objectStoreConfig = mockInstance(ObjectStoreConfig, { bucket: { name: '', region: '' } });
 const azureBlobConfig = mockInstance(AzureBlobConfig, { containerName: '' });
-const publisher = mock<RedisResponsePublisher>();
+const publisher = mock<RedisChannelPublisher & WorkQueuePublisherClient>();
+/** Stands in for each consuming connection of the work queues. */
+const workQueueConsumer = mock<{ disconnect(): void }>();
 const redisClientService = mockInstance(RedisClientService, {
 	toValidPrefix: (prefix: string) => prefix,
-	createClient: vi.fn(() => publisher) as unknown as RedisClientService['createClient'],
+	createClient: vi.fn(({ type }: { type: string }) =>
+		type === 'publisher(n8n)' ? publisher : workQueueConsumer,
+	) as unknown as RedisClientService['createClient'],
 });
 
 // Services the base `init()` reaches, as in worker.test.ts.
@@ -56,6 +68,16 @@ mockInstance(OtelService);
 mockInstance(TelemetryEventRelay);
 mockInstance(ActivityEventRelay);
 mockInstance(WorkflowFailureNotificationEventRelay);
+
+/** The real boot check, over files this test does not need to write. */
+const useTls = (enabled: boolean) => {
+	const logger = mock<Logger>();
+	logger.scoped.mockReturnValue(logger);
+	const mtls = new EngineMtls(Container.get(EngineConfig), mock<OutboundHttp>(), logger);
+	vi.spyOn(mtls, 'enabled', 'get').mockReturnValue(enabled);
+	Container.set(EngineMtls, mtls);
+	return mtls;
+};
 
 describe('Engine', () => {
 	const originalEnv = process.env;
@@ -79,12 +101,25 @@ describe('Engine', () => {
 		engineConfig = mockInstance(EngineConfig, {
 			authSecret: 'a'.repeat(32),
 			controlPlaneBaseUrl: 'http://n8n-main:3001',
+			tlsInsecureAllowPlainHttp: true,
+			orchestrationConcurrency: 1,
+			stepConcurrency: 1,
 		});
+		useTls(false);
 	});
 
 	afterEach(() => {
 		process.env = originalEnv;
 	});
+
+	/** Opens the consuming connections, as the runtime does when it starts the queues. */
+	const startAndStopWorkQueues = async () => {
+		const queues = vi.mocked(runtime.init).mock.calls.at(-1)?.[0].queues;
+		for (const queue of [queues?.orchestration, queues?.step]) {
+			queue?.start(async () => {});
+			await queue?.stop();
+		}
+	};
 
 	const createEngine = () => {
 		const engine = new Engine();
@@ -102,6 +137,7 @@ describe('Engine', () => {
 			sentry: { backendDsn: '' },
 			cache: { backend: 'memory' },
 			taskRunners: {},
+			codeExecution: { backend: 'task-runners' },
 			outboundProxy: { mode: 'main-only' },
 			expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
 			generic: { gracefulShutdownTimeout: 30 },
@@ -163,6 +199,22 @@ describe('Engine', () => {
 			await expect(createEngine().init()).rejects.toThrow('N8N_ENGINE_CONTROL_PLANE_BASE_URL');
 		});
 
+		it('refuses to boot over plain HTTP without the opt-out', async () => {
+			engineConfig.tlsInsecureAllowPlainHttp = false;
+
+			await expect(createEngine().init()).rejects.toThrow(
+				'N8N_ENGINE_TLS_INSECURE_ALLOW_PLAIN_HTTP',
+			);
+		});
+
+		it('refuses an http control plane address when TLS is on', async () => {
+			useTls(true);
+
+			await expect(createEngine().init()).rejects.toThrow(
+				'N8N_ENGINE_CONTROL_PLANE_BASE_URL must start with https://',
+			);
+		});
+
 		it('never opens, migrates or reads the control plane database', async () => {
 			await createEngine().init();
 
@@ -177,18 +229,78 @@ describe('Engine', () => {
 			expect(CrashJournal.init).not.toHaveBeenCalled();
 		});
 
-		it('loads the nodes and starts no task runner', async () => {
+		it('loads the nodes and starts the task runner module', async () => {
 			await createEngine().init();
 
 			expect(loadNodesAndCredentials.init).toHaveBeenCalled();
-			expect(taskRunnerModule.start).not.toHaveBeenCalled();
+			expect(taskRunnerModule.start).toHaveBeenCalled();
 		});
 
-		it('sends execution responses over Redis', async () => {
+		it('sends execution responses and lifecycle events over Redis', async () => {
 			await createEngine().init();
 
 			expect(redisClientService.createClient).toHaveBeenCalledWith({ type: 'publisher(n8n)' });
-			expect(runtime.init).toHaveBeenCalledWith(expect.any(RedisExecutionResponseSender));
+			expect(runtime.init).toHaveBeenCalledWith({
+				responseSender: expect.any(ExecutionChannelSender),
+				lifecycleEventSender: expect.any(LifecycleEventChannelSender),
+				queues: expect.anything(),
+			});
+		});
+
+		it('publishes work queue messages on the execution channel connection', async () => {
+			publisher.lpush.mockResolvedValue(1);
+			await createEngine().init();
+			const queues = vi.mocked(runtime.init).mock.calls.at(-1)?.[0].queues;
+
+			await queues?.orchestration.publish({
+				type: 'step:settled',
+				executionId: 'exec-1',
+				stepId: 'step-1',
+			});
+
+			expect(redisClientService.createClient).toHaveBeenCalledTimes(1);
+			expect(redisClientService.createClient).toHaveBeenCalledWith({ type: 'publisher(n8n)' });
+			expect(publisher.lpush).toHaveBeenCalledWith(
+				expect.stringMatching(/:engine-v2-queue:orchestration$/),
+				expect.any(String),
+			);
+		});
+
+		it('runs each work queue at the concurrency that the engine config sets for it', async () => {
+			engineConfig.orchestrationConcurrency = 2;
+			engineConfig.stepConcurrency = 3;
+
+			await createEngine().init();
+
+			expect(createInstanceRedisWorkQueues).toHaveBeenCalledWith(publisher, expect.anything(), {
+				orchestration: 2,
+				step: 3,
+			});
+		});
+
+		it('publishes lifecycle events over Redis on the channel of their execution', async () => {
+			publisher.publish.mockResolvedValue(1);
+			await createEngine().init();
+			const lifecycleEventSender = vi
+				.mocked(runtime.init)
+				.mock.calls.at(-1)?.[0].lifecycleEventSender;
+
+			await lifecycleEventSender?.send(
+				[
+					{
+						type: 'execution:completed',
+						executionId: 'exec-1',
+						workflowId: 'wf-1',
+						at: '2026-10-29T10:00:00.000Z',
+					},
+				],
+				new AbortController().signal,
+			);
+
+			expect(publisher.publish).toHaveBeenCalledWith(
+				expect.stringMatching(/:engine-v2-lifecycle:exec-1$/),
+				expect.any(String),
+			);
 		});
 
 		it('starts the data plane after the base init and finishes loading the nodes', async () => {
@@ -256,22 +368,82 @@ describe('Engine', () => {
 		it('shuts the data plane down before exiting, without touching the crash journal', async () => {
 			const engine = createEngine();
 			await engine.init();
+			await startAndStopWorkQueues();
+			const dispose = vi.spyOn(Expression, 'disposeExpressionEngine');
 			const exit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 			try {
 				// @ts-expect-error - Accessing protected method for testing
 				await engine.stopProcess();
 
 				expect(runtime.shutdown).toHaveBeenCalled();
+				expect(workQueueConsumer.disconnect).toHaveBeenCalledTimes(2);
 				expect(publisher.disconnect).toHaveBeenCalledTimes(1);
 				expect(vi.mocked(runtime.shutdown).mock.invocationCallOrder[0]).toBeLessThan(
+					workQueueConsumer.disconnect.mock.invocationCallOrder[0],
+				);
+				expect(workQueueConsumer.disconnect.mock.invocationCallOrder[1]).toBeLessThan(
 					publisher.disconnect.mock.invocationCallOrder[0],
 				);
-				expect(exit).toHaveBeenCalledWith();
+				expect(exit).toHaveBeenCalledExactlyOnceWith();
 				expect(vi.mocked(runtime.shutdown).mock.invocationCallOrder[0]).toBeLessThan(
 					exit.mock.invocationCallOrder[0],
 				);
 				expect(CrashJournal.cleanup).not.toHaveBeenCalled();
 				expect(dbConnection.close).not.toHaveBeenCalled();
+				// In-flight steps still evaluate expressions until the engine has stopped.
+				expect(vi.mocked(runtime.shutdown).mock.invocationCallOrder[0]).toBeLessThan(
+					dispose.mock.invocationCallOrder[0],
+				);
+			} finally {
+				dispose.mockRestore();
+				exit.mockRestore();
+			}
+		});
+
+		it('closes every Redis connection and reports every error when the data plane fails to shut down', async () => {
+			const engine = createEngine();
+			await engine.init();
+			await startAndStopWorkQueues();
+			const shutdownError = new Error('shutdown failed');
+			runtime.shutdown.mockRejectedValueOnce(shutdownError);
+			const disconnectError = new Error('disconnect failed');
+			publisher.disconnect.mockImplementationOnce(() => {
+				throw disconnectError;
+			});
+			// @ts-expect-error - Accessing protected method for testing
+			const exitWithCrash = vi.spyOn(engine, 'exitWithCrash').mockResolvedValue(undefined);
+			const exit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+			try {
+				// @ts-expect-error - Accessing protected method for testing
+				await engine.stopProcess();
+
+				expect(publisher.disconnect).toHaveBeenCalledTimes(1);
+				expect(workQueueConsumer.disconnect).toHaveBeenCalledTimes(2);
+				expect(exitWithCrash).toHaveBeenCalledWith(
+					'There was an error shutting down the engine.',
+					expect.objectContaining({ errors: [shutdownError, disconnectError] }),
+				);
+			} finally {
+				exit.mockRestore();
+			}
+		});
+
+		it('reports a single release error through the crash path', async () => {
+			const engine = createEngine();
+			await engine.init();
+			const shutdownError = new Error('shutdown failed');
+			runtime.shutdown.mockRejectedValueOnce(shutdownError);
+			// @ts-expect-error - Accessing protected method for testing
+			const exitWithCrash = vi.spyOn(engine, 'exitWithCrash').mockResolvedValue(undefined);
+			const exit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+			try {
+				// @ts-expect-error - Accessing protected method for testing
+				await engine.stopProcess();
+
+				expect(exitWithCrash).toHaveBeenCalledWith(
+					'There was an error shutting down the engine.',
+					expect.objectContaining({ errors: [shutdownError] }),
+				);
 			} finally {
 				exit.mockRestore();
 			}

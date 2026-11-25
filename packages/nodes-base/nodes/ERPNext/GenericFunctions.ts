@@ -6,28 +6,25 @@ import type {
 	IWebhookFunctions,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, decodePathValue, requestUrl } from 'n8n-workflow';
 
-/**
- * Return the base API URL based on the user's environment.
- */
-const getBaseUrl = ({ environment, domain, subdomain }: ERPNextApiCredentials) =>
-	environment === 'cloudHosted' ? `https://${subdomain}.${domain}` : domain;
+export const toPathValue = (version: number, value: string) =>
+	version < 1.1 ? decodePathValue(value) : value;
 
 export async function erpNextApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject = {},
 	query: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
 ) {
 	const credentials = await this.getCredentials<ERPNextApiCredentials>('erpNextApi');
-	const baseUrl = getBaseUrl(credentials);
+	const { environment, domain, subdomain } = credentials;
 
-	let options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
@@ -35,12 +32,13 @@ export async function erpNextApiRequest(
 		method,
 		body,
 		qs: query,
-		uri: uri || `${baseUrl}${resource}`,
+		uri:
+			environment === 'cloudHosted'
+				? requestUrl`https://${subdomain}.${domain}${resource}`
+				: requestUrl`${domain}${resource}`,
 		json: true,
 		rejectUnauthorized: !credentials.allowUnauthorizedCerts,
 	};
-
-	options = Object.assign({}, options, option);
 
 	if (!Object.keys(options.body as IDataObject).length) {
 		delete options.body;
@@ -69,7 +67,7 @@ export async function erpNextApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject,
 	query: IDataObject = {},
 ) {

@@ -13,6 +13,7 @@ on:
 
 jobs:
   build:
+    if: github.repository == 'n8n-io/n8n' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
 
     steps:

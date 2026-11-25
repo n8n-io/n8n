@@ -1,18 +1,31 @@
 import { AiPreferenceListQueryDto, AiPreferenceRequestDto } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Body, Delete, Get, Patch, Post, Query, RestController } from '@n8n/decorators';
-import type { Response } from 'express';
+import { Body, Delete, Get, Middleware, Patch, Post, Query, RestController } from '@n8n/decorators';
+import type { NextFunction, Request, Response } from 'express';
 
 import { AiPreferenceService } from '@n8n/backend-services';
 
+import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
+
 /**
- * No feature-flag check: the flag gates the surfaces that read preferences, so a
- * write with the flag off is inert. No route scopes: authorization is row-shaped and
- * lives in the service, as in `VariablesController`.
+ * No route scopes: authorization is row-shaped and lives in the service, as in
+ * `VariablesController`.
  */
 @RestController('/ai-preferences')
 export class AiPreferenceController {
-	constructor(private readonly aiPreferenceService: AiPreferenceService) {}
+	constructor(
+		private readonly aiPreferenceService: AiPreferenceService,
+		private readonly aiPreferenceSettingsService: AiPreferenceSettingsService,
+	) {}
+
+	@Middleware()
+	requirePreferencesEnabled(_req: Request, res: Response, next: NextFunction) {
+		if (!this.aiPreferenceSettingsService.isEnabled) {
+			res.status(404).send('Not found');
+			return;
+		}
+		next();
+	}
 
 	@Get('/')
 	async getPreferences(
@@ -20,7 +33,8 @@ export class AiPreferenceController {
 		_res: Response,
 		@Query query: AiPreferenceListQueryDto,
 	) {
-		return await this.aiPreferenceService.list(req.user, query);
+		const { skip, take, ...filters } = query;
+		return await this.aiPreferenceService.list(req.user, { ...filters, offset: skip, limit: take });
 	}
 
 	@Get('/count')

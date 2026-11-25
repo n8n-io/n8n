@@ -1,3 +1,4 @@
+import type { AppBinding } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
@@ -14,6 +15,7 @@ const appId = '11111111-1111-4111-8111-111111111111';
 const versionId = '22222222-2222-4222-8222-222222222222';
 const files = new Map([['index.html', Buffer.from('<html/>')]]);
 const attempt = { attemptNumber: 1, startedAt: new Date() };
+const binding: AppBinding = { key: 'submit', kind: 'workflow', workflowId: 'w1' };
 
 function createService() {
 	const apps = mock<AppRepository>();
@@ -21,18 +23,19 @@ function createService() {
 	const sourceVersions = mock<AppSourceVersionStore>();
 	const buildResults = mock<AppBuildResultStore>();
 	const retention = mock<AppRetentionService>();
-	const version = mock<AppVersion>({
+	// A plain object: `mock()` does not keep arrays such as `bindings`.
+	const version = {
 		id: versionId,
 		appId,
 		label: 'Original',
 		buildStatus: 'queued',
-	});
+		bindings: [binding],
+		isScaffold: false,
+	} as AppVersion;
 	apps.findInProject.mockResolvedValue(mock<App>({ id: appId, draftVersionId: versionId }));
 	versions.findVersionById.mockResolvedValue(version);
 	sourceVersions.createVersion.mockImplementation(async (data) => {
-		versions.findVersionById.mockResolvedValue(
-			mock<AppVersion>({ ...version, id: data.id, label: data.label }),
-		);
+		versions.findVersionById.mockResolvedValue({ ...version, id: data.id, label: data.label });
 	});
 	const service = new AppVersionService(
 		apps,
@@ -46,6 +49,45 @@ function createService() {
 }
 
 describe('AppVersionService', () => {
+	describe('copyDraft', () => {
+		const next: AppBinding = {
+			key: 'tasks',
+			kind: 'dataTable',
+			dataTableId: 't1',
+			permissions: ['read'],
+		};
+
+		it('saves the draft with the new bindings and its label, then prunes', async () => {
+			const { service, versions, sourceVersions, retention, version } = createService();
+			sourceVersions.copyDraft.mockImplementation(async (data) => {
+				versions.findVersionById.mockResolvedValue({ ...version, ...data });
+			});
+
+			const copy = await service.copyDraft('project', appId, versionId, [next]);
+
+			expect(sourceVersions.copyDraft).toHaveBeenCalledWith({
+				id: copy.id,
+				appId,
+				expectedDraftVersionId: versionId,
+				label: 'Original',
+				bindings: [next],
+			});
+			expect(copy.id).not.toBe(versionId);
+			expect(copy.bindings).toEqual([next]);
+			expect(retention.prune).toHaveBeenCalledWith(appId);
+		});
+
+		it('refuses when the draft is another version', async () => {
+			const { service, apps, sourceVersions } = createService();
+			apps.findInProject.mockResolvedValue(mock<App>({ id: appId, draftVersionId: 'newer' }));
+
+			await expect(service.copyDraft('project', appId, versionId, [next])).rejects.toThrow(
+				ConflictError,
+			);
+			expect(sourceVersions.copyDraft).not.toHaveBeenCalled();
+		});
+	});
+
 	it('does not read source files from another app', async () => {
 		const { service, versions, sourceVersions } = createService();
 		versions.findVersionById.mockResolvedValue(
@@ -139,7 +181,7 @@ describe('AppVersionService', () => {
 		expect(buildResults.recordSuccess).toHaveBeenCalledWith(appId, versionId, files, attempt);
 	});
 
-	it('restores files and the label into a new version', async () => {
+	it('restores files, the label, and the bindings into a new version', async () => {
 		const { service, sourceVersions } = createService();
 		sourceVersions.readSource.mockResolvedValue(files);
 
@@ -147,7 +189,111 @@ describe('AppVersionService', () => {
 
 		expect(restored.id).not.toBe(versionId);
 		expect(sourceVersions.createVersion).toHaveBeenCalledWith(
-			{ id: restored.id, appId, expectedDraftVersionId: versionId, label: 'Original' },
+			{
+				id: restored.id,
+				appId,
+				expectedDraftVersionId: versionId,
+				label: 'Original',
+				bindings: [binding],
+				isScaffold: false,
+			},
+			files,
+		);
+	});
+
+	it('keeps the scaffold flag of a restored scaffold version', async () => {
+		const { service, versions, sourceVersions, version } = createService();
+		versions.findVersionById.mockResolvedValue({ ...version, isScaffold: true });
+		sourceVersions.readSource.mockResolvedValue(files);
+
+		await service.restoreSource('project', appId, versionId, versionId);
+
+		expect(sourceVersions.createVersion).toHaveBeenCalledWith(
+			expect.objectContaining({ isScaffold: true }),
+			files,
+		);
+	});
+
+	it.each([true, false])(
+		'stores the scaffold flag %s that the caller passes',
+		async (isScaffold) => {
+			const { service, sourceVersions } = createService();
+
+			await service.saveSource('project', appId, versionId, files, null, undefined, { isScaffold });
+
+			expect(sourceVersions.createVersion).toHaveBeenCalledWith(
+				expect.objectContaining({ isScaffold }),
+				files,
+			);
+		},
+	);
+
+	it('stores a source version as not a scaffold by default', async () => {
+		const { service, sourceVersions } = createService();
+
+		await service.saveSource('project', appId, versionId, files);
+
+		expect(sourceVersions.createVersion).toHaveBeenCalledWith(
+			expect.objectContaining({ isScaffold: false }),
+			files,
+		);
+	});
+
+	describe('isScaffold', () => {
+		it('returns false without a version', async () => {
+			const { service, versions } = createService();
+
+			expect(await service.isScaffold(null)).toBe(false);
+			expect(versions.findVersionById).not.toHaveBeenCalled();
+		});
+
+		it('returns false for a missing version', async () => {
+			const { service, versions } = createService();
+			versions.findVersionById.mockResolvedValue(null);
+
+			expect(await service.isScaffold(versionId)).toBe(false);
+		});
+
+		it('returns the flag of the version', async () => {
+			const { service, versions, version } = createService();
+			versions.findVersionById.mockResolvedValue({ ...version, isScaffold: true });
+
+			expect(await service.isScaffold(versionId)).toBe(true);
+		});
+	});
+
+	it('keeps the bindings of the draft that a new source version replaces', async () => {
+		const { service, versions, sourceVersions } = createService();
+
+		await service.saveSource('project', appId, versionId, files);
+
+		expect(versions.findVersionById).toHaveBeenCalledWith(versionId);
+		expect(sourceVersions.createVersion).toHaveBeenCalledWith(
+			expect.objectContaining({ bindings: [binding] }),
+			files,
+		);
+	});
+
+	it('starts the first version without bindings', async () => {
+		const { service, apps, sourceVersions } = createService();
+		apps.findInProject.mockResolvedValue(mock<App>({ id: appId, draftVersionId: null }));
+
+		await service.saveSource('project', appId, null, files);
+
+		expect(sourceVersions.createVersion).toHaveBeenCalledWith(
+			expect.objectContaining({ bindings: [] }),
+			files,
+		);
+	});
+
+	it('stores the bindings that the caller passes', async () => {
+		const { service, sourceVersions } = createService();
+		const other: AppBinding = { key: 'other', kind: 'workflow', workflowId: 'w2' };
+
+		await service.saveSource('project', appId, versionId, files, null, [other]);
+
+		expect(sourceVersions.createVersion).toHaveBeenCalledWith(
+			expect.objectContaining({ bindings: [other] }),
 			files,
 		);
 	});

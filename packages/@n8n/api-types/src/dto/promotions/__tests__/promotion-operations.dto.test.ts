@@ -7,6 +7,7 @@ import {
 	PromotePackageDto,
 	applyPackageResultSchema,
 } from '../promotion-operations.dto';
+import { PromoteSelectionRequestDto } from '../promotable-resource.dto';
 
 describe('PromotePackageDto', () => {
 	it('accepts an optional non-blank commit message and an optional force flag', () => {
@@ -100,8 +101,9 @@ describe.each([
 	const workflowIds = ['workflow1', 'workflow2'];
 	const expectedSource = { environmentId: 'env1', branchName: 'main', commitSha: 'a'.repeat(40) };
 
-	it('rejects an empty workflow list', () => {
-		expect(dto.safeParse({ workflowIds: [], expectedSource }).success).toBe(false);
+	it('accepts a selection without workflows, and an empty one that applies only the project', () => {
+		expect(dto.safeParse({ folderIds: ['folder1'], expectedSource }).success).toBe(true);
+		expect(dto.safeParse({ expectedSource }).success).toBe(true);
 	});
 
 	it('rejects a workflow list with duplicate ids', () => {
@@ -205,5 +207,24 @@ describe('ApplyPackageResultDto', () => {
 		{ ...identity, status: 'applied', counts: {} },
 	])('requires the fields for each outcome: %j', (value) => {
 		expect(applyPackageResultSchema.safeParse(value).success).toBe(false);
+	});
+});
+
+describe('PromoteSelectionRequestDto', () => {
+	it('accepts credential ids, and leaves them out when the request omits them', () => {
+		expect(PromoteSelectionRequestDto.parse({ credentialIds: ['c1', 'c2'] })).toEqual({
+			credentialIds: ['c1', 'c2'],
+		});
+		expect(PromoteSelectionRequestDto.parse({}).credentialIds).toBeUndefined();
+	});
+
+	it('rejects a repeated credential id', () => {
+		expect(PromoteSelectionRequestDto.safeParse({ credentialIds: ['c1', 'c1'] }).success).toBe(
+			false,
+		);
+	});
+
+	it('still rejects an unknown key', () => {
+		expect(PromoteSelectionRequestDto.safeParse({ credentialId: 'c1' }).success).toBe(false);
 	});
 });

@@ -4,11 +4,11 @@ import {
 	renderSkillCatalogPrompt,
 	RUNTIME_SKILL_MAX_OUTPUT_BYTES,
 } from '@n8n/agents';
-import type { InstanceAiEvent } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { loadHubRunSkills, type AssistantSkillReader } from '../instance-ai-hub-skills';
+import { InstanceAiSkillTelemetry } from '../instance-ai-skill-telemetry';
 import type { AssistantSkillContent } from '@/modules/skills';
 
 const builtIn = {
@@ -76,21 +76,50 @@ describe('Assistant Hub runtime skills', () => {
 		const provider = providerFor([content()]);
 		if (flag === 'unavailable') provider.isEnabled.mockRejectedValue(new Error('Unavailable'));
 		else provider.isEnabled.mockResolvedValue(false);
-		const { source, availabilityNotice } = await load(provider, builtIns);
+		const { source } = await load(provider, builtIns);
 		expect(source.registry).toEqual(builtIns.registry);
-		expect(source.shouldAppendSkillUpdates?.('hub-previously-loaded')).toBe(true);
-		expect(source.shouldAppendSkillUpdates?.(builtIn.id)).toBe(false);
 		expect(await source.loadSkill('hub-previously-loaded')).toBeNull();
 		if (flag === 'unavailable') {
-			expect(availabilityNotice).toContain('temporarily unavailable');
+			expect(source.dynamicCatalog?.skillIds).toEqual([]);
+			expect(source.dynamicCatalog?.notice).toContain('temporarily unavailable');
 			expect(source.getLoadError?.('hub-previously-loaded')?.retryable).toBe(true);
 		} else {
-			expect(availabilityNotice).toBeUndefined();
+			expect(source.dynamicCatalog).toBeUndefined();
 			expect(source.getLoadError?.('hub-previously-loaded')).toBeUndefined();
 		}
 		expect(provider.listSkills).not.toHaveBeenCalled();
 		expect(provider.readSkill).not.toHaveBeenCalled();
 	});
+
+	it.each([
+		{ flag: 'on', expected: true },
+		{ flag: 'off', expected: true },
+		{ flag: 'unavailable', expected: false },
+	])('checks loaded Hub skills for updates when the flag is $flag', async ({ flag, expected }) => {
+		const builtIns = createRuntimeSkillSource([builtIn]);
+		const provider = providerFor([content()]);
+		if (flag === 'unavailable') provider.isEnabled.mockRejectedValue(new Error('Unavailable'));
+		if (flag === 'off') provider.isEnabled.mockResolvedValue(false);
+		const { source } = await load(provider, builtIns);
+
+		// A failed Hub list must not report every loaded Hub skill as removed.
+		expect(source.shouldAppendSkillUpdates?.('hub-previously-loaded')).toBe(expected);
+		expect(source.shouldAppendSkillUpdates?.(builtIn.id)).toBe(false);
+	});
+
+	it.each([
+		{ label: 'empty', contents: [] },
+		{ label: 'invalid', contents: [content({ name: '' })] },
+	])(
+		'omits dynamic catalogue metadata when no valid entries apply ($label)',
+		async ({ contents }) => {
+			const builtIns = createRuntimeSkillSource([builtIn]);
+			const { source } = await load(providerFor(contents), builtIns);
+
+			expect(source.registry).toEqual(builtIns.registry);
+			expect(source.dynamicCatalog).toBeUndefined();
+		},
+	);
 
 	it('discovers summaries, activates one skill, and reads references on demand', async () => {
 		const saved = content({
@@ -100,38 +129,22 @@ describe('Assistant Hub runtime skills', () => {
 			],
 		});
 		const provider = providerFor([saved, content({ id: 'unselected' })]);
-		const { source, mapSkillEventForDisplay } = await load(provider);
+		const { source } = await load(provider);
 		const [entry] = hubEntries(source);
+		expect(source.dynamicCatalog?.skillIds).toEqual(hubEntries(source).map(({ id }) => id));
+		expect(source.dynamicCatalog?.notice).toContain('Load by exact skillId');
 		const catalog = renderSkillCatalogPrompt(source.registry);
 		expect(catalog).toContain(saved.description);
 		expect(catalog).not.toContain(saved.instructions);
 		expect(provider.readSkill).not.toHaveBeenCalled();
 
 		const tool = createSkillLoadTool(source);
-		const call: InstanceAiEvent = {
-			type: 'tool-call',
-			runId: 'run-1',
-			agentId: 'assistant',
-			payload: { toolCallId: 'load-1', toolName: 'load_skill', args: { skillId: entry.id } },
-		};
-		expect(mapSkillEventForDisplay?.(call)).toBe(call);
-		const activation = await tool.handler?.({ skillId: entry.id }, { loadSkill: source.loadSkill });
-		const event: InstanceAiEvent = {
-			type: 'tool-result',
-			runId: call.runId,
-			agentId: call.agentId,
-			payload: { toolCallId: 'load-1', result: activation },
-		};
-		const originalEvent = structuredClone(event);
-		expect(mapSkillEventForDisplay?.(event)).toMatchObject({
-			payload: { result: { content: expect.stringContaining(saved.instructions) } },
-		});
+		const activation = await tool.handler?.({ skillId: entry.id }, {});
 		expect(activation).toMatchObject({
-			success: true,
-			content: expect.stringContaining(saved.instructions),
-			linkedFiles: { references: saved.files.map(({ path }) => ({ path })) },
+			type: 'content',
+			value: [{ type: 'text', text: expect.stringContaining(saved.instructions) }],
 		});
-		expect(event).toEqual(originalEvent);
+		for (const { path } of saved.files) expect(JSON.stringify(activation)).toContain(path);
 		expect(JSON.stringify(activation)).not.toContain('Detailed guide.');
 		expect(provider.readFile).not.toHaveBeenCalled();
 		expect(
@@ -145,48 +158,6 @@ describe('Assistant Hub runtime skills', () => {
 			'references/guide.md',
 		);
 		expect(await source.loadSkill(builtIn.id)).toMatchObject(builtIn);
-	});
-
-	it.each([
-		'built-in',
-		'unloaded',
-		'version mismatch',
-		'reference',
-		'failed',
-		'other tool',
-		'other agent',
-	])('preserves %s results in the display stream', async (scenario) => {
-		const provider = providerFor([content()]);
-		const { source, mapSkillEventForDisplay } = await load(provider);
-		const [entry] = hubEntries(source);
-		if (scenario !== 'unloaded') await source.loadSkill(entry.id);
-		mapSkillEventForDisplay?.({
-			type: 'tool-call',
-			runId: 'run-1',
-			agentId: 'assistant',
-			payload: {
-				toolCallId: 'load-1',
-				toolName: scenario === 'other tool' ? 'skills' : 'load_skill',
-				args: { skillId: entry.id },
-			},
-		});
-		const event: InstanceAiEvent = {
-			type: 'tool-result',
-			runId: 'run-1',
-			agentId: scenario === 'other agent' ? 'custom-agent' : 'assistant',
-			payload: {
-				toolCallId: 'load-1',
-				result: {
-					success: scenario !== 'failed',
-					skillId: scenario === 'built-in' ? builtIn.id : entry.id,
-					hash: scenario === 'version mismatch' ? 'other-version' : entry.hash,
-					content: 'Original output.',
-					...(scenario === 'reference' ? { filePath: 'references/guide.md' } : {}),
-				},
-			},
-		};
-		expect(mapSkillEventForDisplay?.(event)).toBe(event);
-		expect(provider.readSkill).toHaveBeenCalledTimes(scenario === 'unloaded' ? 0 : 1);
 	});
 
 	it('retains the selected version for instructions and references throughout the turn', async () => {
@@ -257,7 +228,7 @@ describe('Assistant Hub runtime skills', () => {
 	it.each([
 		['empty instructions', { instructions: ' ' }],
 		['oversized instructions', { instructions: 'é'.repeat(RUNTIME_SKILL_MAX_OUTPUT_BYTES / 2) }],
-		['unsupported file', { files: [{ path: 'scripts/run.py', content: 'print(1)' }] }],
+		['invalid file path', { files: [{ path: '../run.py', content: 'print(1)' }] }],
 		['invalid path', { files: [{ path: 'references/a\0.md', content: 'Guide.' }] }],
 	] satisfies Array<[string, Partial<SavedSkill>]>)(
 		'rejects %s on activation',
@@ -382,14 +353,27 @@ describe('Assistant Hub runtime skills', () => {
 		expect(source.getLoadError?.(entry.id)).toBeUndefined();
 	});
 
-	it.each([0, 1])('enforces the reference UTF-8 limit with %i extra bytes', async (extra) => {
-		const body = 'é'.repeat(RUNTIME_SKILL_MAX_OUTPUT_BYTES / 2) + 'a'.repeat(extra);
-		const { source } = await load(
-			providerFor([content({ files: [{ path: 'references/guide.md', content: body }] })]),
-		);
-		const file = await source.loadFile?.(hubEntries(source)[0].id, 'references/guide.md');
-		if (extra) expect(file).toBeNull();
-		else expect(file?.bytes).toBe(RUNTIME_SKILL_MAX_OUTPUT_BYTES);
+	it('loads a large reference from its original path and caps the tool response by bytes', async () => {
+		const body = 'é'.repeat(RUNTIME_SKILL_MAX_OUTPUT_BYTES / 2) + 'a';
+		const path = 'reference/degraded/guide.md';
+		const { source } = await load(providerFor([content({ files: [{ path, content: body }] })]));
+		const skillId = hubEntries(source)[0].id;
+		expect(await source.loadFile?.(skillId, path)).toMatchObject({
+			filePath: path,
+			content: body,
+			bytes: RUNTIME_SKILL_MAX_OUTPUT_BYTES + 1,
+		});
+		const tool = createSkillLoadTool(source);
+		expect(await tool.handler?.({ skillId, filePath: path }, {})).toMatchObject({
+			success: true,
+			filePath: path,
+			bytes: RUNTIME_SKILL_MAX_OUTPUT_BYTES + 1,
+			content: `${body.slice(0, -1)}\n\n[... output truncated to ${RUNTIME_SKILL_MAX_OUTPUT_BYTES / 1024} KB. To read the next part, call load_skill with the same filePath and offset ${RUNTIME_SKILL_MAX_OUTPUT_BYTES} ...]`,
+		});
+		// The offset from the note returns the rest of the file.
+		expect(
+			await tool.handler?.({ skillId, filePath: path, offset: RUNTIME_SKILL_MAX_OUTPUT_BYTES }, {}),
+		).toMatchObject({ success: true, content: 'a' });
 	});
 
 	it('reads only registered Hub paths and delegates built-in references', async () => {
@@ -424,7 +408,7 @@ describe('Assistant Hub runtime skills', () => {
 			const provider = providerFor([content()]);
 			if (availability === 'catalog-unavailable')
 				provider.listSkills.mockRejectedValue(new Error('Unavailable'));
-			const { source, availabilityNotice } = await load(provider, builtIns);
+			const { source } = await load(provider, builtIns);
 			const previousHash = source.registry.skillsHash;
 			await source.prepare?.();
 			expect(source.registry.skills[0].hash).toBe('prepared');
@@ -433,10 +417,92 @@ describe('Assistant Hub runtime skills', () => {
 			expect(hubEntries(source)).toHaveLength(availability === 'available' ? 1 : 0);
 			expect(provider.readSkill).not.toHaveBeenCalled();
 			if (availability !== 'available') {
-				expect(availabilityNotice).toContain('temporarily unavailable');
+				expect(source.dynamicCatalog?.notice).toContain('temporarily unavailable');
 				expect(source.getLoadError?.('hub-existing')?.retryable).toBe(true);
 				expect(source.getLoadError?.(builtIn.id)).toBeUndefined();
 			}
 		},
 	);
+});
+
+describe('Hub load telemetry outcomes', () => {
+	it('keeps concurrent reference failures separate', async () => {
+		const provider = providerFor([
+			content({
+				files: [
+					{ path: 'references/temporary.md', content: 'Temporary' },
+					{ path: 'references/missing.md', content: 'Missing' },
+				],
+			}),
+		]);
+		const { source } = await load(provider);
+		const [entry] = hubEntries(source);
+		const tool = createSkillLoadTool(source);
+		await tool.handler?.({ skillId: entry.id }, {});
+		provider.readFile.mockImplementation(async (_context, _id, _version, path) => {
+			if (path === 'references/temporary.md') throw new Error('Temporary error');
+			return null;
+		});
+		const results = await Promise.all([
+			tool.handler?.({ skillId: entry.id, filePath: 'references/temporary.md' }, {}),
+			tool.handler?.({ skillId: entry.id, filePath: 'references/missing.md' }, {}),
+		]);
+		expect(results).toMatchObject([
+			{ success: false, errorCode: 'temporarily_unavailable' },
+			{ success: false, errorCode: 'unavailable' },
+		]);
+	});
+
+	it('reports a temporary catalog failure for a previously known Hub ID', async () => {
+		const provider = providerFor([content()]);
+		const first = await load(provider);
+		const [entry] = hubEntries(first.source);
+		provider.listSkills.mockRejectedValue(new Error('Temporary catalog error'));
+		const next = await load(provider);
+		const tool = createSkillLoadTool(next.source);
+		expect(await tool.handler?.({ skillId: entry.id }, {})).toMatchObject({
+			success: false,
+			errorCode: 'temporarily_unavailable',
+		});
+	});
+
+	it('uses each tool result reason after a transient reference error', async () => {
+		const saved = content({ files: [{ path: 'references/guide.md', content: 'Guide' }] });
+		const provider = providerFor([saved]);
+		const { source } = await load(provider);
+		const [entry] = hubEntries(source);
+		const tool = createSkillLoadTool(source);
+		const telemetry = new InstanceAiSkillTelemetry('orchestrator-1');
+		telemetry.bind(source);
+		async function invoke(key: string, filePath?: string) {
+			const args = { skillId: entry.id, ...(filePath ? { filePath } : {}) };
+			telemetry.observe({
+				type: 'tool-call',
+				runId: 'run-1',
+				agentId: 'orchestrator-1',
+				payload: { toolCallId: key, toolName: 'load_skill', args },
+			});
+			const result = await tool.handler?.(args, {});
+			telemetry.observe({
+				type: 'tool-result',
+				runId: 'run-1',
+				agentId: 'orchestrator-1',
+				payload: { toolCallId: key, result },
+			});
+		}
+		await invoke('main');
+		provider.readFile.mockRejectedValue(new Error('Private provider error'));
+		await invoke('transient', 'references/guide.md');
+		await invoke('invalid', 'references/not-registered.md');
+		expect(telemetry.snapshot()).toMatchObject({
+			hub_skill_attempt_count: 1,
+			hub_skill_load_count: 1,
+			hub_skill_loaded_ids: [saved.id],
+			hub_skill_reference_failure_count: 2,
+			hub_skill_failures: [
+				{ operation: 'reference', reason: 'temporarily_unavailable', count: 1 },
+				{ operation: 'reference', reason: 'invalid_reference', count: 1 },
+			],
+		});
+	});
 });

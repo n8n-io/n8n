@@ -100,10 +100,14 @@ export interface ObservationLogObserverInput {
 	transcriptTokenCount: number;
 	observationLogTail: ObservationLogEntry[];
 	renderedObservationLogTail: string | null;
+	/** The current working set, which the Observer can write again in full. */
+	workingSet?: string | null;
 	executionCounter?: AgentExecutionCounter;
 	telemetry?: BuiltTelemetry;
 	/** The agent's model transport (`AgentRuntimeConfig.modelFetch`), for the task's own model call. */
 	modelFetch?: typeof globalThis.fetch;
+	/** The agent's caller identity (`AgentRuntimeConfig.functionId`), for the task's request header. */
+	functionId?: string;
 }
 
 /** Return observation bullets, or exactly NO_OBSERVATIONS when the batch has no new facts. */
@@ -130,11 +134,19 @@ export interface ObservationLogReflectorInput {
 	activeObservationLog: ObservationLogEntry[];
 	renderedObservationLog: string;
 	tokenCount: number;
+	/** Token count the reflected entries should reach together. */
 	tokenBudget: number;
+	/**
+	 * True when only the oldest entries are sent. The newest entries stay as
+	 * written and follow the reflection.
+	 */
+	olderOnly?: boolean;
 	executionCounter?: AgentExecutionCounter;
 	telemetry?: BuiltTelemetry;
 	/** The agent's model transport (`AgentRuntimeConfig.modelFetch`), for the task's own model call. */
 	modelFetch?: typeof globalThis.fetch;
+	/** The agent's caller identity (`AgentRuntimeConfig.functionId`), for the task's request header. */
+	functionId?: string;
 }
 
 export interface ObservationLogReflectResult {
@@ -158,7 +170,7 @@ export type ObservationLogReflectFn = (
 /** Reported after an observation-log observer/reflector LLM call completes, for hosts that meter usage. */
 export interface MemoryTaskUsageReport {
 	task: ObservationLogTaskKind;
-	/** Stable model id string (e.g. 'anthropic/claude-sonnet-4-5'). */
+	/** Stable model id string (e.g. 'anthropic/claude-sonnet-5-5'). */
 	model: string;
 	usage: TokenUsage;
 	/** Stable per-LLM-call id, generated once at the call site so hosts can build idempotent billing dedupe keys. */

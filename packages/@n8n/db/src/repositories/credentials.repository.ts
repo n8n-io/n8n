@@ -6,7 +6,7 @@ import { DataSource, ILike, In, IsNull, LessThan, Like, Not, QueryFailedError } 
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 
 import {
 	CredentialsEntity,
@@ -207,6 +207,19 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 	): Promise<CredentialsEntity> {
 		assertClearedFor(ctx.policyCleared, 'credentialSave', credentialContentSubject(credential));
 		return await this.managerFor(ctx).save(CredentialsEntity, credential);
+	}
+
+	async updateDescription(
+		id: string,
+		description: string | null,
+		ctx: OperationContext,
+	): Promise<boolean> {
+		assertClearedFor(ctx.policyCleared, 'credentialSave', { type: 'credential', id });
+		const result = await this.managerFor(ctx).update(CredentialsEntity, id, {
+			description,
+			updatedAt: new Date(),
+		});
+		return (result.affected ?? 0) > 0;
 	}
 
 	async updateContent(

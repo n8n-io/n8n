@@ -1,5 +1,6 @@
 export * from './api';
 export * from './browser';
+export * from './client';
 export * from './community-nodes';
 export * from './csp';
 export * from './instance';
@@ -15,6 +16,7 @@ export const LICENSE_FEATURES = {
 	LDAP: 'feat:ldap',
 	SCIM: 'feat:scim',
 	TYPE_AVAILABILITY_POLICIES: 'feat:typeAvailabilityPolicies',
+	EXECUTION_LIMITS: 'feat:executionLimits',
 	SAML: 'feat:saml',
 	OIDC: 'feat:oidc',
 	MFA_ENFORCEMENT: 'feat:mfaEnforcement',
@@ -163,3 +165,6 @@ export const NANOID_ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijkl
 
 /** Protected-resource id of the instance MCP server, shared by the mcp and oauth-server modules. */
 export const INSTANCE_MCP_RESOURCE_ID = 'instance-mcp';
+
+export const MISSING_SCOPE_ERROR_MESSAGE =
+	'User is missing a scope required to perform this action';

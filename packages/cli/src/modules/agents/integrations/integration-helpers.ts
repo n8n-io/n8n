@@ -38,6 +38,28 @@ export function unsupportedAction(platform: string, action: string): Integration
 	);
 }
 
+/** The chat SDK attachment type for a MIME type. */
+export function fileAttachmentType(mimeType: string): 'image' | 'video' | 'audio' | 'file' {
+	// MIME types are case-insensitive, and stored values can have spaces.
+	const type = mimeType.trim().toLowerCase();
+	if (type.startsWith('image/')) return 'image';
+	if (type.startsWith('video/')) return 'video';
+	if (type.startsWith('audio/')) return 'audio';
+	return 'file';
+}
+
+/** The attachment type to send a file as. An image over `maxImageBytes` goes as a file. */
+export function outboundAttachmentType(
+	file: { mimeType: string; fileSizeBytes: number },
+	maxImageBytes?: number,
+): 'image' | 'video' | 'audio' | 'file' {
+	const type = fileAttachmentType(file.mimeType);
+	if (type === 'image' && maxImageBytes !== undefined && file.fileSizeBytes > maxImageBytes) {
+		return 'file';
+	}
+	return type;
+}
+
 export function normalizePlatformId(platform: string, id: string): string {
 	return id.includes(':') ? id : `${platform}:${id}`;
 }

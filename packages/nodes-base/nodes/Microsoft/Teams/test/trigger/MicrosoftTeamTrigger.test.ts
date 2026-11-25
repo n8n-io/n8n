@@ -1,11 +1,21 @@
-import { mock } from 'vitest-mock-extended';
-import type { INode } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { mock, mockDeep } from 'vitest-mock-extended';
+import type {
+	IDataObject,
+	IHookFunctions,
+	INode,
+	IWebhookFunctions,
+	NodeParameterValueType,
+	RequestPath,
+} from 'n8n-workflow';
+import { NodeApiError, ObservableObject, requestPath } from 'n8n-workflow';
 
 import { MicrosoftTeamsTrigger } from '../../MicrosoftTeamsTrigger.node';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../v2/transport';
 import type { Mock } from 'vitest';
 import type * as _transport from '../../v2/transport';
+
+type WebhookRequest = ReturnType<IWebhookFunctions['getRequestObject']>;
+type WebhookResponse = ReturnType<IWebhookFunctions['getResponseObject']>;
 
 // Preserve the real transport exports (the node description references
 // SERVICE_PRINCIPAL_AUTH/SP_HIDE at construction, and getResourcePath uses the real
@@ -31,36 +41,279 @@ describe('Microsoft Teams Trigger Node', () => {
 		vi.clearAllMocks();
 	});
 
+	// The hook methods want an `IHookFunctions` and `webhook()` an `IWebhookFunctions`; one
+	// deep mock serves both kinds of case.
+	const hookCtx = (staticData: Record<string, unknown>, params: Record<string, unknown> = {}) => {
+		const ctx = mockDeep<IHookFunctions & IWebhookFunctions>();
+		ctx.getWorkflow.mockReturnValue({ id: 'wf1', active: true });
+		ctx.getNode.mockReturnValue(mock<INode>({ name: 'Microsoft Teams Trigger' }));
+		ctx.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
+		ctx.getWorkflowStaticData.mockReturnValue(staticData as IDataObject);
+		ctx.getNodeParameter.mockImplementation(
+			(name: string, fallback?: unknown) =>
+				(name in params ? params[name] : fallback) as NodeParameterValueType,
+		);
+		return ctx;
+	};
+	type TriggerContext = ReturnType<typeof hookCtx>;
+
+	const arrange = ({
+		value,
+		staticData = { subscriptionIds: ['sub1'], webhookSecret: 'secret' },
+		params = { event: 'newChat' },
+		mode = 'webhook',
+	}: {
+		value: unknown[];
+		staticData?: Record<string, unknown>;
+		params?: Record<string, unknown>;
+		mode?: 'webhook' | 'manual';
+	}) => {
+		const res = {
+			status: vi.fn().mockReturnThis(),
+			send: vi.fn().mockReturnThis(),
+			end: vi.fn(),
+		};
+		const ctx = hookCtx(staticData, params);
+		ctx.getRequestObject.mockReturnValue({
+			body: { value },
+			query: {},
+		} as unknown as WebhookRequest);
+		ctx.getResponseObject.mockReturnValue(res as unknown as WebhookResponse);
+		ctx.getMode.mockReturnValue(mode);
+		return { ctx, res, staticData };
+	};
+
+	const calls = (method: string) =>
+		(microsoftApiRequest.call as Mock).mock.calls
+			.filter((call) => call[1] === method)
+			.map(([ctx, requestMethod, path, ...rest]) => [ctx, requestMethod, String(path), ...rest]);
+	// The subscription listing and the joined teams both page through `microsoftApiRequestAllItems`.
+	const pagedGraph = (
+		subscriptions: unknown[],
+		teams: unknown[] = [{ id: 'team1' }, { id: 'team2' }],
+	) =>
+		(microsoftApiRequestAllItems.call as Mock).mockImplementation(
+			async (_ctx: unknown, _property: string, _method: string, path: RequestPath) => {
+				if (path.value === '/v1.0/subscriptions') return subscriptions;
+				if (path.value === '/v1.0/me/joinedTeams') return teams;
+				throw new Error(`unexpected path ${path}`);
+			},
+		);
+
 	describe('webhookMethods', () => {
 		describe('checkExists', () => {
-			it('adopts the live subscription ids and returns true when a secret is stored', async () => {
-				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
-					{
-						id: 'sub1',
-						notificationUrl: 'https://webhook.url',
-						resource: '/me/chats',
-						expirationDateTime: new Date(Date.now() + 3600000).toISOString(),
+			const HOUR = 3600000;
+			const checkExists = async (ctx: TriggerContext) =>
+				await new MicrosoftTeamsTrigger().webhookMethods.default.checkExists.call(ctx);
+			const own = (id: string, resource: string, expiresInMs: number) => ({
+				id,
+				notificationUrl: 'https://webhook.url',
+				resource,
+				expirationDateTime: new Date(Date.now() + expiresInMs).toISOString(),
+			});
+			const graphCalls = () =>
+				(microsoftApiRequest.call as Mock).mock.calls.map((call) => [call[1], String(call[2])]);
+			const forbidden = (ctx: TriggerContext) =>
+				new NodeApiError(ctx.getNode(), { message: 'Forbidden', httpCode: '403' });
+			const throttled = (ctx: TriggerContext) =>
+				new NodeApiError(ctx.getNode(), { message: 'Too many requests', httpCode: '429' });
+			const NOW = Date.parse('2026-10-16T10:00:00.000Z');
+			const renewal = { expirationDateTime: new Date(NOW + 4318 * 60 * 1000).toISOString() };
+			// Answers by method and subscription id, for example `PATCH sub1`: an Error in the table is
+			// thrown. POST creates `new`. Anything else answers 404, which a DELETE counts as done.
+			const routeGraph = (answers: Record<string, unknown>) =>
+				(microsoftApiRequest.call as Mock).mockImplementation(
+					async (_ctx: unknown, method: string, path: RequestPath) => {
+						if (method === 'POST' && String(path) === '/v1.0/subscriptions') return { id: 'new' };
+						const answer =
+							answers[`${method} ${String(path).slice('/v1.0/subscriptions/'.length)}`];
+						if (answer instanceof Error) throw answer;
+						if (answer === undefined) {
+							throw new NodeApiError(mock<INode>(), { message: 'Not found', httpCode: '404' });
+						}
+						return answer;
 					},
-				]);
+				);
+			const proven = (id: string, resource = '/me/chats', expiresInMs = HOUR) => ({
+				...own(id, resource, expiresInMs),
+				clientState: 'secret',
+			});
 
-				mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
+			beforeEach(() => {
+				vi.useFakeTimers({ toFake: ['Date'], now: NOW });
+			});
+
+			afterEach(() => {
+				vi.useRealTimers();
+			});
+
+			it('renews the stored live subscription to a full lifetime without rewriting the static data', async () => {
+				// The static-data proxy marks every set and delete as a change, and each change is a save.
+				const staticData = ObservableObject.create({
+					subscriptionIds: ['sub1'],
+					webhookSecret: 'secret',
+				});
+				const ctx = hookCtx(staticData, { event: 'newChat' });
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
+					own('sub1', '/me/chats', HOUR),
+				]);
+				routeGraph({ 'GET sub1': proven('sub1'), 'PATCH sub1': {} });
+
+				const result = await checkExists(ctx);
+
+				expect(result).toBe(true);
+				expect(graphCalls()).toEqual([
+					['GET', '/v1.0/subscriptions/sub1'],
+					['PATCH', '/v1.0/subscriptions/sub1'],
+				]);
+				expect(calls('PATCH')[0][3]).toEqual(renewal);
+				expect((staticData as { __dataChanged?: boolean }).__dataChanged).toBe(false);
+			});
+
+			it('clears a marked retry after a reconcile that settles', async () => {
 				const staticData: Record<string, unknown> = {
-					subscriptionIds: ['old'],
+					subscriptionIds: ['sub1'],
+					webhookSecret: 'secret',
+					pendingReconcile: true,
+				};
+				const ctx = hookCtx(staticData, { event: 'newChat' });
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
+					own('sub1', '/me/chats', HOUR),
+				]);
+				routeGraph({ 'GET sub1': proven('sub1'), 'PATCH sub1': {} });
+
+				await expect(checkExists(ctx)).resolves.toBe(true);
+				expect(staticData).toEqual({ subscriptionIds: ['sub1'], webhookSecret: 'secret' });
+			});
+
+			it('replaces a kept subscription that is gone at its renewal in the same activation', async () => {
+				const staticData: Record<string, unknown> = {
+					subscriptionIds: ['sub1'],
 					webhookSecret: 'secret',
 				};
-				mockWebhookFunctions.getWorkflowStaticData.mockReturnValue(staticData);
+				const ctx = hookCtx(staticData, { event: 'newChat' });
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
+					own('sub1', '/me/chats', HOUR),
+				]);
+				routeGraph({ 'GET sub1': proven('sub1') });
 
-				mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-					if (paramName === 'event') return 'newChat';
-					return false;
-				});
-
-				const result = await new MicrosoftTeamsTrigger().webhookMethods.default.checkExists.call(
-					mockWebhookFunctions,
+				await expect(checkExists(ctx)).resolves.toBe(true);
+				expect(graphCalls()).toEqual([
+					['GET', '/v1.0/subscriptions/sub1'],
+					['PATCH', '/v1.0/subscriptions/sub1'],
+					['POST', '/v1.0/subscriptions'],
+				]);
+				expect(calls('POST')[0][3]).toEqual(
+					expect.objectContaining({ resource: '/me/chats', clientState: 'secret' }),
 				);
-				expect(result).toBe(true);
-				expect(staticData.subscriptionIds).toEqual(['sub1']);
-				expect(microsoftApiRequest.call).not.toHaveBeenCalled();
+				expect(staticData).toEqual({ webhookSecret: 'secret', subscriptionIds: ['new'] });
+				expect(ctx.logger.warn).not.toHaveBeenCalled();
+			});
+
+			it('throws the create error when a kept subscription is gone at its renewal and cannot be replaced', async () => {
+				const staticData: Record<string, unknown> = {
+					subscriptionIds: ['sub1'],
+					webhookSecret: 'secret',
+				};
+				const ctx = hookCtx(staticData, { event: 'newChat' });
+				const createError = forbidden(ctx);
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
+					own('sub1', '/me/chats', HOUR),
+				]);
+				routeGraph({ 'GET sub1': proven('sub1') });
+				const baseline = (microsoftApiRequest.call as Mock).getMockImplementation();
+				(microsoftApiRequest.call as Mock).mockImplementation(
+					async (callCtx: unknown, method: string, path: RequestPath, body?: unknown) => {
+						if (method === 'POST') throw createError;
+						return await baseline?.(callCtx, method, path, body);
+					},
+				);
+
+				await expect(checkExists(ctx)).rejects.toBe(createError);
+				expect(graphCalls()).toEqual([
+					['GET', '/v1.0/subscriptions/sub1'],
+					['PATCH', '/v1.0/subscriptions/sub1'],
+					['POST', '/v1.0/subscriptions'],
+				]);
+				// Nothing gone stays stored, so core's cleanup has nothing stale to remove.
+				expect(staticData).toEqual({ webhookSecret: 'secret', subscriptionIds: [] });
+			});
+
+			it('renews a kept subscription even when its expiry is already near the maximum', async () => {
+				const nearMax = 4317 * 60 * 1000;
+				const ctx = hookCtx(
+					{ subscriptionIds: ['sub1'], webhookSecret: 'secret' },
+					{ event: 'newChat' },
+				);
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
+					own('sub1', '/me/chats', nearMax),
+				]);
+				routeGraph({ 'GET sub1': proven('sub1', '/me/chats', nearMax), 'PATCH sub1': {} });
+
+				await expect(checkExists(ctx)).resolves.toBe(true);
+				expect(calls('PATCH').map((call) => call.slice(2))).toEqual([
+					['/v1.0/subscriptions/sub1', renewal],
+				]);
+			});
+
+			it('sends no renewal on a fresh publish', async () => {
+				const ctx = hookCtx({}, { event: 'newChat' });
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([]);
+				routeGraph({});
+
+				await expect(checkExists(ctx)).resolves.toBe(false);
+				await expect(
+					new MicrosoftTeamsTrigger().webhookMethods.default.create.call(ctx),
+				).resolves.toBe(true);
+				expect(graphCalls()).toEqual([['POST', '/v1.0/subscriptions']]);
+			});
+
+			// A read can fail for a reason about the transport, a 429 for example, so a stored
+			// subscription stays and the next lifecycle batch reconciles.
+			it.each([
+				['two stored twins', ['a', 'b'], ['a', 'b']],
+				['a stored subscription and a leftover beside it', ['a'], ['a']],
+			])('keeps %s and marks a retry when every read fails', async (_label, storedIds, keptIds) => {
+				const staticData: Record<string, unknown> = {
+					subscriptionIds: storedIds,
+					webhookSecret: 'secret',
+				};
+				const ctx = hookCtx(staticData, { event: 'newChat' });
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
+					own('a', '/me/chats', HOUR),
+					own('b', '/me/chats', 2 * HOUR),
+				]);
+				(microsoftApiRequest.call as Mock).mockRejectedValue(throttled(ctx));
+
+				await expect(checkExists(ctx)).resolves.toBe(true);
+				expect(calls('DELETE')).toHaveLength(0);
+				expect(calls('POST')).toHaveLength(0);
+				expect(staticData).toEqual({
+					subscriptionIds: keptIds,
+					webhookSecret: 'secret',
+					pendingReconcile: true,
+				});
+			});
+
+			// A failed create here fails the activation and core retries it, so nothing goes dark unseen.
+			it('replaces an unstored leftover whose read fails', async () => {
+				const staticData: Record<string, unknown> = {
+					subscriptionIds: [],
+					webhookSecret: 'secret',
+				};
+				const ctx = hookCtx(staticData, { event: 'newChat' });
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([own('x', '/me/chats', HOUR)]);
+				(microsoftApiRequest.call as Mock).mockImplementation(
+					async (_ctx: unknown, method: string) => {
+						if (method === 'GET') throw throttled(ctx);
+						return method === 'POST' ? { id: 'new' } : {};
+					},
+				);
+
+				await expect(checkExists(ctx)).resolves.toBe(true);
+				expect(calls('DELETE').map((call) => call[2])).toEqual(['/v1.0/subscriptions/x']);
+				expect(calls('POST')).toHaveLength(1);
+				expect(staticData).toEqual({ subscriptionIds: ['new'], webhookSecret: 'secret' });
 			});
 			// Graph does not return clientState on a list, so a subscription whose secret
 			// this node no longer holds can never be verified against.
@@ -91,7 +344,7 @@ describe('Microsoft Teams Trigger Node', () => {
 				expect(microsoftApiRequest.call).toHaveBeenCalledWith(
 					expect.anything(),
 					'DELETE',
-					'/v1.0/subscriptions/sub1',
+					requestPath`/v1.0/subscriptions/sub1`,
 				);
 				expect(staticData.subscriptionIds).toBeUndefined();
 			});
@@ -126,294 +379,594 @@ describe('Microsoft Teams Trigger Node', () => {
 				expect(result).toBe(false);
 				expect(mockWebhookFunctions.logger.warn).toHaveBeenCalled();
 			});
-			// create() overwrites subscriptionIds, so an id Graph still holds has to
-			// outlive checkExists or nothing is left to delete it by.
-			it('should keep a stale subscription id when it cannot be removed', async () => {
-				const staticData: Record<string, unknown> = {};
-				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
-					{
-						id: 'sub1',
-						notificationUrl: 'https://webhook.url',
-						resource: '/me/chats',
-						expirationDateTime: new Date(Date.now() + 3600000).toISOString(),
-					},
-				]);
-				(microsoftApiRequest.call as Mock).mockRejectedValue(new Error('Graph is unreachable'));
-
-				mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
-				mockWebhookFunctions.getWorkflowStaticData.mockReturnValue(staticData);
-				mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) =>
-					paramName === 'event' ? 'newChat' : false,
-				);
-				mockWebhookFunctions.getWorkflow.mockReturnValue({ id: 'wf1' });
-				mockWebhookFunctions.getNode.mockReturnValue({ name: 'Microsoft Teams Trigger' });
-				mockWebhookFunctions.logger = { warn: vi.fn() };
-
-				await new MicrosoftTeamsTrigger().webhookMethods.default.checkExists.call(
-					mockWebhookFunctions,
-				);
-
-				expect(staticData.staleSubscriptionIds).toEqual(['sub1']);
-			});
-
-			it('should forget a stale id once the subscription is removed', async () => {
-				const staticData: Record<string, unknown> = { staleSubscriptionIds: ['earlier-sub'] };
-				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
-					{
-						id: 'sub1',
-						notificationUrl: 'https://webhook.url',
-						resource: '/me/chats',
-						expirationDateTime: new Date(Date.now() + 3600000).toISOString(),
-					},
-				]);
-				(microsoftApiRequest.call as Mock).mockResolvedValue({});
-
-				mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
-				mockWebhookFunctions.getWorkflowStaticData.mockReturnValue(staticData);
-				mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) =>
-					paramName === 'event' ? 'newChat' : false,
-				);
-
-				await new MicrosoftTeamsTrigger().webhookMethods.default.checkExists.call(
-					mockWebhookFunctions,
-				);
-
-				expect(staticData.staleSubscriptionIds).toBeUndefined();
-			});
-
-			// Declining is not enough on its own: create() mints a fresh clientState,
-			// so anything left on this URL keeps delivering with a secret we can no
-			// longer verify.
-			it('should delete a live subscription on another resource and clear both keys', async () => {
-				const staticData: Record<string, unknown> = {
-					subscriptionIds: ['sub-other'],
-					webhookSecret: 'stored-secret',
-				};
-				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
-					{
-						id: 'sub-other',
-						notificationUrl: 'https://webhook.url',
-						resource: '/teams/t1/channels/c1/messages',
-						expirationDateTime: new Date(Date.now() + 3600000).toISOString(),
-					},
-				]);
-				(microsoftApiRequest.call as Mock).mockResolvedValue({});
-
-				mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
-				mockWebhookFunctions.getWorkflowStaticData.mockReturnValue(staticData);
-				mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) =>
-					paramName === 'event' ? 'newChat' : false,
-				);
-
-				const result = await new MicrosoftTeamsTrigger().webhookMethods.default.checkExists.call(
-					mockWebhookFunctions,
-				);
-
-				expect(result).toBe(false);
-				expect(microsoftApiRequest.call).toHaveBeenCalledWith(
-					expect.anything(),
-					'DELETE',
-					'/v1.0/subscriptions/sub-other',
-				);
-				expect(staticData.subscriptionIds).toBeUndefined();
-				expect(staticData.webhookSecret).toBeUndefined();
-			});
-
-			it.each([{}, { webhookSecret: '' }])(
+			it.each([
+				[{}, ['sub1', 'sub2']],
+				[{ webhookSecret: '' }, ['sub1', 'sub2']],
+				[{ subscriptionIds: ['old'] }, ['sub1', 'sub2', 'old']],
+			])(
 				'removes every own subscription and returns false when no secret is stored (%j)',
-				async (staticData) => {
+				async (stored, removed) => {
+					const staticData: Record<string, unknown> = { ...stored };
+					const ctx = hookCtx(staticData, { event: 'newChat' });
 					(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
-						{
-							id: 'sub1',
-							notificationUrl: 'https://webhook.url',
-							resource: '/me/chats',
-							expirationDateTime: new Date(Date.now() + 3600000).toISOString(),
-						},
-						{
-							id: 'sub2',
-							notificationUrl: 'https://webhook.url',
-							resource: '/me/chats',
-							expirationDateTime: new Date(Date.now() - 3600000).toISOString(),
-						},
-						{
-							id: 'subX',
-							notificationUrl: 'https://other.url',
-							resource: '/me/chats',
-							expirationDateTime: new Date(Date.now() + 3600000).toISOString(),
-						},
+						own('sub1', '/me/chats', HOUR),
+						own('sub2', '/me/chats', -HOUR),
+						{ ...own('subX', '/me/chats', HOUR), notificationUrl: 'https://other.url' },
 					]);
 					(microsoftApiRequest.call as Mock).mockResolvedValue({});
-					mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
-					mockWebhookFunctions.getWorkflowStaticData.mockReturnValue(staticData);
 
-					const result = await new MicrosoftTeamsTrigger().webhookMethods.default.checkExists.call(
-						mockWebhookFunctions,
-					);
+					const result = await checkExists(ctx);
 
 					expect(result).toBe(false);
-					expect(
-						(microsoftApiRequest.call as Mock).mock.calls.map((call) => call.slice(1, 3)),
-					).toEqual([
-						['DELETE', '/v1.0/subscriptions/sub1'],
-						['DELETE', '/v1.0/subscriptions/sub2'],
-					]);
+					expect(graphCalls()).toEqual(
+						removed.map((id) => ['DELETE', `/v1.0/subscriptions/${id}`]),
+					);
 					expect(staticData).not.toHaveProperty('subscriptionIds');
 				},
 			);
 
 			it('warns per failed removal and still returns false when no secret is stored', async () => {
-				const ctx: any = mock({ logger: { warn: vi.fn(), debug: vi.fn() } });
-				ctx.getWorkflow.mockReturnValue({ id: 'wf1' });
-				ctx.getNode.mockReturnValue({ name: 'Microsoft Teams Trigger' });
-				ctx.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
-				ctx.getWorkflowStaticData.mockReturnValue({});
+				const ctx = hookCtx({});
 				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
 					{ id: 'sub1', notificationUrl: 'https://webhook.url', resource: '/me/chats' },
 					{ id: 'sub2', notificationUrl: 'https://webhook.url', resource: '/me/chats' },
 				]);
-				(microsoftApiRequest.call as Mock).mockRejectedValue(
-					new NodeApiError(ctx.getNode(), { message: 'Forbidden', httpCode: '403' }),
-				);
+				(microsoftApiRequest.call as Mock).mockRejectedValue(forbidden(ctx));
 
-				const result = await new MicrosoftTeamsTrigger().webhookMethods.default.checkExists.call(
-					ctx,
-				);
+				const result = await checkExists(ctx);
 
 				expect(result).toBe(false);
-				expect(
-					(microsoftApiRequest.call as Mock).mock.calls.map((call) => call.slice(1, 3)),
-				).toEqual([
+				expect(graphCalls()).toEqual([
 					['DELETE', '/v1.0/subscriptions/sub1'],
 					['DELETE', '/v1.0/subscriptions/sub2'],
 				]);
 				expect(ctx.logger.warn).toHaveBeenCalledTimes(2);
 				expect(ctx.logger.warn).toHaveBeenCalledWith(
-					'Microsoft Teams Trigger: failed to remove a stale subscription',
+					'Microsoft Teams Trigger: failed to remove subscription',
 					expect.objectContaining({ subscriptionId: 'sub2', error: expect.any(String) }),
 				);
 			});
 
-			it('removes an expiring own subscription and adopts the live one when a secret is stored', async () => {
+			it('removes an expiring stored subscription and re-creates the resource with the stored secret', async () => {
+				const staticData: Record<string, unknown> = {
+					subscriptionIds: ['sub1'],
+					webhookSecret: 'secret',
+				};
+				const ctx = hookCtx(staticData, { event: 'newChat' });
 				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
-					{
-						id: 'sub1',
-						notificationUrl: 'https://webhook.url',
-						resource: '/me/chats',
-						expirationDateTime: new Date(Date.now() + 3600000).toISOString(),
-					},
-					{
-						id: 'sub2',
-						notificationUrl: 'https://webhook.url',
-						resource: '/me/chats',
-						expirationDateTime: new Date(Date.now() + 2 * 60 * 1000).toISOString(),
-					},
+					own('sub1', '/me/chats', 2 * 60 * 1000),
 				]);
-				(microsoftApiRequest.call as Mock).mockResolvedValue({});
-				mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
-				const staticData: Record<string, unknown> = { webhookSecret: 'secret' };
-				mockWebhookFunctions.getWorkflowStaticData.mockReturnValue(staticData);
-				mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) =>
-					paramName === 'event' ? 'newChat' : false,
-				);
+				(microsoftApiRequest.call as Mock).mockResolvedValue({ id: 'new' });
 
-				const result = await new MicrosoftTeamsTrigger().webhookMethods.default.checkExists.call(
-					mockWebhookFunctions,
-				);
+				const result = await checkExists(ctx);
 
 				expect(result).toBe(true);
-				expect(
-					(microsoftApiRequest.call as Mock).mock.calls.map((call) => call.slice(1, 3)),
-				).toEqual([['DELETE', '/v1.0/subscriptions/sub2']]);
-				expect(staticData).toEqual({ webhookSecret: 'secret', subscriptionIds: ['sub1'] });
-			});
-
-			it('removes an expiring own subscription and returns false when nothing else covers the resource', async () => {
-				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
-					{
-						id: 'sub1',
-						notificationUrl: 'https://webhook.url',
-						resource: '/me/chats',
-						expirationDateTime: new Date(Date.now() + 2 * 60 * 1000).toISOString(),
-					},
+				expect(graphCalls()).toEqual([
+					['DELETE', '/v1.0/subscriptions/sub1'],
+					['POST', '/v1.0/subscriptions'],
 				]);
-				(microsoftApiRequest.call as Mock).mockResolvedValue({});
-				mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
-				const staticData: Record<string, unknown> = { webhookSecret: 'secret' };
-				mockWebhookFunctions.getWorkflowStaticData.mockReturnValue(staticData);
-				mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) =>
-					paramName === 'event' ? 'newChat' : false,
+				expect(calls('POST')[0][3]).toEqual(
+					expect.objectContaining({ clientState: 'secret', resource: '/me/chats' }),
 				);
-
-				const result = await new MicrosoftTeamsTrigger().webhookMethods.default.checkExists.call(
-					mockWebhookFunctions,
-				);
-
-				expect(result).toBe(false);
-				expect(
-					(microsoftApiRequest.call as Mock).mock.calls.map((call) => call.slice(1, 3)),
-				).toEqual([['DELETE', '/v1.0/subscriptions/sub1']]);
-				expect(staticData).toEqual({});
+				expect(staticData).toEqual({ webhookSecret: 'secret', subscriptionIds: ['new'] });
 			});
 
-			it('returns false when no subscription exists', async () => {
+			it('creates the required subscription with the stored secret when none exists', async () => {
+				const staticData: Record<string, unknown> = { webhookSecret: 'secret' };
+				const ctx = hookCtx(staticData, { event: 'newChat' });
 				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([]);
-				mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
-				const staticData: Record<string, unknown> = { webhookSecret: 'secret' };
-				mockWebhookFunctions.getWorkflowStaticData.mockReturnValue(staticData);
-				mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) =>
-					paramName === 'event' ? 'newChat' : false,
-				);
+				(microsoftApiRequest.call as Mock).mockResolvedValue({ id: 'new' });
 
-				const result = await new MicrosoftTeamsTrigger().webhookMethods.default.checkExists.call(
-					mockWebhookFunctions,
-				);
+				const result = await checkExists(ctx);
 
-				expect(result).toBe(false);
-				expect(microsoftApiRequest.call).not.toHaveBeenCalled();
-				expect(staticData).toEqual({});
+				expect(result).toBe(true);
+				expect(graphCalls()).toEqual([['POST', '/v1.0/subscriptions']]);
+				expect(calls('POST')[0][3]).toEqual(expect.objectContaining({ clientState: 'secret' }));
+				expect(staticData).toEqual({ webhookSecret: 'secret', subscriptionIds: ['new'] });
 			});
 
-			it('returns false when the listing fails', async () => {
-				(microsoftApiRequestAllItems.call as Mock).mockRejectedValue(
-					new Error('API request failed'),
-				);
-				mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
-				mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({ webhookSecret: 'secret' });
+			it('returns false without a Graph call when the webhook URL is not https', async () => {
+				const ctx = hookCtx({ webhookSecret: 'secret' }, { event: 'newChat' });
+				ctx.getNodeWebhookUrl.mockReturnValue('http://webhook.url');
 
-				const result = await new MicrosoftTeamsTrigger().webhookMethods.default.checkExists.call(
-					mockWebhookFunctions,
-				);
+				const result = await checkExists(ctx);
 
 				expect(result).toBe(false);
+				expect(microsoftApiRequestAllItems.call).not.toHaveBeenCalled();
 				expect(microsoftApiRequest.call).not.toHaveBeenCalled();
+			});
+
+			describe('when the listing fails', () => {
+				it.each([
+					['a plain error', (_ctx: TriggerContext) => new Error('API request failed')],
+					['a 403', (ctx: TriggerContext) => forbidden(ctx)],
+					['a 429', (ctx: TriggerContext) => throttled(ctx)],
+				])('throws %s at once when no secret is stored', async (_label, makeError) => {
+					const ctx = hookCtx({ subscriptionIds: ['sub1'] }, { event: 'newChat' });
+					const error = makeError(ctx);
+					(microsoftApiRequestAllItems.call as Mock).mockRejectedValue(error);
+
+					await expect(checkExists(ctx)).rejects.toBe(error);
+					expect(microsoftApiRequestAllItems.call).toHaveBeenCalledTimes(1);
+					expect(microsoftApiRequest.call).not.toHaveBeenCalled();
+				});
+
+				const S1 = '/v1.0/subscriptions/sub1';
+
+				it.each([
+					[
+						'the stored secret',
+						['sub1'],
+						'secret',
+						[
+							['GET', S1],
+							['PATCH', S1],
+						],
+						[renewal],
+					],
+					['no clientState', ['sub1'], null, [['GET', S1]], []],
+					[
+						'the stored secret, with the id stored twice',
+						['sub1', 'sub1'],
+						'secret',
+						[
+							['GET', S1],
+							['GET', S1],
+							['PATCH', S1],
+						],
+						[renewal],
+					],
+				])(
+					'keeps the stored subscriptions and marks a retry when GET by id shows them live with %s',
+					async (_label, ids, answered, graph, bodies) => {
+						const staticData: Record<string, unknown> = {
+							subscriptionIds: ids,
+							webhookSecret: 'secret',
+						};
+						const ctx = hookCtx(staticData, { event: 'newChat' });
+						(microsoftApiRequestAllItems.call as Mock).mockRejectedValue(throttled(ctx));
+						routeGraph({
+							'GET sub1': { ...own('sub1', '/me/chats', HOUR), clientState: answered },
+							'PATCH sub1': {},
+						});
+
+						await expect(checkExists(ctx)).resolves.toBe(true);
+						expect(microsoftApiRequestAllItems.call).toHaveBeenCalledTimes(1);
+						expect(graphCalls()).toEqual(graph);
+						expect(calls('PATCH').map((call) => call[3])).toEqual(bodies);
+						expect(staticData.subscriptionIds).toBe(ids);
+						// The activation could not list, so the next lifecycle batch lists and reconciles.
+						expect(staticData.pendingReconcile).toBe(true);
+						expect(ctx.logger.warn).toHaveBeenCalledWith(
+							'Microsoft Teams Trigger: failed to list subscriptions, kept the stored ones',
+							expect.objectContaining({ workflowId: 'wf1', error: expect.any(String) }),
+						);
+					},
+				);
+
+				it('throws the listing error and writes nothing when Graph does not show the stored id', async () => {
+					const staticData: Record<string, unknown> = {
+						subscriptionIds: ['sub1'],
+						webhookSecret: 'secret',
+					};
+					const ctx = hookCtx(staticData, { event: 'newChat' });
+					const error = throttled(ctx);
+					(microsoftApiRequestAllItems.call as Mock).mockRejectedValue(error);
+					routeGraph({});
+
+					await expect(checkExists(ctx)).rejects.toBe(error);
+					expect(graphCalls()).toEqual([['GET', '/v1.0/subscriptions/sub1']]);
+					expect(calls('DELETE')).toHaveLength(0);
+					expect(calls('POST')).toHaveLength(0);
+					expect(staticData).toEqual({ subscriptionIds: ['sub1'], webhookSecret: 'secret' });
+				});
+
+				it.each([
+					{
+						when: 'and it is the only stored one',
+						params: { event: 'newChat' },
+						storedIds: ['sub1'],
+						answers: () => ({ 'GET sub1': proven('sub1') }),
+						renewed: ['sub1'],
+					},
+					{
+						when: 'even when the renewal on the other resource succeeds',
+						params: { event: 'newChannel', watchAllTeams: true },
+						storedIds: ['a', 'b'],
+						answers: () => ({
+							'GET a': proven('a', '/teams/team1/channels'),
+							'GET b': proven('b', '/teams/team2/channels'),
+							'PATCH a': {},
+						}),
+						renewed: ['a', 'b'],
+					},
+				])(
+					'throws the listing error when a renewed stored subscription is gone, $when',
+					async ({ params, storedIds, answers, renewed }) => {
+						const staticData: Record<string, unknown> = {
+							subscriptionIds: storedIds,
+							webhookSecret: 'secret',
+						};
+						const ctx = hookCtx(staticData, params);
+						const error = throttled(ctx);
+						// Only the subscription listing fails: Watch All still reads the joined teams.
+						(microsoftApiRequestAllItems.call as Mock).mockImplementation(
+							async (_ctx: unknown, _property: string, _method: string, path: RequestPath) => {
+								if (String(path) === '/v1.0/me/joinedTeams')
+									return [{ id: 'team1' }, { id: 'team2' }];
+								throw error;
+							},
+						);
+						routeGraph(answers());
+
+						await expect(checkExists(ctx)).rejects.toBe(error);
+						expect(calls('PATCH').map((call) => call[2])).toEqual(
+							renewed.map((id) => `/v1.0/subscriptions/${id}`),
+						);
+						expect(calls('DELETE')).toHaveLength(0);
+						expect(calls('POST')).toHaveLength(0);
+						expect(staticData).toEqual({ subscriptionIds: storedIds, webhookSecret: 'secret' });
+						expect(ctx.logger.warn).not.toHaveBeenCalled();
+					},
+				);
+
+				// A throw runs `delete()`, which also removes the secret, so one lost subscription must
+				// not cost the stored one that still covers the resource.
+				it('drops only the gone stored id and keeps the ones that still cover', async () => {
+					const staticData: Record<string, unknown> = {
+						subscriptionIds: ['a', 'b', 'c'],
+						webhookSecret: 'secret',
+					};
+					const ctx = hookCtx(staticData, { event: 'newChannel', watchAllTeams: true });
+					const error = throttled(ctx);
+					(microsoftApiRequestAllItems.call as Mock).mockImplementation(
+						async (_ctx: unknown, _property: string, _method: string, path: RequestPath) => {
+							if (String(path) === '/v1.0/me/joinedTeams')
+								return [{ id: 'team1' }, { id: 'team2' }];
+							throw error;
+						},
+					);
+					// a is renewed and gone, b still covers team1 without a clientState, c renews team2.
+					routeGraph({
+						'GET a': proven('a', '/teams/team1/channels'),
+						'GET b': { ...own('b', '/teams/team1/channels', HOUR), clientState: null },
+						'GET c': proven('c', '/teams/team2/channels'),
+						'PATCH c': {},
+					});
+
+					await expect(checkExists(ctx)).resolves.toBe(true);
+					expect(calls('PATCH').map((call) => call[2])).toEqual([
+						'/v1.0/subscriptions/a',
+						'/v1.0/subscriptions/c',
+					]);
+					expect(calls('DELETE')).toHaveLength(0);
+					expect(calls('POST')).toHaveLength(0);
+					expect(staticData).toEqual({
+						subscriptionIds: ['b', 'c'],
+						webhookSecret: 'secret',
+						pendingReconcile: true,
+					});
+				});
+
+				it('warns, keeps the stored ids and marks a retry when a renewal fails for another reason', async () => {
+					const staticData: Record<string, unknown> = {
+						subscriptionIds: ['sub1'],
+						webhookSecret: 'secret',
+					};
+					const ctx = hookCtx(staticData, { event: 'newChat' });
+					(microsoftApiRequestAllItems.call as Mock).mockRejectedValue(throttled(ctx));
+					routeGraph({ 'GET sub1': proven('sub1'), 'PATCH sub1': forbidden(ctx) });
+
+					await expect(checkExists(ctx)).resolves.toBe(true);
+					expect(staticData).toEqual({
+						subscriptionIds: ['sub1'],
+						webhookSecret: 'secret',
+						pendingReconcile: true,
+					});
+					expect(ctx.logger.warn).toHaveBeenCalledTimes(2);
+					expect(ctx.logger.warn).toHaveBeenCalledWith(
+						'Microsoft Teams Trigger: failed to renew subscription',
+						expect.objectContaining({ subscriptionId: 'sub1' }),
+					);
+					expect(ctx.logger.warn).toHaveBeenCalledWith(
+						'Microsoft Teams Trigger: failed to list subscriptions, kept the stored ones',
+						expect.objectContaining({ error: expect.any(String) }),
+					);
+				});
+
+				it('saves nothing when it renews and the retry mark is already set', async () => {
+					const staticData = ObservableObject.create({
+						subscriptionIds: ['sub1'],
+						webhookSecret: 'secret',
+						pendingReconcile: true,
+					});
+					const ctx = hookCtx(staticData, { event: 'newChat' });
+					(microsoftApiRequestAllItems.call as Mock).mockRejectedValue(throttled(ctx));
+					routeGraph({ 'GET sub1': proven('sub1'), 'PATCH sub1': {} });
+
+					await expect(checkExists(ctx)).resolves.toBe(true);
+					expect(calls('PATCH')).toHaveLength(1);
+					expect((staticData as { __dataChanged?: boolean }).__dataChanged).toBe(false);
+				});
+			});
+
+			it('creates only the uncovered resource and keeps the trusted subscription', async () => {
+				const staticData: Record<string, unknown> = {
+					subscriptionIds: ['a'],
+					webhookSecret: 'secret',
+				};
+				const ctx = hookCtx(staticData, { event: 'newChannel', watchAllTeams: true });
+				pagedGraph([own('a', '/teams/team1/channels', HOUR)]);
+				routeGraph({ 'GET a': proven('a', '/teams/team1/channels'), 'PATCH a': {} });
+
+				const result = await checkExists(ctx);
+
+				expect(result).toBe(true);
+				expect(calls('DELETE')).toHaveLength(0);
+				expect(calls('POST').map((call) => call[3])).toEqual([
+					expect.objectContaining({ resource: '/teams/team2/channels', clientState: 'secret' }),
+				]);
+				// The subscription created in this activation gets no renewal.
+				expect(calls('PATCH').map((call) => call[2])).toEqual(['/v1.0/subscriptions/a']);
+				expect(staticData).toEqual({ webhookSecret: 'secret', subscriptionIds: ['a', 'new'] });
+			});
+
+			it('replaces an unstored own subscription that has another secret', async () => {
+				const staticData: Record<string, unknown> = {
+					subscriptionIds: ['old'],
+					webhookSecret: 'secret',
+				};
+				const ctx = hookCtx(staticData, { event: 'newChat' });
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
+					own('sub1', '/me/chats', HOUR),
+				]);
+				(microsoftApiRequest.call as Mock).mockImplementation(
+					async (_ctx: unknown, method: string) =>
+						method === 'GET'
+							? { ...own('sub1', '/me/chats', HOUR), clientState: 'other' }
+							: { id: 'new' },
+				);
+
+				const result = await checkExists(ctx);
+
+				expect(result).toBe(true);
+				expect(graphCalls()).toEqual([
+					['GET', '/v1.0/subscriptions/sub1'],
+					['DELETE', '/v1.0/subscriptions/sub1'],
+					['DELETE', '/v1.0/subscriptions/old'],
+					['POST', '/v1.0/subscriptions'],
+				]);
+				expect(calls('POST')[0][3]).toEqual(expect.objectContaining({ clientState: 'secret' }));
+				expect(staticData.subscriptionIds).toEqual(['new']);
+			});
+
+			// An earlier version stored every own subscription, so either one can carry a foreign secret,
+			// the one about to expire included.
+			it.each([
+				['both are live', 2 * HOUR, ['a', 'b']],
+				['the second one expires soon', 2 * 60 * 1000, ['a']],
+			])(
+				'replaces two stored twins with another secret when %s',
+				async (_label, expiresInMs, read) => {
+					const staticData: Record<string, unknown> = {
+						subscriptionIds: ['a', 'b'],
+						webhookSecret: 'secret',
+					};
+					const ctx = hookCtx(staticData, { event: 'newChat' });
+					(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
+						own('a', '/me/chats', HOUR),
+						own('b', '/me/chats', expiresInMs),
+					]);
+					(microsoftApiRequest.call as Mock).mockImplementation(
+						async (_ctx: unknown, method: string, path: RequestPath) =>
+							method === 'GET'
+								? {
+										...own(path.value.slice('/v1.0/subscriptions/'.length), '/me/chats', HOUR),
+										clientState: 'other',
+									}
+								: { id: 'new' },
+					);
+
+					const result = await checkExists(ctx);
+
+					expect(result).toBe(true);
+					expect(graphCalls()).toEqual([
+						...read.map((id) => ['GET', `/v1.0/subscriptions/${id}`]),
+						['DELETE', '/v1.0/subscriptions/a'],
+						['DELETE', '/v1.0/subscriptions/b'],
+						['POST', '/v1.0/subscriptions'],
+					]);
+					expect(calls('POST')[0][3]).toEqual(
+						expect.objectContaining({ clientState: 'secret', resource: '/me/chats' }),
+					);
+					expect(staticData.subscriptionIds).toEqual(['new']);
+				},
+			);
+
+			it('removes a stored subscription whose resource is no longer required', async () => {
+				const staticData: Record<string, unknown> = {
+					subscriptionIds: ['a'],
+					webhookSecret: 'secret',
+				};
+				const ctx = hookCtx(staticData, { event: 'newChat' });
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
+					own('a', '/teams/t1/channels', HOUR),
+				]);
+				(microsoftApiRequest.call as Mock).mockResolvedValue({ id: 'new' });
+
+				const result = await checkExists(ctx);
+
+				expect(result).toBe(true);
+				expect(graphCalls()).toEqual([
+					['DELETE', '/v1.0/subscriptions/a'],
+					['POST', '/v1.0/subscriptions'],
+				]);
+				// The repair keeps the stored secret, so nothing left at this URL delivers with a
+				// secret that the node cannot verify.
+				expect(calls('POST')[0][3]).toEqual(
+					expect.objectContaining({ resource: '/me/chats', clientState: 'secret' }),
+				);
+				expect(staticData).toEqual({ webhookSecret: 'secret', subscriptionIds: ['new'] });
+			});
+
+			it('keeps a stored id in the static data when it is unlisted and Graph refuses the removal', async () => {
+				const staticData: Record<string, unknown> = {
+					subscriptionIds: ['old'],
+					webhookSecret: 'secret',
+				};
+				const ctx = hookCtx(staticData, { event: 'newChat' });
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([]);
+				(microsoftApiRequest.call as Mock).mockImplementation(
+					async (_ctx: unknown, method: string) => {
+						if (method === 'DELETE') throw forbidden(ctx);
+						return { id: 'new' };
+					},
+				);
+
+				const result = await checkExists(ctx);
+
+				expect(result).toBe(true);
+				expect(graphCalls()).toEqual([
+					['DELETE', '/v1.0/subscriptions/old'],
+					['POST', '/v1.0/subscriptions'],
+				]);
+				expect(ctx.logger.warn).toHaveBeenCalledWith(
+					'Microsoft Teams Trigger: failed to remove subscription',
+					expect.objectContaining({ subscriptionId: 'old' }),
+				);
+				// A refused delete marks no retry: the next reconcile retries it from the stored id.
+				expect(staticData).toEqual({ webhookSecret: 'secret', subscriptionIds: ['old', 'new'] });
+			});
+
+			it('drops a stored id that fails validation', async () => {
+				const staticData: Record<string, unknown> = {
+					subscriptionIds: ['old/../x'],
+					webhookSecret: 'secret',
+				};
+				const ctx = hookCtx(staticData, { event: 'newChat' });
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([]);
+				(microsoftApiRequest.call as Mock).mockResolvedValue({ id: 'new' });
+
+				const result = await checkExists(ctx);
+
+				expect(result).toBe(true);
+				expect(graphCalls()).toEqual([['POST', '/v1.0/subscriptions']]);
+				expect(ctx.logger.warn).toHaveBeenCalledTimes(1);
+				expect(staticData.subscriptionIds).toEqual(['new']);
+			});
+
+			it('warns and still returns true when an orphan cannot be removed', async () => {
+				const staticData: Record<string, unknown> = {
+					subscriptionIds: ['a'],
+					webhookSecret: 'secret',
+				};
+				const ctx = hookCtx(staticData, { event: 'newChat' });
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
+					own('a', '/me/chats', HOUR),
+					own('x', '/me/chats', HOUR),
+				]);
+				routeGraph({
+					'GET a': proven('a'),
+					'GET x': { ...own('x', '/me/chats', HOUR), clientState: 'other' },
+					'PATCH a': {},
+					'DELETE x': forbidden(ctx),
+				});
+
+				const result = await checkExists(ctx);
+
+				expect(result).toBe(true);
+				expect(graphCalls()).toEqual([
+					['GET', '/v1.0/subscriptions/a'],
+					['GET', '/v1.0/subscriptions/x'],
+					['DELETE', '/v1.0/subscriptions/x'],
+					['PATCH', '/v1.0/subscriptions/a'],
+				]);
+				expect(ctx.logger.warn).toHaveBeenCalledTimes(1);
+				expect(ctx.logger.warn).toHaveBeenCalledWith(
+					'Microsoft Teams Trigger: failed to remove subscription',
+					expect.objectContaining({ subscriptionId: 'x' }),
+				);
+				expect(staticData).toEqual({ subscriptionIds: ['a'], webhookSecret: 'secret' });
+			});
+
+			it('throws the create error after every create settled', async () => {
+				const ctx = hookCtx(
+					{ webhookSecret: 'secret' },
+					{ event: 'newChannel', watchAllTeams: true },
+				);
+				const error = forbidden(ctx);
+				const secondError = forbidden(ctx);
+				pagedGraph([]);
+				(microsoftApiRequest.call as Mock).mockImplementation(
+					async (_ctx: unknown, _method: string, _path: string, body?: Record<string, unknown>) => {
+						throw body?.resource === '/teams/team1/channels' ? error : secondError;
+					},
+				);
+
+				await expect(checkExists(ctx)).rejects.toBe(error);
+				expect(calls('POST').map((call) => call[3].resource)).toEqual([
+					'/teams/team1/channels',
+					'/teams/team2/channels',
+				]);
+				expect(ctx.logger.warn).toHaveBeenCalledWith(
+					'Microsoft Teams Trigger: failed to create subscription',
+					expect.objectContaining({ resource: '/teams/team2/channels' }),
+				);
+			});
+
+			it('throws the create error when a removal failed as well', async () => {
+				const ctx = hookCtx({ webhookSecret: 'secret' }, { event: 'newChat' });
+				const createError = forbidden(ctx);
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([own('x', '/me/chats', HOUR)]);
+				(microsoftApiRequest.call as Mock).mockImplementation(
+					async (_ctx: unknown, method: string) => {
+						if (method === 'GET') return { ...own('x', '/me/chats', HOUR), clientState: 'other' };
+						if (method === 'DELETE') throw forbidden(ctx);
+						throw createError;
+					},
+				);
+
+				await expect(checkExists(ctx)).rejects.toBe(createError);
+				expect(graphCalls()).toEqual([
+					['GET', '/v1.0/subscriptions/x'],
+					['DELETE', '/v1.0/subscriptions/x'],
+					['POST', '/v1.0/subscriptions'],
+				]);
+				expect(ctx.logger.warn).toHaveBeenCalledWith(
+					'Microsoft Teams Trigger: failed to remove subscription',
+					expect.objectContaining({ subscriptionId: 'x' }),
+				);
 			});
 		});
 
 		describe('create', () => {
+			const create = async (ctx: TriggerContext) =>
+				await new MicrosoftTeamsTrigger().webhookMethods.default.create.call(ctx);
+
+			it('clears a marked retry with the fresh secret', async () => {
+				(microsoftApiRequest.call as Mock).mockResolvedValue({ id: 'sub-new' });
+				const staticData: Record<string, unknown> = { pendingReconcile: true };
+				const ctx = hookCtx(staticData, { event: 'newChat' });
+
+				await expect(create(ctx)).resolves.toBe(true);
+				expect(staticData).toEqual({
+					subscriptionIds: ['sub-new'],
+					webhookSecret: expect.any(String),
+				});
+			});
+
 			it('should create a subscription successfully', async () => {
-				(microsoftApiRequest.call as Mock).mockResolvedValue({ id: 'subscription123' });
+				(microsoftApiRequest.call as Mock).mockResolvedValue({ id: 'sub-new' });
+				const staticData: Record<string, unknown> = {};
+				const ctx = hookCtx(staticData, { event: 'newChat' });
 
-				mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
-				mockWebhookFunctions.getNodeParameter.mockReturnValue('newChat');
-				mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({
-					node: {
-						subscriptionIds: [],
-					},
-				});
-
-				(microsoftApiRequest.call as Mock).mockResolvedValue({
-					value: [{ id: 'team1', displayName: 'Team 1' }],
-				});
-
-				const result = await new MicrosoftTeamsTrigger().webhookMethods.default.create.call(
-					mockWebhookFunctions,
-				);
+				const result = await create(ctx);
 
 				expect(result).toBe(true);
 				expect(microsoftApiRequest.call).toHaveBeenCalledWith(
-					mockWebhookFunctions,
+					ctx,
 					'POST',
-					'/v1.0/subscriptions',
+					requestPath`/v1.0/subscriptions`,
 					expect.objectContaining({
 						changeType: 'created',
 						notificationUrl: 'https://webhook.url',
@@ -424,17 +977,15 @@ describe('Microsoft Teams Trigger Node', () => {
 						clientState: expect.any(String),
 					}),
 				);
+				expect(staticData.subscriptionIds).toEqual(['sub-new']);
 			});
 
 			it('should persist a clientState secret on the workflow static data', async () => {
-				(microsoftApiRequest.call as Mock).mockResolvedValue({ id: 'subscription123' });
-
+				(microsoftApiRequest.call as Mock).mockResolvedValue({ id: 'sub-new' });
 				const staticData: { subscriptionIds?: string[]; webhookSecret?: string } = {};
-				mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
-				mockWebhookFunctions.getNodeParameter.mockReturnValue('newChat');
-				mockWebhookFunctions.getWorkflowStaticData.mockReturnValue(staticData);
+				const ctx = hookCtx(staticData, { event: 'newChat' });
 
-				await new MicrosoftTeamsTrigger().webhookMethods.default.create.call(mockWebhookFunctions);
+				await create(ctx);
 
 				expect(typeof staticData.webhookSecret).toBe('string');
 				expect((staticData.webhookSecret as string).length).toBeGreaterThan(0);
@@ -447,135 +998,268 @@ describe('Microsoft Teams Trigger Node', () => {
 			});
 
 			it('should throw an error if the URL is invalid', async () => {
-				mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('invalid-url');
-				await expect(
-					new MicrosoftTeamsTrigger().webhookMethods.default.create.call(mockWebhookFunctions),
-				).rejects.toThrow('Invalid Notification URL');
+				const ctx = hookCtx({});
+				ctx.getNodeWebhookUrl.mockReturnValue('invalid-url');
+
+				await expect(create(ctx)).rejects.toThrow('Invalid Notification URL');
+			});
+
+			it('settles every create before it throws the first error unchanged', async () => {
+				const staticData: Record<string, unknown> = {};
+				const ctx = hookCtx(staticData, { event: 'newChannel', watchAllTeams: true });
+				const error = new NodeApiError(ctx.getNode(), { message: 'Forbidden', httpCode: '403' });
+				const secondError = new NodeApiError(ctx.getNode(), {
+					message: 'Forbidden',
+					httpCode: '403',
+				});
+				// team2 fails at once and team1 fails last, so settle order differs from resource order.
+				let failTeam1: (error: Error) => void = () => {};
+				pagedGraph([]);
+				(microsoftApiRequest.call as Mock).mockImplementation(
+					async (_ctx: unknown, _method: string, _path: string, body?: Record<string, unknown>) => {
+						if (body?.resource === '/teams/team2/channels') throw secondError;
+						return await new Promise((_resolve, reject) => {
+							failTeam1 = reject;
+						});
+					},
+				);
+
+				const pending = create(ctx);
+				let settled = false;
+				const mark = () => {
+					settled = true;
+				};
+				void pending.then(mark, mark);
+				await new Promise((resolve) => setImmediate(resolve));
+				expect(settled).toBe(false);
+
+				failTeam1(error);
+
+				await expect(pending).rejects.toBe(error);
+				expect(calls('POST').map((call) => call[3].resource)).toEqual([
+					'/teams/team1/channels',
+					'/teams/team2/channels',
+				]);
+				expect(ctx.logger.warn).toHaveBeenCalledWith(
+					'Microsoft Teams Trigger: failed to create subscription',
+					expect.objectContaining({ resource: '/teams/team1/channels', error: expect.any(String) }),
+				);
+				expect(ctx.logger.warn).toHaveBeenCalledWith(
+					'Microsoft Teams Trigger: failed to create subscription',
+					expect.objectContaining({ resource: '/teams/team2/channels' }),
+				);
+				expect(staticData).toEqual({ subscriptionIds: [] });
+			});
+
+			const partialCreate = (ctx: TriggerContext, deleteError?: Error) => {
+				const error = new NodeApiError(ctx.getNode(), { message: 'Forbidden', httpCode: '403' });
+				pagedGraph([]);
+				(microsoftApiRequest.call as Mock).mockImplementation(
+					async (_ctx: unknown, method: string, _path: string, body?: Record<string, unknown>) => {
+						if (method === 'DELETE') {
+							if (deleteError) throw deleteError;
+							return {};
+						}
+						if (body?.resource === '/teams/team1/channels') return { id: 'landed' };
+						throw error;
+					},
+				);
+				return error;
+			};
+
+			it('removes the subscriptions that landed before it throws', async () => {
+				const staticData: Record<string, unknown> = {};
+				const ctx = hookCtx(staticData, { event: 'newChannel', watchAllTeams: true });
+				const error = partialCreate(ctx);
+
+				await expect(create(ctx)).rejects.toBe(error);
+
+				expect(calls('DELETE').map((call) => call[2])).toEqual(['/v1.0/subscriptions/landed']);
+				expect(staticData).toEqual({ subscriptionIds: [] });
+			});
+
+			it('keeps a landed id that Graph refused to remove, so the cleanup retries it', async () => {
+				const staticData: Record<string, unknown> = {};
+				const ctx = hookCtx(staticData, { event: 'newChannel', watchAllTeams: true });
+				const error = partialCreate(
+					ctx,
+					new NodeApiError(ctx.getNode(), { message: 'Unavailable', httpCode: '503' }),
+				);
+
+				await expect(create(ctx)).rejects.toBe(error);
+				expect(staticData).toEqual({ subscriptionIds: ['landed'] });
+
+				// The publication service runs `delete()` on the same workflow next; its listing fails.
+				(microsoftApiRequestAllItems.call as Mock).mockRejectedValue(new Error('list failed'));
+				await new MicrosoftTeamsTrigger().webhookMethods.default.delete.call(ctx);
+
+				expect(calls('DELETE').map((call) => call[2])).toEqual([
+					'/v1.0/subscriptions/landed',
+					'/v1.0/subscriptions/landed',
+				]);
+				expect(staticData).toEqual({});
 			});
 		});
 
 		describe('delete', () => {
-			it('should delete subscriptions using stored IDs and clean static data', async () => {
-				const mockWebhookData: {
-					subscriptionIds?: string[];
-					webhookSecret?: string;
-				} = {
-					subscriptionIds: ['subscription123'],
-					webhookSecret: 'stored-secret',
-				};
+			const remove = async (ctx: TriggerContext) =>
+				await new MicrosoftTeamsTrigger().webhookMethods.default.delete.call(ctx);
+			const deleted = () => calls('DELETE').map((call) => call[2]);
 
-				mockWebhookFunctions.getWorkflowStaticData.mockReturnValue(mockWebhookData);
-
-				(microsoftApiRequest.call as Mock).mockResolvedValue({});
-
-				const result = await new MicrosoftTeamsTrigger().webhookMethods.default.delete.call(
-					mockWebhookFunctions,
-				);
-				expect(result).toBe(true);
-				expect(microsoftApiRequest.call).toHaveBeenCalledWith(
-					mockWebhookFunctions,
-					'DELETE',
-					'/v1.0/subscriptions/subscription123',
-				);
-				expect(mockWebhookData.subscriptionIds).toBeUndefined();
-				expect(mockWebhookData.webhookSecret).toBeUndefined();
-			});
-
-			it('should remove a stale subscription left behind by a failed activation', async () => {
-				const mockWebhookData: Record<string, unknown> = { staleSubscriptionIds: ['stale1'] };
-
-				mockWebhookFunctions.getWorkflowStaticData.mockReturnValue(mockWebhookData);
-				(microsoftApiRequest.call as Mock).mockResolvedValue({});
-
-				const result = await new MicrosoftTeamsTrigger().webhookMethods.default.delete.call(
-					mockWebhookFunctions,
-				);
-
-				expect(result).toBe(true);
-				expect(microsoftApiRequest.call).toHaveBeenCalledWith(
-					mockWebhookFunctions,
-					'DELETE',
-					'/v1.0/subscriptions/stale1',
-				);
-				expect(mockWebhookData.staleSubscriptionIds).toBeUndefined();
-			});
-
-			it('should ask Graph once for an id held as both current and stale', async () => {
-				mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({
-					subscriptionIds: ['sub1'],
-					staleSubscriptionIds: ['sub1', 'stale1'],
-				});
-				(microsoftApiRequest.call as Mock).mockResolvedValue({});
-
-				await new MicrosoftTeamsTrigger().webhookMethods.default.delete.call(mockWebhookFunctions);
-
-				expect((microsoftApiRequest.call as Mock).mock.calls).toHaveLength(2);
-			});
-
-			it('treats a 404 as already removed and still cleans the static data', async () => {
-				const mockWebhookData: Record<string, unknown> = {
-					subscriptionIds: ['gone'],
-					webhookSecret: 'stored-secret',
-				};
-				const node = mock<INode>({ name: 'Microsoft Teams Trigger' });
-				mockWebhookFunctions.getWorkflowStaticData.mockReturnValue(mockWebhookData);
-				(microsoftApiRequest.call as Mock).mockRejectedValue(
-					new NodeApiError(node, { message: 'Not found', httpCode: '404' }),
-				);
-
-				const result = await new MicrosoftTeamsTrigger().webhookMethods.default.delete.call(
-					mockWebhookFunctions,
-				);
-
-				expect(result).toBe(true);
-				expect(mockWebhookData).toEqual({});
-			});
-
-			it('should return false if no subscription matches', async () => {
-				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([]);
-				mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
-				mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({
-					node: {
-						subscriptionIds: [],
-					},
-				});
-
-				const result = await new MicrosoftTeamsTrigger().webhookMethods.default.delete.call(
-					mockWebhookFunctions,
-				);
-				expect(result).toBe(false);
-			});
-
-			// Static data is flat; a nested `node` key returns at the guard and never
-			// reaches the request, so the rejection below would go unexercised.
-			it('should keep the stored ids when Graph rejects the delete', async () => {
+			it.each([
+				['nothing is listed', []],
+				[
+					'the listing shows it at an old webhook URL',
+					[{ id: 'subscription123', notificationUrl: 'https://old.url' }],
+				],
+			])('deletes the stored id and cleans the static data when %s', async (_label, listing) => {
 				const staticData: Record<string, unknown> = {
 					subscriptionIds: ['subscription123'],
 					webhookSecret: 'stored-secret',
+					pendingReconcile: true,
 				};
-				(microsoftApiRequest.call as Mock).mockRejectedValue(
-					new NodeApiError(
-						mockWebhookFunctions.getNode(),
-						{ message: 'Graph is unavailable' },
-						{ httpCode: '500' },
-					),
-				);
-				mockWebhookFunctions.getWorkflowStaticData.mockReturnValue(staticData);
+				const ctx = hookCtx(staticData);
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue(listing);
+				(microsoftApiRequest.call as Mock).mockResolvedValue({});
 
-				const result = await new MicrosoftTeamsTrigger().webhookMethods.default.delete.call(
-					mockWebhookFunctions,
+				const result = await remove(ctx);
+
+				expect(result).toBe(true);
+				expect(deleted()).toEqual(['/v1.0/subscriptions/subscription123']);
+				expect(staticData).toEqual({});
+			});
+
+			it('should remove a stale subscription left behind by a failed activation', async () => {
+				const staticData: Record<string, unknown> = { staleSubscriptionIds: ['stale1'] };
+				const ctx = hookCtx(staticData);
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([]);
+				(microsoftApiRequest.call as Mock).mockResolvedValue({});
+
+				const result = await remove(ctx);
+
+				expect(result).toBe(true);
+				expect(deleted()).toEqual(['/v1.0/subscriptions/stale1']);
+				expect(staticData).toEqual({});
+			});
+
+			it('should ask Graph once for an id held as both current and stale', async () => {
+				const staticData: Record<string, unknown> = {
+					subscriptionIds: ['sub1'],
+					staleSubscriptionIds: ['sub1', 'stale1'],
+				};
+				const ctx = hookCtx(staticData);
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
+					{ id: 'stale1', notificationUrl: 'https://webhook.url' },
+				]);
+				(microsoftApiRequest.call as Mock).mockResolvedValue({});
+
+				await remove(ctx);
+
+				expect(deleted()).toEqual(['/v1.0/subscriptions/sub1', '/v1.0/subscriptions/stale1']);
+				expect(staticData).toEqual({});
+			});
+
+			it('treats a 404 as already removed and still cleans the static data', async () => {
+				const staticData: Record<string, unknown> = {
+					subscriptionIds: ['gone'],
+					webhookSecret: 'stored-secret',
+				};
+				const ctx = hookCtx(staticData);
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([]);
+				(microsoftApiRequest.call as Mock).mockRejectedValue(
+					new NodeApiError(ctx.getNode(), { message: 'Not found', httpCode: '404' }),
 				);
+
+				const result = await remove(ctx);
+
+				expect(result).toBe(true);
+				expect(staticData).toEqual({});
+			});
+
+			it('returns true and clears the static data when nothing is stored or listed', async () => {
+				const staticData: Record<string, unknown> = {};
+				const ctx = hookCtx(staticData);
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([]);
+
+				const result = await remove(ctx);
+
+				expect(result).toBe(true);
+				expect(microsoftApiRequest.call).not.toHaveBeenCalled();
+				expect(staticData).toEqual({});
+			});
+
+			it('returns false and still clears the static data when a removal fails', async () => {
+				const staticData: Record<string, unknown> = {
+					subscriptionIds: ['subscription123'],
+					webhookSecret: 's',
+				};
+				const ctx = hookCtx(staticData);
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
+					{ id: 'subscription123', notificationUrl: 'https://webhook.url' },
+				]);
+				(microsoftApiRequest.call as Mock).mockRejectedValue(
+					new NodeApiError(ctx.getNode(), { message: 'Forbidden', httpCode: '403' }),
+				);
+
+				const result = await remove(ctx);
 
 				expect(result).toBe(false);
-				// Without this the test would also pass if delete() never reached Graph.
-				expect(microsoftApiRequest.call).toHaveBeenCalledWith(
-					expect.anything(),
-					'DELETE',
-					'/v1.0/subscriptions/subscription123',
+				expect(deleted()).toEqual(['/v1.0/subscriptions/subscription123']);
+				expect(ctx.logger.warn).toHaveBeenCalledTimes(1);
+				expect(ctx.logger.warn).toHaveBeenCalledWith(
+					'Microsoft Teams Trigger: failed to remove subscription',
+					expect.objectContaining({ subscriptionId: 'subscription123' }),
 				);
-				// Nothing was removed on Graph, so the ids must survive for the next attempt.
-				expect(staticData.subscriptionIds).toEqual(['subscription123']);
-				expect(staticData.webhookSecret).toBe('stored-secret');
+				expect(staticData).toEqual({});
+			});
+
+			it('deletes the union of the listed own ids and the stored ids', async () => {
+				const staticData: Record<string, unknown> = { subscriptionIds: ['a'], webhookSecret: 's' };
+				const ctx = hookCtx(staticData);
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
+					{ id: 'b', notificationUrl: 'https://webhook.url' },
+					{ id: 'c', notificationUrl: 'https://other.url' },
+				]);
+				(microsoftApiRequest.call as Mock).mockResolvedValue({});
+
+				const result = await remove(ctx);
+
+				expect(result).toBe(true);
+				expect(deleted()).toEqual(['/v1.0/subscriptions/a', '/v1.0/subscriptions/b']);
+				expect(staticData).toEqual({});
+			});
+
+			it('falls back to the stored ids and warns when the listing fails', async () => {
+				const staticData: Record<string, unknown> = { subscriptionIds: ['a'], webhookSecret: 's' };
+				const ctx = hookCtx(staticData);
+				(microsoftApiRequestAllItems.call as Mock).mockRejectedValue(new Error('list failed'));
+				(microsoftApiRequest.call as Mock).mockResolvedValue({});
+
+				const result = await remove(ctx);
+
+				expect(result).toBe(true);
+				expect(deleted()).toEqual(['/v1.0/subscriptions/a']);
+				expect(ctx.logger.warn).toHaveBeenCalledTimes(1);
+				expect(ctx.logger.warn).toHaveBeenCalledWith(
+					'Microsoft Teams Trigger: failed to list subscriptions, removing the stored ids only',
+					expect.objectContaining({ workflowId: 'wf1', error: 'list failed' }),
+				);
+				expect(staticData).toEqual({});
+			});
+
+			it('removes the subscriptions a failed create left behind', async () => {
+				const staticData: Record<string, unknown> = {};
+				const ctx = hookCtx(staticData);
+				(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
+					{ id: 'a', notificationUrl: 'https://webhook.url' },
+					{ id: 'b', notificationUrl: 'https://webhook.url' },
+				]);
+				(microsoftApiRequest.call as Mock).mockResolvedValue({});
+
+				const result = await remove(ctx);
+
+				expect(result).toBe(true);
+				expect(deleted()).toEqual(['/v1.0/subscriptions/a', '/v1.0/subscriptions/b']);
 			});
 		});
 	});
@@ -671,31 +1355,287 @@ describe('Microsoft Teams Trigger Node', () => {
 			]);
 		});
 
-		it('should return 401 when clientState does not match stored secret', async () => {
-			const mockRequest = {
-				body: {
-					value: [{ clientState: 'wrong-secret-aa' }],
-				},
-				query: {},
-			};
-			const mockResponse = {
-				status: vi.fn().mockReturnThis(),
-				send: vi.fn().mockReturnThis(),
-				end: vi.fn().mockReturnThis(),
-			};
+		it.each([
+			['one item', [{ clientState: 'wrong-secret-aa' }]],
+			['every item', [{ clientState: 'wrong-secret-aa' }, { clientState: 'wrong-secret-bb' }]],
+		])(
+			'should return 401 when the clientState of %s does not match the stored secret',
+			async (_label, value) => {
+				const mockRequest = { body: { value }, query: {} };
+				const mockResponse = {
+					status: vi.fn().mockReturnThis(),
+					send: vi.fn().mockReturnThis(),
+					end: vi.fn().mockReturnThis(),
+				};
 
-			mockWebhookFunctions.getRequestObject.mockReturnValue(mockRequest);
-			mockWebhookFunctions.getResponseObject.mockReturnValue(mockResponse);
-			mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({
-				webhookSecret: 'expected-secret',
+				mockWebhookFunctions.getRequestObject.mockReturnValue(mockRequest);
+				mockWebhookFunctions.getResponseObject.mockReturnValue(mockResponse);
+				mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({
+					webhookSecret: 'expected-secret',
+				});
+
+				const result = await new MicrosoftTeamsTrigger().webhook.call(mockWebhookFunctions);
+
+				expect(mockResponse.status).toHaveBeenCalledWith(401);
+				expect(mockResponse.send).toHaveBeenCalledWith('Unauthorized');
+				expect(result.noWebhookResponse).toBe(true);
+				expect(result.workflowData).toBeUndefined();
+			},
+		);
+
+		it('processes the valid items of a mixed batch and drops the one with a wrong clientState', async () => {
+			const { ctx, res } = arrange({
+				value: [
+					{ subscriptionId: 'sub1', clientState: 'secret', resourceData: { id: '1' } },
+					{ subscriptionId: 'subX', clientState: 'wrong', resourceData: { id: '2' } },
+					{ subscriptionId: 'sub1', clientState: 'secret', resourceData: { id: '3' } },
+				],
 			});
 
-			const result = await new MicrosoftTeamsTrigger().webhook.call(mockWebhookFunctions);
+			const result = await new MicrosoftTeamsTrigger().webhook.call(ctx);
 
-			expect(mockResponse.status).toHaveBeenCalledWith(401);
-			expect(mockResponse.send).toHaveBeenCalledWith('Unauthorized');
-			expect(result.noWebhookResponse).toBe(true);
-			expect(result.workflowData).toBeUndefined();
+			expect(res.status).not.toHaveBeenCalled();
+			expect(result).toEqual({ workflowData: [[{ json: { id: '1' } }, { json: { id: '3' } }]] });
+			expect(ctx.logger.debug).toHaveBeenCalledWith(
+				'Microsoft Teams Trigger: rejected notifications without the stored clientState',
+				expect.objectContaining({ workflowId: 'wf1', rejected: 1, subscriptionIds: ['subX'] }),
+			);
+		});
+
+		it('emits every change notification of a batch as an item of one execution', async () => {
+			const change = (id: string) => ({
+				subscriptionId: 'sub1',
+				clientState: 'secret',
+				resourceData: { id },
+			});
+			const { ctx, res } = arrange({ value: [change('m1'), change('m2'), change('m3')] });
+
+			const result = await new MicrosoftTeamsTrigger().webhook.call(ctx);
+
+			expect(res.status).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				workflowData: [[{ json: { id: 'm1' } }, { json: { id: 'm2' } }, { json: { id: 'm3' } }]],
+			});
+		});
+
+		it('emits the notification without clientState when it has no resourceData', async () => {
+			const bare = { subscriptionId: 'sub1', clientState: 'secret', changeType: 'created' };
+			const { ctx } = arrange({ value: [bare, { ...bare, resourceData: { id: 'm2' } }] });
+
+			const result = await new MicrosoftTeamsTrigger().webhook.call(ctx);
+
+			expect(result).toStrictEqual({
+				workflowData: [
+					[
+						{ json: { subscriptionId: 'sub1', changeType: 'created' } },
+						{ json: { changeType: 'created', id: 'm2' } },
+					],
+				],
+			});
+		});
+
+		it('keeps changeType, resource and the parsed ids in the item', async () => {
+			const resource = "teams('t1')/channels('c1')/messages('m1')";
+			const { ctx } = arrange({
+				value: [
+					{
+						subscriptionId: 'sub1',
+						clientState: 'secret',
+						changeType: 'Created',
+						resource,
+						tenantId: 'x',
+						resourceData: {
+							id: 'm1',
+							'@odata.type': '#Microsoft.Graph.chatMessage',
+							'@odata.id': resource,
+						},
+					},
+					{
+						subscriptionId: 'sub1',
+						clientState: 'secret',
+						changeType: 'created',
+						resource: 'unexpected/path',
+						tenantId: 'x',
+						resourceData: { id: 'm2' },
+					},
+				],
+			});
+
+			const result = await new MicrosoftTeamsTrigger().webhook.call(ctx);
+
+			expect(result.workflowData).toStrictEqual([
+				[
+					{
+						json: {
+							changeType: 'Created',
+							resource,
+							teamId: 't1',
+							channelId: 'c1',
+							messageId: 'm1',
+							id: 'm1',
+							'@odata.type': '#Microsoft.Graph.chatMessage',
+							'@odata.id': resource,
+						},
+					},
+					{ json: { changeType: 'created', resource: 'unexpected/path', id: 'm2' } },
+				],
+			]);
+			expect(microsoftApiRequest.call).not.toHaveBeenCalled();
+			expect(microsoftApiRequestAllItems.call).not.toHaveBeenCalled();
+		});
+
+		it('keeps the resourceData value when a field has the same name', async () => {
+			const { ctx } = arrange({
+				value: [
+					{
+						subscriptionId: 'sub1',
+						clientState: 'secret',
+						changeType: 'created',
+						resource: "teams('t1')/channels('c1')/messages('m1')",
+						tenantId: 'x',
+						resourceData: {
+							id: 'm1',
+							teamId: 'from-resource-data',
+							changeType: 'from-resource-data',
+							resource: 'from-resource-data',
+						},
+					},
+				],
+			});
+
+			const result = await new MicrosoftTeamsTrigger().webhook.call(ctx);
+
+			expect(result.workflowData).toStrictEqual([
+				[
+					{
+						json: {
+							changeType: 'from-resource-data',
+							resource: 'from-resource-data',
+							teamId: 'from-resource-data',
+							channelId: 'c1',
+							messageId: 'm1',
+							id: 'm1',
+						},
+					},
+				],
+			]);
+		});
+
+		it('adds the ids to a notification with no resourceData', async () => {
+			const resource = "chats('c1')/messages('m1')";
+			const { ctx } = arrange({
+				value: [
+					{
+						subscriptionId: 'sub1',
+						clientState: 'secret',
+						changeType: 'created',
+						resource,
+						tenantId: 'x',
+					},
+				],
+			});
+
+			const result = await new MicrosoftTeamsTrigger().webhook.call(ctx);
+
+			expect(result.workflowData).toStrictEqual([
+				[
+					{
+						json: {
+							changeType: 'created',
+							resource,
+							chatId: 'c1',
+							messageId: 'm1',
+							subscriptionId: 'sub1',
+							tenantId: 'x',
+						},
+					},
+				],
+			]);
+		});
+
+		it('does not add a changeType or resource that is not a string', async () => {
+			const { ctx } = arrange({
+				value: [
+					{
+						subscriptionId: 'sub1',
+						clientState: 'secret',
+						changeType: 123,
+						resource: 42,
+						tenantId: 'x',
+						resourceData: { id: 'm1' },
+					},
+				],
+			});
+
+			const result = await new MicrosoftTeamsTrigger().webhook.call(ctx);
+
+			expect(result.workflowData).toStrictEqual([[{ json: { id: 'm1' } }]]);
+		});
+
+		it.each([
+			['a string', 'abc'],
+			['an array', [{ id: 'm1' }]],
+			['a number', 5],
+			['null', null],
+		])('uses the notification when resourceData is %s', async (_name, resourceData) => {
+			const resource = "chats('c1')/messages('m1')";
+			const { ctx } = arrange({
+				value: [
+					{
+						subscriptionId: 'sub1',
+						clientState: 'secret',
+						changeType: 'created',
+						resource,
+						tenantId: 'x',
+						resourceData,
+					},
+				],
+			});
+
+			const result = await new MicrosoftTeamsTrigger().webhook.call(ctx);
+
+			expect(result.workflowData).toStrictEqual([
+				[
+					{
+						json: {
+							changeType: 'created',
+							resource,
+							chatId: 'c1',
+							messageId: 'm1',
+							subscriptionId: 'sub1',
+							tenantId: 'x',
+							resourceData,
+						},
+					},
+				],
+			]);
+		});
+
+		it('caps the logged subscription ids of the rejected notifications', async () => {
+			const rejectedItems = Array.from({ length: 25 }, (_, index) => ({
+				subscriptionId: `${index}`.padEnd(100, 'x'),
+				clientState: 'wrong',
+			}));
+			const { ctx } = arrange({
+				value: [
+					{ subscriptionId: 'sub1', clientState: 'secret', resourceData: { id: '1' } },
+					...rejectedItems,
+					{},
+				],
+			});
+
+			await new MicrosoftTeamsTrigger().webhook.call(ctx);
+
+			const fields = ctx.logger.debug.mock.calls.find(
+				([message]) =>
+					message ===
+					'Microsoft Teams Trigger: rejected notifications without the stored clientState',
+			)?.[1];
+			// The first 20 rejected items, each id cut to 64 characters.
+			expect(fields).toMatchObject({
+				rejected: 26,
+				subscriptionIds: Array.from({ length: 20 }, (_, index) => `${index}`.padEnd(64, 'x')),
+			});
 		});
 
 		it('should reject notifications when no secret is stored', async () => {
@@ -736,37 +1676,8 @@ describe('Microsoft Teams Trigger Node', () => {
 			lifecycleEvent,
 		});
 
-		const arrange = ({
-			value,
-			staticData = { subscriptionIds: ['sub1'], webhookSecret: 'secret' },
-			params = { event: 'newChat' },
-			mode = 'webhook',
-		}: {
-			value: unknown[];
-			staticData?: Record<string, unknown>;
-			params?: Record<string, unknown>;
-			mode?: 'webhook' | 'manual';
-		}) => {
-			const res = {
-				status: vi.fn().mockReturnThis(),
-				send: vi.fn().mockReturnThis(),
-				end: vi.fn(),
-			};
-			const ctx: any = mock({ logger: { warn: vi.fn(), debug: vi.fn() } });
-			ctx.getRequestObject.mockReturnValue({ body: { value }, query: {} });
-			ctx.getResponseObject.mockReturnValue(res);
-			ctx.getWorkflowStaticData.mockReturnValue(staticData);
-			ctx.getNode.mockReturnValue({ name: 'Microsoft Teams Trigger' });
-			ctx.getWorkflow.mockReturnValue({ id: 'wf1' });
-			ctx.getMode.mockReturnValue(mode);
-			ctx.getNodeWebhookUrl.mockReturnValue('https://webhook.url');
-			ctx.getNodeParameter.mockImplementation((name: string, fallback?: unknown) =>
-				name in params ? params[name] : fallback,
-			);
-			return { ctx, res, staticData };
-		};
-
-		const webhook = async (ctx: any) => await new MicrosoftTeamsTrigger().webhook.call(ctx);
+		const webhook = async (ctx: TriggerContext) =>
+			await new MicrosoftTeamsTrigger().webhook.call(ctx);
 
 		beforeEach(() => {
 			vi.useFakeTimers({ toFake: ['Date'], now: NOW });
@@ -788,7 +1699,7 @@ describe('Microsoft Teams Trigger Node', () => {
 			expect(microsoftApiRequest.call).toHaveBeenCalledWith(
 				ctx,
 				'PATCH',
-				'/v1.0/subscriptions/sub1',
+				requestPath`/v1.0/subscriptions/sub1`,
 				{ expirationDateTime: expectedExpiry },
 			);
 			expect(res.status).toHaveBeenCalledTimes(1);
@@ -886,7 +1797,7 @@ describe('Microsoft Teams Trigger Node', () => {
 			expect(microsoftApiRequest.call).toHaveBeenCalledWith(
 				ctx,
 				'POST',
-				'/v1.0/subscriptions',
+				requestPath`/v1.0/subscriptions`,
 				expect.objectContaining({ resource: '/me/chats', expirationDateTime: expectedExpiry }),
 			);
 			expect(res.status).toHaveBeenCalledWith(202);
@@ -912,13 +1823,13 @@ describe('Microsoft Teams Trigger Node', () => {
 			expect(microsoftApiRequest.call).toHaveBeenCalledWith(
 				ctx,
 				'PATCH',
-				'/v1.0/subscriptions/sub1',
+				requestPath`/v1.0/subscriptions/sub1`,
 				{ expirationDateTime: expectedExpiry },
 			);
 			expect(res.status).toHaveBeenCalledWith(202);
 			expect(result).toEqual({
 				noWebhookResponse: true,
-				workflowData: [[{ json: change1.resourceData }], [{ json: change2.resourceData }]],
+				workflowData: [[{ json: change1.resourceData }, { json: change2.resourceData }]],
 			});
 		});
 
@@ -930,12 +1841,24 @@ describe('Microsoft Teams Trigger Node', () => {
 				],
 				staticData: { subscriptionIds: ['sub1', 'sub2'], webhookSecret: 'secret' },
 			});
+			const listed = (id: string, expiresInMinutes: number) => ({
+				id,
+				resource: '/me/chats',
+				notificationUrl: 'https://webhook.url',
+				expirationDateTime: new Date(NOW + expiresInMinutes * 60 * 1000).toISOString(),
+			});
+			// sub1 outlives the renewed sub2, so only renewed-first can keep sub2.
+			(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
+				listed('sub1', 4319),
+				listed('sub2', 60),
+			]);
 			(microsoftApiRequest.call as Mock).mockImplementation(
-				async (_ctx: unknown, _method: string, path: string) => {
-					if (path === '/v1.0/subscriptions/sub1') {
+				async (_ctx: unknown, method: string, path: RequestPath) => {
+					if (method !== 'PATCH') return {};
+					if (path.value === '/v1.0/subscriptions/sub1') {
 						throw new NodeApiError(ctx.getNode(), { message: 'Forbidden', httpCode: '403' });
 					}
-					return {};
+					return listed('sub2', 4318);
 				},
 			);
 
@@ -949,18 +1872,21 @@ describe('Microsoft Teams Trigger Node', () => {
 			expect(microsoftApiRequest.call).toHaveBeenCalledWith(
 				ctx,
 				'PATCH',
-				'/v1.0/subscriptions/sub1',
+				requestPath`/v1.0/subscriptions/sub1`,
 				{ expirationDateTime: expectedExpiry },
 			);
 			expect(microsoftApiRequest.call).toHaveBeenCalledWith(
 				ctx,
 				'PATCH',
-				'/v1.0/subscriptions/sub2',
+				requestPath`/v1.0/subscriptions/sub2`,
 				{ expirationDateTime: expectedExpiry },
 			);
-			expect(microsoftApiRequestAllItems.call).not.toHaveBeenCalled();
+			expect(microsoftApiRequestAllItems.call).toHaveBeenCalledTimes(1);
+			// sub1 lost to the renewed sub2: it is forgotten, and its own next renewal removes it.
+			expect(calls('DELETE')).toHaveLength(0);
+			expect(calls('POST')).toHaveLength(0);
 			expect(res.status).toHaveBeenCalledWith(202);
-			expect(staticData).toEqual({ subscriptionIds: ['sub1', 'sub2'], webhookSecret: 'secret' });
+			expect(staticData).toEqual({ subscriptionIds: ['sub2'], webhookSecret: 'secret' });
 			expect(JSON.stringify(ctx.logger.warn.mock.calls)).not.toContain('secret');
 		});
 
@@ -994,6 +1920,49 @@ describe('Microsoft Teams Trigger Node', () => {
 			expect(microsoftApiRequest.call).not.toHaveBeenCalled();
 			expect(microsoftApiRequestAllItems.call).not.toHaveBeenCalled();
 			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('does no lifecycle Graph work for a rejected lifecycle item next to a valid change item', async () => {
+			const change = { subscriptionId: 'sub1', clientState: 'secret', resourceData: { id: 'm1' } };
+			const { ctx, res } = arrange({
+				value: [change, { ...lifecycleItem('reauthorizationRequired'), clientState: 'wrong' }],
+			});
+
+			const result = await webhook(ctx);
+
+			expect(microsoftApiRequest.call).not.toHaveBeenCalled();
+			expect(microsoftApiRequestAllItems.call).not.toHaveBeenCalled();
+			expect(res.status).not.toHaveBeenCalled();
+			expect(result).toEqual({ workflowData: [[{ json: change.resourceData }]] });
+		});
+
+		it('handles a valid lifecycle item next to a rejected change item', async () => {
+			const { ctx, res, staticData } = arrange({
+				value: [
+					{ subscriptionId: 'sub1', clientState: 'wrong', resourceData: { id: 'm1' } },
+					lifecycleItem('reauthorizationRequired'),
+				],
+			});
+			const sub1 = { id: 'sub1', resource: '/me/chats', notificationUrl: 'https://webhook.url' };
+			(microsoftApiRequestAllItems.call as Mock).mockResolvedValue([
+				{ ...sub1, expirationDateTime: new Date(NOW + 60 * 60 * 1000).toISOString() },
+			]);
+			(microsoftApiRequest.call as Mock).mockResolvedValue({
+				...sub1,
+				expirationDateTime: expectedExpiry,
+			});
+
+			const result = await webhook(ctx);
+
+			expect(calls('PATCH').map((call) => call[2])).toEqual(['/v1.0/subscriptions/sub1']);
+			expect(res.status).toHaveBeenCalledTimes(1);
+			expect(res.status).toHaveBeenCalledWith(202);
+			// The request rejected an item, so the batch is not a plain renewal.
+			expect(microsoftApiRequestAllItems.call).toHaveBeenCalledTimes(1);
+			expect(calls('DELETE')).toHaveLength(0);
+			expect(calls('POST')).toHaveLength(0);
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(staticData).toEqual({ subscriptionIds: ['sub1'], webhookSecret: 'secret' });
 		});
 
 		it('acks and ignores lifecycle items during a manual test run', async () => {

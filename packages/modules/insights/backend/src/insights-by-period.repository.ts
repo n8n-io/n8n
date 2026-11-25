@@ -12,12 +12,14 @@ import { Container, Service } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { DataSource, LessThanOrEqual, Repository } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { z } from 'zod';
 
 import {
 	getDateRangesCommonTableExpressionQuery,
 	getDateRangesSelectQuery,
+	getUtcOffsetSegments,
+	type UtcOffsetSegment,
 } from './insights-by-period-query.helper';
 import { InsightsByPeriod } from './insights-by-period.entity';
 import type { PeriodUnit, TypeUnitNumber, ByTimeInsightType } from './insights-shared';
@@ -68,29 +70,38 @@ const optionalNumberLike = z
 	.optional()
 	.transform((value) => (value !== undefined ? Number(value) : undefined));
 
-/** A raw `periodStart`: a `Date` on Postgres, a UTC SQL datetime string on SQLite. */
-const periodStartParser = z.union([z.date(), z.string()]).transform((value): string => {
-	if (value instanceof Date) {
-		return value.toISOString();
-	}
+/**
+ * Parses a raw `periodStart` (a `Date` on Postgres, a SQL datetime string on SQLite) into a UTC ISO
+ * string. `zone` is the zone of the SQLite wall-clock value: UTC for stored rows, the caller's
+ * zone for buckets that `getPeriodStartExpr` truncates in local time. Postgres returns instants,
+ * so `zone` does not apply to them.
+ */
+const makePeriodStartParser = (zone = 'utc') =>
+	z.union([z.date(), z.string()]).transform((value): string => {
+		if (value instanceof Date) {
+			return value.toISOString();
+		}
 
-	const parsedDatetime = DateTime.fromSQL(value.toString(), { zone: 'utc' });
-	if (parsedDatetime.isValid) {
-		return parsedDatetime.toISO() ?? new Date(value).toISOString();
-	}
+		const parsedDatetime = DateTime.fromSQL(value.toString(), { zone });
+		if (parsedDatetime.isValid) {
+			return parsedDatetime.toUTC().toISO() ?? new Date(value).toISOString();
+		}
 
-	return new Date(value).toISOString();
-});
+		return new Date(value).toISOString();
+	});
 
-const aggregatedInsightsByTimeParser = z
-	.object({
-		periodStart: periodStartParser,
-		runTime: optionalNumberLike,
-		succeeded: optionalNumberLike,
-		failed: optionalNumberLike,
-		timeSaved: optionalNumberLike,
-	})
-	.array();
+const periodStartParser = makePeriodStartParser();
+
+const makeAggregatedInsightsByTimeParser = (zone?: string) =>
+	z
+		.object({
+			periodStart: makePeriodStartParser(zone),
+			runTime: optionalNumberLike,
+			succeeded: optionalNumberLike,
+			failed: optionalNumberLike,
+			timeSaved: optionalNumberLike,
+		})
+		.array();
 
 const dailyBillableExecutionsParser = z
 	.object({
@@ -100,7 +111,7 @@ const dailyBillableExecutionsParser = z
 	.transform(({ periodStart, billable }) => ({ day: periodStart.slice(0, 10), billable }))
 	.array();
 
-const UTC_TIME_ZONE = { name: 'UTC', offsetMinutes: 0 };
+type CallerTimeZone = { name: string; offsetSegments: UtcOffsetSegment[] };
 
 /**
  * Identifies a caller whose insights must be limited to the workflows they can
@@ -156,7 +167,8 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		// Database-specific period start expression to filter out data to compact by days matching the periodUnit
 		let periodStartExpr = `date('now', '-${maxAgeInDays} days')`;
 		if (dbType === 'postgresdb') {
-			periodStartExpr = `CURRENT_DATE - INTERVAL '${maxAgeInDays} day'`;
+			// Subtract days before converting back, so DST in the session zone cannot shift the cutoff
+			periodStartExpr = `(DATE_TRUNC('day', NOW() AT TIME ZONE 'UTC') - INTERVAL '${maxAgeInDays} day') AT TIME ZONE 'UTC'`;
 		}
 
 		return periodStartExpr;
@@ -165,58 +177,60 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 	/**
 	 * Builds the SQL expression that truncates `periodStart` to the start of its period bucket.
 	 *
-	 * @param callerTimeZone Caller timezone to bucket in. Omit for internal compaction, which must
-	 * stay timezone-agnostic (UTC) since its boundaries define the stored/deduplicated period keys.
+	 * @param callerTimeZone Caller timezone to bucket in. Omit to bucket in UTC, as compaction (whose
+	 * boundaries define the stored period keys) and billable-execution counts do.
 	 * When set, day/week boundaries follow the caller's local wall-clock (LIGO-808), so a
 	 * positive-offset caller no longer gets an extra prior-day chart bar. `name` is the IANA zone;
-	 * `offsetMinutes` is that zone's UTC offset at the range start (e.g. 120 for Europe/Berlin in
-	 * summer), used only for the SQLite fallback.
+	 * `offsetSegments` are that zone's UTC offsets over the queried range, used only for SQLite.
+	 *
+	 * On SQLite with a caller timezone, the expression yields the bucket start as a local wall-clock
+	 * datetime. Parse it with `makePeriodStartParser(callerTimeZone.name)`.
 	 */
-	private getPeriodStartExpr(
-		periodUnitToCompactInto: PeriodUnit,
-		callerTimeZone?: { name: string; offsetMinutes: number },
-	) {
-		// Database-specific period start expression to truncate timestamp to the periodUnit
-		// SQLite by default
-		let periodStartExpr =
-			periodUnitToCompactInto === 'week'
-				? "strftime('%Y-%m-%d 00:00:00.000', date(periodStart, '-6 days', 'weekday 1'))"
-				: `strftime('%Y-%m-%d ${periodUnitToCompactInto === 'hour' ? '%H' : '00'}:00:00.000', periodStart)`;
+	private getPeriodStartExpr(periodUnitToCompactInto: PeriodUnit, callerTimeZone?: CallerTimeZone) {
+		// A bare DATE_TRUNC on timestamptz truncates in the session time zone, so always name one.
+		// Postgres resolves the offset per row, so buckets stay exact across DST transitions.
 		if (dbType === 'postgresdb') {
-			periodStartExpr = `DATE_TRUNC('${periodUnitToCompactInto}', ${this.escapeField('periodStart')})`;
+			// Re-check the zone so it cannot break out of the string literal
+			const zone =
+				callerTimeZone && isValidTimeZone(callerTimeZone.name) ? callerTimeZone.name : 'UTC';
+			const periodField = this.escapeField('periodStart');
+			return `DATE_TRUNC('${periodUnitToCompactInto}', ${periodField} AT TIME ZONE '${zone}') AT TIME ZONE '${zone}'`;
 		}
 
 		if (!callerTimeZone) {
-			return periodStartExpr;
+			return periodUnitToCompactInto === 'week'
+				? "strftime('%Y-%m-%d 00:00:00.000', date(periodStart, '-6 days', 'weekday 1'))"
+				: `strftime('%Y-%m-%d ${periodUnitToCompactInto === 'hour' ? '%H' : '00'}:00:00.000', periodStart)`;
 		}
 
 		// Truncating in UTC splits a caller-local day/week across two UTC buckets for non-UTC
 		// callers (e.g. an extra prior-day chart bar for positive offsets, LIGO-808).
-		if (dbType === 'postgresdb') {
-			// Postgres ships the IANA timezone database, so it can truncate directly in the caller's
-			// zone. The offset is resolved per row, so buckets stay correct even when the range spans
-			// a DST transition. `name` is a validated IANA zone (see below), so it cannot break out of
-			// the string literal; re-check at the boundary as defence in depth.
-			if (isValidTimeZone(callerTimeZone.name)) {
-				const periodField = this.escapeField('periodStart');
-				const zone = callerTimeZone.name;
-				return `DATE_TRUNC('${periodUnitToCompactInto}', ${periodField} AT TIME ZONE '${zone}') AT TIME ZONE '${zone}'`;
-			}
-			return periodStartExpr;
-		}
-
-		// SQLite has no IANA timezone database, so approximate with a single offset anchored on the
-		// range start: shift into local wall-clock time, truncate, then shift the boundary back to
-		// UTC. Exact for the common case, but can misplace rows in a ~1h window at a bucket edge when
-		// a range crosses a DST transition (the offset that applied at the range start no longer
-		// holds on the far side). Postgres above is exact; this is the documented SQLite limitation.
-		const offsetMinutes = callerTimeZone.offsetMinutes;
+		// SQLite has no IANA timezone database. Shift each row into local wall-clock time with the
+		// offset of its own DST segment, then truncate. The bucket start stays in local time: one
+		// fixed offset cannot convert it back, because the offset at the bucket start can differ
+		// from the offset of the rows in it.
+		const offsetModifierExpr = this.getOffsetModifierExpr(callerTimeZone.offsetSegments);
 		const localTruncatedExpr =
 			periodUnitToCompactInto === 'week'
-				? `date(periodStart, '${offsetMinutes} minutes', '-6 days', 'weekday 1')`
-				: `strftime('%Y-%m-%d ${periodUnitToCompactInto === 'hour' ? '%H' : '00'}:00:00', periodStart, '${offsetMinutes} minutes')`;
+				? `date(periodStart, ${offsetModifierExpr}, '-6 days', 'weekday 1')`
+				: `strftime('%Y-%m-%d ${periodUnitToCompactInto === 'hour' ? '%H' : '00'}:00:00', periodStart, ${offsetModifierExpr})`;
 
-		return `strftime('%Y-%m-%d %H:%M:%f', datetime(${localTruncatedExpr}, '${-offsetMinutes} minutes'))`;
+		return `strftime('%Y-%m-%d %H:%M:%f', ${localTruncatedExpr})`;
+	}
+
+	/** Builds a SQLite date modifier that shifts `periodStart` by the UTC offset of its segment. */
+	private getOffsetModifierExpr(offsetSegments: UtcOffsetSegment[]) {
+		const [firstSegment, ...laterSegments] = offsetSegments;
+		const firstModifier = `'${firstSegment.offsetMinutes} minutes'`;
+		if (laterSegments.length === 0) return firstModifier;
+
+		const whenClauses = laterSegments
+			.reverse()
+			.map(
+				({ fromUtc, offsetMinutes }) =>
+					`WHEN periodStart >= '${fromUtc}' THEN '${offsetMinutes} minutes'`,
+			);
+		return `CASE ${whenClauses.join(' ')} ELSE ${firstModifier} END`;
 	}
 
 	getPeriodInsightsBatchQuery({
@@ -542,12 +556,14 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			return `SUM(CASE WHEN insights.type = ${TypeToNumber[type]} THEN value ELSE 0 END) AS "${displayTypeName[TypeToNumber[type]]}"`;
 		});
 
-		// offsetMinutes is anchored on startDate so historical ranges bucket using the offset that
-		// applied then, rather than today's offset. It only feeds the SQLite fallback; Postgres
-		// resolves the offset per row from the IANA zone name and so also handles DST transitions.
-		const callerTimeZone = timeZone
-			? { name: timeZone, offsetMinutes: DateTime.fromJSDate(startDate).setZone(timeZone).offset }
-			: undefined;
+		// offsetSegments only feed SQLite. Postgres resolves the offset per row from the zone name.
+		const callerTimeZone =
+			timeZone && isValidTimeZone(timeZone)
+				? {
+						name: timeZone,
+						offsetSegments: getUtcOffsetSegments({ startDate, endDate, timeZone }),
+					}
+				: undefined;
 		const periodStartExpr = this.getPeriodStartExpr(periodUnit, callerTimeZone);
 
 		const rawRowsQuery = this.createQueryBuilder('insights')
@@ -573,8 +589,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		}
 
 		const rawRows = await rawRowsQuery.getRawMany();
-
-		return aggregatedInsightsByTimeParser.parse(rawRows);
+		return makeAggregatedInsightsByTimeParser(callerTimeZone?.name).parse(rawRows);
 	}
 
 	async getDailyBillableExecutions({
@@ -591,7 +606,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			startDateTime: firstDay,
 			endDateTime: DateTime.fromJSDate(endDate, { zone: 'utc' }).plus({ days: 1 }).startOf('day'),
 		});
-		const periodStartExpr = this.getPeriodStartExpr('day', UTC_TIME_ZONE);
+		const periodStartExpr = this.getPeriodStartExpr('day');
 
 		const rawRows = await this.createQueryBuilder('insights')
 			.addCommonTableExpression(cte, 'date_ranges')

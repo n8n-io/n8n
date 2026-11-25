@@ -27,6 +27,7 @@ vi.mock('node:fs/promises', async (importOriginal) => {
 
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
+import { serializedSkillSchema } from '@/modules/n8n-packages/spec/serialized/skill.schema';
 
 import type { BranchLayout } from '../branch-placement';
 import { PromotionsWorkflowsMovedCrossProjectError } from '../promotions-selective-push.error';
@@ -89,6 +90,7 @@ const selection = (overrides: Partial<SelectivePushOptions> = {}): SelectivePush
 	projectId: 'p1',
 	workflowIds: [],
 	deletedWorkflowIds: [],
+	folderIds: [],
 	...overrides,
 });
 
@@ -154,9 +156,13 @@ describe('WorkingCopyUpdater', () => {
 	});
 
 	describe('validateSelection', () => {
-		it('rejects an empty selection', () => {
-			expect(() => updater.validateSelection(selection())).toThrow(
-				'At least one workflow must be selected or deleted',
+		it('accepts an empty selection, which promotes only the project', () => {
+			expect(() => updater.validateSelection(selection())).not.toThrow();
+		});
+
+		it('rejects duplicate credential ids', () => {
+			expect(() => updater.validateSelection(selection({ credentialIds: ['c1', 'c1'] }))).toThrow(
+				'credentialIds contains duplicates',
 			);
 		});
 
@@ -187,6 +193,15 @@ describe('WorkingCopyUpdater', () => {
 					selection({ workflowIds: ['w1', 'w2'] }),
 				),
 			).toThrow('The export does not match the selection (missing w2)');
+		});
+
+		it('rejects selected credentials the export did not write', () => {
+			expect(() =>
+				updater.assertStagingMatchesSelection(
+					makeManifest({ workflows: [] }),
+					selection({ credentialIds: ['c1'] }),
+				),
+			).toThrow('The export does not match the selection (missing c1)');
 		});
 
 		it('rejects extra workflows the export wrote', () => {
@@ -488,6 +503,63 @@ describe('WorkingCopyUpdater', () => {
 			expect(await readExported('projects/beta/workflows/w-moved/workflow.json')).toBe(
 				workflowFile('w-moved'),
 			);
+		});
+
+		it('keeps Agent folders, skills, and metadata when the project is renamed', async () => {
+			const agentFile = JSON.stringify({ id: 'a1', name: 'Agent' });
+			const metadata = JSON.stringify({ versionId: 'v1', publishedVersionId: 'v1' });
+			const agentFolder = JSON.stringify({ id: 'f1', name: 'Sales', resourceType: 'agent' });
+			const skill = serializedSkillSchema.parse({
+				id: 'skill_triage',
+				scope: 'project',
+				skill: {
+					name: 'Triage',
+					description: 'Triage support requests',
+					instructions: 'Read requests.',
+				},
+				frontmatter: null,
+			});
+			const skillFile = JSON.stringify(skill);
+			const renamed = { ...alpha, name: 'Renamed', target: 'projects/renamed' };
+			await apply(
+				{
+					manifest: makeManifest({
+						projects: [alpha],
+						folders: [folder('f1', 'Sales', 'sales')],
+						agents: [{ id: 'a1', name: 'Agent', target: 'projects/alpha/folders/sales/agents/a1' }],
+					}),
+					files: {
+						'projects/alpha/project.json': projectFile,
+						'projects/alpha/folders/sales/folder.json': agentFolder,
+						'projects/alpha/folders/sales/agents/a1/agent.json': agentFile,
+						'projects/alpha/folders/sales/agents/a1/agent-metadata.json': metadata,
+						'projects/alpha/skills/skill_triage/skill.json': skillFile,
+					},
+				},
+				{
+					manifest: makeManifest({
+						projects: [renamed],
+					}),
+					files: {
+						'projects/renamed/project.json': JSON.stringify({ id: alpha.id, name: renamed.name }),
+					},
+				},
+			);
+
+			expect(await readExported('projects/renamed/folders/sales/folder.json')).toBe(agentFolder);
+			expect(await readExported('projects/renamed/folders/sales/agents/a1/agent.json')).toBe(
+				agentFile,
+			);
+			expect(
+				await readExported('projects/renamed/folders/sales/agents/a1/agent-metadata.json'),
+			).toBe(metadata);
+			expect((await readWrittenManifest()).agents).toEqual([
+				{ id: 'a1', name: 'Agent', target: 'projects/renamed/folders/sales/agents/a1' },
+			]);
+			expect(await readExported('projects/renamed/skills/skill_triage/skill.json')).toBe(skillFile);
+			expect((await readWrittenManifest()).skills).toEqual([
+				{ id: skill.id, name: skill.skill.name, target: 'projects/renamed/skills/skill_triage' },
+			]);
 		});
 
 		it('renames the folder on the branch and rides unselected workflows along', async () => {

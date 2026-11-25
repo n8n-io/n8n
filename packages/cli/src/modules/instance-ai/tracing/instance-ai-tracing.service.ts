@@ -1,5 +1,5 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
-import type { Logger } from '@n8n/backend-common';
+import { getN8nVersion, type Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import {
 	continueInstanceAiTraceContext,
@@ -17,7 +17,7 @@ import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { nanoid } from 'nanoid';
 import { v5 as uuidv5 } from 'uuid';
 
-import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
+import { WORKFLOW_SDK_VERSION } from '@/constants';
 import type { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 
@@ -31,7 +31,7 @@ import { TraceReplayState } from '../trace-replay-state';
 // Stable UUID namespace for deterministic feedback IDs. Submitting the same
 // (key, responseId) pair twice produces the same feedback UUID so LangSmith
 // upserts the record (thumbs-down → later text comment = one record, not two).
-const INSTANCE_AI_FEEDBACK_NAMESPACE = 'c5be4c87-5b6e-49ed-afe1-9c5c1f99a5c0';
+export const INSTANCE_AI_FEEDBACK_NAMESPACE = 'c5be4c87-5b6e-49ed-afe1-9c5c1f99a5c0';
 
 export interface MessageTraceFinalization {
 	status: 'completed' | 'cancelled' | 'error' | 'suspended';
@@ -43,11 +43,7 @@ export interface MessageTraceFinalization {
 	error?: string;
 }
 
-export type OrchestratorResumeReason =
-	| 'approval'
-	| 'background_task_completed'
-	| 'workflow_verification'
-	| 'workflow_setup';
+export type OrchestratorResumeReason = 'approval' | 'background_task_completed' | 'workflow_setup';
 
 // The slice of each collaborator the tracing service actually uses. Anchored to
 // the concrete types via `Pick` so the signatures stay in sync with the source.
@@ -219,7 +215,7 @@ export class InstanceAiTracingService {
 				agent_id: orchestratorAgentId(options.runId),
 				...options.metadata,
 			},
-			n8nVersion: N8N_VERSION,
+			n8nVersion: getN8nVersion(),
 			workflowSdkVersion: WORKFLOW_SDK_VERSION,
 			browserExtension: options.browserExtension,
 		});

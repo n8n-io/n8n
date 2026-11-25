@@ -7,6 +7,7 @@ import SecuritySettings from './SecuritySettings.vue';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { ref } from 'vue';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG } from './rateLimits/rateLimits';
 
@@ -36,6 +37,22 @@ vi.mock('@n8n/rest-api-client/api/public-api-rate-limit-settings', () => {
 		updatePublicApiRateLimitSettings: vi.fn(),
 	};
 });
+
+const policyAccess = vi.hoisted(() => ({ canManage: false }));
+vi.mock('@n8n/frontend-module-type-availability-policies', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/frontend-module-type-availability-policies')>()),
+	// The access rules have their own tests in the module, so the row only reads the result.
+	usePolicyAdminAccess: () => ({
+		canManagePolicies: ref(policyAccess.canManage),
+		entryRouteName: ref('PolicyEntryView'),
+	}),
+}));
+
+const routerPush = vi.fn();
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal<typeof import('vue-router')>()),
+	useRouter: () => ({ push: routerPush }),
+}));
 
 const showToast = vi.fn();
 const showError = vi.fn();
@@ -89,6 +106,38 @@ describe('SecuritySettings', () => {
 		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowReviews] = false;
 		checkEnvFeatureFlag.mockReturnValue(false);
 		usersStore.updateEnforceMfa = vi.fn().mockResolvedValue(undefined);
+		policyAccess.canManage = false;
+	});
+
+	describe('node and credential policies', () => {
+		it('shows the row with a Preview badge to a user who can manage the policies', async () => {
+			policyAccess.canManage = true;
+			const { findByTestId, getByTestId } = renderView();
+
+			const row = await findByTestId('security-type-policies-row');
+
+			expect(row).toHaveTextContent('Node and credential policies');
+			expect(row).toHaveTextContent('Configure');
+			expect(within(row).getByTestId('security-type-policies-preview-badge')).toBeInTheDocument();
+			expect(getByTestId('security-type-policies-section')).toHaveTextContent('Access control');
+		});
+
+		it('opens the entry page of the policies from the row', async () => {
+			policyAccess.canManage = true;
+			const { findByTestId } = renderView();
+
+			await userEvent.click(await findByTestId('security-type-policies-row'));
+
+			expect(routerPush).toHaveBeenCalledWith({ name: 'PolicyEntryView' });
+		});
+
+		it('hides the row from a user who cannot manage the policies', async () => {
+			const { queryByTestId } = renderView();
+
+			await waitFor(() => expect(getSecuritySettings).toHaveBeenCalled());
+
+			expect(queryByTestId('security-type-policies-section')).not.toBeInTheDocument();
+		});
 	});
 
 	describe('API key rate limits', () => {
@@ -163,16 +212,12 @@ describe('SecuritySettings', () => {
 		expect(
 			getByText('Require two-factor authentication for users who sign in with email and password.'),
 		).toBeInTheDocument();
+		expect(queryByText('Manage reviews before publishing workflows.')).not.toBeInTheDocument();
 		expect(
 			getByText(
-				'Allow users to submit workflow versions for approval before publishing. Reviews are optional, but an open review blocks publishing.',
+				'Allow users to request approval before publishing. An open review blocks publishing.',
 			),
 		).toBeInTheDocument();
-		expect(
-			queryByText(
-				'Require workflow versions to be submitted for review and approved before they can be published to production.',
-			),
-		).not.toBeInTheDocument();
 		expect(
 			queryByText(
 				'Select whether to redact production executions, or manual and production executions.',
@@ -513,9 +558,13 @@ describe('SecuritySettings', () => {
 				expect(getByTestId('security-personal-space-sharing-toggle')).toBeInTheDocument();
 			});
 
-			expect(getByTestId('enable-force-mfa')).toHaveClass('is-disabled');
-			expect(getByTestId('security-personal-space-sharing-toggle')).toHaveClass('is-disabled');
-			expect(getByTestId('security-personal-space-publishing-toggle')).toHaveClass('is-disabled');
+			expect(getByTestId('enable-force-mfa')).toHaveAttribute('data-disabled');
+			expect(getByTestId('security-personal-space-sharing-toggle')).toHaveAttribute(
+				'data-disabled',
+			);
+			expect(getByTestId('security-personal-space-publishing-toggle')).toHaveAttribute(
+				'data-disabled',
+			);
 		});
 
 		it('should not call update APIs when clicking disabled toggles', async () => {
@@ -559,7 +608,7 @@ describe('SecuritySettings', () => {
 			});
 
 			const sharingToggle = getByTestId('security-personal-space-sharing-toggle');
-			expect(sharingToggle).toHaveClass('is-disabled');
+			expect(sharingToggle).toHaveAttribute('data-disabled');
 		});
 
 		it('should render disabled publishing toggle when unlicensed', async () => {
@@ -570,7 +619,7 @@ describe('SecuritySettings', () => {
 			});
 
 			const publishingToggle = getByTestId('security-personal-space-publishing-toggle');
-			expect(publishingToggle).toHaveClass('is-disabled');
+			expect(publishingToggle).toHaveAttribute('data-disabled');
 		});
 
 		it('should not call updateSecuritySettings when clicking disabled toggle', async () => {
@@ -588,15 +637,13 @@ describe('SecuritySettings', () => {
 	});
 
 	describe('Data redaction section', () => {
-		it('should render toggle and summary', async () => {
+		it('should render toggle and docs link', async () => {
 			const { getByTestId } = renderView();
 
 			await waitFor(() => {
 				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
 			});
 
-			expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent('Affected scope');
-			expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent('No executions');
 			expect(getByTestId('redaction-enforcement-docs-link').closest('a')).toHaveAttribute(
 				'href',
 				'https://docs.n8n.io/workflows/executions/execution-data-redaction/#instance-level-enforcement',
@@ -625,7 +672,7 @@ describe('SecuritySettings', () => {
 				expect(getByTestId('redaction-enforcement-scope-row')).toBeInTheDocument();
 			});
 
-			expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent(
+			expect(getByTestId('redaction-enforcement-scope-select')).toHaveTextContent(
 				'Production executions',
 			);
 		});
@@ -742,7 +789,7 @@ describe('SecuritySettings', () => {
 				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
 			});
 
-			expect(getByTestId('enable-redaction-enforcement')).toHaveClass('is-disabled');
+			expect(getByTestId('enable-redaction-enforcement')).toHaveAttribute('data-disabled');
 		});
 
 		it('should render disabled scope dropdown when unlicensed even if enforced=true', async () => {
@@ -775,8 +822,19 @@ describe('SecuritySettings', () => {
 			expect(getByTestId('redaction-enforcement-scope-select')).toHaveAttribute('data-disabled');
 			// One badge on the toggle row, one on the scope row.
 			expect(getAllByText('Upgrade').length).toBeGreaterThanOrEqual(2);
-			// Summary reflects stored floor='off' while the disabled dropdown previews 'production'.
-			expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent('No executions');
+		});
+
+		it('should not render a scope summary that repeats the scope dropdown', async () => {
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
+
+			const { getByTestId, queryByText } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('redaction-enforcement-scope-select')).toBeInTheDocument();
+			});
+
+			expect(queryByText('Affected scope')).not.toBeInTheDocument();
+			expect(queryByText('No executions')).not.toBeInTheDocument();
 		});
 
 		it('should not call updateSecuritySettings when clicking disabled scope dropdown', async () => {
@@ -811,7 +869,7 @@ describe('SecuritySettings', () => {
 			});
 
 			expect(getByTestId('redaction-enforcement-scope-select')).toHaveAttribute('data-disabled');
-			expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent(
+			expect(getByTestId('redaction-enforcement-scope-select')).toHaveTextContent(
 				'Production executions',
 			);
 		});
@@ -830,7 +888,7 @@ describe('SecuritySettings', () => {
 			});
 
 			expect(getByTestId('redaction-enforcement-scope-select')).toHaveAttribute('data-disabled');
-			expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent(
+			expect(getByTestId('redaction-enforcement-scope-select')).toHaveTextContent(
 				'Manual and production executions',
 			);
 		});
@@ -847,10 +905,10 @@ describe('SecuritySettings', () => {
 				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
 			});
 
-			expect(getByTestId('enable-redaction-enforcement')).toHaveClass('is-disabled');
+			expect(getByTestId('enable-redaction-enforcement')).toHaveAttribute('data-disabled');
 		});
 
-		it('should render correct affected-scope summary for floor=all', async () => {
+		it('should preselect the stored floor in the scope dropdown for floor=all', async () => {
 			getSecuritySettings.mockResolvedValue({
 				...defaultSettings,
 				redactionEnforcement: { floor: 'all' },
@@ -859,7 +917,7 @@ describe('SecuritySettings', () => {
 			const { getByTestId } = renderView();
 
 			await waitFor(() => {
-				expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent(
+				expect(getByTestId('redaction-enforcement-scope-select')).toHaveTextContent(
 					'Manual and production executions',
 				);
 			});
@@ -879,7 +937,7 @@ describe('SecuritySettings', () => {
 					expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
 				});
 
-				expect(getByTestId('enable-redaction-enforcement')).toHaveClass('is-disabled');
+				expect(getByTestId('enable-redaction-enforcement')).toHaveAttribute('data-disabled');
 			});
 
 			it('should show the Upgrade badges and disabled scope dropdown when endpoint 403s', async () => {
@@ -893,8 +951,6 @@ describe('SecuritySettings', () => {
 				expect(getByTestId('redaction-enforcement-scope-select')).toHaveAttribute('data-disabled');
 				// One badge on the toggle row, one on the scope row.
 				expect(getAllByText('Upgrade').length).toBeGreaterThanOrEqual(2);
-				// Defaults to floor 'off' when state never resolves.
-				expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent('No executions');
 			});
 
 			it('should not show an error toast when the endpoint 403s', async () => {
@@ -930,14 +986,11 @@ describe('SecuritySettings', () => {
 			expect(queryByTestId('security-workflow-reviews-toggle')).not.toBeInTheDocument();
 		});
 
-		it('should not render workflow reviews section when license is off', async () => {
-			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowReviews] = false;
-			checkEnvFeatureFlag.mockReturnValue(true);
-			const { queryByTestId } = renderView();
+		it('should not render workflow reviews section when the settings carry no workflow reviews policy', async () => {
+			getSecuritySettings.mockResolvedValue(defaultSettings);
+			const { findByTestId, queryByTestId } = renderView();
 
-			await waitFor(() => {
-				expect(getSecuritySettings).toHaveBeenCalled();
-			});
+			await findByTestId('security-personal-space-sharing-toggle');
 
 			expect(queryByTestId('security-workflow-reviews-toggle')).not.toBeInTheDocument();
 		});
@@ -957,7 +1010,7 @@ describe('SecuritySettings', () => {
 				expect(getByTestId('security-workflow-reviews-toggle')).toBeInTheDocument();
 			});
 
-			expect(getByTestId('security-workflow-reviews-preview-tag')).toHaveTextContent('Preview');
+			expect(getByTestId('security-workflow-reviews-preview-badge')).toHaveTextContent('Preview');
 		});
 
 		it('should persist workflow reviews toggle changes', async () => {
@@ -995,16 +1048,85 @@ describe('SecuritySettings', () => {
 				availableTypes: ['workflow_review'],
 				failedTypes: [],
 			});
-			expect(toggle).not.toHaveClass('is-disabled');
+			expect(toggle).not.toHaveAttribute('data-disabled');
 			expect(showError).not.toHaveBeenCalled();
 			expect(settingsStore.getSettings).not.toHaveBeenCalled();
 		});
 
-		it('should disable workflow reviews toggle when managed by env', async () => {
+		it('hides Require approval while workflow reviews are off', async () => {
+			const { findByTestId, queryByTestId } = renderView();
+
+			await findByTestId('security-workflow-reviews-toggle');
+
+			expect(
+				queryByTestId('security-workflow-reviews-require-approval-select'),
+			).not.toBeInTheDocument();
+		});
+
+		it('shows Require approval and saves Always required', async () => {
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				workflowReviews: { enabled: true },
+			});
+			updateSecuritySettings.mockResolvedValue({
+				workflowReviews: { enabled: true, alwaysRequired: true },
+			});
+
+			const { findByTestId, findByRole } = renderView();
+			const select = await findByTestId('security-workflow-reviews-require-approval-select');
+			expect(select).toHaveTextContent('Set per project or workflow');
+
+			await userEvent.click(select);
+			await userEvent.click(await findByRole('option', { name: 'Always required' }));
+
+			await waitFor(() => {
+				expect(updateSecuritySettings).toHaveBeenCalledWith(expect.anything(), {
+					workflowReviews: { alwaysRequired: true },
+				});
+				expect(settingsStore.settings.workflowReviews).toEqual({
+					enabled: true,
+					alwaysRequired: true,
+				});
+				expect(showToast).toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'success', title: 'Approval setting updated' }),
+				);
+			});
+		});
+
+		it('shows workflow reviews as off when the approval save returns them disabled', async () => {
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				workflowReviews: { enabled: true, alwaysRequired: false },
+			});
+			// Another admin turned reviews off after this page loaded.
+			updateSecuritySettings.mockResolvedValue({
+				workflowReviews: { enabled: false, alwaysRequired: true },
+			});
+
+			const { findByTestId, findByRole, getByTestId } = renderView();
+
+			await userEvent.click(
+				await findByTestId('security-workflow-reviews-require-approval-select'),
+			);
+			await userEvent.click(await findByRole('option', { name: 'Always required' }));
+
+			await waitFor(() =>
+				expect(settingsStore.settings.workflowReviews).toEqual({
+					enabled: false,
+					alwaysRequired: true,
+				}),
+			);
+			expect(getByTestId('security-workflow-reviews-toggle')).toHaveAttribute(
+				'aria-checked',
+				'false',
+			);
+		});
+
+		it('should disable workflow reviews controls when managed by env', async () => {
 			getSecuritySettings.mockResolvedValue({
 				...defaultSettings,
 				managedByEnv: true,
-				workflowReviews: { enabled: true },
+				workflowReviews: { enabled: true, alwaysRequired: true },
 			});
 
 			const { getByTestId } = renderView();
@@ -1013,7 +1135,10 @@ describe('SecuritySettings', () => {
 				expect(getByTestId('security-workflow-reviews-toggle')).toBeInTheDocument();
 			});
 
-			expect(getByTestId('security-workflow-reviews-toggle')).toHaveClass('is-disabled');
+			expect(getByTestId('security-workflow-reviews-toggle')).toHaveAttribute('data-disabled');
+			expect(getByTestId('security-workflow-reviews-require-approval-select')).toHaveAttribute(
+				'data-disabled',
+			);
 		});
 
 		it('should show alert dialog and proceed when confirming disable workflow reviews', async () => {
@@ -1036,6 +1161,11 @@ describe('SecuritySettings', () => {
 			await waitFor(() => {
 				expect(getByRole('dialog')).toBeInTheDocument();
 			});
+
+			expect(getByRole('dialog')).toHaveTextContent('Disable publish reviews');
+			expect(getByRole('dialog')).toHaveTextContent(
+				'Publish reviews will no longer be available on this instance. Existing project-level review settings will no longer apply.',
+			);
 
 			await userEvent.click(getByRole('button', { name: 'Confirm' }));
 

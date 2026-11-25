@@ -53,6 +53,7 @@ export interface MismatchShape {
 	legacy_type: string;
 	quickjs_type: string;
 	error_class?: string;
+	error_origin?: string;
 	count: number;
 }
 
@@ -257,6 +258,7 @@ export class QuickJsExpressionShadow implements ExpressionShadowRunner {
 			legacy_type: legacy.ok ? valueType(legacy.value) : 'error',
 			quickjs_type: quickjs.ok ? valueType(quickjs.value) : 'error',
 			error_class: !quickjs.ok ? quickjs.errorClass : !legacy.ok ? legacy.errorClass : undefined,
+			error_origin: quickjs.ok ? undefined : quickjs.errorOrigin,
 		};
 		const key = JSON.stringify(shape);
 		const existing = this.mismatches.get(key);

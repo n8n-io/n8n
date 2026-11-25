@@ -4,6 +4,13 @@ import { getMonorepoProjects } from './pnpm-utils.mjs';
 
 const NPM_REGISTRY = 'https://registry.npmjs.org';
 
+const UNSCOPED_PACKAGES_FOLLOWING_STABLE = new Set([
+	'n8n-core',
+	'n8n-editor-ui',
+	'n8n-nodes-base',
+	'n8n-workflow',
+]);
+
 // Standalone packages release from master out-of-sync with the main pipeline
 // (release-standalone-package.yml), so their `latest` follows the newest beta
 // on npm instead of the version recorded in the stable checkout.
@@ -58,18 +65,23 @@ export async function resolveLatestVersion(pkg) {
 	return target;
 }
 
+/** @param {import('./pnpm-utils.mjs').PnpmPackage[]} packages */
+export function getPackagesToPromote(packages) {
+	return packages.filter(
+		(pkg) =>
+			!pkg.private &&
+			pkg.version &&
+			(pkg.name.startsWith('@n8n/') || UNSCOPED_PACKAGES_FOLLOWING_STABLE.has(pkg.name)),
+	);
+}
+
 async function setLatestForMonorepoPackages() {
 	const token = process.env.NPM_TOKEN;
 	if (!token) {
 		throw new Error('NPM_TOKEN environment variable is required');
 	}
 
-	const packages = await getMonorepoProjects();
-
-	const publishedPackages = packages //
-		.filter((pkg) => !pkg.private)
-		.filter((pkg) => pkg.name.startsWith('@n8n/'))
-		.filter((pkg) => pkg.version);
+	const publishedPackages = getPackagesToPromote(await getMonorepoProjects());
 
 	const failures = [];
 

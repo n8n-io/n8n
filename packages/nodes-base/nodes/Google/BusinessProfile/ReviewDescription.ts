@@ -5,6 +5,9 @@ import {
 	handleErrorsGetReview,
 	handleErrorsReplyToReview,
 	handlePagination,
+	reviewPresend,
+	reviewReplyPresend,
+	reviewsPresend,
 } from './GenericFunctions';
 
 export const reviewOperations: INodeProperties[] = [
@@ -22,9 +25,9 @@ export const reviewOperations: INodeProperties[] = [
 				action: 'Delete a reply to a review',
 				description: 'Delete a reply to a review',
 				routing: {
+					send: { preSend: [reviewReplyPresend] },
 					request: {
 						method: 'DELETE',
-						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/reviews/{{$parameter["review"].split("reviews/").pop().split("/reply")[0]}}/reply',
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
@@ -38,9 +41,9 @@ export const reviewOperations: INodeProperties[] = [
 				action: 'Get review',
 				description: 'Retrieve details of a specific review on Google Business Profile',
 				routing: {
+					send: { preSend: [reviewPresend] },
 					request: {
 						method: 'GET',
-						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/reviews/{{$parameter["review"].split("reviews/").pop().split("/reply")[0]}}',
 						ignoreHttpStatusErrors: true,
 					},
 
@@ -55,11 +58,10 @@ export const reviewOperations: INodeProperties[] = [
 				action: 'Get many reviews',
 				description: 'Retrieve multiple reviews',
 				routing: {
-					send: { paginate: true },
+					send: { paginate: true, preSend: [reviewsPresend] },
 					operations: { pagination: handlePagination },
 					request: {
 						method: 'GET',
-						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/reviews',
 						qs: {
 							pageSize:
 								'={{ $parameter["limit"] ? ($parameter["limit"] < 50 ? $parameter["limit"] : 50) : 50 }}', // Google allows maximum 50 results per page
@@ -73,9 +75,9 @@ export const reviewOperations: INodeProperties[] = [
 				action: 'Reply to review',
 				description: 'Reply to a review',
 				routing: {
+					send: { preSend: [reviewReplyPresend] },
 					request: {
 						method: 'PUT',
-						url: '=/{{$parameter["account"]}}/{{$parameter["location"]}}/reviews/{{$parameter["review"].split("reviews/").pop().split("/reply")[0]}}/reply',
 						ignoreHttpStatusErrors: true,
 					},
 					output: {
