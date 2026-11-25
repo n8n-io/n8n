@@ -53,6 +53,7 @@ const AppPreviewHost = defineComponent({
 		app: { type: Object as PropType<AppResponse>, required: true },
 		inspectable: Boolean,
 		elementSelected: Boolean,
+		assistantWorking: Boolean,
 	},
 	emits: ['element-selected'],
 	setup(props, { emit }) {
@@ -64,6 +65,7 @@ const AppPreviewHost = defineComponent({
 				versions,
 				inspectable: props.inspectable,
 				elementSelected: props.elementSelected,
+				assistantWorking: props.assistantWorking,
 				onElementSelected: (element: AppPreviewElement) => emit('element-selected', element),
 			});
 	},
@@ -132,6 +134,55 @@ describe('AppPreview', () => {
 
 		expect(await findByTestId('app-preview-empty')).toBeInTheDocument();
 		expect(getByTestId('app-preview-feedback')).toHaveTextContent('Give feedback');
+	});
+
+	it('shows the build state while the Assistant works on an app that has no version yet', async () => {
+		vi.mocked(listAppVersions).mockResolvedValue([]);
+		const { findByTestId, getByTestId, getByText, queryByTestId, getByLabelText } = renderComponent(
+			{
+				props: { app: app(null), assistantWorking: true },
+			},
+		);
+
+		expect(await findByTestId('app-preview-first-build')).toHaveAttribute('role', 'status');
+		expect(getByText('Building your app…')).toBeVisible();
+		expect(getByText("It appears here when it's ready")).toBeVisible();
+		expect(queryByTestId('app-preview-empty')).not.toBeInTheDocument();
+		expect(getByLabelText('Screen size')).toBeDisabled();
+		expect(getByTestId('app-preview-reload')).toBeDisabled();
+	});
+
+	it('shows the empty state again when the Assistant stops before a build', async () => {
+		vi.mocked(listAppVersions).mockResolvedValue([]);
+		const { findByTestId, queryByTestId, rerender } = renderComponent({
+			props: { app: app(null), assistantWorking: true },
+		});
+		await findByTestId('app-preview-first-build');
+
+		await rerender({ app: app(null), assistantWorking: false });
+
+		expect(await findByTestId('app-preview-empty')).toBeInTheDocument();
+		expect(queryByTestId('app-preview-first-build')).not.toBeInTheDocument();
+	});
+
+	it('keeps the build failed state while the Assistant works on a fix', async () => {
+		vi.mocked(listAppVersions).mockResolvedValue([version('v1', 'failed')]);
+		const { findByTestId, queryByTestId } = renderComponent({
+			props: { app: app(), assistantWorking: true },
+		});
+
+		expect(await findByTestId('app-preview-build-failed')).toBeInTheDocument();
+		expect(queryByTestId('app-preview-first-build')).not.toBeInTheDocument();
+	});
+
+	it('keeps showing a built app while the Assistant works on it', async () => {
+		vi.mocked(listAppVersions).mockResolvedValue([version('v2', 'succeeded')]);
+		const { findByTestId, queryByTestId } = renderComponent({
+			props: { app: app(), assistantWorking: true },
+		});
+
+		expect(await findByTestId('app-preview-frame')).toBeInTheDocument();
+		expect(queryByTestId('app-preview-first-build')).not.toBeInTheDocument();
 	});
 
 	it('shows an empty state when the app has no build', async () => {

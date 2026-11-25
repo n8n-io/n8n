@@ -13,7 +13,9 @@ import {
 	N8nButton,
 	N8nEmptyState,
 	N8nIconButton,
+	N8nHeading,
 	N8nLoading,
+	N8nSpinner,
 	N8nText,
 	N8nTooltip,
 	type IconName,
@@ -59,6 +61,8 @@ const props = defineProps<{
 	versions: AppVersions;
 	inspectable?: boolean;
 	elementSelected?: boolean;
+	/** The Assistant is working on this app, so a first build is on its way. */
+	assistantWorking?: boolean;
 }>();
 
 const emit = defineEmits<{ 'element-selected': [element: AppPreviewElement] }>();
@@ -101,6 +105,11 @@ const previewOrigin = computed(() =>
 const loading = computed(() => props.versions.loading.value || granting.value);
 const failed = computed(() => props.versions.failed.value || grantFailed.value);
 const buildFailed = computed(() => head.value?.buildStatus === 'failed');
+// The Assistant saves a version only after its build, so while it works on a new
+// app there is no version yet. Show the build state for that whole wait.
+const firstBuild = computed(
+	() => building.value || (!!props.assistantWorking && !latestBuilt.value && !buildFailed.value),
+);
 const versionLabel = computed(() => {
 	const version = preview.value?.version;
 	return version ? getAppVersionLabel(version) : null;
@@ -295,7 +304,7 @@ onBeforeUnmount(() => {
 						:class="$style.groupStart"
 						:aria-label="i18n.baseText('apps.preview.reload')"
 						:loading="loading"
-						:disabled="building && !preview"
+						:disabled="firstBuild && !preview"
 						data-test-id="app-preview-reload"
 						@click="reload"
 					/>
@@ -340,13 +349,22 @@ onBeforeUnmount(() => {
 				data-test-id="app-preview-frame"
 				@load="onFrameLoad"
 			/>
-			<N8nEmptyState
-				v-else-if="building"
-				:icon="{ type: 'icon', value: 'wrench' }"
-				:heading="i18n.baseText('apps.preview.firstBuild.heading')"
-				:description="i18n.baseText('apps.preview.firstBuild.description')"
+			<div
+				v-else-if="firstBuild"
+				:class="$style.firstBuild"
+				role="status"
 				data-test-id="app-preview-first-build"
-			/>
+			>
+				<N8nSpinner type="grid" size="xlarge" />
+				<div :class="$style.firstBuildText">
+					<N8nHeading tag="h2" size="xlarge" align="center">
+						{{ i18n.baseText('apps.preview.firstBuild.heading') }}
+					</N8nHeading>
+					<N8nText color="text-base" align="center">
+						{{ i18n.baseText('apps.preview.firstBuild.description') }}
+					</N8nText>
+				</div>
+			</div>
 			<N8nEmptyState
 				v-else-if="buildFailed"
 				:icon="{ type: 'icon', value: 'triangle-alert' }"
@@ -439,6 +457,21 @@ onBeforeUnmount(() => {
 	&:not(:last-child) {
 		padding-bottom: 0;
 	}
+}
+
+.firstBuild {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--spacing--md);
+	padding: var(--spacing--3xl) var(--spacing--xl);
+}
+
+.firstBuildText {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	max-width: 32rem;
 }
 
 .frame {
