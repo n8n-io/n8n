@@ -1,5 +1,6 @@
 import type { AgentFileDto, KnowledgeCollectionFileDto } from '@n8n/api-types';
 import { getPromptWorkspaceRoot, type SandboxProvider } from '@n8n/agents/sandbox';
+import { UnexpectedError } from '@n8n/errors';
 import path from 'node:path';
 
 import type { AgentFile, KnowledgeFile } from '../entities';
@@ -45,7 +46,7 @@ export function assertKnowledgePathSegment(segment: string, label: string): void
 		/[\\/]/.test(segment) ||
 		hasControlCharacter(segment)
 	) {
-		throw new Error(`Invalid ${label} for agent knowledge storage`);
+		throw new UnexpectedError(`Invalid ${label} for agent knowledge storage`);
 	}
 }
 
@@ -59,7 +60,7 @@ const MAX_MIRROR_PATH_SEGMENTS = 2;
 export function assertKnowledgeMirrorPath(mirrorPath: string, label: string): void {
 	const segments = mirrorPath.split('/');
 	if (segments.length > MAX_MIRROR_PATH_SEGMENTS) {
-		throw new Error(`Invalid ${label} for agent knowledge storage`);
+		throw new UnexpectedError(`Invalid ${label} for agent knowledge storage`);
 	}
 	for (const segment of segments) {
 		assertKnowledgePathSegment(segment, label);

@@ -831,12 +831,16 @@ describe('KnowledgeFileService', () => {
 		);
 	});
 
-	it('destroys the sandbox after the final file is deleted when the collections of the scope are empty', async () => {
+	it('decides on the files of the collections, not on the collections, after the final file is deleted', async () => {
 		await fileRepository.save(makeAgentFile({ id: 'file-1' }));
+		// A collection without files keeps the tools attached, but not the sandbox.
 		collectionSourceService.hasCollections.mockResolvedValue(true);
+		collectionSourceService.hasCollectionFiles.mockResolvedValue(false);
 
 		await expect(service.deleteFile(scope, 'file-1', writeFence)).resolves.toBe(true);
 
+		expect(collectionSourceService.hasCollections).not.toHaveBeenCalled();
+		expect(collectionSourceService.hasCollectionFiles).toHaveBeenCalledWith(scope);
 		expect(sandboxProviderProxy.destroy).toHaveBeenCalledExactlyOnceWith(scope);
 		expect(mirrorService.syncMirrorInBackground).not.toHaveBeenCalled();
 	});
