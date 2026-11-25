@@ -113,6 +113,7 @@ import {
 import type { ToolPickerMode } from './AgentCapabilitiesSection.types';
 import { toToolIconSource } from '../utils/toolIconSource';
 import AgentToolConfigContent, { type AgentToolConfigData } from './AgentToolConfigContent.vue';
+import type { ToolConfigTab } from './AgentToolConfigForm.vue';
 import AgentToolConfigCredentialPicker from './AgentToolConfigCredentialPicker.vue';
 import AgentToolConfigTitleIcon from './AgentToolConfigTitleIcon.vue';
 import AgentModalMultiStep from './modals/AgentModalMultiStep.vue';
@@ -367,7 +368,7 @@ function resumeToolConfigStep() {
 		data: { ...props.data, resumeToolRef: undefined },
 	});
 	const entry = workingToolEntries.value.find((candidate) => candidate.ref === resumeToolRef);
-	if (entry) openConfigForToolEntry(entry);
+	if (entry) openConfigForToolEntry(entry, 'guardrails');
 }
 
 function updateConfigTitle(value: string) {
@@ -722,11 +723,12 @@ async function handleCreateWorkflow() {
 	}
 }
 
-function openConfigForToolEntry(entry: WorkingToolEntry) {
+function openConfigForToolEntry(entry: WorkingToolEntry, initialTab?: ToolConfigTab) {
 	const toolRef = entry.ref;
 	activeConfigEntry = entry;
 	openConfigModal({
 		toolRef,
+		initialTab,
 		projectId: props.data.projectId,
 		agentId: props.data.agentId,
 		supportsToolApproval: props.data.supportsToolApproval,

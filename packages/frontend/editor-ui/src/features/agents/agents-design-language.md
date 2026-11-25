@@ -365,12 +365,11 @@ On narrow screens, use `--spacing--md` for these gaps. The body scrolls only whe
 the dialog reaches this limit. Keep short modals sized to their content.
 Picker steps can keep a minimum height for their result list.
 
-Keep the approval toggle and its destination selector together in tool forms.
-Place Advanced settings after the approval controls. Join both sections in one
-bordered group with a divider and no gap. Keep approval controls outside the
-Advanced disclosure so they stay visible when it collapses. Use the standard
-button hover background on Advanced. Keep its header square at internal dividers
-and round only the corners that touch the outer group border.
+Use Parameters and Guardrails tabs in tool forms that support either guardrails
+or approval. Open Parameters by default and keep Advanced settings in that tab.
+Put guardrails above approval in the Guardrails tab. Keep the approval toggle
+and its destination selector together. Keep form edits when users switch tabs.
+Return to Guardrails after a guardrail edit. Keep MCP configuration on one page.
 
 Do not add top padding or a top margin to a modal's first content wrapper. The
 shell supplies that space. Use the flush body only for a full-bleed workspace.

@@ -1734,7 +1734,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			expect(openModalSpy).toHaveBeenCalledWith(MODAL_NAME);
 		});
 
-		it('reopens on the config step of the stashed tool after a guardrail edit', async () => {
+		it('reopens on the Guardrails tab of the stashed tool after a guardrail edit', async () => {
 			const guardrails: ToolGuardrailsWiring = {
 				getGuardrails: () => [],
 				getTools: () => [],
@@ -1747,9 +1747,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 
 			// The resume lands directly on the tool's config step, not the picker.
 			const data = getConfigData();
-			expect(
-				data.kind !== 'mcpServer' && data.kind !== 'registryMcpServer' ? data.toolRef : undefined,
-			).toEqual(ref);
+			expect(data).toMatchObject({ toolRef: ref, initialTab: 'guardrails' });
 			// The stash is consumed, so a later manual open starts at the picker.
 			const stored = uiStore.modalStateById[MODAL_NAME].data as {
 				resumeToolRef?: AgentJsonToolRef;

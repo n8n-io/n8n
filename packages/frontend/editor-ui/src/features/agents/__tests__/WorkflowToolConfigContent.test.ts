@@ -159,9 +159,9 @@ describe('WorkflowToolConfigContent', () => {
 		setProjectWorkflows([workflow('Notify Sales'), workflow('Invoice Sender')]);
 	});
 
-	it('keeps workflow approval in its own group and Advanced last', async () => {
+	it('keeps workflow Advanced in Parameters and puts approval below guardrails', async () => {
 		mockedStore(useSettingsStore).isAgentModuleActive = vi.fn().mockReturnValue(true);
-		const { getByTestId, container } = renderForm(
+		const { getByTestId, getByRole, container } = renderForm(
 			createRef({ requireApproval: true }),
 			{ getConfig: () => null, saveConfiguration: vi.fn() },
 			true,
@@ -170,26 +170,30 @@ describe('WorkflowToolConfigContent', () => {
 		const destination = container.querySelector<HTMLElement>(
 			'[data-testid="agent-approval-route"]',
 		)!;
-		const approval = getByTestId('agent-workflow-tool-approval');
 		const advanced = getByTestId('agent-workflow-tool-advanced');
 		const guardrails = container.querySelector('[data-testid="agent-tool-guardrails-section"]');
 
-		expect(destination).toContainElement(toggle);
-		expect(
-			destination.compareDocumentPosition(advanced) & Node.DOCUMENT_POSITION_FOLLOWING,
-		).toBeTruthy();
-		expect(approval).toContainElement(destination);
-		expect(destination).toHaveAttribute('data-test-id', 'settings-row-group');
-		expect(approval).not.toContainElement(advanced);
-		expect(advanced.parentElement?.previousElementSibling).toBe(guardrails);
-		expect(toggle).toBeVisible();
+		expect(advanced).toBeVisible();
+		expect(toggle).not.toBeVisible();
 		expect(advanced).toHaveAttribute('aria-expanded', 'false');
 		await fireEvent.click(advanced);
 		expect(getByTestId('agent-workflow-tool-all-outputs')).toBeVisible();
 
+		await fireEvent.keyDown(getByRole('tab', { name: 'agents.builder.guardrails.title' }), {
+			key: 'Enter',
+		});
+		expect(advanced).not.toBeVisible();
+		expect(guardrails).toBeVisible();
+		expect(toggle).toBeVisible();
+		expect(destination).toContainElement(toggle);
+		expect(guardrails?.nextElementSibling).toContainElement(destination);
+
 		await fireEvent.click(toggle);
 		expect(container.querySelector('[data-testid="agent-review-add"]')).not.toBeInTheDocument();
-		expect(advanced).toHaveAttribute('aria-expanded', 'true');
+		await fireEvent.keyDown(getByRole('tab', { name: 'nodeSettings.parameters' }), {
+			key: 'Enter',
+		});
+		expect(getByTestId('agent-workflow-tool-all-outputs')).toBeVisible();
 	});
 
 	it('emits valid=true when target, name and description are set', () => {

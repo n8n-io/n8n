@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { AgentApprovalRoute, AgentConfigValidationIssue } from '@n8n/api-types';
-import { N8nCallout, N8nText } from '@n8n/design-system';
+import { createReusableTemplate } from '@vueuse/core';
+import { N8nCallout, N8nSettingsRowGroup, N8nTabs, N8nText } from '@n8n/design-system';
 import {
 	RestrictedTypeCallout,
 	useNodeTypeRestriction,
@@ -63,6 +64,7 @@ interface ToolModalData {
 	onConfirm: (updatedRef: AgentJsonToolRef) => void;
 	onRemove?: () => void;
 	kind?: 'tool';
+	initialTab?: ToolConfigTab;
 	/**
 	 * Tool-guardrails wiring. Present only on hosts whose agent supports
 	 * guardrails, and only for existing node/workflow tools; commits are
@@ -86,6 +88,7 @@ interface McpServerModalData {
 }
 
 export type AgentToolConfigModalData = ToolModalData | McpServerModalData;
+export type ToolConfigTab = 'parameters' | 'guardrails';
 
 const props = defineProps<{
 	data: AgentToolConfigModalData;
@@ -218,8 +221,14 @@ const approvalToolKey = computed(() =>
 const hasReviewContext = computed(
 	() => supportsApproval.value && !!props.data.approvalContext && !!props.data.projectId,
 );
-const showApprovalSetting = computed(
-	() => supportsApproval.value && !isMcpTool.value && toolModalData.value !== null,
+const [DefineParameters, ReuseParameters] = createReusableTemplate();
+const activeTab = ref<ToolConfigTab>(toolModalData.value?.initialTab ?? 'parameters');
+const tabs = computed(() => [
+	{ value: 'parameters' as const, label: i18n.baseText('nodeSettings.parameters') },
+	{ value: 'guardrails' as const, label: i18n.baseText('agents.builder.guardrails.title') },
+]);
+const showTabs = computed(
+	() => !isMcpTool.value && (supportsApproval.value || guardrailsSection.value),
 );
 
 watch(
@@ -317,7 +326,10 @@ function withApprovalRequirement(ref: AgentJsonToolRef): AgentJsonToolRef {
 
 function confirm(): boolean {
 	submitCount.value += 1;
-	if (!canSave.value) return false;
+	if (!canSave.value) {
+		activeTab.value = 'parameters';
+		return false;
+	}
 
 	if (isCustomTool.value) {
 		const toolData = toolModalData.value;
@@ -404,7 +416,7 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 </script>
 
 <template>
-	<div :class="[$style.contentWrapper, isCustomTool && $style.codeContentWrapper]">
+	<div :class="$style.contentWrapper">
 		<RestrictedTypeCallout
 			v-if="isRestricted"
 			surface="tool"
@@ -426,65 +438,23 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 		>
 			{{ i18n.baseText('agents.toolConfig.validation.fixFields' as BaseTextKey) }}
 		</N8nText>
-		<AgentToolConfigCustomContent
-			v-if="isCustomTool"
-			:code="customToolCode"
-			:class="$style.customToolViewer"
-		/>
-		<AgentToolConfigApprovalSetting
-			v-if="isCustomTool && showApprovalSetting && !hasReviewContext"
-			v-model="approvalRequired"
-		/>
-		<div v-if="!isCustomTool" :class="$style.configureTab">
+		<DefineParameters>
+			<AgentToolConfigCustomContent
+				v-if="isCustomTool"
+				:code="customToolCode"
+				:class="$style.customToolViewer"
+			/>
 			<AgentToolConfigWorkflowContent
-				v-if="workflowInitialRef"
+				v-else-if="workflowInitialRef"
 				ref="workflowContentRef"
 				:initial-ref="workflowInitialRef"
 				:submit-count="submitCount"
 				:project-id="data.projectId"
-				:show-approval-setting="showApprovalSetting"
-				:approval-required="approvalRequired"
 				@update:valid="isValid = $event"
 				@update:node-name="handleNodeNameUpdate"
-				@update:approval-required="approvalRequired = $event"
-			>
-				<template
-					v-if="data.approvalContext && data.projectId && supportsApproval"
-					#approvalSettings
-				>
-					<AgentApprovalRouteSelect
-						v-if="data.approvalContext && data.projectId"
-						v-model="approvalRoute"
-						:tool-key="approvalToolKey"
-						v-model:approval-required="approvalRequired"
-						:context="data.approvalContext"
-						:project-id="data.projectId"
-						:disabled="isRestricted"
-					/>
-				</template>
-				<template v-if="guardrailsSection" #beforeAdvanced>
-					<AgentToolGuardrailsSection
-						:tool-ref="guardrailsSection.toolRef"
-						v-bind="guardrailsSection.wiring"
-						@open-guardrail="emit('open-guardrail', $event)"
-					/>
-				</template>
-			</AgentToolConfigWorkflowContent>
-			<AgentToolConfigNodeContent
-				v-else-if="isMcpTool && initialNode"
-				ref="mcpContentRef"
-				:initial-node="initialNode"
-				:existing-tool-names="data.existingToolNames"
-				:project-id="data.projectId"
-				:hidden-parameters="['include', 'includeTools', 'excludeTools']"
-				:read-only="isRestricted"
-				content-test-id="agent-tool-config-mcp-content"
-				@update:valid="isValid = $event"
-				@update:node-name="handleNodeNameUpdate"
-				@update:node="draftNode = $event"
 			/>
 			<AgentToolConfigNodeContent
-				v-else-if="initialNode"
+				v-else-if="initialNode && !isMcpTool"
 				ref="nodeContentRef"
 				:initial-node="initialNode"
 				:existing-tool-names="data.existingToolNames"
@@ -497,43 +467,73 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 				@update:node-name="handleNodeNameUpdate"
 				@update:node="draftNode = $event"
 			/>
-			<AgentToolConfigApprovalSetting
-				v-if="!isMcpTool && initialNode && showApprovalSetting && !hasReviewContext"
-				v-model="approvalRequired"
-				:disabled="isRestricted"
-			/>
-			<AgentToolConfigMcpApprovalSetting
-				v-if="isMcpTool && mcpPermissions && supportsApproval && currentNode"
-				v-model="mcpPermissions"
-				:node="currentNode"
-				:disabled="isRestricted"
+		</DefineParameters>
+
+		<template v-if="isMcpTool">
+			<div :class="$style.contentWrapper">
+				<AgentToolConfigNodeContent
+					v-if="initialNode"
+					ref="mcpContentRef"
+					:initial-node="initialNode"
+					:existing-tool-names="data.existingToolNames"
+					:project-id="data.projectId"
+					:hidden-parameters="['include', 'includeTools', 'excludeTools']"
+					:read-only="isRestricted"
+					content-test-id="agent-tool-config-mcp-content"
+					@update:valid="isValid = $event"
+					@update:node-name="handleNodeNameUpdate"
+					@update:node="draftNode = $event"
+				/>
+				<AgentToolConfigMcpApprovalSetting
+					v-if="mcpPermissions && supportsApproval && currentNode"
+					v-model="mcpPermissions"
+					:node="currentNode"
+					:disabled="isRestricted"
+					:project-id="data.projectId"
+					@update:valid="mcpApprovalValid = $event"
+				/>
+			</div>
+			<AgentApprovalRouteSelect
+				v-if="hasReviewContext && data.approvalContext && data.projectId"
+				v-model="approvalRoute"
+				:tool-key="approvalToolKey"
+				:label="i18n.baseText('agents.hitl.mcpRoute')"
+				:context="data.approvalContext"
 				:project-id="data.projectId"
-				@update:valid="mcpApprovalValid = $event"
+				:disabled="isRestricted"
 			/>
-		</div>
-		<AgentApprovalRouteSelect
-			v-if="
-				!isWorkflowTool &&
-				data.approvalContext &&
-				data.projectId &&
-				supportsApproval &&
-				((!isMcpTool && showApprovalSetting) || isMcpTool)
-			"
-			v-model="approvalRoute"
-			:tool-key="approvalToolKey"
-			:label="isMcpTool ? i18n.baseText('agents.hitl.mcpRoute') : undefined"
-			:approval-required="isMcpTool ? undefined : approvalRequired"
-			@update:approval-required="approvalRequired = $event"
-			:context="data.approvalContext"
-			:project-id="data.projectId"
-			:disabled="isRestricted"
-		/>
-		<AgentToolGuardrailsSection
-			v-if="!isWorkflowTool && guardrailsSection"
-			:tool-ref="guardrailsSection.toolRef"
-			v-bind="guardrailsSection.wiring"
-			@open-guardrail="emit('open-guardrail', $event)"
-		/>
+		</template>
+		<N8nTabs v-else-if="showTabs" v-model="activeTab" :options="tabs">
+			<template #content>
+				<div v-show="activeTab === 'parameters'" :class="$style.tabContent">
+					<ReuseParameters />
+				</div>
+				<div
+					v-show="activeTab === 'guardrails'"
+					:class="[$style.contentWrapper, $style.tabContent]"
+				>
+					<AgentToolGuardrailsSection
+						v-if="guardrailsSection"
+						:tool-ref="guardrailsSection.toolRef"
+						v-bind="guardrailsSection.wiring"
+						@open-guardrail="emit('open-guardrail', $event)"
+					/>
+					<AgentApprovalRouteSelect
+						v-if="hasReviewContext && data.approvalContext && data.projectId"
+						v-model="approvalRoute"
+						v-model:approval-required="approvalRequired"
+						:tool-key="approvalToolKey"
+						:context="data.approvalContext"
+						:project-id="data.projectId"
+						:disabled="isRestricted"
+					/>
+					<N8nSettingsRowGroup v-else-if="supportsApproval" :class="$style.approvalFallback">
+						<AgentToolConfigApprovalSetting v-model="approvalRequired" :disabled="isRestricted" />
+					</N8nSettingsRowGroup>
+				</div>
+			</template>
+		</N8nTabs>
+		<ReuseParameters v-else />
 	</div>
 </template>
 
@@ -549,20 +549,16 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 	}
 }
 
-.codeContentWrapper {
-	height: min(calc(var(--spacing--5xl) * 2), calc(70dvh - var(--spacing--5xl)));
-	overflow: hidden;
+.tabContent {
+	margin-block-start: var(--spacing--md);
 }
 
-.configureTab {
-	display: flex;
-	min-height: 0;
-	flex-direction: column;
-	gap: var(--spacing--md);
+.approvalFallback {
+	background: transparent;
 }
 
 .customToolViewer {
-	flex: 1;
+	height: min(calc(var(--spacing--5xl) * 2), calc(70dvh - var(--spacing--5xl)));
 	min-height: 0;
 	min-width: 0;
 	overflow: hidden;

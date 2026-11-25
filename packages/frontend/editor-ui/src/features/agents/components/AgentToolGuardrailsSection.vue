@@ -190,6 +190,9 @@ function onOpenGuardrail(guardrail: AgentToolGuardrailConfig) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+	padding: var(--spacing--sm) var(--spacing--md);
+	border: var(--border);
+	border-radius: var(--radius--xs);
 	width: 100%;
 }
 
@@ -205,9 +208,6 @@ function onOpenGuardrail(guardrail: AgentToolGuardrailConfig) {
 
 .box {
 	display: flex;
-	padding: var(--spacing--3xs);
-	border: var(--border);
-	border-radius: var(--radius--md);
 }
 
 .chips {

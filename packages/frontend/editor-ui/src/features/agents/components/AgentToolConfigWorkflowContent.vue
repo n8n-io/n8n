@@ -1,23 +1,18 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { N8nSettingsRowGroup } from '@n8n/design-system';
 
-import AgentToolConfigApprovalSetting from './AgentToolConfigApprovalSetting.vue';
 import WorkflowToolConfigContent from './WorkflowToolConfigContent.vue';
 import type { WorkflowToolRef } from '../types';
 
 const props = defineProps<{
 	initialRef: WorkflowToolRef;
 	projectId?: string;
-	showApprovalSetting?: boolean;
-	approvalRequired?: boolean;
 	submitCount?: number;
 }>();
 
 const emit = defineEmits<{
 	'update:valid': [valid: boolean];
 	'update:node-name': [name: string];
-	'update:approvalRequired': [required: boolean];
 }>();
 
 const contentRef = ref<InstanceType<typeof WorkflowToolConfigContent> | null>(null);
@@ -69,28 +64,5 @@ defineExpose({
 		:submit-count="props.submitCount"
 		@update:valid="emit('update:valid', $event)"
 		@update:node-name="emit('update:node-name', $event)"
-	>
-		<template v-if="props.showApprovalSetting" #commonSettings>
-			<div data-test-id="agent-workflow-tool-approval">
-				<slot name="approvalSettings">
-					<N8nSettingsRowGroup :class="$style.approvalFallback">
-						<AgentToolConfigApprovalSetting
-							:model-value="props.approvalRequired ?? false"
-							@update:model-value="emit('update:approvalRequired', $event)"
-						/>
-					</N8nSettingsRowGroup>
-				</slot>
-			</div>
-		</template>
-		<template #beforeAdvanced>
-			<slot name="beforeAdvanced" />
-		</template>
-	</WorkflowToolConfigContent>
+	/>
 </template>
-
-<style module lang="scss">
-.approvalFallback {
-	padding: var(--spacing--sm) var(--spacing--md);
-	background: transparent;
-}
-</style>
