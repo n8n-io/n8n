@@ -1,0 +1,36 @@
+packages/nodes-base/nodes/Form/v2/FormTriggerV2.node.ts
+  s_d7d0a81b33d5c6::t_e5489ae8ee49d9 48
+packages/nodes-base/nodes/Form/FormTrigger.node.ts
+  s_d7d0a81b33d5c6::t_396515b2d84f57 30
+  s_d7d0a81b33d5c6::t_20039ac6ea6cd7 17
+packages/nodes-base/nodes/Form/test/hidden-auth-headers.test.ts
+  s_d7d0a81b33d5c6::t_28768d2dcf704f 1-10,12-66,69-217
+  s_d7d0a81b33d5c6::t_8ee5fcd27705ed 11
+  s_d7d0a81b33d5c6::t_183e4edf2ff1f3 67-68
+packages/nodes-base/nodes/Form/utils/utils.ts
+  s_d7d0a81b33d5c6::t_8149136ac64ce2 484-500
+  s_d7d0a81b33d5c6::t_4b998084f923f2 590
+  s_d7d0a81b33d5c6::t_1bcdba8b9ce801 1190
+  s_d7d0a81b33d5c6::t_c639031c62d4b0 28-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "51338d04c3097cdcca486b047e9286e3c9b7e989",
+  "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_d7d0a81b33d5c6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e2fb3262-6ea3-4416-83c3-76f9f4cd7d8b",
+        "model": "unknown"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}
