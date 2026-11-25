@@ -17,7 +17,7 @@ import { isArrayIndexKey, isKeyOf } from './utils';
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy
 
 // ---------------------------------------------------------------------------
-// Proxy registry — used only for testing/introspection, not accessible from
+// Proxy registry — read by the runtime and by tests, not accessible from
 // expression code. Avoids shadowing user data keys like __isProxy / __path.
 // ---------------------------------------------------------------------------
 const proxyPaths = new WeakMap<object, string[]>();
