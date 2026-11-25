@@ -381,5 +381,21 @@ describe('McpServerView', () => {
 				'MCP server not found',
 			);
 		});
+
+		it('does not load the connections of a server that does not exist', async () => {
+			api.getMcpServer.mockRejectedValue(new ResponseError('Not found', { httpStatusCode: 404 }));
+			api.listMcpServerConnections.mockRejectedValue(
+				new ResponseError('Not found', { httpStatusCode: 404 }),
+			);
+			capabilityRegistry.provide(capabilities.projectPermissions, {
+				scopesFor: () => BUILDER,
+				isReadOnly: () => false,
+			});
+			renderComponent();
+
+			await screen.findByTestId('mcp-server-not-found');
+			// The connections call would answer 404 too and show a second error toast.
+			expect(api.listMcpServerConnections).not.toHaveBeenCalled();
+		});
 	});
 });

@@ -160,7 +160,9 @@ watch(
 	[projectId, serverId],
 	async () => {
 		connections.data.value = null;
-		await Promise.all([load(), connections.load()]);
+		await load();
+		// A server that did not load has no connections, and their load would show a second error.
+		if (server.value) await connections.load();
 	},
 	{ immediate: true },
 );
