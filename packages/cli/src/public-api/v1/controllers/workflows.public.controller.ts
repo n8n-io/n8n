@@ -12,6 +12,8 @@ import {
 	ListWorkflowsQueryDto,
 	PublishWorkflowPublicDto,
 	RetrievedWorkflowPublicDto,
+	RunWorkflowPublicDto,
+	StartedWorkflowRunPublicDto,
 	TagIdsPublicDto,
 	TransferWorkflowPublicDto,
 	UpdatedWorkflowPublicDto,
@@ -61,7 +63,7 @@ import type { Response } from 'express';
 import { PROJECT_ROOT } from 'n8n-workflow';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
-import { ResponseError, BadRequestError, NotFoundError } from '@n8n/errors';
+import { ResponseError, BadRequestError, NotFoundError, UnexpectedError } from '@n8n/errors';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
@@ -77,19 +79,26 @@ import {
 import { TagService } from '@/services/tag.service';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { createWorkflowEntityFromPayload } from '@/workflows/workflow-entity-mapper';
+import {
+	TRIGGER_EVENT_REQUIRED_MESSAGE,
+	WorkflowExecutionService,
+} from '@/workflows/workflow-execution.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import type { PublicApiRequest } from '@/public-api/public-api-client';
+import type { WorkflowRequest } from '@/workflows/workflow.request';
 
 const ACTIVATE_DEACTIVATE_DEPRECATED_SINCE = new Date('2026-07-23T00:00:00Z');
 const OLD_VERSION_PATH_DEPRECATED_SINCE = new Date('2026-08-26T00:00:00Z');
 
 const UPDATE_CONFLICT_DESCRIPTION =
 	'Conflict, e.g. re-publication blocked by an open workflow review (then `reason` and ' +
-	'`workflowReviewRequestId` are present; the update itself is still saved as a draft) or a ' +
-	'webhook path conflict.';
+	'`workflowReviewRequestId` are present), re-publication of a version without an approved ' +
+	'review when the instance or the project requires one (then `reason` is `review_required` ' +
+	'and `versionId` names the draft), or a webhook path conflict. A blocked re-publication ' +
+	'still saves the update as a draft. To save without publishing, set `publishIfActive=false`.';
 
 const UPDATE_PUBLISH_FORBIDDEN_DESCRIPTION =
 	'The update would re-publish the workflow, but the API key lacks `workflow:activate` or the ' +
@@ -98,7 +107,9 @@ const UPDATE_PUBLISH_FORBIDDEN_DESCRIPTION =
 
 const PUBLISH_CONFLICT_DESCRIPTION =
 	'Conflict, e.g. publication blocked by an open workflow review (then `reason` and ' +
-	'`workflowReviewRequestId` are present) or a webhook path conflict.';
+	'`workflowReviewRequestId` are present), publication of a version without an approved ' +
+	'review when the instance or the project requires one (then `reason` is `review_required` ' +
+	'and `versionId` is present), or a webhook path conflict.';
 
 function toPublicJson(value: unknown): Record<string, unknown> | null {
 	return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -226,6 +237,7 @@ export class WorkflowsPublicController {
 		private readonly tagService: TagService,
 		private readonly redactionEnforcementService: RedactionEnforcementService,
 		private readonly workflowDependencyQueryService: WorkflowDependencyQueryService,
+		private readonly workflowExecutionService: WorkflowExecutionService,
 	) {}
 
 	private get workflowTagsEnabled(): boolean {
@@ -338,12 +350,17 @@ export class WorkflowsPublicController {
 
 		await this.redactionEnforcementService.assertNewPolicyAllowed(body.settings.redactionPolicy);
 
-		const createdWorkflow = await this.workflowCreationService.createWorkflow(req.user, workflow, {
-			projectId,
-			parentFolderId: parentFolderId ?? undefined,
-			publicApi: req.publicApiClient,
-			source: 'api',
-		});
+		const createdWorkflow = await this.workflowCreationService.createWorkflow(
+			req.user,
+			workflow,
+			{
+				projectId,
+				parentFolderId: parentFolderId ?? undefined,
+				publicApi: req.publicApiClient,
+				source: 'api',
+			},
+			req.ctx,
+		);
 
 		return {
 			...this.toWorkflowPublicDto(createdWorkflow),
@@ -452,6 +469,7 @@ export class WorkflowsPublicController {
 					apiKeyScopes: req.tokenGrant?.apiKeyScopes ?? [],
 					source: 'api',
 				},
+				req.ctx,
 			);
 		} catch (error) {
 			if (error instanceof FolderNotFoundError) throw new NotFoundError(error.message);
@@ -482,6 +500,7 @@ export class WorkflowsPublicController {
 			req.user,
 			workflowId,
 			req.publicApiClient,
+			req.ctx,
 		);
 
 		if (!workflow) {
@@ -512,6 +531,7 @@ export class WorkflowsPublicController {
 			req.user,
 			workflowId,
 			req.publicApiClient,
+			req.ctx,
 		);
 
 		if (!workflow) {
@@ -539,6 +559,7 @@ export class WorkflowsPublicController {
 			req.user,
 			workflowId,
 			req.publicApiClient,
+			req.ctx,
 		);
 
 		if (!workflow) {
@@ -657,13 +678,18 @@ export class WorkflowsPublicController {
 		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 		@Body body: PublishWorkflowPublicDto,
 	): Promise<WorkflowPublishPublicDto> {
-		const workflow = await this.workflowService.activateWorkflow(req.user, workflowId, {
-			versionId: body.versionId,
-			name: body.name,
-			description: body.description,
-			source: 'api',
-			publicApi: req.publicApiClient,
-		});
+		const workflow = await this.workflowService.activateWorkflow(
+			req.user,
+			workflowId,
+			{
+				versionId: body.versionId,
+				name: body.name,
+				description: body.description,
+				source: 'api',
+				publicApi: req.publicApiClient,
+			},
+			req.ctx,
+		);
 
 		return this.toWorkflowPublishPublicDto(workflow);
 	}
@@ -683,10 +709,12 @@ export class WorkflowsPublicController {
 		_res: Response,
 		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 	): Promise<WorkflowPublicDto> {
-		const workflow = await this.workflowService.deactivateWorkflow(req.user, workflowId, {
-			source: 'api',
-			publicApi: req.publicApiClient,
-		});
+		const workflow = await this.workflowService.deactivateWorkflow(
+			req.user,
+			workflowId,
+			{ source: 'api', publicApi: req.publicApiClient },
+			req.ctx,
+		);
 
 		return this.toWorkflowPublicDto(workflow);
 	}
@@ -908,6 +936,73 @@ export class WorkflowsPublicController {
 		);
 
 		return toDependencyListPublicDto(result[workflowId], pagination);
+	}
+
+	@Post('/:workflowId/run')
+	@ApiKeyScope('workflow:execute')
+	@ProjectScope('workflow:execute')
+	@ApiSummary('Run a workflow with existing run data')
+	@ApiDescription(
+		'Start a manual execution of the latest saved version of a workflow. n8n reuses the given ' +
+			'run data and runs the nodes up to the destination node. The call returns when the ' +
+			'execution starts. It does not wait for the execution to finish. The user must also ' +
+			'have the `workflow:execute` project scope.',
+	)
+	@ApiTags(['Workflow'])
+	@ApiResponse(200, StartedWorkflowRunPublicDto)
+	@ApiErrorResponse(400, {
+		description:
+			'The request body is invalid, or `destinationNode.nodeName` is not a node in the workflow.',
+	})
+	@ApiErrorResponse(403, {
+		description:
+			'The API key or the user does not have the required permission, or the instance is in read-only mode.',
+	})
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409, { description: TRIGGER_EVENT_REQUIRED_MESSAGE })
+	async runWorkflow(
+		req: PublicApiRequest,
+		_res: Response,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
+		@Body body: RunWorkflowPublicDto,
+	): Promise<StartedWorkflowRunPublicDto> {
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, req.user, [
+			'workflow:execute',
+		]);
+
+		if (!workflow) {
+			throw new NotFoundError('Not Found');
+		}
+
+		const destinationNodeExists = workflow.nodes.some(
+			(node) => node.name === body.destinationNode.nodeName,
+		);
+		if (!destinationNodeExists) {
+			throw new BadRequestError(
+				`The workflow has no node named "${body.destinationNode.nodeName}"`,
+			);
+		}
+
+		const runPayload: WorkflowRequest.ManualRunPayload = {
+			runData: body.runData,
+			destinationNode: body.destinationNode,
+			dirtyNodeNames: body.dirtyNodeNames,
+		};
+		const result = await this.workflowExecutionService.executeManually({
+			workflowData: workflow,
+			payload: runPayload,
+			user: req.user,
+			waitForWebhook: false,
+		});
+
+		// `waitForWebhook: false` makes the service throw instead of waiting, so this cannot happen.
+		if (!('executionId' in result)) {
+			throw new UnexpectedError('Manual run waited for a webhook although waiting was turned off');
+		}
+
+		await this.workflowService.emitWorkflowExecuted(req.user, workflow, result.executionId);
+
+		return { executionId: result.executionId };
 	}
 
 	/**

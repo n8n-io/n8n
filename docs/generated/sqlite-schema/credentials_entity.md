@@ -18,7 +18,7 @@ CREATE TABLE "credentials_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name"
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | data | TEXT |  | false |  |  |  |
 | description | TEXT |  | true |  |  |  |
-| id | varchar(36) |  | false | [agent_credential_dependency](agent_credential_dependency.md) [chat_hub_agents](chat_hub_agents.md) [chat_hub_sessions](chat_hub_sessions.md) [credential_dependency](credential_dependency.md) [dynamic_credential_entry](dynamic_credential_entry.md) [dynamic_credential_user_entry](dynamic_credential_user_entry.md) [instance_ai_mcp_registry_connections](instance_ai_mcp_registry_connections.md) [instance_credential_assignment](instance_credential_assignment.md) [shared_credentials](shared_credentials.md) [skill_source](skill_source.md) |  |  |
+| id | varchar(36) |  | false | [agent_credential_dependency](agent_credential_dependency.md) [chat_hub_agents](chat_hub_agents.md) [chat_hub_sessions](chat_hub_sessions.md) [credential_dependency](credential_dependency.md) [dynamic_credential_entry](dynamic_credential_entry.md) [dynamic_credential_user_entry](dynamic_credential_user_entry.md) [instance_ai_mcp_registry_connections](instance_ai_mcp_registry_connections.md) [instance_credential_assignment](instance_credential_assignment.md) [knowledge_vector_store](knowledge_vector_store.md) [shared_credentials](shared_credentials.md) [skill_source](skill_source.md) |  |  |
 | isGlobal | boolean | 0 | false |  |  |  |
 | isManaged | boolean | 0 | false |  |  |  |
 | isResolvable | boolean | false | false |  |  |  |
@@ -60,6 +60,8 @@ erDiagram
 "dynamic_credential_user_entry" |o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_mcp_registry_connections" }o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_credential_assignment" }o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
+"knowledge_vector_store" }o--o| "credentials_entity" : "FOREIGN KEY (embeddingCredentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"knowledge_vector_store" }o--o| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "shared_credentials" |o--|| "credentials_entity" : "FOREIGN KEY (credentialsId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "skill_source" }o--o| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "credentials_entity" }o--o| "dynamic_credential_resolver" : "FOREIGN KEY (resolverId) REFERENCES dynamic_credential_resolver (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
@@ -153,6 +155,20 @@ erDiagram
   varchar_128_ credentialUseId PK
   datetime_3_ updatedAt
 }
+"knowledge_vector_store" {
+  TEXT config
+  datetime_3_ createdAt
+  varchar createdById FK
+  varchar_36_ credentialId FK
+  varchar_512_ description
+  varchar_36_ embeddingCredentialId FK
+  varchar_255_ embeddingModel
+  varchar_16_ id PK
+  varchar_16_ knowledgeCollectionId FK
+  varchar_64_ name
+  varchar_16_ provider
+  datetime_3_ updatedAt
+}
 "shared_credentials" {
   datetime_3_ createdAt
   varchar_36_ credentialsId PK
@@ -164,6 +180,7 @@ erDiagram
   datetime_3_ createdAt
   varchar createdById FK
   varchar_36_ credentialId FK
+  boolean credentialRequired
   varchar id PK
   varchar_255_ identityKey
   datetime_3_ lastCheckedAt
@@ -173,6 +190,7 @@ erDiagram
   varchar_36_ projectId FK
   varchar_32_ status
   varchar_16_ type
+  TEXT unlinkedSkills
   datetime_3_ updatedAt
 }
 "dynamic_credential_resolver" {

@@ -3,6 +3,8 @@ import { Container } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
 import { v4 as uuid } from 'uuid';
 
+import { createAgent, ensureInstanceAgent } from '@test-integration/db/agents';
+
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { getAgentOrThrow } from '@/modules/agents/utils/get-agent-or-throw';
 
@@ -21,14 +23,14 @@ describe('AgentRepository instance scope', () => {
 	beforeEach(async () => {
 		projectId = (await createTeamProject()).id;
 		projectAgentId = uuid();
-		await agentRepo.insert({
+		await createAgent({
 			id: projectAgentId,
 			name: 'Project agent',
 			projectId,
 			schema: null,
 			availableInMCP: true,
 		});
-		await agentRepo.ensureInstanceAgent(instanceAgentId, 'Instance agent');
+		await ensureInstanceAgent(instanceAgentId, 'Instance agent');
 		// Match the project agent, so only the scope filter can tell them apart.
 		await agentRepo.update({ id: instanceAgentId }, { availableInMCP: true });
 	});
@@ -41,7 +43,8 @@ describe('AgentRepository instance scope', () => {
 		await testDb.terminate();
 	});
 
-	describe('ensureInstanceAgent', () => {
+	// Through `SystemAgentRegistrationService.ensureInstanceAgent`, which owns the seeding.
+	describe('seeding instance agent rows', () => {
 		it('creates an instance agent without a project', async () => {
 			const row = await agentRepo.findOneByOrFail({ id: instanceAgentId });
 
@@ -54,7 +57,7 @@ describe('AgentRepository instance scope', () => {
 		});
 
 		it('renames an existing instance agent and does not create a second row', async () => {
-			await agentRepo.ensureInstanceAgent(instanceAgentId, 'Renamed agent');
+			await ensureInstanceAgent(instanceAgentId, 'Renamed agent');
 
 			const rows = await agentRepo.findBy({ id: instanceAgentId });
 			expect(rows).toHaveLength(1);
@@ -62,7 +65,7 @@ describe('AgentRepository instance scope', () => {
 		});
 
 		it('refuses to take over a project agent with the same id', async () => {
-			await expect(agentRepo.ensureInstanceAgent(projectAgentId, 'Taken over')).rejects.toThrow(
+			await expect(ensureInstanceAgent(projectAgentId, 'Taken over')).rejects.toThrow(
 				'exists as a project agent',
 			);
 
@@ -77,9 +80,9 @@ describe('AgentRepository instance scope', () => {
 			const id = 'test-concurrent-instance-agent';
 
 			await Promise.all([
-				agentRepo.ensureInstanceAgent(id, 'Concurrent agent'),
-				agentRepo.ensureInstanceAgent(id, 'Concurrent agent'),
-				agentRepo.ensureInstanceAgent(id, 'Concurrent agent'),
+				ensureInstanceAgent(id, 'Concurrent agent'),
+				ensureInstanceAgent(id, 'Concurrent agent'),
+				ensureInstanceAgent(id, 'Concurrent agent'),
 			]);
 
 			const rows = await agentRepo.findBy({ id });
@@ -130,7 +133,7 @@ describe('AgentRepository instance scope', () => {
 			expect(await agentRepo.findChatReachableById(instanceAgentId, null)).toBeNull();
 
 			expect(
-				ids((await agentRepo.findByProjectIdsPaginated(null, { skip: 0, take: 50 })).data),
+				ids((await agentRepo.findByProjectIdsPaginated(null, { offset: 0, limit: 50 })).data),
 			).toEqual([projectAgentId]);
 			expect(ids(await agentRepo.findSummariesByProjectIds(null))).toEqual([projectAgentId]);
 			expect(ids(await agentRepo.findSummariesByIds([projectAgentId, instanceAgentId]))).toEqual([

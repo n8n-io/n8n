@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "2.48.0",
+  "version": "2.50.0",
   "private": true,
   "engines": {
     "node": ">=24.0.0",
@@ -20,7 +20,7 @@
     "build:docker:smoke": "node scripts/smoke-n8n-image.mjs",
     "build:docker:clean": "TURBO_FORCE=true node scripts/build-n8n.mjs && DOCKER_BUILD_NO_CACHE=true DOCKER_BUILD_BASE_IMAGE=true node scripts/dockerize-n8n.mjs",
     "build:docker:test": "node scripts/build-n8n.mjs && node scripts/dockerize-n8n.mjs && turbo run test:container:standard --filter=n8n-playwright",
-    "typecheck": "turbo typecheck",
+    "typecheck": "turbo typecheck --concurrency=4",
     "dev": "node scripts/dev-command-removed-notice.mjs",
     "dev:up": "node scripts/dev-up.mjs",
     "dev:be": "turbo run dev --env-mode=loose --log-prefix=none --filter=n8n",
@@ -51,6 +51,7 @@
     "seed:account:check": "node scripts/instance-seeding/checkPreferenceProfile.mjs",
     "seed:test": "node --test scripts/instance-seeding/*.test.mjs",
     "nathan": "node scripts/nathan.mjs",
+    "rig": "node scripts/experimental/rig/bin/rig.mjs",
     "agent:setup": "node scripts/agent-setup.mjs",
     "agent:lint": "node scripts/agent-check.mjs lint",
     "agent:typecheck": "node scripts/agent-check.mjs typecheck",

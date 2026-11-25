@@ -32,6 +32,16 @@ describe('Data Transformation Functions', () => {
 				expect(evaluate('={{ ({ test1: 1 }).hasField("test2") }}')).toBe(false);
 			});
 
+			test('should return false for inherited Object.prototype names', () => {
+				expect(evaluate('={{ ({}).hasField("toString") }}')).toBe(false);
+				expect(evaluate('={{ ({}).hasField("constructor") }}')).toBe(false);
+				expect(evaluate('={{ ({ test1: 1 }).hasField("hasOwnProperty") }}')).toBe(false);
+			});
+
+			test('should return true when an own field shadows a prototype name', () => {
+				expect(evaluate('={{ ({ toString: "custom" }).hasField("toString") }}')).toBe(true);
+			});
+
 			test('should return true for a key served through has/get traps without an own property descriptor', () => {
 				const target = { test1: 1 };
 				const proxy = new Proxy(target, {
@@ -171,6 +181,12 @@ describe('Data Transformation Functions', () => {
 
 		test('.urlEncode should encode special characters per WHATWG spec', () => {
 			expect(evaluate('={{ ({ name: "hello!()" }).urlEncode() }}')).toEqual('name=hello%21%28%29');
+		});
+
+		test('.urlEncode should encode a lone surrogate as U+FFFD', () => {
+			const values = [{ s: '\uD800', t: 'a\uD83Db' }];
+			expect(evaluate('={{ ({ v: $json.s }).urlEncode() }}', values)).toEqual('v=%EF%BF%BD');
+			expect(evaluate('={{ ({ [$json.t]: 1 }).urlEncode() }}', values)).toEqual('a%EF%BF%BDb=1');
 		});
 
 		describe('.keys', () => {

@@ -2,12 +2,13 @@ import { NotFoundError } from '@n8n/errors';
 import type { AgentPublishHistory } from '../entities/agent-publish-history.entity';
 import type { AgentPublishHistoryRepository } from '../repositories/agent-publish-history.repository';
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore a type-only EventService import; keep the import.
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, TelemetryProxy } from '@n8n/backend-services';
 import type { ToolDescriptor } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { Person } from '@n8n/db';
 import type { TransactionRunner, OperationContext, Transaction } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import { Container } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { QueryFailedError } from '@n8n/typeorm';
@@ -17,7 +18,6 @@ import type { InstanceSettings } from 'n8n-core';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@n8n/errors';
 import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
-import type { Telemetry } from '@/telemetry';
 
 import { runInBuilderTelemetrySession } from '../builder/builder-telemetry-session';
 import type { AgentCustomToolsService } from '../agent-custom-tools.service';
@@ -61,7 +61,7 @@ const byBuilder = { by: 'builder', trigger: 'explicit' } as const;
 
 const schema: AgentJsonConfig = {
 	name: 'Support Agent',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	instructions: 'Help users',
 };
 
@@ -122,7 +122,7 @@ function makeService({ isKnowledgeActive = true } = {}) {
 	const taskService = mock<AgentTaskService>();
 	const agentValidationService = mock<AgentValidationService>();
 	const credentialsService = mock<CredentialsService>();
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const eventService = mock<EventService>();
 	const agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>();
 	const ctx: OperationContext = { trx: mock<Transaction>() };
@@ -132,8 +132,8 @@ function makeService({ isKnowledgeActive = true } = {}) {
 	agentTaskRepository.replaceForAgent.mockResolvedValue(false);
 	Container.set(AgentRuntimeCacheService, runtimeCacheService);
 	const agentPolicyService = mock<AgentPolicyService>();
-	const agentFileRepository = mock<KnowledgeFileRepository>();
-	agentFileRepository.getKnowledgeTotals.mockResolvedValue({ fileCount: 0, totalBytes: 0 });
+	const knowledgeFileRepository = mock<KnowledgeFileRepository>();
+	knowledgeFileRepository.getKnowledgeTotals.mockResolvedValue({ fileCount: 0, totalBytes: 0 });
 
 	agentRepository.claimSetupCompleted.mockResolvedValue(true);
 	agentRepository.setActiveVersionFenced.mockResolvedValue(true);
@@ -194,7 +194,7 @@ function makeService({ isKnowledgeActive = true } = {}) {
 		),
 		agentPolicyService,
 		skillRefs,
-		agentFileRepository,
+		knowledgeFileRepository,
 		publishHistory,
 		makeKnowledgeAvailabilityService({ isKnowledgeActive }),
 	);
@@ -203,7 +203,7 @@ function makeService({ isKnowledgeActive = true } = {}) {
 		publishHistory,
 		service,
 		logger,
-		agentFileRepository,
+		knowledgeFileRepository,
 		skillRefs,
 		agentPolicyService,
 		agentUpdateBroadcaster,
@@ -972,16 +972,16 @@ describe('AgentPublishService', () => {
 	] as const)(
 		'adds the knowledge file totals to the %s publish event',
 		async (by, publishedEvent) => {
-			const { service, agentRepository, agentFileRepository, telemetry } = makeService();
+			const { service, agentRepository, knowledgeFileRepository, telemetry } = makeService();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
-			agentFileRepository.getKnowledgeTotals.mockResolvedValue({
+			knowledgeFileRepository.getKnowledgeTotals.mockResolvedValue({
 				fileCount: 3,
 				totalBytes: 4096,
 			});
 
 			await service.publishAgent(agentId, projectId, person, { by, trigger: 'explicit' });
 
-			expect(agentFileRepository.getKnowledgeTotals).toHaveBeenCalledWith(agentId, {});
+			expect(knowledgeFileRepository.getKnowledgeTotals).toHaveBeenCalledWith(agentId, {});
 			expect(telemetry.track).toHaveBeenCalledWith(
 				publishedEvent,
 				expect.objectContaining({ knowledge_file_count: 3, knowledge_total_bytes: 4096 }),
@@ -990,7 +990,7 @@ describe('AgentPublishService', () => {
 	);
 
 	it('publishes and sends the event without knowledge totals when the knowledge module is inactive', async () => {
-		const { service, agentRepository, agentFileRepository, telemetry, logger } = makeService({
+		const { service, agentRepository, knowledgeFileRepository, telemetry, logger } = makeService({
 			isKnowledgeActive: false,
 		});
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
@@ -998,7 +998,7 @@ describe('AgentPublishService', () => {
 		await service.publishAgent(agentId, projectId, person, byUser);
 
 		expect(agentRepository.setActiveVersionFenced).toHaveBeenCalled();
-		expect(agentFileRepository.getKnowledgeTotals).not.toHaveBeenCalled();
+		expect(knowledgeFileRepository.getKnowledgeTotals).not.toHaveBeenCalled();
 		expect(logger.warn).not.toHaveBeenCalled();
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.AGENTS.USER_PUBLISHED_AGENT,
@@ -1011,9 +1011,9 @@ describe('AgentPublishService', () => {
 	});
 
 	it('publishes and sends the event without knowledge totals when the totals read fails', async () => {
-		const { service, agentRepository, agentFileRepository, telemetry } = makeService();
+		const { service, agentRepository, knowledgeFileRepository, telemetry } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
-		agentFileRepository.getKnowledgeTotals.mockRejectedValue(new Error('read failed'));
+		knowledgeFileRepository.getKnowledgeTotals.mockRejectedValue(new Error('read failed'));
 
 		await service.publishAgent(agentId, projectId, person, byUser);
 
@@ -1818,6 +1818,38 @@ describe('AgentPublishService', () => {
 			agentId,
 			projectId,
 		});
+	});
+
+	it('adds the login of the operation context to the archive events', async () => {
+		const { service, agentRepository, chatIntegrationService, eventService } = makeService();
+		const loginCtx: OperationContext = {
+			security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+		};
+		agentRepository.setArchived.mockResolvedValue(true);
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		await service.archiveAgent(agentId, projectId, person, undefined, 'user', loginCtx);
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				activeVersionId: versionId,
+				integrations: [{ type: 'slack', credentialId: 'credential-1' }],
+			}),
+		);
+		chatIntegrationService.disconnectChannel.mockRejectedValue(new Error('disconnect failed'));
+		await expect(
+			service.archiveAgent(agentId, projectId, person, undefined, 'user', loginCtx),
+		).rejects.toThrow('disconnect failed');
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ isArchived: true }));
+		await service.unarchiveAgent(agentId, projectId, person, undefined, loginCtx);
+
+		const loginIds = (eventName: string) =>
+			eventService.emit.mock.calls
+				.filter(([name]) => name === eventName)
+				.map(([, payload]) => (payload as { loginId?: string }).loginId);
+		expect(loginIds('agent-archived')).toEqual(['login-1', 'login-1']);
+		expect(loginIds('agent-unarchived')).toEqual(['login-1']);
 	});
 
 	it('reports a conflict when the agent is published during the archive', async () => {

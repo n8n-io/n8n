@@ -13,8 +13,10 @@ import type {
 import {
 	NodeApiError,
 	NodeOperationError,
+	READ_ONLY_ANNOTATIONS,
 	removeCircularRefs,
 	NodeConnectionTypes,
+	getMcpAuthHeaders,
 	sleepUnlessExecutionCancelled,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
@@ -177,30 +179,37 @@ export class HttpRequestV2 implements INodeType {
 						{
 							name: 'DELETE',
 							value: 'DELETE',
+							annotations: { effect: 'write', destructive: true, idempotent: false },
 						},
 						{
 							name: 'GET',
 							value: 'GET',
+							annotations: READ_ONLY_ANNOTATIONS,
 						},
 						{
 							name: 'HEAD',
 							value: 'HEAD',
+							annotations: READ_ONLY_ANNOTATIONS,
 						},
 						{
 							name: 'OPTIONS',
 							value: 'OPTIONS',
+							annotations: READ_ONLY_ANNOTATIONS,
 						},
 						{
 							name: 'PATCH',
 							value: 'PATCH',
+							annotations: { effect: 'write', destructive: true, idempotent: false },
 						},
 						{
 							name: 'POST',
 							value: 'POST',
+							// POST can run arbitrary actions, so it keeps the restrictive default.
 						},
 						{
 							name: 'PUT',
 							value: 'PUT',
+							annotations: { effect: 'write', destructive: true, idempotent: true },
 						},
 					],
 					default: 'GET',
@@ -649,6 +658,7 @@ export class HttpRequestV2 implements INodeType {
 		let httpBearerAuth;
 		let httpDigestAuth;
 		let httpHeaderAuth;
+		let httpMultipleHeadersAuth;
 		let httpQueryAuth;
 		let httpTemplatedCustomAuth;
 		let oAuth1Api;
@@ -674,6 +684,8 @@ export class HttpRequestV2 implements INodeType {
 				try {
 					httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
 				} catch {}
+			} else if (genericAuthType === 'httpMultipleHeadersAuth') {
+				httpMultipleHeadersAuth = await this.getCredentials('httpMultipleHeadersAuth');
 			} else if (genericAuthType === 'httpQueryAuth') {
 				try {
 					httpQueryAuth = await this.getCredentials('httpQueryAuth');
@@ -704,6 +716,7 @@ export class HttpRequestV2 implements INodeType {
 			httpBearerAuth,
 			httpDigestAuth,
 			httpHeaderAuth,
+			httpMultipleHeadersAuth,
 			httpQueryAuth,
 			httpTemplatedCustomAuth,
 			oAuth1Api,
@@ -1039,6 +1052,11 @@ export class HttpRequestV2 implements INodeType {
 			if (httpHeaderAuth !== undefined) {
 				requestOptions.headers![httpHeaderAuth.name as string] = httpHeaderAuth.value;
 				authDataKeys.headers = [httpHeaderAuth.name as string];
+			}
+			if (httpMultipleHeadersAuth !== undefined) {
+				const headers = getMcpAuthHeaders('multipleHeadersAuth', httpMultipleHeadersAuth);
+				requestOptions.headers = { ...requestOptions.headers, ...headers };
+				authDataKeys.headers = Object.keys(headers);
 			}
 			if (httpQueryAuth !== undefined) {
 				if (!requestOptions.qs) {

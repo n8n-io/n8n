@@ -604,6 +604,27 @@ export function getActiveCredentialTypes(
 	}
 }
 
+const CREDENTIAL_TYPE_PARAMETERS = ['nodeCredentialType', 'genericAuthType'] as const;
+
+export function getRequestedCredentialTypes(
+	node: INode,
+	getNodeTypeDescription: () => INodeTypeDescription | null,
+): string[] {
+	const types = new Set(Object.keys(node.credentials ?? {}));
+
+	const named = CREDENTIAL_TYPE_PARAMETERS.map((name) => node.parameters?.[name]).filter(
+		(value): value is string => typeof value === 'string' && value !== '',
+	);
+	if (named.length > 0) {
+		const active = getActiveCredentialTypes(node, getNodeTypeDescription());
+		for (const type of named) if (active?.has(type)) types.add(type);
+	}
+
+	if (node.extendsCredential) types.add(node.extendsCredential);
+
+	return [...types];
+}
+
 /**
  * Returns the context data
  *
@@ -1394,14 +1415,10 @@ export function getNodeParametersIssues(
 
 /**
  * Returns the node's issues as a flat list of human-readable strings,
- * covering execution errors, parameter/credential/input issues, and unknown node types.
+ * covering parameter/credential/input issues and unknown node types.
  */
 export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] {
 	const messages: string[] = [];
-
-	if (issues.execution !== undefined) {
-		messages.push('Execution Error.');
-	}
 
 	for (const propertyIssues of [issues.parameters, issues.credentials, issues.input]) {
 		if (propertyIssues === undefined) continue;
@@ -1841,10 +1858,6 @@ export function mergeIssues(destination: INodeIssues, source: INodeIssues | null
 	if (source === null) {
 		// Nothing to merge
 		return;
-	}
-
-	if (source.execution === true) {
-		destination.execution = true;
 	}
 
 	const objectProperties = ['parameters', 'credentials'];

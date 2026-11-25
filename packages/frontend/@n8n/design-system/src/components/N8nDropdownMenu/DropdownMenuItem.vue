@@ -17,6 +17,7 @@ import {
 	DropdownMenuPortalTargetKey,
 	DropdownMenuSubMaxHeightKey,
 	DropdownMenuWidthKey,
+	DropdownMenuExtraPopperClassKey,
 	DropdownMenuExternalNavigationKey,
 	type DropdownMenuItemProps,
 	type DropdownMenuItemSlots,
@@ -42,6 +43,7 @@ const props = withDefaults(
 		checkbox: false,
 		closeOnSelect: true,
 		searchMode: 'internal',
+		iconSize: 'large',
 	},
 );
 const slots = defineSlots<DropdownMenuItemSlots<T, D>>();
@@ -57,6 +59,7 @@ const $style = useCssModule();
 const portalTarget = inject(DropdownMenuPortalTargetKey, ref(undefined));
 const subMenuMaxHeight = inject(DropdownMenuSubMaxHeightKey, ref(undefined));
 const menuWidth = inject(DropdownMenuWidthKey, ref('24rem'));
+const extraPopperClass = inject(DropdownMenuExtraPopperClassKey, ref(undefined));
 const externalNavigation = inject(DropdownMenuExternalNavigationKey, null);
 
 const internalSubMenuOpen = ref(false);
@@ -283,7 +286,7 @@ onBeforeUnmount(() => {
 						:icon="icon.value"
 						:class="[$style['item-leading'], $style.icon]"
 						:color="disabled ? 'text-xlight' : 'text-light'"
-						size="large"
+						:size="iconSize"
 					/>
 					<span v-else-if="icon?.type === 'emoji'" :class="[$style['item-leading'], $style.emoji]">
 						{{ icon.value }}
@@ -355,7 +358,7 @@ onBeforeUnmount(() => {
 
 			<DropdownMenuPortal v-bind="portalTarget ? { to: portalTarget } : {}">
 				<DropdownMenuSubContent
-					:class="$style['sub-content']"
+					:class="[$style['sub-content'], extraPopperClass]"
 					:style="[
 						subContentMaxHeight ? { maxHeight: subContentMaxHeight } : {},
 						subMenuMaxHeight ? { '--n8n-dropdown-sub-max-height': subMenuMaxHeight } : {},
@@ -490,7 +493,7 @@ onBeforeUnmount(() => {
 					:icon="icon.value"
 					:class="[$style['item-leading'], $style.icon]"
 					:color="disabled ? 'text-xlight' : 'text-light'"
-					size="large"
+					:size="iconSize"
 				/>
 				<span v-else-if="icon?.type === 'emoji'" :class="[$style['item-leading'], $style.emoji]">
 					{{ icon.value }}
@@ -530,7 +533,7 @@ onBeforeUnmount(() => {
 					:icon="icon.value"
 					:class="[$style['item-leading'], $style.icon]"
 					:color="disabled ? 'text-xlight' : 'text-light'"
-					size="large"
+					:size="iconSize"
 				/>
 				<span v-else-if="icon?.type === 'emoji'" :class="[$style['item-leading'], $style.emoji]">
 					{{ icon.value }}

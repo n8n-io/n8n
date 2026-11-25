@@ -17,6 +17,7 @@ export class AwsLambda implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AWS Lambda',
 		name: 'awsLambda',
+		schemaPath: 'Aws',
 		icon: 'file:lambda.svg',
 		group: ['output'],
 		version: [1, 1.1],

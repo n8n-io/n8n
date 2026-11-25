@@ -247,13 +247,14 @@ export const jsonStringify = (obj: unknown, options: JSONStringifyOptions = {}):
 export { sleep } from '@n8n/utils/sleep';
 
 export function fileTypeFromMimeType(mimeType: string): BinaryFileType | undefined {
-	if (mimeType.startsWith('application/json')) return 'json';
-	if (mimeType.startsWith('text/html')) return 'html';
-	if (mimeType.startsWith('image/')) return 'image';
-	if (mimeType.startsWith('audio/')) return 'audio';
-	if (mimeType.startsWith('video/')) return 'video';
-	if (mimeType.startsWith('text/') || mimeType.startsWith('application/javascript')) return 'text';
-	if (mimeType.startsWith('application/pdf')) return 'pdf';
+	const essence = mimeType.split(';')[0].trim().toLowerCase();
+	if (essence === 'application/json') return 'json';
+	if (essence === 'text/html') return 'html';
+	if (essence.startsWith('image/')) return 'image';
+	if (essence.startsWith('audio/')) return 'audio';
+	if (essence.startsWith('video/')) return 'video';
+	if (essence.startsWith('text/') || essence === 'application/javascript') return 'text';
+	if (essence === 'application/pdf') return 'pdf';
 	return;
 }
 

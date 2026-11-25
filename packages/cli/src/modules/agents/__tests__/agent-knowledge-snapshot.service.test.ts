@@ -3,7 +3,7 @@ import { mock } from 'vitest-mock-extended';
 import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 import type {
 	KnowledgeFileRepository,
-	AgentKnowledgeTotals,
+	KnowledgeFileTotals,
 } from '@/modules/knowledge/repositories/knowledge-file.repository';
 
 import { AgentKnowledgeSnapshotService } from '../agent-knowledge-snapshot.service';
@@ -12,18 +12,18 @@ import type { AgentRepository, PublishedAgentVectorStores } from '../repositorie
 describe('AgentKnowledgeSnapshotService', () => {
 	function makeService(
 		pages: PublishedAgentVectorStores[][],
-		fileTotals: Record<string, AgentKnowledgeTotals> = {},
+		fileTotals: Record<string, KnowledgeFileTotals> = {},
 		{ isKnowledgeActive = true } = {},
 	) {
 		const agentRepository = mock<AgentRepository>();
-		const agentFileRepository = mock<KnowledgeFileRepository>();
+		const knowledgeFileRepository = mock<KnowledgeFileRepository>();
 
 		for (const page of pages) {
 			agentRepository.findPublishedVectorStoreProvidersPage.mockResolvedValueOnce(page);
 		}
 
 		agentRepository.findPublishedVectorStoreProvidersPage.mockResolvedValue([]);
-		agentFileRepository.getKnowledgeTotalsByAgentIds.mockImplementation(
+		knowledgeFileRepository.getKnowledgeTotalsByAgentIds.mockImplementation(
 			async (agentIds) =>
 				new Map(
 					agentIds
@@ -35,11 +35,11 @@ describe('AgentKnowledgeSnapshotService', () => {
 		return {
 			service: new AgentKnowledgeSnapshotService(
 				agentRepository,
-				agentFileRepository,
+				knowledgeFileRepository,
 				makeKnowledgeAvailabilityService({ isKnowledgeActive }),
 			),
 			agentRepository,
-			agentFileRepository,
+			knowledgeFileRepository,
 		};
 	}
 
@@ -72,7 +72,7 @@ describe('AgentKnowledgeSnapshotService', () => {
 	});
 
 	it('counts no files and does not read the file totals when the knowledge module is inactive', async () => {
-		const { service, agentFileRepository } = makeService(
+		const { service, knowledgeFileRepository } = makeService(
 			[
 				[
 					{ agentId: 'files-only', vectorStoreProviders: [] },
@@ -96,7 +96,7 @@ describe('AgentKnowledgeSnapshotService', () => {
 			vector_store_count: 1,
 			vector_store_providers: { pinecone: 1 },
 		});
-		expect(agentFileRepository.getKnowledgeTotalsByAgentIds).not.toHaveBeenCalled();
+		expect(knowledgeFileRepository.getKnowledgeTotalsByAgentIds).not.toHaveBeenCalled();
 	});
 
 	it('returns zero counts when no agent is published', async () => {

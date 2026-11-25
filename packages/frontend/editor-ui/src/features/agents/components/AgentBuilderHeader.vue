@@ -18,11 +18,13 @@ import {
 	N8nIcon,
 	N8nHoverCard,
 	N8nText,
+	useDropdownSearch,
 } from '@n8n/design-system';
 import type { IconOrEmoji, PathItem } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useAgentFolderBreadcrumb } from '../composables/useAgentFolderBreadcrumb';
 import { PROJECT_AGENTS } from '@/features/agents/constants';
 
 import AgentPublishButton from './AgentPublishButton.vue';
@@ -59,7 +61,7 @@ const emit = defineEmits<{
 	reverted: [agent: AgentResource];
 	'switch-agent': [agentId: string];
 	'open-publish-timeline': [];
-	'setup-task-action': [task: SetupTask<SetupTaskId>];
+	'setup-task-action': [task: SetupTask];
 }>();
 
 const i18n = useI18n();
@@ -79,6 +81,11 @@ const projectRoute = computed<RouteLocationRaw>(() => ({
 	params: { projectId: props.projectId },
 }));
 
+const folderBreadcrumbs = useAgentFolderBreadcrumb(
+	computed(() => props.projectId),
+	computed(() => props.agent?.parentFolderId),
+);
+
 const breadcrumbItems = computed<PathItem[]>(() => [
 	{
 		id: props.projectId,
@@ -86,6 +93,7 @@ const breadcrumbItems = computed<PathItem[]>(() => [
 		label: props.projectName ?? i18n.baseText('agents.builder.header.projectFallback'),
 		href: router.resolve(projectRoute.value).href,
 	},
+	...folderBreadcrumbs.value,
 ]);
 
 const agentDisplayName = computed(() => props.agent?.name ?? '…');
@@ -114,6 +122,9 @@ const switcherOptions = computed<Array<DropdownMenuItemProps<string>>>(() => {
 	}));
 });
 
+const { filteredItems: filteredSwitcherOptions, handleSearch: onSwitcherSearch } =
+	useDropdownSearch(switcherOptions, { isSearchable: (item) => !item.disabled });
+
 function onSwitcherSelect(id: string) {
 	if (id === '__empty__') return;
 	emit('switch-agent', id);
@@ -124,8 +135,15 @@ function onCreateAgent() {
 }
 
 function onBreadcrumbSelect(item: PathItem) {
-	if (item.id !== props.projectId) return;
-	void router.push(projectRoute.value);
+	void router.push(
+		item.id === props.projectId
+			? projectRoute.value
+			: {
+					name: PROJECT_AGENTS,
+					params: { projectId: props.projectId },
+					query: { folderId: item.id },
+				},
+	);
 }
 
 /**
@@ -169,9 +187,13 @@ function onMenuSelect(id: string) {
 				<template #append>
 					<span :class="$style.crumbSeparator" aria-hidden="true">/</span>
 					<N8nDropdownMenu
-						:items="switcherOptions"
+						:items="filteredSwitcherOptions"
 						placement="bottom-start"
 						data-testid="agent-header-switcher"
+						searchable
+						:search-placeholder="i18n.baseText('generic.search')"
+						:empty-text="i18n.baseText('agents.noResults')"
+						@search="onSwitcherSearch"
 						@select="onSwitcherSelect"
 					>
 						<template #trigger>

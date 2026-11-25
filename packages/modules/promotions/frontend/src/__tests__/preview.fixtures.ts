@@ -2,6 +2,8 @@ import type { PromotionPreview, PromotionResource } from '@n8n/api-types';
 
 export const COMMIT_SHA = 'c'.repeat(40);
 
+export const PREVIEW_REVISION = 'a'.repeat(64);
+
 export const resource = (
 	overrides: Partial<PromotionResource> & Pick<PromotionResource, 'key' | 'name'>,
 ): PromotionResource => {
@@ -79,6 +81,7 @@ export const billingResources = {
 export const billingPreview = (overrides: Partial<PromotionPreview> = {}): PromotionPreview => ({
 	commitSha: COMMIT_SHA,
 	source: { environmentId: 'environment-1', branchName: 'main' },
+	environment: { name: 'Production', providerType: 'git' },
 	resources: Object.values(billingResources),
 	dependencies: [
 		{ workflowKey: 'workflow:w1', resourceKey: 'dataTable:t1', included: true },
@@ -90,5 +93,6 @@ export const billingPreview = (overrides: Partial<PromotionPreview> = {}): Promo
 		{ workflowKey: 'workflow:w4', resourceKey: 'credential:c2', included: true },
 		{ workflowKey: 'workflow:w4', resourceKey: 'workflow:w9', included: false },
 	],
+	revision: PREVIEW_REVISION,
 	...overrides,
 });

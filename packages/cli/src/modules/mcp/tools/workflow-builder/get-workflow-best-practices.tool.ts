@@ -1,3 +1,4 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import {
 	bestPracticesRegistry,
@@ -7,8 +8,6 @@ import {
 } from '@n8n/workflow-sdk/prompts/best-practices';
 import { GROUPING_GUIDANCE } from '@n8n/workflow-sdk/prompts/sdk-reference';
 import z from 'zod';
-
-import type { Telemetry } from '@/telemetry';
 
 import { MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL } from './constants';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
@@ -109,7 +108,7 @@ function buildTechniqueResponse(technique: WorkflowTechniqueType) {
  */
 export const createGetWorkflowBestPracticesTool = (
 	user: User,
-	telemetry: Telemetry,
+	telemetry: TelemetryProxy,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL.toolName,
 	config: {

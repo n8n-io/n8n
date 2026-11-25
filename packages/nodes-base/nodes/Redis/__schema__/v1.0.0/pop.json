@@ -1,0 +1,42 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"propertyName": {
+			"additionalProperties": true,
+			"properties": {
+				"body": {
+					"properties": {
+						"MediaUrl0": {}
+					},
+					"type": ["object", "string"]
+				},
+				"business_id": {
+					"type": "string"
+				},
+				"client_id": {
+					"type": "string"
+				},
+				"contact_id": {
+					"type": "string"
+				},
+				"conversation_id": {
+					"type": "string"
+				},
+				"event": {
+					"type": "string"
+				},
+				"external_message_id": {
+					"type": "string"
+				},
+				"message_id": {
+					"type": "string"
+				},
+				"software_conversation_id": {
+					"type": "string"
+				}
+			},
+			"type": ["null", "object", "string"]
+		}
+	},
+	"type": "object"
+}

@@ -1,0 +1,38 @@
+{
+  "name": "@n8n/engine-parity",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Generates random workflows, runs each one on engine v1 and engine v2, and compares the results",
+  "scripts": {
+    "clean": "rimraf .turbo",
+    "typecheck": "tsc --noEmit",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "lint": "oxlint --quiet",
+    "lint:fix": "oxlint --fix",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:dev": "vitest --watch"
+  },
+  "dependencies": {
+    "@n8n/utils": "workspace:*",
+    "@n8n/workflow-engine-check": "workspace:*",
+    "@n8n/workflow-sdk": "workspace:*",
+    "fast-check": "catalog:",
+    "n8n-core": "workspace:*",
+    "n8n-nodes-base": "workspace:*",
+    "n8n-workflow": "workspace:*",
+    "uuid": "catalog:"
+  },
+  "devDependencies": {
+    "@n8n/oxlint-config": "workspace:*",
+    "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
+    "@types/node": "catalog:",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
+    "typescript": "catalog:typescript",
+    "vitest": "catalog:"
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
+}

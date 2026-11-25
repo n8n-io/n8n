@@ -14,6 +14,7 @@ describe('PromotionReviewHostResolver', () => {
 
 	const input = (over: Partial<PromotionOperationInput> = {}): PromotionOperationInput => ({
 		environmentId: 'env1',
+		environmentName: 'Production',
 		scope: 'instance',
 		providerId: 'prov1',
 		providerType: 'gitlab',

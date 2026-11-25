@@ -69,6 +69,7 @@ export class ZohoCrm implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Zoho CRM',
 		name: 'zohoCrm',
+		schemaPath: 'Zoho',
 		icon: { light: 'file:zoho.svg', dark: 'file:zoho.dark.svg' },
 		group: ['transform'],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',

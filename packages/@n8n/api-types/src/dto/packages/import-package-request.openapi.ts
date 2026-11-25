@@ -30,8 +30,8 @@ export const importPackageRequestFieldDocs = {
 			'was retained. ' +
 			'Otherwise, also when the package has no completeness flag, it is listed under ' +
 			'`credentials.incomplete` and blocks workflow publishing with `incomplete-credential`. ' +
-			'`create-with-values` requires the `credential:create` scope when the import creates ' +
-			'a credential. ' +
+			'`create-stub` and `create-with-values` require the `credential:create` scope when the ' +
+			'import creates a credential. ' +
 			'`must-preexist` requires every referenced credential to already exist.',
 	},
 	credentialConflictPolicy: {
@@ -135,10 +135,8 @@ export const importPackageRequestFieldDocs = {
 			'`workflow:delete` scope. When it removes a folder, it needs `folder:delete`. ' +
 			'It is rejected against a `projectConflictPolicy` other than `overwrite`, and blocks ' +
 			'up front if the caller cannot delete something it would remove. ' +
-			'A project package needs the `folder:create` scope only when the import creates a ' +
-			'folder, and a folders-enabled license only when it creates, changes or removes a ' +
-			'folder. A workflow package with folders always needs `folder:create`, ' +
-			'`folder:update` and that license.',
+			'The import needs the `folder:create` scope only when it creates a folder, and a ' +
+			'folders-enabled license only when it creates, changes or removes a folder.',
 	},
 	overwriteDeletionPolicy: {
 		description:
@@ -162,7 +160,8 @@ export const importPackageRequestFieldDocs = {
 		description:
 			'Controls what happens when a referenced data table has no match in the target ' +
 			'project. `create` (default) creates it from the package schema, keeping the source ' +
-			'id, with no rows; requires the `dataTable:create` scope. `must-preexist` rejects the ' +
+			'id, with no rows. It requires the `dataTable:create` scope only when it creates a ' +
+			'table. A table that already exists needs no scope. `must-preexist` rejects the ' +
 			'import. `do-nothing` skips creation of missing tables. Under the `keep-existing`, ' +
 			'`fail`, and `overwrite-non-destructive` schema conflict policies, matched tables are ' +
 			'still validated for schema compatibility and can still block the import. The import ' +

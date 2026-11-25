@@ -4,6 +4,12 @@ import userEvent from '@testing-library/user-event';
 import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import { createTestingPinia } from '@pinia/testing';
 import ThinkingBlock from '../components/ThinkingBlock.vue';
+import { ThinkingWordKey } from '../composables/useThinkingWords';
+import { ref } from 'vue';
+import { mockedStore } from '@/__tests__/utils';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT } from '@/app/constants/experiments';
+import { usePostHog } from '@/app/stores/posthog.store';
 import type {
 	InstanceAiAgentNode,
 	InstanceAiTimelineEntry,
@@ -51,9 +57,18 @@ const toolEntry = (toolCallId: string): InstanceAiTimelineEntry => ({
 	toolCallId,
 });
 
+/** The live subline belongs to the variant of the draft workflow preview experiment. */
+function setDraftWorkflowPreview(enabled: boolean) {
+	const { name, variant, control } = INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT;
+	vi.spyOn(usePostHog(), 'getVariant').mockImplementation((flag) =>
+		flag === name ? (enabled ? variant : control) : undefined,
+	);
+}
+
 describe('ThinkingBlock', () => {
 	beforeEach(() => {
 		createTestingPinia({ stubActions: false });
+		setDraftWorkflowPreview(true);
 	});
 
 	it.each(['completed', 'cancelled', 'error'] as const)(
@@ -71,6 +86,85 @@ describe('ThinkingBlock', () => {
 			expect((await findByText('Searching nodes')).className).not.toContain('shimmer');
 		},
 	);
+
+	it('shows an action that Auto mode approved, with the reason', async () => {
+		const tc = makeToolCall({
+			toolName: 'publish_workflow',
+			autoApproval: {
+				message: 'Publish "Lead router"',
+				reason: 'The user asked to publish this workflow.',
+				decidedBy: 'judge',
+			},
+		});
+		const { getByTestId, findByTestId, findByText } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ toolCalls: [tc] }),
+				entries: [toolEntry(tc.toolCallId)],
+				active: false,
+			},
+		});
+		await fireEvent.click(getByTestId('thinking-block-header'));
+
+		const step = await findByTestId('instance-ai-auto-approval');
+		expect(step.textContent).toContain('Approved automatically: Publish "Lead router"');
+		await userEvent.click(await findByText('Approved automatically: Publish "Lead router"'));
+		expect(await findByText('The user asked to publish this workflow.')).toBeInTheDocument();
+	});
+
+	it('labels a multi-line card message with its first line', async () => {
+		const tc = makeToolCall({
+			toolName: 'data_tables',
+			autoApproval: {
+				message: 'Add 1 row\n\nRow 1: set "name" to "Jane Doe"',
+				reason: 'The user asked for this row.',
+				decidedBy: 'judge',
+			},
+		});
+		const { getByTestId, findByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ toolCalls: [tc] }),
+				entries: [toolEntry(tc.toolCallId)],
+				active: false,
+			},
+		});
+		await fireEvent.click(getByTestId('thinking-block-header'));
+
+		const step = await findByTestId('instance-ai-auto-approval');
+		expect(step.textContent).toContain('Approved automatically: Add 1 row');
+		expect(step.textContent).not.toContain('Row 1');
+	});
+
+	it('explains an action that the low-risk rule approved', async () => {
+		const tc = makeToolCall({
+			toolName: 'workspace',
+			autoApproval: { message: 'Create folder "Reports"', reason: 'n/a', decidedBy: 'rule' },
+		});
+		const { getByTestId, findByText } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ toolCalls: [tc] }),
+				entries: [toolEntry(tc.toolCallId)],
+				active: false,
+			},
+		});
+		await fireEvent.click(getByTestId('thinking-block-header'));
+
+		await userEvent.click(await findByText('Approved automatically: Create folder "Reports"'));
+		expect(await findByText("Low-risk action that's easy to undo")).toBeInTheDocument();
+	});
+
+	it('shows no auto-approval line for a call that the user approved', async () => {
+		const tc = makeToolCall({ confirmationStatus: 'approved' });
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ toolCalls: [tc] }),
+				entries: [toolEntry(tc.toolCallId)],
+				active: false,
+			},
+		});
+		await fireEvent.click(getByTestId('thinking-block-header'));
+
+		expect(queryByTestId('instance-ai-auto-approval')).not.toBeInTheDocument();
+	});
 
 	it('animates a loading tool owned by a live agent', async () => {
 		const tc = makeToolCall({ isLoading: true });
@@ -287,28 +381,147 @@ describe('ThinkingBlock', () => {
 		expect(getByTestId('thinking-block-subline')).not.toHaveTextContent('Thinking');
 	});
 
-	it('should show "Thinking" on the subline when no tool call is the tail', () => {
-		// Covers the reasoning-only phases (run start, between tool calls) —
-		// the block must always carry a live signal while active.
+	it('rotates the node types the agent read on the subline while it writes the source', async () => {
+		vi.useFakeTimers({ now: 0 });
+		try {
+			const names: Record<string, string> = {
+				'n8n-nodes-base.gmail': 'Gmail',
+				'n8n-nodes-base.slack': 'Slack',
+			};
+			mockedStore(useNodeTypesStore).getNodeType = vi.fn((name: string) =>
+				names[name] ? { displayName: names[name] } : null,
+			) as unknown as ReturnType<typeof useNodeTypesStore>['getNodeType'];
+			const read = makeToolCall({
+				toolCallId: 'tc-read',
+				toolName: 'get_node_types',
+				args: { nodeTypes: ['n8n-nodes-base.gmail', 'n8n-nodes-base.slack'] },
+			});
+			const write = makeToolCall({
+				toolCallId: 'tc-write',
+				toolName: 'workspace_write_file',
+				isLoading: true,
+			});
+			const { getByTestId } = renderComponent({
+				props: {
+					agentNode: makeAgentNode({ status: 'active', toolCalls: [read, write] }),
+					entries: [toolEntry('tc-read'), toolEntry('tc-write')],
+					active: true,
+				},
+			});
+			expect(getByTestId('thinking-block-subline')).toHaveTextContent('Configuring Gmail nodes');
+
+			// The next name comes after 3 seconds, and shows once it has held for 400 ms.
+			await vi.advanceTimersByTimeAsync(3500);
+
+			expect(getByTestId('thinking-block-subline')).toHaveTextContent('Configuring Slack nodes');
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('reads the node types of a call with the former builder tool name', () => {
+		mockedStore(useNodeTypesStore).getNodeType = vi.fn((name: string) =>
+			name === 'n8n-nodes-base.gmail' ? { displayName: 'Gmail' } : null,
+		) as unknown as ReturnType<typeof useNodeTypesStore>['getNodeType'];
+		const read = makeToolCall({
+			toolCallId: 'tc-read',
+			toolName: 'agent_builder_get_node_types',
+			args: { nodeTypes: ['n8n-nodes-base.gmail'] },
+		});
+		const write = makeToolCall({
+			toolCallId: 'tc-write',
+			toolName: 'workspace_write_file',
+			isLoading: true,
+		});
+		const { getByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ status: 'active', toolCalls: [read, write] }),
+				entries: [toolEntry('tc-read'), toolEntry('tc-write')],
+				active: true,
+			},
+		});
+
+		expect(getByTestId('thinking-block-subline')).toHaveTextContent('Configuring Gmail nodes');
+	});
+
+	it('should show the newest complete reasoning sentence on the subline', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ status: 'active' }),
+				entries: [reasoning('Figuring out the trigger. Gmail can filter by label. Then the')],
+				active: true,
+			},
+		});
+
+		expect(getByTestId('thinking-block-subline')).toHaveTextContent('Gmail can filter by label.');
+	});
+
+	it('should follow the reasoning sentence on the subline as it streams', async () => {
+		const agentNode = makeAgentNode({ status: 'active' });
+		const { getByTestId, rerender } = renderComponent({
+			props: {
+				agentNode,
+				entries: [reasoning('Figuring out the trigger. Gmail can filter')],
+				active: true,
+			},
+		});
+		expect(getByTestId('thinking-block-subline')).toHaveTextContent('Gmail can filter');
+
+		await rerender({
+			entries: [reasoning('Figuring out the trigger. Gmail can filter by label')],
+		});
+
+		expect(getByTestId('thinking-block-subline')).toHaveTextContent('Gmail can filter by label');
+	});
+
+	it('should keep "Thinking" on the subline for the control group of the experiment', () => {
+		setDraftWorkflowPreview(false);
+
+		const { getByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ status: 'active' }),
+				entries: [reasoning('Figuring out the trigger. Gmail can filter by label')],
+				active: true,
+			},
+		});
+
+		expect(getByTestId('thinking-block-subline')).toHaveTextContent('Thinking');
+		expect(getByTestId('thinking-block-subline')).not.toHaveTextContent('Gmail');
+	});
+
+	it('should keep the newest words of streaming reasoning in view', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ status: 'active' }),
+				entries: [reasoning('Figuring out the trigger. Gmail can filter by label')],
+				active: true,
+			},
+		});
+
+		expect(getByTestId('thinking-block-subline-label')).toHaveAttribute('data-truncate', 'start');
+	});
+
+	it('should show "Thinking" on the subline until reasoning adds to the title', () => {
+		// The title already shows the first sentence, so the subline does not repeat it.
 		const tc = makeToolCall({ toolCallId: 'tc-1' });
-		const noTools = renderComponent({
+		const firstSentenceOnly = renderComponent({
 			props: {
 				agentNode: makeAgentNode({ status: 'active' }),
 				entries: [reasoning('Figuring out the trigger. Hmm.')],
 				active: true,
 			},
 		});
-		expect(noTools.getByTestId('thinking-block-subline')).toHaveTextContent('Thinking');
-		noTools.unmount();
+		expect(firstSentenceOnly.getByTestId('thinking-block-subline')).toHaveTextContent('Thinking');
+		firstSentenceOnly.unmount();
 
-		const toolThenReasoning = renderComponent({
+		const toolThenStreaming = renderComponent({
 			props: {
 				agentNode: makeAgentNode({ status: 'active', toolCalls: [tc] }),
-				entries: [toolEntry('tc-1'), reasoning('Got the results. Next step.')],
+				entries: [toolEntry('tc-1'), reasoning('Got the')],
 				active: true,
 			},
 		});
-		expect(toolThenReasoning.getByTestId('thinking-block-subline')).toHaveTextContent('Thinking');
+		expect(toolThenStreaming.getByTestId('thinking-block-subline')).toHaveTextContent('Thinking');
 	});
 
 	it('should show the elapsed in the header while expanded', async () => {
@@ -444,6 +657,7 @@ describe('ThinkingBlock', () => {
 describe('collapsed subline label', () => {
 	beforeEach(() => {
 		createTestingPinia({ stubActions: false });
+		setDraftWorkflowPreview(true);
 	});
 
 	const contextEntry = (
@@ -486,36 +700,6 @@ describe('collapsed subline label', () => {
 });
 
 describe('skill update activity', () => {
-	it.each([undefined, 'Updated instructions for this response.'])(
-		'shows the saved skill content with a fallback for metadata-only events (%s)',
-		async (content) => {
-			const entry: InstanceAiTimelineEntry = {
-				type: 'skill-update',
-				runId: 'run-1',
-				skillId: 'hub:1',
-				name: 'Writing',
-				version: 'v2',
-				change: 'updated',
-				content,
-			};
-			const { getByTestId, findByRole, findByText } = renderComponent({
-				props: { agentNode: makeAgentNode(), entries: [entry], active: true },
-				global: { stubs: { ToolResultJson: false } },
-			});
-			expect(getByTestId('thinking-block-subline')).toHaveTextContent(
-				'Using updated skill: Writing',
-			);
-			await fireEvent.click(getByTestId('thinking-block-header'));
-			await fireEvent.click(await findByRole('button', { name: 'Using updated skill: Writing' }));
-			if (content) {
-				expect(await findByText(/Updated instructions for this response/)).toBeVisible();
-				expect(await findByText(/"hash": "v2"/)).toBeVisible();
-			} else {
-				expect(await findByText('Latest version loaded for this response')).toBeVisible();
-			}
-		},
-	);
-
 	it('shows an unnamed unavailable skill without exposing its internal ID', async () => {
 		const entry: InstanceAiTimelineEntry = {
 			type: 'skill-update',
@@ -528,10 +712,63 @@ describe('skill update activity', () => {
 			props: { agentNode: makeAgentNode(), entries: [entry], active: false },
 		});
 		await fireEvent.click(getByTestId('thinking-block-header'));
-		await fireEvent.click(
-			await findByRole('button', { name: 'A previously loaded skill is unavailable' }),
-		);
-		expect(await findByText("The Assistant can't use this skill for this response")).toBeVisible();
+		await fireEvent.click(await findByRole('button', { name: 'A loaded skill is unavailable' }));
+		expect(await findByText('The Assistant stopped using this skill')).toBeVisible();
 		expect(queryByText('hub:internal-id')).toBeNull();
+	});
+
+	it('says that the Assistant loads an updated skill again', async () => {
+		const entry: InstanceAiTimelineEntry = {
+			type: 'skill-update',
+			runId: 'run-1',
+			skillId: 'hub:internal-id',
+			name: 'Triage',
+			version: 'v2',
+			change: 'updated',
+		};
+		const { getByTestId, findByRole, findByText } = renderComponent({
+			props: { agentNode: makeAgentNode(), entries: [entry], active: false },
+		});
+		await fireEvent.click(getByTestId('thinking-block-header'));
+		await fireEvent.click(await findByRole('button', { name: 'Skill updated: Triage' }));
+		expect(
+			await findByText('This skill changed. The Assistant loads the new version when it needs it.'),
+		).toBeVisible();
+	});
+});
+
+describe('thinking word', () => {
+	beforeEach(() => {
+		createTestingPinia({ stubActions: false });
+		setDraftWorkflowPreview(true);
+	});
+
+	const renderWithWord = (props: {
+		agentNode: InstanceAiAgentNode;
+		entries: InstanceAiTimelineEntry[];
+	}) =>
+		renderComponent({
+			props: { ...props, active: true },
+			global: { provide: { [ThinkingWordKey]: ref('Joining the dots') } },
+		});
+
+	it('shows the thinking word of the thread instead of "Thinking"', () => {
+		const { getByTestId } = renderWithWord({
+			agentNode: makeAgentNode({ status: 'active' }),
+			entries: [],
+		});
+
+		expect(getByTestId('thinking-block-header')).toHaveTextContent('Joining the dots');
+		expect(getByTestId('thinking-block-subline')).toHaveTextContent('Joining the dots');
+	});
+
+	it('shows a running tool instead of the thinking word', () => {
+		const tc = makeToolCall({ isLoading: true });
+		const { getByTestId } = renderWithWord({
+			agentNode: makeAgentNode({ status: 'active', toolCalls: [tc] }),
+			entries: [toolEntry(tc.toolCallId)],
+		});
+
+		expect(getByTestId('thinking-block-subline')).not.toHaveTextContent('Joining the dots');
 	});
 });

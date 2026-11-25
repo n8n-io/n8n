@@ -1,6 +1,6 @@
 import type { AgentImportIssue } from './entities/agent/agent-import.types';
 import type { ImportedAgentChannel, PolicyViolation } from '@n8n/api-types';
-import type { User } from '@n8n/db';
+import type { OperationContext, User } from '@n8n/db';
 import type { Readable } from 'node:stream';
 
 import type { PublicApiCaller } from '@/public-api/public-api-client';
@@ -263,6 +263,8 @@ export type TagConflictPolicy = (typeof TagConflictPolicy)[keyof typeof TagConfl
 
 export interface ExportPackageRequest {
 	user: User;
+	/** The caller's operation context. Audit events read the login of a service account from it. */
+	ctx?: OperationContext;
 	agentIds?: string[];
 	workflowIds?: string[];
 	folderIds?: string[];
@@ -275,7 +277,13 @@ export interface ExportPackageRequest {
 	projectWorkflowIds?: string[];
 	/** With `projectWorkflowIds`, also export these folders and the folders above them. */
 	projectFolderIds?: string[];
-	/** Internal opt-out for callers that cannot import Agents yet. */
+	/**
+	 * Promotions only. Also writes these credentials, without a requirement row, so a project can
+	 * promote a credential that none of its selected workflows uses. Each id must be owned by one
+	 * of `projectIds`: the caller checks it.
+	 */
+	projectCredentialIds?: string[];
+	/** Internal opt-out for callers that cannot import Agents or Agent folders yet. */
 	includeAgents?: boolean;
 	includeVariableValues?: boolean;
 	canExportVariableValues?: boolean;
@@ -291,6 +299,8 @@ export type PackageImportSource = 'package-import' | 'git-pull';
 
 export type ImportRequest = {
 	user: User;
+	/** The caller's operation context. Audit events read the login of a service account from it. */
+	ctx?: OperationContext;
 	projectId?: string;
 	folderId?: string;
 	bindings?: Partial<Pick<PackageImportBindings, 'credentials'>>;
@@ -339,6 +349,8 @@ export interface ImportSelection {
  */
 export type ImportSelectionRequest = {
 	user: User;
+	/** The caller's operation context. Audit events read the login of a service account from it. */
+	ctx?: OperationContext;
 	apiKeyScopes?: string[];
 	publicApi: PublicApiCaller;
 	bindings?: Partial<Pick<PackageImportBindings, 'credentials'>>;
@@ -454,6 +466,8 @@ export type ImportTagProperties = {
  */
 export interface ImportContext {
 	user: User;
+	/** The caller's operation context. Audit events read the login of a service account from it. */
+	ctx?: OperationContext;
 	projectId: string;
 	folderId: string | null;
 	publicApi: PublicApiCaller;

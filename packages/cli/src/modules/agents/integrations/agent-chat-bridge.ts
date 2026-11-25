@@ -14,10 +14,10 @@ import {
 	type AgentMessageIntegrationOrigin,
 } from '@n8n/api-types';
 import { LockNamespace, LockService } from '@n8n/backend-common';
-import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import type { Attachment, Author, CardElement, Chat, Message, Thread } from 'chat';
+import { HITL_CALLBACK_PREFIX } from 'n8n-core';
 import type { Logger } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
 
@@ -82,7 +82,6 @@ import type {
 	IntegrationPlatformMessageContext,
 	SessionBinding,
 } from './integration-tools';
-import { downloadDiscordAttachment } from './platforms/discord/discord-operations';
 import { SLACK_STREAMING_OPTIONS } from './platforms/slack/slack-bridge-behavior';
 
 import { type InternalThread, toInternalThreadId } from './types';
@@ -123,6 +122,8 @@ interface TurnSession {
 	/** The session that the turn runs in. A task-session binding can redirect it. */
 	memory: { threadId: InternalThread; resourceId: string };
 	sessionMode: AgentSessionMode;
+	/** Task messages this recipient has not answered yet. The turn carries them, then they clear. */
+	priorOutboundMessages?: string[];
 }
 
 /**
@@ -147,8 +148,14 @@ interface InboundOptions {
 function buildModelMessage(
 	labelledText: string,
 	bridgeExecutionContext: BridgeExecutionContext,
+	priorOutboundMessages: string[] = [],
 ): string {
 	const modelContext: string[] = [];
+	if (priorOutboundMessages.length > 0) {
+		modelContext.push(
+			`A task sent this user the following message(s) before they replied:\n${priorOutboundMessages.join('\n---\n')}`,
+		);
+	}
 	if (bridgeExecutionContext.historyContext) {
 		modelContext.push(bridgeExecutionContext.historyContext);
 	}
@@ -262,7 +269,6 @@ export class AgentChatBridge {
 		private readonly integration: AgentIntegrationConfig,
 		messageContextStore?: IntegrationMessageContextService,
 		private readonly attachmentService?: AgentChatAttachmentService,
-		private readonly discordHttpClient?: HttpRequestClient,
 		private readonly messageQueue: AgentMessageQueueService = Container.get(
 			AgentMessageQueueService,
 		),
@@ -294,7 +300,9 @@ export class AgentChatBridge {
 			postErrorToThread: this.postErrorToThread.bind(this),
 			handleSuspension: this.handleSuspension.bind(this),
 			handleMessage: this.handleMessage.bind(this),
-			isIntegrationActionTool: (toolName) => actionToolNamePattern.test(toolName),
+			isIntegrationActionTool: (toolName) =>
+				actionToolNamePattern.test(toolName) ||
+				(this.integrationImpl?.conversationTools.some((name) => name === toolName) ?? false),
 			postReplyFiles: async (thread, { fileIds, caption, agentThreadId, onPosted }) =>
 				await Container.get(AgentOutboundFiles).postReplyFiles(thread, integration.type, {
 					fileIds,
@@ -424,11 +432,6 @@ export class AgentChatBridge {
 			integration,
 			Container.get(IntegrationMessageContextService),
 			Container.get(AgentChatAttachmentService),
-			integration.type === 'discord'
-				? Container.get(OutboundHttp).requests({
-						useDefaultSsrfPolicy: 'unsafe', // Discord attachment URLs are restricted to its fixed CDN host
-					})
-				: undefined,
 		);
 	}
 
@@ -466,6 +469,28 @@ export class AgentChatBridge {
 
 		this.chat.onAction(async (event) => {
 			try {
+				// Reviewers need not be on the chat allowlist. `respond` verifies the signed
+				// callback and the configured recipient.
+				if (event.actionId.startsWith(HITL_CALLBACK_PREFIX)) {
+					const { AgentChannelHitlService } = await import(
+						'../approval/agent-channel-hitl.service.js'
+					);
+					const decision = await Container.get(AgentChannelHitlService).respond(
+						this.agentId,
+						this.n8nProjectId,
+						this.integration,
+						event,
+					);
+					if (decision === 'unavailable') {
+						if (event.thread)
+							await postToUserOrThread(
+								event.thread,
+								event.user,
+								'This approval request is no longer available or has already been handled',
+							);
+					} else await this.hitlResumeHandler.settleApprovalAction(event, decision);
+					return;
+				}
 				if (!this.canUserAccess(event.user, event.raw)) return;
 				await this.hitlResumeHandler.handleAction(event);
 			} catch (error) {
@@ -989,23 +1014,47 @@ export class AgentChatBridge {
 		// currently active.
 		// A failed-send report goes to the session that sent the message, which
 		// is not always the one the thread is bound to.
-		const sessionOrigin =
-			(await this.resolveFailedSendOrigin(thread, message)) ??
-			(await this.messageContextBridge.resolveSession(this.baseThreadId(thread)));
-		if (sessionOrigin) {
+		const failedSendOrigin = await this.resolveFailedSendOrigin(thread, message);
+		if (failedSendOrigin) {
 			return {
 				activeThreadId,
 				memory: {
-					threadId: toInternalThreadId(sessionOrigin.threadId),
-					resourceId: sessionOrigin.resourceId,
+					threadId: toInternalThreadId(failedSendOrigin.threadId),
+					resourceId: failedSendOrigin.resourceId,
 				},
 				sessionMode: 'existing',
+			};
+		}
+		const replyScope = await this.messageContextBridge.resolveSessionReplyScope(
+			this.baseThreadId(thread),
+		);
+		// A task that messaged several recipients keeps one memory for all of them.
+		// A reply then runs in its own session, so it cannot see what the task sent
+		// to the others. Only the messages sent to this recipient are carried over.
+		if (replyScope && !replyScope.sharedWithOtherRecipients) {
+			return {
+				activeThreadId,
+				memory: {
+					threadId: toInternalThreadId(replyScope.binding.threadId),
+					resourceId: replyScope.binding.resourceId,
+				},
+				sessionMode: 'existing',
+				priorOutboundMessages: replyScope.outboundMessages,
+			};
+		}
+		const sessionMode = (await this.agentService.getSessionMode?.(activeThreadId.id)) ?? 'new';
+		if (replyScope) {
+			return {
+				activeThreadId,
+				memory: { threadId: activeThreadId, resourceId },
+				sessionMode,
+				priorOutboundMessages: replyScope.outboundMessages,
 			};
 		}
 		return {
 			activeThreadId,
 			memory: { threadId: activeThreadId, resourceId },
-			sessionMode: (await this.agentService.getSessionMode?.(activeThreadId.id)) ?? 'new',
+			sessionMode,
 		};
 	}
 
@@ -1092,6 +1141,7 @@ export class AgentChatBridge {
 					modelMessage: buildModelMessage(
 						`[${author.name} (${author.id})]: ${textWithNotes}`,
 						context,
+						session.priorOutboundMessages,
 					),
 					author,
 					integrationOrigin,
@@ -1111,6 +1161,12 @@ export class AgentChatBridge {
 				},
 			});
 			accepted = result.status === 'accepted';
+			if (accepted && session.priorOutboundMessages?.length) {
+				await this.messageContextBridge.consumeOutboundMessages(
+					this.baseThreadId(thread),
+					session.priorOutboundMessages,
+				);
+			}
 			if (result.status === 'accepted' && integrationOrigin) {
 				this.recordOriginNames(
 					{ thread, message, subject },
@@ -1248,9 +1304,8 @@ export class AgentChatBridge {
 	}
 
 	/**
-	 * Download and persist inbound platform attachments. Slack/Telegram adapters
-	 * provide `fetchData`; Discord provides a signed CDN URL. Oversize or failed
-	 * downloads degrade to a text note on the user turn — an attachment problem
+	 * Download and persist inbound platform attachments. Oversize or failed
+	 * downloads degrade to a text note on the user turn so an attachment problem
 	 * never aborts the run. Returns stored refs plus the notes to append.
 	 */
 	private async storeInboundAttachments(
@@ -1348,12 +1403,12 @@ export class AgentChatBridge {
 	}
 
 	private async fetchAttachmentData(attachment: Attachment): Promise<Buffer | null> {
-		if (attachment.fetchData) return await attachment.fetchData();
+		if (attachment.fetchData) {
+			const fetched = await attachment.fetchData();
+			return Buffer.isBuffer(fetched) ? fetched : Buffer.from(fetched);
+		}
 		if (Buffer.isBuffer(attachment.data)) return attachment.data;
 		if (attachment.data) return Buffer.from(await attachment.data.arrayBuffer());
-		if (this.integration.type === 'discord' && attachment.url && this.discordHttpClient) {
-			return await downloadDiscordAttachment(attachment.url, this.discordHttpClient);
-		}
 		return null;
 	}
 

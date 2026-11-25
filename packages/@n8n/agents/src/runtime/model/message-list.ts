@@ -3,6 +3,7 @@ import type { ModelMessage, SystemModelMessage } from 'ai';
 
 import { toAiMessages } from './messages';
 import { filterLlmMessages, getCreatedAt } from '../../sdk/message';
+import { detectLoadedSkills } from '../../skills/loaded-skills';
 import type { SerializedMessageList } from '../../types/runtime/message-list';
 import type {
 	AgentDbMessage,
@@ -10,6 +11,7 @@ import type {
 	ContentToolCall,
 	ToolCallSuspensionInfo,
 } from '../../types/sdk/message';
+import type { ReasoningReplayScope } from '../../types/sdk/provider';
 import type { JSONValue } from '../../types/utils/json';
 import { stringifyError } from '../loop/runtime-helpers';
 import { compareKeyset } from '../memory/memory-store';
@@ -57,11 +59,6 @@ export type LlmContext = {
  * cache breakpoint (and OpenAI's automatic prefix cache) on nearly every
  * call, for no future read. Providers that do not support multiple system
  * messages receive one merged message instead.
- *
- * `skillInstructions` (recovered active skills) sit between the two, in their
- * own message with their own cache options. They change only when a skill
- * moves out of the conversation, so the base instructions and the tools in
- * front of them stay cached when that happens.
  */
 export function buildSystemMessages(
 	baseInstructions: string,
@@ -70,26 +67,20 @@ export function buildSystemMessages(
 	volatileInstructions?: string,
 	mcpConnectionNote?: string,
 	splitSystemMessages = true,
-	skillInstructions?: { content: string; providerOptions?: ProviderOptions },
 ): SystemModelMessage | SystemModelMessage[] {
 	const cacheOptions = instructionProviderOptions
 		? { providerOptions: instructionProviderOptions }
 		: {};
-	const skillContent = skillInstructions?.content.trim();
 	const volatileSections = [
 		volatileInstructions?.trim(),
 		mcpConnectionNote?.trim(),
 		observationLogMemory?.trim(),
 	].filter((s): s is string => Boolean(s));
 
-	if (!splitSystemMessages || (!skillContent && volatileSections.length === 0)) {
+	if (!splitSystemMessages || volatileSections.length === 0) {
 		return {
 			role: 'system',
-			content: [
-				baseInstructions,
-				...(skillContent ? [skillContent] : []),
-				...volatileSections,
-			].join('\n\n'),
+			content: [baseInstructions, ...volatileSections].join('\n\n'),
 			...cacheOptions,
 		};
 	}
@@ -101,15 +92,6 @@ export function buildSystemMessages(
 			...cacheOptions,
 		},
 	];
-	if (skillContent) {
-		messages.push({
-			role: 'system',
-			content: `\n\n${skillContent}`,
-			...(skillInstructions?.providerOptions
-				? { providerOptions: skillInstructions.providerOptions }
-				: {}),
-		});
-	}
 	if (volatileSections.length > 0) {
 		messages.push({
 			role: 'system',
@@ -137,9 +119,6 @@ type MessageSource = 'history' | 'input' | 'response';
  * the full three-way source distinction survives a round-trip.
  */
 export class AgentMessageList {
-	activeSkillIds?: string[];
-	activeSkillVersions?: Record<string, string | null>;
-
 	private all: AgentDbMessage[] = [];
 
 	private historySet = new Set<AgentDbMessage>();
@@ -157,6 +136,12 @@ export class AgentMessageList {
 	 * re-derive it from the persisted cursor.
 	 */
 	private observationMaskBoundary: { createdAt: Date; id: string } | undefined;
+
+	/**
+	 * Skills that `load_skill` loaded in thread messages that this run did not
+	 * load, because the resume point starts after them.
+	 */
+	private earlierLoadedSkillIds = new Set<string>();
 
 	/**
 	 * Normalize an AgentMessage into an AgentDbMessage and push it onto `this.all`,
@@ -344,26 +329,6 @@ export class AgentMessageList {
 		block.suspension = suspension;
 	}
 
-	/**
-	 * Record that a tool programmatically activated a skill on its own result, so
-	 * `ActiveSkills` can re-anchor the skill body there on a later turn instead
-	 * of falling back to the `<active_skills>` system prompt. The stamp rides on
-	 * the persisted message; it is metadata only and never reaches the model
-	 * (`toAiMessages` ignores it). No-op when the tool call is unknown.
-	 */
-	stampActivatedSkill(toolCallId: string, skillId: string, version?: string): void {
-		const host = this.findToolCallHost(toolCallId);
-		if (!host) return;
-		const block = this.findToolCallBlock(host, toolCallId);
-		if (!block) return;
-		const current = block.activatedSkillIds ?? [];
-		block.activatedSkillIds = [...new Set([...current, skillId])];
-		if (version !== undefined) {
-			block.activatedSkillVersions = { ...block.activatedSkillVersions, [skillId]: version };
-		}
-		this.responseSet.add(host);
-	}
-
 	private findToolCallHost(toolCallId: string): AgentDbMessage | undefined {
 		// Start from the last message and go backwards to find the host message
 		for (let i = this.all.length - 1; i >= 0; i--) {
@@ -398,16 +363,13 @@ export class AgentMessageList {
 		instructionProviderOptions?: ProviderOptions,
 		volatileInstructions?: string,
 		splitSystemMessages = true,
-		skillInstructions?: {
-			content: string;
-			/** Resolved from the conversation messages, which can hold caller breakpoints. */
-			cacheOptions?: (messages: ModelMessage[]) => ProviderOptions | undefined;
-		},
 		providerId?: string,
+		replayReasoning?: ReasoningReplayScope,
 	): LlmContext {
 		const messages = toAiMessages(
 			filterLlmMessages(stripOrphanedToolMessages(this.llmVisibleMessages())),
 			providerId,
+			replayReasoning,
 		);
 		// A masked window may be empty or start mid-exchange; anchor it with a
 		// synthetic user message so the model call stays valid.
@@ -425,10 +387,6 @@ export class AgentMessageList {
 				volatileInstructions,
 				this.mcpConnectionNote,
 				splitSystemMessages,
-				skillInstructions && {
-					content: skillInstructions.content,
-					providerOptions: skillInstructions.cacheOptions?.(messages),
-				},
 			),
 			messages,
 		};
@@ -506,6 +464,16 @@ export class AgentMessageList {
 		});
 	}
 
+	/** Record skills that earlier messages loaded, when the list does not hold those messages. */
+	addEarlierLoadedSkills(skillIds: Iterable<string>): void {
+		for (const id of skillIds) this.earlierLoadedSkillIds.add(id);
+	}
+
+	/** Skills that `load_skill` loaded in the thread, also where compaction hides the call. */
+	loadedSkillIds(): Set<string> {
+		return new Set([...this.earlierLoadedSkillIds, ...detectLoadedSkills(this.all)]);
+	}
+
 	/** All messages currently in the list, as live references. */
 	messages(): readonly AgentDbMessage[] {
 		return this.all;
@@ -518,17 +486,14 @@ export class AgentMessageList {
 			historyIds: toIds(this.historySet),
 			inputIds: toIds(this.inputSet),
 			responseIds: toIds(this.responseSet),
-			...(this.activeSkillIds !== undefined ? { activeSkillIds: [...this.activeSkillIds] } : {}),
-			...(this.activeSkillVersions ? { activeSkillVersions: { ...this.activeSkillVersions } } : {}),
+			...(this.earlierLoadedSkillIds.size > 0 && {
+				earlierLoadedSkillIds: [...this.earlierLoadedSkillIds],
+			}),
 		};
 	}
 
 	static deserialize(data: SerializedMessageList): AgentMessageList {
 		const list = new AgentMessageList();
-		list.activeSkillIds = data.activeSkillIds ? [...data.activeSkillIds] : undefined;
-		list.activeSkillVersions = data.activeSkillVersions
-			? { ...data.activeSkillVersions }
-			: undefined;
 		const historyIdSet = new Set(data.historyIds);
 		const inputIdSet = new Set(data.inputIds);
 		const responseIdSet = new Set(data.responseIds);
@@ -542,6 +507,7 @@ export class AgentMessageList {
 			if (inputIdSet.has(msg.id)) list.inputSet.add(msg);
 			if (responseIdSet.has(msg.id)) list.responseSet.add(msg);
 		}
+		list.addEarlierLoadedSkills(data.earlierLoadedSkillIds ?? []);
 		list.sortAllByCreatedAt();
 		return list;
 	}

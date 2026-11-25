@@ -590,9 +590,12 @@ const table = useVueTable({
 											:render="header.column.columnDef.header"
 											:props="header.getContext()"
 										/>
-										<template v-if="header.column.getCanSort()">
+										<span
+											v-if="header.column.getCanSort() && header.column.getIsSorted()"
+											class="sort-indicator"
+										>
 											{{ { asc: '↑', desc: '↓' }[header.column.getIsSorted() as string] }}
-										</template>
+										</span>
 									</div>
 
 									<div
@@ -723,6 +726,10 @@ const table = useVueTable({
 	height: 100%;
 	font-size: var(--font-size--sm);
 
+	.sort-indicator {
+		margin-inline-start: var(--spacing--4xs);
+	}
+
 	table {
 		width: 100%;
 		border-collapse: separate;
@@ -787,8 +794,10 @@ const table = useVueTable({
 	tbody tr {
 		background-color: var(--color--background--light-3);
 		border-bottom: 1px solid var(--color--foreground);
+		// No border at all: a transparent one still takes 1px and shows the darker
+		// background behind the table in dark mode.
 		&:last-child {
-			border-color: transparent;
+			border-bottom: none;
 		}
 	}
 

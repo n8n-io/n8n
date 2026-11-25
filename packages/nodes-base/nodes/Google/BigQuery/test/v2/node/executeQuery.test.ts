@@ -1,7 +1,11 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
+import { constructExecutionMetaData } from 'n8n-core';
+import type { IDataObject, IExecuteFunctions, INode } from 'n8n-workflow';
 import nock from 'nock';
+import { mock } from 'vitest-mock-extended';
 
 import { googleApiCredentials } from './credentials.fixture';
+import { execute } from '../../../v2/actions/database/executeQuery.operation';
 
 describe('Test Google BigQuery V2, executeQuery', () => {
 	// The harness loads the node from dist via require(), so the real jsonwebtoken
@@ -38,4 +42,43 @@ describe('Test Google BigQuery V2, executeQuery', () => {
 		workflowFiles: ['executeQuery.workflow.json'],
 		credentials: { googleApi: googleApiCredentials },
 	});
+});
+
+describe('Test Google BigQuery V2, executeQuery expression resolution', () => {
+	it.each([
+		{ typeVersion: 2.2, expected: "select '1$&2', '1$$2', '^[0-9]+$'" },
+		{ typeVersion: 2.1, expected: "select '1{{ $json.sql }}2', '1$2', '^[0-9]+" },
+	])(
+		'should insert the resolved query for version $typeVersion',
+		async ({ typeVersion, expected }) => {
+			const nodeParameters: IDataObject = {
+				authentication: 'oAuth2',
+				projectId: 'test-project',
+				sqlQuery: '{{ $json.sql }}',
+				options: {},
+			};
+			const requestOAuth2 = vi.fn().mockResolvedValue({
+				jobReference: { jobId: 'job_123' },
+				status: { state: 'DONE' },
+			});
+			const executeFunctions = mock<IExecuteFunctions>({
+				getExecutionCancelSignal: () => undefined,
+				getInputData: () => [{ json: {} }],
+				getNode: () => mock<INode>({ typeVersion }),
+				getNodeParameter: ((name: string) =>
+					nodeParameters[name]) as IExecuteFunctions['getNodeParameter'],
+				evaluateExpression: () => "select '1$&2', '1$$2', '^[0-9]+$'",
+				helpers: mock({ constructExecutionMetaData, requestOAuth2 }),
+			});
+
+			await execute.call(executeFunctions);
+
+			expect(requestOAuth2).toHaveBeenCalledWith(
+				'googleBigQueryOAuth2Api',
+				expect.objectContaining({
+					body: { configuration: { query: { query: expected, useLegacySql: false } } },
+				}),
+			);
+		},
+	);
 });

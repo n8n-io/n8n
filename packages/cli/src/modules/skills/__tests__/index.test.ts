@@ -13,11 +13,14 @@ describe('public API', () => {
 		expect(Object.keys(publicApi).sort()).toEqual([
 			'AssistantSkillsFlagGate',
 			'SkillAccessService',
+			'SkillAgentNameTakenError',
 			'SkillNameTakenError',
 			'SkillRuntimeService',
 			'SkillService',
 			'SkillSourceCredentials',
 			'SkillSourceCredentialsProxy',
+			'SkillSourceService',
+			'SkillSyncFlagGate',
 			'SkillUsage',
 			'SkillUsageProxy',
 			'SkillsGate',
@@ -29,8 +32,10 @@ describe('public API', () => {
 			'skillContentHashOf',
 			'skillNameTakenToolMessage',
 			'skillScopeOf',
+			'skillSourceReasonOf',
 			'toSkillToolRefusal',
 			'withTrimmedName',
+			'withUnsentSkillFiles',
 		]);
 		// The import loads every skills service, which takes seconds under a full test run.
 	}, 30_000);

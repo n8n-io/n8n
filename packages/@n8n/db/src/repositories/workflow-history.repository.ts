@@ -2,6 +2,7 @@ import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, LessThan } from '@n8n/typeorm';
 import type { WhereExpressionBuilder } from '@n8n/typeorm';
 import { DiffMetaData, DiffRule, groupWorkflows, SKIP_RULES } from 'n8n-workflow';
+import type { StoredVersionedSettings } from 'n8n-workflow';
 
 import {
 	WorkflowHistory,
@@ -29,7 +30,12 @@ export class WorkflowHistoryRepository extends BaseRepository<WorkflowHistory> {
 		version: Pick<
 			WorkflowHistory,
 			'authors' | 'connections' | 'nodes' | 'versionId' | 'workflowId' | 'autosaved'
-		> & { name?: string; description?: string; nodeGroups?: WorkflowHistory['nodeGroups'] },
+		> & {
+			name?: string;
+			description?: string;
+			nodeGroups?: WorkflowHistory['nodeGroups'];
+			settings: StoredVersionedSettings;
+		},
 		ctx: OperationContext,
 	) {
 		await this.managerFor(ctx).insert(WorkflowHistory, version);

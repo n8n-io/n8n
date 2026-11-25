@@ -28,6 +28,7 @@ import {
 } from './errors';
 import { isV1NodeStepConfig } from './guards';
 import { fromStepInputs, toStepOutputs } from './io';
+import { convergingSlots, itemLinks, relinkOutputItems } from './item-links';
 import { SubWorkflowCalls } from './sub-workflow-calls';
 import { attachResponseHooks } from './v1-response-hooks';
 import type {
@@ -47,6 +48,7 @@ import {
 	toV1Sources,
 	toV1Workflow,
 } from './v1-adapters';
+import { nodeNamesById } from './v1-run-data';
 
 /**
  * Turns what the node recorded into a wait declaration.
@@ -119,6 +121,7 @@ export class V1StepExecutor implements IStepExecutor {
 			stepData.outputsByNode,
 			request.node.id,
 			request.context.iteration,
+			stepData.outputSourcesByNode,
 		);
 		const workflow = toV1Workflow(request.context.workflowId, node, execution, this.deps.nodeTypes);
 
@@ -127,14 +130,25 @@ export class V1StepExecutor implements IStepExecutor {
 		);
 		attachResponseHooks(additionalData, request);
 
+		const links = itemLinks(
+			request.inputSources,
+			convergingSlots(stepData.graph, request.node.id),
+			nodeNamesById(stepData.graph),
+		);
 		const context = toV1ExecuteContext({
 			node,
 			workflow,
 			execution,
-			source: toV1Sources(stepData.graph).get(node.id) ?? [],
+			source: toV1Sources(
+				stepData.graph,
+				stepData.outputsByNode,
+				node.id,
+				request.context.iteration,
+			),
 			additionalData,
 			stepContext: request.context,
 			itemsByConnection: fromStepInputs(request.inputs),
+			itemLinks: links,
 			resumeToken: this.deps.resumeToken?.({ executionId: request.context.executionId }),
 			subWorkflowCalls: new SubWorkflowCalls(node, request.context, this.deps.resolveSubWorkflow),
 			subExecutionResume: request.resume,
@@ -146,7 +160,7 @@ export class V1StepExecutor implements IStepExecutor {
 
 		return await workflow.expression.withIsolate(async () => {
 			const nodeResult = await this.runNode({ nodeType, context });
-			return toStepResult(context, nodeResult);
+			return toStepResult(context, relinkOutputItems(nodeResult, links));
 		});
 	}
 

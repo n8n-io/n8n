@@ -21,6 +21,9 @@ export class ScimForbiddenError extends UserError {
 	}
 }
 
+/** The request tries to delete, deactivate or change the email of the instance owner. Maps to HTTP 403. */
+export class ScimOwnerProtectedError extends ScimForbiddenError {}
+
 /** Filter expression is not supported. Maps to HTTP 400 with scimType "invalidFilter". */
 export class ScimInvalidFilterError extends UserError {
 	constructor(filter: string) {

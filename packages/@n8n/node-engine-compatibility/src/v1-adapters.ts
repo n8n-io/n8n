@@ -3,11 +3,12 @@
  * back into engine v1 artifacts (`INode`, `Workflow`, run data, node execute context).
  */
 
-import { deriveLoops, isBatchStepConfig } from '@n8n/engine';
+import { isBatchStepConfig } from '@n8n/engine';
 import type {
 	GraphNode,
 	StepExecutionContext,
 	StepSlots,
+	StepOutputSources,
 	SubExecutionResumeCause,
 	WorkflowGraph,
 } from '@n8n/engine';
@@ -36,6 +37,7 @@ import type {
 import { createRunExecutionData, Workflow, WorkflowExecuteModeList } from 'n8n-workflow';
 import { UnexpectedError } from '@n8n/errors';
 
+import { linkInputItems } from './item-links';
 import { supplySubExecutionResult } from './sub-execution-result';
 import type { SubWorkflowCalls } from './sub-workflow-calls';
 import {
@@ -54,18 +56,26 @@ import type {
 	V1Execution,
 	V1NodeStepConfig,
 } from './types';
-import { emptyRun, forwardEdgesByTarget, nodeNamesById, toSourceSlots } from './v1-run-data';
+import {
+	emptyRun,
+	nodeNamesById,
+	toSourceLineage,
+	toSourcesAt,
+	linkOutputSources,
+	type SourceLineage,
+} from './v1-run-data';
 
 export function toV1Execution(
 	graph: WorkflowGraph,
 	outputsByNode: Record<string, Record<number, StepSlots>>,
 	activeNodeId: string,
 	activeIteration: number,
+	outputSourcesByNode: Record<string, Record<number, StepOutputSources>> = {},
 ): V1Execution {
 	return {
 		nodes: toV1Nodes(graph),
 		connections: toV1Connections(graph),
-		runData: toV1RunData(graph, outputsByNode, activeNodeId, activeIteration),
+		runData: toV1RunData(graph, outputsByNode, activeNodeId, activeIteration, outputSourcesByNode),
 	};
 }
 
@@ -114,41 +124,40 @@ function toV1RunData(
 	outputsByNode: Record<string, Record<number, StepSlots>>,
 	activeNodeId: string,
 	activeIteration: number,
+	outputSourcesByNode: Record<string, Record<number, StepOutputSources>>,
 ): IRunData {
-	const namesById = nodeNamesById(graph);
-	const sourcesByNodeId = toV1Sources(graph);
-	const activeLoop = deriveLoops(graph).find((loop) => loop.memberIds.has(activeNodeId));
+	const lineage = toExecuteLineage(graph, outputsByNode);
+	const activeLoop = lineage.loops.find((loop) => loop.memberIds.has(activeNodeId));
 
 	const runData: IRunData = {};
 	for (const [completedNodeId, outputsByIteration] of Object.entries(outputsByNode)) {
-		const nodeName = namesById.get(completedNodeId);
+		const nodeName = lineage.namesById.get(completedNodeId);
 		if (nodeName === undefined) continue;
 
 		const iterations = Object.keys(outputsByIteration).map(Number);
 		if (iterations.length === 0) continue;
 
-		let lastShown: number;
-		if (!activeLoop) {
-			lastShown = Math.max(...iterations);
-		} else if (activeLoop.memberIds.has(completedNodeId)) {
-			lastShown = activeIteration;
-		} else {
-			lastShown = 0;
-		}
-
-		const source = sourcesByNodeId.get(completedNodeId) ?? [];
+		const lastShown = activeLoop?.memberIds.has(completedNodeId)
+			? activeIteration
+			: Math.max(...iterations);
 
 		// A pass the node was skipped on gets an empty run rather than a gap.
 		runData[nodeName] = Array.from({ length: lastShown + 1 }, (_, iteration) => {
+			const source = toSourcesAt(lineage, completedNodeId, iteration);
 			const outputs = outputsByIteration[iteration];
 			if (outputs === undefined) return emptyRun(iteration, source);
 
+			const main = linkOutputSources(
+				fromStepInputs(outputs),
+				outputSourcesByNode[completedNodeId]?.[iteration] ?? null,
+				lineage.namesById,
+			);
 			return {
 				startTime: 0,
 				executionTime: 0,
 				executionIndex: iteration,
 				source,
-				data: { [MAIN_CONNECTION_TYPE]: fromStepInputs(outputs) },
+				data: { [MAIN_CONNECTION_TYPE]: main },
 			};
 		});
 	}
@@ -156,15 +165,30 @@ function toV1RunData(
 	return runData;
 }
 
-/** The execute path reports one pass, so no source names a `previousNodeRun`. */
-export function toV1Sources(graph: WorkflowGraph): Map<string, Array<ISourceData | null>> {
-	const namesById = nodeNamesById(graph);
+/** `toSourcesAt` for the execute path, which knows only completed steps. */
+export function toV1Sources(
+	graph: WorkflowGraph,
+	outputsByNode: Record<string, Record<number, StepSlots>>,
+	nodeId: string,
+	iteration: number,
+): Array<ISourceData | null> {
+	return toSourcesAt(toExecuteLineage(graph, outputsByNode), nodeId, iteration);
+}
 
-	const sourcesByNodeId = new Map<string, Array<ISourceData | null>>();
-	for (const [nodeId, edges] of forwardEdgesByTarget(graph)) {
-		sourcesByNodeId.set(nodeId, toSourceSlots(edges, namesById));
+/**
+ * Each node's last pass, which the source of a node after a loop names. The execute
+ * path has only completed steps, so the last pass is the highest pass among them.
+ */
+function toExecuteLineage(
+	graph: WorkflowGraph,
+	outputsByNode: Record<string, Record<number, StepSlots>>,
+): SourceLineage {
+	const lastIterationByNodeId = new Map<string, number>();
+	for (const [nodeId, outputsByIteration] of Object.entries(outputsByNode)) {
+		const iterations = Object.keys(outputsByIteration).map(Number);
+		if (iterations.length > 0) lastIterationByNodeId.set(nodeId, Math.max(...iterations));
 	}
-	return sourcesByNodeId;
+	return toSourceLineage(graph, lastIterationByNodeId);
 }
 
 export function toV1Workflow(
@@ -366,15 +390,19 @@ export function toV1ExecuteContext({
 	additionalData,
 	stepContext,
 	itemsByConnection,
+	itemLinks,
 	resumeToken,
 	subWorkflowCalls,
 	subExecutionResume,
 	resumeMinters,
 }: CreateExecuteContextParams): DurableWaitExecuteContext {
-	const firstInput = itemsByConnection[0] ?? [];
-	const connectionInputData = firstInput.length > 0 ? firstInput : [{ json: {} }];
+	itemsByConnection = linkInputItems(itemsByConnection, itemLinks);
+	// As v1 does for execution order v1: the first input with items supplies the
+	// connection data, and an empty input stays empty for the node to read.
+	const inputWithItems = itemsByConnection.find((items) => items.length > 0);
+	const connectionInputData = inputWithItems ?? [{ json: {} }];
 	const inputData: ITaskDataConnections = {
-		main: [connectionInputData, ...itemsByConnection.slice(1)],
+		main: inputWithItems ? itemsByConnection : [connectionInputData, ...itemsByConnection.slice(1)],
 	};
 
 	const runExecutionData = createRunExecutionData({

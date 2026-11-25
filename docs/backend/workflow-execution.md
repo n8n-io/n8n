@@ -1,12 +1,12 @@
 ---
 title: Workflow execution
-last_reviewed: 2026-11-05
+last_reviewed: 2026-11-20
 contact: ivov
 ---
 
 # Workflow execution
 
-On [Start here](README.md), you called the production URL of the webhook in your workflow, and you got a greeting back. On this page, we follow that call through the main.
+On [Start here](README.md), you called the production URL of the webhook in your workflow, and you got a greeting back. On this page, we follow that call through the main on engine v1, the default engine.
 
 ```mermaid
 sequenceDiagram
@@ -24,7 +24,7 @@ sequenceDiagram
 
 ## Lookup
 
-When your call arrives, the main looks up which workflow has a webhook with the path `hello` and the method `POST`. Then it loads the published version of that workflow. Edits to the draft do not change production until you publish them.
+When your call arrives, the main looks up which workflow has a webhook with the path `hello` and the method `POST`. Then it loads the published version of that workflow. Edits to the draft do not change production until you publish them. On a test instance with engine v2 enabled, production uses the engine of the published version. Manual tests of the draft use the draft's engine.
 
 ## Start
 

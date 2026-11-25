@@ -10,13 +10,20 @@ import {
 	N8nSettingsRow,
 	N8nSettingsRowConfigure,
 	N8nSettingsRowGroup,
+	N8nText,
 } from '@n8n/design-system';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { VIEWS } from '@/app/constants';
+import { useIsCollectionsEnabled } from '@/features/shared/knowledge/useIsCollectionsEnabled';
 
+import { useCollectionsStore } from '../collections.store';
 import { useContextStore } from '../context.store';
-import { isContextSkillsEnabled } from '../context.utils';
+import {
+	canManageContextPreferences,
+	isContextPreferencesEnabled,
+	isContextSkillsEnabled,
+} from '../context.utils';
 import { useSkillsStore } from '../skills.store';
 
 const i18n = useI18n();
@@ -24,8 +31,11 @@ const router = useRouter();
 const documentTitle = useDocumentTitle();
 const contextStore = useContextStore();
 const skillsStore = useSkillsStore();
-// The skills row follows the skills module. Preferences are always on.
+const collectionsStore = useCollectionsStore();
 const skillsEnabled = isContextSkillsEnabled();
+const preferencesEnabled = isContextPreferencesEnabled();
+const canManagePreferences = canManageContextPreferences();
+const collectionsEnabled = useIsCollectionsEnabled();
 const { showError } = useToast();
 
 const preferenceCount = computed(() =>
@@ -42,12 +52,23 @@ const skillCount = computed(() =>
 	}),
 );
 
+const collectionCount = computed(() =>
+	i18n.baseText('settings.context.collections.count', {
+		interpolate: { count: collectionsStore.count },
+		adjustToNumber: collectionsStore.count,
+	}),
+);
+
 async function openSkills() {
 	await router.push({ name: VIEWS.SETTINGS_CONTEXT_SKILLS });
 }
 
 async function openPreferences() {
 	await router.push({ name: VIEWS.SETTINGS_CONTEXT_PREFERENCES });
+}
+
+async function openCollections() {
+	await router.push({ name: VIEWS.SETTINGS_CONTEXT_COLLECTIONS });
 }
 
 /** Each row reports its own failure: it would otherwise show a zero as though it were real. */
@@ -62,14 +83,20 @@ async function loadCount(fetchCount: () => Promise<unknown>, errorKey: BaseTextK
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.context.title'));
 	await Promise.all([
-		loadCount(
-			async () => await contextStore.fetchPreferenceCount(),
-			'settings.context.preferences.error.load',
-		),
+		preferencesEnabled &&
+			loadCount(
+				async () => await contextStore.fetchPreferenceCount(),
+				'settings.context.preferences.error.load',
+			),
 		skillsEnabled &&
 			loadCount(
 				async () => await skillsStore.fetchSkillCount(),
 				'settings.context.skills.error.load',
+			),
+		collectionsEnabled.value &&
+			loadCount(
+				async () => await collectionsStore.fetchCollections(),
+				'settings.context.collections.error.load',
 			),
 	]);
 });
@@ -89,6 +116,7 @@ onMounted(async () => {
 
 		<N8nSettingsRowGroup>
 			<N8nSettingsRow
+				v-if="preferencesEnabled || canManagePreferences"
 				clickable
 				:title="i18n.baseText('settings.context.preferences.title')"
 				:description="i18n.baseText('settings.context.preferences.subtitle')"
@@ -96,7 +124,13 @@ onMounted(async () => {
 				@click="openPreferences"
 			>
 				<template #action>
-					<N8nSettingsRowConfigure :value="preferenceCount" />
+					<N8nSettingsRowConfigure
+						:value="
+							preferencesEnabled
+								? preferenceCount
+								: i18n.baseText('settings.context.preferences.disabled.status')
+						"
+					/>
 				</template>
 			</N8nSettingsRow>
 
@@ -115,9 +149,28 @@ onMounted(async () => {
 			<N8nSettingsRow
 				v-else
 				:title="i18n.baseText('settings.context.skills.title')"
-				:description="i18n.baseText('settings.context.comingSoon')"
+				:description="i18n.baseText('settings.context.skills.disabled.description')"
 				data-test-id="settings-context-skills-row"
-			/>
+			>
+				<template #action>
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText('settings.context.skills.disabled.status') }}
+					</N8nText>
+				</template>
+			</N8nSettingsRow>
+
+			<N8nSettingsRow
+				v-if="collectionsEnabled"
+				clickable
+				:title="i18n.baseText('settings.context.collections.title')"
+				:description="i18n.baseText('settings.context.collections.subtitle')"
+				data-test-id="settings-context-collections-row"
+				@click="openCollections"
+			>
+				<template #action>
+					<N8nSettingsRowConfigure :value="collectionCount" />
+				</template>
+			</N8nSettingsRow>
 		</N8nSettingsRowGroup>
 	</N8nSettingsLayout>
 </template>
