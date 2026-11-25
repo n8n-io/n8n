@@ -11,7 +11,7 @@ import { useNodeDocsUrl } from '@/app/composables/useNodeDocsUrl';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import type { NodeSettingsTab } from '@/app/types/nodeSettings';
 import { useI18n } from '@n8n/i18n';
-import { N8nTabs } from '@n8n/design-system';
+import { N8nIcon, N8nLink, N8nTabs, N8nTooltip } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 type Props = {
@@ -75,7 +75,7 @@ const options = computed(() => {
 			...(props.hasCredentialIssue && {
 				icon: 'triangle-alert',
 				iconPosition: 'right',
-				variant: 'danger',
+				iconColor: 'danger',
 			}),
 		});
 	}
@@ -90,14 +90,13 @@ const options = computed(() => {
 		{
 			value: 'settings',
 			notification: canUpdatePackage.value && hasUpdateAvailable.value ? true : undefined,
-			...(props.compact
-				? { icon: 'settings', align: 'right', tooltip: i18n.baseText('nodeSettings.settings') }
-				: { label: i18n.baseText('nodeSettings.settings') }),
+			label: i18n.baseText('nodeSettings.settings'),
 		},
 	);
 
 	if (isCommunityNode.value) {
 		ret.push({
+			label: i18n.baseText('generic.communityNode'),
 			icon: 'box',
 			value: 'communityNode',
 			align: 'right',
@@ -110,22 +109,11 @@ const options = computed(() => {
 		});
 	}
 
-	if (documentationUrl.value) {
-		ret.push({
-			value: 'docs',
-			href: documentationUrl.value,
-			align: 'right',
-			...(props.compact
-				? { icon: 'book-open', tooltip: i18n.baseText('nodeSettings.docs') }
-				: { label: i18n.baseText('nodeSettings.docs') }),
-		});
-	}
-
 	return ret;
 });
 
-function onTabSelect(tab: NodeSettingsTab) {
-	if (tab === 'docs' && props.nodeType) {
+function onDocsClick() {
+	if (props.nodeType) {
 		void externalHooks.run('dataDisplay.onDocumentationUrlClick', {
 			nodeType: props.nodeType,
 			documentationUrl: documentationUrl.value,
@@ -139,7 +127,9 @@ function onTabSelect(tab: NodeSettingsTab) {
 			type: 'docs',
 		});
 	}
+}
 
+function onTabSelect(tab: NodeSettingsTab) {
 	if (tab === 'settings' && props.nodeType) {
 		telemetry.track('User viewed node settings', {
 			node_type: props.nodeType.name,
@@ -163,21 +153,48 @@ function onTooltipClick(tab: NodeSettingsTab, event: MouseEvent) {
 	<N8nTabs
 		:options="options"
 		:model-value="modelValue"
-		variant="modern"
 		:size="compact ? 'small' : 'medium'"
+		:class="$style.tabs"
 		@update:model-value="onTabSelect"
 		@tooltip-click="onTooltipClick"
-	/>
+	>
+		<template v-if="documentationUrl" #suffix>
+			<N8nTooltip
+				:disabled="!compact"
+				:content="i18n.baseText('nodeSettings.docs')"
+				placement="bottom"
+				:show-after="100"
+			>
+				<N8nLink
+					:to="documentationUrl"
+					new-window
+					:underline="false"
+					theme="text"
+					:class="$style.docsLink"
+					:aria-label="compact ? i18n.baseText('nodeSettings.docs') : undefined"
+					data-test-id="tab-docs"
+					@click="onDocsClick"
+				>
+					<N8nIcon v-if="compact" icon="book-open" size="small" />
+					<template v-else>
+						{{ i18n.baseText('nodeSettings.docs') }}
+						<N8nIcon icon="external-link" size="small" />
+					</template>
+				</N8nLink>
+			</N8nTooltip>
+		</template>
+	</N8nTabs>
 </template>
 
-<style lang="scss">
-#communityNode > div {
-	cursor: auto;
-	padding-right: 0;
-	padding-left: 0;
-
-	&:hover {
-		color: unset;
-	}
+<style lang="scss" module>
+.tabs {
+	width: 100%;
+}
+.docsLink {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	padding: 0 var(--spacing--sm);
+	font-size: var(--font-size--sm);
 }
 </style>

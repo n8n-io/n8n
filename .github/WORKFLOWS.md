@@ -261,9 +261,12 @@ survive. The run is skipped when `latest` already matches the lockfile; a
 |------------------------------------|----------------------------------------|--------|
 | PR dequeued (not merged or manual) | `util-notify-merge-queue-removal.yml`  | Writes one PR comment with the reason. Later removals update the same comment. |
 
-This workflow uses `pull_request_target`. Thus, it runs without approval on
-fork and bot PRs, and it has a write token on them. No step checks out or runs
-PR code. An edit to the comment does not send a new notification.
+This workflow uses `pull_request`, because GitHub does not start a
+`pull_request_target` run for the `dequeued` type. On PRs from external
+contributors and bots, a run waits for approval. On fork PRs, the token is
+read-only, so the comment step fails. The `concurrency` group keeps at most one
+pending run for each PR, so many approved runs update one comment. An edit to
+the comment does not send a new notification.
 
 ### Label Triggers
 
@@ -693,7 +696,7 @@ Push to master
 | Monday 00:00              | `util-update-node-popularity.yml` | Node usage stats         |
 | Monday 02:00              | `test-e2e-coverage-weekly.yml`    | Weekly E2E coverage      |
 | Monday 06:00              | `test-link-check-weekly.yml`      | Broken links in `packages/` |
-| Mon–Tue every 2 hours at :15 | `ci-detect-new-packages.yml`   | Report unpublished npm packages in `#alerts-developer-platforms` and link the package setup workflow |
+| Monday every 2 hours at :15 | `ci-detect-new-packages.yml`   | Report unpublished npm packages in `#alerts-developer-platforms` and link the package setup workflow |
 | Wednesday 04:00           | `util-update-get-n8n-versions.yml` | get-n8n stable versions |
 | Saturday 22:00            | `test-evals-ai.yml`               | AI workflow evals        |
 | 1st of month 04:00        | `util-refresh-cubic-schema.yml`   | Refresh vendored cubic schema |
@@ -970,14 +973,13 @@ The format is strict, enforced by `node .github/scripts/owners/owners.mjs --chec
 Team existence is not checked by `--check` (it needs an org read token, which
 fork PRs do not have); a separate workflow covers it (DEVP-891).
 
-The file drives four workflows:
+The file drives three workflows:
 
 | Workflow                          | Purpose                                                                  |
 |-----------------------------------|--------------------------------------------------------------------------|
 | `ci-owners-validation.yml`        | Validates OWNERS (syntax, dead paths) via `owners.mjs --check` |
-| `ci-owners-review-recommendations.yml` | Calls DevHub: advisory PR comment with owning teams, line stats, required teams |
 | `ci-owners-assign-reviewers.yml`  | Opt-in reviewer auto-assignment (label-triggered)                        |
-| `ci-owners-required-reviews.yml`  | Calls DevHub: enforces `required` and `involved` entries through the "Required Reviews" commit status |
+| `ci-owners-required-reviews.yml`  | Enforces `required` and `involved` entries through the "Required Reviews" commit status, and calls DevHub for the advisory PR comment |
 
 ### Auto-assign reviewers
 
@@ -1010,9 +1012,10 @@ counts.
 workflow in `n8n-io/github-actions`. The shared workflow reads OWNERS from
 `master`, checks live approvals and team membership, and writes a commit status
 named **Required Reviews** on the head SHA. It uses the n8n Assistant GitHub
-App credentials and runs no PR code. The optional ownership comment still
-uses DevHub through OIDC. See `ownership-checks/README.md` in
-`n8n-io/github-actions`.
+App credentials and runs no PR code. The same call also asks DevHub, through
+OIDC, to post the PR review overview comment: owning teams, line stats and
+required teams. The comment is advisory: if DevHub fails, the status is not
+affected. See `ownership-checks/README.md` in `n8n-io/github-actions`.
 
 A missing approval reports `pending` ("Waiting for approval from: …"), not
 `failure`, so an unreviewed PR does not show red CI. Any state other than

@@ -177,7 +177,10 @@ export class PolicyDecisionService implements PolicyEnforcementBackend {
 	 * structured half only reaches the console under `N8N_LOG_FORMAT=json` — the text format
 	 * prints the message alone — so the message names the point on its own.
 	 */
-	private audit(input: DecisionAuditInput, actor: PolicyActor) {
+	private audit<Point extends EnforcementPoint>(
+		input: DecisionAuditInput<Point>,
+		actor: PolicyActor,
+	) {
 		const line = decisionAudit(input);
 		const message =
 			line.outcome === 'violation'

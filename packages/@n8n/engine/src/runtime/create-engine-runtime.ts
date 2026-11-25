@@ -42,14 +42,29 @@ import {
 	RunningStepRepair,
 } from '../reconciliation';
 import type { ExecutionResponseSender } from '../response-channel';
-import { createEngineServer } from '../server';
+import { createEngineServer, type EngineServerDeps } from '../server';
+
+/** The parts of the engine that a process can run. */
+export const ENGINE_ROLES = ['api', 'orchestrator', 'step-worker'] as const;
+export type EngineRole = (typeof ENGINE_ROLES)[number];
 
 export interface EngineRuntimeOptions {
+	/**
+	 * The roles this process runs. Defaults to all of them. `api` serves `/api`,
+	 * `orchestrator` consumes the orchestration queue and runs reconciliation,
+	 * and `step-worker` consumes the step queue and runs the wait sweeper. Every
+	 * role serves `/healthz`. Only processes on shared queues can split the roles
+	 * between them.
+	 */
+	roles?: readonly EngineRole[];
 	/** The data plane database, already initialized and migrated. */
 	dataSource: DataSource;
 	admittance: AdmittanceService;
-	/** Verifies the identity token on every `/api` request. No default: an unauthenticated engine must never boot by omission. */
-	identityVerifier: IdentityVerifier;
+	/**
+	 * Verifies the identity token on every `/api` request. The `api` role refuses
+	 * to start without it, so an unauthenticated API never boots by omission.
+	 */
+	identityVerifier?: IdentityVerifier;
 	/** Where the engine writes its own messages. Defaults to the console. */
 	logger?: EngineLogger;
 	/**
@@ -83,7 +98,8 @@ export interface EngineRuntimeOptions {
 	reconciliationIntervalMs?: number;
 	/**
 	 * The queues to run on, with their concurrency already set. The runtime
-	 * starts and stops them. The host closes their connections.
+	 * starts and stops the queues its roles consume. The host closes their
+	 * connections.
 	 */
 	queues: EngineWorkQueues;
 }
@@ -92,9 +108,12 @@ export interface EngineRuntimeOptions {
 export interface EngineRuntime {
 	/** The engine HTTP app. The host decides where, and whether, to listen. */
 	app: Application;
-	/** Starts consuming the engine's queues. */
+	/** Starts the workers and sweepers of this process's roles. */
 	start(): void;
-	/** Stops the engine's workers. The host still owns its listener and its `DataSource`. */
+	/**
+	 * Stops the workers and sweepers of this process's roles. The host still owns
+	 * its listener and its `DataSource`.
+	 */
 	stop(): Promise<void>;
 }
 
@@ -107,6 +126,7 @@ export interface EngineRuntime {
  * admittance policy, the external dependencies and the HTTP listener.
  */
 export function createEngineRuntime({
+	roles = ENGINE_ROLES,
 	dataSource,
 	admittance,
 	identityVerifier,
@@ -127,6 +147,19 @@ export function createEngineRuntime({
 		throw new UnexpectedError(
 			`The resume secret must be at least ${MIN_SECRET_LENGTH} characters long`,
 		);
+	}
+
+	// Refused here: a process with no known role would idle without a word.
+	if (roles.length === 0) throw new UnexpectedError('The engine needs at least one role');
+	const unknownRoles = new Set(roles.filter((role) => !ENGINE_ROLES.includes(role)));
+	if (unknownRoles.size > 0) {
+		throw new UnexpectedError(
+			`Unknown engine roles: ${[...unknownRoles].join(', ')}. The valid roles are ${ENGINE_ROLES.join(', ')}`,
+		);
+	}
+	const runs = new Set(roles);
+	if (runs.has('api') && !identityVerifier) {
+		throw new UnexpectedError('The api role needs an identity verifier');
 	}
 
 	// Refused here and not at the first write: an invalid threshold would
@@ -225,26 +258,41 @@ export function createEngineRuntime({
 		),
 	);
 
-	const { app } = createEngineServer({
-		startExecution,
-		cancelExecution,
-		executionQuery: new ExecutionQueryService(executionViewStore),
-		resumeRequests:
-			resumeSecret === undefined
-				? undefined
-				: new ResumeRequestService(executionStore, stepStore, stepQueue, resumeSecret),
-		identityVerifier,
-		logger,
-	});
+	let apiDeps: EngineServerDeps | undefined;
+	if (runs.has('api') && identityVerifier) {
+		apiDeps = {
+			startExecution,
+			cancelExecution,
+			executionQuery: new ExecutionQueryService(executionViewStore),
+			resumeRequests:
+				resumeSecret === undefined
+					? undefined
+					: new ResumeRequestService(executionStore, stepStore, stepQueue, resumeSecret),
+			identityVerifier,
+			logger,
+		};
+	}
+	const { app } = createEngineServer(apiDeps);
+
+	const workers: Array<OrchestrationWorker | StepWorker> = [];
+	const sweepers: Array<ReconciliationSweeper | WaitSweeper> = [];
+	if (runs.has('orchestrator')) {
+		workers.push(orchestrationWorker);
+		// Not with the step worker: it repairs what a crashed step worker leaves behind.
+		sweepers.push(reconciliationSweeper);
+	}
+	if (runs.has('step-worker')) {
+		workers.push(stepWorker);
+		// The step worker re-arms it when a step suspends, which keeps a short wait on time.
+		sweepers.push(waitSweeper);
+	}
 
 	return {
 		app,
 
 		start: () => {
-			orchestrationWorker.start();
-			stepWorker.start();
-			waitSweeper.start();
-			reconciliationSweeper.start();
+			for (const worker of workers) worker.start();
+			for (const sweeper of sweepers) sweeper.start();
 		},
 
 		stop: async () => {
@@ -255,8 +303,8 @@ export function createEngineRuntime({
 
 			// The sweepers stop first: they feed the queues, so nothing lands
 			// there after the workers have drained.
-			await Promise.all([waitSweeper.stop(), reconciliationSweeper.stop()]);
-			await Promise.all([orchestrationWorker.stop(), stepWorker.stop()]);
+			await Promise.all(sweepers.map(async (sweeper) => await sweeper.stop()));
+			await Promise.all(workers.map(async (worker) => await worker.stop()));
 			// After the workers are quiet, so the last events still reach the host.
 			await lifecycleEventPublisher.stop();
 		},
