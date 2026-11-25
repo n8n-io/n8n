@@ -1194,13 +1194,13 @@ export const resetAgentTestRun = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-	sessionId?: string,
+	sessionId: string,
 ): Promise<AgentTestRunResetResponse> => {
 	return await makeRestApiRequest<AgentTestRunResetResponse>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/test-run/reset`,
-		sessionId ? { sessionId } : {},
+		{ sessionId },
 	);
 };
 

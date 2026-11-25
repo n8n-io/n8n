@@ -107,11 +107,16 @@ export interface HeldActionDescriptor {
 	input: unknown;
 	createdAt: string;
 	committedAt?: string;
+	/** A replay started and failed. The service may have accepted the write. */
+	failedAt?: string;
+	/** The safe error message of the failed replay. */
+	error?: string;
 }
 
 export type BeginCommitActionResult =
 	| { status: 'ready'; action: HeldActionDescriptor }
 	| { status: 'already_committed'; action: HeldActionDescriptor }
+	| { status: 'already_failed'; action: HeldActionDescriptor }
 	| { status: 'not_found' };
 
 type ReplySource = 'world_state' | 'made_up';
@@ -244,10 +249,15 @@ export class SimulationSession {
 	/**
 	 * Claims a held action for one-shot replay. Returns `already_committed` when the action
 	 * already finished or is currently replaying, so duplicate requests never execute twice.
+	 * Returns `already_failed` when a replay started and failed: the service may have accepted
+	 * the write before the failure, so a second replay could send it twice.
 	 */
 	beginCommitAction(actionId: string): BeginCommitActionResult {
 		const action = this.heldActions.get(actionId);
 		if (!action) return { status: 'not_found' };
+		if (action.failedAt !== undefined) {
+			return { status: 'already_failed', action: { ...action } };
+		}
 		if (action.committedAt !== undefined || this.committingActions.has(actionId)) {
 			return { status: 'already_committed', action: { ...action } };
 		}
@@ -261,6 +271,17 @@ export class SimulationSession {
 		if (action) action.committedAt = committedAt;
 	}
 
+	/** Records a replay that started and failed. The action never replays again. */
+	failCommitAction(actionId: string, failedAt: string, error: string): void {
+		this.committingActions.delete(actionId);
+		const action = this.heldActions.get(actionId);
+		if (action) {
+			action.failedAt = failedAt;
+			action.error = error;
+		}
+	}
+
+	/** Releases the claim. Use it only when the replay did not start, so nothing was sent. */
 	abortCommitAction(actionId: string): void {
 		this.committingActions.delete(actionId);
 	}

@@ -800,7 +800,12 @@ export class ExecutionRecorder {
 	private recordToolResult(
 		chunk: (StreamChunk & { type: 'tool-result' }) & { simulation?: ToolCallSimulation },
 	): void {
-		const { toolCallId, toolName: name, output, simulation } = chunk;
+		const { toolCallId, toolName: name, output } = chunk;
+		// The detail can hold a raw simulator error, so it is scrubbed like the output.
+		const simulation =
+			chunk.simulation?.detail !== undefined
+				? { ...chunk.simulation, detail: scrubSecretsInText(chunk.simulation.detail) }
+				: chunk.simulation;
 		const isError = chunk.isError === true;
 		const canceled = chunk.canceled === true;
 		const recordedOutput = sanitizeExecutionLogValue(
