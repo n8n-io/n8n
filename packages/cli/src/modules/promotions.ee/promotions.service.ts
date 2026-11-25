@@ -288,10 +288,8 @@ export class PromotionsService {
 			target?.baseCommitSha,
 		);
 
-		if (
-			!this.skillSelection.enabled &&
-			(await readLeftoverManifest(packageFolder))?.skills !== undefined
-		) {
+		const includeSkills = this.skillSelection.enabled;
+		if (!includeSkills && (await readLeftoverManifest(packageFolder))?.skills !== undefined) {
 			throw new BadRequestError(
 				'Skills are unavailable. Enable Skills before replacing this package.',
 			);
@@ -315,11 +313,16 @@ export class PromotionsService {
 				instancePromotionExportRequest({
 					user: actor,
 					projectIds,
-					includeSkills: this.skillSelection.enabled,
+					includeSkills,
 				}),
 				{ targetDir: stagingFolder },
 			);
 
+			if (projectIds.length === 0 && exportResult.counts.skills) {
+				throw new BadRequestError(
+					'Promotions packages with Skills must contain a team project. Create a team project, then promote again.',
+				);
+			}
 			if (exportResult.counts.skills)
 				assertPackageImportApiKeyScopes(skillApiKeyScopes, ['skill:read']);
 			// The lease can expire during the long export. Check before the package changes,

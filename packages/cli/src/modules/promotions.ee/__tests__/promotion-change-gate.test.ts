@@ -1,4 +1,10 @@
-import { SkillService, SkillAccessService, SkillsGate } from '@/modules/skills';
+import { ModuleRegistry } from '@n8n/backend-common';
+import {
+	SkillService,
+	SkillAccessService,
+	SkillRuntimeService,
+	SkillsGate,
+} from '@/modules/skills';
 import { PromotionSkillSelectionService } from '../promotion-skill-selection.service';
 import type { Role, Scope as DbScope, SharedWorkflowRepository, User } from '@n8n/db';
 import { ForbiddenError } from '@n8n/errors';
@@ -51,6 +57,8 @@ describe('PromotionChangeService.getPreview review gate', () => {
 			mock<SkillsGate>({ isEnabled: false }),
 			mock<SkillService>(),
 			mock<SkillAccessService>(),
+			mock<SkillRuntimeService>(),
+			mock<ModuleRegistry>(),
 		),
 		promotionsService,
 		mock<N8nPackagesService>(),
@@ -60,6 +68,8 @@ describe('PromotionChangeService.getPreview review gate', () => {
 				mock<SkillsGate>({ isEnabled: false }),
 				mock<SkillService>(),
 				mock<SkillAccessService>(),
+				mock<SkillRuntimeService>(),
+				mock<ModuleRegistry>(),
 			),
 			mock<N8nPackagesService>(),
 			mock<SharedWorkflowRepository>(),

@@ -224,7 +224,7 @@ it('sends a Skill-only selection and keeps its conflict separate from workflows'
 					kind: 'skill',
 					code: 'skill-conflict',
 					id: 'skill_one',
-					reason: 'A consumer uses this Skill.',
+					reason: 'in-use',
 				},
 			],
 		}),

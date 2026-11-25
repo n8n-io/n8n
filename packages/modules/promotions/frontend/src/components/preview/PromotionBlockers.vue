@@ -101,7 +101,7 @@ const conflictRow = (conflict: HardConflict, index: number): BlockerRow => {
 		return {
 			key: `skill:${conflict.id}`,
 			status: status('conflict'),
-			detail: conflict.reason,
+			detail: i18n.baseText(`promotions.bindings.conflicts.skill-conflict.${conflict.reason}`),
 			icon: resourceIcon('skill'),
 			name: conflict.id,
 			type: 'skill',

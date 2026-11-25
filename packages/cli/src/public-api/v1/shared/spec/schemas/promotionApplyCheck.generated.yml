@@ -283,7 +283,22 @@ properties:
             id:
               type: string
             reason:
-              type: string
+              anyOf:
+                - type: string
+                  enum:
+                    - unavailable
+                    - invalid-selection
+                    - scope-conflict
+                    - permission-denied
+                    - source-managed
+                    - content-conflict
+                    - name-conflict
+                    - missing
+                    - in-use
+                    - protected
+                - type: string
+                  enum:
+                    - project-deletion
           required:
             - kind
             - code

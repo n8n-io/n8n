@@ -1,7 +1,12 @@
-import { SkillService, SkillAccessService, SkillsGate } from '@/modules/skills';
+import {
+	SkillService,
+	SkillAccessService,
+	SkillRuntimeService,
+	SkillsGate,
+} from '@/modules/skills';
 import { PromotionSkillSelectionService } from '../promotion-skill-selection.service';
 import type { PromotionApplyCheck } from '@n8n/api-types';
-import { LockService, type Logger } from '@n8n/backend-common';
+import { LockService, ModuleRegistry, type Logger } from '@n8n/backend-common';
 import type { EventService, Publisher } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import { Person } from '@n8n/db';
@@ -120,6 +125,7 @@ describe('PromotionsService', () => {
 	const reviewsService = mock<PromotionReviewsService>();
 	const eventService = mock<EventService>();
 	const promotePreviewService = mock<PromotePreviewService>();
+	const skillsGate = { isEnabled: false };
 	const actor = Object.assign(new Person(), {
 		id: 'actor',
 		firstName: 'Ada',
@@ -189,6 +195,7 @@ describe('PromotionsService', () => {
 
 	beforeEach(async () => {
 		vi.clearAllMocks();
+		skillsGate.isEnabled = false;
 		logger.scoped.mockReturnValue(logger);
 		publisher.publishCommand.mockResolvedValue();
 		folderService.getFoldersByIds.mockResolvedValue([]);
@@ -210,9 +217,11 @@ describe('PromotionsService', () => {
 		applyPreviewService = new ApplyPreviewService(
 			mock<SkillService>({ runPromotion: async (run) => await run() }),
 			new PromotionSkillSelectionService(
-				mock<SkillsGate>({ isEnabled: false }),
+				skillsGate as SkillsGate,
 				mock<SkillService>({ findIdsInProjects: async () => [] }),
 				mock<SkillAccessService>(),
+				mock<SkillRuntimeService>(),
+				mock<ModuleRegistry>(),
 			),
 			n8nPackagesService,
 			inventoryReader,
@@ -226,9 +235,11 @@ describe('PromotionsService', () => {
 		service = new PromotionsService(
 			mock<SkillService>({ runPromotion: async (run) => await run() }),
 			new PromotionSkillSelectionService(
-				mock<SkillsGate>({ isEnabled: false }),
+				skillsGate as SkillsGate,
 				mock<SkillService>({ findIdsInProjects: async () => [] }),
 				mock<SkillAccessService>(),
+				mock<SkillRuntimeService>(),
+				mock<ModuleRegistry>(),
 			),
 			resolver,
 			providersService,
@@ -479,6 +490,69 @@ describe('PromotionsService', () => {
 					};
 				},
 			);
+		});
+
+		it('keeps the package when Skills become unavailable before the export', async () => {
+			skillsGate.isEnabled = true;
+			const packageFolder = path.join(
+				workingDirectory.paths(ENVIRONMENT_ID).repositoryFolder,
+				'n8n',
+			);
+			await mkdir(packageFolder, { recursive: true });
+			const before = JSON.stringify({
+				...emptyManifest,
+				packageFormatVersion: '2',
+				skills: [{ id: 's1', name: 'Guide', target: 'skills/guide-s1' }],
+			});
+			await writeFile(path.join(packageFolder, 'manifest.json'), before);
+			projectRepository.findTeamProjectIds.mockImplementationOnce(async () => {
+				skillsGate.isEnabled = false;
+				return ['project-a'];
+			});
+			const exportPackage = n8nPackagesService.exportPackageToDirectory.getMockImplementation()!;
+			n8nPackagesService.exportPackageToDirectory.mockImplementation(async (request, target) => {
+				if (request.includeInstanceSkills && !skillsGate.isEnabled) {
+					throw new BadRequestError(
+						'Skills are unavailable. The requested export cannot be completed.',
+					);
+				}
+				return await exportPackage(request, target);
+			});
+
+			await expect(service.promote(ENVIRONMENT_ID, actor, {})).rejects.toThrow(
+				'Skills are unavailable',
+			);
+			expect(await readFile(path.join(packageFolder, 'manifest.json'), 'utf-8')).toBe(before);
+			expect(gitService.commitAndPush).not.toHaveBeenCalled();
+		});
+
+		it('keeps the package when an export contains only instance Skills and no projects', async () => {
+			skillsGate.isEnabled = true;
+			projectRepository.findTeamProjectIds.mockResolvedValue([]);
+			const packageFolder = path.join(
+				workingDirectory.paths(ENVIRONMENT_ID).repositoryFolder,
+				'n8n',
+			);
+			await mkdir(packageFolder, { recursive: true });
+			const before = JSON.stringify(emptyManifest);
+			await writeFile(path.join(packageFolder, 'manifest.json'), before);
+			const exportPackage = n8nPackagesService.exportPackageToDirectory.getMockImplementation()!;
+			n8nPackagesService.exportPackageToDirectory.mockImplementation(async (...args) => {
+				const result = await exportPackage(...args);
+				return { ...result, counts: { ...result.counts, skills: 1 } };
+			});
+
+			await expect(service.promote(ENVIRONMENT_ID, actor, {})).rejects.toThrow(
+				'must contain a team project',
+			);
+			expect(await readFile(path.join(packageFolder, 'manifest.json'), 'utf-8')).toBe(before);
+			expect(gitService.commitAndPush).not.toHaveBeenCalled();
+		});
+
+		it('still promotes an empty instance with no Skills', async () => {
+			projectRepository.findTeamProjectIds.mockResolvedValue([]);
+			await service.promote(ENVIRONMENT_ID, actor, {});
+			expect(gitService.commitAndPush).toHaveBeenCalled();
 		});
 
 		it.each([false, true])(

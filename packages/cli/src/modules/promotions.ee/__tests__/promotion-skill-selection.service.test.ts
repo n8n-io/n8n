@@ -1,8 +1,14 @@
 import type { User } from '@n8n/db';
+import { ModuleRegistry } from '@n8n/backend-common';
 import { mock } from 'vitest-mock-extended';
 
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
-import { SkillAccessService, SkillService, SkillsGate, type LatestSkill } from '@/modules/skills';
+import {
+	SkillAccessService,
+	SkillService,
+	SkillRuntimeService,
+	SkillsGate,
+} from '@/modules/skills';
 
 import { PromotionSkillSelectionService } from '../promotion-skill-selection.service';
 
@@ -28,11 +34,21 @@ const manifest: PackageManifest = {
 describe('PromotionSkillSelectionService', () => {
 	const skills = mock<SkillService>();
 	const access = mock<SkillAccessService>();
+	const runtime = mock<SkillRuntimeService>();
+	const moduleRegistry = mock<ModuleRegistry>();
 	const gate = { isEnabled: true };
-	const service = new PromotionSkillSelectionService(gate as SkillsGate, skills, access);
+	const service = new PromotionSkillSelectionService(
+		gate as SkillsGate,
+		skills,
+		access,
+		runtime,
+		moduleRegistry,
+	);
 
 	beforeEach(() => {
+		vi.clearAllMocks();
 		gate.isEnabled = true;
+		moduleRegistry.isActive.mockReturnValue(true);
 		skills.findIdsInProjects.mockResolvedValue(['skill_project', 'skill_removed']);
 		skills.findInstanceIds.mockResolvedValue(['skill_instance']);
 		access.accessCheck.mockResolvedValue(() => true);
@@ -51,6 +67,13 @@ describe('PromotionSkillSelectionService', () => {
 			expect.objectContaining({ code: 'skill-conflict', id: 'skill_project' }),
 			expect.objectContaining({ code: 'skill-conflict', id: 'skill_removed' }),
 		]);
+	});
+
+	it('skips Skill storage when the module is not loaded', async () => {
+		moduleRegistry.isActive.mockReturnValue(false);
+		skills.findIdsInProjects.mockRejectedValue(new Error('Skill entity is not registered'));
+		await expect(service.projectDeletionConflicts(['p1'])).resolves.toEqual([]);
+		expect(skills.findIdsInProjects).not.toHaveBeenCalled();
 	});
 
 	it('keeps unselected Skills, including instance Skills', async () => {
@@ -99,14 +122,20 @@ describe('PromotionSkillSelectionService', () => {
 	});
 
 	it('classifies selected source Skills by identity and rejects scope changes', async () => {
-		skills.findLatest.mockResolvedValue(
+		runtime.findTargets.mockResolvedValue(
 			new Map([
-				['skill_project', mock<LatestSkill>({ id: 'skill_project', target: { projectId: 'p1' } })],
+				['skill_project', { projectId: 'p1' }],
+				['skill_instance', { projectId: null }],
 			]),
 		);
 		await expect(
 			service.forPromote(mock<User>(), 'p1', ['skill_project', 'skill_removed']),
 		).resolves.toEqual({ skillIds: ['skill_project'], deletedSkillIds: ['skill_removed'] });
+		await expect(service.forPromote(mock<User>(), 'p1', ['skill_instance'])).resolves.toEqual({
+			skillIds: ['skill_instance'],
+			deletedSkillIds: [],
+		});
+		expect(skills.findLatest).not.toHaveBeenCalled();
 		await expect(service.forPromote(mock<User>(), 'other', ['skill_project'])).rejects.toThrow(
 			'another project',
 		);

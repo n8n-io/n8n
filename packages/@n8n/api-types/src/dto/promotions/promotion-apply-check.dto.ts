@@ -9,6 +9,7 @@ import {
 	tagUnresolvedKindSchema,
 } from '../packages/import-blocking-issue.schema';
 import { variableTypeSchema, variableValueSchema } from '../variables/base.dto';
+import { skillImportIssueReasonSchema } from '../packages/skill-import.schema';
 
 const sourceId = z.string().min(1);
 
@@ -176,7 +177,7 @@ export const promotionBindingConflictSchema = z.discriminatedUnion('code', [
 		kind: z.literal('skill'),
 		code: z.literal('skill-conflict'),
 		id: z.string(),
-		reason: z.string(),
+		reason: skillImportIssueReasonSchema.or(z.literal('project-deletion')),
 	}),
 	credentialConflictSchema.extend({ code: z.literal('missing-id') }),
 	credentialConflictSchema.extend({ code: z.literal('conflicting-types') }),

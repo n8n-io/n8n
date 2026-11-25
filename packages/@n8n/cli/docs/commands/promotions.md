@@ -74,8 +74,12 @@ Packages with no standalone Skills collection do not remove local skills.
 An instance Promote stops if Skills are unavailable and the branch already
 contains skills. This keeps the branch's skills intact.
 
-A project with Skills cannot be deleted by Apply. Move or explicitly delete its
-Skills first. This keeps Skill permissions and consumer checks active.
+An instance Promote that includes skills requires at least one team project.
+If no team project exists, Promote stops before replacing or pushing the package.
+
+When the Skills module is loaded, Apply cannot delete a project that contains
+skills. Move or explicitly delete its skills first. This keeps skill permissions
+and consumer checks active.
 
 ## Setup example: Git over SSH
 

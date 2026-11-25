@@ -1,11 +1,17 @@
 import type { PromotionBindingConflict } from '@n8n/api-types';
+import { ModuleRegistry } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 
 import type { ImportSelection } from '@/modules/n8n-packages/n8n-packages.types';
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
-import { SkillAccessService, SkillService, SkillsGate } from '@/modules/skills';
+import {
+	SkillAccessService,
+	SkillService,
+	SkillRuntimeService,
+	SkillsGate,
+} from '@/modules/skills';
 
 import { projectHolding } from './branch-placement';
 
@@ -15,6 +21,8 @@ export class PromotionSkillSelectionService {
 		private readonly gate: SkillsGate,
 		private readonly skills: SkillService,
 		private readonly access: SkillAccessService,
+		private readonly runtime: SkillRuntimeService,
+		private readonly moduleRegistry: ModuleRegistry,
 	) {}
 
 	get enabled(): boolean {
@@ -22,27 +30,27 @@ export class PromotionSkillSelectionService {
 	}
 
 	async projectDeletionConflicts(projectIds: string[]): Promise<PromotionBindingConflict[]> {
-		if (projectIds.length === 0) return [];
+		if (projectIds.length === 0 || !this.moduleRegistry.isActive('skills')) return [];
 		// Project deletion must not bypass Skill permissions, source ownership, or consumer guards.
 		const ids = await this.skills.findIdsInProjects(projectIds);
 		return ids.map((id) => ({
 			kind: 'skill',
 			code: 'skill-conflict',
 			id,
-			reason: 'Move or delete this Skill before deleting its project.',
+			reason: 'project-deletion',
 		}));
 	}
 
 	async forPromote(user: User, projectId: string, ids: string[]) {
 		if (ids.length === 0) return {};
 		this.assertEnabled();
-		const current = await this.skills.findLatest(ids);
+		const current = await this.runtime.findTargets(ids);
 		const canRead = await this.access.accessCheck(user, 'read');
-		for (const skill of current.values()) {
-			if (skill.target.projectId !== null && skill.target.projectId !== projectId) {
+		for (const target of current.values()) {
+			if (target.projectId !== null && target.projectId !== projectId) {
 				throw new BadRequestError('A selected Skill belongs to another project.');
 			}
-			if (!canRead(skill.target)) throw new ForbiddenError('You cannot read a selected Skill.');
+			if (!canRead(target)) throw new ForbiddenError('You cannot read a selected Skill.');
 		}
 		return {
 			skillIds: ids.filter((id) => current.has(id)),

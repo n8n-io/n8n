@@ -85,6 +85,7 @@ export async function planStandaloneSkills(
 					plan.issues.push({
 						type: 'skill-conflict',
 						skillId: id,
+						reason: 'in-use',
 						message: 'An imported Agent requires this Skill.',
 					});
 			}
@@ -96,6 +97,7 @@ export async function planStandaloneSkills(
 				plan.issues.push({
 					type: 'skill-conflict',
 					skillId: write.skill.id,
+					reason: 'in-use',
 					message: 'An imported Agent requires this Skill.',
 				});
 			}
@@ -105,6 +107,7 @@ export async function planStandaloneSkills(
 				plan.issues.push({
 					type: 'skill-conflict',
 					skillId: write.skill.id,
+					reason: 'name-conflict',
 					message: 'Two package Skills have the same name in this scope.',
 				});
 			}

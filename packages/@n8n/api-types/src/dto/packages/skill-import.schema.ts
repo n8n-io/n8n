@@ -1,8 +1,22 @@
 import { z } from 'zod';
 
+export const skillImportIssueReasonSchema = z.enum([
+	'unavailable',
+	'invalid-selection',
+	'scope-conflict',
+	'permission-denied',
+	'source-managed',
+	'content-conflict',
+	'name-conflict',
+	'missing',
+	'in-use',
+	'protected',
+]);
+
 export const skillImportIssueSchema = z.object({
 	type: z.literal('skill-conflict'),
 	skillId: z.string(),
+	reason: skillImportIssueReasonSchema,
 	message: z.string(),
 });
 

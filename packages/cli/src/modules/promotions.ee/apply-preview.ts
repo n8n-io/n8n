@@ -301,7 +301,7 @@ function describeIssue(
 
 	switch (issue.type) {
 		case 'skill-conflict':
-			return { kind: 'skill', code: 'skill-conflict', id: issue.skillId, reason: issue.message };
+			return { kind: 'skill', code: 'skill-conflict', id: issue.skillId, reason: issue.reason };
 		case 'project-conflict': {
 			if (issue.kind !== 'not-team') {
 				return projectConflict('project-conflict', issue.kind, issue.sourceProjectId);

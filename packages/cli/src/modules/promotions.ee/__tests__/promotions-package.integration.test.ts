@@ -4684,43 +4684,46 @@ describe('standalone Skill promotions', () => {
 		expect((await findLatestSkillVersion(second.id))?.id).toBe(untouched.versionId);
 	});
 
-	it.each(['identity', 'name', 'source', 'permission', 'unavailable'] as const)(
-		'shows %s conflicts before writing Skills',
-		async (kind) => {
-			const remote = await createRemote();
-			const environments = await createInstanceEnvironments(remote.bareDir);
-			const project = await createTeamProject('Skills project', owner);
-			const skill = await createSkill({ projectId: project.id, content: { name: 'Guide' } });
-			await service.promote(environments.promote.id, owner, {});
-			await createSkillVersion(skill.id, { name: 'Guide', instructions: 'Local content' });
-			if (kind === 'identity' || kind === 'name') {
-				await deleteSkill(skill.id);
-				await createSkill({
-					...(kind === 'identity' ? { id: skill.id } : { projectId: project.id }),
-					content: { name: 'Guide', instructions: 'Local content' },
-				});
-			}
-			if (kind === 'source')
-				vi.spyOn(Container.get(SkillService), 'isSourceManaged').mockResolvedValue(true);
-			if (kind === 'permission')
-				vi.spyOn(Container.get(SkillAccessService), 'canAccess').mockImplementation(
-					async (_user, _target, operation) => operation === 'read',
-				);
-			if (kind === 'unavailable')
-				vi.spyOn(Container.get(SkillsGate), 'isEnabled', 'get').mockReturnValue(false);
-			const preview = await changeService().getInstanceApplyPreview(owner, environments.apply.id);
-			expect(preview.check.conflicts).toEqual(
-				expect.arrayContaining([
-					expect.objectContaining({ kind: 'skill', id: skill.id, code: 'skill-conflict' }),
-				]),
-			);
-			const apply = vi.spyOn(Container.get(N8nPackagesService), 'applyPackagePlan');
-			await expect(service.apply(environments.apply.id, owner, {})).resolves.toMatchObject({
-				status: 'blocked',
+	it.each([
+		['identity', 'scope-conflict'],
+		['name', 'name-conflict'],
+		['source', 'source-managed'],
+		['permission', 'permission-denied'],
+		['unavailable', 'unavailable'],
+	] as const)('shows %s conflicts before writing Skills', async (kind, reason) => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		const project = await createTeamProject('Skills project', owner);
+		const skill = await createSkill({ projectId: project.id, content: { name: 'Guide' } });
+		await service.promote(environments.promote.id, owner, {});
+		await createSkillVersion(skill.id, { name: 'Guide', instructions: 'Local content' });
+		if (kind === 'identity' || kind === 'name') {
+			await deleteSkill(skill.id);
+			await createSkill({
+				...(kind === 'identity' ? { id: skill.id } : { projectId: project.id }),
+				content: { name: 'Guide', instructions: 'Local content' },
 			});
-			expect(apply).not.toHaveBeenCalled();
-		},
-	);
+		}
+		if (kind === 'source')
+			vi.spyOn(Container.get(SkillService), 'isSourceManaged').mockResolvedValue(true);
+		if (kind === 'permission')
+			vi.spyOn(Container.get(SkillAccessService), 'canAccess').mockImplementation(
+				async (_user, _target, operation) => operation === 'read',
+			);
+		if (kind === 'unavailable')
+			vi.spyOn(Container.get(SkillsGate), 'isEnabled', 'get').mockReturnValue(false);
+		const preview = await changeService().getInstanceApplyPreview(owner, environments.apply.id);
+		expect(preview.check.conflicts).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ kind: 'skill', id: skill.id, code: 'skill-conflict', reason }),
+			]),
+		);
+		const apply = vi.spyOn(Container.get(N8nPackagesService), 'applyPackagePlan');
+		await expect(service.apply(environments.apply.id, owner, {})).resolves.toMatchObject({
+			status: 'blocked',
+		});
+		expect(apply).not.toHaveBeenCalled();
+	});
 
 	it('shows following consumers, preserves published pins, and blocks their removal', async () => {
 		const remote = await createRemote();

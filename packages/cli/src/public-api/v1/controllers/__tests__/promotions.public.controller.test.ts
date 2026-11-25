@@ -233,7 +233,7 @@ describe('Promotion Skill content access', () => {
 							kind: 'skill',
 							code: 'skill-conflict',
 							id: 's1',
-							reason: 'Move or delete this Skill first.',
+							reason: 'project-deletion',
 						},
 					],
 				},

@@ -7,11 +7,25 @@ oneOf:
           - skill-conflict
       skillId:
         type: string
+      reason:
+        type: string
+        enum:
+          - unavailable
+          - invalid-selection
+          - scope-conflict
+          - permission-denied
+          - source-managed
+          - content-conflict
+          - name-conflict
+          - missing
+          - in-use
+          - protected
       message:
         type: string
     required:
       - type
       - skillId
+      - reason
       - message
   - type: object
     properties:

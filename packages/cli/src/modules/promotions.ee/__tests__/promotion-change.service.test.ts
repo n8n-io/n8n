@@ -1,4 +1,10 @@
-import { SkillService, SkillAccessService, SkillsGate } from '@/modules/skills';
+import { ModuleRegistry } from '@n8n/backend-common';
+import {
+	SkillService,
+	SkillAccessService,
+	SkillRuntimeService,
+	SkillsGate,
+} from '@/modules/skills';
 import { PromotionSkillSelectionService } from '../promotion-skill-selection.service';
 import type { User } from '@n8n/db';
 import { ForbiddenError } from '@n8n/errors';
@@ -153,6 +159,8 @@ describe('PromotionChangeService preview permission', () => {
 			mock<SkillsGate>({ isEnabled: false }),
 			mock<SkillService>(),
 			mock<SkillAccessService>(),
+			mock<SkillRuntimeService>(),
+			mock<ModuleRegistry>(),
 		),
 		mock(),
 		mock(),

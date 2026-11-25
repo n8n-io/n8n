@@ -1,4 +1,4 @@
-import { skillNameKey, type ImportedSkillSummary } from '@n8n/api-types';
+import { skillNameKey, type ImportedSkillSummary, type SkillImportIssue } from '@n8n/api-types';
 import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
@@ -82,41 +82,46 @@ export class SkillImporter {
 			plan.issues = ids.map((skillId) => ({
 				type: 'skill-conflict',
 				skillId,
+				reason: 'unavailable',
 				message: 'Skills are unavailable on this instance.',
 			}));
 			return plan;
 		}
 		const existing = await this.skillService.findLatest(ids);
 		const names = new Set<string>();
-		const issue = (skillId: string, message: string) =>
-			plan.issues.push({ type: 'skill-conflict', skillId, message });
+		const issue = (skillId: string, reason: SkillImportIssue['reason'], message: string) =>
+			plan.issues.push({ type: 'skill-conflict', skillId, reason, message });
 		for (const { skill, projectId } of selected) {
 			if (deletedSkillIds.includes(skill.id)) {
-				issue(skill.id, 'A Skill cannot be imported and removed in the same request.');
+				issue(
+					skill.id,
+					'invalid-selection',
+					'A Skill cannot be imported and removed in the same request.',
+				);
 				continue;
 			}
 			const target = { projectId: skill.scope === 'instance' ? null : projectId };
 			if (skill.scope === 'project' && target.projectId === null) {
-				issue(skill.id, 'A project Skill requires a destination project.');
+				issue(skill.id, 'scope-conflict', 'A project Skill requires a destination project.');
 				continue;
 			}
 			const row = existing.get(skill.id);
 			if (row && !isSameSkillTarget(row.target, target)) {
-				issue(skill.id, 'The Skill identity belongs to another scope.');
+				issue(skill.id, 'scope-conflict', 'The Skill identity belongs to another scope.');
 				continue;
 			}
 			if (row && !(await this.skillAccess.canAccess(user, target, 'read'))) {
-				issue(skill.id, 'You cannot read the destination Skill.');
+				issue(skill.id, 'permission-denied', 'You cannot read the destination Skill.');
 				continue;
 			}
 			if (row && (await this.skillService.isSourceManaged(skill.id))) {
-				issue(skill.id, 'The destination Skill is managed by a source.');
+				issue(skill.id, 'source-managed', 'The destination Skill is managed by a source.');
 				continue;
 			}
 			// Standalone selection keeps the package identity. Agent copies keep their existing rules.
 			const decision = decideWrite(skill, target, row, conflictPolicy);
 			if (decision.kind === 'issue') {
-				issue(skill.id, decision.message);
+				issue(skill.id, 'content-conflict', decision.message);
 				continue;
 			}
 			if (row) plan.checked.push(row);
@@ -124,9 +129,9 @@ export class SkillImporter {
 				const problem = row
 					? undefined
 					: await this.createNameProblem(skill.id, target, skill.skill.name);
-				if (problem) issue(skill.id, problem);
+				if (problem) issue(skill.id, 'name-conflict', problem);
 				if (!claimName(names, decision.write))
-					issue(skill.id, 'Two selected Skills have the same name in this scope.');
+					issue(skill.id, 'name-conflict', 'Two selected Skills have the same name in this scope.');
 				if (
 					!(await this.canWrite(
 						user,
@@ -134,7 +139,7 @@ export class SkillImporter {
 						target.projectId !== null && options.pendingProjectIds?.has(target.projectId) === true,
 					))
 				)
-					issue(skill.id, 'You cannot create or edit this Skill.');
+					issue(skill.id, 'permission-denied', 'You cannot create or edit this Skill.');
 				addWrite(plan.writes, decision.write, skill.id, []);
 			}
 			plan.outcomes.push({
@@ -165,13 +170,13 @@ export class SkillImporter {
 				skill.skill.name,
 				plannedNames,
 			);
-			if (problem) issue(skill.id, problem);
+			if (problem) issue(skill.id, 'name-conflict', problem);
 			plannedNames.set(skill.id, skill.skill.name);
 		}
 		for (const id of new Set(deletedSkillIds)) {
 			const row = existing.get(id);
 			if (!row) {
-				issue(id, 'The requested destination Skill does not exist.');
+				issue(id, 'missing', 'The requested destination Skill does not exist.');
 				continue;
 			}
 			if (
@@ -179,14 +184,14 @@ export class SkillImporter {
 				options.allowedProjectIds &&
 				!options.allowedProjectIds.has(row.target.projectId)
 			) {
-				issue(id, 'The Skill is outside the selected destination projects.');
+				issue(id, 'scope-conflict', 'The Skill is outside the selected destination projects.');
 				continue;
 			}
 			try {
 				await this.skillAccess.requireAccess(user, id, 'delete');
 				await this.skillService.assertCanDelete(id);
 				if (await this.skillService.isSourceManaged(id)) {
-					issue(id, 'The destination Skill is managed by a source.');
+					issue(id, 'source-managed', 'The destination Skill is managed by a source.');
 					continue;
 				}
 			} catch (error) {
@@ -198,7 +203,15 @@ export class SkillImporter {
 					)
 				)
 					throw error;
-				issue(id, error.message);
+				issue(
+					id,
+					error instanceof ForbiddenError
+						? 'permission-denied'
+						: error instanceof NotFoundError
+							? 'missing'
+							: 'in-use',
+					error.message,
+				);
 				continue;
 			}
 			plan.checked.push(row);
@@ -217,7 +230,7 @@ export class SkillImporter {
 				this.skillService.assertWritable();
 			} catch (error) {
 				if (!(error instanceof ForbiddenError)) throw error;
-				for (const { skill } of plan.writes.shared) issue(skill.id, error.message);
+				for (const { skill } of plan.writes.shared) issue(skill.id, 'protected', error.message);
 			}
 		}
 		return plan;
