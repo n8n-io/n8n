@@ -319,7 +319,7 @@ async function enter(value: typeof source.value) {
 <template>
 	<N8nPopover
 		v-model:open="open"
-		:teleported="teleported"
+		:teleported="teleported ?? false"
 		:z-index="teleported ? builderMenuZIndex : undefined"
 		position-strategy="fixed"
 		:enable-scrolling="false"

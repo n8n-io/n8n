@@ -138,33 +138,36 @@ it('keeps a custom name when the destination changes', async () => {
 	wrapper.unmount();
 });
 
-it('keeps the portaled menu linked to its trigger outside the editor column', async () => {
-	const column = document.createElement('div');
-	document.body.append(column);
-	const wrapper = mount(AgentApprovalDestinationMenu, {
-		attachTo: column,
-		props: {
-			context,
-			projectId: 'project',
-			label: 'Add approver',
-			testId: 'add',
-			teleported: true,
-		},
-	});
-	try {
-		const trigger = wrapper.get('[data-testid="add"]');
-		await trigger.trigger('click');
-		await flushPromises();
-		const menu = document.querySelector(
-			`[role="dialog"][aria-labelledby="${trigger.attributes('id')}"]`,
-		);
-		expect(menu).toBeInTheDocument();
-		expect(column.contains(menu)).toBe(false);
-	} finally {
-		wrapper.unmount();
-		column.remove();
-	}
-});
+it.each([true, undefined])(
+	'keeps the menu linked to its trigger (teleported: %s)',
+	async (teleported) => {
+		const column = document.createElement('div');
+		document.body.append(column);
+		const wrapper = mount(AgentApprovalDestinationMenu, {
+			attachTo: column,
+			props: {
+				context,
+				projectId: 'project',
+				label: 'Add approver',
+				testId: 'add',
+				teleported,
+			},
+		});
+		try {
+			const trigger = wrapper.get('[data-testid="add"]');
+			await trigger.trigger('click');
+			await flushPromises();
+			const menu = document.querySelector(
+				`[role="dialog"][aria-labelledby="${trigger.attributes('id')}"]`,
+			);
+			expect(menu).toBeInTheDocument();
+			expect(column.contains(menu)).toBe(teleported !== true);
+		} finally {
+			wrapper.unmount();
+			column.remove();
+		}
+	},
+);
 
 it('lists available approvals above the divider and creation options', async () => {
 	const wrapper = mount(AgentApprovalDestinationMenu, {
