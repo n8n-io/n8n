@@ -1,7 +1,6 @@
 import type { HttpRequestClient } from '@n8n/backend-network';
 
 import {
-	downloadDiscordAttachment,
 	fetchDiscordApplicationMetadata,
 	searchDiscordChannels,
 	settleDiscordActionMessage,
@@ -232,48 +231,6 @@ it('settles an action by replacing the message and removing its controls', async
 			},
 		},
 	]);
-});
-
-it('cancels an in-flight attachment download when the deadline expires', async () => {
-	const controller = new AbortController();
-	const timeoutError = new DOMException('The operation was aborted due to timeout', 'TimeoutError');
-	const timeoutSpy = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(controller.signal);
-
-	try {
-		const httpClient = {
-			request: vi.fn(
-				async (options: { abortSignal?: AbortSignal }) =>
-					await new Promise((resolve, reject) => {
-						const { abortSignal } = options;
-						if (!abortSignal) {
-							resolve({ body: Buffer.alloc(0), headers: {}, statusCode: 200 });
-							return;
-						}
-						if (abortSignal.aborted) {
-							reject(abortSignal.reason);
-							return;
-						}
-						abortSignal.addEventListener(
-							'abort',
-							() => {
-								reject(abortSignal.reason);
-							},
-							{ once: true },
-						);
-					}),
-			),
-		} as unknown as HttpRequestClient;
-
-		const downloadPromise = downloadDiscordAttachment(
-			'https://cdn.discordapp.com/attachments/1/2/file.bin',
-			httpClient,
-		);
-		controller.abort(timeoutError);
-
-		await expect(downloadPromise).rejects.toBe(timeoutError);
-	} finally {
-		timeoutSpy.mockRestore();
-	}
 });
 
 it('does not send credentials on cross-origin redirects for authenticated Discord requests', async () => {

@@ -249,3 +249,29 @@ describe('AgentRequirementsExtractor', () => {
 		});
 	});
 });
+
+it('exports decision workflow references and clears channel approval credentials', () => {
+	const snapshot = prepare({
+		name: 'Reviewer',
+		model: 'openai/test',
+		instructions: 'Review tools',
+		hitlConfigurations: [
+			{ id: 'interaction_workflow', name: 'Review', method: 'workflow', workflowId: 'decision-id' },
+			{
+				id: 'interaction_channel',
+				name: 'Review channel',
+				method: 'channel',
+				channel: 'slack',
+				credentialId: 'source-credential',
+				recipient: { kind: 'channel', id: 'C_REVIEW' },
+			},
+		],
+	});
+	expect(snapshot.content.config?.hitlConfigurations?.[1]).toMatchObject({ credentialId: '' });
+	expect(extractor.extract(snapshot).workflows).toContainEqual({
+		...source,
+		referencedWorkflowId: 'decision-id',
+		origin: 'top-level',
+	});
+	expect(extractor.extract(snapshot).credentials).toEqual([]);
+});

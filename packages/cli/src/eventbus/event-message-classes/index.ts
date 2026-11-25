@@ -172,6 +172,8 @@ export const eventNamesAudit = [
 	'n8n.audit.workflow-reviews.disabled',
 	'n8n.audit.workflow-reviews.approval-required.enabled',
 	'n8n.audit.workflow-reviews.approval-required.disabled',
+	'n8n.audit.workflow-reviews.project-approval-required.enabled',
+	'n8n.audit.workflow-reviews.project-approval-required.disabled',
 	'n8n.audit.public-api-rate-limit.enabled',
 	'n8n.audit.public-api-rate-limit.disabled',
 	'n8n.audit.public-api-rate-limit.updated',

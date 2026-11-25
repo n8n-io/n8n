@@ -1,7 +1,11 @@
 import type { KnowledgeCollectionDto } from '@n8n/api-types';
 import { createComponentRenderer } from '@/__tests__/render';
+import { mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import { STORES } from '@n8n/stores';
+import { useRBACStore } from '@n8n/stores/rbac.store';
+import userEvent from '@testing-library/user-event';
+import { waitFor, within } from '@testing-library/vue';
 
 import CollectionsTable from './CollectionsTable.vue';
 
@@ -27,6 +31,20 @@ function render(collections: KnowledgeCollectionDto[], showEmpty = false) {
 	return renderTable({ props: { collections, loading: false, showEmpty } });
 }
 
+async function openActions(row: HTMLElement) {
+	await userEvent.click(within(row).getByTestId('collection-row-actions').querySelector('button')!);
+}
+
+function menuItem(action: 'edit' | 'delete') {
+	return document.querySelector(`[data-test-id="action-${action}"]`);
+}
+
+function menuLabels() {
+	return Array.from(document.querySelectorAll('[role="menuitem"]')).map((item) =>
+		item.textContent?.trim(),
+	);
+}
+
 describe('CollectionsTable', () => {
 	beforeEach(() => {
 		createTestingPinia({
@@ -39,6 +57,14 @@ describe('CollectionsTable', () => {
 							name: 'Support team',
 							type: 'team',
 							icon: { type: 'icon', value: 'bot' },
+							// Project admins and editors both hold `agent:update`.
+							scopes: ['agent:read', 'agent:update'],
+						},
+						{
+							id: 'team-viewer',
+							name: 'Viewers only',
+							type: 'team',
+							scopes: ['agent:read'],
 						},
 					],
 				},
@@ -166,5 +192,74 @@ describe('CollectionsTable', () => {
 		const { container } = render(rows);
 
 		expect(container.querySelector('.table-pagination')).toBeNull();
+	});
+
+	describe('row menu', () => {
+		const editable = collection({
+			id: 'editable',
+			homeProject: { id: 'team-1', name: 'Support team', type: 'team' },
+		});
+		const readOnly = collection({
+			id: 'read-only',
+			name: 'Brand guidelines',
+			homeProject: { id: 'team-viewer', name: 'Viewers only', type: 'team' },
+		});
+
+		it('offers Edit and Delete on a row the user can change', async () => {
+			const { getByTestId } = render([editable]);
+
+			await openActions(getByTestId('collections-table'));
+
+			await waitFor(() => expect(menuItem('edit')).toBeInTheDocument());
+			expect(menuLabels()).toEqual(['Edit', 'Delete']);
+		});
+
+		it('shows no menu on a row of a project where the user is a viewer', () => {
+			const { getAllByTestId } = render([editable, readOnly]);
+			const rowOf = (name: string) =>
+				getAllByTestId('collection-name')
+					.find((cell) => cell.textContent?.trim() === name)!
+					.closest('tr')!;
+
+			expect(within(rowOf('Customer support')).getByTestId('collection-row-actions')).toBeVisible();
+			expect(within(rowOf('Brand guidelines')).queryByTestId('collection-row-actions')).toBeNull();
+		});
+
+		it('gives the row menu a name for screen readers', () => {
+			const { getByTestId } = render([editable]);
+
+			expect(
+				within(getByTestId('collection-row-actions')).getByRole('button', { name: 'More actions' }),
+			).toBeVisible();
+		});
+
+		it('shows the menu on every row to a user with the global scope', () => {
+			mockedStore(useRBACStore).hasScope.mockImplementation((scope) => scope === 'agent:update');
+			const { getAllByTestId } = render([
+				editable,
+				readOnly,
+				collection({
+					id: 'other',
+					homeProject: { id: 'team-2', name: 'Sales', type: 'team' },
+				}),
+			]);
+
+			expect(getAllByTestId('collection-row-actions')).toHaveLength(3);
+		});
+
+		it('emits edit and delete with the collection of the row', async () => {
+			const { getByTestId, emitted } = render([editable]);
+
+			await openActions(getByTestId('collections-table'));
+			await waitFor(() => expect(menuItem('edit')).toBeInTheDocument());
+			await userEvent.click(menuItem('edit')!);
+
+			await openActions(getByTestId('collections-table'));
+			await waitFor(() => expect(menuItem('delete')).toBeInTheDocument());
+			await userEvent.click(menuItem('delete')!);
+
+			expect(emitted('edit')).toEqual([[editable]]);
+			expect(emitted('delete')).toEqual([[editable]]);
+		});
 	});
 });

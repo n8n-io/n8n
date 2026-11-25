@@ -52,6 +52,7 @@ packages:
   - packages/modules/**
   - packages/extensions/**
   - packages/quality/**
+  - scripts/experimental/*
   - '!packages/quality/testing/playwright/fixtures/community-packages/packages/**'
 
 catalog:

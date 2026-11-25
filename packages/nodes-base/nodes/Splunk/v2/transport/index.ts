@@ -19,7 +19,7 @@ export async function splunkApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	endpoint: RequestPath,
-	body: IDataObject = {},
+	{ output_mode: _, ...body }: IDataObject = {},
 	qs: IDataObject = {},
 ): Promise<any> {
 	const { baseUrl, allowUnauthorizedCerts } =
@@ -31,20 +31,11 @@ export async function splunkApiRequest(
 		},
 		method,
 		form: body,
-		qs,
+		qs: { ...qs, output_mode: 'xml' },
 		uri: requestUrl`${baseUrl}${endpoint}`,
-		json: true,
 		rejectUnauthorized: !allowUnauthorizedCerts,
 		useQuerystring: true, // serialize roles array as `roles=A&roles=B`
 	};
-
-	if (!Object.keys(body).length) {
-		delete options.body;
-	}
-
-	if (!Object.keys(qs).length) {
-		delete options.qs;
-	}
 
 	let result;
 	try {
@@ -52,13 +43,8 @@ export async function splunkApiRequest(
 
 		do {
 			try {
-				const response = await this.helpers.requestWithAuthentication.call(
-					this,
-					'splunkApi',
-					options,
-				);
-				result = await parseXml(response);
-				return result;
+				result = await this.helpers.requestWithAuthentication.call(this, 'splunkApi', options);
+				break;
 			} catch (error) {
 				if (attempts >= 5) {
 					throw error;
@@ -87,6 +73,15 @@ export async function splunkApiRequest(
 		}
 
 		throw new NodeApiError(this.getNode(), error as JsonObject);
+	}
+
+	try {
+		return await parseXml(result);
+	} catch {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Splunk returned a response that is not valid XML',
+		);
 	}
 }
 

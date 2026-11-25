@@ -1,6 +1,7 @@
 import type {
 	WorkflowReviewRequestForWorkflow,
 	WorkflowReviewRequestSummary,
+	WorkflowReviewRequirementLevel,
 } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -18,6 +19,7 @@ export const useWorkflowReviewStatusStore = defineStore('workflowReviewStatus', 
 	const rootStore = useRootStore();
 
 	const latestReviewByWorkflowId = ref<Record<string, WorkflowReviewRequestForWorkflow | null>>({});
+	const reviewRequiredByWorkflowId = ref<Record<string, WorkflowReviewRequirementLevel | null>>({});
 	// Latest-wins: only the most recently started fetch may write its outcome.
 	const latestSequenceByWorkflowId: Record<string, number> = {};
 
@@ -39,6 +41,12 @@ export const useWorkflowReviewStatusStore = defineStore('workflowReviewStatus', 
 		return openReviewRequest(workflowId) !== null;
 	};
 
+	/** The level that requires an approved review, or `undefined` when not fetched yet. */
+	const reviewRequiredBy = (
+		workflowId: string,
+	): WorkflowReviewRequirementLevel | null | undefined =>
+		reviewRequiredByWorkflowId.value[workflowId];
+
 	/** True when a newer fetch has started since this one. */
 	const isStale = (workflowId: string, sequence: number): boolean =>
 		sequence !== latestSequenceByWorkflowId[workflowId];
@@ -50,12 +58,13 @@ export const useWorkflowReviewStatusStore = defineStore('workflowReviewStatus', 
 		try {
 			// No state filter: the newest review answers both questions, keeping the
 			// canvas to a single workflow-review request.
-			const { data } = await fetchWorkflowReviewRequests(rootStore.restApiContext, {
+			const response = await fetchWorkflowReviewRequests(rootStore.restApiContext, {
 				workflowId,
 				take: 1,
 			});
 			if (isStale(workflowId, sequence)) return;
-			latestReviewByWorkflowId.value[workflowId] = data[0] ?? null;
+			latestReviewByWorkflowId.value[workflowId] = response.data[0] ?? null;
+			reviewRequiredByWorkflowId.value[workflowId] = response.reviewRequiredBy;
 		} catch (error) {
 			if (isStale(workflowId, sequence)) return;
 			if (
@@ -64,6 +73,7 @@ export const useWorkflowReviewStatusStore = defineStore('workflowReviewStatus', 
 			) {
 				// Access or feature revoked — fall back to the local preference.
 				delete latestReviewByWorkflowId.value[workflowId];
+				delete reviewRequiredByWorkflowId.value[workflowId];
 				return;
 			}
 			// Transient error: keep the last known status. This is a background
@@ -103,6 +113,7 @@ export const useWorkflowReviewStatusStore = defineStore('workflowReviewStatus', 
 		latestReviewRequest,
 		openReviewRequest,
 		hasOpenReview,
+		reviewRequiredBy,
 		fetchStatus,
 		setOpenReview,
 	};
