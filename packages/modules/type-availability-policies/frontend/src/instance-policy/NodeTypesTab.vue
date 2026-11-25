@@ -16,7 +16,8 @@ const i18n = useI18n();
 const rootStore = useRootStore();
 const theme = useAppliedTheme();
 const instancePolicy = useInstancePolicy();
-const { types, loading, changeAccess } = useInstanceTypeAccess('node');
+const { types, loading, changeAccess, selection, bulkBusy, bulkChange } =
+	useInstanceTypeAccess('node');
 
 // `null` until the summaries load, so that the rows do not show type names first.
 const typeSummaries = shallowRef<ReadonlyMap<string, NodeTypeSummary> | null>(null);
@@ -72,12 +73,15 @@ defineExpose({ returnFocus: (name: string | undefined) => table.value?.returnFoc
 <template>
 	<InstancePolicyTable
 		ref="table"
+		v-model:selection="selection"
 		:rows="rows"
+		:bulk-busy="bulkBusy"
 		:loading="loading || typeSummaries === null"
 		:search-placeholder="i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.search.node')"
 		:no-match-text="i18n.baseText('typeAvailabilityPolicies.instancePolicy.table.noMatch.node')"
 		data-test-id="node-types-tab"
 		@change="changeAccess"
+		@bulk-change="bulkChange"
 		@open="(name) => emit('open', name)"
 	>
 		<template #toolbar-start>

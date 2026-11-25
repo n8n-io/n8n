@@ -470,6 +470,99 @@ describe('N8nDataTableServer', () => {
 		});
 	});
 
+	it('gives the select checkboxes an accessible name', async () => {
+		const { getByRole, getAllByRole, rerender } = render(N8nDataTableServer<Item>, {
+			props: { items, headers, itemsLength: 3, showSelect: true, selection: [] },
+		});
+
+		expect(getByRole('checkbox', { name: 'Select all rows on this page' })).toBeInTheDocument();
+		expect(getAllByRole('checkbox', { name: 'Select row' })).toHaveLength(3);
+
+		await rerender({
+			selectAllLabel: 'Select the page',
+			selectRowLabel: (item: Item) => `Select ${item.firstName}`,
+		});
+
+		expect(getByRole('checkbox', { name: 'Select the page' })).toBeInTheDocument();
+		expect(getByRole('checkbox', { name: `Select ${items[0].firstName}` })).toBeInTheDocument();
+	});
+
+	it('does not emit click:row when a row checkbox is clicked', async () => {
+		const { container, emitted } = render(N8nDataTableServer<Item>, {
+			props: { items, headers, itemsLength: 3, showSelect: true, selection: [] },
+		});
+
+		await userEvent.click(container.querySelector<HTMLElement>('tbody [role="checkbox"]')!);
+
+		expect(emitted('update:selection')).toHaveLength(1);
+		expect(emitted('click:row')).toBeUndefined();
+	});
+
+	it('keeps the rows of other pages selected and bases the header state on this page', async () => {
+		const offPage = 'not-on-this-page';
+		const { container, emitted, rerender } = render(N8nDataTableServer<Item>, {
+			props: { items, headers, itemsLength: 10, showSelect: true, selection: [offPage] },
+		});
+		const header = container.querySelector<HTMLElement>('thead [role="checkbox"]')!;
+
+		// A selection on another page does not make the header partly checked.
+		expect(header).toHaveAttribute('aria-checked', 'false');
+
+		const [first] = container.querySelectorAll<HTMLElement>('tbody [role="checkbox"]');
+		await userEvent.click(first);
+		expect(emitted('update:selection').at(-1)).toEqual([[offPage, items[0].id]]);
+
+		await rerender({ selection: [offPage, items[0].id] });
+		expect(header).toHaveAttribute('aria-checked', 'mixed');
+
+		await userEvent.click(header);
+		expect(emitted('update:selection').at(-1)).toEqual([
+			[offPage, ...items.map((item) => item.id)],
+		]);
+
+		await rerender({ selection: [offPage, ...items.map((item) => item.id)] });
+		expect(header).toHaveAttribute('aria-checked', 'true');
+
+		// Clearing the page leaves the rows of the other pages.
+		await userEvent.click(header);
+		expect(emitted('update:selection').at(-1)).toEqual([[offPage]]);
+	});
+
+	it('selects the given rows on every page from the header when selectAllItems is set', async () => {
+		const otherPages = [itemFactory(), itemFactory()];
+		const notSelectable = itemFactory();
+		const allIds = [...items, ...otherPages].map((item) => item.id);
+		const hidden = 'hidden-by-a-filter';
+		const { container, emitted, rerender } = render(N8nDataTableServer<Item>, {
+			props: {
+				items,
+				headers,
+				itemsLength: allIds.length + 1,
+				showSelect: true,
+				selection: [hidden],
+				selectAllItems: [...items, ...otherPages, notSelectable],
+				itemSelectable: (item: Item) => item.id !== notSelectable.id,
+			},
+		});
+		const header = container.querySelector<HTMLElement>('thead [role="checkbox"]')!;
+		expect(header).toHaveAttribute('aria-checked', 'false');
+
+		await userEvent.click(header);
+		// Every selectable row, on all pages. The row that `itemSelectable` refuses is left out.
+		expect(emitted('update:selection').at(-1)).toEqual([[hidden, ...allIds]]);
+
+		await rerender({ selection: [hidden, ...allIds] });
+		expect(header).toHaveAttribute('aria-checked', 'true');
+
+		await rerender({ selection: [hidden, otherPages[0].id] });
+		expect(header).toHaveAttribute('aria-checked', 'mixed');
+
+		// Clearing keeps the ids outside the list, such as rows that a filter hides.
+		await rerender({ selection: [hidden, ...allIds] });
+		await userEvent.click(header);
+		expect(emitted('update:selection').at(-1)).toEqual([[hidden]]);
+	});
+
 	it('should render one skeleton row per page size while the first page loads', () => {
 		const { container } = render(N8nDataTableServer<Item>, {
 			props: { items: [], headers, itemsLength: 100, loading: true, itemsPerPage: 25 },

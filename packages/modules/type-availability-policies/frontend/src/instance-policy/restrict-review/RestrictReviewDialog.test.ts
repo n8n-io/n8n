@@ -7,7 +7,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h } from 'vue';
 
 import RestrictReviewDialog from './RestrictReviewDialog.vue';
-import { useRestrictReviewStore, type RestrictReviewRequest } from './restrict-review.store';
+import {
+	useRestrictReviewStore,
+	type BulkRestrictReviewRequest,
+	type RestrictReviewRequest,
+} from './restrict-review.store';
 
 const { track } = vi.hoisted(() => ({ track: vi.fn() }));
 
@@ -264,5 +268,61 @@ describe('RestrictReviewDialog', () => {
 		await userEvent.keyboard('{Escape}');
 
 		expect(resolve).toHaveBeenCalledWith(false);
+	});
+
+	describe('bulk restriction', () => {
+		const bulk: BulkRestrictReviewRequest = {
+			kind: 'node',
+			total: 5,
+			items: [
+				{ name: 'n8n-nodes-base.notion', label: 'Notion', usage: notion.usage },
+				{ name: 'n8n-nodes-base.slack', label: 'Slack', usage: null },
+			],
+		};
+
+		function openBulk(request: BulkRestrictReviewRequest) {
+			const review = useRestrictReviewStore();
+			review.bulkRequest = request;
+			const resolve = vi.spyOn(review, 'resolve');
+			renderComponent();
+			return { resolve };
+		}
+
+		it('lists each type in use with its usage, and the types with no known usage', async () => {
+			openBulk(bulk);
+
+			await waitFor(() => expect(screen.getByText('Restrict 5 nodes?')).toBeInTheDocument());
+			expect(
+				screen.getByText(
+					"Users won't be able to add or use these nodes. 2 of the 5 selected items are currently used:",
+				),
+			).toBeInTheDocument();
+			expect(
+				screen.getByText('Notion: 3 uses across 2 workflows, 0 active workflows'),
+			).toBeInTheDocument();
+			expect(
+				screen.getByText('Slack: the usage could not be loaded, so it may be in use'),
+			).toBeInTheDocument();
+		});
+
+		it('uses the credential text', async () => {
+			openBulk({ ...bulk, kind: 'credential' });
+
+			expect(await screen.findByText('Restrict 5 credential types?')).toBeInTheDocument();
+		});
+
+		it('confirms with the count', async () => {
+			const { resolve } = openBulk(bulk);
+
+			await userEvent.click(await screen.findByRole('button', { name: 'Restrict 5' }));
+			expect(resolve).toHaveBeenCalledWith(true);
+		});
+
+		it('cancels with Cancel', async () => {
+			const { resolve } = openBulk(bulk);
+
+			await userEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
+			expect(resolve).toHaveBeenCalledWith(false);
+		});
 	});
 });

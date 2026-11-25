@@ -37,6 +37,7 @@ import type {
 	Row,
 	RowSelectionState,
 	SortingState,
+	Table,
 	Updater,
 } from '@tanstack/vue-table';
 import { createColumnHelper, FlexRender, getCoreRowModel, useVueTable } from '@tanstack/vue-table';
@@ -50,6 +51,7 @@ import get from 'lodash/get.js';
 import { computed, h, shallowRef, useSlots, useTemplateRef, watch } from 'vue';
 
 import { useScrollEdges } from '../../composables/useScrollEdges';
+import { useI18n } from '../../composables/useI18n';
 import N8nCheckbox from '../../v2/components/Checkbox/Checkbox.vue';
 import N8nPagination, { PAGINATION_ALL_ITEMS_PER_PAGE } from '../N8nPagination';
 
@@ -74,6 +76,17 @@ const props = withDefaults(
 		returnObject?: boolean;
 
 		itemSelectable?: boolean | DeepKeys<T> | ((row: T) => boolean);
+		/** The accessible name of the checkbox that selects the rows of the page. */
+		selectAllLabel?: string;
+		/**
+		 * The rows that the header checkbox selects. By default it selects the rows of this page.
+		 * A table that pages on the client can pass every row that matches its filters, so the
+		 * header selects them on every page. `itemSelectable` applies to them too. Not for use with
+		 * `returnObject`.
+		 */
+		selectAllItems?: T[];
+		/** The accessible name of the checkbox of a row, for example "Select Slack". */
+		selectRowLabel?: (row: T) => string;
 		pageSizes?: number[];
 		/**
 		 * Render the pager. Set this to false when the screen loads more rows itself.
@@ -118,6 +131,9 @@ const props = withDefaults(
 	}>(),
 	{
 		itemSelectable: undefined,
+		selectAllLabel: undefined,
+		selectAllItems: undefined,
+		selectRowLabel: undefined,
 		itemValue: 'id',
 		pageSizes: () => [10, 25, 50, 100],
 		pagination: true,
@@ -463,25 +479,24 @@ function handleSortingChange(updaterOrValue: Updater<SortingState>) {
 }
 
 const SELECT_COLUMN_ID = 'data-table-select';
+const { t } = useI18n();
+
 const selectColumn: ColumnDef<T> = {
 	id: SELECT_COLUMN_ID,
 	enableResizing: false,
 	// 16px leading inset, 16px checkbox, 8px trailing padding.
 	size: 40,
 	enablePinning: true,
-	header: ({ table }) => {
-		return h(N8nCheckbox, {
-			modelValue: table.getIsAllRowsSelected(),
-			indeterminate: table.getIsSomeRowsSelected(),
-			'onUpdate:modelValue': (value: boolean) => {
-				table.toggleAllRowsSelected(value);
-			},
-		});
-	},
+	header: ({ table }) =>
+		h(N8nCheckbox, {
+			...(props.selectAllItems ? selectAllState(props.selectAllItems) : pageSelectAllState(table)),
+			'aria-label': props.selectAllLabel ?? t('dataTable.selectAll'),
+		}),
 	cell: ({ row }) => {
 		return h(N8nCheckbox, {
 			modelValue: row.getIsSelected(),
 			disabled: !row.getCanSelect(),
+			'aria-label': props.selectRowLabel?.(row.original) ?? t('dataTable.selectRow'),
 			'onUpdate:modelValue': (value: boolean) => {
 				row.toggleSelected(value);
 			},
@@ -493,6 +508,54 @@ const selectColumn: ColumnDef<T> = {
 		},
 	},
 };
+
+type SelectAllState = {
+	modelValue: boolean;
+	indeterminate: boolean;
+	disabled?: boolean;
+	'onUpdate:modelValue': (value: boolean) => void;
+};
+
+// The page variants compare only the rows of this page, so rows that stay selected on other pages
+// do not make the header checkbox look partly checked.
+function pageSelectAllState(table: Table<T>): SelectAllState {
+	return {
+		modelValue: table.getIsAllPageRowsSelected(),
+		indeterminate: table.getIsSomePageRowsSelected(),
+		'onUpdate:modelValue': (value) => table.toggleAllRowsSelected(value),
+	};
+}
+
+function selectAllState(items: T[]): SelectAllState {
+	const ids = items.filter(isItemSelectable).map((item, index) => getRowId(item, index));
+	const selectedCount = ids.filter((id) => rowSelection.value[id]).length;
+	return {
+		modelValue: ids.length > 0 && selectedCount === ids.length,
+		indeterminate: selectedCount > 0 && selectedCount < ids.length,
+		disabled: ids.length === 0,
+		'onUpdate:modelValue': (value) => {
+			// Ids outside `ids`, such as rows that a filter hides, keep their state.
+			const next = { ...rowSelection.value };
+			for (const id of ids) {
+				if (value) next[id] = true;
+				else delete next[id];
+			}
+			handleRowSelectionChange(next);
+		},
+	};
+}
+
+function isItemSelectable(item: T): boolean {
+	if (typeof props.itemSelectable === 'undefined') return true;
+	if (typeof props.itemSelectable === 'boolean') return props.itemSelectable;
+	if (typeof props.itemSelectable === 'function') return props.itemSelectable(item);
+	return Boolean(get(item, props.itemSelectable));
+}
+
+// A click on the checkbox of a row selects it and does not also activate the row.
+function onCellClick(columnId: string, event: MouseEvent) {
+	if (columnId === SELECT_COLUMN_ID) event.stopPropagation();
+}
 
 function getRowId(originalRow: T, index: number, parent?: Row<T>): string {
 	if (typeof props.itemValue === 'function') {
@@ -578,20 +641,7 @@ const table = useVueTable({
 	columnResizeMode: 'onChange',
 	columnResizeDirection: 'ltr',
 	getRowId,
-	enableRowSelection: (row) => {
-		if (typeof props.itemSelectable === 'undefined') {
-			return true;
-		}
-		if (typeof props.itemSelectable === 'boolean') {
-			return props.itemSelectable;
-		}
-
-		if (typeof props.itemSelectable === 'function') {
-			return props.itemSelectable(row.original);
-		}
-
-		return Boolean(get(row.original, props.itemSelectable));
-	},
+	enableRowSelection: (row) => isItemSelectable(row.original),
 	onRowSelectionChange: handleRowSelectionChange,
 });
 </script>
@@ -753,6 +803,7 @@ const table = useVueTable({
 															getColumnMeta(cell.column).cellProps.align,
 														),
 													}"
+													@click="onCellClick(cell.column.id, $event)"
 												>
 													<div class="cell-content">
 														<FlexRender

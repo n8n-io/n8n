@@ -12,11 +12,14 @@ export function policyTableCells(defaultName: string) {
 	const accessCell = (getByTestId: GetByTestId, name = defaultName) =>
 		getByTestId(`instance-policy-access-${name}`);
 
-	/** Projects, Uses, Workflows and Active workflows. The cells before them are Name and Access. */
+	/**
+	 * Projects, Uses, Workflows and Active workflows. The cells before them are the select checkbox,
+	 * Name and Access.
+	 */
 	const usageCells = (getByTestId: GetByTestId, name = defaultName) =>
 		within(accessCell(getByTestId, name).closest('tr') as HTMLElement)
 			.getAllByRole('cell')
-			.slice(2)
+			.slice(3)
 			.map((cell) => cell.textContent?.trim());
 
 	return { accessCell, usageCells };

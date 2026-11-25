@@ -21,6 +21,7 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 
 import type { TypeIcon } from './instancePolicyTable.types';
+import PolicySelectionBar from '../components/PolicySelectionBar.vue';
 import type { InstanceTypeAccessRow } from './useInstanceTypeAccess';
 
 export type InstancePolicyTableRow = InstanceTypeAccessRow & {
@@ -37,12 +38,22 @@ const props = defineProps<{
 	loading: boolean;
 	searchPlaceholder: string;
 	noMatchText: string;
+	/** A bulk change of the selection is in progress. */
+	bulkBusy?: boolean;
 }>();
 
 const emit = defineEmits<{
 	change: [name: string, access: PolicyAction, label: string];
+	/** The admin gives the selected types the same access. */
+	bulkChange: [types: Array<{ name: string; label: string }>, access: PolicyAction];
 	open: [name: string];
 }>();
+
+/**
+ * The names of the selected types. It is kept when the page, the search or the filter changes, so
+ * the bar counts the selected rows that are hidden too.
+ */
+const selection = defineModel<string[]>('selection', { default: () => [] });
 
 const i18n = useI18n();
 
@@ -253,6 +264,52 @@ watch(
 
 defineExpose({ returnFocus });
 
+const rowsByName = computed(() => new Map(props.rows.map((row) => [row.name, row])));
+const selectedRows = computed(() =>
+	selection.value.flatMap((name) => rowsByName.value.get(name) ?? []),
+);
+
+// A reload can remove a type, or a rule can make it read-only, so the selection keeps only the
+// rows that the admin can still change.
+watch(rowsByName, (rows) => {
+	if (rows.size === 0) return;
+	const kept = selection.value.filter((name) => rows.get(name)?.editable === true);
+	if (kept.length !== selection.value.length) selection.value = kept;
+});
+
+const isEditable = (row: InstancePolicyTableRow) => row.editable;
+
+const selectRowLabel = (row: InstancePolicyTableRow) =>
+	i18n.baseText('typeAvailabilityPolicies.instancePolicy.bulk.selectRow', {
+		interpolate: { name: row.displayName },
+	});
+
+function onBulkChange(access: PolicyAction) {
+	emit(
+		'bulkChange',
+		selectedRows.value.map((row) => ({ name: row.name, label: row.displayName })),
+		access,
+	);
+}
+
+/** The bar leaves the DOM with the selection, so the focus goes to the checkbox of the page. */
+function focusSelectAll() {
+	const selectAll = root.value?.querySelector<HTMLElement>('thead [role="checkbox"]');
+	if (selectAll) selectAll.focus();
+	else focusFilter();
+}
+
+watch(
+	() => selection.value.length,
+	async (count) => {
+		if (count > 0 || !root.value?.contains(document.activeElement)) return;
+		const focused = document.activeElement;
+		await nextTick();
+		if (focused && !focused.isConnected) focusSelectAll();
+	},
+	{ flush: 'pre' },
+);
+
 // This page sets only Allowed and Restricted. A row that the default action leaves open to project
 // opt-in can still move to either. One list for each current access keeps the menus' props stable.
 function menuItems(current: PolicyAction): Array<DropdownMenuItemProps<PolicyAction>> {
@@ -313,6 +370,12 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 		<!-- The reload after a save must not swap the message, and its clear button, for skeleton rows. -->
 		<N8nDataTableServer
 			v-model:sort-by="sortBy"
+			v-model:selection="selection"
+			show-select
+			:item-selectable="isEditable"
+			:select-row-label="selectRowLabel"
+			:select-all-items="filteredRows"
+			:select-all-label="i18n.baseText('typeAvailabilityPolicies.instancePolicy.bulk.selectAll')"
 			:headers="headers"
 			:items="pageRows"
 			:items-length="filteredRows.length"
@@ -402,6 +465,15 @@ async function onAccessChange(row: InstancePolicyTableRow, access: PolicyAction)
 				@update:page="(value: number) => (page = value - 1)"
 			/>
 		</div>
+		<PolicySelectionBar
+			:count="selectedRows.length"
+			:can-restrict="selectedRows.some((row) => row.access !== 'deny')"
+			:can-allow="selectedRows.some((row) => row.access !== 'allow')"
+			:busy="bulkBusy"
+			@restrict="onBulkChange('deny')"
+			@allow="onBulkChange('allow')"
+			@clear="selection = []"
+		/>
 	</div>
 </template>
 

@@ -58,7 +58,7 @@ const openFilter = async (getByRole: (role: string, options?: object) => HTMLEle
 
 const rowNames = (container: HTMLElement) =>
 	Array.from(container.querySelectorAll<HTMLTableRowElement>('tbody tr'), (tableRow) =>
-		tableRow.cells[0]?.textContent?.trim(),
+		tableRow.cells[1]?.textContent?.trim(),
 	);
 
 describe('InstancePolicyTable', () => {
@@ -273,7 +273,7 @@ describe('InstancePolicyTable', () => {
 			.map((tableRow) =>
 				within(tableRow)
 					.getAllByRole('cell')
-					.slice(2)
+					.slice(3)
 					.map((cell) => cell.textContent?.trim()),
 			);
 		expect(usageCells).toEqual([
@@ -371,7 +371,7 @@ describe('InstancePolicyTable', () => {
 			.find((tableRow) => tableRow.textContent?.includes('Airtable API'));
 
 		// A usage cell, which has no control of its own.
-		await userEvent.click(airtableRow!.querySelectorAll('td')[2]);
+		await userEvent.click(airtableRow!.querySelectorAll('td')[3]);
 
 		expect(emitted('open')).toEqual([['airtableApi']]);
 	});
@@ -554,6 +554,149 @@ describe('InstancePolicyTable', () => {
 				'Notion API',
 			]);
 			expect(searchBox).toHaveFocus();
+		});
+	});
+
+	describe('selection', () => {
+		const checkbox = (getByRole: (role: string, options?: object) => HTMLElement, name: string) =>
+			getByRole('checkbox', { name: `Select ${name}` });
+
+		it('gives each row a checkbox named after it, and disables it on a read-only row', () => {
+			const { getByRole } = setup([...ROWS, row('slackApi', 'Slack API', 'delegate', false)]);
+
+			expect(checkbox(getByRole, 'Bitly API')).toBeEnabled();
+			expect(checkbox(getByRole, 'Slack API')).toBeDisabled();
+			expect(getByRole('checkbox', { name: 'Select all rows' })).toBeInTheDocument();
+		});
+
+		it('shows the bar with the count and the actions, and announces the count', async () => {
+			const { getByRole, getByTestId, queryByTestId } = setup();
+			expect(queryByTestId('selected-items-info')).not.toBeInTheDocument();
+
+			for (const name of ['Bitly API', 'Airtable API', 'Notion API']) {
+				await userEvent.click(checkbox(getByRole, name));
+			}
+
+			const bar = within(getByTestId('selected-items-info'));
+			expect(bar.getByText('3 rows selected')).toBeInTheDocument();
+			expect(bar.getByRole('button', { name: 'Restrict' })).toBeEnabled();
+			expect(bar.getByRole('button', { name: 'Allow' })).toBeEnabled();
+			expect(bar.getByRole('button', { name: 'Clear selection' })).toBeInTheDocument();
+			expect(getByTestId('policy-bulk-status')).toHaveTextContent('3 rows selected');
+		});
+
+		it('does not open a row when the admin clicks its checkbox', async () => {
+			const { getByRole, emitted } = setup();
+
+			await userEvent.click(checkbox(getByRole, 'Airtable API'));
+
+			expect(emitted('open')).toBeUndefined();
+		});
+
+		it('emits the selected types with the access of the action', async () => {
+			const { getByRole, getByTestId, emitted } = setup();
+			await userEvent.click(checkbox(getByRole, 'Bitly API'));
+			await userEvent.click(checkbox(getByRole, 'Airtable API'));
+
+			await userEvent.click(getByTestId('policy-bulk-allow'));
+			await userEvent.click(getByTestId('policy-bulk-restrict'));
+
+			const types = [
+				{ name: 'bitlyApi', label: 'Bitly API' },
+				{ name: 'airtableApi', label: 'Airtable API' },
+			];
+			expect(emitted('bulkChange')).toEqual([
+				[types, 'allow'],
+				[types, 'deny'],
+			]);
+		});
+
+		it('disables the action that would change no selected row', async () => {
+			const { getByRole, getByTestId } = setup();
+
+			await userEvent.click(checkbox(getByRole, 'Airtable API'));
+
+			expect(getByTestId('policy-bulk-allow')).toBeDisabled();
+			expect(getByTestId('policy-bulk-restrict')).toBeEnabled();
+		});
+
+		it('keeps the selection when the page, the search or the filter changes', async () => {
+			const rows = Array.from({ length: 26 }, (_, index) =>
+				row(`type${index}`, `Type ${String(index).padStart(2, '0')}`),
+			);
+			const { getByRole, getByTestId, getByPlaceholderText } = setup(rows);
+
+			await userEvent.click(checkbox(getByRole, 'Type 00'));
+			await fireEvent.click(getByTestId('pagination-next'));
+			await userEvent.click(checkbox(getByRole, 'Type 25'));
+			await fireEvent.update(getByPlaceholderText('Search credentials'), 'Type 25');
+
+			expect(within(getByTestId('selected-items-info')).getByText('2 rows selected')).toBeVisible();
+			expect(checkbox(getByRole, 'Type 25')).toHaveAttribute('aria-checked', 'true');
+		});
+
+		it('selects every row that the search and the filter show, on all pages', async () => {
+			const rows = [
+				...Array.from({ length: 30 }, (_, index) =>
+					row(`type${index}`, `Type ${String(index).padStart(2, '0')}`),
+				),
+				row('readOnly', 'Read only', 'delegate', false),
+				row('restricted', 'Restricted type', 'deny'),
+			];
+			const { getByRole, getByTestId, emitted } = setup(rows);
+			const selectAll = getByRole('checkbox', { name: 'Select all rows' });
+
+			await userEvent.click(selectAll);
+			const bar = within(getByTestId('selected-items-info'));
+			// Every editable row, on both pages. The read-only row is left out.
+			expect(bar.getByText('31 rows selected')).toBeInTheDocument();
+			expect(selectAll).toHaveAttribute('aria-checked', 'true');
+
+			await userEvent.click(selectAll);
+			expect(getByTestId('policy-bulk-status')).toHaveTextContent('Selection cleared');
+
+			// With a filter, only the rows that it shows.
+			await openFilter(getByRole);
+			await userEvent.click(await findPopupItem(OPTION, 'Restricted (1)'));
+			await userEvent.click(selectAll);
+			expect(within(getByTestId('selected-items-info')).getByText('1 row selected')).toBeVisible();
+
+			await userEvent.click(getByTestId('policy-bulk-allow'));
+			expect(emitted('bulkChange')).toEqual([
+				[[{ name: 'restricted', label: 'Restricted type' }], 'allow'],
+			]);
+		});
+
+		it('clears the selection and moves the focus to the select-all checkbox', async () => {
+			const { getByRole, getByTestId, queryByTestId } = setup();
+			await userEvent.click(checkbox(getByRole, 'Bitly API'));
+
+			await userEvent.click(getByRole('button', { name: 'Clear selection' }));
+
+			expect(queryByTestId('selected-items-info')).not.toBeInTheDocument();
+			expect(checkbox(getByRole, 'Bitly API')).toHaveAttribute('aria-checked', 'false');
+			expect(getByTestId('policy-bulk-status')).toHaveTextContent('Selection cleared');
+			await waitFor(() => expect(getByRole('checkbox', { name: 'Select all rows' })).toHaveFocus());
+		});
+
+		it('clears the selection when the admin presses Escape in the bar', async () => {
+			const { getByRole, getByTestId, queryByTestId } = setup();
+			await userEvent.click(checkbox(getByRole, 'Bitly API'));
+
+			getByTestId('policy-bulk-allow').focus();
+			await userEvent.keyboard('{Escape}');
+
+			expect(queryByTestId('selected-items-info')).not.toBeInTheDocument();
+		});
+
+		it('drops a selected type that becomes read-only', async () => {
+			const { getByRole, getByTestId, queryByTestId, rerender } = setup();
+			await userEvent.click(checkbox(getByRole, 'Bitly API'));
+			expect(getByTestId('selected-items-info')).toBeInTheDocument();
+
+			await rerender({ rows: [row('bitlyApi', 'Bitly API', 'delegate', false), ...ROWS.slice(1)] });
+
+			expect(queryByTestId('selected-items-info')).not.toBeInTheDocument();
 		});
 	});
 });

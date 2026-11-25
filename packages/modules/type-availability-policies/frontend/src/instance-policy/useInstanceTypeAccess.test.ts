@@ -14,7 +14,7 @@ import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.
 
 const mocks = vi.hoisted(() => ({
 	fetchInstancePolicy: vi.fn(),
-	saveInstancePolicy: vi.fn(),
+	setInstanceTypeAccess: vi.fn(),
 	fetchInstanceAccess: vi.fn(),
 	fetchNodeTypeUsage: vi.fn(),
 }));
@@ -53,7 +53,7 @@ describe('useInstanceTypeAccess', () => {
 
 	it('shows the access that the store read and saves a change through it', async () => {
 		await setup();
-		mocks.saveInstancePolicy.mockResolvedValue({ ...nodePolicy(2), warnings: [] });
+		mocks.setInstanceTypeAccess.mockResolvedValue({ ...nodePolicy(2), warnings: [] });
 
 		const { types, changeAccess } = useInstanceTypeAccess('node');
 
@@ -70,16 +70,9 @@ describe('useInstanceTypeAccess', () => {
 
 		await changeAccess('n8n-nodes-base.slack', 'deny', 'Slack');
 
-		expect(mocks.saveInstancePolicy).toHaveBeenCalledWith(expect.anything(), 'node', {
-			defaultAction: 'allow',
+		expect(mocks.setInstanceTypeAccess).toHaveBeenCalledWith(expect.anything(), 'node', {
+			changes: [{ type: 'n8n-nodes-base.slack', access: 'deny' }],
 			version: 1,
-			rules: [
-				{
-					id: expect.any(String),
-					action: 'deny',
-					selector: { kind: 'name', value: 'n8n-nodes-base.slack' },
-				},
-			],
 		});
 		// The store reads the access of the saved version once, and the composable does not read it.
 		expect(mocks.fetchInstanceAccess).toHaveBeenCalledTimes(2);
@@ -87,7 +80,7 @@ describe('useInstanceTypeAccess', () => {
 
 	it('is loading while the store reads the access after a save', async () => {
 		await setup();
-		mocks.saveInstancePolicy.mockResolvedValue({ ...nodePolicy(2), warnings: [] });
+		mocks.setInstanceTypeAccess.mockResolvedValue({ ...nodePolicy(2), warnings: [] });
 		const read = createDeferredPromise<InstanceTypeAccessResponse>();
 		mocks.fetchInstanceAccess.mockReturnValue(read.promise);
 		const { loading, changeAccess } = useInstanceTypeAccess('node');
@@ -103,7 +96,7 @@ describe('useInstanceTypeAccess', () => {
 
 	it('shows the new access until the access list of the saved version arrives', async () => {
 		await setup();
-		mocks.saveInstancePolicy.mockResolvedValue({ ...nodePolicy(2), warnings: [] });
+		mocks.setInstanceTypeAccess.mockResolvedValue({ ...nodePolicy(2), warnings: [] });
 		const { types, changeAccess } = useInstanceTypeAccess('node');
 		await waitFor(() => expect(types.value).toHaveLength(1));
 
@@ -124,7 +117,7 @@ describe('useInstanceTypeAccess', () => {
 	it('keeps a later pick on the same row when an earlier save fails', async () => {
 		await setup();
 		const firstSave = createDeferredPromise<InstancePolicy<'node'> & { warnings: [] }>();
-		mocks.saveInstancePolicy
+		mocks.setInstanceTypeAccess
 			.mockReturnValueOnce(firstSave.promise)
 			.mockResolvedValue({ ...nodePolicy(3), warnings: [] });
 		const { types, changeAccess } = useInstanceTypeAccess('node');
@@ -143,7 +136,7 @@ describe('useInstanceTypeAccess', () => {
 
 	it('shows the server value again when the page cannot edit the policy', async () => {
 		await setup();
-		mocks.saveInstancePolicy.mockRejectedValue(
+		mocks.setInstanceTypeAccess.mockRejectedValue(
 			new ResponseError('several documents', { httpStatusCode: 409 }),
 		);
 		const { types, changeAccess } = useInstanceTypeAccess('node');
@@ -159,7 +152,7 @@ describe('useInstanceTypeAccess', () => {
 		it('applies nothing until the admin confirms', async () => {
 			mocks.fetchNodeTypeUsage.mockResolvedValue({ 'n8n-nodes-base.slack': inUse });
 			await setup();
-			mocks.saveInstancePolicy.mockResolvedValue({ ...nodePolicy(2), warnings: [] });
+			mocks.setInstanceTypeAccess.mockResolvedValue({ ...nodePolicy(2), warnings: [] });
 			const review = useRestrictReviewStore();
 			const { types, changeAccess } = useInstanceTypeAccess('node');
 
@@ -173,12 +166,12 @@ describe('useInstanceTypeAccess', () => {
 				}),
 			);
 			expect(types.value[0].access).toBe('allow');
-			expect(mocks.saveInstancePolicy).not.toHaveBeenCalled();
+			expect(mocks.setInstanceTypeAccess).not.toHaveBeenCalled();
 
 			review.resolve(true);
 			await change;
 
-			expect(mocks.saveInstancePolicy).toHaveBeenCalledTimes(1);
+			expect(mocks.setInstanceTypeAccess).toHaveBeenCalledTimes(1);
 			expect(review.request).toBeNull();
 		});
 
@@ -193,7 +186,7 @@ describe('useInstanceTypeAccess', () => {
 			review.resolve(false);
 			await change;
 
-			expect(mocks.saveInstancePolicy).not.toHaveBeenCalled();
+			expect(mocks.setInstanceTypeAccess).not.toHaveBeenCalled();
 			expect(types.value[0].access).toBe('allow');
 		});
 
@@ -204,7 +197,7 @@ describe('useInstanceTypeAccess', () => {
 			await useInstancePolicyStore().load(['node']);
 			const counts = createDeferredPromise<Record<string, typeof inUse>>();
 			mocks.fetchNodeTypeUsage.mockReturnValue(counts.promise);
-			mocks.saveInstancePolicy.mockResolvedValue({ ...nodePolicy(2), warnings: [] });
+			mocks.setInstanceTypeAccess.mockResolvedValue({ ...nodePolicy(2), warnings: [] });
 			const { changeAccess } = useInstanceTypeAccess('node');
 
 			const restrict = changeAccess('n8n-nodes-base.slack', 'deny', 'Slack');
@@ -213,11 +206,11 @@ describe('useInstanceTypeAccess', () => {
 			await restrict;
 
 			expect(useRestrictReviewStore().request).toBeNull();
-			expect(mocks.saveInstancePolicy).toHaveBeenCalledTimes(1);
-			expect(mocks.saveInstancePolicy).not.toHaveBeenCalledWith(
+			expect(mocks.setInstanceTypeAccess).toHaveBeenCalledTimes(1);
+			expect(mocks.setInstanceTypeAccess).not.toHaveBeenCalledWith(
 				expect.anything(),
 				'node',
-				expect.objectContaining({ rules: [expect.objectContaining({ action: 'deny' })] }),
+				expect.objectContaining({ changes: [expect.objectContaining({ access: 'deny' })] }),
 			);
 		});
 
@@ -242,13 +235,158 @@ describe('useInstanceTypeAccess', () => {
 		it('never asks before allowing a type', async () => {
 			mocks.fetchNodeTypeUsage.mockResolvedValue({ 'n8n-nodes-base.slack': inUse });
 			await setup();
-			mocks.saveInstancePolicy.mockResolvedValue({ ...nodePolicy(2), warnings: [] });
+			mocks.setInstanceTypeAccess.mockResolvedValue({ ...nodePolicy(2), warnings: [] });
 			const { changeAccess } = useInstanceTypeAccess('node');
 
 			await changeAccess('n8n-nodes-base.slack', 'allow', 'Slack');
 
 			expect(useRestrictReviewStore().request).toBeNull();
-			expect(mocks.saveInstancePolicy).toHaveBeenCalledTimes(1);
+			expect(mocks.setInstanceTypeAccess).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('bulk change', () => {
+		const SLACK = 'n8n-nodes-base.slack';
+		const NOTION = 'n8n-nodes-base.notion';
+		const GITHUB = 'n8n-nodes-base.github';
+		const inUse = { uses: 3, workflows: 2, activeWorkflows: 1, projects: 1 };
+		const unused = { uses: 0, workflows: 0, activeWorkflows: 0, projects: 0 };
+		const selected = [
+			{ name: SLACK, label: 'Slack' },
+			{ name: NOTION, label: 'Notion' },
+			{ name: GITHUB, label: 'GitHub' },
+		];
+
+		const threeTypes = (version: number): InstanceTypeAccessResponse => ({
+			...nodeAccess(version),
+			types: [
+				{ name: SLACK, access: 'deny', matchedRuleId: null },
+				{ name: NOTION, access: 'deny', matchedRuleId: null },
+				{ name: GITHUB, access: 'allow', matchedRuleId: null },
+			],
+		});
+
+		const savedRules = () =>
+			(
+				mocks.setInstanceTypeAccess.mock.calls[0][2] as {
+					changes: Array<{ type: string; access: string }>;
+				}
+			).changes.map((change) => [change.type, change.access]);
+
+		beforeEach(() => {
+			mocks.fetchInstanceAccess.mockResolvedValue(threeTypes(1));
+			mocks.fetchNodeTypeUsage.mockResolvedValue({
+				[SLACK]: inUse,
+				[NOTION]: unused,
+				[GITHUB]: inUse,
+			});
+			mocks.setInstanceTypeAccess.mockResolvedValue({ ...nodePolicy(2), warnings: [] });
+		});
+
+		it('allows the selected types in one save, with no review, and shows them at once', async () => {
+			await setup();
+			const { types, changeAccessMany } = useInstanceTypeAccess('node');
+
+			const change = changeAccessMany(selected, 'allow');
+			expect(types.value.map((type) => type.access)).toEqual(['allow', 'allow', 'allow']);
+
+			expect(await change).toBe('saved');
+			expect(useRestrictReviewStore().bulkRequest).toBeNull();
+			expect(mocks.setInstanceTypeAccess).toHaveBeenCalledTimes(1);
+			// GitHub is already allowed, so the save leaves it out.
+			expect(savedRules()).toEqual([
+				[SLACK, 'allow'],
+				[NOTION, 'allow'],
+			]);
+		});
+
+		it('asks once for the restricted types in use and restricts all of them on confirm', async () => {
+			mocks.fetchInstanceAccess.mockResolvedValue({
+				...threeTypes(1),
+				types: threeTypes(1).types.map((type) => ({ ...type, access: 'allow' as const })),
+			});
+			await setup();
+			const review = useRestrictReviewStore();
+			const { changeAccessMany } = useInstanceTypeAccess('node');
+
+			const change = changeAccessMany(selected, 'deny');
+			await waitFor(() =>
+				expect(review.bulkRequest).toEqual({
+					kind: 'node',
+					total: 3,
+					items: [
+						{ name: SLACK, label: 'Slack', usage: inUse },
+						{ name: GITHUB, label: 'GitHub', usage: inUse },
+					],
+				}),
+			);
+			expect(mocks.setInstanceTypeAccess).not.toHaveBeenCalled();
+
+			review.resolve(true);
+
+			expect(await change).toBe('saved');
+			expect(mocks.setInstanceTypeAccess).toHaveBeenCalledTimes(1);
+			expect(savedRules()).toEqual([
+				[SLACK, 'deny'],
+				[NOTION, 'deny'],
+				[GITHUB, 'deny'],
+			]);
+		});
+
+		it('changes nothing when the admin cancels the review', async () => {
+			mocks.fetchInstanceAccess.mockResolvedValue({
+				...threeTypes(1),
+				types: threeTypes(1).types.map((type) => ({ ...type, access: 'allow' as const })),
+			});
+			await setup();
+			const review = useRestrictReviewStore();
+			const { types, changeAccessMany } = useInstanceTypeAccess('node');
+
+			const change = changeAccessMany(selected, 'deny');
+			await waitFor(() => expect(review.bulkRequest).not.toBeNull());
+			review.resolve(false);
+
+			expect(await change).toBe('cancelled');
+			expect(mocks.setInstanceTypeAccess).not.toHaveBeenCalled();
+			expect(types.value.map((type) => type.access)).toEqual(['allow', 'allow', 'allow']);
+		});
+
+		it('restricts with no review when no selected type is in use', async () => {
+			mocks.fetchNodeTypeUsage.mockResolvedValue({});
+			await setup();
+
+			expect(await useInstanceTypeAccess('node').changeAccessMany(selected, 'deny')).toBe('saved');
+			expect(useRestrictReviewStore().bulkRequest).toBeNull();
+			expect(savedRules()).toEqual([[GITHUB, 'deny']]);
+		});
+
+		it('leaves out read-only types and saves nothing when no type needs the change', async () => {
+			mocks.fetchInstanceAccess.mockResolvedValue({
+				...threeTypes(1),
+				types: [
+					{ name: SLACK, access: 'delegate', matchedRuleId: 'rule-1' },
+					{ name: GITHUB, access: 'allow', matchedRuleId: null },
+				],
+			});
+			await setup();
+
+			expect(await useInstanceTypeAccess('node').changeAccessMany(selected, 'allow')).toBe(
+				'unchanged',
+			);
+			expect(mocks.setInstanceTypeAccess).not.toHaveBeenCalled();
+		});
+
+		it('shows the server values again when the policy changed', async () => {
+			await setup();
+			mocks.setInstanceTypeAccess.mockRejectedValue(
+				new ResponseError('Conflict', { httpStatusCode: 409 }),
+			);
+			mocks.fetchInstancePolicy.mockResolvedValue(nodePolicy(2));
+			mocks.fetchInstanceAccess.mockResolvedValue(threeTypes(2));
+			const { types, changeAccessMany } = useInstanceTypeAccess('node');
+
+			expect(await changeAccessMany(selected, 'allow')).toBe('changed');
+			expect(types.value.map((type) => type.access)).toEqual(['deny', 'deny', 'allow']);
 		});
 	});
 });
