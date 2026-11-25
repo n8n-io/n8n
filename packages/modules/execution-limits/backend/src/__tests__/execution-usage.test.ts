@@ -12,8 +12,8 @@ const period: UsagePeriod = {
 const totals = (
 	startedCount: number,
 	blockedCount: number,
-	lastFoldAt: Date | null = null,
-): UsageTotals => ({ startedCount, blockedCount, lastFoldAt });
+	lastCountedAt: Date | null = null,
+): UsageTotals => ({ startedCount, blockedCount, lastCountedAt });
 
 describe('toUsage', () => {
 	it('adds started minus blocked across the parts', () => {
@@ -28,29 +28,29 @@ describe('toUsage', () => {
 		expect(toUsage(scope, period, totals(1, 4)).executions).toBe(0);
 	});
 
-	it('keeps the latest fold time', () => {
+	it('keeps the latest counted time', () => {
 		const early = new Date('2026-11-10T00:00:00.000Z');
 		const late = new Date('2026-11-12T00:00:00.000Z');
 
-		expect(toUsage(scope, period, totals(1, 0, late), totals(1, 0, early)).lastFoldAt).toEqual(
+		expect(toUsage(scope, period, totals(1, 0, late), totals(1, 0, early)).lastCountedAt).toEqual(
 			late,
 		);
-		expect(toUsage(scope, period, totals(1, 0, early), totals(1, 0, late)).lastFoldAt).toEqual(
+		expect(toUsage(scope, period, totals(1, 0, early), totals(1, 0, late)).lastCountedAt).toEqual(
 			late,
 		);
 	});
 
-	it('ignores a part without a fold time when others have one', () => {
+	it('ignores a part without a counted time when others have one', () => {
 		const at = new Date('2026-11-10T00:00:00.000Z');
 
-		expect(toUsage(scope, period, totals(1, 0), totals(1, 0, at)).lastFoldAt).toEqual(at);
+		expect(toUsage(scope, period, totals(1, 0), totals(1, 0, at)).lastCountedAt).toEqual(at);
 	});
 
-	it('has a null fold time when every part has none', () => {
-		expect(toUsage(scope, period, totals(1, 0), totals(2, 0)).lastFoldAt).toBeNull();
+	it('has a null counted time when every part has none', () => {
+		expect(toUsage(scope, period, totals(1, 0), totals(2, 0)).lastCountedAt).toBeNull();
 	});
 
 	it('gives zero and null for no parts', () => {
-		expect(toUsage(scope, period)).toEqual({ scope, period, executions: 0, lastFoldAt: null });
+		expect(toUsage(scope, period)).toEqual({ scope, period, executions: 0, lastCountedAt: null });
 	});
 });

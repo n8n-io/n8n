@@ -29,12 +29,12 @@ const ROWS_PER_STATEMENT = 1000;
 const COUNTED_DAYS = 'u."day" >= $1 AND u."day" <= $2 AND u."entityType" = \'workflow\'';
 
 const TOTALS =
-	'COALESCE(SUM(u."startedCount"), 0) AS "startedCount", COALESCE(SUM(u."blockedCount"), 0) AS "blockedCount", MAX(u."updatedAt") AS "lastFoldAt"';
+	'COALESCE(SUM(u."startedCount"), 0) AS "startedCount", COALESCE(SUM(u."blockedCount"), 0) AS "blockedCount", MAX(u."updatedAt") AS "lastCountedAt"';
 
 type TotalsRow = {
 	startedCount: number | string;
 	blockedCount: number | string;
-	lastFoldAt: Date | string | null;
+	lastCountedAt: Date | string | null;
 };
 
 // Postgres returns a sum as a string.
@@ -42,7 +42,7 @@ function toTotals(row: TotalsRow): UsageTotals {
 	return {
 		startedCount: Number(row.startedCount),
 		blockedCount: Number(row.blockedCount),
-		lastFoldAt: row.lastFoldAt === null ? null : parseDbTime(row.lastFoldAt),
+		lastCountedAt: row.lastCountedAt === null ? null : parseDbTime(row.lastCountedAt),
 	};
 }
 

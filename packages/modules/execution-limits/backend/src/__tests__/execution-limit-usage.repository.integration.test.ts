@@ -130,7 +130,7 @@ describe('ExecutionLimitUsageRepository reads', () => {
 		expect(instance.startedCount).toBe(2);
 	});
 
-	it('gives the time of the latest fold as a Date', async () => {
+	it('gives the latest counted time as a Date', async () => {
 		const earlier = new Date('2026-11-18T08:00:00.000Z');
 		await usage.insert([
 			projectRow({ day: '2026-11-18', updatedAt: earlier }),
@@ -141,12 +141,12 @@ describe('ExecutionLimitUsageRepository reads', () => {
 		const project = await repository.sumProjectUsage('project-1', FIRST_DAY, LAST_DAY, {});
 		const instance = await repository.sumInstanceUsage(FIRST_DAY, LAST_DAY, {});
 
-		expect(project.lastFoldAt).toEqual(UPDATED_AT);
-		expect(instance.lastFoldAt).toEqual(UPDATED_AT);
+		expect(project.lastCountedAt).toEqual(UPDATED_AT);
+		expect(instance.lastCountedAt).toEqual(UPDATED_AT);
 	});
 
-	it('gives zero counts and no fold time when the range has no row', async () => {
-		const empty = { startedCount: 0, blockedCount: 0, lastFoldAt: null };
+	it('gives zero counts and no counted time when the range has no row', async () => {
+		const empty = { startedCount: 0, blockedCount: 0, lastCountedAt: null };
 
 		expect(await repository.sumProjectUsage('project-1', FIRST_DAY, LAST_DAY, {})).toEqual(empty);
 		expect(await repository.sumInstanceUsage(FIRST_DAY, LAST_DAY, {})).toEqual(empty);
@@ -184,7 +184,7 @@ describe('ExecutionLimitUsageRepository reads', () => {
 			expect(totals.get(limitedA)).toEqual({
 				startedCount: 8,
 				blockedCount: 1,
-				lastFoldAt: UPDATED_AT,
+				lastCountedAt: UPDATED_AT,
 			});
 			expect(totals.get(limitedB)).toMatchObject({ startedCount: 2, blockedCount: 0 });
 		});

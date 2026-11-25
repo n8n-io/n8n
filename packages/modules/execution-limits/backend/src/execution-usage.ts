@@ -7,7 +7,7 @@ export type UsageTotals = {
 	startedCount: number;
 	blockedCount: number;
 	/** `null` when the range has no row. */
-	lastFoldAt: Date | null;
+	lastCountedAt: Date | null;
 };
 
 export type ExecutionUsage = {
@@ -15,11 +15,14 @@ export type ExecutionUsage = {
 	period: UsagePeriod;
 	/** Workflow executions that count toward a limit: started minus blocked. */
 	executions: number;
-	/** Time of the last fold that changed this count. `null` when nothing is counted. */
-	lastFoldAt: Date | null;
+	/**
+	 * Time a run of this scope was last counted. It stays old while the scope has no runs, so it
+	 * does not show how fresh the count is. `null` when nothing is counted.
+	 */
+	lastCountedAt: Date | null;
 };
 
-export const NO_USAGE: UsageTotals = { startedCount: 0, blockedCount: 0, lastFoldAt: null };
+export const NO_USAGE: UsageTotals = { startedCount: 0, blockedCount: 0, lastCountedAt: null };
 
 /** Adds the totals of the parts of one period. The cached read and the database read both use it. */
 export function toUsage(
@@ -28,14 +31,14 @@ export function toUsage(
 	...parts: UsageTotals[]
 ): ExecutionUsage {
 	let counted = 0;
-	let lastFoldAt: Date | null = null;
+	let lastCountedAt: Date | null = null;
 	for (const part of parts) {
 		counted += part.startedCount - part.blockedCount;
-		if (part.lastFoldAt && (!lastFoldAt || part.lastFoldAt > lastFoldAt)) {
-			lastFoldAt = part.lastFoldAt;
+		if (part.lastCountedAt && (!lastCountedAt || part.lastCountedAt > lastCountedAt)) {
+			lastCountedAt = part.lastCountedAt;
 		}
 	}
 
 	// A run that starts in one period and is blocked in the next makes the new period negative.
-	return { scope, period, executions: Math.max(0, counted), lastFoldAt };
+	return { scope, period, executions: Math.max(0, counted), lastCountedAt };
 }
