@@ -1125,17 +1125,22 @@ describe('AgentRuntimeReconstructionService — plan tools gating', () => {
 				expect(builtAgent.contextCueProvider).toHaveBeenCalledTimes(1);
 				const provider = builtAgent.contextCueProvider.mock.calls[0][0];
 				const cues = [
-					{ id: 'background-updates:settled:job-1:completed', content: 'Background result' },
+					{ id: 'background-updates:job:job-1:completed', content: 'Background result' },
 				];
+				const sentCueIds = new Set(['background-updates:job:earlier:completed']);
 				wakeService.getBackgroundUpdateCues.mockResolvedValue(cues);
 				expect(
 					await provider({
 						messages: [],
-						sentCueIds: new Set(),
+						sentCueIds,
 						persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
 					}),
 				).toEqual(cues);
-				expect(wakeService.getBackgroundUpdateCues).toHaveBeenCalledWith('thread-1', 'resource-1');
+				expect(wakeService.getBackgroundUpdateCues).toHaveBeenCalledWith(
+					'thread-1',
+					'resource-1',
+					sentCueIds,
+				);
 				expect(
 					await provider({ messages: [], sentCueIds: new Set(), persistence: undefined }),
 				).toEqual([]);

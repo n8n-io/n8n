@@ -120,7 +120,11 @@ export class AgentWakeService {
 	 * only their own jobs. Wake runs already receive these results as input and
 	 * need no cue.
 	 */
-	async getBackgroundUpdateCues(threadId: string, resourceId: string): Promise<ContextCueEntry[]> {
+	async getBackgroundUpdateCues(
+		threadId: string,
+		resourceId: string,
+		sentCueIds: ReadonlySet<string> = new Set(),
+	): Promise<ContextCueEntry[]> {
 		if (!this.agentsConfig.backgroundTasksEnabled) return [];
 		if (this.activeWakes.has(threadId)) return [];
 
@@ -128,39 +132,37 @@ export class AgentWakeService {
 			this.jobRepository.findWakeableUnconsumed(threadId),
 			this.jobRepository.findRequestedStopIds(threadId, resourceId),
 		]);
-		const jobs = pending.filter(
+		const unseenJobs = pending.filter(
 			(job) =>
 				job.parentResourceId === resourceId &&
 				job.status !== 'suspended' &&
 				!job.pauseRequestId &&
-				!job.wakeAttemptId,
+				!job.wakeAttemptId &&
+				!sentCueIds.has(settledJobCueId(job)),
 		);
-		if (jobs.length === 0 && stopIds.length === 0) return [];
+		const stopCueId = stopIds.length > 0 ? `background-updates:stop:${stopIds.join(',')}` : null;
+		const includeStopCue = stopCueId !== null && !sentCueIds.has(stopCueId);
+		if (unseenJobs.length === 0 && !includeStopCue) return [];
 
 		const cues: ContextCueEntry[] = [];
 
-		if (jobs.length > 0) {
+		for (const [index, job] of unseenJobs.entries()) {
 			// Remove tag characters so titles cannot close the surrounding tag.
 			// Quote titles to distinguish them from instructions.
-			const summaries = jobs
-				.map((job) => {
-					const title = job.title.replace(/[<>]/g, '').slice(0, HINT_TITLE_MAX_CHARS);
-					return `${JSON.stringify(title)} (${job.status})`;
-				})
-				.join(', ');
-			const settledKey = jobs
-				.map((job) => `${job.id}:${job.status}`)
-				.sort()
-				.join(',');
+			const title = job.title.replace(/[<>]/g, '').slice(0, HINT_TITLE_MAX_CHARS);
+			const checkInstruction =
+				index === unseenJobs.length - 1
+					? ' Call background_jobs with action "check" once before you finish this turn, only if you have not already checked in this turn. Collect all relevant jobs in that call.'
+					: '';
 			cues.push({
-				id: `background-updates:settled:${settledKey}`,
-				content: `${AGENT_BACKGROUND_UPDATES_OPEN_TAG}${jobs.length} background job(s) settled: ${summaries}. Call background_jobs with action "check" once before you finish this turn, only if you have not already checked in this turn. Collect all relevant jobs in that call.${AGENT_BACKGROUND_UPDATES_CLOSE_TAG}`,
+				id: settledJobCueId(job),
+				content: `${AGENT_BACKGROUND_UPDATES_OPEN_TAG}Background job settled: ${JSON.stringify(title)} (${job.status}).${checkInstruction}${AGENT_BACKGROUND_UPDATES_CLOSE_TAG}`,
 			});
 		}
 
-		if (stopIds.length > 0) {
+		if (includeStopCue) {
 			cues.push({
-				id: `background-updates:stop:${stopIds.join(',')}`,
+				id: stopCueId,
 				content: `${AGENT_BACKGROUND_UPDATES_OPEN_TAG}The user requested a stop for background tasks. Sub-agents pause at their checkpoints. Workflows stop through execution cancellation. One combined report follows when the selected tasks are inactive. Do not replace or resume these tasks automatically. First call background_jobs with action "resume" when the latest user message explicitly asks to continue. If that message arrived before the report, ask the user to wait and retry. Cancelled workflows need new calls through their normal tools. Check conversation history and current jobs before repeating a workflow call.${AGENT_BACKGROUND_UPDATES_CLOSE_TAG}`,
 			});
 		}
@@ -496,6 +498,10 @@ export class AgentWakeService {
 			this.activeWakes.delete(threadId);
 		}
 	}
+}
+
+function settledJobCueId(job: Pick<AgentBackgroundJob, 'id' | 'status'>): string {
+	return `background-updates:job:${job.id}:${job.status}`;
 }
 
 function isStartedRecordingFailure(error: unknown): boolean {

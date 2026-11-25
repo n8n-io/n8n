@@ -331,18 +331,20 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 	}
 
 	async findRequestedStopIds(parentThreadId: string, parentResourceId: string): Promise<string[]> {
-		const scope = { parentThreadId, parentResourceId, pauseRequestId: Not(IsNull()) };
-		const rows = await this.find({
-			select: { pauseRequestId: true },
-			where: [
-				{ ...scope, kind: 'subagent', status: In(['running', 'suspended', 'paused']) },
-				{ ...scope, kind: 'workflow', notifiedAt: IsNull() },
-			],
-		});
+		const rows = await this.createQueryBuilder('job')
+			.select('DISTINCT job.pauseRequestId', 'pauseRequestId')
+			.where('job.parentThreadId = :parentThreadId', { parentThreadId })
+			.andWhere('job.parentResourceId = :parentResourceId', { parentResourceId })
+			.andWhere('job.pauseRequestId IS NOT NULL')
+			.andWhere(
+				"((job.kind = 'subagent' AND job.status IN ('running', 'suspended', 'paused')) OR (job.kind = 'workflow' AND job.notifiedAt IS NULL))",
+			)
+			.getRawMany<{ pauseRequestId: string | null }>();
 
-		return [
-			...new Set(rows.map((row) => row.pauseRequestId).filter((id): id is string => id !== null)),
-		].sort();
+		return rows
+			.map(({ pauseRequestId }) => pauseRequestId)
+			.filter((id): id is string => id !== null)
+			.sort();
 	}
 
 	async findSettledSubAgentsWithCheckpoints(): Promise<AgentBackgroundJob[]> {
