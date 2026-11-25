@@ -5,7 +5,7 @@ import { z } from 'zod';
 
 import { servicePort, type Topology } from '../config/env-yaml';
 import { type EnvPaths, globalSecretsFile } from '../config/paths';
-import { readDotenv } from '../env/dotenv';
+import { readSecrets } from '../env/secret-store';
 import { RigError } from '../errors';
 import { RIG } from '../meta';
 
@@ -45,7 +45,7 @@ export function clearTunnelUrl(paths: EnvPaths): void {
 export function tunnelToken(paths: EnvPaths, topology: Topology): string | undefined {
 	if (topology.tunnel.provider !== 'cloudflare' || !topology.tunnel.hostname) return undefined;
 	// The secrets of the environment win over the global secrets.
-	const token = [...readDotenv(globalSecretsFile()), ...readDotenv(paths.secrets)]
+	const token = [...readSecrets(globalSecretsFile()), ...readSecrets(paths.secrets)]
 		.filter((entry) => entry.key === TUNNEL_TOKEN_KEY)
 		.at(-1)?.value;
 	if (!token) {

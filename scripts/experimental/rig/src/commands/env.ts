@@ -1,8 +1,10 @@
+import { readFileSync } from 'node:fs';
 import { defineCommand } from 'citty';
 import pc from 'picocolors';
 
 import { type RigEnv, suggest } from '../environment';
-import { setInDotenvFile, unsetInDotenvFile } from '../env/dotenv';
+import { unsetInDotenvFile } from '../env/dotenv';
+import { editSecrets } from '../env/secret-store';
 import { TOPOLOGY_KEYS } from '../env/managed';
 import { diffResolved, type EnvSource, type ResolvedEnv, resolveRunnerEnv } from '../env/resolve';
 import { RigError } from '../errors';
@@ -12,7 +14,13 @@ import { table, ui } from '../ui/output';
 import { confirm, isInteractive } from '../ui/prompt';
 import { envArg, loadEnv, offerRestart, parseAssignments, positionals } from './common';
 import { browseCommand } from './env-browse';
-import { ensureLayerFile, managedConflicts, resolveLayer } from './layers';
+import {
+	ensureLayerFile,
+	isSecretLayer,
+	managedConflicts,
+	resolveLayer,
+	setInLayer,
+} from './layers';
 
 const onArg = {
 	on: {
@@ -80,9 +88,8 @@ const setCommand = defineCommand({
 			}
 		}
 
-		const file = ensureLayerFile(env, layer);
 		for (const [key, value] of Object.entries(assignments)) {
-			setInDotenvFile(file, key, value);
+			setInLayer(env, layer, key, value);
 			ui.success(`${key} set in ${pc.bold(env.layerLabel(layer))}`);
 		}
 		await offerRestart(env, layer, args.restart);
@@ -118,10 +125,32 @@ const editCommand = defineCommand({
 	async run({ args }) {
 		const env = loadEnv(args.env);
 		const layer = layerOf(env, args);
-		await editFile(ensureLayerFile(env, layer));
+		const file = ensureLayerFile(env, layer);
+		if (!isSecretLayer(layer)) {
+			await editFile(file);
+		} else if (!(await editSecrets(file, editPlaintextCopy))) {
+			ui.step(`No change in ${env.layerLabel(layer)}.`);
+			return;
+		}
 		await offerRestart(env, layer, args.restart);
 	},
 });
+
+/**
+ * Opens the decrypted copy of a secrets file. An editor without a wait flag
+ * returns at once, so ask before rig encrypts the copy and deletes it.
+ */
+async function editPlaintextCopy(file: string): Promise<void> {
+	const before = readFileSync(file, 'utf8');
+	const started = Date.now();
+	await editFile(file);
+	const quick = Date.now() - started < 2000;
+	if (!quick || !isInteractive() || readFileSync(file, 'utf8') !== before) return;
+	ui.step(`rig shows the secrets decrypted in ${file}. It deletes this copy after the edit.`);
+	while (!(await confirm('Did you save and close the file?', false))) {
+		// Wait for the user.
+	}
+}
 
 function isSecret(source: EnvSource | undefined): boolean {
 	return source?.layer === 'secrets';

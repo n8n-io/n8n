@@ -118,6 +118,25 @@ export function setInDotenv(text: string, key: string, value: string): string {
 	return `${lines.join('\n')}\n`;
 }
 
+/**
+ * Rewrites the values of active lines and keeps comments and order. `map`
+ * returns the new value, or `undefined` to keep the line as it is.
+ */
+export function mapDotenvValues(
+	text: string,
+	map: (key: string, value: string) => string | undefined,
+): string {
+	return text
+		.split('\n')
+		.map((line) => {
+			const parsed = parseLine(line);
+			if (!parsed || parsed.commented) return line;
+			const value = map(parsed.key, unquote(parsed.rawValue));
+			return value === undefined ? line : `${parsed.key}=${formatValue(value)}`;
+		})
+		.join('\n');
+}
+
 /** Removes every active line for the key. Commented lines stay. */
 export function unsetInDotenv(text: string, key: string): { text: string; removed: number } {
 	let removed = 0;

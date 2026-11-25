@@ -36,6 +36,11 @@ export function globalSecretsFile(): string {
 	return join(configDir(), 'secrets.env');
 }
 
+/** The key that encrypts secrets, when no OS keystore is available. */
+export function secretsKeyFile(): string {
+	return join(configDir(), 'secrets.key');
+}
+
 /** A path for messages: `~` instead of the home directory. */
 export function displayPath(path: string): string {
 	const home = homedir();

@@ -10,7 +10,8 @@ import type {
 	RunnerComponent,
 	RunnerLayer,
 } from '../topology/components';
-import { readDotenv } from './dotenv';
+import { type DotenvEntry, readDotenv } from './dotenv';
+import { readSecrets } from './secret-store';
 import {
 	defaultLauncherEnv,
 	defaultProcessEnv,
@@ -86,13 +87,18 @@ function fromRecord(kind: LayerKind, label: string, record: Record<string, strin
 	};
 }
 
-function fromFile(kind: LayerKind, paths: EnvPaths, file: string): Layer {
+function fromFile(
+	kind: LayerKind,
+	paths: EnvPaths,
+	file: string,
+	read: (file: string) => DotenvEntry[] = readDotenv,
+): Layer {
 	// Files outside the environment, like profiles, show with their full path.
 	const inside = file.startsWith(`${paths.root}/`);
 	const label = inside ? relative(paths.root, file) : displayPath(file);
 	return {
 		kind,
-		entries: readDotenv(file).map((entry) => ({
+		entries: read(file).map((entry) => ({
 			key: entry.key,
 			value: entry.value,
 			label: `${label}:${entry.line}`,
@@ -154,8 +160,8 @@ function profileLayers(ctx: ResolveContext, exclude: (key: string) => boolean): 
 /** Global secrets first, so the secrets of the environment win. */
 function secretLayers(ctx: ResolveContext, exclude: (key: string) => boolean): Layer[] {
 	return [
-		without(fromFile('secrets', ctx.paths, globalSecretsFile()), exclude),
-		without(fromFile('secrets', ctx.paths, ctx.paths.secrets), exclude),
+		without(fromFile('secrets', ctx.paths, globalSecretsFile(), readSecrets), exclude),
+		without(fromFile('secrets', ctx.paths, ctx.paths.secrets, readSecrets), exclude),
 	];
 }
 

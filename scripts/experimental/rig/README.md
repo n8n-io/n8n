@@ -273,7 +273,8 @@ flowchart LR
   F --> G["7. rig run -e K=V<br/>(not saved)"]
 ```
 
-- Both `secrets.env` files have mode 0600.
+- Both `secrets.env` files have mode 0600. `rig` encrypts their values. See
+  [Secrets encryption](#secrets-encryption).
 - Runners of a launcher get `env/runner-js.env` or `env/runner-py.env`, then
   `env/runner-js@<host>.env`.
 - After a change, `rig` lists the affected running components and offers a
@@ -325,6 +326,49 @@ The first run reads the source with the TypeScript compiler and takes a few
 seconds. Later runs use a cache until the commit or a scanned file changes.
 `--refresh` reads the source again.
 
+## Secrets encryption
+
+`rig` encrypts each value in both `secrets.env` files with AES-256-GCM. The
+key names stay readable. One random key encrypts all values:
+
+```
+N8N_ENCRYPTION_KEY=enc:v1:hDz3yjBDGQNXbhqbZlUPv17sM2BY…
+```
+
+The key is in the OS keystore. `rig` picks the backend on the first use and
+saves it in `secrets.backend` in the global config:
+
+| Backend | Used when | Key |
+|---|---|---|
+| `keychain` | macOS | Login keychain, item `n8n-rig` |
+| `secret-service` | Linux with `secret-tool` and an unlocked keyring (GNOME Keyring, KWallet) | Secret Service, service `n8n-rig` |
+| `file` | No OS keystore, for example over SSH or in WSL. `rig` shows a warning | `~/.config/rig/secrets.key`, mode 0600 |
+| `off` | Only when you set it | No key. Values are in plaintext |
+
+- `rig` reads the key once for each command. Components get the decrypted
+  values in their env.
+- `rig env edit --on secrets` decrypts the file into a private temp file. It
+  opens that file in your editor, then encrypts the result and deletes the
+  copy. On Linux, the copy is in `$XDG_RUNTIME_DIR`.
+- When a secrets file has plaintext values, for example after a manual edit,
+  `rig` encrypts them the next time it reads the file.
+- If you lose the key, you cannot decrypt the values. n8n then cannot read the
+  credentials that it encrypted with `N8N_ENCRYPTION_KEY`. Keep a backup of
+  the key: `pnpm rig secrets export-key`.
+- The encryption protects the files, for example in backups, dotfile syncs,
+  or screen shares. It does not protect against programs that run as your
+  user.
+
+| Task | Command |
+|---|---|
+| Show the backend, the key, and each file | `pnpm rig secrets status` |
+| Move the key to another backend | `pnpm rig secrets use <keychain\|secret-service\|file\|off>` |
+| Encrypt all plaintext values now | `pnpm rig secrets encrypt` |
+| Back up the key | `pnpm rig secrets export-key` |
+| Restore the key, for example on a new machine | `pnpm rig secrets import-key` (asks for the key, or reads stdin) |
+
+`RIG_SECRETS_BACKEND` overrides the saved backend for one command.
+
 ## Commands
 
 | Command | Function |
@@ -334,12 +378,13 @@ seconds. Later runs use a cache until the commit or a scanned file changes.
 | `services up\|down` | Start or stop only the containers |
 | `env browse\|set\|unset\|edit\|ls\|explain\|diff` | Read and change env vars |
 | `profile ls\|on\|off` | Turn profiles on or off |
+| `secrets status\|encrypt\|use\|export-key\|import-key` | Manage the [encryption of secrets](#secrets-encryption) |
 | `exec <component> -- <cmd>` | Run a command with the env of a component |
 | `print <component> --format shell\|dotenv\|json\|vscode` | Print the resolved env, or VS Code launch configurations |
 | `psql`, `redis-cli` | Open a shell in a service container |
 | `config get\|set\|unset\|edit` | Read and change the global config: `launcher.path`, `launcher.version`, `container.runtime`, `browser`, `editor` |
 | `edit` | Open `env.yaml` in your editor, then check it |
-| `doctor` | Check the runtime, Node, Go, `uv`, the checkout and build, the launcher, and ports |
+| `doctor` | Check the runtime, Node, Go, `uv`, the checkout and build, the launcher, ports, and secrets encryption |
 
 To select an environment, `rig` uses the first of these:
 
@@ -354,6 +399,7 @@ To select an environment, `rig` uses the first of these:
 | `~/.config/rig/config.yaml` | Global config | `RIG_CONFIG_DIR` |
 | `~/.config/rig/profiles/<name>.env` | Profiles | `RIG_CONFIG_DIR` |
 | `~/.config/rig/secrets.env` | Global secrets | `RIG_CONFIG_DIR` |
+| `~/.config/rig/secrets.key` | Secrets key, only with the `file` backend | `RIG_CONFIG_DIR` |
 | `~/.local/share/rig/envs/<name>/env.yaml` | Topology | `RIG_DATA_DIR` |
 | `~/.local/share/rig/envs/<name>/env/*.env` | Env layers | `RIG_DATA_DIR` |
 | `~/.local/share/rig/envs/<name>/secrets.env` | Generated and own secrets | `RIG_DATA_DIR` |

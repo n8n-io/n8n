@@ -5,7 +5,7 @@ import { loadEnvCatalog } from '../env-catalog/catalog';
 import type { EnvVarInfo } from '../env-catalog/extract';
 import { rankVars, shortDescription } from '../env-catalog/search';
 import type { RigEnv } from '../environment';
-import { readDotenv, setInDotenvFile, unsetInDotenvFile } from '../env/dotenv';
+import { unsetInDotenvFile } from '../env/dotenv';
 import { TOPOLOGY_KEYS } from '../env/managed';
 import { CancelledError, RigError } from '../errors';
 import { RUNNER_LAYERS } from '../topology/components';
@@ -24,7 +24,7 @@ import {
 	spinner,
 } from '../ui/prompt';
 import { envArg, loadEnv, offerRestart } from './common';
-import { ensureLayerFile, managedConflicts, resolveLayer } from './layers';
+import { managedConflicts, readLayer, resolveLayer, setInLayer } from './layers';
 import { RIG } from '../meta';
 
 type Pick =
@@ -59,7 +59,7 @@ function isRunnerLayer(layer: string): boolean {
 }
 
 function layerValues(env: RigEnv, layer: string): Map<string, string> {
-	return new Map(readDotenv(env.layerFile(layer)).map((entry) => [entry.key, entry.value]));
+	return new Map(readLayer(env, layer).map((entry) => [entry.key, entry.value]));
 }
 
 /** The value that running components get, for a few components that the layer affects. */
@@ -374,7 +374,7 @@ export const browseCommand = defineCommand({
 				} else {
 					if (answer.value === current) continue;
 					if (!(await passesGuardrails(env, layer, info.name))) continue;
-					setInDotenvFile(ensureLayerFile(env, layer), info.name, answer.value);
+					setInLayer(env, layer, info.name, answer.value);
 					log.success(`${info.name}=${truncate(answer.value, 60)} in ${env.layerLabel(layer)}`);
 				}
 				changed.add(layer);

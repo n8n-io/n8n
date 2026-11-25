@@ -6,7 +6,16 @@ import pc from 'picocolors';
 
 import { requiredServices, servicePorts } from '../config/env-yaml';
 import { CONTAINER_RUNTIMES, loadGlobalConfig } from '../config/global-config';
+import { displayPath } from '../config/paths';
 import { RigEnv } from '../environment';
+import {
+	inspectSecrets,
+	keyFileHint,
+	keyFileWarning,
+	keyStoreLabel,
+	SECRETS_BACKEND_ENV_VAR,
+	type SecretsReport,
+} from '../env/secret-store';
 import { RigError } from '../errors';
 import {
 	type LauncherSource,
@@ -366,6 +375,69 @@ function toolChecks(): Check[] {
 	];
 }
 
+function secretsChecks(): Check[] {
+	let report: SecretsReport;
+	try {
+		report = inspectSecrets();
+	} catch (error) {
+		return [
+			{
+				status: 'fail',
+				label: 'Backend',
+				detail: error instanceof Error ? error.message : String(error),
+			},
+		];
+	}
+	const { backend, from } = report.choice;
+	const checks: Check[] = [];
+	if (backend === 'off') {
+		checks.push({
+			status: 'warn',
+			label: 'Backend',
+			detail: 'off, secrets are in plaintext',
+			hint: `Run \`${RIG} secrets use <backend>\`.`,
+		});
+	} else if (!report.available || report.problem) {
+		checks.push({
+			status: 'fail',
+			label: 'Backend',
+			detail: report.problem ?? `${keyStoreLabel(backend)} is not available`,
+			hint: `Run \`${RIG} secrets use <backend>\` to move to a backend that works here.`,
+		});
+	} else if (backend === 'file') {
+		checks.push({
+			status: 'warn',
+			label: 'Backend',
+			detail: keyFileWarning(),
+			hint: keyFileHint(),
+		});
+	} else {
+		checks.push({
+			status: 'ok',
+			label: 'Backend',
+			detail: `${keyStoreLabel(backend)} ${pc.dim(from === 'detected' ? '(saved on the first use)' : `(${from === 'env' ? SECRETS_BACKEND_ENV_VAR : 'secrets.backend'})`)}`,
+		});
+	}
+	const unreadable = report.files.filter((file) => file.unreadable > 0);
+	for (const file of unreadable) {
+		checks.push({
+			status: 'fail',
+			label: 'Secrets',
+			detail: `${file.unreadable} value(s) in ${displayPath(file.file)} cannot be decrypted`,
+			hint: `Import the right key with \`${RIG} secrets import-key\`.`,
+		});
+	}
+	if (unreadable.length === 0 && report.files.length > 0) {
+		const encrypted = report.files.reduce((sum, file) => sum + file.encrypted, 0);
+		checks.push({
+			status: 'ok',
+			label: 'Secrets',
+			detail: `${encrypted} encrypted value(s) in ${report.files.length} file(s)`,
+		});
+	}
+	return checks;
+}
+
 function printSection(title: string, checks: Check[]): void {
 	console.log(`\n${pc.bold(title)}`);
 	const width = Math.max(...checks.map((check) => check.label.length));
@@ -379,7 +451,7 @@ function printSection(title: string, checks: Check[]): void {
 export const doctorCommand = defineCommand({
 	meta: {
 		name: 'doctor',
-		description: 'Check the tools, the checkout, the launcher, and ports',
+		description: 'Check the tools, the checkout, the launcher, ports, and secrets encryption',
 	},
 	args: { ...envArg },
 	async run({ args }) {
@@ -423,6 +495,7 @@ export const doctorCommand = defineCommand({
 				],
 			]);
 		}
+		sections.push(['Secrets encryption', secretsChecks()]);
 		sections.push(['Browser and editor', toolChecks()]);
 
 		for (const [title, checks] of sections) printSection(title, checks);

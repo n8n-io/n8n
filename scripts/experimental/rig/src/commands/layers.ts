@@ -2,7 +2,9 @@ import { chmodSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 import { GLOBAL_SECRETS_LAYER, profileName, type RigEnv, suggest } from '../environment';
+import { type DotenvEntry, readDotenv, setInDotenvFile } from '../env/dotenv';
 import { resolveRunnerEnv } from '../env/resolve';
+import { readSecrets, setSecret } from '../env/secret-store';
 import { RigError } from '../errors';
 import { RUNNER_LAYERS } from '../topology/components';
 import { layerHeader } from './lifecycle';
@@ -20,14 +22,28 @@ export function resolveLayer(env: RigEnv, on: string | undefined): string {
 	return layer;
 }
 
-function isSecretLayer(layer: string): boolean {
+export function isSecretLayer(layer: string): boolean {
 	return layer === 'secrets' || layer === GLOBAL_SECRETS_LAYER;
+}
+
+/** The entries of a layer file. Secret layers come decrypted. */
+export function readLayer(env: RigEnv, layer: string): DotenvEntry[] {
+	const file = env.layerFile(layer);
+	return isSecretLayer(layer) ? readSecrets(file) : readDotenv(file);
+}
+
+/** Sets a value in a layer file. Secret layers get the value encrypted. */
+export function setInLayer(env: RigEnv, layer: string, key: string, value: string): void {
+	const file = ensureLayerFile(env, layer);
+	if (isSecretLayer(layer)) setSecret(file, key, value);
+	else setInDotenvFile(file, key, value);
 }
 
 function header(layer: string): string {
 	if (layer === GLOBAL_SECRETS_LAYER) {
 		return (
 			'# Secrets for every rig environment, for example license keys. Mode 0600.\n' +
+			'# rig encrypts the values. Edit them with `rig env edit --on global-secrets`.\n' +
 			'# The secrets.env of an environment wins over this file.\n\n'
 		);
 	}

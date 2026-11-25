@@ -20,7 +20,8 @@ import {
 	selectEnvName,
 	setCurrentEnv,
 } from '../environment';
-import { setInDotenv, setInDotenvFile } from '../env/dotenv';
+import { setInDotenv } from '../env/dotenv';
+import { setSecret } from '../env/secret-store';
 import { ensureSecrets } from '../env/secrets';
 import { RigError } from '../errors';
 import { servicesDown } from '../services/compose';
@@ -169,7 +170,7 @@ export function createEnvironment(
 	}
 	ensureSecrets(paths.secrets);
 	for (const [key, value] of Object.entries(options.secrets ?? {})) {
-		setInDotenvFile(paths.secrets, key, value);
+		setSecret(paths.secrets, key, value);
 	}
 	setCurrentEnv(name);
 
