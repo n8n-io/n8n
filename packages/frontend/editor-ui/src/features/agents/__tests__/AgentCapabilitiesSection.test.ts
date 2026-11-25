@@ -1898,14 +1898,17 @@ describe('AgentCapabilitiesSection workflows from skills', () => {
 		workflowsInSkillsEnabled.value = false;
 	});
 
-	it('shows each workflow that an attached skill mentions, with a note that names the skill', () => {
+	it('shows each workflow that an attached skill mentions, with a tag that names the skill', () => {
 		const wrapper = mountWithSkills([]);
 
 		const chips = wrapper.findAll('[data-testid="agent-capabilities-skill-workflow-row"]');
 		expect(chips.map((chip) => chip.text().replace(/\s+/g, ' '))).toEqual([
-			'Send report agents.builder.tools.workflow.fromSkill',
-			'Notify agents.builder.tools.workflow.fromSkill',
+			'Send report Weekly ops agents.builder.tools.workflow.fromSkill',
+			'Notify Weekly ops agents.builder.tools.workflow.fromSkill',
 		]);
+		const source = chips[0].find('[data-testid="agent-capabilities-skill-workflow-source"]');
+		expect(source.attributes('title')).toBe('agents.builder.tools.workflow.fromSkill');
+		expect(source.find('[aria-hidden="true"]').text()).toBe('Weekly ops');
 		expect(baseTextSpy).toHaveBeenCalledWith('agents.builder.tools.workflow.fromSkill', {
 			interpolate: { skill: 'Weekly ops' },
 		});
@@ -1939,7 +1942,7 @@ describe('AgentCapabilitiesSection workflows from skills', () => {
 		expect(wrapper.findAll('[data-testid="agent-capabilities-workflow-row"]')).toHaveLength(1);
 		const skillChips = wrapper.findAll('[data-testid="agent-capabilities-skill-workflow-row"]');
 		expect(skillChips.map((chip) => chip.text().replace(/\s+/g, ' '))).toEqual([
-			'Notify agents.builder.tools.workflow.fromSkill',
+			'Notify Weekly ops agents.builder.tools.workflow.fromSkill',
 		]);
 	});
 
