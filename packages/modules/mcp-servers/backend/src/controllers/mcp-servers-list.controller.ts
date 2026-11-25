@@ -1,8 +1,8 @@
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Get, RestController } from '@n8n/decorators';
 
-import { CustomMcpServersFlagGate } from './services/custom-mcp-servers-flag-gate';
-import { McpServersService } from './mcp-servers.service';
+import { CustomMcpServersFlagGate } from '../services/custom-mcp-servers-flag-gate';
+import { McpServersService } from '../services/mcp-servers.service';
 
 /** The servers of all projects, for the "MCP" tab on Overview. */
 @RestController('/mcp-servers')

@@ -11,8 +11,8 @@ import {
 	RestController,
 } from '@n8n/decorators';
 
-import { CustomMcpServersFlagGate } from './services/custom-mcp-servers-flag-gate';
-import { McpServersService } from './mcp-servers.service';
+import { CustomMcpServersFlagGate } from '../services/custom-mcp-servers-flag-gate';
+import { McpServersService } from '../services/mcp-servers.service';
 
 type ServerRequest = AuthenticatedRequest<{ projectId: string; serverId: string }>;
 
