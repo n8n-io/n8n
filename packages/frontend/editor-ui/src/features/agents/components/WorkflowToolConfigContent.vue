@@ -447,9 +447,6 @@ defineExpose({
 			</N8nText>
 		</div>
 
-		<slot name="commonSettings" />
-		<slot name="beforeAdvanced" />
-
 		<div :class="$style.advanced">
 			<button
 				type="button"

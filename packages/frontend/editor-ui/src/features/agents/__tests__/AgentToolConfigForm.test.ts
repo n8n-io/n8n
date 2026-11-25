@@ -170,6 +170,7 @@ describe('AgentToolConfigForm MCP configuration', () => {
 		await flushPromises();
 
 		const section = wrapper.getComponent(ApprovalRouteStub);
+		expect(wrapper.find('[role=tablist]').exists()).toBe(false);
 		expect(section.props('toolKey')).toBe('mcp:github');
 		section.vm.$emit('update:modelValue', route);
 		await flushPromises();
@@ -273,8 +274,10 @@ describe('AgentToolConfigForm guardrails', () => {
 		});
 		await flushPromises();
 
-		const chip = wrapper.find('[data-testid="agent-tool-guardrails-chip"]');
-		expect(chip.exists()).toBe(true);
+		const chip = wrapper.get('[data-testid="agent-tool-guardrails-chip"]');
+		const guardrailsTab = wrapper.get('[role=tab][aria-selected=false]');
+		await guardrailsTab.trigger('keydown', { key: 'Enter' });
+		expect(guardrailsTab.attributes('aria-selected')).toBe('true');
 		await chip.trigger('click');
 
 		expect(wrapper.emitted('open-guardrail')).toEqual([[{ guardrail: savedGuardrail }]]);

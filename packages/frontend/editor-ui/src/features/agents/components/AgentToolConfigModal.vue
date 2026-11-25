@@ -97,10 +97,9 @@ async function handleRemove() {
  * this modal with the same tool, so the form returns with live guardrail chips.
  */
 function handleOpenGuardrail(request: OpenGuardrailRequest) {
-	const wiring =
-		props.data.kind !== 'mcpServer' && props.data.kind !== 'registryMcpServer'
-			? props.data.guardrails
-			: undefined;
+	const data = props.data;
+	if (data.kind === 'mcpServer' || data.kind === 'registryMcpServer') return;
+	const wiring = data.guardrails;
 	if (!wiring) return;
 	closeDialog();
 	uiStore.openModalWithData({
@@ -111,7 +110,13 @@ function handleOpenGuardrail(request: OpenGuardrailRequest) {
 			getGuardrails: wiring.getGuardrails,
 			getTools: wiring.getTools,
 			onUpdateGuardrails: wiring.onUpdateGuardrails,
-			onExit: () => uiStore.openModal(props.modalName),
+			onExit: () => {
+				uiStore.setModalData({
+					name: props.modalName,
+					data: { ...data, initialTab: 'guardrails' },
+				});
+				uiStore.openModal(props.modalName);
+			},
 		},
 	});
 }
