@@ -13,7 +13,7 @@ import { DataSource } from '@n8n/typeorm';
 import type { INode } from 'n8n-workflow';
 import { v7 as uuidv7 } from 'uuid';
 
-import { createMember, createUser } from '../shared/db/users';
+import { createAdmin, createMember, createUser } from '../shared/db/users';
 import * as utils from '../shared/utils/';
 
 /**
@@ -37,6 +37,7 @@ const TRIGGER: INode = {
 let member: User;
 let viewer: User;
 let outsider: User;
+let admin: User;
 let project: Project;
 let serverSlug: string;
 
@@ -59,6 +60,12 @@ async function createServer(slug: string, projectId: string) {
 		description: 'Pipeline numbers for the sales team.',
 	});
 	return id;
+}
+
+async function deleteServer(slug: string) {
+	await Container.get(DataSource)
+		.getRepository(McpServer)
+		.update({ slug }, { deletedAt: new Date() });
 }
 
 async function addTool(serverId: string, toolName: string, targetId: string, position: number) {
@@ -91,6 +98,7 @@ beforeAll(async () => {
 	member = await createUser({ role: GLOBAL_MEMBER_ROLE, firstName: 'Maya', lastName: 'Lind' });
 	viewer = await createMember();
 	outsider = await createMember();
+	admin = await createAdmin();
 });
 
 beforeEach(async () => {
@@ -110,8 +118,17 @@ beforeEach(async () => {
 });
 
 describe('GET /mcp-servers/share/:slug', () => {
+	it('answers 401 to a person who is not signed in', async () => {
+		await testServer.authlessAgent.get(sharePath(serverSlug)).expect(401);
+	});
+
 	it('answers 404 for an unknown server', async () => {
 		await testServer.authAgentFor(member).get(sharePath('no-such-server')).expect(404);
+	});
+
+	it('answers 404 for a deleted server, whose slug stays reserved', async () => {
+		await deleteServer(serverSlug);
+		await testServer.authAgentFor(member).get(sharePath(serverSlug)).expect(404);
 	});
 
 	it('answers 404 when the flag is off', async () => {
@@ -135,6 +152,13 @@ describe('GET /mcp-servers/share/:slug', () => {
 				{ toolName: 'get_pipeline_summary', description: 'Description of get_pipeline_summary' },
 			],
 		});
+	});
+
+	// An instance admin holds `mcpServer:connect` globally, so they connect to every server.
+	it('gives an instance admin who is not in the project the description and the tools', async () => {
+		const response = await testServer.authAgentFor(admin).get(sharePath(serverSlug)).expect(200);
+
+		expect(response.body.data).toMatchObject({ canConnect: true, tools: [expect.anything()] });
 	});
 
 	it('gives a signed-in person who is not in the project only the public page', async () => {
@@ -163,6 +187,13 @@ describe('GET /mcp-servers/share/:slug/public', () => {
 	it('answers 404 when the flag is off', async () => {
 		setFlag(false);
 		await testServer.authlessAgent.get(publicPath(serverSlug)).expect(404);
+	});
+
+	it('answers 404 for a deleted server, without the name of the project', async () => {
+		await deleteServer(serverSlug);
+		const response = await testServer.authlessAgent.get(publicPath(serverSlug)).expect(404);
+
+		expect(JSON.stringify(response.body)).not.toContain('Marketing');
 	});
 
 	it('gives a person who is not signed in no description and no tools', async () => {
