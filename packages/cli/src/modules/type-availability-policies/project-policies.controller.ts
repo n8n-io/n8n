@@ -1,13 +1,15 @@
-import type {
-	ProjectPoliciesResponse,
-	ProjectPolicyEffectiveCounts,
-	ProjectPolicyKindSummary,
+import {
+	DeleteProjectPolicyQueryDto,
+	type ProjectPoliciesResponse,
+	type ProjectPolicyEffectiveCounts,
+	type ProjectPolicyKindSummary,
 } from '@n8n/api-types';
 import { LICENSE_FEATURES, MISSING_SCOPE_ERROR_MESSAGE } from '@n8n/constants';
 import { AuthenticatedRequest, ProjectRepository } from '@n8n/db';
-import { Get, GlobalScope, Licensed, RestController } from '@n8n/decorators';
+import { Delete, Get, GlobalScope, Licensed, Param, Query, RestController } from '@n8n/decorators';
 import { ForbiddenError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
+import type { Response } from 'express';
 
 import { CredentialTypes } from '@/credential-types';
 import { NodeTypes } from '@/node-types';
@@ -30,10 +32,7 @@ export class ProjectPoliciesController {
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@GlobalScope('nodeTypePolicy:manage')
 	async listProjectPolicies(req: AuthenticatedRequest): Promise<ProjectPoliciesResponse> {
-		// `@GlobalScope` checks one scope, and the response covers credential types too.
-		if (!hasGlobalScope(req.user, 'credentialTypePolicy:manage')) {
-			throw new ForbiddenError(MISSING_SCOPE_ERROR_MESSAGE);
-		}
+		assertCanManageCredentialTypePolicies(req);
 
 		const [projects, node, credential] = await Promise.all([
 			this.projectRepository.findTeamProjectsWithMemberCount(),
@@ -64,12 +63,42 @@ export class ProjectPoliciesController {
 		};
 	}
 
+	@Delete('/:projectId')
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
+	@GlobalScope('nodeTypePolicy:manage')
+	async deleteProjectPolicy(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId') projectId: string,
+		@Query query: DeleteProjectPolicyQueryDto,
+	) {
+		assertCanManageCredentialTypePolicies(req);
+
+		await this.service.deleteProjectPolicy(
+			projectId,
+			{
+				[NODE_TYPES_KIND]: query.nodeTypesVersion,
+				[CREDENTIAL_TYPES_KIND]: query.credentialTypesVersion,
+			},
+			req.user.id,
+		);
+
+		return { success: true };
+	}
+
 	private async summarizeNodeTypes() {
 		return await this.service.summarizeProjectPolicies(
 			NODE_TYPES_KIND,
 			Object.keys(this.nodeTypes.getKnownTypes()),
 			await this.listedNodeTypes.filter(),
 		);
+	}
+}
+
+/** `@GlobalScope` checks one scope, and these routes cover credential types too. */
+function assertCanManageCredentialTypePolicies(req: AuthenticatedRequest) {
+	if (!hasGlobalScope(req.user, 'credentialTypePolicy:manage')) {
+		throw new ForbiddenError(MISSING_SCOPE_ERROR_MESSAGE);
 	}
 }
 

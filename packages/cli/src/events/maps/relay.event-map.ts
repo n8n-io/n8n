@@ -82,9 +82,10 @@ export type { UserLike };
 /**
  * Which write path produced a policy document event. A composed save emits a document event
  * of its own, so a consumer that already reports the composed save uses this to skip it
- * instead of counting one save twice.
+ * instead of counting one save twice. A project policy delete removes documents as a side
+ * effect, so a consumer that tracks only the document library skips it too.
  */
-export type PolicyWriteOrigin = 'composed-save' | 'document-api';
+export type PolicyWriteOrigin = 'composed-save' | 'document-api' | 'project-policy-delete';
 
 export type SystemDeactivationReason =
 	| 'memory-guard'
@@ -2017,10 +2018,26 @@ export type RelayEventMap = ModuleEventMap & {
 		loginId?: string;
 	};
 
+	/** Each document the same delete removes emits its own `node-type-policy-document-deleted`. */
+	'node-type-policy-scope-deleted': {
+		updatedBy: string;
+		kind: string;
+		projectId: string;
+		scopeId: string;
+		before: {
+			defaultAction: PolicyAction;
+			version: number;
+			attachments: readonly PolicyAttachment[];
+		};
+		/** Login of the service account that acted. Absent for people and outside a request. */
+		loginId?: string;
+	};
+
 	'node-type-policy-document-deleted': {
 		updatedBy: string;
 		kind: string;
 		policyId: string;
+		origin: PolicyWriteOrigin;
 		before: { rules: readonly PolicyRule[]; version: number };
 		/** Login of the service account that acted. Absent for people and outside a request. */
 		loginId?: string;

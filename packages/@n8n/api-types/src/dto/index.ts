@@ -448,6 +448,7 @@ export {
 	PutProjectPolicyDto,
 } from './type-availability-policies/put-project-policy.dto';
 export { CreateProjectPolicyDto } from './type-availability-policies/create-project-policy.dto';
+export { DeleteProjectPolicyQueryDto } from './type-availability-policies/delete-project-policy-query.dto';
 export {
 	CreateCredentialTypePolicyDocumentDto,
 	CreatePolicyDocumentDto,

@@ -166,6 +166,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'variable-updated': (event) => this.variableUpdated(event),
 			'variable-deleted': (event) => this.variableDeleted(event),
 			'node-type-policy-scope-updated': (event) => this.nodeTypePolicyScopeUpdated(event),
+			'node-type-policy-scope-deleted': (event) => this.nodeTypePolicyScopeDeleted(event),
 			'node-type-policy-document-created': (event) => this.nodeTypePolicyDocumentCreated(event),
 			'node-type-policy-document-updated': (event) => this.nodeTypePolicyDocumentUpdated(event),
 			'node-type-policy-document-deleted': (event) => this.nodeTypePolicyDocumentDeleted(event),
@@ -1111,6 +1112,23 @@ export class LogStreamingEventRelay extends EventRelay {
 				scopeId: event.scopeId,
 				before: event.before ? { ...event.before } : null,
 				after: { ...event.after },
+				...(event.loginId !== undefined && { loginId: event.loginId }),
+			},
+		});
+	}
+
+	private nodeTypePolicyScopeDeleted(event: RelayEventMap['node-type-policy-scope-deleted']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.node-type-policy.scope.deleted',
+			payload: {
+				updatedBy: event.updatedBy,
+				kind: event.kind,
+				projectId: event.projectId,
+				scopeId: event.scopeId,
+				before: {
+					defaultAction: event.before.defaultAction,
+					...attachmentsContentToJson(event.before),
+				},
 				...(event.loginId !== undefined && { loginId: event.loginId }),
 			},
 		});

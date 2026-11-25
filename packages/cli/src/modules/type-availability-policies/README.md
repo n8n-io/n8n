@@ -320,8 +320,15 @@ has no entry. The route needs `nodeTypePolicy:manage` and `credentialTypePolicy:
 checks the second scope in the handler.
 
 `hasPolicy` is `true` when the project has a scope row of either kind. `updatedAt` is the later
-`updatedAt` of those rows. Every write moves the scope's version, and so its `updatedAt`. No route
-deletes a project scope row, so a project that resets to allow-all keeps `hasPolicy: true`.
+`updatedAt` of those rows. Every write moves the scope's version, and so its `updatedAt`. A
+project that resets to allow-all keeps its rows, and so keeps `hasPolicy: true`.
+
+`DELETE /project-policies/:projectId?nodeTypesVersion=&credentialTypesVersion=` deletes the
+project's rows of both kinds in one transaction, with the same two permission scopes. The project then
+follows the instance policy. Each version must match the current version of its kind, and a kind
+with no row is at version 0. A stale version fails with 409 and deletes nothing. A project with no
+row of either kind fails with 404. The route also deletes each attached document that no other
+scope uses. A document that another scope uses stays.
 
 The counts are counts of types, not of rules, over the types the instance policy page lists:
 
@@ -446,6 +453,9 @@ through a sealed repository method, and the lint rule that guards that has no al
 - **A row edited outside the service is picked up by the poll only.** A migration or manual
   SQL publishes no command. The poll sees the change if it moves a version, the row count or
   the newest `createdAt`.
+- **A version can repeat after a project policy delete.** A scope created again starts at
+  version 1. A client that read a version before the delete can match the new scope by chance,
+  and its write then passes the version check.
 - **Type-level policy is not a data boundary.** Blocking a node does not block the API behind
   it, because HTTP Request and Code remain available. Load-time exclusion
   (`NODES_EXCLUDE`) is the stronger tool for the types that must never load.

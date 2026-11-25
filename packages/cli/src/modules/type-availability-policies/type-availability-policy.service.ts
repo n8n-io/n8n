@@ -515,9 +515,99 @@ export class TypeAvailabilityPolicyService {
 			updatedBy,
 			kind: existing.kind,
 			policyId,
+			origin: 'document-api',
 			before: { rules: existing.rules, version: existing.version },
 			loginId: loginIdOf(ctx),
 		});
+	}
+
+	/**
+	 * Deletes a project's scope of each kind, so the project follows the instance policy again,
+	 * and each attached document that no other scope uses. A document another scope uses stays.
+	 * Both kinds go in one transaction, so a stale version of either one deletes nothing.
+	 * A kind without a scope is expected at `UNCONFIGURED_VERSION`, the version a read returns.
+	 */
+	async deleteProjectPolicy(
+		projectId: string,
+		expectedVersions: { [NODE_TYPES_KIND]: number; [CREDENTIAL_TYPES_KIND]: number },
+		updatedBy: string,
+	): Promise<void> {
+		const result = await this.transactionRunner.run({}, async (ctx) => {
+			// One kind after the other in a fixed order. No other path locks scopes of two kinds.
+			const kinds = [NODE_TYPES_KIND, CREDENTIAL_TYPES_KIND] as const;
+			const found: Array<TypeAvailabilityPolicyScope | null> = [];
+			for (const kind of kinds) {
+				found.push(
+					await this.scopeRepository.findScopeByKindAndProject(kind, projectId, ctx, true),
+				);
+			}
+
+			const scopes = found.filter((scope) => scope !== null);
+			if (scopes.length === 0) {
+				throw new NotFoundError(`Project has no policy: ${projectId}`);
+			}
+
+			kinds.forEach((kind, i) => {
+				const currentVersion = found[i]?.version ?? UNCONFIGURED_VERSION;
+				if (currentVersion !== expectedVersions[kind]) {
+					throw scopeVersionConflict(expectedVersions[kind], currentVersion);
+				}
+			});
+
+			const attachmentsByScope = await this.attachmentRepository.listAttachmentsForScopes(
+				scopes.map((scope) => scope.id),
+				ctx,
+			);
+
+			for (const scope of scopes) {
+				await this.scopeRepository.deleteScope(scope.id, ctx);
+			}
+
+			// Scopes before documents, the order every write path keeps. The document lock makes a
+			// concurrent attach wait, so the check below cannot miss it.
+			const policyIds = [
+				...new Set([...attachmentsByScope.values()].flat().map((a) => a.policyId)),
+			];
+			const deletedDocuments: TypeAvailabilityPolicy[] = [];
+			for (const policy of await this.policyRepository.findManyByIds(policyIds, ctx, true)) {
+				const stillAttached = await this.attachmentRepository.listScopeIdsAttachedToPolicy(
+					policy.id,
+					ctx,
+				);
+				if (stillAttached.length > 0) continue;
+
+				await this.policyRepository.deletePolicy(policy.id, ctx);
+				deletedDocuments.push(policy);
+			}
+
+			return { scopes, attachmentsByScope, deletedDocuments };
+		});
+
+		await this.snapshot.refreshAfterWrite();
+
+		for (const scope of result.scopes) {
+			this.eventService.emit('node-type-policy-scope-deleted', {
+				updatedBy,
+				kind: scope.kind,
+				projectId,
+				scopeId: scope.id,
+				before: {
+					defaultAction: scope.defaultAction,
+					version: scope.version,
+					attachments: result.attachmentsByScope.get(scope.id) ?? [],
+				},
+			});
+		}
+
+		for (const document of result.deletedDocuments) {
+			this.eventService.emit('node-type-policy-document-deleted', {
+				updatedBy,
+				kind: document.kind,
+				policyId: document.id,
+				origin: 'project-policy-delete',
+				before: { rules: document.rules, version: document.version },
+			});
+		}
 	}
 
 	async getPolicyDocument(kind: string, policyId: string): Promise<TypeAvailabilityPolicy | null> {

@@ -938,8 +938,11 @@ export class TelemetryEventRelay extends EventRelay {
 		updatedBy,
 		kind,
 		policyId,
+		origin,
 		before,
 	}: RelayEventMap['node-type-policy-document-deleted']) {
+		if (origin !== 'document-api') return;
+
 		this.trackPolicyDocument(updatedBy, kind, policyId, 'deleted', [], before.rules);
 	}
 

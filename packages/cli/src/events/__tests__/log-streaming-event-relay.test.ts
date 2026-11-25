@@ -5131,7 +5131,24 @@ describe('LogStreamingEventRelay', () => {
 				{
 					event: 'node-type-policy-document-deleted',
 					auditName: 'n8n.audit.node-type-policy.document.deleted',
-					payload: { updatedBy: 'sa-1', kind: 'node', policyId: 'policy-1', before: policy },
+					payload: {
+						updatedBy: 'sa-1',
+						kind: 'node',
+						policyId: 'policy-1',
+						origin: 'document-api',
+						before: policy,
+					},
+				},
+				{
+					event: 'node-type-policy-scope-deleted',
+					auditName: 'n8n.audit.node-type-policy.scope.deleted',
+					payload: {
+						updatedBy: 'sa-1',
+						kind: 'node',
+						projectId: 'project-1',
+						scopeId: 'scope-1',
+						before: { defaultAction: 'deny', ...attachments },
+					},
 				},
 				{
 					event: 'node-type-policy-attachments-updated',
@@ -5146,6 +5163,35 @@ describe('LogStreamingEventRelay', () => {
 					},
 				},
 			]);
+
+			it('should send the scope, its default action and its attachments on `node-type-policy-scope-deleted`', () => {
+				eventService.emit('node-type-policy-scope-deleted', {
+					updatedBy: 'user-1',
+					kind: 'node-types',
+					projectId: 'project-1',
+					scopeId: 'scope-1',
+					before: {
+						defaultAction: 'deny',
+						version: 3,
+						attachments: [{ policyId: 'policy-1', rules: [], priority: 0, isFloor: false }],
+					},
+				});
+
+				expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+					eventName: 'n8n.audit.node-type-policy.scope.deleted',
+					payload: {
+						updatedBy: 'user-1',
+						kind: 'node-types',
+						projectId: 'project-1',
+						scopeId: 'scope-1',
+						before: {
+							defaultAction: 'deny',
+							version: 3,
+							attachments: [{ policyId: 'policy-1', rules: [], priority: 0, isFloor: false }],
+						},
+					},
+				});
+			});
 		});
 
 		describe('execution limits', () => {

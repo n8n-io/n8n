@@ -263,6 +263,11 @@ export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAv
 		await this.managerFor(ctx).increment(TypeAvailabilityPolicyScope, { id }, 'version', 1);
 	}
 
+	/** The scope's attachments go with it (FK cascade). The documents they point at stay. */
+	async deleteScope(id: string, ctx: OperationContext): Promise<void> {
+		await this.managerFor(ctx).delete(TypeAvailabilityPolicyScope, { id });
+	}
+
 	/**
 	 * Bumps every named scope, for a policy edit fanning out to the scopes it is attached to.
 	 *
