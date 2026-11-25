@@ -3520,6 +3520,50 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(wakeService.onParentTurnFinished).not.toHaveBeenCalled();
 	});
 
+	it('keeps previewChat unset on a wake for a non-preview draft thread', async () => {
+		const { service, runtimeCacheService, executionService } = makeService();
+		executionService.canUseDraftThread.mockImplementation(
+			async (_threadId, _projectId, _agentId, _userId, options) => !options?.previewChat,
+		);
+		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+
+		await service.executeForWake({
+			backgroundJobSignal,
+			agentId,
+			projectId,
+			message: '<background-jobs-settled>[]</background-jobs-settled>',
+			memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+			identity: { type: 'draft', user, principalHash: userPrincipalHash },
+			abortSignal: new AbortController().signal,
+		});
+
+		expect(executionService.canUseDraftThread).toHaveBeenNthCalledWith(
+			1,
+			'thread-1',
+			projectId,
+			agentId,
+			user.id,
+			{ previewChat: true, sessionMode: 'existing' },
+		);
+		expect(executionService.canUseDraftThread).toHaveBeenNthCalledWith(
+			2,
+			'thread-1',
+			projectId,
+			agentId,
+			user.id,
+			{ previewChat: false, sessionMode: 'existing' },
+		);
+		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith({
+			agentId,
+			projectId,
+			integrationType: N8N_CHAT_INTEGRATION_TYPE,
+			usePublishedVersion: false,
+			user,
+			sandboxPrincipalHash: userPrincipalHash,
+		});
+	});
+
 	it.each(['draft', 'published'] as const)(
 		'records a failed %s wake without delivering its output',
 		async (type) => {

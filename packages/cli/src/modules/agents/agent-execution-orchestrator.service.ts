@@ -1221,14 +1221,12 @@ export class AgentExecutionOrchestratorService {
 			}
 		}
 		if (isDraft) {
-			setup = await this.preparePreviewChat({
+			setup = await this.prepareDraftWake({
 				agentId,
 				projectId: config.projectId,
 				threadId: memory.threadId,
 				resourceId: memory.resourceId,
 				user: identity.user,
-				previewChat: true,
-				sessionMode: 'existing',
 			});
 		} else {
 			await this.externalHooks.run('agent.preExecute', [agentId]);
@@ -1715,6 +1713,54 @@ export class AgentExecutionOrchestratorService {
 				integrationType: N8N_CHAT_INTEGRATION_TYPE,
 				user,
 				previewChat,
+			},
+		};
+	}
+
+	/**
+	 * Resolve draft wake setup while keeping Preview Chat threads distinct from
+	 * non-preview draft runs (such as Instance AI or MCP), which share the draft
+	 * memory resource without the preview runtime instruction or surface.
+	 */
+	private async prepareDraftWake(params: {
+		agentId: string;
+		projectId: string;
+		threadId: string;
+		resourceId: string;
+		user: User;
+	}): Promise<ChatChannelSetup> {
+		const { agentId, projectId, threadId, resourceId, user } = params;
+		if (resourceId !== chatSurfaceMemoryResourceId('preview', user.id)) {
+			throw new UserError('Session not found');
+		}
+
+		const isPreviewThread = await this.agentExecutionService.canUseDraftThread(
+			threadId,
+			projectId,
+			agentId,
+			user.id,
+			{ previewChat: true, sessionMode: 'existing' },
+		);
+		if (
+			!isPreviewThread &&
+			!(await this.agentExecutionService.canUseDraftThread(threadId, projectId, agentId, user.id, {
+				previewChat: false,
+				sessionMode: 'existing',
+			}))
+		) {
+			throw new UserError('Session not found');
+		}
+
+		return {
+			surface: isPreviewThread ? 'preview' : undefined,
+			access: { accessScope: 'user', ownerId: user.id },
+			sandboxPrincipalHash: hashAgentSandboxPrincipal({ type: 'n8n-user', userId: user.id }),
+			alwaysSandboxed: false,
+			runtime: {
+				usePublishedVersion: false,
+				integrationType: N8N_CHAT_INTEGRATION_TYPE,
+				user,
+				...(isPreviewThread ? { previewChat: true } : {}),
 			},
 		};
 	}
