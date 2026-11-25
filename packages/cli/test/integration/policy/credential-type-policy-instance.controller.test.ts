@@ -104,7 +104,8 @@ describe('credential type availability policy instance controller admin happy pa
 			attachments: [{ policyId: expect.any(String), rules: [rule], priority: 0, isFloor: false }],
 			version: instance.body.data.version,
 		});
-		expect(emitSpy).not.toHaveBeenCalled();
+		// Route telemetry is emitted on this service too, so only audit events count here.
+		expect(emitSpy.mock.calls.filter(([name]) => name !== 'internal-api-invoked')).toEqual([]);
 		const updated = await agent
 			.put(path)
 			.send({ attachments: [], version: read.body.data.version });
