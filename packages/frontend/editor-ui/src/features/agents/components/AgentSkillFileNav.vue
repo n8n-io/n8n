@@ -3,11 +3,20 @@ import { computed } from 'vue';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
-import type { AgentSkill } from '../types';
+import type { AgentSkill } from '@/features/agents/types';
 import SkillDiffCount from './skillVersions/SkillDiffCount.vue';
-import type { FileChange } from './skillVersions/skillVersionDiff';
+import type {
+	FileChange,
+	FileStatus,
+} from '@/features/agents/components/skillVersions/skillVersionDiff';
 
 const SKILL_FILE = 'SKILL.md';
+const statusLabels: Record<FileStatus, BaseTextKey> = {
+	added: 'agents.builder.skills.versions.fileAdded',
+	removed: 'agents.builder.skills.versions.fileDeleted',
+	modified: 'agents.builder.skills.versions.fileModified',
+};
+const statusIcons = { added: 'file-plus', removed: 'file-minus', modified: 'file-diff' } as const;
 
 const props = withDefaults(
 	defineProps<{
@@ -34,7 +43,9 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const references = computed(() => props.skill.references ?? []);
+const references = computed(() =>
+	(props.skill.references ?? []).map(({ path }) => ({ path, change: props.changeCounts?.[path] })),
+);
 
 function isInvalid(path: string) {
 	return props.invalidPaths.includes(path);
@@ -47,12 +58,7 @@ function referenceLabel(path: string) {
 		: path;
 	const status = props.changeCounts?.[path]?.status;
 	if (!status) return label;
-	const statusLabel = i18n.baseText(
-		status === 'added'
-			? 'agents.builder.skills.versions.fileAdded'
-			: 'agents.builder.skills.versions.fileDeleted',
-	);
-	return `${label}, ${statusLabel}`;
+	return `${label}, ${i18n.baseText(statusLabels[status])}`;
 }
 
 function isSelected(path: string) {
@@ -130,25 +136,21 @@ function testIdForPath(path: string) {
 						"
 					/>
 					<N8nText size="medium" :class="$style.path">{{ reference.path }}</N8nText>
-					<span v-if="props.changeCounts?.[reference.path]" :class="$style.count">
-						<!-- A file that only one version has: new in the later one, or deleted from it. -->
+					<span v-if="reference.change" :class="$style.count">
 						<N8nIcon
-							v-if="props.changeCounts[reference.path].status"
-							:icon="
-								props.changeCounts[reference.path].status === 'added' ? 'file-plus' : 'file-minus'
-							"
+							v-if="reference.change.status"
+							:icon="statusIcons[reference.change.status]"
 							size="small"
 							:class="
-								props.changeCounts[reference.path].status === 'added'
+								reference.change.status === 'added'
 									? $style.fileAdded
-									: $style.fileDeleted
+									: reference.change.status === 'removed'
+										? $style.fileDeleted
+										: undefined
 							"
-							:data-testid="`${testIdForPath(reference.path)}-${props.changeCounts[reference.path].status}`"
+							:data-testid="`${testIdForPath(reference.path)}-${reference.change.status}`"
 						/>
-						<SkillDiffCount
-							:count="props.changeCounts[reference.path]"
-							:hide-zero="!!props.changeCounts[reference.path].status"
-						/>
+						<SkillDiffCount :count="reference.change" :hide-zero="!!reference.change.status" />
 					</span>
 				</button>
 				<N8nButton

@@ -15,7 +15,7 @@ export interface ClosableWorkQueueConsumerClient extends WorkQueueConsumerClient
 export interface RedisWorkQueuesOptions {
 	/** Both queues publish over it. The caller owns it and closes it. */
 	publisher: WorkQueuePublisherClient;
-	/** Opens a new connection. It is called once per queue, because a blocking pop holds its connection. */
+	/** Opens a new connection. It is called once for each queue that starts, because a blocking pop holds its connection. */
 	createConsumer: () => ClosableWorkQueueConsumerClient;
 	/** The Redis key prefix of the host. The engine adds the names of its lists. */
 	keyPrefix: string;
@@ -28,7 +28,7 @@ export interface RedisWorkQueuesOptions {
 export interface RedisWorkQueues {
 	/** Pass them to `createEngineRuntime`, which starts and stops them. */
 	queues: EngineWorkQueues;
-	/** Closes the consumer connections. Call it after the engine has stopped the queues. */
+	/** Closes the consumer connections that the started queues opened. Call it after the engine has stopped the queues. */
 	close(): void;
 }
 
@@ -43,14 +43,18 @@ export function createRedisWorkQueues({
 	concurrency,
 	logger,
 }: RedisWorkQueuesOptions): RedisWorkQueues {
-	const orchestrationConsumer = createConsumer();
-	const stepConsumer = createConsumer();
+	const opened: ClosableWorkQueueConsumerClient[] = [];
+	const openConsumer = () => {
+		const consumer = createConsumer();
+		opened.push(consumer);
+		return consumer;
+	};
 
 	return {
 		queues: {
 			orchestration: new RedisWorkQueue({
 				publisher,
-				consumer: orchestrationConsumer,
+				openConsumer,
 				key: `${keyPrefix}:engine-v2-queue:orchestration`,
 				parse: (value) => orchestrationMessageSchema.parse(value),
 				logger,
@@ -58,7 +62,7 @@ export function createRedisWorkQueues({
 			}),
 			step: new RedisWorkQueue({
 				publisher,
-				consumer: stepConsumer,
+				openConsumer,
 				key: `${keyPrefix}:engine-v2-queue:step`,
 				parse: (value) => stepMessageSchema.parse(value),
 				logger,
@@ -66,7 +70,7 @@ export function createRedisWorkQueues({
 			}),
 		},
 		close: () => {
-			for (const consumer of [orchestrationConsumer, stepConsumer]) consumer.disconnect();
+			for (const consumer of opened) consumer.disconnect();
 		},
 	};
 }

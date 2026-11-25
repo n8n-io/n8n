@@ -136,9 +136,11 @@ describe('readSkillFolder', () => {
 
 		it.each([
 			{ path: 'references/a.md', kept: 'references/a.md' },
-			{ path: './references/a.md', kept: 'references/a.md' },
-			{ path: '.\\references\\a.md', kept: 'references/a.md' },
 			{ path: 'references/deep/a.markdown', kept: 'references/deep/a.markdown' },
+			{ path: 'reference/degraded/a.md', kept: 'reference/degraded/a.md' },
+			{ path: 'scripts/run.sh', kept: 'scripts/run.sh' },
+			{ path: 'LICENSE', kept: 'LICENSE' },
+			{ path: 'references/data.json', kept: 'references/data.json' },
 		])('keeps $path as $kept', ({ path, kept }) => {
 			const { content, skippedFiles } = readFile(path);
 
@@ -147,12 +149,9 @@ describe('readSkillFolder', () => {
 		});
 
 		it.each([
-			{ path: 'scripts/run.sh', skipped: 'scripts/run.sh' },
-			{ path: 'assets/logo.png', skipped: 'assets/logo.png' },
-			{ path: 'LICENSE', skipped: 'LICENSE' },
-			{ path: 'references/data.json', skipped: 'references/data.json' },
 			{ path: 'references/../secrets.md', skipped: 'references/../secrets.md' },
-			{ path: '.\\docs\\a.md', skipped: 'docs/a.md' },
+			{ path: '.\\docs\\a.md', skipped: '.\\docs\\a.md' },
+			{ path: './references/a.md', skipped: './references/a.md' },
 		])('skips $path', ({ path, skipped }) => {
 			const { content, skippedFiles } = readFile(path);
 
@@ -168,17 +167,57 @@ describe('readSkillFolder', () => {
 			expect(skippedFiles).toEqual(['references/a\0.md']);
 		});
 
-		it('skips a reference with a NUL character in its text, and lists it as one n8n cannot store', () => {
-			const { content, skippedFiles, unstorableFiles } = readSkillFolder('brand-voice', [
+		it('removes the byte order mark and CRLF from Markdown files only', () => {
+			const { content } = readSkillFolder('brand-voice', [
 				SKILL,
-				{ path: 'references/a.md', content: 'PNG\0data' },
-				{ path: 'references/b.md', content: 'Text' },
-				{ path: 'scripts/run.sh', content: 'x' },
+				{ path: 'reference/guide.MD', content: '\uFEFFLine 1\r\nLine 2\r' },
+				{ path: 'notes.markdown', content: Buffer.from('\uFEFFA\r\n') },
+				{ path: 'scripts/run.bat', content: '\uFEFFecho 1\r\n' },
 			]);
 
-			expect(content.files).toEqual([{ path: 'references/b.md', content: 'Text' }]);
-			expect(skippedFiles).toEqual(['references/a.md', 'scripts/run.sh']);
-			expect(unstorableFiles).toEqual(['references/a.md']);
+			expect(content.files).toEqual([
+				{ path: 'notes.markdown', content: 'A\n' },
+				{ path: 'reference/guide.MD', content: 'Line 1\nLine 2\n' },
+				{ path: 'scripts/run.bat', content: '\uFEFFecho 1\r\n' },
+			]);
+		});
+
+		it('keeps a file with a text name as text when it has a byte that is not UTF-8', () => {
+			// 0x92 is a quote in Windows-1252.
+			const quote = Buffer.from([0x49, 0x74, 0x92, 0x73]);
+			const { content } = readSkillFolder('brand-voice', [
+				{ path: 'SKILL.md', content: Buffer.concat([Buffer.from(String(SKILL.content)), quote]) },
+				{ path: 'assets/data.bin', content: quote },
+				{ path: 'references/guide.md', content: quote },
+				{ path: 'references/guide.mdx', content: quote },
+				{ path: 'references/nul.md', content: Buffer.from([0x41, 0]) },
+			]);
+
+			expect(content.instructions).toContain('It\uFFFDs');
+			expect(content.files).toEqual([
+				{ path: 'assets/data.bin', content: quote.toString('base64'), isBinary: true },
+				{ path: 'references/guide.md', content: 'It\uFFFDs' },
+				{ path: 'references/guide.mdx', content: 'It\uFFFDs' },
+				{ path: 'references/nul.md', content: 'QQA=', isBinary: true },
+			]);
+		});
+
+		it('preserves binary bytes, empty files, and the line endings of a script', () => {
+			const input = Buffer.from([0, 0xff, 0xfe, 10]);
+			const { content, skippedFiles } = readSkillFolder('brand-voice', [
+				SKILL,
+				{ path: 'assets/logo.png', content: input },
+				{ path: 'reference/empty.md', content: '' },
+				{ path: 'scripts/run.sh', content: 'x\r\n' },
+			]);
+
+			expect(content.files).toEqual([
+				{ path: 'assets/logo.png', content: input.toString('base64'), isBinary: true },
+				{ path: 'reference/empty.md', content: '' },
+				{ path: 'scripts/run.sh', content: 'x\r\n' },
+			]);
+			expect(skippedFiles).toEqual([]);
+			expect(writeSkillFolder(content)[1].content).toEqual(input);
 		});
 
 		it.each([
@@ -193,13 +232,12 @@ describe('readSkillFolder', () => {
 		});
 
 		it.each([
-			{ case: 'a ./ path', extra: ['references/a.md', './references/a.md'], at: 'references/a.md' },
 			{
-				case: 'backslashes',
-				extra: ['references/a.md', 'references\\a.md'],
-				at: 'references/a.md',
+				case: 'two supporting files',
+				extra: ['reference/a.md', 'reference/a.md'],
+				at: 'reference/a.md',
 			},
-			{ case: 'a second SKILL.md', extra: ['./SKILL.md'], at: 'SKILL.md' },
+			{ case: 'a second SKILL.md', extra: ['SKILL.md'], at: 'SKILL.md' },
 		])('refuses two paths for one file, with $case', ({ extra, at }) => {
 			const files = [SKILL, ...extra.map((path) => ({ path, content: 'x' }))];
 			const read = () => readSkillFolder('brand-voice', files);
@@ -208,11 +246,11 @@ describe('readSkillFolder', () => {
 			expect(read).toThrow(`The folder has more than one file at ${at}.`);
 		});
 
-		it('finds SKILL.md under a ./ path and lists skipped files in path order', () => {
+		it('lists skipped files in path order', () => {
 			const { content, skippedFiles } = readSkillFolder('brand-voice', [
-				{ path: 'scripts/run.sh', content: 'x' },
-				{ ...SKILL, path: './SKILL.md' },
-				{ path: 'LICENSE', content: 'x' },
+				{ path: 'z/../run.sh', content: 'x' },
+				SKILL,
+				{ path: 'a/../LICENSE', content: 'x' },
 				{ path: 'references/b.md', content: 'B\r\n' },
 				{ path: 'references/a.md', content: 'A' },
 			]);
@@ -221,7 +259,7 @@ describe('readSkillFolder', () => {
 				{ path: 'references/a.md', content: 'A' },
 				{ path: 'references/b.md', content: 'B\n' },
 			]);
-			expect(skippedFiles).toEqual(['LICENSE', 'scripts/run.sh']);
+			expect(skippedFiles).toEqual(['a/../LICENSE', 'z/../run.sh']);
 		});
 	});
 });
@@ -262,11 +300,11 @@ describe('writeSkillFolder', () => {
 	it('keeps the hash of a read folder stable over a write and a read', () => {
 		const messy = [
 			{
-				path: '.\\SKILL.md',
+				path: 'SKILL.md',
 				content:
 					'\uFEFF---\r\nname: "  Brand voice "\r\ndescription: Write\r\nmetadata:\r\n  team: core\r\n---\r\n\r\n  Use short sentences.  \r\n\r\n',
 			},
-			{ path: './references/tone.md', content: 'Warm.\r\n' },
+			{ path: 'references/tone.md', content: 'Warm.\r\n' },
 			{ path: 'scripts/run.sh', content: 'echo' },
 		];
 		const { content: first } = readSkillFolder('brand-voice', messy);
