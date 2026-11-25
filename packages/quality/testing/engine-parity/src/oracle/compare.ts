@@ -126,6 +126,41 @@ function isTrigger(parityCase: ParityCase, nodeName: string): boolean {
 	return parityCase.ir.triggers.some((trigger) => trigger.key === nodeName);
 }
 
+/** True when the fired trigger can reach `target` without going through `skip`. */
+function reachable(parityCase: ParityCase, target: string, skip?: string): boolean {
+	const { connections } = parityCase.workflow;
+	const seen = new Set<string>();
+	const queue = [parityCase.ir.firedTrigger];
+	while (queue.length > 0) {
+		const current = queue.shift();
+		if (current === undefined || current === skip || seen.has(current)) continue;
+		if (current === target) return true;
+		seen.add(current);
+		for (const outputs of Object.values(connections[current] ?? {})) {
+			for (const output of outputs ?? []) {
+				for (const connection of output ?? []) queue.push(connection.node);
+			}
+		}
+	}
+	return false;
+}
+
+/** True when every path from the fired trigger to `target` goes through `node`. */
+function isOnEveryPath(parityCase: ParityCase, node: string, target: string): boolean {
+	if (node === target) return true;
+	return reachable(parityCase, target) && !reachable(parityCase, target, node);
+}
+
+/**
+ * A node that one engine did not run, but that the engine had to run before
+ * it got to its failing node. No order of branches explains that.
+ */
+function skippedRequiredNode(diff: Diff, v1: Outcome, v2: Outcome, parityCase: ParityCase) {
+	if (diff.kind !== 'nodeRan' || !diff.node) return false;
+	const failingNode = (v1.nodes[diff.node] ? v2 : v1).error?.node;
+	return failingNode !== undefined && isOnEveryPath(parityCase, diff.node, failingNode);
+}
+
 export function compare(
 	v1: Outcome,
 	v2: Outcome,
@@ -140,7 +175,13 @@ export function compare(
 		)
 		.map((diff): Diff => {
 			// A node that ran on both engines must still give the same items.
-			if (!byOrder || diff.level === 'L3' || diff.level === 'L4' || diff.kind === 'items') {
+			if (
+				!byOrder ||
+				diff.level === 'L3' ||
+				diff.level === 'L4' ||
+				diff.kind === 'items' ||
+				skippedRequiredNode(diff, v1, v2, parityCase)
+			) {
 				return diff;
 			}
 			return {
