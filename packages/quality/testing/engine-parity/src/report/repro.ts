@@ -18,7 +18,8 @@ export interface Repro {
 	path: string;
 	ir: IrWorkflow;
 	workflow: IWorkflowBase;
-	subWorkflows: Record<string, IWorkflowBase>;
+	/** Repro files from before sub-workflows do not have this field. */
+	subWorkflows?: Record<string, IWorkflowBase>;
 	/** The workflow as `@n8n/workflow-sdk` code. */
 	sdkCode: string;
 	raw: { v1: unknown; v2: unknown };
@@ -88,5 +89,5 @@ export function readRepro(file: string): Repro {
 
 /** The case of a repro file, ready to run again. */
 export function reproCase(repro: Repro): ParityCase {
-	return { ir: repro.ir, workflow: repro.workflow, subWorkflows: repro.subWorkflows };
+	return { ir: repro.ir, workflow: repro.workflow, subWorkflows: repro.subWorkflows ?? {} };
 }

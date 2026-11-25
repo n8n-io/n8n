@@ -142,22 +142,31 @@ describe('grammar', () => {
 		expect([...modes].sort()).toEqual([false, true]);
 	});
 
-	it('makes cases that the SDK can print as code', () => {
-		for (const parityCase of sample('subWorkflows', 3, 20)) {
-			expect(toSdkCode(parityCase.ir)).toContain("workflow('parity'");
-		}
-	});
+	it.each(['code', 'subWorkflows'])(
+		'makes cases that the SDK can print as code for the "%s" rule set',
+		(name) => {
+			for (const parityCase of sample(name, 3, 20)) {
+				expect(toSdkCode(parityCase.ir)).toContain("workflow('parity'");
+			}
+		},
+	);
 
-	it('gives each Execute Workflow node its own sub-workflow', () => {
-		const cases = sample('subWorkflows').filter((parityCase) =>
-			parityCase.ir.nodes.some((irNode) => irNode.catalogId === 'executeWorkflow'),
-		);
+	it('gives each Execute Workflow node its own sub-workflow, nested calls included', () => {
+		const calls = (parityCase: ParityCase) =>
+			[parityCase.ir, ...Object.values(parityCase.ir.subWorkflows ?? {})].flatMap((ir) =>
+				ir.nodes.filter((irNode) => irNode.catalogId === 'executeWorkflow'),
+			);
+		const cases = sample('subWorkflows').filter((parityCase) => calls(parityCase).length > 0);
 
 		expect(cases.length).toBeGreaterThan(0);
+		const nested = cases.some((parityCase) =>
+			Object.values(parityCase.ir.subWorkflows ?? {}).some((sub) =>
+				sub.nodes.some((irNode) => irNode.catalogId === 'executeWorkflow'),
+			),
+		);
+		expect(nested).toBe(true);
 		for (const parityCase of cases) {
-			for (const irNode of parityCase.ir.nodes.filter(
-				(node) => node.catalogId === 'executeWorkflow',
-			)) {
+			for (const irNode of calls(parityCase)) {
 				expect(parityCase.subWorkflows[String(irNode.params.workflowId)]).toBeDefined();
 			}
 		}
