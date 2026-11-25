@@ -23,7 +23,10 @@ export declare namespace Zammad {
 		accessToken: string;
 	};
 
-	export type OAuth2Credentials = CredentialsBase;
+	export type OAuth2Credentials = {
+		baseUrl: string;
+		ignoreSSLIssues?: boolean;
+	};
 
 	export type UserAdditionalFields = IDataObject & CustomFieldsUi & AddressUi;
 	export type UserUpdateFields = UserAdditionalFields;

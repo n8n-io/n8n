@@ -35,7 +35,7 @@ export async function zammadApiRequest(
 			qs,
 			uri: requestUrl`${oAuth2Credentials.baseUrl}/api/v1${endpoint}`,
 			json: true,
-			rejectUnauthorized: !oAuth2Credentials.allowUnauthorizedCerts,
+			rejectUnauthorized: !oAuth2Credentials.ignoreSSLIssues,
 		};
 
 		if (!Object.keys(body).length) {
