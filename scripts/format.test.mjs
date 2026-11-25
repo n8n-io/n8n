@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 import { afterEach, describe, it } from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import { chunkTargets, collectFormatTargets, formatRootFiles } from './format.mjs';
+
+const FORMAT_SCRIPT_PATH = fileURLToPath(new URL('./format.mjs', import.meta.url));
 
 const temporaryDirectories = [];
 
@@ -152,6 +155,26 @@ describe('collectFormatTargets', () => {
 		assert.deepEqual(toRelativeSorted(dir, biomeTargets), ['dir.json/nested.ts', 'turbo.json']);
 	});
 
+	it('skips symlinks pointing to regular files in both git and fallback walk modes', () => {
+		for (const git of [true, false]) {
+			const dir = createFixture({
+				git,
+				files: {
+					'real.json': '{}\n',
+					'target.txt': '{"a": 1}\n',
+					'target-yml.txt': 'a: 1\n',
+				},
+			});
+			symlinkSync(join(dir, 'target.txt'), join(dir, 'linked.json'));
+			symlinkSync(join(dir, 'target-yml.txt'), join(dir, 'linked.yml'));
+
+			const { prettierTargets, biomeTargets } = collectFormatTargets(dir);
+
+			assert.deepEqual(toRelativeSorted(dir, prettierTargets), []);
+			assert.deepEqual(toRelativeSorted(dir, biomeTargets), ['real.json']);
+		}
+	});
+
 	it('returns empty arrays when no matching files exist', () => {
 		const dir = createFixture({
 			git: true,
@@ -230,6 +253,7 @@ describe('formatRootFiles', () => {
 		assert.equal(calls[0].bin, process.execPath);
 		assert.equal(calls[0].options.shell, undefined);
 		assert.equal(calls[0].options.cwd, resolve(dir));
+		assert.deepEqual(calls[0].options.stdio, ['ignore', 'ignore', 'inherit']);
 		assert.deepEqual(calls[0].args, [
 			resolve(dir, 'node_modules/prettier/bin/prettier.cjs'),
 			'--config',
@@ -243,6 +267,7 @@ describe('formatRootFiles', () => {
 		assert.equal(calls[1].bin, process.execPath);
 		assert.equal(calls[1].options.shell, undefined);
 		assert.equal(calls[1].options.cwd, resolve(dir));
+		assert.deepEqual(calls[1].options.stdio, ['ignore', 'ignore', 'inherit']);
 		assert.deepEqual(calls[1].args.slice(0, 5), [
 			resolve(dir, 'node_modules/@biomejs/biome/bin/biome'),
 			'format',
@@ -371,5 +396,59 @@ describe('formatRootFiles', () => {
 				}),
 			/biome not found at path: .*bin[/\\]biome.*Please run `pnpm i` first/s,
 		);
+	});
+});
+
+describe('CLI entrypoint guard', () => {
+	it('runs formatRootFiles when invoked through a symlinked directory or script symlink and keeps stdout quiet', () => {
+		const fixtureDir = createFixture({
+			git: true,
+			files: {
+				'sample.json': '{}\n',
+			},
+		});
+		const recordPath = join(fixtureDir, 'invocations.log');
+		const biomeDir = join(fixtureDir, 'node_modules', '@biomejs', 'biome');
+		mkdirSync(join(biomeDir, 'bin'), { recursive: true });
+		writeFileSync(
+			join(biomeDir, 'package.json'),
+			JSON.stringify({ name: '@biomejs/biome', bin: { biome: 'bin/biome.cjs' } }),
+		);
+		writeFileSync(
+			join(biomeDir, 'bin', 'biome.cjs'),
+			[
+				"const fs = require('node:fs');",
+				`fs.appendFileSync(${JSON.stringify(recordPath)}, JSON.stringify(process.argv.slice(2)) + '\\n');`,
+				"console.log('Formatted 1 file.');",
+			].join('\n'),
+		);
+
+		const aliasRoot = mkdtempSync(join(tmpdir(), 'format-symlink-test-'));
+		temporaryDirectories.push(aliasRoot);
+		const dirLink = join(aliasRoot, 'scripts-alias');
+		const fileLink = join(aliasRoot, 'format-alias.mjs');
+		symlinkSync(dirname(FORMAT_SCRIPT_PATH), dirLink, 'dir');
+		symlinkSync(FORMAT_SCRIPT_PATH, fileLink, 'file');
+
+		const dirStdout = execFileSync(process.execPath, [join(dirLink, 'format.mjs')], {
+			cwd: fixtureDir,
+			encoding: 'utf8',
+		});
+		const fileStdout = execFileSync(process.execPath, [fileLink], {
+			cwd: fixtureDir,
+			encoding: 'utf8',
+		});
+
+		assert.equal(dirStdout, '');
+		assert.equal(fileStdout, '');
+
+		const invocations = readFileSync(recordPath, 'utf8')
+			.trim()
+			.split('\n')
+			.map((line) => JSON.parse(line));
+		assert.equal(invocations.length, 2);
+		for (const args of invocations) {
+			assert.ok(args.includes(resolve(fixtureDir, 'sample.json')));
+		}
 	});
 });

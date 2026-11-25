@@ -85,6 +85,8 @@ export const collectFormatTargets = (rootDir = process.cwd()) => {
 		const entryPath = path.resolve(resolvedRoot, relativePath);
 		let stat;
 		try {
+			// Skip directories (including nested Git repos) and symlinks.
+			// Prettier exits with code 2 on explicit symlink paths, and Biome would rewrite symlink targets.
 			stat = fs.lstatSync(entryPath);
 		} catch {
 			continue;
@@ -181,9 +183,10 @@ export const formatRootFiles = ({
 	const { prettierTargets, biomeTargets } = collectFormatTargets(resolvedRoot);
 
 	// Invoke Node CLI entry points directly without a shell so paths with spaces work on Windows too.
+	// Discard formatter stdout (matching prior execSync behavior) while preserving stderr diagnostics.
 	const execOptions = {
 		cwd: resolvedRoot,
-		stdio: 'inherit',
+		stdio: ['ignore', 'ignore', 'inherit'],
 	};
 
 	if (prettierTargets.length > 0) {
@@ -224,6 +227,23 @@ export const formatRootFiles = ({
 	return { prettierTargets, biomeTargets };
 };
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
+const resolveRealPath = (filePath) => {
+	try {
+		return fs.realpathSync.native(filePath);
+	} catch {
+		return fs.realpathSync(filePath);
+	}
+};
+
+const isDirectExecution = (entryPath = process.argv[1], moduleUrl = import.meta.url) => {
+	if (!entryPath) return false;
+	try {
+		return resolveRealPath(fileURLToPath(moduleUrl)) === resolveRealPath(entryPath);
+	} catch {
+		return false;
+	}
+};
+
+if (isDirectExecution()) {
 	formatRootFiles();
 }
