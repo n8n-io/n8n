@@ -1708,7 +1708,8 @@ describe('AgentValidationService — structured issues', () => {
 		});
 
 		it('blocks publish when a mentioned workflow is not found, but not a run', async () => {
-			const { service } = mentionSetup();
+			const { service, workflowRepository } = mentionSetup();
+			workflowRepository.findByIds.mockResolvedValue([]);
 
 			const publishResult = await service.validateAgentConfiguration(
 				agentId,
@@ -1726,6 +1727,54 @@ describe('AgentValidationService — structured issues', () => {
 				},
 			]);
 			expect(runtimeResult).toEqual({ missing: [] });
+		});
+
+		it('blocks publish when a mentioned workflow is outside the project of the agent', async () => {
+			const { service, workflowRepository } = mentionSetup();
+			workflowRepository.findByIds.mockResolvedValue([
+				{ id: 'wf-mentioned', isArchived: false },
+			] as never);
+
+			const result = await service.validateAgentConfiguration(
+				agentId,
+				projectId,
+				credentials,
+				'publish',
+			);
+
+			expect(workflowRepository.findByIds).toHaveBeenCalledWith(['wf-mentioned'], {
+				fields: ['isArchived'],
+			});
+			expect(result.issues).toEqual([
+				{
+					code: 'incompatible_reference',
+					path: 'skills.lucky.workflows.wf-mentioned',
+					capability: { kind: 'tool', id: 'Get code', toolType: 'workflow' },
+					reason: 'not_in_project',
+				},
+			]);
+		});
+
+		it('reports an archived mentioned workflow as not found', async () => {
+			const { service, workflowRepository } = mentionSetup();
+			workflowRepository.findByIds.mockResolvedValue([
+				{ id: 'wf-mentioned', isArchived: true },
+			] as never);
+
+			const result = await service.validateAgentConfiguration(
+				agentId,
+				projectId,
+				credentials,
+				'publish',
+			);
+
+			expect(result.issues).toEqual([
+				{
+					code: 'missing_reference',
+					path: 'skills.lucky.workflows.wf-mentioned',
+					capability: { kind: 'tool', id: 'Get code', toolType: 'workflow' },
+				},
+			]);
 		});
 
 		it('does not report a published mentioned workflow without a supported trigger', async () => {
