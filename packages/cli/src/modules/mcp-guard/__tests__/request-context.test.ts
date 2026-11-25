@@ -12,7 +12,7 @@ describe('withRequestSignal', () => {
 
 		const call = runWithRequestContext(
 			{ origin: 'https://a.test', signal: controller.signal },
-			() => withRequestSignal(base)('https://a.test/x'),
+			async () => await withRequestSignal(base)('https://a.test/x'),
 		);
 		controller.abort();
 
@@ -23,8 +23,9 @@ describe('withRequestSignal', () => {
 		const base = vi.fn(async (_input: unknown, _init?: RequestInit) => new Response('ok'));
 		const own = new AbortController().signal;
 
-		await runWithRequestContext({ origin: 'https://a.test' }, () =>
-			withRequestSignal(base)('https://a.test/x', { signal: own }),
+		await runWithRequestContext(
+			{ origin: 'https://a.test' },
+			async () => await withRequestSignal(base)('https://a.test/x', { signal: own }),
 		);
 
 		expect(base.mock.calls[0][1]?.signal).toBe(own);

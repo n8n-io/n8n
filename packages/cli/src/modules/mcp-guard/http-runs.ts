@@ -74,7 +74,9 @@ export class HttpRunRegistry {
 		// The real reads use the credential of the request that is being answered.
 		const upstream = createHttpToolCaller({
 			origin: () => currentRequestContext().origin,
-			send: this.cfg.send ?? ((req) => sendToNetwork(req, { timeoutMs: REQUEST_TIMEOUT_MS })),
+			send:
+				this.cfg.send ??
+				(async (req) => await sendToNetwork(req, { timeoutMs: REQUEST_TIMEOUT_MS })),
 			headers: () => {
 				const { authorization } = currentRequestContext();
 				return { accept: 'application/json', ...(authorization && { authorization }) };
