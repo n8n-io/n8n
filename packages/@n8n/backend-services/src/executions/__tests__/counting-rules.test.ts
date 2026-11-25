@@ -121,7 +121,7 @@ const expectStatisticsName = (f: LedgerFact): StatisticsNames | null => {
 	const counted =
 		f.entityType === 'workflow' &&
 		f.event === 'ended' &&
-		['success', 'error', 'crashed', 'blocked'].includes(f.outcome) &&
+		['success', 'error', 'crashed'].includes(f.outcome) &&
 		f.mode !== 'chat';
 	if (!counted) return null;
 	const isManual = f.mode === 'manual' || f.source === 'instance_ai';
@@ -480,11 +480,8 @@ describe('toWorkflowStatisticsCount (fact)', () => {
 		expect(mismatches).toEqual([]);
 	});
 
-	test('a blocked production run counts as a production error outside the root count', () => {
-		expect(toWorkflowStatisticsCount(fact({ outcome: 'blocked' }))).toEqual({
-			name: StatisticsNames.productionError,
-			isRoot: false,
-		});
+	test('does not count a blocked run', () => {
+		expect(toWorkflowStatisticsCount(fact({ outcome: 'blocked' }))).toBeNull();
 	});
 
 	test('an Instance AI run in trigger mode counts as a manual success outside the root count', () => {
@@ -532,23 +529,22 @@ describe('toWorkflowStatisticsCount (run)', () => {
 		expect(mismatches).toEqual([]);
 	});
 
-	test('counts a run that failed before its first node started as a production error, not root', () => {
+	test('does not count a run that failed before its first node started', () => {
 		const blocked = {
 			...run('webhook', 'error'),
 			data: { resultData: { failedBeforeStart: 'policy' as const } },
 		};
-		expect(toWorkflowStatisticsCount(blocked)).toEqual({
-			name: StatisticsNames.productionError,
-			isRoot: false,
-		});
+		expect(toWorkflowStatisticsCount(blocked)).toBeNull();
 	});
 
-	test('counts a crashed run that no runner took as a production error, not root', () => {
+	test('does not count a crashed run that no runner took', () => {
 		const crashed = { mode: 'trigger' as const, status: 'crashed' as const, startedAt: null };
-		expect(toWorkflowStatisticsCount(crashed)).toEqual({
-			name: StatisticsNames.productionError,
-			isRoot: false,
-		});
+		expect(toWorkflowStatisticsCount(crashed)).toBeNull();
+	});
+
+	test('does not count a trigger error saved without a start', () => {
+		const triggerError = { mode: 'trigger' as const, status: 'error' as const, startedAt: null };
+		expect(toWorkflowStatisticsCount(triggerError)).toBeNull();
 	});
 
 	test('does not count a canceled run', () => {

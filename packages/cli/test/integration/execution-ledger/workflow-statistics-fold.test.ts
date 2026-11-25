@@ -9,10 +9,15 @@ import { sleep } from '@n8n/utils/sleep';
 import type {
 	ExecutionStatus,
 	IRun,
+	Workflow,
 	WorkflowExecuteMode,
 	WorkflowExecutionSource,
 } from 'n8n-workflow';
-import { createEmptyRunExecutionData, createRunExecutionData } from 'n8n-workflow';
+import {
+	createEmptyRunExecutionData,
+	createRunExecutionData,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 import { ExecutionLedgerModule } from '@n8n/backend-module-execution-ledger/module';
 import {
@@ -25,6 +30,7 @@ import {
 } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { ExecutionService } from '@/executions/execution.service';
 import { packagedModules } from '@/modules/modules.manifest';
 import { WorkflowStatisticsFoldStep } from '@/services/workflow-statistics.fold-step';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
@@ -302,12 +308,21 @@ describe('workflow statistics fold step', () => {
 				'new',
 				'queue-recovery',
 			);
+
+			const [node] = workflow.nodes;
+			await Container.get(ExecutionService).createErrorExecution(
+				new NodeOperationError(node, 'Trigger failed'),
+				node,
+				workflow,
+				{ id: workflow.id } as Workflow,
+				'trigger',
+			);
 		};
 
 		// Hand-written, so a shared mistake in both writers still fails.
 		const expected: Counters = {
 			[StatisticsNames.productionSuccess]: { count: 5, rootCount: 3 },
-			[StatisticsNames.productionError]: { count: 4, rootCount: 2 },
+			[StatisticsNames.productionError]: { count: 2, rootCount: 2 },
 			[StatisticsNames.manualSuccess]: { count: 2, rootCount: 0 },
 			[StatisticsNames.manualError]: { count: 1, rootCount: 0 },
 		};
