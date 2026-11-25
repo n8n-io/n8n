@@ -3,12 +3,19 @@ import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, getChildNodes, type IConnections } 
 import type { AgentApproval, AgentIntegrationSettings } from './agent-integration.schema';
 import type { AgentJsonConfig } from './agent-json-config.schema';
 import type { AgentPersonalisation } from './agent-personalisation';
+import type { AgentSkillReference } from './agent-skill.schema';
 import type { AgentBackgroundJobSignal } from './background-job';
 import type { ProviderAttachmentCapabilities } from './provider-capabilities';
 
 export type AgentActor = 'user' | 'builder' | 'mcp';
 
-export type AgentExecutionStatus = 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
+export type AgentExecutionStatus =
+	| 'running'
+	| 'success'
+	| 'error'
+	| 'cancelled'
+	| 'interrupted'
+	| 'awaiting';
 
 export interface AgentSessionPreviewAccess {
 	canContinueInPreview: boolean;
@@ -159,6 +166,11 @@ export interface AgentIntegrationStatusEntry {
 	errorMessage?: string;
 }
 
+export interface AgentIntegrationDraftEntry {
+	type: string;
+	settings?: AgentIntegrationSettings;
+}
+
 export interface AgentIntegrationStatusResponse {
 	/**
 	 * Rollup across `integrations`, for callers that only need one word:
@@ -166,6 +178,8 @@ export interface AgentIntegrationStatusResponse {
 	 */
 	status: 'configured' | 'connected' | 'disconnected' | 'partial' | 'error';
 	integrations: AgentIntegrationStatusEntry[];
+	/** Channels saved without a credential. Setup forms start from their settings. */
+	drafts: AgentIntegrationDraftEntry[];
 	n8nChat: { draftEnabled: boolean; publishedEnabled: boolean };
 }
 
@@ -202,9 +216,9 @@ export interface AgentWhatsAppVerifyTokenResponse {
 	verifyToken: string;
 }
 
-export interface AgentSkillReference {
-	path: string;
-	content: string;
+/** The URL of an agent's webhook channel. Callers send `POST` requests to `${url}/responses`. */
+export interface AgentWebhookUrlResponse {
+	url: string;
 }
 
 export interface AgentSkill {
@@ -215,6 +229,21 @@ export interface AgentSkill {
 	references?: AgentSkillReference[];
 }
 
+/**
+ * The versions of one attached skill, as the agent builder shows them. Numbers are
+ * `skill_version.version`.
+ */
+export interface AgentSkillVersionInfo {
+	/** The version the draft runs: the pinned one, else the latest. */
+	draft: number;
+	/** The version the published agent runs. Null when the published agent does not use the skill. */
+	published: number | null;
+	/** The newest saved version of the skill. */
+	latest: number;
+	/** True when the draft ref is pinned to a version. */
+	pinned: boolean;
+}
+
 export interface AgentConfigResponse {
 	config: AgentJsonConfig;
 	configHash: string;
@@ -223,6 +252,13 @@ export interface AgentConfigResponse {
 export interface AgentConfigMutationResponse extends AgentConfigResponse {
 	updatedAt: string;
 	versionId: string | null;
+}
+
+/** Saved state returned with an Agent creation response. */
+export interface AgentCreationState {
+	config: AgentJsonConfig | null;
+	configHash: string | null;
+	adopted: boolean;
 }
 
 export interface AgentSkillMutationResponse {
@@ -237,6 +273,132 @@ export interface AgentVersionDto {
 	schema: AgentJsonConfig | null;
 	skills: Record<string, AgentSkill> | null;
 	author: string;
+}
+
+export const AGENT_MEMORY_ENTRY_SOURCE_KINDS = [
+	'slack',
+	'linear',
+	'discord',
+	'telegram',
+	'whatsapp',
+	'teams',
+	'n8n-chat',
+	'preview',
+	'build',
+] as const;
+
+export type AgentMemoryEntrySourceKind = (typeof AGENT_MEMORY_ENTRY_SOURCE_KINDS)[number];
+
+/**
+ * Sources the memory list can filter by. `users` covers the n8n users who chatted
+ * with the agent, in Preview or in n8n Chat.
+ */
+export const AGENT_MEMORY_FILTER_SOURCES = [
+	'slack',
+	'linear',
+	'discord',
+	'telegram',
+	'whatsapp',
+	'teams',
+	'users',
+	'build',
+] as const;
+
+export type AgentMemoryFilterSource = (typeof AGENT_MEMORY_FILTER_SOURCES)[number];
+
+/** The kind of source inside an integration that the memory list can filter by. */
+export const AGENT_MEMORY_SOURCE_FACETS = ['user', 'channel', 'team'] as const;
+
+export type AgentMemorySourceFacet = (typeof AGENT_MEMORY_SOURCE_FACETS)[number];
+
+/** Where a stored memory came from. Every part except `kind` is dropped when unknown. */
+export interface AgentMemoryEntrySourceDto {
+	kind: AgentMemoryEntrySourceKind;
+	userName?: string;
+	/** The requesting user wrote the source message. Only set for n8n chat, preview and build. */
+	isViewer?: boolean;
+	/** Slack channel name with the leading `#` (e.g. `#general`), or Linear issue identifier (e.g. `ENG-123`). */
+	place?: string;
+	isDirectMessage?: boolean;
+}
+
+export interface AgentMemoryEntryDto {
+	id: string;
+	content: string;
+	createdAt: string;
+	source?: AgentMemoryEntrySourceDto;
+	/** Distinct source threads besides the one shown in `source`. */
+	otherSourceCount: number;
+}
+
+/** Current state of a memory entry that a run recalled. `replaced` means the agent dropped or superseded it. */
+export type AgentTraceRecalledMemoryStatus = 'active' | 'replaced' | 'deleted';
+
+/** Current state of a fact that a run flagged for capture. */
+export type AgentTraceFlaggedMemoryStatus =
+	| 'pending'
+	| 'stored'
+	| 'replaced'
+	| 'failed'
+	| 'deleted';
+
+/** The newest evidence for a recalled entry. */
+export interface AgentTraceMemoryOriginDto {
+	threadId: string;
+	/** The requesting user can open this session. */
+	canOpen: boolean;
+	evidence: string;
+	createdAt: string;
+}
+
+export interface AgentTraceRecalledMemoryDto {
+	entryId: string;
+	content: string;
+	status: AgentTraceRecalledMemoryStatus;
+	origin?: AgentTraceMemoryOriginDto;
+}
+
+export interface AgentTraceFlaggedMemoryDto {
+	captureId: string;
+	content: string;
+	evidence: string;
+	status: AgentTraceFlaggedMemoryStatus;
+}
+
+/** Memory activity of a session, keyed by the `toolCallId` of each recall_memory and flag_memory call. */
+export interface AgentThreadMemoryDto {
+	recalls: Record<string, AgentTraceRecalledMemoryDto[]>;
+	flags: Record<string, AgentTraceFlaggedMemoryDto>;
+}
+
+export interface AgentMemoryEntriesPageDto {
+	items: AgentMemoryEntryDto[];
+	/** Count of all active entries that match the filter, not just this page. */
+	total: number;
+	nextCursor: string | null;
+}
+
+export interface AgentMemorySourceFacetItemDto {
+	/** Platform id for integrations, n8n user id for chat surfaces. */
+	id: string;
+	/** Snapshot of the name. Absent when no name is known. */
+	name?: string;
+	/** The requesting user. Only set for n8n users. */
+	isViewer?: boolean;
+}
+
+/** The sources of one integration or chat surface that have active memories. */
+export interface AgentMemorySourceFacetGroupDto {
+	kind: AgentMemoryFilterSource;
+	users: AgentMemorySourceFacetItemDto[];
+	/** Slack and Discord only. */
+	channels?: AgentMemorySourceFacetItemDto[];
+	/** Linear only. */
+	teams?: AgentMemorySourceFacetItemDto[];
+}
+
+export interface AgentMemorySourceFacetsDto {
+	groups: AgentMemorySourceFacetGroupDto[];
 }
 
 export interface AgentFileDto {
@@ -255,6 +417,28 @@ export interface AgentVersionListItemDto {
 	updatedAt: string;
 	author: string;
 	isActive: boolean;
+	name?: string | null;
+	description?: string | null;
+	isCurrent?: boolean;
+	lastPublished?: Pick<AgentPublishHistoryItemDto, 'author' | 'createdAt' | 'isLegacy'>;
+	/**
+	 * Whether this version's config adds the agent to n8n Chat. Only the
+	 * single-version endpoint sets it, so the publish modal can say so before it publishes.
+	 */
+	includesN8nChat?: boolean;
+}
+
+export interface AgentPublishHistoryItemDto {
+	id: number;
+	versionId: string | null;
+	name: string | null;
+	description: string | null;
+	event: 'activated' | 'deactivated';
+	author: string;
+	createdAt: string;
+	endedAt: string | null;
+	isActive: boolean;
+	isLegacy: boolean;
 }
 
 /**
@@ -263,7 +447,7 @@ export interface AgentVersionListItemDto {
 export interface AgentCapabilityModel {
 	/** Provider prefix of the model id, e.g. 'anthropic'. Empty when the id has no prefix. */
 	provider: string;
-	/** Model name, e.g. 'claude-sonnet-4-5'. */
+	/** Model name, e.g. 'claude-sonnet-5-5'. */
 	model: string;
 }
 
@@ -333,6 +517,36 @@ export interface PersistedChildTrace {
 	steps: PersistedChildTraceStep[];
 }
 
+/**
+ * A file that a workflow or node tool returned. The tool output lists these
+ * in its `files` field. The model sees only this metadata, not the bytes.
+ */
+export interface AgentToolOutputFile {
+	fileId: string;
+	fileName: string;
+	mimeType: string;
+	sizeBytes: number;
+}
+
+/** A file of an agent session, for the session files list. */
+export interface AgentSessionFile extends AgentToolOutputFile {
+	/** Where the file came from, e.g. 'chat', 'tool' or 'sandbox'. */
+	source: string;
+	/** ISO 8601 time when the file was stored. */
+	createdAt: string;
+}
+
+export interface AgentSessionFilesResponse {
+	/** Newest first. One entry for each content, plus each older file without a hash. */
+	files: AgentSessionFile[];
+}
+
+/** A tool output file that was not stored. The model gets the reason in the tool result. */
+export interface AgentToolSkippedFile {
+	fileName: string;
+	reason: string;
+}
+
 export interface AgentPersistedMessageContentPart {
 	type: 'text' | 'reasoning' | 'tool-call' | 'file' | (string & {});
 	text?: string;
@@ -356,6 +570,12 @@ export interface AgentPersistedMessageContentPart {
 	sizeBytes?: number;
 	/** Live trace of a delegated child, present only on `delegate_subagent` parts. */
 	childTrace?: PersistedChildTrace;
+	/** Event name of a `host-event` part. See the `host-event` SSE event. */
+	name?: string;
+	/** Update key of a `host-event` part. A turn keeps one event for each name and key. */
+	key?: string;
+	/** Event payload of a `host-event` part. */
+	payload?: unknown;
 }
 
 /** Platform user who wrote a turn in a shared integration thread. */
@@ -365,6 +585,8 @@ export interface AgentMessageAuthor {
 }
 
 export interface AgentPersistedMessageDto {
+	/** A saved acknowledgement of Stop all tasks. */
+	stopReport?: boolean;
 	/** Background results that started this turn. */
 	backgroundTaskSignal?: AgentBackgroundJobSignal;
 	id: string;
@@ -372,6 +594,12 @@ export interface AgentPersistedMessageDto {
 	content: AgentPersistedMessageContentPart[];
 	/** Set on user turns that came in through a chat integration. */
 	author?: AgentMessageAuthor;
+	/**
+	 * Resources that the user sent with a user turn, for example mentioned
+	 * workflows. The system agent provider reads them from the stored model
+	 * input, and the chat host shows them. The shape belongs to that provider.
+	 */
+	references?: unknown[];
 	/** Agent-execution turn id when this message was produced from an execution transcript. */
 	executionId?: string;
 	/** Outcome of the execution that produced this message. */
@@ -405,6 +633,51 @@ export interface AgentChatQueueResponse {
 	steerableExecutionId: string | null;
 }
 
+/**
+ * Token usage and cost of one agent execution, or a sum of executions.
+ * `cacheReadTokens` and `cacheWriteTokens` are subsets of `promptTokens`.
+ */
+export interface AgentExecutionUsage {
+	promptTokens: number | null;
+	completionTokens: number | null;
+	totalTokens: number | null;
+	/** Input tokens read from the provider prompt cache. Part of `promptTokens`. */
+	cacheReadTokens: number | null;
+	/** Input tokens written to the provider prompt cache. Part of `promptTokens`. */
+	cacheWriteTokens: number | null;
+	/** Estimated cost in USD. */
+	cost: number | null;
+}
+
+/** Usage of one execution, with the fields that identify it. */
+export interface AgentExecutionUsageEntry extends AgentExecutionUsage {
+	executionId: string;
+	/** Session thread of the execution. A delegated run has its own child thread. */
+	threadId: string;
+	/** Execution that delegated this run. Null for a top-level turn. */
+	parentExecutionId: string | null;
+	status: AgentExecutionStatus;
+	model: string | null;
+	startedAt: string | null;
+	stoppedAt: string | null;
+	duration: number;
+}
+
+/** Usage of one turn: its own execution, its delegated runs and their sum. */
+export interface AgentTurnUsage extends AgentExecutionUsageEntry {
+	/** Delegated runs that this turn started, oldest first. */
+	descendants: AgentExecutionUsageEntry[];
+	/** Sum of the turn's own usage and the usage of all its descendants. */
+	total: AgentExecutionUsage;
+}
+
+/** Usage of every turn in a system-agent thread, oldest first. */
+export interface AgentThreadUsageResponse {
+	executions: AgentTurnUsage[];
+	/** Sum of all turns and their descendants. */
+	total: AgentExecutionUsage;
+}
+
 /** Chat history envelope returned by the agent chat messages endpoints. */
 export interface AgentChatMessagesResponse {
 	messages: AgentPersistedMessageDto[];
@@ -415,12 +688,17 @@ export interface AgentChatMessagesResponse {
 	 * An omitted value means that the endpoint does not report execution state.
 	 */
 	activeExecutionId?: string | null;
+	/**
+	 * Cursor of the next older page. `null` means that no older turns exist.
+	 * An omitted value means that the response holds the whole thread.
+	 */
+	nextCursor?: string | null;
 }
 
 /**
  * One agent as the n8n chat page lists it.
  *
- * Deliberately narrow. Its audience holds `agent:execute` alone — a
+ * Deliberately narrow. Its audience can hold `agent:execute` alone — a
  * `project:chatUser` can start a production chat but has no `agent:read` — so
  * the published instructions, tools and skills must not travel with the list.
  * The page needs a label, an avatar, the owning project, and a user-facing
@@ -436,6 +714,11 @@ export interface AgentChatListItem {
 	project: { id: string; name: string };
 	/** Media types this agent's model accepts as attachments, derived from its published config. */
 	attachments: ProviderAttachmentCapabilities;
+	/**
+	 * `false` for an agent the user owns that is not published to n8n Chat yet.
+	 * Its icon, blurb and attachments then come from the draft config.
+	 */
+	availableInChat: boolean;
 }
 
 export interface AgentChatListResponse {
@@ -469,8 +752,29 @@ export interface AgentN8nChatThreadsResponse {
 	nextCursor: string | null;
 }
 
+/** One of the user's own threads with a system agent. `projectId` is its working project. */
+export interface SystemAgentThreadSummary {
+	id: string;
+	title: string | null;
+	updatedAt: string;
+	projectId: string;
+	/** The memory metadata of the thread, such as the agent that an Assistant thread builds. */
+	metadata?: Record<string, unknown>;
+}
+
+/** One page of the user's own threads with one system agent, newest first. */
+export interface SystemAgentThreadsResponse {
+	data: SystemAgentThreadSummary[];
+	/** Pass as `cursor` to read the next page. `null` on the last page. */
+	nextCursor: string | null;
+}
+
 export interface AgentSessionLangSmithExportResponse {
 	traceId: string;
+}
+
+export interface AgentSessionStopResponse {
+	cancelRequested: boolean;
 }
 
 /**
@@ -487,6 +791,11 @@ export const N8N_CHAT_INTEGRATION_TYPE = 'n8n_chat' as const;
  * except `control` turns them on.
  */
 export const AGENTS_N8N_CHAT_FLAG = '125_agents_n8n_chat';
+/**
+ * Instance-level PostHog flag for the sandbox files of agents and the session
+ * files panel in the agent chat.
+ */
+export const AGENT_SANDBOX_FILES_FLAG = '137_agent_sandbox_files';
 /** Fixed tool names for the implicit in-app chat integration (no credential suffixes). */
 export const N8N_CHAT_ACTION_TOOL_NAME = 'chat_action' as const;
 export const N8N_CHAT_CONTEXT_TOOL_NAME = 'chat_context' as const;

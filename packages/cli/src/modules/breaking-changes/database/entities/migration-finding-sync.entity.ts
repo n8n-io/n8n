@@ -15,7 +15,7 @@ export class MigrationFindingSync extends BaseEntity {
 	@DateTimeColumn()
 	syncedAt: Date;
 
-	/** Hash of the rule ids active during the last scan. */
+	/** Hash of the n8n version and the rule ids active during the last scan. */
 	@Column({ type: 'varchar', length: 128 })
 	ruleSetFingerprint: string;
 }

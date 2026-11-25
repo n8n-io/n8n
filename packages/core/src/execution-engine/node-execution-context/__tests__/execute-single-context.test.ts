@@ -13,7 +13,8 @@ import type {
 	ICredentialDataDecryptedObject,
 	WorkflowExpression,
 } from 'n8n-workflow';
-import { UnexpectedError, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { describeCommonTests } from './shared-tests';
@@ -105,6 +106,28 @@ describe('ExecuteSingleContext', () => {
 			const expectedData = { json: { test: 'data' } };
 
 			expect(executeSingleContext.getInputData(inputIndex, connectionType)).toEqual(expectedData);
+		});
+
+		it('should read input data from a map without a prototype', () => {
+			const inputDataWithoutPrototype = { ...inputData };
+			Object.setPrototypeOf(inputDataWithoutPrototype, null);
+			const context = new ExecuteSingleContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputDataWithoutPrototype,
+				itemIndex,
+				executeData,
+				abortSignal,
+			);
+
+			expect(context.getInputData(inputIndex, connectionType)).toEqual(
+				inputData.main[inputIndex]?.[itemIndex],
+			);
 		});
 
 		it('should return an empty object if the input name does not exist', () => {

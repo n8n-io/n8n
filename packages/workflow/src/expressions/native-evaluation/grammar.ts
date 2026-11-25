@@ -108,7 +108,6 @@ export const { isArray } = Array;
 export const { hasOwn } = Object;
 export const toStr = String;
 export const toNum = Number;
-export const clone = structuredClone;
 
 export type NativeMethod = (this: unknown, ...args: unknown[]) => unknown;
 
@@ -278,12 +277,8 @@ const EXCLUDED_EXTENSIONS = new Set([
 	// Spread into Math.min/max: the engines overflow at sizes under the cap.
 	'min',
 	'max',
-	// The in-isolate copy diverges: Intl.NumberFormat, URL, URLSearchParams
-	// and TextDecoder are not available there.
-	'format',
+	// The in-isolate copy diverges: URL is not available there.
 	'extractUrlPath',
-	'urlEncode',
-	'base64Decode',
 ]);
 export const EXTENSION_METHODS: ReadonlySet<string> = new Set(
 	ExpressionExtensions.filter((extension) => extension.typeName !== 'Date')

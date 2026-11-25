@@ -1,35 +1,57 @@
-import type { EventService } from '@n8n/backend-services';
+import { AgentsConfig } from '@n8n/config';
+import type { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore a type-only EventService import; keep the import.
+import type { CredentialsFinderService, EventService, TelemetryProxy } from '@n8n/backend-services';
 import type { Mocked } from 'vitest';
 import {
 	DEFAULT_AGENT_PERSONALISATION,
+	type AgentHitlConfiguration,
 	type AgentIntegrationConfig,
 	type AgentJsonConfig,
 } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { User, WorkflowRepository, TransactionRunner } from '@n8n/db';
+import {
+	GLOBAL_MEMBER_ROLE,
+	type User,
+	type WorkflowRepository,
+	type TransactionRunner,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
+import { BadRequestError } from '@n8n/errors';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import set from 'lodash/set';
 import { mock } from 'vitest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import type { Telemetry } from '@/telemetry';
-
+import { runInBuilderTelemetrySession } from '../builder/builder-telemetry-session';
 import { AgentConfigPreparationService } from '../agent-config-preparation.service';
 import { AgentConfigService } from '../agent-config.service';
-import { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
+import {
+	AgentModificationTelemetryService,
+	diffAgentConfigSettings,
+	type AgentConfigSetting,
+} from '../agent-modification-telemetry.service';
 import { AgentSaveCompletionService } from '../agent-save-completion.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentSetupCompletionService } from '../agent-setup-completion.service';
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { AgentValidationService } from '../agent-validation.service';
-import type { Agent } from '../entities/agent.entity';
+import type { Agent, ProjectAgent } from '../entities/agent.entity';
+import type {
+	AgentChatIntegration,
+	ChatIntegrationRegistry,
+} from '../integrations/agent-chat-integration';
 import { syncAgentIntegrations } from '../integrations/integrations-sync';
 import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
-import type { AgentPolicyService } from '../agent-policy.service';
+import type { CompleteAgentDefinition } from '../utils/agent-definition';
+import { AgentPolicyService } from '../agent-policy.service';
+import { AgentTaskService } from '../agent-task.service';
 import {
 	composeStoredJsonConfig,
 	createAgentSkillRefsService,
@@ -44,7 +66,7 @@ const user = { id: 'user-1' } as User;
 
 const baseConfig: AgentJsonConfig = {
 	name: 'Support Agent',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	instructions: 'Help users',
 };
 
@@ -52,7 +74,7 @@ const storedCustomTool = {
 	tool_1: { code: 'a', descriptor: { name: 'tool_1', description: 'a', inputSchema: {} } },
 } as unknown as Agent['tools'];
 
-function makeAgent(overrides: AgentFixtureOverrides = {}): Agent {
+function makeAgent(overrides: AgentFixtureOverrides = {}): ProjectAgent {
 	return {
 		id: agentId,
 		name: 'Support Agent',
@@ -65,11 +87,11 @@ function makeAgent(overrides: AgentFixtureOverrides = {}): Agent {
 		setupCompletedAt: null,
 		updatedAt: new Date('2025-01-01T00:00:00Z'),
 		...overrides,
-	} as unknown as Agent;
+	} as unknown as ProjectAgent;
 }
 
 /** Write options fenced against `agent`, the entity the repository mock returns. */
-function fencedOn(agent: Agent) {
+function fencedOn(agent: ProjectAgent) {
 	return {
 		modifiedBy: 'user',
 		baseConfigHash: getAgentConfigHash(composeStoredJsonConfig(agent)),
@@ -87,9 +109,14 @@ function makeService() {
 	const nodeToolAiGatewayService = mock<NodeToolAiGatewayService>();
 	const eventService = mock<EventService>();
 	const agentValidationService = mock<AgentValidationService>();
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>();
 	const agentPolicyService = mock<AgentPolicyService>();
+	const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
+	const credentialsFinderService = mock<CredentialsFinderService>();
+	credentialsFinderService.findCredentialForUser.mockImplementation(
+		async (id) => ({ id, isGlobal: false, isResolvable: false }) as never,
+	);
 
 	agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
 		status: 'valid',
@@ -103,31 +130,54 @@ function makeService() {
 	agentTaskRepository.findByAgentId.mockResolvedValue([]);
 	workflowRepository.findManyByAgentToolReferences.mockResolvedValue([]);
 
+	const workflowFinderService = mock<WorkflowFinderService>();
+	workflowFinderService.findWorkflowIdsWithScopeForUser.mockImplementation(
+		async (ids) => new Set(ids),
+	);
+
 	const transactionRunner = mock<TransactionRunner>();
 	transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 	Container.set(AgentRuntimeCacheService, runtimeCacheService);
+	Container.set(WorkflowFinderService, workflowFinderService);
+	Container.set(AgentTaskService, mock<AgentTaskService>());
+	Container.set(AgentPolicyService, agentPolicyService);
+	const configPreparation = new AgentConfigPreparationService(
+		credentialsService,
+		workflowRepository,
+		nodeToolAiGatewayService,
+		agentRepository,
+		agentTaskRepository,
+		skillRefs,
+		agentPolicyService,
+		credentialsFinderService,
+	);
 	const service = new AgentConfigService(
 		mockLogger(),
 		agentRepository,
 		agentTaskRepository,
-		new AgentConfigPreparationService(
-			credentialsService,
-			workflowRepository,
-			nodeToolAiGatewayService,
-		),
+		configPreparation,
 		new AgentSetupCompletionService(agentValidationService, telemetry, agentRepository),
 		transactionRunner,
 		new AgentSaveCompletionService(
 			eventService,
 			agentUpdateBroadcaster,
-			new AgentModificationTelemetryService(telemetry),
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users): remove only the mock<EventService>() argument.
+			new AgentModificationTelemetryService(
+				telemetry,
+				mock<InstanceSettings>(),
+				mock<EventService>(),
+			),
 		),
-		agentPolicyService,
 		skillRefs,
+		chatIntegrationRegistry,
+		mock<AgentDefinitionService>(),
 	);
 
 	return {
 		service,
+		configPreparation,
+		credentialsFinderService,
+		chatIntegrationRegistry,
 		agentPolicyService,
 		agentRepository,
 		agentTaskRepository,
@@ -140,6 +190,7 @@ function makeService() {
 		agentValidationService,
 		telemetry,
 		agentUpdateBroadcaster,
+		workflowFinderService,
 	};
 }
 
@@ -159,6 +210,97 @@ describe('AgentConfigService', () => {
 
 	afterEach(() => {
 		vi.restoreAllMocks();
+	});
+
+	it('initializes a legacy version ID when the submitted configuration has no changes', async () => {
+		const { service, agentRepository } = makeService();
+		const agent = makeAgent({ versionId: null });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+		const result = await service.updateConfig(
+			agentId,
+			projectId,
+			baseConfig,
+			user,
+			fencedOn(agent),
+		);
+
+		expect(agentRepository.saveDraftFenced).toHaveBeenCalledOnce();
+		expect(result.versionId).toEqual(expect.any(String));
+		expect(result.versionId).toBe(agent.versionId);
+	});
+
+	describe('prepareDefinition', () => {
+		it('reconciles enabled tools with the accessible credential types before a complete save', async () => {
+			const { configPreparation, credentialsService, nodeToolAiGatewayService } = makeService();
+			const enabledTool = {
+				type: 'node',
+				name: 'Slack',
+				node: {
+					nodeType: 'n8n-nodes-base.slackTool',
+					nodeTypeVersion: 2,
+					nodeParameters: {},
+					credentials: {
+						slackApi: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
+					},
+				},
+			} as const;
+			const definition: CompleteAgentDefinition = {
+				name: baseConfig.name,
+				config: {
+					...baseConfig,
+					tools: [enabledTool, { ...enabledTool, name: 'Disabled Slack', enabled: false }],
+				},
+				tools: {},
+				tasks: new Map(),
+			};
+			vi.spyOn(configPreparation, 'validateDefinition').mockResolvedValue(definition);
+			mockAccessibleCredentials(credentialsService, ['model-credential']);
+
+			await configPreparation.prepareDefinition(agentId, definition, projectId, user);
+
+			expect(nodeToolAiGatewayService.assignManagedCredentials).toHaveBeenCalledWith(
+				[enabledTool],
+				new Set(['openAiApi']),
+			);
+		});
+
+		it('rejects an inaccessible explicit node credential before gateway reconciliation', async () => {
+			const { configPreparation, nodeToolAiGatewayService } = makeService();
+			const inaccessibleCredential = {
+				id: 'missing-credential',
+				name: 'Slack',
+				__aiGatewayManaged: true,
+			};
+			const definition: CompleteAgentDefinition = {
+				name: baseConfig.name,
+				config: {
+					...baseConfig,
+					tools: [
+						{
+							type: 'node',
+							name: 'Slack',
+							node: {
+								nodeType: 'n8n-nodes-base.slackTool',
+								nodeTypeVersion: 2,
+								nodeParameters: {},
+								credentials: {
+									slackApi: inaccessibleCredential,
+								},
+							},
+						},
+					],
+				},
+				tools: {},
+				tasks: new Map(),
+			};
+			vi.spyOn(configPreparation, 'validateDefinition').mockResolvedValue(definition);
+
+			await expect(
+				configPreparation.prepareDefinition(agentId, definition, projectId, user),
+			).rejects.toThrow('Credential "missing-credential"');
+			expect(nodeToolAiGatewayService.assignManagedCredentials).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('validateConfig', () => {
@@ -251,6 +393,297 @@ describe('AgentConfigService', () => {
 	});
 
 	describe('updateConfig', () => {
+		describe('Human review', () => {
+			beforeEach(() => {
+				vi.spyOn(Container.get(AgentsConfig), 'humanReviewEnabled', 'get').mockReturnValue(true);
+			});
+			const configurations: AgentHitlConfiguration[] = [
+				{
+					id: 'workflow-review',
+					name: 'Workflow review',
+					method: 'workflow',
+					workflowId: 'review',
+				},
+				{
+					id: 'channel-review',
+					name: 'Channel review',
+					method: 'channel',
+					channel: 'telegram',
+					credentialId: 'bot',
+					recipient: { kind: 'user', id: '12345' },
+				},
+			];
+
+			it('refuses a new human review while the module is disabled', async () => {
+				vi.spyOn(Container.get(AgentsConfig), 'humanReviewEnabled', 'get').mockReturnValue(false);
+				const { service, agentRepository } = makeService();
+				const agent = makeAgent();
+				agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+				await expect(
+					service.updateConfig(
+						agentId,
+						projectId,
+						{ ...baseConfig, hitlConfigurations: [configurations[0]] },
+						user,
+						fencedOn(agent),
+					),
+				).rejects.toThrow('not enabled');
+				expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
+			});
+
+			it('removes saved review settings while the module is disabled', async () => {
+				vi.spyOn(Container.get(AgentsConfig), 'humanReviewEnabled', 'get').mockReturnValue(false);
+				const { service, agentRepository } = makeService();
+				const agent = makeAgent({
+					schema: { ...baseConfig, hitlConfigurations: [configurations[0]] },
+				});
+				agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+				const result = await service.updateConfig(agentId, projectId, baseConfig, user, {
+					...fencedOn(agent),
+					clearOmittedOptionalFields: true,
+				});
+				expect(result.config.hitlConfigurations).toBeUndefined();
+				expect(agentRepository.saveDraftFenced).toHaveBeenCalled();
+			});
+
+			it.each(configurations)(
+				'saves and updates a $method destination in the returned config',
+				async (configuration) => {
+					const { service, agentRepository, credentialsService } = makeService();
+					mockAccessibleCredentials(credentialsService, ['bot']);
+					const agent = makeAgent();
+					agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+					const added = await service.updateConfig(
+						agentId,
+						projectId,
+						{ ...baseConfig, hitlConfigurations: [configuration] },
+						user,
+						fencedOn(agent),
+					);
+					expect(added.config.hitlConfigurations).toEqual([configuration]);
+					expect(agentRepository.saveDraftFenced).toHaveBeenCalled();
+					expect(agent.schema?.hitlConfigurations).toEqual([configuration]);
+					expect((await service.getConfig(agentId, projectId)).hitlConfigurations).toEqual([
+						configuration,
+					]);
+					const updated = {
+						...configuration,
+						name: 'Administrator review',
+						nameOverridden: true,
+						expirySeconds: 3600 as const,
+					};
+					const changed = await service.updateConfig(
+						agentId,
+						projectId,
+						{ ...baseConfig, hitlConfigurations: [updated] },
+						user,
+						fencedOn(agent),
+					);
+					expect(changed.config.hitlConfigurations).toEqual([updated]);
+					expect(changed.configHash).not.toBe(added.configHash);
+				},
+			);
+
+			it.each([false, true])(
+				'handles omitted destinations with clearOmittedOptionalFields=%s',
+				async (clearOmittedOptionalFields) => {
+					const { service, agentRepository } = makeService();
+					const agent = makeAgent({
+						schema: { ...baseConfig, hitlConfigurations: configurations },
+					});
+					agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+					const result = await service.updateConfig(agentId, projectId, baseConfig, user, {
+						...fencedOn(agent),
+						clearOmittedOptionalFields,
+					});
+					expect(result.config.hitlConfigurations).toEqual(
+						clearOmittedOptionalFields ? undefined : configurations,
+					);
+				},
+			);
+
+			describe('while the module is disabled', () => {
+				const route = { type: 'configuration' as const, configurationIds: ['workflow-review'] };
+				const reviewedConfig: AgentJsonConfig = {
+					...baseConfig,
+					hitlConfigurations: [configurations[0]],
+					tools: [{ type: 'custom', id: 'tool_1', approvalRoute: route }],
+				};
+
+				beforeEach(() => {
+					vi.spyOn(Container.get(AgentsConfig), 'humanReviewEnabled', 'get').mockReturnValue(false);
+				});
+
+				it('keeps stored review settings during an unrelated edit', async () => {
+					const { service, agentRepository } = makeService();
+					const agent = makeAgent({ schema: reviewedConfig, tools: storedCustomTool });
+					agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+					const result = await service.updateConfig(
+						agentId,
+						projectId,
+						{ ...reviewedConfig, instructions: 'Help users quickly' },
+						user,
+						fencedOn(agent),
+					);
+
+					expect(result.config.instructions).toBe('Help users quickly');
+					expect(agentRepository.saveDraftFenced).toHaveBeenCalled();
+				});
+
+				it.each([
+					[
+						'a changed destination',
+						{
+							...reviewedConfig,
+							hitlConfigurations: [{ ...configurations[0], name: 'Other review' }],
+						},
+					],
+					[
+						'a changed tool route',
+						{
+							...reviewedConfig,
+							tools: [
+								{
+									type: 'custom' as const,
+									id: 'tool_1',
+									approvalRoute: { type: 'configuration' as const, configurationIds: ['other'] },
+								},
+							],
+						},
+					],
+				])('rejects %s', async (_label, config) => {
+					const { service, agentRepository } = makeService();
+					const agent = makeAgent({ schema: reviewedConfig, tools: storedCustomTool });
+					agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+					await expect(
+						service.updateConfig(agentId, projectId, config, user, fencedOn(agent)),
+					).rejects.toThrow('not enabled');
+					expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
+				});
+
+				it('rejects review settings in a complete definition without a stored config', async () => {
+					const { configPreparation } = makeService();
+					const definition: CompleteAgentDefinition = {
+						name: baseConfig.name,
+						config: { ...baseConfig, hitlConfigurations: [configurations[0]] },
+						tools: {},
+						tasks: new Map(),
+					};
+
+					await expect(configPreparation.validateDefinition(agentId, definition)).rejects.toThrow(
+						'not enabled',
+					);
+				});
+
+				it('accepts unchanged review settings in a complete definition', async () => {
+					const { configPreparation } = makeService();
+					const config: AgentJsonConfig = {
+						...baseConfig,
+						hitlConfigurations: [configurations[0]],
+					};
+					const definition: CompleteAgentDefinition = {
+						name: baseConfig.name,
+						config: { ...config, instructions: 'Help users quickly' },
+						tools: {},
+						tasks: new Map(),
+					};
+
+					const result = await configPreparation.validateDefinition(agentId, definition, config);
+
+					expect(result.config?.hitlConfigurations).toEqual([configurations[0]]);
+				});
+
+				it('passes the stored config from a complete save to the review check', async () => {
+					const { configPreparation } = makeService();
+					const definition: CompleteAgentDefinition = {
+						name: baseConfig.name,
+						config: { ...baseConfig, hitlConfigurations: [configurations[0]] },
+						tools: {},
+						tasks: new Map(),
+					};
+					const validate = vi
+						.spyOn(configPreparation, 'validateDefinition')
+						.mockResolvedValue({ ...definition, config: null });
+
+					await configPreparation.prepareDefinition(
+						agentId,
+						definition,
+						projectId,
+						user,
+						{},
+						reviewedConfig,
+					);
+
+					expect(validate).toHaveBeenCalledWith(agentId, definition, reviewedConfig);
+				});
+			});
+
+			it('rejects a review workflow that the user cannot read in the project', async () => {
+				const { service, agentRepository, workflowFinderService } = makeService();
+				workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set());
+				const agent = makeAgent();
+				agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+				await expect(
+					service.updateConfig(
+						agentId,
+						projectId,
+						{ ...baseConfig, hitlConfigurations: [configurations[0]] },
+						user,
+						fencedOn(agent),
+					),
+				).rejects.toThrow('Workflow "review" is missing or inaccessible.');
+				expect(workflowFinderService.findWorkflowIdsWithScopeForUser).toHaveBeenCalledWith(
+					['review'],
+					user,
+					['workflow:read'],
+					projectId,
+				);
+				expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
+			});
+
+			it('keeps a stored review workflow without a new access check', async () => {
+				const { service, agentRepository, workflowFinderService } = makeService();
+				workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set());
+				const agent = makeAgent({
+					schema: { ...baseConfig, hitlConfigurations: [configurations[0]] },
+				});
+				agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+				await service.updateConfig(
+					agentId,
+					projectId,
+					{
+						...baseConfig,
+						instructions: 'Help users quickly',
+						hitlConfigurations: [configurations[0]],
+					},
+					user,
+					fencedOn(agent),
+				);
+
+				expect(workflowFinderService.findWorkflowIdsWithScopeForUser).not.toHaveBeenCalled();
+				expect(agentRepository.saveDraftFenced).toHaveBeenCalled();
+			});
+
+			it('clears all destinations when the submitted list is empty', async () => {
+				const { service, agentRepository } = makeService();
+				const agent = makeAgent({ schema: { ...baseConfig, hitlConfigurations: configurations } });
+				agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+				const result = await service.updateConfig(
+					agentId,
+					projectId,
+					{ ...baseConfig, hitlConfigurations: [] },
+					user,
+					fencedOn(agent),
+				);
+				expect(result.config.hitlConfigurations).toEqual([]);
+				expect((await service.getConfig(agentId, projectId)).hitlConfigurations).toEqual([]);
+			});
+		});
+
 		it('rejects an update based on a stale config without mutating the agent', async () => {
 			const { service, agentRepository, eventService, telemetry } = makeService();
 			const agent = makeAgent();
@@ -414,7 +847,7 @@ describe('AgentConfigService', () => {
 				fencedOn(agent),
 			);
 
-			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
+			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as ProjectAgent;
 			expect(saved.schema?.config?.webSearch).toEqual({ enabled: false });
 			expect(saved.schema?.providerTools).toEqual({});
 			// The returned (composed) config reflects the persisted state so the tool
@@ -471,7 +904,7 @@ describe('AgentConfigService', () => {
 				user,
 				fencedOn(agent),
 			);
-			let saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
+			let saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as ProjectAgent;
 			expect(saved.schema).toEqual(
 				expect.objectContaining({
 					instructions: 'Updated instructions',
@@ -490,9 +923,61 @@ describe('AgentConfigService', () => {
 				user,
 				fencedOn(agent),
 			);
-			saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
+			saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as ProjectAgent;
 			expect(saved.integrations).toEqual([]);
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+		});
+
+		describe('platform with one connection per agent', () => {
+			const teams = (credentialId: string): AgentIntegrationConfig => ({
+				type: 'teams',
+				credentialId,
+			});
+
+			function makeTeamsService(integrations: AgentIntegrationConfig[]) {
+				const context = makeService();
+				context.chatIntegrationRegistry.get.mockReturnValue(
+					mock<AgentChatIntegration>({
+						singleConnectionPerAgent: true,
+						displayLabel: 'Microsoft Teams',
+					}),
+				);
+				const agent = makeAgent({ integrations });
+				context.agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+				mockAccessibleCredentials(context.credentialsService, ['teams-1', 'teams-2']);
+				return { ...context, agent };
+			}
+
+			it('rejects a config that adds a second connection', async () => {
+				const { service, agentRepository, agent } = makeTeamsService([teams('teams-1')]);
+
+				await expect(
+					service.updateConfig(
+						agentId,
+						projectId,
+						{ ...baseConfig, integrations: [teams('teams-1'), teams('teams-2')] },
+						user,
+						fencedOn(agent),
+					),
+				).rejects.toThrow(BadRequestError);
+				expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
+			});
+
+			it('rejects a save of an agent that already holds two', async () => {
+				const both = [teams('teams-1'), teams('teams-2')];
+				const { service, agentRepository, agent } = makeTeamsService(both);
+
+				await expect(
+					service.updateConfig(
+						agentId,
+						projectId,
+						{ ...baseConfig, integrations: both },
+						user,
+						fencedOn(agent),
+					),
+				).rejects.toThrow(BadRequestError);
+				expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
+			});
 		});
 
 		it('keeps omitted integrations without syncing channels', async () => {
@@ -503,7 +988,8 @@ describe('AgentConfigService', () => {
 
 			await service.updateConfig(agentId, projectId, { ...baseConfig }, user, fencedOn(agent));
 
-			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
+			expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
+			const saved = agent;
 			expect(saved.integrations).toEqual([slack]);
 			expect(syncAgentIntegrations).not.toHaveBeenCalled();
 		});
@@ -526,7 +1012,7 @@ describe('AgentConfigService', () => {
 				{ clearOmittedOptionalFields: true, ...fencedOn(agent) },
 			);
 
-			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
+			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as ProjectAgent;
 			expect(saved.schema?.instructions).toBe('Reached through an entrypoint workflow');
 			expect(saved.integrations).toEqual([]);
 			expect(syncAgentIntegrations).toHaveBeenCalledWith(saved, [telegram], [], expect.anything());
@@ -561,7 +1047,7 @@ describe('AgentConfigService', () => {
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 			const save = async (config: AgentJsonConfig) => {
 				await service.updateConfig(agentId, projectId, config, user, fencedOn(agent));
-				return agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
+				return agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as ProjectAgent;
 			};
 
 			let saved = await save({ ...baseConfig, description: '  Answers support tickets  ' });
@@ -574,9 +1060,10 @@ describe('AgentConfigService', () => {
 			expect(saved.schema).not.toHaveProperty('description');
 		});
 
-		it('persists modelDeploymentName, retains it when omitted, and drops it on clearOmittedOptionalFields', async () => {
+		it('drops a legacy modelDeploymentName from a stored config and from the payload', async () => {
 			const { service, agentRepository } = makeService();
-			const agent = makeAgent();
+			const legacySchema = { ...baseConfig, modelDeploymentName: 'my-gpt4o-deployment' };
+			const agent = makeAgent({ schema: legacySchema as AgentJsonConfig });
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
 			await service.updateConfig(
@@ -586,40 +1073,8 @@ describe('AgentConfigService', () => {
 				user,
 				fencedOn(agent),
 			);
-			let saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
-			expect(saved.schema?.modelDeploymentName).toBe('my-gpt4o-deployment');
 
-			// Omitting the field keeps the stored value (merge semantics).
-			await service.updateConfig(agentId, projectId, { ...baseConfig }, user, fencedOn(agent));
-			saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
-			expect(saved.schema?.modelDeploymentName).toBe('my-gpt4o-deployment');
-
-			// An explicit empty value is a clear (the builder sends "" when the
-			// user blanks the deployment-name field).
-			await service.updateConfig(
-				agentId,
-				projectId,
-				{ ...baseConfig, modelDeploymentName: '' },
-				user,
-				fencedOn(agent),
-			);
-			saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
-			expect(saved.schema).not.toHaveProperty('modelDeploymentName');
-
-			await service.updateConfig(
-				agentId,
-				projectId,
-				{ ...baseConfig, modelDeploymentName: 'my-gpt4o-deployment' },
-				user,
-				fencedOn(agent),
-			);
-
-			// Full-replace callers remove it when omitted.
-			await service.updateConfig(agentId, projectId, { ...baseConfig }, user, {
-				clearOmittedOptionalFields: true,
-				...fencedOn(agent),
-			});
-			saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
+			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as ProjectAgent;
 			expect(saved.schema).not.toHaveProperty('modelDeploymentName');
 		});
 
@@ -644,7 +1099,7 @@ describe('AgentConfigService', () => {
 				{ clearOmittedOptionalFields: true, ...fencedOn(agent) },
 			);
 
-			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
+			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as ProjectAgent;
 			// Provided fields keep their submitted value; omitted ones are removed
 			// instead of retaining the stored value.
 			expect(saved.schema?.memory).toEqual({ enabled: false, storage: 'n8n' });
@@ -662,7 +1117,8 @@ describe('AgentConfigService', () => {
 
 			await service.updateConfig(agentId, projectId, { ...baseConfig }, user, fencedOn(agent));
 
-			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
+			expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
+			const saved = agent;
 			expect(saved.schema).toHaveProperty('description', '');
 		});
 
@@ -685,7 +1141,7 @@ describe('AgentConfigService', () => {
 				...fencedOn(agent),
 			});
 
-			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
+			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as ProjectAgent;
 			expect(saved.tools).toEqual({});
 			expect(skillRefs.replaceDraftRefs).toHaveBeenCalledWith(saved, undefined, {});
 			expect(agentTaskRepository.deleteForAgent).toHaveBeenCalledWith(agentId, ['task-1'], {});
@@ -705,13 +1161,10 @@ describe('AgentConfigService', () => {
 
 			await service.updateConfig(agentId, projectId, { ...baseConfig }, user, fencedOn(agent));
 
-			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
+			expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
+			const saved = agent;
 			expect(saved.tools).toEqual(storedCustomTool);
-			expect(skillRefs.replaceDraftRefs).toHaveBeenCalledWith(
-				saved,
-				[{ type: 'skill', id: 'skill-1' }],
-				{},
-			);
+			expect(skillRefs.replaceDraftRefs).not.toHaveBeenCalled();
 			expect(agentTaskRepository.deleteForAgent).not.toHaveBeenCalled();
 		});
 
@@ -732,9 +1185,10 @@ describe('AgentConfigService', () => {
 			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
 				projectId,
 				excludePersonalRoute: true,
+				excludeResolvable: true,
 			});
 			expect(credentialsService.findAllCredentialIdsForProject).not.toHaveBeenCalled();
-			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
+			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as ProjectAgent;
 			expect((saved.schema as AgentJsonConfig).credential).toBe('user-cred');
 		});
 
@@ -779,7 +1233,7 @@ describe('AgentConfigService', () => {
 				['wf-id-1', 'Existing Name', 'ghost'],
 				['wf-id-1', 'Existing Name', 'ghost'],
 			);
-			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
+			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as ProjectAgent;
 			expect(saved.schema?.tools).toEqual([
 				{
 					type: 'workflow',
@@ -810,26 +1264,6 @@ describe('AgentConfigService', () => {
 			expect(reactivated.config.tools).toEqual([
 				{ type: 'workflow', workflow: 'Deferred Workflow', enabled: true },
 			]);
-		});
-
-		it('drops the inline body of a removed skill ref while the skills hub is off', async () => {
-			const { service, agentRepository, skillRefs } = makeService();
-			Object.assign(skillRefs, { usesSkillsHub: false });
-			const kept = { name: 'Kept', description: 'Kept', instructions: 'Keep.' };
-			const agent = makeAgent({
-				skills: { kept, removed: { name: 'Removed', description: 'Removed', instructions: 'Go.' } },
-			});
-			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-
-			await service.updateConfig(
-				agentId,
-				projectId,
-				{ ...baseConfig, skills: [{ type: 'skill', id: 'kept' }] },
-				user,
-				byUser,
-			);
-
-			expect(agentRepository.saveDraftFenced.mock.calls[0][0].skills).toEqual({ kept });
 		});
 
 		it('removes config refs and stored bodies that no longer have matching definitions', async () => {
@@ -883,7 +1317,7 @@ describe('AgentConfigService', () => {
 				{ type: 'custom', id: 'tool_1', enabled: false, requireApproval: true },
 				{ type: 'custom', id: 'disabled_missing_tool', enabled: false },
 			]);
-			// The skill refs seam checks skill refs against the skills hub.
+			// The skill refs seam checks skill refs against the skills module.
 			expect(saved.schema).not.toHaveProperty('skills');
 			expect(skillRefs.replaceDraftRefs).toHaveBeenCalledWith(
 				saved,
@@ -1266,7 +1700,13 @@ describe('AgentConfigService', () => {
 			agentRepository.saveDraftFenced.mockResolvedValue(false);
 
 			await expect(
-				service.updateConfig(agentId, projectId, baseConfig, user, byUser),
+				service.updateConfig(
+					agentId,
+					projectId,
+					{ ...baseConfig, instructions: 'Changed' },
+					user,
+					byUser,
+				),
 			).rejects.toThrow('Agent was modified concurrently; please retry');
 
 			expect(telemetry.track).not.toHaveBeenCalled();
@@ -1297,7 +1737,7 @@ describe('AgentConfigService', () => {
 			expect(config.skills).toEqual(skillRefs);
 		});
 
-		it('saves the refs of a config that getConfig returned without a change', async () => {
+		it('keeps the version and refs when the config did not change', async () => {
 			const { service, agentRepository, skillRefs: refsService } = makeService();
 			const agent = makeAgentWithSkillRefs();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
@@ -1312,14 +1752,9 @@ describe('AgentConfigService', () => {
 			expect(result.config.skills).toEqual(skillRefs);
 			expect(result.configHash).toBe(baseConfigHash);
 			expect(await service.getConfig(agentId, projectId)).toEqual(config);
-			// The fenced save and the skill refs write share one transaction.
-			const [[, saveCtx]] = agentRepository.saveDraftFenced.mock.calls;
-			const [[written, refs, refsCtx]] = refsService.replaceDraftRefs.mock.calls;
-			expect(refsCtx).toBe(saveCtx);
-			expect(written).toBe(agent);
-			expect(refs).toEqual(skillRefs);
-			// The stored config holds no skill refs.
-			expect(agent.schema).not.toHaveProperty('skills');
+			expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
+			expect(refsService.replaceDraftRefs).not.toHaveBeenCalled();
+			expect(result.versionId).toBe(agent.versionId);
 		});
 
 		it('passes the submitted refs to the skill refs seam', async () => {
@@ -1337,29 +1772,175 @@ describe('AgentConfigService', () => {
 		});
 
 		it('validates, saves and reports the effective refs, without the stale ids', async () => {
-			const { service, agentRepository, skillRefs: refsService } = makeService();
+			const { service, agentRepository, skillRefs: refsService, telemetry } = makeService();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgentWithSkillRefs());
 			const config = await service.getConfig(agentId, projectId);
-			const kept = [skillRefs[2]];
+			const kept = skillRefs;
 			refsService.effectiveDraftRefs.mockResolvedValue(kept);
 
 			const result = await service.updateConfig(
 				agentId,
 				projectId,
-				{ ...config, skills: [skillRefs[2], { type: 'skill' as const, id: 'stale' }] },
+				{ ...config, skills: [...kept, { type: 'skill' as const, id: 'stale' }] },
 				user,
 				{ baseConfigHash: getAgentConfigHash(config), modifiedBy: 'user' },
 			);
 
-			expect(refsService.replaceDraftRefs).toHaveBeenCalledWith(expect.anything(), kept, {});
+			expect(refsService.replaceDraftRefs).not.toHaveBeenCalled();
 			expect(result.config.skills).toEqual(kept);
+			expect(telemetry.track).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
+				expect.anything(),
+			);
 		});
 	});
 
 	describe('modification telemetry', () => {
-		function modifiedEvent(telemetry: Mocked<Telemetry>, entry: unknown) {
+		function modifiedEvent(telemetry: Mocked<TelemetryProxy>, entry: unknown) {
 			return telemetry.track.mock.calls.find(([called]) => called === entry)?.[1];
 		}
+
+		const workerModel = { model: 'openai/gpt-5-mini', credential: '' };
+		const settingsConfig = {
+			...baseConfig,
+			config: {
+				maxIterations: 10,
+				toolCallConcurrency: 4,
+				promptCaching: { enabled: true, anthropic: { ttl: '5m' } },
+				guardrails: {
+					budget: {
+						enabled: true,
+						monthlyBudgetUsd: 100,
+						alertThresholdPercent: 80,
+						sessionCostCapUsd: 10,
+					},
+				},
+			},
+			memory: {
+				enabled: true,
+				storage: 'n8n',
+				observationalMemory: {
+					observerModel: { ...workerModel },
+					reflectorModel: { ...workerModel },
+				},
+				episodicMemory: {
+					enabled: true,
+					credential: 'managed',
+					reflectorModel: { ...workerModel },
+				},
+			},
+			subAgents: {
+				modelsByDifficulty: {
+					low: { ...workerModel },
+					medium: { ...workerModel },
+					high: { ...workerModel },
+				},
+			},
+		} satisfies AgentJsonConfig;
+		const allChangedSettings: AgentConfigSetting[] = [
+			'monthly_budget',
+			'budget_alert',
+			'session_cost_cap',
+			'custom_model_routing',
+			'memory_model',
+			'cache_duration',
+			'tool_concurrency',
+			'max_iterations',
+		];
+
+		it.each<[AgentConfigSetting, string, string | number]>([
+			['monthly_budget', 'config.guardrails.budget.monthlyBudgetUsd', 200],
+			['budget_alert', 'config.guardrails.budget.alertThresholdPercent', 90],
+			['session_cost_cap', 'config.guardrails.budget.sessionCostCapUsd', 20],
+			['custom_model_routing', 'subAgents.modelsByDifficulty.low.model', 'openai/gpt-5'],
+			['custom_model_routing', 'subAgents.modelsByDifficulty.medium.model', 'openai/gpt-5'],
+			['custom_model_routing', 'subAgents.modelsByDifficulty.high.model', 'openai/gpt-5'],
+			['memory_model', 'memory.observationalMemory.observerModel.model', 'openai/gpt-5'],
+			['memory_model', 'memory.observationalMemory.reflectorModel.model', 'openai/gpt-5'],
+			['memory_model', 'memory.episodicMemory.reflectorModel.model', 'openai/gpt-5'],
+			['cache_duration', 'config.promptCaching.anthropic.ttl', '1h'],
+			['tool_concurrency', 'config.toolCallConcurrency', 8],
+			['max_iterations', 'config.maxIterations', 20],
+		])('identifies %s changes at %s', (setting, path, value) => {
+			const nextConfig = set(structuredClone(settingsConfig), path, value);
+
+			expect(diffAgentConfigSettings(settingsConfig, nextConfig)).toEqual([setting]);
+		});
+
+		it.each([
+			['adds', baseConfig, settingsConfig],
+			['removes', settingsConfig, baseConfig],
+		] as const)(
+			'reports when a save %s stored settings in a fixed order',
+			async (_operation, previous, next) => {
+				const { service, agentRepository, telemetry } = makeService();
+				const agent = makeAgent({ schema: previous });
+				agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+				await service.updateConfig(agentId, projectId, next, user, {
+					...fencedOn(agent),
+					clearOmittedOptionalFields: true,
+				});
+
+				expect(modifiedEvent(telemetry, TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT)).toMatchObject({
+					changed_settings: allChangedSettings,
+					event_version: '2',
+				});
+			},
+		);
+
+		it('does not report omitted settings retained by the save merge', async () => {
+			const { service, agentRepository, telemetry } = makeService();
+			const agent = makeAgent({ schema: settingsConfig });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, instructions: 'Escalate billing questions' },
+				user,
+				fencedOn(agent),
+			);
+
+			expect(result.config).toMatchObject({
+				config: settingsConfig.config,
+				memory: settingsConfig.memory,
+				subAgents: settingsConfig.subAgents,
+			});
+			expect(modifiedEvent(telemetry, TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT)).toMatchObject({
+				changed_parts: ['instructions'],
+				changed_settings: [],
+			});
+		});
+
+		it.each([
+			['budget flag', ['config.guardrails.budget.enabled'], false],
+			[
+				'credentials',
+				[
+					'subAgents.modelsByDifficulty.low.credential',
+					'subAgents.modelsByDifficulty.medium.credential',
+					'subAgents.modelsByDifficulty.high.credential',
+					'memory.observationalMemory.observerModel.credential',
+					'memory.observationalMemory.reflectorModel.credential',
+					'memory.episodicMemory.reflectorModel.credential',
+				],
+				'new-credential',
+			],
+		] as const)('does not report %s-only changes as settings', async (_kind, paths, value) => {
+			const { service, agentRepository, credentialsService, telemetry } = makeService();
+			const agent = makeAgent({ schema: settingsConfig });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			mockAccessibleCredentials(credentialsService, ['new-credential']);
+			const nextConfig = structuredClone(settingsConfig);
+			for (const path of paths) set(nextConfig, path, value);
+
+			await service.updateConfig(agentId, projectId, nextConfig, user, fencedOn(agent));
+
+			expect(modifiedEvent(telemetry, TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT)).toMatchObject({
+				changed_settings: [],
+			});
+		});
 
 		/** What `AgentsService.create` leaves behind: a row with nothing configured. */
 		const blankConfig: AgentJsonConfig = {
@@ -1368,14 +1949,14 @@ describe('AgentConfigService', () => {
 			instructions: '',
 		};
 
-		it('reports the write that first configures an agent as a creation, not a modification', async () => {
+		it('reports the first configuration of a saved draft as a modification', async () => {
 			const { service, agentRepository, telemetry } = makeService();
 			const agent = makeAgent({ schema: blankConfig });
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
 			await service.updateConfig(agentId, projectId, { ...baseConfig }, user, fencedOn(agent));
 
-			expect(modifiedEvent(telemetry, TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT)).toMatchObject({
+			expect(modifiedEvent(telemetry, TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT)).toMatchObject({
 				agent_id: agentId,
 				project_id: projectId,
 				user_id: user.id,
@@ -1383,7 +1964,7 @@ describe('AgentConfigService', () => {
 				model: baseConfig.model,
 			});
 			expect(telemetry.track).not.toHaveBeenCalledWith(
-				TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
+				TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT,
 				expect.anything(),
 			);
 		});
@@ -1436,7 +2017,7 @@ describe('AgentConfigService', () => {
 			);
 		});
 
-		it('stays silent when a write leaves the agent unconfigured, so a creation is always its first event', async () => {
+		it('reports a rename of an incomplete saved Agent as a modification', async () => {
 			const { service, agentRepository, telemetry } = makeService();
 			const agent = makeAgent({ schema: blankConfig });
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
@@ -1453,7 +2034,7 @@ describe('AgentConfigService', () => {
 				TELEMETRY_EVENT.AGENTS.USER_CREATED_AGENT,
 				expect.anything(),
 			);
-			expect(telemetry.track).not.toHaveBeenCalledWith(
+			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
 				expect.anything(),
 			);
@@ -1496,10 +2077,31 @@ describe('AgentConfigService', () => {
 					agent_id: agentId,
 					project_id: projectId,
 					user_id: user.id,
-					event_version: '1',
+					event_version: '2',
 					changed_parts: ['instructions'],
+					changed_settings: [],
 					has_published_version: false,
 				}),
+			);
+		});
+
+		it.each([
+			['user', TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT],
+			['builder', TELEMETRY_EVENT.AGENTS.BUILDER_MODIFIED_AGENT],
+		] as const)('reports a description-only %s save', async (modifiedBy, entry) => {
+			const { service, agentRepository, telemetry } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, description: 'Answers billing questions' },
+				user,
+				{ ...byUser, modifiedBy },
+			);
+
+			expect(modifiedEvent(telemetry, entry)).toEqual(
+				expect.objectContaining({ agent_id: agentId, changed_parts: ['description'] }),
 			);
 		});
 
@@ -1513,25 +2115,58 @@ describe('AgentConfigService', () => {
 			await service.updateConfig(
 				agentId,
 				projectId,
-				{ ...baseConfig, instructions: 'Escalate billing questions' },
+				{
+					...baseConfig,
+					instructions: 'Escalate billing questions',
+					config: { toolCallConcurrency: 8 },
+				},
 				user,
 				{ ...byUser, modifiedBy },
 			);
 
 			expect(modifiedEvent(telemetry, entry)).toEqual(
-				expect.objectContaining({ agent_id: agentId, changed_parts: ['instructions'] }),
+				expect.objectContaining({ agent_id: agentId, changed_parts: ['instructions', 'config'] }),
 			);
+			expect(modifiedEvent(telemetry, entry)).not.toHaveProperty('changed_settings');
 			expect(telemetry.track).not.toHaveBeenCalledWith(
 				TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
 				expect.anything(),
 			);
 		});
 
-		it('emits nothing when the submitted config matches what is stored', async () => {
+		it('reports the Assistant thread and run on a builder save inside a session', async () => {
 			const { service, agentRepository, telemetry } = makeService();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 
-			await service.updateConfig(agentId, projectId, { ...baseConfig }, user, byUser);
+			await runInBuilderTelemetrySession(
+				{ threadId: 'thread-1', runId: 'run-1' },
+				async () =>
+					await service.updateConfig(
+						agentId,
+						projectId,
+						{ ...baseConfig, instructions: 'Escalate billing questions' },
+						user,
+						{ ...byUser, modifiedBy: 'builder' },
+					),
+			);
+
+			expect(modifiedEvent(telemetry, TELEMETRY_EVENT.AGENTS.BUILDER_MODIFIED_AGENT)).toEqual(
+				expect.objectContaining({ thread_id: 'thread-1', run_id: 'run-1' }),
+			);
+		});
+
+		it('emits nothing when the submitted config matches what is stored', async () => {
+			const { service, agentRepository, telemetry } = makeService();
+			const agent = makeAgent({ schema: settingsConfig });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				structuredClone(settingsConfig),
+				user,
+				fencedOn(agent),
+			);
 
 			expect(telemetry.track).not.toHaveBeenCalledWith(
 				TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT,
@@ -1548,13 +2183,39 @@ describe('AgentConfigService', () => {
 				service.updateConfig(
 					agentId,
 					projectId,
-					{ ...baseConfig, instructions: 'Escalate billing questions' },
+					{ ...baseConfig, config: { toolCallConcurrency: 8 } },
 					user,
 					byUser,
 				),
 			).rejects.toThrow('db down');
 
 			expect(telemetry.track).not.toHaveBeenCalled();
+		});
+
+		it('keeps a committed setting change when telemetry fails', async () => {
+			const { service, agentRepository, telemetry, eventService } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			agentRepository.saveDraftFenced.mockImplementation(async () => {
+				expect(telemetry.track).not.toHaveBeenCalled();
+				return true;
+			});
+			telemetry.track.mockImplementation(() => {
+				throw new Error('Telemetry unavailable');
+			});
+
+			const result = await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, config: { toolCallConcurrency: 8 } },
+				user,
+				byUser,
+			);
+
+			expect(result.config.config?.toolCallConcurrency).toBe(8);
+			expect(eventService.emit).toHaveBeenCalledWith('agent-saved', { agentId });
+			expect(modifiedEvent(telemetry, TELEMETRY_EVENT.AGENTS.USER_MODIFIED_AGENT)).toMatchObject({
+				changed_settings: ['tool_concurrency'],
+			});
 		});
 
 		it('reports a published agent as having a live version', async () => {
@@ -1691,6 +2352,121 @@ describe('AgentConfigService', () => {
 				changed_parts: ['triggers'],
 				trigger_count: 1,
 			});
+		});
+	});
+	describe('credential usage on save', () => {
+		const member = { id: 'user-1', role: GLOBAL_MEMBER_ROLE } as User;
+		const server = {
+			name: 'docs',
+			url: 'https://mcp.example.test/mcp',
+			transport: 'streamableHttp',
+			authentication: 'headerAuth',
+			credential: 'credential-1',
+		} as const;
+		const withServer = (entry: object = server): AgentJsonConfig =>
+			({ ...baseConfig, mcpServers: [entry] }) as AgentJsonConfig;
+
+		/** The user can read `credential-1`; `connect` and `isGlobal` decide its use. */
+		function setup(grant: { connect: boolean; isGlobal?: boolean }, stored = baseConfig) {
+			const context = makeService();
+			const agent = makeAgent({ schema: stored });
+			context.agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			context.credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				{ id: 'credential-1', name: 'Header', type: 'httpHeaderAuth' },
+			] as never);
+			context.credentialsFinderService.findCredentialForUser.mockImplementation(
+				async (id, _user, scopes) =>
+					scopes.includes('credential:connect') && !grant.connect
+						? null
+						: ({ id, isGlobal: grant.isGlobal ?? false, isResolvable: false } as never),
+			);
+			return { ...context, options: fencedOn(agent) };
+		}
+
+		it('rejects a new credential that the user can only read', async () => {
+			const { service, agentRepository, options } = setup({ connect: false });
+
+			await expect(
+				service.updateConfig(agentId, projectId, withServer(), member, options),
+			).rejects.toThrow('Credential "credential-1" is missing or inaccessible.');
+			expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
+		});
+
+		it('rejects a changed entry that holds a credential the user can only read', async () => {
+			const { service, options } = setup({ connect: false }, withServer());
+
+			await expect(
+				service.updateConfig(
+					agentId,
+					projectId,
+					withServer({ ...server, url: 'https://other.example.test/mcp' }),
+					member,
+					options,
+				),
+			).rejects.toThrow('Credential "credential-1" is missing or inaccessible.');
+		});
+
+		it('keeps an unchanged credential that the user can only read', async () => {
+			const { service, options } = setup({ connect: false }, withServer());
+
+			const result = await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...withServer(), instructions: 'Updated instructions' },
+				member,
+				options,
+			);
+
+			expect(result.config.mcpServers?.[0]?.credential).toBe('credential-1');
+		});
+
+		it('keeps an unchanged credential in a stored entry that omits default fields', async () => {
+			const { url, name, authentication, credential } = server;
+			const { service, options } = setup(
+				{ connect: false },
+				withServer({ name, url, authentication, credential }),
+			);
+
+			const result = await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...withServer(), instructions: 'Updated instructions' },
+				member,
+				options,
+			);
+
+			expect(result.config.mcpServers?.[0]?.credential).toBe('credential-1');
+		});
+
+		it('accepts a new credential that the user can connect', async () => {
+			const { service, options } = setup({ connect: true });
+
+			const result = await service.updateConfig(agentId, projectId, withServer(), member, options);
+
+			expect(result.config.mcpServers?.[0]?.credential).toBe('credential-1');
+		});
+
+		it('accepts a new global credential that the user can read', async () => {
+			const { service, options } = setup({ connect: false, isGlobal: true });
+
+			const result = await service.updateConfig(agentId, projectId, withServer(), member, options);
+
+			expect(result.config.mcpServers?.[0]?.credential).toBe('credential-1');
+		});
+
+		it('rejects a new credential that the user can only read in a complete definition', async () => {
+			const { configPreparation } = setup({ connect: false });
+			const definition: CompleteAgentDefinition = {
+				name: baseConfig.name,
+				config: withServer(),
+				tools: {},
+				tasks: new Map(),
+			};
+			vi.spyOn(configPreparation, 'validateDefinition').mockResolvedValue(definition);
+
+			await expect(
+				configPreparation.prepareDefinition(agentId, definition, projectId, member),
+			).rejects.toThrow('Credential "credential-1" is missing or inaccessible.');
 		});
 	});
 });

@@ -1,11 +1,10 @@
+import type { SerializedCredential, SerializedVariable } from '@n8n/api-types';
+
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
-import type { SerializedCredential } from '../../spec/serialized/credential.schema';
-import type { SerializedVariable } from '../../spec/serialized/variable.schema';
 import {
 	deriveParentFolderId,
 	foldersInScope,
-	needsBundledCredentialData,
 	placeByLayout,
 	placeCredentialData,
 	workflowsInScope,
@@ -94,17 +93,6 @@ describe('package-layout', () => {
 
 			expect(noData).toEqual([requirement]);
 			expect(noFile).toEqual([requirement]);
-		});
-
-		it('needsBundledCredentialData only under create-with-values with requirements present', () => {
-			const request = (credentialMissingMode: 'create-stub' | 'create-with-values') => ({
-				credentialMatchingMode: 'id-only' as const,
-				credentialMissingMode,
-			});
-
-			expect(needsBundledCredentialData(request('create-with-values'), true)).toBe(true);
-			expect(needsBundledCredentialData(request('create-with-values'), false)).toBe(false);
-			expect(needsBundledCredentialData(request('create-stub'), true)).toBe(false);
 		});
 	});
 

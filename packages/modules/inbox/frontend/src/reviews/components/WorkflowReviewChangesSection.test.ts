@@ -20,15 +20,17 @@ const { diffViewProps } = vi.hoisted(() => ({
 
 const DiffView = defineComponent({
 	name: 'WorkflowDiffView',
-	props: [
-		'sourceSnapshot',
-		'targetSnapshot',
-		'workflowId',
-		'workflowName',
-		'sourceLabel',
-		'targetLabel',
-		'showFullscreenButton',
-	],
+	props: {
+		sourceSnapshot: null,
+		targetSnapshot: null,
+		workflowId: String,
+		workflowName: String,
+		sourceLabel: String,
+		targetLabel: String,
+		showFullscreenButton: Boolean,
+		canvasIdPrefix: String,
+		hideTitle: Boolean,
+	},
 	setup(props) {
 		diffViewProps.push(props as SlotWorkflowDiffProps);
 	},
@@ -227,6 +229,8 @@ describe('WorkflowReviewChangesSection', () => {
 
 		expect(diffViewProps[0].workflowId).toBe('wf-1');
 		expect(diffViewProps[0].workflowName).toBe('Payment handler');
+		expect(diffViewProps[0].canvasIdPrefix).toBe('wf-1');
+		expect(diffViewProps[0].hideTitle).toBe(true);
 		expect(sourceSnapshot?.versionId).toBe('0f123890-0000-0000-0000-000000000000');
 		expect(sourceSnapshot?.nodes.map((node) => node.id)).toEqual(['node-removed', 'node-1']);
 

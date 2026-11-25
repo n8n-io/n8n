@@ -74,8 +74,10 @@ N8N_PORT=5680 \
 N8N_RUNNERS_BROKER_PORT=5681 \
 N8N_USER_FOLDER=<printed-temp-directory> \
 E2E_TESTS=true \
+N8N_INSTANCE_AI_ENABLED=true \
 N8N_ENABLED_MODULES=instance-ai,agents \
 N8N_AI_ENABLED=true \
+N8N_INSTANCE_AI_EVAL_INSTANCE=true \
 pnpm exec dotenvx run -f ../../.env.eval -- pnpm start
 ```
 

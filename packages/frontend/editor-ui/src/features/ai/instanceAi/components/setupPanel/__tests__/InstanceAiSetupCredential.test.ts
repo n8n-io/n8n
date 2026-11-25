@@ -145,7 +145,7 @@ const InputStub = defineComponent({
 	},
 });
 const ExistingCredentialStub = defineComponent({
-	props: ['workflowId', 'projectId', 'overrideCredType'],
+	props: ['workflowId', 'projectId', 'overrideCredType', 'credentials'],
 	emits: ['credentialSelected'],
 	setup(props, { emit }) {
 		return () =>
@@ -154,6 +154,9 @@ const ExistingCredentialStub = defineComponent({
 				{
 					'data-workflow-id': props.workflowId,
 					'data-project-id': props.projectId,
+					'data-credential-ids': (props.credentials as Array<{ id: string }> | undefined)
+						?.map(({ id }) => id)
+						.join(','),
 					onClick: () =>
 						emit('credentialSelected', {
 							properties: {
@@ -808,7 +811,10 @@ describe('InstanceAiSetupCredential', () => {
 		expect(store.upsertCredential).not.toHaveBeenCalled();
 		test.resolve();
 		await flushPromises();
-		expect(store.fetchUsableCredentials).toHaveBeenCalledWith({ workflowId: 'wf' });
+		expect(store.fetchUsableCredentials).toHaveBeenCalledWith({
+			workflowId: 'wf',
+			forAssistant: true,
+		});
 		expect(rendered.emitted<[unknown, string]>('bindCredential')?.[0]).toEqual([
 			item,
 			savedCredential.id,
@@ -1122,6 +1128,28 @@ describe('InstanceAiSetupCredential', () => {
 		},
 	);
 
+	it('gives the picker no credentials while the store holds another scope', async () => {
+		const store = mockedStore(useCredentialsStore);
+		const credential = { ...savedCredential, isResolvable: true };
+		store.hasUsableCredentialsForScope = vi.fn().mockReturnValue(false);
+		store.getUsableCredentialByType = vi.fn().mockReturnValue([credential]);
+		store.getCredentialById = vi.fn().mockReturnValue(credential);
+		const rendered = renderComponent({
+			props: {
+				node: {
+					...node,
+					credentials: { serviceApi: { id: credential.id, name: credential.name } },
+				},
+			},
+		});
+		await flushPromises();
+
+		expect(rendered.getByRole('button', { name: 'Select existing connection' })).toHaveAttribute(
+			'data-credential-ids',
+			'',
+		);
+	});
+
 	it('offers an existing credential before the announced workflow node exists', async () => {
 		const store = mockedStore(useCredentialsStore);
 		store.hasUsableCredentialsForScope = vi.fn().mockReturnValue(true);
@@ -1161,19 +1189,41 @@ describe('InstanceAiSetupCredential', () => {
 		expect(JSON.stringify(rendered.emitted('askForHelp'))).not.toContain('private-draft');
 		expect(rendered.getByLabelText('API key')).toHaveValue('private-draft');
 		await rendered.rerender({ helpDisabled: true });
-		expect(rendered.getByRole('button', { name: 'Help me find my API key' })).toBeDisabled();
+		expect(rendered.getByRole('button', { name: 'Help me find my API key' })).toHaveAttribute(
+			'aria-disabled',
+			'true',
+		);
 	});
 
 	it('explains why Help is unavailable while the assistant is building', async () => {
 		const view = renderComponent({ props: { helpDisabled: true } });
 		const button = view.getByRole('button', { name: 'Help me find my API key' });
-		expect(button).toBeDisabled();
-		await userEvent.hover(button.parentElement!);
+		expect(button).toHaveAttribute('aria-disabled', 'true');
+		await userEvent.hover(button);
 		expect(await view.findByTestId('tooltip-content')).toHaveTextContent(
 			'The assistant is still working. Help will be available when it finishes.',
 		);
 		await userEvent.click(button);
 		expect(view.emitted('askForHelp')).toBeUndefined();
+	});
+
+	it('keeps the help explanation focusable while a connection is pending', async () => {
+		const request = Promise.withResolvers<ICredentialsResponse>();
+		mockedStore(useCredentialsStore).createNewCredential.mockReturnValueOnce(request.promise);
+		const view = renderComponent({ props: { helpDisabled: true } });
+		await flushPromises();
+		await fireEvent.update(view.getByLabelText('API key'), 'test-key');
+		await userEvent.click(view.getByRole('button', { name: 'Save' }));
+		expect(mockedStore(useCredentialsStore).createNewCredential).toHaveBeenCalledTimes(1);
+		const help = view.getByRole('button', { name: 'Help me find my API key' });
+		expect(help).toHaveAttribute('aria-disabled', 'true');
+		expect(help).not.toBeDisabled();
+		help.focus();
+		expect(help).toHaveFocus();
+		await userEvent.keyboard('{Enter} ');
+		expect(view.emitted('askForHelp')).toBeUndefined();
+		request.resolve(savedCredential);
+		await flushPromises();
 	});
 
 	it.each([false, true])(

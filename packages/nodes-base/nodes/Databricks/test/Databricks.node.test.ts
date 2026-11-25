@@ -1,6 +1,6 @@
 import { sleep } from '@n8n/utils/sleep';
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import { NodeApiError, NodeHelpers } from 'n8n-workflow';
+import { NodeApiError, NodeHelpers, requestUrl } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -272,6 +272,39 @@ describe('Databricks', () => {
 				);
 
 				expect(result?.toolAttribution).toBe(expected);
+			},
+		);
+	});
+
+	describe('Lakebase -> resource switch', () => {
+		it('should list Lakebase in the resource dropdown', () => {
+			const { description } = new Databricks();
+			const resource = description.properties.find((property) => property.name === 'resource');
+
+			expect(resource?.options).toContainEqual(
+				expect.objectContaining({ name: 'Lakebase', value: 'lakebase' }),
+			);
+		});
+
+		it.each([
+			['lakebase', 'getAll', true],
+			['job', 'run', false],
+		])(
+			'should scope the Lakebase operations and locators to the lakebase resource (%s)',
+			(resource, operation, expected) => {
+				const { description } = new Databricks();
+
+				const result = NodeHelpers.getNodeParameters(
+					description.properties,
+					{ resource },
+					true,
+					false,
+					node,
+					description,
+				);
+
+				expect(result?.operation).toBe(operation);
+				expect(Object.hasOwn(result ?? {}, 'lakebaseProject')).toBe(expected);
 			},
 		);
 	});
@@ -815,6 +848,92 @@ describe('Databricks', () => {
 		});
 	});
 
+	describe('Request URLs', () => {
+		const genieMessage =
+			'/api/2.0/genie/spaces/01ef9c3d5e7f1a2b3c4d5e6f7a8b9c0d/conversations/01efa1b2c3d4e5f6a7b8c9d0e1f2a3b4/messages/01efb2c3d4e5f6a7b8c9d0e1f2a3b4c5/attachments/01efc3d4e5f6a7b8c9d0e1f2a3b4c5d6';
+
+		beforeAll(() => {
+			const databricksNock = nock(HOST);
+
+			databricksNock
+				.head('/api/2.0/fs/files/Volumes/main/default/my_volume/reports/2024/q1.csv')
+				.reply(200, '', {
+					'content-length': '128',
+					'content-type': 'text/csv',
+					'last-modified': 'Mon, 01 Jan 2024 00:00:00 GMT',
+				});
+
+			databricksNock
+				.get('/api/2.0/fs/directories/Volumes/main/default/my_volume/reports/2024')
+				.query({ page_size: 50 })
+				.reply(200, {
+					contents: [
+						{ name: 'q1.csv', path: '/Volumes/main/default/my_volume/reports/2024/q1.csv' },
+					],
+				});
+
+			databricksNock
+				.get('/api/2.0/fs/directories/Volumes/main/default/my_volume')
+				.reply(200, { contents: [{ name: 'reports', is_directory: true }] });
+
+			databricksNock
+				.put('/api/2.0/fs/files/Volumes/main/default/my_volume/uploads/2024/report.json')
+				.reply(204);
+
+			databricksNock
+				.post(`${genieMessage}/execute-query`)
+				.reply(200, { statement_response: { statement_id: 'stmt-genie-001' } });
+
+			databricksNock
+				.get(`${genieMessage}/query-result`)
+				.reply(200, { statement_response: { result: { data_array: [['42']] } } });
+
+			databricksNock.get('/api/2.1/unity-catalog/volumes/main.default.my_volume').reply(200, {
+				name: 'my_volume',
+				full_name: 'main.default.my_volume',
+				volume_type: 'MANAGED',
+			});
+
+			databricksNock.post('/api/2.1/unity-catalog/functions').reply(200, {
+				name: 'add_one',
+				full_name: 'main.default.add_one',
+			});
+
+			databricksNock.get('/api/2.1/unity-catalog/functions/main.default.add_one').reply(200, {
+				name: 'add_one',
+				full_name: 'main.default.add_one',
+			});
+
+			databricksNock
+				.get('/api/2.1/unity-catalog/functions')
+				.query({ catalog_name: 'main', schema_name: 'default' })
+				.reply(200, { functions: [{ full_name: 'main.default.add_one' }] });
+
+			databricksNock.delete('/api/2.1/unity-catalog/functions/main.default.old_fn').reply(200, {});
+
+			databricksNock.post('/api/2.0/sql/statements').reply(200, {
+				statement_id: 'stmt-chunked-001',
+				status: { state: 'SUCCEEDED' },
+				manifest: { total_chunk_count: 2, schema: { columns: [{ name: 'id', type: 'INT' }] } },
+				result: { data_array: [['1']] },
+			});
+
+			databricksNock
+				.get('/api/2.0/sql/statements/stmt-chunked-001/result/chunks/1')
+				.reply(200, { data_array: [['2']] });
+		});
+
+		afterAll(() => {
+			expect(nock.pendingMocks()).toEqual([]);
+			nock.cleanAll();
+		});
+
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['request-urls.workflow.json'],
+		});
+	});
+
 	describe('Router -> PERMISSION_DENIED replaces the generic Forbidden message with the Databricks message', () => {
 		beforeAll(() => {
 			nock(HOST)
@@ -1104,7 +1223,7 @@ describe('Databricks SQL -> Execute Query (async polling)', () => {
 		expect(requests).toHaveLength(3);
 		expect(requests[0][1]).toMatchObject({
 			method: 'POST',
-			url: `${HOST}/api/2.0/sql/statements`,
+			url: requestUrl`${HOST}/api/2.0/sql/statements`,
 			body: {
 				warehouse_id: 'warehouse123',
 				statement: 'SELECT id, name FROM test_table',
@@ -1114,11 +1233,11 @@ describe('Databricks SQL -> Execute Query (async polling)', () => {
 		});
 		expect(requests[1][1]).toMatchObject({
 			method: 'GET',
-			url: `${HOST}/api/2.0/sql/statements/stmt-001`,
+			url: requestUrl`${HOST}/api/2.0/sql/statements/stmt-001`,
 		});
 		expect(requests[2][1]).toMatchObject({
 			method: 'GET',
-			url: `${HOST}/api/2.0/sql/statements/stmt-001`,
+			url: requestUrl`${HOST}/api/2.0/sql/statements/stmt-001`,
 		});
 
 		// One delay before each poll, none before the initial POST
@@ -1198,7 +1317,7 @@ describe('Job -> Run (wait for completion)', () => {
 		expect(apiMock(context)).toHaveBeenCalledTimes(1);
 		expect(apiMock(context)).toHaveBeenCalledWith(
 			'databricksApi',
-			expect.objectContaining({ method: 'POST', url: `${HOST}/api/2.2/jobs/run-now` }),
+			expect.objectContaining({ method: 'POST', url: requestUrl`${HOST}/api/2.2/jobs/run-now` }),
 		);
 	});
 
@@ -1260,7 +1379,7 @@ describe('Job -> Run (wait for completion)', () => {
 			'databricksApi',
 			expect.objectContaining({
 				method: 'GET',
-				url: `${HOST}/api/2.2/jobs/runs/get`,
+				url: requestUrl`${HOST}/api/2.2/jobs/runs/get`,
 				qs: { run_id: RUN_ID },
 			}),
 		);
@@ -1467,7 +1586,7 @@ describe('listSearch -> getJobs', () => {
 			'databricksApi',
 			expect.objectContaining({
 				method: 'GET',
-				url: `${HOST}/api/2.2/jobs/list`,
+				url: requestUrl`${HOST}/api/2.2/jobs/list`,
 				qs: { limit: 100, page_token: 'prev-token' },
 			}),
 		);
@@ -1526,5 +1645,39 @@ describe('listSearch -> getJobs', () => {
 
 		expect(apiMock(context)).toHaveBeenCalledTimes(10);
 		expect(result).toEqual({ results: [], paginationToken: 'more' });
+	});
+});
+
+describe('Lakebase -> Execute Function method wiring', () => {
+	const databricks = new Databricks();
+	const property = (name: string) => databricks.description.properties.find((p) => p.name === name);
+
+	// Lint validates loadOptionsMethod names only, so these two are pinned here
+	it('resolves the function picker to a listSearch method', () => {
+		const listMode = property('lakebaseFunction')?.modes?.find((mode) => mode.name === 'list');
+		const method = listMode?.typeOptions
+			?.searchListMethod as keyof typeof databricks.methods.listSearch;
+
+		expect(method).toBeDefined();
+		expect(typeof databricks.methods.listSearch[method]).toBe('function');
+	});
+
+	it('resolves the argument form to a resourceMapping method', () => {
+		const method = property('functionArguments')?.typeOptions?.resourceMapper
+			?.resourceMapperMethod as keyof typeof databricks.methods.resourceMapping;
+
+		expect(method).toBeDefined();
+		expect(typeof databricks.methods.resourceMapping[method]).toBe('function');
+	});
+
+	it('opens on the argument form', () => {
+		expect(property('specifyArguments')?.default).toBe('fields');
+	});
+
+	// The editor clears a locator only when a declared dependency changes
+	it('resets the function picker when a parent locator changes', () => {
+		expect(property('lakebaseFunction')?.typeOptions?.loadOptionsDependsOn).toEqual(
+			property('lakebaseTable')?.typeOptions?.loadOptionsDependsOn,
+		);
 	});
 });

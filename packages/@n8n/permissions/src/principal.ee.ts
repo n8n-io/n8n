@@ -1,11 +1,14 @@
+import type { z } from 'zod';
+
+import type { principalTypeSchema } from './schemas.ee';
 import type { AuthPrincipal } from './types.ee';
 
-export type PrincipalType = 'human' | 'service';
+export type PrincipalType = z.infer<typeof principalTypeSchema>;
 
 /** The resolved caller. One per party. Structurally an AuthPrincipal, so every scope check accepts it unchanged. */
 export type Principal = AuthPrincipal & {
 	readonly id: string;
-	/** Only 'human' is produced for now. 'service' is the socket for service accounts. */
+	/** Only 'person' is produced for now. 'service' is the socket for service accounts. */
 	readonly type: PrincipalType;
 	/** Optional: `user.email` is nullable, and a service account has none. */
 	readonly email?: string;
@@ -49,6 +52,8 @@ export type ResourceGrant = {
 	readonly audiences: string[];
 	/** Workflow the holder must keep `workflow:execute` on. Absent if none is required. */
 	readonly executeAccessWorkflowId?: string;
+	/** Project in which the holder must keep all `scopes`. Absent if none is required. */
+	readonly projectAccess?: { projectId: string; scopes: string[] };
 };
 
 /** Who is calling, on whose authority, and how they proved it. No field holds a bearer token. */

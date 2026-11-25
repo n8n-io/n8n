@@ -147,8 +147,10 @@ describe('N8nChatThreadHistory', () => {
 	});
 
 	it('drops a stale response from a previous open', async () => {
-		let resolveFirst: (value: { data: AgentN8nChatThreadSummary[]; nextCursor: null }) => void =
-			() => {};
+		let resolveFirst: (value: {
+			data: AgentN8nChatThreadSummary[];
+			nextCursor: null;
+		}) => void = () => {};
 		listN8nChatThreadsMock.mockImplementationOnce(
 			async () =>
 				await new Promise((resolve) => {

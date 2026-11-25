@@ -1,14 +1,7 @@
 <script setup lang="ts">
-import { computed, inject, ref } from 'vue';
-import {
-	N8nBadge,
-	N8nButton,
-	N8nIcon,
-	N8nSpinner,
-	N8nSwitch2,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { computed, inject, nextTick, onMounted, ref, useId, watch } from 'vue';
+import { useResizeObserver } from '@vueuse/core';
+import { N8nBadge, N8nButton, N8nIcon, N8nSpinner, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { RestrictedNodePopover } from '@n8n/frontend-module-type-availability-policies';
 import ToolCredentialPicker from './ToolCredentialPicker.vue';
@@ -32,7 +25,6 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'open-detail': [item: ToolConnectionItem];
 	connect: [item: ToolConnectionItem];
-	disconnect: [item: ToolConnectionItem];
 	'select-credential': [item: ToolConnectionItem, authType: string, credentialId: string];
 	'credential-dropdown-open': [item: ToolConnectionItem];
 	'first-credential-connect': [item: ToolConnectionItem];
@@ -40,6 +32,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const installReasonId = useId();
 const credentialAdapter = inject(TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY, null);
 const creditsLabelKey = inject(TOOL_CONNECTION_CREDITS_LABEL_KEY, null);
 
@@ -65,6 +58,8 @@ const shouldShowCredentialPicker = computed(() => {
 	if (!credentialAdapter || !props.item.credentials?.length) return false;
 	if (props.item.status === 'connecting') return false;
 	if (hasToolConnection(props.item.status)) return true;
+	// Gateway credits need no stored credential, so the picker offers them to every user.
+	if (props.item.credentials?.some(({ aiGateway }) => aiGateway)) return true;
 
 	return Boolean(
 		props.item.credentials?.some(
@@ -123,6 +118,36 @@ const isActivationBlocked = computed(
 const rowRef = ref<HTMLElement | null>(null);
 
 /**
+ * Skill descriptions can be long, so a skill row cuts its description to two lines. The full
+ * text shows in a tooltip, but only when the text is cut.
+ */
+const clampsDescription = computed(() => props.item.kind === 'skill');
+const descriptionRef = ref<InstanceType<typeof N8nText> | null>(null);
+const isDescriptionTruncated = ref(false);
+
+function measureDescription() {
+	const element: unknown = descriptionRef.value?.$el;
+	isDescriptionTruncated.value =
+		element instanceof HTMLElement && element.scrollHeight > element.clientHeight + 1;
+}
+
+onMounted(() => {
+	if (clampsDescription.value) measureDescription();
+});
+useResizeObserver(
+	computed(() => (clampsDescription.value ? descriptionRef.value?.$el : null)),
+	measureDescription,
+);
+watch(
+	() => props.item.description,
+	async () => {
+		if (!clampsDescription.value) return;
+		await nextTick();
+		measureDescription();
+	},
+);
+
+/**
  * For most rows the button only repeated what clicking the row already does.
  * What survives is the pair that goes somewhere the row body cannot: installing
  * a community package, and connecting an MCP server without a detour through
@@ -141,6 +166,32 @@ function handleRowClick() {
 	if (props.item.status === 'connecting') return;
 	emit('open-detail', props.item);
 }
+
+const mainActionRef = ref<HTMLElement | null>(null);
+/** Set when "Add" had focus, so focus can move once the button is gone. */
+let refocusAfterAdd = false;
+
+function handleSkillAdd(event: MouseEvent) {
+	refocusAfterAdd =
+		event.currentTarget instanceof HTMLElement &&
+		event.currentTarget.contains(document.activeElement);
+	emit('connect', props.item);
+}
+
+/**
+ * "Added" is static text, so the focused "Add" button leaves the page when the
+ * skill is added. Move focus to the row's own button (it opens the skill) so
+ * keyboard users stay on the same row instead of falling back to the page.
+ */
+watch(
+	() => props.item.kind === 'skill' && props.item.attached,
+	async (attached) => {
+		if (!attached || !refocusAfterAdd) return;
+		refocusAfterAdd = false;
+		await nextTick();
+		mainActionRef.value?.focus();
+	},
+);
 
 function handleConnect() {
 	emit('connect', props.item);
@@ -165,81 +216,104 @@ function handleConnect() {
 		:data-test-id="`tools-connection-row`"
 		:data-row-kind="item.kind"
 	>
-		<component
-			:is="isRowNavigable ? 'button' : 'div'"
-			:type="isRowNavigable ? 'button' : undefined"
-			:class="[$style.mainAction, { [$style.mainActionStatic]: !isRowNavigable }]"
-			:disabled="isRowNavigable ? isDisabled || item.status === 'connecting' : undefined"
-			:aria-disabled="isActivationBlocked || undefined"
-			data-test-id="tools-connection-row-main"
-			@click="isRowNavigable && handleRowClick()"
-		>
-			<template v-if="item.kind === 'workflow'">
-				<span :class="$style.workflowIcon" aria-hidden="true">
-					<N8nIcon icon="workflow" :size="20" />
-				</span>
-				<N8nText :class="$style.workflowTitle" tag="span" bold>{{ item.title }}</N8nText>
-				<N8nText
-					v-if="item.warning"
-					:class="$style.workflowWarning"
-					tag="span"
-					size="small"
-					color="warning"
-					data-test-id="tools-connection-row-warning"
-				>
-					{{ item.warning }}
-				</N8nText>
-			</template>
-
-			<template v-else>
-				<ToolIcon
-					v-if="item.kind !== 'skill'"
-					:source="resolvedIcon"
-					:fallback-icon="placeholderIcon"
-				/>
-				<span :class="$style.text">
-					<span :class="$style.titleRow">
-						<N8nText :class="$style.title" tag="span" bold>{{ item.title }}</N8nText>
-						<N8nTooltip
-							v-if="item.verified"
-							:content="i18n.baseText('communityNodeInfo.approved')"
-							placement="top"
-						>
-							<N8nIcon
-								icon="shield-half"
-								:size="14"
-								:class="$style.verifiedIcon"
-								:aria-label="i18n.baseText('communityNodeInfo.approved')"
-								data-test-id="tools-connection-row-verified-badge"
-							/>
-						</N8nTooltip>
-						<N8nBadge
-							v-if="item.freeCredits"
-							size="xxsmall"
-							:variant="creditsPill.type === 'info' ? 'info' : 'success'"
-							data-test-id="tools-connection-row-free-credits"
-						>
-							{{ creditsPill.text }}
-						</N8nBadge>
+		<div :class="$style.main">
+			<component
+				:is="isRowNavigable ? 'button' : 'div'"
+				ref="mainActionRef"
+				:type="isRowNavigable ? 'button' : undefined"
+				:class="[$style.mainAction, { [$style.mainActionStatic]: !isRowNavigable }]"
+				:disabled="isRowNavigable ? isDisabled || item.status === 'connecting' : undefined"
+				:aria-disabled="isActivationBlocked || undefined"
+				data-test-id="tools-connection-row-main"
+				@click="isRowNavigable && handleRowClick()"
+			>
+				<template v-if="item.kind === 'workflow'">
+					<span :class="$style.workflowIcon" aria-hidden="true">
+						<N8nIcon icon="workflow" :size="20" />
 					</span>
+					<N8nText :class="$style.workflowTitle" tag="span" bold>{{ item.title }}</N8nText>
 					<N8nText
-						v-if="item.description"
-						:class="$style.description"
+						v-if="item.warning"
+						:class="$style.workflowWarning"
 						tag="span"
 						size="small"
-						color="text-light"
+						color="warning"
+						data-test-id="tools-connection-row-warning"
 					>
-						{{ item.description }}
+						{{ item.warning }}
 					</N8nText>
-				</span>
-			</template>
-		</component>
+				</template>
+
+				<template v-else>
+					<ToolIcon
+						v-if="item.kind !== 'skill'"
+						:source="resolvedIcon"
+						:fallback-icon="placeholderIcon"
+					/>
+					<span :class="$style.text">
+						<span :class="$style.titleRow">
+							<N8nText :class="$style.title" tag="span" bold>{{ item.title }}</N8nText>
+							<N8nTooltip
+								v-if="item.verified"
+								:content="i18n.baseText('communityNodeInfo.approved')"
+								placement="top"
+							>
+								<N8nIcon
+									icon="shield-half"
+									:size="14"
+									:class="$style.verifiedIcon"
+									:aria-label="i18n.baseText('communityNodeInfo.approved')"
+									data-test-id="tools-connection-row-verified-badge"
+								/>
+							</N8nTooltip>
+							<N8nBadge
+								v-if="item.freeCredits"
+								size="xxsmall"
+								:variant="creditsPill.type === 'info' ? 'info' : 'success'"
+								data-test-id="tools-connection-row-free-credits"
+							>
+								{{ creditsPill.text }}
+							</N8nBadge>
+						</span>
+						<N8nTooltip
+							v-if="item.description"
+							:disabled="!isDescriptionTruncated"
+							as-child
+							placement="top-start"
+							:content-class="$style.descriptionTooltip"
+						>
+							<template #content>{{ item.description }}</template>
+							<N8nText
+								ref="descriptionRef"
+								:class="[$style.description, clampsDescription && $style.descriptionClamped]"
+								tag="span"
+								size="small"
+								color="text-light"
+								:data-cut="isDescriptionTruncated || undefined"
+								data-test-id="tools-connection-row-description"
+							>
+								{{ item.description }}
+							</N8nText>
+						</N8nTooltip>
+						<N8nText
+							v-if="installBlocked && !item.installing"
+							:id="installReasonId"
+							tag="span"
+							size="small"
+							color="text-light"
+							>{{ i18n.baseText('tools.connection.install.contactAdmin') }}</N8nText
+						>
+					</span>
+				</template>
+			</component>
+			<slot name="footer" />
+		</div>
 
 		<div :class="$style.action">
 			<RestrictedNodePopover
 				v-if="restriction"
 				:node-type-name="item.title"
-				:scope="restriction.scope"
+				:restriction="restriction"
 				:anchor="rowRef"
 				:side-offset="48"
 			/>
@@ -255,18 +329,24 @@ function handleConnect() {
 				</span>
 				<template #content>{{ item.disabledReason }}</template>
 			</N8nTooltip>
-			<N8nSwitch2
-				v-else-if="item.kind === 'skill'"
-				:model-value="item.attached"
-				:disabled="item.attaching"
-				:label="
-					i18n.baseText(
-						item.attached ? 'tools.connection.action.attached' : 'tools.connection.action.detached',
-					)
-				"
+			<N8nButton
+				v-else-if="item.kind === 'skill' && !item.attached"
+				variant="outline"
+				size="small"
+				:aria-label="connectAriaLabel"
 				data-test-id="tools-connection-row-attach"
-				@update:model-value="$event ? emit('connect', item) : emit('disconnect', item)"
-			/>
+				@click="handleSkillAdd"
+			>
+				{{ connectLabel ?? i18n.baseText('generic.add') }}
+			</N8nButton>
+			<span
+				v-else-if="item.kind === 'skill'"
+				:class="$style.statusMarker"
+				data-test-id="tools-connection-row-added"
+			>
+				<N8nIcon icon="check" :size="14" :class="$style.statusIconConnected" aria-hidden="true" />
+				{{ connectedLabel ?? i18n.baseText('tools.connection.action.added') }}
+			</span>
 			<N8nButton
 				v-else-if="item.kind === 'service'"
 				variant="outline"
@@ -305,20 +385,17 @@ function handleConnect() {
 				{{ i18n.baseText('tools.connection.action.connecting') }}
 			</span>
 			<template v-else-if="hasDirectAction">
-				<N8nTooltip
-					v-if="installBlocked && !item.installing"
-					:content="i18n.baseText('tools.connection.install.contactAdmin')"
-					placement="top"
-				>
-					<span>
-						<N8nButton
-							:label="actionLabel"
-							variant="outline"
-							size="small"
-							disabled
-							data-test-id="tools-connection-row-install"
-						/>
-					</span>
+				<N8nTooltip v-if="installBlocked && !item.installing" as-child placement="top">
+					<template #content>{{ i18n.baseText('tools.connection.install.contactAdmin') }}</template>
+					<N8nButton
+						:label="actionLabel"
+						variant="outline"
+						size="small"
+						disabled
+						focusable-when-disabled
+						:aria-describedby="installReasonId"
+						data-test-id="tools-connection-row-install"
+					/>
 				</N8nTooltip>
 				<N8nButton
 					v-else
@@ -376,6 +453,11 @@ function handleConnect() {
 	}
 }
 
+.row--skill {
+	// Skill rows have no icon. Start the text on the same edge as the search icon.
+	padding-inline-start: var(--spacing--xs);
+}
+
 .rowDisabled {
 	opacity: 0.6;
 
@@ -398,6 +480,15 @@ function handleConnect() {
 	&:hover {
 		background: transparent;
 	}
+}
+
+// Stacks the row button and the optional footer, which cannot sit inside the button.
+.main {
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 0;
+	min-width: 0;
+	align-self: stretch;
 }
 
 .mainAction {
@@ -481,6 +572,20 @@ function handleConnect() {
 	// Wrap onto further lines rather than truncating; the virtual scroller
 	// measures each row's real height, so taller rows lay out correctly.
 	white-space: normal;
+	overflow-wrap: anywhere;
+}
+
+.descriptionClamped {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
+	overflow: hidden;
+}
+
+.descriptionTooltip {
+	max-width: calc(var(--spacing--5xl) * 2);
+	white-space: pre-line;
 	overflow-wrap: anywhere;
 }
 

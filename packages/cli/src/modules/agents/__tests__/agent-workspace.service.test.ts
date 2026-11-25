@@ -85,9 +85,11 @@ describe('AgentWorkspaceService', () => {
 		expect(workspace.filesystem?.basePath).toBe('/home/daytona/workspace');
 		expect(workspace.getTools().map(({ name }) => name)).toEqual([
 			'workspace_read_file',
+			'workspace_read_files',
 			'workspace_read_tool_result',
 			'workspace_str_replace_file',
 			'workspace_write_file',
+			'workspace_edit_files',
 			'workspace_execute_command',
 		]);
 	});
@@ -101,9 +103,11 @@ describe('AgentWorkspaceService', () => {
 		expect(workspace.filesystem?.basePath).toBe('/home/daytona/workspace/subagents/thread-9');
 		expect(workspace.getTools().map(({ name }) => name)).toEqual([
 			'workspace_read_file',
+			'workspace_read_files',
 			'workspace_read_tool_result',
 			'workspace_str_replace_file',
 			'workspace_write_file',
+			'workspace_edit_files',
 			'workspace_execute_command',
 		]);
 

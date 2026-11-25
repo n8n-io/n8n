@@ -3,9 +3,16 @@ import { nextTick, reactive } from 'vue';
 import { vi } from 'vitest';
 import { useProjectsStore } from './projects.store';
 import * as projectsApi from './projects.api';
+import * as workflowsEEApi from '@/app/api/workflows.ee';
+import * as credentialsEEApi from '@/features/credentials/credentials.ee.api';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { Project, ProjectListItem, ProjectType } from './projects.types';
 import { ProjectTypes } from './projects.types';
 import type { ProjectRole, Scope } from '@n8n/permissions';
+import type { FrontendSettings } from '@n8n/api-types';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import * as workflowReviewsApi from '@/features/workflow-reviews/workflowReviews.api';
 
 type MockRoute = {
 	params: Record<string, string>;
@@ -29,6 +36,15 @@ vi.mock('./projects.api', () => ({
 	addProjectMembers: vi.fn(),
 	updateProjectMemberRole: vi.fn(),
 	deleteProjectMember: vi.fn(),
+}));
+
+vi.mock('@/app/api/workflows.ee', () => ({ moveWorkflowToProject: vi.fn() }));
+vi.mock('@/features/workflow-reviews/workflowReviews.api', () => ({
+	getProjectWorkflowReviewSettings: vi.fn(),
+	updateProjectWorkflowReviewSettings: vi.fn(),
+}));
+vi.mock('@/features/credentials/credentials.ee.api', () => ({
+	moveCredentialToProject: vi.fn(),
 }));
 
 // Typed mocked facade for the API module
@@ -349,5 +365,137 @@ describe('useProjectsStore.setProjectNavActiveIdByWorkflowHomeProject', () => {
 
 		expect(store.projectNavActiveId).toBe('inbox');
 		expect(store.currentProject).toBeNull();
+	});
+});
+
+describe('useProjectsStore.hasTeamProjectQuota', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+	});
+
+	it('keeps team project quota available on a protected instance', () => {
+		useSettingsStore().settings = {
+			enterprise: { projects: { team: { limit: 1 } } },
+		} as FrontendSettings;
+		useSourceControlStore().setPreferences({ branchReadOnly: true });
+		const store = useProjectsStore();
+
+		expect(store.hasTeamProjectQuota).toBe(true);
+		expect(store.canCreateProjects).toBe(false);
+	});
+});
+
+describe('useProjectsStore.moveResourceToProject', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+		vi.clearAllMocks();
+	});
+
+	it('should return the workflow transfer result from the API', async () => {
+		const result = { unpublishReasons: [] };
+		vi.mocked(workflowsEEApi.moveWorkflowToProject).mockResolvedValue(result);
+		const store = useProjectsStore();
+
+		const returned = await store.moveResourceToProject('workflow', 'w1', 'p2', 'f1', ['c1']);
+
+		expect(returned).toBe(result);
+		expect(workflowsEEApi.moveWorkflowToProject).toHaveBeenCalledWith(expect.anything(), 'w1', {
+			destinationProjectId: 'p2',
+			destinationParentFolderId: 'f1',
+			shareCredentials: ['c1'],
+		});
+	});
+
+	it('should move a credential and return undefined', async () => {
+		vi.mocked(credentialsEEApi.moveCredentialToProject).mockResolvedValue(undefined);
+		const store = useProjectsStore();
+		const credentialsStore = useCredentialsStore();
+		vi.spyOn(credentialsStore, 'fetchAllCredentials').mockResolvedValue([]);
+
+		const returned = await store.moveResourceToProject('credential', 'c1', 'p2');
+
+		expect(returned).toBeUndefined();
+		expect(credentialsEEApi.moveCredentialToProject).toHaveBeenCalledWith(
+			expect.anything(),
+			'c1',
+			'p2',
+		);
+		expect(workflowsEEApi.moveWorkflowToProject).not.toHaveBeenCalled();
+		expect(credentialsStore.fetchAllCredentials).toHaveBeenCalled();
+	});
+});
+
+describe('useProjectsStore workflow review settings', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+		vi.clearAllMocks();
+		mockRoute.params = { projectId: 'p1' };
+	});
+
+	afterEach(() => {
+		mockRoute.params = {};
+	});
+
+	it('loads and saves the workflow review settings of a project', async () => {
+		vi.mocked(workflowReviewsApi.getProjectWorkflowReviewSettings).mockResolvedValue({
+			requiredByProject: false,
+		});
+		vi.mocked(workflowReviewsApi.updateProjectWorkflowReviewSettings).mockResolvedValue({
+			requiredByProject: true,
+		});
+		const store = useProjectsStore();
+
+		await store.fetchProjectWorkflowReviewSettings('p1');
+		expect(store.currentProjectWorkflowReviewSettings).toEqual({ requiredByProject: false });
+
+		await store.updateCurrentProjectWorkflowReviewSettings('p1', { requiredByProject: true });
+
+		expect(workflowReviewsApi.updateProjectWorkflowReviewSettings).toHaveBeenCalledWith(
+			expect.anything(),
+			'p1',
+			{ requiredByProject: true },
+		);
+		expect(store.currentProjectWorkflowReviewSettings).toEqual({ requiredByProject: true });
+	});
+
+	it('clears the previous project value when the fetch for a new project fails', async () => {
+		vi.mocked(workflowReviewsApi.getProjectWorkflowReviewSettings)
+			.mockResolvedValueOnce({ requiredByProject: true })
+			.mockRejectedValueOnce(new Error('network down'));
+		const store = useProjectsStore();
+		await store.fetchProjectWorkflowReviewSettings('p1');
+
+		mockRoute.params = { projectId: 'p2' };
+		await expect(store.fetchProjectWorkflowReviewSettings('p2')).rejects.toThrow('network down');
+
+		expect(store.currentProjectWorkflowReviewSettings).toBeNull();
+	});
+
+	it('drops a response for a project that is no longer current', async () => {
+		vi.mocked(workflowReviewsApi.getProjectWorkflowReviewSettings).mockResolvedValue({
+			requiredByProject: true,
+		});
+		const store = useProjectsStore();
+		const fetch = store.fetchProjectWorkflowReviewSettings('p1');
+
+		mockRoute.params = { projectId: 'p2' };
+		await fetch;
+
+		expect(store.currentProjectWorkflowReviewSettings).toBeNull();
+	});
+
+	it('drops a saved value for a project that is no longer current', async () => {
+		vi.mocked(workflowReviewsApi.updateProjectWorkflowReviewSettings).mockResolvedValue({
+			requiredByProject: true,
+		});
+		const store = useProjectsStore();
+		const save = store.updateCurrentProjectWorkflowReviewSettings('p1', {
+			requiredByProject: true,
+		});
+
+		mockRoute.params = { projectId: 'p2' };
+		await save;
+
+		expect(store.currentProjectWorkflowReviewSettings).toBeNull();
 	});
 });

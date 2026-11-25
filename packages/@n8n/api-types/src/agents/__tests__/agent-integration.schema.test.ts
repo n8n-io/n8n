@@ -84,6 +84,29 @@ describe('AgentIntegrationSchema', () => {
 		expect(result.success).toBe(false);
 	});
 
+	it.each([true, false])(
+		'preserves the Slack mention-only setting: %s',
+		(onlyRespondWhenMentioned) => {
+			const config = {
+				type: 'slack',
+				credentialId: 'cred-123',
+				settings: { messagingExperience: 'agent', onlyRespondWhenMentioned },
+			};
+			expect(AgentIntegrationSchema.parse(config)).toEqual(config);
+			expect(AgentIntegrationConfigSchema.parse(config)).toEqual(config);
+		},
+	);
+
+	it('rejects a non-boolean Slack mention-only setting', () => {
+		expect(
+			AgentIntegrationSchema.safeParse({
+				type: 'slack',
+				credentialId: 'cred-123',
+				settings: { messagingExperience: 'agent', onlyRespondWhenMentioned: 'true' },
+			}).success,
+		).toBe(false);
+	});
+
 	it('rejects Telegram private settings without allowed users', () => {
 		const result = AgentIntegrationSchema.safeParse({
 			type: 'telegram',
@@ -212,6 +235,24 @@ describe('AgentIntegrationSchema', () => {
 
 		it('still rejects an unknown setting', () => {
 			expect(parse({ somethingElse: true }).success).toBe(false);
+		});
+	});
+
+	describe('webhook channel', () => {
+		it('accepts a webhook without settings, which is a copied draft', () => {
+			expect(
+				AgentIntegrationConfigSchema.safeParse({ type: 'webhook', credentialId: '' }).success,
+			).toBe(true);
+		});
+
+		it('rejects an unknown authentication', () => {
+			expect(
+				AgentIntegrationConfigSchema.safeParse({
+					type: 'webhook',
+					credentialId: '',
+					settings: { authentication: 'basicAuth' },
+				}).success,
+			).toBe(false);
 		});
 	});
 

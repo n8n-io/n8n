@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 
-import { checkWhatsAppCredential, getWhatsAppWebhookStatus } from './api';
+import { checkWhatsAppCredential, getWhatsAppMetaStatus, getWhatsAppWebhookStatus } from './api';
 
 vi.mock('@n8n/rest-api-client', () => ({
 	makeRestApiRequest: vi.fn(),
@@ -37,8 +37,23 @@ describe('WhatsApp channel API', () => {
 			context,
 			'GET',
 			'/projects/p/agents/v2/a/integrations/whatsapp/webhook-status',
+			undefined,
 		);
 		expect(result).toEqual({ verified: true });
+	});
+
+	it('sends the credential with the webhook status so the app can be compared', async () => {
+		vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ verified: true, appMismatch: true });
+
+		const result = await getWhatsAppWebhookStatus(context, 'p', 'a', 'cred-1');
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			context,
+			'GET',
+			'/projects/p/agents/v2/a/integrations/whatsapp/webhook-status',
+			{ credentialId: 'cred-1' },
+		);
+		expect(result).toEqual({ verified: true, appMismatch: true });
 	});
 
 	it('encodes each ID as one path segment', async () => {
@@ -56,6 +71,22 @@ describe('WhatsApp channel API', () => {
 			context,
 			'GET',
 			'/projects/p%2F1/agents/v2/a%3F2/integrations/whatsapp/webhook-status',
+			undefined,
 		);
+	});
+});
+
+describe('getWhatsAppMetaStatus', () => {
+	it('reads the Meta status for the agent and credential', async () => {
+		vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ state: 'dailyLimit' });
+
+		const result = await getWhatsAppMetaStatus(context, 'p', 'a', 'cred 1');
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			context,
+			'GET',
+			'/projects/p/agents/v2/a/integrations/whatsapp/meta-status/cred%201',
+		);
+		expect(result).toEqual({ state: 'dailyLimit' });
 	});
 });

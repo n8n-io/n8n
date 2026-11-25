@@ -11,6 +11,12 @@ import { EditorEnabledFeaturesKey, VIEWS } from '@/app/constants';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
+import {
+	describeSubWorkflowRestriction,
+	useSubWorkflowRestriction,
+} from '@n8n/frontend-module-type-availability-policies';
+import { usePolicyViolationLabels } from '@/app/composables/usePolicyViolationLabels';
+import { useNodeCredentialTypeRestrictions } from '@/features/credentials/composables/useNodeCredentialTypeRestrictions';
 import CanvasNodeStatusMark from './CanvasNodeStatusMark.vue';
 const {
 	size = 'large',
@@ -31,55 +37,61 @@ const {
 	name,
 	validationErrors,
 	hasValidationErrors,
+	isSetupRequired: needsCredentialSetup,
 	executionStatus,
 	hasRunData,
 	runDataIterations,
 	isDisabled,
+	isReadOnly,
 	render,
 	isNotInstalledCommunityNode,
 	isRestricted,
 	restrictionScope,
+	isDeprecated,
+	deprecatedReplacementName,
 } = useCanvasNode();
 const renderData = injectCanvasRenderData();
+
+const deprecatedTooltip = computed(() =>
+	deprecatedReplacementName.value
+		? i18n.baseText('node.deprecatedWithReplacement', {
+				interpolate: { nodeTypeName: deprecatedReplacementName.value },
+			})
+		: i18n.baseText('node.deprecated'),
+);
+
 const editorFeatures = inject(EditorEnabledFeaturesKey, undefined);
 const workflowDocumentStore = injectWorkflowDocumentStore();
-const needsCredentialSetup = computed(() => {
-	if (!editorFeatures?.value.credentialSetupWarnings) return false;
-	const node = workflowDocumentStore.value.getNodeById(id.value);
-	const issues = node?.issues;
-	const credentialTypes = Object.keys(issues?.credentials ?? {});
-	if (!node || !credentialTypes.length) return false;
-	if (
-		Object.entries(issues ?? {}).some(
-			([kind, issue]) =>
-				kind !== 'credentials' &&
-				(typeof issue === 'boolean' ? issue : Object.keys(issue ?? {}).length > 0),
-		)
-	)
-		return false;
-	return credentialTypes.every((type) => {
-		const credential = node.credentials?.[type];
-		return !credential?.id && !credential?.__aiGatewayManaged;
-	});
+const { labelOf } = usePolicyViolationLabels();
+const { restriction: subWorkflowRestriction } = useSubWorkflowRestriction({
+	parentWorkflowId: () => workflowDocumentStore.value.workflowId,
+	node: () => workflowDocumentStore.value.getNodeById(id.value),
+	// The check is gated like the sub-workflow picker, so a viewer would only get a 403.
+	enabled: () =>
+		!isReadOnly.value && workflowDocumentStore.value.scopes.includes('workflow:update'),
 });
+const subWorkflowRestrictionLines = computed(() =>
+	subWorkflowRestriction.value
+		? describeSubWorkflowRestriction(subWorkflowRestriction.value, labelOf)
+		: [],
+);
+const { descriptions: credentialTypeRestrictionLines } = useNodeCredentialTypeRestrictions(() =>
+	workflowDocumentStore.value.getNodeById(id.value),
+);
 const executionErrors = computed(
 	() => renderData.value.executionIssuesByNodeId.get(id.value)?.value ?? [],
 );
 const hasExecutionErrors = computed(() => executionErrors.value.length > 0);
-const hasPinnedData = computed(
-	() =>
-		!renderData.value.isExecutionDataDisplayed &&
-		!!renderData.value.pinnedDataByNodeName[name.value],
-);
+const hasPinnedData = computed(() => !!renderData.value.pinnedDataByNodeName[name.value]);
 const hasExecutionPinData = computed(
-	() =>
-		renderData.value.isExecutionDataDisplayed &&
-		!!renderData.value.executionPinDataByNodeId.get(id.value)?.value,
+	() => !!renderData.value.getDisplayedExecutionPinData(id.value),
 );
 const hasVisiblePinData = computed(() => hasPinnedData.value || hasExecutionPinData.value);
 const route = useRoute();
 
-const hideNodeIssues = computed(() => false); // @TODO Implement this
+// Hosts such as template previews opt out of issue indicators (validation
+// and execution errors) when the viewer can't act on them.
+const hideNodeIssues = computed(() => editorFeatures?.value.showNodeIssues === false);
 const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
 const dirtiness = computed(() =>
 	render.value.type === CanvasNodeRenderType.Default ? render.value.options.dirtiness : undefined,
@@ -139,6 +151,18 @@ const groupedExecutionErrors = computed(() => {
 		<N8nIcon icon="power" :size="size" />
 	</div>
 	<div
+		v-else-if="credentialTypeRestrictionLines.length > 0"
+		:class="[...commonClasses, $style.warning]"
+		data-test-id="node-credential-type-restricted"
+	>
+		<N8nTooltip :show-after="500" placement="bottom">
+			<template #content>
+				<div v-for="line in credentialTypeRestrictionLines" :key="line">{{ line }}</div>
+			</template>
+			<N8nIcon icon="triangle-alert" :size="size" />
+		</N8nTooltip>
+	</div>
+	<div
 		v-else-if="hasExecutionErrors && !hideNodeIssues"
 		:class="[...commonClasses, $style.issues]"
 		data-test-id="node-issues"
@@ -148,6 +172,16 @@ const groupedExecutionErrors = computed(() => {
 				<TitledList :title="`${i18n.baseText('node.issues')}:`" :items="groupedExecutionErrors" />
 			</template>
 			<CanvasNodeStatusMark status="error" :size="size" />
+		</N8nTooltip>
+	</div>
+	<div
+		v-else-if="isDeprecated"
+		:class="[...commonClasses, $style.deprecated]"
+		data-test-id="canvas-node-status-deprecated"
+	>
+		<N8nTooltip :show-after="500" placement="bottom">
+			<template #content> {{ deprecatedTooltip }} </template>
+			<N8nIcon icon="triangle-alert" :size="size" />
 		</N8nTooltip>
 	</div>
 	<div
@@ -163,6 +197,21 @@ const groupedExecutionErrors = computed(() => {
 				/>
 			</template>
 			<N8nIcon :icon="needsCredentialSetup ? 'key-round' : 'node-validation-error'" :size="size" />
+		</N8nTooltip>
+	</div>
+	<div
+		v-else-if="subWorkflowRestriction"
+		:class="[...commonClasses, $style.warning]"
+		data-test-id="node-sub-workflow-restricted"
+	>
+		<N8nTooltip :show-after="500" placement="bottom">
+			<template #content>
+				<TitledList
+					:title="subWorkflowRestrictionLines[0]"
+					:items="subWorkflowRestrictionLines.slice(1)"
+				/>
+			</template>
+			<N8nIcon icon="triangle-alert" :size="size" />
 		</N8nTooltip>
 	</div>
 	<div v-else-if="executionStatus === 'unknown'">
@@ -240,6 +289,10 @@ const groupedExecutionErrors = computed(() => {
 		background-color: rgba(255, 255, 255, 0.82);
 		border-radius: var(--radius--lg);
 	}
+}
+
+.deprecated {
+	color: var(--color--danger);
 }
 
 .issues {

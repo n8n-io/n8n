@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { ModuleMetadata, type ModuleInterface } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import {
@@ -10,7 +11,7 @@ import {
 	TrustedSourceStore,
 } from '@n8n/inbound-auth';
 import { InstanceSettings } from 'n8n-core';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { AuthStrategyRegistry, ProtectedResourceRegistry } from '@n8n/backend-services/auth';
@@ -23,8 +24,11 @@ import { InboundAuthCoreModule } from '../inbound-auth-core.module';
 import { PublicApiOAuthStrategy } from '../public-api-oauth.strategy';
 import { PublicApiProtectedResource } from '../public-api-protected-resource';
 import { InboundResourceAdmission } from '../resource-admission';
+import { TrustedSourceDbDirectory } from '../trusted-source-directory.service';
 import { TrustedSourceDiscoveryTask } from '../trusted-source-discovery.task';
 import { TrustedSourceDbGate } from '../trusted-source.gate';
+import { LocalAuthorizationServerProxy } from '../local-authorization-server.proxy';
+import { TrustedSourceDiscoveryService } from '../trusted-source-discovery.service';
 import { TrustedSourceDbStore } from '../trusted-source.store';
 
 // A mocked module's factory runs on its first import, so the first `init()` that imports the
@@ -79,14 +83,38 @@ describe('InboundAuthCoreModule', () => {
 			);
 		});
 
+		it('upgrades the stored configs once on a main instance', async () => {
+			dbStore.upgradeStoredConfigs.mockClear();
+
+			await new InboundAuthCoreModule().init();
+
+			expect(dbStore.upgradeStoredConfigs).toHaveBeenCalledTimes(1);
+		});
+
+		it('warns and still seeds when the upgrade fails', async () => {
+			const warn = vi.spyOn(Container.get(Logger), 'warn').mockImplementation(() => {});
+			const error = new Error('database down');
+			dbStore.seedSystemSource.mockClear();
+			dbStore.upgradeStoredConfigs.mockRejectedValueOnce(error);
+
+			await expect(new InboundAuthCoreModule().init()).resolves.toBeUndefined();
+
+			expect(warn).toHaveBeenCalledWith('Could not upgrade stored trusted source configs', {
+				error,
+			});
+			expect(dbStore.seedSystemSource).toHaveBeenCalledTimes(1);
+		});
+
 		it.each(['webhook', 'worker'] as const)(
-			'does not seed the system trusted source on a %s instance',
+			'neither upgrades nor seeds on a %s instance',
 			async (instanceType) => {
 				Container.set(InstanceSettings, mock<InstanceSettings>({ instanceType }));
+				dbStore.upgradeStoredConfigs.mockClear();
 				dbStore.seedSystemSource.mockClear();
 
 				await new InboundAuthCoreModule().init();
 
+				expect(dbStore.upgradeStoredConfigs).not.toHaveBeenCalled();
 				expect(dbStore.seedSystemSource).not.toHaveBeenCalled();
 				Container.set(InstanceSettings, mock<InstanceSettings>({ instanceType: 'main' }));
 			},
@@ -97,6 +125,18 @@ describe('InboundAuthCoreModule', () => {
 
 			await expect(server.getMetadata()).rejects.toThrow(OperationalError);
 			await expect(server.getJwks()).rejects.toThrow(OperationalError);
+			await expect(server.isAccessTokenActive('token')).resolves.toBe(false);
+		});
+
+		it('discovers the system trusted source once the OAuth2 server registers itself', async () => {
+			const discovery = mock<TrustedSourceDiscoveryService>();
+			Container.set(TrustedSourceDiscoveryService, discovery);
+
+			await Container.get(LocalAuthorizationServerProxy).registerProvider(
+				mock<LocalAuthorizationServer>(),
+			);
+
+			expect(discovery.refresh).toHaveBeenCalledWith('n8n-internal');
 		});
 
 		it('binds the OAuth2 AuthenticationService', () => {
@@ -154,6 +194,14 @@ describe('InboundAuthCoreModule', () => {
 		expect(entry).toBeDefined();
 		expect(entry?.instanceTypes).toEqual(['main', 'webhook', 'worker']);
 		expect(entry?.licenseFlag).toBeUndefined();
+	});
+
+	it('hands the trusted source directory to nodes as its module context', async () => {
+		const directory = mock<TrustedSourceDbDirectory>();
+		Container.set(TrustedSourceDbDirectory, directory);
+		const module: ModuleInterface = new InboundAuthCoreModule();
+
+		expect(await module.context?.()).toEqual({ trustedSourceDirectory: directory });
 	});
 
 	it('exposes the discovery task as its only system task', async () => {

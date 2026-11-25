@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import { JSONPath } from 'jsonpath-plus';
 import type { INodeUi } from '@/Interface';
-import { NodeConnectionTypes, type IDataObject, type IRunExecutionData } from 'n8n-workflow';
+import type { IDataObject, IRunExecutionData, NodeConnectionType } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { clearJsonKey, convertPath } from '@/app/utils/typesUtils';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
@@ -16,8 +17,7 @@ import { usePinnedData } from '@/app/composables/usePinnedData';
 import { inject, computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
-import { N8nIconButton } from '@n8n/design-system';
+import { N8nDropdownMenu, N8nIconButton } from '@n8n/design-system';
 type JsonPathData = {
 	path: string;
 	startPath: string;
@@ -33,10 +33,12 @@ const props = withDefaults(
 		jsonData: IDataObject[];
 		outputIndex: number | undefined;
 		runIndex: number | undefined;
+		connectionType: NodeConnectionType;
 		execution?: IRunExecutionData;
 	}>(),
 	{
 		selectedJsonPath: nonExistingJsonPath,
+		connectionType: NodeConnectionTypes.Main,
 	},
 );
 
@@ -83,7 +85,7 @@ function getJsonValue(): string {
 					props.runIndex,
 					props.outputIndex,
 					'output',
-					NodeConnectionTypes.Main,
+					props.connectionType,
 					props.execution,
 				),
 			);
@@ -128,6 +130,26 @@ function getJsonParameterPath(): JsonPathData {
 	}
 
 	return { path, startPath };
+}
+
+const copyItems = computed(() => [
+	{
+		id: 'value',
+		label: i18n.baseText('runData.copyValue'),
+	},
+	{
+		id: 'itemPath',
+		label: i18n.baseText('runData.copyItemPath'),
+		divided: true,
+	},
+	{
+		id: 'parameterPath',
+		label: i18n.baseText('runData.copyParameterPath'),
+	},
+]);
+
+function onCopySelect(command: string) {
+	handleCopyClick({ command });
 }
 
 function handleCopyClick(commandData: { command: string }) {
@@ -204,36 +226,25 @@ function handleCopyClick(commandData: { command: string }) {
 			:circle="false"
 			@click="handleCopyClick({ command: 'value' })"
 		/>
-		<ElDropdown
+		<N8nDropdownMenu
 			v-else
-			trigger="click"
+			:items="copyItems"
+			placement="bottom-end"
 			:teleported="
-				!isInPopOutWindow // disabling teleport ensures the menu is rendered in pop-out window
+				!isInPopOutWindow // disabling teleport keeps the menu in the pop-out window
 			"
-			@command="handleCopyClick"
+			@select="onCopySelect"
 		>
-			<span class="el-dropdown-link">
+			<template #trigger>
 				<N8nIconButton
 					variant="outline"
 					:title="i18n.baseText('runData.copyToClipboard')"
 					icon="files"
 					:circle="false"
+					data-test-id="ndv-json-copy-menu"
 				/>
-			</span>
-			<template #dropdown>
-				<ElDropdownMenu>
-					<ElDropdownItem :command="{ command: 'value' }">
-						{{ i18n.baseText('runData.copyValue') }}
-					</ElDropdownItem>
-					<ElDropdownItem :command="{ command: 'itemPath' }" divided>
-						{{ i18n.baseText('runData.copyItemPath') }}
-					</ElDropdownItem>
-					<ElDropdownItem :command="{ command: 'parameterPath' }">
-						{{ i18n.baseText('runData.copyParameterPath') }}
-					</ElDropdownItem>
-				</ElDropdownMenu>
 			</template>
-		</ElDropdown>
+		</N8nDropdownMenu>
 	</div>
 </template>
 

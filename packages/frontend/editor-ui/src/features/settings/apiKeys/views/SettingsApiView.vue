@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { useToast } from '@n8n/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { usePrefetchModals } from '@/app/composables/usePrefetchModals';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME } from '@/app/constants/durations';
 
@@ -52,6 +53,10 @@ const documentTitle = useDocumentTitle();
 const i18n = useI18n();
 const { goToUpgrade } = usePageRedirectionHelper();
 const telemetry = useTelemetry();
+
+usePrefetchModals([API_KEY_CREATE_OR_EDIT_MODAL_KEY], {
+	enabled: () => settingsStore.isPublicApiEnabled,
+});
 
 const loading = ref(false);
 const apiKeysStore = useApiKeysStore();
@@ -133,6 +138,8 @@ const { isSwaggerUIEnabled, publicApiPath, publicApiLatestVersion } = settingsSt
 const { baseUrl } = useRootStore();
 
 const { isPublicApiEnabled } = settingsStore;
+
+const showKeyTable = computed(() => isPublicApiEnabled && hasAnyKeys.value);
 
 const apiDocsURL = computed(() => {
 	if (!isSwaggerUIEnabled) return `https://${DOCS_DOMAIN}/api/api-reference/`;
@@ -298,7 +305,7 @@ function onOpenScopes(apiKey: ApiKey) {
 </script>
 
 <template>
-	<N8nSettingsLayout full-width :class="$style.layout">
+	<N8nSettingsLayout :full-width="showKeyTable" :class="$style.layout">
 		<!-- Three links in one sentence, so the built-in docs link is off and the sentence is composed in the slot. -->
 		<N8nSettingsPageHeader
 			:title="i18n.baseText('settings.api')"
@@ -340,7 +347,7 @@ function onOpenScopes(apiKey: ApiKey) {
 			</template>
 		</N8nSettingsPageHeader>
 
-		<div v-if="isPublicApiEnabled && hasAnyKeys" :class="$style.tableArea">
+		<div v-if="showKeyTable" :class="$style.tableArea">
 			<div :class="$style.toolbar">
 				<N8nTabs
 					v-if="canManageAllKeys"
@@ -377,11 +384,14 @@ function onOpenScopes(apiKey: ApiKey) {
 					</div>
 					<N8nTooltip
 						:disabled="canCreateKeys"
+						as-child
 						:content="i18n.baseText('settings.api.create.disabledTooltip')"
 					>
+						<template #content>{{ i18n.baseText('settings.api.create.disabledTooltip') }}</template>
 						<N8nButton
 							size="medium"
 							:disabled="!canCreateKeys"
+							focusable-when-disabled
 							data-test-id="api-key-create-button"
 							@click="onCreateApiKey"
 						>

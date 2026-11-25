@@ -1,23 +1,33 @@
 import {
 	type AgentVersionListItemDto,
+	UpdateAgentVersionDto,
 	PaginationDto,
 	PublishAgentDto,
 	RevertAgentToVersionDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Body, Get, Param, Post, ProjectScope, Query, RestController } from '@n8n/decorators';
+import {
+	Body,
+	Get,
+	Param,
+	Patch,
+	Post,
+	ProjectScope,
+	Query,
+	RestController,
+} from '@n8n/decorators';
 import type { Response } from 'express';
 
 import { AgentPublishService } from './agent-publish.service';
-import { AgentRunnableStateService } from './agent-runnable-state.service';
-import { CollaborationService } from '@/collaboration/collaboration.service';
+import { AgentResponseMapper } from './agent-response.mapper';
+import { AgentWriteLockService } from './agent-write-lock.service';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentPublishController {
 	constructor(
 		private readonly agentPublishService: AgentPublishService,
-		private readonly agentRunnableStateService: AgentRunnableStateService,
-		private readonly collaborationService: CollaborationService,
+		private readonly agentResponseMapper: AgentResponseMapper,
+		private readonly agentWriteLockService: AgentWriteLockService,
 	) {}
 
 	@Post('/:agentId/publish')
@@ -29,7 +39,7 @@ export class AgentPublishController {
 		@Body payload: PublishAgentDto,
 	) {
 		const clientId = req.headers?.['push-ref'];
-		await this.collaborationService.validateAgentWriteLock(
+		await this.agentWriteLockService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
 			req.params.projectId,
@@ -43,8 +53,11 @@ export class AgentPublishController {
 			{ by: 'user', trigger: 'explicit' },
 			payload?.versionId,
 			req.headers?.['push-ref'],
+			undefined,
+			payload,
+			payload?.draft,
 		);
-		return await this.agentRunnableStateService.addRunnableState(
+		return await this.agentResponseMapper.toAgentDto(
 			agent,
 			req.params.projectId,
 			req.user,
@@ -60,7 +73,7 @@ export class AgentPublishController {
 		@Param('agentId') agentId: string,
 	) {
 		const clientId = req.headers?.['push-ref'];
-		await this.collaborationService.validateAgentWriteLock(
+		await this.agentWriteLockService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
 			req.params.projectId,
@@ -74,11 +87,57 @@ export class AgentPublishController {
 			'user',
 			req.headers?.['push-ref'],
 		);
-		return await this.agentRunnableStateService.addRunnableState(
-			agent,
-			req.params.projectId,
-			req.user,
+		return await this.agentResponseMapper.toAgentDto(agent, req.params.projectId, req.user);
+	}
+
+	@Post('/:agentId/archive')
+	@ProjectScope('agent:delete')
+	async archive(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+	) {
+		const { projectId } = req.params;
+		const pushRef = req.headers?.['push-ref'];
+		await this.agentWriteLockService.validateAgentWriteLock(
+			req.user.id,
+			pushRef,
+			projectId,
+			agentId,
+			'archive',
 		);
+		const agent = await this.agentPublishService.archiveAgent(
+			agentId,
+			projectId,
+			req.user,
+			pushRef,
+		);
+		return await this.agentResponseMapper.toAgentDto(agent, projectId, req.user);
+	}
+
+	@Post('/:agentId/unarchive')
+	@ProjectScope('agent:delete')
+	async unarchive(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+	) {
+		const { projectId } = req.params;
+		const pushRef = req.headers?.['push-ref'];
+		await this.agentWriteLockService.validateAgentWriteLock(
+			req.user.id,
+			pushRef,
+			projectId,
+			agentId,
+			'unarchive',
+		);
+		const agent = await this.agentPublishService.unarchiveAgent(
+			agentId,
+			projectId,
+			req.user,
+			pushRef,
+		);
+		return await this.agentResponseMapper.toAgentDto(agent, projectId, req.user);
 	}
 
 	@Post('/:agentId/revert-to-published')
@@ -89,7 +148,7 @@ export class AgentPublishController {
 		@Param('agentId') agentId: string,
 	) {
 		const clientId = req.headers?.['push-ref'];
-		await this.collaborationService.validateAgentWriteLock(
+		await this.agentWriteLockService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
 			req.params.projectId,
@@ -103,11 +162,7 @@ export class AgentPublishController {
 			'user',
 			req.headers?.['push-ref'],
 		);
-		return await this.agentRunnableStateService.addRunnableState(
-			agent,
-			req.params.projectId,
-			req.user,
-		);
+		return await this.agentResponseMapper.toAgentDto(agent, req.params.projectId, req.user);
 	}
 
 	@Post('/:agentId/revert-to-version')
@@ -119,7 +174,7 @@ export class AgentPublishController {
 		@Body payload: RevertAgentToVersionDto,
 	) {
 		const clientId = req.headers?.['push-ref'];
-		await this.collaborationService.validateAgentWriteLock(
+		await this.agentWriteLockService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
 			req.params.projectId,
@@ -134,11 +189,7 @@ export class AgentPublishController {
 			'user',
 			req.headers?.['push-ref'],
 		);
-		return await this.agentRunnableStateService.addRunnableState(
-			agent,
-			req.params.projectId,
-			req.user,
-		);
+		return await this.agentResponseMapper.toAgentDto(agent, req.params.projectId, req.user);
 	}
 
 	@Get('/:agentId/versions')
@@ -149,11 +200,66 @@ export class AgentPublishController {
 		@Param('agentId') agentId: string,
 		@Query query: PaginationDto,
 	): Promise<AgentVersionListItemDto[]> {
+		return await this.agentPublishService.listVersions(
+			agentId,
+			req.params.projectId,
+			query.take,
+			query.skip,
+		);
+	}
+
+	@Get('/:agentId/versions/:versionId')
+	@ProjectScope('agent:read')
+	async getVersion(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Param('versionId') versionId: string,
+	) {
+		return await this.agentPublishService.getVersionSummary(
+			agentId,
+			req.params.projectId,
+			versionId,
+		);
+	}
+
+	@Get('/:agentId/publish-history')
+	@ProjectScope('agent:read')
+	async listPublishHistory(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Query query: PaginationDto,
+	) {
 		return await this.agentPublishService.listPublishHistory(
 			agentId,
 			req.params.projectId,
 			query.take,
 			query.skip,
+		);
+	}
+
+	@Patch('/:agentId/versions/:versionId')
+	@ProjectScope('agent:update')
+	async updateVersion(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Param('versionId') versionId: string,
+		@Body payload: UpdateAgentVersionDto,
+	) {
+		await this.agentWriteLockService.validateAgentWriteLock(
+			req.user.id,
+			req.headers?.['push-ref'],
+			req.params.projectId,
+			agentId,
+			'edit version',
+		);
+		await this.agentPublishService.updateVersionMetadata(
+			agentId,
+			req.params.projectId,
+			versionId,
+			payload,
 		);
 	}
 }

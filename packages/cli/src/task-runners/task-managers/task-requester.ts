@@ -3,7 +3,8 @@ import { GlobalConfig, TaskRunnersConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { TaskResultData, RequesterMessage, BrokerMessage, TaskData } from '@n8n/task-runner';
 import { AVAILABLE_RPC_METHODS } from '@n8n/task-runner';
-import { isSerializedBuffer, toBuffer, ErrorReporter } from 'n8n-core';
+import { isSerializedBuffer, serializeBuffer, toBuffer, ErrorReporter } from 'n8n-core';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { createResultOk, createResultError, type Result } from '@n8n/utils/result';
 import type {
 	EnvProviderState,
@@ -451,12 +452,26 @@ export abstract class TaskRequester {
 
 			const data = await func.call(funcs, ...params);
 
+			let encoded: unknown = data;
+			try {
+				if (Buffer.isBuffer(data)) encoded = serializeBuffer(data);
+			} catch (error) {
+				this.sendMessage({
+					type: 'requester:rpcresponse',
+					taskId,
+					callId,
+					status: 'error',
+					data: `Failed to encode RPC response: ${ensureError(error).message}`,
+				});
+				return;
+			}
+
 			this.sendMessage({
 				type: 'requester:rpcresponse',
 				taskId,
 				callId,
 				status: 'success',
-				data,
+				data: encoded,
 			});
 		} catch (e) {
 			this.sendMessage({

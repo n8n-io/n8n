@@ -13,6 +13,7 @@ import {
 } from '../channels/registry';
 import { useN8nChatChannel } from '../channels/n8nChat/useN8nChatChannel';
 import type {
+	AgentChannelRestart,
 	AgentChannelRuntime,
 	AgentChannelView,
 	AgentChannelViewExpose,
@@ -280,10 +281,11 @@ const {
 	disabled: () => props.disabled || channelActionInFlight.value || channelViewLoading.value,
 	status: integrationStatus,
 	runtimeFor,
-	onRemoved: (channelType) => {
+	onRemoved: (channelType, { restartWith }) => {
 		if (!isIntegrationConfigured(channelType)) emit('channel-disconnected', channelType);
 		emit('agent-changed');
-		completeAndClose();
+		if (restartWith) restartSetup(channelType, restartWith);
+		else completeAndClose();
 	},
 });
 
@@ -331,6 +333,10 @@ const showFooterActions = computed(
 const currentChannelCredentialId = computed(() =>
 	getChannelCredentialId(selectedChannelType.value),
 );
+/** A channel view can say that the channel runs without a credential. */
+const credentialMissing = computed(
+	() => channelViewRef.value?.credentialRequired !== false && !currentChannelCredentialId.value,
+);
 const headerText = computed(() => {
 	const isListMode = currentView.value === 'list';
 	const channel = selectedChannelType.value;
@@ -371,6 +377,12 @@ function connectAction(channelType: string) {
 		{ text: (key) => i18n.baseText(key) },
 		runtimeFor(channelType),
 	);
+}
+
+function listDescription(channelType: string): string | undefined {
+	return getAgentChannelPlatform(channelType).getListDescription?.({
+		text: (key) => i18n.baseText(key),
+	});
 }
 
 function goToSetup(channelType: string) {
@@ -462,18 +474,22 @@ async function writeChannelConfig(): Promise<boolean> {
 	if (actionInFlight.value) return false;
 	saveAttempted.value = true;
 	const channelType = selectedChannelType.value;
-	const credentialId = currentChannelCredentialId.value;
-	if (!channelType || !credentialId) return false;
+	// The lookup falls back to the connected credential. A channel that needs none
+	// (an API channel switched to none) must keep a cleared selection empty.
+	const credentialId =
+		channelType && channelViewRef.value?.credentialRequired === false
+			? (selectedCredentials.value[channelType] ?? '')
+			: currentChannelCredentialId.value;
+	if (!channelType || credentialMissing.value) return false;
 	if (channelViewRef.value?.validationError) return false;
 	if (!channelApprovalValid.value) return false;
 
 	// Swapping the credential of a configured channel is one request: the
 	// backend brings the new channel up, swaps both entries in a single write,
-	// and only then releases the old one.
+	// and only then releases the old one. The old credential can be '' for a
+	// channel that runs without one.
 	const credentialIdToReplace =
-		isEditMode.value &&
-		credentialIdAtEditOpen.value &&
-		credentialIdAtEditOpen.value !== credentialId
+		isEditMode.value && isConfigured(channelType) && credentialIdAtEditOpen.value !== credentialId
 			? credentialIdAtEditOpen.value
 			: undefined;
 
@@ -488,7 +504,9 @@ async function writeChannelConfig(): Promise<boolean> {
 			return false;
 		}
 		await connect(channelType, credentialId, channelViewRef.value?.currentSettings, {
-			...(credentialIdToReplace ? { replaces: { credentialId: credentialIdToReplace } } : {}),
+			...(credentialIdToReplace !== undefined
+				? { replaces: { credentialId: credentialIdToReplace } }
+				: {}),
 			// Only the edit view shows the approval control, so only it may carry one.
 			...(isEditMode.value && channelApproval.value ? { approval: channelApproval.value } : {}),
 		});
@@ -586,13 +604,22 @@ function handlePlatformConnected() {
 	finishConnect(channelType);
 }
 
-function removeCurrentChannel() {
+function removeCurrentChannel(restartWith?: AgentChannelRestart) {
 	const channelType = selectedChannelType.value;
 	if (!channelType) return;
 	void requestDisconnect(
 		channelType,
 		credentialIdAtEditOpen.value || connectedCredentials.value[channelType] || '',
+		restartWith,
 	);
+}
+
+function restartSetup(channelType: string, restart: AgentChannelRestart) {
+	runtimeFor(channelType).reset?.(restart);
+	prepareChannelEdit(null);
+	selectedCredentials.value[channelType] = restart.credentialId;
+	viewSession.value += 1;
+	goToSetup(channelType);
 }
 
 /** The list's "Make unavailable" menu item. n8n Chat has no credential to carry. */
@@ -661,6 +688,7 @@ watch(
 						v-for="integration in channelList"
 						:key="integration.type"
 						:integration="integration"
+						:description="listDescription(integration.type)"
 						:configured="isConfigured(integration.type)"
 						:connected="isConnected(integration.type)"
 						:not-running="hasRuntimeError(integration.type)"
@@ -703,6 +731,7 @@ watch(
 					"
 					:error-is-conflict="errorIsConflict[currentIntegration.type]"
 					:saved-settings="integrationSettings[currentIntegration.type]"
+					:saved-credential-id="connectedCredentials[currentIntegration.type] ?? ''"
 					:is-published="isPublished"
 					:agent-name="agentId"
 					:project-id="projectId"
@@ -719,9 +748,21 @@ watch(
 					@persist="writeChannelConfig"
 					@connected="handlePlatformConnected"
 					@done="finishSetup"
-				/>
+					@restart="removeCurrentChannel"
+				>
+					<template
+						v-if="isEditMode && currentIntegration.type === 'slack' && approvableActions.length > 0"
+						#additionalSettings
+					>
+						<AgentChannelApprovalSetting
+							v-model="channelApproval"
+							:actions="approvableActions"
+							@update:valid="channelApprovalValid = $event"
+						/>
+					</template>
+				</component>
 				<N8nText
-					v-if="saveAttempted && !currentChannelCredentialId"
+					v-if="saveAttempted && credentialMissing"
 					size="small"
 					color="danger"
 					data-testid="agent-channel-credential-required"
@@ -730,7 +771,7 @@ watch(
 				</N8nText>
 
 				<AgentChannelApprovalSetting
-					v-if="isEditMode && approvableActions.length > 0"
+					v-if="isEditMode && currentIntegration.type !== 'slack' && approvableActions.length > 0"
 					v-model="channelApproval"
 					:actions="approvableActions"
 					@update:valid="channelApprovalValid = $event"
@@ -745,7 +786,7 @@ watch(
 				:loading="selectedChannelType ? isLoading(selectedChannelType) : false"
 				:disabled="disabled || actionInFlight || !selectedChannelType"
 				data-testid="agent-channel-remove-channel"
-				@click="removeCurrentChannel"
+				@click="removeCurrentChannel()"
 			>
 				<template v-if="!isN8nChatSelected" #icon><N8nIcon icon="trash-2" :size="16" /></template>
 				{{ removeChannelLabel }}

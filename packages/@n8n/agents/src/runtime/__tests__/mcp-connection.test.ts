@@ -155,7 +155,7 @@ describe('McpConnection — custom fetch forwarding', () => {
 		expect(options.eventSourceInit?.fetch).toBe(customFetch);
 	});
 
-	it('omits `fetch` and `eventSourceInit` when no custom fetch is provided', async () => {
+	it('uses a redirect-aware fetch for SSE when no custom fetch is provided', async () => {
 		const conn = new McpConnection({
 			name: 's3',
 			url: 'https://example.test/mcp',
@@ -169,8 +169,8 @@ describe('McpConnection — custom fetch forwarding', () => {
 			URL,
 			{ fetch?: typeof fetch; eventSourceInit?: { fetch?: typeof fetch } },
 		];
-		expect(options.fetch).toBeUndefined();
-		expect(options.eventSourceInit).toBeUndefined();
+		expect(options.fetch).toEqual(expect.any(Function));
+		expect(options.eventSourceInit?.fetch).toBe(options.fetch);
 	});
 });
 
@@ -463,6 +463,25 @@ describe('McpConnection — tool filtering', () => {
 		]);
 		expect(tools[0]?.suspendSchema).toBeDefined();
 		expect(tools[1]?.suspendSchema).toBeUndefined();
+	});
+
+	it('routes only the tools that need approval through the host wrapper', async () => {
+		const wrapApproval = vi.fn((tool) => ({ ...tool, description: 'External review' }));
+		const conn = new McpConnection({
+			name: 's1',
+			url: 'https://example.test/mcp',
+			transport: 'streamableHttp',
+			requireApproval: ['subtract'],
+			wrapApproval,
+		});
+		await conn.connect();
+		const tools = await conn.listTools();
+		expect(wrapApproval).toHaveBeenCalledOnce();
+		expect(wrapApproval).toHaveBeenCalledWith(expect.objectContaining({ name: 's1_subtract' }));
+		expect(tools.map((tool) => tool.name)).toEqual(['s1_echo', 's1_add', 's1_subtract']);
+		expect(tools[0].description).not.toBe('External review');
+		expect(tools[1].description).not.toBe('External review');
+		expect(tools[2].description).toBe('External review');
 	});
 
 	it('keeps model-facing names unique when tool names normalize identically', async () => {

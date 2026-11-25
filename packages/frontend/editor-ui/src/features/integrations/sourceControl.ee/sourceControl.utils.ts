@@ -9,10 +9,19 @@ import dateformat from 'dateformat';
 import type { useToast } from '@n8n/composables/useToast';
 import { telemetry } from '@/app/plugins/telemetry';
 import type { SourceControlTreeRow } from './sourceControl.types';
+import { PROTECTED_INSTANCE_DOCS_URL } from './sourceControl.constants';
 
 type SourceControlledFileStatus = SourceControlledFile['status'];
 
 const i18n = useI18n();
+
+/** Tooltip HTML that explains why an action is disabled on a protected instance. */
+export const getProtectedInstanceTooltip = () =>
+	i18n.baseText('readOnlyEnv.tooltip', {
+		interpolate: {
+			link: `<a href="${PROTECTED_INSTANCE_DOCS_URL}" target="_blank">${i18n.baseText('readOnlyEnv.tooltip.link')}</a>`,
+		},
+	});
 
 export const getStatusText = (status: SourceControlledFileStatus) =>
 	i18n.baseText(`settings.sourceControl.status.${status}` as BaseTextKey);

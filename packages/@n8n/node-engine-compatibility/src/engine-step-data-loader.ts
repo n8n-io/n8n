@@ -1,4 +1,4 @@
-import type { ExecutionStore, StepSlots, StepStore } from '@n8n/engine';
+import type { ExecutionStore, StepOutputSources, StepSlots, StepStore } from '@n8n/engine';
 
 import type { StepData, StepDataLoader } from './types';
 
@@ -21,6 +21,7 @@ export function createEngineStepDataLoader(
 		const steps = await stepStore.loadAllSteps(context.executionId);
 
 		const byNode = new Map<string, Record<number, StepSlots>>();
+		const sourcesByNode = new Map<string, Record<number, StepOutputSources>>();
 		for (const step of steps) {
 			if (step.status !== 'completed' || step.outputs === null) continue;
 			let byIteration = byNode.get(step.nodeId);
@@ -29,8 +30,20 @@ export function createEngineStepDataLoader(
 				byNode.set(step.nodeId, byIteration);
 			}
 			byIteration[step.iteration] = step.outputs;
+			if (step.outputSources) {
+				let sourcesByIteration = sourcesByNode.get(step.nodeId);
+				if (sourcesByIteration === undefined) {
+					sourcesByIteration = {};
+					sourcesByNode.set(step.nodeId, sourcesByIteration);
+				}
+				sourcesByIteration[step.iteration] = step.outputSources;
+			}
 		}
 
-		return { graph: execution.graph, outputsByNode: Object.fromEntries(byNode) };
+		return {
+			graph: execution.graph,
+			outputsByNode: Object.fromEntries(byNode),
+			outputSourcesByNode: Object.fromEntries(sourcesByNode),
+		};
 	};
 }

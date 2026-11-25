@@ -5,6 +5,7 @@ import { within } from '@testing-library/vue';
 import { describe, expect, it } from 'vitest';
 
 import PolicyViolationList from './PolicyViolationList.vue';
+import type { PolicyViolationListItem } from './policyViolations';
 
 const SLACK_NODE_TYPE = 'n8n-nodes-base.slack';
 const TELEGRAM_NODE_TYPE = 'n8n-nodes-base.telegram';
@@ -68,7 +69,7 @@ describe('PolicyViolationList', () => {
 		const { getAllByTestId } = renderComponent({
 			props: {
 				violations: [slackOnInstance, githubCredentialOnInstance],
-				labelOf: ({ subject }: PolicyViolation) => (subject ? labels[subject] : undefined),
+				labelOf: ({ subject }: PolicyViolationListItem) => (subject ? labels[subject] : undefined),
 			},
 		});
 
@@ -79,23 +80,44 @@ describe('PolicyViolationList', () => {
 	});
 
 	it('shows the backend message for an unknown kind, and the raw heading for an unknown scope', () => {
-		const deprecated = { ...slackOnInstance, kind: 'node-type-deprecated', scope: 'team' };
+		const unknownKind = { ...slackOnInstance, kind: 'node-type-retired', scope: 'team' };
 		const withoutScope: PolicyViolation = {
 			kind: 'workflow-start-denied',
 			checkId: 'workflow-start',
 			message: 'This project cannot start workflows',
 		};
 		const { getAllByTestId } = renderComponent({
-			props: { violations: [withoutScope, deprecated] },
+			props: { violations: [withoutScope, unknownKind] },
 		});
 
 		expect(getAllByTestId('policy-violation-scope').map((heading) => heading.textContent)).toEqual([
 			'team',
 		]);
 		expect(groupTexts(getAllByTestId('policy-violation-group'))).toEqual([
-			[deprecated.message],
+			[unknownKind.message],
 			['This project cannot start workflows'],
 		]);
+	});
+
+	it('lists deprecated node types under their own heading, once per type', () => {
+		const deprecated: PolicyViolation = {
+			kind: 'node-type-deprecated',
+			checkId: 'deprecated-nodes',
+			message: 'Cannot use a "n8n-nodes-base.function" node ("Function")',
+			subject: 'n8n-nodes-base.function',
+			subjectType: 'nodeType',
+		};
+		const { getAllByTestId } = renderComponent({
+			props: {
+				violations: [deprecated, { ...deprecated, message: 'Cannot use … ("Function1")' }],
+				labelOf: () => 'Function',
+			},
+		});
+
+		expect(getAllByTestId('policy-violation-scope').map((heading) => heading.textContent)).toEqual([
+			'Deprecated. Replace or remove these nodes.',
+		]);
+		expect(groupTexts(getAllByTestId('policy-violation-group'))).toEqual([['Function node']]);
 	});
 
 	it('lists a repeated violation once', () => {
@@ -110,7 +132,7 @@ describe('PolicyViolationList', () => {
 		const { getAllByTestId, emitted } = renderComponent({
 			props: {
 				violations: [slackOnInstance, githubCredentialOnInstance, telegramInProject],
-				isJumpable: ({ subject }: PolicyViolation) => subject !== TELEGRAM_NODE_TYPE,
+				isJumpable: ({ subject }: PolicyViolationListItem) => subject !== TELEGRAM_NODE_TYPE,
 			},
 		});
 

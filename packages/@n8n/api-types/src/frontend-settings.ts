@@ -135,12 +135,13 @@ export interface FrontendSettings {
 		};
 	};
 	instanceId: string;
+	/** Random ID of this install, for telemetry. Absent while the process has none. */
+	installId?: string;
 	telemetry: ITelemetrySettings;
 	posthog: {
 		enabled: boolean;
 		apiHost: string;
 		apiKey: string;
-		autocapture: boolean;
 		disableSessionRecording: boolean;
 		debug: boolean;
 		proxy: string;
@@ -183,11 +184,6 @@ export interface FrontendSettings {
 	workflowsGroupsWithTriggersEnabled: boolean;
 	workflowsGroupsWithManyBoundariesEnabled: boolean;
 	useWorkflowPublicationService: boolean;
-	/**
-	 * Granular credential sharing: a personal credential is usable in any
-	 * project its owner works in. Set from `N8N_ENV_FEAT_CRED_SHARING`.
-	 */
-	granularCredentialSharing: boolean;
 	logLevel: LogLevel;
 	hiringBannerEnabled: boolean;
 	previewMode: boolean;
@@ -269,6 +265,12 @@ export interface FrontendSettings {
 	};
 	ai: {
 		allowSendingParameterValues: boolean;
+		/** Whether n8n may train models on this instance's Assistant traces. */
+		allowModelTraining: boolean;
+	};
+	aiPreferences: {
+		enabled: boolean;
+		managedByEnv: boolean;
 	};
 	pruning?: {
 		isEnabled: boolean;
@@ -359,6 +361,12 @@ export type FrontendModuleSettings = {
 		serverUrl?: string;
 		/** Whether newly created workflows are auto-exposed to MCP. */
 		autoExposeNewWorkflows: boolean;
+		preferencesEnabled: boolean;
+	};
+
+	skills?: {
+		skillSyncEnabled: boolean;
+		skillSyncManagedByEnv: boolean;
 	};
 
 	/**
@@ -386,6 +394,8 @@ export type FrontendModuleSettings = {
 	scim?: {
 		/** Whether SCIM provisioning is enabled in the instance. */
 		scimEnabled: boolean;
+		/** Whether the instance has a SCIM token. */
+		hasToken: boolean;
 	};
 
 	/**
@@ -404,7 +414,6 @@ export type FrontendModuleSettings = {
 	'instance-ai'?: {
 		enabled: boolean;
 		mcpConnectionsAvailable: boolean;
-		localGatewayDisabled: boolean;
 		browserUseEnabled: boolean;
 		proxyEnabled: boolean;
 		cloudManaged: boolean;
@@ -415,6 +424,9 @@ export type FrontendModuleSettings = {
 		sandboxUnavailableReason: string | null;
 		/** When true, orchestrator LLM step / workflow code debug is captured (`N8N_INSTANCE_AI_RUN_DEBUG_ENABLED`). */
 		runDebugEnabled: boolean;
+		workflowSuggestionsEnabled: boolean;
+		/** Whether new threads can run on the n8n Assistant agent of the agents runtime. */
+		assistantAgentEnabled: boolean;
 	};
 
 	/**
@@ -465,8 +477,31 @@ export type FrontendModuleSettings = {
 		knowledgeBaseEnabled: boolean;
 		/** Whether the AI Assistant proxy is available to the agents module. */
 		proxyEnabled: boolean;
-		/** Whether agents use the skills hub (`N8N_AGENTS_SKILLS_HUB_ENABLED`, read at startup). */
-		skillsHubEnabled?: boolean;
+	};
+
+	/**
+	 * Client settings for the knowledge module.
+	 */
+	knowledge?: {
+		/**
+		 * The upload limits the backend enforces, so the editor can reject an
+		 * upload with the same limits before the request. Configured through
+		 * the `N8N_KNOWLEDGE_*` environment variables.
+		 */
+		limits: {
+			/** Largest single file, in bytes. */
+			maxFileSizeBytes: number;
+			/** Most files in one upload request. */
+			maxFilesPerUpload: number;
+			/** Most bytes one knowledge base can hold across all its files. */
+			maxTotalSizeBytes: number;
+		};
+		/**
+		 * Whether the operator turned collections on with
+		 * `N8N_KNOWLEDGE_COLLECTIONS_ENABLED`. The editor combines it with the
+		 * PostHog flag `KNOWLEDGE_COLLECTIONS_FLAG`.
+		 */
+		collectionsEnabled?: boolean;
 	};
 };
 

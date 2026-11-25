@@ -27,7 +27,6 @@ describe('TarPackageReader', () => {
 		it('round-trips manifest and workflow files written by TarPackageWriter', async () => {
 			const manifest = {
 				packageFormatVersion: '1',
-				exportedAt: '2026-05-18T12:00:00.000Z',
 				sourceN8nVersion: '1.0.0',
 				sourceId: 'instance-abc',
 				workflows: [{ id: 'wf-abc', name: 'My workflow', target: 'workflows/my-workflow-abc' }],

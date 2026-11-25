@@ -181,7 +181,12 @@ export class MessageEventBusDestinationWebhook
 		return requestOptions;
 	}
 
-	async matchDecryptedCredentialType(credentialType: string, raw = true) {
+	/**
+	 * Decrypt destination credentials with expression resolution enabled by default
+	 * (`raw = false`) so External Secrets expressions (e.g. `{{ $secrets... }}`)
+	 * are resolved before the request is sent.
+	 */
+	async matchDecryptedCredentialType(credentialType: string, raw = false) {
 		const foundCredential = Object.entries(this.credentials).find((e) => e[0] === credentialType);
 		if (foundCredential) {
 			const credentialsDecrypted = await this.credentialsHelper?.getDecrypted(
@@ -369,30 +374,22 @@ export class MessageEventBusDestinationWebhook
 		let httpDigestAuth;
 		let httpHeaderAuth;
 		let httpQueryAuth;
-		let httpTemplatedCustomAuth;
+		let customAuthCredentials;
 
 		if (this.authentication === 'genericCredentialType') {
 			if (this.genericAuthType === 'httpBasicAuth') {
-				try {
-					httpBasicAuth = await this.matchDecryptedCredentialType('httpBasicAuth');
-				} catch {}
+				httpBasicAuth = await this.matchDecryptedCredentialType('httpBasicAuth');
 			} else if (this.genericAuthType === 'httpDigestAuth') {
-				try {
-					httpDigestAuth = await this.matchDecryptedCredentialType('httpDigestAuth');
-				} catch {}
+				httpDigestAuth = await this.matchDecryptedCredentialType('httpDigestAuth');
 			} else if (this.genericAuthType === 'httpHeaderAuth') {
-				try {
-					httpHeaderAuth = await this.matchDecryptedCredentialType('httpHeaderAuth');
-				} catch {}
+				httpHeaderAuth = await this.matchDecryptedCredentialType('httpHeaderAuth');
 			} else if (this.genericAuthType === 'httpQueryAuth') {
-				try {
-					httpQueryAuth = await this.matchDecryptedCredentialType('httpQueryAuth');
-				} catch {}
-			} else if (this.genericAuthType === 'httpTemplatedCustomAuth') {
-				httpTemplatedCustomAuth = await this.matchDecryptedCredentialType(
-					'httpTemplatedCustomAuth',
-					false,
-				);
+				httpQueryAuth = await this.matchDecryptedCredentialType('httpQueryAuth');
+			} else if (
+				this.genericAuthType === 'httpTemplatedCustomAuth' ||
+				this.genericAuthType === 'httpMultipleHeadersAuth'
+			) {
+				customAuthCredentials = await this.matchDecryptedCredentialType(this.genericAuthType);
 			}
 		}
 
@@ -417,13 +414,13 @@ export class MessageEventBusDestinationWebhook
 				username: httpDigestAuth.user as string,
 				password: httpDigestAuth.password as string,
 			};
-		} else if (httpTemplatedCustomAuth) {
+		} else if (customAuthCredentials) {
 			this.credentialsHelper ??= Container.get(CredentialsHelper);
 			Object.assign(
 				request,
 				await this.credentialsHelper.authenticate(
-					httpTemplatedCustomAuth,
-					'httpTemplatedCustomAuth',
+					customAuthCredentials,
+					this.genericAuthType,
 					request,
 				),
 			);

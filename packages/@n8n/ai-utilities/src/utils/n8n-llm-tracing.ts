@@ -7,11 +7,13 @@ import type {
 	SerializedSecret,
 } from '@langchain/core/load/serializable';
 import type { BaseMessage } from '@langchain/core/messages';
-import type { LLMResult } from '@langchain/core/outputs';
-import pick from 'lodash/pick';
-import type { IDataObject, ISupplyDataFunctions, JsonObject } from 'n8n-workflow';
+import type { Generation, LLMResult } from '@langchain/core/outputs';
+import { isRecord } from '@n8n/utils/is-record';
+import type { IDataObject, ISupplyDataFunctions, ITaskMetadata, JsonObject } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeError, NodeOperationError } from 'n8n-workflow';
 
+import { buildChatGenAiAttributes, type GenAiProviderName } from '../gen-ai';
+import { extractRespondingModel, toRunDataGeneration } from './extract-responding-model';
 import { logAiEvent } from './log-ai-event';
 import { redactHeaderValues } from './redact-headers';
 import { stripNonXHeaders } from './strip-non-x-headers';
@@ -31,7 +33,49 @@ type ProviderTokenUsageResult = TokenUsageResult & {
 	totalCost?: number;
 };
 
-type TokensUsageParser = (result: LLMResult) => TokenUsageResult;
+export type TokensUsageParser = (result: LLMResult) => TokenUsageResult;
+
+function readUsageMetadata(generation: Generation) {
+	const message = 'message' in generation ? generation.message : undefined;
+	if (!isRecord(message)) return undefined;
+
+	const usage = message.usage_metadata;
+	if (!isRecord(usage)) return undefined;
+
+	const inputTokens = typeof usage.input_tokens === 'number' ? usage.input_tokens : 0;
+	const outputTokens = typeof usage.output_tokens === 'number' ? usage.output_tokens : 0;
+
+	return {
+		inputTokens,
+		outputTokens,
+		totalTokens:
+			typeof usage.total_tokens === 'number' ? usage.total_tokens : inputTokens + outputTokens,
+	};
+}
+
+/**
+ * Reads the LangChain-standard `usage_metadata` off the generation message. Use it for providers
+ * that report usage there and leave `llmOutput` empty, such as AWS Bedrock Converse.
+ */
+export function usageMetadataTokensUsageParser(result: LLMResult): TokenUsageResult {
+	let promptTokens = 0;
+	let completionTokens = 0;
+	let totalTokens = 0;
+
+	// One entry for each prompt, and only its first candidate. A provider asked for several
+	// candidates reports usage once for the request and repeats it on each, so summing the
+	// inner array would count the prompt tokens again for every candidate.
+	for (const [generation] of result.generations) {
+		const usage = generation && readUsageMetadata(generation);
+		if (!usage) continue;
+
+		promptTokens += usage.inputTokens;
+		completionTokens += usage.outputTokens;
+		totalTokens += usage.totalTokens;
+	}
+
+	return { completionTokens, promptTokens, totalTokens };
+}
 
 /** Anthropic Messages usage. Cached input tokens count as prompt tokens. */
 export function anthropicTokensUsageParser(result: LLMResult): TokenUsageResult {
@@ -54,10 +98,54 @@ export function anthropicTokensUsageParser(result: LLMResult): TokenUsageResult 
 	};
 }
 
+/** The reported OpenAI `tokenUsage` shape; a partial payload falls through to the message. */
+function isReportedTokenUsage(
+	usage: unknown,
+): usage is Partial<ProviderTokenUsageResult> & { promptTokens: number; completionTokens: number } {
+	if (typeof usage !== 'object' || usage === null) return false;
+	if (!('promptTokens' in usage) || typeof usage.promptTokens !== 'number') return false;
+	if (!('completionTokens' in usage) || typeof usage.completionTokens !== 'number') return false;
+	return true;
+}
+
+/**
+ * OpenAI Chat Model usage. Reads the reported `tokenUsage` first (Chat Completions),
+ * then the message's `usage_metadata` (Responses API, which reports only
+ * `estimatedTokenUsage`). Never reads `estimatedTokenUsage`, which mixes provider
+ * usage with local estimates. A provider-reported `total_tokens` on the message wins
+ * over recomputing input + output; the `tokenUsage` payload carries no total the
+ * default parser trusts, so that branch recomputes.
+ */
+export function openAiTokensUsageParser(result: LLMResult): TokenUsageResult {
+	const reportedUsage: unknown = result.llmOutput?.tokenUsage;
+	// Correct only because handleLLMEnd receives @langchain/openai's raw _generate
+	// output. If it ever receives a post-generate() LLMResult, _combineLLMOutput
+	// zeroes tokenUsage (it ignores estimatedTokenUsage) and this branch returns
+	// 0/0/0, regressing to estimate even though message.usage_metadata is populated.
+	if (isReportedTokenUsage(reportedUsage)) {
+		const promptTokens = reportedUsage.promptTokens;
+		const completionTokens = reportedUsage.completionTokens;
+		// totalTokens is recomputed here (unlike usage_metadata) to preserve the default parser's historical Completions contract.
+		return {
+			completionTokens,
+			promptTokens,
+			totalTokens: promptTokens + completionTokens,
+			cost: reportedUsage.cost ?? reportedUsage.totalCost,
+		};
+	}
+
+	// Responses reports usage on the message, the same place Bedrock Converse does, so the
+	// message branch is shared rather than written twice. A chat model returns one generation
+	// for one prompt, so summing and reading [0][0] agree on every response either path sees.
+	return usageMetadataTokensUsageParser(result);
+}
+
 type RunDetail = {
 	index: number;
 	messages: BaseMessage[] | string[] | string;
 	options: SerializedSecret | SerializedNotImplemented | SerializedFields;
+	isChatModel?: boolean;
+	requestModel?: string;
 };
 
 const TIKTOKEN_ESTIMATE_MODEL = 'gpt-4o';
@@ -111,6 +199,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		tokensUsageParser: TokensUsageParser;
 		errorDescriptionMapper: (error: NodeError) => string | null | undefined;
 		redactedHeaders?: string[];
+		genAiProviderName?: GenAiProviderName;
 	} = {
 		// Default(OpenAI format) parser
 		tokensUsageParser: (result: LLMResult) => {
@@ -137,6 +226,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			tokensUsageParser?: TokensUsageParser;
 			errorDescriptionMapper?: (error: NodeError) => string;
 			redactedHeaders?: string[];
+			genAiProviderName?: GenAiProviderName;
 		},
 	) {
 		super();
@@ -158,16 +248,17 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		// but just in case, we set the index to the length of the runsMap
 		const runDetails = this.runsMap[runId] ?? { index: Object.keys(this.runsMap).length };
 
-		output.generations = output.generations.map((gen) =>
-			gen.map((g) => pick(g, ['text', 'generationInfo'])),
-		);
+		// Read usage before the generations are reduced to their run-data shape,
+		// so a parser can read fields the run-data shape drops (e.g. the message).
+		const tokenUsage = this.options.tokensUsageParser(output);
+
+		output.generations = output.generations.map((gen) => gen.map(toRunDataGeneration));
 
 		const tokenUsageEstimate = {
 			completionTokens: 0,
 			promptTokens: 0,
 			totalTokens: 0,
 		};
-		const tokenUsage = this.options.tokensUsageParser(output);
 
 		if (output.generations.length > 0) {
 			tokenUsageEstimate.completionTokens = await this.estimateTokensFromGeneration(
@@ -186,8 +277,10 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			response: { generations: output.generations },
 		};
 
+		const isUsageReported = tokenUsage.completionTokens > 0;
+
 		// If the LLM response contains actual tokens usage, otherwise fallback to the estimate
-		if (tokenUsage.completionTokens > 0) {
+		if (isUsageReported) {
 			response.tokenUsage = tokenUsage;
 			this.applyTracingTokenMetadata({
 				promptTokens: tokenUsage.promptTokens,
@@ -223,7 +316,11 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			this.connectionType,
 			runDetails.index,
 			[[{ json: { ...response } }]],
-			undefined,
+			this.buildGenAiMetadata(
+				runDetails,
+				output.generations[0]?.[0],
+				isUsageReported ? tokenUsage : undefined,
+			),
 			sourceNodeRunIndex,
 		);
 
@@ -234,7 +331,15 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		});
 	}
 
-	async handleLLMStart(llm: Serialized, prompts: string[], runId: string) {
+	async handleLLMStart(
+		llm: Serialized,
+		prompts: string[],
+		runId: string,
+		_parentRunId?: string,
+		_extraParams?: Record<string, unknown>,
+		_tags?: string[],
+		metadata?: Record<string, unknown>,
+	) {
 		const estimatedTokens = await this.estimateTokensFromStringList(prompts);
 		const sourceNodeRunIndex =
 			this.#parentRunIndex !== undefined
@@ -266,6 +371,9 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			index,
 			options,
 			messages: prompts,
+			isChatModel: metadata?.ls_model_type === 'chat',
+			requestModel:
+				typeof metadata?.ls_model_name === 'string' ? metadata.ls_model_name : undefined,
 		};
 		this.promptTokensEstimate = estimatedTokens;
 	}
@@ -303,6 +411,24 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 	// Used to associate subsequent runs with the correct parent run in subnodes of subnodes
 	setParentRunIndex(runIndex: number) {
 		this.#parentRunIndex = runIndex;
+	}
+
+	private buildGenAiMetadata(
+		runDetails: Partial<RunDetail>,
+		generation: Generation | undefined,
+		usage: TokenUsageResult | undefined,
+	): ITaskMetadata | undefined {
+		if (!runDetails.isChatModel) return undefined;
+
+		return {
+			tracing: buildChatGenAiAttributes({
+				nodeType: this.executionFunctions.getNode().type,
+				providerName: this.options.genAiProviderName,
+				requestModel: runDetails.requestModel,
+				responseModel: generation ? extractRespondingModel(generation) : undefined,
+				usage,
+			}),
+		};
 	}
 
 	private applyTracingTokenMetadata(params: {

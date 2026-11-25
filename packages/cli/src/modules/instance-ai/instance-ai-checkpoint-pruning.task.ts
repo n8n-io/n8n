@@ -9,11 +9,15 @@ import {
 import type { SystemTaskSchedule } from '@n8n/decorators';
 
 import { InstanceAiService } from './instance-ai.service';
+import {
+	SelfHealingTemporaryWorkflowService,
+	SELF_HEALING_CLEANUP_BUDGET_MS,
+} from './self-healing/self-healing-temporary-workflow.service';
 
 /**
  * Expires stale Instance AI checkpoints, hard-deletes their tombstones past
  * the GC horizon, and drops expired pending confirmations and conversation
- * threads, so suspended-run state does not pile up forever.
+ * threads. Also removes abandoned Assistant verification workflows.
  */
 @SystemTask()
 export class InstanceAiCheckpointPruningTask implements SystemTask {
@@ -26,14 +30,13 @@ export class InstanceAiCheckpointPruningTask implements SystemTask {
 	readonly target = clusterTarget({
 		scheduler: {
 			retryOnFailure: true,
-			// The pass runs three statements in a row that ignore the signal, so it can
-			// take three statement timeouts. A timeout that stops the run before they end
-			// lets the next run start them again, so it waits for all three first.
+			// Budget pruning and bounded workflow cleanup. Keep time for in-flight calls to finish.
 			timeoutSeconds: timeoutAfterLimit(
 				3 * statementTimeoutSeconds(this.databaseConfig),
-				5 * Time.minutes.toSeconds,
+				5 * Time.minutes.toSeconds + SELF_HEALING_CLEANUP_BUDGET_MS / 1000,
 			),
 		},
+		// oxlint-disable-next-line typescript/no-deprecated -- Keep timer scheduling while the durable scheduler is disabled.
 		leaderTimer: {
 			runOnTakeover: true,
 			retryDelaySeconds: 30,
@@ -44,9 +47,12 @@ export class InstanceAiCheckpointPruningTask implements SystemTask {
 		private readonly instanceAiConfig: InstanceAiConfig,
 		private readonly databaseConfig: DatabaseConfig,
 		private readonly instanceAiService: InstanceAiService,
+		private readonly temporaryWorkflows: SelfHealingTemporaryWorkflowService,
 	) {}
 
 	async run(signal: AbortSignal): Promise<void> {
 		await this.instanceAiService.pruneExpiredData(Date.now(), signal);
+
+		await this.temporaryWorkflows.cleanupAbandoned(signal);
 	}
 }

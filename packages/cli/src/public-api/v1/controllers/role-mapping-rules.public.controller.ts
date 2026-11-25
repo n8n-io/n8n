@@ -8,7 +8,7 @@ import {
 	roleMappingRuleIdParamSchema,
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
-import { AuthenticatedRequest } from '@n8n/db';
+import { AuthenticatedRequest, isPerson } from '@n8n/db';
 import {
 	ApiDescription,
 	ApiErrorResponse,
@@ -104,7 +104,7 @@ export class RoleMappingRulesPublicController {
 	): Promise<RoleMappingRulePublicDto> {
 		this.assertProvisioningLicensed();
 
-		const rule = await this.roleMappingRuleService.create(body, req.user);
+		const rule = await this.roleMappingRuleService.create(body, req.user, req.ctx);
 
 		return toRoleMappingRulePublicDto(rule);
 	}
@@ -126,12 +126,15 @@ export class RoleMappingRulesPublicController {
 	): Promise<RoleMappingRulePublicDto> {
 		this.assertProvisioningLicensed();
 
-		const rule = await this.roleMappingRuleService.move({
-			id: roleMappingRuleId,
-			targetIndex: body.targetIndex,
-			userId: req.user.id,
-			userEmail: req.user.email,
-		});
+		const rule = await this.roleMappingRuleService.move(
+			{
+				id: roleMappingRuleId,
+				targetIndex: body.targetIndex,
+				userId: req.user.id,
+				userEmail: isPerson(req.user) ? req.user.email : undefined,
+			},
+			req.ctx,
+		);
 
 		return toRoleMappingRulePublicDto(rule);
 	}
@@ -153,12 +156,15 @@ export class RoleMappingRulesPublicController {
 	): Promise<RoleMappingRulePublicDto> {
 		this.assertProvisioningLicensed();
 
-		const rule = await this.roleMappingRuleService.patch({
-			id: roleMappingRuleId,
-			dto: body,
-			userId: req.user.id,
-			userEmail: req.user.email,
-		});
+		const rule = await this.roleMappingRuleService.patch(
+			{
+				id: roleMappingRuleId,
+				dto: body,
+				userId: req.user.id,
+				userEmail: isPerson(req.user) ? req.user.email : undefined,
+			},
+			req.ctx,
+		);
 
 		return toRoleMappingRulePublicDto(rule);
 	}
@@ -179,11 +185,14 @@ export class RoleMappingRulesPublicController {
 	): Promise<RoleMappingRulePublicDto> {
 		this.assertProvisioningLicensed();
 
-		const rule = await this.roleMappingRuleService.delete({
-			id: roleMappingRuleId,
-			userId: req.user.id,
-			userEmail: req.user.email,
-		});
+		const rule = await this.roleMappingRuleService.delete(
+			{
+				id: roleMappingRuleId,
+				userId: req.user.id,
+				userEmail: isPerson(req.user) ? req.user.email : undefined,
+			},
+			req.ctx,
+		);
 
 		return toRoleMappingRulePublicDto(rule);
 	}

@@ -40,7 +40,8 @@ export class SourceControlContextFactory {
 				.leftJoinAndSelect('pr.role', 'role')
 				.leftJoinAndSelect('pr.user', 'user')
 				.where('project.id IN (:...ids)', { ids: personalProjectIds })
-				.select(['project.id', 'pr.userId', 'pr.projectId', 'role.slug', 'user.email'])
+				// `user.kind` lets TypeORM load the owner as a `Person`, which has the email.
+				.select(['project.id', 'pr.userId', 'pr.projectId', 'role.slug', 'user.email', 'user.kind'])
 				.getMany();
 
 			const relationsById = new Map(ownerRelations.map((p) => [p.id, p.projectRelations]));

@@ -1,11 +1,11 @@
 import type { ToolDescriptor } from '@n8n/agents';
 import { type AgentJsonConfig } from '@n8n/api-types';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentHistory } from '../../entities/agent-history.entity';
-import type { Agent } from '../../entities/agent.entity';
+import type { ProjectAgent } from '../../entities/agent.entity';
 import type { AgentHistoryRepository } from '../../repositories/agent-history.repository';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { SubAgentSourceResolver } from '../sub-agent-source-resolver';
@@ -22,7 +22,7 @@ const versionId = 'version-1';
 
 const runnableConfig: AgentJsonConfig = {
 	name: 'Helper Agent',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	credential: 'credential-1',
 	instructions: 'Be useful.',
 	config: {
@@ -57,7 +57,7 @@ function makeAgentHistory(overrides: AgentHistoryFixtureOverrides = {}): AgentHi
 	} as unknown as AgentHistory;
 }
 
-function makeAgent(overrides: AgentFixtureOverrides = {}): Agent {
+function makeAgent(overrides: AgentFixtureOverrides = {}): ProjectAgent {
 	return {
 		id: agentId,
 		name: 'Helper Agent',
@@ -69,7 +69,7 @@ function makeAgent(overrides: AgentFixtureOverrides = {}): Agent {
 		activeVersionId: versionId,
 		activeVersion: makeAgentHistory(),
 		...overrides,
-	} as unknown as Agent;
+	} as unknown as ProjectAgent;
 }
 
 describe('SubAgentSourceResolver', () => {
@@ -198,6 +198,24 @@ describe('SubAgentSourceResolver', () => {
 		).resolves.toMatchObject({
 			source: { sourceId: agentId, versionId },
 		});
+	});
+
+	it('rejects an archived agent on the saved configuration and pinned version paths', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(makeAgentHistory());
+		const original = await resolver.resolveForRuntime({ agentId }, { projectId });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ isArchived: true }));
+		const message = 'Sub-agent "Helper Agent" is archived. Restore it before delegating to it.';
+
+		await expect(
+			resolver.resolveForRuntime(
+				{ agentId },
+				{ projectId, runtimeSnapshot: JSON.stringify(original) },
+			),
+		).rejects.toThrow(message);
+		await expect(resolver.resolveForRuntime({ agentId, versionId }, { projectId })).rejects.toThrow(
+			message,
+		);
 	});
 
 	it('resolves the published version with its assets for production runs', async () => {
@@ -334,6 +352,46 @@ describe('SubAgentSourceResolver', () => {
 		await expect(resolver.resolveForRuntime({ agentId, versionId }, { projectId })).rejects.toThrow(
 			`Version "${versionId}" not found for agent "${agentId}"`,
 		);
+	});
+
+	describe('service account for log attribution', () => {
+		it.each([
+			{ label: 'the draft', source: { agentId }, context: { projectId } },
+			{
+				label: 'the published version',
+				source: { agentId },
+				context: { projectId, usePublishedVersion: true },
+			},
+			{ label: 'a pinned version', source: { agentId, versionId }, context: { projectId } },
+		])('returns the service account of the agent row for $label', async ({ source, context }) => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ identityId: 'sa-1' }));
+			agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(makeAgentHistory());
+
+			const result = await resolver.resolveForRuntime(source, context);
+
+			expect(result.agentServiceAccountId).toBe('sa-1');
+		});
+
+		it('takes the service account from the live row for a saved background configuration', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			const original = await resolver.resolveForRuntime({ agentId }, { projectId });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ identityId: 'sa-1' }));
+
+			const resumed = await resolver.resolveForRuntime(
+				{ agentId },
+				{ projectId, runtimeSnapshot: JSON.stringify(original) },
+			);
+
+			expect(resumed.agentServiceAccountId).toBe('sa-1');
+		});
+
+		it('returns no service account for an agent without one', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ identityId: undefined }));
+
+			const result = await resolver.resolveForRuntime({ agentId }, { projectId });
+
+			expect(result).not.toHaveProperty('agentServiceAccountId');
+		});
 	});
 
 	describe('skill refs round trip', () => {

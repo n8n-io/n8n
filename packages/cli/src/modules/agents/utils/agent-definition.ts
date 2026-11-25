@@ -1,4 +1,5 @@
 import type { AgentJsonConfig, AgentSkill, AgentTaskConfig } from '@n8n/api-types';
+import type { OperationContext } from '@n8n/db';
 
 import type { AgentHistory } from '../entities/agent-history.entity';
 import type { Agent } from '../entities/agent.entity';
@@ -8,7 +9,7 @@ import { toAgentDocument, type AgentSkillRefs } from '../json-config/agent-docum
 export interface AgentDefinition extends Pick<Agent, 'tools'> {
 	/** The JSON document, with the skill refs. */
 	schema: AgentJsonConfig | null;
-	/** Skill bodies from the skills hub, keyed by skill id. */
+	/** Skill bodies from the skills module, keyed by skill id. */
 	skills: Record<string, AgentSkill>;
 	tasks: ReadonlyMap<string, AgentTaskConfig>;
 }
@@ -19,6 +20,46 @@ export interface AgentDefinition extends Pick<Agent, 'tools'> {
  */
 export interface PendingSkillRefs {
 	skillRefs: AgentSkillRefs;
+}
+
+/** Complete authored content, before integrations are split from the configuration. */
+export interface CompleteAgentDefinition extends Pick<Agent, 'name' | 'tools'> {
+	config: AgentJsonConfig | null;
+	tasks: ReadonlyMap<string, AgentTaskConfig>;
+}
+
+/**
+ * Writes the skills that belong to one Agent. A complete save calls it in the Agent's
+ * transaction, after the Agent row exists and before the skill refs are saved. A caller
+ * passes it only when the save changes a skill that the Agent uses.
+ */
+export type AgentSkillWriter = (ctx: OperationContext) => Promise<void>;
+
+/** Omitted metadata stays unchanged on ordinary saves and version restoration. */
+export interface AgentDefinitionMetadata {
+	availableInMCP?: boolean;
+}
+
+/** IDs reserved for new definitions, with their authorized destination projects. */
+export interface PlannedAgentDestinations {
+	agents?: ReadonlyMap<string, string>;
+	workflows?: ReadonlyMap<string, string>;
+}
+
+export function findMissingAgentDefinitionBodies(
+	definition: Pick<CompleteAgentDefinition, 'config' | 'tools' | 'tasks'>,
+) {
+	const references = [
+		[
+			'tools',
+			definition.config?.tools?.filter((tool) => tool.type === 'custom') ?? [],
+			new Set(Object.keys(definition.tools)),
+		],
+		['tasks', definition.config?.tasks ?? [], new Set(definition.tasks.keys())],
+	] as const;
+	return references.flatMap(([kind, refs, ids]) =>
+		refs.filter(({ id }) => !ids.has(id)).map(({ id }) => ({ kind, id })),
+	);
 }
 
 /** Keep configuration, inline bodies and skill bodies from the same draft or version. */

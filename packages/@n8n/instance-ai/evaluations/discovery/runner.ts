@@ -5,15 +5,26 @@
 // captures InstanceAi events into the CapturedEvent[] shape that
 // extractOutcomeFromEvents consumes, then runs the discovery check. No
 // Docker, no n8n server — the orchestrator runs in-process against
-// stubbed services.
+// stubbed services. The agent is the one that both Assistant runtimes build.
+// The runner reads its stream itself (see ./stream-turn.ts), so it needs no
+// runtime.
 //
-// What's tested: the orchestrator's first dispatch decision. Tools are NOT
-// stubbed — when the orchestrator loads a runtime skill or reaches for a
-// Computer Use browser tool, the tool-call event fires before any downstream
-// failure, so the discovery check still sees the dispatch intent. The wall-clock
+// What's tested: the orchestrator's first dispatch decision. Most tools are
+// NOT stubbed — when the orchestrator loads a skill or reaches for a
+// Browser Use tool, the tool-call event fires before any downstream
+// failure, so the discovery check still sees the dispatch intent. The Agent
+// Builder tools are the exception: they have the production names, descriptions,
+// input schemas, and reference skills, but they report success without doing
+// work, and `agent_builder_select_agent` runs against a stub builder delegate.
+// Only the routing to them is graded, not the Agent build itself. The wall-clock
 // timeout bounds the trial, not the run: at the budget the trial stops and fails,
 // and the abandoned stream is left to unwind on its own. Scenarios or --max-steps
 // can additionally opt into an iteration cap.
+//
+// The runner approves a question card, which the model reads as skipped questions,
+// so the run can reach the calls that the scenario requires. After those calls, a
+// discovery trial ends at the next question card, like a production turn does.
+// Otherwise the model guesses the answers and builds until the budget.
 //
 // Routing mode (`stopBeforeTool`) checks each orchestrator tool call before it
 // runs, and ends the run when the check says so (see ../routing/grade.ts).
@@ -23,21 +34,37 @@
 // (see ./seeded-turn.ts).
 // ---------------------------------------------------------------------------
 
-import type { GuardrailsOptions } from '@n8n/agents';
-import type { InstanceAiEvent, TaskList } from '@n8n/api-types';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+
+import { Tool, type BuiltTool, type GuardrailsOptions, type RuntimeSkill } from '@n8n/agents';
+import {
+	AGENT_BUILDER_TOOL_NAMES,
+	SHARED_BUILDER_TOOL_NAMES,
+	type InstanceAiEvent,
+	type TaskList,
+} from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { nanoid } from 'nanoid';
+import { z } from 'zod';
 
 import {
 	buildConfirmationPolicy,
+	declaresAnswer,
 	resolveConfirmation,
 	unmatchedConfirmations,
 	type ApprovalResponder,
 } from './confirmation-policy';
 import { credentialAutoSetupResponder } from './credential-approval';
-import { evaluateDiscoveryTrial } from './expected-tools-invoked';
+import { evaluateDiscoveryTrial, requiredCallsMade } from './expected-tools-invoked';
 import { resolveStreamStatus } from './stream-status';
-import { buildTurnMessage, createSeededThread, type SeededThread } from './seeded-turn';
+import { streamTurn } from './stream-turn';
+import {
+	buildTurnMessage,
+	createSeededThread,
+	STUB_PROJECT_ID,
+	type SeededThread,
+} from './seeded-turn';
 import { createStubLocalMcpServer } from './stub-local-mcp';
 import {
 	createMcpConnectResponder,
@@ -58,22 +85,18 @@ import {
 import { createInstanceAgent } from '../../src/agent/instance-agent';
 import type { InstanceAiEventBus } from '../../src/event-bus';
 import type { Logger } from '../../src/logger';
-import {
-	executeResumableStream,
-	normalizeStreamSource,
-} from '../../src/runtime/resumable-stream-executor';
-import { loadInstanceAiRuntimeSkillSource } from '../../src/skills/runtime-skills';
+import { loadInstanceAiSkills } from '../../src/skills/skills';
+import { AGENT_BUILDER_ORCHESTRATOR_TOOL_NAMES } from '../../src/tools/tool-ids';
 import type {
-	BuilderTurnStream,
 	InstanceAiContext,
 	InstanceAiBuilderDelegate,
-	ComputerUseState,
+	BrowserUseState,
 	ModelConfig,
 	OrchestrationContext,
 	TaskStorage,
 } from '../../src/types';
 import { buildKnowledgeBaseWorkspaceBundle } from '../../src/knowledge-base/materialize-knowledge-base';
-import { asResumable, type SuspensionInfo } from '../../src/utils/stream-helpers';
+import type { SuspensionInfo } from '../../src/utils/stream-helpers';
 import { createInMemoryEventBus, wrapEventBusWithObserver } from '../harness/in-memory-event-bus';
 import { createStubServices, defaultNodesJsonPath } from '../harness/stub-services';
 import { createStubWorkspace, stubWorkspaceRoot } from '../harness/stub-workspace';
@@ -110,8 +133,20 @@ export interface DiscoveryRunResult {
 export async function runDiscoveryScenario(
 	options: DiscoveryRunOptions,
 ): Promise<DiscoveryRunResult> {
-	const turn = await runOrchestratorTurn(options);
-	const outcome = extractOutcomeFromEvents(turn.events);
+	// A question that waits for the user has no result, so the outcome does not list
+	// its call. The Assistant still made it.
+	const outcomeOf = (events: CapturedEvent[], openQuestion?: PendingToolCall) => {
+		const result = extractOutcomeFromEvents(events);
+		if (openQuestion) result.toolCalls.push({ ...openQuestion, durationMs: 0 });
+		return result;
+	};
+	const turn = await runOrchestratorTurn({
+		...options,
+		stopBeforeTool: stopAtAgentBuild,
+		endAtQuestion: (question, events) =>
+			requiredCallsMade(options.scenario, outcomeOf(events, question)),
+	});
+	const outcome = outcomeOf(turn.events, turn.openQuestion);
 	const check = evaluateDiscoveryTrial(options.scenario, outcome, {
 		streamStatus: turn.streamStatus,
 		timeoutMs: turn.timeoutMs,
@@ -142,6 +177,11 @@ export interface OrchestratorTurnOptions extends Omit<DiscoveryRunOptions, 'scen
 		suspension: SuspensionInfo,
 		events: CapturedEvent[],
 	) => Promise<Record<string, unknown>>;
+	/**
+	 * Runs at a question card with no answer from `answerQuestions` or the scenario.
+	 * `true` ends the turn there. Otherwise the runner approves the card.
+	 */
+	endAtQuestion?: (question: PendingToolCall, events: CapturedEvent[]) => boolean;
 	/** The thread of the earlier turns of the same conversation. Unset starts a new thread. */
 	thread?: SeededThread;
 }
@@ -155,6 +195,8 @@ export interface OrchestratorTurnResult {
 	runError?: string;
 	timeoutMs: number;
 	unmatchedConfirmations: string[];
+	/** The question card that the turn ended at. */
+	openQuestion?: PendingToolCall;
 }
 
 /** Runs one orchestrator turn and returns what it published, with no check. */
@@ -168,13 +210,14 @@ export async function runOrchestratorTurn(
 	const maxSteps = options.scenario?.maxSteps ?? options.maxSteps;
 	const timeoutMs = options.scenario?.timeoutMs ?? options.timeoutMs ?? 60_000;
 	const nodesJsonPath = options.nodesJsonPath ?? defaultNodesJsonPath();
-	const { stopBeforeTool, answerQuestions } = options;
+	const { stopBeforeTool, answerQuestions, endAtQuestion } = options;
 
 	const events: CapturedEvent[] = [];
 	const instanceEvents: InstanceAiEvent[] = [];
 
 	let streamStatus: DiscoveryStreamStatus = 'completed';
 	let runError: string | undefined;
+	let openQuestion: PendingToolCall | undefined;
 
 	const confirmationPolicy = buildConfirmationPolicy(options.scenario);
 	const suspensions = new Map<string, SuspensionInfo>();
@@ -212,8 +255,10 @@ export async function runOrchestratorTurn(
 		const mcpRegistry = mcpState ? createStubMcpRegistry(mcpState) : undefined;
 		const context: InstanceAiContext = {
 			...applyInstanceState(services.context, options.scenario, mcpRegistry),
+			// Every production thread belongs to a project. Without one, adopting an existing Agent fails.
+			projectId: STUB_PROJECT_ID,
 			// The Agents module is a default module, so the eval runs with a builder.
-			builderDelegate: createStubBuilderDelegate(),
+			builderDelegate: createStubBuilderDelegate(options.scenario.seed),
 			workspace: createStubWorkspace(knowledgeBase.files),
 			workspaceRoot: stubWorkspaceRoot,
 		};
@@ -236,8 +281,8 @@ export async function runOrchestratorTurn(
 			instanceEvents.push(event);
 		});
 
-		// `OrchestrationContext` is required for the orchestrator to receive tools like
-		// `create-tasks` and runtime skills. Discovery scenarios measure first-step
+		// `OrchestrationContext` is required for the orchestrator to receive orchestration
+		// tools and skills. Discovery scenarios measure first-step
 		// tool-call decisions, not background execution.
 		const orchestrationContext = createStubOrchestrationContext({
 			context,
@@ -272,45 +317,37 @@ export async function runOrchestratorTurn(
 				},
 			],
 		};
-		const streamSource = normalizeStreamSource(
-			await agent.stream(buildTurnMessage(options.scenario), {
+		const run = streamTurn({
+			agent,
+			input: buildTurnMessage(options.scenario),
+			executionOptions: {
 				maxIterations: maxSteps,
-				...(thread ? { persistence: { threadId, resourceId: context.userId } } : {}),
-				abortSignal: abortController.signal,
 				providerOptions: {
 					anthropic: { cacheControl: { type: 'ephemeral' as const } },
 				},
 				...(guardrails ? { guardrails } : {}),
-			}),
-		);
-
-		const run = executeResumableStream({
-			agent: asResumable(agent),
-			stream: streamSource,
-			context: {
-				threadId,
-				runId,
-				agentId: ORCHESTRATOR_AGENT_ID,
-				eventBus,
-				signal: abortController.signal,
-				logger: silentLogger(),
 			},
-			control: {
-				mode: 'auto',
-				onSuspension: (suspension) => suspensions.set(suspension.requestId, suspension),
-				// A resumed stream runs without the stream options, so the route check goes along.
-				buildResumeOptions: ({ agentRunId, suspension }) => ({
-					runId: agentRunId,
-					toolCallId: suspension.toolCallId,
-					...(guardrails ? { guardrails } : {}),
-				}),
-				waitForConfirmation: async (requestId: string): Promise<Record<string, unknown>> => {
-					const suspension = suspensions.get(requestId);
-					if (answerQuestions && suspension?.suspendPayload.inputType === 'questions') {
-						return await answerQuestions(suspension, events);
+			...(thread ? { persistence: { threadId, resourceId: context.userId } } : {}),
+			runId,
+			agentId: ORCHESTRATOR_AGENT_ID,
+			signal: abortController.signal,
+			// The tools publish their events on the bus, so the stream events go there too.
+			onEvent: (event) => eventBus.publish(threadId, event),
+			answerSuspension: async (suspension) => {
+				suspensions.set(suspension.requestId, suspension);
+				if (suspension.suspendPayload.inputType === 'questions') {
+					if (answerQuestions) return await answerQuestions(suspension, events);
+					const question = findToolCall(instanceEvents, suspension.toolCallId);
+					if (
+						question &&
+						!declaresAnswer(suspension, confirmationPolicy) &&
+						endAtQuestion?.(question, events)
+					) {
+						openQuestion = question;
+						return undefined;
 					}
-					return resolveConfirmation(suspension, confirmationPolicy, approvalResponders);
-				},
+				}
+				return resolveConfirmation(suspension, confirmationPolicy, approvalResponders);
 			},
 		});
 		void run.catch(() => {});
@@ -337,12 +374,25 @@ export async function runOrchestratorTurn(
 		...(runError ? { runError } : {}),
 		timeoutMs,
 		unmatchedConfirmations: unmatchedConfirmations(confirmationPolicy, suspensions.values()),
+		...(openQuestion ? { openQuestion } : {}),
 	};
 }
 
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
+
+function findToolCall(
+	events: readonly InstanceAiEvent[],
+	toolCallId: string,
+): PendingToolCall | undefined {
+	for (const event of events) {
+		if (event.type === 'tool-call' && event.payload.toolCallId === toolCallId) {
+			return { toolCallId, toolName: event.payload.toolName, args: event.payload.args };
+		}
+	}
+	return undefined;
+}
 
 function applyInstanceState(
 	base: InstanceAiContext,
@@ -352,27 +402,14 @@ function applyInstanceState(
 	const state = scenario.instanceState;
 	if (!state) return base;
 
-	const computerUse: ComputerUseState | undefined = state.computerUse;
-	// Both channels can serve tools, so the stub server gets the union.
-	const liveToolCategories = computerUse
-		? Object.values(computerUse).flatMap((channel) =>
-				channel.status === 'connected' ? channel.toolCategories : [],
-			)
-		: [];
+	const browserUse: BrowserUseState | undefined = state.browserUse;
 
 	const localMcpServer =
-		liveToolCategories.length > 0
-			? createStubLocalMcpServer({
-					capabilities: liveToolCategories.filter(
-						(c): c is 'browser' | 'filesystem' | 'shell' =>
-							c === 'browser' || c === 'filesystem' || c === 'shell',
-					),
-				})
-			: base.localMcpServer;
+		browserUse?.status === 'connected' ? createStubLocalMcpServer() : base.localMcpServer;
 
 	return {
 		...base,
-		...(computerUse ? { computerUseState: computerUse } : {}),
+		...(browserUse ? { browserUseState: browserUse } : {}),
 		...(localMcpServer ? { localMcpServer } : {}),
 		...(mcpRegistry ? { mcpService: mcpRegistry.service } : {}),
 		...(state.folderExploration !== undefined
@@ -385,35 +422,86 @@ function silentLogger(): Logger {
 	return { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
 }
 
-function completedBuilderTurn(): BuilderTurnStream {
-	return {
-		fullStream: (async function* () {
-			await Promise.resolve();
-			yield {
-				type: 'tool-call',
-				toolCallId: 'discovery-write',
-				toolName: 'write_config',
-				input: {},
-			};
-			yield { type: 'tool-result', toolCallId: 'discovery-write', output: { ok: true } };
-		})(),
-		text: Promise.resolve('Agent configured for discovery evaluation.'),
-	};
+const STUB_BUILDER_TOOL_NAMES: readonly string[] = AGENT_BUILDER_ORCHESTRATOR_TOOL_NAMES.filter(
+	(name) => name !== AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT,
+);
+
+const AGENT_BUILD_STOP_TOOL_NAMES: readonly string[] = [
+	...STUB_BUILDER_TOOL_NAMES,
+	SHARED_BUILDER_TOOL_NAMES.SEARCH_NODES,
+	SHARED_BUILDER_TOOL_NAMES.GET_NODE_TYPES,
+	SHARED_BUILDER_TOOL_NAMES.GET_NODE_PARAMETER_OPTIONS,
+];
+
+/**
+ * Ends the trial at the first builder call after `agent_builder_select_agent`. The route is
+ * settled by then, and the stubs report success, so the model otherwise builds until the budget.
+ */
+async function stopAtAgentBuild(
+	call: PendingToolCall,
+	events: readonly InstanceAiEvent[],
+): Promise<boolean> {
+	const agentSelected = events.some(
+		(event) =>
+			event.type === 'tool-call' &&
+			event.payload.toolName === AGENT_BUILDER_TOOL_NAMES.SELECT_AGENT,
+	);
+	return await Promise.resolve(
+		agentSelected && AGENT_BUILD_STOP_TOOL_NAMES.includes(call.toolName),
+	);
 }
 
-function createStubBuilderDelegate(): InstanceAiBuilderDelegate {
+/**
+ * A copy of the builder tools and reference skills that the agents module in packages/cli
+ * supplies, which this package cannot import. Nothing updates the copy automatically.
+ */
+const agentBuilderFileSchema = z.object({
+	tools: z.array(
+		z.object({
+			name: z.string(),
+			description: z.string(),
+			inputSchema: z.custom<NonNullable<BuiltTool['inputSchema']>>(isRecord),
+		}),
+	),
+	skills: z.array(
+		z.custom<RuntimeSkill>(
+			(skill) =>
+				isRecord(skill) && typeof skill.id === 'string' && typeof skill.instructions === 'string',
+		),
+	),
+});
+
+type AgentBuilderFile = z.infer<typeof agentBuilderFileSchema>;
+
+/** Builder tools with the production names, descriptions, and input schemas that report success. */
+function createStubBuilderTools(tools: AgentBuilderFile['tools']): BuiltTool[] {
+	return STUB_BUILDER_TOOL_NAMES.map((name) => {
+		const tool = tools.find((candidate) => candidate.name === name);
+		if (!tool) throw new Error(`agent-builder.json has no "${name}" tool`);
+		return new Tool(name)
+			.description(tool.description)
+			.input(tool.inputSchema)
+			.handler(async () => await Promise.resolve({ ok: true }))
+			.build();
+	});
+}
+
+function createStubBuilderDelegate(seed: DiscoveryScenario['seed']): InstanceAiBuilderDelegate {
+	const agentBuilder = agentBuilderFileSchema.parse(
+		JSON.parse(readFileSync(path.join(__dirname, 'agent-builder.json'), 'utf8')),
+	);
 	return {
 		createAgent: async (name) =>
 			await Promise.resolve({
 				agentId: 'discovery-agent',
-				projectId: 'discovery-project',
+				projectId: STUB_PROJECT_ID,
 				name,
 			}),
-		streamBuild: async () => await Promise.resolve(completedBuilderTurn()),
-		resumeBuild: async () => await Promise.resolve(completedBuilderTurn()),
-		findOpenSuspensions: async () => await Promise.resolve([]),
-		cancelOpenSuspension: async () => await Promise.resolve(),
-		resolveAgentName: async () => await Promise.resolve(undefined),
+		getBuilderTools: () => createStubBuilderTools(agentBuilder.tools),
+		getRuntimeSkills: () => agentBuilder.skills,
+		getBuilderSessionContext: async () => await Promise.resolve('## Session context'),
+		resolveAgentName: async (agentId) =>
+			await Promise.resolve(seed?.agents.find((agent) => agent.id === agentId)?.config.name),
 	};
 }
 
@@ -444,13 +532,13 @@ function createStubOrchestrationContext(
 		modelId: opts.modelId,
 		eventBus: opts.eventBus,
 		logger: silentLogger(),
-		runtimeSkills: loadInstanceAiRuntimeSkillSource(),
+		skills: loadInstanceAiSkills(),
 		abortSignal: opts.abortSignal,
 		taskStorage,
-		// Surface the localMcpServer so Computer Use browser tools are available to the
+		// Surface the localMcpServer so Browser Use tools are available to the
 		// orchestrator.
 		...(opts.context.localMcpServer ? { localMcpServer: opts.context.localMcpServer } : {}),
-		// Registers the `workspace_*` file tools for build-workflow
+		// Registers the `workspace_*` file tools for workflow_builder_build_workflow
 		...(opts.context.workspace ? { workspace: opts.context.workspace } : {}),
 		...(opts.context.workspaceRoot ? { workspaceRoot: opts.context.workspaceRoot } : {}),
 		// Used for the orchestrator's untrusted-content doctrine and other domain references.

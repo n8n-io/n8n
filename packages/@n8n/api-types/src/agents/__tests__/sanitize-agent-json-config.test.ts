@@ -5,7 +5,7 @@ import { SUB_AGENT_MAX_CHILDREN_MAX, SUB_AGENT_MAX_CHILDREN_MIN } from '../sub-a
 
 const baseConfig = {
 	name: 'Test Agent',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	instructions: 'Be helpful',
 };
 
@@ -504,7 +504,7 @@ describe('sanitizeAgentJsonConfig', () => {
 					low: { model: 'openai/gpt-4o-mini', credential: 'cred-openai' },
 					medium: { model: 'anthropic/claude-haiku-4-5', credential: 'cred-anthropic' },
 					high: {
-						model: 'openrouter/anthropic/claude-sonnet-4-5',
+						model: 'openrouter/anthropic/claude-sonnet-5.5',
 						credential: 'cred-openrouter',
 					},
 				},
@@ -521,7 +521,7 @@ describe('sanitizeAgentJsonConfig', () => {
 			subAgents: {
 				modelsByDifficulty: {
 					low: { model: 'openai/gpt-4o-mini', credential: 'cred-openai' },
-					extreme: { model: 'anthropic/claude-sonnet-4-5', credential: 'cred-anthropic' },
+					extreme: { model: 'anthropic/claude-sonnet-5-5', credential: 'cred-anthropic' },
 				},
 			},
 		});
@@ -623,7 +623,7 @@ describe('sanitizeAgentJsonConfig', () => {
 				maxChildren: 4,
 				agents: [{ agentId: 'agent-2', useWhen: 'Use for support escalation.' }],
 				modelsByDifficulty: {
-					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'cred-anthropic' },
+					high: { model: 'anthropic/claude-sonnet-5-5', credential: 'cred-anthropic' },
 				},
 			},
 		});
@@ -634,7 +634,61 @@ describe('sanitizeAgentJsonConfig', () => {
 				maxChildren: 4,
 				agents: [{ agentId: 'agent-2', useWhen: 'Use for support escalation.' }],
 				modelsByDifficulty: {
-					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'cred-anthropic' },
+					high: { model: 'anthropic/claude-sonnet-5-5', credential: 'cred-anthropic' },
+				},
+			},
+		});
+		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);
+	});
+
+	it('keeps valid tool guardrails and strips unknown fields inside them', () => {
+		const sanitized = sanitizeAgentJsonConfig({
+			...baseConfig,
+			config: {
+				guardrails: {
+					tools: [
+						{
+							kind: 'pii',
+							id: 'pii_guard',
+							stage: 'after',
+							tools: [{ type: 'workflow', workflowId: 'wf-1', legacyRefField: true }],
+							type: 'selected',
+							entities: ['EMAIL_ADDRESS'],
+							legacyGuardrailField: true,
+						},
+						{
+							kind: 'jailbreak',
+							id: 'jailbreak_guard',
+							stage: 'before',
+							tools: [{ type: 'workflow', workflowId: 'wf-1' }],
+							threshold: 0.8,
+						},
+					],
+				},
+			},
+		});
+
+		expect(sanitized).toEqual({
+			...baseConfig,
+			config: {
+				guardrails: {
+					tools: [
+						{
+							kind: 'pii',
+							id: 'pii_guard',
+							stage: 'after',
+							tools: [{ type: 'workflow', workflowId: 'wf-1' }],
+							type: 'selected',
+							entities: ['EMAIL_ADDRESS'],
+						},
+						{
+							kind: 'jailbreak',
+							id: 'jailbreak_guard',
+							stage: 'before',
+							tools: [{ type: 'workflow', workflowId: 'wf-1' }],
+							threshold: 0.8,
+						},
+					],
 				},
 			},
 		});

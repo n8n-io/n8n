@@ -1,0 +1,8 @@
+{
+	"properties": {
+		"limits": {
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

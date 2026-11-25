@@ -41,6 +41,8 @@ class QueueRecoveryConfig {
 	batchSize: number = 100;
 }
 
+const nonNegativeIntSchema = z.coerce.number().int().nonnegative();
+
 @Config
 class RecoveryConfig {
 	/**
@@ -55,9 +57,16 @@ class RecoveryConfig {
 	 */
 	@Env('N8N_WORKFLOW_AUTODEACTIVATION_ENABLED')
 	workflowDeactivationEnabled: boolean = false;
-}
 
-const nonNegativeIntSchema = z.coerce.number().int().nonnegative();
+	/**
+	 * How many times n8n tries to resume a waiting execution or start a queued one before it
+	 * marks the execution as crashed, so an execution whose data doesn't fit in memory can't
+	 * restart n8n in a loop. The count resets once the execution runs. Set to 0 to remove the
+	 * limit.
+	 */
+	@Env('N8N_EXECUTIONS_MAX_RESUME_ATTEMPTS', nonNegativeIntSchema)
+	maxResumeAttempts: number = 2;
+}
 
 @Config
 class QueueRetentionConfig {
@@ -152,7 +161,12 @@ export class ExecutionsConfig {
 	@Env('EXECUTIONS_DATA_SAVE_ON_PROGRESS')
 	saveExecutionProgress: boolean = false;
 
-	/** Whether to save execution data for manual executions. This default can be overridden at a workflow level. */
+	/**
+	 * Whether to save execution data for manual executions. You can override this for each workflow.
+	 * When set to false and pruning is on, n8n still keeps a manual execution that a user runs in
+	 * the editor for that user alone, for example to debug it with the n8n Assistant, until
+	 * `EXECUTIONS_DATA_HARD_DELETE_BUFFER` has passed.
+	 */
 	@Env('EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS')
 	saveDataManualExecutions: boolean = true;
 

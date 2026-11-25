@@ -3,6 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { ScheduledJob as ScheduledJobEntity, ScheduledTask } from '@n8n/db';
 import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { EntityManager } from '@n8n/typeorm';
 
 import { selfOwned } from './shared/job-factory';
 
@@ -75,6 +76,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 	}
 
 	const reload = async (id: string) => await taskRepository.findOneByOrFail({ id });
+	const reloadJob = async () => await jobRepository.findOneByOrFail({ id: job.id });
 
 	beforeAll(async () => {
 		// Use separate connections for concurrent claims.
@@ -708,11 +710,43 @@ describe('ScheduledTaskRepository executor methods', () => {
 				0,
 			);
 			expect((await reload(id)).dispatchedAt).toBeNull();
+			expect((await reloadJob()).lastDispatchedAt).toBeNull();
 
 			expect(await taskRepository.markDispatched({ host: HOST_A, id, claimedEpoch: epoch })).toBe(
 				1,
 			);
 			expect((await reload(id)).dispatchedAt).not.toBeNull();
+		});
+
+		it('markDispatched stamps the same instant on the job', async () => {
+			const { id, epoch } = await claimOne();
+
+			await taskRepository.markDispatched({ host: HOST_A, id, claimedEpoch: epoch });
+
+			const { dispatchedAt } = await reload(id);
+			const { lastDispatchedAt } = await reloadJob();
+			expect(dispatchedAt).not.toBeNull();
+			expect(lastDispatchedAt).not.toBeNull();
+			expect(Math.abs(lastDispatchedAt!.getTime() - dispatchedAt!.getTime())).toBeLessThanOrEqual(
+				1000,
+			);
+		});
+
+		it('markDispatched leaves dispatchedAt unset when the job stamp fails', async () => {
+			const { id, epoch } = await claimOne();
+			vi.spyOn(EntityManager.prototype, 'query').mockRejectedValueOnce(
+				new Error('job stamp failed'),
+			);
+
+			try {
+				await expect(
+					taskRepository.markDispatched({ host: HOST_A, id, claimedEpoch: epoch }),
+				).rejects.toThrow('job stamp failed');
+			} finally {
+				vi.restoreAllMocks();
+			}
+
+			expect((await reload(id)).dispatchedAt).toBeNull();
 		});
 
 		it('markDispatched is not fenced on an existing marker (at-least-once allows redelivery)', async () => {
@@ -1002,6 +1036,28 @@ describe('ScheduledTaskRepository executor methods', () => {
 				await taskRepository.completeTask({ host: HOST_A, id, claimedEpoch: reclaimed.leaseEpoch }),
 			).toBe(1);
 			expect((await reload(id)).status).toBe('succeeded');
+		});
+	});
+
+	describe('task id reuse after deleting the newest task', () => {
+		it('does not let a claim on a deleted task act on a task inserted after it', async () => {
+			await createTask();
+			const [stale] = await taskRepository.claimDueTasks(claimOpts({ host: HOST_A }));
+			await taskRepository.delete({ id: stale.id });
+
+			await createTask();
+			const [fresh] = await taskRepository.claimDueTasks(claimOpts({ host: HOST_A }));
+			expect(fresh.leaseEpoch).toBe(stale.leaseEpoch);
+
+			expect(Number(fresh.id)).toBeGreaterThan(Number(stale.id));
+			expect(
+				await taskRepository.completeTask({
+					host: HOST_A,
+					id: stale.id,
+					claimedEpoch: stale.leaseEpoch,
+				}),
+			).toBe(0);
+			expect((await reload(fresh.id)).status).toBe('running');
 		});
 	});
 

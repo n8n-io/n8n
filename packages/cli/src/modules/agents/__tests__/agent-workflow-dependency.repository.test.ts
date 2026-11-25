@@ -94,6 +94,46 @@ describe('AgentWorkflowDependencyRepository', () => {
 		]);
 	});
 
+	it('tracks decision workflows in the draft and published definition', async () => {
+		const agent = makeAgent();
+		const published = makePublishedVersion();
+		agent.schema!.hitlConfigurations = [
+			{
+				id: 'draft-review',
+				name: 'Draft review',
+				method: 'workflow',
+				workflowId: 'decision-draft',
+			},
+		];
+		published.schema!.hitlConfigurations = [
+			{
+				id: 'published-review',
+				name: 'Published review',
+				method: 'workflow',
+				workflowId: 'decision-published',
+			},
+		];
+		entityManager.findOne.mockImplementation(async (entity) =>
+			entity === Agent ? agent : published,
+		);
+		entityManager.find.mockResolvedValue(workflows('decision-draft', 'decision-published'));
+		await repository.refreshForAgent(agent.id);
+		expect(entityManager.find).toHaveBeenCalledWith(WorkflowEntity, {
+			where: [
+				{
+					id: In(['wf-draft', 'wf-published', 'decision-draft', 'decision-published']),
+					shared: { projectId: 'project-1' },
+				},
+				{ name: In(['Legacy WF']), shared: { projectId: 'project-1' } },
+			],
+			select: ['id'],
+		});
+		expect(entityManager.insert).toHaveBeenCalledWith(AgentWorkflowDependency, [
+			{ agentId: agent.id, workflowId: 'decision-draft' },
+			{ agentId: agent.id, workflowId: 'decision-published' },
+		]);
+	});
+
 	it('only inserts rows for workflows that resolve inside the agent project', async () => {
 		const agent = makeAgent();
 		agent.activeVersionId = null;
@@ -118,6 +158,26 @@ describe('AgentWorkflowDependencyRepository', () => {
 		expect(entityManager.find).not.toHaveBeenCalled();
 		expect(entityManager.insert).not.toHaveBeenCalled();
 	});
+
+	it.each(['sqlite', 'postgres'])(
+		'removes the rows of an instance agent and does not rebuild them on %s',
+		async (type) => {
+			Object.assign(entityManager.connection, { options: { type } });
+			entityManager.findOne.mockResolvedValue({
+				...makeAgent(),
+				scope: 'instance',
+				projectId: null,
+			} as Agent);
+
+			await repository.refreshForAgent('agent-1');
+
+			expect(entityManager.delete).toHaveBeenCalledWith(AgentWorkflowDependency, {
+				agentId: 'agent-1',
+			});
+			expect(entityManager.find).not.toHaveBeenCalled();
+			expect(entityManager.insert).not.toHaveBeenCalled();
+		},
+	);
 
 	it('locks the agent and the resolved workflows before replacing rows on Postgres', async () => {
 		Object.assign(entityManager.connection, { options: { type: 'postgres' } });

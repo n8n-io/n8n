@@ -82,6 +82,7 @@ describe('nodeExecuteAfter', () => {
 		expect(workflowExecutionStateStore.executingNode.removeExecutingNode).toHaveBeenCalledTimes(1);
 		expect(workflowExecutionStateStore.executingNode.removeExecutingNode).toHaveBeenCalledWith(
 			'Test Node',
+			0,
 		);
 		expect(clearAgentNodeProgress).toHaveBeenCalledWith('Test Node');
 		expect(assistantStore.onNodeExecution).toHaveBeenCalledTimes(1);

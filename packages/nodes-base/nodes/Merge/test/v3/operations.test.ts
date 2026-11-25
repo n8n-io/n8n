@@ -251,6 +251,59 @@ describe('Test MergeV3, combineBySql operation', () => {
 		expect(returnData[0].map((item) => item.json.name)).toEqual(['Sam', 'Dan']);
 	});
 
+	it('keeps a resolved value out of another parameter slot', async () => {
+		const mergeNode: INode = {
+			...node,
+			typeVersion: 3.2,
+			parameters: {
+				options: { queryParameters: '={{ $json.name }},Jon' },
+			},
+		};
+		const context = {
+			...createMockExecuteFunction(
+				{
+					operation: 'combineBySql',
+					query: 'SELECT name FROM input1 WHERE name = ? OR name = ?',
+					options: { queryParameters: 'Sam, Dan,Jon' },
+				},
+				mergeNode,
+			),
+			evaluateExpression: (expr: string) => (expr === '{{ $json.name }}' ? 'Sam, Dan' : expr),
+			getWorkflow: () => ({ id: 'test-workflow-id', name: 'Test Workflow', active: false }),
+		};
+
+		const returnData = await mode.combineBySql.execute.call(context as never, inputsData);
+
+		expect(returnData[0].map((item) => item.json.name)).toEqual(['Jon']);
+	});
+
+	it.each([
+		{ typeVersion: 3.3, expected: ['1$&2', '1$$2'] },
+		{ typeVersion: 3.2, expected: ['1{{ $json.sql }}2', '1$2'] },
+	])(
+		'should insert the resolved query for version $typeVersion',
+		async ({ typeVersion, expected }) => {
+			const context = {
+				...createMockExecuteFunction(
+					{ operation: 'combineBySql', query: '{{ $json.sql }}' },
+					{ ...node, typeVersion },
+				),
+				evaluateExpression: () => "SELECT * FROM input1 WHERE code IN ('1$&2', '1$$2')",
+			};
+
+			const returnData = await mode.combineBySql.execute.call(context as never, [
+				[
+					{ json: { code: '1$&2' } },
+					{ json: { code: '1$$2' } },
+					{ json: { code: '1{{ $json.sql }}2' } },
+					{ json: { code: '1$2' } },
+				],
+			]);
+
+			expect(returnData[0].map((item) => item.json.code)).toEqual(expected);
+		},
+	);
+
 	it('LEFT JOIN, missing input 2(empty array)', async () => {
 		const nodeParameters: IDataObject = {
 			operation: 'combineBySql',

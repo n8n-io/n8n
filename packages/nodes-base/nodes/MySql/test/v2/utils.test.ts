@@ -1,7 +1,7 @@
 import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 
-import type { SortRule, WhereClause } from '../../v2/helpers/interfaces';
+import type { Mysql2Pool, QueryValues, SortRule, WhereClause } from '../../v2/helpers/interfaces';
 import * as utils from '../../v2/helpers/utils';
 import {
 	prepareQueryAndReplacements,
@@ -11,6 +11,7 @@ import {
 	addSortRules,
 	replaceEmptyStringsByNulls,
 	escapeSqlIdentifier,
+	getUniqueKeyColumns,
 	splitQueryToStatements,
 } from '../../v2/helpers/utils';
 
@@ -111,15 +112,15 @@ describe('Test MySql V2, prepareQueryAndReplacements', () => {
 		);
 	});
 
-	it('should handle escaped double quotes correctly', () => {
+	it('should not treat a double quote inside a single-quoted string as closing it', () => {
 		const preparedQuery = prepareQueryAndReplacements(
-			"INSERT INTO test_table(content) VALUES('Don\"'t replace $1 here')",
+			"INSERT INTO test_table(content) VALUES('Don\"t replace $1 here')",
 			2.5,
 			['should_not_appear', 123],
 		);
 		expect(preparedQuery).toBeDefined();
 		expect(preparedQuery.query).toEqual(
-			"INSERT INTO test_table(content) VALUES('Don\"'t replace $1 here')",
+			"INSERT INTO test_table(content) VALUES('Don\"t replace $1 here')",
 		);
 	});
 
@@ -166,6 +167,18 @@ describe('Test MySql V2, prepareQueryAndReplacements', () => {
 				['123', 'John'], // Correct number of values
 			);
 		}).not.toThrow();
+	});
+
+	it('should throw a clear error for a null identifier value, both legacy and current versions', () => {
+		const valuesWithNull = [null, 1] as unknown as QueryValues;
+
+		expect(() =>
+			prepareQueryAndReplacements('SELECT * FROM $1:name WHERE id = $2', 2.5, valuesWithNull),
+		).toThrow('Parameter $1 has no value to use as an identifier');
+
+		expect(() =>
+			prepareQueryAndReplacements('SELECT * FROM $1:name WHERE id = $2', 2.4, valuesWithNull),
+		).toThrow('Parameter $1 has no value to use as an identifier');
 	});
 });
 
@@ -463,5 +476,47 @@ describe('Test MySql V2, splitQueryToStatements', () => {
 				expect(utils.getWhereClauses(ctx, 0)).toBe(clauses);
 			},
 		);
+	});
+});
+
+describe('Test MySql V2, getUniqueKeyColumns', () => {
+	it('should return lower-cased single-column unique keys of a qualified table', async () => {
+		const pool = {
+			query: vi
+				.fn()
+				.mockResolvedValueOnce([
+					[
+						{ Key_name: 'PRIMARY', Non_unique: '0', Seq_in_index: 1, Column_name: 'id', Null: '' },
+						{
+							Key_name: 'uq_email',
+							Non_unique: 0,
+							Seq_in_index: 1,
+							Column_name: 'Email',
+							Null: 'YES',
+						},
+						{ Key_name: 'uq_pair', Non_unique: 0, Seq_in_index: 1, Column_name: 'a' },
+						{ Key_name: 'uq_pair', Non_unique: 0, Seq_in_index: 2, Column_name: 'b' },
+						{ Key_name: 'uq_expr', Non_unique: 0, Seq_in_index: 1, Column_name: null },
+						{ Key_name: 'uq_mixed', Non_unique: 0, Seq_in_index: 1, Column_name: 'c' },
+						{ Key_name: 'uq_mixed', Non_unique: 0, Seq_in_index: 2, Column_name: null },
+						{ Key_name: 'idx_name', Non_unique: 1, Seq_in_index: 1, Column_name: 'name' },
+					],
+					[],
+				])
+				.mockResolvedValueOnce([
+					[
+						{ Field: 'id', Type: 'BIGINT unsigned' },
+						{ Field: 'Email', Type: 'varchar(64)' },
+					],
+					[],
+				]),
+		} as unknown as Mysql2Pool;
+
+		await expect(getUniqueKeyColumns(pool, 'otherdb.orders')).resolves.toEqual([
+			{ column: 'id', nullable: false, type: 'bigint unsigned' },
+			{ column: 'email', nullable: true, type: 'varchar(64)' },
+		]);
+		expect(pool.query).toHaveBeenCalledWith('SHOW COLUMNS FROM `otherdb`.`orders`');
+		expect(pool.query).toHaveBeenCalledWith('SHOW INDEX FROM `otherdb`.`orders`');
 	});
 });

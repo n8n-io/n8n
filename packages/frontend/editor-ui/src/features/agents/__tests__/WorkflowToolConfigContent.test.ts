@@ -84,6 +84,7 @@ function workflow(
 		updatedAt: overrides.updatedAt ?? '2026-07-01T12:00:00.000Z',
 		nodes: [{ type: TRIGGER_TYPE }] as Array<{
 			type: string;
+			typeVersion?: number;
 			parameters?: Record<string, unknown>;
 		}>,
 	};
@@ -150,6 +151,28 @@ describe('WorkflowToolConfigContent', () => {
 
 		expect(lastEmit(emitted, 'update:valid')).toBe(false);
 	});
+
+	it.each(['', '   '])(
+		'marks description %j invalid after Save and clears it after correction',
+		async (description) => {
+			const { getByTestId, getByRole, onConfirm } = renderForm(createRef({ description }));
+			const field = getByTestId('agent-workflow-tool-description');
+
+			expect(field).not.toHaveAttribute('aria-invalid', 'true');
+			await fireEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(field).toHaveAttribute('aria-invalid', 'true');
+			expect(onConfirm).not.toHaveBeenCalled();
+
+			await fireEvent.update(field, 'Send a notification');
+
+			expect(field).toHaveAttribute('aria-invalid', 'false');
+			await fireEvent.click(getByRole('button', { name: 'Save' }));
+			expect(onConfirm).toHaveBeenCalledWith(
+				expect.objectContaining({ description: 'Send a notification' }),
+			);
+		},
+	);
 
 	it('emits valid=false for a whitespace-only description', () => {
 		const { emitted } = renderComponent({
@@ -381,6 +404,31 @@ describe('WorkflowToolConfigContent', () => {
 	});
 
 	describe('workflow input bindings', () => {
+		it('configures an unpublished workflow whose trigger omits default parameters', async () => {
+			setProjectWorkflows([
+				{
+					...workflow('Notify Sales', { activeVersionId: null }),
+					nodes: [
+						{
+							type: 'n8n-nodes-base.executeWorkflowTrigger',
+							typeVersion: 1.3,
+							parameters: { workflowInputs: { values: [{ name: 'request' }] } },
+						},
+					],
+				},
+			]);
+			const inputs: WorkflowToolRef['inputs'] = {
+				request: { mode: 'fixed', value: 'Please review this request' },
+			};
+			const view = renderForm(createRef({ inputs }));
+			await view.findByTestId('agent-workflow-tool-target-unpublished');
+			await fireEvent.click(view.getByTestId('agent-workflow-tool-advanced'));
+			const field = await view.findByTestId('agent-workflow-tool-input-request');
+			expect(within(field).getByRole('textbox')).toHaveValue('Please review this request');
+			await fireEvent.click(view.getByRole('button', { name: 'Save' }));
+			expect(view.onConfirm).toHaveBeenCalledWith(expect.objectContaining({ inputs }));
+		});
+
 		function workflowWithInputs(
 			name: string,
 			fields: Array<{ name: string; type?: string }>,

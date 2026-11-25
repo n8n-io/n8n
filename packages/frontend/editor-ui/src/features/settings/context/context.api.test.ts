@@ -7,6 +7,7 @@ import {
 	getPreferenceCount,
 	getPreferences,
 	updatePreference,
+	updatePreferenceSettings,
 } from './context.api';
 
 vi.mock('@n8n/rest-api-client', () => ({
@@ -71,5 +72,13 @@ describe('context.api', () => {
 		await deletePreference(context, 'p1');
 
 		expect(makeRestApiRequest).toHaveBeenCalledWith(context, 'DELETE', '/ai-preferences/p1');
+	});
+
+	it('saves the preferences switch', async () => {
+		await updatePreferenceSettings(context, { enabled: false });
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(context, 'PATCH', '/ai-preference-settings', {
+			enabled: false,
+		});
 	});
 });

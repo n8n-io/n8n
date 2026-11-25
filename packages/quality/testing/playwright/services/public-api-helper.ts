@@ -111,6 +111,20 @@ export class PublicApiHelper {
 		return await this.api.request.get(`/api/v1/executions/${executionId}`, { headers, params });
 	}
 
+	/** GET /api/v1/workflows with the given API key. Returns the raw response. */
+	async listWorkflowsRaw(apiKey: string): Promise<APIResponse> {
+		return await this.api.request.get('/api/v1/workflows', {
+			headers: { 'X-N8N-API-KEY': apiKey },
+		});
+	}
+
+	/** GET /api/v1/workflows with a bearer token, or with no credential. Returns the raw response. */
+	async listWorkflowsWithBearerRaw(token?: string): Promise<APIResponse> {
+		return await this.api.request.get('/api/v1/workflows', {
+			headers: token ? { Authorization: `Bearer ${token}` } : {},
+		});
+	}
+
 	/** Invite a user and return the invite accept URL for completing registration. */
 	async inviteUser(
 		email: string,

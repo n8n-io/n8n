@@ -22,6 +22,8 @@ export const {{PascalName}}Module = defineFrontendModule({
 	// adHocModalKeyPrefixes: [ /* prefixes for modal keys minted at runtime */ ],
 	// settingsPages: [ /* IMenuItem[]; feeds SettingsSidebar */ ],
 	// pushHandlers: { /* keyed by push message type */ },
+	// parameterInputs: [ /* ParameterInputContribution[]; resolved by parameter.type in the NDV */ ],
+	// runDataDisplayModes: [ /* RunDataDisplayModeContribution[]; shown in the NDV and Logs run data panes */ ],
 	// commands: [ /* CommandBarEntry[] */ ],
 
 	// The SDK types the fields below, but no host in the shell reads them yet.

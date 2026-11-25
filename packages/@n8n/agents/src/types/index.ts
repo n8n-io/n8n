@@ -43,6 +43,7 @@ export type {
 	StreamChunk,
 	FinishReason,
 	TokenUsage,
+	PromptSizeUsage,
 	ModelConfig,
 	RunOptions,
 	ExecutionOptions,
@@ -63,6 +64,9 @@ export type {
 	AnthropicPromptCachingConfig,
 	OpenAIPromptCachingConfig,
 	PromptCachingConfig,
+	NativeToolDeferralConfig,
+	ToolDeferralConfig,
+	ToolDeferralMode,
 } from './sdk/agent';
 export { FINISH_REASONS, isFinishReason } from './sdk/agent';
 
@@ -70,12 +74,16 @@ export type { SerializedMessageList } from './runtime/message-list';
 
 export type {
 	ToolContext,
+	ToolCallInterception,
+	ToolCallInterceptor,
 	ToolCancellationContext,
 	ToolExecutionContext,
 	ToolApprovalContext,
 	InterruptibleToolContext,
 	ToolSuspendOptions,
 	BuiltTool,
+	ToolDispatch,
+	LegacyCallConverter,
 	BuiltProviderTool,
 } from './sdk/tool';
 
@@ -86,6 +94,7 @@ export type {
 	BuiltEpisodicMemoryStore,
 	EpisodicMemoryConfig,
 	EpisodicMemoryCaptureCandidate,
+	EpisodicMemoryCaptureGuidance,
 	EpisodicMemoryCaptureKind,
 	EpisodicMemoryCaptureMethods,
 	EpisodicMemoryCaptureStatus,
@@ -94,15 +103,19 @@ export type {
 	EpisodicMemoryEntrySource,
 	EpisodicMemoryMethods,
 	EpisodicMemoryPrompts,
-	EpisodicMemoryReflectFn,
-	EpisodicMemoryReflectResult,
-	EpisodicMemoryReflection,
+	EpisodicMemoryConsolidateFn,
+	EpisodicMemoryConsolidateResult,
+	EpisodicMemoryConsolidation,
+	EpisodicMemoryConsolidationFact,
+	EpisodicMemoryConsolidationNeighbour,
+	EpisodicMemoryConsolidatorInput,
+	EpisodicMemoryFactRelation,
 	EpisodicMemoryReflectionApply,
 	EpisodicMemoryReflectionApplyMerge,
-	EpisodicMemoryReflectionMerge,
 	EpisodicMemoryReflectionResult,
-	EpisodicMemoryReflectorInput,
 	EpisodicMemoryScope,
+	EpisodicScopeDecision,
+	ResolvedEpisodicScope,
 	EpisodicMemorySearchOptions,
 	EpisodicMemoryStatus,
 	EpisodicMemoryTaskLockHandle,
@@ -117,6 +130,10 @@ export type {
 	NewEpisodicMemoryCaptureCandidate,
 	ObservationLogMemoryConfig,
 	ObservationalMemoryConfig,
+	ObservationWindowShares,
+	ObservationLogPlacement,
+	ObservationFailurePolicy,
+	ObservationReflectionMode,
 	CheckpointStore,
 	TitleGenerationConfig,
 } from './sdk/memory';
@@ -132,12 +149,19 @@ export type {
 	VectorFilter,
 } from './sdk/vector-store';
 
-export type { ObservationCursor } from './sdk/observation';
+export type {
+	BuiltObservationResumeStore,
+	ObservationCursor,
+	ObservationResumeState,
+} from './sdk/observation';
 
 export type {
 	BuiltObservationLogStore,
 	BuiltObservationLogTaskLockStore,
 	NewObservationLogEntry,
+	ObservationLogBatch,
+	ObservationLogBatchEntry,
+	ObservationLogBatchCommitResult,
 	ObservationLogEntry,
 	ObservationLogMarker,
 	ObservationLogMerge,

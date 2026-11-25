@@ -16,17 +16,16 @@ import type {
 	StructuredChunk,
 	WebhookResponseMode,
 } from 'n8n-workflow';
-import {
-	ExecutionCancelledError,
-	OperationalError,
-	SystemShutdownExecutionCancelledError,
-} from 'n8n-workflow';
+import { ExecutionCancelledError, SystemShutdownExecutionCancelledError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import { sleep } from '@n8n/utils/sleep';
 import { strict as assert } from 'node:assert';
 import type PCancelable from 'p-cancelable';
 
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
+import { UnsavedManualExecutionService } from '@/execution-lifecycle/unsaved-manual-execution.service';
+import { ExecutionCancelService } from '@/executions/execution-cancel.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type {
 	IExecutingWorkflowData,
@@ -53,6 +52,9 @@ export class ActiveExecutions {
 	/** Response mode by execution ID, if webhook-initiated. */
 	private responseModes = new Map<string, WebhookResponseMode>();
 
+	/** True once `shutdown()` has started. A parked execution is then removed instead of retained for resume. */
+	private isDraining = false;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
@@ -61,6 +63,8 @@ export class ActiveExecutions {
 		private readonly eventService: EventService,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly unsavedManualExecutionService: UnsavedManualExecutionService,
+		private readonly executionCancelService: ExecutionCancelService,
 	) {}
 
 	has(executionId: string) {
@@ -97,6 +101,7 @@ export class ActiveExecutions {
 				const fullExecutionData: CreateExecutionPayload = {
 					data: executionData.executionData!,
 					mode,
+					// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 					finished: false,
 					workflowData: executionData.workflowData,
 					status: executionStatus,
@@ -111,8 +116,17 @@ export class ActiveExecutions {
 					fullExecutionData.workflowId = workflowId;
 				}
 
-				executionId = await this.executionPersistence.create(fullExecutionData);
+				executionId = await this.executionPersistence.create(
+					fullExecutionData,
+					{},
+					{
+						source: executionData.source,
+						// On an error workflow run, this is the project of the workflow that failed, not the owner.
+						projectId: mode === 'error' ? undefined : executionData.projectId,
+					},
+				);
 				assert(executionId);
+				await this.unsavedManualExecutionService.recordStarter(executionId, executionData);
 
 				if (shouldReserveCapacity) {
 					await capacityReservation.reserve({ mode, executionId });
@@ -130,11 +144,15 @@ export class ActiveExecutions {
 					await capacityReservation.reserve({ mode, executionId });
 				}
 
-				const execution: Pick<IExecutionDb, 'id' | 'data' | 'waitTill' | 'status'> = {
+				const execution: Pick<
+					IExecutionDb,
+					'id' | 'data' | 'waitTill' | 'status' | 'resumeAttempts'
+				> = {
 					id: executionId,
 					data: executionData.executionData!,
 					waitTill: null,
 					status: executionStatus,
+					resumeAttempts: 0,
 				};
 
 				const updateSucceeded = await this.executionPersistence.updateExistingExecution(
@@ -179,10 +197,13 @@ export class ActiveExecutions {
 			})
 			.finally(() => {
 				capacityReservation.release();
-				if (execution.status === 'waiting') {
+				execution.postExecuteSettled = true;
+				// A worker never resumes in-process: a main or webhook process resumes it as a new job.
+				const mayResumeHere = !this.isDraining && !this.instanceSettings.isWorker;
+				if (execution.status === 'waiting' && mayResumeHere) {
 					// Do not hold on a reference to the previous WorkflowExecute instance, since a resuming execution will use a new instance
 					delete execution.workflowExecution;
-				} else {
+				} else if (this.activeExecutions[executionId] === execution) {
 					delete this.activeExecutions[executionId];
 					this.responseModes.delete(executionId);
 					this.logger.debug('Execution removed', { executionId });
@@ -376,7 +397,12 @@ export class ActiveExecutions {
 
 		try {
 			await Promise.race([
-				this.executionRepository.cancelManyRunning(executionIds),
+				(async () => {
+					const { recorded } = await this.executionCancelService.markAsCanceled(executionIds, [
+						'running',
+					]);
+					await recorded;
+				})(),
 				new Promise<never>((_, reject) => {
 					timeout = setTimeout(
 						() => reject(new OperationalError('Timed out writing the cancelled status')),
@@ -410,8 +436,16 @@ export class ActiveExecutions {
 		return this.responseModes.get(executionId);
 	}
 
-	/** Wait for all active executions to finish */
+	/**
+	 * Wait for all active executions to finish.
+	 *
+	 * A parked (waiting) execution keeps its entry so a resume can answer its original caller.
+	 * No resume happens during a drain, so a parked entry is dropped as soon as its run has
+	 * stopped writing: here for entries parked before the drain, and in the settle handler
+	 * for entries that park while the drain waits.
+	 */
 	async shutdown(cancelAll = false) {
+		this.isDraining = true;
 		const isRegularMode = this.executionsConfig.mode === 'regular';
 		if (isRegularMode) {
 			// removal of active executions will no longer release capacity back,
@@ -423,12 +457,13 @@ export class ActiveExecutions {
 		let executionIds = Object.keys(this.activeExecutions);
 		const toCancel: string[] = [];
 		for (const executionId of executionIds) {
-			const { status, isQueueJob } = this.activeExecutions[executionId];
+			const { status, isQueueJob, postExecuteSettled } = this.activeExecutions[executionId];
+			const isParked = status === 'waiting' && postExecuteSettled === true;
 			if (isRegularMode && cancelAll) {
 				this.stopExecution(executionId, new SystemShutdownExecutionCancelledError(executionId));
 				toCancel.push(executionId);
-			} else if (status === 'waiting' || status === 'new' || (isWorker && isQueueJob)) {
-				// Remove waiting, new and, on a worker, enqueued executions: these run as Bull jobs that this draining worker never picks up
+			} else if (isParked || status === 'new' || (isWorker && isQueueJob)) {
+				// Remove parked, new and, on a worker, enqueued executions: these run as Bull jobs that this draining worker never picks up
 				delete this.activeExecutions[executionId];
 			}
 		}

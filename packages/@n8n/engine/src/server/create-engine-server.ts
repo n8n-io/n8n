@@ -2,9 +2,14 @@ import express, { type Application } from 'express';
 
 import { createAuthenticationMiddleware } from '../auth/authenticate';
 import type { IdentityVerifier } from '../auth/identity.types';
-import type { CancelExecutionService, ExecutionQueryService } from '../execution';
+import type {
+	CancelExecutionService,
+	ExecutionQueryService,
+	ResumeRequestService,
+} from '../execution';
 import type { StartExecutionService } from '../execution/start-execution.service';
 import type { EngineLogger } from '../logging';
+import { createResumeRequestsRouter, createStepExecutionsRouter } from './routes/resume-requests';
 import { createWorkflowExecutionsRouter } from './routes/workflow-executions';
 
 /**
@@ -19,13 +24,22 @@ export interface EngineServerDeps {
 	startExecution: StartExecutionService;
 	cancelExecution: CancelExecutionService;
 	executionQuery: ExecutionQueryService;
+	/**
+	 * Absent when the host gives no resume secret. Every resume route then
+	 * answers 501. Optional until a later decision says where the secret comes
+	 * from and whether the engine refuses to start without it.
+	 */
+	resumeRequests?: ResumeRequestService;
 	identityVerifier: IdentityVerifier;
 	/** Where the engine writes its own messages. Defaults to the console. */
 	logger?: EngineLogger;
 }
 
-/** Builds the engine HTTP app: `/healthz` plus the authenticated execution API. */
-export function createEngineServer(deps: EngineServerDeps): { app: Application } {
+/**
+ * Builds the engine HTTP app: `/healthz` plus the authenticated execution API.
+ * Without `deps`, the app serves only `/healthz`.
+ */
+export function createEngineServer(deps: EngineServerDeps | undefined): { app: Application } {
 	const app = express();
 
 	// Stays open: a liveness probe, and it reveals nothing.
@@ -33,10 +47,17 @@ export function createEngineServer(deps: EngineServerDeps): { app: Application }
 		res.status(200).json({ status: 'ok' });
 	});
 
+	if (deps === undefined) return { app };
+
 	// Mounted on the prefix, not on each router, so a future router cannot forget it.
 	app.use('/api', createAuthenticationMiddleware(deps.identityVerifier, deps.logger));
 	app.use('/api', express.json({ limit: MAX_BODY_SIZE }));
 	app.use('/api/workflow-executions', createWorkflowExecutionsRouter(deps));
+	app.use('/api/step-executions', createStepExecutionsRouter(deps.resumeRequests));
+	app.use(
+		'/api/resume-requests',
+		createResumeRequestsRouter(deps.resumeRequests, deps.executionQuery),
+	);
 
 	return { app };
 }

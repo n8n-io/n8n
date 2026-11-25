@@ -16,6 +16,7 @@
 // its own tool calls.
 // ---------------------------------------------------------------------------
 
+import { resolveBuilderToolName } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
 import type { EventOutcome } from '../types';
@@ -32,12 +33,12 @@ const SPAWN_PREFIX = 'spawn_sub_agent:';
 function collectInvokedTools(outcome: EventOutcome): string[] {
 	const tools = new Set<string>();
 	for (const tc of outcome.toolCalls) {
-		if (tc.toolName && !wasDeclined(tc)) tools.add(tc.toolName);
+		if (tc.toolName && !wasDeclined(tc)) tools.add(resolveBuilderToolName(tc.toolName));
 	}
 	for (const agent of outcome.agentActivities) {
-		for (const t of agent.tools) tools.add(t);
+		for (const t of agent.tools) tools.add(resolveBuilderToolName(t));
 		for (const tc of agent.toolCalls) {
-			if (tc.toolName && !wasDeclined(tc)) tools.add(tc.toolName);
+			if (tc.toolName && !wasDeclined(tc)) tools.add(resolveBuilderToolName(tc.toolName));
 		}
 	}
 	return [...tools];
@@ -53,7 +54,8 @@ function matches(name: string, invokedTools: string[], spawnedAgents: string[]):
 	if (name.startsWith(SPAWN_PREFIX)) {
 		return spawnedAgents.includes(name);
 	}
-	return invokedTools.includes(name);
+	// Stored cases can name a tool by its former builder tool name.
+	return invokedTools.includes(resolveBuilderToolName(name));
 }
 
 function validateRule(rule: ExpectedToolInvocations): void {
@@ -78,7 +80,9 @@ function toolCallMatchesExpectation(
 	expectation: ForbiddenToolCall,
 ): boolean {
 	if (wasDeclined(toolCall) !== (expectation.declined ?? false)) return false;
-	if (toolCall.toolName !== expectation.toolName) return false;
+	if (resolveBuilderToolName(toolCall.toolName) !== resolveBuilderToolName(expectation.toolName)) {
+		return false;
+	}
 	if (expectation.args && !matchesArgPattern(expectation.args, toolCall.args)) return false;
 
 	const argsContainAny = expectation.argsContainAny ?? [];
@@ -217,9 +221,22 @@ export function runExpectedToolsInvokedCheck(
 }
 
 /**
+ * Whether the calls so far satisfy each rule that requires a call. A scenario
+ * that only forbids calls has nothing to wait for.
+ */
+export function requiredCallsMade(scenario: DiscoveryTestCase, outcome: EventOutcome): boolean {
+	const { anyOf, anyOfToolCalls, allOfToolCalls } = scenario.expectedToolInvocations;
+	const required = { anyOf, anyOfToolCalls, allOfToolCalls };
+	if (!Object.values(required).some((rule) => rule && rule.length > 0)) return true;
+	return runExpectedToolsInvokedCheck({ ...scenario, expectedToolInvocations: required }, outcome)
+		.pass;
+}
+
+/**
  * Only a run that finished on its own terms can settle an expectation, so anything else
  * fails whichever way the expectation points — a truncated run that satisfied a positive
- * expectation still means the agent never got to finish what it was doing.
+ * expectation still means the agent never got to finish what it was doing. A turn that
+ * ends at a question to the user finished on its own terms.
  */
 export function evaluateDiscoveryTrial(
 	scenario: DiscoveryTestCase,
@@ -245,6 +262,7 @@ function invalidTrialReason(trial: DiscoveryTrialFacts): string | undefined {
 		case 'stopped-on-route':
 			return undefined;
 		case 'completed':
+		case 'waiting-for-user':
 			return trial.unmatchedConfirmations.length > 0
 				? `Scenario declared confirmation answers for [${trial.unmatchedConfirmations.join(', ')}] that no suspension asked for, so those decisions never ran.`
 				: undefined;

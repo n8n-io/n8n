@@ -2,9 +2,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/unbound-method */
 import { OpenAI } from '@langchain/openai';
-import { makeN8nLlmFailedAttemptHandler, aiClientFetch } from '@n8n/ai-utilities';
+import { makeN8nLlmFailedAttemptHandler, aiClientFetch, getProxyAgent } from '@n8n/ai-utilities';
+import { createResultOk } from '@n8n/utils/result';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
-import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
+import type { INode, ISupplyDataFunctions, NodeEgressFilter } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
 import { LmLemonade } from '../LmLemonade.node';
@@ -15,6 +16,15 @@ vi.mock('@n8n/ai-utilities');
 const MockedOpenAI = vi.mocked(OpenAI);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
 const mockedAiClientFetch = vi.mocked(aiClientFetch);
+const mockedGetProxyAgent = vi.mocked(getProxyAgent);
+
+const egressFilter: NodeEgressFilter = {
+	validateUrl: vi.fn().mockResolvedValue(createResultOk(undefined)),
+	validateConnectionHost: vi.fn().mockReturnValue(createResultOk(undefined)),
+	createSecureLookup: vi.fn().mockReturnValue(vi.fn()),
+	validateRedirectSync: vi.fn(),
+};
+const dispatcher = { kind: 'dispatcher' };
 
 describe('LmLemonade', () => {
 	let node: LmLemonade;
@@ -46,6 +56,8 @@ describe('LmLemonade', () => {
 		});
 
 		mockedMakeN8nLlmFailedAttemptHandler.mockReturnValue(vi.fn());
+		ctx.helpers.getSecureEgressFilter = vi.fn().mockReturnValue(egressFilter);
+		mockedGetProxyAgent.mockReturnValue(dispatcher as never);
 		return ctx;
 	};
 
@@ -71,6 +83,25 @@ describe('LmLemonade', () => {
 				}),
 			);
 			expect(result).toEqual({ response: expect.any(Object) });
+		});
+
+		it('should pass the egress-filtered dispatcher to the client', async () => {
+			const ctx = setupMockContext();
+
+			await node.supplyData.call(ctx, 0);
+
+			expect(mockedGetProxyAgent).toHaveBeenCalledWith(
+				'http://localhost:8000/api/v1',
+				{},
+				egressFilter,
+			);
+			expect(MockedOpenAI).toHaveBeenCalledWith(
+				expect.objectContaining({
+					configuration: expect.objectContaining({
+						fetchOptions: { dispatcher },
+					}),
+				}),
+			);
 		});
 	});
 });

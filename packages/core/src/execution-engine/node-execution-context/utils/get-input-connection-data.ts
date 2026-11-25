@@ -24,20 +24,18 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
-	UnexpectedError,
 	ExecutionBaseError,
 	NodeConnectionTypes,
 	NodeOperationError,
-	UserError,
 	isHitlToolType,
 } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import z, { ZodType } from 'zod';
 
 import { StructuredToolkit, type SupplyDataToolResponse } from './ai-tool-types';
 import { createNodeAsTool, getSchema } from './create-node-as-tool';
 import type { ExecuteContext, WebhookContext } from '../../node-execution-context';
-// eslint-disable-next-line import-x/no-cycle
-import { SupplyDataContext } from '../../node-execution-context/supply-data-context';
+import type { SupplyDataContext } from '../../node-execution-context/supply-data-context';
 import { isEngineRequest } from '../../requests-response';
 
 /**
@@ -116,6 +114,7 @@ export function createHitlToolkit(
  * 5. If denied: denial message → Agent knows not to retry
  */
 export async function createHitlToolSupplyData(
+	supplyDataContextClass: typeof SupplyDataContext,
 	hitlNode: INode,
 	workflow: Workflow,
 	runExecutionData: IRunExecutionData,
@@ -130,7 +129,7 @@ export async function createHitlToolSupplyData(
 	abortSignal?: AbortSignal,
 	parentNode?: INode,
 ): Promise<SupplyData> {
-	const context = new SupplyDataContext(
+	const context = new supplyDataContextClass(
 		workflow,
 		hitlNode,
 		additionalData,
@@ -232,8 +231,14 @@ function mapResult(result?: NodeOutput) {
 	return { response, nodeHasMixedJsonAndBinaryData, sendMessage };
 }
 
+/** The signal that aborts when one of `signals` aborts. Undefined when there is none. */
+function anySignal(...signals: Array<AbortSignal | undefined>): AbortSignal | undefined {
+	const defined = signals.filter((signal) => signal !== undefined);
+	return defined.length > 1 ? AbortSignal.any(defined) : defined[0];
+}
+
 export function makeHandleToolInvocation(
-	contextFactory: (runIndex: number) => ISupplyDataFunctions,
+	contextFactory: (runIndex: number, invocationSignal?: AbortSignal) => ISupplyDataFunctions,
 	node: INode,
 	nodeType: INodeType,
 	runExecutionData: IRunExecutionData,
@@ -246,7 +251,7 @@ export function makeHandleToolInvocation(
 	// of the same tool when the tool is used in a loop or in a parallel execution.
 	let runIndex = getNextRunIndex(runExecutionData, node.name);
 
-	return async (toolArgs: IDataObject) => {
+	return async (toolArgs: IDataObject, invocationSignal?: AbortSignal) => {
 		let maxTries = 1;
 		if (node.retryOnFail === true) {
 			maxTries = Math.min(5, Math.max(2, node.maxTries ?? 3));
@@ -262,7 +267,7 @@ export function makeHandleToolInvocation(
 		for (let tryIndex = 0; tryIndex < maxTries; tryIndex++) {
 			// Increment the runIndex for the next invocation
 			const localRunIndex = runIndex++;
-			const context = contextFactory(localRunIndex);
+			const context = contextFactory(localRunIndex, invocationSignal);
 
 			// Get abort signal from context for cancellation support
 			const abortSignal = context.getExecutionCancelSignal?.();
@@ -309,7 +314,9 @@ export function makeHandleToolInvocation(
 			} catch (error) {
 				// Check if error is due to cancellation
 				if (abortSignal?.aborted) {
-					throw new NodeOperationError(node, 'Execution was cancelled');
+					const cancelError = new NodeOperationError(node, 'Execution was cancelled');
+					context.addOutputData(NodeConnectionTypes.AiTool, localRunIndex, cancelError);
+					throw cancelError;
 				}
 
 				const nodeError = new NodeOperationError(node, error as Error);
@@ -394,6 +401,7 @@ export function extendResponseMetadata(response: unknown, connectedNode: INode) 
 
 export async function getInputConnectionData(
 	this: ExecuteContext | WebhookContext | SupplyDataContext,
+	supplyDataContextClass: typeof SupplyDataContext,
 	workflow: Workflow,
 	runExecutionData: IRunExecutionData,
 	parentRunIndex: number,
@@ -448,6 +456,7 @@ export async function getInputConnectionData(
 		// HITL tools need special handling to create the middleware tool
 		if (isHitlToolType(connectedNode?.type)) {
 			const supplyData = await createHitlToolSupplyData(
+				supplyDataContextClass,
 				connectedNode,
 				workflow,
 				runExecutionData,
@@ -470,8 +479,12 @@ export async function getInputConnectionData(
 			connectedNode.type,
 			connectedNode.typeVersion,
 		);
-		const contextFactory = (runIndex: number, inputData: ITaskDataConnections) =>
-			new SupplyDataContext(
+		const contextFactory = (
+			runIndex: number,
+			inputData: ITaskDataConnections,
+			invocationSignal?: AbortSignal,
+		) =>
+			new supplyDataContextClass(
 				workflow,
 				connectedNode,
 				additionalData,
@@ -483,7 +496,7 @@ export async function getInputConnectionData(
 				connectionType,
 				executeData,
 				closeFunctions,
-				abortSignal,
+				anySignal(abortSignal, invocationSignal),
 				parentNode,
 			);
 
@@ -493,7 +506,7 @@ export async function getInputConnectionData(
 					node: connectedNode,
 					nodeType: connectedNodeType,
 					handleToolInvocation: makeHandleToolInvocation(
-						(i) => contextFactory(i, {}),
+						(i, invocationSignal) => contextFactory(i, {}, invocationSignal),
 						connectedNode,
 						connectedNodeType,
 						runExecutionData,
@@ -512,6 +525,7 @@ export async function getInputConnectionData(
 				});
 			}
 		} else {
+			// This context has the execution signal only. A failed agent run does not cancel the calls of this tool.
 			const context = contextFactory(parentRunIndex, parentInputData);
 			try {
 				const supplyData = await connectedNodeType.supplyData.call(context, itemIndex);
@@ -537,33 +551,35 @@ export async function getInputConnectionData(
 					});
 				}
 
-				let currentNodeRunIndex = 0;
-				if (runExecutionData.resultData.runData.hasOwnProperty(parentNode.name)) {
-					currentNodeRunIndex = runExecutionData.resultData.runData[parentNode.name].length;
-				}
-
-				// The `subRun` entry is merged onto `runData[<name>][currentNodeRunIndex]` at the
-				// end of the execution, so it has to name a node that gets a record there. A
-				// top-level parent gets one appended right after this failure; a sub-node parent
-				// never does.
-				const subRunTarget = this instanceof SupplyDataContext ? undefined : parentNode.name;
-
-				// Display the error on the node which is causing it
+				// Display the error on the node which is causing it. The run goes after the runs
+				// this sub-node already recorded, not at the parent's run count.
+				const subNodeRunIndex = context.getNextRunIndex();
 				await context.addExecutionDataFunctions(
 					'input',
 					error,
 					connectionType,
-					subRunTarget,
-					currentNodeRunIndex,
+					undefined,
+					subNodeRunIndex,
 				);
 
 				await context.addExecutionDataFunctions(
 					'output',
 					error,
 					connectionType,
-					subRunTarget,
-					currentNodeRunIndex,
+					undefined,
+					subNodeRunIndex,
 				);
+
+				// The `subRun` entry is merged onto `runData[parent][parentRunCount]` at the end
+				// of the execution, so the parent must get a record there. A top-level parent gets
+				// one appended right after this failure; a sub-node parent never does.
+				if (!(this instanceof supplyDataContextClass)) {
+					let parentRunCount = 0;
+					if (Object.hasOwn(runExecutionData.resultData.runData, parentNode.name)) {
+						parentRunCount = runExecutionData.resultData.runData[parentNode.name].length;
+					}
+					context.stageSubRun(parentNode.name, parentRunCount, subNodeRunIndex);
+				}
 
 				// Display on the calling node which node has the error
 				throw new NodeOperationError(connectedNode, `Error in sub-node ${connectedNode.name}`, {

@@ -16,15 +16,18 @@ const i18n = useI18n();
 const labels = computed<Record<BreakingChangeRuleImpact, string>>(() => ({
 	upgradeBlocked: i18n.baseText('settings.migrationReport.impact.upgradeBlocked'),
 	executionsFail: i18n.baseText('settings.migrationReport.impact.executionsFail'),
+	executionsMightFail: i18n.baseText('settings.migrationReport.impact.executionsMightFail'),
 	behaviorChanges: i18n.baseText('settings.migrationReport.impact.behaviorChanges'),
 	capabilityRemoved: i18n.baseText('settings.migrationReport.impact.capabilityRemoved'),
 }));
 
 // Danger for impacts that stop the instance or the executions, warning when
-// runs continue with a different result, neutral when nothing at runtime changes.
+// runs continue with a different result or when only a default changes that the
+// admin can override, neutral when nothing at runtime changes.
 const badgeVariants: Record<BreakingChangeRuleImpact, BadgeVariant> = {
 	upgradeBlocked: 'danger',
 	executionsFail: 'danger',
+	executionsMightFail: 'warning',
 	behaviorChanges: 'warning',
 	capabilityRemoved: 'outline',
 };

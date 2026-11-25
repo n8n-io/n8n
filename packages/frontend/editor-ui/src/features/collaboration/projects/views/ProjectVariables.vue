@@ -11,6 +11,7 @@ import { computed, onMounted, ref, useTemplateRef } from 'vue';
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
 
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
+import ResourcesListEmptyState from '@/app/components/layouts/ResourcesListEmptyState.vue';
 import type { BaseFilters, Resource, VariableResource, DatatableColumn } from '@/Interface';
 
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -38,6 +39,7 @@ import { useEnvironmentsStore } from '@/features/settings/environments.ee/enviro
 import type { EnvironmentVariable } from '@/features/settings/environments.ee/environments.types';
 import VariablesUsageBadge from '@/features/settings/environments.ee/components/VariablesUsageBadge.vue';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { getProtectedInstanceTooltip } from '@/features/integrations/sourceControl.ee/sourceControl.utils';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
@@ -108,6 +110,22 @@ const globalVariables = computed(() => environmentsStore.variables.filter((v) =>
 const canCreateVariables = computed(
 	() =>
 		isFeatureEnabled.value && (globalPermissions.value.create ?? projectPermissions.value.create),
+);
+
+// On a protected instance, source control owns which variables exist and their keys.
+// Users can still edit values, because source control does not carry them.
+const isProtectedInstance = computed(() => sourceControlStore.preferences.branchReadOnly);
+
+const canDeleteVariables = computed(
+	() =>
+		!isProtectedInstance.value &&
+		!!(globalPermissions.value.delete ?? projectPermissions.value.delete),
+);
+
+const deleteDisabledTooltip = computed(() =>
+	isProtectedInstance.value
+		? getProtectedInstanceTooltip()
+		: i18n.baseText('variables.row.button.delete.onlyRoleCanDelete'),
 );
 
 const columns = computed(() => {
@@ -331,7 +349,7 @@ onMounted(() => {
 				/>
 
 				<N8nCheckbox
-					label="Value missing"
+					:label="i18n.baseText('variables.filters.incomplete')"
 					data-test-id="variable-filter-incomplete"
 					:model-value="filters.incomplete"
 					@update:model-value="setKeyValue('incomplete', $event)"
@@ -383,7 +401,7 @@ onMounted(() => {
 		<template v-if="!isFeatureEnabled" #preamble>
 			<N8nEmptyState class="mb-m" v-bind="unavailableNoticeProps" />
 		</template>
-		<template v-if="!isFeatureEnabled || (isFeatureEnabled && !canCreateVariables)" #empty>
+		<template v-if="!isFeatureEnabled || !canCreateVariables || isProtectedInstance" #empty>
 			<N8nEmptyState v-if="!isFeatureEnabled" v-bind="unavailableNoticeProps" />
 			<N8nEmptyState
 				v-else-if="!canCreateVariables"
@@ -395,6 +413,12 @@ onMounted(() => {
 				"
 				:description="i18n.baseText('variables.empty.notAllowedToCreate.description')"
 			/>
+			<ResourcesListEmptyState
+				v-else
+				resource-key="variables"
+				:button-disabled="true"
+				:disabled-tooltip-text="i18n.baseText('readOnlyEnv.cantAdd.any')"
+			/>
 		</template>
 		<template #default="{ data }">
 			<tr data-test-id="variables-row">
@@ -405,7 +429,9 @@ onMounted(() => {
 					<template v-if="data.value">
 						<span v-n8n-truncate:20="data.value" />
 					</template>
-					<N8nBadge v-else variant="warning"> Value missing </N8nBadge>
+					<N8nBadge v-else variant="warning">{{
+						i18n.baseText('variables.row.valueMissing')
+					}}</N8nBadge>
 				</td>
 				<td>
 					<VariablesUsageBadge v-if="data.key" :name="data.key" />
@@ -422,6 +448,7 @@ onMounted(() => {
 					<div class="action-buttons">
 						<N8nTooltip
 							:disabled="globalPermissions.update ?? projectPermissions.update"
+							as-child
 							placement="top"
 						>
 							<N8nButton
@@ -430,6 +457,7 @@ onMounted(() => {
 								data-test-id="variable-row-edit-button"
 								class="mr-xs"
 								:disabled="!(globalPermissions.update ?? projectPermissions.update)"
+								focusable-when-disabled
 								@click="openEditVariableModal(data)"
 							>
 								{{ i18n.baseText('variables.row.button.edit') }}
@@ -439,21 +467,22 @@ onMounted(() => {
 							</template>
 						</N8nTooltip>
 						<N8nTooltip
-							:disabled="globalPermissions.delete ?? projectPermissions.delete"
+							:disabled="canDeleteVariables"
+							as-child
+							:content="deleteDisabledTooltip"
 							placement="top"
 						>
+							<template #content>{{ deleteDisabledTooltip }}</template>
 							<N8nButton
 								variant="outline"
 								size="small"
 								data-test-id="variable-row-delete-button"
-								:disabled="!(globalPermissions.delete ?? projectPermissions.delete)"
+								:disabled="!canDeleteVariables"
+								focusable-when-disabled
 								@click="handleDeleteVariable(data)"
 							>
 								{{ i18n.baseText('variables.row.button.delete') }}
 							</N8nButton>
-							<template #content>
-								{{ i18n.baseText('variables.row.button.delete.onlyRoleCanDelete') }}
-							</template>
 						</N8nTooltip>
 					</div>
 				</td>
@@ -486,6 +515,10 @@ onMounted(() => {
 	justify-content: end;
 	opacity: 0;
 	transition: opacity 0.2s ease;
+
+	&:focus-within {
+		opacity: 1;
+	}
 }
 
 :deep(.datatable) {

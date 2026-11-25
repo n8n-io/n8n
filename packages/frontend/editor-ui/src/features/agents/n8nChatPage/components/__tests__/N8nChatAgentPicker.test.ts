@@ -1,5 +1,6 @@
 import { computed, ref, type Ref } from 'vue';
 import userEvent from '@testing-library/user-event';
+import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import type { AgentChatListItem } from '@n8n/api-types';
 
@@ -28,9 +29,17 @@ vi.mock('../../../composables/useCreateAgent', () => ({
 	useCreateAgent: () => ({ createAgent: createAgentMock }),
 }));
 
+const connectIntegrationMock = vi.fn();
+const publishAgentMock = vi.fn();
+vi.mock('../../../composables/useAgentApi', () => ({
+	connectIntegration: (...args: unknown[]) => connectIntegrationMock(...args),
+	publishAgent: (...args: unknown[]) => publishAgentMock(...args),
+}));
+
 const pushMock = vi.fn();
 vi.mock('vue-router', () => ({
 	useRouter: () => ({ push: pushMock }),
+	useRoute: () => ({ params: {}, query: {} }),
 }));
 
 function agent(id: string, name: string, description?: string): AgentChatListItem {
@@ -40,6 +49,7 @@ function agent(id: string, name: string, description?: string): AgentChatListIte
 		description,
 		project: { id: 'project-1', name: 'Project' },
 		attachments: { image: false, pdf: false, audio: false },
+		availableInChat: true,
 	};
 }
 
@@ -51,16 +61,17 @@ function setup(
 		disabled?: boolean;
 	} = { modelValue: null },
 ) {
+	const retry = vi.fn();
 	useN8nChatAgentsMock.mockReturnValue({
 		agents: ref(result.agents),
 		count: ref(result.count),
 		isLoading: ref(result.isLoading ?? false),
 		loadFailed: ref(false),
-		retry: vi.fn(),
+		retry,
 	});
 
 	const renderComponent = createComponentRenderer(N8nChatAgentPicker);
-	return renderComponent({ props });
+	return { ...renderComponent({ props, pinia: createTestingPinia() }), retry };
 }
 
 describe('N8nChatAgentPicker', () => {
@@ -227,5 +238,31 @@ describe('N8nChatAgentPicker', () => {
 		await userEvent.click(trigger);
 
 		expect(queryByTestId('n8n-chat-agent-picker-menu')).not.toBeInTheDocument();
+	});
+
+	it('publishes an agent not in n8n Chat to it after confirmation, then selects it', async () => {
+		const draft = { ...agent('a1', 'Recruiting screener'), availableInChat: false };
+		const { getByTestId, findByTestId, emitted, retry } = setup({ agents: [draft], count: 1 });
+
+		await userEvent.click(getByTestId('n8n-chat-agent-picker-trigger'));
+		expect(await findByTestId('n8n-chat-agent-picker-make-available-a1')).toHaveTextContent(
+			'Make available',
+		);
+		await userEvent.click(getByTestId('n8n-chat-agent-picker-item-a1'));
+
+		await userEvent.click(await findByTestId('n8n-chat-make-available-confirm'));
+
+		await waitFor(() => {
+			expect(emitted('update:modelValue')).toEqual([[{ ...draft, availableInChat: true }]]);
+		});
+		expect(connectIntegrationMock).toHaveBeenCalledWith(
+			expect.anything(),
+			'project-1',
+			'a1',
+			'n8n_chat',
+			'',
+		);
+		expect(publishAgentMock).toHaveBeenCalledWith(expect.anything(), 'project-1', 'a1');
+		expect(retry).toHaveBeenCalled();
 	});
 });

@@ -108,10 +108,7 @@ function parseNodeName(node: AstNode | namedTypes.MemberExpression['property']):
 function parseLegacyNodeName(node: namedTypes.MemberExpression): string | null {
 	if (node.computed === true) return parseNodeName(node.property);
 
-	const { property } = node;
-	if (property.type !== 'Identifier' || !isSafeObjectProperty(property.name)) return null;
-
-	return property.name;
+	return parseStaticKey(node.property);
 }
 
 // `$('Name')`, `$input` or `$node['Name']` in object/receiver position, or
@@ -207,8 +204,15 @@ function parseComputedKey(
 }
 
 // `a.b`: the key is an identifier.
+// `.$` declines: the engine's DollarSignValidator accepts it only in some
+// positions, so the engine decides.
 function parseStaticKey(property: namedTypes.MemberExpression['property']): string | null {
-	if (property.type !== 'Identifier' || !isSafeObjectProperty(property.name)) return null;
+	if (property.type !== 'Identifier' || property.name === '$') {
+		return null;
+	}
+	if (!isSafeObjectProperty(property.name)) {
+		return null;
+	}
 
 	return property.name;
 }
@@ -338,12 +342,13 @@ function parseChain(node: namedTypes.ChainExpression, parse: ParseChild): Simple
  * Once a chunk holds an extension call, extendTransform rewrites every
  * optional chain in it through its own polyfill, and that reprint drops the
  * parentheses around a `??` operand mixed with `&&` or `||`: the engines
- * then throw "invalid syntax" where this interpreter would evaluate. A
- * chunk with both an optional chain and an extension call is theirs. The
- * rewrite matches by method name alone, so a node-ref call like
- * `$input.first()` counts too.
+ * then throw "invalid syntax" where this interpreter would evaluate. An
+ * extension call in any chunk sends every chunk through the rewrite, so an
+ * expression with both an optional chain and an extension call is theirs,
+ * even when the two are in different chunks. The rewrite matches by method
+ * name alone, so a node-ref call like `$input.first()` counts too.
  */
-export function usesPolyfilledChain(root: SimpleNode): boolean {
+export function usesPolyfilledChain(roots: SimpleNode[]): boolean {
 	let chain = false;
 	let extension = false;
 	const visit = (node: SimpleNode): void => {
@@ -383,7 +388,7 @@ export function usesPolyfilledChain(root: SimpleNode): boolean {
 				return;
 		}
 	};
-	visit(root);
+	roots.forEach(visit);
 	return chain && extension;
 }
 

@@ -1,7 +1,7 @@
 /**
  * Node-level diff between a built workflow and its previously saved version.
  *
- * `build-workflow` round-trips the whole workflow (get-as-code → edit → build),
+ * `workflow_builder_build_workflow` round-trips the whole workflow (get-as-code → edit → build),
  * so every build re-submits nodes the user never asked to touch. These helpers
  * let the build pipeline tell touched nodes apart from pre-existing ones, so
  * validation and setup routing never punish a node for merely being present.
@@ -125,6 +125,19 @@ function nodeUnchanged(node: NodeJSON, saved: NodeJSON): boolean {
 		node.name === saved.name &&
 		isDeepStrictEqual(node.credentials ?? {}, saved.credentials ?? {}) &&
 		(node.disabled ?? false) === (saved.disabled ?? false)
+	);
+}
+
+/** Codegen writes boolean settings only when true, so `false` and absent compare equal. */
+function executionSettingsUnchanged(node: NodeJSON, saved: NodeJSON): boolean {
+	return (
+		Boolean(node.executeOnce) === Boolean(saved.executeOnce) &&
+		Boolean(node.retryOnFail) === Boolean(saved.retryOnFail) &&
+		Boolean(node.alwaysOutputData) === Boolean(saved.alwaysOutputData) &&
+		node.maxTries === saved.maxTries &&
+		node.waitBetweenTries === saved.waitBetweenTries &&
+		node.onError === saved.onError &&
+		node.extendsCredential === saved.extendsCredential
 	);
 }
 
@@ -256,6 +269,13 @@ export function downgradeUnchangedNodeBlockers(
 				warning.code === 'chat_model_validation' &&
 				(!isDeepStrictEqual(node.credentials ?? {}, saved.credentials ?? {}) ||
 					(node.disabled ?? false) !== (saved.disabled ?? false))
+			)
+				return warning;
+		} else if (warning.code === 'PREFER_PREDEFINED_CREDENTIAL') {
+			if (
+				!nodeUnchanged(node, saved) ||
+				!executionSettingsUnchanged(node, saved) ||
+				wiredIntoFlow(node, saved, builtSignatures, savedSignatures)
 			)
 				return warning;
 		} else {

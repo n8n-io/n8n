@@ -3,11 +3,11 @@ import { test, expect } from '../../../../../fixtures/base';
 test.describe(
 	'Manual partial execution',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Execution' }],
 	},
 	() => {
-		test('should not execute parent nodes with no run data', async ({ n8n }) => {
-			await n8n.start.fromImportedWorkflow('manual-partial-execution.json');
+		test('should not execute parent nodes with no run data @engine:v2', async ({ n8n }) => {
+			const { workflowId } = await n8n.start.fromImportedWorkflow('manual-partial-execution.json');
 			await n8n.canvas.clickZoomToFitButton();
 
 			await n8n.canvas.openNode('Edit Fields');
@@ -21,25 +21,30 @@ test.describe(
 			await expect(n8n.ndv.getNodeRunSuccessIndicator()).toBeHidden();
 			await expect(n8n.ndv.getNodeRunTooltipIndicator()).toBeHidden();
 			await expect(n8n.ndv.outputPanel.getRunSelector()).toBeHidden();
+
+			await n8n.api.workflows.assertLatestExecutionRoutedToEngine(workflowId);
 		});
 
-		test('should report a user error, not crash, when the only upstream node is disabled', async ({
+		test('should report a user error, not crash, when the only upstream node is disabled @engine:v2', async ({
 			n8n,
 		}, testInfo) => {
 			const { containerConfig } = testInfo.project.use as {
-				containerConfig?: { workers?: number };
+				containerConfig?: { workers?: number; engine?: string };
 			};
-			// In queue mode the partial run is handled by a worker, so the UserError never
-			// reaches the main-process UI as a toast. Only assert it in direct (main-only) mode.
+			// In queue mode a worker runs a legacy partial run, so the UserError never
+			// reaches the main-process UI as a toast. Engine v2 runs go to the engine, not
+			// to a worker, so a stack with engine v2 still shows the toast.
 			test.skip(
-				Boolean(containerConfig?.workers),
+				Boolean(containerConfig?.workers) && !containerConfig?.engine,
 				'Toast is only shown when the run executes on a main',
 			);
 
 			// Pinned Webhook -> Process. A full run gives both nodes run data (from the pinned
 			// webhook); disabling the Webhook then leaves Process with no enabled upstream node
 			// to start from.
-			await n8n.start.fromImportedWorkflow('partial-execution-disabled-pinned-parent.json');
+			const { workflowId } = await n8n.start.fromImportedWorkflow(
+				'partial-execution-disabled-pinned-parent.json',
+			);
 			await n8n.canvas.clickZoomToFitButton();
 
 			await n8n.canvas.clickExecuteWorkflowButton();
@@ -55,15 +60,21 @@ test.describe(
 					.getNotificationByContent(/Connect a trigger and make sure it's enabled/)
 					.first(),
 			).toBeVisible();
+
+			await n8n.api.workflows.assertLatestExecutionRoutedToEngine(workflowId);
 		});
 
 		test.describe('partial execution v2', () => {
-			test('should execute from the first dirty node up to the current node', async ({ n8n }) => {
+			test('should execute from the first dirty node up to the current node @engine:v2', async ({
+				n8n,
+			}) => {
 				const nodeNames = ['A', 'B', 'C'];
 
 				await n8n.navigate.toWorkflow('new');
 				await n8n.partialExecutionComposer.enablePartialExecutionV2();
-				await n8n.start.fromImportedWorkflow('Test_workflow_partial_execution_v2.json');
+				const { workflowId } = await n8n.start.fromImportedWorkflow(
+					'Test_workflow_partial_execution_v2.json',
+				);
 				await n8n.canvas.clickZoomToFitButton();
 
 				await n8n.partialExecutionComposer.executeFullWorkflowAndVerifySuccess(nodeNames);
@@ -79,6 +90,8 @@ test.describe(
 				await n8n.partialExecutionComposer.openNodeForDataVerification('A');
 
 				await expect(n8n.ndv.outputPanel.getTbodyCell(0, 0)).toHaveText(beforeText);
+
+				await n8n.api.workflows.assertLatestExecutionRoutedToEngine(workflowId);
 			});
 		});
 	},

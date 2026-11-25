@@ -8,6 +8,7 @@ import { jsonParse } from 'n8n-workflow';
 
 import { AgentCredentialLookupService } from '../../agent-credential-lookup.service';
 import { stringProperty } from '../../integration-helpers';
+import { GRAPH_APP_ROLES } from './teams-graph-permissions';
 
 const TEAMS_CREDENTIAL_TYPE = 'microsoftEntraServicePrincipalApi';
 
@@ -16,7 +17,6 @@ const BOT_FRAMEWORK_SCOPE = 'https://api.botframework.com/.default';
 
 /** Graph lists the app permissions it granted in the token's `roles` claim. */
 const GRAPH_SCOPE = 'https://graph.microsoft.com/.default';
-const FILES_READ_ALL = 'Files.Read.All';
 
 /** The only cloud the Teams channel reaches, matching what the channel enforces. */
 const GLOBAL_GRAPH_API_BASE_URL = 'https://graph.microsoft.com';
@@ -102,9 +102,13 @@ export class TeamsCredentialCheckService {
 		try {
 			const { token } = await this.requestToken(secret, GRAPH_SCOPE);
 			if (!token) return { status: 'unknown' };
-			return { status: rolesOf(token).includes(FILES_READ_ALL) ? 'approved' : 'notApproved' };
+			const granted = rolesOf(token);
+			const approved = GRAPH_APP_ROLES.every(({ permission }) => granted.includes(permission));
+			return { status: approved ? 'approved' : 'notApproved' };
 		} catch (error) {
-			this.logger.debug('[TeamsCredentialCheck] Could not read the file access grant', { error });
+			this.logger.debug('[TeamsCredentialCheck] Could not read the Graph permission grant', {
+				error,
+			});
 			return { status: 'unknown' };
 		}
 	}

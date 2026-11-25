@@ -1,17 +1,22 @@
+import { UpdateAgentDto } from '@n8n/api-types';
 import type { Mocked } from 'vitest';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
+import { LockedError } from '@n8n/errors';
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { FolderService } from '@/services/folder.service';
 
 import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
 import type { AgentDefaultModelResolverService } from '../agent-default-model-resolver.service';
 import type { AgentPublishService } from '../agent-publish.service';
+import type { AgentConfigService } from '../agent-config.service';
+import { AgentResponseMapper } from '../agent-response.mapper';
 import { AgentRunnableStateService } from '../agent-runnable-state.service';
 import type { AgentsService } from '../agents.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import { AgentsController } from '../agents.controller';
-import type { CollaborationService } from '@/collaboration/collaboration.service';
+import type { AgentWriteLockService } from '../agent-write-lock.service';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
@@ -22,27 +27,29 @@ function makeController({
 	agentsService = mock<
 		Pick<
 			AgentsService,
-			'create' | 'findById' | 'findByProjectId' | 'findByProjectIdPaginated' | 'delete'
+			'createOrAdopt' | 'findById' | 'findByProjectId' | 'findByProjectIdPaginated' | 'delete'
 		>
 	>(),
 	agentPublishService = mock<AgentPublishService>(),
 	agentValidationService = mock<AgentValidationService>(),
 	credentialsService = mock<CredentialsService>(),
 	agentDefaultModelResolverService = mock<AgentDefaultModelResolverService>(),
-	collaborationService = mock<CollaborationService>(),
+	agentWriteLockService = mock<AgentWriteLockService>(),
+	agentConfigService = mock<AgentConfigService>(),
 	skillRefs = createAgentSkillRefsService(),
 }: {
 	agentsService?: Mocked<
 		Pick<
 			AgentsService,
-			'create' | 'findById' | 'findByProjectId' | 'findByProjectIdPaginated' | 'delete'
+			'createOrAdopt' | 'findById' | 'findByProjectId' | 'findByProjectIdPaginated' | 'delete'
 		>
 	>;
 	agentPublishService?: Mocked<AgentPublishService>;
 	agentValidationService?: Mocked<AgentValidationService>;
 	credentialsService?: Mocked<CredentialsService>;
 	agentDefaultModelResolverService?: Mocked<AgentDefaultModelResolverService>;
-	collaborationService?: Mocked<CollaborationService>;
+	agentWriteLockService?: Mocked<AgentWriteLockService>;
+	agentConfigService?: Mocked<AgentConfigService>;
 	skillRefs?: ReturnType<typeof createAgentSkillRefsService>;
 } = {}) {
 	const agentRunnableStateService = new AgentRunnableStateService(
@@ -51,17 +58,24 @@ function makeController({
 		agentPublishService,
 		skillRefs,
 	);
+	const agentResponseMapper = new AgentResponseMapper(
+		agentRunnableStateService,
+		mock<FolderService>(),
+	);
 
 	return {
 		controller: new AgentsController(
 			agentsService as unknown as AgentsService,
-			agentRunnableStateService,
+			agentResponseMapper,
 			agentDefaultModelResolverService,
-			collaborationService,
+			agentWriteLockService,
+			agentConfigService,
 		),
 		agentsService,
 		agentPublishService,
 		agentValidationService,
+		agentConfigService,
+		agentWriteLockService,
 	};
 }
 
@@ -74,6 +88,7 @@ describe('AgentsController route access scopes', () => {
 		['create', 'agent:create'],
 		['list', 'agent:list'],
 		['get', 'agent:read'],
+		['update', 'agent:update'],
 		['delete', 'agent:delete'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(routes.get(handlerName)?.accessScope?.scope).toBe(scope);
@@ -86,9 +101,14 @@ describe('AgentsController create', () => {
 	function makeCreateController(createdId: string) {
 		const agentPublishService = mock<AgentPublishService>();
 		const agentValidationService = mock<AgentValidationService>();
-		const agentsService = mock<Pick<AgentsService, 'create'>>();
+		const agentsService = mock<Pick<AgentsService, 'createOrAdopt'>>();
 		const agentDefaultModelResolverService = mock<AgentDefaultModelResolverService>();
-		agentsService.create.mockResolvedValue({ id: createdId, projectId: 'project-1' } as never);
+		agentsService.createOrAdopt.mockResolvedValue({
+			agent: { id: createdId, projectId: 'project-1' },
+			config: null,
+			configHash: null,
+			adopted: false,
+		} as never);
 		agentDefaultModelResolverService.resolve.mockResolvedValue(null);
 		agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
 			status: 'valid',
@@ -113,8 +133,12 @@ describe('AgentsController create', () => {
 			id: 'aBcDeFgHiJkLmNoP',
 		} as never);
 
-		expect(agentsService.create).toHaveBeenCalledWith('project-1', 'Support Agent', {
+		expect(agentsService.createOrAdopt).toHaveBeenCalledWith('project-1', 'Support Agent', {
 			actor: { kind: 'user', user: { id: 'user-1' } },
+			user: { id: 'user-1' },
+			createdBy: 'user',
+			pushRef: undefined,
+			config: undefined,
 			id: 'aBcDeFgHiJkLmNoP',
 		});
 	});
@@ -124,28 +148,99 @@ describe('AgentsController create', () => {
 
 		await controller.create(req, mock<Response>(), { name: 'Support Agent' } as never);
 
-		expect(agentsService.create).toHaveBeenCalledWith('project-1', 'Support Agent', {
+		expect(agentsService.createOrAdopt).toHaveBeenCalledWith('project-1', 'Support Agent', {
 			actor: { kind: 'user', user: { id: 'user-1' } },
+			user: { id: 'user-1' },
+			createdBy: 'user',
+			pushRef: undefined,
+			config: undefined,
 			id: undefined,
 		});
 	});
 
-	it('passes a resolved default model to the service', async () => {
+	it('passes the requested tag ids to the creation options', async () => {
+		const { controller, agentsService } = makeCreateController('tagged-agent');
+
+		await controller.create(req, mock<Response>(), {
+			name: 'Support Agent',
+			tags: ['tag-1', 'tag-2'],
+		} as never);
+
+		expect(agentsService.createOrAdopt).toHaveBeenCalledWith(
+			'project-1',
+			'Support Agent',
+			expect.objectContaining({ tagIds: ['tag-1', 'tag-2'] }),
+		);
+	});
+
+	it('passes initial configuration and returns the committed autosave baseline', async () => {
 		const { controller, agentsService, agentDefaultModelResolverService } =
-			makeCreateController('server-minted');
-		agentDefaultModelResolverService.resolve.mockResolvedValue({
-			model: 'openai/gpt-5-mini',
-			credential: 'managed',
-		});
+			makeCreateController('new-agent');
+		const config = { name: 'Support Agent', model: '', instructions: 'Help users' };
+		const agent = {
+			id: 'new-agent',
+			name: config.name,
+			projectId: 'project-1',
+			versionId: 'v1',
+			schema: config,
+			integrations: [],
+			tools: {},
+			createdAt: new Date('2026-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+		};
+		agentsService.createOrAdopt.mockResolvedValue({
+			agent,
+			config,
+			configHash: 'saved-hash',
+			adopted: false,
+		} as never);
 
-		await controller.create(req, mock<Response>(), { name: 'Support Agent' } as never);
+		const result = await controller.create(req, mock<Response>(), { name: config.name, config });
 
-		expect(agentsService.create).toHaveBeenCalledWith('project-1', 'Support Agent', {
-			actor: { kind: 'user', user: { id: 'user-1' } },
-			id: undefined,
-			defaultModel: { model: 'openai/gpt-5-mini', credential: 'managed' },
+		expect(agentsService.createOrAdopt).toHaveBeenCalledWith(
+			'project-1',
+			config.name,
+			expect.objectContaining({ config, user: { id: 'user-1' }, createdBy: 'user' }),
+		);
+		expect(agentDefaultModelResolverService.resolve).not.toHaveBeenCalled();
+		expect(result).toMatchObject({
+			id: 'new-agent',
+			versionId: 'v1',
+			config,
+			adopted: false,
 		});
+		expect(result.configHash).toMatch(/^[a-f0-9]{64}$/);
+		expect(result).not.toHaveProperty('schema');
 	});
+
+	it.each([undefined, { name: 'Support Agent', model: '', instructions: 'Help users' }])(
+		'seeds the default model only when the config is omitted: %j',
+		async (config) => {
+			const { controller, agentsService, agentDefaultModelResolverService } =
+				makeCreateController('server-minted');
+			agentDefaultModelResolverService.resolve.mockResolvedValue({
+				model: 'openai/gpt-5-mini',
+				credential: 'managed',
+			});
+
+			await controller.create(req, mock<Response>(), { name: 'Support Agent', config });
+
+			expect(agentsService.createOrAdopt).toHaveBeenCalledWith('project-1', 'Support Agent', {
+				actor: { kind: 'user', user: { id: 'user-1' } },
+				user: { id: 'user-1' },
+				createdBy: 'user',
+				pushRef: undefined,
+				config,
+				id: undefined,
+				...(config === undefined
+					? { defaultModel: { model: 'openai/gpt-5-mini', credential: 'managed' } }
+					: {}),
+			});
+			expect(agentDefaultModelResolverService.resolve).toHaveBeenCalledTimes(
+				config === undefined ? 1 : 0,
+			);
+		},
+	);
 
 	it('seeds the schema, skills, and tools for a duplicate and skips default-model resolution', async () => {
 		const { controller, agentsService, agentDefaultModelResolverService } =
@@ -154,7 +249,7 @@ describe('AgentsController create', () => {
 		const tools = { tool1: { code: 'return []', descriptor: { name: 'Lookup' } } };
 		const schema = {
 			name: 'Source Agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Triage tickets.',
 			integrations: [{ type: 'slack', credentialId: 'cred-slack-1' }],
 		};
@@ -171,18 +266,18 @@ describe('AgentsController create', () => {
 		// The duplicate is a user-driven write, so the controller threads the
 		// user through — the service blanks inaccessible credentials and copies
 		// channels as drafts off that flag.
-		expect(agentsService.create).toHaveBeenCalledWith(
+		expect(agentsService.createOrAdopt).toHaveBeenCalledWith(
 			'project-1',
 			'Source Agent Copy',
 			expect.objectContaining({
-				schema: expect.objectContaining({ model: 'anthropic/claude-sonnet-4-5' }),
+				schema: expect.objectContaining({ model: 'anthropic/claude-sonnet-5-5' }),
 				skills,
 				tools,
 				user: { id: 'user-1' },
 			}),
 		);
 		// No default model is resolved for a duplicate.
-		const [, , options] = agentsService.create.mock.calls[0] as [
+		const [, , options] = agentsService.createOrAdopt.mock.calls[0] as [
 			string,
 			string,
 			Record<string, unknown>,
@@ -194,7 +289,7 @@ describe('AgentsController create', () => {
 		const { controller, agentsService } = makeCreateController('agent-copy');
 		const schema = {
 			name: 'Source Agent',
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-5-5',
 			instructions: 'Triage tickets.',
 		};
 
@@ -205,7 +300,7 @@ describe('AgentsController create', () => {
 
 		// The config name is kept in sync with the entity name so the list and
 		// the builder never disagree on a directly-seeded create.
-		expect(agentsService.create).toHaveBeenCalledWith(
+		expect(agentsService.createOrAdopt).toHaveBeenCalledWith(
 			'project-1',
 			'Source Agent Copy',
 			expect.objectContaining({
@@ -223,8 +318,8 @@ describe('AgentsController list', () => {
 		const response = { count: 1, data: [{ id: 'agent-1' }] } as never;
 		const res = mock<Response>();
 		const query = {
-			skip: 0,
-			take: 10,
+			offset: 0,
+			limit: 10,
 		} as never;
 		agentsService.findByProjectIdPaginated.mockResolvedValue(response);
 
@@ -232,7 +327,11 @@ describe('AgentsController list', () => {
 
 		expect(agentsService.findByProjectIdPaginated).toHaveBeenCalledWith('project-1', query);
 		expect(agentsService.findByProjectId).not.toHaveBeenCalled();
-		expect(res.json).toHaveBeenCalledWith(response);
+		expect(res.json).toHaveBeenCalledWith({
+			count: 1,
+			data: [expect.objectContaining({ id: 'agent-1', hasConfig: false, personalisation: null })],
+		});
+		expect(res.json.mock.calls[0]?.[0].data[0]).not.toHaveProperty('config');
 	});
 
 	it('uses backend listing when pagination, sorting, or filters are provided', async () => {
@@ -240,15 +339,15 @@ describe('AgentsController list', () => {
 		const response = { count: 1, data: [{ id: 'agent-1' }] } as never;
 		const res = mock<Response>();
 		const query = {
-			skip: 0,
-			take: 50,
+			offset: 0,
+			limit: 50,
 			sortBy: 'name:asc',
 			filter: { query: 'support' },
 		} as never;
 		agentsService.findByProjectIdPaginated.mockResolvedValue(response);
 		const listReq = {
 			params: { projectId: 'project-1' },
-			query: { skip: '0', take: '50', sortBy: 'name:asc', filter: '{"query":"support"}' },
+			query: { offset: '0', limit: '50', sortBy: 'name:asc', filter: '{"query":"support"}' },
 			user: { id: 'user-1' },
 		} as never;
 
@@ -256,7 +355,54 @@ describe('AgentsController list', () => {
 
 		expect(agentsService.findByProjectIdPaginated).toHaveBeenCalledWith('project-1', query);
 		expect(agentsService.findByProjectId).not.toHaveBeenCalled();
-		expect(res.json).toHaveBeenCalledWith(response);
+		expect(res.json).toHaveBeenCalledWith({
+			count: 1,
+			data: [
+				expect.objectContaining({
+					id: 'agent-1',
+					hasConfig: false,
+					personalisation: null,
+				}),
+			],
+		});
+		expect(res.json.mock.calls[0]?.[0].data[0]).not.toHaveProperty('config');
+	});
+
+	it('copies personalisation onto the list item and leaves config off it', async () => {
+		const { controller, agentsService } = makeController();
+		const personalisation = { icon: 'bot', gradient: { from: '#000000', to: '#ffffff' } };
+		const res = mock<Response>();
+		agentsService.findByProjectIdPaginated.mockResolvedValue({
+			count: 1,
+			data: [
+				{
+					id: 'agent-1',
+					name: 'Support',
+					projectId: 'project-1',
+					schema: { name: 'Support', personalisation },
+					createdAt: new Date('2026-01-01T00:00:00.000Z'),
+					updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+				},
+			],
+		} as never);
+
+		await controller.list(req, res, { skip: 0, take: 10 } as never);
+
+		expect(res.json).toHaveBeenCalledWith({
+			count: 1,
+			data: [
+				expect.objectContaining({
+					id: 'agent-1',
+					name: 'Support',
+					hasConfig: true,
+					personalisation,
+					createdAt: '2026-01-01T00:00:00.000Z',
+					updatedAt: '2026-01-02T00:00:00.000Z',
+				}),
+			],
+		});
+		expect(res.json.mock.calls[0]?.[0].data[0]).not.toHaveProperty('config');
+		expect(res.json.mock.calls[0]?.[0].data[0]).not.toHaveProperty('schema');
 	});
 });
 
@@ -309,9 +455,16 @@ describe('AgentsController agent resource', () => {
 				isRunnable: true,
 			}),
 		);
-		// The skill bodies come from the skills hub, not from the agent row.
+		// The skill bodies come from the skills module, not from the agent row.
 		expect(result.skills).toEqual({ triage });
 		expect(result.skillHashes.triage).toMatch(/^[a-f0-9]{64}$/);
+		expect(result).not.toHaveProperty('schema');
+		expect(result.config).toEqual(
+			expect.objectContaining({
+				name: 'Agent',
+				skills: [{ type: 'skill', id: 'triage' }],
+			}),
+		);
 		expect(agentValidationService.validateLoadedAgentConfiguration).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'agent-1' }),
 			'project-1',
@@ -357,14 +510,137 @@ describe('AgentsController agent resource', () => {
 			}),
 		);
 	});
+
+	it('saves a GET body through the agent resource and returns the allowlisted agent', async () => {
+		const agentsService = mock<Pick<AgentsService, 'findById'>>();
+		const agentConfigService = mock<AgentConfigService>();
+		const saved = {
+			id: 'agent-1',
+			name: 'Support',
+			projectId: 'project-1',
+			schema: { name: 'Support', model: '', instructions: 'Help users' },
+			integrations: [],
+			tools: {},
+			createdAt: new Date('2026-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+		};
+		agentsService.findById.mockResolvedValue(saved as never);
+		agentConfigService.updateConfig.mockResolvedValue({
+			config: saved.schema,
+			configHash: 'hash',
+			versionId: 'v2',
+			updatedAt: saved.updatedAt,
+		} as never);
+		const { controller, agentWriteLockService, agentValidationService } = makeController({
+			agentsService: agentsService as never,
+			agentConfigService,
+		});
+		agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
+			status: 'valid',
+			issues: [],
+		});
+
+		const result = await controller.update(
+			{
+				params: { projectId: 'project-1' },
+				user: { id: 'user-1' },
+				headers: { 'push-ref': 'tab-1' },
+			} as never,
+			mock<Response>(),
+			'agent-1',
+			{ config: saved.schema, baseConfigHash: 'previous-hash' } as never,
+		);
+
+		expect(agentWriteLockService.validateAgentWriteLock).toHaveBeenCalledWith(
+			'user-1',
+			'tab-1',
+			'project-1',
+			'agent-1',
+			'update',
+		);
+		expect(agentConfigService.updateConfig).toHaveBeenCalledWith(
+			'agent-1',
+			'project-1',
+			saved.schema,
+			{ id: 'user-1' },
+			expect.objectContaining({ baseConfigHash: 'previous-hash', modifiedBy: 'user' }),
+		);
+		expect(result).toEqual(
+			expect.objectContaining({
+				id: 'agent-1',
+				name: 'Support',
+				configHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+			}),
+		);
+		expect(result).not.toHaveProperty('schema');
+	});
+
+	it('uses configHash from a GET body when baseConfigHash is absent', async () => {
+		const agentsService = mock<Pick<AgentsService, 'findById'>>();
+		const agentConfigService = mock<AgentConfigService>();
+		agentsService.findById.mockResolvedValue({
+			id: 'agent-1',
+			projectId: 'project-1',
+			schema: null,
+		} as never);
+		const { controller, agentValidationService } = makeController({
+			agentsService: agentsService as never,
+			agentConfigService,
+		});
+		agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
+			status: 'valid',
+			issues: [],
+		});
+
+		await controller.update(
+			{ params: { projectId: 'project-1' }, user: { id: 'user-1' }, headers: {} } as never,
+			mock<Response>(),
+			'agent-1',
+			UpdateAgentDto.parse({
+				config: { name: 'Support' },
+				configHash: 'from-get',
+				id: 'agent-1',
+				name: 'Support',
+			}) as never,
+		);
+
+		expect(agentConfigService.updateConfig).toHaveBeenCalledWith(
+			'agent-1',
+			'project-1',
+			{ name: 'Support' },
+			{ id: 'user-1' },
+			expect.objectContaining({ baseConfigHash: 'from-get' }),
+		);
+	});
+
+	it('rejects an update when another tab holds the write lock', async () => {
+		const agentConfigService = mock<AgentConfigService>();
+		const agentWriteLockService = mock<AgentWriteLockService>();
+		agentWriteLockService.validateAgentWriteLock.mockRejectedValue(new LockedError('locked'));
+		const { controller } = makeController({ agentConfigService, agentWriteLockService });
+
+		await expect(
+			controller.update(
+				{
+					params: { projectId: 'project-1' },
+					user: { id: 'user-1' },
+					headers: { 'push-ref': 'tab-2' },
+				} as never,
+				mock<Response>(),
+				'agent-1',
+				{ config: { name: 'Support' }, baseConfigHash: 'hash' } as never,
+			),
+		).rejects.toBeInstanceOf(LockedError);
+		expect(agentConfigService.updateConfig).not.toHaveBeenCalled();
+	});
 });
 
 describe('AgentsController.getWriteLock', () => {
 	it('passes the agent id from the route param, not the response object', async () => {
-		const collaborationService = mock<CollaborationService>();
+		const agentWriteLockService = mock<AgentWriteLockService>();
 		const lock = { clientId: 'tab-1', userId: 'user-1' };
-		collaborationService.getAgentWriteLock.mockResolvedValue(lock);
-		const { controller } = makeController({ collaborationService });
+		agentWriteLockService.getAgentWriteLock.mockResolvedValue(lock);
+		const { controller } = makeController({ agentWriteLockService });
 
 		// The registry calls handlers as (req, res, ...decoratedArgs).
 		const result = await controller.getWriteLock(
@@ -376,7 +652,7 @@ describe('AgentsController.getWriteLock', () => {
 			'agent-1',
 		);
 
-		expect(collaborationService.getAgentWriteLock).toHaveBeenCalledWith('project-1', 'agent-1');
+		expect(agentWriteLockService.getAgentWriteLock).toHaveBeenCalledWith('project-1', 'agent-1');
 		expect(result).toEqual(lock);
 	});
 });

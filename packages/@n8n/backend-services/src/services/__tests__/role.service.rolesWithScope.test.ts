@@ -54,6 +54,27 @@ describe('RoleService.rolesWithScope', () => {
 			expect(result).toEqual(mockRoles);
 		});
 
+		it('should pass any-of scopes through to the cache service', async () => {
+			const mockRoles = ['project:admin'];
+			const anyOf = ['credential:connect' as const, 'credential:share' as const];
+			roleCacheService.getRolesWithAllScopes.mockResolvedValue(mockRoles);
+
+			const result = await roleService.rolesWithScope(
+				'project',
+				'credential:read',
+				undefined,
+				anyOf,
+			);
+
+			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenCalledWith(
+				'project',
+				['credential:read'],
+				undefined,
+				anyOf,
+			);
+			expect(result).toEqual(mockRoles);
+		});
+
 		it('should handle empty array input', async () => {
 			const mockRoles: string[] = [];
 			roleCacheService.getRolesWithAllScopes.mockResolvedValue(mockRoles);

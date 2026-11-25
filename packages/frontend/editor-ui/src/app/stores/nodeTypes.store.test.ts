@@ -93,6 +93,10 @@ describe('useNodeTypesStore', () => {
 	describe('visibleNodeTypes module gating', () => {
 		const DATA_TABLE = 'n8n-nodes-base.dataTable';
 		const MESSAGE_AN_AGENT = 'n8n-nodes-base.messageAnAgent';
+		const decisionNodes = [
+			'n8n-nodes-base.agentDecisionTrigger',
+			'n8n-nodes-base.agentDecisionResponse',
+		];
 
 		let activeModules: string[];
 
@@ -103,6 +107,7 @@ describe('useNodeTypesStore', () => {
 				makeNodeType({ name: 'n8n-nodes-test.plain', outputs: ['main'] }),
 				makeNodeType({ name: DATA_TABLE, outputs: ['main'] }),
 				makeNodeType({ name: MESSAGE_AN_AGENT, outputs: ['main'] }),
+				...decisionNodes.map((name) => makeNodeType({ name, outputs: ['main'] })),
 			]);
 
 			activeModules = ['data-table', 'agents'];
@@ -139,10 +144,56 @@ describe('useNodeTypesStore', () => {
 			expect(store.isNodeTypeModuleDisabled(MESSAGE_AN_AGENT)).toBe(true);
 		});
 
+		it('only offers the approval nodes when Agents and Human Review are enabled', () => {
+			const settingsStore = useSettingsStore();
+			const gate = vi
+				.spyOn(settingsStore, 'isAgentModuleActive')
+				.mockImplementation(
+					(feature) =>
+						feature === 'human-review' &&
+						activeModules.includes('agents') &&
+						activeModules.includes(feature),
+				);
+
+			for (const name of decisionNodes) expect(visibleNames()).not.toContain(name);
+
+			activeModules = ['agents', 'human-review'];
+			for (const name of decisionNodes) expect(store.isNodeTypeModuleDisabled(name)).toBe(false);
+			expect(gate).toHaveBeenCalledWith('human-review');
+
+			activeModules = ['human-review'];
+			for (const name of decisionNodes) expect(store.isNodeTypeModuleDisabled(name)).toBe(true);
+		});
+
 		it('should never treat a node type without a module as disabled', () => {
 			activeModules = [];
 
 			expect(store.isNodeTypeModuleDisabled('n8n-nodes-test.plain')).toBe(false);
+		});
+	});
+
+	describe('deprecated node types', () => {
+		beforeEach(() => {
+			setActivePinia(createTestingPinia({ stubActions: false }));
+			store = useNodeTypesStore();
+			store.setNodeTypes([
+				makeNodeType({ name: 'n8n-nodes-test.plain', outputs: ['main'] }),
+				makeNodeType({ name: 'n8n-nodes-test.deprecated', outputs: ['main'], deprecated: true }),
+			]);
+		});
+
+		it('should report whether a node type version is deprecated', () => {
+			expect(store.isNodeDeprecated({ type: 'n8n-nodes-test.deprecated', typeVersion: 1 })).toBe(
+				true,
+			);
+			expect(store.isNodeDeprecated({ type: 'n8n-nodes-test.plain', typeVersion: 1 })).toBe(false);
+		});
+
+		it('should omit deprecated node types from visibleNodeTypes', () => {
+			const visibleNames = store.visibleNodeTypes.map((nodeType) => nodeType.name);
+
+			expect(visibleNames).toContain('n8n-nodes-test.plain');
+			expect(visibleNames).not.toContain('n8n-nodes-test.deprecated');
 		});
 	});
 

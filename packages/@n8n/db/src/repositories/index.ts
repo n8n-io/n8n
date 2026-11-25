@@ -47,8 +47,11 @@ export { ExecutionListRepository } from './execution-list.repository';
 export { ExecutionMetadataRepository } from './execution-metadata.repository';
 export {
 	ExecutionRepository,
+	type CanceledExecution,
 	type CrashedExecution,
 	type ExecutionDeletionCriteria,
+	type ResumableExecutionStatus,
+	type ResumeAttemptClaim,
 	type UpdateExecutionConditions,
 } from './execution.repository';
 export { FolderRepository } from './folder.repository';
@@ -61,8 +64,10 @@ export {
 } from './idempotency-key.repository';
 export { InvalidAuthTokenRepository } from './invalid-auth-token.repository';
 export { InstanceCredentialAssignmentRepository } from './instance-credential-assignment.repository';
+export { AgentExecutionStatisticsRepository } from './agent-execution-statistics.repository';
 export { LicenseMetricsRepository } from './license-metrics.repository';
 export { ProjectPoolSettingsRepository } from './project-pool-settings.repository.ee';
+export { ProjectWorkflowReviewSettingsRepository } from './project-workflow-review-settings.repository.ee';
 export { ProjectRelationRepository } from './project-relation.repository';
 export {
 	ProjectRepository,
@@ -98,7 +103,7 @@ export { SettingsRepository } from './settings.repository';
 export { TagRepository } from './tag.repository';
 export { TestCaseExecutionRepository } from './test-case-execution.repository.ee';
 export { TestRunRepository, type TestRunSummary } from './test-run.repository.ee';
-export { VariablesRepository, type VariableKeyScope } from './variables.repository';
+export { VariablesRepository } from './variables.repository';
 export { WorkflowHistoryRepository } from './workflow-history.repository';
 export { WorkflowStatisticsRepository } from './workflow-statistics.repository';
 export { WorkflowTagMappingRepository } from './workflow-tag-mapping.repository';
@@ -118,6 +123,7 @@ export {
 export {
 	WorkflowPublishedVersionRepository,
 	type PublishedWorkflowDataForExecution,
+	type PublishedVersionForExecution,
 } from './workflow-published-version.repository';
 export {
 	WorkflowPublishHistoryRepository,
@@ -151,6 +157,8 @@ export {
 	type NodeUsageScope,
 } from './workflow-dependency.repository';
 export { WebhookRepository } from './webhook.repository';
+export { PersonRepository, type CloudHooksPeople } from './person.repository';
+export { ServiceAccountRepository } from './service-account.repository';
 export { UserRepository } from './user.repository';
 export { SecretsProviderConnectionRepository } from './secrets-provider-connection.repository.ee';
 export { ProjectSecretsProviderAccessRepository } from './project-secrets-provider-access.repository.ee';

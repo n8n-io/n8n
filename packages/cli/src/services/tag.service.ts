@@ -38,8 +38,8 @@ export class TagService {
 	}
 
 	/**
-	 * Re-keys an existing tag to a new id, moving its workflow and folder
-	 * mappings along. Does not run the `tag.beforeUpdate`/`afterUpdate`
+	 * Re-keys an existing tag to a new id, moving its workflow, folder and
+	 * agent mappings along. Does not run the `tag.beforeUpdate`/`afterUpdate`
 	 * external hooks: those model name edits, and no id-change hook contract
 	 * exists.
 	 */
@@ -110,6 +110,10 @@ export class TagService {
 
 	async getAllByWorkflowId(workflowId: string): Promise<TagEntity[]> {
 		return await this.tagRepository.findBy({ workflows: { id: workflowId } });
+	}
+
+	async getAllByAgentId(agentId: string): Promise<TagEntity[]> {
+		return await this.tagRepository.findAllByAgentId(agentId);
 	}
 
 	/**

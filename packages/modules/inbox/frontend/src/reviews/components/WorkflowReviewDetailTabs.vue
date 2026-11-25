@@ -2,12 +2,12 @@
 import type { WorkflowReviewInboxItem, WorkflowReviewRequestDetail } from '@n8n/api-types';
 import { N8nCallout, N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, provide, useTemplateRef } from 'vue';
+import { computed, provide, ref, useTemplateRef, watch } from 'vue';
 
 import { ReviewDetailScrollContainerKey, ReviewLinkedWorkflowsKey } from '../constants';
 import type { WorkflowReviewDecisionInput } from '../workflowReviews.api';
 import WorkflowReviewActivityFeed from './WorkflowReviewActivityFeed.vue';
-import WorkflowReviewChangesSection from './WorkflowReviewChangesSection.vue';
+import WorkflowReviewChangesList from './WorkflowReviewChangesList.vue';
 import WorkflowReviewCommentComposer from './WorkflowReviewCommentComposer.vue';
 import WorkflowReviewDecisionPopover from './WorkflowReviewDecisionPopover.vue';
 import WorkflowReviewDetailMetadata from './WorkflowReviewDetailMetadata.vue';
@@ -23,6 +23,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'update:tab': [tab: WorkflowReviewDetailTab];
 	decide: [input: WorkflowReviewDecisionInput];
+	close: [];
 }>();
 
 const i18n = useI18n();
@@ -33,8 +34,29 @@ const detail = computed<WorkflowReviewRequestDetail | null>(() =>
 	'workflows' in props.review ? props.review : null,
 );
 
+// Held here, not in the list: the detail body remounts on every tab switch.
+const expandedWorkflowId = ref<string>();
+// The review that `expandedWorkflowId` belongs to.
+let expandedReviewId: string | undefined;
+
+// Open the first workflow for each new review. A refetch keeps the choice while the
+// open workflow is still listed. The detail lists only readable workflows, so it can drop one.
+watch(
+	detail,
+	(value) => {
+		if (!value?.workflows.length) return;
+		const open = expandedWorkflowId.value;
+		const isListed = value.workflows.some(({ workflowId }) => workflowId === open);
+		if (value.id === expandedReviewId && (open === undefined || isListed)) return;
+		expandedReviewId = value.id;
+		expandedWorkflowId.value = value.workflows[0].workflowId;
+	},
+	{ immediate: true },
+);
+
 const viewerCanDecide = computed(() => detail.value?.viewerCanDecide ?? false);
 const viewerCanComment = computed(() => detail.value?.viewerCanComment ?? false);
+const viewerCanClose = computed(() => detail.value?.viewerCanClose ?? false);
 
 // See the key's doc: read-time names for feed entries, never snapshotted into payloads.
 provide(
@@ -56,11 +78,12 @@ provide(
 
 const ineligibilityHint = computed(() => {
 	if (!detail.value || detail.value.viewerCanDecide) return '';
-	// Any reason other than 'author' gets the generic permission hint, so new
-	// backend reasons degrade gracefully instead of breaking the UI.
-	return detail.value.viewerDecisionIneligibilityReason === 'author'
-		? i18n.baseText('workflowReviews.detail.decision.ineligible.author')
-		: i18n.baseText('generic.missing.permissions');
+	if (detail.value.viewerDecisionIneligibilityReason === 'author') {
+		return i18n.baseText('workflowReviews.detail.decision.ineligible.author');
+	}
+	// Any other reason gets the generic permission hint, so new backend reasons degrade
+	// gracefully. A viewer who may close gets none: it would sit next to a working button.
+	return detail.value.viewerCanClose ? '' : i18n.baseText('generic.missing.permissions');
 });
 
 /**
@@ -105,7 +128,6 @@ const tabOptions = computed(() => [
 			<N8nTabs
 				:model-value="tab"
 				:options="tabOptions"
-				variant="modern"
 				data-test-id="workflow-review-detail-tab-bar"
 				@update:model-value="emit('update:tab', $event)"
 			/>
@@ -114,12 +136,13 @@ const tabOptions = computed(() => [
 				detail payload, so the list item alone can't say who may decide. -->
 			<div v-if="detail?.state === 'open'" :class="$style.decisionActions">
 				<WorkflowReviewDecisionPopover
+					:review-title="detail.title"
 					:deciding="deciding"
 					:viewer-can-decide="viewerCanDecide"
-					:viewer-can-comment="viewerCanComment"
+					:viewer-can-close="viewerCanClose"
 					:ineligibility-hint="ineligibilityHint"
 					@decide="emit('decide', $event)"
-					@comment-posted="emit('update:tab', 'activity')"
+					@close="emit('close')"
 				/>
 			</div>
 		</div>
@@ -174,8 +197,7 @@ const tabOptions = computed(() => [
 							</div>
 						</N8nCallout>
 					</template>
-					<!-- Closed reviews take no new comments (the backend 409s) -->
-					<template v-if="review.state === 'open'" #composer>
+					<template #composer>
 						<WorkflowReviewCommentComposer :can-comment="viewerCanComment" />
 					</template>
 				</WorkflowReviewActivityFeed>
@@ -190,15 +212,13 @@ const tabOptions = computed(() => [
 				>
 					{{ i18n.baseText('workflowReviews.changes.unavailable') }}
 				</N8nCallout>
-				<template v-else-if="detail.workflows.length > 0">
-					<WorkflowReviewChangesSection
-						v-for="workflow in detail.workflows"
-						:key="workflow.workflowId"
-						:workflow="workflow"
-						:state="detail.state"
-						:decision="detail.decision"
-					/>
-				</template>
+				<WorkflowReviewChangesList
+					v-else-if="detail.workflows.length > 0"
+					v-model:expanded="expandedWorkflowId"
+					:workflows="detail.workflows"
+					:state="detail.state"
+					:decision="detail.decision"
+				/>
 				<!-- No rows left: the workflow was deleted, or the requester lost access to it. -->
 				<N8nCallout
 					v-else

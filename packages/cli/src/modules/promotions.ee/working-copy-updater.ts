@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
@@ -11,7 +12,7 @@ import { BadRequestError, InternalServerError } from '@n8n/errors';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import type { ManifestEntry, PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
-import { containerMoves, isUnder, staleWorkflowTargets } from './branch-placement';
+import { containerMoves, isUnder, projectHolding, staleWorkflowTargets } from './branch-placement';
 import type { BranchLayout, ContainerMove } from './branch-placement';
 import { writeImportManifest } from './import-manifest-bridge';
 import { PromotionsWorkflowsMovedCrossProjectError } from './promotions-selective-push.error';
@@ -20,6 +21,9 @@ const selectivePushOptionsSchema = z.object({
 	projectId: z.string().min(1),
 	workflowIds: z.array(z.string().min(1)),
 	deletedWorkflowIds: z.array(z.string().min(1)),
+	folderIds: z.array(z.string().min(1)),
+	/** Credentials of the project to write although no selected workflow uses them. */
+	credentialIds: z.array(z.string().min(1)).optional(),
 });
 
 export type SelectivePushOptions = z.infer<typeof selectivePushOptionsSchema>;
@@ -28,6 +32,8 @@ const ENTITY_FILES = {
 	'project.json': 'projects',
 	'folder.json': 'folders',
 	'workflow.json': 'workflows',
+	'agent.json': 'agents',
+	'skill.json': 'skills',
 } as const satisfies Record<string, keyof BranchLayout>;
 
 /** Dependency collections whose directory a rename relocates (name-derived slug). */
@@ -62,7 +68,7 @@ export type ScannedBranch = {
 /**
  * Applies a selective export to the exported working copy of a branch. It reads
  * the branch, runs the guards, then overlays. The caller resolves the
- * connection, runs the exporter and commits.
+ * environment, runs the exporter and commits.
  *
  */
 @Service()
@@ -80,10 +86,6 @@ export class WorkingCopyUpdater {
 			throw new BadRequestError(`Invalid selection: ${parsed.error.issues[0].message}`);
 		}
 
-		if (selection.workflowIds.length === 0 && selection.deletedWorkflowIds.length === 0) {
-			throw new BadRequestError('At least one workflow must be selected or deleted');
-		}
-
 		const addSet = new Set(selection.workflowIds);
 		if (addSet.size !== selection.workflowIds.length) {
 			throw new BadRequestError('workflowIds contains duplicates');
@@ -91,6 +93,13 @@ export class WorkingCopyUpdater {
 		const deleteSet = new Set(selection.deletedWorkflowIds);
 		if (deleteSet.size !== selection.deletedWorkflowIds.length) {
 			throw new BadRequestError('deletedWorkflowIds contains duplicates');
+		}
+		if (new Set(selection.folderIds).size !== selection.folderIds.length) {
+			throw new BadRequestError('folderIds contains duplicates');
+		}
+		const credentialIds = selection.credentialIds ?? [];
+		if (new Set(credentialIds).size !== credentialIds.length) {
+			throw new BadRequestError('credentialIds contains duplicates');
 		}
 
 		const overlap = selection.deletedWorkflowIds.filter((id) => addSet.has(id));
@@ -100,14 +109,20 @@ export class WorkingCopyUpdater {
 	}
 
 	/**
-	 * The exporter must write exactly the selected workflows. Extra or missing
-	 * ids mean the overlay would change the branch in a way the caller did not
-	 * ask for, so stop before any file work.
+	 * The exporter must write exactly the selected workflows, and every selected
+	 * folder. Extra or missing ids mean the overlay would change the branch in a
+	 * way the caller did not ask for, so stop before any file work.
 	 */
 	assertStagingMatchesSelection(staging: PackageManifest, selection: SelectivePushOptions): void {
 		const stagedIds = new Set((staging.workflows ?? []).map((workflow) => workflow.id));
 		const selectedIds = new Set(selection.workflowIds);
-		const missing = selection.workflowIds.filter((id) => !stagedIds.has(id));
+		const stagedFolderIds = new Set((staging.folders ?? []).map((folder) => folder.id));
+		const stagedCredentialIds = new Set((staging.credentials ?? []).map(({ id }) => id));
+		const missing = [
+			...selection.workflowIds.filter((id) => !stagedIds.has(id)),
+			...selection.folderIds.filter((id) => !stagedFolderIds.has(id)),
+			...(selection.credentialIds ?? []).filter((id) => !stagedCredentialIds.has(id)),
+		];
 		const extra = [...stagedIds].filter((id) => !selectedIds.has(id));
 		if (missing.length === 0 && extra.length === 0) return;
 
@@ -131,7 +146,13 @@ export class WorkingCopyUpdater {
 		const rootInfo = await fs.stat(resolvedBase).catch(() => null);
 		if (!rootInfo?.isDirectory()) return { state: {}, dependencies: [] };
 
-		const collected: Required<BranchLayout> = { projects: [], folders: [], workflows: [] };
+		const collected: Required<BranchLayout> = {
+			projects: [],
+			folders: [],
+			workflows: [],
+			agents: [],
+			skills: [],
+		};
 		const dependencies: DependencyRef[] = [];
 
 		const walk = async (absDir: string): Promise<void> => {
@@ -154,7 +175,18 @@ export class WorkingCopyUpdater {
 
 				const kind = ENTITY_FILES[entry.name as keyof typeof ENTITY_FILES];
 				if (kind !== undefined) {
-					collected[kind].push(await this.readEntityFile(fullPath, target, relativeFile));
+					const { entry, isArchived } = await this.readEntityFile(
+						fullPath,
+						target,
+						relativeFile,
+						kind,
+					);
+					// Only a workflow entry carries the flag; the other kinds list id, name and target.
+					if (kind === 'workflows') {
+						collected.workflows.push({ ...entry, isArchived });
+						continue;
+					}
+					collected[kind].push(entry);
 					continue;
 				}
 
@@ -173,6 +205,8 @@ export class WorkingCopyUpdater {
 			...(collected.projects.length > 0 ? { projects: collected.projects } : {}),
 			...(collected.folders.length > 0 ? { folders: collected.folders } : {}),
 			...(collected.workflows.length > 0 ? { workflows: collected.workflows } : {}),
+			...(collected.agents.length > 0 ? { agents: collected.agents } : {}),
+			...(collected.skills.length > 0 ? { skills: collected.skills } : {}),
 		};
 		return { state, dependencies };
 	}
@@ -186,6 +220,8 @@ export class WorkingCopyUpdater {
 			['projects', state.projects],
 			['folders', state.folders],
 			['workflows', state.workflows],
+			['agents', state.agents],
+			['skills', state.skills],
 		] as const) {
 			const seen = new Map<string, string>();
 			for (const entry of entries ?? []) {
@@ -223,7 +259,8 @@ export class WorkingCopyUpdater {
 		file: string,
 		target: string,
 		relativeFile: string,
-	): Promise<ManifestEntry> {
+		kind: keyof BranchLayout,
+	): Promise<{ entry: ManifestEntry; isArchived: boolean }> {
 		let raw: string;
 		try {
 			raw = await fs.readFile(file, 'utf-8');
@@ -240,17 +277,17 @@ export class WorkingCopyUpdater {
 				`"${relativeFile}" on the branch is not valid JSON. Remove it and retry.`,
 			);
 		}
-		if (
-			typeof parsed !== 'object' ||
-			parsed === null ||
-			typeof (parsed as { id?: unknown }).id !== 'string' ||
-			typeof (parsed as { name?: unknown }).name !== 'string'
-		) {
+
+		const nameSource = isRecord(parsed) && kind === 'skills' ? parsed.skill : parsed;
+		const name = isRecord(nameSource) ? nameSource.name : undefined;
+
+		if (!isRecord(parsed) || typeof parsed.id !== 'string' || typeof name !== 'string') {
 			throw new BadRequestError(
 				`"${relativeFile}" on the branch is missing an id or a name. Remove it and retry.`,
 			);
 		}
-		return { id: (parsed as { id: string }).id, name: (parsed as { name: string }).name, target };
+
+		return { entry: { id: parsed.id, name, target }, isArchived: parsed.isArchived === true };
 	}
 
 	async assertSelectionFitsBranch(
@@ -311,7 +348,12 @@ export class WorkingCopyUpdater {
 			(w) => selected.has(w.id) && (!projectTarget || !isUnder(w.target, projectTarget)),
 		);
 		if (moved.length > 0) {
-			throw new PromotionsWorkflowsMovedCrossProjectError(moved.map((workflow) => workflow.id));
+			throw new PromotionsWorkflowsMovedCrossProjectError(
+				moved.map(({ id, target }) => {
+					const project = projectHolding(branch.projects, target);
+					return { id, detail: project && `in project "${project.name}" on the branch` };
+				}),
+			);
 		}
 	}
 
@@ -332,7 +374,7 @@ export class WorkingCopyUpdater {
 		);
 		if (foreign) {
 			throw new BadRequestError(
-				`"${foreign.from}" belongs to another project on the branch. A selective push cannot move it. Push all projects instead.`,
+				`"${foreign.from}" belongs to another project on the branch. Promotion can't move it between projects. Move it back on this instance, then promote again.`,
 			);
 		}
 	}
@@ -492,7 +534,11 @@ export class WorkingCopyUpdater {
 		const resolved = await this.resolveLeafTarget(exportFolder, target, 'Manifest');
 
 		const writtenIds = new Set((staging.workflows ?? []).map((entry) => entry.id));
-		for (const entry of remaining.workflows ?? []) {
+		for (const entry of [
+			...(remaining.workflows ?? []),
+			...(remaining.agents ?? []),
+			...(remaining.skills ?? []),
+		]) {
 			if (isUnder(entry.target, target)) {
 				throw new BadRequestError(
 					`Removing "${target}" would delete content the selection keeps. Remove it and retry.`,

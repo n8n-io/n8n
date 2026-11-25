@@ -10,7 +10,7 @@ import { renderTeamsAppIcons } from './teams-app-icons';
 import { TeamsArmTemplateService } from './teams-arm-template.service';
 import { botResourceId } from './teams-bot-provisioning.service';
 import { TeamsManifestService } from './teams-manifest.service';
-import type { Agent } from '../../../entities/agent.entity';
+import type { ProjectAgent } from '../../../entities/agent.entity';
 import { AgentRepository } from '../../../repositories/agent.repository';
 import { AgentCredentialLookupService } from '../../agent-credential-lookup.service';
 import { stringProperty } from '../../integration-helpers';
@@ -202,7 +202,7 @@ export class TeamsSetupService {
 	 * The app's settings live on the connected integration, because they are what
 	 * the user chose for this agent's Teams app rather than for the agent itself.
 	 */
-	private teamsSettingsOf(agent: Agent): AgentTeamsIntegrationSettings | undefined {
+	private teamsSettingsOf(agent: ProjectAgent): AgentTeamsIntegrationSettings | undefined {
 		return agent.integrations?.find((item) => item.type === 'teams')?.settings;
 	}
 
@@ -255,7 +255,7 @@ export class TeamsSetupService {
 		};
 	}
 
-	private async getAgent(scope: AgentScope): Promise<Agent> {
+	private async getAgent(scope: AgentScope): Promise<ProjectAgent> {
 		const agent = await this.agentRepository.findByIdAndProjectId(scope.agentId, scope.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${scope.agentId}" not found`);
 		return agent;
@@ -266,7 +266,7 @@ export class TeamsSetupService {
 	 * the template route has none. The client ID this returns is not a secret: it
 	 * ships inside the manifest the user downloads.
 	 */
-	private connectedCredentialId(agent: Agent): string | undefined {
+	private connectedCredentialId(agent: ProjectAgent): string | undefined {
 		return agent.integrations?.find((item) => item.type === 'teams')?.credentialId;
 	}
 
@@ -312,7 +312,7 @@ export class TeamsSetupService {
 	 * handed over, for example after the agent was renamed. n8n sees the download
 	 * or the publish, not the upload in Teams, so this is as close as it gets.
 	 */
-	private appOutdated(agent: Agent, identity: BotIdentity | null): boolean {
+	private appOutdated(agent: ProjectAgent, identity: BotIdentity | null): boolean {
 		if (!identity?.teamsAppFingerprint) return false;
 		const current = this.manifestService.buildManifest({
 			agentName: agent.name,

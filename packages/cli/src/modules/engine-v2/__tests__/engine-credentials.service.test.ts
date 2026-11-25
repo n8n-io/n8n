@@ -46,6 +46,7 @@ describe('EngineCredentialsService', () => {
 			homeProject: mock(),
 			inaccessibleIds: [],
 			unusableForActingUser: [],
+			personalRouteIds: [],
 		});
 		vi.mocked(credentialsHelper.getDecrypted).mockResolvedValue(decrypted);
 	});
@@ -98,6 +99,7 @@ describe('EngineCredentialsService', () => {
 				homeProject: mock(),
 				inaccessibleIds: ['cred-1'],
 				unusableForActingUser: [],
+				personalRouteIds: [],
 			});
 
 			await expect(service.resolve(resolveRequest)).rejects.toThrow(ForbiddenError);

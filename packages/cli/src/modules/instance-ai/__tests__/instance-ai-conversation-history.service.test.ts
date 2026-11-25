@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import type { InstanceAiMessage } from '../entities/instance-ai-message.entity';
@@ -365,6 +365,25 @@ describe('InstanceAiConversationHistoryService', () => {
 
 			expect(hits[0].excerpts[0].text).toBe('Q: Which timezone? → A: Europe/Berlin');
 			expect(hits[0].matchedIn).toEqual(['user-answers']);
+		});
+
+		it('renders ask-user answers stored under the former tool name', async () => {
+			const repos = setup();
+			givenSearchHit(repos, {
+				candidates: [
+					messageRow({
+						role: 'assistant',
+						content: askUserContent(
+							[{ question: 'Which timezone?', selectedOptions: ['Europe/Berlin'] }],
+							{ toolName: 'ask-user' },
+						),
+					}),
+				],
+			});
+
+			const { hits } = await repos.history.search({ query: 'timezone', limit: 10 });
+
+			expect(hits[0].excerpts[0].text).toBe('Q: Which timezone? → A: Europe/Berlin');
 		});
 
 		it('ignores ask-user calls that were never resolved', async () => {

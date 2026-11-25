@@ -68,6 +68,20 @@ export const WORKFLOW_REVIEWS_TELEMETRY = defineTelemetryEvents({
 				),
 		}),
 	},
+	USER_CLOSED_WORKFLOW_REVIEW: {
+		name: 'User closed workflow review',
+		description:
+			'A user closed an open review without approving it. The review keeps its last decision. A system close fires "Workflow review closed" instead.',
+		properties: z.object({
+			user_id: z.string(),
+			workflow_review_request_id: z.string(),
+			workflow_id: z.string(),
+			workflow_version_id: z
+				.string()
+				.nullable()
+				.describe('Null when the pinned version was pruned before the close'),
+		}),
+	},
 	USER_COMMENTED_ON_WORKFLOW_REVIEW: {
 		name: 'User commented on workflow review',
 		description: 'A comment was posted on an open review.',

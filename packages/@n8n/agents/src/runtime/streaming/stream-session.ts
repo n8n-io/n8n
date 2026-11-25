@@ -1,4 +1,5 @@
 import { StreamWriterGuard } from './stream-writer-guard';
+import { createAbortError } from '../../sdk/abort';
 import type { StreamChunk } from '../../types';
 import { AgentEvent } from '../../types/runtime/event';
 import type { AgentEventData } from '../../types/runtime/event';
@@ -73,6 +74,11 @@ export function startStreamSession(deps: StreamSessionDeps): ReadableStream<Stre
 		const { type: _type, ...payload } = data;
 		void guard.write({ type: 'subagent-started', ...payload });
 	};
+	const onToolApproval = (data: AgentEventData): void => {
+		if (data.type !== AgentEvent.ToolApproval) return;
+		const { type: _type, ...payload } = data;
+		void guard.write({ type: 'tool-approval', ...payload });
+	};
 	const onSubAgentCompleted = (data: AgentEventData): void => {
 		if (data.type !== AgentEvent.SubAgentCompleted) return;
 		const { type: _type, ...payload } = data;
@@ -87,6 +93,7 @@ export function startStreamSession(deps: StreamSessionDeps): ReadableStream<Stre
 	deps.eventBus.on(AgentEvent.ToolExecutionStart, onToolExecutionStart);
 	deps.eventBus.on(AgentEvent.ToolExecutionEnd, onToolExecutionEnd);
 	deps.eventBus.on(AgentEvent.SubAgentStarted, onSubAgentStarted);
+	deps.eventBus.on(AgentEvent.ToolApproval, onToolApproval);
 	deps.eventBus.on(AgentEvent.SubAgentCompleted, onSubAgentCompleted);
 	deps.eventBus.on(AgentEvent.SubAgentChunk, onSubAgentChunk);
 
@@ -112,7 +119,7 @@ export function startStreamSession(deps: StreamSessionDeps): ReadableStream<Stre
 			// a mid-run failure were already reported to the sink and must still be
 			// billed on the terminal chunk.
 			await guard.fail(
-				isAbort ? new Error('Agent run was aborted') : error,
+				isAbort ? createAbortError('Agent run was aborted') : error,
 				'error',
 				deps.getTerminalFinish?.(),
 			);
@@ -121,6 +128,7 @@ export function startStreamSession(deps: StreamSessionDeps): ReadableStream<Stre
 			deps.eventBus.off(AgentEvent.ToolExecutionStart, onToolExecutionStart);
 			deps.eventBus.off(AgentEvent.ToolExecutionEnd, onToolExecutionEnd);
 			deps.eventBus.off(AgentEvent.SubAgentStarted, onSubAgentStarted);
+			deps.eventBus.off(AgentEvent.ToolApproval, onToolApproval);
 			deps.eventBus.off(AgentEvent.SubAgentCompleted, onSubAgentCompleted);
 			deps.eventBus.off(AgentEvent.SubAgentChunk, onSubAgentChunk);
 			void guard.close();

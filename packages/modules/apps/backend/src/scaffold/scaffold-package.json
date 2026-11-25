@@ -1,0 +1,22 @@
+{
+	"name": "n8n-app",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"engines": {
+		"node": ">=22.12.0",
+		"npm": ">=10"
+	},
+	"scripts": {
+		"build": "vite build"
+	},
+	"dependencies": {
+		"@lucide/vue": "1.68.0",
+		"vue": "3.5.44",
+		"vue-router": "4.6.4"
+	},
+	"devDependencies": {
+		"@vitejs/plugin-vue": "6.0.10",
+		"vite": "8.3.5"
+	}
+}
