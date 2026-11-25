@@ -51,6 +51,28 @@ export function selectLatestExecutedRun(checkRuns) {
 }
 
 /**
+ * List all check runs for a check name on a commit SHA.
+ *
+ * @param {{
+ *   octokit: import('../github-helpers.mjs').GitHubInstance,
+ *   owner: string,
+ *   repo: string,
+ *   headSha: string,
+ *   checkName: string,
+ * }} params
+ */
+export async function listCheckRuns({ octokit, owner, repo, headSha, checkName }) {
+	return await octokit.paginate(octokit.rest.checks.listForRef, {
+		owner,
+		repo,
+		ref: headSha,
+		check_name: checkName,
+		filter: 'all',
+		per_page: 100,
+	});
+}
+
+/**
  * Fail when any skipped quality check already failed on the PR head commit.
  *
  * @param {{
@@ -64,18 +86,7 @@ export function selectLatestExecutedRun(checkRuns) {
 export async function run({ octokit, owner, repo, headSha, checkNames = GATED_CHECK_NAMES }) {
 	const results = await Promise.all(
 		checkNames.map(async (checkName) => {
-			const runs = await octokit.paginate(
-				octokit.rest.checks.listForRef,
-				{
-					owner,
-					repo,
-					ref: headSha,
-					check_name: checkName,
-					filter: 'all',
-					per_page: 100,
-				},
-				(response) => response.data.check_runs,
-			);
+			const runs = await listCheckRuns({ octokit, owner, repo, headSha, checkName });
 			return { checkName, latest: selectLatestExecutedRun(runs) };
 		}),
 	);

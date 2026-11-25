@@ -1,16 +1,18 @@
 /**
  * Re-triggers the PR Size Limit check when a maintainer comments `/size-limit-override`.
  *
- * Finds the latest `PR Size Limit` check run on the PR's HEAD commit and re-requests it.
+ * Finds the newest completed, non-skipped `PR Size Limit` check run on the PR's HEAD commit
+ * and re-requests it so unrelated label runs cannot intercept the override.
  * The re-run scans comments, finds the override, and passes — satisfying branch protection
  * without any label manipulation or status API calls.
  *
  * Exit codes:
  *   0 – Check run re-requested successfully
- *   1 – Commenter lacks permission, or no check run found to re-request
+ *   1 – Commenter lacks permission, or no executed check run found to re-request
  */
 
 import { initGithub, getEventFromGithubEventPath } from '../github-helpers.mjs';
+import { listCheckRuns, selectLatestExecutedRun } from './preserve-skipped-checks.mjs';
 
 const CHECK_NAME = 'PR Size Limit';
 
@@ -44,26 +46,25 @@ export async function run({ octokit, owner, repo, prNumber, commenter, commentId
 	});
 	const headSha = pr.head.sha;
 
-	const {
-		data: { check_runs },
-	} = await octokit.rest.checks.listForRef({
+	const checkRuns = await listCheckRuns({
+		octokit,
 		owner,
 		repo,
-		ref: headSha,
-		check_name: CHECK_NAME,
-		per_page: 1,
+		headSha,
+		checkName: CHECK_NAME,
 	});
+	const latestExecutedRun = selectLatestExecutedRun(checkRuns);
 
-	if (check_runs.length === 0) {
+	if (!latestExecutedRun) {
 		throw new Error(
-			`No '${CHECK_NAME}' check run found for ${headSha}. Push a new commit to trigger it.`,
+			`No executed '${CHECK_NAME}' check run found for ${headSha}. Push a new commit to trigger it.`,
 		);
 	}
 
 	await octokit.rest.checks.rerequestRun({
 		owner,
 		repo,
-		check_run_id: check_runs[0].id,
+		check_run_id: latestExecutedRun.id,
 	});
 
 	await octokit.rest.reactions.createForIssueComment({
@@ -73,7 +74,7 @@ export async function run({ octokit, owner, repo, prNumber, commenter, commentId
 		content: '+1',
 	});
 
-	console.log(`Re-requested '${CHECK_NAME}' check run (${check_runs[0].id}) for ${headSha}`);
+	console.log(`Re-requested '${CHECK_NAME}' check run (${latestExecutedRun.id}) for ${headSha}`);
 }
 
 export async function main() {

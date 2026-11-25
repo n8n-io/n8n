@@ -16,7 +16,8 @@ function createOctokit(runsByCheckName) {
 	const listForRef = () => {};
 	const paginate = mock.fn(async (_method, params, mapFn) => {
 		const runs = runsByCheckName[params.check_name] ?? [];
-		return mapFn ? mapFn({ data: { check_runs: runs } }) : runs;
+		// Octokit normalizes `{ total_count, check_runs }` so `response.data` is already an array.
+		return mapFn ? mapFn({ data: runs }) : runs;
 	});
 	return { paginate, rest: { checks: { listForRef } } };
 }
