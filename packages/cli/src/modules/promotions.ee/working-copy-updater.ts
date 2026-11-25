@@ -24,6 +24,8 @@ const selectivePushOptionsSchema = z.object({
 	folderIds: z.array(z.string().min(1)),
 	/** Credentials of the project to write although no selected workflow uses them. */
 	credentialIds: z.array(z.string().min(1)).optional(),
+	preferenceIds: z.array(z.string().uuid()).optional(),
+	deletedPreferenceIds: z.array(z.string().uuid()).optional(),
 });
 
 export type SelectivePushOptions = z.infer<typeof selectivePushOptionsSchema>;
@@ -34,6 +36,7 @@ const ENTITY_FILES = {
 	'workflow.json': 'workflows',
 	'agent.json': 'agents',
 	'skill.json': 'skills',
+	'preference.json': 'preferences',
 } as const satisfies Record<string, keyof BranchLayout>;
 
 /** Dependency collections whose directory a rename relocates (name-derived slug). */
@@ -86,6 +89,12 @@ export class WorkingCopyUpdater {
 			throw new BadRequestError(`Invalid selection: ${parsed.error.issues[0].message}`);
 		}
 
+		const preferenceIds = [
+			...(selection.preferenceIds ?? []),
+			...(selection.deletedPreferenceIds ?? []),
+		];
+		if (new Set(preferenceIds).size !== preferenceIds.length)
+			throw new BadRequestError('A Preference can be selected only once.');
 		const addSet = new Set(selection.workflowIds);
 		if (addSet.size !== selection.workflowIds.length) {
 			throw new BadRequestError('workflowIds contains duplicates');
@@ -114,6 +123,13 @@ export class WorkingCopyUpdater {
 	 * way the caller did not ask for, so stop before any file work.
 	 */
 	assertStagingMatchesSelection(staging: PackageManifest, selection: SelectivePushOptions): void {
+		const stagedPreferences = new Set((staging.preferences ?? []).map(({ id }) => id));
+		const preferences = selection.preferenceIds ?? [];
+		if (
+			stagedPreferences.size !== preferences.length ||
+			preferences.some((id) => !stagedPreferences.has(id))
+		)
+			throw new BadRequestError('The Preference export does not match the selection.');
 		const stagedIds = new Set((staging.workflows ?? []).map((workflow) => workflow.id));
 		const selectedIds = new Set(selection.workflowIds);
 		const stagedFolderIds = new Set((staging.folders ?? []).map((folder) => folder.id));
@@ -152,6 +168,7 @@ export class WorkingCopyUpdater {
 			workflows: [],
 			agents: [],
 			skills: [],
+			preferences: [],
 		};
 		const dependencies: DependencyRef[] = [];
 
@@ -207,6 +224,7 @@ export class WorkingCopyUpdater {
 			...(collected.workflows.length > 0 ? { workflows: collected.workflows } : {}),
 			...(collected.agents.length > 0 ? { agents: collected.agents } : {}),
 			...(collected.skills.length > 0 ? { skills: collected.skills } : {}),
+			...(collected.preferences.length > 0 ? { preferences: collected.preferences } : {}),
 		};
 		return { state, dependencies };
 	}
@@ -222,6 +240,7 @@ export class WorkingCopyUpdater {
 			['workflows', state.workflows],
 			['agents', state.agents],
 			['skills', state.skills],
+			['preferences', state.preferences],
 		] as const) {
 			const seen = new Map<string, string>();
 			for (const entry of entries ?? []) {
@@ -279,7 +298,8 @@ export class WorkingCopyUpdater {
 		}
 
 		const nameSource = isRecord(parsed) && kind === 'skills' ? parsed.skill : parsed;
-		const name = isRecord(nameSource) ? nameSource.name : undefined;
+		const name =
+			kind === 'preferences' ? 'Preference' : isRecord(nameSource) ? nameSource.name : undefined;
 
 		if (!isRecord(parsed) || typeof parsed.id !== 'string' || typeof name !== 'string') {
 			throw new BadRequestError(
@@ -296,6 +316,7 @@ export class WorkingCopyUpdater {
 	): Promise<ScannedBranch> {
 		try {
 			const branch = await this.scanBranch(exportFolder);
+			this.assertPreferenceSelection(branch.state, selection);
 			this.assertDeletionsOnBranch(branch.state, selection);
 			this.assertNoCrossProjectMoves(branch.state, selection);
 			return branch;
@@ -313,6 +334,21 @@ export class WorkingCopyUpdater {
 	 * project. Membership is judged by the project's directory on the branch,
 	 * the only place that records it.
 	 */
+	private assertPreferenceSelection(branch: BranchLayout, selection: SelectivePushOptions) {
+		const projectTarget = branch.projects?.find(({ id }) => id === selection.projectId)?.target;
+		const entries = new Map((branch.preferences ?? []).map((entry) => [entry.id, entry]));
+		for (const id of [
+			...(selection.preferenceIds ?? []),
+			...(selection.deletedPreferenceIds ?? []),
+		]) {
+			const entry = entries.get(id);
+			if (entry && (!projectTarget || !isUnder(entry.target, projectTarget)))
+				throw new BadRequestError('A selected Preference belongs to another scope on the branch.');
+			if (!entry && selection.deletedPreferenceIds?.includes(id))
+				throw new BadRequestError('The removed Preference is absent from the branch.');
+		}
+	}
+
 	assertDeletionsOnBranch(branch: BranchLayout, selection: SelectivePushOptions): void {
 		if (selection.deletedWorkflowIds.length === 0) return;
 
@@ -434,6 +470,13 @@ export class WorkingCopyUpdater {
 
 			await fs.cp(exportFolder, workFolder, { recursive: true, verbatimSymlinks: true });
 
+			for (const entry of existing.preferences ?? []) {
+				if (!selection.deletedPreferenceIds?.includes(entry.id)) continue;
+				const dir = await this.resolveLeafTarget(workFolder, entry.target, 'Manifest');
+				await fs.rm(path.join(dir, 'preference.json'));
+				if ((await fs.readdir(dir)).length === 0) await fs.rmdir(dir);
+			}
+
 			for (const target of staleWorkflowTargets(
 				existing,
 				staging,
@@ -538,6 +581,7 @@ export class WorkingCopyUpdater {
 			...(remaining.workflows ?? []),
 			...(remaining.agents ?? []),
 			...(remaining.skills ?? []),
+			...(remaining.preferences ?? []),
 		]) {
 			if (isUnder(entry.target, target)) {
 				throw new BadRequestError(
@@ -582,7 +626,7 @@ export class WorkingCopyUpdater {
 		staging: PackageManifest,
 		otherProjectTargets: string[],
 	): {
-		renamedInScope: Array<{ collection: DependencyCollection; target: string }>;
+		renamedInScope: { collection: DependencyCollection; target: string }[];
 		outOfScopeInStaging: Set<string>;
 	} {
 		const stagingTargets = new Map<string, string>();
@@ -592,7 +636,7 @@ export class WorkingCopyUpdater {
 			}
 		}
 
-		const renamedInScope: Array<{ collection: DependencyCollection; target: string }> = [];
+		const renamedInScope: { collection: DependencyCollection; target: string }[] = [];
 		const outOfScopeInStaging = new Set<string>();
 
 		for (const dependency of dependencies) {
@@ -668,7 +712,7 @@ export class WorkingCopyUpdater {
 
 		const stash = await fs.mkdtemp(path.join(path.dirname(workFolder), '.relocate-'));
 		try {
-			const parked: Array<{ holding: string; dest: string; move: ContainerMove }> = [];
+			const parked: { holding: string; dest: string; move: ContainerMove }[] = [];
 			for (const [index, move] of moves.entries()) {
 				const holding = path.join(stash, String(index));
 				await fs.rename(sources[index], holding);

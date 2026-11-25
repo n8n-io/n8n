@@ -33,6 +33,7 @@ import type { PromotionOperationInput } from './promotions.types';
 
 /** One side of the comparison: its manifest, and the Git blob SHA of each file path. */
 export type PreviewSide = {
+	includeInstancePreferences?: boolean;
 	manifest: PackageManifest | null;
 	blobByPath: ReadonlyMap<string, string>;
 	/**
@@ -73,6 +74,7 @@ const RESOURCE_TYPES = {
 	dataTables: 'dataTable',
 	variables: 'variable',
 	tags: 'tag',
+	preferences: 'preference',
 } as const satisfies Partial<Record<ManifestEntityCollection, PromotionResourceType>>;
 
 const TYPE_ORDER: PromotionResourceType[] = [
@@ -83,6 +85,7 @@ const TYPE_ORDER: PromotionResourceType[] = [
 	'dataTable',
 	'variable',
 	'tag',
+	'preference',
 ];
 
 export function resourceKey(type: Exclude<PromotionResourceType, 'variable'>, id: string): string {
@@ -164,6 +167,10 @@ export function indexSide(side: PreviewSide, projectId: string): Map<string, Sid
 		}
 	}
 
+	for (const preference of (manifest.preferences ?? []).filter(inProject)) {
+		add('preferences', preference, resourceKey('preference', preference.id));
+	}
+
 	const requirements = manifest.requirements;
 	for (const collection of ['credentials', 'dataTables', 'tags'] as const) {
 		const entries = new Map(manifest[collection]?.map((entry) => [entry.id, entry]));
@@ -198,6 +205,22 @@ export function indexProjects(
 	for (const projectId of projectIds) {
 		const scoped = { ...side, manifest: scopeManifestToProject(side.manifest, projectId) };
 		for (const [key, resource] of indexSide(scoped, projectId)) index.set(key, resource);
+	}
+	for (const entry of side.includeInstancePreferences ? (side.manifest.preferences ?? []) : []) {
+		if (entry.target.startsWith(`${PACKAGE_ENTITY_LAYOUT.projects.directory}/`)) continue;
+		const key = resourceKey('preference', entry.id);
+		const path = packagePath('preferences', entry.target);
+		index.set(key, {
+			key,
+			type: 'preference',
+			id: entry.id,
+			name: entry.name,
+			target: entry.target,
+			parentKey: null,
+			path,
+			blobSha: side.blobByPath.get(path) ?? null,
+			isArchived: false,
+		});
 	}
 	return index;
 }
@@ -280,6 +303,11 @@ function applyOperationRules(
 	});
 
 	if (removals?.has(resource.key)) return { ...withoutChanges, change: 'deleted' };
+	if (type === 'preference' && change === 'deleted') {
+		return direction === 'promote' || planned?.get(resource.key)?.change === 'deleted'
+			? resource
+			: null;
+	}
 	if (change === 'deleted') {
 		// Neither direction deletes dependencies. Their files and rows stay.
 		if (type !== 'workflow' && type !== 'project' && type !== 'folder') return null;
@@ -324,7 +352,7 @@ function isSelectable(
 	{ type, change, parentKey }: PromotionResource,
 	direction: PromotionDirection,
 ): boolean {
-	if (type === 'workflow') return true;
+	if (type === 'workflow' || type === 'preference') return true;
 	const changed = change === 'added' || change === 'modified';
 	// `parentKey` is set only when the credential sits in the folder of a project or a folder in it.
 	if (type === 'credential') return direction === 'promote' && changed && parentKey !== null;
@@ -467,6 +495,12 @@ export function buildPreview({
 		const after = desiredIndex.get(key);
 		const current = after ?? before;
 		if (!current) continue;
+		if (
+			current.type === 'preference' &&
+			operation?.direction === 'promote' &&
+			desired.manifest?.preferences === undefined
+		)
+			continue;
 		const compared = compareResource(current, before, after);
 		const resource = operation ? applyOperationRules(compared, { ...operation, before }) : compared;
 		if (resource)

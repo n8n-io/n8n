@@ -6168,8 +6168,11 @@ describe('TelemetryEventRelay', () => {
 					dataTables: 0,
 					variables: 4,
 					tags: 5,
+					preferences: 2,
 				},
 				selectedWorkflowCount: 3,
+				selectedPreferenceCount: 2,
+				requestedResourceTypes: ['workflow', 'preference'],
 				openedReview: false,
 			});
 
@@ -6187,6 +6190,9 @@ describe('TelemetryEventRelay', () => {
 				data_table_count: 0,
 				variable_count: 4,
 				tag_count: 5,
+				preference_count: 2,
+				selected_preference_count: 2,
+				requested_resource_types: ['workflow', 'preference'],
 				selected_workflow_count: 3,
 				opened_review: false,
 			};
@@ -6213,6 +6219,7 @@ describe('TelemetryEventRelay', () => {
 				outcome: 'failed',
 				failure_kind: 'user',
 				workflow_count: undefined,
+				preference_count: undefined,
 			});
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.PROMOTIONS.USER_PROMOTED_CHANGES,
@@ -6228,6 +6235,7 @@ describe('TelemetryEventRelay', () => {
 				outcome: 'applied',
 				durationMs: 2000,
 				workflowsChanged: 6,
+				preferencesChanged: 0,
 				workflowsFailedToPublish: 1,
 			});
 
@@ -6240,6 +6248,7 @@ describe('TelemetryEventRelay', () => {
 				failure_kind: undefined,
 				duration_ms: 2000,
 				workflows_changed: 6,
+				preferences_changed: 0,
 				workflows_failed_to_publish: 1,
 			};
 			expect(telemetry.track).toHaveBeenCalledWith(

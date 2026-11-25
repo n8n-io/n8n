@@ -33,6 +33,47 @@ A scope lets the key start the operation. The role of the key owner still
 decides what the operation can read and write. For example, the change details
 show variable values only when that role can list variables.
 
+## Preferences
+
+Promotions v2 carries shared Preferences. A project selection carries only that
+project's Preferences. A whole-instance operation also carries instance
+Preferences. Personal Preferences, feature settings, and role assignments stay
+local.
+
+Enable Preferences on both instances. Both instances must support
+[Preference packages](package.md#shared-preferences), which use package format 3.
+An older destination that does not support this format must be upgraded first.
+Legacy Environments v1 does not carry Preferences.
+
+Review the change list and the instruction diff before applying. Select a
+Preference by its ID with `--preference`; repeat the flag for more than one.
+Pass `--expected-preview-revision` from that preview. Apply also needs the
+`--expected-*` source flags. The JSON API uses `preferenceIds`,
+`expectedPreviewRevision`, and `expectedSource` for the same operation.
+
+A matching ID replaces the destination's instruction text. Identical content
+causes no write. Unselected Preferences stay unchanged. A selected removal
+deletes only that Preference. A whole-instance Apply also shows removals in its
+preview. An absent or unavailable Preferences collection never requests removal.
+If Preferences are unavailable at the source, a whole-instance Promote refuses
+to replace a branch that contains them.
+
+Resolve scope, identity, duplicate-text, permission, and scope-limit conflicts
+before applying. Reload the preview after a source commit or destination edit.
+The importer checks for concurrent edits again before it writes.
+
+A new imported Preference uses `import` as its creation source and names the
+person who applied it as its creator. A content update keeps the existing
+creation source and creator. Authorized Promotions Apply can change shared
+Preferences in a protected environment. Ordinary edits and package imports
+remain blocked there.
+
+The API key needs `aiPreference:read` and `aiPreference:list` to preview or
+promote Preferences. Apply needs both read scopes and the Preference scope for each selected action:
+`aiPreference:create`, `aiPreference:update`, or `aiPreference:delete`.
+An unchanged selected Preference needs `aiPreference:read`. The key owner's
+resource permissions must also allow each action.
+
 ## Setup example: Git over SSH
 
 ```bash

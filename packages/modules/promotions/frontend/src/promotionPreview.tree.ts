@@ -10,7 +10,13 @@ import type { ResourceKey } from './promotionPreview.selection';
  * workflows use them.
  */
 
-export type PreviewTreeGroup = 'credential' | 'dataTable' | 'variable' | 'tag' | 'subWorkflow';
+export type PreviewTreeGroup =
+	| 'credential'
+	| 'dataTable'
+	| 'variable'
+	| 'tag'
+	| 'subWorkflow'
+	| 'preference';
 
 export type PreviewTreeItem = {
 	/** The resource key, or a section or group id. */
@@ -34,6 +40,7 @@ const GROUP_ORDER: readonly PreviewTreeGroup[] = [
 	'variable',
 	'dataTable',
 	'tag',
+	'preference',
 ];
 
 const RESOURCE_ICONS: Record<PromotionResourceType, IconName> = {
@@ -44,6 +51,7 @@ const RESOURCE_ICONS: Record<PromotionResourceType, IconName> = {
 	dataTable: 'table',
 	variable: 'variable',
 	tag: 'tags',
+	preference: 'sliders-horizontal',
 };
 
 export function resourceIcon(type: PromotionResourceType): IconName {

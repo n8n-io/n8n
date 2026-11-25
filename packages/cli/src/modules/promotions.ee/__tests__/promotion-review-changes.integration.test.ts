@@ -1,3 +1,5 @@
+import { AiPreferenceService } from '@n8n/backend-services';
+import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import type { PromotionResource } from '@n8n/api-types';
 import { createTeamProject, createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
 import type { Person } from '@n8n/db';
@@ -78,6 +80,7 @@ beforeEach(async () => {
 	await Container.get(PromotionEnvironmentRepository).delete({});
 	await Container.get(PromotionProviderRepository).delete({});
 	await testDb.truncate([
+		'AiPreference',
 		'SharedCredentials',
 		'CredentialsEntity',
 		'SharedWorkflow',
@@ -677,3 +680,41 @@ it('lists nothing when the recorded base of a closed review has an unreadable ma
 		warnings: ['baselineManifestUnreadable'],
 	});
 }, 60_000);
+
+it('shows instance Preference text in a promotion review', async () => {
+	const enabled = vi
+		.spyOn(Container.get(AiPreferenceSettingsService), 'isEnabled', 'get')
+		.mockReturnValue(true);
+	try {
+		const preferences = Container.get(AiPreferenceService);
+		const preference = await preferences.create(
+			owner,
+			{ scope: 'instance', content: 'Use UTC.' },
+			'ui',
+		);
+		const first = await promote('Shared instructions');
+		await mergeOnHost(first.iid, first.commitSha);
+		await preferences.update(owner, preference.id, { content: 'Use local time.' });
+		const second = await promote('Update shared instructions');
+		const changes = await changesOf(second.reviewId);
+		expect(changed(changes.resources)).toEqual([[`preference:${preference.id}`, 'modified']]);
+		const { body } = await server
+			.authAgentFor(owner)
+			.post(`/promotions/reviews/${second.reviewId}/changes/details`)
+			.send({
+				baselineCommitSha: changes.baselineCommitSha,
+				headCommitSha: changes.headCommitSha,
+				keys: [`preference:${preference.id}`],
+			})
+			.expect(200);
+		expect(body.data.details).toContainEqual(
+			expect.objectContaining({
+				type: 'preference',
+				before: { id: preference.id, scope: 'instance', content: 'Use UTC.' },
+				after: { id: preference.id, scope: 'instance', content: 'Use local time.' },
+			}),
+		);
+	} finally {
+		enabled.mockRestore();
+	}
+});

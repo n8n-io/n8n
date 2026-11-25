@@ -50,10 +50,12 @@ export async function exportInstancePackage(
 	{
 		keepContent,
 		credentialIds,
+		preferenceOptions,
 	}: {
 		keepContent?: (path: string) => boolean;
 		/** Credentials of the exported projects to write although no workflow uses them. */
 		credentialIds?: string[];
+		preferenceOptions?: Pick<ExportPackageRequest, 'includePreferences' | 'preferenceIds'>;
 	} = {},
 ): Promise<InstancePackage> {
 	const writer = new HashingPackageWriter();
@@ -63,6 +65,7 @@ export async function exportInstancePackage(
 			user,
 			projectIds,
 			projectCredentialIds: credentialIds,
+			...preferenceOptions,
 			includeAgents: false,
 			includeArchived: true,
 			includeTags: true,

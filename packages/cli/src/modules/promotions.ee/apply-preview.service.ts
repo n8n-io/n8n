@@ -1,3 +1,7 @@
+import {
+	PromotionPreferenceService,
+	selectPromotionPreferences,
+} from './promotion-preference.service';
 import type {
 	PromotionBindingConflict,
 	PromotionPreviewCheck,
@@ -75,6 +79,8 @@ export function applySelectionRequest(
 	return {
 		user,
 		publicApi,
+		preferenceConflictPolicy: 'replace',
+		preferencesFromPromotion: true,
 		projectConflictPolicy: ProjectConflictPolicy.Overwrite,
 		// Hard delete, so that the next preview has nothing left to show.
 		overwriteDeletionPolicy: OverwriteDeletionPolicy.HardDelete,
@@ -89,8 +95,8 @@ export function applySelectionRequest(
 		layoutConflictPolicy: LayoutConflictPolicy.FollowPackage,
 		// A credential must be usable by the project, not only by the user who applies.
 		credentialPersonalRoute: CredentialPersonalRoute.Exclude,
-		// No `apiKeyScopes`: an Apply key needs only `promotions:apply`, and the role of the user
-		// checks each write. The content comes from the configured branch, not from the caller.
+		// Existing resources use the user's write permissions. Preference API-key grants travel
+		// separately in `preferenceApiKeyScopes`.
 	};
 }
 
@@ -145,6 +151,7 @@ export class ApplyPreviewService {
 		private readonly folderService: FolderService,
 		private readonly localEntities: LocalPackageEntities,
 		private readonly globalConfig: GlobalConfig,
+		private readonly preferenceSelection: PromotionPreferenceService,
 	) {}
 
 	/**
@@ -169,6 +176,10 @@ export class ApplyPreviewService {
 			projectId,
 			await this.sharedWorkflowRepository.findOwnedWorkflowIdsByProjects([projectId]),
 			new Set(moves.workflows.map(({ id }) => id)),
+		);
+		Object.assign(
+			selection,
+			selectPromotionPreferences(await reader.readManifest(), instance.manifest, projectId),
 		);
 		// The import needs the project on the branch. Without it, the preview still shows what the
 		// branch lacks, and the check stops Apply.
@@ -204,19 +215,27 @@ export class ApplyPreviewService {
 	async buildInstance({
 		user,
 		files,
+		instance: suppliedInstance,
 	}: {
 		user: User;
 		files: ReadonlyMap<string, Buffer>;
+		instance?: InstancePackage;
 	}): Promise<ApplyPreview> {
 		const { reader, inventory } = await this.readPackage(files);
-		const teamProjectIds = await this.projectRepository.findTeamProjectIds();
-		const [moves, deletedProjects, instance] = await Promise.all([
+		const instance = suppliedInstance ?? (await this.exportInstance(user));
+		const teamProjectIds = instance.manifest.projects?.map(({ id }) => id) ?? [];
+		const [moves, deletedProjects] = await Promise.all([
 			this.findCrossProjectMoves(inventory),
 			this.deletionsOf(inventory, teamProjectIds),
-			exportInstancePackage(this.packagesService, user, teamProjectIds),
 		]);
 		const plan = await this.packagesService.planPackage(
-			instanceApplyRequest(user, false),
+			{
+				...instanceApplyRequest(user, false),
+				deletedPreferenceIds: selectPromotionPreferences(
+					await reader.readManifest(),
+					instance.manifest,
+				).deletedPreferenceIds,
+			},
 			reader,
 			'check',
 		);
@@ -241,6 +260,7 @@ export class ApplyPreviewService {
 			instance,
 			files,
 			manifest: plan.manifest,
+			includeInstancePreferences: true,
 			tagsDisabled: this.globalConfig.tags.disabled,
 		});
 		// What a deleted project owns but no listed workflow uses is not in the comparison.
@@ -249,6 +269,13 @@ export class ApplyPreviewService {
 		// Apply applies the whole package, so nothing can be selected.
 		for (const resource of resources) resource.selectable = false;
 		return await this.finish(resources, dependencies, check);
+	}
+
+	async exportInstance(user: User): Promise<InstancePackage> {
+		const projectIds = await this.projectRepository.findTeamProjectIds();
+		return await exportInstancePackage(this.packagesService, user, projectIds, {
+			preferenceOptions: await this.preferenceSelection.exportOptions(user, projectIds, true),
+		});
 	}
 
 	/** A whole-instance Apply deletes the team projects that the package does not hold. */
@@ -398,11 +425,13 @@ function compareWithBranch({
 	files,
 	manifest,
 	tagsDisabled,
+	includeInstancePreferences = false,
 }: Pick<Parameters<typeof buildPreview>[0], 'operation' | 'projectIds'> & {
 	instance: InstancePackage;
 	files: ReadonlyMap<string, Buffer>;
 	manifest: PreviewSide['manifest'];
 	tagsDisabled: boolean;
+	includeInstancePreferences?: boolean;
 }) {
 	const workflowPaths = new Set(
 		tagsDisabled
@@ -413,10 +442,12 @@ function compareWithBranch({
 		operation,
 		projectIds,
 		base: {
+			includeInstancePreferences,
 			manifest: instance.manifest,
 			blobByPath: new Map(instance.files.map(({ path, blobSha }) => [path, blobSha])),
 		},
 		desired: {
+			includeInstancePreferences,
 			manifest: manifest && tagsDisabled ? withoutTags(manifest) : manifest,
 			blobByPath: new Map(
 				[...files].map(([path, content]) => [
@@ -444,6 +475,7 @@ function contentOfProjects(instance: InstancePackage, projectIds: readonly strin
 		const inside = ({ target }: { target: string }) => target.startsWith(`${project.target}/`);
 		return [
 			resourceKey('project', projectId),
+			...(manifest.preferences ?? []).filter(inside).map(({ id }) => resourceKey('preference', id)),
 			...(manifest.folders ?? []).filter(inside).map(({ id }) => resourceKey('folder', id)),
 			...(manifest.workflows ?? []).filter(inside).map(({ id }) => resourceKey('workflow', id)),
 		];

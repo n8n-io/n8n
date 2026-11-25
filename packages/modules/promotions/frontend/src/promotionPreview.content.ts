@@ -44,7 +44,16 @@ export function hasUnreadableSide(detail: PromotionResourceDetail): boolean {
 	);
 }
 
-const FIELD_IDS = ['name', 'description', 'icon', 'location', 'type', 'data', 'value'] as const;
+const FIELD_IDS = [
+	'name',
+	'description',
+	'icon',
+	'location',
+	'type',
+	'data',
+	'value',
+	'content',
+] as const;
 
 export type FieldId = (typeof FIELD_IDS)[number];
 
@@ -86,6 +95,8 @@ function fieldsOf(
 			if (!variable) return {};
 			return { name: variable.name, type: variable.type, value: variable.value };
 		}
+		case 'preference':
+			return detail[side] ? { content: detail[side].content } : {};
 		case 'tag': {
 			const tag = detail[side];
 			return tag ? { name: tag.name } : {};

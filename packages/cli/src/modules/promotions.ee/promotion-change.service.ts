@@ -1,3 +1,4 @@
+import { PromotionPreferenceService } from './promotion-preference.service';
 import type {
 	PromotionDirection,
 	PromotionInstanceApplyPreview,
@@ -13,6 +14,7 @@ import {
 	serializedFolderSchema,
 	serializedProjectSchema,
 	serializedTagSchema,
+	serializedPreferenceSchema,
 	serializedVariableSchema,
 	serializedWorkflowSchema,
 } from '@n8n/api-types';
@@ -72,6 +74,7 @@ export class PromotionChangeService {
 		private readonly environmentResolver: PromotionEnvironmentResolver,
 		private readonly projectRepository: ProjectRepository,
 		private readonly credentialSelection: PromotionCredentialSelectionService,
+		private readonly preferenceSelection: PromotionPreferenceService,
 	) {}
 
 	/**
@@ -105,7 +108,9 @@ export class PromotionChangeService {
 		}
 		const [files, instance] = await Promise.all([
 			this.promotionsService.readApplyPackageAtCommit(projectId, branch.commitSha),
-			exportInstancePackage(this.packagesService, user, [projectId]),
+			exportInstancePackage(this.packagesService, user, [projectId], {
+				preferenceOptions: await this.preferenceSelection.exportOptions(user, [projectId]),
+			}),
 		]);
 		const preview = await this.applyPreviewService.build({ user, projectId, files, instance });
 		return {
@@ -164,6 +169,7 @@ export class PromotionChangeService {
 		const [branchFiles, instance] = await Promise.all([
 			readBranch([manifestPath]),
 			exportInstancePackage(this.packagesService, user, [projectId], {
+				preferenceOptions: await this.preferenceSelection.exportOptions(user, [projectId]),
 				// Keep the content of the requested resources only. Variables match by name, not by ID.
 				keepContent: (path) =>
 					requestedIds.has(entityIdOfPath(path)) ||
@@ -228,6 +234,7 @@ export class PromotionChangeService {
 		const [branchFiles, instance] = await Promise.all([
 			readBranch([manifestPath]),
 			exportInstancePackage(this.packagesService, user, teamProjectIds, {
+				preferenceOptions: await this.preferenceSelection.exportOptions(user, teamProjectIds, true),
 				// Keep the content of the requested resources only. Variables match by name, not by ID.
 				keepContent: (path) =>
 					requestedIds.has(entityIdOfPath(path)) ||
@@ -238,11 +245,15 @@ export class PromotionChangeService {
 		const branchProjectIds = new Set(branchManifest?.projects?.map(({ id }) => id));
 		const projectIds = [...new Set([...teamProjectIds, ...branchProjectIds])];
 		const branchIndex = indexProjects(
-			{ manifest: branchManifest, blobByPath: new Map() },
+			{ manifest: branchManifest, blobByPath: new Map(), includeInstancePreferences: true },
 			projectIds,
 		);
 		const instanceIndex = indexProjects(
-			{ manifest: instance.manifest, blobByPath: blobsByPath(instance.files) },
+			{
+				manifest: instance.manifest,
+				blobByPath: blobsByPath(instance.files),
+				includeInstancePreferences: true,
+			},
 			projectIds,
 		);
 		const unindexed = keys.filter((key) => !branchIndex.has(key) && !instanceIndex.has(key));
@@ -427,6 +438,8 @@ export function toDetail({
 			return { type, ...parseSides(serializedWorkflowSchema) };
 		case 'credential':
 			return { type, ...parseSides(serializedCredentialSchema) };
+		case 'preference':
+			return { type, ...parseSides(serializedPreferenceSchema) };
 		case 'tag':
 			return { type, ...parseSides(serializedTagSchema) };
 		case 'variable': {

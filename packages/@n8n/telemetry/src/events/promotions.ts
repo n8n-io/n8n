@@ -126,6 +126,24 @@ export const PROMOTIONS_TELEMETRY = defineTelemetryEvents({
 				),
 			failure_kind: failureKind,
 			duration_ms: z.number(),
+			preference_count: z
+				.number()
+				.int()
+				.nonnegative()
+				.optional()
+				.describe('Preferences exported on success. Absent when the collection was unavailable.'),
+			selected_preference_count: z
+				.number()
+				.int()
+				.nonnegative()
+				.optional()
+				.describe(
+					'Preferences explicitly selected in a project operation, including unsuccessful attempts.',
+				),
+			requested_resource_types: z
+				.array(z.enum(['workflow', 'folder', 'credential', 'preference']))
+				.optional()
+				.describe('Resource types in a project selection. No resource identifiers.'),
 			workflow_count: z
 				.number()
 				.optional()
@@ -182,6 +200,26 @@ export const PROMOTIONS_TELEMETRY = defineTelemetryEvents({
 				),
 			failure_kind: failureKind,
 			duration_ms: z.number(),
+			preferences_changed: z
+				.number()
+				.int()
+				.nonnegative()
+				.optional()
+				.describe(
+					'Preferences created, updated, and removed on a completed apply. Absent when unknown.',
+				),
+			selected_preference_count: z
+				.number()
+				.int()
+				.nonnegative()
+				.optional()
+				.describe(
+					'Preferences explicitly selected in a project operation, including unsuccessful attempts.',
+				),
+			requested_resource_types: z
+				.array(z.enum(['workflow', 'folder', 'credential', 'preference']))
+				.optional()
+				.describe('Resource types in a project selection. No resource identifiers.'),
 			workflows_changed: z
 				.number()
 				.optional()

@@ -1,3 +1,4 @@
+import { PromotionPreferenceService } from './promotion-preference.service';
 import type { PromotionPreview, PromotionResource } from '@n8n/api-types';
 import { SharedWorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -35,6 +36,7 @@ export class PromotePreviewService {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly reviewGate: PromotionReviewGateService,
 		private readonly credentialSelection: PromotionCredentialSelectionService,
+		private readonly preferenceSelection: PromotionPreferenceService,
 	) {}
 
 	/** `readBranch` is a callback, so a project with an open review skips the git and export work. */
@@ -77,6 +79,7 @@ export class PromotePreviewService {
 		// select them.
 		const visibleCredentialIds = new Set(selectableCredentialIds);
 		const instance = await exportInstancePackage(this.packagesService, user, [projectId], {
+			preferenceOptions: await this.preferenceSelection.exportOptions(user, [projectId]),
 			credentialIds: selectableCredentialIds,
 		});
 		// Promote compares with the branch manifest to see renames and moves. The manifest can list

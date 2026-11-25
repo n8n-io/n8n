@@ -15,6 +15,9 @@ import {
  * credentials promotes only the project.
  */
 export const promoteRequestSchema = z.object({
+	preferenceIds: promotionSelectedIdsSchema('preferenceIds').openapi({
+		description: 'Shared Preferences to write or remove, from the reviewed preview.',
+	}),
 	workflowIds: promotionSelectedIdsSchema('workflowIds'),
 	folderIds: promotionSelectedIdsSchema('folderIds').openapi({
 		description:

@@ -113,6 +113,7 @@ export class PreferenceImporter {
 			changes,
 			request.preferenceConflictPolicy,
 			newProjectIds,
+			request.preferencesFromPromotion,
 		);
 		this.assertApiKeyScopes(request, plan);
 		return {
@@ -126,7 +127,12 @@ export class PreferenceImporter {
 		this.assertAvailable(plan);
 		this.assertApiKeyScopes(request, plan.changes);
 		try {
-			await this.preferences.checkSharedChanges(request.user, plan.changes, request.ctx);
+			await this.preferences.checkSharedChanges(
+				request.user,
+				plan.changes,
+				request.ctx,
+				request.preferencesFromPromotion,
+			);
 		} catch (error) {
 			throw this.blocked(error);
 		}
@@ -135,7 +141,12 @@ export class PreferenceImporter {
 	async apply(request: ResolvedImportRequest, plan: PreferenceImportPlan) {
 		await this.check(request, plan);
 		try {
-			return await this.preferences.applySharedChanges(request.user, plan.changes, request.ctx);
+			return await this.preferences.applySharedChanges(
+				request.user,
+				plan.changes,
+				request.ctx,
+				request.preferencesFromPromotion,
+			);
 		} catch (error) {
 			throw this.blocked(error);
 		}
@@ -154,7 +165,7 @@ export class PreferenceImporter {
 
 	private assertApiKeyScopes(request: ResolvedImportRequest, plan: SharedPreferencePlan) {
 		for (const item of plan.items) {
-			assertPackageImportApiKeyScopes(request.apiKeyScopes, [
+			assertPackageImportApiKeyScopes(request.preferenceApiKeyScopes ?? request.apiKeyScopes, [
 				`aiPreference:${item.action === 'skip' ? 'read' : item.action}`,
 			]);
 		}

@@ -4,7 +4,11 @@ import { jsonParse } from 'n8n-workflow';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
+import {
+	MANIFEST_FILE,
+	FORMAT_VERSION,
+	PREFERENCES_FORMAT_VERSION,
+} from '@/modules/n8n-packages/spec/constants';
 import type { ManifestEntry, PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 import type {
@@ -28,6 +32,7 @@ const SNAPSHOT_FILES = {
 	'workflow.json': 'workflows',
 	'agent.json': 'agents',
 	'skill.json': 'skills',
+	'preference.json': 'preferences',
 	'credential.json': 'credentials',
 	'data-table.json': 'dataTables',
 	'tag.json': 'tags',
@@ -114,7 +119,13 @@ export async function writeImportManifest(options: {
 	const variables = await collectVariables(exportFolder, leftover, staging, containerMoves);
 
 	const written = {
-		packageFormatVersion: '1',
+		packageFormatVersion:
+			collections.preferences || staging.preferences || leftover?.preferences
+				? PREFERENCES_FORMAT_VERSION
+				: FORMAT_VERSION,
+		...(staging.preferences !== undefined || leftover?.preferences !== undefined
+			? { preferences: [] }
+			: {}),
 		sourceN8nVersion: getN8nVersion(),
 		sourceId,
 		...collections,
@@ -135,6 +146,7 @@ async function walkSnapshotCollections(
 		workflows: [],
 		agents: [],
 		skills: [],
+		preferences: [],
 		credentials: [],
 		dataTables: [],
 		tags: [],
@@ -172,6 +184,7 @@ async function walkSnapshotCollections(
 		...(state.workflows.length > 0 ? { workflows: state.workflows } : {}),
 		...(state.agents.length > 0 ? { agents: state.agents } : {}),
 		...(state.skills.length > 0 ? { skills: state.skills } : {}),
+		...(state.preferences.length > 0 ? { preferences: state.preferences } : {}),
 		...(state.credentials.length > 0 ? { credentials: state.credentials } : {}),
 		...(state.dataTables.length > 0 ? { dataTables: state.dataTables } : {}),
 		...(state.tags.length > 0 ? { tags: state.tags } : {}),
@@ -191,7 +204,8 @@ async function readIdNameFile(
 	}
 
 	const nameSource = isRecord(parsed) && kind === 'skills' ? parsed.skill : parsed;
-	const name = isRecord(nameSource) ? nameSource.name : undefined;
+	const name =
+		kind === 'preferences' ? 'Preference' : isRecord(nameSource) ? nameSource.name : undefined;
 
 	if (!isRecord(parsed) || typeof parsed.id !== 'string' || typeof name !== 'string') {
 		return undefined;

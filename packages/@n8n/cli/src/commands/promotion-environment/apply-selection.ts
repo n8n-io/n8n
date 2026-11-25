@@ -32,6 +32,10 @@ export default class PromotionEnvironmentApplySelection extends PromotionApplyCo
 			description: 'Workflow ID to apply (repeat for more than one)',
 			multiple: true,
 		}),
+		preference: Flags.string({
+			description: 'Shared Preference ID from the reviewed preview (repeat for more than one)',
+			multiple: true,
+		}),
 		folder: Flags.string({
 			description: 'Folder ID to apply (repeat for more than one)',
 			multiple: true,
@@ -42,7 +46,11 @@ export default class PromotionEnvironmentApplySelection extends PromotionApplyCo
 
 	async run() {
 		const { args, flags } = await this.parse(PromotionEnvironmentApplySelection);
-		const selection = { workflowIds: flags.workflow, folderIds: flags.folder };
+		const selection = {
+			workflowIds: flags.workflow,
+			folderIds: flags.folder,
+			...(flags.preference ? { preferenceIds: flags.preference } : {}),
+		};
 		await this.execute(async () => {
 			const result = await this.getClient(flags).applyProjectSelection(
 				args.projectId,

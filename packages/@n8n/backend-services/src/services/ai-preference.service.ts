@@ -423,6 +423,7 @@ export class AiPreferenceService {
 		changes: SharedPreferenceChange[],
 		policy: 'fail' | 'skip' | 'replace' = 'fail',
 		newProjectIds: string[] = [],
+		fromPromotion = false,
 	): Promise<SharedPreferencePlan> {
 		const plan: SharedPreferencePlan = { items: [], issues: [], newProjectIds };
 		const seen = new Set<string>();
@@ -456,7 +457,7 @@ export class AiPreferenceService {
 					action = 'update';
 				}
 				const item: SharedPreferencePlan['items'][number] = { ...change, action, previous };
-				await this.authorizeSharedChange(user, item, newProjectIds);
+				await this.authorizeSharedChange(user, item, newProjectIds, {}, fromPromotion);
 				plan.items.push(item);
 			} catch (error) {
 				plan.issues.push({ ...toSharedPreferenceIssue(error), preferenceId: change.id });
@@ -464,7 +465,7 @@ export class AiPreferenceService {
 		}
 		if (plan.issues.length === 0) {
 			try {
-				await this.checkSharedChanges(user, plan);
+				await this.checkSharedChanges(user, plan, {}, fromPromotion);
 			} catch (error) {
 				plan.issues.push(toSharedPreferenceIssue(error));
 			}
@@ -477,6 +478,7 @@ export class AiPreferenceService {
 		item: SharedPreferencePlan['items'][number],
 		newProjectIds: string[],
 		ctx: OperationContext = {},
+		fromPromotion = false,
 	) {
 		const operation = item.action === 'skip' ? 'read' : item.action;
 		const access = this.projectAccess(user, ctx);
@@ -498,8 +500,7 @@ export class AiPreferenceService {
 		}
 		if (item.previous?.project?.type === 'personal')
 			throw new BadRequestError('Personal project Preferences cannot be imported.');
-		if (item.action !== 'skip')
-			this.assertWritable({ userId: null, projectId: item.projectId ?? null });
+		if (item.action !== 'skip') this.assertSharedWritable(user, item.projectId, fromPromotion);
 	}
 
 	/** Recheck a preview before any package writes. Apply repeats this check under the same scope locks. */
@@ -507,26 +508,32 @@ export class AiPreferenceService {
 		user: User,
 		plan: SharedPreferencePlan,
 		ctx: OperationContext = {},
+		fromPromotion = false,
 	): Promise<void> {
 		if (plan.issues.length) throw new ConflictError('A blocked Preference plan cannot be applied.');
 		if (plan.items.length === 0) return;
 		for (const item of plan.items)
-			await this.authorizeSharedChange(user, item, plan.newProjectIds, ctx);
+			await this.authorizeSharedChange(user, item, plan.newProjectIds, ctx, fromPromotion);
 		await this.aiPreferenceRepository.withWriteLock(
 			plan.items.map(changeTarget),
 			ctx,
 			async (ctx) => {
-				await this.validateSharedChanges(plan, ctx);
+				await this.validateSharedChanges(user, plan, ctx, fromPromotion);
 			},
 			plan.items.map(({ id }) => id),
 		);
 	}
 
-	async applySharedChanges(user: User, plan: SharedPreferencePlan, ctx: OperationContext = {}) {
+	async applySharedChanges(
+		user: User,
+		plan: SharedPreferencePlan,
+		ctx: OperationContext = {},
+		fromPromotion = false,
+	) {
 		if (plan.issues.length) throw new ConflictError('A blocked Preference plan cannot be applied.');
 		if (plan.items.length === 0) return [];
 		for (const item of plan.items) {
-			await this.authorizeSharedChange(user, item, plan.newProjectIds, ctx);
+			await this.authorizeSharedChange(user, item, plan.newProjectIds, ctx, fromPromotion);
 			if (
 				item.projectId &&
 				plan.newProjectIds.includes(item.projectId) &&
@@ -539,7 +546,7 @@ export class AiPreferenceService {
 			plan.items.map(changeTarget),
 			ctx,
 			async (ctx) => {
-				await this.validateSharedChanges(plan, ctx);
+				await this.validateSharedChanges(user, plan, ctx, fromPromotion);
 				// Remove first so the final batch can replace a full scope.
 				for (const item of plan.items) {
 					if (item.action === 'delete')
@@ -569,10 +576,23 @@ export class AiPreferenceService {
 		);
 	}
 
-	private async validateSharedChanges(plan: SharedPreferencePlan, ctx: OperationContext) {
+	private assertSharedWritable(user: User, projectId: string | undefined, fromPromotion: boolean) {
+		if (fromPromotion) {
+			if (!hasGlobalScope(user, 'promotions:apply'))
+				throw new ForbiddenError('Applying Preferences requires promotions:apply.');
+			return;
+		}
+		this.assertWritable({ userId: null, projectId: projectId ?? null });
+	}
+
+	private async validateSharedChanges(
+		user: User,
+		plan: SharedPreferencePlan,
+		ctx: OperationContext,
+		fromPromotion: boolean,
+	) {
 		for (const item of plan.items) {
-			if (item.action !== 'skip')
-				this.assertWritable({ userId: null, projectId: item.projectId ?? null });
+			if (item.action !== 'skip') this.assertSharedWritable(user, item.projectId, fromPromotion);
 			if (item.previous) await this.aiPreferenceRepository.assertUnchanged(item.previous, ctx);
 			else if (await this.aiPreferenceRepository.findForChange(item.id, ctx))
 				throw new ConflictError('The Preference changed. Create a new import plan.');

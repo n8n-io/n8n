@@ -22,6 +22,26 @@ oneOf:
       counts:
         type: object
         properties:
+          preferences:
+            type: object
+            properties:
+              created:
+                type: integer
+                minimum: 0
+              updated:
+                type: integer
+                minimum: 0
+              removed:
+                type: integer
+                minimum: 0
+              skipped:
+                type: integer
+                minimum: 0
+            required:
+              - created
+              - updated
+              - removed
+              - skipped
           projects:
             type: object
             properties:

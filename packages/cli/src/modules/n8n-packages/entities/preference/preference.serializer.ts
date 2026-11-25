@@ -10,7 +10,9 @@ import { PackageExportBlockedError } from '../package-export.errors';
 
 @Service()
 export class PreferenceSerializer {
-	serialize(preference: AiPreferenceDto): SerializedPreference {
+	serialize(
+		preference: Pick<AiPreferenceDto, 'id' | 'userId' | 'projectId' | 'project' | 'content'>,
+	): SerializedPreference {
 		const scope = aiPreferenceScopeOf(preference);
 		if (scope === 'user' || preference.project?.type === 'personal') {
 			throw new PackageExportBlockedError('Personal Preferences cannot be exported.');

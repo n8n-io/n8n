@@ -25,6 +25,10 @@ export default class PromotionEnvironmentPromoteSelection extends BaseCommand {
 			description: 'Workflow ID to promote (repeat for more than one)',
 			multiple: true,
 		}),
+		preference: Flags.string({
+			description: 'Shared Preference ID from the reviewed preview (repeat for more than one)',
+			multiple: true,
+		}),
 		folder: Flags.string({
 			description: 'Folder ID to promote (repeat for more than one)',
 			multiple: true,
@@ -41,7 +45,11 @@ export default class PromotionEnvironmentPromoteSelection extends BaseCommand {
 		await this.execute(async () => {
 			const result = await this.getClient(flags).promoteProjectSelection(
 				args.projectId,
-				{ workflowIds: flags.workflow, folderIds: flags.folder },
+				{
+					workflowIds: flags.workflow,
+					folderIds: flags.folder,
+					...(flags.preference ? { preferenceIds: flags.preference } : {}),
+				},
 				flags.message,
 				flags.expectedPreviewRevision,
 			);

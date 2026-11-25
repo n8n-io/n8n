@@ -17,6 +17,7 @@ export type OperationSelection = {
 	folderIds: string[];
 	/** Credentials that the project owns. Only Promote sends them. */
 	credentialIds: string[];
+	preferenceIds?: string[];
 };
 
 /**
@@ -30,8 +31,10 @@ export function toOperationRequest(
 	const workflowIds = new Set<string>();
 	const folderIds = new Set<string>();
 	const credentialIds = new Set<string>();
+	const preferenceIds = new Set<string>();
 	for (const key of selected) {
 		const resource = graph.resources.get(key);
+		if (resource?.type === 'preference') preferenceIds.add(resource.id);
 		if (resource?.type === 'workflow') workflowIds.add(resource.id);
 		if (resource?.type === 'folder') folderIds.add(resource.id);
 		// Other credentials come with the workflows that use them.
@@ -41,6 +44,7 @@ export function toOperationRequest(
 		workflowIds: [...workflowIds].sort(),
 		folderIds: [...folderIds].sort(),
 		credentialIds: [...credentialIds].sort(),
+		...(preferenceIds.size ? { preferenceIds: [...preferenceIds].sort() } : {}),
 	};
 }
 
@@ -149,6 +153,15 @@ export function listBlockers(
 				kind: 'conflict',
 				resourceKey: `project:${conflict.project.id}`,
 				workflowKeys: conflict.workflows.map(({ id }) => workflowKey(id)),
+			});
+		} else if (conflict.kind === 'preference') {
+			const keys = conflict.id
+				? [`preference:${conflict.id}`]
+				: listedKeys.filter((key) => key.startsWith('preference:'));
+			blockers.push({
+				kind: 'conflict',
+				resourceKey: conflict.id ? `preference:${conflict.id}` : null,
+				workflowKeys: keys,
 			});
 		} else if (conflict.kind === 'credential') {
 			blockers.push({

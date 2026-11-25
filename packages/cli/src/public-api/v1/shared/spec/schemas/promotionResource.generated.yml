@@ -12,6 +12,7 @@ properties:
       - dataTable
       - variable
       - tag
+      - preference
   id:
     type: string
   name:
