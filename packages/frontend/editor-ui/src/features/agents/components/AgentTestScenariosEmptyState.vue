@@ -13,17 +13,14 @@ const props = withDefaults(
 		projectId: string;
 		agentId: string;
 		beforeGenerate?: () => Promise<void> | void;
-		autoRun?: boolean;
 	}>(),
 	{
 		beforeGenerate: undefined,
-		autoRun: false,
 	},
 );
 
 const emit = defineEmits<{
 	select: [prompt: string];
-	'auto-run-consumed': [];
 }>();
 
 const i18n = useI18n();
@@ -43,7 +40,7 @@ function resetState() {
 	seenScenarios.value = [];
 }
 
-async function generate(different: boolean, options: { autoSelectFirst?: boolean } = {}) {
+async function generate(different: boolean) {
 	if (state.value === 'loading') return;
 
 	const currentRequest = ++requestVersion;
@@ -80,10 +77,6 @@ async function generate(different: boolean, options: { autoSelectFirst?: boolean
 			]),
 		].slice(-MAX_SEEN_SCENARIOS);
 		state.value = 'ready';
-
-		if (options.autoSelectFirst) {
-			emit('select', response.scenarios[0]);
-		}
 	} catch {
 		if (currentRequest !== requestVersion) return;
 		state.value = 'error';
@@ -101,17 +94,6 @@ watch(
 			resetState();
 		}
 	},
-);
-
-watch(
-	() => props.autoRun,
-	(shouldAutoRun) => {
-		if (!shouldAutoRun) return;
-
-		emit('auto-run-consumed');
-		void generate(false, { autoSelectFirst: true });
-	},
-	{ immediate: true },
 );
 </script>
 

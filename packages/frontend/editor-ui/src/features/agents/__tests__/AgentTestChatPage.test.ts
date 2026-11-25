@@ -29,12 +29,11 @@ const AgentChatPanelStub = defineComponent({
 
 const AgentTestScenariosEmptyStateStub = defineComponent({
 	name: 'AgentTestScenariosEmptyState',
-	props: ['projectId', 'agentId', 'beforeGenerate', 'autoRun'],
-	emits: ['select', 'auto-run-consumed'],
+	props: ['projectId', 'agentId', 'beforeGenerate'],
+	emits: ['select'],
 	template: `
-		<div data-testid="scenarios-empty-state-stub" :data-auto-run="String(Boolean(autoRun))">
+		<div data-testid="scenarios-empty-state-stub">
 			<button data-testid="trigger-select" @click="$emit('select', 'Run scenario 1')" />
-			<button data-testid="trigger-consumed" @click="$emit('auto-run-consumed')" />
 		</div>
 	`,
 });
@@ -75,36 +74,19 @@ describe('AgentTestChatPage', () => {
 	it('renders the suggested scenarios empty state and sends selected scenarios when enabled', async () => {
 		const wrapper = mountPage({ showTestScenarios: true });
 
-		const emptyState = wrapper.get('[data-testid="scenarios-empty-state-stub"]');
-		expect(emptyState.attributes('data-auto-run')).toBe('false');
+		expect(wrapper.find('[data-testid="scenarios-empty-state-stub"]').exists()).toBe(true);
 
 		await wrapper.get('[data-testid="trigger-select"]').trigger('click');
 		expect(sendMessageFromOutsideMock).toHaveBeenCalledExactlyOnceWith('Run scenario 1');
 	});
 
-	it('passes autoRun to the scenarios empty state when autoStartTest is true and forwards consumption', async () => {
-		const wrapper = mountPage({ showTestScenarios: true, autoStartTest: true });
-
-		expect(
-			wrapper.get('[data-testid="scenarios-empty-state-stub"]').attributes('data-auto-run'),
-		).toBe('true');
-
-		await wrapper.get('[data-testid="trigger-consumed"]').trigger('click');
-		await flushPromises();
-		expect(wrapper.emitted('auto-start-consumed')).toEqual([[]]);
-	});
-
-	it('suppresses autoRun when an explicit initialPrompt is already present', async () => {
-		const wrapper = mountPage({
+	it('sends an explicit initialPrompt when provided', async () => {
+		mountPage({
 			showTestScenarios: true,
-			autoStartTest: true,
 			initialPrompt: 'Run scheduled check',
 		});
 		await flushPromises();
 
-		expect(
-			wrapper.get('[data-testid="scenarios-empty-state-stub"]').attributes('data-auto-run'),
-		).toBe('false');
 		expect(sendMessageFromOutsideMock).toHaveBeenCalledWith('Run scheduled check');
 	});
 });

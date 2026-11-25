@@ -212,8 +212,6 @@ const props = withDefaults(
 		artifactPreviewSessionId?: string;
 		/** Controls the preview chat when the builder is inside Instance AI. */
 		artifactPreviewOpen?: boolean;
-		/** Automatically starts a test when opened from an n8n Assistant action. */
-		artifactPreviewAutoTest?: boolean;
 		/** Render the test chat over the host Assistant column. */
 		artifactPreviewChatTarget?: HTMLElement | null;
 		/** True while the AI is actively building/mutating this agent in artifact mode — disables editing/publishing without hiding content. */
@@ -239,7 +237,6 @@ const props = withDefaults(
 		artifactAgentId: undefined,
 		artifactPreviewSessionId: undefined,
 		artifactPreviewOpen: undefined,
-		artifactPreviewAutoTest: false,
 		artifactPreviewChatTarget: undefined,
 		artifactEditingLocked: false,
 		artifactAgentPending: false,
@@ -249,7 +246,6 @@ const props = withDefaults(
 
 const emit = defineEmits<{
 	'preview-open-change': [open: boolean];
-	'preview-auto-test-consumed': [];
 	/** The agent name was successfully saved. */
 	'name-saved': [name: string];
 	'assistant-handoff': [params: AgentTestHandoffParams];
@@ -440,26 +436,13 @@ async function setChatMode(mode: 'build' | 'test') {
 	closePreviewDock();
 	return true;
 }
-const pendingAssistantAutoTest = ref(false);
-const autoStartTest = computed(
-	() => pendingAssistantAutoTest.value || Boolean(props.artifactPreviewAutoTest),
-);
-
-function consumeAutoStartTest() {
-	pendingAssistantAutoTest.value = false;
-	if (props.artifactPreviewAutoTest) emit('preview-auto-test-consumed');
-}
-
 const openParentAgentChatPreview = inject<
 	((agentId: string, projectId: string) => boolean) | undefined
 >('openAgentChatPreview', undefined);
 if (!isArtifactMode.value) {
 	provide('openAgentChatPreview', (targetAgentId: string, targetProjectId: string): boolean => {
 		if (targetAgentId === agentId.value && targetProjectId === projectId.value) {
-			pendingAssistantAutoTest.value = true;
-			void setChatMode('test').then((opened) => {
-				if (!opened) pendingAssistantAutoTest.value = false;
-			});
+			void setChatMode('test');
 		} else if (openParentAgentChatPreview) {
 			return openParentAgentChatPreview(targetAgentId, targetProjectId);
 		} else {
@@ -503,7 +486,6 @@ const openedForPendingAgent = ref(isRouteAgentPending.value);
 const templateApplied = ref(false);
 watch([projectId, agentId], () => {
 	taskPreviewPrompt.value = undefined;
-	pendingAssistantAutoTest.value = false;
 	showConfiguration.value = false;
 	aiPanelOpenForVisit.value = null;
 });
@@ -1337,7 +1319,6 @@ function viewPreviewTrace() {
 }
 
 function startNewPreviewSession() {
-	consumeAutoStartTest();
 	onNewChat();
 }
 
@@ -1418,7 +1399,6 @@ function returnToBuilderFromPreview() {
 
 function closePreviewDock() {
 	previewRequest++;
-	consumeAutoStartTest();
 	persistedPreviewOpen.value = false;
 	showConfiguration.value = false;
 	if (!isArtifactMode.value) closePreviewRoute();
@@ -3444,11 +3424,6 @@ function onRemoveVectorStore(vectorStore: AgentJsonVectorStoreConfig) {
 }
 
 function onContinueLoaded({ sessionId, count }: AgentContinueLoadedEvent) {
-	// Preserve existing test conversations rather than injecting a new test prompt.
-	if (count > 0) {
-		consumeAutoStartTest();
-	}
-
 	if (
 		count === 0 &&
 		currentSessionIsEphemeral.value &&
@@ -3891,7 +3866,6 @@ useKeybindings({
 							:new-session="currentSessionIsEphemeral"
 							:initial-prompt="taskPreviewPrompt"
 							:show-test-scenarios="showTestScenariosEmptyState"
-							:auto-start-test="autoStartTest"
 							:can-delete-session="canDeletePreviewSession"
 							:is-deleting-session="isDeletingSession"
 							:can-send-to-assistant="isArtifactMode ? instanceAiAvailable : instanceAiReady"
@@ -3909,7 +3883,6 @@ useKeybindings({
 							@send-to-assistant="onSendPreviewToAssistant"
 							@open-build="!isArtifactMode && setChatMode('build')"
 							@initial-consumed="taskPreviewPrompt = undefined"
-							@auto-start-consumed="consumeAutoStartTest"
 						>
 							<template v-if="inlineTestChat" #composer-footer>
 								<AgentBuilderChatDisclaimer />

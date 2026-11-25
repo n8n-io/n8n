@@ -13,7 +13,6 @@ const props = defineProps<{
 	agentId: string;
 	previewSessionId?: string;
 	previewOpen: boolean;
-	previewAutoTest?: boolean;
 	previewChatTarget?: HTMLElement | null;
 	/** No agent row exists yet — the builder renders a local draft and persists on first edit. */
 	pending?: boolean;
@@ -21,7 +20,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'preview-open-change': [open: boolean];
-	'preview-auto-test-consumed': [];
 	'assistant-handoff': [params: AgentTestHandoffParams];
 }>();
 
@@ -88,13 +86,11 @@ async function persistAgent(target: PendingAgentRequest): Promise<AgentCreationR
 			:artifact-agent-id="props.agentId"
 			:artifact-preview-session-id="props.previewSessionId"
 			:artifact-preview-open="props.previewOpen"
-			:artifact-preview-auto-test="props.previewAutoTest"
 			:artifact-preview-chat-target="props.previewChatTarget"
 			:artifact-agent-pending="props.pending"
 			:artifact-editing-locked="isAgentBuilding"
 			:artifact-persist-agent="persistAgent"
 			@preview-open-change="emit('preview-open-change', $event)"
-			@preview-auto-test-consumed="emit('preview-auto-test-consumed')"
 			@assistant-handoff="emit('assistant-handoff', $event)"
 			@name-saved="syncAgentTarget"
 		/>

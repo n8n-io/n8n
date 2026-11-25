@@ -64,12 +64,11 @@ const AgentBuilderViewStub = {
 	props: [
 		'artifactPreviewSessionId',
 		'artifactPreviewOpen',
-		'artifactPreviewAutoTest',
 		'artifactPreviewChatTarget',
 		'artifactPersistAgent',
 		'artifactEditingLocked',
 	],
-	emits: ['name-saved', 'preview-open-change', 'preview-auto-test-consumed', 'assistant-handoff'],
+	emits: ['name-saved', 'preview-open-change', 'assistant-handoff'],
 	template: '<div />',
 };
 
@@ -127,7 +126,6 @@ describe('InstanceAiAgentPreview', () => {
 				agentId: 'agent-1',
 				previewSessionId: 'preview-session-1',
 				previewOpen: true,
-				previewAutoTest: true,
 				previewChatTarget,
 			},
 			global: {
@@ -138,10 +136,8 @@ describe('InstanceAiAgentPreview', () => {
 		const builder = wrapper.findComponent({ name: 'AgentBuilderView' });
 		expect(builder.props('artifactPreviewSessionId')).toBe('preview-session-1');
 		expect(builder.props('artifactPreviewOpen')).toBe(true);
-		expect(builder.props('artifactPreviewAutoTest')).toBe(true);
 		expect(builder.props('artifactPreviewChatTarget')).toBe(previewChatTarget);
 		builder.vm.$emit('preview-open-change', true);
-		builder.vm.$emit('preview-auto-test-consumed');
 		const handoff = {
 			projectId: 'project-1',
 			agentId: 'agent-1',
@@ -153,7 +149,6 @@ describe('InstanceAiAgentPreview', () => {
 		await wrapper.vm.$nextTick();
 
 		expect(wrapper.emitted('preview-open-change')).toEqual([[true]]);
-		expect(wrapper.emitted('preview-auto-test-consumed')).toEqual([[]]);
 		expect(wrapper.emitted('assistant-handoff')).toEqual([[handoff]]);
 	});
 

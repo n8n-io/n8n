@@ -159,20 +159,6 @@ describe('AgentTestScenariosEmptyState', () => {
 		expect(wrapper.findAll('[data-testid="agent-test-scenario-row"]')).toHaveLength(1);
 	});
 
-	it('auto-generates, transitions to ready, and emits the first scenario when autoRun is true', async () => {
-		generateAgentTestScenariosMock.mockResolvedValueOnce({
-			scenarios: ['Auto-started scenario', 'Second scenario'],
-		});
-
-		const wrapper = mountEmptyState({ autoRun: true });
-		await flushPromises();
-
-		expect(wrapper.emitted('auto-run-consumed')).toEqual([[]]);
-		expect(wrapper.emitted('select')).toEqual([['Auto-started scenario']]);
-		expect(wrapper.find('[data-testid="agent-test-scenarios-loading"]').exists()).toBe(false);
-		expect(wrapper.findAll('[data-testid="agent-test-scenario-row"]')).toHaveLength(2);
-	});
-
 	it('caps accumulated previousScenarios to the latest 20 across repeated regenerations', async () => {
 		for (let batch = 0; batch < 7; batch++) {
 			generateAgentTestScenariosMock.mockResolvedValueOnce({

@@ -664,16 +664,10 @@ async function handleFixWithAiFromOffer(): Promise<void> {
 // --- Agent preview ---
 // The test chat of the agent preview docks over the chat column.
 const isAgentTestDockOpen = ref(false);
-const isAgentTestAutoStart = ref(false);
 const agentPreviewChatTarget = useTemplateRef<HTMLElement>('agentPreviewChatTarget');
-
-watch(isAgentTestDockOpen, (open) => {
-	if (!open) isAgentTestAutoStart.value = false;
-});
 
 function openAgentChatPreview(agentId: string, projectId: string): boolean {
 	preview.openAgentPreview(agentId, projectId);
-	isAgentTestAutoStart.value = true;
 	isAgentTestDockOpen.value = true;
 	return true;
 }
@@ -1231,11 +1225,9 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 							:project-id="preview.activeAgentProjectId.value"
 							:preview-session-id="activeAgentPreviewSessionId"
 							:preview-open="isAgentTestDockOpen"
-							:preview-auto-test="isAgentTestAutoStart"
 							:preview-chat-target="agentPreviewChatTarget"
 							:pending="preview.activeAgentPending.value"
 							@preview-open-change="handleAgentTestDockOpenChange"
-							@preview-auto-test-consumed="isAgentTestAutoStart = false"
 							@assistant-handoff="handleAgentPreviewAssistantHandoff"
 						/>
 						<!-- Retain each open skill's draft while another artifact is visible. -->

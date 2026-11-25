@@ -29,7 +29,6 @@ const props = withDefaults(
 		newSession?: boolean;
 		initialPrompt?: string;
 		showTestScenarios?: boolean;
-		autoStartTest?: boolean;
 		placeholder?: string;
 		composerHeight?: string;
 		canSendToAssistant?: boolean;
@@ -44,7 +43,6 @@ const props = withDefaults(
 		visible: true,
 		newSession: false,
 		showTestScenarios: false,
-		autoStartTest: false,
 		layout: 'dock',
 		dismissedFixToolCallIds: () => [],
 		budgetCards: false,
@@ -59,7 +57,6 @@ const emit = defineEmits<{
 	'open-build': [];
 	'send-to-assistant': [event?: AgentSendToAssistantEvent];
 	'initial-consumed': [];
-	'auto-start-consumed': [];
 	'message-sent': [];
 }>();
 
@@ -141,9 +138,7 @@ defineExpose({ focusInput, getConversationMarkdown, clearBudgetStops });
 						:project-id="projectId"
 						:agent-id="agentId"
 						:before-generate="beforeSend"
-						:auto-run="autoStartTest && !initialPrompt"
 						@select="onSelectTestScenario"
-						@auto-run-consumed="emit('auto-start-consumed')"
 					/>
 				</template>
 				<template v-if="$slots['composer-start']" #composer-start>

@@ -261,9 +261,8 @@ const InstanceAiAgentPreviewStub = defineComponent({
 		projectId: { type: String, required: true },
 		previewSessionId: { type: String, required: false },
 		previewOpen: { type: Boolean, required: true },
-		previewAutoTest: { type: Boolean, default: false },
 	},
-	emits: ['preview-open-change', 'preview-auto-test-consumed', 'assistant-handoff'],
+	emits: ['preview-open-change', 'assistant-handoff'],
 	setup(props, { emit }) {
 		const openAgentChatPreview = inject<
 			((agentId: string, projectId: string) => boolean) | undefined
@@ -278,17 +277,8 @@ const InstanceAiAgentPreviewStub = defineComponent({
 					'data-project-id': props.projectId,
 					'data-preview-session-id': props.previewSessionId,
 					'data-preview-open': String(props.previewOpen),
-					'data-preview-auto-test': String(props.previewAutoTest),
 				},
 				[
-					h(
-						'button',
-						{
-							'data-test-id': 'instance-ai-agent-preview-consume-auto-test',
-							onClick: () => emit('preview-auto-test-consumed'),
-						},
-						'Consume auto test',
-					),
 					h(
 						'button',
 						{
@@ -3926,10 +3916,6 @@ describe('InstanceAiThreadView', () => {
 			expect(agentPreview).toHaveAttribute('data-agent-id', 'agent-1');
 			expect(agentPreview).toHaveAttribute('data-project-id', 'project-1');
 			expect(agentPreview).toHaveAttribute('data-preview-open', 'true');
-			expect(agentPreview).toHaveAttribute('data-preview-auto-test', 'true');
-
-			await user.click(await findByTestId('instance-ai-agent-preview-consume-auto-test'));
-			expect(agentPreview).toHaveAttribute('data-preview-auto-test', 'false');
 			// It's a handoff to chat, not a trip to evals: the panel stays and no evals
 			// focus is requested.
 			expect(queryByTestId('instance-ai-test-agent-preview-try-agent-stub')).toBeInTheDocument();

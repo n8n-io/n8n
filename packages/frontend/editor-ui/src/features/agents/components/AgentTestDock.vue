@@ -59,7 +59,6 @@ const props = withDefaults(
 		newSession?: boolean;
 		initialPrompt?: string;
 		showTestScenarios?: boolean;
-		autoStartTest?: boolean;
 		canSendToAssistant?: boolean;
 		dismissedFixToolCallIds?: string[];
 		canDeleteSession?: boolean;
@@ -72,7 +71,6 @@ const props = withDefaults(
 	{
 		newSession: false,
 		showTestScenarios: false,
-		autoStartTest: false,
 		overlay: false,
 		canDeleteSession: false,
 		isDeletingSession: false,
@@ -94,7 +92,6 @@ const emit = defineEmits<{
 	'open-build': [];
 	'send-to-assistant': [event?: AgentSendToAssistantEvent];
 	'initial-consumed': [];
-	'auto-start-consumed': [];
 	'message-sent': [];
 }>();
 
@@ -346,7 +343,6 @@ defineExpose({ clearBudgetStops });
 				:new-session="props.newSession"
 				:initial-prompt="props.initialPrompt"
 				:show-test-scenarios="props.showTestScenarios"
-				:auto-start-test="props.autoStartTest"
 				:can-send-to-assistant="props.canSendToAssistant"
 				:dismissed-fix-tool-call-ids="props.dismissedFixToolCallIds"
 				:before-send="props.beforeSend"
@@ -358,7 +354,6 @@ defineExpose({ clearBudgetStops });
 				@open-build="emit('open-build')"
 				@send-to-assistant="emit('send-to-assistant', $event)"
 				@initial-consumed="emit('initial-consumed')"
-				@auto-start-consumed="emit('auto-start-consumed')"
 				@message-sent="emit('message-sent')"
 			>
 				<template v-if="$slots['composer-start']" #composer-start>
