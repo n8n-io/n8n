@@ -1,3 +1,4 @@
+import userEvent from '@testing-library/user-event';
 import { render } from '@testing-library/vue';
 import { defineComponent, h, nextTick } from 'vue';
 
@@ -40,6 +41,69 @@ describe('N8nEmptyState', () => {
 			},
 		});
 		expect(wrapper.html()).toMatchSnapshot();
+	});
+
+	describe('small size', () => {
+		// The tooltip stays real: its stub drops the button that it wraps.
+		const stubs = ['N8nHeading', 'N8nText', 'N8nButton', 'N8nCallout', 'N8nIcon'];
+
+		it('should render correctly', () => {
+			const wrapper = render(N8nEmptyState, {
+				props: {
+					size: 'small',
+					description: 'No rows match the search and filter.',
+					buttonText: 'Clear search and filter',
+				},
+				global: { stubs },
+			});
+			expect(wrapper.html()).toMatchSnapshot();
+		});
+
+		it('should render a small outline button', () => {
+			const { container } = render(N8nEmptyState, {
+				props: { size: 'small', buttonText: 'Clear search and filter' },
+				global: { stubs },
+			});
+			const button = container.querySelector('n8n-button-stub');
+			expect(button).toHaveAttribute('size', 'small');
+			expect(button).toHaveAttribute('variant', 'outline');
+		});
+
+		it('should use the button variant that the caller sets', () => {
+			const { container } = render(N8nEmptyState, {
+				props: { size: 'small', buttonText: 'Retry', buttonVariant: 'solid' },
+				global: { stubs },
+			});
+			expect(container.querySelector('n8n-button-stub')).toHaveAttribute('variant', 'solid');
+		});
+
+		it('should render the heading at medium size and the icon at 24px', () => {
+			const { container } = render(N8nEmptyState, {
+				props: { size: 'small', heading: 'No matches', icon: { type: 'icon', value: 'search' } },
+				global: { stubs },
+			});
+			expect(container.querySelector('n8n-heading-stub')).toHaveAttribute('size', 'medium');
+			expect(container.querySelector('n8n-icon-stub')).toHaveAttribute('size', '24');
+		});
+
+		it('should emit click:button when the button is clicked', async () => {
+			const wrapper = render(N8nEmptyState, {
+				props: { size: 'small', buttonText: 'Clear search and filter' },
+			});
+			await userEvent.click(wrapper.getByRole('button', { name: 'Clear search and filter' }));
+			expect(wrapper.emitted('click:button')).toHaveLength(1);
+		});
+
+		it('should keep the large button and the xlarge heading at the default size', () => {
+			const { container } = render(N8nEmptyState, {
+				props: { heading: 'Headline', buttonText: 'Do something' },
+				global: { stubs },
+			});
+			const button = container.querySelector('n8n-button-stub');
+			expect(button).toHaveAttribute('size', 'large');
+			expect(button).toHaveAttribute('variant', 'solid');
+			expect(container.querySelector('n8n-heading-stub')).toHaveAttribute('size', 'xlarge');
+		});
 	});
 
 	describe('icon cards variant', () => {

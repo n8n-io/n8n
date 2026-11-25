@@ -338,6 +338,9 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		aiGatewayStore.isNodeTypeVersionSupported = vi.fn().mockReturnValue(true);
 		aiGatewayStore.isCredentialTypeSupported = vi.fn().mockReturnValue(false);
 		nodeTypesStore.getNodeVersions = vi.fn().mockReturnValue([1]);
+		// The node types are in the store by default. The node types tests below empty it.
+		nodeTypesStore.hasNodeTypes = true;
+		nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockResolvedValue(undefined);
 		const credentialsStore = mockedStore(useCredentialsStore);
 		credentialsStore.fetchCredentialTypes = vi.fn().mockResolvedValue(undefined);
 		credentialsStore.fetchAllCredentials = vi.fn().mockResolvedValue([]);
@@ -496,6 +499,33 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			projectId: PROJECT_ID,
 		});
 		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledTimes(1);
+		expect(modalAttrs.loading).toBe(false);
+	});
+
+	it('shows the loading screen until the node types are loaded', async () => {
+		nodeTypesStore.hasNodeTypes = false;
+		const { promise, resolve } = Promise.withResolvers<void>();
+		nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockReturnValue(promise);
+		render();
+		await flushPromises();
+
+		expect(nodeTypesStore.loadNodeTypesIfNotLoaded).toHaveBeenCalled();
+		expect(modalAttrs.loading).toBe(true);
+
+		resolve();
+		await flushPromises();
+
+		expect(modalAttrs.loading).toBe(false);
+	});
+
+	it('stops loading when the node types fail to load', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		nodeTypesStore.hasNodeTypes = false;
+		nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockRejectedValue(new Error('node types'));
+		render();
+
+		await flushPromises();
+
 		expect(modalAttrs.loading).toBe(false);
 	});
 

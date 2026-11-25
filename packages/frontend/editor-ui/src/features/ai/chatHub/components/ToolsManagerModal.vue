@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { v4 as uuidv4 } from 'uuid';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useNodeTypesLoad } from '@/app/composables/useNodeTypesLoad';
 import { useUIStore } from '@/app/stores/ui.store';
 import ToolListItem from './ToolListItem.vue';
 import NodeToolSettingsContent from '@/features/shared/toolConfig/NodeToolSettingsContent.vue';
@@ -167,6 +168,9 @@ const availableToolTypes = computed<INodeTypeDescription[]>(() => {
 		});
 });
 
+// The tool list needs the node types.
+const { isLoading: nodeTypesLoading } = useNodeTypesLoad();
+
 onMounted(() => {
 	void nodeTypesStore.fetchCommunityNodePreviews();
 });
@@ -228,6 +232,14 @@ const filteredAvailableTools = computed(() =>
 function getNodeType(tool: ChatHubToolDto): INodeTypeDescription | null {
 	return nodeTypesStore.getNodeType(tool.definition.type, tool.definition.typeVersion);
 }
+
+// A tool whose node type is not in the store has nothing to show, so it is left out.
+const configuredToolItems = computed(() =>
+	filteredConfiguredTools.value.flatMap((tool) => {
+		const nodeType = getNodeType(tool);
+		return nodeType ? [{ tool, nodeType }] : [];
+	}),
+);
 
 function openSettings(
 	node: INode,
@@ -443,60 +455,69 @@ function onDialogOpenUpdate(open: boolean) {
 		<N8nDialogBody>
 			<!-- List view: the body padding is reset so this scrollbar sits on the dialog edge. -->
 			<div v-show="currentView === 'list'" data-tools-manager-modal :class="$style.listWrapper">
-				<div v-if="filteredConfiguredTools.length > 0" :class="$style.section">
-					<N8nHeading size="small" color="text-light" tag="h3">
-						{{
-							i18n.baseText('chatHub.toolsManager.configuredTools', {
-								interpolate: { count: tools.length },
-							})
-						}}
-					</N8nHeading>
-					<div>
-						<ToolListItem
-							v-for="tool in filteredConfiguredTools"
-							:key="tool.definition.id"
-							:node-type="getNodeType(tool)!"
-							:configured-node="tool.definition"
-							:enabled="agentToolIds ? agentToolIds.includes(tool.definition.id) : tool.enabled"
-							:role-blocked="isToolTypeExcluded(tool.definition.type)"
-							mode="configured"
-							@configure="handleConfigureTool(tool)"
-							@remove="handleRemoveTool(tool.definition.id)"
-							@toggle="handleToggleTool(tool, $event)"
-						/>
-					</div>
-				</div>
-
-				<div v-if="filteredAvailableTools.length > 0" :class="$style.section">
-					<N8nHeading size="small" color="text-light" tag="h3">
-						{{
-							i18n.baseText('chatHub.toolsManager.availableTools', {
-								interpolate: { count: availableToolTypes.length },
-							})
-						}}
-					</N8nHeading>
-					<div>
-						<ToolListItem
-							v-for="nodeType in filteredAvailableTools"
-							:key="nodeType.name"
-							:node-type="nodeType"
-							:community-preview="isCommunityPreviewTool(nodeType)"
-							:installing="installingToolName === nodeType.name"
-							:install-disabled="!isAdminOrOwner"
-							mode="available"
-							@add="handleAddTool(nodeType)"
-						/>
-					</div>
-				</div>
-
 				<div
-					v-if="filteredConfiguredTools.length === 0 && filteredAvailableTools.length === 0"
+					v-if="nodeTypesLoading"
 					:class="$style.emptyState"
+					data-test-id="chat-tools-manager-loading"
 				>
-					<N8nText color="text-light">
-						{{ i18n.baseText('chatHub.toolsManager.noResults') }}
-					</N8nText>
+					<N8nIcon icon="loader-circle" size="large" spin />
 				</div>
+				<template v-else>
+					<div v-if="configuredToolItems.length > 0" :class="$style.section">
+						<N8nHeading size="small" color="text-light" tag="h3">
+							{{
+								i18n.baseText('chatHub.toolsManager.configuredTools', {
+									interpolate: { count: tools.length },
+								})
+							}}
+						</N8nHeading>
+						<div>
+							<ToolListItem
+								v-for="{ tool, nodeType } in configuredToolItems"
+								:key="tool.definition.id"
+								:node-type="nodeType"
+								:configured-node="tool.definition"
+								:enabled="agentToolIds ? agentToolIds.includes(tool.definition.id) : tool.enabled"
+								:role-blocked="isToolTypeExcluded(tool.definition.type)"
+								mode="configured"
+								@configure="handleConfigureTool(tool)"
+								@remove="handleRemoveTool(tool.definition.id)"
+								@toggle="handleToggleTool(tool, $event)"
+							/>
+						</div>
+					</div>
+
+					<div v-if="filteredAvailableTools.length > 0" :class="$style.section">
+						<N8nHeading size="small" color="text-light" tag="h3">
+							{{
+								i18n.baseText('chatHub.toolsManager.availableTools', {
+									interpolate: { count: availableToolTypes.length },
+								})
+							}}
+						</N8nHeading>
+						<div>
+							<ToolListItem
+								v-for="nodeType in filteredAvailableTools"
+								:key="nodeType.name"
+								:node-type="nodeType"
+								:community-preview="isCommunityPreviewTool(nodeType)"
+								:installing="installingToolName === nodeType.name"
+								:install-disabled="!isAdminOrOwner"
+								mode="available"
+								@add="handleAddTool(nodeType)"
+							/>
+						</div>
+					</div>
+
+					<div
+						v-if="configuredToolItems.length === 0 && filteredAvailableTools.length === 0"
+						:class="$style.emptyState"
+					>
+						<N8nText color="text-light">
+							{{ i18n.baseText('chatHub.toolsManager.noResults') }}
+						</N8nText>
+					</div>
+				</template>
 			</div>
 
 			<!-- Settings view: doesn't scroll, lets NodeToolSettingsContent.tabContent scroll -->

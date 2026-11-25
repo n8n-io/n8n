@@ -537,7 +537,7 @@ describe('unpublished package handling', () => {
 			'Notify Developer Platform alerts channel',
 		);
 
-		assert.deepEqual(triggersOf(scheduledCheck).schedule, [{ cron: '15 */2 * * 1-2' }]);
+		assert.deepEqual(triggersOf(scheduledCheck).schedule, [{ cron: '15 */2 * * 1' }]);
 		assert.match(check.run, /detect-new-packages\.mjs --report-only --strict/);
 		assert.equal(notify.if, "steps.detect.outputs.packages != '[]'");
 		assert.match(notify.run, /--channel '#alerts-developer-platforms'/);
