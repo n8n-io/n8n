@@ -31,7 +31,7 @@ function isGpt56OrNewerModel(modelId: ModelConfig): boolean {
 const ANTHROPIC_EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'] as const;
 type AnthropicEffort = (typeof ANTHROPIC_EFFORTS)[number];
 
-function readConfiguredEffort(): AnthropicEffort | undefined {
+function getConfiguredEffort(): AnthropicEffort | undefined {
 	const effort = parseReasoningEffort(process.env.N8N_INSTANCE_AI_REASONING_EFFORT);
 	return ANTHROPIC_EFFORTS.find((supported) => supported === effort);
 }
@@ -45,7 +45,7 @@ export function applyAgentThinking(
 	const provider = resolveModelProvider(modelId);
 
 	if (provider === 'openrouter') {
-		const reasoningEffort = effort ?? readConfiguredEffort();
+		const reasoningEffort = effort ?? getConfiguredEffort();
 		if (reasoningEffort !== undefined) agent.reasoning(reasoningEffort);
 		return;
 	}
@@ -86,7 +86,7 @@ export function applyAgentThinking(
 	if (provider === 'anthropic' || provider === 'google-vertex-anthropic') {
 		agent.thinking(provider, {
 			mode: 'adaptive',
-			effort: effort ?? readConfiguredEffort() ?? 'medium',
+			effort: effort ?? getConfiguredEffort() ?? 'medium',
 		});
 		return;
 	}
