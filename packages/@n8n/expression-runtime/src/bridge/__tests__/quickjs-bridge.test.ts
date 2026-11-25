@@ -667,3 +667,100 @@ describe('QuickJsBridge string transfer', () => {
 		}
 	});
 });
+
+describe('QuickJsBridge cycle guard', () => {
+	it('should return cyclic values inside Map, Set and Error without breaking or failing dispose', async () => {
+		const bridge = new QuickJsBridge({ timeout: 5000 });
+		await bridge.initialize();
+		try {
+			const selfMap = bridge.execute('const m = new Map(); m.set("self", m); return m;', {}) as Map<
+				string,
+				unknown
+			>;
+			expect(selfMap.get('self')).toBe(selfMap);
+
+			const selfSet = bridge.execute(
+				'const s = new Set(); s.add(s); return s;',
+				{},
+			) as Set<unknown>;
+			expect(selfSet.has(selfSet)).toBe(true);
+
+			const errInMap = bridge.execute(
+				'const e = new Error("loop"); e.self = e; return new Map([["e", e]]);',
+				{},
+			) as Map<string, Error & { self: unknown }>;
+			const innerErr = errInMap.get('e')!;
+			expect(innerErr).toBeInstanceOf(Error);
+			expect(innerErr.self).toBe(innerErr);
+
+			const errWithMap = bridge.execute(
+				'const e = new Error("loop"); const m = new Map([["e", e]]); e.m = m; return e;',
+				{},
+			) as Error & { m: Map<string, Error & { m: unknown }> };
+			expect(errWithMap).toBeInstanceOf(Error);
+			expect(errWithMap.m.get('e')?.m).toBe(errWithMap.m);
+
+			// The runtime stays healthy for subsequent expressions on the same bridge.
+			expect(bridge.execute('return 1 + 1;', {})).toBe(2);
+		} finally {
+			await expect(bridge.dispose()).resolves.toBeUndefined();
+		}
+	});
+
+	it('should keep own __proto__ keys on cyclic objects inside a Map', async () => {
+		const bridge = new QuickJsBridge({ timeout: 5000 });
+		await bridge.initialize();
+		try {
+			const result = bridge.execute(
+				'const o = JSON.parse(\'{"__proto__":{"flag":1},"kept":2}\'); o.self = o; return new Map([["k", o]]);',
+				{},
+			) as Map<string, Record<string, unknown>>;
+			const value = result.get('k')!;
+
+			expect(Object.hasOwn(value, '__proto__')).toBe(true);
+			expect(Object.getOwnPropertyDescriptor(value, '__proto__')?.value).toStrictEqual({ flag: 1 });
+			expect(value.flag).toBeUndefined();
+			expect(value.kept).toBe(2);
+			expect(value.self).toBe(value);
+		} finally {
+			await bridge.dispose();
+		}
+	});
+
+	it('should keep cyclic Map and Set transfer working after built-in method replacements', async () => {
+		const bridge = new QuickJsBridge({ timeout: 5000 });
+		await bridge.initialize();
+		try {
+			bridge.execute(
+				`
+				const m = new Map();
+				m.set("self", m);
+				const s = new Set();
+				s.add(s);
+				globalThis.__cyclicMap = m;
+				globalThis.__cyclicSet = s;
+				Map.prototype.get = function () { throw new Error("replaced"); };
+				Map.prototype.set = function () { throw new Error("replaced"); };
+				Map.prototype.forEach = function () { throw new Error("replaced"); };
+				Set.prototype.add = function () { throw new Error("replaced"); };
+				Set.prototype.forEach = function () { throw new Error("replaced"); };
+				return "ok";
+				`,
+				{},
+			);
+
+			const mapResult = bridge.execute('return globalThis.__cyclicMap;', {}) as Map<
+				string,
+				unknown
+			>;
+			const setResult = bridge.execute('return globalThis.__cyclicSet;', {}) as Set<unknown>;
+
+			expect(mapResult).toBeInstanceOf(Map);
+			expect(mapResult.get('self')).toBe(mapResult);
+			expect(setResult).toBeInstanceOf(Set);
+			expect(setResult.has(setResult)).toBe(true);
+		} finally {
+			await expect(bridge.dispose()).resolves.toBeUndefined();
+		}
+	});
+});

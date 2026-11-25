@@ -639,11 +639,7 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 			expect(marker.__n8nType).toBe('DateTime');
 		});
 
-		// The isolate engine sends a class instance across by structured clone, which
-		// resolves a value that refers to itself. The QuickJS engine walks the value
-		// instead, and that walk does not end on this shape. The restriction is a
-		// known limit of that engine, not a property of the luxon transfer.
-		it.runIf(!isQuickJS)('should return a class instance that contains itself', () => {
+		it('should return a class instance that contains itself', () => {
 			const data = { $json: {} };
 
 			const result = evaluator.evaluate(
@@ -712,6 +708,262 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 		expect(evaluator.evaluate('{{ new Set([undefined]) }}', data, caller)).toStrictEqual(
 			new Set([undefined]),
 		);
+	});
+
+	describe('self-referencing and shared values in Map, Set and Error', () => {
+		const data = { $json: {} };
+
+		it('should return a Map that holds itself as a value or a key', () => {
+			const byValue = evaluator.evaluate(
+				'{{ (() => { const m = new Map(); m.set("self", m); return m; })() }}',
+				data,
+				caller,
+			) as Map<unknown, unknown>;
+			const byKey = evaluator.evaluate(
+				'{{ (() => { const m = new Map(); m.set(m, 1); return m; })() }}',
+				data,
+				caller,
+			) as Map<unknown, unknown>;
+
+			expect(byValue).toBeInstanceOf(Map);
+			expect(byValue.get('self')).toBe(byValue);
+			expect(byKey).toBeInstanceOf(Map);
+			expect(byKey.get(byKey)).toBe(1);
+		});
+
+		it('should return a Set that holds itself', () => {
+			const result = evaluator.evaluate(
+				'{{ (() => { const s = new Set(); s.add(s); return s; })() }}',
+				data,
+				caller,
+			) as Set<unknown>;
+
+			expect(result).toBeInstanceOf(Set);
+			expect(result.size).toBe(1);
+			expect(result.has(result)).toBe(true);
+		});
+
+		it('should return a Map or a Set that holds a self-referencing object or array', () => {
+			const mapObj = evaluator.evaluate(
+				'{{ (() => { const o = { a: 1 }; o.self = o; return new Map([["k", o]]); })() }}',
+				data,
+				caller,
+			) as Map<string, Record<string, unknown>>;
+			const mapArr = evaluator.evaluate(
+				'{{ (() => { const a = [1]; a.push(a); return new Map([["k", a]]); })() }}',
+				data,
+				caller,
+			) as Map<string, unknown[]>;
+			const setObj = evaluator.evaluate(
+				'{{ (() => { const o = { a: 1 }; o.self = o; return new Set([o]); })() }}',
+				data,
+				caller,
+			) as Set<Record<string, unknown>>;
+			const setArr = evaluator.evaluate(
+				'{{ (() => { const a = [1]; a.push(a); return new Set([a]); })() }}',
+				data,
+				caller,
+			) as Set<unknown[]>;
+
+			const mo = mapObj.get('k')!;
+			expect(mo.a).toBe(1);
+			expect(mo.self).toBe(mo);
+
+			const ma = mapArr.get('k')!;
+			expect(ma[0]).toBe(1);
+			expect(ma[1]).toBe(ma);
+
+			const [so] = [...setObj];
+			expect(so.a).toBe(1);
+			expect(so.self).toBe(so);
+
+			const [sa] = [...setArr];
+			expect(sa[0]).toBe(1);
+			expect(sa[1]).toBe(sa);
+		});
+
+		it('should return mutually referencing Map and Set instances', () => {
+			const result = evaluator.evaluate(
+				'{{ (() => { const m = new Map(); const s = new Set([m]); m.set("s", s); return m; })() }}',
+				data,
+				caller,
+			) as Map<string, Set<unknown>>;
+
+			expect(result).toBeInstanceOf(Map);
+			const inner = result.get('s');
+			expect(inner).toBeInstanceOf(Set);
+			expect(inner?.has(result)).toBe(true);
+		});
+
+		it('should return a Map whose key refers back to the Map and is also its value', () => {
+			const result = evaluator.evaluate(
+				'{{ (() => { const m = new Map(); const k = { a: 1 }; k.m = m; m.set(k, k); return m; })() }}',
+				data,
+				caller,
+			) as Map<Record<string, unknown>, Record<string, unknown>>;
+
+			const [[key, value]] = [...result.entries()];
+			expect(key).toBe(value);
+			expect(key.a).toBe(1);
+			expect(key.m).toBe(result);
+		});
+
+		it('should return an Error that holds a self-referencing Map, Set, or object inside a Map', () => {
+			const errWithMap = evaluator.evaluate(
+				'{{ (() => { const e = new Error("x"); const m = new Map([["e", e]]); e.m = m; return e; })() }}',
+				data,
+				caller,
+			) as Error & { m: Map<string, unknown> };
+			const errWithSet = evaluator.evaluate(
+				'{{ (() => { const e = new Error("x"); const s = new Set(); s.add(s); e.s = s; return e; })() }}',
+				data,
+				caller,
+			) as Error & { s: Set<unknown> };
+			const errWithMapObj = evaluator.evaluate(
+				'{{ (() => { const e = new Error("x"); const o = { a: 1 }; o.self = o; e.m = new Map([["o", o]]); return e; })() }}',
+				data,
+				caller,
+			) as Error & { m: Map<string, Record<string, unknown>> };
+
+			expect(errWithMap).toBeInstanceOf(Error);
+			expect(errWithMap.message).toBe('x');
+			expect(errWithMap.m).toBeInstanceOf(Map);
+			expect(errWithMap.m.get('e')).toBeInstanceOf(Error);
+
+			expect(errWithSet).toBeInstanceOf(Error);
+			expect(errWithSet.s).toBeInstanceOf(Set);
+			expect(errWithSet.s.has(errWithSet.s)).toBe(true);
+
+			const nested = errWithMapObj.m.get('o')!;
+			expect(nested.a).toBe(1);
+			expect(nested.self).toBe(nested);
+		});
+
+		it('should return a Map or a Set that holds a self-referencing Error', () => {
+			const mapWithSelfErr = evaluator.evaluate(
+				'{{ (() => { const e = new Error("x"); e.self = e; return new Map([["e", e]]); })() }}',
+				data,
+				caller,
+			) as Map<string, Error>;
+			const mapWithMutualErr = evaluator.evaluate(
+				'{{ (() => { const m = new Map(); const e = new Error("x"); e.m = m; m.set("e", e); return m; })() }}',
+				data,
+				caller,
+			) as Map<string, Error>;
+			const setWithSelfErr = evaluator.evaluate(
+				'{{ (() => { const e = new Error("x"); e.self = e; return new Set([e]); })() }}',
+				data,
+				caller,
+			) as Set<Error>;
+
+			expect(mapWithSelfErr.get('e')).toBeInstanceOf(Error);
+			expect(mapWithSelfErr.get('e')?.message).toBe('x');
+			expect(mapWithMutualErr.get('e')).toBeInstanceOf(Error);
+			expect(mapWithMutualErr.get('e')?.message).toBe('x');
+			const [setErr] = [...setWithSelfErr];
+			expect(setErr).toBeInstanceOf(Error);
+			expect(setErr.message).toBe('x');
+		});
+
+		it('should return a class instance in a cycle with a Map', () => {
+			const mapWithClass = evaluator.evaluate(
+				'{{ (() => { class C { constructor() { this.n = 1; this.self = this; } } return new Map([["c", new C()]]); })() }}',
+				data,
+				caller,
+			) as Map<string, Record<string, unknown>>;
+			const classWithMap = evaluator.evaluate(
+				'{{ (() => { class C { constructor() { const m = new Map(); m.set("c", this); this.m = m; } } return new C(); })() }}',
+				data,
+				caller,
+			) as { m: Map<string, unknown> };
+
+			const c = mapWithClass.get('c')!;
+			expect(c.n).toBe(1);
+			expect(c.self).toBe(c);
+			expect(classWithMap.m).toBeInstanceOf(Map);
+			expect(classWithMap.m.get('c')).toBe(classWithMap);
+		});
+
+		it('should keep shared references inside a Map or an Error', () => {
+			const sharedInMap = evaluator.evaluate(
+				'{{ (() => { const o = { a: 1 }; const d = new Date(0); return new Map([["o1", o], ["o2", o], ["d1", d], ["d2", d]]); })() }}',
+				data,
+				caller,
+			) as Map<string, unknown>;
+			const sharedInError = evaluator.evaluate(
+				'{{ (() => { const o = { a: 1 }; return Object.assign(new Error("x", { cause: o }), { a: o, b: o, toJSON: () => o }); })() }}',
+				data,
+				caller,
+			) as Error & { a: unknown; b: unknown; toJSON: () => unknown };
+
+			expect(sharedInMap.get('o1')).toBe(sharedInMap.get('o2'));
+			expect(sharedInMap.get('d1')).toBeInstanceOf(Date);
+			expect(sharedInMap.get('d1')).toBe(sharedInMap.get('d2'));
+			expect(sharedInError.a).toBe(sharedInError.b);
+			expect(sharedInError.cause).toBe(sharedInError.a);
+			expect(sharedInError.toJSON()).toBe(sharedInError.a);
+		});
+
+		it('should preserve user keys that match ref markers next to cycles', () => {
+			const result = evaluator.evaluate(
+				'{{ (() => { const o = { __isRef: true, __id: 0, __isRefDef: true, __value: "user" }; o.self = o; return new Map([["k", o]]); })() }}',
+				data,
+				caller,
+			) as Map<string, Record<string, unknown>>;
+
+			const entry = result.get('k')!;
+			expect(entry.__isRef).toBe(true);
+			expect(entry.__id).toBe(0);
+			expect(entry.__isRefDef).toBe(true);
+			expect(entry.__value).toBe('user');
+			expect(entry.self).toBe(entry);
+		});
+
+		it('should round-trip cyclic Map, Set and Error values from host-call data', () => {
+			const selfMap = new Map<string, unknown>();
+			selfMap.set('self', selfMap);
+			const selfSet = new Set<unknown>();
+			selfSet.add(selfSet);
+			const cycObj: Record<string, unknown> = { a: 1 };
+			cycObj.self = cycObj;
+			const mapWithObj = new Map([['k', cycObj]]);
+			const errWithMap = Object.assign(new Error('from host'), {
+				m: new Map<string, unknown>(),
+			});
+			errWithMap.m.set('e', errWithMap);
+			const json = { selfMap, selfSet, mapWithObj, errWithMap, marker: { __isRef: true, __id: 0 } };
+			const hostData = { $json: json, $input: { first: () => ({ json }) } };
+
+			const outMap = evaluator.evaluate(
+				'{{ $input.first().json.selfMap }}',
+				hostData,
+				caller,
+			) as Map<string, unknown>;
+			const outSet = evaluator.evaluate(
+				'{{ $input.first().json.selfSet }}',
+				hostData,
+				caller,
+			) as Set<unknown>;
+			const outMapObj = evaluator.evaluate(
+				'{{ $input.first().json.mapWithObj }}',
+				hostData,
+				caller,
+			) as Map<string, Record<string, unknown>>;
+			const outErr = evaluator.evaluate('{{ $json.errWithMap }}', hostData, caller) as Error & {
+				m: Map<string, unknown>;
+			};
+			const outMarker = evaluator.evaluate('{{ $input.first().json.marker }}', hostData, caller);
+
+			expect(outMap).toBeInstanceOf(Map);
+			expect(outMap.get('self')).toBe(outMap);
+			expect(outSet).toBeInstanceOf(Set);
+			expect(outSet.has(outSet)).toBe(true);
+			expect(outMapObj.get('k')?.self).toBe(outMapObj.get('k'));
+			expect(outErr).toBeInstanceOf(Error);
+			expect(outErr.message).toBe('from host');
+			expect(outErr.m).toBeInstanceOf(Map);
+			expect(outMarker).toStrictEqual({ __isRef: true, __id: 0 });
+		});
 	});
 
 	it('should honor locale and options in toLocaleString/toLocaleTimeString', () => {
@@ -962,6 +1214,17 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 		).toEqual({ nested: { __isSet: true, __values: [1] } });
 		expect(evaluator.evaluate('{{ ({ __isEscaped: true, __value: 1 }) }}', data, caller)).toEqual({
 			__isEscaped: true,
+			__value: 1,
+		});
+		expect(evaluator.evaluate('{{ ({ __isRef: true, __id: 0 }) }}', data, caller)).toEqual({
+			__isRef: true,
+			__id: 0,
+		});
+		expect(
+			evaluator.evaluate('{{ ({ __isRefDef: true, __id: 0, __value: 1 }) }}', data, caller),
+		).toEqual({
+			__isRefDef: true,
+			__id: 0,
 			__value: 1,
 		});
 	});
