@@ -90,6 +90,8 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		return actionsGenerator.generateMergedNodesAndActions(unofficialCommunityNodeTypes.value, []);
 	});
 
+	const hasNodeTypes = computed(() => Object.keys(nodeTypes.value).length > 0);
+
 	const allNodeTypes = computed(() => {
 		return Object.values(nodeTypes.value).flatMap((nodeType) =>
 			Object.keys(nodeType).map((version) => nodeType[Number(version)]),
@@ -408,7 +410,9 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	// empty array if the database is unavailable so the caller can fall back to REST.
 	const loadNodeTypesFromLocalDb = async (): Promise<INodeTypeDescription[]> => {
 		try {
-			const { loadNodeTypes, getAllNodeTypes } = await import('@/app/workers');
+			const { initialize, loadNodeTypes, getAllNodeTypes } = await import('@/app/workers');
+			// The worker must be initialized before it can sync. A second call returns at once.
+			await initialize({ version: rootStore.versionCli });
 			await loadNodeTypes(rootStore.baseUrl);
 			return await getAllNodeTypes();
 		} catch (error) {
@@ -427,10 +431,19 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		}
 	};
 
+	// Callers that start while a load runs share that load, so the editor sends one request.
+	// The promise is cleared when the load ends, so a failed load can retry on the next call.
+	let nodeTypesLoad: Promise<void> | undefined;
+
 	const loadNodeTypesIfNotLoaded = async () => {
-		if (Object.keys(nodeTypes.value).length === 0) {
-			await getNodeTypes();
+		if (hasNodeTypes.value) {
+			return;
 		}
+
+		nodeTypesLoad ??= getNodeTypes().finally(() => {
+			nodeTypesLoad = undefined;
+		});
+		await nodeTypesLoad;
 	};
 
 	const getNodeTranslationHeaders = async () => {
@@ -555,6 +568,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 
 	return {
 		nodeTypes,
+		hasNodeTypes,
 		allNodeTypes,
 		allLatestNodeTypes,
 		getNodeType,
