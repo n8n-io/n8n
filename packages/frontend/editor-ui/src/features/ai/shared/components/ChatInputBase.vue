@@ -398,7 +398,8 @@ defineExpose({
 	width: 100%;
 }
 
-.fixedHeightInput > div:has(> textarea) {
+/* The input container of `N8nChatInput`, with a textarea or the rich editor of inline tokens. */
+.fixedHeightInput > div:first-child {
 	height: var(--chat-input-height);
 
 	> textarea {
@@ -410,11 +411,6 @@ defineExpose({
 	> textarea + div {
 		flex-shrink: 0;
 	}
-}
-
-/* The rich editor of a composer with inline tokens. */
-.fixedHeightInput > div:has(> div > [contenteditable]) {
-	height: var(--chat-input-height);
 }
 
 .attachmentRow {

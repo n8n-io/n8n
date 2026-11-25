@@ -9,7 +9,8 @@ const props = defineProps(nodeViewProps);
 
 const label = computed(() => String(props.node.attrs.label));
 const icon = computed(() => {
-	const options = props.extension.options as ChatTokenNodeOptions;
+	// Tiptap types the options of a node view's extension as `any`.
+	const options: ChatTokenNodeOptions = props.extension.options;
 	return options.icon?.(String(props.node.attrs.href));
 });
 </script>

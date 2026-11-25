@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeAll, beforeEach, afterAll, afterEach } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
@@ -18,6 +18,21 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import type { InstanceAiElementAttachment } from '@n8n/api-types';
 
 const telemetryTrack = vi.hoisted(() => vi.fn());
+
+// jsdom lacks elementFromPoint, and ProseMirror calls it on a click in the inline-mention
+// editor. Kept to this file: the editor-ui setup leaves it undefined on purpose.
+let addedElementFromPoint = false;
+beforeAll(() => {
+	if (Object.getOwnPropertyDescriptor(Document.prototype, 'elementFromPoint')) return;
+	Object.defineProperty(Document.prototype, 'elementFromPoint', {
+		configurable: true,
+		value: () => null,
+	});
+	addedElementFromPoint = true;
+});
+afterAll(() => {
+	if (addedElementFromPoint) Reflect.deleteProperty(Document.prototype, 'elementFromPoint');
+});
 
 // The plus menu asks for a router; keep the rest of vue-router real.
 vi.mock('vue-router', async (importOriginal) => ({

@@ -150,6 +150,7 @@ const isLoadingHistory = ref(true);
 const isBusy = ref(false);
 const isPanelStreaming = ref(false);
 const isAwaitingUserAnswer = ref(false);
+const isAnsweringQuestion = ref(false);
 const isAwaitingUserApproval = ref(false);
 const focusOpenInteraction = vi.fn();
 // The tool step labeler that the view gives the chat.
@@ -203,6 +204,7 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 				messages: chatMessages,
 				isStreaming: isPanelStreaming,
 				isAwaitingUserAnswer,
+				isAnsweringQuestion,
 				isAwaitingUserApproval,
 				focusOpenInteraction,
 				isSubmitting: ref(false),
@@ -660,6 +662,7 @@ describe('AssistantAgentThreadView', () => {
 		isBusy.value = false;
 		isPanelStreaming.value = false;
 		isAwaitingUserAnswer.value = false;
+		isAnsweringQuestion.value = false;
 		isAwaitingUserApproval.value = false;
 		focusOpenInteraction.mockReset();
 		panelSlots.current = [];
@@ -2904,6 +2907,50 @@ describe('AssistantAgentThreadView', () => {
 
 			expect(draft()).toBe('');
 			expect(showError).toHaveBeenCalled();
+		});
+
+		it('counts a mention whose name has brackets toward the attachment limit', async () => {
+			composerAttachments.value = Array.from({ length: 10 }, (_, index) => ({
+				chip: { id: `mention:workflow:wf-${index}`, label: `Workflow ${index}` },
+				clientContextPatch: { attachments: [{ type: 'workflow', id: `wf-${index}` }] },
+			}));
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			await pick(
+				{
+					...workflowMention,
+					item: {
+						...workflowMention.item,
+						key: 'workflow:wf-x:wf-x',
+						workflowId: 'wf-x',
+						entityId: 'wf-x',
+						label: '[seed] Orders',
+					},
+					attachment: { type: 'workflow', id: 'wf-x', name: '[seed] Orders' },
+				},
+				getByTestId,
+			);
+
+			expect(draft()).toBe('');
+			expect(showError).toHaveBeenCalled();
+		});
+
+		// An answer to a question card goes without the client context, so a mention would lose its resource.
+		it('turns off picking while the composer answers a question card', async () => {
+			renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+			expect(mentionPickerProps.current?.disabled).toBe(false);
+
+			isAnsweringQuestion.value = true;
+			await flushPromises();
+
+			expect(mentionPickerProps.current?.disabled).toBe(true);
+			expect(panelProps.current['inline-tokens']).toEqual(
+				expect.objectContaining({ trigger: false }),
+			);
 		});
 
 		it('reports the staged mentions with the sent message, and opens the mentioned workflow', async () => {

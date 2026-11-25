@@ -1,4 +1,9 @@
-import { formatChatToken, splitChatTokens, type ChatToken } from '@n8n/utils/chat-tokens';
+import {
+	CHAT_TOKEN_SCHEME,
+	formatChatToken,
+	splitChatTokens,
+	type ChatToken,
+} from '@n8n/utils/chat-tokens';
 import { Extension, Node, type JSONContent } from '@tiptap/core';
 import { Fragment, Slice, type Node as ProseMirrorNode, type Schema } from '@tiptap/pm/model';
 import { Plugin, type EditorState } from '@tiptap/pm/state';
@@ -58,10 +63,12 @@ export const ChatTokenNode = Node.create<ChatTokenNodeOptions>({
 			{
 				tag: 'span[data-chat-token]',
 				// The form that `renderHTML` writes: the target in `data-href`, the label after `@`.
-				getAttrs: (element) => ({
-					href: element.getAttribute('data-href') ?? '',
-					label: (element.textContent ?? '').replace(/^@/, ''),
-				}),
+				// Dropped HTML can hold any target, so only a resource target makes a token.
+				getAttrs: (element) => {
+					const href = element.getAttribute('data-href') ?? '';
+					if (!href.startsWith(CHAT_TOKEN_SCHEME)) return false;
+					return { href, label: (element.textContent ?? '').replace(/^@/, '') };
+				},
 			},
 		];
 	},

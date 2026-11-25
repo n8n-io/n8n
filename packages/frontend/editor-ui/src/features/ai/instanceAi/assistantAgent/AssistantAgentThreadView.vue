@@ -256,15 +256,10 @@ const agentConfig = computed<AgentJsonConfig>(() => ({
  * resources that the text mentions inline go with the references of a hand-off.
  */
 function clientContext(message?: { text: string }): Record<string, unknown> {
-	// The panel adds the attachments of its staged chips, so a mention of one is not sent again.
-	const alreadySent = [
-		...pendingReferences,
-		...(panel.value?.composerAttachments ?? []).flatMap(readChipAttachments),
-	];
 	const attachments = [
 		...pendingReferences,
 		...(message
-			? withoutAttachedResources(mentions.attachmentsFor(message.text), alreadySent)
+			? withoutAttachedResources(mentions.attachmentsFor(message.text), reservedResources())
 			: []),
 	];
 	return {
@@ -626,14 +621,26 @@ const mentionActiveWorkflowId = computed(() => {
 		? activeId
 		: undefined;
 });
+/**
+ * The resources that the next message sends besides its mentions: the hand-off
+ * references, and the staged chips, which the panel adds. A mention of one of
+ * them is not sent again.
+ */
+function reservedResources(): InstanceAiAttachment[] {
+	return [
+		...pendingReferences,
+		...(panel.value?.composerAttachments ?? []).flatMap(readChipAttachments),
+	];
+}
+
 const mentions = useAssistantAgentMentions({
 	threadId: props.threadId,
 	projectId: () => props.projectId,
-	panel: () => panel.value,
+	composer: () => panel.value,
 	picker: () => mentionPicker.value,
 	artifacts: () => mentionArtifacts.value,
-	reservedAttachmentCount: () => pendingReferences.length,
-	reservedResources: () => pendingReferences,
+	reservedAttachmentCount: () => reservedResources().length,
+	reservedResources,
 	// An answer to an open card is sent without the client context, so it cannot carry a mention.
 	isBlocked: () =>
 		(panel.value?.isSubmitting ?? true) || (panel.value?.isAnsweringQuestion ?? false),

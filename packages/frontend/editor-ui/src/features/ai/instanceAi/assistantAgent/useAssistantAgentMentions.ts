@@ -6,7 +6,7 @@ import {
 import { useToast } from '@n8n/composables/useToast';
 import type { ChatInputTokenQueryEnd } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { chatTokensToPlainText, type ChatToken } from '@n8n/utils/chat-tokens';
+import { chatTokensToPlainText, formatChatToken, type ChatToken } from '@n8n/utils/chat-tokens';
 import { computed, ref, watch, type MaybeRefOrGetter, type Ref } from 'vue';
 
 import { useAssistantAtMentionsTelemetry } from '@/features/ai/assistant-at-mentions/assistantAtMentions.telemetry';
@@ -22,12 +22,7 @@ import { useAssistantMentionAvailability } from '@/features/ai/assistant-at-ment
 import { useIsAssistantAtMentionsEnabled } from '@/features/ai/assistant-at-mentions/composables/useIsAssistantAtMentionsEnabled';
 import { chatResourceTokenIcon } from '@/features/ai/shared/utils/chatResourceTokens';
 
-import {
-	countMentions,
-	countStagedAttachments,
-	readChipAttachments,
-	type StagedChip,
-} from './assistantMentionAttachments';
+import { countMentions } from './assistantMentionAttachments';
 import {
 	mentionAttachmentsOf,
 	mentionHrefsOf,
@@ -54,9 +49,9 @@ export interface MentionMenuAnchor {
 	contextElement?: Element;
 }
 
-/** The parts of the chat panel that the mentions use. */
-interface MentionPanel {
-	readonly composerAttachments: readonly StagedChip[];
+/** The parts of the composer that the mentions use. */
+interface MentionComposer {
+	/** The element that takes the text: the rich editor. */
 	getInputElement: () => HTMLElement | undefined;
 	getTokenEditor: () => TokenEditor | undefined;
 }
@@ -69,11 +64,10 @@ interface MentionPicker {
 }
 
 /**
- * The @-mention picker of the Assistant agent composer. A pick stays in the
- * composer text as an inline token. The host binds `draft` to the panel draft,
- * turns on the panel tokens with `tokenOptions`, and forwards the token queries
- * of the composer. `attachmentsFor` gives the attachments that a sent text
- * carries, for the client context of the message.
+ * The @-mention picker of a composer with inline tokens. A pick stays in the
+ * composer text as a token. The host binds `draft` to the composer text, turns
+ * on the composer tokens with `tokenOptions`, and forwards the token queries of
+ * the composer. `attachmentsFor` gives the attachments that a sent text carries.
  */
 export function useAssistantAgentMentions(options: {
 	/** No thread yet on the empty view. */
@@ -83,14 +77,14 @@ export function useAssistantAgentMentions(options: {
 	enabled?: () => boolean;
 	/** The composer text, when the host keeps it. */
 	draft?: Ref<string>;
-	panel: () => MentionPanel | null | undefined;
+	composer: () => MentionComposer | null | undefined;
 	picker: () => MentionPicker | null | undefined;
 	/** The thread's workflow tabs, which the picker lists first with their nodes. */
 	artifacts: () => readonly WorkflowArtifactReference[];
-	/** Attachments that the next message sends besides the mentions. */
+	/** The number of attachments that the next message sends besides the mentions. */
 	reservedAttachmentCount: () => number;
 	/** The resources among those attachments. A mention of one of them adds nothing. */
-	reservedResources?: () => readonly InstanceAiAttachment[];
+	reservedResources: () => readonly InstanceAiAttachment[];
 	/** The composer does not take a pick, for example while a message is sent. */
 	isBlocked: () => boolean;
 }) {
@@ -124,9 +118,9 @@ export function useAssistantAgentMentions(options: {
 	function anchorAtTrigger(): MentionMenuAnchor {
 		let last = new DOMRect();
 		return {
-			contextElement: options.panel()?.getInputElement(),
+			contextElement: options.composer()?.getInputElement(),
 			getBoundingClientRect: () => {
-				last = options.panel()?.getTokenEditor()?.getTriggerRect() ?? last;
+				last = options.composer()?.getTokenEditor()?.getTriggerRect() ?? last;
 				return last;
 			},
 		};
@@ -190,7 +184,7 @@ export function useAssistantAgentMentions(options: {
 			return;
 		}
 		if (!menuOpen.value) return;
-		const tokenEditor = options.panel()?.getTokenEditor();
+		const tokenEditor = options.composer()?.getTokenEditor();
 		// A picker closed right after a typed `@` leaves no stray `@` in the draft.
 		if (openSource === 'typed' && !tokenEditor?.removeEmptyTrigger()) {
 			tokenEditor?.dismissTrigger();
@@ -211,28 +205,20 @@ export function useAssistantAgentMentions(options: {
 	}
 
 	function handleSelect(selection: AssistantMentionSelection): void {
-		const panel = options.panel();
-		const tokenEditor = panel?.getTokenEditor();
-		if (!panel || !tokenEditor) return;
+		const tokenEditor = options.composer()?.getTokenEditor();
+		if (!tokenEditor) return;
 		const { item, attachment } = selection;
 		const token = mentionToken(item);
 
 		// A repeated mention adds no attachment, and node mentions join their workflow's.
-		// A mention of a staged or reserved resource is sent once, with that resource.
+		// A mention of a reserved resource is sent once, with that resource. The token
+		// goes in its text form, which cleans a label that would not parse back.
 		const withPick = new Map(picked).set(token.href, { item, attachment });
 		const sentCount = withoutAttachedResources(
-			mentionAttachmentsOf(`${draft.value} [@${token.label}](${token.href})`, withPick),
-			[
-				...panel.composerAttachments.flatMap(readChipAttachments),
-				...(options.reservedResources?.() ?? []),
-			],
+			mentionAttachmentsOf(`${draft.value} ${formatChatToken(token)}`, withPick),
+			options.reservedResources(),
 		).length;
-		if (
-			sentCount +
-				countStagedAttachments(panel.composerAttachments) +
-				options.reservedAttachmentCount() >
-			MAX_INSTANCE_AI_ATTACHMENTS_PER_MESSAGE
-		) {
+		if (sentCount + options.reservedAttachmentCount() > MAX_INSTANCE_AI_ATTACHMENTS_PER_MESSAGE) {
 			showLimitError();
 			return;
 		}
@@ -303,7 +289,7 @@ export function useAssistantAgentMentions(options: {
 	}
 
 	function isComposerInput(event: Event): boolean {
-		const input = options.panel()?.getInputElement();
+		const input = options.composer()?.getInputElement();
 		return input !== undefined && event.target === input;
 	}
 
@@ -325,6 +311,7 @@ export function useAssistantAgentMentions(options: {
 	// The picks belong to the project that they were picked in. A new project keeps
 	// the words of the draft, but its mentions become plain `@label` text.
 	watch(options.projectId, (projectId, previousProjectId) => {
+		if (!isEnabled.value) return;
 		if (previousProjectId === undefined || projectId === previousProjectId) return;
 		if (menuOpen.value) close('unavailable');
 		draft.value = chatTokensToPlainText(draft.value);

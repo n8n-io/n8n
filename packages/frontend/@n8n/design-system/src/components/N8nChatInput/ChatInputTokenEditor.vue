@@ -229,14 +229,14 @@ function focus(options?: FocusOptions): void {
 	const instance = editor.value;
 	if (!instance) return;
 	if (options?.preventScroll) {
-		(instance.view.dom as HTMLElement).focus({ preventScroll: true });
+		instance.view.dom.focus({ preventScroll: true });
 		return;
 	}
 	instance.commands.focus();
 }
 
 function getElement(): HTMLElement | undefined {
-	return editor.value?.view.dom as HTMLElement | undefined;
+	return editor.value?.view.dom;
 }
 
 /**
