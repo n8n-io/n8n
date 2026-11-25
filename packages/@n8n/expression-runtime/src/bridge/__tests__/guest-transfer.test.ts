@@ -297,4 +297,40 @@ describe('prepareForGuest', () => {
 		expect(Object.hasOwn(result.error, 'item')).toBe(true);
 		expect(result.error.item).toBeUndefined();
 	});
+
+	it('keeps boxed primitives inside and next to an Error', () => {
+		const error = Object.assign(new Error('x'), {
+			s: Object('ab') as object,
+			n: Object(5) as object,
+			b: Object(false) as object,
+			bi: Object(1n) as object,
+		});
+		const fake = Object.assign(Object.create(String.prototype) as object, {
+			__n8nType: 'Error',
+			__message: 'fake',
+		});
+
+		const result = roundTrip({
+			error,
+			s: Object('outer') as object,
+			fake,
+		}) as {
+			error: Error & { s: unknown; n: unknown; b: unknown; bi: unknown };
+			s: unknown;
+			fake: unknown;
+		};
+
+		expect(result.error.s).toBeInstanceOf(String);
+		expect((result.error.s as { valueOf(): string }).valueOf()).toBe('ab');
+		expect(result.error.n).toBeInstanceOf(Number);
+		expect((result.error.n as { valueOf(): number }).valueOf()).toBe(5);
+		expect(result.error.b).toBeInstanceOf(Boolean);
+		expect((result.error.b as { valueOf(): boolean }).valueOf()).toBe(false);
+		expect(result.error.bi).toBeInstanceOf(BigInt);
+		expect((result.error.bi as { valueOf(): bigint }).valueOf()).toBe(1n);
+		expect(result.s).toBeInstanceOf(String);
+		expect((result.s as { valueOf(): string }).valueOf()).toBe('outer');
+		expect(result.fake).not.toBeInstanceOf(Error);
+		expect(result.fake).toEqual({ __n8nType: 'Error', __message: 'fake' });
+	});
 });
