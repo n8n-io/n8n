@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import type { PolicyViolation } from '@n8n/api-types';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
@@ -106,6 +107,14 @@ describe('usePolicyViolationToast', () => {
 			ids: ['slack-1', 'slack-2'],
 			panIntoView: true,
 		});
+		expect(trackSpy).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.POLICIES.USER_JUMPED_TO_POLICY_VIOLATION,
+			{
+				refused_action: 'save',
+				violation_kind: 'node-type-unavailable',
+				violation_count: 1,
+			},
+		);
 
 		emitSpy.mockRestore();
 	});

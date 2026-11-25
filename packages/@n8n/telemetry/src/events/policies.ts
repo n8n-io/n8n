@@ -64,4 +64,16 @@ export const POLICIES_TELEMETRY = defineTelemetryEvents({
 			project_id: z.string().nullable(),
 		}),
 	},
+	USER_JUMPED_TO_POLICY_VIOLATION: {
+		name: 'User jumped to policy violation',
+		description:
+			'The user clicked a violation in the toast that reports a blocked save, publish or execution, and the canvas selected the nodes that cause it. Pairs with "Policy blocked action" to show whether users act on a block.',
+		properties: z.object({
+			refused_action: z.enum(['save', 'publish', 'execute']),
+			violation_kind: z
+				.string()
+				.describe("The kind of the clicked violation, e.g. 'node-type-unavailable'"),
+			violation_count: z.number().describe('How many violations the toast listed'),
+		}),
+	},
 });

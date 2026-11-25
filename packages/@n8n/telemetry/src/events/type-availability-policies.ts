@@ -217,4 +217,30 @@ export const TYPE_AVAILABILITY_POLICIES_TELEMETRY = defineTelemetryEvents({
 				.describe('The instance access of the type when the dialog opened'),
 		}),
 	},
+	USER_REVIEWED_TYPE_RESTRICTION: {
+		name: 'User reviewed type restriction',
+		description:
+			'An admin answered the review that opens before a type that workflows use becomes restricted. A cancel does not reach the backend, so only this event reports it. A type that no workflow uses skips the review and does not fire it.',
+		properties: z.object({
+			kind,
+			type_name: z.string().describe('The node or credential type name, not user data'),
+			decision: z
+				.enum(['confirm', 'cancel'])
+				.describe("'cancel' also covers Escape and a click outside the review"),
+			uses: z
+				.number()
+				.nullable()
+				.describe('Nodes that use the type. Null when the review could not load the counts'),
+			workflows: z.number().nullable().describe('Workflows that use the type'),
+			active_workflows: z.number().nullable().describe('Active workflows that use the type'),
+		}),
+	},
+	USER_CLICKED_REPLACE_RESTRICTED_NODE: {
+		name: 'User clicked replace restricted node',
+		description:
+			'The user chose to replace a restricted node from its node details view, instead of asking an admin for access.',
+		properties: z.object({
+			scope: restrictionScope,
+		}),
+	},
 });
