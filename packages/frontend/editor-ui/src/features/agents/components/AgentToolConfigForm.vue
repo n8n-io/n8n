@@ -354,6 +354,7 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 <template>
 	<div :class="[$style.contentWrapper, isCustomTool && $style.codeContentWrapper]">
 		<RestrictedTypeCallout
+			telemetry-source="agent_tool_config"
 			v-if="isRestricted"
 			surface="tool"
 			:type-name="restrictedToolName"

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
 	N8nPreviewBadge,
 	N8nSegmentControl,
@@ -8,6 +9,7 @@ import {
 } from '@n8n/design-system';
 import { VIEWS } from '@n8n/frontend-constants/views';
 import { useI18n } from '@n8n/i18n';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createReusableTemplate } from '@vueuse/core';
 import { computed, onMounted, useTemplateRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -24,11 +26,13 @@ import {
 	POLICY_TAB_LABEL_KEY,
 	type RestrictedTypeKind,
 } from '../type-availability-policies.constants';
+import { TELEMETRY_POLICY_KIND } from '../type-availability-policies.telemetry';
 
 const i18n = useI18n();
 const route = useRoute();
 const router = useRouter();
 const documentTitle = useDocumentTitle();
+const telemetry = useTelemetry();
 const { manageableKinds, entryRouteName } = usePolicyAdminAccess();
 const instancePolicy = useInstancePolicy();
 // The tabs sit in the table's toolbar, so a tab with a table renders them there.
@@ -67,6 +71,7 @@ const details = computed(() => {
 const tab = useTemplateRef<InstanceType<typeof NodeTypesTab | typeof CredentialTypesTab>>('tab');
 
 function openDetails(name: string) {
+	detailsOpenedFromTable = name;
 	void router.replace({ query: { ...route.query, tab: activeTab.value, details: name } });
 }
 
@@ -102,6 +107,36 @@ const detailsTypeUnknown = computed(() => {
 		!access.types.has(details.value.name)
 	);
 });
+
+// A name from the table or from a link reports only once the server lists the type.
+let detailsOpenedFromTable: string | undefined;
+let trackedDetails: string | undefined;
+
+watch(
+	() => {
+		if (!details.value) return undefined;
+		const { kind, name } = details.value;
+		return { kind, name, entry: instancePolicy.typeAccess[kind]?.types.get(name) };
+	},
+	(opened) => {
+		const key = opened && `${opened.kind}:${opened.name}`;
+		if (key === trackedDetails) return;
+		if (!opened) {
+			trackedDetails = undefined;
+			return;
+		}
+		if (!opened.entry) return;
+		trackedDetails = key;
+		telemetry.track(TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_OPENED_TYPE_ACCESS_DIALOG, {
+			kind: TELEMETRY_POLICY_KIND[opened.kind],
+			type_name: opened.name,
+			source: detailsOpenedFromTable === opened.name ? 'table' : 'link',
+			current_access: opened.entry.access,
+		});
+		detailsOpenedFromTable = undefined;
+	},
+	{ immediate: true },
+);
 
 watch(
 	detailsTypeUnknown,

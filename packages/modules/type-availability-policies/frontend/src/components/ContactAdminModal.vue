@@ -8,11 +8,13 @@ import {
 	N8nLoading,
 	N8nText,
 } from '@n8n/design-system';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { staticRolesWithScope } from '@n8n/permissions';
 import type { IUserResponse, Project } from '@n8n/rest-api-client';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { computed, ref, watch } from 'vue';
 
 import {
@@ -24,12 +26,17 @@ import {
 } from '../type-availability-policies.constants';
 import { useCloseOnEscape } from '../composables/useCloseOnEscape';
 import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.store';
+import {
+	TELEMETRY_POLICY_KIND,
+	type RestrictedTypeSurface,
+} from '../type-availability-policies.telemetry';
 
 const {
 	typeName,
 	kind = 'node',
 	audience,
 	project,
+	telemetrySource,
 } = defineProps<{
 	/** Several names switch to copy that does not assume one node or one credential type. */
 	typeName: string | string[];
@@ -37,11 +44,13 @@ const {
 	audience: ContactAudience;
 	/** Whose project admins to list. Defaults to the open project. */
 	project?: Project | null;
+	telemetrySource: RestrictedTypeSurface;
 }>();
 
 const open = defineModel<boolean>('open', { default: false });
 
 const i18n = useI18n();
+const telemetry = useTelemetry();
 const usersStore = useUsersStore();
 const rolesStore = useRolesStore();
 const policiesStore = useTypeAvailabilityPoliciesStore();
@@ -121,7 +130,14 @@ const description = computed(() =>
 watch(
 	open,
 	async (isOpen) => {
-		if (!isOpen || audience === 'project') return;
+		if (!isOpen) return;
+		telemetry.track(TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_OPENED_CONTACT_ADMIN_DIALOG, {
+			kind: TELEMETRY_POLICY_KIND[kind],
+			audience: listedAudience.value,
+			source: telemetrySource,
+			restricted_type_count: typeNames.value.length,
+		});
+		if (audience === 'project') return;
 
 		// A reopen can start a second lookup before the first resolves; only the latest one ends loading.
 		const id = ++lookupId;
@@ -137,6 +153,15 @@ watch(
 );
 
 useCloseOnEscape(open, () => (open.value = false));
+
+function onAdminEmailClick() {
+	telemetry.track(TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_CLICKED_ADMIN_EMAIL, {
+		kind: TELEMETRY_POLICY_KIND[kind],
+		audience: listedAudience.value,
+		source: telemetrySource,
+		admin_count: admins.value.length,
+	});
+}
 
 function mailtoHref(email: string): string {
 	return `mailto:${email}?subject=${encodeURIComponent(mailSubject.value)}`;
@@ -159,7 +184,12 @@ function mailtoHref(email: string): string {
 					<N8nAvatar :first-name="admin.firstName" :last-name="admin.lastName" size="small" />
 					<div :class="$style.identity">
 						<N8nText size="medium" color="text-dark">{{ displayName(admin) }}</N8nText>
-						<N8nLink :to="mailtoHref(admin.email)" size="small" theme="text">
+						<N8nLink
+							:to="mailtoHref(admin.email)"
+							size="small"
+							theme="text"
+							@click="onAdminEmailClick"
+						>
 							{{ admin.email }}
 						</N8nLink>
 					</div>

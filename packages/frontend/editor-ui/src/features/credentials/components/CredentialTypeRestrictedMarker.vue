@@ -3,6 +3,7 @@ import {
 	RestrictedNodePopover,
 	type ContactAudience,
 	type RestrictedTypeKind,
+	type RestrictedTypeSurface,
 	type TypeRestriction,
 } from '@n8n/frontend-module-type-availability-policies';
 import { computed, useTemplateRef } from 'vue';
@@ -17,6 +18,7 @@ const props = withDefaults(
 		description?: string;
 		/** `row` opens the popover on hover of the select option around it, `field` on the marker itself. */
 		placement?: 'row' | 'field';
+		telemetrySource: RestrictedTypeSurface;
 	}>(),
 	{ kind: 'credential', scopeLabel: undefined, description: undefined, placement: 'row' },
 );
@@ -43,6 +45,7 @@ const anchor = computed(() =>
 			:scope-label="scopeLabel"
 			:description="description"
 			:anchor="anchor"
+			:telemetry-source="telemetrySource"
 			@contact-admin="(audience) => emit('contactAdmin', audience)"
 		/>
 	</span>

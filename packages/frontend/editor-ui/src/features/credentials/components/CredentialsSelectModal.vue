@@ -214,6 +214,7 @@ function openCredentialType() {
 							<span :class="$style.restrictedScope">
 								<N8nText size="small" color="text-light">{{ restricted.scopeLabel }}</N8nText>
 								<CredentialTypeRestrictedMarker
+									telemetry-source="credential_select_modal"
 									v-if="hasListOpened"
 									:name="credential.displayName"
 									:restriction="restricted.restriction"
@@ -230,6 +231,7 @@ function openCredentialType() {
 					</N8nOption>
 				</N8nSelect>
 				<ContactAdminModal
+					telemetry-source="credential_select_modal"
 					v-model:open="isContactAdminOpen"
 					:kind="contactAdmin.kind"
 					:type-name="contactAdmin.subject"

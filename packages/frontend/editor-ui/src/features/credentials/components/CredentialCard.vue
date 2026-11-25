@@ -297,6 +297,7 @@ function moveResource() {
 				>
 					<N8nBadge>
 						<RestrictedNodePopover
+							telemetry-source="credential_card"
 							:kind="restriction.kind"
 							side="right"
 							marker-size="xsmall"
@@ -311,6 +312,7 @@ function moveResource() {
 						{{ locale.baseText('credentials.item.restricted') }}
 					</N8nBadge>
 					<ContactAdminModal
+						telemetry-source="credential_card"
 						v-model:open="isContactAdminOpen"
 						:kind="contactAdmin.kind"
 						:type-name="contactAdmin.subject"

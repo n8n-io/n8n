@@ -311,6 +311,7 @@ function handleConnect() {
 
 		<div :class="$style.action">
 			<RestrictedNodePopover
+				telemetry-source="tools_connection"
 				v-if="restriction"
 				:node-type-name="item.title"
 				:restriction="restriction"

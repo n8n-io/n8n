@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { N8nButton, N8nIcon, N8nPopover, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { ProjectType } from '@n8n/rest-api-client';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
 	unrefElement,
 	useActiveElement,
@@ -22,6 +24,10 @@ import {
 	type ContactAudience,
 	type RestrictedTypeKind,
 } from '../type-availability-policies.constants';
+import {
+	TELEMETRY_POLICY_KIND,
+	type RestrictedTypeSurface,
+} from '../type-availability-policies.telemetry';
 import ContactAdminModal from './ContactAdminModal.vue';
 
 const props = withDefaults(
@@ -29,6 +35,7 @@ const props = withDefaults(
 		nodeTypeName: string;
 		restriction?: OptionalVerdict;
 		kind?: RestrictedTypeKind;
+		telemetrySource: RestrictedTypeSurface;
 		/** The list row the popover explains. It opens beside this element, not beside the lock. */
 		anchor?: MaybeElement;
 		/** Keyboard-active without DOM focus, such as a virtual list selection. */
@@ -65,6 +72,7 @@ const parentHandlesContactAdmin = Boolean(getCurrentInstance()?.vnode.props?.onC
 const HOVER_GRACE_MS = 200;
 
 const i18n = useI18n();
+const telemetry = useTelemetry();
 
 const anchorElement = computed(() => unrefElement(props.anchor) ?? undefined);
 const markerRef = ref<HTMLElement | null>(null);
@@ -102,6 +110,31 @@ const wantsOpen = computed(
 	() => !isContactAdminOpen.value && !isDismissed.value && hasIntent.value,
 );
 const { open, claim } = useExclusiveOpen(wantsOpen);
+
+// Hover opens the card, so a pointer that crosses a list would otherwise report every row it passes.
+// An `active` row alone does not count: a list can select its first row before the user does anything.
+let hasTrackedOpen = false;
+const isOpenByUser = computed(
+	() =>
+		open.value &&
+		(anchorHovered.value || contentHovered.value || anchorFocused.value || contentFocused.value),
+);
+watch(
+	isOpenByUser,
+	(isOpen) => {
+		if (!isOpen || hasTrackedOpen) return;
+		hasTrackedOpen = true;
+		telemetry.track(
+			TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_OPENED_RESTRICTED_TYPE_DETAILS,
+			{
+				kind: TELEMETRY_POLICY_KIND[props.kind],
+				scope: props.restriction?.scope ?? null,
+				source: props.telemetrySource,
+			},
+		);
+	},
+	{ immediate: true },
+);
 
 // The leave grace keeps wantsOpen true when the pointer comes back fast, so each entry claims the card.
 function reopen() {
@@ -228,6 +261,7 @@ function onContentKeydown(event: KeyboardEvent) {
 			:type-name="nodeTypeName"
 			:kind="kind"
 			:audience="contactCopy.audience"
+			:telemetry-source="telemetrySource"
 		/>
 	</span>
 </template>

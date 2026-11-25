@@ -45,6 +45,7 @@ const typeNames = computed(() => restricted.map(({ displayName }) => displayName
 			kind="node"
 			:type-name="typeNames"
 			:audience="contactCopy.audience"
+			telemetry-source="template"
 		/>
 	</div>
 </template>

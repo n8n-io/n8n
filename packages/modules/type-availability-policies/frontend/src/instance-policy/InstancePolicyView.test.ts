@@ -3,22 +3,28 @@ import type { Scope } from '@n8n/permissions';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { reactive } from 'vue';
 
 import InstancePolicyView from './InstancePolicyView.vue';
 import { useInstancePolicyStore } from './instance-policy.store';
 import { accessFilter } from '../__tests__/table';
 import { POLICIES_LANDING_VIEW } from '../type-availability-policies.constants';
 
-const { route, push, replace, fetchInstancePolicy, fetchInstanceAccess } = vi.hoisted(() => ({
-	route: { query: {} as Record<string, string> },
-	push: vi.fn(),
-	replace: vi.fn(),
-	fetchInstancePolicy: vi.fn(),
-	fetchInstanceAccess: vi.fn(),
-}));
+const { route, routeOverride, push, replace, track, fetchInstancePolicy, fetchInstanceAccess } =
+	vi.hoisted(() => ({
+		route: { query: {} as Record<string, string> },
+		/** A reactive route, for a test that needs the view to follow its own query writes. */
+		routeOverride: { current: undefined as { query: Record<string, unknown> } | undefined },
+		track: vi.fn(),
+		push: vi.fn(),
+		replace: vi.fn(),
+		fetchInstancePolicy: vi.fn(),
+		fetchInstanceAccess: vi.fn(),
+	}));
 
 vi.mock('../type-availability-policies.api', () => ({
 	fetchInstancePolicy,
@@ -34,8 +40,12 @@ vi.mock('../type-availability-policies.api', () => ({
 	fetchNodeTypeUsage: vi.fn(async () => ({})),
 }));
 
+vi.mock('@n8n/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track }),
+}));
+
 vi.mock('vue-router', () => ({
-	useRoute: () => route,
+	useRoute: () => routeOverride.current ?? route,
 	useRouter: () => ({ push, replace }),
 }));
 
@@ -103,6 +113,7 @@ const setupAfterEarlierVisit = async (query: Record<string, string>) => {
 describe('InstancePolicyView', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		routeOverride.current = undefined;
 		fetchInstancePolicy.mockResolvedValue({
 			scopeId: null,
 			rules: [],
@@ -450,6 +461,57 @@ describe('InstancePolicyView', () => {
 			await closeFromInside(getByTestId('credential-type-access-dialog'));
 
 			expect(rowButton).toHaveFocus();
+		});
+	});
+
+	describe('telemetry', () => {
+		const openedEvent = TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_OPENED_TYPE_ACCESS_DIALOG;
+
+		it('reports a dialog that a link opens once the server lists the type', async () => {
+			setup(BOTH_SCOPES, { tab: 'credential', details: 'airtableApi' });
+
+			await waitFor(() =>
+				expect(track).toHaveBeenCalledWith(openedEvent, {
+					kind: 'credential-types',
+					type_name: 'airtableApi',
+					source: 'link',
+					current_access: 'allow',
+				}),
+			);
+			expect(track).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not report a link to a type that the server does not list', async () => {
+			setup(BOTH_SCOPES, { tab: 'credential', details: 'unknownApi' });
+
+			await waitFor(() => expect(replace).toHaveBeenCalledWith({ query: { tab: 'credential' } }));
+			expect(track).not.toHaveBeenCalledWith(openedEvent, expect.anything());
+		});
+
+		it('reports a dialog that a click in the table opens', async () => {
+			const reactiveRoute = reactive({ query: { tab: 'node' } as Record<string, unknown> });
+			routeOverride.current = reactiveRoute;
+			replace.mockImplementation(({ query }: { query: Record<string, unknown> }) => {
+				reactiveRoute.query = query;
+			});
+			fetchInstanceAccess.mockResolvedValue({
+				scopeId: null,
+				version: 0,
+				defaultAction: 'allow',
+				types: [{ name: 'n8n-nodes-base.notion', access: 'deny', matchedRuleId: 'rule-1' }],
+			});
+			const { findByText } = setup(BOTH_SCOPES, { tab: 'node' });
+
+			await fireEvent.click(await findByText('Notion'));
+
+			await waitFor(() =>
+				expect(track).toHaveBeenCalledWith(openedEvent, {
+					kind: 'node-types',
+					type_name: 'n8n-nodes-base.notion',
+					source: 'table',
+					current_access: 'deny',
+				}),
+			);
 		});
 	});
 });

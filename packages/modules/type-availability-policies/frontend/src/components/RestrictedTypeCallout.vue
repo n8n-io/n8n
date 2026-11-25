@@ -10,11 +10,13 @@ import {
 	type OptionalVerdict,
 	type RestrictedCalloutSurface,
 } from '../composables/useNodeTypeRestriction';
+import type { RestrictedTypeSurface } from '../type-availability-policies.telemetry';
 
-const { surface, typeName, restriction } = defineProps<{
+const { surface, typeName, restriction, telemetrySource } = defineProps<{
 	surface: RestrictedCalloutSurface;
 	typeName: string;
 	restriction?: OptionalVerdict;
+	telemetrySource: RestrictedTypeSurface;
 }>();
 
 const i18n = useI18n();
@@ -45,6 +47,7 @@ const description = computed(() => describeTypeRestriction(surface, typeName, re
 			:kind="surface === 'credential' ? 'credential' : 'node'"
 			:type-name="typeName"
 			:audience="contactCopy.audience"
+			:telemetry-source="telemetrySource"
 		/>
 	</div>
 </template>

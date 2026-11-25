@@ -9,6 +9,7 @@ export {
 	type ContactAudience,
 	type RestrictedTypeKind,
 } from './type-availability-policies.constants';
+export type { RestrictedTypeSurface } from './type-availability-policies.telemetry';
 export { useTypeAvailability } from './composables/useTypeAvailability';
 export { usePolicyAdminAccess } from './composables/usePolicyAdminAccess';
 export {

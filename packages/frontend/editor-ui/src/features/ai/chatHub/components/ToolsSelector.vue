@@ -293,6 +293,7 @@ onMounted(async () => {
 			<template #item-trailing="{ item }">
 				<template v-if="item.id !== CREATE_NEW_TOOL_ID">
 					<RestrictedMenuItemMarker
+						telemetry-source="chat_hub_tools"
 						v-if="item.data?.restriction"
 						:node-type-name="restrictedTypeName(item)"
 						:restriction="item.data.restriction"
@@ -312,6 +313,7 @@ onMounted(async () => {
 			</template>
 		</N8nDropdownMenu>
 		<ContactAdminModal
+			telemetry-source="chat_hub_tools"
 			:type-name="contactAdmin?.typeName ?? ''"
 			:audience="contactAdmin?.audience ?? 'instance'"
 			:open="contactAdmin !== null"

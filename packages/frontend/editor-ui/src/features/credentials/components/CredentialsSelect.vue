@@ -163,6 +163,7 @@ defineExpose({ focus });
 						<span :class="$style.restrictedScope">
 							<N8nText size="small" color="text-light">{{ scopeLabel(restriction) }}</N8nText>
 							<CredentialTypeRestrictedMarker
+								telemetry-source="credential_select"
 								v-if="hasListOpened"
 								:name="credType.displayName"
 								:restriction="restriction"
@@ -184,6 +185,7 @@ defineExpose({ focus });
 				data-test-id="credential-select-restricted"
 			>
 				<RestrictedNodePopover
+					telemetry-source="credential_select"
 					kind="credential"
 					side="right"
 					:node-type-name="selectedRestriction.name"
@@ -212,6 +214,7 @@ defineExpose({ focus });
 			/>
 		</div>
 		<ContactAdminModal
+			telemetry-source="credential_select"
 			kind="credential"
 			:type-name="contactAdmin.subject"
 			:audience="contactAdmin.audience"

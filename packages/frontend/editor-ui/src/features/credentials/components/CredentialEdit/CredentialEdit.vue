@@ -1816,6 +1816,7 @@ const { width } = useElementSize(credNameRef);
 									</template>
 								</N8nCallout>
 								<RestrictedTypeCallout
+									telemetry-source="credential_edit"
 									v-if="credentialTypeRestriction"
 									surface="credential"
 									:type-name="credentialType.displayName"

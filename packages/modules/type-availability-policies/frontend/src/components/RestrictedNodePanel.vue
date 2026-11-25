@@ -64,6 +64,7 @@ const description = computed(() =>
 			v-model:open="isContactAdminOpen"
 			:type-name="nodeTypeName"
 			:audience="contactCopy.audience"
+			telemetry-source="ndv"
 		/>
 	</div>
 </template>
