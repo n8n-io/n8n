@@ -11,7 +11,7 @@ import { Service } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
 import { DataSource, In, IsNull } from '@n8n/typeorm';
 
-import { McpServer } from './mcp-server.entity';
+import { McpServer } from './database/entities/mcp-server.entity';
 
 class McpServerTable extends BaseRepository<McpServer> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {

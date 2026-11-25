@@ -10,7 +10,7 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, NotFoundError, UnexpectedError } from '@n8n/errors';
 
-import type { McpServer } from './mcp-server.entity';
+import type { McpServer } from './database/entities/mcp-server.entity';
 import type { McpServerActor } from './mcp-server-events';
 import { McpServerRepository, type McpServerProject } from './mcp-server.repository';
 
