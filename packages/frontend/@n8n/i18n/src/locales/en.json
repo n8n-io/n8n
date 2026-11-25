@@ -3039,7 +3039,7 @@
 	"nodeSettings.versionPicker.label": "{node} node version",
 	"nodeSettings.versionPicker.previousVersions": "Previous versions",
 	"nodeSettings.versionPicker.current": "Current",
-	"nodeSettings.versionPicker.olderDisabled": "Older than the current version. Use Undo or Version History to go back.",
+	"nodeSettings.versionPicker.olderDisabled": "You can't switch to an older version here. To go back, use Undo or Version History.",
 	"nodeSettings.versionPicker.confirm.title": "Update {node} to version {version}?",
 	"nodeSettings.versionPicker.confirm.carryOver": "Your parameters carry over where the new version supports them. Missing values are highlighted after the update.",
 	"nodeSettings.versionPicker.confirm.undo": "You can undo the update until you publish. Edits made after the update are lost on undo.",

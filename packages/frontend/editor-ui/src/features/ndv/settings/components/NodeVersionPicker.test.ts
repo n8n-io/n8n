@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import NodeVersionPicker from './NodeVersionPicker.vue';
 
-const OLDER_DISABLED = 'Older than the current version. Use Undo or Version History to go back.';
+const OLDER_DISABLED =
+	"You can't switch to an older version here. To go back, use Undo or Version History.";
 
 const renderComponent = createComponentRenderer(NodeVersionPicker, {
 	props: {
