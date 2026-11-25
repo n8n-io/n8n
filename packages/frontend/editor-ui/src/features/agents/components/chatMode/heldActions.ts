@@ -87,7 +87,30 @@ function sentenceCase(value: string): string {
 	return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
-function inferAppAndAction(toolName: string): { appName: string; actionLabel: string } {
+const SEND_VERBS: ReadonlySet<string> = new Set(['send', 'post', 'reply', 'forward', 'notify']);
+// Verbs that change a thing that exists. The result is saved, also when the thing is a message.
+const CHANGE_VERBS: ReadonlySet<string> = new Set([
+	'edit',
+	'update',
+	'modify',
+	'rename',
+	'delete',
+	'remove',
+	'archive',
+]);
+const ACTION_VERBS: ReadonlySet<string> = new Set([
+	...SEND_VERBS,
+	...CHANGE_VERBS,
+	'create',
+	'add',
+	'append',
+	'insert',
+	'set',
+]);
+
+function inferAppAndAction(fullToolName: string): { appName: string; actionLabel: string } {
+	// MCP tools carry an `mcp_` prefix before the server name. It is not the app.
+	const toolName = fullToolName.replace(/^mcp_+(?=[^_])/i, '');
 	// MCP or prefixed names: e.g. "linear__create_issue", "slack:post_message", "gmail_send_email"
 	const doubleSep = toolName.split(/__|::|:/);
 	if (doubleSep.length >= 2) {
@@ -99,6 +122,10 @@ function inferAppAndAction(toolName: string): { appName: string; actionLabel: st
 	}
 
 	const parts = toolName.split('_').filter(Boolean);
+	// A name that starts with a verb, such as `edit_message`, has no app. Keep the verb.
+	if (parts.length >= 2 && ACTION_VERBS.has(parts[0].toLowerCase())) {
+		return { appName: titleCase(toolName), actionLabel: sentenceCase(toolName) };
+	}
 	if (parts.length >= 2) {
 		const [app, ...rest] = parts;
 		return {
@@ -209,16 +236,19 @@ const SENT_OBJECTS: ReadonlySet<string> = new Set([
 	'dm',
 	'post',
 ]);
-const SEND_VERBS: ReadonlySet<string> = new Set(['send', 'post', 'reply', 'forward', 'notify']);
 
 /**
  * What an action makes or sends, in lower case: `email` for `Send email`, `row` for `Append row`.
- * An action without a verb and an object, such as a tool named after its app, is an `action`.
+ * An action without an object is an `action`: a tool named after its app, or a verb alone
+ * such as `Send`.
  */
 export function actionObject(action: Pick<AgentHeldAction, 'actionLabel' | 'appName'>): string {
 	const words = action.actionLabel.toLowerCase().split(/\s+/).filter(Boolean);
 	if (words.length === 0 || action.actionLabel === action.appName) return 'action';
-	return words[words.length - 1];
+	const last = words[words.length - 1];
+	// `Reply` and `Post` are also objects. `Send` is not.
+	if (words.length === 1 && ACTION_VERBS.has(last) && !SENT_OBJECTS.has(last)) return 'action';
+	return last;
 }
 
 /** Whether a run action was sent (an email, a message) or saved (a row, a contact). */
@@ -226,7 +256,9 @@ export function actionOutcome(
 	action: Pick<AgentHeldAction, 'actionLabel' | 'appName'>,
 ): 'sent' | 'saved' {
 	const verb = action.actionLabel.toLowerCase().split(/\s+/)[0] ?? '';
-	return SEND_VERBS.has(verb) || SENT_OBJECTS.has(actionObject(action)) ? 'sent' : 'saved';
+	if (SEND_VERBS.has(verb)) return 'sent';
+	if (CHANGE_VERBS.has(verb)) return 'saved';
+	return SENT_OBJECTS.has(actionObject(action)) ? 'sent' : 'saved';
 }
 
 export function formatPreviewEntries(input: unknown): Array<{ key: string; value: string }> {

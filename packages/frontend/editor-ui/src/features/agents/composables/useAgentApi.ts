@@ -206,7 +206,7 @@ export const listN8nChatAgents = async (
 	});
 };
 
-/** Options for {@link listN8nChatThreads}. `cursor` is a thread's `updatedAt` ISO string. */
+/** Options for {@link listN8nChatThreads}. Pass the previous page's `nextCursor` unchanged. */
 export type ListN8nChatThreadsOptions = {
 	limit: number;
 	cursor?: string;
@@ -1194,13 +1194,13 @@ export const resetAgentTestRun = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-	sessionId?: string,
+	sessionId: string,
 ): Promise<AgentTestRunResetResponse> => {
 	return await makeRestApiRequest<AgentTestRunResetResponse>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/test-run/reset`,
-		sessionId ? { sessionId } : {},
+		{ sessionId },
 	);
 };
 

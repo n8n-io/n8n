@@ -29,10 +29,13 @@ const props = withDefaults(
 		actions: AgentHeldAction[];
 		committed?: AgentTestRunCommitResponse;
 		busy?: boolean;
+		/** True while the reply can still get more held actions. The run must wait for all of them. */
+		runDisabled?: boolean;
 	}>(),
 	{
 		committed: undefined,
 		busy: false,
+		runDisabled: false,
 	},
 );
 
@@ -73,8 +76,7 @@ const resultByActionId = computed(() => {
 
 const committedSucceededCount = computed(() => {
 	if (!props.committed) return 0;
-	const succeeded = props.committed.results.filter((item) => item.status !== 'failed').length;
-	return succeeded > 0 ? succeeded : props.actions.length;
+	return props.committed.results.filter((item) => item.status !== 'failed').length;
 });
 
 const committedTime = computed(() =>
@@ -129,7 +131,7 @@ function actionStatus(actionId: string) {
 }
 
 function onRunClick() {
-	if (props.busy || props.committed) return;
+	if (props.busy || props.runDisabled || props.committed) return;
 	emit('run-actions', props.actions);
 }
 </script>
@@ -148,7 +150,7 @@ function onRunClick() {
 					:class="[$style.trigger, props.committed && $style.triggerDone]"
 					data-testid="agent-held-actions-toggle"
 				>
-					<template v-if="props.committed" #prefix>
+					<template v-if="committedSucceededCount > 0" #prefix>
 						<N8nIcon icon="check" size="small" :class="$style.doneIcon" aria-hidden="true" />
 					</template>
 					<span
@@ -269,6 +271,7 @@ function onRunClick() {
 								size="small"
 								icon="play"
 								:loading="props.busy"
+								:disabled="props.runDisabled"
 								data-testid="agent-held-actions-run-btn"
 								@click="onRunClick"
 							>

@@ -1,7 +1,7 @@
 import { createTestingPinia } from '@pinia/testing';
 import { configure, fireEvent, screen, waitFor } from '@testing-library/vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ref } from 'vue';
+import { nextTick, ref } from 'vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
@@ -100,6 +100,43 @@ describe('heldActions helpers', () => {
 		});
 	});
 
+	it('keeps the verb of a tool name that starts with a verb', () => {
+		const [held] = extractHeldActions([
+			{
+				tool: 'edit_message',
+				toolCallId: 'write-1',
+				state: TOOL_CALL_STATE.DONE,
+				simulation: { route: 'simulated', reason: 'served_from_world', evidence: ['world_write'] },
+			},
+		]);
+
+		expect(held.actionLabel).toBe('Edit message');
+		expect(actionObject(held)).toBe('message');
+		expect(actionOutcome(held)).toBe('saved');
+	});
+
+	it.each(['mcp_linear_create_issue', 'mcp__linear__create_issue'])(
+		'reads the server of the MCP tool %s as its app',
+		(tool) => {
+			const [held] = extractHeldActions([
+				{
+					tool,
+					toolCallId: 'write-mcp',
+					state: TOOL_CALL_STATE.DONE,
+					simulation: {
+						route: 'simulated',
+						reason: 'served_from_world',
+						evidence: ['world_write'],
+					},
+				},
+			]);
+
+			expect(held.appName).toBe('Linear');
+			expect(held.actionLabel).toBe('Create issue');
+			expect(held.toolName).toBe(tool);
+		},
+	);
+
 	it('formats committedAt timestamps as HH:MM', () => {
 		const date = new Date(2026, 10, 20, 9, 5, 0);
 		expect(formatCommitTime(date.toISOString())).toBe('09:05');
@@ -114,6 +151,9 @@ describe('actionObject and actionOutcome', () => {
 		['Append row', 'Google Sheets', 'row', 'saved'],
 		['Create contact', 'HubSpot', 'contact', 'saved'],
 		['Reply', 'Gmail', 'reply', 'sent'],
+		['Send', 'Gmail', 'action', 'sent'],
+		['Edit message', 'Slack', 'message', 'saved'],
+		['Update message', 'Telegram', 'message', 'saved'],
 		['Gmail', 'Gmail', 'action', 'saved'],
 	] as const)('%s in %s is a %s that is %s', (actionLabel, appName, object, outcome) => {
 		expect(actionObject({ actionLabel, appName })).toBe(object);
@@ -198,6 +238,22 @@ describe('AgentHeldActionsTray', () => {
 		expect(emitted('run-actions')).toEqual([[sampleActions]]);
 	});
 
+	it('does not emit run-actions while the run is disabled', async () => {
+		const { getByTestId, emitted, rerender } = renderTray({
+			props: { actions: sampleActions, runDisabled: true },
+		});
+
+		await fireEvent.click(getByTestId('agent-held-actions-toggle'));
+		await waitFor(() => expect(getByTestId('agent-held-actions-run-btn')).toBeDisabled());
+		await fireEvent.click(getByTestId('agent-held-actions-run-btn'));
+		expect(emitted('run-actions')).toBeUndefined();
+
+		await rerender({ runDisabled: false });
+		expect(getByTestId('agent-held-actions-run-btn')).toBeEnabled();
+		await fireEvent.click(getByTestId('agent-held-actions-run-btn'));
+		expect(emitted('run-actions')).toEqual([[sampleActions]]);
+	});
+
 	it('updates in place to the done count and done summary after commit', () => {
 		const committedAt = new Date(2026, 10, 20, 14, 7, 0).toISOString();
 		const { getByTestId, queryByTestId } = renderTray({
@@ -214,6 +270,9 @@ describe('AgentHeldActionsTray', () => {
 		});
 
 		expect(getByTestId('agent-held-actions-committed-banner')).toHaveTextContent('2 actions done');
+		expect(
+			getByTestId('agent-held-actions-toggle').querySelector('[data-icon="check"]'),
+		).toBeInTheDocument();
 		expect(getByTestId('agent-held-actions-done-summary')).toHaveTextContent(
 			'Done in your real apps at 14:07.',
 		);
@@ -240,6 +299,29 @@ describe('AgentHeldActionsTray', () => {
 		expect(rows[1]).not.toHaveTextContent('Linear: issue saved');
 		expect(getByTestId('agent-held-action-failed')).toHaveTextContent('Failed');
 		expect(getByTestId('agent-held-actions-committed-banner')).toHaveTextContent('1 action done');
+	});
+
+	it('does not show a replay as a success when every action failed', async () => {
+		const { getByTestId, getAllByTestId } = renderTray({
+			props: {
+				actions: sampleActions,
+				committed: {
+					committedAt: new Date(2026, 10, 20, 14, 7, 0).toISOString(),
+					results: [
+						{ actionId: 'call-1', toolName: 'slack__post_message', status: 'failed' },
+						{ actionId: 'call-2', toolName: 'linear__create_issue', status: 'failed' },
+					],
+				},
+			},
+		});
+
+		await waitFor(() => expect(getAllByTestId('agent-held-action-failed')).toHaveLength(2));
+		const banner = getByTestId('agent-held-actions-committed-banner');
+		expect(banner).toHaveTextContent('0 actions done');
+		expect(banner).not.toHaveTextContent('2 actions done');
+		expect(
+			getByTestId('agent-held-actions-toggle').querySelector('[data-icon="check"]'),
+		).not.toBeInTheDocument();
 	});
 
 	it('shows a saved row for an action that changed data', async () => {
@@ -329,6 +411,48 @@ describe('useAgentHeldActions', () => {
 		);
 		expect(state.confirmModalOpen.value).toBe(false);
 		expect(state.committedByReply.value['reply-1']).toEqual(response);
+	});
+
+	it('keeps the busy state of a new commit when a commit for an earlier chat settles', async () => {
+		const settle: Array<{ resolve: (value: unknown) => void; reject: (error: Error) => void }> = [];
+		commitAgentTestRunActionsMock.mockImplementation(
+			async () =>
+				await new Promise((resolve, reject) => {
+					settle.push({ resolve, reject });
+				}),
+		);
+
+		const sessionId = ref('chat-1');
+		const state = useAgentHeldActions({
+			projectId: ref('p1'),
+			agentId: ref('a1'),
+			sessionId,
+		});
+
+		state.openConfirmModal('reply-1', sampleActions);
+		const firstCommit = state.confirmCommit();
+		expect(state.committingReplyId.value).toBe('reply-1');
+
+		sessionId.value = 'chat-2';
+		await nextTick();
+		expect(state.committingReplyId.value).toBeNull();
+
+		state.openConfirmModal('reply-2', sampleActions);
+		const secondCommit = state.confirmCommit();
+		expect(state.committingReplyId.value).toBe('reply-2');
+
+		// The commit for the earlier chat fails after the new commit starts.
+		settle[0].reject(new Error('Old chat failed'));
+		expect(await firstCommit).toBe(false);
+		expect(state.committingReplyId.value).toBe('reply-2');
+		expect(state.commitError.value).toBeNull();
+		expect(state.confirmModalOpen.value).toBe(true);
+
+		const response = { committedAt: new Date().toISOString(), results: [] };
+		settle[1].resolve(response);
+		expect(await secondCommit).toBe(true);
+		expect(state.committingReplyId.value).toBeNull();
+		expect(state.committedByReply.value).toEqual({ 'reply-2': response });
 	});
 
 	it('counts the actions of the chat that ran, across replies, without failed ones', async () => {

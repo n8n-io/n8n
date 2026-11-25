@@ -8,4 +8,5 @@ export class UpdateProjectWorkflowReviewSettingsDto extends Z.class({
 
 export type ProjectWorkflowReviewSettingsResponse = {
 	requiredByProject: boolean;
+	requiredByInstance: boolean;
 };

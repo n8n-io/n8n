@@ -35,10 +35,11 @@ const countsText = computed(() => {
 	if (!loaded) return null;
 	return (['node', 'credential'] as const)
 		.map((kind) => {
-			const { restricted, total } = loaded[kind];
-			return i18n.baseText(`typeAvailabilityPolicies.landing.${kind}Count`, {
+			const { restricted, optIn, total } = loaded[kind];
+			const suffix = optIn > 0 ? 'CountWithOptIn' : 'Count';
+			return i18n.baseText(`typeAvailabilityPolicies.landing.${kind}${suffix}`, {
 				adjustToNumber: total,
-				interpolate: { restricted, total },
+				interpolate: { restricted, optIn, total },
 			});
 		})
 		.join(' · ');

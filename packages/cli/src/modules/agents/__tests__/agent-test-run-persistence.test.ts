@@ -74,4 +74,31 @@ describe('safe testing tool-call simulation persistence', () => {
 			simulation: slackSimulation,
 		});
 	});
+
+	it('scrubs secrets from the simulation detail before it reaches the timeline', () => {
+		const recorder = new ExecutionRecorder();
+		const secret = 'sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789';
+
+		recorder.record({ type: 'tool-call', toolCallId: 'call-1', toolName: 'gmail_send', input: {} });
+		recorder.record({
+			type: 'tool-result',
+			toolCallId: 'call-1',
+			toolName: 'gmail_send',
+			output: 'blocked',
+			isError: true,
+			simulation: {
+				route: 'blocked',
+				reason: 'simulator_unavailable',
+				detail: `Request failed with Authorization: Bearer ${secret}`,
+			},
+		});
+
+		const toolCall = recorder
+			.getMessageRecord()
+			.timeline.find((event) => event.type === 'tool-call');
+		expect(toolCall).toMatchObject({
+			simulation: { route: 'blocked', reason: 'simulator_unavailable' },
+		});
+		expect(JSON.stringify(toolCall)).not.toContain(secret);
+	});
 });

@@ -1,16 +1,17 @@
 import {
+	AgentTestRunResetDto,
 	agentTestRunCommitRequestSchema,
 	type AgentTestRunCommitResponse,
 	type AgentTestRunResetResponse,
 	type AgentTestRunToolsResponse,
 } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import { Publisher } from '@n8n/backend-services';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Param, Post, ProjectScope, RestController } from '@n8n/decorators';
 import { BadRequestError } from '@n8n/errors';
-import { isRecord } from '@n8n/utils/is-record';
 import type { Response } from 'express';
 
-import { chatThreadId } from './agent-test-chat.service';
 import { HeldActionCommitService } from './simulation/held-action-commit.service';
 import { SafeTestingFlagGate } from './simulation/safe-testing-flag-gate';
 import { SimulationSessionService } from './simulation/simulation-session.service';
@@ -22,6 +23,8 @@ export class AgentTestRunController {
 		private readonly flagGate: SafeTestingFlagGate,
 		private readonly simulationSessions: SimulationSessionService,
 		private readonly heldActionCommit: HeldActionCommitService,
+		private readonly publisher: Publisher,
+		private readonly logger: Logger,
 	) {}
 
 	/** Which of the agent's tools can run in a test run, before the run starts. */
@@ -70,18 +73,21 @@ export class AgentTestRunController {
 		_res: Response,
 		@Param('projectId') projectId: string,
 		@Param('agentId') agentId: string,
+		@Body payload: AgentTestRunResetDto,
 	): Promise<AgentTestRunResetResponse> {
 		await this.flagGate.assertEnabled(req.user);
-		const bodySessionId =
-			isRecord(req.body) && typeof req.body.sessionId === 'string' && req.body.sessionId.trim()
-				? req.body.sessionId.trim()
-				: undefined;
-		this.simulationSessions.resetForTestChat({
-			userId: req.user.id,
-			projectId,
-			agentId,
-			testChatId: bodySessionId ?? chatThreadId(agentId, req.user.id),
-		});
+		// A world belongs to the chat of the run. No run uses a thread that the server could guess.
+		const chat = { userId: req.user.id, projectId, agentId, testChatId: payload.sessionId };
+		this.simulationSessions.resetForTestChat(chat);
+		// Any main can run the chat's next turn, so each one drops its world. A no-op outside queue mode.
+		try {
+			await this.publisher.publishCommand({ command: 'reset-agent-test-run', payload: chat });
+		} catch (error) {
+			this.logger.warn('[SafeTesting] Failed to relay a test run reset', {
+				agentId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
 		return { reset: true };
 	}
 }

@@ -15,7 +15,10 @@ import { unsavedAgentIds } from '../composables/useCreateAgent';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { N8nButton } from '@n8n/design-system';
 import { AGENT_PROMPT_INSPIRATION_TIMING } from '@/app/constants/durations';
-import { AGENTS_INVOCATION_STEP_EXPERIMENT } from '@/app/constants/experiments';
+import {
+	AGENT_SETUP_HEADER_EXPERIMENT,
+	AGENTS_INVOCATION_STEP_EXPERIMENT,
+} from '@/app/constants/experiments';
 import { usePostHog } from '@/app/stores/posthog.store';
 import type { persistPendingAgent } from '@/features/ai/instanceAi/instanceAi.memory.api';
 import {
@@ -47,6 +50,13 @@ import {
 	AGENT_TOOL_CONFIG_MODAL_KEY,
 	AGENT_UNPUBLISHED_WORKFLOWS_MODAL_KEY,
 } from '../constants';
+
+const setupHeaderVariant = ref<string | boolean>();
+vi.mock('@/experiments/agentSetupHeader/useAgentSetupHeaderExperiment', () => ({
+	useAgentSetupHeaderExperiment: () => ({
+		isEnabled: computed(() => setupHeaderVariant.value === AGENT_SETUP_HEADER_EXPERIMENT.variant),
+	}),
+}));
 
 const builderExperimentMock = reactive({
 	layout: { chatWidth: 'current', testChat: 'dock' },
@@ -711,6 +721,7 @@ const commonStubs = {
 			'reverted',
 			'switch-agent',
 			'open-publish-timeline',
+			'setup-task-action',
 			'toggle-instance-ai',
 		],
 	},
@@ -908,6 +919,7 @@ function mockPendingAgentRow(...pendingIds: string[]) {
 }
 
 function resetViewMocks() {
+	setupHeaderVariant.value = undefined;
 	vi.clearAllMocks();
 	for (let index = localStorage.length - 1; index >= 0; index--) {
 		const key = localStorage.key(index);
@@ -3507,6 +3519,7 @@ describe('AgentBuilderView — preview routing', () => {
 describe('AgentBuilderView — configuration validation', () => {
 	beforeEach(() => {
 		resetViewMocks();
+		setupHeaderVariant.value = AGENT_SETUP_HEADER_EXPERIMENT.variant;
 		vi.restoreAllMocks();
 		createObjectURLSpy?.mockRestore();
 		revokeObjectURLSpy?.mockRestore();
@@ -3539,6 +3552,53 @@ describe('AgentBuilderView — configuration validation', () => {
 		expect(header.attributes('data-config-validation-status')).toBe('invalid');
 	});
 
+	it.each(
+		[undefined, false, true, 'control', 'variant'].flatMap((variant) =>
+			[false, true].map((artifactMode) => ({ variant, artifactMode })),
+		),
+	)(
+		'places setup tasks for flag $variant (artifact mode: $artifactMode)',
+		async ({ variant, artifactMode }) => {
+			setupHeaderVariant.value = variant;
+			const wrapper = await renderView({
+				props: { artifactMode, artifactProjectId: 'p1', artifactAgentId: 'a1' },
+			});
+			const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+			const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+			const host = variant === 'variant' ? editor : header;
+			const other = variant === 'variant' ? header : editor;
+
+			expect(host.props('tasks')).toEqual(
+				expect.arrayContaining([expect.objectContaining({ id: 'add-tool' })]),
+			);
+			expect(other.props('tasks')).toBeUndefined();
+			const tasks = host.props('tasks') as SetupTask[];
+			host.vm.$emit(
+				'setup-task-action',
+				tasks.find((task) => task.id === 'test-agent'),
+			);
+			await flushPromises();
+			expect(wrapper.findComponent({ name: 'AgentTestDock' }).props('isOpen')).toBe(true);
+			await wrapper.setProps({ artifactEditingLocked: true });
+			expect(host.props('tasks')).toBeUndefined();
+			expect(other.props('tasks')).toBeUndefined();
+		},
+	);
+
+	it('moves setup tasks when the flag loads after the view', async () => {
+		setupHeaderVariant.value = undefined;
+		const wrapper = await renderView();
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		expect(header.props('tasks')).toBeDefined();
+		expect(editor.props('tasks')).toBeUndefined();
+
+		setupHeaderVariant.value = AGENT_SETUP_HEADER_EXPERIMENT.variant;
+		await nextTick();
+		expect(header.props('tasks')).toBeUndefined();
+		expect(editor.props('tasks')).toBeDefined();
+	});
+
 	it('shows setup tasks after the assistant finishes building an agent artifact', async () => {
 		const wrapper = await renderView({
 			props: {
@@ -3548,17 +3608,17 @@ describe('AgentBuilderView — configuration validation', () => {
 				artifactEditingLocked: true,
 			},
 		});
-		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 
-		expect(header.props('tasks')).toBeUndefined();
+		expect(editor.props('tasks')).toBeUndefined();
 
 		await wrapper.setProps({ artifactEditingLocked: false });
-		expect(header.props('tasks')).toEqual(
+		expect(editor.props('tasks')).toEqual(
 			expect.arrayContaining([expect.objectContaining({ id: 'add-tool', state: 'todo' })]),
 		);
 
 		await wrapper.setProps({ artifactEditingLocked: true });
-		expect(header.props('tasks')).toBeUndefined();
+		expect(editor.props('tasks')).toBeUndefined();
 	});
 
 	it.each([false, true])(
@@ -3573,20 +3633,20 @@ describe('AgentBuilderView — configuration validation', () => {
 			};
 
 			const wrapper = await renderView();
-			const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+			const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 			const preview = wrapper.findComponent({ name: 'AgentTestDock' });
 			const vm = wrapper.vm as unknown as { setupTasks: SetupTask[] };
 			const testTask = vm.setupTasks.find((task) => task.id === 'test-agent');
 
-			expect(header.props('agent').isRunnable).toBe(isRunnable);
+			expect(editor.props('agent').isRunnable).toBe(isRunnable);
 			expect(preview.props('isOpen')).toBe(false);
 
-			header.vm.$emit('setup-task-action', testTask);
+			editor.vm.$emit('setup-task-action', testTask);
 			await flushPromises();
 
 			expect(preview.props('isOpen')).toBe(isRunnable);
 			expect(testTask).toEqual(expect.objectContaining({ state: 'todo', visible: isRunnable }));
-			const visibleTasks: SetupTask[] = header.props('tasks') ?? [];
+			const visibleTasks: SetupTask[] = editor.props('tasks') ?? [];
 			expect(visibleTasks.some((task) => task.id === 'test-agent' && task.visible)).toBe(
 				isRunnable,
 			);
@@ -3601,31 +3661,34 @@ describe('AgentBuilderView — configuration validation', () => {
 				props: { artifactMode, artifactProjectId: 'p1', artifactAgentId: 'a1' },
 			});
 
-			expect(wrapper.findComponent({ name: 'AgentBuilderHeader' }).props('tasks')).toBeUndefined();
+			expect(
+				wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('tasks'),
+			).toBeUndefined();
 		},
 	);
 
 	it('hides setup tasks when the agent is published', async () => {
 		const wrapper = await renderView();
 		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
-		expect(header.props('tasks')).toBeDefined();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		expect(editor.props('tasks')).toBeDefined();
 
 		header.vm.$emit('published', makeAgentResponse({ activeVersionId: 'v1' }));
 		await flushPromises();
 
-		expect(header.props('tasks')).toBeUndefined();
+		expect(editor.props('tasks')).toBeUndefined();
 	});
 
 	it('hides setup tasks while the embedded assistant builds the agent', async () => {
 		const wrapper = await renderView();
-		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
-		expect(header.props('tasks')).toBeDefined();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		expect(editor.props('tasks')).toBeDefined();
 
 		await wrapper.find('[data-testid="ai-panel-emit-building"]').trigger('click');
-		expect(header.props('tasks')).toBeUndefined();
+		expect(editor.props('tasks')).toBeUndefined();
 
 		await wrapper.find('[data-testid="ai-panel-stop-building"]').trigger('click');
-		expect(header.props('tasks')).toEqual(
+		expect(editor.props('tasks')).toEqual(
 			expect.arrayContaining([expect.objectContaining({ id: 'add-tool', state: 'todo' })]),
 		);
 	});
@@ -3644,7 +3707,9 @@ describe('AgentBuilderView — configuration validation', () => {
 				},
 			});
 
-			expect(wrapper.findComponent({ name: 'AgentBuilderHeader' }).props('tasks')).toBeUndefined();
+			expect(
+				wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('tasks'),
+			).toBeUndefined();
 			expect(createAgentMock).not.toHaveBeenCalled();
 		},
 	);
@@ -3653,12 +3718,12 @@ describe('AgentBuilderView — configuration validation', () => {
 		'completes the add-tool setup task when adding %s',
 		async (kind) => {
 			const wrapper = await renderView();
-			const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+			const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 			const vm = wrapper.vm as unknown as {
 				onConfigFieldUpdate: (updates: Partial<AgentJsonConfig>) => void;
 			};
 
-			expect(header.props('tasks')).toEqual(
+			expect(editor.props('tasks')).toEqual(
 				expect.arrayContaining([expect.objectContaining({ id: 'add-tool', state: 'todo' })]),
 			);
 
@@ -3678,14 +3743,14 @@ describe('AgentBuilderView — configuration validation', () => {
 			});
 			await nextTick();
 
-			expect(header.props('tasks')).toEqual(
+			expect(editor.props('tasks')).toEqual(
 				expect.arrayContaining([expect.objectContaining({ id: 'add-tool', state: 'complete' })]),
 			);
 
 			vm.onConfigFieldUpdate({ tools: [], mcpServers: [] });
 			await nextTick();
 
-			expect(header.props('tasks')).toEqual(
+			expect(editor.props('tasks')).toEqual(
 				expect.arrayContaining([expect.objectContaining({ id: 'add-tool', state: 'todo' })]),
 			);
 		},
@@ -3695,23 +3760,24 @@ describe('AgentBuilderView — configuration validation', () => {
 		fetchedSessionThreads.push({ id: 'thread-tested', updatedAt: '2026-01-02T00:00:00Z' });
 
 		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
 
-		expect(header.props('tasks')).toEqual(
+		expect(editor.props('tasks')).toEqual(
 			expect.arrayContaining([expect.objectContaining({ id: 'publish-agent', visible: false })]),
 		);
 
 		header.vm.$emit('publish-ready', true);
 		await nextTick();
 
-		expect(header.props('tasks')).toEqual(
+		expect(editor.props('tasks')).toEqual(
 			expect.arrayContaining([expect.objectContaining({ id: 'publish-agent', visible: true })]),
 		);
 
 		header.vm.$emit('publish-ready', false);
 		await nextTick();
 
-		expect(header.props('tasks')).toEqual(
+		expect(editor.props('tasks')).toEqual(
 			expect.arrayContaining([expect.objectContaining({ id: 'publish-agent', visible: false })]),
 		);
 	});
@@ -3736,10 +3802,11 @@ describe('AgentBuilderView — configuration validation', () => {
 			},
 		});
 		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 		header.vm.$emit('publish-ready', true);
 		await nextTick();
 
-		expect(header.props('tasks')).toEqual(
+		expect(editor.props('tasks')).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
 					id: 'add-trigger',
@@ -3781,10 +3848,11 @@ describe('AgentBuilderView — configuration validation', () => {
 				},
 			});
 			const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+			const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 			header.vm.$emit('publish-ready', true);
 			await nextTick();
 
-			expect(header.props('tasks')).toEqual(
+			expect(editor.props('tasks')).toEqual(
 				expect.arrayContaining([
 					expect.objectContaining({
 						id: 'add-trigger',
@@ -3810,10 +3878,11 @@ describe('AgentBuilderView — configuration validation', () => {
 			},
 		});
 		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 		header.vm.$emit('publish-ready', true);
 		await nextTick();
 
-		expect(header.props('tasks')).toEqual(
+		expect(editor.props('tasks')).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({ id: 'add-trigger', visible: false }),
 				expect.objectContaining({ id: 'publish-agent', visible: true }),
@@ -7956,7 +8025,7 @@ describe('AgentBuilderView — safe testing Hold & Replay (V1)', () => {
 					...commonStubs.AgentTestDock,
 					data: () => ({ heldToolCalls }),
 					template:
-						'<aside data-testid="stub-agent-preview-dock"><slot name="after-reply" group-id="reply-1" :tool-calls="heldToolCalls" /></aside>',
+						'<aside data-testid="stub-agent-preview-dock"><slot name="after-reply" group-id="reply-1" :tool-calls="heldToolCalls" :complete="true" /></aside>',
 				},
 			},
 		});
@@ -7998,6 +8067,90 @@ describe('AgentBuilderView — safe testing Hold & Replay (V1)', () => {
 		expect(wrapper.get('[data-testid="agent-held-actions-done-summary"]').text()).toBe(
 			'agents.testRun.holdReplay.doneSummary',
 		);
+		wrapper.unmount();
+	});
+
+	it('does not open the confirm modal while the test reply is not complete', async () => {
+		const heldToolCalls = [
+			{
+				tool: 'slack__post_message',
+				toolCallId: 'call-1',
+				input: { channel: '#ops', text: 'Shipped' },
+				state: 'done',
+				simulation: {
+					route: 'simulated',
+					reason: 'served_from_world',
+					evidence: ['world_write'],
+				},
+			},
+		];
+
+		const wrapper = await renderView({
+			seedStores: () => {
+				usePostHog().overrides = { [AGENT_SAFE_TESTING_FLAG]: { value: true } };
+			},
+			stubs: {
+				AgentTestDock: {
+					...commonStubs.AgentTestDock,
+					data: () => ({ heldToolCalls, complete: false }),
+					template:
+						'<aside data-testid="stub-agent-preview-dock"><button data-testid="finish-reply" @click="complete = true" /><slot name="after-reply" group-id="reply-1" :tool-calls="heldToolCalls" :complete="complete" /></aside>',
+				},
+			},
+		});
+
+		await wrapper.getComponent({ name: 'AgentTestDock' }).vm.$emit('new-session');
+		await nextTick();
+		await wrapper.get('[data-testid="agent-held-actions-toggle"]').trigger('click');
+		await nextTick();
+
+		const runButton = () => wrapper.get('[data-testid="agent-held-actions-run-btn"]');
+		const modal = wrapper.getComponent({ name: 'AgentRunHeldActionsModal' });
+		expect(runButton().attributes('disabled')).toBeDefined();
+		await runButton().trigger('click');
+		await nextTick();
+		expect(modal.props('open')).toBe(false);
+
+		await wrapper.get('[data-testid="finish-reply"]').trigger('click');
+		await nextTick();
+		expect(runButton().attributes('disabled')).toBeUndefined();
+		await runButton().trigger('click');
+		await nextTick();
+		expect(modal.props('open')).toBe(true);
+		wrapper.unmount();
+	});
+
+	it('sends a starter prompt from the standalone preview page', async () => {
+		routeState.name = AGENT_PREVIEW_VIEW;
+		const sendMessageFromOutside = vi.fn();
+		const wrapper = await renderView({
+			seedStores: () => {
+				usePostHog().overrides = { [AGENT_SAFE_TESTING_FLAG]: { value: true } };
+			},
+			stubs: {
+				AgentChatPanel: {
+					name: 'AgentChatPanel',
+					template: '<div><slot name="empty-state" /></div>',
+					emits: ['initial-consumed'],
+					methods: { sendMessageFromOutside },
+				},
+			},
+		});
+
+		const page = wrapper.getComponent({ name: 'AgentTestChatPage' });
+		const firstChip = wrapper.findAll('[data-testid="agent-test-run-starter-chip"]')[0];
+		expect(firstChip).toBeDefined();
+		await firstChip.trigger('click');
+		await flushPromises();
+
+		expect(page.props('initialPrompt')).toBe(firstChip.text());
+		expect(sendMessageFromOutside).toHaveBeenCalledExactlyOnceWith(firstChip.text());
+
+		// The panel accepts the message, so the same starter can be sent again.
+		wrapper.findComponent({ name: 'AgentChatPanel' }).vm.$emit('initial-consumed');
+		await nextTick();
+
+		expect(page.props('initialPrompt')).toBeUndefined();
 		wrapper.unmount();
 	});
 });

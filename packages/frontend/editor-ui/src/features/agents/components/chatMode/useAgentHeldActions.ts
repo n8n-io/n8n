@@ -27,6 +27,8 @@ export function useAgentHeldActions(options: UseAgentHeldActionsOptions) {
 	const pendingActions = ref<AgentHeldAction[]>([]);
 	const committingReplyId = ref<string | null>(null);
 	const commitError = ref<string | null>(null);
+	// The request that owns the busy state. A request for an earlier chat must not change it.
+	let activeRequest: symbol | null = null;
 
 	/** Actions of this chat that ran in the real apps. A failed action did not run. */
 	const sentCount = computed(() =>
@@ -49,6 +51,7 @@ export function useAgentHeldActions(options: UseAgentHeldActionsOptions) {
 	});
 
 	watch([options.projectId, options.agentId, options.sessionId], () => {
+		activeRequest = null;
 		committedByReply.value = {};
 		pendingReplyId.value = null;
 		pendingActions.value = [];
@@ -81,6 +84,8 @@ export function useAgentHeldActions(options: UseAgentHeldActionsOptions) {
 			return false;
 		}
 
+		const request = Symbol('commit');
+		activeRequest = request;
 		committingReplyId.value = replyId;
 		commitError.value = null;
 		try {
@@ -94,6 +99,7 @@ export function useAgentHeldActions(options: UseAgentHeldActionsOptions) {
 				},
 			);
 			if (
+				activeRequest !== request ||
 				options.projectId.value !== targetProjectId ||
 				options.agentId.value !== targetAgentId ||
 				options.sessionId.value !== testChatId
@@ -108,13 +114,17 @@ export function useAgentHeldActions(options: UseAgentHeldActionsOptions) {
 			pendingActions.value = [];
 			return true;
 		} catch (error) {
+			if (activeRequest !== request) return false;
 			commitError.value =
 				error instanceof Error && error.message
 					? error.message
 					: i18n.baseText('agents.testRun.holdReplay.confirmModal.error');
 			return false;
 		} finally {
-			committingReplyId.value = null;
+			if (activeRequest === request) {
+				activeRequest = null;
+				committingReplyId.value = null;
+			}
 		}
 	}
 

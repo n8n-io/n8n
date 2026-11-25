@@ -514,6 +514,12 @@ const showWorkflowReviewSettings = computed(
 		projectsStore.currentProjectWorkflowReviewSettings !== null,
 );
 
+const isLockedByInstance = computed(
+	() =>
+		isInstanceApprovalRequired.value ||
+		projectsStore.currentProjectWorkflowReviewSettings?.requiredByInstance === true,
+);
+
 function resetWorkflowReviewFormData() {
 	formData.value.requiredByProject =
 		projectsStore.currentProjectWorkflowReviewSettings?.requiredByProject ?? false;
@@ -522,7 +528,7 @@ function resetWorkflowReviewFormData() {
 function hasWorkflowReviewChanges(): boolean {
 	return (
 		showWorkflowReviewSettings.value &&
-		!isInstanceApprovalRequired.value &&
+		!isLockedByInstance.value &&
 		formData.value.requiredByProject !==
 			projectsStore.currentProjectWorkflowReviewSettings?.requiredByProject
 	);
@@ -542,7 +548,7 @@ const requireApprovalOptions = computed<Array<SelectOptionBase<RequireApprovalOp
 ]);
 
 const requireApproval = computed<RequireApprovalOption>(() =>
-	isInstanceApprovalRequired.value || formData.value.requiredByProject ? 'always' : 'perWorkflow',
+	isLockedByInstance.value || formData.value.requiredByProject ? 'always' : 'perWorkflow',
 );
 
 const onRequireApprovalUpdate = (value: SelectValue | undefined) => {
@@ -991,17 +997,17 @@ onMounted(async () => {
 							:title="i18n.baseText('projects.settings.workflowReviews.requireApproval.title')"
 						>
 							<template #action>
-								<N8nTooltip :disabled="!isInstanceApprovalRequired" placement="top">
+								<N8nTooltip :disabled="!isLockedByInstance" placement="top">
 									<template #content>
 										{{ i18n.baseText('workflowReviews.enforcement.lockedByInstance') }}
 									</template>
 									<!-- A disabled select gets no hover events, so the wrapper takes them. -->
-									<span :class="{ [$style.lockedControl]: isInstanceApprovalRequired }">
+									<span :class="{ [$style.lockedControl]: isLockedByInstance }">
 										<N8nSelect2
 											:model-value="requireApproval"
 											:items="requireApprovalOptions"
 											size="medium"
-											:disabled="isInstanceApprovalRequired"
+											:disabled="isLockedByInstance"
 											:aria-label="
 												i18n.baseText('projects.settings.workflowReviews.requireApproval.title')
 											"

@@ -34,6 +34,8 @@ import {
 	createAgentSkill,
 	getSkillDetail,
 	updateAgentSkill,
+	getAgentTestRunTools,
+	resetAgentTestRun,
 } from '../composables/useAgentApi';
 import type { SkillListItem } from '@n8n/api-types';
 import type { AgentResource, AgentJsonConfig } from '../types';
@@ -49,6 +51,40 @@ const restApiContext = { baseUrl: '/rest', pushRef: 'push-ref' };
 describe('useAgentApi', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	describe('test run', () => {
+		it('reads the test run tools of an agent', async () => {
+			const response = {
+				tools: [{ toolName: 'gmail_send', kind: 'node', testability: 'simulated' }],
+			};
+			vi.mocked(makeRestApiRequest).mockResolvedValue(response);
+
+			await expect(getAgentTestRunTools(restApiContext, 'project-1', 'agent-1')).resolves.toEqual(
+				response,
+			);
+
+			expect(makeRestApiRequest).toHaveBeenCalledExactlyOnceWith(
+				restApiContext,
+				'GET',
+				'/projects/project-1/agents/v2/agent-1/test-run/tools',
+			);
+		});
+
+		it('resets the test run of one chat session', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValue({ reset: true });
+
+			await expect(
+				resetAgentTestRun(restApiContext, 'project-1', 'agent-1', 'session-1'),
+			).resolves.toEqual({ reset: true });
+
+			expect(makeRestApiRequest).toHaveBeenCalledExactlyOnceWith(
+				restApiContext,
+				'POST',
+				'/projects/project-1/agents/v2/agent-1/test-run/reset',
+				{ sessionId: 'session-1' },
+			);
+		});
 	});
 
 	describe('listAttachableSkills', () => {

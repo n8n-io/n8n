@@ -6,6 +6,7 @@ import type { INode, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentRuntime, AgentRuntimeCacheService } from '../../agent-runtime-cache.service';
+import { hashAgentSandboxPrincipal } from '../../agent-sandbox-principal';
 import { HeldActionCommitService } from '../held-action-commit.service';
 import { SimulationSession } from '../simulation-session';
 import type { SimulationSessionService } from '../simulation-session.service';
@@ -138,6 +139,7 @@ describe('HeldActionCommitService', () => {
 			projectId: 'project-1',
 			user,
 			usePublishedVersion: false,
+			sandboxPrincipalHash: expect.any(String),
 		});
 		expect(runtimeCache.releaseRuntimeLease).toHaveBeenCalledWith(agent);
 
@@ -256,20 +258,119 @@ describe('HeldActionCommitService', () => {
 			status: 'failed',
 			error: 'Held action not found in this test chat.',
 		});
+	});
 
-		// Retrying: tc-1 can retry and succeed, while tc-2 stays already_committed.
-		const retry = await service.commitHeldActions({
+	it('does not run an action again after its handler rejected, because the service may have accepted the write', async () => {
+		const { session } = createSimulatedSession();
+		// The write reached the service, and then the response timed out.
+		const realSlack = vi
+			.fn()
+			.mockRejectedValueOnce(new Error('timeout of 30000ms exceeded'))
+			.mockResolvedValue({ ok: true });
+		const realGmail = vi.fn().mockResolvedValue({ ok: true });
+
+		await captureHeldWrite(session, 'slack_post_message', 'tc-1', { text: 'Once' }, vi.fn());
+		await captureHeldWrite(session, 'gmail_send_email', 'tc-2', { to: 'a@b.com' }, vi.fn());
+
+		const simulationSessions = mock<SimulationSessionService>();
+		simulationSessions.getSession.mockReturnValue(session);
+		const { runtimeCache } = makeRuntime([
+			{ name: 'slack_post_message', description: 'Slack', handler: realSlack },
+			{ name: 'gmail_send_email', description: 'Gmail', handler: realGmail },
+		]);
+		const service = new HeldActionCommitService(mock<Logger>(), simulationSessions, runtimeCache);
+		const request = {
 			agentId: 'agent-1',
 			projectId: 'project-1',
 			user,
 			testChatId: 'chat-1',
 			actionIds: ['tc-1', 'tc-2'],
-		});
+		};
 
+		const first = await service.commitHeldActions(request);
+		expect(first.results[0]).toMatchObject({ actionId: 'tc-1', status: 'failed' });
+
+		const retry = await service.commitHeldActions(request);
+
+		expect(realSlack).toHaveBeenCalledTimes(1);
+		expect(realGmail).toHaveBeenCalledTimes(1);
 		expect(retry.results).toEqual([
-			{ actionId: 'tc-1', toolName: 'slack_post_message', status: 'done' },
+			{
+				actionId: 'tc-1',
+				toolName: 'slack_post_message',
+				status: 'failed',
+				error: expect.stringContaining('timeout of 30000ms exceeded'),
+			},
 			{ actionId: 'tc-2', toolName: 'gmail_send_email', status: 'already_committed' },
 		]);
+		expect(retry.results[0].error).toContain('did not run again');
+		expect(session.getHeldAction('tc-1')?.committedAt).toBeUndefined();
+	});
+
+	it('keeps an action replayable when the replay did not start', async () => {
+		const { session } = createSimulatedSession();
+		const realSlack = vi.fn().mockResolvedValue({ ok: true });
+		await captureHeldWrite(session, 'slack_post_message', 'tc-1', { text: 'Later' }, vi.fn());
+
+		const simulationSessions = mock<SimulationSessionService>();
+		simulationSessions.getSession.mockReturnValue(session);
+		const { runtime, runtimeCache } = makeRuntime([
+			{ name: 'slack_post_message', description: 'Slack', handler: realSlack },
+		]);
+		const missingTool = mock<AgentRuntime>({
+			agent: { declaredTools: [] } as unknown as RuntimeAgent,
+		});
+		runtimeCache.getRuntime
+			.mockRejectedValueOnce(new Error('Runtime build failed'))
+			.mockResolvedValueOnce(missingTool)
+			.mockResolvedValueOnce(runtime);
+		const service = new HeldActionCommitService(mock<Logger>(), simulationSessions, runtimeCache);
+		const request = {
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			user,
+			testChatId: 'chat-1',
+			actionIds: ['tc-1'],
+		};
+
+		await expect(service.commitHeldActions(request)).rejects.toThrow('Runtime build failed');
+		const withoutTool = await service.commitHeldActions(request);
+		expect(withoutTool.results[0]).toMatchObject({ actionId: 'tc-1', status: 'failed' });
+		expect(realSlack).not.toHaveBeenCalled();
+
+		const replay = await service.commitHeldActions(request);
+
+		expect(replay.results).toEqual([
+			{ actionId: 'tc-1', toolName: 'slack_post_message', status: 'done' },
+		]);
+		expect(realSlack).toHaveBeenCalledTimes(1);
+	});
+
+	it('builds the replay runtime with the sandbox scope of the test chat', async () => {
+		const { session } = createSimulatedSession();
+		await captureHeldWrite(session, 'slack_post_message', 'tc-1', { text: 'Hi' }, vi.fn());
+
+		const simulationSessions = mock<SimulationSessionService>();
+		simulationSessions.getSession.mockReturnValue(session);
+		const { runtimeCache } = makeRuntime([
+			{ name: 'slack_post_message', description: 'Slack', handler: vi.fn() },
+		]);
+		const service = new HeldActionCommitService(mock<Logger>(), simulationSessions, runtimeCache);
+
+		await service.commitHeldActions({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			user,
+			testChatId: 'chat-1',
+			actionIds: ['tc-1'],
+		});
+
+		const params = runtimeCache.getRuntime.mock.calls[0][0];
+		expect(params.sandboxPrincipalHash).toBe(
+			hashAgentSandboxPrincipal({ type: 'test-chat', userId: 'user-1', threadId: 'chat-1' }),
+		);
+		// The replay must run live: a simulation session on the runtime would intercept it.
+		expect(params.simulation).toBeUndefined();
 	});
 
 	it('throws NotFoundError when no simulation session is bound to the caller, agent, and test chat', async () => {

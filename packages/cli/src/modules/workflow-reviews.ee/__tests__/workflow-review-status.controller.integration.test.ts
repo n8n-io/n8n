@@ -385,30 +385,61 @@ describe('the level that requires a review for a workflow', () => {
 			.patch(`/projects/${teamProject.id}/workflow-review-settings`)
 			.send({ requiredByProject })
 			.expect(200);
+	const setInstanceApprovalRequiredForProject = async (requiredByInstance: boolean) =>
+		await ownerAgent
+			.patch(`/workflow-review-settings/projects/${teamProject.id}`)
+			.send({ requiredByInstance })
+			.expect(200);
 	const reviewRequiredBy = async (agent: SuperAgentTest, workflowId: string) =>
 		(await listRequests(agent, { workflowId }).expect(200)).body.data.reviewRequiredBy;
 
 	test.each([
-		['no level', { instance: false, project: false }, null],
-		['the instance', { instance: true, project: false }, 'instance'],
-		['the project', { instance: false, project: true }, 'project'],
+		['no level', { instance: false, instanceForProject: false, project: false }, null],
+		['the instance', { instance: true, instanceForProject: false, project: false }, 'instance'],
+		[
+			'the instance for this project',
+			{ instance: false, instanceForProject: true, project: false },
+			'instance',
+		],
+		[
+			'the instance for this project over the project',
+			{ instance: false, instanceForProject: true, project: true },
+			'instance',
+		],
+		['the project', { instance: false, instanceForProject: false, project: true }, 'project'],
 	])('reports which level requires a review: %s', async (_case, levels, expected) => {
 		const { workflow } = await createReviewableWorkflow(teamProject);
 		await setInstanceApprovalRequired(levels.instance);
+		await setInstanceApprovalRequiredForProject(levels.instanceForProject);
 		await setProjectApprovalRequired(levels.project);
 
 		expect(await reviewRequiredBy(ownerAgent, workflow.id)).toBe(expected);
 	});
 
-	test('applies the project setting again when the instance stops requiring approval', async () => {
-		const { workflow } = await createReviewableWorkflow(teamProject);
-		await setProjectApprovalRequired(true);
-		await setInstanceApprovalRequired(true);
-		expect(await reviewRequiredBy(ownerAgent, workflow.id)).toBe('instance');
+	test.each([
+		['for all projects', setInstanceApprovalRequired],
+		['for this project', setInstanceApprovalRequiredForProject],
+	])(
+		'applies the project setting again when the instance stops requiring approval %s',
+		async (_case, setInstanceLevel) => {
+			const { workflow } = await createReviewableWorkflow(teamProject);
+			await setProjectApprovalRequired(true);
+			await setInstanceLevel(true);
+			expect(await reviewRequiredBy(ownerAgent, workflow.id)).toBe('instance');
 
+			await setInstanceLevel(false);
+
+			expect(await reviewRequiredBy(ownerAgent, workflow.id)).toBe('project');
+		},
+	);
+
+	test('applies the instance option of the project again when the instance stops always requiring approval', async () => {
+		const { workflow } = await createReviewableWorkflow(teamProject);
+		await setInstanceApprovalRequiredForProject(true);
+		await setInstanceApprovalRequired(true);
 		await setInstanceApprovalRequired(false);
 
-		expect(await reviewRequiredBy(ownerAgent, workflow.id)).toBe('project');
+		expect(await reviewRequiredBy(ownerAgent, workflow.id)).toBe('instance');
 	});
 
 	test('reports the project level to a user who can read the workflow but not its project', async () => {

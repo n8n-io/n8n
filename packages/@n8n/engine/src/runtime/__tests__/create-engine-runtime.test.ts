@@ -4,8 +4,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AllowAllAdmittance } from '../../admittance';
 import { mintIdentityToken, SharedSecretIdentityVerifier } from '../../auth';
+import { UnexpectedError } from '../../common';
 import { TypeOrmExecutionStore, TypeOrmStepStore, type EngineStores } from '../../database';
 import { generateId } from '../../database/generate-id';
+import { noopExecutionFilesDeleter } from '../../dependencies';
 import { BatchingLifecycleEventPublisher } from '../../lifecycle-events';
 import {
 	createInMemoryWorkQueues,
@@ -14,6 +16,7 @@ import {
 	type StepMessage,
 } from '../../queue';
 import { noopExecutionResponseSender } from '../../response-channel';
+import { RetentionSweeper } from '../../retention';
 import {
 	createEngineRuntime,
 	ENGINE_ROLES,
@@ -25,6 +28,11 @@ const fakeQueue = <T>() => ({
 	publish: vi.fn(async (_message: T) => {}),
 	start: vi.fn(),
 	stop: vi.fn(async () => {}),
+});
+
+vi.mock('../../retention', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../../retention')>();
+	return { ...actual, RetentionSweeper: vi.fn(actual.RetentionSweeper) };
 });
 
 /** Enough of a `DataSource` for the stores: they only hold on to a repository. */
@@ -378,6 +386,142 @@ describe('createEngineRuntime', () => {
 		} finally {
 			await engine.stop();
 		}
+	});
+
+	it('builds no retention sweeper when the host sets no retention policy', () => {
+		vi.mocked(RetentionSweeper).mockClear();
+
+		runtime();
+
+		expect(RetentionSweeper).not.toHaveBeenCalled();
+	});
+
+	it.each<{ name: string; roles?: EngineRole[] }>([
+		{ name: 'all roles (default)', roles: undefined },
+		{ name: 'orchestrator only', roles: ['orchestrator'] },
+	])(
+		'sweeps with the retention policy of the host and deletes files with its file deleter ($name)',
+		async ({ roles }) => {
+			const findPrunable = vi
+				.spyOn(TypeOrmExecutionStore.prototype, 'findPrunableExecutions')
+				.mockResolvedValueOnce([{ id: 'exec-1', workflowId: 'wf-1', finishedAt: new Date(0) }])
+				.mockResolvedValue([]);
+			vi.spyOn(TypeOrmExecutionStore.prototype, 'deleteEndedExecutions').mockResolvedValue(1);
+			const deleteExecutionFiles = vi.fn(async () => {});
+			const engine = createEngineRuntime({
+				roles,
+				dataSource: fakeDataSource(),
+				admittance: new AllowAllAdmittance(),
+				identityVerifier,
+				responseSender,
+				externalDependencies: () => ({ deleteExecutionFiles }),
+				queues: createInMemoryWorkQueues(),
+				retention: { maxAgeMs: 1_000, intervalMs: 1 },
+			});
+			engine.start();
+
+			await vi.waitFor(() =>
+				expect(deleteExecutionFiles).toHaveBeenCalledWith({
+					workflowId: 'wf-1',
+					executionId: 'exec-1',
+				}),
+			);
+			expect(findPrunable).toHaveBeenCalledWith({ maxAgeMs: 1_000, limit: 100 });
+			await engine.stop();
+		},
+	);
+
+	it.each<{ name: string; roles: EngineRole[] }>([
+		{ name: 'api only', roles: ['api'] },
+		{ name: 'step-worker only', roles: ['step-worker'] },
+		{ name: 'api and step-worker', roles: ['api', 'step-worker'] },
+	])('starts no retention sweeper without the orchestrator role ($name)', async ({ roles }) => {
+		vi.mocked(RetentionSweeper).mockClear();
+		const engine = runtime({
+			roles,
+			externalDependencies: () => ({ deleteExecutionFiles: noopExecutionFilesDeleter }),
+			retention: { maxAgeMs: 1_000 },
+		});
+		const sweeper = vi.mocked(RetentionSweeper).mock.results[0].value as RetentionSweeper;
+		const start = vi.spyOn(sweeper, 'start');
+
+		engine.start();
+		await engine.stop();
+
+		expect(start).not.toHaveBeenCalled();
+	});
+
+	it('refuses a retention policy without a file deleter', () => {
+		expect(() => runtime({ retention: { maxAgeMs: 1_000 } })).toThrow(
+			'Execution retention needs a file deleter',
+		);
+	});
+
+	it.each([
+		{ maxAgeMs: -1 },
+		{ maxAgeMs: 1e300 },
+		{ maxAgeMs: 0, intervalMs: 0 },
+		{ maxAgeMs: 0, intervalMs: 0.5 },
+		{ maxAgeMs: 0, intervalMs: 2 ** 31 },
+		{ maxAgeMs: 0, batchSize: 0 },
+		{ maxAgeMs: 0, batchSize: 1.5 },
+	])('refuses the retention policy %o', (retention) => {
+		expect(() =>
+			createEngineRuntime({
+				dataSource: fakeDataSource(),
+				admittance: new AllowAllAdmittance(),
+				identityVerifier,
+				responseSender,
+				externalDependencies: () => ({ deleteExecutionFiles: noopExecutionFilesDeleter }),
+				queues: createInMemoryWorkQueues(),
+				retention,
+			}),
+		).toThrow(UnexpectedError);
+	});
+
+	it('accepts a retention policy that sets only a maximum age of 0', () => {
+		expect(() =>
+			createEngineRuntime({
+				dataSource: fakeDataSource(),
+				admittance: new AllowAllAdmittance(),
+				identityVerifier,
+				responseSender,
+				externalDependencies: () => ({ deleteExecutionFiles: noopExecutionFilesDeleter }),
+				queues: createInMemoryWorkQueues(),
+				retention: { maxAgeMs: 0 },
+			}),
+		).not.toThrow();
+	});
+
+	it('waits for a retention pass in progress before it stops', async () => {
+		let releasePass = () => {};
+		const findPrunable = vi
+			.spyOn(TypeOrmExecutionStore.prototype, 'findPrunableExecutions')
+			.mockImplementation(
+				async () =>
+					await new Promise((resolve) => {
+						releasePass = () => resolve([]);
+					}),
+			);
+		const engine = createEngineRuntime({
+			dataSource: fakeDataSource(),
+			admittance: new AllowAllAdmittance(),
+			identityVerifier,
+			responseSender,
+			externalDependencies: () => ({ deleteExecutionFiles: noopExecutionFilesDeleter }),
+			queues: createInMemoryWorkQueues(),
+			retention: { maxAgeMs: 1_000, intervalMs: 1 },
+		});
+		engine.start();
+		await vi.waitFor(() => expect(findPrunable).toHaveBeenCalled());
+
+		let stopped = false;
+		const stopping = engine.stop().then(() => (stopped = true));
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(stopped).toBe(false);
+
+		releasePass();
+		await stopping;
 	});
 
 	it.each([Number.NaN, Number.POSITIVE_INFINITY, 0, -1, 1.5])(

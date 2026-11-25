@@ -26,6 +26,7 @@ import {
 	AGENTS_CHAT_INTERACTION_EXTENSIONS,
 	appendHostEventSources,
 	findHostEventRenderer,
+	findToolFooterRenderer,
 	findToolResultRenderer,
 	getHostEventItems,
 	type AgentsChatHostEventItems,
@@ -94,6 +95,8 @@ const props = defineProps<{
 	loadOlderMessagesFailed?: boolean;
 	/** Replaces the generic "Thinking" of the thinking blocks. The Assistant sets it. */
 	thinkingLabel?: string;
+	/** The chat runs in test mode. */
+	testRun?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -110,16 +113,30 @@ const emit = defineEmits<{
 	'retry-load-older': [];
 }>();
 
-defineSlots<{
+const slots = defineSlots<{
 	/** Temporary status at the end of the transcript. */
 	status?: () => unknown;
 	/** Host actions for a finished agent reply, next to the default copy action. */
 	'message-actions'?: (props: { message: ChatMessage; executionId?: string }) => unknown;
-	/** Content rendered directly below an assistant reply that executed tool calls (for example held actions). */
-	'after-reply'?: (props: { groupId: string; toolCalls: ToolCall[] }) => unknown;
-	/** The `references` of a user message, for example mentioned workflows. */
+	/**
+	 * Content rendered directly below an assistant reply that executed tool calls (for example held actions).
+	 * `complete` is false while the reply can still get more tool calls.
+	 */
+	'after-reply'?: (props: { groupId: string; toolCalls: ToolCall[]; complete: boolean }) => unknown;
+	/**
+	 * The `references` of a user message, for example mentioned workflows. They
+	 * show before the files of the message, in the same group.
+	 */
 	'user-message-references'?: (props: { message: ChatMessage }) => unknown;
 }>();
+
+function showsReferences(message: ChatMessage): boolean {
+	return (
+		message.role === CHAT_MESSAGE_ROLE.USER &&
+		!!message.references?.length &&
+		!!slots['user-message-references']
+	);
+}
 
 const i18n = useI18n();
 const canSendToAssistant = computed(() =>
@@ -292,7 +309,7 @@ const tailSummaryId = computed(() => {
 interface GroupToolCalls {
 	/** Calls that render as default tool steps. */
 	steps: ToolCall[];
-	/** Finished calls that a host extension renders in place of a step. */
+	/** Finished calls that a host extension renders after the steps: in place of a step, or as a step footer. */
 	hostResults: Array<{ toolCall: ToolCall; renderer: AgentsChatToolResultRenderer }>;
 }
 
@@ -316,8 +333,14 @@ const toolCallsByGroupId = computed(() => {
 		for (const toolCall of toolCalls) {
 			const renderer =
 				extensions.length > 0 ? findToolResultRenderer(toolCall, extensions) : undefined;
-			if (renderer) split.hostResults.push({ toolCall, renderer });
-			else split.steps.push(toolCall);
+			if (renderer) {
+				split.hostResults.push({ toolCall, renderer });
+				continue;
+			}
+			split.steps.push(toolCall);
+			const footer =
+				extensions.length > 0 ? findToolFooterRenderer(toolCall, extensions) : undefined;
+			if (footer) split.hostResults.push({ toolCall, renderer: footer });
 		}
 		byGroupId.set(group.id, split);
 	}
@@ -405,6 +428,27 @@ const streamingGroupId = computed(() =>
 		? displayGroups.value.at(-1)?.id
 		: undefined,
 );
+
+/** The last reply while its run is active. More tool calls can still arrive in it. */
+const activeReplyGroupId = computed(() =>
+	props.messagingState !== 'idle' || props.messages.at(-1)?.status === CHAT_MESSAGE_STATUS.STREAMING
+		? displayGroups.value.at(-1)?.id
+		: undefined,
+);
+
+const UNSETTLED_TOOL_CALL_STATES: ReadonlySet<string> = new Set([
+	TOOL_CALL_STATE.PENDING,
+	TOOL_CALL_STATE.RUNNING,
+	TOOL_CALL_STATE.SUSPENDED,
+]);
+
+/** A reply is complete when its run has ended and each of its tool calls has settled. */
+function isReplyComplete(groupId: string, toolCalls: readonly ToolCall[]): boolean {
+	return (
+		groupId !== activeReplyGroupId.value &&
+		!toolCalls.some((toolCall) => UNSETTLED_TOOL_CALL_STATES.has(toolCall.state))
+	);
+}
 
 const formatChatDividerTimestamp = useChatDividerTimestamp();
 
@@ -696,6 +740,7 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 						:dismissed-tool-call-ids="dismissedFixToolCallIds"
 						:execution-id="group.executionId"
 						:host-events="getGroupHostEventItems(group.id).toolCalls"
+						:test-run="testRun"
 						@fix-with-assistant="onFixWithAssistant(group, $event)"
 					/>
 					<div
@@ -780,6 +825,10 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 							:active="group.active || group.awaitingInput"
 							:awaiting-input="group.awaitingInput"
 							:duration-sec="getThinkingDurationSec(group.thinkingSegments)"
+							:class="[
+								$style.thinkingBlock,
+								{ [$style.thinkingBlockLive]: group.active || group.awaitingInput },
+							]"
 							test-id="agent-chat-thinking-block"
 						>
 							<AgentChatHostEvents :items="getGroupHostEventItems(group.id).thinking" />
@@ -828,6 +877,7 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 						name="after-reply"
 						:group-id="group.id"
 						:tool-calls="group.toolCalls"
+						:complete="isReplyComplete(group.id, group.toolCalls)"
 					/>
 				</N8nChatMessage>
 			</div>
@@ -839,11 +889,21 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 				]"
 			>
 				<AgentChatMessageAttachments
-					v-if="group.message.attachments?.length && projectId && agentId"
-					:attachments="group.message.attachments"
+					v-if="
+						(group.message.attachments?.length || showsReferences(group.message)) &&
+						projectId &&
+						agentId
+					"
+					:attachments="group.message.attachments ?? []"
 					:project-id="projectId"
 					:agent-id="agentId"
-				/>
+				>
+					<slot
+						v-if="showsReferences(group.message)"
+						name="user-message-references"
+						:message="group.message"
+					/>
+				</AgentChatMessageAttachments>
 				<N8nText
 					v-if="group.message.role === CHAT_MESSAGE_ROLE.USER && group.message.author"
 					size="xsmall"
@@ -864,6 +924,7 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 						:dismissed-tool-call-ids="dismissedFixToolCallIds"
 						:execution-id="group.message.executionId"
 						:host-events="getGroupHostEventItems(group.id).toolCalls"
+						:test-run="testRun"
 						@fix-with-assistant="onFixWithAssistant(group, $event)"
 					/>
 					<div
@@ -973,17 +1034,6 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 							</div>
 						</template>
 					</template>
-					<div
-						v-if="
-							group.message.role === CHAT_MESSAGE_ROLE.USER &&
-							group.message.references?.length &&
-							$slots['user-message-references']
-						"
-						:class="$style.references"
-						data-testid="agent-chat-message-references"
-					>
-						<slot name="user-message-references" :message="group.message" />
-					</div>
 					<AgentBudgetNoticeCard
 						v-for="notice in group.message.budgetNotices ?? []"
 						:key="notice.id"
@@ -1036,6 +1086,10 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 							:active="isThinkingActive(group.message)"
 							:awaiting-input="group.message.status === CHAT_MESSAGE_STATUS.AWAITING_USER"
 							:duration-sec="getThinkingDurationSec(group.thinkingSegments)"
+							:class="[
+								$style.thinkingBlock,
+								{ [$style.thinkingBlockLive]: isThinkingActive(group.message) },
+							]"
 							test-id="agent-chat-thinking-block"
 						>
 							<AgentChatHostEvents :items="getGroupHostEventItems(group.id).thinking" />
@@ -1092,6 +1146,10 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 						name="after-reply"
 						:group-id="group.id"
 						:tool-calls="group.message.toolCalls"
+						:complete="
+							group.message.status !== CHAT_MESSAGE_STATUS.STREAMING &&
+							isReplyComplete(group.id, group.message.toolCalls)
+						"
 					/>
 				</N8nChatMessage>
 			</div>
@@ -1254,21 +1312,6 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 	padding: 0 var(--spacing--sm) var(--spacing--4xs);
 }
 
-.references {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--spacing--2xs);
-
-	.chatMessage + & {
-		margin-top: var(--spacing--2xs);
-	}
-
-	// The host can show none of the references of a message.
-	&:empty {
-		display: none;
-	}
-}
-
 .chatMessageError {
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border-radius: var(--radius--lg);
@@ -1277,7 +1320,31 @@ function setMemoryFooterOpen(groupId: string, open: boolean): void {
 	color: var(--text-color--danger);
 }
 
+/* Takes the row of the thinking header that replaces it, so the dots have the
+   same space above and below. */
 .typingIndicator {
-	margin-top: var(--spacing--xs);
+	align-items: center;
+	height: calc(var(--font-size--sm) * var(--line-height--lg));
+	margin-block: var(--spacing--4xs);
+}
+
+/* The space to the next step (the list gap and the message's top padding), so
+   the line has the same space above and below. */
+.thinkingBlock {
+	margin-top: calc(var(--spacing--sm) + var(--spacing--4xs));
+	/* Lines up with the message text, which has the same inline padding. */
+	padding-inline: var(--spacing--sm);
+}
+
+/* A live step can end with the actions row (its margin and its small buttons)
+   above the thinking line. Keep that space, so the line does not move then. */
+.thinkingBlockLive {
+	margin-top: calc(var(--spacing--xs) + var(--height--sm));
+}
+
+/* With the actions row above, or no content above, the space is already there. */
+:has(> .messageFooter) + .thinkingBlock,
+:empty + .thinkingBlock {
+	margin-top: 0;
 }
 </style>
