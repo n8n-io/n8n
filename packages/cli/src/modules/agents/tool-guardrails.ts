@@ -13,7 +13,14 @@ import {
 	PIIEntity,
 	TOPICAL_ALIGNMENT_SYSTEM_PROMPT,
 } from '@n8n/ai-utilities/guardrails';
-import type { ExecutionOptions, GuardrailDecision, ModelGuardrail, RunOptions } from '@n8n/agents';
+import {
+	chargeModelSpend,
+	type BudgetGuardrailOptions,
+	type ExecutionOptions,
+	type GuardrailDecision,
+	type ModelGuardrail,
+	type RunOptions,
+} from '@n8n/agents';
 import type { AgentToolGuardrailConfig, AgentToolGuardrailKind } from '@n8n/api-types';
 import { generateText, type LanguageModel } from 'ai';
 import { nodeNameToToolName } from 'n8n-workflow';
@@ -30,28 +37,45 @@ import type { ToolRegistry } from './tool-registry';
  * The check runs on the JSON-stringified tool input (before) and final tool
  * result (after). A trigger or a check failure stops the call with the code
  * `guardrail.<kind>.<id>`.
- * Pattern kinds check locally; the four model kinds run on the agent's own
- * model through the AGENT-1547 seam; the workflow kind runs a check workflow
- * before the call, with the structured tool call as its input. Hooks build
- * pattern kinds first, so a cheap stop short-circuits the model spend, and
- * workflow checks last, as the most expensive stop.
+ * Workflow checks use the structured tool input and run before the call.
  */
 
 /** The node's default trigger confidence for the model-based kinds. */
 const DEFAULT_LLM_THRESHOLD = 0.7;
 
+type GuardrailSpend = {
+	modelId: string;
+	budget: BudgetGuardrailOptions;
+	callId: string;
+};
+
 /** Adapts an AI SDK model to the model-agnostic LLM check seam. */
-function toGuardrailModelRunner(model: LanguageModel): GuardrailModelRunner {
+function toGuardrailModelRunner(
+	model: LanguageModel,
+	spend: GuardrailSpend | undefined,
+): GuardrailModelRunner {
 	return async (systemPrompt, input) => {
 		const result = await generateText({ model, instructions: systemPrompt, prompt: input });
-		return result.text;
+		if (spend) {
+			await chargeModelSpend({
+				modelId: spend.modelId,
+				usage: result.usage,
+				providerMetadata: result.finalStep.providerMetadata,
+				callId: spend.callId,
+				budget: spend.budget,
+			});
+		}
+		return { text: result.text, ...(result.usage ? { usage: result.usage } : {}) };
 	};
 }
 
-function buildCheck(
-	guardrail: AgentToolGuardrailConfig,
-	guardrailModel: LanguageModel | undefined,
-): CheckFn | undefined {
+type ModelGuardrailKind = 'jailbreak' | 'nsfw' | 'topicalAlignment';
+
+type PatternToolGuardrailConfig = Exclude<AgentToolGuardrailConfig, { kind: ModelGuardrailKind }>;
+
+type ModelToolGuardrailConfig = Extract<AgentToolGuardrailConfig, { kind: ModelGuardrailKind }>;
+
+function buildPatternCheck(guardrail: PatternToolGuardrailConfig): CheckFn | undefined {
 	switch (guardrail.kind) {
 		case 'keywords':
 			return createKeywordsCheckFn({ keywords: guardrail.keywords });
@@ -69,39 +93,38 @@ function buildCheck(
 				blockUserinfo: guardrail.blockUserinfo ?? true,
 				allowSubdomains: guardrail.allowSubdomains ?? false,
 			});
-		case 'jailbreak':
-		case 'nsfw':
-		case 'topicalAlignment': {
-			// A model kind needs the agent's model; a draft without a model
-			// cannot run, so skipping is safe there.
-			if (guardrailModel === undefined) return undefined;
-			const run = toGuardrailModelRunner(guardrailModel);
-			const threshold = guardrail.threshold ?? DEFAULT_LLM_THRESHOLD;
-			if (guardrail.kind === 'jailbreak') {
-				return createJailbreakCheckFn({
-					run,
-					prompt: guardrail.prompt?.trim() || JAILBREAK_PROMPT,
-					threshold,
-				});
-			}
-			if (guardrail.kind === 'nsfw') {
-				return createNSFWCheckFn({
-					run,
-					prompt: guardrail.prompt?.trim() || NSFW_SYSTEM_PROMPT,
-					threshold,
-				});
-			}
-			if (guardrail.kind === 'topicalAlignment') {
-				return createTopicalAlignmentCheckFn({
-					run,
-					prompt: guardrail.prompt?.trim() || TOPICAL_ALIGNMENT_SYSTEM_PROMPT,
-					threshold,
-				});
-			}
-		}
 		default:
 			return undefined;
 	}
+}
+
+function buildModelCheck(
+	guardrail: ModelToolGuardrailConfig,
+	model: LanguageModel,
+	spend: GuardrailSpend | undefined,
+): CheckFn {
+	const run = toGuardrailModelRunner(model, spend);
+	const threshold = guardrail.threshold ?? DEFAULT_LLM_THRESHOLD;
+	const prompt = guardrail.prompt?.trim();
+	if (guardrail.kind === 'jailbreak') {
+		return createJailbreakCheckFn({
+			run,
+			prompt: prompt || JAILBREAK_PROMPT,
+			threshold,
+		});
+	}
+	if (guardrail.kind === 'nsfw') {
+		return createNSFWCheckFn({
+			run,
+			prompt: prompt || NSFW_SYSTEM_PROMPT,
+			threshold,
+		});
+	}
+	return createTopicalAlignmentCheckFn({
+		run,
+		prompt: prompt || TOPICAL_ALIGNMENT_SYSTEM_PROMPT,
+		threshold,
+	});
 }
 
 /** Resolves an entry's typed refs to runtime tool names. */
@@ -179,10 +202,27 @@ const MODEL_KINDS: ReadonlySet<AgentToolGuardrailKind> = new Set([
 	'topicalAlignment',
 ]);
 
+function isModelKind(guardrail: AgentToolGuardrailConfig): guardrail is ModelToolGuardrailConfig {
+	return (
+		guardrail.kind === 'jailbreak' ||
+		guardrail.kind === 'nsfw' ||
+		guardrail.kind === 'topicalAlignment'
+	);
+}
+
+function guardrailCallId(
+	toolCallId: string,
+	guardrail: ModelToolGuardrailConfig,
+	stage: 'before' | 'after',
+): string {
+	return `${toolCallId}:guardrail:${guardrail.kind}:${guardrail.id}:${stage}`;
+}
+
 function buildHook(
 	guardrail: AgentToolGuardrailConfig,
 	registry: ToolRegistry,
 	guardrailModel: LanguageModel | undefined,
+	spend: Omit<GuardrailSpend, 'callId'> | undefined,
 	guardrailWorkflowContext: WorkflowToolContext | undefined,
 ): ModelGuardrail | undefined {
 	const stages =
@@ -211,18 +251,41 @@ function buildHook(
 		return hook;
 	}
 
-	const check = buildCheck(guardrail, guardrailModel);
-	if (!check) return undefined;
-	const run = async (value: unknown) => await decide(check, value, code);
+	// A model check is built per tool call so its ledger id closes over that
+	// call. Parallel tools must not share one id.
+	let run: (
+		stage: 'before' | 'after',
+		toolCallId: string,
+		value: unknown,
+	) => Promise<GuardrailDecision | undefined>;
+	if (isModelKind(guardrail)) {
+		if (guardrailModel === undefined) return undefined;
+		const model = guardrailModel;
+		run = async (stage, toolCallId, value) =>
+			await decide(
+				buildModelCheck(
+					guardrail,
+					model,
+					spend ? { ...spend, callId: guardrailCallId(toolCallId, guardrail, stage) } : undefined,
+				),
+				value,
+				code,
+			);
+	} else {
+		const check = buildPatternCheck(guardrail);
+		if (!check) return undefined;
+		run = async (_stage, _toolCallId, value) => await decide(check, value, code);
+	}
 
 	const hook: ModelGuardrail = {};
 	if (stages.has('before')) {
-		hook.beforeTool = async (ctx) => (covers(ctx.toolName) ? await run(ctx.input) : undefined);
+		hook.beforeTool = async (ctx) =>
+			covers(ctx.toolName) ? await run('before', ctx.toolCallId, ctx.input) : undefined;
 	}
 	if (stages.has('after')) {
 		hook.afterTool = async (ctx, result): Promise<GuardrailDecision> => {
 			if (!covers(ctx.toolName)) return { action: 'allow' };
-			return (await run(result)) ?? { action: 'allow' };
+			return (await run('after', ctx.toolCallId, result)) ?? { action: 'allow' };
 		};
 	}
 	return hook;
@@ -234,6 +297,10 @@ export function withToolGuardrails<T extends RunOptions & ExecutionOptions>(
 		toolGuardrails?: AgentToolGuardrailConfig[];
 		toolRegistry: ToolRegistry;
 		guardrailModel?: LanguageModel;
+		/** Catalog id of `guardrailModel`. Pricing misses the catalog without it. */
+		guardrailModelId?: string;
+		/** Set only when a session cap or a monthly budget is on. */
+		budget?: BudgetGuardrailOptions;
 		/** Callable-workflow machinery for `workflow`-kind guardrail checks. */
 		guardrailWorkflowContext?: WorkflowToolContext;
 	},
@@ -252,6 +319,10 @@ export function withToolGuardrails<T extends RunOptions & ExecutionOptions>(
 		...guardrails.filter((guardrail) => MODEL_KINDS.has(guardrail.kind)),
 		...guardrails.filter((guardrail) => guardrail.kind === 'workflow'),
 	];
+	const spend =
+		input.budget && input.guardrailModelId
+			? { modelId: input.guardrailModelId, budget: input.budget }
+			: undefined;
 
 	const hooks: ModelGuardrail[] = [];
 	for (const guardrail of ordered) {
@@ -259,6 +330,7 @@ export function withToolGuardrails<T extends RunOptions & ExecutionOptions>(
 			guardrail,
 			input.toolRegistry,
 			input.guardrailModel,
+			spend,
 			input.guardrailWorkflowContext,
 		);
 		if (hook) hooks.push(hook);

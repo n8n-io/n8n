@@ -1,6 +1,6 @@
-import type { ExecutionOptions, RunOptions } from '@n8n/agents';
+import type { BudgetGuardrailOptions, ExecutionOptions, RunOptions } from '@n8n/agents';
 import { createKeywordsCheckFn, type GuardrailResult } from '@n8n/ai-utilities/guardrails';
-import { createModel } from '@n8n/agents';
+import { chargeModelSpend, createModel } from '@n8n/agents';
 import type { AgentToolGuardrailConfig } from '@n8n/api-types';
 import type { LanguageModel } from 'ai';
 import { MockLanguageModelV3 } from 'ai/test';
@@ -11,6 +11,14 @@ import { withToolGuardrails } from '../tool-guardrails';
 import { createWorkflowGuardrailCheck } from '../tools/workflow-guardrail-check';
 import type { WorkflowToolContext } from '../tools/workflow-tool-factory';
 import type { ToolRegistry } from '../tool-registry';
+
+vi.mock('@n8n/agents', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@n8n/agents')>();
+	return {
+		...actual,
+		chargeModelSpend: vi.fn().mockResolvedValue(undefined),
+	};
+});
 
 vi.mock('@n8n/ai-utilities/guardrails', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@n8n/ai-utilities/guardrails')>();
@@ -46,16 +54,27 @@ const ctx = (toolName: string, input: unknown) => ({
 function hooksFor(
 	toolGuardrails: AgentToolGuardrailConfig[],
 	guardrailModel?: LanguageModel,
-	guardrailWorkflowContext?: WorkflowToolContext,
+	options?: {
+		guardrailModelId?: string;
+		budget?: BudgetGuardrailOptions;
+		guardrailWorkflowContext?: WorkflowToolContext;
+	},
 ) {
 	const attached = withToolGuardrails(base, {
 		toolGuardrails,
 		toolRegistry: registry,
 		guardrailModel,
-		guardrailWorkflowContext,
+		...options,
 	});
 	return attached.guardrails?.hooks ?? [];
 }
+
+const budget = {
+	ledger: { add: vi.fn(), read: vi.fn() },
+	sessionId: 'session-1',
+	agentId: 'agent-1',
+	sessionCostCapUsd: 2,
+} as BudgetGuardrailOptions;
 
 describe('withToolGuardrails', () => {
 	it('passes the options through unchanged when no guardrails are configured', () => {
@@ -495,6 +514,73 @@ describe('withToolGuardrails model kinds', () => {
 			server.close();
 		}
 	});
+
+	it('charges a model check under the tool call id', async () => {
+		vi.mocked(chargeModelSpend).mockClear();
+		const hooks = hooksFor(
+			[jailbreakGuardrail],
+			mockModel('{"confidenceScore":0.2,"flagged":false}'),
+			{ guardrailModelId: 'openai/gpt-4o-mini', budget },
+		);
+
+		const stop = await hooks[0].beforeTool?.(ctx('read_file', { message: 'Read the file.' }));
+
+		expect(stop).toBeUndefined();
+		expect(chargeModelSpend).toHaveBeenCalledWith(
+			expect.objectContaining({
+				callId: 'tc-1:guardrail:jailbreak:g1:before',
+				modelId: 'openai/gpt-4o-mini',
+				budget,
+			}),
+		);
+	});
+
+	it('charges a model check that returns tokens and then fails to parse', async () => {
+		vi.mocked(chargeModelSpend).mockClear();
+		const hooks = hooksFor([jailbreakGuardrail], mockModel('not json at all'), {
+			guardrailModelId: 'openai/gpt-4o-mini',
+			budget,
+		});
+
+		const stop = await hooks[0].beforeTool?.(ctx('read_file', { message: 'anything' }));
+
+		expect(stop).toEqual({ action: 'stop', code: 'guardrail.jailbreak.g1' });
+		expect(chargeModelSpend).toHaveBeenCalledWith(
+			expect.objectContaining({ callId: 'tc-1:guardrail:jailbreak:g1:before' }),
+		);
+	});
+
+	it('does not charge when the model call throws', async () => {
+		vi.mocked(chargeModelSpend).mockClear();
+		const throwing = new MockLanguageModelV3({
+			provider: 'mock',
+			modelId: 'guardrail-test',
+			doGenerate: async () => {
+				throw new Error('model down');
+			},
+		});
+		const hooks = hooksFor([jailbreakGuardrail], throwing, {
+			guardrailModelId: 'openai/gpt-4o-mini',
+			budget,
+		});
+
+		const stop = await hooks[0].beforeTool?.(ctx('read_file', { message: 'anything' }));
+
+		expect(stop).toEqual({ action: 'stop', code: 'guardrail.jailbreak.g1' });
+		expect(chargeModelSpend).not.toHaveBeenCalled();
+	});
+
+	it('does not charge when no budget is set', async () => {
+		vi.mocked(chargeModelSpend).mockClear();
+		const hooks = hooksFor(
+			[jailbreakGuardrail],
+			mockModel('{"confidenceScore":0.2,"flagged":false}'),
+		);
+
+		await hooks[0].beforeTool?.(ctx('read_file', { message: 'Read the file.' }));
+
+		expect(chargeModelSpend).not.toHaveBeenCalled();
+	});
 });
 
 const guardrailWorkflowContext = { projectId: 'p1' } as unknown as WorkflowToolContext;
@@ -534,14 +620,14 @@ describe('withToolGuardrails workflow kind', () => {
 
 	it('registers before-only: beforeTool exists, afterTool does not', () => {
 		withCheckResult({});
-		const [hook] = hooksFor([workflowGuardrail], undefined, guardrailWorkflowContext);
+		const [hook] = hooksFor([workflowGuardrail], undefined, { guardrailWorkflowContext });
 		expect(hook.beforeTool).toBeTypeOf('function');
 		expect(hook.afterTool).toBeUndefined();
 	});
 
 	it('builds the check from the guardrail config and the runtime context', async () => {
 		const calls = withCheckResult({});
-		const [hook] = hooksFor([workflowGuardrail], undefined, guardrailWorkflowContext);
+		const [hook] = hooksFor([workflowGuardrail], undefined, { guardrailWorkflowContext });
 
 		await hook.beforeTool?.(ctx('read_file', { note: 'check me' }));
 
@@ -555,7 +641,7 @@ describe('withToolGuardrails workflow kind', () => {
 
 	it('stops with the guardrail.workflow code when the check workflow reports a tripwire', async () => {
 		withCheckResult({ tripwireTriggered: true });
-		const [hook] = hooksFor([workflowGuardrail], undefined, guardrailWorkflowContext);
+		const [hook] = hooksFor([workflowGuardrail], undefined, { guardrailWorkflowContext });
 
 		const stop = await hook.beforeTool?.(ctx('read_file', { note: 'anything' }));
 		expect(stop).toEqual({ action: 'stop', code: 'guardrail.workflow.wg1' });
@@ -563,7 +649,7 @@ describe('withToolGuardrails workflow kind', () => {
 
 	it('fails closed when the check workflow fails to execute', async () => {
 		withCheckResult({ executionFailed: true });
-		const [hook] = hooksFor([workflowGuardrail], undefined, guardrailWorkflowContext);
+		const [hook] = hooksFor([workflowGuardrail], undefined, { guardrailWorkflowContext });
 
 		const stop = await hook.beforeTool?.(ctx('read_file', { note: 'anything' }));
 		expect(stop).toEqual({ action: 'stop', code: 'guardrail.workflow.wg1' });
@@ -571,7 +657,7 @@ describe('withToolGuardrails workflow kind', () => {
 
 	it('allows the covered call when the check workflow is clean', async () => {
 		withCheckResult({});
-		const [hook] = hooksFor([workflowGuardrail], undefined, guardrailWorkflowContext);
+		const [hook] = hooksFor([workflowGuardrail], undefined, { guardrailWorkflowContext });
 
 		const decision = await hook.beforeTool?.(ctx('read_file', { note: 'clean' }));
 		expect(decision).toBeUndefined();
@@ -579,7 +665,7 @@ describe('withToolGuardrails workflow kind', () => {
 
 	it('does not run the check for uncovered tools, and covers every tool when tools is absent', async () => {
 		const calls = withCheckResult({});
-		const [hook] = hooksFor([workflowGuardrail], undefined, guardrailWorkflowContext);
+		const [hook] = hooksFor([workflowGuardrail], undefined, { guardrailWorkflowContext });
 		await hook.beforeTool?.(ctx('my_renamed_tool', { note: 'not covered' }));
 		expect(calls).toHaveLength(0);
 
@@ -587,7 +673,7 @@ describe('withToolGuardrails workflow kind', () => {
 		const [allToolsHook] = hooksFor(
 			[{ kind: 'workflow', id: 'wg-all', workflowId: 'wf-check' }],
 			undefined,
-			guardrailWorkflowContext,
+			{ guardrailWorkflowContext },
 		);
 		await allToolsHook.beforeTool?.(ctx('my_renamed_tool', { note: 'covered now' }));
 		expect(allCalls).toEqual([{ toolName: 'my_renamed_tool', input: { note: 'covered now' } }]);
@@ -606,7 +692,7 @@ describe('withToolGuardrails workflow kind', () => {
 				},
 			],
 			undefined,
-			guardrailWorkflowContext,
+			{ guardrailWorkflowContext },
 		);
 
 		expect(hooks).toHaveLength(2);

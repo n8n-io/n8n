@@ -23,6 +23,7 @@ const props = withDefaults(
 defineSlots<{
 	default?: () => unknown;
 	extra?: () => unknown;
+	add?: () => unknown;
 }>();
 
 const emit = defineEmits<{
@@ -42,7 +43,8 @@ const emit = defineEmits<{
 					<slot />
 				</div>
 
-				<template v-if="props.hideAdd" />
+				<slot v-if="$slots.add" name="add" />
+				<template v-else-if="props.hideAdd" />
 				<N8nTooltip
 					v-else-if="props.itemCount > 0"
 					as-child

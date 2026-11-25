@@ -6,6 +6,7 @@ import {
 	matchesApprovalUser,
 	matchesApprovalChannel,
 	listReviewRecipients,
+	APPROVAL_DESTINATION_PAGE_SIZE,
 } from '../../channel-hitl';
 import { requireCredentialField } from '../../credential-fields';
 import { UserError } from '@n8n/errors';
@@ -41,14 +42,8 @@ export const discordHitl = {
 	async listOptions(context) {
 		if (context.query.field === 'guild')
 			return await listDiscordPage(context, 'guild', context.query.cursor);
-		return await listReviewRecipients(context.query.cursor, async (kind, cursor) => {
-			try {
-				return await listDiscordPage(context, kind, cursor);
-			} catch (error) {
-				// A bot without the Server Members intent cannot list members. Keep the channels.
-				if (kind === 'user' && httpStatusFromError(error) === 403) return { options: [] };
-				throw error;
-			}
+		return await listReviewRecipients(context.query.cursor, async (kind, cursor, limit) => {
+			return await listDiscordPage(context, kind, cursor, limit);
 		});
 	},
 	createNode(configuration) {
@@ -71,27 +66,37 @@ async function listDiscordPage(
 	{ credential, httpClient, query }: ChannelHitlOptionsContext,
 	field: 'guild' | 'channel' | 'user',
 	cursor?: string,
+	limit = APPROVAL_DESTINATION_PAGE_SIZE,
 ): Promise<AgentHitlOptionsPage> {
 	const guildId = query.guildId;
 	if (field !== 'guild' && !guildId) throw new UserError('Select a Discord server first');
-	const params = new URLSearchParams({ limit: '200' });
+	const search = query.query.trim().toLowerCase().replace(/^[@#]/, '');
+	const searchMembers = field === 'user' && search.length > 0;
+	const params = new URLSearchParams(field === 'channel' ? {} : { limit: String(limit) });
 	if (cursor) {
 		if (!/^\d+$/.test(cursor)) throw new UserError('Invalid Discord page');
-		params.set('after', cursor);
+		if (field !== 'channel' && !searchMembers) params.set('after', cursor);
 	}
+	if (searchMembers) params.set('query', search);
 	const path =
 		field === 'guild'
 			? '/users/@me/guilds'
-			: `/guilds/${guildId}/${field === 'user' ? 'members' : 'channels'}`;
-	const response = await httpClient.request<unknown>({
-		method: 'GET',
-		url: `https://discord.com/api/v10${path}?${params}`,
-		headers: {
-			Authorization: `Bot ${requireCredentialField(credential, 'botToken', 'The Discord bot token is missing')}`,
-		},
-		json: true,
-		disableFollowRedirect: true,
-	});
+			: `/guilds/${guildId}/${field === 'user' ? (searchMembers ? 'members/search' : 'members') : 'channels'}`;
+	const response = await httpClient
+		.request<unknown>({
+			method: 'GET',
+			url: `https://discord.com/api/v10${path}?${params}`,
+			headers: {
+				Authorization: `Bot ${requireCredentialField(credential, 'botToken', 'The Discord bot token is missing')}`,
+			},
+			json: true,
+			disableFollowRedirect: true,
+		})
+		.catch((error: unknown) => {
+			// Discord requires the Server Members intent for browsing the member list.
+			if (field === 'user' && !searchMembers && httpStatusFromError(error) === 403) return [];
+			throw error;
+		});
 	const members = field === 'user' ? membersSchema.parse(response) : undefined;
 	const rows = members
 		? members.map((member) => ({
@@ -107,10 +112,18 @@ async function listDiscordPage(
 				(!('type' in row) || row.type === undefined || row.type === 0 || row.type === 5),
 		)
 		.map((row) => ({ id: row.id, name: field === 'channel' ? `#${row.name}` : row.name }));
+	if (searchMembers) return { options };
+	if (field === 'channel') {
+		// Discord returns the server's complete channel list in one request.
+		const start = cursor ? options.findIndex((option) => option.id === cursor) + 1 : 0;
+		const remaining = options
+			.slice(start)
+			.filter((option) => option.name.toLowerCase().includes(search));
+		const page = remaining.slice(0, limit);
+		return { options: page, nextCursor: remaining.length > limit ? page.at(-1)?.id : undefined };
+	}
 	return {
-		options: options.filter((option) =>
-			option.name.toLowerCase().includes(query.query.toLowerCase().replace(/^[@#]/, '')),
-		),
-		nextCursor: field !== 'channel' && rows.length === 200 ? rows.at(-1)?.id : undefined,
+		options: options.filter((option) => option.name.toLowerCase().includes(search)),
+		nextCursor: rows.length === limit ? rows.at(-1)?.id : undefined,
 	};
 }

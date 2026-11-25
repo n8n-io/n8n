@@ -314,6 +314,55 @@ describe('ToolCallRunner guardrail after-stage stop', () => {
 		expect(handler).toHaveBeenCalledTimes(1);
 	});
 
+	it('keeps a guardrail refusal plain for an untrusted tool', async () => {
+		const handler = vi.fn<NonNullable<BuiltTool['handler']>>().mockResolvedValue('tool output');
+		const tool: BuiltTool = {
+			name: 'fetch_page',
+			description: 'Synthetic tool',
+			handler,
+			outputTrust: 'untrusted',
+		};
+		const { runner } = makeRunner();
+		const { params } = makeCall(tool);
+
+		const outcome = await runner.processToolCall({
+			...params,
+			guardrails: {
+				hooks: [
+					{
+						afterTool: async () => ({ action: 'stop' as const, code: 'guardrail.urls.g1' }),
+					},
+				],
+			},
+		});
+
+		const error = outcome.outcome === 'error' ? outcome.error : '';
+		expect(error).toContain('Tool result blocked by guardrail: guardrail.urls.g1');
+		// Runtime-authored guardrail text is not tool output: it must not carry
+		// the untrusted-data wrapper.
+		expect(error).not.toContain('<untrusted_data');
+	});
+
+	it('still wraps a handler failure for an untrusted tool', async () => {
+		const handler = vi
+			.fn<NonNullable<BuiltTool['handler']>>()
+			.mockRejectedValue(new Error('boom from the tool'));
+		const tool: BuiltTool = {
+			name: 'fetch_page',
+			description: 'Synthetic tool',
+			handler,
+			outputTrust: 'untrusted',
+		};
+		const { runner } = makeRunner();
+		const { params } = makeCall(tool);
+
+		const outcome = await runner.processToolCall(params);
+
+		const error = outcome.outcome === 'error' ? outcome.error : '';
+		// Tool-authored errors stay protected by the untrusted wrapper.
+		expect(error).toContain('<untrusted_data');
+	});
+
 	it('keeps the success outcome when the after-stage hook only observes', async () => {
 		const handler = vi.fn<NonNullable<BuiltTool['handler']>>().mockResolvedValue('clean result');
 		const tool: BuiltTool = { name: 'fetch_page', description: 'Synthetic tool', handler };

@@ -5,9 +5,11 @@ import { useToast } from '@n8n/composables/useToast';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import {
 	skillNameKey,
+	type AgentHitlConfiguration,
 	type AgentConfigValidationIssue,
 	type AgentSkillAvailability,
 	type AgentSkillVersionInfo,
+	type AgentToolGuardrailConfig,
 	type SkillCreateMethod,
 	type SkillDetail,
 	type SkillVersionDetail,
@@ -27,8 +29,11 @@ import {
 	AGENT_SKILL_MODAL_KEY,
 } from '../constants';
 import { isSkillNameTakenError, normalizeAgentSkillForSave } from '../utils/agentSkill';
+import { hitlConfigurationUpdates } from '../utils/hitlConfiguration';
+import { withToolGuardrails } from '../utils/guardrails';
 import type { ToolOpenTarget, ToolPickerMode } from '../components/AgentCapabilitiesSection.types';
 import type { AgentSkillConfirmResult } from '../components/AgentSkillModal.vue';
+import type { ToolGuardrailsWiring } from '../components/AgentToolGuardrailsSection.vue';
 import type {
 	AgentResource,
 	AgentJsonConfig,
@@ -118,6 +123,12 @@ export interface UseAgentCapabilitiesActionsDeps {
 	 */
 	refreshAgentAfterMutation?: (projectId: string, agentId: string) => Promise<boolean>;
 	validationIssues?: Ref<AgentConfigValidationIssue[]> | ComputedRef<AgentConfigValidationIssue[]>;
+	/**
+	 * Whether the user may edit this agent. Tool modals lock their guardrails
+	 * section without it: creating, changing, or deleting a guardrail is a
+	 * config write. Hosts without guardrails wiring omit it.
+	 */
+	canEditAgent?: Ref<boolean> | ComputedRef<boolean>;
 	telemetry?: AgentCapabilitiesTelemetry;
 }
 
@@ -144,6 +155,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		beforeAgentMutation,
 		refreshAgentAfterMutation,
 		validationIssues,
+		canEditAgent,
 		telemetry,
 	} = deps;
 
@@ -157,36 +169,148 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 
 	// Agents keep their skills in the skills module. Inline agents keep them in the node.
 	const skillRefsEnabled = computed(() => !localSkills);
+	// Tool guardrails live on the agent's `config` sub-object, which inline
+	// agents do not carry, so their tool modals get no guardrails wiring.
+	const toolGuardrailsEnabled = !localSkills;
+
+	/**
+	 * Guardrails wiring for the tool modals: reads stay live through getters,
+	 * commits write the whole `config` sub-object because the config funnel
+	 * shallow-assigns top-level keys. Writes land on the agent that was open
+	 * when the modal opened, like the tools confirm.
+	 */
+	function toolGuardrailsWiring(targetAgentId: string): ToolGuardrailsWiring {
+		const targetProjectId = projectId.value;
+		const isCurrent = () => agentId.value === targetAgentId && projectId.value === targetProjectId;
+		return {
+			getGuardrails: () =>
+				isCurrent() ? (localConfig.value?.config?.guardrails?.tools ?? []) : [],
+			getTools: () => (isCurrent() ? (localConfig.value?.tools ?? []) : []),
+			onUpdateGuardrails: (tools: AgentToolGuardrailConfig[]) => {
+				if (!isCurrent()) return;
+				if (canEditAgent && !canEditAgent.value) return;
+				scheduleConfigUpdate(withToolGuardrails(localConfig.value, tools));
+			},
+			validationIssues: () =>
+				validationIssues?.value.filter((issue) => issue.capability.kind === 'guardrail') ?? [],
+			// Live check
+			disabled: () => !isCurrent() || canEditAgent?.value === false,
+		};
+	}
+
+	/**
+	 * Renaming a node tool must not orphan guardrail refs that name it: the
+	 * publish gate refuses a config whose refs point at no configured tool.
+	 * Follows each rename with a config write, so both surfaces (the edit-tool
+	 * modal and the tools picker) keep the refs attached.
+	 */
+	function migrateGuardrailsForToolRenames(renames: Array<{ from: string; to: string }>): void {
+		const byFrom = new Map(
+			renames
+				.filter(({ from, to }) => from !== '' && to !== '' && from !== to)
+				.map(({ from, to }) => [from, to]),
+		);
+		if (byFrom.size === 0) return;
+		const guardrails = localConfig.value?.config?.guardrails?.tools;
+		if (!guardrails?.length) return;
+		const touched = guardrails.some((guardrail) =>
+			(guardrail.tools ?? []).some((ref) => ref.type === 'node' && byFrom.has(ref.name)),
+		);
+		if (!touched) return;
+		const next = guardrails.map((guardrail) => {
+			if (!guardrail.tools) return guardrail;
+			return {
+				...guardrail,
+				tools: guardrail.tools.map((ref) =>
+					ref.type === 'node' && byFrom.has(ref.name)
+						? { ...ref, name: byFrom.get(ref.name) as string }
+						: ref,
+				),
+			};
+		});
+		scheduleConfigUpdate(withToolGuardrails(localConfig.value, next));
+	}
+
+	function getCustomTool(id: string) {
+		const tools = agent.value?.tools;
+		return tools && Object.hasOwn(tools, id) ? tools[id] : undefined;
+	}
+
+	function hitlContext() {
+		if (supportsToolApproval === false) return undefined;
+		const targetAgentId = agentId.value;
+		const targetProjectId = projectId.value;
+		const isCurrentTarget = () =>
+			agentId.value === targetAgentId && projectId.value === targetProjectId;
+		return {
+			agentId: targetAgentId,
+			get isPublished() {
+				return !!agent.value?.activeVersionId;
+			},
+			ensureAgentPersisted: async () => {
+				if (!isCurrentTarget()) return;
+				await beforeAgentMutation?.();
+				if (isCurrentTarget()) await ensureAgentPersisted?.();
+			},
+			onChannelsChanged: async () => {
+				if (isCurrentTarget()) {
+					await refreshAgentAfterMutation?.(targetProjectId, targetAgentId);
+				}
+			},
+			getConfig: () => (isCurrentTarget() ? localConfig.value : null),
+			getCustomToolName: (id: string) =>
+				isCurrentTarget() ? getCustomTool(id)?.descriptor.name : undefined,
+			saveConfiguration: (configuration: AgentHitlConfiguration, toolKeys?: string[]) => {
+				if (!isCurrentTarget()) return;
+				scheduleConfigUpdate(hitlConfigurationUpdates(localConfig.value, configuration, toolKeys));
+			},
+		};
+	}
 
 	function onOpenAddToolModal(mode: ToolPickerMode = 'tools') {
 		// Capture the target at open time: a confirm landing after an agent/node
 		// switch must not write the old agent's tool list into the new one.
 		const targetAgentId = agentId.value;
+		const targetProjectId = projectId.value;
+		const isCurrent = () => agentId.value === targetAgentId && projectId.value === targetProjectId;
 
 		uiStore.openModalWithData({
 			name: AGENT_TOOLS_MODAL_KEY,
 			data: {
 				mode,
-				tools: localConfig.value?.tools ?? [],
-				mcpServers: localConfig.value?.mcpServers ?? [],
+				get tools() {
+					return isCurrent() ? (localConfig.value?.tools ?? []) : [];
+				},
+				get mcpServers() {
+					return isCurrent() ? (localConfig.value?.mcpServers ?? []) : [];
+				},
 				projectId: projectId.value,
 				agentId: targetAgentId,
 				supportsToolApproval,
+				approvalContext: hitlContext(),
+				...(toolGuardrailsEnabled && { guardrails: toolGuardrailsWiring(targetAgentId) }),
 				onConfirm: (payload: {
 					tools?: AgentJsonToolConfig[];
 					mcpServers?: AgentJsonMcpServerConfig[];
+					renamedTool?: { from: string; to: string };
 				}) => {
-					if (agentId.value !== targetAgentId) return;
+					if (!isCurrent()) return;
 					scheduleConfigUpdate({
 						...(payload.tools && { tools: payload.tools }),
 						...(payload.mcpServers && { mcpServers: payload.mcpServers }),
 					});
+					if (toolGuardrailsEnabled && payload.renamedTool) {
+						migrateGuardrailsForToolRenames([payload.renamedTool]);
+					}
 				},
 			},
 		});
 	}
 
 	function onOpenToolFromList(target: ToolOpenTarget | number) {
+		const targetAgentId = agentId.value;
+		const targetProjectId = projectId.value;
+		const isCurrent = () => agentId.value === targetAgentId && projectId.value === targetProjectId;
 		const tools = localConfig.value?.tools ?? [];
 
 		const toolIndex =
@@ -205,8 +329,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		// section below instead of treating it as a missing tool.
 		const tool = toolIndex >= 0 ? tools[toolIndex] : undefined;
 		if (tool) {
-			const customTool =
-				tool.type === 'custom' && tool.id ? agent.value?.tools?.[tool.id] : undefined;
+			const customTool = tool.type === 'custom' ? getCustomTool(tool.id) : undefined;
 
 			telemetry?.trackOpenedToolFromList?.(tool.type);
 
@@ -218,22 +341,30 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					projectId: projectId.value,
 					agentId: agentId.value,
 					supportsToolApproval,
+					approvalContext: hitlContext(),
 					validationIssues: () =>
 						validationIssues?.value.filter(
 							(issue) => issue.capability.kind === 'tool' && issue.capability.index === toolIndex,
 						) ?? [],
+					...(toolGuardrailsEnabled &&
+						tool.type !== 'custom' && { guardrails: toolGuardrailsWiring(agentId.value) }),
 					existingToolNames: tools
 						.map((toolRef, i) =>
 							i === toolIndex || toolRef.type === 'custom' ? null : toolRef.name,
 						)
 						.filter((name): name is string => !!name),
 					onConfirm: (updatedTool: AgentJsonToolConfig) => {
+						if (!isCurrent()) return;
 						const nextTools = [...(localConfig.value?.tools ?? [])];
 						nextTools[toolIndex] = updatedTool;
 						scheduleConfigUpdate({ tools: nextTools });
+						// Follow a node-tool rename so guardrail refs stay attached.
+						if (toolGuardrailsEnabled && tool.type === 'node' && updatedTool.type === 'node') {
+							migrateGuardrailsForToolRenames([{ from: tool.name, to: updatedTool.name }]);
+						}
 					},
 					onRemove: () => {
-						if (!localConfig.value?.tools?.[toolIndex]) return;
+						if (!isCurrent() || !localConfig.value?.tools?.[toolIndex]) return;
 						onRemoveTool(toolIndex);
 					},
 				},
@@ -261,6 +392,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 					mcpServer,
 					projectId: projectId.value,
 					supportsToolApproval,
+					approvalContext: hitlContext(),
 					existingToolNames: mcpServers
 						.filter((_, index) => index !== mcpServerIndex)
 						.map((server) => server.name),
@@ -299,6 +431,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				projectId: projectId.value,
 				agentId: agentId.value,
 				supportsToolApproval,
+				approvalContext: hitlContext(),
 				existingToolNames: mcpServers
 					.filter((_, i) => i !== mcpServerIndex)
 					.map((server) => server.name),

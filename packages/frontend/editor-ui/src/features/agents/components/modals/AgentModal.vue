@@ -37,7 +37,7 @@ const props = withDefaults(
 		headerDividerTone?: 'default' | 'warning';
 		bodyScrollable?: boolean;
 		bodyFlush?: boolean;
-		/** Pin the body height so the dialog does not resize between steps. Short modals leave it off. */
+		/** Keep the dialog height stable between steps when requested. */
 		stableHeight?: boolean;
 		/** A fixed size from the window, so the dialog never resizes when its content changes. */
 		fixedSize?: boolean;
@@ -281,11 +281,13 @@ function onOpenAutoFocus(event: Event) {
 @use '@n8n/design-system/css/mixins/mixins' as scrollbar-mixins;
 
 [role='dialog'].dialog {
+	--agent-modal--viewport-gap: var(--spacing--3xl);
 	--n8n-dialog-region--padding: 0;
 	--n8n-dialog-close--inset-block-start: calc(
 		var(--spacing--md) + (var(--n8n-dialog-title--line) - var(--n8n-dialog-close--size)) / 2
 	);
 	--n8n-dialog-close--inset-inline-end: var(--spacing--lg);
+	max-height: calc(100dvh - var(--agent-modal--viewport-gap) * 2);
 }
 
 .header {
@@ -392,7 +394,7 @@ function onOpenAutoFocus(event: Event) {
 /* The size of the window less a margin, whatever the content. The body and the side panel scroll. */
 [role='dialog'].dialogFixed {
 	width: min(72rem, calc(100dvw - var(--spacing--lg) * 2));
-	height: calc(100dvh - var(--spacing--3xl) * 2);
+	height: calc(100dvh - var(--agent-modal--viewport-gap) * 2);
 	max-width: none;
 
 	.splitWithPanel {
@@ -463,7 +465,6 @@ function onOpenAutoFocus(event: Event) {
 	--agent-modal-body--padding-block-end: var(--spacing--md);
 	box-sizing: border-box;
 	min-height: 0;
-	max-height: min(70dvh, calc(var(--height--5xl) * 6));
 	overflow-y: auto;
 	scrollbar-gutter: stable;
 	padding: 0 var(--agent-modal-body--padding-inline) var(--agent-modal-body--padding-block-end);
@@ -551,6 +552,7 @@ function onOpenAutoFocus(event: Event) {
 	}
 
 	[role='dialog'].dialog {
+		--agent-modal--viewport-gap: var(--spacing--md);
 		--n8n-dialog-close--inset-inline-end: var(--spacing--md);
 	}
 

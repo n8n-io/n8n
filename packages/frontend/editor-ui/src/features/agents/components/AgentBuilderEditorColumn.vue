@@ -17,10 +17,11 @@ import type {
 } from '../types';
 import type { ToolOpenTarget, ToolPickerMode } from './AgentCapabilitiesSection.types';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useAgentApprovalDestinationsEnabled } from '@/features/agents/composables/useAgentApprovalDestinationsEnabled';
 import { useTypeAvailability } from '@n8n/frontend-module-type-availability-policies';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
-import AgentBudgetPanel from './AgentBudgetPanel.vue';
+import AgentHitlPanel from './AgentHitlPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
 import AgentTriggersSection from './AgentTriggersSection.vue';
 import { provideAgentPersonalisation } from '../channels/agentPersonalisation';
@@ -31,6 +32,7 @@ import AgentMemoryEntriesPanel from './AgentMemoryEntriesPanel.vue';
 import AgentVectorStoresPanel from './AgentVectorStoresPanel.vue';
 import AgentMcpPanel from './AgentMcpPanel.vue';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
+import AgentGuardrailsSection from './AgentGuardrailsSection.vue';
 import AgentSubAgentsPanel from './AgentSubAgentsPanel.vue';
 import AgentBuilderTabPanel from './AgentBuilderTabPanel.vue';
 import AgentPanel from './AgentPanel.vue';
@@ -85,7 +87,16 @@ provideAgentPersonalisation(
 const isKnowledgeAdvancedExpanded = ref(false);
 const isMemoryViewAll = ref(false);
 
+watch(
+	() => !!props.localConfig?.vectorStores?.length,
+	(configured) => {
+		if (configured) isKnowledgeAdvancedExpanded.value = true;
+	},
+	{ immediate: true },
+);
+
 const settingsStore = useSettingsStore();
+const approvalDestinationsEnabled = useAgentApprovalDestinationsEnabled();
 const isMcpAvailable = computed(
 	() => settingsStore.isModuleActive('mcp') && !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
 );
@@ -367,6 +378,38 @@ defineExpose({ onSetupTaskAction });
 						/>
 					</AgentPanel>
 
+					<AgentPanel
+						:header="i18n.baseText('agents.builder.guardrails.title')"
+						header-visibility="visually-hidden"
+						data-testid="agent-guardrails-panel"
+					>
+						<AgentGuardrailsSection
+							:config="localConfig"
+							:tools="localConfig?.tools ?? []"
+							:project-id="projectId"
+							:agent-id="agentId"
+							:disabled="childrenDisabled"
+							:validation-issues="configValidationIssues ?? []"
+							@update:config="emit('update:config', $event)"
+							@update:budget-config="emit('update:budget-config', $event)"
+						>
+							<template v-if="approvalDestinationsEnabled" #approval>
+								<AgentHitlPanel
+									:agent-id="agentId"
+									:agent-unsaved="agentUnsaved"
+									:is-published="Boolean(agent?.activeVersionId)"
+									:ensure-agent-persisted="ensureAgentPersisted"
+									:config="localConfig"
+									:custom-tools="agent?.tools"
+									:project-id="projectId"
+									:disabled="childrenDisabled"
+									@agent-changed="emit('agent-changed')"
+									@update:config="emit('update:config', $event)"
+								/>
+							</template>
+						</AgentGuardrailsSection>
+					</AgentPanel>
+
 					<AgentMemoryPanel
 						v-if="canEditAgent"
 						:config="localConfig"
@@ -464,13 +507,6 @@ defineExpose({ onSetupTaskAction });
 					data-testid="agent-settings-tab-content"
 				>
 					<div :class="$style.settingsCards">
-						<AgentBudgetPanel
-							:config="localConfig"
-							:project-id="projectId"
-							:agent-id="agentId"
-							:disabled="childrenDisabled"
-							@update:config="emit('update:budget-config', $event)"
-						/>
 						<AgentSubAgentsPanel
 							:config="localConfig"
 							:disabled="childrenDisabled"

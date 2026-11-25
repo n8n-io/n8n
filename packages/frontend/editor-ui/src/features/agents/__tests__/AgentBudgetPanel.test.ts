@@ -48,6 +48,7 @@ vi.mock('@n8n/i18n', () => ({
 				'agents.builder.budget.title': 'Usage and limits',
 				'agents.builder.budget.notSet': 'Not set',
 				'agents.builder.budget.usage.none': 'No monthly budget',
+				'agents.builder.budget.usage.label': 'Monthly usage',
 				'agents.builder.budget.usage.unavailable': 'Usage unavailable',
 				'agents.builder.budget.usage.spent': '{spent} of {budget} used',
 				'agents.builder.budget.monthly.value': '{amount}/month',
@@ -112,6 +113,46 @@ describe('AgentBudgetPanel', () => {
 		expect(wrapper.text()).toContain('No monthly budget');
 		expect(getAgentBudgetSpend).not.toHaveBeenCalled();
 	});
+
+	it('shows the monthly summary and keeps budget controls collapsed when embedded', async () => {
+		const wrapper = mount(AgentBudgetPanel, {
+			props: { config: config(), projectId: 'project-1', agentId: 'agent-1', embedded: true },
+		});
+		const disclosure = wrapper.get('button[aria-expanded]');
+		const monthly = wrapper.get('[data-testid="agent-budget-monthly-row"]');
+
+		expect(disclosure.text()).toContain('Monthly usage');
+		expect(disclosure.text()).toContain('No monthly budget');
+		expect(monthly.isVisible()).toBe(false);
+
+		await disclosure.trigger('click');
+		expect(monthly.isVisible()).toBe(true);
+		await monthly.trigger('click');
+		expect(wrapper.getComponent(AgentBudgetMonthlyModal).props('open')).toBe(true);
+		wrapper.unmount();
+	});
+
+	it.each([{ monthlyBudgetUsd: 200 }, { sessionCostCapUsd: 5 }])(
+		'opens embedded controls with a saved limit %j',
+		async (limit) => {
+			getAgentBudgetSpend.mockReset().mockResolvedValue({ spentUsd: 0 });
+			const wrapper = mount(AgentBudgetPanel, {
+				props: {
+					config: config({ guardrails: { budget: { enabled: true, ...limit } } }),
+					projectId: 'project-1',
+					agentId: 'agent-1',
+					embedded: true,
+				},
+				global: { stubs: { I18nT: true } },
+			});
+			const disclosure = wrapper.get('button[aria-expanded]');
+			expect(disclosure.attributes('aria-expanded')).toBe('true');
+			await disclosure.trigger('click');
+			expect(disclosure.attributes('aria-expanded')).toBe('false');
+			await flushPromises();
+			wrapper.unmount();
+		},
+	);
 
 	it('shows the saved amounts and the alert percent', async () => {
 		getAgentBudgetSpend.mockReset().mockResolvedValue({ spentUsd: 42 });

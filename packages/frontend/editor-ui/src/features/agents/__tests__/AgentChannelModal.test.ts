@@ -393,6 +393,17 @@ describe('AgentChannelModal', () => {
 		mocks.saveDescription.mockResolvedValue(undefined);
 	});
 
+	it('limits a review channel picker to the supported platforms', async () => {
+		catalog.value = [exampleIntegration, slackIntegration];
+		const wrapper = mountModal('list', false, { channelTypes: ['slack', 'telegram', 'discord'] });
+		await flushPromises();
+		expect(
+			wrapper
+				.findAll('[data-testid="channel-list-item"]')
+				.map((item) => item.attributes('data-type')),
+		).toEqual(['slack']);
+	});
+
 	it('uses the Add trigger title in the trigger picker', async () => {
 		const wrapper = mountModal('list');
 		await flushPromises();

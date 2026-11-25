@@ -80,6 +80,7 @@ export interface ApprovalInput {
 	type: 'approval';
 	toolName: string;
 	displayName?: string;
+	description?: string;
 	supportsSessionApproval?: boolean;
 	args: unknown;
 	/** Why the "Approve for me" mode of the n8n Assistant showed the card. */

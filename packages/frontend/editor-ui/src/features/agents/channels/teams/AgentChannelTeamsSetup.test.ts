@@ -949,6 +949,15 @@ describe('AgentChannelTeamsSetup', () => {
 			expect(queryByTestId('teams-scope-channels')).toBeNull();
 		});
 
+		it('starts availability open when a shared scope is configured', async () => {
+			const { getByTestId } = renderComponent({
+				props: settingsProps({ savedSettings: { teamChannels: true } }),
+			});
+
+			await waitFor(() => expect(getByTestId('teams-scope-channels')).toBeVisible());
+			expect(checkedSwitch(getByTestId('teams-scope-channels'))).toBe(true);
+		});
+
 		it('opens a collapsed panel with its chevron', async () => {
 			const { getByTestId } = renderComponent({ props: settingsProps() });
 

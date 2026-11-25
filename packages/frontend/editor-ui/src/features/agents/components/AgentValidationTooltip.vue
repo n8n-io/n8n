@@ -225,6 +225,7 @@ function actionIssueMessage(
 	specificIssueKeys: Record<string, BaseTextKey>,
 ): string {
 	const { kind, toolType } = issue.capability;
+	if (kind === 'humanReview') return issueMessage(issue);
 	const pathKey = previewPathKey(issue);
 	const key =
 		(issue.reason ? reasonSpecificKeys[issue.reason] : undefined) ??

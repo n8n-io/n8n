@@ -51,7 +51,7 @@ export function createLangChainGuardrailRunner(model: BaseChatModel): GuardrailM
 			input,
 			system_message: systemPrompt,
 		});
-		return extractText(result.content);
+		return { text: extractText(result.content) };
 	};
 }
 

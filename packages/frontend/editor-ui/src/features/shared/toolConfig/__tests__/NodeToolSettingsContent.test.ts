@@ -270,6 +270,22 @@ describe('NodeToolSettingsContent', () => {
 		expect(getByText('nodeSettings.settings')).toBeTruthy();
 	});
 
+	it('shows the selected pane when the host supplies the tab bar', async () => {
+		const initialNode = createMockNode();
+		settingsStore.isOtelCustomSpanAttributesEnabled = true;
+		const { getAllByTestId, queryByRole, rerender } = renderComponent({
+			props: { initialNode, activeTab: 'settings' },
+		});
+		const [parameters, settings] = getAllByTestId('parameter-input-list');
+
+		expect(queryByRole('tablist')).not.toBeInTheDocument();
+		expect(parameters).not.toBeVisible();
+		expect(settings).toBeVisible();
+		await rerender({ initialNode, activeTab: 'params' });
+		expect(parameters).toBeVisible();
+		expect(settings).not.toBeVisible();
+	});
+
 	it('should render ParameterInputList when node is provided', () => {
 		const { getAllByTestId } = renderComponent({
 			props: { initialNode: createMockNode() },

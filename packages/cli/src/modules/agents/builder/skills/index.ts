@@ -3,6 +3,7 @@ import type { RuntimeSkill } from '@n8n/agents';
 import { configSkill } from './config.skill';
 import { customToolsSkill } from './custom-tools.skill';
 import { externalServicesSkill } from './external-services.skill';
+import { humanReviewSkill } from './human-review.skill';
 import { memorySkill } from './memory.skill';
 import { nodeToolsSkill } from './node-tools.skill';
 import { resourceLocatorsSkill } from './resource-locators.skill';
@@ -26,6 +27,7 @@ export function getBuilderRuntimeSkills(): RuntimeSkill[] {
 		configSkill(),
 		customToolsSkill(),
 		externalServicesSkill(),
+		humanReviewSkill(),
 		memorySkill(),
 		nodeToolsSkill(),
 		resourceLocatorsSkill(),

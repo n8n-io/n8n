@@ -360,6 +360,7 @@ export class AgentRuntimeCacheService {
 			budget,
 			toolGuardrails,
 			guardrailModel,
+			guardrailModelId,
 			guardrailWorkflowContext,
 		} = await reconstruction;
 
@@ -371,6 +372,7 @@ export class AgentRuntimeCacheService {
 			...(budget !== undefined ? { budget } : {}),
 			...(toolGuardrails !== undefined ? { toolGuardrails } : {}),
 			...(guardrailModel !== undefined ? { guardrailModel } : {}),
+			...(guardrailModelId !== undefined ? { guardrailModelId } : {}),
 			...(guardrailWorkflowContext !== undefined ? { guardrailWorkflowContext } : {}),
 			projectId,
 			telemetryConfiguration: buildAgentConfigurationTelemetry(runSource),

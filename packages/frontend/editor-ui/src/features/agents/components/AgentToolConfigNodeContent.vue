@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { provide, ref } from 'vue';
+import { computed, provide, ref } from 'vue';
 import type { INode } from 'n8n-workflow';
 import { UNSUPPORTED_AGENT_NODE_TOOL_OPERATIONS } from '@n8n/api-types';
 
@@ -8,7 +8,9 @@ import {
 	ResourceMapperRefreshEmptySchemaKey,
 	ResourceMapperSchemaAutoRefreshKey,
 } from '@/app/constants';
-import NodeToolSettingsContent from '@/features/shared/toolConfig/NodeToolSettingsContent.vue';
+import NodeToolSettingsContent, {
+	type ToolSettingsTab,
+} from '@/features/shared/toolConfig/NodeToolSettingsContent.vue';
 
 const HIDDEN_AGENT_NODE_TOOL_OPERATIONS = [
 	...UNSUPPORTED_AGENT_NODE_TOOL_OPERATIONS,
@@ -24,6 +26,7 @@ const props = defineProps<{
 	parameterIssues?: Record<string, string[]>;
 	fromAiDisabledParameters?: string[];
 	readOnly?: boolean;
+	activeTab?: ToolSettingsTab;
 }>();
 
 const emit = defineEmits<{
@@ -33,6 +36,7 @@ const emit = defineEmits<{
 }>();
 
 const contentRef = ref<InstanceType<typeof NodeToolSettingsContent> | null>(null);
+const tabOptions = computed(() => contentRef.value?.tabOptions);
 
 provide(ResourceMapperSchemaAutoRefreshKey, false);
 provide(ResourceMapperRefreshEmptySchemaKey, true);
@@ -53,6 +57,7 @@ defineExpose({
 	getNode,
 	getNodeTypeDescription,
 	handleChangeName,
+	tabOptions,
 });
 </script>
 
@@ -68,6 +73,7 @@ defineExpose({
 		:parameter-issues="props.parameterIssues"
 		:from-ai-disabled-parameters="props.fromAiDisabledParameters"
 		:read-only="props.readOnly"
+		:active-tab="props.activeTab"
 		:sync-node-to-ndv="true"
 		:data-test-id="props.contentTestId"
 		@update:valid="emit('update:valid', $event)"

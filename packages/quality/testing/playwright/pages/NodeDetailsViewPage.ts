@@ -611,17 +611,24 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async changeInputRunSelector(value: string) {
-		const selector = this.inputPanel.getRunSelector();
-		await selector.click();
-		await this.getVisiblePopoverOption(value).click();
+		await this.selectRun(this.inputPanel, value);
 		await this.expectInputRunSelectorValue(value);
 	}
 
 	async changeOutputRunSelector(value: string) {
-		const selector = this.outputPanel.getRunSelector();
-		await selector.click();
-		await this.getVisiblePopoverOption(value).click();
+		await this.selectRun(this.outputPanel, value);
 		await this.expectOutputRunSelectorValue(value);
+	}
+
+	private async selectRun(panel: RunDataPanel, value: string) {
+		await panel.getRunSelector().click();
+		const listboxId = await panel.getRunSelectorInput().getAttribute('aria-controls');
+		// The other panel's list can still be visible during its closing animation.
+		await this.page
+			.locator(`[id="${listboxId}"]`)
+			.getByTestId('run-selection-option')
+			.filter({ hasText: value })
+			.click();
 	}
 
 	// Run-selector updates can land asynchronously (notably cross-panel via

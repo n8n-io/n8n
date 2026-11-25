@@ -55,6 +55,8 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { disposeNDVStore, useNDVStore } from '@/features/ndv/shared/ndv.store';
 
+export type ToolSettingsTab = 'params' | 'settings';
+
 const props = defineProps<{
 	initialNode: INode;
 	existingToolNames?: string[];
@@ -70,6 +72,8 @@ const props = defineProps<{
 	/** Keeps standalone Agent tool parameters resolvable through the scoped NDV store. */
 	syncNodeToNdv?: boolean;
 	readOnly?: boolean;
+	/** The host renders the tab bar when it supplies the active tab. */
+	activeTab?: ToolSettingsTab;
 }>();
 
 const emit = defineEmits<{
@@ -119,8 +123,8 @@ const nodeTypeDescription = computed(() => {
 	};
 });
 
-type ToolSettingsTab = 'params' | 'settings';
-const activeTab = ref<ToolSettingsTab>('params');
+const localTab = ref<ToolSettingsTab>('params');
+const selectedTab = computed(() => props.activeTab ?? localTab.value);
 
 const parametersByTab = computed(() =>
 	collectParametersByTab(nodeTypeDescription.value?.properties ?? [], false),
@@ -507,17 +511,17 @@ onBeforeUnmount(() => {
 	disposeWorkflowDocumentStore(documentStore);
 });
 
-defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
+defineExpose({ node, isValid, nodeTypeDescription, handleChangeName, tabOptions });
 </script>
 
 <template>
 	<div :class="$style.container">
 		<N8nTabs
-			v-if="tabOptions.length > 1"
-			:model-value="activeTab"
+			v-if="props.activeTab === undefined && tabOptions.length > 1"
+			:model-value="localTab"
 			:options="tabOptions"
 			:class="$style.tabs"
-			@update:model-value="activeTab = $event"
+			@update:model-value="localTab = $event"
 		/>
 
 		<div v-if="nodeTypesLoading" :class="$style.loading" data-test-id="tool-settings-loading">
@@ -525,7 +529,7 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 		</div>
 		<div v-else :class="$style.tabContent">
 			<!-- Parameters Tab -->
-			<div v-show="activeTab === 'params'">
+			<div v-show="selectedTab === 'params'">
 				<ParameterInputList
 					v-if="node"
 					:parameters="parametersByTab.params"
@@ -561,7 +565,7 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 			</div>
 
 			<!-- Settings Tab -->
-			<div v-show="activeTab === 'settings'">
+			<div v-show="selectedTab === 'settings'">
 				<ParameterInputList
 					v-if="node && parametersByTab.settings.length > 0"
 					:parameters="parametersByTab.settings"

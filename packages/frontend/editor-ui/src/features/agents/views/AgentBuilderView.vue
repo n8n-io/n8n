@@ -2162,6 +2162,7 @@ async function refreshValidationBeforePublish(): Promise<boolean> {
 	const unpublishedWorkflows = unpublishedWorkflowTools(
 		configValidation.value.issues,
 		localConfig.value?.tools ?? [],
+		localConfig.value?.hitlConfigurations ?? [],
 	);
 
 	if (unpublishedWorkflows.length > 0) {
@@ -2240,6 +2241,7 @@ const caps = useAgentCapabilitiesActions({
 	beforeAgentMutation: flushAutosaveIgnoringResult,
 	refreshAgentAfterMutation: onConfigUpdated,
 	validationIssues: computed(() => configValidation.value?.issues ?? []),
+	canEditAgent: effectiveCanEditAgent,
 	scheduleConfigUpdate: onConfigFieldUpdate,
 	scheduleSkillSave: ({ skillId, skill, availableTo }) => {
 		// Acquire the write lock before persisting any change.

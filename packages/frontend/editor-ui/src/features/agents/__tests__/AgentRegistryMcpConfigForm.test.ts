@@ -1,3 +1,4 @@
+import type { AgentApprovalRoute } from '@n8n/api-types';
 import { defineComponent, ref } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -10,7 +11,13 @@ import type {
 import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants';
 
 import AgentRegistryMcpConfigForm from '../components/AgentRegistryMcpConfigForm.vue';
+import AgentApprovalRouteSelect from '../components/AgentApprovalRouteSelect.vue';
+import McpToolPermissionsEditor from '@/features/shared/toolsConnection/McpToolPermissionsEditor.vue';
 import type { AgentRegistryMcpModalData } from '../composables/useAgentRegistryMcpConfig';
+
+vi.mock('@n8n/stores/settings.store', () => ({
+	useSettingsStore: () => ({ isAgentModuleActive: () => true }),
+}));
 
 const saveMock = vi.hoisted(() => vi.fn());
 const useAgentRegistryMcpConfigMock = vi.hoisted(() => vi.fn());
@@ -86,17 +93,21 @@ function makeItem(
 }
 
 function mountForm({
+	approvalRoute,
 	connectionTimeoutMs,
 	status = 'connected',
 	isNew = false,
 	onRemove,
 	itemAvailable = true,
+	withApprovalContext = false,
 }: {
+	approvalRoute?: AgentApprovalRoute;
 	connectionTimeoutMs?: number;
 	status?: McpServerConnectionItem['status'];
 	isNew?: boolean;
 	onRemove?: () => void;
 	itemAvailable?: boolean;
+	withApprovalContext?: boolean;
 } = {}) {
 	useAgentRegistryMcpConfigMock.mockReturnValue({
 		item: ref(itemAvailable ? makeItem(status, connectionTimeoutMs) : null),
@@ -111,7 +122,11 @@ function mountForm({
 	const data: AgentRegistryMcpModalData = {
 		kind: 'registryMcpServer',
 		projectId: 'project-1',
+		approvalContext: withApprovalContext
+			? { getConfig: () => null, saveConfiguration: vi.fn() }
+			: undefined,
 		mcpServer: {
+			approvalRoute,
 			name: 'github',
 			authentication: 'githubMcpOAuth2Api',
 			credential: 'credential-1',
@@ -127,11 +142,16 @@ function mountForm({
 		props: { data },
 		global: {
 			stubs: {
+				AgentApprovalRouteSelect: {
+					props: { embedded: Boolean, modelValue: Object, disabled: Boolean },
+					template: '<div data-testid="approval-setting"></div>',
+				},
 				McpConnectionStatusCallout: true,
 				McpDetailBody: true,
 				McpToolPermissionsEditor: {
 					props: ['modelValue', 'status'],
-					template: '<div data-testid="permissions-editor" :data-status="status" />',
+					template:
+						'<div data-testid="permissions-editor" :data-status="status"><slot name="after-permissions" :disabled="status !== \'connected\'" /></div>',
 				},
 			},
 		},
@@ -183,6 +203,25 @@ describe('AgentRegistryMcpConfigForm', () => {
 		});
 	});
 
+	it('keeps approval destinations grouped with MCP permissions even when no tools ask first', async () => {
+		const wrapper = mountForm({ withApprovalContext: true });
+		const fields = wrapper.findAll('[data-testid]').map((field) => field.attributes('data-testid'));
+		expect(fields.indexOf('approval-setting')).toBeGreaterThan(
+			fields.indexOf('permissions-editor'),
+		);
+		expect(fields.indexOf('approval-setting')).toBeLessThan(
+			fields.indexOf('agent-mcp-connection-timeout'),
+		);
+		const route = wrapper.getComponent(AgentApprovalRouteSelect);
+		expect(route.props('embedded')).toBe(true);
+		expect(route.props('modelValue')).toBeUndefined();
+		wrapper.getComponent(McpToolPermissionsEditor).vm.$emit('update:modelValue', {
+			categories: { read: 'always_allow', write: 'always_allow' },
+		});
+		await wrapper.vm.$nextTick();
+		expect(wrapper.findComponent(AgentApprovalRouteSelect).exists()).toBe(true);
+	});
+
 	it('converts an existing millisecond timeout to seconds', () => {
 		const wrapper = mountForm({ connectionTimeoutMs: 45_000 });
 
@@ -194,10 +233,23 @@ describe('AgentRegistryMcpConfigForm', () => {
 		await timeoutInput(wrapper).setValue('90');
 
 		expect(confirm(wrapper)).toBe(true);
-		expect(saveMock).toHaveBeenCalledWith({
-			...permissions,
-			connectionTimeoutMs: 90_000,
-		});
+		expect(saveMock).toHaveBeenCalledWith(
+			{
+				...permissions,
+				connectionTimeoutMs: 90_000,
+			},
+			undefined,
+		);
+	});
+
+	it('preserves the server approval destination when saving settings', () => {
+		const approvalRoute: AgentApprovalRoute = {
+			type: 'configuration',
+			configurationIds: ['review'],
+		};
+		const wrapper = mountForm({ approvalRoute });
+		expect(confirm(wrapper)).toBe(true);
+		expect(saveMock).toHaveBeenCalledWith(expect.anything(), approvalRoute);
 	});
 
 	it.each(['', '0', '121', '1.5'])('rejects invalid timeout value %j', async (value) => {
@@ -218,10 +270,11 @@ describe('AgentRegistryMcpConfigForm', () => {
 		);
 	});
 
-	it('disables only the timeout input while the connection is unhealthy', () => {
-		const wrapper = mountForm({ status: 'disconnected' });
+	it('disables timeout and approval settings while the connection is unhealthy', () => {
+		const wrapper = mountForm({ status: 'disconnected', withApprovalContext: true });
 
 		expect(timeoutInput(wrapper).element).toBeDisabled();
+		expect(wrapper.getComponent(AgentApprovalRouteSelect).props('disabled')).toBe(true);
 		expect(wrapper.text()).toContain('agents.toolConfig.mcp.timeout.label');
 		expect(wrapper.text()).toContain('agents.toolConfig.mcp.timeout.help');
 	});

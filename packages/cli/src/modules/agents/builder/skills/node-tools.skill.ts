@@ -117,6 +117,8 @@ through \`$json\`; use \`$fromAI\` for those fields instead.
 - Node tools execute inline, so never use waiting operations such as \`sendAndWait\`
   or \`dispatchAndWait\`. When the user requests human approval, configure the
   intended non-waiting operation and set \`requireApproval: true\` on the tool.
+  Load \`agent-builder-human-review\` to choose and configure its reviewers.
+  Put waiting review steps in a review workflow, not in the tool itself.
 
 ## Verify
 
