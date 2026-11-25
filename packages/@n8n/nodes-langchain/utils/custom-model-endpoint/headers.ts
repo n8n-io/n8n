@@ -33,10 +33,10 @@ function getLoginHeader(login: LoginMethod): Record<string, string> {
 }
 
 /**
- * A switch, so a login added later stops compiling here rather than leaking quietly. The
+ * A switch, so a login added later stops compiling here rather than passing quietly. The
  * built header goes in beside the raw value, because a gateway can echo either one, but
  * only when the value is there: with the field blank the header is the bare scheme word,
- * and redacting `Bearer ` takes it out of the gateway's own advice.
+ * and filtering `Bearer ` would take it out of the gateway's own advice.
  */
 function loginSecrets(login: LoginMethod): string[] {
 	const sent = () => Object.values(getLoginHeader(login));

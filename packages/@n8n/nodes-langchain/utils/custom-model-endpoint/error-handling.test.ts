@@ -200,7 +200,7 @@ describe('a gateway that repeats what it was sent', () => {
 	const bodyFrom = async (
 		endpoint: EndpointCredential,
 		body: string,
-		secretHeaders?: Record<string, string>,
+		userHeaders?: Record<string, string>,
 	) => {
 		const authFetch = createCustomModelEndpointAuthFetch(
 			ctx,
@@ -209,8 +209,7 @@ describe('a gateway that repeats what it was sent', () => {
 				endpoint,
 				egressFilter: allowAll,
 				baseFetch: routed(body),
-				requestHeaders: secretHeaders,
-				secretHeaders,
+				userHeaders,
 			},
 		);
 		return await (await authFetch(BASE_URL)).text();
@@ -301,7 +300,7 @@ describe('a gateway that repeats what it was sent', () => {
 				endpoint,
 				egressFilter: allowAll,
 				baseFetch: routed(body),
-				requestHeaders: { 'x-n8n-execution-id': '1234', 'x-n8n-workflow-name': 'My Workflow' },
+				contextHeaders: { 'x-n8n-execution-id': '1234', 'x-n8n-workflow-name': 'My Workflow' },
 			},
 		);
 
@@ -627,6 +626,15 @@ describe('every shape a gateway can answer with', () => {
 	const KEY = 'ollama';
 	const secrets = [KEY, `Bearer ${KEY}`];
 
+	const throughWith = async (body: string, list: string[], contentType = 'text/event-stream') => {
+		const baseFetch = (async () =>
+			new Response(body, {
+				status: 200,
+				headers: { 'content-type': contentType },
+			})) as typeof fetch;
+		return await (await wrapCustomModelEndpointErrorFetch(baseFetch, list)(BASE_URL)).text();
+	};
+
 	const through = async (body: string, status: number, contentType: string) => {
 		const baseFetch = (async () =>
 			new Response(body, { status, headers: { 'content-type': contentType } })) as typeof fetch;
@@ -804,6 +812,71 @@ describe('every shape a gateway can answer with', () => {
 		expect(surfaced).not.toContain(KEY);
 	});
 
+	/** One chunk in, so the size-bound cut lands at a position the test can place a value on. */
+	const firstRelease = async (body: string, list: string[]) => {
+		const stream = new ReadableStream<Uint8Array>({
+			start(controller) {
+				controller.enqueue(new TextEncoder().encode(body));
+				controller.close();
+			},
+		});
+		const baseFetch = (async () =>
+			new Response(stream, {
+				status: 200,
+				headers: { 'content-type': 'text/event-stream' },
+			})) as typeof fetch;
+
+		const response = await wrapCustomModelEndpointErrorFetch(baseFetch, list)(BASE_URL);
+		const reader = (response.body as ReadableStream<Uint8Array>).getReader();
+		const { value } = await reader.read();
+		await reader.cancel();
+		return new TextDecoder().decode(value);
+	};
+
+	// Cutting first and filtering the parts would leave the head of the value in the first
+	// release and its tail in the next, with neither part holding it whole
+	it('loses a credential that spans the size-bound release', async () => {
+		const token = 'Qz7Lm2Rt9Bv4';
+		const filler = 'x'.repeat(MAX_CARRIED + 1024);
+		// The cut sits at `length - (token.length - 1)`, so this puts half the token past it
+		const at = filler.length - (token.length - 1) - token.length / 2;
+		const body = filler.slice(0, at) + token + filler.slice(at + token.length);
+
+		const released = await firstRelease(body, [token]);
+
+		expect(released.length).toBeGreaterThan(0);
+		expect(released).not.toContain(token.slice(0, token.length / 2));
+	}, 20000);
+
+	/**
+	 * A body with no boundary holds in the buffer, and searching the buffer again for each
+	 * chunk would read the whole stream once per chunk. The same 2 MiB takes about 20 ms
+	 * when only the new text is read and about 7 s when the buffer is, so the bound below
+	 * is wide enough for a loaded machine and still well under the cost it guards.
+	 */
+	it('reads a body that never ends a frame once, not once for each chunk', async () => {
+		const chunkSize = 64;
+		const chunks = (2 * 1024 * 1024) / chunkSize;
+		const stream = new ReadableStream<Uint8Array>({
+			start(controller) {
+				const encoder = new TextEncoder();
+				const chunk = encoder.encode('x'.repeat(chunkSize));
+				for (let sent = 0; sent < chunks; sent++) controller.enqueue(chunk);
+				controller.close();
+			},
+		});
+		const baseFetch = (async () =>
+			new Response(stream, {
+				status: 200,
+				headers: { 'content-type': 'text/event-stream' },
+			})) as typeof fetch;
+
+		const started = performance.now();
+		await (await wrapCustomModelEndpointErrorFetch(baseFetch, [KEY])(BASE_URL)).text();
+
+		expect(performance.now() - started).toBeLessThan(2_000);
+	}, 60000);
+
 	// The size-bound cut must not land between the halves of an astral character
 	it('keeps an astral character whole across the size-bound release', async () => {
 		const overlap = KEY.length - 1;
@@ -822,6 +895,36 @@ describe('every shape a gateway can answer with', () => {
 		expect(surfaced).toContain('\u{1F600}');
 		expect(surfaced).not.toContain('\uFFFD');
 	}, 20000);
+
+	// A short header value is on the list like any other, and the bytes around the decoded
+	// text of a frame are JSON syntax and numbers
+	it('leaves the numbers of a filtered frame alone when a listed value is one digit', async () => {
+		const frame = 'data: {"error":{"message":"too fast"},"retry_after":11}\n\n';
+
+		const surfaced = await throughWith(frame, ['1']);
+
+		expect(surfaced).toBe(frame);
+		expect(JSON.parse(surfaced.slice('data: '.length))).toMatchObject({ retry_after: 11 });
+	});
+
+	// The client asks for this frame by default, and it carries no choices, so the rule
+	// that an empty choices list is not an answer would send it through the filter
+	it('leaves the closing usage frame of a stream alone', async () => {
+		const frame = 'data: {"choices":[],"usage":{"total_tokens":21},"model":"gpt-4.1"}\n\n';
+
+		expect(await throughWith(frame, ['1'])).toBe(frame);
+	});
+
+	// A listed value is free to be a word of the protocol, and rewriting the prefix would
+	// leave the client a frame it cannot read
+	it('keeps the frame prefix when a listed value is the word data', async () => {
+		const frame = `data: {"error":{"message":"bad key ${KEY}"}}\n\n`;
+
+		const surfaced = await throughWith(frame, ['data', KEY]);
+
+		expect(surfaced.startsWith('data: ')).toBe(true);
+		expect(surfaced).not.toContain(KEY);
+	});
 
 	// Replacing the shorter one first would leave the longer one's tail in the clear
 	it('loses a secret that another secret is a prefix of', async () => {

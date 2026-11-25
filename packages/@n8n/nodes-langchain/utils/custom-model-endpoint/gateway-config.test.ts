@@ -292,8 +292,7 @@ describe('createCustomModelEndpointConfig', () => {
 			headers: { 'content-type': 'application/json' },
 		});
 		const { configuration } = withKey({
-			requestHeaders: { 'x-api-key': typed },
-			secretHeaders: { 'x-api-key': typed },
+			userHeaders: { 'x-api-key': typed },
 		});
 
 		const response = await configuration.fetch!('https://gateway.example.com/v1/chat/completions');
@@ -304,7 +303,7 @@ describe('createCustomModelEndpointConfig', () => {
 	it('carries the login, the per-request headers and the timeout to the wire', async () => {
 		const { configuration } = withKey({
 			timeout: 1_500,
-			requestHeaders: { 'x-n8n-workflow-id': 'wf-1' },
+			contextHeaders: { 'x-n8n-workflow-id': 'wf-1' },
 		});
 
 		await configuration.fetch?.('https://gateway.example.com/v1/chat/completions');

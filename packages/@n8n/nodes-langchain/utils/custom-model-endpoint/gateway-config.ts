@@ -77,9 +77,10 @@ export function createCustomModelEndpointConfig(
 	options: {
 		credentialType: AcceptedCredential;
 		timeout?: number;
-		requestHeaders?: Record<string, string>;
-		/** The subset of `requestHeaders` the user typed, which can hold a key. */
-		secretHeaders?: Record<string, string>;
+		/** n8n's own context headers, which name the workflow and the execution. */
+		contextHeaders?: Record<string, string>;
+		/** The headers the user typed on the node, any of which can hold a key. */
+		userHeaders?: Record<string, string>;
 	},
 ): { configuration: ClientOptions; endpoint: EndpointCredential } {
 	const endpoint = readEndpointCredential(options.credentialType, credential);
@@ -90,8 +91,8 @@ export function createCustomModelEndpointConfig(
 		endpoint,
 		egressFilter,
 		baseFetch: createEndpointBaseFetch(egressFilter, options.timeout),
-		requestHeaders: options.requestHeaders,
-		secretHeaders: options.secretHeaders,
+		contextHeaders: options.contextHeaders,
+		userHeaders: options.userHeaders,
 	});
 
 	return {

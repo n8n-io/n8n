@@ -61,16 +61,18 @@ export function createCustomModelEndpointAuthFetch(
 		endpoint: EndpointCredential;
 		egressFilter: NodeEgressFilter;
 		baseFetch: typeof fetch;
-		requestHeaders?: Record<string, string>;
 		/**
-		 * The subset of `requestHeaders` the user typed. n8n's own context headers carry the
-		 * workflow name and the execution id, which are not secrets and would be cut out of
-		 * any error that names them.
+		 * n8n's own context headers carry the workflow name and the execution id. They are
+		 * not secrets, and filtering them would cut the names out of any error that uses them.
 		 */
-		secretHeaders?: Record<string, string>;
+		contextHeaders?: Record<string, string>;
+		/** The headers the user typed on the node, any of which can hold a key. */
+		userHeaders?: Record<string, string>;
 	},
 ): typeof fetch {
-	const { endpoint, egressFilter, baseFetch, requestHeaders } = options;
+	const { endpoint, egressFilter, baseFetch, contextHeaders = {}, userHeaders = {} } = options;
+	// Built here from the one list, so a header cannot be sent without also being filtered
+	const requestHeaders = { ...contextHeaders, ...userHeaders };
 	const node = ctx.getNode();
 	const allowedDomains = getCredentialAllowedDomains({
 		node,
@@ -104,7 +106,7 @@ export function createCustomModelEndpointAuthFetch(
 	const authFetch = createRefreshingAuthFetch({
 		baseFetch: wrapCustomModelEndpointErrorFetch(baseFetch, [
 			...credentialSecrets(endpoint),
-			...Object.values(options.secretHeaders ?? {})
+			...Object.values(userHeaders)
 				.map(asSent)
 				.filter((value) => value.length > 0),
 		]),

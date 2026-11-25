@@ -1,6 +1,8 @@
 import { redactSecrets } from '@n8n/ai-utilities';
 import { isRecord } from '@n8n/utils/is-record';
 
+import { modelIdsIn } from './model-list';
+
 const MAX_MESSAGE_LENGTH = 500;
 const UNPARSED = Symbol('unparsed');
 
@@ -127,9 +129,13 @@ const EVENT_BOUNDARY = /\r\n\r\n|\n\n|\r\r/g;
 export const MAX_CARRIED = 4 * 1024 * 1024;
 
 /**
- * A refusal filtered in place, with the escaped spellings covered. `\u006f` in a JSON
- * string is the credential once the client parses it, so every string in the body is
- * filtered after decoding and the body is rebuilt only when that changed something.
+ * Filters the decoded text of a refusal as well as the bytes. `\u006f` in a JSON string is
+ * the credential once the client parses it, so every name and every string in the body is
+ * filtered after decoding, and the body is rebuilt only when that changed something.
+ *
+ * A body that parses is returned as it arrived when nothing changed. The bytes around the
+ * decoded text are JSON syntax and numbers, and a listed value that is also an ordinary
+ * run of digits would rewrite those and leave a body the client can no longer parse.
  * A body that does not parse falls back to the bytes, which is all there is to work with.
  */
 function withoutSecretsInJson(raw: string, secrets: string[]): string {
@@ -137,35 +143,21 @@ function withoutSecretsInJson(raw: string, secrets: string[]): string {
 	if (parsed === UNPARSED) return withoutKnownSecrets(raw, secrets);
 
 	let changed = false;
+	const filter = (text: string) => {
+		const safe = withoutKnownSecrets(text, secrets);
+		changed ||= safe !== text;
+		return safe;
+	};
 	const walk = (value: unknown): unknown => {
-		if (typeof value === 'string') {
-			const safe = withoutKnownSecrets(value, secrets);
-			changed ||= safe !== value;
-			return safe;
-		}
+		if (typeof value === 'string') return filter(value);
 		if (Array.isArray(value)) return value.map(walk);
 		if (isRecord(value))
-			return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, walk(v)]));
+			return Object.fromEntries(Object.entries(value).map(([k, v]) => [filter(k), walk(v)]));
 		return value;
 	};
 
 	const filtered = walk(parsed);
-	return changed ? JSON.stringify(filtered) : withoutKnownSecrets(raw, secrets);
-}
-
-/** What `modelIdsIn` in `models.ts` accepts: an empty list, or entries that name a model. */
-function isModelList(value: unknown): boolean {
-	if (!Array.isArray(value)) return false;
-	// `idOf` drops a blank id, and a non-empty list that names nothing is a shape
-	// `modelIdsIn` rejects, so a blank one does not make this a list either.
-	const names = (entry: unknown) =>
-		typeof entry === 'string'
-			? entry
-			: isRecord(entry) && typeof entry.id === 'string'
-				? entry.id
-				: '';
-
-	return value.length === 0 || value.some((entry) => names(entry).length > 0);
+	return changed ? JSON.stringify(filtered) : raw;
 }
 
 /**
@@ -186,9 +178,10 @@ function isAnswer(parsed: unknown): boolean {
 	if (isRecord(parsed.response) && parsed.response.error) return false;
 
 	return (
-		// No choices is what the client reports as an empty answer, so it is not one
-		(Array.isArray(parsed.choices) && parsed.choices.length > 0) ||
-		isModelList(parsed.data) ||
+		// No choices is what the client reports as an empty answer, so it is not one,
+		// except in the closing usage frame, which the client asks for by default
+		(Array.isArray(parsed.choices) && (parsed.choices.length > 0 || isRecord(parsed.usage))) ||
+		modelIdsIn(parsed) !== undefined ||
 		parsed.object === 'response' ||
 		Array.isArray(parsed.output) ||
 		(typeof parsed.type === 'string' && parsed.type.startsWith('response.'))
@@ -219,13 +212,11 @@ function endOfLastFrame(text: string): number {
 }
 
 /**
- * The bytes always, and the decoded payload on top when it can be put back. A payload
- * carried over several `data:` lines is joined from them, so it is not a substring of the
- * frame and the splice finds nothing; such a frame keeps the byte pass alone, which means
- * an escaped spelling inside one is the case this does not reach.
+ * Filters the payload of a frame and leaves the `data:` prefix and the other protocol
+ * lines as they arrived, so a listed value that is also an ordinary word cannot rewrite
+ * the framing itself.
  */
 function withoutSecretsInFrame(frame: string, secrets: string[]): string {
-	const filtered = withoutKnownSecrets(frame, secrets);
 	const data = frameData(frame);
 	// A gateway that frames nothing still sends a body, and it reaches here rather than the
 	// branch below, so it takes the same decoded filter that branch uses. The boundary is
@@ -238,10 +229,17 @@ function withoutSecretsInFrame(frame: string, secrets: string[]): string {
 	}
 
 	const safe = withoutSecretsInJson(data, secrets);
-	return safe === data ? filtered : withoutKnownSecrets(frame.split(data).join(safe), secrets);
+	if (safe === data) return frame;
+
+	const spliced = frame.split(data).join(safe);
+	// A payload carried over several `data:` lines is joined from them, so it is not a
+	// substring of the frame and the splice finds nothing. The bytes are then the only
+	// way to reach it.
+	return spliced === frame ? withoutKnownSecrets(frame, secrets) : spliced;
 }
 
 const ENDS_A_FRAME = /(?:\r\n\r\n|\n\n|\r\r)$/;
+const LONGEST_BOUNDARY = '\r\n\r\n'.length;
 
 /** Splits on the boundary and keeps it, so the bytes out are the bytes in. */
 function framesOf(text: string): string[] {
@@ -280,39 +278,55 @@ function withoutSecretsInStream(
 		return leadsAPair ? at - 1 : at;
 	};
 	let carried = '';
+	/** The tail of `carried`, so a boundary split across two chunks is still found. */
+	let seam = '';
+	const tailOf = (text: string) => text.slice(-(LONGEST_BOUNDARY - 1));
 
-	/**
-	 * A whole frame can be read, so an answer passes through untouched. A release forced by
-	 * the size bound is an arbitrary slice of one, which cannot be read, so it is filtered.
-	 */
-	const emit = (
-		text: string,
-		controller: TransformStreamDefaultController<Uint8Array>,
-		readable: boolean,
-	) => {
-		const safe = readable && isAnswerText(text) ? text : withoutSecretsInFrame(text, secrets);
+	/** A whole frame can be read, so an answer passes through untouched. */
+	const emit = (text: string, controller: TransformStreamDefaultController<Uint8Array>) => {
+		const safe = isAnswerText(text) ? text : withoutSecretsInFrame(text, secrets);
 		controller.enqueue(encoder.encode(safe));
 	};
 
 	return body.pipeThrough(
 		new TransformStream<Uint8Array, Uint8Array>({
 			transform(chunk, controller) {
-				carried += decoder.decode(chunk, { stream: true });
+				const text = decoder.decode(chunk, { stream: true });
+				if (text.length === 0) return;
 
-				const frameEnd = endOfLastFrame(carried);
-				const release =
-					frameEnd !== -1 ? frameEnd : carried.length > MAX_CARRIED ? safeCut(carried) : -1;
-				if (release <= 0) return;
+				// Only the new text and the seam before it are read. `carried` holds no boundary,
+				// because every one found releases the text up to it, so searching it again would
+				// cost one pass over the whole stream for each chunk and find nothing.
+				const searched = seam + text;
+				const found = endOfLastFrame(searched);
+				const frameEnd = found === -1 ? -1 : carried.length - seam.length + found;
 
-				const complete = carried.slice(0, release);
-				carried = carried.slice(release);
+				carried += text;
+				seam = tailOf(searched);
 
-				if (frameEnd === -1) return emit(complete, controller, false);
-				for (const frame of framesOf(complete)) emit(frame, controller, true);
+				if (frameEnd === -1) {
+					if (carried.length <= MAX_CARRIED) return;
+
+					// Filtered whole and cut afterwards, so a value that spans the cut is already
+					// replaced. Only a value that runs on into the next chunk waits in the tail.
+					const safe = withoutSecretsInFrame(carried, secrets);
+					const at = safeCut(safe);
+					if (at <= 0) return;
+
+					controller.enqueue(encoder.encode(safe.slice(0, at)));
+					carried = safe.slice(at);
+					seam = tailOf(carried);
+					return;
+				}
+
+				const complete = carried.slice(0, frameEnd);
+				carried = carried.slice(frameEnd);
+				seam = tailOf(carried);
+				for (const frame of framesOf(complete)) emit(frame, controller);
 			},
 			flush(controller) {
 				carried += decoder.decode();
-				if (carried.length > 0) emit(carried, controller, true);
+				if (carried.length > 0) emit(carried, controller);
 			},
 		}),
 	);
@@ -351,10 +365,9 @@ function withoutContentLength(response: Response): Headers {
 }
 
 /**
- * Every reader decodes before it displays, so the decoded text is filtered as well as the
- * bytes: a credential spelled `\u0073k-…` or `&#115;k-…` would otherwise be rebuilt in
- * cleartext downstream. The body is rewritten only when a filter changed something, so an
- * untouched error reaches the client exactly as the gateway sent it.
+ * Filters the decoded text as well as the bytes, because every reader decodes before it
+ * displays. The body is rewritten only when a filter changed something, so an untouched
+ * error reaches the client exactly as the gateway sent it.
  */
 function filteredErrorBody(raw: string, secrets: string[]): string {
 	// Filtered before trimming, because `String.trim` also takes a no-break space, which a
