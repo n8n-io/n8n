@@ -836,6 +836,29 @@ describe('NodeSettings', () => {
 			expect(node?.parameters.mode).toBe('fast');
 		});
 
+		it('writes the default for a value that the new version does not accept', async () => {
+			const formatProperty = (options: string[]) => ({
+				displayName: 'Format',
+				name: 'format',
+				type: 'options' as const,
+				default: 'json',
+				options: options.map((value) => ({ name: value, value })),
+			});
+			const { findByTestId, workflowDocumentStore } = renderVersioned({
+				node: { ...httpNode, typeVersion: 1, parameters: { format: 'xml' } },
+				nodeTypes: [
+					versionedType(1, { properties: [formatProperty(['json', 'xml'])] }),
+					versionedType(2, { properties: [formatProperty(['json', 'text'])] }),
+				],
+			});
+
+			await fireEvent.click(await findByTestId('node-version-select'));
+
+			const node = workflowDocumentStore.getNodeByName(httpNode.name);
+			expect(node?.typeVersion).toBe(2);
+			expect(node?.parameters).toEqual({ format: 'json' });
+		});
+
 		describe('after the user confirms a version', () => {
 			const renderAndUpdate = async () => {
 				const rendered = renderVersioned();
