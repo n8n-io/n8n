@@ -11,7 +11,11 @@ import { Service } from '@n8n/di';
 
 import { CallableWorkflowRunner } from '@/workflows/callable/callable-workflow-runner.service';
 
-/** Each check loads the published version, so the picker checks a few workflows at a time. */
+/**
+ * Each check loads the published version, so the picker checks a few workflows at a time.
+ * Limit: each open of the picker checks every workflow of the project, so the cost grows with
+ * the project size. A paged, searchable candidate list is a follow-up.
+ */
 const LIST_CHECK_BATCH_SIZE = 10;
 
 /** Workflow tools of custom MCP servers. They run through the shared runner, as the server's project. */
