@@ -44,6 +44,9 @@ export class AgentRequirementsExtractor {
 			}),
 		);
 		for (const id of extractGuardrailCheckWorkflowIds(config)) workflowIds.add(id);
+		for (const interaction of config?.hitlConfigurations ?? []) {
+			if (interaction.method === 'workflow') workflowIds.add(interaction.workflowId);
+		}
 		for (const node of nodes) {
 			const id = getStaticSubworkflowId(node);
 			if (id) workflowIds.add(id);

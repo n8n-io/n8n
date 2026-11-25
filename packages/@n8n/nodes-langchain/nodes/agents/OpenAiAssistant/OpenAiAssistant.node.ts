@@ -11,6 +11,7 @@ import type {
 import { aiClientFetch } from '@n8n/ai-utilities';
 import { OpenAI as OpenAIClient } from 'openai';
 
+import { createRunCancellation } from '@utils/agent-execution/createRunCancellation';
 import { getConnectedTools, mergeCustomHeaders, getRequiredApiKey } from '@utils/helpers';
 import { getTracingConfig } from '@utils/tracing';
 
@@ -395,11 +396,17 @@ export class OpenAiAssistant implements INodeType {
 					tools,
 				});
 
-				const response = await agentExecutor.withConfig(getTracingConfig(this)).invoke({
-					content: input,
-					signal: this.getExecutionCancelSignal(),
-					timeout: options.timeout ?? 10000,
-				});
+				const runCancellation = createRunCancellation(this.getExecutionCancelSignal());
+				const response = await runCancellation.abortOnFailure(
+					agentExecutor.withConfig(getTracingConfig(this)).invoke(
+						{
+							content: input,
+							signal: runCancellation.signal,
+							timeout: options.timeout ?? 10000,
+						},
+						{ signal: runCancellation.signal },
+					),
+				);
 
 				returnData.push({ json: response });
 			} catch (error) {

@@ -2,6 +2,8 @@ name: 'CI: Owners Required Reviews'
 run-name: "${{ github.event_name == 'workflow_dispatch' && format('CI: Owners Required Reviews (PR #{0})', inputs.pr_number) || '' }}"
 
 # The shared workflow uses the configured GitHub App to publish Required Reviews.
+# It also asks DevHub to post the PR review overview comment.
+# Keep the comment here: this repository runs only allowed workflows on pull_request_target.
 
 on:
   pull_request_target:
@@ -51,7 +53,7 @@ jobs:
       id-token: write
       pull-requests: read
     with:
-      ownership-comment: false
+      ownership-comment: true
       devhub-url: https://devhub.services.n8n.cloud
       pull-request-number: ${{ inputs.pr_number }}
     secrets:

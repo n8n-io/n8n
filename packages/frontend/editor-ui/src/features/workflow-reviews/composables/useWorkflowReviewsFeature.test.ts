@@ -3,8 +3,15 @@ import { createPinia, setActivePinia } from 'pinia';
 import { createMockEnterpriseSettings } from '@/__tests__/mocks';
 import { defaultSettings } from '@n8n/frontend-test-utils';
 import { EnterpriseEditionFeature } from '@/app/constants';
+import type { WorkflowReviewRequirementLevel } from '@n8n/api-types';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
+import { fetchWorkflowReviewRequests } from '@/features/workflow-reviews/workflowReviews.api';
 import { useWorkflowReviewsFeature } from './useWorkflowReviewsFeature';
+
+vi.mock('@/features/workflow-reviews/workflowReviews.api', () => ({
+	fetchWorkflowReviewRequests: vi.fn(),
+}));
 
 describe('useWorkflowReviewsFeature', () => {
 	const setGates = ({
@@ -64,32 +71,76 @@ describe('useWorkflowReviewsFeature', () => {
 		expect(isWorkflowReviewsEnabled.value).toBe(false);
 	});
 
-	it.each([
+	it.each<{
+		label: string;
+		enabled: boolean;
+		alwaysRequired?: boolean;
+		serverLevel?: WorkflowReviewRequirementLevel | null;
+		homeProject?: { type: 'team' | 'personal' };
+		expected: WorkflowReviewRequirementLevel | null;
+	}>([
 		{
-			label: 'an unknown home project with reviews on',
+			label: 'the server level over the instance rule',
 			enabled: true,
-			homeProject: undefined,
-			expected: true,
+			serverLevel: 'project',
+			homeProject: { type: 'team' },
+			expected: 'project',
 		},
 		{
-			label: 'a team project with reviews off',
+			label: 'the instance rule for a team workflow before the first fetch',
+			enabled: true,
+			homeProject: { type: 'team' },
+			expected: 'instance',
+		},
+		{
+			label: 'the instance rule for an unknown home project before the first fetch',
+			enabled: true,
+			expected: 'instance',
+		},
+		{
+			label: 'no level for a personal workflow before the first fetch',
+			enabled: true,
+			homeProject: { type: 'personal' },
+			expected: null,
+		},
+		{
+			label:
+				'no level for a team workflow before the first fetch when approval is required only when configured',
+			enabled: true,
+			alwaysRequired: false,
+			homeProject: { type: 'team' },
+			expected: null,
+		},
+		{
+			label: 'no level when workflow reviews are off',
 			enabled: false,
-			homeProject: { type: 'team' as const },
-			expected: false,
+			serverLevel: 'project',
+			homeProject: { type: 'team' },
+			expected: null,
 		},
 	])(
-		'returns $expected under an always required policy for $label',
-		({ enabled, homeProject, expected }) => {
+		'reports $label',
+		async ({ enabled, alwaysRequired = true, serverLevel, homeProject, expected }) => {
+			setGates({ licensed: true, instanceEnabled: true });
 			const settingsStore = useSettingsStore();
-			setGates({ licensed: true, instanceEnabled: enabled });
 			settingsStore.settings = {
 				...settingsStore.settings,
-				workflowReviews: { enabled, alwaysRequired: true },
+				workflowReviews: { enabled, alwaysRequired },
 			};
+			if (serverLevel !== undefined) {
+				vi.mocked(fetchWorkflowReviewRequests).mockResolvedValue({
+					count: 0,
+					data: [],
+					reviewRequiredBy: serverLevel,
+				});
+				await useWorkflowReviewStatusStore().fetchStatus('workflow-1');
+			}
 
-			const { isReviewRequiredFor } = useWorkflowReviewsFeature();
+			const { reviewRequiredBy, isReviewRequiredFor } = useWorkflowReviewsFeature();
+			const workflow = { id: 'workflow-1', homeProject };
 
-			expect(isReviewRequiredFor(homeProject)).toBe(expected);
+			expect(reviewRequiredBy(workflow)).toBe(expected);
+			expect(isReviewRequiredFor(workflow)).toBe(expected !== null);
 		},
 	);
 

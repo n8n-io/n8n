@@ -1,7 +1,10 @@
+import { isRecord } from '@n8n/utils/is-record';
 import {
 	NodeOperationError,
+	decodePathValue,
 	requestPath,
 	requestUrl,
+	sanitizeXmlName,
 	type IExecuteFunctions,
 	type IHookFunctions,
 	type IHttpRequestMethods,
@@ -9,6 +12,7 @@ import {
 	type IDataObject,
 	type RequestPath,
 } from 'n8n-workflow';
+import { parseStringPromise } from 'xml2js';
 
 export function webDavPath(path: string): RequestPath {
 	return path
@@ -18,6 +22,48 @@ export function webDavPath(path: string): RequestPath {
 				segment === '' ? requestPath`${parent}/` : requestPath`${parent}/${segment}`,
 			requestPath``,
 		);
+}
+
+const WEBDAV_ROOT = /^.*?\/remote\.php\/(?:webdav|dav\/files\/[^/]+)\//;
+
+export async function parseFolderList(xml: string): Promise<IDataObject[]> {
+	const data: unknown = await parseStringPromise(xml, {
+		explicitArray: false,
+		tagNameProcessors: [sanitizeXmlName],
+		attrNameProcessors: [sanitizeXmlName],
+	});
+
+	const propNames: Record<string, string> = {
+		'd:getlastmodified': 'lastModified',
+		'd:getcontentlength': 'contentLength',
+		'd:getcontenttype': 'contentType',
+	};
+
+	const multistatus = isRecord(data) ? data['d:multistatus'] : undefined;
+	const responses: unknown[] = isRecord(multistatus) ? [multistatus['d:response']].flat() : [];
+
+	// The first response is the listed folder itself.
+	return responses
+		.slice(1)
+		.filter(isRecord)
+		.map((response): IDataObject => {
+			const propstat = [response['d:propstat']].flat()[0];
+			const prop = isRecord(propstat) ? propstat['d:prop'] : undefined;
+			const props: Record<string, unknown> = isRecord(prop) ? prop : {};
+			const eTag = props['d:getetag'];
+
+			return {
+				// Nextcloud never encodes "/" in an href, so decoding the full path adds no separator.
+				path: decodePathValue(String(response['d:href']).replace(WEBDAV_ROOT, '')),
+				...Object.fromEntries(
+					Object.entries(propNames)
+						.filter(([propName]) => typeof props[propName] === 'string')
+						.map(([propName, key]): [string, string] => [key, String(props[propName])]),
+				),
+				type: props['d:resourcetype'] === '' ? 'file' : 'folder',
+				eTag: typeof eTag === 'string' ? eTag.slice(1, -1) : undefined,
+			};
+		});
 }
 
 /**

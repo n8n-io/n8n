@@ -227,6 +227,8 @@ export const TEST_BUTTON_PRIMARY_COLOR_EXPERIMENT = createExperiment(
 	'148_test_button_primary_color',
 );
 
+export const AGENTS_INVOCATION_STEP_EXPERIMENT = createExperiment('153_agents_invocation_step');
+
 export const AGENT_BUILDER_EXPERIMENT_COHORT = createExperiment(
 	'133_agent_builder_experiment_cohort',
 	{
@@ -307,4 +309,5 @@ export const EXPERIMENTS_TO_TRACK = [
 	AGENTS_N8N_CHAT_EXPERIMENT.name,
 	QUICKJS_EXPRESSION_SHADOW_EXPERIMENT.name,
 	TEST_BUTTON_PRIMARY_COLOR_EXPERIMENT.name,
+	AGENTS_INVOCATION_STEP_EXPERIMENT.name,
 ];
