@@ -1,5 +1,6 @@
 import { MAX_APPROVAL_FILE_NAMES } from '@n8n/api-types';
 import type { IBinaryData, IBinaryKeyData } from 'n8n-workflow';
+import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
 
@@ -17,6 +18,22 @@ export function workflowFilesOf(context: InstanceAiContext) {
 
 export type WorkflowFiles = NonNullable<ReturnType<typeof workflowFilesOf>>;
 
+/** The `files` field of an input item, for tools that give items to a run. */
+export const inputItemFilesSchema = z
+	.record(z.string(), z.string())
+	.optional()
+	.describe(
+		'Files of this conversation to give this item as binary data. ' +
+			'Key = binary property name (usually "data"), value = fileId, such as the fileId of a user upload, ' +
+			'of a file from `share-files`, or of a file that a run returned.',
+	);
+
+/**
+ * The binary data entries of files that one call already read, by fileId. An
+ * entry is a reference to the stored bytes, never the bytes, so it stays small.
+ */
+type ReadFiles = Map<string, IBinaryData | undefined>;
+
 /**
  * Resolve `files` (binary property name to fileId) to binary data entries.
  * Gives an error message for a fileId that the conversation does not have.
@@ -24,17 +41,45 @@ export type WorkflowFiles = NonNullable<ReturnType<typeof workflowFilesOf>>;
 export async function readInputFiles(
 	workflowFiles: WorkflowFiles,
 	files: Record<string, string> | undefined,
+	readFiles: ReadFiles = new Map(),
 ): Promise<{ binary?: IBinaryKeyData; error?: string }> {
 	if (!files || Object.keys(files).length === 0) return {};
 	const entries = new Map<string, IBinaryData>();
 	for (const [key, fileId] of Object.entries(files)) {
-		const entry = await workflowFiles.readBinary(fileId);
+		if (!readFiles.has(fileId)) readFiles.set(fileId, await workflowFiles.readBinary(fileId));
+		const entry = readFiles.get(fileId);
 		if (!entry) return { error: `File "${fileId}" not found in this conversation` };
-		entries.set(key, entry);
+		// A copy for each item, so a node that changes one entry does not change the others.
+		entries.set(key, { ...entry });
 	}
 	// A plain object would take a `__proto__` key as its prototype. `fromEntries` defines
 	// own properties only, so no key from the model can change a prototype.
 	return { binary: Object.fromEntries(entries) };
+}
+
+export interface InputItem {
+	json: Record<string, unknown>;
+	binary?: IBinaryKeyData;
+}
+
+/**
+ * Resolve the `files` of each input item to binary data. Reads each fileId one
+ * time, however many items use it. `fileIds` lists the files that the items got.
+ */
+export async function readItemFiles(
+	workflowFiles: WorkflowFiles | undefined,
+	items: Array<{ json: Record<string, unknown>; files?: Record<string, string> }>,
+): Promise<{ items: InputItem[]; fileIds: string[]; error?: undefined } | { error: string }> {
+	const readFiles: ReadFiles = new Map();
+	const result: InputItem[] = [];
+	for (const { json, files } of items) {
+		const { binary, error } = workflowFiles
+			? await readInputFiles(workflowFiles, files, readFiles)
+			: {};
+		if (error) return { error };
+		result.push(binary ? { json, binary } : { json });
+	}
+	return { items: result, fileIds: [...readFiles.keys()] };
 }
 
 /**

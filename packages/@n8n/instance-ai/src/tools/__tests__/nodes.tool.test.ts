@@ -1174,6 +1174,60 @@ describe('nodes tools', () => {
 				expect(suspendFn.mock.calls[0][0].message).toMatch(/ with the file a\.png$/);
 			});
 
+			it('reads a file that several items get one time, and names it one time', async () => {
+				const { context, storedFiles } = contextWithFiles();
+				const suspendFn = vi.fn();
+
+				await executeTool(
+					createExecuteNodeTool(context),
+					{
+						...executeInput,
+						input: [
+							{ json: {}, files: { data: 'file-1' } },
+							{ json: {}, files: { data: 'file-1', copy: 'file-1' } },
+						],
+					} as never,
+					{ suspend: suspendFn } as never,
+				);
+
+				expect(storedFiles.readBinary).toHaveBeenCalledTimes(1);
+				expect(suspendFn.mock.calls[0][0].message).toMatch(/ with the file a\.png$/);
+			});
+
+			it('gives each item its own copy of a file entry', async () => {
+				const { context, executeNodeService } = contextWithFiles();
+
+				await executeTool(
+					createExecuteNodeTool(context),
+					{
+						...executeInput,
+						input: [
+							{ json: {}, files: { data: 'file-1' } },
+							{ json: {}, files: { data: 'file-1' } },
+						],
+					} as never,
+					{ resumeData: { approved: true } } as never,
+				);
+
+				const [first, second] = executeNodeService.execute.mock.calls[0][0].input;
+				expect(first.binary.data).toEqual(pngBinary);
+				expect(first.binary.data).not.toBe(second.binary.data);
+			});
+
+			it('does not read the files when the user denied the run', async () => {
+				const { context, storedFiles, executeNodeService } = contextWithFiles();
+
+				const result = await executeTool(
+					createExecuteNodeTool(context),
+					{ ...executeInput, input: [{ json: {}, files: { data: 'other' } }] } as never,
+					{ resumeData: { approved: false } } as never,
+				);
+
+				expect(result).toEqual({ status: 'error', denied: true, reason: 'User denied the action' });
+				expect(storedFiles.readBinary).not.toHaveBeenCalled();
+				expect(executeNodeService.execute).not.toHaveBeenCalled();
+			});
+
 			it('stores no output files without storeFiles', async () => {
 				const { context, executeNodeService } = contextWithFiles();
 

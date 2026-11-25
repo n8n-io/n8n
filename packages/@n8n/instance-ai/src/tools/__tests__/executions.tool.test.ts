@@ -1319,6 +1319,20 @@ describe('execution tools', () => {
 			);
 		});
 
+		it('does not read the files when the user denied the run', async () => {
+			const { context, storedFiles } = contextWithFiles();
+
+			const result = await executeTool(
+				createExecutionToolRouter(context),
+				{ action: 'run' as const, workflowId: 'wf-1', files: { data: 'other' } },
+				createAgentCtx({ resumeData: { approved: false } }) as never,
+			);
+
+			expect(result).toMatchObject({ status: 'error', denied: true });
+			expect(storedFiles.readBinary).not.toHaveBeenCalled();
+			expect(context.executionService.run).not.toHaveBeenCalled();
+		});
+
 		it('does not ask for approval or run the workflow with a file that the conversation does not have', async () => {
 			const { context } = contextWithFiles();
 			const suspend = vi.fn();

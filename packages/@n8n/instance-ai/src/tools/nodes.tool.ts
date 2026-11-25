@@ -22,7 +22,6 @@ import {
 } from '@n8n/api-types';
 import { validateNodeConfig } from '@n8n/workflow-sdk';
 import { isToolType } from 'n8n-workflow';
-import type { IBinaryKeyData } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -32,7 +31,12 @@ import type { ExploreResourcesParams, InstanceAiContext, NodeDescription } from 
 import { needsModelSelection } from './nodes/model-selection';
 import { pickPreferredChatModelNode } from './nodes/preferred-chat-model';
 import { addSetupPreference, type NodeWithSetupPreference } from './nodes/setup-preference';
-import { describeInputFiles, readInputFiles, workflowFilesOf } from './shared/workflow-files';
+import {
+	describeInputFiles,
+	inputItemFilesSchema,
+	readItemFiles,
+	workflowFilesOf,
+} from './shared/workflow-files';
 import { buildCredentialMap } from './workflows/resolve-credentials';
 import { DOMAIN_TOOL_IDS } from './tool-ids';
 
@@ -125,14 +129,7 @@ const executeNodeFileFieldsShape = {
 		.array(
 			z.object({
 				json: z.record(z.unknown()),
-				files: z
-					.record(z.string(), z.string())
-					.optional()
-					.describe(
-						'Files of this conversation to give this item as binary data. ' +
-							'Key = binary property name (usually "data"), value = fileId, such as the fileId of a user upload, ' +
-							'of a file from `share-files`, or of a file that a run returned.',
-					),
+				files: inputItemFilesSchema,
 			}),
 		)
 		.optional()
@@ -520,19 +517,15 @@ async function handleExecute(
 		};
 	}
 
+	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
+		return { status: 'error' as const, denied: true, reason: 'User denied the action' };
+	}
+
 	// Read the files before the approval, so a missing file fails early and the prompt can name them.
 	const workflowFiles = workflowFilesOf(context);
-	let items: Array<{ json: Record<string, unknown>; binary?: IBinaryKeyData }> | undefined;
-	const inputFileIds: string[] = [];
-	if (input.input) {
-		items = [];
-		for (const { json, files } of input.input) {
-			const { binary, error } = workflowFiles ? await readInputFiles(workflowFiles, files) : {};
-			if (error) return { status: 'error' as const, error: { message: error } };
-			if (binary && files) inputFileIds.push(...Object.values(files));
-			items.push(binary ? { json, binary } : { json });
-		}
-	}
+	const read = input.input ? await readItemFiles(workflowFiles, input.input) : undefined;
+	if (read?.error !== undefined)
+		return { status: 'error' as const, error: { message: read.error } };
 
 	const grantKey = buildExecuteNodeSessionGrantKey(input.type, input.config.parameters);
 	const allowedByScope = context.permissions?.executeNode === 'always_allow';
@@ -545,13 +538,9 @@ async function handleExecute(
 		return await suspend({
 			requestId: nanoid(),
 			...labels,
-			message: labels.message + describeInputFiles((items ?? []).map((item) => item.binary)),
+			message: labels.message + describeInputFiles((read?.items ?? []).map((item) => item.binary)),
 			severity: 'warning' as const,
 		});
-	}
-
-	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
-		return { status: 'error' as const, denied: true, reason: 'User denied the action' };
 	}
 
 	if (resumeData?.approved && resumeData.scope === 'session' && grantKey !== null) {
@@ -562,9 +551,9 @@ async function handleExecute(
 		type: input.type,
 		version: input.version,
 		config: input.config,
-		input: items,
+		input: read?.items,
 		...(workflowFiles && input.storeFiles
-			? { storeOutputFile: workflowFiles.storeWorkflowFile, inputFileIds }
+			? { storeOutputFile: workflowFiles.storeWorkflowFile, inputFileIds: read?.fileIds ?? [] }
 			: {}),
 		timeoutMs: input.timeoutMs,
 	});
