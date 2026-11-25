@@ -4,6 +4,7 @@ import {
 	linkUserToProject,
 	testDb,
 } from '@n8n/backend-test-utils';
+import { ExecutionsConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
 import type { User, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -54,6 +55,7 @@ const getExecution = async (user: User, includeData: boolean) =>
 		Container.get(WorkflowFinderService),
 		mock<Telemetry>(),
 		Container.get(ExecutionRedactionServiceProxy),
+		Container.get(ExecutionsConfig).maxDisplaySize,
 	).handler(
 		{
 			workflowId: workflow.id,

@@ -117,7 +117,7 @@ describe('buildAlwaysAllowKey', () => {
 		expect(buildAlwaysAllowKey('skills', { action: 'create' })).toBe('skills:create');
 	});
 
-	it.each(['delete', 'unarchive', 'publish', 'unpublish', 'restore-version', 'update-version'])(
+	it.each(['unarchive', 'publish', 'restore-version', 'update-version'])(
 		'matches the backend per-workflow grant for the workflows %s action',
 		(action) => {
 			expect(
@@ -127,15 +127,23 @@ describe('buildAlwaysAllowKey', () => {
 	);
 
 	it.each([
-		['archive_workflow', 'delete'],
 		['unarchive_workflow', 'unarchive'],
 		['publish_workflow', 'publish'],
-		['unpublish_workflow', 'unpublish'],
 		['restore_workflow_version', 'restore-version'],
 		['update_workflow_version', 'update-version'],
 	])('matches the backend per-workflow grant for the %s tool', (toolName, action) => {
 		expect(buildAlwaysAllowKey(toolName, { workflowId: 'wf-1' })).toBe(`workflows:${action}:wf-1`);
 		expect(buildAlwaysAllowKey(toolName, {}, 'wf-2')).toBe(`workflows:${action}:wf-2`);
+	});
+
+	it.each([
+		['archive_workflow', 'delete'],
+		['unpublish_workflow', 'unpublish'],
+	])('matches the backend grant for every workflow for the %s tool', (toolName, action) => {
+		expect(buildAlwaysAllowKey(toolName, { workflowId: 'wf-1' })).toBe(`workflows:${action}`);
+		expect(buildAlwaysAllowKey('workflow_builder_workflows', { action, workflowId: 'wf-2' })).toBe(
+			`workflows:${action}`,
+		);
 	});
 
 	it('stores no key for a workflow tool call without a workflow', () => {

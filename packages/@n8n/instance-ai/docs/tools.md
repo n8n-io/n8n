@@ -45,12 +45,28 @@ tool with a probe `suspend()` and, when the review approves, again with
 `{ approved: true }`. Cards that need input (setup, credentials, questions,
 resource decisions) always show. An approved call emits `auto-approval`, its
 judge tokens are claimed from the user's credits, and a tool keeps the grant
-that its approval gives, as "Allow once" does in Manual mode. Telemetry that
+that its approval gives, as "Allow once" does in Manual mode. A call that the
+review sends to the user suspends with the tool's payload and `askReason`, and
+the card shows the reason below the description. `askReason.kind` is `judge`
+with the judge's sentence in `text`, or a fixed cause that the frontend
+translates (`instanceAi.approvalAskReason.*`): `always-ask`, `too-long` or
+`judge-failed`. The wrapper adds `askReason` to the tool's suspend schema, so
+the stored suspension keeps it. Telemetry that
 the probe tracks is sent only when the card shows. `approval-judge.ts`
 describes what the judge reads and how it cuts long input.
 
 The judge sees the user's messages, the user's answers in question cards, and
 the Assistant's text.
+
+The trace of a run shows the mode as `approval_mode` in the metadata of its
+root run and its `agent: orchestrator` run: `manual`, `auto`, or `unavailable`
+when the flag is off. In Auto, each reviewed approval adds an `approval: review`
+run to the trace, with the tag `approval-review`. Its metadata has `tool_name`,
+`approval_route` (`always-ask`, `low-risk` or `judge`), `approval_decision`
+(`approve` or `ask`), `approval_decided_by` (`rule` or `judge`),
+`approval_judge_failed`, and `tool_call_id` when the call has one. Its output
+adds `approval_reason`. A decision that the judge model made also has its
+`llm: approval-judge` run. A review that failed before the model call has none.
 
 ### Approval copy
 
@@ -430,6 +446,9 @@ Archive a workflow (soft delete, deactivates if needed). Reverse it with
 |-------|------|----------|-------------|
 | `workflowId` | string | yes | Workflow to archive |
 
+"Always allow" on the approval card saves one thread grant for the action. The
+Assistant then archives other workflows in the thread without a card.
+
 **Returns**: `{ success: boolean }`
 
 ### `unarchive_workflow`
@@ -513,6 +532,9 @@ Stop a workflow from running in production. The draft is preserved.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `workflowId` | string | yes | Workflow ID |
+
+"Always allow" on the approval card saves one thread grant for the action, as
+it does for `archive_workflow`.
 
 **Returns**: `{ success: boolean }`
 

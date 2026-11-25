@@ -60,6 +60,12 @@ const outputSchema = {
 		.unknown()
 		.optional()
 		.describe('Execution result data (only present when includeData is true)'),
+	dataTooLargeToDisplay: z
+		.boolean()
+		.optional()
+		.describe(
+			'True when the execution data is larger than the display size limit of the instance. The data is then not loaded and `data` is null',
+		),
 	error: z.string().optional().describe('Error message if the request failed'),
 } satisfies z.ZodRawShape;
 
@@ -69,6 +75,8 @@ export const createGetExecutionTool = (
 	workflowFinderService: WorkflowFinderService,
 	telemetry: Telemetry,
 	executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
+	/** `EXECUTIONS_DATA_MAX_DISPLAY_SIZE`: larger execution data is not loaded. `0` disables the limit. */
+	maxDataSizeBytes: number,
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'get_workflow_execution',
 	config: {
@@ -109,19 +117,28 @@ export const createGetExecutionTool = (
 			// split into branches so TypeScript can narrow each return type.
 			let execution;
 			let executionData: IRunExecutionData | null | undefined;
+			let dataTooLargeToDisplay = false;
 			if (includeData) {
-				const fullExecution = await Container.get(ExecutionPersistence).findWithUnflattenedData(
+				const fullExecution = await Container.get(ExecutionPersistence).findOneInWorkflows(
 					executionId,
 					[workflowId],
+					{ includeAnnotation: false, maxDataSizeBytes },
 				);
 
-				if (fullExecution) {
+				// The loader skips data above `maxDataSizeBytes` and returns empty run data.
+				dataTooLargeToDisplay =
+					fullExecution !== undefined &&
+					'dataTooLargeToDisplay' in fullExecution &&
+					fullExecution.dataTooLargeToDisplay === true;
+				if (fullExecution && 'data' in fullExecution && !dataTooLargeToDisplay) {
 					// Redacts in place, modifying fullExecution internally
 					await executionRedactionServiceProxy.processExecution(fullExecution, { user });
+					executionData = fullExecution.data;
+				} else {
+					executionData = null;
 				}
 
 				execution = fullExecution;
-				executionData = fullExecution?.data ?? null;
 			} else {
 				execution = await executionRepository.findIfAccessible(executionId, [workflowId]);
 			}
@@ -157,7 +174,11 @@ export const createGetExecutionTool = (
 
 			const output =
 				filteredData !== undefined
-					? { execution: executionMeta, data: filteredData }
+					? {
+							execution: executionMeta,
+							data: filteredData,
+							...(dataTooLargeToDisplay && { dataTooLargeToDisplay }),
+						}
 					: { execution: executionMeta };
 
 			telemetryPayload.results = {

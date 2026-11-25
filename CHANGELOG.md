@@ -1,3 +1,50 @@
+## [2.49.6](https://github.com/n8n-io/n8n/compare/n8n@2.49.5...n8n@2.49.6) (2026-11-25)
+
+
+### Bug Fixes
+
+* **core:** Align base64, urlEncode and format results of isolate expression engines with legacy ([#44969](https://github.com/n8n-io/n8n/issues/44969)) ([7fb24bd](https://github.com/n8n-io/n8n/commit/7fb24bd79ceae45444ee9c859973bde522306a72))
+
+
+### Features
+
+* **core:** Evaluate urlEncode, base64Decode and format natively ([#44995](https://github.com/n8n-io/n8n/issues/44995)) ([e79571f](https://github.com/n8n-io/n8n/commit/e79571f6f4c38ddb347a9ff56ee2ba29e20786e0))
+
+
+## [2.49.5](https://github.com/n8n-io/n8n/compare/n8n@2.49.4...n8n@2.49.5) (2026-11-23)
+
+
+### Bug Fixes
+
+* **core:** Refresh the cached token of an expirable credential during its test ([#44832](https://github.com/n8n-io/n8n/issues/44832)) ([5041b0d](https://github.com/n8n-io/n8n/commit/5041b0deb0aefe88b339b36c33372038cb50ff8f))
+* **core:** Return an item that holds a value the vm expression engine cannot copy ([#44879](https://github.com/n8n-io/n8n/issues/44879)) ([36ef1a5](https://github.com/n8n-io/n8n/commit/36ef1a51854c6a55e24561b2bda40f2009fa9247))
+
+
+## [2.49.4](https://github.com/n8n-io/n8n/compare/n8n@2.49.3...n8n@2.49.4) (2026-11-23)
+
+
+### Bug Fixes
+
+* **ai-builder:** Apply "Always allow" on archive and unpublish to all workflows in the thread ([#44629](https://github.com/n8n-io/n8n/issues/44629)) ([e000c7f](https://github.com/n8n-io/n8n/commit/e000c7fa3240dfed39724d1e3ed86edcc0833df4))
+* **core:** Give custom instance roles access to the Migration Report ([#44666](https://github.com/n8n-io/n8n/issues/44666)) ([3cbc4ad](https://github.com/n8n-io/n8n/commit/3cbc4adabf2aa5e47cc572560005f604a63f32dd))
+* **core:** Throw when an expression reaches the memory limit on the quickjs engine ([#44686](https://github.com/n8n-io/n8n/issues/44686)) ([fe05e36](https://github.com/n8n-io/n8n/commit/fe05e3639129c26133280ad7abf19a64aa174778))
+* **editor:** Keep Migration Report controls inside narrow screens ([#44659](https://github.com/n8n-io/n8n/issues/44659)) ([2214317](https://github.com/n8n-io/n8n/commit/2214317ff38d651914868539c9c8ed46dbf5e609))
+
+
+## [2.49.3](https://github.com/n8n-io/n8n/compare/n8n@2.49.2...n8n@2.49.3) (2026-11-20)
+
+
+### Bug Fixes
+
+* **core, HTTP Request Node:** Handle empty response bodies in pagination ([#44443](https://github.com/n8n-io/n8n/issues/44443)) ([3443f12](https://github.com/n8n-io/n8n/commit/3443f12caac4f1f42128e438dcfdfe20ab05164f))
+* **core:** End memory guard hold when hold-limit stop frees no memory ([#44462](https://github.com/n8n-io/n8n/issues/44462)) ([2e2d425](https://github.com/n8n-io/n8n/commit/2e2d425990c74192b10fb63c42e7d95d6489b3fc))
+* **core:** Store plain input data in the error output of scripting nodes ([#44529](https://github.com/n8n-io/n8n/issues/44529)) ([102c0a9](https://github.com/n8n-io/n8n/commit/102c0a91b759702514e766e912e710dbc4b7e128))
+* **editor:** Keep announcements interactive above the account menu ([#44471](https://github.com/n8n-io/n8n/issues/44471)) ([583d187](https://github.com/n8n-io/n8n/commit/583d187dde251ff3417f0086c63576e12818b64b))
+
+
+## [2.49.2](https://github.com/n8n-io/n8n/compare/n8n@2.49.1...n8n@2.49.2) (2026-11-19)
+
+
 ## [2.49.1](https://github.com/n8n-io/n8n/compare/n8n@2.49.0...n8n@2.49.1) (2026-11-18)
 
 
