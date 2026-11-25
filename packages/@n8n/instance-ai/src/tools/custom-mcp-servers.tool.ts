@@ -4,7 +4,6 @@ import {
 	mcpServerNameSchema,
 	mcpServerSlugSchema,
 	mcpServerToolNameSchema,
-	type McpServerDetailResponse,
 	type McpServerResponse,
 	type McpServerToolResponse,
 } from '@n8n/api-types';
@@ -199,6 +198,17 @@ const SESSION_GRANT_ACTIONS: ReadonlySet<WriteAction> = new Set([
 	'generate',
 ]);
 
+/** The project scope of each change, as on the REST routes: `mcpServer:<change>`. */
+const WRITE_SCOPE: Record<WriteAction, 'create' | 'update' | 'delete'> = {
+	create: 'create',
+	update: 'update',
+	delete: 'delete',
+	'add-tools': 'update',
+	'update-tool': 'update',
+	generate: 'update',
+	'remove-tool': 'update',
+};
+
 function sessionGrantKey(action: WriteAction): string {
 	return `${DOMAIN_TOOL_IDS.CUSTOM_MCP_SERVERS}:${action}`;
 }
@@ -213,6 +223,8 @@ async function withApproval<T extends object>(
 	context: InstanceAiContext,
 	ctx: ConfirmationToolContext,
 	action: WriteAction,
+	/** The project of the change. Without it, the project of this conversation or the personal one. */
+	projectId: string | undefined,
 	request: () => Promise<Omit<ConfirmationSuspendPayload, 'requestId'>>,
 	run: () => Promise<T>,
 ) {
@@ -225,6 +237,8 @@ async function withApproval<T extends object>(
 		permission === 'always_allow' ||
 		(grantable && context.sessionApprovedToolKeys?.has(sessionGrantKey(action)) === true);
 	if (!granted && !resumeData) {
+		// No card for a change that the user cannot make: the write would only fail after the approval.
+		await requireService(context).assertCanWrite(projectId, WRITE_SCOPE[action]);
 		return await ctx.suspend({ requestId: nanoid(), ...(await request()) });
 	}
 	if (resumeData && !resumeData.approved) {
@@ -267,12 +281,6 @@ function toRef(input: { serverId: string; projectId?: string }): CustomMcpServer
 	return { serverId: input.serverId, projectId: input.projectId };
 }
 
-function findTool(server: McpServerDetailResponse, toolId: string): McpServerToolResponse {
-	const tool = server.tools.find(({ id }) => id === toolId);
-	if (!tool) throw new Error(`The server has no tool with the ID "${toolId}".`);
-	return tool;
-}
-
 function changesMessage(
 	changes: { name?: string; description?: string },
 	nameChange: (name: string) => string,
@@ -304,13 +312,14 @@ async function handleUpdate(
 		context,
 		ctx,
 		'update',
+		input.projectId,
 		async () => ({
 			message: changesMessage(
 				changes,
 				(name) => `Rename the server to "${name}".`,
 				'Change the description of the server. AI clients get it as the server instructions.',
 			),
-			resourceName: (await service.get(toRef(input))).name,
+			resourceName: (await service.getServer(toRef(input))).name,
 			severity: 'info',
 		}),
 		async () => ({
@@ -353,17 +362,13 @@ async function handleAddTools(
 		context,
 		ctx,
 		'add-tools',
+		input.projectId,
 		async () => {
-			const [server, candidates] = await Promise.all([
-				service.get(toRef(input)),
-				service.listToolCandidates(toRef(input), {
-					limit: Number.MAX_SAFE_INTEGER,
-					includeUnusable: true,
-				}),
+			const [server, workflowNames] = await Promise.all([
+				service.getServer(toRef(input)),
+				service.workflowNames(toRef(input), input.workflowIds),
 			]);
-			const names = new Map(
-				candidates.candidates.map(({ workflowId, name }) => [workflowId, name]),
-			);
+			const names = new Map(workflowNames.map(({ workflowId, name }) => [workflowId, name]));
 			const workflows = input.workflowIds.map((id) => names.get(id) ?? id).join(', ');
 			return {
 				message: `Add ${countWorkflows(input.workflowIds.length)} as tools: ${workflows}.`,
@@ -391,11 +396,12 @@ async function handleUpdateTool(
 			reason: 'Pass a toolName or a description to change.',
 		};
 	}
-	const tool = findTool(await service.get(toRef(input)), input.toolId);
+	const { tool } = await service.getTool(toRef(input), input.toolId);
 	return await withApproval(
 		context,
 		ctx,
 		'update-tool',
+		input.projectId,
 		async () => ({
 			message: `${changesMessage(
 				{ name: changes.toolName, description: changes.description },
@@ -420,11 +426,10 @@ async function handleGenerate(
 	input: ActionInput<'generate'>,
 	ctx: ConfirmationToolContext,
 ) {
-	const server = await service.get(toRef(input));
-	if (!server.toolDraftsAvailable) {
+	const { tool, toolDraftsAvailable } = await service.getTool(toRef(input), input.toolId);
+	if (!toolDraftsAvailable) {
 		return { success: false, refused: true, reason: DRAFTS_NOT_AVAILABLE };
 	}
-	const tool = findTool(server, input.toolId);
 	const fields = {
 		toolName: 'the tool name',
 		description: 'the tool description',
@@ -434,6 +439,7 @@ async function handleGenerate(
 		context,
 		ctx,
 		'generate',
+		input.projectId,
 		async () => ({
 			message: `Write ${target} again with AI, from the workflow.`,
 			resourceName: tool.toolName,
@@ -454,12 +460,12 @@ async function handleRemoveTool(
 	input: ActionInput<'remove-tool'>,
 	ctx: ConfirmationToolContext,
 ) {
-	const server = await service.get(toRef(input));
-	const tool = findTool(server, input.toolId);
+	const { server, tool } = await service.getTool(toRef(input), input.toolId);
 	return await withApproval(
 		context,
 		ctx,
 		'remove-tool',
+		input.projectId,
 		async () => ({
 			message: `Remove the tool from ${server.name}. AI clients cannot call it after this.`,
 			resourceName: tool.toolName,
@@ -482,8 +488,9 @@ async function handleDelete(
 		context,
 		ctx,
 		'delete',
+		input.projectId,
 		async () => {
-			const server = await service.get(toRef(input));
+			const server = await service.getServer(toRef(input));
 			return {
 				message: `Delete the server. AI clients lose access to its tools now. Its URL /mcp-servers/${server.slug} stays reserved. You cannot undo this.`,
 				resourceName: server.name,
@@ -522,6 +529,7 @@ export function createCustomMcpServersTool(context: InstanceAiContext) {
 						context,
 						ctx,
 						'create',
+						input.projectId,
 						async () => ({
 							message:
 								'Create a custom MCP server. AI clients can connect to it after you add tools.',

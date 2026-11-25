@@ -46,6 +46,10 @@ function createService(): ServiceMock {
 	return {
 		list: vi.fn().mockResolvedValue([server]),
 		get: vi.fn().mockResolvedValue(detail),
+		getServer: vi.fn().mockResolvedValue(server),
+		getTool: vi.fn().mockResolvedValue({ server, tool, toolDraftsAvailable: true }),
+		workflowNames: vi.fn().mockResolvedValue([]),
+		assertCanWrite: vi.fn().mockResolvedValue(undefined),
 		create: vi.fn().mockResolvedValue(server),
 		update: vi.fn().mockResolvedValue(server),
 		delete: vi.fn().mockResolvedValue(undefined),
@@ -232,6 +236,41 @@ describe('custom-mcp-servers tool', () => {
 		});
 	});
 
+	describe('write access', () => {
+		it.each<[Record<string, unknown>, string]>([
+			[{ action: 'delete', serverId: SERVER_ID, projectId: 'project-2' }, 'delete'],
+			[{ action: 'update', serverId: SERVER_ID, name: 'Other' }, 'update'],
+			[{ action: 'remove-tool', serverId: SERVER_ID, toolId: TOOL_ID }, 'update'],
+			[{ action: 'create', name: 'Sales Tools' }, 'create'],
+		])('shows no card when the user cannot make the change: %j', async (input, change) => {
+			service.assertCanWrite.mockRejectedValue(
+				new Error('User does not have the required permissions in this project'),
+			);
+			const suspend = vi.fn();
+
+			await expect(
+				executeTool(createCustomMcpServersTool(createContext(service)), input, suspendCtx(suspend)),
+			).rejects.toThrow('User does not have the required permissions in this project');
+
+			expect(service.assertCanWrite).toHaveBeenCalledWith(input.projectId, change);
+			expect(suspend).not.toHaveBeenCalled();
+		});
+
+		it('reads one tool, not the whole server, for a tool card', async () => {
+			await executeTool(
+				createCustomMcpServersTool(createContext(service)),
+				{ action: 'update-tool', serverId: SERVER_ID, toolId: TOOL_ID, description: 'New' },
+				suspendCtx(vi.fn()),
+			);
+
+			expect(service.getTool).toHaveBeenCalledWith(
+				{ serverId: SERVER_ID, projectId: undefined },
+				TOOL_ID,
+			);
+			expect(service.get).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('delete', () => {
 		const input = { action: 'delete', serverId: SERVER_ID, projectId: 'project-1' };
 
@@ -390,13 +429,7 @@ describe('custom-mcp-servers tool', () => {
 		};
 
 		it('names the workflows on the card', async () => {
-			service.listToolCandidates.mockResolvedValue({
-				candidates: [
-					{ workflowId: 'workflow-2', name: 'Lead score', description: null, reason: null },
-				],
-				unusable: 0,
-				more: false,
-			});
+			service.workflowNames.mockResolvedValue([{ workflowId: 'workflow-2', name: 'Lead score' }]);
 			const suspend = vi.fn();
 
 			await executeTool(
@@ -413,6 +446,21 @@ describe('custom-mcp-servers tool', () => {
 				}),
 			);
 			expect(service.addTools).not.toHaveBeenCalled();
+		});
+
+		it('reads only the names of the given workflows for the card', async () => {
+			await executeTool(
+				createCustomMcpServersTool(createContext(service)),
+				input,
+				suspendCtx(vi.fn()),
+			);
+
+			expect(service.workflowNames).toHaveBeenCalledWith(
+				{ serverId: SERVER_ID, projectId: undefined },
+				['workflow-2', 'workflow-4'],
+			);
+			expect(service.listToolCandidates).not.toHaveBeenCalled();
+			expect(service.get).not.toHaveBeenCalled();
 		});
 
 		it('adds the tools after the approval', async () => {
@@ -505,6 +553,7 @@ describe('custom-mcp-servers tool', () => {
 	});
 
 	it('tells the model when the tool is not on the server', async () => {
+		service.getTool.mockRejectedValue(new Error('Tool not found'));
 		const suspend = vi.fn();
 
 		await expect(
@@ -513,7 +562,7 @@ describe('custom-mcp-servers tool', () => {
 				{ action: 'remove-tool', serverId: SERVER_ID, toolId: 'other-tool' },
 				suspendCtx(suspend),
 			),
-		).rejects.toThrow('The server has no tool with the ID "other-tool".');
+		).rejects.toThrow('Tool not found');
 		expect(suspend).not.toHaveBeenCalled();
 	});
 
@@ -582,7 +631,7 @@ describe('custom-mcp-servers tool', () => {
 		});
 
 		it('refuses without a card when AI drafts are not available', async () => {
-			service.get.mockResolvedValue({ ...detail, toolDraftsAvailable: false });
+			service.getTool.mockResolvedValue({ server, tool, toolDraftsAvailable: false });
 			const suspend = vi.fn();
 
 			const result = await executeTool(

@@ -22,8 +22,11 @@ export class WorkflowToolAdapter extends WorkflowToolPort {
 		super();
 	}
 
-	async list(projectId: string): Promise<WorkflowToolListItem[]> {
-		const ids = await this.sharedWorkflowRepository.findOwnedWorkflowIdsByProjects([projectId]);
+	async list(projectId: string, workflowIds?: string[]): Promise<WorkflowToolListItem[]> {
+		const owned = await this.sharedWorkflowRepository.findOwnedWorkflowIdsByProjects([projectId]);
+		const wanted = workflowIds ? new Set(workflowIds) : undefined;
+		const ids = wanted ? owned.filter((id) => wanted.has(id)) : owned;
+		if (ids.length === 0) return [];
 		const workflows = await this.workflowRepository.findByIds(ids, {
 			fields: ['name', 'description', 'isArchived'],
 		});

@@ -110,3 +110,15 @@ describe('McpServerToolsService.findCandidates', () => {
 		expect(ports.check).toHaveBeenCalledTimes(2);
 	});
 });
+
+describe('McpServerToolsService reads for an approval card', () => {
+	it('reads the names of the given workflows, with no check', async () => {
+		const { service, ports } = setup([workflow('a', 'Alpha')]);
+
+		await expect(service.workflowNames(PROJECT_ID, ['a'])).resolves.toEqual([
+			{ workflowId: 'a', name: 'Alpha' },
+		]);
+		expect(ports.list).toHaveBeenCalledWith(PROJECT_ID, ['a']);
+		expect(ports.check).not.toHaveBeenCalled();
+	});
+});

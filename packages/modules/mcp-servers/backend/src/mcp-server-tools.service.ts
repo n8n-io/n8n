@@ -128,6 +128,25 @@ export class McpServerToolsService {
 		);
 	}
 
+	/** One tool of a server. It checks only this tool, not every tool of the server. */
+	async getTool(
+		projectId: string,
+		serverId: string,
+		toolId: string,
+	): Promise<McpServerToolResponse> {
+		const tool = await this.findTool(projectId, serverId, toolId);
+		return toToolResponse(tool, await this.brokenReason(projectId, tool));
+	}
+
+	/** The names of these workflows of the project, with no check. Unknown IDs are left out. */
+	async workflowNames(
+		projectId: string,
+		workflowIds: string[],
+	): Promise<Array<{ workflowId: string; name: string }>> {
+		const workflows = await this.workflows.list(projectId, workflowIds);
+		return workflows.map(({ workflowId, name }) => ({ workflowId, name }));
+	}
+
 	/** Every workflow of the project, with the reason when it cannot be a tool of this server. */
 	async listCandidates(projectId: string, serverId: string): Promise<McpServerToolCandidate[]> {
 		const server = await this.findServer(projectId, serverId);

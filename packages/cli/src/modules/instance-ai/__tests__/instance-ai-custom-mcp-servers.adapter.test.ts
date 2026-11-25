@@ -94,6 +94,55 @@ describe('InstanceAiCustomMcpServersAdapterService', () => {
 		expect(detail).toEqual({ ...server, tools: [tool], toolDraftsAvailable: true });
 	});
 
+	describe('reads for an approval card', () => {
+		it('reads one tool and its server, without the other tools', async () => {
+			servers.get.mockResolvedValue(server);
+			tools.getTool.mockResolvedValue(tool);
+			tools.draftsAvailable.mockResolvedValue(false);
+
+			const result = await createService().getTool({ serverId: SERVER_ID }, TOOL_ID);
+
+			expect(access.resolveProjectId).toHaveBeenCalledWith(['mcpServer:read'], undefined);
+			expect(tools.getTool).toHaveBeenCalledWith('bound', SERVER_ID, TOOL_ID);
+			expect(tools.listTools).not.toHaveBeenCalled();
+			expect(result).toEqual({ server, tool, toolDraftsAvailable: false });
+		});
+
+		it('reads only the names of the given workflows', async () => {
+			tools.workflowNames.mockResolvedValue([{ workflowId: 'workflow-1', name: 'Lead score' }]);
+
+			await createService().workflowNames({ serverId: SERVER_ID, projectId: 'project-1' }, [
+				'workflow-1',
+			]);
+
+			expect(access.resolveProjectId).toHaveBeenCalledWith(['mcpServer:update'], 'project-1');
+			expect(tools.workflowNames).toHaveBeenCalledWith('project-1', ['workflow-1']);
+			expect(tools.findCandidates).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('assertCanWrite', () => {
+		it.each(['create', 'update', 'delete'] as const)(
+			'checks the %s scope and the bound project',
+			async (change) => {
+				await createService().assertCanWrite('project-1', change);
+
+				expect(access.resolveProjectId).toHaveBeenCalledWith([`mcpServer:${change}`], 'project-1');
+				expect(access.assertInBoundProject).toHaveBeenCalledWith('project-1');
+			},
+		);
+
+		it('throws when the user has no scope in the project', async () => {
+			access.resolveProjectId.mockRejectedValue(
+				new Error('User does not have the required permissions in this project'),
+			);
+
+			await expect(createService().assertCanWrite('project-2', 'delete')).rejects.toThrow(
+				'User does not have the required permissions in this project',
+			);
+		});
+	});
+
 	describe('create', () => {
 		it('makes the slug from the name, and marks the event with the Assistant source', async () => {
 			servers.create.mockResolvedValue(server);

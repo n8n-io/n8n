@@ -67,6 +67,31 @@ export class InstanceAiCustomMcpServersAdapterService {
 				]);
 				return { ...server, tools: serverTools, toolDraftsAvailable };
 			},
+			getServer: async ({ serverId, projectId }) => {
+				const { servers } = await services();
+				return await servers.get(await readProject('mcpServer:read', projectId), serverId);
+			},
+			getTool: async ({ serverId, projectId }, toolId) => {
+				const { servers, tools } = await services();
+				const resolved = await readProject('mcpServer:read', projectId);
+				const [server, tool, toolDraftsAvailable] = await Promise.all([
+					servers.get(resolved, serverId),
+					tools.getTool(resolved, serverId, toolId),
+					tools.draftsAvailable(user),
+				]);
+				return { server, tool, toolDraftsAvailable };
+			},
+			// The card of add-tools names the workflows. The write needs `update`, as the picker does.
+			workflowNames: async ({ projectId }, workflowIds) => {
+				const { tools } = await services();
+				return await tools.workflowNames(
+					await readProject('mcpServer:update', projectId),
+					workflowIds,
+				);
+			},
+			assertCanWrite: async (projectId, change) => {
+				await writeProject(`mcpServer:${change}`, projectId);
+			},
 			create: async ({ projectId, name, slug, description }) => {
 				const madeSlug = slug ?? mcpServerSlugFromName(name);
 				if (!madeSlug) throw new UserError('The name has no letters or digits, so pass a slug.');
