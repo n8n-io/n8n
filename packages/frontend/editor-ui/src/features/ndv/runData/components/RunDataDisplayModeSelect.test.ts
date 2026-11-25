@@ -10,8 +10,6 @@ const renderComponent = createComponentRenderer(RunDataDisplayModeSelect, {
 		compact: false,
 		value: 'schema',
 		hasBinaryData: false,
-		paneType: 'output',
-		nodeGeneratesHtml: false,
 		hasRenderableData: false,
 	},
 });
@@ -48,23 +46,6 @@ describe('RunDataDisplayModeSelect', () => {
 			expect(getByTestId('radio-button-binary')).toHaveTextContent('Binary');
 		});
 
-		it('should offer html first in the output pane when the node generates HTML', () => {
-			const { container, getByTestId } = renderComponent({
-				props: { paneType: 'output', nodeGeneratesHtml: true },
-			});
-
-			expect(getOptionValues(container)).toEqual(['html', 'schema', 'table', 'json']);
-			expect(getByTestId('radio-button-html')).toHaveTextContent('HTML');
-		});
-
-		it('should not offer html in the input pane', () => {
-			const { container } = renderComponent({
-				props: { paneType: 'input', nodeGeneratesHtml: true },
-			});
-
-			expect(getOptionValues(container)).toEqual(['schema', 'table', 'json']);
-		});
-
 		it('should offer rendered first when the data has renderable content', () => {
 			const { container, getByTestId } = renderComponent({ props: { hasRenderableData: true } });
 
@@ -72,32 +53,17 @@ describe('RunDataDisplayModeSelect', () => {
 			expect(getByTestId('radio-button-ai')).toHaveTextContent('Rendered');
 		});
 
-		it('should order rendered, html, built-in modes and binary when all apply', () => {
+		it('should order rendered, built-in modes and binary when all apply', () => {
 			const { container } = renderComponent({
-				props: {
-					value: 'ai',
-					paneType: 'output',
-					hasBinaryData: true,
-					nodeGeneratesHtml: true,
-					hasRenderableData: true,
-				},
+				props: { value: 'ai', hasBinaryData: true, hasRenderableData: true },
 			});
 
-			expect(getOptionValues(container)).toEqual([
-				'ai',
-				'html',
-				'schema',
-				'table',
-				'json',
-				'binary',
-			]);
+			expect(getOptionValues(container)).toEqual(['ai', 'schema', 'table', 'json', 'binary']);
 		});
 
-		it('should offer registered modes after html and before the built-in modes', () => {
+		it('should offer registered modes after rendered and before the built-in modes', () => {
 			const { container, getByTestId } = renderComponent({
 				props: {
-					paneType: 'output',
-					nodeGeneratesHtml: true,
 					hasRenderableData: true,
 					hasBinaryData: true,
 					registeredDisplayModes: [registered('map', 'Map'), registered('chart', 'Chart')],
@@ -106,7 +72,6 @@ describe('RunDataDisplayModeSelect', () => {
 
 			expect(getOptionValues(container)).toEqual([
 				'ai',
-				'html',
 				'map',
 				'chart',
 				'schema',
@@ -131,16 +96,13 @@ describe('RunDataDisplayModeSelect', () => {
 				props: {
 					compact: true,
 					value: 'ai',
-					paneType: 'output',
 					hasBinaryData: true,
-					nodeGeneratesHtml: true,
 					hasRenderableData: true,
 				},
 			});
 
 			const expectedIcons = {
 				ai: 'text',
-				html: 'file-code',
 				schema: 'schema',
 				table: 'table',
 				json: 'json',
@@ -196,9 +158,7 @@ describe('RunDataDisplayModeSelect', () => {
 		});
 
 		it('should emit the first mode when the value is not offered', () => {
-			const { emitted } = renderComponent({
-				props: { value: 'html', paneType: 'output', nodeGeneratesHtml: false },
-			});
+			const { emitted } = renderComponent({ props: { value: 'ai' } });
 
 			expect(emitted('change')).toEqual([['schema']]);
 		});
