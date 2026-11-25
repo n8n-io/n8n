@@ -256,6 +256,17 @@ describe('SettingsCollectionsView', () => {
 		await waitFor(() => expect(rowNames(getAllByTestId)).toEqual(['Customer support', 'Oldest']));
 	});
 
+	it('opens the collection of a clicked row', async () => {
+		const { getByTestId } = await renderWithEditableRow();
+
+		await userEvent.click(getByTestId('collection-name'));
+
+		expect(push).toHaveBeenCalledWith({
+			name: 'KnowledgeCollection',
+			params: { projectId: 'team-1', collectionId: 'c1' },
+		});
+	});
+
 	it('opens the dialog in edit mode for the collection of the row', async () => {
 		const { getByTestId } = await renderWithEditableRow();
 

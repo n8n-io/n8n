@@ -29,6 +29,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
+	open: [collection: KnowledgeCollectionDto];
 	edit: [collection: KnowledgeCollectionDto];
 	delete: [collection: KnowledgeCollectionDto];
 }>();
@@ -72,6 +73,10 @@ function onAction(collection: KnowledgeCollectionDto, action: CollectionAction) 
 	} else {
 		emit('delete', collection);
 	}
+}
+
+function onRowClick(_event: MouseEvent, payload: { item: KnowledgeCollectionDto }) {
+	emit('open', payload.item);
 }
 
 function projectLabel(project: HomeProject): string {
@@ -162,6 +167,8 @@ const headers = computed<Array<TableHeader<KnowledgeCollectionDto>>>(() => [
 			:items-length="props.collections.length"
 			:loading="props.loading"
 			:pagination="false"
+			:row-props="{ class: $style.row }"
+			@click:row="onRowClick"
 		>
 			<template v-if="props.showEmpty" #cover>
 				<slot name="empty" />
@@ -225,9 +232,9 @@ const headers = computed<Array<TableHeader<KnowledgeCollectionDto>>>(() => [
 				</N8nText>
 			</template>
 
-			<!-- A row the user cannot change has no menu. -->
+			<!-- A row the user cannot change has no menu. A click on the menu does not open the row. -->
 			<template #[`item.actions`]="{ item }">
-				<div v-if="canChange(item)" :class="$style.actions">
+				<div v-if="canChange(item)" :class="$style.actions" @click.stop>
 					<N8nActionToggle
 						:actions="rowActions"
 						:aria-label="i18n.baseText('node.moreActions')"
@@ -282,5 +289,9 @@ const headers = computed<Array<TableHeader<KnowledgeCollectionDto>>>(() => [
 .actions {
 	display: flex;
 	justify-content: flex-end;
+}
+
+.row {
+	cursor: pointer;
 }
 </style>
