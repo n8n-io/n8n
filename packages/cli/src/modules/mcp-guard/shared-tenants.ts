@@ -19,6 +19,8 @@ export class SharedTenantAdmin extends GymAdmin {
 
 	private readonly states = new Map<string, TenantState>();
 
+	private readonly epochs = new Map<string, number>();
+
 	/** One state for the tenant, so a vendor knows an object that another vendor made. */
 	stateFor(tenant: string): TenantState {
 		let state = this.states.get(tenant);
@@ -32,6 +34,9 @@ export class SharedTenantAdmin extends GymAdmin {
 	override async createTenant(tenant: string): Promise<void> {
 		this.holders.set(tenant, (this.holders.get(tenant) ?? 0) + 1);
 		const pending = this.creating.get(tenant);
+		// Only the caller that starts the creation may drop the shared `creating` entry. A caller that
+		// waits for another one must not, because the tenant is live for the other vendors.
+		let owner = false;
 		try {
 			if (pending) {
 				await pending;
@@ -40,18 +45,25 @@ export class SharedTenantAdmin extends GymAdmin {
 				this.forgetTenant(tenant);
 				this.holders.set(tenant, 1);
 			}
+			owner = true;
 			const creation = super.createTenant(tenant);
 			this.creating.set(tenant, creation);
 			await creation;
 		} catch (error) {
-			this.creating.delete(tenant);
+			if (owner) this.creating.delete(tenant);
 			this.release(tenant);
 			throw error;
 		}
 	}
 
+	override tenantEpoch(tenant: string): number {
+		return this.epochs.get(tenant) ?? 0;
+	}
+
 	/** The gym lost the tenant: drop the lease, the creation and what the vendors know of it. */
 	override forgetTenant(tenant: string): void {
+		// A run of another vendor that was made before this call holds a stale credential.
+		this.epochs.set(tenant, this.tenantEpoch(tenant) + 1);
 		this.holders.delete(tenant);
 		this.creating.delete(tenant);
 		const state = this.states.get(tenant);

@@ -12,7 +12,9 @@ vi.mock('../network', () => ({
 const model: HydrationModel = { resolve: async () => ({}) as never };
 
 function setup(tenantExists = true, gymUrl = 'http://127.0.0.1:8083') {
+	const epoch = { value: 0 };
 	const admin = {
+		tenantEpoch: vi.fn((_t: string) => epoch.value),
 		createTenant: vi.fn(async (_t: string) => {}),
 		seed: vi.fn(async (..._a: unknown[]) => ({})),
 		issueMcpCredential: vi.fn(async (..._a: unknown[]) => 'tenant-token'),
@@ -26,7 +28,7 @@ function setup(tenantExists = true, gymUrl = 'http://127.0.0.1:8083') {
 		admin: admin as unknown as GymAdmin,
 		gymUrl,
 	});
-	return { registry, admin };
+	return { registry, admin, epoch };
 }
 
 describe('HttpRunRegistry', () => {
@@ -112,6 +114,27 @@ describe('HttpRunRegistry', () => {
 		await expect(registry.getOrCreate('agent-a', model)).rejects.toThrow('no credential');
 
 		expect(admin.deleteTenant).toHaveBeenCalledTimes(1);
+	});
+
+	it('builds the run again, without a second forget, when another vendor made the tenant again', async () => {
+		const { registry, admin, epoch } = setup(true);
+		await registry.getOrCreate('agent-a', model);
+
+		epoch.value = 1;
+		await registry.getOrCreate('agent-a', model);
+
+		expect(admin.createTenant).toHaveBeenCalledTimes(2);
+		expect(admin.forgetTenant).not.toHaveBeenCalled();
+	});
+
+	it('does not release a lease for a run of an older epoch', async () => {
+		const { registry, admin, epoch } = setup(true);
+		await registry.getOrCreate('agent-a', model);
+		epoch.value = 1;
+
+		await registry.delete('agent-a');
+
+		expect(admin.deleteTenant).not.toHaveBeenCalled();
 	});
 
 	it('cleans a tenant name', async () => {

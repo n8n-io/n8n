@@ -127,4 +127,26 @@ describe('SharedTenantAdmin', () => {
 		expect(call).toHaveBeenCalledTimes(3);
 		expect(call.mock.calls[1]).toEqual(['DELETE', '/_sim/v1/tenants/guard-a']);
 	});
+
+	it('keeps the shared creation when a waiting vendor fails to check the tenant', async () => {
+		const { admin, create } = setup();
+		await admin.createTenant('guard-a');
+		vi.spyOn(GymAdmin.prototype, 'tenantExists').mockRejectedValueOnce(new Error('down'));
+
+		await expect(admin.createTenant('guard-a')).rejects.toThrow('down');
+		await admin.createTenant('guard-a');
+
+		// The tenant stays live: no second PUT, which would meet a 409 and delete it.
+		expect(create).toHaveBeenCalledTimes(1);
+	});
+
+	it('changes the epoch of a tenant each time the guard forgets it', async () => {
+		const { admin } = setup();
+		await admin.createTenant('guard-a');
+		expect(admin.tenantEpoch('guard-a')).toBe(0);
+
+		admin.forgetTenant('guard-a');
+		expect(admin.tenantEpoch('guard-a')).toBe(1);
+		expect(admin.tenantEpoch('guard-b')).toBe(0);
+	});
 });

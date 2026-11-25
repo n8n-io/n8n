@@ -81,6 +81,11 @@ export class GymAdmin {
 		return tenants.some((t) => isRecord(t) && t.tenant === tenant);
 	}
 
+	/** Changes when the guard forgets a tenant. A run made before the change has a stale credential. */
+	tenantEpoch(_tenant: string): number {
+		return 0;
+	}
+
 	/** Drops what the guard remembers of a tenant that the gym lost. The gym keeps nothing here. */
 	forgetTenant(_tenant: string): void {}
 

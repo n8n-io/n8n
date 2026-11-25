@@ -14,6 +14,8 @@ import { matchesVendor, type VendorKnowledge } from './vendor-knowledge';
 
 export interface HttpRun {
 	tenant: string;
+	// The epoch of the tenant when the run was made. A later epoch means the tenant was made again.
+	epoch: number;
 	lastUsed: number;
 	router: HttpGuardRouter;
 }
@@ -49,9 +51,12 @@ export class HttpRunRegistry {
 		if (existing) {
 			// Mark the run as used before the check, so the idle cleanup does not delete it meanwhile.
 			existing.lastUsed = Date.now();
-			// Someone can delete the tenant in the gym. Then build the run again.
-			if (await this.cfg.admin.tenantExists(existing.tenant)) return existing;
-			this.cfg.admin.forgetTenant(existing.tenant);
+			const { admin } = this.cfg;
+			const epoch = admin.tenantEpoch(existing.tenant);
+			// Someone can delete the tenant in the gym. Then build the run again. When another vendor
+			// already made the tenant again (a later epoch), this run has a stale credential too.
+			if (existing.epoch === epoch && (await admin.tenantExists(existing.tenant))) return existing;
+			if (existing.epoch === epoch) admin.forgetTenant(existing.tenant);
 			this.runs.delete(runId);
 		}
 		let creating = this.creating.get(runId);
@@ -69,6 +74,7 @@ export class HttpRunRegistry {
 		const tenant = `guard-${runId}`.toLowerCase().replace(/[^a-z0-9-]/g, '-');
 		const state = stateFor?.(tenant);
 		await admin.createTenant(tenant);
+		const epoch = admin.tenantEpoch(tenant);
 		// A failure after this point must give the tenant back, or the lease stays for ever.
 		try {
 			// The gym issues a credential only for a tenant with an account. Seed one placeholder account.
@@ -136,7 +142,7 @@ export class HttpRunRegistry {
 				profile,
 				gymIds: state?.gymIds,
 			});
-			const run: HttpRun = { tenant, lastUsed: Date.now(), router };
+			const run: HttpRun = { tenant, epoch, lastUsed: Date.now(), router };
 			this.runs.set(runId, run);
 			return run;
 		} catch (error) {
@@ -157,7 +163,9 @@ export class HttpRunRegistry {
 		const run = this.runs.get(runId);
 		if (!run) return false;
 		// Forget the run only after the gym deleted the tenant, so a failed delete is tried again.
-		await this.cfg.admin.deleteTenant(run.tenant);
+		// A run of an older epoch holds no lease: the guard forgot it when the tenant was lost.
+		const { admin } = this.cfg;
+		if (run.epoch === admin.tenantEpoch(run.tenant)) await admin.deleteTenant(run.tenant);
 		this.runs.delete(runId);
 		return true;
 	}
