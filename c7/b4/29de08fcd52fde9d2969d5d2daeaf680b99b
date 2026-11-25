@@ -1,0 +1,47 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentApprovalRouteSelect.vue
+  s_dfe3f914c8bb46::t_0c93246ef2dea3 112-117
+  s_dfe3f914c8bb46::t_d59f66c9b58d3b 3,41
+packages/frontend/editor-ui/src/features/agents/components/AgentHitlPanel.vue
+  s_dfe3f914c8bb46::t_49e4f3dfadf507 99
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_dfe3f914c8bb46::t_d59f66c9b58d3b 640-643
+  s_dfe3f914c8bb46::t_49e4f3dfadf507 670-672
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_dfe3f914c8bb46::t_d59f66c9b58d3b 19,96,351
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHitlPanel.test.ts
+  s_dfe3f914c8bb46::t_49e4f3dfadf507 42-44
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApprovalDestinationsEnabled.ts
+  s_dfe3f914c8bb46::t_d59f66c9b58d3b 1-8
+packages/frontend/editor-ui/src/features/agents/components/AgentRegistryMcpConfigForm.vue
+  s_dfe3f914c8bb46::t_d59f66c9b58d3b 2,42
+packages/frontend/editor-ui/src/features/ai/shared/components/ToolApprovalCard.test.ts
+  s_dfe3f914c8bb46::t_d59f66c9b58d3b 68,70-73,76-82,84-93
+  s_dfe3f914c8bb46::t_7872a7caf7518a 83
+packages/frontend/editor-ui/src/features/agents/components/AgentApprovalDestinationMenu.vue
+  s_dfe3f914c8bb46::t_49e4f3dfadf507 28,48-49,322
+  s_dfe3f914c8bb46::t_b5598901c9d880 323
+packages/frontend/editor-ui/src/features/ai/shared/components/ToolApprovalCard.vue
+  s_dfe3f914c8bb46::t_d59f66c9b58d3b 68
+  s_dfe3f914c8bb46::t_d3f1cb1fe48c47 97-104,125,128,131-135
+  s_dfe3f914c8bb46::t_2564b46148112d 136
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHitlConfigurationModal.test.ts
+  s_dfe3f914c8bb46::t_8d0e8a660e366e 141-168
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_dfe3f914c8bb46::t_4ee5cbd93f8528 158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c7b429de08fcd52fde9d2969d5d2daeaf680b99b",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
