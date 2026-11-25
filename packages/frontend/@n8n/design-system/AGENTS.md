@@ -117,6 +117,113 @@ async function onRemove(el: HTMLElement) {
 - **Do** give `inject` a default (`null` or a fallback) so the child works without the root.
 - **Don't** export the context key from the package `index.ts`. It is internal to the compound component.
 
+### Controlled/Uncontrolled
+
+Make state ownership explicit. Support both modes only when callers need them.
+Use a named prop and an `update:<name>` event for each value.
+
+Set the controlled Boolean prop's default to `undefined` so an omitted prop
+selects uncontrolled mode. Check against `undefined`, not truthiness: `false` is
+a valid controlled value.
+
+❌ Don't: leave the optional Boolean prop without an explicit `undefined`
+default. Vue casts an omitted `enabled` prop to `false`, so this example never
+uses the local value.
+
+```vue
+<script setup lang="ts">
+import { computed, ref } from 'vue';
+
+const props = defineProps<{
+	enabled?: boolean;
+	defaultEnabled?: boolean;
+}>();
+
+const localEnabled = ref(props.defaultEnabled ?? false);
+const enabled = computed(() => props.enabled ?? localEnabled.value);
+</script>
+```
+
+✅ Do: render the parent value in controlled mode and update local state only in
+uncontrolled mode. This example is a component named `N8nToggleField.vue`.
+
+```vue
+<script setup lang="ts">
+import { computed, ref } from 'vue';
+
+import N8nSwitch from '../N8nSwitch/Switch.vue';
+
+/** Props for a toggle with optional parent state ownership. */
+interface ToggleFieldProps {
+	/** Translated label for the switch. */
+	label: string;
+	/** Parent-owned value. Undefined selects uncontrolled mode. */
+	enabled?: boolean;
+	/** Initial value in uncontrolled mode. Ignored in controlled mode. */
+	defaultEnabled?: boolean;
+}
+
+/** Events for requested or local toggle changes. */
+interface ToggleFieldEmits {
+	/** Emitted when the user requests a value change in either mode. */
+	'update:enabled': [value: boolean];
+}
+
+const props = withDefaults(defineProps<ToggleFieldProps>(), {
+	enabled: undefined,
+	defaultEnabled: false,
+});
+const emit = defineEmits<ToggleFieldEmits>();
+
+const localEnabled = ref(props.defaultEnabled);
+const enabled = computed(() => props.enabled ?? localEnabled.value);
+
+function updateEnabled(value: boolean) {
+	if (props.enabled === undefined) {
+		localEnabled.value = value;
+	}
+	emit('update:enabled', value);
+}
+</script>
+
+<template>
+	<N8nSwitch :label="label" :model-value="enabled" @update:model-value="updateEnabled" />
+</template>
+```
+
+The caller can use either mode. The `label` prop below comes from the caller's
+translations. `v-model:enabled` binds `:enabled` and `@update:enabled` together.
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue';
+
+import N8nToggleField from './N8nToggleField.vue';
+
+defineProps<{ label: string }>();
+const enabled = ref(false);
+</script>
+
+<template>
+	<!-- Controlled, including when enabled is false. -->
+	<N8nToggleField v-model:enabled="enabled" :label="label" />
+	<!-- Uncontrolled. The component starts enabled and owns later changes. -->
+	<N8nToggleField default-enabled :label="label" />
+</template>
+```
+
+- **Do** keep the same mode for the lifetime of a component instance. Remount it
+  with a new `key` when the caller needs to reset uncontrolled state.
+- **Do** test an explicit `false`, parent updates, a parent that does not apply
+  an emitted update, uncontrolled changes, and changes to `default*` after mount.
+- **Don't** copy the controlled prop into a `ref` and render that copy. It can
+  drift from the parent's value.
+- **Don't** watch `default*` to keep local state in sync. It is an initial value,
+  not a controlled prop.
+- **Do** use a Reka primitive's controlled/uncontrolled API when it already
+  provides this behavior. The explicit state above explains the contract; it
+  does not require each wrapper to implement it again.
+
 ### Prefer explicit components with slots over many-mode components
 
 A component with many boolean props for modes is hard to read and hard to
