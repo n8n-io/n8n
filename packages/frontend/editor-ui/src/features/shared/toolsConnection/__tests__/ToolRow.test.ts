@@ -196,6 +196,13 @@ describe('ToolRow', () => {
 			expect(emitted('connect')).toEqual([[skill]]);
 		});
 
+		it('draws no icon on a skill row, also in a picker that does not set iconless', () => {
+			const { container } = renderSkill(skill);
+
+			expect(container.querySelector('[data-row-kind="skill"]')?.className).toMatch(/rowIconless/);
+			expect(container.querySelector('[data-test-id="tools-connection-row-main"] svg')).toBeNull();
+		});
+
 		it('shows an added skill as static text with no action', () => {
 			const { getByTestId, queryByTestId, getAllByRole } = renderSkill({
 				...skill,

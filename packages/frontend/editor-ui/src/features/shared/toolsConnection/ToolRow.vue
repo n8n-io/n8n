@@ -109,6 +109,8 @@ const installBlocked = computed(
 );
 
 const isDisabled = computed(() => Boolean(props.item.disabled));
+// Skill rows never had an icon, so they stay icon-less in a picker that does not opt in.
+const isIconless = computed(() => props.iconless || props.item.kind === 'skill');
 // A collection row has nothing to open in the picker. Its buttons do all the work.
 const isRowNavigable = computed(
 	() => props.item.kind !== 'service' && props.item.kind !== 'collection',
@@ -237,7 +239,7 @@ function handleConnect() {
 			$style.row,
 			$style[`row--${item.kind}`],
 			{
-				[$style.rowIconless]: iconless,
+				[$style.rowIconless]: isIconless,
 				[$style.rowDisabled]: isDisabled,
 				[$style.rowRestricted]: !!restriction,
 				[$style.rowBlocked]: isActivationBlocked,
@@ -275,7 +277,7 @@ function handleConnect() {
 				</template>
 
 				<template v-else>
-					<ToolIcon v-if="!iconless" :source="resolvedIcon" :fallback-icon="placeholderIcon" />
+					<ToolIcon v-if="!isIconless" :source="resolvedIcon" :fallback-icon="placeholderIcon" />
 					<span :class="$style.text">
 						<span :class="$style.titleRow">
 							<N8nText :class="$style.title" tag="span" bold>{{ item.title }}</N8nText>

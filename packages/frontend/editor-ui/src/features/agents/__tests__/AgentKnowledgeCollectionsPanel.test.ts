@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AgentKnowledgeCollectionDto } from '@n8n/api-types';
 
 import { createComponentRenderer } from '@/__tests__/render';
+import { VIEWS } from '@/app/constants';
 import AgentKnowledgeCollectionsPanel from '@/features/agents/components/AgentKnowledgeCollectionsPanel.vue';
 
 configure({ testIdAttribute: 'data-testid' });
@@ -31,8 +32,10 @@ vi.mock('@n8n/stores/useRootStore', () => ({ useRootStore: () => ({ restApiConte
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal<typeof import('vue-router')>()),
 	useRouter: () => ({
-		resolve: ({ params }: { params?: Record<string, string> }) => ({
-			href: `/projects/${params?.projectId}/collections/${params?.collectionId}`,
+		resolve: ({ name, params }: { name: string; params?: Record<string, string> }) => ({
+			href: params?.collectionId
+				? `/projects/${params.projectId}/collections/${params.collectionId}`
+				: `/${name}`,
 		}),
 	}),
 }));
@@ -60,6 +63,10 @@ vi.mock('@/features/shared/toolsConnection/ToolsConnectionModal.vue', () => ({
 		emits: ['connect', 'disconnect', 'update:searchQuery'],
 		template: `
 			<div>
+				<input data-testid="picker-search" @input="$emit('update:searchQuery', $event.target.value)" />
+				<span data-testid="picker-tab-label">{{ categoryLabels?.project }}</span>
+				<p data-testid="picker-empty">{{ emptyMessage }}</p>
+				<p data-testid="picker-no-results">{{ noResultsMessage }}</p>
 				<div v-for="item in items" :key="item.id" data-testid="picker-row">
 					<span>{{ item.title }}</span>
 					<span>{{ item.description }}</span>
@@ -229,5 +236,42 @@ describe('AgentKnowledgeCollectionsPanel', () => {
 		const result = await render({ disabled: true });
 
 		expect(await result.findByTestId('chip-menu-remove')).toBeDisabled();
+	});
+
+	it('labels the project tab with the project name, and says when the project has no collections', async () => {
+		listAgentKnowledgeCollections.mockResolvedValue([]);
+		const result = await render();
+		await userEvent.click(result.getByTestId('agent-collections-add'));
+
+		expect(await result.findByTestId('picker-tab-label')).toHaveTextContent('Darwin');
+		expect(result.getByTestId('picker-empty')).toHaveTextContent(
+			'agents.builder.collections.picker.empty',
+		);
+	});
+
+	it('names the search text in the no-match message', async () => {
+		const result = await render();
+		await userEvent.click(result.getByTestId('agent-collections-add'));
+
+		await userEvent.type(await result.findByTestId('picker-search'), ' invoices ');
+
+		expect(result.getByTestId('picker-no-results')).toHaveTextContent(
+			'agents.builder.collections.picker.noResults invoices',
+		);
+	});
+
+	it('opens Settings > Context > Collections in a new tab from Manage collections', async () => {
+		const open = vi.spyOn(window, 'open').mockReturnValue(null);
+		const result = await render();
+		await userEvent.click(result.getByTestId('agent-collections-add'));
+
+		await userEvent.click(await result.findByTestId('agent-collections-picker-manage'));
+
+		expect(open).toHaveBeenCalledWith(
+			`/${VIEWS.SETTINGS_CONTEXT_COLLECTIONS}`,
+			'_blank',
+			'noopener',
+		);
+		open.mockRestore();
 	});
 });
