@@ -339,6 +339,29 @@ describe('shared agents chat display groups', () => {
 				'thinkingSegments' in group ? group.thinkingSegments.map((segment) => segment.id) : [],
 			),
 		).toEqual([[], ['r1', 'r2', 'r3'], []]);
+		if (topGroups[1].kind !== 'message') return;
+		expect(topGroups[1].runTail).toBe(topGroups[2]);
+	});
+
+	it('does not link a one-group run to itself when thinking is at the top', () => {
+		const groups = buildDisplayGroups(
+			[
+				{ id: 'u1', role: 'user', content: 'hi', executionId: 'exec-1' },
+				{
+					id: 'a1',
+					role: 'assistant',
+					content: 'Hello.',
+					executionId: 'exec-1',
+					thinkingSegments: [{ id: 'r1', content: 'Greet the user.' }],
+				},
+			],
+			{ thinkingAtTop: true },
+		);
+
+		expect(groups).toHaveLength(2);
+		if (groups[1].kind !== 'message') throw new Error('expected a message group');
+		expect(groups[1].thinkingSegments.map((segment) => segment.id)).toEqual(['r1']);
+		expect(groups[1].runTail).toBeUndefined();
 	});
 
 	it('does not group assistant messages with visible text as tool-only messages', () => {

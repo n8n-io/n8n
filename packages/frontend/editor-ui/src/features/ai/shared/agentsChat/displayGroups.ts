@@ -124,7 +124,7 @@ function collectRunThinking(groups: DisplayGroup[], atTop: boolean): void {
 		const tail = run[run.length - 1];
 		if (atTop) {
 			run[0].thinkingSegments = segments;
-			run[0].runTail = tail;
+			if (tail !== run[0]) run[0].runTail = tail;
 		} else {
 			tail.thinkingSegments = segments;
 		}
