@@ -29,6 +29,7 @@ import { useDynamicCredentials } from '@/features/resolvers/composables/useDynam
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { PROMOTIONS_SETTINGS_VIEW } from '@n8n/frontend-module-promotions';
 import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
+import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
 import {
 	canManageInstanceAi,
 	canMessageInstanceAi,
@@ -122,6 +123,8 @@ const ResourceCenterView = async () =>
 
 const SecuritySettingsView = async () =>
 	await import('@/features/settings/security/SecuritySettings.vue');
+const WorkflowReviewInstanceSettingsView = async () =>
+	await import('@/features/settings/security/WorkflowReviewInstanceSettingsView.vue');
 
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 
@@ -702,6 +705,34 @@ export const routes: RouteRecordRaw[] = [
 				meta: {
 					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
+						rbac: {
+							scope: ['securitySettings:manage'],
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'security',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'security/workflow-reviews/project-requirements',
+				name: VIEWS.SECURITY_WORKFLOW_REVIEW_INSTANCE_SETTINGS,
+				component: WorkflowReviewInstanceSettingsView,
+				beforeEnter: () =>
+					useWorkflowReviewsFeature().isWorkflowReviewsEnabled.value || {
+						name: VIEWS.SECURITY_SETTINGS,
+					},
+				meta: {
+					middleware: ['authenticated', 'enterprise', 'rbac'],
+					middlewareOptions: {
+						enterprise: {
+							feature: EnterpriseEditionFeature.WorkflowReviews,
+						},
 						rbac: {
 							scope: ['securitySettings:manage'],
 						},

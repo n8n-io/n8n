@@ -3,8 +3,10 @@ import { createTestingPinia } from '@pinia/testing';
 import { i18nInstance } from '@n8n/i18n';
 import { nextTick, ref } from 'vue';
 import { describe, expect, it } from 'vitest';
+import { createMemoryHistory, createRouter } from 'vue-router';
 
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
+import { AGENT_N8N_CHAT_VIEW } from '@/features/agents/constants';
 import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
@@ -53,10 +55,20 @@ function renderView(
 	const pinia = createTestingPinia();
 	const projectsStore = mockedStore(useProjectsStore);
 	configureStore(projectsStore);
+	const router = createRouter({
+		history: createMemoryHistory('/n8n/'),
+		routes: [
+			{
+				path: '/assistant/agents/:agentId/:agentThreadId?',
+				name: AGENT_N8N_CHAT_VIEW,
+				component: { template: '<div />' },
+			},
+		],
+	});
 
 	return mount(AgentChannelN8nChatView, {
 		props: baseProps(props),
-		global: { plugins: [pinia, i18nInstance] },
+		global: { plugins: [pinia, i18nInstance, router] },
 	});
 }
 
@@ -90,6 +102,23 @@ describe('AgentChannelN8nChatView', () => {
 		});
 
 		expect(wrapper.text()).toContain('Personal');
+	});
+
+	it.each(['setup', 'edit'])('links to the published channel in %s mode', (mode) => {
+		const wrapper = renderView({ mode, availableInChat: true });
+
+		const link = wrapper.get('[role="alert"] a');
+		expect(link.text()).toBe('Talk to agent');
+		expect(link.attributes('href')).toBe('/n8n/assistant/agents/agent-1');
+		expect(link.attributes('target')).toBe('_blank');
+	});
+
+	it.each([
+		{ mode: 'setup', isPublished: true, availableInChat: false },
+		{ mode: 'edit', isPublished: false, availableInChat: true },
+		{ mode: 'edit', isPublished: true, availableInChat: false },
+	])('hides the chat link for %j', (props) => {
+		expect(renderView(props).find('[role="alert"] a').exists()).toBe(false);
 	});
 
 	it('initialises the description from savedDescription and shows the placeholder', () => {

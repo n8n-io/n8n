@@ -8,6 +8,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { MfaService } from '@/mfa/mfa.service';
 import type { SecuritySettingsService } from '@/services/security-settings.service';
+import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 
 import { SecurityPolicyInstanceSettingsLoader } from '../loaders/security-policy.instance-settings-loader';
 
@@ -15,6 +16,7 @@ describe('SecurityPolicyInstanceSettingsLoader', () => {
 	const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
 	const mfaService = mock<MfaService>();
 	const securitySettingsService = mock<SecuritySettingsService>();
+	const workflowReviewPolicyService = mock<WorkflowReviewPolicyService>();
 
 	const createLoader = (configOverrides: Partial<InstanceSettingsLoaderConfig> = {}) => {
 		const config = {
@@ -22,6 +24,8 @@ describe('SecurityPolicyInstanceSettingsLoader', () => {
 			mfaEnforcedEnabled: false,
 			personalSpacePublishingEnabled: true,
 			personalSpaceSharingEnabled: true,
+			workflowReviewsEnabled: false,
+			workflowReviewsAlwaysRequired: false,
 			...configOverrides,
 		} as InstanceSettingsLoaderConfig;
 
@@ -29,6 +33,7 @@ describe('SecurityPolicyInstanceSettingsLoader', () => {
 			config,
 			securitySettingsService,
 			mfaService,
+			workflowReviewPolicyService,
 			logger,
 		);
 	};
@@ -36,6 +41,10 @@ describe('SecurityPolicyInstanceSettingsLoader', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		logger.scoped.mockReturnThis();
+		workflowReviewPolicyService.update.mockResolvedValue({
+			before: { enabled: false },
+			after: { enabled: false },
+		});
 	});
 
 	describe('when N8N_SECURITY_POLICY_MANAGED_BY_ENV is false', () => {
@@ -47,6 +56,7 @@ describe('SecurityPolicyInstanceSettingsLoader', () => {
 			expect(result).toBe('skipped');
 			expect(mfaService.enforceMFA).not.toHaveBeenCalled();
 			expect(securitySettingsService.setPersonalSpaceSetting).not.toHaveBeenCalled();
+			expect(workflowReviewPolicyService.update).not.toHaveBeenCalled();
 			expect(logger.debug).toHaveBeenCalledWith(
 				expect.stringContaining('not managed by environment variables'),
 			);
@@ -166,6 +176,62 @@ describe('SecurityPolicyInstanceSettingsLoader', () => {
 				PERSONAL_SPACE_SHARING_SETTING,
 				false,
 			);
+		});
+
+		it('should apply workflow reviews with approval always required from the environment', async () => {
+			const loader = createLoader({
+				securityPolicyManagedByEnv: true,
+				workflowReviewsEnabled: true,
+				workflowReviewsAlwaysRequired: true,
+			});
+
+			await loader.run();
+
+			expect(workflowReviewPolicyService.update).toHaveBeenCalledWith({
+				enabled: true,
+				alwaysRequired: true,
+			});
+		});
+
+		it('should turn workflow reviews off when the environment does not enable them', async () => {
+			const loader = createLoader({ securityPolicyManagedByEnv: true });
+
+			await loader.run();
+
+			expect(workflowReviewPolicyService.update).toHaveBeenCalledWith({
+				enabled: false,
+				alwaysRequired: false,
+			});
+		});
+
+		it('should warn when the environment turns a workflow review control off', async () => {
+			workflowReviewPolicyService.update.mockResolvedValue({
+				before: { enabled: true, alwaysRequired: true },
+				after: { enabled: false, alwaysRequired: false },
+			});
+
+			await createLoader({ securityPolicyManagedByEnv: true }).run();
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('N8N_WORKFLOW_REVIEWS_ENABLED'),
+			);
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('N8N_WORKFLOW_REVIEWS_ALWAYS_REQUIRED'),
+			);
+		});
+
+		it.each([
+			{
+				before: { enabled: true, alwaysRequired: true },
+				after: { enabled: true, alwaysRequired: true },
+			},
+			{ before: { enabled: false }, after: { enabled: false, alwaysRequired: false } },
+		])('should not warn when no workflow review control goes from on to off', async (policy) => {
+			workflowReviewPolicyService.update.mockResolvedValue(policy);
+
+			await createLoader({ securityPolicyManagedByEnv: true }).run();
+
+			expect(logger.warn).not.toHaveBeenCalled();
 		});
 
 		it('should log info message about override being enabled', async () => {
