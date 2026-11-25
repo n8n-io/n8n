@@ -535,18 +535,67 @@ describe('CollectionView', () => {
 			await waitFor(() => expect(screen.queryByTestId('collection-modal')).toBeNull());
 		});
 
-		it('keeps a newer name when a description save ends after a rename', async () => {
-			await setup();
-			const descriptionSave = Promise.withResolvers<KnowledgeCollectionDto>();
-			collectionsStore.updateCollection.mockReturnValueOnce(descriptionSave.promise);
+		/** Saves a new description, then closes the dialog while the save still runs. */
+		async function startDescriptionSaveAndCancel(text: string) {
+			const save = Promise.withResolvers<KnowledgeCollectionDto>();
+			collectionsStore.updateCollection.mockReturnValueOnce(save.promise);
 
 			await pickAction('Edit description');
 			await screen.findByTestId('collection-modal');
 			await userEvent.clear(descriptionField());
-			await userEvent.type(descriptionField(), 'Refunds, pricing and shipping');
+			await userEvent.type(descriptionField(), text);
 			await userEvent.click(screen.getByTestId('collection-modal-submit'));
 			await userEvent.click(screen.getByTestId('collection-modal-cancel'));
 			await waitFor(() => expect(screen.queryByTestId('collection-modal')).toBeNull());
+
+			return save;
+		}
+
+		it('keeps a newer description when a rename ends after a description save', async () => {
+			await setup();
+			const descriptionSave = await startDescriptionSaveAndCancel('Refunds, pricing and shipping');
+			const rename = Promise.withResolvers<KnowledgeCollectionDto>();
+			collectionsStore.updateCollection.mockReturnValueOnce(rename.promise);
+			await typeTitle('Support handbook');
+
+			descriptionSave.resolve(collectionDto({ description: 'Refunds, pricing and shipping' }));
+			await flushPromises();
+			// The rename request read the collection before the description write, so it has the old description.
+			rename.resolve(collectionDto({ name: 'Support handbook' }));
+			await flushPromises();
+
+			expect(titlePreview()).toHaveTextContent('Support handbook');
+			expect(screen.getByTestId('collection-description')).toHaveTextContent(
+				'Refunds, pricing and shipping',
+			);
+		});
+
+		it('keeps a refused name and its error when a description save ends after it', async () => {
+			await setup();
+			const descriptionSave = await startDescriptionSaveAndCancel('Refunds, pricing and shipping');
+			collectionsStore.updateCollection.mockRejectedValueOnce(
+				new ResponseError('A collection with this name already exists in this project.', {
+					httpStatusCode: 409,
+				}),
+			);
+			await typeTitle('Product docs');
+			await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
+
+			descriptionSave.resolve(collectionDto({ description: 'Refunds, pricing and shipping' }));
+			await flushPromises();
+
+			expect(titlePreview()).toHaveTextContent('Product docs');
+			expect(screen.getByRole('alert')).toHaveTextContent(
+				'A collection with this name already exists. The name is not saved.',
+			);
+			expect(screen.getByTestId('collection-description')).toHaveTextContent(
+				'Refunds, pricing and shipping',
+			);
+		});
+
+		it('keeps a newer name when a description save ends after a rename', async () => {
+			await setup();
+			const descriptionSave = await startDescriptionSaveAndCancel('Refunds, pricing and shipping');
 
 			collectionsStore.updateCollection.mockResolvedValueOnce(
 				collectionDto({ name: 'Support handbook' }),

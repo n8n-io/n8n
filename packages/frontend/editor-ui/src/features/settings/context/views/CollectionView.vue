@@ -170,14 +170,18 @@ watch(
 	{ immediate: true },
 );
 
-// Make sure the title, the tab and the rename state follow each new copy of the collection.
-watch(collection, (current) => {
-	editableName.value = current?.name ?? '';
-	renameError.value = '';
-	if (current) {
-		documentTitle.set(current.name);
-	}
-});
+// Make sure the title, the tab and the rename state follow the saved name, and only the name:
+// a description save must not discard a refused name that the user can still fix.
+watch(
+	() => collection.value?.name,
+	(name) => {
+		editableName.value = name ?? '';
+		renameError.value = '';
+		if (name) {
+			documentTitle.set(name);
+		}
+	},
+);
 
 async function onRename(name: string) {
 	const current = collection.value;
@@ -200,7 +204,9 @@ async function onRename(name: string) {
 			return;
 		}
 
-		collection.value = updated;
+		// Take only the name, so a description save that ends first keeps its text.
+		const latest = collection.value ?? updated;
+		collection.value = { ...latest, name: updated.name };
 	} catch (error) {
 		const isNameTaken = error instanceof ResponseError && error.httpStatusCode === 409;
 		// A page that changed or closed has no title to show the failure under, so it gets a toast.
