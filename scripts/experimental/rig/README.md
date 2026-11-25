@@ -332,6 +332,7 @@ allowed values.
 | Enum, boolean | List of options |
 | List of enums (for example `N8N_LOG_OUTPUT`) | Checkboxes |
 | Other types | Text field. Empty input unsets the var |
+| Secrets (sensitive keys, secrets layers) | Masked field. To remove a value, pick `Unset` |
 | `⇄ Change layer` | Switch between `shared`, roles, and components |
 | `+ Other variable…` | Set a name that n8n does not declare |
 | Ctrl+C in a value prompt | Go back to the search |
@@ -365,7 +366,8 @@ N8N_ENCRYPTION_KEY=enc:v1:hDz3yjBDGQNXbhqbZlUPv17sM2BY…
 A sensitive key can have a different value in each layer, for example one
 API key in a profile and another one in `env/worker-2.env`. `env ls`,
 `env explain`, `env diff`, and `env browse` mask sensitive values in every
-layer. `--show-secrets` shows them. Values that `rig` sets itself, for example
+layer. `env ls`, `env explain`, and `env diff` show them with
+`--show-secrets`. Values that `rig` sets itself, for example
 `DB_POSTGRESDB_PASSWORD=postgres` for the local Postgres, always show. When
 you override such a value in a layer, `rig` masks it.
 
@@ -386,10 +388,12 @@ saves it in `secrets.backend` in the global config:
   deletes the copy. The copy is in `$XDG_RUNTIME_DIR` when that directory
   exists, which is usually in memory on Linux. Otherwise it is in the temp
   directory of the system. Every `secrets.env` file uses the temp copy.
-- `rig` must know when the editor closes the copy. A known editor from the
-  list, a terminal editor such as `vim` or `nano`, and a GUI editor with
-  `--wait` or `-w` return when the file closes. For other editors, `rig` asks
-  before it deletes the copy, and it needs a terminal for this question.
+- `rig` must know when the editor closes the copy. It knows this only for the
+  editors that it lists (`vi` too): when you pick one in the editor prompt,
+  and in `$EDITOR` or a command line for a listed terminal editor such as
+  `vim` or `nano`, or for a listed GUI editor with `--wait` or `-w`. For all
+  other editors, `rig` asks before it deletes the copy, and it needs a
+  terminal for this question.
 - When an env file has plaintext values that must be encrypted, for example
   after a manual edit, `rig` encrypts them the next time it reads the file.
 - A file without encrypted or sensitive values does not need the key.

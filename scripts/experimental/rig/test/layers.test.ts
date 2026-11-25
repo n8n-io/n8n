@@ -153,3 +153,11 @@ describe('secretOverrideChecks', () => {
 		expect(checks[0].hint).toContain('rig generated N8N_ENCRYPTION_KEY');
 	});
 });
+
+describe('secretOverrideChecks with engine v2', () => {
+	it('should not report the engine-v2 module that rig adds as a layer override', () => {
+		const env = makeEnv('e', { ...PRESETS['enginev2-local'].topology });
+		write(env.paths.secrets, 'N8N_ENABLED_MODULES=insights\n');
+		expect(secretOverrideChecks(env)).toEqual([]);
+	});
+});

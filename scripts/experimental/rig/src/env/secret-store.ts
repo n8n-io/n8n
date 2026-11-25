@@ -361,14 +361,16 @@ export function hasEncryptedValues(file: string): boolean {
  */
 export function encryptEnvFile(file: string): number {
 	if (!existsSync(file) || secretsBackend().backend === 'off') return 0;
-	const text = readFileSync(file, 'utf8');
-	const entries = parseDotenv(text);
-	if (pendingEntries(file, entries).length === 0) return 0;
+	if (pendingEntries(file, parseDotenv(readFileSync(file, 'utf8'))).length === 0) return 0;
 	const key = activeKey(true);
-	for (const entry of entries) {
+	// Read again after the key: the keystore can wait for the user, and another
+	// process can change the file meanwhile. No wait comes between this read and the write.
+	const text = readFileSync(file, 'utf8');
+	for (const entry of parseDotenv(text)) {
 		if (isEncrypted(entry.value)) decryptOrThrow(key, entry, file);
 	}
 	const result = encryptText(text, key, file);
+	if (result.count === 0) return 0;
 	writePrivate(file, result.text);
 	return result.count;
 }

@@ -16,6 +16,7 @@ import {
 	SECRETS_BACKEND_ENV_VAR,
 	type SecretsReport,
 } from '../env/secret-store';
+import type { LayerKind } from '../env/resolve';
 import { GENERATED_SECRET_KEYS } from '../env/secrets';
 import { RigError } from '../errors';
 import {
@@ -358,6 +359,8 @@ async function portChecks(env: RigEnv): Promise<Check[]> {
  * from an older rig can run with another value now, for example another
  * N8N_ENCRYPTION_KEY.
  */
+const OVERRIDING_LAYERS = new Set<LayerKind>(['shared', 'role', 'component']);
+
 export function secretOverrideChecks(env: RigEnv): Check[] {
 	const overrides = new Map<string, Check>();
 	try {
@@ -368,7 +371,8 @@ export function secretOverrideChecks(env: RigEnv): Check[] {
 					.at(-1);
 				const winner = sources.at(-1);
 				if (!secret || !winner || winner === secret || winner.value === secret.value) continue;
-				if (winner.layer === 'one-off' || winner.layer === 'shell') continue;
+				// Only a layer file can override secrets.env. rig adds `engine-v2` to N8N_ENABLED_MODULES after the merge.
+				if (!OVERRIDING_LAYERS.has(winner.layer)) continue;
 				overrides.set(`${key} ${winner.label}`, {
 					status: 'warn',
 					label: 'Secrets',

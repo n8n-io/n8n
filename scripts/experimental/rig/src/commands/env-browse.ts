@@ -211,10 +211,16 @@ async function askText(
 	masked: boolean,
 ): Promise<Answer> {
 	if (masked) {
-		// Mask the input. Empty input keeps the value, so Enter never unsets a key by mistake.
-		const value = await password(
-			`${info.name} ${pc.dim(current === undefined ? '(empty goes back)' : '(empty keeps the value)')}`,
-		);
+		// A masked input cannot show the value, so unset is a choice, not an empty input.
+		if (current !== undefined) {
+			const action = await select<'set' | Answer>(info.name, [
+				{ value: 'set', label: 'New value…' },
+				{ value: UNSET.value, label: UNSET.label, hint: UNSET.hint },
+				{ value: BACK.value, label: BACK.label },
+			]);
+			if (action !== 'set') return action;
+		}
+		const value = await password(`${info.name} ${pc.dim('(empty goes back)')}`);
 		return value === '' ? { type: 'back' } : { type: 'set', value };
 	}
 	const hint =
