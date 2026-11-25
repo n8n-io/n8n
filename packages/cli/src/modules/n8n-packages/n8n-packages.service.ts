@@ -754,7 +754,6 @@ export class N8nPackagesService {
 			...CHERRY_PICK_IMPORT_POLICY,
 			preferenceConflictPolicy: request.preferenceConflictPolicy,
 			preferencesFromPromotion: request.preferencesFromPromotion,
-			preferenceApiKeyScopes: request.preferenceApiKeyScopes,
 			projectConflictPolicy: request.projectConflictPolicy ?? ProjectConflictPolicy.Merge,
 			overwriteDeletionPolicy: request.overwriteDeletionPolicy ?? OverwriteDeletionPolicy.Archive,
 			conflictPolicy: request.conflictPolicy ?? ImportConflictPolicy.NewVersion,

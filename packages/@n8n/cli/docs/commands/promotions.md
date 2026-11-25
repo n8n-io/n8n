@@ -47,8 +47,10 @@ Legacy Environments v1 does not carry Preferences.
 
 Review the change list and the instruction diff before applying. Select a
 Preference by its ID with `--preference`; repeat the flag for more than one.
-Pass `--expected-preview-revision` from that preview. Apply also needs the
-`--expected-*` source flags. The JSON API uses `preferenceIds`,
+Pass `--expected-preview-revision` to check that preview before the operation.
+For Apply, pass the `--expected-*` source flags to check the source commit too.
+These checks are optional, as for other resources. Continue requires the source
+flags from the preceding Apply result. The JSON API uses `preferenceIds`,
 `expectedPreviewRevision`, and `expectedSource` for the same operation.
 
 A matching ID replaces the destination's instruction text. Identical content
@@ -68,11 +70,9 @@ creation source and creator. Authorized Promotions Apply can change shared
 Preferences in a protected environment. Ordinary edits and package imports
 remain blocked there.
 
-The API key needs `aiPreference:read` and `aiPreference:list` to preview or
-promote Preferences. Apply needs both read scopes and the Preference scope for each selected action:
-`aiPreference:create`, `aiPreference:update`, or `aiPreference:delete`.
-An unchanged selected Preference needs `aiPreference:read`. The key owner's
-resource permissions must also allow each action.
+The API key needs the Promotions scope for the operation: `promotions:promote`
+or `promotions:apply`. The same scope permits its preview and content details.
+The key owner's resource permissions must also allow each action.
 
 ## Setup example: Git over SSH
 

@@ -1,5 +1,4 @@
 import type {
-	PromotionPreferenceAccess,
 	BranchPackage,
 	PackageCommit,
 	PromotionCacheDescriptor,
@@ -9,7 +8,6 @@ import type {
 import {
 	PromotionPreferenceService,
 	selectPromotionPreferences,
-	assertPreferenceReadAccess,
 } from './promotion-preference.service';
 import { readLeftoverManifest } from './import-manifest-bridge';
 import {
@@ -243,7 +241,7 @@ export class PromotionsService {
 	async promote(
 		environmentId: string,
 		actor: User,
-		request: PromotePackageDto & PromotionPreferenceAccess,
+		request: PromotePackageDto,
 	): Promise<PromotePackageResultDto> {
 		const input = await this.resolver.resolveForEnvironment(environmentId, 'promote');
 		return await this.trackPromote(
@@ -262,7 +260,7 @@ export class PromotionsService {
 	private async promoteResolved(
 		input: PromotionOperationInput,
 		actor: User,
-		request: PromotePackageDto & PromotionPreferenceAccess,
+		request: PromotePackageDto,
 		signal: AbortSignal,
 	): Promise<PromotePackageResultDto> {
 		this.assertInstanceScope(input, 'Promote');
@@ -299,7 +297,6 @@ export class PromotionsService {
 				actor,
 				projectIds,
 				true,
-				request.preferenceApiKeyScopes,
 			);
 			const previousManifest = await readLeftoverManifest(packageFolder);
 			if (
@@ -668,7 +665,7 @@ export class PromotionsService {
 	async promoteProjectSelection(
 		projectId: string,
 		actor: User,
-		request: PromoteRequest & PromotionPreferenceAccess,
+		request: PromoteRequest,
 	): Promise<PromoteSelectionResultDto> {
 		const workflowIds = request.workflowIds ?? [];
 		const folderIds = request.folderIds ?? [];
@@ -696,13 +693,10 @@ export class PromotionsService {
 					async (current, signal): Promise<PromoteSelectionResultDto> => {
 						let preferences: Pick<SelectivePushOptions, 'preferenceIds' | 'deletedPreferenceIds'> =
 							{};
-						if (preferenceIds.length) assertPreferenceReadAccess(request.preferenceApiKeyScopes);
-						if (preferenceIds.length && !request.expectedPreviewRevision)
-							throw new BadRequestError('Review the Preference changes before promoting them.');
 						// Promote what the page shows. When the project or its branch changed after the
 						// preview, stop and write nothing. This is a check, not a lock. It runs before the
 						// selection is read, so a selected folder that moved away gives this result too.
-						if (request.expectedPreviewRevision !== undefined) {
+						if (request.expectedPreviewRevision !== undefined || preferenceIds.length) {
 							await this.ensureCheckout(current, signal);
 							const preview = await this.promotePreviewService.build({
 								user: actor,
@@ -710,7 +704,10 @@ export class PromotionsService {
 								input: current,
 								readBranch: async () => await this.readBranchPackageResolved(current, projectId),
 							});
-							if (preview.revision !== request.expectedPreviewRevision) {
+							if (
+								request.expectedPreviewRevision !== undefined &&
+								preview.revision !== request.expectedPreviewRevision
+							) {
 								this.logger.info('Promote stopped because the preview changed', {
 									status: 'preview-changed',
 									environmentId: current.environmentId,
@@ -892,7 +889,7 @@ export class PromotionsService {
 	async apply(
 		environmentId: string,
 		actor: User,
-		request: ApplyPackageDto & PromotionPreferenceAccess = {},
+		request: ApplyPackageDto = {},
 		publicApi: PublicApiCaller = false,
 		ctx: OperationContext = {},
 	): Promise<ApplyPackageResultDto> {
@@ -902,7 +899,7 @@ export class PromotionsService {
 	async continueApply(
 		environmentId: string,
 		actor: User,
-		request: ContinueApplyPackageDto & PromotionPreferenceAccess,
+		request: ContinueApplyPackageDto,
 		publicApi: PublicApiCaller = false,
 		ctx: OperationContext = {},
 	): Promise<ApplyPackageResultDto> {
@@ -957,7 +954,7 @@ export class PromotionsService {
 	async applyProjectSelection(
 		projectId: string,
 		actor: User,
-		request: ApplySelectionDto & PromotionPreferenceAccess,
+		request: ApplySelectionDto,
 		publicApi: PublicApiCaller = false,
 		ctx: OperationContext = {},
 	): Promise<ApplyPackageResultDto> {
@@ -967,7 +964,6 @@ export class PromotionsService {
 			toApplySelection(request),
 			{
 				publicApi,
-				preferenceApiKeyScopes: request.preferenceApiKeyScopes,
 				expectedSource: request.expectedSource,
 				expectedPreviewRevision: request.expectedPreviewRevision,
 			},
@@ -978,7 +974,7 @@ export class PromotionsService {
 	async continueApplyProjectSelection(
 		projectId: string,
 		actor: User,
-		request: ContinueApplySelectionDto & PromotionPreferenceAccess,
+		request: ContinueApplySelectionDto,
 		publicApi: PublicApiCaller = false,
 		ctx: OperationContext = {},
 	): Promise<ApplyPackageResultDto> {
@@ -988,7 +984,6 @@ export class PromotionsService {
 			toApplySelection(request),
 			{
 				publicApi,
-				preferenceApiKeyScopes: request.preferenceApiKeyScopes,
 				expectedSource: request.expectedSource,
 				expectedPreviewRevision: request.expectedPreviewRevision,
 				confirmDestructiveChanges: request.confirmDestructiveChanges === true,
@@ -1081,13 +1076,11 @@ export class PromotionsService {
 		selection: ApplySelection,
 		{
 			publicApi,
-			preferenceApiKeyScopes,
 			expectedSource,
 			expectedPreviewRevision,
 			confirmDestructiveChanges = false,
 		}: {
 			publicApi: PublicApiCaller;
-			preferenceApiKeyScopes?: string[];
 			expectedSource?: ApplySelectionDto['expectedSource'];
 			expectedPreviewRevision?: string;
 			confirmDestructiveChanges?: boolean;
@@ -1119,7 +1112,6 @@ export class PromotionsService {
 							signal,
 							expectedPreviewRevision,
 							ctx,
-							preferenceApiKeyScopes,
 						),
 				),
 		);
@@ -1136,11 +1128,7 @@ export class PromotionsService {
 		signal: AbortSignal,
 		expectedPreviewRevision?: string,
 		ctx: OperationContext = {},
-		preferenceApiKeyScopes?: string[],
 	): Promise<ApplyPackageResultDto> {
-		if (requested.preferenceIds.length) assertPreferenceReadAccess(preferenceApiKeyScopes);
-		if (requested.preferenceIds.length && (!expectedSource || !expectedPreviewRevision))
-			throw new BadRequestError('Review the Preference changes before applying them.');
 		await this.ensureCheckout(input, signal);
 
 		const tip = await this.readApplyTip(input, expectedSource);
@@ -1148,12 +1136,12 @@ export class PromotionsService {
 		const { identity, files } = tip;
 
 		const instance =
-			expectedPreviewRevision !== undefined
+			expectedPreviewRevision !== undefined || requested.preferenceIds.length
 				? await exportInstancePackage(this.n8nPackagesService, actor, [projectId], {
 						preferenceOptions: await this.preferenceSelection.exportOptions(actor, [projectId]),
 					})
 				: undefined;
-		if (instance) {
+		if (expectedPreviewRevision !== undefined && instance) {
 			const preview = await this.applyPreviewService.build({
 				user: actor,
 				projectId,
@@ -1187,13 +1175,13 @@ export class PromotionsService {
 			{
 				...applySelectionRequest(actor, publicApi, confirmDestructiveChanges),
 				ctx,
-				preferenceApiKeyScopes,
 			},
 			reader,
 			selection,
 			'enforce',
 		);
 		if (
+			expectedPreviewRevision !== undefined &&
 			plan.preferences &&
 			instance &&
 			!this.preferenceSelection.matchesSnapshot(plan.preferences, instance)
@@ -1238,7 +1226,7 @@ export class PromotionsService {
 		environmentId: string,
 		actor: User,
 		publicApi: PublicApiCaller,
-		request: ApplyPackageDto & PromotionPreferenceAccess & { confirmDestructiveChanges?: boolean },
+		request: ApplyPackageDto & { confirmDestructiveChanges?: boolean },
 		ctx: OperationContext = {},
 	): Promise<ApplyPackageResultDto> {
 		const input = await this.resolver.resolveForEnvironment(environmentId, 'apply');
@@ -1262,10 +1250,9 @@ export class PromotionsService {
 		publicApi: PublicApiCaller,
 		{
 			expectedSource,
-			preferenceApiKeyScopes,
 			expectedPreviewRevision,
 			confirmDestructiveChanges = false,
-		}: ApplyPackageDto & PromotionPreferenceAccess & { confirmDestructiveChanges?: boolean },
+		}: ApplyPackageDto & { confirmDestructiveChanges?: boolean },
 		signal: AbortSignal,
 		ctx: OperationContext = {},
 	): Promise<ApplyPackageResultDto> {
@@ -1300,25 +1287,18 @@ export class PromotionsService {
 				manifest,
 				instance.manifest,
 			).deletedPreferenceIds;
-			if (manifest.preferences.length || deletedPreferenceIds.length)
-				assertPreferenceReadAccess(preferenceApiKeyScopes);
-			if (
-				(manifest.preferences.length || deletedPreferenceIds.length) &&
-				(!expectedSource || !expectedPreviewRevision)
-			)
-				throw new BadRequestError('Review the Preference changes before applying them.');
 		}
 		const plan = await this.n8nPackagesService.planPackage(
 			{
 				...instanceApplyRequest(actor, publicApi, confirmDestructiveChanges),
 				ctx,
 				deletedPreferenceIds,
-				preferenceApiKeyScopes,
 			},
 			reader,
 			'enforce',
 		);
 		if (
+			expectedPreviewRevision !== undefined &&
 			plan.preferences &&
 			instance &&
 			!this.preferenceSelection.matchesSnapshot(plan.preferences, instance)
@@ -2004,9 +1984,7 @@ async function pathExists(target: string): Promise<boolean> {
 /** What a project Apply selects. The project details always come along. */
 type ApplySelection = { workflowIds: string[]; folderIds: string[]; preferenceIds: string[] };
 
-function toApplySelection(
-	request: (ApplySelectionDto & PromotionPreferenceAccess) | ContinueApplySelectionDto,
-): ApplySelection {
+function toApplySelection(request: ApplySelectionDto | ContinueApplySelectionDto): ApplySelection {
 	return {
 		workflowIds: request.workflowIds ?? [],
 		folderIds: request.folderIds ?? [],

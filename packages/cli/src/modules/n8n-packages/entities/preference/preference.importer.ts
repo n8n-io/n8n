@@ -165,7 +165,7 @@ export class PreferenceImporter {
 
 	private assertApiKeyScopes(request: ResolvedImportRequest, plan: SharedPreferencePlan) {
 		for (const item of plan.items) {
-			assertPackageImportApiKeyScopes(request.preferenceApiKeyScopes ?? request.apiKeyScopes, [
+			assertPackageImportApiKeyScopes(request.apiKeyScopes, [
 				`aiPreference:${item.action === 'skip' ? 'read' : item.action}`,
 			]);
 		}

@@ -1,7 +1,7 @@
 import { AiPreferenceService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { BadRequestError } from '@n8n/errors';
 
 import type { PreferenceImportPlan } from '@/modules/n8n-packages/entities/preference/preference.importer';
 import { PreferenceSerializer } from '@/modules/n8n-packages/entities/preference/preference.serializer';
@@ -44,10 +44,8 @@ export class PromotionPreferenceService {
 		user: User,
 		projectIds: string[],
 		includeInstance = false,
-		apiKeyScopes?: string[],
 	): Promise<Pick<ExportPackageRequest, 'includePreferences' | 'preferenceIds'>> {
 		if (!this.settings.isEnabled) return {};
-		assertPreferenceReadAccess(apiKeyScopes);
 		const preferenceIds: string[] = [];
 		if (includeInstance) {
 			let offset = 0;
@@ -100,14 +98,4 @@ export function selectPromotionPreferences(
 		selectedPreferenceIds: ids.filter((id) => sourceIds.has(id)),
 		deletedPreferenceIds: ids.filter((id) => !sourceIds.has(id)),
 	};
-}
-
-export function assertPreferenceReadAccess(apiKeyScopes?: string[]) {
-	if (
-		apiKeyScopes &&
-		!['aiPreference:read', 'aiPreference:list'].every((scope) => apiKeyScopes.includes(scope))
-	)
-		throw new ForbiddenError(
-			'The API key needs aiPreference:read and aiPreference:list for Preferences.',
-		);
 }

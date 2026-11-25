@@ -421,8 +421,6 @@ export type ResolvedImportFolderProperties = ImportFolderProperties &
 export type PromotionLayoutProperties = {
 	/** Internal Apply path. Resource permissions and concurrency checks still apply. */
 	preferencesFromPromotion?: boolean;
-	/** API-key grants for Preferences only. Other Promotions resources keep their existing gates. */
-	preferenceApiKeyScopes?: string[];
 	/** Omitted means `fail`. */
 	layoutConflictPolicy?: LayoutConflictPolicy;
 	/** Omitted means `allow`. */

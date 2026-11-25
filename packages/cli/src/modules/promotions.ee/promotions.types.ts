@@ -114,6 +114,3 @@ export type PromotionReviewCloseReason =
 	| 'environment_deleted'
 	| 'environment_target_changed'
 	| 'environment_host_changed';
-
-/** API-key grants supplied by the controller, never by the request body. */
-export type PromotionPreferenceAccess = { preferenceApiKeyScopes?: string[] };

@@ -11,6 +11,7 @@ import {
 	FolderRepository,
 	ProjectRepository,
 	ProjectRelationRepository,
+	Role,
 	WorkflowPublicationOutboxRepository,
 	WorkflowPublicationTriggerStatusRepository,
 	WorkflowPublishedVersionRepository,
@@ -97,7 +98,11 @@ import { TagService } from '@/services/tag.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { createFolder } from '@test-integration/db/folders';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
-import { createMember, createOwnerWithApiKey } from '@test-integration/db/users';
+import {
+	createMember,
+	createMemberWithApiKey,
+	createOwnerWithApiKey,
+} from '@test-integration/db/users';
 import { createProjectVariable, createVariable } from '@test-integration/db/variables';
 import { initNodeTypes, initCredentialsTypes, setupTestServer } from '@test-integration/utils';
 
@@ -4742,7 +4747,7 @@ describe('Preference promotions through Git', () => {
 		expect(environments.apply.id).toBe(incoming.source.environmentId);
 	});
 
-	it('replaces reviewed content, rejects a stale preview, and checks API-key grants', async () => {
+	it('replaces reviewed content and rejects a stale preview', async () => {
 		const preferences = preferencesEnabled();
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
@@ -4766,12 +4771,6 @@ describe('Preference promotions through Git', () => {
 		});
 		const fresh = await loadApplyPreview(project.id);
 		const reviewed = { ...request, expectedPreviewRevision: fresh.revision };
-		await expect(
-			service.applyProjectSelection(project.id, owner, {
-				...reviewed,
-				preferenceApiKeyScopes: ['promotions:apply'],
-			}),
-		).rejects.toThrow();
 		expect((await preferences.getById(owner, saved.id)).content).toBe('A later edit.');
 		expect(await service.applyProjectSelection(project.id, owner, reviewed)).toMatchObject({
 			status: 'applied',
@@ -4842,40 +4841,126 @@ describe('Preference promotions through Git', () => {
 		expect((await preferences.getById(owner, global.id)).content).toBe(global.content);
 		await expect(preferences.getById(owner, removed.id)).rejects.toThrow();
 	});
-	it('checks Preference grants and request validation over the public API', async () => {
-		const preferences = preferencesEnabled();
-		const remote = await createRemote();
-		const environments = await createInstanceEnvironments(remote.bareDir);
-		const project = await createTeamProject('Orders', owner);
-		const saved = await preferences.create(
-			owner,
-			{ scope: 'project', projectId: project.id, content: 'Use UTC.' },
-			'ui',
-		);
-		await service.promote(environments.promote.id, owner, {});
-		await preferences.update(owner, saved.id, { content: 'Local wording.' });
-		const limited = testServer.publicApiAgentFor(
-			await createOwnerWithApiKey({ scopes: ['promotions:apply'] }),
-		);
-		const url = `/promotions/projects/${project.id}`;
-		await limited.get(`${url}/changes/apply`).expect(403);
-		const agent = testServer.publicApiAgentFor(owner);
-		const preview = (await agent.get(`${url}/changes/apply`).expect(200)).body;
-		const request = {
-			preferenceIds: [saved.id],
-			expectedSource: { ...preview.source, commitSha: preview.commitSha },
-			expectedPreviewRevision: preview.revision,
-		};
-		await limited.post(`${url}/apply`).send(request).expect(403);
-		await agent
-			.post(`${url}/apply`)
-			.send({ ...request, preferencesFromPromotion: true })
-			.expect(400);
-		expect((await preferences.getById(owner, saved.id)).content).toBe('Local wording.');
-		const response = await agent.post(`${url}/apply`).send(request).expect(200);
-		expect(response.body).toMatchObject({
-			status: 'applied',
-			counts: { preferences: { updated: 1 } },
-		});
-	});
+	it.each(['project', 'instance'] as const)(
+		'uses Promotions grants and optional review tokens for %s Preferences over the public API',
+		async (scope) => {
+			const preferences = preferencesEnabled();
+			const remote = await createRemote();
+			const environments = await createInstanceEnvironments(remote.bareDir);
+			const project = await createTeamProject('Orders', owner);
+			const saved = await preferences.create(
+				owner,
+				{ scope, ...(scope === 'project' ? { projectId: project.id } : {}), content: 'Use UTC.' },
+				'ui',
+			);
+			const promoteAgent = testServer.publicApiAgentFor(
+				await createOwnerWithApiKey({ scopes: ['promotions:promote'] }),
+			);
+			const applyAgent = testServer.publicApiAgentFor(
+				await createOwnerWithApiKey({ scopes: ['promotions:apply'] }),
+			);
+			const promoteUrl =
+				scope === 'project'
+					? `/promotions/projects/${project.id}`
+					: `/promotions/environments/${environments.promote.id}`;
+			const applyUrl =
+				scope === 'project'
+					? `/promotions/projects/${project.id}`
+					: `/promotions/environments/${environments.apply.id}`;
+			const changesUrl = `${applyUrl}/changes${scope === 'project' ? '/apply' : ''}`;
+			const selection = scope === 'project' ? { preferenceIds: [saved.id] } : {};
+			expect(
+				(await promoteAgent.post(`${promoteUrl}/promote`).send(selection).expect(200)).body,
+			).toMatchObject({ counts: { preferences: 1 } });
+			await preferences.update(owner, saved.id, { content: 'Local wording.' });
+			const preview = (await applyAgent.get(changesUrl).expect(200)).body;
+			expect(preview.resources).toContainEqual(
+				expect.objectContaining({ type: 'preference', id: saved.id, change: 'modified' }),
+			);
+			const details = await applyAgent
+				.post(`${changesUrl}/details`)
+				.send({
+					commitSha: preview.commitSha,
+					keys: [`preference:${saved.id}`],
+				})
+				.expect(200);
+			expect(details.body.details).toContainEqual(
+				expect.objectContaining({
+					type: 'preference',
+					after: expect.objectContaining({ content: saved.content }),
+				}),
+			);
+			await promoteAgent.post(`${applyUrl}/apply`).send(selection).expect(403);
+			const memberAgent = testServer.publicApiAgentFor(
+				await createMemberWithApiKey({ scopes: ['promotions:apply'] }),
+			);
+			await memberAgent.post(`${applyUrl}/apply`).send(selection).expect(403);
+			await applyAgent
+				.post(`${applyUrl}/apply`)
+				.send({
+					...selection,
+					preferencesFromPromotion: true,
+				})
+				.expect(400);
+			expect((await preferences.getById(owner, saved.id)).content).toBe('Local wording.');
+			const reader = await createOwnerWithApiKey();
+			reader.role = Object.assign(new Role(), reader.role, {
+				scopes: reader.role.scopes.filter(
+					({ slug }) =>
+						slug !== (scope === 'project' ? 'projectAiPreference:update' : 'aiPreference:update'),
+				),
+			});
+			const denied =
+				scope === 'project'
+					? await service.applyProjectSelection(project.id, reader, selection)
+					: await service.apply(environments.apply.id, reader);
+			expect(denied).toMatchObject({
+				status: 'blocked',
+				check: {
+					conflicts: expect.arrayContaining([
+						expect.objectContaining({ code: 'preference-conflict', reason: 'forbidden' }),
+					]),
+				},
+			});
+			expect((await preferences.getById(owner, saved.id)).content).toBe('Local wording.');
+
+			const applied = (await applyAgent.post(`${applyUrl}/apply`).send(selection).expect(200)).body;
+			expect(applied).toMatchObject({ status: 'applied', counts: { preferences: { updated: 1 } } });
+			expect((await preferences.getById(owner, saved.id)).content).toBe(saved.content);
+
+			await preferences.update(owner, saved.id, { content: 'Another local edit.' });
+			const continued = await applyAgent
+				.post(`${applyUrl}/apply/continue`)
+				.send({
+					...selection,
+					expectedSource: { environmentId: applied.environmentId, ...applied.git },
+				})
+				.expect(200);
+			expect(continued.body).toMatchObject({
+				status: 'applied',
+				counts: { preferences: { updated: 1 } },
+			});
+
+			await preferences.delete(owner, saved.id);
+			await promoteAgent.post(`${promoteUrl}/promote`).send(selection).expect(200);
+			const repository = Container.get(AiPreferenceRepository);
+			await repository.savePreference(
+				repository.create({
+					id: saved.id,
+					projectId: scope === 'project' ? project.id : null,
+					userId: null,
+					source: 'ui',
+					createdById: owner.id,
+					content: saved.content,
+				}),
+				{},
+			);
+			const removed = await applyAgent.post(`${applyUrl}/apply`).send(selection).expect(200);
+			expect(removed.body).toMatchObject({
+				status: 'applied',
+				counts: { preferences: { removed: 1 } },
+			});
+			await expect(preferences.getById(owner, saved.id)).rejects.toThrow();
+		},
+	);
 });
