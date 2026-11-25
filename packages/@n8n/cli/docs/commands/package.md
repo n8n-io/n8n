@@ -224,11 +224,13 @@ against the shared skill schema:
 
 - Each path is relative to the skill folder and has 512 characters or fewer. It
   cannot go up a folder or replace `SKILL.md`.
-- A skill has 500 files or fewer.
-- A text file has 1,048,576 characters or fewer. A binary file has 1 MiB or
-  fewer.
-- All files of a skill total 2,097,152 characters or fewer. A binary file
-  counts with its Base64 length.
+- A skill has 500 supporting files or fewer.
+- A text file has 1,048,576 characters or fewer. A binary file has 1,398,104
+  Base64 characters or fewer, which is about 1 MiB.
+- The supporting files of a skill total 2,097,152 characters or fewer. A binary
+  file counts with its Base64 length.
+- The Markdown instructions have 65,536 characters or fewer. They do not count
+  toward the supporting-file limits.
 
 An Agent reads text files through `load_skill`. An Agent run does not load
 binary files, so `load_skill` does not list them or return their contents.
