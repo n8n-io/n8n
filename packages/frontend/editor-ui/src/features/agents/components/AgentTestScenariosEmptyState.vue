@@ -73,9 +73,12 @@ async function generate(different: boolean, options: { autoSelectFirst?: boolean
 		}
 
 		scenarios.value = response.scenarios;
-		seenScenarios.value = [...new Set([...seenScenarios.value, ...response.scenarios])].slice(
-			-MAX_SEEN_SCENARIOS,
-		);
+		seenScenarios.value = [
+			...new Set([
+				...seenScenarios.value.filter((scenario) => !response.scenarios.includes(scenario)),
+				...response.scenarios,
+			]),
+		].slice(-MAX_SEEN_SCENARIOS);
 		state.value = 'ready';
 
 		if (options.autoSelectFirst) {

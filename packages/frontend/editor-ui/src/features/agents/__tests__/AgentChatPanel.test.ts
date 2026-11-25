@@ -3569,12 +3569,26 @@ describe('AgentChatPanel', () => {
 		).sendMessageFromOutside('Handed off prompt');
 		await flushPromises();
 
+		expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith(
+			'Handed off prompt',
+			undefined,
+			expect.any(Function),
+			undefined,
+		);
+		const onAccepted = sendMessageMock.mock.lastCall?.[2];
+		expect(onAccepted).toBeTypeOf('function');
+
+		const draftEventsBeforeAccept = wrapper.emitted('update:inputDraft')?.length ?? 0;
 		await wrapper.setProps({ inputDraft: 'User typed something new' });
-		sendMessageMock.mock.lastCall?.[2]?.();
+		onAccepted?.();
 		response.resolve('sent');
 		await flushPromises();
 
-		expect(wrapper.emitted('update:inputDraft')?.at(-1)).not.toEqual(['']);
+		expect(wrapper.emitted('update:inputDraft')).toHaveLength(draftEventsBeforeAccept);
+		expect(wrapper.emitted('update:inputDraft')).not.toContainEqual(['']);
+		expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('modelValue')).toBe(
+			'User typed something new',
+		);
 		wrapper.unmount();
 	});
 
