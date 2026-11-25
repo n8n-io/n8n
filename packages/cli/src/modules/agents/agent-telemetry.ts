@@ -1,6 +1,7 @@
 import { SKILL_LOAD_TOOL_NAME } from '@n8n/agents';
 import type { AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
+import { isCommunityPackageName } from 'n8n-workflow';
 
 import type {
 	AgentTelemetryMemoryType,
@@ -82,7 +83,14 @@ export function buildAgentConfigurationTelemetryFromConfig(
 	const mcpServerCount = config?.mcpServers?.length ?? 0;
 	const subAgentCount = config?.subAgents?.agents?.length ?? 0;
 
-	const toolTypes = new Set<string>(config?.tools?.map((tool) => tool.type) ?? []);
+	// A node tool from a community package reports as `community_node`, not `node`.
+	const toolTypes = new Set<string>(
+		config?.tools?.map((tool) =>
+			tool.type === 'node' && isCommunityPackageName(tool.node.nodeType.split('.')[0] ?? '')
+				? 'community_node'
+				: tool.type,
+		) ?? [],
+	);
 	if (mcpServerCount > 0) toolTypes.add('mcp');
 	if (providerToolCount > 0) toolTypes.add('provider');
 	if (hasWebSearch) toolTypes.add('web_search');
