@@ -294,7 +294,7 @@ describe('AgentInfoPanel', () => {
 			'Call detect_anomalies(as_of) for github_* and custom:<metric_id> & report results';
 		const wrapper = mount(AgentInfoPanel, {
 			props: {
-				config: { name: 'Research agent', model: 'anthropic/claude-sonnet-4-5', instructions },
+				config: { name: 'Research agent', model: 'anthropic/claude-sonnet-5-5', instructions },
 				showModel: false,
 			},
 			global: { stubs: { N8nMarkdownEditor } },
