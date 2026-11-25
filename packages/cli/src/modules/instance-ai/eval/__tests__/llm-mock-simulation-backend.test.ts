@@ -306,7 +306,12 @@ describe('LlmMockSimulationBackend', () => {
 	it('gives the stop signal to the web search mock', async () => {
 		const { backend, webSearch } = setup();
 		webSearch.mockReturnValue(new Promise(() => {}));
-		const world = await backend.openWorld({ testChatId: 'chat-1', agent, firstMessage: 'hi' });
+		const world = await backend.openWorld({
+			ownerId: 'user-1',
+			testChatId: 'chat-1',
+			agent,
+			firstMessage: 'hi',
+		});
 		const controller = new AbortController();
 
 		const reply = world.handleRequest(
@@ -366,6 +371,7 @@ describe('LlmMockSimulationBackend', () => {
 	])('gives the mock only the origin of the MCP URL %s', async (origin, expected) => {
 		const { backend } = setup();
 		await backend.openWorld({
+			ownerId: 'user-1',
 			testChatId: 'chat-1',
 			agent: { ...agent, tools: [{ toolName: 'acme', kind: 'mcp', origin }] },
 			firstMessage: 'hi',
