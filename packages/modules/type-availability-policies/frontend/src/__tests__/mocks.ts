@@ -56,7 +56,6 @@ export const contactAdminModalStub = {
 		'<div v-if="open" data-test-id="contact-admin-modal" :data-audience="audience" :data-kind="kind">{{ typeName }}<button data-test-id="contact-admin-close" @click="$emit(\'update:open\', false)" /></div>',
 };
 
-/** A team project in the project policy list. It has no policy unless `overrides` gives one. */
 export function mockProjectPolicy(
 	overrides: Partial<ProjectPolicySummary> & Pick<ProjectPolicySummary, 'projectId' | 'name'>,
 ): ProjectPolicySummary {

@@ -23,7 +23,6 @@ import { createProjectPolicy } from '../type-availability-policies.api';
 import { PROJECT_POLICY_VIEW } from '../type-availability-policies.constants';
 
 const { projects } = defineProps<{
-	/** The team projects that have no policy yet. */
 	projects: ProjectPolicySummary[];
 }>();
 

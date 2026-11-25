@@ -4,7 +4,7 @@ import { shallowRef } from 'vue';
 
 import { fetchProjectPolicies } from '../type-availability-policies.api';
 
-/** The team projects with their policy state. `projects` stays `null` until a read succeeds. */
+/** `projects` stays `null` until a read succeeds. */
 export function useProjectPolicies() {
 	const rootStore = useRootStore();
 	const projects = shallowRef<ProjectPolicySummary[] | null>(null);

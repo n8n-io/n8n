@@ -19,7 +19,6 @@ function typeList(
 	});
 }
 
-/** The one-line summary of what a project policy changes, for example "Restricts 5 nodes". */
 export function projectPolicySummary(project: ProjectPolicySummary): string {
 	const restricted = typeList(project, 'restricted');
 	const optedIn = typeList(project, 'optedIn');
