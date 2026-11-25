@@ -384,7 +384,7 @@ it('detects edits between planning and applying', async () => {
 	});
 });
 
-it('rejects ordinary imports and edits on a protected instance', async () => {
+it('rejects package imports on a protected instance', async () => {
 	const { id } = await createSkill({
 		projectId: destination.id,
 		content: { ...content, name: 'Existing guide' },
@@ -395,9 +395,30 @@ it('rejects ordinary imports and edits on a protected instance', async () => {
 			issues: [expect.objectContaining({ message: expect.stringContaining('protected instance') })],
 		},
 	});
-	await expect(Container.get(SkillService).delete(owner, id)).rejects.toThrow('protected instance');
 	expect(await findSkillIds()).toEqual([id]);
 });
+
+it.each(['create', 'update', 'delete'] as const)(
+	'rechecks instance write settings before applying a Skill %s',
+	async (action) => {
+		const skill = packaged();
+		if (action !== 'create') await importSkills(await archive([skill]));
+		const before = await findLatestSkillVersion(skill.id);
+		skill.skill.instructions = 'Reviewed instructions';
+		const importer = Container.get(SkillImporter);
+		const plan = await importer.planStandalone(
+			owner,
+			action === 'delete' ? [] : [{ skill, projectId: destination.id }],
+			action === 'delete' ? [skill.id] : [],
+			'new-version',
+		);
+		expect(plan.issues).toEqual([]);
+
+		Container.get(InstanceWriteAccessService).setReadOnly(true);
+		await expect(importer.applyStandalone(owner, plan)).rejects.toThrow('protected instance');
+		expect(await findLatestSkillVersion(skill.id)).toEqual(before);
+	},
+);
 
 it('reports unavailable Skills and rejects unsupported format versions', async () => {
 	Container.get(ModuleRegistry).settings.set('agents', { enabled: false });

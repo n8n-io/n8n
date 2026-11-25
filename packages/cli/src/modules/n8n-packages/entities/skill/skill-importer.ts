@@ -485,6 +485,7 @@ export class SkillImporter {
 
 	/** Returns the Agents that follow a saved skill. */
 	private async write(user: User, write: SkillWrite, ctx: OperationContext): Promise<string[]> {
+		this.skillService.assertWritable();
 		const { id, skill, frontmatter } = write.skill;
 		if (!write.base) {
 			await this.skillService.createTrusted(
