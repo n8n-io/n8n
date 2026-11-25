@@ -11,6 +11,9 @@ import { Container } from '@n8n/di';
 @BackendModule({ name: 'execution-limits' })
 export class ExecutionLimitsModule implements ModuleInterface {
 	async init() {
+		// Load before the licence check so an unlicensed instance returns 403 and not 404.
+		await import('./execution-limits.controller.js');
+
 		const { FoldStepRegistry } = await import('@n8n/db');
 		const { ExecutionLimitUsageFoldStep } = await import('./execution-limit-usage.fold-step.js');
 

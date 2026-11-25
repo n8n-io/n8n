@@ -48,6 +48,7 @@ const EXPECTED_GROUPS: Record<string, string[]> = {
 	AccessAndOrganization: ['Projects', 'Role', 'RoleMappingRule', 'User'],
 	InstanceSettings: [
 		'CredentialTypePolicy',
+		'ExecutionLimits',
 		'LogStreaming',
 		'NodeTypePolicy',
 		'SecurityPolicy',

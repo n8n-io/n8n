@@ -12,11 +12,12 @@ describe('executionLimitMaxExecutionsSchema', () => {
 });
 
 describe('DEFAULT_EXECUTION_LIMIT_SETTINGS', () => {
-	test('is a valid settings row with a monthly period and no caps', () => {
+	test('is a valid settings row with a monthly period, no caps, and version 0', () => {
 		expect(executionLimitSettingsSchema.parse(DEFAULT_EXECUTION_LIMIT_SETTINGS)).toEqual({
 			periodUnit: 'month',
 			instanceMaxExecutions: null,
 			defaultProjectMaxExecutions: null,
+			version: 0,
 		});
 	});
 });
@@ -26,6 +27,7 @@ describe('executionLimitSettingsSchema', () => {
 		periodUnit: 'month',
 		instanceMaxExecutions: 100_000,
 		defaultProjectMaxExecutions: 5_000,
+		version: 3,
 	};
 
 	test.each([
@@ -43,9 +45,16 @@ describe('executionLimitSettingsSchema', () => {
 			periodUnit: 'day',
 			instanceMaxExecutions: null,
 			defaultProjectMaxExecutions: null,
+			version: 0,
 		});
 
 		expect(result.success).toBe(true);
+	});
+
+	test('reads a stored row without version as version 0', () => {
+		const { version: _version, ...legacyRow } = valid;
+
+		expect(executionLimitSettingsSchema.parse(legacyRow)).toEqual({ ...legacyRow, version: 0 });
 	});
 
 	test('reads a row that a newer version saved with an extra field', () => {
@@ -66,6 +75,10 @@ describe('executionLimitSettingsSchema', () => {
 		['a missing cap', { periodUnit: 'day', instanceMaxExecutions: null }],
 		['a string cap', { ...valid, instanceMaxExecutions: '100' }],
 		['a fractional cap', { ...valid, defaultProjectMaxExecutions: 1.5 }],
+		['a negative version', { ...valid, version: -1 }],
+		['a fractional version', { ...valid, version: 1.5 }],
+		['a string version', { ...valid, version: '1' }],
+		['a null version', { ...valid, version: null }],
 	])('rejects %s', (_, value) => {
 		expect(executionLimitSettingsSchema.safeParse(value).success).toBe(false);
 	});

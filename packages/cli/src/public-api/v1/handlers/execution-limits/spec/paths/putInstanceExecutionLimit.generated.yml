@@ -1,0 +1,68 @@
+operationId: putInstanceExecutionLimit
+tags:
+  - ExecutionLimits
+summary: 'Preview: Replace the instance execution limit'
+description: |-
+  **Preview** — breaking changes may still occur without major version bump.
+
+  Replaces the instance execution limit settings with the provided full object. Every field is required; a `GET` response is a valid `PUT` body. `defaultProjectMaxExecutions` cannot be above `maxExecutions`. Each new team project gets this limit when it is created. Existing projects keep their limits. `version` must equal the version from the last read; a stale version is rejected with 409 and nothing changes.
+
+  Requires the `executionLimit:update` API key scope.
+x-required-scope: executionLimit:update
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          periodUnit:
+            type: string
+            enum:
+              - day
+              - week
+              - month
+            description: Calendar period that counts executions (`day`, `week` or `month`).
+          maxExecutions:
+            type: integer
+            nullable: true
+            minimum: 1
+            maximum: 2147483647
+            description: Maximum number of executions for the instance in each period (1 to 2147483647), or `null` for no limit.
+          defaultProjectMaxExecutions:
+            type: integer
+            nullable: true
+            minimum: 1
+            maximum: 2147483647
+            description: Default execution limit for new team projects (1 to 2147483647), or `null` for no default. Cannot be above `maxExecutions`. Each new team project gets this limit when it is created. Existing projects keep their limits.
+          version:
+            type: integer
+            minimum: 0
+            description: Version from the last read. A stale version on PUT is rejected with 409 and nothing changes.
+        required:
+          - periodUnit
+          - maxExecutions
+          - defaultProjectMaxExecutions
+          - version
+        additionalProperties: false
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/instanceExecutionLimitDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

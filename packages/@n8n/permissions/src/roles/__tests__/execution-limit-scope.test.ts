@@ -1,4 +1,10 @@
 import { API_KEY_RESOURCES } from '@/constants.ee';
+import {
+	ADMIN_API_KEY_SCOPES,
+	API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT,
+	MEMBER_API_KEY_SCOPES,
+	OWNER_API_KEY_SCOPES,
+} from '@/public-api-permissions.ee';
 import { scopeInformation } from '@/scope-information';
 import {
 	GLOBAL_ADMIN_SCOPES,
@@ -79,9 +85,16 @@ describe('execution limit scope independence', () => {
 });
 
 describe('execution limit scope metadata', () => {
-	it('is not an API key scope', () => {
-		expect(API_KEY_RESOURCES).not.toHaveProperty('executionLimit');
+	it('declares executionLimit as an owner/admin API key scope and keeps projectExecutionLimit out', () => {
+		expect(API_KEY_RESOURCES.executionLimit).toEqual(['read', 'update']);
 		expect(API_KEY_RESOURCES).not.toHaveProperty('projectExecutionLimit');
+
+		for (const scope of ['executionLimit:read', 'executionLimit:update'] as const) {
+			expect(OWNER_API_KEY_SCOPES).toContain(scope);
+			expect(ADMIN_API_KEY_SCOPES).toContain(scope);
+			expect(MEMBER_API_KEY_SCOPES).not.toContain(scope);
+			expect(API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT).not.toContain(scope);
+		}
 	});
 
 	it('has a display name and description for every scope', () => {

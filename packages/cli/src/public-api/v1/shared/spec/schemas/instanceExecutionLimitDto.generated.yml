@@ -1,0 +1,30 @@
+type: object
+properties:
+  periodUnit:
+    type: string
+    enum:
+      - day
+      - week
+      - month
+    description: Calendar period that counts executions (`day`, `week` or `month`).
+  maxExecutions:
+    type: integer
+    nullable: true
+    minimum: 1
+    maximum: 2147483647
+    description: Maximum number of executions for the instance in each period (1 to 2147483647), or `null` for no limit.
+  defaultProjectMaxExecutions:
+    type: integer
+    nullable: true
+    minimum: 1
+    maximum: 2147483647
+    description: Default execution limit for new team projects (1 to 2147483647), or `null` for no default. Cannot be above `maxExecutions`. Each new team project gets this limit when it is created. Existing projects keep their limits.
+  version:
+    type: integer
+    minimum: 0
+    description: Version from the last read. A stale version on PUT is rejected with 409 and nothing changes.
+required:
+  - periodUnit
+  - maxExecutions
+  - defaultProjectMaxExecutions
+  - version

@@ -156,6 +156,11 @@ paths:
   /workflows/{workflowId}/test-runs/{runId}/cancel:
     post:
       $ref: ./handlers/workflows/spec/paths/cancelTestRun.generated.yml
+  /execution-limits/instance:
+    get:
+      $ref: ./handlers/execution-limits/spec/paths/getInstanceExecutionLimit.generated.yml
+    put:
+      $ref: ./handlers/execution-limits/spec/paths/putInstanceExecutionLimit.generated.yml
   /executions:
     get:
       $ref: ./handlers/executions/spec/paths/getExecutions.generated.yml

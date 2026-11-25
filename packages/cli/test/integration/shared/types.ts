@@ -66,7 +66,8 @@ type EndpointGroup =
 	| 'encryption-keys'
 	| 'workflow-reviews'
 	| 'test-webhooks'
-	| 'type-availability-policies';
+	| 'type-availability-policies'
+	| 'execution-limits';
 
 type ModuleName =
 	| 'inbox'
@@ -74,6 +75,7 @@ type ModuleName =
 	| 'external-secrets'
 	| 'community-packages'
 	| 'data-table'
+	| 'execution-limits'
 	| 'instance-ai'
 	| 'mcp'
 	| 'oauth-jwe'

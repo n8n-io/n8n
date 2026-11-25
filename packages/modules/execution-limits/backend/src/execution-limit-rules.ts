@@ -1,6 +1,12 @@
-import { executionLimitSettingsSchema, type ExecutionLimitSettings } from '@n8n/api-types';
+import type { ExecutionLimitSettings } from '@n8n/api-types';
 
 import type { ExecutionLimitChange, ProjectLimit } from './execution-limits.types';
+
+const AUDITED_SETTING_FIELDS = [
+	'periodUnit',
+	'instanceMaxExecutions',
+	'defaultProjectMaxExecutions',
+] as const satisfies ReadonlyArray<keyof ExecutionLimitSettings>;
 
 /** The project ids that occur more than one time in `limits`. */
 export function findDuplicateProjectIds(limits: ProjectLimit[]): string[] {
@@ -46,15 +52,12 @@ export function diffLimitSettings(
 	before: ExecutionLimitSettings,
 	after: ExecutionLimitSettings,
 ): ExecutionLimitChange[] {
-	return executionLimitSettingsSchema
-		.keyof()
-		.options.filter((field) => before[field] !== after[field])
-		.map((field) => ({
-			projectId: null,
-			field,
-			oldValue: before[field],
-			newValue: after[field],
-		}));
+	return AUDITED_SETTING_FIELDS.filter((field) => before[field] !== after[field]).map((field) => ({
+		projectId: null,
+		field,
+		oldValue: before[field],
+		newValue: after[field],
+	}));
 }
 
 export function diffProjectLimits(

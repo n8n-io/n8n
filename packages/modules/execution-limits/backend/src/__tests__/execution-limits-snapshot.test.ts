@@ -13,6 +13,7 @@ const SETTINGS: ExecutionLimitSettings = {
 	periodUnit: 'week',
 	instanceMaxExecutions: 1000,
 	defaultProjectMaxExecutions: null,
+	version: 0,
 };
 
 const LIMITED = { periodUnit: 'week', instanceMaxExecutions: 1000, projectMaxExecutions: 50 };

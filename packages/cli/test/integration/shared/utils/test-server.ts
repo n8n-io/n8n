@@ -466,6 +466,10 @@ export const setupTestServer = ({
 							'@/modules/type-availability-policies/type-availability-policies.module.js'
 						);
 						break;
+
+					case 'execution-limits':
+						await import('@n8n/backend-module-execution-limits/module');
+						break;
 				}
 			}
 

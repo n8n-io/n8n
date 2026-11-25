@@ -187,6 +187,7 @@ export const API_KEY_RESOURCES = {
 	roleMappingRule: ['create', 'delete', 'list', 'update'] as const,
 	nodeTypePolicy: ['manage'] as const,
 	credentialTypePolicy: ['manage'] as const,
+	executionLimit: ['read', 'update'] as const,
 } as const;
 
 export const GLOBAL_OWNER_ROLE_SLUG = 'global:owner';
