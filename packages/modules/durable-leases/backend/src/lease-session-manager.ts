@@ -2,6 +2,8 @@ import type { Logger } from '@n8n/backend-common';
 import type { LeaseKindRepository, LeaseSessionRepository } from '@n8n/db';
 import { randomUUID } from 'node:crypto';
 
+import { track } from './promises';
+
 export interface LeaseSessionManagerDeps {
 	kind: string;
 	leaseSeconds: number;
@@ -65,17 +67,7 @@ export class LeaseSessionManager {
 
 		const id = this.currentId;
 		this.currentId = undefined;
-		if (id !== undefined) {
-			try {
-				await this.deps.sessions.deleteSession(id, {});
-			} catch (error) {
-				this.deps.logger.warn('Failed to delete lease session', {
-					kind: this.deps.kind,
-					sessionId: id,
-					error,
-				});
-			}
-		}
+		if (id !== undefined) await this.deleteSession(id);
 
 		await Promise.all(this.pendingDeletes);
 	}
@@ -112,7 +104,7 @@ export class LeaseSessionManager {
 		const id = this.currentId;
 		if (id === undefined) {
 			void this.ensureSession().catch((error: unknown) => {
-				this.deps.logger.warn('Failed to start lease session', { kind: this.deps.kind, error });
+				this.warn('Failed to start lease session', { error });
 			});
 			return;
 		}
@@ -130,11 +122,7 @@ export class LeaseSessionManager {
 		try {
 			renewed = await sessions.renewLive(id, leaseSeconds, {});
 		} catch (error) {
-			this.deps.logger.warn('Failed to renew lease session', {
-				kind: this.deps.kind,
-				sessionId: id,
-				error,
-			});
+			this.warn('Failed to renew lease session', { sessionId: id, error });
 			return;
 		}
 
@@ -145,21 +133,23 @@ export class LeaseSessionManager {
 		const id = this.currentId;
 		if (id === undefined) return;
 		this.currentId = undefined;
-		this.deps.logger.warn('Lost lease session', { kind: this.deps.kind, sessionId: id, reason });
+		this.warn('Lost lease session', { sessionId: id, reason });
 		this.deleteRow(id);
 	}
 
 	private deleteRow(id: string): void {
-		const deleting = this.deps.sessions
-			.deleteSession(id, {})
-			.catch((error: unknown) => {
-				this.deps.logger.warn('Failed to delete lease session', {
-					kind: this.deps.kind,
-					sessionId: id,
-					error,
-				});
-			})
-			.finally(() => this.pendingDeletes.delete(deleting));
-		this.pendingDeletes.add(deleting);
+		track(this.pendingDeletes, this.deleteSession(id));
+	}
+
+	private async deleteSession(id: string): Promise<void> {
+		try {
+			await this.deps.sessions.deleteSession(id, {});
+		} catch (error) {
+			this.warn('Failed to delete lease session', { sessionId: id, error });
+		}
+	}
+
+	private warn(message: string, meta: Record<string, unknown>): void {
+		this.deps.logger.warn(message, { kind: this.deps.kind, ...meta });
 	}
 }
