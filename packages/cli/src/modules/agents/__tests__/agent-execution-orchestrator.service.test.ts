@@ -2448,19 +2448,54 @@ describe('AgentExecutionOrchestratorService', () => {
 		const session = mock<SimulationSession>();
 		session.markTestChat.mockRejectedValue(new Error('Could not mark the test chat'));
 
-		await collect(
-			service.executeForChat({
-				agentId,
-				projectId,
-				message: 'hello',
-				user,
-				memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
-				simulation: vi.fn().mockResolvedValue(session),
-			}),
-		).catch(() => undefined);
+		await expect(
+			collect(
+				service.executeForChat({
+					agentId,
+					projectId,
+					message: 'hello',
+					user,
+					memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+					simulation: vi.fn().mockResolvedValue(session),
+				}),
+			),
+		).rejects.toThrow('Could not mark the test chat');
 
 		expect(session.markTestChat).toHaveBeenCalled();
 		expect(runtime.agent.stream).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		['no resolver', undefined],
+		['a resolver that finds no session', vi.fn().mockResolvedValue(undefined)],
+	])('never resumes a test chat live, with %s', async (_name, simulation) => {
+		const { service, executionService, runtimeCacheService, checkpointStorage } = makeService();
+		executionService.findThreadById.mockResolvedValue({
+			id: 'thread-1',
+			projectId,
+			agentId,
+			accessScope: 'project',
+			ownerId: null,
+			testChat: true,
+		} as never);
+		checkpointStorage.getStatus.mockResolvedValueOnce({
+			status: 'active',
+			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'resource-1' } },
+		} as never);
+
+		await expect(
+			collect(
+				service.resumeForChat({
+					agentId,
+					projectId,
+					runId: 'run-1',
+					toolCallId: 'tc-1',
+					resumeData: { approved: true },
+					...(simulation ? { simulation } : {}),
+				}),
+			),
+		).rejects.toThrow('This test chat can only resume as a test run');
+		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
 	});
 
 	it('marks the test chat before the agent runs', async () => {
@@ -4723,6 +4758,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				user,
 				usePublishedVersion: false,
 				integrationType: N8N_CHAT_INTEGRATION_TYPE,
+				simulation: vi.fn().mockResolvedValue(mock<SimulationSession>()),
 			}),
 		);
 
