@@ -1,3 +1,5 @@
+import { isDeepStrictEqual } from 'node:util';
+
 import type {
 	InstanceTypeAccessResponse,
 	NodeTypeAvailabilityScope,
@@ -895,6 +897,17 @@ export class TypeAvailabilityPolicyService {
 			policedType,
 			newRuleId: generateNanoId,
 		});
+
+		// A write moves the version, which fails the next write of every admin who read the old one.
+		if (isDeepStrictEqual(rules, effective.rules)) {
+			return {
+				scopeId: effective.scopeId,
+				defaultAction: effective.defaultAction,
+				version: effective.version,
+				rules,
+				warnings: this.validateAndLintRules(kind, rules),
+			};
+		}
 
 		return await this.setEffectivePolicy(
 			kind,

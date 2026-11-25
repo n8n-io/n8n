@@ -359,6 +359,10 @@ server decision. `policy-access-changes.ts` places the rules:
 The write goes through the same path as `PUT`, so the same version check, warnings and `409`
 for several attachments or a shared document apply. One call changes either all types or none.
 
+Unlike `PUT`, a call that leaves the rules as they are writes nothing and keeps the version, so
+it does not fail the next write of another admin. That call also skips the `409` checks above,
+because it changes no document.
+
 ### Usage counts of each credential type
 
 `GET /credential-type-policies/usage` and `GET /projects/:projectId/credential-type-policies/usage`

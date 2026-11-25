@@ -458,6 +458,28 @@ describe('PATCH /instance/access', () => {
 		}
 	});
 
+	test('keeps the version when the rules do not change, so the next write still applies', async () => {
+		const first = await patchAccess(NODE_ROUTE, [{ type: SLACK, access: 'deny' }], 0);
+		expect(first.body.data.version).toBe(1);
+
+		const repeated = await patchAccess(NODE_ROUTE, [{ type: SLACK, access: 'deny' }], 1);
+
+		expect(repeated.statusCode).toBe(200);
+		expect(repeated.body.data).toMatchObject({ version: 1, rules: first.body.data.rules });
+
+		const next = await patchAccess(NODE_ROUTE, [{ type: NOTION, access: 'deny' }], 1);
+		expect(next.statusCode).toBe(200);
+		expect(next.body.data.version).toBe(2);
+	});
+
+	test('inherit on a type that no rule names creates no scope', async () => {
+		const response = await patchAccess(NODE_ROUTE, [{ type: SLACK, access: 'inherit' }], 0);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toMatchObject({ scopeId: null, version: 0, rules: [] });
+		expect(await instancePolicy(NODE_ROUTE)).toMatchObject({ scopeId: null, version: 0 });
+	});
+
 	test('rejects a stale version with 409 and changes nothing', async () => {
 		await putInstancePolicy(NODE_ROUTE, [
 			{ id: 'deny-slack', action: 'deny', selector: { kind: 'name', value: SLACK } },
