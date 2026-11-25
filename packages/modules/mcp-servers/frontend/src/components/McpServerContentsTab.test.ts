@@ -496,5 +496,43 @@ describe('McpServerContentsTab', () => {
 			expect(byName('escalate_to_on_call')).toHaveAttribute('data-highlighted', 'true');
 			expect(byName('get_campaign_numbers')).toHaveAttribute('data-highlighted', 'false');
 		});
+
+		it('keeps the newest tools when an older reload answers last', async () => {
+			const first = tool();
+			const added = tool({
+				id: '0190a8d6-4a2e-7000-8000-0000000000a2',
+				targetId: 'wf-6',
+				toolName: 'escalate_to_on_call',
+			});
+			api.getMcpServer.mockResolvedValue(server([first]));
+			const { findAllByTestId, rerender } = renderWith({ refreshKey: 0 });
+			await findAllByTestId('mcp-tool-row');
+			const slow = deferred<McpServerDetailResponse>();
+			api.getMcpServer.mockReturnValueOnce(slow.promise);
+			await rerender({ refreshKey: 1 });
+			api.getMcpServer.mockResolvedValueOnce(server([first, added]));
+			await rerender({ refreshKey: 2 });
+			await waitFor(async () => expect(await findAllByTestId('mcp-tool-row')).toHaveLength(2));
+
+			slow.resolve(server([first]));
+			await slow.promise;
+			await new Promise((resolve) => setTimeout(resolve));
+
+			expect(await findAllByTestId('mcp-tool-row')).toHaveLength(2);
+		});
+
+		it('highlights no row when a reload replaces the first load', async () => {
+			const firstLoad = deferred<McpServerDetailResponse>();
+			api.getMcpServer.mockReturnValueOnce(firstLoad.promise);
+			const { findAllByTestId, rerender } = renderWith({ refreshKey: 0 });
+			api.getMcpServer.mockResolvedValueOnce(server([tool()]));
+
+			await rerender({ refreshKey: 1 });
+			firstLoad.resolve(server([]));
+
+			const rows = await findAllByTestId('mcp-tool-row');
+			expect(rows).toHaveLength(1);
+			expect(rows[0]).toHaveAttribute('data-highlighted', 'false');
+		});
 	});
 });

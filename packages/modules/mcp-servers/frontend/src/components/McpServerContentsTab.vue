@@ -6,6 +6,7 @@ import type {
 	McpServerToolResponse,
 	UpdateMcpServerToolDto,
 } from '@n8n/api-types';
+import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { useToast } from '@n8n/composables/useToast';
 import { N8nButton, N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
 import { VIEWS } from '@n8n/frontend-constants/views';
@@ -46,6 +47,8 @@ const toast = useToast();
 const route = useRoute();
 const router = useRouter();
 const rootStore = useRootStore();
+/** The first load and each reload: only the newest response sets the tools. */
+const latestFetch = useLatestFetch();
 
 const server = ref<McpServerDetailResponse | null>(null);
 const loading = ref(true);
@@ -80,27 +83,38 @@ function replaceTool(updated: McpServerToolResponse) {
 }
 
 async function load() {
+	const isLatest = latestFetch.next();
 	loading.value = true;
 	try {
-		server.value = await getMcpServer(rootStore.restApiContext, props.projectId, props.serverId);
+		const response = await getMcpServer(rootStore.restApiContext, props.projectId, props.serverId);
+		if (!isLatest()) return;
+		server.value = response;
 	} catch (error) {
+		if (!isLatest()) return;
 		toast.showError(error, i18n.baseText('mcpServers.tools.loadError'));
 	} finally {
-		loading.value = false;
+		if (isLatest()) loading.value = false;
 	}
 }
 
 /** Loads the tools again with no loading state, so the rows of the page stay in place. */
 async function reload() {
+	const isLatest = latestFetch.next();
 	try {
 		const next = await getMcpServer(rootStore.restApiContext, props.projectId, props.serverId);
-		const known = new Set(server.value?.tools.map(({ id }) => id));
+		if (!isLatest()) return;
+		// Without a list to compare with, as during the first load, no row is new.
+		const known = server.value ? new Set(server.value.tools.map(({ id }) => id)) : undefined;
 		highlightedIds.value = new Set(
-			next.tools.filter(({ id }) => !known.has(id)).map(({ id }) => id),
+			known ? next.tools.filter(({ id }) => !known.has(id)).map(({ id }) => id) : [],
 		);
 		server.value = next;
 	} catch (error) {
+		if (!isLatest()) return;
 		toast.showError(error, i18n.baseText('mcpServers.tools.loadError'));
+	} finally {
+		// A reload can replace the first load, which then leaves the loading state to it.
+		if (isLatest()) loading.value = false;
 	}
 }
 
