@@ -255,6 +255,26 @@ describe('AppConnectionsCard', () => {
 		);
 	});
 
+	it('adds a resource once when Add is clicked again before the save ends', async () => {
+		providePermissions(['app:update']);
+		const pendingSave = Promise.withResolvers<AppBindingsResponse>();
+		vi.mocked(setAppBindings).mockReturnValueOnce(pendingSave.promise);
+		vi.mocked(listBindableResources).mockResolvedValue({
+			count: 1,
+			data: [{ id: 'w2', name: 'Post weekly report' }],
+		});
+		const { findByTestId } = renderComponent();
+
+		await userEvent.click(await findByTestId('app-binding-add-workflow'));
+		const add = await findByTestId('app-binding-picker-add-w2');
+		await userEvent.click(add);
+		await userEvent.click(add);
+		pendingSave.resolve(saved);
+		await flushPromises();
+
+		expect(setAppBindings).toHaveBeenCalledOnce();
+	});
+
 	it('shows the warning, the setup and a link to the workflow in its dialog', async () => {
 		providePermissions(['app:update']);
 		const { findByTestId, getByTestId, getByRole } = renderComponent();

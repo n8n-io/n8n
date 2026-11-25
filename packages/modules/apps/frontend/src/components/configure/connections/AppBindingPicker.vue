@@ -27,9 +27,9 @@ const props = defineProps<{
 	boundIds: ReadonlySet<string>;
 	/** The row already has connections, so the add action is an icon-only button. */
 	hasItems: boolean;
+	/** Saves the new connection. The picker waits for it, so a second click can't add it twice. */
+	addResource: (resource: BindableResource) => Promise<void>;
 }>();
-
-const emit = defineEmits<{ add: [resource: BindableResource] }>();
 
 const i18n = useI18n();
 const toast = useToast();
@@ -42,6 +42,7 @@ const loading = ref(false);
 const resources = ref<BindableResource[]>([]);
 const resourceCount = ref(0);
 const search = ref('');
+const adding = ref(new Set<string>());
 
 const config = computed(() => BINDING_KINDS[props.kind]);
 const addLabel = computed(() => i18n.baseText(config.value.addLabel));
@@ -78,6 +79,16 @@ function onSearch(value: string) {
 	latestFetch.invalidate();
 	loading.value = true;
 	void fetchResourcesDebounced(value.trim());
+}
+
+async function add(resource: BindableResource) {
+	if (adding.value.has(resource.id)) return;
+	adding.value.add(resource.id);
+	try {
+		await props.addResource(resource);
+	} finally {
+		adding.value.delete(resource.id);
+	}
 }
 
 async function show() {
@@ -178,7 +189,8 @@ onScopeDispose(() => {
 							variant="outline"
 							size="small"
 							:data-test-id="`app-binding-picker-add-${resource.id}`"
-							@click="emit('add', resource)"
+							:loading="adding.has(resource.id)"
+							@click="add(resource)"
 						>
 							{{ addLabel }}
 						</N8nButton>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AppBinding, AppBindingKind, AppResponse } from '@n8n/api-types';
+import type { AppBinding, AppBindingKind, AppDescribedBinding, AppResponse } from '@n8n/api-types';
 import { N8nAlertDialog, N8nCard, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref, useId } from 'vue';
@@ -22,10 +22,11 @@ const i18n = useI18n();
 const headingId = useId();
 const { bindings, warningsByKey, loading, loaded, load, save } = useAppBindings(() => props.app);
 const openKey = ref<string>();
-const removeKey = ref<string>();
+// The binding to remove stays set while the confirmation fades out, so its text does not go blank.
+const removeTarget = ref<AppDescribedBinding>();
+const removeOpen = ref(false);
 
 const openBinding = computed(() => bindings.value.find(({ key }) => key === openKey.value));
-const removeBinding = computed(() => bindings.value.find(({ key }) => key === removeKey.value));
 
 const canUpdate = computed(
 	() => getAppPermissions(props.app.projectId).canUpdate && loaded.value && !loading.value,
@@ -65,9 +66,14 @@ async function add(kind: AppBindingKind, resource: BindableResource) {
 	]);
 }
 
+function requestRemove(binding: AppDescribedBinding) {
+	removeTarget.value = binding;
+	removeOpen.value = true;
+}
+
 async function confirmRemove() {
-	const key = removeKey.value;
-	removeKey.value = undefined;
+	removeOpen.value = false;
+	const key = removeTarget.value?.key;
 	if (!key) return;
 	if (openKey.value === key) openKey.value = undefined;
 	await persist((current) => current.filter((binding) => binding.key !== key));
@@ -106,7 +112,7 @@ onMounted(load);
 								:warning="warningsByKey.get(binding.key)"
 								:can-update="canUpdate"
 								@open="openKey = binding.key"
-								@remove="removeKey = binding.key"
+								@remove="requestRemove(binding)"
 							/>
 							<AppBindingPicker
 								v-if="canUpdate"
@@ -114,7 +120,7 @@ onMounted(load);
 								:project-id="app.projectId"
 								:bound-ids="row.boundIds"
 								:has-items="row.bindings.length > 0"
-								@add="add(row.kind, $event)"
+								:add-resource="(resource) => add(row.kind, resource)"
 							/>
 						</div>
 					</div>
@@ -128,23 +134,23 @@ onMounted(load);
 			:warning="warningsByKey.get(openBinding.key)"
 			:can-update="canUpdate"
 			@close="openKey = undefined"
-			@remove="removeKey = openBinding.key"
+			@remove="requestRemove(openBinding)"
 		/>
 		<N8nAlertDialog
-			:open="removeBinding !== undefined"
+			:open="removeOpen"
 			size="medium"
 			:stacked="openBinding !== undefined"
 			:title="
 				i18n.baseText('apps.configure.connections.removeConfirm.title', {
-					interpolate: { name: removeBinding?.name ?? '' },
+					interpolate: { name: removeTarget?.name ?? '' },
 				})
 			"
-			:description="removeBinding && i18n.baseText(BINDING_KINDS[removeBinding.kind].removeMessage)"
+			:description="removeTarget && i18n.baseText(BINDING_KINDS[removeTarget.kind].removeMessage)"
 			:action-label="i18n.baseText('apps.configure.connections.removeConfirm.confirm')"
 			action-variant="destructive"
 			:cancel-label="i18n.baseText('generic.cancel')"
 			@action="confirmRemove"
-			@update:open="!$event && (removeKey = undefined)"
+			@update:open="removeOpen = $event"
 		/>
 	</N8nCard>
 </template>

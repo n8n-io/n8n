@@ -461,7 +461,7 @@
 	"apps.configure.connections.removeConfirm.confirm": "Yes, remove",
 	"apps.configure.connections.removeConfirm.message.workflow": "The app can no longer run this workflow. Parts of the app that use it get an error until the Assistant updates them.",
 	"apps.configure.connections.removeConfirm.message.dataTable": "The app can no longer use this table. Parts of the app that use it get an error until the Assistant updates them.",
-	"apps.configure.connections.removeConfirm.message.agent": "The app can no longer chat with this agent. Parts of the app that use it get an error until the Assistant updates them.",
+	"apps.configure.connections.removeConfirm.message.agent": "The app can no longer use this agent. Parts of the app that use it get an error until the Assistant updates them.",
 	"apps.configure.connections.warning.resource_missing": "This resource is no longer in the project. The app gets an error when it uses it.",
 	"apps.configure.connections.warning.resource_unpublished": "This resource is not published. The app gets an error when it uses it.",
 	"apps.configure.connections.warning.resource_unpublished.workflow": "This workflow hasn't been published yet. Parts of the app that use it will show an error until you publish it.",
