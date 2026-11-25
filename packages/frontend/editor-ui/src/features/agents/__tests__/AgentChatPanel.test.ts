@@ -3527,6 +3527,30 @@ describe('AgentChatPanel', () => {
 		wrapper.unmount();
 	});
 
+	it('sends an outside message on the first call when inputDraft is controlled by the parent', async () => {
+		const response = Promise.withResolvers<'sent'>();
+		sendMessageMock.mockReturnValueOnce(response.promise);
+		const wrapper = mountPanel({ inputDraft: '' });
+
+		(
+			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+		).sendMessageFromOutside('Summarise the tickets that came in this morning');
+		await flushPromises();
+
+		expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith(
+			'Summarise the tickets that came in this morning',
+			undefined,
+			expect.any(Function),
+			undefined,
+		);
+		sendMessageMock.mock.lastCall?.[2]?.();
+		response.resolve('sent');
+		await flushPromises();
+
+		expect(wrapper.emitted('update:inputDraft')?.at(-1)).toEqual(['']);
+		wrapper.unmount();
+	});
+
 	it('submits an outside message while the current stream runs', async () => {
 		const response = Promise.withResolvers<'sent'>();
 		sendMessageMock.mockReturnValueOnce(response.promise);

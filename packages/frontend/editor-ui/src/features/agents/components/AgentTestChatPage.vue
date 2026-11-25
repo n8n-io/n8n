@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import { inject, ref, useTemplateRef, watch } from 'vue';
 
-import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
+import { deriveAgentStatus } from '@/features/agents/composables/agentTelemetry.utils';
 import type {
 	AgentContinueLoadedEvent,
 	AgentUsageUpdate,
 	AgentSendToAssistantEvent,
 	AgentJsonConfig,
 	AgentResource,
-} from '../types';
-import type { BudgetAmountField } from '../utils/budget-config';
+} from '@/features/agents/types';
+import type { BudgetAmountField } from '@/features/agents/utils/budget-config';
 import AgentChatPanel from './AgentChatPanel.vue';
+import AgentTestScenariosEmptyState from './AgentTestScenariosEmptyState.vue';
 import { AGENT_BUILDER_STANDALONE_KEY } from './agentBuilderInjectionKeys';
 
 const standaloneBuilder = inject(AGENT_BUILDER_STANDALONE_KEY, false);
@@ -27,6 +28,8 @@ const props = withDefaults(
 		effectiveSessionId?: string;
 		newSession?: boolean;
 		initialPrompt?: string;
+		showTestScenarios?: boolean;
+		autoStartTest?: boolean;
 		placeholder?: string;
 		composerHeight?: string;
 		canSendToAssistant?: boolean;
@@ -40,6 +43,8 @@ const props = withDefaults(
 	{
 		visible: true,
 		newSession: false,
+		showTestScenarios: false,
+		autoStartTest: false,
 		layout: 'dock',
 		dismissedFixToolCallIds: () => [],
 		budgetCards: false,
@@ -54,6 +59,7 @@ const emit = defineEmits<{
 	'open-build': [];
 	'send-to-assistant': [event?: AgentSendToAssistantEvent];
 	'initial-consumed': [];
+	'auto-start-consumed': [];
 	'message-sent': [];
 }>();
 
@@ -62,6 +68,10 @@ const chatPanel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('chatPanel
 
 function onFirstUserMessage(text: string | undefined) {
 	if (text !== undefined) emit('message-sent');
+}
+
+function onSelectTestScenario(prompt: string) {
+	chatPanel.value?.sendMessageFromOutside(prompt);
 }
 
 function focusInput(options?: FocusOptions) {
@@ -126,6 +136,16 @@ defineExpose({ focusInput, getConversationMarkdown, clearBudgetStops });
 				@send-to-assistant="emit('send-to-assistant', $event)"
 				@first-user-message="onFirstUserMessage"
 			>
+				<template v-if="showTestScenarios" #empty-state>
+					<AgentTestScenariosEmptyState
+						:project-id="projectId"
+						:agent-id="agentId"
+						:before-generate="beforeSend"
+						:auto-run="autoStartTest && !initialPrompt"
+						@select="onSelectTestScenario"
+						@auto-run-consumed="emit('auto-start-consumed')"
+					/>
+				</template>
 				<template v-if="$slots['composer-start']" #composer-start>
 					<slot name="composer-start" />
 				</template>

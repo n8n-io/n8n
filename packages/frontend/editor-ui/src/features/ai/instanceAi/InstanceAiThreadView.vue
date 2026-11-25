@@ -412,6 +412,7 @@ function consumeAgentReturnNodeId() {
 
 function openAgentChatPreview(agentId: string, projectId: string): boolean {
 	preview.openAgentPreview(agentId, projectId);
+	isAgentTestAutoStart.value = true;
 	isAgentTestDockOpen.value = true;
 	return true;
 }
@@ -530,6 +531,11 @@ const isResizingPreview = ref(false);
 const isThreadAreaResizing = ref(false);
 const isPreviewExpanded = ref(false);
 const isAgentTestDockOpen = ref(false);
+const isAgentTestAutoStart = ref(false);
+
+watch(isAgentTestDockOpen, (open) => {
+	if (!open) isAgentTestAutoStart.value = false;
+});
 const agentPreviewChatTarget = useTemplateRef<HTMLElement>('agentPreviewChatTarget');
 
 // The composer requesting focus (e.g. after a canvas action) reads as the user
@@ -1164,9 +1170,11 @@ function handleNewThreadClick() {
 								:project-id="preview.activeAgentProjectId.value"
 								:preview-session-id="activeAgentPreviewSessionId"
 								:preview-open="isAgentTestDockOpen"
+								:preview-auto-test="isAgentTestAutoStart"
 								:preview-chat-target="agentPreviewChatTarget"
 								:pending="preview.activeAgentPending.value"
 								@preview-open-change="handleAgentTestDockOpenChange"
+								@preview-auto-test-consumed="isAgentTestAutoStart = false"
 								@assistant-handoff="handleAgentPreviewAssistantHandoff"
 							/>
 							<!-- A viewed browser tab stays mounted, so its live view does not reload on each switch. -->

@@ -1423,7 +1423,11 @@ function captureTarget(): () => boolean {
 		props.continueSessionId === target.continueSessionId;
 }
 
-async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
+async function submitDraft(
+	text: string,
+	files: File[],
+	options: { clearExternalDraft?: boolean } = {},
+): Promise<SubmitResult> {
 	if (!text && files.length === 0) return 'rejected';
 	if (isSubmissionBlocked.value) return 'busy';
 	// Taken before any await, so a user send made while this hand-off runs cannot claim it.
@@ -1437,7 +1441,7 @@ async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 	if (composerResume) {
 		const result = await resume(composerResume, () => {
 			if (!isCurrentTarget()) return;
-			if (inputText.value.trim() === text) inputText.value = '';
+			if (inputText.value.trim() === text || options.clearExternalDraft) inputText.value = '';
 			consumeQueuedExternalMessage(text);
 			trackSentToN8nChat(hadNoMessagesBeforeSend);
 		});
@@ -1450,7 +1454,7 @@ async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 		emitMessageSending({ text, files: [] });
 		const result = await cancelAndSteer(text, () => {
 			if (!isCurrentTarget()) return;
-			if (inputText.value.trim() === text) inputText.value = '';
+			if (inputText.value.trim() === text || options.clearExternalDraft) inputText.value = '';
 			consumeQueuedExternalMessage(text);
 			trackSentToN8nChat(hadNoMessagesBeforeSend);
 		});
@@ -1461,6 +1465,7 @@ async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 		text,
 		files,
 		fromComposer: true,
+		clearExternalDraft: options.clearExternalDraft,
 		handoffPreview: ownedHandoffPreview,
 		clientContext: ownedClientContext,
 	});
@@ -1474,6 +1479,8 @@ interface SendRequest {
 	 * send clears the composer. A host send leaves the composer to the user.
 	 */
 	fromComposer: boolean;
+	/** Clear the controlled composer draft even if its `v-model` echo has not flushed yet. */
+	clearExternalDraft?: boolean;
 	/** The bubble a hand-off installed before it was sent. */
 	handoffPreview?: ChatMessage;
 	/** Sent with this message only, on top of the `clientContext` prop. */
@@ -1485,6 +1492,7 @@ async function sendRequest(request: SendRequest): Promise<SubmitResult> {
 		text,
 		files,
 		fromComposer,
+		clearExternalDraft,
 		handoffPreview: ownedHandoffPreview,
 		clientContext: ownedClientContext,
 	} = request;
@@ -1539,7 +1547,7 @@ async function sendRequest(request: SendRequest): Promise<SubmitResult> {
 			queueExpanded.value = false;
 			trackSentToN8nChat(hadNoMessagesBeforeSend);
 			if (!fromComposer) return;
-			if (inputText.value.trim() === text) inputText.value = '';
+			if (inputText.value.trim() === text || clearExternalDraft) inputText.value = '';
 			attachedFiles.value = attachedFiles.value.filter((file) => !files.includes(file));
 			composerAttachments.value = composerAttachments.value.filter(
 				(attachment) => !sentAttachments.includes(attachment),
@@ -1638,9 +1646,12 @@ async function submitQueuedExternalMessage() {
 
 	submittingQueuedExternalMessage = true;
 	let result: SubmitResult = 'rejected';
+	const wroteDraft = !handoffPreview;
 	try {
-		inputText.value = message;
-		result = await onSubmit();
+		if (wroteDraft) inputText.value = message;
+		result = await submitDraft(message.trim(), [...attachedFiles.value], {
+			clearExternalDraft: wroteDraft,
+		});
 	} finally {
 		submittingQueuedExternalMessage = false;
 	}
@@ -1653,6 +1664,7 @@ async function submitQueuedExternalMessage() {
 		firstMessagePreview.value = undefined;
 		// The files stay in the composer as the user's draft now.
 		externalAttachedFiles = [];
+		if (!wroteDraft) inputText.value = message;
 	}
 	if (
 		queuedExternalMessage !== undefined &&
