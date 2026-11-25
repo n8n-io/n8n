@@ -57,7 +57,6 @@ jobs:
       affected_packages: ${{ steps.affected-packages.outputs.list }}
       lockfile_impact: ${{ steps.affected-packages.outputs.lockfile-impact }}
       changed_files: ${{ steps.ci-filter.outputs.changed-files }}
-      currents_record_key: ${{ secrets.CURRENTS_RECORD_KEY != '' && 'present' || '' }}
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
@@ -513,6 +512,9 @@ jobs:
   e2e:
     name: E2E
     needs: [install-and-build, prepare-docker, e2e-matrix]
+    permissions:
+      contents: read
+      id-token: write
     if: >-
       needs.prepare-docker.result == 'success' &&
       needs.e2e-matrix.result == 'success' &&
@@ -526,7 +528,7 @@ jobs:
       workers: '1'
       pre-generated-matrix: ${{ needs.e2e-matrix.outputs.matrix }}
       artifact-prefix: e2e
-      currents-record-key: ${{ needs.install-and-build.outputs.currents_record_key }}
+      skip-shard-upload-when-recording: true
     secrets: inherit
 
   # Engine v2 parity: runs the `@engine:*` specs against a main that routes
@@ -537,6 +539,9 @@ jobs:
   e2e-engine:
     name: E2E on engine v2
     needs: [install-and-build, prepare-docker]
+    permissions:
+      contents: read
+      id-token: write
     if: >-
       needs.prepare-docker.result == 'success' &&
       (needs.install-and-build.outputs.engine_e2e == 'true'
@@ -592,6 +597,9 @@ jobs:
   e2e-performance:
     name: E2E Performance
     needs: [install-and-build, prepare-docker]
+    permissions:
+      contents: read
+      id-token: write
     # Performance is internal-only (license secrets required, not available on forks).
     # Runs when path filter trips OR when the PR carries the `run-perf-tests` label
     # (opt-in coverage for shared-utility / Vue Flow changes that the path filter

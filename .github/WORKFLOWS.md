@@ -928,6 +928,7 @@ Scripts in `.github/scripts/`:
 | `find-last-green-commit.mjs` | Newest PR commit that passed the current workflow, for incremental PR runs | `ci-pull-requests.yml` |
 | `quality/check-cubic-config.mjs` | Validate `cubic.yaml` against the vendored cubic schema; enforce its silent agent/character limits. `--refresh` re-pulls the schema | `test-workflow-scripts-reusable.yml`, `util-refresh-cubic-schema.yml` |
 | `glob.mjs`              | Builtin-only glob matcher for changed-file paths (`**`, `*`, dot segments) | `quality/check-pr-size.mjs` |
+| `currents-oidc.mjs`     | Mint, revoke, and cancel Currents runs via GitHub Actions OIDC | `test-e2e-reusable.yml`, `test-image-efficiency.yml`, `test-workflows-callable.yml` |
 | `probe-registry.mjs`    | Registry path throughput probe (temporary) | `util-probe-registry.yml` |
 
 ### Preview Scripts

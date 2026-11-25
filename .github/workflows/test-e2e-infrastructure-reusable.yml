@@ -9,6 +9,9 @@ concurrency:
   group: e2e-infrastructure-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   prepare-docker:
     uses: ./.github/workflows/prepare-docker-reusable.yml
@@ -17,6 +20,9 @@ jobs:
   benchmark:
     needs: [prepare-docker]
     name: ${{ matrix.lane }}
+    permissions:
+      contents: read
+      id-token: write
     strategy:
       fail-fast: false
       matrix:

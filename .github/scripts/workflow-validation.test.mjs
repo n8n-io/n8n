@@ -50,71 +50,138 @@ const resolveInputs = (workflow, callerInputs = {}) => {
 
 /**
  * Evaluates the subset of the GitHub Actions expression syntax that the step
- * conditions below use: the status functions, `&&`/`||`, and `==`/`!=` against
- * a string literal. Anything outside that subset throws, so a condition this
- * evaluator cannot model fails the test instead of passing silently.
+ * conditions below use: the status functions, `&&`/`||`, unary `!`,
+ * parenthesized grouping, `==`/`!=`, string/boolean literals, `inputs.*`, and
+ * `env.*`. Anything outside that subset throws, so a condition this evaluator
+ * cannot model fails the test instead of passing silently.
  *
  * @param {string} condition - the raw value of a step's `if:` key
- * @param {{ inputs?: Record<string, unknown>, jobStatus?: 'success' | 'failure' | 'cancelled' }} context
+ * @param {{ inputs?: Record<string, unknown>, env?: Record<string, string>, jobStatus?: 'success' | 'failure' | 'cancelled' }} context
  * @returns {boolean} true when the step runs, false when the runner skips it
  */
-const evaluateStepCondition = (condition, { inputs = {}, jobStatus = 'success' } = {}) => {
+const evaluateStepCondition = (
+	condition,
+	{ inputs = {}, env = {}, jobStatus = 'success' } = {},
+) => {
 	const expression = String(condition)
 		.trim()
 		.replace(/^\$\{\{(.*)\}\}$/s, '$1')
 		.trim();
-	// The subset has no grouping, so only the zero-argument status calls may
-	// carry parentheses. Anything else would need precedence rules this lacks.
-	assert.doesNotMatch(
-		expression.replace(/\w+\(\)/g, ''),
-		/[()]/,
-		`step condition uses grouping this evaluator cannot model: "${expression}"`,
-	);
 
-	const value = (token) => {
-		const term = token.trim();
-		switch (term) {
-			case 'always()':
-				return true;
-			case 'success()':
-				return jobStatus === 'success';
-			case 'failure()':
-				return jobStatus === 'failure';
-			case 'cancelled()':
-				return jobStatus === 'cancelled';
-			case 'true':
-				return true;
-			case 'false':
-				return false;
-			default:
-				break;
+	const tokenPattern =
+		/\s*(?:(\|\||&&|==|!=|[!()])|('(?:[^']|'')*')|([A-Za-z_][\w.-]*(?:\(\))?))/gy;
+	const tokens = [];
+	let cursor = 0;
+	while (cursor < expression.length) {
+		tokenPattern.lastIndex = cursor;
+		const match = tokenPattern.exec(expression);
+		assert.ok(
+			match && match.index === cursor,
+			`unsupported term in step condition: "${expression.slice(cursor).trim()}"`,
+		);
+		const [, op, str, ident] = match;
+		if (op) tokens.push({ type: 'op', value: op });
+		else if (str !== undefined)
+			tokens.push({ type: 'str', value: str.slice(1, -1).replaceAll("''", "'") });
+		else if (ident) tokens.push({ type: 'ident', value: ident });
+		cursor = tokenPattern.lastIndex;
+	}
+
+	let pos = 0;
+	const peek = () => tokens[pos];
+	const consume = () => tokens[pos++];
+
+	const parsePrimary = () => {
+		const token = consume();
+		assert.ok(token, `unexpected end of step condition: "${expression}"`);
+
+		if (token.type === 'op' && token.value === '(') {
+			const inner = parseOr();
+			const closing = consume();
+			assert.ok(
+				closing?.type === 'op' && closing.value === ')',
+				`unclosed "(" in step condition: "${expression}"`,
+			);
+			return inner;
 		}
 
-		const literal = term.match(/^'(.*)'$/s);
-		if (literal) return literal[1];
+		if (token.type === 'str') return token.value;
 
-		const input = term.match(/^inputs\.([\w-]+)$/);
-		if (input) {
-			assert.ok(input[1] in inputs, `condition reads an unknown input "${input[1]}"`);
-			return inputs[input[1]];
+		if (token.type === 'ident') {
+			switch (token.value) {
+				case 'always()':
+					return true;
+				case 'success()':
+					return jobStatus === 'success';
+				case 'failure()':
+					return jobStatus === 'failure';
+				case 'cancelled()':
+					return jobStatus === 'cancelled';
+				case 'true':
+					return true;
+				case 'false':
+					return false;
+				default:
+					break;
+			}
+
+			const input = token.value.match(/^inputs\.([\w-]+)$/);
+			if (input) {
+				assert.ok(input[1] in inputs, `condition reads an unknown input "${input[1]}"`);
+				return inputs[input[1]];
+			}
+
+			const envVar = token.value.match(/^env\.([\w-]+)$/);
+			if (envVar) {
+				return env[envVar[1]] ?? '';
+			}
 		}
 
-		assert.fail(`unsupported term in step condition: "${term}"`);
+		assert.fail(`unsupported term in step condition: "${token.value}"`);
 	};
 
-	const operand = (token) => {
-		const comparison = token.match(/^(.+?)(==|!=)(.+)$/s);
-		if (!comparison) return Boolean(value(token));
-
-		const [, left, operator, right] = comparison;
-		const equal = String(value(left)) === String(value(right));
-		return operator === '==' ? equal : !equal;
+	const parseUnary = () => {
+		if (peek()?.type === 'op' && peek().value === '!') {
+			consume();
+			return !Boolean(parseUnary());
+		}
+		return parsePrimary();
 	};
 
-	// `&&` binds tighter than `||`, and the subset has no parentheses to nest.
-	return expression
-		.split('||')
-		.some((disjunct) => disjunct.split('&&').every((conjunct) => operand(conjunct)));
+	const parseComparison = () => {
+		const left = parseUnary();
+		if (peek()?.type === 'op' && (peek().value === '==' || peek().value === '!=')) {
+			const operator = consume().value;
+			const right = parseUnary();
+			const equal = String(left) === String(right);
+			return operator === '==' ? equal : !equal;
+		}
+		return left;
+	};
+
+	const parseAnd = () => {
+		let result = Boolean(parseComparison());
+		while (peek()?.type === 'op' && peek().value === '&&') {
+			consume();
+			const right = Boolean(parseComparison());
+			result = result && right;
+		}
+		return result;
+	};
+
+	const parseOr = () => {
+		let result = parseAnd();
+		while (peek()?.type === 'op' && peek().value === '||') {
+			consume();
+			const right = parseAnd();
+			result = result || right;
+		}
+		return result;
+	};
+
+	const result = parseOr();
+	assert.equal(pos, tokens.length, `unexpected token in step condition: "${peek()?.value}"`);
+	return result;
 };
 
 describe('evaluateStepCondition', () => {
@@ -133,6 +200,19 @@ describe('evaluateStepCondition', () => {
 		const inputs = { key: 'abc' };
 		assert.equal(evaluateStepCondition("${{ inputs.key == 'abc' }}", { inputs }), true);
 		assert.equal(evaluateStepCondition("${{ inputs.key != 'abc' }}", { inputs }), false);
+	});
+
+	it('supports unary negation, parentheses, and env lookups', () => {
+		const condition = "${{ always() && (!inputs.skip || env.KEY == '') }}";
+		assert.equal(
+			evaluateStepCondition(condition, { inputs: { skip: false }, env: { KEY: 'k' } }),
+			true,
+		);
+		assert.equal(evaluateStepCondition(condition, { inputs: { skip: true }, env: {} }), true);
+		assert.equal(
+			evaluateStepCondition(condition, { inputs: { skip: true }, env: { KEY: 'k' } }),
+			false,
+		);
 	});
 
 	it('rejects a term it cannot model', () => {
@@ -464,63 +544,193 @@ describe('release PR verification gate', () => {
 
 describe('test-e2e-reusable.yml', () => {
 	const workflow = workflowFile('test-e2e-reusable.yml');
+	const steps = workflow.jobs.test.steps;
+	const mintStep = stepNamed(workflow, 'test', 'Mint Currents record key');
+	const runTests = stepNamed(workflow, 'test', 'Run Tests');
 	const shardUpload = stepNamed(workflow, 'test', 'Upload Shard Artifacts');
 	const a11yUpload = stepNamed(workflow, 'test', 'Upload Accessibility Report');
+	const cancelStep = stepNamed(workflow, 'test', 'Cancel Currents run if workflow is cancelled');
+	const revokeStep = stepNamed(workflow, 'test', 'Revoke Currents OIDC record key');
 
-	describe('currents-record-key input', () => {
-		it('is an optional string that defaults to an empty value', () => {
-			const { 'currents-record-key': recordKey } = triggersOf(workflow).workflow_call.inputs;
+	describe('skip-shard-upload-when-recording input', () => {
+		it('replaces currents-record-key with an optional boolean defaulting to false', () => {
+			const declaredInputs = triggersOf(workflow).workflow_call.inputs;
+			const skipInput = declaredInputs['skip-shard-upload-when-recording'];
 
-			assert.ok(recordKey, 'workflow does not declare a currents-record-key input');
-			assert.equal(recordKey.type, 'string');
-			assert.equal(recordKey.required ?? false, false);
-			assert.equal(recordKey.default, '');
+			assert.equal(declaredInputs['currents-record-key'], undefined);
+			assert.ok(skipInput, 'workflow does not declare skip-shard-upload-when-recording');
+			assert.equal(skipInput.type, 'boolean');
+			assert.equal(skipInput.required ?? false, false);
+			assert.equal(skipInput.default, false);
 		});
 	});
 
 	describe('shard artifact upload', () => {
-		it('runs when the caller passes no record key', () => {
+		it('runs for default callers even when Currents records', () => {
 			const inputs = resolveInputs(workflow);
 
 			for (const jobStatus of ['success', 'failure']) {
-				assert.equal(
-					evaluateStepCondition(shardUpload.if, { inputs, jobStatus }),
-					true,
-					`shard upload must run on a ${jobStatus} job when no record key is passed`,
-				);
+				for (const env of [{}, { CURRENTS_RECORD_KEY: 'crnts_ci_live' }]) {
+					assert.equal(
+						evaluateStepCondition(shardUpload.if, { inputs, env, jobStatus }),
+						true,
+						`shard upload must run on a ${jobStatus} job for nightly callers`,
+					);
+				}
 			}
 		});
 
-		it('runs when the caller passes an empty record key', () => {
-			const inputs = resolveInputs(workflow, { 'currents-record-key': '' });
+		it('runs when skip-shard-upload-when-recording is true and no record key is exported (fork PRs)', () => {
+			const inputs = resolveInputs(workflow, { 'skip-shard-upload-when-recording': true });
 
-			assert.equal(evaluateStepCondition(shardUpload.if, { inputs }), true);
+			for (const jobStatus of ['success', 'failure']) {
+				for (const env of [{}, { CURRENTS_RECORD_KEY: '' }]) {
+					assert.equal(
+						evaluateStepCondition(shardUpload.if, { inputs, env, jobStatus }),
+						true,
+						`shard upload must run on a ${jobStatus} fork job when no record key is exported`,
+					);
+				}
+			}
 		});
 
-		it('is skipped when the caller passes a record key', () => {
-			const inputs = resolveInputs(workflow, { 'currents-record-key': 'record-key-value' });
+		it('is skipped when skip-shard-upload-when-recording is true and Currents records', () => {
+			const inputs = resolveInputs(workflow, { 'skip-shard-upload-when-recording': true });
 
 			for (const jobStatus of ['success', 'failure']) {
 				assert.equal(
-					evaluateStepCondition(shardUpload.if, { inputs, jobStatus }),
+					evaluateStepCondition(shardUpload.if, {
+						inputs,
+						env: { CURRENTS_RECORD_KEY: 'crnts_ci_live' },
+						jobStatus,
+					}),
 					false,
-					`shard upload must be skipped on a ${jobStatus} job when a record key is passed`,
+					`shard upload must be skipped on a ${jobStatus} job when recording with skip enabled`,
 				);
 			}
 		});
 	});
 
 	describe('accessibility report upload', () => {
-		it('is not gated on the record key', () => {
-			assert.doesNotMatch(String(a11yUpload.if), /currents-record-key/);
+		it('is not gated on Currents recording', () => {
+			assert.doesNotMatch(String(a11yUpload.if), /CURRENTS_RECORD_KEY|skip-shard-upload/);
 		});
 
-		it('runs on a failed job whether or not a record key is passed', () => {
-			for (const callerInputs of [{}, { 'currents-record-key': 'record-key-value' }]) {
+		it('runs on a failed job whether or not Currents records', () => {
+			for (const callerInputs of [{}, { 'skip-shard-upload-when-recording': true }]) {
 				const inputs = resolveInputs(workflow, callerInputs);
-
-				assert.equal(evaluateStepCondition(a11yUpload.if, { inputs, jobStatus: 'failure' }), true);
+				for (const env of [{}, { CURRENTS_RECORD_KEY: 'crnts_ci_live' }]) {
+					assert.equal(
+						evaluateStepCondition(a11yUpload.if, { inputs, env, jobStatus: 'failure' }),
+						true,
+					);
+				}
 			}
+		});
+	});
+
+	describe('Currents OIDC lifecycle and permissions', () => {
+		it('mints before Run Tests, cancels via OIDC helper without CURRENTS_API_KEY, and revokes last', () => {
+			assert.equal(workflow.jobs.test.permissions.contents, 'read');
+			assert.equal(workflow.jobs.test.permissions['id-token'], 'write');
+			assert.ok(steps.indexOf(mintStep) < steps.indexOf(runTests));
+			assert.ok(steps.indexOf(cancelStep) < steps.indexOf(revokeStep));
+			assert.equal(steps.indexOf(revokeStep), steps.length - 1);
+			assert.equal(runTests.env.CURRENTS_RECORD_KEY, undefined);
+			assert.equal(mintStep.env.CURRENTS_OIDC_POLICY_ID, '${{ vars.CURRENTS_OIDC_POLICY_ID }}');
+			assert.equal(mintStep.env.FALLBACK_CURRENTS_RECORD_KEY, '${{ secrets.CURRENTS_RECORD_KEY }}');
+			assert.match(mintStep.run, /currents-oidc\.mjs mint/);
+			assert.match(cancelStep.run, /currents-oidc\.mjs cancel/);
+			assert.equal(cancelStep.env?.CURRENTS_API_KEY, undefined);
+			assert.equal(
+				evaluateStepCondition(cancelStep.if, {
+					env: { CURRENTS_RECORD_KEY: 'crnts_ci_live' },
+					jobStatus: 'cancelled',
+				}),
+				true,
+			);
+			assert.equal(
+				evaluateStepCondition(cancelStep.if, { env: {}, jobStatus: 'cancelled' }),
+				false,
+			);
+			assert.match(revokeStep.run, /currents-oidc\.mjs revoke/);
+			assert.equal(revokeStep['continue-on-error'], true);
+			assert.equal(
+				evaluateStepCondition(revokeStep.if, {
+					env: { CURRENTS_RECORD_KEY: 'crnts_ci_live' },
+					jobStatus: 'failure',
+				}),
+				true,
+			);
+			assert.equal(evaluateStepCondition(revokeStep.if, { env: {}, jobStatus: 'success' }), false);
+		});
+
+		it('wires ci-pull-requests.yml and all OIDC callers with id-token: write', () => {
+			const prCi = workflowFile('ci-pull-requests.yml');
+			assert.equal(prCi.jobs['install-and-build'].outputs.currents_record_key, undefined);
+			assert.equal(prCi.jobs.e2e.with['currents-record-key'], undefined);
+			assert.equal(prCi.jobs.e2e.with['skip-shard-upload-when-recording'], true);
+
+			const oidcCallerJobs = [
+				['ci-pull-requests.yml', 'e2e'],
+				['ci-pull-requests.yml', 'e2e-engine'],
+				['ci-pull-requests.yml', 'e2e-performance'],
+				['test-e2e-performance-reusable.yml', 'build-and-test-performance'],
+				['test-e2e-performance-reusable.yml', 'idle-memory-baselines'],
+				['test-e2e-pc-nightly.yml', 'e2e'],
+				['test-e2e-coverage-nightly.yml', 'e2e'],
+				['test-e2e-infrastructure-reusable.yml', 'benchmark'],
+				['test-image-efficiency.yml', 'image-efficiency'],
+				['test-workflows-callable.yml', 'run_workflow_tests'],
+				['test-workflows-nightly.yml', 'run_workflow_tests'],
+			];
+			for (const [file, jobName] of oidcCallerJobs) {
+				const caller = workflowFile(file);
+				const permissions = caller.jobs[jobName].permissions;
+				assert.equal(
+					permissions?.contents,
+					'read',
+					`${file} job ${jobName} must grant contents: read`,
+				);
+				assert.equal(
+					permissions?.['id-token'],
+					'write',
+					`${file} job ${jobName} must grant id-token: write`,
+				);
+			}
+
+			const imageEff = workflowFile('test-image-efficiency.yml');
+			const imageJob = imageEff.jobs['image-efficiency'];
+			assert.equal(imageJob.env.CURRENTS_RECORD_KEY, undefined);
+			assert.ok(
+				imageJob.steps.indexOf(
+					stepNamed(imageEff, 'image-efficiency', 'Mint Currents record key'),
+				) <
+					imageJob.steps.indexOf(
+						stepNamed(imageEff, 'image-efficiency', 'Measure image layer efficiency'),
+					),
+			);
+			assert.equal(
+				imageJob.steps.indexOf(
+					stepNamed(imageEff, 'image-efficiency', 'Revoke Currents OIDC record key'),
+				),
+				imageJob.steps.length - 1,
+			);
+
+			const wfCallable = workflowFile('test-workflows-callable.yml');
+			const wfJob = wfCallable.jobs.run_workflow_tests;
+			const wfMint = stepNamed(wfCallable, 'run_workflow_tests', 'Mint Currents record key');
+			const wfRun = stepNamed(wfCallable, 'run_workflow_tests', 'Run Workflow Tests');
+			const wfSchema = stepNamed(wfCallable, 'run_workflow_tests', 'Run Workflow Schema Tests');
+			const wfRevoke = stepNamed(
+				wfCallable,
+				'run_workflow_tests',
+				'Revoke Currents OIDC record key',
+			);
+			assert.ok(wfJob.steps.indexOf(wfMint) < wfJob.steps.indexOf(wfRun));
+			assert.equal(wfRun.env.CURRENTS_RECORD_KEY, undefined);
+			assert.equal(wfSchema.env.CURRENTS_RECORD_KEY, undefined);
+			assert.equal(wfJob.steps.indexOf(wfRevoke), wfJob.steps.length - 1);
 		});
 	});
 });

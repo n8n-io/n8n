@@ -20,6 +20,8 @@ on:
         description: 'Currents record key for test reporting. Empty on fork PRs.'
         required: false
 
+permissions: {}
+
 env:
   NODE_OPTIONS: --max-old-space-size=3072
 
@@ -27,6 +29,9 @@ jobs:
   run_workflow_tests:
     name: Run Workflow Tests with Snapshots
     runs-on: blacksmith-2vcpu-ubuntu-2204
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -41,15 +46,24 @@ jobs:
         env:
           N8N_ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
 
+      - name: Mint Currents record key
+        env:
+          CURRENTS_OIDC_POLICY_ID: ${{ vars.CURRENTS_OIDC_POLICY_ID }}
+          FALLBACK_CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
+        run: node .github/scripts/currents-oidc.mjs mint
+
       - name: Run Workflow Tests
         run: pnpm --filter=n8n-playwright test:workflows --workers 4
         env:
-          CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
           CURRENTS_PROJECT_ID: 'mpLFH9'
 
       - name: Run Workflow Schema Tests
         if: ${{ inputs.compare_schemas == 'true' }}
         run: pnpm --filter=n8n-playwright test:workflows:schema
         env:
-          CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
           CURRENTS_PROJECT_ID: 'mpLFH9'
+
+      - name: Revoke Currents OIDC record key
+        if: ${{ always() && env.CURRENTS_RECORD_KEY != '' }}
+        continue-on-error: true
+        run: node .github/scripts/currents-oidc.mjs revoke

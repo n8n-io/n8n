@@ -37,11 +37,11 @@ on:
         required: false
         default: 'nHHLA5'
         type: string
-      currents-record-key:
-        description: 'Currents record key. When set, Currents keeps the run artifacts and the shards do not upload their own.'
+      skip-shard-upload-when-recording:
+        description: 'Skip uploading shard artifacts when Currents records the run.'
         required: false
-        default: ''
-        type: string
+        default: false
+        type: boolean
       pre-generated-matrix:
         description: 'Pre-generated shard matrix JSON. Defaults to 1 shard; multi-shard callers pass their own.'
         required: false
@@ -63,6 +63,8 @@ on:
         default: 'standard'
         type: string
 
+permissions: {}
+
 env:
   NODE_OPTIONS: ${{ contains(inputs.runner, '2vcpu') && '--max-old-space-size=6144' || '' }}
   PLAYWRIGHT_WORKERS: ${{ inputs.workers != '' && inputs.workers || '2' }}
@@ -82,6 +84,7 @@ jobs:
     timeout-minutes: ${{ inputs.timeout-minutes }}
     permissions:
       contents: read
+      id-token: write
     strategy:
       fail-fast: false
       matrix:
@@ -151,6 +154,13 @@ jobs:
             echo "args=$MATRIX_SPECS" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Mint Currents record key
+        if: steps.shard-args.outputs.skip != 'true'
+        env:
+          CURRENTS_OIDC_POLICY_ID: ${{ vars.CURRENTS_OIDC_POLICY_ID }}
+          FALLBACK_CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
+        run: node .github/scripts/currents-oidc.mjs mint
+
       - name: Run Tests
         if: steps.shard-args.outputs.skip != 'true'
         run: |
@@ -170,7 +180,6 @@ jobs:
           WORKERS: ${{ env.PLAYWRIGHT_WORKERS }}
           SHARD_ARGS: ${{ steps.shard-args.outputs.args }}
           # Args for actual test command runner
-          CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
           QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
           QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
           QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
@@ -187,10 +196,10 @@ jobs:
           # so a local run stays quiet unless it is asked for.
           PLAYWRIGHT_A11Y_REPORT: '1'
 
-      # Currents already keeps these artifacts for the runs it records, so the
-      # shard upload is only needed when no record key is passed.
+      # Currents already keeps these artifacts for the runs it records, so callers
+      # that do not consume shard artifacts downstream can opt out when recording.
       - name: Upload Shard Artifacts
-        if: ${{ always() && inputs.currents-record-key == '' }}
+        if: ${{ always() && (!inputs.skip-shard-upload-when-recording || env.CURRENTS_RECORD_KEY == '') }}
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: ${{ inputs.artifact-prefix }}-shard-${{ matrix.shard }}
@@ -220,14 +229,11 @@ jobs:
           if-no-files-found: ignore
 
       - name: Cancel Currents run if workflow is cancelled
-        if: ${{ cancelled() }}
-        env:
-          CURRENTS_API_KEY: ${{ secrets.CURRENTS_API_KEY }}
-        run: |
-          if [ -n "$CURRENTS_API_KEY" ]; then
-            curl --location --request PUT \
-              "https://api.currents.dev/v1/runs/cancel-ci/github" \
-              --header "Authorization: Bearer $CURRENTS_API_KEY" \
-              --header "Content-Type: application/json" \
-              --data "{\"githubRunId\": \"${{ github.run_id }}\", \"githubRunAttempt\": \"${{ github.run_attempt }}\"}"
-          fi
+        if: ${{ cancelled() && env.CURRENTS_RECORD_KEY != '' }}
+        continue-on-error: true
+        run: node .github/scripts/currents-oidc.mjs cancel
+
+      - name: Revoke Currents OIDC record key
+        if: ${{ always() && env.CURRENTS_RECORD_KEY != '' }}
+        continue-on-error: true
+        run: node .github/scripts/currents-oidc.mjs revoke

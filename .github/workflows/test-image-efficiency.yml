@@ -21,8 +21,10 @@ jobs:
     needs: prepare-docker
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
     timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
     env:
-      CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
       CURRENTS_PROJECT_ID: 'nHHLA5'
       CURRENTS_CI_BUILD_ID: ${{ github.repository }}-${{ github.run_id }}-${{ github.run_attempt }}-images
       QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
@@ -55,6 +57,12 @@ jobs:
           tar -xzf "$ARCHIVE" -C "$DIR" dive
           echo "$DIR" >> "$GITHUB_PATH"
 
+      - name: Mint Currents record key
+        env:
+          CURRENTS_OIDC_POLICY_ID: ${{ vars.CURRENTS_OIDC_POLICY_ID }}
+          FALLBACK_CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
+        run: node .github/scripts/currents-oidc.mjs mint
+
       - name: Measure image layer efficiency
         run: >-
           pnpm --filter=@n8n/efficiency exec playwright test
@@ -71,3 +79,8 @@ jobs:
             packages/quality/efficiency/playwright-report/
           retention-days: 7
           if-no-files-found: ignore
+
+      - name: Revoke Currents OIDC record key
+        if: ${{ always() && env.CURRENTS_RECORD_KEY != '' }}
+        continue-on-error: true
+        run: node .github/scripts/currents-oidc.mjs revoke

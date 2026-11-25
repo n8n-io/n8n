@@ -16,9 +16,15 @@ on:
         type: string
         default: 'master'
 
+permissions:
+  contents: read
+
 jobs:
   run_workflow_tests:
     name: Run Workflow Tests
+    permissions:
+      contents: read
+      id-token: write
     uses: ./.github/workflows/test-workflows-callable.yml
     with:
       git_ref: ${{ github.event_name == 'schedule' && 'master' || github.event.inputs.git_ref_to_test }}
