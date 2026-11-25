@@ -306,7 +306,19 @@ export class SimulationSessionService {
 		agentId: string;
 		testChatId: string;
 	}): void {
-		const key = `${input.userId}:${input.projectId}:${input.agentId}:${input.testChatId}`;
+		const key = sessionKeyFromIds(input);
+		this.dropSession(key);
+		// An open that still runs caches its world after this call, so that world goes too.
+		const opening = this.opening.get(key);
+		if (opening) {
+			void opening.then(
+				() => this.dropSession(key),
+				() => undefined,
+			);
+		}
+	}
+
+	private dropSession(key: string): void {
 		const cached = this.sessions.get(key);
 		if (!cached) return;
 		this.sessions.delete(key);

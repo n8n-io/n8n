@@ -260,6 +260,34 @@ describe('classifyToolAction', () => {
 				},
 			},
 			{
+				label: 'MCP tool find_and_replace, where a read verb comes before a write verb',
+				action: { toolName: 'find_and_replace', kind: 'mcp', mcpToolName: 'find_and_replace' },
+			},
+			{
+				label: 'node operation findAndReplace',
+				action: {
+					toolName: 'docs_find_and_replace',
+					kind: 'node',
+					nodeParameters: { operation: 'findAndReplace' },
+				},
+			},
+			{
+				label: 'MCP tool search_replace with a write verb and no joining word',
+				action: { toolName: 'search_replace', kind: 'mcp', mcpToolName: 'search_replace' },
+			},
+			{
+				label: 'joined name whose second verb is not a known write verb',
+				action: { toolName: 'get_and_frobnicate', kind: 'mcp', mcpToolName: 'get_and_frobnicate' },
+			},
+			{
+				label: 'joined name fetch_then_obliterate',
+				action: {
+					toolName: 'fetch_then_obliterate',
+					kind: 'mcp',
+					mcpToolName: 'fetch_then_obliterate',
+				},
+			},
+			{
 				label: 'expression operation',
 				action: {
 					toolName: 'gmail_get',

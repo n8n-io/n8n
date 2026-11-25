@@ -358,7 +358,7 @@ defineExpose({ clearBudgetStops });
 				@send-to-assistant="emit('send-to-assistant', $event)"
 				@initial-consumed="emit('initial-consumed')"
 				@message-sent="emit('message-sent')"
-				@new-session="createNewSession('test-panel')"
+				@new-session="emit('new-session')"
 				@first-user-message="emit('first-user-message', $event)"
 			>
 				<template v-if="$slots['empty-state']" #empty-state>

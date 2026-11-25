@@ -1112,4 +1112,9 @@ export class AgentTaskCancellationDto extends Z.class({
 	planId: z.string().uuid().toLowerCase().nullable(),
 }) {}
 
+/** Request body to reset the simulated world of one test chat. */
+export class AgentTestRunResetDto extends Z.class({
+	sessionId: z.string().trim().min(1),
+}) {}
+
 export class AgentHitlOptionsQueryDto extends Z.class(AgentHitlOptionsQuerySchema.shape) {}

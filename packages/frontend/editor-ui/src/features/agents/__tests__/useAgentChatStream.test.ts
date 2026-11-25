@@ -76,6 +76,7 @@ import {
 	type UseAgentChatStreamParams,
 } from '../composables/useAgentChatStream';
 import { INTERACTION_EXTENSION_TOOL_NAME } from '@/features/ai/shared/agentsChat/constants';
+import { TOOL_CALL_STATE } from '@/features/agents/constants';
 import type { AgentsChatInteractionExtension } from '@/features/ai/shared/agentsChat/interactionRegistry';
 import {
 	TEST_EXTENSION_KEY,
@@ -6247,6 +6248,57 @@ describe('useAgentChatStream — interaction extensions', () => {
 			extensionKey: TEST_EXTENSION_KEY,
 			runId: 'run-ext',
 		});
+	});
+
+	it('drops simulation metadata that fails validation and keeps the tool call', async () => {
+		const events = [
+			{ type: 'execution-started', executionId: 'exec-sim-2', sessionId: 'thread-sim' },
+			{ type: 'start-step' },
+			{
+				type: 'tool-call',
+				toolCallId: 'call-email',
+				toolName: 'gmail_send',
+				input: { to: 'ana@example.com' },
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'call-email',
+				toolName: 'gmail_send',
+				output: { sent: true },
+				// The reason does not belong to the route.
+				simulation: { route: 'blocked', reason: 'served_from_world' },
+			},
+			{
+				type: 'tool-call',
+				toolCallId: 'call-slack',
+				toolName: 'slack_post_message',
+				input: { channel: '#support' },
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'call-slack',
+				toolName: 'slack_post_message',
+				output: { ok: true },
+				simulation: { route: 'not_a_route' },
+			},
+			{ type: 'finish-step' },
+		] as AgentSseEvent[];
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => makeSseResponse(events)),
+		);
+		const hook = buildHook('thread-sim');
+
+		await hook.sendMessage('Send the refund email and notify Slack');
+		await flushPromises();
+
+		const assistant = hook.messages.value.find((m) => m.role === 'assistant');
+		expect(assistant?.toolCalls).toHaveLength(2);
+		for (const toolCall of assistant?.toolCalls ?? []) {
+			expect(toolCall.state).toBe(TOOL_CALL_STATE.DONE);
+			expect(toolCall.simulation).toBeUndefined();
+		}
+		expect(assistant?.toolCalls?.[0].output).toEqual({ sent: true });
 	});
 });
 
