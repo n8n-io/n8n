@@ -272,6 +272,10 @@ export interface AgentSkillMutationResponse {
 	versionId: string | null;
 }
 
+export interface AgentSkillWorkflowAccessResponse {
+	outsideProjectWorkflowIds: string[];
+}
+
 export interface AgentVersionDto {
 	versionId: string;
 	schema: AgentJsonConfig | null;

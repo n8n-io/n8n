@@ -64,7 +64,11 @@ import type {
 	ToolCategoryKey,
 	ToolConnectionItem,
 } from '@/features/shared/toolsConnection/types';
-import { getSkillDetail, listAttachableSkills } from '../composables/useAgentApi';
+import {
+	getAgentSkillWorkflowAccess,
+	getSkillDetail,
+	listAttachableSkills,
+} from '@/features/agents/composables/useAgentApi';
 import { useSkillVersions } from '../composables/useSkillVersions';
 import { useSkillWorkflowMentionNames } from '@/features/agents/composables/useSkillWorkflowMentionNames';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
@@ -418,6 +422,7 @@ const pickerItemsWithRecommended = computed<SkillConnectionItem[]>(() =>
 const previewSkill = ref<SkillDetail | null>(null);
 const previewPath = ref(SKILL_FILE);
 const previewLoading = ref(false);
+const previewOutsideProjectWorkflowIds = ref<string[]>([]);
 const previewIsAdded = computed(
 	() => !!previewSkill.value && attachedSkillIds.value.has(previewSkill.value.id),
 );
@@ -1007,14 +1012,43 @@ async function onPickerItemPreview(item: ToolConnectionItem) {
 	if (item.kind !== 'skill' || item.disabled) return;
 	if (item.category === 'recommended') return await selectRecommendedSkill(item.skillId);
 	previewLoading.value = true;
+	previewOutsideProjectWorkflowIds.value = [];
 	try {
 		previewSkill.value = await getSkillDetail(rootStore.restApiContext, item.skillId);
 		previewPath.value = SKILL_FILE;
 		step.value = 'preview';
+		void loadPreviewOutsideProjectWorkflowIds(item.skillId);
 	} catch (error) {
 		showError(error, i18n.baseText('agents.builder.skills.picker.previewError'));
 	} finally {
 		previewLoading.value = false;
+	}
+}
+
+async function loadPreviewOutsideProjectWorkflowIds(skillId: string) {
+	const { projectId, agentId } = props.data;
+	if (
+		!projectId ||
+		!agentId ||
+		!posthog.isVariantEnabled(
+			WORKFLOWS_IN_SKILLS_EXPERIMENT.name,
+			WORKFLOWS_IN_SKILLS_EXPERIMENT.variant,
+		)
+	) {
+		return;
+	}
+	try {
+		const { outsideProjectWorkflowIds } = await getAgentSkillWorkflowAccess(
+			rootStore.restApiContext,
+			projectId,
+			agentId,
+			skillId,
+		);
+		if (previewSkill.value?.id === skillId) {
+			previewOutsideProjectWorkflowIds.value = outsideProjectWorkflowIds;
+		}
+	} catch {
+		return;
 	}
 }
 
@@ -1606,6 +1640,7 @@ function onRemove() {
 			<AgentSkillFileNav
 				:skill="previewSkill.skill"
 				:selected-path="previewPath"
+				:outside-project-workflow-ids="previewOutsideProjectWorkflowIds"
 				read-only
 				@select="previewPath = $event"
 			/>
