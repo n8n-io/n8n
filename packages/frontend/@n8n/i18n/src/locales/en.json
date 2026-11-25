@@ -2552,7 +2552,7 @@
 	"mcpServers.share.oneClick.title": "Add in one click",
 	"mcpServers.share.addTo": "Add to {client}",
 	"mcpServers.share.oneClick.afterAdd": "After you add the server, sign in to n8n and click Allow.",
-	"mcpServers.share.claude.manual": "If the Claude dialog does not open, go to Settings, then Connectors, in Claude. Click Add custom connector and enter the server URL.",
+	"mcpServers.share.claude.manual": "If the Claude dialog does not open, go to Customize, then Connectors, in Claude. Click Add custom connector and enter the server URL.",
 	"mcpServers.share.claude.plans": "On Claude Team and Enterprise plans, only owners can add custom connectors.",
 	"mcpServers.share.command.title": "Add with a command",
 	"mcpServers.share.command.signIn.claudeCode": "Then run /mcp in Claude Code and select the server to sign in.",
