@@ -632,17 +632,11 @@ export class ExecutionService {
 	private async stopV1Execution(execution: IExecutionResponse): Promise<StopResult> {
 		this.assertStoppable(execution);
 
-		// The stop overwrites the status, so read the parked children first.
-		const waitingChildIds = execution.status === 'waiting' ? getWaitingChildIds(execution) : [];
-
 		// oxlint-disable-next-line typescript/no-deprecated
 		const { mode, startedAt, stoppedAt, finished, status } =
 			this.globalConfig.executions.mode === 'regular'
 				? await this.stopInRegularMode(execution)
 				: await this.stopInScalingMode(execution);
-
-		// The parent is canceled first, so a child that ends below cannot resume it.
-		if (status === 'canceled') await this.stopWaitingChildren(execution.id, waitingChildIds);
 
 		return {
 			mode,
@@ -813,6 +807,7 @@ export class ExecutionService {
 
 	private async stopDuringRun(execution: IExecutionResponse): Promise<IExecutionResponse> {
 		const expectedStatus = execution.status;
+		const waitingChildIds = expectedStatus === 'waiting' ? getWaitingChildIds(execution) : [];
 		const error = new ManualExecutionCancelledError(execution.id);
 
 		execution.data = execution.data ?? createEmptyRunExecutionData();
@@ -850,6 +845,10 @@ export class ExecutionService {
 				? await this.stopInRegularMode(current)
 				: await this.stopInScalingMode(current);
 		}
+
+		// The parent is canceled now, so a child that ends cannot resume it. The queue-mode
+		// broadcast runs after this, so a failed broadcast does not skip the children.
+		await this.stopWaitingChildren(execution.id, waitingChildIds);
 
 		return execution;
 	}

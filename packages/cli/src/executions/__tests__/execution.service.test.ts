@@ -1512,6 +1512,7 @@ describe('ExecutionService', () => {
 						updated: true,
 						ended: true,
 					});
+					executionStopService.requestStop.mockResolvedValue(undefined);
 				});
 
 				it('stops each child after the parent, also in a workflow the caller cannot access', async () => {
@@ -1575,6 +1576,19 @@ describe('ExecutionService', () => {
 					);
 
 					expect(executionPersistence.findSingleExecution).not.toHaveBeenCalled();
+				});
+
+				it.runIf(mode === 'queue')('stops the children when the stop broadcast fails', async () => {
+					arrange(execution('parent', 'waiting', ['child']), [execution('child', 'waiting')]);
+					executionStopService.requestStop.mockImplementation(async (id) => {
+						if (id === 'parent') throw new Error('publish failed');
+					});
+
+					await expect(executionService.stop('parent', ['workflow-of-parent'])).rejects.toThrow(
+						'publish failed',
+					);
+
+					expect(stoppedIds()).toEqual(['parent', 'child']);
 				});
 
 				it('does not look for children when the parent is running', async () => {
