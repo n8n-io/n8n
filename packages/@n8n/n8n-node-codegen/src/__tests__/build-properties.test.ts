@@ -2,45 +2,10 @@ import type { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
 
 import { buildProperties } from '../build-properties';
 import { N8N_NODE_CONFIG } from '../n8n-node.config';
-import type { ApiParameter, OperationRow, SpecOperation } from '../types';
+import type { OperationRow } from '../types';
+import { parameter, row } from './fixtures';
 
 const PARSED_JSON = '={{ typeof $value === "string" ? $value.parseJson() : $value }}';
-
-const parameter = (name: string, overrides: Partial<ApiParameter> = {}): ApiParameter => ({
-	name,
-	location: 'query',
-	required: false,
-	deprecated: false,
-	schema: { type: 'string' },
-	...overrides,
-});
-
-const row = (
-	operationId: string,
-	overrides: Partial<SpecOperation> = {},
-	fields: OperationRow['fields'] = {},
-): OperationRow => ({
-	resource: { id: 'workflow', displayName: 'Workflow' },
-	isDefault: false,
-	fields,
-	operation: {
-		operationId,
-		summary: `Summary of ${operationId}`,
-		method: 'GET',
-		apiPath: '/workflows',
-		tag: {
-			name: 'Workflow',
-			displayName: 'Workflows',
-			group: { name: 'BuildAndRun', displayName: 'Build and run' },
-		},
-		deprecated: false,
-		paginated: false,
-		emptyResponse: false,
-		parameters: [],
-		blockers: [],
-		...overrides,
-	},
-});
 
 const build = (...rows: OperationRow[]) => buildProperties(rows, N8N_NODE_CONFIG.spec);
 
