@@ -26,6 +26,14 @@ describe('getNodeVersionChoices', () => {
 		expect(getNodeVersionChoices([1, 2, 3], hides(2), 2, 3).listed).toEqual([3, 2, 1]);
 	});
 
+	it('drops a version above the latest version', () => {
+		expect(getNodeVersionChoices([1, 2, 3], hides(), 1, 2).listed).toEqual([2, 1]);
+	});
+
+	it('keeps a version above the latest version when it is the current version', () => {
+		expect(getNodeVersionChoices([1, 2, 3], hides(), 3, 2).listed).toEqual([3, 2, 1]);
+	});
+
 	it('uses the default version as latest', () => {
 		expect(getNodeVersionChoices([1, 2, 3], hides(), 1, 2).latest).toBe(2);
 	});

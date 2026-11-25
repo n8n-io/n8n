@@ -98,6 +98,15 @@ describe('NodeVersionPicker', () => {
 		expect(within(listbox).getAllByRole('option')).toHaveLength(5);
 	});
 
+	it('omits the Recommended group when the node is above the latest version', async () => {
+		renderComponent({ props: { currentVersion: 4, latest: 3.1, versions: [4, 3.1, 3] } });
+
+		const listbox = await openMenu();
+
+		expect(within(listbox).queryByRole('group', { name: 'Recommended' })).not.toBeInTheDocument();
+		expect(within(listbox).getAllByRole('option')).toHaveLength(3);
+	});
+
 	it('asks for confirmation when the user picks a newer version', async () => {
 		const { emitted } = renderComponent();
 

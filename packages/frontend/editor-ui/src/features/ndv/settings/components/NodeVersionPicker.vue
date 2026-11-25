@@ -37,16 +37,19 @@ const items = computed(() => {
 		label: String(version),
 		disabled: version < props.currentVersion,
 	});
+	// A node above the latest version cannot go back to it, so the latest version is not recommended.
+	const recommended =
+		props.latest !== undefined && props.latest >= props.currentVersion ? props.latest : undefined;
 	const groups: Array<SelectGroupItem<number>> = [
 		{
 			type: 'group',
 			label: i18n.baseText('generic.recommended'),
-			items: props.versions.filter((version) => version === props.latest).map(toItem),
+			items: props.versions.filter((version) => version === recommended).map(toItem),
 		},
 		{
 			type: 'group',
 			label: i18n.baseText('nodeSettings.versionPicker.previousVersions'),
-			items: props.versions.filter((version) => version !== props.latest).map(toItem),
+			items: props.versions.filter((version) => version !== recommended).map(toItem),
 		},
 	];
 
