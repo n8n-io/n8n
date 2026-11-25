@@ -12,6 +12,7 @@
  */
 
 import { Logger } from '@n8n/backend-common';
+import { createHash } from 'node:crypto';
 import { Container } from '@n8n/di';
 
 // ---------------------------------------------------------------------------
@@ -164,6 +165,9 @@ export function redactSecretSearchParams(endpoint: string): string {
 const UUID_SEGMENT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const TELEGRAM_TOKEN_SEGMENT = /^(?:bot)?\d{6,}:[A-Za-z0-9_-]{20,}$/i;
 const OPAQUE_SEGMENT = /^[A-Za-z0-9_-]{24,}$/;
+// Words and numbers with hyphens, such as `weekly-report-2024`. A token mixes letters and digits in one part.
+const KEBAB_SLUG = /^(?:[a-z]+|\d+)(?:-(?:[a-z]+|\d+))+$/;
+const USERINFO = /^(\s*=?\s*[a-z][a-z0-9+.-]*:\/\/)[^/?#]*@/i;
 
 // A path segment that holds a credential, such as `/bot<token>/sendMessage`. No vendor profile tells
 // which segment it is, so this reads the shape: a bot token, or a long mix of letters and digits.
@@ -181,8 +185,15 @@ function isTokenSegment(segment: string): boolean {
 		/\d/.test(text) &&
 		/[A-Za-z]/.test(text) &&
 		!UUID_SEGMENT.test(text) &&
+		!KEBAB_SLUG.test(text) &&
 		!/^[0-9a-f]+$/i.test(text)
 	);
+}
+
+// A short hash keeps two different hidden segments apart. The write ledger keys on the endpoint, so a
+// fixed marker would make two resources look like one.
+function hiddenSegment(segment: string): string {
+	return `<redacted:${createHash('sha256').update(segment).digest('hex').slice(0, 6)}>`;
 }
 
 /**
@@ -190,12 +201,14 @@ function isTokenSegment(segment: string): boolean {
  * the secret parameters of the query. A host has dots, so it is never a token segment.
  */
 export function redactEndpoint(endpoint: string): string {
-	const queryStart = endpoint.indexOf('?');
-	const path = queryStart === -1 ? endpoint : endpoint.slice(0, queryStart);
-	const query = queryStart === -1 ? '' : endpoint.slice(queryStart);
+	// A URL can carry `user:password@` before the host.
+	const text = endpoint.replace(USERINFO, '$1<redacted>@');
+	const queryStart = text.indexOf('?');
+	const path = queryStart === -1 ? text : text.slice(0, queryStart);
+	const query = queryStart === -1 ? '' : text.slice(queryStart);
 	const safePath = path
 		.split('/')
-		.map((segment) => (isTokenSegment(segment) ? REDACTED : segment))
+		.map((segment) => (isTokenSegment(segment) ? hiddenSegment(segment) : segment))
 		.join('/');
 	return redactSecretSearchParams(safePath + query);
 }

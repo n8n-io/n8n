@@ -150,9 +150,10 @@ describe('HttpSimulator', () => {
 			scope,
 		);
 
-		expect(lines).toEqual([
-			'mcp-guard http GET api.unknown.test/<redacted>/sendMessage -> simulated',
-		]);
+		expect(lines).toHaveLength(1);
+		expect(lines[0]).toMatch(
+			/^mcp-guard http GET api\.unknown\.test\/<redacted:[0-9a-f]{6}>\/sendMessage -> simulated$/,
+		);
 	});
 
 	it('gives the mock the address that `baseURL` and `qs` make', async () => {

@@ -405,22 +405,34 @@ describe('redactNodeParameters', () => {
 
 describe('redactEndpoint', () => {
 	const BOT = 'bot123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw';
+	const HIDDEN = '<redacted:[0-9a-f]{6}>';
 
 	it('hides a bot token and a long opaque segment of the path', () => {
-		expect(redactEndpoint(`/${BOT}/sendMessage`)).toBe('/<redacted>/sendMessage');
-		expect(redactEndpoint('/v1/keys/k9Xq2LmPz7Rt4VbN8YcW1HdS5Fg/use')).toBe(
-			'/v1/keys/<redacted>/use',
+		expect(redactEndpoint(`/${BOT}/sendMessage`)).toMatch(new RegExp(`^/${HIDDEN}/sendMessage$`));
+		expect(redactEndpoint('/v1/keys/k9Xq2LmPz7Rt4VbN8YcW1HdS5Fg/use')).toMatch(
+			new RegExp(`^/v1/keys/${HIDDEN}/use$`),
 		);
-		expect(redactEndpoint(`https://api.x.test/${BOT}/getMe`)).toBe(
-			'https://api.x.test/<redacted>/getMe',
+		expect(redactEndpoint(`https://api.x.test/${BOT}/getMe`)).toMatch(
+			new RegExp(`^https://api.x.test/${HIDDEN}/getMe$`),
 		);
 	});
 
-	it('keeps a normal path, a UUID, a hex id and a plain word', () => {
+	it('keeps two different hidden ids apart, and the same id the same', () => {
+		const one = redactEndpoint('/v1/items/k9Xq2LmPz7Rt4VbN8YcW1HdS5Fg');
+		const two = redactEndpoint('/v1/items/Zr3Tt8WqLm2Xc9VbN4YdH7Js1Pk');
+
+		expect(one).not.toBe(two);
+		expect(redactEndpoint('/v1/items/k9Xq2LmPz7Rt4VbN8YcW1HdS5Fg')).toBe(one);
+	});
+
+	it('keeps a normal path, a UUID, a hex id, a plain word and a kebab-case slug', () => {
 		const path = '/v1/tasks/3f2b6c1e-8a4d-4f0b-9c7e-1d2a3b4c5d6e/comments/507f1f77bcf86cd799439011';
 		expect(redactEndpoint(path)).toBe(path);
 		expect(redactEndpoint('/v1/organizationmembershipsettings')).toBe(
 			'/v1/organizationmembershipsettings',
+		);
+		expect(redactEndpoint('/posts/weekly-report-for-the-team-2024')).toBe(
+			'/posts/weekly-report-for-the-team-2024',
 		);
 	});
 
@@ -428,6 +440,13 @@ describe('redactEndpoint', () => {
 		expect(redactEndpoint('/v1/tasks?api_key=abc&page=2')).toBe(
 			'/v1/tasks?api_key=<redacted>&page=2',
 		);
+	});
+
+	it('hides the user and password of a URL', () => {
+		const out = redactEndpoint('https://jo:hunter22@api.x.test/v1/tasks');
+
+		expect(out).toBe('https://<redacted>@api.x.test/v1/tasks');
+		expect(redactEndpoint('=https://jo:hunter22@api.x.test/v1')).not.toContain('hunter22');
 	});
 });
 
