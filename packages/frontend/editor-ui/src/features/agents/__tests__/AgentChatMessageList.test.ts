@@ -15,6 +15,7 @@ import {
 	TEST_HOST_EVENT,
 	TEST_RESULT_TOOL_NAME,
 	testHostEventExtensions,
+	testToolFooterExtension,
 	testToolResultExtension,
 } from '@/features/ai/shared/agentsChat/__tests__/fixtures/testInteractionExtension';
 
@@ -2055,6 +2056,28 @@ describe('AgentChatMessageList', () => {
 			expect(results[0].find('[data-testid="test-tool-result"]').text()).toContain('tc-note');
 			expect(results[0].text()).toContain('{"saved":true}');
 			expect(stepToolCallIds(wrapper)).toEqual(['tc-http']);
+			wrapper.unmount();
+		});
+
+		it.each([
+			[
+				'keeps the default step and renders a host footer after the steps',
+				[testToolFooterExtension],
+				['tc-http', 'tc-note'],
+			],
+			[
+				'renders no footer for a call that a host result replaces',
+				[testToolResultExtension, testToolFooterExtension],
+				['tc-http'],
+			],
+		])('%s', (_, extensions, steps) => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: { messages: [assistantMessage([httpCall, savedNote])], messagingState: 'idle' },
+				global: { provide: { [AGENTS_CHAT_INTERACTION_EXTENSIONS]: computed(() => extensions) } },
+			});
+
+			expect(wrapper.findAll('[data-testid="test-tool-result"]')).toHaveLength(1);
+			expect(stepToolCallIds(wrapper)).toEqual(steps);
 			wrapper.unmount();
 		});
 
