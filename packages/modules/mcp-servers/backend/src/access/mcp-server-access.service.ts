@@ -134,8 +134,7 @@ export class McpServerAccessService {
 
 	/**
 	 * Removes a blocked person from the list: deletes their connection rows and their block. As a
-	 * project member, the person can connect again with a new sign-in. The refresh tokens are
-	 * already gone since the block.
+	 * project member, the person can connect again with a new sign-in.
 	 */
 	async remove(projectId: string, serverId: string, userId: string): Promise<void> {
 		const server = await this.findServer(projectId, serverId);
@@ -146,6 +145,8 @@ export class McpServerAccessService {
 			}
 			await this.connections.deleteForPerson(server.id, userId, ctx);
 		});
+		// A refresh that ran during the block can have written a new token, as for restore.
+		await this.refreshTokens.deleteForPerson(this.resources.serverUrl(server), userId);
 	}
 
 	private async findServer(projectId: string, serverId: string): Promise<McpServer> {

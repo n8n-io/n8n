@@ -362,6 +362,16 @@ describe('DELETE /projects/:projectId/mcp-servers/:serverId/connections/:userId'
 		expect(emit).not.toHaveBeenCalled();
 	});
 
+	it('deletes a refresh token that a refresh wrote during the block, so the person signs in again', async () => {
+		await ownerAgent.post(`${serverPath()}/blocks`).send({ userId: tom.id }).expect(200);
+		await addRefreshToken(tom, resourceUrl(server.slug), 'tom-during-block');
+		await addRefreshToken(maya, resourceUrl(server.slug), 'maya-this-server');
+
+		await ownerAgent.delete(`${serverPath()}/connections/${tom.id}`).expect(200);
+
+		expect(await refreshTokens()).toEqual(['maya-this-server']);
+	});
+
 	it('refuses to remove a person who is not blocked', async () => {
 		await addConnection(maya, CLAUDE_CODE, 'Claude Code', new Date(), new Date());
 
