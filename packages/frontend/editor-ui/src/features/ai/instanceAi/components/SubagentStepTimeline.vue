@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import {
+	N8nSpinner,
 	N8nButton,
 	N8nIcon,
 	type IconName,
@@ -158,7 +159,7 @@ const steps = computed((): TimelineStep[] => {
 						<N8nButton ref="triggerRef" variant="ghost" size="small" :class="$style.toggleTrigger">
 							<template #icon>
 								<template v-if="step.isLoading">
-									<N8nIcon icon="spinner" size="small" color="primary" spin />
+									<N8nSpinner type="dots" size="small" style="color: var(--color--primary)" />
 								</template>
 								<N8nIcon v-else :icon="step.icon" size="small" />
 							</template>

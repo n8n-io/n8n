@@ -11,7 +11,7 @@ import type { DropdownMenuItemProps, IconColor } from '@n8n/design-system';
 import type { ExecutionStatus, ExecutionSummary } from 'n8n-workflow';
 import { isIndefiniteWait } from 'n8n-workflow';
 import { computed, ref, useCssModule } from 'vue';
-import { type IconName } from '@n8n/design-system';
+import { N8nSpinner, type IconName } from '@n8n/design-system';
 
 import {
 	N8nButton,
@@ -275,12 +275,13 @@ async function handleActionItemClick(commandData: Command) {
 				"
 			>
 				<div :class="$style.status">
-					<N8nIcon
+					<N8nSpinner
+						v-if="isRunning"
+						type="dots"
 						size="medium"
-						:icon="statusRender.icon"
-						:color="statusRender.color"
-						:spin="isRunning"
+						style="color: var(--color--secondary)"
 					/>
+					<N8nIcon v-else size="medium" :icon="statusRender.icon" :color="statusRender.color" />
 					{{ statusRender.label }}
 				</div>
 			</N8nTooltip>

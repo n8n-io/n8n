@@ -14,7 +14,6 @@ interface IconProps {
 	// node icons (lazy-loaded via `node:` prefix), and any Lucide icon name (rendered via fallback SVG)
 	icon: IconName | NodeIconName | (string & {});
 	size?: IconSize | number;
-	spin?: boolean;
 	// accepts a named IconColor token or a raw CSS custom property (e.g. '--node--icon--color--blue')
 	color?: IconColor | (string & {});
 	strokeWidth?: number | undefined;
@@ -25,7 +24,6 @@ interface IconProps {
 defineOptions({ name: 'N8nIcon' });
 
 const props = withDefaults(defineProps<IconProps>(), {
-	spin: false,
 	size: undefined,
 	color: undefined,
 	fallbackIcon: undefined,
@@ -34,10 +32,6 @@ const props = withDefaults(defineProps<IconProps>(), {
 const $style = useCssModule();
 const classes = computed(() => {
 	const applied: string[] = [];
-	if (props.spin) {
-		applied.push('spin');
-	}
-
 	if (props.strokeWidth) {
 		applied.push('strokeWidth');
 	}
@@ -174,8 +168,6 @@ watch(
 </template>
 
 <style lang="scss" module>
-@use '../../css/mixins/motion';
-
 .fallbackIcon {
 	stroke-width: 1.5;
 }
@@ -185,9 +177,5 @@ watch(
 	path {
 		stroke-width: var(--icon--stroke-width);
 	}
-}
-
-.spin {
-	@include motion.spin;
 }
 </style>

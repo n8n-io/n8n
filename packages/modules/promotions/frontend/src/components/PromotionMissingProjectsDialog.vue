@@ -4,6 +4,7 @@ import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { useToast } from '@n8n/composables/useToast';
 import {
+	N8nSpinner,
 	N8nButton,
 	N8nCheckbox,
 	N8nDialog,
@@ -11,7 +12,6 @@ import {
 	N8nDialogFooter,
 	N8nDialogHeader,
 	N8nDialogTitle,
-	N8nIcon,
 	N8nLink,
 	N8nText,
 	N8nUserSelect,
@@ -339,10 +339,9 @@ async function submit() {
 										<N8nText bold>{{ project.name }}</N8nText>
 									</N8nLink>
 									<N8nText v-else bold color="text-dark">{{ project.name }}</N8nText>
-									<N8nIcon
+									<N8nSpinner
 										v-if="states.get(project.id)?.status === 'creating'"
-										icon="loader-circle"
-										spin
+										type="dots"
 										size="small"
 									/>
 								</div>

@@ -1,4 +1,4 @@
-import { N8nIcon } from '@n8n/design-system';
+import { N8nIcon, N8nSpinner } from '@n8n/design-system';
 import userEvent from '@testing-library/user-event';
 import { mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -200,7 +200,9 @@ describe('AgentChatPlan timer', () => {
 		const wrapper = mount(AgentChatPlan, { props: { plan } });
 
 		expect(wrapper.get('[data-testid="agent-chat-plan-timer"]').text()).toBe('0:30');
-		expect(wrapper.findComponent(N8nIcon).props('spin')).toBe(false);
+		expect(
+			wrapper.get('[data-testid="agent-chat-plan-indicator"]').findComponent(N8nSpinner).exists(),
+		).toBe(false);
 
 		await vi.advanceTimersByTimeAsync(5_000);
 
@@ -423,12 +425,12 @@ describe('AgentChatPlan', () => {
 		});
 		const wrapper = mount(AgentChatPlan, { props: { plan } });
 		const trigger = wrapper.get('button');
-		const indicator = () => wrapper.findAllComponents(N8nIcon)[0];
+		const indicator = () => wrapper.get('[data-testid="agent-chat-plan-indicator"]');
 		expect(trigger.text()).toContain('Checking sources');
 		expect(wrapper.findAll('[role="status"]')).toHaveLength(1);
 		expect(trigger.find('[role="status"]').exists()).toBe(false);
 		expect(wrapper.get('[role="status"]').text()).toBe('Checking sources');
-		expect(indicator().props()).toMatchObject({ icon: 'loader-circle', spin: true });
+		expect(indicator().getComponent(N8nSpinner).props('type')).toBe('dots');
 		await trigger.trigger('click');
 		expect(wrapper.get('[data-testid="agent-chat-plan-details"]').attributes('aria-label')).toBe(
 			'Research options',
@@ -456,7 +458,7 @@ describe('AgentChatPlan', () => {
 		);
 		expect(wrapper.text()).not.toContain('Plan closed');
 		expect(trigger.text()).not.toContain('Stopped checking');
-		expect(indicator().props()).toMatchObject({ icon: 'list-checks', spin: false });
+		expect(wrapper.findAllComponents(N8nIcon)[0].props('icon')).toBe('list-checks');
 		expect(wrapper.text().match(/One source remains unchecked\./g)).toHaveLength(2);
 		expect(wrapper.get('[data-testid="agent-chat-plan-details"]').text()).not.toContain(
 			'One source remains unchecked.',
@@ -497,7 +499,9 @@ describe('AgentChatPlan', () => {
 					}),
 				},
 			});
-			expect(wrapper.findAllComponents(N8nIcon)[0].props('spin')).toBe(status === 'in_progress');
+			expect(
+				wrapper.get('[data-testid="agent-chat-plan-indicator"]').findComponent(N8nSpinner).exists(),
+			).toBe(status === 'in_progress');
 			wrapper.unmount();
 		},
 	);
@@ -567,15 +571,19 @@ describe('AgentChatPlan', () => {
 		const wrapper = mount(AgentChatPlan, { props: { plan } });
 		await wrapper.get('button').trigger('click');
 		expect(
-			wrapper.findAll('[data-status]').map((row) => row.getComponent(N8nIcon).props('icon')),
-		).toEqual(['check', 'circle', 'loader', 'check', 'x', 'x']);
+			wrapper
+				.findAll('[data-status]')
+				.map((row) =>
+					row.findComponent(N8nSpinner).exists() ? 'dots' : row.getComponent(N8nIcon).props('icon'),
+				),
+		).toEqual(['check', 'circle', 'dots', 'check', 'x', 'x']);
 		expect(wrapper.findAll('[data-status]').map((row) => row.attributes('data-status'))).toEqual([
 			'done',
 			...statuses,
 		]);
 		expect(wrapper.get('[data-testid="agent-chat-plan-summary"]').text()).toBe('1 of 5 tasks done');
 		expect(
-			wrapper.findAll('[data-status]').map((row) => row.getComponent(N8nIcon).props('spin')),
+			wrapper.findAll('[data-status]').map((row) => row.findComponent(N8nSpinner).exists()),
 		).toEqual([false, false, true, false, false, false]);
 		expect(wrapper.find('[class*="shimmer"]').exists()).toBe(false);
 		wrapper.unmount();
@@ -682,10 +690,12 @@ describe('Background task stop display', () => {
 		for (const row of wrapper.findAll('[data-status="paused"]')) {
 			expect(row.attributes('aria-label')).toBe('agents.chat.tasks.stopped');
 			expect(row.getComponent(N8nIcon).props('icon')).toBe('circle-pause');
-			expect(row.getComponent(N8nIcon).props('spin')).toBe(false);
+			expect(row.findComponent(N8nSpinner).exists()).toBe(false);
 		}
 
-		expect(wrapper.findAllComponents(N8nIcon)[0].props('spin')).toBe(false);
+		expect(
+			wrapper.get('[data-testid="agent-chat-plan-indicator"]').findComponent(N8nSpinner).exists(),
+		).toBe(false);
 		expect(wrapper.get('[data-testid="agent-chat-plan-summary"]').text()).toBe('2 of 6 tasks done');
 		expect(wrapper.find('[data-testid="agent-chat-plan-stop"]').exists()).toBe(false);
 		expect(plan).toEqual(saved);

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nBadge, N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nSpinner, N8nBadge, N8nButton, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 
@@ -113,11 +113,10 @@ const legend = computed(() =>
 			>
 				<VersionAvatar :index="version.index" variant="square" size="small" />
 				<N8nText size="xsmall" color="text-base">{{ version.label }}</N8nText>
-				<N8nIcon
+				<N8nSpinner
 					v-if="version.isRunning"
-					icon="spinner"
+					type="dots"
 					size="xsmall"
-					spin
 					:title="i18n.baseText('evaluation.compare.versionsLegend.running')"
 				/>
 				<N8nText v-else-if="version.scorePercent !== null" size="xsmall" bold>

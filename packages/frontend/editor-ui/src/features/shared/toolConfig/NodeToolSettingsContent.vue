@@ -29,7 +29,7 @@ import {
 } from '@/features/ndv/shared/ndv.utils';
 import { omitOperationOptions } from '@/features/shared/toolConfig/toolConfig.utils';
 import type { INodeUpdatePropertiesInformation, ITab, IUpdateInformation } from '@/Interface';
-import { N8nIcon, N8nTabs, N8nText } from '@n8n/design-system';
+import { N8nSpinner, N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import {
 	NodeHelpers,
@@ -521,7 +521,7 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 		/>
 
 		<div v-if="nodeTypesLoading" :class="$style.loading" data-test-id="tool-settings-loading">
-			<N8nIcon icon="loader-circle" size="large" spin />
+			<N8nSpinner type="dots" size="large" />
 		</div>
 		<div v-else :class="$style.tabContent">
 			<!-- Parameters Tab -->

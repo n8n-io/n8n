@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, provide, shallowRef, watch } from 'vue';
-import { N8nIcon } from '@n8n/design-system';
+import { N8nSpinner } from '@n8n/design-system';
 import NodeView from '@/app/views/NodeView.vue';
 import type { IWorkflowDb, INodeUi } from '@/Interface';
 import type { IWorkflowTemplate } from '@n8n/rest-api-client/api/templates';
@@ -147,7 +147,7 @@ const isReady = computed(() => documentStore.value !== null);
 	<div :class="$style.host" data-test-id="workflow-preview-host">
 		<NodeView v-if="isReady" />
 		<div v-else :class="$style.centerState">
-			<N8nIcon icon="loader-circle" :size="80" spin />
+			<N8nSpinner type="dots" :size="80" />
 		</div>
 	</div>
 </template>

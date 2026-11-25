@@ -568,7 +568,6 @@ exports[`CodeDiff > renders error state correctly 1`] = `
           class="mr-5xs"
           color="danger"
           icon="triangle-alert"
-          spin="false"
         />
         <span
           class="infoText"
@@ -862,7 +861,6 @@ exports[`CodeDiff > renders replaced code diff correctly 1`] = `
           class="ml-xs"
           color="success"
           icon="check"
-          spin="false"
         />
         <span
           class="infoText"

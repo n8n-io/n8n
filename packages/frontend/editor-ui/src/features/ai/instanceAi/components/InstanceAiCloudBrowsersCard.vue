@@ -4,7 +4,7 @@
  * read-only live view that opens the browser tab, and a stop button. A finished task stays, with
  * no browser, until its result reaches the assistant.
  */
-import { N8nHeading, N8nIcon, N8nIconButton, type IconName } from '@n8n/design-system';
+import { N8nSpinner, N8nHeading, N8nIcon, N8nIconButton, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, inject } from 'vue';
 
@@ -26,13 +26,10 @@ const openCloudBrowserTab = inject<((taskId: string) => void) | undefined>(
 );
 
 // The same icons as the Tasks section of the panel.
-const stateIcons: Record<
-	CloudBrowserTask['state'],
-	{ icon: IconName; spin: boolean; className: string }
-> = {
-	running: { icon: 'spinner', spin: true, className: 'runningIcon' },
-	done: { icon: 'circle-check', spin: false, className: 'doneIcon' },
-	failed: { icon: 'circle-x', spin: false, className: 'failedIcon' },
+const stateIcons: Record<CloudBrowserTask['state'], { icon: IconName; className: string }> = {
+	running: { icon: 'spinner', className: 'runningIcon' },
+	done: { icon: 'circle-check', className: 'doneIcon' },
+	failed: { icon: 'circle-x', className: 'failedIcon' },
 };
 
 // A running task the instance no longer runs (for example after a restart) is not shown.
@@ -88,9 +85,15 @@ function subtitleOf(task: CloudBrowserTask): string {
 			>
 				<div :class="$style.header">
 					<span :class="$style.titleLine" aria-hidden="true">
+						<N8nSpinner
+							v-if="task.state === 'running'"
+							type="dots"
+							:class="$style[stateIcon.className]"
+							size="small"
+						/>
 						<N8nIcon
+							v-else
 							:icon="stateIcon.icon"
-							:spin="stateIcon.spin"
 							:class="$style[stateIcon.className]"
 							size="small"
 						/>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nSpinner, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 // Accent "working" pill for an in-progress run set, distinct from the settled
@@ -14,7 +14,7 @@ const i18n = useI18n();
 
 <template>
 	<span :class="$style.indicator" data-test-id="eval-running-indicator">
-		<N8nIcon icon="spinner" size="xsmall" spin />
+		<N8nSpinner type="dots" size="xsmall" />
 		<N8nText size="xsmall" :bold="true" :compact="true">
 			{{
 				i18n.baseText('evaluation.collections.card.runningProgress', {

@@ -9,6 +9,7 @@ import N8nAiActivityStepChevron from '../N8nAiActivityStepChevron';
 import N8nAiActivityStepResultSection from '../N8nAiActivityStepResultSection';
 import N8nChatInput from '../N8nChatInput';
 import N8nIcon from '../N8nIcon';
+import N8nSpinner from '../N8nSpinner';
 import N8nAiActivityStepGroup from './AiActivityStepGroup.vue';
 
 export default {
@@ -170,7 +171,7 @@ export const Default: StoryFn = () => ({
 });
 
 export const BackgroundJobs: StoryFn = (args) => ({
-	components: { N8nAiActivityStepGroup, N8nChatInput, N8nIcon },
+	components: { N8nAiActivityStepGroup, N8nChatInput, N8nIcon, N8nSpinner },
 	setup: () => ({ args }),
 	data: () => ({
 		message: '',
@@ -186,12 +187,13 @@ export const BackgroundJobs: StoryFn = (args) => ({
 				<template #leading>
 					<div class="background-jobs-story">
 						<n8n-ai-activity-step-group v-bind="args">
-							<template #prefix><n8n-icon icon="loader-circle" spin size="small" aria-hidden="true" class="job-spinner" style="color: var(--color--primary)" /></template>
+							<template #prefix><n8n-spinner type="dots" size="small" aria-hidden="true" class="job-spinner" style="color: var(--color--primary)" /></template>
 							<template #header-trailing><span aria-live="off" style="font-variant-numeric: tabular-nums; color: var(--text-color--subtler)">0:42</span></template>
 							<div style="padding: var(--spacing--sm); border-bottom: var(--border); border-bottom-style: dashed;">
 								<ul style="list-style: none; padding: 0; margin: 0 0 var(--spacing--xs); max-height: 20vh; overflow-y: auto">
 									<li v-for="job in jobs" :key="job.title" style="display: flex; align-items: flex-start; gap: var(--spacing--2xs); padding-block: var(--spacing--3xs); font-size: var(--font-size--sm); line-height: var(--line-height--lg); color: var(--text-color--subtle); overflow-wrap: anywhere">
-										<n8n-icon :icon="job.waiting ? 'circle' : 'loader-circle'" :spin="!job.waiting" size="small" aria-hidden="true" :class="job.waiting ? 'waiting' : 'job-spinner'" :style="{ flexShrink: 0, color: job.waiting ? 'var(--text-color--subtler)' : 'var(--color--primary)' }" />
+										<n8n-spinner v-if="!job.waiting" type="dots" size="small" aria-hidden="true" class="job-spinner" style="flex-shrink: 0; color: var(--color--primary)" />
+										<n8n-icon v-else icon="circle" size="small" aria-hidden="true" class="waiting" style="flex-shrink: 0; color: var(--text-color--subtler)" />
 										<span>{{ job.title }}</span>
 									</li>
 								</ul>

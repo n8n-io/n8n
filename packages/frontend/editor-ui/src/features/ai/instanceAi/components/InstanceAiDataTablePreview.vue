@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, ref, shallowRef, watch } from 'vue';
-import { N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nSpinner, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import DataTableTable from '@/features/core/dataTable/components/dataGrid/DataTableTable.vue';
 import DataTableLoadingIndicator from '@/features/core/dataTable/components/dataGrid/DataTableLoadingIndicator.vue';
@@ -140,7 +140,7 @@ watch(
 			:class="$style.centerState"
 			data-test-id="instance-ai-data-table-loading"
 		>
-			<N8nIcon icon="loader-circle" :size="80" spin />
+			<N8nSpinner type="dots" :size="80" />
 		</div>
 	</div>
 </template>

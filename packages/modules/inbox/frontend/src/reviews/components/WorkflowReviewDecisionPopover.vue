@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { WORKFLOW_REVIEW_TEXT_MAX_LENGTH } from '@n8n/api-types';
 import {
+	N8nSpinner,
 	N8nButton,
 	N8nDialog,
 	N8nDialogDescription,
@@ -121,7 +122,8 @@ function onRequestChanges() {
 					data-test-id="workflow-review-decision-trigger"
 				>
 					{{ i18n.baseText('workflowReviews.detail.decision.trigger') }}
-					<N8nIcon :icon="deciding ? 'loader' : 'chevron-down'" :spin="deciding" />
+					<N8nSpinner v-if="deciding" type="dots" />
+					<N8nIcon v-else icon="chevron-down" />
 				</N8nButton>
 			</template>
 		</N8nDropdownMenu>

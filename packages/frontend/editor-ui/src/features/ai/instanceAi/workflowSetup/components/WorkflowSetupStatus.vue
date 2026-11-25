@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { N8nIcon, N8nText, type IconName } from '@n8n/design-system';
+import { N8nSpinner, N8nIcon, N8nText, type IconName } from '@n8n/design-system';
 import { i18n, type BaseTextKey } from '@n8n/i18n';
 import type { TerminalState } from '../workflowSetup.types';
 
@@ -11,7 +11,6 @@ type StatusView = {
 	icon: IconName;
 	iconClass: IconClass;
 	labelKey: BaseTextKey;
-	spin?: boolean;
 };
 
 const STATUS_BY_STATE: Record<TerminalState, StatusView> = {
@@ -19,7 +18,6 @@ const STATUS_BY_STATE: Record<TerminalState, StatusView> = {
 		icon: 'spinner',
 		iconClass: 'iconLoading',
 		labelKey: 'instanceAi.workflowSetup.applying',
-		spin: true,
 	},
 	applied: {
 		icon: 'check',
@@ -43,12 +41,13 @@ const statusView = computed(() => STATUS_BY_STATE[props.state]);
 
 <template>
 	<div :class="$style.status" :data-test-id="`instance-ai-workflow-setup-status-${state}`">
-		<N8nIcon
-			:icon="statusView.icon"
+		<N8nSpinner
+			v-if="state === 'applying'"
+			type="dots"
 			size="small"
-			:spin="!!statusView.spin"
 			:class="$style[statusView.iconClass]"
 		/>
+		<N8nIcon v-else :icon="statusView.icon" size="small" :class="$style[statusView.iconClass]" />
 		<N8nText size="small" color="text-light">
 			{{ i18n.baseText(statusView.labelKey) }}
 		</N8nText>

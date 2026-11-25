@@ -60,7 +60,6 @@ exports[`ConnectionTracker > should render network error when both offline and p
             color="warning"
             data-v-f4a2fe1d=""
             icon="triangle-alert"
-            spin="false"
           />
           <span
             class="n8n-text size-small regular"
@@ -110,7 +109,6 @@ exports[`ConnectionTracker > should render network error when offline 1`] = `
             color="warning"
             data-v-f4a2fe1d=""
             icon="triangle-alert"
-            spin="false"
           />
           <span
             class="n8n-text size-small regular"
@@ -160,7 +158,6 @@ exports[`ConnectionTracker > should render push error when push disconnected and
             color="warning"
             data-v-f4a2fe1d=""
             icon="triangle-alert"
-            spin="false"
           />
           <span
             class="n8n-text size-small regular"

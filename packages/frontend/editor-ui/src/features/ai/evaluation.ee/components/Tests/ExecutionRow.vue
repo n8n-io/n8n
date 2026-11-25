@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nSpinner, N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -134,7 +134,7 @@ const outputEntries = computed(() => toEntries(items.value.output));
 			:data-test-id="`tests-execution-detail-${execution.id}`"
 		>
 			<div v-if="loading" :class="$style.loading">
-				<N8nIcon icon="spinner" size="small" :spin="true" />
+				<N8nSpinner type="dots" size="small" />
 			</div>
 			<template v-else>
 				<div v-if="inputEntries.length > 0" :class="$style.group">

@@ -6,6 +6,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import ToolListItem from './ToolListItem.vue';
 import NodeToolSettingsContent from '@/features/shared/toolConfig/NodeToolSettingsContent.vue';
 import {
+	N8nSpinner,
 	N8nButton,
 	N8nDialog,
 	N8nDialogBody,
@@ -460,7 +461,7 @@ function onDialogOpenUpdate(open: boolean) {
 					:class="$style.emptyState"
 					data-test-id="chat-tools-manager-loading"
 				>
-					<N8nIcon icon="loader-circle" size="large" spin />
+					<N8nSpinner type="dots" size="large" />
 				</div>
 				<template v-else>
 					<div v-if="configuredToolItems.length > 0" :class="$style.section">

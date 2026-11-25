@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, defineComponent, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
 import {
+	N8nSpinner,
 	N8nDialog,
 	N8nDialogBody,
 	N8nIcon,
@@ -448,7 +449,7 @@ function handleOpenChange(value: boolean) {
 				:aria-label="i18n.baseText('generic.loading')"
 				data-test-id="tools-connection-loading"
 			>
-				<N8nIcon icon="loader-circle" size="xlarge" spin />
+				<N8nSpinner type="dots" size="xlarge" />
 				<N8nText color="text-light">{{ i18n.baseText('generic.loading') }}</N8nText>
 			</div>
 		</component>
@@ -529,11 +530,8 @@ function handleOpenChange(value: boolean) {
 						@click="emit('create', activeCategory)"
 					>
 						<span :class="$style.createIcon" aria-hidden="true">
-							<N8nIcon
-								:icon="createActionLoading ? 'loader-circle' : 'plus'"
-								:size="20"
-								:spin="createActionLoading"
-							/>
+							<N8nSpinner v-if="createActionLoading" type="dots" size="xlarge" />
+							<N8nIcon v-else icon="plus" :size="20" />
 						</span>
 						<span :class="$style.createText">
 							<N8nText tag="span" bold>

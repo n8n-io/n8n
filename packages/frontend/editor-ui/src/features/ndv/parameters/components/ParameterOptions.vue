@@ -188,7 +188,7 @@ const onViewSelected = (selected: string) => {
 	<div :class="$style.container" data-test-id="parameter-options-container">
 		<div v-if="loading" :class="$style.loader" data-test-id="parameter-options-loader">
 			<N8nText v-if="loading" size="small">
-				<N8nIcon icon="refresh-cw" size="xsmall" :spin="true" />
+				<N8nIcon icon="refresh-cw" size="xsmall" :class="$style.spinning" />
 				{{ loadingMessage }}
 			</N8nText>
 		</div>
@@ -247,6 +247,8 @@ const onViewSelected = (selected: string) => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
+
 .container {
 	display: flex;
 	min-height: var(--parameter-input-options--height, 24px);
@@ -287,5 +289,9 @@ const onViewSelected = (selected: string) => {
 	&:hover {
 		color: var(--color--danger);
 	}
+}
+
+.spinning {
+	@include motion.spin;
 }
 </style>

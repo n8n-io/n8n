@@ -233,7 +233,7 @@ describe('PromotionPreviewBadges', () => {
 			expect(badge).toHaveAttribute('aria-disabled', 'true');
 			expect(badge).not.toHaveAttribute('data-route');
 			expect(badge).not.toHaveTextContent('0');
-			expect(badge.querySelector('[data-icon="loader-circle"]')).toBeInTheDocument();
+			expect(badge.querySelector('.n8n-spinner')).toBeInTheDocument();
 			expect(badge.querySelector('[data-icon]')).toHaveAttribute(
 				'data-icon',
 				direction === 'promote' ? 'arrow-up' : 'arrow-down',

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, onBeforeUnmount } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nCallout, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nSpinner, N8nCallout, N8nIcon, N8nText } from '@n8n/design-system';
 
 import type { INodeUi } from '@/Interface';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants/nodeTypes';
@@ -132,11 +132,10 @@ defineExpose({ markInteracted });
 		@mouseleave="onCardMouseLeave"
 	>
 		<header :data-test-id="`${cardTestId}-header`" :class="$style.header" @click="onHeaderClick">
-			<N8nIcon
+			<N8nSpinner
 				v-if="!expanded && loading && !isComplete"
+				type="dots"
 				:data-test-id="`${cardTestId}-loading-icon`"
-				icon="spinner"
-				:spin="true"
 				:class="$style['loading-icon']"
 				size="medium"
 			/>

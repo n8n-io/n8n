@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, onBeforeUnmount, onMounted, provide, ref, useTemplateRef, watch } from 'vue';
-import { N8nIcon } from '@n8n/design-system';
+import { N8nSpinner } from '@n8n/design-system';
 import { ResponseError } from '@n8n/rest-api-client';
 import type { IWorkflowDb } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
@@ -169,7 +169,7 @@ const isReady = computed(() => !isLoading.value && !!currentWorkflowDocumentStor
 			<LogsPanel :class="$style.logs" />
 		</template>
 		<div v-else :class="$style.centerState">
-			<N8nIcon icon="loader-circle" :size="80" spin />
+			<N8nSpinner type="dots" :size="80" />
 		</div>
 	</div>
 </template>

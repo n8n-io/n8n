@@ -169,19 +169,19 @@ describe('SelfHealingResultContent', () => {
 	});
 
 	it.each([
-		{ pendingAction: null, icon: 'chevron-down', spin: false },
-		{ pendingAction: 'chat', icon: 'loader', spin: true },
-		{ pendingAction: 'dismiss', icon: 'chevron-down', spin: false },
+		{ pendingAction: null, icon: 'chevron-down', loading: false },
+		{ pendingAction: 'chat', icon: 'spinner', loading: true },
+		{ pendingAction: 'dismiss', icon: 'chevron-down', loading: false },
 	] as const)(
 		'shows $icon in the review trigger while $pendingAction is pending',
-		({ pendingAction, icon, spin }) => {
+		({ pendingAction, icon, loading }) => {
 			const { getByRole } = renderContent({ pendingAction });
 			const trigger = getByRole('button', { name: /Review/ });
 
 			expect(trigger).not.toHaveAttribute('aria-busy');
 			const triggerIcon = trigger.querySelector('[data-icon]');
 			expect(triggerIcon).toHaveAttribute('data-icon', icon);
-			expect(triggerIcon?.classList.contains('spin')).toBe(spin);
+			expect(trigger.querySelector('.n8n-spinner') !== null).toBe(loading);
 		},
 	);
 

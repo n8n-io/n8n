@@ -689,7 +689,7 @@ defineExpose({
 			@refresh-field-list="initFetching(true)"
 		/>
 		<N8nText v-if="!showMappingModeSelect && state.loading" size="small">
-			<N8nIcon icon="refresh-cw" size="xsmall" :spin="true" />
+			<N8nIcon icon="refresh-cw" size="xsmall" :class="$style.spinning" />
 			{{
 				locale.baseText('resourceMapper.fetchingFields.message', {
 					interpolate: {
@@ -776,9 +776,15 @@ defineExpose({
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/motion';
+
 .typeConversionOptions {
 	display: grid;
 	padding: var(--spacing--md);
 	gap: var(--spacing--2xs);
+}
+
+.spinning {
+	@include motion.spin;
 }
 </style>

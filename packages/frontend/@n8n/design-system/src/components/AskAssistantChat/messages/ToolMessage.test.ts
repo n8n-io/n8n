@@ -117,8 +117,7 @@ describe('ToolMessage', () => {
 				isFirstOfRole: true,
 			});
 
-			expect(wrapper.html()).toContain('icon="spinner"');
-			expect(wrapper.html()).toContain('spin');
+			expect(wrapper.findComponent({ name: 'N8nSpinner' }).props('type')).toBe('dots');
 		});
 
 		it('should render completed status with check icon', () => {

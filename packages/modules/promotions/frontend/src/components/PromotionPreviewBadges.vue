@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { PromotionDirection } from '@n8n/api-types';
-import { N8nBadge, N8nIcon, N8nTooltip, type IconName } from '@n8n/design-system';
+import { N8nSpinner, N8nBadge, N8nTooltip, type IconName } from '@n8n/design-system';
 import { VIEWS } from '@n8n/frontend-constants/views';
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
@@ -183,7 +183,7 @@ const badges = computed(() => {
 					:leading-icon="ICONS[badge.direction]"
 				>
 					<span :class="$style.count">
-						<N8nIcon v-if="badge.loading" icon="loader-circle" size="small" spin />
+						<N8nSpinner v-if="badge.loading" type="dots" size="small" />
 						<template v-else>{{ badge.failed ? '?' : badge.changeCount }}</template>
 					</span>
 				</N8nBadge>
