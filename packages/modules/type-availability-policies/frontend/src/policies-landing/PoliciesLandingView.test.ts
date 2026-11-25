@@ -107,11 +107,11 @@ describe('PoliciesLandingView', () => {
 		).toBeInTheDocument();
 	});
 
-	it('shows how many node and credential types the instance policy restricts', async () => {
+	it('shows how many types the instance policy restricts, and opens to project opt-in when it does', async () => {
 		const { findByTestId } = renderForAdmin();
 
 		expect(await findByTestId('policies-landing-instance-counts')).toHaveTextContent(
-			'1 of 2 nodes restricted · 2 of 4 credentials restricted',
+			'1 of 2 nodes restricted · 2 of 4 credentials restricted, 1 open to project opt-in',
 		);
 	});
 

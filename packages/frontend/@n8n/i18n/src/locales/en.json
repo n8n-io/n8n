@@ -3048,6 +3048,8 @@
 	"typeAvailabilityPolicies.landing.global": "Global",
 	"typeAvailabilityPolicies.landing.nodeCount": "{restricted} of {total} node restricted | {restricted} of {total} nodes restricted",
 	"typeAvailabilityPolicies.landing.credentialCount": "{restricted} of {total} credential restricted | {restricted} of {total} credentials restricted",
+	"typeAvailabilityPolicies.landing.nodeCountWithOptIn": "{restricted} of {total} node restricted, {optIn} open to project opt-in | {restricted} of {total} nodes restricted, {optIn} open to project opt-in",
+	"typeAvailabilityPolicies.landing.credentialCountWithOptIn": "{restricted} of {total} credential restricted, {optIn} open to project opt-in | {restricted} of {total} credentials restricted, {optIn} open to project opt-in",
 	"typeAvailabilityPolicies.instancePolicy.tabs.node": "Nodes",
 	"typeAvailabilityPolicies.instancePolicy.tabs.credential": "Credentials",
 	"typeAvailabilityPolicies.instancePolicy.table.name": "Name",
