@@ -26,6 +26,7 @@ import {
 	AGENTS_CHAT_INTERACTION_EXTENSIONS,
 	appendHostEventSources,
 	findHostEventRenderer,
+	findToolFooterRenderer,
 	findToolResultRenderer,
 	getHostEventItems,
 	type AgentsChatHostEventItems,
@@ -301,7 +302,7 @@ const tailSummaryId = computed(() => {
 interface GroupToolCalls {
 	/** Calls that render as default tool steps. */
 	steps: ToolCall[];
-	/** Finished calls that a host extension renders in place of a step. */
+	/** Finished calls that a host extension renders after the steps: in place of a step, or as a step footer. */
 	hostResults: Array<{ toolCall: ToolCall; renderer: AgentsChatToolResultRenderer }>;
 }
 
@@ -325,8 +326,14 @@ const toolCallsByGroupId = computed(() => {
 		for (const toolCall of toolCalls) {
 			const renderer =
 				extensions.length > 0 ? findToolResultRenderer(toolCall, extensions) : undefined;
-			if (renderer) split.hostResults.push({ toolCall, renderer });
-			else split.steps.push(toolCall);
+			if (renderer) {
+				split.hostResults.push({ toolCall, renderer });
+				continue;
+			}
+			split.steps.push(toolCall);
+			const footer =
+				extensions.length > 0 ? findToolFooterRenderer(toolCall, extensions) : undefined;
+			if (footer) split.hostResults.push({ toolCall, renderer: footer });
 		}
 		byGroupId.set(group.id, split);
 	}
