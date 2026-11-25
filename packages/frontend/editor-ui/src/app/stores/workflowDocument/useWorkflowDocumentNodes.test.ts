@@ -283,10 +283,9 @@ describe('useWorkflowDocumentNodes', () => {
 			workflowDocumentNodes.onStateDirty(dirtySpy);
 			workflowDocumentNodes.setNodeTypeVersion('Target', 2, { new: 'value' });
 
-			expect(workflowDocumentNodes.getNodeByName('Target')).toMatchObject({
-				typeVersion: 2,
-				parameters: { new: 'value' },
-			});
+			const updated = workflowDocumentNodes.getNodeByName('Target');
+			expect(updated?.typeVersion).toBe(2);
+			expect(updated?.parameters).toEqual({ new: 'value' });
 			expect(nodesSpy).toHaveBeenCalledOnce();
 			expect(nodesSpy).toHaveBeenCalledWith({ action: 'update', payload: { name: 'Target' } });
 			expect(dirtySpy).toHaveBeenCalledOnce();
