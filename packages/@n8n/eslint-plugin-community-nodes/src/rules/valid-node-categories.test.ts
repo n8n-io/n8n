@@ -156,6 +156,12 @@ ruleTester.run('valid-node-categories', ValidNodeCategoriesRule, {
 			before: () => mockSiblingCodex(toolsOnly),
 		},
 		{
+			name: 'spread after a connection type can override it',
+			filename: typescriptNode,
+			code: nodeCode({ outputs: "[{ type: 'main', ...connection }]" }),
+			before: () => mockSiblingCodex(toolsOnly),
+		},
+		{
 			name: 'inline codex takes precedence over sibling codex for the Root Nodes check',
 			filename: typescriptNode,
 			code: inlineCodex(['Development']),

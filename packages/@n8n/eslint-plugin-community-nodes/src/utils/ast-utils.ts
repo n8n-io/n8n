@@ -62,7 +62,7 @@ export function isTriggerNode(
 export function isMainConnection(element: TSESTree.Node | null | undefined): boolean | null {
 	const connection =
 		element?.type === AST_NODE_TYPES.ObjectExpression
-			? (findObjectProperty(element, 'type')?.value ?? null)
+			? (findStaticProperty(element, 'type')?.value ?? null)
 			: (element ?? null);
 	const value = getStringLiteralValue(connection);
 	if (value !== null) return value === 'main';
@@ -207,6 +207,23 @@ export function findObjectProperty(
 		(prop) => prop.type === AST_NODE_TYPES.Property && getPropertyKeyName(prop) === propertyName,
 	);
 	return property?.type === AST_NODE_TYPES.Property ? property : null;
+}
+
+/**
+ * Returns the property that sets `name` last, null when no property sets it, or
+ * undefined when a later spread or computed key could replace it.
+ */
+export function findStaticProperty(
+	object: TSESTree.ObjectExpression,
+	name: string,
+): TSESTree.Property | null | undefined {
+	for (const property of [...object.properties].reverse()) {
+		if (property.type !== AST_NODE_TYPES.Property) return undefined;
+		const key = getPropertyKeyName(property);
+		if (key === null) return undefined;
+		if (key === name) return property;
+	}
+	return null;
 }
 
 export function getLiteralValue(node: TSESTree.Node | null): string | boolean | number | null {

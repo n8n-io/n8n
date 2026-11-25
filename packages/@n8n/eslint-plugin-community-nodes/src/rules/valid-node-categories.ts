@@ -7,7 +7,7 @@ import {
 	createRule,
 	findNodeDescriptionObject,
 	findObjectProperty,
-	getPropertyKeyName,
+	findStaticProperty,
 	getRuleDocsUrl,
 	getStringLiteralValue,
 	getTopLevelObjectInJson,
@@ -20,17 +20,6 @@ const supportedValuesUrl = `${getRuleDocsUrl(ruleName)}#supported-values`;
 const validCategories: ReadonlySet<string> = new Set(CODEX_NODE_CATEGORIES);
 const validAiSubcategories: ReadonlySet<string> = new Set(Object.values(CODEX_AI_SUBCATEGORIES));
 const rootNodes = CODEX_AI_SUBCATEGORIES.ROOT_NODES;
-
-function findStaticProperty(object: TSESTree.ObjectExpression, name: string) {
-	for (const property of [...object.properties].reverse()) {
-		// A spread or dynamic key can override an earlier property.
-		if (property.type !== AST_NODE_TYPES.Property) return undefined;
-		const key = getPropertyKeyName(property);
-		if (key === null) return undefined;
-		if (key === name) return property;
-	}
-	return null;
-}
 
 function isMainNode(description: TSESTree.ObjectExpression): boolean {
 	const inputs = findStaticProperty(description, 'inputs')?.value;
