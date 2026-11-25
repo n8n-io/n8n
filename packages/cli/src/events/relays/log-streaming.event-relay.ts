@@ -1686,6 +1686,14 @@ export class LogStreamingEventRelay extends EventRelay {
 					payload,
 				});
 				break;
+			case 'promotions_project_environments':
+				void this.eventBus.sendAuditEvent({
+					eventName: value
+						? 'n8n.audit.promotions.project-environments.enabled'
+						: 'n8n.audit.promotions.project-environments.disabled',
+					payload,
+				});
+				break;
 			default:
 				assertNever(settingName);
 		}

@@ -21,6 +21,8 @@ const POLICY_SETTING_NAMES = {
 	whoCanApply: 'promotions_who_can_apply',
 } as const satisfies Record<PromotionProjectAccessSetting, string>;
 
+const PROJECT_ENVIRONMENTS_KEY = 'promotions.projectEnvironments';
+
 @Service()
 export class PromotionSettingsService {
 	constructor(
@@ -62,6 +64,38 @@ export class PromotionSettingsService {
 		await this.syncProjectRoleScopes(after);
 
 		return after;
+	}
+
+	/** Has no license check: callers live in the licensed module or behind a licensed route. */
+	async isProjectEnvironmentsEnabled(ctx: OperationContext = {}): Promise<boolean> {
+		const row = await this.settingsRepository.findByKeyInContext(PROJECT_ENVIRONMENTS_KEY, ctx);
+		return row?.value === 'true';
+	}
+
+	async setProjectEnvironmentsEnabled(
+		actor: UserLike,
+		enabled: boolean,
+		ctx: OperationContext = {},
+	): Promise<boolean> {
+		const before = await this.isProjectEnvironmentsEnabled(ctx);
+		await this.settingsRepository.upsertByKey(
+			PROJECT_ENVIRONMENTS_KEY,
+			String(enabled),
+			false,
+			ctx,
+		);
+
+		if (before !== enabled) {
+			const { id, email, firstName, lastName, role } = actor;
+			this.eventService.emit('instance-policies-updated', {
+				user: { id, email, firstName, lastName, role },
+				settingName: 'promotions_project_environments',
+				value: enabled,
+				loginId: loginIdOf(ctx),
+			});
+		}
+
+		return enabled;
 	}
 
 	/**

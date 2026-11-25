@@ -37,3 +37,14 @@ export class UpdatePromotionSettingsDto extends Z.class(
 ) {}
 
 export type PromotionSettings = PromotionProjectAccessSettings;
+
+const enabled = z.boolean().openapi({
+	description: 'Whether project environments are on for this instance.',
+});
+
+export class PromotionProjectEnvironmentsSettingsPublicDto extends Z.class({ enabled }) {}
+
+export class UpdatePromotionProjectEnvironmentsSettingsDto extends Z.class(
+	{ enabled },
+	{ strict: true },
+) {}
