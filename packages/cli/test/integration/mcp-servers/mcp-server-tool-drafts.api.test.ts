@@ -108,9 +108,9 @@ beforeEach(async () => {
 	project = await createTeamProject('Marketing');
 	await linkUserToProject(editor, project, 'project:editor');
 	await linkUserToProject(viewer, project, 'project:viewer');
-	vi.mocked(Container.get(PostHogClient).getFeatureFlags).mockResolvedValue({
-		'155_custom_mcp_servers': 'test',
-	});
+	vi.mocked(Container.get(PostHogClient).getFeatureFlagForInstance).mockImplementation(
+		async (flag) => (flag === '155_custom_mcp_servers' ? 'test' : undefined),
+	);
 	const adapter = Container.get(TextDraftAdapter);
 	isAvailable = vi.spyOn(adapter, 'isAvailable').mockResolvedValue(true);
 	draft = vi.spyOn(adapter, 'draft');

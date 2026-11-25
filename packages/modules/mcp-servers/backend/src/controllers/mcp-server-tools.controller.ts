@@ -55,7 +55,7 @@ export class McpServerToolsController {
 	@Post('/tools/:toolId/draft')
 	@ProjectScope('mcpServer:update')
 	async draft(req: ToolRequest, _res: unknown, @Body dto: DraftMcpServerToolDto) {
-		await this.flagGate.assertEnabled(req.user);
+		await this.flagGate.assertEnabled();
 		return await this.toolsService.draftTool(
 			req.user,
 			req.params.projectId,
