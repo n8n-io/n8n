@@ -6,9 +6,12 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { nextTick, reactive } from 'vue';
 
 import InstancePolicyView from './InstancePolicyView.vue';
 import { useInstancePolicyStore } from './instance-policy.store';
+import { accessFilter } from '../__tests__/table';
+import { useRestrictReviewStore } from './restrict-review/restrict-review.store';
 import { POLICIES_LANDING_VIEW } from '../type-availability-policies.constants';
 
 const { route, push, replace, fetchInstancePolicy, fetchInstanceAccess } = vi.hoisted(() => ({
@@ -33,23 +36,36 @@ vi.mock('../type-availability-policies.api', () => ({
 	fetchNodeTypeUsage: vi.fn(async () => ({})),
 }));
 
+// Reactive, so that a test can change the query of a mounted page.
+const reactiveRoute = reactive(route);
+
 vi.mock('vue-router', () => ({
-	useRoute: () => route,
+	useRoute: () => reactiveRoute,
 	useRouter: () => ({ push, replace }),
 }));
 
+// Closes as the real dialog does: it asks to close, then announces where the focus returns.
+const closeDialog = {
+	close(this: { $emit: (event: string, ...args: unknown[]) => void }) {
+		this.$emit('update:open', false);
+		this.$emit('closeAutoFocus', new Event('focusScope.autoFocusOnUnmount', { cancelable: true }));
+	},
+};
+
 const nodeTypeAccessDialogStub = {
 	props: ['open', 'nodeType'],
-	emits: ['update:open'],
+	emits: ['update:open', 'closeAutoFocus'],
+	methods: closeDialog,
 	template:
-		'<button data-test-id="node-type-access-dialog" :data-node-type="nodeType" @click="$emit(\'update:open\', false)" />',
+		'<button data-test-id="node-type-access-dialog" :data-node-type="nodeType" @click="close" />',
 };
 
 const credentialTypeAccessDialogStub = {
 	props: ['open', 'credentialType'],
-	emits: ['update:open'],
+	emits: ['update:open', 'closeAutoFocus'],
+	methods: closeDialog,
 	template:
-		'<button data-test-id="credential-type-access-dialog" :data-credential-type="credentialType" @click="$emit(\'update:open\', false)" />',
+		'<button data-test-id="credential-type-access-dialog" :data-credential-type="credentialType" @click="close" />',
 };
 
 const renderView = createComponentRenderer(InstancePolicyView, {
@@ -395,5 +411,79 @@ describe('InstancePolicyView', () => {
 		await fireEvent.click(getByTestId('node-type-access-dialog'));
 
 		expect(replace).toHaveBeenCalledWith({ query: { tab: 'node' } });
+	});
+
+	describe('focus when the dialog closes', () => {
+		const NODE_DIALOG = { tab: 'node', details: 'n8n-nodes-base.notion' };
+		const NOTION_ROW = 'instance-policy-open-n8n-nodes-base.notion';
+		// The focus is inside the open dialog when it closes.
+		const closeFromInside = async (dialog: HTMLElement) => {
+			dialog.focus();
+			await fireEvent.click(dialog);
+		};
+
+		it('returns the focus to the row of the type', async () => {
+			const { getByTestId, findByTestId } = setup(BOTH_SCOPES, NODE_DIALOG);
+			const rowButton = await findByTestId(NOTION_ROW);
+
+			await closeFromInside(getByTestId('node-type-access-dialog'));
+
+			expect(rowButton).toHaveFocus();
+		});
+
+		it('moves the focus to the access filter when the row is not in the table', async () => {
+			const { getByTestId, getByRole, findByTestId, getByPlaceholderText, queryByTestId } = setup(
+				BOTH_SCOPES,
+				NODE_DIALOG,
+			);
+			await findByTestId(NOTION_ROW);
+			await fireEvent.update(getByPlaceholderText('Search nodes'), 'no match');
+			expect(queryByTestId(NOTION_ROW)).not.toBeInTheDocument();
+
+			await closeFromInside(getByTestId('node-type-access-dialog'));
+
+			expect(accessFilter(getByRole)).toHaveFocus();
+		});
+
+		it('returns the focus on the Credentials tab too', async () => {
+			const { getByTestId, findByTestId } = setup(BOTH_SCOPES, {
+				tab: 'credential',
+				details: 'bitlyApi',
+			});
+			const rowButton = await findByTestId('instance-policy-open-bitlyApi');
+
+			await closeFromInside(getByTestId('credential-type-access-dialog'));
+
+			expect(rowButton).toHaveFocus();
+		});
+	});
+
+	it('cancels the reviews of the access dialog when the dialog closes', async () => {
+		setup(BOTH_SCOPES, { tab: 'node', details: 'n8n-nodes-base.notion' });
+		const cancelAll = vi.spyOn(useRestrictReviewStore(), 'cancelAll');
+
+		reactiveRoute.query = { tab: 'node' };
+		await nextTick();
+
+		expect(cancelAll).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps the reviews of the table when an access dialog opens', async () => {
+		setup(BOTH_SCOPES, { tab: 'node' });
+		const cancelAll = vi.spyOn(useRestrictReviewStore(), 'cancelAll');
+
+		reactiveRoute.query = { tab: 'node', details: 'n8n-nodes-base.notion' };
+		await nextTick();
+
+		expect(cancelAll).not.toHaveBeenCalled();
+	});
+
+	it('cancels the open review and each review that still loads when the admin leaves', () => {
+		const { unmount } = setup();
+		const cancelAll = vi.spyOn(useRestrictReviewStore(), 'cancelAll');
+
+		unmount();
+
+		expect(cancelAll).toHaveBeenCalledTimes(1);
 	});
 });

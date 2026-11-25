@@ -1,0 +1,134 @@
+import { z } from 'zod';
+import { isRecord } from '@n8n/utils/is-record';
+
+export const AGENT_DECISION_TRIGGER_NODE_TYPE = 'n8n-nodes-base.agentDecisionTrigger';
+
+export const AgentApprovalRouteSchema = z.preprocess(
+	(value) => {
+		if (
+			isRecord(value) &&
+			value.type === 'configuration' &&
+			typeof value.configurationId === 'string' &&
+			!('configurationIds' in value)
+		) {
+			const { configurationId, ...route } = value;
+			return { ...route, configurationIds: [configurationId] };
+		}
+		return value;
+	},
+	z.discriminatedUnion('type', [
+		z.object({ type: z.literal('conversation') }).strict(),
+		z
+			.object({
+				type: z.literal('configuration'),
+				configurationIds: z
+					.array(z.string().min(1))
+					.min(1)
+					.refine((ids) => new Set(ids).size === ids.length, 'Select each human review once'),
+			})
+			.strict(),
+	]),
+);
+
+export const AgentHitlChannelSchema = z.enum(['slack', 'telegram', 'discord']);
+const configurationBase = {
+	id: z.string().min(1),
+	name: z.string().trim().min(1),
+	nameOverridden: z.boolean().optional(),
+	expirySeconds: z.union([z.literal(3600), z.literal(86400), z.literal(604800)]).optional(),
+};
+export const AgentHitlConfigurationSchema = z
+	.discriminatedUnion('method', [
+		z
+			.object({
+				...configurationBase,
+				method: z.literal('workflow'),
+				workflowId: z.string().min(1),
+			})
+			.strict(),
+		z
+			.object({
+				...configurationBase,
+				method: z.literal('channel'),
+				channel: AgentHitlChannelSchema,
+				credentialId: z.string(),
+				recipient: z
+					.object({
+						kind: z.enum(['channel', 'user']),
+						id: z.string().min(1),
+						name: z.string().optional(),
+					})
+					.strict(),
+				guildId: z.string().regex(/^\d+$/).optional(),
+			})
+			.strict(),
+	])
+	.superRefine((configuration, ctx) => {
+		if (configuration.method !== 'channel') return;
+		if (
+			configuration.channel === 'telegram' &&
+			(configuration.recipient.kind !== 'user' || !/^\d+$/.test(configuration.recipient.id))
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['recipient', 'id'],
+				message: 'Enter a numeric Telegram user ID',
+			});
+		}
+		if (
+			configuration.channel === 'discord' &&
+			(!configuration.guildId || !/^\d+$/.test(configuration.recipient.id))
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['recipient'],
+				message: 'Select a Discord server and destination',
+			});
+		}
+	});
+
+export type AgentHitlChannel = z.infer<typeof AgentHitlChannelSchema>;
+export type AgentHitlChannelConfiguration = Extract<AgentHitlConfiguration, { method: 'channel' }>;
+export type AgentHitlOption = {
+	id: string;
+	name: string;
+	kind?: 'channel' | 'user';
+};
+export interface AgentHitlOptionsPage {
+	options: AgentHitlOption[];
+	nextCursor?: string;
+}
+export interface AgentHitlChannelDescriptor {
+	channel: AgentHitlChannel;
+	credentialId: string;
+	label: string;
+	fields: Array<{
+		name: 'guild' | 'recipient';
+		type: 'search' | 'text';
+	}>;
+}
+
+export const AgentHitlOptionsQuerySchema = z.object({
+	channel: AgentHitlChannelSchema,
+	credentialId: z.string().min(1),
+	field: z.enum(['guild', 'recipient']),
+	guildId: z.string().regex(/^\d+$/).optional(),
+	query: z.string().max(200).default(''),
+	cursor: z.string().max(2048).optional(),
+});
+export type AgentHitlOptionsQuery = z.infer<typeof AgentHitlOptionsQuerySchema>;
+
+export const AgentDecisionSchema = z.object({
+	approved: z.boolean(),
+	reason: z.string().optional(),
+});
+
+export type AgentApprovalRoute = z.infer<typeof AgentApprovalRouteSchema>;
+export type AgentHitlConfiguration = z.infer<typeof AgentHitlConfigurationSchema>;
+
+/** Send-and-wait nodes return either the decision or a data envelope. */
+export function parseAgentDecision(value: unknown): z.infer<typeof AgentDecisionSchema> {
+	const direct = AgentDecisionSchema.safeParse(value);
+	if (direct.success) return direct.data;
+	return z.object({ data: AgentDecisionSchema }).parse(value).data;
+}

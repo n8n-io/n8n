@@ -229,6 +229,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 				parentWorkflowSettings: this.workflow.settings,
 				node: this.node,
 				parentCallbackManager,
+				abortSignal: this.abortSignal,
 			});
 		} catch (error) {
 			// A failed sub-workflow may still have attempted or resolved private credentials

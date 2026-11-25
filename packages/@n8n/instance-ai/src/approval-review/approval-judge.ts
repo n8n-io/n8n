@@ -64,6 +64,8 @@ export type ApprovalJudgeResult =
 export interface ApprovalJudgeOptions {
 	model: ModelConfig;
 	modelFetch?: FetchFn;
+	/** Tag outgoing model requests with `x-n8n-function-id` when request labels are enabled. */
+	requestLabels?: boolean;
 	abortSignal?: AbortSignal;
 	/** Defaults to `APPROVAL_JUDGE_TIMEOUT_MS`. */
 	timeoutMs?: number;
@@ -373,6 +375,7 @@ export async function judgeApproval(
 				providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' } } },
 			})
 			.structuredOutput(approvalJudgeVerdictSchema);
+		if (options.requestLabels) agent.functionId('instance-ai.approval-judge');
 		if (options.modelFetch) agent.modelFetch(options.modelFetch);
 		if (options.telemetry) agent.telemetry(options.telemetry);
 

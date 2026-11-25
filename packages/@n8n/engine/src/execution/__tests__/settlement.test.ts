@@ -115,6 +115,60 @@ describe('decideSuccessors', () => {
 		expect(decisions).toEqual({ toQueue: [], toSeed: [], toSkip: [] });
 	});
 
+	/** The diamond with both branches into m's slot 0: a same-slot convergence. */
+	const converging = makeGraph([
+		{ from: 'trigger', to: 'if' },
+		{ from: 'if', to: 'a', outputIndex: 0 },
+		{ from: 'if', to: 'b', outputIndex: 1 },
+		{ from: 'a', to: 'm', inputIndex: 0 },
+		{ from: 'b', to: 'm', inputIndex: 0 },
+	]);
+
+	it('leaves a same-slot convergence undecided while one edge is unsettled', () => {
+		const decisions = decideLoopless(
+			converging,
+			keyFor('a'),
+			makeSteps(
+				summary('trigger', 'completed', [true]),
+				summary('if', 'completed', [true, true]),
+				summary('a', 'completed', [true]),
+				summary('b', 'queued'),
+			),
+		);
+
+		expect(decisions).toEqual({ toQueue: [], toSeed: [], toSkip: [] });
+	});
+
+	it('queues a same-slot convergence once its last edge settles, dead or live', () => {
+		const decisions = decideLoopless(
+			converging,
+			keyFor('b'),
+			makeSteps(
+				summary('trigger', 'completed', [true]),
+				summary('if', 'completed', [true, false]),
+				summary('a', 'completed', [true]),
+				summary('b', 'skipped'),
+			),
+		);
+
+		expect(decisions).toEqual({ toQueue: [keyFor('m')], toSeed: [], toSkip: [] });
+	});
+
+	it('skips a same-slot convergence when every edge settled dead', () => {
+		const decisions = decideLoopless(
+			converging,
+			keyFor('b'),
+			makeSteps(
+				summary('trigger', 'completed', [true]),
+				summary('if', 'completed', [false, false]),
+				summary('a', 'skipped'),
+				summary('b', 'skipped'),
+			),
+		);
+
+		expect(decisions).toEqual({ toQueue: [], toSeed: [], toSkip: [keyFor('m')] });
+	});
+
 	it('cascades a skip one hop at a time through the event loop', () => {
 		// dead chain b -> c -> d: each settled event plans exactly the next hop.
 		const graph = makeGraph([
@@ -268,7 +322,7 @@ function randomDag(rand: () => number): WorkflowGraph {
 		const to = `n${i}`;
 		const candidates = ['trigger', ...Array.from({ length: i }, (_, j) => `n${j}`)];
 		const predecessorCount = Math.min(candidates.length, 1 + randomInt(rand, 2));
-		// distinct predecessors, one edge per input slot (the validated shape)
+		// distinct predecessors, one edge per input slot
 		const shuffled = [...candidates].sort(() => rand() - 0.5);
 		for (let slot = 0; slot < predecessorCount; slot++) {
 			edges.push({

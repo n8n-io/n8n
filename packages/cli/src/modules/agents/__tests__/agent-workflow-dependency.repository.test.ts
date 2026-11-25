@@ -94,6 +94,46 @@ describe('AgentWorkflowDependencyRepository', () => {
 		]);
 	});
 
+	it('tracks decision workflows in the draft and published definition', async () => {
+		const agent = makeAgent();
+		const published = makePublishedVersion();
+		agent.schema!.hitlConfigurations = [
+			{
+				id: 'draft-review',
+				name: 'Draft review',
+				method: 'workflow',
+				workflowId: 'decision-draft',
+			},
+		];
+		published.schema!.hitlConfigurations = [
+			{
+				id: 'published-review',
+				name: 'Published review',
+				method: 'workflow',
+				workflowId: 'decision-published',
+			},
+		];
+		entityManager.findOne.mockImplementation(async (entity) =>
+			entity === Agent ? agent : published,
+		);
+		entityManager.find.mockResolvedValue(workflows('decision-draft', 'decision-published'));
+		await repository.refreshForAgent(agent.id);
+		expect(entityManager.find).toHaveBeenCalledWith(WorkflowEntity, {
+			where: [
+				{
+					id: In(['wf-draft', 'wf-published', 'decision-draft', 'decision-published']),
+					shared: { projectId: 'project-1' },
+				},
+				{ name: In(['Legacy WF']), shared: { projectId: 'project-1' } },
+			],
+			select: ['id'],
+		});
+		expect(entityManager.insert).toHaveBeenCalledWith(AgentWorkflowDependency, [
+			{ agentId: agent.id, workflowId: 'decision-draft' },
+			{ agentId: agent.id, workflowId: 'decision-published' },
+		]);
+	});
+
 	it('only inserts rows for workflows that resolve inside the agent project', async () => {
 		const agent = makeAgent();
 		agent.activeVersionId = null;
@@ -105,6 +145,31 @@ describe('AgentWorkflowDependencyRepository', () => {
 		expect(entityManager.insert).toHaveBeenCalledWith(AgentWorkflowDependency, [
 			{ agentId: agent.id, workflowId: 'wf-draft' },
 		]);
+	});
+
+	it('includes a workflow guardrail check workflow in the dependency ids', async () => {
+		const agent = makeAgent();
+		agent.activeVersionId = null;
+		agent.schema = {
+			...agent.schema,
+			config: {
+				guardrails: {
+					tools: [{ kind: 'workflow', id: 'g1', workflowId: 'wf-check' }],
+				},
+			},
+		} as Agent['schema'];
+		entityManager.findOne.mockResolvedValue(agent);
+		entityManager.find.mockResolvedValue(workflows('wf-draft', 'wf-legacy', 'wf-check'));
+
+		await repository.refreshForAgent(agent.id);
+
+		expect(entityManager.find).toHaveBeenCalledWith(WorkflowEntity, {
+			where: [
+				{ id: In(['wf-draft', 'wf-check']), shared: { projectId: 'project-1' } },
+				{ name: In(['Legacy WF']), shared: { projectId: 'project-1' } },
+			],
+			select: ['id'],
+		});
 	});
 
 	it('leaves the replacement empty when the agent no longer exists', async () => {

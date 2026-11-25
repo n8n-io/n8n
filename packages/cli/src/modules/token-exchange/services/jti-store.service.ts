@@ -33,6 +33,6 @@ export class JtiStoreService {
 	 */
 	async consume(jti: string, expiresAt: Date): Promise<boolean> {
 		const expiresAtWithGrace = new Date(expiresAt.getTime() + GRACE_PERIOD_MS);
-		return await this.jtiRepository.atomicConsume(jti, expiresAtWithGrace);
+		return await this.jtiRepository.atomicConsume(jti, expiresAtWithGrace, {});
 	}
 }

@@ -17,6 +17,9 @@ import { toSearchObject, type SearchCriteria } from '../search-criteria';
 
 const EMAIL_BATCH_SIZE = 20;
 
+/** Most UIDs kept for a retry, so a mailbox full of unreadable messages cannot grow the list for ever. */
+const MAX_PENDING_UIDS = 100;
+
 /** imapflow answers with the UID whether or not it is asked for, so no entry requests it. */
 const FETCH_QUERY: Record<string, FetchQueryObject> = {
 	resolved: { source: true },
@@ -72,9 +75,11 @@ export async function getNewEmails(
 		imapConnection,
 		postProcessAction,
 		searchCriteria,
+		newMailWindow,
 	}: {
 		imapConnection: ImapSimple;
 		searchCriteria: SearchCriteria[];
+		newMailWindow?: SearchCriteria;
 		postProcessAction: string;
 		onEmailBatch: (data: INodeExecutionData[]) => Promise<void>;
 	},
@@ -84,53 +89,97 @@ export async function getNewEmails(
 	const limit = this.getNode().typeVersion >= 2.1 ? EMAIL_BATCH_SIZE : undefined;
 
 	const buildItem = itemBuilderFor.call(this, format, imapConnection);
+	const fetchQuery = FETCH_QUERY[format] ?? {};
 
-	let criteria = searchCriteria;
+	const buildRetryItem: ItemBuilder = async (message) => {
+		try {
+			return await buildItem(message);
+		} catch (error) {
+			this.logger.warn(`Retrying email UID ${message.uid} failed, trying it again next time`, {
+				error: error as Error,
+			});
+			return undefined;
+		}
+	};
+
+	const processBatch = async (messages: FetchMessageObject[], build: ItemBuilder = buildItem) => {
+		const items: INodeExecutionData[] = [];
+		const emittedUids: number[] = [];
+		const skippedUids: number[] = [];
+
+		for (const message of messages) {
+			const item = await build(message);
+			if (item) {
+				items.push(item);
+				emittedUids.push(message.uid);
+			} else {
+				skippedUids.push(message.uid);
+			}
+		}
+
+		// only mark messages as seen once processing has finished
+		if (postProcessAction === 'read' && emittedUids.length > 0) {
+			await imapConnection.addFlags(emittedUids, ['\\SEEN']);
+		}
+
+		return { items, skippedUids };
+	};
+
+	// A message that made no item sits below the watermark, so the UID window of every later
+	// search hides it. Search the remembered UIDs explicitly and try them again. A UID the server
+	// no longer returns has left the mailbox or stopped matching, so it leaves the list too.
+	let pendingUids = (staticData.pendingMessageUids as number[] | undefined) ?? [];
+	if (pendingUids.length > 0) {
+		const results = await imapConnection.search(
+			toSearchObject([...searchCriteria, ['UID', pendingUids.join(',')]]),
+			fetchQuery,
+		);
+		const { items, skippedUids } = await processBatch(results, buildRetryItem);
+		pendingUids = skippedUids;
+		staticData.pendingMessageUids = pendingUids;
+		await onEmailBatch(items);
+	}
+
+	let pageWindow = newMailWindow;
 	let results: FetchMessageObject[] = [];
 	let maxUid = 0;
 
 	do {
-		if (maxUid) {
-			criteria = criteria.filter(
-				(criterion) => !Array.isArray(criterion) || !['UID', 'SINCE'].includes(criterion[0]),
-			);
-			criteria.push(['UID', `${maxUid}:*`]);
-		}
-		results = await imapConnection.search(
-			toSearchObject(criteria),
-			FETCH_QUERY[format] ?? {},
-			limit,
-		);
+		if (maxUid) pageWindow = ['UID', `${maxUid}:*`];
+		const criteria = pageWindow ? [...searchCriteria, pageWindow] : searchCriteria;
+		results = await imapConnection.search(toSearchObject(criteria), fetchQuery, limit);
 
 		this.logger.debug(`Process ${results.length} new emails in node "EmailReadImap"`);
 
-		const newEmails: INodeExecutionData[] = [];
-		const processedUids: number[] = [];
-
-		for (const message of results) {
-			const lastMessageUid = staticData.lastMessageUid as number | undefined;
-			if (lastMessageUid !== undefined && message.uid <= lastMessageUid) continue;
+		// The UID window is inclusive, so the message at the watermark comes back in every search.
+		const lastMessageUid = staticData.lastMessageUid as number | undefined;
+		const newMessages = results.filter(
+			(message) => lastMessageUid === undefined || message.uid > lastMessageUid,
+		);
+		for (const message of newMessages) {
 			if (message.uid > maxUid) maxUid = message.uid;
-
-			const item = await buildItem(message);
-			if (!item) continue;
-
-			newEmails.push(item);
-			processedUids.push(message.uid);
 		}
 
-		// only mark messages as seen once processing has finished
-		if (postProcessAction === 'read' && processedUids.length > 0) {
-			await imapConnection.addFlags(processedUids, ['\\SEEN']);
-		}
+		const { items, skippedUids } = await processBatch(newMessages);
 
 		// Set before emitting: n8n persists the static data as the emit goes out, so a watermark
 		// advanced afterwards is only written by the next batch, and a lone message never at all.
-		if (maxUid > ((staticData.lastMessageUid as number) ?? 0)) {
+		if (maxUid > (lastMessageUid ?? 0)) {
 			staticData.lastMessageUid = maxUid;
 		}
+		if (skippedUids.length > 0) {
+			pendingUids = [...pendingUids, ...skippedUids];
+			if (pendingUids.length > MAX_PENDING_UIDS) {
+				const dropped = pendingUids.slice(0, pendingUids.length - MAX_PENDING_UIDS);
+				pendingUids = pendingUids.slice(-MAX_PENDING_UIDS);
+				this.logger.warn(
+					`Giving up on emails that made no item over the limit, UIDs ${dropped.join(',')}`,
+				);
+			}
+			staticData.pendingMessageUids = pendingUids;
+		}
 
-		await onEmailBatch(newEmails);
+		await onEmailBatch(items);
 	} while (results.length >= EMAIL_BATCH_SIZE);
 }
 

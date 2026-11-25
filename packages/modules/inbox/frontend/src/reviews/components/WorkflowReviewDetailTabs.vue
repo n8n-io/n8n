@@ -128,7 +128,6 @@ const tabOptions = computed(() => [
 			<N8nTabs
 				:model-value="tab"
 				:options="tabOptions"
-				variant="modern"
 				data-test-id="workflow-review-detail-tab-bar"
 				@update:model-value="emit('update:tab', $event)"
 			/>
