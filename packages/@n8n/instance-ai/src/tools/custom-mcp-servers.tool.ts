@@ -1,6 +1,7 @@
 import { Tool } from '@n8n/agents';
 import {
 	MCP_SERVER_DESCRIPTION_MAX_LENGTH,
+	MCP_SERVER_TOOL_DESCRIPTION_MAX_LENGTH,
 	mcpServerNameSchema,
 	mcpServerSlugSchema,
 	mcpServerToolNameSchema,
@@ -33,11 +34,11 @@ const projectIdField = z
 	);
 const serverIdField = z.string().describe('The server ID from the list action');
 const toolIdField = z.string().describe('The tool ID from the get action');
-// The server and the tool descriptions have the same length limit.
+// One field for both texts. The adapter applies the exact limit of each with its REST DTO.
 const descriptionField = z
 	.string()
 	.trim()
-	.max(MCP_SERVER_DESCRIPTION_MAX_LENGTH)
+	.max(Math.max(MCP_SERVER_DESCRIPTION_MAX_LENGTH, MCP_SERVER_TOOL_DESCRIPTION_MAX_LENGTH))
 	.optional()
 	.describe(
 		'For a server: what the server is for. AI clients get it as the server instructions. For a tool: when an AI client should call the tool, and what it returns',
@@ -334,8 +335,7 @@ async function handleToolCandidates(
 ) {
 	const page = await service.listToolCandidates(toRef(input), {
 		query: input.query,
-		// The provider schema can drop the bounds, so the handler applies them again.
-		limit: Math.min(input.limit ?? CANDIDATE_LIMIT_DEFAULT, CANDIDATE_LIMIT_MAX),
+		limit: input.limit ?? CANDIDATE_LIMIT_DEFAULT,
 		includeUnusable: input.includeUnusable === true,
 	});
 	const notes = [
@@ -513,7 +513,17 @@ export function createCustomMcpServersTool(context: InstanceAiContext) {
 			.untrustedOutput()
 			.suspend(confirmationSuspendSchema)
 			.resume(confirmationResumeSchema)
-			.handler(async (input: Input, ctx: ConfirmationToolContext) => {
+			.handler(async (rawInput: Input, ctx: ConfirmationToolContext) => {
+				// The provider schema drops some bounds, such as the size of workflowIds, so the
+				// handler checks the input again before it shows a card.
+				const parsed = inputSchema.safeParse(rawInput);
+				if (!parsed.success) {
+					const issues = parsed.error.issues.map(
+						({ path, message }) => `${path.join('.') || 'input'}: ${message}`,
+					);
+					throw new Error(`Invalid input. ${issues.join('; ')}`);
+				}
+				const input = parsed.data;
 				const service = requireService(context);
 				switch (input.action) {
 					case 'list':

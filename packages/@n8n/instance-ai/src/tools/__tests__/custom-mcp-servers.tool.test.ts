@@ -452,6 +452,20 @@ describe('custom-mcp-servers tool', () => {
 			expect(service.addTools).not.toHaveBeenCalled();
 		});
 
+		it.each([0, 101])('shows no card for %i workflows', async (count) => {
+			const suspend = vi.fn();
+			const workflowIds = Array.from({ length: count }, (_, i) => `workflow-${i}`);
+
+			await expect(
+				executeTool(
+					createCustomMcpServersTool(createContext(service)),
+					{ ...input, workflowIds },
+					suspendCtx(suspend),
+				),
+			).rejects.toThrow('Invalid input. workflowIds:');
+			expect(suspend).not.toHaveBeenCalled();
+		});
+
 		it('reads only the names of the given workflows for the card', async () => {
 			await executeTool(
 				createCustomMcpServersTool(createContext(service)),

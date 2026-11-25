@@ -143,6 +143,38 @@ describe('InstanceAiCustomMcpServersAdapterService', () => {
 		});
 	});
 
+	describe('input checks of the REST DTOs', () => {
+		const ref = { serverId: SERVER_ID, projectId: 'project-1' };
+		const ids = (count: number) => Array.from({ length: count }, (_, i) => `workflow-${i}`);
+
+		it.each([0, 101])('refuses to add %i workflows', async (count) => {
+			await expect(createService().addTools(ref, ids(count))).rejects.toThrow();
+			expect(tools.addWorkflowTools).not.toHaveBeenCalled();
+		});
+
+		it('adds 100 workflows', async () => {
+			tools.addWorkflowTools.mockResolvedValue([tool]);
+
+			await createService().addTools(ref, ids(100));
+
+			expect(tools.addWorkflowTools).toHaveBeenCalledWith('project-1', SERVER_ID, ids(100), actor);
+		});
+
+		it('refuses a server description over the limit', async () => {
+			await expect(
+				createService().update(ref, { description: 'x'.repeat(2001) }),
+			).rejects.toThrow();
+			expect(servers.update).not.toHaveBeenCalled();
+		});
+
+		it('refuses a tool name that AI clients cannot call', async () => {
+			await expect(
+				createService().updateTool(ref, TOOL_ID, { toolName: 'Not a tool name' }),
+			).rejects.toThrow();
+			expect(tools.updateTool).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('create', () => {
 		it('makes the slug from the name, and marks the event with the Assistant source', async () => {
 			servers.create.mockResolvedValue(server);

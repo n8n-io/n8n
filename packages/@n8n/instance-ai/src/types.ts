@@ -35,6 +35,8 @@ import type {
 	McpServerToolDraftResponse,
 	McpServerToolResponse,
 	SaveSkillDto,
+	UpdateMcpServerDto,
+	UpdateMcpServerToolDto,
 	SkillDetail,
 	SkillListResponse,
 	SkillSaveResponse,
@@ -1448,10 +1450,7 @@ export interface InstanceAiCustomMcpServerService {
 		slug?: string;
 		description?: string;
 	}): Promise<McpServerResponse>;
-	update(
-		ref: CustomMcpServerRef,
-		changes: { name?: string; description?: string },
-	): Promise<McpServerResponse>;
+	update(ref: CustomMcpServerRef, changes: UpdateMcpServerDto): Promise<McpServerResponse>;
 	delete(ref: CustomMcpServerRef): Promise<void>;
 	/**
 	 * The first workflows of the project in name order, up to `limit`. Without
@@ -1465,7 +1464,7 @@ export interface InstanceAiCustomMcpServerService {
 	updateTool(
 		ref: CustomMcpServerRef,
 		toolId: string,
-		changes: { toolName?: string; description?: string },
+		changes: UpdateMcpServerToolDto,
 	): Promise<McpServerToolResponse>;
 	/** "Generate": an AI draft of one field, or of both fields without `field`. */
 	generateTool(

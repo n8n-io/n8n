@@ -1,7 +1,10 @@
 import {
+	AddMcpServerToolsDto,
 	CreateMcpServerDto,
 	MCP_SERVER_ACTION_SCOPES,
 	mcpServerSlugFromName,
+	UpdateMcpServerDto,
+	UpdateMcpServerToolDto,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
@@ -111,12 +114,14 @@ export class InstanceAiCustomMcpServersAdapterService {
 					actor,
 				);
 			},
+			// Each input goes through the DTO of its REST route, as `@Body` does there.
 			update: async ({ serverId, projectId }, changes) => {
+				const dto = UpdateMcpServerDto.parse(changes);
 				const { servers } = await services();
 				return await servers.update(
 					await writeProject(MCP_SERVER_ACTION_SCOPES.update, projectId),
 					serverId,
-					changes,
+					dto,
 				);
 			},
 			delete: async ({ serverId, projectId }) => {
@@ -136,21 +141,23 @@ export class InstanceAiCustomMcpServersAdapterService {
 				);
 			},
 			addTools: async ({ serverId, projectId }, workflowIds) => {
+				const dto = AddMcpServerToolsDto.parse({ workflowIds });
 				const { tools } = await services();
 				return await tools.addWorkflowTools(
 					await writeProject(MCP_SERVER_ACTION_SCOPES.addTools, projectId),
 					serverId,
-					workflowIds,
+					dto.workflowIds,
 					actor,
 				);
 			},
 			updateTool: async ({ serverId, projectId }, toolId, changes) => {
+				const dto = UpdateMcpServerToolDto.parse(changes);
 				const { tools } = await services();
 				return await tools.updateTool(
 					await writeProject(MCP_SERVER_ACTION_SCOPES.updateTool, projectId),
 					serverId,
 					toolId,
-					changes,
+					dto,
 				);
 			},
 			generateTool: async ({ serverId, projectId }, toolId, field) => {
