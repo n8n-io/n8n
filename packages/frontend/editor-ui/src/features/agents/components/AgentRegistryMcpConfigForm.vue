@@ -128,8 +128,9 @@ async function remove(): Promise<boolean> {
 		title: i18n.baseText('tools.connection.settings.removeConfirm.title', {
 			interpolate: { name: title.value },
 		}),
-		description: i18n.baseText('tools.connection.settings.removeConfirm.description', {
-			interpolate: { item: 'tool', service: title.value },
+		description: i18n.baseText('agents.toolConfig.mcp.removeConfirm.description'),
+		descriptionEmphasis: i18n.baseText('agents.toolConfig.mcp.removeConfirm.credentialNotice', {
+			interpolate: { service: title.value },
 		}),
 		isDestructive: true,
 		confirmButtonText: i18n.baseText('tools.connection.settings.removeConfirm.confirmButton', {
