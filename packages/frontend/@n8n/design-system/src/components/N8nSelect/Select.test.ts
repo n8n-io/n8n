@@ -1,5 +1,8 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import userEvent from '@testing-library/user-event';
 import { render, waitFor, within } from '@testing-library/vue';
+import { preprocessCSS, resolveConfig } from 'vite';
 import { defineComponent, ref } from 'vue';
 
 import N8nSelect from './Select.vue';
@@ -145,5 +148,139 @@ describe('components', () => {
 				);
 			},
 		);
+
+		describe('dropdown scrollbar', () => {
+			// Regression tests for DS-745: N8nSelect renders its option list in ElScrollbar.
+			// ElScrollbar draws a custom overlay scrollbar and adds `el-scrollbar__wrap--hidden-default`.
+			// The theme stylesheet must hide the native scrollbar on that wrapper.
+			const packageRoot = process.cwd();
+			const themeFile = resolve(packageRoot, 'src/css/index.scss');
+			let themeStyle: HTMLStyleElement | null = null;
+
+			beforeAll(async () => {
+				const config = await resolveConfig(
+					{
+						configFile: false,
+						root: packageRoot,
+						logLevel: 'silent',
+					},
+					'serve',
+				);
+				const { code } = await preprocessCSS(readFileSync(themeFile, 'utf8'), themeFile, config);
+				themeStyle = document.createElement('style');
+				themeStyle.textContent = code;
+				document.head.append(themeStyle);
+			}, 60_000);
+
+			afterAll(() => {
+				themeStyle?.remove();
+				themeStyle = null;
+			});
+
+			async function renderOpenLongSelect() {
+				const options = Array.from({ length: 12 }, (_, index) => ({
+					value: `option-${index + 1}`,
+					label: `Option ${index + 1}`,
+				}));
+
+				const host = defineComponent({
+					components: { N8nSelect, N8nOption },
+					setup() {
+						const selected = ref('');
+						return { options, selected };
+					},
+					template: `
+						<N8nSelect v-model="selected" :teleported="false">
+							<N8nOption
+								v-for="option in options"
+								:key="option.value"
+								:value="option.value"
+								:label="option.label"
+							/>
+						</N8nSelect>
+					`,
+				});
+
+				const { container } = render(host);
+				await userEvent.click(container.querySelector('input')!);
+
+				const popper = await waitFor(() => {
+					const el = container.querySelector<HTMLElement>('.el-select__popper');
+					expect(el).not.toBeNull();
+					return el!;
+				});
+
+				const wrap = popper.querySelector<HTMLElement>('.el-scrollbar__wrap');
+				const verticalBar = popper.querySelector<HTMLElement>('.el-scrollbar__bar.is-vertical');
+				expect(wrap).not.toBeNull();
+				expect(verticalBar).not.toBeNull();
+
+				return { wrap: wrap!, verticalBar: verticalBar! };
+			}
+
+			/**
+			 * Read the last `display` declaration for `element::-webkit-scrollbar`.
+			 * jsdom does not implement `getComputedStyle(element, pseudoElement)`.
+			 */
+			function getWebkitScrollbarDisplay(element: HTMLElement, sheet: CSSStyleSheet): string {
+				let display = '';
+
+				const visitRules = (rules: CSSRuleList) => {
+					for (const rule of rules) {
+						if (rule instanceof CSSStyleRule) {
+							const ruleDisplay = rule.style.getPropertyValue('display').trim();
+							if (!ruleDisplay) continue;
+
+							for (const rawSelector of rule.selectorText.split(',')) {
+								const selector = rawSelector.trim();
+								if (!selector.endsWith('::-webkit-scrollbar')) continue;
+								const baseSelector = selector.slice(0, -'::-webkit-scrollbar'.length).trim();
+								if (!baseSelector) continue;
+
+								try {
+									if (element.matches(baseSelector)) {
+										display = ruleDisplay;
+									}
+								} catch {
+									// Ignore selectors unsupported by jsdom's selector engine.
+								}
+							}
+						} else if ('cssRules' in rule) {
+							visitRules((rule as CSSGroupingRule).cssRules);
+						}
+					}
+				};
+
+				visitRules(sheet.cssRules);
+				return display;
+			}
+
+			it('styles the dropdown scroll area with the Element Plus custom scrollbar', async () => {
+				const { wrap, verticalBar } = await renderOpenLongSelect();
+
+				expect(wrap).toHaveClass('el-scrollbar__wrap--hidden-default');
+				expect(getComputedStyle(wrap).overflow).toBe('auto');
+				expect(getComputedStyle(verticalBar).position).toBe('absolute');
+			});
+
+			it('hides the native scrollbar via scrollbar-width on the dropdown list wrapper', async () => {
+				const { wrap } = await renderOpenLongSelect();
+
+				expect(
+					getComputedStyle(wrap).getPropertyValue('scrollbar-width').trim(),
+					'el-scrollbar__wrap--hidden-default must set scrollbar-width: none so the native scrollbar does not appear next to the Element Plus scrollbar',
+				).toBe('none');
+			});
+
+			it('hides the native WebKit scrollbar on the dropdown list wrapper', async () => {
+				const { wrap } = await renderOpenLongSelect();
+
+				expect(themeStyle?.sheet).not.toBeNull();
+				expect(
+					getWebkitScrollbarDisplay(wrap, themeStyle!.sheet!),
+					'el-scrollbar__wrap--hidden-default::-webkit-scrollbar must set display: none so WebKit browsers do not render a second scrollbar',
+				).toBe('none');
+			});
+		});
 	});
 });
