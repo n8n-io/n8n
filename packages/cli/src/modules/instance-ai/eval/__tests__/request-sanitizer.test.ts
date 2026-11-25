@@ -3,6 +3,7 @@ import { Container } from '@n8n/di';
 
 import {
 	isSecretKey,
+	redactEndpoint,
 	redactNodeParameters,
 	redactSecretKeys,
 	redactSecretValuePatterns,
@@ -399,5 +400,60 @@ describe('redactNodeParameters', () => {
 		expect(JSON.stringify(result)).not.toContain('secret-');
 		expect(JSON.stringify(result)).toContain('application/json');
 		expect(JSON.stringify(result)).toContain('https://a.test/x');
+	});
+});
+
+describe('redactEndpoint', () => {
+	const BOT = 'bot123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw';
+
+	it('hides a bot token and a long opaque segment of the path', () => {
+		expect(redactEndpoint(`/${BOT}/sendMessage`)).toBe('/<redacted>/sendMessage');
+		expect(redactEndpoint('/v1/keys/k9Xq2LmPz7Rt4VbN8YcW1HdS5Fg/use')).toBe(
+			'/v1/keys/<redacted>/use',
+		);
+		expect(redactEndpoint(`https://api.x.test/${BOT}/getMe`)).toBe(
+			'https://api.x.test/<redacted>/getMe',
+		);
+	});
+
+	it('keeps a normal path, a UUID, a hex id and a plain word', () => {
+		const path = '/v1/tasks/3f2b6c1e-8a4d-4f0b-9c7e-1d2a3b4c5d6e/comments/507f1f77bcf86cd799439011';
+		expect(redactEndpoint(path)).toBe(path);
+		expect(redactEndpoint('/v1/organizationmembershipsettings')).toBe(
+			'/v1/organizationmembershipsettings',
+		);
+	});
+
+	it('hides a secret parameter of the query as well', () => {
+		expect(redactEndpoint('/v1/tasks?api_key=abc&page=2')).toBe(
+			'/v1/tasks?api_key=<redacted>&page=2',
+		);
+	});
+});
+
+describe('redactNodeParameters with strings', () => {
+	it('hides a secret in a URL parameter', () => {
+		const out = JSON.stringify(
+			redactNodeParameters({
+				url: 'https://a.test/bot123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw/x?token=t1',
+			}),
+		);
+
+		expect(out).not.toContain('AAHdqTcv');
+		expect(out).not.toContain('t1');
+		expect(out).toContain('a.test');
+	});
+
+	it('hides a secret inside a JSON text, and keeps a JSON text with no secret as it is', () => {
+		const headers = '{"Authorization":"Basic abc123","Accept":"application/json"}';
+		const plain = '{ "title": "Buy milk" }';
+
+		expect(redactNodeParameters({ jsonHeaders: headers })).toEqual({
+			jsonHeaders: expect.not.stringContaining('abc123'),
+		});
+		expect(JSON.stringify(redactNodeParameters({ jsonHeaders: headers }))).toContain(
+			'application/json',
+		);
+		expect(redactNodeParameters({ jsonBody: plain })).toEqual({ jsonBody: plain });
 	});
 });

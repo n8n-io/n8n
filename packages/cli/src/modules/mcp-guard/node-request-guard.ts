@@ -125,7 +125,9 @@ export function createNodeRequestGuard(scope: NodeRequestGuardScope): EvalLlmMoc
 		// A host with no vendor gets a simulated answer when the HTTP Request node calls it. Another node,
 		// or a host with a vendor, goes to the guard.
 		if (isGenericHttpNode(node) && !hasVendor(req)) {
-			return await Container.get(HttpSimulator).respond(options, node, scope);
+			// The mock reads `url` only. Give it the address that the guard resolved from `baseURL` and `qs`.
+			const resolved = { ...options, url: req.url.href, baseURL: undefined, qs: undefined };
+			return await Container.get(HttpSimulator).respond(resolved, node, scope);
 		}
 		// Load the guard only when a node tool makes a call. Most chats never do.
 		const { HttpGuardService } = await import('./http-guard.service.js');

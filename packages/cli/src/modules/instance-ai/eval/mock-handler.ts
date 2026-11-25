@@ -32,6 +32,7 @@ import {
 } from './provider-shapes';
 import { redactBinaryBody } from './request-binary-redactor';
 import {
+	redactEndpoint,
 	redactSecretKeys,
 	redactSecretSearchParams,
 	redactSecretValuePatterns,
@@ -289,6 +290,7 @@ function recordWrite(
 	request: MockRequest,
 	nodeName: string,
 	response: EvalMockHttpResponse,
+	redact = false,
 ): void {
 	if (!request.url || !isWriteRequest(request)) return;
 	if (response.statusCode >= 400 || isMockErrorSentinel(response)) return;
@@ -304,7 +306,7 @@ function recordWrite(
 	ledger.push({
 		hostname,
 		method,
-		endpoint: redactSecretSearchParams(extractEndpoint(request.url)),
+		endpoint: redactSecretSearchParams(extractEndpoint(request.url, redact)),
 		nodeName,
 		// Snapshot now: the entry must not change when node code mutates the body later.
 		body:
@@ -394,11 +396,11 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 			const cached = cacheKey ? responseCache.get(cacheKey) : undefined;
 			if (cached) {
 				Container.get(Logger).debug(
-					`[EvalMock] Serving cached mock for ${requestOptions.method ?? 'GET'} ${extractEndpoint(requestOptions.url)} ("${node.name}")`,
+					`[EvalMock] Serving cached mock for ${requestOptions.method ?? 'GET'} ${extractEndpoint(requestOptions.url, options?.redactSecrets)} ("${node.name}")`,
 				);
 				await sleep(CACHED_REPLY_DELAY_MS);
 				const response = cloneMockResponse(await cached);
-				recordWrite(writeLedger, requestOptions, node.name, response);
+				recordWrite(writeLedger, requestOptions, node.name, response, options?.redactSecrets);
 				return response;
 			}
 
@@ -430,10 +432,10 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 			// the object with the cached promise, so an in-place body mutation by
 			// node code would otherwise leak into every later hit.
 			const response = cloneMockResponse(await pending);
-			recordWrite(writeLedger, requestOptions, node.name, response);
+			recordWrite(writeLedger, requestOptions, node.name, response, options?.redactSecrets);
 			return response;
 		} catch (error) {
-			return buildPipelineErrorResponse(error, requestOptions, node.name);
+			return buildPipelineErrorResponse(error, requestOptions, node.name, options?.redactSecrets);
 		}
 	};
 }
@@ -470,12 +472,13 @@ function buildPipelineErrorResponse(
 	error: unknown,
 	request: { url?: string; method?: string },
 	nodeName: string,
+	redact = false,
 ): EvalMockHttpResponse {
 	const message = error instanceof Error ? error.message : String(error);
 	const stack =
 		error instanceof Error && error.stack ? error.stack.replace(/\s*\n\s*/g, ' <- ') : '(no stack)';
 	Container.get(Logger).error(
-		`[EvalMock] Mock pipeline error for "${nodeName}" (${request.method ?? 'GET'} ${extractEndpoint(request.url ?? '')}): ${message} | stack: ${stack}`,
+		`[EvalMock] Mock pipeline error for "${nodeName}" (${request.method ?? 'GET'} ${extractEndpoint(request.url ?? '', redact)}): ${message} | stack: ${stack}`,
 	);
 	return {
 		body: { _evalMockError: true, message: `Mock pipeline error: ${message}` },
@@ -560,7 +563,7 @@ async function generateMockResponse(
 	}
 
 	const serviceName = extractServiceName(request.url);
-	const endpoint = extractEndpoint(request.url);
+	const endpoint = extractEndpoint(request.url, context.redactSecrets);
 	const requestHostname = extractHostname(request.url);
 
 	const dateAnchors = buildDateAnchors(new Date());
@@ -569,9 +572,7 @@ async function generateMockResponse(
 		'## Request',
 		`Service: ${serviceName}`,
 		`Node: "${node.name}" (${node.type})`,
-		(request.method ?? 'GET') +
-			' ' +
-			(context.redactSecrets ? redactSecretSearchParams(endpoint) : endpoint),
+		`${request.method ?? 'GET'} ${endpoint}`,
 		'Generate the response for this EXACT endpoint and method.',
 	];
 
@@ -650,7 +651,7 @@ async function generateMockResponse(
 	const joined = sections.join('\n');
 	const userPrompt = context.redactSecrets ? redactSecretValuePatterns(joined) : joined;
 
-	const safeUrl = extractEndpoint(request.url);
+	const safeUrl = extractEndpoint(request.url, context.redactSecrets);
 	let lastError = '';
 
 	const requestPath = extractEndpointPath(request.url);
@@ -1329,13 +1330,16 @@ function extractServiceName(url: string): string {
 	}
 }
 
-function extractEndpoint(url: string): string {
+/** The path and query of a URL. With `redact`, a token-like segment and a secret parameter are hidden. */
+function extractEndpoint(url: string, redact = false): string {
+	let endpoint = url;
 	try {
 		const parsed = new URL(url);
-		return parsed.pathname + (parsed.search ? parsed.search : '');
+		endpoint = parsed.pathname + (parsed.search ? parsed.search : '');
 	} catch {
-		return url;
+		// Keep the text as it is.
 	}
+	return redact ? redactEndpoint(endpoint) : endpoint;
 }
 
 function extractEndpointPath(url: string): string {

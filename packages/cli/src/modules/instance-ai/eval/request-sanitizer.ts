@@ -161,12 +161,69 @@ export function redactSecretSearchParams(endpoint: string): string {
 	return `${endpoint.slice(0, queryStart)}?${query}`;
 }
 
+const UUID_SEGMENT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const TELEGRAM_TOKEN_SEGMENT = /^(?:bot)?\d{6,}:[A-Za-z0-9_-]{20,}$/i;
+const OPAQUE_SEGMENT = /^[A-Za-z0-9_-]{24,}$/;
+
+// A path segment that holds a credential, such as `/bot<token>/sendMessage`. No vendor profile tells
+// which segment it is, so this reads the shape: a bot token, or a long mix of letters and digits.
+// A UUID and a plain hex id stay, because the model needs ids to write a consistent answer.
+function isTokenSegment(segment: string): boolean {
+	let text = segment;
+	try {
+		text = decodeURIComponent(segment);
+	} catch {
+		// Use the segment as it is.
+	}
+	if (TELEGRAM_TOKEN_SEGMENT.test(text)) return true;
+	return (
+		OPAQUE_SEGMENT.test(text) &&
+		/\d/.test(text) &&
+		/[A-Za-z]/.test(text) &&
+		!UUID_SEGMENT.test(text) &&
+		!/^[0-9a-f]+$/i.test(text)
+	);
+}
+
+/**
+ * Redact the secrets of an endpoint or of a URL for a model or a log: a token-like path segment, and
+ * the secret parameters of the query. A host has dots, so it is never a token segment.
+ */
+export function redactEndpoint(endpoint: string): string {
+	const queryStart = endpoint.indexOf('?');
+	const path = queryStart === -1 ? endpoint : endpoint.slice(0, queryStart);
+	const query = queryStart === -1 ? '' : endpoint.slice(queryStart);
+	const safePath = path
+		.split('/')
+		.map((segment) => (isTokenSegment(segment) ? REDACTED : segment))
+		.join('/');
+	return redactSecretSearchParams(safePath + query);
+}
+
+// A string parameter can hold a URL, or a JSON text such as the headers of a node.
+function redactStringParameter(value: string): string {
+	const trimmed = value.trim();
+	if (/^=?\s*https?:\/\//i.test(trimmed)) return redactEndpoint(value);
+	if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+		try {
+			const parsed: unknown = JSON.parse(trimmed);
+			const redacted = JSON.stringify(redactNodeParameters(parsed));
+			// Keep the text as it is when nothing changed.
+			return redacted === JSON.stringify(parsed) ? value : redacted;
+		} catch {
+			// Not JSON. Keep the text.
+		}
+	}
+	return value;
+}
+
 /**
  * Redact the secrets of the parameters of a node. Besides the key rules of `redactSecretKeys`, it
  * hides the value of a `{ name, value }` pair whose name is a secret, such as a header or a query
  * parameter of the HTTP Request node.
  */
 export function redactNodeParameters(value: unknown): unknown {
+	if (typeof value === 'string') return redactStringParameter(value);
 	if (Array.isArray(value)) return value.map((item) => redactNodeParameters(item));
 	if (typeof value !== 'object' || value === null) return value;
 

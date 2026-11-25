@@ -8,6 +8,8 @@ import {
 	type INode,
 } from 'n8n-workflow';
 
+import { redactEndpoint } from '../instance-ai/eval/request-sanitizer';
+
 import { GUARDED_CALL_TIMEOUT_MS } from './mcp-guard-fetch';
 import type { NodeRequestGuardScope } from './node-request-guard';
 
@@ -33,7 +35,8 @@ const failure = (statusCode: number, text: string): EvalMockHttpResponse => ({
 });
 
 interface Simulation {
-	handler: EvalLlmMockHandler;
+	// A promise, so two first requests of a chat share one handler and one write ledger.
+	handler: Promise<EvalLlmMockHandler>;
 	lastUsed: number;
 }
 
@@ -95,24 +98,32 @@ export class HttpSimulator {
 		}
 		let simulation = this.simulations.get(key);
 		if (!simulation) {
-			// Load the mock only when a chat needs it. It brings the eval code of Instance AI.
-			const { createLlmMockHandler } = await import('../instance-ai/eval/mock-handler.js');
 			simulation = {
-				handler: createLlmMockHandler({ model: scope.model, redactSecrets: true }),
+				handler: this.createHandler(scope).catch((error: unknown) => {
+					// A failed load must not stay in the map.
+					this.simulations.delete(key);
+					throw error;
+				}),
 				lastUsed: now,
 			};
 			this.simulations.set(key, simulation);
 		}
 		simulation.lastUsed = now;
-		return simulation.handler;
+		return await simulation.handler;
 	}
 
-	// Method, host and path only. Never the query, the headers or the body.
+	private async createHandler(scope: NodeRequestGuardScope): Promise<EvalLlmMockHandler> {
+		// Load the mock only when a chat needs it. It brings the eval code of Instance AI.
+		const { createLlmMockHandler } = await import('../instance-ai/eval/mock-handler.js');
+		return createLlmMockHandler({ model: scope.model, redactSecrets: true });
+	}
+
+	// Method, host and path only, with a token-like segment hidden. Never the query, the headers or the body.
 	private log(options: IHttpRequestOptions): void {
 		let target = 'unknown';
 		try {
 			const url = new URL(options.url, options.baseURL);
-			target = `${url.host}${url.pathname}`;
+			target = `${url.host}${redactEndpoint(url.pathname)}`;
 		} catch {
 			// Keep the placeholder. A bad URL must not stop the answer.
 		}

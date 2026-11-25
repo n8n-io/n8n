@@ -4,6 +4,7 @@ import type { INode } from 'n8n-workflow';
 
 import { HttpSimulator, isGenericHttpNode, SIMULATED_HEADER } from '../http-simulator';
 import type { HydrationModel } from '../hydration-llm';
+import { createNodeRequestGuard } from '../node-request-guard';
 
 const mockHandler = vi.fn();
 const createLlmMockHandler = vi.fn((_options?: unknown) => mockHandler);
@@ -69,12 +70,21 @@ describe('HttpSimulator', () => {
 		expect(createLlmMockHandler).toHaveBeenCalledWith({ model, redactSecrets: true });
 	});
 
-	it('keeps one mock for each chat, so a later read can see an earlier write', async () => {
+	it('makes one mock for each chat and one more for another chat', async () => {
 		await simulator.respond({ url: 'https://a.test/x', method: 'POST' }, node, scope);
 		await simulator.respond({ url: 'https://a.test/x' }, node, scope);
 		await simulator.respond({ url: 'https://a.test/x' }, node, { ...scope, chatId: 'chat2' });
 
 		expect(createLlmMockHandler).toHaveBeenCalledTimes(2);
+	});
+
+	it('makes one mock when two first requests of a chat come at once', async () => {
+		await Promise.all([
+			simulator.respond({ url: 'https://a.test/x', method: 'POST' }, node, scope),
+			simulator.respond({ url: 'https://a.test/x' }, node, scope),
+		]);
+
+		expect(createLlmMockHandler).toHaveBeenCalledTimes(1);
 	});
 
 	it('answers 502 when the mock gives an error marker, and never calls the network', async () => {
@@ -129,5 +139,31 @@ describe('HttpSimulator', () => {
 		);
 
 		expect(lines).toEqual(['mcp-guard http POST api.unknown.test/items -> simulated']);
+	});
+
+	it('hides a token in the path of the call from the log', async () => {
+		await simulator.respond(
+			{
+				url: 'https://api.unknown.test/bot123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw/sendMessage',
+			},
+			node,
+			scope,
+		);
+
+		expect(lines).toEqual([
+			'mcp-guard http GET api.unknown.test/<redacted>/sendMessage -> simulated',
+		]);
+	});
+
+	it('gives the mock the address that `baseURL` and `qs` make', async () => {
+		const options = { url: '/v1/items', baseURL: 'https://api.unknown.test', qs: { page: 2 } };
+		const guard = createNodeRequestGuard(scope);
+		Container.set(HttpSimulator, simulator);
+
+		await guard(options, node);
+
+		expect(mockHandler.mock.calls[0][0]).toMatchObject({
+			url: 'https://api.unknown.test/v1/items?page=2',
+		});
 	});
 });
