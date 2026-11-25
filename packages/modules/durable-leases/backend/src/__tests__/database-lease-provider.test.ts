@@ -64,7 +64,7 @@ describe('DatabaseLeaseProvider', () => {
 		).rejects.toMatchObject({
 			cause: expect.objectContaining({
 				message: expect.stringContaining(
-					'Lease kind "test-kind": renewal must be at most the lease minus the margin, divided by three',
+					'N8N_LEASES_RENEW_SECONDS must be at most 4 seconds, which is the leaseSeconds option of lease kind "test-kind" (19) minus N8N_LEASES_MARGIN_SECONDS (5), divided by three, got 5',
 				),
 			}),
 		});

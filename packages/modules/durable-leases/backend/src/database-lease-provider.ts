@@ -41,7 +41,7 @@ export class DatabaseLeaseProvider implements LeaseProvider<LeaseTransaction> {
 		try {
 			assertLeaseTimings(
 				{ leaseSeconds, renewSeconds: config.renewSeconds, marginSeconds: config.marginSeconds },
-				`Lease kind "${kind}"`,
+				`the leaseSeconds option of lease kind "${kind}"`,
 			);
 		} catch (error) {
 			throw new InvalidLeaseKindOptionsError(kind, 'leaseSeconds', leaseSeconds, { cause: error });

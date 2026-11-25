@@ -9,26 +9,29 @@ export interface LeaseTimings {
 	marginSeconds: number;
 }
 
-export function assertLeaseTimings(timings: LeaseTimings, subject: string): void {
+export function assertLeaseTimings(
+	timings: LeaseTimings,
+	leaseName = 'N8N_LEASES_LEASE_SECONDS',
+): void {
 	const { leaseSeconds, renewSeconds, marginSeconds } = timings;
 
 	if (leaseSeconds < 8) {
-		throw new UserError(`${subject}: lease must be at least 8 seconds, got ${leaseSeconds}`);
+		throw new UserError(`${leaseName} must be at least 8 seconds, got ${leaseSeconds}`);
 	}
 	if (leaseSeconds > MAX_LEASE_SECONDS) {
 		throw new UserError(
-			`${subject}: lease must be at most ${MAX_LEASE_SECONDS} seconds, got ${leaseSeconds}`,
+			`${leaseName} must be at most ${MAX_LEASE_SECONDS} seconds, got ${leaseSeconds}`,
 		);
 	}
 	const maxRenewSeconds = Math.floor((leaseSeconds - marginSeconds) / 3);
 	if (maxRenewSeconds < 1) {
 		throw new UserError(
-			`N8N_LEASES_MARGIN_SECONDS must be at most ${leaseSeconds - 3} seconds, so that N8N_LEASES_LEASE_SECONDS (${leaseSeconds}) leaves time to renew, got ${marginSeconds}`,
+			`N8N_LEASES_MARGIN_SECONDS must be at most ${leaseSeconds - 3} seconds, so that ${leaseName} (${leaseSeconds}) leaves time to renew, got ${marginSeconds}`,
 		);
 	}
 	if (renewSeconds > maxRenewSeconds) {
 		throw new UserError(
-			`${subject}: renewal must be at most the lease minus the margin, divided by three (${maxRenewSeconds} seconds), got ${renewSeconds}`,
+			`N8N_LEASES_RENEW_SECONDS must be at most ${maxRenewSeconds} seconds, which is ${leaseName} (${leaseSeconds}) minus N8N_LEASES_MARGIN_SECONDS (${marginSeconds}), divided by three, got ${renewSeconds}`,
 		);
 	}
 }

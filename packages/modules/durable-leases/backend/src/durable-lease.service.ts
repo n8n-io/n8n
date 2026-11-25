@@ -27,7 +27,7 @@ export class DurableLeaseService {
 		kinds: LeaseKindRepository,
 		sessions: LeaseSessionRepository,
 	) {
-		assertLeaseTimings(config, 'N8N_LEASES_*');
+		assertLeaseTimings(config);
 		this.provider = new DatabaseLeaseProvider({
 			config,
 			kinds,
