@@ -280,7 +280,7 @@ describe('AssistantTurnInputBuilder — resolveAppTargetsBlock', () => {
 describe('AssistantTurnInputBuilder — resolveMcpServerTargetBlock', () => {
 	type Internals = {
 		resolveMcpServerTargetBlock: (
-			context: { customMcpServerService?: { get: Mock } },
+			context: { customMcpServerService?: { getServer: Mock } },
 			metadata: Record<string, unknown>,
 		) => Promise<string>;
 	};
@@ -299,33 +299,38 @@ describe('AssistantTurnInputBuilder — resolveMcpServerTargetBlock', () => {
 	};
 
 	it('sends nothing when the thread works on no server', async () => {
-		const get = vi.fn();
+		const getServer = vi.fn();
 
-		expect(await builder.resolveMcpServerTargetBlock({ customMcpServerService: { get } }, {})).toBe(
-			'',
-		);
-		expect(get).not.toHaveBeenCalled();
+		expect(
+			await builder.resolveMcpServerTargetBlock({ customMcpServerService: { getServer } }, {}),
+		).toBe('');
+		expect(getServer).not.toHaveBeenCalled();
 	});
 
 	it('names the server with its current name', async () => {
-		const get = vi.fn().mockResolvedValue({ id: serverId, projectId: 'project-1', name: 'Docs' });
+		const getServer = vi
+			.fn()
+			.mockResolvedValue({ id: serverId, projectId: 'project-1', name: 'Docs' });
 
 		const block = await builder.resolveMcpServerTargetBlock(
-			{ customMcpServerService: { get } },
+			{ customMcpServerService: { getServer } },
 			metadata,
 		);
 
-		expect(get).toHaveBeenCalledWith({ serverId, projectId: 'project-1' });
+		expect(getServer).toHaveBeenCalledWith({ serverId, projectId: 'project-1' });
 		expect(block).toBe(
 			buildMcpServerTargetBlock({ id: serverId, projectId: 'project-1', name: 'Docs' }),
 		);
 	});
 
 	it('sends nothing when the server is gone or the service is off', async () => {
-		const get = vi.fn().mockRejectedValue(new Error('Not found'));
+		const getServer = vi.fn().mockRejectedValue(new Error('Not found'));
 
 		expect(
-			await builder.resolveMcpServerTargetBlock({ customMcpServerService: { get } }, metadata),
+			await builder.resolveMcpServerTargetBlock(
+				{ customMcpServerService: { getServer } },
+				metadata,
+			),
 		).toBe('');
 		expect(await builder.resolveMcpServerTargetBlock({}, metadata)).toBe('');
 		expect(builder.logger.warn).toHaveBeenCalledTimes(1);
