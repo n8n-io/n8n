@@ -283,7 +283,15 @@ export async function apiRequest(
 	try {
 		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
+		const apiError = new NodeApiError(this.getNode(), error as JsonObject);
+		if (apiError.description?.includes("can't parse entities")) {
+			throw new NodeApiError(this.getNode(), error as JsonObject, {
+				message: apiError.description,
+				description:
+					"Telegram could not read the formatting in the text. To send the text as it is, set 'Parse Mode' to 'Plain Text'. To keep the formatting, escape the special characters, for example _ and *.",
+			});
+		}
+		throw apiError;
 	}
 }
 

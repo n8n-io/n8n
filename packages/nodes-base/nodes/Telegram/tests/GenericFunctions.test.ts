@@ -104,6 +104,52 @@ describe('Telegram > GenericFunctions', () => {
 			expect(result).toEqual({ success: true });
 		});
 
+		it('should show the Telegram error and a parse mode hint when Telegram cannot parse the text', async () => {
+			const telegramError = {
+				ok: false,
+				error_code: 400,
+				description:
+					"Bad Request: can't parse entities: Can't find end of the entity starting at byte offset 12",
+			};
+			(mockThis.getCredentials as Mock).mockResolvedValue(credentials);
+			(mockThis.helpers.request as Mock).mockRejectedValue(
+				Object.assign(new Error(`400 - ${JSON.stringify(telegramError)}`), {
+					statusCode: 400,
+					error: telegramError,
+				}),
+			);
+
+			const error = await apiRequest
+				.call(mockThis, 'POST', 'sendMessage', { text: 'Workflow: My_Workflow' })
+				.catch((e: NodeApiError) => e);
+
+			expect(error).toBeInstanceOf(NodeApiError);
+			expect(error.message).toBe(telegramError.description);
+			expect(error.description).toContain('Plain Text');
+		});
+
+		it('should keep the default error for other Telegram errors', async () => {
+			const telegramError = {
+				ok: false,
+				error_code: 400,
+				description: 'Bad Request: chat not found',
+			};
+			(mockThis.getCredentials as Mock).mockResolvedValue(credentials);
+			(mockThis.helpers.request as Mock).mockRejectedValue(
+				Object.assign(new Error(`400 - ${JSON.stringify(telegramError)}`), {
+					statusCode: 400,
+					error: telegramError,
+				}),
+			);
+
+			const error = await apiRequest
+				.call(mockThis, 'POST', 'sendMessage', { text: 'Hello' })
+				.catch((e: NodeApiError) => e);
+
+			expect(error.message).toBe('Bad request - please check your parameters');
+			expect(error.description).toBe(telegramError.description);
+		});
+
 		it('should throw a NodeApiError on request failure', async () => {
 			const method: IHttpRequestMethods = 'POST';
 			const endpoint = 'sendMessage';
