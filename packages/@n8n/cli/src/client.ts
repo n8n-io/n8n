@@ -371,6 +371,14 @@ export class N8nClient {
 		return await this.paginate<Record<string, unknown>>('/promotions/providers', {}, limit);
 	}
 
+	async getPromotionSettings() {
+		return await this.get<Record<string, unknown>>('/promotions/settings');
+	}
+
+	async updatePromotionSettings(body: unknown) {
+		return await this.put<Record<string, unknown>>('/promotions/settings', body);
+	}
+
 	async getPromotionProvider(id: string) {
 		return await this.get<Record<string, unknown>>(`/promotions/providers/${id}`);
 	}

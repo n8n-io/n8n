@@ -96,10 +96,9 @@ test.describe(
 	'Sub-workflow output contract',
 	{ annotation: [{ type: 'owner', description: 'Core Execution' }] },
 	() => {
-		// TODO(CET-315): the child's branches converge on one input, which engine v2
-		// refuses. Engine v2 does not run `each` mode at all.
+		// Engine v2 does not run `each` mode at all.
 		for (const { mode, engine } of [
-			{ mode: 'once', engine: '@engine:v2-pending' },
+			{ mode: 'once', engine: '@engine:v2' },
 			{ mode: 'each', engine: '@engine:v1-only' },
 		]) {
 			test(`returns the reported false-branch items in ${mode} mode ${engine}`, async ({ api }) => {
@@ -135,8 +134,9 @@ test.describe(
 			});
 		}
 
-		// TODO(CET-315): the child's branches converge on one input, which engine v2 refuses.
-		test('keeps the v1.2 output contract for an existing workflow @engine:v2-pending', async ({
+		// Engine v1 runs "Upper terminal" once for each branch that feeds it, and engine v2
+		// runs it once on the items of all of them, so the v1.2 contract returns other items.
+		test('keeps the v1.2 output contract for an existing workflow @engine:v1-only', async ({
 			api,
 		}) => {
 			const childDefinition = definition('ado-5857-child.json');

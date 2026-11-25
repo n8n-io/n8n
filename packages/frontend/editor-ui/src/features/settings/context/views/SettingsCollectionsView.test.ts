@@ -256,6 +256,17 @@ describe('SettingsCollectionsView', () => {
 		await waitFor(() => expect(rowNames(getAllByTestId)).toEqual(['Customer support', 'Oldest']));
 	});
 
+	it('opens the collection of a clicked row', async () => {
+		const { getByTestId } = await renderWithEditableRow();
+
+		await userEvent.click(getByTestId('collection-name'));
+
+		expect(push).toHaveBeenCalledWith({
+			name: 'KnowledgeCollection',
+			params: { projectId: 'team-1', collectionId: 'c1' },
+		});
+	});
+
 	it('opens the dialog in edit mode for the collection of the row', async () => {
 		const { getByTestId } = await renderWithEditableRow();
 
@@ -264,6 +275,7 @@ describe('SettingsCollectionsView', () => {
 		const modal = getByTestId('collection-modal-stub');
 		expect(modal).toHaveAttribute('data-open', 'true');
 		expect(modal).toHaveAttribute('data-collection', 'c1');
+		expect(push).not.toHaveBeenCalled();
 	});
 
 	it('reloads the list after an edit', async () => {
@@ -294,6 +306,7 @@ describe('SettingsCollectionsView', () => {
 		await pickRowAction(getByTestId, 'delete');
 
 		expect(getByTestId('collection-delete-dialog-stub')).toHaveAttribute('data-collection', 'c1');
+		expect(push).not.toHaveBeenCalled();
 	});
 
 	it('closes the delete dialog and reloads the list after a delete', async () => {

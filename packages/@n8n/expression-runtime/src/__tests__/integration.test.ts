@@ -1362,6 +1362,61 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 			expect(attempts).toBe(2);
 		});
 	});
+
+	describe('concat of workflow data arrays', () => {
+		const data = { $json: { list: [1, [2, 3], { id: 4 }], other: ['a'] } };
+
+		it.each([
+			['{{ $json.list.concat($json.other) }}', [1, [2, 3], { id: 4 }, 'a']],
+			['{{ [0].concat($json.list, 9, $json.other) }}', [0, 1, [2, 3], { id: 4 }, 9, 'a']],
+			['{{ $json.list.concat() }}', [1, [2, 3], { id: 4 }]],
+			['{{ $json.list[1].concat($json.list[2]) }}', [2, 3, { id: 4 }]],
+			['{{ [].concat.length }}', 1],
+			['{{ [].concat.name }}', 'concat'],
+			['{{ $json.other.concat("b", [["c"]]) }}', ['a', 'b', ['c']]],
+			[
+				'{{ (() => { const list = $json.list; list.push(5); return list.concat($json.other); })() }}',
+				[1, [2, 3], { id: 4 }, 5, 'a'],
+			],
+			[
+				'{{ (() => { const list = $json.other; list[Symbol.isConcatSpreadable] = false; return [0].concat(list).length; })() }}',
+				2,
+			],
+			[
+				'{{ (() => { const list = $json.other; list.constructor = { [Symbol.species]: function () { return { tag: "mine" }; } }; return list.concat("b").tag; })() }}',
+				'mine',
+			],
+		])('%s', (expression, expected) => {
+			expect(evaluator.evaluate(expression, data, caller)).toEqual(expected);
+		});
+
+		it.runIf(!isQuickJS)('keeps the holes of a workflow data array', () => {
+			const result = evaluator.evaluate(
+				'{{ (() => { const list = $json.list; delete list[0]; return list.concat($json.other); })() }}',
+				data,
+				caller,
+			);
+
+			expect(result).toHaveLength(4);
+			expect(0 in (result as unknown[])).toBe(false);
+		});
+
+		it('keeps a non-spreadable workflow data array whole after an expression replaces Boolean', () => {
+			evaluator.evaluate(
+				'{{ (function () { this.Boolean = () => true; return "x"; })() }}',
+				data,
+				caller,
+			);
+
+			expect(
+				evaluator.evaluate(
+					'{{ (() => { const list = $json.other; list[Symbol.isConcatSpreadable] = 0; return [0].concat(list).length; })() }}',
+					{ $json: { other: ['a', 'b'] } },
+					caller,
+				),
+			).toBe(2);
+		});
+	});
 });
 
 describe(`Integration: ${engineName} error handling`, () => {
@@ -1447,6 +1502,26 @@ describe(`Integration: ${engineName} error handling`, () => {
 					caller,
 				),
 			).toThrow(MemoryLimitError);
+		} finally {
+			await evaluator.release(caller);
+			await evaluator.dispose();
+		}
+	});
+
+	it.each([
+		'{{ $json.list.concat($json.list).length }}',
+		'{{ (() => { const list = $json.list; list[Symbol.isConcatSpreadable] = true; return list.concat(list).length; })() }}',
+	])('should concat workflow data arrays within a small memory limit: %s', async (expression) => {
+		const evaluator = new ExpressionEvaluator({
+			createBridge: () => newBridge({ memoryLimit: 16, timeout: 5000 }),
+			maxCodeCacheSize: 64,
+		});
+		const caller = {};
+		const data = { $json: { list: Array.from({ length: 200_000 }, () => 1) } };
+		await evaluator.initialize();
+		await evaluator.acquire(caller);
+		try {
+			expect(evaluator.evaluate(expression, data, caller)).toBe(400_000);
 		} finally {
 			await evaluator.release(caller);
 			await evaluator.dispose();

@@ -12,6 +12,7 @@ import {
 	NodeConnectionTypes,
 	NodeOperationError,
 	parseRegexLiteral,
+	READ_ONLY_ANNOTATIONS,
 	safeRegex,
 } from 'n8n-workflow';
 
@@ -27,6 +28,7 @@ export class IfV1 implements INodeType {
 		this.description = {
 			...baseDescription,
 			version: 1,
+			annotations: READ_ONLY_ANNOTATIONS,
 			defaults: {
 				name: 'If',
 				color: '#408000',

@@ -843,6 +843,7 @@ describe('AssistantAgentThreadView', () => {
 			expect.objectContaining({ key: 'assistant_tool_result_table' }),
 			expect.objectContaining({ key: 'assistant_tool_result_code' }),
 			expect.objectContaining({ key: 'assistant_shared_files' }),
+			expect.objectContaining({ key: 'assistant_artifact_card' }),
 		]);
 		expect(sendMessageFromOutside).not.toHaveBeenCalled();
 	});
@@ -2106,12 +2107,9 @@ describe('AssistantAgentThreadView', () => {
 			expect(clientContext()).not.toHaveProperty('context');
 		});
 
-		it('opens the handed-off workflow and sends it with the first message', async () => {
-			stashPendingWorkflowAttachment('thread-new', {
-				type: 'workflow',
-				id: 'wf-7',
-				name: 'Handed off',
-			});
+		it('opens the handed-off workflow and stages it as a composer chip', async () => {
+			const workflow = { type: 'workflow' as const, id: 'wf-7', name: 'Handed off' };
+			stashPendingWorkflowAttachment('thread-new', workflow);
 
 			const { getByTestId } = await renderNewThread();
 			isLoadingHistory.value = false;
@@ -2120,9 +2118,14 @@ describe('AssistantAgentThreadView', () => {
 			expect(sendMessageFromOutside).not.toHaveBeenCalled();
 			expect(getByTestId('assistant-agent-preview-panel')).toBeVisible();
 			expect(previewProps.current).toMatchObject({ 'workflow-id': 'wf-7' });
-			expect(clientContext()).toMatchObject({
-				attachments: [{ type: 'workflow', id: 'wf-7', name: 'Handed off' }],
-			});
+			// The chip sends the workflow, so a removed chip does not send it.
+			expect(composerAttachments.value).toEqual([
+				{
+					chip: { id: 'mention:workflow:wf-7', label: 'Handed off', icon: 'workflow' },
+					clientContextPatch: { attachments: [workflow] },
+				},
+			]);
+			expect(clientContext()).not.toHaveProperty('attachments');
 		});
 
 		it('puts a handed-off draft into the composer without sending it', async () => {
@@ -2183,15 +2186,37 @@ describe('AssistantAgentThreadView', () => {
 			const { unmount } = await renderNewThread();
 			unmount();
 			setDraft.mockReset();
+			// A reload starts with an empty composer.
+			composerAttachments.value = [];
 
 			await renderNewThread();
 			expect(setDraft).toHaveBeenCalledWith('Suggest my preferences');
-			expect(clientContext()).toMatchObject({ attachments: [{ type: 'workflow', id: 'wf-7' }] });
+			expect(stagedNodes()).toEqual([
+				{ id: 'mention:workflow:wf-7', attachments: [{ type: 'workflow', id: 'wf-7' }] },
+			]);
 
 			const onSessionCreated = panelProps.current.onSessionCreated as () => void;
 			onSessionCreated();
 			expect(getPendingWorkflowAttachment('thread-new')).toBeNull();
 			expect(getPendingComposerDraft('thread-new')).toBeNull();
+		});
+
+		it('does not stage a removed handed-off workflow again after a reload', async () => {
+			stashPendingWorkflowAttachment('thread-new', { type: 'workflow', id: 'wf-7' });
+			const { unmount } = await renderNewThread();
+			const onRemoved = panelProps.current.onComposerAttachmentRemoved as (id: string) => void;
+
+			onRemoved('mention:workflow:other');
+			expect(getPendingWorkflowAttachment('thread-new')).toEqual({ type: 'workflow', id: 'wf-7' });
+
+			onRemoved('mention:workflow:wf-7');
+			expect(getPendingWorkflowAttachment('thread-new')).toBeNull();
+
+			unmount();
+			// A reload starts with an empty composer.
+			composerAttachments.value = [];
+			await renderNewThread();
+			expect(composerAttachments.value).toEqual([]);
 		});
 
 		it('drops the launch marker once the server accepts the first message', async () => {
@@ -2630,7 +2655,7 @@ describe('AssistantAgentThreadView', () => {
 		});
 
 		it('stages a mentioned workflow or agent as a chip that sends it in the client context', async () => {
-			const { getByTestId, getAllByTestId } = renderView({
+			const { getByTestId } = renderView({
 				props: { threadId: 'thread-1', projectId: 'project-1' },
 			});
 			await flushPromises();
@@ -2642,7 +2667,7 @@ describe('AssistantAgentThreadView', () => {
 				{ id: 'mention:workflow:wf-1', attachments: [workflowMention.attachment] },
 				{ id: 'mention:agent:agent-1', attachments: [agentMention.attachment] },
 			]);
-			expect(getAllByTestId('agent-chat-composer-chip').map((chip) => chip.textContent)).toEqual([
+			expect(composerAttachments.value.map(({ chip }) => chip.label)).toEqual([
 				'Uptime monitor',
 				'Support agent',
 			]);
@@ -2779,9 +2804,10 @@ describe('AssistantAgentThreadView', () => {
 			};
 			await flushPromises();
 
-			expect(getAllByTestId('attachment-preview-resource').map((chip) => chip.textContent)).toEqual(
-				['Uptime monitor', 'Support agent'],
-			);
+			const cards = getAllByTestId('attachment-preview-resource');
+			expect(cards).toHaveLength(2);
+			expect(cards[0]).toHaveTextContent('Uptime monitor');
+			expect(cards[1]).toHaveTextContent('Support agent');
 		});
 
 		it('does not show the agent that the thread builds as a reference', async () => {
@@ -2807,9 +2833,9 @@ describe('AssistantAgentThreadView', () => {
 			};
 			await flushPromises();
 
-			expect(getAllByTestId('attachment-preview-resource').map((chip) => chip.textContent)).toEqual(
-				['Uptime monitor'],
-			);
+			const cards = getAllByTestId('attachment-preview-resource');
+			expect(cards).toHaveLength(1);
+			expect(cards[0]).toHaveTextContent('Uptime monitor');
 		});
 	});
 });

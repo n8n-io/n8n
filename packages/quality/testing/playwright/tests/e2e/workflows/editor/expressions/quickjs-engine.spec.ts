@@ -1,9 +1,13 @@
-import {
-	SCHEDULE_TRIGGER_NODE_NAME,
-	EDIT_FIELDS_SET_NODE_NAME,
-} from '../../../../../config/constants';
+import type { Page, Route } from '@playwright/test';
+
+import { SCHEDULE_TRIGGER_NODE_NAME } from '../../../../../config/constants';
 import { test, expect } from '../../../../../fixtures/base';
-import type { n8nPage } from '../../../../../pages/n8nPage';
+import {
+	addEditFields,
+	installWasmProbe,
+	readWasmProbe,
+	recordPageErrors,
+} from './quickjs-engine-helpers';
 
 /**
  * Runs the editor on the QuickJS engine. Without this the container keeps the
@@ -13,14 +17,46 @@ import type { n8nPage } from '../../../../../pages/n8nPage';
 test.use({ capability: { env: { N8N_EXPRESSION_ENGINE_FRONTEND: 'quickjs' } } });
 
 const SCHEDULE_PARAMETER_NAME = 'daysInterval';
+const QUICKJS_WASM_URL = '**/emscripten-module*.wasm*';
 
-/** The counter the probe keeps on the page under test. */
-type ProbeWindow = Window & { wasmInstantiations: number };
+interface Deferred {
+	promise: Promise<void>;
+	resolve: () => void;
+}
 
-async function addEditFields(n8n: n8nPage): Promise<void> {
-	await n8n.canvas.addNode(EDIT_FIELDS_SET_NODE_NAME);
-	await n8n.ndv.getAssignmentCollectionAdd('assignments').click();
-	await n8n.ndv.clickAssignmentExpressionToggle('assignments');
+function createDeferred(): Deferred {
+	let resolve = () => {};
+	const promise = new Promise<void>((res) => {
+		resolve = res;
+	});
+	return { promise, resolve };
+}
+
+/**
+ * Holds QuickJS WASM asset requests until `release()` is called, so a test can
+ * observe startup while the engine is still loading.
+ */
+async function holdQuickJsWasm(page: Page): Promise<{
+	requested: Promise<void>;
+	release: () => void;
+	getRequestCount: () => number;
+}> {
+	const requested = createDeferred();
+	const gate = createDeferred();
+	let requestCount = 0;
+
+	await page.route(QUICKJS_WASM_URL, async (route: Route) => {
+		requestCount++;
+		requested.resolve();
+		await gate.promise;
+		await route.continue();
+	});
+
+	return {
+		requested: requested.promise,
+		release: gate.resolve,
+		getRequestCount: () => requestCount,
+	};
 }
 
 test.describe(
@@ -41,19 +77,7 @@ test.describe(
 			// second, blank one in the same context, and sees none of this traffic.
 			const page = n8n.page;
 
-			await page.addInitScript(() => {
-				const probe = window as unknown as ProbeWindow;
-				probe.wasmInstantiations = 0;
-				for (const name of ['instantiate', 'instantiateStreaming'] as const) {
-					const original = WebAssembly[name];
-					// @ts-expect-error the probe replaces the host global on purpose
-					WebAssembly[name] = function (...args: unknown[]) {
-						probe.wasmInstantiations++;
-						// @ts-expect-error forwarding through the replaced global
-						return original.apply(WebAssembly, args);
-					};
-				}
-			});
+			await installWasmProbe(page);
 			// The fixture already loaded the app, so the init script needs a fresh load.
 			await page.reload();
 
@@ -64,10 +88,10 @@ test.describe(
 			await n8n.ndv.typeInExpressionEditor('{{ 1 + 2');
 			await expect(n8n.ndv.getInlineExpressionEditorOutput()).toHaveText('3');
 
-			const instantiations = await page.evaluate(
-				() => (window as unknown as ProbeWindow).wasmInstantiations,
+			const { wasmInstantiations } = await readWasmProbe(page);
+			expect(wasmInstantiations, 'the page instantiated the QuickJS wasm module').toBeGreaterThan(
+				0,
 			);
-			expect(instantiations, 'the page instantiated the QuickJS wasm module').toBeGreaterThan(0);
 		});
 
 		test('resolves $json with n8n extensions, and the backend agrees', async ({ n8n }) => {
@@ -123,6 +147,59 @@ test.describe(
 			await n8n.ndv.clearExpressionEditor();
 			await n8n.ndv.typeInExpressionEditor("{{ 'abc'.toUpperCase()");
 			await expect(n8n.ndv.getInlineExpressionEditorOutput()).toHaveText('ABC');
+		});
+
+		test('waits for a delayed engine start and evaluates through QuickJS once ready', async ({
+			n8n,
+		}) => {
+			const page = n8n.page;
+			const errors = recordPageErrors(page);
+
+			await installWasmProbe(page);
+			const wasmHold = await holdQuickJsWasm(page);
+
+			const loginResponse = page.waitForResponse(
+				(response) => new URL(response.url()).pathname.endsWith('/rest/login') && response.ok(),
+			);
+			const settingsResponse = page.waitForResponse(
+				(response) => new URL(response.url()).pathname.endsWith('/rest/settings') && response.ok(),
+			);
+
+			const navigation = n8n.start.fromBlankCanvas();
+			// Prevent an unhandled rejection if an assertion below fails before `await navigation`.
+			navigation.catch(() => {});
+			try {
+				// Both boot auth/settings and the QuickJS WASM request run in parallel.
+				await Promise.all([wasmHold.requested, loginResponse, settingsResponse]);
+
+				// The workflow canvas must not render while QuickJS is still starting.
+				await expect(n8n.canvas.canvasPane()).toBeHidden();
+				const probeWhileHeld = await readWasmProbe(page);
+				expect(probeWhileHeld.wasmSuccesses, 'QuickJS wasm has not instantiated yet').toBe(0);
+				expect(
+					wasmHold.getRequestCount(),
+					'the login hook reused the in-flight boot start instead of fetching WASM twice',
+				).toBe(1);
+			} finally {
+				wasmHold.release();
+			}
+
+			await navigation;
+
+			await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME);
+			await n8n.ndv.activateParameterExpressionEditor(SCHEDULE_PARAMETER_NAME);
+			await n8n.ndv.clearExpressionEditor();
+			await n8n.ndv.typeInExpressionEditor('{{ 1 + 2');
+			await expect(n8n.ndv.getInlineExpressionEditorOutput()).toHaveText('3');
+
+			const probe = await readWasmProbe(page);
+			expect(wasmHold.getRequestCount(), 'the page fetched the QuickJS wasm once').toBe(1);
+			expect(probe.wasmSuccesses, 'the page instantiated the QuickJS wasm once').toBe(1);
+			expect(probe.wasmFailures).toBe(0);
+			expect(
+				errors.getPageErrors(),
+				'no uncaught page errors occurred during delayed startup',
+			).toEqual([]);
 		});
 	},
 );
