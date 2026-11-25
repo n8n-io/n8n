@@ -203,7 +203,13 @@ const editCommand = defineCommand({
 		const file = ensureLayerFile(env, layer);
 		if (isSecretLayer(layer) || hasEncryptedValues(file)) {
 			if (!(await editEnvFile(file, editPlaintextCopy))) {
-				ui.step(`No change in ${env.layerLabel(layer)}.`);
+				// Plaintext values from before the encryption still get encrypted.
+				const count = encryptEnvFile(file);
+				ui.step(
+					count > 0
+						? `No change in ${env.layerLabel(layer)}. Encrypted ${count} plaintext value(s).`
+						: `No change in ${env.layerLabel(layer)}.`,
+				);
 				return;
 			}
 		} else {
@@ -228,9 +234,9 @@ async function editPlaintextCopy(file: string): Promise<void> {
 			`Set a known editor, which rig opens with its wait flag: \`${RIG} config set editor <name>\`.`,
 		);
 	}
-	const before = readFileSync(file, 'utf8');
 	await editFile(file);
-	if (waits || readFileSync(file, 'utf8') !== before) return;
+	// A saved change does not show that the editor closed the file. So ask every time.
+	if (waits) return;
 	ui.step(`rig shows the secrets decrypted in ${file}. It deletes this copy after the edit.`);
 	while (!(await confirm('Did you save and close the file?', false))) {
 		// Wait for the user.

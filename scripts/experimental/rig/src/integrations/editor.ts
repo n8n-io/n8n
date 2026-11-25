@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import pc from 'picocolors';
 
 import { loadGlobalConfig, saveGlobalConfig, setGlobalConfigValue } from '../config/global-config';
@@ -147,12 +147,27 @@ export async function chooseEditor(): Promise<string> {
 }
 
 /**
- * Whether the editor surely returns only after the file closes. rig adds the
- * wait flag to a known editor. `$EDITOR` and a command line run as given.
+ * Whether an editor command line returns only after the file closes: a known
+ * terminal editor, or a known GUI editor with its wait flag.
+ */
+export function commandLineWaits(line: string): boolean {
+	const [command = '', ...args] = line.trim().split(/\s+/);
+	const name = basename(command);
+	if (name === 'vi') return true;
+	const known = EDITORS.find((editor) => editor.command === name);
+	if (!known) return false;
+	return known.terminal || args.includes('--wait') || args.includes('-w');
+}
+
+/**
+ * Whether the configured editor surely returns only after the file closes.
+ * rig adds the wait flag to a known editor. `$EDITOR` and a command line run
+ * as given, so rig checks them.
  */
 export async function editorWaits(): Promise<boolean> {
 	const editor = await chooseEditor();
-	return EDITORS.some((known) => known.id === editor);
+	if (EDITORS.some((known) => known.id === editor)) return true;
+	return commandLineWaits(editor === ENV_EDITOR ? (envEditor() ?? 'vi') : editor);
 }
 
 /** Opens a file in the configured editor and waits until it closes. */

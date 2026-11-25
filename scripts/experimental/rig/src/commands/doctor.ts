@@ -410,7 +410,7 @@ function toolChecks(): Check[] {
 	];
 }
 
-function secretsChecks(): Check[] {
+export function secretsChecks(): Check[] {
 	let report: SecretsReport;
 	try {
 		report = inspectSecrets();
@@ -462,7 +462,17 @@ function secretsChecks(): Check[] {
 			hint: `Import the right key with \`${RIG} secrets import-key\`.`,
 		});
 	}
-	if (unreadable.length === 0 && report.files.length > 0) {
+	// With encryption off, the backend check above already warns about plaintext.
+	const plaintext = backend === 'off' ? [] : report.files.filter((file) => file.plaintext > 0);
+	for (const file of plaintext) {
+		checks.push({
+			status: 'warn',
+			label: 'Secrets',
+			detail: `${file.plaintext} value(s) in ${displayPath(file.file)} are in plaintext`,
+			hint: `Run \`${RIG} secrets encrypt\`. rig also encrypts them the next time it reads the file.`,
+		});
+	}
+	if (unreadable.length === 0 && plaintext.length === 0 && report.files.length > 0) {
 		const encrypted = report.files.reduce((sum, file) => sum + file.encrypted, 0);
 		checks.push({
 			status: 'ok',

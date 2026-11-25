@@ -11,6 +11,7 @@ import { dirname, join } from 'node:path';
 import { runCommand } from 'citty';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { secretsChecks } from '../src/commands/doctor';
 import { shownValue } from '../src/commands/env-browse';
 import { secretsCommand } from '../src/commands/secrets';
 import { loadGlobalConfig } from '../src/config/global-config';
@@ -425,5 +426,29 @@ describe('review fixes', () => {
 			/^COPIED_SETTING=enc:v1:\S+\nN8N_LOG_LEVEL=debug\n$/,
 		);
 		expect(readEnvFile(file)[0].value).toBe('new');
+	});
+});
+
+describe('status of the key and the values', () => {
+	it('should warn in doctor about plaintext values', () => {
+		const file = join(envsDir(), 'a', 'env', 'shared.env');
+		setEnvValue(globalSecretsFile(), 'OTHER', 'x');
+		write(file, 'OPENAI_API_KEY=plain\n');
+		const checks = secretsChecks();
+		expect(checks).toContainEqual(
+			expect.objectContaining({ status: 'warn', detail: expect.stringContaining('in plaintext') }),
+		);
+		expect(checks.some((c) => c.status === 'ok' && c.label === 'Secrets')).toBe(false);
+	});
+
+	it('should show a missing key in secrets status when values are encrypted', async () => {
+		setEnvValue(globalSecretsFile(), 'OTHER', 'x');
+		rmSync(secretsKeyFile());
+		clearKeyCache();
+		const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+		await runCommand(secretsCommand, { rawArgs: ['status'] });
+		const output = log.mock.calls.map((call) => String(call[0])).join('\n');
+		expect(output).toContain('missing: 1 encrypted value cannot be decrypted');
+		expect(output).not.toContain('created on first use');
 	});
 });

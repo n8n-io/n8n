@@ -383,10 +383,13 @@ saves it in `secrets.backend` in the global config:
   values in their env.
 - `rig env edit` decrypts a file with encrypted values into a private temp
   file. It opens that file in your editor, then encrypts the result and
-  deletes the copy. On Linux, the copy is in `$XDG_RUNTIME_DIR`. Every
-  `secrets.env` file uses the temp copy. With `$EDITOR` or an editor command
-  line, `rig` cannot know when the edit ends. It asks before it deletes an
-  unchanged copy, and it needs a terminal for this question.
+  deletes the copy. The copy is in `$XDG_RUNTIME_DIR` when that directory
+  exists, which is usually in memory on Linux. Otherwise it is in the temp
+  directory of the system. Every `secrets.env` file uses the temp copy.
+- `rig` must know when the editor closes the copy. A known editor from the
+  list, a terminal editor such as `vim` or `nano`, and a GUI editor with
+  `--wait` or `-w` return when the file closes. For other editors, `rig` asks
+  before it deletes the copy, and it needs a terminal for this question.
 - When an env file has plaintext values that must be encrypted, for example
   after a manual edit, `rig` encrypts them the next time it reads the file.
 - A file without encrypted or sensitive values does not need the key.
@@ -404,7 +407,7 @@ saves it in `secrets.backend` in the global config:
 | Task | Command |
 |---|---|
 | Show the backend, the key, and each file | `pnpm rig secrets status` |
-| Move the key to another backend | `pnpm rig secrets use <keychain\|secret-service\|file\|off>` |
+| Switch the backend. `rig` copies the key to the new backend. Delete the old copy yourself | `pnpm rig secrets use <keychain\|secret-service\|file\|off>` |
 | Encrypt all plaintext values now | `pnpm rig secrets encrypt` |
 | Back up the key | `pnpm rig secrets export-key` |
 | Restore the key, for example on a new machine | `pnpm rig secrets import-key` (asks for the key, or reads stdin) |

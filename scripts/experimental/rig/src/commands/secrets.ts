@@ -64,13 +64,22 @@ const statusCommand = defineCommand({
 		}[from];
 		const rows: string[][] = [[pc.bold('Backend'), `${backend} ${pc.dim(`(${source})`)}`]];
 		if (backend !== 'off') {
+			// rig makes a key only when no file has encrypted values. Otherwise the key is lost.
+			const encrypted = report.files.reduce((sum, status) => sum + status.encrypted, 0);
+			const keyState = report.key
+				? pc.green('· present')
+				: encrypted > 0
+					? pc.red(
+							`· missing: ${plural(encrypted, 'encrypted value')} cannot be decrypted. Import the key with \`${RIG} secrets import-key\``,
+						)
+					: pc.dim('· created on first use');
 			rows.push([
 				pc.bold('Key'),
 				!report.available
 					? pc.red(`${keyStoreLabel(backend)} is not available on this machine`)
 					: report.problem
 						? pc.red(report.problem)
-						: `${keyStoreLocation(backend)} ${report.key ? pc.green('· present') : pc.dim('· created on first use')}`,
+						: `${keyStoreLocation(backend)} ${keyState}`,
 			]);
 		}
 		console.log(table(rows));
