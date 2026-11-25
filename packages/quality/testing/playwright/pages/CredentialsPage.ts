@@ -37,6 +37,11 @@ export class CredentialsPage extends BasePage {
 		return this.getTypeFilterSelect().locator('input[role="combobox"]:not([tabindex="-1"])');
 	}
 
+	/** The display input draws the focus outline of the select. */
+	getTypeFilterInput() {
+		return this.getTypeFilterSelect().locator('.el-input__inner');
+	}
+
 	/**
 	 * Create a credential from the credentials list, fill fields, save, and close the modal.
 	 * @param credentialType - The type of credential to create (e.g. 'Notion API')
