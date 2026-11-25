@@ -83,6 +83,13 @@ export const testToolResultExtension: AgentsChatInteractionExtension = {
 	resultComponent: TestToolResult,
 };
 
+/** A host extension that renders a footer for the test tool, and keeps its default step. */
+export const testToolFooterExtension: AgentsChatInteractionExtension = {
+	key: 'test_footer',
+	matchToolFooter: (toolCall) => toolCall.tool === TEST_RESULT_TOOL_NAME,
+	toolFooterComponent: TestToolResult,
+};
+
 /** Test-only tool whose output the host renders inside the default step. */
 export const TEST_OUTPUT_TOOL_NAME = 'list_rows';
 

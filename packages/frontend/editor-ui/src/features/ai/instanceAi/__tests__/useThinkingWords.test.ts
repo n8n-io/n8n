@@ -1,5 +1,5 @@
 import { useI18n } from '@n8n/i18n';
-import { effectScope, nextTick, ref } from 'vue';
+import { type EffectScope, effectScope, nextTick, ref } from 'vue';
 
 import {
 	GENERAL_THINKING_WORD_KEYS,
@@ -12,39 +12,43 @@ const i18n = useI18n();
 const generalWords = GENERAL_THINKING_WORD_KEYS.map((key) => i18n.baseText(key));
 const workflowWords = WORKFLOW_THINKING_WORD_KEYS.map((key) => i18n.baseText(key));
 
-function setup(initial: { active: boolean; building?: boolean; threadId?: string }) {
-	const active = ref(initial.active);
-	const building = ref(initial.building ?? false);
-	const threadId = ref(initial.threadId ?? 'thread-1');
-	const scope = effectScope();
-	const word = scope.run(() =>
-		useThinkingWordRotation({
-			active: () => active.value,
-			building: () => building.value,
-			threadId: () => threadId.value,
-		}),
-	)!;
-	/**
-	 * The `count` words that show, the current one first. It rotates only between
-	 * the reads, because each rotation marks a word as shown.
-	 */
-	const collect = (count: number) => {
-		const words: Array<string | undefined> = [];
-		for (let i = 0; i < count; i++) {
-			if (i > 0) vi.advanceTimersByTime(THINKING_WORD_ROTATION_MS);
-			words.push(word.value);
-		}
-		return words;
-	};
-	return { word, active, building, threadId, collect, scope };
-}
-
 describe('useThinkingWordRotation', () => {
+	const scopes: EffectScope[] = [];
+
+	function setup(initial: { active: boolean; building?: boolean; threadId?: string }) {
+		const active = ref(initial.active);
+		const building = ref(initial.building ?? false);
+		const threadId = ref(initial.threadId ?? 'thread-1');
+		const scope = effectScope();
+		scopes.push(scope);
+		const word = scope.run(() =>
+			useThinkingWordRotation({
+				active: () => active.value,
+				building: () => building.value,
+				threadId: () => threadId.value,
+			}),
+		)!;
+		/**
+		 * The `count` words that show, the current one first. It rotates only between
+		 * the reads, because each rotation marks a word as shown.
+		 */
+		const collect = (count: number) => {
+			const words: Array<string | undefined> = [];
+			for (let i = 0; i < count; i++) {
+				if (i > 0) vi.advanceTimersByTime(THINKING_WORD_ROTATION_MS);
+				words.push(word.value);
+			}
+			return words;
+		};
+		return { word, active, building, threadId, collect, scope };
+	}
+
 	beforeEach(() => {
 		vi.useFakeTimers();
 	});
 
 	afterEach(() => {
+		scopes.splice(0).forEach((scope) => scope.stop());
 		vi.useRealTimers();
 	});
 

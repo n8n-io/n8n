@@ -288,4 +288,10 @@ describe('N8nAttachment', function describeComponent() {
 
 		expect(screen.getByTitle('example.pdf')).toBeVisible();
 	});
+
+	it('shows the given icon, without a MIME type', function testIcon() {
+		render(N8nAttachment, { props: { fileName: 'Orders', icon: 'workflow', isRemovable: false } });
+		const icon = screen.getByRole('figure').querySelector('[data-icon]');
+		expect(icon).toHaveAttribute('data-icon', 'workflow');
+	});
 });

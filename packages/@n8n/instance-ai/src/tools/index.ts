@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports */
 import type { BuiltTool } from '@n8n/agents';
 import {
+	APP_TOOL_ACTIONS,
+	APP_TOOL_NAME_BY_ACTION,
 	DATA_TABLE_READ_TOOL_ACTIONS,
 	DATA_TABLE_TOOL_NAME_BY_ACTION,
 	EXECUTION_TOOL_ACTIONS,
@@ -286,7 +288,12 @@ function getOrchestratorDomainToolFactories(
 	}
 
 	if (context.appService) {
-		tools.push([DOMAIN_TOOL_IDS.APPS, () => loadAppsTool().createAppsTool(context)]);
+		for (const action of APP_TOOL_ACTIONS) {
+			tools.push([
+				APP_TOOL_NAME_BY_ACTION[action],
+				() => loadAppsTool().createAppTool(context, action),
+			]);
+		}
 	}
 
 	// Registered on every turn, with or without files, so the tool list, which

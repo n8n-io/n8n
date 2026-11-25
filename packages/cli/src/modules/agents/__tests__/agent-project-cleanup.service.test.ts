@@ -10,6 +10,7 @@ import { AgentProjectCleanupService } from '../agent-project-cleanup.service';
 import type { AgentServiceAccountService } from '../agent-service-account.service';
 import type { AgentSessionStopService } from '../agent-session-stop.service';
 import type { AgentTestChatService } from '../agent-test-chat.service';
+import type { AgentApprovalCleanupService } from '../approval/agent-approval-cleanup.service';
 import type { ProjectAgent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
@@ -25,6 +26,7 @@ describe('AgentProjectCleanupService', () => {
 	const sessions = mock<AgentSessionStopService>();
 	const executions = mock<AgentExecutionRepository>();
 	const agentServiceAccount = mock<AgentServiceAccountService>();
+	const approvalCleanup = mock<AgentApprovalCleanupService>();
 	const actor = mock<User>({ id: 'actor-1' });
 	const service = new AgentProjectCleanupService(
 		agents,
@@ -37,6 +39,7 @@ describe('AgentProjectCleanupService', () => {
 		sessions,
 		executions,
 		agentServiceAccount,
+		approvalCleanup,
 	);
 
 	beforeEach(() => {
@@ -112,6 +115,52 @@ describe('AgentProjectCleanupService', () => {
 		}
 	});
 
+	it('cleans up approvals of each agent with its private owner', async () => {
+		const first = mock<ProjectAgent>({ id: 'agent-1', approvalWorkflowId: 'owner-1' });
+		const second = mock<ProjectAgent>({ id: 'agent-2', approvalWorkflowId: null });
+		agents.findByProjectId.mockResolvedValue([first, second]);
+
+		await service.cleanupProject('project-1', { actor });
+
+		expect(approvalCleanup.cleanupAgent).toHaveBeenCalledTimes(2);
+		expect(approvalCleanup.cleanupAgent).toHaveBeenCalledWith('agent-1', 'project-1', 'owner-1');
+		expect(approvalCleanup.cleanupAgent).toHaveBeenCalledWith('agent-2', 'project-1', null);
+		expect(approvalCleanup.cleanupAgent.mock.invocationCallOrder[0]).toBeGreaterThan(
+			agentServiceAccount.deleteForAgent.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('checks approval blockers of every agent before it removes any account', async () => {
+		agents.findByProjectId.mockResolvedValue([
+			mock<ProjectAgent>({ id: 'agent-1', identityId: 'sa-1' }),
+			mock<ProjectAgent>({ id: 'agent-2', identityId: 'sa-2' }),
+		]);
+		approvalCleanup.assertCanCleanupAgent
+			.mockResolvedValueOnce()
+			.mockRejectedValueOnce(new Error('still stopping'));
+
+		await expect(service.cleanupProject('project-1', { actor })).rejects.toThrow('still stopping');
+		expect(approvalCleanup.assertCanCleanupAgent).toHaveBeenCalledWith('agent-2');
+		expect(approvalCleanup.cleanupAgent).not.toHaveBeenCalled();
+		expect(agentServiceAccount.deleteForAgent).not.toHaveBeenCalled();
+	});
+
+	it('keeps knowledge and chat when an approval blocks cleanup', async () => {
+		agents.findByProjectId.mockResolvedValue([
+			mock<ProjectAgent>({ id: 'agent-1', identityId: 'sa-1' }),
+		]);
+		approvalCleanup.cleanupAgent.mockRejectedValue(new Error('approval resumed'));
+
+		await expect(service.cleanupProject('project-1', { actor })).rejects.toThrow(
+			'approval resumed',
+		);
+
+		expect(knowledge.deleteAllFilesForAgent).not.toHaveBeenCalled();
+		expect(knowledge.destroyKnowledgeSandbox).not.toHaveBeenCalled();
+		expect(testChat.clearAllTestChatMessages).not.toHaveBeenCalled();
+		expect(executionService.deleteExecutionLogsForAgent).not.toHaveBeenCalled();
+	});
+
 	it('stops the project deletion when a service account cannot be removed', async () => {
 		agents.findByProjectId.mockResolvedValue([
 			mock<ProjectAgent>({ id: 'agent-1', identityId: 'sa-1' }),
@@ -121,6 +170,9 @@ describe('AgentProjectCleanupService', () => {
 		await expect(service.cleanupProject('project-1', { actor })).rejects.toThrow(
 			'transfer blocked',
 		);
+		expect(approvalCleanup.cleanupAgent).not.toHaveBeenCalled();
+		expect(knowledge.deleteAllFilesForAgent).not.toHaveBeenCalled();
+		expect(testChat.clearAllTestChatMessages).not.toHaveBeenCalled();
 		expect(executionService.deleteExecutionLogsForAgent).not.toHaveBeenCalled();
 		expect(executionService.deleteMemoryThreadsForProject).not.toHaveBeenCalled();
 	});
