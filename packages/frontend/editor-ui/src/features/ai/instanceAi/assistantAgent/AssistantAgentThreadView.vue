@@ -889,9 +889,10 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 				:aria-hidden="isAgentTestDockOpen || undefined"
 			>
 				<template #actions>
-					<!-- A new thread has no turns to show until its first message starts the session. -->
+					<!-- A debug tool, so it shows with the debug flag only. A new thread has no turns
+					to show until its first message starts the session. -->
 					<N8nTooltip
-						v-if="!isNewSession"
+						v-if="trace.isEnabled && !isNewSession"
 						:content="i18n.baseText('agents.builder.preview.viewSession')"
 						placement="bottom"
 						:show-after="TOOLTIP_DELAY_MS"

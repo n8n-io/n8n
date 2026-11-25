@@ -1577,21 +1577,33 @@ describe('AssistantAgentThreadView', () => {
 		expect(routerPush).toHaveBeenCalledWith({ name: INSTANCE_AI_VIEW });
 	});
 
-	it('opens the session timeline of the thread from the header', async () => {
-		const { getByTestId } = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
-		await flushPromises();
-
-		await fireEvent.click(getByTestId('assistant-agent-view-session'));
-
-		expect(routerPush).toHaveBeenCalledWith({
-			name: INSTANCE_AI_THREAD_SESSION_VIEW,
-			params: { threadId: 'thread-1' },
-		});
-	});
-
 	describe('trace export', () => {
 		afterEach(() => {
 			localStorage.removeItem('instanceAi.debugMode');
+		});
+
+		it('hides the session timeline button without the debug flag', async () => {
+			const { queryByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			expect(queryByTestId('assistant-agent-view-session')).not.toBeInTheDocument();
+		});
+
+		it('opens the session timeline of the thread from the header with the debug flag', async () => {
+			localStorage.setItem('instanceAi.debugMode', 'true');
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			await fireEvent.click(getByTestId('assistant-agent-view-session'));
+
+			expect(routerPush).toHaveBeenCalledWith({
+				name: INSTANCE_AI_THREAD_SESSION_VIEW,
+				params: { threadId: 'thread-1' },
+			});
 		});
 
 		it('hides the trace menu without the debug flag', async () => {
