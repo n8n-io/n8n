@@ -7,18 +7,25 @@ import {
 	type NativeFallbackReason,
 } from './evaluator';
 import { MAX_DEPTH, MAX_RESULT_LENGTH, hasOwn, isArray, isObj } from './grammar';
-import type { IWorkflowDataProxyData } from '../../interfaces';
+import type { NativeEvaluationData, NativeEvaluationHost } from './host';
 
 const { getPrototypeOf, keys } = Object;
 
 export {
 	CALLABLE_METHODS,
+	EXTENSION_METHODS,
 	ITERATOR_METHODS,
+	MAX_DEPTH,
 	MAX_RESULT_LENGTH,
 	MAX_STEPS,
 	MAX_WORK,
+	RESERVED_NAMES,
 	TIME_METHODS,
 } from './grammar';
+export type { NativeFallbackReason } from './evaluator';
+export type { NativeEvaluationData, NativeEvaluationHost } from './host';
+export { canVerifyNatively, nativeSkeleton, NativeVerifier } from './verify';
+export type { NativeVerifyMismatch } from './verify';
 
 // Fast native evaluation: an in-process interpreter for a closed subset of
 // the expression grammar.
@@ -54,6 +61,7 @@ export {
 // Layout: grammar.ts holds the closed grammar and the allowlists, parser.ts
 // turns esprima output into it, compiler.ts splits, compiles and caches whole
 // expressions, evaluator.ts interprets them, and this file runs them.
+// host.ts declares what the caller injects.
 // skeleton.ts and verify.ts serve verify mode only.
 
 /** Does the expression (leading `=` stripped) fit the native subset? */
@@ -69,13 +77,14 @@ export function isNativelyEvaluable(expression: string): boolean {
  */
 export function evaluateNatively(
 	expression: string,
-	data: IWorkflowDataProxyData,
+	data: NativeEvaluationData,
+	host: NativeEvaluationHost,
 ): { handled: true; value: unknown } | { handled: false; fallbackReason?: NativeFallbackReason } {
 	const compiled = getCompiled(expression);
 	if (compiled === null) return { handled: false };
 
 	try {
-		const value = copyResult(evalCompiled(compiled, data));
+		const value = copyResult(evalCompiled(compiled, data, host));
 		return { handled: true, value };
 	} catch (error) {
 		if (error instanceof EngineFallbackError) {
@@ -141,8 +150,12 @@ function copyResult(value: unknown): unknown {
 	return copy(value, 0);
 }
 
-function evalCompiled(compiled: CompiledExpression, data: IWorkflowDataProxyData): unknown {
-	const env = new Env(data);
+function evalCompiled(
+	compiled: CompiledExpression,
+	data: NativeEvaluationData,
+	host: NativeEvaluationHost,
+): unknown {
+	const env = new Env(data, host);
 
 	if (compiled.isWholeValue) {
 		const code = compiled.chunks[1];

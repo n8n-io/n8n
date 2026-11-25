@@ -3233,6 +3233,9 @@ importers:
         specifier: 3.25.76
         version: 3.25.76
     devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -3254,6 +3257,12 @@ importers:
       esbuild:
         specifier: ^0.28.1
         version: 0.28.1
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 7.0.2007
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
