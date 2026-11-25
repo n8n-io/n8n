@@ -217,6 +217,22 @@ describe('SimulationSessionService', () => {
 		expect(session?.worldId).toBeUndefined();
 	});
 
+	it('opens the world again on the next turn after it failed to open', async () => {
+		const backend = llmBackend();
+		vi.mocked(backend.openWorld).mockRejectedValueOnce(new Error('mock model not configured'));
+		const { service } = setup({ backend });
+
+		const failed = await service.openForDraftRun(openInput);
+		const retried = await service.openForDraftRun({ ...openInput, message: 'again' });
+		const reused = await service.openForDraftRun({ ...openInput, message: 'and again' });
+
+		expect(failed?.worldId).toBeUndefined();
+		expect(retried).not.toBe(failed);
+		expect(retried?.worldId).toBe('world-1');
+		expect(reused).toBe(retried);
+		expect(backend.openWorld).toHaveBeenCalledTimes(2);
+	});
+
 	it('lists which tools can be tested, with n8n blocks before the backend sees them', async () => {
 		const backend = llmBackend();
 		const { service } = setup({ backend });

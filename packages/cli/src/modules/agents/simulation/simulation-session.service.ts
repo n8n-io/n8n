@@ -276,7 +276,8 @@ export class SimulationSessionService {
 			...(binding ? { connectionBinding: binding.digest } : {}),
 			marked,
 		};
-		this.sessions.set(sessionKey(input), entry);
+		// A session without a world is not cached, so the next turn tries to open the world again.
+		if (world) this.sessions.set(sessionKey(input), entry);
 		return session;
 	}
 
