@@ -11,7 +11,7 @@ import type { ExecutionResponseSender } from '../response-channel';
 import type { OrchestrationMessage, StepMessage, StepSettledEvent, WorkQueue } from '../queue';
 import type { CancelExecutionService } from './cancel-execution.service';
 import { countExpectedSettledSteps } from './completion';
-import type { ExecutionRecord, ExecutionStore } from './execution-store';
+import { isMissingExecution, type ExecutionRecord, type ExecutionStore } from './execution-store';
 import {
 	isLiveExecutionStatus,
 	isSettledStatus,
@@ -23,7 +23,7 @@ import {
 } from './execution.types';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
 import { decideSuccessors, decisionKeys } from './settlement';
-import type { StepRecord, StepStore } from './step-store';
+import { StepNotFoundError, type StepRecord, type StepStore } from './step-store';
 import {
 	collectSubExecutionResult,
 	resumeAwaitingParent,
@@ -55,10 +55,25 @@ export class StepSettledHandler {
 	) {}
 
 	async handle(event: StepSettledEvent): Promise<void> {
-		const [step, execution] = await Promise.all([
+		const [stepLoad, executionLoad] = await Promise.allSettled([
 			this.stepStore.loadStep(event.stepId),
 			this.executionStore.loadExecution(event.executionId),
 		]);
+		// Test the execution first: its deletion also deletes the step row.
+		if (executionLoad.status === 'rejected') {
+			if (isMissingExecution(executionLoad.reason, event.executionId)) {
+				if (stepLoad.status === 'rejected') {
+					if (stepLoad.reason instanceof StepNotFoundError) return;
+					throw stepLoad.reason;
+				}
+				// A step of another execution means a wrong message, which must still fail.
+				if (stepLoad.value.executionId === event.executionId) return;
+			}
+			throw executionLoad.reason;
+		}
+		if (stepLoad.status === 'rejected') throw stepLoad.reason;
+		const step = stepLoad.value;
+		const execution = executionLoad.value;
 		const node = validateStepContext(step, execution);
 
 		// v1 parity: an error that escapes a node ends the whole execution, not

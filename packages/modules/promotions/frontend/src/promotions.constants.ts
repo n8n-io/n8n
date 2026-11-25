@@ -1,3 +1,5 @@
+import type { PromotionProjectAccessSetting } from '@n8n/permissions';
+
 export const PROMOTIONS_SETTINGS_VIEW = 'PromotionsSettings';
 export const PROMOTIONS_ENVIRONMENT_ADD_VIEW = 'PromotionsEnvironmentAdd';
 export const PROMOTIONS_ENVIRONMENT_EDIT_VIEW = 'PromotionsEnvironmentEdit';
@@ -11,6 +13,14 @@ export const PROMOTIONS_SETTINGS_SCOPES = [
 	'promotions:readProviders',
 	'promotions:readEnvironments',
 ] as const;
+
+/**
+ * The project access settings that the Environments settings page shows. A setting shows
+ * only when the capability it unlocks ships: LIGO-1474 adds `whoCanPromote`, LIGO-1476 adds
+ * `whoCanApply`.
+ */
+export const PROJECT_ACCESS_SETTINGS_ON_ENVIRONMENTS_PAGE: readonly PromotionProjectAccessSetting[] =
+	[];
 
 export const PROMOTION_PREVIEW_VIEWS = {
 	promote: 'PromotionPreviewPromote',

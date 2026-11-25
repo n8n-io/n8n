@@ -16,14 +16,34 @@ import type {
 	SimulationWorld,
 } from '@/modules/agents/simulation/tool-simulation.contracts';
 
-import { resolveCanonicalMcpCatalogs } from './agent-execution.service';
-import { generateAgentScenarioSeed, type AgentSeedToolSummary } from './agent-scenario-seed';
-import { createMcpMockFetch, MCP_MOCK_GENERATION_FAILURE_PREFIX } from './mcp-mock-fetch';
-import { createLlmMockHandler } from './mock-handler';
-import { redactSecretValuePatterns, truncateForLlm } from './request-sanitizer';
-import { createWebSearchMock, WEB_SEARCH_MOCK_FAILURE_NOTE } from './web-search-mock';
+import type { AgentSeedToolSummary } from './agent-scenario-seed';
 
 const MAX_SCENARIO_HINT_CHARS = 2_000;
+
+const DEFAULT_MCP_MOCK_ORIGIN = 'https://mcp.invalid';
+
+/** Loads the mocks when a test run opens a world, so a normal startup does not load them. */
+async function loadMocks() {
+	const [executionService, scenarioSeed, mcpMock, mockHandler, sanitizer, webSearchMock] =
+		await Promise.all([
+			import('./agent-execution.service.js'),
+			import('./agent-scenario-seed.js'),
+			import('./mcp-mock-fetch.js'),
+			import('./mock-handler.js'),
+			import('./request-sanitizer.js'),
+			import('./web-search-mock.js'),
+		]);
+	return {
+		...executionService,
+		...scenarioSeed,
+		...mcpMock,
+		...mockHandler,
+		...sanitizer,
+		...webSearchMock,
+	};
+}
+
+type Mocks = Awaited<ReturnType<typeof loadMocks>>;
 
 /** Tool kinds the LLM mock can answer. n8n blocks the other kinds before they get here. */
 const SERVED_KINDS = new Set<ToolTestCapability['kind']>(['node', 'workflow', 'mcp', 'web_search']);
@@ -59,25 +79,35 @@ export class LlmMockSimulationBackend implements SimulationBackend {
 	}
 
 	async openWorld({ agent, firstMessage }: OpenWorldInput): Promise<SimulationWorld> {
-		const scenarioHints = truncateForLlm(
-			redactSecretValuePatterns(firstMessage),
+		const mocks = await loadMocks();
+		const scenarioHints = mocks.truncateForLlm(
+			mocks.redactSecretValuePatterns(firstMessage),
 			MAX_SCENARIO_HINT_CHARS,
 		);
-		const seed = await generateAgentScenarioSeed({
+		const seed = await mocks.generateAgentScenarioSeed({
 			agentName: agent.name,
 			instructions: agent.instructions,
 			tools: seedTools(agent),
 			scenarioHints,
 		});
-		return await this.buildWorld(`llm-mock-${randomUUID()}`, agent, seed, scenarioHints);
+		return await this.buildWorld(mocks, `llm-mock-${randomUUID()}`, agent, seed, scenarioHints);
 	}
 
 	private async buildWorld(
+		mocks: Mocks,
 		worldId: string,
 		agent: SimulatedAgent,
 		seed: InstanceAiEvalAgentScenarioSeed,
 		scenarioHints: string,
 	): Promise<SimulationWorld> {
+		const {
+			createLlmMockHandler,
+			createMcpMockFetch,
+			createWebSearchMock,
+			resolveCanonicalMcpCatalogs,
+			MCP_MOCK_GENERATION_FAILURE_PREFIX,
+			WEB_SEARCH_MOCK_FAILURE_NOTE,
+		} = mocks;
 		const httpMock: EvalLlmMockHandler = createLlmMockHandler({
 			scenarioHints,
 			globalContext: seed.globalContext,
@@ -87,12 +117,15 @@ export class LlmMockSimulationBackend implements SimulationBackend {
 		// server gets a URL made from its name, under its origin for a registry catalog match.
 		const mcpServers = agent.tools
 			.filter((tool) => tool.kind === 'mcp')
-			.map((tool) => ({
-				name: tool.toolName,
-				url: mockMcpUrl(tool.toolName, tool.origin),
-				origin: tool.origin,
-				description: tool.description,
-			}));
+			.map((tool) => {
+				const origin = tool.origin === undefined ? undefined : safeMcpOrigin(tool.origin);
+				return {
+					name: tool.toolName,
+					url: mockMcpUrl(tool.toolName, origin),
+					origin,
+					description: tool.description,
+				};
+			});
 		const mcpFetch: FetchFn = createMcpMockFetch({
 			servers: mcpServers,
 			agentInstructions: agent.instructions,
@@ -129,7 +162,7 @@ export class LlmMockSimulationBackend implements SimulationBackend {
 				const { signal } = call;
 				if (signal?.aborted) throw stoppedError();
 				if (request.protocol === 'web_search') {
-					const body = await untilStopped(webSearch(request.args), signal);
+					const body = await untilStopped(webSearch(request.args, { signal }), signal);
 					if (body.note === WEB_SEARCH_MOCK_FAILURE_NOTE) {
 						return { outcome: 'unavailable', detail: 'The LLM mock failed to answer this search.' };
 					}
@@ -162,7 +195,10 @@ export class LlmMockSimulationBackend implements SimulationBackend {
 					const text = await response.text();
 					// The MCP mock reports a failure as a JSON-RPC internal error, or a failed tool
 					// generation as an error result with a fixed text.
-					if (isMcpInternalError(text) || isMcpGenerationFailure(text)) {
+					if (
+						isMcpInternalError(text) ||
+						isMcpGenerationFailure(text, MCP_MOCK_GENERATION_FAILURE_PREFIX)
+					) {
 						return {
 							outcome: 'unavailable',
 							detail: 'The LLM mock failed to answer this MCP call.',
@@ -216,8 +252,24 @@ export class LlmMockSimulationBackend implements SimulationBackend {
 	}
 }
 
-function mockMcpUrl(serverName: string, origin = 'https://mcp.invalid'): string {
+function mockMcpUrl(serverName: string, origin = DEFAULT_MCP_MOCK_ORIGIN): string {
 	return `${origin}/n8n-mcp-server/${encodeURIComponent(serverName)}`;
+}
+
+/**
+ * Keep only the scheme and host of an HTTP(S) URL. The mock puts the URL in its prompt, and the
+ * user info, path or query of a real URL can hold a key.
+ */
+function safeMcpOrigin(origin: string): string {
+	let url: URL;
+	try {
+		url = new URL(origin);
+	} catch {
+		return DEFAULT_MCP_MOCK_ORIGIN;
+	}
+	return url.protocol === 'http:' || url.protocol === 'https:'
+		? url.origin
+		: DEFAULT_MCP_MOCK_ORIGIN;
 }
 
 function seedTools(agent: SimulatedAgent): AgentSeedToolSummary[] {
@@ -250,7 +302,7 @@ async function untilStopped<T>(work: Promise<T>, signal: AbortSignal | undefined
 }
 
 /** A `tools/call` result that the MCP mock made because it failed to generate one. */
-function isMcpGenerationFailure(text: string): boolean {
+function isMcpGenerationFailure(text: string, failurePrefix: string): boolean {
 	try {
 		const parsed: unknown = JSON.parse(text);
 		if (typeof parsed !== 'object' || parsed === null || !('result' in parsed)) return false;
@@ -265,7 +317,7 @@ function isMcpGenerationFailure(text: string): boolean {
 			first !== null &&
 			'text' in first &&
 			typeof first.text === 'string' &&
-			first.text.startsWith(MCP_MOCK_GENERATION_FAILURE_PREFIX)
+			first.text.startsWith(failurePrefix)
 		);
 	} catch {
 		return false;

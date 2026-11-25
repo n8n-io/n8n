@@ -112,19 +112,24 @@ export function evaluateType(
 	return { action: defaultAction, matchedRuleId: null };
 }
 
+/** The index of the first rule matching `type`, or `-1` when none does. */
+export function firstMatchIndex(
+	rules: readonly PolicyRule[],
+	type: PolicedType,
+	resolvePackage: PackageResolver,
+): number {
+	return rules.findIndex((rule) => selectorMatches(rule.selector, type, resolvePackage));
+}
+
 /** The first rule matching `type`, or `null` when none does. */
 function firstMatch(
 	rules: readonly PolicyRule[],
 	type: PolicedType,
 	resolvePackage: PackageResolver,
 ): PolicyVerdict | null {
-	for (const rule of rules) {
-		if (selectorMatches(rule.selector, type, resolvePackage)) {
-			return { action: rule.action, matchedRuleId: rule.id };
-		}
-	}
+	const rule = rules[firstMatchIndex(rules, type, resolvePackage)];
 
-	return null;
+	return rule ? { action: rule.action, matchedRuleId: rule.id } : null;
 }
 
 /**

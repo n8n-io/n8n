@@ -62,7 +62,10 @@ import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { isValidCronExpression } from './integrations/cron-validation';
 import { AgentRepository } from './repositories/agent.repository';
 import { findWorkflowToolWorkflows } from './tools/workflow-tool-workflow-resolver';
-import { extractAgentWorkflowRefs } from './utils/extract-agent-workflow-refs';
+import {
+	extractAgentWorkflowRefs,
+	extractGuardrailCheckWorkflowIds,
+} from './utils/extract-agent-workflow-refs';
 import { findHttpRequestToolUrlFromAiViolations } from './utils/node-tool-validation';
 import { findNameClashGroups } from '@/modules/skills';
 
@@ -371,7 +374,8 @@ export class AgentValidationService {
 			return credentialList.find((credential) => credential.id === credentialId);
 		};
 
-		const { agentsById, workflowsByReference } = await this.prefetchReferenceLookups(ctx);
+		const { agentsById, workflowsByReference, guardrailWorkflowsById } =
+			await this.prefetchReferenceLookups(ctx);
 
 		this.collectCoreIssues(config, issues);
 		this.collectVectorStoreIssues(config, issues);
@@ -406,6 +410,7 @@ export class AgentValidationService {
 			await this.collectChannelIssues(ctx.integrations, findCredential, issues);
 		}
 		await this.collectToolIssues(ctx, findCredential, workflowsByReference, issues, scope);
+		this.collectGuardrailWorkflowIssues(config, guardrailWorkflowsById, issues, scope);
 		await this.collectMcpServerIssues(config, findCredential, issues);
 		await this.collectHumanReviewIssues(ctx, findCredential, issues, scope);
 
@@ -415,11 +420,14 @@ export class AgentValidationService {
 	private async prefetchReferenceLookups(ctx: ConfigurationValidationContext): Promise<{
 		agentsById: Map<string, Pick<Agent, 'id' | 'activeVersionId'>>;
 		workflowsByReference: Map<string, WorkflowEntity>;
+		/** Check workflows keyed by id. Separate from tool names, which share that map. */
+		guardrailWorkflowsById: Map<string, WorkflowEntity>;
 	}> {
 		const subAgentIds = new Set<string>();
 		const workflowRefs = extractAgentWorkflowRefs(ctx.config).filter(
 			(ref) => ref.enabled !== false && ref.workflow,
 		);
+		const guardrailCheckWorkflowIds = extractGuardrailCheckWorkflowIds(ctx.config);
 
 		for (const ref of ctx.config.subAgents?.agents ?? []) {
 			if (ref.enabled === false) continue;
@@ -428,14 +436,23 @@ export class AgentValidationService {
 			}
 		}
 
-		const [agents, workflowsByReference] = await Promise.all([
+		const [agents, workflowsByReference, guardrailCheckWorkflows] = await Promise.all([
 			this.agentRepository.findByIdsAndProjectId([...subAgentIds], ctx.projectId),
 			findWorkflowToolWorkflows(this.workflowRepository, workflowRefs, ctx.projectId),
+			guardrailCheckWorkflowIds.length > 0
+				? this.workflowRepository.findManyByAgentToolReferences(
+						ctx.projectId,
+						guardrailCheckWorkflowIds,
+						[],
+					)
+				: [],
 		]);
-
 		return {
 			agentsById: new Map(agents.map((agent) => [agent.id, agent])),
 			workflowsByReference,
+			guardrailWorkflowsById: new Map(
+				guardrailCheckWorkflows.map((workflow) => [workflow.id, workflow]),
+			),
 		};
 	}
 
@@ -651,6 +668,49 @@ export class AgentValidationService {
 					id: guardrails[guardrailIndex].id,
 				}),
 			);
+		}
+	}
+
+	/**
+	 * A `workflow`-kind guardrail must point at a usable check workflow: the
+	 * reference is unusable at every scope (a missing or incompatible check
+	 * fails closed at run time), and unpublished additionally blocks publishing
+	 * the agent, mirroring the workflow-tool rules.
+	 */
+	private collectGuardrailWorkflowIssues(
+		config: AgentJsonConfig,
+		guardrailWorkflowsById: Map<string, WorkflowEntity>,
+		issues: AgentConfigValidationIssue[],
+		scope: AgentValidationScope,
+	) {
+		const guardrails = config.config?.guardrails?.tools ?? [];
+		for (let index = 0; index < guardrails.length; index++) {
+			const guardrail = guardrails[index];
+			if (guardrail.kind !== 'workflow') continue;
+
+			const path = `config.guardrails.tools.${index}.workflowId`;
+			const capability: AgentConfigValidationIssue['capability'] = {
+				kind: 'guardrail',
+				id: guardrail.id,
+			};
+
+			const workflow = guardrailWorkflowsById.get(guardrail.workflowId);
+			if (!workflow) {
+				issues.push(issue('missing_reference', path, capability));
+				continue;
+			}
+
+			const incompatibility = getWorkflowToolIncompatibilityReason(workflow);
+			if (incompatibility) {
+				issues.push(issue('incompatible_reference', path, capability, incompatibility.reason));
+				continue;
+			}
+
+			// Production runs load the published check workflow version, like
+			// workflow tools, so an unpublished check blocks publishing the agent.
+			if (scope === 'publish' && !workflow.activeVersionId) {
+				issues.push(issue('incompatible_reference', path, capability, 'not_published'));
+			}
 		}
 	}
 
