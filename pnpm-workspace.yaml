@@ -317,6 +317,7 @@ catalog:
   '@microsoft/opentelemetry': 1.5.0
   pg-copy-streams: 7.0.0
   '@types/pg-copy-streams': 1.2.5
+  '@n8n/sandbox-client': 1.4.0
 
 catalogMode: strict
 
