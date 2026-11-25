@@ -40,11 +40,18 @@ export type DisplayGroup =
 			id: string;
 			message: AgentsChatMessage;
 			thinkingSegments: ThinkingSegment[];
+			/**
+			 * Set on a group that shows the thinking of its run at the top: the last
+			 * group of the run. The thinking block reads its live state from it.
+			 */
+			runTail?: TurnDisplayGroup;
 	  }
 	| {
 			kind: typeof DISPLAY_GROUP_KIND.TOOL_RUN;
 			id: string;
 			thinkingSegments: ThinkingSegment[];
+			/** The same as `runTail` of a message group. */
+			runTail?: TurnDisplayGroup;
 			active: boolean;
 			awaitingInput: boolean;
 			toolCalls: ToolCall[];
@@ -114,7 +121,13 @@ function collectRunThinking(groups: DisplayGroup[], atTop: boolean): void {
 		if (run.length === 0) return;
 		const segments = run.flatMap((group) => group.thinkingSegments);
 		for (const group of run) group.thinkingSegments = [];
-		(atTop ? run[0] : run[run.length - 1]).thinkingSegments = segments;
+		const tail = run[run.length - 1];
+		if (atTop) {
+			run[0].thinkingSegments = segments;
+			run[0].runTail = tail;
+		} else {
+			tail.thinkingSegments = segments;
+		}
 		run = [];
 		executionId = undefined;
 	};

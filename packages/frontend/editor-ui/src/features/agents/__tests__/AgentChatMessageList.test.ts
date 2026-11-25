@@ -1182,7 +1182,10 @@ describe('AgentChatMessageList', () => {
 			).toBe(false);
 		});
 
-		it('keeps the top thinking block active while a later message streams', () => {
+		it.each<[string, ChatMessage['status']]>([
+			['streams', 'streaming'],
+			['waits for the user', 'awaitingUser'],
+		])('keeps the top thinking block active while a later message %s', (_name, status) => {
 			const wrapper = mount(AgentChatMessageList, {
 				props: {
 					messages: [
@@ -1192,9 +1195,9 @@ describe('AgentChatMessageList', () => {
 							content: 'I will search first.',
 							thinkingSegments: [{ id: 'reasoning-1', content: 'Choose a query.' }],
 							toolCalls: [{ tool: 'search', toolCallId: 'tool-1', state: 'done' }],
-							status: 'streaming',
+							status: 'success',
 						},
-						{ ...final, status: 'streaming' },
+						{ ...final, status },
 					],
 					messagingState: 'receiving',
 					thinkingAtTop: true,

@@ -495,17 +495,19 @@ function isThinkingActive(message: ChatMessage): boolean {
 }
 
 function getThinkingState(group: TurnDisplayGroup) {
-	if (group.kind === DISPLAY_GROUP_KIND.TOOL_RUN) {
+	// The newest step of the run tells if the run still works or waits for the user.
+	const source = group.runTail ?? group;
+	if (source.kind === DISPLAY_GROUP_KIND.TOOL_RUN) {
 		return {
-			active: group.active || group.awaitingInput,
-			awaitingInput: group.awaitingInput,
-			streaming: group.active,
+			active: source.active || source.awaitingInput,
+			awaitingInput: source.awaitingInput,
+			streaming: source.active,
 		};
 	}
 	return {
-		active: isThinkingActive(group.message),
-		awaitingInput: group.message.status === CHAT_MESSAGE_STATUS.AWAITING_USER,
-		streaming: group.message.status === CHAT_MESSAGE_STATUS.STREAMING,
+		active: isThinkingActive(source.message),
+		awaitingInput: source.message.status === CHAT_MESSAGE_STATUS.AWAITING_USER,
+		streaming: source.message.status === CHAT_MESSAGE_STATUS.STREAMING,
 	};
 }
 
