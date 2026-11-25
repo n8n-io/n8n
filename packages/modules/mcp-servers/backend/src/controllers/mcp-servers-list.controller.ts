@@ -15,7 +15,7 @@ export class McpServersListController {
 	@Get('/')
 	// The route has no project id, so the service checks `mcpServer:list` in each project.
 	async list(req: AuthenticatedRequest) {
-		await this.flagGate.assertEnabled(req.user);
+		await this.flagGate.assertEnabled();
 		return await this.service.listForUser(req.user);
 	}
 }

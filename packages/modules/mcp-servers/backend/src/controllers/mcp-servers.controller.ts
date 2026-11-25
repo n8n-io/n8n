@@ -30,14 +30,14 @@ export class McpServersController {
 	@Get('/')
 	@ProjectScope('mcpServer:list')
 	async list(req: ServerRequest) {
-		await this.flagGate.assertEnabled(req.user);
+		await this.flagGate.assertEnabled();
 		return await this.service.list(req.params.projectId);
 	}
 
 	@Post('/')
 	@ProjectScope('mcpServer:create')
 	async create(req: ServerRequest, _res: unknown, @Body dto: CreateMcpServerDto) {
-		await this.flagGate.assertEnabled(req.user);
+		await this.flagGate.assertEnabled();
 		return await this.service.create(req.params.projectId, dto, {
 			userId: req.user.id,
 			source: 'ui',
@@ -47,29 +47,29 @@ export class McpServersController {
 	// Before `/:serverId`, which would match this path too.
 	@Get('/slug-available')
 	@ProjectScope('mcpServer:create')
-	async slugAvailable(req: ServerRequest, _res: unknown, @Query query: McpServerSlugQueryDto) {
-		await this.flagGate.assertEnabled(req.user);
+	async slugAvailable(_req: ServerRequest, _res: unknown, @Query query: McpServerSlugQueryDto) {
+		await this.flagGate.assertEnabled();
 		return await this.service.slugAvailability(query.slug);
 	}
 
 	@Get('/:serverId')
 	@ProjectScope('mcpServer:read')
 	async get(req: ServerRequest) {
-		await this.flagGate.assertEnabled(req.user);
+		await this.flagGate.assertEnabled();
 		return await this.service.get(req.params.projectId, req.params.serverId);
 	}
 
 	@Patch('/:serverId')
 	@ProjectScope('mcpServer:update')
 	async update(req: ServerRequest, _res: unknown, @Body dto: UpdateMcpServerDto) {
-		await this.flagGate.assertEnabled(req.user);
+		await this.flagGate.assertEnabled();
 		return await this.service.update(req.params.projectId, req.params.serverId, dto);
 	}
 
 	@Delete('/:serverId')
 	@ProjectScope('mcpServer:delete')
 	async delete(req: ServerRequest) {
-		await this.flagGate.assertEnabled(req.user);
+		await this.flagGate.assertEnabled();
 		await this.service.delete(req.params.projectId, req.params.serverId, {
 			userId: req.user.id,
 			source: 'ui',
