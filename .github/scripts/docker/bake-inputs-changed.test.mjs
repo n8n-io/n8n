@@ -23,8 +23,8 @@ describe('changedTargets', () => {
 
 	it('ignores the tag of a pinned image', () => {
 		const digest = `sha256:${'a'.repeat(64)}`;
-		const before = bakeInputs(plan({ RUNTIME_IMAGE: `n8nio/base:26.13.0@${digest}` }), ['base']);
-		const after = bakeInputs(plan({ RUNTIME_IMAGE: `n8nio/base:26.13.0-abc123@${digest}` }), [
+		const before = bakeInputs(plan({ RUNTIME_IMAGE: `n8nio/base:26.13.1@${digest}` }), ['base']);
+		const after = bakeInputs(plan({ RUNTIME_IMAGE: `n8nio/base:26.13.1-abc123@${digest}` }), [
 			'base',
 		]);
 		assert.deepEqual(changedTargets(before, after), []);
@@ -47,8 +47,8 @@ describe('changedTargets', () => {
 	});
 
 	it('reports a changed build arg', () => {
-		const before = bakeInputs(plan({ DHI_REF: 'dhi.io/node:26.13.0@sha256:a' }), ['base']);
-		const after = bakeInputs(plan({ DHI_REF: 'dhi.io/node:26.13.0@sha256:b' }), ['base']);
+		const before = bakeInputs(plan({ DHI_REF: 'dhi.io/node:26.13.1@sha256:a' }), ['base']);
+		const after = bakeInputs(plan({ DHI_REF: 'dhi.io/node:26.13.1@sha256:b' }), ['base']);
 		assert.deepEqual(changedTargets(before, after), ['base']);
 	});
 
