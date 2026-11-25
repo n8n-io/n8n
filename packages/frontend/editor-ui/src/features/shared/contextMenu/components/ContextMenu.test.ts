@@ -11,6 +11,7 @@ const menuState = vi.hoisted(() => ({
 	target: { value: undefined as { source: 'canvas'; nodeIds: string[] } | undefined },
 	position: { value: [0, 0] as [number, number] },
 	actions: { value: [] as Array<ActionDropdownItem<ContextMenuAction>> },
+	anchor: { value: undefined as HTMLElement | undefined },
 	close: vi.fn(),
 }));
 
@@ -18,6 +19,8 @@ vi.mock('../composables/useContextMenu', async () => {
 	const { computed, ref } = await import('vue');
 	const target = ref(menuState.target.value);
 	const position = ref(menuState.position.value);
+	const anchor = ref(menuState.anchor.value);
+	menuState.anchor = anchor;
 	const actions = ref(menuState.actions.value);
 	menuState.target = target;
 	menuState.position = position;
@@ -29,6 +32,7 @@ vi.mock('../composables/useContextMenu', async () => {
 		useContextMenu: () => ({
 			isOpen: computed(() => target.value !== undefined),
 			position,
+			anchor,
 			actions,
 			targetNodeIds: computed(() => target.value?.nodeIds ?? []),
 			targetGroupId: computed(() => undefined),
@@ -59,6 +63,7 @@ describe('ContextMenu', () => {
 	beforeEach(() => {
 		menuState.target.value = undefined;
 		menuState.close.mockClear();
+		menuState.anchor.value = undefined;
 		document.body.innerHTML = '';
 	});
 
@@ -89,6 +94,28 @@ describe('ContextMenu', () => {
 		await userEvent.click(document.querySelector('[data-test-id="context-menu-item-delete"]')!);
 
 		expect(emitted('action')).toEqual([['delete', ['node-1'], undefined]]);
+	});
+
+	it('positions the design-system menu below the toolbar button', async () => {
+		const anchor = document.createElement('button');
+		document.body.appendChild(anchor);
+		menuState.anchor.value = anchor;
+		const { getByTestId } = renderComponent();
+		open([{ id: 'open', label: 'Open' }]);
+		await getMenu();
+
+		const menu = document.querySelector('[data-menu-content]');
+		expect(menu).toBe(getByTestId('context-menu'));
+		expect(menu).toHaveAttribute('data-side', 'bottom');
+		expect(menu).toHaveAttribute('data-align', 'end');
+	});
+
+	it('does not select disabled actions', async () => {
+		const { emitted } = renderComponent();
+		open([{ id: 'delete', label: 'Delete', disabled: true }]);
+		await getMenu();
+		await userEvent.click(document.querySelector('[data-test-id="context-menu-item-delete"]')!);
+		expect(emitted('action')).toBeUndefined();
 	});
 
 	it('closes the composable target when the menu is dismissed', async () => {

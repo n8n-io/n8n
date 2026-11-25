@@ -1,4 +1,4 @@
-import type { DropdownMenuContentProps } from 'reka-ui';
+import type { DropdownMenuContentProps, FocusOutsideEvent, PointerDownOutsideEvent } from 'reka-ui';
 import type { InjectionKey, Ref } from 'vue';
 
 import type { IconSize } from '../../types';
@@ -203,6 +203,10 @@ export interface DropdownMenuEmits<T = string, D = never> {
 	(e: 'submenu:toggle', itemId: T, open: boolean): void;
 	/** Emitted on mouseup event for an item (for wrapper compatibility) */
 	(e: 'item-mouseup', item: DropdownMenuItemProps<T, D>): void;
+	/** Lets the caller control focus restoration when the menu closes. */
+	(e: 'close-auto-focus', event: Event): void;
+	/** Reports pointer or focus interactions outside the menu. */
+	(e: 'interact-outside', event: FocusOutsideEvent | PointerDownOutsideEvent): void;
 }
 
 type SlotUiProps = { class: string };

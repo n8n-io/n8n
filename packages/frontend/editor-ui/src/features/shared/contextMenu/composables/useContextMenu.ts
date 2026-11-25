@@ -1,6 +1,6 @@
 import type { XYPosition } from '@/Interface';
 import { useUIStore } from '@/app/stores/ui.store';
-import { computed, ref, toRaw, watch } from 'vue';
+import { computed, ref, shallowRef, toRaw, watch } from 'vue';
 import {
 	getMousePosition,
 	isPastableWorkflowText,
@@ -27,6 +27,7 @@ export type ContextMenuActionCallback = (
 
 const position = ref<XYPosition>([0, 0]);
 const target = ref<ContextMenuTarget>();
+const anchor = shallowRef<HTMLElement>();
 // undefined when the clipboard cannot be read without a prompt
 const clipboardHasPasteData = ref<boolean>();
 
@@ -67,6 +68,7 @@ export const useContextMenu = () => {
 
 	const close = () => {
 		target.value = undefined;
+		anchor.value = undefined;
 		position.value = [0, 0];
 	};
 
@@ -85,6 +87,10 @@ export const useContextMenu = () => {
 
 		event.preventDefault();
 
+		anchor.value =
+			menuTarget.source === 'node-button' && event.currentTarget instanceof HTMLElement
+				? event.currentTarget
+				: undefined;
 		target.value = menuTarget;
 		position.value = getMousePosition(event);
 
@@ -110,6 +116,7 @@ export const useContextMenu = () => {
 	return {
 		isOpen,
 		position,
+		anchor,
 		target,
 		actions: computed(() => (isOpen.value ? actions.value : [])),
 		targetNodeIds,

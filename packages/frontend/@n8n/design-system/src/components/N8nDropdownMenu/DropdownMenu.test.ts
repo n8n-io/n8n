@@ -605,6 +605,26 @@ describe('N8nDropdownMenu', () => {
 			});
 		});
 
+		it('lets the caller control close focus and observe outside interactions', () => {
+			const onCloseAutoFocus = vi.fn((event: Event) => event.preventDefault());
+			const onInteractOutside = vi.fn();
+			const wrapper = shallowMount(DropdownMenu, {
+				props: { items: createItems(1), modelValue: true, onCloseAutoFocus, onInteractOutside },
+				global: { renderStubDefaultSlot: true },
+			});
+			const content = wrapper.findComponent(DropdownMenuContent);
+			const closeEvent = new Event('closeAutoFocus', { cancelable: true });
+			content.vm.$emit('closeAutoFocus', closeEvent);
+			expect(onCloseAutoFocus).toHaveBeenCalledWith(closeEvent);
+			expect(closeEvent.defaultPrevented).toBe(true);
+
+			const outsideEvent = new CustomEvent('interactOutside', {
+				detail: { originalEvent: new PointerEvent('pointerdown') },
+			});
+			content.vm.$emit('interactOutside', outsideEvent);
+			expect(onInteractOutside).toHaveBeenCalledWith(outsideEvent);
+		});
+
 		it('should position the menu relative to a custom reference', function () {
 			const reference = document.createElement('div');
 			const wrapper = shallowMount(DropdownMenu, {
