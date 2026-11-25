@@ -13,6 +13,14 @@ vi.mock('@/app/stores/posthog.store', () => ({
 	}),
 }));
 
+vi.mock('vue-router', () => ({
+	useRouter: () => ({
+		resolve: ({ params }: { params: { workflowId: string } }) => ({
+			href: `/base/workflow/${params.workflowId}`,
+		}),
+	}),
+}));
+
 const PickerStub = defineComponent({
 	name: 'SkillWorkflowMentionPicker',
 	props: ['mode', 'projectId', 'projectName', 'mentionedWorkflowIds'],
@@ -49,6 +57,22 @@ describe('AgentSkillFileNav', () => {
 		const rows = container.querySelectorAll('[data-testid="agent-skill-workflow-item"]');
 		expect([...rows].map((row) => row.textContent?.trim())).toEqual(['Weekly report', 'Archive']);
 		expect(byTestId(container, 'picker-stub')).toHaveAttribute('data-ids', 'wf1,wf2');
+	});
+
+	it('links each listed workflow to its page in a new tab', () => {
+		flag.enabled = true;
+		const { container } = renderComponent({
+			props: { skill: MENTIONING_SKILL, selectedPath: 'SKILL.md' },
+		});
+
+		const links = container.querySelectorAll('[data-testid="agent-skill-workflow-link"]');
+		expect([...links].map((link) => link.getAttribute('href'))).toEqual([
+			'/base/workflow/wf1',
+			'/base/workflow/wf2',
+		]);
+		expect(links[0]).toHaveAttribute('target', '_blank');
+		expect(links[0]).toHaveAttribute('rel', 'noopener');
+		expect(links[0]).toHaveTextContent('Weekly report');
 	});
 
 	it('shows an empty state when the skill mentions no workflow', () => {
