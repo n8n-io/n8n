@@ -222,15 +222,16 @@ describe('applyAgentThinking', () => {
 	describe('OpenRouter reasoning', () => {
 		afterEach(() => vi.unstubAllEnvs());
 
-		it.each([
-			[undefined, 'medium'],
-			['high', 'high'],
-			['max', 'max'],
-			['minimal', 'medium'],
-		])('resolves the configured effort %s to %s', (configured, expected) => {
+		it.each(['low', 'medium', 'high', 'xhigh', 'max'])('uses configured effort %s', (effort) => {
+			vi.stubEnv('N8N_INSTANCE_AI_REASONING_EFFORT', effort);
+			applyAgentThinking(new Agent('test'), 'openrouter/moonshotai/kimi-k3');
+			expect(mockAgentInstances[0]?.reasoning).toHaveBeenCalledWith(effort);
+		});
+
+		it.each([undefined, '', 'minimal', 'unknown'])('omits reasoning for %s', (configured) => {
 			vi.stubEnv('N8N_INSTANCE_AI_REASONING_EFFORT', configured);
 			applyAgentThinking(new Agent('test'), 'openrouter/moonshotai/kimi-k3');
-			expect(mockAgentInstances[0]?.reasoning).toHaveBeenCalledWith(expected);
+			expect(mockAgentInstances[0]?.reasoning).not.toHaveBeenCalled();
 		});
 
 		it('prefers an explicit effort over the configured effort', () => {
