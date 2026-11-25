@@ -183,6 +183,16 @@ describe('Test Notion', () => {
 				expect(result).toBe(testId);
 			}
 		});
+
+		test.each([
+			['undefined', undefined],
+			['null', null],
+			['an incomplete resourceLocator object', { __rl: true, mode: 'url' }],
+			['a number', 12345],
+			['an empty string', ''],
+		])('should return an empty string when input is %s', (_, input) => {
+			expect(extractPageId(input)).toBe('');
+		});
 	});
 });
 

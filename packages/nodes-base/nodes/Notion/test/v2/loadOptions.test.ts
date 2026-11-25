@@ -40,6 +40,7 @@ function createMockLoadOptionsContext(parameters: Record<string, unknown>): ILoa
 
 function createNotionV2LoadOptionsContext(
 	currentNodeParameters: INodeParameters,
+	path = 'parameters.propertiesUi.propertyValues[0].key',
 ): LoadOptionsContext {
 	const notionV2 = new Notion().getNodeType(2.2);
 	const nodeTypes = mock<INodeTypes>();
@@ -65,12 +66,7 @@ function createNotionV2LoadOptionsContext(
 	// Assign directly so vitest-mock-extended does not wrap parameter objects in mock proxies.
 	additionalData.currentNodeParameters = currentNodeParameters;
 
-	return new LoadOptionsContext(
-		workflow,
-		node,
-		additionalData,
-		'parameters.propertiesUi.propertyValues[0].key',
-	);
+	return new LoadOptionsContext(workflow, node, additionalData, path);
 }
 
 describe('Notion V2 load options', () => {
@@ -141,6 +137,7 @@ describe('Notion V2 load options', () => {
 			['incomplete id resourceLocator object', { __rl: true, mode: 'id' }],
 			['null value', null],
 			['numeric value', 12345],
+			['empty string', ''],
 		])('returns no options when pageId resolves to %s', async (_label, pageId) => {
 			const context = createNotionV2LoadOptionsContext({
 				resource: 'databasePage',
@@ -149,6 +146,33 @@ describe('Notion V2 load options', () => {
 			});
 
 			const result = await getDatabaseIdFromPage.call(context);
+
+			expect(result).toEqual([]);
+			expect(mockNotionApiRequest).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getDatabaseOptionsFromPage', () => {
+		it.each([
+			['incomplete url resourceLocator object', { __rl: true, mode: 'url' }],
+			['incomplete id resourceLocator object', { __rl: true, mode: 'id' }],
+			['null value', null],
+			['numeric value', 12345],
+			['empty string', ''],
+		])('returns no options when pageId resolves to %s', async (_label, pageId) => {
+			const context = createNotionV2LoadOptionsContext(
+				{
+					resource: 'databasePage',
+					operation: 'update',
+					pageId,
+					propertiesUi: {
+						propertyValues: [{ key: 'Status|select', type: 'select' }],
+					},
+				},
+				'parameters.propertiesUi.propertyValues[0].selectValue',
+			);
+
+			const result = await getDatabaseOptionsFromPage.call(context);
 
 			expect(result).toEqual([]);
 			expect(mockNotionApiRequest).not.toHaveBeenCalled();

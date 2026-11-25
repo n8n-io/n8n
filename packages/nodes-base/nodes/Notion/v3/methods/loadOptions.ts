@@ -124,10 +124,8 @@ export async function getUsers(this: ILoadOptionsFunctions): Promise<INodeProper
 async function getParentDataSourceIdFromPage(
 	this: ILoadOptionsFunctions,
 ): Promise<string | undefined> {
-	const pageIdValue = this.getCurrentNodeParameter('pageId', { extractValue: true }) as
-		| string
-		| null;
-	const pageId = extractPageId(pageIdValue ?? '');
+	const pageIdValue = this.getCurrentNodeParameter('pageId', { extractValue: true });
+	const pageId = typeof pageIdValue === 'string' && pageIdValue ? extractPageId(pageIdValue) : '';
 	if (!pageId) {
 		return undefined;
 	}

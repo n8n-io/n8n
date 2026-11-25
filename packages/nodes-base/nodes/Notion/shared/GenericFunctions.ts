@@ -929,7 +929,10 @@ export async function downloadFiles(
 	return elements;
 }
 
-export function extractPageId(page = '') {
+export function extractPageId(page: unknown = ''): string {
+	if (typeof page !== 'string') {
+		return '';
+	}
 	if (page.includes('p=')) {
 		return page.split('p=')[1];
 	} else if (page.includes('-') && page.includes('https')) {

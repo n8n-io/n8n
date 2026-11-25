@@ -138,10 +138,12 @@ export async function getUsers(this: ILoadOptionsFunctions): Promise<INodeProper
 export async function getDatabaseIdFromPage(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
+	const pageIdValue = this.getCurrentNodeParameter('pageId', { extractValue: true });
+	const pageId = typeof pageIdValue === 'string' && pageIdValue ? extractPageId(pageIdValue) : '';
+	if (!pageId) {
+		return [];
+	}
 	const returnData: INodePropertyOptions[] = [];
-	const pageId = extractPageId(
-		this.getCurrentNodeParameter('pageId', { extractValue: true }) as string,
-	);
 	const {
 		parent: { database_id: databaseId },
 	} = await notionApiRequest.call(this, 'GET', requestPath`/pages/${pageId}`);
@@ -183,10 +185,8 @@ export async function getDatabaseIdFromPage(
 export async function getDatabaseOptionsFromPage(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	const pageIdValue = this.getCurrentNodeParameter('pageId', { extractValue: true }) as
-		| string
-		| null;
-	const pageId = extractPageId(pageIdValue ?? '');
+	const pageIdValue = this.getCurrentNodeParameter('pageId', { extractValue: true });
+	const pageId = typeof pageIdValue === 'string' && pageIdValue ? extractPageId(pageIdValue) : '';
 	if (!pageId) {
 		return [];
 	}
