@@ -8,7 +8,6 @@ import { CredentialDataError } from 'n8n-core';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
-import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { getExternalSecretExpressionPaths } from '@/credentials/external-secrets.utils';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
@@ -46,7 +45,6 @@ export class CredentialImporter {
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsFinder: CredentialsFinderService,
 		private readonly eventService: EventService,
-		private readonly credentialDescriptions: CredentialDescriptionsService,
 		private readonly credentialsOverwrites: CredentialsOverwrites,
 	) {}
 
@@ -99,7 +97,6 @@ export class CredentialImporter {
 		const requirementsById = new Map(
 			(request.requirements ?? []).map((requirement) => [requirement.id, requirement]),
 		);
-		const descriptionsEnabled = await this.credentialDescriptions.isEnabled();
 		const destinations = new Map<string, CredentialsEntity | null>();
 		const inScope: Array<{
 			match: CredentialMatch;
@@ -131,10 +128,7 @@ export class CredentialImporter {
 					targetName: destination.name,
 					usedBy: mergeRequirementConsumers(requirementsById.get(sourceId)?.usedBy ?? []),
 				},
-				// With descriptions off, the description decides nothing: no difference, no conflict.
-				packageCredential: descriptionsEnabled
-					? packageCredential
-					: { ...packageCredential, description: undefined },
+				packageCredential,
 				destination,
 				ownerProjectId,
 			});
@@ -359,9 +353,7 @@ export class CredentialImporter {
 			credentialType: saved.type,
 			credentialId: saved.id,
 			credentialName: saved.name,
-			...((await this.credentialDescriptions.isEnabled()) && {
-				credentialDescriptionLength: saved.description?.length ?? 0,
-			}),
+			credentialDescriptionLength: saved.description?.length ?? 0,
 			isDynamic: saved.isResolvable ?? false,
 			usesExternalSecrets: getExternalSecretExpressionPaths(data).length > 0,
 			jweEnabled: data.jweEnabled === true,

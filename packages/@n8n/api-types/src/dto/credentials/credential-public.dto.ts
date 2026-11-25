@@ -19,7 +19,7 @@ export const credentialSharedPublicSchema = z.object({
 export const credentialPublicSchema = publicApiCredentialResponseSchema.extend({
 	description: z.string().nullable().optional().openapi({
 		example: 'Read-only key for the reporting database',
-		description: 'Present only when credential descriptions are enabled.',
+		description: 'Plain text description of the credential, or null.',
 	}),
 	resolverId: z.string().nullable(),
 	createdAt: z.string().datetime(),
@@ -56,8 +56,7 @@ export class CreateCredentialPublicDto extends Z.class({
 	name: z.string().openapi({ example: "Joe's Github Credentials" }),
 	description: credentialDescriptionSchema.optional().openapi({
 		example: 'Read-only key for the reporting database',
-		description:
-			'Plain text, up to 512 characters. A blank value is saved as null. Ignored when credential descriptions are disabled.',
+		description: 'Plain text, up to 512 characters. A blank value is saved as null.',
 	}),
 	type: z.string().openapi({ example: 'githubApi' }),
 	data: z.record(z.string(), z.unknown()).openapi({
@@ -96,7 +95,7 @@ export class UpdateCredentialPublicDto extends Z.class({
 	description: credentialDescriptionSchema.optional().openapi({
 		example: 'Read-only key for the reporting database',
 		description:
-			'Plain text, up to 512 characters. Send null or a blank value to clear it. Omit it to keep the stored value. Ignored when credential descriptions are disabled.',
+			'Plain text, up to 512 characters. Send null or a blank value to clear it. Omit it to keep the stored value.',
 	}),
 	type: z.string().optional().openapi({
 		example: 'githubApi',

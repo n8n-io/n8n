@@ -485,7 +485,7 @@ describe('McpService', () => {
 			const service = buildResolutionService({ postHogClient });
 
 			await expect(service.resolveFeatureFlags(user)).resolves.toEqual({
-				credentialDescriptionsEnabled: false,
+				credentialDescriptionsEnabled: true,
 				mcpApps: { enabled: true, variant: 'variant' },
 				instanceContextEnabled: true,
 				skillsExtensionEnabled: false,
@@ -588,7 +588,7 @@ describe('McpService', () => {
 			const service = buildResolutionService({ postHogClient, mcpAppsEnabled: true });
 
 			await expect(service.resolveFeatureFlags(user)).resolves.toEqual({
-				credentialDescriptionsEnabled: false,
+				credentialDescriptionsEnabled: true,
 				mcpApps: { enabled: true, variant: 'env_override' },
 				instanceContextEnabled: true,
 				skillsExtensionEnabled: false,
@@ -608,7 +608,7 @@ describe('McpService', () => {
 			});
 
 			await expect(service.resolveFeatureFlags(user)).resolves.toEqual({
-				credentialDescriptionsEnabled: false,
+				credentialDescriptionsEnabled: true,
 				mcpApps: { enabled: true, variant: 'env_override' },
 				instanceContextEnabled: true,
 				skillsExtensionEnabled: false,

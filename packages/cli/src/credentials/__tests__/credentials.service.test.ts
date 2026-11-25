@@ -1,4 +1,3 @@
-import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
 import { CREDENTIAL_DESCRIPTION_MAX_LENGTH } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import {
@@ -6,7 +5,6 @@ import {
 	type EventService,
 	type RoleService,
 	type CredentialsFinderService,
-	type PostHogClient,
 } from '@n8n/backend-services';
 import type {
 	CredentialsRepository,
@@ -116,8 +114,6 @@ describe('CredentialsService', () => {
 	const errorReporter = mock<ErrorReporter>();
 	const credentialTypes = mock<CredentialTypes>();
 	const credentialsRepository = mock<CredentialsRepository>();
-	const postHogClient = mock<PostHogClient>();
-	const credentialDescriptions = new CredentialDescriptionsService(postHogClient);
 	const credentialDependencyService = mock<CredentialDependencyService>();
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const ownershipService = mock<OwnershipService>();
@@ -167,14 +163,12 @@ describe('CredentialsService', () => {
 		eventService,
 		transactionRunner,
 		policyEnforcementService,
-		credentialDescriptions,
 		mock(), // credentialsPermissionChecker
 		credentialRestrictions,
 	);
 
 	beforeEach(() => {
 		vi.resetAllMocks();
-		postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
 		policyEnforcementService.enforceCredentialSave.mockResolvedValue(cleared);
 		credentialDependencyService.resolveExternalSecretsStoreDependencyFilter.mockResolvedValue(
 			undefined,
@@ -563,10 +557,9 @@ describe('CredentialsService', () => {
 			},
 		);
 
-		it.each(['disabled', 'invalid', 'missing', 'policy'])(
+		it.each(['invalid', 'missing', 'policy'])(
 			'rejects %s before hooks and writes',
 			async (reason) => {
-				if (reason === 'disabled') postHogClient.getFeatureFlagForInstance.mockResolvedValue(false);
 				if (reason === 'missing')
 					credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
 				if (reason === 'policy')
@@ -714,17 +707,6 @@ describe('CredentialsService', () => {
 
 			expect(prepared.description).toBe('Read-only key for reporting.');
 		});
-
-		it.each([false, undefined])(
-			'ignores description updates when the flag is %s',
-			async (enabled) => {
-				postHogClient.getFeatureFlagForInstance.mockResolvedValue(enabled);
-				for (const description of [null, 'x'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH + 1)]) {
-					const prepared = await prepare(description);
-					expect(prepared.description).toBeUndefined();
-				}
-			},
-		);
 
 		it.each([
 			['an empty string', ''],
@@ -2301,7 +2283,7 @@ describe('CredentialsService', () => {
 				});
 			};
 
-			it('persists and returns the description when the flag is enabled', async () => {
+			it('persists and returns the description', async () => {
 				const stored = setUpUpdate();
 				const payload = buildPayload(stored, { description: 'New description' });
 
@@ -2313,10 +2295,9 @@ describe('CredentialsService', () => {
 					expect.anything(),
 				);
 				expect(result?.description).toBe(storedDescription);
-				expect(postHogClient.getFeatureFlagForInstance).toHaveBeenCalledOnce();
 			});
 
-			it('keeps a hook-added description when the flag is enabled', async () => {
+			it('keeps a hook-added description', async () => {
 				const stored = setUpUpdate();
 				hookSetsDescription('From hook');
 
@@ -2328,47 +2309,6 @@ describe('CredentialsService', () => {
 					expect.anything(),
 				);
 			});
-
-			it.each([false, undefined])(
-				'keeps the description out of the write and the response when the flag is %s',
-				async (enabled) => {
-					postHogClient.getFeatureFlagForInstance.mockResolvedValue(enabled);
-					const stored = setUpUpdate();
-					let hookInput: ICredentialsDb | undefined;
-					externalHooks.run.mockImplementation(async (_hookName, params) => {
-						hookInput = { ...(params as [ICredentialsDb])[0] };
-					});
-					const payload = buildPayload(stored, { description: 'New description' });
-
-					const result = await service.update(stored.id, payload, ownerActor);
-
-					expect(hookInput).not.toHaveProperty('description');
-					const [, written] = credentialsRepository.updateContent.mock.calls[0];
-					expect(written).not.toHaveProperty('description');
-					expect(result).not.toBeNull();
-					expect(result).not.toHaveProperty('description');
-					expect(stored.description).toBe(storedDescription);
-					expect(postHogClient.getFeatureFlagForInstance).toHaveBeenCalledOnce();
-				},
-			);
-
-			it.each([false, undefined])(
-				'keeps a hook-added description out of the write and the response when the flag is %s',
-				async (enabled) => {
-					postHogClient.getFeatureFlagForInstance.mockResolvedValue(enabled);
-					const stored = setUpUpdate();
-					hookSetsDescription('From hook');
-
-					const result = await service.update(stored.id, buildPayload(stored), ownerActor);
-
-					const [, written] = credentialsRepository.updateContent.mock.calls[0];
-					expect(written).not.toHaveProperty('description');
-					expect(result).not.toBeNull();
-					expect(result).not.toHaveProperty('description');
-					expect(stored.description).toBe(storedDescription);
-					expect(postHogClient.getFeatureFlagForInstance).toHaveBeenCalledOnce();
-				},
-			);
 		});
 	});
 
@@ -3908,26 +3848,6 @@ describe('CredentialsService', () => {
 
 				expect(result[0].description).toBe(description);
 				expect(result[0]).not.toHaveProperty('data');
-			},
-		);
-
-		it.each([false, undefined])(
-			'omits descriptions from workflow-scoped lists when the flag is %s',
-			async (enabled) => {
-				postHogClient.getFeatureFlagForInstance.mockResolvedValue(enabled);
-				const credential = Object.assign(new CredentialsEntity(), regularCredential, {
-					description: 'Read-only reporting account',
-				});
-				credentialsFinderService.findCredentialsForUser.mockResolvedValue([credential]);
-				credentialsRepository.findAllCredentialsForWorkflow.mockResolvedValue([credential]);
-
-				const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
-					workflowId: 'workflow-1',
-				});
-
-				expect(result).toHaveLength(1);
-				expect(result[0]).not.toHaveProperty('description');
-				expect(credential.description).toBe('Read-only reporting account');
 			},
 		);
 

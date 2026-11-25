@@ -3,7 +3,7 @@ import {
 	InvalidTargetError,
 } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import { Logger, type LicenseState, type ModuleRegistry } from '@n8n/backend-common';
-import { type EventService, type UrlService, type PostHogClient } from '@n8n/backend-services';
+import { type EventService, type UrlService } from '@n8n/backend-services';
 import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
@@ -2080,7 +2080,6 @@ describe('OAuthServerService', () => {
 				mock<GlobalConfig>(),
 				mock<ModuleRegistry>(),
 				mock<LicenseState>(),
-				mock<PostHogClient>(),
 			);
 			expect(mcpResource.getResourceUrl()).toBe('https://n8n-mcp.example.com/mcp-server/http');
 

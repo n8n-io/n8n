@@ -1,5 +1,4 @@
 import type { Response } from 'express';
-import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
 import type { MockInstance } from 'vitest';
 vi.mock('@/generic-helpers', () => ({
 	validateEntity: vi.fn(),
@@ -26,7 +25,7 @@ import type { CredentialRequest } from '@/requests';
 
 import { createNewCredentialsPayload, createdCredentialsWithScopes } from './credentials.test-data';
 import type { CredentialDependencyService } from '../credential-dependency.service';
-import type { CredentialsFinderService, PostHogClient } from '@n8n/backend-services';
+import type { CredentialsFinderService } from '@n8n/backend-services';
 import { CredentialsController } from '../credentials.controller';
 import { CredentialsService } from '../credentials.service';
 import type { EnterpriseCredentialsService } from '../credentials.service.ee';
@@ -44,8 +43,6 @@ describe('CredentialsController', () => {
 
 	// Mock the credentialsRepository with a working create method
 	const credentialsRepository = mock<CredentialsRepository>();
-	const postHogClient = mock<PostHogClient>();
-	const credentialDescriptions = new CredentialDescriptionsService(postHogClient);
 
 	// real CredentialsService instance with mocked dependencies
 	const credentialsService = new CredentialsService(
@@ -73,7 +70,6 @@ describe('CredentialsController', () => {
 		mock(), // eventService
 		mock(), // transactionRunner
 		mock(), // policyEnforcementService
-		credentialDescriptions,
 		mock(), // credentialsPermissionChecker
 		mock(), // credentialRestrictions
 	);
@@ -107,7 +103,6 @@ describe('CredentialsController', () => {
 		credentialsFinderService,
 		mock(), // connectionStatusProxy
 		credentialsOverwrites,
-		credentialDescriptions,
 	);
 
 	let req: AuthenticatedRequest;
@@ -118,7 +113,6 @@ describe('CredentialsController', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
-		postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
 		decryptSpy = vi.spyOn(credentialsService, 'decrypt');
 		createEncryptedDataSpy = vi.spyOn(credentialsService, 'createEncryptedData');
 		prepareUpdateDataSpy = vi.spyOn(credentialsService, 'prepareUpdateData');

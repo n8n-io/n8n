@@ -31,7 +31,7 @@ export const serializedCredentialSchema = z
 		id: z.string().min(1),
 		name: z.string().min(1),
 		type: z.string().min(1),
-		// Present only when the source instance has credential descriptions on.
+		// Absent in packages that older n8n versions exported.
 		description: credentialDescriptionSchema.optional(),
 		data: serializedCredentialDataSchema.optional(),
 		dataIsComplete: z.boolean().optional(),

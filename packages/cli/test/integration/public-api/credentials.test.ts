@@ -1,8 +1,4 @@
-import {
-	CREDENTIAL_DESCRIPTION_MAX_LENGTH,
-	CREDENTIAL_DESCRIPTIONS_FLAG,
-	MAX_ITEMS_PER_PAGE,
-} from '@n8n/api-types';
+import { CREDENTIAL_DESCRIPTION_MAX_LENGTH, MAX_ITEMS_PER_PAGE } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import type { CredentialPayload } from '@n8n/backend-test-utils';
 import { createTeamProject, linkUserToProject, randomName, testDb } from '@n8n/backend-test-utils';
@@ -26,7 +22,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
-import { EventService, RoleCacheService, PostHogClient } from '@n8n/backend-services';
+import { EventService, RoleCacheService } from '@n8n/backend-services';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 
@@ -964,6 +960,7 @@ describe('DELETE /credentials/:id', () => {
 		expect(response.body).toStrictEqual({
 			id: savedCredential.id,
 			name: savedCredential.name,
+			description: null,
 			type: savedCredential.type,
 			isManaged: savedCredential.isManaged,
 			isGlobal: savedCredential.isGlobal,
@@ -1990,13 +1987,6 @@ describe('PATCH /credentials/:id', () => {
 describe('credential description', () => {
 	const description = 'Read-only key for the reporting database';
 
-	const setDescriptionsFlag = (enabled: boolean) =>
-		vi
-			.mocked(Container.get(PostHogClient).getFeatureFlagForInstance)
-			.mockImplementation(async (flag) =>
-				flag === CREDENTIAL_DESCRIPTIONS_FLAG ? enabled : undefined,
-			);
-
 	const getStoredDescription = async (id: string) =>
 		(await Container.get(CredentialsRepository).findOneByOrFail({ id })).description;
 
@@ -2007,11 +1997,6 @@ describe('credential description', () => {
 		expect(response.statusCode).toBe(200);
 		return response.body.id as string;
 	};
-
-	beforeEach(() => setDescriptionsFlag(true));
-	afterEach(() => {
-		vi.mocked(Container.get(PostHogClient).getFeatureFlagForInstance).mockResolvedValue(undefined);
-	});
 
 	test('should save the description of a credential created with a supplied ID', async () => {
 		const response = await authOwnerAgent
@@ -2066,22 +2051,6 @@ describe('credential description', () => {
 
 		const fetched = await authOwnerAgent.get(`/credentials/${id}`);
 		expect(fetched.body.description).toBe(description);
-	});
-
-	test('should ignore the description when credential descriptions are disabled', async () => {
-		setDescriptionsFlag(false);
-
-		const created = await authOwnerAgent.post('/credentials').send({
-			...credentialPayload(),
-			description: 'x'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH + 1),
-		});
-
-		expect(created.statusCode).toBe(200);
-		expect(created.body).not.toHaveProperty('description');
-		expect(await getStoredDescription(created.body.id)).toBeNull();
-
-		const fetched = await authOwnerAgent.get(`/credentials/${created.body.id}`);
-		expect(fetched.body).not.toHaveProperty('description');
 	});
 });
 

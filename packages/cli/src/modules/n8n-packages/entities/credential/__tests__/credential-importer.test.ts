@@ -16,7 +16,6 @@ import { mock } from 'vitest-mock-extended';
 import { ForbiddenError, NotFoundError, UnprocessableRequestError } from '@n8n/errors';
 import { CredentialDataError, Credentials } from 'n8n-core';
 import type { CredentialTypes } from '@/credential-types';
-import type { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
 
@@ -51,7 +50,6 @@ describe('CredentialImporter', () => {
 	const credentialsService = mock<CredentialsService>();
 	const credentialsFinder = mock<CredentialsFinderService>();
 	const eventService = mock<EventService>();
-	const credentialDescriptions = mock<CredentialDescriptionsService>();
 	const credentialsOverwrites = mock<CredentialsOverwrites>();
 	const credentialTypes = mock<CredentialTypes>();
 	const targetProject = mock<Project>({ id: 'project-target' });
@@ -133,7 +131,6 @@ describe('CredentialImporter', () => {
 			credentialsService,
 			credentialsFinder,
 			eventService,
-			credentialDescriptions,
 			credentialsOverwrites,
 		);
 	});
@@ -562,28 +559,24 @@ describe('CredentialImporter', () => {
 			).rejects.toThrow(UnprocessableRequestError);
 		});
 
-		it.each([{ enabled: true }, { enabled: false }])(
-			'treats a description-only difference as an update only when descriptions are on ($enabled)',
-			async ({ enabled }) => {
-				credentialDescriptions.isEnabled.mockResolvedValue(enabled);
-				credentialsFinder.findById.mockResolvedValue(destination({ description: 'Old' }));
-				credentialsService.decryptOrFail.mockResolvedValue({ accessToken: EXPRESSION });
+		it('treats a description-only difference as an update', async () => {
+			credentialsFinder.findById.mockResolvedValue(destination({ description: 'Old' }));
+			credentialsService.decryptOrFail.mockResolvedValue({ accessToken: EXPRESSION });
 
-				const result = await importer.plan(
-					context,
-					bindingRequest([requirement], {
-						conflictPolicy: 'overwrite',
-						packageCredentials: new Map([
-							['cred-1', packageFile({ description: 'From the package' })],
-						]),
-					}),
-				);
+			const result = await importer.plan(
+				context,
+				bindingRequest([requirement], {
+					conflictPolicy: 'overwrite',
+					packageCredentials: new Map([
+						['cred-1', packageFile({ description: 'From the package' })],
+					]),
+				}),
+			);
 
-				expect(result.candidates).toHaveLength(1);
-				expect(result.candidates[0].description).toBe(enabled ? 'From the package' : undefined);
-				expect(result.updates).toHaveLength(enabled ? 1 : 0);
-			},
-		);
+			expect(result.candidates).toHaveLength(1);
+			expect(result.candidates[0].description).toBe('From the package');
+			expect(result.updates).toHaveLength(1);
+		});
 
 		it('keeps an equal candidate out of the updates', async () => {
 			credentialsFinder.findById.mockResolvedValue(destination());
@@ -897,7 +890,6 @@ describe('CredentialImporter', () => {
 				credentialsService.update.mockResolvedValue(
 					stored({ name: 'Renamed', isResolvable: false, description: 'Team token' }),
 				);
-				credentialDescriptions.isEnabled.mockResolvedValue(true);
 				credentialsOverwrites.supportsManagedAuth.mockReturnValue(false);
 				credentialsOverwrites.usesManagedAuth.mockReturnValue(false);
 				credentialsOverwrites.getManagedAppVersion.mockReturnValue(2);

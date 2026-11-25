@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import { useCredentialDescriptionsExperiment } from '@/experiments/credentialDescriptions/useCredentialDescriptionsExperiment';
 import { useAgentAssistantCredentialHelp } from '@/features/agents/composables/useAgentAssistantCredentialHelp';
-import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '@/features/credentials/templatedAuth.utils';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
 import type { IUpdateInformation, NewCredentialsModal } from '@/Interface';
@@ -103,8 +101,6 @@ type Props = {
 
 /** All a new credential needs of its owning project: where to save it, and what to call it in the toast. */
 type CredentialHomeProject = { id: string; name?: string | null };
-
-const { isEnabled: credentialDescriptionsEnabled } = useCredentialDescriptionsExperiment();
 
 const props = withDefaults(defineProps<Props>(), { mode: 'new', activeId: undefined });
 
@@ -321,7 +317,6 @@ watch(currentCredential, (credential) => {
 
 const canEditDescription = computed(
 	() =>
-		credentialDescriptionsEnabled.value &&
 		!isEditingManagedCredential.value &&
 		(isNewCredential.value
 			? credentialPermissions.value.create
@@ -367,7 +362,7 @@ const sidebarItems = computed(() => {
 		},
 		...(isInstanceCredential.value ||
 		modalOptions.value?.destination ||
-		(credentialDescriptionsEnabled.value && isEditingManagedCredential.value)
+		isEditingManagedCredential.value
 			? []
 			: [
 					{
@@ -376,16 +371,11 @@ const sidebarItems = computed(() => {
 						position: 'top',
 					} satisfies IMenuItem,
 				]),
-		...(credentialDescriptionsEnabled.value ||
-		credentialTypeName.value !== TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE
-			? [
-					{
-						id: 'details',
-						label: i18n.baseText('credentialEdit.credentialEdit.details'),
-						position: 'top',
-					} satisfies IMenuItem,
-				]
-			: []),
+		{
+			id: 'details',
+			label: i18n.baseText('credentialEdit.credentialEdit.details'),
+			position: 'top',
+		} satisfies IMenuItem,
 	];
 
 	return menuItems;
@@ -402,11 +392,7 @@ const defaultCredentialTypeName = computed(() => {
 });
 
 const showSaveButton = computed(() => {
-	if (
-		isQuickConnectMode.value ||
-		(credentialDescriptionsEnabled.value && isEditingManagedCredential.value)
-	)
-		return false;
+	if (isQuickConnectMode.value || isEditingManagedCredential.value) return false;
 	const hasPermission = credentialPermissions.value.create ?? credentialPermissions.value.update;
 	if (!hasPermission) return false;
 	return true;
@@ -416,14 +402,7 @@ const credentialHasDependents = computed(
 	() => !!credentialId.value && hasDependencies(credentialId.value, 'credential'),
 );
 
-const showHeaderSaveButton = computed(
-	() =>
-		showSaveButton.value &&
-		!!credentialType.value &&
-		(credentialDescriptionsEnabled.value ||
-			activeTab.value === 'connection' ||
-			activeTab.value === 'sharing'),
-);
+const showHeaderSaveButton = computed(() => showSaveButton.value && !!credentialType.value);
 
 const showSharingContent = computed(() => activeTab.value === 'sharing' && !!credentialType.value);
 
@@ -1779,10 +1758,7 @@ const { width } = useElementSize(credNameRef);
 				<div :class="$style.credentialDialog" data-test-id="editCredential-modal">
 					<template v-if="!loading">
 						<div :class="$style.container" data-test-id="credential-edit-dialog">
-							<div
-								v-if="credentialDescriptionsEnabled || !isEditingManagedCredential"
-								:class="$style.sidebar"
-							>
+							<div :class="$style.sidebar">
 								<N8nMenuItem
 									v-for="item in sidebarItems"
 									:key="item.id"

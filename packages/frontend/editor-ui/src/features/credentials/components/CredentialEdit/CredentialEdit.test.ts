@@ -2134,58 +2134,6 @@ describe('CredentialEdit', () => {
 				return { credentialsStore, credential, render };
 			};
 
-			test('keeps the previous Details layout and omits descriptions from saves when disabled', async () => {
-				const { credentialsStore, credential, render } = setupExistingCredential();
-				mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(false);
-				credentialsStore.updateCredential.mockResolvedValue(credential);
-				const view = render();
-				await userEvent.click(await view.findByText('Details'));
-				expect(view.queryByRole('textbox', { name: 'Description' })).not.toBeInTheDocument();
-				expect(view.getByText('Created')).toBeInTheDocument();
-				expect(view.queryByTestId('credential-save-button')).not.toBeInTheDocument();
-				await userEvent.click(view.getByText('Connection'));
-				const name = view.getByTestId('credential-name');
-				await userEvent.click(name);
-				const nameInput = within(name).getByRole('textbox');
-				await userEvent.clear(nameInput);
-				await userEvent.type(nameInput, 'Renamed credential{enter}');
-				await userEvent.click(
-					within(view.getByTestId('credential-save-button')).getByRole('button'),
-				);
-				await waitFor(() => expect(credentialsStore.updateCredential).toHaveBeenCalledTimes(1));
-				expect(credentialsStore.updateCredential.mock.calls[0][0].data).not.toHaveProperty(
-					'description',
-				);
-				expect(credential.description).toBe('Use for test reports');
-			});
-
-			test('keeps the managed credential sidebar hidden when disabled', async () => {
-				const { render } = setupExistingCredential({ isManaged: true });
-				mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(false);
-				const view = render();
-				await waitFor(() => expect(view.getByTestId('credential-edit-dialog')).toBeInTheDocument());
-				expect(view.queryByText('Details')).not.toBeInTheDocument();
-				expect(view.queryByText('Sharing')).not.toBeInTheDocument();
-			});
-
-			test('keeps Details hidden for Templated Custom Auth when disabled', async () => {
-				const { pinia } = setupNewCredential({
-					...credentialType,
-					name: TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
-				});
-				mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(false);
-				const view = renderComponent({
-					props: {
-						activeId: TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
-						modalName: CREDENTIAL_EDIT_MODAL_KEY,
-						mode: 'new',
-					},
-					pinia,
-				});
-				await waitFor(() => expect(view.getByText('Connection')).toBeInTheDocument());
-				expect(view.queryByText('Details')).not.toBeInTheDocument();
-			});
-
 			test('saves the description in one request and shows it after reopening', async () => {
 				const { credentialsStore, credential, render } = setupExistingCredential();
 				const savedCredential = { ...credential, description: 'Use for production reports' };

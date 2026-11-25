@@ -1,4 +1,3 @@
-import { useCredentialDescriptionsExperiment } from '@/experiments/credentialDescriptions/useCredentialDescriptionsExperiment';
 import { useToast } from '@n8n/composables/useToast';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useI18n } from '@n8n/i18n';
@@ -52,7 +51,6 @@ interface CreateAndAuthorizeOptions {
  * Used by NodeCredentials for the quick connect OAuth flow.
  */
 export function useCredentialOAuth() {
-	const { isEnabled: credentialDescriptionsEnabled } = useCredentialDescriptionsExperiment();
 	const credentialsStore = useCredentialsStore();
 	const projectsStore = useProjectsStore();
 	const workflowsStore = useWorkflowsStore();
@@ -449,9 +447,7 @@ export function useCredentialOAuth() {
 					{
 						id: '',
 						name,
-						...(credentialDescriptionsEnabled.value && options.description !== undefined
-							? { description: options.description }
-							: {}),
+						...(options.description !== undefined ? { description: options.description } : {}),
 						type: credentialTypeName,
 						data,
 					},

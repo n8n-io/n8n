@@ -39,12 +39,9 @@ export class CredentialSerializer {
 		{
 			data,
 			dataIsComplete,
-			includeDescription,
 		}: {
 			data?: SerializedCredentialData;
 			dataIsComplete?: boolean;
-			/** Set when the source instance has credential descriptions on. An empty one exports as `null`. */
-			includeDescription?: boolean;
 		} = {},
 	): SerializedCredential {
 		return serializedCredentialSchema.parse(
@@ -52,7 +49,8 @@ export class CredentialSerializer {
 				id: credential.id,
 				name: credential.name,
 				type: credential.type,
-				...(includeDescription ? { description: credential.description ?? null } : {}),
+				// An empty description exports as `null`.
+				description: credential.description ?? null,
 				...(data !== undefined ? { data } : {}),
 				...(dataIsComplete !== undefined ? { dataIsComplete } : {}),
 			}),

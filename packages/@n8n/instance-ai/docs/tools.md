@@ -872,10 +872,7 @@ Cancel a running execution.
 
 ## Credential tools
 
-Both builders use these five tools. The instance PostHog flag
-`120_credential_descriptions` controls description fields and selection
-guidance. Only boolean `true` enables them. When the flag is false or missing,
-`list_credentials` omits `description`, including managed entries.
+Both builders use these five tools.
 
 > **Security note**: The agent never handles raw credential secrets. Credential
 > creation and secret configuration is done through the n8n frontend UI (via
