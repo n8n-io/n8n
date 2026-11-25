@@ -1472,7 +1472,7 @@ describe('Telemetry', () => {
 			expect(report).toMatchObject({
 				user_id: 'user1',
 				total_calls: 2,
-				clients: JSON.stringify({ editor_ui: 1, n8n_node: 0, other: 1 }),
+				clients: JSON.stringify({ editor_ui: 1, n8n_node: 0, n8n_cli: 0, other: 1 }),
 				routes: JSON.stringify([
 					{ route: 'GET /rest/workflows/{workflowId}', result: '4xx', caller: 'other', calls: 1 },
 				]),
@@ -1504,7 +1504,7 @@ describe('Telemetry', () => {
 				user_id: 'user1',
 				total_calls: 2,
 				routes: '[]',
-				clients: JSON.stringify({ editor_ui: 2, n8n_node: 0, other: 0 }),
+				clients: JSON.stringify({ editor_ui: 2, n8n_node: 0, n8n_cli: 0, other: 0 }),
 			});
 			for (const [field, schema] of Object.entries(INTERNAL_API_USAGE_JSON_FIELDS)) {
 				expect(schema.safeParse(jsonParse(reports[0][field] as string)).success).toBe(true);
@@ -1536,6 +1536,7 @@ describe('Telemetry', () => {
 			expect(jsonParse(reports[0].clients as string)).toEqual({
 				editor_ui: 0,
 				n8n_node: 0,
+				n8n_cli: 0,
 				other: 250,
 			});
 		});

@@ -1,8 +1,8 @@
-import { N8N_CLIENT_HEADER, type ZodClass } from '@n8n/api-types';
+import { type ZodClass } from '@n8n/api-types';
 import { inProduction } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
-import { type BooleanLicenseFeature } from '@n8n/constants';
+import { type BooleanLicenseFeature, N8N_CLIENT_HEADER } from '@n8n/constants';
 import { isAuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import type {

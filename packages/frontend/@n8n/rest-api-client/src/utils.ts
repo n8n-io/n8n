@@ -1,5 +1,4 @@
-import { N8N_CLIENT_EDITOR_UI, N8N_CLIENT_HEADER } from '@n8n/api-types';
-import { getBrowserId } from '@n8n/constants';
+import { getBrowserId, N8N_CLIENT_EDITOR_UI, N8N_CLIENT_HEADER } from '@n8n/constants';
 import { assert } from '@n8n/utils/assert';
 import type {
 	AxiosRequestConfig,

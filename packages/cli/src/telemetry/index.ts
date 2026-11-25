@@ -117,7 +117,12 @@ interface IInternalApiInvocationsBufferEntry {
  */
 const INTERNAL_API_ROUTE_ROWS_PER_EVENT = 100;
 
-const NO_CALLS_BY_CLIENT: Record<PublicApiClient, number> = { editor_ui: 0, n8n_node: 0, other: 0 };
+const NO_CALLS_BY_CLIENT: Record<PublicApiClient, number> = {
+	editor_ui: 0,
+	n8n_node: 0,
+	n8n_cli: 0,
+	other: 0,
+};
 
 /** An empty report still gets one batch, so its totals are sent. */
 function batchRouteRows(rows: IInternalApiRouteCalls[]): IInternalApiRouteCalls[][] {
@@ -468,7 +473,7 @@ export class Telemetry implements TelemetryTracker {
 			entry = {
 				total_calls: 0,
 				first: new Date(),
-				clients: { editor_ui: 0, n8n_node: 0, other: 0 },
+				clients: { ...NO_CALLS_BY_CLIENT },
 				routeCalls: new Map(),
 			};
 			this.internalApiInvocationsBuffer.set(user_id, entry);

@@ -11,7 +11,7 @@ const report = {
 		{ route: 'GET /rest/workflows/{workflowId}', result: '4xx', caller: 'other', calls: 1 },
 		{ route: 'GET /rest/credentials', result: '2xx', caller: 'n8n_node', calls: 1 },
 	]),
-	clients: JSON.stringify({ editor_ui: 1, n8n_node: 1, other: 2 }),
+	clients: JSON.stringify({ editor_ui: 1, n8n_node: 1, n8n_cli: 0, other: 2 }),
 };
 
 type JsonField = keyof typeof INTERNAL_API_USAGE_JSON_FIELDS;
@@ -34,7 +34,7 @@ describe('Internal API usage', () => {
 		const followUp = {
 			...report,
 			total_calls: 0,
-			clients: JSON.stringify({ editor_ui: 0, n8n_node: 0, other: 0 }),
+			clients: JSON.stringify({ editor_ui: 0, n8n_node: 0, n8n_cli: 0, other: 0 }),
 		};
 
 		expect(INTERNAL_API_USAGE.getValidationError(followUp)).toBeNull();

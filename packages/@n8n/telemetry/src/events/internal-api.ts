@@ -1,19 +1,21 @@
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
+import { publicApiClientSchema } from '../schemas';
 
 export const INTERNAL_API_USAGE_JSON_FIELDS = {
 	routes: z.array(
 		z.object({
 			route: z.string(),
 			result: z.enum(['2xx', '4xx', '5xx']),
-			caller: z.enum(['n8n_node', 'other']),
+			caller: publicApiClientSchema.exclude(['editor_ui']),
 			calls: z.number().int().positive(),
 		}),
 	),
 	clients: z.object({
 		editor_ui: z.number().int().nonnegative(),
 		n8n_node: z.number().int().nonnegative(),
+		n8n_cli: z.number().int().nonnegative(),
 		other: z.number().int().nonnegative(),
 	}),
 };
@@ -34,12 +36,12 @@ export const INTERNAL_API_TELEMETRY = defineTelemetryEvents({
 			routes: z
 				.string()
 				.describe(
-					'JSON text. One row per route, result and caller, for callers other than the Editor UI: [{"route": "GET /rest/workflows/{workflowId}", "result": "2xx", "caller": "other", "calls": 3}]. result is 2xx, 4xx or 5xx. caller is n8n_node or other',
+					'JSON text. One row per route, result and caller, for callers other than the Editor UI: [{"route": "GET /rest/workflows/{workflowId}", "result": "2xx", "caller": "other", "calls": 3}]. result is 2xx, 4xx or 5xx. caller is n8n_node, n8n_cli or other',
 				),
 			clients: z
 				.string()
 				.describe(
-					'JSON text. Calls per caller for all callers: {"editor_ui": 5, "n8n_node": 1, "other": 2}',
+					'JSON text. Calls per caller for all callers: {"editor_ui": 5, "n8n_node": 1, "n8n_cli": 0, "other": 2}',
 				),
 		}),
 	},

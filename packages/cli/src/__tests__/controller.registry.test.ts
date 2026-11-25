@@ -5,7 +5,8 @@ vi.mock('@n8n/backend-common', async () => {
 	};
 });
 
-import { N8N_CLIENT_EDITOR_UI, N8N_CLIENT_HEADER, Z } from '@n8n/api-types';
+import { Z } from '@n8n/api-types';
+import { N8N_CLIENT_EDITOR_UI, N8N_CLIENT_HEADER } from '@n8n/constants';
 import type { EventService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import {
