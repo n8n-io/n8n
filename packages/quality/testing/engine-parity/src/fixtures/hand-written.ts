@@ -116,4 +116,25 @@ export const handWrittenCases: Record<string, ParityCase> = {
 		],
 		[{ json: { n: 0 } }, { json: { n: 2 } }, { json: { n: 3 } }],
 	),
+
+	// The item from input 1 of the Merge traces back past the trigger, not to "A".
+	'reference across a merge to the other branch': build(
+		[
+			set('A', { a: 'from A' }),
+			{
+				key: 'Join',
+				catalogId: 'merge.append',
+				params: { mode: 'append', numberInputs: 2 },
+				via: 'merge',
+			},
+			set('Use', { fromA: "={{ $('A').item.json.a }}" }),
+		],
+		[
+			{ from: 'Trigger', out: 0, to: 'A', in: 0 },
+			{ from: 'A', out: 0, to: 'Join', in: 0 },
+			{ from: 'Trigger', out: 0, to: 'Join', in: 1 },
+			{ from: 'Join', out: 0, to: 'Use', in: 0 },
+		],
+		[{ json: { n: 1 } }],
+	),
 };
