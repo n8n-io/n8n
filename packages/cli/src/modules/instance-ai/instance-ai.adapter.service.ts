@@ -629,6 +629,8 @@ export class InstanceAiAdapterService {
 			onHelperUsage?: InstanceAiContext['onHelperUsage'];
 			/** Transport for those utility LLM calls. */
 			modelFetch?: FetchFn;
+			/** Unlabeled transport for non-LLM utility fetches such as the models.dev catalog. */
+			catalogFetch?: FetchFn;
 			/** Effective data-sharing setting for this run. Absent → the env value. */
 			allowSendingParameterValues?: boolean;
 		},
@@ -658,6 +660,7 @@ export class InstanceAiAdapterService {
 			utilityModelId,
 			onHelperUsage,
 			modelFetch,
+			catalogFetch,
 			allowSendingParameterValues = this.allowSendingParameterValues,
 		} = options ?? {};
 
@@ -698,6 +701,7 @@ export class InstanceAiAdapterService {
 			...(utilityModelId ? { utilityModelId } : {}),
 			...(onHelperUsage ? { onHelperUsage } : {}),
 			modelFetch,
+			...(catalogFetch ? { catalogFetch } : {}),
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId, {
 				nodeUsageGateOpen: nodeUsageEnabled === true,
 				folderExploration: folderExplorationEnabled === true,

@@ -2,8 +2,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useAgentChannelSetup } from '../composables/useAgentChannelSetup';
 
-const { fetchCredentials, fetchProject, openNewCredential, projectsStore } = vi.hoisted(() => ({
+const {
+	fetchCredentials,
+	fetchCredentialTypes,
+	credentialTypes,
+	fetchProject,
+	openNewCredential,
+	projectsStore,
+} = vi.hoisted(() => ({
 	fetchCredentials: vi.fn(),
+	fetchCredentialTypes: vi.fn(),
+	credentialTypes: new Map<string, { displayName: string }>(),
 	fetchProject: vi.fn(),
 	openNewCredential: vi.fn(),
 	projectsStore: {
@@ -32,7 +41,8 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
 		setCredentials: vi.fn(),
 		fetchUsableCredentials: fetchCredentials,
-		getCredentialTypeByName: vi.fn(),
+		fetchCredentialTypes,
+		getCredentialTypeByName: (name: string) => credentialTypes.get(name),
 	}),
 }));
 
@@ -63,6 +73,67 @@ describe('useAgentChannelSetup', () => {
 		fetchCredentials.mockResolvedValue([
 			{ id: 'credential-1', name: 'Example credential', type: 'exampleApi' },
 			{ id: 'other', name: 'Other credential', type: 'otherApi' },
+		]);
+		credentialTypes.clear();
+		fetchCredentialTypes.mockResolvedValue(undefined);
+	});
+
+	it('sets the type label when the credential types arrive after the credentials', async () => {
+		const { promise, resolve } = Promise.withResolvers<void>();
+		fetchCredentialTypes.mockReturnValueOnce(promise);
+		const setup = useAgentChannelSetup({
+			projectId: () => 'project-1',
+			currentIntegration: () => integrations[0],
+			connectedCredentials: () => ({}),
+			fetchStatus: vi.fn().mockResolvedValue(undefined),
+		});
+
+		const loading = setup.loadChannelState(integrations);
+		await Promise.resolve();
+		credentialTypes.set('exampleApi', { displayName: 'Example API' });
+		resolve();
+		await loading;
+
+		expect(fetchCredentialTypes).toHaveBeenCalledWith(false);
+		expect(setup.getCredentials('example')).toEqual([
+			expect.objectContaining({ id: 'credential-1', typeDisplayName: 'Example API' }),
+		]);
+	});
+
+	it('retries the credential types on the next fetch after a failed load', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		fetchCredentialTypes.mockRejectedValueOnce(new Error('unavailable'));
+		const setup = useAgentChannelSetup({
+			projectId: () => 'project-1',
+			currentIntegration: () => integrations[0],
+			connectedCredentials: () => ({}),
+			fetchStatus: vi.fn().mockResolvedValue(undefined),
+		});
+
+		await setup.loadChannelState(integrations);
+		credentialTypes.set('exampleApi', { displayName: 'Example API' });
+		await setup.loadChannelState(integrations);
+
+		expect(fetchCredentialTypes).toHaveBeenCalledTimes(2);
+		expect(setup.getCredentials('example')).toEqual([
+			expect.objectContaining({ id: 'credential-1', typeDisplayName: 'Example API' }),
+		]);
+	});
+
+	it('lists the credentials without type labels when the credential types fail to load', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		fetchCredentialTypes.mockRejectedValueOnce(new Error('unavailable'));
+		const setup = useAgentChannelSetup({
+			projectId: () => 'project-1',
+			currentIntegration: () => integrations[0],
+			connectedCredentials: () => ({}),
+			fetchStatus: vi.fn().mockResolvedValue(undefined),
+		});
+
+		await setup.loadChannelState(integrations);
+
+		expect(setup.getCredentials('example')).toEqual([
+			expect.objectContaining({ id: 'credential-1', typeDisplayName: undefined }),
 		]);
 	});
 

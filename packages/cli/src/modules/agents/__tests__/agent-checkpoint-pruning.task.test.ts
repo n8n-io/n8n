@@ -1,3 +1,4 @@
+import type { TransactionRunner } from '@n8n/db';
 import type { DatabaseConfig } from '@n8n/config';
 import { MAX_TIMER_DELAY_SECONDS } from '@n8n/constants';
 import { mock } from 'vitest-mock-extended';
@@ -15,11 +16,14 @@ describe('AgentCheckpointPruningTask', () => {
 		type: 'postgresdb',
 		postgresdb: { statementTimeoutMs: 300_000 },
 	});
+	const txRunner = mock<TransactionRunner>();
+	txRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 	const task = new AgentCheckpointPruningTask(
 		databaseConfig,
 		checkpointStorage,
 		backgroundJobs,
 		agentExecutionRepository,
+		txRunner,
 	);
 
 	it('should declare an hourly prune cadence', () => {
@@ -48,6 +52,7 @@ describe('AgentCheckpointPruningTask', () => {
 					checkpointStorage,
 					backgroundJobs,
 					agentExecutionRepository,
+					txRunner,
 				).target.scheduler.timeoutSeconds,
 			).toBe(timeoutSeconds);
 		},
@@ -60,7 +65,10 @@ describe('AgentCheckpointPruningTask', () => {
 		await task.run(signal);
 
 		expect(checkpointStorage.pruneStaleSuspensions).toHaveBeenCalledTimes(1);
-		expect(agentExecutionRepository.failExpiredWaitingApprovals).toHaveBeenCalledWith(['thread-1']);
+		expect(agentExecutionRepository.failExpiredWaitingApprovals).toHaveBeenCalledWith(
+			['thread-1'],
+			{},
+		);
 		expect(backgroundJobs.pruneExpiredPausedJobs).toHaveBeenCalledWith(undefined, signal);
 	});
 });

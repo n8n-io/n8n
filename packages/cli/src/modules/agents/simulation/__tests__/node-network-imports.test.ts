@@ -99,6 +99,7 @@ const LOCAL_MODULES = new Set([
 	'@langchain/core',
 	'@mozilla/readability',
 	'@n8n/config',
+	'@n8n/constants',
 	'@n8n/di',
 	'@n8n/errors',
 	'@n8n/utils',

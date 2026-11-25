@@ -3,13 +3,14 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testconta
 import postgresVersions from 'n8n-containers/postgres-versions.json';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import type { PrunableExecution } from '../../execution/execution-store';
+import { ExecutionNotFoundError, type PrunableExecution } from '../../execution/execution-store';
 import {
 	SETTLED_STEP_STATUSES,
 	type ExecutionStatus,
 	type ParentLink,
 	type StepStatus,
 } from '../../execution/execution.types';
+import { createStores } from '../create-stores';
 import { createDataSource } from '../data-source';
 import { WorkflowExecution } from '../entities/workflow-execution.entity';
 import { generateId } from '../generate-id';
@@ -235,6 +236,20 @@ describe('execution retention (integration)', () => {
 
 			expect(await store.deleteEndedExecutions([...live, ended])).toBe(1);
 			expect(await countRows('workflow_execution', 'id', live)).toBe(3);
+		});
+
+		it('leaves a late queue message of a deleted execution nothing to claim and no execution to load', async () => {
+			const id = await addExecution({ status: 'cancelled' });
+			const stepId = await addStep(id, 'queued');
+			const { stepStore } = createStores(dataSource);
+
+			expect(await store.deleteEndedExecutions([id])).toBe(1);
+
+			expect(await store.transitionStatus(id, 'queued', 'running')).toBe(false);
+			expect(await stepStore.claimStep(stepId)).toBeNull();
+			const loadError: unknown = await store.loadExecution(id).catch((error: unknown) => error);
+			expect(loadError).toBeInstanceOf(ExecutionNotFoundError);
+			expect(loadError).toHaveProperty('executionId', id);
 		});
 
 		it('deletes nothing for an empty list', async () => {

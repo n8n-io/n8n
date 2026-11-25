@@ -7,3 +7,6 @@ export const workflowReviewsPolicySchema = z.object({
 });
 
 export type WorkflowReviewsPolicy = z.infer<typeof workflowReviewsPolicySchema>;
+
+/** The highest level that requires an approved review before a new workflow version is published. */
+export type WorkflowReviewRequirementLevel = 'instance' | 'project';

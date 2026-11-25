@@ -30,7 +30,7 @@ describe('ChatEmbedModal', () => {
 
 		const modalContainer = getByTestId('chatEmbed-modal');
 		const tabs = modalContainer.querySelectorAll('.n8n-tabs .tab');
-		const activeTab = modalContainer.querySelector('.n8n-tabs .tab.activeTab');
+		const activeTab = modalContainer.querySelector('.n8n-tabs .tab[data-state="active"]');
 		const editor = modalContainer.querySelector('.cm-editor');
 
 		expect(tabs).toHaveLength(4);

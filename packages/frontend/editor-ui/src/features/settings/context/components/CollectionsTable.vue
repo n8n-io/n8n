@@ -29,6 +29,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
+	open: [collection: KnowledgeCollectionDto];
 	edit: [collection: KnowledgeCollectionDto];
 	delete: [collection: KnowledgeCollectionDto];
 }>();
@@ -72,6 +73,10 @@ function onAction(collection: KnowledgeCollectionDto, action: CollectionAction) 
 	} else {
 		emit('delete', collection);
 	}
+}
+
+function onRowClick(_event: MouseEvent, payload: { item: KnowledgeCollectionDto }) {
+	emit('open', payload.item);
 }
 
 function projectLabel(project: HomeProject): string {
@@ -162,6 +167,8 @@ const headers = computed<Array<TableHeader<KnowledgeCollectionDto>>>(() => [
 			:items-length="props.collections.length"
 			:loading="props.loading"
 			:pagination="false"
+			:row-props="{ class: $style.row }"
+			@click:row="onRowClick"
 		>
 			<template v-if="props.showEmpty" #cover>
 				<slot name="empty" />
@@ -169,9 +176,12 @@ const headers = computed<Array<TableHeader<KnowledgeCollectionDto>>>(() => [
 
 			<template #[`item.name`]="{ item }">
 				<div :class="$style.collection">
-					<N8nText size="medium" color="text-dark" data-test-id="collection-name">
-						{{ item.name }}
-					</N8nText>
+					<!-- A button, so that keyboard users can open the collection too. -->
+					<button type="button" :class="$style.open" @click.stop="emit('open', item)">
+						<N8nText size="medium" color="text-dark" data-test-id="collection-name">
+							{{ item.name }}
+						</N8nText>
+					</button>
 					<N8nText
 						size="small"
 						color="text-light"
@@ -225,9 +235,9 @@ const headers = computed<Array<TableHeader<KnowledgeCollectionDto>>>(() => [
 				</N8nText>
 			</template>
 
-			<!-- A row the user cannot change has no menu. -->
+			<!-- A row the user cannot change has no menu. A click on the menu does not open the row. -->
 			<template #[`item.actions`]="{ item }">
-				<div v-if="canChange(item)" :class="$style.actions">
+				<div v-if="canChange(item)" :class="$style.actions" @click.stop>
 					<N8nActionToggle
 						:actions="rowActions"
 						:aria-label="i18n.baseText('node.moreActions')"
@@ -247,6 +257,16 @@ const headers = computed<Array<TableHeader<KnowledgeCollectionDto>>>(() => [
 	gap: var(--spacing--5xs);
 	padding-block: var(--spacing--2xs);
 	min-width: 0;
+}
+
+.open {
+	align-self: flex-start;
+	max-width: 100%;
+	padding: 0;
+	border: none;
+	background: none;
+	text-align: start;
+	cursor: pointer;
 }
 
 // Line clamping needs the text element itself, not a wrapper.
@@ -282,5 +302,9 @@ const headers = computed<Array<TableHeader<KnowledgeCollectionDto>>>(() => [
 .actions {
 	display: flex;
 	justify-content: flex-end;
+}
+
+.row {
+	cursor: pointer;
 }
 </style>

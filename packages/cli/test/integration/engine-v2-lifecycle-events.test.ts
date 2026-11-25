@@ -167,6 +167,20 @@ describe('lifecycle events of engine v2 runs', () => {
 		expect(sentMessages()).toEqual([
 			{
 				message: expect.objectContaining({
+					type: 'executionStarted',
+					data: expect.objectContaining({
+						executionId,
+						workflowId: workflow.id,
+						mode: 'manual',
+						workflowName: workflow.name,
+						// A full run starts from no run data.
+						flattedRunData: '[{}]',
+					}),
+				}),
+				pushRef: 'push-1',
+			},
+			{
+				message: expect.objectContaining({
 					type: 'nodeExecuteBefore',
 					data: expect.objectContaining({ executionId, nodeName: TRIGGER_NAME }),
 				}),

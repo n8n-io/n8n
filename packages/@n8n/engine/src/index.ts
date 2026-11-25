@@ -1,5 +1,5 @@
-export { createEngineRuntime } from './runtime';
-export type { EngineRuntime, EngineRuntimeOptions } from './runtime';
+export { createEngineRuntime, ENGINE_ROLES } from './runtime';
+export type { EngineRole, EngineRuntime, EngineRuntimeOptions } from './runtime';
 
 export type { EngineLogger } from './logging';
 
@@ -88,7 +88,12 @@ export type {
 export { jsonObjectSchema, UnimplementedError } from './common';
 export type { JsonObject, JsonValue } from './common';
 
-export { deriveLoops, isBatchStepConfig, validateExecutableGraph } from './graph';
+export {
+	compareByConcatenationOrder,
+	deriveLoops,
+	isBatchStepConfig,
+	validateExecutableGraph,
+} from './graph';
 export type {
 	BatchStepConfig,
 	GraphEdge,
@@ -107,10 +112,12 @@ export type {
 	IStepExecutor,
 	StepExecutionContext,
 	StepExecutionRequest,
+	StepInputSources,
 	StepExecutionResult,
 	SubExecutionDeclaration,
 	SubExecutionMode,
 } from './dependencies';
+export { noopExecutionFilesDeleter } from './dependencies';
 
 export { AllowAllAdmittance, AdmittanceRejectedError } from './admittance';
 export type {
@@ -163,7 +170,7 @@ export type {
 	StepRecord,
 	ResumeCause,
 	StepSlots,
-	StepOutputSource,
+	ItemSource,
 	StepOutputSources,
 	StepStatus,
 	StepStore,
@@ -174,6 +181,8 @@ export type {
 	WaitDeclaration,
 	WorkflowDocument,
 } from './execution';
+
+export type { ExecutionRetentionPolicy } from './retention';
 
 export { createDataSource, WorkflowExecution, WorkflowStepExecution } from './database';
 export type { EngineStores } from './database';

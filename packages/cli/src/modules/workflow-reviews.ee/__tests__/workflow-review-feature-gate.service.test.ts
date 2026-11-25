@@ -32,4 +32,15 @@ describe('WorkflowReviewFeatureGate', () => {
 	test('is available when the license and policy both allow reviews', async () => {
 		await expect(featureGate.isAvailable()).resolves.toBe(true);
 	});
+
+	test('returns the policy only while reviews are available', async () => {
+		policyService.get.mockResolvedValue({ enabled: true, alwaysRequired: true });
+		await expect(featureGate.getAvailablePolicy()).resolves.toEqual({
+			enabled: true,
+			alwaysRequired: true,
+		});
+
+		policyService.get.mockResolvedValue({ enabled: false, alwaysRequired: true });
+		await expect(featureGate.getAvailablePolicy()).resolves.toBeNull();
+	});
 });

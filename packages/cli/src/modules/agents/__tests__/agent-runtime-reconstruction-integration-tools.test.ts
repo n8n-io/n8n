@@ -420,6 +420,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AgentSetupCompletionService>(),
 			mock<N8nChatFlagService>(),
 			mock<AgentDefinitionService>(),
+			mock(),
 			mock<GlobalConfig>({ tags: { disabled: false } }),
 			mock<TagService>(),
 			mock<FolderService>(),
@@ -456,7 +457,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			'attaches eager conversation tools with n8n Chat=%s',
 			async (n8nChat) => {
 				const registry = new ChatIntegrationRegistry();
-				registry.register(new SlackIntegration(mock<AgentRepository>()));
+				registry.register(new SlackIntegration(mock<AgentRepository>(), mock()));
 				registry.register(new N8nChatIntegration(mock()));
 				Container.set(ChatIntegrationRegistry, registry);
 				Container.set(IntegrationMessageContextService, mock<IntegrationMessageContextService>());
