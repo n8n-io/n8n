@@ -1885,7 +1885,7 @@ const isMinimapVisible = ref(false);
  * viewport is hard to find and the mask stays light grey in dark mode.
  * Theme tokens keep it readable in both.
  */
-const minimapMaskColor = 'color-mix(in srgb, var(--color--background--light-2) 60%, transparent)';
+const minimapMaskColor = 'color-mix(in srgb, var(--color--background--light-2) 50%, transparent)';
 const minimapMaskStrokeColor = 'var(--text-color--subtler)';
 const minimapMaskStrokeWidth = 1.5;
 
