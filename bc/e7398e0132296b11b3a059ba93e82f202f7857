@@ -1,0 +1,18 @@
+packages/@n8n/agents/src/runtime/__tests__/mcp-connection.test.ts
+  h_23d60aac2fe72e 1-2,712-716,789
+packages/@n8n/agents/src/runtime/__tests__/mcp-http-error.test.ts
+  h_23d60aac2fe72e 1-2,15
+packages/@n8n/agents/src/runtime/__tests__/tool-call-runner.test.ts
+  h_23d60aac2fe72e 374
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bce7398e0132296b11b3a059ba93e82f202f7857",
+  "prompts": {},
+  "humans": {
+    "h_23d60aac2fe72e": {
+      "author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
