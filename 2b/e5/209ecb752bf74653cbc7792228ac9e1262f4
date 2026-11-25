@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/channels/n8nChat/AgentChannelN8nChatView.vue
+  s_51a6314e48c330::t_06cdad97a7bd65 97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2be5209ecb752bf74653cbc7792228ac9e1262f4",
+  "prompts": {},
+  "sessions": {
+    "s_51a6314e48c330": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a20e8b-81ae-7243-a7a9-3ce4c97b2732",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
