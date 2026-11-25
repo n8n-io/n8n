@@ -14,7 +14,7 @@ import { normalize } from './oracle/normalize';
 import type { Outcome } from './oracle/normalize';
 import { CoverageReport } from './report/coverage';
 import { buildRepro, writeRepro } from './report/repro';
-import { diffSignature, findingSignature } from './report/signature';
+import { diffSignature, findingFailsRun, findingSignature } from './report/signature';
 import type { Finding } from './report/signature';
 import type { EngineRunner, RawOutcome } from './runners/runner';
 
@@ -159,7 +159,7 @@ export async function runParity(
 	rmSync(outDir, { recursive: true, force: true });
 	const arbitrary = parityCaseArb(rules);
 	const failing = new Map<string, FirstSeen>();
-	const findings = new Map<string, FirstSeen>();
+	const findings = new Map<string, FirstSeen & { failsRun: boolean }>();
 
 	let index = 0;
 	// The property returns true for differences, so the run continues. An exception still fails it.
@@ -174,7 +174,9 @@ export async function runParity(
 			}
 			for (const finding of result.findings) {
 				const signature = findingSignature(finding);
-				if (!findings.has(signature)) findings.set(signature, { path, parityCase, result });
+				if (!findings.has(signature)) {
+					findings.set(signature, { path, parityCase, result, failsRun: findingFailsRun(finding) });
+				}
 			}
 			return true;
 		}),
@@ -206,9 +208,9 @@ export async function runParity(
 		failures.push({ signature, file });
 	}
 
-	// Findings do not fail the run. Their repro files are not shrunk.
+	// Repro files of findings are not shrunk.
 	for (const [signature, first] of findings) {
-		report.repros[signature] = writeRepro(
+		const file = writeRepro(
 			outDir,
 			buildRepro({
 				signature,
@@ -222,6 +224,8 @@ export async function runParity(
 				findings: first.result.findings,
 			}),
 		);
+		report.repros[signature] = file;
+		if (first.failsRun) failures.push({ signature, file });
 	}
 
 	return { report, failures, summaryFile: report.write(outDir) };

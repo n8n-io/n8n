@@ -89,6 +89,9 @@ export TESTCONTAINERS_RYUK_DISABLED=true
 | L4 | `pairedItem` lineage | Warning |
 | E | The check accepts the case, but an engine refuses it or times out, or the converter drops an edge | Finding |
 
+A refusal or a timeout fails the run. The other findings show in the summary
+only.
+
 When both runs fail, and the order of branches decides which node fails first,
 L0 to L2 differences become L3: engine v1 runs branches one after another, and
 engine v2 can run them in parallel. Items of a node that ran on both engines

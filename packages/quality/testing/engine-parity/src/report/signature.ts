@@ -35,6 +35,11 @@ export function diffSignature(diff: Diff, parityCase: ParityCase): string {
 	return [diff.level, nodeTag(parityCase, diff.node), diff.kind].map(slug).join('.');
 }
 
+/** An engine that refuses or does not finish a case that the check accepts fails the run. */
+export function findingFailsRun(finding: Finding): boolean {
+	return finding.kind === 'refused' || finding.kind === 'timeout';
+}
+
 export function findingSignature(finding: Finding): string {
 	return ['E', finding.engine, finding.kind].map(slug).join('.');
 }
