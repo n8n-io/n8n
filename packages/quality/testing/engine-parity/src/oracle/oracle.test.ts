@@ -84,6 +84,41 @@ describe('oracle', () => {
 		]);
 	});
 
+	it('fails when an engine skips a node on every path to the shared failure', () => {
+		const linear = handWrittenCases['linear pipeline with references'];
+		const error = { node: 'B', class: 'NodeOperationError' };
+		const run = { outputs: [[{ a: 1 }]], pairedItem: [[null]], failed: false };
+		const failedRun = { outputs: [], pairedItem: [], failed: true };
+		const v1 = outcome({
+			status: 'error',
+			error,
+			terminal: [],
+			nodes: { Trigger: [run], A: [run], B: [failedRun] },
+			runOrder: ['Trigger#0', 'A#0', 'B#0'],
+		});
+		const v2 = outcome({
+			status: 'error',
+			error,
+			terminal: [],
+			nodes: { Trigger: [run], B: [failedRun] },
+			runOrder: ['Trigger#0', 'B#0'],
+		});
+
+		expect(
+			compare(v1, v2, linear, rules).map(
+				({ level, kind, severity }) => `${level}.${kind}.${severity}`,
+			),
+		).toEqual(['L2.nodeRan.fail']);
+
+		// A failing node that is not in the graph says nothing about the paths to it.
+		const outside = { node: 'Outside', class: 'NodeOperationError' };
+		expect(
+			compare({ ...v1, error: outside }, { ...v2, error: outside }, linear, rules).map(
+				({ level, kind, severity }) => `${level}.${kind}.${severity}`,
+			),
+		).toEqual(['L3.nodeRanByOrder.warning']);
+	});
+
 	it('writes items with sorted keys', () => {
 		expect(canonical({ b: 1, a: { d: 2, c: 3 } })).toBe('{"a":{"c":3,"d":2},"b":1}');
 	});

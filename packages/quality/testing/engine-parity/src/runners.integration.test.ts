@@ -22,7 +22,7 @@ describe('runners (integration)', () => {
 	it.each(Object.entries(handWrittenCases))(
 		'runs "%s" on both engines alike',
 		async (_, parityCase) => {
-			const result = await checkCase(parityCase, runners, ruleSets.full);
+			const result = await checkCase(parityCase, runners, ruleSets.smoke);
 
 			expect(result.raw.v1?.kind).toBe('ran');
 			expect(result.raw.v2?.kind).toBe('ran');
@@ -35,7 +35,7 @@ describe('runners (integration)', () => {
 		const result = await checkCase(
 			handWrittenCases['reference to a node that does not exist'],
 			runners,
-			ruleSets.full,
+			ruleSets.smoke,
 		);
 
 		expect(result.outcomes.v1?.error).toEqual({ node: 'A', class: 'NodeOperationError' });

@@ -135,7 +135,8 @@ export async function runParity(
 ): Promise<ParityFailure[]> {
 	const failures: ParityFailure[] = [];
 	let index = 0;
-	await fc.check(
+	// The property returns true for differences, so the run continues. An exception still fails it.
+	await fc.assert(
 		fc.asyncProperty(parityCaseArb(rules), async (parityCase) => {
 			// The fast-check path of this case. A replayed path runs one case.
 			const path = options.path ?? String(index++);
