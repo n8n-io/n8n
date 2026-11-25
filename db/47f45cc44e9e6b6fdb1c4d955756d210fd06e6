@@ -55,6 +55,7 @@ packages/frontend/editor-ui/src/features/agents/composables/useAgentTasks.ts
   s_f89f4e9241716c::t_61290a775f5fc2 1-4,14-36,39-146,149-155,157-173,179-192
   s_f89f4e9241716c::t_9458d43003df3e 37-38,156
   s_ce7e5bf9640e6d::t_c2b11d5e39d99e 5-13
+  s_329dff755c3fc0::t_91fcd1f6754480 147-148
 packages/frontend/editor-ui/src/app/constants/experiments.ts
   s_4b663869bd1748::t_63b4ff357ff575 256-258,260
 packages/frontend/@n8n/i18n/src/locales/en.json
@@ -67,6 +68,14 @@ packages/frontend/@n8n/i18n/src/locales/en.json
   "base_commit_sha": "db47f45cc44e9e6b6fdb1c4d955756d210fd06e6",
   "prompts": {},
   "sessions": {
+    "s_329dff755c3fc0": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a211e4-03bd-741b-864f-97444719010f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
     "s_4b663869bd1748": {
       "agent_id": {
         "tool": "pi",
