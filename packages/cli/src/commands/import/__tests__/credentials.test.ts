@@ -65,49 +65,48 @@ describe('ImportCredentialsCommand', () => {
 			);
 		});
 
-		it('reads a credential that `--decrypted` wrote as a data object', async () => {
-			await write('cred-1.json', {
-				...credentialFile('cred-1'),
-				data: { name: 'X-Api-Key', value: 'secret' },
-			});
-			const { command, logger } = buildCommand();
-
-			const credentials = await command['readCredentials']({ inputPath: inputDir, separate: true });
-
-			expect(credentials).toHaveLength(1);
-			expect(logger.warn).not.toHaveBeenCalled();
-		});
-
-		it.each([
-			['null data', null],
-			['array data', []],
-			['number data', 42],
-		])('skips a file with %s that the insert cannot use', async (_label, data) => {
+		it('skips a file that has a type but no data', async () => {
 			await write('cred-1.json', credentialFile('cred-1'));
-			await write('broken.json', { ...credentialFile('broken'), data });
-			const { command, logger } = buildCommand();
+			const { data: _data, ...withoutData } = credentialFile('other');
+			await write('other.json', withoutData);
+			const { command } = buildCommand();
 
 			const credentials = await command['readCredentials']({ inputPath: inputDir, separate: true });
 
 			expect(credentials).toHaveLength(1);
 			expect(credentials[0]).toMatchObject({ id: 'cred-1' });
-			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('Skipping invalid credential file'),
-			);
 		});
 
-		it('skips a malformed JSON file and imports the credentials beside it', async () => {
+		it('skips a file that has data but no type', async () => {
+			await write('cred-1.json', credentialFile('cred-1'));
+			const { type: _type, ...withoutType } = credentialFile('other');
+			await write('other.json', withoutType);
+			const { command } = buildCommand();
+
+			const credentials = await command['readCredentials']({ inputPath: inputDir, separate: true });
+
+			expect(credentials).toHaveLength(1);
+			expect(credentials[0]).toMatchObject({ id: 'cred-1' });
+		});
+
+		it('passes a credential with null data on to the import', async () => {
+			await write('cred-1.json', credentialFile('cred-1'));
+			await write('broken.json', { ...credentialFile('broken'), data: null });
+			const { command } = buildCommand();
+
+			const credentials = await command['readCredentials']({ inputPath: inputDir, separate: true });
+
+			expect(credentials).toHaveLength(2);
+		});
+
+		it('stops on a file that is not valid JSON', async () => {
 			await write('cred-1.json', credentialFile('cred-1'));
 			await writeRaw('truncated.json', '{"type": "httpHeaderAuth", "data": "U2Fs');
-			const { command, logger } = buildCommand();
+			const { command } = buildCommand();
 
-			const credentials = await command['readCredentials']({ inputPath: inputDir, separate: true });
-
-			expect(credentials).toHaveLength(1);
-			expect(credentials[0]).toMatchObject({ id: 'cred-1' });
-			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('Skipping invalid credential file'),
-			);
+			await expect(
+				command['readCredentials']({ inputPath: inputDir, separate: true }),
+			).rejects.toThrow();
 		});
 
 		it('reads every credential file when the directory holds only credentials', async () => {

@@ -17,6 +17,7 @@ import { Command, type PolicyCleared } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
+import { isRecord } from '@n8n/utils/is-record';
 import glob from 'fast-glob';
 import fs from 'fs';
 import omit from 'lodash/omit';
@@ -76,20 +77,9 @@ type ImportableCredentialProperty = Exclude<
 const isCredentialData = (data: unknown): data is ICredentialDataDecryptedObject =>
 	typeof data === 'object' && data !== null && !Array.isArray(data);
 
-/**
- * A credential export always carries a `type` and a `data` field. `data` is the
- * encrypted string, or the decrypted object that `--decrypted` writes. The import
- * directory usually also holds the workflow files that `export:workflow --backup`
- * writes, and those must be skipped rather than inserted as credentials. Any other
- * `data` shape cannot satisfy the credential data column, so it is skipped too.
- */
-const isExportedCredential = (content: unknown): content is Partial<CredentialsEntity> => {
-	if (typeof content !== 'object' || content === null || Array.isArray(content)) return false;
-
-	const { type, data } = content as { type?: unknown; data?: unknown };
-
-	return typeof type === 'string' && (typeof data === 'string' || isCredentialData(data));
-};
+/** Every credential export carries a string `type` and a `data` field; other exports do not. */
+const isExportedCredential = (content: unknown): content is Partial<CredentialsEntity> =>
+	isRecord(content) && typeof content.type === 'string' && 'data' in content;
 
 type ExistingCredential = Pick<CredentialsEntity, 'id' | 'type' | 'usageScope'>;
 
@@ -490,19 +480,13 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 			credentials = [];
 
 			for (const file of files) {
-				// A file that does not hold JSON is one more file to skip, not a reason to
-				// abort the import and leave the credentials beside it unimported. `null`
-				// fails the check below, so it takes the same skip path.
-				const content = jsonParse<unknown>(fs.readFileSync(file, { encoding: 'utf8' }), {
-					fallbackValue: null,
-				});
+				const content = jsonParse<unknown>(fs.readFileSync(file, { encoding: 'utf8' }));
 
-				if (!isExportedCredential(content)) {
+				if (isExportedCredential(content)) {
+					credentials.push(content);
+				} else {
 					this.logger.warn(`Skipping invalid credential file: ${file}`);
-					continue;
 				}
-
-				credentials.push(content);
 			}
 		} else {
 			const credentialsUnchecked = jsonParse<Array<Partial<CredentialsEntity>>>(
