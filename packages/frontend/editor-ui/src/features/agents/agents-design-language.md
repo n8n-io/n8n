@@ -637,10 +637,10 @@ for the Assistant and Agent Preview. Pass the app catalog labels through
 Use the description slot to show the Agent name and the requested tool name.
 Show a node icon only when configured tool metadata identifies its node type.
 Use the localized Agent label when no name is available.
-Show the Agent's short approval description in the shared card. Do not show JSON
-arguments when a description is available. Saved requests without a description
-can still show sanitized arguments. Use the same request text in connected
-channel approvals. Offer only approve-once and deny there. Leave space for the
+Show the Agent's short approval description above the available tool arguments
+in the shared card. Show the arguments supplied for display by the backend.
+Respect redacted requests. Use the same description in connected channel
+approvals. Offer only approve-once and deny there. Leave space for the
 card's outline and shadow inside scrollable containers.
 Keep approval policy and response payloads in the caller. Show the session
 option only when the backend supports it. Replace the Preview composer with
@@ -667,7 +667,9 @@ divider before the options to create an approval. List Workflow before the
 connected channels.
 Open the destination pane on pointer hover or keyboard activation. Include search
 in that pane and fetch more results as the user scrolls. Group people and channels.
-Keep the source menu and destination pane at their own heights.
+Keep the source menu and destination pane at their own heights. Render the Build
+tab menu outside the editor column so it stays anchored beside either chat
+panel. Keep menus inside their settings dialogs.
 Create the approval when the user selects a destination. Use workflow or recipient
 names by default and show the platform as an icon. Preserve explicit name overrides.
 

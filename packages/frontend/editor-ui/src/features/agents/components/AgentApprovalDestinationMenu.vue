@@ -25,6 +25,7 @@ const props = defineProps<{
 	existing?: boolean;
 	excludeIds?: string[];
 	iconOnly?: boolean;
+	teleported?: boolean;
 	label: string;
 	testId?: string;
 }>();
@@ -44,6 +45,8 @@ const existingApprovers = computed(() =>
 		({ id }) => !props.excludeIds?.includes(id),
 	),
 );
+// The portaled menu sits above the fullscreen Builder and below the dialog overlay.
+const builderMenuZIndex = 'calc(var(--dialogs--z) - 2)';
 const open = ref(false);
 const agentId = computed(() => props.context.agentId);
 const busy = ref(false);
@@ -316,7 +319,8 @@ async function enter(value: typeof source.value) {
 <template>
 	<N8nPopover
 		v-model:open="open"
-		:teleported="false"
+		:teleported="teleported"
+		:z-index="teleported ? builderMenuZIndex : undefined"
 		position-strategy="fixed"
 		:enable-scrolling="false"
 		:content-class="$style.popover"

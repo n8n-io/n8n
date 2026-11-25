@@ -65,7 +65,7 @@ function submit(key: string) {
 		"
 		:labels="approvalLabels"
 		:description="input.description"
-		:args="input.description ? undefined : input.args"
+		:args="input.args"
 		:supports-session-approval="input.supportsSessionApproval"
 		:disabled="disabled"
 		:auto-focus="autoFocus"
@@ -94,9 +94,14 @@ function submit(key: string) {
 					</template>
 					<template #toolName>
 						<span :class="$style.nameBadge">
-							<NodeIcon v-if="nodeType" :node-type="nodeType" aria-hidden="true" />
-							<N8nIcon v-else icon="wrench" aria-hidden="true" />
-							{{ toolLabel }}
+							<NodeIcon
+								v-if="nodeType"
+								:node-type="nodeType"
+								:class="$style.toolIcon"
+								aria-hidden="true"
+							/>
+							<N8nIcon v-else icon="wrench" :class="$style.toolIcon" aria-hidden="true" />
+							<span>{{ toolLabel }}</span>
 						</span>
 					</template>
 				</I18nT>
@@ -117,13 +122,16 @@ function submit(key: string) {
 
 .nameBadge {
 	display: inline-flex;
-	justify-content: center;
-	align-items: center;
+	align-items: baseline;
 	color: var(--text-color);
 	gap: var(--spacing--3xs);
-	height: 1lh;
-	transform: translateY(2px);
-	padding: var(--spacing--4xs);
+	padding-inline: var(--spacing--4xs);
 	font-weight: var(--font-weight--medium);
+}
+
+.toolIcon {
+	--node--icon--size: var(--height--3xs);
+
+	align-self: center;
 }
 </style>

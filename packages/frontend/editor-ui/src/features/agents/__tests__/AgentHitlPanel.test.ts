@@ -39,7 +39,9 @@ it('edits configurations from pills and creates one with the plus action', async
 	);
 	wrapper.getComponent(AgentHitlConfigurationModal).vm.$emit('close');
 	await wrapper.vm.$nextTick();
-	wrapper.getComponent(AgentApprovalDestinationMenu).vm.$emit('select', {
+	const menu = wrapper.getComponent(AgentApprovalDestinationMenu);
+	expect(menu.props('teleported')).toBe(true);
+	menu.vm.$emit('select', {
 		method: 'workflow',
 		workflowId: 'another',
 		name: 'Another approval',

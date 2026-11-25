@@ -16,7 +16,7 @@ import type {
 } from '../types';
 import type { ToolOpenTarget, ToolPickerMode } from './AgentCapabilitiesSection.types';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { HUMAN_REVIEW_MODULE } from '@n8n/constants';
+import { useAgentApprovalDestinationsEnabled } from '@/features/agents/composables/useAgentApprovalDestinationsEnabled';
 import { useTypeAvailability } from '@n8n/frontend-module-type-availability-policies';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
@@ -93,6 +93,7 @@ watch(
 );
 
 const settingsStore = useSettingsStore();
+const approvalDestinationsEnabled = useAgentApprovalDestinationsEnabled();
 const isMcpAvailable = computed(
 	() => settingsStore.isModuleActive('mcp') && !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
 );
@@ -347,7 +348,7 @@ defineExpose({ onSetupTaskAction });
 							@update:config="emit('update:config', $event)"
 							@update:budget-config="emit('update:budget-config', $event)"
 						>
-							<template v-if="settingsStore.isAgentModuleActive(HUMAN_REVIEW_MODULE)" #approval>
+							<template v-if="approvalDestinationsEnabled" #approval>
 								<AgentHitlPanel
 									:agent-id="agentId"
 									:agent-unsaved="agentUnsaved"

@@ -65,13 +65,32 @@ describe('ToolApprovalCard', () => {
 		expect(wrapper.emitted('submit')).toEqual([[{ approved: true, scope: 'session' }]]);
 	});
 
-	it('shows the Agent explanation instead of JSON arguments', () => {
+	it('shows the explanation and the HTTP request body together', () => {
 		const input = parseApprovalInput({
-			...approvalInput,
-			description: '  Calculate the total cost of the selected items.  ',
+			type: 'approval',
+			toolName: 'send_request',
+			description: '  Update the status of the selected record.  ',
+			args: { parameters: { method: 'POST', body: { status: 'active' } } },
 		});
 		const wrapper = mountCard(input!);
-		expect(wrapper.text()).toContain('Calculate the total cost of the selected items.');
+
+		expect(wrapper.text()).toContain('Update the status of the selected record.');
+		expect(wrapper.get('[data-test-id="approval-card-args"]').text()).toContain(
+			'"status": "active"',
+		);
+	});
+
+	it('keeps arguments marked as redacted out of the card', () => {
+		const input = parseApprovalInput({
+			type: 'approval',
+			toolName: 'send_request',
+			description: 'Request details are hidden by the caller settings.',
+			argumentsRedacted: true,
+			args: { parameters: { body: { status: 'active' } } },
+		});
+		const wrapper = mountCard(input!);
+
+		expect(wrapper.text()).toContain('Request details are hidden by the caller settings.');
 		expect(wrapper.find('[data-test-id="approval-card-args"]').exists()).toBe(false);
 	});
 

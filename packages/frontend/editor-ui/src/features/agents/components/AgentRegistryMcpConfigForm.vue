@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { HUMAN_REVIEW_MODULE } from '@n8n/constants';
-import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useAgentApprovalDestinationsEnabled } from '@/features/agents/composables/useAgentApprovalDestinationsEnabled';
 import { N8nInput, N8nSpinner, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { AgentApprovalRoute, McpToolPermissions } from '@n8n/api-types';
@@ -40,9 +39,7 @@ const config = useAgentRegistryMcpConfig(modalData, () => emit('credential-delet
 const item = config.item;
 const title = config.title;
 const submitted = ref(false);
-const approvalDestinationsEnabled = computed(() =>
-	useSettingsStore().isAgentModuleActive(HUMAN_REVIEW_MODULE),
-);
+const approvalDestinationsEnabled = useAgentApprovalDestinationsEnabled();
 const approvalRoute = ref<AgentApprovalRoute | undefined>(props.data.mcpServer.approvalRoute);
 const initialConnectionTimeoutMs =
 	props.data.mcpServer.connectionTimeoutMs ?? DEFAULT_AGENT_MCP_CONNECTION_TIMEOUT_MS;

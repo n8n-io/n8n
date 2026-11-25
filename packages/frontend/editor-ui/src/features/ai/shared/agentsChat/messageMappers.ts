@@ -155,7 +155,7 @@ export function parseApprovalInput(value: unknown): ApprovalInput | undefined {
 		...(typeof value.description === 'string' && value.description.trim()
 			? { description: value.description.trim() }
 			: {}),
-		args: value.args,
+		args: value.argumentsRedacted === true ? undefined : value.args,
 		...(askReason.success && { askReason: askReason.data }),
 	};
 }

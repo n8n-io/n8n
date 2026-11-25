@@ -385,7 +385,6 @@ function onKeydown(event: KeyboardEvent) {
 	height: var(--height--5xs);
 	border-radius: 50%;
 	background-color: var(--color--purple-700);
-	transform: translateY(1px);
 	@include motion.pulse;
 }
 

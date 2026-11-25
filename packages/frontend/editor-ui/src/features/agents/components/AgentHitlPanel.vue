@@ -96,6 +96,7 @@ function remove(id = editing.value?.id) {
 		>
 			<template #add>
 				<AgentApprovalDestinationMenu
+					teleported
 					:context="context"
 					:project-id="projectId"
 					:disabled="disabled"

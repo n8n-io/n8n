@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { useSettingsStore } from '@n8n/stores/settings.store';
-import { HUMAN_REVIEW_MODULE } from '@n8n/constants';
+import { useAgentApprovalDestinationsEnabled } from '@/features/agents/composables/useAgentApprovalDestinationsEnabled';
 import { N8nIcon, N8nSettingsRowGroup } from '@n8n/design-system';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { useI18n } from '@n8n/i18n';
@@ -39,7 +38,7 @@ const label = computed(
 			props.approvalRequired === undefined ? 'agents.hitl.mcpRoute' : 'agents.hitl.route',
 		),
 );
-const enabled = computed(() => useSettingsStore().isAgentModuleActive(HUMAN_REVIEW_MODULE));
+const approvalDestinationsEnabled = useAgentApprovalDestinationsEnabled();
 const group = computed(() => (props.embedded ? 'div' : N8nSettingsRowGroup));
 const editing = ref<AgentHitlConfiguration>();
 const expanded = ref(false);
@@ -110,7 +109,12 @@ watch(
 
 <template>
 	<div>
-		<component :is="group" v-if="enabled" :class="$style.group" data-testid="agent-approval-route">
+		<component
+			:is="group"
+			v-if="approvalDestinationsEnabled"
+			:class="$style.group"
+			data-testid="agent-approval-route"
+		>
 			<AgentToolConfigApprovalSetting
 				v-if="approvalRequired !== undefined"
 				:model-value="approvalRequired"
