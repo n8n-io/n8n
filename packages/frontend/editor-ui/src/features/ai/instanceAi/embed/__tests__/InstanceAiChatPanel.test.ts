@@ -1517,6 +1517,57 @@ describe('InstanceAiChatPanel', () => {
 			expect(wrapper.emitted('subject-changed')).toBeUndefined();
 		});
 
+		it('tells the host about each change when approvals finish out of order', async () => {
+			const runtime = makeThread();
+			const wrapper = mountServerPanel(runtime);
+			await flushPromises();
+			runtime.messages.push(
+				serverToolCall(
+					'tc-first',
+					{ action: 'add-tools', serverId: SERVER_ID, workflowIds: ['w1'] },
+					undefined,
+				),
+				serverToolCall(
+					'tc-second',
+					{ action: 'add-tools', serverId: SERVER_ID, workflowIds: ['w2'] },
+					undefined,
+				),
+			);
+			const [first, second] = runtime.messages.map((message) => message.agentTree!.toolCalls[0]);
+			first.isLoading = true;
+			second.isLoading = true;
+			await flushPromises();
+
+			second.result = untrusted({ success: true, serverMutated: true, tools: [] });
+			second.isLoading = false;
+			await flushPromises();
+			first.result = untrusted({ success: true, serverMutated: true, tools: [] });
+			first.isLoading = false;
+			await flushPromises();
+
+			expect(wrapper.emitted('subject-changed')).toHaveLength(2);
+		});
+
+		it('does not replay the changes that the history loads in one tick', async () => {
+			const runtime = makeThread();
+			runtime.isHydratingThread = true;
+			const wrapper = mountServerPanel(runtime);
+			await flushPromises();
+
+			// History loading sets the messages and ends hydration in the same tick.
+			runtime.messages.push(
+				serverToolCall(
+					'tc-old',
+					{ action: 'update', serverId: SERVER_ID, description: 'Old' },
+					untrusted({ success: true, serverMutated: true, server: {} }),
+				),
+			);
+			runtime.isHydratingThread = false;
+			await flushPromises();
+
+			expect(wrapper.emitted('subject-changed')).toBeUndefined();
+		});
+
 		it('keeps a pre-fill for the composer of the thread that it opens', async () => {
 			store.getThreadMetadata.mockReturnValue(undefined);
 			const wrapper = mount(InstanceAiChatPanel, {
