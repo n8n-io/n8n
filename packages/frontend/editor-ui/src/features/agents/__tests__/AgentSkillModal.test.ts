@@ -2661,7 +2661,7 @@ describe('header and footer', () => {
 		expect(getByTestId('agent-skill-modal')).toHaveAttribute('data-fixed-size', 'true');
 	});
 
-	it('edits Assistant and MCP availability from the menu', async () => {
+	it('edits Assistant and MCP availability from the menu and keeps it open', async () => {
 		const onConfirm = vi.fn();
 		const { container, getByTestId, getByRole, queryByRole } = renderModal({
 			realMenu: true,
@@ -2673,21 +2673,23 @@ describe('header and footer', () => {
 
 		expect(container.querySelector('header [role="switch"]')).toBeNull();
 		expect(queryByRole('menu')).not.toBeInTheDocument();
-		const openMenu = async () => await userEvent.click(getByTestId('agent-skill-header-menu'));
-		await openMenu();
+		await userEvent.click(getByTestId('agent-skill-header-menu'));
 		const assistantItem = () =>
 			getByRole('menuitemcheckbox', { name: 'settings.context.skills.assistant.toggle' });
 		const mcpItem = () =>
 			getByRole('menuitemcheckbox', { name: 'settings.context.skills.modal.mcp.toggle' });
 		expect(assistantItem()).not.toBeChecked();
 		expect(mcpItem()).toBeChecked();
+
 		assistantItem().focus();
 		await userEvent.keyboard('{Enter}');
-		await openMenu();
+		expect(queryByRole('menu')).toBeInTheDocument();
 		expect(assistantItem()).toBeChecked();
+
 		await userEvent.click(mcpItem());
-		await openMenu();
+		expect(queryByRole('menu')).toBeInTheDocument();
 		expect(mcpItem()).not.toBeChecked();
+
 		await userEvent.keyboard('{Escape}');
 		await userEvent.click(getByTestId('agent-skill-create-save'));
 
