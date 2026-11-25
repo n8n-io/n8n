@@ -1,0 +1,7 @@
+type: object
+properties:
+  enabled:
+    type: boolean
+    description: Whether project environments are on for this instance.
+required:
+  - enabled
