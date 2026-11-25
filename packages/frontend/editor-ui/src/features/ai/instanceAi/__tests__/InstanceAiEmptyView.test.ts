@@ -21,6 +21,7 @@ import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import { useAssistantCreditsStore } from '../assistantCredits.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { usePostHog } from '@/app/stores/posthog.store';
+import { INSTANCE_AI_ASSISTANT_AGENT_EXPERIMENT } from '@/app/constants/experiments';
 import { INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
@@ -1417,6 +1418,21 @@ describe('InstanceAiEmptyView', () => {
 			useSettingsStore().moduleSettings = {
 				'instance-ai': { ...defaultModuleSettings, assistantAgentEnabled: true },
 			};
+			vi.mocked(usePostHog().isFeatureEnabled).mockImplementation(
+				(flag) => flag === INSTANCE_AI_ASSISTANT_AGENT_EXPERIMENT.name,
+			);
+		});
+
+		it('starts a current Assistant thread for a user outside the rollout', async () => {
+			vi.mocked(usePostHog().isFeatureEnabled).mockReturnValue(false);
+			const { getByTestId } = renderView();
+
+			expect(getByTestId('instance-ai-input-accepted-mime-types')).toHaveTextContent('unset');
+			await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+			await flushPromises();
+
+			expect(store.syncThread).toHaveBeenCalled();
+			expect(thread.sendMessage).toHaveBeenCalledWith('hello', expect.anything());
 		});
 
 		it('restricts the composer to the file types of the Assistant agent', () => {
@@ -1466,6 +1482,37 @@ describe('InstanceAiEmptyView', () => {
 			expect(pendingMessage?.files.map((file) => file.name)).toEqual(['screenshot.png']);
 			expect(pendingMessage?.references).toEqual([]);
 			expect(pendingMessage?.authorship).toEqual(USER_TYPED_MESSAGE);
+		});
+
+		it('starts the App creation on the Assistant agent with the pending App', async () => {
+			const appId = '019a4012-272c-7313-91af-5c94a3d819a9';
+			routeQuery.pendingAppId = appId;
+			routeQuery.projectId = 'project-1';
+			routeQuery.source = 'app_builder_page';
+			pushMock.mockResolvedValue(undefined);
+			const { getByTestId } = renderView();
+
+			await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+			await flushPromises();
+
+			expect(store.syncThread).not.toHaveBeenCalled();
+			expect(store.updateThreadMetadata).not.toHaveBeenCalled();
+			expect(pushMock).toHaveBeenCalledWith({
+				name: INSTANCE_AI_THREAD_VIEW,
+				params: { threadId: 'thread-placeholder' },
+			});
+			expect(localStorage.setItem).toHaveBeenCalledWith(
+				'n8n-assistant-agent-launch:thread-placeholder',
+				JSON.stringify({
+					projectId: 'project-1',
+					subject: { type: 'app', id: appId, projectId: 'project-1', pending: true },
+				}),
+			);
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				'User launched Instance AI thread',
+				expect.objectContaining({ source: 'app_builder_page', runtime: 'agents' }),
+			);
+			expect(consumePendingAssistantAgentMessage('thread-placeholder')?.text).toBe('hello');
 		});
 
 		it('drops the first message and restores the draft when the navigation fails', async () => {

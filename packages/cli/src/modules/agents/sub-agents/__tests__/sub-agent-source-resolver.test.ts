@@ -22,7 +22,7 @@ const versionId = 'version-1';
 
 const runnableConfig: AgentJsonConfig = {
 	name: 'Helper Agent',
-	model: 'anthropic/claude-sonnet-4-5',
+	model: 'anthropic/claude-sonnet-5-5',
 	credential: 'credential-1',
 	instructions: 'Be useful.',
 	config: {
@@ -352,6 +352,46 @@ describe('SubAgentSourceResolver', () => {
 		await expect(resolver.resolveForRuntime({ agentId, versionId }, { projectId })).rejects.toThrow(
 			`Version "${versionId}" not found for agent "${agentId}"`,
 		);
+	});
+
+	describe('service account for log attribution', () => {
+		it.each([
+			{ label: 'the draft', source: { agentId }, context: { projectId } },
+			{
+				label: 'the published version',
+				source: { agentId },
+				context: { projectId, usePublishedVersion: true },
+			},
+			{ label: 'a pinned version', source: { agentId, versionId }, context: { projectId } },
+		])('returns the service account of the agent row for $label', async ({ source, context }) => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ identityId: 'sa-1' }));
+			agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(makeAgentHistory());
+
+			const result = await resolver.resolveForRuntime(source, context);
+
+			expect(result.agentServiceAccountId).toBe('sa-1');
+		});
+
+		it('takes the service account from the live row for a saved background configuration', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			const original = await resolver.resolveForRuntime({ agentId }, { projectId });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ identityId: 'sa-1' }));
+
+			const resumed = await resolver.resolveForRuntime(
+				{ agentId },
+				{ projectId, runtimeSnapshot: JSON.stringify(original) },
+			);
+
+			expect(resumed.agentServiceAccountId).toBe('sa-1');
+		});
+
+		it('returns no service account for an agent without one', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ identityId: undefined }));
+
+			const result = await resolver.resolveForRuntime({ agentId }, { projectId });
+
+			expect(result).not.toHaveProperty('agentServiceAccountId');
+		});
 	});
 
 	describe('skill refs round trip', () => {

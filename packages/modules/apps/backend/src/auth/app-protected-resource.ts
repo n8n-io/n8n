@@ -7,6 +7,7 @@ import {
 	type ProtectedResource,
 	type ResourcePrincipal,
 } from '@n8n/inbound-auth';
+import type { ResourceGrant } from '@n8n/permissions';
 
 import type { App } from '../app.entity';
 import { AppRepository } from '../app.repository';
@@ -23,9 +24,10 @@ export class AppProtectedResource implements ProtectedResourceResolver {
 		private readonly projectScope: ProjectScopeService,
 	) {}
 
-	forApp(app: App): ProtectedResource {
+	forApp(app: App, { revalidate = true }: { revalidate?: boolean } = {}): ProtectedResource {
 		const url = this.hosts.callbackUrl(app);
 		const currentApp = async () => {
+			if (!revalidate) return app;
 			const current = await this.apps.findById(app.id);
 			return current?.publishedVersionId && current.namespace === app.namespace ? current : null;
 		};
@@ -45,7 +47,18 @@ export class AppProtectedResource implements ProtectedResourceResolver {
 				const current = await currentApp();
 				return !!current && (await this.canAccess(current, user));
 			},
+			getGrant: () => this.grantFor(app),
 		};
+	}
+
+	/**
+	 * Mirrors `canAccess`, so a sealed run re-checks project access. The grant keeps the
+	 * visibility of the moment it is sealed. It does not re-check that the app is still published.
+	 */
+	grantFor(app: Pick<App, 'id' | 'namespace' | 'projectId' | 'visibility'>): ResourceGrant {
+		const audiences = [this.hosts.callbackUrl(app)];
+		if (app.visibility === 'instance') return { audiences };
+		return { audiences, projectAccess: { projectId: app.projectId, scopes: ['app:read'] } };
 	}
 
 	async canAccess(app: App, user: ResourcePrincipal): Promise<boolean> {

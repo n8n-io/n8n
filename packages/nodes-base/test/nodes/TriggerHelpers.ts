@@ -66,6 +66,7 @@ type TestWebhookTriggerNodeOptions = TestTriggerNodeOptions & {
 type TestPollingTriggerNodeOptions = TestTriggerNodeOptions & {
 	/** Overrides the poll time budget the context reports (default: 5 minutes). */
 	pollBudgetMs?: number;
+	declareBoundedPoll?: () => void;
 };
 
 function getNodeVersion(Trigger: new () => VersionedNodeType, version?: number) {
@@ -230,6 +231,9 @@ export async function testWebhookTriggerNode(
 			);
 		},
 		prepareBinaryData: options.helpers?.prepareBinaryData ?? vi.fn(),
+		...(options.helpers?.httpRequestWithAuthentication
+			? { httpRequestWithAuthentication: options.helpers.httpRequestWithAuthentication }
+			: {}),
 	});
 
 	const request = mock<express.Request>({
@@ -239,6 +243,12 @@ export async function testWebhookTriggerNode(
 	const response = mock<express.Response>({ status: vi.fn(() => mock<express.Response>()) });
 	const webhookFunctions = mock<IWebhookFunctions>({
 		helpers,
+		logger: mock<WorkflowLogger>({
+			debug: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
+		}),
 		nodeHelpers: {
 			copyBinaryFile: vi.fn(async () => mock<IBinaryData>()),
 		},
@@ -325,10 +335,10 @@ export async function testPollingTriggerNode(
 	// don't take the eval-mock code path.
 	(additionalData as unknown as Record<string, unknown>).evalLlmMockHandler = undefined;
 
-	const { pollBudgetMs } = options;
+	const { pollBudgetMs, declareBoundedPoll } = options;
 	// Each undefined keeps a PollContext default: __emit, __emitError,
-	// __commitCursor, __runPoll, resolveNodeStaticData. The poll-budget getter is
-	// the only constructor argument this helper sets.
+	// __commitCursor, __runPoll, resolveNodeStaticData. The poll-budget getter and
+	// the bounded-poll declaration are the only constructor arguments this helper sets.
 	const pollContext = new PollContext(
 		workflow,
 		node,
@@ -341,6 +351,7 @@ export async function testPollingTriggerNode(
 		undefined,
 		undefined,
 		pollBudgetMs === undefined ? undefined : () => pollBudgetMs,
+		declareBoundedPoll,
 	);
 
 	pollContext.getNode = () => node;

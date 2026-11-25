@@ -67,6 +67,22 @@ describe('AppHostService', () => {
 		expect(hosts.previewNamespace(request('--preview.apps.localhost:5678'))).toBeUndefined();
 	});
 
+	it('uses the origin of the instance base URL as the editor origin', () => {
+		expect(setup({ instanceBaseUrl: 'https://n8n.example.net/base' }).editorOrigin).toBe(
+			'https://n8n.example.net',
+		);
+	});
+
+	it.each([
+		['sales.apps.example.com', "'none'"],
+		['unknown.nested.apps.example.com', "'none'"],
+		['sales--preview.apps.example.com', 'https://n8n.example.net'],
+	])('allows only the editor to frame preview hosts: %s', (host, frameAncestors) => {
+		expect(setup().contentSecurityPolicy(request(host))).toBe(
+			`base-uri 'self'; object-src 'none'; frame-ancestors ${frameAncestors}`,
+		);
+	});
+
 	it('accepts valid parent labels with consecutive hyphens', () => {
 		expect(setup({ baseUrl: 'https://apps--public.example.com' }).origin('sales')).toBe(
 			'https://sales.apps--public.example.com',

@@ -59,6 +59,7 @@ export function createGoogleVertexModel(
 		project: creds.project,
 		location: creds.location,
 		googleAuthOptions: {
+			// oxlint-disable-next-line typescript/no-deprecated -- Pass explicit service-account fields, not an arbitrary credential configuration.
 			credentials: {
 				client_email: creds.clientEmail,
 				private_key: formatPemBlock(creds.privateKey),

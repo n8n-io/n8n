@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { CacheService, EventService } from '@n8n/backend-services';
 import {
@@ -24,6 +25,7 @@ import {
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { jsonParse } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
@@ -109,10 +111,6 @@ const turnOnSso = async (protocol: 'saml' | 'oidc') => {
 	await setCurrentAuthenticationMethod(protocol);
 };
 
-afterAll(() => {
-	delete process.env.N8N_ENV_FEAT_SCIM;
-});
-
 beforeEach(async () => {
 	await testDb.truncate([
 		'ApiKey',
@@ -129,9 +127,6 @@ beforeEach(async () => {
 	await Container.get(ScimSettingsService).setDeprovisioningPolicy({
 		...DEFAULT_SCIM_DEPROVISIONING_POLICY,
 	});
-
-	// Every test except the opt-in ones runs with the opt-in on.
-	process.env.N8N_ENV_FEAT_SCIM = 'true';
 
 	// SCIM provisioning works only while SAML or OIDC single sign-on is on.
 	await turnOnSso('saml');
@@ -166,6 +161,124 @@ describe('SCIM /scim/v2 authentication', () => {
 
 		expect(response.status).toBe(403);
 		expect(response.body).toMatchObject({ schemas: [ERROR_SCHEMA], status: '403' });
+	});
+});
+
+describe('SCIM rejected requests', () => {
+	let emit: MockInstance<EventService['emit']>;
+
+	beforeEach(() => {
+		emit = vi.spyOn(Container.get(EventService), 'emit');
+	});
+
+	afterEach(() => {
+		emit.mockRestore();
+	});
+
+	const rejections = () => emit.mock.calls.filter(([name]) => name === 'scim-request-rejected');
+
+	/** The observer reports on `finish`, which can come after the client has the response. */
+	const expectRejection = async (event: object) =>
+		await vi.waitFor(() => expect(emit).toHaveBeenCalledWith('scim-request-rejected', event));
+
+	const newUser = (userName: string) => ({ body: { schemas: [USER_SCHEMA], userName } });
+
+	it('reports a request without a token once', async () => {
+		await scimRequest('get', '/Users', { bearer: null }).expect(401);
+
+		await expectRejection({ operation: 'list_users', status: 401, reason: 'invalid_token' });
+		expect(rejections()).toHaveLength(1);
+	});
+
+	it('reports a request with an unknown token', async () => {
+		await scimRequest('get', '/Users/some-id', { bearer: 'not-a-scim-token' }).expect(401);
+
+		await expectRejection({ operation: 'get_user', status: 401, reason: 'invalid_token' });
+	});
+
+	it('reports a token that a rotation replaced', async () => {
+		const oldToken = token;
+		await testServer.authAgentFor(admin).post('/scim/token').expect(201);
+
+		await scimRequest('get', '/Users', { bearer: oldToken }).expect(401);
+
+		await expectRejection({ operation: 'list_users', status: 401, reason: 'superseded_token' });
+	});
+
+	it('reports a request while SCIM is off', async () => {
+		await Container.get(ScimSettingsService).setEnabled(false);
+
+		await scimRequest('post', '/Users', newUser('ada@example.com')).expect(403);
+
+		await expectRejection({ operation: 'create_user', status: 403, reason: 'scim_disabled' });
+	});
+
+	it('reports a request while single sign-on is off', async () => {
+		Container.get(GlobalConfig).sso.saml.loginEnabled = false;
+		await setCurrentAuthenticationMethod('email');
+
+		await scimRequest('get', '/ServiceProviderConfig').expect(403);
+
+		await expectRejection({ operation: 'discovery', status: 403, reason: 'sso_off' });
+	});
+
+	it('reports a body that fails validation', async () => {
+		await scimRequest('post', '/Users', { body: { schemas: [USER_SCHEMA] } }).expect(400);
+
+		await expectRejection({ operation: 'create_user', status: 400, reason: 'invalid_request' });
+	});
+
+	it('reports a filter that n8n does not support', async () => {
+		const filter = encodeURIComponent('displayName eq "Ada"');
+
+		await scimRequest('get', `/Users?filter=${filter}`).expect(400);
+
+		await expectRejection({ operation: 'list_users', status: 400, reason: 'invalid_filter' });
+	});
+
+	it('reports a path that n8n does not support', async () => {
+		await scimRequest('post', '/Groups', {
+			body: { schemas: ['urn:ietf:params:scim:schemas:core:2.0:Group'], displayName: 'Ops' },
+		}).expect(404);
+
+		await expectRejection({ operation: 'other', status: 404, reason: 'not_found' });
+	});
+
+	it('reports a value that n8n cannot use', async () => {
+		const member = await createMember();
+
+		await scimRequest('patch', `/Users/${member.id}`, {
+			body: patchOps({ op: 'replace', path: 'active', value: 'no' }),
+		}).expect(400);
+
+		await expectRejection({ operation: 'patch_user', status: 400, reason: 'invalid_value' });
+	});
+
+	it('reports a user that already exists', async () => {
+		await scimRequest('post', '/Users', newUser('ada@example.com')).expect(201);
+		await scimRequest('post', '/Users', newUser('ada@example.com')).expect(409);
+
+		await expectRejection({ operation: 'create_user', status: 409, reason: 'conflict' });
+	});
+
+	it('reports a change to the instance owner', async () => {
+		await scimRequest('delete', `/Users/${owner.id}`).expect(403);
+
+		await expectRejection({ operation: 'delete_user', status: 403, reason: 'owner_protected' });
+	});
+
+	it('reports a user that does not exist', async () => {
+		// Postgres rejects an id that is not a UUID, so use a valid one that does not exist.
+		await scimRequest('get', `/Users/${randomUUID()}`).expect(404);
+
+		await expectRejection({ operation: 'get_user', status: 404, reason: 'not_found' });
+	});
+
+	it('reports nothing for a request that succeeds', async () => {
+		await scimRequest('get', '/Users').expect(200);
+		await scimRequest('post', '/Users', newUser('ada@example.com')).expect(201);
+
+		expect(rejections()).toEqual([]);
 	});
 });
 
@@ -588,6 +701,29 @@ describe('SCIM deprovisioning policy', () => {
 				.expect(400);
 
 			expect(await getConfig()).toMatchObject({ onDelete: 'disable' });
+		});
+
+		it('reports a policy change once, and nothing when the policy stays the same', async () => {
+			const emit = vi.spyOn(Container.get(EventService), 'emit');
+
+			await savePolicy({ onDelete: 'delete' }).expect(200);
+			await savePolicy({ onDelete: 'delete' }).expect(200);
+
+			const changes = emit.mock.calls.filter(
+				([name]) => name === 'scim-deprovisioning-policy-updated',
+			);
+			expect(changes).toEqual([
+				[
+					'scim-deprovisioning-policy-updated',
+					{
+						user: expect.objectContaining({ id: admin.id }),
+						isActive: true,
+						before: DEFAULT_SCIM_DEPROVISIONING_POLICY,
+						after: { ...DEFAULT_SCIM_DEPROVISIONING_POLICY, onDelete: 'delete' },
+					},
+				],
+			]);
+			emit.mockRestore();
 		});
 
 		it('returns 400 and saves nothing for a transfer project that does not exist', async () => {
@@ -1033,72 +1169,6 @@ describe('SCIM /scim/v2/Schemas', () => {
 	});
 });
 
-describe('SCIM opt-in', () => {
-	const restRoutes = [
-		['get', '/scim/config'],
-		['patch', '/scim/config'],
-		['put', '/scim/deprovisioning'],
-		['post', '/scim/token'],
-		['delete', '/scim/token'],
-		['get', '/scim/transfer-targets'],
-	] as const;
-
-	describe('while the opt-in is off', () => {
-		beforeEach(() => {
-			process.env.N8N_ENV_FEAT_SCIM = 'false';
-		});
-
-		it.each(scimRoutes)('%s /scim/v2%s returns 404 with a valid token', async (method, path) => {
-			expect((await scimRequest(method, path)).status).toBe(404);
-		});
-
-		it.each(scimRoutes)('%s /scim/v2%s returns 404 without a token', async (method, path) => {
-			expect((await scimRequest(method, path, { bearer: null })).status).toBe(404);
-		});
-
-		// The gate runs after the session and the scope checks.
-		it.each(restRoutes)('%s /rest%s returns 404 to an admin', async (method, path) => {
-			const response = await testServer
-				.authAgentFor(admin)
-				[method](path)
-				.send(method === 'patch' ? { enabled: true } : {});
-
-			expect(response.status).toBe(404);
-		});
-
-		it.each(restRoutes)('%s /rest%s returns 403 to a member', async (method, path) => {
-			const member = await createMember();
-			const response = await testServer
-				.authAgentFor(member)
-				[method](path)
-				.send(method === 'patch' ? { enabled: true } : {});
-
-			expect(response.status).toBe(403);
-		});
-
-		it.each(restRoutes)('%s /rest%s returns 401 without a session', async (method, path) => {
-			const response = await testServer.authlessAgent[method](path).send(
-				method === 'patch' ? { enabled: true } : {},
-			);
-
-			expect(response.status).toBe(401);
-		});
-
-		it('keeps the SCIM setting and the token', async () => {
-			await testServer.authAgentFor(admin).patch('/scim/config').send({ enabled: false });
-
-			expect(await Container.get(ScimSettingsService).isEnabled()).toBe(true);
-			expect(await scimTokenRepository().findInstanceToken({})).not.toBeNull();
-		});
-	});
-
-	it('answers while N8N_ENV_FEAT_SCIM is true', async () => {
-		await scimRequest('get', '/ServiceProviderConfig').expect(200);
-		await scimRequest('get', '/Users').expect(200);
-		await testServer.authAgentFor(admin).get('/scim/config').expect(200);
-	});
-});
-
 describe('SCIM and single sign-on', () => {
 	const scimSettings = () => Container.get(ScimSettingsService);
 
@@ -1243,14 +1313,26 @@ describe('SCIM and single sign-on', () => {
 	// the license comes back.
 	it('saves the switch as off when single sign-on turns off without the SCIM module', async () => {
 		await scimSettings().setEnabled(true);
+		const eventService = Container.get(EventService);
+		const emit = vi.spyOn(eventService, 'emit');
 		const readerWithoutModule = new ScimSwitchReader(
 			Container.get(LicenseState),
 			Container.get(SettingsRepository),
 			Container.get(CacheService),
 			Container.get(Logger),
+			eventService,
 		);
 
 		await readerWithoutModule.turnOff('saml');
+
+		// The SCIM module then finds SCIM off, so this is the only report.
+		expect(emit).toHaveBeenCalledWith('scim-settings-updated', {
+			user: null,
+			isActive: false,
+			change: 'disabled',
+			source: 'sso_off',
+		});
+		emit.mockRestore();
 
 		expect(
 			await Container.get(SettingsRepository).findByKey('scim.provisioning.enabled'),

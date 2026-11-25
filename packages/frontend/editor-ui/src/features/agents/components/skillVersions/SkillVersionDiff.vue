@@ -26,8 +26,8 @@ const shownSections = computed(() =>
 	props.sections
 		.filter((section) =>
 			props.selectedPath === SKILL_FILE
-				? section.key in FIELD_LABELS
-				: section.key === props.selectedPath,
+				? !section.isFile
+				: section.isFile && section.key === props.selectedPath,
 		)
 		.map((section) => ({ ...section, blocks: blocksOf(section.lines) })),
 );
@@ -52,12 +52,13 @@ function blocksOf(lines: DiffLine[]): Block[] {
 }
 
 function labelOf(section: DiffSection): string {
+	if (section.isFile) return section.key;
 	const key = FIELD_LABELS[section.key];
 	return key ? i18n.baseText(key) : section.key;
 }
 
 function isMarkdown(section: DiffSection): boolean {
-	return MARKDOWN_FIELDS.has(section.key) || section.key.endsWith('.md');
+	return section.isFile ? /\.(md|markdown)$/i.test(section.key) : MARKDOWN_FIELDS.has(section.key);
 }
 
 /**
@@ -81,9 +82,21 @@ function rendersAsMarkdown(section: DiffSection, text: string): boolean {
 		>
 			<div :class="$style.fieldHeader">
 				<N8nText size="small" bold>{{ labelOf(section) }}</N8nText>
-				<SkillDiffCount :count="section" />
+				<N8nText v-if="section.status === 'modified'" size="small">
+					{{ i18n.baseText('agents.builder.skills.versions.fileModified') }}
+				</N8nText>
+				<SkillDiffCount v-else :count="section" :hide-zero="section.isBinary" />
 			</div>
-			<div :class="$style.body">
+			<N8nText v-if="section.isBinary" size="small">
+				{{
+					i18n.baseText(
+						section.blocks.length
+							? 'agents.builder.skills.versions.binarySide'
+							: 'agents.builder.skills.files.binary',
+					)
+				}}
+			</N8nText>
+			<div v-if="!section.isBinary || section.blocks.length" :class="$style.body">
 				<template v-for="(block, index) in section.blocks" :key="index">
 					<N8nMarkdown
 						v-if="block.kind === 'equal' && rendersAsMarkdown(section, block.text)"

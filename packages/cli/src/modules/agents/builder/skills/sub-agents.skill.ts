@@ -121,7 +121,7 @@ Example shape:
 "subAgents": {
   "modelsByDifficulty": {
     "low": { "model": "openai/gpt-4o-mini", "credential": "credential-id" },
-    "high": { "model": "anthropic/claude-sonnet-4-5", "credential": "credential-id" }
+    "high": { "model": "anthropic/claude-sonnet-5-5", "credential": "credential-id" }
   }
 }
 \`\`\`

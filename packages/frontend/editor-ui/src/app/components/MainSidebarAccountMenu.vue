@@ -225,6 +225,7 @@ useKeybindings({ ctrl_alt_o: () => onHelpSelect('about') });
 		>
 			<N8nDropdownMenu
 				v-model="isOpen"
+				:modal="false"
 				:items="[]"
 				:placement="isCollapsed ? 'right-end' : 'top-start'"
 				width="var(--spacing--5xl)"

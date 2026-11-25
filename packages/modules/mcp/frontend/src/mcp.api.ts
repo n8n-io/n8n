@@ -13,6 +13,7 @@ import { makeRestApiRequest, getFullApiResponse } from '@n8n/rest-api-client';
 export type McpSettingsResponse = {
 	mcpAccessEnabled: boolean;
 	autoExposeNewWorkflows: boolean;
+	preferencesEnabled: boolean;
 };
 
 export type ToggleWorkflowsMcpAccessTarget =
@@ -44,7 +45,7 @@ export type ToggleAgentsMcpAccessResponse = {
 
 export async function updateMcpSettings(
 	context: IRestApiContext,
-	settings: { mcpAccessEnabled?: boolean; autoExposeNewWorkflows?: boolean },
+	settings: Partial<McpSettingsResponse>,
 ): Promise<McpSettingsResponse> {
 	return await makeRestApiRequest(context, 'PATCH', '/mcp/settings', settings);
 }

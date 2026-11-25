@@ -61,6 +61,7 @@ const dialogBan = requireBan('reka-ui', 'Dialog');
 const dateRangeBan = requireBan('reka-ui', 'DateRangePicker');
 const toggleBan = requireBan('reka-ui', 'Toggle');
 const menuBan = requireBan('element-plus', 'ElMenu');
+const tabsBan = requireBan('element-plus', 'ElTabs');
 const radioBan = requireBan('reka-ui', 'RadioGroup');
 
 const paginationWrapper =
@@ -320,6 +321,21 @@ ruleTester.run('no-direct-component-imports', NoDirectComponentImportsRule, {
 			errors: [error('RadioGroupRoot', radioBan), error('RadioGroupItem', radioBan)],
 		},
 		{
+			name: 'element-plus tabs point at N8nTabs',
+			code: "import { ElTabs, ElTabPane } from 'element-plus';",
+			errors: [error('ElTabs', tabsBan), error('ElTabPane', tabsBan)],
+		},
+		{
+			name: 'deep element-plus tabs path',
+			code: "import Tabs from 'element-plus/es/components/tabs';",
+			errors: [error('element-plus/es/components/tabs', tabsBan)],
+		},
+		{
+			name: 'deep element-plus tab-pane path',
+			code: "import Pane from 'element-plus/es/components/tab-pane';",
+			errors: [error('element-plus/es/components/tab-pane', tabsBan)],
+		},
+		{
 			name: 'element-plus radio stays a direct primitive import',
 			code: "import { ElRadio, ElRadioGroup } from 'element-plus';",
 			errors: [
@@ -362,6 +378,11 @@ vueRuleTester.run('no-direct-component-imports templates', NoDirectComponentImpo
 			code: template('<el-menu><ElMenu /></el-menu>'),
 		},
 		{
+			name: 'tabs template tags in the allowed wrapper path',
+			filename: wrapperFile('components/N8nTabs', 'Tabs.vue'),
+			code: template('<el-tabs><ElTabPane /></el-tabs>'),
+		},
+		{
 			name: 'reka radio imports in the allowed wrapper path',
 			filename: radioWrapper,
 			code: "<script>import { RadioGroupRoot, injectRadioGroupRootContext } from 'reka-ui';</script>",
@@ -396,6 +417,18 @@ vueRuleTester.run('no-direct-component-imports templates', NoDirectComponentImpo
 			filename: 'Component.vue',
 			code: "<script>import { injectRadioGroupRootContext } from 'reka-ui';</script>",
 			errors: [error('injectRadioGroupRootContext', radioBan)],
+		},
+		{
+			name: 'kebab-case tabs template tag',
+			filename: 'Component.vue',
+			code: template('<el-tabs><el-tab-pane /></el-tabs>'),
+			errors: [error('el-tabs', tabsBan), error('el-tab-pane', tabsBan)],
+		},
+		{
+			name: 'PascalCase tabs template tag',
+			filename: 'Component.vue',
+			code: template('<ElTabs><ElTabPane /></ElTabs>'),
+			errors: [error('ElTabs', tabsBan), error('ElTabPane', tabsBan)],
 		},
 		{
 			name: 'kebab-case radio template tag',

@@ -43,11 +43,43 @@ describe('renderObservationLog', () => {
 				'The following is your memory of this conversation. It accumulates as observations are made. Older entries may have been merged or dropped during periodic restructuring.',
 				'Marker legend: CRITICAL = must retain, IMPORTANT = useful continuity, INFO = contextual detail, COMPLETION = completed/resolved.',
 				'',
+				'Date: 2026-05-12',
 				'* IMPORTANT (14:30) User is rebuilding observational memory.',
 				'  * COMPLETION (14:31) Plan 4 was completed.',
 				'</observations>',
 			].join('\n'),
 		);
+	});
+
+	it('writes the date once for each day, and on a child from a later day', () => {
+		const first = entry({ id: 'first', text: 'First day.' });
+		const lateChild = entry({
+			id: 'late-child',
+			parentId: first.id,
+			text: 'Next day follow-up.',
+			createdAt: new Date(2026, 4, 13, 9, 5),
+		});
+		const sameDay = entry({
+			id: 'same-day',
+			text: 'Later on the first day.',
+			createdAt: new Date(2026, 4, 12, 16, 0),
+		});
+		const second = entry({
+			id: 'second',
+			text: 'Second day.',
+			createdAt: new Date(2026, 4, 13, 10, 0),
+		});
+
+		const lines = renderObservationLog([second, lateChild, sameDay, first])?.split('\n');
+
+		expect(lines?.slice(4, -1)).toEqual([
+			'Date: 2026-05-12',
+			'* IMPORTANT (14:30) First day.',
+			'  * IMPORTANT (2026-05-13 09:05) Next day follow-up.',
+			'* IMPORTANT (16:00) Later on the first day.',
+			'Date: 2026-05-13',
+			'* IMPORTANT (10:00) Second day.',
+		]);
 	});
 
 	it('applies the render token budget to active observations', () => {

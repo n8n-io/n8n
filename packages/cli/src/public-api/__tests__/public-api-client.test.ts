@@ -3,6 +3,8 @@ import { resolvePublicApiClient } from '@/public-api/public-api-client';
 describe('resolvePublicApiClient', () => {
 	it.each([
 		['editor_ui', 'editor-ui'],
+		['n8n_node', 'n8n-node'],
+		['n8n_cli', 'n8n-cli'],
 		['other', 'other'],
 	])(
 		'returns the %s telemetry value for the %s marker value',

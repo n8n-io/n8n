@@ -1,0 +1,30 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"date": {
+			"type": "string"
+		},
+		"email": {
+			"type": "string"
+		},
+		"event": {
+			"type": "string"
+		},
+		"id": {
+			"type": ["number", "string"]
+		},
+		"message-id": {
+			"type": "string"
+		},
+		"subject": {
+			"type": "string"
+		},
+		"ts": {
+			"type": "number"
+		},
+		"ts_event": {
+			"type": "number"
+		}
+	},
+	"type": "object"
+}

@@ -1,0 +1,23 @@
+{
+	"properties": {
+		"audioFormat": {
+			"type": "string"
+		},
+		"audioLength": {
+			"type": "number"
+		},
+		"audioSize": {
+			"type": "number"
+		},
+		"audioUrl": {
+			"type": "string"
+		},
+		"usageCharacters": {
+			"type": "number"
+		},
+		"wordCount": {
+			"type": "number"
+		}
+	},
+	"type": "object"
+}

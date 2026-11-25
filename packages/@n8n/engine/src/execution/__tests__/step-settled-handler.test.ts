@@ -7,6 +7,7 @@ import {
 } from '../../lifecycle-events';
 import type { OrchestrationMessage, StepMessage, WorkQueue } from '../../queue';
 import type { ExecutionResponseSender } from '../../response-channel';
+import type { CancelExecutionService } from '../cancel-execution.service';
 import type { ExecutionRecord, ExecutionStore } from '../execution-store';
 import { stepKeyId, type StepKey, type StepSlots, type StepStatus } from '../execution.types';
 import { StepSettledHandler } from '../step-settled-handler';
@@ -77,7 +78,12 @@ function makeExecutionStore(
 			.mockResolvedValue({ finishedAt: new Date('2026-09-30T08:00:00.000Z') }),
 		cancelExecution: vi.fn().mockResolvedValue(null),
 		loadSeededOutputs: vi.fn().mockResolvedValue(new Map()),
+		findStaleQueuedExecutions: vi.fn(),
+		renewQueuedExecution: vi.fn(),
 		refreshLiveStatus: vi.fn(),
+		loadLiveSubExecutionIds: vi.fn().mockResolvedValue([]),
+		findPrunableExecutions: vi.fn(),
+		deleteEndedExecutions: vi.fn(),
 		...storeOverrides,
 	};
 }
@@ -94,6 +100,7 @@ function makeStepStore(
 		iteration: 0,
 		status: 'completed',
 		outputs: null,
+		outputSources: null,
 		waitDeclaration: null,
 		resumeCause: null,
 		...step,
@@ -112,6 +119,10 @@ function makeStepStore(
 		resumeStep: vi.fn().mockResolvedValue(true),
 		resumeDueSteps: vi.fn().mockResolvedValue([]),
 		nextWaitDeadline: vi.fn().mockResolvedValue(null),
+		findStaleQueuedSteps: vi.fn().mockResolvedValue([]),
+		renewQueuedStep: vi.fn(),
+		findStaleRunningSteps: vi.fn().mockResolvedValue([]),
+		failStaleRunningStep: vi.fn(),
 		failStep: vi.fn(),
 		failWaitingStep: vi.fn(),
 		cancelStep: vi.fn(),
@@ -157,6 +168,9 @@ function makeResponseSender() {
 	return { send: vi.fn() } as unknown as ExecutionResponseSender;
 }
 
+/** The one method of the cancel service the handler calls; a stub stands in for the class. */
+type SubExecutionCanceller = Pick<CancelExecutionService, 'cancelSubExecutions'>;
+
 function makeHandler(
 	stepStore: StepStore,
 	{
@@ -165,6 +179,7 @@ function makeHandler(
 		orchestrationQueue = makeOrchestrationQueue(),
 		lifecycleEventPublisher = makeLifecycleEventPublisher(),
 		responseSender = makeResponseSender(),
+		subExecutionCanceller = { cancelSubExecutions: vi.fn() } as SubExecutionCanceller,
 	} = {},
 ) {
 	return {
@@ -175,12 +190,14 @@ function makeHandler(
 			orchestrationQueue,
 			new LifecycleEventPublisherFactory(lifecycleEventPublisher),
 			responseSender,
+			subExecutionCanceller as CancelExecutionService,
 		),
 		executionStore,
 		stepQueue,
 		orchestrationQueue,
 		lifecycleEventPublisher,
 		responseSender,
+		subExecutionCanceller,
 	};
 }
 
@@ -620,6 +637,7 @@ describe('StepSettledHandler sub-executions', () => {
 			iteration,
 			status,
 			outputs,
+			outputSources: null,
 			waitDeclaration: null,
 			resumeCause: null,
 		};
@@ -672,10 +690,10 @@ describe('StepSettledHandler sub-executions', () => {
 		expect(stepStore.cancelPendingSteps).toHaveBeenCalledExactlyOnceWith('exec-1');
 	});
 
-	it('resumes the awaiting parent with the error the moment a step fails', async () => {
+	it('resumes the awaiting parent with the error the moment a step fails, then cancels the sub-executions', async () => {
 		const error = { name: 'TypeError', message: 'boom' };
 		const stepStore = makeStepStore({ status: 'failed', error });
-		const { handler, stepQueue } = makeHandler(stepStore, {
+		const { handler, stepQueue, subExecutionCanceller } = makeHandler(stepStore, {
 			executionStore: makeExecutionStore({ parent }),
 		});
 
@@ -692,6 +710,25 @@ describe('StepSettledHandler sub-executions', () => {
 			executionId: 'exec-parent',
 			stepId: 'step-call',
 		});
+		expect(subExecutionCanceller.cancelSubExecutions).toHaveBeenCalledExactlyOnceWith('exec-1');
+		// The parent first: a cascade that throws must not strand it.
+		expect(vi.mocked(stepStore.resumeStep).mock.invocationCallOrder[0]).toBeLessThan(
+			vi.mocked(subExecutionCanceller.cancelSubExecutions).mock.invocationCallOrder[0],
+		);
+	});
+
+	it('still cancels the sub-executions when the parent resume throws', async () => {
+		const stepStore = makeStepStore(
+			{ status: 'failed', error: { name: 'Error', message: 'x' } },
+			{ resumeStep: vi.fn().mockRejectedValue(new Error('resume failed')) },
+		);
+		const { handler, subExecutionCanceller } = makeHandler(stepStore, {
+			executionStore: makeExecutionStore({ parent }),
+		});
+
+		await expect(handler.handle(event)).rejects.toThrow('resume failed');
+
+		expect(subExecutionCanceller.cancelSubExecutions).not.toHaveBeenCalled();
 	});
 
 	it('resumes the awaiting parent with the failed step error when the completion count reveals a failure', async () => {
@@ -705,7 +742,7 @@ describe('StepSettledHandler sub-executions', () => {
 				loadFailedSteps: vi.fn().mockResolvedValue([{ ...row('b', 'failed', null), error }]),
 			},
 		);
-		const { handler } = makeHandler(stepStore, {
+		const { handler, subExecutionCanceller } = makeHandler(stepStore, {
 			executionStore: makeExecutionStore({ parent }),
 		});
 
@@ -717,6 +754,25 @@ describe('StepSettledHandler sub-executions', () => {
 			status: 'failed',
 			error,
 		});
+		expect(subExecutionCanceller.cancelSubExecutions).toHaveBeenCalledExactlyOnceWith('exec-1');
+		expect(vi.mocked(stepStore.resumeStep).mock.invocationCallOrder[0]).toBeLessThan(
+			vi.mocked(subExecutionCanceller.cancelSubExecutions).mock.invocationCallOrder[0],
+		);
+	});
+
+	it('cancels no sub-executions and resumes no parent on a redelivered failure event', async () => {
+		const stepStore = makeStepStore({ status: 'failed', error: { name: 'Error', message: 'x' } });
+		const { handler, subExecutionCanceller } = makeHandler(stepStore, {
+			executionStore: makeExecutionStore(
+				{ parent },
+				{ finishExecution: vi.fn().mockResolvedValue(null) },
+			),
+		});
+
+		await handler.handle(event);
+
+		expect(subExecutionCanceller.cancelSubExecutions).not.toHaveBeenCalled();
+		expect(stepStore.resumeStep).not.toHaveBeenCalled();
 	});
 
 	it('resumes nothing for a parent that does not await the sub-execution', async () => {

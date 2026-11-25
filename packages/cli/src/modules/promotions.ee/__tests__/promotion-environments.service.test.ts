@@ -26,6 +26,7 @@ import { PromotionEnvironmentsService } from '../promotion-environments.service'
 import type { PromotionProvidersService } from '../promotion-providers.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import type { PromotionsGitService } from '../promotions-git.service';
+import { holdEnvironmentLock } from './utils/environment-lock';
 
 vi.mock('@/permissions.ee/check-access');
 const userHasScopesMock = userHasScopes as MockedFunction<typeof userHasScopes>;
@@ -93,21 +94,7 @@ describe('PromotionEnvironmentsService', () => {
 			updatedAt: new Date(),
 		}) as PromotionEnvironment;
 
-	/** Holds the environment lock until the returned function is called. */
-	const holdLock = async () => {
-		let release!: () => void;
-		let acquired!: () => void;
-		const held = new Promise<void>((resolve) => (acquired = resolve));
-		const done = environmentLock.run(ENVIRONMENT_ID, async () => {
-			acquired();
-			await new Promise<void>((resolve) => (release = resolve));
-		});
-		await held;
-		return async () => {
-			release();
-			await done;
-		};
-	};
+	const holdLock = async () => await holdEnvironmentLock(environmentLock, ENVIRONMENT_ID);
 
 	const isLockFree = async () =>
 		await environmentLock.run(ENVIRONMENT_ID, async () => true).catch(() => false);

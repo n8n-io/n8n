@@ -1,6 +1,6 @@
 ---
 title: AI functionality
-last_reviewed: 2026-11-06
+last_reviewed: 2026-11-20
 contact: Cadiac
 ---
 
@@ -24,7 +24,7 @@ An **AI agent** answers questions and takes actions in other services, e.g. Slac
 - **Instructions and a model:** The AI agent calls the model with a credential or with Gateway credits.
 - **Tools:** An AI agent can call nodes, workflows, MCP servers, and custom tools. The [Agent turn](agent-turn.md#tools) page explains what runs each tool.
 - **Sub-agents:** An AI agent can give a task to another AI agent, and wait for the result.
-- **Triggers:** Chat integrations (e.g. Slack) and schedules start an AI agent. The [Agent publication](agent-publication.md#agent-triggers) page explains where each trigger runs.
+- **Triggers:** Chat integrations (e.g. Slack), the API channel, and schedules start an AI agent. The [Agent publication](agent-publication.md#agent-triggers) page explains where each trigger runs.
 
 Like a workflow, an AI agent has a draft and a published version. Triggers start only the published version.
 
@@ -48,7 +48,7 @@ A user connects an AI app (e.g. Claude Desktop) to the MCP server. The app can t
 
 A **skill** is a set of instructions that a user saves once. AI agents, the n8n Assistant, and AI apps that connect to the MCP server read a skill when they need it. A user can also sync skills from a GitHub repository. A synced skill is read-only in n8n. n8n checks the repository for changes, and the user accepts each update.
 
-A published AI agent keeps the skill versions that it had at publication. An edit to a skill therefore changes only the draft of the AI agent, until the user publishes it again.
+A published AI agent keeps the skill versions that it had at publication. A draft that follows the latest version uses a skill edit without creating a saved agent version. Publishing that draft captures the new skill version.
 
 ## Knowledge
 

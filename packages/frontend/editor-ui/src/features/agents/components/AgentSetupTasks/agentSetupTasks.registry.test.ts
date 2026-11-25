@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { setupTaskDefinitions, type SetupContext } from './agentSetupTasks.registry';
 
-function makeContext(): SetupContext {
+function makeContext(overrides?: Partial<SetupContext>): SetupContext {
 	return {
 		config: {
 			loaded: true,
@@ -10,10 +10,13 @@ function makeContext(): SetupContext {
 			model: 'openai:gpt-4.1',
 			instructions: 'Help the user',
 			toolCount: 0,
+			scheduleCount: 0,
 		},
 		channels: { loaded: true, ids: [] },
 		publication: { loaded: true, canPublish: true, activeVersionId: null },
 		sessions: { loaded: true, count: 0 },
+		showTriggerStep: false,
+		...overrides,
 	};
 }
 
@@ -31,29 +34,70 @@ describe('test-agent setup task', () => {
 	});
 });
 
-describe('add-channel setup task', () => {
-	it('does not require a channel to publish an agent', () => {
-		expect(setupTaskDefinitions['add-channel'].required).toBe(false);
+describe('add-trigger setup task', () => {
+	it('is hidden when the experiment is disabled', () => {
+		const context = makeContext({ showTriggerStep: false });
+
+		expect(setupTaskDefinitions['add-trigger'].getVisible(context)).toBe(false);
+		expect(setupTaskDefinitions['add-trigger'].getState(context)).toBe('todo');
 	});
 
-	it('stays hidden when no channel is configured', () => {
-		const context = makeContext();
+	it('shows immediately when the experiment is enabled', () => {
+		const context = makeContext({ showTriggerStep: true });
+		context.config.isRunnable = false;
 
-		expect(setupTaskDefinitions['add-channel'].getVisible()).toBe(false);
-		expect(setupTaskDefinitions['add-channel'].getState(context)).toBe('todo');
+		expect(setupTaskDefinitions['add-trigger'].getVisible(context)).toBe(true);
+		expect(setupTaskDefinitions['add-trigger'].getState(context)).toBe('todo');
 	});
 
-	it('keeps the channel completion state', () => {
-		const context = makeContext();
+	it('completes when a channel is connected', () => {
+		const context = makeContext({ showTriggerStep: true });
 		context.channels.ids = ['n8n_chat'];
 
-		expect(setupTaskDefinitions['add-channel'].getState(context)).toBe('complete');
+		expect(setupTaskDefinitions['add-trigger'].getState(context)).toBe('complete');
 	});
 
-	it('keeps the state unknown until channels load', () => {
-		const context = makeContext();
-		context.channels.loaded = false;
+	it('completes when an enabled schedule exists', () => {
+		const context = makeContext({ showTriggerStep: true });
+		context.config.scheduleCount = 1;
 
-		expect(setupTaskDefinitions['add-channel'].getState(context)).toBe('unknown');
+		expect(setupTaskDefinitions['add-trigger'].getState(context)).toBe('complete');
+	});
+
+	it('keeps the state unknown until channels and config load', () => {
+		const channelsLoading = makeContext({ showTriggerStep: true });
+		channelsLoading.channels.loaded = false;
+		expect(setupTaskDefinitions['add-trigger'].getState(channelsLoading)).toBe('unknown');
+
+		const configLoading = makeContext({ showTriggerStep: true });
+		configLoading.config.loaded = false;
+		expect(setupTaskDefinitions['add-trigger'].getState(configLoading)).toBe('unknown');
+	});
+});
+
+describe('publish-agent setup task', () => {
+	it('shows after testing in control even without a trigger', () => {
+		const context = makeContext({ showTriggerStep: false });
+		context.sessions.count = 1;
+
+		expect(setupTaskDefinitions['publish-agent'].getVisible(context)).toBe(true);
+	});
+
+	it('stays hidden until a trigger is configured when the experiment is enabled', () => {
+		const context = makeContext({ showTriggerStep: true });
+		context.sessions.count = 1;
+
+		expect(setupTaskDefinitions['publish-agent'].getVisible(context)).toBe(false);
+
+		context.channels.ids = ['slack'];
+		expect(setupTaskDefinitions['publish-agent'].getVisible(context)).toBe(true);
+	});
+
+	it('shows when a schedule satisfies the trigger step', () => {
+		const context = makeContext({ showTriggerStep: true });
+		context.sessions.count = 1;
+		context.config.scheduleCount = 1;
+
+		expect(setupTaskDefinitions['publish-agent'].getVisible(context)).toBe(true);
 	});
 });

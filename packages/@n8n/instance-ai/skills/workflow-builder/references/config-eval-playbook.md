@@ -60,12 +60,12 @@ resolved output. Only omit `=` for a genuinely fixed constant string.
    ```
    list_data_tables()
    // if none fits:
-   create_data_table(name="Support agent eval dataset",
-     columns=[{ name: "input", type: "string" },
-              { name: "expected_output", type: "string" }])
-   // then seed rows:
-   insert_data_table_rows(dataTableId="<id>",
-     rows=[{ input: "...", expected_output: "..." }])
+   change_data_tables(changes=[
+     { action: "create", name: "Support agent eval dataset",
+       columns: [{ name: "input", type: "string" },
+                 { name: "expected_output", type: "string" }] },
+     { action: "insert-rows", table: "Support agent eval dataset",
+       rows: [{ input: "...", expected_output: "..." }] }])
    ```
 
 2. Create the config eval, linking the dataset by id:

@@ -19,13 +19,13 @@
  *     chunks/
  *       *.ts                          # reusable node/workflow modules
  *     knowledge-base/
- *       index.json                    # combined catalog of guides and templates
+ *       index.json                    # combined catalog of guides and references
  *       best-practices/
  *         index.json                  # technique guide catalog
  *         *.md                        # guide content per technique
- *       templates/
- *         index.json                  # curated template catalog
- *         *.ts                        # SDK workflow examples
+ *       reference/
+ *         index.json                  # reference file catalog
+ *         *.md                        # SDK and node reference content
  */
 
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
@@ -195,10 +195,14 @@ const SANDBOX_TSX_VERSION = resolveHostDepVersion('tsx');
  */
 const SANDBOX_TYPES_NODE_VERSION = '24.10.1';
 
-function buildPackageJson(sdkSpecifier: string | null): string {
+function buildPackageJson(
+	sdkSpecifier: string | null,
+	additionalDependencies: Readonly<Record<string, string>> = {},
+): string {
 	const dependencies: Record<string, string> = {
 		tsx: SANDBOX_TSX_VERSION,
 		typescript: SANDBOX_TYPESCRIPT_VERSION,
+		...additionalDependencies,
 	};
 	if (sdkSpecifier) {
 		dependencies['@n8n/workflow-sdk'] = sdkSpecifier;
@@ -216,6 +220,17 @@ function buildPackageJson(sdkSpecifier: string | null): string {
 		null,
 		2,
 	);
+}
+
+export function buildSnapshotPackageJson(packages: readonly WorkspacePackageTarball[]): string {
+	const dependencies: Record<string, string> = {};
+	for (const { filename, packageName } of [...packages].sort((a, b) =>
+		a.packageName.localeCompare(b.packageName),
+	)) {
+		dependencies[packageName] = `file:.n8n-packages/${filename}`;
+	}
+
+	return buildPackageJson(null, dependencies);
 }
 
 /**
@@ -517,13 +532,11 @@ async function materializeKnowledgeBaseStep(
 	verifiedBundles: VerifiedWorkspaceBundles | undefined,
 ): Promise<void> {
 	await setupStep('materialize-knowledge-base', async () => {
-		const templatesBundle = (await context.templatesService?.getBundle()) ?? null;
 		await materializeKnowledgeBaseIntoWorkspace({
 			workspace,
 			verifiedBundles,
 			root,
 			logger: context.logger,
-			templatesArchive: templatesBundle?.archive ?? null,
 		});
 	});
 }

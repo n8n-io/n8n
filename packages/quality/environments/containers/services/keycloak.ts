@@ -6,6 +6,7 @@ import { Agent, request as undiciRequest } from 'undici';
 
 import { createSilentLogConsumer } from '../helpers/utils';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
+import type { LoadBalancerResult } from './load-balancer';
 import type { FileToMount, HelperContext, Service, ServiceResult, StartContext } from './types';
 
 const HOSTNAME = 'keycloak';
@@ -28,6 +29,7 @@ const N8N_KEYCLOAK_CERT_PATH = '/tmp/keycloak-ca.pem';
 
 export interface KeycloakConfig {
 	n8nCallbackUrl: string;
+	pathPrefix?: string;
 }
 
 export interface KeycloakMeta {
@@ -56,8 +58,9 @@ const KEYCLOAK_TRIGGER_WEBHOOK_IDS = {
 } as const;
 
 function generateRealmJson(callbackUrl: string): string {
-	// Derive the n8n base URL from the OIDC callback URL
-	const n8nBaseUrl = callbackUrl.split('/rest/')[0];
+	// Derive the n8n base URL from the OIDC callback URL.
+	const restIndex = callbackUrl.lastIndexOf('/rest/');
+	const n8nBaseUrl = restIndex === -1 ? callbackUrl : callbackUrl.slice(0, restIndex);
 	return JSON.stringify({
 		realm: KEYCLOAK_TEST_REALM,
 		enabled: true,
@@ -227,10 +230,18 @@ async function waitForKeycloakReady(
 
 export const keycloak: Service<KeycloakResult> = {
 	description: 'Keycloak OIDC provider',
+	dependsOn: ['loadBalancer'],
 
 	getOptions(ctx) {
+		const lbResult = ctx.serviceResults.loadBalancer as LoadBalancerResult | undefined;
 		const port = ctx.allocatedPorts.loadBalancer ?? ctx.allocatedPorts.main;
-		return { n8nCallbackUrl: `http://localhost:${port}/rest/sso/oidc/callback` };
+		const baseUrl =
+			lbResult?.meta.baseUrl ?? `http://localhost:${port}${ctx.config.pathPrefix ?? '/'}`;
+		const baseWithSlash = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+		return {
+			n8nCallbackUrl: new URL('rest/sso/oidc/callback', baseWithSlash).href,
+			pathPrefix: ctx.config.pathPrefix,
+		};
 	},
 
 	async verifyFromN8n(result, n8nContainers) {
@@ -276,7 +287,7 @@ export const keycloak: Service<KeycloakResult> = {
 		config?: unknown,
 		ctx?: StartContext,
 	): Promise<KeycloakResult> {
-		const { n8nCallbackUrl } = config as KeycloakConfig;
+		const { n8nCallbackUrl, pathPrefix } = config as KeycloakConfig;
 		const { consumer, throwWithLogs } = createSilentLogConsumer();
 
 		// Allocate a fixed host port for Keycloak
@@ -308,6 +319,8 @@ export const keycloak: Service<KeycloakResult> = {
 				.withLabels({
 					'com.docker.compose.project': projectName,
 					'com.docker.compose.service': HOSTNAME,
+					// Testcontainers does not hash copied files for reuse.
+					...(pathPrefix ? { 'n8n.path-prefix': pathPrefix } : {}),
 				})
 				.withName(`${projectName}-${HOSTNAME}`)
 				.withLogConsumer(consumer)

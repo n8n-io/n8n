@@ -1,5 +1,5 @@
-export { createEngineRuntime } from './runtime';
-export type { EngineRuntime, EngineRuntimeOptions } from './runtime';
+export { createEngineRuntime, ENGINE_ROLES } from './runtime';
+export type { EngineRole, EngineRuntime, EngineRuntimeOptions } from './runtime';
 
 export type { EngineLogger } from './logging';
 
@@ -28,6 +28,7 @@ export type {
 	EngineErrorResponse,
 	ExecutionSnapshot,
 	StepDetail,
+	SubExecutionDetail,
 } from './server';
 export type {
 	FindLatestExecutionRequest,
@@ -119,13 +120,17 @@ export type {
 } from './admittance';
 
 export type {
+	EngineWorkQueues,
 	ExecutionEnqueuedEvent,
 	OrchestrationMessage,
 	StepSettledEvent,
 	StepMessage,
 	StepReadyEvent,
 	WorkQueue,
+	RedisWorkQueues,
+	WorkQueuePublisherClient,
 } from './queue';
+export { createInMemoryWorkQueues, createRedisWorkQueues } from './queue';
 
 export {
 	attachStepErrorDetails,
@@ -158,6 +163,8 @@ export type {
 	StepRecord,
 	ResumeCause,
 	StepSlots,
+	StepOutputSource,
+	StepOutputSources,
 	StepStatus,
 	StepStore,
 	StepView,

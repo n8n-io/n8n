@@ -3,6 +3,7 @@ import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 
+import { TX_CTX } from './test-utils/skill-services';
 import type { SkillSourceConnection } from '../database/entities/skill-source-connection.entity';
 import type { SkillSourceLink } from '../database/entities/skill-source-link.entity';
 import type { SkillSourceRepository } from '../database/repositories/skill-source.repository';
@@ -10,6 +11,7 @@ import type { SkillRepository } from '../database/repositories/skill.repository'
 import { SkillSourceReadError } from '../errors/skill-source-read.error';
 import type { SkillAccessService } from '../services/skill-access.service';
 import type { SkillSyncFlagGate } from '../services/skill-sync-flag-gate';
+import { SkillSourceBackoff } from '../services/skill-source-backoff';
 import { SkillSyncService } from '../services/skill-sync.service';
 import type { SkillsTelemetry } from '../services/skills-telemetry.service';
 import type { SkillSourceClient } from '../sources/skill-source-client';
@@ -33,10 +35,20 @@ describe('SkillSyncService', () => {
 		mock(),
 		mock(),
 		telemetry,
+		mock(),
+		mock(),
+		mock(),
 		txRunner,
+		mock(),
+		new SkillSourceBackoff(),
 	);
 	const user = mock<User>({ id: 'user-1' });
-	const source = mock<SkillSourceConnection>({ id: 'source-1', type: 'github', projectId: 'p1' });
+	const source = mock<SkillSourceConnection>({
+		id: 'source-1',
+		type: 'github',
+		projectId: 'p1',
+		unlinkedSkills: [],
+	});
 
 	const givenLink = (pendingContentHash: string | null) =>
 		sources.findLinkBySkillId.mockResolvedValue(
@@ -45,9 +57,10 @@ describe('SkillSyncService', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
-		txRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
+		txRunner.run.mockImplementation(async (_ctx, fn) => await fn(TX_CTX));
 		sources.findById.mockResolvedValue(source);
 		access.canOnSource.mockResolvedValue(true);
+		access.accessCheck.mockResolvedValue(() => true);
 		sources.deleteLink.mockResolvedValue(true);
 	});
 
@@ -63,7 +76,7 @@ describe('SkillSyncService', () => {
 			expect(telemetry.stoppedSync).not.toHaveBeenCalled();
 			acquired.resolve(undefined);
 			await stopped;
-			expect(sources.deleteLink).toHaveBeenCalledWith('skill_a', {});
+			expect(sources.deleteLink).toHaveBeenCalledWith('skill_a', TX_CTX);
 		});
 
 		it.each([
@@ -76,7 +89,7 @@ describe('SkillSyncService', () => {
 
 				await service.stopSyncing(user, 'skill_a');
 
-				expect(sources.deleteLink).toHaveBeenCalledWith('skill_a', {});
+				expect(sources.deleteLink).toHaveBeenCalledWith('skill_a', TX_CTX);
 				expect(telemetry.stoppedSync).toHaveBeenCalledTimes(1);
 				expect(telemetry.stoppedSync).toHaveBeenCalledWith(
 					{ provider: 'github', had_pending_update: hadPendingUpdate },
@@ -132,7 +145,12 @@ describe('SkillSyncService', () => {
 				mock(),
 				mock(),
 				telemetry,
+				mock(),
+				mock(),
+				mock(),
 				txRunner,
+				mock(),
+				new SkillSourceBackoff(),
 			);
 			const firstId = 'a6c11527-f2f8-4dc9-a0e2-d2804c5b219a';
 			const secondId = '4795c2a1-f46c-4b7d-a657-a435cedb7181';
@@ -143,6 +161,7 @@ describe('SkillSyncService', () => {
 					credentialId: null,
 					credentialRequired: false,
 					probeCursor: 'current',
+					unlinkedSkills: [],
 					lastCheckedAt: null,
 				}),
 			);

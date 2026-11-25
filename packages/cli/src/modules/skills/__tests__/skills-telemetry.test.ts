@@ -1,19 +1,18 @@
+import type { TelemetryProxy } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 
-import type { Telemetry } from '@/telemetry';
-
 import type { Skill } from '../database/entities/skill.entity';
 import type { SkillRepository } from '../database/repositories/skill.repository';
-import { SkillsTelemetry } from '../services/skills-telemetry.service';
+import { flaggedCodes, SkillsTelemetry } from '../services/skills-telemetry.service';
 
 function skill(id: string, target: Partial<Pick<Skill, 'projectId'>> = {}): Skill {
 	return mock<Skill>({ id, projectId: target.projectId ?? null });
 }
 
 describe('SkillsTelemetry', () => {
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<TelemetryProxy>();
 	const repository = mock<SkillRepository>();
 	const service = new SkillsTelemetry(telemetry, repository, mockLogger());
 	const skills = [skill('skill_instance'), skill('skill_project', { projectId: 'project-1' })];
@@ -150,6 +149,22 @@ describe('SkillsTelemetry', () => {
 		]);
 	});
 
+	it('gives each rule and each link reason of the flagged findings one time', () => {
+		const link = { rule: 'risky_url', severity: 'needs_review', detail: '' } as const;
+
+		expect(
+			flaggedCodes([
+				{ ...link, linkReason: 'not_https' },
+				{ ...link, linkReason: 'not_https' },
+				{ ...link, linkReason: 'ip_address' },
+				{ rule: 'new_url', severity: 'info', detail: '' },
+			]),
+		).toEqual({ rule_codes: ['risky_url'], link_reason_codes: ['not_https', 'ip_address'] });
+		expect(
+			flaggedCodes([{ rule: 'hidden_unicode', severity: 'needs_review', detail: '' }]),
+		).toEqual({ rule_codes: ['hidden_unicode'] });
+	});
+
 	it('reports a Skill Sync import with its counts', async () => {
 		const props = {
 			provider: 'github' as const,
@@ -192,5 +207,32 @@ describe('SkillsTelemetry', () => {
 			undefined,
 		);
 		expect(telemetry.track).not.toHaveBeenCalled();
+	});
+	it('reports update review outcomes without content or agent names', async () => {
+		await service.reviewedUpdate(
+			{
+				provider: 'github',
+				kind: 'update',
+				action: 'accept',
+				verdict: 'needs_review',
+				bulk: true,
+				status: 'failure',
+				reason: 'stale',
+			},
+			'user-1',
+		);
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.USER_REVIEWED_SKILL_UPDATE,
+			{
+				user_id: 'user-1',
+				provider: 'github',
+				kind: 'update',
+				action: 'accept',
+				verdict: 'needs_review',
+				bulk: true,
+				status: 'failure',
+				reason: 'stale',
+			},
+		);
 	});
 });

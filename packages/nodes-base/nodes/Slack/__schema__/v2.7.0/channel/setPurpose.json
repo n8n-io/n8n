@@ -1,0 +1,115 @@
+{
+	"properties": {
+		"context_team_id": {
+			"type": "string"
+		},
+		"created": {
+			"type": "number"
+		},
+		"creator": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"is_archived": {
+			"type": "boolean"
+		},
+		"is_channel": {
+			"type": "boolean"
+		},
+		"is_ext_shared": {
+			"type": "boolean"
+		},
+		"is_general": {
+			"type": "boolean"
+		},
+		"is_group": {
+			"type": "boolean"
+		},
+		"is_im": {
+			"type": "boolean"
+		},
+		"is_member": {
+			"type": "boolean"
+		},
+		"is_mpim": {
+			"type": "boolean"
+		},
+		"is_org_shared": {
+			"type": "boolean"
+		},
+		"is_pending_ext_shared": {
+			"type": "boolean"
+		},
+		"is_private": {
+			"type": "boolean"
+		},
+		"is_shared": {
+			"type": "boolean"
+		},
+		"name": {
+			"type": "string"
+		},
+		"name_normalized": {
+			"type": "string"
+		},
+		"parent_conversation": {},
+		"pending_connected_team_ids": {
+			"items": {},
+			"type": "array"
+		},
+		"pending_shared": {
+			"items": {},
+			"type": "array"
+		},
+		"previous_names": {
+			"items": {},
+			"type": "array"
+		},
+		"properties": {
+			"type": "object"
+		},
+		"purpose": {
+			"properties": {
+				"creator": {
+					"type": "string"
+				},
+				"last_set": {
+					"type": "number"
+				},
+				"value": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"shared_team_ids": {
+			"items": {
+				"type": "string"
+			},
+			"type": "array"
+		},
+		"topic": {
+			"properties": {
+				"creator": {
+					"type": "string"
+				},
+				"last_set": {
+					"type": "number"
+				},
+				"value": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"unlinked": {
+			"type": "number"
+		},
+		"updated": {
+			"type": "number"
+		}
+	},
+	"type": "object"
+}
