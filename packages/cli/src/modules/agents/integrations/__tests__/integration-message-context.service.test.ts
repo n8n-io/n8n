@@ -512,6 +512,11 @@ describe('IntegrationMessageContextService', () => {
 			'thread-1': {
 				episodicScopesByResource: {
 					'integration:slack:bad': { writeScopeId: '' },
+					'integration:slack:mixed': {
+						disabled: true,
+						writeScopeId: 'slack:a1:T1:channel:C1',
+						readScopeIds: ['slack:a1:T1:channel:C1'],
+					},
 				},
 			},
 		});
@@ -530,6 +535,9 @@ describe('IntegrationMessageContextService', () => {
 			disabled: true,
 		});
 		await expect(service.getEpisodicScope('thread-1', 'integration:slack:bad')).resolves.toEqual({
+			disabled: true,
+		});
+		await expect(service.getEpisodicScope('thread-1', 'integration:slack:mixed')).resolves.toEqual({
 			disabled: true,
 		});
 		await expect(
