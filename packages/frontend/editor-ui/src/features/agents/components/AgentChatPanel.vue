@@ -57,7 +57,6 @@ import type {
 	ChatMessageQueueItem,
 } from '@/features/ai/shared/components/chatMessageQueue.types';
 import { useAttachmentPreviews } from '@/features/ai/shared/composables/useAttachmentPreviews';
-import InstanceAiResourceChip from '@/features/ai/instanceAi/components/InstanceAiResourceChip.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
 import {
 	findTailOpenInteractive,
@@ -243,6 +242,8 @@ const emit = defineEmits<{
 	];
 	/** Each event of the chat stream, as received. A host can keep them for a debug export. */
 	'stream-event': [event: AgentSseEvent];
+	/** The user removed the card of a staged chip. The panel already dropped the chip. */
+	'composer-attachment-removed': [id: string];
 	/**
 	 * The chat posts a new message now, before the server answers, so a refused
 	 * send emits this too. Typed text that cancels an open card emits this, but
@@ -266,14 +267,11 @@ defineSlots<{
 	/** Content docked above the composer, for example a checklist. */
 	'above-input'?: () => unknown;
 	/**
-	 * Chips at the start of the composer attachment strip. The default content
-	 * shows the chips from `addComposerAttachment`. A host that renders its own
-	 * chips gets them, and a function to remove one, as slot props.
+	 * Chips that the host draws above the attachment cards, for example chips
+	 * with `hostRendered`. The panel shows the other staged chips as cards, in
+	 * one group with the files.
 	 */
-	'composer-attachments'?: (props: {
-		chips: AgentChatComposerChip[];
-		removeChip: (id: string) => void;
-	}) => unknown;
+	'composer-attachments'?: () => unknown;
 	/**
 	 * Controls at the start of the composer footer. `disabled` is true while the
 	 * composer does not take input, as for the built-in attach button.
@@ -484,8 +482,8 @@ function onChatInputKeydown(event: KeyboardEvent) {
 		!event.isComposing &&
 		event.keyCode !== IME_COMPOSITION_KEYCODE &&
 		!event.repeat &&
-		attachedFiles.value.length > 0 &&
-		removingFiles.value.size === 0
+		hasAttachmentCards.value &&
+		removingAttachments.value.size === 0
 	) {
 		event.preventDefault();
 		event.stopPropagation();
@@ -782,17 +780,8 @@ const backgroundElapsed = computed(() => {
 });
 
 const attachedFiles = ref<File[]>([]);
-const removingFiles = ref(new Set<File>());
-
-/** Clear stale removal state only after the draft file list changes. */
-watch(
-	() => [...attachedFiles.value],
-	(files) => {
-		for (const file of removingFiles.value) {
-			if (!files.includes(file)) removingFiles.value.delete(file);
-		}
-	},
-);
+/** Files and chip ids whose card plays its removal. */
+const removingAttachments = ref(new Set<File | string>());
 
 const { previewUrl } = useAttachmentPreviews(() => attachedFiles.value);
 const draftFileKeys = new WeakMap<File, number>();
@@ -809,7 +798,22 @@ function draftFileKey(file: File): number {
 
 /** Host chips need text or files before the message can be sent. */
 const composerAttachments = ref<AgentChatComposerAttachment[]>([]);
-const composerChips = computed(() => composerAttachments.value.map(({ chip }) => chip));
+const cardChips = computed(() =>
+	composerAttachments.value.map(({ chip }) => chip).filter((chip) => !chip.hostRendered),
+);
+const hasAttachmentCards = computed(
+	() => cardChips.value.length > 0 || attachedFiles.value.length > 0,
+);
+
+/** Clear stale removal state only after the draft files or chips change. */
+watch(
+	() => [...attachedFiles.value, ...cardChips.value.map(({ id }) => id)],
+	(items) => {
+		for (const item of removingAttachments.value) {
+			if (!items.includes(item)) removingAttachments.value.delete(item);
+		}
+	},
+);
 const chatInput = useTemplateRef<InstanceType<typeof ChatInputBase>>('chatInput');
 const attachmentGroupRef =
 	useTemplateRef<InstanceType<typeof N8nAttachmentGroup>>('attachmentGroupRef');
@@ -1111,7 +1115,7 @@ const budgetIncreasePending = ref(false);
 const isRetrying = ref(false);
 const isSubmissionBlocked = computed(
 	() =>
-		removingFiles.value.size > 0 ||
+		removingAttachments.value.size > 0 ||
 		isRetrying.value ||
 		!!editingQueueId.value ||
 		isPreparingToSend.value ||
@@ -1746,6 +1750,11 @@ function removeComposerAttachment(id: string) {
 	composerAttachments.value = composerAttachments.value.filter((item) => item.chip.id !== id);
 }
 
+function handleChipRemove(id: string) {
+	removeComposerAttachment(id);
+	emit('composer-attachment-removed', id);
+}
+
 // Session files: every channel has the list route.
 const posthog = usePostHog();
 const showSessionFilesToggle = computed(
@@ -2070,45 +2079,26 @@ onBeforeUnmount(() => {
 								"
 							/>
 						</template>
-						<template
-							v-if="
-								attachedFiles.length > 0 ||
-								composerAttachments.length > 0 ||
-								$slots['composer-attachments']
-							"
-							#attachments
-						>
-							<div
-								v-if="composerAttachments.length > 0 || $slots['composer-attachments']"
-								:class="$style.attachmentsStrip"
-							>
-								<slot
-									name="composer-attachments"
-									:chips="composerChips"
-									:remove-chip="removeComposerAttachment"
-								>
-									<InstanceAiResourceChip
-										v-for="chip in composerChips"
-										:key="chip.id"
-										:label="chip.label"
-										:icon="chip.icon"
-										removable
-										:remove-label="
-											locale.baseText('agents.chat.composer.removeChip', {
-												interpolate: { label: chip.label },
-											})
-										"
-										test-id="agent-chat-composer-chip"
-										remove-test-id="agent-chat-composer-chip-remove"
-										@remove="removeComposerAttachment(chip.id)"
-									/>
-								</slot>
+						<template v-if="hasAttachmentCards || $slots['composer-attachments']" #attachments>
+							<div v-if="$slots['composer-attachments']" :class="$style.attachmentsStrip">
+								<slot name="composer-attachments" />
 							</div>
 							<N8nAttachmentGroup
-								v-if="attachedFiles.length > 0"
+								v-if="hasAttachmentCards"
 								ref="attachmentGroupRef"
 								:class="$style.attachmentGroup"
 							>
+								<N8nAttachment
+									v-for="chip in cardChips"
+									:key="chip.id"
+									:file-name="chip.label"
+									:icon="chip.icon"
+									:is-removable="true"
+									data-test-id="agent-chat-composer-chip"
+									@remove-start="removingAttachments.add(chip.id)"
+									@remove="handleChipRemove(chip.id)"
+									@remove-end="removingAttachments.delete(chip.id)"
+								/>
 								<N8nAttachment
 									v-for="file in attachedFiles"
 									:key="draftFileKey(file)"
@@ -2117,9 +2107,9 @@ onBeforeUnmount(() => {
 									:size-bytes="file.size"
 									:src="previewUrl(file)"
 									:is-removable="true"
-									@remove-start="removingFiles.add(file)"
+									@remove-start="removingAttachments.add(file)"
 									@remove="handleFileRemove(file)"
-									@remove-end="removingFiles.delete(file)"
+									@remove-end="removingAttachments.delete(file)"
 								/>
 							</N8nAttachmentGroup>
 						</template>
