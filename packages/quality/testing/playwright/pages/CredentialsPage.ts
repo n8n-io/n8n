@@ -20,6 +20,23 @@ export class CredentialsPage extends BasePage {
 		return this.page.getByTestId('create-credential-button');
 	}
 
+	getFiltersTrigger() {
+		return this.getResourcesListFiltersTrigger();
+	}
+
+	getFiltersDropdown() {
+		return this.getResourcesListFiltersDropdown();
+	}
+
+	getTypeFilterSelect() {
+		return this.page.getByTestId('credential-filter-type');
+	}
+
+	getTypeFilterCombobox() {
+		// Multiple filterable ElSelect renders both a focusable combobox and a readonly tabindex="-1" display input.
+		return this.getTypeFilterSelect().locator('input[role="combobox"]:not([tabindex="-1"])');
+	}
+
 	/**
 	 * Create a credential from the credentials list, fill fields, save, and close the modal.
 	 * @param credentialType - The type of credential to create (e.g. 'Notion API')
