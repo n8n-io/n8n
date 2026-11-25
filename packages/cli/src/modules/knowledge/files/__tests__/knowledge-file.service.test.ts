@@ -390,6 +390,17 @@ describe('KnowledgeFileService', () => {
 		expect(fileStore.write).not.toHaveBeenCalled();
 	});
 
+	// The mirror keeps the files of the agent next to the directories of its
+	// collections, and tells them apart by the `.` of the extension.
+	it('rejects uploads whose file name has no allowed extension, without the middleware', async () => {
+		await expect(
+			service.uploadFiles(scope, [makeMulterFile({ originalname: 'handbook' })], writeFence),
+		).rejects.toThrow('Only CSV, PDF, Markdown, and TXT files are allowed');
+
+		expect(fileRepository.all()).toEqual([]);
+		expect(fileStore.write).not.toHaveBeenCalled();
+	});
+
 	it('cleans up already-stored files when a later upload in the batch fails', async () => {
 		const tempDirectory = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-upload-'));
 		const firstPath = path.join(tempDirectory, 'first.txt');
@@ -648,6 +659,12 @@ describe('KnowledgeFileService', () => {
 			await expect(
 				service.uploadFiles(scope, [makeMulterFile({ originalname: 'a'.repeat(256) })], writeFence),
 			).rejects.toMatchObject({ reason: 'invalid_file_name' });
+		});
+
+		it('gives a file name without an allowed extension the file_type reason', async () => {
+			await expect(
+				service.uploadFiles(scope, [makeMulterFile({ originalname: 'tool.exe' })], writeFence),
+			).rejects.toMatchObject({ reason: 'file_type' });
 		});
 
 		it('gives a too long MIME type no reason, so it is reported as unknown', async () => {

@@ -16,6 +16,17 @@ export function hasAllowedKnowledgeFileExtension(file: Pick<Express.Multer.File,
 	return allowedKnowledgeFileExtensions.has(extension);
 }
 
+/**
+ * The error of a file whose extension is not allowed. The middleware and
+ * `KnowledgeFileService.validateUploadMetadata` raise the same one.
+ */
+export function knowledgeFileTypeError(): KnowledgeUploadError {
+	return new KnowledgeUploadError(
+		'Only CSV, PDF, Markdown, and TXT files are allowed',
+		'file_type',
+	);
+}
+
 /** The multer codes that `describeMulterError` explains. Other codes have no fixed reason. */
 export function multerFailureReason(
 	error: multer.MulterError,
@@ -57,12 +68,7 @@ export class KnowledgeUploadMiddleware {
 			limits: { fileSize: config.maxFileSizeBytes },
 			fileFilter: (_req, file, done) => {
 				if (!hasAllowedKnowledgeFileExtension(file)) {
-					done(
-						new KnowledgeUploadError(
-							'Only CSV, PDF, Markdown, and TXT files are allowed',
-							'file_type',
-						),
-					);
+					done(knowledgeFileTypeError());
 					return;
 				}
 

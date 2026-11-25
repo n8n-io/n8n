@@ -22,6 +22,10 @@ import { KnowledgeCollectionSourceService } from '../retrieval/collection-source
 import { KnowledgeMirrorService } from '../retrieval/mirror.service';
 import { KnowledgeFileStore, type KnowledgeFileStorageReference } from './knowledge-file-store';
 import { KnowledgeUploadError, type KnowledgeUploadFailureReason } from './knowledge-upload.error';
+import {
+	hasAllowedKnowledgeFileExtension,
+	knowledgeFileTypeError,
+} from './knowledge-upload.middleware';
 import { extractPdfText } from './pdf-text';
 import { toKnowledgeContentFileName, toAgentFileDto } from './storage-naming';
 
@@ -277,12 +281,23 @@ export class KnowledgeFileService {
 		}
 	}
 
-	/** Rejects a file name or a MIME type that is too long for its column. */
+	/**
+	 * Rejects a file that cannot be stored: a name or a MIME type that is too
+	 * long for its column, an unsafe name, or a name without an allowed
+	 * extension. The upload middleware checks the extension first, but the
+	 * mirror relies on it (a file of the agent and a collection directory
+	 * never collide because a file name holds a `.`), so the services check
+	 * it too, for a caller that does not go through multer.
+	 */
 	validateUploadMetadata(files: Express.Multer.File[]) {
 		for (const file of files) {
 			this.validateMetadataLength('File name', file.originalname, 'invalid_file_name');
 			// No reason fits a MIME type that is too long, so the failure event reports `unknown`.
 			this.validateMetadataLength('MIME type', file.mimetype);
+			toKnowledgeContentFileName(file.originalname);
+			if (!hasAllowedKnowledgeFileExtension(file)) {
+				throw knowledgeFileTypeError();
+			}
 		}
 	}
 

@@ -426,7 +426,8 @@ export class KnowledgeMirrorService {
 	 * The files of the agent at the root of the mirror, then the files of its
 	 * collections, one directory for each collection. The two sets cannot
 	 * collide: a file name has an extension, so it holds a `.`, and a collection
-	 * directory is a slug, which never does.
+	 * directory is a slug, which never does. `validateUploadMetadata` keeps
+	 * the first half true, `slugFromName` the second.
 	 */
 	private async loadKnowledgeFileLookup(
 		scope: KnowledgeConsumerScope,
