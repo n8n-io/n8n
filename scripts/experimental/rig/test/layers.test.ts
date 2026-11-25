@@ -8,6 +8,7 @@ import {
 	managedConflicts,
 	resolveLayer,
 } from '../src/commands/layers';
+import { secretOverrideChecks } from '../src/commands/doctor';
 import { parseTopology, saveTopology, type TopologyInput } from '../src/config/env-yaml';
 import { envsDir, globalSecretsFile, profileFile } from '../src/config/paths';
 import { PRESETS } from '../src/config/presets';
@@ -135,5 +136,20 @@ describe('managedConflicts', () => {
 				value: expect.stringContaining('task-runner-python'),
 			},
 		]);
+	});
+});
+
+describe('secretOverrideChecks', () => {
+	it('should warn when a layer overrides a value of secrets.env', () => {
+		write(globalSecretsFile(), 'OPENAI_API_KEY=global\n');
+		const env = makeEnv('d');
+		write(env.paths.secrets, 'N8N_ENCRYPTION_KEY=generated\n');
+		write(env.paths.layerFile('shared'), 'N8N_ENCRYPTION_KEY=old\nOPENAI_API_KEY=layer\n');
+
+		const checks = secretOverrideChecks(env);
+		expect(checks.map((c) => c.detail)).toEqual([
+			'N8N_ENCRYPTION_KEY in env/shared.env:1 overrides secrets.env:1',
+		]);
+		expect(checks[0].hint).toContain('rig generated N8N_ENCRYPTION_KEY');
 	});
 });

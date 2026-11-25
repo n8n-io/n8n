@@ -16,6 +16,7 @@ import {
 	SECRETS_BACKEND_ENV_VAR,
 	type SecretsReport,
 } from '../env/secret-store';
+import { GENERATED_SECRET_KEYS } from '../env/secrets';
 import { RigError } from '../errors';
 import {
 	type LauncherSource,
@@ -351,6 +352,40 @@ async function portChecks(env: RigEnv): Promise<Check[]> {
 	return checks;
 }
 
+/**
+ * Values of secrets.env that a more specific layer overrides. Before the
+ * secrets moved below the other layers, secrets.env won. So an environment
+ * from an older rig can run with another value now, for example another
+ * N8N_ENCRYPTION_KEY.
+ */
+export function secretOverrideChecks(env: RigEnv): Check[] {
+	const overrides = new Map<string, Check>();
+	try {
+		for (const component of env.components()) {
+			for (const [key, sources] of env.resolve(component).trace) {
+				const secret = sources
+					.filter((source) => source.layer === 'secrets' && source.label.startsWith('secrets.env:'))
+					.at(-1);
+				const winner = sources.at(-1);
+				if (!secret || !winner || winner === secret || winner.value === secret.value) continue;
+				if (winner.layer === 'one-off' || winner.layer === 'shell') continue;
+				overrides.set(`${key} ${winner.label}`, {
+					status: 'warn',
+					label: 'Secrets',
+					detail: `${key} in ${winner.label} overrides ${secret.label}`,
+					hint: GENERATED_SECRET_KEYS.includes(key)
+						? `rig generated ${key}. Remove it from ${winner.label} unless you want this value.`
+						: `Layers win over secrets.env. Remove ${key} from ${winner.label} to use the value of secrets.env.`,
+				});
+			}
+		}
+	} catch {
+		// The "Secrets encryption" section reports a key that rig cannot read.
+		return [];
+	}
+	return [...overrides.values()];
+}
+
 function toolChecks(): Check[] {
 	const { browser, editor } = loadGlobalConfig();
 	const browsers = installedBrowsers().map((b) => b.label);
@@ -482,7 +517,10 @@ export const doctorCommand = defineCommand({
 			],
 		];
 		if (env) {
-			sections.push([`Environment ${env.name}`, await portChecks(env)]);
+			sections.push([
+				`Environment ${env.name}`,
+				[...(await portChecks(env)), ...secretOverrideChecks(env)],
+			]);
 		} else {
 			sections.push([
 				'Environment',

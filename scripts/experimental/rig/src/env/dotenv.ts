@@ -118,9 +118,26 @@ export function setInDotenv(text: string, key: string, value: string): string {
 	return `${lines.join('\n')}\n`;
 }
 
+/** The text after the value in a raw value, for example ` # a comment`. */
+function valueSuffix(raw: string): string {
+	let end: number;
+	if (raw.startsWith('"')) {
+		const close = findClosingQuote(raw, '"');
+		end = close === -1 ? raw.length : close + 1;
+	} else if (raw.startsWith("'")) {
+		const close = raw.indexOf("'", 1);
+		end = close === -1 ? raw.length : close + 1;
+	} else {
+		const comment = raw.search(/\s#/);
+		end = comment === -1 ? raw.length : comment;
+	}
+	return raw.slice(end);
+}
+
 /**
- * Rewrites the values of active lines and keeps comments and order. `map`
- * returns the new value, or `undefined` to keep the line as it is.
+ * Rewrites the values of active lines. Keeps comments, order, an `export`
+ * prefix, a trailing comment, and CRLF line endings. `map` returns the new
+ * value, or `undefined` to keep the line as it is.
  */
 export function mapDotenvValues(
 	text: string,
@@ -129,10 +146,14 @@ export function mapDotenvValues(
 	return text
 		.split('\n')
 		.map((line) => {
-			const parsed = parseLine(line);
+			const eol = line.endsWith('\r') ? '\r' : '';
+			const body = eol ? line.slice(0, -1) : line;
+			const parsed = parseLine(body);
 			if (!parsed || parsed.commented) return line;
 			const value = map(parsed.key, unquote(parsed.rawValue));
-			return value === undefined ? line : `${parsed.key}=${formatValue(value)}`;
+			if (value === undefined) return line;
+			const prefix = body.slice(0, body.length - parsed.rawValue.length);
+			return `${prefix}${formatValue(value)}${valueSuffix(parsed.rawValue)}${eol}`;
 		})
 		.join('\n');
 }

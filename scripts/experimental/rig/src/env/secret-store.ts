@@ -274,11 +274,19 @@ function pendingEntries(file: string, entries: DotenvEntry[]): DotenvEntry[] {
 	return entries.filter((entry) => !isEncrypted(entry.value) && mustEncrypt(file, entry.key));
 }
 
-/** Encrypts the plaintext values of dotenv text that must be encrypted. */
-function encryptText(text: string, key: Buffer, file: string): { text: string; count: number } {
+/**
+ * Encrypts the plaintext values of dotenv text that must be encrypted, and the
+ * values of `alsoEncrypt`.
+ */
+function encryptText(
+	text: string,
+	key: Buffer,
+	file: string,
+	alsoEncrypt: ReadonlySet<string> = new Set(),
+): { text: string; count: number } {
 	let count = 0;
 	const result = mapDotenvValues(text, (name, value) => {
-		if (isEncrypted(value) || !mustEncrypt(file, name)) return undefined;
+		if (isEncrypted(value) || !(mustEncrypt(file, name) || alsoEncrypt.has(name))) return undefined;
 		count++;
 		return encryptValue(key, name, value);
 	});
@@ -317,7 +325,9 @@ export function readEnvFile(file: string): DotenvEntry[] {
 	const decrypted = entries.map((entry) =>
 		isEncrypted(entry.value) ? { ...entry, value: decryptOrThrow(key, entry, file) } : entry,
 	);
-	if (pending.length > 0) {
+	// The keystore can wait for the user. When another process changed the file
+	// meanwhile, keep its change: the next read encrypts the file.
+	if (pending.length > 0 && readFileSync(file, 'utf8') === text) {
 		const encrypted = encryptText(text, key, file);
 		writePrivate(file, encrypted.text);
 		notice(`Encrypted ${encrypted.count} value(s) in ${displayPath(file)}.`);
@@ -328,14 +338,13 @@ export function readEnvFile(file: string): DotenvEntry[] {
 /** Sets one value. Encrypts it when it must be encrypted, unless encryption is off. */
 export function setEnvValue(file: string, name: string, value: string): void {
 	const { backend } = secretsBackend();
+	const encrypt = backend !== 'off' && mustEncrypt(file, name);
+	// Get the key before the read: the keystore can wait for the user.
+	const stored = encrypt ? encryptValue(activeKey(true), name, value) : value;
 	const text = existsSync(file) ? readFileSync(file, 'utf8') : '';
-	if (backend === 'off' || !mustEncrypt(file, name)) {
-		const next = setInDotenv(text, name, value);
-		if (isSecretsFile(file)) writePrivate(file, next);
-		else writeFileSync(file, next);
-		return;
-	}
-	writePrivate(file, setInDotenv(text, name, encryptValue(activeKey(true), name, value)));
+	const next = setInDotenv(text, name, stored);
+	if (encrypt || isSecretsFile(file)) writePrivate(file, next);
+	else writeFileSync(file, next);
 }
 
 /** Whether a file has encrypted values. Does not decrypt them. */
@@ -494,9 +503,18 @@ export async function editEnvFile(
 		await edit(plainFile);
 		const edited = readFileSync(plainFile, 'utf8');
 		if (edited === plain) return false;
-		const hasPending = pendingEntries(file, parseDotenv(edited)).length > 0;
+		// A value that was encrypted stays encrypted, also when its key does not match the name rule.
+		const wasEncrypted = new Set(
+			entries.filter((entry) => isEncrypted(entry.value)).map((entry) => entry.key),
+		);
+		const hasPending = parseDotenv(edited).some(
+			(entry) =>
+				!isEncrypted(entry.value) && (mustEncrypt(file, entry.key) || wasEncrypted.has(entry.key)),
+		);
 		const stored =
-			backend === 'off' || !hasPending ? edited : encryptText(edited, activeKey(true), file).text;
+			backend === 'off' || !hasPending
+				? edited
+				: encryptText(edited, activeKey(true), file, wasEncrypted).text;
 		writePrivate(file, stored);
 		return true;
 	} finally {

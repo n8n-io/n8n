@@ -10,7 +10,7 @@ import { TOPOLOGY_KEYS } from '../env/managed';
 import { diffResolved, type EnvSource, type ResolvedEnv, resolveRunnerEnv } from '../env/resolve';
 import { RigError } from '../errors';
 import { RIG } from '../meta';
-import { editFile } from '../integrations/editor';
+import { editFile, editorWaits } from '../integrations/editor';
 import { RUNNER_LAYERS } from '../topology/components';
 import { table, ui } from '../ui/output';
 import { ask, confirm, isInteractive, password } from '../ui/prompt';
@@ -218,14 +218,19 @@ const editCommand = defineCommand({
 
 /**
  * Opens the decrypted copy of an env file. An editor without a wait flag
- * returns at once, so ask before rig encrypts the copy and deletes it.
+ * returns before the edit ends, so ask before rig encrypts the copy and deletes it.
  */
 async function editPlaintextCopy(file: string): Promise<void> {
+	const waits = await editorWaits();
+	if (!waits && !isInteractive()) {
+		throw new RigError(
+			'Without a terminal, rig cannot check that the editor closed the decrypted copy.',
+			`Set a known editor, which rig opens with its wait flag: \`${RIG} config set editor <name>\`.`,
+		);
+	}
 	const before = readFileSync(file, 'utf8');
-	const started = Date.now();
 	await editFile(file);
-	const quick = Date.now() - started < 2000;
-	if (!quick || !isInteractive() || readFileSync(file, 'utf8') !== before) return;
+	if (waits || readFileSync(file, 'utf8') !== before) return;
 	ui.step(`rig shows the secrets decrypted in ${file}. It deletes this copy after the edit.`);
 	while (!(await confirm('Did you save and close the file?', false))) {
 		// Wait for the user.

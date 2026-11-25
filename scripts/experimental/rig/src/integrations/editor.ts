@@ -146,6 +146,15 @@ export async function chooseEditor(): Promise<string> {
 	return choice;
 }
 
+/**
+ * Whether the editor surely returns only after the file closes. rig adds the
+ * wait flag to a known editor. `$EDITOR` and a command line run as given.
+ */
+export async function editorWaits(): Promise<boolean> {
+	const editor = await chooseEditor();
+	return EDITORS.some((known) => known.id === editor);
+}
+
 /** Opens a file in the configured editor and waits until it closes. */
 export async function editFile(file: string): Promise<void> {
 	const editor = await chooseEditor();

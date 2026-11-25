@@ -282,6 +282,8 @@ flowchart LR
   global secrets, and a different key in `env/worker-2.env`.
 - When a layer value overrides a secret that `rig` generated, for example
   `N8N_ENCRYPTION_KEY`, `rig env set` warns and asks first.
+- In older versions of `rig`, `secrets.env` won over all layers. `rig doctor`
+  warns when a layer overrides a value of `secrets.env`.
 - `rig env set` refuses a secret value on the command line, for example
   `OPENAI_API_KEY=sk-…`, because the shell history and the process list keep
   it. Give only the key: `rig env set OPENAI_API_KEY`. `rig` then asks for the
@@ -382,7 +384,9 @@ saves it in `secrets.backend` in the global config:
 - `rig env edit` decrypts a file with encrypted values into a private temp
   file. It opens that file in your editor, then encrypts the result and
   deletes the copy. On Linux, the copy is in `$XDG_RUNTIME_DIR`. Every
-  `secrets.env` file uses the temp copy.
+  `secrets.env` file uses the temp copy. With `$EDITOR` or an editor command
+  line, `rig` cannot know when the edit ends. It asks before it deletes an
+  unchanged copy, and it needs a terminal for this question.
 - When an env file has plaintext values that must be encrypted, for example
   after a manual edit, `rig` encrypts them the next time it reads the file.
 - A file without encrypted or sensitive values does not need the key.

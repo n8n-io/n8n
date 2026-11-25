@@ -24,6 +24,7 @@ import {
 } from '../src/config/paths';
 import {
 	clearKeyCache,
+	decryptEnvFile,
 	decryptValue,
 	detectBackend,
 	editEnvFile,
@@ -392,5 +393,37 @@ describe('env browse values', () => {
 		expect(shownValue('secrets', 'MY_SETTING', 'x')).toBe('••••••');
 		expect(shownValue('global-secrets', 'MY_SETTING', 'x')).toBe('••••••');
 		expect(shownValue('shared', 'N8N_LOG_LEVEL', 'debug')).toBe('debug');
+	});
+});
+
+describe('review fixes', () => {
+	it('should encrypt and decrypt a CRLF file', () => {
+		const file = envSecrets('a');
+		write(file, 'API_KEY=plain\r\nOTHER=x # note\r\n');
+		expect(readEnvFile(file).map((e) => e.value)).toEqual(['plain', 'x']);
+		const text = readFileSync(file, 'utf8');
+		expect(text).toMatch(/^API_KEY=enc:v1:\S+\r\nOTHER=enc:v1:\S+ # note\r\n$/);
+
+		const key = readKey('file');
+		if (!key) throw new Error('no key');
+		expect(decryptEnvFile(file, key)).toBe(2);
+		expect(readFileSync(file, 'utf8')).toBe('API_KEY=plain\r\nOTHER=x # note\r\n');
+	});
+
+	it('should keep a value encrypted after an edit, also when the name rule does not match', async () => {
+		const file = join(envsDir(), 'a', 'env', 'shared.env');
+		setEnvValue(globalSecretsFile(), 'OTHER', 'x');
+		const key = readKey('file');
+		if (!key) throw new Error('no key');
+		write(file, `COPIED_SETTING=${encryptValue(key, 'COPIED_SETTING', 'old')}\n`);
+
+		await editEnvFile(file, async (plain) => {
+			writeFileSync(plain, 'COPIED_SETTING=new\nN8N_LOG_LEVEL=debug\n');
+		});
+
+		expect(readFileSync(file, 'utf8')).toMatch(
+			/^COPIED_SETTING=enc:v1:\S+\nN8N_LOG_LEVEL=debug\n$/,
+		);
+		expect(readEnvFile(file)[0].value).toBe('new');
 	});
 });
