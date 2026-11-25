@@ -15,19 +15,18 @@ const MAX_PARALLEL_FILE_DELETES = 5;
  */
 export class ExecutionFileCleanup {
 	constructor(
-		private readonly deleteFiles: ExecutionFilesDeleter | undefined,
+		private readonly deleteFiles: ExecutionFilesDeleter,
 		private readonly logger: EngineLogger,
 	) {}
 
 	async deleteFilesOf(executions: ExecutionLocation[]): Promise<ExecutionLocation[]> {
-		const deleteFiles = this.deleteFiles;
-		if (!deleteFiles) return executions;
-
 		const results: Array<PromiseSettledResult<void>> = [];
 		for (let start = 0; start < executions.length; start += MAX_PARALLEL_FILE_DELETES) {
 			const chunk = executions.slice(start, start + MAX_PARALLEL_FILE_DELETES);
 			results.push(
-				...(await Promise.allSettled(chunk.map(async (execution) => await deleteFiles(execution)))),
+				...(await Promise.allSettled(
+					chunk.map(async (execution) => await this.deleteFiles(execution)),
+				)),
 			);
 		}
 

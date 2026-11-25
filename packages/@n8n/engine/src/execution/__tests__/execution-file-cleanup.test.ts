@@ -12,12 +12,6 @@ const first: ExecutionLocation = { workflowId: 'wf-1', executionId: 'exec-1' };
 const second: ExecutionLocation = { workflowId: 'wf-1', executionId: 'exec-2' };
 
 describe('ExecutionFileCleanup', () => {
-	it('returns every execution when the host supplied no deleter', async () => {
-		const cleanup = new ExecutionFileCleanup(undefined, makeLogger());
-
-		await expect(cleanup.deleteFilesOf([first, second])).resolves.toEqual([first, second]);
-	});
-
 	it('calls the deleter once per execution with its location', async () => {
 		const deleteFiles = vi.fn().mockResolvedValue(undefined);
 		const cleanup = new ExecutionFileCleanup(deleteFiles, makeLogger());
