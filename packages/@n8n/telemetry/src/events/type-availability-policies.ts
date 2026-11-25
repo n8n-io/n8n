@@ -45,7 +45,7 @@ export const TYPE_AVAILABILITY_POLICIES_TELEMETRY = defineTelemetryEvents({
 	USER_SAVED_TYPE_AVAILABILITY_POLICY: {
 		name: 'User saved type availability policy',
 		description:
-			'A type availability policy (node types or credential types, per `kind`) was saved for one scope through the composed write that the policy UI uses. One event per save, covering both the scope default action and its rules. Rule-level edits through the advanced document and attachment APIs report separately. The type counts and list report what this scope decides on its own, so at project scope they are the project layer before it composes with the instance policy.',
+			'A type availability policy (node types or credential types, per `kind`) was saved for one scope through the composed write that the policy UI uses. One event per save, covering both the scope default action and its rules. Rule-level edits through the advanced document and attachment APIs report separately. The type counts and list report what this scope decides on its own, so at project scope they are the project layer before it composes with the instance policy. Adding a project policy through `POST /project-policies` also reports here, with `origin: add-project-policy`.',
 		properties: z.object({
 			user_id: userId,
 			source,
@@ -94,6 +94,12 @@ export const TYPE_AVAILABILITY_POLICIES_TELEMETRY = defineTelemetryEvents({
 				.number()
 				.describe('Saved rules that name a package or type this instance has not loaded'),
 			version: z.number().describe('The scope version after the write'),
+			origin: z
+				.enum(['save', 'add-project-policy'])
+				.optional()
+				.describe(
+					"'add-project-policy' is the one-call create from the Add project policy dialog. It reports one event for each kind that had no project policy, with no rules and the allow default action",
+				),
 		}),
 	},
 	USER_UPDATED_TYPE_AVAILABILITY_POLICY_DOCUMENT: {

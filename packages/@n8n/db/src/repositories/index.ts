@@ -75,6 +75,7 @@ export {
 	ProjectRepository,
 	ProjectIdConflictError,
 	type ProjectListOptions,
+	type TeamProjectWithMemberCount,
 } from './project.repository';
 export { RoleRepository } from './role.repository';
 export { RoleMappingRuleRepository } from './role-mapping-rule.repository';

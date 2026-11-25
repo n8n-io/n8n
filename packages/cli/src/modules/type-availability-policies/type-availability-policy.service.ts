@@ -7,8 +7,8 @@ import type {
 	ProjectPolicyKindSummary,
 	TypeAccessChange,
 } from '@n8n/api-types';
-import { EventService, loginIdOf } from '@n8n/backend-services';
-import { TransactionRunner, type OperationContext } from '@n8n/db';
+import { EventService, loginIdOf, ProjectNotFoundError } from '@n8n/backend-services';
+import { ProjectRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { Service } from '@n8n/di';
 import {
@@ -17,7 +17,7 @@ import {
 	isCredentialOnlyNodeType,
 } from 'n8n-workflow';
 
-import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
+import { BadRequestError, ConflictError, NotFoundError, UserError } from '@n8n/errors';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 
@@ -49,6 +49,9 @@ import { lintPolicyRules, type PolicyRuleWarning } from './policy-rule-lint';
 import { TypeAvailabilityPolicySnapshot } from './type-availability-policy-snapshot';
 
 export type { EffectivePolicy } from './effective-policy';
+
+/** A fixed order, so that two writers always lock the scope rows in the same order. */
+const PROJECT_POLICY_KINDS = [NODE_TYPES_KIND, CREDENTIAL_TYPES_KIND] as const;
 
 /** One attachment slot as the API accepts it, before the scope it belongs to is known. */
 export type AttachmentInput = {
@@ -227,6 +230,7 @@ export class TypeAvailabilityPolicyService {
 		private readonly snapshot: TypeAvailabilityPolicySnapshot,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly nodeTypes: NodeTypes,
+		private readonly projectRepository: ProjectRepository,
 	) {}
 
 	/**
@@ -919,6 +923,76 @@ export class TypeAvailabilityPolicyService {
 	}
 
 	/**
+	 * Gives a team project its own policy for each kind that has none, in one transaction. Each new
+	 * scope has no rules and `defaultAction: 'allow'`, so the project still follows the instance
+	 * policy. Does not call `setEffectivePolicy` once for each kind, because each of those calls
+	 * commits on its own and can leave half a policy.
+	 */
+	async createProjectPolicy(
+		projectId: string,
+		updatedBy: string,
+		ctx: OperationContext = {},
+	): Promise<void> {
+		await this.assertTeamProject(projectId);
+
+		const created = await this.transactionRunner.run({}, async (tx) => {
+			const scopes: TypeAvailabilityPolicyScope[] = [];
+			for (const kind of PROJECT_POLICY_KINDS) {
+				const { scope, created: isNew } = await this.scopeRepository.createScopeIfAbsent(
+					{ kind, projectId, defaultAction: 'allow', updatedBy },
+					tx,
+				);
+				if (isNew) scopes.push(scope);
+			}
+
+			if (scopes.length === 0) {
+				throw new ConflictError('Project already has a policy for node types and credential types');
+			}
+
+			return scopes;
+		});
+
+		await this.snapshot.refreshAfterWrite();
+
+		for (const scope of created) {
+			const after = { defaultAction: scope.defaultAction, version: scope.version };
+
+			this.eventService.emit('node-type-policy-scope-updated', {
+				updatedBy,
+				kind: scope.kind,
+				projectId,
+				scopeId: scope.id,
+				before: null,
+				after,
+				loginId: loginIdOf(ctx),
+			});
+
+			this.eventService.emit('node-type-policy-saved', {
+				updatedBy,
+				kind: scope.kind,
+				projectId,
+				scopeId: scope.id,
+				before: null,
+				after,
+				rulesBefore: null,
+				rulesAfter: [],
+				shadowWarningCount: 0,
+				notLoadedWarningCount: 0,
+				origin: 'add-project-policy',
+			});
+		}
+	}
+
+	/** Only a team project can have a project policy. */
+	private async assertTeamProject(projectId: string): Promise<void> {
+		const [project] = await this.projectRepository.findTypesByIds([projectId]);
+		ProjectNotFoundError.isDefinedAndNotNull(project, projectId);
+		if (project.type !== 'team') {
+			throw new BadRequestError('A personal project cannot have a project policy');
+		}
+	}
+
+	/**
 	 * What the instance policy alone decides for each type, evaluated against one read so that
 	 * `version` matches the verdicts. Uncached for the reason on `getEffectivePolicy`.
 	 */
@@ -1067,16 +1141,17 @@ export class TypeAvailabilityPolicyService {
 	/**
 	 * Counts for the project policy list. Reads the database, not the snapshot, so the counts and
 	 * `updatedAt` come from one source. `listTypes` picks the types to count from the verdicts of a
-	 * project without a policy.
+	 * project without a policy. `projectId` limits `byProject` to that one project.
 	 */
 	async summarizeProjectPolicies(
 		kind: string,
 		typeNames: readonly string[],
 		listTypes: ListTypes = (verdicts) => verdicts,
+		projectId?: string,
 	): Promise<ProjectPolicyKindSummaries> {
 		const [instance, projects] = await Promise.all([
 			this.getEffectivePolicy(kind, null),
-			this.readProjectScopes(kind),
+			this.readProjectScopes(kind, projectId),
 		]);
 
 		const withoutProjectPolicy = listTypes(
@@ -1122,8 +1197,9 @@ export class TypeAvailabilityPolicyService {
 
 	private async readProjectScopes(
 		kind: string,
+		projectId?: string,
 	): Promise<Array<ProjectEffectivePolicy & { updatedAt: Date }>> {
-		const scopes = await this.scopeRepository.findProjectScopes(kind, {});
+		const scopes = await this.scopeRepository.findProjectScopes(kind, {}, projectId);
 		const attachmentsByScope = await this.attachmentRepository.listAttachmentsForScopes(
 			scopes.map((scope) => scope.id),
 			{},
