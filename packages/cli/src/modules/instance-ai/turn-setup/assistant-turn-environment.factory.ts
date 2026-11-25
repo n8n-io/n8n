@@ -281,6 +281,8 @@ export class AssistantTurnEnvironmentFactory {
 			proxyRunConfig ?? (await this.createProxyRunConfig(user));
 
 		const proxyContext = { runId, threadId };
+		const baseModelFetch = this.modelService.getModelFetch();
+		const labeledModelFetch = this.modelService.getLabeledModelFetch(proxyContext);
 		const modelId =
 			proxyBaseUrl && tokenManager
 				? await this.modelService.resolveProxyModel(user, proxyBaseUrl, tokenManager, proxyContext)
@@ -351,7 +353,8 @@ export class AssistantTurnEnvironmentFactory {
 			modelId,
 			utilityModelId,
 			onHelperUsage: this.creditService.helperUsageClaimer(user, threadId, runId),
-			modelFetch: this.modelService.getModelFetch(),
+			modelFetch: labeledModelFetch,
+			catalogFetch: baseModelFetch,
 			allowSendingParameterValues,
 			temporaryWorkflowMarkers: runtime.temporaryWorkflowMarkers,
 		});
@@ -397,7 +400,8 @@ export class AssistantTurnEnvironmentFactory {
 						tokenManager,
 						proxyContext,
 					}),
-				modelFetch: this.modelService.getModelFetch(),
+				modelFetch: labeledModelFetch,
+				requestLabels: this.instanceAiConfig.modelRequestLabels,
 				getTracing: () => orchestrationContext.tracing,
 			});
 		}
@@ -567,7 +571,7 @@ export class AssistantTurnEnvironmentFactory {
 			orchestratorAgentId: orchestratorAgentId(runId),
 			modelId,
 			...(tracing ? { tracing } : {}),
-			modelFetch: this.modelService.getModelFetch(),
+			modelFetch: labeledModelFetch,
 			modelStreamStallOptions: modelStreamStallOptions(this.aiConfig),
 			eventBus: runtime.eventBus,
 			logger: this.logger,

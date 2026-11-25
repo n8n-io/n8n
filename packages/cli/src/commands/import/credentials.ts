@@ -16,6 +16,7 @@ import { Container } from '@n8n/di';
 import glob from 'fast-glob';
 import fs from 'fs';
 import omit from 'lodash/omit';
+import { isRecord } from '@n8n/utils/is-record';
 import pick from 'lodash/pick';
 import { Cipher } from 'n8n-core';
 import { jsonParse, type ICredentialDataDecryptedObject } from 'n8n-workflow';
@@ -72,6 +73,10 @@ type ImportableCredentialProperty = Exclude<
 
 const isCredentialData = (data: unknown): data is ICredentialDataDecryptedObject =>
 	typeof data === 'object' && data !== null && !Array.isArray(data);
+
+/** Every credential export carries a string `type` and a `data` field; other exports do not. */
+const isExportedCredential = (content: unknown): content is Partial<CredentialsEntity> =>
+	isRecord(content) && typeof content.type === 'string' && 'data' in content;
 
 type ExistingCredential = Pick<CredentialsEntity, 'id' | 'type' | 'usageScope'>;
 
@@ -440,9 +445,17 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 				absolute: true,
 			});
 
-			credentials = files.map((file) =>
-				jsonParse<Partial<CredentialsEntity>>(fs.readFileSync(file, { encoding: 'utf8' })),
-			);
+			credentials = [];
+
+			for (const file of files) {
+				const content = jsonParse<unknown>(fs.readFileSync(file, { encoding: 'utf8' }));
+
+				if (isExportedCredential(content)) {
+					credentials.push(content);
+				} else {
+					this.logger.warn(`Skipping invalid credential file: ${file}`);
+				}
+			}
 		} else {
 			const credentialsUnchecked = jsonParse<Array<Partial<CredentialsEntity>>>(
 				fs.readFileSync(inputPath, { encoding: 'utf8' }),

@@ -27,6 +27,7 @@ import { NotFoundError } from '@n8n/errors';
 import { NodeTypes } from '@/node-types';
 
 import { NODE_TYPES_KIND } from './constants';
+import { ListedNodeTypes } from './listed-node-types';
 import { NodeTypeUsageService } from './node-type-usage.service';
 import { TypeAvailabilityPolicyService } from './type-availability-policy.service';
 
@@ -42,6 +43,7 @@ export class TypeAvailabilityPolicyInstanceController {
 		private readonly service: TypeAvailabilityPolicyService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly nodeTypeUsageService: NodeTypeUsageService,
+		private readonly listedNodeTypes: ListedNodeTypes,
 	) {}
 
 	@Get('/instance')
@@ -62,22 +64,11 @@ export class TypeAvailabilityPolicyInstanceController {
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@GlobalScope('nodeTypePolicy:manage')
 	async getInstanceAccess(): Promise<InstanceTypeAccessResponse> {
-		const access = await this.service.getInstanceAccess(
+		return await this.service.getInstanceAccess(
 			NODE_TYPES_KIND,
 			Object.keys(this.nodeTypes.getKnownTypes()),
+			await this.listedNodeTypes.filter(),
 		);
-		const matchedRuleIdByName = new Map(
-			access.types.map((type) => [type.name, type.matchedRuleId]),
-		);
-
-		// A generated tool variant usually follows its base type, so it gets no row. A rule can name
-		// the variant itself, and then the variant keeps its row: the admin must see that rule.
-		const types = access.types.filter((type) => {
-			const { baseName, isSyntheticTool } = this.nodeTypes.resolveBaseName(type.name);
-			return !isSyntheticTool || type.matchedRuleId !== matchedRuleIdByName.get(baseName);
-		});
-
-		return { ...access, types };
 	}
 
 	@Get('/usage')

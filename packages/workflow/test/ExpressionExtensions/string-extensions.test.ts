@@ -386,6 +386,29 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{ "hi".extractUrlPath() }}')).toBeUndefined();
 		});
 
+		test.each([
+			['https://de.wikipedia.org/wiki/Käse', '/wiki/K%C3%A4se'],
+			['https://example.com/my report.pdf', '/my%20report.pdf'],
+			['https://example.com/a<b>c', '/a%3Cb%3Ec'],
+			['https://example.com/v1/../v2/users', '/v2/users'],
+			['https://example.com/a/./b', '/a/b'],
+			['https://example.com/a/b/..', '/a/'],
+			['https://example.com/a%2fb', '/a%2fb'],
+			['https://example.com/a+b;c=d', '/a+b;c=d'],
+			['http:example.com/path', '/path'],
+			['mailto:me@example.com', 'me@example.com'],
+			['https://exa mple.com/path', undefined],
+			['https://example.com:port/path', undefined],
+		])('.extractUrlPath should give the path of `new URL()` for %j', (url, path) => {
+			expect(evaluate('={{ $json.url.extractUrlPath() }}', [{ url }])).toEqual(path);
+		});
+
+		test('.extractUrlPath should replace a lone surrogate in the path', () => {
+			expect(
+				evaluate('={{ ("https://example.com/" + "😀".substring(0, 1)).extractUrlPath() }}'),
+			).toEqual('/%EF%BF%BD');
+		});
+
 		test('.parseJson should work on a string', () => {
 			expect(evaluate('={{ \'{"test1":1,"test2":"2"}\'.parseJson() }}')).toEqual({
 				test1: 1,

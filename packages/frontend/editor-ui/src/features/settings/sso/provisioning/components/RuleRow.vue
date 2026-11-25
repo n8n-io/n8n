@@ -45,12 +45,18 @@ const selectedProjectNames = computed(() => {
 </script>
 <template>
 	<div :class="[$style.row, { [$style.disabled]: props.disabled }]" data-test-id="rule-row">
-		<div :class="$style.cellDrag" class="drag-handle" aria-label="Reorder rule">
+		<div
+			:class="$style.cellDrag"
+			class="drag-handle"
+			:aria-label="i18n.baseText('settings.sso.settings.roleMappingRules.reorderRule')"
+		>
 			<N8nIcon icon="grip-vertical" size="small" color="text-light" />
 		</div>
 		<div :class="$style.cellPriority">{{ priority }}.</div>
 		<div :class="$style.cellCondition">
-			<span :class="$style.label">If</span>
+			<span :class="$style.label">{{
+				i18n.baseText('settings.sso.settings.roleMappingRules.if')
+			}}</span>
 			<RuleMappingExpressionInput
 				:model-value="props.rule.expression"
 				:disabled="props.disabled"
@@ -61,7 +67,9 @@ const selectedProjectNames = computed(() => {
 			/>
 		</div>
 		<div :class="$style.cellRole">
-			<span :class="$style.label">assign</span>
+			<span :class="$style.label">{{
+				i18n.baseText('settings.sso.settings.roleMappingRules.assign')
+			}}</span>
 			<InstanceRoleAssignmentSelect
 				v-if="props.type !== 'project'"
 				:model-value="props.rule.role"
@@ -110,7 +118,7 @@ const selectedProjectNames = computed(() => {
 				size="small"
 				color="text-light"
 				:class="[$style.actionIcon, { [$style.disabledIcon]: props.disabled }]"
-				aria-label="Duplicate rule"
+				:aria-label="i18n.baseText('settings.sso.settings.roleMappingRules.duplicateRule')"
 				data-test-id="rule-copy-button"
 				@click="!props.disabled && emit('duplicate', props.rule.id)"
 			/>
@@ -121,7 +129,7 @@ const selectedProjectNames = computed(() => {
 				size="small"
 				color="text-light"
 				:class="[$style.actionIcon, { [$style.disabledIcon]: props.disabled }]"
-				aria-label="Delete rule"
+				:aria-label="i18n.baseText('settings.sso.settings.roleMappingRules.deleteRule')"
 				data-test-id="rule-delete-button"
 				@click="!props.disabled && emit('delete', props.rule.id)"
 			/>

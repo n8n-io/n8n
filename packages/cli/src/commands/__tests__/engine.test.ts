@@ -5,10 +5,12 @@ import { AzureBlobConfig, ObjectStoreConfig } from '@n8n/blob-storage';
 import { ObjectStoreService } from '@n8n/blob-storage/object-store';
 import { EngineConfig } from '@n8n/config';
 import { DbConnection } from '@n8n/db';
+import { CommandMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { WorkQueuePublisherClient } from '@n8n/engine';
 import { BinaryDataConfig, BinaryDataService, ErrorReporter } from 'n8n-core';
 import { Expression } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import * as CrashJournal from '@/crash-journal';
@@ -19,6 +21,7 @@ import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { EngineMtls } from '@/modules/engine-v2/engine-mtls';
+import { parseEngineRoles } from '@/modules/engine-v2/engine-roles';
 import { EngineV2Runtime } from '@/modules/engine-v2/engine-v2.runtime';
 import { ExecutionChannelSender } from '@/modules/engine-v2/execution-channel/execution-channel-sender';
 import { LifecycleEventChannelSender } from '@/modules/engine-v2/execution-channel/lifecycle-event-sender';
@@ -104,6 +107,7 @@ describe('Engine', () => {
 			tlsInsecureAllowPlainHttp: true,
 			orchestrationConcurrency: 1,
 			stepConcurrency: 1,
+			roles: '',
 		});
 		useTls(false);
 	});
@@ -121,8 +125,10 @@ describe('Engine', () => {
 		}
 	};
 
-	const createEngine = () => {
+	const createEngine = (flags: { roles?: string } = {}) => {
 		const engine = new Engine();
+		// @ts-expect-error - Overriding readonly property for testing
+		engine.flags = flags;
 		// @ts-expect-error - Overriding readonly property for testing
 		engine.globalConfig = {
 			executions: { mode: 'regular' },
@@ -187,25 +193,59 @@ describe('Engine', () => {
 			}
 		});
 
-		it('refuses to boot without the shared secret', async () => {
-			engineConfig.authSecret = '';
+		it.each([
+			{ flag: undefined, role: 'api' },
+			{ flag: 'api', role: 'api' },
+			{ flag: 'step-worker', role: 'step-worker' },
+			{ flag: 'orchestrator,step-worker', role: 'step-worker' },
+		])(
+			'refuses to boot --roles=$flag without the shared secret, naming the $role role',
+			async ({ flag, role }) => {
+				engineConfig.authSecret = '';
 
-			await expect(createEngine().init()).rejects.toThrow('N8N_ENGINE_AUTH_SECRET');
-		});
+				await expect(createEngine({ roles: flag }).init()).rejects.toThrow(
+					`The ${role} role needs N8N_ENGINE_AUTH_SECRET`,
+				);
+			},
+		);
 
-		it('refuses to boot without the control plane address', async () => {
-			engineConfig.controlPlaneBaseUrl = '';
+		it.each([undefined, 'step-worker', 'api,step-worker'])(
+			'refuses to boot --roles=%s without the control plane address',
+			async (flag) => {
+				engineConfig.controlPlaneBaseUrl = '';
 
-			await expect(createEngine().init()).rejects.toThrow('N8N_ENGINE_CONTROL_PLANE_BASE_URL');
-		});
+				await expect(createEngine({ roles: flag }).init()).rejects.toThrow(
+					'The step-worker role needs N8N_ENGINE_CONTROL_PLANE_BASE_URL',
+				);
+			},
+		);
 
-		it('refuses to boot over plain HTTP without the opt-out', async () => {
-			engineConfig.tlsInsecureAllowPlainHttp = false;
+		it.each([
+			{ flag: 'orchestrator', withSecret: false },
+			{ flag: 'api', withSecret: true },
+			{ flag: 'api,orchestrator', withSecret: true },
+		])(
+			'boots --roles=$flag without the control plane address (shared secret set: $withSecret)',
+			async ({ flag, withSecret }) => {
+				if (!withSecret) engineConfig.authSecret = '';
+				engineConfig.controlPlaneBaseUrl = '';
 
-			await expect(createEngine().init()).rejects.toThrow(
-				'N8N_ENGINE_TLS_INSECURE_ALLOW_PLAIN_HTTP',
-			);
-		});
+				await createEngine({ roles: flag }).init();
+
+				expect(runtime.init).toHaveBeenCalled();
+			},
+		);
+
+		it.each(['api', 'orchestrator', 'step-worker'])(
+			'refuses to boot --roles=%s over plain HTTP without the opt-out',
+			async (flag) => {
+				engineConfig.tlsInsecureAllowPlainHttp = false;
+
+				await expect(createEngine({ roles: flag }).init()).rejects.toThrow(
+					'N8N_ENGINE_TLS_INSECURE_ALLOW_PLAIN_HTTP',
+				);
+			},
+		);
 
 		it('refuses an http control plane address when TLS is on', async () => {
 			useTls(true);
@@ -213,6 +253,14 @@ describe('Engine', () => {
 			await expect(createEngine().init()).rejects.toThrow(
 				'N8N_ENGINE_CONTROL_PLANE_BASE_URL must start with https://',
 			);
+		});
+
+		it('ignores an http control plane address when TLS is on and no role dials it', async () => {
+			useTls(true);
+
+			await createEngine({ roles: 'api,orchestrator' }).init();
+
+			expect(runtime.init).toHaveBeenCalled();
 		});
 
 		it('never opens, migrates or reads the control plane database', async () => {
@@ -229,11 +277,70 @@ describe('Engine', () => {
 			expect(CrashJournal.init).not.toHaveBeenCalled();
 		});
 
-		it('loads the nodes and starts the task runner module', async () => {
-			await createEngine().init();
+		describe('roles', () => {
+			let initExpressionEngine: MockInstance<typeof Expression.initExpressionEngine>;
 
-			expect(loadNodesAndCredentials.init).toHaveBeenCalled();
-			expect(taskRunnerModule.start).toHaveBeenCalled();
+			beforeEach(() => {
+				initExpressionEngine = vi.spyOn(Expression, 'initExpressionEngine').mockResolvedValue();
+			});
+
+			afterEach(() => {
+				initExpressionEngine.mockRestore();
+			});
+
+			it('runs the roles that N8N_ENGINE_ROLES names', async () => {
+				engineConfig.roles = 'orchestrator';
+
+				await createEngine().init();
+
+				expect(runtime.init).toHaveBeenCalledWith(
+					expect.objectContaining({ roles: ['orchestrator'] }),
+				);
+			});
+
+			it.each([undefined, 'step-worker', 'api,step-worker'])(
+				'loads the nodes and starts the expression engine and the code execution backend with --roles=%s',
+				async (flag) => {
+					await createEngine({ roles: flag }).init();
+
+					expect(loadNodesAndCredentials.init).toHaveBeenCalled();
+					expect(loadNodesAndCredentials.postProcessLoaders).toHaveBeenCalled();
+					expect(initExpressionEngine).toHaveBeenCalled();
+					expect(taskRunnerModule.start).toHaveBeenCalled();
+				},
+			);
+
+			it.each(['api', 'orchestrator', 'api,orchestrator'])(
+				'loads no nodes and starts neither the expression engine nor the code execution backend with --roles=%s',
+				async (flag) => {
+					await createEngine({ roles: flag }).init();
+
+					expect(loadNodesAndCredentials.init).not.toHaveBeenCalled();
+					expect(loadNodesAndCredentials.postProcessLoaders).not.toHaveBeenCalled();
+					expect(initExpressionEngine).not.toHaveBeenCalled();
+					expect(taskRunnerModule.start).not.toHaveBeenCalled();
+				},
+			);
+
+			it('refuses to boot with an unknown role in N8N_ENGINE_ROLES before it starts anything', async () => {
+				engineConfig.roles = 'worker';
+
+				await expect(createEngine().init()).rejects.toThrow(
+					'Unknown engine role in N8N_ENGINE_ROLES: worker',
+				);
+				expect(loadNodesAndCredentials.init).not.toHaveBeenCalled();
+				expect(redisClientService.createClient).not.toHaveBeenCalled();
+				expect(taskRunnerModule.start).not.toHaveBeenCalled();
+				expect(runtime.init).not.toHaveBeenCalled();
+			});
+
+			it('names every engine role and the environment variable in the help text of --roles', () => {
+				const flagsSchema = Container.get(CommandMetadata).get('engine')?.flagsSchema;
+				const allRoles = parseEngineRoles(undefined);
+
+				expect(flagsSchema?.shape.roles.description).toContain(allRoles.join(', '));
+				expect(flagsSchema?.shape.roles.description).toContain('N8N_ENGINE_ROLES');
+			});
 		});
 
 		it('sends execution responses and lifecycle events over Redis', async () => {
@@ -244,6 +351,7 @@ describe('Engine', () => {
 				responseSender: expect.any(ExecutionChannelSender),
 				lifecycleEventSender: expect.any(LifecycleEventChannelSender),
 				queues: expect.anything(),
+				roles: expect.anything(),
 			});
 		});
 

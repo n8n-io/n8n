@@ -5,6 +5,7 @@ import type { BatchRequest } from '../../runtime/lazy-proxy';
 import { BATCH_READ_LIMITS, batchReadBudget, readBatchAtPath } from '../batch-read';
 import type { BatchReadBudget } from '../batch-read';
 import { HostDataResolver } from '../host-data-resolver';
+import { getValueAtPath } from '../host-functions';
 
 const limits = {
 	smallValueChars: 100,
@@ -249,11 +250,25 @@ describe('readBatchAtPath on an array, for a request of named fields', () => {
 	});
 
 	it('counts the name of each field in the read limit', () => {
-		const name = 'n'.repeat(300);
+		const name = 'n'.repeat(92);
 		const items = Array.from({ length: 10 }, () => ({ [name]: 1 }));
 
-		// Each item takes 316 characters of the read limit of 1000.
-		expect(readItems(items, 0, 9, [name])).toEqual(whole(items.slice(0, 3)));
+		// Each item takes 108 characters of the read limit of 1000.
+		expect(readItems(items, 0, 9, [name])).toEqual(whole(items.slice(0, 9)));
+	});
+
+	it('leaves a name over the small size out of the request, so its field is read alone', () => {
+		const name = 'n'.repeat(limits.smallValueChars + 1);
+		const rows = [{ [name]: 'value', id: 1 }];
+		const resolver = new HostDataResolver({ $json: { rows } });
+		const budget = { remaining: 1000 };
+
+		expect(
+			readBatchAtPath(resolver, ['$json', 'rows'], 0, 0, [name, 'id'], limits, budget),
+		).toEqual(whole([{ id: 1 }]));
+		// The item counts 8, the name `id` 2 and the number 8.
+		expect(budget.remaining).toBe(1000 - 18);
+		expect(getValueAtPath(resolver, ['$json', 'rows', '0', name])).toBe('value');
 	});
 
 	it('counts a field over the small size as the small size, and a missing field as nothing', () => {
