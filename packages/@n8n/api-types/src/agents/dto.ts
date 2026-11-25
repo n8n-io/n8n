@@ -195,8 +195,16 @@ export class ListAgentMemoryEntriesQueryDto extends Z.class({
 
 /** Cross-agent n8n Chat thread list: cursor + limit only, no status/origin/scope filters. */
 export class ListN8nChatThreadsQueryDto extends Z.class({
-	// The cursor is a thread's `updatedAt` ISO string (see `paginateByUpdatedAt`).
-	cursor: z.string().datetime().optional(),
+	cursor: z
+		.string()
+		.refine((cursor) => {
+			const [updatedAt, id, ...rest] = cursor.split('|');
+			return (
+				z.string().datetime().safeParse(updatedAt).success &&
+				(id === undefined || (id.length > 0 && rest.length === 0))
+			);
+		})
+		.optional(),
 	limit: z.string().optional(),
 	/** Filters threads to one agent. */
 	agentId: z.string().min(1).max(128).optional(),

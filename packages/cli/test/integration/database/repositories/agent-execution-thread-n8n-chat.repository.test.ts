@@ -185,26 +185,32 @@ describe('AgentExecutionThreadRepository n8n Chat queries', () => {
 			});
 		});
 
-		it('pages newest-updated first with a cursor', async () => {
+		it.each([false, true])('pages newest-updated first with a cursor (tied: %s)', async (tied) => {
 			const owner = await createMember();
 			const older = await createThread({ ownerId: owner.id });
 			await createExecution(older.id, N8N_CHAT_PRODUCTION_SOURCE);
 			await threadRepo.update({ id: older.id }, { updatedAt: new Date('2024-01-01T00:00:00Z') });
 			const newer = await createThread({ ownerId: owner.id });
 			await createExecution(newer.id, N8N_CHAT_PRODUCTION_SOURCE);
-			await threadRepo.update({ id: newer.id }, { updatedAt: new Date('2024-02-01T00:00:00Z') });
+			await threadRepo.update(
+				{ id: newer.id },
+				{
+					updatedAt: new Date(tied ? '2024-01-01T00:00:00Z' : '2024-02-01T00:00:00Z'),
+				},
+			);
+			const expectedIds = tied ? [older.id, newer.id].sort().reverse() : [newer.id, older.id];
 
 			const firstPage = await threadRepo.findN8nChatThreadsForOwner(owner.id, [agentId], {
 				limit: 1,
 			});
-			expect(firstPage.threads.map((thread) => thread.id)).toEqual([newer.id]);
+			expect(firstPage.threads.map((thread) => thread.id)).toEqual([expectedIds[0]]);
 			expect(firstPage.nextCursor).not.toBeNull();
 
 			const secondPage = await threadRepo.findN8nChatThreadsForOwner(owner.id, [agentId], {
 				limit: 1,
 				cursor: firstPage.nextCursor!,
 			});
-			expect(secondPage.threads.map((thread) => thread.id)).toEqual([older.id]);
+			expect(secondPage.threads.map((thread) => thread.id)).toEqual([expectedIds[1]]);
 			expect(secondPage.nextCursor).toBeNull();
 		});
 
