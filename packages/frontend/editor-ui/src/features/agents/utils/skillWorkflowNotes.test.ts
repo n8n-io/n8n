@@ -15,7 +15,7 @@ const workflow = (
 ): SkillWorkflowNoteData => ({
 	nodes,
 	activeVersionId: published ? 'v1' : null,
-	settings: { availableInMCP },
+	settings: { executionOrder: 'v1', availableInMCP },
 });
 
 const PROJECT_SKILL = { instanceSkill: false, availableToMCP: false };
