@@ -1,0 +1,16 @@
+packages/cli/src/modules/agents/__tests__/agent-attention-flags.test.ts
+  h_23d60aac2fe72e 28,30
+packages/cli/src/modules/agents/agent-attention-flags.controller.ts
+  h_23d60aac2fe72e 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1e5eb1771740abce908dab108efbf37a1a0fefca",
+  "prompts": {},
+  "humans": {
+    "h_23d60aac2fe72e": {
+      "author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
