@@ -2,12 +2,7 @@ import type { InstanceTypeAccess } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { shallowRef } from 'vue';
 
-import { visibleNodeTypes } from '../instance-policy/visibleNodeTypes';
-import {
-	fetchInstanceAccess,
-	fetchInstancePolicy,
-	fetchNodeTypeSummaries,
-} from '../type-availability-policies.api';
+import { fetchInstanceAccess } from '../type-availability-policies.api';
 
 type TypeCount = { restricted: number; total: number };
 
@@ -27,14 +22,12 @@ export function useInstancePolicyCounts() {
 
 	async function load(): Promise<void> {
 		try {
-			const [nodeAccess, nodePolicy, credentialAccess, summaries] = await Promise.all([
+			const [nodeAccess, credentialAccess] = await Promise.all([
 				fetchInstanceAccess(rootStore.restApiContext, 'node'),
-				fetchInstancePolicy(rootStore.restApiContext, 'node'),
 				fetchInstanceAccess(rootStore.restApiContext, 'credential'),
-				fetchNodeTypeSummaries(rootStore.baseUrl),
 			]);
 			counts.value = {
-				node: countRestricted(visibleNodeTypes(nodeAccess.types, summaries, nodePolicy.rules)),
+				node: countRestricted(nodeAccess.types),
 				credential: countRestricted(credentialAccess.types),
 			};
 		} catch {

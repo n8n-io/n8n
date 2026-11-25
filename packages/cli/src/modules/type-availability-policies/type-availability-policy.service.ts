@@ -30,6 +30,7 @@ import {
 	type EffectivePolicy,
 	type ProjectEffectivePolicy,
 } from './effective-policy';
+import type { ListTypes } from './listed-node-types';
 import { loadedCheckFor, packageResolverFor, policedTypeFor } from './package-resolver';
 import {
 	evaluateComposedType,
@@ -57,11 +58,6 @@ export type ScopeAttachments = {
 
 /** One type's composed verdict, as `evaluateComposedTypes` reports it. */
 export type ComposedTypeVerdict = ComposedVerdict & { readonly name: string };
-
-type ListTypes = (
-	verdicts: ComposedTypeVerdict[],
-	instanceRules: readonly PolicyRule[],
-) => ComposedTypeVerdict[];
 
 /** One kind's counts for the project policy list. Projects without a scope row are absent. */
 export type ProjectPolicyKindSummaries = {
@@ -860,6 +856,7 @@ export class TypeAvailabilityPolicyService {
 	async getInstanceAccess(
 		kind: string,
 		typeNames: readonly string[],
+		listTypes: ListTypes = (types) => types,
 	): Promise<InstanceTypeAccessResponse> {
 		const effective = await this.getEffectivePolicy(kind, null);
 		const resolvePackage = packageResolverFor(kind, this.loadNodesAndCredentials);
@@ -869,16 +866,19 @@ export class TypeAvailabilityPolicyService {
 			scopeId: effective.scopeId,
 			version: effective.version,
 			defaultAction: effective.defaultAction,
-			types: typeNames.map((name) => {
-				const { action, matchedRuleId } = evaluateRules(
-					effective.rules,
-					effective.defaultAction,
-					policedType(name),
-					resolvePackage,
-				);
+			types: listTypes(
+				typeNames.map((name) => {
+					const { action, matchedRuleId } = evaluateRules(
+						effective.rules,
+						effective.defaultAction,
+						policedType(name),
+						resolvePackage,
+					);
 
-				return { name, access: action, matchedRuleId };
-			}),
+					return { name, access: action, matchedRuleId };
+				}),
+				effective.rules,
+			),
 		};
 	}
 

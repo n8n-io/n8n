@@ -27,7 +27,7 @@ import { NotFoundError } from '@n8n/errors';
 import { NodeTypes } from '@/node-types';
 
 import { NODE_TYPES_KIND } from './constants';
-import { withoutFollowingToolVariants } from './listed-node-types';
+import { ListedNodeTypes } from './listed-node-types';
 import { NodeTypeUsageService } from './node-type-usage.service';
 import { TypeAvailabilityPolicyService } from './type-availability-policy.service';
 
@@ -43,6 +43,7 @@ export class TypeAvailabilityPolicyInstanceController {
 		private readonly service: TypeAvailabilityPolicyService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly nodeTypeUsageService: NodeTypeUsageService,
+		private readonly listedNodeTypes: ListedNodeTypes,
 	) {}
 
 	@Get('/instance')
@@ -63,15 +64,11 @@ export class TypeAvailabilityPolicyInstanceController {
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@GlobalScope('nodeTypePolicy:manage')
 	async getInstanceAccess(): Promise<InstanceTypeAccessResponse> {
-		const access = await this.service.getInstanceAccess(
+		return await this.service.getInstanceAccess(
 			NODE_TYPES_KIND,
 			Object.keys(this.nodeTypes.getKnownTypes()),
+			await this.listedNodeTypes.filter(),
 		);
-		const types = withoutFollowingToolVariants(access.types, (name) =>
-			this.nodeTypes.resolveBaseName(name),
-		);
-
-		return { ...access, types };
 	}
 
 	@Get('/usage')

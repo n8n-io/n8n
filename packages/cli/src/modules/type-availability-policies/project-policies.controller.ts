@@ -13,8 +13,7 @@ import { CredentialTypes } from '@/credential-types';
 import { NodeTypes } from '@/node-types';
 
 import { CREDENTIAL_TYPES_KIND, NODE_TYPES_KIND } from './constants';
-import { HiddenNodeTypes } from './hidden-node-types';
-import { listedNodeTypes } from './listed-node-types';
+import { ListedNodeTypes } from './listed-node-types';
 import { TypeAvailabilityPolicyService } from './type-availability-policy.service';
 
 @RestController('/project-policies')
@@ -24,7 +23,7 @@ export class ProjectPoliciesController {
 		private readonly projectRepository: ProjectRepository,
 		private readonly nodeTypes: NodeTypes,
 		private readonly credentialTypes: CredentialTypes,
-		private readonly hiddenNodeTypes: HiddenNodeTypes,
+		private readonly listedNodeTypes: ListedNodeTypes,
 	) {}
 
 	@Get('/')
@@ -65,19 +64,11 @@ export class ProjectPoliciesController {
 		};
 	}
 
-	/** Counts the node types the instance policy page lists, so the totals match that page. */
 	private async summarizeNodeTypes() {
-		const hiddenTypes = await this.hiddenNodeTypes.get();
-
 		return await this.service.summarizeProjectPolicies(
 			NODE_TYPES_KIND,
 			Object.keys(this.nodeTypes.getKnownTypes()),
-			(verdicts, instanceRules) =>
-				listedNodeTypes(verdicts, {
-					resolveBaseName: (name) => this.nodeTypes.resolveBaseName(name),
-					hiddenTypes,
-					instanceRules,
-				}),
+			await this.listedNodeTypes.filter(),
 		);
 	}
 }

@@ -301,10 +301,16 @@ write between them can return newer rules under the older `version`. A write tha
 `version` back then fails with a conflict, so no change is lost.
 
 The credential route lists the type names of `available-credential-types`. The node route lists
-the type names of `available-types`, but it leaves out a generated tool variant when the same rule,
-or the default action, decides the variant and its base type. Such a variant has the access of its
-base. When a different rule decides the variant, for example an earlier `name` rule for the
-variant (see the rule order above), the variant keeps its row so that the admin can see that rule.
+the type names of `available-types`, and it is the only place that decides which node types the
+admin page lists. It leaves out two kinds of type:
+
+- A generated tool variant that the same rule, or the default action, decides as its base type.
+  Such a variant has the access of its base. When a different rule decides the variant, for
+  example an earlier `name` rule for the variant (see the rule order above), the variant keeps its
+  row so that the admin can see that rule.
+- A hidden node type, unless an instance `name` rule decides it, for the same reason. The `hidden`
+  flag comes from the static `types/nodes.json`, because a main process releases the node
+  descriptions from memory after startup. The route fails when it cannot read that file.
 
 ### The policy state of each team project
 
@@ -319,10 +325,7 @@ deletes a project scope row, so a project that resets to allow-all keeps `hasPol
 The counts are counts of types, not of rules, over the types the instance policy page lists:
 
 - Credential types: every known credential type.
-- Node types: the types of the node access route, without a hidden type. A hidden type stays when
-  an instance `name` rule decides it. This matches `visibleNodeTypes` in the frontend module, so
-  change both together. The `hidden` flag comes from the static `types/nodes.json`, because a main
-  process releases the node descriptions from memory after startup.
+- Node types: the types that the node access route lists.
 
 Each project's verdicts are compared with the verdicts of a project that has no policy:
 
@@ -450,7 +453,7 @@ through a sealed repository method, and the lint rule that guards that has no al
 | `credential-type-policy-instance.controller.ts`   | Instance scope, documents, attachments and access of each type, `credential-types` |
 | `credential-type-policy-project.controller.ts`    | A project's own scope, for project admins, `credential-types`                   |
 | `project-policies.controller.ts`                  | The policy state of every team project, for both kinds                          |
-| `listed-node-types.ts`                            | The node types the instance policy page lists                                   |
+| `listed-node-types.ts`                            | The node types the instance policy page lists, for the access route and counts  |
 | `hidden-node-types.ts`                            | The hidden node types, read from the static node types file                     |
 | `available-types.controller.ts`                   | The effective type set for one project, for the builder                         |
 | `sub-workflow-policy-check.controller.ts`         | The start violations a parent's call to a sub-workflow would hit                |
