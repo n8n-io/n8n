@@ -1,5 +1,6 @@
 import { createHmac } from 'crypto';
 import type { IDataObject, IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -88,10 +89,19 @@ describe('VenafiTlsProtectCloudTrigger', () => {
 			const exists = await trigger.webhookMethods.default.checkExists.call(hookFunctions);
 
 			expect(exists).toBe(false);
-			expect(venafiApiRequest).toHaveBeenCalledWith('DELETE', '/v1/connectors/ours');
-			expect(venafiApiRequest).toHaveBeenCalledWith('DELETE', '/v1/connectors/ours-disabled');
-			expect(venafiApiRequest).not.toHaveBeenCalledWith('DELETE', '/v1/connectors/other');
-			expect(venafiApiRequest).not.toHaveBeenCalledWith('DELETE', '/v1/connectors/other-url');
+			expect(venafiApiRequest).toHaveBeenCalledWith('DELETE', requestPath`/v1/connectors/ours`);
+			expect(venafiApiRequest).toHaveBeenCalledWith(
+				'DELETE',
+				requestPath`/v1/connectors/ours-disabled`,
+			);
+			expect(venafiApiRequest).not.toHaveBeenCalledWith(
+				'DELETE',
+				requestPath`/v1/connectors/other`,
+			);
+			expect(venafiApiRequest).not.toHaveBeenCalledWith(
+				'DELETE',
+				requestPath`/v1/connectors/other-url`,
+			);
 		});
 	});
 

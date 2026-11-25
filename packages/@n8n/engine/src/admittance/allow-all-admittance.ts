@@ -8,7 +8,6 @@ import type { AdmittanceDecision, AdmittanceRequest, AdmittanceService } from '.
  * queue-depth limits).
  */
 export class AllowAllAdmittance implements AdmittanceService {
-	// eslint-disable-next-line @typescript-eslint/require-await -- satisfies async interface; impl has no async work
 	async evaluate(_request: AdmittanceRequest): Promise<AdmittanceDecision> {
 		return { accept: true };
 	}

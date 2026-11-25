@@ -7,7 +7,6 @@ import type {
 	IWebhookFunctions,
 	IWebhookResponseData,
 	IDataObject,
-	INodeExecutionData,
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
@@ -24,7 +23,9 @@ import {
 	listOwnSubscriptions,
 	logTrigger,
 	markPendingReconcile,
+	parseResourceIds,
 	reconcileSubscriptions,
+	renewSubscriptions,
 	storedSubscriptionsCover,
 	verifyWebhook,
 } from './v2/helpers/utils-trigger';
@@ -35,6 +36,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Microsoft Teams Trigger',
 		name: 'microsoftTeamsTrigger',
+		schemaPath: 'Microsoft/Teams',
 		icon: 'file:teams.svg',
 		group: ['trigger'],
 		version: 1,
@@ -372,19 +374,32 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				// instance start fails, the legacy activation manager queues retries instead. So
 				// stored subscriptions that GET by id shows live stay: the listing allows only 40
 				// requests per 20 s for an app across all tenants, and the next listing reconciles.
+				// Where exactly one stored id on a required resource shows the stored secret, the node
+				// tries to renew it. A failure other than a 404 only warns, and the subscription keeps
+				// its expiry. A 404 means the subscription is gone: its id leaves the stored ids, and
+				// the stored subscriptions stay while another stored id still covers its resource. A
+				// throw here is costly: `delete()` also removes the stored secret, so the next attempt
+				// cannot keep anything without a listing.
 				let subscriptions: SubscriptionResponse[];
 				try {
 					subscriptions = await listOwnSubscriptions.call(this, webhookUrl);
 				} catch (error) {
-					if (
-						clientState !== undefined &&
-						(await storedSubscriptionsCover.call(this, webhookUrl, clientState, event))
-					) {
-						logTrigger.call(this, 'warn', 'failed to list subscriptions, kept the stored ones', {
-							error: ensureError(error).message,
-						});
-						markPendingReconcile(webhookData, true);
-						return true;
+					const cover =
+						clientState === undefined
+							? undefined
+							: await storedSubscriptionsCover.call(this, webhookUrl, clientState, event);
+					if (cover !== undefined) {
+						const { gone } = await renewSubscriptions.call(this, cover.renew);
+						if (cover.covering.every((ids) => ids.some((id) => !gone.has(id)))) {
+							if (gone.size > 0) {
+								webhookData.subscriptionIds = storedIds.filter((id) => !gone.has(id));
+							}
+							logTrigger.call(this, 'warn', 'failed to list subscriptions, kept the stored ones', {
+								error: ensureError(error).message,
+							});
+							markPendingReconcile(webhookData, true);
+							return true;
+						}
 					}
 					throw error;
 				}
@@ -413,6 +428,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 					subscriptions,
 					// An unproven leftover is replaced: a failed create here throws, and core retries.
 					holdUnproven: false,
+					renewKeepers: true,
 				});
 				// A resource without a live subscription is a dark trigger, so the activation
 				// fails with the Graph error. A failed removal only warns: the next reconcile
@@ -536,11 +552,23 @@ export class MicrosoftTeamsTrigger implements INodeType {
 		const changeNotifications = accepted.filter(
 			(item) => isRecord(item) && !isLifecycleNotification(item),
 		) as WebhookNotification[];
-		const workflowData = changeNotifications.map((event) => [
-			{
-				json: (event.resourceData as IDataObject) ?? event,
-			} as INodeExecutionData,
-		]);
+		// `workflowData` has one array for each output. The node has one output, so all change
+		// notifications go in one array. `clientState` is the stored secret. The items do not
+		// include it.
+		const workflowData = [
+			changeNotifications.map(({ clientState, ...notification }) => {
+				// The added fields go first. On a name clash the resourceData (or notification) value wins.
+				const json: IDataObject = {
+					...(typeof notification.changeType === 'string' && {
+						changeType: notification.changeType,
+					}),
+					...(typeof notification.resource === 'string' && { resource: notification.resource }),
+					...parseResourceIds(notification.resource),
+					...(isRecord(notification.resourceData) ? notification.resourceData : notification),
+				};
+				return { json };
+			}),
+		];
 
 		if (lifecycleNotifications.length === 0) {
 			return { workflowData };

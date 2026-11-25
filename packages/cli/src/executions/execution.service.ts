@@ -1,7 +1,12 @@
 import type { DeleteExecutionsDto } from '@n8n/api-types';
 import { ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService, ExecutionRedactionServiceProxy } from '@n8n/backend-services';
+import {
+	EventService,
+	ExecutionRedactionServiceProxy,
+	WorkflowVersionedSettingsService,
+	loginIdOf,
+} from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type {
 	CreateExecutionPayload,
@@ -9,6 +14,7 @@ import type {
 	IExecutionBase,
 	IExecutionResponse,
 	IGetExecutionsQueryFilter,
+	OperationContext,
 	User,
 } from '@n8n/db';
 import {
@@ -37,6 +43,8 @@ import {
 	WorkflowOperationError,
 	createEmptyRunExecutionData,
 	createErrorExecutionData,
+	runDataUsedDynamicCredentials,
+	WORKFLOW_ENGINE_TYPES,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -47,6 +55,7 @@ import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error
 import {
 	BadRequestError,
 	ConflictError,
+	ForbiddenError,
 	InternalServerError,
 	NotFoundError,
 	UnexpectedError,
@@ -66,6 +75,7 @@ import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { EngineV2ExecutionReader } from './engine-v2-execution-reader.service';
 import { MissingExecutionDataError } from './execution-data/missing-execution-data.error';
 import { isExecutionIdV2, type ExecutionIdV2 } from './execution-id';
+import { ExecutionCancelService } from './execution-cancel.service';
 import { ExecutionPersistence } from './execution-persistence';
 
 import type { ExecutionRequest, RetriedExecution, StopResult } from './execution.types';
@@ -88,6 +98,7 @@ export const schemaGetExecutionsQueryFilter = {
 		vote: { type: 'string' },
 		projectId: { type: 'string' },
 		workflowVersionId: { type: 'string' },
+		engine: { type: 'string', enum: [...WORKFLOW_ENGINE_TYPES] },
 	},
 	$defs: {
 		metadata: {
@@ -134,6 +145,8 @@ export class ExecutionService {
 		private readonly ownershipService: OwnershipService,
 		private readonly engineV2ExecutionReader: EngineV2ExecutionReader,
 		private readonly engineDataPlane: EngineDataPlaneProxyService,
+		private readonly workflowVersionedSettings: WorkflowVersionedSettingsService,
+		private readonly executionCancelService: ExecutionCancelService,
 	) {}
 
 	/**
@@ -151,24 +164,17 @@ export class ExecutionService {
 
 		const { id: executionId } = req.params;
 		let execution: IExecutionResponse | IExecutionBase | undefined;
-		// A v2 execution has no control-plane row.
-		if (isExecutionIdV2(executionId)) {
-			execution = await this.engineV2ExecutionReader.findOne(executionId, sharedWorkflowIds);
-		} else {
-			try {
-				execution = await this.executionPersistence.findOneInWorkflows(
-					executionId,
-					sharedWorkflowIds,
-					{ maxDataSizeBytes: this.globalConfig.executions.maxDisplaySize },
+		try {
+			execution = await this.findOneAcrossEngines(executionId, sharedWorkflowIds, {
+				maxDataSizeBytes: this.globalConfig.executions.maxDisplaySize,
+			});
+		} catch (error) {
+			if (error instanceof MissingExecutionDataError) {
+				throw new NotFoundError(
+					'Data for this execution is unavailable. It may have already been deleted based on your data retention settings.',
 				);
-			} catch (error) {
-				if (error instanceof MissingExecutionDataError) {
-					throw new NotFoundError(
-						'Data for this execution is unavailable. It may have already been deleted based on your data retention settings.',
-					);
-				}
-				throw error;
 			}
+			throw error;
 		}
 
 		if (!execution) {
@@ -218,12 +224,9 @@ export class ExecutionService {
 		});
 		if (!canReadExecutions) return undefined;
 
-		// A workflow runs on one engine, and only that engine holds its executions.
-		const settings = await this.workflowRepository.findSettings(workflowId);
-		const execution =
-			settings?.engineType === 'v2'
-				? await this.engineV2ExecutionReader.findLatest({ status: ['success'] }, [workflowId])
-				: await this.lastSuccessfulV1Execution(workflowId);
+		const execution = this.workflowVersionedSettings.isEnabled()
+			? await this.lastSuccessfulExecutionOnEitherEngine(workflowId)
+			: await this.lastSuccessfulExecutionOnEngineV1(workflowId);
 		if (!execution) return undefined;
 
 		await this.executionRedactionServiceProxy.processExecution(execution, {
@@ -233,12 +236,40 @@ export class ExecutionService {
 		return execution;
 	}
 
-	private async lastSuccessfulV1Execution(
+	/**
+	 * Manual runs use the draft engine and production runs use the published one,
+	 * so the latest success can be on either engine.
+	 */
+	private async lastSuccessfulExecutionOnEitherEngine(
+		workflowId: string,
+	): Promise<IExecutionResponse | undefined> {
+		const [v1Execution, v2Execution] = await Promise.all([
+			this.lastSuccessfulExecutionOnEngineV1(workflowId),
+			this.engineV2ExecutionReader.findLatest({ status: ['success'] }, [workflowId]),
+		]);
+		if (!v1Execution || !v2Execution) return v1Execution ?? v2Execution;
+
+		// Both engines pick their newest run by creation. A queued run can start
+		// after a newer one, so comparing start times would mix two orders.
+		return v2Execution.createdAt.getTime() > v1Execution.createdAt.getTime()
+			? v2Execution
+			: v1Execution;
+	}
+
+	private async lastSuccessfulExecutionOnEngineV1(
 		workflowId: string,
 	): Promise<IExecutionResponse | undefined> {
 		const executions = await this.executionPersistence.findMultipleExecutions(
 			{
-				select: ['id', 'mode', 'startedAt', 'stoppedAt', 'workflowId', 'jsonSizeBytes'],
+				select: [
+					'id',
+					'mode',
+					'createdAt',
+					'startedAt',
+					'stoppedAt',
+					'workflowId',
+					'jsonSizeBytes',
+				],
 				where: {
 					workflowId,
 					status: 'success',
@@ -256,17 +287,20 @@ export class ExecutionService {
 		return executions[0];
 	}
 
-	async retry({
-		executionId,
-		options = {},
-		sharedWorkflowIds,
-		user,
-	}: {
-		executionId: string;
-		options?: { loadWorkflow?: boolean; redactExecutionData?: boolean };
-		sharedWorkflowIds: string[];
-		user: User;
-	}): Promise<RetriedExecution> {
+	async retry(
+		{
+			executionId,
+			options = {},
+			sharedWorkflowIds,
+			user,
+		}: {
+			executionId: string;
+			options?: { loadWorkflow?: boolean; redactExecutionData?: boolean };
+			sharedWorkflowIds: string[];
+			user: User;
+		},
+		ctx: OperationContext = {},
+	): Promise<RetriedExecution> {
 		const execution = await this.executionPersistence.findWithUnflattenedData(
 			executionId,
 			sharedWorkflowIds,
@@ -292,6 +326,30 @@ export class ExecutionService {
 			throw new ConflictError('The execution succeeded, so it cannot be retried.');
 		}
 
+		// A retry reuses the original run's identity, so its private credentials
+		// resolve as the user who started it. Only that user may retry it.
+		const runtimeData = execution.data.executionData.runtimeData;
+		const usesDynamicCredentials =
+			runtimeData?.usesDynamicCredentials === true ||
+			runDataUsedDynamicCredentials(execution.data.resultData?.runData);
+		if (usesDynamicCredentials && runtimeData?.executedByUserId !== user.id) {
+			this.logger.info('Attempt to retry an execution was blocked because it ran as another user', {
+				userId: user.id,
+				executionId,
+			});
+			throw new ForbiddenError(
+				"This execution ran with another user's credentials. Run the workflow yourself instead.",
+			);
+		}
+
+		// The saved workflow can reference private credentials that the original
+		// run did not. Keep the original identity and trigger secrets only for the
+		// user the run belongs to. Sub-workflows inherit this context, so this also covers them.
+		if (runtimeData && runtimeData.executedByUserId !== user.id) {
+			delete runtimeData.credentials;
+			delete runtimeData.secureArtifacts;
+		}
+
 		const executionMode = 'retry';
 
 		// oxlint-disable-next-line typescript/no-deprecated
@@ -301,7 +359,8 @@ export class ExecutionService {
 		// Start the workflow
 		const data: IWorkflowExecutionDataProcess = {
 			executionMode,
-			executionData: execution.data,
+			// A retry is a new root execution. It must not take the root mode of the original run.
+			executionData: { ...execution.data, rootExecutionMode: undefined },
 			retryOf: executionId,
 			workflowData: execution.workflowData,
 			userId: user.id,
@@ -396,6 +455,7 @@ export class ExecutionService {
 			projectId,
 			projectName,
 			source: 'user-retry',
+			loginId: loginIdOf(ctx),
 		});
 
 		const summary: RetriedExecution = {
@@ -429,6 +489,7 @@ export class ExecutionService {
 		await this.executionRedactionServiceProxy.processExecution(response, {
 			user,
 			redactExecutionData: options.redactExecutionData,
+			ctx,
 		});
 
 		return response;
@@ -436,6 +497,17 @@ export class ExecutionService {
 
 	async delete(user: User, payload: DeleteExecutionsDto, sharedWorkflowIds: string[]) {
 		const { deleteBefore, ids, filters: requestFiltersRaw } = payload;
+
+		// Read the engine from the raw filter: if a field fails the schema, the
+		// filters are dropped and a delete by date would match every v1 row.
+		const engine: unknown = requestFiltersRaw?.engine;
+		if (engine !== undefined && !WORKFLOW_ENGINE_TYPES.some((known) => known === engine)) {
+			throw new BadRequestError('Unknown engine in the executions filter');
+		}
+
+		// A delete by date reaches only the engine v1 table, so an engine v2 filter
+		// matches nothing there.
+		if (deleteBefore && engine === 'v2') return;
 
 		let requestFilters: IGetExecutionsQueryFilter | undefined;
 		if (requestFiltersRaw) {
@@ -486,6 +558,7 @@ export class ExecutionService {
 		const fullExecutionData: CreateExecutionPayload = {
 			data: executionData,
 			mode,
+			// oxlint-disable-next-line typescript/no-deprecated -- Keep the legacy execution field for existing consumers.
 			finished: false,
 			workflowData,
 			workflowId: workflow.id,
@@ -640,7 +713,7 @@ export class ExecutionService {
 	private async stopInRegularMode(execution: IExecutionResponse) {
 		if (this.concurrencyControl.has(execution.id)) {
 			this.concurrencyControl.remove({ mode: execution.mode, executionId: execution.id });
-			return await this.executionRepository.stopBeforeRun(execution);
+			return await this.stopBeforeRun(execution);
 		}
 
 		if (this.activeExecutions.has(execution.id)) {
@@ -683,6 +756,26 @@ export class ExecutionService {
 		}
 	}
 
+	private async stopBeforeRun(execution: IExecutionResponse): Promise<IExecutionResponse> {
+		const {
+			canceled: [canceled],
+		} = await this.executionCancelService.markAsCanceled([execution.id]);
+		if (canceled) {
+			return { ...execution, status: 'canceled', stoppedAt: canceled.stoppedAt, waitTill: null };
+		}
+
+		// Nothing changed, so the run finished first and its own outcome is the answer.
+		return await this.findCurrentOrThrow(execution);
+	}
+
+	private async findCurrentOrThrow(execution: IExecutionResponse) {
+		const current = await this.executionPersistence.findWithUnflattenedData(execution.id, [
+			execution.workflowId,
+		]);
+		if (!current) throw new MissingExecutionStopError(execution.id);
+		return current;
+	}
+
 	private async stopDuringRun(execution: IExecutionResponse): Promise<IExecutionResponse> {
 		const expectedStatus = execution.status;
 		const error = new ManualExecutionCancelledError(execution.id);
@@ -697,16 +790,25 @@ export class ExecutionService {
 		execution.waitTill = null;
 		execution.status = 'canceled';
 
-		const stopped = await this.executionPersistence.updateExistingExecution(
+		const { updated, ended } = await this.executionPersistence.saveExecutionOutcome(
 			execution.id,
 			execution,
 			{ requireStatus: expectedStatus },
 		);
-		if (!stopped) {
-			const current = await this.executionPersistence.findWithUnflattenedData(execution.id, [
-				execution.workflowId,
+		if (ended) {
+			void this.executionCancelService.recordEnded([
+				{
+					id: execution.id,
+					workflowId: execution.workflowId,
+					workflowName: execution.workflowData?.name,
+					mode: execution.mode,
+					startedAt: execution.startedAt ?? null,
+					stoppedAt: execution.stoppedAt,
+				},
 			]);
-			if (!current) throw new MissingExecutionStopError(execution.id);
+		}
+		if (!updated) {
+			const current = await this.findCurrentOrThrow(execution);
 			if (current.status === 'canceled') return current;
 			this.assertStoppable(current);
 			return this.globalConfig.executions.mode === 'regular'
@@ -756,11 +858,35 @@ export class ExecutionService {
 	}
 
 	/**
+	 * Load an execution from engine v1 or v2, based on the shape of the id.
+	 * Returns `undefined` if the execution does not belong to one of `workflowIds`.
+	 * A v2 execution has no annotations, retries or `waitTill`.
+	 */
+	async findOneAcrossEngines(
+		executionId: string,
+		workflowIds: string[],
+		options: {
+			includeData?: boolean;
+			includeAnnotation?: boolean;
+			maxDataSizeBytes?: number;
+		} = {},
+	): Promise<IExecutionResponse | IExecutionBase | undefined> {
+		if (isExecutionIdV2(executionId)) {
+			// The data plane stores no annotation and caps no data size, so it
+			// reads only `includeData` off the options.
+			return await this.engineV2ExecutionReader.findOne(executionId, workflowIds, options);
+		}
+
+		return await this.executionPersistence.findOneInWorkflows(executionId, workflowIds, options);
+	}
+
+	/**
 	 * Load one execution scoped to `workflowIds` as a domain entity.
 	 * Options control data/annotation inclusion; no redaction or flatting.
 	 *
-	 * Prefer this for public API and service-to-service loads. For the editor
-	 * flatted response, use {@link findOne}.
+	 * Control-plane only. For an id that may come from either engine, use
+	 * {@link findOneAcrossEngines}. For the editor flatted response, use
+	 * {@link findOne}.
 	 */
 	async findOneInWorkflows(
 		executionId: string,

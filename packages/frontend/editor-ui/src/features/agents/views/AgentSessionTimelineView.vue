@@ -4,12 +4,12 @@ import { useClipboard } from '@n8n/composables/useClipboard';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentSessionStop } from '../composables/useAgentSessionStop';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
-import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
-import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
+import { MODAL_CONFIRM } from '@/app/constants';
 import { useAgentProjectBreadcrumb } from '@/features/agents/composables/useAgentProjectBreadcrumb';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import {
 	AGENT_BUILDER_VIEW,
+	PROJECT_AGENTS,
 	AGENT_SESSION_DETAIL_VIEW,
 	AGENT_SESSIONS_LIST_VIEW,
 } from '@/features/agents/constants';
@@ -17,6 +17,8 @@ import { useAgentSessionLangSmithExport } from '@/features/agents/composables/us
 import { useAgentSessionUsage } from '@/features/agents/composables/useAgentSessionUsage';
 import { useAgentExecutionUpdates } from '@/features/agents/composables/useAgentExecutionUpdates';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
+import { formatSessionDateTime } from '@/features/agents/utils/timeline-time';
+import { formatDuration, threadTokenBreakdownOf } from '@/features/agents/session-timeline.utils';
 import {
 	defaultAgentSessionFilters,
 	type AgentExecution,
@@ -26,6 +28,10 @@ import {
 import AgentSessionTimelineHeader from '@/features/agents/components/AgentSessionTimelineHeader.vue';
 import { useBackOrFallback } from '@/features/agents/composables/useBackOrFallback';
 import AgentSessionTimelinePanel from '@/features/agents/components/AgentSessionTimelinePanel.vue';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { getAgent } from '../composables/useAgentApi';
+import { useAgentFolderBreadcrumb } from '../composables/useAgentFolderBreadcrumb';
 import { useAgentConfig } from '@/features/agents/composables/useAgentConfig';
 import {
 	increasedBudgetConfig,
@@ -137,6 +143,8 @@ const triggerIcon = computed((): IconName => {
 			return 'sparkles';
 		case 'n8n_chat_production':
 			return 'message-square';
+		case 'webhook':
+			return 'plug';
 		default:
 			return 'bolt-filled';
 	}
@@ -155,6 +163,9 @@ const triggerLabel = computed((): string => {
 	if (source === 'n8n_chat_production') {
 		return i18n.baseText('agentSessions.origin.n8nChat');
 	}
+	if (source === 'webhook') {
+		return i18n.baseText('agentSessions.origin.webhook');
+	}
 	return source.charAt(0).toUpperCase() + source.slice(1);
 });
 
@@ -166,7 +177,7 @@ const sessionTitle = computed(() => {
 const { projectName, projectIcon } = useAgentProjectBreadcrumb(projectId);
 
 const projectRoute = computed<RouteLocationRaw>(() => ({
-	name: VIEWS.PROJECTS_WORKFLOWS,
+	name: PROJECT_AGENTS,
 	params: { projectId: projectId.value },
 }));
 
@@ -175,12 +186,42 @@ const agentRoute = computed<RouteLocationRaw>(() => ({
 	params: { projectId: projectId.value, agentId: agentId.value },
 }));
 
+const parentFolderId = ref<string | null>(null);
+const rootStore = useRootStore();
+const settingsStore = useSettingsStore();
+const folderBreadcrumbs = useAgentFolderBreadcrumb(projectId, parentFolderId);
+
+watch(
+	[projectId, agentId, () => settingsStore.isFoldersFeatureEnabled],
+	async ([project, agent, foldersEnabled], _, onCleanup) => {
+		let current = true;
+		onCleanup(() => {
+			current = false;
+		});
+		parentFolderId.value = null;
+
+		if (!foldersEnabled) return;
+
+		try {
+			const resource = await getAgent(rootStore.restApiContext, project, agent);
+
+			if (current) {
+				parentFolderId.value = resource.parentFolderId ?? null;
+			}
+		} catch {
+			// The session can remain readable after its Agent is deleted.
+		}
+	},
+	{ immediate: true },
+);
+
 const breadcrumbItems = computed<PathItem[]>(() => [
 	{
 		id: projectId.value,
 		label: projectName.value ?? i18n.baseText('agents.builder.header.projectFallback'),
 		href: router.resolve(projectRoute.value).href,
 	},
+	...folderBreadcrumbs.value,
 	{
 		id: agentId.value,
 		label: thread.value?.agentName ?? '…',
@@ -209,7 +250,7 @@ const sessionOptions = computed<Array<DropdownMenuItemProps<string, SessionDropd
 		label: truncate(threadTitleOf(session), 64),
 		class: session.id === threadId.value ? 'session-dropdown-item-active' : undefined,
 		data: {
-			date: formatDate(session.updatedAt),
+			date: formatSessionDateTime(session.updatedAt),
 			active: session.id === threadId.value,
 		},
 	}));
@@ -248,6 +289,7 @@ const sessionMetadata = computed<SessionTimelineMetadata>(() => ({
 		label: triggerLabel.value,
 	},
 	totalTokens: totalTokens.value,
+	usage: threadTokenBreakdownOf(executions.value),
 	totalCost: totalCost.value,
 	durationLabel: durationLabel.value,
 }));
@@ -270,18 +312,6 @@ watch(
 	{ immediate: true },
 );
 
-function formatDuration(ms: number): string {
-	if (!Number.isFinite(ms) || ms <= 0) return '';
-	if (ms < 1000) return `${ms}ms`;
-	return `${(ms / 1000).toFixed(1)}s`;
-}
-
-function formatDate(fullDate: string): string {
-	if (!fullDate) return '';
-	const { date, time } = convertToDisplayDate(fullDate);
-	return `${date} ${time}`;
-}
-
 const closeTimeline = useBackOrFallback(() => ({
 	name: AGENT_SESSIONS_LIST_VIEW,
 	params: { projectId: projectId.value, agentId: agentId.value },
@@ -292,6 +322,12 @@ function onBreadcrumbSelect(item: PathItem) {
 		void router.push(projectRoute.value);
 	} else if (item.id === agentId.value) {
 		void router.push(agentRoute.value);
+	} else {
+		void router.push({
+			name: PROJECT_AGENTS,
+			params: { projectId: projectId.value },
+			query: { folderId: item.id },
+		});
 	}
 }
 

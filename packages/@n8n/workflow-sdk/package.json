@@ -1,6 +1,6 @@
 {
   "name": "@n8n/workflow-sdk",
-  "version": "0.41.0",
+  "version": "0.43.0",
   "description": "TypeScript SDK for programmatically creating n8n workflows",
   "exports": {
     ".": {
@@ -109,6 +109,7 @@
     "@dagrejs/dagre": "^1.1.4",
     "@n8n/constants": "workspace:*",
     "@n8n/utils": "workspace:*",
+    "@n8n/workflow-engine-check": "workspace:*",
     "acorn": "8.14.0",
     "lodash": "catalog:",
     "n8n-workflow": "workspace:*",

@@ -340,12 +340,33 @@ const getChatResponseMode = (
 	return undefined;
 };
 
+export function shouldUseLastNodeForChatHistory(
+	nodeType: string,
+	body: unknown,
+	responseMode: WebhookResponseMode,
+): boolean {
+	return (
+		nodeType === CHAT_TRIGGER_NODE_TYPE &&
+		isRecord(body) &&
+		body.action === 'loadPreviousSession' &&
+		(responseMode === 'lastNode' || responseMode === 'streaming' || responseMode === 'hostedChat')
+	);
+}
+
 /** Returns whether the node is an enabled Form node or form-resuming Wait node. */
 function isEnabledFormPageNode(node: INode): boolean {
 	if (node.disabled) return false;
 	if (node.type === FORM_NODE_TYPE) return true;
 
 	return node.type === WAIT_NODE_TYPE && node.parameters.resume === 'form';
+}
+
+/** Whether submitting this Form Trigger opens another form page or a Form Ending. */
+function formTriggerHasMorePages(workflowStartNode: INode, workflow: Workflow): boolean {
+	return (
+		workflowStartNode.type === FORM_TRIGGER_NODE_TYPE &&
+		autoDetectResponseMode(workflowStartNode, workflow, 'POST') === 'formPage'
+	);
 }
 
 export function autoDetectResponseMode(
@@ -1045,6 +1066,7 @@ export async function executeWebhook(
 	);
 
 	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
+		// oxlint-disable-next-line typescript/no-deprecated -- Keep the alias for existing webhook expressions.
 		$executionId: executionId,
 	};
 
@@ -1077,7 +1099,7 @@ export async function executeWebhook(
 	});
 
 	const {
-		responseMode,
+		responseMode: configuredResponseMode,
 		responseCode,
 		responseData,
 		checkAllMainOutputs,
@@ -1085,6 +1107,7 @@ export async function executeWebhook(
 		responseContentType,
 		responseBinaryPropertyName,
 	} = evaluateResponseOptions(context, req);
+	let responseMode = configuredResponseMode;
 
 	if (!SUPPORTED_RESPONSE_MODES.has(responseMode)) {
 		// If the mode is not known we error. Is probably best like that instead of using
@@ -1112,7 +1135,12 @@ export async function executeWebhook(
 		// run that will not start.
 		routesToEngineV2 = engineV2Webhooks.handles(workflowData, executionMode);
 		if (routesToEngineV2) {
-			engineV2Webhooks.assertSupported({ workflowStartNode, responseMode, executionId });
+			engineV2Webhooks.assertSupported({
+				workflowStartNode,
+				responseMode,
+				executionId,
+				formHasMorePages: formTriggerHasMorePages(workflowStartNode, workflow),
+			});
 			// A workflow that runs on engine v2 in this mode never starts on v1, so a
 			// resume here names a v2 execution. Anything else is a bug.
 			if (executionId !== undefined && !isExecutionIdV2(executionId)) {
@@ -1142,6 +1170,14 @@ export async function executeWebhook(
 			executionMode,
 			additionalKeys,
 		);
+
+		// The widget loads history from one JSON response.
+		const useLastNodeForChatHistory = shouldUseLastNodeForChatHistory(
+			workflowStartNode.type,
+			req.body,
+			responseMode,
+		);
+		if (useLastNodeForChatHistory) responseMode = 'lastNode';
 
 		// TODO: remove this hack, and make sure that execution data is properly created before the MCP trigger is executed
 		if (
@@ -1255,6 +1291,8 @@ export async function executeWebhook(
 			userId: webhookData.userId,
 			encryptedRunnerIdentity: additionalData.encryptedRunnerIdentity,
 			callerAwaitsOutcome: IMMEDIATE_RESPONSE_MODES.has(responseMode) ? 'none' : 'response',
+			// A queue worker can finish before this handler registers the response mode.
+			forceFullExecutionData: useLastNodeForChatHistory,
 			// v1 reads this from `executionData.startData`, which `prepareExecutionData`
 			// sets, so carrying it here changes nothing for v1. Engine v2 has no way to
 			// stop at a node, and its dispatcher refuses the run on this field.
@@ -1368,8 +1406,9 @@ export async function executeWebhook(
 		 * We track the webhook response mode so that `WorkflowRunner` can decide whether it
 		 * needs to fetch full execution data from the DB when a job finishes in scaling mdoe.
 		 *
-		 * A v2 run has no control-plane execution to record it against, and the
-		 * `engine-v2` module refuses queue mode, so there is nothing to track.
+		 * A v2 run has no control-plane execution to record it against, and its
+		 * response comes back over the execution channel, not from a queue job,
+		 * so there is nothing to track.
 		 */
 		if (!routesToEngineV2) {
 			Container.get(ActiveExecutions).setResponseMode(executionId, responseMode);

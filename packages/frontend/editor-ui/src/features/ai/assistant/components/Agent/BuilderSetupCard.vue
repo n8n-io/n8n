@@ -205,12 +205,18 @@ watch(isActive, (active, wasActive) => {
 					icon-only
 					:disabled="isPrevDisabled"
 					data-test-id="wizard-card-footer-prev"
-					aria-label="Previous step"
+					:aria-label="i18n.baseText('aiAssistant.builder.setupWizard.prevStep')"
 					@click="emit('goToPrev')"
 				>
 					<N8nIcon icon="chevron-left" size="xsmall" />
 				</N8nButton>
-				<N8nText size="small" color="text-light"> {{ stepIndex + 1 }} of {{ totalCards }} </N8nText>
+				<N8nText size="small" color="text-light">
+					{{
+						i18n.baseText('aiAssistant.builder.setupWizard.stepCounter', {
+							interpolate: { current: stepIndex + 1, total: totalCards },
+						})
+					}}
+				</N8nText>
 				<N8nButton
 					v-if="showArrows"
 					variant="ghost"
@@ -218,7 +224,7 @@ watch(isActive, (active, wasActive) => {
 					icon-only
 					:disabled="isNextDisabled"
 					data-test-id="wizard-card-footer-next"
-					aria-label="Next step"
+					:aria-label="i18n.baseText('aiAssistant.builder.setupWizard.nextStep')"
 					@click="emit('goToNext')"
 				>
 					<N8nIcon icon="chevron-right" size="xsmall" />

@@ -20,7 +20,7 @@ CREATE TABLE "agent_execution_threads" ("id" varchar(128) PRIMARY KEY NOT NULL, 
 | agentName | varchar(255) |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | emoji | varchar(8) |  | true |  |  |  |
-| id | varchar(128) |  | false | [agent_execution](agent_execution.md) [agent_message_queue](agent_message_queue.md) [agent_plan](agent_plan.md) [agent_thread_grants](agent_thread_grants.md) |  |  |
+| id | varchar(128) |  | false | [agent_attention_flags](agent_attention_flags.md) [agent_execution](agent_execution.md) [agent_message_queue](agent_message_queue.md) [agent_plan](agent_plan.md) [agent_thread_grants](agent_thread_grants.md) |  |  |
 | ownerId | varchar |  | true |  | [user](user.md) |  |
 | parentAgentId | varchar(36) |  | true |  |  |  |
 | parentThreadId | varchar(128) |  | true |  |  |  |
@@ -64,6 +64,7 @@ CREATE TABLE "agent_execution_threads" ("id" varchar(128) PRIMARY KEY NOT NULL, 
 erDiagram
 
 "agent_execution_threads" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_attention_flags" }o--|| "agent_execution_threads" : "FOREIGN KEY (sessionId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_execution" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_message_queue" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_plan" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -96,12 +97,15 @@ erDiagram
 }
 "agents" {
   varchar_36_ activeVersionId FK
+  varchar_36_ approvalWorkflowId FK
   boolean availableInMCP
   datetime_3_ createdAt
   varchar_36_ id PK
+  varchar identityId FK
   TEXT integrations
   boolean isArchived
   varchar_128_ name
+  varchar_36_ parentFolderId FK
   varchar_255_ projectId FK
   INTEGER publicationRevision
   INTEGER revision
@@ -112,6 +116,13 @@ erDiagram
   TEXT tools
   datetime_3_ updatedAt
   varchar_36_ versionId
+}
+"agent_attention_flags" {
+  datetime_3_ createdAt
+  varchar id PK
+  varchar_128_ sessionId FK
+  varchar_32_ type
+  datetime_3_ updatedAt
 }
 "agent_execution" {
   boolean acceptsSteering

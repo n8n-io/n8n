@@ -1,15 +1,20 @@
-import { type ContextCueSet, whileSkillActive } from '@n8n/agents';
+import { type ContextCueSet, whileSkillLoaded } from '@n8n/agents';
+import { getBlockedEngineV2Limits } from '@n8n/workflow-sdk/prompts/sdk-reference';
+
+import type { InstanceAiEngineSetup } from '../../types';
+
+const ERROR_WORKFLOW_OPT_IN_CUE_ID = 'error-workflow-opt-in';
 
 /**
- * Context cues for the `post-build-flow` skill. The build tool activates
- * the skill after a direct build, and it stays active through verification,
+ * Context cues for the `post-build-flow` skill. The build tool tells
+ * the agent to load the skill after a direct build, and it stays loaded through verification,
  * setup, live tests, cleanup, publishing and the final summary. Each phase
  * looks different in the step text, so retrieval scores these cues on
  * every step and each one matches in its own phase.
  */
 export const POST_BUILD_FLOW_CUES: ContextCueSet = {
 	id: 'post-build-flow',
-	isActive: whileSkillActive('post-build-flow'),
+	isActive: whileSkillLoaded('post-build-flow'),
 	cues: [
 		// Verification
 		{
@@ -48,7 +53,7 @@ export const POST_BUILD_FLOW_CUES: ContextCueSet = {
 		},
 		{
 			id: 'empty-lookup-seed-and-remove',
-			text: 'Non-empty `nodesNotReached` with `success: true` is partial evidence, usually a lookup that returned zero items. Seed a matching test row (e.g. `insert_data_table_rows`), verify again once, then delete the row. If you cannot seed, or the second pass still does not reach them, name the unreached nodes and offer a manual test; do not start a live run.',
+			text: 'Non-empty `nodesNotReached` with `success: true` is partial evidence, usually a lookup that returned zero items. Seed a matching test row (an `insert-rows` change in `change_data_tables`), verify again once, then delete the row. If you cannot seed, or the second pass still does not reach them, name the unreached nodes and offer a manual test; do not start a live run.',
 			appliesWhen:
 				'Verification succeeded but stopped early and lists nodes not reached, often after an empty lookup or query.',
 		},
@@ -83,11 +88,6 @@ export const POST_BUILD_FLOW_CUES: ContextCueSet = {
 			text: 'Never publish a workflow to test it. `run_workflow` and verification inject `inputData` as the trigger output, so form, webhook and chat triggers are testable unpublished.',
 			appliesWhen:
 				'About to test a workflow with a form, webhook, chat or other event trigger that is not published.',
-		},
-		{
-			id: 'verification-follow-up-no-ack',
-			text: 'On `<workflow-verification-follow-up>`, verify at once from the `obligation`, with no acknowledgement first and no `setup_workflow` call in this turn. Setup comes as a separate `<workflow-setup-required>` step.',
-			appliesWhen: 'The current message contains a workflow-verification-follow-up block.',
 		},
 		// Setup
 		{
@@ -141,7 +141,7 @@ export const POST_BUILD_FLOW_CUES: ContextCueSet = {
 			appliesWhen: 'A credential resolution note says Gateway credits are depleted.',
 		},
 		{
-			id: 'error-workflow-opt-in',
+			id: ERROR_WORKFLOW_OPT_IN_CUE_ID,
 			text: 'After a direct new primary workflow is published, load `error-workflows` and ask its explicit opt-in. Do not replace it with a generic "anything else?", publish or test question.',
 			appliesWhen: 'A new primary workflow was just published successfully.',
 		},
@@ -176,3 +176,23 @@ export const POST_BUILD_FLOW_CUES: ContextCueSet = {
 		},
 	],
 };
+
+let engineAwareCues: ContextCueSet | undefined;
+
+/**
+ * The post-build flow cues for the engines of the instance. With the `engine-v2` module,
+ * the error workflow offer waits for the `v1-build` phase while engine v2 does not
+ * support error workflows, so a v2 workflow does not get the offer. Without the module
+ * every workflow runs on v1, so the cues stay the same.
+ */
+export function getPostBuildFlowCues(engineSetup?: InstanceAiEngineSetup): ContextCueSet {
+	if (engineSetup?.engineV2Available !== true) return POST_BUILD_FLOW_CUES;
+	if (!getBlockedEngineV2Limits().has('error-workflows')) return POST_BUILD_FLOW_CUES;
+	engineAwareCues ??= {
+		...POST_BUILD_FLOW_CUES,
+		cues: POST_BUILD_FLOW_CUES.cues.map((cue) =>
+			cue.id === ERROR_WORKFLOW_OPT_IN_CUE_ID ? { ...cue, phase: 'v1-build' } : cue,
+		),
+	};
+	return engineAwareCues;
+}

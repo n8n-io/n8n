@@ -1,23 +1,54 @@
-import { ModuleMetadata } from '@n8n/decorators';
+import { mockInstance } from '@n8n/backend-test-utils';
+import { ExecutionLedger } from '@n8n/backend-services';
+import { LifecycleMetadata, ModuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
+import { ExecutionLedgerParkedEntity } from '../database/entities/execution-ledger-parked.entity';
 import { ExecutionLedgerEntity } from '../database/entities/execution-ledger.entity';
+import { ExecutionLedgerRowWriter } from '../execution-ledger-row.writer';
 import { ExecutionLedgerModule } from '../execution-ledger.module';
 
 describe('ExecutionLedgerModule', () => {
-	it('registers the module entrypoint', () => {
-		expect(Container.get(ModuleMetadata).get('execution-ledger')?.class).toBe(
-			ExecutionLedgerModule,
-		);
+	it('registers the module entrypoint for main, worker and webhook instances', () => {
+		const entry = Container.get(ModuleMetadata).get('execution-ledger');
+
+		expect(entry?.class).toBe(ExecutionLedgerModule);
+		expect(entry?.instanceTypes).toEqual(['main', 'worker', 'webhook']);
 	});
 
-	it('registers the ledger entity', async () => {
-		expect(await new ExecutionLedgerModule().entities()).toEqual([ExecutionLedgerEntity]);
+	it('registers the ledger and parked ledger entities', async () => {
+		expect(await new ExecutionLedgerModule().entities()).toEqual([
+			ExecutionLedgerEntity,
+			ExecutionLedgerParkedEntity,
+		]);
+	});
+
+	it('binds the row writer to the core ledger service', async () => {
+		const ledger = mockInstance(ExecutionLedger);
+		const writer = mockInstance(ExecutionLedgerRowWriter);
+
+		await new ExecutionLedgerModule().init();
+
+		expect(ledger.setImplementation).toHaveBeenCalledWith(writer);
 	});
 
 	it('registers the fold system task', async () => {
 		const tasks = await new ExecutionLedgerModule().systemTasks();
 
 		expect(tasks.map((task) => task.name)).toEqual(['ExecutionLedgerFoldTask']);
+	});
+
+	it('registers the ended handler for the workflow execute after event', async () => {
+		await new ExecutionLedgerModule().init();
+
+		const handlers = Container.get(LifecycleMetadata).getHandlers();
+
+		expect(handlers).toContainEqual(
+			expect.objectContaining({
+				eventName: 'workflowExecuteAfter',
+				methodName: 'handleWorkflowExecuteAfter',
+				handlerClass: expect.objectContaining({ name: 'ExecutionEndedHandler' }),
+			}),
+		);
 	});
 });

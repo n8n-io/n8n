@@ -85,6 +85,8 @@ export interface DaytonaSandboxConfig extends EnabledSandboxConfigBase {
 	autoArchiveInterval?: number;
 	autoDeleteInterval?: number;
 	createTimeoutSeconds?: number;
+	/** Give the first start a budget of a few seconds. See `DaytonaSandboxOptions.quickStart`. */
+	quickStart?: boolean;
 	getAuthToken?: () => Promise<string>;
 	refreshSkewMs?: number;
 	logger?: Logger;

@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useNodeCommands } from './useNodeCommands';
 import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
+import { mockEngineV2Compatibility } from '@n8n/frontend-module-engine-v2/__tests__/mocks';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -15,6 +17,7 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { createTestNode } from '@/__tests__/mocks';
 import type { CommandBarLocalSource, CommandBarSearchRequest } from '../types';
+import CommandBarRestrictedNode from '../components/CommandBarRestrictedNode.vue';
 
 vi.mock('@/app/composables/useWorkflowId', async () => {
 	const { computed } = await import('vue');
@@ -462,6 +465,109 @@ describe('useNodeCommands', () => {
 				['n8n-nodes-base.httpRequest', false],
 				['n8n-nodes-base.slack', true],
 			]);
+		});
+
+		it.each(['instance', 'project'] as const)(
+			'should explain a node type restricted in the %s scope at the end of its row',
+			(scope) => {
+				setMergedNodes([
+					createMockNodeType('n8n-nodes-base.httpRequest', 'HTTP Request'),
+					createMockNodeType('n8n-nodes-base.slack', 'Slack'),
+				]);
+				mockRestrictedNodeTypes({ 'n8n-nodes-base.slack': scope });
+
+				const { items } = searchNodes();
+
+				expect(items[0].trailing).toBeUndefined();
+				expect(items[1].trailing).toEqual({
+					component: CommandBarRestrictedNode,
+					props: {
+						nodeTypeName: 'Slack',
+						restriction: expect.objectContaining({ scope }),
+					},
+				});
+			},
+		);
+	});
+
+	describe('engine v2 compatibility', () => {
+		beforeEach(() => {
+			setMergedNodes([
+				createMockNodeType('n8n-nodes-base.gmail', 'Gmail'),
+				createMockNodeType('n8n-nodes-base.slack', 'Slack'),
+			]);
+			mockEngineV2Compatibility({ unsupportedNodeTypes: ['n8n-nodes-base.gmail'] });
+			useSettingsStore().settings.activeModules = ['engine-v2'];
+		});
+
+		it('should disable a node type that engine v2 does not support', () => {
+			useWorkflowDocumentStore(createWorkflowDocumentId('123')).mergeSettings({
+				engineType: 'v2',
+			});
+
+			const { items } = searchNodes();
+
+			// Search lists every disabled item last.
+			expect(items.map((item) => [item.id, item.disabled])).toEqual([
+				['n8n-nodes-base.slack', false],
+				['n8n-nodes-base.gmail', true],
+			]);
+		});
+
+		it('should enable every node type when the workflow runs on engine v1', () => {
+			useWorkflowDocumentStore(createWorkflowDocumentId('123')).mergeSettings({
+				engineType: 'v1',
+			});
+
+			const { items } = searchNodes();
+
+			expect(items.map((item) => [item.id, item.disabled])).toEqual([
+				['n8n-nodes-base.gmail', false],
+				['n8n-nodes-base.slack', false],
+			]);
+		});
+
+		it('should enable every node type when the engine-v2 module is off', () => {
+			useSettingsStore().settings.activeModules = [];
+			useWorkflowDocumentStore(createWorkflowDocumentId('123')).mergeSettings({
+				engineType: 'v2',
+			});
+
+			const { items } = searchNodes();
+
+			expect(items.map((item) => [item.id, item.disabled])).toEqual([
+				['n8n-nodes-base.gmail', false],
+				['n8n-nodes-base.slack', false],
+			]);
+		});
+
+		it('should show no explanation for a node type that is only incompatible', () => {
+			useWorkflowDocumentStore(createWorkflowDocumentId('123')).mergeSettings({
+				engineType: 'v2',
+			});
+
+			const { items } = searchNodes();
+
+			expect(items.find((item) => item.id === 'n8n-nodes-base.gmail')?.trailing).toBeUndefined();
+		});
+
+		it('should explain the policy for a node type that is also restricted', () => {
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.gmail': 'instance' });
+			useWorkflowDocumentStore(createWorkflowDocumentId('123')).mergeSettings({
+				engineType: 'v2',
+			});
+
+			const { items } = searchNodes();
+			const gmail = items.find((item) => item.id === 'n8n-nodes-base.gmail');
+
+			expect(gmail?.disabled).toBe(true);
+			expect(gmail?.trailing).toEqual({
+				component: CommandBarRestrictedNode,
+				props: {
+					nodeTypeName: 'Gmail',
+					restriction: expect.objectContaining({ scope: 'instance' }),
+				},
+			});
 		});
 	});
 

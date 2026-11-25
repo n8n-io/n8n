@@ -7,7 +7,7 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | data | text |  | false |  |  |  |
 | description | text |  | true |  |  | User-supplied note on what the credential is for and where it belongs. Set and read through the credentials API |
-| id | varchar(36) |  | false | [public.agent_credential_dependency](public.agent_credential_dependency.md) [public.chat_hub_agents](public.chat_hub_agents.md) [public.chat_hub_sessions](public.chat_hub_sessions.md) [public.credential_dependency](public.credential_dependency.md) [public.dynamic_credential_entry](public.dynamic_credential_entry.md) [public.dynamic_credential_user_entry](public.dynamic_credential_user_entry.md) [public.instance_ai_mcp_registry_connections](public.instance_ai_mcp_registry_connections.md) [public.instance_credential_assignment](public.instance_credential_assignment.md) [public.shared_credentials](public.shared_credentials.md) [public.skill_source](public.skill_source.md) |  |  |
+| id | varchar(36) |  | false | [public.agent_credential_dependency](public.agent_credential_dependency.md) [public.chat_hub_agents](public.chat_hub_agents.md) [public.chat_hub_sessions](public.chat_hub_sessions.md) [public.credential_dependency](public.credential_dependency.md) [public.dynamic_credential_entry](public.dynamic_credential_entry.md) [public.dynamic_credential_user_entry](public.dynamic_credential_user_entry.md) [public.instance_ai_mcp_registry_connections](public.instance_ai_mcp_registry_connections.md) [public.instance_credential_assignment](public.instance_credential_assignment.md) [public.knowledge_vector_store](public.knowledge_vector_store.md) [public.shared_credentials](public.shared_credentials.md) [public.skill_source](public.skill_source.md) |  |  |
 | isGlobal | boolean | false | false |  |  |  |
 | isManaged | boolean | false | false |  |  |  |
 | isResolvable | boolean | false | false |  |  |  |
@@ -60,6 +60,8 @@ erDiagram
 "public.dynamic_credential_user_entry" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
 "public.instance_ai_mcp_registry_connections" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
 "public.instance_credential_assignment" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE RESTRICT"
+"public.knowledge_vector_store" }o--o| "public.credentials_entity" : "FOREIGN KEY (#quot;embeddingCredentialId#quot;) REFERENCES credentials_entity(id) ON DELETE SET NULL"
+"public.knowledge_vector_store" }o--o| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE SET NULL"
 "public.shared_credentials" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialsId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
 "public.skill_source" }o--o| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE SET NULL"
 "public.credentials_entity" }o--o| "public.dynamic_credential_resolver" : "FOREIGN KEY (#quot;resolverId#quot;) REFERENCES dynamic_credential_resolver(id) ON DELETE SET NULL"
@@ -153,6 +155,20 @@ erDiagram
   varchar_128_ credentialUseId
   timestamp_3__with_time_zone updatedAt
 }
+"public.knowledge_vector_store" {
+  json config
+  timestamp_3__with_time_zone createdAt
+  uuid createdById FK
+  varchar_36_ credentialId FK
+  varchar_512_ description
+  varchar_36_ embeddingCredentialId FK
+  varchar_255_ embeddingModel
+  varchar_16_ id
+  varchar_16_ knowledgeCollectionId FK
+  varchar_64_ name
+  varchar_16_ provider
+  timestamp_3__with_time_zone updatedAt
+}
 "public.shared_credentials" {
   timestamp_3__with_time_zone createdAt
   varchar_36_ credentialsId FK
@@ -164,6 +180,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   varchar_36_ credentialId FK
+  boolean credentialRequired
   uuid id
   varchar_255_ identityKey
   timestamp_3__with_time_zone lastCheckedAt
@@ -173,6 +190,7 @@ erDiagram
   varchar_36_ projectId FK
   varchar_32_ status
   varchar_16_ type
+  json unlinkedSkills
   timestamp_3__with_time_zone updatedAt
 }
 "public.dynamic_credential_resolver" {

@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
@@ -17,7 +18,7 @@ vi.mock('../../transport', async () => {
 });
 
 const SITE_ID = 'contoso.sharepoint.com,g1,g2';
-const WORKBOOK_ROOT = `/v1.0/sites/${encodeURIComponent(SITE_ID)}/drives/b!drive1/items/ITEM123`;
+const WORKBOOK_ROOT = requestPath`/v1.0/sites/${SITE_ID}/drives/b!drive1/items/ITEM123`;
 
 describe('Microsoft Excel (SharePoint) — Sheet: Clear', () => {
 	let node: MicrosoftExcelSharePoint;
@@ -64,7 +65,7 @@ describe('Microsoft Excel (SharePoint) — Sheet: Clear', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'POST',
-			`${WORKBOOK_ROOT}/workbook/worksheets/Sheet1/range/clear`,
+			requestPath`${WORKBOOK_ROOT}/workbook/worksheets/Sheet1/range/clear`,
 			{ applyTo: 'All' },
 		);
 		expect(result[0].map((item) => item.json)).toEqual([{ success: true }]);
@@ -78,7 +79,7 @@ describe('Microsoft Excel (SharePoint) — Sheet: Clear', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'POST',
-			`${WORKBOOK_ROOT}/workbook/worksheets/Sheet1/range(address='${encodeURIComponent('A1:B2')}')/clear`,
+			requestPath`${WORKBOOK_ROOT}/workbook/worksheets/Sheet1/range(address='A1:B2')/clear`,
 			{ applyTo: 'All' },
 		);
 	});
@@ -91,7 +92,7 @@ describe('Microsoft Excel (SharePoint) — Sheet: Clear', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'POST',
-			`${WORKBOOK_ROOT}/workbook/worksheets/Sheet1/range/clear`,
+			requestPath`${WORKBOOK_ROOT}/workbook/worksheets/Sheet1/range/clear`,
 			{ applyTo: 'All' },
 		);
 	});
@@ -106,7 +107,7 @@ describe('Microsoft Excel (SharePoint) — Sheet: Clear', () => {
 
 			expect(apiRequest).toHaveBeenCalledWith(
 				'POST',
-				`${WORKBOOK_ROOT}/workbook/worksheets/Sheet1/range/clear`,
+				requestPath`${WORKBOOK_ROOT}/workbook/worksheets/Sheet1/range/clear`,
 				{ applyTo },
 			);
 		},

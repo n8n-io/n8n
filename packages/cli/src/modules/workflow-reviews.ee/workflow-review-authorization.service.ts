@@ -37,6 +37,7 @@ export interface WorkflowReviewViewerEligibility {
 	canDecide: boolean;
 	decisionIneligibilityReason: WorkflowReviewDecisionIneligibilityReason | null;
 	canComment: boolean;
+	canClose: boolean;
 }
 
 /**
@@ -258,11 +259,12 @@ export class WorkflowReviewAuthorizationService {
 	// #region Viewer capabilities
 
 	/**
-	 * What a viewer may do with a review they can see — decide it, comment on it —
-	 * in one pass so the two answers cannot disagree. Reuses the snapshot from
+	 * What a viewer may do with a review they can see — decide it, comment on it,
+	 * close it — in one pass so the answers cannot disagree. Reuses the snapshot from
 	 * {@link findReadableRequestOrFail}, whose read probe is the one `decide()` runs.
 	 *
 	 * `canDecide` is advisory: `decide()` re-checks the same rule under its lock.
+	 * `canClose` is not advisory: it is the rule `close()` enforces.
 	 * It answers who, not when — the lifecycle guard is deliberately not mirrored
 	 * here, so callers gate on `state`/`decision` themselves.
 	 */
@@ -275,8 +277,8 @@ export class WorkflowReviewAuthorizationService {
 	): Promise<WorkflowReviewViewerEligibility> {
 		const { request, workflowRows, readableWorkflowRows } = access;
 
-		// A decision or comment covers the whole review, so both need read access to
-		// every covered workflow.
+		// A decision, comment, or close covers the whole review, so each needs read access
+		// to every covered workflow.
 		const canReadEveryWorkflow =
 			workflowRows.length > 0 && readableWorkflowRows.length === workflowRows.length;
 
@@ -286,6 +288,7 @@ export class WorkflowReviewAuthorizationService {
 				canDecide: false,
 				decisionIneligibilityReason: 'missing_permission',
 				canComment: false,
+				canClose: false,
 			};
 		}
 
@@ -308,6 +311,8 @@ export class WorkflowReviewAuthorizationService {
 			decisionIneligibilityReason: capability.allowed ? null : capability.reason,
 			// Authors keep commenting on a review they may not decide.
 			canComment: capability.allowed || isAuthor,
+			// Interim until LIGO-1458: deciders and the requester may close.
+			canClose: capability.allowed || request.createdById === user.id,
 		};
 	}
 

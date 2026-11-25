@@ -1,6 +1,7 @@
 import type { SkillScope } from '@n8n/api-types';
 import {
 	BaseRepository,
+	DbLock,
 	LIKE_ESCAPE_CLAUSE,
 	Project,
 	TransactionRunner,
@@ -21,6 +22,7 @@ import {
 import type {
 	AssistantSkillSummary,
 	ResolvedSkillRow,
+	SkillFileReadOptions,
 	SkillTarget,
 } from '../../utils/skill-content';
 import { SkillFile } from '../entities/skill-file.entity';
@@ -54,6 +56,10 @@ export type SkillListFilter = {
 	/** The skills an agent uses. */
 	usedBySkillIds?: string[];
 	createdById?: string;
+	/** Restrict results to these connected sources. An empty array matches nothing. */
+	sourceIds?: string[];
+	/** Sources whose labels match the search, in addition to skill names and descriptions. */
+	searchSourceIds?: string[];
 	search?: string;
 	availableToMCP?: boolean;
 	/** Most recently changed first when absent. */
@@ -127,14 +133,18 @@ export class SkillRepository {
 		return await query.getMany();
 	}
 
-	/** Read all open source groups on one page in one query. */
+	/** Read the page slice across its open source groups. */
 	async findVisibleSourceSkills(
 		visibility: SkillVisibility,
 		filter: SkillMatchFilter,
 		sourceIds: string[],
+		slice: { skip: number; take: number },
 	): Promise<Skill[]> {
 		const skills: Skill[] = [];
+		let skip = slice.skip;
 		for (const ids of chunkIds(sourceIds)) {
+			const remaining = slice.take - skills.length;
+			if (remaining <= 0) break;
 			const query = this.filteredQuery(visibility, filter, {});
 			if (!query) return [];
 			const sourceOrder = ids.map(
@@ -150,8 +160,11 @@ export class SkillRepository {
 					filter.sort?.order ?? 'DESC',
 				)
 				.addOrderBy('skill.id', 'ASC')
+				.offset(skip)
+				.limit(remaining)
 				.getMany();
 			skills.push(...rows);
+			skip = 0;
 		}
 		return skills;
 	}
@@ -204,6 +217,15 @@ export class SkillRepository {
 		if (filter.createdById !== undefined) {
 			query.andWhere('skill.createdById = :createdById', { createdById: filter.createdById });
 		}
+		if (filter.sourceIds || filter.searchSourceIds?.length) {
+			query.leftJoin(SkillSourceLink, 'filterSourceLink', 'filterSourceLink.skillId = skill.id');
+		}
+		if (filter.sourceIds) {
+			if (filter.sourceIds.length === 0) return null;
+			query.andWhere('filterSourceLink.sourceId IN (:...filterSourceIds)', {
+				filterSourceIds: filter.sourceIds,
+			});
+		}
 		if (filter.availableToMCP !== undefined) {
 			query.andWhere('skill.availableToMCP = :availableToMCP', {
 				availableToMCP: filter.availableToMCP,
@@ -222,11 +244,16 @@ export class SkillRepository {
 		}
 		if (filter.search) {
 			query.andWhere(
-				new Brackets((qb) =>
-					qb
-						.where(`LOWER(latest.name) LIKE :search ${LIKE_ESCAPE_CLAUSE}`)
-						.orWhere(`LOWER(latest.description) LIKE :search ${LIKE_ESCAPE_CLAUSE}`),
-				),
+				new Brackets((qb) => {
+					qb.where(`LOWER(latest.name) LIKE :search ${LIKE_ESCAPE_CLAUSE}`).orWhere(
+						`LOWER(latest.description) LIKE :search ${LIKE_ESCAPE_CLAUSE}`,
+					);
+					if (filter.searchSourceIds?.length) {
+						qb.orWhere('filterSourceLink.sourceId IN (:...searchSourceIds)', {
+							searchSourceIds: filter.searchSourceIds,
+						});
+					}
+				}),
 				{ search: `%${escapeLike(filter.search.toLowerCase())}%` },
 			);
 		}
@@ -317,7 +344,7 @@ export class SkillRepository {
 			availableToAssistant: Boolean(scope.assistantAvailableToAssistant),
 		};
 		const files = await this.table.manager.find(SkillFile, {
-			where: { skillVersionId: version.id },
+			where: { skillVersionId: version.id, isBinary: false },
 			select: { path: true },
 		});
 		files.sort((left, right) => compareSkillFilePaths(left.path, right.path));
@@ -339,6 +366,7 @@ export class SkillRepository {
 			.innerJoin(Skill, 'skill', 'skill.id = version.skillId')
 			.where('version.id = :versionId AND skill.id = :skillId', { versionId, skillId })
 			.andWhere('file.path = :path', { path })
+			.andWhere('file.isBinary = :isBinary', { isBinary: false })
 			.andWhere('skill.availableToAssistant = :enabled', { enabled: true })
 			.andWhere('(skill.projectId IS NULL OR skill.projectId = :projectId)', { projectId })
 			.addSelect('skill.projectId', 'assistantProjectId')
@@ -375,13 +403,14 @@ export class SkillRepository {
 	async findLatestSaved(
 		skillIds: string[],
 		ctx: OperationContext = {},
+		options: SkillFileReadOptions = {},
 	): Promise<Map<string, ResolvedSkillRow>> {
 		const manager = this.table.managerFor(ctx);
 		const versions = await inChunks(
 			skillIds,
 			async (chunk) => await latestVersionsQuery(manager, chunk).getMany(),
 		);
-		return await this.resolveBySkill(versions, ctx);
+		return await this.resolveBySkill(versions, ctx, options);
 	}
 
 	/** Name, description and number of the latest version, without its content. */
@@ -421,6 +450,22 @@ export class SkillRepository {
 		return new Map(versions.map((version) => [version.skillId, version.id]));
 	}
 
+	/** One file of the latest version of a skill, with the name of that version. */
+	async findLatestFile(
+		skillId: string,
+		path: string,
+	): Promise<{ name: string; file: SkillFile } | null> {
+		const { manager } = this.table;
+		const [version] = await latestVersionsQuery(manager, [skillId])
+			.select(['version.id', 'version.skillId', 'version.name'])
+			.getMany();
+		if (!version) return null;
+		const file = await manager.findOne(SkillFile, {
+			where: { skillVersionId: version.id, path },
+		});
+		return file ? { name: version.name, file } : null;
+	}
+
 	/**
 	 * The name of the latest version of every skill in one target: the same project or the
 	 * instance. For the name check.
@@ -445,12 +490,13 @@ export class SkillRepository {
 	async findVersionsByIds(
 		versionIds: string[],
 		ctx: OperationContext = {},
+		options: SkillFileReadOptions = {},
 	): Promise<Map<string, ResolvedSkillRow>> {
 		if (versionIds.length === 0) return new Map();
 		const versions = await this.table.managerFor(ctx).find(SkillVersion, {
 			where: { id: In(unique(versionIds)) },
 		});
-		const rows = await this.resolve(versions, ctx);
+		const rows = await this.resolve(versions, ctx, options);
 		return new Map(rows.map((row) => [row.version.id, row]));
 	}
 
@@ -496,9 +542,17 @@ export class SkillRepository {
 		content: SkillContent,
 		createdById: string | null,
 		ctx: OperationContext = {},
+		sourceRevision: string | null = null,
 	): Promise<string> {
 		return await this.table.runInTransaction(ctx, async (manager) => {
-			const id = await insertVersion(manager, skillId, version, content, createdById, null);
+			const id = await insertVersion(
+				manager,
+				skillId,
+				version,
+				content,
+				createdById,
+				sourceRevision,
+			);
 			await manager.update(Skill, { id: skillId }, { updatedAt: new Date() });
 			return id;
 		});
@@ -626,6 +680,16 @@ export class SkillRepository {
 		await this.lock(skillIds, 'pessimistic_write', ctx);
 	}
 
+	/** Serialize name checks and writes. Take all existing skill row locks before this lock. */
+	async lockNames(ctx: OperationContext): Promise<void> {
+		if (!ctx.trx) throw new UnexpectedError('Skill name locks need a transaction');
+		// SQLite serializes write transactions. PostgreSQL needs a lock without a schema change.
+		if (this.table.manager.connection.options.type !== 'postgres') return;
+		await this.table
+			.managerFor(ctx)
+			.query('SELECT pg_advisory_xact_lock($1)', [DbLock.SKILL_NAMES]);
+	}
+
 	/** Shared lock: publishes run side by side, a save waits for them. */
 	async lockForPublish(skillIds: string[], ctx: OperationContext = {}): Promise<void> {
 		await this.lock(skillIds, 'pessimistic_read', ctx);
@@ -642,6 +706,8 @@ export class SkillRepository {
 		await this.table.managerFor(ctx).find(Skill, {
 			select: ['id'],
 			where: { id: In(unique(skillIds)) },
+			// Attaches, publishes, and source deletes can lock overlapping sets of skills.
+			order: { id: 'ASC' },
 			lock: { mode },
 		});
 	}
@@ -649,8 +715,9 @@ export class SkillRepository {
 	private async resolveBySkill(
 		versions: SkillVersion[],
 		ctx: OperationContext,
+		options: SkillFileReadOptions,
 	): Promise<Map<string, ResolvedSkillRow>> {
-		const rows = await this.resolve(versions, ctx);
+		const rows = await this.resolve(versions, ctx, options);
 		return new Map(rows.map((row) => [row.skill.id, row]));
 	}
 
@@ -658,6 +725,7 @@ export class SkillRepository {
 	private async resolve(
 		versions: SkillVersion[],
 		ctx: OperationContext,
+		{ textOnly = false }: SkillFileReadOptions = {},
 	): Promise<ResolvedSkillRow[]> {
 		if (versions.length === 0) return [];
 		const manager = this.table.managerFor(ctx);
@@ -667,7 +735,10 @@ export class SkillRepository {
 		);
 		const files = await inChunks(
 			versions.map((version) => version.id),
-			async (chunk) => await manager.find(SkillFile, { where: { skillVersionId: In(chunk) } }),
+			async (chunk) =>
+				await manager.find(SkillFile, {
+					where: { skillVersionId: In(chunk), ...(textOnly ? { isBinary: false } : {}) },
+				}),
 		);
 		const skillById = new Map(skills.map((skill) => [skill.id, skill]));
 		const filesByVersion = new Map<string, SkillFile[]>();
@@ -772,6 +843,7 @@ async function insertFiles(
 			skillVersionId,
 			path: file.path,
 			content: file.content,
+			isBinary: file.isBinary ?? false,
 		})),
 	);
 }

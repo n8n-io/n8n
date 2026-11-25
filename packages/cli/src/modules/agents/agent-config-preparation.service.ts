@@ -7,13 +7,16 @@ import {
 	type AgentJsonConfig,
 } from '@n8n/api-types';
 import { WorkflowRepository, type User } from '@n8n/db';
-import { ProjectScopeService } from '@n8n/backend-services';
+import { CredentialsFinderService, ProjectScopeService } from '@n8n/backend-services';
 import { Container, Service } from '@n8n/di';
+import { AgentsConfig } from '@n8n/config';
 import { ForbiddenError, UserError } from '@n8n/errors';
 import { isRecord } from '@n8n/utils/is-record';
+import isEqual from 'lodash/isEqual';
 import { getStaticSubworkflowId } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { findUsableMcpCredential } from '@/modules/mcp-registry/mcp-credential-access';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 
 import {
@@ -27,7 +30,7 @@ import { AgentSkillRefsService } from './agent-skill-refs.service';
 import type { Agent, ProjectAgent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { assertSingleConnections } from './integrations/single-connection';
-import { decomposeJsonConfig } from './json-config/agent-config-composition';
+import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
 import { toAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
 import { pruneMissingConfigReferences } from './json-config/prune-missing-config-references';
 import { AgentRepository } from './repositories/agent.repository';
@@ -47,8 +50,14 @@ import {
 	type CompleteAgentDefinition,
 	type PlannedAgentDestinations,
 } from './utils/agent-definition';
-import { extractAgentWorkflowRefs } from './utils/extract-agent-workflow-refs';
-import { visitAgentCredentialReferences } from './utils/visit-agent-credential-references';
+import {
+	extractAgentWorkflowRefs,
+	extractGuardrailCheckWorkflowIds,
+} from './utils/extract-agent-workflow-refs';
+import {
+	findChangedCredentialReferences,
+	visitAgentCredentialReferences,
+} from './utils/visit-agent-credential-references';
 import {
 	findHttpRequestToolUrlFromAiViolations,
 	validateNodeToolConfigs,
@@ -73,6 +82,7 @@ export class AgentConfigPreparationService {
 		private readonly agentTaskRepository: AgentTaskRepository,
 		private readonly agentSkillRefs: AgentSkillRefsService,
 		private readonly agentPolicyService: AgentPolicyService,
+		private readonly credentialsFinderService: CredentialsFinderService,
 	) {}
 
 	async prepareForSave(
@@ -96,6 +106,11 @@ export class AgentConfigPreparationService {
 			entity.projectId,
 			user,
 		);
+		await this.assertUsableCredentialChanges(
+			validatedConfig,
+			isNew ? null : composeJsonConfig(entity, previousSkillRefs),
+			user,
+		);
 		const previousSchema = entity.schema ? toAgentDocument(entity.schema, previousSkillRefs) : null;
 		const existingTaskIds = await this.reconcileConfigReferences(
 			entity,
@@ -109,6 +124,14 @@ export class AgentConfigPreparationService {
 			validatedConfig,
 			rawConfig,
 			clearOmitted,
+		);
+		const previousReviewConfig = isNew ? null : previousSchema;
+		assertHumanReviewSettingsAllowed(replacement.nextSchema, previousReviewConfig);
+		await this.assertReadableHitlWorkflows(
+			replacement.nextSchema,
+			previousReviewConfig,
+			entity.projectId,
+			user,
 		);
 		await this.agentPolicyService.enforceSave(
 			entity.projectId,
@@ -134,6 +157,7 @@ export class AgentConfigPreparationService {
 	async validateDefinition(
 		agentId: string,
 		definition: CompleteAgentDefinition,
+		previousConfig: AgentJsonConfig | null = null,
 	): Promise<CompleteAgentDefinition> {
 		const [{ AgentCustomToolsService }, { AgentTaskService }] = await Promise.all([
 			import('./agent-custom-tools.service.js'),
@@ -154,6 +178,7 @@ export class AgentConfigPreparationService {
 			result.config.integrations ?? [],
 		);
 		prepared.config = reconcileNativeWebSearch(result.config);
+		assertHumanReviewSettingsAllowed(prepared.config, previousConfig);
 		this.validateSubAgentRefs(prepared.config.subAgents?.agents ?? [], agentId);
 		const [missingBody] = findMissingAgentDefinitionBodies(prepared);
 		if (missingBody) {
@@ -171,8 +196,9 @@ export class AgentConfigPreparationService {
 		projectId: string,
 		user: User,
 		planned: PlannedAgentDestinations = {},
+		previousConfig: AgentJsonConfig | null = null,
 	) {
-		const prepared = await this.validateDefinition(agentId, definition);
+		const prepared = await this.validateDefinition(agentId, definition, previousConfig);
 		const credentialProvider = createAgentCredentialProvider(
 			this.credentialsService,
 			projectId,
@@ -188,6 +214,7 @@ export class AgentConfigPreparationService {
 					);
 				}
 			});
+			await this.assertUsableCredentialChanges(prepared.config, previousConfig, user);
 			if (prepared.config.tools !== undefined) {
 				await this.nodeToolAiGatewayService.assignManagedCredentials(
 					prepared.config.tools.filter((tool) => tool.enabled !== false),
@@ -240,6 +267,10 @@ export class AgentConfigPreparationService {
 		if (localIds.some((id) => !id))
 			throw new UserError('A workflow tool references a missing workflow.');
 		const ids = new Set(localIds.filter((id): id is string => id !== undefined));
+		for (const id of extractGuardrailCheckWorkflowIds(config)) ids.add(id);
+		for (const interaction of config.hitlConfigurations ?? []) {
+			if (interaction.method === 'workflow') ids.add(interaction.workflowId);
+		}
 		for (const tool of config.tools ?? []) {
 			if (tool.type !== 'node') continue;
 			const id = getStaticSubworkflowId({
@@ -277,6 +308,54 @@ export class AgentConfigPreparationService {
 			}
 			throw new UserError(`Workflow "${id}" is missing or inaccessible.`);
 		}
+	}
+
+	/**
+	 * A user needs read access in this project to each workflow that a human review
+	 * configuration adds. Workflows that the stored config already uses stay allowed.
+	 */
+	private async assertReadableHitlWorkflows(
+		next: AgentJsonConfig,
+		previous: AgentJsonConfig | null,
+		projectId: string,
+		user: User,
+	): Promise<void> {
+		const previousIds = new Set(hitlWorkflowIds(previous));
+		const ids = [...new Set(hitlWorkflowIds(next))].filter((id) => !previousIds.has(id));
+		if (ids.length === 0) return;
+		const readable = await Container.get(WorkflowFinderService).findWorkflowIdsWithScopeForUser(
+			ids,
+			user,
+			['workflow:read'],
+			projectId,
+		);
+		const missing = ids.find((id) => !readable.has(id));
+		if (missing) throw new UserError(`Workflow "${missing}" is missing or inaccessible.`);
+	}
+
+	/**
+	 * Reading a credential does not grant its use. A user may keep a credential
+	 * that the config already holds, but needs usage rights to add one or to
+	 * change the entry that holds it.
+	 */
+	private async assertUsableCredentialChanges(next: unknown, previous: unknown, user: User) {
+		// Apply the schema defaults to the stored config too, so a default does not count as a change.
+		const normalized = previous ? await this.validateConfig(previous) : undefined;
+		const baseline = normalized?.valid ? normalized.config : previous;
+		for (const id of findChangedCredentialReferences(next, baseline)) {
+			if (!(await findUsableMcpCredential(this.credentialsFinderService, id, user))) {
+				throw new UserError(`Credential "${id}" is missing or inaccessible.`);
+			}
+		}
+	}
+
+	/** Returns the IDs of `credentialIds` that the user may use, not only read. */
+	async filterUsableCredentialIds(credentialIds: Iterable<string>, user: User) {
+		const usable = new Set<string>();
+		for (const id of credentialIds) {
+			if (await findUsableMcpCredential(this.credentialsFinderService, id, user)) usable.add(id);
+		}
+		return usable;
 	}
 
 	async prepareConfig(config: unknown, projectId: string, user: User) {
@@ -520,6 +599,60 @@ function mergePersonalisationWithPreviousGradient(
 	};
 }
 
+function hitlWorkflowIds(config: AgentJsonConfig | null): string[] {
+	return (config?.hitlConfigurations ?? []).flatMap((configuration) =>
+		configuration.method === 'workflow' ? [configuration.workflowId] : [],
+	);
+}
+
+type AgentJsonTool = NonNullable<AgentJsonConfig['tools']>[number];
+
+function toolReviewKey(tool: AgentJsonTool): string {
+	if (tool.type === 'custom') return `custom:${tool.id}`;
+	if (tool.type === 'workflow') return `workflow:${tool.workflowId ?? tool.workflow}`;
+	return `node:${tool.name}`;
+}
+
+/** The parts of a config that need the human review feature. */
+function humanReviewSettings(config: AgentJsonConfig | null) {
+	const configurationRoutes = <T extends { approvalRoute?: AgentJsonTool['approvalRoute'] }>(
+		items: T[] | undefined,
+		key: (item: T) => string,
+	) =>
+		Object.fromEntries(
+			(items ?? []).flatMap((item) =>
+				item.approvalRoute?.type === 'configuration'
+					? [[key(item), item.approvalRoute] as const]
+					: [],
+			),
+		);
+	return {
+		hitlConfigurations: Object.fromEntries(
+			(config?.hitlConfigurations ?? []).map((configuration) => [configuration.id, configuration]),
+		),
+		tools: configurationRoutes(config?.tools, toolReviewKey),
+		mcpServers: configurationRoutes(config?.mcpServers, (server) => server.name),
+	};
+}
+
+/**
+ * With human review off, a save must not add or change review settings.
+ * Review settings that the stored config already holds do not block other edits,
+ * and a save can remove them.
+ */
+export function assertHumanReviewSettingsAllowed(
+	next: AgentJsonConfig,
+	previous: AgentJsonConfig | null,
+): void {
+	if (Container.get(AgentsConfig).humanReviewEnabled) return;
+	const before = humanReviewSettings(previous);
+	const after = humanReviewSettings(next);
+	const unchanged = (['hitlConfigurations', 'tools', 'mcpServers'] as const).every((group) =>
+		Object.entries(after[group]).every(([key, value]) => isEqual(value, before[group][key])),
+	);
+	if (!unchanged) throw new UserError('Human review is not enabled on this instance');
+}
+
 const OPTIONAL_SCHEMA_FIELDS = [
 	'credential',
 	'description',
@@ -533,6 +666,7 @@ const OPTIONAL_SCHEMA_FIELDS = [
 	'config',
 	'mcpServers',
 	'vectorStores',
+	'hitlConfigurations',
 ] as const;
 
 /**

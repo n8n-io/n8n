@@ -15,12 +15,14 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { DRAG_EVENT_DATA_KEY } from '@/app/constants';
 import { EmbeddedCanvasElementKey } from '@/app/constants/injectionKeys';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
+import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import type { NodeTypeSelectedPayload } from '@/Interface';
 import { onClickOutside, useElementBounding } from '@vueuse/core';
 
 import { N8nIconButton, OVERLAY_LAYER_SELECTOR } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 // elements that should not trigger onClickOutside
 const OUTSIDE_CLICK_WHITELIST = [
 	// different modals
@@ -35,6 +37,7 @@ export interface Props {
 }
 
 const props = defineProps<Props>();
+const i18n = useI18n();
 const { resetViewStacks } = useViewStacks();
 const { registerKeyHook } = useKeyboardNavigation();
 const emit = defineEmits<{
@@ -45,9 +48,11 @@ const emit = defineEmits<{
 const uiStore = useUIStore();
 const bannersStore = useBannersStore();
 const chatPanelStore = useChatPanelStore();
+const focusPanelStore = useFocusPanelStore();
 const settingsStore = useSettingsStore();
 
-const { setActions, setMergeNodes, consumePendingInitialViewStack } = useNodeCreatorStore();
+const nodeCreatorStore = useNodeCreatorStore();
+const { setActions, setMergeNodes, consumePendingInitialViewStack } = nodeCreatorStore;
 const { generateMergedNodesAndActions } = useActionsGenerator();
 
 const state = reactive({
@@ -62,11 +67,19 @@ const viewStacksLength = computed(() => useViewStacks().viewStacks.length);
 const embeddedCanvas = inject(EmbeddedCanvasElementKey, ref(null));
 const { top: embeddedCanvasTop } = useElementBounding(embeddedCanvas);
 
+// A replacement from the setup panel opens beside the focus panel, so the card stays in view.
+const isBesideFocusPanel = computed(
+	() =>
+		!embeddedCanvas.value &&
+		nodeCreatorStore.isReplacingFromSetupPanel &&
+		focusPanelStore.focusPanelActive,
+);
+
 const nodeCreatorInlineStyle = computed(() => {
 	const rightPosition = getRightOffset();
 	return {
 		top: `${getTopOffset()}px`,
-		right: `${rightPosition}px`,
+		'--node-creator--right': `${rightPosition}px`,
 	};
 });
 
@@ -79,11 +92,9 @@ function getTopOffset() {
 }
 
 function getRightOffset() {
-	if (chatPanelStore.isOpen) {
-		return chatPanelStore.width;
-	}
+	const chatOffset = chatPanelStore.isOpen ? chatPanelStore.width : 0;
 
-	return 0;
+	return isBesideFocusPanel.value ? chatOffset + focusPanelStore.focusPanelWidth : chatOffset;
 }
 
 function onMouseUpOutside() {
@@ -159,14 +170,18 @@ registerKeyHook('NodeCreatorCloseEscape', {
 	handler: () => emit('closeNodeCreator'),
 });
 
-watch(
-	() => ({
-		httpOnlyCredentials: useCredentialsStore().httpOnlyCredentialTypes,
-		nodeTypes: useNodeTypesStore().visibleNodeTypes,
-	}),
-	({ nodeTypes, httpOnlyCredentials }) => {
-		const { actions, mergedNodes } = generateMergedNodesAndActions(nodeTypes, httpOnlyCredentials);
+// A computed tracks every store the generator reads, including type availability
+// policies that load after this component mounts.
+const mergedNodesAndActions = computed(() =>
+	generateMergedNodesAndActions(
+		useNodeTypesStore().visibleNodeTypes,
+		useCredentialsStore().httpOnlyCredentialTypes,
+	),
+);
 
+watch(
+	mergedNodesAndActions,
+	({ actions, mergedNodes }) => {
 		setActions(actions);
 		setMergeNodes(mergedNodes);
 	},
@@ -202,14 +217,14 @@ onClickOutside(
 			v-if="active"
 			:class="$style.close"
 			icon="x"
-			aria-label="Close Node Creator"
+			:aria-label="i18n.baseText('nodeCreator.close')"
 			@click="emit('closeNodeCreator')"
 		/>
 		<SlideTransition>
 			<div
 				v-if="active"
 				ref="nodeCreator"
-				:class="{ [$style.nodeCreator]: true }"
+				:class="{ [$style.nodeCreator]: true, [$style.besideFocusPanel]: isBesideFocusPanel }"
 				:style="nodeCreatorInlineStyle"
 				data-test-id="node-creator"
 				@dragover="onDragOver"
@@ -238,10 +253,18 @@ onClickOutside(
 	position: fixed;
 	top: $header-height;
 	bottom: 0;
-	right: 0;
+	right: var(--node-creator--right, 0);
 	z-index: var(--node-creator--z);
 	width: var(--node-creator--width);
 	color: $node-creator-text-color;
+
+	// Never push the creator past the app sidebar on a narrow window.
+	&.besideFocusPanel {
+		right: min(
+			var(--node-creator--right),
+			calc(100vw - var(--node-creator--width) - #{$sidebar-width})
+		);
+	}
 }
 
 .nodeCreatorScrim {

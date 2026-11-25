@@ -1,0 +1,124 @@
+import { INSTANCE_AI_THREAD_SOURCE_FALLBACK } from '@n8n/api-types';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { isRecord } from '@n8n/utils/is-record';
+
+import {
+	EMPTY_ASSISTANT_MENTION_COUNTS,
+	type AssistantMentionCounts,
+} from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
+
+import { messageApprovalMode, threadTargetsAgent } from '../instanceAi.threadRuntime';
+import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
+import {
+	resolveAuthorship,
+	type InstanceAiMessageAuthorship,
+	type InstanceAiPrefillPayload,
+} from '../prefills';
+import { useAssistantAgentThreadsStore } from './assistantAgentThreads.store';
+
+/** The context of the user message that starts a run, as `User sent builder message` reports it. */
+export interface AssistantAgentSentMessageContext {
+	isFirstMessage: boolean;
+	mentionCounts: AssistantMentionCounts;
+	attachmentCount: number;
+	selectedElementCount: number;
+}
+
+/** A text that the host sends for the user. Its authorship is final. */
+export interface AssistantAgentHostSend {
+	text: string;
+	authorship: InstanceAiMessageAuthorship;
+	mentionCounts?: AssistantMentionCounts;
+}
+
+export interface AssistantAgentSendingMessage {
+	text: string;
+	files: File[];
+	clientContext?: Record<string, unknown>;
+	isFirstMessage: boolean;
+}
+
+/**
+ * Sends `User sent builder message` for each message of an Assistant agent
+ * thread, with the properties of the current runtime. The host tells who wrote
+ * a text before it pre-fills or sends it. The chat reports each send.
+ */
+export function useAssistantAgentMessageTelemetry(threadId: string) {
+	const telemetry = useTelemetry();
+	const rootStore = useRootStore();
+	const settingsStore = useInstanceAiSettingsStore();
+	const threadsStore = useAssistantAgentThreadsStore();
+	let prefill: InstanceAiPrefillPayload | null = null;
+	let hostSend: AssistantAgentHostSend | null = null;
+
+	function takeAuthorship(
+		text: string,
+		composerMentionCounts: AssistantMentionCounts | undefined,
+	): Omit<AssistantAgentHostSend, 'text'> {
+		// Only the next send can be the host send. A refused host send leaves its text
+		// as the user's draft, so that next send is still the host text when it matches.
+		const host = hostSend;
+		hostSend = null;
+		if (host?.text.trim() === text) {
+			return { authorship: host.authorship, mentionCounts: host.mentionCounts };
+		}
+		return { authorship: resolveAuthorship(text, prefill), mentionCounts: composerMentionCounts };
+	}
+
+	/**
+	 * Returns the context of the message, which `User received AI Assistant response` repeats.
+	 * `composerMentionCounts` are the composer mentions that this message sends. A host send
+	 * reports its own counts instead.
+	 */
+	function trackSend(
+		{ text, files, clientContext, isFirstMessage }: AssistantAgentSendingMessage,
+		composerMentionCounts?: AssistantMentionCounts,
+	): AssistantAgentSentMessageContext {
+		const { authorship, mentionCounts = EMPTY_ASSISTANT_MENTION_COUNTS } = takeAuthorship(
+			text,
+			composerMentionCounts,
+		);
+		const isPrefill = authorship.kind === 'prefill';
+		const attachments: unknown[] = Array.isArray(clientContext?.attachments)
+			? clientContext.attachments
+			: [];
+		const attachmentCount = files.length + attachments.length;
+		const selectedElementCount = attachments.filter(
+			(a) => isRecord(a) && a.type === 'element',
+		).length;
+		// Like the backend: a message that attaches an agent, or a thread that builds one, runs in Manual.
+		const buildsAgent =
+			attachments.some((attachment) => isRecord(attachment) && attachment.type === 'agent') ||
+			threadTargetsAgent(threadsStore.threadsById.get(threadId)?.metadata);
+		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE, {
+			thread_id: threadId,
+			instance_id: rootStore.instanceId,
+			is_first_message: isFirstMessage,
+			// shortcut: Assistant agent threads keep no launch source yet; AST-1819 adds it.
+			action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+			prefill_type: isPrefill ? authorship.prefillType : null,
+			prefill_id: isPrefill ? (authorship.prefillId ?? null) : null,
+			prompt_modified: isPrefill ? (authorship.promptModified ?? false) : null,
+			approval_mode: messageApprovalMode(settingsStore, buildsAgent),
+			mention_counts: mentionCounts,
+			attachment_count: attachmentCount,
+			selected_element_count: selectedElementCount,
+			runtime: 'agents',
+		});
+		return { isFirstMessage, mentionCounts, attachmentCount, selectedElementCount };
+	}
+
+	return {
+		/** The text that the composer shows now came from a pre-fill. Set `null` when the composer text is cleared. */
+		setPrefill(next: InstanceAiPrefillPayload | null) {
+			prefill = next;
+		},
+		/** Call before the host sends a text for the user. */
+		expectHostSend(send: AssistantAgentHostSend) {
+			hostSend = send;
+		},
+		trackSend,
+	};
+}

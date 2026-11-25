@@ -13,7 +13,7 @@ import type {
 	PersistAgentDraftOptions,
 	PersistedAgentDraft,
 } from './agent-draft.contracts';
-import { AgentRunnableStateService } from './agent-runnable-state.service';
+import { AgentResponseMapper } from './agent-response.mapper';
 import { AgentsService, type AgentCreationResult } from './agents.service';
 import { AgentsSettingsService } from './agents-settings.service';
 
@@ -23,7 +23,7 @@ export class AgentDraftService {
 		private readonly settings: AgentsSettingsService,
 		private readonly agents: AgentsService,
 		private readonly defaultModel: AgentDefaultModelResolverService,
-		private readonly runnableState: AgentRunnableStateService,
+		private readonly agentResponseMapper: AgentResponseMapper,
 	) {}
 
 	async createDraft(
@@ -67,14 +67,23 @@ export class AgentDraftService {
 		} else {
 			creationResult = await this.createPendingDraft(user, projectId, options);
 		}
-		const { agent, ...creationState } = creationResult;
+		const { agent, adopted } = creationResult;
+
+		if (
+			adopted &&
+			options.parentFolderId !== undefined &&
+			agent.parentFolderId !== options.parentFolderId
+		) {
+			await this.agents.move(agent.id, projectId, options.parentFolderId);
+			agent.parentFolderId = options.parentFolderId;
+		}
+
 		return {
 			id: agent.id,
 			name: agent.name,
 			getState: async () => ({
-				...(await this.runnableState.addRunnableState(agent, projectId, user)),
-				...creationState,
-				projectId,
+				...(await this.agentResponseMapper.toAgentDto(agent, projectId, user)),
+				adopted,
 			}),
 		};
 	}
@@ -93,6 +102,7 @@ export class AgentDraftService {
 			user,
 			createdBy: 'user',
 			id: options.id,
+			...(options.parentFolderId !== undefined ? { parentFolderId: options.parentFolderId } : {}),
 			adoptOnCollision: options.adoptOnCollision,
 			config: options.config,
 			pushRef: options.pushRef,
@@ -104,6 +114,6 @@ export class AgentDraftService {
 		if (!(await userHasScopes(user, ['agent:delete'], false, { projectId }))) {
 			throw new ForbiddenError('You do not have permission to access agents in this project.');
 		}
-		await this.agents.delete(agentId, projectId);
+		await this.agents.delete(agentId, user, projectId);
 	}
 }

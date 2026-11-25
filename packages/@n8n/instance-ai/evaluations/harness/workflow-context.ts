@@ -1,4 +1,4 @@
-import type { WorkflowResponse } from '../clients/n8n-client';
+import type { WorkflowNodeResponse, WorkflowResponse } from '../clients/n8n-client';
 
 /**
  * Renders node groups for the judge. Groups persist member node *ids*, but the
@@ -32,7 +32,31 @@ function renderNodeGroupLines(wf: WorkflowResponse): string[] {
 	];
 }
 
-/** Render the per-build workflow structure: nodes, connections, all configs, node groups. */
+function renderSettingsLines(wf: WorkflowResponse): string[] {
+	const settings = wf.settings ?? {};
+	const header =
+		'**Workflow settings** (an absent or "DEFAULT" value means the instance default; an absent `executionOrder` means the legacy `v0` order):';
+	if (Object.keys(settings).length === 0) {
+		// Stated absence, not omission — the judge must be able to tell "no time
+		// zone set" from "the time zone is not shown to me".
+		return [header, '', '(none set)', ''];
+	}
+	return [header, '```json', JSON.stringify(settings, null, 2), '```', ''];
+}
+
+/**
+ * A node as the judge reads it: every saved field except the two it cannot use.
+ * The context is name-keyed, so the id is hidden, and canvas coordinates say
+ * nothing about behavior. Hiding by exception keeps a node field that n8n adds
+ * later visible — a field that is silently missing makes the judge fail a
+ * correct build.
+ */
+function renderNode(node: WorkflowNodeResponse): Record<string, unknown> {
+	const { id: _id, position: _position, name, parameters, ...shown } = node;
+	return { name: name ?? '(unnamed)', ...shown, parameters: parameters ?? {} };
+}
+
+/** Render the per-build workflow structure: nodes, all configs, connections, settings, node groups. */
 export function buildWorkflowContextBlock(wf: WorkflowResponse | undefined): string {
 	if (!wf) return '## Workflow structure\n\n(no workflow built)';
 	const lines: string[] = ['## Workflow structure', ''];
@@ -41,33 +65,10 @@ export function buildWorkflowContextBlock(wf: WorkflowResponse | undefined): str
 	}
 	lines.push('');
 	lines.push('**All node configs:**');
-	lines.push(
-		'```json',
-		JSON.stringify(
-			wf.nodes.map((node) => ({
-				name: node.name ?? '(unnamed)',
-				type: node.type,
-				typeVersion: node.typeVersion,
-				...(node.disabled !== undefined ? { disabled: node.disabled } : {}),
-				...(node.onError !== undefined ? { onError: node.onError } : {}),
-				// Node-level behavior flags — preservation-style expectations assert on
-				// these, so omitting them makes the judge read a correct build as a fail.
-				...(node.alwaysOutputData !== undefined ? { alwaysOutputData: node.alwaysOutputData } : {}),
-				...(node.retryOnFail !== undefined ? { retryOnFail: node.retryOnFail } : {}),
-				...(node.maxTries !== undefined ? { maxTries: node.maxTries } : {}),
-				...(node.waitBetweenTries !== undefined ? { waitBetweenTries: node.waitBetweenTries } : {}),
-				...(node.executeOnce !== undefined ? { executeOnce: node.executeOnce } : {}),
-				...(node.credentials !== undefined ? { credentials: node.credentials } : {}),
-				parameters: node.parameters ?? {},
-			})),
-			null,
-			2,
-		),
-		'```',
-		'',
-	);
+	lines.push('```json', JSON.stringify(wf.nodes.map(renderNode), null, 2), '```', '');
 	lines.push('**Connections:**');
 	lines.push('```json', JSON.stringify(wf.connections, null, 2), '```', '');
+	lines.push(...renderSettingsLines(wf));
 	lines.push(...renderNodeGroupLines(wf));
 	return lines.join('\n');
 }

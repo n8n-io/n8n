@@ -142,11 +142,11 @@ describe('sub-workflow error propagation to parent after Wait resume', () => {
 			owner,
 		);
 
-		const result = await workflowExecutionService.executeManually(
-			parent,
-			{ triggerToStartFrom: { name: 'Trigger' } },
-			owner,
-		);
+		const result = await workflowExecutionService.executeManually({
+			workflowData: parent,
+			payload: { triggerToStartFrom: { name: 'Trigger' } },
+			user: owner,
+		});
 		if (!('executionId' in result)) {
 			throw new Error(`Expected an executionId, got ${JSON.stringify(result)}`);
 		}

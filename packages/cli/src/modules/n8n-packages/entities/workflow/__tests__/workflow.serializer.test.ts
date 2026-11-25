@@ -2,6 +2,7 @@ import type { SerializedWorkflow } from '@n8n/api-types';
 import { WorkflowEntity } from '@n8n/db';
 
 import { WorkflowSerializer } from '../workflow.serializer';
+import { PackageWorkflowInvalidError } from '../../package-export.errors';
 
 const wire = (overrides: Partial<SerializedWorkflow> = {}): SerializedWorkflow => ({
 	id: 'wf-source-id',
@@ -91,6 +92,52 @@ describe('WorkflowSerializer.deserialize', () => {
 	});
 });
 
+describe('WorkflowSerializer description', () => {
+	const serializer = new WorkflowSerializer();
+
+	const workflow = (description: string | null) =>
+		Object.assign(new WorkflowEntity(), {
+			id: 'wf-1',
+			name: 'Workflow',
+			description,
+			versionId: 'version-1',
+			activeVersionId: null,
+			nodes: [],
+			connections: {},
+			isArchived: false,
+		});
+
+	it('exports a description', () => {
+		const wire = serializer.serialize(workflow('Syncs orders'), { includeTags: false });
+
+		expect(wire.description).toBe('Syncs orders');
+	});
+
+	it('omits an empty description', () => {
+		const wire = serializer.serialize(workflow(null), { includeTags: false });
+
+		expect(wire).not.toHaveProperty('description');
+	});
+
+	it('does not put the description in the metadata file', () => {
+		expect(serializer.serializeMetadata(workflow('Syncs orders'))).not.toHaveProperty(
+			'description',
+		);
+	});
+
+	it('restores the description on import', () => {
+		const wire = serializer.serialize(workflow('Syncs orders'), { includeTags: false });
+
+		expect(serializer.deserialize(wire).description).toBe('Syncs orders');
+	});
+
+	it('clears the description when the package has none', () => {
+		const wire = serializer.serialize(workflow(null), { includeTags: false });
+
+		expect(serializer.deserialize(wire).description).toBeNull();
+	});
+});
+
 describe('WorkflowSerializer.serializeMetadata', () => {
 	const serializer = new WorkflowSerializer();
 
@@ -122,5 +169,26 @@ describe('WorkflowSerializer.serializeMetadata', () => {
 		const neverPublished = workflow({ activeVersionId: null });
 
 		expect(serializer.serializeMetadata(neverPublished).publishedVersionId).toBeNull();
+	});
+});
+
+describe('WorkflowSerializer.serializeForExport', () => {
+	const serializer = new WorkflowSerializer();
+
+	it('reports a null credential reference as an invalid field instead of crashing', () => {
+		const workflow = Object.assign(new WorkflowEntity(), {
+			id: 'wf-bad',
+			name: 'Bad',
+			nodes: [{ ...wire().nodes[0], credentials: { someApi: null } }],
+			connections: {},
+			isArchived: false,
+		});
+
+		expect(() => serializer.serializeForExport(workflow, { includeTags: false })).toThrow(
+			PackageWorkflowInvalidError,
+		);
+		expect(() => serializer.serializeForExport(workflow, { includeTags: false })).toThrow(
+			'nodes.0.credentials.someApi',
+		);
 	});
 });

@@ -3,10 +3,17 @@ import { computed, ref, type Ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WhatsAppMetaStatus } from '@n8n/api-types';
 
+import { MODAL_CONFIRM } from '@/app/constants';
+
 import AgentChannelWhatsAppEditView from './AgentChannelWhatsAppEditView.vue';
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
+}));
+
+const confirm = vi.fn();
+vi.mock('../../composables/useAgentConfirmationModal', () => ({
+	useAgentConfirmationModal: () => ({ openAgentConfirmationModal: confirm }),
 }));
 
 const { metaStatus, useMetaStatusSpy } = vi.hoisted(() => ({
@@ -59,7 +66,9 @@ function mountView(props: Record<string, unknown> = {}) {
 				AgentChannelWhatsAppSetup: { template: '<div data-testid="whatsapp-details" />' },
 				AgentChannelWhatsAppMetaCallout: {
 					props: ['status'],
-					template: '<div data-testid="meta-callout">{{ status?.state }}</div>',
+					emits: ['setup'],
+					template:
+						'<div data-testid="meta-callout" @click="$emit(\'setup\')">{{ status?.state }}</div>',
 				},
 			},
 		},
@@ -90,6 +99,39 @@ describe('AgentChannelWhatsAppEditView', () => {
 		expect(
 			callout.compareDocumentPosition(credential) & Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
+	});
+
+	it('restarts the full setup without a credential once the user confirms', async () => {
+		confirm.mockResolvedValue(MODAL_CONFIRM);
+		metaStatus.value = { state: 'numberNotFound' };
+		const wrapper = mountView();
+		await flushPromises();
+
+		await wrapper.get('[data-testid="meta-callout"]').trigger('click');
+		await flushPromises();
+
+		expect(confirm).toHaveBeenCalledWith(
+			expect.objectContaining({
+				title: 'agents.channels.whatsapp.restart.confirmTitle',
+				confirmButtonText: 'agents.channels.whatsapp.meta.action.setUpAgain',
+			}),
+		);
+		expect(wrapper.emitted('restart')).toEqual([[{ credentialId: '' }]]);
+		expect(wrapper.emitted('create')).toBeUndefined();
+	});
+
+	it('keeps the channel when the user cancels setting up again', async () => {
+		confirm.mockResolvedValue('cancel');
+		metaStatus.value = { state: 'numberMigrated' };
+		const wrapper = mountView();
+		await flushPromises();
+
+		await wrapper.get('[data-testid="meta-callout"]').trigger('click');
+		await flushPromises();
+
+		expect(confirm).toHaveBeenCalledTimes(1);
+		expect(wrapper.emitted('restart')).toBeUndefined();
+		expect(wrapper.emitted('create')).toBeUndefined();
 	});
 
 	it('keeps the credential and the details below the callout', async () => {

@@ -1,4 +1,6 @@
 import type {
+	AiPreferenceDto,
+	AiPreferenceScope,
 	InstanceAiPreferenceCardEditRequestDto,
 	InstanceAiPreferenceCardEditResponse,
 	InstanceAiPreferenceCardEvent,
@@ -10,9 +12,10 @@ import { Service } from '@n8n/di';
 import { orchestratorAgentId } from '@n8n/instance-ai';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
-import { AiPreferenceService } from '@n8n/backend-services';
+import { AiPreferenceService, TelemetryProxy } from '@n8n/backend-services';
+import { NotFoundError } from '@n8n/errors';
+import { AiPreferenceSettingsService } from '@/services/ai-preference-settings.service';
 import { secondsSinceSaved } from '@/services/ai-preference-write';
-import { Telemetry } from '@/telemetry';
 
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 
@@ -28,14 +31,24 @@ import { InProcessEventBus } from './event-bus/in-process-event-bus';
  * Both methods also hand the fact back to the caller. The card then renders the
  * new state at once instead of waiting for the stream to deliver the same fact,
  * and the stream's copy sets the same fields again.
+ *
+ * `undoRow` and `editRow` do the write and the telemetry without the fact, for
+ * the Assistant agent, which stores the card state in its thread metadata.
  */
 @Service()
 export class InstanceAiPreferenceCardService {
 	constructor(
 		private readonly aiPreferenceService: AiPreferenceService,
 		private readonly eventBus: InProcessEventBus,
-		private readonly telemetry: Telemetry,
+		private readonly telemetry: TelemetryProxy,
+		private readonly aiPreferenceSettingsService: AiPreferenceSettingsService,
 	) {}
+
+	private requirePreferencesEnabled(): void {
+		if (!this.aiPreferenceSettingsService.isEnabled) {
+			throw new NotFoundError('Preferences are turned off');
+		}
+	}
 
 	async undo(
 		user: User,
@@ -43,16 +56,22 @@ export class InstanceAiPreferenceCardService {
 		preferenceId: string,
 		{ runId, toolCallId }: InstanceAiPreferenceCardUndoRequestDto,
 	): Promise<InstanceAiPreferenceCardEvent> {
-		// Read before the delete: the removal reports the scope and the age of the row, and both
-		// are gone once the row is.
-		const removed = await this.aiPreferenceService.getById(user, preferenceId);
-		await this.aiPreferenceService.delete(user, preferenceId);
-		const event = this.publish(threadId, {
+		await this.undoRow(user, preferenceId);
+		return this.publish(threadId, {
 			type: 'preference-card',
 			runId,
 			agentId: orchestratorAgentId(runId),
 			payload: { toolCallId, preferenceId, state: 'undone' },
 		});
+	}
+
+	/** Deletes the row that a card shows, and reports it as a rejected assistant write. */
+	async undoRow(user: User, preferenceId: string): Promise<void> {
+		this.requirePreferencesEnabled();
+		// Read before the delete: the removal reports the scope and the age of the row, and both
+		// are gone once the row is.
+		const removed = await this.aiPreferenceService.getById(user, preferenceId);
+		await this.aiPreferenceService.delete(user, preferenceId);
 		const { scope } = aiPreferenceTargetOf(removed);
 		// The same pair the MCP undo fires, so one number covers every way a user takes back an
 		// assistant write, whatever the surface.
@@ -71,7 +90,6 @@ export class InstanceAiPreferenceCardService {
 			scope_type: scope,
 			text_length: removed.content.length,
 		});
-		return event;
 	}
 
 	async edit(
@@ -87,6 +105,45 @@ export class InstanceAiPreferenceCardService {
 			userId,
 		}: InstanceAiPreferenceCardEditRequestDto,
 	): Promise<InstanceAiPreferenceCardEditResponse> {
+		const preference = await this.editRow(user, preferenceId, {
+			content,
+			scope,
+			projectId,
+			userId,
+		});
+		const event = this.publish(threadId, {
+			type: 'preference-card',
+			runId,
+			agentId: orchestratorAgentId(runId),
+			payload: {
+				toolCallId,
+				preferenceId,
+				state: 'edited',
+				content: preference.content,
+				scope: aiPreferenceTargetOf(preference).scope,
+				projectId: preference.projectId,
+			},
+		});
+		return { preference, event };
+	}
+
+	/** Updates the row that a card shows, with the rules of the settings page, and reports it. */
+	async editRow(
+		user: User,
+		preferenceId: string,
+		{
+			content,
+			scope,
+			projectId,
+			userId,
+		}: {
+			content: string;
+			scope?: AiPreferenceScope;
+			projectId?: string | null;
+			userId?: string | null;
+		},
+	): Promise<AiPreferenceDto> {
+		this.requirePreferencesEnabled();
 		// The scope this edit found, for the report only. A card edit that names no scope
 		// leaves the target to the write itself, so a move that lands between this read and
 		// the write changes what is reported, never what is saved.
@@ -111,19 +168,6 @@ export class InstanceAiPreferenceCardService {
 		// between, and reading that as a move would credit this edit with someone else's.
 		const moved =
 			named && (before.scope !== after.scope || preference.projectId !== projectIdOf(before));
-		const event = this.publish(threadId, {
-			type: 'preference-card',
-			runId,
-			agentId: orchestratorAgentId(runId),
-			payload: {
-				toolCallId,
-				preferenceId,
-				state: 'edited',
-				content: preference.content,
-				scope: after.scope,
-				projectId: preference.projectId,
-			},
-		});
 		this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED, {
 			user_id: user.id,
 			surface: 'aia',
@@ -152,7 +196,7 @@ export class InstanceAiPreferenceCardService {
 				scope_changed: true,
 			});
 		}
-		return { preference, event };
+		return preference;
 	}
 
 	private publish(

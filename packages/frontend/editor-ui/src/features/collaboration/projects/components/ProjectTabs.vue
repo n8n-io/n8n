@@ -166,6 +166,7 @@ function onSelectTab(value: string | number) {
 		:model-value="selectedTabLabel"
 		:options="options"
 		data-test-id="project-tabs"
+		:show-border="true"
 		@update:model-value="onSelectTab"
 	/>
 </template>

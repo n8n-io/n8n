@@ -2,13 +2,15 @@ import { DateTime } from 'luxon';
 
 import { getBrowserUsePrompt } from './browser-use-prompt';
 import { COMMUNICATION_STYLE_SECTION } from './communication-style.prompt';
+import { ASK_USER_TOOL_ID, ORCHESTRATION_TOOL_IDS } from '../tools/tool-ids';
 import {
 	SCOPE_GROUNDING_GUARDRAIL,
 	SECRET_ASK_GUARDRAIL,
 	SECRET_PASTE_GUARDRAIL,
 } from './credential-guardrails.prompt';
 import { getSandboxWorkspaceSection, UNTRUSTED_CONTENT_DOCTRINE } from './shared-prompts';
-import type { BrowserUseState } from '../types';
+import { getWorkflowEngineSection } from './workflow-engine-prompt';
+import type { BrowserUseState, InstanceAiEngineSetup } from '../types';
 
 interface SystemPromptOptions {
 	browserUseState?: BrowserUseState;
@@ -23,12 +25,26 @@ interface SystemPromptOptions {
 	projectId?: string;
 	/** Absolute or host-relative sandbox workspace root for `<workspace_root>` paths in prompts. */
 	workspaceRoot?: string;
+	/** The import-files tool is wired; tell the model how to bring conversation files into the sandbox. */
+	fileImportEnabled?: boolean;
+	/** The list-files tool is wired; tell the model how to find the files of earlier turns. */
+	fileListingEnabled?: boolean;
+	/** The share-files tool is wired; tell the model how to give sandbox files to the user. */
+	fileSharingEnabled?: boolean;
+	/** The view-file tool is wired; tell the model how to look at the images it makes. */
+	fileViewingEnabled?: boolean;
 	conversationHistoryEnabled?: boolean;
 	/** The save_user_preference tool is wired; tell the model when to reach for it. */
 	preferenceSavingEnabled?: boolean;
+	/** The send_feedback tool is wired; tell the model when to report a problem. */
+	feedbackToolEnabled?: boolean;
 	skillManagementEnabled?: boolean;
+	/** The start-cloud-browser-task tool is wired; tell the model when and how to delegate to it. */
+	cloudBrowserEnabled?: boolean;
 	/** Setup panel v2 flag: `setup_workflow` announces instead of opening a card. */
 	setupPanelEnabled?: boolean;
+	/** The workflow engines of the instance. Adds the engine section only with the `engine-v2` module. */
+	engineSetup?: InstanceAiEngineSetup;
 }
 
 export function getDateTimeSection(timeZone?: string): string {
@@ -190,6 +206,50 @@ function getPreferenceSavingSection(): string {
 When the user's own words describe a lasting rule, choice, or thing to avoid for future work, not only for the current task, call \`save_user_preference\` and save it. Do not save a one-off instruction for the current task, and do not save casual chat. Do not tell the user you saved a preference until the tool returns a success. Tell them they can edit or undo it from the card in the chat. If the tool refuses the text as too long, shorten it to the limit the result names and call it once more. On any other refusal, tell the user why nothing was saved and do not call it again in this turn.`;
 }
 
+function getFeedbackSection(): string {
+	return `
+## Sending Feedback
+
+When you are not sure how to do something and no tool or doc answers it, a tool or n8n behaves wrong, or n8n cannot do what the user needs, call \`send_feedback\` once for that problem. Then continue with your best attempt, or tell the user what blocks you. No one replies to feedback, so never wait for an answer and never tell the user that the n8n team will help. This also applies when you build a workaround because n8n has no trigger, node or operation for what the user asked: send feedback with severity \`workaround\`, then build it.
+- Send feedback: the node definition and the docs disagree about a parameter. \`workflow_builder_build_workflow\` keeps rejecting valid code with the same error. The user needs a node operation that does not exist.
+- Do not send feedback: a credential is missing. The request is unclear (use \`ask_user\`). A validation error names the field to fix.`;
+}
+
+/** Which browser to use when the user's own browser is offered too. */
+function getBrowserSelectionGuidance(browserUseState?: BrowserUseState): string {
+	if (!browserUseState || browserUseState.status === 'unavailable') return '';
+
+	const intro = `
+The Browser Use section is about the user's own browser. When it says the user must connect their browser, that applies only to their browser, never to the virtual browser.`;
+
+	if (browserUseState.status === 'connected') {
+		return `${intro}
+- **The user's browser is connected**, so ask which browser to use before the first browser task in this conversation. Ask with \`${ASK_USER_TOOL_ID}\`: one single-choice question with \`required: true\`, "Which browser should I use?", and exactly these two options: "Your browser: runs directly in Chrome. The chat is paused while the Assistant completes the task." and "Virtual browser: runs in the background. You can keep chatting while the Assistant completes the task.". Do not ask when the user already said which, when this conversation already has the answer, or when a saved preference names one. The current request wins over a saved preference.`;
+	}
+	return `${intro}
+- **The user's browser is not connected**, so use the virtual browser and do not ask.`;
+}
+
+function getCloudBrowserSection(browserUseState?: BrowserUseState): string {
+	return `
+## Virtual Browser
+
+Use \`${ORCHESTRATION_TOOL_IDS.START_CLOUD_BROWSER_TASK}\` when the user asks you to look something up or do something on a website, and no node, API or web search covers it. Each task runs in the background in its own virtual browser, so you and the user can keep working. It needs no extension and no connection.
+${getBrowserSelectionGuidance(browserUseState)}
+
+- **When you talk to the user, just say "browser".** Never say "cloud browser". Say "virtual browser" only when you need to tell it apart from the user's own browser, for example when the user chooses which browser to use.
+- **Write a complete goal.** The browser agent cannot see this conversation. Say which site to use, what to find or do, and what to report back. Add \`startUrl\` when you know the page.
+- **The browser agent can get the user to sign in.** When a site needs a login, a two-factor code or a CAPTCHA, it asks the user to take over the browser, waits while they sign in through the live view, and continues. Never tell the browser agent to stop at a sign-in, and never ask the user for a password or to sign in before you start the task.
+- **Split independent goals into parallel tasks**, for example one task for each site to compare. Keep steps that depend on each other in one task.
+- **After you start a task**, tell the user in one sentence that it runs in the background. Continue with work that does not depend on it, or end your turn. Do not wait for it and do not poll. The result arrives as a follow-up message when the task ends.
+- **When a result arrives** in a \`<cloud-browser-task-completed>\` block, it has one \`<task>\` for each task that ended. Tell the user what the task was about and what it found, in a few sentences, then continue any work that waited for it.
+- **When a task did not finish**, its \`outcome\` says why. \`denied\`: the user denied an approval that the task needed. \`cancelled\`: the user or n8n stopped the task. \`unreported\`: the browser agent answered without confirming its result, so its summary is its last message. Pass on what it found and say it is unconfirmed. Tell the user what happened. Do not start the task again unless the user asks.
+- **Tasks that still run** are listed in a \`<running-tasks>\` block in the latest message. Blocks in earlier messages are out of date. A task that is not listed in the latest message has ended, and with no such block, none is running. Never tell the user a task is still running when it is not listed.
+- **When a task is blocked** because a site blocks automated browsers, or because the user did not return control of the browser, tell the user plainly.
+- **Creating credentials:** the browser agent can create new n8n credentials from secrets it finds on a page, for example an API key or a login. It cannot update an existing credential. The user approves each one. Pass each one in \`credentialsToCreate\` with its type (find it with \`search_credential_types\`) and a name. Never put the secret values in the goal, and never ask the user to paste them into chat.
+- The browser agent asks the user for site approvals itself. Do not ask for them before you start a task.`;
+}
+
 function getLicenseLimitationsSection(licenseHints?: string[]): string {
 	if (!licenseHints?.length) return '';
 
@@ -268,20 +328,28 @@ export function createSystemPromptRenderer(communicationStyleSection: string) {
 			parameterValuesHidden,
 			projectId,
 			workspaceRoot,
+			fileImportEnabled,
+			fileListingEnabled,
+			fileSharingEnabled,
+			fileViewingEnabled,
 			conversationHistoryEnabled,
 			preferenceSavingEnabled,
+			feedbackToolEnabled,
 			skillManagementEnabled,
+			cloudBrowserEnabled,
 			setupPanelEnabled,
+			engineSetup,
 		} = options;
 
 		return `You are the n8n Instance Agent — a helpful AI assistant embedded in an n8n instance. Your job is to understand the user's request and load the skills that match it. Once a skill is loaded, learn it in depth before continuing. You are also encouraged to call skills at any point in the conversation if it will help you achieve the user's goal. Match the user's request against skill descriptions in the catalog. Call \`load_skill\` before acting on a matched skill's guidance. A single turn may need more than one skill when routing requires it. Tool descriptions carry any load-before-call gates (\`load_skill\`).
 
-${workspaceRoot ? `${getSandboxWorkspaceSection(workspaceRoot)}` : ''}
+${workspaceRoot ? `${getSandboxWorkspaceSection(workspaceRoot, { fileImportEnabled, fileListingEnabled, fileSharingEnabled, fileViewingEnabled })}` : ''}
 ${getProjectScopeSection(projectId)}
 ${getExistingResourcesSection()}
 ${getPreviewTabsSection()}
 ${conversationHistoryEnabled ? getConversationRecallSection() : ''}
 ${preferenceSavingEnabled ? getPreferenceSavingSection() : ''}
+${feedbackToolEnabled ? getFeedbackSection() : ''}
 ${SECRET_ASK_GUARDRAIL}
 ${SECRET_PASTE_GUARDRAIL}
 ${getToolDiscoverySection(toolSearchEnabled, mcpToolSearchEnabled)}
@@ -315,9 +383,10 @@ Don't fabricate provider setup mechanics (credential field names, secret values,
 ${UNTRUSTED_CONTENT_DOCTRINE}
 
 ${getBrowserUsePrompt({ state: browserUseState })}
+${cloudBrowserEnabled ? getCloudBrowserSection(browserUseState) : ''}
 ${getLicenseLimitationsSection(licenseHints)}
 ${getReadOnlySection(branchReadOnly, skillManagementEnabled)}
-${getLimitedModeSection(parameterValuesHidden)}
+${getLimitedModeSection(parameterValuesHidden)}${getWorkflowEngineSection(engineSetup)}
 
 ## Reply language
 

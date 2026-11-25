@@ -23,6 +23,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'update:tab': [tab: WorkflowReviewDetailTab];
 	decide: [input: WorkflowReviewDecisionInput];
+	close: [];
 }>();
 
 const i18n = useI18n();
@@ -55,6 +56,7 @@ watch(
 
 const viewerCanDecide = computed(() => detail.value?.viewerCanDecide ?? false);
 const viewerCanComment = computed(() => detail.value?.viewerCanComment ?? false);
+const viewerCanClose = computed(() => detail.value?.viewerCanClose ?? false);
 
 // See the key's doc: read-time names for feed entries, never snapshotted into payloads.
 provide(
@@ -76,11 +78,12 @@ provide(
 
 const ineligibilityHint = computed(() => {
 	if (!detail.value || detail.value.viewerCanDecide) return '';
-	// Any reason other than 'author' gets the generic permission hint, so new
-	// backend reasons degrade gracefully instead of breaking the UI.
-	return detail.value.viewerDecisionIneligibilityReason === 'author'
-		? i18n.baseText('workflowReviews.detail.decision.ineligible.author')
-		: i18n.baseText('generic.missing.permissions');
+	if (detail.value.viewerDecisionIneligibilityReason === 'author') {
+		return i18n.baseText('workflowReviews.detail.decision.ineligible.author');
+	}
+	// Any other reason gets the generic permission hint, so new backend reasons degrade
+	// gracefully. A viewer who may close gets none: it would sit next to a working button.
+	return detail.value.viewerCanClose ? '' : i18n.baseText('generic.missing.permissions');
 });
 
 /**
@@ -125,7 +128,6 @@ const tabOptions = computed(() => [
 			<N8nTabs
 				:model-value="tab"
 				:options="tabOptions"
-				variant="modern"
 				data-test-id="workflow-review-detail-tab-bar"
 				@update:model-value="emit('update:tab', $event)"
 			/>
@@ -134,12 +136,13 @@ const tabOptions = computed(() => [
 				detail payload, so the list item alone can't say who may decide. -->
 			<div v-if="detail?.state === 'open'" :class="$style.decisionActions">
 				<WorkflowReviewDecisionPopover
+					:review-title="detail.title"
 					:deciding="deciding"
 					:viewer-can-decide="viewerCanDecide"
-					:viewer-can-comment="viewerCanComment"
+					:viewer-can-close="viewerCanClose"
 					:ineligibility-hint="ineligibilityHint"
 					@decide="emit('decide', $event)"
-					@comment-posted="emit('update:tab', 'activity')"
+					@close="emit('close')"
 				/>
 			</div>
 		</div>
@@ -194,8 +197,7 @@ const tabOptions = computed(() => [
 							</div>
 						</N8nCallout>
 					</template>
-					<!-- Closed reviews take no new comments (the backend 409s) -->
-					<template v-if="review.state === 'open'" #composer>
+					<template #composer>
 						<WorkflowReviewCommentComposer :can-comment="viewerCanComment" />
 					</template>
 				</WorkflowReviewActivityFeed>

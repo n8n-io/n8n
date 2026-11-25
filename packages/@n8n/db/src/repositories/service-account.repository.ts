@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { DataSource } from '@n8n/typeorm';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { BaseRepository } from './base-repository';
 import {
@@ -88,6 +88,21 @@ export class ServiceAccountRepository {
 				}),
 			);
 			return { serviceAccount, project };
+		});
+	}
+
+	/**
+	 * Renames the account and its personal project in one transaction, because
+	 * the project takes the account name. The name must not be blank.
+	 */
+	async rename(id: string, name: string, ctx: OperationContext = {}) {
+		if (name.trim() === '') {
+			throw new UnexpectedError('A service account needs a name');
+		}
+
+		await this.table.runInTransaction(ctx, async (tx) => {
+			await tx.update(ServiceAccountDetails, { userId: id }, { name });
+			await tx.update(Project, { type: 'personal', creatorId: id }, { name });
 		});
 	}
 }

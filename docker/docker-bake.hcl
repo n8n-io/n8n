@@ -8,7 +8,7 @@
 variable "NODE_VERSION" { default = "26.13.0" }
 
 # n8nio/base builds on these. The tag of each base is the Node version of its
-# DHI ref. No n8n image uses the Node 22 and 24 bases.
+# DHI ref. The Node 24 base supplies the 1.x runtime image.
 variable "DHI_REF" {
   default = "dhi.io/node:26.13.0-alpine3.24-dev@sha256:3e61a81f5d83780aff01cb2d8f2251698bf3fe7d522bef71a9656fa93333b504"
 }
@@ -37,13 +37,18 @@ variable "DEBIAN_RUNTIME_IMAGE" {
   default = "n8nio/base:26.13.0-debian-b23a3454e958998b052277c130ee6f9f027427f0@sha256:cbdcf28cd718a9a3c8490cd2ee80dd61869e19e3a663ab0f7b762eb5e7ee2f4a"
 }
 
-# Published by build-node-pc-image.yml on master.
+# Published by build-node-pc-image.yml on master. The n8n image compiles native
+# addons in these images and copies their compiled Node onto RUNTIME_IMAGE.
+variable "N8N_BUILDER_IMAGE" {
+  default = "n8nio/node-patched:26.13.0-6484e2d8092f46c7ce7a4fbd97847ba3cb539e72-dev@sha256:2bb25015cc92814809410aaab21ad5696a901a2f58c9bce6ed5faeafe4fd5f15"
+}
 variable "PC_BUILDER_IMAGE" {
-  default = "n8nio/node-pc:26.13.0-b23a3454e958998b052277c130ee6f9f027427f0-dev@sha256:13b88649776f735e4c2dd2818eb754f6fcd55a3444a114559d58995e55785b1b"
+  default = "n8nio/node-pc:26.13.0-c191db3de7f8187af3f35a59c2a1ca6833c66afc-dev@sha256:c1ff9dd826920453d5ab67cb3daaa4b3efb5270cf45d65b7f393bee7c4ff1857"
 }
-variable "PC_RUNTIME_IMAGE" {
-  default = "n8nio/node-pc:26.13.0-b23a3454e958998b052277c130ee6f9f027427f0@sha256:16ce0475bc1336d7aaa877bbfc3c346d6355805594f3065c217655ee0fb0c4fc"
-}
+
+# Input of n8nio/node-patched for the 1.x image.
+# build-node-pc-image.yml publishes node-patched on master.
+variable "NODE_24_VERSION" { default = "24.22.3" }
 
 # Other base images. The runners take their Python version from the image tag.
 variable "ALPINE_IMAGE" {
@@ -117,8 +122,9 @@ target "n8n" {
   dockerfile = "docker/images/n8n/Dockerfile"
   tags       = tags(N8N_TAGS, "${IMAGE_BASE_NAME}:${IMAGE_TAG}")
   args = {
-    BUILDER_IMAGE = BUILDER_IMAGE
-    RUNTIME_IMAGE = RUNTIME_IMAGE
+    BUILDER_IMAGE              = N8N_BUILDER_IMAGE
+    RUNTIME_IMAGE              = RUNTIME_IMAGE
+    ENABLE_POINTER_COMPRESSION = "false"
   }
 }
 
@@ -126,9 +132,9 @@ target "n8n-pc" {
   inherits = ["n8n"]
   tags     = tags(N8N_PC_TAGS, "${IMAGE_BASE_NAME}:${IMAGE_TAG}-pc")
   args = {
-    BUILDER_IMAGE     = PC_BUILDER_IMAGE
-    RUNTIME_IMAGE     = PC_RUNTIME_IMAGE
-    IMAGE_DESCRIPTION = "Workflow Automation Tool (pointer-compressed variant, internal to n8n Cloud, no support or stability guarantees)"
+    BUILDER_IMAGE              = PC_BUILDER_IMAGE
+    ENABLE_POINTER_COMPRESSION = "true"
+    IMAGE_DESCRIPTION          = "Workflow Automation Tool (pointer-compressed variant, internal to n8n Cloud, no support or stability guarantees)"
   }
 }
 
@@ -210,17 +216,38 @@ target "base-node-24" {
   tags     = ["n8nio/base:${dhi_node_version(NODE_24_DHI_REF)}"]
 }
 
-# build-node-pc-image.yml builds the runtime and dev stages and sets the tags.
+# build-node-pc-image.yml builds the dev stage of all Node source builds and
+# sets the tags. None of these depend on RUNTIME_IMAGE, so OS base refreshes
+# do not recompile Node.
 target "node-pc" {
   inherits   = ["_context"]
   dockerfile = "docker/images/node-pc/Dockerfile"
-  target     = "runtime"
+  target     = "dev"
   args = {
-    NODE_VERSION  = NODE_VERSION
-    ALPINE_IMAGE  = ALPINE_IMAGE
-    RUNTIME_IMAGE = RUNTIME_IMAGE
+    NODE_VERSION               = NODE_VERSION
+    ALPINE_IMAGE               = ALPINE_IMAGE
+    ENABLE_POINTER_COMPRESSION = "true"
   }
-  tags = ["n8nio/node-pc:${NODE_VERSION}"]
+  tags = ["n8nio/node-pc:${NODE_VERSION}-dev"]
+}
+
+# Stock-configured Node 24 with the same V8 patches, for the 1.x image.
+target "node-patched-24" {
+  inherits = ["node-pc"]
+  args = {
+    NODE_VERSION               = NODE_24_VERSION
+    ENABLE_POINTER_COMPRESSION = "false"
+  }
+  tags = ["n8nio/node-patched:${NODE_24_VERSION}-dev"]
+}
+
+# Stock-configured Node 26 with the same V8 patches, for the release images.
+target "node-patched-26" {
+  inherits = ["node-pc"]
+  args = {
+    ENABLE_POINTER_COMPRESSION = "false"
+  }
+  tags = ["n8nio/node-patched:${NODE_VERSION}-dev"]
 }
 
 group "default" { targets = ["n8n", "runners"] }

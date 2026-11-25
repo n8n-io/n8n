@@ -3,15 +3,10 @@ import { SPLIT_BUILDER_TOOLS } from '@n8n/api-types';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { resolvePromptProfile } from '../../prompts/prompt-profiles';
 import { ALWAYS_LOADED_TOOL_NAMES } from '../../tools/tool-ids';
 import { POST_BUILD_FLOW_CUES } from '../context-cues/post-build-flow.cues';
 import { WORKFLOW_BUILDER_CUES } from '../context-cues/workflow-builder.cues';
-import {
-	INSTANCE_AI_SKILLS_DIR,
-	loadInstanceAiPromptSkills,
-	loadInstanceAiSkills,
-} from '../skills';
+import { INSTANCE_AI_SKILLS_DIR, loadInstanceAiSkills } from '../skills';
 
 const ORIGINAL_ENABLED_MODULES = process.env.N8N_ENABLED_MODULES;
 const AGENT_BUILDING_SKILL_IDS = ['agent-builder', 'intent-recognition'];
@@ -141,17 +136,6 @@ describe('Instance AI skills', () => {
 		expect(postBuildFlow).toMatch(/load the\s+`credential-recipe-research` reference/);
 	});
 
-	// Routing needs intent-recognition once per request; carrying its body for the
-	// rest of the thread costs every later call ~7K tokens.
-	it('expires intent-recognition when the next user turn starts', async () => {
-		for (const version of ['default@1', 'progressive@1']) {
-			const { profile } = resolvePromptProfile({ version });
-			const { source } = await loadInstanceAiPromptSkills(profile);
-			const entry = source.registry.skills.find((skill) => skill.id === 'intent-recognition');
-			expect(entry?.policy?.lifetime).toBe('turn');
-		}
-	});
-
 	it('lists only top-level skills in the catalog', () => {
 		const source = loadInstanceAiSkills();
 		const topLevel = source.registry.skills.filter((skill) => !skill.parents).map(({ id }) => id);
@@ -164,7 +148,6 @@ describe('Instance AI skills', () => {
 			'instance-awareness',
 			'intent-recognition',
 			'n8n-docs-assistant',
-			'progressive-building',
 			'suggest-automations',
 			'v3-migration',
 			'workflow-builder',
@@ -178,10 +161,25 @@ describe('Instance AI skills', () => {
 		expect(skill?.instructions).not.toContain('additionalInstructions');
 	});
 
+	it('recommends the app builder only for the apps tool group', async () => {
+		const skill = await loadInstanceAiSkills().loadSkill('app-builder');
+
+		// A broad group such as `tools` would suggest the skill for requests that are not about apps.
+		expect(skill?.recommendedToolGroups).toEqual(['apps']);
+	});
+
+	it('tells workflows where to read the app visitor', async () => {
+		const skill = await loadInstanceAiSkills().loadSkill('app-builder');
+
+		expect(skill?.instructions).toContain("$execution.customData.get('appVisitor')");
+		expect(skill?.instructions).toContain('Read `appVisitor` only in a Code node');
+		expect(skill?.instructions).toContain('By default, bind data tables to the app');
+	});
+
 	it('opens a newly created app before editing its files', async () => {
 		const skill = await loadInstanceAiSkills().loadSkill('app-builder');
 
-		expect(skill?.instructions).toContain('`action: "open"` and the returned `app.id`');
+		expect(skill?.instructions).toContain('call `open_app` with the returned `app.id`');
 	});
 
 	it('builds the layout of a new app before it creates resources', async () => {
@@ -320,21 +318,6 @@ describe('Instance AI skills', () => {
 		expect(playbook).toContain('Config Eval Playbook');
 	});
 
-	it('keeps the progressive-building fragment out of both profile catalogs', async () => {
-		const source = loadInstanceAiSkills();
-		const progressive = source.registry.skills.find(
-			(skill) => skill.name === 'progressive-building',
-		);
-		expect(progressive?.id).toBe('progressive-building');
-		for (const mode of ['default', 'progressive'] as const) {
-			const { source: selected } = await loadInstanceAiPromptSkills(
-				resolvePromptProfile({ mode }).profile,
-			);
-			expect(selected.registry.skills.map(({ id }) => id)).not.toContain('progressive-building');
-			await expect(selected.loadSkill('progressive-building')).resolves.toBeNull();
-		}
-	});
-
 	it('loads the bundled Agents module skills', async () => {
 		const source = loadInstanceAiSkills();
 		const loadTool = createSkillLoadTool(source);
@@ -450,6 +433,7 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain('workspace source file');
 		expect(loaded?.instructions).toContain('`search_nodes` with `categories`');
 		expect(loaded?.instructions).toContain('`search_nodes` with `query`/`queries`');
+		expect(loaded?.instructions).toMatch(/prefer its app-specific trigger node/i);
 		expect(loaded?.instructions).toContain("newCredential('Credential Name', 'credential-id')");
 		expect(loaded?.instructions).toContain('Verification');
 		expect(loaded?.instructions).toContain('Build/save success is not workflow-quality evidence');
@@ -468,7 +452,6 @@ describe('Instance AI skills', () => {
 		expect(loaded?.instructions).toContain('Prefer n8n sources over guessing');
 		expect(loaded?.instructions).toContain('knowledge base');
 		expect(loaded?.instructions).toContain('n8n-docs-assistant');
-		expect(loaded?.instructions).toContain('never load `templates/index.json`');
 		expect(loaded?.instructions).toContain('node-types/index.txt');
 		// Eval-driven rules arrive as retrieved context cues, not in the skill body.
 		const builderCueText = WORKFLOW_BUILDER_CUES.cues.map(({ text }) => text).join('\n');
@@ -525,7 +508,7 @@ describe('Instance AI skills', () => {
 		const source = loadInstanceAiSkills();
 		const skill = source.registry.skills.find((entry) => entry.name === 'post-build-flow');
 
-		expect(skill?.description).toContain('workflow-verification-follow-up');
+		expect(skill?.description).toContain('workflow-setup-required');
 		expect(skill?.parents).toEqual(['workflow-builder']);
 
 		const loaded = await source.loadSkill('post-build-flow');

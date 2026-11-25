@@ -57,19 +57,19 @@ vi.mock('./WorkflowReviewDetailMetadata.vue', () => ({
 	},
 }));
 
-// The real popover cannot open in jsdom (Reka UI), so expose what this component passes
-// down as attributes and let a button stand in for the comment it reports back.
+// Expose what this component passes down as attributes, and let a button stand in for the close.
 vi.mock('./WorkflowReviewDecisionPopover.vue', () => ({
 	default: {
 		name: 'WorkflowReviewDecisionPopover',
-		props: ['deciding', 'viewerCanDecide', 'viewerCanComment', 'ineligibilityHint'],
+		props: ['deciding', 'viewerCanDecide', 'viewerCanClose', 'ineligibilityHint'],
 		template: `
 			<div
 				data-test-id="workflow-review-decision-popover"
 				:data-can-decide="viewerCanDecide"
+				:data-can-close="viewerCanClose"
 				:data-ineligibility-hint="ineligibilityHint"
 			>
-				<button data-test-id="emit-comment-posted" @click="$emit('comment-posted')" />
+				<button data-test-id="emit-close" @click="$emit('close')" />
 			</div>`,
 	},
 }));
@@ -118,6 +118,7 @@ function makeDetail(
 		viewerCanDecide: true,
 		viewerDecisionIneligibilityReason: null,
 		viewerCanComment: true,
+		viewerCanClose: true,
 		...overrides,
 	};
 }
@@ -128,11 +129,11 @@ describe('WorkflowReviewDetailTabs', () => {
 	});
 
 	it('lets the viewer switch between the Activity and Changes tabs', async () => {
-		const { getByText, emitted } = renderComponent({
+		const { getByRole, emitted } = renderComponent({
 			props: { review: makeDetail(), tab: 'activity', deciding: false },
 		});
 
-		getByText('Changes').click();
+		await userEvent.click(getByRole('tab', { name: 'Changes' }));
 
 		expect(emitted('update:tab')).toEqual([['changes']]);
 	});
@@ -279,8 +280,8 @@ describe('WorkflowReviewDetailTabs', () => {
 			});
 		});
 
-		it('does not render the composer on closed reviews', () => {
-			const { getByTestId, queryByTestId } = renderComponent({
+		it('still takes comments on a closed review', () => {
+			const { getByTestId } = renderComponent({
 				props: {
 					review: makeDetail({ state: 'closed', decision: 'approved' }),
 					tab: 'activity',
@@ -288,8 +289,7 @@ describe('WorkflowReviewDetailTabs', () => {
 				},
 			});
 
-			expect(getByTestId('workflow-review-activity-feed')).toBeInTheDocument();
-			expect(queryByTestId('workflow-review-comment-composer')).not.toBeInTheDocument();
+			expect(getByTestId('workflow-review-comment-composer')).toBeInTheDocument();
 		});
 	});
 
@@ -415,18 +415,6 @@ describe('WorkflowReviewDetailTabs', () => {
 	});
 
 	describe('decision actions', () => {
-		// The trigger lives outside the tab panel, so a comment posted from the Changes tab
-		// would otherwise succeed with nothing to show for it.
-		it('switches to the activity tab once a comment was posted from the popover', () => {
-			const { getByTestId, emitted } = renderComponent({
-				props: { review: makeDetail(), tab: 'changes', deciding: false },
-			});
-
-			getByTestId('emit-comment-posted').click();
-
-			expect(emitted('update:tab')).toEqual([['activity']]);
-		});
-
 		it('offers no decision on a closed review', () => {
 			const { queryByTestId } = renderComponent({
 				props: {
@@ -477,12 +465,35 @@ describe('WorkflowReviewDetailTabs', () => {
 			);
 		});
 
+		it('lets a requester who cannot decide close the review', () => {
+			const { getByTestId, emitted } = renderComponent({
+				props: {
+					review: makeDetail({
+						viewerCanDecide: false,
+						viewerDecisionIneligibilityReason: 'author',
+						viewerCanClose: true,
+					}),
+					tab: 'activity',
+					deciding: false,
+				},
+			});
+
+			expect(getByTestId('workflow-review-decision-popover')).toHaveAttribute(
+				'data-can-close',
+				'true',
+			);
+			getByTestId('emit-close').click();
+
+			expect(emitted('close')).toHaveLength(1);
+		});
+
 		it('falls back to the generic permission hint for any other reason', () => {
 			const { getByTestId } = renderComponent({
 				props: {
 					review: makeDetail({
 						viewerCanDecide: false,
 						viewerDecisionIneligibilityReason: 'missing_reviewer_permission',
+						viewerCanClose: false,
 					}),
 					tab: 'activity',
 					deciding: false,
@@ -494,6 +505,25 @@ describe('WorkflowReviewDetailTabs', () => {
 			expect(popover).toHaveAttribute(
 				'data-ineligibility-hint',
 				'Missing permissions to perform this action',
+			);
+		});
+
+		it('shows no permission hint to a viewer who may still close the review', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					review: makeDetail({
+						viewerCanDecide: false,
+						viewerDecisionIneligibilityReason: 'missing_permission',
+						viewerCanClose: true,
+					}),
+					tab: 'activity',
+					deciding: false,
+				},
+			});
+
+			expect(getByTestId('workflow-review-decision-popover')).toHaveAttribute(
+				'data-ineligibility-hint',
+				'',
 			);
 		});
 	});

@@ -1,5 +1,6 @@
+import { UserError } from '@n8n/errors';
 import type { IExecuteData, IExecuteFunctions, INode } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestUrl } from 'n8n-workflow';
 import { mock, mockDeep, mockReset } from 'vitest-mock-extended';
 
 import { execute } from './message.operation';
@@ -56,7 +57,7 @@ describe('Google Gemini message model identity', () => {
 			'googlePalmApi',
 			expect.objectContaining({
 				method: 'POST',
-				url: 'https://generativelanguage.googleapis.com/v1beta/models/gemma-4-26b-a4b-it:generateContent',
+				url: requestUrl`https://generativelanguage.googleapis.com/v1beta/models/gemma-4-26b-a4b-it:generateContent`,
 				body: expect.objectContaining({
 					contents: [{ role: 'user', parts: [{ text: 'Hello, world!' }] }],
 				}),
@@ -66,6 +67,20 @@ describe('Google Gemini message model identity', () => {
 		expect(executeFunctionsMock.setMetadata).toHaveBeenCalledExactlyOnceWith({
 			tokenUsage: { inputTokens: 10, outputTokens: 5 },
 		});
+	});
+
+	it('should report the block reason when Gemini blocks the prompt', async () => {
+		executeFunctionsMock.helpers.httpRequestWithAuthentication.mockResolvedValue({
+			promptFeedback: {
+				blockReason: 'PROHIBITED_CONTENT',
+				blockReasonMessage: 'The prompt is not allowed',
+			},
+		});
+
+		const result = execute.call(executeFunctionsMock, 0);
+
+		await expect(result).rejects.toBeInstanceOf(UserError);
+		await expect(result).rejects.toThrow('Gemini blocked the prompt (reason: PROHIBITED_CONTENT)');
 	});
 
 	it('should reject a successful Gemini 3 Flash response when a Gemma model is configured', async () => {

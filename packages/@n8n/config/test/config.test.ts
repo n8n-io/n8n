@@ -293,6 +293,7 @@ describe('GlobalConfig', () => {
 				schedulerMetricsInterval: 20,
 				includePollTriggerMetrics: false,
 				includeSystemTaskMetrics: false,
+				includeAgentMetrics: false,
 				activeWorkflowCountInterval: 60,
 				includeWorkflowStatistics: false,
 				workflowStatisticsInterval: 300,
@@ -308,6 +309,7 @@ describe('GlobalConfig', () => {
 				includeWorkflowPublicationMetrics: false,
 				includeMcpPostSaveMetrics: false,
 				workflowPublicationMetricInterval: 60,
+				includeExecutionLedgerMetrics: false,
 			},
 			additionalNonUIRoutes: '',
 			agentWebhook: 'agent-webhook',
@@ -373,8 +375,10 @@ describe('GlobalConfig', () => {
 			vertexServiceAccountJson: '',
 			mcpServers: '',
 			browserUseEnabled: true,
+			cloudBrowserEnabled: true,
 			observerMessageTokens: 30_000,
-			memoryModel: '',
+			utilityModel: '',
+			approvalJudgeModel: '',
 			midRunObservation: true,
 			sandboxEnabled: false,
 			sandboxProvider: 'n8n-sandbox',
@@ -475,6 +479,14 @@ describe('GlobalConfig', () => {
 			grantTokenTtl: 30,
 			insecureMode: false,
 		},
+		codeExecution: {
+			backend: 'task-runners',
+			sandbox: {
+				url: '',
+				apiKey: '',
+				scope: 'execution',
+			},
+		},
 		sentry: {
 			backendDsn: '',
 			frontendDsn: '',
@@ -526,12 +538,12 @@ describe('GlobalConfig', () => {
 			jitterRatio: 0.1,
 			maxConcurrentPasses: 10,
 			triggerNodeMode: 'new',
-			enabledForPollTriggers: false,
+			enabledForPollTriggers: true,
 			pollTimeoutSeconds: 45,
 			maxAttempts: 5,
 			taskTimeoutSeconds: 300,
 			misfireGraceSeconds: 60,
-			durableCursorsEnabled: false,
+			durableCursorsEnabled: true,
 			enabledForSystemTasks: false,
 			enabledForAgentTasks: false,
 			ownerReconciliationEnabled: true,
@@ -540,6 +552,11 @@ describe('GlobalConfig', () => {
 			ownerReconciliationBatchSize: 500,
 			ownerQuarantineGraceSeconds: 86400,
 			ownerSettleSeconds: 300,
+		},
+		leases: {
+			leaseSeconds: 20,
+			renewSeconds: 5,
+			marginSeconds: 5,
 		},
 		evaluation: {
 			collectionsEnabled: false,
@@ -564,7 +581,7 @@ describe('GlobalConfig', () => {
 		security: {
 			restrictFileAccessTo: '~/.n8n-files',
 			blockFileAccessToN8nFiles: true,
-			blockFilePatterns: '^(?:[^/]*/)*\\.git(?:/.*)?$',
+			blockFilePatterns: '(?:^|/)\\.git(?:/|$)',
 			daysAbandonedWorkflow: 90,
 			contentSecurityPolicy: undefined,
 			contentSecurityPolicyReportOnly: DEFAULT_CONTENT_SECURITY_POLICY,
@@ -747,6 +764,8 @@ describe('GlobalConfig', () => {
 			mfaEnforcedEnabled: false,
 			personalSpacePublishingEnabled: true,
 			personalSpaceSharingEnabled: true,
+			workflowReviewsEnabled: false,
+			workflowReviewsAlwaysRequired: false,
 			samlMetadata: '',
 			samlMetadataUrl: '',
 			samlLoginEnabled: false,
@@ -754,6 +773,10 @@ describe('GlobalConfig', () => {
 			logStreamingDestinations: '',
 			mcpManagedByEnv: false,
 			mcpAccessEnabled: false,
+			skillSyncManagedByEnv: false,
+			skillSyncEnabled: false,
+			preferencesManagedByEnv: false,
+			preferencesEnabled: false,
 			communityPackagesManagedByEnv: false,
 			communityPackages: '',
 		},
@@ -764,7 +787,9 @@ describe('GlobalConfig', () => {
 			tracingRecordInputs: true,
 			tracingRecordOutputs: true,
 			modules: [],
+			humanReviewEnabled: false,
 			backgroundTasksEnabled: false,
+			serviceAccountsEnabled: false,
 			sandboxEnabled: false,
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
 			sandboxSnapshot: 'daytonaio/sandbox:0.8.0',
@@ -802,11 +827,11 @@ describe('GlobalConfig', () => {
 
 	it('should parse N8N_POLLER_DURABLE_CURSORS_ENABLED from env variables', () => {
 		process.env = {
-			N8N_POLLER_DURABLE_CURSORS_ENABLED: 'true',
+			N8N_POLLER_DURABLE_CURSORS_ENABLED: 'false',
 		};
 		const config = Container.get(GlobalConfig);
 
-		expect(config.scheduler.durableCursorsEnabled).toBe(true);
+		expect(config.scheduler.durableCursorsEnabled).toBe(false);
 	});
 
 	it('should parse N8N_AGENTS_TRACING_RECORD_INPUTS from env variables', () => {
@@ -875,9 +900,13 @@ describe('GlobalConfig', () => {
 			N8N_GLOBAL_USER_AGENT_VALUE: 'AcmeCorp/1.0',
 			N8N_AGENTS_AI_SANDBOX_EPHEMERAL: 'true',
 			N8N_AGENTS_AI_SANDBOX_SNAPSHOT: 'n8n/agent-knowledge:1.2.3',
+			N8N_WORKFLOW_REVIEWS_ENABLED: 'true',
+			N8N_WORKFLOW_REVIEWS_ALWAYS_REQUIRED: 'true',
 		};
 		const config = Container.get(GlobalConfig);
 
+		// structuredClone omits prototype getters.
+		const { humanReviewEnabled: _humanReviewEnabled, ...agentDefaults } = defaultConfig.agents;
 		expect(structuredClone(config)).toEqual({
 			...defaultConfig,
 			database: {
@@ -930,9 +959,14 @@ describe('GlobalConfig', () => {
 				responseBodyReadTimeout: 300000,
 			},
 			agents: {
-				...defaultConfig.agents,
+				...agentDefaults,
 				sandboxEphemeral: true,
 				sandboxSnapshot: 'n8n/agent-knowledge:1.2.3',
+			},
+			instanceSettingsLoader: {
+				...defaultConfig.instanceSettingsLoader,
+				workflowReviewsEnabled: true,
+				workflowReviewsAlwaysRequired: true,
 			},
 		});
 		expect(readFileSyncMock).not.toHaveBeenCalled();

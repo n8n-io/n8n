@@ -1,3 +1,4 @@
+import { CREDENTIAL_DESCRIPTION_MAX_LENGTH } from '../../../schemas/credential-description.schema';
 import { serializedCredentialSchema } from '../credential.schema';
 
 describe('serializedCredentialSchema', () => {
@@ -5,6 +6,29 @@ describe('serializedCredentialSchema', () => {
 		const credential = { id: 'cred-1', name: 'GitHub', type: 'githubApi' };
 
 		expect(() => serializedCredentialSchema.parse(credential)).not.toThrow();
+	});
+
+	it.each(['Prod key', null, undefined])('accepts the description %s', (description) => {
+		const credential = { id: 'cred-1', name: 'GitHub', type: 'githubApi', description };
+
+		expect(() => serializedCredentialSchema.parse(credential)).not.toThrow();
+	});
+
+	it('rejects a description over the length limit', () => {
+		const credential = {
+			id: 'cred-1',
+			name: 'GitHub',
+			type: 'githubApi',
+			description: 'x'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH + 1),
+		};
+
+		expect(() => serializedCredentialSchema.parse(credential)).toThrow();
+	});
+
+	it('rejects a description that is not a string', () => {
+		const credential = { id: 'cred-1', name: 'GitHub', type: 'githubApi', description: 5 };
+
+		expect(() => serializedCredentialSchema.parse(credential)).toThrow();
 	});
 
 	it('accepts nested expression data', () => {

@@ -8,15 +8,14 @@ import type { MemorySaver, StateSnapshot } from '@langchain/langgraph';
 import { Command, GraphRecursionError } from '@langchain/langgraph';
 import type { SelectedNodeContext } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import {
-	OperationalError,
-	UserError,
-	type INodeTypeDescription,
-	type IRunExecutionData,
-	type ITelemetryTrackProperties,
-	type IWorkflowBase,
-	type NodeExecutionSchema,
+import type {
+	INodeTypeDescription,
+	IRunExecutionData,
+	ITelemetryTrackProperties,
+	IWorkflowBase,
+	NodeExecutionSchema,
 } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 
 import { MAX_AI_BUILDER_PROMPT_LENGTH, MAX_MULTI_AGENT_STREAM_ITERATIONS } from '@/constants';
 

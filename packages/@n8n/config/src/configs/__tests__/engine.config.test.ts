@@ -75,6 +75,15 @@ describe('EngineConfig', () => {
 		expect(Container.get(EngineConfig).controlPlaneBaseUrl).toBe('http://cp.internal:5678');
 	});
 
+	it('should leave the engine roles empty by default and read them as given', () => {
+		expect(Container.get(EngineConfig).roles).toBe('');
+
+		Container.reset();
+		process.env.N8N_ENGINE_ROLES = 'api,orchestrator';
+
+		expect(Container.get(EngineConfig).roles).toBe('api,orchestrator');
+	});
+
 	it('should host the data plane in-process by default', () => {
 		expect(Container.get(EngineConfig).mode).toBe('in-process');
 	});
@@ -100,6 +109,47 @@ describe('EngineConfig', () => {
 		process.env.N8N_ENGINE_DEFAULT_TYPE = 'v2';
 
 		expect(Container.get(EngineConfig).defaultType).toBe('v2');
+	});
+
+	describe.each([
+		{ key: 'stepConcurrency', envVar: 'N8N_ENGINE_STEP_CONCURRENCY', defaultValue: 1 },
+		{
+			key: 'orchestrationConcurrency',
+			envVar: 'N8N_ENGINE_ORCHESTRATION_CONCURRENCY',
+			defaultValue: 1,
+		},
+		{ key: 'databasePoolSize', envVar: 'N8N_ENGINE_DATABASE_POOL_SIZE', defaultValue: 10 },
+		{
+			key: 'databaseConnectionTimeoutMs',
+			envVar: 'N8N_ENGINE_DATABASE_CONNECTION_TIMEOUT',
+			defaultValue: 20_000,
+		},
+	] as const)('$envVar', ({ key, envVar, defaultValue }) => {
+		it(`should default to ${defaultValue}`, () => {
+			expect(Container.get(EngineConfig)[key]).toBe(defaultValue);
+		});
+
+		it('should read a positive integer', () => {
+			process.env[envVar] = '25';
+
+			expect(Container.get(EngineConfig)[key]).toBe(25);
+		});
+
+		it('should reject 0 and fall back to the default', () => {
+			process.env[envVar] = '0';
+
+			expect(Container.get(EngineConfig)[key]).toBe(defaultValue);
+			expect(consoleWarnMock).toHaveBeenCalledWith(expect.stringContaining(envVar));
+		});
+	});
+
+	it('should reject a connection timeout above the largest timer delay and fall back to the default', () => {
+		process.env.N8N_ENGINE_DATABASE_CONNECTION_TIMEOUT = '2147483648';
+
+		expect(Container.get(EngineConfig).databaseConnectionTimeoutMs).toBe(20_000);
+		expect(consoleWarnMock).toHaveBeenCalledWith(
+			expect.stringContaining('N8N_ENGINE_DATABASE_CONNECTION_TIMEOUT'),
+		);
 	});
 
 	it('should reject an unknown default engine type and fall back to v1', () => {

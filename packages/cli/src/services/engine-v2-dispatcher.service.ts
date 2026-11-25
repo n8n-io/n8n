@@ -7,6 +7,7 @@ import {
 	UnexpectedError,
 	UserError,
 } from '@n8n/errors';
+import { stringify } from 'flatted';
 import type {
 	INode,
 	INodeExecutionData,
@@ -18,6 +19,7 @@ import type {
 import { classifyTriggerIdentity, isTriggerNodeType } from 'n8n-workflow';
 import assert from 'node:assert';
 
+import { getPushRefUserId } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import {
 	createExecutionIdV2,
 	type ExecutionIdV2,
@@ -186,6 +188,11 @@ export class EngineV2Dispatcher {
 		let prepared: PreparedStart;
 		try {
 			this.assertAvailable();
+			// Before the plan: the planner cannot plan a tool run, and its error
+			// would hide the real cause.
+			if (data.agentRequest !== undefined) {
+				throw new NotImplementedError('Engine v2 cannot run a workflow as an AI tool yet.');
+			}
 
 			// A partial run, or one with pinned data, is planned here: the data plane
 			// gets a graph trimmed to what runs, plus the steps it records as done.
@@ -245,7 +252,6 @@ export class EngineV2Dispatcher {
 			allowNonTriggerRoot: plan !== undefined,
 			pinData: this.resolvePinData(data),
 		});
-		// One pass per node: a planned run seeds nothing inside a loop yet.
 		const seededSteps = await this.toSeededSteps(plan);
 
 		const executionId = data.engineV2ExecutionId ?? createExecutionIdV2();
@@ -255,7 +261,7 @@ export class EngineV2Dispatcher {
 		// run here, so the data plane reads them where every other file of the run is.
 		await this.payloadFiles.claimForExecution(trigger.outputs, executionId);
 		// At the session cap this can evict another run's session, uncaught below. Rare; not worth fixing.
-		this.registerPushSession(executionId, data, trigger);
+		this.registerPushSession(executionId, data, trigger, plan);
 
 		return {
 			executionId,
@@ -282,25 +288,43 @@ export class EngineV2Dispatcher {
 
 	/**
 	 * Lifecycle events carry no session id, so the push ref is recorded here,
-	 * keyed by execution id.
+	 * keyed by execution id. The `executionStarted` message is prepared here
+	 * too: the run data is gone by the time the relay needs it.
 	 */
 	private registerPushSession(
 		executionId: string,
 		data: IWorkflowExecutionDataProcess,
 		trigger: FiredTrigger,
+		plan?: ManualRunPlan,
 	): void {
 		const { pushRef, workflowData } = data;
 		// No push ref means nothing is watching this run.
 		if (!pushRef) return;
 
+		const runData = plan?.runData ?? {};
+		// A trigger taken from the run data does not run again, and the editor
+		// shows its run from `flattedRunData`. v1 reports no run of it either.
+		const reusedTrigger =
+			trigger.name !== undefined &&
+			Object.hasOwn(runData, trigger.name) &&
+			data.triggerToStartFrom?.data === undefined;
+
 		this.pushRegistry.register(executionId, {
 			pushRef,
+			userId: getPushRefUserId(data),
 			workflowId: workflowData.id,
 			// The engine never announces the trigger, so save its outputs for the relay.
 			trigger:
-				trigger.name === undefined
+				trigger.name === undefined || reusedTrigger
 					? undefined
 					: { nodeName: trigger.name, outputs: trigger.outputs },
+			start: {
+				mode: data.executionMode,
+				// Not redacted: the run data came from the editor's own request.
+				flattedRunData: stringify(runData),
+				source: data.source,
+				workflowName: workflowData.name,
+			},
 		});
 	}
 
@@ -359,10 +383,6 @@ export class EngineV2Dispatcher {
 			throw new NotImplementedError(
 				'Engine v2 cannot start a run at a pinned node yet. Run the workflow from the trigger instead.',
 			);
-		}
-
-		if (data.agentRequest !== undefined) {
-			throw new NotImplementedError('Engine v2 cannot run a workflow as an AI tool yet.');
 		}
 
 		// `WorkflowRunner.run` returns through the v2 branch before it establishes the
@@ -431,8 +451,13 @@ export class EngineV2Dispatcher {
 		if (!plan) return undefined;
 		// Lazily imported, as in `toEngineWorkflowPayload`.
 		const { toStepOutputs } = await import('@n8n/node-engine-compatibility');
-		return Object.fromEntries(
-			plan.seeded.map(({ nodeId, outputs }) => [nodeId, [toStepOutputs(outputs)]]),
-		);
+		// One entry per node, its passes in iteration order; the planner numbers
+		// them from 0 without gaps. A null prototype: a node id such as
+		// `constructor` must land on its own key.
+		const byNode: SeededSteps = Object.create(null);
+		for (const { nodeId, iteration, outputs } of plan.seeded) {
+			(byNode[nodeId] ??= [])[iteration] = toStepOutputs(outputs);
+		}
+		return byNode;
 	}
 }

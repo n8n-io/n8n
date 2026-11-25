@@ -1,0 +1,71 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"_deprecation_notice": {
+			"type": "string"
+		},
+		"accept_all": {
+			"type": "boolean"
+		},
+		"block": {
+			"type": "boolean"
+		},
+		"disposable": {
+			"type": "boolean"
+		},
+		"email": {
+			"type": "string"
+		},
+		"gibberish": {
+			"type": "boolean"
+		},
+		"mx_records": {
+			"type": "boolean"
+		},
+		"regexp": {
+			"type": "boolean"
+		},
+		"result": {
+			"type": "string"
+		},
+		"score": {
+			"type": "number"
+		},
+		"smtp_check": {
+			"type": "boolean"
+		},
+		"smtp_server": {
+			"type": "boolean"
+		},
+		"sources": {
+			"items": {
+				"properties": {
+					"domain": {
+						"type": "string"
+					},
+					"extracted_on": {
+						"type": "string"
+					},
+					"last_seen_on": {
+						"type": "string"
+					},
+					"still_on_page": {
+						"type": "boolean"
+					},
+					"uri": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"status": {
+			"type": "string"
+		},
+		"webmail": {
+			"type": "boolean"
+		}
+	},
+	"type": "object"
+}

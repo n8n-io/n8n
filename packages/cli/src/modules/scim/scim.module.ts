@@ -8,15 +8,16 @@ import { Container } from '@n8n/di';
  * Implements System for Cross-domain Identity Management (RFC 7644) for
  * automated user lifecycle management.
  *
- * `feat:scim` activates the module. Before general availability, its routes
- * answer only while `N8N_ENV_FEAT_SCIM` is `true` (`scim-opt-in.ts`). SCIM
- * provisioning works only while SAML or OIDC single sign-on is on
+ * `feat:scim` activates the module, and `N8N_DISABLED_MODULES=scim` turns it
+ * off. SCIM provisioning works only while SAML or OIDC single sign-on is on
  * (`ScimSsoService`).
  */
 @BackendModule({ name: 'scim', licenseFlag: 'feat:scim', instanceTypes: ['main'] })
 export class ScimModule implements ModuleInterface {
 	async init() {
-		// Import controllers to register routes
+		// Import controllers to register routes. `ScimController` comes first:
+		// its static router reports every `/scim/v2` request before the routes
+		// of the other SCIM controllers match.
 		await import('./scim.controller.js');
 		await import('./scim-discovery.controller.js');
 		await import('./scim-token.controller.js');

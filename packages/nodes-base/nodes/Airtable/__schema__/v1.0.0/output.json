@@ -1,0 +1,14 @@
+{
+	"properties": {
+		"createdTime": {
+			"type": "string"
+		},
+		"fields": {
+			"type": "object"
+		},
+		"id": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

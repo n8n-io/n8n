@@ -25,6 +25,10 @@ import type { ResponseExpectation } from '../../response-channel';
 @Index('idx_workflow_execution_parent_execution_id', ['parentExecutionId'], {
 	where: 'parent_execution_id IS NOT NULL',
 })
+@Index('idx_workflow_execution_stale_after', ['staleAfter'], { where: "status = 'queued'" })
+@Index('idx_workflow_execution_finished_at_id', ['finishedAt', 'id'], {
+	where: 'finished_at IS NOT NULL',
+})
 export class WorkflowExecution {
 	@PrimaryColumn('uuid')
 	id!: string;
@@ -72,6 +76,14 @@ export class WorkflowExecution {
 	/** Which lifecycle events (if any) the caller subscribes to. `null` means none. */
 	@Column('jsonb', { name: 'lifecycle_event_subscription', nullable: true })
 	lifecycleEventSubscription!: LifecycleEventSubscription | null;
+
+	/**
+	 * When the engine treats the execution as stuck in `queued`. The store
+	 * writes it when the row becomes `queued`, and clears it when the row leaves
+	 * that status.
+	 */
+	@Column({ name: 'stale_after', type: 'timestamptz', precision: 3, nullable: true })
+	staleAfter!: Date | null;
 
 	@CreateDateColumn({ name: 'created_at', type: 'timestamptz', precision: 3 })
 	createdAt!: Date;

@@ -8,7 +8,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { fieldFields, fieldOperations } from './FieldDescription';
 import { fileFields, fileOperations } from './FileDescription';
@@ -86,7 +86,13 @@ export class QuickBase implements INodeType {
 			async getTableFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const tableId = this.getCurrentNodeParameter('tableId') as string;
-				const fields = await quickbaseApiRequest.call(this, 'GET', '/fields', {}, { tableId });
+				const fields = await quickbaseApiRequest.call(
+					this,
+					'GET',
+					requestPath`/fields`,
+					{},
+					{ tableId },
+				);
 				for (const field of fields) {
 					returnData.push({
 						name: field.label,
@@ -98,7 +104,13 @@ export class QuickBase implements INodeType {
 			async getUniqueTableFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const tableId = this.getCurrentNodeParameter('tableId') as string;
-				const fields = await quickbaseApiRequest.call(this, 'GET', '/fields', {}, { tableId });
+				const fields = await quickbaseApiRequest.call(
+					this,
+					'GET',
+					requestPath`/fields`,
+					{},
+					{ tableId },
+				);
 				for (const field of fields) {
 					//upsert can be achived just with fields that are set as unique and are no the primary key
 					if (field.unique === true && field.properties.primaryKey === false) {
@@ -139,7 +151,7 @@ export class QuickBase implements INodeType {
 						options,
 					);
 
-					responseData = await quickbaseApiRequest.call(this, 'GET', '/fields', {}, qs);
+					responseData = await quickbaseApiRequest.call(this, 'GET', requestPath`/fields`, {}, qs);
 
 					if (!returnAll) {
 						const limit = this.getNodeParameter('limit', i);
@@ -171,7 +183,7 @@ export class QuickBase implements INodeType {
 					responseData = await quickbaseApiRequest.call(
 						this,
 						'DELETE',
-						`/files/${tableId}/${recordId}/${fieldId}/${versionNumber}`,
+						requestPath`/files/${tableId}/${recordId}/${fieldId}/${versionNumber}`,
 					);
 
 					const executionData = this.helpers.constructExecutionMetaData(
@@ -212,7 +224,7 @@ export class QuickBase implements INodeType {
 					responseData = await quickbaseApiRequest.call(
 						this,
 						'GET',
-						`/files/${tableId}/${recordId}/${fieldId}/${versionNumber}`,
+						requestPath`/files/${tableId}/${recordId}/${fieldId}/${versionNumber}`,
 						{},
 						{},
 						{ json: false, resolveWithFullResponse: true },
@@ -278,7 +290,7 @@ export class QuickBase implements INodeType {
 					body.fieldsToReturn = options.fields as string[];
 				}
 
-				responseData = await quickbaseApiRequest.call(this, 'POST', '/records', body);
+				responseData = await quickbaseApiRequest.call(this, 'POST', requestPath`/records`, body);
 
 				if (simple) {
 					const { data: records } = responseData;
@@ -320,7 +332,12 @@ export class QuickBase implements INodeType {
 						where: wheres[i],
 					};
 
-					responseData = await quickbaseApiRequest.call(this, 'DELETE', '/records', body);
+					responseData = await quickbaseApiRequest.call(
+						this,
+						'DELETE',
+						requestPath`/records`,
+						body,
+					);
 
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData as IDataObject[]),
@@ -371,14 +388,20 @@ export class QuickBase implements INodeType {
 						responseData = await quickbaseApiRequestAllItems.call(
 							this,
 							'POST',
-							'/records/query',
+							requestPath`/records/query`,
 							body,
 							qs,
 						);
 					} else {
 						body.options = { top: this.getNodeParameter('limit', i) };
 
-						responseData = await quickbaseApiRequest.call(this, 'POST', '/records/query', body, qs);
+						responseData = await quickbaseApiRequest.call(
+							this,
+							'POST',
+							requestPath`/records/query`,
+							body,
+							qs,
+						);
 
 						const { data: records, fields } = responseData;
 						responseData = [];
@@ -466,7 +489,7 @@ export class QuickBase implements INodeType {
 					body.fieldsToReturn = options.fields as string[];
 				}
 
-				responseData = await quickbaseApiRequest.call(this, 'POST', '/records', body);
+				responseData = await quickbaseApiRequest.call(this, 'POST', requestPath`/records`, body);
 
 				if (simple) {
 					const { data: records } = responseData;
@@ -549,7 +572,7 @@ export class QuickBase implements INodeType {
 					body.fieldsToReturn = options.fields as string[];
 				}
 
-				responseData = await quickbaseApiRequest.call(this, 'POST', '/records', body);
+				responseData = await quickbaseApiRequest.call(this, 'POST', requestPath`/records`, body);
 
 				if (simple) {
 					const { data: records } = responseData;
@@ -588,7 +611,7 @@ export class QuickBase implements INodeType {
 						responseData = await quickbaseApiRequestAllItems.call(
 							this,
 							'POST',
-							`/reports/${reportId}/run`,
+							requestPath`/reports/${reportId}/run`,
 							{},
 							qs,
 						);
@@ -598,7 +621,7 @@ export class QuickBase implements INodeType {
 						responseData = await quickbaseApiRequest.call(
 							this,
 							'POST',
-							`/reports/${reportId}/run`,
+							requestPath`/reports/${reportId}/run`,
 							{},
 							qs,
 						);
@@ -641,7 +664,7 @@ export class QuickBase implements INodeType {
 					responseData = await quickbaseApiRequest.call(
 						this,
 						'GET',
-						`/reports/${reportId}`,
+						requestPath`/reports/${reportId}`,
 						{},
 						qs,
 					);

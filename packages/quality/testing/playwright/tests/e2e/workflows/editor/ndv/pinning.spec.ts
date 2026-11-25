@@ -72,6 +72,26 @@ test.describe(
 				await expect(n8n.canvas.getNodeSuccessStatusIndicator(NODES.SCHEDULE_TRIGGER)).toBeHidden();
 			});
 
+			test('should update the pinned indicator when pinning and unpinning after an execution', async ({
+				n8n,
+			}) => {
+				await n8n.canvas.addNode(NODES.SCHEDULE_TRIGGER);
+
+				await n8n.ndv.execute();
+				await expect(n8n.ndv.outputPanel.get()).toBeVisible();
+
+				await n8n.ndv.togglePinData();
+				await n8n.ndv.close();
+
+				await expect(n8n.canvas.getNodePinnedStatusIndicator(NODES.SCHEDULE_TRIGGER)).toBeVisible();
+
+				await n8n.canvas.openNode(NODES.SCHEDULE_TRIGGER);
+				await n8n.ndv.togglePinData();
+				await n8n.ndv.close();
+
+				await expect(n8n.canvas.getNodePinnedStatusIndicator(NODES.SCHEDULE_TRIGGER)).toBeHidden();
+			});
+
 			test('should be able to set custom pinned data', async ({ n8n }) => {
 				await n8n.canvas.addNode(NODES.SCHEDULE_TRIGGER);
 
@@ -202,7 +222,8 @@ test.describe(
 				await expect(hint).toContainText('pairedItem');
 			});
 
-			test('should use pin data in manual webhook executions', async ({
+			// Engine v2 cannot plan a test webhook run of a workflow with two triggers yet (CET-1273).
+			test('should use pin data in manual webhook executions @engine:v2-pending', async ({
 				n8n,
 				setupRequirements,
 			}) => {

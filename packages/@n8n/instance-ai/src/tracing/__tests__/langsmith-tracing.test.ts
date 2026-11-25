@@ -24,9 +24,11 @@ import {
 	createInternalOperationTraceContext,
 	createTraceReplayOnlyContext,
 	continueInstanceAiTraceContext,
+	mergeTraceRunInputs,
 	redactLangSmithTelemetrySpan,
 	releaseTraceClient,
 	shutdownProductTelemetryProviders,
+	setTraceApprovalMode,
 	setTraceModelId,
 	setTracePromptVersion,
 	submitLangsmithUserFeedback,
@@ -61,6 +63,7 @@ vi.mock('@n8n/agents', async () => {
 
 	let spanCounter = 0;
 	let buildError: Error | undefined;
+	let lastTransformExportedSpan: ((span: unknown) => unknown) | undefined;
 	let startSpanError: Error | undefined;
 	const contextStorage = new AsyncLocalStorage<Context>();
 	const contextManager: ContextManager = {
@@ -154,6 +157,10 @@ vi.mock('@n8n/agents', async () => {
 	};
 
 	class MockLangSmithTelemetry {
+		constructor(config?: { transformExportedSpan?: (span: unknown) => unknown }) {
+			lastTransformExportedSpan = config?.transformExportedSpan;
+		}
+
 		private functionIdValue?: string;
 		private metadataValue?: Record<string, unknown>;
 		private recordInputsValue = true;
@@ -225,6 +232,7 @@ vi.mock('@n8n/agents', async () => {
 			},
 			getSpans: () => spans,
 			getProvider: () => provider,
+			getLastTransformExportedSpan: () => lastTransformExportedSpan,
 		},
 	};
 });
@@ -318,6 +326,7 @@ type AgentsMockModule = {
 			forceFlush: Mock<(...args: []) => Promise<void>>;
 			shutdown: Mock<(...args: []) => Promise<void>>;
 		};
+		getLastTransformExportedSpan: () => ((span: unknown) => unknown) | undefined;
 	};
 };
 
@@ -440,6 +449,165 @@ describe('createInstanceAiTraceContext', () => {
 		expect(typeof tracing?.rootRun.metadata?.workflow_sdk_version).toBe('string');
 		await startForegroundActor(tracing!);
 		expect(tracing?.orchestratorRun.parentRunId).toBe(tracing?.messageRun.id);
+	});
+
+	it('keeps a long user message whole in the turn inputs', async () => {
+		const message = 'Plan the pilot budget. '.repeat(400);
+
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message },
+		});
+
+		expect(tracing?.rootRun.inputs?.message).toBe(message);
+	});
+
+	it('caps a very large user message in the turn inputs and marks the cut', async () => {
+		const message = 'word '.repeat(30_000);
+
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message },
+		});
+
+		const traced = tracing?.rootRun.inputs?.message;
+		expect(typeof traced).toBe('string');
+		expect(traced).toMatch(/^(word ){20000}\[truncated 50000 chars\]$/);
+	});
+
+	it('scrubs a secret that crosses the user message cap', async () => {
+		const secret = 'sk-proj-1234567890abcdefghijklmnopqrst';
+		const message = `${'word '.repeat(19_998)}${secret} ${'word '.repeat(200)}`;
+
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message },
+		});
+
+		expect(tracing?.rootRun.inputs?.message).not.toContain('sk-proj');
+	});
+
+	it('cuts a long unbroken run inside the user message and keeps the words around it', async () => {
+		const message = `Here is my data: ${'x'.repeat(50_000)} thanks`;
+
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message },
+		});
+
+		expect(tracing?.rootRun.inputs?.message).toBe(
+			`Here is my data: ${'x'.repeat(2_000)} [truncated 48000 chars] thanks`,
+		);
+	});
+
+	it('counts every dropped character when a long unbroken run fills the scan window', async () => {
+		const tail = ' word'.repeat(10_000);
+		const message = `${'x'.repeat(150_000)}${tail}.`;
+
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message },
+		});
+
+		expect(tracing?.rootRun.inputs?.message).toBe(
+			`${'x'.repeat(2_000)} [truncated 148000 chars]${tail}.`,
+		);
+	});
+
+	it('marks the unscanned tail of a message that stays long after the runs are cut', async () => {
+		const keptRun = `${'x'.repeat(2_000)} [truncated 148000 chars]`;
+		const words = ` ${'word '.repeat(30_000)}`;
+
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message: `${'x'.repeat(150_000)}${words}` },
+		});
+
+		const afterCut = `${keptRun}${words}`;
+		expect(tracing?.rootRun.inputs?.message).toBe(
+			`${afterCut.slice(0, 100_000)}[truncated ${afterCut.length - 100_000} chars]`,
+		);
+	});
+
+	it('keeps the 2,000-character cap on a message in a child run', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message: 'hi' },
+		});
+
+		const child = await tracing!.startChildRun(tracing!.rootRun, {
+			name: 'agent: orchestrator',
+			inputs: { message: 'd'.repeat(5_000) },
+		});
+
+		expect(child.inputs?.message).toBe(`${'d'.repeat(2_000)}...`);
+	});
+
+	it('keeps a long assistant response whole in the turn outputs', async () => {
+		const response = 'Here are the revised settings. '.repeat(300);
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message: 'hi' },
+		});
+
+		await tracing!.finishRun(tracing!.rootRun, {
+			outputs: { status: 'completed', response, note: 'c'.repeat(5_000) },
+		});
+
+		expect(tracing?.rootRun.outputs?.response).toBe(response);
+		expect(tracing?.rootRun.outputs?.note).toBe(`${'c'.repeat(2_000)}...`);
+	});
+
+	it('keeps the capped user message stable when more inputs merge into the turn', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message: 'word '.repeat(30_000) },
+		});
+		const capped = tracing?.rootRun.inputs?.message;
+
+		mergeTraceRunInputs(tracing?.rootRun, { attachmentCount: 1 });
+
+		expect(tracing?.rootRun.inputs?.message).toBe(capped);
+		expect(tracing?.rootRun.inputs?.attachmentCount).toBe(1);
+	});
+
+	it('still caps long values other than the user message in the turn inputs', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message: 'hi', note: 'b'.repeat(5_000) },
+		});
+
+		expect(tracing?.rootRun.inputs?.note).toBe(`${'b'.repeat(2_000)}...`);
 	});
 
 	it('creates native telemetry with thread and run metadata', async () => {
@@ -673,6 +841,32 @@ describe('createInstanceAiTraceContext', () => {
 
 		await telemetry.provider?.shutdown();
 	});
+
+	it.each([
+		{ approvalMode: 'auto', recorded: 'auto' },
+		// The run has no mode when the approval modes are not available.
+		{ approvalMode: undefined, recorded: 'unavailable' },
+	] as const)(
+		'stamps approval_mode "$recorded" on root and actor runs',
+		async ({ approvalMode, recorded }) => {
+			const tracing = await createInstanceAiTraceContext({
+				threadId: 'thread-1',
+				messageId: 'message-1',
+				runId: 'run-1',
+				userId: 'user-1',
+				input: { message: 'Publish my workflow' },
+			});
+			const actorRun = await startForegroundActor(tracing!);
+
+			setTraceApprovalMode(tracing, approvalMode);
+
+			for (const run of [tracing!.rootRun, actorRun]) {
+				expect(run.metadata).toHaveProperty('approval_mode', recorded);
+				const span = agentsMock.getSpans().find((entry) => entry.id === run.otelSpanId);
+				expect(span?.attributes).toHaveProperty('langsmith.metadata.approval_mode', recorded);
+			}
+		},
+	);
 
 	it('redacts secret-bearing native telemetry span attributes', () => {
 		const span = {
@@ -1505,7 +1699,7 @@ describe('createInstanceAiTraceContext', () => {
 		});
 
 		expect(tracing).toBeDefined();
-		setTracePromptVersion(tracing, 'progressive@1');
+		setTracePromptVersion(tracing, 'concise@1');
 
 		const continuedTracing = await continueInstanceAiTraceContext(tracing!, {
 			threadId: 'thread-1',
@@ -1528,7 +1722,7 @@ describe('createInstanceAiTraceContext', () => {
 		expect(continuedTracing.rootRun.metadata).toEqual(
 			expect.objectContaining({
 				'instance_ai.canonical_name': 'instance-ai.orchestrator_resume',
-				prompt_version: 'progressive@1',
+				prompt_version: 'concise@1',
 			}),
 		);
 		expect(continuedTracing.rootRun.metadata).toEqual(
@@ -1548,7 +1742,7 @@ describe('createInstanceAiTraceContext', () => {
 		expect(continuedTracing.orchestratorRun.metadata).toEqual(
 			expect.objectContaining({
 				'instance_ai.canonical_name': 'instance-ai.agent.orchestrator',
-				prompt_version: 'progressive@1',
+				prompt_version: 'concise@1',
 			}),
 		);
 	});
@@ -2331,6 +2525,38 @@ describe('createInstanceAiTraceContext', () => {
 		expect(tracing).toBeDefined();
 		expect(tracing?.messageRun).toBeDefined();
 		expect(tracing?.orchestratorRun).toBeDefined();
+	});
+
+	it.each([
+		[undefined, 'instance-ai'],
+		[['model-training-opt-out'], 'instance-ai, model-training-opt-out'],
+	])('adds proxy trace tags %j to every exported span', async (traceTags, expectedTags) => {
+		await createInstanceAiTraceContext({
+			threadId: 'thread-tags',
+			messageId: 'message-tags',
+			runId: 'run-tags',
+			userId: 'user-tags',
+			input: { message: 'tag test' },
+			proxyConfig: {
+				apiUrl: 'https://proxy.example.com/langsmith',
+				getAuthHeaders: async () => ({ Authorization: 'Bearer proxy-token' }),
+				traceTags,
+			},
+		});
+		const transform = agentsMock.getLastTransformExportedSpan();
+
+		const productSpan = transform?.({
+			name: 'turn',
+			attributes: { 'langsmith.span.tags': 'instance-ai' },
+		}) as { attributes: Record<string, unknown> };
+		expect(productSpan.attributes['langsmith.span.tags']).toBe(expectedTags);
+
+		const llmSpan = transform?.({ name: 'llm', attributes: {} }) as {
+			attributes: Record<string, unknown>;
+		};
+		expect(llmSpan.attributes['langsmith.span.tags']).toBe(
+			traceTags ? 'model-training-opt-out' : undefined,
+		);
 	});
 
 	it('respects diagnostics opt-out before proxy auto-enable', async () => {

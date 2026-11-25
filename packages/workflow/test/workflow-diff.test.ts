@@ -883,6 +883,25 @@ describe('groupWorkflows', () => {
 				expect(result).toBe(true);
 			});
 		});
+		describe('skipDifferentVersionedSettings', () => {
+			it('should keep versions that differ only in the engine when grouping', () => {
+				const node = mock<DiffableNode>({ id: '1', parameters: { a: 1 } });
+				const workflows = mock<IWorkflowBase[]>([
+					{ id: '1', versionId: '1', nodes: [node], settings: { engineType: 'v1' } },
+					{ id: '1', versionId: '2', nodes: [node], settings: { engineType: 'v2' } },
+					{ id: '1', versionId: '3', nodes: [node], settings: { engineType: 'v2' } },
+				]);
+
+				const { removed, remaining } = groupWorkflows(
+					workflows,
+					[() => true],
+					[SKIP_RULES.skipDifferentVersionedSettings],
+				);
+
+				expect(remaining).toEqual([workflows[0], workflows[2]]);
+				expect(removed).toEqual([workflows[1]]);
+			});
+		});
 
 		describe('RULES.makeMergeDependingOnSizeRule', () => {
 			// Helper to create mock workflows

@@ -1,4 +1,5 @@
-import { computed, nextTick, ref, type ComputedRef, type Ref } from 'vue';
+import { computed, defineComponent, nextTick, ref, type ComputedRef, type Ref } from 'vue';
+import { mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -6,6 +7,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
+import { ASSISTANT_RUNTIME } from '../../assistantRuntime';
 import type { WorkflowSetupSection } from '../workflowSetup.types';
 import { makeWorkflowSetupSection } from '../__tests__/factories';
 import { useWorkflowSetupActions } from './useWorkflowSetupActions';
@@ -127,8 +129,9 @@ function setupHarness(opts: { isReady?: boolean } = {}): Harness {
 	};
 }
 
-function getTelemetryCalls(eventName: string) {
-	return telemetryTrack.mock.calls.filter(([event]) => event === eventName);
+// A legacy event is a name. A registered event is its definition object.
+function getTelemetryCalls(event: unknown) {
+	return telemetryTrack.mock.calls.filter(([tracked]) => tracked === event);
 }
 
 describe('useWorkflowSetupActions', () => {
@@ -154,6 +157,7 @@ describe('useWorkflowSetupActions', () => {
 					workflow_id: 'workflow-1',
 					thread_id: 'thread-1',
 					session_id: 'session-1',
+					runtime: 'instance-ai',
 				});
 				if (typeof variant === 'string') {
 					expect(payload).toMatchObject({
@@ -167,6 +171,70 @@ describe('useWorkflowSetupActions', () => {
 			}
 		},
 	);
+
+	it('tracks the saved setup with the setup tool result of the current runtime', async () => {
+		const h = setupHarness();
+		h.completedSet.add(h.sectionA.id);
+		h.apply.mockResolvedValue({
+			success: true,
+			completedNodes: [{ nodeName: 'A', credentialType: 'typeA' }],
+		});
+
+		await h.actions.apply();
+
+		expect(getTelemetryCalls(TELEMETRY_EVENT.WORKFLOW.SETUP_SAVED)).toEqual([
+			[
+				TELEMETRY_EVENT.WORKFLOW.SETUP_SAVED,
+				{
+					instance_id: 'instance-1',
+					workflow_id: 'workflow-1',
+					thread_id: 'thread-1',
+					session_id: 'session-1',
+					source: 'instance_ai_setup_wizard',
+					request_id: 'req-1',
+					items: [
+						{
+							node_id: 'node-a',
+							node_type: 'n8n-nodes-base.httpRequest',
+							kind: 'credential',
+							credential_type: 'typeA',
+							completed: true,
+						},
+						{
+							node_id: 'node-b',
+							node_type: 'n8n-nodes-base.httpRequest',
+							kind: 'credential',
+							credential_type: 'typeB',
+							completed: false,
+						},
+					],
+					setup_complete: false,
+					runtime: 'instance-ai',
+				},
+			],
+		]);
+	});
+
+	it('reports the runtime that an Assistant agent thread provides', async () => {
+		let h: Harness | undefined;
+		mount(
+			defineComponent({
+				setup() {
+					h = setupHarness();
+					return () => null;
+				},
+			}),
+			{ global: { provide: { [ASSISTANT_RUNTIME as symbol]: 'agents' } } },
+		);
+		h!.completedSet.add(h!.sectionA.id);
+		await h!.actions.apply();
+
+		expect(telemetryTrack.mock.calls.map(([event, payload]) => [event, payload.runtime])).toEqual([
+			['Instance AI workflow setup step shown', 'agents'],
+			['Instance AI workflow setup step handled', 'agents'],
+			['User finished providing input', 'agents'],
+		]);
+	});
 
 	it('tracks the active setup step when it is shown', () => {
 		setupHarness();

@@ -12,16 +12,15 @@ import { Service } from '@n8n/di';
 import { GLOBAL_MEMBER_ROLE_SLUG, GLOBAL_OWNER_ROLE_SLUG, hasGlobalScope } from '@n8n/permissions';
 import { randomString } from 'n8n-workflow';
 
-import { EventService, UrlService } from '@n8n/backend-services';
-import { PasswordUtility } from '@/services/password.utility';
+import { EventService, UrlService, PasswordUtility } from '@n8n/backend-services';
 
 import { ScimUserRepository } from './database/scim-user.repository';
 import { ScimDeprovisioningService } from './scim-deprovisioning.service';
 import {
 	ScimConflictError,
-	ScimForbiddenError,
 	ScimInvalidFilterError,
 	ScimInvalidValueError,
+	ScimOwnerProtectedError,
 	ScimResourceNotFoundError,
 } from './scim.errors';
 
@@ -32,6 +31,19 @@ type ParsedFilter = { attribute: 'userName' | 'externalId'; value: string };
 
 /** The user fields the owner guard compares before and after a write. */
 type OwnerGuardSnapshot = Pick<Person, 'email' | 'disabled'>;
+
+/**
+ * Read a SCIM boolean. Entra ID sends `"True"` and `"False"` as strings when
+ * the tenant URL does not have the `aadOptscim062020` flag.
+ */
+function toScimBoolean(value: unknown): boolean | undefined {
+	if (typeof value === 'boolean') return value;
+	if (typeof value !== 'string') return undefined;
+	const normalized = value.toLowerCase();
+	if (normalized === 'true') return true;
+	if (normalized === 'false') return false;
+	return undefined;
+}
 
 @Service()
 export class ScimService {
@@ -57,16 +69,22 @@ export class ScimService {
 			SSO_PROVIDER_TYPES.includes(identity.providerType),
 		)?.providerId;
 
+		// Entra ID maps `name.formatted` by default and sends it again on every
+		// sync cycle when the response does not contain it. Not `accountFullName`:
+		// SCIM and invited users can have empty or null name parts.
+		const fullName = [person.firstName, person.lastName].filter(Boolean).join(' ') || undefined;
+
 		const scimUser: ScimUser = {
 			schemas: ['urn:ietf:params:scim:schemas:core:2.0:User'],
 			id: person.id,
 			userName: person.email,
 			externalId,
 			name: {
+				formatted: fullName,
 				givenName: person.firstName || undefined,
 				familyName: person.lastName || undefined,
 			},
-			displayName: [person.firstName, person.lastName].filter(Boolean).join(' ') || person.email,
+			displayName: fullName ?? person.email,
 			emails: person.email
 				? [
 						{
@@ -219,6 +237,7 @@ export class ScimService {
 			user: createdUser,
 			userType: providerType ?? 'email',
 			wasDisabledLdapUser: false,
+			source: 'scim',
 		});
 
 		const created = await this.getUserById(createdUser.id);
@@ -257,7 +276,11 @@ export class ScimService {
 
 		if (changes.size > 0) {
 			await this.saveUser(person);
-			this.eventService.emit('user-updated', { user: person, fieldsChanged: [...changes] });
+			this.eventService.emit('user-updated', {
+				user: person,
+				fieldsChanged: [...changes],
+				source: 'scim',
+			});
 		}
 
 		const patched = await this.getUserById(person.id);
@@ -275,9 +298,13 @@ export class ScimService {
 			case 'roles':
 				// SSO role mapping owns the instance role, so SCIM roles are ignored.
 				return;
-			case 'active':
-				if (typeof value === 'boolean') this.setField(person, 'disabled', !value, changes);
+			case 'active': {
+				// Deactivation must not fail silently: an unreadable value returns 400, as on POST and PUT.
+				const active = toScimBoolean(value);
+				if (active === undefined) throw new ScimInvalidValueError('"active" must be true or false');
+				this.setField(person, 'disabled', !active, changes);
 				return;
+			}
 			case 'userName':
 				if (typeof value === 'string') this.setField(person, 'email', value.toLowerCase(), changes);
 				return;
@@ -301,8 +328,8 @@ export class ScimService {
 			case 'emails':
 				if (Array.isArray(value)) {
 					const primary = value.find(
-						(email: { primary?: boolean; value?: unknown }) =>
-							email?.primary && typeof email.value === 'string',
+						(email: { primary?: unknown; value?: unknown }) =>
+							toScimBoolean(email?.primary) === true && typeof email.value === 'string',
 					) as { value: string } | undefined;
 					if (primary) this.setField(person, 'email', primary.value.toLowerCase(), changes);
 				}
@@ -361,7 +388,11 @@ export class ScimService {
 
 		if (changes.size > 0) {
 			await this.saveUser(person);
-			this.eventService.emit('user-updated', { user: person, fieldsChanged: [...changes] });
+			this.eventService.emit('user-updated', {
+				user: person,
+				fieldsChanged: [...changes],
+				source: 'scim',
+			});
 		}
 
 		const updated = await this.getUserById(person.id);
@@ -388,7 +419,7 @@ export class ScimService {
 	async deleteUser(id: string): Promise<void> {
 		const person = await this.getUserEntity(id);
 		if (this.isOwner(person)) {
-			throw new ScimForbiddenError('The instance owner cannot be deleted via SCIM');
+			throw new ScimOwnerProtectedError('The instance owner cannot be deleted via SCIM');
 		}
 
 		const policy = await this.scimDeprovisioningService.getPolicy();
@@ -410,7 +441,11 @@ export class ScimService {
 	private async deactivate(person: Person): Promise<void> {
 		person.disabled = true;
 		await this.personRepository.save(person);
-		this.eventService.emit('user-updated', { user: person, fieldsChanged: ['disabled'] });
+		this.eventService.emit('user-updated', {
+			user: person,
+			fieldsChanged: ['disabled'],
+			source: 'scim',
+		});
 		this.logger.info('SCIM: User deprovisioned', { userId: person.id });
 	}
 
@@ -439,11 +474,13 @@ export class ScimService {
 
 		// A difference in case only is the same address, so allow it.
 		if (person.email.toLowerCase() !== before.email.toLowerCase()) {
-			throw new ScimForbiddenError('The email of the instance owner cannot be changed via SCIM');
+			throw new ScimOwnerProtectedError(
+				'The email of the instance owner cannot be changed via SCIM',
+			);
 		}
 
 		if (person.disabled && !before.disabled) {
-			throw new ScimForbiddenError('The instance owner cannot be deactivated via SCIM');
+			throw new ScimOwnerProtectedError('The instance owner cannot be deactivated via SCIM');
 		}
 	}
 

@@ -377,6 +377,7 @@ describe('SkillService user actions', () => {
 				projectId: 'project-1',
 				projectName: 'Team',
 				projectType: 'team',
+				projectIcon: null,
 				source: 'ui',
 				createdBy: null,
 				latestVersion: 2,

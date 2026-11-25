@@ -11,9 +11,11 @@ import {
 } from '@n8n/design-system';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+
+import { useMenuTriggerTooltip } from '../composables/useMenuTriggerTooltip';
 
 const PERSONAL_PROJECT_ICON: IconOrEmoji = { type: 'icon', value: 'user' };
 const FALLBACK_PROJECT_ICON: IconOrEmoji = { type: 'icon', value: 'layers' };
@@ -23,8 +25,7 @@ const projectsStore = useProjectsStore();
 const model = defineModel<string | null>();
 const open = ref(false);
 const searchTerm = ref('');
-const isTooltipSuppressed = ref(false);
-let tooltipSuppressTimeout: ReturnType<typeof setTimeout> | undefined;
+const { isTooltipDisabled } = useMenuTriggerTooltip(open);
 
 const selectedProject = computed(() =>
 	projectsStore.myProjects.find((project) => project.id === model.value),
@@ -54,21 +55,10 @@ const menuItems = computed<Array<DropdownMenuItemProps<string>>>(() =>
 		checked: selectedProject.value?.id === project.id,
 	})),
 );
-const isTooltipDisabled = computed(() => open.value || isTooltipSuppressed.value);
-
-watch(open, (isOpen, wasOpen) => {
-	if (!isOpen && wasOpen) {
-		suppressTooltip();
-	}
-});
 
 // The search field clears its term only when the menu closes, not when the field is removed.
 watch(showSearch, (isSearchShown) => {
 	if (!isSearchShown) searchTerm.value = '';
-});
-
-onBeforeUnmount(() => {
-	clearTimeout(tooltipSuppressTimeout);
 });
 
 function getProjectName(project: ProjectListItem) {
@@ -81,14 +71,6 @@ function getProjectIcon(project?: ProjectListItem): IconOrEmoji {
 	if (project?.type === 'personal') return PERSONAL_PROJECT_ICON;
 
 	return project?.icon && isIconOrEmoji(project.icon) ? project.icon : FALLBACK_PROJECT_ICON;
-}
-
-function suppressTooltip() {
-	clearTimeout(tooltipSuppressTimeout);
-	isTooltipSuppressed.value = true;
-	tooltipSuppressTimeout = setTimeout(() => {
-		isTooltipSuppressed.value = false;
-	}, TOOLTIP_DELAY_MS + 100);
 }
 
 function selectProject(projectId: string) {

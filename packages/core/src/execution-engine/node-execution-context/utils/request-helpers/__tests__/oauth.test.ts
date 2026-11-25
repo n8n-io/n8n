@@ -8,7 +8,8 @@ import type {
 	INode,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { MANAGED_VERSION_KEY, OperationalError, UserError } from 'n8n-workflow';
+import { MANAGED_VERSION_KEY } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 import nock from 'nock';
 import { Readable } from 'stream';
 import { mockDeep } from 'vitest-mock-extended';

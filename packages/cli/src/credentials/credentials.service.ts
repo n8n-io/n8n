@@ -1,6 +1,12 @@
 import type { CreateCredentialDto, CredentialConnectionStatus } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService, RoleService, CredentialsFinderService } from '@n8n/backend-services';
+import {
+	CredentialRestrictionsProviderProxy,
+	CredentialsFinderService,
+	EventService,
+	loginIdOf,
+	RoleService,
+} from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import {
 	Project,
@@ -29,13 +35,9 @@ import type {
 } from '@n8n/db';
 import type { PolicyCleared } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
-import {
-	In,
-	type EntityManager,
-	type FindOptionsRelations,
-	type FindOptionsWhere,
-} from '@n8n/typeorm';
+import { hasGlobalScope, type Scope } from '@n8n/permissions';
+import { In, type EntityManager } from '@n8n/typeorm';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import cloneDeep from 'lodash/cloneDeep';
 import isEqual from 'lodash/isEqual';
 import { CredentialDataError, Credentials, ErrorReporter } from 'n8n-core';
@@ -163,6 +165,7 @@ type GetManyOptions = {
 	includeData?: boolean;
 	onlySharedWithMe?: boolean;
 	includeGlobal?: boolean;
+	includeRestrictions?: boolean;
 	filters?: {
 		externalSecretsStore?: string;
 	};
@@ -282,6 +285,7 @@ export class CredentialsService {
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly credentialDescriptions: CredentialDescriptionsService,
 		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
+		private readonly credentialRestrictions: CredentialRestrictionsProviderProxy,
 	) {}
 
 	async countConnectedUsers(credentialId: string): Promise<number> {
@@ -344,6 +348,7 @@ export class CredentialsService {
 			includeData = false,
 			onlySharedWithMe = false,
 			includeGlobal = false,
+			includeRestrictions = false,
 			filters = {},
 		}: GetManyOptions = {},
 	): Promise<
@@ -392,8 +397,39 @@ export class CredentialsService {
 			listQueryOptions,
 			onlySharedWithMe,
 		);
+		// A custom select can leave out the home project, so the verdicts would be wrong.
+		if (includeRestrictions && isDefaultSelect) {
+			const { projectId } = listQueryOptions.filter ?? {};
+			await this.addRestrictions(enriched, typeof projectId === 'string' ? projectId : undefined);
+		}
 
 		return { credentials: enriched, count };
+	}
+
+	/**
+	 * Workflows of the listed project use its credentials, shared ones too, so a project list is
+	 * judged by that project. Other lists judge each credential by its home project.
+	 */
+	private async addRestrictions(
+		credentials: Array<{ type: string; homeProject?: { id: string } | null }>,
+		listedProjectId?: string,
+	): Promise<void> {
+		try {
+			const restrictions = await this.credentialRestrictions.findRestrictions(
+				credentials.map(({ type, homeProject }) => ({
+					type,
+					projectId: listedProjectId ?? homeProject?.id ?? null,
+				})),
+			);
+			credentials.forEach((credential, index) => {
+				const restriction = restrictions[index];
+				if (restriction) Object.assign(credential, { restriction });
+			});
+		} catch (error) {
+			this.logger.warn('Failed to resolve credential restrictions for the credentials list', {
+				error: ensureError(error),
+			});
+		}
 	}
 
 	private async getManyForAdminUser(
@@ -809,40 +845,6 @@ export class CredentialsService {
 		return await this.credentialsRepository.findAllCredentialsForProject(projectId);
 	}
 
-	/**
-	 * Retrieve the sharing that matches a user and a credential.
-	 */
-	// TODO: move to SharedCredentialsService
-	async getSharing(
-		user: User,
-		credentialId: string,
-		globalScopes: Scope[],
-		relations: FindOptionsRelations<SharedCredentials> = { credentials: true },
-	): Promise<SharedCredentials | null> {
-		let where: FindOptionsWhere<SharedCredentials> = {
-			credentialsId: credentialId,
-			credentials: { usageScope: 'project' },
-		};
-
-		if (!hasGlobalScope(user, globalScopes, { mode: 'allOf' })) {
-			where = {
-				...where,
-				role: 'credential:owner',
-				project: {
-					projectRelations: {
-						role: { slug: PROJECT_OWNER_ROLE_SLUG },
-						userId: user.id,
-					},
-				},
-			};
-		}
-
-		return await this.sharedCredentialsRepository.findOne({
-			where,
-			relations,
-		});
-	}
-
 	private applyDataMerge(
 		incomingData: ICredentialDataDecryptedObject,
 		decryptedData: ICredentialDataDecryptedObject,
@@ -1150,6 +1152,7 @@ export class CredentialsService {
 		user: User,
 		credentialId: string,
 		description: string | null,
+		ctx: OperationContext = {},
 	): Promise<void> {
 		if (!(await this.credentialDescriptions.isEnabled())) {
 			throw new BadRequestError('Credential descriptions are not enabled');
@@ -1207,6 +1210,7 @@ export class CredentialsService {
 			credentialDescriptionLength: savedDescription?.length ?? 0,
 			isDynamic: credential.isResolvable,
 			descriptionOnly: true,
+			loginId: loginIdOf(ctx),
 		});
 	}
 
@@ -1540,6 +1544,7 @@ export class CredentialsService {
 		user: User,
 		credentialId: string,
 		options: { includeInstanceCredentials?: boolean } = {},
+		ctx: OperationContext = {},
 	): Promise<boolean> {
 		const credential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
@@ -1587,13 +1592,13 @@ export class CredentialsService {
 				);
 			}
 			if (result.status === 'deleted') {
-				this.emitCredentialDeleted(user, credential, owningProject?.id);
+				this.emitCredentialDeleted(user, credential, owningProject?.id, ctx);
 			}
 			return result.status === 'deleted';
 		}
 
 		await this.credentialsRepository.remove(credential);
-		this.emitCredentialDeleted(user, credential, owningProject?.id);
+		this.emitCredentialDeleted(user, credential, owningProject?.id, ctx);
 		return true;
 	}
 
@@ -1620,6 +1625,7 @@ export class CredentialsService {
 		user: User,
 		credential: CredentialsEntity,
 		projectId: string | undefined,
+		ctx: OperationContext = {},
 	) {
 		this.eventService.emit('credentials-deleted', {
 			user,
@@ -1627,6 +1633,7 @@ export class CredentialsService {
 			credentialId: credential.id,
 			credentialName: credential.name,
 			projectId,
+			loginId: loginIdOf(ctx),
 		});
 
 		if (credential.isResolvable) {
@@ -2002,13 +2009,13 @@ export class CredentialsService {
 			}
 		}
 
-		let sharing: SharedCredentials | null = null;
+		// Resolve access with the same rules as the access middleware, the
+		// credential list and the pre-execution check. Team project membership and
+		// shares created while sharing was licensed stay valid after a downgrade.
 		let decryptedData: ICredentialDataDecryptedObject | null = null;
 
-		sharing = includeDecryptedData
-			? // Try to get the credential with `credential:update` scope, which
-				// are required for decrypting the data.
-				await this.getSharing(user, credentialId, [
+		let credential = includeDecryptedData
+			? await this.credentialsFinderService.findCredentialForUser(credentialId, user, [
 					'credential:read',
 					// Decryption needs edit rights, exactly as the enterprise path requires.
 					// A see-only instance role holds read but not update, so it falls
@@ -2019,21 +2026,22 @@ export class CredentialsService {
 				])
 			: null;
 
-		if (sharing) {
-			// Decrypt the data if we found the credential with the `credential:update`
-			// scope.
-			decryptedData = await this.decrypt(sharing.credentials);
+		if (credential) {
+			decryptedData = await this.decrypt(credential);
 		} else {
-			// Otherwise try to find them with only the `credential:read` scope. In
-			// that case we return them without the decrypted data.
-			sharing = await this.getSharing(user, credentialId, ['credential:read']);
+			// Metadata only: no `data` is returned on this branch, so seeing the
+			// credential is enough.
+			credential = await this.credentialsFinderService.findCredentialForUser(
+				credentialId,
+				user,
+				['credential:read'],
+				{ visibilityOnly: true },
+			);
 		}
 
-		if (!sharing) {
+		if (!credential) {
 			throw new NotFoundError(`Credential with ID "${credentialId}" could not be found.`);
 		}
-
-		const { credentials: credential } = sharing;
 
 		const { data: _, ...rest } = credential;
 		await this.credentialDescriptions.stripIfDisabled(rest);
@@ -2184,6 +2192,7 @@ export class CredentialsService {
 			type: string;
 			projectId: string;
 			data?: ICredentialDataDecryptedObject;
+			description?: string | null;
 		},
 		user: User,
 	): Promise<CredentialsEntity> {
@@ -2195,6 +2204,9 @@ export class CredentialsService {
 			type: opts.type,
 			data,
 		});
+		if (opts.description !== undefined && (await this.credentialDescriptions.isEnabled())) {
+			encryptedCredential.description = parseCredentialDescription(opts.description);
+		}
 
 		const credentialEntity = this.credentialsRepository.create({
 			...encryptedCredential,

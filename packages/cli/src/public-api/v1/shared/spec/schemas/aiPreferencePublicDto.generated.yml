@@ -1,0 +1,39 @@
+type: object
+properties:
+  id:
+    type: string
+  content:
+    type: string
+  scope:
+    type: string
+    enum:
+      - user
+      - project
+      - instance
+  userId:
+    type: string
+    nullable: true
+  projectId:
+    type: string
+    nullable: true
+  source:
+    type: string
+    enum:
+      - ui
+      - aia
+      - mcp
+      - api
+      - import
+  createdAt:
+    type: string
+  updatedAt:
+    type: string
+required:
+  - id
+  - content
+  - scope
+  - userId
+  - projectId
+  - source
+  - createdAt
+  - updatedAt
