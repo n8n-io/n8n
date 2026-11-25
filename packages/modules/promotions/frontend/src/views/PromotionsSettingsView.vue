@@ -11,6 +11,7 @@ import {
 	N8nEmptyState,
 	N8nEnterpriseReadinessBadge,
 	N8nExternalLink,
+	N8nIcon,
 	N8nLoading2,
 	N8nPreviewBadge,
 	N8nSettingsLayout,
@@ -48,6 +49,7 @@ import {
 	fetchPromotionEnvironments,
 	type PromotionEnvironment,
 } from '../promotionsSettings.api';
+import { promotionDirectionIcon } from '../promotionsSettings.utils';
 
 const i18n = useI18n();
 const toast = useToast();
@@ -225,11 +227,23 @@ async function remove(environment: PromotionEnvironment) {
 							"
 							@remove="remove(environments[direction])"
 						/>
-						<div v-else :class="$style.column">
-							<N8nSettingsRow
-								:title="i18n.baseText(`settings.promotions.environments.${direction}.title`)"
-								:show-divider="false"
-							/>
+						<div v-else :class="[$style.column, $style.emptyColumn]">
+							<N8nSettingsRow :show-divider="false">
+								<template #info>
+									<div
+										:style="{ display: 'flex', alignItems: 'center', gap: 'var(--spacing--2xs)' }"
+									>
+										<N8nIcon
+											:icon="promotionDirectionIcon[direction]"
+											color="text-dark"
+											size="small"
+										/>
+										<N8nText bold size="medium" color="text-dark">
+											{{ i18n.baseText(`settings.promotions.environments.${direction}.title`) }}
+										</N8nText>
+									</div>
+								</template>
+							</N8nSettingsRow>
 							<div :class="$style.empty">
 								<N8nButton
 									:ref="(button) => (addButtons[direction] = button)"
@@ -330,11 +344,19 @@ async function remove(environment: PromotionEnvironment) {
 	cursor: pointer;
 }
 
+// The minimum height gives the empty column room, so the button sits in the middle of the
+// space below the title.
+.emptyColumn {
+	min-height: calc(var(--spacing--4xl) + var(--spacing--sm));
+}
+
 .empty {
 	display: flex;
 	flex: 1;
 	align-items: center;
 	justify-content: center;
-	padding: var(--spacing--lg) var(--spacing--sm);
+	// The title row has its own bottom padding. The bottom padding here moves the button up,
+	// so it centers in the space below the title text.
+	padding: 0 var(--spacing--sm) var(--spacing--lg);
 }
 </style>

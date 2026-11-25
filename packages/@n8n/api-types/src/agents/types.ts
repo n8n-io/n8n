@@ -3,6 +3,7 @@ import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, getChildNodes, type IConnections } 
 import type { AgentApproval, AgentIntegrationSettings } from './agent-integration.schema';
 import type { AgentJsonConfig } from './agent-json-config.schema';
 import type { AgentPersonalisation } from './agent-personalisation';
+import type { AgentSkillReference } from './agent-skill.schema';
 import type { AgentBackgroundJobSignal } from './background-job';
 import type { ProviderAttachmentCapabilities } from './provider-capabilities';
 
@@ -218,11 +219,6 @@ export interface AgentWhatsAppVerifyTokenResponse {
 /** The URL of an agent's webhook channel. Callers send `POST` requests to `${url}/responses`. */
 export interface AgentWebhookUrlResponse {
 	url: string;
-}
-
-export interface AgentSkillReference {
-	path: string;
-	content: string;
 }
 
 export interface AgentSkill {
