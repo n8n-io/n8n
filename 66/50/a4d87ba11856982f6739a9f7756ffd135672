@@ -1,0 +1,164 @@
+packages/@n8n/backend-services/src/services/ai-preference.md
+  s_1b3760c92ccdfb::t_17d887bb520a79 125-126,132
+  s_1b3760c92ccdfb::t_f8d083c3ce772b 123-124,127,134-139,233-250
+packages/@n8n/api-types/src/dto/packages/__tests__/preference.schema.test.ts
+  ai_agent 1-41
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  ai_agent 10-13,33,74,88,178-185,215-222,234-247,333
+packages/frontend/editor-ui/src/features/settings/context/context.utils.test.ts
+  ai_agent 252-262
+packages/cli/src/services/ai-preference-write.ts
+  ai_agent 44-49
+packages/@n8n/db/src/repositories/ai-preference.repository.ts
+  s_1b3760c92ccdfb::t_ae03bbc6462b89 62
+  s_1b3760c92ccdfb::t_a53a68cfd37c1b 3,9,12,49-61,63-100,156-163,217-231
+packages/@n8n/backend-services/src/index.ts
+  ai_agent 211-216
+packages/cli/src/modules/n8n-packages/entities/project/project-importer.ts
+  ai_agent 2,82-87,89-110,126-136
+packages/@n8n/backend-services/src/services/project-scope.service.ts
+  ai_agent 1-6,22,43-47,50,57-67
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  ai_agent 9,23,79,89,144,178-186,406-411,414-415,439-440,755,857
+packages/@n8n/cli/src/__tests__/package-export.test.ts
+  ai_agent 24,68-104
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/exportPackage.generated.yml
+  ai_agent 4,31-34,44-54
+packages/cli/src/public-api/v1/shared/spec/schemas/importResultDto.generated.yml
+  ai_agent 124-172,176-191
+packages/@n8n/api-types/src/dto/packages/preference.schema.ts
+  ai_agent 1-14
+packages/cli/test/integration/public-api/n8n-packages-preferences.test.ts
+  ai_agent 1-138
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackageSelection.generated.yml
+  ai_agent 14-15,25-34,39-41
+packages/cli/src/modules/n8n-packages/spec/manifest.schema.ts
+  ai_agent 5,50-66,68-73,75-84
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  ai_agent 8-9,122-155,308
+packages/@n8n/cli/src/commands/package/import.ts
+  ai_agent 22-34,181-182
+packages/@n8n/api-types/src/dto/packages/import-result.dto.ts
+  ai_agent 327-343,345-352
+packages/cli/src/modules/n8n-packages/entities/preference/preference.importer.ts
+  ai_agent 1-168
+packages/@n8n/api-types/src/dto/packages/export-package-request.openapi.ts
+  ai_agent 4-11
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  ai_agent 10,79,96-109,297-316
+packages/@n8n/backend-services/src/services/ai-preference.service.ts
+  s_1b3760c92ccdfb::t_63c267543d6385 18-24
+  s_1b3760c92ccdfb::t_37332ca8852b73 12-17,30-36,58,76-80,142-143,254,257,303-305,310-316,336,338-342,351-352,371-372,383-583,612,614,657,686,717,1070-1074
+packages/@n8n/cli/src/commands/package/import-selection.ts
+  ai_agent 21-39,97,100-101
+packages/cli/src/modules/n8n-packages/__tests__/blocking-issue-schema-contract.test.ts
+  ai_agent 8-10
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-gates.test.ts
+  ai_agent 28-91
+packages/cli/src/modules/n8n-packages/entities/preference/preference.exporter.ts
+  ai_agent 1-81
+packages/cli/src/public-api/v1/shared/spec/schemas/importBlockingIssue.generated.yml
+  ai_agent 7-22
+packages/cli/src/modules/n8n-packages/spec/__tests__/manifest.schema.test.ts
+  ai_agent 238-284
+packages/@n8n/cli/src/__tests__/package-import-selection.test.ts
+  ai_agent 69-71,91-93,139-157
+packages/cli/src/modules/n8n-packages/engine/import-gates.ts
+  ai_agent 22-40,43-46
+packages/cli/src/public-api/v1/controllers/n8n-packages.public.controller.ts
+  ai_agent 110-119,165-173,201-202,220-221,235-237,265,267,286-289
+packages/@n8n/cli/README.md
+  ai_agent 141-152
+packages/cli/src/modules/promotions.ee/base-branch-files.ts
+  ai_agent 16
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-selection-request.dto.test.ts
+  ai_agent 188-190,200-218
+packages/@n8n/cli/docs/commands/package.md
+  s_1b3760c92ccdfb::t_824351688ea2e6 273,286-357
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  ai_agent 264-267,269-271,308-309,340-341,362,576,697-702,910-916,918,921-924
+packages/@n8n/api-types/src/dto/packages/__tests__/import-result.dto.test.ts
+  ai_agent 1,185-208
+packages/cli/src/modules/n8n-packages/entities/preference/__tests__/preference.serializer.test.ts
+  ai_agent 1-51
+packages/cli/src/modules/mcp/__tests__/update-user-preference.tool.test.ts
+  ai_agent 7,285-292,303
+packages/cli/src/modules/n8n-packages/spec/constants.ts
+  ai_agent 2
+packages/@n8n/backend-services/src/services/__tests__/ai-preference.service.test.ts
+  s_1b3760c92ccdfb::t_f8d083c3ce772b 6,10,17,28,63,67,69-70,93,396,404,424,441,470,531,570,586-588,600,620-622,626-627,645-646,662-663,688,701,746-768,773,787-789,803,814,832,884-886,906,916,933
+  s_1b3760c92ccdfb::t_63c267543d6385 94-99
+packages/@n8n/cli/src/__tests__/client.test.ts
+  ai_agent 79-120
+packages/@n8n/api-types/src/dto/packages/import-package-request.openapi.ts
+  ai_agent 4-11,270-273
+packages/cli/src/services/__tests__/ai-preference-write.test.ts
+  ai_agent 174-181
+packages/cli/src/modules/n8n-packages/entities/preference/preference.serializer.ts
+  ai_agent 1-25
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  ai_agent 16-17,105-115,118-123,195-197,253-258,260-262
+packages/frontend/editor-ui/src/features/settings/context/context.utils.ts
+  ai_agent 154,163-165
+packages/@n8n/api-types/src/dto/packages/export-package-request.dto.ts
+  ai_agent 9-18
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-blocked.error.test.ts
+  ai_agent 141-150
+packages/cli/src/services/project.service.ee.ts
+  ai_agent 550-584,599,607-608,610-611,613-615
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  ai_agent 1,801-822
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  ai_agent 20-22,26,52,64-72,173-175,199
+packages/@n8n/cli/src/__tests__/package-import.test.ts
+  ai_agent 100-101,201-215
+packages/cli/src/modules/n8n-packages/__tests__/preferences.integration.test.ts
+  s_1b3760c92ccdfb::t_63c267543d6385 421-426,428-439,451-453
+  s_1b3760c92ccdfb::t_f8d083c3ce772b 1-414,461-697
+  s_1b3760c92ccdfb::t_53f53a40469233 415-420,427,440-450,454-460
+packages/cli/src/public-api/v1/controllers/openapi/n8n-packages.openapi.ts
+  ai_agent 4,26-30,46,88-93
+packages/cli/test/integration/database/repositories/ai-preference.repository.test.ts
+  s_1b3760c92ccdfb::t_63c267543d6385 52-58,83-89,101-107
+  s_1b3760c92ccdfb::t_53f53a40469233 47-51,59-82,90-100,108-122
+packages/@n8n/cli/src/commands/package/export.ts
+  ai_agent 16,46-55,143,145,157-158,170-171
+packages/@n8n/backend-services/src/services/__tests__/project-scope.service.test.ts
+  ai_agent 1,19-23,115-119,121-125,141
+packages/cli/src/modules/mcp/tools/save-user-preference.tool.ts
+  ai_agent 5,58-61,64,313-319
+packages/cli/src/modules/n8n-packages/io/manifest-entry.ts
+  ai_agent 29,52
+packages/cli/src/modules/n8n-packages/engine/import-blocked.error.ts
+  ai_agent 15
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackage.generated.yml
+  ai_agent 8,20-21,24-25,35-44
+packages/@n8n/backend-services/src/services/ai-preference-changes.ts
+  ai_agent 1-34
+packages/cli/src/modules/mcp/__tests__/save-user-preference.tool.test.ts
+  ai_agent 584-619
+packages/@n8n/db/src/repositories/project-relation.repository.ts
+  ai_agent 11,87-88
+packages/cli/src/modules/mcp/tools/update-user-preference.tool.ts
+  ai_agent 9,135,164
+packages/cli/src/modules/n8n-packages/engine/__tests__/n8n-package-parser.preference.test.ts
+  ai_agent 1-83
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.schema.ts
+  ai_agent 425-429
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6650a4d87ba11856982f6739a9f7756ffd135672",
+  "prompts": {},
+  "sessions": {
+    "s_1b3760c92ccdfb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a20df9-cb98-7aa1-a82b-883694996695",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
