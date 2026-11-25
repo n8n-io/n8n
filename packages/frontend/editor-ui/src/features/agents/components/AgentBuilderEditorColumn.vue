@@ -16,6 +16,7 @@ import type {
 } from '../types';
 import type { ToolOpenTarget, ToolPickerMode } from './AgentCapabilitiesSection.types';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useIsCollectionsEnabled } from '@/features/shared/knowledge/useIsCollectionsEnabled';
 import { useTypeAvailability } from '@n8n/frontend-module-type-availability-policies';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
@@ -26,6 +27,7 @@ import { provideAgentPersonalisation } from '../channels/agentPersonalisation';
 import AgentIdentityHeader from './AgentIdentityHeader.vue';
 import AgentInfoPanel from './AgentInfoPanel.vue';
 import AgentFilesPanel from './AgentFilesPanel.vue';
+import AgentKnowledgeCollectionsPanel from './AgentKnowledgeCollectionsPanel.vue';
 import AgentMemoryEntriesPanel from './AgentMemoryEntriesPanel.vue';
 import AgentVectorStoresPanel from './AgentVectorStoresPanel.vue';
 import AgentMcpPanel from './AgentMcpPanel.vue';
@@ -83,6 +85,7 @@ provideAgentPersonalisation(
 );
 const isKnowledgeAdvancedExpanded = ref(false);
 const isMemoryViewAll = ref(false);
+const isCollectionsEnabled = useIsCollectionsEnabled();
 
 const settingsStore = useSettingsStore();
 const isMcpAvailable = computed(
@@ -361,6 +364,12 @@ defineExpose({ onSetupTaskAction });
 							@delete-file="emit('delete-file', $event)"
 						/>
 					</AgentPanel>
+					<AgentKnowledgeCollectionsPanel
+						v-if="isCollectionsEnabled && !agentUnsaved && !isMemoryViewAll"
+						:project-id="projectId"
+						:agent-id="agentId"
+						:disabled="childrenDisabled"
+					/>
 					<AgentMemoryEntriesPanel
 						v-if="!agentUnsaved"
 						v-model:show-all="isMemoryViewAll"
