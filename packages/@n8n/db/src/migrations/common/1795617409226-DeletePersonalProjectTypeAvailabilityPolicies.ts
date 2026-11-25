@@ -1,5 +1,7 @@
 import type { IrreversibleMigration, MigrationContext } from '../migration-types';
 
+const DELETE_BATCH_SIZE = 500;
+
 /**
  * Only a team project can have a node or credential type policy. Before the server checked the
  * project type, an admin could write one on a personal project through the API. This deletes
@@ -71,12 +73,13 @@ export class DeletePersonalProjectTypeAvailabilityPolicies1795617409226
 	}
 
 	private async deletePolicies({ escape, runQuery }: MigrationContext, ids: string[]) {
-		if (ids.length === 0) return;
-
-		await runQuery(
-			`DELETE FROM ${escape.tableName('type_availability_policy')}
-			WHERE ${escape.columnName('id')} IN (:...ids)`,
-			{ ids },
-		);
+		// Each id is one bind parameter, so batches stay under SQLite's parameter limit.
+		for (let start = 0; start < ids.length; start += DELETE_BATCH_SIZE) {
+			await runQuery(
+				`DELETE FROM ${escape.tableName('type_availability_policy')}
+				WHERE ${escape.columnName('id')} IN (:...ids)`,
+				{ ids: ids.slice(start, start + DELETE_BATCH_SIZE) },
+			);
+		}
 	}
 }
