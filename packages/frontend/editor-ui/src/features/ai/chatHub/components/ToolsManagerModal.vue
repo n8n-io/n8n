@@ -523,7 +523,6 @@ function onDialogOpenUpdate(open: boolean) {
 			<!-- Settings view: doesn't scroll, lets NodeToolSettingsContent.tabContent scroll -->
 			<div v-if="currentView === 'settings' && settingsNode" :class="$style.settingsWrapper">
 				<RestrictedTypeCallout
-					telemetry-source="chat_hub_tools_manager"
 					v-if="settingsIsRestricted"
 					surface="chatTool"
 					:type-name="settingsTypeName"

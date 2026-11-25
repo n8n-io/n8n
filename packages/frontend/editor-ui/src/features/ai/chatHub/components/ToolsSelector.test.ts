@@ -66,7 +66,6 @@ function createMockToolDto(
 }
 
 const renderComponent = createComponentRenderer(ToolsSelector, {
-	props: { telemetrySource: 'chat_hub_tools' },
 	global: {
 		stubs: {
 			NodeIcon: { template: '<div />' },

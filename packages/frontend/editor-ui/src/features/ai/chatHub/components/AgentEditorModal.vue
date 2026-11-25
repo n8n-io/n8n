@@ -620,7 +620,6 @@ watch(documentVisibility, (visibility) => {
 							>
 								<div>
 									<ToolsSelector
-										telemetry-source="chat_hub_agent_editor"
 										:disabled="!canSelectTools"
 										:disabled-tooltip="
 											canSelectTools

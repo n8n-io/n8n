@@ -204,7 +204,6 @@ function contactForAll() {
 								:kind="row.kind"
 								:project-type="destinationType"
 								:anchor="rowElements.get(row.key)"
-								telemetry-source="transfer_dialog"
 								side="right"
 								@contact-admin="
 									(audience) => openContact({ audience, names: [row.name], kind: row.kind })
@@ -234,7 +233,6 @@ function contactForAll() {
 			:kind="contact.kind"
 			:audience="contact.audience"
 			:project="destination"
-			telemetry-source="transfer_dialog"
 		/>
 	</N8nDialog>
 </template>

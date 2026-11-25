@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { computed, ref } from 'vue';
 
 import ContactAdminModal from './ContactAdminModal.vue';
@@ -25,7 +23,6 @@ const {
 const emit = defineEmits<{ replaceNode: [] }>();
 
 const i18n = useI18n();
-const telemetry = useTelemetry();
 
 const isContactAdminOpen = ref(false);
 
@@ -33,13 +30,6 @@ const { copy: contactCopy } = useRestrictionContact(() => restriction);
 const description = computed(() =>
 	describeNodeTypeRestriction(nodeTypeName, restriction, showReplace ? 'replace' : 'contact'),
 );
-
-function replaceNode() {
-	telemetry.track(TELEMETRY_EVENT.TYPE_AVAILABILITY_POLICIES.USER_CLICKED_REPLACE_RESTRICTED_NODE, {
-		scope: restriction?.scope ?? null,
-	});
-	emit('replaceNode');
-}
 </script>
 
 <template>
@@ -65,7 +55,7 @@ function replaceNode() {
 				size="small"
 				icon="arrow-left-right"
 				data-test-id="node-restricted-replace"
-				@click="replaceNode"
+				@click="emit('replaceNode')"
 			>
 				{{ i18n.baseText('typeAvailabilityPolicies.restrictedNode.replaceNode') }}
 			</N8nButton>
@@ -74,7 +64,6 @@ function replaceNode() {
 			v-model:open="isContactAdminOpen"
 			:type-name="nodeTypeName"
 			:audience="contactCopy.audience"
-			telemetry-source="ndv"
 		/>
 	</div>
 </template>

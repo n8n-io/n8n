@@ -788,7 +788,6 @@ defineExpose({
 
 			<template #item-restricted="{ item }">
 				<RestrictedMenuItemMarker
-					telemetry-source="agent_model_selector"
 					kind="credential"
 					:node-type-name="restrictedCredentialsName(item)"
 					:restriction="item.data?.restriction"
@@ -799,7 +798,6 @@ defineExpose({
 			</template>
 		</N8nAiModelSelectorDropdown>
 		<ContactAdminModal
-			telemetry-source="agent_model_selector"
 			kind="credential"
 			:type-name="contactAdmin?.subject ?? ''"
 			:audience="contactAdmin?.audience ?? 'instance'"

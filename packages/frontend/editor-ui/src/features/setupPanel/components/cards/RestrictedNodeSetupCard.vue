@@ -109,7 +109,6 @@ function onReplaceNode() {
 				</N8nButton>
 			</div>
 			<ContactAdminModal
-				telemetry-source="setup_panel"
 				v-model:open="isContactAdminOpen"
 				:kind="contactKind"
 				:type-name="contactTypeName"

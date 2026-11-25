@@ -57,7 +57,6 @@ const scopeLabel = computed(() => {
 			scopeLabel
 		}}</span>
 		<RestrictedNodePopover
-			telemetry-source="command_bar"
 			ref="popover"
 			:node-type-name="nodeTypeName"
 			:restriction="restriction"
