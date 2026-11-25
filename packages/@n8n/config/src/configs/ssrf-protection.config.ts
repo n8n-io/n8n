@@ -89,7 +89,7 @@ export class SsrfProtectionConfig {
 	 * are unaffected by this setting.
 	 */
 	@Env('N8N_SSRF_PROTECTION_ENABLED')
-	enabled: boolean = false;
+	enabled: boolean = true;
 
 	/**
 	 * The IP address ranges (in CIDR notation) that guarded requests are not

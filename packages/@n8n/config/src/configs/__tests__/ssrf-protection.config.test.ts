@@ -14,9 +14,9 @@ describe('SsrfProtectionConfig', () => {
 	});
 
 	describe('defaults', () => {
-		test('enabled is false', () => {
+		test('enabled is true', () => {
 			process.env = {};
-			expect(Container.get(SsrfProtectionConfig).enabled).toBe(false);
+			expect(Container.get(SsrfProtectionConfig).enabled).toBe(true);
 		});
 
 		test('blockedIpRanges defaults to default ranges', () => {
