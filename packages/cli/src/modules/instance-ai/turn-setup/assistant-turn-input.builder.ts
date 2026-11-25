@@ -491,6 +491,7 @@ export class AssistantTurnInputBuilder {
 						threadArtifacts,
 						contextAttachments,
 						loadReplayedHistory,
+						message,
 					)
 				: '';
 		const appTargetsBlock =
@@ -809,8 +810,10 @@ export class AssistantTurnInputBuilder {
 		context: InstanceAiThreadArtifactsContext | undefined,
 		attachments: InstanceAiResourceAttachment[],
 		loadHistory: () => Promise<AgentDbMessage[]>,
+		/** The user's text, whose inline mentions the block lists apart from hand-offs. */
+		message?: string,
 	): Promise<string> {
-		const freshBlock = buildThreadArtifactsBlock(context, attachments);
+		const freshBlock = buildThreadArtifactsBlock(context, attachments, message);
 		if (!freshBlock) return '';
 		// A hand-off always rides its own turn: the parser rebuilds the attachments from it.
 		if (attachments.length > 0) return freshBlock;

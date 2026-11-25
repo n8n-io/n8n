@@ -9,6 +9,7 @@ import {
 	type InstanceAiThreadArtifact,
 	type InstanceAiThreadArtifactsContext,
 } from '@n8n/api-types';
+import { listChatTokens, parseChatResourceHref } from '@n8n/utils/chat-tokens';
 import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -604,15 +605,44 @@ function attachmentToThreadArtifact(
 	};
 }
 
+/** The resources that the inline tokens of a message point to, as `kind:id` keys. */
+function inlineMentionKeys(messageText: string | undefined): Set<string> {
+	const keys = new Set<string>();
+	for (const { href } of listChatTokens(messageText ?? '')) {
+		const target = parseChatResourceHref(href);
+		if (!target) continue;
+		const [id] = target.ids;
+		// A node or group token points into its workflow, which a nodes attachment names.
+		keys.add(
+			target.kind === 'node' || target.kind === 'group' ? `nodes:${id}` : `${target.kind}:${id}`,
+		);
+	}
+	return keys;
+}
+
+function attachmentMentionKey(attachment: InstanceAiResourceAttachment): string | undefined {
+	if (attachment.type === 'nodes') return `nodes:${attachment.workflowId}`;
+	if (attachment.type === 'workflow' || attachment.type === 'agent') {
+		return `${attachment.type}:${attachment.id}`;
+	}
+	return undefined;
+}
+
+const INLINE_MENTIONS_HEADER =
+	'The user mentioned these items in their message. Each mention is written inline where the user refers to it, as `[@name](n8n-resource://<kind>/<id>)`: `workflow/<workflowId>`, `agent/<agentId>`, `node/<workflowId>/<nodeId>` or `group/<workflowId>/<canvasGroupId>`. Apply each part of the request to the item that it mentions:';
+
 /**
- * Preview-tab index plus any editor hand-off resources for this turn. Ids and
- * names for the ambient list; when resource attachments are present, a leading
- * JSON line keeps them durable for reload (replacing the old `<editor-context>`
- * block). Lives inside `<thread-context>` for prompt-caching reasons.
+ * Preview-tab index plus any editor hand-off and inline mentioned resources for
+ * this turn. Ids and names for the ambient list; when resource attachments are
+ * present, a leading JSON line keeps them durable for reload (replacing the old
+ * `<editor-context>` block). Lives inside `<thread-context>` for prompt-caching
+ * reasons. `messageText` is the user's text: an attachment that one of its
+ * inline tokens points to is listed as a mention, not as a hand-off.
  */
 export function buildThreadArtifactsBlock(
 	context: InstanceAiThreadArtifactsContext | undefined,
 	resourceAttachments: InstanceAiResourceAttachment[] = [],
+	messageText?: string,
 ): string {
 	// A fixed order, so reordering tabs does not change the block and re-send it.
 	const previewArtifacts = [...(context?.artifacts ?? [])].sort((a, b) =>
@@ -653,21 +683,27 @@ export function buildThreadArtifactsBlock(
 		),
 	);
 
-	// Section 2: what the editor handed off that is not already a tab — a node
-	// selection is never a tab, so it always lands here.
+	// Sections 2 and 3: what the message mentions inline, and what the editor handed
+	// off, when it is not already a tab — a node selection is never a tab, so it
+	// always lands here.
 	const listedKeys = new Set(previewArtifacts.map((artifact) => `${artifact.type}:${artifact.id}`));
+	const mentionKeys = inlineMentionKeys(messageText);
+	const mentionLines: string[] = [];
 	const handoffLines: string[] = [];
 	for (const attachment of resourceAttachments) {
+		const mentionKey = attachmentMentionKey(attachment);
+		const lines = mentionKey && mentionKeys.has(mentionKey) ? mentionLines : handoffLines;
 		if (attachment.type === 'nodes') {
-			handoffLines.push(buildNodesAttachmentLine(attachment));
+			lines.push(buildNodesAttachmentLine(attachment));
 			continue;
 		}
 		if (attachment.type === 'element') {
-			handoffLines.push(buildElementAttachmentLine(attachment));
+			lines.push(buildElementAttachmentLine(attachment));
 			continue;
 		}
-		if (listedKeys.has(`${attachment.type}:${attachment.id}`)) continue;
-		handoffLines.push(
+		// A mention is listed even when it is a tab, so the agent can read its token.
+		if (lines === handoffLines && listedKeys.has(`${attachment.type}:${attachment.id}`)) continue;
+		lines.push(
 			formatThreadArtifactLine(
 				attachmentToThreadArtifact(attachment),
 				false,
@@ -693,6 +729,7 @@ export function buildThreadArtifactsBlock(
 
 	const prose = [
 		...(previewLines.length > 0 ? [PREVIEW_TABS_HEADER, ...previewLines] : []),
+		...(mentionLines.length > 0 ? [INLINE_MENTIONS_HEADER, ...mentionLines] : []),
 		...(handoffLines.length > 0
 			? [
 					'The user opened this conversation from the editor, where they are looking at:',

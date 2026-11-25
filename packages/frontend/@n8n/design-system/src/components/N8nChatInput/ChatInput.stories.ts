@@ -1058,3 +1058,59 @@ SuggestionsDisabled.args = {
 	suggestions: workflowSuggestions,
 	disabled: true,
 };
+
+const INLINE_TOKEN_OPTIONS = [
+	{ label: 'Order sync', href: 'n8n-resource://workflow/order-sync' },
+	{ label: 'Support bot', href: 'n8n-resource://agent/support-bot' },
+];
+
+/** Type `@` to pick a resource. The pick stays in the text as an inline token. */
+const InlineTokensTemplate: StoryFn = (args) => ({
+	setup() {
+		const value = ref(
+			String(args.modelValue ?? 'Copy [@Order sync](n8n-resource://workflow/order-sync) into '),
+		);
+		const query = ref<string>();
+		const input = ref<InstanceType<typeof N8nChatInput>>();
+		const matches = computed(() =>
+			query.value === undefined
+				? []
+				: INLINE_TOKEN_OPTIONS.filter((option) =>
+						option.label.toLowerCase().includes((query.value ?? '').toLowerCase()),
+					),
+		);
+		const tokens = {
+			trigger: true,
+			icon: (href: string) => (href.includes('/agent/') ? 'robot' : 'workflow'),
+		};
+		function pick(option: (typeof INLINE_TOKEN_OPTIONS)[number]) {
+			input.value?.getTokenEditor()?.insertToken(option);
+			query.value = undefined;
+		}
+		return { args, value, query, input, matches, tokens, pick, onSubmit: methods.onSubmit };
+	},
+	components: { N8nChatInput },
+	template: `
+		<div style="width: 500px; max-width: 100%; display: flex; flex-direction: column; gap: 8px;">
+			<n8n-chat-input
+				ref="input"
+				v-bind="args"
+				v-model="value"
+				:tokens="tokens"
+				@token-query="(next) => (query = next)"
+				@submit="onSubmit"
+			/>
+			<div v-if="query !== undefined" style="display: flex; gap: 4px;">
+				<button v-for="option in matches" :key="option.href" @mousedown.prevent="pick(option)">
+					{{ option.label }}
+				</button>
+			</div>
+			<code style="white-space: pre-wrap; font-size: 12px;">{{ value }}</code>
+		</div>
+	`,
+});
+
+export const WithInlineTokens = InlineTokensTemplate.bind({});
+WithInlineTokens.args = {
+	placeholder: 'Type @ to mention a workflow or an agent',
+};

@@ -164,7 +164,10 @@ export {
 	useChatInputAutoFocus,
 	type ChatInputAutoFocusOptions,
 	type ChatInputAutoFocusTarget,
+	type ChatInputTokenQueryEnd,
+	type N8nChatInputTokenOptions,
 } from './N8nChatInput';
+export { default as N8nChatToken, type N8nChatTokenProps } from './N8nChatToken';
 export { default as N8nChatMessage } from './N8nChatMessage';
 export { default as N8nChatScrollArea } from './N8nChatScrollArea';
 export type {

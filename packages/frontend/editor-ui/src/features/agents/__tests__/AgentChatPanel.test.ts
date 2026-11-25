@@ -312,6 +312,8 @@ vi.mock('@/features/ai/shared/components/ChatInputBase.vue', async () => {
 					},
 					openFilePicker: openFilePickerMock,
 					getInputElement: () => input.value,
+					getEditorElement: () => input.value,
+					getTokenEditor: () => undefined,
 				});
 				return { input };
 			},
@@ -5475,6 +5477,26 @@ describe('AgentChatPanel', () => {
 			expect(wrapper.emitted('message-accepted')).toEqual([
 				[{ text: 'use these', files: [], clientContext }],
 			]);
+		});
+
+		it('builds the client context from the text that it sends', async () => {
+			acceptOnSend();
+			const clientContext = vi.fn((message: { text: string }) => ({ sentText: message.text }));
+			const wrapper = mountPanel({ clientContext });
+
+			composerVm(wrapper).sendMessageFromOutside('Fix [@Orders](n8n-resource://workflow/1)');
+			await flushPromises();
+			await flushPromises();
+
+			expect(clientContext).toHaveBeenCalledWith({
+				text: 'Fix [@Orders](n8n-resource://workflow/1)',
+			});
+			expect(sendMessageMock).toHaveBeenCalledWith(
+				'Fix [@Orders](n8n-resource://workflow/1)',
+				undefined,
+				expect.any(Function),
+				{ sentText: 'Fix [@Orders](n8n-resource://workflow/1)' },
+			);
 		});
 
 		describe('sendHostMessage', () => {

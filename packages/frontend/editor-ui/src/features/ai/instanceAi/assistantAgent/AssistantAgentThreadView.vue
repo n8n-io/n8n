@@ -137,6 +137,7 @@ import {
 	readMessageReferences,
 	toMentionComposerAttachment,
 } from './assistantMentionAttachments';
+import { isMentionedInline } from './assistantMentionTokens';
 import {
 	countSentNodes,
 	readNodesAttachment,
@@ -249,13 +250,20 @@ const agentConfig = computed<AgentJsonConfig>(() => ({
 	instructions: '',
 }));
 
-/** The Assistant reads the same request fields as from its current runtime. */
-function clientContext(): Record<string, unknown> {
+/**
+ * The Assistant reads the same request fields as from its current runtime. The
+ * resources that the text mentions inline go with the references of a hand-off.
+ */
+function clientContext(message?: { text: string }): Record<string, unknown> {
+	const attachments = [
+		...pendingReferences,
+		...(message ? mentions.attachmentsFor(message.text) : []),
+	];
 	return {
 		timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 		...(rootStore.pushRef ? { pushRef: rootStore.pushRef } : {}),
 		browserUseAvailable: settingsStore.isBrowserUseAvailable,
-		...(pendingReferences.length > 0 ? { attachments: pendingReferences } : {}),
+		...(attachments.length > 0 ? { attachments } : {}),
 		...(pendingHandoffContext ? { context: pendingHandoffContext } : {}),
 		// The server binds the subject on the first turn. Until then, every send carries it.
 		...(launch?.subject && isNewSession.value ? { subject: launch.subject } : {}),
@@ -280,7 +288,14 @@ function threadArtifactsContext(): Record<string, unknown> {
 }
 
 /** The references go with the first message, so a retry of a refused send keeps them. */
-function onMessageAccepted({ clientContext }: { clientContext?: Record<string, unknown> }): void {
+function onMessageAccepted({
+	text,
+	clientContext,
+}: {
+	text: string;
+	clientContext?: Record<string, unknown>;
+}): void {
+	mentions.handleSent(text);
 	// Tracked on acceptance, like the current runtime, so refused sends don't inflate the count.
 	// The sent context has the references and the nodes that the composer chips added.
 	const nodeCount = countSentNodes(clientContext);
@@ -292,9 +307,7 @@ function onMessageAccepted({ clientContext }: { clientContext?: Record<string, u
 	}
 	// A mentioned workflow shows only now that the message is sent, not when it
 	// was picked. The first mention is the one shown, as on the current runtime.
-	const mentioned = mentions.firstSentMentionedWorkflow(
-		readMessageReferences(clientContext?.attachments),
-	);
+	const mentioned = mentions.firstSentMentionedWorkflow(text);
 	if (mentioned) {
 		preview.openTab({ id: mentioned.id, type: 'workflow', name: mentioned.name, icon: 'workflow' });
 	}
@@ -352,8 +365,9 @@ const turnTelemetry = useAssistantAgentTurnTelemetry({
 
 function onMessageSending(message: AssistantAgentSendingMessage): void {
 	mentions.close();
-	const sent = readMessageReferences(message.clientContext?.attachments);
-	turnTelemetry.trackSubmit(messageTelemetry.trackSend(message, mentions.sentMentionCounts(sent)));
+	turnTelemetry.trackSubmit(
+		messageTelemetry.trackSend(message, mentions.sentMentionCounts(message.text)),
+	);
 }
 
 function onStreamEvent(event: AgentSseEvent): void {
@@ -452,10 +466,15 @@ const threadAgentIds = computed(() => {
 	return new Set([targets?.bound?.agentId, targets?.pending?.agentId].filter(isString));
 });
 
-/** The references that a user message shows, without the agent of the thread. */
+/**
+ * The references that a user message shows above its text: not the agent of the
+ * thread, and not the resources that the text shows inline.
+ */
 function shownReferences(message: ChatMessage): InstanceAiResourceAttachment[] {
 	return readMessageReferences(message.references).filter(
-		(reference) => reference.type !== 'agent' || !threadAgentIds.value.has(reference.id),
+		(reference) =>
+			(reference.type !== 'agent' || !threadAgentIds.value.has(reference.id)) &&
+			!isMentionedInline(reference, message.content),
 	);
 }
 
@@ -935,7 +954,6 @@ const stagedNodes = computed(() =>
 
 /** A removed handoff workflow must not come back when the page reloads. */
 function onComposerChipRemoved(chipId: string): void {
-	mentions.handleChipRemoved(chipId);
 	if (handoff.workflowChip && chipId === mentionChipId(handoff.workflowChip)) {
 		clearPendingWorkflowAttachment(props.threadId);
 	}
@@ -1059,14 +1077,7 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 				:inert="isAgentTestDockOpen || undefined"
 				:aria-hidden="isAgentTestDockOpen || undefined"
 			>
-				<div
-					:class="$style.chatColumn"
-					@keydown.capture="mentions.handleKeydown"
-					@pointerdown.capture="mentions.handlePointerDown"
-					@click.capture="mentions.handleCaretMove"
-					@keyup.capture="mentions.handleCaretMove"
-					@select.capture="mentions.handleCaretMove"
-				>
+				<div :class="$style.chatColumn" @keydown.capture="mentions.handleKeydown">
 					<AgentChatPanel
 						ref="panel"
 						:project-id="props.projectId"
@@ -1085,6 +1096,7 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 						:client-context="clientContext"
 						:message-references="messageReferences"
 						:input-draft="mentions.draft.value"
+						:inline-tokens="mentions.isEnabled.value ? mentions.tokenOptions.value : undefined"
 						:interaction-extensions="interactionExtensions"
 						:show-attach-button="false"
 						:max-length="EXTENDED_PROMPT_MAX_LENGTH"
@@ -1096,7 +1108,8 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 						@draft-cleared="messageTelemetry.setPrefill(null)"
 						@message-accepted="onMessageAccepted"
 						@update:streaming="onStreamingChange"
-						@update:input-draft="mentions.handleTextChange"
+						@update:input-draft="mentions.draft.value = $event"
+						@token-query="mentions.handleTokenQuery"
 						@composer-attachment-removed="onComposerChipRemoved"
 					>
 						<!-- Passed only with an offer, so the chat keeps its empty state and spacing. -->
@@ -1140,7 +1153,7 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 								:attachment="nodes"
 								is-removable
 								@update:attachment="updateStagedNodes"
-								@remove-all="mentions.handleChipRemoved(id)"
+								@remove-all="panel?.removeComposerAttachment(id)"
 							/>
 						</template>
 						<template #user-message-references="{ message }">
@@ -1159,8 +1172,6 @@ function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
 								:project-id="props.projectId"
 								:artifacts="mentionArtifacts"
 								:active-workflow-id="mentionActiveWorkflowId"
-								:excluded-keys="mentions.excludedKeys.value"
-								:excluded-workflow-ids="mentions.excludedWorkflowIds.value"
 								:input-element="mentionInput"
 								:reference="mentionReference"
 								:disabled="!mentions.canUseMentions.value"

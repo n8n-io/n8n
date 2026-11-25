@@ -14,6 +14,8 @@ import {
 	N8nText,
 	N8nTooltip,
 	N8nVisuallyHidden,
+	type ChatInputTokenQueryEnd,
+	type N8nChatInputTokenOptions,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSpeechRecognition } from '@vueuse/core';
@@ -56,6 +58,8 @@ const props = withDefaults(
 		/** Keeps the composer at this CSS height, including its attachment row. */
 		composerHeight?: string;
 		maxLength?: number;
+		/** Turns on inline tokens, such as @-mentions, in the composer text. */
+		tokens?: N8nChatInputTokenOptions;
 	}>(),
 	{
 		blockCanvasShortcuts: true,
@@ -66,6 +70,7 @@ const props = withDefaults(
 		attachedEncodedBytes: 0,
 		autosize: () => ({ minRows: 2, maxRows: 6 }),
 		maxLength: undefined,
+		tokens: undefined,
 	},
 );
 
@@ -77,6 +82,8 @@ const emit = defineEmits<{
 	'files-selected': [files: File[]];
 	/** Files dropped, pasted or picked whose type `acceptedMimeTypes` does not allow. */
 	'files-rejected': [files: File[]];
+	/** With `tokens`: the query after `@`, or `undefined` with the reason when it ends without a pick. */
+	'token-query': [query: string | undefined, end?: ChatInputTokenQueryEnd];
 }>();
 
 const i18n = useI18n();
@@ -149,6 +156,16 @@ function focusInput(options?: FocusOptions) {
 /** Returns the native textarea while the component is mounted. */
 function getInputElement(): HTMLTextAreaElement | undefined {
 	return inputRef.value?.getInputElement();
+}
+
+/** Returns the element that takes the text: the textarea, or the rich editor with `tokens`. */
+function getEditorElement(): HTMLElement | undefined {
+	return inputRef.value?.getEditorElement();
+}
+
+/** The token commands of the composer, while `tokens` is set. */
+function getTokenEditor() {
+	return inputRef.value?.getTokenEditor();
 }
 
 /** Returns the element around the send and stop button while the component is mounted. */
@@ -233,7 +250,8 @@ function handleFileSelect(e: Event) {
 function handleKeydown(e: KeyboardEvent) {
 	// Only the textarea gets tab-to-autocomplete; other focusable children
 	// (attach/mic buttons, leading-slot chips) must keep normal Tab navigation.
-	const isTextareaFocused = (e.target as HTMLElement)?.tagName === 'TEXTAREA';
+	const isTextareaFocused =
+		(e.target as HTMLElement)?.tagName === 'TEXTAREA' || e.target === getEditorElement();
 	if (e.key === 'Tab' && !e.shiftKey && isTextareaFocused) {
 		e.preventDefault();
 		emit('tab');
@@ -252,6 +270,8 @@ function handleSubmit() {
 defineExpose({
 	focus: focusInput,
 	getInputElement,
+	getEditorElement,
+	getTokenEditor,
 	getSendStopButtonElement,
 	openFilePicker: handleAttach,
 });
@@ -302,7 +322,9 @@ defineExpose({
 			:autosize="composerHeight ? false : autosize"
 			:layout="composerHeight || autosize !== false ? 'multiline' : 'single-line'"
 			:max-length="maxLength"
+			:tokens="tokens"
 			@update:model-value="emit('update:modelValue', $event)"
+			@token-query="(query, end) => emit('token-query', query, end)"
 			@submit="handleSubmit"
 			@stop="emit('stop')"
 		>
@@ -388,6 +410,11 @@ defineExpose({
 	> textarea + div {
 		flex-shrink: 0;
 	}
+}
+
+/* The rich editor of a composer with inline tokens. */
+.fixedHeightInput > div:has(> div > [contenteditable]) {
+	height: var(--chat-input-height);
 }
 
 .attachmentRow {

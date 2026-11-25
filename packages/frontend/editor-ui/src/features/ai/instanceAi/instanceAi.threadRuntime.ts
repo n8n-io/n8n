@@ -8,6 +8,7 @@ import {
 	type WorkflowDraftsByFilePath,
 } from './instanceAi.workflowDrafts';
 import { ResponseError } from '@n8n/rest-api-client';
+import { chatTokensToPlainText } from '@n8n/utils/chat-tokens';
 import {
 	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
@@ -206,7 +207,8 @@ const FIRST_MESSAGE_TITLE_LENGTH = 60;
 
 /** A thread title made from its first user message, for a thread that has no title yet. */
 export function firstMessageTitle(text: string): string {
-	const trimmed = text.trim();
+	// An inline mention shows as its `@name`.
+	const trimmed = chatTokensToPlainText(text).trim();
 	return trimmed.length > FIRST_MESSAGE_TITLE_LENGTH
 		? trimmed.slice(0, FIRST_MESSAGE_TITLE_LENGTH) + '…'
 		: trimmed;

@@ -14,10 +14,9 @@ import { flushPromises } from '@vue/test-utils';
 import { setActivePinia } from 'pinia';
 import { defineComponent, h, inject, ref, type Ref } from 'vue';
 
-import {
-	mergeClientContextPatches,
-	type AgentChatComposerAttachment,
-} from '@/features/agents/utils/composer-attachments';
+import { formatChatToken } from '@n8n/utils/chat-tokens';
+
+import type { AgentChatComposerAttachment } from '@/features/agents/utils/composer-attachments';
 import { EMPTY_ASSISTANT_MENTION_COUNTS } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 
@@ -180,6 +179,16 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 			const removeComposerAttachment = (id: string) => {
 				composerAttachments.value = composerAttachments.value.filter((item) => item.chip.id !== id);
 			};
+			// Like the real composer, a picked token goes into the draft after its text.
+			const tokenEditor = {
+				insertToken: (token: { label: string; href: string }) => {
+					const current = typeof attrs['input-draft'] === 'string' ? attrs['input-draft'] : '';
+					const update = attrs['onUpdate:inputDraft'] as ((value: string) => void) | undefined;
+					update?.(`${current}${formatChatToken(token)} `);
+				},
+				removeEmptyTrigger: () => false,
+				dismissTrigger: () => {},
+			};
 			expose({
 				sendMessageFromOutside,
 				sendHostMessage,
@@ -199,6 +208,7 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 				isBusy,
 				isLoadingHistory,
 				getInputElement: () => undefined,
+				getTokenEditor: () => tokenEditor,
 			});
 			return () => {
 				panelProps.current = { ...attrs };
@@ -553,7 +563,21 @@ vi.mock('vue-router', async (importOriginal) => ({
 
 const renderView = createComponentRenderer(AssistantAgentThreadView);
 
-type AcceptMessage = (payload: { clientContext?: Record<string, unknown> }) => void;
+type AcceptMessage = (payload: { text: string; clientContext?: Record<string, unknown> }) => void;
+
+/** The composer text that the view holds. */
+function draft(): string {
+	const value = panelProps.current['input-draft'];
+	return typeof value === 'string' ? value : '';
+}
+
+/** The client context that the view gives the panel for a sent text. */
+function hostClientContext(text: string): Record<string, unknown> {
+	const build = panelProps.current['client-context'] as (message?: {
+		text: string;
+	}) => Record<string, unknown>;
+	return build({ text });
+}
 
 function nodeSet(...names: string[]): InstanceAiNodesAttachment['sets'][number] {
 	return { nodes: names.map((name) => ({ id: `id-${name}`, name })) };
@@ -965,7 +989,7 @@ describe('AssistantAgentThreadView', () => {
 		expect(clientContext()).toMatchObject({ attachments: [reference] });
 
 		const onMessageAccepted = panelProps.current.onMessageAccepted as AcceptMessage;
-		onMessageAccepted({ clientContext: clientContext() });
+		onMessageAccepted({ text: '', clientContext: clientContext() });
 		expect(clientContext()).not.toHaveProperty('attachments');
 		expect(telemetryTrack).not.toHaveBeenCalled();
 	});
@@ -1068,8 +1092,8 @@ describe('AssistantAgentThreadView', () => {
 
 		const clientContext = panelProps.current['client-context'] as () => Record<string, unknown>;
 		const onMessageAccepted = panelProps.current.onMessageAccepted as AcceptMessage;
-		onMessageAccepted({ clientContext: clientContext() });
-		onMessageAccepted({ clientContext: clientContext() });
+		onMessageAccepted({ text: '', clientContext: clientContext() });
+		onMessageAccepted({ text: '', clientContext: clientContext() });
 
 		expect(telemetryTrack).toHaveBeenCalledTimes(1);
 		expect(telemetryTrack).toHaveBeenCalledWith(
@@ -1335,7 +1359,7 @@ describe('AssistantAgentThreadView', () => {
 
 			// A refused send keeps the app for the retry.
 			const onMessageAccepted = panelProps.current.onMessageAccepted as AcceptMessage;
-			onMessageAccepted({ clientContext: clientContext() });
+			onMessageAccepted({ text: '', clientContext: clientContext() });
 			expect(clientContext()).toMatchObject({ subject });
 
 			const onSessionCreated = panelProps.current.onSessionCreated as () => void;
@@ -2040,6 +2064,7 @@ describe('AssistantAgentThreadView', () => {
 			const onMessageAccepted = panelProps.current.onMessageAccepted as AcceptMessage;
 
 			onMessageAccepted({
+				text: '',
 				clientContext: {
 					attachments: [
 						{ type: 'workflow', id: 'wf-2', name: 'Digest' },
@@ -2211,7 +2236,7 @@ describe('AssistantAgentThreadView', () => {
 			);
 
 			const onMessageAccepted = panelProps.current.onMessageAccepted as AcceptMessage;
-			onMessageAccepted({ clientContext: clientContext() });
+			onMessageAccepted({ text: '', clientContext: clientContext() });
 			expect(clientContext()).not.toHaveProperty('attachments');
 			expect(clientContext()).not.toHaveProperty('context');
 		});
@@ -2763,7 +2788,7 @@ describe('AssistantAgentThreadView', () => {
 			expect(queryByTestId('mention-picker-stub')).not.toBeInTheDocument();
 		});
 
-		it('stages a mentioned workflow or agent as a chip that sends it in the client context', async () => {
+		it('puts a mentioned workflow or agent in the text, and sends it in the client context', async () => {
 			const { getByTestId } = renderView({
 				props: { threadId: 'thread-1', projectId: 'project-1' },
 			});
@@ -2772,53 +2797,75 @@ describe('AssistantAgentThreadView', () => {
 			await pick(workflowMention, getByTestId);
 			await pick(agentMention, getByTestId);
 
-			expect(stagedNodes()).toEqual([
-				{ id: 'mention:workflow:wf-1', attachments: [workflowMention.attachment] },
-				{ id: 'mention:agent:agent-1', attachments: [agentMention.attachment] },
+			const text = draft();
+			expect(text).toBe(
+				'[@Uptime monitor](n8n-resource://workflow/wf-1) [@Support agent](n8n-resource://agent/agent-1) ',
+			);
+			expect(composerAttachments.value).toEqual([]);
+			expect(hostClientContext(text).attachments).toEqual([
+				workflowMention.attachment,
+				agentMention.attachment,
 			]);
-			expect(composerAttachments.value.map(({ chip }) => chip.label)).toEqual([
-				'Uptime monitor',
-				'Support agent',
-			]);
-			expect(mentionPickerProps.current?.['excluded-keys']).toEqual([
-				'workflow:wf-1:wf-1',
-				'agent:agent-1',
-			]);
+			expect(panelProps.current['inline-tokens']).toEqual(
+				expect.objectContaining({ trigger: true }),
+			);
 			expect(telemetryTrack).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.INSTANCE_AI.USER_SELECTED_AI_ASSISTANT_MENTION,
 				expect.objectContaining({ thread_id: 'thread-1', kind: 'workflow', source: 'workflows' }),
 			);
 		});
 
-		it('adds a mentioned node to the nodes chip of its workflow', async () => {
-			// The canvas staged a node of the same workflow.
-			composerAttachments.value = [
-				{
-					chip: { id: 'nodes:wf-1', label: '1 node', icon: 'layers' },
-					clientContextPatch: {
-						attachments: [{ type: 'nodes', workflowId: 'wf-1', sets: [nodeSet('Webhook')] }],
-					},
+		it('joins the node mentions of one workflow into one nodes attachment', async () => {
+			const webhookMention = {
+				...nodeMention,
+				item: {
+					...nodeMention.item,
+					key: 'node:wf-1:id-Webhook',
+					label: 'Webhook',
+					entityId: 'id-Webhook',
 				},
-			];
+				attachment: { ...nodeMention.attachment, sets: [nodeSet('Webhook')] },
+			};
 			const { getByTestId } = renderView({
 				props: { threadId: 'thread-1', projectId: 'project-1' },
 			});
 			await flushPromises();
 
 			await pick(nodeMention, getByTestId);
+			await pick(webhookMention, getByTestId);
 
-			expect(stagedNodes()).toEqual([
+			expect(draft()).toBe(
+				'[@Slack](n8n-resource://node/wf-1/id-Slack) [@Webhook](n8n-resource://node/wf-1/id-Webhook) ',
+			);
+			expect(hostClientContext(draft()).attachments).toEqual([
 				{
-					id: 'nodes:wf-1',
-					attachments: [
-						{
-							type: 'nodes',
-							workflowId: 'wf-1',
-							sets: [nodeSet('Webhook'), nodeSet('Slack')],
-						},
-					],
+					type: 'nodes',
+					workflowId: 'wf-1',
+					workflowName: 'Uptime monitor',
+					sets: [nodeSet('Slack'), nodeSet('Webhook')],
 				},
 			]);
+			expect(composerAttachments.value).toEqual([]);
+		});
+
+		it('sends only the mentions that the text still holds', async () => {
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+			await pick(workflowMention, getByTestId);
+			await pick(agentMention, getByTestId);
+
+			// The user deleted the workflow token.
+			const edited = 'Ask [@Support agent](n8n-resource://agent/agent-1)';
+			(panelProps.current['onUpdate:inputDraft'] as (value: string) => void)(edited);
+			await flushPromises();
+
+			expect(hostClientContext(edited).attachments).toEqual([agentMention.attachment]);
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_REMOVED_AI_ASSISTANT_MENTION,
+				expect.objectContaining({ kind: 'workflow' }),
+			);
 		});
 
 		it('refuses a mention past the attachment limit of a message', async () => {
@@ -2833,7 +2880,7 @@ describe('AssistantAgentThreadView', () => {
 
 			await pick(agentMention, getByTestId);
 
-			expect(composerAttachments.value).toHaveLength(10);
+			expect(draft()).toBe('');
 			expect(showError).toHaveBeenCalled();
 		});
 
@@ -2844,10 +2891,9 @@ describe('AssistantAgentThreadView', () => {
 			await flushPromises();
 			await pick(workflowMention, getByTestId);
 			await pick(agentMention, getByTestId);
-			// The context that the panel sends: the host context with the staged chip patches.
-			const hostContext = panelProps.current['client-context'] as () => Record<string, unknown>;
-			const clientContext = mergeClientContextPatches(composerAttachments.value, hostContext());
-			expect(clientContext?.attachments).toEqual([
+			const text = `Compare ${draft()}`;
+			const clientContext = hostClientContext(text);
+			expect(clientContext.attachments).toEqual([
 				workflowMention.attachment,
 				agentMention.attachment,
 			]);
@@ -2858,8 +2904,8 @@ describe('AssistantAgentThreadView', () => {
 				clientContext?: Record<string, unknown>;
 				isFirstMessage: boolean;
 			}) => void;
-			onMessageSending({ text: 'Compare them', files: [], clientContext, isFirstMessage: false });
-			(panelProps.current.onMessageAccepted as AcceptMessage)({ clientContext });
+			onMessageSending({ text, files: [], clientContext, isFirstMessage: false });
+			(panelProps.current.onMessageAccepted as AcceptMessage)({ text, clientContext });
 			await flushPromises();
 
 			expect(telemetryTrack).toHaveBeenCalledWith(
@@ -2917,6 +2963,25 @@ describe('AssistantAgentThreadView', () => {
 			expect(cards).toHaveLength(2);
 			expect(cards[0]).toHaveTextContent('Uptime monitor');
 			expect(cards[1]).toHaveTextContent('Support agent');
+		});
+
+		it('does not show a reference above the text when the text shows it inline', async () => {
+			const { getAllByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			referencedMessage.value = {
+				id: 'u-1',
+				role: 'user',
+				content: 'Fix [@Uptime monitor](n8n-resource://workflow/wf-1)',
+				references: [workflowMention.attachment, agentMention.attachment],
+			};
+			await flushPromises();
+
+			const cards = getAllByTestId('attachment-preview-resource');
+			expect(cards).toHaveLength(1);
+			expect(cards[0]).toHaveTextContent('Support agent');
 		});
 
 		it('does not show the agent that the thread builds as a reference', async () => {

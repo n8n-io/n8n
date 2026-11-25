@@ -3,45 +3,51 @@ import {
 	type InstanceAiResourceAttachment,
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
+import type { ChatInputTokenQueryEnd } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import type { ChatToken } from '@n8n/utils/chat-tokens';
 import { computed, ref, watch } from 'vue';
 
 import { useAssistantAtMentionsTelemetry } from '@/features/ai/assistant-at-mentions/assistantAtMentions.telemetry';
 import type {
+	AssistantMentionCloseReason,
 	AssistantMentionCounts,
-	AssistantMentionItem,
 	AssistantMentionPickerOpenMetrics,
 	AssistantMentionSelection,
+	AssistantMentionTriggerSource,
 	WorkflowArtifactReference,
 } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
-import { useAssistantAtMentions } from '@/features/ai/assistant-at-mentions/composables/useAssistantAtMentions';
 import { useAssistantMentionAvailability } from '@/features/ai/assistant-at-mentions/composables/useAssistantMentionAvailability';
 import { useIsAssistantAtMentionsEnabled } from '@/features/ai/assistant-at-mentions/composables/useIsAssistantAtMentionsEnabled';
-import type { AgentChatComposerAttachment } from '@/features/agents/utils/composer-attachments';
+import { chatResourceTokenIcon } from '@/features/ai/shared/utils/chatResourceTokens';
 
 import {
 	countMentions,
 	countStagedAttachments,
-	mentionKeysOf,
-	readChipAttachments,
-	stagedMentionKeys,
-	toMentionComposerAttachment,
 	type StagedChip,
 } from './assistantMentionAttachments';
-import { toNodesComposerAttachment } from './assistantNodeAttachments';
+import {
+	mentionAttachmentsOf,
+	mentionHrefsOf,
+	mentionToken,
+	type PickedMention,
+} from './assistantMentionTokens';
 
 /** The key code that browsers report for a key press during IME composition. */
 const IME_COMPOSITION_KEYCODE = 229;
 
+/** The token commands of the composer. */
+interface TokenEditor {
+	insertToken: (token: ChatToken) => void;
+	removeEmptyTrigger: () => boolean;
+	dismissTrigger: () => void;
+}
+
 /** The parts of the chat panel that the mentions use. */
 interface MentionPanel {
 	readonly composerAttachments: readonly StagedChip[];
-	addComposerAttachment: (
-		chip: AgentChatComposerAttachment['chip'],
-		clientContextPatch?: Record<string, unknown>,
-	) => void;
-	removeComposerAttachment: (id: string) => void;
-	getInputElement: () => HTMLTextAreaElement | undefined;
+	getInputElement: () => HTMLElement | undefined;
+	getTokenEditor: () => TokenEditor | undefined;
 }
 
 /** The exposed methods of the mention picker. */
@@ -52,10 +58,11 @@ interface MentionPicker {
 }
 
 /**
- * The @-mention picker of the Assistant agent composer. The host binds `draft`
- * to the panel draft and forwards the composer events. Each pick stages a
- * composer chip, which sends the resource in the client context of the next
- * message, as the composer of the current runtime does.
+ * The @-mention picker of the Assistant agent composer. A pick stays in the
+ * composer text as an inline token. The host binds `draft` to the panel draft,
+ * turns on the panel tokens with `tokenOptions`, and forwards the token queries
+ * of the composer. `attachmentsFor` gives the attachments that a sent text
+ * carries, for the client context of the message.
  */
 export function useAssistantAgentMentions(options: {
 	threadId: string;
@@ -64,7 +71,7 @@ export function useAssistantAgentMentions(options: {
 	picker: () => MentionPicker | null | undefined;
 	/** The thread's workflow tabs, which the picker lists first with their nodes. */
 	artifacts: () => readonly WorkflowArtifactReference[];
-	/** Attachments that the next message sends besides the staged chips. */
+	/** Attachments that the next message sends besides the mentions. */
 	reservedAttachmentCount: () => number;
 	/** The composer does not take a pick, for example while a message is sent. */
 	isBlocked: () => boolean;
@@ -84,58 +91,79 @@ export function useAssistantAgentMentions(options: {
 
 	/** The composer text. The host binds it to the panel draft. */
 	const draft = ref('');
-	const mentions = useAssistantAtMentions({
-		text: draft,
-		enabled: canUseMentions,
-		getInputElement: () => options.panel()?.getInputElement(),
-		onOpened: telemetry.trackPickerOpened,
-		onClosed: (info) => {
+	const menuOpen = ref(false);
+	const query = ref('');
+	// How the current open started, so the outcome reports the source the open reported.
+	let openSource: AssistantMentionTriggerSource | undefined;
+
+	/**
+	 * Every pick of this composer, by token target. A pick stays here after its
+	 * token leaves the text, so an undo that brings the token back still sends it.
+	 */
+	const picked = new Map<string, PickedMention>();
+	/** The targets in the draft, to tell when the user deletes a token. */
+	let draftHrefs = new Set<string>();
+
+	const tokenOptions = computed(() => ({
+		trigger: canUseMentions.value,
+		icon: chatResourceTokenIcon,
+	}));
+
+	function markOpened(source: AssistantMentionTriggerSource): void {
+		if (openSource !== undefined) return;
+		openSource = source;
+		menuOpen.value = true;
+		telemetry.trackPickerOpened(source);
+	}
+
+	function close(reason: AssistantMentionCloseReason = 'closed_menu'): void {
+		if (openSource !== undefined) {
 			// Synchronous on purpose: the picker still shows what the user looked at.
 			const picker = options.picker();
 			picker?.flushEmptySearch();
 			const metrics = picker?.getOpenMetrics();
-			if (metrics) telemetry.trackPickerDismissed(info, metrics);
-		},
-	});
-
-	const staged = computed(() => options.panel()?.composerAttachments ?? []);
-	const excludedKeys = computed(() => stagedMentionKeys(staged.value));
-	const excludedWorkflowIds = computed(() =>
-		staged.value
-			.flatMap(readChipAttachments)
-			.flatMap((attachment) => (attachment.type === 'workflow' ? [attachment.id] : [])),
-	);
-
-	/** The mentions that each staged chip holds. Other chips, such as canvas nodes, have none. */
-	const mentionsByChip = new Map<string, AssistantMentionItem[]>();
-
-	// A sent chip leaves the composer, so its mentions go too. A nodes chip that
-	// lost some of its nodes keeps only the mentions it still holds.
-	watch(staged, (chips) => {
-		const keys = new Set(stagedMentionKeys(chips));
-		const chipIds = new Set(chips.map(({ chip }) => chip.id));
-		for (const [chipId, items] of mentionsByChip) {
-			if (!chipIds.has(chipId)) {
-				mentionsByChip.delete(chipId);
-				continue;
-			}
-			const kept = items.filter((item) => keys.has(item.key));
-			for (const item of items) {
-				if (!kept.includes(item)) telemetry.trackMentionRemoved(item.kind);
-			}
-			mentionsByChip.set(chipId, kept);
+			if (metrics) telemetry.trackPickerDismissed({ source: openSource, reason }, metrics);
 		}
-	});
+		openSource = undefined;
+		menuOpen.value = false;
+		query.value = '';
+	}
 
-	function toComposerAttachment(
-		attachment: InstanceAiResourceAttachment,
-		chips: readonly StagedChip[],
-	): AgentChatComposerAttachment | undefined {
-		if (attachment.type === 'nodes') return toNodesComposerAttachment(attachment, chips);
-		if (attachment.type === 'workflow' || attachment.type === 'agent') {
-			return toMentionComposerAttachment(attachment);
+	/** The composer reports the `@query` that the caret is in, or its end. */
+	function handleTokenQuery(next: string | undefined, end?: ChatInputTokenQueryEnd): void {
+		if (next !== undefined) {
+			if (!canUseMentions.value) return;
+			query.value = next;
+			markOpened('typed');
+			return;
 		}
-		return undefined;
+		if (openSource !== 'typed') return;
+		close(end === 'deleted' ? 'deleted_trigger' : 'moved_caret');
+	}
+
+	function openFromButton(): void {
+		if (!canUseMentions.value) return;
+		query.value = '';
+		markOpened('button');
+	}
+
+	function handleMenuOpenChange(open: boolean): void {
+		if (open) {
+			if (!menuOpen.value) openFromButton();
+			return;
+		}
+		if (!menuOpen.value) return;
+		const tokenEditor = options.panel()?.getTokenEditor();
+		// A picker closed right after a typed `@` leaves no stray `@` in the draft.
+		if (openSource === 'typed' && !tokenEditor?.removeEmptyTrigger()) {
+			tokenEditor?.dismissTrigger();
+		}
+		close('closed_menu');
+	}
+
+	/** The attachments that a text with mention tokens sends. */
+	function attachmentsFor(text: string): InstanceAiResourceAttachment[] {
+		return mentionAttachmentsOf(text, picked);
 	}
 
 	function showLimitError(): void {
@@ -145,37 +173,34 @@ export function useAssistantAgentMentions(options: {
 		);
 	}
 
-	async function handleSelect(selection: AssistantMentionSelection): Promise<void> {
+	function handleSelect(selection: AssistantMentionSelection): void {
 		const panel = options.panel();
-		if (!panel) return;
+		const tokenEditor = panel?.getTokenEditor();
+		if (!panel || !tokenEditor) return;
 		const { item, attachment } = selection;
-		const existingArtifact =
-			item.kind === 'agent'
-				? undefined
-				: options.artifacts().find((artifact) => artifact.id === item.workflowId);
-		// A pick of a staged mention stages nothing, but it still ends this open.
-		if (excludedKeys.value.includes(item.key)) {
-			telemetry.trackMentionSelected(selection, existingArtifact);
-			await mentions.clearActiveRange();
-			return;
-		}
+		const token = mentionToken(item);
 
-		const chips = panel.composerAttachments;
-		const next = toComposerAttachment(attachment, chips);
-		if (!next) return;
-		// Nodes join the chip of their workflow, which sends one attachment.
-		const addsAttachment = !chips.some(({ chip }) => chip.id === next.chip.id);
+		// A repeated mention adds no attachment, and node mentions join their workflow's.
+		const withPick = new Map(picked).set(token.href, { item, attachment });
+		const sentCount = mentionAttachmentsOf(
+			`${draft.value} [@${token.label}](${token.href})`,
+			withPick,
+		).length;
 		if (
-			addsAttachment &&
-			countStagedAttachments(chips) + options.reservedAttachmentCount() >=
-				MAX_INSTANCE_AI_ATTACHMENTS_PER_MESSAGE
+			sentCount +
+				countStagedAttachments(panel.composerAttachments) +
+				options.reservedAttachmentCount() >
+			MAX_INSTANCE_AI_ATTACHMENTS_PER_MESSAGE
 		) {
 			showLimitError();
 			return;
 		}
 
-		panel.addComposerAttachment(next.chip, next.clientContextPatch);
-		mentionsByChip.set(next.chip.id, [...(mentionsByChip.get(next.chip.id) ?? []), item]);
+		picked.set(token.href, { item, attachment });
+		const existingArtifact =
+			item.kind === 'agent'
+				? undefined
+				: options.artifacts().find((artifact) => artifact.id === item.workflowId);
 		telemetry.trackMentionSelected(selection, existingArtifact);
 		if (selection.truncated) {
 			toast.showError(
@@ -183,55 +208,57 @@ export function useAssistantAgentMentions(options: {
 				i18n.baseText('instanceAi.nodeContext.truncated.title'),
 			);
 		}
-		await mentions.clearActiveRange();
+		tokenEditor.insertToken(token);
+		close('selected');
 	}
 
-	/** The user removed a whole chip from the composer. */
-	function handleChipRemoved(chipId: string): void {
-		for (const item of mentionsByChip.get(chipId) ?? []) telemetry.trackMentionRemoved(item.kind);
-		mentionsByChip.delete(chipId);
-		options.panel()?.removeComposerAttachment(chipId);
+	// A token the user deletes counts as a removed mention. A sent text leaves the
+	// draft through `handleSent`, so its tokens are not counted.
+	watch(draft, (text) => {
+		const hrefs = new Set(mentionHrefsOf(text));
+		for (const href of draftHrefs) {
+			const removed = picked.get(href);
+			if (!hrefs.has(href) && removed) telemetry.trackMentionRemoved(removed.item.kind);
+		}
+		draftHrefs = hrefs;
+	});
+
+	/** The panel accepted a message with this text. Call it before the panel clears the draft. */
+	function handleSent(text: string): void {
+		for (const href of mentionHrefsOf(text)) draftHrefs.delete(href);
 	}
 
-	/**
-	 * The staged mentions that a message sends. A send without the composer
-	 * chips, such as the answer to a question card, sends none of them.
-	 */
-	function sentMentionCounts(
-		sent: readonly InstanceAiResourceAttachment[],
-	): AssistantMentionCounts {
-		const sentKeys = new Set(mentionKeysOf(sent));
+	/** The mentions that a sent text carries, by kind. */
+	function sentMentionCounts(text: string): AssistantMentionCounts {
 		return countMentions(
-			[...mentionsByChip.values()].flat().filter(({ key }) => sentKeys.has(key)),
+			mentionHrefsOf(text).flatMap((href) => {
+				const mention = picked.get(href);
+				return mention ? [mention.item] : [];
+			}),
 		);
 	}
 
 	/**
-	 * The workflow of the first mention that a sent message carried. Its tab
-	 * opens once the message is sent, not when the mention is picked.
+	 * The workflow of the first mention that a sent text carries. Its tab opens
+	 * once the message is sent, not when the mention is picked.
 	 */
-	function firstSentMentionedWorkflow(
-		sent: readonly InstanceAiResourceAttachment[],
-	): { id: string; name: string } | undefined {
-		const sentWorkflowIds = new Set(
-			sent.flatMap((attachment) =>
-				attachment.type === 'workflow'
-					? [attachment.id]
-					: attachment.type === 'nodes'
-						? [attachment.workflowId]
-						: [],
-			),
-		);
-		for (const item of [...mentionsByChip.values()].flat()) {
-			if (item.kind !== 'agent' && sentWorkflowIds.has(item.workflowId)) {
-				return { id: item.workflowId, name: item.workflowName };
+	function firstSentMentionedWorkflow(text: string): { id: string; name: string } | undefined {
+		for (const attachment of mentionAttachmentsOf(text, picked)) {
+			if (attachment.type === 'workflow') {
+				return { id: attachment.id, name: attachment.name ?? attachment.id };
+			}
+			if (attachment.type === 'nodes') {
+				return {
+					id: attachment.workflowId,
+					name: attachment.workflowName ?? attachment.workflowId,
+				};
 			}
 		}
 		return undefined;
 	}
 
-	function handleEmptySearch(query: string): void {
-		telemetry.trackEmptySearch(query, { artifactCount: options.artifacts().length });
+	function handleEmptySearch(searchQuery: string): void {
+		telemetry.trackEmptySearch(searchQuery, { artifactCount: options.artifacts().length });
 	}
 
 	function isComposerInput(event: Event): boolean {
@@ -241,7 +268,7 @@ export function useAssistantAgentMentions(options: {
 
 	/** Arrows and Enter move through the open picker, so Enter does not send. */
 	function handleKeydown(event: KeyboardEvent): void {
-		if (!mentions.menuOpen.value || !isComposerInput(event)) return;
+		if (!menuOpen.value || !isComposerInput(event)) return;
 		const handled = options.picker()?.handleExternalKeydown(event) ?? false;
 		const hasModifier = event.shiftKey || event.ctrlKey || event.metaKey || event.altKey;
 		const isComposing = event.isComposing || event.keyCode === IME_COMPOSITION_KEYCODE;
@@ -250,36 +277,26 @@ export function useAssistantAgentMentions(options: {
 		event.stopPropagation();
 	}
 
-	function handlePointerDown(event: Event): void {
-		if (isComposerInput(event)) mentions.saveSelection();
-	}
-
-	function handleCaretMove(event: Event): void {
-		if (isComposerInput(event)) void mentions.handleCaretMove();
-	}
-
-	watch(canUseMentions, (enabled, wasEnabled) => {
-		if (enabled && !wasEnabled) void mentions.handleTextChange(draft.value);
+	watch(canUseMentions, (enabled) => {
+		if (!enabled && menuOpen.value) close('unavailable');
 	});
 
 	return {
 		isEnabled: isFlagEnabled,
 		canUseMentions,
+		tokenOptions,
 		draft,
-		menuOpen: mentions.menuOpen,
-		query: mentions.query,
-		excludedKeys,
-		excludedWorkflowIds,
-		handleTextChange: async (value: string) => await mentions.handleTextChange(value),
-		handleMenuOpenChange: mentions.handleMenuOpenChange,
+		menuOpen,
+		query,
+		handleTokenQuery,
+		handleMenuOpenChange,
 		handleSelect,
-		handleChipRemoved,
 		handleEmptySearch,
 		handleKeydown,
-		handlePointerDown,
-		handleCaretMove,
+		handleSent,
+		attachmentsFor,
 		sentMentionCounts,
 		firstSentMentionedWorkflow,
-		close: mentions.close,
+		close,
 	};
 }

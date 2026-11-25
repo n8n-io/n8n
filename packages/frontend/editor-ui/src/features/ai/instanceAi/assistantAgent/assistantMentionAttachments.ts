@@ -11,15 +11,12 @@ import {
 	type AssistantMentionCounts,
 	type AssistantMentionItem,
 } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
-import {
-	buildAgentMentionKey,
-	buildMentionKey,
-} from '@/features/ai/assistant-at-mentions/utils/buildMentionItems';
 import type { AgentChatComposerAttachment } from '@/features/agents/utils/composer-attachments';
 
 /**
- * Mentions in the Assistant agent composer. A workflow or agent mention gets
- * its own chip. A node or group mention joins the nodes chip of its workflow.
+ * Resource chips in the Assistant agent composer, such as the workflow that a
+ * hand-off from the editor attaches. Typed @-mentions stay in the text instead:
+ * see `assistantMentionTokens.ts`.
  */
 
 const MENTION_CHIP_PREFIX = 'mention:';
@@ -66,34 +63,6 @@ export function toMentionComposerAttachment(
 		},
 		clientContextPatch: { attachments: [attachment] },
 	};
-}
-
-/** The mention keys that the staged chips already hold, so the picker hides them. */
-export function stagedMentionKeys(staged: readonly StagedChip[]): string[] {
-	return mentionKeysOf(staged.flatMap(readChipAttachments));
-}
-
-/** The mention keys that resource attachments hold. */
-export function mentionKeysOf(attachments: readonly InstanceAiResourceAttachment[]): string[] {
-	const keys = new Set<string>();
-	for (const attachment of attachments) {
-		if (attachment.type === 'workflow') {
-			keys.add(buildMentionKey('workflow', attachment.id, attachment.id));
-		} else if (attachment.type === 'agent') {
-			keys.add(buildAgentMentionKey(attachment.id));
-		} else if (attachment.type === 'nodes') {
-			for (const set of attachment.sets) {
-				if (set.canvasGroupId) {
-					keys.add(buildMentionKey('group', attachment.workflowId, set.canvasGroupId));
-					continue;
-				}
-				for (const node of set.nodes) {
-					keys.add(buildMentionKey('node', attachment.workflowId, node.id));
-				}
-			}
-		}
-	}
-	return [...keys];
 }
 
 /** The number of resource attachments that the staged chips send. */

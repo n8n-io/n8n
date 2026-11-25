@@ -57,6 +57,7 @@ vi.mock('@n8n/design-system', () => ({
 		</div>`,
 	},
 	N8nIcon: { template: '<i />' },
+	N8nChatToken: { props: ['label', 'icon'], template: '<span v-bind="$attrs">{{ label }}</span>' },
 	N8nSpinner: { template: '<span />' },
 	N8nLink: { props: ['to', 'theme', 'size', 'underline'], template: '<a :href="to"><slot /></a>' },
 	N8nIconButton: {
@@ -534,6 +535,31 @@ describe('AgentChatMessageList', () => {
 		expect(group.contains(wrapper.get('[data-testid="reference"]').element)).toBe(true);
 		expect(bubble.contains(group)).toBe(false);
 		expect(group.compareDocumentPosition(bubble) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+		wrapper.unmount();
+	});
+
+	it('shows the inline tokens of a user message as chips in place', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{
+						id: 'u-1',
+						role: 'user',
+						content:
+							'Do x with [@Foo](n8n-resource://workflow/1) and y with [@Bar](n8n-resource://agent/2)',
+					},
+				],
+				messagingState: 'idle',
+			},
+		});
+
+		const tokens = wrapper.findAll('[data-testid="agent-chat-message-token"]');
+		expect(tokens.map((token) => token.text())).toEqual(['Foo', 'Bar']);
+		const bubble = wrapper.get('[data-testid="chat-message-shell"]');
+		expect(bubble.text()).toContain('Do x with');
+		expect(bubble.text()).toContain('and y with');
+		expect(bubble.text()).not.toContain('n8n-resource://');
 
 		wrapper.unmount();
 	});

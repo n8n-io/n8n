@@ -58,7 +58,7 @@ const props = withDefaults(
 		activeWorkflowId?: string;
 		excludedKeys?: readonly string[];
 		excludedWorkflowIds?: readonly string[];
-		inputElement?: HTMLTextAreaElement | null;
+		inputElement?: HTMLElement | null;
 		reference?: HTMLElement | null;
 		disabled?: boolean;
 	}>(),
