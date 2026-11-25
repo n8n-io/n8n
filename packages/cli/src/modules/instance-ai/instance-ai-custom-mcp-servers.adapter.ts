@@ -87,11 +87,12 @@ export class InstanceAiCustomMcpServersAdapterService {
 				await servers.delete(await writeProject('mcpServer:delete', projectId), serverId, actor);
 			},
 			// The REST route needs `update` too: the picker only serves a change of the server.
-			listToolCandidates: async ({ serverId, projectId }) => {
+			listToolCandidates: async ({ serverId, projectId }, options) => {
 				const { tools } = await services();
-				return await tools.listCandidates(
+				return await tools.findCandidates(
 					await readProject('mcpServer:update', projectId),
 					serverId,
+					options,
 				);
 			},
 			addTools: async ({ serverId, projectId }, workflowIds) => {

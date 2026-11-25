@@ -1393,6 +1393,21 @@ export interface CustomMcpServerRef {
 	projectId?: string;
 }
 
+export interface CustomMcpServerCandidateQuery {
+	/** Only workflows whose name or description contains this text, in any case. */
+	query?: string;
+	limit: number;
+	includeUnusable?: boolean;
+}
+
+export interface CustomMcpServerCandidatePage {
+	candidates: McpServerToolCandidate[];
+	/** Checked workflows that are not in `candidates`, because they cannot be a tool. */
+	unusable: number;
+	/** `true` when the page stopped at the limit, and at least one more workflow fits. */
+	more: boolean;
+}
+
 /**
  * The builder actions on custom MCP servers. The adapter calls the same module services as the
  * REST API, with the same project scopes, and marks each event with the source "assistant".
@@ -1414,8 +1429,14 @@ export interface InstanceAiCustomMcpServerService {
 		changes: { name?: string; description?: string },
 	): Promise<McpServerResponse>;
 	delete(ref: CustomMcpServerRef): Promise<void>;
-	/** Every workflow of the project, with the reason when it cannot be a tool. */
-	listToolCandidates(ref: CustomMcpServerRef): Promise<McpServerToolCandidate[]>;
+	/**
+	 * The first workflows of the project in name order, up to `limit`. Without
+	 * `includeUnusable`, only the workflows that can be a tool.
+	 */
+	listToolCandidates(
+		ref: CustomMcpServerRef,
+		options: CustomMcpServerCandidateQuery,
+	): Promise<CustomMcpServerCandidatePage>;
 	addTools(ref: CustomMcpServerRef, workflowIds: string[]): Promise<McpServerToolResponse[]>;
 	updateTool(
 		ref: CustomMcpServerRef,

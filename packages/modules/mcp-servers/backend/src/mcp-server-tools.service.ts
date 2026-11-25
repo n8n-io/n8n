@@ -32,13 +32,37 @@ import { McpServerRepository } from './mcp-server.repository';
 import { TextDraftPort, type TextDraftResult } from './tools/text-draft-port';
 import { buildToolDraftPrompt, parseToolDraftAnswer, type ToolDraft } from './tools/tool-draft';
 import { toToolName, uniqueToolName } from './tools/tool-name';
-import { WorkflowToolPort, type WorkflowToolRefusal } from './tools/workflow-tool-port';
+import {
+	WorkflowToolPort,
+	type WorkflowToolListItem,
+	type WorkflowToolRefusal,
+} from './tools/workflow-tool-port';
+
+/** A page of tool candidates, for a caller that cannot take every workflow of the project. */
+export interface McpServerToolCandidatePage {
+	candidates: McpServerToolCandidate[];
+	/** Checked workflows that are not in `candidates`, because they cannot be a tool. */
+	unusable: number;
+	/** `true` when the page stopped at the limit, and at least one more workflow fits. */
+	more: boolean;
+}
+
+export interface McpServerToolCandidateQuery {
+	/** Only workflows whose name or description contains this text, in any case. */
+	query?: string;
+	limit: number;
+	/** Also return the workflows that cannot be a tool, with the reason. */
+	includeUnusable?: boolean;
+}
 
 /**
  * Parallel drafts after an add can pick the same name. The unique index refuses the second
  * write, and the draft tries again with the next free name.
  */
 const DRAFT_SAVE_ATTEMPTS = 3;
+
+/** Each check loads the published version, so the picker checks a few workflows at a time. */
+const CHECK_BATCH_SIZE = 10;
 
 /** `null` for `not_found`: a workflow that the project does not own is no candidate. */
 const UNAVAILABLE_REASONS: Record<WorkflowToolRefusal, McpServerWorkflowUnavailableReason | null> =
@@ -112,14 +136,77 @@ export class McpServerToolsService {
 			this.tools.listByServer(server.id),
 		]);
 		const added = new Set(tools.map((tool) => tool.targetId));
-
-		const candidates = workflows.flatMap(({ workflowId, name, description, check }) => {
-			const unavailable = check.callable ? null : UNAVAILABLE_REASONS[check.reason];
-			if (!check.callable && !unavailable) return [];
-			const reason = added.has(workflowId) ? ('already_added' as const) : unavailable;
-			return [{ workflowId, name, description, reason }];
-		});
+		const candidates: McpServerToolCandidate[] = [];
+		for (let i = 0; i < workflows.length; i += CHECK_BATCH_SIZE) {
+			const batch = workflows.slice(i, i + CHECK_BATCH_SIZE);
+			const checked = await this.checkCandidates(projectId, batch, added);
+			candidates.push(...checked.filter((candidate) => candidate !== null));
+		}
 		return candidates.sort((a, b) => a.name.localeCompare(b.name));
+	}
+
+	/**
+	 * The first workflows of the project in name order, up to `limit`. It checks only the
+	 * workflows that it needs to fill the page, so the cost does not grow with the project.
+	 * Without `includeUnusable`, the page has only the workflows that can be a tool.
+	 */
+	async findCandidates(
+		projectId: string,
+		serverId: string,
+		{ query, limit, includeUnusable = false }: McpServerToolCandidateQuery,
+	): Promise<McpServerToolCandidatePage> {
+		const server = await this.findServer(projectId, serverId);
+		const [workflows, tools] = await Promise.all([
+			this.workflows.list(projectId),
+			this.tools.listByServer(server.id),
+		]);
+		const added = new Set(tools.map((tool) => tool.targetId));
+		const needle = query?.trim().toLowerCase();
+		const matching = (
+			needle
+				? workflows.filter(({ name, description }) =>
+						`${name}\n${description ?? ''}`.toLowerCase().includes(needle),
+					)
+				: workflows
+		).sort((a, b) => a.name.localeCompare(b.name));
+
+		const page: McpServerToolCandidatePage = { candidates: [], unusable: 0, more: false };
+		for (let i = 0; i < matching.length; i += CHECK_BATCH_SIZE) {
+			const batch = matching.slice(i, i + CHECK_BATCH_SIZE);
+			const checked = await this.checkCandidates(projectId, batch, added);
+			for (const candidate of checked) {
+				if (candidate === null) continue;
+				if (candidate.reason !== null && !includeUnusable) {
+					page.unusable++;
+					continue;
+				}
+				if (page.candidates.length === limit) {
+					page.more = true;
+					return page;
+				}
+				page.candidates.push(candidate);
+			}
+		}
+		return page;
+	}
+
+	/** `null` for a workflow that is no candidate at all, such as one the project lost. */
+	private async checkCandidates(
+		projectId: string,
+		workflows: WorkflowToolListItem[],
+		added: Set<string | null>,
+	): Promise<Array<McpServerToolCandidate | null>> {
+		return await Promise.all(
+			workflows.map(async ({ workflowId, name, description }) => {
+				if (added.has(workflowId)) {
+					return { workflowId, name, description, reason: 'already_added' as const };
+				}
+				const check = await this.workflows.check(projectId, workflowId);
+				const reason = check.callable ? null : UNAVAILABLE_REASONS[check.reason];
+				if (!check.callable && !reason) return null;
+				return { workflowId, name, description, reason };
+			}),
+		);
 	}
 
 	/**

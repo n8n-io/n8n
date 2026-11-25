@@ -86,13 +86,33 @@ const deleteAction = z.object({
 	...serverRefShape,
 });
 
+const CANDIDATE_LIMIT_DEFAULT = 50;
+const CANDIDATE_LIMIT_MAX = 100;
+
 const toolCandidatesAction = z.object({
 	action: z
 		.literal('tool-candidates')
 		.describe(
-			'List the workflows of the project of the server. reason is null when the workflow can be a tool, and else says why it cannot',
+			'List the workflows of the project of the server that can be a tool, in name order. The result counts the workflows that it left out',
 		),
 	...serverRefShape,
+	query: z
+		.string()
+		.optional()
+		.describe('Only workflows whose name or description contains this text, in any case'),
+	limit: z
+		.number()
+		.int()
+		.positive()
+		.max(CANDIDATE_LIMIT_MAX)
+		.optional()
+		.describe(`The most workflows to return. Default: ${CANDIDATE_LIMIT_DEFAULT}`),
+	includeUnusable: z
+		.boolean()
+		.optional()
+		.describe(
+			'Also list the workflows that cannot be a tool. Their reason says why. Use it to tell the user why a workflow is not on the server',
+		),
 });
 
 const addToolsAction = z.object({
@@ -285,6 +305,30 @@ async function handleUpdate(
 	);
 }
 
+async function handleToolCandidates(
+	service: InstanceAiCustomMcpServerService,
+	input: ActionInput<'tool-candidates'>,
+) {
+	const page = await service.listToolCandidates(toRef(input), {
+		query: input.query,
+		// The provider schema can drop the bounds, so the handler applies them again.
+		limit: Math.min(input.limit ?? CANDIDATE_LIMIT_DEFAULT, CANDIDATE_LIMIT_MAX),
+		includeUnusable: input.includeUnusable === true,
+	});
+	const notes = [
+		page.more ? 'More workflows fit. Pass a query, or a higher limit, to see them.' : undefined,
+		page.unusable > 0
+			? `${countWorkflows(page.unusable)} that cannot be a tool are left out. Pass includeUnusable to see why.`
+			: undefined,
+	].filter((note) => note !== undefined);
+	return {
+		candidates: page.candidates,
+		more: page.more,
+		unusableLeftOut: page.unusable,
+		...(notes.length > 0 ? { note: notes.join(' ') } : {}),
+	};
+}
+
 async function handleAddTools(
 	context: InstanceAiContext,
 	service: InstanceAiCustomMcpServerService,
@@ -298,9 +342,14 @@ async function handleAddTools(
 		async () => {
 			const [server, candidates] = await Promise.all([
 				service.get(toRef(input)),
-				service.listToolCandidates(toRef(input)),
+				service.listToolCandidates(toRef(input), {
+					limit: Number.MAX_SAFE_INTEGER,
+					includeUnusable: true,
+				}),
 			]);
-			const names = new Map(candidates.map(({ workflowId, name }) => [workflowId, name]));
+			const names = new Map(
+				candidates.candidates.map(({ workflowId, name }) => [workflowId, name]),
+			);
 			const workflows = input.workflowIds.map((id) => names.get(id) ?? id).join(', ');
 			return {
 				message: `Add ${countWorkflows(input.workflowIds.length)} as tools: ${workflows}.`,
@@ -473,7 +522,7 @@ export function createCustomMcpServersTool(context: InstanceAiContext) {
 				case 'delete':
 					return await handleDelete(context, service, input, ctx);
 				case 'tool-candidates':
-					return { candidates: await service.listToolCandidates(toRef(input)) };
+					return await handleToolCandidates(service, input);
 				case 'add-tools':
 					return await handleAddTools(context, service, input, ctx);
 				case 'update-tool':

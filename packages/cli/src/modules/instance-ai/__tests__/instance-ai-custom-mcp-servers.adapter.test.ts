@@ -163,14 +163,14 @@ describe('InstanceAiCustomMcpServersAdapterService', () => {
 	});
 
 	it('runs the tool actions with the update scope, as the REST routes do', async () => {
-		tools.listCandidates.mockResolvedValue([]);
+		tools.findCandidates.mockResolvedValue({ candidates: [], unusable: 0, more: false });
 		tools.addWorkflowTools.mockResolvedValue([tool]);
 		tools.updateTool.mockResolvedValue(tool);
 		tools.draftTool.mockResolvedValue({ status: 'drafted', tool });
 		const service = createService();
 		const ref = { serverId: SERVER_ID, projectId: 'project-1' };
 
-		await service.listToolCandidates(ref);
+		await service.listToolCandidates(ref, { query: 'lead', limit: 20 });
 		await service.addTools(ref, ['workflow-1']);
 		await service.updateTool(ref, TOOL_ID, { toolName: 'campaign_stats' });
 		await service.generateTool(ref, TOOL_ID, 'description');
@@ -180,7 +180,10 @@ describe('InstanceAiCustomMcpServersAdapterService', () => {
 		for (const call of access.resolveProjectId.mock.calls) {
 			expect(call).toEqual([['mcpServer:update'], 'project-1']);
 		}
-		expect(tools.listCandidates).toHaveBeenCalledWith('project-1', SERVER_ID);
+		expect(tools.findCandidates).toHaveBeenCalledWith('project-1', SERVER_ID, {
+			query: 'lead',
+			limit: 20,
+		});
 		expect(tools.addWorkflowTools).toHaveBeenCalledWith(
 			'project-1',
 			SERVER_ID,

@@ -49,7 +49,7 @@ function createService(): ServiceMock {
 		create: vi.fn().mockResolvedValue(server),
 		update: vi.fn().mockResolvedValue(server),
 		delete: vi.fn().mockResolvedValue(undefined),
-		listToolCandidates: vi.fn().mockResolvedValue([]),
+		listToolCandidates: vi.fn().mockResolvedValue({ candidates: [], unusable: 0, more: false }),
 		addTools: vi.fn().mockResolvedValue([tool]),
 		updateTool: vi.fn().mockResolvedValue(tool),
 		generateTool: vi.fn().mockResolvedValue({ status: 'drafted', tool }),
@@ -310,27 +310,57 @@ describe('custom-mcp-servers tool', () => {
 		);
 	});
 
-	it('lists the workflows that can be tools, without asking', async () => {
+	describe('tool-candidates', () => {
 		const candidates = [
 			{ workflowId: 'workflow-2', name: 'Lead score', description: null, reason: null },
-			{
-				workflowId: 'workflow-3',
-				name: 'Form intake',
-				description: null,
-				reason: 'missing_trigger',
-			},
 		];
-		service.listToolCandidates.mockResolvedValue(candidates);
-		const suspend = vi.fn();
 
-		const result = await executeTool(
-			createCustomMcpServersTool(createContext(service)),
-			{ action: 'tool-candidates', serverId: SERVER_ID },
-			suspendCtx(suspend),
-		);
+		it('lists the workflows that can be tools, without asking', async () => {
+			service.listToolCandidates.mockResolvedValue({ candidates, unusable: 0, more: false });
+			const suspend = vi.fn();
 
-		expect(result).toEqual({ candidates });
-		expect(suspend).not.toHaveBeenCalled();
+			const result = await executeTool(
+				createCustomMcpServersTool(createContext(service)),
+				{ action: 'tool-candidates', serverId: SERVER_ID },
+				suspendCtx(suspend),
+			);
+
+			expect(result).toEqual({ candidates, more: false, unusableLeftOut: 0 });
+			expect(service.listToolCandidates).toHaveBeenCalledWith(
+				{ serverId: SERVER_ID, projectId: undefined },
+				{ query: undefined, limit: 50, includeUnusable: false },
+			);
+			expect(suspend).not.toHaveBeenCalled();
+		});
+
+		it('passes the query and the limit, and says what it left out', async () => {
+			service.listToolCandidates.mockResolvedValue({ candidates, unusable: 3, more: true });
+
+			const result = await executeTool(
+				createCustomMcpServersTool(createContext(service)),
+				{
+					action: 'tool-candidates',
+					serverId: SERVER_ID,
+					query: 'lead',
+					limit: 1,
+					includeUnusable: false,
+				},
+				suspendCtx(vi.fn()),
+			);
+
+			expect(service.listToolCandidates).toHaveBeenCalledWith(
+				{ serverId: SERVER_ID, projectId: undefined },
+				{ query: 'lead', limit: 1, includeUnusable: false },
+			);
+			expect(result).toEqual({
+				candidates,
+				more: true,
+				unusableLeftOut: 3,
+				note:
+					'More workflows fit. Pass a query, or a higher limit, to see them. ' +
+					'3 workflows that cannot be a tool are left out. Pass includeUnusable to see why.',
+			});
+		});
 	});
 
 	describe('add-tools', () => {
@@ -341,9 +371,13 @@ describe('custom-mcp-servers tool', () => {
 		};
 
 		it('names the workflows on the card', async () => {
-			service.listToolCandidates.mockResolvedValue([
-				{ workflowId: 'workflow-2', name: 'Lead score', description: null, reason: null },
-			]);
+			service.listToolCandidates.mockResolvedValue({
+				candidates: [
+					{ workflowId: 'workflow-2', name: 'Lead score', description: null, reason: null },
+				],
+				unusable: 0,
+				more: false,
+			});
 			const suspend = vi.fn();
 
 			await executeTool(
